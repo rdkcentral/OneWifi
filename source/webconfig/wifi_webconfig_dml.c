@@ -39,7 +39,6 @@ webconfig_subdoc_object_t   dml_objects[7] = {
     { webconfig_subdoc_object_type_wificap, "WiFiCap" },
 };
 
-
 webconfig_error_t init_dml_subdoc(webconfig_subdoc_t *doc)
 {
     doc->num_objects = sizeof(dml_objects)/sizeof(webconfig_subdoc_object_t);
@@ -280,116 +279,10 @@ webconfig_error_t encode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
         }
     }
 
-#if 0
-    //wifi_state
-    state_obj = cJSON_CreateObject();
-    cJSON_AddItemToObject(json, "Wifi_State", state_obj);
-
-    //encode wifi_radio_state
-    obj_array = cJSON_CreateArray();
-    cJSON_AddItemToObject(state_obj, "Wifi_Radio_State", obj_array);
-
-    for (i = 0; i < NUM_RADIO_OBJS; i++) {
-        radio_state = &data->u.decoded.radios[i].radio_state;
-        if (radio_state == NULL) {
-            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to get radio state for %d\n", __func__, __LINE__, i);
-            return webconfig_error_encode;
-        }
-
-        obj = cJSON_CreateObject();
-        cJSON_AddItemToArray(obj_array, obj);
-        if (encode_radio_state_object(radio_state, obj) != webconfig_error_none) {
-            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode radio state object for %d\n", __func__, __LINE__, i);
-            return webconfig_error_encode;
-
-        }
-    }
-
-    //encode wifi_vif_state
-    obj_array = cJSON_CreateArray();
-    cJSON_AddItemToObject(state_obj, "Wifi_VIF_State", obj_array);
-
-    for (i = 0; i < NUM_RADIO_OBJS; i++) {
-        //To get the number of vaps
-        vap_map = &params->radios[i].vaps.vap_map;
-        for (j = 0; j < vap_map->num_vaps; j++) {
-            //To get the vap_name
-            rdk_vap_array = &params->radios[i].vaps.rdk_vap_array[j];
-            memset(vap_name, 0, sizeof(vap_name));
-            strcpy(vap_name, (char *)rdk_vap_array->vap_name);
-            //Compare the vap_names
-            if ((strcmp(vap_name, "private_ssid_2g") == 0) ||
-                    (strcmp(vap_name, "private_ssid_5g") == 0)) {
-                vap_state = &params->radios[i].vaps.vap_state[j];
-                obj = cJSON_CreateObject();
-                cJSON_AddItemToArray(obj_array, obj);
-                if (encode_vap_state_object(vap_state, obj) != webconfig_error_none) {
-                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode wifi vap status for vap %d of radio %d\n", __func__, __LINE__, j, i);
-                    return webconfig_error_encode;
-                }
-            } else if ((strcmp(vap_name, "iot_ssid_2g") == 0) ||
-                    (strcmp(vap_name, "iot_ssid_5g") == 0)) {
-                vap_state = &params->radios[i].vaps.vap_state[j];
-                obj = cJSON_CreateObject();
-                cJSON_AddItemToArray(obj_array, obj);
-                if (encode_vap_state_object(vap_state, obj) != webconfig_error_none) {
-                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode wifi vap status for vap %d of radio %d\n", __func__, __LINE__, j, i);
-                    return webconfig_error_encode;
-                }
-            } else if ((strcmp(vap_name, "hotspot_open_2g") == 0) ||
-                    (strcmp(vap_name, "hotspot_open_5g") == 0)) {
-                vap_state = &params->radios[i].vaps.vap_state[j];
-                obj = cJSON_CreateObject();
-                cJSON_AddItemToArray(obj_array, obj);
-                if (encode_vap_state_object(vap_state, obj) != webconfig_error_none) {
-                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode wifi vap status for vap %d of radio %d\n", __func__, __LINE__, j, i);
-                    return webconfig_error_encode;
-                }
-            } else if ((strcmp(vap_name, "lnf_psk_2g") == 0) ||
-                    (strcmp(vap_name, "lnf_psk_5g") == 0)) {
-                vap_state = &params->radios[i].vaps.vap_state[j];
-                obj = cJSON_CreateObject();
-                cJSON_AddItemToArray(obj_array, obj);
-                if (encode_vap_state_object(vap_state, obj) != webconfig_error_none) {
-                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode wifi vap status for vap %d of radio %d\n", __func__, __LINE__, j, i);
-                    return webconfig_error_encode;
-                }
-            } else if ((strcmp(vap_name, "hotspot_secure_2g") == 0) ||
-                    (strcmp(vap_name, "hotspot_secure_5g") == 0)) {
-                vap_state = &params->radios[i].vaps.vap_state[j];
-                obj = cJSON_CreateObject();
-                cJSON_AddItemToArray(obj_array, obj);
-                if (encode_vap_state_object(vap_state, obj) != webconfig_error_none) {
-                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode wifi vap status for vap %d of radio %d\n", __func__, __LINE__, j, i);
-                    return webconfig_error_encode;
-                }
-            } else if ((strcmp(vap_name, "lnf_radius_2g") == 0) ||
-                    (strcmp(vap_name, "lnf_radius_5g") == 0)) {
-                vap_state = &params->radios[i].vaps.vap_state[j];
-                obj = cJSON_CreateObject();
-                cJSON_AddItemToArray(obj_array, obj);
-                if (encode_vap_state_object(vap_state, obj) != webconfig_error_none) {
-                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode wifi vap status for vap %d of radio %d\n", __func__, __LINE__, j, i);
-                    return webconfig_error_encode;
-                }
-            } else if ((strcmp(vap_name, "mesh_backhaul_2g") == 0) ||
-                    (strcmp(vap_name, "mesh_backhaul_5g") == 0)) {
-                vap_state = &params->radios[i].vaps.vap_state[j];
-                obj = cJSON_CreateObject();
-                cJSON_AddItemToArray(obj_array, obj);
-                if (encode_vap_state_object(vap_state, obj) != webconfig_error_none) {
-                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode wifi vap status for vap %d of radio %d\n", __func__, __LINE__, j, i);
-                    return webconfig_error_encode;
-                }
-            }
-        }
-    }
-#endif
     memset(data->u.encoded.raw, 0, MAX_SUBDOC_SIZE);
     str = cJSON_Print(json);
     memcpy(data->u.encoded.raw, str, strlen(str));
 
-    // wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Encoded JSON:\n%s\n", __func__, __LINE__, str);
     cJSON_free(str);
     cJSON_Delete(json);
     wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: encode success\n", __func__, __LINE__);

@@ -1442,3 +1442,268 @@ webconfig_error_t encode_wifiradiocap(wifi_radio_capabilities_t *radiocap, cJSON
     }
     return webconfig_error_none;
 }
+
+webconfig_error_t encode_stats_config_object(hash_map_t *stats_map, cJSON *st_arr_obj)
+{
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d\n", __func__, __LINE__);
+    cJSON *st_obj;
+
+    stats_config_t *st_cfg;
+    if ((st_arr_obj == NULL)) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer\n", __func__, __LINE__);
+        return webconfig_error_encode;
+    }
+
+    if (stats_map != NULL) {
+        st_cfg = hash_map_get_first(stats_map);
+        while (st_cfg != NULL) {
+            st_obj = cJSON_CreateObject();
+            if (st_obj == NULL) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__, __LINE__);
+                return webconfig_error_encode;
+            }
+            cJSON_AddItemToArray(st_arr_obj, st_obj);
+            cJSON_AddNumberToObject(st_obj, "StatsType", st_cfg->stats_type);
+            cJSON_AddNumberToObject(st_obj, "ReportType", st_cfg->report_type);
+            cJSON_AddNumberToObject(st_obj, "RadioType", st_cfg->radio_type);
+            cJSON_AddNumberToObject(st_obj, "SurveyType", st_cfg->survey_type);
+            cJSON_AddNumberToObject(st_obj, "ReportingInterval", st_cfg->reporting_interval);
+            cJSON_AddNumberToObject(st_obj, "ReportingCount", st_cfg->reporting_count);
+            cJSON_AddNumberToObject(st_obj, "SamplingInterval", st_cfg->sampling_interval);
+            cJSON_AddNumberToObject(st_obj, "SurveyInterval", st_cfg->survey_interval);
+            cJSON_AddNumberToObject(st_obj, "ThresholdUtil", st_cfg->threshold_util);
+            cJSON_AddNumberToObject(st_obj, "ThresholdMaxDelay", st_cfg->threshold_max_delay);
+            cJSON_AddItemToObject(st_obj, "ChannelList",  cJSON_CreateIntArray(st_cfg->channels_list.channels_list, st_cfg->channels_list.num_channels));
+            st_cfg = hash_map_get_next(stats_map, st_cfg);
+        }
+    }
+
+    return webconfig_error_none;
+}
+
+webconfig_error_t encode_steering_config_object(hash_map_t *steer_map, cJSON *st_arr_obj)
+{
+    steering_config_t *st_cfg;
+    cJSON *st_obj, *vap_name_array, *vap_name_obj;
+    int i = 0;
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d\n", __func__, __LINE__);
+
+    if ((st_arr_obj == NULL)) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer\n", __func__, __LINE__);
+        return webconfig_error_encode;
+    }
+
+    if (steer_map != NULL) {
+        st_cfg = hash_map_get_first(steer_map);
+        while (st_cfg != NULL) {
+            st_obj = cJSON_CreateObject();
+            if (st_obj == NULL) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__, __LINE__);
+                return webconfig_error_encode;
+            }
+            cJSON_AddItemToArray(st_arr_obj, st_obj);
+            vap_name_array = cJSON_CreateArray();
+            if (vap_name_array == NULL) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer\n", __func__, __LINE__);
+                return webconfig_error_encode;
+            }
+            cJSON_AddItemToObject(st_obj, "VapNames", vap_name_array);
+            if (st_cfg->vap_name_list_len < 2) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Invalid vap_name_list len : %d\n", __func__, __LINE__, st_cfg->vap_name_list_len);
+                return webconfig_error_encode;
+            }
+            for (i = 0; i < st_cfg->vap_name_list_len; i++) {
+                vap_name_obj = cJSON_CreateObject();
+                cJSON_AddItemToArray(vap_name_array, vap_name_obj);
+                cJSON_AddStringToObject(vap_name_obj, "VapName", (char *)st_cfg->vap_name_list[i]);
+            }
+            cJSON_AddNumberToObject(st_obj, "ChanUtilAvgCount", st_cfg->chan_util_avg_count);
+            cJSON_AddNumberToObject(st_obj, "ChanUtilCheckSec", st_cfg->chan_util_check_sec);
+            cJSON_AddNumberToObject(st_obj, "ChanUtilHWM", st_cfg->chan_util_hwm);
+            cJSON_AddNumberToObject(st_obj, "ChanUtilLWM", st_cfg->chan_util_lwm);
+            cJSON_AddBoolToObject(st_obj, "Dbg2gRawChUtil", st_cfg->dbg_2g_raw_chan_util);
+            cJSON_AddBoolToObject(st_obj, "Dbg2gRawRSSI", st_cfg->dbg_2g_raw_rssi);
+            cJSON_AddBoolToObject(st_obj, "Dbg5gRawChUtil", st_cfg->dbg_5g_raw_chan_util);
+            cJSON_AddBoolToObject(st_obj, "Dbg5gRawChRSSI", st_cfg->dbg_5g_raw_rssi);
+            cJSON_AddNumberToObject(st_obj, "DbgLevel", st_cfg->debug_level);
+            cJSON_AddNumberToObject(st_obj, "DefRssiInactXing", st_cfg->def_rssi_inact_xing);
+            cJSON_AddNumberToObject(st_obj, "DefRssiLowXing", st_cfg->def_rssi_low_xing);
+            cJSON_AddNumberToObject(st_obj, "DefRssiXing", st_cfg->def_rssi_xing);
+            cJSON_AddBoolToObject(st_obj, "GwOnly", st_cfg->gw_only);
+            cJSON_AddNumberToObject(st_obj, "InactChkSec", st_cfg->inact_check_sec);
+            cJSON_AddNumberToObject(st_obj, "InactToutSecNormal", st_cfg->inact_tmout_sec_normal);
+            cJSON_AddNumberToObject(st_obj, "InactToutSecOverload", st_cfg->inact_tmout_sec_overload);
+            cJSON_AddNumberToObject(st_obj, "KickDebouncePeriod", st_cfg->kick_debounce_period);
+            cJSON_AddNumberToObject(st_obj, "KickDebounceThresh", st_cfg->kick_debounce_thresh);
+            cJSON_AddNumberToObject(st_obj, "StatsReportInterval", st_cfg->stats_report_interval);
+            cJSON_AddNumberToObject(st_obj, "SuccesssThreshSecs", st_cfg->success_threshold_secs);
+            st_cfg = hash_map_get_next(steer_map, st_cfg);
+        }
+    }
+
+    return webconfig_error_none;
+}
+
+
+webconfig_error_t encode_steering_clients_object(hash_map_t *steer_clients_map, cJSON *st_arr_obj)
+{
+    band_steering_clients_t *st_cfg;
+    cJSON *st_obj, *param_arr, *param_obj;
+    int i = 0;
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d\n", __func__, __LINE__);
+
+    if ((st_arr_obj == NULL)) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer\n", __func__, __LINE__);
+        return webconfig_error_encode;
+    }
+
+    if (steer_clients_map != NULL) {
+        st_cfg = hash_map_get_first(steer_clients_map);
+        while (st_cfg != NULL) {
+            st_obj = cJSON_CreateObject();
+            if (st_obj == NULL) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__, __LINE__);
+                return webconfig_error_encode;
+            }
+            cJSON_AddItemToArray(st_arr_obj, st_obj);
+
+            //CsParams
+            param_arr = cJSON_CreateArray();
+            if (param_arr == NULL) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer\n", __func__, __LINE__);
+                return webconfig_error_encode;
+            }
+            cJSON_AddItemToObject(st_obj, "CsParams", param_arr);
+            for (i = 0; i < st_cfg->cs_params_len; i++) {
+                param_obj = cJSON_CreateObject();
+                if ((param_obj == NULL)) {
+                    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer\n", __func__, __LINE__);
+                    return webconfig_error_encode;
+                }
+                cJSON_AddItemToArray(param_arr, param_obj);
+                cJSON_AddStringToObject(param_obj, "Key", (char *)st_cfg->cs_params[i].key);
+                cJSON_AddStringToObject(param_obj, "Value", (char *)st_cfg->cs_params[i].value);
+            }
+
+            //SteeringBtmParams
+            param_arr = cJSON_CreateArray();
+            if (param_arr == NULL) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer\n", __func__, __LINE__);
+                return webconfig_error_encode;
+            }
+            cJSON_AddItemToObject(st_obj, "SteeringBtmParams", param_arr);
+            for (i = 0; i < st_cfg->steering_btm_params_len; i++) {
+                param_obj = cJSON_CreateObject();
+                if ((param_obj == NULL)) {
+                    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer\n", __func__, __LINE__);
+                    return webconfig_error_encode;
+                }
+                cJSON_AddItemToArray(param_arr, param_obj);
+                cJSON_AddStringToObject(param_obj, "Key", (char *)st_cfg->steering_btm_params[i].key);
+                cJSON_AddStringToObject(param_obj, "Value", (char *)st_cfg->steering_btm_params[i].value);
+            }
+
+            //RrmBcnRptParams
+            param_arr = cJSON_CreateArray();
+            if (param_arr == NULL) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer\n", __func__, __LINE__);
+                return webconfig_error_encode;
+            }
+            cJSON_AddItemToObject(st_obj, "RrmBcnRptParams", param_arr);
+            for (i = 0; i < st_cfg->rrm_bcn_rpt_params_len; i++) {
+                param_obj = cJSON_CreateObject();
+                if ((param_obj == NULL)) {
+                    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer\n", __func__, __LINE__);
+                    return webconfig_error_encode;
+                }
+                cJSON_AddItemToArray(param_arr, param_obj);
+                cJSON_AddStringToObject(param_obj, "Key", (char *)st_cfg->rrm_bcn_rpt_params[i].key);
+                cJSON_AddStringToObject(param_obj, "Value", (char *)st_cfg->rrm_bcn_rpt_params[i].value);
+            }
+
+            //sc_btm_params
+            param_arr = cJSON_CreateArray();
+            if (param_arr == NULL) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer\n", __func__, __LINE__);
+                return webconfig_error_encode;
+            }
+            cJSON_AddItemToObject(st_obj, "ScBtmParams", param_arr);
+            for (i = 0; i < st_cfg->sc_btm_params_len; i++) {
+                param_obj = cJSON_CreateObject();
+                if ((param_obj == NULL)) {
+                    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer\n", __func__, __LINE__);
+                    return webconfig_error_encode;
+                }
+                cJSON_AddItemToArray(param_arr, param_obj);
+                cJSON_AddStringToObject(param_obj, "Key", (char *)st_cfg->sc_btm_params[i].key);
+                cJSON_AddStringToObject(param_obj, "Value", (char *)st_cfg->sc_btm_params[i].value);
+            }
+
+
+            cJSON_AddStringToObject(st_obj, "Mac", st_cfg->mac);
+            cJSON_AddNumberToObject(st_obj, "BackoffExpBase", st_cfg->backoff_exp_base);
+            cJSON_AddNumberToObject(st_obj, "BackoffSecs", st_cfg->backoff_secs);
+            cJSON_AddNumberToObject(st_obj, "Hwm", st_cfg->hwm);
+            cJSON_AddNumberToObject(st_obj, "Lwm", st_cfg->lwm);
+            cJSON_AddNumberToObject(st_obj, "KickDebouncePeriod", st_cfg->kick_debounce_period);
+            cJSON_AddNumberToObject(st_obj, "KickReason", st_cfg->kick_reason);
+            cJSON_AddBoolToObject(st_obj,   "KickUponIdle", st_cfg->kick_upon_idle);
+            cJSON_AddNumberToObject(st_obj, "MaxRejects", st_cfg->max_rejects);
+            cJSON_AddBoolToObject(st_obj,   "PreAssocAuthBlock", st_cfg->pre_assoc_auth_block);
+            cJSON_AddNumberToObject(st_obj, "RejectsTmoutSecs", st_cfg->rejects_tmout_secs);
+            cJSON_AddNumberToObject(st_obj, "ScKickDebouncePeriod", st_cfg->sc_kick_debounce_period);
+            cJSON_AddNumberToObject(st_obj, "ScKickReason", st_cfg->sc_kick_reason);
+            cJSON_AddBoolToObject(st_obj,   "SteerDuringBackoff", st_cfg->steer_during_backoff);
+            cJSON_AddNumberToObject(st_obj, "SteeringFailCnt", st_cfg->steering_fail_cnt);
+            cJSON_AddNumberToObject(st_obj, "SteeringKickCnt", st_cfg->steering_kick_cnt);
+            cJSON_AddNumberToObject(st_obj, "SteeringSuccessCnt", st_cfg->steering_success_cnt);
+            cJSON_AddNumberToObject(st_obj, "StickyKickCnt", st_cfg->sticky_kick_cnt);
+            cJSON_AddNumberToObject(st_obj, "StickyKickDebouncePeriod", st_cfg->sticky_kick_debounce_period);
+            cJSON_AddNumberToObject(st_obj, "StickyKickReason", st_cfg->sticky_kick_reason);
+            cJSON_AddNumberToObject(st_obj, "CsMode", st_cfg->cs_mode);
+            cJSON_AddNumberToObject(st_obj, "ForceKick", st_cfg->force_kick);
+            cJSON_AddNumberToObject(st_obj, "KickType", st_cfg->kick_type);
+            cJSON_AddNumberToObject(st_obj, "Pref5g", st_cfg->pref_5g);
+            cJSON_AddNumberToObject(st_obj, "RejectDetection", st_cfg->reject_detection);
+            cJSON_AddNumberToObject(st_obj, "ScKickType", st_cfg->sc_kick_type);
+            cJSON_AddNumberToObject(st_obj, "StickyKickType", st_cfg->sticky_kick_type);
+
+
+            st_cfg = hash_map_get_next(steer_clients_map, st_cfg);
+        }
+    }
+
+    return webconfig_error_none;
+}
+
+webconfig_error_t encode_vif_neighbors_object(hash_map_t *neighbors_map, cJSON *neighbor_arr_obj)
+{
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d\n", __func__, __LINE__);
+    cJSON *neighbor_obj;
+
+    vif_neighbors_t *neighbor_cfg;
+    if ((neighbor_arr_obj == NULL)) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer\n", __func__, __LINE__);
+        return webconfig_error_encode;
+    }
+
+    if (neighbors_map != NULL) {
+        neighbor_cfg = hash_map_get_first(neighbors_map);
+        while (neighbor_cfg != NULL) {
+            neighbor_obj = cJSON_CreateObject();
+            if (neighbor_obj == NULL) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__, __LINE__);
+                return webconfig_error_encode;
+            }
+            cJSON_AddItemToArray(neighbor_arr_obj, neighbor_obj);
+            cJSON_AddStringToObject(neighbor_obj, "Bssid", neighbor_cfg->bssid);
+            cJSON_AddStringToObject(neighbor_obj, "IfName", neighbor_cfg->if_name);
+            cJSON_AddNumberToObject(neighbor_obj, "Channel", neighbor_cfg->channel);
+            cJSON_AddNumberToObject(neighbor_obj, "HTMode", neighbor_cfg->ht_mode);
+            cJSON_AddNumberToObject(neighbor_obj, "Priority", neighbor_cfg->priority);
+            neighbor_cfg = hash_map_get_next(neighbors_map, neighbor_cfg);
+        }
+    }
+
+    return webconfig_error_none;
+}

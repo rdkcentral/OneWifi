@@ -346,6 +346,12 @@ WiFi_GetParamBoolValue
         return TRUE;
     }
 
+    if (AnscEqualString(ParamName, "OW_Core_Thread", TRUE))
+    {
+        *pBool = rfc_pcfg->ow_core_thread_rfc;
+        return TRUE;
+    }
+
     if (AnscEqualString(ParamName, "WiFi_Mgmt_Frame_Rbus_Enable", TRUE))
     {
         *pBool = rfc_pcfg->mgmt_frame_rbus_enabled_rfc;
@@ -1029,6 +1035,13 @@ WiFi_SetParamBoolValue
     {
         if(bValue != rfc_pcfg->wifiinterworking_rfc) {
             push_rfc_dml_cache_to_one_wifidb(bValue,ctrl_event_type_wifi_interworking_rfc);
+        }
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "OW_Core_Thread", TRUE))
+    {
+        if(bValue != rfc_pcfg->ow_core_thread_rfc){
+            push_rfc_dml_cache_to_one_wifidb(bValue,ctrl_event_type_ow_core_thread_rfc);
         }
         return TRUE;
     }

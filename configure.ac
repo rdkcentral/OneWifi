@@ -144,6 +144,15 @@ AM_CONDITIONAL(CCSP_ARCH_ATOM, test "x$CCSP_ARCH" = xatom)
 AM_CONDITIONAL(CCSP_ARCH_PC, test "x$CCSP_ARCH" = xpc)
 AM_CONDITIONAL(CCSP_ARCH_MIPS, test "x$CCSP_ARCH" = xmips)
 
+AC_ARG_ENABLE([libwebconfig],
+             [  --enable-libwebconfig    Turn on building libwebconfig, otherwise link against sysroot],
+             [case "${enableval}" in
+                yes) libwebconfig=true ;;
+                 no) libwebconfig=false ;;
+                  *) AC_MSG_ERROR([bad value ${enableval} for --enable-libwebconfig]) ;;
+            esac],[libwebconfig=true])
+AM_CONDITIONAL([LIBWEBCONFIG], [test x$libwebconfig = xtrue])
+
 AC_ARG_ENABLE([rdk-wifi-libhostap],
     [AS_HELP_STRING([--enable-rdk-wifi-libhostap],[enable])],
     [

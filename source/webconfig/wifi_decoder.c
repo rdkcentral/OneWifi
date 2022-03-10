@@ -3078,7 +3078,7 @@ webconfig_error_t decode_blaster_object(const cJSON *blaster_cfg, active_msmt_t 
     decode_param_array(blaster_cfg, "Step", obj_array);
     length = cJSON_GetArraySize(obj_array);
 
-	for (i = 0; i < length; i++) {
+    for (i = 0; i < length; i++) {
         stepobj = cJSON_GetArrayItem(obj_array, i);
         decode_param_integer(stepobj, "StepId", param);
         blaster_info->Step[i].StepId = param->valuedouble;
@@ -3348,3 +3348,483 @@ webconfig_error_t decode_wifiradiocap(wifi_radio_capabilities_t *radio_cap, cJSO
     return webconfig_error_none;
 }
 
+webconfig_error_t decode_stats_config_object(hash_map_t **stats_map, cJSON *st_arr_obj)
+{
+    char key[32] = {0};
+    unsigned char id[32] = {0};
+    stats_config_t temp_sta_cfg;
+    stats_config_t *sta_cfg;
+    cJSON *st_obj, *iterator, *channel_list;
+    unsigned int size = 0, i = 0;
+    int count = 0;
+
+    if (st_arr_obj == NULL) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: cjson st_arr_obj is NULL \n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    size = cJSON_GetArraySize(st_arr_obj);
+    if (*stats_map == NULL) {
+        *stats_map = hash_map_create();
+    }
+
+    for (i = 0; i < size; i++) {
+        st_obj = cJSON_GetArrayItem(st_arr_obj, i);
+        if (st_obj == NULL) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: null Json Pointer for : %d \n", __func__, __LINE__, i);
+            return webconfig_error_decode;
+        }
+
+
+        memset(&temp_sta_cfg, 0, sizeof(stats_config_t));
+
+        cJSON *param;
+        decode_param_integer(st_obj, "StatsType", param);
+        temp_sta_cfg.stats_type = param->valuedouble;
+        decode_param_integer(st_obj, "ReportType", param);
+        temp_sta_cfg.report_type = param->valuedouble;
+        decode_param_integer(st_obj, "RadioType", param);
+        temp_sta_cfg.radio_type = param->valuedouble;
+        decode_param_integer(st_obj, "SurveyType", param);
+        temp_sta_cfg.survey_type = param->valuedouble;
+        decode_param_integer(st_obj, "ReportingInterval", param);
+        temp_sta_cfg.reporting_interval = param->valuedouble;
+        decode_param_integer(st_obj, "ReportingCount", param);
+        temp_sta_cfg.reporting_count = param->valuedouble;
+        decode_param_integer(st_obj, "SamplingInterval", param);
+        temp_sta_cfg.sampling_interval = param->valuedouble;
+        decode_param_integer(st_obj, "SurveyInterval", param);
+        temp_sta_cfg.survey_interval = param->valuedouble;
+        decode_param_integer(st_obj, "ThresholdUtil", param);
+        temp_sta_cfg.threshold_util = param->valuedouble;
+        decode_param_integer(st_obj, "ThresholdMaxDelay", param);
+        temp_sta_cfg.threshold_max_delay = param->valuedouble;
+
+        channel_list = cJSON_GetObjectItem(st_obj, "ChannelList");
+        if (channel_list != NULL) {
+            count = 0;
+            cJSON_ArrayForEach(iterator, channel_list) {
+                if (cJSON_IsNumber(iterator)) {
+                    temp_sta_cfg.channels_list.channels_list[count] = iterator->valuedouble;
+                    count++;
+                }
+            }
+            temp_sta_cfg.channels_list.num_channels = count;
+        }
+
+        memset(key, 0, sizeof(key));
+        memset(id, 0, sizeof(id));
+        if (get_stats_cfg_id(key, sizeof(key), id, sizeof(id), temp_sta_cfg.stats_type, temp_sta_cfg.report_type,
+                    temp_sta_cfg.radio_type, temp_sta_cfg.survey_type) == RETURN_ERR) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: get_stats_cfg_id failed %d\n", __func__, __LINE__, i);
+            return webconfig_error_decode;
+        }
+
+        snprintf(temp_sta_cfg.stats_cfg_id, sizeof(temp_sta_cfg.stats_cfg_id), "%s", key);
+        if (*stats_map != NULL) {
+            sta_cfg = hash_map_get(*stats_map, key);
+            if (sta_cfg == NULL) {
+                sta_cfg = (stats_config_t *)malloc(sizeof(stats_config_t));
+                if (sta_cfg == NULL) {
+                    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: stat_config is NULL for %d\n", __func__, __LINE__, i);
+                    return webconfig_error_decode;
+                }
+                memset(sta_cfg, 0, sizeof(stats_config_t));
+                memcpy(sta_cfg, &temp_sta_cfg, sizeof(stats_config_t));
+                hash_map_put(*stats_map, strdup(key), sta_cfg);
+            } else {
+                memcpy(sta_cfg, &temp_sta_cfg, sizeof(stats_config_t));
+            }
+        }
+    }
+    return webconfig_error_none;
+}
+
+webconfig_error_t decode_steering_config_object(hash_map_t **steer_map, cJSON *st_arr_obj)
+{
+    const cJSON  *param;
+    cJSON *st_obj, *vap_name_array, *vap_name_obj;
+    steering_config_t temp_st_cfg, *st_cfg;
+    char key[64] = {0};
+    unsigned char id[64] = {0};
+    unsigned int size = 0, i = 0, vap_name_array_size = 0, j = 0, vap_name_list_count = 0;
+
+    if (st_arr_obj == NULL) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: cjson st_arr_obj is NULL \n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    size = cJSON_GetArraySize(st_arr_obj);
+
+    if (*steer_map == NULL) {
+        *steer_map = hash_map_create();
+    }
+
+
+    for (i = 0; i < size; i++) {
+        st_obj = cJSON_GetArrayItem(st_arr_obj, i);
+        if (st_obj == NULL) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: null Json Pointer \n", __func__, __LINE__);
+            return webconfig_error_decode;
+        }
+
+        memset(&temp_st_cfg, 0, sizeof(steering_config_t));
+
+        vap_name_array = cJSON_GetObjectItem(st_obj, "VapNames");
+        if ((vap_name_array == NULL) && (cJSON_IsObject(vap_name_array) == false)) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: vap_name_array object not present\n", __func__, __LINE__);
+            return webconfig_error_decode;
+        }
+        vap_name_array_size = cJSON_GetArraySize(vap_name_array);
+
+        for (j = 0; j<vap_name_array_size; j++) {
+            vap_name_obj = cJSON_GetArrayItem(vap_name_array, j);
+            if (vap_name_obj == NULL) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: null Json Pointer \n", __func__, __LINE__);
+                return webconfig_error_decode;
+            }
+            decode_param_string(vap_name_obj, "VapName", param);
+            strcpy((char *)temp_st_cfg.vap_name_list[vap_name_list_count], param->valuestring);
+            vap_name_list_count++;
+        }
+        temp_st_cfg.vap_name_list_len = vap_name_list_count;
+        if (vap_name_list_count < 2) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Invalid vap_name list count : %d \n", __func__, __LINE__, vap_name_list_count);
+            return webconfig_error_decode;
+        }
+
+        decode_param_integer(st_obj, "ChanUtilAvgCount", param);
+        temp_st_cfg.chan_util_avg_count = param->valuedouble;
+        decode_param_integer(st_obj, "ChanUtilCheckSec", param);
+        temp_st_cfg.chan_util_check_sec = param->valuedouble;
+        decode_param_integer(st_obj, "ChanUtilHWM", param);
+        temp_st_cfg.chan_util_hwm = param->valuedouble;
+        decode_param_integer(st_obj, "ChanUtilLWM", param);
+        temp_st_cfg.chan_util_lwm = param->valuedouble;
+        decode_param_bool(st_obj, "Dbg2gRawChUtil", param);
+        temp_st_cfg.dbg_2g_raw_chan_util = (param->type & cJSON_True) ? true:false;
+        decode_param_bool(st_obj, "Dbg2gRawRSSI", param);
+        temp_st_cfg.dbg_2g_raw_rssi = (param->type & cJSON_True) ? true:false;
+        decode_param_bool(st_obj, "Dbg5gRawChUtil", param);
+        temp_st_cfg.dbg_5g_raw_chan_util = (param->type & cJSON_True) ? true:false;
+        decode_param_bool(st_obj, "Dbg5gRawChRSSI", param);
+        temp_st_cfg.dbg_5g_raw_rssi = (param->type & cJSON_True) ? true:false;
+        decode_param_integer(st_obj, "DbgLevel", param);
+        temp_st_cfg.debug_level = param->valuedouble;
+        decode_param_integer(st_obj, "DefRssiInactXing", param);
+        temp_st_cfg.def_rssi_inact_xing = param->valuedouble;
+        decode_param_integer(st_obj, "DefRssiLowXing", param);
+        temp_st_cfg.def_rssi_low_xing = param->valuedouble;
+        decode_param_integer(st_obj, "DefRssiXing", param);
+        temp_st_cfg.def_rssi_xing = param->valuedouble;
+        decode_param_bool(st_obj, "GwOnly", param);
+        temp_st_cfg.gw_only = (param->type & cJSON_True) ? true:false;
+        decode_param_integer(st_obj, "InactChkSec", param);
+        temp_st_cfg.inact_check_sec = param->valuedouble;
+        decode_param_integer(st_obj, "InactToutSecNormal", param);
+        temp_st_cfg.inact_tmout_sec_normal = param->valuedouble;
+        decode_param_integer(st_obj, "InactToutSecOverload", param);
+        temp_st_cfg.inact_tmout_sec_overload = param->valuedouble;
+        decode_param_integer(st_obj, "KickDebouncePeriod", param);
+        temp_st_cfg.kick_debounce_period = param->valuedouble;
+        decode_param_integer(st_obj, "KickDebounceThresh", param);
+        temp_st_cfg.kick_debounce_thresh = param->valuedouble;
+        decode_param_integer(st_obj, "StatsReportInterval", param);
+        temp_st_cfg.stats_report_interval = param->valuedouble;
+        decode_param_integer(st_obj, "SuccesssThreshSecs", param);
+        temp_st_cfg.success_threshold_secs = param->valuedouble;
+
+        memset(key, 0, sizeof(key));
+        memset(id, 0, sizeof(id));
+        if (get_steering_cfg_id(key, sizeof(key), id, sizeof(id), &temp_st_cfg) == RETURN_ERR) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: get_steering_cfg_id failed %d\n", __func__, __LINE__, i);
+            return webconfig_error_decode;
+        }
+        snprintf(temp_st_cfg.steering_cfg_id, sizeof(temp_st_cfg.steering_cfg_id), "%s", key);
+
+        if (*steer_map != NULL) {
+            st_cfg = hash_map_get(*steer_map, key);
+            if (st_cfg == NULL) {
+                st_cfg = (steering_config_t *)malloc(sizeof(steering_config_t));
+                if (st_cfg == NULL) {
+                    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: st_config is NULL for %d\n", __func__, __LINE__, i);
+                    return webconfig_error_decode;
+                }
+                memset(st_cfg, 0, sizeof(steering_config_t));
+                memcpy(st_cfg, &temp_st_cfg, sizeof(steering_config_t));
+                hash_map_put(*steer_map, strdup(key), st_cfg);
+            } else {
+                memcpy(st_cfg, &temp_st_cfg, sizeof(steering_config_t));
+            }
+        }
+    }
+
+    return webconfig_error_none;
+}
+
+webconfig_error_t decode_steering_clients_object(hash_map_t **steering_client_map, cJSON *st_arr_obj)
+{
+    const cJSON  *param;
+    cJSON *st_obj, *param_arr, *param_obj;
+    band_steering_clients_t temp_st_cfg, *st_cfg;
+    char key[64] = {0};
+    unsigned char id[64] = {0};
+    unsigned int size = 0, i = 0, j = 0, param_arr_size;
+
+    if (st_arr_obj == NULL) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: cjson st_arr_obj is NULL \n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    size = cJSON_GetArraySize(st_arr_obj);
+
+    if (*steering_client_map == NULL) {
+        *steering_client_map = hash_map_create();
+    }
+
+
+    for (i = 0; i < size; i++) {
+        st_obj = cJSON_GetArrayItem(st_arr_obj, i);
+        if (st_obj == NULL) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: null Json Pointer \n", __func__, __LINE__);
+            return webconfig_error_decode;
+        }
+
+        memset(&temp_st_cfg, 0, sizeof(band_steering_clients_t));
+        decode_param_string(st_obj, "Mac", param);
+        strcpy((char *)temp_st_cfg.mac, param->valuestring);
+        decode_param_integer(st_obj, "BackoffExpBase", param);
+        temp_st_cfg.backoff_exp_base = param->valuedouble;
+        decode_param_integer(st_obj, "BackoffSecs", param);
+        temp_st_cfg.backoff_secs = param->valuedouble;
+        decode_param_integer(st_obj, "Hwm", param);
+        temp_st_cfg.hwm = param->valuedouble;
+        decode_param_integer(st_obj, "Lwm", param);
+        temp_st_cfg.lwm = param->valuedouble;
+        decode_param_integer(st_obj, "KickDebouncePeriod", param);
+        temp_st_cfg.kick_debounce_period = param->valuedouble;
+        decode_param_integer(st_obj, "KickReason", param);
+        temp_st_cfg.kick_reason = param->valuedouble;
+        decode_param_bool(st_obj, "KickUponIdle", param);
+        temp_st_cfg.kick_upon_idle = param->valuedouble;
+        decode_param_integer(st_obj, "MaxRejects", param);
+        temp_st_cfg.max_rejects = param->valuedouble;
+        decode_param_bool(st_obj, "PreAssocAuthBlock", param);
+        temp_st_cfg.pre_assoc_auth_block = param->valuedouble;
+        decode_param_integer(st_obj, "RejectsTmoutSecs", param);
+        temp_st_cfg.rejects_tmout_secs = param->valuedouble;
+        decode_param_integer(st_obj, "ScKickDebouncePeriod", param);
+        temp_st_cfg.sc_kick_debounce_period = param->valuedouble;
+        decode_param_integer(st_obj, "ScKickReason", param);
+        temp_st_cfg.sc_kick_reason = param->valuedouble;
+        decode_param_bool(st_obj, "SteerDuringBackoff", param);
+        temp_st_cfg.steer_during_backoff = param->valuedouble;
+        decode_param_integer(st_obj, "SteeringFailCnt", param);
+        temp_st_cfg.steering_fail_cnt = param->valuedouble;
+        decode_param_integer(st_obj, "SteeringKickCnt", param);
+        temp_st_cfg.steering_kick_cnt = param->valuedouble;
+        decode_param_integer(st_obj, "SteeringSuccessCnt", param);
+        temp_st_cfg.steering_success_cnt = param->valuedouble;
+        decode_param_integer(st_obj, "StickyKickCnt", param);
+        temp_st_cfg.sticky_kick_cnt = param->valuedouble;
+        decode_param_integer(st_obj, "StickyKickDebouncePeriod", param);
+        temp_st_cfg.sticky_kick_debounce_period = param->valuedouble;
+        decode_param_integer(st_obj, "StickyKickReason", param);
+        temp_st_cfg.sticky_kick_reason = param->valuedouble;
+        decode_param_integer(st_obj, "CsMode", param);
+        temp_st_cfg.cs_mode = param->valuedouble;
+        decode_param_integer(st_obj, "ForceKick", param);
+        temp_st_cfg.force_kick = param->valuedouble;
+        decode_param_integer(st_obj, "KickType", param);
+        temp_st_cfg.kick_type = param->valuedouble;
+        decode_param_integer(st_obj, "Pref5g", param);
+        temp_st_cfg.pref_5g = param->valuedouble;
+        decode_param_integer(st_obj, "RejectDetection", param);
+        temp_st_cfg.reject_detection = param->valuedouble;
+        decode_param_integer(st_obj, "ScKickType", param);
+        temp_st_cfg.sc_kick_type = param->valuedouble;
+        decode_param_integer(st_obj, "StickyKickType", param);
+        temp_st_cfg.sticky_kick_type = param->valuedouble;
+
+        //CsParams
+        param_arr = cJSON_GetObjectItem(st_obj, "CsParams");
+        if ((param_arr == NULL) && (cJSON_IsObject(param_arr) == false)) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: param_arr object not present\n", __func__, __LINE__);
+            return webconfig_error_decode;
+        }
+        param_arr_size = cJSON_GetArraySize(param_arr);
+
+        for (j = 0; j<param_arr_size; j++) {
+            param_obj = cJSON_GetArrayItem(param_arr, j);
+            if (param_obj == NULL) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: null Json Pointer \n", __func__, __LINE__);
+                return webconfig_error_decode;
+            }
+            decode_param_string(param_obj, "Key", param);
+            strcpy((char *)temp_st_cfg.cs_params[j].key, param->valuestring);
+            decode_param_string(param_obj, "Value", param);
+            strcpy((char *)temp_st_cfg.cs_params[j].value, param->valuestring);
+        }
+        temp_st_cfg.cs_params_len = j;
+
+        //steering_btm_params
+        param_arr = cJSON_GetObjectItem(st_obj, "SteeringBtmParams");
+        if ((param_arr == NULL) && (cJSON_IsObject(param_arr) == false)) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: param_arr object not present\n", __func__, __LINE__);
+            return webconfig_error_decode;
+        }
+        param_arr_size = cJSON_GetArraySize(param_arr);
+
+        for (j = 0; j<param_arr_size; j++) {
+            param_obj = cJSON_GetArrayItem(param_arr, j);
+            if (param_obj == NULL) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: null Json Pointer \n", __func__, __LINE__);
+                return webconfig_error_decode;
+            }
+            decode_param_string(param_obj, "Key", param);
+            strcpy((char *)temp_st_cfg.steering_btm_params[j].key, param->valuestring);
+            decode_param_string(param_obj, "Value", param);
+            strcpy((char *)temp_st_cfg.steering_btm_params[j].value, param->valuestring);
+        }
+        temp_st_cfg.steering_btm_params_len = j;
+
+        //rrm_bcn_rpt_params
+        param_arr = cJSON_GetObjectItem(st_obj, "RrmBcnRptParams");
+        if ((param_arr == NULL) && (cJSON_IsObject(param_arr) == false)) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: param_arr object not present\n", __func__, __LINE__);
+            return webconfig_error_decode;
+        }
+        param_arr_size = cJSON_GetArraySize(param_arr);
+
+        for (j = 0; j<param_arr_size; j++) {
+            param_obj = cJSON_GetArrayItem(param_arr, j);
+            if (param_obj == NULL) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: null Json Pointer \n", __func__, __LINE__);
+                return webconfig_error_decode;
+            }
+            decode_param_string(param_obj, "Key", param);
+            strcpy((char *)temp_st_cfg.rrm_bcn_rpt_params[j].key, param->valuestring);
+            decode_param_string(param_obj, "Value", param);
+            strcpy((char *)temp_st_cfg.rrm_bcn_rpt_params[j].value, param->valuestring);
+        }
+        temp_st_cfg.rrm_bcn_rpt_params_len = j;
+
+        //sc_btm_params
+        param_arr = cJSON_GetObjectItem(st_obj, "ScBtmParams");
+        if ((param_arr == NULL) && (cJSON_IsObject(param_arr) == false)) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: param_arr object not present\n", __func__, __LINE__);
+            return webconfig_error_decode;
+        }
+        param_arr_size = cJSON_GetArraySize(param_arr);
+
+        for (j = 0; j<param_arr_size; j++) {
+            param_obj = cJSON_GetArrayItem(param_arr, j);
+            if (param_obj == NULL) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: null Json Pointer \n", __func__, __LINE__);
+                return webconfig_error_decode;
+            }
+            decode_param_string(param_obj, "Key", param);
+            strcpy((char *)temp_st_cfg.sc_btm_params[j].key, param->valuestring);
+            decode_param_string(param_obj, "Value", param);
+            strcpy((char *)temp_st_cfg.sc_btm_params[j].value, param->valuestring);
+        }
+        temp_st_cfg.sc_btm_params_len = j;
+
+        memset(key, 0, sizeof(key));
+        memset(id, 0, sizeof(id));
+
+        if (get_steering_clients_id(key, sizeof(key), id, sizeof(id), temp_st_cfg.mac) == RETURN_ERR) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: get_steering_cfg_id failed %d\n", __func__, __LINE__, i);
+            return webconfig_error_decode;
+        }
+        snprintf(temp_st_cfg.steering_client_id, sizeof(temp_st_cfg.steering_client_id), "%s", key);
+
+        if (*steering_client_map != NULL) {
+            st_cfg = hash_map_get(*steering_client_map, key);
+            if (st_cfg == NULL) {
+                st_cfg = (band_steering_clients_t *)malloc(sizeof(band_steering_clients_t));
+                if (st_cfg == NULL) {
+                    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: st_config is NULL for %d\n", __func__, __LINE__, i);
+                    return webconfig_error_decode;
+                }
+                memset(st_cfg, 0, sizeof(band_steering_clients_t));
+                memcpy(st_cfg, &temp_st_cfg, sizeof(band_steering_clients_t));
+                hash_map_put(*steering_client_map, strdup(key), st_cfg);
+            } else {
+                memcpy(st_cfg, &temp_st_cfg, sizeof(band_steering_clients_t));
+            }
+        }
+    }
+
+    return webconfig_error_none;
+}
+
+webconfig_error_t decode_vif_neighbors_object(hash_map_t **neighbors_map, cJSON *neighbors_arr_obj)
+{
+    char key[32] = {0};
+    vif_neighbors_t temp_neighbors_cfg;
+    vif_neighbors_t *neighbors_cfg;
+    cJSON *neighbors_obj;
+    unsigned int size = 0, i = 0;
+    unsigned char id[64] = {0};
+
+    if (neighbors_arr_obj == NULL) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: cjson neighbors_arr_obj is NULL \n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    size = cJSON_GetArraySize(neighbors_arr_obj);
+    if (*neighbors_map == NULL) {
+        *neighbors_map = hash_map_create();
+    }
+
+    for (i = 0; i < size; i++) {
+        neighbors_obj = cJSON_GetArrayItem(neighbors_arr_obj, i);
+        if (neighbors_obj == NULL) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: null Json Pointer for : %d \n", __func__, __LINE__, i);
+            return webconfig_error_decode;
+        }
+
+
+        memset(&temp_neighbors_cfg, 0, sizeof(vif_neighbors_t));
+
+        cJSON *param;
+
+        decode_param_string(neighbors_obj, "Bssid", param);
+        strcpy((char *)temp_neighbors_cfg.bssid, param->valuestring);
+        decode_param_string(neighbors_obj, "IfName", param);
+        strcpy((char *)temp_neighbors_cfg.if_name, param->valuestring);
+        decode_param_integer(neighbors_obj, "Channel", param);
+        temp_neighbors_cfg.channel = param->valuedouble;
+        decode_param_integer(neighbors_obj, "HTMode", param);
+        temp_neighbors_cfg.ht_mode = param->valuedouble;
+        decode_param_integer(neighbors_obj, "Priority", param);
+        temp_neighbors_cfg.priority = param->valuedouble;
+
+        memset(key, 0, sizeof(key));
+        memset(id, 0, sizeof(id));
+
+        if (get_vif_neighbor_id(key, sizeof(key), id, sizeof(id), temp_neighbors_cfg.bssid) == RETURN_ERR) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: get_vif_neighbor_id failed %d\n", __func__, __LINE__, i);
+            return webconfig_error_decode;
+        }
+
+        snprintf(temp_neighbors_cfg.neighbor_id, sizeof(temp_neighbors_cfg.neighbor_id), "%s", key);
+        if (*neighbors_map != NULL) {
+            neighbors_cfg = hash_map_get(*neighbors_map, key);
+            if (neighbors_cfg == NULL) {
+                neighbors_cfg = (vif_neighbors_t *)malloc(sizeof(vif_neighbors_t));
+                if (neighbors_cfg == NULL) {
+                    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: neighbors_cfg is NULL for %d\n", __func__, __LINE__, i);
+                    return webconfig_error_decode;
+                }
+                memset(neighbors_cfg, 0, sizeof(vif_neighbors_t));
+                memcpy(neighbors_cfg, &temp_neighbors_cfg, sizeof(vif_neighbors_t));
+                hash_map_put(*neighbors_map, strdup(key), neighbors_cfg);
+            } else {
+                memcpy(neighbors_cfg, &temp_neighbors_cfg, sizeof(vif_neighbors_t));
+            }
+        }
+    }
+    return webconfig_error_none;
+}

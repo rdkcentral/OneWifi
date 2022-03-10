@@ -43,6 +43,7 @@
 #include "ieee80211.h"
 
 #define MAX_NUM_CLIENTS 64
+#define MAX_NUM_CONFIG  16//Used for steering_Config
 
 webconfig_consumer_t    webconfig_consumer;
 webconfig_external_ovsdb_t    ext_proto;
@@ -326,6 +327,31 @@ void print_associated_clients_ovs_schema(FILE  *fp, const struct schema_Wifi_Ass
     }
     return;
 }
+/*
+void print_band_steering_config(FILE  *fp, const struct schema_Band_Steering_Config *config)
+{
+    fprintf(fp, " chan_util_avg_count       : %d\n", config->chan_util_avg_count);
+    fprintf(fp, " chan_util_check_sec       : %d\n", config->chan_util_check_sec);
+    fprintf(fp, " chan_util_hwm             : %d\n", config->chan_util_hwm);
+    fprintf(fp, " chan_util_lwm             : %d\n", config->chan_util_lwm);
+    fprintf(fp, " dbg_2g_raw_chan_util      : %d\n", config->dbg_2g_raw_chan_util);
+    fprintf(fp, " dbg_2g_raw_rssi           : %d\n", config->dbg_2g_raw_rssi);
+    fprintf(fp, " debug_level               : %d\n", config->debug_level);
+    fprintf(fp, " def_rssi_inact_xing       : %d\n", config->def_rssi_inact_xing);
+    fprintf(fp, " def_rssi_low_xing         : %d\n", config->def_rssi_low_xing);
+    fprintf(fp, " gw_only                   : %d\n", config->gw_only);
+    fprintf(fp, " if_name_2g                : %s\n", config->if_name_2g);
+    fprintf(fp, " if_name_5g                : %s\n", config->if_name_5g);
+    fprintf(fp, " inact_check_sec           : %d\n", config->inact_check_sec);
+    fprintf(fp, " inact_tmout_sec_normal    : %d\n", config->inact_tmout_sec_normal);
+    fprintf(fp, " inact_tmout_sec_overload  : %d\n", config->inact_tmout_sec_overload);
+    fprintf(fp, " kick_debounce_period      : %d\n", config->kick_debounce_period);
+    fprintf(fp, " kick_debounce_thresh      : %d\n", config->kick_debounce_thresh);
+    fprintf(fp, " stats_report_interval     : %d\n", config->stats_report_interval);
+    fprintf(fp, " success_threshold_secs    : %d\n", config->success_threshold_secs);
+
+}
+*/
 
 void dump_ovs_schema(webconfig_subdoc_type_t type)
 {
@@ -353,6 +379,7 @@ void dump_ovs_schema(webconfig_subdoc_type_t type)
     const struct schema_Wifi_Radio_State *radio_state;
     const struct schema_Wifi_VIF_State   *vif_state;
     const struct schema_Wifi_Associated_Clients *assoc_clients;
+    //const struct schema_Band_Steering_Config *band_steer_config;
     unsigned int vap_array_index = 0;
     webconfig_consumer_t *consumer = get_consumer_object();
 
@@ -392,6 +419,10 @@ void dump_ovs_schema(webconfig_subdoc_type_t type)
             vap_names = (char **)&total_vap_names;
             array_size = ARRAY_SIZE(total_vap_names);
         break;
+
+        case webconfig_subdoc_type_steering_config:
+            strcat(file_name, "/log_steering_config_schema");
+            break;
 
         default:
             return;
@@ -479,8 +510,20 @@ void dump_ovs_schema(webconfig_subdoc_type_t type)
         }
         fprintf(fp, "\n");
     }
-
-
+/*
+    if ((type == webconfig_subdoc_type_steering_config) || (type == webconfig_subdoc_type_dml)) {
+        fprintf(fp, "Band steering Configuration\n");
+        for (i = 0; i < MAX_NUM_CONFIG; i++) {
+            band_steer_config =  ext_proto.band_steer_config[i];
+            if (band_steer_config == NULL) {
+                printf("%s:%d: steer_config is empty for : %d\n", __func__, __LINE__, i);
+                return;
+            }
+            print_band_steering_config(fp, band_steer_config);
+        }
+        fprintf(fp, "\n");
+    }
+*/
 
     fclose(fp);
 
@@ -725,6 +768,16 @@ void handle_webconfig_consumer_event(webconfig_consumer_t *consumer, const char 
                             printf("%s:%d: macfilter set successful, Radios: %s, %s, Test State:%d\n", __func__, __LINE__,
                                     consumer->radios[0].name, consumer->radios[1].name,
                                     consumer->test_state);
+                        /*} else if (consumer->test_state == consumer_test_state_band_steer_config_test_pending) {
+                            consumer->steer_config_test_pending_count = 0;
+                            consumer->test_state = consumer_test_state_band_steer_config_test_complete;
+                            cmd_delta_time = get_current_time_ms() - cmd_start_time;
+                            printf("%s:%d: current time:%llu subdoc execution delta time:%u milliSeconds\n", __func__, __LINE__, get_current_time_ms(), cmd_delta_time);
+                            printf("%s:%d: steer config set successful, Radios: %s, %s, Test State:%d\n", __func__, __LINE__,
+                                    consumer->radios[0].name, consumer->radios[1].name,
+                                    consumer->test_state);
+                            dump_ovs_schema(subdoc_type);
+                            dump_ovs_schema(webconfig_subdoc_type_steering_config);*/
                         } else {
                             consumer->test_state = consumer_test_state_cache_init_complete;
 
@@ -1296,7 +1349,268 @@ void test_macfilter_subdoc_change(webconfig_consumer_t *consumer)
     }
 }
 
+void test_vif_neighbors_subdoc_change(webconfig_consumer_t *consumer)
+{
+    webconfig_subdoc_data_t data;
+    webconfig_error_t ret = webconfig_error_none;
 
+    char *str;
+
+    str = NULL;
+
+    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+
+    printf("%s:%d: current time:%llu\n", __func__, __LINE__, get_current_time_ms());
+    if (enable_ovsdb == true) {
+        webconfig_external_ovsdb_t ext_proto_vif_neighbor;
+        const struct schema_Wifi_VIF_Neighbors *vif_neighbor[2];
+        int *param;
+
+        vif_neighbor[0] = ext_proto.vif_neighbors[0];
+
+        param = (int *)&vif_neighbor[0]->channel;
+        *param = 6;
+
+        param = (int *)&vif_neighbor[0]->priority;
+        *param = 1;
+
+        snprintf((char *)vif_neighbor[0]->bssid, sizeof(vif_neighbor[0]->bssid), "aa:bb:cc:dd:ee:ff");
+        snprintf((char *)vif_neighbor[0]->if_name, sizeof(vif_neighbor[0]->if_name), "wl0.7");
+        snprintf((char *)vif_neighbor[0]->ht_mode, sizeof(vif_neighbor[0]->ht_mode), "HT20");
+
+        vif_neighbor[1] = ext_proto.vif_neighbors[1];
+
+        param = (int *)&vif_neighbor[1]->channel;
+        *param = 6;
+
+        param = (int *)&vif_neighbor[1]->priority;
+        *param = 1;
+
+        snprintf((char *)vif_neighbor[1]->bssid, sizeof(vif_neighbor[1]->bssid), "aa:bb:cc:dd:ee:ee");
+        snprintf((char *)vif_neighbor[1]->if_name, sizeof(vif_neighbor[1]->if_name), "wl0.7");
+        snprintf((char *)vif_neighbor[1]->ht_mode, sizeof(vif_neighbor[1]->ht_mode), "HT20");
+
+        ext_proto_vif_neighbor.vif_neighbors = vif_neighbor;
+        param = (int *)&ext_proto_vif_neighbor.vif_neighbor_row_count;
+        *param = 2;
+
+        printf("%s:%d: start vif neighbor config test\n", __func__, __LINE__);
+        ret = webconfig_ovsdb_encode(&consumer->webconfig, &ext_proto_vif_neighbor,
+                webconfig_subdoc_type_vif_neighbors, &str);
+    }
+
+    if (ret == webconfig_error_none) {
+        printf("%s:%d: webconfig consumer vif neighbour start test\n", __func__, __LINE__);
+#ifdef WEBCONFIG_TESTS_OVER_QUEUE
+        push_data_to_ctrl_queue(str, strlen(str), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data);
+#else
+        cmd_start_time = get_current_time_ms();
+        printf("%s:%d: command start current time:%llu\n", __func__, __LINE__, cmd_start_time);
+        rbus_setStr(consumer->rbus_handle, WIFI_WEBCONFIG_DOC_DATA_SOUTH, str);
+#endif
+    } else {
+        printf("%s:%d: Webconfig set failed\n", __func__, __LINE__);
+    }
+
+}
+
+
+void test_steeringclient_subdoc_change(webconfig_consumer_t *consumer)
+{
+    webconfig_subdoc_data_t data;
+    webconfig_error_t ret = webconfig_error_none;
+
+    char *str;
+
+    str = NULL;
+
+    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+
+    printf("%s:%d: current time:%llu\n", __func__, __LINE__, get_current_time_ms());
+    if (enable_ovsdb == true) {
+        webconfig_external_ovsdb_t ext_proto_steer_client;
+        const struct schema_Band_Steering_Clients *steer_client[2];
+        int *param;
+
+        steer_client[0] = ext_proto.band_steering_clients[0];
+
+        param = (int *)&steer_client[0]->hwm;
+        *param = 35;
+
+        param = (int *)&steer_client[0]->lwm;
+        *param = 10;
+
+        snprintf((char *)steer_client[0]->mac, sizeof(steer_client[0]->mac), "aa:bb:cc:dd:ee:ff");
+        snprintf((char *)steer_client[0]->force_kick, sizeof(steer_client[0]->force_kick), "directed");
+
+        snprintf((char *)steer_client[0]->steering_btm_params_keys[0], sizeof(steer_client[0]->steering_btm_params_keys[0]), "abridged");
+        snprintf((char *)steer_client[0]->steering_btm_params[0], sizeof(steer_client[0]->steering_btm_params[0]), "1");
+
+        snprintf((char *)steer_client[0]->steering_btm_params_keys[1], sizeof(steer_client[0]->steering_btm_params_keys[1]), "btm_max_retries");
+        snprintf((char *)steer_client[0]->steering_btm_params[1], sizeof(steer_client[0]->steering_btm_params[1]), "3");
+
+        param = (int *)&steer_client[0]->steering_btm_params_len;
+        *param = 2;
+        snprintf((char *)steer_client[0]->kick_type, sizeof(steer_client[0]->kick_type), "deauth");
+        snprintf((char *)steer_client[0]->pref_5g, sizeof(steer_client[0]->pref_5g), "hwm");
+        snprintf((char *)steer_client[0]->reject_detection, sizeof(steer_client[0]->reject_detection), "probe_null");
+
+        ext_proto_steer_client.band_steering_clients = steer_client;
+        param = (int *)&ext_proto_steer_client.steering_client_row_count;
+        *param = 1;
+
+        printf("%s:%d: start steer config test\n", __func__, __LINE__);
+        ret = webconfig_ovsdb_encode(&consumer->webconfig, &ext_proto_steer_client,
+                webconfig_subdoc_type_steering_clients, &str);
+    }
+
+    if (ret == webconfig_error_none) {
+        printf("%s:%d: webconfig consumer steer client start test\n", __func__, __LINE__);
+//        dump_subdoc(str, webconfig_subdoc_type_steering_config);
+#ifdef WEBCONFIG_TESTS_OVER_QUEUE
+        push_data_to_ctrl_queue(str, strlen(str), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data);
+#else
+        cmd_start_time = get_current_time_ms();
+        printf("%s:%d: command start current time:%llu\n", __func__, __LINE__, cmd_start_time);
+        rbus_setStr(consumer->rbus_handle, WIFI_WEBCONFIG_DOC_DATA_SOUTH, str);
+#endif
+    } else {
+        printf("%s:%d: Webconfig set failed\n", __func__, __LINE__);
+    }
+
+}
+
+void test_steerconfig_subdoc_change(webconfig_consumer_t *consumer)
+{
+    webconfig_subdoc_data_t data;
+    webconfig_error_t ret = webconfig_error_none;
+
+    char *str;
+
+    str = NULL;
+
+    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+
+    printf("%s:%d: current time:%llu\n", __func__, __LINE__, get_current_time_ms());
+    if (enable_ovsdb == true) {
+        webconfig_external_ovsdb_t ext_proto_steer_config;
+        const struct schema_Band_Steering_Config *steer_config[2];
+        int *param;
+
+        steer_config[0] = ext_proto.band_steer_config[0];
+
+        param = (int *)&steer_config[0]->chan_util_hwm;
+        *param = 35;
+
+        param = (int *)&steer_config[0]->chan_util_lwm;
+        *param = 10;
+
+        snprintf((char *)steer_config[0]->if_name_2g, sizeof(steer_config[0]->if_name_2g), "wl0.7");
+        snprintf((char *)steer_config[0]->if_name_5g, sizeof(steer_config[0]->if_name_5g), "wl1.7");
+
+        ext_proto_steer_config.band_steer_config = steer_config;
+        param = (int *)&ext_proto_steer_config.steer_row_count;
+        *param = 1;
+
+        printf("%s:%d: start steer config test\n", __func__, __LINE__);
+        ret = webconfig_ovsdb_encode(&consumer->webconfig, &ext_proto_steer_config,
+                webconfig_subdoc_type_steering_config, &str);
+    }
+
+    if (ret == webconfig_error_none) {
+        printf("%s:%d: webconfig consumer steer config start test\n", __func__, __LINE__);
+        dump_subdoc(str, webconfig_subdoc_type_steering_config);
+#ifdef WEBCONFIG_TESTS_OVER_QUEUE
+        push_data_to_ctrl_queue(str, strlen(str), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data);
+#else
+        cmd_start_time = get_current_time_ms();
+        printf("%s:%d: command start current time:%llu\n", __func__, __LINE__, cmd_start_time);
+        rbus_setStr(consumer->rbus_handle, WIFI_WEBCONFIG_DOC_DATA_SOUTH, str);
+#endif
+    } else {
+        printf("%s:%d: Webconfig set failed\n", __func__, __LINE__);
+    }
+
+}
+
+
+void test_statsconfig_subdoc_change(webconfig_consumer_t *consumer)
+{
+    webconfig_subdoc_data_t data;
+    webconfig_error_t ret = webconfig_error_none;
+
+    char *str;
+    int  i = 0;
+
+    str = NULL;
+
+    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+
+    printf("%s:%d: current time:%llu\n", __func__, __LINE__, get_current_time_ms());
+    if (enable_ovsdb == true) {
+        webconfig_external_ovsdb_t ext_proto_stats_config;
+        const struct schema_Wifi_Stats_Config *stat_config[2];
+        int *param;
+
+        stat_config[0] = ext_proto.stats_config[0];
+
+        snprintf((char *)stat_config[0]->stats_type, sizeof(stat_config[0]->stats_type), "neighbor");
+        snprintf((char *)stat_config[0]->report_type, sizeof(stat_config[0]->report_type), "raw");
+        snprintf((char *)stat_config[0]->radio_type, sizeof(stat_config[0]->radio_type), "2.4G");
+        snprintf((char *)stat_config[0]->survey_type, sizeof(stat_config[0]->survey_type), "on-chan");
+
+        param = (int *)&stat_config[0]->reporting_interval;
+        *param = 10;
+
+        param = (int *)&stat_config[0]->channel_list_len;
+        *param = 3;
+        for (i = 0; i < stat_config[0]->channel_list_len; i++) {
+            param = (int *)&stat_config[0]->channel_list[i];
+            *param = i+1;
+        }
+
+
+        stat_config[1] = ext_proto.stats_config[1];
+
+        snprintf((char *)stat_config[1]->stats_type, sizeof(stat_config[1]->stats_type), "neighbor");
+        snprintf((char *)stat_config[1]->report_type, sizeof(stat_config[1]->report_type), "raw");
+        snprintf((char *)stat_config[1]->radio_type, sizeof(stat_config[1]->radio_type), "5G");
+        snprintf((char *)stat_config[1]->survey_type, sizeof(stat_config[1]->survey_type), "on-chan");
+
+        param = (int *)&stat_config[1]->reporting_interval;
+        *param = 20;
+
+        param = (int *)&stat_config[1]->channel_list_len;
+        *param = 3;
+        for (i = 0; i < stat_config[1]->channel_list_len; i++) {
+            param = (int *)&stat_config[1]->channel_list[i];
+            *param = 36 + (i*4);
+        }
+
+        ext_proto_stats_config.stats_config = stat_config;
+
+        param = (int *)&ext_proto_stats_config.stats_row_count;
+        *param = 2;
+
+        printf("%s:%d: start stat config test\n", __func__, __LINE__);
+        ret = webconfig_ovsdb_encode(&consumer->webconfig, &ext_proto_stats_config,
+                webconfig_subdoc_type_stats_config, &str);
+    }
+
+    if (ret == webconfig_error_none) {
+        printf("%s:%d: webconfig consumer steer config start test\n", __func__, __LINE__);
+#ifdef WEBCONFIG_TESTS_OVER_QUEUE
+        push_data_to_ctrl_queue(str, strlen(str), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data);
+#else
+        cmd_start_time = get_current_time_ms();
+        printf("%s:%d: command start current time:%llu\n", __func__, __LINE__, cmd_start_time);
+        rbus_setStr(consumer->rbus_handle, WIFI_WEBCONFIG_DOC_DATA_SOUTH, str);
+#endif
+    } else {
+        printf("%s:%d: Webconfig set failed\n", __func__, __LINE__);
+    }
+
+}
 
 void test_private_subdoc_change(webconfig_consumer_t *consumer)
 {
@@ -1881,10 +2195,34 @@ void consumer_app_trigger_subdoc_test( webconfig_consumer_t *consumer, consumer_
             test_mesh_sta_subdoc_change(consumer);
         break;
 
+        case consumer_test_start_band_steer_config_subdoc:
+            consumer->steer_config_test_pending_count= 0;
+            consumer->test_state = consumer_test_state_band_steer_config_test_pending;
+            test_steerconfig_subdoc_change(consumer);
+            break;
+
+        case consumer_test_start_stats_config_subdoc:
+            consumer->stats_config_test_pending_count= 0;
+            consumer->test_state = consumer_test_state_stats_config_test_pending;
+            test_statsconfig_subdoc_change(consumer);
+            break;
+
+        case consumer_test_start_band_steer_client_subdoc:
+            consumer->steer_client_test_pending_count = 0;
+            consumer->test_state = consumer_test_start_band_steer_client_subdoc;
+            test_steeringclient_subdoc_change(consumer);
+            break;
+
         case consumer_test_start_lnf_subdoc:
             consumer->xfinity_test_pending_count = 0;
             consumer->test_state = consumer_test_state_lnf_subdoc_test_pending;
             test_lnf_subdoc_change(consumer);
+            break;
+
+       case consumer_test_start_vif_neighbors_subdoc:
+            consumer->vif_neighbors_test_pending_count = 0;
+            consumer->test_state = consumer_test_start_vif_neighbors_subdoc;
+            test_vif_neighbors_subdoc_change(consumer);
             break;
 
         case consumer_test_start_all_subdoc:
@@ -2042,6 +2380,85 @@ void initialize_ovs_schema_structs()
         memset((struct schema_Wifi_Associated_Clients *)ext_proto.assoc_clients[i], 0, sizeof(struct schema_Wifi_Associated_Clients));
     }
 
+
+    ext_proto.band_steer_config = (const struct schema_Band_Steering_Config **) malloc(sizeof(struct schema_Band_Steering_Config *) * MAX_NUM_CONFIG);
+    if (ext_proto.band_steer_config == NULL) {
+        printf("[%s]:%d Memory allocation fail for band_steer_config table\n",__FUNCTION__,__LINE__);
+        free_ovs_schema_structs();
+        return;
+    }
+    memset((struct schema_Band_Steering_Config **)ext_proto.band_steer_config, 0, (sizeof(struct schema_Band_Steering_Config *) * MAX_NUM_CONFIG));
+
+
+    for (i = 0; i < MAX_NUM_CONFIG; i++) {
+        ext_proto.band_steer_config[i] = (struct schema_Band_Steering_Config*)malloc(sizeof(struct schema_Band_Steering_Config));
+        if (ext_proto.band_steer_config[i] == NULL) {
+            printf("[%s]:%d Memory allocation fail for %d\n",__FUNCTION__,__LINE__, i);
+            free_ovs_schema_structs();
+            return;
+        }
+        memset((struct schema_Band_Steering_Config*)ext_proto.band_steer_config[i], 0, sizeof(struct schema_Band_Steering_Config));
+    }
+
+
+    ext_proto.stats_config = (const struct schema_Wifi_Stats_Config **) malloc(sizeof(struct schema_Wifi_Stats_Config *) * MAX_NUM_CONFIG);
+    if (ext_proto.stats_config == NULL) {
+        printf("[%s]:%d Memory allocation fail for stats_config table\n",__FUNCTION__,__LINE__);
+        free_ovs_schema_structs();
+        return;
+    }
+    memset((struct schema_Wifi_Stats_Config **)ext_proto.stats_config, 0, (sizeof(struct schema_Wifi_Stats_Config *) * MAX_NUM_CONFIG));
+
+
+    for (i = 0; i < MAX_NUM_CONFIG; i++) {
+        ext_proto.stats_config[i] = (struct schema_Wifi_Stats_Config*)malloc(sizeof(struct schema_Wifi_Stats_Config));
+        if (ext_proto.stats_config[i] == NULL) {
+            printf("[%s]:%d Memory allocation fail for %d\n",__FUNCTION__,__LINE__, i);
+            free_ovs_schema_structs();
+            return;
+        }
+        memset((struct schema_Wifi_Stats_Config*)ext_proto.stats_config[i], 0, sizeof(struct schema_Wifi_Stats_Config));
+    }
+
+    ext_proto.band_steering_clients = (const struct schema_Band_Steering_Clients **) malloc(sizeof(struct schema_Band_Steering_Clients *) * MAX_NUM_CONFIG);
+    if (ext_proto.band_steering_clients == NULL) {
+        printf("[%s]:%d Memory allocation fail for band_steering_clients table\n",__FUNCTION__,__LINE__);
+        free_ovs_schema_structs();
+        return;
+    }
+    memset((struct schema_Band_Steering_Clients **)ext_proto.band_steering_clients, 0, (sizeof(struct schema_Band_Steering_Clients *) * MAX_NUM_CONFIG));
+
+
+    for (i = 0; i < MAX_NUM_CONFIG; i++) {
+        ext_proto.band_steering_clients[i] = (struct schema_Band_Steering_Clients *)malloc(sizeof(struct schema_Band_Steering_Clients));
+        if (ext_proto.band_steering_clients[i] == NULL) {
+            printf("[%s]:%d Memory allocation fail for %d\n",__FUNCTION__,__LINE__, i);
+            free_ovs_schema_structs();
+            return;
+        }
+        memset((struct schema_Band_Steering_Clients *)ext_proto.band_steering_clients[i], 0, sizeof(struct schema_Band_Steering_Clients));
+    }
+
+    ext_proto.vif_neighbors = (const struct schema_Wifi_VIF_Neighbors **) malloc(sizeof(struct schema_Wifi_VIF_Neighbors *) * MAX_NUM_CONFIG);
+    if (ext_proto.vif_neighbors == NULL) {
+        printf("[%s]:%d Memory allocation fail for vif_neighbors table\n",__FUNCTION__,__LINE__);
+        free_ovs_schema_structs();
+        return;
+    }
+    memset((struct schema_Wifi_VIF_Neighbors **)ext_proto.vif_neighbors, 0, (sizeof(struct schema_Wifi_VIF_Neighbors *) * MAX_NUM_CONFIG));
+
+
+    for (i = 0; i < MAX_NUM_CONFIG; i++) {
+        ext_proto.vif_neighbors[i] = (struct schema_Wifi_VIF_Neighbors *)malloc(sizeof(struct schema_Wifi_VIF_Neighbors));
+        if (ext_proto.vif_neighbors[i] == NULL) {
+            printf("[%s]:%d Memory allocation fail for %d\n",__FUNCTION__,__LINE__, i);
+            free_ovs_schema_structs();
+            return;
+        }
+        memset((struct schema_Wifi_VIF_Neighbors *)ext_proto.vif_neighbors[i], 0, sizeof(struct schema_Wifi_VIF_Neighbors));
+    }
+
+
     return;
 }
 
@@ -2101,6 +2518,54 @@ void free_ovs_schema_structs()
             if (ext_proto.assoc_clients!= NULL) {
                 free(ext_proto.assoc_clients);
                 ext_proto.assoc_clients = NULL;
+            }
+
+            for (i = 0; i < MAX_NUM_CONFIG; i++) {
+                if (ext_proto.band_steer_config[i] != NULL) {
+                    free((struct schema_Band_Steering_Config *)ext_proto.band_steer_config[i]);
+                    ext_proto.band_steer_config[i] = NULL;
+                }
+            }
+
+            if (ext_proto.band_steer_config!= NULL) {
+                free(ext_proto.band_steer_config);
+                ext_proto.band_steer_config = NULL;
+            }
+
+            for (i = 0; i < MAX_NUM_CONFIG; i++) {
+                if (ext_proto.stats_config[i] != NULL) {
+                    free((struct schema_Wifi_Stats_Config *)ext_proto.stats_config[i]);
+                    ext_proto.stats_config[i] = NULL;
+                }
+            }
+
+            if (ext_proto.stats_config!= NULL) {
+                free(ext_proto.stats_config);
+                ext_proto.stats_config = NULL;
+            }
+
+            for (i = 0; i < MAX_NUM_CONFIG; i++) {
+                if (ext_proto.band_steering_clients[i] != NULL) {
+                    free((struct schema_Band_Steering_Clients *)ext_proto.band_steering_clients[i]);
+                    ext_proto.band_steering_clients[i] = NULL;
+                }
+            }
+
+            if (ext_proto.band_steering_clients!= NULL) {
+                free(ext_proto.band_steering_clients);
+                ext_proto.band_steering_clients = NULL;
+            }
+
+            for (i = 0; i < MAX_NUM_CONFIG; i++) {
+                if (ext_proto.vif_neighbors[i] != NULL) {
+                    free((struct schema_Wifi_VIF_Neighbors *)ext_proto.vif_neighbors[i]);
+                    ext_proto.vif_neighbors[i] = NULL;
+                }
+            }
+
+            if (ext_proto.vif_neighbors!= NULL) {
+                free(ext_proto.vif_neighbors);
+                ext_proto.vif_neighbors = NULL;
             }
 
             is_ovs_init = false;
@@ -2578,6 +3043,14 @@ int parse_input_parameters(char *first_input, char *second_input, char *input_fi
                 consumer_app_trigger_subdoc_test(consumer, consumer_test_start_xfinity_subdoc);
             } else if (!strncmp(second_input, "getsubdoc", strlen("getsubdoc"))) {
                 test_getsubdoctype(consumer);
+            } else if (!strncmp(second_input, "steerconfig", strlen("steerconfig"))) {
+                consumer_app_trigger_subdoc_test(consumer, consumer_test_start_band_steer_config_subdoc);
+            } else if (!strncmp(second_input, "statconfig", strlen("statconfig"))) {
+                consumer_app_trigger_subdoc_test(consumer, consumer_test_start_stats_config_subdoc);
+            } else if (!strncmp(second_input, "steerclient", strlen("steerclient"))) {
+                consumer_app_trigger_subdoc_test(consumer, consumer_test_start_band_steer_client_subdoc);
+            } else if (!strncmp(second_input, "neighbor", strlen("neighbor"))) {
+                consumer_app_trigger_subdoc_test(consumer, consumer_test_start_vif_neighbors_subdoc);
             } else if (!strncmp(second_input, "disable", strlen("disable"))) {
                 free_ovs_schema_structs();
                 is_ovs_init = false;
@@ -2749,6 +3222,7 @@ void consumer_queue_loop(webconfig_consumer_t *consumer)
     int rc;
     consumer_event_t *queue_data = NULL;
 
+    pthread_mutex_lock(&consumer->lock);
     while (consumer->exit_consumer == false) {
         gettimeofday(&tv_now, NULL);
         time_to_wait.tv_nsec = 0;
@@ -2761,13 +3235,11 @@ void consumer_queue_loop(webconfig_consumer_t *consumer)
             }
         }
 
-        pthread_mutex_lock(&consumer->lock);
         rc = pthread_cond_timedwait(&consumer->cond, &consumer->lock, &time_to_wait);
-        if (rc == 0) {
+        if ((rc == 0) || (queue_count(consumer->queue) > 0)) {
             while (queue_count(consumer->queue)) {
                 queue_data = queue_pop(consumer->queue);
                 if (queue_data == NULL) {
-                    pthread_mutex_unlock(&consumer->lock);
                     continue;
                 }
                 switch (queue_data->event_type) {
@@ -2777,7 +3249,7 @@ void consumer_queue_loop(webconfig_consumer_t *consumer)
                     break;
 
                     default:
-                        //printf("[%s]:WIFI consumer thread not supported this event %d\r\n",__FUNCTION__, queue_data->event_type);
+                        printf("[%s]:WIFI consumer thread not supported this event %d\r\n",__FUNCTION__, queue_data->event_type);
                     break;
                 }
 
@@ -2870,12 +3342,11 @@ void consumer_queue_loop(webconfig_consumer_t *consumer)
             }
 
         } else {
-            pthread_mutex_unlock(&consumer->lock);
             printf("RDK_LOG_WARN, WIFI %s: Invalid Return Status %d\n",__FUNCTION__,rc);
             continue;
         }
-        pthread_mutex_unlock(&consumer->lock);
     }
+    pthread_mutex_unlock(&consumer->lock);
 
     return;
 }
@@ -3454,7 +3925,11 @@ void dump_subdoc(const char *str, webconfig_subdoc_type_t type)
 
         case webconfig_subdoc_type_mesh_sta:
             strcat(file_name, "/log_mesh_sta_subdoc");
-        break;
+            break;
+
+        case webconfig_subdoc_type_steering_config:
+            strcat(file_name, "/log_steering_config_subdoc");
+            break;
 
         default:
             return;

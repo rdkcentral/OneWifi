@@ -49,6 +49,10 @@ typedef struct {
     active_msmt_t                   blaster_config_global;
     rdk_wifi_radio_t                radio_config[MAX_NUM_RADIOS];
     bool                            is_db_update_required;
+    hash_map_t                      *stats_config_map;
+    hash_map_t                      *steering_config_map;
+    hash_map_t                      *steering_client_map;
+    hash_map_t                      *vif_neighbors_map;
 #if DML_SUPPORT
     wifi_ssp_t                      ssp;
     wifi_dml_parameters_t           dml_parameters;

@@ -23,6 +23,7 @@
 #include <pthread.h>
 #include <ev.h>
 #include <sys/time.h>
+#include <syscfg/syscfg.h>
 #include <assert.h>
 #include "wifi_data_plane.h"
 #if DML_SUPPORT
@@ -39,6 +40,7 @@
 #endif // DML_SUPPORT
 
 #include "wifi_util.h"
+#include <opensync/ow_core_thread.h>
 
 #if DML_SUPPORT
 #include <execinfo.h>
@@ -1441,6 +1443,23 @@ int init_wifimgr()
         g_wifi_mgr.csi_data_queue = queue_create();
     }
 
+    if (g_wifi_mgr.stats_config_map == NULL) {
+        g_wifi_mgr.stats_config_map = hash_map_create();
+    }
+
+    if (g_wifi_mgr.steering_config_map == NULL) {
+        g_wifi_mgr.steering_config_map = hash_map_create();
+    }
+
+    if (g_wifi_mgr.steering_client_map == NULL) {
+        g_wifi_mgr.steering_client_map = hash_map_create();
+    }
+
+
+    if (g_wifi_mgr.vif_neighbors_map == NULL) {
+        g_wifi_mgr.vif_neighbors_map = hash_map_create();
+    }
+
 #if DML_SUPPORT
     //init ssp_loop.
     if (ssp_loop_init() < 0) {
@@ -1472,6 +1491,26 @@ int start_wifimgr()
 
     pthread_cond_destroy(&g_wifi_mgr.dml_init_status);
     pthread_mutex_unlock(&g_wifi_mgr.lock);
+
+    bool rfc_status;
+    get_wifi_rfc_parameters(RFC_WIFI_OW_CORE_THREAD, (bool *)&rfc_status);
+    if (true == rfc_status) {
+        /* This will spawn the OneWifi Core Thread that is taken from
+         * OpenSync. The function returns only after the thread has been
+         * spawned and it has performed it's basic setup. Once the
+         * function returns other ow_ functions can be called.
+         */
+         ow_core_thread_start();
+         wifi_util_dbg_print(WIFI_MGR,"%s: ow core thread started\n", __func__);
+         if(syscfg_set_commit(NULL, "ow_core_thread", "true") != 0) {
+             wifi_util_error_print(WIFI_MGR,"%s: syscfg_set failed for ow_core_thread enable\n", __func__);
+         }
+    } else {
+         wifi_util_dbg_print(WIFI_MGR,"%s: ow core thread disabled\n", __func__);
+         if(syscfg_set_commit(NULL, "ow_core_thread", "false") != 0) {
+             wifi_util_error_print(WIFI_MGR,"%s: syscfg_set failed for ow_core_thread disable\n", __func__);
+         }
+    }
 #else
     init_wifi_db_param();
 #endif // DML_SUPPORT

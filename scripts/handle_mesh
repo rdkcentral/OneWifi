@@ -20,6 +20,7 @@
 
 MODEL_NUM=`grep MODEL_NUM /etc/device.properties | cut -d "=" -f2`
 OPENSYNC_ENABLE=`syscfg get opensync`
+HAL_WRAPPER_ENABLE=`syscfg get ow_core_thread`
 platform_checks()
 {
 if [ "$MODEL_NUM" == "DPC3941" ] || [ "$MODEL_NUM" == "DPC3939" ]; then
@@ -63,6 +64,7 @@ if [ $# -eq 0 ]; then
 else
  platform_checks
  if [ "$OPENSYNC_ENABLE" == "true" ] || [ -f /etc/onewifi_enabled ];then
+    export SM_WIFI_STATS_DISABLE=$HAL_WRAPPER_ENABLE
     if [ -z "$(pidof ovsdb-server)" ]
     then
         /usr/opensync/scripts/managers.init $1

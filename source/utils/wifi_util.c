@@ -29,6 +29,7 @@
 #include "wifi_mgr.h"
 #include <netinet/in.h>
 #include <time.h>
+#include <openssl/sha.h>
 
 /* enable PID in debug logs */
 #define __ENABLE_PID__     0
@@ -1909,6 +1910,35 @@ int  min_hw_mode_conversion(unsigned int vapIndex, char *inputStr, char *outputS
     return RETURN_ERR;
 }
 
+int stats_type_conversion(stats_type_t *stat_type_enum, char *stat_type, int stat_type_len, unsigned int conv_type)
+{
+    char arr_str[][32] = {"neighbor", "survey", "client", "capacity", "radio", "essid", "quality", "device", "rssi", "steering", "client_auth_fails"};
+    stats_type_t arr_enum[] = {stats_type_neighbor, stats_type_survey, stats_type_client, stats_type_capacity, stats_type_radio, stats_type_essid,
+                       stats_type_quality, stats_type_device, stats_type_rssi, stats_type_steering, stats_type_client_auth_fails};
+
+    unsigned int i = 0;
+    if ((stat_type_enum == NULL) || (stat_type == NULL)) {
+        return RETURN_ERR;
+    }
+    if (conv_type == STRING_TO_ENUM) {
+        for (i = 0; i < ARRAY_SIZE(arr_str); i++) {
+            if (strcmp(arr_str[i], stat_type) == 0) {
+                *stat_type_enum = arr_enum[i];
+                return RETURN_OK;
+            }
+        }
+    } else if (conv_type == ENUM_TO_STRING) {
+        for (i = 0; i < ARRAY_SIZE(arr_enum); i++) {
+            if (arr_enum[i] == *stat_type_enum) {
+                snprintf(stat_type, stat_type_len, "%s", arr_str[i]);
+                return RETURN_OK;
+            }
+        }
+    }
+
+    return RETURN_ERR;
+}
+
 
 int  vif_radio_idx_conversion(unsigned int vapIndex, int *input, int *output, char *tableType)
 {
@@ -2089,4 +2119,444 @@ bool wifiStandardStrToEnum(char *pWifiStdStr, wifi_ieee80211Variant_t *p80211Var
         token = strtok(NULL, ",");
     }
     return TRUE;
+}
+
+int report_type_conversion(report_type_t *report_type_enum, char *report_type, int report_type_len, unsigned int conv_type)
+{
+    char arr_str[][16] = {"raw", "average", "histogram", "percentile",  "diff"};
+
+    report_type_t arr_enum[] = {report_type_raw, report_type_average, report_type_histogram, report_type_percentile, report_type_diff};
+
+    unsigned int i = 0;
+    if ((report_type_enum == NULL) || (report_type == NULL)) {
+        return RETURN_ERR;
+    }
+    if (conv_type == STRING_TO_ENUM) {
+        for (i = 0; i < ARRAY_SIZE(arr_str); i++) {
+            if (strcmp(arr_str[i], report_type) == 0) {
+                *report_type_enum = arr_enum[i];
+                return RETURN_OK;
+            }
+        }
+    } else if (conv_type == ENUM_TO_STRING) {
+        for (i = 0; i < ARRAY_SIZE(arr_enum); i++) {
+            if (arr_enum[i] == *report_type_enum) {
+                snprintf(report_type, report_type_len, "%s", arr_str[i]);
+                return RETURN_OK;
+            }
+        }
+    }
+
+    return RETURN_ERR;
+}
+
+int survey_type_conversion(survey_type_t *survey_type_enum, char *survey_type, int survey_type_len, unsigned int conv_type)
+{
+    char arr_str[][16] = { "on-chan", "off-chan", "full"};
+    survey_type_t arr_enum[] = {survey_type_on_channel, survey_type_off_channel, survey_type_full};
+
+    unsigned int i = 0;
+    if ((survey_type_enum == NULL) || (survey_type == NULL)) {
+        return RETURN_ERR;
+    }
+    if (conv_type == STRING_TO_ENUM) {
+        for (i = 0; i < ARRAY_SIZE(arr_str); i++) {
+            if (strcmp(arr_str[i], survey_type) == 0) {
+                *survey_type_enum = arr_enum[i];
+                return RETURN_OK;
+            }
+        }
+    } else if (conv_type == ENUM_TO_STRING) {
+        for (i = 0; i < ARRAY_SIZE(arr_enum); i++) {
+            if (arr_enum[i] == *survey_type_enum) {
+                snprintf(survey_type, survey_type_len, "%s", arr_str[i]);
+                return RETURN_OK;
+            }
+        }
+    }
+
+    return RETURN_ERR;
+}
+
+int get_steering_cfg_id(char *key, int key_len, unsigned char * id, int id_len, const steering_config_t *st_cfg)
+{
+    int out_bytes = 0;
+    char buff[512];
+    int i = 0, outbytes = 0;
+    SHA256_CTX ctx;
+    if ((key == NULL) || (id == NULL) || (st_cfg == NULL)) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: input arguements are NULL!!!\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    for (i=0; i < st_cfg->vap_name_list_len; i++) {
+        if ((st_cfg->vap_name_list[i] == NULL) || (strlen(st_cfg->vap_name_list[i]) == 0)) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: vap_name_list failed!!!\n", __func__, __LINE__);
+            return RETURN_ERR;
+
+        }
+
+        outbytes +=  snprintf(&buff[outbytes], (sizeof(buff) - outbytes), "%s", st_cfg->vap_name_list[i]);
+        if ((out_bytes < 0) || (out_bytes >= key_len)) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: snprintf error\n", __func__, __LINE__);
+            return RETURN_ERR;
+        }
+    }
+
+
+    SHA256_Init(&ctx);
+    SHA256_Update(&ctx, buff, 512);
+    SHA256_Final(id, &ctx);
+
+    out_bytes = snprintf(key, key_len, "%02x%02x%02x%02x%02x%02x%02x%02x%02x",
+            id[0], id[1], id[2],
+            id[3], id[4], id[5],
+            id[6], id[7], id[8]);
+    if ((out_bytes < 0) || (out_bytes >= key_len)) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: snprintf error\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: key:%s\n", __func__, __LINE__, key);
+
+    return RETURN_OK;
+}
+
+int get_stats_cfg_id(char *key, int key_len, unsigned char *id, int id_len, const unsigned int stats_type, const unsigned int report_type, const unsigned int radio_type, const unsigned int survey_type)
+{
+    unsigned char buff[256];
+    SHA256_CTX ctx;
+    unsigned int pos;
+    int out_bytes = 0;
+
+    if ((key == NULL) || (id == NULL)) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: input arguements are NULL!!!\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    memset(buff, 0, 256);
+
+    pos = 0;
+    memcpy(&buff[pos], (unsigned char *)&stats_type, sizeof(stats_type)); pos += sizeof(stats_type);
+    memcpy(&buff[pos], (unsigned char *)&report_type, sizeof(report_type)); pos += sizeof(report_type);
+    memcpy(&buff[pos], (unsigned char *)&radio_type, sizeof(radio_type)); pos += sizeof(radio_type);
+    memcpy(&buff[pos], (unsigned char *)&survey_type, sizeof(survey_type));
+
+    SHA256_Init(&ctx);
+    SHA256_Update(&ctx, buff, 256);
+    SHA256_Final(id, &ctx);
+
+    out_bytes = snprintf(key, key_len, "%02x%02x%02x%02x%02x%02x%02x%02x%02x",
+            id[0], id[1], id[2],
+            id[3], id[4], id[5],
+            id[6], id[7], id[8]);
+    if ((out_bytes < 0) || (out_bytes >= key_len)) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: snprintf error\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: key:%s\n", __func__, __LINE__, key);
+
+    return RETURN_OK;
+}
+
+int get_steering_clients_id(char *key, int key_len, unsigned char *id, int id_len, const char *mac)
+{
+    int out_bytes = 0;
+    if ((key == NULL) || (id == NULL) || (mac == NULL)) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: input arguements are NULL!!!\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    if (WiFi_IsValidMacAddr(mac) != TRUE) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Not valid MAC Address : %s!!!\n", __func__, __LINE__, mac);
+        return RETURN_ERR;
+    }
+
+    out_bytes = snprintf(key, key_len, "%s", mac);
+    if ((out_bytes < 0) || (out_bytes >= key_len)) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: snprintf error\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: key:%s\n", __func__, __LINE__, key);
+
+    return RETURN_OK;
+}
+
+int cs_state_type_conversion(cs_state_t *cs_state_type_enum, char *cs_state, int cs_state_len, unsigned int conv_type)
+{
+    char arr_str[][16] = {"none", "steering", "expired", "failed", "xing_low", "xing_high", "xing_disabled"};
+    cs_state_t arr_enum[] = {cs_state_none, cs_state_steering, cs_state_expired, cs_state_failed, cs_state_xing_low, cs_state_xing_high, cs_state_xing_disabled};
+
+    unsigned int i = 0;
+    if ((cs_state_type_enum == NULL) || (cs_state == NULL)) {
+        return RETURN_ERR;
+    }
+    if (conv_type == STRING_TO_ENUM) {
+        for (i = 0; i < ARRAY_SIZE(arr_str); i++) {
+            if (strcmp(arr_str[i], cs_state) == 0) {
+                *cs_state_type_enum = arr_enum[i];
+                return RETURN_OK;
+            }
+        }
+    } else if (conv_type == ENUM_TO_STRING) {
+        for (i = 0; i < ARRAY_SIZE(arr_enum); i++) {
+            if (arr_enum[i] == *cs_state_type_enum) {
+                snprintf(cs_state, cs_state_len, "%s", arr_str[i]);
+                return RETURN_OK;
+            }
+        }
+    }
+
+    return RETURN_ERR;
+}
+
+int cs_mode_type_conversion(cs_mode_t *cs_mode_type_enum, char *cs_mode, int cs_mode_len, unsigned int conv_type)
+{
+    char arr_str[][16] = {"off", "home", "away"};
+    cs_mode_t arr_enum[] = {cs_mode_off, cs_mode_home, cs_mode_away};
+
+    unsigned int i = 0;
+    if ((cs_mode_type_enum == NULL) || (cs_mode == NULL)) {
+        return RETURN_ERR;
+    }
+    if (conv_type == STRING_TO_ENUM) {
+        for (i = 0; i < ARRAY_SIZE(arr_str); i++) {
+            if (strcmp(arr_str[i], cs_mode) == 0) {
+                *cs_mode_type_enum = arr_enum[i];
+                return RETURN_OK;
+            }
+        }
+    } else if (conv_type == ENUM_TO_STRING) {
+        for (i = 0; i < ARRAY_SIZE(arr_enum); i++) {
+            if (arr_enum[i] == *cs_mode_type_enum) {
+                snprintf(cs_mode, cs_mode_len, "%s", arr_str[i]);
+                return RETURN_OK;
+            }
+        }
+    }
+
+    return RETURN_ERR;
+}
+
+int force_kick_type_conversion(force_kick_t *force_kick_type_enum, char *force_kick, int force_kick_len, unsigned int conv_type)
+{
+    char arr_str[][16] = {"none", "speculative", "directed", "ghost_device"};
+    force_kick_t arr_enum[] = { force_kick_none, force_kick_speculative, force_kick_directed, force_kick_ghost_device};
+
+    unsigned int i = 0;
+    if ((force_kick_type_enum == NULL) || (force_kick == NULL)) {
+        return RETURN_ERR;
+    }
+    if (conv_type == STRING_TO_ENUM) {
+        for (i = 0; i < ARRAY_SIZE(arr_str); i++) {
+            if (strcmp(arr_str[i], force_kick) == 0) {
+                *force_kick_type_enum = arr_enum[i];
+                return RETURN_OK;
+            }
+        }
+    } else if (conv_type == ENUM_TO_STRING) {
+        for (i = 0; i < ARRAY_SIZE(arr_enum); i++) {
+            if (arr_enum[i] == *force_kick_type_enum) {
+                snprintf(force_kick, force_kick_len, "%s", arr_str[i]);
+                return RETURN_OK;
+            }
+        }
+    }
+
+    return RETURN_ERR;
+}
+
+int kick_type_conversion(kick_type_t *kick_type_enum, char *kick_type, int kick_type_len, unsigned int conv_type)
+{
+    char arr_str[][16] = {"none", "deauth", "disassoc", "bss_tm_req", "rrm_br_req", "btm_deauth","btm_disassoc"};
+    kick_type_t arr_enum[] = { kick_type_none, kick_type_deauth, kick_type_disassoc, kick_type_bss_tm_req, kick_type_rrm_br_req, kick_type_btm_deauth, kick_type_btm_disassoc};
+
+    unsigned int i = 0;
+    if ((kick_type_enum == NULL) || (kick_type == NULL)) {
+        return RETURN_ERR;
+    }
+    if (conv_type == STRING_TO_ENUM) {
+        for (i = 0; i < ARRAY_SIZE(arr_str); i++) {
+            if (strcmp(arr_str[i], kick_type) == 0) {
+                *kick_type_enum = arr_enum[i];
+                return RETURN_OK;
+            }
+        }
+    } else if (conv_type == ENUM_TO_STRING) {
+        for (i = 0; i < ARRAY_SIZE(arr_enum); i++) {
+            if (arr_enum[i] == *kick_type_enum) {
+                snprintf(kick_type, kick_type_len, "%s", arr_str[i]);
+                return RETURN_OK;
+            }
+        }
+    }
+
+    return RETURN_ERR;
+}
+
+int pref_5g_conversion(pref_5g_t *pref_5g_enum, char *pref_5g, int pref_5g_len, unsigned int conv_type)
+{
+    char arr_str[][16] = {"hwm", "never", "always", "nonDFS"};
+    pref_5g_t arr_enum[] = {pref_5g_hwm, pref_5g_never, pref_5g_always, pref_5g_nonDFS};
+
+    unsigned int i = 0;
+    if ((pref_5g_enum == NULL) || (pref_5g == NULL)) {
+        return RETURN_ERR;
+    }
+    if (conv_type == STRING_TO_ENUM) {
+        for (i = 0; i < ARRAY_SIZE(arr_str); i++) {
+            if (strcmp(arr_str[i], pref_5g) == 0) {
+                *pref_5g_enum = arr_enum[i];
+                return RETURN_OK;
+            }
+        }
+    } else if (conv_type == ENUM_TO_STRING) {
+        for (i = 0; i < ARRAY_SIZE(arr_enum); i++) {
+            if (arr_enum[i] == *pref_5g_enum) {
+                snprintf(pref_5g, pref_5g_len, "%s", arr_str[i]);
+                return RETURN_OK;
+            }
+        }
+    }
+
+    return RETURN_ERR;
+}
+
+
+int reject_detection_conversion(reject_detection_t *reject_detection_enum, char *reject_detection, int reject_detection_len, unsigned int conv_type)
+{
+    char arr_str[][16] = {"none", "probe_all", "probe_null", "probe_direct", "auth_block"};
+    reject_detection_t arr_enum[] = {reject_detection_none, reject_detection_probe_all, reject_detection_probe_null, reject_detection_probe_direcet, reject_detection_auth_blocked};
+
+    unsigned int i = 0;
+    if ((reject_detection_enum == NULL) || (reject_detection == NULL)) {
+        return RETURN_ERR;
+    }
+    if (conv_type == STRING_TO_ENUM) {
+        for (i = 0; i < ARRAY_SIZE(arr_str); i++) {
+            if (strcmp(arr_str[i], reject_detection) == 0) {
+                *reject_detection_enum = arr_enum[i];
+                return RETURN_OK;
+            }
+        }
+    } else if (conv_type == ENUM_TO_STRING) {
+        for (i = 0; i < ARRAY_SIZE(arr_enum); i++) {
+            if (arr_enum[i] == *reject_detection_enum) {
+                snprintf(reject_detection, reject_detection_len, "%s", arr_str[i]);
+                return RETURN_OK;
+            }
+        }
+    }
+
+    return RETURN_ERR;
+}
+
+int sc_kick_type_conversion(sc_kick_type_t *sc_kick_enum, char *sc_kick, int sc_kick_len, unsigned int conv_type)
+{
+    char arr_str[][16] = {"none", "deauth", "disassoc", "bss_tm_req", "rrm_br_req", "btm_deauth", "btm_disassoc", "rrm_deauth", "rrm_disassoc"};
+    sc_kick_type_t arr_enum[] = { sc_kick_type_none, sc_kick_type_deauth, sc_kick_type_disassoc, sc_kick_type_bss_tm_req, sc_kick_type_rrm_br_req, sc_kick_type_btm_deauth, sc_kick_type_btm_disassoc, sc_kick_type_rrm_deauth, sc_kick_type_rrm_disassoc};
+
+    unsigned int i = 0;
+    if ((sc_kick_enum == NULL) || (sc_kick == NULL)) {
+        return RETURN_ERR;
+    }
+    if (conv_type == STRING_TO_ENUM) {
+        for (i = 0; i < ARRAY_SIZE(arr_str); i++) {
+            if (strcmp(arr_str[i], sc_kick) == 0) {
+                *sc_kick_enum = arr_enum[i];
+                return RETURN_OK;
+            }
+        }
+    } else if (conv_type == ENUM_TO_STRING) {
+        for (i = 0; i < ARRAY_SIZE(arr_enum); i++) {
+            if (arr_enum[i] == *sc_kick_enum) {
+                snprintf(sc_kick, sc_kick_len, "%s", arr_str[i]);
+                return RETURN_OK;
+            }
+        }
+    }
+
+    return RETURN_ERR;
+}
+
+int sticky_kick_type_conversion(sticky_kick_type_t *sticky_kick_enum, char *sticky_kick, int sticky_kick_len, unsigned int conv_type)
+{
+    char arr_str[][16] =  {"none", "deauth", "disassoc", "bss_tm_req", "rrm_br_req", "btm_deauth", "btm_disassoc"};
+    sticky_kick_type_t arr_enum[] = { sticky_kick_type_none, sticky_kick_type_deauth, sticky_kick_type_disassoc, sticky_kick_type_bss_tm_req, sticky_kick_type_rrm_br_req, sticky_kick_type_btm_deauth, sticky_kick_type_btm_disassoc};
+
+    unsigned int i = 0;
+    if ((sticky_kick_enum == NULL) || (sticky_kick == NULL)) {
+        return RETURN_ERR;
+    }
+    if (conv_type == STRING_TO_ENUM) {
+        for (i = 0; i < ARRAY_SIZE(arr_str); i++) {
+            if (strcmp(arr_str[i], sticky_kick) == 0) {
+                *sticky_kick_enum = arr_enum[i];
+                return RETURN_OK;
+            }
+        }
+    } else if (conv_type == ENUM_TO_STRING) {
+        for (i = 0; i < ARRAY_SIZE(arr_enum); i++) {
+            if (arr_enum[i] == *sticky_kick_enum) {
+                snprintf(sticky_kick, sticky_kick_len, "%s", arr_str[i]);
+                return RETURN_OK;
+            }
+        }
+    }
+
+    return RETURN_ERR;
+}
+
+int get_vif_neighbor_id(char *key, int key_len, unsigned char *id, int id_len, const char *mac)
+{
+    int out_bytes = 0;
+    if ((key == NULL) || (id == NULL) || (mac == NULL)) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: input arguements are NULL!!!\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    if (WiFi_IsValidMacAddr(mac) != TRUE) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Not valid MAC Address : %s!!!\n", __func__, __LINE__, mac);
+        return RETURN_ERR;
+    }
+
+    out_bytes = snprintf(key, key_len, "%s", mac);
+    if ((out_bytes < 0) || (out_bytes >= key_len)) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: snprintf error\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: key:%s\n", __func__, __LINE__, key);
+
+    return RETURN_OK;
+}
+
+int vif_neighbor_htmode_conversion(ht_mode_t *ht_mode_enum, char *ht_mode, int ht_mode_len, unsigned int conv_type)
+{
+    char arr_str[][16] = {"HT20", "HT2040", "HT40", "HT40+", "HT40-", "HT80", "HT160", "HT80+80"};
+    ht_mode_t arr_enum[] = {ht_mode_HT20, ht_mode_HT2040, ht_mode_HT40, ht_mode_HT40plus, ht_mode_HT20minus, ht_mode_HT80, ht_mode_HT160, ht_mode_HT80plus80};
+
+    unsigned int i = 0;
+    if ((ht_mode_enum == NULL) || (ht_mode == NULL)) {
+        return RETURN_ERR;
+    }
+    if (conv_type == STRING_TO_ENUM) {
+        for (i = 0; i < ARRAY_SIZE(arr_str); i++) {
+            if (strcmp(arr_str[i], ht_mode) == 0) {
+                *ht_mode_enum = arr_enum[i];
+                return RETURN_OK;
+            }
+        }
+    } else if (conv_type == ENUM_TO_STRING) {
+        for (i = 0; i < ARRAY_SIZE(arr_enum); i++) {
+            if (arr_enum[i] == *ht_mode_enum) {
+                snprintf(ht_mode, ht_mode_len, "%s", arr_str[i]);
+                return RETURN_OK;
+            }
+        }
+    }
+
+    return RETURN_ERR;
 }

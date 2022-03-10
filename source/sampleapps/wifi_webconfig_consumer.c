@@ -304,6 +304,8 @@ int initial_sync(webconfig_consumer_t *consumer)
     rbusValue_t value;
     int rc = RBUS_ERROR_SUCCESS;
     const char *paramNames[] = {WIFI_WEBCONFIG_INIT_DML_DATA};
+    const char *str;
+    int len = 0;
 
     rc = rbus_get(consumer->rbus_handle, paramNames[0], &value);
     if (rc != RBUS_ERROR_SUCCESS) {
@@ -312,6 +314,15 @@ int initial_sync(webconfig_consumer_t *consumer)
     }
 
     printf("%s:%d: init cache trigger successful\n", __func__, __LINE__);
+
+    str = rbusValue_GetString(value, &len);
+    if (str == NULL) {
+        printf("%s Null pointer,Rbus set string len=%d\n",__FUNCTION__,len);
+        return -1;
+    }
+
+    printf("%s:%d data send to consumer event len : %d\n",__FUNCTION__, __LINE__, len);
+    handle_webconfig_consumer_event(consumer, str, len, consumer_event_webconfig_get_data);
 
     return 0;
 }

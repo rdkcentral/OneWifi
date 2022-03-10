@@ -178,6 +178,7 @@
         PJS_OVS_BOOL(dfsatbootup_rfc) \
         PJS_OVS_BOOL(dfs_rfc) \
         PJS_OVS_BOOL(wpa3_rfc) \
+        PJS_OVS_BOOL(ow_core_thread_rfc) \
         PJS_OVS_BOOL(twoG80211axEnable_rfc) \
         PJS_OVS_BOOL(hotspot_open_2g_last_enabled) \
         PJS_OVS_BOOL(hotspot_open_5g_last_enabled) \
@@ -2015,6 +2016,7 @@
     COLUMN(dfsatbootup_rfc) \
     COLUMN(dfs_rfc) \
     COLUMN(wpa3_rfc) \
+    COLUMN(ow_core_thread_rfc) \
     COLUMN(twoG80211axEnable_rfc) \
     COLUMN(hotspot_open_2g_last_enabled) \
     COLUMN(hotspot_open_5g_last_enabled) \
@@ -3300,6 +3302,7 @@
 #define SCHEMA__Wifi_Rfc_Config__radiusgreylist_rfc "radiusgreylist_rfc"
 #define SCHEMA__Wifi_Rfc_Config__dfsatbootup_rfc "dfsatbootup_rfc"
 #define SCHEMA__Wifi_Rfc_Config__wpa3_rfc "wpa3_rfc"
+#define SCHEMA__Wifi_Rfc_Config__ow_core_thread_rfc "ow_core_thread_rfc"
 #define SCHEMA__Wifi_Rfc_Config__twoG80211axEnable_rfc "twoG80211axEnable_rfc"
 #define SCHEMA__Wifi_Rfc_Config__hotspot_open_2g_last_enabled "hotspot_open_2g_last_enabled"
 #define SCHEMA__Wifi_Rfc_Config__hotspot_open_5g_last_enabled "hotspot_open_5g_last_enabled"

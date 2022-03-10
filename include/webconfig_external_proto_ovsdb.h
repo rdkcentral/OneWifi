@@ -31,6 +31,10 @@ typedef struct {
     const struct schema_Wifi_VIF_State   **vif_state;
     const struct schema_Wifi_Blaster_State   **blaster_state;
     const struct schema_Wifi_Associated_Clients **assoc_clients;
+    const struct schema_Wifi_Stats_Config  **stats_config;
+    const struct schema_Band_Steering_Config **band_steer_config;
+    const struct schema_Band_Steering_Clients **band_steering_clients;
+    const struct schema_Wifi_VIF_Neighbors **vif_neighbors;
 
     const unsigned int radio_config_row_count;
     const unsigned int vif_config_row_count;
@@ -39,6 +43,10 @@ typedef struct {
     const unsigned int vif_state_row_count;
     const unsigned int blaster_state_row_count;
     const unsigned int assoc_clients_row_count;
+    const unsigned int stats_row_count;
+    const unsigned int steer_row_count;
+    const unsigned int steering_client_row_count;
+    const unsigned int vif_neighbor_row_count;
 
 /* TBD: place for next arrays and other data, in particular
  *

@@ -21,7 +21,7 @@ AM_LDFLAGS += -lev
 
 CcspWifiSsp_CFLAGS += $(JOURNALCTL_ENABLE_FLAG)
 
-CcspWifiSsp_SOURCES += log.c log_syslog.c log_stdout.c log_traceback.c
+CcspWifiSsp_SOURCES += log.c log_syslog.c log_stdout.c log_traceback.c log_journal.c
 
 CcspWifiSsp_LDFLAGS_LDFLAGS += -lev
 

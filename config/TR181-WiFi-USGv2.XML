@@ -284,6 +284,12 @@
             <writable>true</writable>
         </parameter>
         <parameter>
+            <name>OW_Core_Thread</name>
+            <type>boolean</type>
+            <syntax>bool</syntax>
+            <writable>true</writable>
+        </parameter>
+        <parameter>
             <name>Log_Enable</name>
             <type>string</type>
             <syntax>string</syntax>

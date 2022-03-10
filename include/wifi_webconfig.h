@@ -114,6 +114,10 @@ typedef enum {
     webconfig_subdoc_type_harvester,
     webconfig_subdoc_type_wifi_config,
     webconfig_subdoc_type_csi,
+    webconfig_subdoc_type_stats_config,
+    webconfig_subdoc_type_steering_config,
+    webconfig_subdoc_type_steering_clients,
+    webconfig_subdoc_type_vif_neighbors,
     webconfig_subdoc_type_max
 } webconfig_subdoc_type_t;
 
@@ -130,6 +134,10 @@ typedef enum {
     webconfig_subdoc_object_type_wificap,
     webconfig_subdoc_object_type_associated_clients,
     webconfig_subdoc_object_type_csi,
+    webconfig_subdoc_object_type_stats_config,
+    webconfig_subdoc_object_type_steering_config,
+    webconfig_subdoc_object_type_steering_clients,
+    webconfig_subdoc_object_type_vif_neighbors,
     webconfig_subdoc_object_max
 } webconfig_subdoc_object_type_t;
 
@@ -151,6 +159,10 @@ typedef struct {
     queue_t *csi_data_queue;
     active_msmt_t blaster;
     instant_measurement_config_t  harvester;
+    hash_map_t  *stats_config_map;
+    hash_map_t  *steering_config_map;
+    hash_map_t  *steering_client_map;
+    hash_map_t  *vif_neighbors_map;
     // external structures that need translation to above structures
     unsigned int num_radios;
     void *external_protos;
@@ -389,7 +401,6 @@ webconfig_error_t       encode_wifi_config_subdoc(webconfig_t *config, webconfig
 webconfig_error_t       translate_to_wifi_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_from_wifi_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 
-
 //  lnf
 webconfig_error_t       init_lnf_subdoc(webconfig_subdoc_t *doc);
 webconfig_error_t       access_check_lnf_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
@@ -397,6 +408,43 @@ webconfig_error_t       decode_lnf_subdoc(webconfig_t *config, webconfig_subdoc_
 webconfig_error_t       encode_lnf_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_to_lnf_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_from_lnf_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+//steering config
+
+webconfig_error_t       init_steering_config_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       decode_steering_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_steering_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_steering_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_steering_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       access_check_steer_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+//stats config
+
+webconfig_error_t       init_stats_config_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       decode_stats_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_stats_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_stats_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_stats_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       access_check_stats_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+
+//steering clients 
+
+webconfig_error_t       init_steering_clients_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       decode_steering_clients_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_steering_clients_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_steering_clients_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_steering_clients_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       access_check_steering_clients_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+//  vif_neighbors
+webconfig_error_t       init_vif_neighbors_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_vif_neighbors_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_vif_neighbors_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_vif_neighbors_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_vif_neighbors_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_vif_neighbors_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
 #ifdef __cplusplus
 }
 #endif

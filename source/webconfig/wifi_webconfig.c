@@ -433,5 +433,50 @@ webconfig_error_t webconfig_init(webconfig_t *config)
     config->subdocs[webconfig_subdoc_type_wifi_config].translate_to_subdoc = translate_to_wifi_config_subdoc;
     config->subdocs[webconfig_subdoc_type_wifi_config].translate_from_subdoc = translate_from_wifi_config_subdoc;
 
+    config->subdocs[webconfig_subdoc_type_stats_config].type = webconfig_subdoc_type_stats_config;
+    strcpy(config->subdocs[webconfig_subdoc_type_stats_config].name, "stats config");
+    config->subdocs[webconfig_subdoc_type_stats_config].major = 1;
+    config->subdocs[webconfig_subdoc_type_stats_config].minor = 1;
+    config->subdocs[webconfig_subdoc_type_stats_config].init_subdoc = init_stats_config_subdoc;
+    config->subdocs[webconfig_subdoc_type_stats_config].access_check_subdoc = access_check_stats_config_subdoc;
+    config->subdocs[webconfig_subdoc_type_stats_config].encode_subdoc = encode_stats_config_subdoc;
+    config->subdocs[webconfig_subdoc_type_stats_config].decode_subdoc = decode_stats_config_subdoc;
+    config->subdocs[webconfig_subdoc_type_stats_config].translate_to_subdoc = translate_to_stats_config_subdoc;
+    config->subdocs[webconfig_subdoc_type_stats_config].translate_from_subdoc = translate_from_stats_config_subdoc;
+
+    config->subdocs[webconfig_subdoc_type_steering_config].type = webconfig_subdoc_type_steering_config;
+    strcpy(config->subdocs[webconfig_subdoc_type_steering_config].name, "steering config");
+    config->subdocs[webconfig_subdoc_type_steering_config].major = 1;
+    config->subdocs[webconfig_subdoc_type_steering_config].minor = 1;
+    config->subdocs[webconfig_subdoc_type_steering_config].init_subdoc = init_steering_config_subdoc;
+    config->subdocs[webconfig_subdoc_type_steering_config].access_check_subdoc = access_check_steer_config_subdoc;
+    config->subdocs[webconfig_subdoc_type_steering_config].encode_subdoc = encode_steering_config_subdoc;
+    config->subdocs[webconfig_subdoc_type_steering_config].decode_subdoc = decode_steering_config_subdoc;
+    config->subdocs[webconfig_subdoc_type_steering_config].translate_to_subdoc = translate_to_steering_config_subdoc;
+    config->subdocs[webconfig_subdoc_type_steering_config].translate_from_subdoc = translate_from_steering_config_subdoc;
+
+    config->subdocs[webconfig_subdoc_type_steering_clients].type = webconfig_subdoc_type_steering_clients;
+    strcpy(config->subdocs[webconfig_subdoc_type_steering_clients].name, "steering clients");
+    config->subdocs[webconfig_subdoc_type_steering_clients].major = 1;
+    config->subdocs[webconfig_subdoc_type_steering_clients].minor = 1;
+    config->subdocs[webconfig_subdoc_type_steering_clients].init_subdoc = init_steering_clients_subdoc;
+    config->subdocs[webconfig_subdoc_type_steering_clients].access_check_subdoc = access_check_steering_clients_subdoc;
+    config->subdocs[webconfig_subdoc_type_steering_clients].encode_subdoc = encode_steering_clients_subdoc;
+    config->subdocs[webconfig_subdoc_type_steering_clients].decode_subdoc = decode_steering_clients_subdoc;
+    config->subdocs[webconfig_subdoc_type_steering_clients].translate_to_subdoc = translate_to_steering_clients_subdoc;
+    config->subdocs[webconfig_subdoc_type_steering_clients].translate_from_subdoc = translate_from_steering_clients_subdoc;
+
+    config->subdocs[webconfig_subdoc_type_vif_neighbors].type = webconfig_subdoc_type_vif_neighbors;
+    strcpy(config->subdocs[webconfig_subdoc_type_vif_neighbors].name, "vif neighbors");
+    config->subdocs[webconfig_subdoc_type_vif_neighbors].major = 1;
+    config->subdocs[webconfig_subdoc_type_vif_neighbors].minor = 1;
+    config->subdocs[webconfig_subdoc_type_vif_neighbors].init_subdoc = init_vif_neighbors_subdoc;
+    config->subdocs[webconfig_subdoc_type_vif_neighbors].init_subdoc(&config->subdocs[webconfig_subdoc_type_vif_neighbors]);
+    config->subdocs[webconfig_subdoc_type_vif_neighbors].access_check_subdoc = access_check_vif_neighbors_subdoc;
+    config->subdocs[webconfig_subdoc_type_vif_neighbors].encode_subdoc = encode_vif_neighbors_subdoc;
+    config->subdocs[webconfig_subdoc_type_vif_neighbors].decode_subdoc = decode_vif_neighbors_subdoc;
+    config->subdocs[webconfig_subdoc_type_vif_neighbors].translate_to_subdoc = translate_to_vif_neighbors_subdoc;
+    config->subdocs[webconfig_subdoc_type_vif_neighbors].translate_from_subdoc = translate_from_vif_neighbors_subdoc;
+
     return webconfig_error_none;
 }

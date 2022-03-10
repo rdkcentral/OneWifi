@@ -55,6 +55,7 @@ extern "C" {
 #define RFC_WIFI_DFS                "Wifi_DFS"
 #define RFC_WIFI_WPA3               "Wifi_WPA3"
 #define RFC_WIFI_MGMT_FRAME_RBUS    "RfcWifiMgmtRbusEnable"
+#define RFC_WIFI_OW_CORE_THREAD     "Wifi_OW_Core_Thread"
 
 #define CSI_CLIENT_PER_SESSION 5
 #define MAX_NUM_CSI_CLIENTS         3
@@ -128,6 +129,7 @@ typedef enum {
     ctrl_webconfig_state_sta_conn_status_rsp_pending = 0x0800,
     ctrl_webconfig_state_vap_mesh_sta_cfg_rsp_pending = 0x1000,
     ctrl_webconfig_state_vap_mesh_backhaul_cfg_rsp_pending = 0x2000,
+    ctrl_webconfig_state_steering_clients_rsp_pending = 0x4000,
     ctrl_webconfig_state_vap_lnf_cfg_rsp_pending = 0x8000,
     ctrl_webconfig_state_blaster_cfg_init_rsp_pending = 0x10000,
     ctrl_webconfig_state_blaster_cfg_complete_rsp_pending = 0x20000,

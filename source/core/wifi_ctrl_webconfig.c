@@ -19,9 +19,11 @@
 
 #include <stdio.h>
 #include <stdbool.h>
+#include <string.h> /* strdup() */
 #include "const.h"
 #define  WBCFG_MULTI_COMP_SUPPORT 1
 #include "webconfig_framework.h"
+#include "ansc_platform.h"
 #include "wifi_hal.h"
 #include "wifi_ctrl.h"
 #include "wifi_mgr.h"
@@ -33,9 +35,284 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <rbus.h>
+#include <opensync/ow_stats_conf.h>
 #ifdef WEBCONFIG_TESTS_OVER_QUEUE
 #include "wifi_webconfig_consumer.h"
 #endif
+#include <opensync/osw_types.h>
+#include <opensync/ow_webconfig.h>
+
+#define OW_CONF_BARRIER_TIMEOUT_MSEC (60 * 1000)
+
+struct ow_conf_vif_config_cb_arg
+{
+    rdk_wifi_vap_info_t *rdk_vap_info;
+    wifi_vap_info_t *vap_info;
+};
+
+int
+webconfig_set_ow_core_state(webconfig_subdoc_data_t *data)
+{
+    const size_t n = ARRAY_SIZE(data->u.decoded.radios);
+    size_t i;
+
+    for (i = 0; i < n; i++) {
+        rdk_wifi_radio_t *rr = &data->u.decoded.radios[i];
+        wifi_radio_operationParam_t *oper = &rr->oper;
+        wifi_vap_info_map_t *map = &rr->vaps.vap_map;
+
+        ow_webconfig_get_phy(rr->name, oper, map);
+
+        rr->vaps.num_vaps = map->num_vaps;
+    }
+
+    return 0;
+}
+
+static char *
+webconfig_get_wifihal_radio_idx_to_name(int rix)
+{
+    char buf[64] = {0};
+
+    /* FIXME: This is deprecated but this is the only
+     * reliable of getting the actual radio name without
+     * some weird mappings. Asking the WifiHAL
+     * implementation seems like the best place.
+     */
+    if (wifi_getRadioIfName(rix, buf) != RETURN_OK) {
+        wifi_util_dbg_print(WIFI_CTRL,
+                            "%s:%s:%d: failed to convert radio index (%d) to name\n",
+                            __FILE__, __func__, __LINE__, rix);
+        return NULL;
+    }
+
+    buf[sizeof(buf) - 1] = 0; /* defensive nul termination */
+    return strdup(buf);
+}
+
+/* FIXME: The wifi_vap_info_t is missing a bunch of things
+ * including ACL. This is unable to control ACLs for now.
+ */
+static int
+webconfig_set_ow_core_vif_config_priv(const struct ow_conf_vif_config_cb_arg *vif_cb_arg)
+{
+    const wifi_vap_info_t *vap = vif_cb_arg->vap_info;
+    const char *vn = vif_cb_arg->vap_info->vap_name;
+    const int rix = vif_cb_arg->vap_info->radio_index;
+    char *rn = webconfig_get_wifihal_radio_idx_to_name(rix);
+
+    acl_entry_t *new_acl_entry = NULL;
+    rdk_wifi_vap_info_t *rdk_vap_info = vif_cb_arg->rdk_vap_info;
+
+    if(rdk_vap_info->acl_map == NULL)
+    {
+         wifi_util_dbg_print(WIFI_CTRL,
+                            "%s:RDK vap info acl map is NULL\n",__func__);
+    }
+
+    if (rn == NULL)
+        return RETURN_ERR;
+
+    ow_conf_vif_flush_ap_acl(vn);
+
+    if(rdk_vap_info->acl_map != NULL){
+        new_acl_entry = hash_map_get_first(rdk_vap_info->acl_map);
+
+    while (new_acl_entry != NULL) {
+            struct osw_hwaddr mac;
+            memcpy(mac.octet, new_acl_entry->mac, 6);
+            wifi_util_dbg_print(WIFI_CTRL,
+                    "%s:MAC string is %x \n",__func__,mac.octet[5] );
+            ow_conf_vif_add_ap_acl(vn, &mac);
+            new_acl_entry = hash_map_get_next(rdk_vap_info->acl_map, new_acl_entry);
+        }
+    }
+
+    ow_webconfig_set_vif(rn, vn, vap);
+    free(rn);
+
+    return RETURN_OK;
+}
+
+static void *
+webconfig_set_ow_core_vif_config_cb(void *arg)
+{
+    return (void *)webconfig_set_ow_core_vif_config_priv(arg);
+}
+
+static int
+webconfig_set_ow_core_vif_config(const struct ow_conf_vif_config_cb_arg *vap)
+{
+    ow_core_thread_call(webconfig_set_ow_core_vif_config_cb, vap);
+    return ow_conf_barrier_wait(OW_CONF_BARRIER_TIMEOUT_MSEC);
+}
+
+static int
+webconfig_set_ow_core_phy_config_priv(rdk_wifi_radio_t *r)
+{
+    wifi_vap_info_map_t *vmap = &r->vaps.vap_map;
+    const size_t max = ARRAY_SIZE(vmap->vap_array);
+    const size_t len = vmap->num_vaps;
+    const size_t n = len > max ? max : len;
+    const int rix = r->vaps.radio_index;
+    char *rn;
+    size_t i;
+
+    rn = webconfig_get_wifihal_radio_idx_to_name(rix);
+    if (rn == NULL) {
+        return RETURN_ERR;
+    }
+
+    ow_webconfig_set_phy(rn, &r->oper);
+
+    for (i = 0; i < n; i++) {
+        wifi_vap_info_t *vap = &vmap->vap_array[i];
+        rdk_wifi_vap_info_t *rdk_vap = &r->vaps.rdk_vap_array[i];
+        const struct ow_conf_vif_config_cb_arg vif_cb_arg = {.vap_info = vap,
+                .rdk_vap_info = rdk_vap};
+        webconfig_set_ow_core_vif_config_priv(&vif_cb_arg);
+    }
+
+    free(rn);
+    rn = NULL;
+
+    return RETURN_OK;
+}
+
+static void *
+webconfig_set_ow_core_phy_config_cb(void *arg)
+{
+    return (void *)webconfig_set_ow_core_phy_config_priv(arg);
+}
+
+static int
+webconfig_set_ow_core_phy_config(const rdk_wifi_radio_t *r)
+{
+    ow_core_thread_call(webconfig_set_ow_core_phy_config_cb, r);
+    return ow_conf_barrier_wait(OW_CONF_BARRIER_TIMEOUT_MSEC);
+}
+
+static enum ow_stats_conf_stats_type
+webconfig_ow_stats_xlate_stats(stats_config_t *stats_conf)
+{
+    switch (stats_conf->stats_type) {
+    case stats_type_neighbor:
+        return OW_STATS_CONF_STATS_TYPE_NEIGHBOR;
+    case stats_type_survey:
+        return OW_STATS_CONF_STATS_TYPE_SURVEY;
+    case stats_type_client:
+        return OW_STATS_CONF_STATS_TYPE_CLIENT;
+    case stats_type_capacity:
+    case stats_type_radio:
+    case stats_type_essid:
+    case stats_type_quality:
+    case stats_type_device:
+    case stats_type_rssi:
+    case stats_type_steering:
+    case stats_type_client_auth_fails:
+    case stats_type_max:
+        return OW_STATS_CONF_STATS_TYPE_UNSPEC;
+    }
+    return OW_STATS_CONF_STATS_TYPE_UNSPEC;
+}
+
+static enum ow_stats_conf_scan_type
+webconfig_ow_stats_xlate_scan(stats_config_t *stats_conf)
+{
+    switch (stats_conf->survey_type) {
+    case survey_type_on_channel:
+        return OW_STATS_CONF_SCAN_TYPE_ON_CHAN;
+    case survey_type_off_channel:
+        return OW_STATS_CONF_SCAN_TYPE_OFF_CHAN;
+    case survey_type_full:
+        return OW_STATS_CONF_SCAN_TYPE_FULL;
+    case survey_type_max:
+        return OW_STATS_CONF_SCAN_TYPE_UNSPEC;
+    }
+    return OW_STATS_CONF_SCAN_TYPE_UNSPEC;
+}
+
+static enum ow_stats_conf_radio_type
+webconfig_ow_stats_xlate_radio(stats_config_t *stats_conf)
+{
+    switch (stats_conf->radio_type) {
+    case WIFI_FREQUENCY_2_4_BAND:
+        return OW_STATS_CONF_RADIO_TYPE_2G;
+    case WIFI_FREQUENCY_5_BAND:
+        return OW_STATS_CONF_RADIO_TYPE_5G;
+    case WIFI_FREQUENCY_5L_BAND:
+        return OW_STATS_CONF_RADIO_TYPE_5GL;
+    case WIFI_FREQUENCY_5H_BAND:
+        return OW_STATS_CONF_RADIO_TYPE_5GU;
+    case WIFI_FREQUENCY_6_BAND:
+        return OW_STATS_CONF_RADIO_TYPE_6G;
+    case WIFI_FREQUENCY_60_BAND:
+        return OW_STATS_CONF_RADIO_TYPE_UNSPEC;
+    }
+
+    return OW_STATS_CONF_RADIO_TYPE_UNSPEC;
+}
+
+static void
+webconfig_apply_ow_stats(stats_config_t *stats_conf)
+{
+    const char *id = stats_conf->stats_cfg_id;
+    struct ow_stats_conf *conf = ow_stats_conf_get();
+    struct ow_stats_conf_entry *conf_e = ow_stats_conf_get_entry(conf, id);
+
+    if (conf_e == NULL)
+        return;
+
+    const enum ow_stats_conf_stats_type stats = webconfig_ow_stats_xlate_stats(stats_conf);
+    const enum ow_stats_conf_scan_type scan = webconfig_ow_stats_xlate_scan(stats_conf);
+    const enum ow_stats_conf_radio_type radio = webconfig_ow_stats_xlate_radio(stats_conf);
+
+    ow_stats_conf_entry_set_stats_type(conf_e, stats);
+    ow_stats_conf_entry_set_scan_type(conf_e, scan);
+    ow_stats_conf_entry_set_radio_type(conf_e, radio);
+    ow_stats_conf_entry_set_channels(conf_e, stats_conf->channels_list.channels_list,
+                                        stats_conf->channels_list.num_channels);
+
+    if (stats_conf->sampling_interval > 0) {
+        ow_stats_conf_entry_set_sampling(conf_e, stats_conf->sampling_interval);
+    }
+
+    if (stats_conf->reporting_interval > 0) {
+        ow_stats_conf_entry_set_reporting(conf_e, stats_conf->reporting_interval);
+    }
+
+    return;
+}
+
+static void
+webconfig_set_ow_stats_config_cb(void *arg)
+{
+    stats_config_t *stats_config = (stats_config_t *) arg;
+
+    if(stats_config == NULL)
+        return;
+
+    webconfig_apply_ow_stats(stats_config);
+    return;
+}
+
+static void
+webconfig_set_ow_stats_config(const stats_config_t *conf)
+{
+    ow_core_thread_call(webconfig_set_ow_stats_config_cb, conf);
+}
+
+static void
+webconfig_clear_ow_stats_config_cb(void *arg)
+{
+    ow_stats_conf_entry_reset_all(ow_stats_conf_get());
+}
+
+static void
+webconfig_clear_ow_stats_config(void)
+{
+    ow_core_thread_call(webconfig_clear_ow_stats_config_cb, NULL);
+}
 
 /* local functions */
 static int decode_ssid_blob(wifi_vap_info_t *vap_info, cJSON *ssid);
@@ -228,7 +505,6 @@ int webconfig_send_csi_status(wifi_ctrl_t *ctrl)
 int webconfig_send_associate_status(wifi_ctrl_t *ctrl)
 {
     webconfig_subdoc_data_t data;
-
     webconfig_init_subdoc_data(&data);
     if (webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_associated_clients) != webconfig_error_none) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
@@ -252,6 +528,17 @@ int webconfig_send_blaster_status(wifi_ctrl_t *ctrl)
 
     if (webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_blaster) != webconfig_error_none) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
+    }
+    return RETURN_OK;
+}
+
+int webconfig_send_steering_clients_status(wifi_ctrl_t *ctrl)
+{
+    webconfig_subdoc_data_t data;
+    webconfig_init_subdoc_data(&data);
+
+    if (webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_steering_clients) != webconfig_error_none) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
     }
     return RETURN_OK;
 }
@@ -353,6 +640,9 @@ int webconfig_analyze_pending_states(wifi_ctrl_t *ctrl)
                 mgr->blaster_config_global.Status = blaster_state_completed;
                 webconfig_send_blaster_status(ctrl);
             break;
+        case ctrl_webconfig_state_steering_clients_rsp_pending:
+            webconfig_send_steering_clients_status(ctrl);
+            break;
         default:
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d - default pending subdoc status:0x%x\r\n", __func__, __LINE__, (ctrl->webconfig_state & CTRL_WEBCONFIG_STATE_MASK));
             break;
@@ -381,6 +671,10 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
     wifi_apps_t         *analytics = NULL;
     char update_status[128];
 #endif // CCSP_COMMON
+    struct ow_conf_vif_config_cb_arg arg_vif_cb;
+    rdk_wifi_vap_info_t *rdk_vap_info;
+    rdk_wifi_vap_info_t tgt_rdk_vap_info;
+    bool rfc_status;
 
     for (i = 0; i < size; i++) {
 
@@ -433,6 +727,7 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
             for (k = 0; k < getNumberVAPsPerRadio(j); k++) {
                 if (strcmp(data->radios[j].vaps.vap_map.vap_array[k].vap_name, vap_names[i]) == 0) {
                     vap_info = &data->radios[j].vaps.vap_map.vap_array[k];
+                    rdk_vap_info = &data->radios[j].vaps.rdk_vap_array[k];
                     found_target = true;
                     break;
                 }
@@ -478,7 +773,24 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
             tgt_vap_map.num_vaps = 1;
             memcpy(&tgt_vap_map.vap_array[0], vap_info, sizeof(wifi_vap_info_t));
 
-            if (svc->update_fn(svc, tgt_radio_idx, &tgt_vap_map) != 0) {
+            memset(&tgt_rdk_vap_info, 0, sizeof(rdk_wifi_vap_info_t));
+            memcpy(&tgt_rdk_vap_info, rdk_vap_info, sizeof(rdk_wifi_vap_info_t));
+            get_wifi_rfc_parameters(RFC_WIFI_OW_CORE_THREAD, (bool *)&rfc_status);
+            if (true == rfc_status) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG,"[%s]:WIFI RFC OW CORE THREAD ENABLED \r\n",__FUNCTION__);
+                arg_vif_cb.rdk_vap_info = &tgt_rdk_vap_info;
+                arg_vif_cb.vap_info = &tgt_vap_map.vap_array[0];
+                if(tgt_rdk_vap_info.acl_map == NULL)
+                {
+                    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: tgt_rdk_vap_info->acp_map == NULL\n", __func__, __LINE__);
+                }
+                ret = webconfig_set_ow_core_vif_config(&arg_vif_cb);
+            } else {
+                wifi_util_dbg_print(WIFI_WEBCONFIG,"[%s]:WIFI RFC OW CORE THREAD DISABLED \r\n",__FUNCTION__);
+                ret = svc->update_fn(svc, tgt_radio_idx, &tgt_vap_map);
+            }
+
+            if (ret != RETURN_OK) {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: failed to apply\n", __func__, __LINE__);
                 return RETURN_ERR;
             }
@@ -555,6 +867,394 @@ bool isglobalParamChanged(wifi_global_config_t *data_config)
     }
     return false;
 }
+
+int webconfig_stats_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
+{
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    stats_config_t  *mgr_stats_config, *dec_stats_config, *temp_stats_config;
+    hash_map_t *mgr_cfg_map, *dec_cfg_map;
+    int ret = RETURN_OK;
+    char key[64] = {0};
+    bool rfc_status = false;
+
+    wifi_util_dbg_print(WIFI_CTRL,"%s %d \n", __func__, __LINE__);
+
+    mgr_cfg_map = mgr->stats_config_map;
+    dec_cfg_map = data->stats_config_map;
+
+    if (dec_cfg_map == NULL) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s %d NULL pointer \n", __func__, __LINE__);
+        ret = RETURN_ERR;
+        goto free_data;
+    }
+
+    if (mgr_cfg_map == dec_cfg_map) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s %d Same data returning \n", __func__, __LINE__);
+        ret = RETURN_OK;
+        goto free_data;
+    }
+
+    if (mgr_cfg_map != NULL) {
+        mgr_stats_config = hash_map_get_first(mgr_cfg_map);
+        while (mgr_stats_config != NULL) {
+            if (hash_map_get(dec_cfg_map, mgr_stats_config->stats_cfg_id) == NULL) {
+                //Notification for delete
+                //notify_observer(mgr_stats_config);
+                memset(key, 0, sizeof(key));
+                snprintf(key, sizeof(key), "%s",  mgr_stats_config->stats_cfg_id);
+                mgr_stats_config = hash_map_get_next(mgr_cfg_map, mgr_stats_config);
+                temp_stats_config = hash_map_remove(mgr_cfg_map, key);
+                if (temp_stats_config != NULL) {
+                    free(temp_stats_config);
+                }
+            } else {
+                mgr_stats_config = hash_map_get_next(mgr_cfg_map, mgr_stats_config);
+            }
+        }
+    }
+
+    if (dec_cfg_map != NULL) {
+        get_wifi_rfc_parameters(RFC_WIFI_OW_CORE_THREAD, (bool *)&rfc_status);
+        if (rfc_status == true) {
+            wifi_util_dbg_print(WIFI_CTRL,"[%s]:WIFI CLEAR OW STATS CONFIG \r\n",__FUNCTION__);
+            //remove all the entries with reset_all before adding new stats config entries
+            webconfig_clear_ow_stats_config();
+        } else {
+            wifi_util_dbg_print(WIFI_CTRL,"[%s]:WIFI CLEAR OW STATS CONFIG RFC DISABLED \r\n",__FUNCTION__);
+        }
+        dec_stats_config = hash_map_get_first(dec_cfg_map);
+        while (dec_stats_config != NULL) {
+            mgr_stats_config = hash_map_get(mgr_cfg_map, dec_stats_config->stats_cfg_id);
+            if (mgr_stats_config == NULL) {
+                mgr_stats_config = (stats_config_t *)malloc(sizeof(stats_config_t));
+                if (mgr_stats_config == NULL) {
+                    wifi_util_dbg_print(WIFI_CTRL,"%s %d NULL pointer \n", __func__, __LINE__);
+                    ret = RETURN_ERR;
+                    goto free_data;
+                }
+                memset(mgr_stats_config, 0, sizeof(stats_config_t));
+                memcpy(mgr_stats_config, dec_stats_config, sizeof(stats_config_t));
+                hash_map_put(mgr_cfg_map, strdup(mgr_stats_config->stats_cfg_id), mgr_stats_config);
+                //Notification for new entry
+                //notify_observer(mgr_stats_config);
+                if (rfc_status == true) {
+                    wifi_util_dbg_print(WIFI_CTRL,"[%s]:WIFI SET OW STATS CONFIG \r\n",__FUNCTION__);
+                    webconfig_set_ow_stats_config(mgr_stats_config);
+                }
+            } else {
+                memcpy(mgr_stats_config, dec_stats_config, sizeof(stats_config_t));
+                //Notification for update
+                //notify_observer(mgr_stats_config);
+                if (rfc_status == true) {
+                    wifi_util_dbg_print(WIFI_CTRL,"[%s]:WIFI UPDATE OW STATS CONFIG \r\n",__FUNCTION__);
+                    webconfig_set_ow_stats_config(mgr_stats_config);
+                }
+            }
+            dec_stats_config = hash_map_get_next(dec_cfg_map, dec_stats_config);
+        }
+    }
+
+  free_data:
+    if ((data != NULL) && (dec_cfg_map != NULL)) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s %d Freeing Decoded Data \n", __func__, __LINE__);
+        dec_stats_config = hash_map_get_first(dec_cfg_map);
+        while (dec_stats_config != NULL) {
+            memset(key, 0, sizeof(key));
+            snprintf(key, sizeof(key), "%s",  dec_stats_config->stats_cfg_id);
+            dec_stats_config = hash_map_get_next(dec_cfg_map, dec_stats_config);
+            temp_stats_config = hash_map_remove(dec_cfg_map, key);
+            if (temp_stats_config != NULL) {
+                free(temp_stats_config);
+            }
+        }
+        hash_map_destroy(dec_cfg_map);
+        dec_cfg_map = NULL;
+    }
+
+    return ret;
+}
+
+
+int webconfig_steering_clients_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
+{
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    band_steering_clients_t  *mgr_steering_client, *dec_steering_client, *temp_steering_client;
+    hash_map_t *mgr_cfg_map, *dec_cfg_map;
+    bool rfc_status;
+    int ret = RETURN_OK;
+    char key[64] = {0};
+
+    wifi_util_dbg_print(WIFI_MGR,"%s %d \n", __func__, __LINE__);
+
+    mgr_cfg_map = mgr->steering_client_map;
+    dec_cfg_map = data->steering_client_map;
+
+    if (dec_cfg_map == NULL) {
+        wifi_util_dbg_print(WIFI_MGR,"%s %d NULL pointer \n", __func__, __LINE__);
+        ret = RETURN_ERR;
+        goto free_data;
+    }
+
+    if (mgr_cfg_map == dec_cfg_map) {
+        wifi_util_dbg_print(WIFI_MGR,"%s %d Same data returning \n", __func__, __LINE__);
+        ret = RETURN_OK;
+        goto free_data;
+    }
+
+    if (mgr_cfg_map != NULL) {
+        mgr_steering_client = hash_map_get_first(mgr_cfg_map);
+        while (mgr_steering_client != NULL) {
+            if (hash_map_get(dec_cfg_map, mgr_steering_client->steering_client_id) == NULL) {
+                //Notification for delete
+                //notify_observer(mgr_steering_client);
+                memset(key, 0, sizeof(key));
+                snprintf(key, sizeof(key), "%s",  mgr_steering_client->steering_client_id);
+                mgr_steering_client = hash_map_get_next(mgr_cfg_map, mgr_steering_client);
+                temp_steering_client = hash_map_remove(mgr_cfg_map, key);
+                if (temp_steering_client != NULL) {
+                    free(temp_steering_client);
+                }
+            } else {
+                mgr_steering_client = hash_map_get_next(mgr_cfg_map, mgr_steering_client);
+            }
+        }
+    }
+
+    if (dec_cfg_map != NULL) {
+        get_wifi_rfc_parameters(RFC_WIFI_OW_CORE_THREAD, (bool *)&rfc_status);
+        if (true == rfc_status) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"[%s]:WIFI RFC OW CORE THREAD ENABLED \r\n",__FUNCTION__);
+            //invalidate all the entries with reset_all before adding new steering client entries
+        } else {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"[%s]:WIFI RFC OW CORE THREAD DISABLED \r\n",__FUNCTION__);
+        }
+        dec_steering_client = hash_map_get_first(dec_cfg_map);
+        while (dec_steering_client != NULL) {
+            mgr_steering_client = hash_map_get(mgr_cfg_map, dec_steering_client->steering_client_id);
+            if (mgr_steering_client == NULL) {
+                mgr_steering_client = (band_steering_clients_t *)malloc(sizeof(band_steering_clients_t));
+                if (mgr_steering_client == NULL) {
+                    wifi_util_dbg_print(WIFI_MGR,"%s %d NULL pointer \n", __func__, __LINE__);
+                    ret = RETURN_ERR;
+                    goto free_data;
+                }
+                memset(mgr_steering_client, 0, sizeof(band_steering_clients_t));
+                memcpy(mgr_steering_client, dec_steering_client, sizeof(band_steering_clients_t));
+                hash_map_put(mgr_cfg_map, strdup(mgr_steering_client->steering_client_id), mgr_steering_client);
+                //notify_observer(mgr_steering_client);
+                if (true == rfc_status) {
+                    wifi_util_dbg_print(WIFI_WEBCONFIG,"[%s]:WIFI RFC OW CORE THREAD ENABLED \r\n",__FUNCTION__);
+                } else {
+                    wifi_util_dbg_print(WIFI_WEBCONFIG,"[%s]:WIFI RFC OW CORE THREAD DISABLED \r\n",__FUNCTION__);
+                }
+            } else {
+                memcpy(mgr_steering_client, dec_steering_client, sizeof(band_steering_clients_t));
+                //notify_observer(mgr_steering_client);
+                if (true == rfc_status) {
+                    wifi_util_dbg_print(WIFI_WEBCONFIG,"[%s]:WIFI RFC OW CORE THREAD ENABLED \r\n",__FUNCTION__);
+                } else {
+                    wifi_util_dbg_print(WIFI_WEBCONFIG,"[%s]:WIFI RFC OW CORE THREAD DISABLED \r\n",__FUNCTION__);
+                }
+            }
+            dec_steering_client = hash_map_get_next(dec_cfg_map, dec_steering_client);
+        }
+    }
+
+  free_data:
+    if ((data != NULL) && (dec_cfg_map != NULL)) {
+        wifi_util_dbg_print(WIFI_MGR,"%s %d Freeing Decoded Data \n", __func__, __LINE__);
+        dec_steering_client = hash_map_get_first(dec_cfg_map);
+        while (dec_steering_client != NULL) {
+            memset(key, 0, sizeof(key));
+            snprintf(key, sizeof(key), "%s",  dec_steering_client->steering_client_id);
+            dec_steering_client = hash_map_get_next(dec_cfg_map, dec_steering_client);
+            temp_steering_client = hash_map_remove(dec_cfg_map, key);
+            if (temp_steering_client != NULL) {
+                free(temp_steering_client);
+            }
+        }
+        hash_map_destroy(dec_cfg_map);
+        dec_cfg_map = NULL;
+    }
+
+    return ret;
+}
+
+
+int webconfig_steering_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
+{
+
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    steering_config_t *mgr_steer_config, *dec_steer_config, *temp_steer_config;
+    hash_map_t *mgr_cfg_map, *dec_cfg_map;
+    int ret = RETURN_OK;
+    char key[64] = {0};
+
+    wifi_util_dbg_print(WIFI_MGR,"%s %d \n", __func__, __LINE__);
+
+    mgr_cfg_map = mgr->steering_config_map;
+    dec_cfg_map = data->steering_config_map;
+
+    if (dec_cfg_map == NULL) {
+        wifi_util_dbg_print(WIFI_MGR,"%s %d NULL pointer \n", __func__, __LINE__);
+        ret = RETURN_ERR;
+        goto free_data;
+    }
+
+    if (mgr_cfg_map == dec_cfg_map) {
+        wifi_util_dbg_print(WIFI_MGR,"%s %d Same data returning \n", __func__, __LINE__);
+        ret = RETURN_OK;
+        goto free_data;
+    }
+
+    if (mgr_cfg_map != NULL) {
+        mgr_steer_config = hash_map_get_first(mgr_cfg_map);
+        while (mgr_steer_config != NULL) {
+            if (hash_map_get(dec_cfg_map, mgr_steer_config->steering_cfg_id) == NULL) {
+                //Notification for delete
+                //notify_observer(mgr_steer_config);
+                memset(key, 0, sizeof(key));
+                snprintf(key, sizeof(key), "%s",  mgr_steer_config->steering_cfg_id);
+                mgr_steer_config = hash_map_get_next(mgr_cfg_map, mgr_steer_config);
+                temp_steer_config = hash_map_remove(mgr_cfg_map, key);
+                if (temp_steer_config != NULL) {
+                    free(temp_steer_config);
+                }
+            } else {
+                mgr_steer_config = hash_map_get_next(mgr_cfg_map, mgr_steer_config);
+            }
+        }
+    }
+
+    if (dec_cfg_map != NULL) {
+        dec_steer_config = hash_map_get_first(dec_cfg_map);
+        while (dec_steer_config != NULL) {
+            mgr_steer_config = hash_map_get(mgr_cfg_map, dec_steer_config->steering_cfg_id);
+            if (mgr_steer_config == NULL) {
+                mgr_steer_config = (steering_config_t *)malloc(sizeof(steering_config_t));
+                if (mgr_steer_config == NULL) {
+                    wifi_util_dbg_print(WIFI_MGR,"%s %d NULL pointer \n", __func__, __LINE__);
+                    ret = RETURN_ERR;
+                    goto free_data;
+                }
+                memset(mgr_steer_config, 0, sizeof(steering_config_t));
+                memcpy(mgr_steer_config, dec_steer_config, sizeof(steering_config_t));
+                hash_map_put(mgr_cfg_map, strdup(mgr_steer_config->steering_cfg_id), mgr_steer_config);
+                //notify_observer(mgr_steer_config);
+            } else {
+                memcpy(mgr_steer_config, dec_steer_config, sizeof(steering_config_t));
+                //notify_observer(mgr_steer_config);
+            }
+            dec_steer_config = hash_map_get_next(dec_cfg_map, dec_steer_config);
+        }
+    }
+  free_data:
+    if ((data != NULL) && (dec_cfg_map != NULL)) {
+        wifi_util_dbg_print(WIFI_MGR,"%s %d Freeing Decoded Data \n", __func__, __LINE__);
+        dec_steer_config = hash_map_get_first(dec_cfg_map);
+        while (dec_steer_config != NULL) {
+            memset(key, 0, sizeof(key));
+            snprintf(key, sizeof(key), "%s", dec_steer_config->steering_cfg_id);
+            dec_steer_config = hash_map_get_next(dec_cfg_map, dec_steer_config);
+            temp_steer_config = hash_map_remove(dec_cfg_map, key);
+            if (temp_steer_config != NULL) {
+                free(temp_steer_config);
+            }
+        }
+        hash_map_destroy(dec_cfg_map);
+        dec_cfg_map = NULL;
+    }
+
+    return ret;
+}
+
+int webconfig_vif_neighbors_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
+{
+
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    vif_neighbors_t *mgr_vif_neighbors, *dec_vif_neighbors, *temp_vif_neighbors;
+    hash_map_t *mgr_cfg_map, *dec_cfg_map;
+    int ret = RETURN_OK;
+    char key[64] = {0};
+
+    wifi_util_dbg_print(WIFI_MGR,"%s %d \n", __func__, __LINE__);
+
+    mgr_cfg_map = mgr->vif_neighbors_map;
+    dec_cfg_map = data->vif_neighbors_map;
+
+    if (dec_cfg_map == NULL) {
+        wifi_util_dbg_print(WIFI_MGR,"%s %d NULL pointer \n", __func__, __LINE__);
+        ret = RETURN_ERR;
+        goto free_data;
+    }
+
+    if (mgr_cfg_map == dec_cfg_map) {
+        wifi_util_dbg_print(WIFI_MGR,"%s %d Same data returning \n", __func__, __LINE__);
+        ret = RETURN_OK;
+        goto free_data;
+    }
+
+    if (mgr_cfg_map != NULL) {
+        mgr_vif_neighbors = hash_map_get_first(mgr_cfg_map);
+        while (mgr_vif_neighbors != NULL) {
+            if (hash_map_get(dec_cfg_map, mgr_vif_neighbors->neighbor_id) == NULL) {
+                //Notification for delete
+                //notify_observer(mgr_vif_neighbors);
+                memset(key, 0, sizeof(key));
+                snprintf(key, sizeof(key), "%s",  mgr_vif_neighbors->neighbor_id);
+                mgr_vif_neighbors = hash_map_get_next(mgr_cfg_map, mgr_vif_neighbors);
+                temp_vif_neighbors = hash_map_remove(mgr_cfg_map, key);
+                if (temp_vif_neighbors != NULL) {
+                    free(temp_vif_neighbors);
+                }
+            } else {
+                mgr_vif_neighbors = hash_map_get_next(mgr_cfg_map, mgr_vif_neighbors);
+            }
+        }
+    }
+
+    if (dec_cfg_map != NULL) {
+        dec_vif_neighbors = hash_map_get_first(dec_cfg_map);
+        while (dec_vif_neighbors != NULL) {
+            mgr_vif_neighbors = hash_map_get(mgr_cfg_map, dec_vif_neighbors->neighbor_id);
+            if (mgr_vif_neighbors == NULL) {
+                mgr_vif_neighbors = (vif_neighbors_t *)malloc(sizeof(vif_neighbors_t));
+                if (mgr_vif_neighbors == NULL) {
+                    wifi_util_dbg_print(WIFI_MGR,"%s %d NULL pointer \n", __func__, __LINE__);
+                    ret = RETURN_ERR;
+                    goto free_data;
+                }
+                memset(mgr_vif_neighbors, 0, sizeof(vif_neighbors_t));
+                memcpy(mgr_vif_neighbors, dec_vif_neighbors, sizeof(vif_neighbors_t));
+                hash_map_put(mgr_cfg_map, strdup(mgr_vif_neighbors->neighbor_id), mgr_vif_neighbors);
+                //notify_observer(mgr_vif_neighbors);
+            } else {
+                memcpy(mgr_vif_neighbors, dec_vif_neighbors, sizeof(vif_neighbors_t));
+                //notify_observer(mgr_vif_neighbors);
+            }
+            dec_vif_neighbors = hash_map_get_next(dec_cfg_map, dec_vif_neighbors);
+        }
+    }
+  free_data:
+    if ((data != NULL) && (dec_cfg_map != NULL)) {
+        wifi_util_dbg_print(WIFI_MGR,"%s %d Freeing Decoded Data \n", __func__, __LINE__);
+        dec_vif_neighbors = hash_map_get_first(dec_cfg_map);
+        while (dec_vif_neighbors != NULL) {
+            memset(key, 0, sizeof(key));
+            snprintf(key, sizeof(key), "%s", dec_vif_neighbors->neighbor_id);
+            dec_vif_neighbors = hash_map_get_next(dec_cfg_map, dec_vif_neighbors);
+            temp_vif_neighbors = hash_map_remove(dec_cfg_map, key);
+            if (temp_vif_neighbors != NULL) {
+                free(temp_vif_neighbors);
+            }
+        }
+        hash_map_destroy(dec_cfg_map);
+        dec_cfg_map = NULL;
+    }
+
+    return ret;
+}
+
 
 int webconfig_global_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
@@ -997,6 +1697,8 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
     rdk_wifi_radio_t *radio_data, *mgr_radio_data;
     wifi_mgr_t *mgr = get_wifimgr_obj();
     bool found_radio_index = false;
+    bool rfc_status;
+    int ret;
 
     // apply the radio and vap data
     for (i = 0; i < getNumberRadios(); i++) {
@@ -1039,7 +1741,16 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
                 }
             }
 
-            if (wifi_hal_setRadioOperatingParameters(mgr_radio_data->vaps.radio_index, &radio_data->oper) != RETURN_OK) {
+            get_wifi_rfc_parameters(RFC_WIFI_OW_CORE_THREAD, (bool *)&rfc_status);
+            if (true == rfc_status) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG,"[%s]:WIFI RFC OW CORE THREAD ENABLED \r\n",__FUNCTION__);
+                ret = webconfig_set_ow_core_phy_config(radio_data);
+            } else {
+                wifi_util_dbg_print(WIFI_WEBCONFIG,"[%s]:WIFI RFC OW CORE THREAD DISABLED \r\n",__FUNCTION__);
+                ret = wifi_hal_setRadioOperatingParameters(mgr_radio_data->vaps.radio_index, &radio_data->oper);
+            }
+
+            if (ret != RETURN_OK) {
                 wifi_util_error_print(WIFI_MGR, "%s:%d: failed to apply\n", __func__, __LINE__);
                 ctrl->webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
                 return RETURN_ERR;
@@ -1390,12 +2101,69 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
             }
             break;
 
-        case webconfig_subdoc_type_null: 
+        case webconfig_subdoc_type_null:
             wifi_util_dbg_print(WIFI_MGR, "%s:%d: null webconfig subdoc\n", __func__, __LINE__);
             if (data->descriptor & webconfig_data_descriptor_encoded) {
                 ret = webconfig_null_subdoc_notify_apply(ctrl, &data->u.encoded);
             } else {
                 wifi_util_error_print(WIFI_MGR, "%s:%d: Not expected apply to null webconfig subdoc\n", __func__, __LINE__);
+            }
+            break;
+
+        case webconfig_subdoc_type_steering_config:
+            if (data->descriptor & webconfig_data_descriptor_encoded) {
+                //Not Applicable
+            } else {
+                wifi_util_dbg_print(WIFI_MGR, "%s:%d: steering config subdoc\n", __func__, __LINE__);
+                ret = webconfig_steering_config_apply(ctrl, &data->u.decoded);
+                if (ret != RETURN_OK) {
+                    wifi_util_dbg_print(WIFI_MGR, "%s:%d: steering_config failed\n", __func__, __LINE__);
+                    return webconfig_error_apply;
+                }
+            }
+            break;
+
+        case webconfig_subdoc_type_stats_config:
+            if (data->descriptor & webconfig_data_descriptor_encoded) {
+                //Not Applicable
+            } else {
+                wifi_util_dbg_print(WIFI_MGR, "%s:%d: stats config subdoc\n", __func__, __LINE__);
+                ret = webconfig_stats_config_apply(ctrl, &data->u.decoded);
+                if (ret != RETURN_OK) {
+                    wifi_util_dbg_print(WIFI_MGR, "%s:%d: stats config failed\n", __func__, __LINE__);
+                    return webconfig_error_apply;
+                }
+            }
+            break;
+
+        case webconfig_subdoc_type_steering_clients:
+            if (data->descriptor & webconfig_data_descriptor_encoded) {
+                if (ctrl->webconfig_state & ctrl_webconfig_state_steering_clients_rsp_pending) {
+                    ctrl->webconfig_state &= ~ctrl_webconfig_state_steering_clients_rsp_pending;
+                    //TBD : to uncomment as part of integration of steering clients hal wrapper
+                    //ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
+                }
+            } else {
+                ctrl->webconfig_state |= ctrl_webconfig_state_steering_clients_rsp_pending;
+                wifi_util_dbg_print(WIFI_MGR, "%s:%d: steering clients subdoc\n", __func__, __LINE__);
+                ret = webconfig_steering_clients_apply(ctrl, &data->u.decoded);
+                if (ret != RETURN_OK) {
+                    wifi_util_dbg_print(WIFI_MGR, "%s:%d: steering clients subdoc failed\n", __func__, __LINE__);
+                    return webconfig_error_apply;
+                }
+            }
+            break;
+
+        case webconfig_subdoc_type_vif_neighbors:
+            if (data->descriptor & webconfig_data_descriptor_encoded) {
+                //Not Applicable
+            } else {
+                wifi_util_dbg_print(WIFI_MGR, "%s:%d: vif neighbors subdoc\n", __func__, __LINE__);
+                ret = webconfig_vif_neighbors_apply(ctrl, &data->u.decoded);
+                if (ret != RETURN_OK) {
+                    wifi_util_dbg_print(WIFI_MGR, "%s:%d: vif neighbors failed\n", __func__, __LINE__);
+                    return webconfig_error_apply;
+                }
             }
             break;
 
@@ -1418,7 +2186,6 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
         default:
             break;
     }
-
 
     wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: new webconfig_state:%02x\n",
                                         __func__, __LINE__, ctrl->webconfig_state);

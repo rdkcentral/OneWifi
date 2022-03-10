@@ -241,4 +241,20 @@ int convert_radio_index_to_freq_band(wifi_platform_property_t *wifi_prop, unsign
 void wifidb_print(char *format, ...);
 void copy_string(char*  destination, char*  source);
 bool wifiStandardStrToEnum(char *pWifiStdStr, wifi_ieee80211Variant_t *p80211VarEnum, ULONG instance_number, bool twoG80211axEnable);
+int stats_type_conversion(stats_type_t *stat_type_enum, char *stat_type, int stat_type_len, unsigned int conv_type);
+int report_type_conversion(report_type_t *report_type_enum, char *report_type, int report_type_len, unsigned int conv_type);
+int survey_type_conversion(survey_type_t *survey_type_enum, char *survey_type, int survey_type_len, unsigned int conv_type);
+int get_steering_cfg_id(char *key, int key_len, unsigned char * id, int id_len, const steering_config_t *st_cfg);
+int get_stats_cfg_id(char *key, int key_len, unsigned char *id, int id_len, const unsigned int stats_type, const unsigned int report_type, const unsigned int radio_type, const unsigned int survey_type);
+int get_steering_clients_id(char *key, int key_len, unsigned char *id, int id_len, const char *mac);
+int cs_state_type_conversion(cs_state_t *cs_state_type_enum, char *cs_state, int cs_state_len, unsigned int conv_type);
+int cs_mode_type_conversion(cs_mode_t *cs_mode_type_enum, char *cs_mode, int cs_mode_len, unsigned int conv_type);
+int force_kick_type_conversion(force_kick_t *force_kick_type_enum, char *force_kick, int force_kick_len, unsigned int conv_type);
+int kick_type_conversion(kick_type_t *kick_type_enum, char *kick_type, int kick_type_len, unsigned int conv_type);
+int pref_5g_conversion(pref_5g_t *pref_5g_enum, char *pref_5g, int pref_5g_len, unsigned int conv_type);
+int reject_detection_conversion(reject_detection_t *reject_detection_enum, char *reject_detection, int reject_detection_len, unsigned int conv_type);
+int sc_kick_type_conversion(sc_kick_type_t *sc_kick_enum, char *sc_kick, int sc_kick_len, unsigned int conv_type);
+int sticky_kick_type_conversion(sticky_kick_type_t *sticky_kick_enum, char *sticky_kick, int sticky_kick_len, unsigned int conv_type);
+int get_vif_neighbor_id(char *key, int key_len, unsigned char *id, int id_len, const char *mac);
+int vif_neighbor_htmode_conversion(ht_mode_t *ht_mode_enum, char *ht_mode, int ht_mode_len, unsigned int conv_type);
 #endif//_WIFI_UTIL_H_

@@ -1814,6 +1814,8 @@ int  get_wifi_rfc_parameters(char *str, void *value)
         *(bool*)value = l_wifi_mgr->rfc_dml_parameters.radiusgreylist_rfc;
     } else if ((strcmp(str, RFC_WIFI_MGMT_FRAME_RBUS) == 0)) {
         *(bool*)value = l_wifi_mgr->rfc_dml_parameters.mgmt_frame_rbus_enabled_rfc;
+    } else if ((strcmp(str, RFC_WIFI_OW_CORE_THREAD) == 0)) {
+        *(bool*)value = l_wifi_mgr->rfc_dml_parameters.ow_core_thread_rfc;
     } else {
         wifi_util_dbg_print(WIFI_CTRL, "%s get wifi rfc parameter not found %s\n", __FUNCTION__, str);
         ret = RETURN_ERR;
@@ -1853,6 +1855,7 @@ wifi_rfc_dml_parameters_t* get_ctrl_rfc_parameters(void)
     g_wifi_mgr->ctrl.rfc_params.dfsatbootup_rfc  = g_wifi_mgr->rfc_dml_parameters.dfsatbootup_rfc ;
     g_wifi_mgr->ctrl.rfc_params.dfs_rfc = g_wifi_mgr->rfc_dml_parameters.dfs_rfc;
     g_wifi_mgr->ctrl.rfc_params.wpa3_rfc = g_wifi_mgr->rfc_dml_parameters.wpa3_rfc;
+    g_wifi_mgr->ctrl.rfc_params.ow_core_thread_rfc = g_wifi_mgr->rfc_dml_parameters.ow_core_thread_rfc;
     g_wifi_mgr->ctrl.rfc_params.twoG80211axEnable_rfc = g_wifi_mgr->rfc_dml_parameters.twoG80211axEnable_rfc;
     g_wifi_mgr->ctrl.rfc_params.hotspot_open_2g_last_enabled = g_wifi_mgr->rfc_dml_parameters.hotspot_open_2g_last_enabled;
     g_wifi_mgr->ctrl.rfc_params.hotspot_open_5g_last_enabled = g_wifi_mgr->rfc_dml_parameters.hotspot_open_5g_last_enabled;
