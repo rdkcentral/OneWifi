@@ -1,0 +1,6 @@
+[Unit]
+Description=WiFi Telemetry Service Group
+Documentation=man:systemd.special(7)
+
+[Install]
+WantedBy=wifi-initialized.target

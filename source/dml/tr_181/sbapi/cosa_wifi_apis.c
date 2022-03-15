@@ -1,0 +1,1530 @@
+/*
+ * If not stated otherwise in this file or this component's Licenses.txt file the
+ * following copyright and licenses apply:
+ *
+ * Copyright 2015 RDK Management
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+*/
+
+/**********************************************************************
+   Copyright [2014] [Cisco Systems, Inc.]
+ 
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+ 
+       http://www.apache.org/licenses/LICENSE-2.0
+ 
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+**********************************************************************/
+
+/**************************************************************************
+
+    module: cosa_wifi_dml.c
+
+        For COSA Data Model Library Development
+
+    -------------------------------------------------------------------
+
+    description:
+
+        This file implementes back-end apis for the COSA Data Model Library
+
+        *  CosaWifiCreate
+        *  CosaWifiInitialize
+        *  CosaWifiRemove
+        *  CosaDmlWifiGetPortMappingNumber
+    -------------------------------------------------------------------
+
+    environment:
+
+        platform independent
+
+    -------------------------------------------------------------------
+
+    author:
+
+        COSA XML TOOL CODE GENERATOR 1.0
+
+    -------------------------------------------------------------------
+
+    revision:
+
+        01/11/2011    initial revision.
+
+**************************************************************************/
+#define _XOPEN_SOURCE 700
+#include <telemetry_busmessage_sender.h>
+#include "cosa_apis.h"
+#include "cosa_dbus_api.h"
+#include "cosa_wifi_apis.h"
+#include "cosa_wifi_sbapi_custom.h"
+#include "cosa_wifi_internal.h"
+#include "plugin_main_apis.h"
+#include "collection.h"
+#include "wifi_hal.h"
+#include "wifi_monitor.h"
+#include "wifi_easy_connect.h"
+#include "ccsp_psm_helper.h"
+#include <ctype.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <strings.h>
+#include <time.h>
+#include "ansc_platform.h"
+#include "pack_file.h"
+#include "ccsp_WifiLog_wrapper.h"
+#include <sysevent/sysevent.h>
+#include <sys/sysinfo.h>
+#include "print_uptime.h"
+#include "wifi_passpoint.h"
+#include "cosa_wifi_dml.h"
+#include "secure_wrapper.h"
+
+#include "wifi_ctrl.h"
+
+#if defined (FEATURE_SUPPORT_WEBCONFIG)
+#include "wifi_webconfig.h"
+#endif
+#include "wifi_passpoint.h"
+#include "msgpack.h"
+#include "ovsdb_table.h"
+#include "wifi_db.h"
+
+#if defined(_COSA_BCM_MIPS_) || defined(_XB6_PRODUCT_REQ_) || defined(_COSA_BCM_ARM_) || defined(_PLATFORM_TURRIS_)
+#include "cJSON.h"
+#include <ctype.h>
+#endif
+
+#ifdef USE_NOTIFY_COMPONENT
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h> 
+#include <sys/un.h>
+#endif
+#ifdef WIFI_HAL_VERSION_3
+#include "safec_lib_common.h"
+#endif
+#define WLAN_MAX_LINE_SIZE 1024
+#define RADIO_BROADCAST_FILE "/tmp/.advertise_ssids"
+#if defined(_COSA_BCM_MIPS)
+#define WLAN_WAIT_LIMIT 3
+#endif
+
+#if defined(_COSA_BCM_MIPS_) || defined(_XB6_PRODUCT_REQ_) || defined(_COSA_BCM_ARM_) || defined(_PLATFORM_TURRIS_)
+#define PARTNERS_INFO_FILE              "/nvram/partners_defaults.json"
+#define BOOTSTRAP_INFO_FILE             "/nvram/bootstrap.json"
+#endif
+
+#ifdef FEATURE_SUPPORT_ONBOARD_LOGGING
+#define OnboardLog(...)                     rdk_log_onboard("WIFI", __VA_ARGS__)
+#else
+#define OnboardLog(...)
+#endif
+
+#if defined (_PLATFORM_RASPBERRYPI_) || defined(_PLATFORM_TURRIS_)
+#define MAX_BUF_SIZE 128
+#endif
+
+#ifdef WIFI_HAL_VERSION_3
+
+#define NAME_FREQUENCY_2_4     2
+#define NAME_FREQUENCY_5       5
+#define NAME_FREQUENCY_6       6
+
+#define MAX_NEIGHBOURS 250
+#endif
+
+static char *FactoryReset       = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.FactoryReset";
+
+struct wifiSecEncrCosaHalMap wifiSecEncrMap[] =
+{
+      {wifi_encryption_none,     COSA_DML_WIFI_AP_SEC_NONE,     "None"},
+      {wifi_encryption_tkip,     COSA_DML_WIFI_AP_SEC_TKIP,     "TKIP"},
+      {wifi_encryption_aes,      COSA_DML_WIFI_AP_SEC_AES,      "AES"},
+      {wifi_encryption_aes_tkip, COSA_DML_WIFI_AP_SEC_AES_TKIP, "AES_TKIP"}
+};
+
+struct wifiSecCosaHalMap wifiSecMap[] =
+{
+      {wifi_security_mode_none,                COSA_DML_WIFI_SECURITY_None,                     "None"},
+      {wifi_security_mode_wep_64,              COSA_DML_WIFI_SECURITY_WEP_64,                   "WEP_64"},
+      {wifi_security_mode_wep_128,             COSA_DML_WIFI_SECURITY_WEP_128,                  "WEP_128"},
+      {wifi_security_mode_wpa_personal,        COSA_DML_WIFI_SECURITY_WPA_Personal,             "WPA-Personal"},
+      {wifi_security_mode_wpa2_personal,       COSA_DML_WIFI_SECURITY_WPA2_Personal,            "WPA2-Personal"},
+      {wifi_security_mode_wpa3_personal,       COSA_DML_WIFI_SECURITY_WPA3_Personal,            "WPA3-Personal"},
+      {wifi_security_mode_wpa_wpa2_personal,   COSA_DML_WIFI_SECURITY_WPA_WPA2_Personal,        "WPA-WPA2-Personal"},
+      {wifi_security_mode_wpa3_transition,     COSA_DML_WIFI_SECURITY_WPA3_Personal_Transition, "WPA3-Personal-Transition"},
+      {wifi_security_mode_wpa_enterprise,      COSA_DML_WIFI_SECURITY_WPA_Enterprise,           "WPA-Enterprise"},
+      {wifi_security_mode_wpa2_enterprise,     COSA_DML_WIFI_SECURITY_WPA2_Enterprise,          "WPA2-Enterprise"},
+      {wifi_security_mode_wpa3_enterprise,     COSA_DML_WIFI_SECURITY_WPA3_Enterprise,          "WPA3-Enterprise"},
+      {wifi_security_mode_wpa_wpa2_enterprise, COSA_DML_WIFI_SECURITY_WPA_WPA2_Enterprise,      "WPA-WPA2-Enterprise"}
+};
+
+struct wifiFreqBandHalMap wifiFreqBandMap[] =
+{
+    {WIFI_FREQUENCY_2_4_BAND, COSA_DML_WIFI_FREQ_BAND_2_4G, "2.4GHz"},
+    {WIFI_FREQUENCY_5_BAND,   COSA_DML_WIFI_FREQ_BAND_5G,   "5GHz"},
+    {WIFI_FREQUENCY_5L_BAND,  COSA_DML_WIFI_FREQ_BAND_5G_L, "Low 5GHz"},
+    {WIFI_FREQUENCY_5H_BAND,  COSA_DML_WIFI_FREQ_BAND_5G_H, "High 5Ghz"},
+    {WIFI_FREQUENCY_6_BAND,   COSA_DML_WIFI_FREQ_BAND_6G,   "6GHz"},
+    {WIFI_FREQUENCY_60_BAND,  COSA_DML_WIFI_FREQ_BAND_60,   "60GHz"}
+};
+
+struct wifiSecMfpCosaHalMap wifiSecMFPMap[] =
+{
+      {wifi_mfp_cfg_disabled, "Disabled"},
+      {wifi_mfp_cfg_optional, "Optional"},
+      {wifi_mfp_cfg_required, "Required"},
+};
+
+struct wifiChanWidthCosaHalMap wifiChanWidthMap[] =
+{
+    {WIFI_CHANNELBANDWIDTH_20MHZ,    COSA_DML_WIFI_CHAN_BW_20M,    "20MHz"},
+    {WIFI_CHANNELBANDWIDTH_40MHZ,    COSA_DML_WIFI_CHAN_BW_40M,    "40MHz"},
+    {WIFI_CHANNELBANDWIDTH_80MHZ,    COSA_DML_WIFI_CHAN_BW_80M,    "80MHz"},
+    {WIFI_CHANNELBANDWIDTH_160MHZ,   COSA_DML_WIFI_CHAN_BW_160M,   "160MHz"},
+    {WIFI_CHANNELBANDWIDTH_80_80MHZ, COSA_DML_WIFI_CHAN_BW_80_80M, "80+80MHz"}
+};
+
+struct wifiGuardIntervalMap wifiGuardIntervalMap[] ={
+      {wifi_guard_interval_400,   COSA_DML_WIFI_GUARD_INTVL_400ns,  "400ns"},
+      {wifi_guard_interval_800,   COSA_DML_WIFI_GUARD_INTVL_800ns,  "800ns"},
+      {wifi_guard_interval_1600,  COSA_DML_WIFI_GUARD_INTVL_1600ns, "1600ns"},
+      {wifi_guard_interval_3200,  COSA_DML_WIFI_GUARD_INTVL_3200ns, "3200ns"},
+      {wifi_guard_interval_auto,  COSA_DML_WIFI_GUARD_INTVL_Auto,   "Auto"}
+};
+
+struct  wifiStdCosaHalMap wifiStdMap[] =
+{
+    {WIFI_80211_VARIANT_A,  COSA_DML_WIFI_STD_a,  "a"},
+    {WIFI_80211_VARIANT_B,  COSA_DML_WIFI_STD_b,  "b"},
+    {WIFI_80211_VARIANT_G,  COSA_DML_WIFI_STD_g,  "g"},
+    {WIFI_80211_VARIANT_N,  COSA_DML_WIFI_STD_n,  "n"},
+    {WIFI_80211_VARIANT_H,  COSA_DML_WIFI_STD_h,  "h"},
+    {WIFI_80211_VARIANT_AC, COSA_DML_WIFI_STD_ac, "ac"},
+    {WIFI_80211_VARIANT_AD, COSA_DML_WIFI_STD_ad, "ad"}
+#ifdef _WIFI_AX_SUPPORT_
+    ,
+      {WIFI_80211_VARIANT_AX, COSA_DML_WIFI_STD_ax, "ax"}
+#endif //_WIFI_AX_SUPPORT_
+};
+
+/**************************************************************************
+*
+*	Function Declarations
+*
+**************************************************************************/
+
+
+#ifndef __user
+#define __user
+#endif
+
+extern BOOL client_fast_reconnect(unsigned int apIndex, char *mac);
+extern BOOL client_fast_redeauth(unsigned int apIndex, char *mac);
+extern pthread_mutex_t g_apRegister_lock;
+int sMac_to_cMac(char *sMac, unsigned char *cMac);
+
+BOOL g_wifidb_rfc = FALSE;
+
+#define  ARRAY_SZ(x)    (sizeof(x) / sizeof((x)[0]))
+
+#include <pthread.h>
+
+// #define wifiDbgPrintf 
+#define wifiDbgPrintf printf
+
+
+extern ANSC_HANDLE bus_handle;
+extern char        g_Subsystem[32];
+
+#define WIFIEXT_DM_RADIO_UPDATE  ""
+#define WIFIEXT_DM_WPS_UPDATE    ""
+#define WIFIEXT_DM_SSID_UPDATE   ""
+#define INTERVAL 50000
+
+#define WIFI_COMP				"eRT.com.cisco.spvtg.ccsp.wifi"
+#define WIFI_BUS					"/com/cisco/spvtg/ccsp/wifi"
+#define HOTSPOT_DEVICE_NAME	"AP_steering"
+#ifndef WIFI_HAL_VERSION_3
+#if defined(_CBR_PRODUCT_REQ_) || defined (_BWG_PRODUCT_REQ_)
+#define HOTSPOT_NO_OF_INDEX			5
+static const int Hotspot_Index[HOTSPOT_NO_OF_INDEX]={5,6,9,10,16};
+#else
+#define HOTSPOT_NO_OF_INDEX			4
+static const int Hotspot_Index[HOTSPOT_NO_OF_INDEX]={5,6,9,10};
+#endif
+#endif
+#if defined(DMCLI_SUPPORT_TO_ADD_DELETE_VAP)
+#define ATH_NAME "ath"
+
+#define GET_SSID_INDEX(ssidList, uInstanceNumber, idx) do { \
+    for ( idx = 0; idx < (ULONG)gSsidCount; idx++ ) \
+        if ( ssidList[idx].InstanceNumber == uInstanceNumber ) \
+            break; \
+    if ( idx >= (ULONG)gSsidCount ) { \
+        wifiDbgPrintf("%s: SSID entry %lu not found in dB \n", __FUNCTION__, uInstanceNumber); \
+        return ANSC_STATUS_FAILURE; \
+    } \
+}while(0)
+
+#define GET_AP_INDEX(apList, uInstanceNumber, idx) do { \
+    for ( idx = 0; idx < (ULONG)gSsidCount; idx++ ) \
+        if ( apList[idx].Cfg.InstanceNumber == (ULONG)uInstanceNumber ) \
+            break; \
+    if ( idx >= (ULONG)gSsidCount ) { \
+        wifiDbgPrintf("%s: AP entry %lu not found in dB \n", __FUNCTION__, (ULONG)uInstanceNumber); \
+        return ANSC_STATUS_FAILURE; \
+    } \
+}while(0)
+#endif
+
+struct wifiDataTxRateHalMap wifiDataTxRateMap[] =
+{
+    {WIFI_BITRATE_DEFAULT, "Default"}, //Used in Set
+    {WIFI_BITRATE_1MBPS,   "1"},
+    {WIFI_BITRATE_2MBPS,   "2"},
+    {WIFI_BITRATE_5_5MBPS, "5.5"},
+    {WIFI_BITRATE_6MBPS,   "6"},
+    {WIFI_BITRATE_9MBPS,   "9"},
+    {WIFI_BITRATE_11MBPS,  "11"},
+    {WIFI_BITRATE_12MBPS,  "12"},
+    {WIFI_BITRATE_18MBPS,  "18"},
+    {WIFI_BITRATE_24MBPS,  "24"},
+    {WIFI_BITRATE_36MBPS,  "36"},
+    {WIFI_BITRATE_48MBPS,  "48"},
+    {WIFI_BITRATE_54MBPS,  "54"}
+};
+
+
+#define CSA_TBTT   25
+
+/**************************************************************************
+*
+*       Function Definitions
+*
+**************************************************************************/
+
+INT getCountryCodeFromInt(wifi_countrycode_type_t countryCode, char *countryStr)
+{
+    unsigned int i;
+    for (i = 0 ; i < ARRAY_SZ(wifiCountryMap) ; ++i)
+    {
+        if(countryCode == wifiCountryMap[i].countryCode)
+        {
+            strncpy(countryStr, wifiCountryMap[i].countryStr, strlen(wifiCountryMap[i].countryStr));
+            return strlen(wifiCountryMap[i].countryStr);
+	}
+    }
+
+    if(i == ARRAY_SZ(wifiCountryMap))
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s Invalid Country code enum\n", __func__));
+    }
+
+    return 0;
+}
+
+INT getTxDataRateFromInt(wifi_bitrate_t DataTxRate, char *DataTxRateStr)
+{
+    unsigned int i;
+    for (i = 0 ; i < ARRAY_SZ(wifiDataTxRateMap) ; ++i)
+    {
+        if(DataTxRate == wifiDataTxRateMap[i].DataTxRateEnum)
+        {
+            strncpy(DataTxRateStr, wifiDataTxRateMap[i].DataTxRateStr, strlen(wifiDataTxRateMap[i].DataTxRateStr));
+            return strlen(wifiDataTxRateMap[i].DataTxRateStr);
+        }
+    }
+
+    if(i == ARRAY_SZ(wifiDataTxRateMap))
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s Invalid DataTxRate enum\n", __func__));
+    }
+
+    return 0;
+}
+
+INT getSecurityStringFromInt(wifi_security_modes_t securityType, char *securityName)
+{
+    unsigned int i;
+    for (i = 0 ; i < ARRAY_SZ(wifiSecMap) ; ++i)
+    {
+        if(securityType == wifiSecMap[i].halSecCfgMethod)
+	{
+	    if (securityType & wifi_security_mode_none )
+            {
+                strcat(securityName, wifiSecMap[i].wifiSecType);
+            }
+
+            if (AnscSizeOfString(securityName) != 0)
+            {
+                strcat(securityName, ",");
+		strcat(securityName, wifiSecMap[i].wifiSecType);
+            }
+            else
+            {
+                strcat(securityName, wifiSecMap[i].wifiSecType);
+            }
+	}
+    }
+    
+    if(i == ARRAY_SZ(wifiSecMap))
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s Invalid Security type enum\n", __func__));
+    }
+    else
+    {
+        return strlen(securityName);
+    }
+    return 0;
+}
+
+INT getBeaconRateStringFromEnum (char *beaconName, int length, wifi_bitrate_t beaconType)
+{
+    unsigned int seqCounter  = 0;
+
+    for (seqCounter = 0; seqCounter < ARRAY_SZ(wifiDataTxRateMap); seqCounter++)
+    {
+        if (beaconType == wifiDataTxRateMap[seqCounter].DataTxRateEnum)
+        {
+            snprintf(beaconName, length, "%sMbps", wifiDataTxRateMap[seqCounter].DataTxRateStr);
+	    return 0;
+        }
+    }
+    return 0;
+}
+
+INT getBeaconRateFromString (const char *beaconName, wifi_bitrate_t *beaconType)
+{
+    INT rc = -1;
+    INT ind = -1;
+    UINT i = 0;
+    if((beaconName == NULL) || (beaconType == NULL))
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s parameter NULL\n", __func__));
+        return 0;
+    }
+    
+    CHAR* tempBeaconName = (CHAR*)malloc(strlen(beaconName)+1);
+
+    if (tempBeaconName == NULL)
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s Malloc failed\n", __func__));
+        return 0;
+    }
+
+    snprintf(tempBeaconName, strlen(beaconName)+1, beaconName);
+    char * token = strtok(tempBeaconName, "Mbps");
+    if (token == NULL)
+    {
+        free (tempBeaconName);
+        return 0;
+    }
+
+    for (i = 0 ; i < ARRAY_SZ(wifiDataTxRateMap) ; ++i)
+    {
+        rc = strcmp_s(token, strlen(token), wifiDataTxRateMap[i].DataTxRateStr, &ind);
+        ERR_CHK(rc);
+        if((!rc) && (!ind))
+        {
+            *beaconType = wifiDataTxRateMap[i].DataTxRateEnum;
+            free (tempBeaconName);
+            return 1;
+        }
+    }
+    
+    free (tempBeaconName);
+    return 0;
+}
+
+INT getIpAddressFromString (const char * ipString, ip_addr_t * ip)
+{
+    if (inet_pton(AF_INET, ipString, &ip->u.IPv4addr) > 0) 
+    {
+        ip->family = wifi_ip_family_ipv4;
+    } 
+    else if (inet_pton(AF_INET6, ipString, ip->u.IPv6addr) > 0)
+    {
+        ip->family = wifi_ip_family_ipv6;
+    }
+    else
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s IP not recognise\n", __func__));
+        return 0;
+    }
+
+    return 1;
+}
+
+ANSC_STATUS
+getMFPTypeFromString (const char *MFPName, wifi_mfp_cfg_t *MFPType)
+{
+    INT rc = -1;
+    INT ind = -1;
+    UINT counter = 0;
+    if( (MFPName == NULL) || (MFPType == NULL) )
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s MFP parameter NULL\n", __func__));
+        return ANSC_STATUS_FAILURE;
+    }
+    for (counter = 0 ; counter < ARRAY_SZ(wifiSecMFPMap) ; ++counter)
+    {
+        rc = strcmp_s(MFPName, strlen(MFPName), wifiSecMFPMap[counter].wifiSecMFP, &ind);
+        ERR_CHK(rc);
+        if((!rc) && (!ind))
+        {
+            *MFPType = wifiSecMFPMap[counter].halSecMFP;
+            return ANSC_STATUS_SUCCESS;
+        }
+    }
+    return ANSC_STATUS_FAILURE;
+}
+
+void
+CosaWiFiDmlGetWPA3TransitionRFC (BOOL *WPA3_RFC)
+{
+    char recName[256] = {0x0};
+    char *strValue = NULL;
+    memset(recName, '\0', sizeof(recName));
+    sprintf(recName, "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.WPA3_Personal_Transition.Enable");
+
+    if(PSM_Get_Record_Value2(bus_handle,g_Subsystem, recName, NULL, &strValue) != CCSP_SUCCESS)
+    {
+        *WPA3_RFC = FALSE;
+        CcspTraceError(("%s: fail to get PSM record for WPA3 Transition Enable RFC\n",__func__));
+    }
+    else
+    {
+        *WPA3_RFC = atoi(strValue);
+        ((CCSP_MESSAGE_BUS_INFO *)bus_handle)->freefunc(strValue);
+    }
+}
+
+ANSC_STATUS
+CosaDmlWiFi_GetGoodRssiThresholdValue( int	*piRssiThresholdValue )
+{
+    wifi_global_param_t *pcfg = get_wifidb_wifi_global_param();
+    if (pcfg != NULL) {
+        *piRssiThresholdValue = pcfg->good_rssi_threshold;
+    } else {
+        CcspTraceInfo(("%s WIFI DB Failed to get global config\n", __FUNCTION__));
+        return ANSC_STATUS_FAILURE;
+    }
+    return ANSC_STATUS_SUCCESS;
+}
+
+ANSC_STATUS
+CosaDmlWiFi_GetAssocCountThresholdValue( int	*piAssocCountThresholdValue )
+{
+    wifi_global_param_t *pcfg = get_wifidb_wifi_global_param();
+    if (pcfg != NULL) {
+        *piAssocCountThresholdValue= pcfg->assoc_count_threshold;
+    } else {
+        CcspTraceInfo(("%s WIFI DB Failed to get global config\n", __FUNCTION__ ));
+        return ANSC_STATUS_FAILURE;
+    }
+    return ANSC_STATUS_SUCCESS;
+}
+
+ANSC_STATUS
+CosaDmlWiFi_GetAssocMonitorDurationValue( int	*piAssocMonitorDurationValue )
+{
+     wifi_global_param_t *pcfg = get_wifidb_wifi_global_param();
+     if (pcfg != NULL) {
+        *piAssocMonitorDurationValue = pcfg->assoc_monitor_duration;
+        CcspTraceInfo(("%s WIFI DB get success Value: %d\n", __FUNCTION__, *piAssocMonitorDurationValue))
+    } else {
+        CcspTraceInfo(("%s WIFI DB Failed to get global config\n", __FUNCTION__ ));
+        return ANSC_STATUS_FAILURE;
+    }
+    return ANSC_STATUS_SUCCESS;
+}
+
+ANSC_STATUS
+CosaDmlWiFi_GetAssocGateTimeValue( int	*piAssocGateTimeValue )
+{
+    wifi_global_param_t *pcfg = get_wifidb_wifi_global_param();
+    if (pcfg != NULL) {
+        *piAssocGateTimeValue = pcfg->assoc_gate_time;
+        CcspTraceInfo(("%s WIFI DB get success Value: %d\n", __FUNCTION__, *piAssocGateTimeValue));
+    } else {
+        CcspTraceInfo(("%s WIFI DB Failed to get global config\n", __FUNCTION__ ));
+        return ANSC_STATUS_FAILURE;
+    }
+    return ANSC_STATUS_SUCCESS;
+}
+
+ANSC_STATUS
+CosaDmlWiFi_GetRapidReconnectThresholdValue(ULONG vAPIndex, int	*rapidReconnThresholdValue )
+{
+    wifi_front_haul_bss_t  *pcfg= NULL;
+    pcfg = Get_wifi_object_bss_parameter(vAPIndex);
+    if(pcfg != NULL)
+    {
+        *rapidReconnThresholdValue = pcfg->rapidReconnThreshold;
+    } else {
+        CcspTraceInfo(("%s WIFI DB Failed to get vap config\n", __FUNCTION__ ));
+        return ANSC_STATUS_FAILURE;
+    }
+   return ANSC_STATUS_SUCCESS;
+}
+
+ANSC_STATUS
+CosaDmlWiFi_GetFeatureMFPConfigValue( BOOLEAN *pbFeatureMFPConfig )
+{
+    wifi_global_param_t *pcfg = get_wifidb_wifi_global_param();
+    if (pcfg != NULL) {
+       *pbFeatureMFPConfig = pcfg->mfp_config_feature;
+        CcspTraceInfo(("%s MFP config value %d\n",__FUNCTION__,pcfg->mfp_config_feature));
+    } else {
+       CcspTraceInfo(("%s Failed to get wifi db value\n", __FUNCTION__ ));
+       return ANSC_STATUS_FAILURE;
+    }	
+    return ANSC_STATUS_SUCCESS;
+}
+
+ANSC_STATUS
+CosaDmlWiFi_GetRapidReconnectCountEnable(ULONG vAPIndex, BOOLEAN *pbReconnectCountEnable, BOOLEAN usePersistent )
+{
+    wifi_front_haul_bss_t  *pcfg= NULL;
+    pcfg = Get_wifi_object_bss_parameter(vAPIndex);
+    if(pcfg != NULL)
+    {
+        *pbReconnectCountEnable = pcfg->rapidReconnectEnable;
+        CcspTraceInfo(("%s WIFI DB get success Value: %d\n", __FUNCTION__, *pbReconnectCountEnable));
+    } else {
+        CcspTraceInfo(("%s WIFI DB Failed to get vap config\n", __FUNCTION__ ));
+        return ANSC_STATUS_FAILURE;
+    }
+    return ANSC_STATUS_SUCCESS;
+}
+
+/*********************************************************************************/
+/*                                                                               */
+/* FUNCTION NAME : CosaDmlWiFiGetEnableRadiusGreylist                            */
+/*                                                                               */
+/* DESCRIPTION   : This function is to get the value of RadiusGreyList           */
+/*                        from the PSM Database                                  */
+/*                                                                               */
+/* INPUT         : pbEnableRadiusGreyList - pointer to the return value          */
+/*                                                                               */
+/* OUTPUT        : TRUE / FALSE                                                  */
+/*                                                                               */
+/* RETURN VALUE  : ANSC_STATUS_SUCCESS / ANSC_STATUS_FAILURE                     */
+/*                                                                               */
+/*********************************************************************************/
+void CosaDmlWiFiGetEnableRadiusGreylist(BOOLEAN *pbEnableRadiusGreyList)
+{
+#if defined (FEATURE_SUPPORT_RADIUSGREYLIST)
+    char *psmStrValue = NULL;
+
+    *pbEnableRadiusGreyList = FALSE;
+    CcspTraceInfo(("[%s] Get EnableRadiusGreylist Value \n",__FUNCTION__));
+
+    if (PSM_Get_Record_Value2(bus_handle, g_Subsystem,
+            "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.RadiusGreyList.Enable",
+            NULL, &psmStrValue) == CCSP_SUCCESS)
+    {
+        *pbEnableRadiusGreyList = _ansc_atoi(psmStrValue);
+        ((CCSP_MESSAGE_BUS_INFO *)bus_handle)->freefunc(psmStrValue);
+    }
+#else
+    UNREFERENCED_PARAMETER(pbEnableRadiusGreyList);
+#endif
+}
+
+#if defined (FEATURE_SUPPORT_RADIUSGREYLIST)
+/*********************************************************************************/
+/*                                                                               */
+/* FUNCTION NAME : CosaDmlWiFiCheckEnableRadiusGreylist                          */
+/*                                                                               */
+/* DESCRIPTION   : This function set the rdk_greylist to TRUE/FALSE in HAL       */
+/*                      at bootup                                                */
+/*                                                                               */
+/* INPUT         : Value                                                         */
+/*                                                                               */
+/* OUTPUT        : TRUE / FALSE                                                  */
+/*                                                                               */
+/* RETURN VALUE  : ANSC_STATUS_SUCCESS / ANSC_STATUS_FAILURE                     */
+/*                                                                               */
+/*********************************************************************************/
+ANSC_STATUS
+CosaDmlWiFiSetEnableRadiusGreylist(BOOLEAN value) {
+
+#if defined (FEATURE_SUPPORT_RADIUSGREYLIST)
+    CcspTraceInfo(("[%s] Enter\n",__FUNCTION__));
+    char recName[256];
+    static char *MacFilterMode      = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.MacFilterMode";
+
+    if (value == TRUE)
+    {
+	CcspTraceInfo(("[%s] Enabled\n",__FUNCTION__));
+        for (UINT apIndex = 0; apIndex < getTotalNumberVAPs(); ++apIndex)
+        {
+            if (isVapHotspot(apIndex))
+            {
+                memset(recName, 0, sizeof(recName));
+                sprintf(recName, MacFilterMode, apIndex+1);
+                PSM_Set_Record_Value2(bus_handle,g_Subsystem, recName, ccsp_string, "2"); 
+            }
+        }
+    }
+    else
+    {
+        CcspTraceInfo(("[%s] Disabled\n",__FUNCTION__));
+        for (UINT apIndex = 0; apIndex < getTotalNumberVAPs(); ++apIndex)
+        {
+            if (isVapHotspot(apIndex))
+            {
+                memset(recName, 0, sizeof(recName));
+                sprintf(recName, MacFilterMode, apIndex+1);
+                PSM_Set_Record_Value2(bus_handle,g_Subsystem, recName, ccsp_string, "1");
+            }
+        }
+    }
+
+#else 
+    UNREFERENCED_PARAMETER(value);
+#endif    
+    return ANSC_STATUS_SUCCESS;
+}
+#endif
+
+ANSC_STATUS CosaDmlWiFiGetTxOverflowSelfheal(BOOLEAN *pbValue)
+{
+    // Initialize the value as FALSE always
+    *pbValue = FALSE;
+    wifi_global_param_t *pcfg = get_wifidb_wifi_global_param();
+    if (pcfg != NULL) {
+        *pbValue = pcfg->tx_overflow_selfheal;
+        return ANSC_STATUS_SUCCESS;
+    }
+    return ANSC_STATUS_FAILURE;
+}
+
+#define RADIO_5G        1
+
+/*********************************************************************************/
+/*                                                                               */
+/* FUNCTION NAME : CosaDmlWiFiGetForceDisableWiFiRadio                           */
+/*                                                                               */
+/* DESCRIPTION   : This function will fetch the value from the PSM database.     */
+/*                                                                               */
+/* INPUT         : pbValue - pointer to the return value                         */
+/*                                                                               */
+/* OUTPUT        : TRUE / FALSE                                                  */
+/*                                                                               */
+/* RETURN VALUE  : ANSC_STATUS_SUCCESS / ANSC_STATUS_FAILURE                     */
+/*                                                                               */
+/*********************************************************************************/
+ANSC_STATUS CosaDmlWiFiGetForceDisableWiFiRadio(BOOLEAN *pbValue)
+{
+    wifi_global_param_t *pcfg = get_wifidb_wifi_global_param();
+    if (pcfg != NULL) {
+        *pbValue = pcfg->force_disable_radio_feature;
+        return ANSC_STATUS_SUCCESS;
+    }
+    return ANSC_STATUS_FAILURE;
+}
+
+ANSC_STATUS CosaDmlWiFiGetCurrForceDisableWiFiRadio(BOOLEAN *pbValue)
+{
+    wifi_global_param_t *pcfg = get_wifidb_wifi_global_param();
+    if (pcfg != NULL) {
+        *pbValue = pcfg->force_disable_radio_feature;
+        return ANSC_STATUS_SUCCESS;
+    }
+    return ANSC_STATUS_FAILURE;
+}
+
+int readRemoteIP(char *sIP, int size,char *sName)
+{
+
+        #define DATA_SIZE 1024
+        FILE *fp1;
+        char buf[DATA_SIZE] = {0};
+        char *urlPtr = NULL;
+        int ret=-1;
+
+        // Grab the ARM or ATOM RPC IP address
+
+        fp1 = fopen("/etc/device.properties", "r");
+        if (fp1 == NULL) {
+            CcspTraceError(("Error opening properties file! \n"));
+            return -1;
+        }
+
+        while (fgets(buf, DATA_SIZE, fp1) != NULL) {
+            // Look for ARM_ARPING_IP or ATOM_ARPING_IP
+            if (strstr(buf, sName) != NULL) {
+                buf[strcspn(buf, "\r\n")] = 0; // Strip off any carriage returns
+
+                // grab URL from string
+                urlPtr = strstr(buf, "=");
+                urlPtr++;
+                strncpy(sIP, urlPtr, size);
+              ret=0;
+              break;
+            }
+        }
+
+        fclose(fp1);
+        return ret;
+
+}
+
+ANSC_STATUS
+CosaDmlWiFi_EnableTelnet(BOOL bEnabled)
+{
+
+    if (bEnabled) {
+	// Attempt to start the telnet daemon on ATOM
+        char NpRemoteIP[128]="";
+        readRemoteIP(NpRemoteIP, 128,"ATOM_ARPING_IP");
+        if (NpRemoteIP[0] != 0 && strlen(NpRemoteIP) > 0) {
+                if (v_secure_system("/usr/sbin/telnetd -b %s",NpRemoteIP) != 0)
+                {
+                        return ANSC_STATUS_FAILURE;
+                }
+        }
+    }
+
+    else {
+        // Attempt to kill the telnet daemon on ATOM
+        if ( v_secure_system("pkill telnetd") != 0 ) {
+	    return ANSC_STATUS_FAILURE;
+        }
+    }
+
+    return ANSC_STATUS_SUCCESS;
+
+}
+
+ANSC_STATUS
+CosaDmlWiFi_setWebConfig(char *webconfstr, int size,uint8_t ssid)
+{
+    push_data_to_ctrl_queue(webconfstr, size, ctrl_event_type_webconfig, ctrl_event_webconfig_set_data);
+
+    return ANSC_STATUS_SUCCESS;
+}
+ANSC_STATUS
+CosaDmlWiFi_getWebConfig()
+{
+    //wifi_radio_config_get();
+    return ANSC_STATUS_SUCCESS;
+}
+
+int cMac_to_sMac(unsigned char *cMac, char *sMac) {
+	if (!sMac || !cMac) return 0;
+	snprintf(sMac, 32, "%02X:%02X:%02X:%02X:%02X:%02X", cMac[0],cMac[1],cMac[2],cMac[3],cMac[4],cMac[5]);
+	return 0;
+}
+
+ANSC_STATUS txRateStrToUint(char *inputStr, UINT *pTxRate)
+{
+    char *token;
+    bool isRateInvalid = TRUE;
+    UINT seqCounter = 0;
+    char tmpInputString[128] = {0};
+
+    if ((inputStr == NULL) || (pTxRate == NULL))
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s Invalid Argument\n", __FUNCTION__));
+        return ANSC_STATUS_FAILURE;
+    }
+
+    snprintf(tmpInputString, sizeof(tmpInputString), "%s", inputStr);
+
+    token = strtok(tmpInputString, ",");
+    while (token != NULL)
+    {
+        isRateInvalid = TRUE;
+        for (seqCounter = 0; seqCounter < ARRAY_SZ(wifiDataTxRateMap); seqCounter++)
+        {
+            if (AnscEqualString(token, wifiDataTxRateMap[seqCounter].DataTxRateStr, TRUE))
+            {
+                *pTxRate |= wifiDataTxRateMap[seqCounter].DataTxRateEnum;
+                //ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s Token : %s txRate : %d\n", __FUNCTION__, token, *pTxRate);
+                isRateInvalid = FALSE;
+            }
+        }
+
+        if (isRateInvalid == TRUE)
+        {
+            CcspWifiTrace(("RDK_LOG_ERROR, %s Invalid txrate Token : %s\n", __FUNCTION__, token));
+            return ANSC_STATUS_FAILURE;
+        }
+
+        token = strtok(NULL, ",");
+    }
+    return ANSC_STATUS_SUCCESS;
+}
+
+ANSC_STATUS wifiSecSupportedDmlToStr(UINT dmlSecModeSupported, char *str, UINT strSize)
+{
+    UINT seqCounter = 0;
+    UINT strCount = 0, strLoc = 0;
+    ccspWifiDbgPrint(CCSP_WIFI_TRACE, "In %s\n", __FUNCTION__);
+    if (str == NULL)
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s str is NULL\n", __FUNCTION__));
+        return ANSC_STATUS_FAILURE;
+    }
+
+    for (seqCounter = 0; seqCounter < ARRAY_SZ(wifiSecMap); seqCounter++)
+    {
+        if (dmlSecModeSupported & wifiSecMap[seqCounter].cosaSecCfgMethod)
+        {
+            strCount = snprintf(&str[strLoc], (strSize-strLoc), "%s,", wifiSecMap[seqCounter].wifiSecType);
+            strLoc += strCount;
+        }
+    }
+    if (strLoc == 0)
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s str is NULL\n", __FUNCTION__));
+        return ANSC_STATUS_FAILURE;
+    }
+
+    str[strLoc-1] = '\0';
+    ccspWifiDbgPrint(CCSP_WIFI_TRACE,"%s  ModeSupported  : %s\n", __FUNCTION__, str);
+    return ANSC_STATUS_SUCCESS;
+}
+
+ANSC_STATUS wifiSecModeDmlToStr(UINT dmlSecModeEnabled, char *str, UINT strSize)
+{
+    UINT seqCounter = 0;
+    ccspWifiDbgPrint(CCSP_WIFI_TRACE, "In %s\n", __FUNCTION__);
+    if (str == NULL)
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s str is NULL\n", __FUNCTION__));
+        return ANSC_STATUS_FAILURE;
+    }
+
+
+    for (seqCounter = 0; seqCounter < ARRAY_SZ(wifiSecMap); seqCounter++)
+    {
+        if (dmlSecModeEnabled == wifiSecMap[seqCounter].cosaSecCfgMethod)
+        {
+            snprintf(str, strSize, "%s", wifiSecMap[seqCounter].wifiSecType);
+            ccspWifiDbgPrint(CCSP_WIFI_TRACE,"%s  ModeEnabled  : %s\n", __FUNCTION__, wifiSecMap[seqCounter].wifiSecType);
+            return ANSC_STATUS_SUCCESS;
+        }
+    }
+
+    CcspWifiTrace(("RDK_LOG_ERROR, %s Invalid Security Mode\n", __FUNCTION__));
+    return ANSC_STATUS_FAILURE;
+}
+
+
+ANSC_STATUS wifiApIsSecmodeOpenForPrivateAP(UINT vapIndex)
+{
+    wifi_radio_operationParam_t *wifiRadioOperParam = NULL;
+    wifi_vap_info_t *wifiVapInfo = NULL;
+    ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s for vapIndex: %d\n", __FUNCTION__, vapIndex);
+
+    //Check is the Vap is private
+    if(isVapPrivate(vapIndex) != TRUE)
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s VapIndex %d is not private VAP\n", __FUNCTION__, vapIndex));
+        return ANSC_STATUS_FAILURE;
+    }
+
+    wifiVapInfo = getVapInfo(vapIndex);
+    if (wifiVapInfo == NULL)
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s Unable to get VAP info for vapIndex : %d\n", __FUNCTION__, vapIndex));
+        return ANSC_STATUS_FAILURE;
+    }
+
+    wifiRadioOperParam = getRadioOperationParam(wifiVapInfo->radio_index);
+    if (wifiRadioOperParam == NULL)
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s Input radioIndex = %d not found for wifiRadioOperParam\n", __FUNCTION__, wifiVapInfo->radio_index));
+        return ANSC_STATUS_FAILURE;
+    }
+
+    //Check for 6Ghz
+    if ((wifiRadioOperParam->band == WIFI_FREQUENCY_6_BAND))
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s Input radioIndex = %d with 6G Band doesnot support WPS: %d\n", __FUNCTION__, wifiVapInfo->radio_index, wifiVapInfo->u.bss_info.security.mode));
+        return ANSC_STATUS_FAILURE;
+    }
+
+    //Check for open security
+    if (wifiVapInfo->u.bss_info.security.mode == wifi_security_mode_none)
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s Open Security for VapIndex : %d, WPS doesnot support \n", __FUNCTION__, vapIndex));
+        return ANSC_STATUS_FAILURE;
+    }
+
+    if ((wifiVapInfo->u.bss_info.security.mode == wifi_security_mode_wpa3_personal) || (wifiVapInfo->u.bss_info.security.mode == wifi_security_mode_wpa3_enterprise) ||
+            (wifiVapInfo->u.bss_info.security.mode == wifi_security_mode_wpa3_transition))
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s Input radioIndex = %d WPS doesnot support WPA3 Mode: %d\n", __FUNCTION__, wifiVapInfo->radio_index, wifiVapInfo->u.bss_info.security.mode));
+        return ANSC_STATUS_FAILURE;
+    }
+
+    return ANSC_STATUS_SUCCESS;
+}
+
+ANSC_STATUS wifiRadioChannelIsValid(UINT radioIndex, UINT inputChannel)
+{
+    unsigned int arrayLen = 0;
+    unsigned int seqCounter  = 0;
+    wifi_radio_capabilities_t *wifiRadioCap = NULL;
+    UINT bandArrIndex = 0;
+    BOOL isBandFound = FALSE;
+    wifi_radio_operationParam_t *wifiRadioOperParam = NULL;
+    wifi_radio_operationParam_t l_pcfg;
+
+    //Get the radio capability for further comparision
+    wifiRadioCap = getRadioCapability(radioIndex);
+    if (wifiRadioCap == NULL)
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s Failed for  unable to get RadioCapability wlanIndex = %d\n", __FUNCTION__, radioIndex));
+        return ANSC_STATUS_FAILURE;
+    }
+    ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s %d for RadioIndex : %d\n", __FUNCTION__, __LINE__, radioIndex);
+    //Get the RadioOperation  structure
+    wifiRadioOperParam = getRadioOperationParam(radioIndex);
+    if (wifiRadioOperParam == NULL)
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s Input radioIndex = %d not found for wifiRadioOperParam\n", __FUNCTION__, radioIndex));
+        return ANSC_STATUS_FAILURE;
+    }
+    memcpy(&l_pcfg, wifiRadioOperParam, sizeof(l_pcfg));
+    wifiRadioOperParam = &l_pcfg;
+
+    //Compare the Band from capability and operation
+    for (bandArrIndex = 0; bandArrIndex < wifiRadioCap->numSupportedFreqBand; bandArrIndex++)
+    {
+        if (wifiRadioCap->band[bandArrIndex] == wifiRadioOperParam->band)
+        {
+            ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s Band = %d is present at array index of cap : %d \n", __FUNCTION__, wifiRadioOperParam->band, bandArrIndex);
+            isBandFound = TRUE;
+            break;
+        }
+    }
+
+    if (isBandFound == FALSE)
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s Input radioIndex = %d Band=%d is  not found in capability\n", __FUNCTION__, radioIndex, wifiRadioOperParam->band));
+        return ANSC_STATUS_FAILURE;
+    }
+
+    arrayLen = wifiRadioCap->channel_list[bandArrIndex].num_channels;
+    for (seqCounter = 0; seqCounter < arrayLen; seqCounter++)
+    {
+        if (inputChannel == (UINT)wifiRadioCap->channel_list[bandArrIndex].channels_list[seqCounter])
+        {
+            ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s %d For RadioIndex : %d inputChannel : %d is supported\n", __FUNCTION__, __LINE__, radioIndex, inputChannel);
+            return ANSC_STATUS_SUCCESS;
+        }
+    }
+    CcspWifiTrace(("RDK_LOG_ERROR, %s Failed for radioIndex : %d for InputChannel : %d\n", __FUNCTION__, radioIndex, inputChannel));
+    return ANSC_STATUS_FAILURE;
+}
+
+ANSC_STATUS operChanBandwidthDmlEnumtoHalEnum(UINT ccspBw, wifi_channelBandwidth_t *halBw)
+{
+    UINT seqCounter = 0;
+    UINT isOperBwInvalid = TRUE;
+
+    if (halBw == NULL)
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s Invalid Argument\n", __FUNCTION__));
+        return ANSC_STATUS_FAILURE;
+    }
+
+    for (seqCounter = 0; seqCounter < ARRAY_SZ(wifiChanWidthMap); seqCounter++)
+    {
+        if (ccspBw == (unsigned int) wifiChanWidthMap[seqCounter].cosaWifiChanWidth)
+        {
+            *halBw = wifiChanWidthMap[seqCounter].halWifiChanWidth;
+            ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s inputBw : %d halbw : %d[%s] ", __FUNCTION__, ccspBw, *halBw, wifiChanWidthMap[seqCounter].wifiChanWidthName);
+            isOperBwInvalid = FALSE;
+            break;
+        }
+    }
+
+    if (isOperBwInvalid == TRUE)
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s Invalid Operational Bandwidth: %d\n", __FUNCTION__, ccspBw));
+        return ANSC_STATUS_FAILURE;
+    }
+
+    return ANSC_STATUS_SUCCESS;
+}
+
+ANSC_STATUS operChanBandwidthHalEnumtoDmlEnum(wifi_channelBandwidth_t halBw, UINT *ccspBw)
+{
+    UINT seqCounter = 0;
+    UINT isOperBwInvalid = TRUE;
+
+    if (ccspBw == NULL)
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s Invalid Argument\n", __FUNCTION__));
+        return ANSC_STATUS_FAILURE;
+    }
+
+    for (seqCounter = 0; seqCounter < ARRAY_SZ(wifiChanWidthMap); seqCounter++)
+    {
+        if ( halBw == wifiChanWidthMap[seqCounter].halWifiChanWidth)
+        {
+            *ccspBw =  wifiChanWidthMap[seqCounter].cosaWifiChanWidth;
+            ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s inputBw : %d dmlbw : %d[%s] ", __FUNCTION__, halBw, *ccspBw, wifiChanWidthMap[seqCounter].wifiChanWidthName);
+            isOperBwInvalid = FALSE;
+            break;
+        }
+    }
+
+    if (isOperBwInvalid == TRUE)
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s Invalid Operational Bandwidth: %d\n", __FUNCTION__, halBw));
+        return ANSC_STATUS_FAILURE;
+    }
+
+    return ANSC_STATUS_SUCCESS;
+}
+
+ANSC_STATUS regDomainStrToEnum(char *pRegDomain, wifi_countrycode_type_t *pCountryCode)
+{
+    UINT seqCounter = 0;
+    bool isregDomainInvalid = TRUE;
+
+    if ((pRegDomain == NULL) || (pCountryCode == NULL))
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s Invalid Argument\n", __FUNCTION__));
+        return ANSC_STATUS_FAILURE;
+    }
+
+    for (seqCounter = 0; seqCounter < ARRAY_SZ(wifiCountryMap); seqCounter++)
+    {
+        if (AnscEqualString(pRegDomain, wifiCountryMap[seqCounter].countryStr, TRUE))
+        {
+            *pCountryCode = wifiCountryMap[seqCounter].countryCode;
+            ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s input : %s Countrycode : %d\n", __FUNCTION__, pRegDomain, *pCountryCode);
+            isregDomainInvalid = FALSE;
+            break;
+        }
+    }
+
+    if (isregDomainInvalid == TRUE)
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s Invalid Regulatory Domain: %s\n", __FUNCTION__, pRegDomain));
+        return ANSC_STATUS_FAILURE;
+    }
+
+    return ANSC_STATUS_SUCCESS;
+}
+
+ANSC_STATUS wifiStdStrToEnum(char *pWifiStdStr, wifi_ieee80211Variant_t *p80211VarEnum)
+{
+    UINT seqCounter = 0;
+    bool isWifiStdInvalid = TRUE;
+    char *token;
+    char tmpInputString[128] = {0};
+
+
+    if ((pWifiStdStr == NULL) || (p80211VarEnum == NULL))
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s Invalid Argument\n", __FUNCTION__));
+        return ANSC_STATUS_FAILURE;
+    }
+
+    *p80211VarEnum = 0;
+    snprintf(tmpInputString, sizeof(tmpInputString), "%s", pWifiStdStr);
+
+    token = strtok(tmpInputString, ",");
+    while (token != NULL)
+    {
+
+        isWifiStdInvalid = TRUE;
+        for (seqCounter = 0; seqCounter < ARRAY_SZ(wifiStdMap); seqCounter++)
+        {
+            if (AnscEqualString(token, wifiStdMap[seqCounter].wifiStdName, TRUE))
+            {
+                *p80211VarEnum |= wifiStdMap[seqCounter].halWifiStd;
+                ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s input : %s wifiStandard : %d\n", __FUNCTION__, pWifiStdStr, *p80211VarEnum);
+                isWifiStdInvalid = FALSE;
+            }
+        }
+
+        if (isWifiStdInvalid == TRUE)
+        {
+            CcspWifiTrace(("RDK_LOG_ERROR, %s Invalid Wifi Standard : %s\n", __FUNCTION__, pWifiStdStr));
+            return ANSC_STATUS_FAILURE;
+        }
+
+        token = strtok(NULL, ",");
+    }
+    return ANSC_STATUS_SUCCESS;
+}
+
+ANSC_STATUS freqBandStrToEnum(char *pFreqBandStr, wifi_freq_bands_t *pFreqBandEnum)
+{
+    UINT seqCounter = 0;
+    bool isBandInvalid = TRUE;
+
+    if ((pFreqBandStr == NULL) || (pFreqBandEnum == NULL))
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s Invalid Argument\n", __FUNCTION__));
+        return ANSC_STATUS_FAILURE;
+    }
+
+    for (seqCounter = 0; seqCounter < ARRAY_SZ(wifiFreqBandMap); seqCounter++)
+    {
+        if (AnscEqualString(pFreqBandStr, wifiFreqBandMap[seqCounter].wifiFreqBandStr, TRUE))
+        {
+            *pFreqBandEnum = wifiFreqBandMap[seqCounter].halWifiFreqBand;
+            ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s input : %s OperatingFrequencyBand : %d\n", __FUNCTION__, pFreqBandStr, *pFreqBandEnum);
+            isBandInvalid = FALSE;
+            break;
+        }
+    }
+
+    if (isBandInvalid == TRUE)
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s Invalid Frequncy Band Token : %s\n", __FUNCTION__, pFreqBandStr));
+        return ANSC_STATUS_FAILURE;
+    }
+
+    return ANSC_STATUS_SUCCESS;
+}
+
+
+ANSC_STATUS guardIntervalDmlEnumtoHalEnum(UINT ccspGiEnum, wifi_guard_interval_t *halGiEnum)
+{
+    bool isGuardIntervalInvalid = TRUE;
+    UINT seqCounter = 0;
+
+    if (halGiEnum == NULL)
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s Invalid Argument\n", __FUNCTION__));
+        return ANSC_STATUS_FAILURE;
+    }
+
+    for (seqCounter = 0; seqCounter < ARRAY_SZ(wifiGuardIntervalMap); seqCounter++)
+    {
+        if (ccspGiEnum == wifiGuardIntervalMap[seqCounter].cosaGuardInterval)
+        {
+            *halGiEnum = wifiGuardIntervalMap[seqCounter].halGuardInterval;
+            isGuardIntervalInvalid = FALSE;
+            ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s Input GuardInterval : %d output GIEnum : %d str : %s\n", __FUNCTION__, ccspGiEnum, *halGiEnum, wifiGuardIntervalMap[seqCounter].wifiGuardIntervalType);
+            break;
+        }
+    }
+    if (isGuardIntervalInvalid == TRUE)
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s Invalid guard Interval : %d\n", __FUNCTION__, ccspGiEnum));
+        return ANSC_STATUS_FAILURE;
+    }
+
+    return ANSC_STATUS_SUCCESS;
+}
+
+ANSC_STATUS guardIntervalHalEnumtoDmlEnum(wifi_guard_interval_t halGiEnum, UINT *ccspGiEnum)
+{
+    bool isGuardIntervalInvalid = TRUE;
+    UINT seqCounter = 0;
+
+    if (ccspGiEnum == NULL) {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s Invalid Argument\n", __FUNCTION__));
+        return ANSC_STATUS_FAILURE;
+    }
+
+    for (seqCounter = 0; seqCounter < ARRAY_SZ(wifiGuardIntervalMap); seqCounter++) {
+        if (halGiEnum == wifiGuardIntervalMap[seqCounter].halGuardInterval) {
+            *ccspGiEnum = wifiGuardIntervalMap[seqCounter].cosaGuardInterval;
+            isGuardIntervalInvalid = FALSE;
+            ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s output GuardInterval : %d Input GIEnum : %d str : %s\n", __FUNCTION__, *ccspGiEnum, halGiEnum, wifiGuardIntervalMap[seqCounter].wifiGuardIntervalType);
+            break;
+        }
+    }
+    if (isGuardIntervalInvalid == TRUE) {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s Invalid guard Interval : %d\n", __FUNCTION__, halGiEnum));
+        return ANSC_STATUS_FAILURE;
+    }
+
+    return ANSC_STATUS_SUCCESS;
+}
+
+void ccspWifiDbgPrint(int level, char *format, ...)
+{
+    char buff[4096] = {0};
+    va_list list;
+    static FILE *fpg = NULL;
+    
+    if (level == CCSP_WIFI_TRACE)
+    {
+        if ((access("/nvram/ccspWifiTrace", R_OK)) != 0) {
+              return;
+        }
+    } else if (level == CCSP_WIFI_INFO)
+    {
+        if ((access("/nvram/ccspWifiInfo", R_OK)) != 0) {
+              return;
+        }
+    } else {
+          return;
+    }
+    
+    get_formatted_time(buff);
+    strcat(buff, " ");
+
+    va_start(list, format);
+    vsprintf(&buff[strlen(buff)], format, list);
+    va_end(list);
+
+    if (fpg == NULL) {
+          fpg = fopen("/tmp/ccspWifiDbgLog", "a+");
+          if (fpg == NULL) {
+                return;
+          } else {
+                fputs(buff, fpg);
+          }
+    } else {
+          fputs(buff, fpg);
+    }
+
+    fflush(fpg);
+}
+
+void WriteWiFiLog(char *msg)
+{
+    char LogMsg_arr[512] = {0};
+    char *LogMsg = LogMsg_arr;
+    char LogLevel[512] = {0};
+
+    if( !msg)
+    {
+        return;
+    }
+    /*CID: 144444 :BUFFER_SIZE_WARNING*/
+    strncpy(LogLevel, msg, sizeof(LogLevel)-1);
+    LogLevel[sizeof(LogLevel)-1] = '\0';
+    strtok_r (LogLevel, ",",&LogMsg);
+    if( AnscEqualString(LogLevel, "RDK_LOG_ERROR", TRUE))
+    {
+        CcspTraceError(("%s", LogMsg));
+    }
+    else if( AnscEqualString(LogLevel, "RDK_LOG_WARN", TRUE))
+    {
+        CcspTraceWarning(("%s", LogMsg));
+    }
+    else if( AnscEqualString(LogLevel, "RDK_LOG_NOTICE", TRUE))
+    {
+        CcspTraceNotice(("%s", LogMsg));
+    }
+    else if( AnscEqualString(LogLevel, "RDK_LOG_INFO", TRUE))
+    {
+        CcspTraceInfo(("%s", LogMsg));
+    }
+    else if( AnscEqualString(LogLevel, "RDK_LOG_DEBUG", TRUE))
+    {
+        CcspTraceDebug(("%s", LogMsg));
+    }
+    else if( AnscEqualString(LogLevel, "RDK_LOG_FATAL", TRUE))
+    {
+        CcspTraceCritical(("%s", LogMsg));
+    }
+    else
+    {
+        CcspTraceInfo(("%s", LogMsg));
+    }
+}
+
+void AssociatedDevice_callback_register()
+{
+}
+
+INT getSecurityTypeFromString(const char *securityName, wifi_security_modes_t *securityType, COSA_DML_WIFI_SECURITY *cosaSecurityType)
+{
+    INT rc = -1;
+    INT ind = -1;
+    UINT i = 0;
+    if((securityName == NULL) || (securityType == NULL) || (cosaSecurityType == NULL))
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s parameter NULL\n", __func__));
+        return 0;
+    }
+    for (i = 0 ; i < ARRAY_SZ(wifiSecMap) ; ++i)
+    {
+        rc = strcmp_s(securityName, strlen(securityName), wifiSecMap[i].wifiSecType, &ind);
+        ERR_CHK(rc);
+        if((!rc) && (!ind))
+        {
+            *securityType = wifiSecMap[i].halSecCfgMethod;
+            *cosaSecurityType = wifiSecMap[i].cosaSecCfgMethod;
+
+            return 1;
+        }
+    }
+    return 0;
+}
+
+ANSC_STATUS
+CosaDmlWiFiGetFactoryResetPsmData
+    (
+        BOOLEAN *factoryResetFlag
+    )
+{
+    char *strValue = NULL;
+    int retPsmGet = CCSP_SUCCESS;
+
+    if (!factoryResetFlag) return ANSC_STATUS_FAILURE;
+
+        printf("%s g_Subsytem = %s\n",__FUNCTION__, g_Subsystem);
+        CcspWifiTrace(("RDK_LOG_WARN,WIFI %s \n",__FUNCTION__));
+    // Get Non-vol parameters from ARM through PSM
+    // PSM may not be available yet on arm so sleep if there is not connection
+    int retry = 0;
+    /* PSM came around 1sec after the 1st retry from wifi (sleep is 10secs)
+     * So, to handle this case,  modified the sleep duration and no of iterations
+     * as we can't be looping for a long time for PSM */
+
+    while (retry++ < 10)
+    {
+        CcspWifiTrace(("RDK_LOG_WARN,WIFI %s :Calling PSM GET to get FactoryReset flag value\n",__FUNCTION__));
+        retPsmGet = PSM_Get_Record_Value2(bus_handle,g_Subsystem, FactoryReset, NULL, &strValue);
+        if (retPsmGet == CCSP_SUCCESS) {
+        printf("%s %s = %s \n",__FUNCTION__, FactoryReset, strValue);
+        CcspWifiTrace(("RDK_LOG_WARN,WIFI %s :PSM GET Success %s = %s \n",__FUNCTION__, FactoryReset, strValue));
+            *factoryResetFlag = _ansc_atoi(strValue);
+            ((CCSP_MESSAGE_BUS_INFO *)bus_handle)->freefunc(strValue);
+
+        } else if (retPsmGet == CCSP_CR_ERR_INVALID_PARAM) {
+            *factoryResetFlag = 0;
+            printf("%s PSM_Get_Record_Value2 (%s) returned error %d \n",__FUNCTION__, FactoryReset, retPsmGet);
+                CcspWifiTrace(("RDK_LOG_WARN,WIFI %s :PSM_Get_Record_Value2 (%s) returned error %d \n",__FUNCTION__, FactoryReset, retPsmGet));
+            // Set to FALSE
+            PSM_Set_Record_Value2(bus_handle,g_Subsystem, FactoryReset, ccsp_string, "0");
+        } else {
+            printf("%s PSM_Get_Record_Value2 returned error %d retry in 10 seconds \n",__FUNCTION__, retPsmGet);
+                CcspWifiTrace(("RDK_LOG_WARN,WIFI %s :returned error %d retry in 10 seconds\n",__FUNCTION__, retPsmGet));
+            AnscSleep(2000);
+            continue;
+        }
+        break;
+    }
+
+    if (retPsmGet != CCSP_SUCCESS && retPsmGet != CCSP_CR_ERR_INVALID_PARAM) {
+            printf("%s Could not connect to the server error %d\n",__FUNCTION__, retPsmGet);
+                        CcspWifiTrace(("RDK_LOG_ERROR,WIFI %s : Could not connect to the server error %d \n",__FUNCTION__, retPsmGet));
+            *factoryResetFlag = 0;
+            return ANSC_STATUS_FAILURE;
+    }
+    CcspWifiTrace(("RDK_LOG_WARN,WIFI %s : Returning Success \n",__FUNCTION__));
+    return ANSC_STATUS_SUCCESS;
+}
+
+ANSC_STATUS
+GetActiveMsmtStepInsNum(active_msmt_step_t *pStepCfg, ULONG *StepIns)
+{
+    active_msmt_t *pcfg = (active_msmt_t *) get_dml_blaster();
+    if(pcfg== NULL) {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d  NULL pointer Get fail\n", __FUNCTION__,__LINE__);
+        return FALSE;
+    }
+
+    int nIndex =0;
+
+    for (nIndex = 0; nIndex < MAX_STEP_COUNT; nIndex++) {
+        if ((ANSC_HANDLE)pStepCfg == ((ANSC_HANDLE)&pcfg->Step[nIndex])) {
+            *StepIns = nIndex;
+            return ANSC_STATUS_SUCCESS;
+        }
+    }
+
+    return ANSC_STATUS_FAILURE;
+}
+ANSC_STATUS CosaDmlWiFiClient_ResetActiveMsmtStep (active_msmt_t *pcfg)
+{
+    INT stepCount = 0;
+    if (pcfg == NULL) {
+        CcspWifiTrace(("RDK_LOG_WARN, %s-%d Recv Param NULL \n",__FUNCTION__,__LINE__));
+        return ANSC_STATUS_FAILURE;
+    }
+    for (stepCount = 0; stepCount < MAX_STEP_COUNT; stepCount++) {
+        pcfg->Step[stepCount].StepId = 0;
+        memset(pcfg->Step[stepCount].SrcMac, '\0',MAC_ADDRESS_LENGTH);
+        memset(pcfg->Step[stepCount].DestMac, '\0',MAC_ADDRESS_LENGTH);
+    }
+    return ANSC_STATUS_SUCCESS;
+}
+ANSC_STATUS
+ValidateActiveMsmtPlanID(UCHAR *pPlanId)
+{
+    CHAR CheckStr[PLAN_ID_LENGTH] = {0};
+    if ((strncmp((char*)pPlanId, CheckStr, PLAN_ID_LENGTH)) == 0) {
+        CcspTraceError(("%s:%d : Plan ID is not configured\n",__func__, __LINE__));
+        return ANSC_STATUS_FAILURE;
+    }
+    return ANSC_STATUS_SUCCESS;
+}
+
+bool validate_inst_client_mac(char * physAddress)
+{
+
+    wifi_util_dbg_print(WIFI_DMCLI, "%s-%d mac is ***%s***\n",__FUNCTION__,__LINE__, physAddress);
+    if (physAddress && physAddress[0]) {
+        if (strlen(physAddress) != MIN_MAC_LEN)
+        {
+            wifi_util_dbg_print(WIFI_DMCLI, "%s-%d mac length is not 12\n",__FUNCTION__,__LINE__);
+            return FALSE;
+        }
+
+        if (!strcmp(physAddress,"000000000000"))
+        {
+            wifi_util_dbg_print(WIFI_DMCLI, "%s-%d mac is all 0\n",__FUNCTION__,__LINE__);
+            return FALSE;
+        }
+
+        return TRUE;
+    }
+    wifi_util_dbg_print(WIFI_DMCLI, "%s-%d mac is NULL\n",__FUNCTION__,__LINE__);
+    return FALSE;
+}
+
+unsigned long inst_client_reproting_periods[] = {0,1,5,15,30,60,300,900,1800,3600,10800,21600,43200,86400};
+bool validate_def_reporting_period(unsigned long period)
+{
+    unsigned int i;
+
+    for (i=0; i < (ARRAY_SZ(inst_client_reproting_periods)); i++) {
+        if (inst_client_reproting_periods[i] == period)
+            return TRUE;
+    }
+    return FALSE;
+}
+
+bool dml_wifi_is_instant_measurements_enable()
+{
+    instant_measurement_config_t *pcfg = (instant_measurement_config_t *) get_dml_harvester();
+    return pcfg->b_inst_client_enabled;
+}
+
+bool get_inst_override_ttl()
+{
+    instant_measurement_config_t *pcfg = (instant_measurement_config_t *) get_dml_harvester();
+    return pcfg->u_inst_client_def_override_ttl;
+}
+

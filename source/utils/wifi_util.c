@@ -1,0 +1,1309 @@
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdarg.h>
+#include <stdbool.h>
+#include <fcntl.h>
+#include "wifi_util.h"
+#include "wifi_ctrl.h"
+#include "wifi_mgr.h"
+#include <netinet/in.h>
+#include <time.h>
+
+ap_name_translator_t ap_name_translator[] =
+{
+    {"wl0.1", "private_ssid_2g"}, //0
+    {"wl1.1", "private_ssid_5g"}, //1
+    {"wl0.2", "iot_ssid_2g"}, //2
+    {"wl1.2", "iot_ssid_5g"}, //3
+    {"wl0.3", "hotspot_open_2g"}, //4
+    {"wl1.3", "hotspot_open_5g"}, //5
+    {"wl0.4", "lnf_psk_2g"}, //6
+    {"wl1.4", "lnf_psk_5g"}, //7
+    {"wl0.5", "hotspot_secure_2g"}, //8
+    {"wl1.5", "hotspot_secure_5g"}, //9
+    {"wl0.6", "lnf_radius_2g"}, //10
+    {"wl1.6", "lnf_radius_5g"}, //11
+    {"wl0.7", "mesh_backhaul_2g"}, //12
+    {"wl1.7", "mesh_backhaul_5g"}, //13
+    {"wl0",   "mesh_sta_2g"}, //14
+    {"wl1",   "mesh_sta_5g"}  //15
+};
+
+
+struct wifiCountryEnumStrMap wifiCountryMap[] =
+{
+    {wifi_countrycode_AC,"AC"}, /**< ASCENSION ISLAND */
+    {wifi_countrycode_AD,"AD"}, /**< ANDORRA */
+    {wifi_countrycode_AE,"AE"}, /**< UNITED ARAB EMIRATES */
+    {wifi_countrycode_AF,"AF"}, /**< AFGHANISTAN */
+    {wifi_countrycode_AG,"AG"}, /**< ANTIGUA AND BARBUDA */
+    {wifi_countrycode_AI,"AI"}, /**< ANGUILLA */
+    {wifi_countrycode_AL,"AL"}, /**< ALBANIA */
+    {wifi_countrycode_AM,"AM"}, /**< ARMENIA */
+    {wifi_countrycode_AN,"AN"}, /**< NETHERLANDS ANTILLES */
+    {wifi_countrycode_AO,"AO"}, /**< ANGOLA */
+    {wifi_countrycode_AQ,"AQ"}, /**< ANTARCTICA */
+    {wifi_countrycode_AR,"AR"}, /**< ARGENTINA */
+    {wifi_countrycode_AS,"AS"}, /**< AMERICAN SAMOA */
+    {wifi_countrycode_AT,"AT"}, /**< AUSTRIA */
+    {wifi_countrycode_AU,"AU"}, /**< AUSTRALIA */
+    {wifi_countrycode_AW,"AW"}, /**< ARUBA */
+    {wifi_countrycode_AZ,"AZ"}, /**< AZERBAIJAN */
+    {wifi_countrycode_BA,"BA"}, /**< BOSNIA AND HERZEGOVINA */
+    {wifi_countrycode_BB,"BB"}, /**< BARBADOS */
+    {wifi_countrycode_BD,"BD"}, /**< BANGLADESH */
+    {wifi_countrycode_BE,"BE"}, /**< BELGIUM */
+    {wifi_countrycode_BF,"BF"}, /**< BURKINA FASO */
+    {wifi_countrycode_BG,"BG"}, /**< BULGARIA */
+    {wifi_countrycode_BH,"BH"}, /**< BAHRAIN */
+    {wifi_countrycode_BI,"BI"}, /**< BURUNDI */
+    {wifi_countrycode_BJ,"BJ"}, /**< BENIN */
+    {wifi_countrycode_BM,"BM"}, /**< BERMUDA */
+    {wifi_countrycode_BN,"BN"}, /**< BRUNEI DARUSSALAM */
+    {wifi_countrycode_BO,"BO"}, /**< BOLIVIA */
+    {wifi_countrycode_BR,"BR"}, /**< BRAZIL */
+    {wifi_countrycode_BS,"BS"}, /**< BAHAMAS */
+    {wifi_countrycode_BT,"BT"}, /**< BHUTAN */
+    {wifi_countrycode_BV,"BV"}, /**< BOUVET ISLAND */
+    {wifi_countrycode_BW,"BW"}, /**< BOTSWANA */
+    {wifi_countrycode_BY,"BY"}, /**< BELARUS */
+    {wifi_countrycode_BZ,"BZ"}, /**< BELIZE */
+    {wifi_countrycode_CA,"CA"}, /**< CANADA */
+    {wifi_countrycode_CC,"CC"}, /**< COCOS (KEELING) ISLANDS */
+    {wifi_countrycode_CD,"CD"}, /**< CONGO,THE DEMOCRATIC REPUBLIC OF THE */
+    {wifi_countrycode_CF,"CF"}, /**< CENTRAL AFRICAN REPUBLIC */
+    {wifi_countrycode_CG,"CG"}, /**< CONGO */
+    {wifi_countrycode_CH,"CH"}, /**< SWITZERLAND */
+    {wifi_countrycode_CI,"CI"}, /**< COTE D'IVOIRE */
+    {wifi_countrycode_CK,"CK"}, /**< COOK ISLANDS */
+    {wifi_countrycode_CL,"CL"}, /**< CHILE */
+    {wifi_countrycode_CM,"CM"}, /**< CAMEROON */
+    {wifi_countrycode_CN,"CN"}, /**< CHINA */
+    {wifi_countrycode_CO,"CO"}, /**< COLOMBIA */
+    {wifi_countrycode_CP,"CP"}, /**< CLIPPERTON ISLAND */
+    {wifi_countrycode_CR,"CR"}, /**< COSTA RICA */
+    {wifi_countrycode_CU,"CU"}, /**< CUBA */
+    {wifi_countrycode_CV,"CV"}, /**< CAPE VERDE */
+    {wifi_countrycode_CY,"CY"}, /**< CYPRUS */
+    {wifi_countrycode_CX,"CX"}, /**< CHRISTMAS ISLAND */
+    {wifi_countrycode_CZ,"CZ"}, /**< CZECH REPUBLIC */
+    {wifi_countrycode_DE,"DE"}, /**< GERMANY */
+    {wifi_countrycode_DJ,"DJ"}, /**< DJIBOUTI */
+    {wifi_countrycode_DK,"DK"}, /**< DENMARK */
+    {wifi_countrycode_DM,"DM"}, /**< DOMINICA */
+    {wifi_countrycode_DO,"DO"}, /**< DOMINICAN REPUBLIC */
+    {wifi_countrycode_DZ,"DZ"}, /**< ALGERIA */
+    {wifi_countrycode_EC,"EC"}, /**< ECUADOR */
+    {wifi_countrycode_EE,"EE"}, /**< ESTONIA */
+    {wifi_countrycode_EG,"EG"}, /**< EGYPT */
+    {wifi_countrycode_EH,"EH"}, /**< WESTERN SAHARA */
+    {wifi_countrycode_ER,"ER"}, /**< ERITREA */
+    {wifi_countrycode_ES,"ES"}, /**< SPAIN */
+    {wifi_countrycode_ET,"ET"}, /**< ETHIOPIA */
+    {wifi_countrycode_FI,"FI"}, /**< FINLAND */
+    {wifi_countrycode_FJ,"FJ"}, /**< FIJI */
+    {wifi_countrycode_FK,"FK"}, /**< FALKLAND ISLANDS (MALVINAS) */
+    {wifi_countrycode_FM,"FM"}, /**< MICRONESIA FEDERATED STATES OF */
+    {wifi_countrycode_FO,"FO"}, /**< FAROE ISLANDS */
+    {wifi_countrycode_FR,"FR"}, /**< FRANCE */
+    {wifi_countrycode_GA,"GA"}, /**< GABON */
+    {wifi_countrycode_GB,"GB"}, /**< UNITED KINGDOM */
+    {wifi_countrycode_GD,"GD"}, /**< GRENADA */
+    {wifi_countrycode_GE,"GE"}, /**< GEORGIA */
+    {wifi_countrycode_GF,"GF"}, /**< FRENCH GUIANA */
+    {wifi_countrycode_GG,"GG"}, /**< GUERNSEY */
+    {wifi_countrycode_GH,"GH"}, /**< GHANA */
+    {wifi_countrycode_GI,"GI"}, /**< GIBRALTAR */
+    {wifi_countrycode_GL,"GL"}, /**< GREENLAND */
+    {wifi_countrycode_GM,"GM"}, /**< GAMBIA */
+    {wifi_countrycode_GN,"GN"}, /**< GUINEA */
+    {wifi_countrycode_GP,"GP"}, /**< GUADELOUPE */
+    {wifi_countrycode_GQ,"GQ"}, /**< EQUATORIAL GUINEA */
+    {wifi_countrycode_GR,"GR"}, /**< GREECE */
+    {wifi_countrycode_GS,"GS"}, /**< SOUTH GEORGIA AND THE SOUTH SANDWICH ISLANDS */
+    {wifi_countrycode_GT,"GT"}, /**< GUATEMALA */
+    {wifi_countrycode_GU,"GU"}, /**< GUAM */
+    {wifi_countrycode_GW,"GW"}, /**< GUINEA-BISSAU */
+    {wifi_countrycode_GY,"GY"}, /**< GUYANA */
+    {wifi_countrycode_HR,"HR"}, /**< CROATIA */
+    {wifi_countrycode_HT,"HT"}, /**< HAITI */
+    {wifi_countrycode_HM,"HM"}, /**< HEARD ISLAND AND MCDONALD ISLANDS */
+    {wifi_countrycode_HN,"HN"}, /**< HONDURAS */
+    {wifi_countrycode_HK,"HK"}, /**< HONG KONG */
+    {wifi_countrycode_HU,"HU"}, /**< HUNGARY */
+    {wifi_countrycode_IS,"IS"}, /**< ICELAND */
+    {wifi_countrycode_IN,"IN"}, /**< INDIA */
+    {wifi_countrycode_ID,"ID"}, /**< INDONESIA */
+    {wifi_countrycode_IR,"IR"}, /**< IRAN, ISLAMIC REPUBLIC OF */
+    {wifi_countrycode_IQ,"IQ"}, /**< IRAQ */
+    {wifi_countrycode_IE,"IE"}, /**< IRELAND */
+    {wifi_countrycode_IL,"IL"}, /**< ISRAEL */
+    {wifi_countrycode_IM,"IM"}, /**< MAN, ISLE OF */
+    {wifi_countrycode_IT,"IT"}, /**< ITALY */
+    {wifi_countrycode_IO,"IO"}, /**< BRITISH INDIAN OCEAN TERRITORY */
+    {wifi_countrycode_JM,"JM"}, /**< JAMAICA */
+    {wifi_countrycode_JP,"JP"}, /**< JAPAN */
+    {wifi_countrycode_JE,"JE"}, /**< JERSEY */
+    {wifi_countrycode_JO,"jo"}, /**< JORDAN */
+    {wifi_countrycode_KE,"KE"}, /**< KENYA */
+    {wifi_countrycode_KG,"KG"}, /**< KYRGYZSTAN */
+    {wifi_countrycode_KH,"KH"}, /**< CAMBODIA */
+    {wifi_countrycode_KI,"KI"}, /**< KIRIBATI */
+    {wifi_countrycode_KM,"KM"}, /**< COMOROS */
+    {wifi_countrycode_KN,"KN"}, /**< SAINT KITTS AND NEVIS */
+    {wifi_countrycode_KP,"KP"}, /**< KOREA, DEMOCRATIC PEOPLE'S REPUBLIC OF */
+    {wifi_countrycode_KR,"KR"}, /**< KOREA, REPUBLIC OF */
+    {wifi_countrycode_KW,"KW"}, /**< KUWAIT */
+    {wifi_countrycode_KY,"KY"}, /**< CAYMAN ISLANDS */
+    {wifi_countrycode_KZ,"KZ"}, /**< KAZAKHSTAN */
+    {wifi_countrycode_LA,"LA"}, /**< LAO PEOPLE'S DEMOCRATIC REPUBLIC */
+    {wifi_countrycode_LB,"LB"}, /**< LEBANON */
+    {wifi_countrycode_LC,"LC"}, /**< SAINT LUCIA */
+    {wifi_countrycode_LI,"LI"}, /**< LIECHTENSTEIN */
+    {wifi_countrycode_LK,"LK"}, /**< SRI LANKA */
+    {wifi_countrycode_LR,"LR"}, /**< LIBERIA */
+    {wifi_countrycode_LS,"LS"}, /**< LESOTHO */
+    {wifi_countrycode_LT,"LT"}, /**< LITHUANIA */
+    {wifi_countrycode_LU,"LU"}, /**< LUXEMBOURG */
+    {wifi_countrycode_LV,"LV"}, /**< LATVIA */
+    {wifi_countrycode_LY,"LY"}, /**< LIBYAN ARAB JAMAHIRIYA */
+    {wifi_countrycode_MA,"MA"}, /**< MOROCCO */
+    {wifi_countrycode_MC,"MC"}, /**< MONACO */
+    {wifi_countrycode_MD,"MD"}, /**< MOLDOVA, REPUBLIC OF */
+    {wifi_countrycode_ME,"ME"}, /**< MONTENEGRO */
+    {wifi_countrycode_MG,"MG"}, /**< MADAGASCAR */
+    {wifi_countrycode_MH,"MH"}, /**< MARSHALL ISLANDS */
+    {wifi_countrycode_MK,"MK"}, /**< MACEDONIA, THE FORMER YUGOSLAV REPUBLIC OF */
+    {wifi_countrycode_ML,"ML"}, /**< MALI */
+    {wifi_countrycode_MM,"MM"}, /**< MYANMAR */
+    {wifi_countrycode_MN,"MN"}, /**< MONGOLIA */
+    {wifi_countrycode_MO,"MO"}, /**< MACAO */
+    {wifi_countrycode_MQ,"MQ"}, /**< MARTINIQUE */
+    {wifi_countrycode_MR,"MR"}, /**< MAURITANIA */
+    {wifi_countrycode_MS,"MS"}, /**< MONTSERRAT */
+    {wifi_countrycode_MT,"MT"}, /**< MALTA */
+    {wifi_countrycode_MU,"MU"}, /**< MAURITIUS */
+    {wifi_countrycode_MV,"MV"}, /**< MALDIVES */
+    {wifi_countrycode_MW,"MW"}, /**< MALAWI */
+    {wifi_countrycode_MX,"MX"}, /**< MEXICO */
+    {wifi_countrycode_MY,"MY"}, /**< MALAYSIA */
+    {wifi_countrycode_MZ,"MZ"}, /**< MOZAMBIQUE */
+    {wifi_countrycode_NA,"NA"}, /**< NAMIBIA */
+    {wifi_countrycode_NC,"NC"}, /**< NEW CALEDONIA */
+    {wifi_countrycode_NE,"NE"}, /**< NIGER */
+    {wifi_countrycode_NF,"NF"}, /**< NORFOLK ISLAND */
+    {wifi_countrycode_NG,"NG"}, /**< NIGERIA */
+    {wifi_countrycode_NI,"NI"}, /**< NICARAGUA */
+    {wifi_countrycode_NL,"NL"}, /**< NETHERLANDS */
+    {wifi_countrycode_NO,"NO"}, /**< NORWAY */
+    {wifi_countrycode_NP,"NP"}, /**< NEPAL */
+    {wifi_countrycode_NR,"NR"}, /**< NAURU */
+    {wifi_countrycode_NU,"NU"}, /**< NIUE */
+    {wifi_countrycode_NZ,"NZ"}, /**< NEW ZEALAND */
+    {wifi_countrycode_MP,"MP"}, /**< NORTHERN MARIANA ISLANDS */
+    {wifi_countrycode_OM,"OM"}, /**< OMAN */
+    {wifi_countrycode_PA,"PA"}, /**< PANAMA */
+    {wifi_countrycode_PE,"PE"}, /**< PERU */
+    {wifi_countrycode_PF,"PF"}, /**< FRENCH POLYNESIA */
+    {wifi_countrycode_PG,"PG"}, /**< PAPUA NEW GUINEA */
+    {wifi_countrycode_PH,"PH"}, /**< PHILIPPINES */
+    {wifi_countrycode_PK,"PK"}, /**< PAKISTAN */
+    {wifi_countrycode_PL,"PL"}, /**< POLAND */
+    {wifi_countrycode_PM,"PM"}, /**< SAINT PIERRE AND MIQUELON */
+    {wifi_countrycode_PN,"PN"}, /**< PITCAIRN */
+    {wifi_countrycode_PR,"PR"}, /**< PUERTO RICO */
+    {wifi_countrycode_PS,"PS"}, /**< PALESTINIAN TERRITORY,OCCUPIED */
+    {wifi_countrycode_PT,"PT"}, /**< PORTUGAL */
+    {wifi_countrycode_PW,"PW"}, /**< PALAU */
+    {wifi_countrycode_PY,"PY"}, /**< PARAGUAY */
+    {wifi_countrycode_QA,"QA"}, /**< QATAR */
+    {wifi_countrycode_RE,"RE"}, /**< REUNION */
+    {wifi_countrycode_RO,"RO"}, /**< ROMANIA */
+    {wifi_countrycode_RS,"RS"}, /**< SERBIA */
+    {wifi_countrycode_RU,"RU"}, /**< RUSSIAN FEDERATION */
+    {wifi_countrycode_RW,"RW"}, /**< RWANDA */
+    {wifi_countrycode_SA,"SA"}, /**< SAUDI ARABIA */
+    {wifi_countrycode_SB,"SB"}, /**< SOLOMON ISLANDS */
+    {wifi_countrycode_SD,"SD"}, /**< SUDAN */
+    {wifi_countrycode_SE,"SE"}, /**< SWEDEN */
+    {wifi_countrycode_SC,"SC"}, /**< SEYCHELLES */
+    {wifi_countrycode_SG,"SG"}, /**< SINGAPORE */
+    {wifi_countrycode_SH,"SH"}, /**< SAINT HELENA */
+    {wifi_countrycode_SI,"SI"}, /**< SLOVENIA */
+    {wifi_countrycode_SJ,"SJ"}, /**< SVALBARD AND JAN MAYEN */
+    {wifi_countrycode_SK,"SK"}, /**< SLOVAKIA */
+    {wifi_countrycode_SL,"SL"}, /**< SIERRA LEONE */
+    {wifi_countrycode_SM,"SM"}, /**< SAN MARINO */
+    {wifi_countrycode_SN,"SN"}, /**< SENEGAL */
+    {wifi_countrycode_SO,"SO"}, /**< SOMALIA */
+    {wifi_countrycode_SR,"SR"}, /**< SURINAME */
+    {wifi_countrycode_ST,"ST"}, /**< SAO TOME AND PRINCIPE */
+    {wifi_countrycode_SV,"SV"}, /**< EL SALVADOR */
+    {wifi_countrycode_SY,"SY"}, /**< SYRIAN ARAB REPUBLIC */
+    {wifi_countrycode_SZ,"SZ"}, /**< SWAZILAND */
+    {wifi_countrycode_TA,"TA"}, /**< TRISTAN DA CUNHA */
+    {wifi_countrycode_TC,"TC"}, /**< TURKS AND CAICOS ISLANDS */
+    {wifi_countrycode_TD,"TD"}, /**< CHAD */
+    {wifi_countrycode_TF,"TF"}, /**< FRENCH SOUTHERN TERRITORIES */
+    {wifi_countrycode_TG,"TG"}, /**< TOGO */
+    {wifi_countrycode_TH,"TH"}, /**< THAILAND */
+    {wifi_countrycode_TJ,"TJ"}, /**< TAJIKISTAN */
+    {wifi_countrycode_TK,"TK"}, /**< TOKELAU */
+    {wifi_countrycode_TL,"TL"}, /**< TIMOR-LESTE (EAST TIMOR) */
+    {wifi_countrycode_TM,"TM"}, /**< TURKMENISTAN */
+    {wifi_countrycode_TN,"TN"}, /**< TUNISIA */
+    {wifi_countrycode_TO,"TO"}, /**< TONGA */
+    {wifi_countrycode_TR,"TR"}, /**< TURKEY */
+    {wifi_countrycode_TT,"TT"}, /**< TRINIDAD AND TOBAGO */
+    {wifi_countrycode_TV,"TV"}, /**< TUVALU */
+    {wifi_countrycode_TW,"TW"}, /**< TAIWAN, PROVINCE OF CHINA */
+    {wifi_countrycode_TZ,"TZ"}, /**< TANZANIA, UNITED REPUBLIC OF */
+    {wifi_countrycode_UA,"UA"}, /**< UKRAINE */
+    {wifi_countrycode_UG,"UG"}, /**< UGANDA */
+    {wifi_countrycode_UM,"UM"}, /**< UNITED STATES MINOR OUTLYING ISLANDS */
+    {wifi_countrycode_US,"US"}, /**< UNITED STATES */
+    {wifi_countrycode_UY,"UY"}, /**< URUGUAY */
+    {wifi_countrycode_UZ,"UZ"}, /**< UZBEKISTAN */
+    {wifi_countrycode_VA,"VA"}, /**< HOLY SEE (VATICAN CITY STATE) */
+    {wifi_countrycode_VC,"VC"}, /**< SAINT VINCENT AND THE GRENADINES */
+    {wifi_countrycode_VE,"VE"}, /**< VENEZUELA */
+    {wifi_countrycode_VG,"VG"}, /**< VIRGIN ISLANDS, BRITISH */
+    {wifi_countrycode_VI,"VI"}, /**< VIRGIN ISLANDS, U.S. */
+    {wifi_countrycode_VN,"VN"}, /**< VIET NAM */
+    {wifi_countrycode_VU,"VU"}, /**< VANUATU */
+    {wifi_countrycode_WF,"WF"}, /**< WALLIS AND FUTUNA */
+    {wifi_countrycode_WS,"WS"}, /**< SAMOA */
+    {wifi_countrycode_YE,"YE"}, /**< YEMEN */
+    {wifi_countrycode_YT,"YT"}, /**< MAYOTTE */
+    {wifi_countrycode_YU,"YU"}, /**< YUGOSLAVIA */
+    {wifi_countrycode_ZA,"ZA"}, /**< SOUTH AFRICA */
+    {wifi_countrycode_ZM,"ZM"}, /**< ZAMBIA */
+    {wifi_countrycode_ZW,"ZW"} /**< ZIMBABWE */
+};
+
+int convert_vap_name_to_index(char *vap_name)
+{
+    int vap_index = -1;
+    if (strcmp(vap_name, "hotspot_open_2g") == 0) {
+        vap_index = 4;
+    } else if (strcmp(vap_name, "hotspot_secure_2g") == 0) {
+        vap_index = 8;
+    } else if (strcmp(vap_name, "hotspot_open_5g") == 0) {
+        vap_index = 5;
+    } else if (strcmp(vap_name, "hotspot_secure_5g") == 0) {
+        vap_index = 9;
+    } else if (strcmp(vap_name, "private_ssid_2g") == 0) {
+        vap_index = 0;
+    } else if (strcmp(vap_name, "private_ssid_5g") == 0) {
+        vap_index = 1;
+    } else if (strcmp(vap_name, "iot_ssid_2g") == 0) {
+        vap_index = 2;
+    } else if (strcmp(vap_name, "iot_ssid_5g") == 0) {
+        vap_index = 3;
+    } else if (strcmp(vap_name, "lnf_psk_2g") == 0) {
+        vap_index = 6;
+    } else if (strcmp(vap_name, "lnf_psk_5g") == 0) {
+        vap_index = 7;
+    } else if (strcmp(vap_name, "lnf_radius_2g") == 0) {
+        vap_index = 10;
+    } else if (strcmp(vap_name, "lnf_radius_5g") == 0) {
+        vap_index = 11;
+    } else if (strcmp(vap_name, "mesh_backhaul_2g") == 0) {
+        vap_index = 12;
+    } else if (strcmp(vap_name, "mesh_backhaul_5g") == 0) {
+        vap_index = 13;
+    } else if (strcmp(vap_name, "mesh_sta_2g") == 0) {
+        vap_index = 14;
+    } else if (strcmp(vap_name, "mesh_sta_5g") == 0) {
+        vap_index = 15;
+    }
+    else
+    {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s wrong vap name:%s\n", __FUNCTION__, vap_name);
+    }
+    return vap_index;
+}
+
+int convert_vap_name_to_array_index(char *vap_name)
+{
+    int vap_index = -1;
+    if (strstr(vap_name, "private_ssid") != NULL) {
+        vap_index = 0;
+    } else if (strstr(vap_name, "iot_ssid") != NULL) {
+        vap_index = 1;
+    } else if (strstr(vap_name, "hotspot_open") != NULL) {
+        vap_index = 2;
+    } else if (strstr(vap_name, "lnf_psk") != NULL) {
+        vap_index = 3;
+    } else if (strstr(vap_name, "hotspot_secure") != NULL) {
+        vap_index = 4;
+    } else if (strstr(vap_name, "lnf_radius") != NULL) {
+        vap_index = 5;
+    } else if (strstr(vap_name, "mesh_backhaul") != NULL) {
+        vap_index = 6;
+    } else if (strstr(vap_name, "mesh_sta") != NULL) {
+        vap_index = 7;
+    }
+    else
+    {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s wrong vap name:%s\n", __FUNCTION__, vap_name);
+    vap_index = -1;
+    }
+    return vap_index;
+}
+
+int convert_vap_name_to_radio_array_index(char *vap_name)
+{
+    int i = 0;
+    i = convert_vap_name_to_index(vap_name);
+    if(i == -1)
+    {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: %s invalid vap name \n",__func__, __LINE__,vap_name);
+        return -1;
+    }
+    if(i%2 == 0)
+    {
+        return 0;
+    }
+    else
+    {
+        return 1;
+    }
+    return -1;
+}
+
+int convert_vap_index_to_name(int vap_index,char *vap_name)
+{
+    if (vap_index == 4) {
+       strcpy(vap_name, "hotspot_open_2g");
+    } else if (vap_index == 8) {
+        strcpy(vap_name, "hotspot_secure_2g");
+    } else if (vap_index == 5) {
+        strcpy(vap_name, "hotspot_open_5g");
+    } else if (vap_index == 9) {
+        strcpy(vap_name, "hotspot_secure_5g");
+    } else if (vap_index == 0) {
+        strcpy(vap_name, "private_ssid_2g");
+    } else if (vap_index == 1) {
+        strcpy(vap_name, "private_ssid_5g");
+    } else if (vap_index == 2) {
+        strcpy(vap_name, "iot_ssid_2g");
+    } else if (vap_index == 3) {
+        strcpy(vap_name, "iot_ssid_5g");
+    } else if (vap_index == 6) {
+        strcpy(vap_name, "lnf_psk_2g");
+    } else if (vap_index == 7) {
+        strcpy(vap_name, "lnf_psk_5g");
+    } else if (vap_index == 10) {
+        strcpy(vap_name, "lnf_radius_2g");
+    } else if (vap_index == 11) {
+        strcpy(vap_name, "lnf_radius_5g");
+    } else if (vap_index == 12) {
+        strcpy(vap_name, "mesh_backhaul_2g");
+    } else if (vap_index == 13) {
+        strcpy(vap_name, "mesh_backhaul_5g");
+    } else if (vap_index == 14) {
+        strcpy(vap_name, "mesh_sta_2g");
+    } else if (vap_index == 15) {
+        strcpy(vap_name, "mesh_sta_5g");
+    }
+    else
+    {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s wrong vap index:%d\n", __FUNCTION__, vap_index);
+    }
+    return 0;
+}
+
+
+int convert_radio_name_to_index(int *index,char *name)
+{
+    if((strncmp(name,"radio1",BUFFER_LENGTH_WIFIDB))== 0)
+    {
+        *index = 0;
+        return 0;
+    }
+    else if((strncmp(name,"radio2",BUFFER_LENGTH_WIFIDB))== 0)
+    {
+        *index = 1;
+        return 0;
+    }
+    else if((strncmp(name,"radio3",BUFFER_LENGTH_WIFIDB))== 0)
+    {
+        *index = 2;
+        return 0;
+    }
+
+    return -1;
+}
+
+
+char *get_formatted_time(char *time)
+{
+    struct tm *tm_info;
+    struct timeval tv_now;
+    char tmp[128];
+
+    gettimeofday(&tv_now, NULL);
+    tm_info = (struct tm *)localtime(&tv_now.tv_sec);
+
+    strftime(tmp, 128, "%y%m%d-%T", tm_info);
+
+    snprintf(time, 128, "%s.%06ld", tmp, tv_now.tv_usec);
+    return time;
+}
+
+void wifi_util_dbg_print(wifi_dbg_type_t module, char *format, ...)
+{
+    char buff[2048*200] = {0};
+    va_list list;
+    FILE *fpg = NULL;
+
+    get_formatted_time(buff);
+    strcat(buff, " ");
+
+    va_start(list, format);
+    vsprintf(&buff[strlen(buff)], format, list);
+    va_end(list);
+
+#ifndef LINUX_VM_PORT
+    switch(module)
+    {
+        case WIFI_DB:{
+            if ((access("/nvram/wifiDbDbg", R_OK)) != 0) {
+                return;
+            }
+            fpg = fopen("/tmp/wifiDb", "a+");
+            if (fpg == NULL) {
+                return;
+            } else {
+                fputs(buff, fpg);
+            }
+            break;
+        }
+        case WIFI_MGR:{
+            if ((access("/nvram/wifiMgrDbg", R_OK)) != 0) {
+                return;
+            }
+            fpg = fopen("/tmp/wifiMgr", "a+");
+            if (fpg == NULL) {
+                return;
+            } else {
+                fputs(buff, fpg);
+            }
+            break;
+        }
+        case WIFI_WEBCONFIG:{
+            if ((access("/nvram/wifiWebConfigDbg", R_OK)) != 0) {
+                return;
+            }
+            fpg = fopen("/tmp/wifiWebConfig", "a+");
+            if (fpg == NULL) {
+                return;
+            } else {
+                fputs(buff, fpg);
+            }
+            break;
+        }
+    case WIFI_CTRL:{
+            if ((access("/nvram/wifiCtrlDbg", R_OK)) != 0) {
+                return;
+            }
+            fpg = fopen("/tmp/wifiCtrl", "a+");
+            if (fpg == NULL) {
+                return;
+            } else {
+                fputs(buff, fpg);
+            }
+            break;
+    }
+        case WIFI_PASSPOINT:{
+            if ((access("/nvram/wifiPasspointDbg", R_OK)) != 0) {
+                return;
+            }
+            fpg = fopen("/tmp/wifiPasspoint", "a+");
+            if (fpg == NULL) {
+                return;
+            } else {
+                fputs(buff, fpg);
+            }
+            break;
+        }
+        case WIFI_DPP:{
+            if ((access("/nvram/wifiDppDbg", R_OK)) != 0) {
+                return;
+            }
+            fpg = fopen("/tmp/wifiDPP", "a+");
+            if (fpg == NULL) {
+                return;
+            } else {
+                fputs(buff, fpg);
+            }
+            break;
+        }
+        case WIFI_MON:{
+            if ((access("/nvram/wifiMonDbg", R_OK)) != 0) {
+                return;
+            }
+            fpg = fopen("/tmp/wifiMon", "a+");
+            if (fpg == NULL) {
+                return;
+            } else {
+                fputs(buff, fpg);
+            }
+            break;
+        }
+    case WIFI_DMCLI:{
+            if ((access("/nvram/wifiDMCLI", R_OK)) != 0) {
+                return;
+            }
+            fpg = fopen("/tmp/wifiDMCLI", "a+");
+            if (fpg == NULL) {
+                return;
+            } else {
+                fputs(buff, fpg);
+            }
+            break;
+        }
+        case WIFI_LIB:{
+            if ((access("/nvram/wifiLib", R_OK)) != 0) {
+                return;
+            }
+            fpg = fopen("/tmp/wifiLib", "a+");
+            if (fpg == NULL) {
+                return;
+            } else {
+                fputs(buff, fpg);
+            }
+            break;
+        }
+    }
+
+    if(fpg != NULL)
+    {
+        fflush(fpg);
+        fclose(fpg);
+    }
+#else
+    printf("%s\n", buff);
+#endif
+}
+
+int WiFi_IsValidMacAddr(const char* mac)
+{
+    int i = 0;
+    int s = 0;
+
+    while (*mac)
+    {
+        if (isxdigit(*mac))
+        {
+            i++;
+        }
+        else if (*mac == ':')
+        {
+            if (i == 0 || i / 2 - 1 != s)
+                break;
+            ++s;
+        }
+        else
+        {
+            s = -1;
+        }
+        ++mac;
+    }
+    return (i == 12 && (s == 5 || s == 0));
+}
+
+INT getIpAddressFromString (const char * ipString, ip_addr_t * ip)
+{
+    if (inet_pton(AF_INET, ipString, &ip->u.IPv4addr) > 0)
+    {
+        ip->family = wifi_ip_family_ipv4;
+    }
+    else if (inet_pton(AF_INET6, ipString, ip->u.IPv6addr) > 0)
+    {
+        ip->family = wifi_ip_family_ipv6;
+    }
+    else
+    {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"RDK_LOG_ERROR, %s IP not recognise\n", __func__);
+        return 0;
+    }
+
+    return 1;
+}
+
+INT getIpStringFromAdrress (char * ipString, const ip_addr_t * ip)
+{
+    if (ip->family == wifi_ip_family_ipv4)
+    {
+        inet_ntop(AF_INET, &ip->u.IPv4addr, ipString, INET_ADDRSTRLEN);
+    }
+    else if (ip->family == wifi_ip_family_ipv6)
+    {
+        inet_ntop(AF_INET6, &ip->u.IPv6addr, ipString, INET_ADDRSTRLEN);
+    }
+    else
+    {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"RDK_LOG_ERROR, %s IP not recognise\n", __func__);
+        return 0;
+    }
+
+    return 1;
+}
+
+void uint8_mac_to_string_mac(uint8_t *mac, char *s_mac)
+{
+
+    if((mac == NULL) || (s_mac == NULL))
+    {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d:parameters is NULL\n", __func__, __LINE__);
+        return;
+    }
+    snprintf(s_mac, 18, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx", mac[0],mac[1], mac[2], mac[3], mac[4],mac[5]);
+}
+
+void string_mac_to_uint8_mac(uint8_t *mac, char *s_mac)
+{
+
+    if((mac == NULL) || (s_mac == NULL))
+    {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d:parameters is NULL\n", __func__, __LINE__);
+        return;
+    }
+    sscanf(s_mac, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx", &mac[0], &mac[1], &mac[2],&mac[3], &mac[4], &mac[5]);
+}
+
+int convert_radio_name_to_radio_index(char *name)
+{
+    if (strcmp(name, "radio1") == 0) {
+        return 0;
+    } else if (strcmp(name, "radio2") == 0) {
+        return 1;
+    } else if (strcmp(name, "radio3") == 0) {
+        return 2;
+    }
+    return -1;
+}
+
+int convert_radio_index_to_radio_name(int index, char *name)
+{
+    if (index == 0) {
+        strncpy(name,"radio1",BUFFER_LENGTH_WIFIDB);
+        return 0;
+    } else if (index == 1) {
+        strncpy(name,"radio2",BUFFER_LENGTH_WIFIDB);
+        return 0;
+    } else if (index == 2) {
+        strncpy(name,"radio3",BUFFER_LENGTH_WIFIDB);
+        return 0;
+    }
+
+    return -1;
+}
+
+int convert_security_mode_integer_to_string(int m,char *mode)
+{
+    if(m==2) {
+        strcpy(mode,"Required");
+        return RETURN_OK;
+    } else if(m==1) {
+        strcpy(mode,"Optional");
+        return RETURN_OK;
+    } else {
+        strcpy(mode,"Disabled");
+        return RETURN_OK;
+    }
+    return RETURN_ERR;
+}
+
+int convert_security_mode_string_to_integer(int *m,char *mode)
+{
+    if(strcmp(mode,"Required") == 0) {
+        *m = 2;
+        return RETURN_OK;
+    } else if(strcmp(mode,"Optional")== 0) {
+        *m = 1;
+        return RETURN_OK;
+    } else {
+        *m = 0;
+        return RETURN_OK;
+    }
+    return RETURN_ERR;
+}
+
+int security_mode_support_radius(int mode)
+{
+    int sec_mode = 0;
+    if((mode == wifi_security_mode_wpa_enterprise) || (mode ==wifi_security_mode_wpa2_enterprise ) || (mode == wifi_security_mode_wpa3_enterprise) || (mode == wifi_security_mode_wpa_wpa2_enterprise)){
+        sec_mode = 1;
+    } else {
+        sec_mode = 0;
+    }
+
+    return sec_mode;
+}
+
+int convert_freq_band_to_radio_index(int band, int *radio_index)
+{
+    if (band > 0) {
+        *radio_index = (band-1);
+        return RETURN_OK;
+    }
+    return RETURN_ERR;
+}
+
+int convert_ifname_to_radioIndex (char *if_name, uint8_t *radio_index)
+{
+    //return the radio Index based in Interface Name
+    if (if_name == NULL) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"WIFI %s:%d input if_name is NULL \n",__FUNCTION__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    if (!strncmp(if_name, "wl0",strlen("wl0"))) {
+        *radio_index = 0;
+        return RETURN_OK;
+    } else if (!strncmp(if_name, "wl1",strlen("wl1"))) {
+        *radio_index = 1;
+        return RETURN_OK;
+    }
+
+    return RETURN_ERR;
+}
+
+int convert_radioindex_to_ifname(unsigned int radio_index, char *if_name, int ifname_len)
+{
+    if (if_name == NULL) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"WIFI %s:%d input if_name is NULL \n",__FUNCTION__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    if (radio_index >= MAX_NUM_RADIOS) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: invalid radioIndex : %d!!!\n", __func__, __LINE__, radio_index);
+        return RETURN_ERR;
+    }
+
+    snprintf(if_name, ifname_len, "wl%d", radio_index);
+
+    return RETURN_OK;
+}
+
+
+int convert_apindex_to_ifname(int idx, char *if_name, int len)
+{
+    if (NULL == if_name || idx  >= (MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO) ) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: input_string parameter error!!!\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    memset(if_name, 0, len);
+    snprintf(if_name, len, "%s", ap_name_translator[idx].if_name);
+    return RETURN_OK;
+}
+
+int convert_ifname_to_vapname(char *if_name, char *vap_name, int vapname_len)
+{
+    unsigned int i = 0;
+    if ((if_name == NULL) || (vap_name == NULL)) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: input_string parameter error!!!\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    memset(vap_name, 0, vapname_len);
+    for (i = 0; i < ARRAY_SZ(ap_name_translator); i++) {
+        if (strcmp(if_name, ap_name_translator[i].if_name) == 0) {
+            snprintf(vap_name, vapname_len, "%s", ap_name_translator[i].vap_name);
+            return RETURN_OK;
+        }
+    }
+
+    return RETURN_ERR;
+}
+
+
+
+int vap_mode_conversion(wifi_vap_mode_t *vapmode_enum, char *vapmode_str, size_t vapmode_str_len, unsigned int conv_type)
+{
+    if ((vapmode_enum == NULL) || (vapmode_str == NULL)) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Input arguments is NULL \n",__func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    if (conv_type == ENUM_TO_STRING) {
+        switch(*vapmode_enum)
+        {
+            case wifi_vap_mode_ap:
+                snprintf(vapmode_str, vapmode_str_len, "%s", "ap");
+                return RETURN_OK;
+
+            case wifi_vap_mode_sta:
+                snprintf(vapmode_str, vapmode_str_len, "%s", "sta");
+                return RETURN_OK;
+
+            case wifi_vap_mode_monitor:
+                snprintf(vapmode_str, vapmode_str_len, "%s", "monitor");
+                return RETURN_OK;
+            default:
+            break;
+        }
+
+    } else if (conv_type == STRING_TO_ENUM) {
+        if (strncmp(vapmode_str, "ap", strlen("ap")) == 0) {
+            *vapmode_enum = wifi_vap_mode_ap;
+            return RETURN_OK;
+        } else if (strncmp(vapmode_str, "sta", strlen("sta")) == 0) {
+            *vapmode_enum = wifi_vap_mode_sta;
+            return RETURN_OK;
+        } else if (strncmp(vapmode_str, "monitor", strlen("monitor")) == 0) {
+            *vapmode_enum = wifi_vap_mode_monitor;
+            return RETURN_OK;
+        }
+    }
+    return RETURN_ERR;
+}
+
+int macfilter_conversion(char *mac_list_type, size_t string_len,  wifi_vap_info_t *vap_info, unsigned int conv_type)
+{
+    if ((mac_list_type == NULL) || (vap_info == NULL)) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Input arguments is NULL \n",__func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    if (conv_type == STRING_TO_ENUM) {
+        if (strncmp(mac_list_type, "whitelist", strlen("whitelist")) == 0) {
+            vap_info->u.bss_info.mac_filter_enable = TRUE;
+            vap_info->u.bss_info.mac_filter_mode = wifi_mac_filter_mode_white_list;
+            return RETURN_OK;
+        } else if (strncmp(mac_list_type, "blacklist", strlen("blacklist")) == 0) {
+            vap_info->u.bss_info.mac_filter_enable = TRUE;
+            vap_info->u.bss_info.mac_filter_mode = wifi_mac_filter_mode_black_list;
+            return RETURN_OK;
+        } else if (strncmp(mac_list_type, "none", strlen("none")) == 0) {
+            vap_info->u.bss_info.mac_filter_enable = FALSE;
+            vap_info->u.bss_info.mac_filter_mode = wifi_mac_filter_mode_white_list;
+            return RETURN_OK;
+        }
+    } else if (conv_type == ENUM_TO_STRING) {
+        if ((vap_info->u.bss_info.mac_filter_enable == TRUE) && (vap_info->u.bss_info.mac_filter_mode == wifi_mac_filter_mode_white_list)) {
+            snprintf(mac_list_type, string_len, "whitelist");
+            return RETURN_OK;
+        } else if ((vap_info->u.bss_info.mac_filter_enable == TRUE) && (vap_info->u.bss_info.mac_filter_mode == wifi_mac_filter_mode_black_list)) {
+            snprintf(mac_list_type, string_len, "blacklist");
+            return RETURN_OK;
+        } else if ((vap_info->u.bss_info.mac_filter_enable == FALSE)) {
+            snprintf(mac_list_type, string_len, "none");
+            return RETURN_OK;
+        }
+    }
+
+    return RETURN_ERR;
+}
+
+int ssid_broadcast_conversion(char *broadcast_string, size_t string_len, BOOL *broadcast_bool, unsigned int conv_type)
+{
+    if ((broadcast_string == NULL) || (broadcast_bool == NULL)) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Input arguments is NULL \n",__func__, __LINE__);
+        return RETURN_ERR;
+    }
+    if (conv_type == STRING_TO_ENUM) {
+        if ((strncmp(broadcast_string, "disabled", strlen("disabled")) == 0) || (strncmp(broadcast_string, "disabled_null", strlen("disabled_null")) == 0)) {
+            *broadcast_bool =  FALSE;
+            return RETURN_OK;
+        } else if (strncmp(broadcast_string, "enabled", strlen("enabled")) == 0) {
+            *broadcast_bool = TRUE;
+            return RETURN_OK;
+        }
+    } else if (conv_type == ENUM_TO_STRING) {
+        if (*broadcast_bool == TRUE) {
+            snprintf(broadcast_string, string_len, "enabled");
+            return RETURN_OK;
+        } else {
+            snprintf(broadcast_string, string_len, "disabled");
+            return RETURN_OK;
+        }
+
+    }
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: broadcast update failed \n",__func__, __LINE__);
+    return RETURN_ERR;
+}
+
+int freq_band_conversion(wifi_freq_bands_t *band_enum, char *freq_band, int freq_band_len, unsigned int conv_type)
+{
+    if ((freq_band == NULL) || (band_enum == NULL)) {
+        return RETURN_ERR;
+    }
+
+    if (conv_type == STRING_TO_ENUM) {
+        if (!strncmp(freq_band, "2.4G", strlen("2.4G")+1)) {
+            *band_enum = WIFI_FREQUENCY_2_4_BAND;
+            return RETURN_OK;
+        } else if (!strncmp(freq_band, "5G", strlen("5G")+1)) {
+            *band_enum = WIFI_FREQUENCY_5_BAND;
+            return RETURN_OK;
+        } else if (!strncmp(freq_band, "5GL", strlen("5GL")+1)) {
+            *band_enum = WIFI_FREQUENCY_5L_BAND;
+            return RETURN_OK;
+        } else if (!strncmp(freq_band, "5GU", strlen("5GU")+1)) {
+            *band_enum = WIFI_FREQUENCY_5H_BAND;
+            return RETURN_OK;
+        }
+
+    } else if (conv_type == ENUM_TO_STRING) {
+        switch(*band_enum){
+            case WIFI_FREQUENCY_2_4_BAND:
+                snprintf(freq_band, freq_band_len, "2.4G");
+                return RETURN_OK;
+            case WIFI_FREQUENCY_5_BAND:
+                snprintf(freq_band, freq_band_len, "5G");
+                return RETURN_OK;
+            case WIFI_FREQUENCY_5L_BAND:
+                snprintf(freq_band, freq_band_len, "5GL");
+                return RETURN_OK;
+            case WIFI_FREQUENCY_5H_BAND:
+                snprintf(freq_band, freq_band_len, "5GU");
+                return RETURN_OK;
+            default:
+            break;
+        }
+    }
+
+    return RETURN_ERR;
+}
+
+
+BOOL is_vap_private(unsigned int ap_index)
+{
+    if (strncmp((CHAR *)ap_name_translator[ap_index].vap_name, "private_ssid", strlen("private_ssid")) == 0) {
+        return TRUE;
+    }
+    return FALSE;
+}
+
+BOOL is_vap_xhs(unsigned int ap_index)
+{
+    if (strncmp((CHAR *)ap_name_translator[ap_index].vap_name, "iot_ssid", strlen("iot_ssid")) == 0) {
+        return TRUE;
+    }
+    return FALSE;
+}
+
+BOOL is_vap_hotspot(unsigned int ap_index)
+{
+    if (strncmp((CHAR *)ap_name_translator[ap_index].vap_name, "hotspot", strlen("hotspot")) == 0) {
+        return TRUE;
+    }
+    return FALSE;
+}
+
+BOOL is_vap_lnf(unsigned int ap_index)
+{
+    if (strncmp((CHAR *)ap_name_translator[ap_index].vap_name, "lnf", strlen("lnf")) == 0) {
+        return TRUE;
+    }
+    return FALSE;
+}
+
+BOOL is_vap_lnfpsk(unsigned int ap_index)
+{
+    if (strncmp((CHAR *)ap_name_translator[ap_index].vap_name, "lnf_psk", strlen("lnf_psk")) == 0) {
+        return TRUE;
+    }
+    return FALSE;
+}
+
+BOOL is_vap_mesh_backhaul(unsigned int ap_index)
+{
+    if (strncmp((CHAR *)ap_name_translator[ap_index].vap_name, "mesh_backhaul", strlen("mesh_backhaul")) == 0) {
+        return TRUE;
+    }
+    return FALSE;
+}
+
+BOOL is_vap_hotspotsecure(unsigned int ap_index)
+{
+    if (strstr((CHAR *)ap_name_translator[ap_index].vap_name, "hotspot_secure") != NULL) {
+        return TRUE;
+    }
+    return FALSE;
+}
+
+BOOL is_vap_lnfsecure(unsigned int ap_index)
+{
+    if (strstr((CHAR *)ap_name_translator[ap_index].vap_name, "lnf_radius") != NULL) {
+        return TRUE;
+    }
+    return FALSE;
+}
+
+
+BOOL is_vap_mesh_sta(unsigned int ap_index)
+{
+    if (strstr((CHAR *)ap_name_translator[ap_index].vap_name, "mesh_sta") != NULL) {
+        return TRUE;
+    }
+    return FALSE;
+}
+
+
+int country_code_conversion(wifi_countrycode_type_t *country_code, char *country, int country_len, unsigned int conv_type)
+{
+    int i = 0;
+    if ((country_code == NULL) || (country == NULL)) {
+        return RETURN_ERR;
+    }
+
+    if (conv_type == STRING_TO_ENUM) {
+        for (i = 0; i < MAX_WIFI_COUNTRYCODE; i++) {
+            if(strcasecmp(country, wifiCountryMap[i].countryStr) == 0) {
+                *country_code = wifiCountryMap[i].countryCode;
+                return RETURN_OK;
+            }
+        }
+
+        if(i == MAX_WIFI_COUNTRYCODE) {
+            return RETURN_ERR;
+        }
+
+    } else if (conv_type == ENUM_TO_STRING) {
+        if ( i >= MAX_WIFI_COUNTRYCODE) {
+            return RETURN_ERR;
+        }
+        snprintf(country, country_len, "%s", wifiCountryMap[*country_code].countryStr);
+        return RETURN_OK;
+    }
+
+    return RETURN_ERR;
+}
+
+
+int hw_mode_conversion(wifi_ieee80211Variant_t *hw_mode_enum, char *hw_mode, int hw_mode_len, unsigned int conv_type)
+{
+    char arr_str[][8] = {"11a", "11b", "11g", "11n", "11ac", "11ax"};
+    wifi_ieee80211Variant_t arr_enum[] = {WIFI_80211_VARIANT_A, WIFI_80211_VARIANT_B, WIFI_80211_VARIANT_G, WIFI_80211_VARIANT_N, WIFI_80211_VARIANT_AC, WIFI_80211_VARIANT_AX};
+    bool is_mode_valid = false;
+
+    unsigned int i = 0;
+    if ((hw_mode_enum == NULL) || (hw_mode == NULL)) {
+        return RETURN_ERR;
+    }
+    if (conv_type == STRING_TO_ENUM) {
+        for (i = 0; i < ARRAY_SZ(arr_str); i++) {
+            if (strcmp(arr_str[i], hw_mode) == 0) {
+                *hw_mode_enum = arr_enum[i];
+                return RETURN_OK;
+            }
+        }
+    } else if (conv_type == ENUM_TO_STRING) {
+        for (i = 0; i < ARRAY_SZ(arr_enum); i++) {
+            if ((arr_enum[i] & *hw_mode_enum) == arr_enum[i]) {
+                snprintf(hw_mode, hw_mode_len, "%s", arr_str[i]);
+                is_mode_valid = true;
+            }
+        }
+
+        if (is_mode_valid == true) {
+            return RETURN_OK;
+        }
+    }
+
+    return RETURN_ERR;
+}
+
+int ht_mode_conversion(wifi_channelBandwidth_t *ht_mode_enum, char *ht_mode, int ht_mode_len, unsigned int conv_type)
+{
+    char arr_str[][8] = {"HT20", "HT40", "HT80", "HT160"};
+    wifi_channelBandwidth_t arr_enum[] = {WIFI_CHANNELBANDWIDTH_20MHZ, WIFI_CHANNELBANDWIDTH_40MHZ, WIFI_CHANNELBANDWIDTH_80MHZ, WIFI_CHANNELBANDWIDTH_160MHZ};
+
+    unsigned int i = 0;
+    if ((ht_mode_enum == NULL) || (ht_mode == NULL)) {
+        return RETURN_ERR;
+    }
+    if (conv_type == STRING_TO_ENUM) {
+        for (i = 0; i < ARRAY_SZ(arr_str); i++) {
+            if (strcmp(arr_str[i], ht_mode) == 0) {
+                *ht_mode_enum = arr_enum[i];
+                return RETURN_OK;
+            }
+        }
+    } else if (conv_type == ENUM_TO_STRING) {
+        for (i = 0; i < ARRAY_SZ(arr_enum); i++) {
+            if (arr_enum[i] == *ht_mode_enum) {
+                snprintf(ht_mode, ht_mode_len, "%s", arr_str[i]);
+                return RETURN_OK;
+            }
+        }
+    }
+
+    return RETURN_ERR;
+}
+
+int get_sta_vap_index_for_radio(unsigned int radio_index)
+{
+    if (radio_index == 0) {
+        return 14;
+    } else if (radio_index == 1) {
+        return 15;
+    }
+
+    return -1;
+}
+
+int channel_mode_conversion(BOOL *auto_channel_bool, char *auto_channel_string, int auto_channel_strlen, unsigned int conv_type)
+{
+    if ((auto_channel_bool == NULL) || (auto_channel_string == NULL)) {
+        return RETURN_ERR;
+    }
+
+    if (conv_type == STRING_TO_ENUM) {
+        if ((strcmp(auto_channel_string, "auto")) || (strcmp(auto_channel_string, "cloud")) || (strcmp(auto_channel_string, "acs"))) {
+            *auto_channel_bool = true;
+            return RETURN_OK;
+        } else if (strcmp(auto_channel_string, "manual")) {
+            *auto_channel_bool = false;
+            return RETURN_OK;
+        }
+    } else if (conv_type == ENUM_TO_STRING) {
+        if (*auto_channel_bool == true) {
+            snprintf(auto_channel_string, auto_channel_strlen, "%s", "auto");
+            return RETURN_OK;
+        } else  if (*auto_channel_bool == false)  {
+            snprintf(auto_channel_string, auto_channel_strlen, "%s", "manual");
+            return RETURN_OK;
+        }
+    }
+
+    return RETURN_ERR;
+}
+
+
+int is_wifi_channel_valid(wifi_freq_bands_t wifi_band, UINT wifi_channel)
+{
+    unsigned int channels_5g[] = {36, 40, 44, 48, 52, 56, 60, 64, 100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140, 144, 149, 153, 157, 161, 165};
+    unsigned int i = 0;
+    bool channel_found = false;
+
+    if (wifi_band == WIFI_FREQUENCY_2_4_BAND) {
+        if ((wifi_channel >= 1) && (wifi_channel <= 14)) {
+            return RETURN_OK;
+        } else {
+            return RETURN_ERR;
+        }
+    } else if (wifi_band == WIFI_FREQUENCY_5_BAND) {
+        for (i=0; i< ARRAY_SZ(channels_5g); i++) {
+            if (wifi_channel == channels_5g[i]) {
+                channel_found = true;
+                break;
+            }
+        }
+
+        if (channel_found == false) {
+            return RETURN_ERR;
+        }
+    } else if (wifi_band == WIFI_FREQUENCY_5L_BAND) {
+
+    } else if (wifi_band == WIFI_FREQUENCY_5H_BAND) {
+
+    } else if (wifi_band == WIFI_FREQUENCY_6_BAND) {
+
+    } else if (wifi_band == WIFI_FREQUENCY_60_BAND) {
+
+    } else {
+        return RETURN_ERR;
+    }
+
+    return RETURN_OK;
+}
+
+
+int is_ssid_name_valid(char *ssid_name)
+{
+    int i = 0, ssid_len;
+
+    if(!ssid_name){
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: SSID is NULL\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    ssid_len = strlen(ssid_name);
+    if ((ssid_len == 0) || (ssid_len > WIFI_MAX_SSID_NAME_LEN)) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: SSID invalid length\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+
+    for (i = 0; i < ssid_len; i++) {
+        if (!((ssid_name[i] >= ' ') && (ssid_name[i] <= '~'))) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: SSID invalid characters\n", __func__, __LINE__);
+            return RETURN_ERR;
+        }
+    }
+
+    return RETURN_OK;
+}
+
+void str_to_mac_bytes (char *key, mac_addr_t bmac) {
+   unsigned int mac[6];
+   if(strlen(key) > MIN_MAC_LEN)
+       sscanf(key, "%02x:%02x:%02x:%02x:%02x:%02x",
+             &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
+   else
+       sscanf(key, "%02x%02x%02x%02x%02x%02x",
+             &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
+   bmac[0] = mac[0]; bmac[1] = mac[1]; bmac[2] = mac[2];
+   bmac[3] = mac[3]; bmac[4] = mac[4]; bmac[5] = mac[5];
+
+}
+
+int get_cm_mac_address(char *mac)
+{
+    FILE *f;
+    char ptr[32];
+    char *cmd = "deviceinfo.sh -cmac";
+
+    memset (ptr, 0, sizeof(ptr));
+
+    if ((f = popen(cmd, "r")) == NULL) {
+        return RETURN_ERR;
+    } else {
+        *ptr = 0;
+        fgets(ptr,32,f);
+        pclose(f);
+    }
+
+    strncpy(mac, ptr, strlen(ptr));
+
+    return RETURN_OK;
+}
+
+/************************************************************************************
+ ************************************************************************************
+  Function    : get_ssid_from_device_mac
+  Parameter   : ssid - Name of ssid
+  Description : Get ssid information from cm mac address
+ *************************************************************************************
+**************************************************************************************/
+int get_ssid_from_device_mac(char *ssid)
+{
+    int ret = RETURN_OK;
+    char s_mac[BUFFER_LENGTH_WIFIDB] = {0};
+    mac_address_t mac;
+    memset(mac, 0, sizeof(mac));
+
+    ret = get_cm_mac_address(s_mac);
+    if(ret != RETURN_OK)
+    {
+        wifi_util_dbg_print(WIFI_DB,"%s:%d: get cm mac address failure: %d \n",__func__, __LINE__, ret);
+        return ret;
+    }
+
+    string_mac_to_uint8_mac(mac, s_mac);
+
+    memset(s_mac, 0, sizeof(s_mac));
+    sprintf(s_mac, "XFSETUP-%02hhX%02hhX", mac[4], mac[5]);
+    strncpy(ssid, s_mac, strlen(s_mac));
+    return ret;
+}

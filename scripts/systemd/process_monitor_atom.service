@@ -1,0 +1,15 @@
+[Unit]
+Description= prcoess monitor service. Only for XB3 devices
+ConditionPathExists=/usr/ccsp/wifi/process_monitor_atom.sh
+
+
+[Service]
+Type=simple
+ExecStart=/bin/sh '/usr/ccsp/wifi/process_monitor_atom.sh'
+ExecStopPost=/bin/sh -c 'echo "`date`: Stopping/Restarting process_monitor_atom.service" >> /rdklogs/logs/AtomConsolelog.txt'
+
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+

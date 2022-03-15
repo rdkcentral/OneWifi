@@ -1,0 +1,86 @@
+##########################################################################
+# If not stated otherwise in this file or this component's Licenses.txt
+# file the following copyright and licenses apply:
+#
+# Copyright 2015 RDK Management
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+##########################################################################
+AM_CFLAGS = -D_ANSC_LINUX
+AM_CFLAGS += -D_ANSC_USER
+if CCSP_ARCH_ARM
+AM_CFLAGS += -D_ANSC_LITTLE_ENDIAN_
+endif
+
+if CCSP_ARCH_ATOM
+AM_CFLAGS += -D_ANSC_LITTLE_ENDIAN_
+endif
+
+if CCSP_ARCH_PC
+AM_CFLAGS += -D_ANSC_LITTLE_ENDIAN_
+endif
+
+AM_LDFLAGS = -L$(top_builddir)/../CcspCommonLibrary/lib
+AM_LDFLAGS += -lccsp_common
+AM_LDFLAGS += -L$(top_builddir)/../hal/lib
+AM_LDFLAGS += -lrdk_wifihal -lhal_wifi
+AM_LDFLAGS += -lwebconfig_framework
+AM_LDFLAGS += -lsecure_wrapper
+AM_LDFLAGS += -lev
+AM_LDFLAGS += -lpthread
+AM_LDFLAGS += -ldl
+AM_LDFLAGS += -ljansson
+AM_LDFLAGS += -lrt
+AM_LDFLAGS += -L$(top_builddir)/source/utils/
+AM_LDFLAGS += -lwifi_utils
+AM_LDFLAGS += -L$(top_builddir)/source/webconfig/
+AM_LDFLAGS += -lwifi_webconfig
+
+AM_CPPFLAGS = -Wall -Werror
+ACLOCAL_AMFLAGS = -I m4
+hardware_platform = i686-linux-gnu
+bin_PROGRAMS = OneWifi
+
+OneWifi_CPPFLAGS = -I/var/tmp/pc-rdkb/include/dbus-1.0 -I$(top_srcdir)/../CcspCommonLibrary/source/ccsp/custom -I$(top_srcdir)/../CcspCommonLibrary/source/ccsp/include -I$(top_srcdir)/../CcspCommonLibrary/source/debug_api/include -I$(top_srcdir)/../CcspCommonLibrary/source/cosa/include -I$(top_srcdir)/../CcspCommonLibrary/source/cosa/include/linux -I$(top_srcdir)/../CcspCommonLibrary/source/ccsp/components/include -I$(top_srcdir)/../CcspCommonLibrary/source/cosa/package/slap/include -I$(top_srcdir)/../hal/include -I$(top_srcdir)/../CcspCommonLibrary/source/util_api/http/include -I$(top_srcdir)/../CcspCommonLibrary/source/util_api/ansc/include  -I$(top_srcdir)/source/dml/wifi_ssp $(top_srcdir)/source/dml/dml_webconfig -I$(top_srcdir)/source/dml/tr_181/ml -I$(top_srcdir)/source/dml/tr_181/sbapi -I$(top_srcdir)/include/tr_181/ml -I$(top_srcdir)/../CcspCommonLibrary/source/ccsp/components/common/MessageBusHelper/include -I$(top_srcdir)/../CcspCommonLibrary/source/ccsp/components/common/PoamIrepFolder -I$(top_srcdir)/include/wifi_ssp -I$(top_srcdir)/./include -I$(top_srcdir)/source/core -I$(top_srcdir)/source/stats -I$(top_srcdir)/source/db -I$(top_srcdir)/lib/ovsdb -I$(top_srcdir)/lib/inc -I$(top_srcdir)/lib/json_util -I$(top_srcdir)/lib/ds -I$(top_srcdir)/lib/common -I$(top_srcdir)/lib/pjs -I$(top_srcdir)/lib/log -I$(top_srcdir)/lib/const -I$(top_srcdir)/lib/schema -I$(top_srcdir)/lib/osp -I$(top_srcdir)/lib/osa -I$(top_srcdir)/lib/psfs -I$(top_srcdir)/lib/qm -I$(top_srcdir)/source/utils  $(CPPFLAGS)
+OneWifi_CFLAGS =  $(SYSTEMD_CFLAGS)
+
+OneWifi_SOURCES = wifi_mgr.c wifi_ctrl.c wifi_passpoint.c wifi_8021x.c wifi_data_plane.c wifi_easy_connect.c wifi_ctrl_queue_handlers.c wifi_ctrl_rbus_handlers.c wifi_ctrl_webconfig.c wifi_ctrl_wifiapi_handlers.c
+
+OneWifi_SOURCES += $(top_srcdir)/source/db/wifi_db.c $(top_srcdir)/source/db/wifi_db_apis.c
+
+OneWifi_SOURCES += $(top_srcdir)/source/utils/jsonconv.c $(top_srcdir)/source/utils/collection.c $(top_srcdir)/source/utils/scheduler.c  $(top_srcdir)/source/stats/wifi_events.c
+
+OneWifi_SOURCES += $(top_srcdir)/source/stats/wifi_monitor.c $(top_srcdir)/source/stats/wifi_associated_devices_msmt.c $(top_srcdir)/source/stats/wifi_single_client_msmt.c 
+
+OneWifi_SOURCES += $(top_srcdir)/source/dml/wifi_ssp/ssp_main.c $(top_srcdir)/source/dml/wifi_ssp/ssp_messagebus_interface.c $(top_srcdir)/source/dml/wifi_ssp/ssp_action.c $(top_srcdir)/source/dml/wifi_ssp/dm_pack_datamodel.c
+
+OneWifi_SOURCES += $(top_srcdir)/lib/common/os_time.c $(top_srcdir)/lib/common/util.c $(top_srcdir)/lib/common/monitor.c $(top_srcdir)/lib/common/os.c $(top_srcdir)/lib/common/os_util.c $(top_srcdir)/lib/common/os_exec.c $(top_srcdir)/lib/const/const.c $(top_srcdir)/lib/ds/ds_tree.c $(top_srcdir)/lib/json_util/string.c $(top_srcdir)/lib/json_util/memdbg.c $(top_srcdir)/lib/json_util/future.c $(top_srcdir)/lib/log/log.c $(top_srcdir)/lib/log/log_syslog.c $(top_srcdir)/lib/log/log_stdout.c $(top_srcdir)/lib/log/log_traceback.c $(top_srcdir)/lib/osa/os_backtrace.c $(top_srcdir)/lib/osa/os_socket.c $(top_srcdir)/lib/osa/os_nif_linux.c $(top_srcdir)/lib/osa/os_regex.c $(top_srcdir)/lib/osa/os_proc.c $(top_srcdir)/lib/osa/os_file_ops.c $(top_srcdir)/lib/osa/os_file.c $(top_srcdir)/lib/osa/os_random.c $(top_srcdir)/lib/ovsdb/ovsdb.c $(top_srcdir)/lib/ovsdb/ovsdb_method.c $(top_srcdir)/lib/ovsdb/ovsdb_update.c $(top_srcdir)/lib/ovsdb/ovsdb_sync.c $(top_srcdir)/lib/ovsdb/ovsdb_sync_api.c $(top_srcdir)/lib/ovsdb/ovsdb_table.c $(top_srcdir)/lib/ovsdb/ovsdb_cache.c $(top_srcdir)/lib/ovsdb/ovsdb_utils.c $(top_srcdir)/lib/pjs/pjs_array.c $(top_srcdir)/lib/pjs/pjs_ovs_basic.c $(top_srcdir)/lib/pjs/pjs_basic.c $(top_srcdir)/lib/pjs/pjs_types.c $(top_srcdir)/lib/pjs/pjs_ovs_set.c $(top_srcdir)/lib/pjs/pjs_ovs_map.c $(top_srcdir)/lib/schema/schema.c
+
+OneWifi_LDFLAGS = -lccsp_common -rdynamic -lsyscfg -lwebconfig_framework -lprint_uptime -lsecure_wrapper $(SYSTEMD_LDFLAGS) -lavro -luuid -lsecure_wrapper -lsysevent -lmsgpackc -lcjson -lrdk_wifihal -lhal_wifi  -lm -ljansson -lev
+
+OneWifi_CPPFLAGS += -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/ -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/ -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/ap -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/utils -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/drivers/ -I$(PKG_CONFIG_SYSROOT_DIR)$(includedir)/qca/qca-wifi/os/linux/include/ -I${PKG_CONFIG_SYSROOT_DIR}${libdir}/ -DEXTERNAL_USE_ONLY
+
+AM_CFLAGS += -DCONFIG_WPS -DCONFIG_IEEE80211R_AP -DCONFIG_IEEE80211R -DCONFIG_ETH_P_OUI -DCONFIG_IEEE80211W
+AM_CFLAGS += -DEAP_SERVER_FAST
+
+OneWifi_LDFLAGS += -lhostap
+OneWifi_LDFLAGS += -lnl-3
+OneWifi_LDFLAGS += -lnl-genl-3
+OneWifi_LDFLAGS += -lnl-route-3
+OneWifi_LDFLAGS += -lnl-nf-3
+OneWifi_LDFLAGS += -lnl-idiag-3
+OneWifi_LDFLAGS += -L$(top_builddir)/source/utils/
+OneWifi_LDFLAGS += -lwifi_utils
+OneWifi_LDFLAGS += -L$(top_builddir)/source/webconfig/
+OneWifi_LDFLAGS += -lwifi_webconfig
+#OneWifi_LDFLAGS += -llibnl-3.la llibnl-genl-3.la llibnl-route-3.la llibnl-nf-3.la llibnl-idiag-3

@@ -1,0 +1,285 @@
+{
+  "namespace": "com.comcast.kestrel.odp.event",
+  "name": "WifiSingleClientActiveMeasurement",
+  "type": "record",
+  "doc": "Contains data that reports a set of WiFi conditions for a single client at a configured interval using wifi blaster",
+  "fields": [{
+      "name": "header",
+      "type": {
+        "namespace": "com.comcast.kestrel",
+        "name": "CoreHeader",
+        "type": "record",
+        "doc": "Common information related to the event which MUST be included in any kestrel event. It allows some common processing at the system level, and some consistency for processing events.",
+        "fields": [{
+            "name": "timestamp",
+            "type": [
+              "null",
+              {
+                "logicalType": "timestamp-millis",
+                "type": "long"
+              }
+            ],
+            "doc": "The UTC time stamp in milliseconds since Unix epoch (January 1, 1970 midnight) when the event is generated.",
+            "default": null
+          },
+          {
+            "name": "plan_id",
+            "type": [
+              "null",
+              {
+                "name": "Plan_Identifier",
+                "namespace": "com.comcast.kestrel.datatype",
+                "size": 16,
+                "type": "fixed"
+              }
+            ],
+            "doc": "Unique identifier for the topology set which contains hexadecimal numbers and there will be one Plan ID per gateway.",
+            "default": null
+          },
+          {
+            "name": "step_id",
+            "type": [
+              "null",
+              {
+                "type": "int"
+              }
+            ],
+            "doc": "Step ID indicates directly connected client connection.",
+            "default": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "cpe_id",
+      "type": {
+        "namespace": "com.comcast.kestrel.odp",
+        "name": "CPEIdentifier",
+        "type": "record",
+        "doc": "Unique identifying fields for a CPE device. All fields are optional, but at least one field should be populated with a non null value",
+        "fields": [{
+          "name": "mac_address",
+          "type": [
+            "null",
+            {
+              "name": "MacAddress",
+              "namespace": "com.comcast.kestrel.datatype",
+              "size": 6,
+              "type": "fixed"
+            }
+          ],
+          "doc": "Canonical (Identifying) MAC address for the gateway. (Eg, may be CM Mac for cable modems)",
+          "default": null
+        }]
+      }
+    },
+    {
+      "name": "data",
+      "type": {
+        "namespace": "com.comcast.kestrel.odp",
+        "name": "SingleClientActiveMeasurementDataWifi",
+        "type": "record",
+        "doc": "Contains operational metrics and data collected about the WiFi physical interface for a specific connected device.",
+        "fields": [{
+            "name": "client_mac",
+            "type": [
+              "null",
+              "com.comcast.kestrel.datatype.MacAddress"
+            ],
+            "doc": "Client MAC address where active measurement is taken"
+          },
+          {
+            "name": "sampling_interval",
+            "type": "int",
+            "doc": "Interval used to poll client data from the driver (milliseconds)"
+          },
+          {
+            "name": "packet_size",
+            "type": "int",
+            "doc": "Size of the packet blasted for active measurement"
+          },
+          {
+            "name": "blast_metrics",
+            "type": [
+              "null",
+              {
+                "namespace": "com.comcast.kestrel.odp",
+                "name": "SingleClientActiveMsmtMetricsWifi",
+                "type": "record",
+                "doc": "Contains operational metrics collected for a WiFi interface that has data link connection to a device",
+                "fields": [{
+                    "name": "BlastRadioMetrics",
+                    "type": {
+                      "type": "array",
+                      "items": {
+                        "namespace": "com.comcast.kestrel.odp",
+                        "name": "BlastRadioData",
+                        "type": "record",
+                        "doc": "Array of readings collected for each radio",
+                        "fields": [{
+                            "name": "radio",
+                            "type": [
+                              "null",
+                              {
+                                "type": "enum",
+                                "symbols": ["radio_2_4G", "radio_5G"],
+                                "name": "radio_type",
+                                "doc": "Band of the Radio"
+                              }
+                            ],
+                            "default": null,
+                            "doc": "Each list item MUST be a member of the type of Radio"
+                          },
+                          {
+                            "name": "noise_floor",
+                            "type": ["null", "int"],
+                            "doc": "The noise floor for this radio channel where a recoverable signal can be obtained. (-110:0) Measured in dBm",
+                            "default": null
+                          },
+                          {
+                            "name": "channel_utilization",
+                            "type": ["null", "float"],
+                            "doc": "Percentage of time the channel was occupied by the radio's own activity (Activity Factor) or the activity of other radios.  Channel utilization MUST cover all user traffic, management traffic, and time the radio was unavailable for CSMA activities, including DIFS intervals, etc.  The metric is calculated and updated in this parameter at the end of the interval defined by Radio Statistics Measuring Interval.  The calculation of this metric MUST only use the data collected from the just completed interval.  If this metric is queried before it has been updated with an initial calculation, it MUST return -1",
+                            "default": null
+                          },
+                          {
+                            "name": "activity_factor",
+                            "type": ["null", "int"],
+                            "doc": "Percentage of time that the radio was transmitting or receiving Wi-Fi packets to/from associated clients. Activity factor MUST include all traffic that deals with communication between the radio and clients associated to the radio as well as management overhead for the radio, including NAV timers, beacons, probe responses,time for receiving devices to send an ACK, SIFC intervals, etc.",
+                            "default": null
+                          },
+                          {
+                            "name": "carrier_sense_threshold_exceeded",
+                            "type": ["null", "int"],
+                            "doc": "Percentage of time that the radio was unable to transmit or receive Wi-Fi packets to/from associated clients due to energy detection (ED) on the channel or clear channel assessment (CCA).",
+                            "default": null
+                          },
+                          {
+                            "name": "channels_in_use",
+                            "type": ["null", "string"],
+                            "doc": "List of radio channels in use",
+                            "default": null
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "name": "operating_standards",
+                    "type": [
+                      "null",
+                      {
+                        "type": "enum",
+                        "symbols": ["a", "b", "g", "n", "ac", "ax"],
+                        "name": "OperatingStandard",
+                        "doc": "802.11 operating standard"
+                      }
+                    ],
+                    "default": null,
+                    "doc": "Each list item MUST be a member of the list reported by theSupportedStandards parameter"
+                  },
+                  {
+                    "name": "operating_channel_bandwidth",
+                    "type": [
+                      "null",
+                      {
+                        "type": "enum",
+                        "symbols": ["_20MHz", "_40MHz", "_80MHz", "_80_80MHz", "_160MHz"],
+                        "name": "OperatingChannelBandwidth",
+                        "doc": "802.11 operating channel bandwidth"
+                      }
+                    ],
+                    "default": null,
+                    "doc": " Indicates the bandwidth at which the channel is operating"
+                  },
+                  {
+                    "name": "channel",
+                    "type": ["null", "int"],
+                    "doc": "802.11 channel in use by this radio",
+                    "default": null
+                  },
+                  {
+                    "name": "frequency_band",
+                    "type": [
+                      "null",
+                      {
+                        "doc": "802.11 operating channel bandwidth",
+                        "name": "WifiRadioFrequencyBand",
+                        "namespace": "com.comcast.kestrel.odp.datatype",
+                        "symbols": ["_2_4GHz", "_5GHz"],
+                        "type": "enum"
+                      }
+                    ],
+                    "doc": "802.11 Frequency band in use by this radio",
+                    "default": null
+                  },
+                  {
+                    "name": "tx_retransmissions",
+                    "type": ["null", "int"],
+                    "doc": "The number of packets that had to be re-transmitted, from the last 100 packets sent to the associated device. Multiple re-transmissions of the same packet count as one",
+                    "default": null
+                  },
+                  {
+                    "name": "max_tx_rate",
+                    "type": ["null", "int"],
+                    "doc": "The Max data transmit rate in Mbps for the access point to the associated device.",
+                    "default": null
+                  },
+                  {
+                    "name": "max_rx_rate",
+                    "type": ["null", "int"],
+                    "doc": "The Max data transmit rate in Mbps for the associated device to the access point.",
+                    "default": null
+                  },
+                  {
+                    "name": "BlastMetricsArrayOfReadings",
+                    "type": {
+                      "type": "array",
+                      "items": {
+                        "namespace": "com.comcast.kestrel.odp",
+                        "name": "BlastMetricsArrayOfReading",
+                        "type": "record",
+                        "doc": "Array of readings collected per sample from wifi blaster for single client",
+                        "fields": [{
+                            "name": "signal_strength",
+                            "type": ["null", "int"],
+                            "doc": "Uplink RSSI value in dBm. Measured by the AP. Example:  -85. An indicator of radio signal strength of the uplink from the connected device to the access point",
+                            "default": null
+                          },
+                          {
+                            "name": "snr",
+                            "type": ["null", "int"],
+                            "doc": "Signal to noise ratio. Compares the level of the Wi-Fi signal to the level of background noise. (measured in decibels dB)",
+                            "default": null
+                          },
+                          {
+                            "name": "tx_phy_rate",
+                            "type": ["null", "int"],
+                            "doc": "TX PHY rate is the rate at which client transmitted and AP received in Mbps. (From Connected Device/client to Gateway/AP is uplink). [TR-181: Device.WiFi.AccessPoint.{i}.AssociatedDevice.{i}.LastDataUplinkRate]",
+                            "default": null
+                          },
+                          {
+                            "name": "rx_phy_rate",
+                            "type": ["null", "int"],
+                            "doc": "RX PHY rate is the rate at which AP transmitted and client received in Mbps. (From Gateway/AP to Connected Device/client is downlink). [TR-181: Device.WiFi.AccessPoint.{i}.AssociatedDevice.{i}.LastDataDownlinkRate]",
+                            "default": null
+                          },
+                          {
+                            "name": "throughput",
+                            "type": ["null", "float"],
+                            "doc": "Calculated Throughput of the collected samples.  Unit is Mbps",
+                            "default": null
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

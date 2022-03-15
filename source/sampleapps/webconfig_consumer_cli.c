@@ -1,0 +1,257 @@
+#include <stdio.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include "wifi_hal.h"
+#include "webconfig_consumer_cli.h"
+
+sample_app_cli_task_t cli_task_obj;
+
+void print_help_msg(void)
+{
+    printf("\r\n|**************************************************************|\r\n");
+    printf("Please use below command to start test\r\n");
+    printf("-w radio [parameters JSON blob file path]    { Test radio subdocument }\r\n");
+    printf("-w private [parameters JSON blob file path]  { Test private subdocument }\r\n");
+    printf("-w mesh [parameters JSON blob file path]     { Test mesh subdocument }\r\n");
+    printf("-w xfinity [parameters JSON blob file path]  { Test xfinity subdocument }\r\n");
+    printf("-w home [parameters JSON blob file path]     { Test home subdocument }\r\n");
+    printf("-w all [parameters JSON blob file path]      { Tests all existing WebConfig Subdocuments one after other }\r\n");
+    printf("-w sync                                      { Test dml sync subdocument }\r\n");
+    printf("-c 0                                         { WAN Manager External gateway absent }\r\n");
+    printf("-c 1                                         { WAN Manager External gateway present }\r\n");
+    printf("-o sync                                      { Test dml subdocument for ovsdb destination}\r\n");
+    printf("-o radio                                     { Test radio subdocument for ovsdb }\r\n");
+    printf("-o mesh                                      { Test mesh subdocument for ovsdb}\r\n");
+    printf("-d <1>/<0>                                   { 1 for enable log and 0 for disable the /tmp/log_<subdoc> file creation}\r\n");
+    printf("-e connect freq value<2437> mac <01:02:03:04:05:06> ssid value sec_mode < 1 > password value\r\n");
+    printf("help\r\n");
+    printf("exit                                         { exit wifi webconfig consumer sample app}\r\n");
+    printf("|**************************************************************|\r\n");
+}
+
+int read_subdoc_input_param_from_file(char *file_path, char *read_data)
+{
+    FILE *file_ptr = NULL;
+    unsigned int data_len = 0;
+    // Opening file in reading mode
+    file_ptr = fopen(file_path, "r");
+    if (file_ptr == NULL) {
+        printf("%s:%d file can't be opened:%s \r\n", __func__, __LINE__, file_path);
+        return RETURN_ERR;
+    } else {
+        fseek(file_ptr, 0, SEEK_END);
+        data_len = ftell(file_ptr);
+        fseek(file_ptr, 0, SEEK_SET);
+        if (data_len != 0) {
+            if (fread(read_data, data_len, 1, file_ptr) != 0) {
+                printf("%s:%d file read success:%s data len:%d\r\n", __func__, __LINE__, file_path, data_len);
+            } else {
+                printf("%s:%d file read failure:%s data len:%d\r\n", __func__, __LINE__, file_path, data_len);
+                return RETURN_ERR;
+            }
+        } else {
+            printf("%s:%d Empty file:%s\r\n", __func__, __LINE__, file_path);
+            return RETURN_ERR;
+        }
+    }
+
+    return RETURN_OK;
+}
+
+int get_next_word(char **word)
+{
+    *word = strtok(NULL, " ");
+    if (*word == NULL) {
+        printf("%s:%d wrong user input:\r\n", __func__, __LINE__);
+        print_help_msg();
+        return RETURN_ERR;
+    }
+
+    return RETURN_OK;
+}
+
+int parse_cli_input_msg(char *msg)
+{
+    char *first_arg, *second_arg, *third_arg;
+    char *arg = NULL, *ssid = NULL, password[32] = {0};
+    unsigned char sec_mode = 0;
+    unsigned int freq = 0;
+    bssid_t mac;
+    int ret = RETURN_OK;
+    if (!strncmp(msg, "help", strlen("help"))) {
+        print_help_msg();
+    } else if (!strncmp(msg, "exit", strlen("exit"))) {
+        de_init_rbus_object();
+        cli_task_obj.exit_cli = true;
+        exit_consumer_queue_loop();
+    } else {
+        first_arg = strtok(msg, " ");
+        second_arg = strtok(NULL, " ");
+        if ((first_arg == NULL) || (second_arg == NULL)) {
+            printf("%s:%d wrong user input:\r\n", __func__, __LINE__);
+            print_help_msg();
+            return RETURN_ERR;
+        } else if (!strncmp(first_arg, "-e", strlen("-e"))) {
+            if (!strncmp(second_arg, "connect", strlen("connect"))) {
+                ret = get_next_word(&arg);
+                if (ret == RETURN_ERR) {
+                    return ret;
+                }
+                if (!strncmp(arg, "freq", strlen("freq"))) {
+                    ret = get_next_word(&arg);
+                    if (ret == RETURN_ERR) {
+                        return ret;
+                    }
+                    freq = atoi(arg);
+                    ret = get_next_word(&arg);
+                    if (ret == RETURN_ERR) {
+                        return ret;
+                    }
+                    if (!strncmp(arg, "mac", strlen("mac"))) {
+                        ret = get_next_word(&arg);
+                        if (ret == RETURN_ERR) {
+                            return ret;
+                        }
+                        string_mac_to_uint8_mac((unsigned char *)mac, arg);
+                        ret = get_next_word(&arg);
+                        if (ret == RETURN_ERR) {
+                            return ret;
+                        }
+                        if (!strncmp(arg, "ssid", strlen("ssid"))) {
+                            ret = get_next_word(&ssid);
+                            if (ret == RETURN_ERR) {
+                                return ret;
+                            }
+                            ret = get_next_word(&arg);
+                            if (ret == RETURN_ERR) {
+                                return ret;
+                            }
+                            if (!strncmp(arg, "sec_mode", strlen("sec_mode"))) {
+                                ret = get_next_word(&arg);
+                                if (ret == RETURN_ERR) {
+                                    return ret;
+                                }
+                                sec_mode = atoi(arg);
+                                if (sec_mode != wifi_security_mode_none) {
+                                    ret = get_next_word(&arg);
+                                    if (ret == RETURN_ERR) {
+                                        return ret;
+                                    }
+                                    if (!strncmp(arg, "password", strlen("password"))) {
+                                        ret = get_next_word(&arg);
+                                        if (ret == RETURN_ERR) {
+                                            return ret;
+                                        }
+                                        strncpy(password, arg, strlen(arg));
+                                        ret = client_connection_init_command(freq, ssid, sec_mode, password, mac);
+                                    }
+                                } else {
+                                    ret = client_connection_init_command(freq, ssid, sec_mode, password, mac);
+                                }
+                            }
+                        }
+                    }
+                }
+            } else if (!strncmp(second_arg, "disconnect", strlen("disconnect"))) {
+                ret = client_disconnection_command();
+            } else {
+                printf("wrong user input:%s\r\n", msg);
+                print_help_msg();
+                return RETURN_ERR;
+            }
+        } else {
+            third_arg = strtok(NULL, " ");
+            ret = parse_input_parameters(first_arg, second_arg, third_arg);
+        }
+    }
+
+    return ret;
+}
+
+void delete_cli_thread(void)
+{
+    printf("%s:%d: delete cli task:\r\n", __func__, __LINE__);
+    pthread_detach(pthread_self());
+    pthread_exit(0);
+}
+
+void *cli_input_func(void *arg)
+{
+    char input_char;
+    unsigned char char_index = 0;
+    bool space_detection = 0, allow_special_char = 0;
+    char input_buff[128] = { 0 };
+
+    print_help_msg();
+    printf("%s:%d: start cli task, Enter Input:\r\n$", __func__, __LINE__);
+    while (cli_task_obj.exit_cli == false) {
+        input_char = getchar();
+        if ((char_index == 2) && (input_char == ' ')) {
+            input_buff[char_index] = input_char;
+            char_index++;
+            space_detection = 0;
+        } else if ((input_char == ' ') && (space_detection == 1)) {
+            input_buff[char_index] = input_char;
+            char_index++;
+            space_detection = 0;
+            allow_special_char = 1;
+        } else if ((char_index == 0) && (input_char == '-')) {
+            input_buff[char_index] = input_char;
+            char_index++;
+            continue;
+        } else if (input_char == ' ') {
+            continue;
+        } else if ((char_index == 0) && (input_char == '\n')) {
+            printf("$");
+            continue;
+        }
+
+        if (input_char >= 'a' && input_char <= 'z') {
+            input_buff[char_index] = input_char;
+            char_index++;
+            space_detection = 1;
+	} else if (input_char >= 'A' && input_char <= 'Z') {
+            input_buff[char_index] = input_char;
+            char_index++;
+            space_detection = 1;
+        } else if (input_char >= '0' && input_char <= '9') {
+            input_buff[char_index] = input_char;
+            char_index++;
+            space_detection = 1;
+        } else if ((input_char == '/' || input_char == '.' || input_char == '_' || input_char == '-' || input_char == ':')
+                     &&  (allow_special_char == 1)) {
+            input_buff[char_index] = input_char;
+            char_index++;
+        } else if ((input_char == '\n') && (char_index <= sizeof(input_buff))) {
+            printf("%s\r\n$", input_buff);
+            parse_cli_input_msg(input_buff);
+            memset(input_buff, 0 ,sizeof(input_buff));
+            char_index = 0;
+            space_detection = 1;
+            allow_special_char = 0;
+        } else if (char_index > sizeof(input_buff)) {
+            printf("wrong input can you please try again\r\n");
+            memset(input_buff, 0 ,sizeof(input_buff));
+            char_index = 0;
+            space_detection = 1;
+            allow_special_char = 0;
+            print_help_msg();
+        }
+    }
+
+    delete_cli_thread();
+    return NULL;
+}
+
+int create_cli_task(void)
+{
+    cli_task_obj.exit_cli = false;
+    if (pthread_create(&cli_task_obj.task_tid, NULL, cli_input_func, &cli_task_obj) != 0) {
+        printf("%s:%d:cli task create failed\n", __func__, __LINE__);
+        return RETURN_ERR;
+    } else {
+        printf("%s:%d:cli task create success\r\n", __func__, __LINE__);
+    }
+
+    return RETURN_OK;
+}

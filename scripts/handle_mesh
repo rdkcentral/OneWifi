@@ -1,0 +1,79 @@
+#!/bin/sh
+######################################################################################
+# If not stated otherwise in this file or this component's LICENSE file the
+# following copyright and licenses apply:
+
+#  Copyright 2020 RDK Management
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+# http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#######################################################################################
+
+MODEL_NUM=`grep MODEL_NUM /etc/device.properties | cut -d "=" -f2`
+OPENSYNC_ENABLE=`syscfg get opensync_enable`
+platform_checks()
+{
+if [ "$MODEL_NUM" == "DPC3941" ] || [ "$MODEL_NUM" == "DPC3939" ]; then
+ if [ "$OPENSYNC_ENABLE" == "true" ];then
+  echo "Opensync mode enabled"
+  DOWNLOAD_PATH_OPENSYNC="/tmp/plume_dnld/usr/opensync/"
+  WORKING_PATH_OPENSYNC="/usr/opensync/" 
+ else
+  DOWNLOAD_PATH="/tmp/plume_dnld/usr/plume/"
+  WORKING_PATH="/usr/plume/"
+ fi
+
+ if [ -z "$(ls -A $WORKING_PATH)" ]; then
+   echo "Work directory empty, copy from download dir"
+   if [ ! -z "$(ls -A $DOWNLOAD_PATH)" ]; then
+    cp -rf $DOWNLOAD_PATH/* $WORKING_PATH
+   else
+    echo "Downloaded dir is empty"
+   fi
+ else
+   echo "Binaries are available in mount dir"
+ fi
+fi
+ 
+}
+
+is_opensync_name()
+{
+    pids_array=`pidof ovsdb-server`
+    for pid in $pids_array ; do
+        if grep opensync /proc/$pid/cmdline ; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+if [ $# -eq 0 ]; then
+ echo "No arguments passed"
+ exit 0
+else
+ platform_checks
+ if [ "$OPENSYNC_ENABLE" == "true" ];then
+    if [ -z "$(pidof ovsdb-server)" ]
+    then
+        /usr/opensync/scripts/managers.init $1
+    elif is_opensync_name
+    then
+        /usr/opensync/scripts/managers.init $1
+    else
+        echo "Opensync will be effective only after reboot"
+        /usr/plume/scripts/managers.init $1
+    fi
+ else
+  /usr/plume/scripts/managers.init $1
+ fi
+fi

@@ -1,0 +1,346 @@
+ /****************************************************************************
+  If not stated otherwise in this file or this component's Licenses.txt
+  file the following copyright and licenses apply:
+
+  Copyright 2020 RDK Management
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+
+ ****************************************************************************/
+
+#ifndef _WIFI_WEBCONF_H_
+#define _WIFI_WEBCONF_H_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <stdbool.h>
+#include <wifi_base.h>
+#include <rbus.h>
+#include <cJSON.h>
+
+#define WIFI_WEBCONFIG_DOC_DATA         "Device.WiFi.WebConfig.Data.Subdoc"
+#define WIFI_WEBCONFIG_INIT_DATA        "Device.WiFi.WebConfig.Data.Init"
+#define WIFI_WEBCONFIG_GET_ASSOC        "Device.WiFi.AssociatedClients"
+#define WIFI_WEBCONFIG_GET_ACL          "Device.WiFi.MacFilter"
+
+#define DEVICE_WIFI_SSID                "Device.WiFi.SSID.%d.SSID"
+#define DEVICE_WIFI_KEYPASSPHRASE       "Device.WiFi.AccessPoint.%d.Security.X_COMCAST-COM_KeyPassphrase"
+#define FACTORY_RESET_NOTIFICATION      "Device.WiFi.NotifyWiFiChanges"
+#define CONFIG_WIFI                     "Device.DeviceInfo.X_RDKCENTRAL-COM_ConfigureWiFi"
+
+#define MIN_PWD_LEN                8
+#define MAX_PWD_LEN                63
+
+#define     WEBCONFIG_MAGIC_SIGNATUTRE  0xdecddecd
+#define     MAX_SUBDOC_SIZE 1024*100
+
+typedef enum {
+    webconfig_error_none,
+    webconfig_error_init,
+    webconfig_error_not_permitted,
+    webconfig_error_unpack,
+    webconfig_error_not_map,
+    webconfig_error_key_absent,
+    webconfig_error_invalid_subdoc,
+    webconfig_error_decode,
+    webconfig_error_encode,
+    webconfig_error_apply,
+    webconfig_error_save,
+    webconfig_error_empty_anqp,
+    webconfig_error_venue_entries,
+    webconfig_error_venue_name_size,
+    webconfig_error_oui_entries,
+    webconfig_error_oui_length,
+    webconfig_error_oui_char,
+    webconfig_error_ipaddress,
+    webconfig_error_realm_entries,
+    webconfig_error_realm_length,
+    webconfig_error_eap_entries,
+    webconfig_error_eap_length,
+    webconfig_error_eap_value,
+    webconfig_error_auth_entries,
+    webconfig_error_auth_param,
+    webconfig_error_generic,
+    webconfig_error_translate_to_ovsdb,
+    webconfig_error_translate_from_ovsdb,
+    webconfig_error_translate_to_tr181,
+    webconfig_error_translate_from_tr181,
+    webconfig_error_max
+} webconfig_error_t;
+
+typedef char    webconfig_error_str_t[128];
+
+typedef struct {
+    webconfig_error_t   err;
+    webconfig_error_str_t   str;
+} webconfig_error_map_t;
+
+typedef enum {
+    webconfig_subdoc_type_unknown,
+    webconfig_subdoc_type_private,
+    webconfig_subdoc_type_home,
+    webconfig_subdoc_type_xfinity,
+    webconfig_subdoc_type_radio,
+    webconfig_subdoc_type_mesh,
+    webconfig_subdoc_type_dml,
+    webconfig_subdoc_type_radio_status,
+    webconfig_subdoc_type_vap_status,
+    webconfig_subdoc_type_associated_clients,
+    webconfig_subdoc_type_wifiapiradio,
+    webconfig_subdoc_type_wifiapivap,
+    webconfig_subdoc_type_mac_filter,
+    webconfig_subdoc_type_blaster,
+    webconfig_subdoc_type_harvester,
+    webconfig_subdoc_type_wifi_config,
+    webconfig_subdoc_type_max
+} webconfig_subdoc_type_t;
+
+typedef enum {
+    webconfig_subdoc_object_type_version,
+    webconfig_subdoc_object_type_subdoc,
+    webconfig_subdoc_object_type_config,
+    webconfig_subdoc_object_type_radios,
+    webconfig_subdoc_object_type_vaps,
+    webconfig_subdoc_object_type_radio_status,
+    webconfig_subdoc_object_type_vap_status,
+    webconfig_subdoc_object_type_wifi_mac_filter,
+    webconfig_subdoc_object_type_harvester,
+    webconfig_subdoc_object_max
+} webconfig_subdoc_object_type_t;
+
+typedef enum {
+    webconfig_initializer_none,
+    webconfig_initializer_onewifi,
+    webconfig_initializer_ovsdb,
+    webconfig_initializer_dml,
+    webconfig_initializer_max
+} webconfig_initializer_t;
+
+typedef struct {
+    wifi_global_config_t    config;
+    wifi_hal_capability_t   hal_cap;
+    rdk_wifi_radio_t    radios[MAX_NUM_RADIOS];
+    active_msmt_t blaster;
+    instant_measurement_config_t  harvester;
+    // external structures that need translation to above structures
+    unsigned int num_radios;
+    void *external_protos;
+} webconfig_subdoc_decoded_data_t;
+
+typedef char    webconfig_subdoc_encoded_raw_t[MAX_SUBDOC_SIZE];
+typedef cJSON * webconfig_subdoc_encoded_json_t;
+
+typedef struct {
+    webconfig_subdoc_encoded_raw_t  raw;
+    webconfig_subdoc_encoded_json_t json;
+} webconfig_subdoc_encoded_data_t;
+
+typedef struct {
+    unsigned int signature;
+    webconfig_subdoc_type_t type;
+#define     webconfig_data_descriptor_encoded                 1 << 0
+#define     webconfig_data_descriptor_translate_to_tr181      1 << 1
+#define     webconfig_data_descriptor_translate_to_ovsdb      1 << 2
+
+#define     webconfig_data_descriptor_decoded                 1 << 16
+#define     webconfig_data_descriptor_translate_from_tr181    1 << 17
+#define     webconfig_data_descriptor_translate_from_ovsdb    1 << 18
+    unsigned int   descriptor;//TBD Onewifi
+    struct {
+        webconfig_subdoc_decoded_data_t decoded;
+        webconfig_subdoc_encoded_data_t encoded;
+    } u;
+} webconfig_subdoc_data_t;
+
+struct webconfig;
+
+typedef char    webconfig_subdoc_name_t[32];
+typedef char    webconfig_subdoc_object_name_t[32];
+
+typedef struct webconfig_subdoc webconfig_subdoc_t;
+
+typedef webconfig_error_t   (* webconfig_apply_data_t)(struct webconfig_subdoc *doc, webconfig_subdoc_data_t *data);
+
+typedef webconfig_error_t   (* webconfig_init_subdoc_t)(struct webconfig_subdoc *doc);
+typedef webconfig_error_t   (* webconfig_access_check_subdoc_t)(struct webconfig *config, webconfig_subdoc_data_t *data);
+typedef webconfig_error_t   (* webconfig_translate_to_subdoc_t)(struct webconfig *config, webconfig_subdoc_data_t *data);
+typedef webconfig_error_t   (* webconfig_translate_from_subdoc_t)(struct webconfig *config, webconfig_subdoc_data_t *data);
+typedef webconfig_error_t   (* webconfig_decode_subdoc_t)(struct webconfig *config, webconfig_subdoc_data_t *data);
+typedef webconfig_error_t   (* webconfig_encode_subdoc_t)(struct webconfig *config, webconfig_subdoc_data_t *data);
+
+typedef struct {
+    webconfig_subdoc_object_type_t  type;
+    webconfig_subdoc_object_name_t  name;
+} webconfig_subdoc_object_t;
+
+typedef struct webconfig_subdoc {
+    webconfig_subdoc_type_t type;
+    webconfig_subdoc_name_t name;
+    unsigned int    num_objects;
+    webconfig_subdoc_object_t   objects[webconfig_subdoc_object_max];
+    unsigned int    major;
+    unsigned int    minor;
+    webconfig_init_subdoc_t init_subdoc;
+    webconfig_access_check_subdoc_t     access_check_subdoc;
+    webconfig_translate_to_subdoc_t translate_to_subdoc;
+    webconfig_translate_from_subdoc_t   translate_from_subdoc;
+    webconfig_decode_subdoc_t   decode_subdoc;
+    webconfig_encode_subdoc_t   encode_subdoc;
+} webconfig_subdoc_t;
+
+typedef struct webconfig {
+    webconfig_initializer_t     initializer;
+    webconfig_apply_data_t  apply_data;
+    webconfig_subdoc_t  subdocs[webconfig_subdoc_type_max];
+} webconfig_t;
+
+// common api for all processes linking with this library
+webconfig_error_t webconfig_init(webconfig_t *config);
+
+// external api sets for onewifi
+webconfig_error_t webconfig_encode(webconfig_t *config, webconfig_subdoc_data_t *data, webconfig_subdoc_type_t type);
+webconfig_error_t webconfig_decode(webconfig_t *config, webconfig_subdoc_data_t *data, const char *str);
+
+
+// internal to webconfig
+webconfig_error_t webconfig_set(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+// private
+webconfig_error_t       init_private_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_private_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_private_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_private_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_private_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_private_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+// home
+webconfig_error_t       init_home_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_home_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_home_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_home_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_home_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_home_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+// xfinity
+webconfig_error_t       init_xfinity_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_xfinity_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_xfinity_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_xfinity_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_xfinity_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_xfinity_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+// radio
+webconfig_error_t       init_radio_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_radio_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_radio_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_radio_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_radio_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_radio_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+// mesh
+webconfig_error_t       init_mesh_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_mesh_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_mesh_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_mesh_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_mesh_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_mesh_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+// dml
+webconfig_error_t       init_dml_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+// radio_status
+webconfig_error_t       init_radio_status_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_radio_status_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_radio_status_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_radio_status_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_radio_status_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_radio_status_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+// vap_status
+webconfig_error_t       init_vap_status_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_vap_status_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_vap_status_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_vap_status_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_vap_status_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_vap_status_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+//associated_clients
+webconfig_error_t       access_check_associated_clients_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_associated_clients_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_associated_clients_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_associated_clients_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_associated_clients_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+// wifiapiradio
+webconfig_error_t       init_wifiapiradio_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_wifiapiradio_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_wifiapiradio_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_wifiapiradio_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_wifiapiradio_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_wifiapiradio_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+// wifiapivap
+webconfig_error_t       init_wifiapivap_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_wifiapivap_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_wifiapivap_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_wifiapivap_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_wifiapivap_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_wifiapivap_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+// mac_filter
+webconfig_error_t       init_mac_filter_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_mac_filter_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_mac_filter_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_mac_filter_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_mac_filter_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_mac_filter_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+//blaster config
+
+webconfig_error_t       init_blaster_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_blaster_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_blaster_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_blaster_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_blaster_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_blaster_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+//harvester
+
+webconfig_error_t       init_harvester_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_harvester_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_harvester_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_harvester_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_harvester_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_harvester_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+//global_config_param
+
+webconfig_error_t       init_wifi_config_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_wifi_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_wifi_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_wifi_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_wifi_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_wifi_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

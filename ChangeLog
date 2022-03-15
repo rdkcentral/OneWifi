@@ -1,0 +1,23 @@
+- move arch/intel_usg/boards/rdkb_arm/cmpnt_build_custom_pre.mk to
+       cmpnt_build_custom_pre_arm.mk
+- move arch/intel_usg/boards/rdkb_atom/cmpnt_build_custom_pre.mk to
+       cmpnt_build_custom_pre_atom.mk
+- move arch/pc/boards/rdkb/cmpnt_build_custom_pre.mk to
+       cmpnt_build_custom_pre_pc.mk
+- mkdir ./config
+- move arch/intel_usg/boards/rdkb_atom/config/CcspWifi.cfg
+       config/CcspWifi.cfg
+- move arch/intel_usg/boards/rdkb_atom/config/CcspDmLib.cfg to
+       config/
+- move arch/intel_usg/boards/rdkb_arm/config/TR181-WIFI-EXT-USGv2.XML to
+       config/
+- move arch/pc/boards/rdkb/config/TR181-WiFi-USGv2.XML to
+       config/TR181-WiFi-USGv2-pc.XML
+- move arch/intel_usg/boards/rdkb_atom/config/TR181-WiFi-USGv2.XML to
+       config/TR181-WiFi-USGv2-atom.XML
+- move arch/pc/source to
+       source-pc
+- remove arch directory
+- move Makefile Makefile.orig
+- add ChangeLog file
+

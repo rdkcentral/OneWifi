@@ -1,0 +1,301 @@
+{
+  "namespace": "com.comcast.kestrel.odp.event",
+  "name": "WifiSingleClient",
+  "type": "record",
+  "doc": "Contains data that reports a set of WiFi conditions for a single client at a configured interval",
+  "fields": [
+    {
+      "name": "header",
+      "type": {
+        "namespace": "com.comcast.kestrel",
+        "name": "CoreHeader",
+        "type": "record",
+        "doc": "Common information related to the event which MUST be included in any kestrel event. It allows some common processing at the system level, and some consistency for processing events.",
+        "fields": [
+          {
+            "name": "timestamp",
+            "type": [
+              "null",
+              {
+                "logicalType": "timestamp-millis",
+                "type": "long"
+              }
+            ],
+            "doc": "The UTC time stamp in milliseconds since Unix epoch (January 1, 1970 midnight) when the event is generated.",
+            "default": null
+          },
+          {
+            "name": "uuid",
+            "type": [
+              "null",
+              {
+                "name": "UUID",
+                "namespace": "com.comcast.kestrel.datatype",
+                "size": 16,
+                "type": "fixed"
+              }
+            ],
+            "doc": "Unique identifier for the event used for event de-duplication and tracing.",
+            "default": null
+          },
+          {
+            "name": "source",
+            "type": [
+              "null",
+              "string"
+            ],
+            "doc": "Source of this report - generally the application or process generating the event",
+            "default": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "cpe_id",
+      "type": {
+        "namespace": "com.comcast.kestrel.odp",
+        "name": "CPEIdentifier",
+        "type": "record",
+        "doc": "Unique identifying fields for a CPE device. All fields are optional, but at least one field should be populated with a non null value",
+        "fields": [
+          {
+            "name": "mac_address",
+            "type": [
+              "null",
+              {
+                "name": "MacAddress",
+                "namespace": "com.comcast.kestrel.datatype",
+                "size": 6,
+                "type": "fixed"
+              }
+            ],
+            "doc": "Canonical (Identifying) MAC address for the gateway. (Eg, may be CM Mac for cable modems)",
+            "default": null
+          },
+          {
+            "name": "cpe_type",
+            "type": [
+              "null",
+              "string"
+            ],
+            "doc": "Contains the cpe type e.g. Extender or Gateway",
+            "default": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "data",
+      "type": {
+          "namespace": "com.comcast.kestrel.odp",
+          "name": "SingleClientDataWifi",
+          "type": "record",
+          "doc": "Contains operational metrics and data collected about the WiFi physical interface for a specific connected device.",
+          "fields": [
+            {
+              "name": "device_id",
+              "type": {
+                "namespace": "com.comcast.kestrel.odp",
+                "name": "ConnectedDeviceIdentifier",
+                "type": "record",
+                "doc": "Identifies a connected device",
+                "fields": [
+                  {
+                    "name": "mac_address",
+                    "type": [
+                      "null",
+                      "com.comcast.kestrel.datatype.MacAddress"
+                    ],
+                    "doc": "MAC address of the conected device the report is related to. TR-181: Device.WiFi.AccessPoint.{i}.Associated{i}.MACAddress",
+                    "default": null
+                  },
+                  {
+                    "name": "device_status",
+                    "type": {
+                    "doc": "Identifies connected device status",
+                    "name": "DeviceStatus",
+                    "namespace": "com.comcast.kestrel.odp.datatype",
+                    "symbols": [
+                    "Online",
+                    "Offline"
+                    ],
+                    "type": "enum"
+                    },
+                    "doc": "Online, Offline status of the client as reported from the AP device.(Note: The client may be connected to a different AP device e.g. POD). TR-181: Device.WiFi.AccessPoint.{i}.Associated{i}.Active"
+                  }
+                ]
+              }
+            },
+            {
+              "name": "timestamp",
+              "type": [
+                "null",
+                {
+                  "logicalType": "timestamp-millis",
+                  "type": "long"
+                }
+              ],
+              "doc": "The UTC time stamp in milliseconds since Unix epoch (January 1, 1970 midnight) when the record data is generated",
+              "default": null
+            },
+            {
+              "name": "interface_mac",
+              "type": "com.comcast.kestrel.datatype.MacAddress",
+              "doc": "MAC address of the gateway interface connected to the end device. TR-181: Device.WiFi.SSID.{i}.BSSID"
+            },
+            {
+              "name": "vAP_index",
+              "type": [
+              "null",
+              "int"
+              ],
+              "doc": "WiFi vAP index. Integer (1-16). Example:  vAP = 1 for user private vAP in the 2.4 GHz band",
+              "default": null
+            },
+            {
+              "name": "interface_metrics",
+              "type": [
+                "null",
+                {
+                  "namespace": "com.comcast.kestrel.odp",
+                  "name": "SingleClientMetricsWifi",
+                  "type": "record",
+                  "doc": "Contains operational metrics collected for a WiFi interface that has data link connection to a device",
+                  "fields": [
+                    {
+                      "name": "tx_rate",
+                      "type": [
+                      "null",
+                      "int"
+                      ],
+                      "doc": "TX PHY rate is the rate at which client transmitted and AP received in Mbps. (From Connected Device/client to Gateway/AP is uplink). [TR-181: Device.WiFi.AccessPoint.{i}.AssociatedDevice.{i}.LastDataUplinkRate]",
+                      "default": null
+                    },
+                    {
+                      "name": "rx_rate",
+                      "type": [
+                        "null",
+                        "int"
+                      ],
+                      "doc": "RX PHY rate is the rate at which AP transmitted and client received in Mbps. (From Gateway/AP to Connected Device/client is downlink). [TR-181: Device.WiFi.AccessPoint.{i}.AssociatedDevice.{i}.LastDataDownlinkRate]",
+                      "default": null
+                    },
+                    {
+                      "name": "tx_packets",
+                      "type": [
+                      "null",
+                      "int"
+                      ],
+                      "doc": "Measured number of packets since the previous data sample in the uplink direction (Client transmitted and AP received). 0 if client is not collected to this AP device. [TR-181: Device.WiFi.AccessPoint.{i}.AssociatedDevice.{i}.Stats.PacketsReceived]",
+                      "default": null
+                    },
+                    {
+                      "name": "rx_packets",
+                      "type": [
+                      "null",
+                      "int"
+                      ],
+                      "doc": "Measured number of packets since the previous sample in the downlink direction (AP sent and client received). 0 if client is not collected to this AP device. [TR-181: Device.WiFi.AccessPoint.{i}.AssociatedDevice.{i}.Stats.PacketsSent]",
+                      "default": null
+                    },
+                    {
+                      "name": "tx_error_packets",
+                      "type": [
+                      "null",
+                      "int"
+                      ],
+                      "doc": "Number of downlink packets that failed after all retries were attempted since the previous data sample. 0 if client is not collected to this AP device. [TR-181: Device.WiFi.AccessPoint.{i}.AssociatedDevice.{i}.Stats.ErrorsSent]",
+                      "default": null
+                    },
+                    {
+                      "name": "retransmissions",
+                      "type": [
+                        "null",
+                        "int"
+                      ],
+                      "doc": "The number of packets that had to be re-transmitted, from the last 100 packets sent to the associated device. Multiple re-transmissions of the same packet count as one. [TR-181: Commonly found in Device.WiFi.AccessPoint.{i}.AssociatedDevice.{i}.Retransmissions]",
+                      "default": null
+                    },
+                    {
+                      "name": "channel_utilization_percent_5ghz",
+                      "type": [
+                      "null",
+                      "int"
+                      ],
+                      "doc": "The percentage of time that the AP detects that the channel is busy due to any reason.  This includes time that the AP is sending WiFi frames, receiving WiFi frames, other Wifi STAs are sending data, energy is detected from non-WiFi sources that prevents transmissions or WiFi transmission is blocked due to holdoff requests from internal IoT radios that overlap the same channel",
+                      "default": null
+                    },
+                    {
+                      "name": "channel_interference_percent_5ghz",
+                      "type": [
+                      "null",
+                      "int"
+                      ],
+                      "doc": "The percentage of time that the AP detects that the channel is busy due to reasons other than sending or receiving WiFi frames.  This equals (CU time – (TX time + RX time))/sample time. This includes time that the AP detects that other Wifi STAs are sending data, energy is detected from non-WiFi sources that prevents transmissions or WiFi transmission is blocked due to holdoff requests from internal IoT radios that overlap the same channel",
+                      "default": null
+                    },
+                    {
+                      "name": "channel_noise_floor_5ghz",
+                       "type": [
+                       "null",
+                       "int"
+                       ],
+                       "doc": "Channel noise floor for the 5 GHz channel used by the AP. Units are in dBm. Value is measured by the AP.Example -95",
+                       "default": null
+                    },
+                    {
+                      "name": "channel_utilization_percent_2_4ghz",
+                      "type": [
+                      "null",
+                      "int"
+                      ],
+                      "doc": "The percentage of time that the AP detects that the channel is busy due to any reason.  This includes time that the AP is sending WiFi frames, receiving WiFi frames, other Wifi STAs are sending data, energy is detected from non-WiFi sources that prevents transmissions or WiFi transmission is blocked due to holdoff requests from internal IoT radios that overlap the same channel",
+                      "default": null
+                    },
+                    {
+                      "name": "channel_interference_percent_2_4ghz",
+                      "type": [
+                      "null",
+                      "int"
+                      ],
+                      "doc": "The percentage of time that the AP detects that the channel is busy due to reasons other than sending or receiving WiFi frames.  This equals (CU time – (TX time + RX time))/sample time. This includes time that the AP detects that other Wifi STAs are sending data, energy is detected from non-WiFi sources that prevents transmissions or WiFi transmission is blocked due to holdoff requests from internal IoT radios that overlap the same channel",
+                      "default": null
+                    },
+                    {
+                      "name": "channel_noise_floor_2_4ghz",
+                      "type": [
+                      "null",
+                      "int"
+                      ],
+                      "doc": "Channel noise floor for the 2.4 GHz channel used by the AP.Units are in dBm. Value is measured by the AP. Example -95",
+                      "default": null
+                    },
+                    {
+                      "name": "signal_strength",
+                      "type": [
+                        "null",
+                        "int"
+                      ],
+                      "doc": "Uplink RSSI value in dBm. Measured by the AP. Example:  -85. An indicator of radio signal strength of the uplink from the connected device to the access point. [TR-181: Commonly found in Device.WiFi.AccessPoint.{i}.AssociatedDevice.{i}.SignalStrength]",
+                      "default": null
+                    },
+                    {
+                      "name": "snr",
+                      "type": [
+                        "null",
+                        "int"
+                      ],
+                      "doc": "Signal to noise ratio. Compares the level of the Wi-Fi signal to the level of background noise. (measured in decibels dB) [TR-181: Device.WiFi.AccessPoint.{i}.AssociatedDevice.{i}.X_COMCAST-COM_SNR]",
+                      "default": null
+                    }
+                  ]
+                }
+              ],
+              "doc": "Operational metrics for the physical interface for the end device",
+              "default": null
+            }
+          ]
+        }
+     }
+   ]
+}
