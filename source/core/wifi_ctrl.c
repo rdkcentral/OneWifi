@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <rbus.h>
+#include "wifi_hal_rdk_framework.h"
 #ifdef CMWIFI_RDKB
 #define FILE_SYSTEM_UPTIME         "/var/systemUptime.txt"
 #else
@@ -605,6 +606,17 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
     return RETURN_OK;
 }
 
+void channel_change_callback(wifi_channel_change_event_t radio_channel_param)
+{
+    wifi_channel_change_event_t channel_change;
+    memset(&channel_change, 0, sizeof(channel_change));
+
+    memcpy(&channel_change, &radio_channel_param, sizeof(wifi_channel_change_event_t));
+
+    push_data_to_ctrl_queue((wifi_channel_change_event_t *)&channel_change, sizeof(wifi_channel_change_event_t), ctrl_event_type_hal_ind, ctrl_event_hal_channel_change);
+    return;
+}
+
 int init_wifi_ctrl(wifi_ctrl_t *ctrl)
 {
     unsigned int i;
@@ -660,6 +672,9 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
 
     //Register wifi hal frame recv callback
     wifi_hal_mgmt_frame_callbacks_register(mgmt_wifi_frame_recv);
+
+    /* Register wifi hal channel change events callback */
+    wifi_chan_event_register(channel_change_callback);
 
     ctrl->rbus_events_subscribed = false;
     ctrl->tunnel_events_subscribed = false;

@@ -166,6 +166,7 @@ typedef enum {
     ctrl_event_hal_assoc_device,
     ctrl_event_hal_disassoc_device,
     ctrl_event_scan_results,
+    ctrl_event_hal_channel_change,
 
     // Commands
     ctrl_event_type_command_sta_connect = 0x200,

@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <rbus.h>
+#include "wifi_hal_rdk_framework.h"
 
 void process_scan_results_event(wifi_bss_info_t *bss, unsigned int len)
 {
@@ -1154,6 +1155,28 @@ void process_device_mode_command_event(int device_mode)
     ctrl->webconfig_state |= ctrl_webconfig_state_vap_cfg_rsp_pending;
 }
 
+void process_channel_change_event(wifi_channel_change_event_t *ch_chg)
+{
+    wifi_radio_operationParam_t *radio_params = NULL;
+    wifi_mgr_t *g_wifidb;
+    g_wifidb = get_wifimgr_obj();
+
+    radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(ch_chg->radioIndex);
+    if (radio_params == NULL) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s: wrong index for radio map: %d\n",__FUNCTION__, ch_chg->radioIndex);
+        return;
+    }
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d channel change on radio:%d old channel:%d new channel:%d channel change event type:%d op_class:%d\n",
+                       __func__, __LINE__, ch_chg->radioIndex, radio_params->channel, ch_chg->channel, ch_chg->event, ch_chg->op_class);
+    pthread_mutex_lock(&g_wifidb->data_cache_lock);
+    radio_params->channel = ch_chg->channel;
+    radio_params->channelWidth = ch_chg->channelWidth;
+    radio_params->op_class = ch_chg->op_class;
+    pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+    g_wifidb->ctrl.webconfig_state = ctrl_webconfig_state_radio_cfg_rsp_pending;
+    update_wifi_radio_config(ch_chg->radioIndex, radio_params);
+}
+
 void handle_command_event(void *data, unsigned int len, ctrl_event_subtype_t subtype)
 {
     switch (subtype) {
@@ -1237,6 +1260,10 @@ void handle_hal_indication(void *data, unsigned int len, ctrl_event_subtype_t su
 
         case ctrl_event_scan_results:
             process_scan_results_event(data, len);
+            break;
+
+        case ctrl_event_hal_channel_change:
+            process_channel_change_event(data);
             break;
 
         default:
