@@ -25,8 +25,16 @@ MESHBR24_IP="169.254.0.1 netmask 255.255.255.0"
 MESHBR50_IP="169.254.1.1 netmask 255.255.255.0"
 IF_MESHEB="brebhaul"
 MESHEB_IP="169.254.85.1 netmask 255.255.255.0"
-
 BRIDGE_MTU=1600
+
+MESH_EXTENDER_BRIDGE="br-home"
+
+if [ "$MODEL_NUM" == "WNXL11BWL" ]; then
+echo "Extender mode bridge configuration"
+ovs-vsctl add-br $MESH_EXTENDER_BRIDGE
+ifconfig $MESH_EXTENDER_BRIDGE up
+exit 0
+fi
 
 ovs_enable=false
 
