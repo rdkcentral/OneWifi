@@ -55,14 +55,8 @@ fi
 if [ "$MODEL_NUM" == "PX5001" ] || [ "$MODEL_NUM" == "CGM4331COM" ] || [ "$MODEL_NUM" == "CGM4981COM" ] || [ "$MODEL_NUM" == "TG4482A" ] || [ "$MODEL_NUM" == "WNXL11BWL" ]; then
  IF_MESHBR24="brlan112"
  IF_MESHBR50="brlan113"
-
- if [ "$MODEL_NUM" == "TG4482A" ]; then
-    IF_MESHVAP24="wlan0.6"
-    IF_MESHVAP50="wlan2.6"
- else
-    IF_MESHVAP24="wl0.6"
-    IF_MESHVAP50="wl1.6"
- fi
+ IF_MESHVAP24="`psmcli get dmsb.l2net.13.Members.OneWiFi`"
+ IF_MESHVAP50="`psmcli get dmsb.l2net.14.Members.OneWiFi`"
  PLUME_BH1_NAME="brlan112"
  PLUME_BH2_NAME="brlan113"
  PLUME_BHAUL_NAME="br403"
@@ -105,7 +99,7 @@ do
    /sbin/ifconfig $WIFI_IFACE 0.0.0.0 up
 done
 
-echo inf add wl0.6 > /proc/driver/flowmgr/cmd
+echo inf add "$IF_MESHVAP24" > /proc/driver/flowmgr/cmd
 
 echo 1 > /sys/class/net/$PLUME_BH1_NAME/bridge/nf_call_iptables
 echo 1 > /sys/class/net/$PLUME_BH1_NAME/bridge/nf_call_arptables
@@ -124,7 +118,7 @@ do
    /sbin/ifconfig $WIFI_IFACE 0.0.0.0 up
 done
 
-echo inf add wl1.6 > /proc/driver/flowmgr/cmd
+echo inf add "$IF_MESHVAP50" > /proc/driver/flowmgr/cmd
 
 echo 1 > /sys/class/net/$PLUME_BH2_NAME/bridge/nf_call_iptables
 echo 1 > /sys/class/net/$PLUME_BH2_NAME/bridge/nf_call_arptables
@@ -247,13 +241,8 @@ fi
 
 
 if [ "$MODEL_NUM" == "PX5001" ] || [ "$MODEL_NUM" == "CGM4331COM" ] || [ "$MODEL_NUM" == "CGM4981COM" ] || [ "$MODEL_NUM" == "SR201" ] || [ "$MODEL_NUM" == "SR203" ]  || [ "$MODEL_NUM" == "SR300" ] ||  [ "$MODEL_NUM" == "SE501" ] || [ "$MODEL_NUM" == "TG4482A" ] || [ "$MODEL_NUM" == "WNXL11BWL" ]; then
-        if [ "$MODEL_NUM" == "TG4482A" ]; then
-                brctl112=`brctl show | grep wlan0.6`
-                brctl113=`brctl show | grep wlan2.6`
-        else
-                brctl113=`brctl show | grep wl1.6`
-                brctl112=`brctl show | grep wl0.6`
-        fi
+        brctl112=`brctl show | grep "$IF_MESHVAP24"`
+        brctl113=`brctl show | grep "$IF_MESHVAP50"`
         if [ "$brctl113" == "" ] || [ "$brctl112" == "" ] && [ "$MODEL_NUM" == "PX5001" ]; then
                 mesh_bridges
         fi
