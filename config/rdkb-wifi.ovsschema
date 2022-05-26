@@ -1,6 +1,6 @@
 {
   "name": "Wifi_Rdk_Database",
-  "version": "1.00.004",
+  "version": "1.00.005",
   "cksum": "2353365742 523",
   "tables": {
     "Wifi_Device_Config": {
@@ -690,9 +690,27 @@
                     "min": 0,
                     "max": 1
                 }
+            },
+            "reason": {
+                "type": {
+                    "key": {
+                        "type": "integer"
+                      },
+                      "min": 0,
+                      "max": 1
+                }
+            },
+            "expiry_time": {
+                "type": {
+                    "key": {
+                        "type": "integer"
+                    },
+                    "min": 0,
+                    "max": 1
             }
-        },
-        "isRoot": true
+        }
+    },
+    "isRoot": true
     },
 
     "Wifi_VAP_Config": {
@@ -971,6 +989,15 @@
           "type": {
             "key": {
               "type": "string"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "network_initiated_greylist": {
+          "type": {
+            "key": {
+              "type": "boolean"
             },
             "min": 0,
             "max": 1

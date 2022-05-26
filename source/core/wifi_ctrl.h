@@ -75,6 +75,10 @@ extern "C" {
 //sta connection 9 seconds retry
 #define STA_CONN_RETRY                     5
 
+#define WLAN_RADIUS_GREYLIST_REJECT        100
+#define GREYLIST_TIMEOUT_IN_SECONDS        (24 * 60 * 60)
+#define GREYLIST_CHECK_IN_SECONDS          (1 * 60 * 60)
+
 typedef enum {
     ctrl_webconfig_state_none = 0,
     ctrl_webconfig_state_radio_cfg_rsp_pending = 0x0001,
@@ -167,7 +171,7 @@ typedef enum {
     ctrl_event_hal_disassoc_device,
     ctrl_event_scan_results,
     ctrl_event_hal_channel_change,
-
+    ctrl_event_radius_greylist,
     // Commands
     ctrl_event_type_command_sta_connect = 0x200,
     ctrl_event_type_command_factory_reset,
@@ -208,10 +212,17 @@ typedef struct {
     wifi_direction_t dir;
 } frame_data_t;
 
+
 typedef struct {
     int ap_index;
     wifi_associated_dev3_t dev_stats;
 }__attribute__((__packed__)) assoc_dev_data_t;
+
+
+typedef struct {
+    mac_address_t sta_mac;
+    int reason;
+} greylist_data_t;
 
 typedef struct {
     unsigned long csi_session_num;
@@ -229,6 +240,8 @@ typedef enum {
 typedef struct {
     mac_address_t mac;
     CHAR device_name[64];
+    int reason;
+    int expiry_time;
 }__attribute__((__packed__)) acl_entry_t;
 
 void process_mgmt_ctrl_frame_event(frame_data_t *msg, uint32_t msg_length);
@@ -288,7 +301,7 @@ int set_wifi_public_vap_enable_status(void);
 void sta_pending_connection_retry(wifi_ctrl_t *ctrl);
 bool get_wifi_mesh_vap_enable_status(void);
 int get_wifi_mesh_sta_network_status(uint8_t vapIndex, bool *status);
-
+bool check_for_greylisted_mac_filter(void);
 #ifdef __cplusplus
 }
 #endif

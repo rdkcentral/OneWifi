@@ -79,6 +79,8 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
     struct timeval tv_now;
     time_t  time_diff;
     int rc;
+    int greylist_event = 0;
+    bool greylist_flag = false;
     ctrl_event_t *queue_data = NULL;
     static uint8_t conn_retry = 0;
 
@@ -168,6 +170,17 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
             } else {
                 conn_retry++;
             }
+
+            if (greylist_event >= GREYLIST_CHECK_IN_SECONDS) {
+                greylist_event = 0;
+                greylist_flag = check_for_greylisted_mac_filter();
+                if (greylist_flag) {
+                    wifi_util_dbg_print(WIFI_CTRL,"greylist_mac present\n");
+                    remove_greylist_acl_entries(false);
+                }
+            }
+            greylist_event++;
+
         } else {
             pthread_mutex_unlock(&ctrl->lock);
             wifi_util_dbg_print(WIFI_CTRL,"RDK_LOG_WARN, WIFI %s: Invalid Return Status %d\n",__FUNCTION__,rc);
@@ -269,7 +282,6 @@ bool check_sta_ext_connection_status(void)
 
     return false;
 }
-
 wifi_platform_property_t *get_wifi_hal_cap_prop(void)
 {
     wifi_mgr_t *wifi_mgr_obj = get_wifimgr_obj();
@@ -328,6 +340,40 @@ void sta_pending_connection_retry(wifi_ctrl_t *ctrl)
     }
 }
 
+bool check_for_greylisted_mac_filter(void)
+{
+    acl_entry_t *acl_entry = NULL;
+    rdk_wifi_vap_info_t *l_rdk_vap_array = NULL;
+    unsigned int itr, itrj;
+    bool greylist_rfc = false;
+    int vap_index = 0;
+    wifi_vap_info_map_t *wifi_vap_map = NULL;
+
+    wifi_rfc_dml_parameters_t *rfc_info = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
+    if (rfc_info) {
+        greylist_rfc = rfc_info->radiusgreylist_rfc;
+        if (greylist_rfc) {
+            for (itr = 0; itr < getNumberRadios(); itr++) {
+                wifi_vap_map = get_wifidb_vap_map(itr);
+                for (itrj = 0; itrj < getMaxNumberVAPsPerRadio(itr); itrj++) {
+                    vap_index = wifi_vap_map->vap_array[itrj].vap_index;
+                    l_rdk_vap_array = get_wifidb_rdk_vap_info(vap_index);
+
+                    if (l_rdk_vap_array->acl_map != NULL) {
+                        acl_entry = hash_map_get_first(l_rdk_vap_array->acl_map);
+                        while(acl_entry != NULL) {
+                            if (acl_entry->mac != NULL && (acl_entry->reason == WLAN_RADIUS_GREYLIST_REJECT)) {
+                                return true;
+                            }
+                            acl_entry = hash_map_get_next(l_rdk_vap_array->acl_map, acl_entry);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return false;
+}
 void rbus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
 {
     rbusValue_t value;
@@ -913,6 +959,38 @@ bool get_wifi_mesh_vap_enable_status(void)
         }
     }
 
+    return false;
+}
+bool get_wifi_public_vap_enable_status(void)
+{
+    bool status = false;
+    unsigned int num_of_radios = getNumberRadios();
+    unsigned int i = 0, j = 0;
+    wifi_vap_info_map_t *vap_map = NULL;
+    mac_address_t zero_mac = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+
+    for (i = 0; i < num_of_radios; i++) {
+        vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(i);
+        if (vap_map == NULL) {
+            wifi_util_dbg_print(WIFI_CTRL,"%s:failed to get vap map for radio index: %d\n",__FUNCTION__, i);
+            return -1;
+        }
+
+        for (j = 0; j < vap_map->num_vaps; j++) {
+            if ((isVapHotspotOpen(vap_map->vap_array[j].vap_index) == TRUE)
+                || (isVapHotspotSecure(vap_map->vap_array[j].vap_index) == TRUE)) {
+
+                get_wifi_vap_network_status(vap_map->vap_array[j].vap_index, &status);
+
+                if (status == true &&  (memcmp(vap_map->vap_array[j].u.bss_info.bssid, zero_mac, sizeof(mac_address_t)) != 0)) {
+                    wifi_util_dbg_print(WIFI_CTRL,"Public xfinity vap is enabled\n");
+                    return true;
+                }
+            }
+        }
+    }
+
+    wifi_util_dbg_print(WIFI_CTRL,"Public xfinity vap is disabled\n");
     return false;
 }
 

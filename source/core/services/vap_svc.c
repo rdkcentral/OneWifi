@@ -76,7 +76,7 @@ int update_global_cache(wifi_vap_info_map_t *tgt_vap_map)
     return RETURN_OK;
 }
 
-int del_wifi_ap_acl_device(wifi_vap_info_map_t *tgt_vap_map)
+int update_acl_entries(wifi_vap_info_map_t *tgt_vap_map)
 {
     rdk_wifi_vap_info_t *vap_info;
     mac_addr_str_t mac_str;
@@ -149,8 +149,8 @@ int vap_svc_start_stop(vap_svc_t *svc, bool enable)
             wifi_util_dbg_print(WIFI_CTRL,"%s: wifi vap create failure: radio_index:%d\n",__FUNCTION__, i);
             return -1;
         } else {
-            wifi_util_dbg_print(WIFI_CTRL,"%s: wifi vap create success: radio_index:%d\n",__FUNCTION__, i);
-            del_wifi_ap_acl_device(&tgt_vap_map);
+            wifi_util_dbg_print(WIFI_CTRL,"%s: wifi vap create success : radio_index:%d\n",__FUNCTION__, i);
+            update_acl_entries(&tgt_vap_map);
             update_global_cache(&tgt_vap_map);
         }
     }

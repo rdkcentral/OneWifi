@@ -4000,6 +4000,7 @@ int device_disassociated(int ap_index, char *mac, int reason)
 {
     wifi_monitor_data_t *data;
     assoc_dev_data_t assoc_data;
+    greylist_data_t greylist_data;
     unsigned int mac_addr[MAC_ADDR_LEN];
 
     data = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
@@ -4024,6 +4025,13 @@ int device_disassociated(int ap_index, char *mac, int reason)
             data->u.dev.sta_mac[3], data->u.dev.sta_mac[4], data->u.dev.sta_mac[5]);
     csi_update_client_mac_status(data->u.dev.sta_mac, FALSE, ap_index);
 
+    if (reason == WLAN_RADIUS_GREYLIST_REJECT) {
+        wifi_util_dbg_print(WIFI_MON,"Device disassociated due to Greylist\n");
+        greylist_data.reason = reason;
+        memcpy(greylist_data.sta_mac, data->u.dev.sta_mac, sizeof(mac_address_t));
+        push_data_to_ctrl_queue(&greylist_data, sizeof(greylist_data), ctrl_event_type_hal_ind, ctrl_event_radius_greylist);
+
+    }
     memcpy(assoc_data.dev_stats.cli_MACAddress, data->u.dev.sta_mac, sizeof(mac_address_t));
     assoc_data.ap_index = data->ap_index;
     push_data_to_ctrl_queue(&assoc_data, sizeof(assoc_data), ctrl_event_type_hal_ind, ctrl_event_hal_disassoc_device);
@@ -4041,6 +4049,7 @@ int device_deauthenticated(int ap_index, char *mac, int reason)
 {
     wifi_monitor_data_t *data;
     unsigned int mac_addr[MAC_ADDR_LEN];
+    greylist_data_t greylist_data;
     assoc_dev_data_t assoc_data;
 
     data = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
@@ -4065,6 +4074,14 @@ int device_deauthenticated(int ap_index, char *mac, int reason)
             data->u.dev.sta_mac[0], data->u.dev.sta_mac[1], data->u.dev.sta_mac[2],
             data->u.dev.sta_mac[3], data->u.dev.sta_mac[4], data->u.dev.sta_mac[5], reason);
     csi_update_client_mac_status(data->u.dev.sta_mac, FALSE, ap_index);
+
+    if (reason == WLAN_RADIUS_GREYLIST_REJECT) {
+        wifi_util_dbg_print(WIFI_MON,"Device deauthenticated due to Greylist\n");
+        greylist_data.reason = reason;
+        memcpy(greylist_data.sta_mac, data->u.dev.sta_mac, sizeof(mac_address_t));
+        push_data_to_ctrl_queue(&greylist_data, sizeof(greylist_data), ctrl_event_type_hal_ind, ctrl_event_radius_greylist);
+
+    }
 
     memcpy(assoc_data.dev_stats.cli_MACAddress, data->u.dev.sta_mac, sizeof(mac_address_t));
     assoc_data.ap_index = data->ap_index;

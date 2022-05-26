@@ -48,6 +48,16 @@
     }   \
 }   \
 
+#define decode_param_allow_empty_string(json, key, value) \
+{   \
+    value = cJSON_GetObjectItem(json, key);     \
+    if ((value == NULL) || (cJSON_IsString(value) == false) ||  \
+            (value->valuestring == NULL) ) {    \
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Validation failed for key:%s\n", __func__, __LINE__, key);   \
+        return webconfig_error_decode;  \
+    }   \
+}   \
+
 #define decode_param_integer(json, key, value) \
 {   \
     value = cJSON_GetObjectItem(json, key);     \
@@ -862,7 +872,13 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
         //strncpy(execRetVal->ErrorMsg, "Invalid Das Server IP Addr",sizeof(execRetVal->ErrorMsg)-1);
         return webconfig_error_decode;
     }
-    getIpAddressFromString(param->valuestring, &radius_info->dasip);
+    if (inet_pton(AF_INET, param->valuestring, &(radius_info->dasip.u.IPv4addr)) > 0) {
+        radius_info->dasip.family = wifi_ip_family_ipv4;
+    } else if (inet_pton(AF_INET6, param->valuestring, &(radius_info->dasip.u.IPv6addr)) > 0) {
+        radius_info->dasip.family = wifi_ip_family_ipv6;
+    } else {
+        return webconfig_error_decode;
+    }
 
     decode_param_integer(radius, "DasServerPort", param);
     radius_info->dasport = param->valuedouble;
@@ -889,9 +905,154 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
     return webconfig_error_none;
 }
 
+webconfig_error_t decode_open_radius_object(const cJSON *radius, wifi_radius_settings_t *radius_info)
+{
+    const cJSON *param;
+    cJSON *object = NULL;
+
+    object = cJSON_GetObjectItem(radius, "RadiusServerIPAddr");
+
+    if (object != NULL) {
+        decode_param_string(radius, "RadiusServerIPAddr", param);
+        if (decode_ipv4_address(param->valuestring) != webconfig_error_none) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Validation failed for RadiusServerIPAddr\n", __func__, __LINE__);
+            //strncpy(execRetVal->ErrorMsg, "Invalid Radius server IP",sizeof(execRetVal->ErrorMsg)-1);
+            return webconfig_error_decode;
+        }
+#ifndef WIFI_HAL_VERSION_3_PHASE2
+        strcpy((char *)radius_info->ip,param->valuestring);
+#else
+        /* check the INET family and update the radius ip address */
+        if(inet_pton(AF_INET, param->valuestring, &(radius_info->ip.u.IPv4addr)) > 0) {
+            radius_info->ip.family = wifi_ip_family_ipv4;
+        } else if(inet_pton(AF_INET6, param->valuestring, &(radius_info->ip.u.IPv6addr)) > 0) {
+            radius_info->ip.family = wifi_ip_family_ipv6;
+        } else {
+            return webconfig_error_decode;
+        }
+#endif
+    }
+
+    object = cJSON_GetObjectItem(radius, "RadiusServerPort");
+
+    if (object != NULL) {
+        decode_param_integer(radius, "RadiusServerPort", param);
+        radius_info->port = param->valuedouble;
+    }
+
+    object = cJSON_GetObjectItem(radius, "RadiusSecret");
+
+    if (object != NULL) {
+        decode_param_allow_empty_string(radius, "RadiusSecret", param);
+        strcpy(radius_info->key, param->valuestring);
+    }
+    object = cJSON_GetObjectItem(radius, "SecondaryRadiusServerIPAddr");
+
+    if (object != NULL) {
+        decode_param_string(radius, "SecondaryRadiusServerIPAddr", param);
+        if (decode_ipv4_address(param->valuestring) != webconfig_error_none) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Validation failed for SecondaryRadiusServerIPAddr\n", __func__, __LINE__);
+            //strncpy(execRetVal->ErrorMsg, "Invalid Secondary Radius server IP",sizeof(execRetVal->ErrorMsg)-1);
+            return webconfig_error_decode;
+        }
+
+#ifndef WIFI_HAL_VERSION_3_PHASE2
+        strcpy((char *)radius_info->s_ip,param->valuestring);
+#else
+        /* check the INET family and update the radius ip address */
+        if (inet_pton(AF_INET, param->valuestring, &(radius_info->s_ip.u.IPv4addr)) > 0) {
+            radius_info->s_ip.family = wifi_ip_family_ipv4;
+        } else if(inet_pton(AF_INET6, param->valuestring, &(radius_info->s_ip.u.IPv6addr)) > 0) {
+            radius_info->s_ip.family = wifi_ip_family_ipv6;
+        } else {
+            return webconfig_error_decode;
+        }
+#endif
+    }
+
+    object = cJSON_GetObjectItem(radius, "SecondaryRadiusServerPort");
+
+    if (object != NULL) {
+        decode_param_integer(radius, "SecondaryRadiusServerPort", param);
+        radius_info->s_port = param->valuedouble;
+    }
+
+    object = cJSON_GetObjectItem(radius, "SecondaryRadiusSecret");
+
+    if (object != NULL) {
+        decode_param_allow_empty_string(radius, "SecondaryRadiusSecret", param);
+        strcpy(radius_info->s_key, param->valuestring);
+    }
+
+    object = cJSON_GetObjectItem(radius, "DasServerIPAddr");
+
+    if (object != NULL) {
+        decode_param_string(radius, "DasServerIPAddr", param);
+        if (decode_ipv4_address(param->valuestring) != webconfig_error_none) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Validation failed for DasServerIPAddr\n", __func__, __LINE__);
+            return webconfig_error_decode;
+        }
+        if (inet_pton(AF_INET, param->valuestring, &(radius_info->dasip.u.IPv4addr)) > 0) {
+            radius_info->dasip.family = wifi_ip_family_ipv4;
+        } else if (inet_pton(AF_INET6, param->valuestring, &(radius_info->dasip.u.IPv6addr)) > 0) {
+            radius_info->dasip.family = wifi_ip_family_ipv6;
+        } else {
+            return webconfig_error_decode;
+        }
+    }
+
+    object = cJSON_GetObjectItem(radius, "DasServerPort");
+
+    if (object != NULL) {
+        decode_param_integer(radius, "DasServerPort", param);
+        radius_info->dasport = param->valuedouble;
+    }
+
+    object = cJSON_GetObjectItem(radius, "DasSecret");
+
+    if (object != NULL) {
+        decode_param_allow_empty_string(radius, "DasSecret", param);
+        strcpy(radius_info->daskey, param->valuestring);
+    }
+
+    object = cJSON_GetObjectItem(radius, "MaxAuthAttempts");
+
+    if (object != NULL) {
+        //max_auth_attempts
+        decode_param_integer(radius, "MaxAuthAttempts", param);
+        radius_info->max_auth_attempts = param->valuedouble;
+    }
+
+    //blacklist_table_timeout
+    object = cJSON_GetObjectItem(radius, "BlacklistTableTimeout");
+
+    if (object != NULL) {
+        decode_param_integer(radius, "BlacklistTableTimeout", param);
+        radius_info->blacklist_table_timeout = param->valuedouble;
+    }
+    //identity_req_retry_interval
+    object = cJSON_GetObjectItem(radius, "IdentityReqRetryInterval");
+
+    if (object != NULL) {
+        decode_param_integer(radius, "IdentityReqRetryInterval", param);
+        radius_info->identity_req_retry_interval = param->valuedouble;
+    }
+
+    //server_retries
+    object = cJSON_GetObjectItem(radius, "ServerRetries");
+
+    if (object != NULL) {
+        decode_param_integer(radius, "ServerRetries", param);
+        radius_info->server_retries = param->valuedouble;
+    }
+
+    return webconfig_error_none;
+}
+
 webconfig_error_t decode_no_security_object(const cJSON *security, wifi_vap_security_t *security_info)
 {
     const cJSON *param;
+    cJSON *object = NULL;
 
     decode_param_string(security, "Mode", param);
     if (strcmp(param->valuestring, "None") != 0) {
@@ -900,6 +1061,14 @@ webconfig_error_t decode_no_security_object(const cJSON *security, wifi_vap_secu
     }
 
     security_info->mode = wifi_security_mode_none;
+    object = cJSON_GetObjectItem(security, "RadiusSettings");
+    if (object != NULL) {
+        decode_param_object(security, "RadiusSettings",param);
+        if (decode_open_radius_object(param, &security_info->u.radius) != 0) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Validation failed\n", __func__, __LINE__);
+            return webconfig_error_decode;
+        }
+    }
     return webconfig_error_none;
 }
 
@@ -1273,6 +1442,7 @@ webconfig_error_t decode_contry_code(wifi_countrycode_type_t *contry_code, char 
 webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_property_t *wifi_prop)
 {
     const cJSON  *param;
+    cJSON *object = NULL;
 
     //VAP Name
     decode_param_string(vap, "VapName", param);
@@ -1333,6 +1503,13 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
     decode_param_bool(vap, "NeighborReportActivated", param);
     vap_info->u.bss_info.nbrReportActivated = (param->type & cJSON_True) ? true:false;
 
+    // NetworkGreyList since this is not mandatory field we need
+    // check for its existence before decode
+    object = cJSON_GetObjectItem(vap, "NetworkGreyList");
+    if (object != NULL) {
+        decode_param_bool(vap, "NetworkGreyList", param);
+        vap_info->u.bss_info.network_initiated_greylist = (param->type & cJSON_True) ? true:false;
+    }
     // RapidReconnCountEnable
     decode_param_bool(vap, "RapidReconnCountEnable", param);
     vap_info->u.bss_info.rapidReconnectEnable = (param->type & cJSON_True) ? true:false;
@@ -2777,6 +2954,7 @@ webconfig_error_t decode_mac_object(rdk_wifi_vap_info_t *rdk_vap_info, cJSON *ob
 
     mac_address_t mac;
     cJSON *client, *obj_acl, *mac_object, *device_name;
+    const cJSON  *param;
     unsigned int size = 0, i = 0;
     acl_entry_t *acl_entry;
 
@@ -2814,6 +2992,11 @@ webconfig_error_t decode_mac_object(rdk_wifi_vap_info_t *rdk_vap_info, cJSON *ob
             return webconfig_error_decode;
         }
         strncpy(acl_entry->device_name, tmp_device_name, sizeof(acl_entry->device_name)-1);
+        decode_param_integer(mac_object, "reason", param);
+        acl_entry->reason = param->valuedouble;
+        decode_param_integer(mac_object, "expiry_time", param);
+        acl_entry->expiry_time = param->valuedouble;
+
         hash_map_put(rdk_vap_info->acl_map, strdup(tmp_mac), acl_entry);
     }
 

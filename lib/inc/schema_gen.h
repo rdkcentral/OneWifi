@@ -111,6 +111,7 @@
         PJS_OVS_BOOL(bss_hotspot) \
         PJS_OVS_INT(wps_push_button) \
         PJS_OVS_STRING(beacon_rate_ctl, 32 + 1) \
+        PJS_OVS_BOOL(network_initiated_greylist) \
         PJS_OVS_STRING(mfp_config, 10 + 1) \
         PJS_OVS_INT_Q(period) \
         PJS_OVS_INT_Q(channel) \
@@ -166,6 +167,8 @@
        PJS_OVS_STRING(macfilter_key, 128 + 1) \
        PJS_OVS_STRING(device_name, 128 + 1) \
        PJS_OVS_STRING(device_mac, 128 + 1) \
+       PJS_OVS_INT(reason)\
+       PJS_OVS_INT(expiry_time)\
    )
 
 #define PJS_SCHEMA_Alarms \
@@ -1941,6 +1944,7 @@
     COLUMN(bss_hotspot) \
     COLUMN(wps_push_button) \
     COLUMN(beacon_rate_ctl) \
+    COLUMN(network_initiated_greylist) \
     COLUMN(mfp_config)\
     COLUMN(period)\
     COLUMN(channel)\
@@ -1983,7 +1987,9 @@
 #define SCHEMA_COLUMN__Wifi_MacFilter_Config(COLUMN) \
     COLUMN(macfilter_key) \
     COLUMN(device_name) \
-    COLUMN(device_mac)
+    COLUMN(device_mac) \
+    COLUMN(reason) \
+    COLUMN(expiry_time)
 
 #define SCHEMA__Alarms "Alarms"
 #define SCHEMA_COLUMN__Alarms(COLUMN) \
@@ -3216,6 +3222,7 @@
 #define SCHEMA__Wifi_VAP_Config__bss_hotspot "bss_hotspot"
 #define SCHEMA__Wifi_VAP_Config__wps_push_button "wps_push_button"
 #define SCHEMA__Wifi_VAP_Config__beacon_rate_ctl "beacon_rate_ctl"
+#define SCHEMA__Wifi_VAP_Config__network_initiated_greylist "network_initiated_greylist"
 #define SCHEMA__Wifi_VAP_Config__mfp_config "mfp_config"
 #define SCHEMA__Wifi_VAP_Config__period "period"
 #define SCHEMA__Wifi_VAP_Config__channel "channel"
@@ -3256,6 +3263,8 @@
 #define SCHEMA__Wifi_MacFilter_Config__macfilter_key "macfilter_key"
 #define SCHEMA__Wifi_MacFilter_Config__device_name "device_name"
 #define SCHEMA__Wifi_MacFilter_Config__devie_mac "device_mac"
+#define SCHEMA__Wifi_MacFilter_Config__reason "reason"
+#define SCHEMA__Wifi_MacFilter_Config__expiry_time "expiry_time"
 
 #define SCHEMA__Wifi_Master_State__if_type "if_type"
 #define SCHEMA__Wifi_Master_State__if_uuid "if_uuid"

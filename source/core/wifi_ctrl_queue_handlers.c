@@ -6,6 +6,7 @@
 #include "wifi_ctrl.h"
 #include "wifi_mgr.h"
 #include "wifi_util.h"
+#include "wifi_monitor.h"
 #include "webconfig_framework.h"
 #include "scheduler.h"
 #include <unistd.h>
@@ -54,6 +55,59 @@ void process_scan_results_event(wifi_bss_info_t *bss, unsigned int len)
 	}
     }
 }
+int remove_greylist_acl_entries(bool remove_all_greylist_entry)
+{
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d  Enter \n", __FUNCTION__, __LINE__);
+    acl_entry_t *tmp_acl_entry = NULL, *acl_entry = NULL;
+    rdk_wifi_vap_info_t *l_rdk_vap_array = NULL;
+    unsigned int itr = 0, itrj = 0;
+    mac_addr_str_t mac_str;
+    struct timeval tv_now;
+    int vap_index = 0;
+    int ret = 0;
+    char macfilterkey[128];
+    wifi_vap_info_map_t *wifi_vap_map = NULL;
+
+    memset(macfilterkey, 0, sizeof(macfilterkey));
+    gettimeofday(&tv_now, NULL);
+
+    for (itr = 0; itr < getNumberRadios(); itr++) {
+        wifi_vap_map = get_wifidb_vap_map(itr);
+        for (itrj = 0; itrj < getMaxNumberVAPsPerRadio(itr); itrj++) {
+            vap_index = wifi_vap_map->vap_array[itrj].vap_index;
+            l_rdk_vap_array = get_wifidb_rdk_vap_info(vap_index);
+
+            if (l_rdk_vap_array->acl_map != NULL) {
+                acl_entry = hash_map_get_first(l_rdk_vap_array->acl_map);
+
+                while(acl_entry != NULL) {
+
+                    if ((acl_entry->reason == WLAN_RADIUS_GREYLIST_REJECT) &&
+                        ((acl_entry->expiry_time <= tv_now.tv_sec) || remove_all_greylist_entry)) {
+
+                        to_mac_str(acl_entry->mac, mac_str);
+                        ret = wifi_delApAclDevice(l_rdk_vap_array->vap_index, mac_str);
+                        if (ret != RETURN_OK) {
+
+                            wifi_util_dbg_print(WIFI_MGR, "%s:%d: wifi_delApAclDevice failed. vap_index %d, mac %s \n",
+                             __func__, __LINE__, l_rdk_vap_array->vap_index, mac_str);
+                            ret = RETURN_ERR;
+                        }
+
+                        if (ret == RETURN_OK || remove_all_greylist_entry) {
+                            tmp_acl_entry = hash_map_remove(l_rdk_vap_array->acl_map, mac_str);
+                            snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", l_rdk_vap_array->vap_name, mac_str);
+                            wifidb_update_wifi_macfilter_config(macfilterkey, tmp_acl_entry, false);
+                        }
+                    }
+                    acl_entry = hash_map_get_next(l_rdk_vap_array->acl_map, acl_entry);
+                }
+            }
+       }
+    }
+    return RETURN_OK;
+}
+
 
 void process_mgmt_ctrl_frame_event(frame_data_t *msg, uint32_t msg_length)
 {
@@ -95,7 +149,17 @@ void send_hotspot_status(char* vap_name, bool up)
 
 void process_xfinity_vaps(bool disable, bool hs_evt)
 {
+    wifi_rfc_dml_parameters_t *rfc_info = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
+    bool greylist_rfc = false;
     uint8_t num_radios = getNumberRadios();
+
+    wifi_vap_info_map_t tmp_created_vap_map;
+    memset((unsigned char *)&tmp_created_vap_map, 0, sizeof(wifi_vap_info_map_t));
+    tmp_created_vap_map.num_vaps = 0;
+
+    if (rfc_info) {
+        greylist_rfc = rfc_info->radiusgreylist_rfc;
+    }
     for(int radio_indx = 0; radio_indx < num_radios; ++radio_indx) {
         wifi_vap_info_map_t *wifi_vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(radio_indx);
         for(unsigned int j = 0; j < wifi_vap_map->num_vaps; ++j) {
@@ -110,6 +174,8 @@ void process_xfinity_vaps(bool disable, bool hs_evt)
             if(disable) {
                 tmp_vap_map.vap_array[0].u.bss_info.enabled = false;
             }
+
+            tmp_vap_map.vap_array[0].u.bss_info.network_initiated_greylist = greylist_rfc;
 
             if(wifi_hal_createVAP(radio_indx, &tmp_vap_map) != RETURN_OK) {
                 wifi_util_dbg_print(WIFI_CTRL, "%s:%d Unable to create vap %s\n", __func__,__LINE__, wifi_vap_map->vap_array[j].vap_name);
@@ -128,11 +194,19 @@ void process_xfinity_vaps(bool disable, bool hs_evt)
                 if(hs_evt) {
                     send_hotspot_status(wifi_vap_map->vap_array[j].vap_name, !disable);
                 }
+                memcpy((unsigned char *)&tmp_created_vap_map.vap_array[tmp_created_vap_map.num_vaps],&tmp_vap_map.vap_array[0],sizeof(wifi_vap_info_t));
+                tmp_created_vap_map.num_vaps++;
+
+                if (greylist_rfc) {
+                    wifi_setApMacAddressControlMode(wifi_vap_map->vap_array[j].vap_index, 2);
+                }
                 wifi_util_dbg_print(WIFI_CTRL, "%s:%d create vap %s successful\n", __func__,__LINE__, wifi_vap_map->vap_array[j].vap_name);
                 update_global_cache(&tmp_vap_map);
             }
         }
     }
+    //Load all the Acl entries related to the created public vaps
+    update_acl_entries(&tmp_created_vap_map);
 }
 
 static int s_xfinity_vaps_task_id = -1;
@@ -791,6 +865,108 @@ void process_kick_assoc_devices_event(void *data)
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d vap_index is %s mac_list is %s timeout is %s\n", __func__, __LINE__, s_vapindex, s_maclist, s_timeout);
     return;
 }
+void process_greylist_mac_filter(void *data)
+{
+    long int  expiry_time = 0;
+    struct timeval tv_now;
+    unsigned int itr = 0, itrj = 0;
+    int reason = 0;
+    int vap_index = 0;
+    const char *wifi_health_log = "/rdklogs/logs/wifihealth.txt";
+    char log_buf[1024] = {0};
+    char time_str[20] = {0};
+    time_t now;
+    struct tm *time_info;
+    bool greylist_client_added = false;
+
+    rdk_wifi_vap_info_t *rdk_vap_info = NULL;
+    mac_address_t zero_mac = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    acl_entry_t *acl_entry = NULL;
+    acl_entry_t *temp_acl_entry = NULL;
+    mac_address_t new_mac;
+    mac_addr_str_t new_mac_str;
+    char macfilterkey[128];
+    wifi_vap_info_map_t *wifi_vap_map = NULL;
+
+    memset(macfilterkey, 0, sizeof(macfilterkey));
+
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d Enter \n", __FUNCTION__, __LINE__);
+    greylist_data_t *grey_data = (greylist_data_t *) data;
+    reason = grey_data->reason;
+
+    wifi_util_dbg_print(WIFI_CTRL,"Disassociation reason is %d\n",reason);
+    if (reason != WLAN_RADIUS_GREYLIST_REJECT){
+        wifi_util_dbg_print(WIFI_CTRL,"This Not a Greylisted disassoc device\n");
+        return;
+    }
+
+    memcpy(new_mac, grey_data->sta_mac, sizeof(mac_address_t));
+    gettimeofday(&tv_now, NULL);
+    expiry_time = tv_now.tv_sec + GREYLIST_TIMEOUT_IN_SECONDS;
+    wifi_util_dbg_print(WIFI_CTRL," time now %d and expiry_time %d\n",tv_now.tv_sec,expiry_time);
+
+    for (itr = 0; itr < getNumberRadios(); itr++) {
+        wifi_vap_map = get_wifidb_vap_map(itr);
+        for (itrj = 0; itrj < getMaxNumberVAPsPerRadio(itr); itrj++) {
+            vap_index = wifi_vap_map->vap_array[itrj].vap_index;
+            rdk_vap_info = get_wifidb_rdk_vap_info(vap_index);
+
+            if (rdk_vap_info == NULL) {
+                 return;
+            }
+
+            if ((strstr(rdk_vap_info->vap_name, "hotspot") == NULL)) {
+                continue;
+            }
+
+            if (rdk_vap_info->acl_map == NULL) {
+                wifi_util_dbg_print(WIFI_CTRL,"GreyList acl_map is NULL\n");
+                rdk_vap_info->acl_map = hash_map_create();
+            }
+
+            if (memcmp(new_mac, zero_mac, sizeof(mac_address_t)) == 0){
+                wifi_util_dbg_print(WIFI_CTRL,"GreyList new_mac is zero mac \n");
+                return ;
+            }
+
+            to_mac_str(new_mac, new_mac_str);
+            temp_acl_entry = hash_map_get(rdk_vap_info->acl_map,strdup(new_mac_str));
+
+            if (temp_acl_entry != NULL) {
+                wifi_util_dbg_print(WIFI_CTRL,"Mac is already present in macfilter \n");
+                return;
+            }
+
+            acl_entry = (acl_entry_t *)malloc(sizeof(acl_entry_t));
+            memcpy(acl_entry->mac, new_mac, sizeof(mac_address_t));
+            to_mac_str(acl_entry->mac, new_mac_str);
+            acl_entry->reason = WLAN_RADIUS_GREYLIST_REJECT;
+            acl_entry->expiry_time = expiry_time;
+
+            if (wifi_addApAclDevice(rdk_vap_info->vap_index, new_mac_str) != RETURN_OK) {
+                wifi_util_dbg_print(WIFI_MGR, "%s:%d: wifi_addApAclDevice failed. vap_index %d, MAC %s \n",
+                   __func__, __LINE__, rdk_vap_info->vap_index, new_mac_str);
+                return;
+            }
+
+            hash_map_put(rdk_vap_info->acl_map, strdup(new_mac_str), acl_entry);
+
+            snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", rdk_vap_info->vap_name, new_mac_str);
+            wifidb_update_wifi_macfilter_config(macfilterkey, acl_entry, true);
+            greylist_client_added = true;
+        }
+    }
+    //Add time and Mac address to wifihealth.txt
+    if (greylist_client_added) {
+        time(&now);
+        time_info = localtime(&now);
+        to_mac_str(new_mac, new_mac_str);
+        strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", time_info);
+        sprintf(log_buf,"%s Client added to grey list from RADIUS:%s\n",time_str,new_mac_str);
+        write_to_file(wifi_health_log, log_buf);
+        wifi_util_dbg_print(WIFI_CTRL,"%s",log_buf);
+   }
+}
 
 void process_wifi_host_sync()
 {
@@ -1075,10 +1251,26 @@ void process_factory_reset_command(bool type)
 
 void process_radius_grey_list_rfc(bool type)
 {
+    bool public_xfinity_vap_status = false;
+    wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
+
     wifi_util_dbg_print(WIFI_DB,"WIFI Enter RFC Func %s: %d : bool %d\n",__FUNCTION__,__LINE__,type);
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
     rfc_param->radiusgreylist_rfc = type;
     wifidb_update_rfc_config(0, rfc_param);
+    g_wifi_mgr->rfc_dml_parameters.radiusgreylist_rfc = type;
+
+    public_xfinity_vap_status = get_wifi_public_vap_enable_status();
+
+    if (public_xfinity_vap_status) {
+        wifi_util_dbg_print(WIFI_CTRL,"public xfinity vaps are up and running\n");
+        process_xfinity_vaps(false,false);
+    }
+
+    if (!rfc_param->radiusgreylist_rfc) {
+        wifi_util_dbg_print(WIFI_CTRL,"Greylist RFC is disabled remove all greylisted entries from DB\n");
+        remove_greylist_acl_entries(true);
+    }
 }
 
 void process_wifi_passpoint_rfc(bool type)
@@ -1256,6 +1448,10 @@ void handle_hal_indication(void *data, unsigned int len, ctrl_event_subtype_t su
 
         case ctrl_event_hal_disassoc_device:
             process_disassoc_device_event(data);
+            break;
+
+        case ctrl_event_radius_greylist:
+            process_greylist_mac_filter(data);
             break;
 
         case ctrl_event_scan_results:

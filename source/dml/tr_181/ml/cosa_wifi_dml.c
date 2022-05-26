@@ -7859,7 +7859,7 @@ Security_SetParamUlongValue
     if( AnscEqualString(ParamName, "RekeyingInterval", TRUE))
     {
 
-        if(!security_mode_support_radius(l_security_cfg->mode))
+        if ((!security_mode_support_radius(l_security_cfg->mode)) && (!isVapHotspotOpen(instance_number -1)))
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Security mode %d does not support radius configuration \n",__func__, __LINE__,l_security_cfg->mode);
             return FALSE;
@@ -7890,7 +7890,7 @@ Security_SetParamUlongValue
 
     if( AnscEqualString(ParamName, "RadiusServerPort", TRUE))
     {
-        if(!security_mode_support_radius(l_security_cfg->mode))
+        if ((!security_mode_support_radius(l_security_cfg->mode)) && (!isVapHotspotOpen(instance_number -1)))
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Security mode %d does not support radius configuration \n",__func__, __LINE__,l_security_cfg->mode);
             return FALSE;
@@ -7907,7 +7907,7 @@ Security_SetParamUlongValue
 
     if( AnscEqualString(ParamName, "SecondaryRadiusServerPort", TRUE))
     {
-        if(!security_mode_support_radius(l_security_cfg->mode))
+        if ((!security_mode_support_radius(l_security_cfg->mode)) && (!isVapHotspotOpen(instance_number -1)))
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Security mode %d does not support radius configuration \n",__func__, __LINE__,l_security_cfg->mode);
             return FALSE;
@@ -7924,7 +7924,7 @@ Security_SetParamUlongValue
 
     if( AnscEqualString(ParamName, "RadiusDASPort", TRUE))
     {
-        if(!security_mode_support_radius(l_security_cfg->mode))
+        if ((!security_mode_support_radius(l_security_cfg->mode)) && (!isVapHotspotOpen(instance_number -1)))
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Security mode %d does not support radius configuration \n",__func__, __LINE__,l_security_cfg->mode);
             return FALSE;
@@ -8241,7 +8241,7 @@ Security_SetParamStringValue
     ERR_CHK(rc);
     if((rc == EOK) && (!ind))
     {
-        if(!security_mode_support_radius(l_security_cfg->mode))
+        if ((!security_mode_support_radius(l_security_cfg->mode)) && (!isVapHotspotOpen(instance_number -1)))
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Security mode %d does not support radius configuration \n",__func__, __LINE__,l_security_cfg->mode);
             return FALSE;
@@ -8271,7 +8271,7 @@ Security_SetParamStringValue
     ERR_CHK(rc);
     if((rc == EOK) && (!ind))
     {
-        if(!security_mode_support_radius(l_security_cfg->mode))
+        if ((!security_mode_support_radius(l_security_cfg->mode)) && (!isVapHotspotOpen(instance_number -1)))
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Security mode %d does not support radius configuration \n",__func__, __LINE__,l_security_cfg->mode);
             return FALSE;
@@ -8299,7 +8299,7 @@ Security_SetParamStringValue
     ERR_CHK(rc);
     if((rc == EOK) && (!ind))
     {
-        if(!security_mode_support_radius(l_security_cfg->mode))
+        if ((!security_mode_support_radius(l_security_cfg->mode)) && (!isVapHotspotOpen(instance_number -1)))
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Security mode %d does not support radius configuration \n",__func__, __LINE__,l_security_cfg->mode);
             return FALSE;
@@ -8326,7 +8326,7 @@ Security_SetParamStringValue
     ERR_CHK(rc);
     if((rc == EOK) && (!ind))
     {
-        if(!security_mode_support_radius(l_security_cfg->mode))
+        if ((!security_mode_support_radius(l_security_cfg->mode)) && (!isVapHotspotOpen(instance_number -1)))
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Security mode %d does not support radius configuration \n",__func__, __LINE__,l_security_cfg->mode);
             return FALSE;
@@ -8391,7 +8391,7 @@ Security_SetParamStringValue
     ERR_CHK(rc);
     if((rc == EOK) && (!ind))
     {
-        if(!security_mode_support_radius(l_security_cfg->mode))
+        if ((!security_mode_support_radius(l_security_cfg->mode)) && (!isVapHotspotOpen(instance_number -1)))
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Security mode %d does not support radius configuration \n",__func__, __LINE__,l_security_cfg->mode);
             return FALSE;
@@ -8399,6 +8399,7 @@ Security_SetParamStringValue
         ip_addr_t parameterIp;
         if (getIpAddressFromString(pString, &parameterIp) != 1)
         {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d getIpAddressFromString failed \n",__func__, __LINE__);
             return FALSE;
         }
         if ((parameterIp.family == wifi_ip_family_ipv4) && (parameterIp.u.IPv4addr == l_security_cfg->u.radius.dasip.u.IPv4addr))
@@ -8419,7 +8420,7 @@ Security_SetParamStringValue
     ERR_CHK(rc);
     if((rc == EOK) && (!ind))
     {
-        if(!security_mode_support_radius(l_security_cfg->mode))
+        if ((!security_mode_support_radius(l_security_cfg->mode)) && (!isVapHotspotOpen(instance_number -1)))
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Security mode %d does not support radius configuration \n",__func__, __LINE__,l_security_cfg->mode);
             return FALSE;
@@ -13870,7 +13871,7 @@ RadiusSettings_SetParamIntValue
     /* check the parameter name and set the corresponding value */
     if( AnscEqualString(ParamName, "RadiusServerRetries", TRUE))
     {
-        if(!security_mode_support_radius(l_security_cfg->mode))
+        if ((!security_mode_support_radius(l_security_cfg->mode)) && (!isVapHotspotOpen(instance_number -1)))
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Security mode %d does not support radius configuration \n",__func__, __LINE__,l_security_cfg->mode);
             return FALSE;
@@ -13904,7 +13905,7 @@ RadiusSettings_SetParamIntValue
     }
     if( AnscEqualString(ParamName, "MaxAuthenticationAttempts", TRUE))
     {
-        if(!security_mode_support_radius(l_security_cfg->mode))
+        if ((!security_mode_support_radius(l_security_cfg->mode)) && (!isVapHotspotOpen(instance_number -1)))
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Security mode %d does not support radius configuration \n",__func__, __LINE__,l_security_cfg->mode);
             return FALSE;
@@ -13934,7 +13935,7 @@ RadiusSettings_SetParamIntValue
 
     if( AnscEqualString(ParamName, "IdentityRequestRetryInterval", TRUE))
     {
-        if(!security_mode_support_radius(l_security_cfg->mode))
+        if ((!security_mode_support_radius(l_security_cfg->mode)) && (!isVapHotspotOpen(instance_number -1)))
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Security mode %d does not support radius configuration \n",__func__, __LINE__,l_security_cfg->mode);
             return FALSE;

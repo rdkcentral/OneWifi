@@ -245,6 +245,8 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info, cJSO
     // NeighborReportActivated
     cJSON_AddBoolToObject(vap_object, "NeighborReportActivated", vap_info->u.bss_info.nbrReportActivated);
 
+    //network_initiated_greylist
+    cJSON_AddBoolToObject(vap_object, "NetworkGreyList", vap_info->u.bss_info.network_initiated_greylist);
 
     // RapidReconnCountEnable
     cJSON_AddBoolToObject(vap_object, "RapidReconnCountEnable", vap_info->u.bss_info.rapidReconnectEnable);
@@ -622,6 +624,7 @@ webconfig_error_t encode_radius_object(const wifi_radius_settings_t *radius_info
 webconfig_error_t encode_no_security_object(const wifi_vap_security_t *security_info, cJSON *security)
 {
 
+    cJSON *obj;
     switch (security_info->mode) {
         case wifi_security_mode_none:
             cJSON_AddStringToObject(security, "Mode", "None");
@@ -632,6 +635,14 @@ webconfig_error_t encode_no_security_object(const wifi_vap_security_t *security_
                             __func__, __LINE__, security_info->mode);
             return webconfig_error_encode;
     }
+    obj = cJSON_CreateObject();
+    cJSON_AddItemToObject(security, "RadiusSettings", obj);
+
+    if (encode_radius_object(&security_info->u.radius, obj) != webconfig_error_none) {
+        wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Encoding radius settings failed\n", __func__, __LINE__);
+        return webconfig_error_encode;
+    }
+        wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Encoding radius settings passed\n", __func__, __LINE__);
 
     return webconfig_error_none;
 }
@@ -1323,6 +1334,8 @@ webconfig_error_t encode_mac_object(rdk_wifi_vap_info_t *rdk_vap_info, cJSON *ob
             cJSON_AddStringToObject(obj_acl_list, "MAC", mac_string);
 
             cJSON_AddStringToObject(obj_acl_list, "DeviceName", acl_entry->device_name);
+            cJSON_AddNumberToObject(obj_acl_list, "reason", acl_entry->reason);
+            cJSON_AddNumberToObject(obj_acl_list, "expiry_time", acl_entry->expiry_time);
             acl_entry = hash_map_get_next(rdk_vap_info->acl_map, acl_entry);
         }
     }

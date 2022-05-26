@@ -359,7 +359,7 @@ void callback_Wifi_Security_Config(ovsdb_update_monitor_t *mon,
         l_security_cfg->eap_req_timeout = new_rec->eap_req_timeout;
         l_security_cfg->eap_req_retries = new_rec->eap_req_retries;
         l_security_cfg->disable_pmksa_caching = new_rec->disable_pmksa_caching;
-        if(!security_mode_support_radius(l_security_cfg->mode))
+        if ((!security_mode_support_radius(l_security_cfg->mode)) && (!isVapHotspotOpen(i))) 
         {
             l_security_cfg->u.key.type = new_rec->key_type;
             strncpy(l_security_cfg->u.key.key,new_rec->keyphrase,sizeof(l_security_cfg->u.key.key)-1);
@@ -631,6 +631,7 @@ void callback_Wifi_VAP_Config(ovsdb_update_monitor_t *mon,
             l_bss_param_cfg->bssMaxSta = new_rec->bss_max_sta;
             l_bss_param_cfg->bssTransitionActivated = new_rec->bss_transition_activated;
             l_bss_param_cfg->nbrReportActivated = new_rec->nbr_report_activated;
+            l_bss_param_cfg->network_initiated_greylist = new_rec->network_initiated_greylist;
             l_bss_param_cfg->rapidReconnectEnable = new_rec->rapid_connect_enabled;
             l_bss_param_cfg->rapidReconnThreshold = new_rec->rapid_connect_threshold;
             l_bss_param_cfg->vapStatsEnable = new_rec->vap_stats_enable;
@@ -658,7 +659,7 @@ void callback_Wifi_VAP_Config(ovsdb_update_monitor_t *mon,
 	        strncpy(l_bss_param_cfg->beaconRateCtl, new_rec->beacon_rate_ctl,(sizeof(l_bss_param_cfg->beaconRateCtl)-1));
 	    }
 
-            wifi_util_dbg_print(WIFI_DB,"%s:%d:VAP Config radio_name=%s vap_name=%s ssid=%s enabled=%d ssid_advertisement_enable=%d isolation_enabled=%d mgmt_power_control=%d bss_max_sta =%d bss_transition_activated=%d nbr_report_activated=%d  rapid_connect_enabled=%d rapid_connect_threshold=%d vap_stats_enable=%d mac_filter_enabled =%d mac_filter_mode=%d  mac_addr_acl_enabled =%d wmm_enabled=%d anqp_parameters=%s hs2Parameters=%s uapsd_enabled =%d beacon_rate=%d bridge_name=%s wmm_noack = %d wep_key_length = %d bss_hotspot = %d wps_push_button = %d beacon_rate_ctl =%s mfp_config = %s\n",__func__, __LINE__,new_rec->radio_name,new_rec->vap_name,new_rec->ssid,new_rec->enabled,new_rec->ssid_advertisement_enabled,new_rec->isolation_enabled,new_rec->mgmt_power_control,new_rec->bss_max_sta,new_rec->bss_transition_activated,new_rec->nbr_report_activated,new_rec->rapid_connect_enabled,new_rec->rapid_connect_threshold,new_rec->vap_stats_enable,new_rec->mac_filter_enabled,new_rec->mac_filter_mode,new_rec->mac_addr_acl_enabled,new_rec->wmm_enabled,new_rec->anqp_parameters,new_rec->hs2_parameters,new_rec->uapsd_enabled,new_rec->beacon_rate,new_rec->bridge_name,new_rec->wmm_noack, new_rec->wep_key_length, new_rec->bss_hotspot,new_rec->wps_push_button, new_rec->beacon_rate_ctl, new_rec->mfp_config);
+            wifi_util_dbg_print(WIFI_DB,"%s:%d:VAP Config radio_name=%s vap_name=%s ssid=%s enabled=%d ssid_advertisement_enable=%d isolation_enabled=%d mgmt_power_control=%d bss_max_sta =%d bss_transition_activated=%d nbr_report_activated=%d  rapid_connect_enabled=%d rapid_connect_threshold=%d vap_stats_enable=%d mac_filter_enabled =%d mac_filter_mode=%d  mac_addr_acl_enabled =%d wmm_enabled=%d anqp_parameters=%s hs2Parameters=%s uapsd_enabled =%d beacon_rate=%d bridge_name=%s wmm_noack = %d wep_key_length = %d bss_hotspot = %d wps_push_button = %d beacon_rate_ctl =%s mfp_config = %s  network_initiated_greylist = %d \n",__func__, __LINE__,new_rec->radio_name,new_rec->vap_name,new_rec->ssid,new_rec->enabled,new_rec->ssid_advertisement_enabled,new_rec->isolation_enabled,new_rec->mgmt_power_control,new_rec->bss_max_sta,new_rec->bss_transition_activated,new_rec->nbr_report_activated,new_rec->rapid_connect_enabled,new_rec->rapid_connect_threshold,new_rec->vap_stats_enable,new_rec->mac_filter_enabled,new_rec->mac_filter_mode,new_rec->mac_addr_acl_enabled,new_rec->wmm_enabled,new_rec->anqp_parameters,new_rec->hs2_parameters,new_rec->uapsd_enabled,new_rec->beacon_rate,new_rec->bridge_name,new_rec->wmm_noack, new_rec->wep_key_length, new_rec->bss_hotspot,new_rec->wps_push_button, new_rec->beacon_rate_ctl, new_rec->mfp_config, new_rec->network_initiated_greylist);
 	    pthread_mutex_unlock(&g_wifidb->data_cache_lock);
         }
     }
@@ -1401,7 +1402,7 @@ int wifidb_get_wifi_vap_config(int radio_index,wifi_vap_info_map_t *config)
             wifidb_get_wifi_vap_info(vap_name,&config->vap_array[vap_index]);
             wifi_util_dbg_print(WIFI_DB,"%s:%d: %svap name vap_index=%d radio_ondex=%d\n",__func__, __LINE__,vap_name,vap_index,radio_index);
             wifi_util_dbg_print(WIFI_DB,"%s:%d: table_Wifi_VAP_Config verify count=%d\n",__func__, __LINE__,vap_count);
-            wifi_util_dbg_print(WIFI_DB,"%s:%d:VAP Config Row=%d radio_name=%s radioindex=%d vap_name=%s vap_index=%d ssid=%s enabled=%d ssid_advertisement_enable=%d isolation_enabled=%d mgmt_power_control=%d bss_max_sta =%d bss_transition_activated=%d nbr_report_activated=%d  rapid_connect_enabled=%d rapid_connect_threshold=%d vap_stats_enable=%d mac_filter_enabled =%d mac_filter_mode=%d  wmm_enabled=%d anqpParameters=%s hs2Parameters=%s uapsd_enabled =%d beacon_rate=%d bridge_name=%s wmm_noack = %d wep_key_length = %d bss_hotspot = %d wps_push_button = %d beacon_rate_ctl =%s \n",__func__, __LINE__,i,name,config->vap_array[vap_index].radio_index,config->vap_array[vap_index].vap_name,config->vap_array[vap_index].vap_index,config->vap_array[vap_index].u.bss_info.ssid,config->vap_array[vap_index].u.bss_info.enabled,config->vap_array[vap_index].u.bss_info.showSsid ,config->vap_array[vap_index].u.bss_info.isolation,config->vap_array[vap_index].u.bss_info.mgmtPowerControl,config->vap_array[vap_index].u.bss_info.bssMaxSta,config->vap_array[vap_index].u.bss_info.bssTransitionActivated,config->vap_array[vap_index].u.bss_info.nbrReportActivated,config->vap_array[vap_index].u.bss_info.rapidReconnectEnable,config->vap_array[vap_index].u.bss_info.rapidReconnThreshold,config->vap_array[vap_index].u.bss_info.vapStatsEnable,config->vap_array[vap_index].u.bss_info.mac_filter_enable,config->vap_array[vap_index].u.bss_info.mac_filter_mode,config->vap_array[vap_index].u.bss_info.wmm_enabled,config->vap_array[vap_index].u.bss_info.interworking.anqp.anqpParameters,config->vap_array[vap_index].u.bss_info.interworking.passpoint.hs2Parameters,config->vap_array[vap_index].u.bss_info.UAPSDEnabled,config->vap_array[vap_index].u.bss_info.beaconRate,config->vap_array[vap_index].bridge_name,config->vap_array[vap_index].u.bss_info.wmmNoAck,config->vap_array[vap_index].u.bss_info.wepKeyLength,config->vap_array[vap_index].u.bss_info.bssHotspot,config->vap_array[vap_index].u.bss_info.wpsPushButton,config->vap_array[vap_index].u.bss_info.beaconRateCtl);//config->vap_array[vap_index].u.bss_info.mfp_config);
+            wifi_util_dbg_print(WIFI_DB,"%s:%d:VAP Config Row=%d radio_name=%s radioindex=%d vap_name=%s vap_index=%d ssid=%s enabled=%d ssid_advertisement_enable=%d isolation_enabled=%d mgmt_power_control=%d bss_max_sta =%d bss_transition_activated=%d nbr_report_activated=%d  rapid_connect_enabled=%d rapid_connect_threshold=%d vap_stats_enable=%d mac_filter_enabled =%d mac_filter_mode=%d  wmm_enabled=%d anqpParameters=%s hs2Parameters=%s uapsd_enabled =%d beacon_rate=%d bridge_name=%s wmm_noack = %d wep_key_length = %d bss_hotspot = %d wps_push_button = %d beacon_rate_ctl =%s network_initiated_greylist=%d\n",__func__, __LINE__,i,name,config->vap_array[vap_index].radio_index,config->vap_array[vap_index].vap_name,config->vap_array[vap_index].vap_index,config->vap_array[vap_index].u.bss_info.ssid,config->vap_array[vap_index].u.bss_info.enabled,config->vap_array[vap_index].u.bss_info.showSsid ,config->vap_array[vap_index].u.bss_info.isolation,config->vap_array[vap_index].u.bss_info.mgmtPowerControl,config->vap_array[vap_index].u.bss_info.bssMaxSta,config->vap_array[vap_index].u.bss_info.bssTransitionActivated,config->vap_array[vap_index].u.bss_info.nbrReportActivated,config->vap_array[vap_index].u.bss_info.rapidReconnectEnable,config->vap_array[vap_index].u.bss_info.rapidReconnThreshold,config->vap_array[vap_index].u.bss_info.vapStatsEnable,config->vap_array[vap_index].u.bss_info.mac_filter_enable,config->vap_array[vap_index].u.bss_info.mac_filter_mode,config->vap_array[vap_index].u.bss_info.wmm_enabled,config->vap_array[vap_index].u.bss_info.interworking.anqp.anqpParameters,config->vap_array[vap_index].u.bss_info.interworking.passpoint.hs2Parameters,config->vap_array[vap_index].u.bss_info.UAPSDEnabled,config->vap_array[vap_index].u.bss_info.beaconRate,config->vap_array[vap_index].bridge_name,config->vap_array[vap_index].u.bss_info.wmmNoAck,config->vap_array[vap_index].u.bss_info.wepKeyLength,config->vap_array[vap_index].u.bss_info.bssHotspot,config->vap_array[vap_index].u.bss_info.wpsPushButton,config->vap_array[vap_index].u.bss_info.beaconRateCtl, config->vap_array[vap_index].u.bss_info.network_initiated_greylist);
 
             wifidb_get_interworking_config(vap_name,&config->vap_array[vap_index].u.bss_info.interworking.interworking);
             wifi_util_dbg_print(WIFI_DB,"%s:%d: Get Wifi_Interworking_Config table vap_name=%s Enable=%d accessNetworkType=%d internetAvailable=%d asra=%d esr=%d uesa=%d hess_present=%d hessid=%s venueGroup=%d venueType=%d \n",__func__, __LINE__,vap_name,config->vap_array[vap_index].u.bss_info.interworking.interworking.interworkingEnabled,config->vap_array[vap_index].u.bss_info.interworking.interworking.accessNetworkType,config->vap_array[vap_index].u.bss_info.interworking.interworking.internetAvailable,config->vap_array[vap_index].u.bss_info.interworking.interworking.asra,config->vap_array[vap_index].u.bss_info.interworking.interworking.esr,config->vap_array[vap_index].u.bss_info.interworking.interworking.uesa,config->vap_array[vap_index].u.bss_info.interworking.interworking.hessOptionPresent,config->vap_array[vap_index].u.bss_info.interworking.interworking.hessid,config->vap_array[vap_index].u.bss_info.interworking.interworking.venueGroup,config->vap_array[vap_index].u.bss_info.interworking.interworking.venueType);
@@ -1410,7 +1411,7 @@ int wifidb_get_wifi_vap_config(int radio_index,wifi_vap_info_map_t *config)
             if (isVapSTAMesh(l_vap_index)) {
                 wifidb_get_wifi_security_config(vap_name,&config->vap_array[vap_index].u.sta_info.security);
 
-                if (!security_mode_support_radius(config->vap_array[vap_index].u.sta_info.security.mode)) {
+                if ((!security_mode_support_radius(config->vap_array[vap_index].u.sta_info.security.mode))) {
                     wifi_util_dbg_print(WIFI_DB,"%s:%d: Get Wifi_Security_Config table sec type=%d  sec key=%s \n",__func__, __LINE__,config->vap_array[vap_index].u.sta_info.security.u.key.type,config->vap_array[vap_index].u.sta_info.security.u.key.key,config->vap_array[vap_index].u.sta_info.security.u.key.type,config->vap_array[vap_index].u.sta_info.security.u.key.key);
                 } else {
                     getIpStringFromAdrress(address,&config->vap_array[vap_index].u.sta_info.security.u.radius.dasip);
@@ -1420,7 +1421,7 @@ int wifidb_get_wifi_vap_config(int radio_index,wifi_vap_info_map_t *config)
             } else {
 	        wifidb_get_wifi_security_config(vap_name,&config->vap_array[vap_index].u.bss_info.security);
 
-                if (!security_mode_support_radius(config->vap_array[vap_index].u.bss_info.security.mode)) {
+                if ((!security_mode_support_radius(config->vap_array[vap_index].u.bss_info.security.mode))&& (!isVapHotspotOpen(vap_index))) {
                     wifi_util_dbg_print(WIFI_DB,"%s:%d: Get Wifi_Security_Config table sec type=%d  sec key=%s \n",__func__, __LINE__,config->vap_array[vap_index].u.bss_info.security.u.key.type,config->vap_array[vap_index].u.bss_info.security.u.key.key,config->vap_array[vap_index].u.bss_info.security.u.key.type,config->vap_array[vap_index].u.bss_info.security.u.key.key);
                 } else {
                     getIpStringFromAdrress(address,&config->vap_array[vap_index].u.bss_info.security.u.radius.dasip);
@@ -1484,6 +1485,7 @@ int wifidb_get_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
     struct schema_Wifi_Security_Config  *pcfg;
     json_t *where;
     int count;
+    int vap_index = 0;
     wifi_db_t *g_wifidb;
     g_wifidb = (wifi_db_t*) get_wifidb_obj();
 
@@ -1499,7 +1501,8 @@ int wifidb_get_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
         wifidb_print("%s:%d Table table_Wifi_Security_Config table not found, entry count=%d \n",__func__, __LINE__, count);
         return -1;
     }
-     wifi_util_dbg_print(WIFI_DB,"%s:%d: Get Wifi_Security_Config table Sec_mode=%d enc_mode=%d r_ser_ip=%s r_ser_port=%d r_ser_key=%s rs_ser_ip=%s rs_ser_ip sec_rad_ser_port=%d rs_ser_key=%s mfg=%s cfg_key_type=%d keyphrase=%s vap_name=%s rekey_interval = %d strict_rekey  = %d eapol_key_timeout  = %d eapol_key_retries  = %d eap_identity_req_timeout  = %d eap_identity_req_retries  = %d eap_req_timeout = %d eap_req_retries = %d disable_pmksa_caching = %d max_auth_attempts=%d blacklist_table_timeout=%d identity_req_retry_interval=%d server_retries=%d das_ip = %s das_port=%d das_key=%s\n",__func__, __LINE__,pcfg->security_mode,pcfg->encryption_method,pcfg->radius_server_ip,pcfg->radius_server_port,pcfg->radius_server_key,pcfg->secondary_radius_server_ip,pcfg->secondary_radius_server_port,pcfg->secondary_radius_server_key,pcfg->mfp_config,pcfg->key_type,pcfg->keyphrase,pcfg->vap_name,pcfg->rekey_interval,pcfg->strict_rekey,pcfg->eapol_key_timeout,pcfg->eapol_key_retries,pcfg->eap_identity_req_timeout,pcfg->eap_identity_req_retries,pcfg->eap_req_timeout,pcfg->eap_req_retries,pcfg->disable_pmksa_caching,pcfg->max_auth_attempts,pcfg->blacklist_table_timeout,pcfg->identity_req_retry_interval,pcfg->server_retries,pcfg->das_ip,pcfg->das_port,pcfg->das_key);
+    vap_index = convert_vap_name_to_array_index(&((wifi_mgr_t*)get_wifimgr_obj())->hal_cap.wifi_prop, vap_name);
+    wifi_util_dbg_print(WIFI_DB,"%s:%d: Get Wifi_Security_Config table Sec_mode=%d enc_mode=%d r_ser_ip=%s r_ser_port=%d r_ser_key=%s rs_ser_ip=%s rs_ser_ip sec_rad_ser_port=%d rs_ser_key=%s mfg=%s cfg_key_type=%d keyphrase=%s vap_name=%s rekey_interval = %d strict_rekey  = %d eapol_key_timeout  = %d eapol_key_retries  = %d eap_identity_req_timeout  = %d eap_identity_req_retries  = %d eap_req_timeout = %d eap_req_retries = %d disable_pmksa_caching = %d max_auth_attempts=%d blacklist_table_timeout=%d identity_req_retry_interval=%d server_retries=%d das_ip = %s das_port=%d das_key=%s\n",__func__, __LINE__,pcfg->security_mode,pcfg->encryption_method,pcfg->radius_server_ip,pcfg->radius_server_port,pcfg->radius_server_key,pcfg->secondary_radius_server_ip,pcfg->secondary_radius_server_port,pcfg->secondary_radius_server_key,pcfg->mfp_config,pcfg->key_type,pcfg->keyphrase,pcfg->vap_name,pcfg->rekey_interval,pcfg->strict_rekey,pcfg->eapol_key_timeout,pcfg->eapol_key_retries,pcfg->eap_identity_req_timeout,pcfg->eap_identity_req_retries,pcfg->eap_req_timeout,pcfg->eap_req_retries,pcfg->disable_pmksa_caching,pcfg->max_auth_attempts,pcfg->blacklist_table_timeout,pcfg->identity_req_retry_interval,pcfg->server_retries,pcfg->das_ip,pcfg->das_port,pcfg->das_key);
 
     sec->mode = pcfg->security_mode;
     sec->encr = pcfg->encryption_method;
@@ -1513,13 +1516,11 @@ int wifidb_get_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
     sec->eap_req_timeout = pcfg->eap_req_timeout;
     sec->eap_req_retries = pcfg->eap_req_retries;
     sec->disable_pmksa_caching = pcfg->disable_pmksa_caching;
-    if(!security_mode_support_radius(sec->mode))
-    {
+    if ((!security_mode_support_radius(sec->mode)) && (!isVapHotspotOpen(vap_index))) {
         sec->u.key.type = pcfg->key_type;
         strncpy(sec->u.key.key,pcfg->keyphrase,sizeof(sec->u.key.key)-1);
     }
-    else
-    {
+    else {
         if (strlen(pcfg->radius_server_ip) != 0) {
             strncpy((char *)sec->u.radius.ip,pcfg->radius_server_ip,sizeof(sec->u.radius.ip)-1);
         }
@@ -1583,7 +1584,7 @@ int wifidb_get_wifi_vap_info(char *vap_name,wifi_vap_info_t *config)
     if(pcfg != NULL)
     {
 
-        wifi_util_dbg_print(WIFI_DB,"%s:%d:VAP Config radio_name=%s vap_name=%s ssid=%s enabled=%d ssid_advertisement_enable=%d isolation_enabled=%d mgmt_power_control=%d bss_max_sta =%d bss_transition_activated=%d nbr_report_activated=%d  rapid_connect_enabled=%d rapid_connect_threshold=%d vap_stats_enable=%d mac_filter_enabled =%d mac_filter_mode=%d  mac_addr_acl_enabled =%d wmm_enabled=%d anqp_parameters=%s hs2Parameters=%s uapsd_enabled =%d beacon_rate=%d bridge_name=%s wmm_noack = %d wep_key_length = %d bss_hotspot = %d wps_push_button = %d beacon_rate_ctl =%s  \n",__func__, __LINE__,pcfg->radio_name,pcfg->vap_name,pcfg->ssid,pcfg->enabled,pcfg->ssid_advertisement_enabled,pcfg->isolation_enabled,pcfg->mgmt_power_control,pcfg->bss_max_sta,pcfg->bss_transition_activated,pcfg->nbr_report_activated,pcfg->rapid_connect_enabled,pcfg->rapid_connect_threshold,pcfg->vap_stats_enable,pcfg->mac_filter_enabled,pcfg->mac_filter_mode,pcfg->mac_addr_acl_enabled,pcfg->wmm_enabled,pcfg->anqp_parameters,pcfg->hs2_parameters,pcfg->uapsd_enabled,pcfg->beacon_rate,pcfg->bridge_name,pcfg->wmm_noack,pcfg->wep_key_length,pcfg->bss_hotspot,pcfg->wps_push_button,pcfg->beacon_rate_ctl);//pcfg->mfp_config);
+        wifi_util_dbg_print(WIFI_DB,"%s:%d:VAP Config radio_name=%s vap_name=%s ssid=%s enabled=%d ssid_advertisement_enable=%d isolation_enabled=%d mgmt_power_control=%d bss_max_sta =%d bss_transition_activated=%d nbr_report_activated=%d  rapid_connect_enabled=%d rapid_connect_threshold=%d vap_stats_enable=%d mac_filter_enabled =%d mac_filter_mode=%d  mac_addr_acl_enabled =%d wmm_enabled=%d anqp_parameters=%s hs2Parameters=%s uapsd_enabled =%d beacon_rate=%d bridge_name=%s wmm_noack = %d wep_key_length = %d bss_hotspot = %d wps_push_button = %d beacon_rate_ctl =%s network_initiated_greylist=%d \n",__func__, __LINE__,pcfg->radio_name,pcfg->vap_name,pcfg->ssid,pcfg->enabled,pcfg->ssid_advertisement_enabled,pcfg->isolation_enabled,pcfg->mgmt_power_control,pcfg->bss_max_sta,pcfg->bss_transition_activated,pcfg->nbr_report_activated,pcfg->rapid_connect_enabled,pcfg->rapid_connect_threshold,pcfg->vap_stats_enable,pcfg->mac_filter_enabled,pcfg->mac_filter_mode,pcfg->mac_addr_acl_enabled,pcfg->wmm_enabled,pcfg->anqp_parameters,pcfg->hs2_parameters,pcfg->uapsd_enabled,pcfg->beacon_rate,pcfg->bridge_name,pcfg->wmm_noack,pcfg->wep_key_length,pcfg->bss_hotspot,pcfg->wps_push_button,pcfg->beacon_rate_ctl, pcfg->network_initiated_greylist);
 
 
         if((convert_radio_name_to_index(&index,pcfg->radio_name))!=0)
@@ -1619,6 +1620,7 @@ int wifidb_get_wifi_vap_info(char *vap_name,wifi_vap_info_t *config)
             config->u.bss_info.bssMaxSta = pcfg->bss_max_sta;
             config->u.bss_info.bssTransitionActivated = pcfg->bss_transition_activated;
             config->u.bss_info.nbrReportActivated = pcfg->nbr_report_activated;
+            config->u.bss_info.network_initiated_greylist = pcfg->network_initiated_greylist;
             config->u.bss_info.rapidReconnectEnable = pcfg->rapid_connect_enabled;
             config->u.bss_info.rapidReconnThreshold = pcfg->rapid_connect_threshold;
             config->u.bss_info.vapStatsEnable = pcfg->vap_stats_enable;
@@ -1712,6 +1714,7 @@ int wifidb_update_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
     memset(&psm_security_cfg, 0, sizeof(psm_security_cfg));
     wifi_db_t *g_wifidb;
     g_wifidb = (wifi_db_t*) get_wifidb_obj();
+    int vap_index = 0;
 
     memset(&cfg_sec,0,sizeof(cfg_sec));
     if(sec == NULL)
@@ -1719,6 +1722,7 @@ int wifidb_update_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
         wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Security Config table - Null pointer \n",__func__, __LINE__);
         return -1;
     }
+    vap_index = convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop,vap_name);
     cfg_sec.security_mode = sec->mode;
     cfg_sec.encryption_method = sec->encr;
     convert_security_mode_integer_to_string(sec->mfp,(char *)&cfg_sec.mfp_config);
@@ -1733,7 +1737,7 @@ int wifidb_update_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
     cfg_sec.eap_req_retries = sec->eap_req_retries;
     cfg_sec.disable_pmksa_caching = sec->disable_pmksa_caching;
 
-    if(!security_mode_support_radius(sec->mode))
+    if ((!security_mode_support_radius(sec->mode)) && (!isVapHotspotOpen(vap_index)))
     {
         strncpy(cfg_sec.radius_server_ip,"",sizeof(cfg_sec.radius_server_ip)-1);
         cfg_sec.radius_server_port = 0;
@@ -1837,10 +1841,11 @@ int wifidb_update_wifi_macfilter_config(char *macfilter_key, acl_entry_t *config
         to_mac_str(config->mac, tmp_mac_str);
         strncpy(cfg_mac.device_mac, tmp_mac_str, sizeof(cfg_mac.device_mac)-1);
         strncpy(cfg_mac.device_name, config->device_name, sizeof(cfg_mac.device_name)-1);
-
+        cfg_mac.reason = config->reason;
+        cfg_mac.expiry_time = config->expiry_time;
         //concat for macfilter_key.
         strncpy(cfg_mac.macfilter_key, macfilter_key, sizeof(cfg_mac.macfilter_key));
-        wifi_util_dbg_print(WIFI_DB,"%s:%d: updating table wifi_macfilter_config table entry is device_mac %s, device_name %s,macfilter_key %s\n", __func__, __LINE__, cfg_mac.device_mac, cfg_mac.device_name, cfg_mac.macfilter_key);
+        wifi_util_dbg_print(WIFI_DB,"%s:%d: updating table wifi_macfilter_config table entry is device_mac %s, device_name %s,macfilter_key %s reason %d and expiry_time %d\n", __func__, __LINE__, cfg_mac.device_mac, cfg_mac.device_name, cfg_mac.macfilter_key,cfg_mac.reason,cfg_mac.expiry_time);
 
         vap_name = strtok(cfg_mac.macfilter_key,"-");
         l_mac_entry.vap_index = convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, vap_name);
@@ -1933,6 +1938,8 @@ void wifidb_get_wifi_macfilter_config()
             memcpy(tmp_acl_entry->mac, mac, sizeof(mac_address_t));
 
             strncpy(tmp_acl_entry->device_name, pcfg->device_name, strlen(pcfg->device_name)+1);
+            tmp_acl_entry->reason = pcfg->reason;
+            tmp_acl_entry->expiry_time = pcfg->expiry_time;
 
             hash_map_put(l_rdk_vap_array->acl_map, strdup(pcfg->device_mac), tmp_acl_entry);
         }
@@ -1993,6 +2000,7 @@ int wifidb_update_wifi_vap_info(char *vap_name,wifi_vap_info_t *config)
         cfg.bss_max_sta = config->u.bss_info.bssMaxSta;
         cfg.bss_transition_activated = config->u.bss_info.bssTransitionActivated;
         cfg.nbr_report_activated = config->u.bss_info.nbrReportActivated;
+        cfg.network_initiated_greylist = config->u.bss_info.network_initiated_greylist;
         cfg.rapid_connect_enabled = config->u.bss_info.rapidReconnectEnable;
         cfg.rapid_connect_threshold = config->u.bss_info.rapidReconnThreshold;
         cfg.vap_stats_enable = config->u.bss_info.vapStatsEnable;
@@ -2010,7 +2018,7 @@ int wifidb_update_wifi_vap_info(char *vap_name,wifi_vap_info_t *config)
         strncpy(cfg.beacon_rate_ctl,config->u.bss_info.beaconRateCtl,sizeof(cfg.beacon_rate_ctl)-1);
         strncpy(cfg.mfp_config,"Disabled",sizeof(cfg.mfp_config)-1);
 
-        wifi_util_dbg_print(WIFI_DB,"%s:%d:VAP Config update data cfg.radio_name=%s cfg.radio_name=%s cfg.ssid=%s cfg.enabled=%d cfg.advertisement=%d cfg.isolation_enabled=%d cfg.mgmt_power_control=%d cfg.bss_max_sta =%d cfg.bss_transition_activated=%d cfg.nbr_report_activated=%d cfg.rapid_connect_enabled=%d cfg.rapid_connect_threshold=%d cfg.vap_stats_enable=%d cfg.mac_filter_enabled =%d cfg.mac_filter_mode=%d cfg.wmm_enabled=%d anqp_parameters=%s hs2_parameters=%s uapsd_enabled =%d beacon_rate=%d bridge_name=%s cfg.wmm_noack = %d cfg.wep_key_length = %d   cfg.bss_hotspot =  %d cfg.wps_push_button =  %d cfg.beacon_rate_ctl = %s cfg.mfp_config =%s  \n",__func__, __LINE__,cfg.radio_name,cfg.vap_name,cfg.ssid,cfg.enabled,cfg.ssid_advertisement_enabled,cfg.isolation_enabled,cfg.mgmt_power_control,cfg.bss_max_sta,cfg.bss_transition_activated,cfg.nbr_report_activated,cfg.rapid_connect_enabled,cfg.rapid_connect_threshold,cfg.vap_stats_enable,cfg.mac_filter_enabled,cfg.mac_filter_mode,cfg.wmm_enabled,cfg.anqp_parameters,cfg.hs2_parameters,cfg.uapsd_enabled,cfg.beacon_rate,cfg.bridge_name,cfg.wmm_noack, cfg.wep_key_length, cfg.bss_hotspot, cfg.wps_push_button, cfg.beacon_rate_ctl, cfg.mfp_config);
+        wifi_util_dbg_print(WIFI_DB,"%s:%d:VAP Config update data cfg.radio_name=%s cfg.radio_name=%s cfg.ssid=%s cfg.enabled=%d cfg.advertisement=%d cfg.isolation_enabled=%d cfg.mgmt_power_control=%d cfg.bss_max_sta =%d cfg.bss_transition_activated=%d cfg.nbr_report_activated=%d cfg.rapid_connect_enabled=%d cfg.rapid_connect_threshold=%d cfg.vap_stats_enable=%d cfg.mac_filter_enabled =%d cfg.mac_filter_mode=%d cfg.wmm_enabled=%d anqp_parameters=%s hs2_parameters=%s uapsd_enabled =%d beacon_rate=%d bridge_name=%s cfg.wmm_noack = %d cfg.wep_key_length = %d   cfg.bss_hotspot =  %d cfg.wps_push_button =  %d cfg.beacon_rate_ctl = %s cfg.mfp_config =%s network_initiated_greylist=%d \n",__func__, __LINE__,cfg.radio_name,cfg.vap_name,cfg.ssid,cfg.enabled,cfg.ssid_advertisement_enabled,cfg.isolation_enabled,cfg.mgmt_power_control,cfg.bss_max_sta,cfg.bss_transition_activated,cfg.nbr_report_activated,cfg.rapid_connect_enabled,cfg.rapid_connect_threshold,cfg.vap_stats_enable,cfg.mac_filter_enabled,cfg.mac_filter_mode,cfg.wmm_enabled,cfg.anqp_parameters,cfg.hs2_parameters,cfg.uapsd_enabled,cfg.beacon_rate,cfg.bridge_name,cfg.wmm_noack, cfg.wep_key_length, cfg.bss_hotspot, cfg.wps_push_button, cfg.beacon_rate_ctl, cfg.mfp_config, cfg.network_initiated_greylist);
     }
     if(ovsdb_table_upsert_with_parent(g_wifidb->wifidb_sock_path,&table_Wifi_VAP_Config,&cfg,false,filter_vap,SCHEMA_TABLE(Wifi_Radio_Config),(ovsdb_where_simple(SCHEMA_COLUMN(Wifi_Radio_Config,radio_name),radio_name)),SCHEMA_COLUMN(Wifi_Radio_Config,vap_configs)) == false)
     {
@@ -3056,6 +3064,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config)
         }
         cfg.u.bss_info.bssTransitionActivated = false;
         cfg.u.bss_info.nbrReportActivated = false;
+        cfg.u.bss_info.network_initiated_greylist = false;
         if (isVapPrivate(vap_index)) {
             cfg.u.bss_info.vapStatsEnable = true;
             cfg.u.bss_info.wpsPushButton = 0;
