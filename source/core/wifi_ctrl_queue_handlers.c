@@ -116,6 +116,8 @@ void process_xfinity_vaps(bool disable, bool hs_evt)
                     send_hotspot_status(wifi_vap_map->vap_array[j].vap_name, disable);
                 }
             } else {
+                wifidb_print("%s:%d [Stop] Current time:[%llu]\r\n", __func__, __LINE__, get_current_ms_time());
+                wifidb_print("%s:%d radio_index:%d create vap %s successful\n", __func__,__LINE__, radio_indx, wifi_vap_map->vap_array[j].vap_name);
                 memcpy((unsigned char *)&wifi_vap_map->vap_array[j],&tmp_vap_map.vap_array[0],sizeof(wifi_vap_info_t));
 
                 // Also update db and cache with new info

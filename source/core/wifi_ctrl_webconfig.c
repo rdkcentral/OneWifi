@@ -1450,6 +1450,7 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
         return execRetVal;
     }
 
+    wifidb_print("%s:%d [Start] Current time:[%llu]\r\n", __func__, __LINE__, get_current_ms_time());
     execRetVal = (pErr)malloc(sizeof(Err));
     if (execRetVal == NULL ) {
         free(msg);

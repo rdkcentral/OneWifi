@@ -584,6 +584,7 @@ rbusError_t get_private_vap(rbusHandle_t handle, rbusProperty_t property, rbusSe
     rc = RBUS_ERROR_SUCCESS;
     wifi_util_dbg_print(WIFI_CTRL,"%s Rbus set string len=%d, str: \n%s\n",__FUNCTION__, len, pTmp);
 
+    wifidb_print("%s:%d [Start] Current time:[%llu]\r\n", __func__, __LINE__, get_current_ms_time());
     webconf_process_private_vap(pTmp);
 
     return rc;
@@ -611,6 +612,7 @@ rbusError_t get_home_vap(rbusHandle_t handle, rbusProperty_t property, rbusSetHa
         wifi_util_dbg_print(WIFI_CTRL,"%s Rbus set string len=%d, str: %s\n",__FUNCTION__,len, pTmp);
     }
 
+    wifidb_print("%s:%d [Start] Current time:[%llu]\r\n", __func__, __LINE__, get_current_ms_time());
     webconf_process_home_vap(pTmp);
 
     return rc;

@@ -122,4 +122,5 @@ wifi_interface_name_t *get_interface_name_for_vap_index(unsigned int vap_index, 
 int convert_vapname_to_ifname(wifi_platform_property_t *wifi_prop, char *vap_name, char *if_name, int ifname_len);
 unsigned int create_vap_mask(wifi_platform_property_t *wifi_prop, const char *vap_name);
 int get_interface_name_from_radio_index(uint8_t radio_index, char *interface_name);
+unsigned long long int get_current_ms_time(void);
 #endif//_WIFI_UTIL_H_

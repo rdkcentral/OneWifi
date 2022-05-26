@@ -682,6 +682,15 @@ int convert_radio_name_to_index(unsigned int *index,char *name)
     return -1;
 }
 
+unsigned long long int get_current_ms_time(void)
+{
+    struct timeval tv_now = { 0 };
+    unsigned long long int milliseconds = 0;
+    gettimeofday(&tv_now, NULL);
+    milliseconds = (tv_now.tv_sec*1000LL + tv_now.tv_usec/1000);
+    return milliseconds;
+}
+
 char *get_formatted_time(char *time)
 {
     struct tm *tm_info;

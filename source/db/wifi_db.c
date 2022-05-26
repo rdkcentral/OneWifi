@@ -43,6 +43,28 @@ ovsdb_table_t table_Wifi_Global_Config;
 ovsdb_table_t table_Wifi_MacFilter_Config;
 ovsdb_table_t table_Wifi_Rfc_Config;
 
+void wifidb_print(char *format, ...)
+{
+    char buff[1024] = {0};
+    va_list list;
+    FILE *fpg = NULL;
+
+    get_formatted_time(buff);
+    strcat(buff, " ");
+
+    va_start(list, format);
+    vsprintf(&buff[strlen(buff)], format, list);
+    va_end(list);
+
+    fpg = fopen("/rdklogs/logs/wifiDb.txt", "a+");
+    if (fpg == NULL) {
+        return;
+    }
+    fputs(buff, fpg);
+    fflush(fpg);
+    fclose(fpg);
+}
+
 void wifidb_init_gas_config_default(wifi_GASConfiguration_t *config);
 
 /************************************************************************************
@@ -817,27 +839,22 @@ int wifidb_update_interworking_config(char *vap_name, wifi_InterworkingElement_t
 		where = ovsdb_tran_cond(OCLM_STR, "vap_name", OFUNC_EQ, vap_name);
     	ret = ovsdb_table_update_where(g_wifidb->wifidb_sock_path, &table_Wifi_Interworking_Config, where, &cfg);
 		if (ret == -1) {
-			wifi_util_dbg_print(WIFI_DB,"%s:%d: failed to update table_Wifi_Interworking_Config table\n", 
-				__func__, __LINE__);
+                        wifidb_print("%s:%d WIFI DB update error !!!. Failed to update table_Wifi_Interworking_Config table \n",__func__, __LINE__);
 			return -1;
 		} else if (ret == 0) {
-			wifi_util_dbg_print(WIFI_DB,"%s:%d: nothing to update table_Wifi_Interworking_Config table\n", 
-				__func__, __LINE__);
+                        wifi_util_dbg_print(WIFI_DB,"%s:%d: nothing to update table_Wifi_Interworking_Config table\n", __func__, __LINE__);
 		} else {
-			wifi_util_dbg_print(WIFI_DB,"%s:%d: update to table_Wifi_Interworking_Config table successful\n", 
-				__func__, __LINE__);
-		}
+                        wifidb_print("%s:%d Updated WIFI DB. table_Wifi_Interworking_Config table updated successful. \n",__func__, __LINE__);
+                }
 	} else {
-    	if (ovsdb_table_insert(g_wifidb->wifidb_sock_path, &table_Wifi_Interworking_Config, &cfg) == false) {
-			wifi_util_dbg_print(WIFI_DB,"%s:%d: failed to insert in table_Wifi_Interworking_Config\n", 
-				__func__, __LINE__);
-			return -1;
-		} else {
-			wifi_util_dbg_print(WIFI_DB,"%s:%d: insert in table_Wifi_Interworking_Config table successful\n", 
-				__func__, __LINE__);
-		}
-	}
-	return 0;
+            if (ovsdb_table_insert(g_wifidb->wifidb_sock_path, &table_Wifi_Interworking_Config, &cfg) == false) {
+                wifidb_print("%s:%d WIFI DB update error !!!. Failed to insert in table_Wifi_Interworking_Config \n",__func__, __LINE__);
+                return -1;
+             } else {
+                wifidb_print("%s:%d Updated WIFI DB. insert in table_Wifi_Interworking_Config successful. \n",__func__, __LINE__);
+             }
+        }
+        return 0;
 }
 
 /************************************************************************************
@@ -860,7 +877,7 @@ int wifidb_get_interworking_config(char *vap_name, wifi_InterworkingElement_t *i
     where = ovsdb_tran_cond(OCLM_STR, "vap_name", OFUNC_EQ, vap_name);
     pcfg = ovsdb_table_select_where(g_wifidb->wifidb_sock_path, &table_Wifi_Interworking_Config, where, &count);
     if (pcfg == NULL) {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d: table not table_Wifi_Interworking_Config not found\n",__func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB update error !!!. table_Wifi_Interworking_Config table not found \n",__func__, __LINE__);
         return -1;
     }
     interworking->interworkingEnabled = pcfg->enable;
@@ -965,11 +982,10 @@ int wifidb_update_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_param)
     where = ovsdb_tran_cond(OCLM_STR, "rfc_id", OFUNC_EQ, index);
     pcfg = ovsdb_table_select_where(g_wifidb->wifidb_sock_path, &table_Wifi_Rfc_Config, where, &count);
     if ((count != 0) && (pcfg != NULL)) {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d: Found %d records with key: %d in Wifi RFCConfig table\n", 
-    	__func__, __LINE__, count, rfc_id);
-	memcpy(&cfg, pcfg, sizeof(struct schema_Wifi_Rfc_Config));
-	update = true;
-	free(pcfg);
+        wifidb_print("%s:%d Updated WIFI DB. Found %d records with key: %d in Wifi RFCConfig table \n",__func__, __LINE__, count, rfc_id);
+        memcpy(&cfg, pcfg, sizeof(struct schema_Wifi_Rfc_Config));
+        update = true;
+        free(pcfg);
     }
     cfg.wifipasspoint_rfc = rfc_param->wifipasspoint_rfc;
     cfg.wifiinterworking_rfc = rfc_param->wifiinterworking_rfc;
@@ -980,30 +996,25 @@ int wifidb_update_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_param)
     if (update == true) {
         where = ovsdb_tran_cond(OCLM_STR, "rfc_id", OFUNC_EQ, index); 
         ret = ovsdb_table_update_where(g_wifidb->wifidb_sock_path, &table_Wifi_Rfc_Config, where, &cfg);
-	if (ret == -1) {
-	    wifi_util_dbg_print(WIFI_DB,"%s:%d: failed to update table_Wifi_Rfc_Config table\n", 
-		__func__, __LINE__);
-	    return -1;
-	} else if (ret == 0) {
-	    wifi_util_dbg_print(WIFI_DB,"%s:%d: nothing to update table_Wifi_Rfc_Config table\n", 
-		__func__, __LINE__);
-	} else {
-	    wifi_util_dbg_print(WIFI_DB,"%s:%d:%d update to table_Wifi_Rfc_Config table successful\n", 
-		__func__, __LINE__,ret);
-	}
+        if (ret == -1) {
+            wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Wifi Rfc Config table \n",__func__, __LINE__);
+            return -1;
+        } else if (ret == 0) {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: nothing to update table_Wifi_Rfc_Config table\n", __func__, __LINE__);
+        } else {
+            wifidb_print("%s:%d Updated WIFI DB. Wifi Rfc Config table updated successful. \n",__func__, __LINE__);
+        }
     } else {
-	strcpy(cfg.rfc_id,index);
+        strcpy(cfg.rfc_id,index);
         if (ovsdb_table_upsert_simple(g_wifidb->wifidb_sock_path, &table_Wifi_Rfc_Config, 
                                   SCHEMA_COLUMN(Wifi_Rfc_Config, rfc_id),
                                   cfg.rfc_id,
                                   &cfg, NULL) == false) {
-	    wifi_util_dbg_print(WIFI_DB,"%s:%d: failed to insert in table_Wifi_RFC_config\n", 
-		__func__, __LINE__);
-	    return -1;
-	} else {
-	    wifi_util_dbg_print(WIFI_DB,"%s:%d: insert in table_Wifi_RFC_Config table successful\n", 
-		__func__, __LINE__);
- 	}
+            wifidb_print("%s:%d WIFI DB update error !!!. Failed to insert in table_Wifi_RFC_config \n",__func__, __LINE__);
+            return -1;
+        } else {
+            wifidb_print("%s:%d Updated WIFI DB. Insert in table_Wifi_RFC_Config table successful \n",__func__, __LINE__);
+        }
     }
     return 0;
 }
@@ -1029,7 +1040,7 @@ int wifidb_get_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_info)
     where = ovsdb_tran_cond(OCLM_STR, "rfc_id", OFUNC_EQ, index);
     pcfg = ovsdb_table_select_where(g_wifidb->wifidb_sock_path, &table_Wifi_Rfc_Config, where, &count);
     if (pcfg == NULL) {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d: table table_Wifi_Rfc_Config not found\n",__func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB update error !!!. table table_Wifi_Rfc_Config not found \n",__func__, __LINE__);
         return -1;
     }
     rfc_info->wifipasspoint_rfc = pcfg->wifipasspoint_rfc;
@@ -1066,11 +1077,10 @@ int wifidb_update_gas_config(UINT advertisement_id, wifi_GASConfiguration_t *gas
     where = ovsdb_tran_cond(OCLM_STR, "advertisement_id", OFUNC_EQ, index);
     pcfg = ovsdb_table_select_where(g_wifidb->wifidb_sock_path, &table_Wifi_GAS_Config, where, &count);
     if ((count != 0) && (pcfg != NULL)) {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d: Found %d records with key: %d in Wifi GAS table\n", 
-    	__func__, __LINE__, count, advertisement_id);
-	memcpy(&cfg, pcfg, sizeof(struct schema_Wifi_GAS_Config));
-	update = true;
-	free(pcfg);
+        wifidb_print("%s:%d Updated WIFI DB. Found %d records with key: %d in Wifi GAS table \n",__func__, __LINE__, count, advertisement_id);
+        memcpy(&cfg, pcfg, sizeof(struct schema_Wifi_GAS_Config));
+        update = true;
+        free(pcfg);
     }
     cfg.pause_for_server_response = gas_info->PauseForServerResponse;
     cfg.response_timeout = gas_info->ResponseTimeout;
@@ -1080,30 +1090,25 @@ int wifidb_update_gas_config(UINT advertisement_id, wifi_GASConfiguration_t *gas
     if (update == true) {
         where = ovsdb_tran_cond(OCLM_STR, "advertisement_id", OFUNC_EQ, index); 
         ret = ovsdb_table_update_where(g_wifidb->wifidb_sock_path, &table_Wifi_GAS_Config, where, &cfg);
-	if (ret == -1) {
-	    wifi_util_dbg_print(WIFI_DB,"%s:%d: failed to update table_Wifi_GAS_Config table\n", 
-		__func__, __LINE__);
-	    return -1;
-	} else if (ret == 0) {
-	    wifi_util_dbg_print(WIFI_DB,"%s:%d: nothing to update table_Wifi_GAS_Config table\n", 
-		__func__, __LINE__);
-	} else {
-	    wifi_util_dbg_print(WIFI_DB,"%s:%d: update to table_Wifi_GAS_Config table successful\n", 
-		__func__, __LINE__);
-	}
+        if (ret == -1) {
+            wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Wifi GAS Config table \n",__func__, __LINE__);
+            return -1;
+        } else if (ret == 0) {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: nothing to update table_Wifi_GAS_Config table\n", __func__, __LINE__);
+        } else {
+            wifidb_print("%s:%d Updated WIFI DB. Wifi GAS Config table updated successful. \n",__func__, __LINE__);
+        }
     } else {
-	strcpy(cfg.advertisement_id,index);
+        strcpy(cfg.advertisement_id,index);
         if (ovsdb_table_upsert_simple(g_wifidb->wifidb_sock_path, &table_Wifi_GAS_Config, 
                                   SCHEMA_COLUMN(Wifi_GAS_Config, advertisement_id),
                                   cfg.advertisement_id,
                                   &cfg, NULL) == false) {
-	    wifi_util_dbg_print(WIFI_DB,"%s:%d: failed to insert in table_Wifi_GAS_Config\n", 
-		__func__, __LINE__);
-	    return -1;
-	} else {
-	    wifi_util_dbg_print(WIFI_DB,"%s:%d: insert in table_Wifi_GAS_Config table successful\n", 
-		__func__, __LINE__);
- 	}
+            wifidb_print("%s:%d WIFI DB update error !!!. Failed to insert in table_Wifi_GAS_Config \n",__func__, __LINE__);
+            return -1;
+        } else {
+            wifidb_print("%s:%d Updated WIFI DB. Insert in table_Wifi_GAS_Config table successful \n",__func__, __LINE__);
+        }
     }
     return 0;
 }
@@ -1129,7 +1134,7 @@ int wifidb_get_gas_config(UINT advertisement_id, wifi_GASConfiguration_t *gas_in
     where = ovsdb_tran_cond(OCLM_STR, "advertisement_id", OFUNC_EQ, index);
     pcfg = ovsdb_table_select_where(g_wifidb->wifidb_sock_path, &table_Wifi_GAS_Config, where, &count);
     if (pcfg == NULL) {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d: table table_Wifi_GAS_Config not found\n",__func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB update error !!!. Table table_Wifi_GAS_Config not found \n",__func__, __LINE__);
         return -1;
     }
     gas_info->AdvertisementID = atoi(pcfg->advertisement_id);
@@ -1197,7 +1202,7 @@ int wifidb_update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t
     wifi_util_dbg_print(WIFI_DB,"%s:%d:Update Radio Config for radio_index=%d \n",__func__, __LINE__,radio_index);
     if((config == NULL) || (convert_radio_to_name(radio_index,name)!=0))
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d: Radio Config update failed \n",__func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Radio Config for radio_index %d \n",__func__, __LINE__,radio_index);
         return -1;
     }
     cfg.enabled = config->enable;
@@ -1249,12 +1254,12 @@ int wifidb_update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t
 
     if(ovsdb_table_upsert_f(g_wifidb->wifidb_sock_path,&table_Wifi_Radio_Config,&cfg,false,insert_filter) == false)
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d: failed to insert Wifi_Radio_Config table\n",__func__, __LINE__);
-	return -1;
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to insert Wifi_Radio_Config table \n",__func__, __LINE__);
+        return -1;
     }
     else
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d: Insert Wifi_Radio_Config table complete\n",__func__, __LINE__);
+        wifidb_print("%s:%d Updated WIFI DB. Insert Wifi_Radio_Config table completed successful. \n",__func__, __LINE__);
     }
 
     return 0;
@@ -1281,7 +1286,7 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
 
     if((config == NULL) || (convert_radio_to_name(radio_index,name)!=0))
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d:Get Radio Config  failed \n",__func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to Get Radio Config \n",__func__, __LINE__);
         return -1;
     }
     wifi_util_dbg_print(WIFI_DB,"%s:%d:Get radio config for index=%d radio_name=%s \n",__func__, __LINE__,radio_index,name);
@@ -1289,7 +1294,7 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
     cfg = ovsdb_table_select_where(g_wifidb->wifidb_sock_path, &table_Wifi_Radio_Config, where, &count);
     if(cfg == NULL)
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d: table not table_Wifi_Radio_Config not found\n",__func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB update error !!!. Table not table_Wifi_Radio_Config not found \n",__func__, __LINE__);
         return -1;
     }
     config->enable = cfg->enabled;
@@ -1331,9 +1336,9 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
     {
         ptr++;
         wifi_util_dbg_print(WIFI_DB,"%s:%d: Wifi_Radio_Config Secondary Channel list %d \t",__func__, __LINE__,atoi(tmp));
-	config->channelSecondary[i] = atoi(tmp);
+        config->channelSecondary[i] = atoi(tmp);
         tmp = ptr;
-	i++;
+        i++;
     }
     config->numSecondaryChannels = cfg->num_secondary_channels;
 
@@ -1366,7 +1371,7 @@ int wifidb_get_wifi_vap_config(int radio_index,wifi_vap_info_map_t *config)
 
     if((config == NULL) || (convert_radio_to_name(radio_index,name)!=0))
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d:Get VAP Config failed \n",__func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to Get VAP Config \n",__func__, __LINE__);
         return -1;
     }
 
@@ -1375,7 +1380,7 @@ int wifidb_get_wifi_vap_config(int radio_index,wifi_vap_info_map_t *config)
     wifi_util_dbg_print(WIFI_DB,"%s:%d:VAP Config get index=%d radio_name=%s \n",__func__, __LINE__,radio_index,name);
     if((pcfg == NULL) || (vap_count== 0))
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d: table_Wifi_VAP_Config not found count=%d\n",__func__, __LINE__,vap_count);
+        wifidb_print("%s:%d WIFI DB update error !!!. table_Wifi_VAP_Config table not found count=%d \n",__func__, __LINE__,vap_count);
         return -1;
     }
     for (i = 0; i < vap_count; i++)
@@ -1447,20 +1452,20 @@ int wifidb_update_wifi_vap_config(int radio_index, wifi_vap_info_map_t *config)
     wifi_util_dbg_print(WIFI_DB,"%s:%d:VAP Config update for radio index=%d No of Vaps=%d\n",__func__, __LINE__,radio_index,config->num_vaps);
     if((config == NULL) || (convert_radio_to_name(radio_index,name)!=0))
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d:Null pointer VAP Config update failed \n",__func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Vap Config - Null pointer \n",__func__, __LINE__);
         return -1;
     }
     for(i=0;i<config->num_vaps;i++)
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d:Update radio=%s vap name=%s \n",__func__, __LINE__,name,config->vap_array[i].vap_name);
+        wifidb_print("%s:%d Updated WIFI DB. vap Config updated successful for radio %s and vap_name %s. \n",__func__, __LINE__,name,config->vap_array[i].vap_name);
         wifidb_update_wifi_vap_info(config->vap_array[i].vap_name,&config->vap_array[i]);
         vap_index = convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, config->vap_array[i].vap_name);
         if (isVapSTAMesh(vap_index)) {
             wifidb_update_wifi_security_config(config->vap_array[i].vap_name,&config->vap_array[i].u.sta_info.security);
-	} else {
+        } else {
             wifidb_update_wifi_security_config(config->vap_array[i].vap_name,&config->vap_array[i].u.bss_info.security);
             wifidb_update_wifi_interworking_config(config->vap_array[i].vap_name,&config->vap_array[i].u.bss_info.interworking.interworking);
-	}
+        }
     }
     return 0;
 }
@@ -1483,14 +1488,14 @@ int wifidb_get_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
 
     if(sec == NULL)
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d:Get table_Wifi_Security_Config failed \n",__func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to Get table_Wifi_Security_Config \n",__func__, __LINE__);
         return -1;
     }
 
     where = ovsdb_tran_cond(OCLM_STR, "vap_name", OFUNC_EQ, vap_name);
     pcfg = ovsdb_table_select_where(g_wifidb->wifidb_sock_path, &table_Wifi_Security_Config, where, &count);
     if (pcfg == NULL) {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d: table not table_Wifi_Security_Config not found\n",__func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB update error !!!. table_Wifi_Security_Config table not found \n",__func__, __LINE__);
         return -1;
     }
      wifi_util_dbg_print(WIFI_DB,"%s:%d: Get Wifi_Security_Config table Sec_mode=%d enc_mode=%d r_ser_ip=%s r_ser_port=%d r_ser_key=%s rs_ser_ip=%s rs_ser_ip sec_rad_ser_port=%d rs_ser_key=%s mfg=%s cfg_key_type=%d keyphrase=%s vap_name=%s rekey_interval = %d strict_rekey  = %d eapol_key_timeout  = %d eapol_key_retries  = %d eap_identity_req_timeout  = %d eap_identity_req_retries  = %d eap_req_timeout = %d eap_req_retries = %d disable_pmksa_caching = %d max_auth_attempts=%d blacklist_table_timeout=%d identity_req_retry_interval=%d server_retries=%d das_ip = %s das_port=%d das_key=%s\n",__func__, __LINE__,pcfg->security_mode,pcfg->encryption_method,pcfg->radius_server_ip,pcfg->radius_server_port,pcfg->radius_server_key,pcfg->secondary_radius_server_ip,pcfg->secondary_radius_server_port,pcfg->secondary_radius_server_key,pcfg->mfp_config,pcfg->key_type,pcfg->keyphrase,pcfg->vap_name,pcfg->rekey_interval,pcfg->strict_rekey,pcfg->eapol_key_timeout,pcfg->eapol_key_retries,pcfg->eap_identity_req_timeout,pcfg->eap_identity_req_retries,pcfg->eap_req_timeout,pcfg->eap_req_retries,pcfg->disable_pmksa_caching,pcfg->max_auth_attempts,pcfg->blacklist_table_timeout,pcfg->identity_req_retry_interval,pcfg->server_retries,pcfg->das_ip,pcfg->das_port,pcfg->das_key);
@@ -1562,7 +1567,7 @@ int wifidb_get_wifi_vap_info(char *vap_name,wifi_vap_info_t *config)
 
     if(config == NULL)
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d:Null pointer Get VAP info failed \n",__func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to Get VAP info - Null pointer \n",__func__, __LINE__);
         return -1;
     }
 
@@ -1571,7 +1576,7 @@ int wifidb_get_wifi_vap_info(char *vap_name,wifi_vap_info_t *config)
     wifi_util_dbg_print(WIFI_DB,"%s:%d:VAP Config get vap_name=%s count=%d\n",__func__, __LINE__,vap_name,count);
     if((pcfg == NULL) || (count== 0))
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d: table_Wifi_VAP_Config not found count=%d\n",__func__, __LINE__,count);
+        wifidb_print("%s:%d WIFI DB update error !!!. table_Wifi_VAP_Config table not found count=%d \n",__func__, __LINE__,count);
         return -1;
     }
     if(pcfg != NULL)
@@ -1660,7 +1665,7 @@ int wifidb_update_wifi_interworking_config(char *vap_name, wifi_InterworkingElem
     wifi_util_dbg_print(WIFI_DB,"%s:%d:Interworking update for vap name=%s\n",__func__, __LINE__,vap_name);
     if(config == NULL)
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d:Null pointer Interworking update failed \n",__func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Interworking - Null pointer \n",__func__, __LINE__);
         return -1;
     }
 
@@ -1680,11 +1685,11 @@ int wifidb_update_wifi_interworking_config(char *vap_name, wifi_InterworkingElem
 
     if(ovsdb_table_upsert_with_parent(g_wifidb->wifidb_sock_path,&table_Wifi_Interworking_Config,&cfg_interworking,false,filter_vapinterworking,SCHEMA_TABLE(Wifi_VAP_Config),ovsdb_where_simple(SCHEMA_COLUMN(Wifi_VAP_Config,vap_name),vap_name),SCHEMA_COLUMN(Wifi_VAP_Config,interworking)) == false)
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d: failed to update Wifi_Interworking_Config table\n",__func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Wifi Interworking Config table \n",__func__, __LINE__);
     }
     else
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d:  update table Wifi_Interworking_Config table successful\n",__func__, __LINE__);
+        wifidb_print("%s:%d Updated WIFI DB. Wifi Interworking Config table updated successful. \n",__func__, __LINE__);
     }
     return 0;
 }
@@ -1708,7 +1713,7 @@ int wifidb_update_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
     memset(&cfg_sec,0,sizeof(cfg_sec));
     if(sec == NULL)
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d:Null pointer Security Config update failed \n",__func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Security Config table - Null pointer \n",__func__, __LINE__);
         return -1;
     }
     cfg_sec.security_mode = sec->mode;
@@ -1766,11 +1771,11 @@ int wifidb_update_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
 
     if(ovsdb_table_upsert_with_parent(g_wifidb->wifidb_sock_path,&table_Wifi_Security_Config,&cfg_sec,false,filter_vapsec,SCHEMA_TABLE(Wifi_VAP_Config),ovsdb_where_simple(SCHEMA_COLUMN(Wifi_VAP_Config,vap_name),vap_name),SCHEMA_COLUMN(Wifi_VAP_Config,security)) == false)
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d: failed to update table_Wifi_Security_Config table\n",__func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Wifi Security Config table \n",__func__, __LINE__);
     }
     else
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d:  update table_Wifi_Security_Config table successful\n",__func__, __LINE__);
+        wifidb_print("%s:%d Updated WIFI DB. Wifi Security Config table updated successful. \n",__func__, __LINE__);
     }
 
     return 0;
@@ -1799,7 +1804,7 @@ int wifidb_update_wifi_macfilter_config(char *macfilter_key, acl_entry_t *config
         where = ovsdb_tran_cond(OCLM_STR, "macfilter_key", OFUNC_EQ, macfilter_key);
         ret = ovsdb_table_delete_where(g_wifidb->wifidb_sock_path, &table_Wifi_MacFilter_Config, where);
         if (ret != 1) {
-            wifi_util_dbg_print(WIFI_DB,"%s:%d: Table Deleting failed\n", __func__, __LINE__);
+            wifidb_print("%s:%d WIFI DB update error !!!. Failed to delete table_Wifi_MacFilter_Config\n",__func__, __LINE__);
             return -1;
         }
     } else {
@@ -1809,7 +1814,7 @@ int wifidb_update_wifi_macfilter_config(char *macfilter_key, acl_entry_t *config
 
         memset(&cfg_mac, 0, sizeof(cfg_mac));
         if (config == NULL) {
-            wifi_util_dbg_print(WIFI_DB,"%s:%d:MacFilter Config update failed \n",__func__, __LINE__);
+            wifidb_print("%s:%d WIFI DB update error !!!. Failed to update MacFilter Config \n",__func__, __LINE__);
             return -1;
         }
 
@@ -1822,10 +1827,10 @@ int wifidb_update_wifi_macfilter_config(char *macfilter_key, acl_entry_t *config
         wifi_util_dbg_print(WIFI_DB,"%s:%d: updating table wifi_macfilter_config table entry is device_mac %s, device_name %s,macfilter_key %s\n", __func__, __LINE__, cfg_mac.device_mac, cfg_mac.device_name, cfg_mac.macfilter_key);
 
         if (ovsdb_table_upsert_with_parent(g_wifidb->wifidb_sock_path, &table_Wifi_MacFilter_Config, &cfg_mac, false, filter_mac, SCHEMA_TABLE(Wifi_VAP_Config), ovsdb_where_simple(SCHEMA_COLUMN(Wifi_VAP_Config,vap_name), macfilter_key), SCHEMA_COLUMN(Wifi_VAP_Config, mac_filter)) ==  false) {
-            wifi_util_dbg_print(WIFI_DB,"%s:%d: failed to update table_Wifi_MacFilter_Config table\n", __func__, __LINE__);
+            wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Wifi_MacFilter Config table \n",__func__, __LINE__);
         }
         else {
-            wifi_util_dbg_print(WIFI_DB,"%s:%d: updated table_Wifi_MacFilter_Config table\n", __func__, __LINE__);
+            wifidb_print("%s:%d Updated WIFI DB. Wifi_MacFilter Config table updated successful. \n",__func__, __LINE__);
         }
 
     } 
@@ -1876,7 +1881,7 @@ void wifidb_get_wifi_macfilter_config()
     g_wifidb = (wifi_db_t*) get_wifidb_obj();
     pcfg = ovsdb_table_select_where(g_wifidb->wifidb_sock_path, &table_Wifi_MacFilter_Config, NULL, &count);
     if (pcfg == NULL) {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d: table table_Wifi_MacFilter_Config has no entry\n", __func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB update error !!!. Table table_Wifi_MacFilter_Config has no entry \n",__func__, __LINE__);
         return;
     }
 
@@ -1934,13 +1939,13 @@ int wifidb_update_wifi_vap_info(char *vap_name,wifi_vap_info_t *config)
     memset(&cfg,0,sizeof(cfg));
     if(config == NULL)
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d:VAP Config update failed \n",__func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to update VAP Config \n",__func__, __LINE__);
         return -1;
     }
     radio_index = convert_vap_name_to_radio_array_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, vap_name);
     if((convert_radio_to_name(radio_index,radio_name))!=0)
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d: Config update failed Invalid radio index %d vap_name=%s\n",__func__, __LINE__,radio_index,vap_name);
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Vap Config - Invalid radio_index %d \n",__func__, __LINE__);
         return -1;
     }
     wifi_util_dbg_print(WIFI_DB,"%s:%d:Update radio=%s vap name=%s \n",__func__, __LINE__,radio_name,config->vap_name);
@@ -1987,11 +1992,11 @@ int wifidb_update_wifi_vap_info(char *vap_name,wifi_vap_info_t *config)
 
     if(ovsdb_table_upsert_with_parent(g_wifidb->wifidb_sock_path,&table_Wifi_VAP_Config,&cfg,false,filter_vap,SCHEMA_TABLE(Wifi_Radio_Config),(ovsdb_where_simple(SCHEMA_COLUMN(Wifi_Radio_Config,radio_name),radio_name)),SCHEMA_COLUMN(Wifi_Radio_Config,vap_configs)) == false)
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d: failed to update table_Wifi_VAP_Config table\n",__func__, __LINE__);
+      wifidb_print("%s:%d WIFI DB update error !!!. Failed to update table_Wifi_VAP_Config table \n",__func__, __LINE__);
     }
     else
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d:  update table_Wifi_VAP_Config table successful\n",__func__, __LINE__);
+        wifidb_print("%s:%d Updated WIFI DB. table_Wifi_VAP_Config table updated successful. \n",__func__, __LINE__);
     }
     return 0;
 }
@@ -2103,7 +2108,7 @@ int wifidb_update_wifi_global_config(wifi_global_param_t *config)
     memset(&cfg,0,sizeof(cfg));
     if(config == NULL)
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d:Global Config update failed \n",__func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Global Config table \n",__func__, __LINE__);
         return -1;
     }
 
@@ -2141,11 +2146,11 @@ int wifidb_update_wifi_global_config(wifi_global_param_t *config)
     
     if (wifidb_update_table_entry(NULL,NULL,OCLM_UUID,&table_Wifi_Global_Config,&cfg,filter_global) <= 0) 
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d updated successfully\n",__func__, __LINE__);
+        wifidb_print("%s:%d Updated WIFI DB. Global Config table updated successful. \n",__func__, __LINE__);
     }
     else
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d failed\n",__func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Global Config table \n",__func__, __LINE__);
     }
     wifi_util_dbg_print(WIFI_DB,"%s:%d  notify_wifi_changes %d  prefer_private %d  prefer_private_configure %d  factory_reset %d  tx_overflow_selfheal %d  inst_wifi_client_enabled %d  inst_wifi_client_reporting_period %d  inst_wifi_client_mac = %s inst_wifi_client_def_reporting_period %d  wifi_active_msmt_enabled %d  wifi_active_msmt_pktsize %d  wifi_active_msmt_num_samples %d  wifi_active_msmt_sample_duration %d  vlan_cfg_version %d  wps_pin = %s bandsteering_enable %d  good_rssi_threshold %d  assoc_count_threshold %d  assoc_gate_time %d  assoc_monitor_duration %d  rapid_reconnect_enable %d  vap_stats_feature %d  mfp_config_feature %d  force_disable_radio_feature %d  force_disable_radio_status %d  fixed_wmm_params %d  wifi_region_code %s diagnostic_enable %d  validate_ssid %d device_network_mode:%d\r\n", __func__, __LINE__, config->notify_wifi_changes,config->prefer_private,config->prefer_private_configure,config->factory_reset,config->tx_overflow_selfheal,config->inst_wifi_client_enabled,config->inst_wifi_client_reporting_period,config->inst_wifi_client_mac, config->inst_wifi_client_def_reporting_period,config->wifi_active_msmt_enabled,config->wifi_active_msmt_pktsize,config->wifi_active_msmt_num_samples,config->wifi_active_msmt_sample_duration,config->vlan_cfg_version,config->wps_pin, config->bandsteering_enable,config->good_rssi_threshold,config->assoc_count_threshold,config->assoc_gate_time,config->assoc_monitor_duration,config->rapid_reconnect_enable,config->vap_stats_feature,config->mfp_config_feature,config->force_disable_radio_feature,config->force_disable_radio_status,config->fixed_wmm_params,config->wifi_region_code,config->diagnostic_enable,config->validate_ssid, config->device_network_mode);
     return 0;
@@ -2165,7 +2170,7 @@ int wifidb_get_wifi_global_config(wifi_global_param_t *config)
     pcfg = (struct schema_Wifi_Global_Config  *) wifidb_get_table_entry(NULL, NULL,&table_Wifi_Global_Config,OCLM_UUID);
     if (pcfg == NULL) 
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d:Null pointer Get global Config failed \n",__func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Global Config - Null pointer \n",__func__, __LINE__);
         return -1;
     }
     else
@@ -2233,8 +2238,10 @@ int wifidb_delete_wifi_radio_config(char *radio_name)
     wifi_util_dbg_print(WIFI_DB,"%s:%d:Radio Config delete radio_name=%s ret=%d\n",__func__, __LINE__,radio_name,ret);
     if(ret != 1)
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d: table_Wifi_Radio_Config delete failed\n",__func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB Delete error !!!. Failed to delete table_Wifi_Radio_Config \n",__func__, __LINE__);
         return -1;
+    } else {
+        wifidb_print("%s:%d Deleted WIFI DB. table_Wifi_Radio_Config deleted successful. \n",__func__, __LINE__);
     }
 
     return 0;
@@ -2259,8 +2266,10 @@ int wifidb_delete_wifi_vap_info(char *vap_name)
     wifi_util_dbg_print(WIFI_DB,"%s:%d:VAP Config delete vap_name=%s ret=%d\n",__func__, __LINE__,vap_name,ret);
     if(ret != 1)
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d: table_Wifi_VAP_Config delete failed\n",__func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB Delete error !!!. Failed to delete table_Wifi_VAP_Config \n",__func__, __LINE__);
         return -1;
+    } else{
+        wifidb_print("%s:%d Deleted WIFI DB. table_Wifi_VAP_Config deleted successful. \n",__func__, __LINE__);
     }
 
     return 0;
@@ -2285,8 +2294,10 @@ int wifidb_delete_wifi_security_config(char *vap_name)
     wifi_util_dbg_print(WIFI_DB,"%s:%d:Security  Config delete vap_name=%s ret=%d\n",__func__, __LINE__,vap_name,ret);
     if(ret != 1)
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d: table_Wifi_Security_Config delete failed\n",__func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB Delete error !!!. Failed to delete table_Wifi_Security_Config. \n",__func__, __LINE__);
         return -1;
+    } else {
+        wifidb_print("%s:%d Deleted WIFI DB. table_Wifi_Security_Config table deleted successful. \n",__func__, __LINE__);
     }
 
     return 0;
@@ -2311,8 +2322,10 @@ int wifidb_delete_wifi_interworking_config(char *vap_name)
     wifi_util_dbg_print(WIFI_DB,"%s:%d: Interworking Config delete vap_name=%s ret=%d\n",__func__, __LINE__,vap_name,ret);
     if(ret != 1)
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d: table_Wifi_Interworking_Config delete failed\n",__func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB Delete error !!!. Failed to delete table_Wifi_Interworking_Config \n",__func__, __LINE__);
         return -1;
+    } else {
+        wifidb_print("%s:%d Deleted WIFI DB. table_Wifi_Interworking_Config table deleted successful. \n",__func__, __LINE__);
     }
 
     return 0;
@@ -2335,7 +2348,8 @@ int wifidb_delete_all_wifi_vap_config()
     //Check for the number of radios
     if (num_radio > MAX_NUM_RADIOS)
     {
-        wifi_util_dbg_print(WIFI_DB,"WIFI %s : Number of Radios %d exceeds supported %d Radios \n",__FUNCTION__, getNumberRadios(), MAX_NUM_RADIOS);
+        wifidb_print("%s:%d WIFI DB Delete error !!!. Failed due to Number of Radios %d exceeds supported %d Radios \n",__func__, 
+                     __LINE__, getNumberRadios(), MAX_NUM_RADIOS);
         return -1;
     }
 
@@ -2357,10 +2371,10 @@ int wifidb_delete_all_wifi_vap_config()
 
     if(ret == 0)
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d deleted successfully\n",__func__, __LINE__);
+        wifidb_print("%s:%d Deleted WIFI DB. all_wifi_vap_config Deleted successful. \n",__func__, __LINE__);
         return 0;
     }
-    wifi_util_dbg_print(WIFI_DB,"%s:%d failed\n",__func__, __LINE__);
+    wifidb_print("%s:%d WIFI DB Delete error !!!. Failed to Delete \n",__func__, __LINE__);
     return -1;
 }
 
@@ -2377,16 +2391,16 @@ int update_wifi_global_config(wifi_global_param_t *config)
 
     if(config == NULL)
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d:Null pointer update VAP Config failed \n",__func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to update VAP Config - Null pointer \n",__func__, __LINE__);
         return -1;
     }
     ret = wifidb_update_wifi_global_config(config);
     if(ret == 0)
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d updated successfully\n",__func__, __LINE__);
+        wifidb_print("%s:%d Updated WIFI DB. VAP Config table updated successful. \n",__func__, __LINE__);
         return 0;
     }
-    wifi_util_dbg_print(WIFI_DB,"%s:%d failed\n",__func__, __LINE__);
+    wifidb_print("%s:%d WIFI DB update error !!!. Failed to update VAP Config\n",__func__, __LINE__);
     return -1;
 }
 
@@ -2403,7 +2417,7 @@ int get_wifi_global_param(wifi_global_param_t *config)
     wifi_mgr_t *g_wifidb;
 
     if (config == NULL) {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d:Null pointer Get global Config failed \n",__func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to get Global Config - Null pointer \n",__func__, __LINE__);
         return -1;
     }
     g_wifidb = get_wifimgr_obj();
@@ -2427,7 +2441,7 @@ int get_wifi_global_config(wifi_global_config_t *config)
     wifi_global_config_t  *global_config = get_wifidb_wifi_global_config();
 
     if (config == NULL) {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d:Null pointer Get global Config failed \n",__func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to get Global Config - Null pointer \n",__func__, __LINE__);
         return -1;
     }
     g_wifidb = get_wifimgr_obj();
@@ -2449,11 +2463,11 @@ int get_wifi_vap_config(int radio_index,wifi_vap_info_map_t *config)
 {
     int ret = 0;
     wifi_mgr_t *g_wifidb;
-	wifi_vap_info_map_t *l_vap_map_param_cfg = NULL;
+    wifi_vap_info_map_t *l_vap_map_param_cfg = NULL;
     l_vap_map_param_cfg = get_wifidb_vap_map(radio_index);
     if(config == NULL || l_vap_map_param_cfg == NULL)
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d:Null pointer Get VAP Config failed \n",__func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to get Wifi VAP Config - Null pointer \n",__func__, __LINE__);
         return -1;
     }
     if(radio_index > (int)getNumberRadios())
@@ -2485,7 +2499,7 @@ int get_wifi_vap_info(char *vap_name,wifi_vap_info_t *config)
     g_wifidb = get_wifimgr_obj();
     if(config == NULL)
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d:Null pointer Get VAP info failed \n",__func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to Get VAP info - Null pointer \n",__func__, __LINE__);
         return -1;
     }
 
@@ -2495,12 +2509,12 @@ int get_wifi_vap_info(char *vap_name,wifi_vap_info_t *config)
         wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid vap name \n",__func__, __LINE__,vap_name);
         return -1;
     }
-	l_vap_param_cfg = get_wifidb_vap_parameters(i);
-	if(l_vap_param_cfg == NULL)
-	{
-           wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid get_wifidb_vap_parameters \n",__func__, __LINE__,vap_name);
-           return -1;
-	}
+    l_vap_param_cfg = get_wifidb_vap_parameters(i);
+    if(l_vap_param_cfg == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid get_wifidb_vap_parameters \n",__func__, __LINE__,vap_name);
+        return -1;
+    }
 
     pthread_mutex_lock(&g_wifidb->data_cache_lock);
     memcpy(config,l_vap_param_cfg,sizeof(wifi_vap_info_t));
@@ -2614,16 +2628,16 @@ int update_wifi_vap_config(int radio_index, wifi_vap_info_map_t *config)
 
     if(config == NULL)
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d:Null pointer update VAP Config failed \n",__func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB update error !!!. update VAP Config failed - Null pointer \n",__func__, __LINE__);
         return -1;
     }
     ret = wifidb_update_wifi_vap_config(radio_index,config);
     if(ret == 0)
     {
-	wifi_util_dbg_print(WIFI_DB,"%s:%d updated successfully\n",__func__, __LINE__);
-	return 0;
+        wifidb_print("%s:%d Updated WIFI DB. wifi VAP Config updated successfully \n",__func__, __LINE__);
+        return 0;
     }
-    wifi_util_dbg_print(WIFI_DB,"%s:%d failed\n",__func__, __LINE__);
+    wifidb_print("%s:%d WIFI DB update error !!!. Failed to update wifi VAP Config table \n",__func__, __LINE__);
     return -1;
 }
 
@@ -2641,16 +2655,16 @@ int update_wifi_vap_info(char *vap_name,wifi_vap_info_t *config)
 
     if(config == NULL)
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d:Null pointer Update VAP info failed \n",__func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to update VAP info - Null pointer \n",__func__, __LINE__);
         return -1;
     } 
     ret = wifidb_update_wifi_vap_info(vap_name,config);
     if(ret == 0)
     {
-	wifi_util_dbg_print(WIFI_DB,"%s:%d updated successfully\n",__func__, __LINE__);
-	return 0;
+        wifidb_print("%s:%d Updated WIFI DB. Vap Info updated successful. \n",__func__, __LINE__);
+        return 0;
     }
-    wifi_util_dbg_print(WIFI_DB,"%s:%d failed\n",__func__, __LINE__);
+    wifidb_print("%s:%d WIFI DB update error !!!. Failed to update VAP info \n",__func__, __LINE__);
     return -1;
 }
 
@@ -2668,16 +2682,16 @@ int update_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
 
     if(sec == NULL)
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d:Null pointer Update Security Config failed \n",__func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Security Config - Null pointer \n",__func__, __LINE__);
         return -1;
     }    
     ret = wifidb_update_wifi_security_config(vap_name,sec);
     if(ret == 0)
     {
-	wifi_util_dbg_print(WIFI_DB,"%s:%d updated successfully\n",__func__, __LINE__);
-	return 0;
+    wifidb_print("%s:%d Updated WIFI DB. Security Config updated successful. \n",__func__, __LINE__);
+    return 0;
     }
-    wifi_util_dbg_print(WIFI_DB,"%s:%d failed\n",__func__, __LINE__);
+    wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Security Config\n",__func__, __LINE__);
     return -1;
 }
 
@@ -2695,16 +2709,16 @@ int update_wifi_interworking_config(char *vap_name, wifi_InterworkingElement_t *
 
     if(config == NULL)
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d:Null pointer Update interworking Config failed \n",__func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to update interworking Config - Null pointer \n",__func__, __LINE__);
         return -1;
     }    
     ret = wifidb_update_wifi_interworking_config(vap_name,config);
     if(ret == 0)
     {
-	wifi_util_dbg_print(WIFI_DB,"%s:%d updated successfully\n",__func__, __LINE__);
-	return 0;
+        wifidb_print("%s:%d Updated WIFI DB. interworking Config updated successful. \n",__func__, __LINE__);
+        return 0;
     }
-    wifi_util_dbg_print(WIFI_DB,"%s:%d failed\n",__func__, __LINE__);
+    wifidb_print("%s:%d WIFI DB update error !!!. Failed to update interworking Config \n",__func__, __LINE__);
     return -1;
 }
 
@@ -2722,16 +2736,16 @@ int update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *confi
 
     if(config == NULL)
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d:Null pointer Update Radio Config failed \n",__func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Radio Config - Null pointer \n",__func__, __LINE__);
         return -1;
     } 
     ret = wifidb_update_wifi_radio_config(radio_index,config);
     if(ret == 0)
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d updated successfully\n",__func__, __LINE__);
-	return 0;
+        wifidb_print("%s:%d Updated WIFI DB. Radio Config updated successful. \n",__func__, __LINE__);
+        return 0;
     }
-    wifi_util_dbg_print(WIFI_DB,"%s:%d failed\n",__func__, __LINE__);
+    wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Radio Config \n",__func__, __LINE__);
     return -1;
 }
 
@@ -2786,16 +2800,16 @@ int update_wifi_gas_config(UINT advertisement_id, wifi_GASConfiguration_t *gas_i
 
     if(gas_info == NULL)
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d:Null pointer update Gas Config failed \n",__func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Gas Config - Null pointer\n",__func__, __LINE__);
         return -1;
     }
     ret = wifidb_update_gas_config(advertisement_id,gas_info);
     if(ret == 0)
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d updated successfully\n",__func__, __LINE__);
+        wifidb_print("%s:%d Updated WIFI DB. Gas Config updated successful. \n",__func__, __LINE__);
         return 0;
     }
-    wifi_util_dbg_print(WIFI_DB,"%s:%d failed\n",__func__, __LINE__);
+    wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Gas Config\n",__func__, __LINE__);
     return -1;
 }
 
@@ -3306,7 +3320,7 @@ void init_wifidb_data()
     wifi_mgr_t *g_wifidb;
     g_wifidb = get_wifimgr_obj();
     int num_radio = getNumberRadios();
-	wifi_vap_info_map_t *l_vap_param_cfg = NULL;
+    wifi_vap_info_map_t *l_vap_param_cfg = NULL;
     wifi_radio_operationParam_t *l_radio_cfg = NULL;
 
     wifi_util_dbg_print(WIFI_DB,"%s:%d No of radios %d\n",__func__, __LINE__,getNumberRadios());
@@ -3473,9 +3487,9 @@ void *start_wifidb_func(void *arg)
     system(cmd);
     sprintf(db_file, "%s/rdkb-wifi.db", WIFIDB_DIR);	
     if (stat(db_file, &sb) != 0) {
-	wifi_util_dbg_print(WIFI_DB,"%s:%d: Could not find rdkb database, ..creating\n", __func__, __LINE__);
+        wifi_util_dbg_print(WIFI_DB,"%s:%d: Could not find rdkb database, ..creating\n", __func__, __LINE__);
         sprintf(cmd, "ovsdb-tool create %s %s/rdkb-wifi.ovsschema", db_file, WIFIDB_SCHEMA_DIR);
-    	system(cmd);
+        system(cmd);
     } else {
         wifi_util_dbg_print(WIFI_DB,"%s:%d: rdkb database already present\n", __func__, __LINE__);
         sprintf(cmd,"ovsdb-tool convert %s %s/rdkb-wifi.ovsschema",db_file,WIFIDB_SCHEMA_DIR);
@@ -3508,7 +3522,7 @@ int start_wifidb()
     pthread_attr_setdetachstate( &attr, PTHREAD_CREATE_DETACHED );
 
     pthread_create(&g_wifidb->wifidb_thr_id, &attr, start_wifidb_func, NULL);
-	
+
     return 0;
 }
 
