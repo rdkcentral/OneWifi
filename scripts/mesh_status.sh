@@ -67,7 +67,7 @@ for vap in 12 13; do
 done
 
 #Ethernet Pod
-OPENSYNC_ENABLE=`syscfg get opensync_enable`
+OPENSYNC_ENABLE=`syscfg get opensync`
 if [ "$OPENSYNC_ENABLE" == "true" ];then
  pod_mac=`/usr/opensync/tools/ovsh s Node_Config | grep -i value | cut -d'|' -f2`
 else
