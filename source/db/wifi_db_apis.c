@@ -28,6 +28,7 @@
 #include "ccsp_base_api.h"
 
 #include "wifi_util.h"
+#include "wifi_mgr.h"
 
 void rdk_wifi_dbg_print(int level, char *format, ...)
 {
@@ -85,19 +86,6 @@ int wifidb_get_reset_hotspot_required(bool *req)
 int wifidb_set_reset_hotspot_required(bool req)
 {
     return 0;
-}
-
-int rdk_wifi_radio_get_vap_name(uint8_t vap_index, char *l_vap_name)
-{
-    if((vap_index > 9))
-    {
-        rdk_wifi_dbg_print(1, "wifidb radio get vap invalid index... %s\n", __FUNCTION__);
-        return -1;
-    }
-    char *vap_name[] = {"private_ssid_2g", "private_ssid_5g", "iot_ssid_2g", "iot_ssid_5g", "hotspot_open_2g", "hotspot_open_5g", "lnf_psk_2g", "lnf_psk_5g", "hotspot_secure_2g", "hotspot_secure_5g"};
-
-    strncpy(l_vap_name, vap_name[vap_index], strlen(vap_name[vap_index]));
-    return CCSP_SUCCESS;
 }
 
 void rdk_wifi_radio_get_status(uint8_t r_index, bool *status)
@@ -242,16 +230,16 @@ void rdk_wifi_radio_get_operating_standards(uint8_t r_index, char *buf)
 
 int rdk_wifi_vap_get_from_index(int wlanIndex, wifi_vap_info_t *vap_map)
 {
-    int retDbGet = CCSP_SUCCESS;
+    int retDbGet;
     char l_vap_name[32];
     memset(l_vap_name, 0, sizeof(l_vap_name));
     memset(vap_map, 0 ,sizeof(wifi_vap_info_t));
 
-    retDbGet = rdk_wifi_radio_get_vap_name(wlanIndex, l_vap_name);
-    if(retDbGet != CCSP_SUCCESS)
+    retDbGet = convert_vap_index_to_name(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, wlanIndex, l_vap_name);
+    if(retDbGet == RETURN_ERR)
     {
         rdk_wifi_dbg_print(1, "wifidb vap name info get failure\n");
-	return retDbGet;
+        return retDbGet;
     }
     retDbGet = wifidb_get_wifi_vap_info(l_vap_name, vap_map);
     if(retDbGet != CCSP_SUCCESS)
@@ -271,11 +259,11 @@ int rdk_wifi_vap_update_from_index(int wlanIndex, wifi_vap_info_t *vap_map)
     char l_vap_name[32];
     memset(l_vap_name, 0, sizeof(l_vap_name));
 
-    retDbSet = rdk_wifi_radio_get_vap_name(wlanIndex, l_vap_name);
-    if(retDbSet != CCSP_SUCCESS)
+    retDbSet = convert_vap_index_to_name(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, wlanIndex, l_vap_name);
+    if(retDbSet == RETURN_ERR)
     {
         rdk_wifi_dbg_print(1, "wifidb vap name info get failure\n");
-	return retDbSet;
+        return retDbSet;
     }
 
     retDbSet = wifidb_update_wifi_vap_info(l_vap_name, vap_map);
@@ -298,11 +286,11 @@ int rdk_wifi_vap_security_get_from_index(int wlanIndex, wifi_vap_security_t *sec
     memset(l_vap_name, 0, sizeof(l_vap_name));
     memset(sec, 0 ,sizeof(wifi_vap_security_t));
 
-    retDbGet = rdk_wifi_radio_get_vap_name(wlanIndex, l_vap_name);
-    if(retDbGet != CCSP_SUCCESS)
+    retDbGet = convert_vap_index_to_name(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, wlanIndex, l_vap_name);
+    if(retDbGet == RETURN_ERR)
     {
         rdk_wifi_dbg_print(1, "wifidb vap name info get failure\n");
-	return retDbGet;
+        return retDbGet;
     }
 
     retDbGet = wifidb_get_wifi_security_config(l_vap_name, sec);
@@ -324,11 +312,11 @@ int rdk_wifi_vap_security_update_from_index(int wlanIndex, wifi_vap_security_t *
     char l_vap_name[32];
     memset(l_vap_name, 0, sizeof(l_vap_name));
 
-    retDbSet = rdk_wifi_radio_get_vap_name(wlanIndex, l_vap_name);
-    if(retDbSet != CCSP_SUCCESS)
+    retDbSet = convert_vap_index_to_name(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, wlanIndex, l_vap_name);
+    if(retDbSet == RETURN_ERR)
     {
         rdk_wifi_dbg_print(1, "wifidb vap name info get failure\n");
-	return retDbSet;
+        return retDbSet;
     }
 
     retDbSet = wifidb_update_wifi_security_config(l_vap_name, sec); 
@@ -549,7 +537,7 @@ int update_wifidb_vap_bss_param(uint8_t vap_index, wifi_front_haul_bss_t *pcfg)
     uint8_t l_radio_index = 0, l_vap_index = 0;
     char l_vap_name[32];
     int ret;
-    get_vap_and_radio_index_from_vap_instance(vap_index, &l_radio_index, &l_vap_index);
+    get_vap_and_radio_index_from_vap_instance(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, vap_index, &l_radio_index, &l_vap_index);
     wifi_vap_info_t *l_vap_maps = get_wifidb_vap_parameters(l_radio_index);
     if(l_vap_maps == NULL || l_vap_index >= getNumberofVAPsPerRadio(l_radio_index))
     {
@@ -559,7 +547,7 @@ int update_wifidb_vap_bss_param(uint8_t vap_index, wifi_front_haul_bss_t *pcfg)
     }
     memcpy(&l_vap_maps->u.bss_info, pcfg, sizeof(wifi_front_haul_bss_t));
 
-    convert_vap_index_to_name(vap_index, l_vap_name);
+    convert_vap_index_to_name(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, vap_index, l_vap_name);
     ret = update_wifi_vap_info(l_vap_name, l_vap_maps);
     if(ret != RETURN_OK)
     {

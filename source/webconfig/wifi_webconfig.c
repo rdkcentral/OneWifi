@@ -377,6 +377,16 @@ webconfig_error_t webconfig_init(webconfig_t *config)
     config->subdocs[webconfig_subdoc_type_harvester].translate_to_subdoc = translate_to_harvester_subdoc;
     config->subdocs[webconfig_subdoc_type_harvester].translate_from_subdoc = translate_from_harvester_subdoc;
 
+    config->subdocs[webconfig_subdoc_type_csi].type = webconfig_subdoc_type_csi;
+    strcpy(config->subdocs[webconfig_subdoc_type_csi].name, "csi data");
+    config->subdocs[webconfig_subdoc_type_csi].major = 1;
+    config->subdocs[webconfig_subdoc_type_csi].minor = 1;
+    config->subdocs[webconfig_subdoc_type_csi].access_check_subdoc = access_check_csi_subdoc;
+    config->subdocs[webconfig_subdoc_type_csi].encode_subdoc = encode_csi_subdoc;
+    config->subdocs[webconfig_subdoc_type_csi].decode_subdoc = decode_csi_subdoc;
+    config->subdocs[webconfig_subdoc_type_csi].translate_to_subdoc =  translate_to_csi_subdoc;
+    config->subdocs[webconfig_subdoc_type_csi].translate_from_subdoc = translate_from_csi_subdoc;
+
     config->subdocs[webconfig_subdoc_type_wifi_config].type = webconfig_subdoc_type_wifi_config;
     strcpy(config->subdocs[webconfig_subdoc_type_wifi_config].name, "Wifi global");
     config->subdocs[webconfig_subdoc_type_wifi_config].major = 1;

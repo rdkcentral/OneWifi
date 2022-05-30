@@ -131,7 +131,7 @@ webconfig_error_t decode_radio_subdoc(webconfig_t *config, webconfig_subdoc_data
     params = &data->u.decoded;
     doc = &config->subdocs[data->type];
 
-//    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Encoded JSON:\n%s\n", __func__, __LINE__, data->u.encoded.raw);
+    // wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Encoded JSON:\n%s\n", __func__, __LINE__, data->u.encoded.raw);
 
     for (i = 0; i < doc->num_objects; i++) {
         if ((cJSON_GetObjectItem(json, doc->objects[i].name)) == NULL) {
@@ -176,7 +176,7 @@ webconfig_error_t decode_radio_subdoc(webconfig_t *config, webconfig_subdoc_data
     }
 
     if (presence_count < MIN_NUM_RADIOS || presence_count > MAX_NUM_RADIOS) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Radio object not present\n", __func__, __LINE__);
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Radio object not present presence_count: %u\n", __func__, __LINE__ ,presence_count);
         cJSON_Delete(json);
         return webconfig_error_invalid_subdoc;
     }

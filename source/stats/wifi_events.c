@@ -573,12 +573,27 @@ rbusError_t events_APtable_addrowhandler(rbusHandle_t handle, char const* tableN
     return RBUS_ERROR_SUCCESS;
 }
 
+unsigned int getInstanceNumber() {
+    int b_InstanceNumber=0, itr;
+    int count  = queue_count(g_rbus_events_queue);
+    event_element_t* check_event;
+
+    if (g_rbus_events_queue != NULL) {
+        for (itr=0; itr<count; itr++) {
+            check_event = (event_element_t *)queue_peek(g_rbus_events_queue, itr);
+            if ((check_event->type == monitor_event_type_csi) && (b_InstanceNumber < check_event->idx)) {
+                b_InstanceNumber = check_event->idx;
+            }
+        }
+    }
+    return b_InstanceNumber;
+}
+
 rbusError_t events_CSItable_addrowhandler(rbusHandle_t handle, char const* tableName, char const* aliasName, uint32_t* instNum)
 {
-    static int instanceCounter = 1;
     event_element_t *event;
-
-    *instNum = instanceCounter++;
+    
+    *instNum = getInstanceNumber() + 1;
 
     wifi_util_dbg_print(WIFI_MON, "%s(): %s %d\n", __FUNCTION__, tableName, *instNum);
 

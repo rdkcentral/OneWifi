@@ -495,7 +495,7 @@ void process_wifiapi_command(char *command, unsigned int len)
             sprintf(buff, "%s: Invalid ap index (%d)", args[0], vap_index);
             goto publish;
         }
-        get_vap_and_radio_index_from_vap_instance((uint8_t)vap_index, (uint8_t *)&radio_index, (uint8_t *)&vap_array_index);
+        get_vap_and_radio_index_from_vap_instance(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, (uint8_t)vap_index, (uint8_t *)&radio_index, (uint8_t *)&vap_array_index);
         if(mgr->radio_config[radio_index].vaps.vap_map.vap_array[vap_array_index].vap_mode != wifi_vap_mode_sta) {
             sprintf(buff, "%s: ap index is not station(%d)", args[0], vap_index);
             goto publish;
@@ -526,7 +526,7 @@ void process_wifiapi_command(char *command, unsigned int len)
             sprintf(buff, "%s: Invalid ap index (%d)", args[0], vap_index);
             goto publish;
         }
-        get_vap_and_radio_index_from_vap_instance((uint8_t)vap_index, (uint8_t *)&radio_index, (uint8_t *)&vap_array_index);
+        get_vap_and_radio_index_from_vap_instance(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, (uint8_t)vap_index, (uint8_t *)&radio_index, (uint8_t *)&vap_array_index);
         if(mgr->radio_config[radio_index].vaps.vap_map.vap_array[vap_array_index].vap_mode != wifi_vap_mode_sta) {
             sprintf(buff, "%s: ap index is not station(%d). r %d va %d mode %d", args[0], vap_index, radio_index, vap_array_index, mgr->radio_config[radio_index].vaps.vap_map.vap_array[vap_array_index].vap_mode);
             goto publish;

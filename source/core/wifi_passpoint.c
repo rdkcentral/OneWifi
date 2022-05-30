@@ -39,8 +39,8 @@
 static wifi_interworking_t g_interworking_data[16];
 static wifi_gas_stats_t gasStats[GAS_CFG_TYPE_SUPPORTED];//ONE_WIFI
 
-extern UINT g_interworking_RFC;
-extern UINT g_passpoint_RFC;
+extern bool g_interworking_RFC;
+extern bool g_passpoint_RFC;
 
 void destroy_passpoint (void);
 
@@ -200,7 +200,7 @@ void process_passpoint_event(wifi_anqp_context_t *anqpReq)
     gasStats[GAS_CFG_TYPE_SUPPORTED - 1].Queries++;
 
     //Check RFC value. Return NUll if not enabled
-    get_wifi_rfc_parameters(RFC_WIFI_PASSPOINT_STATUS, (bool *)&rfc_status);
+    get_wifi_rfc_parameters(RFC_WIFI_PASSPOINT, (bool *)&rfc_status);
     if (false == rfc_status){
         wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Received ANQP Request. RFC Disabled\n", __func__, __LINE__);
     }else if(g_interworking_data[apIns].passpoint.enable != true){
@@ -1075,8 +1075,8 @@ ANSC_STATUS WiFi_SetHS2Config(uint8_t vapIndex, char *JSON_STR)
 
 #ifndef LINUX_VM_PORT
     //Fetch RFC values for Interworking and Passpoint
-    get_wifi_rfc_parameters(RFC_WIFI_INTERWORKING_STATUS, (UINT *)&g_interworking_RFC);
-    get_wifi_rfc_parameters(RFC_WIFI_PASSPOINT_STATUS, (UINT *)&g_passpoint_RFC);//ONE_WIFI
+    get_wifi_rfc_parameters(RFC_WIFI_INTERWORKING, (bool *)&g_interworking_RFC);
+    get_wifi_rfc_parameters(RFC_WIFI_PASSPOINT, (bool *)&g_passpoint_RFC);//ONE_WIFI
 #endif
 
     memset((char *)&passpointCfg,0,sizeof(wifi_interworking_t));

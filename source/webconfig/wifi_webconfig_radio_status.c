@@ -88,7 +88,7 @@ webconfig_error_t encode_radio_status_subdoc(webconfig_t *config, webconfig_subd
     str = cJSON_Print(json);
 
     memcpy(data->u.encoded.raw, str, strlen(str));
-    //wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Encoded JSON:\n%s\n", __func__, __LINE__, str);
+    // wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Encoded JSON:\n%s\n", __func__, __LINE__, str);
 
     cJSON_Delete(json);
     return webconfig_error_none;
@@ -151,7 +151,7 @@ webconfig_error_t decode_radio_status_subdoc(webconfig_t *config, webconfig_subd
         }
 
         //Get the radio_index from the temp structure
-        if (convert_ifname_to_radioIndex(temp_radio_state.if_name, &radio_index) != RETURN_OK) {
+        if (convert_ifname_to_radio_index(&params->hal_cap.wifi_prop, temp_radio_state.if_name, &radio_index) != RETURN_OK) {
             wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Radio State object invalid radio_index : %s\n",
                     __func__, __LINE__, temp_radio_state.if_name);
             cJSON_Delete(json);

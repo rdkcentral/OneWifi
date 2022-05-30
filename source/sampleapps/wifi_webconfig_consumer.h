@@ -8,7 +8,13 @@
 extern "C" {
 #endif
 
-#define MAX_WAIT    5
+#define MAX_WAIT            5
+#define RBUS_CLI_MAX_PARAM  25
+
+typedef enum {
+    rbus_bool_data,
+    rbus_int_data
+} rbus_data_type_t;
 
 typedef enum {
     consumer_event_type_webconfig,
@@ -34,7 +40,9 @@ typedef enum {
     consumer_test_state_xfinity_subdoc_test_pending,
     consumer_test_state_xfinity_subdoc_test_complete,
     consumer_test_state_home_subdoc_test_pending,
-    consumer_test_state_home_subdoc_test_complete
+    consumer_test_state_home_subdoc_test_complete,
+    consumer_test_state_macfilter_subdoc_test_pending,
+    consumer_test_state_macfilter_subdoc_test_complete
 } consumer_test_state_t;
 
 typedef enum {
@@ -47,6 +55,7 @@ typedef enum {
     consumer_test_start_all_subdoc,
     consumer_test_start_wan_manager,
     consumer_test_start_client_connection,
+    consumer_test_start_macfilter_subdoc,
     consumer_all_test_completed
 } consumer_test_sequence_t;
 
@@ -81,12 +90,14 @@ typedef struct {
     unsigned int        mesh_test_pending_count;
     unsigned int        xfinity_test_pending_count;
     unsigned int        home_test_pending_count;
+    unsigned int        macfilter_test_pending_count;
     unsigned char       sta_connect_test_pending_count;
 } webconfig_consumer_t;
 
 rbusError_t webconfig_consumer_set_subdoc(rbusHandle_t handle, rbusProperty_t property, rbusSetHandlerOptions_t* opts);
 void webconfig_consumer_sta_conn_status(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription);
-int sta_connection_status_event(int apIndex, wifi_bss_info_t *bss_dev, wifi_station_stats_t *sta);
+void webconfig_consumer_sta_interface_name(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription);
+webconfig_consumer_t *get_consumer_object();
 
 #ifdef __cplusplus
 }

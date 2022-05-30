@@ -8,14 +8,27 @@ extern "C" {
 #include <wifi_hal.h>
 #include <collection.h>
 
-#define WIFI_STA_2G_VAP_CONNECT_STATUS      "Device.WiFi.STA.0.Connection.Status"
-#define WIFI_STA_5G_VAP_CONNECT_STATUS      "Device.WiFi.STA.1.Connection.Status"
+#define WIFI_STA_2G_VAP_CONNECT_STATUS      "Device.WiFi.STA.1.Connection.Status"
+#define WIFI_STA_5G_VAP_CONNECT_STATUS      "Device.WiFi.STA.2.Connection.Status"
+#define WIFI_STA_2G_INTERFACE_NAME          "Device.WiFi.STA.1.InterfaceName"
+#define WIFI_STA_5G_INTERFACE_NAME          "Device.WiFi.STA.2.InterfaceName"
+#define WIFI_STA_NAMESPACE                  "Device.WiFi.STA.{i}."
+#define WIFI_STA_CONNECT_STATUS             "Device.WiFi.STA.{i}.Connection.Status"
+#define WIFI_STA_INTERFACE_NAME             "Device.WiFi.STA.{i}.InterfaceName"
 #define WIFI_ACTIVE_GATEWAY_CHECK           "Device.X_RDK_GatewayManagement.CheckForOtherGateway"
 #define WIFI_WAN_FAILOVER_TEST              "Device.WiFi.WanFailoverTest"
+#define WIFI_LMLITE_NOTIFY                  "Device.Hosts.X_RDKCENTRAL-COM_LMHost_Sync_From_WiFi"
+#define WIFI_HOTSPOT_NOTIFY                 "Device.X_COMCAST-COM_GRE.Hotspot.ClientChange"
+#define WIFI_NOTIFY_ASSOCIATED_ENTRIES      "Device.NotifyComponent.SetNotifi_ParamName"
 
 #define PLAN_ID_LENGTH     16
 #define MAX_STEP_COUNT  32 /*Active Measurement Step Count */
 #define  MAC_ADDRESS_LENGTH  13
+
+typedef enum {
+    rdk_dev_mode_type_gw,
+    rdk_dev_mode_type_ext
+} rdk_dev_mode_type_t;
 
 typedef struct {
     unsigned char SrcMac[MAC_ADDRESS_LENGTH];
@@ -55,12 +68,13 @@ typedef struct {
 } wifi_dml_parameters_t;
 
 typedef struct {
-    UINT wifi_passpoint_status;
-    UINT wifi_interworking_status;
-    bool RadiusGreyList_status;
-    bool HostapdAuthenticator_status;
-    bool wifi_EasyConnect_status;
-    bool wifi_ActiveMeasurements_status;
+    bool wifipasspoint_rfc;
+    bool wifiinterworking_rfc;
+    bool radiusgreylist_rfc;
+    bool dfsatbootup_rfc;
+    bool dfs_rfc;
+    bool wpa3_rfc;
+    char rfc_id[4];
 } wifi_rfc_dml_parameters_t;
 
 typedef struct {
@@ -93,6 +107,7 @@ typedef struct {
     char wifi_region_code[4];
     bool diagnostic_enable;
     bool validate_ssid;
+    int device_network_mode;
 } __attribute__((packed)) wifi_global_param_t;
 
 typedef struct {
@@ -105,6 +120,8 @@ typedef struct {
     UINT                    vap_index;
     queue_t                 *associated_devices_queue;
     hash_map_t              *acl_map;
+    int                     kick_device_task_counter;
+    bool                    kick_device_config_change;
 } rdk_wifi_vap_info_t;
 
 typedef struct {
@@ -196,7 +213,13 @@ typedef struct {
     unsigned long          u_inst_client_def_reporting_period;
     unsigned long          u_inst_client_def_override_ttl;
     char                   mac_address[MAC_ADDRESS_LENGTH];
-}instant_measurement_config_t;
+} instant_measurement_config_t;
+
+typedef struct {
+    wifi_station_stats_t   stats;
+    wifi_interface_name_t  interface_name;
+    wifi_bss_info_t        bss_info;
+} __attribute__((packed)) rdk_sta_data_t;
 
 #ifdef __cplusplus
 }

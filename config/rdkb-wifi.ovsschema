@@ -1,6 +1,6 @@
 {
   "name": "Wifi_Rdk_Database",
-  "version": "1.00.002",
+  "version": "1.00.004",
   "cksum": "2353365742 523",
   "tables": {
     "Wifi_Device_Config": {
@@ -1109,7 +1109,7 @@
             "key": {
               "type": "integer",
               "minInteger": 0,
-              "maxInteger": 128
+              "maxInteger": 255
             },
             "min": 0,
             "max": 1
@@ -1397,7 +1397,73 @@
       ],
      "isRoot": true
     },
-
+  "Wifi_Rfc_Config": {
+      "columns": {
+        "wifipasspoint_rfc": {
+          "type": {
+            "key": {
+              "type": "boolean"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "wifiinterworking_rfc": {
+          "type": {
+            "key": {
+              "type": "boolean"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "radiusgreylist_rfc": {
+          "type": {
+            "key": {
+              "type": "boolean"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "dfsatbootup_rfc": {
+          "type": {
+            "key": {
+              "type": "boolean"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "dfs_rfc": {
+          "type": {
+            "key": {
+              "type": "boolean"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "wpa3_rfc": {
+          "type": {
+            "key": {
+              "type": "boolean"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+      "rfc_id": {
+          "type": "string"
+        }
+     },
+     "indexes": [
+        [
+          "rfc_id"
+        ]
+      ],
+     "isRoot": true
+    },
     "Wifi_Global_Config": {
       "columns": {
         "gas_config": {
@@ -1667,6 +1733,15 @@
           "type": {
             "key": {
               "type": "boolean"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "device_network_mode": {
+          "type": {
+            "key": {
+              "type": "integer"
             },
             "min": 0,
             "max": 1

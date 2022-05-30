@@ -35,14 +35,6 @@
 #include "cosa_wifi_internal.h"
 #include "wifi_monitor.h"
 #include "wifi_util.h"
-
-static char *to_mac_str    (mac_address_t mac, mac_addr_str_t key) {
-    snprintf(key, 18, "%02x:%02x:%02x:%02x:%02x:%02x",
-             mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-
-    return (char *)key;
-}
-
 #if 0
 static void to_mac_bytes   (mac_addr_str_t key, mac_address_t bmac) {
    unsigned int mac[6];

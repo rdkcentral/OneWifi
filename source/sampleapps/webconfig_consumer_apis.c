@@ -19,6 +19,8 @@
 #include "webconfig_external_proto_ovsdb.h"
 #include "wifi_webconfig_consumer.h"
 
+#define MAX_NUM_CLIENTS 64
+
 webconfig_consumer_t    webconfig_consumer;
 webconfig_external_ovsdb_t    ext_proto;
 BOOL is_ovs_init = false;
@@ -27,6 +29,19 @@ BOOL enable_ovsdb = false;
 BOOL debug_enable = false;
 void free_ovs_schema_structs();
 void dump_subdoc(const char *str, webconfig_subdoc_type_t type);
+wifi_vap_info_t *get_wifi_radio_vap_info(rdk_wifi_radio_t *wifi_radio, const char *vap_name_prefix);
+rdk_wifi_vap_info_t *get_wifi_radio_rdkvap_info(rdk_wifi_radio_t *wifi_radio, const char *vap_name_prefix);
+
+static unsigned long long int cmd_start_time = 0;
+static unsigned int cmd_delta_time = 0;
+unsigned long long int get_current_time_ms(void)
+{
+    struct timeval tv_now = { 0 };
+    unsigned long long int milliseconds = 0;
+    gettimeofday(&tv_now, NULL);
+    milliseconds = (tv_now.tv_sec*1000LL + tv_now.tv_usec/1000);
+    return milliseconds;
+}
 
 webconfig_consumer_t *get_consumer_object()
 {
@@ -39,8 +54,8 @@ void print_radio_state_ovs_schema(FILE  *fp, const struct schema_Wifi_Radio_Stat
     fprintf(fp, "freq_band                 : %s\n",   radio->freq_band);
     fprintf(fp, "enabled                   : %d\n",   radio->enabled);
     fprintf(fp, "dfs_demo                  : %d\n",   radio->dfs_demo);
-    //fprintf(fp, "%s:%d hw_type                 : %s\n", radio->hw_type);
-    //fprintf(fp, "%s:%d hw_config               : %s\n", radio->hw_config);
+    fprintf(fp, "hw_type                   : %s\n", radio->hw_type);
+    //fprintf(fp, "hw_config               : %s\n", radio->hw_config);
     fprintf(fp, "country                   : %s\n",   radio->country);
     fprintf(fp, "channel                   : %d\n",   radio->channel);
     fprintf(fp, "channel_sync              : %d\n",   radio->channel_sync);
@@ -51,7 +66,7 @@ void print_radio_state_ovs_schema(FILE  *fp, const struct schema_Wifi_Radio_Stat
     fprintf(fp, "thermal_downgrade_temp    : %d\n",   radio->thermal_downgrade_temp);
     fprintf(fp, "thermal_upgrade_temp      : %d\n",   radio->thermal_upgrade_temp);
     fprintf(fp, "thermal_integration       : %d\n",   radio->thermal_integration);
-    //fprintf(fp, "%s:%d temperature_control       : %s\n",   radio->temperature_control);
+    //fprintf(fp, "temperature_control       : %s\n",   radio->temperature_control);
     fprintf(fp, "tx_power                  : %d\n",   radio->tx_power);
     fprintf(fp, "bcn_int                   : %d\n",   radio->bcn_int);
     fprintf(fp, "tx_chainmask              : %d\n",   radio->tx_chainmask);
@@ -70,8 +85,8 @@ void print_radio_config_ovs_schema(FILE  *fp, const struct schema_Wifi_Radio_Con
     fprintf(fp, "freq_band                 : %s\n",   radio->freq_band);
     fprintf(fp, "enabled                   : %d\n",   radio->enabled);
     fprintf(fp, "dfs_demo                  : %d\n",   radio->dfs_demo);
-    //fprintf(fp, "%s:%d hw_type                 : %s\n", radio->hw_type);
-    //fprintf(fp, "%s:%d hw_config               : %s\n", radio->hw_config);
+    fprintf(fp, "hw_type                   : %s\n", radio->hw_type);
+    //fprintf(fp, "hw_config               : %s\n", radio->hw_config);
     fprintf(fp, "country                   : %s\n",   radio->country);
     fprintf(fp, "channel                   : %d\n",   radio->channel);
     fprintf(fp, "channel_sync              : %d\n",   radio->channel_sync);
@@ -82,7 +97,7 @@ void print_radio_config_ovs_schema(FILE  *fp, const struct schema_Wifi_Radio_Con
     fprintf(fp, "thermal_downgrade_temp    : %d\n",   radio->thermal_downgrade_temp);
     fprintf(fp, "thermal_upgrade_temp      : %d\n",   radio->thermal_upgrade_temp);
     fprintf(fp, "thermal_integration       : %d\n",   radio->thermal_integration);
-    //fprintf(fp, "%s:%d temperature_control       : %s\n",   radio->temperature_control);
+    //fprintf(fp, "temperature_control       : %s\n",   radio->temperature_control);
     fprintf(fp, "tx_power                  : %d\n",   radio->tx_power);
     fprintf(fp, "bcn_int                   : %d\n",   radio->bcn_int);
     fprintf(fp, "tx_chainmask              : %d\n",   radio->tx_chainmask);
@@ -94,12 +109,15 @@ void print_radio_config_ovs_schema(FILE  *fp, const struct schema_Wifi_Radio_Con
 
 void print_vif_state_ovs_schema(FILE  *fp, const struct schema_Wifi_VIF_State *vif)
 {
+    int i = 0;
     fprintf(fp, " if_name                   : %s\n",   vif->if_name);
     fprintf(fp, " enabled                   : %d\n",   vif->enabled);
     fprintf(fp, " mode                      : %s\n",   vif->mode);
     fprintf(fp, " vif_radio_idx             : %d\n",   vif->vif_radio_idx);
+    fprintf(fp, " mac                       : %s\n",   vif->mac);
     fprintf(fp, " wds                       : %d\n",   vif->wds);
     fprintf(fp, " ssid                      : %s\n",   vif->ssid);
+    fprintf(fp, " ssid_broadcast            : %s\n",   vif->ssid_broadcast);
     fprintf(fp, " bridge                    : %s\n",   vif->bridge);
     fprintf(fp, " mac_list_type             : %s\n",   vif->mac_list_type);
     fprintf(fp, " vlan_id                   : %d\n",   vif->vlan_id);
@@ -118,7 +136,21 @@ void print_vif_state_ovs_schema(FILE  *fp, const struct schema_Wifi_VIF_State *v
     fprintf(fp, " wps_pbc                   : %d\n",   vif->wps_pbc);
     fprintf(fp, " wps_pbc_key_id            : %s\n",   vif->wps_pbc_key_id);
     fprintf(fp, " wpa                       : %d\n",   vif->wpa);
-    //fprintf(fp, " wpa_key_mgmt                : %s\n",   vif->wpa_key_mgmt);
+    for (i=0; i<vif->wpa_key_mgmt_len; i++) {
+        if (vif->wpa_key_mgmt[i] != NULL) {
+            fprintf(fp, " wpa_key_mgmt                : %s\n",   vif->wpa_key_mgmt[i]);
+        }
+    }
+    for (i=0; i<vif->wpa_psks_len; i++) {
+        if (vif->wpa_psks[i] != NULL) {
+            fprintf(fp, " wpa_psk                : %s\n",   vif->wpa_psks[i]);
+        }
+    }
+    for (i=0; i<vif->mac_list_len; i++) {
+        if (vif->mac_list[i] != NULL) {
+            fprintf(fp, " mac_list                : %s\n",   vif->mac_list[i]);
+        }
+    }
     //  fprintf(fp, " wpa_psks                  : %s\n",   vif->wpa_psks);
     //  fprintf(fp, " wpa_oftags                : %s\n",   vif->wpa_oftags);
     fprintf(fp, " radius_srv_addr           : %s\n",   vif->radius_srv_addr);
@@ -130,6 +162,7 @@ void print_vif_state_ovs_schema(FILE  *fp, const struct schema_Wifi_VIF_State *v
 
 void print_vif_config_ovs_schema(FILE  *fp, const struct schema_Wifi_VIF_Config *vif)
 {
+    int i = 0;
     fprintf(fp, " if_name                   : %s\n",   vif->if_name);
     fprintf(fp, " enabled                   : %d\n",   vif->enabled);
     fprintf(fp, " mode                      : %s\n",   vif->mode);
@@ -137,6 +170,7 @@ void print_vif_config_ovs_schema(FILE  *fp, const struct schema_Wifi_VIF_Config 
     fprintf(fp, " vif_dbg_lvl               : %d\n",   vif->vif_dbg_lvl);
     fprintf(fp, " wds                       : %d\n",   vif->wds);
     fprintf(fp, " ssid                      : %s\n",   vif->ssid);
+    fprintf(fp, " ssid_broadcast            : %s\n",   vif->ssid_broadcast);
     fprintf(fp, " bridge                    : %s\n",   vif->bridge);
     fprintf(fp, " mac_list_type             : %s\n",   vif->mac_list_type);
     fprintf(fp, " vlan_id                   : %d\n",   vif->vlan_id);
@@ -158,11 +192,38 @@ void print_vif_config_ovs_schema(FILE  *fp, const struct schema_Wifi_VIF_Config 
     //fprintf(fp, " wpa_key_mgmt                : %s\n",   vif->wpa_key_mgmt);
     //  fprintf(fp, " wpa_psks                  : %s\n",   vif->wpa_psks);
     //  fprintf(fp, " wpa_oftags                : %s\n",   vif->wpa_oftags);
+    for (i=0; i<vif->wpa_key_mgmt_len; i++) {
+        if (vif->wpa_key_mgmt[i] != NULL) {
+            fprintf(fp, " wpa_key_mgmt                : %s\n",   vif->wpa_key_mgmt[i]);
+        }
+    }
+    for (i=0; i<vif->wpa_psks_len; i++) {
+        if (vif->wpa_psks[i] != NULL) {
+            fprintf(fp, " wpa_psk                : %s\n",   vif->wpa_psks[i]);
+        }
+    }
+    for (i=0; i<vif->mac_list_len; i++) {
+        if (vif->mac_list[i] != NULL) {
+            fprintf(fp, " mac_list                : %s\n",   vif->mac_list[i]);
+        }
+    }
     fprintf(fp, " radius_srv_addr           : %s\n",   vif->radius_srv_addr);
     fprintf(fp, " radius_srv_port           : %d\n",   vif->radius_srv_port);
     fprintf(fp, " radius_srv_secret         : %s\n",   vif->radius_srv_secret);
     fprintf(fp, " default_oftag             : %s\n",   vif->default_oftag);
 
+    return;
+}
+
+void print_associated_clients_ovs_schema(FILE  *fp, const struct schema_Wifi_Associated_Clients *assoc_clients, unsigned int count)
+{
+    if ((assoc_clients->mac != NULL) && (strlen(assoc_clients->mac)) != 0) {
+        fprintf(fp, " Client Number             : %d\n",   count);
+        fprintf(fp, " Client mac                : %s\n",   assoc_clients->mac);
+        fprintf(fp, " Client state              : %s\n",   assoc_clients->state);
+        fprintf(fp, " Client capabilities       : %s\n",   assoc_clients->capabilities[0]);
+        fprintf(fp, " Client ifname             : %s\n",   assoc_clients->_uuid.uuid);
+    }
     return;
 }
 
@@ -190,7 +251,9 @@ void dump_ovs_schema(webconfig_subdoc_type_t type)
     const struct schema_Wifi_VIF_Config *vif_row;
     const struct schema_Wifi_Radio_State *radio_state;
     const struct schema_Wifi_VIF_State   *vif_state;
+    const struct schema_Wifi_Associated_Clients *assoc_clients;
     unsigned int vap_array_index = 0;
+    webconfig_consumer_t *consumer = get_consumer_object();
 
     //    getcwd(file_name, 128);
     strcpy(file_name, "/tmp");
@@ -209,6 +272,14 @@ void dump_ovs_schema(webconfig_subdoc_type_t type)
             strcat(file_name, "/log_init_schema");
             vap_names = (char **)&total_vap_names;
             array_size = ARRAY_SZ(total_vap_names);
+        break;
+        case webconfig_subdoc_type_mac_filter:
+            strcat(file_name, "/log_macfilter_schema");
+            vap_names = (char **)&total_vap_names;
+            array_size = ARRAY_SZ(total_vap_names);
+        break;
+        case webconfig_subdoc_type_associated_clients:
+            strcat(file_name, "/log_assoc_client_schema");
         break;
 
         default:
@@ -233,11 +304,11 @@ void dump_ovs_schema(webconfig_subdoc_type_t type)
         }
     }
 
-    if (((type == webconfig_subdoc_type_mesh) || (type == webconfig_subdoc_type_dml)) && (type != webconfig_subdoc_type_radio)) {
+    if (((type == webconfig_subdoc_type_mesh) || (type == webconfig_subdoc_type_dml) || (type == webconfig_subdoc_type_mac_filter)) && (type != webconfig_subdoc_type_radio)) {
         fprintf(fp, "VIF Config Schema Configuration\n");
         for (i = 0; i < array_size; i++) {
 
-            vap_array_index = convert_vap_name_to_index(vap_names[i]);
+            vap_array_index = convert_vap_name_to_index(&consumer->hal_cap.wifi_prop, vap_names[i]);
 
             vif_row = ext_proto.vif_config[vap_array_index];
             if (vif_row == NULL) {
@@ -266,7 +337,7 @@ void dump_ovs_schema(webconfig_subdoc_type_t type)
         fprintf(fp, "VIF State Schema Configuration\n");
         for (i = 0; i < array_size; i++) {
 
-            vap_array_index = convert_vap_name_to_index(vap_names[i]);
+            vap_array_index = convert_vap_name_to_index(&consumer->hal_cap.wifi_prop, vap_names[i]);
 
             vif_state = ext_proto.vif_state[vap_array_index];
             if (vif_state == NULL) {
@@ -278,11 +349,66 @@ void dump_ovs_schema(webconfig_subdoc_type_t type)
         }
     }
 
+    if (type == webconfig_subdoc_type_associated_clients) {
+        fprintf(fp, "Associated clients Configuration\n");
+        for (i = 0; i < MAX_NUM_CLIENTS; i++) {
+            assoc_clients = ext_proto.assoc_clients[i];
+            if (assoc_clients == NULL) {
+                printf("%s:%d: vif_row is empty for : %d\n", __func__, __LINE__, i);
+                return;
+            }
+            print_associated_clients_ovs_schema(fp, assoc_clients, i);
+        }
+        fprintf(fp, "\n");
+    }
+
+
+
     fclose(fp);
 
     return;
 }
 
+webconfig_error_t   app_free_macfilter_entries(webconfig_subdoc_data_t *data)
+{
+    unsigned int i, j;
+    webconfig_subdoc_decoded_data_t *decoded_params;
+    rdk_wifi_radio_t *radio;
+    rdk_wifi_vap_info_t *rdk_vap;
+    acl_entry_t *temp_acl_entry, *acl_entry;
+    mac_addr_str_t mac_str;
+
+    decoded_params = &data->u.decoded;
+    if (decoded_params == NULL) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: decoded_params is NULL\n", __func__, __LINE__);
+        return webconfig_error_invalid_subdoc;
+    }
+
+    for (i = 0; i < decoded_params->num_radios; i++) {
+        radio = &decoded_params->radios[i];
+
+        for (j = 0; j < radio->vaps.num_vaps; j++) {
+            rdk_vap = &decoded_params->radios[i].vaps.rdk_vap_array[j];
+            if (rdk_vap == NULL){
+                continue;
+            }
+            if(rdk_vap->acl_map != NULL) {
+                acl_entry = hash_map_get_first(rdk_vap->acl_map);
+                while(acl_entry != NULL) {
+                    to_mac_str(acl_entry->mac,mac_str);
+                    acl_entry = hash_map_get_next(rdk_vap->acl_map,acl_entry);
+                    temp_acl_entry = hash_map_remove(rdk_vap->acl_map, mac_str);
+                    if (temp_acl_entry != NULL) {
+                        free(temp_acl_entry);
+                    }
+                }
+                hash_map_destroy(rdk_vap->acl_map);
+                rdk_vap->acl_map = NULL;
+            }
+        }
+    }
+    return webconfig_error_none;
+}
 
 int push_data_to_consumer_queue(const void *msg, unsigned int len, ctrl_event_type_t type, ctrl_event_subtype_t sub_type)
 {
@@ -308,6 +434,7 @@ int push_data_to_consumer_queue(const void *msg, unsigned int len, ctrl_event_ty
     memcpy(data->msg, msg, len);
     data->len = len;
 
+    printf("%s:%d: current time:%llu\n", __func__, __LINE__, get_current_time_ms());
     pthread_mutex_lock(&consumer->lock);
     queue_push(consumer->queue, data);
     pthread_cond_signal(&consumer->cond);
@@ -385,18 +512,20 @@ void handle_webconfig_consumer_event(webconfig_consumer_t *consumer, const char 
     switch (subtype) {
         case consumer_event_webconfig_set_data:
 
-//            printf("%s:%d: Received webconfig subdoc:\n%s\n ... decoding and translating\n", __func__, __LINE__, str);
+            //            printf("%s:%d: Received webconfig subdoc:\n%s\n ... decoding and translating\n", __func__, __LINE__, str);
             // tell webconfig to decode
             if (enable_ovsdb == true) {
                 unsigned int *num;
                 num = (unsigned int *)&ext_proto.radio_config_row_count;
                 *num = consumer->hal_cap.wifi_prop.numRadios;
                 num = (unsigned int *)&ext_proto.vif_config_row_count;
-                *num = consumer->hal_cap.wifi_prop.numRadios * MAX_NUM_RADIOS;
+                *num = consumer->hal_cap.wifi_prop.numRadios * MAX_NUM_VAP_PER_RADIO;
                 num = (unsigned int *)&ext_proto.radio_state_row_count;
-                *num = consumer->hal_cap.wifi_prop.numRadios * MAX_NUM_RADIOS;
+                *num = consumer->hal_cap.wifi_prop.numRadios;
                 num = (unsigned int *)&ext_proto.vif_state_row_count;
-                *num = consumer->hal_cap.wifi_prop.numRadios * MAX_NUM_RADIOS;
+                *num = consumer->hal_cap.wifi_prop.numRadios * MAX_NUM_VAP_PER_RADIO;
+                num = (unsigned int *)&ext_proto.assoc_clients_row_count;
+                *num = MAX_NUM_CLIENTS;
 
                 ret = webconfig_ovsdb_decode(&consumer->webconfig, str, &ext_proto, &subdoc_type);
                 printf( "%s:%d:webconfig_ovsdb_decode\n", __func__, __LINE__);
@@ -404,11 +533,11 @@ void handle_webconfig_consumer_event(webconfig_consumer_t *consumer, const char 
                 printf( "%s:%d:webconfig_decode\n", __func__, __LINE__);
 
                 memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+                memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&consumer->hal_cap, sizeof(wifi_hal_capability_t));
                 ret = webconfig_decode(&consumer->webconfig, &data, str);
                 if (ret == webconfig_error_none)
                     subdoc_type = data.type;
-                
-                consumer->hal_cap.wifi_prop.numRadios = data.u.decoded.num_radios ;
+
             }
 
             if (ret == webconfig_error_none ) {
@@ -416,11 +545,21 @@ void handle_webconfig_consumer_event(webconfig_consumer_t *consumer, const char 
 
                 switch (subdoc_type) {
                     case webconfig_subdoc_type_dml:
+                        dump_subdoc(str, webconfig_subdoc_type_dml);
+                        //free the data in hash_map
+                        if (enable_ovsdb == false) {
+                            app_free_macfilter_entries(&data);
+                        }
+                        consumer->hal_cap.wifi_prop.numRadios = data.u.decoded.num_radios;
                         memcpy((unsigned char *)&consumer->config, (unsigned char *)&data.u.decoded.config, sizeof(wifi_global_config_t));
                         memcpy((unsigned char *)consumer->radios, (unsigned char *)data.u.decoded.radios, consumer->hal_cap.wifi_prop.numRadios * sizeof(rdk_wifi_radio_t));
+                        memcpy((unsigned char *)&consumer->hal_cap, (unsigned char *)&data.u.decoded.hal_cap, sizeof(wifi_hal_capability_t));
+
                         if (consumer->test_state == consumer_test_state_radio_subdoc_test_pending) {
                             consumer->radio_test_pending_count = 0;
                             consumer->test_state = consumer_test_state_radio_subdoc_test_complete;
+                            cmd_delta_time = get_current_time_ms() - cmd_start_time;
+                            printf("%s:%d: current time:%llu subdoc execution delta time:%u milliSeconds\n", __func__, __LINE__, get_current_time_ms(), cmd_delta_time);
                             printf("%s:%d: Radio set successful, Radios: %s, %s, Test State:%d\n", __func__, __LINE__,
                                     consumer->radios[0].name, consumer->radios[1].name,
                                     consumer->test_state);
@@ -429,12 +568,16 @@ void handle_webconfig_consumer_event(webconfig_consumer_t *consumer, const char 
                         } else if (consumer->test_state == consumer_test_state_private_subdoc_test_pending) {
                             consumer->private_test_pending_count = 0;
                             consumer->test_state = consumer_test_state_private_subdoc_test_complete;
+                            cmd_delta_time = get_current_time_ms() - cmd_start_time;
+                            printf("%s:%d: current time:%llu subdoc execution delta time:%u milliSeconds\n", __func__, __LINE__, get_current_time_ms(), cmd_delta_time);
                             printf("%s:%d: consumer vap private set successful, Radios: %s, %s, Test State:%d\n", __func__, __LINE__,
                                     consumer->radios[0].name, consumer->radios[1].name,
                                     consumer->test_state);
                         } else if (consumer->test_state == consumer_test_state_mesh_subdoc_test_pending) {
                             consumer->mesh_test_pending_count = 0;
                             consumer->test_state = consumer_test_state_mesh_subdoc_test_complete;
+                            cmd_delta_time = get_current_time_ms() - cmd_start_time;
+                            printf("%s:%d: current time:%llu subdoc execution delta time:%u milliSeconds\n", __func__, __LINE__, get_current_time_ms(), cmd_delta_time);
                             printf("%s:%d: consumer vap mesh set successful, Radios: %s, %s, Test State:%d\n", __func__, __LINE__,
                                     consumer->radios[0].name, consumer->radios[1].name,
                                     consumer->test_state);
@@ -443,13 +586,25 @@ void handle_webconfig_consumer_event(webconfig_consumer_t *consumer, const char 
                         } else if (consumer->test_state == consumer_test_state_xfinity_subdoc_test_pending) {
                             consumer->xfinity_test_pending_count = 0;
                             consumer->test_state = consumer_test_state_xfinity_subdoc_test_complete;
+                            cmd_delta_time = get_current_time_ms() - cmd_start_time;
+                            printf("%s:%d: current time:%llu subdoc execution delta time:%u milliSeconds\n", __func__, __LINE__, get_current_time_ms(), cmd_delta_time);
                             printf("%s:%d: consumer vap xfinity set successful, Radios: %s, %s, Test State:%d\n", __func__, __LINE__,
                                     consumer->radios[0].name, consumer->radios[1].name,
                                     consumer->test_state);
                         } else if (consumer->test_state == consumer_test_state_home_subdoc_test_pending) {
                             consumer->home_test_pending_count = 0;
                             consumer->test_state = consumer_test_state_home_subdoc_test_complete;
+                            cmd_delta_time = get_current_time_ms() - cmd_start_time;
+                            printf("%s:%d: current time:%llu subdoc execution delta time:%u milliSeconds\n", __func__, __LINE__, get_current_time_ms(), cmd_delta_time);
                             printf("%s:%d: consumer Vap home set successful, Radios: %s, %s, Test State:%d\n", __func__, __LINE__,
+                                    consumer->radios[0].name, consumer->radios[1].name,
+                                    consumer->test_state);
+                        } else if (consumer->test_state == consumer_test_state_macfilter_subdoc_test_pending) {
+                            consumer->home_test_pending_count = 0;
+                            consumer->test_state = consumer_test_state_macfilter_subdoc_test_complete;
+                            cmd_delta_time = get_current_time_ms() - cmd_start_time;
+                            printf("%s:%d: current time:%llu subdoc execution delta time:%u milliSeconds\n", __func__, __LINE__, get_current_time_ms(), cmd_delta_time);
+                            printf("%s:%d: macfilter set successful, Radios: %s, %s, Test State:%d\n", __func__, __LINE__,
                                     consumer->radios[0].name, consumer->radios[1].name,
                                     consumer->test_state);
                         } else {
@@ -462,30 +617,71 @@ void handle_webconfig_consumer_event(webconfig_consumer_t *consumer, const char 
                                     consumer->radios[0].name, consumer->radios[1].name,
                                     consumer->test_state);
                         }
-                        break;
+                    break;
 
                     case webconfig_subdoc_type_radio_status:
                         printf("%s:%d: Received radio status\n", __func__, __LINE__);
-                        break;
+                    break;
 
                     case webconfig_subdoc_type_vap_status:
                         printf("%s:%d: Received radio status\n", __func__, __LINE__);
-                        break;
+                    break;
+
 
                     default:
                         printf("%s:%d: Unknown webconfig subdoc type:%d\n", __func__, __LINE__, data.type);
-                        break;
+                    break;
                 }
 
             } else {
                 printf("%s:%d: webconfig error\n", __func__, __LINE__);
             }
-            break;
-
+        break;
         case consumer_event_webconfig_get_data:
-            printf( "%s:%d:Get config data for webconfig\n", __func__, __LINE__);
-            break;
+            //printf("%s:%d: Received webconfig subdoc:\n%s\n ... decoding and translating\n", __func__, __LINE__, str);
+            // tell webconfig to decode
+            if (enable_ovsdb == true) {
+                unsigned int *num;
+                num = (unsigned int *)&ext_proto.radio_config_row_count;
+                *num = consumer->hal_cap.wifi_prop.numRadios;
+                num = (unsigned int *)&ext_proto.vif_config_row_count;
+                *num = consumer->hal_cap.wifi_prop.numRadios * MAX_NUM_VAP_PER_RADIO;
+                num = (unsigned int *)&ext_proto.radio_state_row_count;
+                *num = consumer->hal_cap.wifi_prop.numRadios;
+                num = (unsigned int *)&ext_proto.vif_state_row_count;
+                *num = consumer->hal_cap.wifi_prop.numRadios * MAX_NUM_VAP_PER_RADIO;
+                num = (unsigned int *)&ext_proto.assoc_clients_row_count;
+                *num = MAX_NUM_CLIENTS;
 
+                ret = webconfig_ovsdb_decode(&consumer->webconfig, str, &ext_proto, &subdoc_type);
+                printf( "%s:%d:webconfig_ovsdb_decode\n", __func__, __LINE__);
+            } else {
+                printf( "%s:%d:webconfig_decode\n", __func__, __LINE__);
+
+                memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+                memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&consumer->hal_cap, sizeof(wifi_hal_capability_t));
+                ret = webconfig_decode(&consumer->webconfig, &data, str);
+                if (ret == webconfig_error_none)
+                    subdoc_type = data.type;
+
+            }
+
+            if (ret == webconfig_error_none ) {
+                printf( "%s:%d:webconfig initializ:%d subdoc_type : %d\n", __func__, __LINE__, config->initializer, subdoc_type);
+                switch (subdoc_type) {
+                    case webconfig_subdoc_type_associated_clients:
+                        printf("%s:%d: Received Associated client status, Use -d 1 option to see the log file\n", __func__, __LINE__);
+                        dump_ovs_schema(webconfig_subdoc_type_associated_clients);
+                        dump_subdoc(str, webconfig_subdoc_type_associated_clients);
+                    break;
+                    default:
+                        printf("%s:%d: Unknown webconfig subdoc type:%d\n", __func__, __LINE__, data.type);
+                    break;
+                }
+            } else {
+                printf("%s:%d: webconfig error\n", __func__, __LINE__);
+            }
+        break;
     }
 }
 
@@ -503,7 +699,7 @@ webconfig_error_t webconfig_parse_json_to_struct(webconfig_t *config, webconfig_
     doc = &config->subdocs[data->type];
     if (doc->access_check_subdoc(config, data) != webconfig_error_none) {
         printf("%s:%d: invalid access for subdocument type:%d in entity:%d\n",
-            __func__, __LINE__, doc->type, config->initializer);
+                __func__, __LINE__, doc->type, config->initializer);
         return webconfig_error_not_permitted;
     }
 
@@ -521,11 +717,11 @@ int parse_subdoc_input_param(webconfig_consumer_t *consumer, webconfig_subdoc_da
 
     ret = read_subdoc_input_param_from_file(consumer->user_input_file_name, data->u.encoded.raw);
     if (ret == RETURN_OK) {
-       // parse JSON blob
-       data->signature = WEBCONFIG_MAGIC_SIGNATUTRE;
-       data->type = webconfig_subdoc_type_unknown;
-       data->descriptor = webconfig_data_descriptor_encoded;
-       ret = webconfig_parse_json_to_struct(&consumer->webconfig, data);
+        // parse JSON blob
+        data->signature = WEBCONFIG_MAGIC_SIGNATUTRE;
+        data->type = webconfig_subdoc_type_unknown;
+        data->descriptor = webconfig_data_descriptor_encoded;
+        ret = webconfig_parse_json_to_struct(&consumer->webconfig, data);
     } else {
         printf("%s:%d: Using default config\r\n", __func__, __LINE__);
     }
@@ -540,10 +736,10 @@ void test_radio_subdoc_change(webconfig_consumer_t *consumer)
     webconfig_error_t ret=webconfig_error_none;
 
     str = NULL;
-    printf("%s:%d: started str : %p\n", __func__, __LINE__, str);
 
     memset(&data, 0, sizeof(webconfig_subdoc_data_t));
 
+    printf("%s:%d: current time:%llu\n", __func__, __LINE__, get_current_time_ms());
     if (enable_ovsdb == true) {
         webconfig_external_ovsdb_t ext_proto_radio;
         unsigned int i = 0;
@@ -569,6 +765,8 @@ void test_radio_subdoc_change(webconfig_consumer_t *consumer)
                 webconfig_subdoc_type_radio, &str);
     } else {
         memcpy((unsigned char *)data.u.decoded.radios, (unsigned char *)consumer->radios, consumer->hal_cap.wifi_prop.numRadios*sizeof(rdk_wifi_radio_t));
+        memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&consumer->hal_cap, sizeof(wifi_hal_capability_t));
+
         if (parse_subdoc_input_param(consumer, &data) != RETURN_OK) {
             data.u.decoded.radios[0].oper.channel = 3;
         }
@@ -590,6 +788,8 @@ void test_radio_subdoc_change(webconfig_consumer_t *consumer)
 #ifdef WEBCONFIG_TESTS_OVER_QUEUE
         push_data_to_ctrl_queue(str, strlen(str), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data);
 #else
+        cmd_start_time = get_current_time_ms();
+        printf("%s:%d: command start current time:%llu\n", __func__, __LINE__, cmd_start_time);
         rbus_setStr(consumer->rbus_handle, WIFI_WEBCONFIG_DOC_DATA, str);
 #endif
     } else {
@@ -602,15 +802,21 @@ void test_radio_subdoc_change(webconfig_consumer_t *consumer)
 void test_mesh_subdoc_change(webconfig_consumer_t *consumer)
 {
     webconfig_subdoc_data_t data;
-    uint8_t vap_array_index = 0;
     webconfig_error_t ret=webconfig_error_none;
+    char test_mac[18];
+    time_t t;
+    rdk_wifi_vap_info_t *rdk_vap;
+    mac_address_t mac;
+    acl_entry_t *acl_entry;
 
     char *str;
     str = NULL;
-    printf("%s:%d: started str : %p\n", __func__, __LINE__, str);
 
     memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+    srand((unsigned) time(&t));
+    snprintf(test_mac, sizeof(test_mac), "%02x:%02x:%02x:%02x:%02x:%02x", 0xaa, 0xbb,0xcc,0xaa, rand() % 25, rand() % 50);
 
+    printf("%s:%d: current time:%llu\n", __func__, __LINE__, get_current_time_ms());
     if (enable_ovsdb == true) {
         webconfig_external_ovsdb_t ext_proto_mesh;
         unsigned int *num = (unsigned int *)&ext_proto_mesh.vif_config_row_count;
@@ -619,15 +825,19 @@ void test_mesh_subdoc_change(webconfig_consumer_t *consumer)
         unsigned int i = 0;
         unsigned int array_index = 0;
         bool *param;
+        unsigned int *param_int;
 
         *num = ARRAY_SZ(vap_names);
 
         for ( i = 0; i < *num; i++) {
-            array_index = convert_vap_name_to_index(vap_names[i]);
+            array_index = convert_vap_name_to_index(&consumer->hal_cap.wifi_prop, vap_names[i]);
             vif_table[i] = ext_proto.vif_config[array_index];
             snprintf((char *)vif_table[i]->ssid, sizeof(vif_table[i]->ssid), "mesh_test_%d", array_index);
             param = (bool *)&vif_table[i]->enabled;
             *param = true;
+            param_int = (unsigned int *)&vif_table[i]->mac_list_len;
+            *param_int = 1;
+            snprintf((char *)vif_table[i]->mac_list[0], sizeof(vif_table[i]->mac_list[0]),"%s", test_mac);
         }
         ext_proto_mesh.vif_config = vif_table;
 
@@ -637,24 +847,52 @@ void test_mesh_subdoc_change(webconfig_consumer_t *consumer)
     } else {
 
         memcpy((unsigned char *)data.u.decoded.radios, (unsigned char *)consumer->radios, consumer->hal_cap.wifi_prop.numRadios*sizeof(rdk_wifi_radio_t));
+        memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&consumer->hal_cap, sizeof(wifi_hal_capability_t));
 
         if (parse_subdoc_input_param(consumer, &data) != RETURN_OK) {
-            vap_array_index = convert_vap_name_to_array_index("mesh_backhaul");
-            data.u.decoded.radios[0].oper.channel = 3;
-            data.u.decoded.radios[0].vaps.vap_map.vap_array[vap_array_index].u.bss_info.bssMaxSta = 5;
-            data.u.decoded.radios[1].oper.channel = 36;
-            data.u.decoded.radios[1].vaps.vap_map.vap_array[vap_array_index].u.bss_info.bssMaxSta = 6;
-            vap_array_index = convert_vap_name_to_array_index("mesh_sta");
+            int radio_0_bssMaxSta;
+            wifi_vap_info_t *vap_info;
+
             data.u.decoded.radios[0].oper.channel = 4;
-            data.u.decoded.radios[0].vaps.vap_map.vap_array[vap_array_index].u.sta_info.scan_params.period = 2;
             data.u.decoded.radios[1].oper.channel = 36;
-            data.u.decoded.radios[1].vaps.vap_map.vap_array[vap_array_index].u.sta_info.scan_params.period = 2;
+            vap_info = get_wifi_radio_vap_info(&data.u.decoded.radios[0], "mesh_backhaul");
+            /* set to different value from current to force a change */
+            if (vap_info->u.bss_info.bssMaxSta == 5) {
+                vap_info->u.bss_info.bssMaxSta = radio_0_bssMaxSta = 6;
+            } else {
+                vap_info->u.bss_info.bssMaxSta = radio_0_bssMaxSta = 5;
+            }
+            vap_info = get_wifi_radio_vap_info(&data.u.decoded.radios[1], "mesh_backhaul");
+            vap_info->u.bss_info.bssMaxSta = (radio_0_bssMaxSta == 6) ? 5 : 6;
+            vap_info = get_wifi_radio_vap_info(&data.u.decoded.radios[0], "mesh_sta");
+            vap_info->u.sta_info.scan_params.period = 2;
+            vap_info = get_wifi_radio_vap_info(&data.u.decoded.radios[1], "mesh_sta");
+            vap_info->u.sta_info.scan_params.period = 2;
+
+            rdk_vap = get_wifi_radio_rdkvap_info(&data.u.decoded.radios[0], "mesh_backhaul");
+            if ((rdk_vap == NULL)) {
+                printf("%s:%d: rdk_vap is null\n", __func__, __LINE__);
+                return;
+            }
+
+            rdk_vap->acl_map = hash_map_create();
+            str_to_mac_bytes(test_mac, mac);
+            acl_entry = (acl_entry_t *)malloc(sizeof(acl_entry_t));
+            if (acl_entry == NULL) {
+                printf("%s:%d NULL Pointer \n", __func__, __LINE__);
+                return;
+            }
+            memset(acl_entry, 0, (sizeof(acl_entry_t)));
+
+            memcpy(&acl_entry->mac, mac, sizeof(mac_address_t));
+            hash_map_put(rdk_vap->acl_map, strdup(test_mac), acl_entry);
+        
         }
 
         //clearing the descriptor
         data.descriptor =  0;
         printf("%s:%d: start webconfig_encode\n", __func__, __LINE__);
-        data.u.decoded.num_radios = consumer->hal_cap.wifi_prop.numRadios; 
+        data.u.decoded.num_radios = consumer->hal_cap.wifi_prop.numRadios;
 
         ret = webconfig_encode(&consumer->webconfig, &data,
                 webconfig_subdoc_type_mesh);
@@ -669,6 +907,8 @@ void test_mesh_subdoc_change(webconfig_consumer_t *consumer)
 #ifdef WEBCONFIG_TESTS_OVER_QUEUE
         push_data_to_ctrl_queue(str, strlen(str), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data);
 #else
+        cmd_start_time = get_current_time_ms();
+        printf("%s:%d: command start current time:%llu\n", __func__, __LINE__, cmd_start_time);
         rbus_setStr(consumer->rbus_handle, WIFI_WEBCONFIG_DOC_DATA, str);
 #endif
     } else {
@@ -677,19 +917,134 @@ void test_mesh_subdoc_change(webconfig_consumer_t *consumer)
 }
 
 
-void test_private_subdoc_change(webconfig_consumer_t *consumer)
+void test_macfilter_subdoc_change(webconfig_consumer_t *consumer)
 {
     webconfig_subdoc_data_t data;
     uint8_t vap_array_index = 0;
+    webconfig_error_t ret=webconfig_error_none;
+    char test_mac[18];
+    rdk_wifi_vap_info_t *rdk_vap;
+    mac_address_t mac;
+    acl_entry_t *acl_entry;
+    time_t t;
+
+    char *str;
+    str = NULL;
+
+    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+    srand((unsigned) time(&t));
+
+    snprintf(test_mac, sizeof(test_mac), "%02x:%02x:%02x:%02x:%02x:%02x", 0xaa, 0xbb,0xcc,0xdd, rand() % 25, rand() % 50);
+
+    printf("%s:%d: current time:%llu\n", __func__, __LINE__, get_current_time_ms());
+    if (enable_ovsdb == true) {
+        webconfig_external_ovsdb_t ext_proto_macfilter;
+        unsigned int *num = (unsigned int *)&ext_proto_macfilter.vif_config_row_count;
+        char *vap_names[16] = {"private_ssid_2g", "private_ssid_5g",
+            "iot_ssid_2g", "iot_ssid_5g",
+            "hotspot_open_2g", "hotspot_open_5g",
+            "lnf_psk_2g", "lnf_psk_5g",
+            "hotspot_secure_2g", "hotspot_secure_5g",
+            "lnf_radius_2g", "lnf_radius_5g",
+            "mesh_backhaul_2g", "mesh_backhaul_5g",
+            "mesh_sta_2g", "mesh_sta_5g"};
+        const struct schema_Wifi_VIF_Config *vif_table[16];
+        unsigned int i = 0;
+        unsigned int array_index = 0;
+        bool *param;
+        unsigned int *param_int;
+
+        *num = ARRAY_SZ(vap_names);
+        for ( i = 0; i < *num; i++) {
+            array_index = convert_vap_name_to_index(&consumer->hal_cap.wifi_prop, vap_names[i]);
+            vif_table[i] = ext_proto.vif_config[array_index];
+            if (is_vap_mesh_backhaul(&consumer->hal_cap.wifi_prop, array_index) == TRUE) {
+                snprintf((char *)vif_table[i]->ssid, sizeof(vif_table[i]->ssid), "macfilter_test_%d", array_index);
+                param = (bool *)&vif_table[i]->enabled;
+                *param = true;
+                param_int = (unsigned int *)&vif_table[i]->mac_list_len;
+                *param_int = 1;
+                snprintf((char *)vif_table[i]->mac_list[0], sizeof(vif_table[i]->mac_list[0]),"%s", test_mac);
+            }
+        }
+        ext_proto_macfilter.vif_config = vif_table;
+
+        printf("%s:%d: start webconfig_ovsdb_encode \n", __func__, __LINE__);
+        ret = webconfig_ovsdb_encode(&consumer->webconfig, &ext_proto_macfilter,
+                webconfig_subdoc_type_mac_filter, &str);
+    } else {
+
+        memcpy((unsigned char *)data.u.decoded.radios, (unsigned char *)consumer->radios, consumer->hal_cap.wifi_prop.numRadios*sizeof(rdk_wifi_radio_t));
+        memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&consumer->hal_cap, sizeof(wifi_hal_capability_t));
+
+        if (parse_subdoc_input_param(consumer, &data) != RETURN_OK) {
+            rdk_vap = NULL;
+            for (vap_array_index = 0; vap_array_index < data.u.decoded.radios[0].vaps.num_vaps; ++vap_array_index) {
+                if (!strncmp(data.u.decoded.radios[0].vaps.rdk_vap_array[vap_array_index].vap_name, "mesh_backhaul", strlen("mesh_backhaul"))) {
+                    rdk_vap = &data.u.decoded.radios[0].vaps.rdk_vap_array[vap_array_index];
+                    break;
+                }
+            }
+
+            if ((rdk_vap == NULL)) {
+                printf("%s:%d: rdk_vap is null\n", __func__, __LINE__);
+                return;
+            }
+
+            rdk_vap->acl_map = hash_map_create();
+            str_to_mac_bytes(test_mac, mac);
+            acl_entry = (acl_entry_t *)malloc(sizeof(acl_entry_t));
+            if (acl_entry == NULL) {
+                printf("%s:%d NULL Pointer \n", __func__, __LINE__);
+                return;
+            }
+            memset(acl_entry, 0, (sizeof(acl_entry_t)));
+
+            memcpy(&acl_entry->mac, mac, sizeof(mac_address_t));
+            hash_map_put(rdk_vap->acl_map, strdup(test_mac), acl_entry);
+        }
+
+        //clearing the descriptor
+        data.descriptor =  0;
+        printf("%s:%d: start webconfig_encode\n", __func__, __LINE__);
+        data.u.decoded.num_radios = consumer->hal_cap.wifi_prop.numRadios;
+
+        ret = webconfig_encode(&consumer->webconfig, &data,
+                webconfig_subdoc_type_mac_filter);
+        if (ret == webconfig_error_none) {
+            str = data.u.encoded.raw;
+        }
+    }
+
+    if (ret == webconfig_error_none) {
+        printf("%s:%d: webconfig consumer macfilter start test\n", __func__, __LINE__);
+        dump_subdoc(str, webconfig_subdoc_type_mac_filter);
+#ifdef WEBCONFIG_TESTS_OVER_QUEUE
+        push_data_to_ctrl_queue(str, strlen(str), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data);
+#else
+        cmd_start_time = get_current_time_ms();
+        printf("%s:%d: command start current time:%llu\n", __func__, __LINE__, cmd_start_time);
+        rbus_setStr(consumer->rbus_handle, WIFI_WEBCONFIG_DOC_DATA, str);
+#endif
+    } else {
+        printf("%s:%d: Webconfig set failed\n", __func__, __LINE__);
+    }
+}
+
+
+
+void test_private_subdoc_change(webconfig_consumer_t *consumer)
+{
+    webconfig_subdoc_data_t data;
     webconfig_error_t ret = webconfig_error_none;
 
     char *str;
 
     str = NULL;
-    printf("%s:%d: started str : %p\n", __func__, __LINE__, str);
 
     memset(&data, 0, sizeof(webconfig_subdoc_data_t));
 
+    printf("%s:%d: current time:%llu\n", __func__, __LINE__, get_current_time_ms());
     if (enable_ovsdb == true) {
         webconfig_external_ovsdb_t ext_proto_private;
         unsigned int *num = (unsigned int *)&ext_proto_private.vif_config_row_count;
@@ -701,7 +1056,7 @@ void test_private_subdoc_change(webconfig_consumer_t *consumer)
         *num = ARRAY_SZ(vap_names);
 
         for ( i = 0; i < *num; i++) {
-            array_index = convert_vap_name_to_index(vap_names[i]);
+            array_index = convert_vap_name_to_index(&consumer->hal_cap.wifi_prop, vap_names[i]);
             vif_table[i] = ext_proto.vif_config[array_index];
             snprintf((char *)vif_table[i]->ssid, sizeof(vif_table[i]->ssid), "ovsdb_test_%d", array_index);
         }
@@ -713,19 +1068,28 @@ void test_private_subdoc_change(webconfig_consumer_t *consumer)
     } else {
 
         memcpy((unsigned char *)data.u.decoded.radios, (unsigned char *)consumer->radios, consumer->hal_cap.wifi_prop.numRadios*sizeof(rdk_wifi_radio_t));
+        memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&consumer->hal_cap, sizeof(wifi_hal_capability_t));
 
         if (parse_subdoc_input_param(consumer, &data) != RETURN_OK) {
-            vap_array_index = convert_vap_name_to_array_index("private_ssid");
+            int bssMaxSta;
+            wifi_vap_info_t *vap_info;
+
             data.u.decoded.radios[0].oper.channel = 5;
-            data.u.decoded.radios[0].vaps.vap_map.vap_array[vap_array_index].u.bss_info.bssMaxSta = 5;
             data.u.decoded.radios[1].oper.channel = 36;
-            data.u.decoded.radios[1].vaps.vap_map.vap_array[vap_array_index].u.bss_info.bssMaxSta = 5;
+            vap_info = get_wifi_radio_vap_info(&data.u.decoded.radios[0], "private_ssid");
+            if (vap_info->u.bss_info.bssMaxSta == 5) {
+                vap_info->u.bss_info.bssMaxSta = bssMaxSta = 6;
+            } else {
+                vap_info->u.bss_info.bssMaxSta = bssMaxSta = 5;
+            }
+            vap_info = get_wifi_radio_vap_info(&data.u.decoded.radios[1], "private_ssid");
+            vap_info->u.bss_info.bssMaxSta = bssMaxSta;
         }
         data.u.decoded.num_radios = consumer->hal_cap.wifi_prop.numRadios;
 
         //clearing the descriptor
         data.descriptor =  0;
-        printf("%s:%d: start webconfig_encode\n", __func__, __LINE__);
+        printf("%s:%d: start webconfig_encode num_of_radio:%d\n", __func__, __LINE__, data.u.decoded.num_radios);
         ret = webconfig_encode(&consumer->webconfig, &data,
                 webconfig_subdoc_type_private);
         if (ret == webconfig_error_none)
@@ -738,6 +1102,8 @@ void test_private_subdoc_change(webconfig_consumer_t *consumer)
 #ifdef WEBCONFIG_TESTS_OVER_QUEUE
         push_data_to_ctrl_queue(str, strlen(str), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data);
 #else
+        cmd_start_time = get_current_time_ms();
+        printf("%s:%d: command start current time:%llu\n", __func__, __LINE__, cmd_start_time);
         rbus_setStr(consumer->rbus_handle, WIFI_WEBCONFIG_DOC_DATA, str);
 #endif
     } else {
@@ -748,15 +1114,14 @@ void test_private_subdoc_change(webconfig_consumer_t *consumer)
 void test_home_subdoc_change(webconfig_consumer_t *consumer)
 {
     webconfig_subdoc_data_t data;
-    uint8_t vap_array_index = 0;
 
     char *str;
     webconfig_error_t ret = webconfig_error_none;
 
     str = NULL;
-    printf("%s:%d: started str : %p\n", __func__, __LINE__, str);
 
     memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+    printf("%s:%d: current time:%llu\n", __func__, __LINE__, get_current_time_ms());
     if (enable_ovsdb == true) {
         webconfig_external_ovsdb_t ext_proto_home;
         unsigned int *num = (unsigned int *)&ext_proto_home.vif_config_row_count;
@@ -768,7 +1133,7 @@ void test_home_subdoc_change(webconfig_consumer_t *consumer)
         *num = ARRAY_SZ(vap_names);
 
         for ( i = 0; i < *num; i++) {
-            array_index = convert_vap_name_to_index(vap_names[i]);
+            array_index = convert_vap_name_to_index(&consumer->hal_cap.wifi_prop, vap_names[i]);
             vif_table[i] = ext_proto.vif_config[array_index];
         }
         ext_proto_home.vif_config = vif_table;
@@ -780,13 +1145,22 @@ void test_home_subdoc_change(webconfig_consumer_t *consumer)
     } else {
 
         memcpy((unsigned char *)data.u.decoded.radios, (unsigned char *)consumer->radios, consumer->hal_cap.wifi_prop.numRadios*sizeof(rdk_wifi_radio_t));
+        memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&consumer->hal_cap, sizeof(wifi_hal_capability_t));
 
         if (parse_subdoc_input_param(consumer, &data) != RETURN_OK) {
-            vap_array_index = convert_vap_name_to_array_index("iot_ssid");
+            int bssMaxSta;
+            wifi_vap_info_t *vap_info;
+
             data.u.decoded.radios[0].oper.channel = 5;
-            data.u.decoded.radios[0].vaps.vap_map.vap_array[vap_array_index].u.bss_info.bssMaxSta = 5;
             data.u.decoded.radios[1].oper.channel = 36;
-            data.u.decoded.radios[1].vaps.vap_map.vap_array[vap_array_index].u.bss_info.bssMaxSta = 5;
+            vap_info = get_wifi_radio_vap_info(&data.u.decoded.radios[0], "iot_ssid");
+            if (vap_info->u.bss_info.bssMaxSta == 5) {
+                vap_info->u.bss_info.bssMaxSta = bssMaxSta = 6;
+            } else {
+                vap_info->u.bss_info.bssMaxSta = bssMaxSta = 5;
+            }
+            vap_info = get_wifi_radio_vap_info(&data.u.decoded.radios[1], "iot_ssid");
+            vap_info->u.bss_info.bssMaxSta = bssMaxSta;
         }
         data.u.decoded.num_radios = consumer->hal_cap.wifi_prop.numRadios;
 
@@ -806,6 +1180,8 @@ void test_home_subdoc_change(webconfig_consumer_t *consumer)
 #ifdef WEBCONFIG_TESTS_OVER_QUEUE
         push_data_to_ctrl_queue(str, strlen(str), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data);
 #else
+        cmd_start_time = get_current_time_ms();
+        printf("%s:%d: command start current time:%llu\n", __func__, __LINE__, cmd_start_time);
         rbus_setStr(consumer->rbus_handle, WIFI_WEBCONFIG_DOC_DATA, str);
 #endif
     } else {
@@ -816,15 +1192,14 @@ void test_home_subdoc_change(webconfig_consumer_t *consumer)
 void test_xfinity_subdoc_change(webconfig_consumer_t *consumer)
 {
     webconfig_subdoc_data_t data;
-    uint8_t vap_array_index = 0;
     webconfig_error_t ret = webconfig_error_none;
 
     char *str;
 
     str = NULL;
-    printf("%s:%d: started str : %p\n", __func__, __LINE__, str);
 
     memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+    printf("%s:%d: current time:%llu\n", __func__, __LINE__, get_current_time_ms());
     if (enable_ovsdb == true) {
         webconfig_external_ovsdb_t ext_proto_xfinity;
         unsigned int *num = (unsigned int *)&ext_proto_xfinity.vif_config_row_count;
@@ -836,7 +1211,7 @@ void test_xfinity_subdoc_change(webconfig_consumer_t *consumer)
         *num = ARRAY_SZ(vap_names);
 
         for ( i = 0; i < *num; i++) {
-            array_index = convert_vap_name_to_index(vap_names[i]);
+            array_index = convert_vap_name_to_index(&consumer->hal_cap.wifi_prop, vap_names[i]);
             vif_table[i] = ext_proto.vif_config[array_index];
         }
         ext_proto_xfinity.vif_config = vif_table;
@@ -847,18 +1222,28 @@ void test_xfinity_subdoc_change(webconfig_consumer_t *consumer)
     } else {
 
         memcpy((unsigned char *)data.u.decoded.radios, (unsigned char *)consumer->radios, consumer->hal_cap.wifi_prop.numRadios*sizeof(rdk_wifi_radio_t));
+        memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&consumer->hal_cap, sizeof(wifi_hal_capability_t));
 
         if (parse_subdoc_input_param(consumer, &data) != RETURN_OK) {
-            vap_array_index = convert_vap_name_to_array_index("hotspot_open");
-            data.u.decoded.radios[0].oper.channel = 5;
-            data.u.decoded.radios[0].vaps.vap_map.vap_array[vap_array_index].u.bss_info.bssMaxSta = 5;
-            data.u.decoded.radios[1].oper.channel = 36;
-            data.u.decoded.radios[1].vaps.vap_map.vap_array[vap_array_index].u.bss_info.bssMaxSta = 6;
-            vap_array_index = convert_vap_name_to_array_index("hotspot_secure");
+            int radio_1_open_bssMaxSta, radio_2_open_bssMaxSta;
+            wifi_vap_info_t *vap_info;
+
             data.u.decoded.radios[0].oper.channel = 6;
-            data.u.decoded.radios[0].vaps.vap_map.vap_array[vap_array_index].u.bss_info.bssMaxSta = 6;
             data.u.decoded.radios[1].oper.channel = 36;
-            data.u.decoded.radios[1].vaps.vap_map.vap_array[vap_array_index].u.bss_info.bssMaxSta = 5;
+            vap_info = get_wifi_radio_vap_info(&data.u.decoded.radios[0], "hotspot_open");
+            if (vap_info->u.bss_info.bssMaxSta == 5) {
+                vap_info->u.bss_info.bssMaxSta = radio_1_open_bssMaxSta = 6;
+                radio_2_open_bssMaxSta = 5;
+            } else {
+                vap_info->u.bss_info.bssMaxSta = radio_1_open_bssMaxSta = 5;
+                radio_2_open_bssMaxSta = 6;
+            }
+            vap_info = get_wifi_radio_vap_info(&data.u.decoded.radios[1], "hotspot_open");
+            vap_info->u.bss_info.bssMaxSta = radio_2_open_bssMaxSta;
+            vap_info = get_wifi_radio_vap_info(&data.u.decoded.radios[0], "hotspot_secure");
+            vap_info->u.bss_info.bssMaxSta = radio_2_open_bssMaxSta;
+            vap_info = get_wifi_radio_vap_info(&data.u.decoded.radios[1], "hotspot_secure");
+            vap_info->u.bss_info.bssMaxSta = radio_1_open_bssMaxSta;
         }
         //clearing the descriptor
         data.descriptor =  0;
@@ -878,6 +1263,8 @@ void test_xfinity_subdoc_change(webconfig_consumer_t *consumer)
 #ifdef WEBCONFIG_TESTS_OVER_QUEUE
         push_data_to_ctrl_queue(str, strlen(str), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data);
 #else
+        cmd_start_time = get_current_time_ms();
+        printf("%s:%d: command start current time:%llu\n", __func__, __LINE__, cmd_start_time);
         rbus_setStr(consumer->rbus_handle, WIFI_WEBCONFIG_DOC_DATA, str);
 #endif
     } else {
@@ -905,10 +1292,10 @@ void exit_consumer_queue_loop(void)
 void de_init_rbus_object(void)
 {
     rbusDataElement_t rbusEvents[] = {
-                                { WIFI_ACTIVE_GATEWAY_CHECK, RBUS_ELEMENT_TYPE_METHOD,
-                                { NULL, webconfig_consumer_set_subdoc, NULL, NULL, NULL, NULL }},
-                                { WIFI_WAN_FAILOVER_TEST, RBUS_ELEMENT_TYPE_METHOD,
-                                { NULL, webconfig_consumer_set_subdoc, NULL, NULL, NULL, NULL }},
+        { WIFI_ACTIVE_GATEWAY_CHECK, RBUS_ELEMENT_TYPE_METHOD,
+            { NULL, webconfig_consumer_set_subdoc, NULL, NULL, NULL, NULL }},
+        { WIFI_WAN_FAILOVER_TEST, RBUS_ELEMENT_TYPE_METHOD,
+            { NULL, webconfig_consumer_set_subdoc, NULL, NULL, NULL, NULL }},
     };
     webconfig_consumer_t *consumer = get_consumer_object();
 
@@ -1000,7 +1387,7 @@ void consumer_app_all_test_sequence(webconfig_consumer_t *consumer)
 
         default:
             //printf("%s:%d: Noop test state:%d\n", __func__, __LINE__, consumer->test_state);
-            break;
+        break;
     }
 }
 
@@ -1050,15 +1437,22 @@ void consumer_app_trigger_subdoc_test( webconfig_consumer_t *consumer, consumer_
             test_home_subdoc_change(consumer);
             break;
 
+        case consumer_test_start_macfilter_subdoc:
+            consumer->macfilter_test_pending_count= 0;
+            consumer->test_state = consumer_test_state_macfilter_subdoc_test_pending;
+            test_macfilter_subdoc_change(consumer);
+            break;
+
         case consumer_test_start_all_subdoc:
             reset_all_test_pending_count();
             consumer->test_state = consumer_test_state_cache_init_complete;
             consumer_app_all_test_sequence(consumer);
             break;
 
+
         default:
             printf("%s:%d: [%d] This Test index not supported\r\n", __func__, __LINE__, test_state);
-            break;
+        break;
     }
 }
 
@@ -1069,12 +1463,40 @@ void consumer_app_trigger_wan_test( webconfig_consumer_t *consumer, consumer_tes
     switch (test_state) {
         case consumer_test_start_wan_manager:
             webconfig_rbus_other_gateway_state_publish(consumer, status);
-            break;
+        break;
 
         default:
             printf("%s:%d: [%d] This Test index not supported\r\n", __func__, __LINE__, test_state);
-            break;
-     }
+        break;
+    }
+}
+
+void generate_tunnel_event(bool status, rbusHandle_t handle)
+{
+    const char *evt_name = "TunnelStatus";
+    const char *evt_val = status ? "TUNNEL_UP" : "TUNNEL_DOWN";
+
+    rbusValue_t value;
+    rbusObject_t rd;
+
+    rbusValue_Init(&value);
+    rbusValue_SetString(value, evt_val);
+
+    rbusObject_Init(&rd, NULL);
+    rbusObject_SetValue(rd, evt_name, value);
+
+    rbusEvent_t event;
+    event.name = evt_name;
+    event.data = rd;
+    event.type = RBUS_EVENT_GENERAL;
+
+    int rc = rbusEvent_Publish(handle, &event);
+    if(rc != RBUS_ERROR_SUCCESS){
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d rbusEvent_Publish %s failed\n", __func__, __LINE__, event.name );
+    }
+
+    rbusValue_Release(value);
+    rbusObject_Release(rd);
 }
 
 void copy_data(char *dest, char *src, unsigned char dest_len)
@@ -1159,6 +1581,24 @@ void initialize_ovs_schema_structs()
         memset((struct schema_Wifi_VIF_State *)ext_proto.vif_state[i], 0, sizeof(struct schema_Wifi_VIF_State));
     }
 
+    ext_proto.assoc_clients = (const struct schema_Wifi_Associated_Clients **) malloc(sizeof(struct schema_Wifi_Associated_Clients *) * MAX_NUM_CLIENTS);
+    if (ext_proto.assoc_clients== NULL) {
+        printf("[%s]:%d Memory allocation fail for assoc clients table\n",__FUNCTION__,__LINE__);
+        free_ovs_schema_structs();
+        return;
+    }
+    memset((struct schema_Wifi_Associated_Clients **)ext_proto.assoc_clients, 0, (sizeof(struct schema_Wifi_Associated_Clients *) * MAX_NUM_CLIENTS));
+
+    for (i = 0; i < MAX_NUM_CLIENTS; i++) {
+        ext_proto.assoc_clients[i] = (struct schema_Wifi_Associated_Clients *)malloc(sizeof(struct schema_Wifi_Associated_Clients));
+        if (ext_proto.assoc_clients[i] == NULL) {
+            printf("[%s]:%d Memory allocation fail for %d\n",__FUNCTION__,__LINE__, i);
+            free_ovs_schema_structs();
+            return;
+        }
+        memset((struct schema_Wifi_Associated_Clients *)ext_proto.assoc_clients[i], 0, sizeof(struct schema_Wifi_Associated_Clients));
+    }
+
     return;
 }
 
@@ -1208,15 +1648,169 @@ void free_ovs_schema_structs()
                 free(ext_proto.vif_state);
                 ext_proto.vif_state = NULL;
             }
+
+            for (i = 0; i < MAX_NUM_CLIENTS; i++) {
+                if (ext_proto.assoc_clients[i] != NULL) {
+                    free((struct schema_Wifi_Associated_Clients *)ext_proto.assoc_clients[i]);
+                    ext_proto.assoc_clients[i] = NULL;
+                }
+            }
+            if (ext_proto.assoc_clients!= NULL) {
+                free(ext_proto.assoc_clients);
+                ext_proto.assoc_clients = NULL;
+            }
+
             is_ovs_init = false;
         }
         enable_ovsdb = false;
     }
 }
 
+int webconfig_rbus_event_publish(webconfig_consumer_t *consumer, char *event_name, unsigned char event_type, unsigned char *data)
+{
+    bool l_bool_data;
+    unsigned int l_uint_data;
+    rbusEvent_t event;
+    rbusObject_t rdata;
+    rbusValue_t value;
+
+    rbusValue_Init(&value);
+    rbusObject_Init(&rdata, NULL);
+
+    rbusObject_SetValue(rdata, event_name, value);
+    if (event_type == rbus_bool_data) {
+        memcpy(&l_bool_data, data, sizeof(l_bool_data));
+        rbusValue_SetBoolean(value, l_bool_data);
+    } else if (event_type == rbus_int_data) {
+        memcpy(&l_uint_data, data, sizeof(l_uint_data));
+        rbusValue_SetUInt32(value, l_uint_data);
+    }
+    event.name = event_name;
+    event.data = rdata;
+    event.type = RBUS_EVENT_GENERAL;
+
+    if (rbusEvent_Publish(consumer->rbus_handle, &event) != RBUS_ERROR_SUCCESS) {
+        printf( "%s:%d: rbusEvent_Publish Event failed for %s\n", __func__, __LINE__, event_name);
+        return RETURN_ERR;
+    } else {
+        printf( "%s:%d: rbusEvent_Publish success for %s\n", __func__, __LINE__, event_name);
+    }
+
+    rbusValue_Release(value);
+    rbusObject_Release(rdata);
+
+    return RETURN_OK;
+}
+
+int recv_data_decode(webconfig_consumer_t *consumer, webconfig_subdoc_data_t *data, const char *recv_data)
+{
+    webconfig_error_t ret = webconfig_error_none;
+
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
+    memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&consumer->hal_cap, sizeof(wifi_hal_capability_t));
+    ret = webconfig_decode(&consumer->webconfig, data, recv_data);
+
+    if (ret == webconfig_error_none) {
+        return 0;
+    } else {
+        return -1;
+    }
+}
+
+int get_device_network_mode_from_ctrl_thread(webconfig_consumer_t *consumer, unsigned int *device_network_mode)
+{
+    rbusValue_t value;
+    const char *str;
+    int len = 0;
+    int rc = RBUS_ERROR_SUCCESS;
+    webconfig_consumer_t l_consumer;
+    webconfig_subdoc_data_t data;
+    const char *paramNames[] = {WIFI_WEBCONFIG_INIT_DATA};
+    memset(&l_consumer, 0, sizeof(l_consumer));
+
+    rc = rbus_get(consumer->rbus_handle, paramNames[0], &value);
+    if (rc != RBUS_ERROR_SUCCESS) {
+        printf ("rbus_get failed for [%s] with error [%d]\n", paramNames[0], rc);
+        return -1;
+    }
+
+    str = rbusValue_GetString(value, &len);
+    if (str == NULL) {
+        printf("%s Null pointer,Rbus set string len=%d\n",__FUNCTION__,len);
+        return -1;
+    }
+
+    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+    rc = recv_data_decode(consumer, &data, str);
+    if (rc == 0) {
+        memcpy((unsigned char *)&l_consumer.config, (unsigned char *)&data.u.decoded.config, sizeof(wifi_global_config_t));
+        *device_network_mode = l_consumer.config.global_parameters.device_network_mode;
+        printf("%s:%d: get device network mode:%d\n", __func__, __LINE__, *device_network_mode);
+    } else {
+        printf("%s:%d: use default value\r\n", __func__, __LINE__);
+        *device_network_mode = consumer->config.global_parameters.device_network_mode;
+    }
+
+    return 0;
+}
+
+int rbus_multi_get(webconfig_consumer_t *consumer, char *first_arg, char *next_arg)
+{
+    int rc = RBUS_ERROR_SUCCESS;
+    int numOfInputParams = 0, numOfOutVals = 0;
+    const char *pInputParam[RBUS_CLI_MAX_PARAM] = {0, 0};
+    rbusProperty_t outputVals = NULL;
+    int i = 0;
+
+    if (first_arg != NULL) {
+        pInputParam[numOfInputParams] = first_arg;
+        numOfInputParams++;
+    }
+
+    if (next_arg != NULL) {
+        pInputParam[numOfInputParams] = next_arg;
+        numOfInputParams++;
+    }
+
+    if (numOfInputParams == 0) {
+        printf("%s:%d: numOfInputParams = %d\r\n", __func__, __LINE__, numOfInputParams);
+        return -1;
+    }
+
+    rc = rbus_getExt(consumer->rbus_handle, numOfInputParams, pInputParam, &numOfOutVals, &outputVals);
+    if(RBUS_ERROR_SUCCESS == rc) {
+        rbusProperty_t next = outputVals;
+        for (i = 0; i < numOfOutVals; i++) {
+            rbusValue_t val = rbusProperty_GetValue(next);
+            rbusValueType_t type = rbusValue_GetType(val);
+            char *pStrVal = rbusValue_ToString(val,NULL,0);
+
+            printf ("Parameter %2d:\n\r", i+1);
+            printf ("              Name  : %s\n\r", rbusProperty_GetName(next));
+            printf ("              Type  : %d\n\r", type);
+            printf ("              Value : %s\n\r", pStrVal);
+
+            if(pStrVal) {
+                free(pStrVal);
+            }
+
+            next = rbusProperty_GetNext(next);
+        }
+        /* Free the memory */
+        rbusProperty_Release(outputVals);
+    } else {
+        printf ("Failed to get the data. Error : %d\n\r",rc);
+        return -1;
+    }
+
+    return 0;
+}
+
 int parse_input_parameters(char *first_input, char *second_input, char *input_file_name)
 {
     webconfig_consumer_t *consumer = get_consumer_object();
+    unsigned int device_network_mode = 0;
+    unsigned int vap_index = 0;
 
     if (!strncmp(first_input, "-w", strlen("-w"))) {
         if (consumer->rbus_events_subscribed == true) {
@@ -1248,6 +1842,9 @@ int parse_input_parameters(char *first_input, char *second_input, char *input_fi
             } else if (!strncmp(second_input, "all", strlen("all"))) {
                 copy_data(consumer->user_input_file_name, input_file_name, sizeof(consumer->user_input_file_name));
                 consumer_app_trigger_subdoc_test(consumer, consumer_test_start_all_subdoc);
+            } else if (!strncmp(second_input, "macfilter", strlen("macfilter"))) {
+                copy_data(consumer->user_input_file_name, input_file_name, sizeof(consumer->user_input_file_name));
+                consumer_app_trigger_subdoc_test(consumer, consumer_test_start_macfilter_subdoc);
             } else if (!strncmp(second_input, "sync", strlen("sync"))) {
                 test_initial_sync();
             } else {
@@ -1259,9 +1856,28 @@ int parse_input_parameters(char *first_input, char *second_input, char *input_fi
         }
     } else if (!strncmp(first_input, "-c", strlen("-c"))) {
         if (!strncmp(second_input, "0", strlen("0"))) {
-            consumer_app_trigger_wan_test(consumer, consumer_test_start_wan_manager, false);
+            get_device_network_mode_from_ctrl_thread(consumer, &device_network_mode);
+            if (device_network_mode == rdk_dev_mode_type_ext) {
+                consumer_app_trigger_wan_test(consumer, consumer_test_start_wan_manager, false);
+            } else {
+                printf("%s:%d: current mode is %d, wan manager test-case run only in extender(station) mode\r\n", __func__, __LINE__, device_network_mode);
+            }
         } else if (!strncmp(second_input, "1", strlen("1"))) {
-            consumer_app_trigger_wan_test(consumer, consumer_test_start_wan_manager, true);
+            get_device_network_mode_from_ctrl_thread(consumer, &device_network_mode);
+            if (device_network_mode == rdk_dev_mode_type_ext) {
+                consumer_app_trigger_wan_test(consumer, consumer_test_start_wan_manager, true);
+            } else {
+                printf("%s:%d: current mode is %d, wan manager test-case run only in extender(station) mode\r\n", __func__, __LINE__, device_network_mode);
+            }
+        } else {
+            printf("%s:%d: wrong second argument:%s\r\n", __func__, __LINE__, second_input);
+            return RETURN_ERR;
+        }
+    } else if (!strncmp(first_input, "-t", strlen("-t"))) {
+        if (!strncmp(second_input, "0", strlen("0"))) {
+            generate_tunnel_event(false, consumer->rbus_handle);
+        } else if (!strncmp(second_input, "1", strlen("1"))) {
+            generate_tunnel_event(true, consumer->rbus_handle);
         } else {
             printf("%s:%d: wrong second argument:%s\r\n", __func__, __LINE__, second_input);
             return RETURN_ERR;
@@ -1280,10 +1896,10 @@ int parse_input_parameters(char *first_input, char *second_input, char *input_fi
 
             if (!strncmp(second_input, "radio", strlen("radio"))) {
                 consumer_app_trigger_subdoc_test(consumer, consumer_test_start_radio_subdoc);
-/*            } else if (!strncmp(second_input, "private", strlen("private"))) {
-                consumer_app_trigger_subdoc_test(consumer, consumer_test_start_private_subdoc);*/
             } else if (!strncmp(second_input, "mesh", strlen("mesh"))) {
                 consumer_app_trigger_subdoc_test(consumer, consumer_test_start_mesh_subdoc);
+            } else if (!strncmp(second_input, "macfilter", strlen("macfilter"))) {
+                consumer_app_trigger_subdoc_test(consumer, consumer_test_start_macfilter_subdoc);
             } else if (!strncmp(second_input, "sync", strlen("sync"))) {
                 test_initial_sync();
             } else if (!strncmp(second_input, "disable", strlen("disable"))) {
@@ -1307,6 +1923,36 @@ int parse_input_parameters(char *first_input, char *second_input, char *input_fi
             return RETURN_ERR;
         }
 
+    } else if (!strncmp(first_input, "-a", strlen("-a"))) {
+        if (!strncmp(second_input, "DeviceNetworkMode", strlen("DeviceNetworkMode"))) {
+            if ((!strncmp(input_file_name, "1", strlen("1"))) ||
+                    (!strncmp(input_file_name, "0", strlen("0")))) {
+                unsigned int device_mode = atoi(input_file_name);
+                webconfig_rbus_event_publish(consumer, TEST_WIFI_DEVICE_MODE, rbus_int_data, (unsigned char *)&device_mode);
+            } else {
+                printf("%s:%d: wrong third argument:%s\r\n", __func__, __LINE__, input_file_name);
+                return RETURN_ERR;
+            }
+        } else {
+            printf("%s:%d: wrong second argument:%s\r\n", __func__, __LINE__, second_input);
+            return RETURN_ERR;
+        }
+
+    } else if (!strncmp(first_input, "-kickmac", strlen("-kickmac"))) {
+        rbus_setStr(consumer->rbus_handle, WIFI_WEBCONFIG_KICK_MAC, second_input);
+
+    } else if (!strncmp(first_input, "wps", strlen("wps"))) {
+        vap_index = atoi(second_input);
+        if (vap_index < MAX_VAP) {
+            webconfig_rbus_event_publish(consumer, RBUS_WIFI_WPS_PIN_START, rbus_int_data, (unsigned char *)&vap_index);
+        } else {
+            printf("%s:%d: wrong second argument:%s:vap_index:%d:%d\r\n", __func__, __LINE__, second_input, vap_index, MAX_VAP);
+            return RETURN_ERR;
+        }
+
+    } else if (!strncmp(first_input, "rbusGet", strlen("rbusGet"))) {
+        rbus_multi_get(consumer, second_input, input_file_name);
+
     } else {
         printf("%s:%d: wrong first argument:%s\r\n", __func__, __LINE__, first_input);
         return RETURN_ERR;
@@ -1315,32 +1961,30 @@ int parse_input_parameters(char *first_input, char *second_input, char *input_fi
     return RETURN_OK;
 }
 
-int sta_connection_status_event(int apIndex, wifi_bss_info_t *bss_dev, wifi_station_stats_t *sta)
+int get_rbus_sta_interface_name(const char *paramNames)
 {
+    rbusValue_t value;
+    int rc = RBUS_ERROR_SUCCESS;
     webconfig_consumer_t *consumer = get_consumer_object();
-    bool active = (sta->connect_status == wifi_connection_status_connected) ? true:false;
 
-    if (active == true) {
-        printf("%s:%d: Station successfully connected with external AP vap_index:%d\r\n", __func__, __LINE__, sta->vap_index);
-        consumer->sta_connect_test_pending_count = 0;
-        consumer->test_input = consumer_all_test_completed;
-    } else {
-        printf("%s:%d: Station disconnected with external AP:%d vap_index:%d\r\n", __func__, __LINE__, sta->connect_status, sta->vap_index);
+    rc = rbus_get(consumer->rbus_handle, paramNames, &value);
+    if (rc != RBUS_ERROR_SUCCESS) {
+        printf ("rbus_get failed for [%s] with error [%d]\n", paramNames, rc);
+        return -1;
     }
 
-    return RETURN_OK;
-}
+    printf(":%s:%d Sta interface name = [%s]\n", __func__, __LINE__, rbusValue_GetString(value, NULL));
 
-int client_disconnection_command(void)
-{
-   printf("%s:%d: wifi_rdk_hal client disconnect API implementation remaining\r\n", __func__, __LINE__);
-    return RETURN_OK;
+    return 0;
 }
 
 void webconfig_consumer_sta_conn_status(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription)
 {
     bool conn_status;
     unsigned int index = 0;
+    int len = 0;
+    rdk_sta_data_t  sta_data = { 0 };
+    const unsigned char *temp_buff;
     rbusValue_t value = rbusObject_GetValue(event->data, NULL );
     if(!value)
     {
@@ -1351,84 +1995,54 @@ void webconfig_consumer_sta_conn_status(rbusHandle_t handle, rbusEvent_t const* 
     printf("%s:%d Rbus event name=%s\n",__FUNCTION__, __LINE__, event->name);
 
     sscanf(event->name, "Device.WiFi.STA.%d.Connection.Status", &index);
-    conn_status = rbusValue_GetBoolean(value);
+    temp_buff = rbusValue_GetBytes(value, &len);
+    if (temp_buff == NULL) {
+        printf("%s:%d Rbus get string failure len=%d\n", __FUNCTION__, __LINE__, len);
+        return;
+    }
 
+    memcpy(&sta_data.stats.connect_status, temp_buff, len);
+    conn_status = (sta_data.stats.connect_status == wifi_connection_status_connected) ? true:false;
     if (conn_status == true) {
-        printf("%s:%d: Station successfully connected with external AP radio:%d\r\n", __func__, __LINE__, index);
+        printf("%s:%d: Station successfully connected with external AP radio:%d\r\n",
+                    __func__, __LINE__, index - 1);
+        if (index == 1) {
+            get_rbus_sta_interface_name(WIFI_STA_2G_INTERFACE_NAME);
+        } else if (index == 2) {
+            get_rbus_sta_interface_name(WIFI_STA_5G_INTERFACE_NAME);
+        }
     } else {
-        printf("%s:%d: Station not able to connected with external AP:%d radio:%d\r\n", __func__, __LINE__, conn_status, index);
+        printf("%s:%d: Station disconnected with external AP:%d radio:%d\r\n",
+                __func__, __LINE__, conn_status, index - 1);
     }
 
     return;
 }
 
-int client_connection_init_command(uint32_t freq, char *ssid, uint8_t sec_mode, char *password, bssid_t mac)
+void webconfig_consumer_sta_interface_name(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription)
 {
-    webconfig_consumer_t *consumer = get_consumer_object();
-    uint8_t vap_array_index = convert_vap_name_to_array_index("mesh_sta");
-    uint8_t vap_index = 0;
-    uint8_t l_input_freq_band = 0;
-    wifi_bss_info_t l_client_connection_bss;
-    wifi_vap_info_map_t tgt_vap_map;
-    wifi_radio_operationParam_t tgt_radio_oper;
-    wifi_vap_info_t *vap_info;
-
-    memset(&tgt_vap_map, 0, sizeof(wifi_vap_info_map_t));
-    memset(&tgt_radio_oper, 0, sizeof(wifi_radio_operationParam_t));
-
-    if (freq >= 2412 && freq <= 2484) {
-        l_input_freq_band = WIFI_FREQUENCY_2_4_BAND;
-        vap_index = convert_vap_name_to_index("mesh_sta_2g");
-    } else if (freq >= 5180 && freq <= 5980) {
-        l_input_freq_band = WIFI_FREQUENCY_5_BAND;
-        vap_index = convert_vap_name_to_index("mesh_sta_5g");
-    } else {
-        printf("%s:%d: wrong frequency range:%d\r\n", __func__, __LINE__, freq);
-        return RETURN_ERR;
-    }
-    tgt_vap_map.num_vaps = 1;
-    vap_info = &consumer->radios[(l_input_freq_band - 1)].vaps.vap_map.vap_array[vap_array_index];
-    memcpy(&tgt_vap_map.vap_array[0], vap_info, sizeof(wifi_vap_info_t));
-
-    memcpy(&tgt_radio_oper, &consumer->radios[(l_input_freq_band - 1)].oper, sizeof(wifi_radio_operationParam_t));
-
-    copy_data(consumer->user_input_file_name, NULL, sizeof(consumer->user_input_file_name));
-    printf("%s:%d: ssid:%s sec_mode:%d password:%s\r\n", __func__, __LINE__, ssid, sec_mode, password);
-    printf("MAC:%02x:%02x:%02x:%02x:%02x:%02x\r\n", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-
-    strncpy(tgt_vap_map.vap_array[0].u.sta_info.ssid, ssid, strlen(ssid));
-    tgt_vap_map.vap_array[0].u.sta_info.security.mode = sec_mode;
-    if (sec_mode == wifi_security_mode_none) {
-        printf("open security encryption set\r\n");
-        tgt_vap_map.vap_array[0].u.sta_info.security.encr = wifi_encryption_none;
-    } else if (tgt_vap_map.vap_array[0].u.sta_info.security.encr == wifi_encryption_none) {
-        printf("AES security encryption set\r\n");
-        tgt_vap_map.vap_array[0].u.sta_info.security.encr = wifi_encryption_aes;
-    }
-    strncpy(tgt_vap_map.vap_array[0].u.sta_info.security.u.key.key, password, strlen(password));
-    memcpy(&tgt_vap_map.vap_array[0].u.sta_info.bssid, mac, sizeof(bssid_t));
-
-    l_client_connection_bss.freq = freq;
-    strncpy(l_client_connection_bss.ssid, ssid, strlen(ssid));
-    memcpy(&l_client_connection_bss.bssid, mac, sizeof(bssid_t));
-
-    printf("%s:%d: radio_index:%d\r\n", __func__, __LINE__, (l_input_freq_band - 1));
-    if (wifi_hal_setRadioOperatingParameters((l_input_freq_band - 1), &tgt_radio_oper) != RETURN_OK) {
-        return RETURN_ERR;
+    unsigned int index = 0;
+    int len = 0;
+    const char *temp_buff;
+    rbusValue_t value = rbusObject_GetValue(event->data, NULL );
+    if(!value)
+    {
+        printf("%s:%d FAIL: value is NULL\n",__FUNCTION__, __LINE__);
+        return;
     }
 
-    if (wifi_hal_createVAP((l_input_freq_band - 1), &tgt_vap_map) != RETURN_OK) {
-        printf( "%s:%d: failed to apply\n", __func__, __LINE__);
-        return RETURN_ERR;
+    printf("%s:%d Rbus event name=%s\n",__FUNCTION__, __LINE__, event->name);
+
+    sscanf(event->name, "Device.WiFi.STA.%d.InterfaceName", &index);
+
+    temp_buff = rbusValue_GetString(value, &len);
+    if (temp_buff == NULL) {
+        printf("%s:%d Rbus get string failure len=%d\n", __FUNCTION__, __LINE__, len);
+        return;
     }
 
-    printf("\n\n%s:%d: vap_index:%d:connecting ... %s %d\n\n", __func__, __LINE__, vap_index,
-                l_client_connection_bss.ssid, l_client_connection_bss.freq);
-    wifi_hal_connect(vap_index, &l_client_connection_bss);
-    printf("%s:%d: consumer app trigger test:%d\n", __func__, __LINE__, consumer_test_start_client_connection);
-    consumer->sta_connect_test_pending_count = 0;
-    consumer->test_input = consumer_test_start_client_connection;
-    return RETURN_OK;
+    printf("%s:%d radio index:%d Rbus get string:%s len=%d\n",__FUNCTION__, __LINE__, index, temp_buff, len);
+    return;
 }
 
 void consumer_queue_loop(webconfig_consumer_t *consumer)
@@ -1464,11 +2078,11 @@ void consumer_queue_loop(webconfig_consumer_t *consumer)
                     case consumer_event_type_webconfig:
                         //printf("%s:%d consumer webconfig event subtype:%d\r\n",__func__, __LINE__, queue_data->sub_type);
                         handle_webconfig_consumer_event(consumer, queue_data->msg, queue_data->len, queue_data->sub_type);
-                        break;
+                    break;
 
                     default:
                         //printf("[%s]:WIFI consumer thread not supported this event %d\r\n",__FUNCTION__, queue_data->event_type);
-                        break;
+                    break;
                 }
 
                 if(queue_data->msg) {
@@ -1486,6 +2100,10 @@ void consumer_queue_loop(webconfig_consumer_t *consumer)
             if (consumer->rbus_events_subscribed == false) {
                 consumer_events_subscribe(consumer);
                 if (consumer->rbus_events_subscribed == true) {
+                    dml_init_sync = true;
+                    enable_ovsdb = false;
+                    is_ovs_init = false;
+                    printf("%s %d Trigger initial sync message\r\n", __func__, __LINE__);
                     test_initial_sync();
                 }
             }
@@ -1498,7 +2116,7 @@ void consumer_queue_loop(webconfig_consumer_t *consumer)
             }
 
             if ((consumer->test_state == consumer_test_state_radio_subdoc_test_pending) &&
-                   (consumer->test_input == consumer_test_start_radio_subdoc)) {
+                    (consumer->test_input == consumer_test_start_radio_subdoc)) {
                 consumer->radio_test_pending_count++;
                 if (consumer->radio_test_pending_count > MAX_WAIT) {
                     printf("%s:%d: Radio test failed, timed out\n", __func__, __LINE__);
@@ -1506,7 +2124,7 @@ void consumer_queue_loop(webconfig_consumer_t *consumer)
                     consumer->test_state = consumer_test_state_radio_subdoc_test_complete;
                 }
             } else if ((consumer->test_state == consumer_test_state_private_subdoc_test_pending) &&
-                   (consumer->test_input == consumer_test_start_private_subdoc)) {
+                    (consumer->test_input == consumer_test_start_private_subdoc)) {
                 consumer->private_test_pending_count++;
                 if (consumer->private_test_pending_count > MAX_WAIT) {
                     printf("%s:%d: Private vap test failed, timed out\n", __func__, __LINE__);
@@ -1514,7 +2132,7 @@ void consumer_queue_loop(webconfig_consumer_t *consumer)
                     consumer->test_state = consumer_test_state_private_subdoc_test_complete;
                 }
             } else if ((consumer->test_state == consumer_test_state_mesh_subdoc_test_pending) &&
-                   (consumer->test_input == consumer_test_start_mesh_subdoc)) {
+                    (consumer->test_input == consumer_test_start_mesh_subdoc)) {
                 consumer->mesh_test_pending_count++;
                 if (consumer->mesh_test_pending_count > MAX_WAIT) {
                     printf("%s:%d: Mesh vap test failed, timed out\n", __func__, __LINE__);
@@ -1522,7 +2140,7 @@ void consumer_queue_loop(webconfig_consumer_t *consumer)
                     consumer->test_state = consumer_test_state_mesh_subdoc_test_complete;
                 }
             } else if ((consumer->test_state == consumer_test_state_xfinity_subdoc_test_pending) &&
-                   (consumer->test_input == consumer_test_start_xfinity_subdoc)) {
+                    (consumer->test_input == consumer_test_start_xfinity_subdoc)) {
                 consumer->xfinity_test_pending_count++;
                 if (consumer->xfinity_test_pending_count > MAX_WAIT) {
                     printf("%s:%d: xfinity vap test failed, timed out\n", __func__, __LINE__);
@@ -1530,19 +2148,20 @@ void consumer_queue_loop(webconfig_consumer_t *consumer)
                     consumer->test_state = consumer_test_state_xfinity_subdoc_test_complete;
                 }
             } else if ((consumer->test_state == consumer_test_state_home_subdoc_test_pending) &&
-                   (consumer->test_input == consumer_test_start_home_subdoc)) {
+                    (consumer->test_input == consumer_test_start_home_subdoc)) {
                 consumer->home_test_pending_count++;
                 if (consumer->home_test_pending_count > MAX_WAIT) {
                     printf("%s:%d: home vap test failed, timed out\n", __func__, __LINE__);
                     consumer->home_test_pending_count = 0;
                     consumer->test_state = consumer_test_state_home_subdoc_test_complete;
                 }
-            } else if (consumer->test_input == consumer_test_start_client_connection) {
-                consumer->sta_connect_test_pending_count++;
-                if (consumer->sta_connect_test_pending_count > (2 * MAX_WAIT)) {
-                    printf("%s:%d: sta connection, timed out\n", __func__, __LINE__);
-                    consumer->sta_connect_test_pending_count = 0;
-                    consumer->test_input = consumer_all_test_completed;
+            } else if ((consumer->test_state == consumer_test_state_macfilter_subdoc_test_pending) &&
+                    (consumer->test_input == consumer_test_start_macfilter_subdoc)) {
+                consumer->macfilter_test_pending_count++;
+                if (consumer->macfilter_test_pending_count > MAX_WAIT) {
+                    printf("%s:%d: macfilter test failed, timed out\n", __func__, __LINE__);
+                    consumer->macfilter_test_pending_count = 0;
+                    consumer->test_state = consumer_test_state_macfilter_subdoc_test_complete;
                 }
             }
         } else {
@@ -2110,6 +2729,16 @@ void dump_subdoc(const char *str, webconfig_subdoc_type_t type)
         case webconfig_subdoc_type_home:
             strcat(file_name, "/log_home_subdoc");
         break;
+        case webconfig_subdoc_type_mac_filter:
+            strcat(file_name, "/log_mac_filter_subdoc");
+        break;
+        case webconfig_subdoc_type_dml:
+            strcat(file_name, "/log_dml_subdoc");
+        break;
+
+        case webconfig_subdoc_type_associated_clients:
+            strcat(file_name, "/log_assoc_clients_subdoc");
+        break;
 
         default:
             return;
@@ -2124,4 +2753,30 @@ void dump_subdoc(const char *str, webconfig_subdoc_type_t type)
     fclose(fp);
 
     return;
+}
+
+wifi_vap_info_t *get_wifi_radio_vap_info(rdk_wifi_radio_t *wifi_radio, const char *vap_name_prefix)
+{
+    unsigned int vap_array_index;
+    wifi_vap_info_t *vap_info = NULL;
+
+    for (vap_array_index = 0; vap_array_index < wifi_radio->vaps.vap_map.num_vaps; ++vap_array_index) {
+        if (!strncmp(wifi_radio->vaps.vap_map.vap_array[vap_array_index].vap_name, vap_name_prefix, strlen(vap_name_prefix))) {
+            vap_info = &wifi_radio->vaps.vap_map.vap_array[vap_array_index];
+        }
+    }
+    return vap_info;
+}
+
+rdk_wifi_vap_info_t *get_wifi_radio_rdkvap_info(rdk_wifi_radio_t *wifi_radio, const char *vap_name_prefix)
+{
+    unsigned int vap_array_index;
+    rdk_wifi_vap_info_t *rdk_vap_info = NULL;
+
+    for (vap_array_index = 0; vap_array_index < wifi_radio->vaps.num_vaps; ++vap_array_index) {
+        if (!strncmp(wifi_radio->vaps.rdk_vap_array[vap_array_index].vap_name, vap_name_prefix, strlen(vap_name_prefix))) {
+            rdk_vap_info = &wifi_radio->vaps.rdk_vap_array[vap_array_index];
+        }
+    }
+    return rdk_vap_info;
 }

@@ -15,15 +15,22 @@ void print_help_msg(void)
     printf("-w mesh [parameters JSON blob file path]     { Test mesh subdocument }\r\n");
     printf("-w xfinity [parameters JSON blob file path]  { Test xfinity subdocument }\r\n");
     printf("-w home [parameters JSON blob file path]     { Test home subdocument }\r\n");
+    printf("-w macfilter [parameters JSON blob file path]{ Test macfilter subdocument }\r\n");
     printf("-w all [parameters JSON blob file path]      { Tests all existing WebConfig Subdocuments one after other }\r\n");
     printf("-w sync                                      { Test dml sync subdocument }\r\n");
     printf("-c 0                                         { WAN Manager External gateway absent }\r\n");
     printf("-c 1                                         { WAN Manager External gateway present }\r\n");
-    printf("-o sync                                      { Test dml subdocument for ovsdb destination}\r\n");
+    printf("-o sync                                      { Test dml subdocument for ovsdb destination, execute this before any -o test cases}\r\n");
     printf("-o radio                                     { Test radio subdocument for ovsdb }\r\n");
     printf("-o mesh                                      { Test mesh subdocument for ovsdb}\r\n");
+    printf("-o macfilter                                 { Test macfilter subdocument for ovsdb}\r\n");
     printf("-d <1>/<0>                                   { 1 for enable log and 0 for disable the /tmp/log_<subdoc> file creation}\r\n");
-    printf("-e connect freq value<2437> mac <01:02:03:04:05:06> ssid value sec_mode < 1 > password value\r\n");
+    printf("-t 1                                         { Tunnel Up event }\r\n");
+    printf("-t 0                                         { Tunnel Down event }\r\n");
+    printf("-a DeviceNetworkMode <1>/<0>                 { 0 for device gateway mode and 1 for device station mode }\r\n");
+    printf("-kickmac <ap_index-maclist-timeout>          { kick associated devices , to kick all <ap_index-ff:ff:ff:ff:ff:ff-timeout>}\r\n");
+    printf("wps <vap_index>                              { Trigger wps test case }\r\n");
+    printf("rbusGet <properties> [properties1]           { Trigger rbus get command }\r\n");
     printf("help\r\n");
     printf("exit                                         { exit wifi webconfig consumer sample app}\r\n");
     printf("|**************************************************************|\r\n");
@@ -73,10 +80,6 @@ int get_next_word(char **word)
 int parse_cli_input_msg(char *msg)
 {
     char *first_arg, *second_arg, *third_arg;
-    char *arg = NULL, *ssid = NULL, password[32] = {0};
-    unsigned char sec_mode = 0;
-    unsigned int freq = 0;
-    bssid_t mac;
     int ret = RETURN_OK;
     if (!strncmp(msg, "help", strlen("help"))) {
         print_help_msg();
@@ -91,74 +94,6 @@ int parse_cli_input_msg(char *msg)
             printf("%s:%d wrong user input:\r\n", __func__, __LINE__);
             print_help_msg();
             return RETURN_ERR;
-        } else if (!strncmp(first_arg, "-e", strlen("-e"))) {
-            if (!strncmp(second_arg, "connect", strlen("connect"))) {
-                ret = get_next_word(&arg);
-                if (ret == RETURN_ERR) {
-                    return ret;
-                }
-                if (!strncmp(arg, "freq", strlen("freq"))) {
-                    ret = get_next_word(&arg);
-                    if (ret == RETURN_ERR) {
-                        return ret;
-                    }
-                    freq = atoi(arg);
-                    ret = get_next_word(&arg);
-                    if (ret == RETURN_ERR) {
-                        return ret;
-                    }
-                    if (!strncmp(arg, "mac", strlen("mac"))) {
-                        ret = get_next_word(&arg);
-                        if (ret == RETURN_ERR) {
-                            return ret;
-                        }
-                        string_mac_to_uint8_mac((unsigned char *)mac, arg);
-                        ret = get_next_word(&arg);
-                        if (ret == RETURN_ERR) {
-                            return ret;
-                        }
-                        if (!strncmp(arg, "ssid", strlen("ssid"))) {
-                            ret = get_next_word(&ssid);
-                            if (ret == RETURN_ERR) {
-                                return ret;
-                            }
-                            ret = get_next_word(&arg);
-                            if (ret == RETURN_ERR) {
-                                return ret;
-                            }
-                            if (!strncmp(arg, "sec_mode", strlen("sec_mode"))) {
-                                ret = get_next_word(&arg);
-                                if (ret == RETURN_ERR) {
-                                    return ret;
-                                }
-                                sec_mode = atoi(arg);
-                                if (sec_mode != wifi_security_mode_none) {
-                                    ret = get_next_word(&arg);
-                                    if (ret == RETURN_ERR) {
-                                        return ret;
-                                    }
-                                    if (!strncmp(arg, "password", strlen("password"))) {
-                                        ret = get_next_word(&arg);
-                                        if (ret == RETURN_ERR) {
-                                            return ret;
-                                        }
-                                        strncpy(password, arg, strlen(arg));
-                                        ret = client_connection_init_command(freq, ssid, sec_mode, password, mac);
-                                    }
-                                } else {
-                                    ret = client_connection_init_command(freq, ssid, sec_mode, password, mac);
-                                }
-                            }
-                        }
-                    }
-                }
-            } else if (!strncmp(second_arg, "disconnect", strlen("disconnect"))) {
-                ret = client_disconnection_command();
-            } else {
-                printf("wrong user input:%s\r\n", msg);
-                print_help_msg();
-                return RETURN_ERR;
-            }
         } else {
             third_arg = strtok(NULL, " ");
             ret = parse_input_parameters(first_arg, second_arg, third_arg);
@@ -218,7 +153,13 @@ void *cli_input_func(void *arg)
             input_buff[char_index] = input_char;
             char_index++;
             space_detection = 1;
-        } else if ((input_char == '/' || input_char == '.' || input_char == '_' || input_char == '-' || input_char == ':')
+
+        } else if (input_char == '*') {
+            input_buff[char_index] = input_char;
+            char_index++;
+            space_detection = 1;
+
+        } else if ((input_char == '/' || input_char == '.' || input_char == '_' || input_char == '-' || input_char == ':' || input_char == ',')
                      &&  (allow_special_char == 1)) {
             input_buff[char_index] = input_char;
             char_index++;

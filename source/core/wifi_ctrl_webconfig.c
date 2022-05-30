@@ -5,6 +5,9 @@
 #include "wifi_ctrl.h"
 #include "wifi_mgr.h"
 #include "wifi_util.h"
+#include "msgpack.h"
+#include "cJSON.h"
+#define  WBCFG_MULTI_COMP_SUPPORT 1
 #include "webconfig_framework.h"
 #include "scheduler.h"
 #include <unistd.h>
@@ -13,6 +16,12 @@
 #ifdef WEBCONFIG_TESTS_OVER_QUEUE
 #include "wifi_webconfig_consumer.h"
 #endif
+
+#define WEBCONFIG_DML_SUBDOC_STATES (ctrl_webconfig_state_radio_cfg_rsp_pending| \
+                                     ctrl_webconfig_state_vap_cfg_rsp_pending| \
+                                     ctrl_webconfig_state_macfilter_cfg_rsp_pending| \
+                                     ctrl_webconfig_state_sta_conn_status_rsp_pending| \
+                                     ctrl_webconfig_state_factoryreset_cfg_rsp_pending)
 
 int webconfig_blaster_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
@@ -37,74 +46,111 @@ int webconfig_blaster_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *
     return RETURN_OK;
 }
 
+static void webconfig_init_subdoc_data(webconfig_subdoc_data_t *data)
+{
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
+    memcpy((unsigned char *)&data->u.decoded.radios, (unsigned char *)&mgr->radio_config, getNumberRadios()*sizeof(rdk_wifi_radio_t));
+    memcpy((unsigned char *)&data->u.decoded.config, (unsigned char *)&mgr->global_config, sizeof(wifi_global_config_t));
+    memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap, sizeof(wifi_hal_capability_t));
+    data->u.decoded.num_radios = getNumberRadios();
+}
+
 int webconfig_send_wifi_config_status(wifi_ctrl_t *ctrl)
 {
     webconfig_subdoc_data_t data;
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
+    memset(&data,0,sizeof(webconfig_subdoc_data_t));
     memcpy((unsigned char *)&data.u.decoded.config, (unsigned char *)&mgr->global_config, sizeof(wifi_global_config_t));
+    memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap, sizeof(wifi_hal_capability_t));
 
-    if (webconfig_encode(&ctrl->webconfig, &data,
-                webconfig_subdoc_type_wifi_config) == webconfig_error_none) {
-        ctrl->webconfig_state = ctrl_webconfig_state_none;
-    }
+    if (webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_wifi_config) != webconfig_error_none) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
+     }
+    ctrl->webconfig_state ^= ctrl_webconfig_state_wifi_config_cfg_rsp_pending;
+
     return RETURN_OK;
 
 }
 
-int webconfig_send_radio_status(wifi_ctrl_t *ctrl)
+int webconfig_send_dml_subdoc_status(wifi_ctrl_t *ctrl)
 {
     webconfig_subdoc_data_t data;
-    wifi_mgr_t *mgr = get_wifimgr_obj();
-
-    memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&mgr->radio_config, getNumberRadios()*sizeof(rdk_wifi_radio_t));
-    memcpy((unsigned char *)&data.u.decoded.config, (unsigned char *)&mgr->global_config, sizeof(wifi_global_config_t));
-    data.u.decoded.num_radios = getNumberRadios();
-
-    if (webconfig_encode(&ctrl->webconfig, &data,
-                webconfig_subdoc_type_dml) == webconfig_error_none) {
-        ctrl->webconfig_state = ctrl_webconfig_state_none;
+    
+    webconfig_init_subdoc_data(&data);
+    if (webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_dml) != webconfig_error_none) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
     }
+    ctrl->webconfig_state &= ~WEBCONFIG_DML_SUBDOC_STATES;
 
     return RETURN_OK;
 }
 
-int webconfig_send_vap_status(wifi_ctrl_t *ctrl)
+int webconfig_send_csi_status(wifi_ctrl_t *ctrl)
 {
     webconfig_subdoc_data_t data;
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
-    memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&mgr->radio_config, getNumberRadios()*sizeof(rdk_wifi_radio_t));
-    memcpy((unsigned char *)&data.u.decoded.config, (unsigned char *)&mgr->global_config, sizeof(wifi_global_config_t));
-    data.u.decoded.num_radios = getNumberRadios();
+    memset(&data,0,sizeof(webconfig_subdoc_data_t));
+    data.u.decoded.csi_data_queue = mgr->csi_data_queue;
+    memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap, sizeof(wifi_hal_capability_t));
 
-    if (webconfig_encode(&ctrl->webconfig, &data,
-                webconfig_subdoc_type_dml) == webconfig_error_none) {
-        ctrl->webconfig_state = ctrl_webconfig_state_none;
+    if (webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_csi) != webconfig_error_none) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
     }
+    ctrl->webconfig_state ^= ctrl_webconfig_state_csi_cfg_rsp_pending;
+
+    return RETURN_OK;
+}
+
+int webconfig_send_associate_status(wifi_ctrl_t *ctrl)
+{
+    webconfig_subdoc_data_t data;
+
+    webconfig_init_subdoc_data(&data);
+
+    if (webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_associated_clients) != webconfig_error_none) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
+    }
+    ctrl->webconfig_state ^= ctrl_webconfig_state_associated_clients_cfg_rsp_pending;
 
     return RETURN_OK;
 }
 
 int webconfig_analyze_pending_states(wifi_ctrl_t *ctrl)
 {
+    static int pending_state = ctrl_webconfig_state_max;
+
+    if ((ctrl->webconfig_state & CTRL_WEBCONFIG_STATE_MASK) == 0) {
+        return RETURN_OK;
+    }
+
+    do {
+        pending_state <<= 1;
+        if (pending_state >= ctrl_webconfig_state_max) {
+            pending_state = 0x0001;
+        }
+    } while ((ctrl->webconfig_state & pending_state) == 0);
+
     // this may move to scheduler task
-    switch (ctrl->webconfig_state) {
+    switch (ctrl->webconfig_state & pending_state) {
         case ctrl_webconfig_state_radio_cfg_rsp_pending:
-            webconfig_send_radio_status(ctrl);
-        ctrl->webconfig_state = ctrl_webconfig_state_none;
-            break;
         case ctrl_webconfig_state_vap_cfg_rsp_pending:
-            webconfig_send_vap_status(ctrl);
-        ctrl->webconfig_state = ctrl_webconfig_state_none;
+        case ctrl_webconfig_state_macfilter_cfg_rsp_pending:
+        case ctrl_webconfig_state_sta_conn_status_rsp_pending:
+        case ctrl_webconfig_state_factoryreset_cfg_rsp_pending:
+            webconfig_send_dml_subdoc_status(ctrl);
             break;
         case ctrl_webconfig_state_wifi_config_cfg_rsp_pending:
             webconfig_send_wifi_config_status(ctrl);
-            ctrl->webconfig_state = ctrl_webconfig_state_none;
             break;
-
-        default:
-            //wifi_util_dbg_print(WIFI_CTRL,"[%s]:WIFI webconfig analyze pending states event not supported: [%d]\r\n",__FUNCTION__, ctrl->webconfig_state);
+        case ctrl_webconfig_state_associated_clients_cfg_rsp_pending:
+            webconfig_send_associate_status(ctrl);
+            break;
+        case ctrl_webconfig_state_csi_cfg_rsp_pending:
+            webconfig_send_csi_status(ctrl);
             break;
     }
 
@@ -116,19 +162,25 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
     unsigned int i, j, k;
     int tgt_radio_idx, tgt_vap_index;
     wifi_vap_info_t *mgr_vap_info, *vap_info;
+    vap_svc_t *svc;
     wifi_vap_info_map_t *mgr_vap_map, tgt_vap_map;
     bool found_target = false;
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
     for (i = 0; i < size; i++) {
 
-        if ((tgt_radio_idx = convert_vap_name_to_radio_array_index(vap_names[i])) == -1) {
+        if ((svc = get_svc_by_name(ctrl, vap_names[i])) == NULL) {
+            continue;
+        }
+
+        if ((tgt_radio_idx = convert_vap_name_to_radio_array_index(&mgr->hal_cap.wifi_prop, vap_names[i])) == -1) {
             wifi_util_dbg_print(WIFI_MGR, "%s:%d: Could not find radio index for vap name:%s\n",
                         __func__, __LINE__, vap_names[i]);
             continue;
         }
 
-        if ((tgt_vap_index = convert_vap_name_to_index(vap_names[i])) == -1) {
+        tgt_vap_index = convert_vap_name_to_index(&mgr->hal_cap.wifi_prop, vap_names[i]);
+        if (tgt_vap_index == -1) {
             wifi_util_dbg_print(WIFI_MGR, "%s:%d: Could not find vap index for vap name:%s\n",
                         __func__, __LINE__, vap_names[i]);
             continue;
@@ -181,7 +233,7 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
         }
 
         found_target = false;
-        printf("%s:%d: Found vap map source and target for vap name: %s\n", __func__, __LINE__, vap_info->vap_name);
+        wifi_util_dbg_print(WIFI_MGR,"%s:%d: Found vap map source and target for vap name: %s\n", __func__, __LINE__, vap_info->vap_name);
 
         if (memcmp(mgr_vap_info, vap_info, sizeof(wifi_vap_info_t)) != 0) {
             // radio data changed apply
@@ -190,27 +242,25 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
             memset(&tgt_vap_map, 0, sizeof(wifi_vap_info_map_t));
             tgt_vap_map.num_vaps = 1;
             memcpy(&tgt_vap_map.vap_array[0], vap_info, sizeof(wifi_vap_info_t));
-            if (wifi_hal_createVAP(tgt_radio_idx, &tgt_vap_map) != RETURN_OK) {
+            if (svc->update_fn(svc, tgt_radio_idx, &tgt_vap_map) != 0) {
                 wifi_util_dbg_print(WIFI_MGR, "%s:%d: failed to apply\n", __func__, __LINE__);
-        ctrl->webconfig_state = ctrl_webconfig_state_vap_cfg_rsp_pending;
+                ctrl->webconfig_state |= ctrl_webconfig_state_vap_cfg_rsp_pending;
                 return RETURN_ERR;
             }
-
-            // write the value to database
-#ifndef LINUX_VM_PORT
-            wifidb_update_wifi_vap_info(vap_names[i], vap_info);
-            if (isVapSTAMesh(tgt_vap_index)) {
-                wifidb_update_wifi_security_config(vap_names[i],&vap_info->u.sta_info.security);
-            } else {
-                wifidb_update_wifi_interworking_config(vap_names[i],&vap_info->u.bss_info.interworking);
-                wifidb_update_wifi_security_config(vap_names[i],&vap_info->u.bss_info.security);
+            memcpy(mgr_vap_info, &tgt_vap_map.vap_array[0], sizeof(wifi_vap_info_t));
+            
+            if (vap_info->vap_mode == wifi_vap_mode_ap) {
+                if (wifi_setApManagementFramePowerControl(vap_info->vap_index,vap_info->u.bss_info.mgmtPowerControl) == RETURN_OK) {
+                    wifi_util_dbg_print(WIFI_MGR, "%s:%d:ManagementFrame Power control set for vapindex =%d Successful \n",__func__, __LINE__,vap_info->vap_index);
+                } else {
+                    wifi_util_dbg_print(WIFI_MGR, "%s:%d:ManagementFrame Power control set failed in  \n",__func__, __LINE__);
+                }
             }
-#endif
-            ctrl->webconfig_state = ctrl_webconfig_state_vap_cfg_rsp_pending;
         } else {
             wifi_util_dbg_print(WIFI_MGR, "%s:%d: Received vap config is same for %s, not applying\n",
                         __func__, __LINE__, vap_names[i]);
         }
+        ctrl->webconfig_state |= ctrl_webconfig_state_vap_cfg_rsp_pending;
     }
 
     return RETURN_OK;
@@ -259,7 +309,7 @@ int webconfig_global_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_da
    /* If neither GasConfig nor Global params are modified */
     if(!global_param_changed && !gas_config_changed) {
         wifi_util_dbg_print(WIFI_CTRL,"Neither Gasconfig nor globalparams are modified");
-        ctrl->webconfig_state = ctrl_webconfig_state_radio_cfg_rsp_pending;
+        ctrl->webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
         return RETURN_ERR;
     }
 
@@ -267,7 +317,7 @@ int webconfig_global_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_da
         wifi_util_dbg_print(WIFI_CTRL,"Global config value is changed hence update the global config in DB\n");
         if(update_wifi_global_config(&data_global_config->global_parameters) == -1) {
             wifi_util_dbg_print(WIFI_CTRL,"Global config value is not updated in DB\n");
-            ctrl->webconfig_state = ctrl_webconfig_state_radio_cfg_rsp_pending;
+            ctrl->webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
             return RETURN_ERR;
         }
     }
@@ -276,12 +326,12 @@ int webconfig_global_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_da
         wifi_util_dbg_print(WIFI_CTRL,"Gas config value is changed hence update the gas config in DB\n");
         if(update_wifi_gas_config(data_global_config->gas_config.AdvertisementID,&data_global_config->gas_config) == -1) {
             wifi_util_dbg_print(WIFI_CTRL,"Gas config value is not updated in DB\n");
-            ctrl->webconfig_state = ctrl_webconfig_state_radio_cfg_rsp_pending;
+            ctrl->webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
             return RETURN_ERR;
         }
     }
 
-    ctrl->webconfig_state = ctrl_webconfig_state_radio_cfg_rsp_pending;
+    ctrl->webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
     return RETURN_OK;
 }
 
@@ -354,19 +404,141 @@ int webconfig_hal_mesh_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_dat
     return webconfig_hal_vap_apply_by_name(ctrl, data, vap_names, num_vaps);
 }
 
-static char *to_mac_str    (mac_address_t mac, mac_addr_str_t key) {
-    snprintf(key, 18, "%02x:%02x:%02x:%02x:%02x:%02x",
-             mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+int webconfig_hal_csi_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
+{
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    queue_t *new_config, *current_config;
+    new_config = data->csi_data_queue;
+    char tmp_cli_list[128];
+    unsigned int itr, i, current_config_count, new_config_count, itrj, num_unique_mac=0;
+    csi_data_t *current_csi_data = NULL, *new_csi_data;
+    bool found = false, data_change = false;
+    mac_addr_str_t mac_str;
+    mac_address_t unique_mac_list[MAX_NUM_CSI_CLIENTS];
+    current_config = mgr->csi_data_queue;
 
-    return (char *)key;
+    if (new_config == NULL || current_config == NULL) {
+        wifi_util_dbg_print(WIFI_MGR,"%s %d NULL pointer \n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    
+    new_config_count  = queue_count(new_config);
+    for (itr=0; itr<new_config_count; itr++) {
+        new_csi_data = (csi_data_t *)queue_peek(new_config, itr);
+        if ((new_csi_data != NULL) && (new_csi_data->enabled)) {
+            for (itrj=0; itrj<new_csi_data->csi_client_count; itrj ++) {
+                found  = false;
+                for (i=0; i<num_unique_mac; i++) {
+                    if (memcmp(new_csi_data->csi_client_list[itrj], unique_mac_list[i], sizeof(mac_address_t)) == 0) {
+                        found  = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    num_unique_mac++;
+                    if (num_unique_mac > MAX_NUM_CSI_CLIENTS) {
+                        wifi_util_dbg_print(WIFI_MGR,"%s %d MAX_NUM_CSI_CLIENTS reached\n", __func__, __LINE__);
+                        ctrl->webconfig_state |= ctrl_webconfig_state_csi_cfg_rsp_pending;
+                        goto free_csi_data;
+                    } else {
+                        memcpy(unique_mac_list[num_unique_mac-1], new_csi_data->csi_client_list[itrj], sizeof(mac_address_t));
+                    }
+                }
+            }
+        }
+    }
+
+    if (current_config != NULL) {
+        current_config_count = queue_count(current_config);
+        for (itr=0; itr<current_config_count; itr++) {
+            current_csi_data = (csi_data_t *)queue_peek(current_config, itr);
+            new_config_count = queue_count(new_config);
+            found = false;
+            for (itrj=0; itrj<new_config_count; itrj++) {
+                new_csi_data = (csi_data_t *)queue_peek(new_config, itrj);
+                if (new_csi_data != NULL) {
+                    if (new_csi_data->csi_session_num == current_csi_data->csi_session_num) {
+                        found = true;
+                    }
+               } 
+            }
+            if (!found) {
+                csi_del_session(current_csi_data->csi_session_num);
+                current_csi_data = (csi_data_t *)queue_remove(current_config, itr);
+                if (current_csi_data != NULL) {
+                    free(current_csi_data);
+                }
+                current_config_count = queue_count(current_config);
+                ctrl->webconfig_state |= ctrl_webconfig_state_csi_cfg_rsp_pending;
+            }
+        }
+    }
+
+    if (new_config != NULL) {
+        new_config_count = queue_count(new_config);
+        for (itr=0; itr<new_config_count; itr++) {
+            new_csi_data = (csi_data_t *)queue_peek(new_config, itr);
+            current_config_count = queue_count(current_config);
+            memset(tmp_cli_list, 0, sizeof(tmp_cli_list));
+            found = false;
+            data_change = false;
+            for (itrj=0; itrj<current_config_count; itrj++) {
+                current_csi_data = (csi_data_t *)queue_peek(current_config, itrj);
+                if (current_csi_data != NULL) {
+                    if (new_csi_data->csi_session_num == current_csi_data->csi_session_num) {
+                        found = true;
+                        if (memcmp(new_csi_data, current_csi_data, sizeof(csi_data_t)) != 0) {
+                            data_change = true;
+                        }
+                        break;
+                    }
+                }
+            }
+
+            //Change client macarray to comma seperarted string.
+            for (i=0; i<new_csi_data->csi_client_count; i++) {
+                to_mac_str(new_csi_data->csi_client_list[i], mac_str);
+                strcat(tmp_cli_list, mac_str);
+                strcat(tmp_cli_list, ",");
+            }
+            int len  = strlen(tmp_cli_list);
+            tmp_cli_list[len-1] = '\0';
+
+            if (!found) {
+                csi_create_session(new_csi_data->csi_session_num);
+                csi_data_t *to_queue = (csi_data_t *)malloc(sizeof(csi_data_t));
+                memcpy(to_queue, new_csi_data, sizeof(csi_data_t));
+                queue_push(current_config, to_queue);
+                csi_enable_session(new_csi_data->enabled, new_csi_data->csi_session_num);
+                csi_set_client_mac(tmp_cli_list, new_csi_data->csi_session_num);
+                ctrl->webconfig_state |= ctrl_webconfig_state_csi_cfg_rsp_pending;
+            }
+
+            if(found && data_change) {
+                csi_enable_session(new_csi_data->enabled, new_csi_data->csi_session_num);
+                csi_set_client_mac(tmp_cli_list, new_csi_data->csi_session_num);
+                memcpy(current_csi_data, new_csi_data, sizeof(csi_data_t));
+                ctrl->webconfig_state |= ctrl_webconfig_state_csi_cfg_rsp_pending;
+            }
+        }
+    }
+
+free_csi_data:
+    if (new_config != NULL) {
+        queue_destroy(new_config);
+    }
+
+    return RETURN_OK;
 }
 
-int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
+int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data, webconfig_subdoc_type_t subdoc_type)
 {
     unsigned int radio_index, vap_index;
     rdk_wifi_vap_info_t *new_config = NULL, *current_config = NULL;
     wifi_mgr_t *mgr = get_wifimgr_obj();
-    acl_entry_t *new_acl_entry, *temp_acl_entry;
+    acl_entry_t *new_acl_entry, *temp_acl_entry, *current_acl_entry;
+    mac_addr_str_t current_mac_str;
+
     mac_addr_str_t new_mac_str;
     int ret = RETURN_OK;
     char macfilterkey[128];
@@ -389,63 +561,75 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
                 return RETURN_OK;
             }
 
+            if ((subdoc_type == webconfig_subdoc_type_mesh) && (isVapMeshBackhaul(data->radios[radio_index].vaps.rdk_vap_array[vap_index].vap_index)) == FALSE) {
+                continue;
+            }
+
+            if (current_config->acl_map != NULL) {
+                current_acl_entry = hash_map_get_first(current_config->acl_map);
+                while (current_acl_entry != NULL) {
+                    to_mac_str(current_acl_entry->mac, current_mac_str);
+                    if ((new_config->acl_map == NULL) || (hash_map_get(new_config->acl_map, current_mac_str) == NULL)) {
+                        wifi_util_dbg_print(WIFI_MGR, "%s:%d: calling wifi_delApAclDevice for mac %s vap_index %d\n", __func__, __LINE__, current_mac_str, current_config->vap_index);
+                        if (wifi_delApAclDevice(current_config->vap_index, current_mac_str) != RETURN_OK) {
+                            wifi_util_dbg_print(WIFI_MGR, "%s:%d: wifi_delApAclDevice failed. vap_index %d, mac %s \n",
+                                    __func__, __LINE__, vap_index, current_mac_str);
+                            ret = RETURN_ERR;
+                            goto free_data;
+                        }
+                        current_acl_entry = hash_map_get_next(current_config->acl_map, current_acl_entry);
+                        temp_acl_entry = hash_map_remove(current_config->acl_map, current_mac_str);
+                        if (temp_acl_entry != NULL) {
+                            snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", current_config->vap_name, current_mac_str);
+
+                            wifidb_update_wifi_macfilter_config(macfilterkey, temp_acl_entry, false);
+                            free(temp_acl_entry);
+                            ctrl->webconfig_state |= ctrl_webconfig_state_macfilter_cfg_rsp_pending;
+                        }
+                    } else {
+                        current_acl_entry = hash_map_get_next(current_config->acl_map, current_acl_entry);
+                    }
+                }
+            }
+
             if (new_config->acl_map != NULL) {
                 new_acl_entry = hash_map_get_first(new_config->acl_map);
                 while (new_acl_entry != NULL) {
-                    to_mac_str(new_acl_entry->mac,new_mac_str);
-                    if (new_acl_entry->acl_action_type == acl_action_add) {
-                        temp_acl_entry = hash_map_get(current_config->acl_map, new_mac_str);
-                        if (temp_acl_entry != NULL) {
-                            wifi_util_dbg_print(WIFI_MGR,"%s %d. Error trying to add existing MAC (%s)\n", __func__, __LINE__, new_mac_str);
+                    to_mac_str(new_acl_entry->mac, new_mac_str);
+                    acl_entry_t *check_acl_entry = hash_map_get(current_config->acl_map, new_mac_str);
+                    if (check_acl_entry == NULL) { //mac is in new_config but not in running config need to update HAL
+                        wifi_util_dbg_print(WIFI_MGR, "%s:%d: calling wifi_addApAclDevice for mac %s vap_index %d\n", __func__, __LINE__, new_mac_str, current_config->vap_index);
+                        if (wifi_addApAclDevice(current_config->vap_index, new_mac_str) != RETURN_OK) {
+                            wifi_util_dbg_print(WIFI_MGR, "%s:%d: wifi_addApAclDevice failed. vap_index %d, MAC %s \n",
+                                    __func__, __LINE__, vap_index, new_mac_str);
                             ret = RETURN_ERR;
                             goto free_data;
-                        } else {
+                        }
 
-                            if (wifi_addApAclDevice(current_config->vap_index, new_mac_str) != RETURN_OK) {
-                                wifi_util_dbg_print(WIFI_MGR, "%s:%d: wifi_addApAclDevice failed. vap_index %d, MAC %s \n",
-                                        __func__, __LINE__, vap_index, new_mac_str);
-                                ret = RETURN_ERR;
-                                goto free_data;
-                            }
-                            temp_acl_entry = (acl_entry_t *)malloc(sizeof(acl_entry_t));
-                            memset(temp_acl_entry, 0, (sizeof(acl_entry_t)));
-                            memcpy(temp_acl_entry, new_acl_entry, sizeof(acl_entry_t));
-                            temp_acl_entry->acl_action_type = acl_action_none;
+                        temp_acl_entry = (acl_entry_t *)malloc(sizeof(acl_entry_t));
+                        memset(temp_acl_entry, 0, (sizeof(acl_entry_t)));
+                        memcpy(temp_acl_entry, new_acl_entry, sizeof(acl_entry_t));
 
-                            hash_map_put(current_config->acl_map,strdup(new_mac_str),temp_acl_entry);
+                        hash_map_put(current_config->acl_map,strdup(new_mac_str),temp_acl_entry);
+                        snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", current_config->vap_name, new_mac_str);
+
+                        wifidb_update_wifi_macfilter_config(macfilterkey, temp_acl_entry, true);
+                        ctrl->webconfig_state |= ctrl_webconfig_state_macfilter_cfg_rsp_pending;
+                    } else {
+                        if (strncmp(check_acl_entry->device_name, new_acl_entry->device_name, sizeof(check_acl_entry->device_name)-1) != 0) {
+                            strncpy(check_acl_entry->device_name, new_acl_entry->device_name, sizeof(check_acl_entry->device_name)-1);
                             snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", current_config->vap_name, new_mac_str);
 
-                            wifidb_update_wifi_macfilter_config(macfilterkey, temp_acl_entry, new_acl_entry->acl_action_type);
+                            wifidb_update_wifi_macfilter_config(macfilterkey, check_acl_entry, true);
+                            ctrl->webconfig_state |= ctrl_webconfig_state_macfilter_cfg_rsp_pending;
                         }
                     }
-                    if (new_acl_entry->acl_action_type == acl_action_del) {
-                        temp_acl_entry = hash_map_get(current_config->acl_map, new_mac_str);
-                        if (temp_acl_entry == NULL) {
-                            wifi_util_dbg_print(WIFI_MGR,"%s %d. Error trying to delete MAC (%s) not in the macfilter list\n", __func__, __LINE__, new_mac_str);
-                            ret = RETURN_ERR;
-                            goto free_data;
-                        } else {
-
-                            if (wifi_delApAclDevice(current_config->vap_index, new_mac_str) != RETURN_OK) {
-                                wifi_util_dbg_print(WIFI_MGR, "%s:%d: wifi_delApAclDevice failed. vap_index %d, mac %s \n",
-                                        __func__, __LINE__, vap_index, new_mac_str);
-                                ret = RETURN_ERR;
-                                goto free_data;
-                            }
-                            temp_acl_entry = hash_map_remove(current_config->acl_map,new_mac_str);
-                            if (temp_acl_entry != NULL) {
-                                snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", current_config->vap_name, new_mac_str);
-
-                                wifidb_update_wifi_macfilter_config(macfilterkey, temp_acl_entry, new_acl_entry->acl_action_type);
-                                free(temp_acl_entry);
-                            }
-                        }
-                    }
-                    new_acl_entry = hash_map_get_next(new_config->acl_map,new_acl_entry);
+                    new_acl_entry = hash_map_get_next(new_config->acl_map, new_acl_entry);
                 }
             }
         }
     }
+
 free_data:
     if ((new_config != NULL) && (new_config->acl_map != NULL)) {
         new_acl_entry = hash_map_get_first(new_config->acl_map);
@@ -493,7 +677,7 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
                             __func__, __LINE__, radio_data->name);
             if (wifi_hal_setRadioOperatingParameters(mgr_radio_data->vaps.radio_index, &radio_data->oper) != RETURN_OK) {
                 wifi_util_dbg_print(WIFI_MGR, "%s:%d: failed to apply\n", __func__, __LINE__);
-        ctrl->webconfig_state = ctrl_webconfig_state_radio_cfg_rsp_pending;
+                ctrl->webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
                 return RETURN_ERR;
             }
 
@@ -501,7 +685,7 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
 #ifndef LINUX_VM_PORT
             wifidb_update_wifi_radio_config(mgr_radio_data->vaps.radio_index, &radio_data->oper);
 #endif
-            ctrl->webconfig_state = ctrl_webconfig_state_radio_cfg_rsp_pending;
+            ctrl->webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
         } else {
             wifi_util_dbg_print(WIFI_MGR, "%s:%d: Received radio config is same, not applying\n", __func__, __LINE__);
         }
@@ -561,16 +745,32 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
         case webconfig_subdoc_type_mesh:
             wifi_util_dbg_print(WIFI_MGR, "%s:%d: mesh webconfig subdoc\n", __func__, __LINE__);
             ret = webconfig_hal_mesh_vap_apply(ctrl, &data->u.decoded);
+            if (ret != RETURN_OK) {
+                wifi_util_dbg_print(WIFI_MGR, "%s:%d: mesh webconfig subdoc failed\n", __func__, __LINE__);
+                return webconfig_error_apply;
+            }
+            ret = webconfig_hal_mac_filter_apply(ctrl, &data->u.decoded, doc->type);
             break;
 
         case webconfig_subdoc_type_mac_filter:
             wifi_util_dbg_print(WIFI_MGR, "%s:%d: mac_filter webconfig subdoc\n", __func__, __LINE__);
-            ret = webconfig_hal_mac_filter_apply(ctrl, &data->u.decoded);
+            ret = webconfig_hal_mac_filter_apply(ctrl, &data->u.decoded, doc->type);
             break;
         case webconfig_subdoc_type_blaster:
             wifi_util_dbg_print(WIFI_MGR, "%s:%d: blaster webconfig subdoc\n", __func__, __LINE__);
             ret = webconfig_blaster_apply(ctrl, &data->u.decoded);
-        break;
+            break;
+
+        case webconfig_subdoc_type_csi:
+            wifi_util_dbg_print(WIFI_MGR, "%s:%d: csi webconfig subdoc\n", __func__, __LINE__);
+            if (data->descriptor & webconfig_data_descriptor_encoded) {
+                wifi_util_dbg_print(WIFI_MGR, "%s:%d: going for notify\n", __func__, __LINE__);
+                ret = webconfig_csi_notify_apply(ctrl, &data->u.encoded);
+            } else {
+                wifi_util_dbg_print(WIFI_MGR, "%s:%d: going for apply\n", __func__, __LINE__);
+                ret = webconfig_hal_csi_apply(ctrl, &data->u.decoded);
+            }
+            break;
 
         case webconfig_subdoc_type_harvester:
             wifi_util_dbg_print(WIFI_MGR, "%s:%d: havester webconfig subdoc\n", __func__, __LINE__);
@@ -579,6 +779,11 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
         case webconfig_subdoc_type_wifi_config:
             wifi_util_dbg_print(WIFI_MGR, "%s:%d: global webconfig subdoc\n", __func__, __LINE__);
             ret = webconfig_global_config_apply(ctrl, &data->u.decoded);
+            break;
+
+        case webconfig_subdoc_type_associated_clients:
+            wifi_util_dbg_print(WIFI_MGR, "%s:%d: associated clients webconfig subdoc\n", __func__, __LINE__);
+            ret = webconfig_client_notify_apply(ctrl, &data->u.encoded);
             break;
 
         case webconfig_subdoc_type_dml:
@@ -603,4 +808,918 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
     return ((ret == RETURN_OK) ? webconfig_error_none:webconfig_error_apply);
 }
 
+uint32_t get_wifi_blob_version(char* subdoc)
+{
+    // TODO: implementation
+    return 0;
+}
+
+int set_wifi_blob_version(char* subdoc,uint32_t version)
+{
+    // TODO: implementation
+    return 0;
+}
+
+static size_t webconf_timeout_handler(size_t numOfEntries)
+{
+    return (numOfEntries * 90);
+}
+
+static void webconf_free_resources(void *arg)
+{
+    wifi_util_dbg_print(WIFI_CTRL, "%s: Enter\n", __func__);
+    if(arg == NULL) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s: Null Input Data\n", __func__);
+        return;
+    }
+
+    execData *blob_exec_data  = (execData*) arg;
+    char *blob_data = (char*)blob_exec_data->user_data;
+    if(blob_data != NULL) {
+        free(blob_data);
+        blob_data = NULL;
+    }
+
+    free(blob_exec_data);
+}
+
+static int webconf_rollback_handler(void)
+{
+    //TODO: what should rollback handler do in the context of OneWifi
+
+    wifi_util_dbg_print(WIFI_CTRL, "%s: Enter\n", __func__);
+    return RETURN_OK;
+}
+
+pErr webconf_config_handler(void *blob)
+{
+    pErr exec_ret_val = NULL;
+
+    if(blob == NULL) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s: Null blob\n", __func__);
+        return exec_ret_val;
+    }
+
+    exec_ret_val = (pErr ) malloc (sizeof(Err));
+    if (exec_ret_val == NULL ) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s: malloc failure\n", __func__);
+        return exec_ret_val;
+    }
+
+    memset(exec_ret_val,0,(sizeof(Err)));
+    exec_ret_val->ErrorCode = BLOB_EXEC_SUCCESS;
+
+    // push blob to ctrl queue
+    push_data_to_ctrl_queue(blob, strlen(blob), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data);
+
+    wifi_util_dbg_print(WIFI_CTRL, "%s: return success\n", __func__);
+    return exec_ret_val;
+}
+
+pErr private_home_exec_common_handler(void *data, bool priv_sd)
+{
+    pErr execRetVal = NULL;
+
+    if(data == NULL) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s: Null blob\n", __func__);
+        return execRetVal;
+    }
+
+    execRetVal = (pErr)malloc(sizeof(Err));
+    if (execRetVal == NULL ) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s: malloc failure\n", __func__);
+        return execRetVal;
+    }
+
+    wifi_util_dbg_print(WIFI_CTRL, "%s, data:\n%s\n", __func__, data);
+    memset(execRetVal,0,(sizeof(Err)));
+    execRetVal->ErrorCode = VALIDATION_FALIED;
+
+    cJSON *root = cJSON_Parse((char*)data);
+    if(root == NULL) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s: json parse failure\n", __func__);
+        return execRetVal;
+    }
+
+    const char* p2g_vap = priv_sd ? "private_ssid_2g" : "home_ssid_2g";
+    const char* p5g_vap = priv_sd ? "private_ssid_5g" : "home_ssid_5g";
+    const char* p2g_vap_sec = priv_sd ? "private_security_2g" : "home_security_2g";
+    const char* p5g_vap_sec = priv_sd ? "private_security_5g" : "home_security_5g";
+
+    const char* p2g_vap_name = priv_sd ? "private_ssid_2g" : "iot_ssid_2g";
+    const char* p5g_vap_name = priv_sd ? "private_ssid_5g" : "iot_ssid_5g";
+
+    cJSON *p2g = cJSON_GetObjectItem(root, p2g_vap);
+    if(p2g == NULL) {
+        cJSON_Delete(root);
+        wifi_util_dbg_print(WIFI_CTRL, "%s: Failed to get 2g VapName\n", __func__);
+        return execRetVal;
+    }
+
+    cJSON *p2g_sec = cJSON_GetObjectItem(root, p2g_vap_sec);
+    if(p2g_sec == NULL) {
+        cJSON_Delete(root);
+        wifi_util_dbg_print(WIFI_CTRL, "%s: Failed to get 2g Security\n", __func__);
+        return execRetVal;
+    }
+
+    cJSON *p5g = cJSON_GetObjectItem(root, p5g_vap);
+    if(p5g == NULL) {
+        cJSON_Delete(root);
+        wifi_util_dbg_print(WIFI_CTRL, "%s: Failed to get 5g VapName\n", __func__);
+        return execRetVal;
+    }
+
+    cJSON *p5g_sec = cJSON_GetObjectItem(root, p5g_vap_sec);
+    if(p5g_sec == NULL) {
+        cJSON_Delete(root);
+        wifi_util_dbg_print(WIFI_CTRL, "%s: Failed to get 5g Security\n", __func__);
+        return execRetVal;
+    }
+
+    cJSON *p2g_ssid = cJSON_GetObjectItem(p2g, "SSID");
+    if(p2g_ssid == NULL) {
+        cJSON_Delete(root);
+        wifi_util_dbg_print(WIFI_CTRL, "%s: Failed to get 2g SSID\n", __func__);
+        return execRetVal;
+    }
+
+    cJSON *p5g_ssid = cJSON_GetObjectItem(p5g, "SSID");
+    if(p5g_ssid == NULL) {
+        cJSON_Delete(root);
+        wifi_util_dbg_print(WIFI_CTRL, "%s: Failed to get 5g SSID\n", __func__);
+        return execRetVal;
+    }
+
+    cJSON *p2g_pass = cJSON_GetObjectItem(p2g_sec, "Passphrase");
+    cJSON *p2g_enc = cJSON_GetObjectItem(p2g_sec, "EncryptionMethod");
+    cJSON *p2g_mod = cJSON_GetObjectItem(p2g_sec, "ModeEnabled");
+
+    if((p2g_pass == NULL) || (p2g_enc == NULL) || (p2g_mod == NULL)) {
+        cJSON_Delete(root);
+        wifi_util_dbg_print(WIFI_CTRL, "%s: Failed to get 2g Security Info\n", __func__);
+        return execRetVal;
+    }
+
+    cJSON *p5g_pass = cJSON_GetObjectItem(p5g_sec, "Passphrase");
+    cJSON *p5g_enc = cJSON_GetObjectItem(p5g_sec, "EncryptionMethod");
+    cJSON *p5g_mod = cJSON_GetObjectItem(p5g_sec, "ModeEnabled");
+
+    if((p5g_pass == NULL) || (p5g_enc == NULL) || (p5g_mod == NULL)) {
+        cJSON_Delete(root);
+        wifi_util_dbg_print(WIFI_CTRL, "%s: Failed to get 5g Security Info\n", __func__);
+        return execRetVal;
+    }
+
+    cJSON *vap_blob = cJSON_DetachItemFromObject(root, "WifiVapConfig");
+    if(vap_blob == NULL) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s,no WifiVapConfig, so create one\n", __func__);
+
+        vap_blob = cJSON_CreateArray();
+        if(vap_blob == NULL) {
+            cJSON_Delete(root);
+            wifi_util_dbg_print(WIFI_CTRL, "%s: Failed to create WifiVapConfig array\n", __func__);
+            return execRetVal;
+        }
+
+        // Mandatory elements like SSID, Passphrase, etc. are always filled with equivalent elements
+        // from 1.0 blob that's delivered through webcfg framework. These have to be present in the
+        // webcfg blob(aka 1.0 blob)
+        cJSON *a_itm1 = cJSON_CreateObject();
+        cJSON_AddItemToObject(a_itm1, "VapName", cJSON_CreateString(p2g_vap_name));
+        cJSON_AddItemToArray(vap_blob, a_itm1);
+        cJSON_AddItemToObject(a_itm1, "SSID", cJSON_CreateString(cJSON_GetStringValue(p2g_ssid)));
+        bool p2g_enabled_b = false;
+        cJSON *p2g_enabled = cJSON_GetObjectItem(p2g, "Enable");
+        if(p2g_enabled != NULL) {
+            if(cJSON_IsBool(p2g_enabled)) {
+                p2g_enabled_b = cJSON_IsTrue(p2g_enabled) ? true : false;
+            }
+        }
+        cJSON_AddBoolToObject(a_itm1, "Enabled", p2g_enabled_b);
+        bool p2g_ad_b = false;
+        cJSON *p2g_ad = cJSON_GetObjectItem(p2g, "SSIDAdvertisementEnabled");
+        if(p2g_ad != NULL) {
+            if(cJSON_IsBool(p2g_ad)) {
+                p2g_ad_b = cJSON_IsTrue(p2g_ad) ? true : false;
+            }
+        }
+        cJSON_AddBoolToObject(a_itm1, "SSIDAdvertisementEnabled", p2g_ad_b);
+
+        cJSON *a_itm1_sec = cJSON_CreateObject();
+        cJSON_AddItemToObject(a_itm1_sec, "Mode", cJSON_CreateString(cJSON_GetStringValue(p2g_mod)));
+        cJSON_AddItemToObject(a_itm1_sec, "EncryptionMethod", cJSON_CreateString(cJSON_GetStringValue(p2g_enc)));
+        cJSON_AddItemToObject(a_itm1_sec, "Passphrase", cJSON_CreateString(cJSON_GetStringValue(p2g_pass)));
+        cJSON_AddItemToObject(a_itm1, "Security", a_itm1_sec);
+
+        cJSON *a_itm2 = cJSON_CreateObject();
+        cJSON_AddItemToObject(a_itm2, "VapName", cJSON_CreateString(p5g_vap_name));
+        cJSON_AddItemToArray(vap_blob, a_itm2);
+        cJSON_AddItemToObject(a_itm2, "SSID", cJSON_CreateString(cJSON_GetStringValue(p5g_ssid)));
+        bool p5g_enabled_b = false;
+        cJSON *p5g_enabled = cJSON_GetObjectItem(p5g, "Enable");
+        if(p5g_enabled != NULL) {
+            if(cJSON_IsBool(p5g_enabled)) {
+                p5g_enabled_b = cJSON_IsTrue(p5g_enabled) ? true : false;
+            }
+        }
+        cJSON_AddBoolToObject(a_itm2, "Enabled", p5g_enabled_b);
+        bool p5g_ad_b = false;
+        cJSON *p5g_ad = cJSON_GetObjectItem(p5g, "SSIDAdvertisementEnabled");
+        if(p5g_ad != NULL) {
+            if(cJSON_IsBool(p5g_ad)) {
+                p5g_ad_b = cJSON_IsTrue(p5g_ad) ? true : false;
+            }
+        }
+        cJSON_AddBoolToObject(a_itm2, "SSIDAdvertisementEnabled", p5g_ad_b);
+
+        cJSON *a_itm2_sec = cJSON_CreateObject();
+        cJSON_AddItemToObject(a_itm2_sec, "Mode", cJSON_CreateString(cJSON_GetStringValue(p5g_mod)));
+        cJSON_AddItemToObject(a_itm2_sec, "EncryptionMethod", cJSON_CreateString(cJSON_GetStringValue(p5g_enc)));
+        cJSON_AddItemToObject(a_itm2_sec, "Passphrase", cJSON_CreateString(cJSON_GetStringValue(p5g_pass)));
+        cJSON_AddItemToObject(a_itm2, "Security", a_itm2_sec);
+    }
+
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    cJSON *vb_entry = NULL;
+
+    cJSON_ArrayForEach(vb_entry, vap_blob) {
+        cJSON *nm_o = cJSON_GetObjectItem(vb_entry, "VapName");
+        if((nm_o == NULL) || (cJSON_IsString(nm_o) == false)) {
+            wifi_util_dbg_print(WIFI_CTRL, "%s: Missing VapName\n", __func__);
+            continue;
+        }
+        char *nm_s = cJSON_GetStringValue(nm_o);
+
+        int rindx = convert_vap_name_to_radio_array_index(&mgr->hal_cap.wifi_prop, nm_s);
+        if(rindx == -1) {
+            wifi_util_dbg_print(WIFI_CTRL, "%s: Failed to get radio_index for %s\n", __func__, nm_s);
+            continue;
+        }
+        unsigned int vindx;
+        if(getVAPIndexFromName(nm_s, &vindx) != RETURN_OK) {
+            wifi_util_dbg_print(WIFI_CTRL, "%s: Failed to get vap_index for %s\n", __func__, nm_s);
+            continue;
+        }
+        char br_name[32];
+        memset(br_name, 0, sizeof(br_name));
+        if(get_vap_interface_bridge_name(vindx, br_name) != RETURN_OK) {
+            wifi_util_dbg_print(WIFI_CTRL, "%s: Failed to get bridge name for vap_index %d\n", __func__, vindx);
+            continue;
+        }
+
+        wifi_vap_info_map_t *wifi_vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(rindx);
+        if(wifi_vap_map == NULL) {
+            wifi_util_dbg_print(WIFI_CTRL, "%s: Failed to get vap map for radio_index %d\n", __func__, rindx);
+            continue;
+        }
+
+        cJSON *pg = NULL;
+        if(rindx == 0) { pg = p2g; }
+        else
+        if(rindx == 1) { pg = p5g; }
+        if(pg == NULL) {
+            // TODO - extend for the 6g case
+            wifi_util_dbg_print(WIFI_CTRL, "%s: Invalid radio_index %d\n", __func__, rindx);
+            continue;
+        }
+
+        cJSON_AddNumberToObject(vb_entry, "RadioIndex", rindx);
+        cJSON_AddNumberToObject(vb_entry, "VapMode", 0);
+        cJSON_AddItemToObject(vb_entry, "BridgeName", cJSON_CreateString(br_name));
+        cJSON_AddItemToObject(vb_entry, "BSSID", cJSON_CreateString("11:22:33:44:55:66"));
+
+        // Elements like IsolationEnable, BssMaxNumSta use values from the cache unless
+        // overridden by equivalent elements in the webcfg blob(aka 1.0 blob)
+        bool iso_en_b = wifi_vap_map->vap_array[vindx].u.bss_info.isolation;
+        cJSON *iso_en = cJSON_GetObjectItem(pg, "IsolationEnable");
+        if(iso_en != NULL) {
+            if(cJSON_IsBool(iso_en)) {
+                iso_en_b = cJSON_IsTrue(iso_en) ? true : false;
+            }
+        }
+        int m_frm_c_n = wifi_vap_map->vap_array[vindx].u.bss_info.mgmtPowerControl;
+        cJSON *m_frm_c = cJSON_GetObjectItem(pg, "ManagementFramePowerControl");
+        if(m_frm_c != NULL) {
+            m_frm_c_n = cJSON_GetNumberValue(m_frm_c);
+        }
+        UINT bss_max_n = wifi_vap_map->vap_array[vindx].u.bss_info.bssMaxSta;
+        cJSON *bss_max = cJSON_GetObjectItem(pg, "BssMaxNumSta");
+        if(bss_max != NULL) {
+            bss_max_n = cJSON_GetNumberValue(bss_max);
+        }
+        bss_max_n = (bss_max_n == 0) ? 75 : bss_max_n;
+
+        bool bss_trans_b = wifi_vap_map->vap_array[vindx].u.bss_info.bssTransitionActivated;
+        cJSON *bss_trans = cJSON_GetObjectItem(pg, "BSSTransitionActivated");
+        if(bss_trans != NULL) {
+            if(cJSON_IsBool(bss_trans)) {
+                bss_trans_b = cJSON_IsTrue(bss_trans) ? true : false;
+            }
+        }
+        bool neigh_b = wifi_vap_map->vap_array[vindx].u.bss_info.nbrReportActivated;
+        cJSON *neigh = cJSON_GetObjectItem(pg, "NeighborReportActivated");
+        if(neigh != NULL) {
+            if(cJSON_IsBool(neigh)) {
+                neigh_b = cJSON_IsTrue(neigh) ? true : false;
+            }
+        }
+        bool rrc_en_b = wifi_vap_map->vap_array[vindx].u.bss_info.rapidReconnectEnable;
+        cJSON *rrc_en = cJSON_GetObjectItem(pg, "RapidReconnCountEnable");
+        if(rrc_en != NULL) {
+            if(cJSON_IsBool(rrc_en)) {
+                rrc_en_b = cJSON_IsTrue(rrc_en) ? true : false;
+            }
+        }
+        UINT rrt_n = wifi_vap_map->vap_array[vindx].u.bss_info.rapidReconnThreshold;
+        cJSON *rrt = cJSON_GetObjectItem(pg, "RapidReconnThreshold");
+        if(rrt != NULL) {
+            rrt_n = cJSON_GetNumberValue(rrt);
+        }
+        bool vs_en_b = wifi_vap_map->vap_array[vindx].u.bss_info.vapStatsEnable;
+        cJSON *vs_en = cJSON_GetObjectItem(pg, "VapStatsEnable");
+        if(vs_en != NULL) {
+            if(cJSON_IsBool(vs_en)) {
+                vs_en_b = cJSON_IsTrue(vs_en) ? true : false;
+            }
+        }
+        bool mac_fil_en_b = wifi_vap_map->vap_array[vindx].u.bss_info.mac_filter_enable;
+        cJSON *mac_fil_en = cJSON_GetObjectItem(pg, "MacFilterEnable");
+        if(mac_fil_en != NULL) {
+            if(cJSON_IsBool(mac_fil_en)) {
+                mac_fil_en_b = cJSON_IsTrue(mac_fil_en) ? true : false;
+            }
+        }
+        UINT mac_fil_mode_n = (UINT)(wifi_vap_map->vap_array[vindx].u.bss_info.mac_filter_mode);
+        cJSON *mac_fil_mode = cJSON_GetObjectItem(pg, "MacFilterMode");
+        if(mac_fil_mode != NULL) {
+            mac_fil_mode_n = cJSON_GetNumberValue(mac_fil_mode);
+        }
+        bool wnm_en_b = wifi_vap_map->vap_array[vindx].u.bss_info.wmm_enabled;
+        cJSON *wnm_en = cJSON_GetObjectItem(pg, "WmmEnabled");
+        if(wnm_en != NULL) {
+            if(cJSON_IsBool(wnm_en)) {
+                wnm_en_b = cJSON_IsTrue(wnm_en) ? true : false;
+            }
+        }
+        bool uapsd_en_b = wifi_vap_map->vap_array[vindx].u.bss_info.UAPSDEnabled;
+        cJSON *uapsd_en = cJSON_GetObjectItem(pg, "UapsdEnabled");
+        if(uapsd_en != NULL) {
+            if(cJSON_IsBool(uapsd_en)) {
+                uapsd_en_b = cJSON_IsTrue(uapsd_en) ? true : false;
+            }
+        }
+        UINT beacon_rate_n = wifi_vap_map->vap_array[vindx].u.bss_info.beaconRate;
+        cJSON *beacon_rate = cJSON_GetObjectItem(pg, "BeaconRate");
+        if(beacon_rate != NULL) {
+            beacon_rate_n = cJSON_GetNumberValue(beacon_rate);
+        }
+        UINT wmm_noack_n = wifi_vap_map->vap_array[vindx].u.bss_info.wmmNoAck;
+        cJSON *wmm_noack = cJSON_GetObjectItem(pg, "WmmNoAck");
+        if(wmm_noack != NULL) {
+            wmm_noack_n = cJSON_GetNumberValue(wmm_noack);
+        }
+        UINT wep_key_n = wifi_vap_map->vap_array[vindx].u.bss_info.wepKeyLength;
+        cJSON *wep_key = cJSON_GetObjectItem(pg, "WepKeyLength");
+        if(wep_key != NULL) {
+            wep_key_n = cJSON_GetNumberValue(wep_key);
+        }
+        UINT wps_push_n = wifi_vap_map->vap_array[vindx].u.bss_info.wpsPushButton;
+        cJSON *wps_push = cJSON_GetObjectItem(pg, "WpsPushButton");
+        if(wps_push != NULL) {
+            wps_push_n = cJSON_GetNumberValue(wps_push);
+        }
+        cJSON *beacon_rate_ctrl = cJSON_GetObjectItem(pg, "BeaconRateCtl");
+
+        cJSON_AddBoolToObject(vb_entry, "IsolationEnable", iso_en_b);
+        cJSON_AddNumberToObject(vb_entry, "ManagementFramePowerControl", m_frm_c_n);
+        cJSON_AddNumberToObject(vb_entry, "BssMaxNumSta", bss_max_n);
+        cJSON_AddBoolToObject(vb_entry, "BSSTransitionActivated", bss_trans_b);
+        cJSON_AddBoolToObject(vb_entry, "NeighborReportActivated", neigh_b);
+        cJSON_AddBoolToObject(vb_entry, "RapidReconnCountEnable", rrc_en_b);
+        cJSON_AddNumberToObject(vb_entry, "RapidReconnThreshold", rrt_n);
+        cJSON_AddBoolToObject(vb_entry, "VapStatsEnable", vs_en_b);
+
+        cJSON_AddBoolToObject(vb_entry, "MacFilterEnable", mac_fil_en_b);
+        cJSON_AddNumberToObject(vb_entry, "MacFilterMode", mac_fil_mode_n);
+        cJSON_AddBoolToObject(vb_entry, "WmmEnabled", wnm_en_b);
+        cJSON_AddBoolToObject(vb_entry, "UapsdEnabled", uapsd_en_b);
+        cJSON_AddNumberToObject(vb_entry, "BeaconRate", beacon_rate_n);
+        cJSON_AddNumberToObject(vb_entry, "WmmNoAck", wmm_noack_n);
+        cJSON_AddNumberToObject(vb_entry, "WepKeyLength", wep_key_n);
+        cJSON_AddBoolToObject(vb_entry, "BssHotspot", false);
+        cJSON_AddNumberToObject(vb_entry, "WpsPushButton", wps_push_n);
+        cJSON_AddBoolToObject(vb_entry, "WpsEnable", true);
+        if(beacon_rate_ctrl != NULL) {
+            cJSON_AddStringToObject(vb_entry, "BeaconRateCtl", cJSON_GetStringValue(beacon_rate_ctrl));
+        }
+        else {
+            cJSON_AddStringToObject(vb_entry, "BeaconRateCtl", "6Mbps");
+        }
+
+        cJSON *sec = cJSON_GetObjectItem(vb_entry, "Security");
+        if(sec != NULL) {
+            char *mfpc = "Optional";
+#if defined(WIFI_HAL_VERSION_3)
+            if(wifi_vap_map->vap_array[vindx].u.bss_info.security.mfp == wifi_mfp_cfg_disabled) {
+                mfpc = "Disabled";
+            }
+            else
+            if(wifi_vap_map->vap_array[vindx].u.bss_info.security.mfp == wifi_mfp_cfg_required) {
+                mfpc = "Required";
+            }
+#else
+            if(wifi_vap_map->vap_array[vindx].u.bss_info.security.mfpConfig[0] != 0) {
+                mfpc = wifi_vap_map->vap_array[vindx].u.bss_info.security.mfpConfig;
+            }
+#endif
+            cJSON_AddItemToObject(sec, "MFPConfig", cJSON_CreateString(mfpc));
+        }
+
+        cJSON *inter = cJSON_GetObjectItem(vb_entry, "Interworking");
+        if(inter == NULL) {
+            inter = cJSON_CreateObject();
+            cJSON_AddBoolToObject(inter, "InterworkingEnable", wifi_vap_map->vap_array[vindx].u.bss_info.interworking.interworking.interworkingEnabled);
+            cJSON_AddNumberToObject(inter, "AccessNetworkType", wifi_vap_map->vap_array[vindx].u.bss_info.interworking.interworking.accessNetworkType);
+            cJSON_AddBoolToObject(inter, "Internet", wifi_vap_map->vap_array[vindx].u.bss_info.interworking.interworking.internetAvailable);
+            cJSON_AddBoolToObject(inter, "ASRA", wifi_vap_map->vap_array[vindx].u.bss_info.interworking.interworking.asra);
+            cJSON_AddBoolToObject(inter, "ESR", wifi_vap_map->vap_array[vindx].u.bss_info.interworking.interworking.esr);
+            cJSON_AddBoolToObject(inter, "UESA", wifi_vap_map->vap_array[vindx].u.bss_info.interworking.interworking.uesa);
+            cJSON_AddBoolToObject(inter, "HESSOptionPresent", wifi_vap_map->vap_array[vindx].u.bss_info.interworking.interworking.hessOptionPresent);
+            if(wifi_vap_map->vap_array[vindx].u.bss_info.interworking.interworking.hessid[0] != 0) {
+                cJSON_AddItemToObject(inter, "HESSID", cJSON_CreateString(wifi_vap_map->vap_array[vindx].u.bss_info.interworking.interworking.hessid));
+            }
+            else {
+                cJSON_AddItemToObject(inter, "HESSID", cJSON_CreateString("11:22:33:44:55:66"));
+            }
+            cJSON *ven = cJSON_CreateObject();
+            cJSON_AddNumberToObject(ven, "VenueType", wifi_vap_map->vap_array[vindx].u.bss_info.interworking.interworking.venueType);
+            cJSON_AddNumberToObject(ven, "VenueGroup", wifi_vap_map->vap_array[vindx].u.bss_info.interworking.interworking.venueGroup);
+            cJSON_AddItemToObject(inter, "Venue", ven);
+            cJSON_AddItemToObject(vb_entry, "Interworking", inter);
+      }
+    }
+
+    cJSON *n_blob = cJSON_CreateObject();
+    cJSON_AddItemToObject(n_blob, "Version", cJSON_CreateString("1.0"));
+    const char *sd_name = priv_sd ? "private" : "home";
+    cJSON_AddItemToObject(n_blob, "SubDocName", cJSON_CreateString(sd_name));
+    cJSON_AddItemToObject(n_blob, "WifiVapConfig", vap_blob);
+
+    char *vap_blob_str = cJSON_Print(n_blob);
+    wifi_util_dbg_print(WIFI_CTRL, "%s, vap_blob:\n%s\n", __func__, vap_blob_str);
+
+    // push blob to ctrl queue
+    push_data_to_ctrl_queue(vap_blob_str, strlen(vap_blob_str), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data);
+
+    cJSON_free(vap_blob_str);
+    cJSON_Delete(n_blob);
+    cJSON_Delete(root);
+
+    execRetVal->ErrorCode = BLOB_EXEC_SUCCESS;
+    return execRetVal;
+}
+
+pErr wifi_private_vap_exec_handler(void *data)
+{
+    return private_home_exec_common_handler(data, true);
+}
+
+pErr wifi_home_vap_exec_handler(void *data)
+{
+    return private_home_exec_common_handler(data, false);
+}
+
+#define MAX_JSON_BUFSIZE 10240
+
+char *unpackDecode(const char* enb)
+{
+    unsigned long msg_size = 0L;
+    unsigned char *msg = AnscBase64Decode((unsigned char *)enb, &msg_size);
+    if(!msg) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s: Failed to decode blob\n", __func__);
+        return NULL;
+    }
+
+    msgpack_zone msg_z;
+    msgpack_object msg_obj;
+
+    msgpack_zone_init(&msg_z, MAX_JSON_BUFSIZE);
+    msgpack_zone_init(&msg_z, MAX_JSON_BUFSIZE);
+    if(msgpack_unpack((const char*)msg, (size_t)msg_size, NULL, &msg_z, &msg_obj) != MSGPACK_UNPACK_SUCCESS) {
+        msgpack_zone_destroy(&msg_z);
+        wifi_util_dbg_print(WIFI_CTRL, "%s: Failed to unpack blob\n", __func__);
+        return NULL;
+    }
+
+    char *dej = (char*)malloc(MAX_JSON_BUFSIZE);
+    if(dej == NULL) {
+        msgpack_zone_destroy(&msg_z);
+        free(msg);
+        wifi_util_dbg_print(WIFI_CTRL, "%s: malloc failure\n", __func__);
+        return NULL;
+    }
+
+    memset(dej, 0, MAX_JSON_BUFSIZE);
+    int json_len = msgpack_object_print_jsonstr(dej, MAX_JSON_BUFSIZE, msg_obj);
+    if(json_len <= 0) {
+        msgpack_zone_destroy(&msg_z);
+        free(dej);
+        free(msg);
+        wifi_util_dbg_print(WIFI_CTRL, "%s: json conversion failure\n", __func__);
+        return NULL;
+    }
+
+    msgpack_zone_destroy(&msg_z);
+    wifi_util_dbg_print(WIFI_CTRL, "%s, blob\n%s\n", __func__, dej);
+    return dej; // decoded, unpacked json - caller should free memory
+}
+
+bool webconf_ver_txn(const char* bb, uint32_t *ver, uint16_t *txn)
+{
+    cJSON *root = cJSON_Parse(bb);
+    if(root == NULL) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s: json parse failure\n", __func__);
+        return false;
+    }
+
+    cJSON *c_ver = cJSON_GetObjectItemCaseSensitive(root, "version");
+    if(c_ver == NULL) {
+       cJSON_Delete(root);
+       wifi_util_dbg_print(WIFI_CTRL, "%s, Failed to get version\n", __func__ );
+       return false;
+    }
+    cJSON *c_txn = cJSON_GetObjectItem(root, "transaction_id");
+    if(c_txn == NULL) {
+       cJSON_Delete(root);
+       wifi_util_dbg_print(WIFI_CTRL, "%s, Failed to get transaction_id\n", __func__ );
+       return false;
+    }
+
+    *ver = (uint32_t)c_ver->valuedouble;
+    *txn = (uint16_t)c_txn->valuedouble;
+    wifi_util_dbg_print(WIFI_CTRL, "%s, ver: %u, txn: %u\n", __func__, *ver, *txn);
+
+    cJSON_Delete(root);
+
+    return true;
+}
+
+void webconf_process_private_vap(const char* enb)
+{
+    char *blob_buf = unpackDecode(enb);
+    if(blob_buf == NULL) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s, Invalid Json\n", __func__ );
+        return;
+    }
+
+    wifi_util_dbg_print(WIFI_CTRL, "%s, blob\n%s\n", __func__, blob_buf);
+
+    uint32_t t_version = 0;
+    uint16_t tx_id = 0;
+    if(!webconf_ver_txn(blob_buf, &t_version, &tx_id)) {
+        free(blob_buf);
+        wifi_util_dbg_print(WIFI_CTRL, "%s, Invalid json, no version or transaction Id\n", __func__ );
+        return;
+    }
+
+    execData *execDataPf = (execData*) malloc (sizeof(execData));
+    if (execDataPf != NULL) {
+        memset(execDataPf, 0, sizeof(execData));
+        execDataPf->txid = tx_id;
+        execDataPf->version = t_version;
+        execDataPf->numOfEntries = 1;
+        strncpy(execDataPf->subdoc_name, "privatessid", sizeof(execDataPf->subdoc_name)-1);
+        execDataPf->user_data = (void*) blob_buf;
+        execDataPf->calcTimeout = webconf_timeout_handler;
+        execDataPf->executeBlobRequest = wifi_private_vap_exec_handler;
+        execDataPf->rollbackFunc = webconf_rollback_handler;
+        execDataPf->freeResources = webconf_free_resources;
+        PushBlobRequest(execDataPf);
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: PushBlobRequest Complete\n", __func__, __LINE__ );
+    }
+}
+
+void webconf_process_home_vap(const char* enb)
+{
+    char *blob_buf = unpackDecode(enb);
+    if(blob_buf == NULL) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s, Invalid Json\n", __func__ );
+        return;
+    }
+
+    uint32_t t_version = 0;
+    uint16_t tx_id = 0;
+    if(!webconf_ver_txn(blob_buf, &t_version, &tx_id)) {
+        free(blob_buf);
+        wifi_util_dbg_print(WIFI_CTRL, "%s, Invalid json, no version or transaction Id\n", __func__ );
+        return;
+    }
+
+    execData *execDataPf = (execData*) malloc (sizeof(execData));
+    if (execDataPf != NULL) {
+        memset(execDataPf, 0, sizeof(execData));
+        execDataPf->txid = tx_id;
+        execDataPf->version = t_version;
+        execDataPf->numOfEntries = 1;
+        strncpy(execDataPf->subdoc_name, "home", sizeof(execDataPf->subdoc_name)-1);
+        execDataPf->user_data = (void*) blob_buf;
+        execDataPf->calcTimeout = webconf_timeout_handler;
+        execDataPf->executeBlobRequest = wifi_home_vap_exec_handler;
+        execDataPf->rollbackFunc = webconf_rollback_handler;
+        execDataPf->freeResources = webconf_free_resources;
+        PushBlobRequest(execDataPf);
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: PushBlobRequest Complete\n", __func__, __LINE__ );
+    }
+}
+
+pErr wifi_vap_cfg_subdoc_handler(void *data)
+{
+    pErr execRetVal = NULL;
+
+    if(data == NULL) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s: Null blob\n", __func__);
+        return execRetVal;
+    }
+
+    unsigned long msg_size = 0L;
+    unsigned char *msg = AnscBase64Decode((unsigned char *)data, &msg_size);
+
+    if(!msg) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s: Failed to decode blob\n", __func__);
+        return execRetVal;
+    }
+
+    execRetVal = (pErr)malloc(sizeof(Err));
+    if (execRetVal == NULL ) {
+        free(msg);
+        wifi_util_dbg_print(WIFI_CTRL, "%s: malloc failure\n", __func__);
+        return execRetVal;
+    }
+    memset(execRetVal,0,(sizeof(Err)));
+
+    msgpack_zone msg_z;
+    msgpack_object msg_obj;
+
+    msgpack_zone_init(&msg_z, MAX_JSON_BUFSIZE);
+    if(msgpack_unpack((const char*)msg, (size_t)msg_size, NULL, &msg_z, &msg_obj) != MSGPACK_UNPACK_SUCCESS) {
+        msgpack_zone_destroy(&msg_z);
+        execRetVal->ErrorCode = VALIDATION_FALIED;
+	strncpy(execRetVal->ErrorMsg, "Msg unpack failed", sizeof(execRetVal->ErrorMsg)-1);
+        free(msg);
+        wifi_util_dbg_print(WIFI_CTRL, "%s: Failed to unpack blob\n", __func__);
+        return execRetVal;
+    }
+
+    char *blob_buf = (char*)malloc(MAX_JSON_BUFSIZE);
+    if(blob_buf == NULL) {
+        msgpack_zone_destroy(&msg_z);
+        execRetVal->ErrorCode = VALIDATION_FALIED;
+	strncpy(execRetVal->ErrorMsg, "blob mem alloc failure", sizeof(execRetVal->ErrorMsg)-1);
+        free(msg);
+        wifi_util_dbg_print(WIFI_CTRL, "%s: malloc failure\n", __func__);
+        return execRetVal;
+    }
+    memset(blob_buf, 0, MAX_JSON_BUFSIZE);
+    int json_len = msgpack_object_print_jsonstr(blob_buf, MAX_JSON_BUFSIZE, msg_obj);
+    if(json_len <= 0) {
+        msgpack_zone_destroy(&msg_z);
+        execRetVal->ErrorCode = VALIDATION_FALIED;
+	strncpy(execRetVal->ErrorMsg, "json conversion failure", sizeof(execRetVal->ErrorMsg)-1);
+        free(blob_buf);
+        free(msg);
+        wifi_util_dbg_print(WIFI_CTRL, "%s: json conversion failure\n", __func__);
+        return execRetVal;
+    }
+
+    // wifi_util_dbg_print(WIFI_CTRL, "%s, blob\n%s\n", __func__, blob_buf);
+
+    cJSON *root = cJSON_Parse(blob_buf);
+    if(root == NULL) {
+        msgpack_zone_destroy(&msg_z);
+        execRetVal->ErrorCode = VALIDATION_FALIED;
+	strncpy(execRetVal->ErrorMsg, "json parse failure", sizeof(execRetVal->ErrorMsg)-1);
+        free(blob_buf);
+        free(msg);
+        wifi_util_dbg_print(WIFI_CTRL, "%s: json parse failure\n", __func__);
+        return execRetVal;
+    }
+
+    cJSON *vap_blob = cJSON_DetachItemFromObject(root, "WifiVapConfig");
+    if(vap_blob == NULL) {
+        msgpack_zone_destroy(&msg_z);
+        execRetVal->ErrorCode = VALIDATION_FALIED;
+	strncpy(execRetVal->ErrorMsg, "Failed to detach WifiVapConfig", sizeof(execRetVal->ErrorMsg)-1);
+        free(blob_buf);
+        free(msg);
+        cJSON_Delete(root);
+        wifi_util_dbg_print(WIFI_CTRL, "%s: Failed to detach WifiVapConfig\n", __func__);
+        return execRetVal;
+    }
+
+    cJSON_Delete(root); // don't need this anymore
+
+    // wifi_util_dbg_print(WIFI_CTRL, "%s, vap_blob arr sz: %d\n", __func__, cJSON_GetArraySize(vap_blob));
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+
+    cJSON *vb_entry = NULL;
+    cJSON_ArrayForEach(vb_entry, vap_blob) {
+        cJSON *nm_o = cJSON_GetObjectItem(vb_entry, "VapName");
+        if((nm_o == NULL) || (cJSON_IsString(nm_o) == false)) {
+            wifi_util_dbg_print(WIFI_CTRL, "%s: Missing VapName\n", __func__);
+            continue;
+        }
+        char *nm_s = cJSON_GetStringValue(nm_o);
+
+        int rindx = convert_vap_name_to_radio_array_index(&mgr->hal_cap.wifi_prop, nm_s);
+        if(rindx == -1) {
+            wifi_util_dbg_print(WIFI_CTRL, "%s: Failed to get radio_index for %s\n", __func__, nm_s);
+            continue;
+        }
+        unsigned int vindx;
+        if(getVAPIndexFromName(nm_s, &vindx) != RETURN_OK) {
+            wifi_util_dbg_print(WIFI_CTRL, "%s: Failed to get vap_index for %s\n", __func__, nm_s);
+            continue;
+        }
+        char br_name[32];
+        memset(br_name, 0, sizeof(br_name));
+        if(get_vap_interface_bridge_name(vindx, br_name) != RETURN_OK) {
+            wifi_util_dbg_print(WIFI_CTRL, "%s: Failed to get bridge name for vap_index %d\n", __func__, vindx);
+            continue;
+        }
+        wifi_vap_info_map_t *wifi_vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(rindx);
+        if(wifi_vap_map == NULL) {
+            wifi_util_dbg_print(WIFI_CTRL, "%s: Failed to get vap map for radio_index %d\n", __func__, rindx);
+            continue;
+        }
+
+        cJSON_AddNumberToObject(vb_entry, "RadioIndex", rindx);
+        cJSON_AddNumberToObject(vb_entry, "VapMode", 0);
+        cJSON_AddItemToObject(vb_entry, "BridgeName", cJSON_CreateString(br_name));
+        cJSON_AddItemToObject(vb_entry, "BSSID", cJSON_CreateString("00:00:00:00:00:00"));
+
+        cJSON_AddBoolToObject(vb_entry, "MacFilterEnable", wifi_vap_map->vap_array[vindx].u.bss_info.mac_filter_enable);
+        cJSON_AddNumberToObject(vb_entry, "MacFilterMode", wifi_vap_map->vap_array[vindx].u.bss_info.mac_filter_mode);
+        cJSON_AddBoolToObject(vb_entry, "WmmEnabled", wifi_vap_map->vap_array[vindx].u.bss_info.wmm_enabled);
+        cJSON_AddBoolToObject(vb_entry, "UapsdEnabled", wifi_vap_map->vap_array[vindx].u.bss_info.UAPSDEnabled);
+        cJSON_AddNumberToObject(vb_entry, "BeaconRate", wifi_vap_map->vap_array[vindx].u.bss_info.beaconRate);
+        cJSON_AddNumberToObject(vb_entry, "WmmNoAck", wifi_vap_map->vap_array[vindx].u.bss_info.wmmNoAck);
+        cJSON_AddNumberToObject(vb_entry, "WepKeyLength", wifi_vap_map->vap_array[vindx].u.bss_info.wepKeyLength);
+        cJSON_AddBoolToObject(vb_entry, "BssHotspot", true);
+        cJSON_AddNumberToObject(vb_entry, "WpsPushButton", 0);
+        cJSON_AddBoolToObject(vb_entry, "WpsEnable", false);
+        if(wifi_vap_map->vap_array[vindx].u.bss_info.beaconRateCtl[0] != 0) {
+            cJSON_AddStringToObject(vb_entry, "BeaconRateCtl", wifi_vap_map->vap_array[vindx].u.bss_info.beaconRateCtl);
+        }
+        else {
+            cJSON_AddStringToObject(vb_entry, "BeaconRateCtl", "6Mbps");
+        }
+
+        if(strstr(nm_s, "hotspot_secure") == NULL) { continue; }
+
+        cJSON *sec_o = cJSON_GetObjectItem(vb_entry, "Security");
+        if(sec_o == NULL) {
+            wifi_util_dbg_print(WIFI_CTRL, "%s: Failed to get Security obj for %s\n", __func__, nm_s);
+            continue;
+        }
+
+        cJSON_AddBoolToObject(sec_o, "Wpa3_transition_disable", wifi_vap_map->vap_array[vindx].u.bss_info.security.wpa3_transition_disable);
+        cJSON_AddNumberToObject(sec_o, "RekeyInterval", wifi_vap_map->vap_array[vindx].u.bss_info.security.rekey_interval);
+        cJSON_AddBoolToObject(sec_o, "StrictRekey", wifi_vap_map->vap_array[vindx].u.bss_info.security.strict_rekey);
+        cJSON_AddNumberToObject(sec_o, "EapolKeyTimeout", wifi_vap_map->vap_array[vindx].u.bss_info.security.eapol_key_timeout);
+        cJSON_AddNumberToObject(sec_o, "EapolKeyRetries", wifi_vap_map->vap_array[vindx].u.bss_info.security.eapol_key_retries);
+        cJSON_AddNumberToObject(sec_o, "EapIdentityReqTimeout", wifi_vap_map->vap_array[vindx].u.bss_info.security.eap_identity_req_timeout);
+        cJSON_AddNumberToObject(sec_o, "EapIdentityReqRetries", wifi_vap_map->vap_array[vindx].u.bss_info.security.eap_identity_req_retries);
+        cJSON_AddNumberToObject(sec_o, "EapReqTimeout", wifi_vap_map->vap_array[vindx].u.bss_info.security.eap_req_timeout);
+        cJSON_AddNumberToObject(sec_o, "EapReqRetries", wifi_vap_map->vap_array[vindx].u.bss_info.security.eap_req_retries);
+        cJSON_AddBoolToObject(sec_o, "DisablePmksaCaching", wifi_vap_map->vap_array[vindx].u.bss_info.security.disable_pmksa_caching);
+
+        cJSON *rad_o = cJSON_GetObjectItem(sec_o, "RadiusSettings");
+        if(rad_o == NULL) {
+            wifi_util_dbg_print(WIFI_CTRL, "%s: Failed to get RadiusSettings obj for %s\n", __func__, nm_s);
+            continue;
+        }
+        char dasIpAddr[32];
+        memset(dasIpAddr, 0, sizeof(dasIpAddr));
+        int das_ip_r = getIpStringFromAdrress(dasIpAddr, &wifi_vap_map->vap_array[vindx].u.bss_info.security.u.radius.dasip);
+        if(das_ip_r == 1) {
+            cJSON_AddItemToObject(rad_o, "DasServerIPAddr", cJSON_CreateString(dasIpAddr));
+        }
+        else {
+            cJSON_AddItemToObject(rad_o, "DasServerIPAddr", cJSON_CreateString("0.0.0.0"));
+        }
+        cJSON_AddNumberToObject(rad_o, "DasServerPort", wifi_vap_map->vap_array[vindx].u.bss_info.security.u.radius.dasport);
+        if(wifi_vap_map->vap_array[vindx].u.bss_info.security.u.radius.daskey[0] != 0) {
+            cJSON_AddStringToObject(rad_o, "DasSecret", wifi_vap_map->vap_array[vindx].u.bss_info.security.u.radius.daskey);
+        }
+        else {
+            cJSON_AddStringToObject(rad_o, "DasSecret", "123456789");
+        }
+	cJSON_AddNumberToObject(rad_o, "MaxAuthAttempts", wifi_vap_map->vap_array[vindx].u.bss_info.security.u.radius.max_auth_attempts);
+        cJSON_AddNumberToObject(rad_o, "BlacklistTableTimeout", wifi_vap_map->vap_array[vindx].u.bss_info.security.u.radius.blacklist_table_timeout);
+        cJSON_AddNumberToObject(rad_o, "IdentityReqRetryInterval", wifi_vap_map->vap_array[vindx].u.bss_info.security.u.radius.identity_req_retry_interval);
+        cJSON_AddNumberToObject(rad_o, "ServerRetries", wifi_vap_map->vap_array[vindx].u.bss_info.security.u.radius.server_retries);
+    }
+
+    cJSON *n_blob = cJSON_CreateObject();
+    cJSON_AddItemToObject(n_blob, "Version", cJSON_CreateString("1.0"));
+    cJSON_AddItemToObject(n_blob, "SubDocName", cJSON_CreateString("xfinity"));
+    cJSON_AddItemToObject(n_blob, "WifiVapConfig", vap_blob);
+
+    char *vap_blob_str = cJSON_Print(n_blob);
+    wifi_util_dbg_print(WIFI_CTRL, "%s, vap_blob:\n%s\n", __func__, vap_blob_str);
+
+    // push blob to ctrl queue
+    push_data_to_ctrl_queue(vap_blob_str, strlen(vap_blob_str), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data_tunnel);
+
+    cJSON_free(vap_blob_str);
+    cJSON_Delete(n_blob);
+
+    free(blob_buf);
+    msgpack_zone_destroy(&msg_z);
+    free(msg);
+
+    execRetVal->ErrorCode = BLOB_EXEC_SUCCESS;
+    return execRetVal;
+}
+
+size_t wifi_vap_cfg_timeout_handler()
+{
+    wifi_util_dbg_print(WIFI_CTRL, "%s: Enter\n", __func__);
+#if defined(_XB6_PRODUCT_REQ_) && !defined (_XB7_PRODUCT_REQ_)
+    // return (2 * XB6_DEFAULT_TIMEOUT);
+#else
+    // return (2 * SSID_DEFAULT_TIMEOUT);
+#endif
+    return 100;
+}
+
+int wifi_vap_cfg_rollback_handler()
+{
+    wifi_util_dbg_print(WIFI_CTRL, "%s: Enter\n", __func__);
+    return RETURN_OK;
+}
+
+int register_multicomp_subdocs()
+{
+    int multi_subdoc_count = 1;
+    int m_sz = multi_subdoc_count * sizeof(multiCompSubDocReg);
+
+    multiCompSubDocReg *subdoc_data = (multiCompSubDocReg *)malloc(m_sz);
+    if(subdoc_data == NULL) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s: Failed to allocate memory\n", __func__);
+        return RETURN_ERR;
+    }
+    memset(subdoc_data, 0 , m_sz);
+
+    // PAM delivers xfinity blob as hotspot - so OneWifi will register for hotspot blob
+    char *sd[] = {"hotspot", (char *) 0 };
+    for(int j = 0; j < multi_subdoc_count; ++j) {
+        strncpy(subdoc_data->multi_comp_subdoc, sd[j], sizeof(subdoc_data->multi_comp_subdoc)-1);
+        subdoc_data->executeBlobRequest = wifi_vap_cfg_subdoc_handler;
+        subdoc_data->calcTimeout = wifi_vap_cfg_timeout_handler;
+        subdoc_data->rollbackFunc = wifi_vap_cfg_rollback_handler;
+    }
+
+    register_MultiComp_subdoc_handler(subdoc_data, multi_subdoc_count);
+
+    return RETURN_OK;
+}
+
+// static char *sub_docs[] = { "privatessid", "home", "xfinity", (char *) 0 };
+static char *sub_docs[] = { "privatessid", "home", (char *)0 };
+
+// register subdocs with webconfig_framework
+int register_with_webconfig_framework()
+{
+    int sd_sz = sizeof(sub_docs)/sizeof(char*) - 1; // not counting 0 in array
+
+    blobRegInfo *blob_data = (blobRegInfo*) malloc(sd_sz * sizeof(blobRegInfo));
+    if (blob_data == NULL) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s: Malloc error\n", __func__);
+        return RETURN_ERR;
+    }
+    memset(blob_data, 0, sd_sz * sizeof(blobRegInfo));
+
+    blobRegInfo *blob_data_pointer = blob_data;
+    for (int i=0 ;i < sd_sz; i++)
+    {
+        strncpy(blob_data_pointer->subdoc_name, sub_docs[i], sizeof(blob_data_pointer->subdoc_name)-1);
+        blob_data_pointer++;
+    }
+    blob_data_pointer = blob_data;
+
+    getVersion version_get = get_wifi_blob_version;
+    setVersion version_set = set_wifi_blob_version;
+
+    register_sub_docs(blob_data, sd_sz, version_get, version_set);
+
+    if(register_multicomp_subdocs() != RETURN_OK) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s: Failed to register multicomp subdocs with framework\n", __func__);
+        return RETURN_ERR;
+    }
+
+    wifi_util_dbg_print(WIFI_CTRL, "%s: Done Registering\n", __func__);
+    return RETURN_OK;
+}
 

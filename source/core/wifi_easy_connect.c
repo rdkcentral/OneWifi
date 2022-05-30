@@ -67,23 +67,6 @@ int wifi_dppReconfigInitiate(wifi_device_dpp_context_t *ctx);
 INT wifi_dppProcessReconfigAuthResponse(wifi_device_dpp_context_t *dpp_ctx);
 int wifi_dppSendReconfigAuthCnf(wifi_device_dpp_context_t *dpp_ctx);
 
-static char *to_mac_str    (mac_address_t mac, mac_addr_str_t key) {
-    snprintf(key, 18, "%02x:%02x:%02x:%02x:%02x:%02x",
-             mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-
-    return (char *)key;
-}
-
-
-static void to_mac_bytes   (mac_addr_str_t key, mac_address_t bmac) {
-   unsigned int mac[6];
-    sscanf(key, "%02x:%02x:%02x:%02x:%02x:%02x",
-             &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
-   bmac[0] = mac[0]; bmac[1] = mac[1]; bmac[2] = mac[2];
-   bmac[3] = mac[3]; bmac[4] = mac[4]; bmac[5] = mac[5];
-
-}
-
 void end_device_provisioning    (wifi_device_dpp_context_t *ctx)
 {
 
@@ -585,11 +568,7 @@ void dppReconfigAnnounce_callback(UINT apIndex, mac_address_t sta, UCHAR *frame,
     ctx->session_data.state = STATE_DPP_PROVISIONED;
     ctx->type = dpp_context_type_received_frame_recfg_announce;
 
-#ifdef WIFI_HAL_VERSION_3
     wifi_getRadioChannel(getRadioIndexFromAp(ctx->ap_index), (ULONG *)&ctx->session_data.channel);
-#else
-    wifi_getRadioChannel(ctx->ap_index%2, (ULONG *)&ctx->session_data.channel);
-#endif
     memset(ctx->session_data.u.reconfig_data.iPubKey, 0, 256);
     strcpy(ctx->session_data.u.reconfig_data.iPubKey, g_easy_connect.reconfig[ctx->ap_index].reconf_pub_key);
 

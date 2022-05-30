@@ -10,6 +10,7 @@ extern "C" {
 #include "wifi_base.h"
 #include "wifi_db.h"
 #include "wifi_blaster.h"
+#include "vap_svc.h"
 #include "cJSON.h"
 #include "collection.h"
 #include "wifi_util.h"
@@ -24,12 +25,15 @@ extern "C" {
 #define WIFI_MAX_SSID_NAME_LEN             33
 #define QUEUE_WIFI_CTRL_TASK_TIMEOUT       1
 
-#define RFC_WIFI_PASSPOINT_STATUS          "RfcWifiPasspointEnable"
-#define RFC_WIFI_INTERWORKING_STATUS       "RfcWifiInterworkingEnable"
-#define RFC_WIFI_RADIUS_GREYLIST_STATUS    "RadiusGreyListStatus"
-#define RFC_WIFI_DISABLE_NATIVE_HOSTAPD    "DisableNativeHostapd"
-#define RFC_WIFI_EASY_CONNECT              "WifiEasyConnect"
-#define RFC_WIFI_CLIENT_ACTIVE_MEASUREMENTS "Wifi_ActiveMeasurements"
+#define RFC_WIFI_PASSPOINT          "RfcWifiPasspointEnable"
+#define RFC_WIFI_INTERWORKING       "RfcWifiInterworkingEnable"
+#define RFC_WIFI_RADIUS_GREYLIST    "RadiusGreyListEnable"
+#define RFC_WIFI_DFSatBootup        "Wifi_DFSatBootup"
+#define RFC_WIFI_DFS                "Wifi_DFS"
+#define RFC_WIFI_WPA3               "Wifi_WPA3"
+
+#define CSI_CLIENT_PER_SESSION 5
+#define MAX_NUM_CSI_CLIENTS         3
 
 #define RSSI_THRESHOLD                     "RssiThresholdValue"
 #define RECONNECT_COUNT_STATUS             "ReconnectCountStatus"
@@ -50,23 +54,52 @@ extern "C" {
 #define WIFI_RBUS_WIFIAPI_COMMAND          "Device.WiFi.WiFiAPI.command"
 #define WIFI_RBUS_WIFIAPI_RESULT           "Device.WiFi.WiFiAPI.result"
 
+#define WIFI_DEVICE_MODE                   "Device.X_RDKCENTRAL-COM_DeviceControl.DeviceNetworkingMode"
+#define WIFI_DEVICE_TUNNEL_STATUS          "Device.TunnelStatus"
+
+#define TEST_WIFI_DEVICE_MODE              "Device.X_RDKCENTRAL-COM_DeviceControl.DeviceNetworkingMode_1"
+
+#define WIFI_RBUS_HOTSPOT_UP               "Device.WiFi.HotspotUp"
+#define WIFI_RBUS_HOTSPOT_DOWN             "Device.WiFi.HotspotDown"
+
+#define WIFI_WEBCONFIG_KICK_MAC            "Device.WiFi.KickAssocDevices"
+#define RBUS_WIFI_WPS_PIN_START            "Device.WiFi.WPS.Start"
+
 #define NAME_FREQUENCY_2_4                 2
 #define NAME_FREQUENCY_5                   5
 #define NAME_FREQUENCY_6                   6
 
+#define WIFI_ALL_RADIO_INDICES             0xffff
+#define DEVICE_TUNNEL_UP                   1
+#define DEVICE_TUNNEL_DOWN                 0
+//sta connection 9 seconds retry
+#define STA_CONN_RETRY                     9
+
 typedef enum {
-    ctrl_webconfig_state_none,
-    ctrl_webconfig_state_radio_cfg_rsp_pending,
-    ctrl_webconfig_state_vap_cfg_rsp_pending,
-    ctrl_webconfig_state_wifi_config_cfg_rsp_pending,
-    ctrl_webconfig_state_max
+    ctrl_webconfig_state_none = 0,
+    ctrl_webconfig_state_radio_cfg_rsp_pending = 0x0001,
+    ctrl_webconfig_state_vap_cfg_rsp_pending = 0x0002,
+    ctrl_webconfig_state_wifi_config_cfg_rsp_pending = 0x0004,
+    ctrl_webconfig_state_macfilter_cfg_rsp_pending = 0x0008,
+    ctrl_webconfig_state_factoryreset_cfg_rsp_pending = 0x0010,
+    ctrl_webconfig_state_associated_clients_cfg_rsp_pending = 0x0020,
+    ctrl_webconfig_state_csi_cfg_rsp_pending = 0x0040,
+    ctrl_webconfig_state_sta_conn_status_rsp_pending = 0x0080,
+    ctrl_webconfig_state_max = 0x0100
 } wifi_ctrl_webconfig_state_t;
 
+#define CTRL_WEBCONFIG_STATE_MASK   0x00ff
+                                  
 typedef struct {
     char *result;
 } wifiapi_t;
 
-typedef struct {
+typedef struct kick_details {
+    char *kick_list;
+    int vap_index;
+}kick_details_t;
+
+typedef struct wifi_ctrl {
     bool                exit_ctrl;
     queue_t             *queue;
     pthread_mutex_t     lock;
@@ -79,10 +112,19 @@ typedef struct {
     wifi_ctrl_webconfig_state_t webconfig_state;
     rbusHandle_t        rbus_handle;
     bool                rbus_events_subscribed;
+    bool                tunnel_events_subscribed;
+    bool                device_mode_subscribed;
+    bool                test_device_mode_subscribed;
+    bool                device_tunnel_status_subscribed;
+    bool                device_wps_test_subscribed;
     bool                factory_reset;
     bool                scan_result_for_connect_pending;
-    unsigned char       sta_conn_retry;
     wifiapi_t           wifiapi;
+    wifi_rfc_dml_parameters_t    rfc_params;
+    unsigned int        sta_tree_instance_num;
+    vap_svc_t           ctrl_svc[vap_svc_type_max];
+    bool                mesh_ext_vap_start_pending;
+    bool                mesh_ext_sta_conn_pending;
 } wifi_ctrl_t;
 
 typedef enum {
@@ -97,6 +139,7 @@ typedef enum {
     // WebConfig event sub types
     ctrl_event_webconfig_set_data,
     ctrl_event_webconfig_get_data,
+    ctrl_event_webconfig_set_data_tunnel,
 
     // HAL events
     ctrl_event_hal_mgmt_farmes = 0x100,
@@ -108,10 +151,24 @@ typedef enum {
     // Commands
     ctrl_event_type_command_sta_connect = 0x200,
     ctrl_event_type_command_factory_reset,
+    ctrl_event_type_radius_grey_list_rfc,
+    ctrl_event_type_wifi_passpoint_rfc,
+    ctrl_event_type_wifi_interworking_rfc,
+    ctrl_event_type_wpa3_rfc,
+    ctrl_event_type_dfs_rfc,
+    ctrl_event_type_dfs_atbootup_rfc,
     ctrl_event_type_command_kickmac,
+    ctrl_event_type_command_kick_assoc_devices,
+    ctrl_event_type_command_wps,
+    ctrl_event_type_command_wifi_host_sync,
+    ctrl_event_type_device_network_mode,
 
     // wif_api
     ctrl_event_type_wifiapi_execution = 0x300,
+
+    // Tunnel
+    ctrl_event_type_xfinity_tunnel_up = 0x400,
+    ctrl_event_type_xfinity_tunnel_down,
 
 } ctrl_event_subtype_t;
 
@@ -136,6 +193,13 @@ typedef struct {
     wifi_associated_dev3_t dev_stats;
 }__attribute__((__packed__)) assoc_dev_data_t;
 
+typedef struct {
+    unsigned long csi_session_num;
+    bool enabled;
+    unsigned int csi_client_count;
+    mac_address_t csi_client_list[CSI_CLIENT_PER_SESSION];
+} csi_data_t;
+
 typedef enum {
     acl_action_add,
     acl_action_del,
@@ -145,7 +209,6 @@ typedef enum {
 typedef struct {
     mac_address_t mac;
     CHAR device_name[64];
-    acl_action acl_action_type;
 }__attribute__((__packed__)) acl_entry_t;
 
 void process_mgmt_ctrl_frame_event(frame_data_t *msg, uint32_t msg_length);
@@ -165,12 +228,14 @@ BOOL isVapLnfPsk(UINT apIndex);
 BOOL isVapMesh(UINT apIndex);
 BOOL isVapSTAMesh(UINT apIndex);
 BOOL isVapHotspotSecure(UINT apIndex);
+BOOL isVapMeshBackhaul(UINT apIndex);
 int getVAPIndexFromName(CHAR *vapName, UINT *apIndex);
 BOOL isVapLnfSecure(UINT apIndex);
 wifi_vap_info_t *getVapInfo(UINT apIndex);
 wifi_radio_capabilities_t *getRadioCapability(UINT radioIndex);
 wifi_radio_operationParam_t *getRadioOperationParam(UINT radioIndex);
 rdk_wifi_vap_info_t *getRdkVapInfo(UINT apIndex);
+wifi_hal_capability_t* rdk_wifi_get_hal_capability_map(void);
 UINT getTotalNumberVAPs();
 UINT getNumberRadios();
 UINT getMaxNumberVAPsPerRadio(UINT radioIndex);
@@ -180,10 +245,8 @@ UINT convert_radio_index_to_frequencyNum(UINT radioIndex);
 wifi_vap_info_map_t * Get_wifi_object(uint8_t radio_index);
 wifi_GASConfiguration_t * Get_wifi_gas_conf_object(void);
 wifi_interworking_t * Get_wifi_object_interworking_parameter(uint8_t vap_instance_number);
-wifi_front_haul_bss_t * Get_wifi_object_bss_parameter(uint8_t vap_instance_number);
 wifi_back_haul_sta_t * get_wifi_object_sta_parameter(uint8_t vapIndex);
 rdk_wifi_vap_info_t* get_wifidb_rdk_vap_info(uint8_t vapIndex);
-void get_vap_and_radio_index_from_vap_instance(uint8_t vap_instance, uint8_t *radio_index, uint8_t *vap_index);
 int convert_radio_index_to_radio_name(int index,char *name);
 wifi_global_param_t* get_wifidb_wifi_global_param(void);
 wifi_global_config_t* get_wifidb_wifi_global_config(void);
@@ -200,6 +263,11 @@ int get_cm_mac_address(char *mac);
 int get_vap_interface_bridge_name(unsigned int vap_index, char *bridge_name);
 void Load_Hotspot_APIsolation_Settings();
 void Hotspot_APIsolation_Set(int apIns);
+int set_wifi_vap_network_status(uint8_t vapIndex, bool status);
+int set_wifi_public_vap_enable_status(void);
+void sta_pending_connection_retry(wifi_ctrl_t *ctrl);
+bool get_wifi_mesh_vap_enable_status(void);
+int get_wifi_mesh_sta_network_status(uint8_t vapIndex, bool *status);
 
 #ifdef __cplusplus
 }

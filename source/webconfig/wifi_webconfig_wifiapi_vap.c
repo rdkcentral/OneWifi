@@ -33,7 +33,7 @@
 webconfig_subdoc_object_t   wifiapi_vap_objects[3] = {
     { webconfig_subdoc_object_type_version, "Version" },
     { webconfig_subdoc_object_type_subdoc, "SubDocName" },
-    { webconfig_subdoc_object_type_radios, "WifiVapConfig" },
+    { webconfig_subdoc_object_type_vaps, "WifiVapConfig" },
 };
 
 webconfig_error_t init_wifiapivap_subdoc(webconfig_subdoc_t *doc)
@@ -70,7 +70,7 @@ webconfig_error_t decode_wifiapivap_subdoc(webconfig_t *config, webconfig_subdoc
     webconfig_subdoc_t  *doc;
     cJSON *obj_vaps;
     cJSON *obj_vap;
-    unsigned int i, size, radio_index = 0, num_vaps = 0;
+    unsigned int i, size, vap_array_index, radio_index = 0;
     unsigned int blob_radio_index, vap_mode = 0;
     const cJSON  *obj_vap_mode;
     char *name;
@@ -81,7 +81,7 @@ webconfig_error_t decode_wifiapivap_subdoc(webconfig_t *config, webconfig_subdoc
     params = &data->u.decoded;
     doc = &config->subdocs[data->type];
 
-    memset(params, 0, sizeof(webconfig_subdoc_decoded_data_t));
+    //memset(params, 0, sizeof(webconfig_subdoc_decoded_data_t));
 
     for (i = 0; i < doc->num_objects; i++) {
         if ((cJSON_GetObjectItem(json, doc->objects[i].name)) == NULL) {
@@ -108,8 +108,8 @@ webconfig_error_t decode_wifiapivap_subdoc(webconfig_t *config, webconfig_subdoc
     for (i = 0; i < size; i++) {
         obj_vap = cJSON_GetArrayItem(obj_vaps, i);
         name = cJSON_GetStringValue(cJSON_GetObjectItem(obj_vap, "VapName"));
-        radio_index = convert_vap_name_to_radio_array_index(name);
-        if (num_vaps == 0) {
+        radio_index = convert_vap_name_to_radio_array_index(&params->hal_cap.wifi_prop, name);
+        if (i == 0) {
             blob_radio_index = radio_index;
         }
         if (blob_radio_index != radio_index) {
@@ -117,7 +117,8 @@ webconfig_error_t decode_wifiapivap_subdoc(webconfig_t *config, webconfig_subdoc
                 __func__, __LINE__, name, blob_radio_index);
             return webconfig_error_invalid_subdoc;
         }
-        vap_info = &params->radios[radio_index].vaps.vap_map.vap_array[num_vaps];
+        vap_array_index = convert_vap_name_to_array_index(&params->hal_cap.wifi_prop, name);
+        vap_info = &params->radios[radio_index].vaps.vap_map.vap_array[vap_array_index];
 
         obj_vap_mode = cJSON_GetObjectItem(obj_vap, "VapMode");
         if (obj_vap_mode == NULL || cJSON_IsNumber(obj_vap_mode) == false) {
@@ -126,21 +127,19 @@ webconfig_error_t decode_wifiapivap_subdoc(webconfig_t *config, webconfig_subdoc
         }
         vap_mode = obj_vap_mode->valuedouble;
         if (vap_mode == wifi_vap_mode_sta) {
-            if (decode_mesh_sta_object(obj_vap, vap_info) != webconfig_error_none) {
+            if (decode_mesh_sta_object(obj_vap, vap_info, &params->hal_cap.wifi_prop) != webconfig_error_none) {
                 wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: VAP object validation failed\n",
                     __func__, __LINE__);
                 return webconfig_error_decode;
             }
         } else {
-            if (decode_wifiapi_vap_object(obj_vap, vap_info) != webconfig_error_none) {
+            if (decode_wifiapi_vap_object(obj_vap, vap_info, &params->hal_cap.wifi_prop) != webconfig_error_none) {
                 wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: VAP object validation failed\n",
                     __func__, __LINE__);
                 return webconfig_error_decode;
             }
         }
-        num_vaps++;
     }
-    params->radios[radio_index].vaps.vap_map.num_vaps = num_vaps;
     
     wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Validation success\n", __func__, __LINE__);
 

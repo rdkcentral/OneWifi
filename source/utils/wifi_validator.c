@@ -44,8 +44,8 @@
 #include "wifi_ctrl.h"
 #include "wifi_util.h"
 
-UINT g_interworking_RFC;
-UINT g_passpoint_RFC;
+bool g_interworking_RFC;
+bool g_passpoint_RFC;
 
 //This Macro ONE_WIFI_CHANGES, used to modify the validator changes. Re-check is required where the macro is used
 #define ONE_WIFI_CHANGES
@@ -1398,7 +1398,7 @@ int validate_contry_code(wifi_countrycode_type_t *contry_code, char *contry)
     return RETURN_ERR;
 }
 
-int validate_vap(const cJSON *vap, wifi_vap_info_t *vap_info, pErr execRetVal)
+int validate_vap(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_property_t *wifi_prop, pErr execRetVal)
 {
 	const cJSON  *param;
 	int ret=RETURN_OK;
@@ -1506,23 +1506,17 @@ int validate_vap(const cJSON *vap, wifi_vap_info_t *vap_info, pErr execRetVal)
         validate_param_string(vap, "BeaconRateCtl", param);
         strcpy(vap_info->u.bss_info.beaconRateCtl, param->valuestring);
         INT apIndex = 0;
-        apIndex = convert_vap_name_to_index(vap_info->vap_name);
+        apIndex = convert_vap_name_to_index(wifi_prop, vap_info->vap_name);
         if (apIndex != -1)
         {
             vap_info->vap_index = apIndex;
-            if((apIndex % 2) == 0) {
-                vap_info->radio_index = RADIO_INDEX_1 - 1;
-            } else {
-                vap_info->radio_index = RADIO_INDEX_2 - 1;//ONE_WIFI
-            }
-
+            vap_info->radio_index = getRadioIndexFromAp(apIndex);
             if (isVapHotspot(apIndex)) {
                 if (isVapHotspotSecure(apIndex)) {
-                   ret = validate_xfinity_secure_vap(vap, vap_info, execRetVal);
+                    ret = validate_xfinity_secure_vap(vap, vap_info, execRetVal);
                 } else {
                     ret = validate_xfinity_open_vap(vap, vap_info, execRetVal);
                 }
-
             } else if(isVapPrivate(apIndex)) {
                 ret = validate_private_vap(vap, vap_info, execRetVal);
             } else if (isVapXhs(apIndex)) {
@@ -1672,6 +1666,10 @@ int validate_wifi_global_config(const cJSON *global_cfg, wifi_global_param_t *gl
     // ValidateSsid
     validate_param_bool(global_cfg, "ValidateSsid", param);
     global_info->validate_ssid = (param->type & cJSON_True) ? true:false;
+
+    // DeviceNetworkMode
+    validate_param_integer(global_cfg, "DeviceNetworkMode", param);
+    global_info->device_network_mode = param->valuedouble;
 
     wifi_util_dbg_print(WIFI_PASSPOINT,"wifi global Parameters validate successfully\n");
     return RETURN_OK;
@@ -2003,7 +2001,7 @@ int validate_wifi_config(const cJSON *wifi, wifi_global_config_t *wifi_info, pEr
     return RETURN_OK;
 }
 
-int wifi_validate_config(const cJSON *root_json, wifi_global_config_t *wifi_config, wifi_vap_info_map_t *vap_map, wifi_radio_operationParam_t *radio_vap_map, char *num_of_radio, pErr execRetVal) 
+int wifi_validate_config(const cJSON *root_json, wifi_global_config_t *wifi_config, wifi_vap_info_map_t *vap_map, wifi_radio_operationParam_t *radio_vap_map, char *num_of_radio, wifi_platform_property_t *wifi_prop, pErr execRetVal)
 {
     const cJSON *wifi, *radio_vaps, *radio_vap, *param_vap, *param_radio;
     int num_radio;
@@ -2089,9 +2087,9 @@ int wifi_validate_config(const cJSON *root_json, wifi_global_config_t *wifi_conf
             wifi_util_dbg_print(WIFI_PASSPOINT,"%s %d getVAPIndexFromName failure for %s\n",__FUNCTION__, __LINE__, param_vap->valuestring);
             return RETURN_ERR;
         }
-        get_vap_and_radio_index_from_vap_instance(vap_index, &radio_index, &vap_array_index);
+        get_vap_and_radio_index_from_vap_instance(wifi_prop, vap_index, &radio_index, &vap_array_index);
 
-        if (validate_vap(vap, &vap_map[radio_index].vap_array[vap_array_index], execRetVal) != RETURN_OK) {
+        if (validate_vap(vap, &vap_map[radio_index].vap_array[vap_array_index], wifi_prop, execRetVal) != RETURN_OK) {
             wifi_util_dbg_print(WIFI_PASSPOINT,"%s %d validate vap failure \n",__FUNCTION__, __LINE__);
             strncpy(execRetVal->ErrorMsg, "validate vap failure",sizeof(execRetVal->ErrorMsg)-1);
             return RETURN_ERR;

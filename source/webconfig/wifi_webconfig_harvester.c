@@ -90,7 +90,7 @@ webconfig_error_t encode_harvester_subdoc(webconfig_t *config, webconfig_subdoc_
     memset(data->u.encoded.raw, 0, MAX_SUBDOC_SIZE);
     str = cJSON_Print(json);
     memcpy(data->u.encoded.raw, str, strlen(str));
-//    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Encoded JSON:\n%s\n", __func__, __LINE__, data->u.encoded.raw);
+    // wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Encoded JSON:\n%s\n", __func__, __LINE__, data->u.encoded.raw);
 
     return webconfig_error_none;
 }
@@ -106,7 +106,7 @@ webconfig_error_t decode_harvester_subdoc(webconfig_t *config, webconfig_subdoc_
     harvester = &data->u.decoded.harvester;
     doc = &config->subdocs[data->type];
 
-//    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Encoded JSON:\n%s\n", __func__, __LINE__, data->u.encoded.raw);
+    // wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Encoded JSON:\n%s\n", __func__, __LINE__, data->u.encoded.raw);
 
     for (i = 0; i < doc->num_objects; i++) {
         if ((cJSON_GetObjectItem(json, doc->objects[i].name)) == NULL) {

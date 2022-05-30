@@ -369,11 +369,6 @@ INT getSecurityStringFromInt(wifi_security_modes_t securityType, char *securityN
     {
         if(securityType == wifiSecMap[i].halSecCfgMethod)
 	{
-	    if (securityType & wifi_security_mode_none )
-            {
-                strcat(securityName, wifiSecMap[i].wifiSecType);
-            }
-
             if (AnscSizeOfString(securityName) != 0)
             {
                 strcat(securityName, ",");
@@ -381,7 +376,7 @@ INT getSecurityStringFromInt(wifi_security_modes_t securityType, char *securityN
             }
             else
             {
-                strcat(securityName, wifiSecMap[i].wifiSecType);
+                strcpy(securityName, wifiSecMap[i].wifiSecType);
             }
 	}
     }

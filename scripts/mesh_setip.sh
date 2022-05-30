@@ -28,12 +28,12 @@ MESHEB_IP="169.254.85.1 netmask 255.255.255.0"
 BRIDGE_MTU=1600
 
 MESH_EXTENDER_BRIDGE="br-home"
-
-if [ "$MODEL_NUM" == "WNXL11BWL" ]; then
-echo "Extender mode bridge configuration"
-ovs-vsctl add-br $MESH_EXTENDER_BRIDGE
-ifconfig $MESH_EXTENDER_BRIDGE up
-exit 0
+DEVICE_MODE="`syscfg get Device_Mode`"
+if [ "$DEVICE_MODE" == "1" ]; then
+ echo "Extender mode bridge configuration"
+ ovs-vsctl add-br $MESH_EXTENDER_BRIDGE
+ ifconfig $MESH_EXTENDER_BRIDGE up
+ exit 0
 fi
 
 ovs_enable=false

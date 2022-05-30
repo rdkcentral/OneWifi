@@ -11,26 +11,47 @@
 #include <netinet/in.h>
 #include <time.h>
 
-ap_name_translator_t ap_name_translator[] =
-{
-    {"wl0.1", "private_ssid_2g"}, //0
-    {"wl1.1", "private_ssid_5g"}, //1
-    {"wl0.2", "iot_ssid_2g"}, //2
-    {"wl1.2", "iot_ssid_5g"}, //3
-    {"wl0.3", "hotspot_open_2g"}, //4
-    {"wl1.3", "hotspot_open_5g"}, //5
-    {"wl0.4", "lnf_psk_2g"}, //6
-    {"wl1.4", "lnf_psk_5g"}, //7
-    {"wl0.5", "hotspot_secure_2g"}, //8
-    {"wl1.5", "hotspot_secure_5g"}, //9
-    {"wl0.6", "lnf_radius_2g"}, //10
-    {"wl1.6", "lnf_radius_5g"}, //11
-    {"wl0.7", "mesh_backhaul_2g"}, //12
-    {"wl1.7", "mesh_backhaul_5g"}, //13
-    {"wl0",   "mesh_sta_2g"}, //14
-    {"wl1",   "mesh_sta_5g"}  //15
-};
+/* enable PID in debug logs */
+#define __ENABLE_PID__     0
 
+/* local helper functions */
+static wifi_interface_name_idex_map_t* get_vap_index_property(wifi_platform_property_t *wifi_prop, unsigned int vap_index, const char *func);
+static wifi_interface_name_idex_map_t* get_vap_name_property(wifi_platform_property_t *wifi_prop, char *vap_name, const char *func);
+static wifi_interface_name_idex_map_t* get_ifname_property(wifi_platform_property_t *wifi_prop, const char *if_name, const char *func);
+
+#define GET_VAP_INDEX_PROPERTY(wifi_prop, vap_index) ({wifi_interface_name_idex_map_t *__if_prop = get_vap_index_property(wifi_prop, vap_index, __func__); __if_prop;})
+#define GET_VAP_NAME_PROPERTY(wifi_prop, vap_name)   ({wifi_interface_name_idex_map_t *__if_prop = get_vap_name_property(wifi_prop, vap_name, __func__); __if_prop;})
+#define GET_IFNAME_PROPERTY(wifi_prop, if_name)      ({wifi_interface_name_idex_map_t *__if_prop = get_ifname_property(wifi_prop, if_name, __func__); __if_prop;})
+
+//Temporary code to be removed
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/syscall.h>
+
+static const unsigned int l_num_radios = 2;
+static wifi_interface_name_idex_map_t l_interface_map[] = {
+    {0, 0,  "wl0",     "brlan1",    0,    true,   14,     "mesh_sta_2g"},
+    {0, 0,  "wl0.1",   "brlan0",  100,    false,  0,      "private_ssid_2g"},
+    {0, 0,  "wl0.2",   "brlan1",  101,    false,  2,      "iot_ssid_2g"},
+    {0, 0,  "wl0.3",   "brlan2",    0,    false,  4,      "hotspot_open_2g"},
+    {0, 0,  "wl0.4",   "br106",   106,    false,  6,      "lnf_psk_2g"},
+    {0, 0,  "wl0.5",   "brlan4",    0,    false,  8,      "hotspot_secure_2g"},
+    {0, 0,  "wl0.6",   "br106",     0,    false,  10,     "lnf_radius_2g"},
+    {0, 0,  "wl0.7",   "brlan112",  0,    false,  12,     "mesh_backhaul_2g"},
+    {1, 1,  "wl1",     "brlan1",    0,    true,   15,     "mesh_sta_5g"},
+    {1, 1,  "wl1.1",   "brlan0",  100,    false,  1,      "private_ssid_5g"},
+    {1, 1,  "wl1.2",   "brlan1",  101,    false,  3,      "iot_ssid_5g"},
+    {1, 1,  "wl1.3",   "brlan3",    0,    false,  5,      "hotspot_open_5g"},
+    {1, 1,  "wl1.4",   "br106",   106,    false,  7,      "lnf_psk_5g"},
+    {1, 1,  "wl1.5",   "brlan5",    0,    false,  9,      "hotspot_secure_5g"},
+    {1, 1,  "wl1.6",   "br106",     0,    false,  11,     "lnf_radius_5g"},
+    {1, 1,  "wl1.7",   "brlan113",  0,    false,  13,     "mesh_backhaul_5g"},
+};
+static radio_interface_mapping_t l_radio_interface_map[] = {
+    { 0, "radio1", "wl0"},
+    { 1, "radio2", "wl1"},
+};
+//end temporary code
 
 struct wifiCountryEnumStrMap wifiCountryMap[] =
 {
@@ -283,161 +304,358 @@ struct wifiCountryEnumStrMap wifiCountryMap[] =
     {wifi_countrycode_ZW,"ZW"} /**< ZIMBABWE */
 };
 
-int convert_vap_name_to_index(char *vap_name)
+static bool b_printed = false;
+
+int get_interface_name_from_radio_index(uint8_t radio_index, char *interface_name)
 {
-    int vap_index = -1;
-    if (strcmp(vap_name, "hotspot_open_2g") == 0) {
-        vap_index = 4;
-    } else if (strcmp(vap_name, "hotspot_secure_2g") == 0) {
-        vap_index = 8;
-    } else if (strcmp(vap_name, "hotspot_open_5g") == 0) {
-        vap_index = 5;
-    } else if (strcmp(vap_name, "hotspot_secure_5g") == 0) {
-        vap_index = 9;
-    } else if (strcmp(vap_name, "private_ssid_2g") == 0) {
-        vap_index = 0;
-    } else if (strcmp(vap_name, "private_ssid_5g") == 0) {
-        vap_index = 1;
-    } else if (strcmp(vap_name, "iot_ssid_2g") == 0) {
-        vap_index = 2;
-    } else if (strcmp(vap_name, "iot_ssid_5g") == 0) {
-        vap_index = 3;
-    } else if (strcmp(vap_name, "lnf_psk_2g") == 0) {
-        vap_index = 6;
-    } else if (strcmp(vap_name, "lnf_psk_5g") == 0) {
-        vap_index = 7;
-    } else if (strcmp(vap_name, "lnf_radius_2g") == 0) {
-        vap_index = 10;
-    } else if (strcmp(vap_name, "lnf_radius_5g") == 0) {
-        vap_index = 11;
-    } else if (strcmp(vap_name, "mesh_backhaul_2g") == 0) {
-        vap_index = 12;
-    } else if (strcmp(vap_name, "mesh_backhaul_5g") == 0) {
-        vap_index = 13;
-    } else if (strcmp(vap_name, "mesh_sta_2g") == 0) {
-        vap_index = 14;
-    } else if (strcmp(vap_name, "mesh_sta_5g") == 0) {
-        vap_index = 15;
+    uint8_t i = 0;
+
+    for (i = 0; i < ARRAY_SZ(l_radio_interface_map); i++) {
+        if (l_radio_interface_map[i].radio_index == radio_index) {
+            strncpy(interface_name, l_radio_interface_map[i].interface_name, strlen(l_radio_interface_map[i].interface_name));
+            return RETURN_OK;
+        }
     }
-    else
-    {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s wrong vap name:%s\n", __FUNCTION__, vap_name);
-    }
-    return vap_index;
+
+    return RETURN_ERR;
 }
 
-int convert_vap_name_to_array_index(char *vap_name)
+wifi_interface_name_t *get_interface_name_for_vap_index(unsigned int vap_index, wifi_platform_property_t *wifi_prop)
 {
-    int vap_index = -1;
-    if (strstr(vap_name, "private_ssid") != NULL) {
-        vap_index = 0;
-    } else if (strstr(vap_name, "iot_ssid") != NULL) {
-        vap_index = 1;
-    } else if (strstr(vap_name, "hotspot_open") != NULL) {
-        vap_index = 2;
-    } else if (strstr(vap_name, "lnf_psk") != NULL) {
-        vap_index = 3;
-    } else if (strstr(vap_name, "hotspot_secure") != NULL) {
-        vap_index = 4;
-    } else if (strstr(vap_name, "lnf_radius") != NULL) {
-        vap_index = 5;
-    } else if (strstr(vap_name, "mesh_backhaul") != NULL) {
-        vap_index = 6;
-    } else if (strstr(vap_name, "mesh_sta") != NULL) {
-        vap_index = 7;
+    unsigned int i, total_vaps=0;
+    wifi_interface_name_idex_map_t *tmp = wifi_prop->interface_map;
+
+    for (i = 0; i < wifi_prop->numRadios; i++) {
+        total_vaps += wifi_prop->radiocap[i].maxNumberVAPs;
     }
-    else
-    {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s wrong vap name:%s\n", __FUNCTION__, vap_name);
-    vap_index = -1;
+
+    if (total_vaps < MIN_NUM_RADIOS*MAX_NUM_VAP_PER_RADIO) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s %d - wrong total vaps = %d\n", __FUNCTION__, __LINE__, total_vaps);
+        total_vaps = wifi_prop->numRadios * MAX_NUM_VAP_PER_RADIO;
     }
-    return vap_index;
+
+    for (i = 0; i < total_vaps; i++) {
+        if (tmp->index == vap_index) {
+            return &tmp->interface_name;
+        }
+        tmp++;
+    }
+
+    return NULL;
 }
 
-int convert_vap_name_to_radio_array_index(char *vap_name)
+void print_interface_map(wifi_platform_property_t *wifi_prop)
 {
-    int i = 0;
-    i = convert_vap_name_to_index(vap_name);
-    if(i == -1)
-    {
-        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: %s invalid vap name \n",__func__, __LINE__,vap_name);
+    if (b_printed == true) {
+        return;
+    }
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "   Interface Map: Number of Radios = %u\n", wifi_prop->numRadios);
+    for (unsigned int i = 0; i < (l_num_radios * MAX_NUM_VAP_PER_RADIO); ++i) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "      phy=%u, radio=%u, ifname=%s, bridge=%s, primary=%s, index=%u, vap_name=%s\n", \
+                                             wifi_prop->interface_map[i].phy_index, \
+                                             wifi_prop->interface_map[i].rdk_radio_index, \
+                                             wifi_prop->interface_map[i].interface_name, \
+                                             wifi_prop->interface_map[i].bridge_name, \
+                                             (wifi_prop->interface_map[i].primary) ? "true" : "false", \
+                                             wifi_prop->interface_map[i].index, \
+                                             wifi_prop->interface_map[i].vap_name);
+    }
+
+    b_printed = true;
+}   
+
+BOOL valid_wifi_property(wifi_platform_property_t *wifi_prop)
+{
+    BOOL b_valid = FALSE;
+    static int num_prints = 0;
+
+    if (wifi_prop && wifi_prop->numRadios <= MAX_NUM_RADIOS && wifi_prop->numRadios >= 2) {
+        /* assume if first 2 radios are valid, the 3rd radio, if any, also valid */
+        /* the third radio could be less than 8 VAPs */
+        for (UINT i = 0; i < (2 * MAX_NUM_VAP_PER_RADIO); ++i) {
+            b_valid = FALSE;
+            if (wifi_prop->interface_map[i].phy_index >= MAX_NUM_RADIOS)
+                break;
+            if (wifi_prop->interface_map[i].rdk_radio_index >= MAX_NUM_RADIOS)
+                break;
+            if (wifi_prop->interface_map[i].interface_name[0] == '\0')
+                break;
+            if (wifi_prop->interface_map[i].index >= (wifi_prop->numRadios * MAX_NUM_VAP_PER_RADIO))
+                break;
+            if (wifi_prop->interface_map[i].vap_name[0] == '\0')
+                break;
+            b_valid = TRUE;
+        }
+    }
+
+    if ((b_valid == FALSE) && (num_prints < 500)) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s %d - Invalid Wifi property\n", __FUNCTION__, __LINE__);
+        print_interface_map(wifi_prop);
+        num_prints++;
+    }
+
+    return b_valid;
+}
+
+static wifi_interface_name_idex_map_t* get_vap_index_property(wifi_platform_property_t *wifi_prop, unsigned int vap_index, const char *func)
+{
+    wifi_interface_name_idex_map_t *if_prop = NULL;
+
+    if (valid_wifi_property(wifi_prop)) {
+        UINT total_vaps = wifi_prop->numRadios * MAX_NUM_VAP_PER_RADIO;
+
+        for (UINT i = 0; i < total_vaps; ++i) {
+            if (wifi_prop->interface_map[i].index == vap_index) {
+                if_prop = &wifi_prop->interface_map[i];
+                break;
+            }
+        }
+    } else {
+        /* temporary code */
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s - Invalid WiFi property called from %s\n", __func__, func);
+        for (UINT i = 0; i < (l_num_radios * MAX_NUM_VAP_PER_RADIO); ++i) {
+            if (l_interface_map[i].index == vap_index) {
+                if_prop = &l_interface_map[i];
+                break;
+            }
+        }
+    }
+
+    return if_prop;
+}
+
+static wifi_interface_name_idex_map_t* get_vap_name_property(wifi_platform_property_t *wifi_prop, char *vap_name, const char *func)
+{
+    wifi_interface_name_idex_map_t *if_prop = NULL;
+
+    if (valid_wifi_property(wifi_prop)) {
+        UINT total_vaps = wifi_prop->numRadios * MAX_NUM_VAP_PER_RADIO; 
+ 
+        for (UINT i = 0; i < total_vaps; ++i) {
+            if (!strcmp(vap_name, wifi_prop->interface_map[i].vap_name)) {
+                if_prop = &wifi_prop->interface_map[i];
+                break;
+            }
+        }
+    } else {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s - Invalid WiFi property called from %s\n", __func__, func);
+        /* temporary code */
+        for (UINT i = 0; i < (l_num_radios * MAX_NUM_VAP_PER_RADIO); ++i) {
+            if (!strcmp(vap_name, l_interface_map[i].vap_name)) {
+                if_prop = &l_interface_map[i];
+                break;
+            }
+        }
+    }
+
+    return if_prop;
+}
+
+static wifi_interface_name_idex_map_t* get_ifname_property(wifi_platform_property_t *wifi_prop, const char *if_name, const char *func)
+{
+    wifi_interface_name_idex_map_t *if_prop = NULL;
+
+    if (valid_wifi_property(wifi_prop)) {
+        UINT total_vaps = wifi_prop->numRadios * MAX_NUM_VAP_PER_RADIO;
+
+        for (UINT i = 0; i < total_vaps ; ++i) {
+            if (!strcmp(if_name, wifi_prop->interface_map[i].interface_name)) {
+                if_prop = &wifi_prop->interface_map[i];
+                break;
+            }
+        }
+    } else {
+        /* temporary code */
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s - Invalid WiFi property called from %s\n", __func__, func);
+        for (UINT i = 0; i < (l_num_radios * MAX_NUM_VAP_PER_RADIO); ++i) {
+            if (!strcmp(if_name, l_interface_map[i].interface_name)) {
+                if_prop = &l_interface_map[i];
+                break;
+            }
+        }
+    }
+
+    return if_prop;
+}
+
+int get_number_of_radios(wifi_platform_property_t *wifi_prop)
+{
+    /* the hal_cap may not be populated */
+    if (valid_wifi_property(wifi_prop))
+        return (int)wifi_prop->numRadios;
+    else
+        return (int)l_num_radios;
+}
+
+int get_total_number_of_vaps(wifi_platform_property_t *wifi_prop)
+{
+    int total_vaps=0;
+
+    if (valid_wifi_property(wifi_prop)) {
+        for (UINT i = 0; i < wifi_prop->numRadios; ++i) {
+            total_vaps += wifi_prop->radiocap[i].maxNumberVAPs;
+        }
+        if (total_vaps < MIN_NUM_RADIOS*MAX_NUM_VAP_PER_RADIO) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d - Invalid total number of VAPs %d\n", __FUNCTION__, __LINE__, total_vaps);
+            total_vaps = wifi_prop->numRadios * MAX_NUM_VAP_PER_RADIO;
+        }
+    } else {
+        total_vaps = l_num_radios * MAX_NUM_VAP_PER_RADIO;
+    }
+
+    return total_vaps;
+}
+
+int convert_vap_name_to_index(wifi_platform_property_t *wifi_prop, char *vap_name)
+{
+    wifi_interface_name_idex_map_t *prop;
+
+    prop = GET_VAP_NAME_PROPERTY(wifi_prop, vap_name);
+    if (prop == NULL) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s - Failed to get VAP index for %s\n", __FUNCTION__, vap_name);
+    }
+
+    return (prop) ? (int)prop->index : RETURN_ERR;
+}
+
+int convert_vap_name_to_array_index(wifi_platform_property_t *wifi_prop, char *vap_name)
+{
+    UINT radio_index = 0;
+    UINT vap_index = 0;
+    int vap_array_index = -1;
+    wifi_interface_name_idex_map_t *if_prop;
+
+    if_prop = GET_VAP_NAME_PROPERTY(wifi_prop, vap_name);
+    if (if_prop) {
+        radio_index = if_prop->rdk_radio_index;
+        vap_index = if_prop->index;
+
+        if (valid_wifi_property(wifi_prop)) {
+            UINT total_vaps = wifi_prop->numRadios * MAX_NUM_VAP_PER_RADIO; 
+
+            for (UINT i = 0; i < total_vaps; i++) {
+                if (wifi_prop->interface_map[i].rdk_radio_index == radio_index) {
+                    vap_array_index++;
+                }
+                if (wifi_prop->interface_map[i].index == vap_index) {
+                    break;
+                }
+            }
+        } else {
+            /* temp code */
+            for (UINT i = 0; i < (l_num_radios * MAX_NUM_VAP_PER_RADIO); i++) {
+                if (l_interface_map[i].rdk_radio_index == radio_index) {
+                    vap_array_index++;
+                }
+                if (l_interface_map[i].index == vap_index) {
+                    break;
+                }
+            }
+        }
+    }
+
+    if (vap_array_index == -1) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Error, could not find vap index for '%s'\n",__func__, __LINE__, vap_name);
+    }
+
+    return vap_array_index;
+}
+
+int convert_vap_name_to_radio_array_index(wifi_platform_property_t *wifi_prop, char *vap_name)
+{
+    wifi_interface_name_idex_map_t *prop;
+
+    prop = GET_VAP_NAME_PROPERTY(wifi_prop, vap_name);
+    if (prop == NULL) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s - Failed to get radio index for %s\n", __FUNCTION__, vap_name);
+    }
+
+    return (prop) ? (int)prop->rdk_radio_index : RETURN_ERR;
+}
+
+void get_vap_and_radio_index_from_vap_instance(wifi_platform_property_t *wifi_prop, uint8_t vap_instance, uint8_t *radio_index, uint8_t *vap_index)
+{
+    int vap_array_index = -1;
+    wifi_interface_name_idex_map_t *if_prop;
+
+    *radio_index = 0;
+    *vap_index = 0;
+    if_prop = GET_VAP_INDEX_PROPERTY(wifi_prop, vap_instance);
+    if (if_prop) {
+        *radio_index = (uint8_t)if_prop->rdk_radio_index;
+
+        if (valid_wifi_property(wifi_prop)) {
+            UINT total_vaps = wifi_prop->numRadios * MAX_NUM_VAP_PER_RADIO; 
+
+            for (unsigned int i = 0; i < total_vaps; i++) {
+                if((uint8_t)wifi_prop->interface_map[i].rdk_radio_index == *radio_index) {
+                    vap_array_index++;
+                }
+                if ((uint8_t)wifi_prop->interface_map[i].index == vap_instance) {
+                    *vap_index = (uint8_t)vap_array_index;
+                    break;
+                }
+            }
+        } else {
+            for (unsigned int i = 0; i < l_num_radios * MAX_NUM_VAP_PER_RADIO; i++) {
+                if((uint8_t)l_interface_map[i].rdk_radio_index == *radio_index) {
+                    vap_array_index++;
+                }
+                if ((uint8_t)l_interface_map[i].index == vap_instance) {
+                    *vap_index = (uint8_t)vap_array_index;
+                    break;
+                }
+            }
+        }
+    }
+
+    if (vap_array_index == -1) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Error, could not find vap array index and radio index for vap_index %d\n",__func__, __LINE__, vap_instance);
+    }
+}
+
+/* return the pointer of the vap name in hal_cap given a vap index */
+char *get_vap_name(wifi_platform_property_t *wifi_prop, int vap_index)
+{
+    wifi_interface_name_idex_map_t *prop;
+
+    if ((prop = GET_VAP_INDEX_PROPERTY(wifi_prop, vap_index)) == NULL) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s - Failed to get VAP name for index %d\n", __FUNCTION__, vap_index);
+    }
+    
+    return (prop) ? &prop->vap_name[0] : NULL;
+}
+
+/* copy the vap name to a buffer given a vap index */
+int convert_vap_index_to_name(wifi_platform_property_t* wifi_prop, int vap_index, char *vap_name)
+{
+    wifi_interface_name_idex_map_t *prop = NULL;
+
+    prop = GET_VAP_INDEX_PROPERTY(wifi_prop, vap_index);
+    if (prop) {
+        strcpy(vap_name, prop->vap_name);
+    } else {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s - converty VAP index %d to VAP name failed\n", __FUNCTION__, vap_index);
+    }
+
+    return (prop) ? RETURN_OK : RETURN_ERR;
+}
+
+int convert_radio_name_to_index(unsigned int *index,char *name)
+{
+    int radio_index;
+    if (name == NULL) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Error, radio name NULL\n",__func__, __LINE__);
         return -1;
     }
-    if(i%2 == 0)
-    {
+    if (sscanf(name, "radio%d", &radio_index) == 1) {
+        *index = radio_index-1;
         return 0;
     }
-    else
-    {
-        return 1;
-    }
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Error, invalid radio name '%s'\n",__func__, __LINE__, name);
     return -1;
 }
-
-int convert_vap_index_to_name(int vap_index,char *vap_name)
-{
-    if (vap_index == 4) {
-       strcpy(vap_name, "hotspot_open_2g");
-    } else if (vap_index == 8) {
-        strcpy(vap_name, "hotspot_secure_2g");
-    } else if (vap_index == 5) {
-        strcpy(vap_name, "hotspot_open_5g");
-    } else if (vap_index == 9) {
-        strcpy(vap_name, "hotspot_secure_5g");
-    } else if (vap_index == 0) {
-        strcpy(vap_name, "private_ssid_2g");
-    } else if (vap_index == 1) {
-        strcpy(vap_name, "private_ssid_5g");
-    } else if (vap_index == 2) {
-        strcpy(vap_name, "iot_ssid_2g");
-    } else if (vap_index == 3) {
-        strcpy(vap_name, "iot_ssid_5g");
-    } else if (vap_index == 6) {
-        strcpy(vap_name, "lnf_psk_2g");
-    } else if (vap_index == 7) {
-        strcpy(vap_name, "lnf_psk_5g");
-    } else if (vap_index == 10) {
-        strcpy(vap_name, "lnf_radius_2g");
-    } else if (vap_index == 11) {
-        strcpy(vap_name, "lnf_radius_5g");
-    } else if (vap_index == 12) {
-        strcpy(vap_name, "mesh_backhaul_2g");
-    } else if (vap_index == 13) {
-        strcpy(vap_name, "mesh_backhaul_5g");
-    } else if (vap_index == 14) {
-        strcpy(vap_name, "mesh_sta_2g");
-    } else if (vap_index == 15) {
-        strcpy(vap_name, "mesh_sta_5g");
-    }
-    else
-    {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s wrong vap index:%d\n", __FUNCTION__, vap_index);
-    }
-    return 0;
-}
-
-
-int convert_radio_name_to_index(int *index,char *name)
-{
-    if((strncmp(name,"radio1",BUFFER_LENGTH_WIFIDB))== 0)
-    {
-        *index = 0;
-        return 0;
-    }
-    else if((strncmp(name,"radio2",BUFFER_LENGTH_WIFIDB))== 0)
-    {
-        *index = 1;
-        return 0;
-    }
-    else if((strncmp(name,"radio3",BUFFER_LENGTH_WIFIDB))== 0)
-    {
-        *index = 2;
-        return 0;
-    }
-
-    return -1;
-}
-
 
 char *get_formatted_time(char *time)
 {
@@ -459,8 +677,13 @@ void wifi_util_dbg_print(wifi_dbg_type_t module, char *format, ...)
     char buff[2048*200] = {0};
     va_list list;
     FILE *fpg = NULL;
-
+#if defined(__ENABLE_PID__) && (__ENABLE_PID__)
+    pid_t pid = syscall(__NR_gettid);
+    sprintf(&buff[0], "%d - ", pid);
+    get_formatted_time(&buff[strlen(buff)]);
+#else
     get_formatted_time(buff);
+#endif
     strcat(buff, " ");
 
     va_start(list, format);
@@ -506,7 +729,7 @@ void wifi_util_dbg_print(wifi_dbg_type_t module, char *format, ...)
             }
             break;
         }
-    case WIFI_CTRL:{
+        case WIFI_CTRL:{
             if ((access("/nvram/wifiCtrlDbg", R_OK)) != 0) {
                 return;
             }
@@ -517,7 +740,7 @@ void wifi_util_dbg_print(wifi_dbg_type_t module, char *format, ...)
                 fputs(buff, fpg);
             }
             break;
-    }
+        }
         case WIFI_PASSPOINT:{
             if ((access("/nvram/wifiPasspointDbg", R_OK)) != 0) {
                 return;
@@ -554,7 +777,7 @@ void wifi_util_dbg_print(wifi_dbg_type_t module, char *format, ...)
             }
             break;
         }
-    case WIFI_DMCLI:{
+        case WIFI_DMCLI:{
             if ((access("/nvram/wifiDMCLI", R_OK)) != 0) {
                 return;
             }
@@ -678,6 +901,7 @@ void string_mac_to_uint8_mac(uint8_t *mac, char *s_mac)
 
 int convert_radio_name_to_radio_index(char *name)
 {
+    //remove this function, it is duplicationg convert_radio_name_to_index
     if (strcmp(name, "radio1") == 0) {
         return 0;
     } else if (strcmp(name, "radio2") == 0) {
@@ -755,72 +979,91 @@ int convert_freq_band_to_radio_index(int band, int *radio_index)
     return RETURN_ERR;
 }
 
-int convert_ifname_to_radioIndex (char *if_name, uint8_t *radio_index)
+int convert_ifname_to_radio_index(wifi_platform_property_t *wifi_prop, char *if_name, unsigned int *radio_index)
 {
+    wifi_interface_name_idex_map_t *prop;
+    
     //return the radio Index based in Interface Name
     if (if_name == NULL) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"WIFI %s:%d input if_name is NULL \n",__FUNCTION__, __LINE__);
         return RETURN_ERR;
     }
 
-    if (!strncmp(if_name, "wl0",strlen("wl0"))) {
-        *radio_index = 0;
-        return RETURN_OK;
-    } else if (!strncmp(if_name, "wl1",strlen("wl1"))) {
-        *radio_index = 1;
-        return RETURN_OK;
+    prop = GET_IFNAME_PROPERTY(wifi_prop, if_name);
+    if (prop) {
+        *radio_index = prop->rdk_radio_index;
+    } else {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d - No interface %s found\n", __FUNCTION__, __LINE__, if_name);
     }
-
-    return RETURN_ERR;
+    return (prop) ? RETURN_OK : RETURN_ERR;
 }
 
-int convert_radioindex_to_ifname(unsigned int radio_index, char *if_name, int ifname_len)
+int convert_radio_index_to_ifname(wifi_platform_property_t *wifi_prop, unsigned int radio_index, char *if_name, int ifname_len)
 {
+    BOOL b_valid;
+    unsigned int num_radios, num_vaps;
+    wifi_interface_name_idex_map_t *vap;
+
     if (if_name == NULL) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"WIFI %s:%d input if_name is NULL \n",__FUNCTION__, __LINE__);
         return RETURN_ERR;
     }
 
-    if (radio_index >= MAX_NUM_RADIOS) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: invalid radioIndex : %d!!!\n", __func__, __LINE__, radio_index);
+    b_valid = valid_wifi_property(wifi_prop);
+    num_radios = (b_valid) ? wifi_prop->numRadios : l_num_radios;
+    if (radio_index >= num_radios) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: invalid radioIndex : %d!!!\n", __FUNCTION__, __LINE__, radio_index);
         return RETURN_ERR;
     }
 
-    snprintf(if_name, ifname_len, "wl%d", radio_index);
-
-    return RETURN_OK;
-}
-
-
-int convert_apindex_to_ifname(int idx, char *if_name, int len)
-{
-    if (NULL == if_name || idx  >= (MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO) ) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: input_string parameter error!!!\n", __func__, __LINE__);
-        return RETURN_ERR;
-    }
-
-    memset(if_name, 0, len);
-    snprintf(if_name, len, "%s", ap_name_translator[idx].if_name);
-    return RETURN_OK;
-}
-
-int convert_ifname_to_vapname(char *if_name, char *vap_name, int vapname_len)
-{
-    unsigned int i = 0;
-    if ((if_name == NULL) || (vap_name == NULL)) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: input_string parameter error!!!\n", __func__, __LINE__);
-        return RETURN_ERR;
-    }
-
-    memset(vap_name, 0, vapname_len);
-    for (i = 0; i < ARRAY_SZ(ap_name_translator); i++) {
-        if (strcmp(if_name, ap_name_translator[i].if_name) == 0) {
-            snprintf(vap_name, vapname_len, "%s", ap_name_translator[i].vap_name);
-            return RETURN_OK;
+    vap = (b_valid) ? &wifi_prop->interface_map[0] : &l_interface_map[0];
+    num_vaps = get_total_number_of_vaps(wifi_prop);
+    /* re-purpose the variable for primary interface found */
+    b_valid = FALSE;
+    for (unsigned int index = 0; index < num_vaps; ++index) {
+        if ((vap[index].rdk_radio_index == radio_index) && (vap[index].primary == TRUE)) {
+            strncpy(if_name, &vap[index].interface_name[0], ifname_len);
+            b_valid = TRUE;
+            break;
         }
     }
 
-    return RETURN_ERR;
+    return (b_valid) ? RETURN_OK : RETURN_ERR;
+}
+
+int convert_apindex_to_ifname(wifi_platform_property_t *wifi_prop, int idx, char *if_name, unsigned int len)
+{
+    wifi_interface_name_idex_map_t *prop;
+
+    /* for 3rd radio, the vap index can be larger than total number of vaps */
+    if (NULL == if_name || idx  >= (int)(MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO)) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: input_string parameter error!!!\n", __FUNCTION__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    prop = GET_VAP_INDEX_PROPERTY(wifi_prop, idx);
+    if (prop) {
+        strncpy(if_name, prop->interface_name, len);
+    }
+
+    return (prop) ? RETURN_OK : RETURN_ERR;
+}
+
+int convert_ifname_to_vapname(wifi_platform_property_t *wifi_prop, char *if_name, char *vap_name, int vapname_len)
+{
+    wifi_interface_name_idex_map_t *prop;
+
+    if ((if_name == NULL) || (vap_name == NULL)) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: input_string parameter error!!!\n", __FUNCTION__, __LINE__);
+        return RETURN_ERR;
+    }
+    
+    prop = GET_IFNAME_PROPERTY(wifi_prop, if_name);
+    if (prop) {
+        strncpy(vap_name, prop->vap_name, vapname_len);
+    }
+
+    return (prop) ? RETURN_OK : RETURN_ERR;
 }
 
 
@@ -974,80 +1217,126 @@ int freq_band_conversion(wifi_freq_bands_t *band_enum, char *freq_band, int freq
     return RETURN_ERR;
 }
 
-
-BOOL is_vap_private(unsigned int ap_index)
+BOOL is_vap_private(wifi_platform_property_t *wifi_prop, UINT ap_index)
 {
-    if (strncmp((CHAR *)ap_name_translator[ap_index].vap_name, "private_ssid", strlen("private_ssid")) == 0) {
-        return TRUE;
+    wifi_interface_name_idex_map_t* vap_prop;
+
+    if ((vap_prop = GET_VAP_INDEX_PROPERTY(wifi_prop, ap_index)) == NULL) {
+        return FALSE;
     }
-    return FALSE;
+
+    return (strncmp((char *)&vap_prop->vap_name[0], "private_ssid", strlen("private_ssid"))) ? FALSE : TRUE;
 }
 
-BOOL is_vap_xhs(unsigned int ap_index)
+BOOL is_vap_xhs(wifi_platform_property_t *wifi_prop, UINT ap_index)
 {
-    if (strncmp((CHAR *)ap_name_translator[ap_index].vap_name, "iot_ssid", strlen("iot_ssid")) == 0) {
-        return TRUE;
+    wifi_interface_name_idex_map_t* vap_prop;
+
+    if ((vap_prop = GET_VAP_INDEX_PROPERTY(wifi_prop, ap_index)) == NULL) {
+        return FALSE;
     }
-    return FALSE;
+
+    return (strncmp((char *)&vap_prop->vap_name[0], "iot_ssid", strlen("iot_ssid"))) ? FALSE : TRUE;
 }
 
-BOOL is_vap_hotspot(unsigned int ap_index)
+BOOL is_vap_hotspot(wifi_platform_property_t *wifi_prop, UINT ap_index)
 {
-    if (strncmp((CHAR *)ap_name_translator[ap_index].vap_name, "hotspot", strlen("hotspot")) == 0) {
-        return TRUE;
+     wifi_interface_name_idex_map_t* vap_prop;
+
+    if ((vap_prop = GET_VAP_INDEX_PROPERTY(wifi_prop, ap_index)) == NULL) {
+        return FALSE;
     }
-    return FALSE;
+
+    return (strncmp((char *)&vap_prop->vap_name[0], "hotspot", strlen("hotspot"))) ? FALSE : TRUE;
 }
 
-BOOL is_vap_lnf(unsigned int ap_index)
+BOOL is_vap_hotspot_open(wifi_platform_property_t *wifi_prop, UINT ap_index)
 {
-    if (strncmp((CHAR *)ap_name_translator[ap_index].vap_name, "lnf", strlen("lnf")) == 0) {
-        return TRUE;
+    wifi_interface_name_idex_map_t* vap_prop;
+
+    if ((vap_prop = GET_VAP_INDEX_PROPERTY(wifi_prop, ap_index)) == NULL) {
+        return FALSE;
     }
-    return FALSE;
+
+    return (strncmp((char *)&vap_prop->vap_name[0], "hotspot_open", strlen("hotspot_open"))) ? FALSE : TRUE;
 }
 
-BOOL is_vap_lnfpsk(unsigned int ap_index)
+BOOL is_vap_lnf(wifi_platform_property_t *wifi_prop, UINT ap_index)
 {
-    if (strncmp((CHAR *)ap_name_translator[ap_index].vap_name, "lnf_psk", strlen("lnf_psk")) == 0) {
-        return TRUE;
+     wifi_interface_name_idex_map_t* vap_prop;
+
+    if ((vap_prop = GET_VAP_INDEX_PROPERTY(wifi_prop, ap_index)) == NULL) {
+        return FALSE;
     }
-    return FALSE;
+
+    return (strncmp((char *)&vap_prop->vap_name[0], "lnf", strlen("lnf"))) ? FALSE : TRUE;
 }
 
-BOOL is_vap_mesh_backhaul(unsigned int ap_index)
+BOOL is_vap_lnf_psk(wifi_platform_property_t *wifi_prop, UINT ap_index)
 {
-    if (strncmp((CHAR *)ap_name_translator[ap_index].vap_name, "mesh_backhaul", strlen("mesh_backhaul")) == 0) {
-        return TRUE;
+    wifi_interface_name_idex_map_t* vap_prop;
+
+    if ((vap_prop = GET_VAP_INDEX_PROPERTY(wifi_prop, ap_index)) == NULL) {
+        return FALSE;
     }
-    return FALSE;
+
+    return (strncmp((char *)&vap_prop->vap_name[0], "lnf_psk", strlen("lnf_psk"))) ? FALSE : TRUE;
 }
 
-BOOL is_vap_hotspotsecure(unsigned int ap_index)
+BOOL is_vap_mesh(wifi_platform_property_t *wifi_prop, UINT ap_index)
 {
-    if (strstr((CHAR *)ap_name_translator[ap_index].vap_name, "hotspot_secure") != NULL) {
-        return TRUE;
+    wifi_interface_name_idex_map_t* vap_prop;
+
+    if ((vap_prop = GET_VAP_INDEX_PROPERTY(wifi_prop, ap_index)) == NULL) {
+        return FALSE;
     }
-    return FALSE;
+
+    return (strncmp((char *)&vap_prop->vap_name[0], "mesh", strlen("mesh"))) ? FALSE : TRUE;
 }
 
-BOOL is_vap_lnfsecure(unsigned int ap_index)
+BOOL is_vap_mesh_backhaul(wifi_platform_property_t *wifi_prop, UINT ap_index)
 {
-    if (strstr((CHAR *)ap_name_translator[ap_index].vap_name, "lnf_radius") != NULL) {
-        return TRUE;
+    wifi_interface_name_idex_map_t* vap_prop;
+
+    if ((vap_prop = GET_VAP_INDEX_PROPERTY(wifi_prop, ap_index)) == NULL) {
+        return FALSE;
     }
-    return FALSE;
+
+    return (strncmp((char *)&vap_prop->vap_name[0], "mesh_backhaul", strlen("mesh_backhaul"))) ? FALSE : TRUE;
 }
 
-
-BOOL is_vap_mesh_sta(unsigned int ap_index)
+BOOL is_vap_hotspot_secure(wifi_platform_property_t *wifi_prop, UINT ap_index)
 {
-    if (strstr((CHAR *)ap_name_translator[ap_index].vap_name, "mesh_sta") != NULL) {
-        return TRUE;
+    wifi_interface_name_idex_map_t* vap_prop;
+
+    if ((vap_prop = GET_VAP_INDEX_PROPERTY(wifi_prop, ap_index)) == NULL) {
+        return FALSE;
     }
-    return FALSE;
+
+    return (strncmp((char *)&vap_prop->vap_name[0], "hotspot_secure", strlen("hotspot_secure"))) ? FALSE : TRUE;
 }
 
+BOOL is_vap_lnf_radius(wifi_platform_property_t *wifi_prop, UINT ap_index)
+{
+    wifi_interface_name_idex_map_t* vap_prop;
+
+    if ((vap_prop = GET_VAP_INDEX_PROPERTY(wifi_prop, ap_index)) == NULL) {
+        return FALSE;
+    }
+
+    return (strncmp((char *)&vap_prop->vap_name[0], "lnf_radius", strlen("lnf_radius"))) ? FALSE : TRUE;
+}
+
+BOOL is_vap_mesh_sta(wifi_platform_property_t *wifi_prop, UINT ap_index)
+{
+    wifi_interface_name_idex_map_t* vap_prop;
+
+    if ((vap_prop = GET_VAP_INDEX_PROPERTY(wifi_prop, ap_index)) == NULL) {
+        return FALSE;
+    }
+
+    return (strncmp((char *)&vap_prop->vap_name[0], "mesh_sta", strlen("mesh_sta"))) ? FALSE :TRUE;
+}
 
 int country_code_conversion(wifi_countrycode_type_t *country_code, char *country, int country_len, unsigned int conv_type)
 {
@@ -1141,15 +1430,24 @@ int ht_mode_conversion(wifi_channelBandwidth_t *ht_mode_enum, char *ht_mode, int
     return RETURN_ERR;
 }
 
-int get_sta_vap_index_for_radio(unsigned int radio_index)
+int get_sta_vap_index_for_radio(wifi_platform_property_t *wifi_prop, unsigned int radio_index)
 {
-    if (radio_index == 0) {
-        return 14;
-    } else if (radio_index == 1) {
-        return 15;
+    int index;
+    int num_vaps;
+    int vap_index = RETURN_ERR;
+
+    num_vaps = get_total_number_of_vaps(wifi_prop);
+    
+    for (index = 0; index < num_vaps; ++index) {
+        if (wifi_prop->interface_map[index].rdk_radio_index == radio_index) {
+            if (!strncmp(wifi_prop->interface_map[index].vap_name, "mesh_sta", strlen("mesh_sta"))) {
+                vap_index = wifi_prop->interface_map[index].index;
+                break;
+            }
+        }
     }
 
-    return -1;
+    return vap_index;
 }
 
 int channel_mode_conversion(BOOL *auto_channel_bool, char *auto_channel_string, int auto_channel_strlen, unsigned int conv_type)
@@ -1246,15 +1544,15 @@ int is_ssid_name_valid(char *ssid_name)
 }
 
 void str_to_mac_bytes (char *key, mac_addr_t bmac) {
-   unsigned int mac[6];
-   if(strlen(key) > MIN_MAC_LEN)
-       sscanf(key, "%02x:%02x:%02x:%02x:%02x:%02x",
-             &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
-   else
-       sscanf(key, "%02x%02x%02x%02x%02x%02x",
-             &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
-   bmac[0] = mac[0]; bmac[1] = mac[1]; bmac[2] = mac[2];
-   bmac[3] = mac[3]; bmac[4] = mac[4]; bmac[5] = mac[5];
+    unsigned int mac[6];
+    if(strlen(key) > MIN_MAC_LEN)
+        sscanf(key, "%02x:%02x:%02x:%02x:%02x:%02x",
+                &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
+    else
+        sscanf(key, "%02x%02x%02x%02x%02x%02x",
+                &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
+    bmac[0] = mac[0]; bmac[1] = mac[1]; bmac[2] = mac[2];
+    bmac[3] = mac[3]; bmac[4] = mac[4]; bmac[5] = mac[5];
 
 }
 
@@ -1281,11 +1579,11 @@ int get_cm_mac_address(char *mac)
 
 /************************************************************************************
  ************************************************************************************
-  Function    : get_ssid_from_device_mac
-  Parameter   : ssid - Name of ssid
-  Description : Get ssid information from cm mac address
+ Function    : get_ssid_from_device_mac
+ Parameter   : ssid - Name of ssid
+ Description : Get ssid information from cm mac address
  *************************************************************************************
-**************************************************************************************/
+ **************************************************************************************/
 int get_ssid_from_device_mac(char *ssid)
 {
     int ret = RETURN_OK;
@@ -1306,4 +1604,209 @@ int get_ssid_from_device_mac(char *ssid)
     sprintf(s_mac, "XFSETUP-%02hhX%02hhX", mac[4], mac[5]);
     strncpy(ssid, s_mac, strlen(s_mac));
     return ret;
+}
+
+int key_mgmt_conversion_legacy(wifi_security_modes_t *mode_enum, wifi_encryption_method_t *encryp_enum, char *str_mode, int mode_len, char *str_encryp, int encryp_len, unsigned int conv_type)
+{
+    //ovs encrytion: "OPEN", "WEP", "WPA-PSK", "WPA-EAP"
+    //ovs mode: "64", "128", "1", "2", "mixed"
+    int ret = RETURN_OK;
+
+    if ((mode_enum == NULL) || (encryp_enum == NULL) || (str_mode == NULL) || (str_encryp == NULL)) {
+        return RETURN_ERR;
+    }
+
+    if (conv_type == STRING_TO_ENUM) {
+        if (strcmp(str_encryp, "OPEN") == 0) {
+            *mode_enum = wifi_security_mode_none;
+            *encryp_enum = wifi_encryption_none;
+        } else if (strcmp(str_encryp, "WEP") == 0) {
+            if (strcmp(str_mode, "64") == 0) {
+                *mode_enum = wifi_security_mode_wep_64;
+            } else if (strcmp(str_mode, "128") == 0) {
+                *mode_enum = wifi_security_mode_wep_128;
+            } else {
+                ret = RETURN_ERR;
+                wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Invalid encryption '%s' and mode '%s'\n", __func__, __LINE__, str_encryp, str_mode);
+            }
+        } else if (strcmp(str_encryp, "WPA-PSK") == 0) {
+            if (strcmp(str_mode, "1") == 0) {
+                *mode_enum = wifi_security_mode_wpa_personal;
+                *encryp_enum = wifi_encryption_tkip;
+            } else if (strcmp(str_mode, "2") == 0) {
+                *mode_enum = wifi_security_mode_wpa2_personal;
+                *encryp_enum = wifi_encryption_aes;
+            } else if (strcmp(str_mode, "mixed") == 0) {
+                *mode_enum = wifi_security_mode_wpa_wpa2_personal;
+                *encryp_enum = wifi_encryption_aes_tkip;
+            } else {
+                ret = RETURN_ERR;
+                wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Invalid encryption '%s' and mode '%s'\n", __func__, __LINE__, str_encryp, str_mode);
+            }
+        } else if (strcmp(str_encryp, "WPA-EAP") == 0) {
+            if (strcmp(str_mode, "1") == 0) {
+                *mode_enum = wifi_security_mode_wpa_enterprise;
+                *encryp_enum = wifi_encryption_tkip;
+            } else if (strcmp(str_mode, "2") == 0) {
+                *mode_enum = wifi_security_mode_wpa2_enterprise;
+                *encryp_enum = wifi_encryption_aes;
+            } else if (strcmp(str_mode, "mixed") == 0) {
+                *mode_enum = wifi_security_mode_wpa_wpa2_enterprise;
+                *encryp_enum = wifi_encryption_aes_tkip;
+            } else {
+                ret = RETURN_ERR;
+                wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Invalid encryption '%s' and mode '%s'\n", __func__, __LINE__, str_encryp, str_mode);
+            }
+        } else {
+            ret = RETURN_ERR;
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Invalid encryption '%s'\n", __func__, __LINE__, str_encryp);
+        }
+    } else if (conv_type == ENUM_TO_STRING) {
+        switch (*mode_enum) {
+        case wifi_security_mode_none:
+            snprintf(str_encryp, encryp_len, "OPEN");
+            break;
+        case wifi_security_mode_wep_64:
+            snprintf(str_mode, mode_len, "64");
+            snprintf(str_encryp, encryp_len, "WEP");
+            break;
+        case wifi_security_mode_wep_128:
+            snprintf(str_mode, mode_len, "128");
+            snprintf(str_encryp, encryp_len, "WEP");
+            break;
+        case wifi_security_mode_wpa_enterprise:
+            snprintf(str_mode, mode_len, "1");
+            snprintf(str_encryp, encryp_len, "WPA-EAP");
+            break;
+        case wifi_security_mode_wpa2_enterprise:
+            snprintf(str_mode, mode_len, "2");
+            snprintf(str_encryp, encryp_len, "WPA-EAP");
+            break;
+        case wifi_security_mode_wpa_wpa2_enterprise:
+            snprintf(str_mode, mode_len, "mixed");
+            snprintf(str_encryp, encryp_len, "WPA-EAP");
+            break;
+        case wifi_security_mode_wpa_personal:
+            snprintf(str_mode, mode_len, "1");
+            snprintf(str_encryp, encryp_len, "WPA-PSK");
+            break;
+        case wifi_security_mode_wpa2_personal:
+            snprintf(str_mode, mode_len, "2");
+            snprintf(str_encryp, encryp_len, "WPA-PSK");
+            break;
+        case wifi_security_mode_wpa_wpa2_personal:
+            snprintf(str_mode, mode_len, "mixed");
+            snprintf(str_encryp, encryp_len, "WPA-PSK");
+            break;
+        case wifi_security_mode_wpa3_enterprise:
+        case wifi_security_mode_wpa3_personal:
+        case wifi_security_mode_wpa3_transition:
+        default:
+            ret = RETURN_ERR;
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: unsupported security mode %d\n", __func__, __LINE__, *mode_enum);
+            break;
+        }
+    }
+
+    return ret;
+}
+
+int key_mgmt_conversion(wifi_security_modes_t *enum_sec, char *str_sec, int sec_len, unsigned int conv_type)
+{
+    char arr_str[][16] = {"wpa-psk", "wpa2-psk", "wpa2-eap", "sae"};
+    wifi_security_modes_t  arr_num[] = {wifi_security_mode_wpa_personal, wifi_security_mode_wpa2_personal, wifi_security_mode_wpa2_enterprise, wifi_security_mode_wpa3_personal};
+    unsigned int i = 0;
+
+    if ((enum_sec == NULL) || (str_sec == NULL)) {
+        return RETURN_ERR;
+    }
+
+    if (conv_type == STRING_TO_ENUM) {
+        for (i = 0; i < ARRAY_SZ(arr_str); i++) {
+            if (strcmp(arr_str[i], str_sec) == 0) {
+                *enum_sec = arr_num[i];
+                return RETURN_OK;
+            }
+        }
+    } else if (conv_type == ENUM_TO_STRING) {
+        for (i = 0; i < ARRAY_SZ(arr_num); i++) {
+            if (arr_num[i]  == *enum_sec) {
+                snprintf(str_sec, sec_len, "%s", arr_str[i]);
+                return RETURN_OK;
+            }
+        }
+    }
+
+    return RETURN_ERR;
+}
+
+int get_radio_if_hw_type(char *str, int str_len)
+{
+    if (str == NULL) {
+        return RETURN_ERR;
+    }
+
+    snprintf(str, str_len, "BCM43684");
+    return RETURN_OK;
+}
+
+char *to_mac_str(mac_address_t mac, mac_addr_str_t key)
+{
+    snprintf(key, 18, "%02x:%02x:%02x:%02x:%02x:%02x",
+            mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+
+    return (char *)key;
+}
+
+void to_mac_bytes (mac_addr_str_t key, mac_address_t bmac)
+{
+    unsigned int mac[6];
+    if(strlen(key) > MIN_MAC_LEN)
+        sscanf(key, "%02x:%02x:%02x:%02x:%02x:%02x",
+                &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
+    else
+        sscanf(key, "%02x%02x%02x%02x%02x%02x",
+                &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
+    bmac[0] = mac[0]; bmac[1] = mac[1]; bmac[2] = mac[2];
+    bmac[3] = mac[3]; bmac[4] = mac[4]; bmac[5] = mac[5];
+
+}
+
+int convert_vapname_to_ifname(wifi_platform_property_t *wifi_prop, char *vap_name, char *if_name, int ifname_len)
+{
+    wifi_interface_name_idex_map_t *if_prop = NULL;
+ 
+    if ((if_name == NULL) || (vap_name == NULL)) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: input_string parameter error!!!\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    if_prop = GET_VAP_NAME_PROPERTY(wifi_prop, vap_name);
+    if (if_prop) {
+        strncpy(if_name, if_prop->interface_name, ifname_len);
+    }
+
+    return (if_prop) ? RETURN_OK : RETURN_ERR;
+}
+
+unsigned int create_vap_mask(wifi_platform_property_t *wifi_prop, const char *vap_name)
+{
+    unsigned int num_vaps;
+    unsigned int mask = 0;
+    wifi_interface_name_idex_map_t *interface_map;
+
+    if ((wifi_prop->numRadios == 0) && (strlen(wifi_prop->interface_map[0].vap_name) == 0)) {
+        interface_map = &l_interface_map[0];
+    } else {
+        interface_map = &wifi_prop->interface_map[0];
+    }
+
+    num_vaps = get_total_number_of_vaps(wifi_prop);
+    for(UINT array_index = 0; array_index < num_vaps; ++array_index) {
+        if (!strncmp((char *)&interface_map[array_index].vap_name[0], vap_name, strlen(vap_name))) {
+            mask |= 1 << wifi_prop->interface_map[array_index].index;
+        }
+    }
+
+    return mask;
 }

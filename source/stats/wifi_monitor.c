@@ -173,20 +173,6 @@ static inline char *to_sta_key    (mac_addr_t mac, sta_key_t key)
     return (char *)key;
 }
 
-static void to_mac_bytes (mac_addr_str_t key, mac_address_t bmac) 
-{
-    unsigned int mac[6];
-    if(strlen(key) > MIN_MAC_LEN)
-        sscanf(key, "%02x:%02x:%02x:%02x:%02x:%02x",
-                &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
-    else
-        sscanf(key, "%02x%02x%02x%02x%02x%02x",
-                &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
-    bmac[0] = mac[0]; bmac[1] = mac[1]; bmac[2] = mac[2];
-    bmac[3] = mac[3]; bmac[4] = mac[4]; bmac[5] = mac[5];
-
-}
-
 static void to_plan_id (unsigned char *PlanId, unsigned char Plan[])
 {
     int i=0;
@@ -3233,7 +3219,7 @@ void csi_enable_subscription(bool subscribe, int csi_session_number)
     wifi_monitor_data_t *data;
 
     pthread_mutex_lock(&g_events_monitor.lock);
-    csi = csi_get_session(FALSE, csi_session_number);
+    csi = csi_get_session(TRUE, csi_session_number);
     if(csi) {
         wifi_util_dbg_print(WIFI_MON, "%s: subscription for session %d\n",__func__, csi_session_number);
         if(subscribe) {
@@ -4132,6 +4118,29 @@ int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
     csi_update_client_mac_status(data->u.dev.sta_mac, TRUE, ap_index);
 
     memcpy(assoc_data.dev_stats.cli_MACAddress, data->u.dev.sta_mac, sizeof(mac_address_t));
+    assoc_data.dev_stats.cli_SignalStrength = associated_dev->cli_SignalStrength;
+    assoc_data.dev_stats.cli_RSSI = associated_dev->cli_RSSI;
+    assoc_data.dev_stats.cli_AuthenticationState = associated_dev->cli_AuthenticationState;
+    assoc_data.dev_stats.cli_LastDataDownlinkRate = associated_dev->cli_LastDataDownlinkRate;
+
+    assoc_data.dev_stats.cli_LastDataUplinkRate = associated_dev->cli_LastDataUplinkRate;
+    assoc_data.dev_stats.cli_SignalStrength = associated_dev->cli_SignalStrength;
+    assoc_data.dev_stats.cli_Retransmissions = associated_dev->cli_Retransmissions;
+    assoc_data.dev_stats.cli_Active = associated_dev->cli_Active;
+    assoc_data.dev_stats.cli_SNR = associated_dev->cli_SNR;
+    assoc_data.dev_stats.cli_DataFramesSentAck = associated_dev->cli_DataFramesSentAck;
+    assoc_data.dev_stats.cli_DataFramesSentNoAck = associated_dev->cli_DataFramesSentNoAck;
+    assoc_data.dev_stats.cli_BytesSent = associated_dev->cli_BytesSent;
+    assoc_data.dev_stats.cli_BytesReceived = associated_dev->cli_BytesReceived;
+    assoc_data.dev_stats.cli_MinRSSI = associated_dev->cli_MinRSSI;
+    assoc_data.dev_stats.cli_MaxRSSI = associated_dev->cli_MaxRSSI;
+    assoc_data.dev_stats.cli_Disassociations = associated_dev->cli_Disassociations;
+    assoc_data.dev_stats.cli_AuthenticationFailures = associated_dev->cli_AuthenticationFailures;
+    snprintf(assoc_data.dev_stats.cli_OperatingStandard, sizeof(assoc_data.dev_stats.cli_OperatingStandard),"%s", associated_dev->cli_OperatingStandard);
+    snprintf(assoc_data.dev_stats.cli_OperatingChannelBandwidth, sizeof(assoc_data.dev_stats.cli_OperatingChannelBandwidth),"%s", associated_dev->cli_OperatingChannelBandwidth);
+    snprintf(assoc_data.dev_stats.cli_InterferenceSources, sizeof(assoc_data.dev_stats.cli_InterferenceSources),"%s", associated_dev->cli_InterferenceSources);
+
+
     assoc_data.ap_index = data->ap_index;
     push_data_to_ctrl_queue(&assoc_data, sizeof(assoc_data), ctrl_event_type_hal_ind, ctrl_event_hal_assoc_device);
 
@@ -4397,12 +4406,10 @@ int init_wifi_monitor ()
 
     /* Initializing the lock for active measurement g_active_msmt.lock */
     pthread_mutex_init(&g_active_msmt.lock, NULL);
-#if 0
     if (initparodusTask() == -1) {
         //wifi_util_dbg_print(WIFI_MON, "%s:%d: Failed to initialize paroduc task\n", __func__, __LINE__);
 
     }
-#endif//ONE_WIFI TBD -N
     pthread_mutex_lock(&g_apRegister_lock);
     wifi_hal_newApAssociatedDevice_callback_register(device_associated);
 #if !defined(_PLATFORM_RASPBERRYPI_) && !defined(_PLATFORM_TURRIS_)

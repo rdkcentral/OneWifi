@@ -19,6 +19,7 @@ typedef struct {
     wifi_ctrl_t                     ctrl;
     wifi_global_config_t            global_config;
     wifi_hal_capability_t           hal_cap;
+    queue_t                         *csi_data_queue;
     rdk_wifi_radio_t                radio_config[MAX_NUM_RADIOS];
     wifi_dml_parameters_t           dml_parameters;
     wifi_rfc_dml_parameters_t       rfc_dml_parameters;

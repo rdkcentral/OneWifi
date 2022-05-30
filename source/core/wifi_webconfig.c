@@ -419,7 +419,7 @@ int webconf_apply_wifi_ssid_params (webconf_wifi_t *pssid_entry, uint8_t wlan_in
             up = (strcmp(status,"Enabled")==0);
             wifi_util_dbg_print(WIFI_WEBCONFIG,"SSID status is %s\n",status);
             if (up == FALSE) {
-                uint8_t radio_index = (wlan_index % 2);
+                uint8_t radio_index = getRadioIndexFromAp(wlan_index);
                 ret_val = wifi_createAp(wlan_index, radio_index, ssid, (adv_enable == TRUE) ? FALSE : TRUE);
                 if (ret_val != RETURN_OK) {
                     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s: Failed to create AP Interface for wlan %d\n",
@@ -1566,6 +1566,7 @@ int radio_config_set(const char *buf, size_t len, pErr exec_ret_val)
     wifi_vap_info_map_t vap_map[MAX_NUM_RADIOS];
     wifi_radio_operationParam_t radio_vap_map[MAX_NUM_RADIOS];
     wifi_global_config_t wifi;
+    wifi_platform_property_t *wifi_prop;
 //    char *buffer = NULL;
     const char *err = NULL;
     int i, ret_val, r_index;
@@ -1652,7 +1653,8 @@ int radio_config_set(const char *buf, size_t len, pErr exec_ret_val)
         return RETURN_ERR;
     }
 
-    if (wifi_validate_config(root_json, &wifi, vap_map, radio_vap_map, &num_radio, exec_ret_val) != RETURN_OK) {
+    wifi_prop = &((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop;
+    if (wifi_validate_config(root_json, &wifi, vap_map, radio_vap_map, &num_radio, wifi_prop, exec_ret_val) != RETURN_OK) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s: Failed to fetch and validate vaps from json. ErrorMsg: %s\n", __FUNCTION__,exec_ret_val->ErrorMsg);
         exec_ret_val->ErrorCode = VALIDATION_FALIED;
         //free(buffer);

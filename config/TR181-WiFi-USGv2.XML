@@ -122,18 +122,6 @@
                     <writable>true</writable>
                 </parameter>
                 <parameter>
-                    <name>Private</name>
-                    <type>string</type>
-                    <syntax>string</syntax>
-                    <writable>true</writable>
-                </parameter>
-                <parameter>
-                    <name>Home</name>
-                    <type>string</type>
-                    <syntax>string</syntax>
-                    <writable>true</writable>
-                </parameter>  
-                <parameter>
                     <name>X_RDK_VapData</name>
                     <type>string</type>
                     <syntax>string</syntax>
@@ -277,6 +265,24 @@
             <syntax>bool</syntax>
             <writable>true</writable>
         </parameter>
+        <parameter>
+            <name>WiFi-Interworking</name>
+            <type>boolean</type>
+            <syntax>bool</syntax>
+            <writable>true</writable>
+        </parameter>
+        <parameter>
+            <name>WiFi-Passpoint</name>
+            <type>boolean</type>
+            <syntax>bool</syntax>
+            <writable>true</writable>
+        </parameter>
+        <parameter>
+            <name>WPA3_Personal_Transition</name>
+            <type>boolean</type>
+            <syntax>bool</syntax>
+            <writable>true</writable>
+        </parameter>
 	</parameters>
 	<objects>
         <object>
@@ -388,13 +394,15 @@
         </object>
         <object>
             <name>X_RDK_CSI</name>
-            <objectType>writableTable</objectType>
+            <objectType>dynWritableTable</objectType>
             <maxInstance>255</maxInstance>
             <functions>
                 <func_GetEntryCount>CSI_GetEntryCount</func_GetEntryCount>
                 <func_GetEntry>CSI_GetEntry</func_GetEntry>
                 <func_AddEntry>CSI_AddEntry</func_AddEntry>
                 <func_DelEntry>CSI_DelEntry</func_DelEntry>
+                <func_IsUpdated>CSI_IsUpdated</func_IsUpdated>
+                <func_Synchronize>CSI_Synchronize</func_Synchronize>
                 <func_GetParamBoolValue>CSI_GetParamBoolValue</func_GetParamBoolValue>
                 <func_SetParamBoolValue>CSI_SetParamBoolValue</func_SetParamBoolValue>
                 <func_GetParamStringValue>CSI_GetParamStringValue</func_GetParamStringValue>

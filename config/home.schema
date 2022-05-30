@@ -1,0 +1,61 @@
+{
+   "home_security_2g":{
+      "EncryptionMethod":"AES",
+      "ModeEnabled":"WPA2-Personal",
+      "Passphrase":"emerald_pwd_home_2g"
+   },
+
+   "home_security_5g":{
+      "EncryptionMethod":"AES",
+      "ModeEnabled":"WPA2-Personal",
+      "Passphrase":"emerald_pwd_home_5g"
+   },
+
+   "home_security_5gl":{
+      "EncryptionMethod":"AES",
+      "ModeEnabled":"WPA2-Personal",
+      "Passphrase":"emerald_pwd_home_5gl"
+   },
+
+   "home_security_5gu":{
+      "EncryptionMethod":"AES",
+      "ModeEnabled":"WPA2-Personal",
+      "Passphrase":"emerald_pwd_home_5gu"
+   },
+
+   "home_security_6g":{
+      "EncryptionMethod":"AES",
+      "ModeEnabled":"WPA3-Personal",
+      "Passphrase":"emerald_pwd_home_6g"
+   },
+
+   "home_ssid_2g":{
+      "SSID":"emerald_home_2g_63",
+      "Enable":true,
+      "SSIDAdvertisementEnabled":true
+   },
+
+   "home_ssid_5g":{
+      "SSID":"emerald_home_5g_63",
+      "Enable":true,
+      "SSIDAdvertisementEnabled":true
+   },
+
+   "home_ssid_5gl":{
+      "SSID":"emerald_home_5gl_63",
+      "Enable":true,
+      "SSIDAdvertisementEnabled":true
+   },
+
+   "home_ssid_5gu":{
+      "SSID":"emerald_home_5gu_63",
+      "Enable":true,
+      "SSIDAdvertisementEnabled":true
+   },
+
+   "home_ssid_6g":{
+      "SSID":"emerald_home_6g_63",
+      "Enable":true,
+      "SSIDAdvertisementEnabled":true
+   }
+}

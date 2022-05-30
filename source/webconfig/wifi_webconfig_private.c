@@ -33,7 +33,7 @@
 webconfig_subdoc_object_t   private_objects[3] = {
     { webconfig_subdoc_object_type_version, "Version" },
     { webconfig_subdoc_object_type_subdoc, "SubDocName" },
-    { webconfig_subdoc_object_type_radios, "WifiVapConfig" },
+    { webconfig_subdoc_object_type_vaps, "WifiVapConfig" },
 };
 
 webconfig_error_t init_private_subdoc(webconfig_subdoc_t *doc)
@@ -103,8 +103,7 @@ webconfig_error_t encode_private_subdoc(webconfig_t *config, webconfig_subdoc_da
         map = &params->radios[i].vaps.vap_map;
         for (j = 0; j < map->num_vaps; j++) {
             vap = &map->vap_array[j];
-            if ((vap->vap_index == (unsigned int)convert_vap_name_to_index("private_ssid_2g")) ||
-                    (vap->vap_index == (unsigned int)convert_vap_name_to_index("private_ssid_5g"))) {
+            if (is_vap_private(&params->hal_cap.wifi_prop, vap->vap_index)) {
                 obj = cJSON_CreateObject();
                 cJSON_AddItemToArray(obj_array, obj);
                 if (encode_private_vap_object(vap, obj) != webconfig_error_none) {
@@ -121,7 +120,7 @@ webconfig_error_t encode_private_subdoc(webconfig_t *config, webconfig_subdoc_da
     str = cJSON_Print(json);
     memcpy(data->u.encoded.raw, str, strlen(str));
   
-//    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Encoded JSON:\n%s\n", __func__, __LINE__, str);
+    // wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Encoded JSON:\n%s\n", __func__, __LINE__, str);
     cJSON_Delete(json);
 
     return webconfig_error_none;
@@ -132,7 +131,7 @@ webconfig_error_t decode_private_subdoc(webconfig_t *config, webconfig_subdoc_da
     webconfig_subdoc_t  *doc;
     cJSON *obj_vaps;
     cJSON *obj, *obj_vap;
-    unsigned int i, j, size, radio_index;
+    unsigned int i, j, size, radio_index, vap_array_index;
     unsigned int presence_count = 0;
     char *vap_names[MAX_NUM_RADIOS] = {
         "private_ssid_2g", "private_ssid_5g",
@@ -193,24 +192,27 @@ webconfig_error_t decode_private_subdoc(webconfig_t *config, webconfig_subdoc_da
 
     // first set the structure to all 0
     memset(&params->radios, 0, sizeof(rdk_wifi_radio_t)*MAX_NUM_RADIOS);
-
-
+    for (i = 0; i < MAX_NUM_RADIOS; i++) {
+        params->radios[i].vaps.vap_map.num_vaps = params->hal_cap.wifi_prop.radiocap[i].maxNumberVAPs;
+        params->radios[i].vaps.num_vaps = params->hal_cap.wifi_prop.radiocap[i].maxNumberVAPs;
+    }
+    
     for (i = 0; i < size; i++) {
         obj_vap = cJSON_GetArrayItem(obj_vaps, i);
         name = cJSON_GetStringValue(cJSON_GetObjectItem(obj_vap, "VapName"));
-        radio_index = convert_vap_name_to_radio_array_index(name);
-        vap_info = &params->radios[radio_index].vaps.vap_map.vap_array[params->radios[radio_index].vaps.vap_map.num_vaps];
+        radio_index = convert_vap_name_to_radio_array_index(&params->hal_cap.wifi_prop, name);
+        vap_array_index = convert_vap_name_to_array_index(&params->hal_cap.wifi_prop, name);
+        vap_info = &params->radios[radio_index].vaps.vap_map.vap_array[vap_array_index];
 //        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: radio index: %d , vap name: %s\n%s\n",
   //                 __func__, __LINE__, radio_index, name, cJSON_Print(obj_vap));
 
-        if ((strcmp(name, "private_ssid_2g") == 0) || (strcmp(name, "private_ssid_5g") == 0)) {
-            if (decode_private_vap_object(obj_vap, vap_info) != webconfig_error_none) {
+        if (!strncmp(name, "private_ssid", strlen("private_ssid"))) {
+            if (decode_private_vap_object(obj_vap, vap_info, &params->hal_cap.wifi_prop) != webconfig_error_none) {
                 wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: VAP object validation failed\n",
                     __func__, __LINE__);
                 cJSON_Delete(json);
                 return webconfig_error_decode;
             }
-            params->radios[radio_index].vaps.vap_map.num_vaps++;
         }
     }
 

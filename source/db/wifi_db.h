@@ -30,6 +30,7 @@ typedef struct {
 #define WIFIDB_SCHEMA_DIR "/usr/ccsp/wifi"
 #define WIFIDB_DIR "/nvram/wifi"
 #define WIFIDB_RUN_DIR "/var/tmp"
+#define DEFAULT_WPS_PIN  "1234"
 
 #define BUFFER_LENGTH_WIFIDB 32
 

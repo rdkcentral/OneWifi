@@ -109,24 +109,44 @@ int init_wifi_hal()
     return RETURN_OK;
 }
 
-int init_global_radio_config(rdk_wifi_radio_t *radios_cfg)
+int init_global_radio_config(rdk_wifi_radio_t *radios_cfg, UINT radio_index)
 {
-    UINT vap_array_index;
-    if (radios_cfg ==  NULL) {
+    UINT vap_array_index = 0;
+    UINT i;
+    wifi_hal_capability_t *wifi_hal_cap_obj = rdk_wifi_get_hal_capability_map();
+
+    if (radios_cfg == NULL) {
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d NULL Pointer\n", __func__, __LINE__);
         return RETURN_ERR;
     }
 
-    for (vap_array_index = 0; vap_array_index <MAX_NUM_VAP_PER_RADIO ; vap_array_index++) {
-        radios_cfg->vaps.rdk_vap_array[vap_array_index].associated_devices_queue = queue_create();
-        if (radios_cfg->vaps.rdk_vap_array[vap_array_index].associated_devices_queue == NULL) {
-            wifi_util_dbg_print(WIFI_CTRL,"%s:%d queue_create(associated_devices_queue) failed\n",__FUNCTION__, __LINE__);
-        }
-        radios_cfg->vaps.rdk_vap_array[vap_array_index].acl_map = hash_map_create();
-        if (radios_cfg->vaps.rdk_vap_array[vap_array_index].acl_map == NULL) {
-            wifi_util_dbg_print(WIFI_CTRL,"%s:%d hash_map_create(acl_map) failed\n",__FUNCTION__, __LINE__);
+    snprintf(radios_cfg->name, sizeof(radios_cfg->name),"radio%d", radio_index+1);
+    for (i = 0; i < (sizeof(wifi_hal_cap_obj->wifi_prop.interface_map)/sizeof(wifi_interface_name_idex_map_t)); i++)
+    {
+        if (wifi_hal_cap_obj->wifi_prop.interface_map[i].rdk_radio_index == radio_index) {
+            radios_cfg->vaps.rdk_vap_array[vap_array_index].vap_index = wifi_hal_cap_obj->wifi_prop.interface_map[i].index;
+            radios_cfg->vaps.vap_map.vap_array[vap_array_index].vap_index = wifi_hal_cap_obj->wifi_prop.interface_map[i].index;
+            radios_cfg->vaps.vap_map.vap_array[vap_array_index].radio_index = radio_index;
+            strcpy((char *)radios_cfg->vaps.rdk_vap_array[vap_array_index].vap_name, (char *)wifi_hal_cap_obj->wifi_prop.interface_map[i].vap_name);
+            strcpy((char *)radios_cfg->vaps.vap_map.vap_array[vap_array_index].vap_name, (char *)wifi_hal_cap_obj->wifi_prop.interface_map[i].vap_name);
+
+            radios_cfg->vaps.rdk_vap_array[vap_array_index].associated_devices_queue = queue_create();
+            if (radios_cfg->vaps.rdk_vap_array[vap_array_index].associated_devices_queue == NULL) {
+                wifi_util_dbg_print(WIFI_CTRL,"%s:%d queue_create(associated_devices_queue) failed\n",__FUNCTION__, __LINE__);
+            }
+            radios_cfg->vaps.rdk_vap_array[vap_array_index].acl_map = hash_map_create();
+            if (radios_cfg->vaps.rdk_vap_array[vap_array_index].acl_map == NULL) {
+                wifi_util_dbg_print(WIFI_CTRL,"%s:%d hash_map_create(acl_map) failed\n",__FUNCTION__, __LINE__);
+            }
+            vap_array_index++;
+            if (vap_array_index >= MAX_NUM_VAP_PER_RADIO) {
+                break;
+            }
         }
     }
+    radios_cfg->vaps.radio_index = radio_index;
+    radios_cfg->vaps.num_vaps = vap_array_index;
+    radios_cfg->vaps.vap_map.num_vaps = vap_array_index;
     return RETURN_OK;
 }
 
@@ -165,7 +185,12 @@ int init_wifimgr()
      
     int itr=0;
     for (itr=0; itr < (int)getNumberRadios(); itr++) {
-        init_global_radio_config(&g_wifi_mgr.radio_config[itr]);
+        init_global_radio_config(&g_wifi_mgr.radio_config[itr], itr);
+    }
+
+    //Init csi_data_queue
+    if (g_wifi_mgr.csi_data_queue == NULL) {
+        g_wifi_mgr.csi_data_queue = queue_create();
     }
 
     //Start Wifi DB server, and Initialize data Cache

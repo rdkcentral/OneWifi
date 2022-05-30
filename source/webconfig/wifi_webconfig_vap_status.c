@@ -79,8 +79,7 @@ webconfig_error_t encode_vap_status_subdoc(webconfig_t *config, webconfig_subdoc
             //Compare the vap_names
             memset(vap_name, 0, sizeof(vap_name));
             strcpy(vap_name, (char *)rdk_vap_array->vap_name);
-            if ((strcmp(vap_name, "private_ssid_2g") == 0) ||
-                    (strcmp(vap_name, "private_ssid_5g") == 0)) {
+            if (strncmp(vap_name, "private_ssid", strlen("private_ssid")) == 0) {
                 vap_state = &params->radios[i].vaps.vap_state[j];
                 obj = cJSON_CreateObject();
                 cJSON_AddItemToArray(obj_array, obj);
@@ -89,8 +88,7 @@ webconfig_error_t encode_vap_status_subdoc(webconfig_t *config, webconfig_subdoc
                     cJSON_Delete(json);
                     return webconfig_error_encode;
                 }
-            } else if ((strcmp(vap_name, "iot_ssid_2g") == 0) ||
-                    (strcmp(vap_name, "iot_ssid_5g") == 0)) {
+            } else if (strncmp(vap_name, "iot_ssid", strlen("iot_ssid")) == 0) {
                 vap_state = &params->radios[i].vaps.vap_state[j];
                 obj = cJSON_CreateObject();
                 cJSON_AddItemToArray(obj_array, obj);
@@ -99,8 +97,7 @@ webconfig_error_t encode_vap_status_subdoc(webconfig_t *config, webconfig_subdoc
                     cJSON_Delete(json);
                     return webconfig_error_encode;
                 }
-            } else if ((strcmp(vap_name, "hotspot_open_2g") == 0) ||
-                    (strcmp(vap_name, "hotspot_open_5g") == 0)) {
+            } else if (strncmp(vap_name, "hotspot_open", strlen("hotspot_open")) == 0) {
                 vap_state = &params->radios[i].vaps.vap_state[j];
                 obj = cJSON_CreateObject();
                 cJSON_AddItemToArray(obj_array, obj);
@@ -109,8 +106,7 @@ webconfig_error_t encode_vap_status_subdoc(webconfig_t *config, webconfig_subdoc
                     cJSON_Delete(json);
                     return webconfig_error_encode;
                 }
-            } else if ((strcmp(vap_name, "lnf_psk_2g") == 0) ||
-                    (strcmp(vap_name, "lnf_psk_5g") == 0)) {
+            } else if (strncmp(vap_name, "lnf_psk", strlen("lnf_psk")) == 0) {
                 vap_state = &params->radios[i].vaps.vap_state[j];
                 obj = cJSON_CreateObject();
                 cJSON_AddItemToArray(obj_array, obj);
@@ -119,8 +115,7 @@ webconfig_error_t encode_vap_status_subdoc(webconfig_t *config, webconfig_subdoc
                     cJSON_Delete(json);
                     return webconfig_error_encode;
                 }
-            } else if ((strcmp(vap_name, "hotspot_secure_2g") == 0) ||
-                    (strcmp(vap_name, "hotspot_secure_5g") == 0)) {
+            } else if (strncmp(vap_name, "hotspot_secure", strlen("hotspot_secure")) == 0) {
                 vap_state = &params->radios[i].vaps.vap_state[j];
                 obj = cJSON_CreateObject();
                 cJSON_AddItemToArray(obj_array, obj);
@@ -129,8 +124,7 @@ webconfig_error_t encode_vap_status_subdoc(webconfig_t *config, webconfig_subdoc
                     cJSON_Delete(json);
                     return webconfig_error_encode;
                 }
-            } else if ((strcmp(vap_name, "lnf_radius_2g") == 0) ||
-                    (strcmp(vap_name, "lnf_radius_5g") == 0)) {
+            } else if (strncmp(vap_name, "lnf_radius", strlen("lnf_radius")) == 0) {
                 vap_state = &params->radios[i].vaps.vap_state[j];
                 obj = cJSON_CreateObject();
                 cJSON_AddItemToArray(obj_array, obj);
@@ -139,8 +133,7 @@ webconfig_error_t encode_vap_status_subdoc(webconfig_t *config, webconfig_subdoc
                     cJSON_Delete(json);
                     return webconfig_error_encode;
                 }
-            } else if ((strcmp(vap_name, "mesh_backhaul_2g") == 0) ||
-                    (strcmp(vap_name, "mesh_backhaul_5g") == 0)) {
+            } else if (strncmp(vap_name, "mesh_backhaul", strlen("mesh_backhaul")) == 0) {
                 vap_state = &params->radios[i].vaps.vap_state[j];
                 obj = cJSON_CreateObject();
                 cJSON_AddItemToArray(obj_array, obj);
@@ -158,7 +151,7 @@ webconfig_error_t encode_vap_status_subdoc(webconfig_t *config, webconfig_subdoc
 
     memcpy(data->u.encoded.raw, str, strlen(str));
 
-//    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Encoded JSON:\n%s\n", __func__, __LINE__, str);
+    // wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Encoded JSON:\n%s\n", __func__, __LINE__, str);
     cJSON_Delete(json);
 
     return webconfig_error_none;
@@ -212,17 +205,17 @@ webconfig_error_t decode_vap_status_subdoc(webconfig_t *config, webconfig_subdoc
             return webconfig_error_decode;
         }
 
-        if (convert_ifname_to_vapname(temp_vap_state.if_name, vap_name, sizeof(vap_name)) != RETURN_OK) {
+        if (convert_ifname_to_vapname(&params->hal_cap.wifi_prop, temp_vap_state.if_name, vap_name, sizeof(vap_name)) != RETURN_OK) {
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Convert ifname to vapname failed\n", __func__, __LINE__);
             cJSON_Delete(json);
             return webconfig_error_invalid_subdoc;
         }
 
         //get the radioindex
-        r_index = convert_vap_name_to_radio_array_index(vap_name);
+        r_index = convert_vap_name_to_radio_array_index(&params->hal_cap.wifi_prop, vap_name);
 
         //get the vap_array_index
-        v_arrayindex =  convert_vap_name_to_array_index(vap_name);
+        v_arrayindex =  convert_vap_name_to_array_index(&params->hal_cap.wifi_prop, vap_name);
 
         if ((v_arrayindex == -1) || (r_index == -1)) {
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: invalid index radio_index %d vap_array_index  %d\n", __func__, __LINE__, r_index, v_arrayindex);

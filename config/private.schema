@@ -1,0 +1,61 @@
+{
+   "private_security_2g":{
+      "EncryptionMethod":"AES",
+      "ModeEnabled":"WPA2-Personal",
+      "Passphrase":"sapphire_pwd_private_2g"
+   },
+
+   "private_security_5g":{
+      "EncryptionMethod":"AES",
+      "ModeEnabled":"WPA2-Personal",
+      "Passphrase":"sapphire_pwd_private_5g"
+   },
+
+   "private_security_5gl":{
+      "EncryptionMethod":"AES",
+      "ModeEnabled":"WPA2-Personal",
+      "Passphrase":"sapphire_pwd_private_5gl"
+   },
+
+   "private_security_5gu":{
+      "EncryptionMethod":"AES",
+      "ModeEnabled":"WPA2-Personal",
+      "Passphrase":"sapphire_pwd_private_5gu"
+   },
+
+   "private_security_6g":{
+      "EncryptionMethod":"AES",
+      "ModeEnabled":"WPA3-Personal",
+      "Passphrase":"sapphire_pwd_private_6g"
+   },
+
+   "private_ssid_2g":{
+      "SSID":"sapphire_private_2g_12",
+      "Enable":true,
+      "SSIDAdvertisementEnabled":true
+   },
+
+   "private_ssid_5g":{
+      "SSID":"sapphire_private_5g_12",
+      "Enable":true,
+      "SSIDAdvertisementEnabled":true
+   },
+
+   "private_ssid_5gl":{
+      "SSID":"sapphire_private_5gl_12",
+      "Enable":true,
+      "SSIDAdvertisementEnabled":true
+   },
+
+   "private_ssid_5gu":{
+      "SSID":"sapphire_private_5gu_12",
+      "Enable":true,
+      "SSIDAdvertisementEnabled":true
+   },
+
+   "private_ssid_6g":{
+      "SSID":"sapphire_private_6g_12",
+      "Enable":true,
+      "SSIDAdvertisementEnabled":true
+   }
+}

@@ -68,24 +68,6 @@
 #define MIN_ACTIVE_MSMT_SAMPLE_DURATION 1
 #define MAX_ACTIVE_MSMT_SAMPLE_DURATION 10000
 
-#ifdef USE_NOTIFY_COMPONENT
-#define LM_GEN_STR_SIZE   	64 
-#define LM_MAX_HOSTS_NUM	256
-
-typedef struct {
-    unsigned char ssid[LM_GEN_STR_SIZE];
-    unsigned char AssociatedDevice[LM_GEN_STR_SIZE];
-	unsigned char phyAddr[32]; /* Byte alignment*/
-    int RSSI;
-	int Status;
-}__attribute__((packed, aligned(1))) LM_wifi_host_t;
-
-typedef struct{
-    int count;
-    LM_wifi_host_t   host[LM_MAX_HOSTS_NUM];
-}__attribute__((packed, aligned(1))) LM_wifi_hosts_t;
-#endif
-
 #define MIN_MAC_LEN     12
 
 #define  COSA_DATAMODEL_WIFI_CLASS_CONTENT                                                  \

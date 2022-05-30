@@ -166,31 +166,28 @@ void CosaDmlWiFiGetDataFromPSM(void)
 
     if (CosaDmlWiFi_GetGoodRssiThresholdValue(&rssi) != ANSC_STATUS_SUCCESS) {
         /* Set default value */
-	rssi = -65;   
+        rssi = -65;
     }
     set_vap_dml_parameters(RSSI_THRESHOLD, &rssi);
     
-    for(index = 0; index < MAX_VAP; index++)
+    for (index = 0; index < getTotalNumberVAPs(); index++)
     {
-        if(CosaDmlWiFi_GetRapidReconnectCountEnable(index , (BOOLEAN *) &bReconnectCountEnable, false) != ANSC_STATUS_SUCCESS)
-	{
-	    /* Set default value */
-	    if((index == 0) || (index == 1))
-	    {
-	        bReconnectCountEnable = 1;
-	    }
-	    else
-	    {
-	        bReconnectCountEnable = 0;
-	    }
-	}
+        if (CosaDmlWiFi_GetRapidReconnectCountEnable(index , (BOOLEAN *) &bReconnectCountEnable, false) != ANSC_STATUS_SUCCESS)
+        {
+            /* Set default value */
+            if (isVapPrivate(index)) {
+                bReconnectCountEnable = 1;
+            } else {
+                bReconnectCountEnable = 0;
+            }
+        }
         set_multi_vap_dml_parameters(index, RECONNECT_COUNT_STATUS, &bReconnectCountEnable);
     }
 
     if(CosaDmlWiFi_GetFeatureMFPConfigValue((BOOLEAN *) &bFeatureMFPConfig) != ANSC_STATUS_SUCCESS)
     {
         /* Set Default value */
-        bFeatureMFPConfig = 0;	
+        bFeatureMFPConfig = 0;
     }
     set_vap_dml_parameters(MFP_FEATURE_STATUS, &bFeatureMFPConfig);
 
@@ -342,11 +339,11 @@ void CosaDmlWiFiGetRFCDataFromPSM(void)
 {
     int retPsmGet = CCSP_SUCCESS;
     char *strValue = NULL;
-    UINT l_interworking_RFC, l_passpoint_RFC;
+    bool l_interworking_RFC, l_passpoint_RFC;
 #if defined (FEATURE_SUPPORT_RADIUSGREYLIST)
     bool wifi_radius_greylist_status;
 #endif
-    bool rfc;
+   // bool rfc;
     char recName[256] = {0x0};
 
     memset(recName, 0, sizeof(recName));
@@ -362,8 +359,7 @@ void CosaDmlWiFiGetRFCDataFromPSM(void)
         /* Set default value */
 	l_interworking_RFC = 0;
     }
-    set_wifi_rfc_parameters(RFC_WIFI_INTERWORKING_STATUS, &l_interworking_RFC);
-
+    push_rfc_dml_cache_to_one_wifidb(l_interworking_RFC,ctrl_event_type_wifi_interworking_rfc);
     retPsmGet = PSM_Get_Record_Value2(bus_handle,g_Subsystem, "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.WiFi-Passpoint.Enable", NULL, &strValue);
     if ((retPsmGet == CCSP_SUCCESS) && (strValue)){
         l_passpoint_RFC = _ansc_atoi(strValue);
@@ -375,41 +371,12 @@ void CosaDmlWiFiGetRFCDataFromPSM(void)
 	l_passpoint_RFC = 0;
     }
 
-    set_wifi_rfc_parameters(RFC_WIFI_PASSPOINT_STATUS, &l_passpoint_RFC);
+    push_rfc_dml_cache_to_one_wifidb(l_passpoint_RFC,ctrl_event_type_wifi_passpoint_rfc);
 
 
 #if defined (FEATURE_SUPPORT_RADIUSGREYLIST)
     CosaDmlWiFiGetEnableRadiusGreylist((BOOLEAN *)&wifi_radius_greylist_status);
-    set_wifi_rfc_parameters(RFC_WIFI_RADIUS_GREYLIST_STATUS, &wifi_radius_greylist_status);
-#endif
-
-    memset(recName, 0, sizeof(recName));
-    sprintf(recName, "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.WifiClient.ActiveMeasurements.Enable");
-    if (PSM_Get_Record_Value2(bus_handle,g_Subsystem, recName, NULL, &strValue) != CCSP_SUCCESS) {
-        wifi_util_dbg_print(WIFI_CTRL,"%s : fetching the PSM db failed for ActiveMsmt RFC\n", __func__);
-	/* Set default value */
-        rfc = 0;
-    }
-    else
-    {
-        rfc = atoi(strValue); 
-    }
-    set_wifi_rfc_parameters(RFC_WIFI_CLIENT_ACTIVE_MEASUREMENTS, &rfc);
-
-#if !defined(_HUB4_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_)
-    memset(recName, 0, sizeof(recName));
-    sprintf(recName, "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.EasyConnect.Enable");
-
-    if(PSM_Get_Record_Value2(bus_handle,g_Subsystem, recName, NULL, &strValue) != CCSP_SUCCESS) {
-        wifi_util_dbg_print(WIFI_CTRL,"%s: fail to get PSM record for RFC EasyConnect\n",__func__);
-	/* Set Deafult value */
-        rfc = 1;
-    }
-    else
-    {
-        rfc = atoi(strValue);
-    }
-    set_wifi_rfc_parameters(RFC_WIFI_EASY_CONNECT, &rfc);
+    push_rfc_dml_cache_to_one_wifidb(wifi_radius_greylist_status,ctrl_event_type_wifi_passpoint_rfc);
 #endif
 }
 
@@ -469,7 +436,7 @@ CosaWifiInitialize
 
         goto  EXIT;
     }
-    
+
     /*Get Wifi entry*/
     pPoamIrepFoWifi = 
         (PPOAM_IREP_FOLDER_OBJECT)pPoamIrepFoCOSA->GetFolder
@@ -520,18 +487,18 @@ CosaWifiInitialize
     wifi_util_dbg_print(WIFI_DMCLI, "%s: DML cahce %s\n", __FUNCTION__,webconfig_dml->radios[0].vaps.vap_map.vap_array[0].u.bss_info.ssid);
     CcspWifiTrace(("RDK_LOG_WARN, RDKB_SYSTEM_BOOT_UP_LOG : CosaWifiInitialize - WiFi initialization complete. \n"));
     t2_event_d("WIFI_INFO_CosaWifiinit",1);
-
 #ifdef FEATURE_SUPPORT_WIFIDB
     CosaDmlWiFiGetDataFromPSM();
     CosaDmlWiFiGetExternalDataFromPSM();
     CosaDmlWiFiGetRFCDataFromPSM();
+
 #endif//ONE_WIFI
 
 EXIT:
         CcspTraceWarning(("CosaWifiInitialize - returnStatus %ld\n", returnStatus));
 
 #ifdef FEATURE_SUPPORT_WIFIDB
-        set_dml_init_status(true);
+    set_dml_init_status(true);
 #endif//ONE_WIFI
 
 	return returnStatus;

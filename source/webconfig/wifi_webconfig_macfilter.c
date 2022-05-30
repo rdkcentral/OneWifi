@@ -52,11 +52,29 @@ webconfig_error_t access_check_mac_filter_subdoc(webconfig_t *config, webconfig_
 webconfig_error_t translate_from_mac_filter_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
 {
     // no translation required
+    if ((data->descriptor & webconfig_data_descriptor_translate_to_ovsdb) == webconfig_data_descriptor_translate_to_ovsdb) {
+        if (translate_to_ovsdb_tables(webconfig_subdoc_type_mac_filter, data) != webconfig_error_none) {
+            return webconfig_error_translate_to_ovsdb;
+        }
+    } else if ((data->descriptor & webconfig_data_descriptor_translate_to_tr181) == webconfig_data_descriptor_translate_to_tr181) {
+
+    } else {
+        // no translation required
+    }
     return webconfig_error_none;
 }
 
 webconfig_error_t translate_to_mac_filter_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
 {
+    if ((data->descriptor & webconfig_data_descriptor_translate_from_ovsdb) == webconfig_data_descriptor_translate_from_ovsdb) {
+        if (translate_from_ovsdb_tables(webconfig_subdoc_type_mac_filter, data) != webconfig_error_none) {
+            return webconfig_error_translate_from_ovsdb;
+        }
+    } else if ((data->descriptor & webconfig_data_descriptor_translate_from_tr181) == webconfig_data_descriptor_translate_from_tr181) {
+
+    } else {
+        // no translation required
+    }
     return webconfig_error_none;
 }
 
@@ -116,6 +134,14 @@ webconfig_error_t encode_mac_filter_subdoc(webconfig_t *config, webconfig_subdoc
     memcpy(data->u.encoded.raw, str, strlen(str));
     cJSON_Delete(json);
 
+    //Check the descriptor is ovsdb, free it
+    if ((data->descriptor & webconfig_data_descriptor_translate_from_ovsdb) == webconfig_data_descriptor_translate_from_ovsdb) {
+        if (free_vap_object_macfilter_entries(data) != webconfig_error_none) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: mac entries free failed\n", __func__, __LINE__);
+            return webconfig_error_encode;
+        }
+    }
+
     return webconfig_error_none;
 }
 
@@ -141,7 +167,6 @@ webconfig_error_t decode_mac_filter_subdoc(webconfig_t *config, webconfig_subdoc
     }
     doc = &config->subdocs[data->type];
 
-    memset(params, 0, sizeof(webconfig_subdoc_decoded_data_t));
     wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Encoded JSON:\n%s\n", __func__, __LINE__, data->u.encoded.raw);
 
     for (i = 0; i < doc->num_objects; i++) {
@@ -170,17 +195,17 @@ webconfig_error_t decode_mac_filter_subdoc(webconfig_t *config, webconfig_subdoc
     for (i = 0; i < size; i++) {
         obj_acl = cJSON_GetArrayItem(obj_mac, i);
         name = cJSON_GetStringValue(cJSON_GetObjectItem(obj_acl, "VapName"));
-        radio_index = convert_vap_name_to_radio_array_index(name);
-        vap_array_index = convert_vap_name_to_array_index(name);
+        radio_index = convert_vap_name_to_radio_array_index(&params->hal_cap.wifi_prop, name);
+        vap_array_index = convert_vap_name_to_array_index(&params->hal_cap.wifi_prop, name);
         rdk_vap_info = &params->radios[radio_index].vaps.rdk_vap_array[vap_array_index];
-        rdk_vap_info->vap_index = convert_vap_name_to_index(name);
+        rdk_vap_info->acl_map = NULL;
+        rdk_vap_info->vap_index = convert_vap_name_to_index(&params->hal_cap.wifi_prop, name);
         if (decode_mac_object(rdk_vap_info, obj_acl) != webconfig_error_none) {
             wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: mac state object validation failed\n",
                     __func__, __LINE__);
             cJSON_Delete(json);
             return webconfig_error_decode;
         }
-        params->radios[radio_index].vaps.vap_map.num_vaps++;
     }
 
     wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Validation success\n", __func__, __LINE__);

@@ -1045,6 +1045,12 @@ webconfig_error_t decode_personal_security_object(const cJSON *security, wifi_va
         security_info->encr = wifi_encryption_aes;
     } else if(strcmp(param->valuestring, "AES+TKIP") == 0) {
         security_info->encr = wifi_encryption_aes_tkip;
+    } else if(strcmp(param->valuestring, "None") == 0) {
+        security_info->encr = wifi_encryption_none;
+        if (security_info->mode != wifi_security_mode_none) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Incorrect encryption method\n", __func__, __LINE__);
+            return webconfig_error_decode;
+        }
     } else {
         //strncpy(execRetVal->ErrorMsg, "Invalid Encryption method",sizeof(execRetVal->ErrorMsg)-1);
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Incorrect encryption method\n", __func__, __LINE__);
@@ -1060,10 +1066,11 @@ webconfig_error_t decode_personal_security_object(const cJSON *security, wifi_va
 
     decode_param_string(security, "Passphrase", param);
 
-    if ((strlen(param->valuestring) < MIN_PWD_LEN) || (strlen(param->valuestring) > MAX_PWD_LEN)) {
-        //strncpy(execRetVal->ErrorMsg, "Invalid Key passphrase length",sizeof(execRetVal->ErrorMsg)-1);
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Incorrect password length\n", __func__, __LINE__);
-        return webconfig_error_decode;
+    if (security_info->mode != wifi_security_mode_none) {
+        if ((strlen(param->valuestring) < MIN_PWD_LEN) || (strlen(param->valuestring) > MAX_PWD_LEN)) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Incorrect password length\n", __func__, __LINE__);
+            return webconfig_error_decode;
+        }
     }
 
     strncpy(security_info->u.key.key, param->valuestring,
@@ -1186,7 +1193,13 @@ webconfig_error_t decode_security_object(const cJSON *security, wifi_vap_securit
             security_info->encr = wifi_encryption_aes;
         } else if(strcmp(param->valuestring, "AES+TKIP") == 0) {
             security_info->encr = wifi_encryption_aes_tkip;
-        } else {
+        } else if(strcmp(param->valuestring, "None") == 0) {
+            security_info->encr = wifi_encryption_none;
+            if (security_info->mode != wifi_security_mode_none) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Incorrect encryption method\n", __func__, __LINE__);
+                return webconfig_error_decode;
+            }
+        }  else {
             //strncpy(execRetVal->ErrorMsg, "Invalid Encryption method",sizeof(execRetVal->ErrorMsg)-1);
             wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Incorrect encryption method\n", __func__, __LINE__);
             return webconfig_error_decode;
@@ -1201,10 +1214,11 @@ webconfig_error_t decode_security_object(const cJSON *security, wifi_vap_securit
 
         decode_param_string(security, "Passphrase", param);
 
-        if ((strlen(param->valuestring) < MIN_PWD_LEN) || (strlen(param->valuestring) > MAX_PWD_LEN)) {
-            //strncpy(execRetVal->ErrorMsg, "Invalid Key passphrase length",sizeof(execRetVal->ErrorMsg)-1);
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Incorrect password length\n", __func__, __LINE__);
-            return webconfig_error_decode;
+        if (security_info->mode != wifi_security_mode_none) {
+            if ((strlen(param->valuestring) < MIN_PWD_LEN) || (strlen(param->valuestring) > MAX_PWD_LEN)) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Incorrect password length\n", __func__, __LINE__);
+                return webconfig_error_decode;
+            }
         }
 
         strncpy(security_info->u.key.key, param->valuestring,
@@ -1256,7 +1270,7 @@ webconfig_error_t decode_contry_code(wifi_countrycode_type_t *contry_code, char 
     return webconfig_error_decode;
 }
 
-webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *vap_info)
+webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_property_t *wifi_prop)
 {
     const cJSON  *param;
 
@@ -1264,7 +1278,7 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
     decode_param_string(vap, "VapName", param);
     strcpy(vap_info->vap_name, param->valuestring);
 
-    vap_info->vap_index = convert_vap_name_to_index(vap_info->vap_name);
+    vap_info->vap_index = convert_vap_name_to_index(wifi_prop, vap_info->vap_name);
 
     // Radio Index
     decode_param_integer(vap, "RadioIndex", param);
@@ -1286,6 +1300,10 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s %d : Ssid name validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
+
+    // BSSID
+    decode_param_string(vap, "BSSID", param);
+    string_mac_to_uint8_mac(vap_info->u.bss_info.bssid, param->valuestring);
 
     // Enabled
     decode_param_bool(vap, "Enabled", param);
@@ -1376,13 +1394,13 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
     return webconfig_error_none;
 }
 
-webconfig_error_t decode_hotspot_open_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info)
+webconfig_error_t decode_hotspot_open_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_property_t *wifi_prop)
 {
     const cJSON *security, *interworking;
     webconfig_error_t ret = webconfig_error_none;
 
     // first decode the common objects
-    if ((ret = decode_vap_common_object(vap, vap_info)) != webconfig_error_none) {
+    if ((ret = decode_vap_common_object(vap, vap_info, wifi_prop)) != webconfig_error_none) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Common vap objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -1408,13 +1426,13 @@ webconfig_error_t decode_hotspot_open_vap_object(const cJSON *vap, wifi_vap_info
     return webconfig_error_none;
 }
 
-webconfig_error_t decode_hotspot_secure_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info)
+webconfig_error_t decode_hotspot_secure_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_property_t *wifi_prop)
 {
     const cJSON *security, *interworking;
     webconfig_error_t ret = webconfig_error_none;
 
     // first decode the common objects
-    if ((ret = decode_vap_common_object(vap, vap_info)) != webconfig_error_none) {
+    if ((ret = decode_vap_common_object(vap, vap_info, wifi_prop)) != webconfig_error_none) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Common vap objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -1440,13 +1458,13 @@ webconfig_error_t decode_hotspot_secure_vap_object(const cJSON *vap, wifi_vap_in
     return webconfig_error_none;
 }
 
-webconfig_error_t decode_lnf_psk_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info)
+webconfig_error_t decode_lnf_psk_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_property_t *wifi_prop)
 {
     const cJSON *security, *interworking;
     webconfig_error_t ret = webconfig_error_none;
 
     // first decode the common objects
-    if ((ret = decode_vap_common_object(vap, vap_info)) != webconfig_error_none) {
+    if ((ret = decode_vap_common_object(vap, vap_info, wifi_prop)) != webconfig_error_none) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Common vap objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -1472,13 +1490,13 @@ webconfig_error_t decode_lnf_psk_vap_object(const cJSON *vap, wifi_vap_info_t *v
     return webconfig_error_none;
 }
 
-webconfig_error_t decode_lnf_radius_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info)
+webconfig_error_t decode_lnf_radius_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_property_t *wifi_prop)
 {
     const cJSON *security, *interworking;
     webconfig_error_t ret = webconfig_error_none;
 
     // first decode the common objects
-    if ((ret = decode_vap_common_object(vap, vap_info)) != webconfig_error_none) {
+    if ((ret = decode_vap_common_object(vap, vap_info, wifi_prop)) != webconfig_error_none) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Common vap objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -1504,13 +1522,13 @@ webconfig_error_t decode_lnf_radius_vap_object(const cJSON *vap, wifi_vap_info_t
     return webconfig_error_none;
 }
 
-webconfig_error_t decode_iot_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info)
+webconfig_error_t decode_iot_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_property_t *wifi_prop)
 {
     const cJSON *security, *interworking;
     webconfig_error_t ret = webconfig_error_none;
 
     // first decode the common objects
-    if ((ret = decode_vap_common_object(vap, vap_info)) != webconfig_error_none) {
+    if ((ret = decode_vap_common_object(vap, vap_info, wifi_prop)) != webconfig_error_none) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Common vap objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -1536,13 +1554,13 @@ webconfig_error_t decode_iot_vap_object(const cJSON *vap, wifi_vap_info_t *vap_i
     return webconfig_error_none;
 }
 
-webconfig_error_t decode_mesh_backhaul_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info)
+webconfig_error_t decode_mesh_backhaul_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_property_t *wifi_prop)
 {
     const cJSON *security, *interworking;
     webconfig_error_t ret = webconfig_error_none;
 
     // first decode the common objects
-    if ((ret = decode_vap_common_object(vap, vap_info)) != webconfig_error_none) {
+    if ((ret = decode_vap_common_object(vap, vap_info, wifi_prop)) != webconfig_error_none) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Common vap objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -1568,13 +1586,13 @@ webconfig_error_t decode_mesh_backhaul_vap_object(const cJSON *vap, wifi_vap_inf
     return webconfig_error_none;
 }
 
-webconfig_error_t decode_private_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info)
+webconfig_error_t decode_private_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_property_t *wifi_prop)
 {
     const cJSON *security, *interworking;
     webconfig_error_t ret = webconfig_error_none;
 
     // first decode the common objects
-    if ((ret = decode_vap_common_object(vap, vap_info)) != webconfig_error_none) {
+    if ((ret = decode_vap_common_object(vap, vap_info, wifi_prop)) != webconfig_error_none) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Common vap objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -1601,18 +1619,18 @@ webconfig_error_t decode_private_vap_object(const cJSON *vap, wifi_vap_info_t *v
     return webconfig_error_none;
 }
 
-webconfig_error_t decode_mesh_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info)
+webconfig_error_t decode_mesh_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_property_t *wifi_prop)
 {
-    return decode_private_vap_object(vap, vap_info);
+    return decode_private_vap_object(vap, vap_info, wifi_prop);
 }
 
-webconfig_error_t decode_wifiapi_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info)
+webconfig_error_t decode_wifiapi_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_property_t *wifi_prop)
 {
     const cJSON *security, *interworking;
     webconfig_error_t ret = webconfig_error_none;
 
     // first decode the common objects
-    if ((ret = decode_vap_common_object(vap, vap_info)) != webconfig_error_none) {
+    if ((ret = decode_vap_common_object(vap, vap_info, wifi_prop)) != webconfig_error_none) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Common vap objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -1654,7 +1672,7 @@ webconfig_error_t decode_scan_params_object(const cJSON *scan_obj, wifi_scan_par
     return webconfig_error_none;
 }
 
-webconfig_error_t decode_mesh_sta_object(const cJSON *vap, wifi_vap_info_t *vap_info)
+webconfig_error_t decode_mesh_sta_object(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_property_t *wifi_prop)
 {
     const cJSON  *param, *security, *scan;
 
@@ -1662,7 +1680,7 @@ webconfig_error_t decode_mesh_sta_object(const cJSON *vap, wifi_vap_info_t *vap_
     decode_param_string(vap, "VapName", param);
     strcpy(vap_info->vap_name, param->valuestring);
 
-    vap_info->vap_index = convert_vap_name_to_index(vap_info->vap_name);
+    vap_info->vap_index = convert_vap_name_to_index(wifi_prop, vap_info->vap_name);
 
     // Radio Index
     decode_param_integer(vap, "RadioIndex", param);
@@ -1673,8 +1691,12 @@ webconfig_error_t decode_mesh_sta_object(const cJSON *vap, wifi_vap_info_t *vap_
     vap_info->vap_mode = param->valuedouble;
 
     //Bridge Name
-    decode_param_string(vap, "BridgeName", param);
-    strncpy(vap_info->bridge_name, param->valuestring,WIFI_BRIDGE_NAME_LEN-1);
+    param = cJSON_GetObjectItem(vap, "BridgeName");
+    if ((param != NULL) && (cJSON_IsString(param) == true) && (param->valuestring != NULL)) {
+        strncpy(vap_info->bridge_name, param->valuestring,WIFI_BRIDGE_NAME_LEN-1);
+    } else {
+        vap_info->bridge_name[0] = '\0';
+    }
 
     // SSID
     decode_param_string(vap, "SSID", param);
@@ -1683,6 +1705,14 @@ webconfig_error_t decode_mesh_sta_object(const cJSON *vap, wifi_vap_info_t *vap_
     // BSSID
     decode_param_string(vap, "BSSID", param);
     string_mac_to_uint8_mac(vap_info->u.sta_info.bssid, param->valuestring);
+
+    // MAC
+    decode_param_string(vap, "MAC", param);
+    string_mac_to_uint8_mac(vap_info->u.sta_info.mac, param->valuestring);
+
+    // Enabled
+    decode_param_bool(vap, "Enabled", param);
+    vap_info->u.sta_info.enabled = (param->type & cJSON_True) ? true:false;
 
     decode_param_object(vap, "Security", security);
     if (decode_personal_security_object(security, &vap_info->u.sta_info.security) != webconfig_error_none) {
@@ -1820,6 +1850,10 @@ webconfig_error_t decode_wifi_global_config(const cJSON *global_cfg, wifi_global
     decode_param_bool(global_cfg, "ValidateSsid", param);
     global_info->validate_ssid = (param->type & cJSON_True) ? true:false;
 
+    // DeviceNetworkMode
+    decode_param_integer(global_cfg, "DeviceNetworkMode", param);
+    global_info->device_network_mode = param->valuedouble;
+
     wifi_util_dbg_print(WIFI_WEBCONFIG,"wifi global Parameters decode successfully\n");
     return webconfig_error_none;
 }
@@ -1908,6 +1942,7 @@ webconfig_error_t decode_wifi_channel(wifi_freq_bands_t wifi_band, UINT *wifi_ra
 int validate_wifi_hw_variant(wifi_freq_bands_t radio_band, wifi_ieee80211Variant_t wifi_hw_mode)
 {
     if (wifi_hw_mode == 0) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s() %d Error %d\n", __FUNCTION__, __LINE__, wifi_hw_mode);
         return RETURN_ERR;
     }
 
@@ -1919,6 +1954,7 @@ int validate_wifi_hw_variant(wifi_freq_bands_t radio_band, wifi_ieee80211Variant
         wifi_hw_mode &= ~(1UL << 7);
 
         if(wifi_hw_mode != 0) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s() %d Error\n", __FUNCTION__, __LINE__);
             return RETURN_ERR;
         }
     } else if (radio_band == WIFI_FREQUENCY_5_BAND) {
@@ -1930,6 +1966,7 @@ int validate_wifi_hw_variant(wifi_freq_bands_t radio_band, wifi_ieee80211Variant
         wifi_hw_mode &= ~(1UL << 7);
 
         if (wifi_hw_mode != 0) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s() %d Error\n", __FUNCTION__, __LINE__);
             return RETURN_ERR;
         }
     } else if (radio_band == WIFI_FREQUENCY_6_BAND) {
@@ -1937,6 +1974,7 @@ int validate_wifi_hw_variant(wifi_freq_bands_t radio_band, wifi_ieee80211Variant
         wifi_hw_mode &= ~(1UL << 7);
 
         if (wifi_hw_mode != 0) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s() %d Error\n", __FUNCTION__, __LINE__);
             return RETURN_ERR;
         }
     } else if (radio_band == WIFI_FREQUENCY_60_BAND) {
@@ -1944,10 +1982,10 @@ int validate_wifi_hw_variant(wifi_freq_bands_t radio_band, wifi_ieee80211Variant
         wifi_hw_mode &= ~(1UL << 6);
 
         if (wifi_hw_mode != 0) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s() %d Error\n", __FUNCTION__, __LINE__);
             return RETURN_ERR;
         }
     }
-
     return RETURN_OK;
 }
 
@@ -2000,10 +2038,18 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
     // FreqBand
     decode_param_integer(obj_radio, "FreqBand", param);
     radio_info->band = param->valuedouble;
-    if ((radio_info->band < 0) || (radio_info->band > 3)) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG,"Invalid wifi radio band configuration, should be between 0 and 3\n");
-        //strncpy(execRetVal->ErrorMsg, "Invalid wifi radio band config 0..3",sizeof(execRetVal->ErrorMsg)-1);
-        return webconfig_error_decode;
+    switch(radio_info->band) {
+        case WIFI_FREQUENCY_2_4_BAND:
+        case WIFI_FREQUENCY_5_BAND:
+        case WIFI_FREQUENCY_5L_BAND:
+        case WIFI_FREQUENCY_5H_BAND:
+        case WIFI_FREQUENCY_6_BAND:
+        case WIFI_FREQUENCY_60_BAND:
+            break;
+
+        default:
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"Invalid wifi radio band 0x%x\n", radio_info->band);
+            return webconfig_error_decode;
     }
 
     if (convert_freq_band_to_radio_index(radio_info->band, &radio_index) != webconfig_error_none) {
@@ -2058,9 +2104,11 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
     // ChannelWidth
     decode_param_integer(obj_radio, "ChannelWidth", param);
     radio_info->channelWidth = param->valuedouble;
-    if ((radio_info->channelWidth < 0) || (radio_info->channelWidth > 4)) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG,"Invalid wifi radio channelWidth configuration, should be between 0 and 4\n");
-        //strncpy(execRetVal->ErrorMsg, "Invalid wifi radio channelWidth config 0..4",sizeof(execRetVal->ErrorMsg)-1);
+    if ((radio_info->channelWidth < WIFI_CHANNELBANDWIDTH_20MHZ)
+            || (radio_info->channelWidth > WIFI_CHANNELBANDWIDTH_80_80MHZ)) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"Invalid wifi radio channelWidth[%d] configuration,\
+            should be between %d and %d\n", radio_info->channelWidth, WIFI_CHANNELBANDWIDTH_20MHZ,
+                                            WIFI_CHANNELBANDWIDTH_80_80MHZ);
         return webconfig_error_decode;
     }
 
@@ -2420,15 +2468,6 @@ webconfig_error_t decode_vap_state_object(const cJSON *obj_v_state, schema_wifi_
        return webconfig_error_none;
 }
 
-static void to_mac_bytes   (mac_addr_str_t key, mac_address_t bmac) {
-   unsigned int mac[6];
-    sscanf(key, "%02x:%02x:%02x:%02x:%02x:%02x",
-             &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
-   bmac[0] = mac[0]; bmac[1] = mac[1]; bmac[2] = mac[2];
-   bmac[3] = mac[3]; bmac[4] = mac[4]; bmac[5] = mac[5];
-
-}
-
 webconfig_error_t decode_associated_clients_object(rdk_wifi_vap_info_t *rdk_vap_info, cJSON *assoc_array)
 {
     if ((rdk_vap_info == NULL) || (assoc_array == NULL)) {
@@ -2533,6 +2572,7 @@ webconfig_error_t decode_associated_clients_object(rdk_wifi_vap_info_t *rdk_vap_
             free(assoc_dev_data);
             return webconfig_error_decode;
         }
+        assoc_dev_data->dev_stats.cli_Active = (value_object->type & cJSON_True) ? true:false;
 
         value_object = cJSON_GetObjectItem(assoc_client, "OperatingStandard");
         if ((value_object == NULL) || (cJSON_IsString(value_object) == false)) {
@@ -2736,13 +2776,11 @@ webconfig_error_t decode_mac_object(rdk_wifi_vap_info_t *rdk_vap_info, cJSON *ob
     }
 
     mac_address_t mac;
-    cJSON *client, *obj_acl, *obj_acl_add, *obj_acl_del, *mac_object;
+    cJSON *client, *obj_acl, *mac_object, *device_name;
     unsigned int size = 0, i = 0;
     acl_entry_t *acl_entry;
 
     obj_acl =  cJSON_GetObjectItem(obj_array, "MACFilterList");
-    obj_acl_add = cJSON_GetObjectItem(obj_array, "MACListToAdd");
-    obj_acl_del = cJSON_GetObjectItem(obj_array, "MACListToDelete");
 
     size = cJSON_GetArraySize(obj_acl);
 
@@ -2763,57 +2801,22 @@ webconfig_error_t decode_mac_object(rdk_wifi_vap_info_t *rdk_vap_info, cJSON *ob
             rdk_vap_info->acl_map = hash_map_create();
         }
         memcpy(&acl_entry->mac, mac, sizeof(mac_address_t));
-        acl_entry->acl_action_type = acl_action_none;
-        hash_map_put(rdk_vap_info->acl_map, strdup(tmp_mac), acl_entry);
-    }
-
-    size = cJSON_GetArraySize(obj_acl_add);
-
-    for (i=0; i<size; i++) {
-        mac_object  = cJSON_GetArrayItem(obj_acl_add, i);
-        client = cJSON_GetObjectItem(mac_object, "MAC");
-        char *tmp_mac = cJSON_GetStringValue(client);
-
-        to_mac_bytes(tmp_mac, mac);
-        acl_entry = (acl_entry_t *)malloc(sizeof(acl_entry_t));
-        if (acl_entry == NULL) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer \n", __func__, __LINE__);
+        device_name = cJSON_GetObjectItem(mac_object, "DeviceName");
+        if ((device_name == NULL) || (cJSON_IsString(device_name) == false)) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
+            free(acl_entry);
             return webconfig_error_decode;
         }
-
-        memset(acl_entry, 0, (sizeof(acl_entry_t)));
-
-        if(!rdk_vap_info->acl_map) {
-            rdk_vap_info->acl_map = hash_map_create();
-        }
-        memcpy(&acl_entry->mac, mac, sizeof(mac_address_t));
-        acl_entry->acl_action_type = acl_action_add;
-        hash_map_put(rdk_vap_info->acl_map, strdup(tmp_mac), acl_entry);
-    }
-
-    size = cJSON_GetArraySize(obj_acl_del);
-
-    for (i=0; i<size; i++) {
-        mac_object  = cJSON_GetArrayItem(obj_acl_del, i);
-        client = cJSON_GetObjectItem(mac_object, "MAC");
-        char *tmp_mac = cJSON_GetStringValue(client);
-
-        to_mac_bytes(tmp_mac, mac);
-        acl_entry = (acl_entry_t*)malloc(sizeof(acl_entry_t));
-        if (acl_entry == NULL) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer \n", __func__, __LINE__);
+        char *tmp_device_name = cJSON_GetStringValue(device_name);
+        if (tmp_device_name == NULL) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
+            free(acl_entry);
             return webconfig_error_decode;
         }
-
-        memset(acl_entry, 0, (sizeof(acl_entry_t)));
-
-        if(!rdk_vap_info->acl_map) {
-            rdk_vap_info->acl_map = hash_map_create();
-        }
-        memcpy(&acl_entry->mac, mac, sizeof(mac_address_t));
-        acl_entry->acl_action_type = acl_action_del;
+        strncpy(acl_entry->device_name, tmp_device_name, sizeof(acl_entry->device_name)-1);
         hash_map_put(rdk_vap_info->acl_map, strdup(tmp_mac), acl_entry);
     }
+
     return webconfig_error_none;
 }
 
@@ -2876,3 +2879,167 @@ webconfig_error_t decode_harvester_object(const cJSON *obj, instant_measurement_
 
     return webconfig_error_none;
 }
+
+webconfig_error_t decode_wificap(wifi_interface_name_idex_map_t *interface_map, cJSON *object)
+{
+    cJSON *value_object;
+    char *tmp_string;
+
+        value_object = cJSON_GetObjectItem(object, "VapName");
+        if ((value_object == NULL) || (cJSON_IsString(value_object) == false)){
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
+            return webconfig_error_decode;
+        }
+
+        tmp_string = cJSON_GetStringValue(value_object);
+        if (tmp_string == NULL) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: NULL pointer \n", __func__, __LINE__);
+            return webconfig_error_decode;
+        }
+
+        strncpy(interface_map->vap_name, tmp_string, sizeof(interface_map->vap_name)-1);
+
+        value_object = cJSON_GetObjectItem(object, "PhyIndex");
+        if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
+            return webconfig_error_decode;
+        }
+
+        interface_map->phy_index = value_object->valuedouble;
+
+        value_object = cJSON_GetObjectItem(object, "RadioIndex");
+        if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
+            return webconfig_error_decode;
+        }
+
+        interface_map->rdk_radio_index = value_object->valuedouble;
+
+        value_object = cJSON_GetObjectItem(object, "InterfaceName");
+        if ((value_object == NULL) || (cJSON_IsString(value_object) == false)){
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
+            return webconfig_error_decode;
+        }
+
+        tmp_string = cJSON_GetStringValue(value_object);
+        if (tmp_string == NULL) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: NULL pointer \n", __func__, __LINE__);
+            return webconfig_error_decode;
+        }
+
+        strncpy(interface_map->interface_name, tmp_string, sizeof(interface_map->interface_name) - 1);
+
+        value_object = cJSON_GetObjectItem(object, "BridgeName");
+        if ((value_object == NULL) || (cJSON_IsString(value_object) == false)){
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
+            return webconfig_error_decode;
+        }
+
+        tmp_string = cJSON_GetStringValue(value_object);
+        if (tmp_string == NULL) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: NULL pointer \n", __func__, __LINE__);
+            return webconfig_error_decode;
+        }
+
+        strncpy(interface_map->bridge_name, tmp_string, sizeof(interface_map->bridge_name) - 1);
+
+        value_object = cJSON_GetObjectItem(object, "VLANID");
+        if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
+            return webconfig_error_decode;
+        }
+        interface_map->vlan_id = value_object->valuedouble;
+ 
+        value_object = cJSON_GetObjectItem(object, "Primary");
+        if ((value_object == NULL) || (cJSON_IsBool(value_object) == false)) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
+            return webconfig_error_decode;
+        }
+        interface_map->primary = (value_object->type & cJSON_True) ? true:false;
+
+        value_object = cJSON_GetObjectItem(object, "Index");
+        if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
+            return webconfig_error_decode;
+        }
+
+        interface_map->index = value_object->valuedouble;
+
+        return webconfig_error_none;
+}
+
+webconfig_error_t decode_csi_object(queue_t** csi_queue, cJSON *object)
+{
+    unsigned int size, itr, count=0;
+    char *tmp_string;
+    cJSON *obj_mac, *value_object, *obj_array;
+
+    csi_data_t *csi_data  = (csi_data_t *)malloc(sizeof(csi_data_t));
+    if (csi_data == NULL) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: NULL Data Pointer\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+    memset(csi_data, 0, sizeof(csi_data_t));
+
+    obj_array = cJSON_GetObjectItem(object, "MACArray");
+    if ((obj_array == NULL) && (cJSON_IsArray(obj_array) == false)) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
+        free(csi_data);
+        return webconfig_error_decode;
+    }
+    size = cJSON_GetArraySize(obj_array);
+    if ((size > CSI_CLIENT_PER_SESSION)) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Invalid Array size %d\n", __func__, __LINE__, size);
+        free(csi_data);
+        return webconfig_error_decode;
+    }
+    for (itr=0; itr<size; itr++) {
+        obj_mac = cJSON_GetArrayItem(obj_array, itr);
+        if (obj_mac == NULL) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: NULL Pointer \n", __func__, __LINE__);
+            free(csi_data);
+            return webconfig_error_decode;
+        }
+
+        value_object = cJSON_GetObjectItem(obj_mac, "macaddress");
+        if ((value_object == NULL) || (cJSON_IsString(value_object) == false)){
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
+            free(csi_data);
+            return webconfig_error_decode;
+        }
+
+        tmp_string = cJSON_GetStringValue(value_object);
+        if (tmp_string == NULL) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: NULL pointer \n", __func__, __LINE__);
+            free(csi_data);
+            return webconfig_error_decode;
+        }
+        to_mac_bytes(tmp_string, csi_data->csi_client_list[itr]);
+        count++;
+    }
+    csi_data->csi_client_count = count;
+
+    value_object = cJSON_GetObjectItem(object, "SessionID");
+    if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)){
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
+        free(csi_data);
+        return webconfig_error_decode;
+    }
+
+    csi_data->csi_session_num = value_object->valuedouble;
+
+    value_object = cJSON_GetObjectItem(object, "Enabled");
+    if ((value_object == NULL) || (cJSON_IsBool(value_object) == false)) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
+        free(csi_data);
+        return webconfig_error_decode;
+    }
+
+    csi_data->enabled = (value_object->type & cJSON_True) ? true:false;
+    if (*csi_queue == NULL) {
+        *csi_queue = queue_create();
+    }
+    queue_push(*csi_queue, csi_data);
+    return webconfig_error_none;
+}
+

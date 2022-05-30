@@ -146,6 +146,19 @@
         PJS_OVS_INT(query_responselength_limit)\
    )
 
+#define PJS_SCHEMA_Wifi_Rfc_Config \
+   PJS(schema_Wifi_Rfc_Config, \
+        PJS_OVS_UUID_Q(_uuid)\
+        PJS_OVS_UUID_Q(_version)\
+        PJS_OVS_STRING(rfc_id, 4 + 1)\
+        PJS_OVS_BOOL(wifipasspoint_rfc) \
+        PJS_OVS_BOOL(wifiinterworking_rfc) \
+        PJS_OVS_BOOL(radiusgreylist_rfc) \
+        PJS_OVS_BOOL(dfsatbootup_rfc) \
+        PJS_OVS_BOOL(dfs_rfc) \
+        PJS_OVS_BOOL(wpa3_rfc) \
+  )
+
 #define PJS_SCHEMA_Wifi_MacFilter_Config \
    PJS(schema_Wifi_MacFilter_Config, \
        PJS_OVS_UUID_Q(_uuid)\
@@ -1548,6 +1561,7 @@
         PJS_OVS_STRING(wifi_region_code,4+1) \
         PJS_OVS_BOOL(diagnostic_enable) \
         PJS_OVS_BOOL(validate_ssid) \
+        PJS_OVS_INT(device_network_mode) \
     )
 
 #define PJS_GEN_TABLE \
@@ -1560,6 +1574,7 @@
      PJS_SCHEMA_Alarms \
      PJS_SCHEMA_Wifi_Master_State \
      PJS_SCHEMA_Wifi_MacFilter_Config \
+     PJS_SCHEMA_Wifi_Rfc_Config \
      PJS_SCHEMA_Wifi_Ethernet_State \
      PJS_SCHEMA_Connection_Manager_Uplink \
      PJS_SCHEMA_Wifi_Inet_Config \
@@ -1650,6 +1665,7 @@
     SCHEMA(Wifi_VAP_Config) \
     SCHEMA(Wifi_Interworking_Config) \
     SCHEMA(Wifi_GAS_Config) \
+    SCHEMA(Wifi_Rfc_Config) \
     SCHEMA(Alarms) \
     SCHEMA(Wifi_Master_State) \
     SCHEMA(Wifi_Ethernet_State) \
@@ -1743,6 +1759,7 @@
     SCHEMA(Wifi_VAP_Config) \
     SCHEMA(Wifi_Interworking_Config) \
     SCHEMA(Wifi_GAS_Config) \
+    SCHEMA(Wifi_Rfc_Config) \
     SCHEMA(Alarms) \
     SCHEMA(Wifi_MacFilter_Config) \
     SCHEMA(Wifi_Master_State) \
@@ -1951,6 +1968,16 @@
     COLUMN(comeback_delay) \
     COLUMN(response_buffering_time) \
     COLUMN(query_responselength_limit)
+
+#define SCHEMA__Wifi_Rfc_Config "Wifi_Rfc_Config"
+#define SCHEMA_COLUMN__Wifi_Rfc_Config(COLUMN) \
+    COLUMN(rfc_id) \
+    COLUMN(wifipasspoint_rfc) \
+    COLUMN(wifiinterworking_rfc) \
+    COLUMN(radiusgreylist_rfc) \
+    COLUMN(dfsatbootup_rfc) \
+    COLUMN(dfs_rfc) \
+    COLUMN(wpa3_rfc)
 
 #define SCHEMA__Wifi_MacFilter_Config "Wifi_MacFilter_Config"
 #define SCHEMA_COLUMN__Wifi_MacFilter_Config(COLUMN) \
@@ -3100,6 +3127,7 @@
     COLUMN(wifi_region_code) \
     COLUMN(diagnostic_enable) \
     COLUMN(validate_ssid) \
+    COLUMN(device_network_mode) \
 
 #define SCHEMA__AWLAN_Node__id "id"
 #define SCHEMA__AWLAN_Node__model "model"
@@ -3211,6 +3239,14 @@
 #define SCHEMA__Wifi_GAS_Config__comeback_delay "comeback_delay"
 #define SCHEMA__Wifi_GAS_Config__response_buffering_time "response_buffering_time"
 #define SCHEMA__Wifi_GAS_Config__query_responselength_limit "query_responselength_limit"
+
+#define SCHEMA__Wifi_Rfc_Config__rfc_id "rfc_id"
+#define SCHEMA__Wifi_Rfc_Config__dfs_rfc "dfs_rfc"
+#define SCHEMA__Wifi_Rfc_Config__wifipasspoint_rfc "wifipasspoint_rfc"
+#define SCHEMA__Wifi_Rfc_Config__wifiinterworking_rfc  "wifiinterworking_rfc"
+#define SCHEMA__Wifi_Rfc_Config__radiusgreylist_rfc "radiusgreylist_rfc"
+#define SCHEMA__Wifi_Rfc_Config__dfsatbootup_rfc "dfsatbootup_rfc"
+#define SCHEMA__Wifi_Rfc_Config__wpa3_rfc "wpa3_rfc"
 
 #define SCHEMA__Alarms__code "code"
 #define SCHEMA__Alarms__timestamp "timestamp"
@@ -4270,3 +4306,4 @@
 #define SCHEMA__Wifi_Global_Config__wifi_region_code "wifi_region_code"
 #define SCHEMA__Wifi_Global_Config__diagnostic_enable "diagnostic_enable"
 #define SCHEMA__Wifi_Global_Config__validate_ssid "validate_ssid"
+#define SCHEMA__Wifi_Global_Config__device_network_mode "device_network_mode"

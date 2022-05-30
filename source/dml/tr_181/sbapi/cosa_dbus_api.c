@@ -47,7 +47,7 @@
 #define CCSP_AGENT_PA_SUBSYSTEM		"eRT."
 #endif
 
-void * bus_handle           = NULL;
+static void * bus_handle           = NULL;
 char   dst_pathname_cr[64]  =  {0};
 
 /* Init COSA */

@@ -203,6 +203,8 @@ webconfig_error_t encode_radio_object(const rdk_wifi_radio_t *radio, cJSON *radi
 
 webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info, cJSON *vap_object)
 {
+    char mac_str[32];
+
     //VAP Name
     cJSON_AddStringToObject(vap_object, "VapName", vap_info->vap_name);
 
@@ -217,6 +219,10 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info, cJSO
 
     // SSID
     cJSON_AddStringToObject(vap_object, "SSID", vap_info->u.bss_info.ssid);
+
+    // BSSID
+    uint8_mac_to_string_mac((uint8_t *)vap_info->u.bss_info.bssid, mac_str);
+    cJSON_AddStringToObject(vap_object, "BSSID", mac_str);
 
     // Enabled
     cJSON_AddBoolToObject(vap_object, "Enabled", vap_info->u.bss_info.enabled);
@@ -396,6 +402,10 @@ webconfig_error_t encode_wifi_global_config(const wifi_global_param_t *global_in
 
     // ValidateSsid
     cJSON_AddBoolToObject(global_obj, "ValidateSsid", (const cJSON_bool) global_info->validate_ssid);
+
+    // DeviceNetworkMode
+    cJSON_AddNumberToObject(global_obj, "DeviceNetworkMode", global_info->device_network_mode);
+
     return webconfig_error_none;
 }
 
@@ -763,14 +773,21 @@ webconfig_error_t encode_personal_security_object(const wifi_vap_security_t *sec
         case wifi_encryption_aes_tkip:
             cJSON_AddStringToObject(security, "EncryptionMethod", "AES+TKIP");
             break;
-
+        case wifi_encryption_none:
+            if (security_info->mode != wifi_security_mode_none) {
+                wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Encryption Method not valid, value:%d\n",
+                            __func__, __LINE__, security_info->encr);
+            } else {
+                cJSON_AddStringToObject(security, "EncryptionMethod", "None");
+            }
+            break;
         default:
             wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Encryption Method not valid, value:%d\n",
                             __func__, __LINE__, security_info->encr);
             return webconfig_error_encode;
     }
 
-    if ((strlen(security_info->u.key.key) < MIN_PWD_LEN)
+    if (((strlen(security_info->u.key.key) < MIN_PWD_LEN) && security_info->mode != wifi_security_mode_none)
                 || (strlen(security_info->u.key.key) > MAX_PWD_LEN)) {
         //strncpy(execRetVal->ErrorMsg, "Invalid Key passphrase length",sizeof(execRetVal->ErrorMsg)-1);
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Incorrect password length\n", __func__, __LINE__);
@@ -1019,6 +1036,13 @@ webconfig_error_t encode_mesh_sta_object(const wifi_vap_info_t *vap_info, cJSON 
     // BSSID
     uint8_mac_to_string_mac((uint8_t *)vap_info->u.sta_info.bssid, mac_str);
     cJSON_AddStringToObject(vap_obj, "BSSID", mac_str);
+
+    // MAC
+    uint8_mac_to_string_mac((uint8_t *)vap_info->u.sta_info.mac, mac_str);
+    cJSON_AddStringToObject(vap_obj, "MAC", mac_str);
+
+    // Enabled
+    cJSON_AddBoolToObject(vap_obj, "Enabled", vap_info->u.sta_info.enabled);
 
     // Security
     obj = cJSON_CreateObject();
@@ -1275,53 +1299,30 @@ webconfig_error_t encode_mac_object(rdk_wifi_vap_info_t *rdk_vap_info, cJSON *ob
         return webconfig_error_encode;
     }
 
-    cJSON *obj_mac, *obj_acl, *obj_acl_add, *obj_acl_del;
+    cJSON *obj_mac, *obj_acl;
     acl_entry_t *acl_entry;
 
     obj_mac = cJSON_CreateObject();
     obj_acl = cJSON_CreateArray();
-    obj_acl_add = cJSON_CreateArray();
-    obj_acl_del = cJSON_CreateArray();
 
     cJSON_AddItemToArray(obj_array, obj_mac);
     cJSON_AddStringToObject(obj_mac, "VapName", (char *)rdk_vap_info->vap_name);
-    cJSON_AddItemToObject(obj_mac, "MACListToAdd", obj_acl_add);
-    cJSON_AddItemToObject(obj_mac, "MACListToDelete", obj_acl_del);
     cJSON_AddItemToObject(obj_mac, "MACFilterList", obj_acl);
 
     if(rdk_vap_info->acl_map != NULL) {
         acl_entry = hash_map_get_first(rdk_vap_info->acl_map);
         while(acl_entry != NULL) {
-            if(acl_entry->acl_action_type == acl_action_add) {
-                cJSON *obj_acl_add_list;
-                obj_acl_add_list= cJSON_CreateObject();
-                cJSON_AddItemToArray(obj_acl_add, obj_acl_add_list);
-                char mac_string[18];
-                snprintf(mac_string, 18, "%02x:%02x:%02x:%02x:%02x:%02x", acl_entry->mac[0], acl_entry->mac[1],
-                        acl_entry->mac[2], acl_entry->mac[3], acl_entry->mac[4], acl_entry->mac[5]);
 
-                cJSON_AddStringToObject(obj_acl_add_list, "MAC", mac_string);
-                memset(mac_string,0,18);
-            } else if (acl_entry->acl_action_type == acl_action_del) {
-                cJSON *obj_acl_delete_list;
-                obj_acl_delete_list= cJSON_CreateObject();
-                cJSON_AddItemToArray(obj_acl_del, obj_acl_delete_list);
-                char mac_string[18];
-                snprintf(mac_string, 18, "%02x:%02x:%02x:%02x:%02x:%02x", acl_entry->mac[0], acl_entry->mac[1],
-                        acl_entry->mac[2], acl_entry->mac[3], acl_entry->mac[4], acl_entry->mac[5]);
+            cJSON *obj_acl_list;
+            obj_acl_list= cJSON_CreateObject();
+            cJSON_AddItemToArray(obj_acl, obj_acl_list);
+            char mac_string[18];
+            memset(mac_string,0,18);
+            snprintf(mac_string, 18, "%02x:%02x:%02x:%02x:%02x:%02x", acl_entry->mac[0], acl_entry->mac[1],
+                    acl_entry->mac[2], acl_entry->mac[3], acl_entry->mac[4], acl_entry->mac[5]);
+            cJSON_AddStringToObject(obj_acl_list, "MAC", mac_string);
 
-                cJSON_AddStringToObject(obj_acl_delete_list, "MAC", mac_string);
-                memset(mac_string,0,18);
-            } else {
-                cJSON *obj_acl_list;
-                obj_acl_list= cJSON_CreateObject();
-                cJSON_AddItemToArray(obj_acl, obj_acl_list);
-                char mac_string[18];
-                snprintf(mac_string, 18, "%02x:%02x:%02x:%02x:%02x:%02x", acl_entry->mac[0], acl_entry->mac[1],
-                        acl_entry->mac[2], acl_entry->mac[3], acl_entry->mac[4], acl_entry->mac[5]);
-                cJSON_AddStringToObject(obj_acl_list, "MAC", mac_string);
-                memset(&mac_string,0,18);
-            }
+            cJSON_AddStringToObject(obj_acl_list, "DeviceName", acl_entry->device_name);
             acl_entry = hash_map_get_next(rdk_vap_info->acl_map, acl_entry);
         }
     }
@@ -1351,3 +1352,68 @@ webconfig_error_t encode_blaster_object(const active_msmt_t *blaster_info, cJSON
     }
     return webconfig_error_none;
 }
+
+webconfig_error_t encode_wificap(wifi_interface_name_idex_map_t *interface_map, cJSON *hal_obj)
+{
+    cJSON *object;
+    if (interface_map->vap_name[0] != '\0') {
+        object =  cJSON_CreateObject();
+        cJSON_AddItemToArray(hal_obj, object);
+        cJSON_AddStringToObject(object, "VapName", interface_map->vap_name);
+        cJSON_AddNumberToObject(object, "PhyIndex", interface_map->phy_index);
+        cJSON_AddNumberToObject(object, "RadioIndex", interface_map->rdk_radio_index);
+        cJSON_AddStringToObject(object, "InterfaceName", interface_map->interface_name);
+        cJSON_AddStringToObject(object, "BridgeName", interface_map->bridge_name);
+        cJSON_AddNumberToObject(object, "VLANID", interface_map->vlan_id);
+        cJSON_AddBoolToObject(object, "Primary", interface_map->primary);
+        cJSON_AddNumberToObject(object, "Index", interface_map->index);
+    }
+    return webconfig_error_none;
+}
+
+webconfig_error_t encode_csi_object(queue_t *csi_queue, cJSON *csi_obj)
+{
+    cJSON *object, *obj, *obj_array;
+    unsigned int itr, itrj;
+    mac_addr_str_t mac_str;
+    if ((csi_queue == NULL) && (csi_obj == NULL)) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer\n", __func__, __LINE__);
+        return webconfig_error_encode;
+    }
+
+    unsigned long count = queue_count(csi_queue);
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d count is %lu \n", __func__, __LINE__, count);
+    for (itr=0; itr<count; itr++) {
+        csi_data_t* csi_data = queue_peek(csi_queue, itr);
+        if (csi_data == NULL) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer\n", __func__, __LINE__);
+            return webconfig_error_encode;
+        }
+
+        object =  cJSON_CreateObject();
+        cJSON_AddItemToArray(csi_obj, object);
+        cJSON_AddNumberToObject(object, "SessionID", csi_data->csi_session_num);
+        cJSON_AddBoolToObject(object, "Enabled", csi_data->enabled);
+
+        obj_array = cJSON_CreateArray();
+        if (obj_array == NULL) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer\n", __func__, __LINE__);
+            return webconfig_error_encode;
+        }
+
+        cJSON_AddItemToObject(object, "MACArray", obj_array);
+        for (itrj=0; itrj<csi_data->csi_client_count; itrj++) {
+            obj = cJSON_CreateObject();
+            if (obj == NULL) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer\n", __func__, __LINE__);
+                return webconfig_error_encode;
+            }
+
+            cJSON_AddItemToArray(obj_array, obj);
+            to_mac_str(csi_data->csi_client_list[itrj], mac_str);
+            cJSON_AddStringToObject(obj, "macaddress", mac_str);
+        }
+    }
+    return webconfig_error_none;
+}
+

@@ -42,22 +42,22 @@ void get_parodus_url(char **url)
                 value = value + strlen("PARODUS_URL=");
 		value[strlen(value)-1] = '\0';
                 *url = strdup(value);
-                CcspWifiTrace(("RDK_LOG_DEBUG, parodus url is %s\n", *url));
+                CcspTraceDebug(("RDK_LOG_DEBUG, parodus url is %s\n", *url));
 		break;
             }
         }
 	fclose(fp);
     } else {
-        CcspWifiTrace(("RDK_LOG_ERROR, Failed to open device.properties file:%s\n", DEVICE_PROPS_FILE));
-		CcspWifiTrace(("RDK_LOG_DEBUG,Adding default value for parodus_url\n"));
+        CcspTraceError(("RDK_LOG_ERROR, Failed to open device.properties file:%s\n", DEVICE_PROPS_FILE));
+		CcspTraceDebug(("RDK_LOG_DEBUG,Adding default value for parodus_url\n"));
 		*url = strdup(PARODUS_URL_DEFAULT);
     }
 
     if( NULL == *url ) {
-        CcspWifiTrace(("RDK_LOG_ERROR, parodus url is not present in device.properties file, adding default parodus_url\n"));
+        CcspTraceError(("RDK_LOG_ERROR, parodus url is not present in device.properties file, adding default parodus_url\n"));
 		*url = strdup(PARODUS_URL_DEFAULT);
     }
 
-    CcspWifiTrace(("RDK_LOG_DEBUG, parodus url formed is %s\n", *url));
+    CcspTraceDebug(("RDK_LOG_DEBUG, parodus url formed is %s\n", *url));
 }
 #endif

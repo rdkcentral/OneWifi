@@ -83,11 +83,9 @@ static char *to_sta_key    (mac_addr_t mac, sta_key_t key) {
 
 void upload_associated_devices_msmt_data(bssid_data_t *bssid_info, sta_data_t *sta_info)
 {
-#if 0
 	const char * serviceName = "harvester";
   	const char * dest = "event:raw.kestrel.reports.InterfaceDevicesWifi";
   	const char * contentType = "avro/binary"; // contentType "application/json", "avro/binary"
-#endif
   	uuid_t transaction_id;
   	char trans_id[37];
 	FILE *fp;
@@ -127,11 +125,7 @@ void upload_associated_devices_msmt_data(bssid_data_t *bssid_info, sta_data_t *s
 	wifi_util_dbg_print(WIFI_MON, "%s:%d: Measurement Type: %d\n", __func__, __LINE__, msmt_type);
 	
 	monitor = get_wifi_monitor();
-#ifdef WIFI_HAL_VERSION_3
         radio_idx = getRadioIndexFromAp(monitor->inst_msmt.ap_index);
-#else
-        radio_idx = (monitor->inst_msmt.ap_index % 2);
-#endif
 
 	/* open schema file */
     fp = fopen (INTERFACE_DEVICES_WIFI_AVRO_FILENAME , "rb");
@@ -601,7 +595,7 @@ void upload_associated_devices_msmt_data(bssid_data_t *bssid_info, sta_data_t *s
   	avro_writer_free(writer);
 
 	size += MAGIC_NUMBER_SIZE + SCHEMA_ID_LENGTH;
-	//sendWebpaMsg((char *)serviceName,(char *) dest, trans_id, (char *)contentType, buff, size);//ONE_WIFI
+	sendWebpaMsg((char *)serviceName,(char *) dest, trans_id, (char *)contentType, buff, size);//ONE_WIFI
 	wifi_util_dbg_print(WIFI_MON, "Creating telemetry record successful\n");
 }
 

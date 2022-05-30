@@ -107,11 +107,9 @@ static char *to_sta_key    (mac_addr_t mac, sta_key_t key) {
 
 void upload_single_client_msmt_data(bssid_data_t *bssid_info, sta_data_t *sta_info)
 {
-#if 0
 	const char * serviceName = "wifi";
   	const char * dest = "event:raw.kestrel.reports.WifiSingleClient";
   	const char * contentType = "avro/binary"; // contentType "application/json", "avro/binary"
-#endif//ONE_WIFI
   	uuid_t transaction_id;
   	char trans_id[37];
 	FILE *fp;
@@ -598,17 +596,15 @@ void upload_single_client_msmt_data(bssid_data_t *bssid_info, sta_data_t *sta_in
   	avro_writer_free(writer);
 
 	size += MAGIC_NUMBER_SIZE + SCHEMA_ID_LENGTH;
-	//sendWebpaMsg((char *)(serviceName), (char *)(dest), trans_id, (char *)(contentType), buff, size);//ONE_WIFI
+	sendWebpaMsg((char *)(serviceName), (char *)(dest), trans_id, (char *)(contentType), buff, size);//ONE_WIFI
 	wifi_util_dbg_print(WIFI_MON, "Creating telemetry record successful\n");
 }
 
 void upload_single_client_active_msmt_data(bssid_data_t *bssid_info, sta_data_t *sta_info)
 {
-#if 0 
     const char * serviceName = "wifi";
     const char * dest = "event:raw.kestrel.reports.WifiSingleClientActiveMeasurement";
     const char * contentType = "avro/binary"; // contentType "application/json", "avro/binary"
-#endif//ONE_WIFI
     unsigned char PlanId[PLAN_ID_LENGTH];
     uuid_t transaction_id;
     char trans_id[37];
@@ -1138,11 +1134,7 @@ void upload_single_client_active_msmt_data(bssid_data_t *bssid_info, sta_data_t 
     if ( CHK_AVRO_ERR ) {
          wifi_util_dbg_print(WIFI_MON, "%s:%d: Avro error: %s\n", __func__, __LINE__, avro_strerror());
     }
-#ifdef WIFI_HAL_VERSION_3
     radio_idx = getRadioIndexFromAp(monitor->curStepData.ApIndex);
-#else
-    radio_idx = (monitor->curStepData.ApIndex >= 0) ? (monitor->curStepData.ApIndex % 2) : 0;
-#endif
     // channel #
     avro_value_get_by_name(&adrField, "blast_metrics", &drField, NULL);
     if ( CHK_AVRO_ERR ) {
@@ -1394,7 +1386,7 @@ void upload_single_client_active_msmt_data(bssid_data_t *bssid_info, sta_data_t 
     avro_writer_free(writer);
 
     size += MAGIC_NUMBER_SIZE + SCHEMA_ID_LENGTH;
-    //sendWebpaMsg((char *)(serviceName),  (char *)(dest), trans_id, (char *)(contentType), buff, size);//ONE_WIFI TBD
+    sendWebpaMsg((char *)(serviceName),  (char *)(dest), trans_id, (char *)(contentType), buff, size);//ONE_WIFI TBD
     wifi_util_dbg_print(WIFI_MON, "Creation of Telemetry record is successful\n");
 
 }

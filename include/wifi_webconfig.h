@@ -34,6 +34,10 @@ extern "C" {
 #define WIFI_WEBCONFIG_INIT_DATA        "Device.WiFi.WebConfig.Data.Init"
 #define WIFI_WEBCONFIG_GET_ASSOC        "Device.WiFi.AssociatedClients"
 #define WIFI_WEBCONFIG_GET_ACL          "Device.WiFi.MacFilter"
+#define WIFI_WEBCONFIG_GET_CSI          "Device.WiFi.CSI"
+
+#define WIFI_WEBCONFIG_PRIVATE_VAP      "Device.WiFi.Private"
+#define WIFI_WEBCONFIG_HOME_VAP         "Device.WiFi.Home"
 
 #define DEVICE_WIFI_SSID                "Device.WiFi.SSID.%d.SSID"
 #define DEVICE_WIFI_KEYPASSPHRASE       "Device.WiFi.AccessPoint.%d.Security.X_COMCAST-COM_KeyPassphrase"
@@ -104,6 +108,7 @@ typedef enum {
     webconfig_subdoc_type_blaster,
     webconfig_subdoc_type_harvester,
     webconfig_subdoc_type_wifi_config,
+    webconfig_subdoc_type_csi,
     webconfig_subdoc_type_max
 } webconfig_subdoc_type_t;
 
@@ -117,6 +122,9 @@ typedef enum {
     webconfig_subdoc_object_type_vap_status,
     webconfig_subdoc_object_type_wifi_mac_filter,
     webconfig_subdoc_object_type_harvester,
+    webconfig_subdoc_object_type_wificap,
+    webconfig_subdoc_object_type_associated_clients,
+    webconfig_subdoc_object_type_csi,
     webconfig_subdoc_object_max
 } webconfig_subdoc_object_type_t;
 
@@ -132,6 +140,7 @@ typedef struct {
     wifi_global_config_t    config;
     wifi_hal_capability_t   hal_cap;
     rdk_wifi_radio_t    radios[MAX_NUM_RADIOS];
+    queue_t *csi_data_queue;
     active_msmt_t blaster;
     instant_measurement_config_t  harvester;
     // external structures that need translation to above structures
@@ -311,6 +320,14 @@ webconfig_error_t       translate_from_mac_filter_subdoc(webconfig_t *config, we
 webconfig_error_t       translate_to_mac_filter_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       encode_mac_filter_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       decode_mac_filter_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+//csi data
+webconfig_error_t       init_csi_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_csi_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_csi_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_csi_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_csi_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_csi_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 
 //blaster config
 
