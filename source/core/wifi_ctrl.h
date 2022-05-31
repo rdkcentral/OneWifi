@@ -73,7 +73,7 @@ extern "C" {
 #define DEVICE_TUNNEL_UP                   1
 #define DEVICE_TUNNEL_DOWN                 0
 //sta connection 9 seconds retry
-#define STA_CONN_RETRY                     9
+#define STA_CONN_RETRY                     5
 
 typedef enum {
     ctrl_webconfig_state_none = 0,
@@ -99,6 +99,23 @@ typedef struct kick_details {
     int vap_index;
 }kick_details_t;
 
+typedef enum {
+    connection_attempt_wait,
+    connection_attempt_in_progress,
+    connection_attempt_failed
+} connection_attempt_t;
+
+typedef enum {
+    connection_state_disconnected,
+    connection_state_in_progress,
+    connection_state_connected
+} connection_state_t;
+
+typedef struct scan_result {
+    wifi_bss_info_t      external_ap;
+    connection_attempt_t conn_attempt;
+} scan_list_t;
+
 typedef struct wifi_ctrl {
     bool                exit_ctrl;
     queue_t             *queue;
@@ -118,13 +135,15 @@ typedef struct wifi_ctrl {
     bool                device_tunnel_status_subscribed;
     bool                device_wps_test_subscribed;
     bool                factory_reset;
-    bool                scan_result_for_connect_pending;
     wifiapi_t           wifiapi;
     wifi_rfc_dml_parameters_t    rfc_params;
     unsigned int        sta_tree_instance_num;
     vap_svc_t           ctrl_svc[vap_svc_type_max];
-    bool                mesh_ext_vap_start_pending;
-    bool                mesh_ext_sta_conn_pending;
+    scan_list_t         *scan_list;
+    unsigned int        scan_count;
+    connection_state_t  conn_state;
+    unsigned int        network_mode; /* 0 - gateway, 1 - extender */
+    unsigned int        connected_vap_index;
 } wifi_ctrl_t;
 
 typedef enum {

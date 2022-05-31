@@ -42,18 +42,17 @@ int vap_svc_mesh_ext_connect()
     unsigned int *channel_list = NULL;
     unsigned char num_of_channels;
 
-    get_default_supported_scan_channel_list(WIFI_FREQUENCY_2_4_BAND, &channel_list, &num_of_channels);
+    if(ctrl->conn_state == connection_state_disconnected) {
+        /* start scan on 2.4Ghz */
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d start Scan on 2.4GHz and 5GHz radios\n",__func__, __LINE__);
+        get_default_supported_scan_channel_list(WIFI_FREQUENCY_2_4_BAND, &channel_list, &num_of_channels);
+        wifi_hal_startScan(0, WIFI_RADIO_SCAN_MODE_OFFCHAN, 0, num_of_channels, channel_list);
 
-    /*  We only need to enable 2.4ghz wifi radio scan,
-     *  5ghz scan trigger automatically started inside scanresult handler
-     */
-    wifi_hal_startScan(0, WIFI_RADIO_SCAN_MODE_OFFCHAN, 0, num_of_channels, channel_list);
+        /* start scan on 5Ghz */
+        get_default_supported_scan_channel_list(WIFI_FREQUENCY_5_BAND, &channel_list, &num_of_channels);
+        wifi_hal_startScan(1, WIFI_RADIO_SCAN_MODE_OFFCHAN, 0, num_of_channels, channel_list);
+    }
 
-    get_default_supported_scan_channel_list(WIFI_FREQUENCY_5_BAND, &channel_list, &num_of_channels);
-    // start 5Ghz scan
-    wifi_hal_startScan(1, WIFI_RADIO_SCAN_MODE_OFFCHAN, 0, num_of_channels, channel_list);
-
-    ctrl->scan_result_for_connect_pending = true;
     return 0;
 }
 
@@ -63,6 +62,9 @@ int vap_svc_mesh_ext_disconnect()
     unsigned int i, j;
     wifi_vap_info_map_t *vap_map = NULL;
     wifi_vap_info_t *vap;
+    wifi_ctrl_t *ctrl;
+
+    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     if ((num_of_radios = getNumberRadios()) > MAX_NUM_RADIOS) {
         wifi_util_dbg_print(WIFI_CTRL,"WIFI %s : Number of Radios %d exceeds supported %d Radios \n",__FUNCTION__, getNumberRadios(), MAX_NUM_RADIOS);
@@ -83,6 +85,7 @@ int vap_svc_mesh_ext_disconnect()
                     (vap->u.sta_info.conn_status == wifi_connection_status_connected)) {
                     wifi_util_dbg_print(WIFI_CTRL, "%s:%d: wifi disconnect :%d\n", __func__, __LINE__, vap->vap_index);
                     wifi_hal_disconnect(vap->vap_index);
+		    ctrl->conn_state = connection_state_disconnected;
                 }
             }
         }
@@ -93,16 +96,11 @@ int vap_svc_mesh_ext_disconnect()
 
 int vap_svc_mesh_ext_start(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map)
 {
-    wifi_ctrl_t *ctrl;
-
-    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-
-    // for sta create vaps and install acl filters
+    /* create STA vap's and install acl filters */
     vap_svc_start(svc);
 
-    // now start a connect procedure
+    /* start STA connection procedure */
     vap_svc_mesh_ext_connect();
-    ctrl->mesh_ext_sta_conn_pending = true;
 
     return 0;
 }

@@ -79,7 +79,7 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
     time_t  time_diff;
     int rc;
     ctrl_event_t *queue_data = NULL;
-    vap_svc_t *ext_svc;
+    static uint8_t conn_retry = 0;
 
     while (ctrl->exit_ctrl == false) {
         gettimeofday(&tv_now, NULL);
@@ -154,19 +154,19 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
                 rbus_subscribe_events(ctrl);
             }
 
-            if (ctrl->mesh_ext_vap_start_pending == true) {
-                // start connection process as STA
-                ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
-                ext_svc->start_fn(ext_svc, WIFI_ALL_RADIO_INDICES, NULL);
-                ctrl->mesh_ext_vap_start_pending = false;
-            }
-
             webconfig_analyze_pending_states(ctrl);
 
-            if (ctrl->mesh_ext_sta_conn_pending == true) {
-                sta_pending_connection_retry(ctrl);
+	    if (conn_retry > STA_CONN_RETRY) {
+                if (ctrl->network_mode == rdk_dev_mode_type_ext) {
+                    sta_pending_connection_retry(ctrl);
+                } else if (ctrl->conn_state == connection_state_connected) {
+                    wifi_util_dbg_print(WIFI_CTRL,"%s:%d gateway mode, disconnect sta on vap:%d\n",__FUNCTION__, __LINE__, ctrl->connected_vap_index);
+                    wifi_hal_disconnect(ctrl->connected_vap_index);
+                }
+                conn_retry = 0;
+            } else {
+                conn_retry++;
             }
-
         } else {
             pthread_mutex_unlock(&ctrl->lock);
             wifi_util_dbg_print(WIFI_CTRL,"RDK_LOG_WARN, WIFI %s: Invalid Return Status %d\n",__FUNCTION__,rc);
@@ -277,45 +277,52 @@ wifi_platform_property_t *get_wifi_hal_cap_prop(void)
 
 void sta_pending_connection_retry(wifi_ctrl_t *ctrl)
 {
-    static uint8_t conn_retry = 0;
-    static uint8_t switch_scan_band = 0;
     unsigned int *channel_list = NULL;
     unsigned char num_of_channels;
-    unsigned char vap_index = 0;
-    bool status_2g, status_5g;
+    unsigned int i;
+    unsigned int vap_index = 0, band = 0;
+    int radio_index = 0;
+    mac_addr_str_t bssid_str;
+    wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
 
-    wifi_platform_property_t *wifi_prop = get_wifi_hal_cap_prop();
+    if(ctrl->conn_state == connection_state_disconnected || ctrl->conn_state == connection_state_in_progress) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d retry timeout, conn_state:%d scan_count:%d\n",__func__, __LINE__, ctrl->conn_state, ctrl->scan_count);
+        if(ctrl->scan_list != NULL) {
+            scan_list_t *scan_list;
+            scan_list = ctrl->scan_list;
 
-    vap_index = convert_vap_name_to_index(wifi_prop, "mesh_sta_2g");
-    get_wifi_mesh_sta_network_status(vap_index, &status_2g);
-    vap_index = convert_vap_name_to_index(wifi_prop, "mesh_sta_5g");
-    get_wifi_mesh_sta_network_status(vap_index, &status_5g);
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: scan_count:%d conn_state:%d\n", __func__, __LINE__, ctrl->scan_count, ctrl->conn_state);
 
-    if (check_sta_ext_connection_status() == true) {
-        wifi_util_dbg_print(WIFI_CTRL,"%s:%d sta successfully connection with external AP\n",__func__, __LINE__);
-        ctrl->mesh_ext_sta_conn_pending = false;
-        conn_retry = 0;
-    } else if ((status_2g == false) && (status_5g == false)) {
-        wifi_util_dbg_print(WIFI_CTRL,"%s:%d disable wifi scan retry\n",__func__, __LINE__);
-        ctrl->mesh_ext_sta_conn_pending = false;
-        conn_retry = 0;
-    } else {
-        if (conn_retry > STA_CONN_RETRY) {
-            wifi_util_dbg_print(WIFI_CTRL,"%s:%d Retry sta connection with external AP\n",__func__, __LINE__);
-            if (switch_scan_band == 0 && (status_2g == true)) {
-                get_default_supported_scan_channel_list(WIFI_FREQUENCY_2_4_BAND, &channel_list, &num_of_channels);
-                // start 2_4Ghz scan
-                wifi_hal_startScan(0, WIFI_RADIO_SCAN_MODE_OFFCHAN, 0, num_of_channels, channel_list);
-                switch_scan_band = 1;
-            } else if (status_5g == true) {
-                get_default_supported_scan_channel_list(WIFI_FREQUENCY_5_BAND, &channel_list, &num_of_channels);
-                // start 5Ghz scan
-                wifi_hal_startScan(1, WIFI_RADIO_SCAN_MODE_OFFCHAN, 0, num_of_channels, channel_list);
-                switch_scan_band = 0;
+            for(i = 0; i < ctrl->scan_count; i++) {
+                if(scan_list->conn_attempt == connection_attempt_wait) {
+                    scan_list->conn_attempt = connection_attempt_in_progress;
+                    ctrl->conn_state = connection_state_in_progress;
+                    if (scan_list->external_ap.freq >= 2412 && scan_list->external_ap.freq <= 2484) {
+                        band = WIFI_FREQUENCY_2_4_BAND;
+                    } else if (scan_list->external_ap.freq >= 5180 && scan_list->external_ap.freq <= 5980) {
+                        band = WIFI_FREQUENCY_5_BAND;
+                    }
+                    convert_freq_band_to_radio_index(band, &radio_index);
+                    vap_index = get_sta_vap_index_for_radio(&mgr->hal_cap.wifi_prop, radio_index);
+
+                    wifi_util_dbg_print(WIFI_CTRL,"%s:%d connecting to ssid:%s bssid:%s rssi:%d frequency:%d on vap:%d radio:%d\n",
+                                            __FUNCTION__, __LINE__, scan_list->external_ap.ssid, to_mac_str(scan_list->external_ap.bssid, bssid_str),
+                                            scan_list->external_ap.rssi, scan_list->external_ap.freq, vap_index, radio_index);
+                    wifi_hal_connect(vap_index, &scan_list->external_ap);
+                    break;
+                }
+                scan_list++;
             }
-            conn_retry = 0;
-        } else {
-            conn_retry++;
+        }
+        if(!ctrl->scan_count) {
+            wifi_util_dbg_print(WIFI_CTRL,"%s:%d no scan results, start scan on 2.4GHz and 5GHz radios\n",__FUNCTION__, __LINE__);
+            /* start scan on 2.4Ghz */
+            get_default_supported_scan_channel_list(WIFI_FREQUENCY_2_4_BAND, &channel_list, &num_of_channels);
+            wifi_hal_startScan(0, WIFI_RADIO_SCAN_MODE_OFFCHAN, 0, num_of_channels, channel_list);
+
+            /* start scan on 5Ghz */
+            get_default_supported_scan_channel_list(WIFI_FREQUENCY_5_BAND, &channel_list, &num_of_channels);
+            wifi_hal_startScan(1, WIFI_RADIO_SCAN_MODE_OFFCHAN, 0, num_of_channels, channel_list);
         }
     }
 }
@@ -335,7 +342,7 @@ void rbus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
     // set all default return values first
     if (strcmp(name, WIFI_DEVICE_MODE) == 0) {
         *ret_val = (unsigned int)global_param.device_network_mode;
-
+	ctrl->network_mode = (unsigned int)*ret_val;
     } else if (strcmp(name, WIFI_DEVICE_TUNNEL_STATUS) == 0) {
         *ret_val = DEVICE_TUNNEL_DOWN; // tunnel down
     }
@@ -351,6 +358,7 @@ void rbus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
 
     if (strcmp(name, WIFI_DEVICE_MODE) == 0) {
         *ret_val = rbusValue_GetUInt32(value);
+	ctrl->network_mode = (unsigned int)*ret_val;
         if (global_param.device_network_mode != (int)*ret_val) {
             global_param.device_network_mode = (int)*ret_val;
             update_wifi_global_config(&global_param);
@@ -415,7 +423,6 @@ void stop_extender_vaps(void)
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
     ext_svc->stop_fn(ext_svc, WIFI_ALL_RADIO_INDICES, NULL);
-    ctrl->mesh_ext_vap_start_pending = false;
 }
 
 void start_extender_vaps(void)
@@ -426,7 +433,6 @@ void start_extender_vaps(void)
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
     ext_svc->start_fn(ext_svc, WIFI_ALL_RADIO_INDICES, NULL);
-    ctrl->mesh_ext_vap_start_pending = true;
 }
 
 int start_wifi_services(void)
@@ -657,6 +663,7 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
 
     ctrl->rbus_events_subscribed = false;
     ctrl->tunnel_events_subscribed = false;
+    ctrl->scan_list = NULL;
 
     register_with_webconfig_framework();
 
