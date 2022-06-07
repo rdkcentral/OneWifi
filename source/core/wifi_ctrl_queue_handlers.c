@@ -275,8 +275,9 @@ void process_sta_conn_status_event(rdk_sta_data_t *sta_data, unsigned int len)
 
                     scan_list++;
                 }
-                ctrl->conn_state = connection_state_disconnected;
+
                 if(scan) {
+                    ctrl->conn_state = connection_state_disconnected;
                     if (ctrl->scan_list != NULL) {
                         free(ctrl->scan_list);
                         ctrl->scan_list = NULL;
