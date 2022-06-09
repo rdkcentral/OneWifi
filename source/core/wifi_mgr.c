@@ -159,6 +159,11 @@ int init_wifimgr()
     struct stat sb;
     char db_file[128];
 
+    if(wifi_hal_pre_init() != RETURN_OK) {
+        wifi_util_dbg_print(WIFI_MGR,"%s wifi hal pre_init failed\n", __func__);
+        return -1;
+    }
+
     //Initialize HAL and get Capabilities
     init_wifi_hal();
 
