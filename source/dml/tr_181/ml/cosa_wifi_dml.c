@@ -2711,7 +2711,7 @@ Radio_GetParamStringValue
         /* collect value */
         ULONG instance_number = 0;
         convert_freq_band_to_dml_radio_index(pcfg->band, &instance_number);
-        if (get_interface_name_from_radio_index(instance_number-1, pValue) != RETURN_OK) {
+        if (get_interface_name_from_radio_index(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop, instance_number-1, pValue) != RETURN_OK) {
             AnscCopyString(pValue, "Invalid_Radio");
         }
         return 0;
@@ -4553,12 +4553,14 @@ SSID_GetEntry
     wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: get_total_num_vap_dml():%d nIndex:%d\n",__func__, __LINE__, get_total_num_vap_dml(), nIndex);
     if (nIndex >= 0 && nIndex <= (UINT)get_total_num_vap_dml())
     {
-	vapInfo = (wifi_vap_info_t *) get_dml_vap_parameters(nIndex);
-       if(vapInfo == NULL)
-       {
-           wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: getVapInfo == NULL nIndex:%d\n",__func__, __LINE__, nIndex);
-       }	       
-        *pInsNumber = nIndex + 1;
+        UINT vapIndex = VAP_INDEX(((webconfig_dml_t *)get_webconfig_dml())->hal_cap, nIndex);
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: nIndex:%d -> vapIndex:%d\n", __func__, __LINE__, nIndex, vapIndex);
+        vapInfo = (wifi_vap_info_t *) get_dml_vap_parameters(vapIndex);
+        if(vapInfo == NULL)
+        {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: get_dml_vap_parameters == NULL nIndex:%d vapIndex:%d\n",__func__, __LINE__, nIndex, vapIndex);
+        }
+        *pInsNumber = vapIndex + 1;
     }
     last_vap_change = AnscGetTickInSeconds(); 
     return (ANSC_HANDLE) vapInfo; /* return the handle */
@@ -4883,11 +4885,11 @@ SSID_GetParamStringValue
 
     if( AnscEqualString(ParamName, "LowerLayers", TRUE))
     {
+        int radioIndex = convert_vap_name_to_radio_array_index(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop, pcfg->vap_name);
+
         /* collect value */
-        if(instance_number % 2 != 0)
-            AnscCopyString(pValue,"Device.WiFi.Radio.1.");
-        else
-            AnscCopyString(pValue,"Device.WiFi.Radio.2.");
+        _ansc_sprintf(str, "Device.WiFi.Radio.%d.", radioIndex+1);
+        AnscCopyString(pValue, str);
         return 0;
     }
 
@@ -5884,13 +5886,14 @@ AccessPoint_GetEntry
     wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: total number of vaps:%d nIndex:%d\n",__func__, __LINE__, get_total_num_vap_dml(), nIndex);
     if ( nIndex >= 0 && nIndex <= (UINT)get_total_num_vap_dml() )
     {
-        vapInfo = (wifi_vap_info_t *) get_dml_vap_parameters(nIndex);
-	if(vapInfo == NULL)
-	{
-	    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: vap parameter is NULL nIndex:%d\n",__func__, __LINE__, nIndex);
-	}
-        *pInsNumber = nIndex + 1;
-
+        UINT vapIndex = VAP_INDEX(((webconfig_dml_t *)get_webconfig_dml())->hal_cap, nIndex);
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: nIndex:%d -> vapIndex:%d\n", __func__, __LINE__, nIndex, vapIndex);
+        vapInfo = (wifi_vap_info_t *) get_dml_vap_parameters(vapIndex);
+        if(vapInfo == NULL)
+        {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: vap parameter is NULL nIndex:%d vapIndex:%d\n",__func__, __LINE__, nIndex, vapIndex);
+        }
+        *pInsNumber = vapIndex + 1;
     }
 
     return (ANSC_HANDLE)vapInfo; /* return the handle */

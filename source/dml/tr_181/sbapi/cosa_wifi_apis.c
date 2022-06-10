@@ -98,6 +98,8 @@
 #include "secure_wrapper.h"
 
 #include "wifi_ctrl.h"
+#include "wifi_util.h"
+#include "dml_onewifi_api.h"
 
 #if defined (FEATURE_SUPPORT_WEBCONFIG)
 #include "wifi_webconfig.h"
@@ -671,9 +673,12 @@ CosaDmlWiFiSetEnableRadiusGreylist(BOOLEAN value) {
 
     if (value == TRUE)
     {
-	CcspTraceInfo(("[%s] Enabled\n",__FUNCTION__));
-        for (UINT apIndex = 0; apIndex < getTotalNumberVAPs(); ++apIndex)
+        CcspTraceInfo(("[%s] Enabled\n",__FUNCTION__));
+        for (UINT index = 0; index < getTotalNumberVAPs(); ++index)
         {
+            UINT apIndex;
+
+            apIndex = VAP_INDEX(((webconfig_dml_t *)get_webconfig_dml())->hal_cap, index);
             if (isVapHotspot(apIndex))
             {
                 memset(recName, 0, sizeof(recName));
@@ -685,8 +690,11 @@ CosaDmlWiFiSetEnableRadiusGreylist(BOOLEAN value) {
     else
     {
         CcspTraceInfo(("[%s] Disabled\n",__FUNCTION__));
-        for (UINT apIndex = 0; apIndex < getTotalNumberVAPs(); ++apIndex)
+        for (UINT index = 0; index < getTotalNumberVAPs(); ++index)
         {
+            UINT apIndex;
+
+            apIndex = VAP_INDEX(((webconfig_dml_t *)get_webconfig_dml())->hal_cap, index);
             if (isVapHotspot(apIndex))
             {
                 memset(recName, 0, sizeof(recName));

@@ -1797,9 +1797,9 @@ int validate_radio_vap(const cJSON *wifi, wifi_radio_operationParam_t *wifi_radi
         // FreqBand
         validate_param_integer(wifi, "FreqBand", param);
         wifi_radio_info->band = param->valuedouble;
-                if ((wifi_radio_info->band < 0) || (wifi_radio_info->band > 3)) {
-                wifi_util_dbg_print(WIFI_PASSPOINT,"Invalid wifi radio band configuration, should be between 0 and 3\n");
-                strncpy(execRetVal->ErrorMsg, "Invalid wifi radio band config 0..3",sizeof(execRetVal->ErrorMsg)-1);
+                if ((wifi_radio_info->band < 0) || (wifi_radio_info->band > 0x20)) {
+                wifi_util_dbg_print(WIFI_PASSPOINT,"Invalid wifi radio band configuration, should be between 0 and 0x20\n");
+                strncpy(execRetVal->ErrorMsg, "Invalid wifi radio band config 0..0x20",sizeof(execRetVal->ErrorMsg)-1);
                 return RETURN_ERR;
         }
         

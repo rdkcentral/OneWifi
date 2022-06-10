@@ -10,6 +10,8 @@
 #include "ansc_platform.h"
 #include "ccsp_WifiLog_wrapper.h"
 #include "wifi_events.h"
+#include "wifi_mgr.h"
+#include "wifi_util.h"
 
 #define MAX_EVENT_NAME_SIZE     200
 #define CLIENTDIAG_JSON_BUFFER_SIZE 665
@@ -152,17 +154,19 @@ void events_update_clientdiagdata(unsigned int num_devs, int vap_idx, wifi_assoc
     unsigned int i =0;
     unsigned int pos = 0;
     unsigned int t_pos = 0;
+    unsigned int vap_array_index;
 
+    getVAPArrayIndexFromVAPIndex((unsigned int) vap_idx, &vap_array_index);
     if(g_isRbusAvailable == FALSE)
     {
         return;
     }
 
     pthread_mutex_lock(&g_events_lock);
-    if(gdiag_events_json_buffer[vap_idx] != NULL)
+    if(gdiag_events_json_buffer[vap_array_index] != NULL)
     {
 
-        pos = snprintf(gdiag_events_json_buffer[vap_idx], 
+        pos = snprintf(gdiag_events_json_buffer[vap_array_index],
                 CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*MAX_ASSOCIATED_WIFI_DEVS,
                 "{"
                 "\"Version\":\"1.0\","
@@ -174,7 +178,7 @@ void events_update_clientdiagdata(unsigned int num_devs, int vap_idx, wifi_assoc
         t_pos = pos + 1;
         if(dev_array != NULL) {
             for(i=0; i<num_devs; i++) {
-                pos += snprintf(&gdiag_events_json_buffer[vap_idx][pos], 
+                pos += snprintf(&gdiag_events_json_buffer[vap_array_index][pos],
                         (CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*MAX_ASSOCIATED_WIFI_DEVS)-pos, "{"
                         "\"MAC\":\"%02x%02x%02x%02x%02x%02x\","
                         "\"DownlinkDataRate\":\"%d\","
@@ -216,7 +220,7 @@ void events_update_clientdiagdata(unsigned int num_devs, int vap_idx, wifi_assoc
             }
             t_pos = pos;
         }
-        snprintf(&gdiag_events_json_buffer[vap_idx][t_pos-1], (
+        snprintf(&gdiag_events_json_buffer[vap_array_index][t_pos-1], (
                 CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*MAX_ASSOCIATED_WIFI_DEVS)-t_pos-1,"]"
                 "}"
                 "]"
@@ -538,12 +542,15 @@ rbusError_t events_subHandler(rbusHandle_t handle, rbusEventSubAction_t action, 
 
 rbusError_t events_APtable_addrowhandler(rbusHandle_t handle, char const* tableName, char const* aliasName, uint32_t* instNum)
 {
-    static int instanceCounter = 1;
+    static int instanceCounter = 0;
     event_element_t *event;
+    unsigned int vap_index;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
 
-    *instNum = instanceCounter++;
-
+    vap_index = VAP_INDEX(mgr->hal_cap, instanceCounter);
+    *instNum = vap_index + 1;
     wifi_util_dbg_print(WIFI_MON, "%s(): %s %d\n", __FUNCTION__, tableName, *instNum);
+    instanceCounter++;
 
     pthread_mutex_lock(&g_events_lock);
 
@@ -552,7 +559,7 @@ rbusError_t events_APtable_addrowhandler(rbusHandle_t handle, char const* tableN
     if(event != NULL)
     {
         sprintf(event->name, "Device.WiFi.AccessPoint.%d.X_RDK_deviceConnected", *instNum);
-        event->idx = *instNum;
+        event->idx = vap_index;
         event->type = monitor_event_type_connect;
         event->subscribed = FALSE;
         event->num_subscribers = 0;
@@ -564,7 +571,7 @@ rbusError_t events_APtable_addrowhandler(rbusHandle_t handle, char const* tableN
     if(event != NULL)
     {
         sprintf(event->name, "Device.WiFi.AccessPoint.%d.X_RDK_deviceDisconnected", *instNum);
-        event->idx = *instNum;
+        event->idx = vap_index;
         event->type = monitor_event_type_disconnect;
         event->subscribed = FALSE;
         event->num_subscribers = 0;
@@ -576,7 +583,7 @@ rbusError_t events_APtable_addrowhandler(rbusHandle_t handle, char const* tableN
     if(event != NULL)
     {
         sprintf(event->name, "Device.WiFi.AccessPoint.%d.X_RDK_deviceDeauthenticated", *instNum);
-        event->idx = *instNum;
+        event->idx = vap_index;
         event->type = monitor_event_type_deauthenticate;
         event->subscribed = FALSE;
         event->num_subscribers = 0;
@@ -588,7 +595,7 @@ rbusError_t events_APtable_addrowhandler(rbusHandle_t handle, char const* tableN
     if(event != NULL)
     {
         sprintf(event->name, "Device.WiFi.AccessPoint.%d.X_RDK_DiagData", *instNum);
-        event->idx = *instNum;
+        event->idx = vap_index;
         event->type = monitor_event_type_diagnostics;
         event->subscribed = FALSE;
         event->num_subscribers = 0;
@@ -633,7 +640,7 @@ rbusError_t events_CSItable_addrowhandler(rbusHandle_t handle, char const* table
     if(event != NULL)
     {
         sprintf(event->name, "Device.WiFi.X_RDK_CSI.%d.data", *instNum);
-        event->idx = *instNum;
+        event->idx = *instNum - 1;
         event->type = monitor_event_type_csi;
         event->subscribed = FALSE;
         queue_push(g_rbus_events_queue, event);

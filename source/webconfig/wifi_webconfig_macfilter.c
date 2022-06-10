@@ -156,6 +156,8 @@ webconfig_error_t decode_mac_filter_subdoc(webconfig_t *config, webconfig_subdoc
     webconfig_subdoc_decoded_data_t *params;
     rdk_wifi_vap_info_t *rdk_vap_info;
     char *name;
+    wifi_vap_name_t vap_names[MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO];
+    int num_vaps;
 
     params = &data->u.decoded;
     if (params == NULL) {
@@ -179,6 +181,11 @@ webconfig_error_t decode_mac_filter_subdoc(webconfig_t *config, webconfig_subdoc
         }
     }
 
+    num_vaps = get_list_of_vap_names(&params->hal_cap.wifi_prop, vap_names, MAX_NUM_RADIOS*MAX_NUM_VAP_PER_RADIO, \
+                                     8, VAP_PREFIX_PRIVATE, VAP_PREFIX_HOTSPOT_OPEN, VAP_PREFIX_HOTSPOT_SECURE, \
+                                     VAP_PREFIX_LNF_PSK, VAP_PREFIX_LNF_RADIUS, VAP_PREFIX_MESH_BACKHAUL, \
+                                     VAP_PREFIX_MESH_STA, VAP_PREFIX_IOT);
+
     obj_mac = cJSON_GetObjectItem(json, "WifiMacFilter");
     if (cJSON_IsArray(obj_mac) == false) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Mac object not present\n", __func__, __LINE__);
@@ -187,7 +194,7 @@ webconfig_error_t decode_mac_filter_subdoc(webconfig_t *config, webconfig_subdoc
     }
 
     size = cJSON_GetArraySize(obj_mac);
-    if (size > (MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO) || size < (MIN_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO)) {
+    if (num_vaps > (int)size) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Not correct number of mac objects: %d\n",
                 __func__, __LINE__, size);
         cJSON_Delete(json);

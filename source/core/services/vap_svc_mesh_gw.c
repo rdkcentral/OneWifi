@@ -3,19 +3,12 @@
 #include "stdlib.h"
 #include <sys/time.h>
 #include "vap_svc.h"
+#include "wifi_ctrl.h"
 #include "wifi_util.h"
 
 bool vap_svc_is_mesh_gw(unsigned int vap_index)
 {
-    static unsigned int  allowed_array[] = {12, 13};
-    unsigned int i;
-
-    for (i = 0; i < ARRAY_SZ(allowed_array); i++) {
-        if (vap_index == allowed_array[i]) {
-            return true;
-        }
-    }
-    return false;
+    return isVapMeshBackhaul(vap_index) ? true : false;
 }
 
 int vap_svc_mesh_gw_start(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map)

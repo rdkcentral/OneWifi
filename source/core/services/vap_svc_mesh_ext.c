@@ -3,19 +3,12 @@
 #include "stdlib.h"
 #include <sys/time.h>
 #include "vap_svc.h"
+#include "wifi_ctrl.h"
 #include "wifi_util.h"
 
 bool vap_svc_is_mesh_ext(unsigned int vap_index)
 {
-    static unsigned int  allowed_array[] = {14, 15};
-    unsigned int i;
-
-    for (i = 0; i < ARRAY_SZ(allowed_array); i++) {
-        if (vap_index == allowed_array[i]) {
-            return true;
-        }
-    }
-    return false;
+    return isVapSTAMesh(vap_index) ? true : false;
 }
 
 void get_default_supported_scan_channel_list(uint8_t radio_band, unsigned int **channel_list, unsigned char *num_of_channels)

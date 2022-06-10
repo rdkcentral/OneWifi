@@ -44,6 +44,7 @@
 #include "wifi_hal_ap.h"
 #include "wifi_hal.h"
 #include "wifi_util.h"
+#include "wifi_mgr.h"
 
 static char *WpsPin = "eRT.com.cisco.spvtg.ccsp.Device.WiFi.WPSPin";
 static char *ApMFPConfig         = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.Security.MFPConfig";
@@ -124,7 +125,7 @@ wifi_vap_psm_param_t *get_vap_psm_obj(unsigned char vap_index)
 {
     wifi_psm_param_t *p_wifi_psm_param = get_psm_obj();
 
-    if ((vap_index < getTotalNumberVAPs())) {
+    if (wifi_util_is_vap_index_valid(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, (int)vap_index)) {
         return &p_wifi_psm_param->vap_psm_cfg[vap_index];
     } else {
         wifi_util_dbg_print(WIFI_PSM, "%s:%d wrong vap_index %d\n", __func__, __LINE__, vap_index);

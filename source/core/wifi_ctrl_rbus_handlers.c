@@ -994,11 +994,7 @@ rbusError_t get_sta_attribs(rbusHandle_t handle, rbusProperty_t property, rbusGe
     }
 
     vap_map = &mgr->radio_config[(index - 1)].vaps.vap_map;
-    if (index == 1) {
-        vap_index = 14;
-    } else if (index == 2) {
-        vap_index = 15;
-    }
+    vap_index = get_sta_vap_index_for_radio(&mgr->hal_cap.wifi_prop, index-1);
 
     rbusValue_Init(&value);
 

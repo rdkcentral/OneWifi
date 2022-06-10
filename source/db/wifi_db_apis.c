@@ -539,7 +539,7 @@ int update_wifidb_vap_bss_param(uint8_t vap_index, wifi_front_haul_bss_t *pcfg)
     int ret;
     get_vap_and_radio_index_from_vap_instance(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, vap_index, &l_radio_index, &l_vap_index);
     wifi_vap_info_t *l_vap_maps = get_wifidb_vap_parameters(l_radio_index);
-    if(l_vap_maps == NULL || l_vap_index >= getNumberofVAPsPerRadio(l_radio_index))
+    if(l_vap_maps == NULL || l_vap_index >= getNumberVAPsPerRadio(l_radio_index))
     {
 
         rdk_wifi_dbg_print(1, "%s: wrong radio_index %d vapIndex:%d \n", __FUNCTION__, l_radio_index, vap_index);

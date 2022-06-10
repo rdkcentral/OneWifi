@@ -1407,6 +1407,7 @@ webconfig_error_t decode_ssid_name(char *ssid_name)
 
     ssid_len = strlen(ssid_name);
     if ((ssid_len == 0) || (ssid_len > WIFI_MAX_SSID_NAME_LEN)) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: SSID length %d exceeds max SSID length %d\n", __func__, __LINE__, ssid_len, WIFI_MAX_SSID_NAME_LEN);
         //strncpy(execRetVal->ErrorMsg, "Invalid SSID Size",sizeof(execRetVal->ErrorMsg)-1);
         return webconfig_error_decode;
     }
@@ -1414,6 +1415,7 @@ webconfig_error_t decode_ssid_name(char *ssid_name)
 
     for (i = 0; i < ssid_len; i++) {
         if (!((ssid_name[i] >= ' ') && (ssid_name[i] <= '~'))) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Invalid character %c in SSID\n", __func__, __LINE__, ssid_name[i]);
             //strncpy(execRetVal->ErrorMsg, "Invalid character in SSID",sizeof(execRetVal->ErrorMsg)-1);
             return webconfig_error_decode;
         }

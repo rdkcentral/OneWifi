@@ -1337,12 +1337,21 @@ void test_private_subdoc_change(webconfig_consumer_t *consumer)
 void test_home_subdoc_change(webconfig_consumer_t *consumer)
 {
     webconfig_subdoc_data_t data;
-
     char *str;
     webconfig_error_t ret = webconfig_error_none;
     bool *param;
+    wifi_vap_name_t vap_names[MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO];
+    int num_vaps;
 
     str = NULL;
+    num_vaps = get_list_of_vap_names(&consumer->hal_cap.wifi_prop, vap_names, MAX_NUM_RADIOS*MAX_NUM_VAP_PER_RADIO, \
+                                     1, VAP_PREFIX_IOT);
+    if (num_vaps == 0) {
+        printf("%s:%d: Home VAP is not supported\n", __func__, __LINE__);
+        consumer->home_test_pending_count = 0;
+        consumer->test_state = consumer_test_state_home_subdoc_test_complete;
+        return;
+    }
 
     memset(&data, 0, sizeof(webconfig_subdoc_data_t));
     printf("%s:%d: current time:%llu\n", __func__, __LINE__, get_current_time_ms());
@@ -1534,7 +1543,6 @@ void test_xfinity_subdoc_change(webconfig_consumer_t *consumer)
 {
     webconfig_subdoc_data_t data;
     webconfig_error_t ret = webconfig_error_none;
-
     char *str;
     int num_vaps;
     wifi_vap_name_t vap_names[MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO];

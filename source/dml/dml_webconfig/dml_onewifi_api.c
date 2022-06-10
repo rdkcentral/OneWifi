@@ -141,6 +141,23 @@ UINT get_total_num_vap_dml()
     return numberOfVap;
 }
 
+UINT get_max_num_vap_dml()
+{
+    webconfig_dml_t* pwebconfig = get_webconfig_dml();
+    UINT maxNumberOfVaps;
+
+    if (pwebconfig == NULL){
+        wifi_util_dbg_print(WIFI_DMCLI,"%s Error: value is NULL\n",__FUNCTION__);
+        maxNumberOfVaps = MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO;
+    } else {
+        maxNumberOfVaps = 0;
+        for (UINT i = 0; i < pwebconfig->hal_cap.wifi_prop.numRadios; i++) {
+            maxNumberOfVaps += pwebconfig->hal_cap.wifi_prop.radiocap[i].maxNumberVAPs;
+        }
+    }
+    return maxNumberOfVaps;
+}
+
 void update_csi_data_queue(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription)
 {
     int len = 0;
@@ -682,8 +699,9 @@ wifi_vap_info_t *get_dml_cache_vap_info(uint8_t vap_index)
 {
     unsigned int radio_index = 0;
     unsigned int vap_array_index = 0;
+    unsigned int num_radios = get_num_radio_dml();
 
-    if (vap_index > get_total_num_vap_dml()) {
+    if (vap_index > (num_radios * MAX_NUM_VAP_PER_RADIO)) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:Invalid vap_index %d \n",__func__, __LINE__, vap_index);
         return NULL;
     }
@@ -881,14 +899,19 @@ wifi_radio_operationParam_t* get_dml_radio_operation_param(uint8_t radio_index)
 
 wifi_vap_info_t* get_dml_vap_parameters(uint8_t vapIndex)
 {
-    uint8_t radio_index = 0, vap_index = 0;
-    get_vap_and_radio_index_from_vap_instance(&((webconfig_dml_t*) get_webconfig_dml())->hal_cap.wifi_prop, vapIndex, &radio_index, &vap_index);
+    uint8_t radio_index = 0, vap_array_index = 0;
+
+    if (get_vap_and_radio_index_from_vap_instance(&((webconfig_dml_t*) get_webconfig_dml())->hal_cap.wifi_prop, vapIndex, &radio_index, &vap_array_index) == RETURN_ERR) {
+        return NULL;
+    }
+
     wifi_vap_info_map_t *l_vap_maps = get_wifidb_vap_map(radio_index);
-    if (l_vap_maps == NULL || vap_index >= MAX_NUM_VAP_PER_RADIO) {
+    if (l_vap_maps == NULL || vap_array_index >= MAX_NUM_VAP_PER_RADIO) {
         wifi_util_dbg_print(WIFI_CTRL, "%s: wrong radio_index %d vapIndex:%d \n", __FUNCTION__, radio_index, vapIndex);
         return NULL;
     }
-    return &l_vap_maps->vap_array[vap_index];
+
+    return &l_vap_maps->vap_array[vap_array_index];
 }
 
 wifi_vap_info_map_t* get_dml_vap_map(uint8_t radio_index)
@@ -947,7 +970,9 @@ void get_subdoc_type_bit_mask_from_vap_index(uint8_t vap_index, int* subdoc)
 void set_dml_cache_vap_config_changed(uint8_t vap_index)
 {
     int subdoc = 0;
-    if (vap_index <  get_total_num_vap_dml()) {
+    unsigned int num_radios = get_num_radio_dml();
+
+    if (vap_index <  (num_radios * MAX_NUM_VAP_PER_RADIO)) {
         get_subdoc_type_bit_mask_from_vap_index(vap_index,&subdoc);
         is_vap_config_changed = is_vap_config_changed|subdoc;
         return;

@@ -268,7 +268,7 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
         found_target = false;
 
         for (j = 0; j < getNumberRadios(); j++) {
-            for (k = 0; k < getMaxNumberVAPsPerRadio(j); k++) {
+            for (k = 0; k < getNumberVAPsPerRadio(j); k++) {
                 if (strcmp(data->radios[j].vaps.vap_map.vap_array[k].vap_name, vap_names[i]) == 0) {
                     vap_info = &data->radios[j].vaps.vap_map.vap_array[k];
                     found_target = true;
@@ -404,8 +404,10 @@ int webconfig_hal_private_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
     unsigned int num_vaps = 0;
     char *vap_name;
     char *vap_names[MAX_VAP];
+    wifi_mgr_t *mgr = get_wifimgr_obj();
 
-    for (ap_index = 0; ap_index < getTotalNumberVAPs(); ap_index++){
+    for (UINT index = 0; index < getTotalNumberVAPs(); index++){
+        ap_index = VAP_INDEX(mgr->hal_cap, index);
         if(isVapPrivate(ap_index)){
             vap_name = getVAPName(ap_index);
             vap_names[num_vaps] = vap_name;
@@ -421,8 +423,10 @@ int webconfig_hal_home_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_dat
     unsigned int num_vaps = 0;
     char *vap_name;
     char *vap_names[MAX_VAP];
+    wifi_mgr_t *mgr = get_wifimgr_obj();
 
-    for (ap_index = 0; ap_index < getTotalNumberVAPs(); ap_index++){
+    for (UINT index = 0; index < getTotalNumberVAPs(); index++){
+        ap_index = VAP_INDEX(mgr->hal_cap, index);
         if(isVapXhs(ap_index)){
             vap_name = getVAPName(ap_index);
             vap_names[num_vaps] = vap_name;
@@ -438,8 +442,10 @@ int webconfig_hal_xfinity_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
     unsigned int num_vaps = 0;
     char *vap_name;
     char *vap_names[MAX_VAP];
+    wifi_mgr_t *mgr = get_wifimgr_obj();
 
-    for (ap_index = 0; ap_index < getTotalNumberVAPs(); ap_index++){
+    for (UINT index = 0; index < getTotalNumberVAPs(); index++){
+        ap_index = VAP_INDEX(mgr->hal_cap, index);
         if(isVapHotspot(ap_index)){
             vap_name = getVAPName(ap_index);
             vap_names[num_vaps] = vap_name;
@@ -472,8 +478,10 @@ int webconfig_hal_mesh_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_dat
     unsigned int num_vaps = 0;
     char *vap_name;
     char *vap_names[MAX_VAP];
+    wifi_mgr_t *mgr = get_wifimgr_obj();
 
-    for (ap_index = 0; ap_index < getTotalNumberVAPs(); ap_index++){
+    for (UINT index = 0; index < getTotalNumberVAPs(); index++){
+        ap_index = VAP_INDEX(mgr->hal_cap, index);
         if(isVapMesh(ap_index)){
             vap_name = getVAPName(ap_index);
             vap_names[num_vaps] = vap_name;
@@ -486,12 +494,15 @@ int webconfig_hal_mesh_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_dat
 int webconfig_hal_mesh_sta_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
     unsigned int num_vaps = 0;
+    unsigned int ap_index;
     char *vap_name;
     char *vap_names[MAX_VAP];
+    wifi_mgr_t *mgr = get_wifimgr_obj();
 
     for (UINT index = 0; index < getTotalNumberVAPs(); index++){
-        if(isVapSTAMesh(index)){
-            vap_name = getVAPName(index);
+        ap_index = VAP_INDEX(mgr->hal_cap, index);
+        if(isVapSTAMesh(ap_index)){
+            vap_name = getVAPName(ap_index);
             vap_names[num_vaps] = vap_name;
             num_vaps++;
         }
@@ -654,7 +665,7 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
 
     //Apply the MacFilter Data
     for(radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
-        for (vap_index = 0; vap_index < getMaxNumberVAPsPerRadio(radio_index); vap_index++) {
+        for (vap_index = 0; vap_index < getNumberVAPsPerRadio(radio_index); vap_index++) {
             new_config = &data->radios[radio_index].vaps.rdk_vap_array[vap_index];
             current_config = &mgr->radio_config[radio_index].vaps.rdk_vap_array[vap_index];
 

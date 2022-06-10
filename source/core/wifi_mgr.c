@@ -191,7 +191,7 @@ int init_global_radio_config(rdk_wifi_radio_t *radios_cfg, UINT radio_index)
     snprintf(radios_cfg->name, sizeof(radios_cfg->name),"radio%d", radio_index+1);
     for (i = 0; i < (sizeof(wifi_hal_cap_obj->wifi_prop.interface_map)/sizeof(wifi_interface_name_idex_map_t)); i++)
     {
-        if (wifi_hal_cap_obj->wifi_prop.interface_map[i].rdk_radio_index == radio_index) {
+        if (wifi_hal_cap_obj->wifi_prop.interface_map[i].vap_name[0] != '\0' && wifi_hal_cap_obj->wifi_prop.interface_map[i].rdk_radio_index == radio_index) {
             radios_cfg->vaps.rdk_vap_array[vap_array_index].vap_index = wifi_hal_cap_obj->wifi_prop.interface_map[i].index;
             radios_cfg->vaps.vap_map.vap_array[vap_array_index].vap_index = wifi_hal_cap_obj->wifi_prop.interface_map[i].index;
             radios_cfg->vaps.vap_map.vap_array[vap_array_index].radio_index = radio_index;

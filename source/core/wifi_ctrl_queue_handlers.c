@@ -353,8 +353,9 @@ void process_sta_conn_status_event(rdk_sta_data_t *sta_data, unsigned int len)
     ctrl = &mgr->ctrl;
 
     /* first update the internal cache */
-    index = (sta_data->stats.vap_index == 14) ? 1:2;
-    vap_map = &mgr->radio_config[(index - 1)].vaps.vap_map;
+    index = get_radio_index_for_vap_index(&mgr->hal_cap.wifi_prop, sta_data->stats.vap_index);
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d - radio index %d, VAP index %d\n", __func__, __LINE__, index, sta_data->stats.vap_index);
+    vap_map = &mgr->radio_config[index].vaps.vap_map;
 
     for (i = 0; i < vap_map->num_vaps; i++) {
         if (vap_map->vap_array[i].vap_index == sta_data->stats.vap_index) {
@@ -1643,6 +1644,7 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
             break;
 
         case ctrl_event_webconfig_set_data_tunnel:
+            memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap, sizeof(wifi_hal_capability_t));
             webconfig_decode(config, &data, raw);
             break;
 

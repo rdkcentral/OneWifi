@@ -188,7 +188,7 @@ void webconf_enc_mode_to_int(char *enc_mode_str, wifi_encryption_method_t *enc_m
     } else if ((strcmp(enc_mode_str, "AES") == 0)) {
         *enc_mode = wifi_encryption_aes;
     } else if ((strcmp(enc_mode_str, "AES+TKIP") == 0)) {
-	*enc_mode = wifi_encryption_aes_tkip;
+        *enc_mode = wifi_encryption_aes_tkip;
     }
 }
 
@@ -203,19 +203,21 @@ void webconf_enc_mode_to_int(char *enc_mode_str, wifi_encryption_method_t *enc_m
 int webconf_populate_initial_config(webconf_wifi_t *current_config, uint8_t ssid)
 {
     wifi_vap_info_map_t *p_vap_map;
-    wifi_util_dbg_print(WIFI_CTRL, "%s: start init config\n", __FUNCTION__);
-
     UINT ap_index, radio_index;
-    for (ap_index = 0; ap_index < getTotalNumberVAPs(); ap_index++) 
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+
+    wifi_util_dbg_print(WIFI_CTRL, "%s: start init config\n", __FUNCTION__);
+    for (UINT index = 0; index < getTotalNumberVAPs(); index++)
     {
+        ap_index = VAP_INDEX(mgr->hal_cap, index);
         radio_index = getRadioIndexFromAp(ap_index);
         p_vap_map = get_wifidb_vap_map(radio_index);
-	    if(p_vap_map == NULL)
-	    {
-                wifi_util_dbg_print(WIFI_CTRL, "[%s]: wrong radio_index %d\n", __FUNCTION__, radio_index);
-	        return RETURN_ERR;
-	    }
-	    strncpy(current_config->ssid[radio_index].ssid_name, p_vap_map->vap_array[ap_index].u.bss_info.ssid, WIFI_AP_MAX_SSID_LEN);
+        if(p_vap_map == NULL)
+        {
+            wifi_util_dbg_print(WIFI_CTRL, "[%s]: wrong radio_index %d\n", __FUNCTION__, radio_index);
+            return RETURN_ERR;
+        }
+        strncpy(current_config->ssid[radio_index].ssid_name, p_vap_map->vap_array[ap_index].u.bss_info.ssid, WIFI_AP_MAX_SSID_LEN);
         current_config->ssid[radio_index].enable = p_vap_map->vap_array[ap_index].u.bss_info.enabled;
         current_config->ssid[radio_index].ssid_advertisement_enabled = p_vap_map->vap_array[ap_index].u.bss_info.showSsid;
         strncpy(current_config->security[radio_index].passphrase, (char*)p_vap_map->vap_array[ap_index].u.bss_info.security.u.key.key,
@@ -265,17 +267,19 @@ int webconf_update_params(webconf_wifi_t *ps, uint8_t ssid)
 {
     wifi_vap_info_map_t *p_vap_map;
     wifi_util_dbg_print(WIFI_CTRL, "%s: webconfig param update\n", __FUNCTION__);
+    wifi_mgr_t *mgr = get_wifimgr_obj();
 
     UINT ap_index, radio_index;
     for (ap_index = 0; ap_index < getTotalNumberVAPs(); ap_index++) 
     {
-        if ( (ssid == WIFI_WEBCONFIG_PRIVATESSID && isVapPrivate(ap_index)) || (ssid == WIFI_WEBCONFIG_HOMESSID && isVapXhs(ap_index)) )
+        UINT vap_index = VAP_INDEX(mgr->hal_cap, index);
+        if ( (ssid == WIFI_WEBCONFIG_PRIVATESSID && isVapPrivate(vap_index)) || (ssid == WIFI_WEBCONFIG_HOMESSID && isVapXhs(vap_index)) )
         {
-            radio_index = getRadioIndexFromAp(ap_index);
+            radio_index = getRadioIndexFromAp(vap_index);
             if (curr_config->ssid[radio_index].ssid_changed) 
             {
                 p_vap_map = get_wifidb_vap_map(radio_index);
-	            if(p_vap_map == NULL)
+                if(p_vap_map == NULL)
                 {
                     wifi_util_dbg_print(WIFI_CTRL, "%s: wrong radio_index %d\n", __FUNCTION__, radio_index);
                     return RETURN_ERR;
@@ -290,7 +294,7 @@ int webconf_update_params(webconf_wifi_t *ps, uint8_t ssid)
             if (curr_config->security[radio_index].sec_changed) 
             {
                 p_vap_map = get_wifidb_vap_map(radio_index);
-	            if(p_vap_map == NULL)
+                if(p_vap_map == NULL)
                 {
                     wifi_util_dbg_print(WIFI_CTRL, "%s: wrong radio_index %d\n", __FUNCTION__, radio_index);
                     return RETURN_ERR;
@@ -344,7 +348,7 @@ int webconf_apply_wifi_ssid_params (webconf_wifi_t *pssid_entry, uint8_t wlan_in
                         "change SSID name on interface: %d SSID: %s \n",__FUNCTION__,wlan_index,ssid);
         t2_event_d("WIFI_INFO_XHCofigchanged", 1);
         
-	ret_val = wifi_setSSIDName(wlan_index, ssid);
+        ret_val = wifi_setSSIDName(wlan_index, ssid);
         if (ret_val != RETURN_OK) {
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s: Failed to apply SSID name for wlan %d\n",__FUNCTION__, wlan_index);
             if (exec_ret_val) {
@@ -368,7 +372,7 @@ int webconf_apply_wifi_ssid_params (webconf_wifi_t *pssid_entry, uint8_t wlan_in
         wifi_util_dbg_print(WIFI_WEBCONFIG, "RDK_LOG_INFO,WIFI %s : Notify Mesh of SSID change\n",__FUNCTION__);
         v_secure_system("/usr/bin/sysevent set wifi_SSIDName \"RDK|%d|%s\"",wlan_index, ssid);
         
-	if (isVapPrivate(wlan_index))
+        if (isVapPrivate(wlan_index))
         {
             global_ssid_updated[getRadioIndexFromAp(wlan_index)] = TRUE;
         }
@@ -396,8 +400,8 @@ int webconf_apply_wifi_ssid_params (webconf_wifi_t *pssid_entry, uint8_t wlan_in
             wifi_getApSecurityPreSharedKey(2, passph);
             wifi_setApSecurityPreSharedKey(3, passph);
         }
-		
-	wifi_util_dbg_print(WIFI_WEBCONFIG,"RDK_LOG_WARN,WIFI %s wifi_setApEnable success  index %d , %d",
+
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"RDK_LOG_WARN,WIFI %s wifi_setApEnable success  index %d , %d",
                      __FUNCTION__,wlan_index, enable);
 
        	wifi_security_modes_t auth_mode;
@@ -464,7 +468,7 @@ int webconf_apply_wifi_ssid_params (webconf_wifi_t *pssid_entry, uint8_t wlan_in
         cur_conf_ssid->ssid_changed = true;
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s: SSID Enable change applied for wlan %d\n",__FUNCTION__, wlan_index);
     } else if (b_force_disable_flag == TRUE) {
-	    wifi_util_dbg_print(WIFI_WEBCONFIG,"RDK_LOG_WARN, WIFI_ATTEMPT_TO_CHANGE_CONFIG_WHEN_FORCE_DISABLED \n");
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"RDK_LOG_WARN, WIFI_ATTEMPT_TO_CHANGE_CONFIG_WHEN_FORCE_DISABLED \n");
     }
     
     if (cur_conf_ssid->ssid_advertisement_enabled != adv_enable) {
@@ -491,7 +495,7 @@ int webconf_apply_wifi_ssid_params (webconf_wifi_t *pssid_entry, uint8_t wlan_in
         v_secure_system("/usr/bin/sysevent set wifi_SSIDAdvertisementEnable \"RDK|%d|%s\"", 
                         wlan_index, adv_enable?"true":"false");
         
-	apply_params.hostapd_restart = true;
+        apply_params.hostapd_restart = true;
         cur_conf_ssid->ssid_changed = true;
         cur_conf_ssid->ssid_advertisement_enabled = adv_enable;
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s: Advertisement change applied for wlan index: %d\n", 
@@ -533,7 +537,7 @@ int webconf_apply_wifi_security_params(webconf_wifi_t *pssid_entry, uint8_t wlan
 
     /* Copy hal specific strings for respective Authentication Mode */
     if (strcmp(mode, "None") == 0 ) {
-	    sec_mode = wifi_security_mode_none;
+        sec_mode = wifi_security_mode_none;
         strcpy(security_type,"None");
         strcpy(auth_mode,"None");
     }
@@ -582,7 +586,7 @@ int webconf_apply_wifi_security_params(webconf_wifi_t *pssid_entry, uint8_t wlan
             }
             return ret_val;
         }
-	wifi_util_dbg_print(WIFI_WEBCONFIG, "RDK_LOG_WARN,%s calling setBasicAuthenticationMode ssid : %d auth_mode : %s \n",
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "RDK_LOG_WARN,%s calling setBasicAuthenticationMode ssid : %d auth_mode : %s \n",
                        __FUNCTION__,wlan_index, mode);
         ret_val = wifi_setApBasicAuthenticationMode(wlan_index, auth_mode);
         if (ret_val != RETURN_OK) {
@@ -597,7 +601,7 @@ int webconf_apply_wifi_security_params(webconf_wifi_t *pssid_entry, uint8_t wlan
         cur_sec_cfg->sec_changed = true;
         apply_params.hostapd_restart = true;
         wifi_util_dbg_print(WIFI_WEBCONFIG,"RDK_LOG_NOTICE, Wifi security mode %s is Enabled", mode);
-	    wifi_util_dbg_print(WIFI_WEBCONFIG, "RDK_LOG_WARN,RDKB_WIFI_CONFIG_CHANGED : Wifi security mode %s is Enabled\n",mode);
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "RDK_LOG_WARN,RDKB_WIFI_CONFIG_CHANGED : Wifi security mode %s is Enabled\n",mode);
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s: Security Mode Change Applied for wlan index %d\n", __FUNCTION__,wlan_index);
     }
 
@@ -625,7 +629,7 @@ int webconf_apply_wifi_security_params(webconf_wifi_t *pssid_entry, uint8_t wlan
                         __FUNCTION__, wlan_index);
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s: Passpharse change applied for wlan index %d\n", __FUNCTION__, wlan_index);
     } else if (b_force_disable_flag == TRUE) {
-	wifi_util_dbg_print(WIFI_WEBCONFIG,"RDK_LOG_WARN, WIFI_ATTEMPT_TO_CHANGE_CONFIG_WHEN_FORCE_DISABLED \n");
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"RDK_LOG_WARN, WIFI_ATTEMPT_TO_CHANGE_CONFIG_WHEN_FORCE_DISABLED \n");
     }
 
     if ((strcmp(cur_sec_cfg->encryption_method, encryption) != 0) &&
@@ -653,7 +657,7 @@ int webconf_apply_wifi_security_params(webconf_wifi_t *pssid_entry, uint8_t wlan
     }
 
     if (cur_sec_cfg->sec_changed) {
-	wifi_util_dbg_print(WIFI_WEBCONFIG, "RDK_LOG_INFO,WIFI %s : Notify Mesh of Security changes\n",__FUNCTION__);
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "RDK_LOG_INFO,WIFI %s : Notify Mesh of Security changes\n",__FUNCTION__);
         v_secure_system("/usr/bin/sysevent set wifi_ApSecurity \"RDK|%d|%s|%s|%s\"",wlan_index, passphrase, auth_mode, method);
     }
  
@@ -669,7 +673,7 @@ int webconf_apply_wifi_security_params(webconf_wifi_t *pssid_entry, uint8_t wlan
             return ret_val;
         }
         
-	ret_val = wifi_removeApSecVaribles(wlan_index);
+        ret_val = wifi_removeApSecVaribles(wlan_index);
         if (ret_val != RETURN_OK) {
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s: Failed to remove Ap Sec variables\n", __FUNCTION__);
             return ret_val;
@@ -689,7 +693,7 @@ int webconf_apply_wifi_security_params(webconf_wifi_t *pssid_entry, uint8_t wlan
             
         }
         
-	if (ret_val != RETURN_OK) {
+        if (ret_val != RETURN_OK) {
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s: Failed to create Host Apd Config\n",__FUNCTION__);
             return ret_val;
         }
@@ -863,26 +867,28 @@ int webconf_apply_wifi_param_handler (webconf_wifi_t *pssid_entry, pErr exec_ret
 {
     int ret_val = RETURN_ERR;
     char *err = NULL;
-    uint8_t i = 0, wlan_index = 0;
+    UINT i = 0, vap_index = 0;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
 
     for (i = 0; i < getTotalNumberVAPs(); i++) 
     {
-        if ( (ssid == WIFI_WEBCONFIG_PRIVATESSID && isVapPrivate(i)) || (ssid == WIFI_WEBCONFIG_HOMESSID && isVapXhs(i)) )
+        vap_index = VAP_INDEX(mgr->hal_cap, i);
+        if ( (ssid == WIFI_WEBCONFIG_PRIVATESSID && isVapPrivate(vap_index)) || (ssid == WIFI_WEBCONFIG_HOMESSID && isVapXhs(vap_index)) )
         {
-            ret_val  = webconf_apply_wifi_ssid_params(pssid_entry, i, exec_ret_val);
+            ret_val  = webconf_apply_wifi_ssid_params(pssid_entry, vap_index, exec_ret_val);
             if (ret_val != RETURN_OK) {
                 wifi_util_dbg_print(WIFI_WEBCONFIG,"%s: Failed to apply ssid params for ap index %d\n",
-                            __FUNCTION__, wlan_index);
+                            __FUNCTION__, vap_index);
                 return ret_val;
             }
 
-            ret_val = webconf_apply_wifi_security_params(pssid_entry, i, exec_ret_val);
+            ret_val = webconf_apply_wifi_security_params(pssid_entry, vap_index, exec_ret_val);
             if (ret_val != RETURN_OK) {
                 wifi_util_dbg_print(WIFI_WEBCONFIG,"%s: Failed to apply security params for ap index %d\n",
-                             __FUNCTION__, wlan_index);
+                             __FUNCTION__, vap_index);
                 return ret_val;
             }
-		}
+        }
     } 
     err = wifi_apply_radio_settings();
     if (err != NULL) {
@@ -908,19 +914,22 @@ int webconf_validate_wifi_param_handler (webconf_wifi_t *pssid_entry, pErr exec_
 {
     uint8_t i = 0, wlan_index = 0;
     int ret_val = RETURN_ERR;
+    UINT vap_index;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
 
     for (i = 0; i < getTotalNumberVAPs(); i++) 
     {
-        if ( (ssid == WIFI_WEBCONFIG_PRIVATESSID && isVapPrivate(i)) || (ssid == WIFI_WEBCONFIG_HOMESSID && isVapXhs(i)) )
+        vap_index = VAP_INDEX(mgr->hal_cap, i);
+        if ( (ssid == WIFI_WEBCONFIG_PRIVATESSID && isVapPrivate(vap_index)) || (ssid == WIFI_WEBCONFIG_HOMESSID && isVapXhs(vap_index)) )
         {
-            ret_val = webconf_validate_wifi_ssid_params(pssid_entry, i, exec_ret_val);
+            ret_val = webconf_validate_wifi_ssid_params(pssid_entry, vap_index, exec_ret_val);
             if (ret_val != RETURN_OK) {
                 wifi_util_dbg_print(WIFI_WEBCONFIG,"%s: Failed to validate ssid params for ap index %d\n",
                              __FUNCTION__,wlan_index);
                 return ret_val;
             }
 
-            ret_val = webconf_validate_wifi_security_params(pssid_entry, i, exec_ret_val);
+            ret_val = webconf_validate_wifi_security_params(pssid_entry, vap_index, exec_ret_val);
             if (ret_val != RETURN_OK) {
                 wifi_util_dbg_print(WIFI_WEBCONFIG,"%s: Failed to validate security params for ap index %d\n",
                              __FUNCTION__, wlan_index);
@@ -1179,9 +1188,12 @@ pErr webconf_wifi_ssid_config_handler(void *Data)
     {
         char param_name[64] = {0};
         UINT radio_index = 0;
-		
-        for (UINT ap_index = 0; ap_index < getTotalNumberVAPs(); ap_index++)
+        UINT ap_index;
+        wifi_mgr_t *mgr = get_wifimgr_obj();
+
+        for (UINT index = 0; index < getTotalNumberVAPs(); index++)
         {
+            ap_index = VAP_INDEX(mgr->hal_cap, index);
             if (isVapPrivate(ap_index))
             {
                 radio_index = getRadioIndexFromAp(ap_index);
@@ -1405,13 +1417,13 @@ int wifi_get_initial_common_config(wifi_global_config_t *curr_cfg)
 ***************************************************************************************/
 int wifi_update_common_config(wifi_global_config_t *wifi_cfg)
 {
-        wifi_GASConfiguration_t *p_gas_conf = Get_wifi_gas_conf_object();
-	p_gas_conf->AdvertisementID = wifi_cfg->gas_config.AdvertisementID;
-        p_gas_conf->PauseForServerResponse = wifi_cfg->gas_config.PauseForServerResponse;
-        p_gas_conf->ResponseTimeout = wifi_cfg->gas_config.ResponseTimeout;
-        p_gas_conf->ComeBackDelay = wifi_cfg->gas_config.ComeBackDelay;
-        p_gas_conf->ResponseBufferingTime = wifi_cfg->gas_config.ResponseBufferingTime;
-        p_gas_conf->QueryResponseLengthLimit = wifi_cfg->gas_config.QueryResponseLengthLimit;
+    wifi_GASConfiguration_t *p_gas_conf = Get_wifi_gas_conf_object();
+    p_gas_conf->AdvertisementID = wifi_cfg->gas_config.AdvertisementID;
+    p_gas_conf->PauseForServerResponse = wifi_cfg->gas_config.PauseForServerResponse;
+    p_gas_conf->ResponseTimeout = wifi_cfg->gas_config.ResponseTimeout;
+    p_gas_conf->ComeBackDelay = wifi_cfg->gas_config.ComeBackDelay;
+    p_gas_conf->ResponseBufferingTime = wifi_cfg->gas_config.ResponseBufferingTime;
+    p_gas_conf->QueryResponseLengthLimit = wifi_cfg->gas_config.QueryResponseLengthLimit;
     //Update WIFIDB
     if(RETURN_OK != wifidb_update_gas_config(wifi_cfg->gas_config.AdvertisementID, &wifi_cfg->gas_config))
     {
@@ -1449,7 +1461,7 @@ int wifi_update_captiveportal (char *ssid, char *password, char *vap_name) {
     if ( strcmp(notify_wifi_changes_val,"true") != 0 ) {
         return RETURN_OK;
     }
-	
+
     UINT ap_index = 0;
     wlan_index = 2;
     pwd_updated = NULL;
@@ -1742,7 +1754,7 @@ int radio_config_set(const char *buf, size_t len, pErr exec_ret_val)
     for (r_index = 0; r_index < num_radio; r_index++)
     {
             /* Update wifidb params */
-	    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Update wifidb with radio and VAP configs No of Radios=%d No of Vaps=%d\n",__FUNCTION__,__LINE__,num_radio,vap_map[r_index].num_vaps);
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Update wifidb with radio and VAP configs No of Radios=%d No of Vaps=%d\n",__FUNCTION__,__LINE__,num_radio,vap_map[r_index].num_vaps);
         if (convert_freq_band_to_radio_index(radio_vap_map[r_index].band, &radio_index) != RETURN_OK) {
             wifi_util_dbg_print(WIFI_WEBCONFIG, " %s %d convert_freq_band_to_radio_index failed for band : %d \n", __FUNCTION__, __LINE__, radio_vap_map[r_index].band);
             return RETURN_ERR;
@@ -1806,7 +1818,7 @@ int wifi_radio_config_get()
             get_wifi_vap_config(r_index,&vap_map[r_index]);
             wifi_util_dbg_print(WIFI_DB,"%s:%d: Wifi_Radio_Config data enabled=%d freq_band=%d auto_channel_enabled=%d channel=%d  channel_width=%d hw_mode=%d csa_beacon_count=%d country=%d dcs_enabled=%d numSecondaryChannels=%d channelSecondary=%d dtim_period %d beacon_interval %d operating_class %d basic_data_transmit_rate %d operational_data_transmit_rate %d  fragmentation_threshold %d guard_interval %d transmit_power %d rts_threshold %d  factory_reset_ssid = %d, radio_stats_measuring_rate = %d, radio_stats_measuring_interval = %d, cts_protection %d, obss_coex= %d, stbc_enable= %d, greenfield_enable= %d, user_control= %d, admin_control= %d,chan_util_threshold= %d, chan_util_selfheal_enable= %d \n",__func__, __LINE__,radio_vap_map[r_index].enable,radio_vap_map[r_index].band,radio_vap_map[r_index].autoChannelEnabled,radio_vap_map[r_index].channel,radio_vap_map[r_index].channelWidth,radio_vap_map[r_index].variant,radio_vap_map[r_index].csa_beacon_count,radio_vap_map[r_index].countryCode,radio_vap_map[r_index].DCSEnabled,radio_vap_map[r_index].numSecondaryChannels,radio_vap_map[r_index].channelSecondary[0],radio_vap_map[r_index].dtimPeriod,radio_vap_map[r_index].beaconInterval,radio_vap_map[r_index].operatingClass,radio_vap_map[r_index].basicDataTransmitRates,radio_vap_map[r_index].operationalDataTransmitRates,radio_vap_map[r_index].fragmentationThreshold,radio_vap_map[r_index].guardInterval,radio_vap_map[r_index].transmitPower,radio_vap_map[r_index].rtsThreshold,radio_vap_map[r_index].factoryResetSsid,radio_vap_map[r_index].radioStatsMeasuringRate,radio_vap_map[r_index].radioStatsMeasuringInterval,radio_vap_map[r_index].ctsProtection,radio_vap_map[r_index].obssCoex,radio_vap_map[r_index].stbcEnable,radio_vap_map[r_index].greenFieldEnable,radio_vap_map[r_index].userControl,radio_vap_map[r_index].adminControl,radio_vap_map[r_index].chanUtilThreshold,radio_vap_map[r_index].chanUtilSelfHealEnable);
 
-	    for (i=0;i<vap_map[r_index].num_vaps;i++)
+            for (i=0;i<vap_map[r_index].num_vaps;i++)
             {
                 wifi_util_dbg_print(WIFI_DB,"%s:%d:VAP Config Row=%d radioindex=%d vap_name=%s vap_index=%d ssid=%s enabled=%d ssid_advertisement_enable=%d isolation_enabled=%d mgmt_power_control=%d bss_max_sta =%d bss_transition_activated=%d nbr_report_activated=%d  rapid_connect_enabled=%d rapid_connect_threshold=%d vap_stats_enable=%d mac_filter_enabled =%d mac_filter_mode=%d  wmm_enabled=%d anqpParameters=%s hs2Parameters=%s uapsd_enabled =%d beacon_rate=%d bridge_name=%s wmm_noack = %d wep_key_length = %d bss_hotspot = %d wps_push_button = %d beacon_rate_ctl =%s network_initiated_greylist=%d\n",__func__, __LINE__,i,vap_map[r_index].vap_array[i].radio_index,vap_map[r_index].vap_array[i].vap_name,vap_map[r_index].vap_array[i].vap_index,vap_map[r_index].vap_array[i].u.bss_info.ssid,vap_map[r_index].vap_array[i].u.bss_info.enabled,vap_map[r_index].vap_array[i].u.bss_info.showSsid ,vap_map[r_index].vap_array[i].u.bss_info.isolation,vap_map[r_index].vap_array[i].u.bss_info.mgmtPowerControl,vap_map[r_index].vap_array[i].u.bss_info.bssMaxSta,vap_map[r_index].vap_array[i].u.bss_info.bssTransitionActivated,vap_map[r_index].vap_array[i].u.bss_info.nbrReportActivated,vap_map[r_index].vap_array[i].u.bss_info.rapidReconnectEnable,vap_map[r_index].vap_array[i].u.bss_info.rapidReconnThreshold,vap_map[r_index].vap_array[i].u.bss_info.vapStatsEnable,vap_map[r_index].vap_array[i].u.bss_info.mac_filter_enable,vap_map[r_index].vap_array[i].u.bss_info.mac_filter_mode,vap_map[r_index].vap_array[i].u.bss_info.wmm_enabled,vap_map[r_index].vap_array[i].u.bss_info.interworking.anqp.anqpParameters,vap_map[r_index].vap_array[i].u.bss_info.interworking.passpoint.hs2Parameters,vap_map[r_index].vap_array[i].u.bss_info.UAPSDEnabled,vap_map[r_index].vap_array[i].u.bss_info.beaconRate,vap_map[r_index].vap_array[i].bridge_name,vap_map[r_index].vap_array[i].u.bss_info.wmmNoAck,vap_map[r_index].vap_array[i].u.bss_info.wepKeyLength,vap_map[r_index].vap_array[i].u.bss_info.bssHotspot,vap_map[r_index].vap_array[i].u.bss_info.wpsPushButton,vap_map[r_index].vap_array[i].u.bss_info.beaconRateCtl,vap_map[r_index].vap_array[i].u.bss_info.network_initiated_greylist);
                 wifi_util_dbg_print(WIFI_DB,"%s:%d: Get Wifi_Interworking_Config table vap_name=%s Enable=%d accessNetworkType=%d internetAvailable=%d asra=%d esr=%d uesa=%d hess_present=%d hessid=%s venueGroup=%d venueType=%d \n",__func__, __LINE__,vap_map[r_index].vap_array[i].vap_name,vap_map[r_index].vap_array[i].u.bss_info.interworking.interworking.interworkingEnabled,vap_map[r_index].vap_array[i].u.bss_info.interworking.interworking.accessNetworkType,vap_map[r_index].vap_array[i].u.bss_info.interworking.interworking.internetAvailable,vap_map[r_index].vap_array[i].u.bss_info.interworking.interworking.asra,vap_map[r_index].vap_array[i].u.bss_info.interworking.interworking.esr,vap_map[r_index].vap_array[i].u.bss_info.interworking.interworking.uesa,vap_map[r_index].vap_array[i].u.bss_info.interworking.interworking.hessOptionPresent,vap_map[r_index].vap_array[i].u.bss_info.interworking.interworking.hessid,vap_map[r_index].vap_array[i].u.bss_info.interworking.interworking.venueGroup,vap_map[r_index].vap_array[i].u.bss_info.interworking.interworking.venueType);

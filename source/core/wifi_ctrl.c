@@ -1076,9 +1076,12 @@ wifi_radio_index_t get_wifidb_radio_index(uint8_t radio_index)
 rdk_wifi_vap_info_t* get_wifidb_rdk_vap_info(uint8_t vapIndex)
 {
     uint8_t radio_index = 0, vap_index = 0;
-    get_vap_and_radio_index_from_vap_instance(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, vapIndex, &radio_index, &vap_index);
+    if (get_vap_and_radio_index_from_vap_instance(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, vapIndex, &radio_index, &vap_index) == -1) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s: Invalid VAP index %u\n", __func__, vapIndex);
+        return NULL;
+    }
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
-    if ((radio_index < getNumberRadios()) && (vap_index < getMaxNumberVAPsPerRadio(radio_index))) {
+    if ((radio_index < getNumberRadios()) && (vap_index < getNumberVAPsPerRadio(radio_index))) {
         return &g_wifi_mgr->radio_config[radio_index].vaps.rdk_vap_array[vap_index];
     } else {
         wifi_util_dbg_print(WIFI_CTRL, "%s: wrong radio or vap index %d\n", __FUNCTION__, radio_index);
@@ -1139,9 +1142,13 @@ wifi_GASConfiguration_t * Get_wifi_gas_conf_object(void)
 wifi_interworking_t * Get_wifi_object_interworking_parameter(uint8_t vapIndex)
 {
     uint8_t radio_index = 0, vap_index = 0;
-    get_vap_and_radio_index_from_vap_instance(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, vapIndex, &radio_index, &vap_index);
+    if (get_vap_and_radio_index_from_vap_instance(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, vapIndex, &radio_index, &vap_index)) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s: Invalid VAP index %u\n", __func__, vapIndex);
+        return NULL;
+    }
+
     wifi_vap_info_map_t *l_vap_maps = get_wifidb_vap_map(radio_index);
-    if (l_vap_maps == NULL || vap_index >= getMaxNumberVAPsPerRadio(radio_index)) {
+    if (l_vap_maps == NULL || vap_index >= getNumberVAPsPerRadio(radio_index)) {
         wifi_util_dbg_print(WIFI_CTRL, "%s: wrong radio_index %d vapIndex:%d \n", __FUNCTION__, radio_index, vapIndex);
         return NULL;
     }
@@ -1151,9 +1158,13 @@ wifi_interworking_t * Get_wifi_object_interworking_parameter(uint8_t vapIndex)
 wifi_vap_security_t * Get_wifi_object_bss_security_parameter(uint8_t vapIndex)
 {
     uint8_t radio_index = 0, vap_index = 0;
-    get_vap_and_radio_index_from_vap_instance(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, vapIndex, &radio_index, &vap_index);
+    if (get_vap_and_radio_index_from_vap_instance(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, vapIndex, &radio_index, &vap_index) == -1) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s: Invalid VAP index %u\n", __func__, vapIndex);
+        return NULL;
+    }
+
     wifi_vap_info_map_t *l_vap_maps = get_wifidb_vap_map(radio_index);
-    if (l_vap_maps == NULL || vap_index >= getMaxNumberVAPsPerRadio(radio_index)) {
+    if (l_vap_maps == NULL || vap_index >= getNumberVAPsPerRadio(radio_index)) {
         wifi_util_dbg_print(WIFI_CTRL, "%s: wrong radio_index %d vapIndex:%d \n", __FUNCTION__, radio_index, vapIndex);
         return NULL;
     }
@@ -1163,7 +1174,10 @@ wifi_vap_security_t * Get_wifi_object_bss_security_parameter(uint8_t vapIndex)
 wifi_vap_security_t * Get_wifi_object_sta_security_parameter(uint8_t vapIndex)
 {
     uint8_t radio_index = 0, vap_index = 0;
-    get_vap_and_radio_index_from_vap_instance(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, vapIndex, &radio_index, &vap_index);
+    if (get_vap_and_radio_index_from_vap_instance(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, vapIndex, &radio_index, &vap_index) == -1) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s: Invalid VAP index %u\n", __func__, vapIndex);
+        return NULL;
+    }
     wifi_vap_info_map_t *l_vap_maps = get_wifidb_vap_map(radio_index);
     if (l_vap_maps == NULL || vap_index >= MAX_NUM_VAP_PER_RADIO) {
         wifi_util_dbg_print(WIFI_CTRL, "%s: wrong radio_index %d vapIndex:%d \n", __FUNCTION__, radio_index, vapIndex);
@@ -1175,9 +1189,12 @@ wifi_vap_security_t * Get_wifi_object_sta_security_parameter(uint8_t vapIndex)
 wifi_front_haul_bss_t * Get_wifi_object_bss_parameter(uint8_t vapIndex)
 {
     uint8_t radio_index = 0, vap_index = 0;
-    get_vap_and_radio_index_from_vap_instance(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, vapIndex, &radio_index, &vap_index);
+    if (get_vap_and_radio_index_from_vap_instance(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, vapIndex, &radio_index, &vap_index) == -1) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s: Invalid VAP index %u\n", __func__, vapIndex);
+        return NULL;
+    }
     wifi_vap_info_map_t *l_vap_maps = get_wifidb_vap_map(radio_index);
-    if(l_vap_maps == NULL || vap_index >= getMaxNumberVAPsPerRadio(radio_index)) {
+    if(l_vap_maps == NULL || vap_index >= getNumberVAPsPerRadio(radio_index)) {
         wifi_util_dbg_print(WIFI_CTRL, "%s: wrong radio_index %d vapIndex:%d \n", __FUNCTION__, radio_index, vapIndex);
         return NULL;
     }
@@ -1187,7 +1204,10 @@ wifi_front_haul_bss_t * Get_wifi_object_bss_parameter(uint8_t vapIndex)
 wifi_back_haul_sta_t * get_wifi_object_sta_parameter(uint8_t vapIndex)
 {
     uint8_t radio_index = 0, vap_index = 0;
-    get_vap_and_radio_index_from_vap_instance(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, vapIndex, &radio_index, &vap_index);
+    if (get_vap_and_radio_index_from_vap_instance(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, vapIndex, &radio_index, &vap_index) == -1) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s: Invalid VAP index %u\n", __func__, vapIndex);
+        return NULL;
+    }
     wifi_vap_info_map_t *l_vap_maps = get_wifidb_vap_map(radio_index);
     if(l_vap_maps == NULL || vap_index >= getMaxNumberVAPsPerRadio(radio_index)) {
         wifi_util_dbg_print(WIFI_CTRL, "%s: wrong radio_index %d vapIndex:%d \n", __FUNCTION__, radio_index, vapIndex);
@@ -1199,7 +1219,10 @@ wifi_back_haul_sta_t * get_wifi_object_sta_parameter(uint8_t vapIndex)
 wifi_vap_info_t* get_wifidb_vap_parameters(uint8_t vapIndex)
 {
     uint8_t radio_index = 0, vap_index = 0;
-    get_vap_and_radio_index_from_vap_instance(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, vapIndex, &radio_index, &vap_index);
+    if (get_vap_and_radio_index_from_vap_instance(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, vapIndex, &radio_index, &vap_index) == -1) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s: Invalid VAP index %u\n", __func__, vapIndex);
+        return NULL;
+    }
     wifi_vap_info_map_t *l_vap_maps = get_wifidb_vap_map(radio_index);
     if (l_vap_maps == NULL || vap_index >= getMaxNumberVAPsPerRadio(radio_index)) {
         wifi_util_dbg_print(WIFI_CTRL, "%s: wrong radio_index %d vapIndex:%d \n", __FUNCTION__, radio_index, vapIndex);
@@ -1255,24 +1278,17 @@ int get_wifi_mesh_sta_network_status(uint8_t vapIndex, bool *status)
 bool get_wifi_mesh_vap_enable_status(void)
 {
     bool status = false;
-    unsigned int num_of_radios = getNumberRadios();
-    unsigned int i = 0, j = 0;
-    wifi_vap_info_map_t *vap_map = NULL;
+    int count;
+    int vap_index;
+    wifi_vap_name_t backhauls[MAX_NUM_RADIOS];
 
-    for (i = 0; i < num_of_radios; i++) {
-        vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(i);
-        if (vap_map == NULL) {
-            wifi_util_dbg_print(WIFI_CTRL,"%s:failed to get vap map for radio index: %d\n",__FUNCTION__, i);
-            return -1;
-        }
-
-        for (j = 0; j < vap_map->num_vaps; j++) {
-            if (isVapMeshBackhaul(vap_map->vap_array[j].vap_index)) {
-                get_wifi_vap_network_status(vap_map->vap_array[j].vap_index, &status);
-                if (status == true) {
-                    return true;
-                }
-            }
+    /* get a list of mesh backhaul names of all radios */
+    count = get_list_of_mesh_backhaul(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, sizeof(backhauls)/sizeof(wifi_vap_name_t), backhauls);
+    for (int i = 0; i < count; i++) {
+        vap_index = convert_vap_name_to_index(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, &backhauls[i][0]);
+        get_wifi_vap_network_status(vap_index, &status);
+        if (status == true) {
+            return true;
         }
     }
 
@@ -1337,28 +1353,18 @@ int set_wifi_sta_network_status(uint8_t vapIndex, bool status)
     return RETURN_OK;
 }
 
-int set_wifi_public_vap_enable_status(void)
+void set_wifi_public_vap_enable_status(void)
 {
-    unsigned int num_of_radios = getNumberRadios();
-    unsigned int i = 0, j = 0;
-    wifi_vap_info_map_t *vap_map = NULL;
+    UINT vap_index;
+    int count;
+    wifi_vap_name_t hotspots[MAX_NUM_RADIOS];
 
-    for (i = 0; i < num_of_radios; i++) {
-        vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(i);
-        if (vap_map == NULL) {
-            wifi_util_dbg_print(WIFI_CTRL,"%s:failed to get vap map for radio index: %d\n",__FUNCTION__, i);
-            return RETURN_ERR;
-        }
-
-        for (j = 0; j < vap_map->num_vaps; j++) {
-            if ((isVapHotspotOpen(vap_map->vap_array[j].vap_index) == TRUE)
-                || (isVapHotspotSecure(vap_map->vap_array[j].vap_index) == TRUE)) {
-                set_wifi_vap_network_status(vap_map->vap_array[j].vap_index, true);
-            }
-        }
+    count = get_list_of_vap_names(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, hotspots, \
+                                  sizeof(hotspots)/sizeof(wifi_vap_name_t), 1, VAP_PREFIX_HOTSPOT);
+    for (int i = 0; i < count; i++) {
+        vap_index = convert_vap_name_to_index(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, &hotspots[i][0]);
+        set_wifi_vap_network_status(vap_index, true);
     }
-
-    return RETURN_OK;
 }
 
 wifi_dml_parameters_t* get_wifi_dml_parameters(void)
@@ -1601,12 +1607,6 @@ wifi_hal_capability_t* rdk_wifi_get_hal_capability_map(void)
     return &wifi_mgr->hal_cap;
 }
 
-UINT getNumberofVAPsPerRadio(UINT radioIndex)
-{
-    wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
-    return (wifi_mgr->radio_config[radioIndex].vaps.vap_map.num_vaps);
-}
-
 rdk_wifi_vap_map_t *getRdkWifiVap(UINT radioIndex)
 {
     if (radioIndex >= getNumberRadios()) {
@@ -1623,15 +1623,15 @@ wifi_vap_info_t *getVapInfo(UINT apIndex)
 {
     UINT radioIndex = 0;
     UINT vapArrayIndex = 0;
+    wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
 
-    if (apIndex >= getTotalNumberVAPs()) {
+    if (apIndex >= wifi_mgr->hal_cap.wifi_prop.numRadios * MAX_NUM_VAP_PER_RADIO) {
         wifi_util_dbg_print(WIFI_CTRL,"RDK_LOG_ERROR, %s Input apIndex = %d not found, Out of range\n", __FUNCTION__, apIndex);
         return NULL;
     }
-    wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
 
     for (radioIndex = 0; radioIndex < getNumberRadios(); radioIndex++) {
-        for (vapArrayIndex = 0; vapArrayIndex < getNumberofVAPsPerRadio(radioIndex); vapArrayIndex++) {
+        for (vapArrayIndex = 0; vapArrayIndex < getNumberVAPsPerRadio(radioIndex); vapArrayIndex++) {
             if (apIndex == wifi_mgr->radio_config[radioIndex].vaps.vap_map.vap_array[vapArrayIndex].vap_index) {
                 //wifi_util_dbg_print(WIFI_CTRL, "%s Input apIndex = %d  found at radioIndex = %d vapArrayIndex = %d\n ", __FUNCTION__, apIndex, radioIndex, vapArrayIndex);
                 return &wifi_mgr->radio_config[radioIndex].vaps.vap_map.vap_array[vapArrayIndex];
@@ -1651,15 +1651,15 @@ rdk_wifi_vap_info_t *getRdkVapInfo(UINT apIndex)
 {
     UINT radioIndex = 0;
     UINT vapArrayIndex = 0;
+    wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
 
-    if (apIndex >= getTotalNumberVAPs()) {
+    if (apIndex >= wifi_mgr->hal_cap.wifi_prop.numRadios * MAX_NUM_VAP_PER_RADIO) {
         wifi_util_dbg_print(WIFI_CTRL,"RDK_LOG_ERROR, %s Input apIndex = %d not found, Out of range\n", __FUNCTION__, apIndex);
         return NULL;
     }
-    wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
 
     for (radioIndex = 0; radioIndex < getNumberRadios(); radioIndex++) {
-        for (vapArrayIndex = 0; vapArrayIndex < getNumberofVAPsPerRadio(radioIndex); vapArrayIndex++) {
+        for (vapArrayIndex = 0; vapArrayIndex < getNumberVAPsPerRadio(radioIndex); vapArrayIndex++) {
             if (apIndex == wifi_mgr->radio_config[radioIndex].vaps.rdk_vap_array[vapArrayIndex].vap_index) {
                 wifi_util_dbg_print(WIFI_CTRL, "%s Input apIndex = %d  found at radioIndex = %d vapArrayIndex = %d\n ", __FUNCTION__, apIndex, radioIndex, vapArrayIndex);
                 return &wifi_mgr->radio_config[radioIndex].vaps.rdk_vap_array[vapArrayIndex];
@@ -1712,7 +1712,7 @@ int rdkGetIndexFromName(char *pIfaceName, UINT *pWlanIndex)
     wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
 
     for (radioIndex = 0; radioIndex < getNumberRadios(); radioIndex++) {
-        for (vapArrayIndex = 0; vapArrayIndex < getNumberofVAPsPerRadio(radioIndex); vapArrayIndex++) {
+        for (vapArrayIndex = 0; vapArrayIndex < getNumberVAPsPerRadio(radioIndex); vapArrayIndex++) {
             if (strncmp(pIfaceName, wifi_mgr->radio_config[radioIndex].vaps.vap_map.vap_array[vapArrayIndex].vap_name, strlen(pIfaceName)) == 0) {
                 *pWlanIndex = wifi_mgr->radio_config[radioIndex].vaps.vap_map.vap_array[vapArrayIndex].vap_index;
                 wifi_util_dbg_print(WIFI_CTRL, "%s pIfaceName : %s wlanIndex : %d\n", __FUNCTION__, pIfaceName, *pWlanIndex);
@@ -1740,7 +1740,11 @@ UINT getRadioIndexFromAp(UINT apIndex)
 
 UINT getPrivateApFromRadioIndex(UINT radioIndex)
 {
-    for (UINT apIndex = 0; apIndex < getTotalNumberVAPs(); apIndex++) {
+    UINT apIndex;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+
+    for (UINT index = 0; index < getTotalNumberVAPs(); index++) {
+        apIndex = VAP_INDEX(mgr->hal_cap, index);
         if((strncmp((CHAR *)getVAPName(apIndex), "private_ssid", strlen("private_ssid")) == 0) &&
                getRadioIndexFromAp(apIndex) == radioIndex ) {
             return apIndex;
@@ -1820,6 +1824,12 @@ UINT getMaxNumberVAPsPerRadio(UINT radioIndex)
     return wifi_hal_cap_obj->wifi_prop.radiocap[radioIndex].maxNumberVAPs;
 }
 
+UINT getNumberVAPsPerRadio(UINT radioIndex)
+{
+    wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
+    return wifi_mgr->radio_config[radioIndex].vaps.num_vaps;
+}
+
 //Returns total number of Configured vaps for all radios
 UINT getTotalNumberVAPs()
 {
@@ -1828,7 +1838,7 @@ UINT getTotalNumberVAPs()
     UINT radioCount = 0;
     if (numVAPs == 0) {
         for (radioCount = 0; radioCount < numRadios; radioCount++)
-            numVAPs += getMaxNumberVAPsPerRadio(radioCount);
+            numVAPs += getNumberVAPsPerRadio(radioCount);
     }
 
     return numVAPs;
@@ -1842,7 +1852,7 @@ CHAR* getVAPName(UINT apIndex)
     wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
 
     for (radioIndex = 0; radioIndex < getNumberRadios(); radioIndex++) {
-        for (vapArrayIndex = 0; vapArrayIndex < getNumberofVAPsPerRadio(radioIndex); vapArrayIndex++) {
+        for (vapArrayIndex = 0; vapArrayIndex < getNumberVAPsPerRadio(radioIndex); vapArrayIndex++) {
             if (apIndex == wifi_mgr->radio_config[radioIndex].vaps.vap_map.vap_array[vapArrayIndex].vap_index) {
                 //wifi_util_dbg_print(WIFI_CTRL, "%s Input apIndex = %d  found at radioIndex = %d vapArrayIndex = %d\n ", __FUNCTION__, apIndex, radioIndex, vapArrayIndex);
                 if((wifi_mgr->radio_config[radioIndex].vaps.rdk_vap_array[vapArrayIndex].vap_name != NULL) && (strlen((CHAR *)wifi_mgr->radio_config[radioIndex].vaps.rdk_vap_array[vapArrayIndex].vap_name) != 0)) {
@@ -1866,7 +1876,7 @@ int getVAPIndexFromName(CHAR *vapName, UINT *apIndex)
     wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
 
     for (UINT radioIndex = 0; radioIndex < getNumberRadios(); radioIndex++) {
-        for (UINT vapArrayIndex = 0; vapArrayIndex < getNumberofVAPsPerRadio(radioIndex); vapArrayIndex++) {
+        for (UINT vapArrayIndex = 0; vapArrayIndex < getNumberVAPsPerRadio(radioIndex); vapArrayIndex++) {
             if (!strncmp (vapName, (CHAR *)wifi_mgr->radio_config[radioIndex].vaps.rdk_vap_array[vapArrayIndex].vap_name, \
                     strlen((CHAR *)wifi_mgr->radio_config[radioIndex].vaps.rdk_vap_array[vapArrayIndex].vap_name) + 1)) {
                 *apIndex = wifi_mgr->radio_config[radioIndex].vaps.vap_map.vap_array[vapArrayIndex].vap_index;
@@ -1875,6 +1885,14 @@ int getVAPIndexFromName(CHAR *vapName, UINT *apIndex)
         }
     }
     return RETURN_ERR;
+}
+
+int getVAPArrayIndexFromVAPIndex(unsigned int apIndex, unsigned int *vap_array_index)
+{
+    wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
+
+    VAP_ARRAY_INDEX(*vap_array_index, wifi_mgr->hal_cap, apIndex);
+    return RETURN_OK;
 }
 
 UINT convert_radio_index_to_frequencyNum(UINT radioIndex)
@@ -1904,7 +1922,7 @@ int get_vap_interface_bridge_name(unsigned int vap_index, char *bridge_name)
     char *l_bridge_name = NULL;
     wifi_hal_capability_t *wifi_hal_cap_obj = rdk_wifi_get_hal_capability_map();
 
-    if ((vap_index >= total_num_of_vaps) || (bridge_name == NULL)) {
+    if ((vap_index >= wifi_hal_cap_obj->wifi_prop.numRadios*MAX_NUM_VAP_PER_RADIO) || (bridge_name == NULL)) {
         wifi_util_dbg_print(WIFI_DB,"%s:%d: Wrong vap_index:%d \n",__func__, __LINE__, vap_index);
         return RETURN_ERR;
     }
@@ -1947,10 +1965,15 @@ void Hotspot_APIsolation_Set(int apIns)
 
 void Load_Hotspot_APIsolation_Settings(void)
 {
-    for (UINT apIndex = 0; apIndex < getTotalNumberVAPs(); ++apIndex) {
-        if (isVapHotspot(apIndex)) {
-            Hotspot_APIsolation_Set(apIndex + 1);
-        }
+    int count;
+    int vap_index;
+    wifi_vap_name_t hotspots[MAX_NUM_RADIOS*2];
+
+    count = get_list_of_vap_names(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, hotspots, \
+                                  sizeof(hotspots)/sizeof(wifi_vap_name_t), 1, VAP_PREFIX_HOTSPOT);
+    for (int i = 0; i < count; i++) {
+        vap_index = convert_vap_name_to_index(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, &hotspots[i][0]);
+        Hotspot_APIsolation_Set(vap_index + 1);
     }
 }
 

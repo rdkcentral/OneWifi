@@ -144,8 +144,9 @@ webconfig_error_t decode_xfinity_subdoc(webconfig_t *config, webconfig_subdoc_da
     cJSON *obj, *obj_vap;
     unsigned int size, radio_index, vap_array_index;
     unsigned int presence_count = 0;
-    char *vap_names[MAX_NUM_RADIOS * 2] = { "hotspot_open_2g", "hotspot_secure_2g", "hotspot_open_5g", "hotspot_secure_5g" };
     char *name;
+    unsigned int num_xfinity_ssid;
+    wifi_vap_name_t vap_names[MAX_NUM_RADIOS * 2];
     wifi_vap_info_t *vap_info;
     cJSON *json = data->u.encoded.json;
     webconfig_subdoc_decoded_data_t *params;
@@ -153,6 +154,11 @@ webconfig_error_t decode_xfinity_subdoc(webconfig_t *config, webconfig_subdoc_da
 
     params = &data->u.decoded;
     doc = &config->subdocs[data->type];
+
+    /* get list of hotspot_open SSID */
+    num_xfinity_ssid = get_list_of_hotspot_open(&params->hal_cap.wifi_prop, MAX_NUM_RADIOS, vap_names);
+    /* get list of hotspot_secure SSID */
+    num_xfinity_ssid += get_list_of_hotspot_secure(&params->hal_cap.wifi_prop, MAX_NUM_RADIOS, &vap_names[num_xfinity_ssid]);
 
     for (i = 0; i < doc->num_objects; i++) {
         if ((cJSON_GetObjectItem(json, doc->objects[i].name)) == NULL) {
@@ -172,9 +178,9 @@ webconfig_error_t decode_xfinity_subdoc(webconfig_t *config, webconfig_subdoc_da
     }
 
     size = cJSON_GetArraySize(obj_vaps);
-    if (size < (MIN_NUM_RADIOS * 2) || size > (MAX_NUM_RADIOS * 2)) {
+    if (num_xfinity_ssid > size) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Not correct number of vap objects: %d, expected: %d\n",
-                __func__, __LINE__, size, (sizeof(vap_names)/sizeof(char *)));
+                __func__, __LINE__, size, params->hal_cap.wifi_prop.numRadios);
         cJSON_Delete(json);
         return webconfig_error_invalid_subdoc;
     }
@@ -194,7 +200,7 @@ webconfig_error_t decode_xfinity_subdoc(webconfig_t *config, webconfig_subdoc_da
         }
     }
 
-    if (presence_count < (MIN_NUM_RADIOS * 2) || presence_count > (MAX_NUM_RADIOS * 2)) {
+    if (presence_count != num_xfinity_ssid) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: vap object not present\n", __func__, __LINE__);
         return webconfig_error_invalid_subdoc;
     }

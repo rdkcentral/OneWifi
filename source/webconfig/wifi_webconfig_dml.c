@@ -392,23 +392,15 @@ webconfig_error_t decode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
     rdk_wifi_vap_info_t *rdk_vap_info;
     unsigned int presence_mask = 0;
     //unsigned char should_apply_mask = 0;
-    char *radio_names[MAX_NUM_RADIOS] = {"radio1", "radio2"};
-    char *vap_names[MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO] = {
-        "private_ssid_2g", "private_ssid_5g",
-        "hotspot_open_2g", "hotspot_open_5g",
-        "hotspot_secure_2g", "hotspot_secure_5g",
-        "lnf_psk_2g", "lnf_psk_5g",
-        "lnf_radius_2g", "lnf_radius_5g",
-        "mesh_backhaul_2g", "mesh_backhaul_5g",
-        "mesh_sta_2g", "mesh_sta_5g",
-        "iot_ssid_2g", "iot_ssid_5g",
-    };
+    char *radio_names[MAX_NUM_RADIOS] = {"radio1", "radio2", "radio3"};
+    wifi_vap_name_t vap_names[MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO];
     char *name;
     wifi_vap_info_t *vap_info;
     cJSON *json = data->u.encoded.json;
     webconfig_subdoc_decoded_data_t *params;
     wifi_platform_property_t *wifi_prop;
     wifi_radio_capabilities_t *radio_cap;
+    int num_vaps;
 
     params = &data->u.decoded;
     doc = &config->subdocs[data->type];
@@ -541,6 +533,17 @@ webconfig_error_t decode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
     }
     params->num_radios = size;
     params->hal_cap.wifi_prop.numRadios = size;
+/*
+    for (i = 0; i < params->num_radios; i++) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: damiano params->radios[i].vaps.num_vaps  %u \n", __func__, __LINE__, i, params->radios[0].vaps.num_vaps);
+    }
+    */
+
+    /* get the vap names interested */
+    num_vaps = get_list_of_vap_names(wifi_prop, vap_names, MAX_NUM_RADIOS*MAX_NUM_VAP_PER_RADIO, \
+                                     8, VAP_PREFIX_PRIVATE, VAP_PREFIX_HOTSPOT_OPEN, VAP_PREFIX_HOTSPOT_SECURE, \
+                                     VAP_PREFIX_LNF_PSK, VAP_PREFIX_LNF_RADIUS, VAP_PREFIX_MESH_BACKHAUL, \
+                                     VAP_PREFIX_MESH_STA, VAP_PREFIX_IOT);
 
     // decode VAP objects
     obj_vaps = cJSON_GetObjectItem(json, "WifiVapConfig");
@@ -551,9 +554,9 @@ webconfig_error_t decode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
     }
 
     size = cJSON_GetArraySize(obj_vaps);
-    if (size < (MIN_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO)|| size > (MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO)) {
+    if (num_vaps > (int)size) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Not correct number of vap objects: %d, expected: %d\n",
-                __func__, __LINE__, size, (sizeof(vap_names)/sizeof(char *)));
+                __func__, __LINE__, size, num_vaps);
         cJSON_Delete(json);
         return webconfig_error_invalid_subdoc;
     }
@@ -575,7 +578,9 @@ webconfig_error_t decode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
         }
     }
 
-    if (presence_mask != pow(2, MAX_NUM_VAP_PER_RADIO*params->num_radios) - 1) {
+//    if (presence_mask != pow(2, MAX_NUM_VAP_PER_RADIO*params->num_radios) - 1) {
+    /* check the present count against number of vaps found in vap_names array */
+    if (presence_mask != (pow(2, num_vaps) - 1)) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: VAP object not present, mask:%x\n",
                 __func__, __LINE__, presence_mask);
         cJSON_Delete(json);
@@ -588,6 +593,10 @@ webconfig_error_t decode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
         obj_vap = cJSON_GetArrayItem(obj_vaps, i);
         name = cJSON_GetStringValue(cJSON_GetObjectItem(obj_vap, "VapName"));
         radio_index = convert_vap_name_to_radio_array_index(wifi_prop, name);
+	if ((int)radio_index == -1) {
+            continue;
+	}
+
         vap_array_index = convert_vap_name_to_array_index(wifi_prop, name);
         vap_info = &params->radios[radio_index].vaps.vap_map.vap_array[vap_array_index];
 
@@ -663,7 +672,7 @@ webconfig_error_t decode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
     }
 
     size = cJSON_GetArraySize(obj_mac);
-    if (size > (MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO) || size < (MIN_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO)) {
+    if (num_vaps > (int)size) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Not correct number of mac objects: %d\n",
                 __func__, __LINE__, size);
         cJSON_Delete(json);
@@ -673,6 +682,10 @@ webconfig_error_t decode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
         obj_acl = cJSON_GetArrayItem(obj_mac, i);
         name = cJSON_GetStringValue(cJSON_GetObjectItem(obj_acl, "VapName"));
         radio_index = convert_vap_name_to_radio_array_index(wifi_prop, name);
+        if ((int)radio_index == -1) {
+                continue;
+        }
+
         vap_array_index = convert_vap_name_to_array_index(wifi_prop, name);
         rdk_vap_info = &params->radios[radio_index].vaps.rdk_vap_array[vap_array_index];
         rdk_vap_info->vap_index = convert_vap_name_to_index(wifi_prop, name);

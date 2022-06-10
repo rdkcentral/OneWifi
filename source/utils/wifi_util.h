@@ -72,6 +72,19 @@ typedef struct{
 #define VAP_PREFIX_LNF_PSK          "lnf_psk"
 #define VAP_PREFIX_LNF_RADIUS       "lnf_radius"
 
+#define VAP_INDEX(hal_cap, map_index)   hal_cap.wifi_prop.interface_map[map_index].index;
+
+#define VAP_ARRAY_INDEX(i, hal_cap, vap_index) {\
+    i = 0;\
+    while((hal_cap.wifi_prop.interface_map[i].interface_name[0] != '\0') && \
+          (hal_cap.wifi_prop.interface_map[i].vap_name[0] != '\0')) {\
+        if(hal_cap.wifi_prop.interface_map[i].index == vap_index) {\
+            break;\
+        }\
+        (i)++;\
+    }\
+}
+
 /* utility functions declarations */
 int get_number_of_radios(wifi_platform_property_t *wifi_prop);
 int get_total_number_of_vaps(wifi_platform_property_t *wifi_prop);
@@ -104,6 +117,7 @@ int macfilter_conversion(char *mac_list_type, size_t string_len,  wifi_vap_info_
 int ssid_broadcast_conversion(char *broadcast_string, size_t string_len, BOOL *broadcast_bool, unsigned int conv_type);
 int get_vap_and_radio_index_from_vap_instance(wifi_platform_property_t *wifi_prop, uint8_t vap_instance, uint8_t *radio_index, uint8_t *vap_index);
 int freq_band_conversion(wifi_freq_bands_t *band_enum, char *freq_band, int freq_band_len, unsigned int conv_type);
+BOOL wifi_util_is_vap_index_valid(wifi_platform_property_t *wifi_prop, int vap_index);
 BOOL is_vap_private(wifi_platform_property_t *wifi_prop, unsigned int ap_index);
 BOOL is_vap_xhs(wifi_platform_property_t *wifi_prop, unsigned int ap_index);
 BOOL is_vap_hotspot(wifi_platform_property_t *wifi_prop, unsigned int ap_index);
@@ -132,9 +146,10 @@ int get_cm_mac_address(char *mac);
 int get_ssid_from_device_mac(char *ssid);
 wifi_interface_name_t *get_interface_name_for_vap_index(unsigned int vap_index, wifi_platform_property_t *wifi_prop);
 int convert_vapname_to_ifname(wifi_platform_property_t *wifi_prop, char *vap_name, char *if_name, int ifname_len);
-unsigned int create_vap_mask(wifi_platform_property_t *wifi_prop, const char *vap_name);
-int get_interface_name_from_radio_index(uint8_t radio_index, char *interface_name);
+unsigned int create_vap_mask(wifi_platform_property_t *wifi_prop, unsigned int num_names, ...);
+int get_interface_name_from_radio_index(wifi_platform_property_t *wifi_prop, uint8_t radio_index, char *interface_name);
 unsigned long long int get_current_ms_time(void);
+wifi_vap_info_t *get_wifi_radio_vap_info_map(rdk_wifi_radio_t *wifi_radio, const char *vap_name_prefix);
 int get_list_of_vap_names(wifi_platform_property_t *wifi_prop, wifi_vap_name_t vap_names[], int list_size, int num_types, ...);
 int get_list_of_private_ssid(wifi_platform_property_t *wifi_prop, int list_size, wifi_vap_name_t vap_names[]);
 int get_list_of_hotspot_open(wifi_platform_property_t *wifi_prop, int list_size, wifi_vap_name_t vap_names[]);

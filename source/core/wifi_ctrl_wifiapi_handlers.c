@@ -491,7 +491,7 @@ void process_wifiapi_command(char *command, unsigned int len)
         wifi_bss_info_t bss;
         //check vap_index
         vap_index = strtol(args[1], NULL, 10);
-        if (vap_index > getTotalNumberVAPs()-1) {
+        if (vap_index >= mgr->hal_cap.wifi_prop.numRadios*MAX_NUM_VAP_PER_RADIO) {
             sprintf(buff, "%s: Invalid ap index (%d)", args[0], vap_index);
             goto publish;
         }
@@ -522,11 +522,11 @@ void process_wifiapi_command(char *command, unsigned int len)
     } else if (strcmp(args[0], "wifi_disconnect")==0) {
         //check vap_index
         vap_index = strtol(args[1], NULL, 10);
-        if (vap_index > getTotalNumberVAPs()-1) {
+        if (vap_index >= mgr->hal_cap.wifi_prop.numRadios*MAX_NUM_VAP_PER_RADIO) {
             sprintf(buff, "%s: Invalid ap index (%d)", args[0], vap_index);
             goto publish;
         }
-        get_vap_and_radio_index_from_vap_instance(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, (uint8_t)vap_index, (uint8_t *)&radio_index, (uint8_t *)&vap_array_index);
+        get_vap_and_radio_index_from_vap_instance(&mgr->hal_cap.wifi_prop, (uint8_t)vap_index, (uint8_t *)&radio_index, (uint8_t *)&vap_array_index);
         if(mgr->radio_config[radio_index].vaps.vap_map.vap_array[vap_array_index].vap_mode != wifi_vap_mode_sta) {
             sprintf(buff, "%s: ap index is not station(%d). r %d va %d mode %d", args[0], vap_index, radio_index, vap_array_index, mgr->radio_config[radio_index].vaps.vap_map.vap_array[vap_array_index].vap_mode);
             goto publish;

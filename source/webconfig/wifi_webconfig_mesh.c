@@ -131,16 +131,17 @@ webconfig_error_t encode_mesh_subdoc(webconfig_t *config, webconfig_subdoc_data_
     obj_array = cJSON_CreateArray();
     cJSON_AddItemToObject(json, "WifiMacFilter", obj_array);
 
-    for(i = 0; i < params->num_radios; i++) {
+    for (i = 0; i < params->num_radios; i++) {
         vap_map = &params->radios[i].vaps.vap_map;
         for (j = 0; j < vap_map->num_vaps; j++) {
             rdk_vap_info = &params->radios[i].vaps.rdk_vap_array[j];
-
-            if (encode_mac_object(rdk_vap_info, obj_array) != webconfig_error_none) {
-                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode mac object\n", __func__, __LINE__);
-                cJSON_Delete(json);
-                return webconfig_error_encode;
-
+	    if (strncmp("mesh_sta", rdk_vap_info->vap_name, strlen("mesh_sta")) == 0 ||
+                strncmp("mesh_backhaul", rdk_vap_info->vap_name, strlen("mesh_backhaul")) == 0) {
+                if (encode_mac_object(rdk_vap_info, obj_array) != webconfig_error_none) {
+                    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode mac object\n", __func__, __LINE__);
+                    cJSON_Delete(json);
+                    return webconfig_error_encode;
+		}
             }
         }
     }
@@ -162,9 +163,8 @@ webconfig_error_t decode_mesh_subdoc(webconfig_t *config, webconfig_subdoc_data_
     cJSON *obj, *obj_vap, *obj_acl, *obj_mac;
     unsigned int i, j, size, radio_index, vap_array_index = 0;
     unsigned int presence_count = 0;
-    char *vap_names[MAX_NUM_RADIOS * 2] = {
-        "mesh_backhaul_2g", "mesh_sta_2g", "mesh_backhaul_5g", "mesh_sta_5g"
-    };
+    unsigned int num_mesh_ssid;
+    wifi_vap_name_t vap_names[MAX_NUM_RADIOS * 2];
     char *name;
     wifi_vap_info_t *vap_info;
     cJSON *json = data->u.encoded.json;
@@ -173,6 +173,11 @@ webconfig_error_t decode_mesh_subdoc(webconfig_t *config, webconfig_subdoc_data_
 
     params = &data->u.decoded;
     doc = &config->subdocs[data->type];
+
+    /* get list of mesh_backhaul SSID */
+    num_mesh_ssid = get_list_of_mesh_backhaul(&params->hal_cap.wifi_prop, MAX_NUM_RADIOS, vap_names);
+    /* get list of mesh_sta SSID */
+    num_mesh_ssid += get_list_of_mesh_sta(&params->hal_cap.wifi_prop, MAX_NUM_RADIOS, &vap_names[num_mesh_ssid]);
 
     for (i = 0; i < doc->num_objects; i++) {
         if ((cJSON_GetObjectItem(json, doc->objects[i].name)) == NULL) {
@@ -192,9 +197,9 @@ webconfig_error_t decode_mesh_subdoc(webconfig_t *config, webconfig_subdoc_data_
     }
 
     size = cJSON_GetArraySize(obj_vaps);
-    if (size < (2 * MIN_NUM_RADIOS)|| size > (2 * MAX_NUM_RADIOS)) {
+    if (num_mesh_ssid > size) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Not correct number of vap objects: %d, expected: %d\n",
-                __func__, __LINE__, size, (sizeof(vap_names)/sizeof(char *)));
+                __func__, __LINE__, size, params->hal_cap.wifi_prop.numRadios);
         cJSON_Delete(json);
         return webconfig_error_invalid_subdoc;
     }
@@ -214,7 +219,7 @@ webconfig_error_t decode_mesh_subdoc(webconfig_t *config, webconfig_subdoc_data_
         }
     }
 
-    if (presence_count < (2 * MIN_NUM_RADIOS) || presence_count > (2 * MAX_NUM_RADIOS)) {
+    if (presence_count != num_mesh_ssid) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: vap object not present\n", __func__, __LINE__);
         return webconfig_error_invalid_subdoc;
     }
@@ -222,7 +227,7 @@ webconfig_error_t decode_mesh_subdoc(webconfig_t *config, webconfig_subdoc_data_
     // first set the structure to all 0
 //    memset(&params->radios, 0, sizeof(rdk_wifi_radio_t)*params->hal_cap.wifi_prop.numRadios);
 
-    for (i = 0; i < MAX_NUM_RADIOS; i++) {
+    for (i = 0; i < params->hal_cap.wifi_prop.numRadios; i++) {
         params->radios[i].vaps.vap_map.num_vaps = params->hal_cap.wifi_prop.radiocap[i].maxNumberVAPs;
         params->radios[i].vaps.num_vaps = params->hal_cap.wifi_prop.radiocap[i].maxNumberVAPs;
     }
@@ -263,7 +268,7 @@ webconfig_error_t decode_mesh_subdoc(webconfig_t *config, webconfig_subdoc_data_
     }
 
     size = cJSON_GetArraySize(obj_mac);
-    if (size > (MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO) || size < (MIN_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO)) {
+    if (num_mesh_ssid > size) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Not correct number of mac objects: %d\n",
                 __func__, __LINE__, size);
         cJSON_Delete(json);
@@ -273,6 +278,10 @@ webconfig_error_t decode_mesh_subdoc(webconfig_t *config, webconfig_subdoc_data_
         obj_acl = cJSON_GetArrayItem(obj_mac, i);
         name = cJSON_GetStringValue(cJSON_GetObjectItem(obj_acl, "VapName"));
         radio_index = convert_vap_name_to_radio_array_index(&params->hal_cap.wifi_prop, name);
+	if ((int)radio_index == -1) {
+            continue;
+        }
+
         vap_array_index = convert_vap_name_to_array_index(&params->hal_cap.wifi_prop, name);
         rdk_vap_info = &params->radios[radio_index].vaps.rdk_vap_array[vap_array_index];
         rdk_vap_info->vap_index = convert_vap_name_to_index(&params->hal_cap.wifi_prop, name);

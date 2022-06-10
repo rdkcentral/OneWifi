@@ -73,6 +73,7 @@
 static events_monitor_t g_events_monitor;
 static struct timeval csi_prune_timer;
 
+#include "wifi_mgr.h"
 #include "wifi_util.h"
 
 extern void* bus_handle;
@@ -383,6 +384,8 @@ BOOL client_fast_reconnect(unsigned int apIndex, char *mac)
     sta_data_t  *sta;
     hash_map_t  *sta_map;
     struct timeval tv_now;
+    unsigned int vap_array_index;
+
     gettimeofday(&tv_now, NULL);
 
     if(!assocMonitorDuration) {
@@ -391,9 +394,10 @@ BOOL client_fast_reconnect(unsigned int apIndex, char *mac)
     }
 
     wifi_util_dbg_print(WIFI_MON, "%s: Checking for client:%s connection on ap:%d\n", __func__, mac, apIndex);
+    getVAPArrayIndexFromVAPIndex(apIndex, &vap_array_index);
 
     pthread_mutex_lock(&g_monitor_module.lock);
-    sta_map = g_monitor_module.bssid_data[apIndex].sta_map;
+    sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
     sta = (sta_data_t *)hash_map_get(sta_map, mac);
     if (sta == NULL) {
         wifi_util_dbg_print(WIFI_MON, "%s: Client:%s could not be found on sta map of ap:%d\n", __func__, mac, apIndex);
@@ -513,6 +517,9 @@ int upload_client_telemetry_data(void *arg)
     static unsigned int i = 0;
     CHAR eventName[32] = {0};
     unsigned int itr = 0;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    UINT vap_index = VAP_INDEX(mgr->hal_cap, i);
+
     if (phase == 0) {
         // IsCosaDmlWiFivAPStatsFeatureEnabled needs to be set to get telemetry of some stats, the TR object is 
         // Device.WiFi.X_RDKCENTRAL-COM_vAPStatsEnable
@@ -526,8 +533,9 @@ int upload_client_telemetry_data(void *arg)
             // check if we should enable of disable detailed client stats collection on XB3
             UINT radioIndex = 0; 
             for (itr = 0; itr < (UINT)getTotalNumberVAPs(); itr++)  {
+                UINT vap_index = VAP_INDEX(mgr->hal_cap, itr);
                 if (stflag[itr] == 1) {
-                    radioIndex = getRadioIndexFromAp(itr);
+                    radioIndex = getRadioIndexFromAp(vap_index);
                     enableRadioDetailStats[radioIndex] = TRUE;
                 }
             }
@@ -568,9 +576,8 @@ int upload_client_telemetry_data(void *arg)
     if (phase == 1) {
         sta_map = g_monitor_module.bssid_data[i].sta_map;
         memset(telemetryBuff, 0, TELEMETRY_MAX_BUFFER);
-        int compare = i + 1 ;
         get_formatted_time(tmp);
-        snprintf(buff, 2048, "%s WIFI_MAC_%d:", tmp, i + 1);
+        snprintf(buff, 2048, "%s WIFI_MAC_%d:", tmp, vap_index + 1);
         num_devs = 0;
         sta = hash_map_get_first(sta_map);
         while (sta != NULL) {
@@ -593,34 +600,34 @@ int upload_client_telemetry_data(void *arg)
           "header": "xh_mac_3_split",    "content": "WIFI_MAC_3:", "type": "wifihealth.txt",
           "header": "xh_mac_4_split",    "content": "WIFI_MAC_4:", "type": "wifihealth.txt",
           */
-        if (isVapPrivate(i)) {
-            snprintf(eventName, sizeof(eventName), "%uGclientMac_split", convert_radio_index_to_frequencyNum(getRadioIndexFromAp(i)));
+        if (isVapPrivate(vap_index)) {
+            snprintf(eventName, sizeof(eventName), "%uGclientMac_split", convert_radio_index_to_frequencyNum(getRadioIndexFromAp(vap_index)));
             t2_event_s(eventName, telemetryBuff);
-        } else if (isVapXhs(i)) {
-            snprintf(eventName, sizeof(eventName), "xh_mac_%d_split", compare);
+        } else if (isVapXhs(vap_index)) {
+            snprintf(eventName, sizeof(eventName), "xh_mac_%d_split", vap_index + 1);
             t2_event_s(eventName, telemetryBuff);
         }
         wifi_util_dbg_print(WIFI_MON, "%s", buff);
         get_formatted_time(tmp);
-        snprintf(buff, 2048, "%s WIFI_MAC_%d_TOTAL_COUNT:%d\n", tmp, i + 1, num_devs);
+        snprintf(buff, 2048, "%s WIFI_MAC_%d_TOTAL_COUNT:%d\n", tmp, vap_index + 1, num_devs);
         write_to_file(wifi_health_log, buff);
         //    "header": "Total_2G_clients_split", "content": "WIFI_MAC_1_TOTAL_COUNT:", "type": "wifihealth.txt",
         //    "header": "Total_5G_clients_split", "content": "WIFI_MAC_2_TOTAL_COUNT:","type": "wifihealth.txt",
         //    "header": "xh_cnt_1_split","content": "WIFI_MAC_3_TOTAL_COUNT:","type": "wifihealth.txt",
         //    "header": "xh_cnt_2_split","content": "WIFI_MAC_4_TOTAL_COUNT:","type": "wifihealth.txt",
-        if (isVapPrivate(i)) {
+        if (isVapPrivate(vap_index)) {
             if (0 == num_devs) {
-                snprintf(eventName, sizeof(eventName), "WIFI_INFO_Zero_%uG_Clients", convert_radio_index_to_frequencyNum(getRadioIndexFromAp(i)));
+                snprintf(eventName, sizeof(eventName), "WIFI_INFO_Zero_%uG_Clients", convert_radio_index_to_frequencyNum(getRadioIndexFromAp(vap_index)));
                 t2_event_d(eventName, 1);
             } else {
-                snprintf(eventName, sizeof(eventName), "Total_%uG_clients_split", convert_radio_index_to_frequencyNum(getRadioIndexFromAp(i)));
+                snprintf(eventName, sizeof(eventName), "Total_%uG_clients_split", convert_radio_index_to_frequencyNum(getRadioIndexFromAp(vap_index)));
                 t2_event_d(eventName, num_devs);
             }
-        }else if (isVapXhs(i)) {
-            snprintf(eventName, sizeof(eventName), "xh_cnt_%u_split", convert_radio_index_to_frequencyNum(getRadioIndexFromAp(i)));
+        }else if (isVapXhs(vap_index)) {
+            snprintf(eventName, sizeof(eventName), "xh_cnt_%u_split", convert_radio_index_to_frequencyNum(getRadioIndexFromAp(vap_index)));
             t2_event_d(eventName, num_devs);
-        }else if (isVapMesh(i)) {
-            snprintf(eventName, sizeof(eventName), "Total_%uG_PodClients_split", convert_radio_index_to_frequencyNum(getRadioIndexFromAp(i)));
+        }else if (isVapMesh(vap_index)) {
+            snprintf(eventName, sizeof(eventName), "Total_%uG_PodClients_split", convert_radio_index_to_frequencyNum(getRadioIndexFromAp(vap_index)));
             t2_event_d(eventName, num_devs);
         }
         wifi_util_dbg_print(WIFI_MON, "%s", buff);
@@ -630,11 +637,11 @@ int upload_client_telemetry_data(void *arg)
         wifi_VAPTelemetry_t telemetry;
         char vap_status[16];
         memset(vap_status,0,16);
-        wifi_getApStatus(i, vap_status);
-        wifi_getVAPTelemetry(i, &telemetry);
+        wifi_getApStatus(vap_index, vap_status);
+        wifi_getVAPTelemetry(vap_index, &telemetry);
         if(strncmp(vap_status,"Up",2)==0) {
             get_formatted_time(tmp);
-            snprintf(buff, 2048, "%s WiFi_TX_Overflow_SSID_%d:%u\n", tmp, i + 1, telemetry.txOverflow);
+            snprintf(buff, 2048, "%s WiFi_TX_Overflow_SSID_%d:%u\n", tmp, vap_index + 1, telemetry.txOverflow);
             write_to_file(wifi_health_log, buff);
             wifi_util_dbg_print(WIFI_MON, "%s", buff);
         }
@@ -648,7 +655,7 @@ int upload_client_telemetry_data(void *arg)
             }
             return TIMER_TASK_CONTINUE;
         }
-        snprintf(buff, 2048, "%s WIFI_RSSI_%d:", tmp, i + 1);
+        snprintf(buff, 2048, "%s WIFI_RSSI_%d:", tmp, vap_index + 1);
         sta = hash_map_get_first(sta_map);
         while (sta != NULL) {
             if (sta->dev_stats.cli_Active == true) {
@@ -660,17 +667,17 @@ int upload_client_telemetry_data(void *arg)
         }
         strncat(buff, "\n", 2);
         write_to_file(wifi_health_log, buff);
-        if (isVapPrivate(i)) {
-            snprintf(eventName, sizeof(eventName), "%uGRSSI_split", convert_radio_index_to_frequencyNum(getRadioIndexFromAp(i)));
+        if (isVapPrivate(vap_index)) {
+            snprintf(eventName, sizeof(eventName), "%uGRSSI_split", convert_radio_index_to_frequencyNum(getRadioIndexFromAp(vap_index)));
             t2_event_s(eventName, telemetryBuff);
-        } else if (isVapXhs(i)) {
-            snprintf(eventName, sizeof(eventName), "xh_rssi_%u_split", compare);
+        } else if (isVapXhs(vap_index)) {
+            snprintf(eventName, sizeof(eventName), "xh_rssi_%u_split", vap_index + 1);
             t2_event_s(eventName, telemetryBuff);
         }
         wifi_util_dbg_print(WIFI_MON, "%s", buff);
         get_formatted_time(tmp);
         memset(telemetryBuff, 0, TELEMETRY_MAX_BUFFER);
-        snprintf(buff, 2048, "%s WIFI_CHANNEL_WIDTH_%d:", tmp, i + 1);
+        snprintf(buff, 2048, "%s WIFI_CHANNEL_WIDTH_%d:", tmp, vap_index + 1);
         sta = hash_map_get_first(sta_map);
         while (sta != NULL) {
             if (sta->dev_stats.cli_Active == true) {
@@ -682,14 +689,14 @@ int upload_client_telemetry_data(void *arg)
         }
         strncat(buff, "\n", 2);
         write_to_file(wifi_health_log, buff);
-        if (isVapPrivate(i)) {
-            snprintf(eventName, sizeof(eventName), "WIFI_CW_%d_split", compare);
+        if (isVapPrivate(vap_index)) {
+            snprintf(eventName, sizeof(eventName), "WIFI_CW_%d_split", vap_index + 1);
             t2_event_s(eventName, telemetryBuff);
         }
         wifi_util_dbg_print(WIFI_MON, "%s", buff);
         if ((sWiFiDmlvApStatsFeatureEnableCfg == true) && nrflag[i]) {
             get_formatted_time(tmp);
-            snprintf(buff, 2048, "%s WIFI_NORMALIZED_RSSI_%d:", tmp, i + 1);
+            snprintf(buff, 2048, "%s WIFI_NORMALIZED_RSSI_%d:", tmp, vap_index + 1);
             sta = hash_map_get_first(sta_map);
             while (sta != NULL) {
                 if (sta->dev_stats.cli_Active == true) {
@@ -706,7 +713,7 @@ int upload_client_telemetry_data(void *arg)
         if ((sWiFiDmlvApStatsFeatureEnableCfg == true) && snflag[i]) {
             get_formatted_time(tmp);
             memset(telemetryBuff, 0, TELEMETRY_MAX_BUFFER);
-            snprintf(buff, 2048, "%s WIFI_SNR_%d:", tmp, i + 1);
+            snprintf(buff, 2048, "%s WIFI_SNR_%d:", tmp, vap_index + 1);
             sta = hash_map_get_first(sta_map);
             while (sta != NULL) {
                 if (sta->dev_stats.cli_Active == true) {
@@ -719,15 +726,15 @@ int upload_client_telemetry_data(void *arg)
             }
             strncat(buff, "\n", 2);
             write_to_file(wifi_health_log, buff);
-            if (isVapPrivate(i)) {
-                snprintf(eventName, sizeof(eventName), "WIFI_SNR_%d_split", compare);
+            if (isVapPrivate(vap_index)) {
+                snprintf(eventName, sizeof(eventName), "WIFI_SNR_%d_split", vap_index + 1);
                 t2_event_s(eventName, telemetryBuff);
             }
             wifi_util_dbg_print(WIFI_MON, "%s", buff);
         }
         get_formatted_time(tmp);
         memset(telemetryBuff, 0, TELEMETRY_MAX_BUFFER);
-        snprintf(buff, 2048, "%s WIFI_TXCLIENTS_%d:", tmp, i + 1);
+        snprintf(buff, 2048, "%s WIFI_TXCLIENTS_%d:", tmp, vap_index + 1);
         sta = hash_map_get_first(sta_map);
         while (sta != NULL) {
             if (sta->dev_stats.cli_Active == true) {
@@ -740,14 +747,14 @@ int upload_client_telemetry_data(void *arg)
         }
         strncat(buff, "\n", 2);
         write_to_file(wifi_health_log, buff);
-        if (isVapPrivate(i)) {
-            snprintf(eventName, sizeof(eventName), "WIFI_TX_%d_split", compare);
+        if (isVapPrivate(vap_index)) {
+            snprintf(eventName, sizeof(eventName), "WIFI_TX_%d_split", vap_index + 1);
             t2_event_s(eventName, telemetryBuff);
         }
         wifi_util_dbg_print(WIFI_MON, "%s", buff);
         get_formatted_time(tmp);
         memset(telemetryBuff, 0, TELEMETRY_MAX_BUFFER);
-        snprintf(buff, 2048, "%s WIFI_RXCLIENTS_%d:", tmp, i + 1);
+        snprintf(buff, 2048, "%s WIFI_RXCLIENTS_%d:", tmp, vap_index + 1);
         sta = hash_map_get_first(sta_map);
         while (sta != NULL) {
             if (sta->dev_stats.cli_Active == true) {
@@ -761,8 +768,8 @@ int upload_client_telemetry_data(void *arg)
         strncat(buff, "\n", 2);
         write_to_file(wifi_health_log, buff);
         //  "header": "WIFI_RX_1_split", "content": "WIFI_RXCLIENTS_1:", "type": "wifihealth.txt",
-        if (isVapPrivate(i)) {
-            snprintf(eventName, sizeof(eventName), "WIFI_RX_%d_split", compare);
+        if (isVapPrivate(vap_index)) {
+            snprintf(eventName, sizeof(eventName), "WIFI_RX_%d_split", vap_index + 1);
             t2_event_s(eventName, telemetryBuff);
         }
         wifi_util_dbg_print(WIFI_MON, "%s", buff);
@@ -770,7 +777,7 @@ int upload_client_telemetry_data(void *arg)
         if ((sWiFiDmlvApStatsFeatureEnableCfg == true) && trflag[i]) {
             get_formatted_time(tmp);
             memset(telemetryBuff, 0, TELEMETRY_MAX_BUFFER);
-            snprintf(buff, 2048, "%s WIFI_MAX_TXCLIENTS_%d:", tmp, i + 1);
+            snprintf(buff, 2048, "%s WIFI_MAX_TXCLIENTS_%d:", tmp, vap_index + 1);
             sta = hash_map_get_first(sta_map);
             while (sta != NULL) {
                 if (sta->dev_stats.cli_Active == true) {
@@ -783,8 +790,8 @@ int upload_client_telemetry_data(void *arg)
             }
             strncat(buff, "\n", 2);
             write_to_file(wifi_health_log, buff);
-            if (isVapPrivate(i)) {
-                snprintf(eventName, sizeof(eventName), "MAXTX_%d_split", compare);
+            if (isVapPrivate(vap_index)) {
+                snprintf(eventName, sizeof(eventName), "MAXTX_%d_split", vap_index + 1);
                 t2_event_s(eventName, telemetryBuff);
             }
             wifi_util_dbg_print(WIFI_MON, "%s", buff);
@@ -792,7 +799,7 @@ int upload_client_telemetry_data(void *arg)
         if ((sWiFiDmlvApStatsFeatureEnableCfg == true) && trflag[i]) {
             get_formatted_time(tmp);
             memset(telemetryBuff, 0, TELEMETRY_MAX_BUFFER);
-            snprintf(buff, 2048, "%s WIFI_MAX_RXCLIENTS_%d:", tmp, i + 1);
+            snprintf(buff, 2048, "%s WIFI_MAX_RXCLIENTS_%d:", tmp, vap_index + 1);
             sta = hash_map_get_first(sta_map);
             while (sta != NULL) {
                 if (sta->dev_stats.cli_Active == true) {
@@ -805,15 +812,15 @@ int upload_client_telemetry_data(void *arg)
             }
             strncat(buff, "\n", 2);
             write_to_file(wifi_health_log, buff);
-            if (isVapPrivate(i)) {
-                snprintf(eventName, sizeof(eventName), "MAXRX_%d_split", compare);
+            if (isVapPrivate(vap_index)) {
+                snprintf(eventName, sizeof(eventName), "MAXRX_%d_split", vap_index + 1);
                 t2_event_s(eventName, telemetryBuff);
             }
             wifi_util_dbg_print(WIFI_MON, "%s", buff);
         }
         if ((sWiFiDmlvApStatsFeatureEnableCfg == true) && trflag[i]) {
             get_formatted_time(tmp);
-            snprintf(buff, 2048, "%s WIFI_RXTXCLIENTDELTA_%d:", tmp, i + 1);
+            snprintf(buff, 2048, "%s WIFI_RXTXCLIENTDELTA_%d:", tmp, vap_index + 1);
             sta = hash_map_get_first(sta_map);
             while (sta != NULL) {
                 if (sta->dev_stats.cli_Active == true) {
@@ -828,7 +835,7 @@ int upload_client_telemetry_data(void *arg)
         }
         if ((sWiFiDmlvApStatsFeatureEnableCfg == true) && stflag[i]) {
             get_formatted_time(tmp);
-            snprintf(buff, 2048, "%s WIFI_BYTESSENTCLIENTS_%d:", tmp, i + 1);
+            snprintf(buff, 2048, "%s WIFI_BYTESSENTCLIENTS_%d:", tmp, vap_index + 1);
             sta = hash_map_get_first(sta_map);
             while (sta != NULL) {
                 if (sta->dev_stats.cli_Active == true) {
@@ -845,7 +852,7 @@ int upload_client_telemetry_data(void *arg)
         }
         if ((sWiFiDmlvApStatsFeatureEnableCfg == true) && stflag[i]) {
             get_formatted_time(tmp);
-            snprintf(buff, 2048, "%s WIFI_BYTESRECEIVEDCLIENTS_%d:", tmp, i + 1);
+            snprintf(buff, 2048, "%s WIFI_BYTESRECEIVEDCLIENTS_%d:", tmp, vap_index + 1);
             sta = hash_map_get_first(sta_map);
             while (sta != NULL) {
                 if (sta->dev_stats.cli_Active == true) {
@@ -863,7 +870,7 @@ int upload_client_telemetry_data(void *arg)
         if ((sWiFiDmlvApStatsFeatureEnableCfg == true) && stflag[i]) {
             get_formatted_time(tmp);
             memset(telemetryBuff, 0, TELEMETRY_MAX_BUFFER);
-            snprintf(buff, 2048, "%s WIFI_PACKETSSENTCLIENTS_%d:", tmp, i + 1);
+            snprintf(buff, 2048, "%s WIFI_PACKETSSENTCLIENTS_%d:", tmp, vap_index + 1);
             sta = hash_map_get_first(sta_map);
             while (sta != NULL) {
                 if (sta->dev_stats.cli_Active == true) {
@@ -877,15 +884,15 @@ int upload_client_telemetry_data(void *arg)
             }
             strncat(buff, "\n", 2);
             write_to_file(wifi_health_log, buff);
-            if (isVapPrivate(i)) {
-                snprintf(eventName, sizeof(eventName), "WIFI_PACKETSSENTCLIENTS_%d_split", compare);
+            if (isVapPrivate(vap_index)) {
+                snprintf(eventName, sizeof(eventName), "WIFI_PACKETSSENTCLIENTS_%d_split", vap_index + 1);
                 t2_event_s(eventName, telemetryBuff);
             }
             wifi_util_dbg_print(WIFI_MON, "%s", buff);
         }
         if ((sWiFiDmlvApStatsFeatureEnableCfg == true) && stflag[i]) {
             get_formatted_time(tmp);
-            snprintf(buff, 2048, "%s WIFI_PACKETSRECEIVEDCLIENTS_%d:", tmp, i + 1);
+            snprintf(buff, 2048, "%s WIFI_PACKETSRECEIVEDCLIENTS_%d:", tmp, vap_index + 1);
             sta = hash_map_get_first(sta_map);
             while (sta != NULL) {
                 if (sta->dev_stats.cli_Active == true) {
@@ -903,7 +910,7 @@ int upload_client_telemetry_data(void *arg)
         if ((sWiFiDmlvApStatsFeatureEnableCfg == true) && stflag[i]) {
             get_formatted_time(tmp);
             memset(telemetryBuff, 0, TELEMETRY_MAX_BUFFER);
-            snprintf(buff, 2048, "%s WIFI_ERRORSSENT_%d:", tmp, i + 1);
+            snprintf(buff, 2048, "%s WIFI_ERRORSSENT_%d:", tmp, vap_index + 1);
             sta = hash_map_get_first(sta_map);
             while (sta != NULL) {
                 if (sta->dev_stats.cli_Active == true) {
@@ -917,9 +924,9 @@ int upload_client_telemetry_data(void *arg)
             }
             strncat(buff, "\n", 2);
             write_to_file(wifi_health_log, buff);
-            if (isVapPrivate(i))
+            if (isVapPrivate(vap_index))
             {
-                snprintf(eventName, sizeof(eventName), "WIFI_ERRORSSENT_%d_split", compare);
+                snprintf(eventName, sizeof(eventName), "WIFI_ERRORSSENT_%d_split", vap_index + 1);
                 t2_event_s(eventName, telemetryBuff);
             }
             wifi_util_dbg_print(WIFI_MON, "%s", buff);
@@ -927,7 +934,7 @@ int upload_client_telemetry_data(void *arg)
         if ((sWiFiDmlvApStatsFeatureEnableCfg == true) && stflag[i]) {
             get_formatted_time(tmp);
             memset(telemetryBuff, 0, TELEMETRY_MAX_BUFFER);
-            snprintf(buff, 2048, "%s WIFI_RETRANSCOUNT_%d:", tmp, i + 1);
+            snprintf(buff, 2048, "%s WIFI_RETRANSCOUNT_%d:", tmp, vap_index + 1);
             sta = hash_map_get_first(sta_map);
             while (sta != NULL) {
                 if (sta->dev_stats.cli_Active == true) {
@@ -941,16 +948,16 @@ int upload_client_telemetry_data(void *arg)
             }
             strncat(buff, "\n", 2);
             write_to_file(wifi_health_log, buff);
-            if (isVapPrivate(i))
+            if (isVapPrivate(vap_index))
             {
-                snprintf(eventName, sizeof(eventName), "WIFIRetransCount%d_split", compare);
+                snprintf(eventName, sizeof(eventName), "WIFIRetransCount%d_split", vap_index + 1);
                 t2_event_s(eventName, telemetryBuff);
             }
             wifi_util_dbg_print(WIFI_MON, "%s", buff);
         }
         if ((sWiFiDmlvApStatsFeatureEnableCfg == true) && stflag[i]) {
             get_formatted_time(tmp);
-            snprintf(buff, 2048, "%s WIFI_FAILEDRETRANSCOUNT_%d:", tmp, i + 1);
+            snprintf(buff, 2048, "%s WIFI_FAILEDRETRANSCOUNT_%d:", tmp, vap_index + 1);
             sta = hash_map_get_first(sta_map);
             while (sta != NULL) {
                 if (sta->dev_stats.cli_Active == true) {
@@ -967,7 +974,7 @@ int upload_client_telemetry_data(void *arg)
         }
         if ((sWiFiDmlvApStatsFeatureEnableCfg == true) && stflag[i]) {
             get_formatted_time(tmp);
-            snprintf(buff, 2048, "%s WIFI_RETRYCOUNT_%d:", tmp, i + 1);
+            snprintf(buff, 2048, "%s WIFI_RETRYCOUNT_%d:", tmp, vap_index + 1);
             sta = hash_map_get_first(sta_map);
             while (sta != NULL) {
                 if (sta->dev_stats.cli_Active == true) {
@@ -984,7 +991,7 @@ int upload_client_telemetry_data(void *arg)
         }
         if ((sWiFiDmlvApStatsFeatureEnableCfg == true) && stflag[i]) {
             get_formatted_time(tmp);
-            snprintf(buff, 2048, "%s WIFI_MULTIPLERETRYCOUNT_%d:", tmp, i + 1);
+            snprintf(buff, 2048, "%s WIFI_MULTIPLERETRYCOUNT_%d:", tmp, vap_index + 1);
             sta = hash_map_get_first(sta_map);
             while (sta != NULL) {
                 if (sta->dev_stats.cli_Active == true) {
@@ -1005,7 +1012,7 @@ int upload_client_telemetry_data(void *arg)
         if (i < (UINT)getTotalNumberVAPs()) {
             get_formatted_time(tmp);
             memset(telemetryBuff, 0, TELEMETRY_MAX_BUFFER);
-            snprintf(buff, 2048, "%s WIFI_GOODBADRSSI_%d:", tmp, i + 1);
+            snprintf(buff, 2048, "%s WIFI_GOODBADRSSI_%d:", tmp, vap_index + 1);
 
             sta = hash_map_get_first(sta_map);
             while (sta != NULL) {
@@ -1025,29 +1032,29 @@ int upload_client_telemetry_data(void *arg)
             }
             strncat(buff, "\n", 2);
             write_to_file(wifi_health_log, buff);
-            if (isVapPrivate(i)) {
-                snprintf(eventName, sizeof(eventName), "GB_RSSI_%d_split", compare);
+            if (isVapPrivate(vap_index)) {
+                snprintf(eventName, sizeof(eventName), "GB_RSSI_%d_split", vap_index + 1);
                 t2_event_s(eventName, telemetryBuff);
             }
             wifi_util_dbg_print(WIFI_MON, "%s", buff);		
         }
         // check if failure indication is enabled in TR swicth
-        wifi_front_haul_bss_t *vap_bss_info = Get_wifi_object_bss_parameter(i);
+        wifi_front_haul_bss_t *vap_bss_info = Get_wifi_object_bss_parameter(vap_index);
         if(vap_bss_info != NULL) {
             sendIndication = vap_bss_info->rapidReconnectEnable;
-            wifi_util_dbg_print(WIFI_MON, "%s: sendIndication:%d vapIndex:%d \n", __FUNCTION__, sendIndication, i);
+            wifi_util_dbg_print(WIFI_MON, "%s: sendIndication:%d vapIndex:%d \n", __FUNCTION__, sendIndication, vap_index);
         } else {
-            wifi_util_dbg_print(WIFI_MON, "%s: wrong vapIndex:%d \n", __FUNCTION__, i);
+            wifi_util_dbg_print(WIFI_MON, "%s: wrong vapIndex:%d \n", __FUNCTION__, vap_index);
         }
-        if (sendIndication == true) {                
+        if (sendIndication == true) {
             BOOLEAN bReconnectCountEnable = 0;
             // check whether Reconnect Count is enabled or not fro individual vAP
-            get_multi_vap_dml_parameters(i, RECONNECT_COUNT_STATUS, &bReconnectCountEnable);
+            get_multi_vap_dml_parameters(vap_index, RECONNECT_COUNT_STATUS, &bReconnectCountEnable);
             if (bReconnectCountEnable == true)
             {
                 get_formatted_time(tmp);
                 memset(telemetryBuff, 0, TELEMETRY_MAX_BUFFER);
-                snprintf(buff, 2048, "%s WIFI_RECONNECT_%d:", tmp, i + 1);
+                snprintf(buff, 2048, "%s WIFI_RECONNECT_%d:", tmp, vap_index + 1);
                 sta = hash_map_get_first(sta_map);
                 while (sta != NULL) {
 
@@ -1062,9 +1069,9 @@ int upload_client_telemetry_data(void *arg)
                 }
                 strncat(buff, "\n", 2);
                 write_to_file(wifi_health_log, buff);
-                if (isVapPrivate(i))
+                if (isVapPrivate(vap_index))
                 {
-                    snprintf(eventName, sizeof(eventName), "WIFI_REC_%d_split", compare);
+                    snprintf(eventName, sizeof(eventName), "WIFI_REC_%d_split", vap_index + 1);
                     t2_event_s(eventName, telemetryBuff);
                 }
                 wifi_util_dbg_print(WIFI_MON, "%s", buff);
@@ -1084,13 +1091,16 @@ int upload_client_telemetry_data(void *arg)
     }
 
     for (i = 0; i < getTotalNumberVAPs(); i++) {
+        UINT vap_index;
+
+        vap_index = VAP_INDEX(mgr->hal_cap, i);
         // update rapid reconnect time limit if changed
-        wifi_front_haul_bss_t *vap_bss_info = Get_wifi_object_bss_parameter(i);
+        wifi_front_haul_bss_t *vap_bss_info = Get_wifi_object_bss_parameter(vap_index);
         if(vap_bss_info != NULL) {
             g_monitor_module.bssid_data[i].ap_params.rapid_reconnect_threshold = vap_bss_info->rapidReconnThreshold;
-            wifi_util_dbg_print(WIFI_MON, "%s:rapidReconnThreshold:%d vapIndex:%d \n", __FUNCTION__, vap_bss_info->rapidReconnThreshold, i);
+            wifi_util_dbg_print(WIFI_MON, "%s:rapidReconnThreshold:%d vapIndex:%d \n", __FUNCTION__, vap_bss_info->rapidReconnThreshold, vap_index);
         } else {
-            wifi_util_dbg_print(WIFI_MON, "%s: wrong vapIndex:%d \n", __FUNCTION__, i);
+            wifi_util_dbg_print(WIFI_MON, "%s: wrong vapIndex:%d \n", __FUNCTION__, vap_index);
         }
 
     }    
@@ -1582,66 +1592,71 @@ static void upload_client_debug_stats_sta_vap_activity_stats(INT apIndex)
  */
 int upload_client_debug_stats(void *arg)
 {
-    static INT apIndex = 0;
+    static INT itr = 0 ;
+    static UINT vap_index = 0;
     static unsigned int phase = 0;
     static char vap_status[16] = {0};
     static hash_map_t     *sta_map;
     static sta_data_t *sta;
     static int phase_sta = 0;
     static int phase_fp = 0;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+
+    vap_index = VAP_INDEX(mgr->hal_cap, itr);
+
     if  (false == sWiFiDmlvApStatsFeatureEnableCfg)
     {
         wifi_util_dbg_print(WIFI_MON, "Client activity stats feature is disabled\n");
         phase_sta = 0;
         phase_fp = 0;
-        apIndex = 0;
+        itr = 0;
         phase = 0;
         return TIMER_TASK_COMPLETE;
     }
     if (phase == 0) {
         if (false == sWiFiDmlvApStatsFeatureEnableCfg)
         {
-            wifi_util_dbg_print(WIFI_MON, "Stats feature is disabled for apIndex = %d\n",apIndex+1);
-            apIndex++;
-            if (apIndex >= (int)getTotalNumberVAPs())
+            wifi_util_dbg_print(WIFI_MON, "Stats feature is disabled for itr = %d\n",itr+1);
+            itr++;
+            if (itr >= (int)getTotalNumberVAPs())
             {
-                apIndex = 0;
+                itr = 0;
                 phase = 0;
                 return TIMER_TASK_COMPLETE;
             }
             return TIMER_TASK_CONTINUE;
         }
         memset(vap_status,0,16);
-        wifi_getApStatus(apIndex, vap_status);
+        wifi_getApStatus(vap_index, vap_status);
         phase++;
         return TIMER_TASK_CONTINUE;
     }
 
     if(strncasecmp(vap_status,"Up",2)==0) {
         if (phase == 1) {
-            upload_client_debug_stats_chan_stats(apIndex);
+            upload_client_debug_stats_chan_stats(vap_index);
             phase++;
             return TIMER_TASK_CONTINUE;
         } else if (phase == 2) {
             if(phase_sta == 0){
-                sta_map = g_monitor_module.bssid_data[apIndex].sta_map;
+                sta_map = g_monitor_module.bssid_data[itr].sta_map;
                 sta = hash_map_get_first(sta_map);
             }
             if (sta != NULL) {
                 if (phase_fp == 0) {
-                    upload_client_debug_stats_sta_fa_info(apIndex, sta);
+                    upload_client_debug_stats_sta_fa_info(vap_index, sta);
                     phase_fp++;
                     return TIMER_TASK_CONTINUE;
                 } else if (phase_fp == 1) {
-                    upload_client_debug_stats_sta_fa_lmac_data_stats(apIndex, sta);
+                    upload_client_debug_stats_sta_fa_lmac_data_stats(vap_index, sta);
                     phase_fp++;
                     return TIMER_TASK_CONTINUE;
                 } else if (phase_fp == 2) {
-                    upload_client_debug_stats_sta_fa_lmac_mgmt_stats(apIndex, sta);
+                    upload_client_debug_stats_sta_fa_lmac_mgmt_stats(vap_index, sta);
                     phase_fp++;
                     return TIMER_TASK_CONTINUE;
                 } else if(phase_fp ==3) {
-                    upload_client_debug_stats_sta_vap_activity_stats(apIndex);
+                    upload_client_debug_stats_sta_vap_activity_stats(vap_index);
                 }
                 sta = hash_map_get_next(sta_map, sta);
                 phase_fp = 0;
@@ -1654,18 +1669,18 @@ int upload_client_debug_stats(void *arg)
             phase_sta=0;
             return TIMER_TASK_CONTINUE;
         } else if (phase == 3) {
-            upload_client_debug_stats_transmit_power_stats(apIndex);
+            upload_client_debug_stats_transmit_power_stats(vap_index);
             phase++;
             return TIMER_TASK_CONTINUE;
         } else if (phase == 4) {
-            upload_client_debug_stats_acs_stats(apIndex);
+            upload_client_debug_stats_acs_stats(vap_index);
         }
     }
-    apIndex++;
+    itr++;
     phase = 0;
-    if (apIndex >= (int)getTotalNumberVAPs())
+    if (itr >= (int)getTotalNumberVAPs())
     {
-        apIndex = 0;
+        itr = 0;
         return TIMER_TASK_COMPLETE;
     }
     return TIMER_TASK_CONTINUE;
@@ -1697,9 +1712,11 @@ process_stats_flag_changed(unsigned int ap_index, client_stats_enable_t *flag)
 static void
 radio_stats_flag_changed(unsigned int radio_index, client_stats_enable_t *flag)
 {
+    wifi_mgr_t *mgr = get_wifimgr_obj();
     for(UINT apIndex = 0; apIndex <= getTotalNumberVAPs(); apIndex++)
     {
-        if (radio_index == getRadioIndexFromAp(apIndex))
+        UINT vap_index = VAP_INDEX(mgr->hal_cap, apIndex);
+        if (radio_index == getRadioIndexFromAp(vap_index))
         {
             reset_client_stats_info(apIndex);
         }
@@ -1769,6 +1786,9 @@ int upload_ap_telemetry_pmf(void *arg)
     char telemetry_buf[1024]={0};
     char pmf_config[16]={0};
     errno_t rc = -1;
+    UINT vap_index;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+
     wifi_util_dbg_print(WIFI_MON, "Entering %s:%d \n", __FUNCTION__, __LINE__);
     // Telemetry:
     // "header":  "WIFI_INFO_PMF_ENABLE"
@@ -1795,10 +1815,11 @@ int upload_ap_telemetry_pmf(void *arg)
     // "type": "wifihealth.txt",
     for(i = 0; i < (int)getTotalNumberVAPs(); i++) 
     {
-        if (isVapPrivate(i))
+        vap_index = VAP_INDEX(mgr->hal_cap, i);
+        if (isVapPrivate(vap_index))
         {
             memset(pmf_config, 0, sizeof(pmf_config));
-            wifi_getApSecurityMFPConfig(i, pmf_config);
+            wifi_getApSecurityMFPConfig(vap_index, pmf_config);
             rc = strcpy_s(telemetry_buf, sizeof(telemetry_buf), pmf_config);
             ERR_CHK(rc);
             get_formatted_time(tmp);
@@ -1922,6 +1943,7 @@ int vap_stats_flag_change(int ap_index, bool enable)
 
 int get_sta_stats_info (assoc_dev_data_t *assoc_dev_data) {
 
+    unsigned int vap_array_index;
     if (assoc_dev_data == NULL) {
         wifi_util_dbg_print(WIFI_MON, "%s:%d: NULL pointer\n", __func__, __LINE__);
         return -1;
@@ -1932,7 +1954,9 @@ int get_sta_stats_info (assoc_dev_data_t *assoc_dev_data) {
     sta_key_t sta_key;
 
     pthread_mutex_lock(&g_monitor_module.lock);
-    sta_map = g_monitor_module.bssid_data[assoc_dev_data->ap_index].sta_map;
+
+    getVAPArrayIndexFromVAPIndex((unsigned int)assoc_dev_data->ap_index, &vap_array_index);
+    sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
     memset(sta_key, 0, STA_KEY_LEN);
 
     sta_data = (sta_data_t *)hash_map_get(sta_map, to_sta_key(assoc_dev_data->dev_stats.cli_MACAddress, sta_key));
@@ -1981,13 +2005,15 @@ void process_diagnostics	(unsigned int ap_index, wifi_associated_dev3_t *dev, un
     wifi_associated_dev3_t	*hal_sta;
     sta_key_t	sta_key;
     char bssid[MIN_MAC_LEN+1];
+    unsigned int vap_array_index;
 
-    sta_map = g_monitor_module.bssid_data[ap_index].sta_map;
+    getVAPArrayIndexFromVAPIndex(ap_index, &vap_array_index);
+    sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
 
     snprintf(bssid, MIN_MAC_LEN+1, "%02x%02x%02x%02x%02x%02x",
-            g_monitor_module.bssid_data[ap_index].bssid[0], g_monitor_module.bssid_data[ap_index].bssid[1],
-            g_monitor_module.bssid_data[ap_index].bssid[2], g_monitor_module.bssid_data[ap_index].bssid[3],
-            g_monitor_module.bssid_data[ap_index].bssid[4], g_monitor_module.bssid_data[ap_index].bssid[5]);
+            g_monitor_module.bssid_data[vap_array_index].bssid[0], g_monitor_module.bssid_data[vap_array_index].bssid[1],
+            g_monitor_module.bssid_data[vap_array_index].bssid[2], g_monitor_module.bssid_data[vap_array_index].bssid[3],
+            g_monitor_module.bssid_data[vap_array_index].bssid[4], g_monitor_module.bssid_data[vap_array_index].bssid[5]);
 
     hal_sta = dev;
     memset(sta_key, 0, STA_KEY_LEN); 
@@ -2106,8 +2132,11 @@ void process_connect	(unsigned int ap_index, auth_deauth_dev_t *dev)
     struct timeval tv_now;
     unsigned int i = 0;
     char vap_status[16];
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    unsigned int vap_array_index;
+    getVAPArrayIndexFromVAPIndex(ap_index, &vap_array_index);
 
-    sta_map = g_monitor_module.bssid_data[ap_index].sta_map;
+    sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
 
     wifi_util_dbg_print(WIFI_MON, "sta map: %p Device:%s connected on ap:%d\n", sta_map, to_sta_key(dev->sta_mac, sta_key), ap_index);
     sta = (sta_data_t *)hash_map_get(sta_map, to_sta_key(dev->sta_mac, sta_key));
@@ -2144,10 +2173,11 @@ void process_connect	(unsigned int ap_index, auth_deauth_dev_t *dev)
     /*To avoid duplicate entries in hash map of different vAPs eg:RDKB-21582
       Also when clients moved away from a vAP and connect back to other vAP this will be usefull*/
     for (i = 0; i < getTotalNumberVAPs(); i++) {
-        if ( i == ap_index)
+        UINT vap_index = VAP_INDEX(mgr->hal_cap, i);
+        if ( vap_index == ap_index)
             continue;
         memset(vap_status,0,16);
-        wifi_getApStatus(i, vap_status);
+        wifi_getApStatus(vap_index, vap_status);
         if(strncasecmp(vap_status,"Up",2)==0) {
             sta_map = g_monitor_module.bssid_data[i].sta_map;
             sta = (sta_data_t *)hash_map_get(sta_map, to_sta_key(dev->sta_mac, sta_key));
@@ -2165,9 +2195,11 @@ void process_disconnect	(unsigned int ap_index, auth_deauth_dev_t *dev)
     sta_data_t *sta;
     hash_map_t     *sta_map;
     struct timeval tv_now;
-    instant_msmt_t	msmt;
+    instant_msmt_t msmt;
+    unsigned int vap_array_index;
 
-    sta_map = g_monitor_module.bssid_data[ap_index].sta_map;
+    getVAPArrayIndexFromVAPIndex(ap_index, &vap_array_index);
+    sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
     wifi_util_dbg_print(WIFI_MON, "Device:%s disconnected on ap:%d\n", to_sta_key(dev->sta_mac, sta_key), ap_index);
     sta = (sta_data_t *)hash_map_get(sta_map, to_sta_key(dev->sta_mac, sta_key));
     if (sta == NULL) {
@@ -2524,8 +2556,12 @@ bool is_device_associated(int ap_index, char *mac)
     mac_address_t bmac;
     sta_data_t *sta;
     hash_map_t     *sta_map;
+    unsigned int vap_array_index;
+    
+    getVAPArrayIndexFromVAPIndex((unsigned int)ap_index, &vap_array_index);
+
     to_mac_bytes(mac, bmac);
-    sta_map = g_monitor_module.bssid_data[ap_index].sta_map;
+    sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
     sta = hash_map_get_first(sta_map);
     while (sta != NULL) {
         if ((memcmp(sta->sta_mac, bmac, sizeof(mac_address_t)) == 0) && (sta->dev_stats.cli_Active == true)) {
@@ -2571,6 +2607,7 @@ int  getApIndexfromClientMac(char *check_mac)
     int ret;
     unsigned char tmpmac[18];
     char* rest = NULL;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
 
     if(check_mac == NULL) {
         wifi_util_dbg_print(WIFI_MON, "%s: Null arguments %p \n",__func__, check_mac);
@@ -2578,14 +2615,15 @@ int  getApIndexfromClientMac(char *check_mac)
     }
 
     macbytes_to_string((unsigned char *)check_mac, tmpmac);
-    for (i = 0; i < MAX_VAP; i++) {
+    for (i = 0; i < getTotalNumberVAPs(); i++) {
+        UINT vap_index = VAP_INDEX(mgr->hal_cap, i);
         memset(tmpassoc, 0, sizeof(tmpassoc));
-        ret = wifi_getApAssociatedDevice(i, tmpassoc, sizeof(tmpassoc));
+        ret = wifi_getApAssociatedDevice(vap_index, tmpassoc, sizeof(tmpassoc));
         rest = tmpassoc;
         if(ret == RETURN_OK) {
             while((cmp_tok = strtok_r(rest, ",", &rest))) {
                 if(!strcasecmp((const char *)tmpmac,cmp_tok)) {
-                    return i;
+                    return vap_index;
                 }
             }
         }
@@ -3550,8 +3588,11 @@ int csi_getCSIData(void *arg)
     gettimeofday(&csi_prune_timer, NULL);
     memset((char *)&evtData,0,sizeof(wifi_monitor_data_t));
     wifi_associated_dev3_t *dev_array = NULL;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+
     //Iterating through each VAP and collecting data
-    for (i = 0; i < MAX_VAP; i++) {
+    for (i = 0; i < (int) getTotalNumberVAPs(); i++) {
+        UINT vap_index = VAP_INDEX(mgr->hal_cap, i);
         count=0;
         memset(tmp_csiClientMac, 0, sizeof(tmp_csiClientMac));
         pthread_mutex_lock(&g_events_monitor.lock);
@@ -3569,7 +3610,7 @@ int csi_getCSIData(void *arg)
             if(!timeval_subtract(&time_diff, &csi_prune_timer, &csi->last_snapshot_time)) {
                 if(csi_timedout(&time_diff, &csi->csi_time_interval)) {
                     for(j = 0; j < csi->no_of_mac; j++) {
-                        if((csi->mac_is_connected[j] == FALSE) || (csi->ap_index[j] != i)) {
+                        if((csi->mac_is_connected[j] == FALSE) || (csi->ap_index[j] != (int)vap_index)) {
                             continue;
                         }
                         for(m=0; m<count; m++) {
@@ -3582,7 +3623,7 @@ int csi_getCSIData(void *arg)
                             wifi_util_dbg_print(WIFI_MON, "%s: Mac already present in CSI list %02x..%02x\n",__func__, csi->mac_list[j][0], csi->mac_list[j][5]);
                             continue;
                         }
-                        wifi_util_dbg_print(WIFI_MON, "%s: Adding Mac for csi collection %02x..%02x ap_idx %d\n",__func__, csi->mac_list[j][0], csi->mac_list[j][5], i);
+                        wifi_util_dbg_print(WIFI_MON, "%s: Adding Mac for csi collection %02x..%02x ap_idx %d\n",__func__, csi->mac_list[j][0], csi->mac_list[j][5], vap_index);
                         memcpy(&tmp_csiClientMac[count], &csi->mac_list[j], sizeof(mac_addr_t));
                         if((csi->client_ip[j][0] != '\0') && ((csi->client_ip_age[j]*csi->csi_time_interval)  <= IPREFRESH_PERIOD_IN_MILLISECONDS) && (g_events_monitor.vap_ip[j][0] != '\0')) {
                             refresh = FALSE;
@@ -3607,7 +3648,7 @@ int csi_getCSIData(void *arg)
                     memcpy(dev_array[itrc].cli_MACAddress, tmp_csiClientMac[itrc], sizeof(mac_addr_t));
                 }
                 for (re_itr = 0; re_itr < 4; re_itr++) {
-                    ret = wifi_getApAssociatedDeviceDiagnosticResult3(i, &dev_array, (unsigned int *)&count);
+                    ret = wifi_getApAssociatedDeviceDiagnosticResult3(vap_index, &dev_array, (unsigned int *)&count);
                     if (ret == RETURN_OK) {
                         for (itrcsi=0; itrcsi < count; itrcsi++) {
                             if (dev_array[itrcsi].cli_CsiData != NULL) {
@@ -3647,28 +3688,31 @@ int csi_getCSIData(void *arg)
 static int clientdiag_sheduler_enable(int ap_index)
 {
     unsigned int clientdiag_interval;
+    unsigned int vap_array_index;
+
+    getVAPArrayIndexFromVAPIndex((unsigned int)ap_index, &vap_array_index);
 
     pthread_mutex_lock(&g_events_monitor.lock);
-    clientdiag_interval = g_events_monitor.diag_session[ap_index].interval;
+    clientdiag_interval = g_events_monitor.diag_session[vap_array_index].interval;
     pthread_mutex_unlock(&g_events_monitor.lock);
 
     if (clientdiag_interval != 0) {
-        if (g_monitor_module.clientdiag_id[ap_index] == 0) {
+        if (g_monitor_module.clientdiag_id[vap_array_index] == 0) {
             scheduler_add_timer_task(g_monitor_module.sched, FALSE,
-                    &(g_monitor_module.clientdiag_id[ap_index]), associated_device_diagnostics_send_event,
-                    (void *)&(g_monitor_module.clientdiag_sched_arg[ap_index]), clientdiag_interval, 0);
+                    &(g_monitor_module.clientdiag_id[vap_array_index]), associated_device_diagnostics_send_event,
+                    (void *)&(g_monitor_module.clientdiag_sched_arg[vap_array_index]), clientdiag_interval, 0);
         } else {
-            if (g_monitor_module.clientdiag_sched_interval[ap_index] != clientdiag_interval) {
-                g_monitor_module.clientdiag_sched_interval[ap_index] = clientdiag_interval;
+            if (g_monitor_module.clientdiag_sched_interval[vap_array_index] != clientdiag_interval) {
+                g_monitor_module.clientdiag_sched_interval[vap_array_index] = clientdiag_interval;
                 scheduler_update_timer_task_interval(g_monitor_module.sched,
-                        g_monitor_module.clientdiag_id[ap_index], clientdiag_interval);
+                        g_monitor_module.clientdiag_id[vap_array_index], clientdiag_interval);
             }
         }
     } else {
-        if (g_monitor_module.clientdiag_id[ap_index] != 0) {
+        if (g_monitor_module.clientdiag_id[vap_array_index] != 0) {
             scheduler_cancel_timer_task(g_monitor_module.sched,
-                    g_monitor_module.clientdiag_id[ap_index]);
-            g_monitor_module.clientdiag_id[ap_index] = 0;
+                    g_monitor_module.clientdiag_id[vap_array_index]);
+            g_monitor_module.clientdiag_id[vap_array_index] = 0;
         }
     }
     return 0;
@@ -3677,12 +3721,16 @@ static int clientdiag_sheduler_enable(int ap_index)
 void diagdata_set_interval(int interval, unsigned int ap_idx)
 {
     wifi_monitor_data_t *data;
+    unsigned int vap_array_index;
 
     if(ap_idx >= MAX_VAP) {
         wifi_util_dbg_print(WIFI_MON, "%s: ap_idx %d not valid\n",__func__, ap_idx);
     }
+
+    getVAPArrayIndexFromVAPIndex(ap_idx, &vap_array_index);
+
     pthread_mutex_lock(&g_events_monitor.lock);
-    g_events_monitor.diag_session[ap_idx].interval = interval;
+    g_events_monitor.diag_session[vap_array_index].interval = interval;
     wifi_util_dbg_print(WIFI_MON, "%s: ap_idx %d configuring inteval %d\n", __func__, ap_idx, interval);
     pthread_mutex_unlock(&g_events_monitor.lock);
     data = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
@@ -3816,9 +3864,12 @@ int captureVAPUpStatus(void *arg)
 {
     static unsigned int i = 0;
     char vap_status[16];
-    wifi_util_dbg_print(WIFI_MON, "Entering %s:%d for VAP %d\n",__FUNCTION__,__LINE__, i);
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+
     memset(vap_status,0,16);
-    wifi_getApStatus(i,vap_status);
+    UINT vap_index = VAP_INDEX(mgr->hal_cap, i);
+    wifi_util_dbg_print(WIFI_MON, "Entering %s:%d for VAP %d\n",__FUNCTION__,__LINE__, vap_index);
+    wifi_getApStatus(vap_index,vap_status);
     if(strncasecmp(vap_status,"Up",2)==0) {
         vap_up_arr[i]=vap_up_arr[i]+1;
         if (!vap_nas_status[i]) {
@@ -3963,12 +4014,14 @@ int radio_diagnostics(void *arg)
 
 int associated_devices_diagnostics(void *arg)
 {
+    static unsigned int idx = 0;
+    static unsigned int phase = 0;
     static unsigned int vap_index = 0;
     static wifi_associated_dev3_t *dev_array = NULL;
     static unsigned int num_devs = 0;
-#if !defined(_CBR_PRODUCT_REQ_) && !defined(_HUB4_PRODUCT_REQ_) && !defined(DUAL_CORE_XB3) && !defined(_WNXL11BWL_PRODUCT_REQ_)
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+#if !defined(_CBR_PRODUCT_REQ_) && !defined(_HUB4_PRODUCT_REQ_) && !defined(DUAL_CORE_XB3) && !(defined (_XB7_PRODUCT_REQ_) && defined (_COSA_BCM_ARM_)) && !defined(_WNXL11BWL_PRODUCT_REQ_)
     unsigned int i = 0;
-
     static unsigned int current_dev = 0;
     static int last_valid_dev = 0;
     char s_mac[MIN_MAC_LEN+1]={0};
@@ -3976,92 +4029,92 @@ int associated_devices_diagnostics(void *arg)
     int jtr = 0;
     static char assoc_list[(MAX_ASSOCIATED_WIFI_DEVS*18)+1];
 
-    if (dev_array == NULL) {
-        current_dev = 0;
-        last_valid_dev = 0;
-        memset(assoc_list, 0, sizeof(assoc_list));
-        if (wifi_getApAssociatedDevice(vap_index, assoc_list, sizeof(assoc_list)) == RETURN_OK) {
-            num_devs = (strlen(assoc_list)+1)/18;
-            if (num_devs > 0) {
-                dev_array = (wifi_associated_dev3_t *) malloc(sizeof(wifi_associated_dev3_t) * num_devs);
-                if (dev_array == NULL) {
-                    vap_index++;
-                    if (vap_index >= getTotalNumberVAPs()) {
-                        vap_index = 0;
-                        return TIMER_TASK_ERROR;
+    if (phase == 0) { /* phase 0: collect diag data */
+        if (dev_array == NULL) {
+            current_dev = 0;
+            last_valid_dev = 0;
+            memset(assoc_list, 0, sizeof(assoc_list));
+           vap_index = VAP_INDEX(mgr->hal_cap, idx);
+            if (wifi_getApAssociatedDevice(vap_index, assoc_list, sizeof(assoc_list)) == RETURN_OK) {
+                num_devs = (strlen(assoc_list)+1)/18;
+                if (num_devs > 0) {
+                    dev_array = (wifi_associated_dev3_t *) malloc(sizeof(wifi_associated_dev3_t) * num_devs);
+                    if (dev_array == NULL) {
+                        wifi_dbg_print(1,"%s,malloc failed ! vap_index=%u\n",__func__,vap_index);
+                        goto exit_task;
                     }
-                }
-                for(i=1;i<num_devs;i++) {
-                    //remove ','
-                    assoc_list[(i*18)-1] = '\0';
+                    for(i=1;i<num_devs;i++) {
+                        //remove ','
+                        assoc_list[(i*18)-1] = '\0';
+                    }
+                } else {
+                    /* No devices are associated with the current vap_index */
+                    phase = 1;
+                    return TIMER_TASK_CONTINUE;
                 }
             } else {
-                //reset json diag buffer
-                events_update_clientdiagdata(0, vap_index, NULL);
-                vap_index++;
-                if (vap_index >= getTotalNumberVAPs()) {
-                    vap_index = 0;
-                    return TIMER_TASK_COMPLETE;
-                }
-            }
-        } else {
-            vap_index++;
-            if (vap_index >= getTotalNumberVAPs()) {
-                vap_index = 0;
-                return TIMER_TASK_ERROR;
-            }
-        }
-        return TIMER_TASK_CONTINUE;
-    }
-
-    if(current_dev < num_devs) {
-        for(itr=0; assoc_list[(current_dev*18) + itr] != '\0'; itr++) {
-            if((assoc_list[(current_dev*18) + itr] != ':') && (jtr < MIN_MAC_LEN)) {
-                s_mac[jtr] = assoc_list[(current_dev*18) + itr];
-                jtr++;
-            }
-        }
-        s_mac[jtr] = '\0';
-        if (wifi_getApAssociatedClientDiagnosticResult(vap_index, s_mac,
-                    &dev_array[last_valid_dev]) == RETURN_OK){
-            last_valid_dev++;
-        }
-        current_dev++;
-        return TIMER_TASK_CONTINUE;
-    }
-    num_devs = last_valid_dev;
-#else //!defined(_CBR_PRODUCT_REQ_) && !defined(_HUB4_PRODUCT_REQ_) && !defined(DUAL_CORE_XB3)
-    if (dev_array == NULL) {
-        if (wifi_getApAssociatedDeviceDiagnosticResult3(vap_index, &dev_array, &num_devs) != RETURN_OK) {
-            if (dev_array) {
-                free(dev_array);
-                dev_array = NULL;
-            }
-            vap_index++;
-#ifdef WIFI_HAL_VERSION_3
-            if (vap_index >= getTotalNumberVAPs()) {
-#else
-            if (vap_index >= MAX_VAP) {
-#endif
-                vap_index = 0;
-                return TIMER_TASK_COMPLETE;
+                /* wifi_getApAssociatedDevice dint return RETURN_OK for the current vap_index.
+                 * Continue the task in the next cycle  */
+                wifi_dbg_print(1,"%s,wifi_getApAssociatedDevice returned error ! vap_index=%u\n",__func__,vap_index);
+                goto exit_task;
             }
             return TIMER_TASK_CONTINUE;
-       }
-       return TIMER_TASK_CONTINUE;
-
+        }
+        if(current_dev < num_devs) {
+            for(itr=0; assoc_list[(current_dev*18) + itr] != '\0'; itr++) {
+                if((assoc_list[(current_dev*18) + itr] != ':') && (jtr < MIN_MAC_LEN)) {
+                    s_mac[jtr] = assoc_list[(current_dev*18) + itr];
+                    jtr++;
+                }
+            }
+            s_mac[jtr] = '\0';
+            if (wifi_getApAssociatedClientDiagnosticResult(vap_index, s_mac,
+                                                        &dev_array[last_valid_dev]) == RETURN_OK){
+                last_valid_dev++;
+            }
+            current_dev++;
+            return TIMER_TASK_CONTINUE;
+        }
+        num_devs = last_valid_dev;
+        phase = 1;
+    }
+#else //!defined(_CBR_PRODUCT_REQ_) && !defined(_HUB4_PRODUCT_REQ_) && !defined(DUAL_CORE_XB3)
+    if (phase == 0) { /* phase 0: collect diag data */
+        if (dev_array == NULL) {
+            num_devs = 0;
+            vap_index = VAP_INDEX(mgr->hal_cap, idx);
+            if (wifi_getApAssociatedDeviceDiagnosticResult3(vap_index, &dev_array, &num_devs) != RETURN_OK) {
+                if (dev_array) {
+                    free(dev_array);
+                    dev_array = NULL;
+                }
+                goto exit_task;
+             }
+            phase = 1;
+            return TIMER_TASK_CONTINUE;
+        }
     }
 #endif
-    events_update_clientdiagdata(num_devs, vap_index, dev_array);
-    process_diagnostics(vap_index, dev_array, num_devs);
+    if (phase == 1) { /* phase 1: process diag data */
+        vap_index = VAP_INDEX(mgr->hal_cap, idx);
+        events_update_clientdiagdata(num_devs, vap_index, dev_array);
+        process_diagnostics(vap_index, dev_array, num_devs);
 
-    if (dev_array) {
-        free(dev_array);
-        dev_array = NULL;
+        if (dev_array) {
+            free(dev_array);
+            dev_array = NULL;
+        }
     }
-    vap_index++;
-    if (vap_index >= getTotalNumberVAPs()) {
-        vap_index = 0;
+
+exit_task:
+    idx++;
+    phase = 0;
+#ifdef WIFI_HAL_VERSION_3
+    if (idx >= getTotalNumberVAPs()) {
+#else
+    if (idx >= MAX_VAP) {
+#endif
+        idx = 0;
         return TIMER_TASK_COMPLETE;
     }
     return TIMER_TASK_CONTINUE;
@@ -4350,19 +4403,22 @@ int init_wifi_monitor ()
     //int rapid_reconn_max;
     unsigned int uptimeval = 0;
     char mac_str[32];
+    UINT vap_index;
     //ONEWIFI To avoid the st
         //Cleanup all CSI clients configured in driver
     unsigned char def_mac[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    wifi_mgr_t *mgr = get_wifimgr_obj();
 
     for (i = 0; i < getTotalNumberVAPs(); i++) {
         /*TODO CID: 110946 Out-of-bounds access - Fix in QTN code*/
-        if (wifi_getSSIDMACAddress(i, mac_str) == RETURN_OK) {
+        vap_index = VAP_INDEX(mgr->hal_cap, i);
+        if (wifi_getSSIDMACAddress(vap_index, mac_str) == RETURN_OK) {
             to_mac_bytes(mac_str, g_monitor_module.bssid_data[i].bssid);
         }
 
         //ONEWIFI To avoid the segmentation Fault
         //Cleanup all CSI clients configured in driver
-        wifi_enableCSIEngine(i, def_mac, FALSE);
+        wifi_enableCSIEngine(vap_index, def_mac, FALSE);
     }
 
     memset(g_monitor_module.cliStatsList, 0, MAX_VAP);
@@ -4391,8 +4447,9 @@ int init_wifi_monitor ()
         g_monitor_module.sta_health_rssi_threshold = rssi;
     }
     for (i = 0; i < getTotalNumberVAPs(); i++) {
+        UINT vap_index = VAP_INDEX(mgr->hal_cap, i);
         // update rapid reconnect time limit if changed
-        wifi_front_haul_bss_t *vap_bss_info = Get_wifi_object_bss_parameter(i);
+        wifi_front_haul_bss_t *vap_bss_info = Get_wifi_object_bss_parameter(vap_index);
         if(vap_bss_info != NULL) {
             g_monitor_module.bssid_data[i].ap_params.rapid_reconnect_threshold = vap_bss_info->rapidReconnThreshold;
             wifi_util_dbg_print(WIFI_MON, "%s:..rapidReconnThreshold:%d vapIndex:%d \n", __FUNCTION__, vap_bss_info->rapidReconnThreshold, i);
@@ -5169,6 +5226,7 @@ void SetActiveMsmtStepDstMac(char *DstMac, ULONG StepIns)
     mac_address_t bmac;
     int i;
     bool is_found = false;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
 
     wifi_util_dbg_print(WIFI_MON, "%s:%d: Active Measurement Step Destination Mac changed to %s for step ins : %d\n", __func__, __LINE__,DstMac,StepIns);
 
@@ -5176,11 +5234,12 @@ void SetActiveMsmtStepDstMac(char *DstMac, ULONG StepIns)
     to_mac_bytes(DstMac, bmac);
 
     for (i = 0; i < (int)getTotalNumberVAPs(); i++) {
+        UINT vap_index = VAP_INDEX(mgr->hal_cap, i);
         if ( is_device_associated(i, DstMac)  == true) {
             wifi_util_dbg_print(WIFI_MON, "%s:%d: found client %s on ap %d\n", __func__, __LINE__, DstMac,i);
             is_found = true;
             pthread_mutex_lock(&g_active_msmt.lock);
-            g_active_msmt.active_msmt.Step[StepIns].ApIndex = i;
+            g_active_msmt.active_msmt.Step[StepIns].ApIndex = vap_index;
             memcpy(g_active_msmt.active_msmt.Step[StepIns].DestMac, bmac, sizeof(mac_address_t));
             /* update the step instance number */
             g_active_msmt.active_msmt.StepInstance[StepIns] = 1;
@@ -5802,6 +5861,7 @@ void process_active_msmt_diagnostics (int ap_index)
     sta_data_t *sta;
     sta_key_t       sta_key;
     unsigned int count = 0;
+    unsigned int vap_array_index;
 
     wifi_util_dbg_print(WIFI_MON, "%s : %d  apindex : %d \n",__func__,__LINE__,ap_index);
 
@@ -5812,7 +5872,8 @@ void process_active_msmt_diagnostics (int ap_index)
         ap_index = 0;
         wifi_util_dbg_print(WIFI_MON, "%s : %d  changed ap_index to : %d \n",__func__,__LINE__,ap_index);
     }
-    sta_map = g_monitor_module.bssid_data[ap_index].sta_map;
+    getVAPArrayIndexFromVAPIndex((unsigned int)ap_index, &vap_array_index);
+    sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
 
     sta = (sta_data_t *)hash_map_get(sta_map, to_sta_key(g_active_msmt.curStepData.DestMac, sta_key));
 

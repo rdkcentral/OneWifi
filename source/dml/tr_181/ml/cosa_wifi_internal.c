@@ -288,6 +288,7 @@ void CosaDmlWiFiGetFromPSM(void)
     wifi_vap_info_t vap_config;
     wifi_front_haul_bss_t *bss_cfg;
     wifi_global_param_t global_cfg;
+    UINT vap_index;
 
     init_mac_filter_hash_map();
 
@@ -504,7 +505,8 @@ void CosaDmlWiFiGetFromPSM(void)
 
             bss_cfg = &vap_config.u.bss_info;
 
-            psm_vap_param = get_vap_psm_obj((instance_number - 1));
+            vap_index = VAP_INDEX(((webconfig_dml_t *)get_webconfig_dml())->hal_cap, instance_number-1);
+            psm_vap_param = get_vap_psm_obj(vap_index);
             if (psm_vap_param == NULL) {
                 wifi_util_dbg_print(WIFI_PSM,"%s:%d psm vap param NULL vap_index:%d\r\n", __func__, __LINE__, (instance_number - 1));
             }
@@ -883,16 +885,19 @@ void CosaDmlWiFiGetDataFromPSM(void)
     
     for (index = 0; index < getTotalNumberVAPs(); index++)
     {
-        if (CosaDmlWiFi_GetRapidReconnectCountEnable(index , (BOOLEAN *) &bReconnectCountEnable, false) != ANSC_STATUS_SUCCESS)
+        UINT apIndex;
+
+        apIndex = VAP_INDEX(((webconfig_dml_t *)get_webconfig_dml())->hal_cap, index);
+        if (CosaDmlWiFi_GetRapidReconnectCountEnable(apIndex , (BOOLEAN *) &bReconnectCountEnable, false) != ANSC_STATUS_SUCCESS)
         {
             /* Set default value */
-            if (isVapPrivate(index)) {
+            if (isVapPrivate(apIndex)) {
                 bReconnectCountEnable = 1;
             } else {
                 bReconnectCountEnable = 0;
             }
         }
-        set_multi_vap_dml_parameters(index, RECONNECT_COUNT_STATUS, &bReconnectCountEnable);
+        set_multi_vap_dml_parameters(apIndex, RECONNECT_COUNT_STATUS, &bReconnectCountEnable);
     }
 
     if(CosaDmlWiFi_GetFeatureMFPConfigValue((BOOLEAN *) &bFeatureMFPConfig) != ANSC_STATUS_SUCCESS)

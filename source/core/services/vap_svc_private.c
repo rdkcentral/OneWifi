@@ -3,18 +3,15 @@
 #include "stdlib.h"
 #include <sys/time.h>
 #include "vap_svc.h"
+#include "wifi_ctrl.h"
 #include "wifi_util.h"
 
 bool vap_svc_is_private(unsigned int vap_index)
 {
-    static unsigned int allowed_array[] = {0, 2, 6, 10, 1, 3, 7, 11};
-    unsigned int i;
-
-    for (i = 0; i < ARRAY_SZ(allowed_array); i++) {
-        if (vap_index == allowed_array[i]) {
-            return true;
-        }
+    if (isVapPrivate(vap_index) || isVapXhs(vap_index) || isVapLnf(vap_index)) {
+        return true;
     }
+
     return false;
 }
 

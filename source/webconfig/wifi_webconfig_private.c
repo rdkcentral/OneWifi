@@ -134,9 +134,8 @@ webconfig_error_t decode_private_subdoc(webconfig_t *config, webconfig_subdoc_da
     cJSON *obj, *obj_vap;
     unsigned int i, j, size, radio_index, vap_array_index;
     unsigned int presence_count = 0;
-    char *vap_names[MAX_NUM_RADIOS] = {
-        "private_ssid_2g", "private_ssid_5g",
-    };
+    unsigned int num_private_ssid;
+    wifi_vap_name_t vap_names[MAX_NUM_RADIOS];
     char *name;
     char *str;
     wifi_vap_info_t *vap_info;
@@ -145,6 +144,10 @@ webconfig_error_t decode_private_subdoc(webconfig_t *config, webconfig_subdoc_da
 
     params = &data->u.decoded;
     doc = &config->subdocs[data->type];
+    /* get list of private SSID */
+    num_private_ssid = get_list_of_private_ssid(&params->hal_cap.wifi_prop, MAX_NUM_RADIOS, vap_names);
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d - Number of private SSID found = %u\n", __func__, __LINE__, num_private_ssid);
 
     str =  cJSON_Print(json);
     wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: decoded JSON:\n%s\n", __func__, __LINE__, str);
@@ -169,7 +172,7 @@ webconfig_error_t decode_private_subdoc(webconfig_t *config, webconfig_subdoc_da
     size = cJSON_GetArraySize(obj_vaps);
     if (size < MIN_NUM_RADIOS || size > MAX_NUM_RADIOS) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Not correct number of vap objects: %d, expected: %d\n",
-            __func__, __LINE__, size, (sizeof(vap_names)/sizeof(char *)));
+            __func__, __LINE__, size, params->hal_cap.wifi_prop.numRadios);
         cJSON_Delete(json);
         return webconfig_error_invalid_subdoc;
     }
@@ -190,7 +193,8 @@ webconfig_error_t decode_private_subdoc(webconfig_t *config, webconfig_subdoc_da
             }
         }
     }
-    if (presence_count < MIN_NUM_RADIOS || presence_count > MAX_NUM_RADIOS) {
+//    if (presence_count < MIN_NUM_RADIOS || presence_count > MAX_NUM_RADIOS) {
+    if (presence_count != num_private_ssid) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: vap object not present\n", __func__, __LINE__);
         return webconfig_error_invalid_subdoc;
     }
@@ -201,7 +205,7 @@ webconfig_error_t decode_private_subdoc(webconfig_t *config, webconfig_subdoc_da
         params->radios[i].vaps.vap_map.num_vaps = params->hal_cap.wifi_prop.radiocap[i].maxNumberVAPs;
         params->radios[i].vaps.num_vaps = params->hal_cap.wifi_prop.radiocap[i].maxNumberVAPs;
     }
-    
+
     for (i = 0; i < size; i++) {
         obj_vap = cJSON_GetArrayItem(obj_vaps, i);
         name = cJSON_GetStringValue(cJSON_GetObjectItem(obj_vap, "VapName"));

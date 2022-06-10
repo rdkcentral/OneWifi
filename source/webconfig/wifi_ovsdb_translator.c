@@ -1589,12 +1589,14 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_dml(webconfig_s
     wifi_hal_capability_t *hal_cap;
     wifi_interface_name_idex_map_t *iface_map;
     webconfig_external_ovsdb_t *proto;
+    wifi_vap_name_t vap_names[MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO];
     //  struct schema_Wifi_Credential_Config **cred_table;
     //   struct schema_Wifi_Credential_Config  *cred_row;
 
     unsigned int presence_mask = 0;
     unsigned int *row_count = NULL;
     wifi_platform_property_t *wifi_prop = &data->u.decoded.hal_cap.wifi_prop;
+    unsigned int dml_vap_mask = 0;
 
     decoded_params = &data->u.decoded;
     if (decoded_params == NULL) {
@@ -1615,6 +1617,8 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_dml(webconfig_s
     }
 
     presence_mask = 0;
+    dml_vap_mask = create_vap_mask(wifi_prop, 8, VAP_PREFIX_PRIVATE, VAP_PREFIX_IOT, VAP_PREFIX_HOTSPOT_OPEN, VAP_PREFIX_HOTSPOT_SECURE, \
+                                                 VAP_PREFIX_MESH_BACKHAUL, VAP_PREFIX_MESH_STA, VAP_PREFIX_LNF_PSK, VAP_PREFIX_LNF_RADIUS);
 
     if (decoded_params->num_radios > MAX_NUM_RADIOS || decoded_params->num_radios < MIN_NUM_RADIOS) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Invalid number of radios : %x\n", __func__, __LINE__, decoded_params->num_radios);
@@ -1628,10 +1632,6 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_dml(webconfig_s
     for (i = 0; i < decoded_params->num_radios; i++) {
         radio = &decoded_params->radios[i];
         vap_map = &radio->vaps.vap_map;
-        if (radio->vaps.num_vaps !=  MAX_NUM_VAP_PER_RADIO) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Invalid number of vaps: %x\n", __func__, __LINE__, radio->vaps.num_vaps);
-            return webconfig_error_invalid_subdoc;
-        }
         for (j = 0; j < radio->vaps.num_vaps; j++) {
             //Get the corresponding vap
             vap = &vap_map->vap_array[j];
@@ -1729,13 +1729,16 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_dml(webconfig_s
         }
     }
 
-    if (presence_mask != (pow(2, (MAX_NUM_VAP_PER_RADIO*decoded_params->num_radios)) - 1)) {
+    if (presence_mask != dml_vap_mask) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: vapindex conf missing presence_mask : %x\n", __func__, __LINE__, presence_mask);
         return webconfig_error_translate_to_ovsdb;
     }
 
     row_count = (unsigned int *)&proto->vif_config_row_count;
-    *row_count = decoded_params->num_radios * MAX_NUM_VAP_PER_RADIO;
+    *row_count = get_list_of_vap_names(wifi_prop, vap_names, MAX_NUM_RADIOS*MAX_NUM_VAP_PER_RADIO, \
+            8, VAP_PREFIX_PRIVATE, VAP_PREFIX_HOTSPOT_OPEN, VAP_PREFIX_HOTSPOT_SECURE, \
+            VAP_PREFIX_LNF_PSK, VAP_PREFIX_LNF_RADIUS, VAP_PREFIX_MESH_BACKHAUL, \
+            VAP_PREFIX_MESH_STA, VAP_PREFIX_IOT);;
 
     for (i = 0; i < decoded_params->num_radios; i++) {
         memcpy(&webconfig_ovsdb_data.u.decoded.radios[i].vaps, &decoded_params->radios[i].vaps, sizeof(rdk_wifi_vap_map_t));
@@ -2294,6 +2297,7 @@ webconfig_error_t translate_vap_object_to_ovsdb_associated_clients_for_assoclist
     assoc_vap_mask = create_vap_mask(wifi_prop, 8, VAP_PREFIX_PRIVATE, VAP_PREFIX_IOT, VAP_PREFIX_HOTSPOT_OPEN, VAP_PREFIX_HOTSPOT_SECURE, \
                                                    VAP_PREFIX_MESH_BACKHAUL, VAP_PREFIX_MESH_STA, VAP_PREFIX_LNF_PSK, VAP_PREFIX_LNF_RADIUS);
 #endif
+
     decoded_params = &data->u.decoded;
     if (decoded_params == NULL) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: decoded_params is NULL\n", __func__, __LINE__);
@@ -2323,10 +2327,6 @@ webconfig_error_t translate_vap_object_to_ovsdb_associated_clients_for_assoclist
     for (i = 0; i < decoded_params->num_radios; i++) {
         radio = &decoded_params->radios[i];
         vap_map = &radio->vaps.vap_map;
-        if (radio->vaps.num_vaps !=  MAX_NUM_VAP_PER_RADIO) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Invalid number of vaps: %x\n", __func__, __LINE__, radio->vaps.num_vaps);
-            return webconfig_error_invalid_subdoc;
-        }
         for (j = 0; j < radio->vaps.num_vaps; j++) {
             //Get the corresponding vap
             vap = &vap_map->vap_array[j];
@@ -2390,12 +2390,17 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state_for_dml(webconfig_su
     wifi_hal_capability_t *hal_cap;
     wifi_interface_name_idex_map_t *iface_map;
     webconfig_external_ovsdb_t *proto;
-    wifi_platform_property_t *wifi_prop;
     //  struct schema_Wifi_Credential_Config **cred_table;
     //   struct schema_Wifi_Credential_Config  *cred_row;
 
     unsigned int presence_mask = 0;
     unsigned int *row_count = NULL;
+    unsigned int dml_vap_mask = 0;
+    wifi_vap_name_t vap_names[MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO];
+    wifi_platform_property_t *wifi_prop = &data->u.decoded.hal_cap.wifi_prop;
+    dml_vap_mask = create_vap_mask(wifi_prop, 8, VAP_PREFIX_PRIVATE, VAP_PREFIX_IOT, VAP_PREFIX_HOTSPOT_OPEN, VAP_PREFIX_HOTSPOT_SECURE, \
+                                                 VAP_PREFIX_MESH_BACKHAUL, VAP_PREFIX_MESH_STA, VAP_PREFIX_LNF_PSK, VAP_PREFIX_LNF_RADIUS);
+
 
     decoded_params = &data->u.decoded;
     if (decoded_params == NULL) {
@@ -2423,7 +2428,6 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state_for_dml(webconfig_su
     }
 
     hal_cap = &decoded_params->hal_cap;
-    wifi_prop = &decoded_params->hal_cap.wifi_prop;
     //Get the number of radios
     for (i = 0; i < decoded_params->num_radios; i++) {
         radio = &decoded_params->radios[i];
@@ -2524,12 +2528,15 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state_for_dml(webconfig_su
         }
     }
 
-    if (presence_mask != (pow(2, decoded_params->num_radios * MAX_NUM_VAP_PER_RADIO) - 1)) {
+    if (presence_mask != dml_vap_mask) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: vapindex conf missing presence_mask : %x\n", __func__, __LINE__, presence_mask);
         return webconfig_error_translate_to_ovsdb;
     }
     row_count = (unsigned int *)&proto->vif_state_row_count;
-    *row_count = decoded_params->num_radios * MAX_NUM_VAP_PER_RADIO;
+    *row_count = get_list_of_vap_names(wifi_prop, vap_names, MAX_NUM_RADIOS*MAX_NUM_VAP_PER_RADIO, \
+            8, VAP_PREFIX_PRIVATE, VAP_PREFIX_HOTSPOT_OPEN, VAP_PREFIX_HOTSPOT_SECURE, \
+            VAP_PREFIX_LNF_PSK, VAP_PREFIX_LNF_RADIUS, VAP_PREFIX_MESH_BACKHAUL, \
+            VAP_PREFIX_MESH_STA, VAP_PREFIX_IOT);
 
     return webconfig_error_none;
 }
@@ -3738,7 +3745,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_private(webconf
     }
 
     presence_mask = 0;
-    private_vap_mask = ((1 << convert_vap_name_to_index(wifi_prop, "private_ssid_2g")) | (1 << convert_vap_name_to_index(wifi_prop, "private_ssid_5g")));
+    private_vap_mask = create_vap_mask(wifi_prop, 1, VAP_PREFIX_PRIVATE);
 
     hal_cap = &decoded_params->hal_cap;
 
@@ -3842,8 +3849,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_mesh_sta(webcon
 
     presence_mask = 0;
     /* create vap mask for mesh sta for all radios */
-    //mesh_vap_mask = create_vap_mask(wifi_prop, 1,  VAP_PREFIX_MESH_STA);
-    mesh_vap_mask = ((1 << convert_vap_name_to_index(wifi_prop, "mesh_sta_2g")) | (1 << convert_vap_name_to_index(wifi_prop, "mesh_sta_5g")));
+    mesh_vap_mask = create_vap_mask(wifi_prop, 1,  VAP_PREFIX_MESH_STA);
 
     hal_cap = &decoded_params->hal_cap;
 
@@ -3937,8 +3943,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_mesh_sta(webc
     }
     presence_mask = 0;
     /* create vap mask for mesh and sta */
-    //mesh_vap_mask = create_vap_mask(wifi_prop, 1, VAP_PREFIX_MESH_STA);
-    mesh_vap_mask = ((1 << convert_vap_name_to_index(wifi_prop, "mesh_sta_2g")) | (1 << convert_vap_name_to_index(wifi_prop, "mesh_sta_5g")));
+    mesh_vap_mask = create_vap_mask(wifi_prop, 1, VAP_PREFIX_MESH_STA);
 
     for (i = 0; i < proto->vif_config_row_count; i++) {
         vap_row = (struct schema_Wifi_VIF_Config *)table[i];
@@ -4034,8 +4039,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_mesh_backhaul(w
 
     presence_mask = 0;
     /* create vap mask for mesh backhaul and mesh sta for all radios */
-//    mesh_vap_mask = create_vap_mask(wifi_prop, 1, VAP_PREFIX_MESH_BACKHAUL);
-    mesh_vap_mask = ((1 << convert_vap_name_to_index(wifi_prop, "mesh_backhaul_2g")) | (1 << convert_vap_name_to_index(wifi_prop, "mesh_backhaul_5g")));
+    mesh_vap_mask = create_vap_mask(wifi_prop, 1, VAP_PREFIX_MESH_BACKHAUL);
 
     hal_cap = &decoded_params->hal_cap;
 
@@ -4254,7 +4258,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_home(webconfig_
     }
 
     presence_mask = 0;
-    home_vap_mask = ((1 << convert_vap_name_to_index(wifi_prop, "iot_ssid_2g")) | (1 << convert_vap_name_to_index(wifi_prop, "iot_ssid_5g")));
+    home_vap_mask = create_vap_mask(wifi_prop, 1, VAP_PREFIX_IOT);
 
     hal_cap = &decoded_params->hal_cap;
 
@@ -4463,9 +4467,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_xfinity(webconf
     }
 
     presence_mask = 0;
-    home_vap_mask = ((1 << convert_vap_name_to_index(wifi_prop, "hotspot_open_2g")) | (1 << convert_vap_name_to_index(wifi_prop, "hotspot_open_5g")) |
-            (1 << convert_vap_name_to_index(wifi_prop, "hotspot_secure_2g")) | (1 << convert_vap_name_to_index(wifi_prop, "hotspot_secure_5g")) );
-
+    home_vap_mask = create_vap_mask(wifi_prop, 2, VAP_PREFIX_HOTSPOT_OPEN, VAP_PREFIX_HOTSPOT_SECURE);
     hal_cap = &decoded_params->hal_cap;
 
     //Get the number of radios
@@ -4568,7 +4570,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_private(webco
         return webconfig_error_translate_from_ovsdb;
     }
     presence_mask = 0;
-    private_vap_mask = ((1 << convert_vap_name_to_index(wifi_prop, "private_ssid_2g")) | (1 << convert_vap_name_to_index(wifi_prop, "private_ssid_5g")));
+    private_vap_mask = create_vap_mask(wifi_prop, 1, VAP_PREFIX_PRIVATE);
 
     for (i = 0; i < proto->vif_config_row_count; i++) {
         vap_row = (struct schema_Wifi_VIF_Config *)table[i];
@@ -4701,8 +4703,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_mesh_backhaul
     }
     presence_mask = 0;
     /* create vap mask for mesh backhaul*/
-    //mesh_vap_mask = create_vap_mask(wifi_prop, 1, VAP_PREFIX_MESH_BACKHAUL);
-    mesh_vap_mask = ((1 << convert_vap_name_to_index(wifi_prop, "mesh_backhaul_2g")) | (1 << convert_vap_name_to_index(wifi_prop, "mesh_backhaul_5g")));
+    mesh_vap_mask = create_vap_mask(wifi_prop, 1, VAP_PREFIX_MESH_BACKHAUL);
 
     for (i = 0; i < proto->vif_config_row_count; i++) {
         vap_row = (struct schema_Wifi_VIF_Config *)table[i];
@@ -4842,9 +4843,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_mesh(webconfi
         return webconfig_error_translate_from_ovsdb;
     }
     presence_mask = 0;
-    mesh_vap_mask = ((1 << convert_vap_name_to_index(wifi_prop, "mesh_backhaul_2g")) | (1 << convert_vap_name_to_index(wifi_prop, "mesh_backhaul_5g")) |
-            (1 << convert_vap_name_to_index(wifi_prop, "mesh_sta_2g")) | (1 << convert_vap_name_to_index(wifi_prop, "mesh_sta_5g")));
-
+    mesh_vap_mask = create_vap_mask(wifi_prop, 2, VAP_PREFIX_MESH_STA, VAP_PREFIX_MESH_BACKHAUL);
     for (i = 0; i < proto->vif_config_row_count; i++) {
         vap_row = (struct schema_Wifi_VIF_Config *)table[i];
         if (vap_row == NULL) {
@@ -4938,7 +4937,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_home(webconfi
         return webconfig_error_translate_from_ovsdb;
     }
     presence_mask = 0;
-    home_vap_mask = ((1 << convert_vap_name_to_index(wifi_prop, "iot_ssid_2g")) | (1 << convert_vap_name_to_index(wifi_prop, "iot_ssid_5g")));
+    home_vap_mask = create_vap_mask(wifi_prop, 1, VAP_PREFIX_IOT);
 
     for (i = 0; i < proto->vif_config_row_count; i++) {
         vap_row = (struct schema_Wifi_VIF_Config *)table[i];
@@ -4957,7 +4956,6 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_home(webconfi
         radio_index = convert_vap_name_to_radio_array_index(wifi_prop, vapname);
 
         //get the vap_array_index
-wifi_util_dbg_print(WIFI_WEBCONFIG, "%s : %s : %d convert_vap_name_to_array_index()\n", __FILE__, __func__, __LINE__);
         vap_array_index =  convert_vap_name_to_array_index(wifi_prop, vapname);
 
         vap_index = convert_vap_name_to_index(wifi_prop, vapname);
@@ -5065,7 +5063,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_lnf(webconfig
         return webconfig_error_translate_from_ovsdb;
     }
     presence_mask = 0;
-    lnf_vap_mask = ((1 << convert_vap_name_to_index(wifi_prop, "lnf_psk")) | (1 << convert_vap_name_to_index(wifi_prop, "lnf_radius")));
+    lnf_vap_mask = create_vap_mask(wifi_prop, 2, VAP_PREFIX_LNF_PSK, VAP_PREFIX_LNF_RADIUS);
 
     for (i = 0; i < proto->vif_config_row_count; i++) {
         vap_row = (struct schema_Wifi_VIF_Config *)table[i];
@@ -5204,8 +5202,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_xfinity(webco
         return webconfig_error_translate_from_ovsdb;
     }
     presence_mask = 0;
-    xfinity_vap_mask = ((1 << convert_vap_name_to_index(wifi_prop, "hotspot_open_2g")) | (1 << convert_vap_name_to_index(wifi_prop, "hotspot_open_5g")) |
-            (1 << convert_vap_name_to_index(wifi_prop, "hotspot_secure_2g")) | (1 << convert_vap_name_to_index(wifi_prop, "hotspot_secure_5g")));
+    xfinity_vap_mask = create_vap_mask(wifi_prop, 2, VAP_PREFIX_HOTSPOT_OPEN, VAP_PREFIX_HOTSPOT_SECURE);
 
     for (i = 0; i < proto->vif_config_row_count; i++) {
         vap_row = (struct schema_Wifi_VIF_Config *)table[i];

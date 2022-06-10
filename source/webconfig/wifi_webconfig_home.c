@@ -138,9 +138,8 @@ webconfig_error_t decode_home_subdoc(webconfig_t *config, webconfig_subdoc_data_
     cJSON *obj, *obj_vap;
     unsigned int i, j, size, radio_index, vap_array_index;
     unsigned int presence_count = 0;
-    char *vap_names[MAX_NUM_RADIOS] = {
-        "iot_ssid_2g", "iot_ssid_5g",
-    };
+    wifi_vap_name_t  vap_names[MAX_NUM_RADIOS];
+    unsigned int num_home_ssid;
     char *name;
     wifi_vap_info_t *vap_info;
     cJSON *json = data->u.encoded.json;
@@ -148,6 +147,10 @@ webconfig_error_t decode_home_subdoc(webconfig_t *config, webconfig_subdoc_data_
 
     params = &data->u.decoded;
     doc = &config->subdocs[data->type];
+
+    num_home_ssid = get_list_of_iot_ssid(&params->hal_cap.wifi_prop, MAX_NUM_RADIOS, vap_names);
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d - Number of home SSID found = %u\n", __func__, __LINE__, num_home_ssid);
 
     for (i = 0; i < doc->num_objects; i++) {
         if ((cJSON_GetObjectItem(json, doc->objects[i].name)) == NULL) {
@@ -167,9 +170,9 @@ webconfig_error_t decode_home_subdoc(webconfig_t *config, webconfig_subdoc_data_
     }
 
     size = cJSON_GetArraySize(obj_vaps);
-    if (size < MIN_NUM_RADIOS || size > MAX_NUM_RADIOS) {
+    if (num_home_ssid > size) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Not correct number of vap objects: %d, expected: %d\n",
-                __func__, __LINE__, size, (sizeof(vap_names)/sizeof(char *)));
+                __func__, __LINE__, size, params->hal_cap.wifi_prop.numRadios);
         cJSON_Delete(json);
         return webconfig_error_invalid_subdoc;
     }
@@ -191,7 +194,7 @@ webconfig_error_t decode_home_subdoc(webconfig_t *config, webconfig_subdoc_data_
     }
 
 
-    if (presence_count < MIN_NUM_RADIOS || presence_count > MAX_NUM_RADIOS) {
+    if (presence_count != num_home_ssid) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: iot objects not found object mask : %x\n",
                         __func__, __LINE__, presence_count);
         cJSON_Delete(json);
