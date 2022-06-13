@@ -1361,7 +1361,12 @@ void process_device_mode_command_event(int device_mode)
             }
         }
     }
-    ctrl->webconfig_state |= ctrl_webconfig_state_vap_cfg_rsp_pending;
+    if(device_mode == rdk_dev_mode_type_gw) {
+        ctrl->webconfig_state |= ctrl_webconfig_state_vap_all_cfg_rsp_pending;
+    } else if (device_mode == rdk_dev_mode_type_ext) {
+        /* Null out VIF table by sending NULL subdoc */
+        ctrl->webconfig_state |= ctrl_webconfig_state_vap_mesh_cfg_rsp_pending;
+    }
 }
 
 void process_channel_change_event(wifi_channel_change_event_t *ch_chg)
@@ -1382,7 +1387,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg)
     radio_params->channelWidth = ch_chg->channelWidth;
     radio_params->op_class = ch_chg->op_class;
     pthread_mutex_unlock(&g_wifidb->data_cache_lock);
-    g_wifidb->ctrl.webconfig_state = ctrl_webconfig_state_radio_cfg_rsp_pending;
+    g_wifidb->ctrl.webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
     update_wifi_radio_config(ch_chg->radioIndex, radio_params);
 }
 

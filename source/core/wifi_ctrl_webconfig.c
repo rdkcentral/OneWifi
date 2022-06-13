@@ -17,10 +17,8 @@
 #include "wifi_webconfig_consumer.h"
 #endif
 
-#define WEBCONFIG_DML_SUBDOC_STATES (ctrl_webconfig_state_radio_cfg_rsp_pending| \
-                                     ctrl_webconfig_state_vap_cfg_rsp_pending| \
+#define WEBCONFIG_DML_SUBDOC_STATES (ctrl_webconfig_state_vap_all_cfg_rsp_pending| \
                                      ctrl_webconfig_state_macfilter_cfg_rsp_pending| \
-                                     ctrl_webconfig_state_sta_conn_status_rsp_pending| \
                                      ctrl_webconfig_state_factoryreset_cfg_rsp_pending)
 
 int webconfig_blaster_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
@@ -69,10 +67,35 @@ int webconfig_send_wifi_config_status(wifi_ctrl_t *ctrl)
     if (webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_wifi_config) != webconfig_error_none) {
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
      }
-    ctrl->webconfig_state ^= ctrl_webconfig_state_wifi_config_cfg_rsp_pending;
 
     return RETURN_OK;
 
+}
+
+int webconfig_send_radio_subdoc_status(wifi_ctrl_t *ctrl, webconfig_subdoc_type_t type)
+{
+    webconfig_subdoc_data_t data;
+
+    webconfig_init_subdoc_data(&data);
+
+    if (webconfig_encode(&ctrl->webconfig, &data, type) != webconfig_error_none) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
+    }
+
+    return RETURN_OK;
+}
+
+int webconfig_send_vap_subdoc_status(wifi_ctrl_t *ctrl, webconfig_subdoc_type_t type)
+{
+    webconfig_subdoc_data_t data;
+
+    webconfig_init_subdoc_data(&data);
+
+    if (webconfig_encode(&ctrl->webconfig, &data, type) != webconfig_error_none) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
+    }
+
+    return RETURN_OK;
 }
 
 int webconfig_send_dml_subdoc_status(wifi_ctrl_t *ctrl)
@@ -83,8 +106,6 @@ int webconfig_send_dml_subdoc_status(wifi_ctrl_t *ctrl)
     if (webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_dml) != webconfig_error_none) {
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
     }
-    ctrl->webconfig_state &= ~WEBCONFIG_DML_SUBDOC_STATES;
-
     return RETURN_OK;
 }
 
@@ -100,8 +121,6 @@ int webconfig_send_csi_status(wifi_ctrl_t *ctrl)
     if (webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_csi) != webconfig_error_none) {
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
     }
-    ctrl->webconfig_state ^= ctrl_webconfig_state_csi_cfg_rsp_pending;
-
     return RETURN_OK;
 }
 
@@ -114,8 +133,6 @@ int webconfig_send_associate_status(wifi_ctrl_t *ctrl)
     if (webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_associated_clients) != webconfig_error_none) {
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
     }
-    ctrl->webconfig_state ^= ctrl_webconfig_state_associated_clients_cfg_rsp_pending;
-
     return RETURN_OK;
 }
 
@@ -134,15 +151,45 @@ int webconfig_analyze_pending_states(wifi_ctrl_t *ctrl)
         }
     } while ((ctrl->webconfig_state & pending_state) == 0);
 
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d - pending subdoc status:0x%x pending_state:0x%x\r\n", __func__,
+                                                        __LINE__, ctrl->webconfig_state, pending_state);
     // this may move to scheduler task
-    switch (ctrl->webconfig_state & pending_state) {
+    switch ((ctrl->webconfig_state & pending_state)) {
         case ctrl_webconfig_state_radio_cfg_rsp_pending:
-        case ctrl_webconfig_state_vap_cfg_rsp_pending:
-        case ctrl_webconfig_state_macfilter_cfg_rsp_pending:
+            webconfig_send_radio_subdoc_status(ctrl, webconfig_subdoc_type_radio);
+            break;
+        case ctrl_webconfig_state_vap_private_cfg_rsp_pending:
+            webconfig_send_vap_subdoc_status(ctrl, webconfig_subdoc_type_private);
+            break;
+        case ctrl_webconfig_state_vap_home_cfg_rsp_pending:
+            webconfig_send_vap_subdoc_status(ctrl, webconfig_subdoc_type_home);
+            break;
+        case ctrl_webconfig_state_vap_xfinity_cfg_rsp_pending:
+            webconfig_send_vap_subdoc_status(ctrl, webconfig_subdoc_type_xfinity);
+            break;
+        case ctrl_webconfig_state_vap_mesh_cfg_rsp_pending:
+            webconfig_send_vap_subdoc_status(ctrl, webconfig_subdoc_type_mesh);
+        break;
         case ctrl_webconfig_state_sta_conn_status_rsp_pending:
-        case ctrl_webconfig_state_factoryreset_cfg_rsp_pending:
+        case ctrl_webconfig_state_vap_mesh_sta_cfg_rsp_pending:
+            webconfig_send_vap_subdoc_status(ctrl, webconfig_subdoc_type_mesh_sta);
+        break;
+        case ctrl_webconfig_state_vap_mesh_backhaul_cfg_rsp_pending:
+            webconfig_send_vap_subdoc_status(ctrl, webconfig_subdoc_type_mesh_backhaul);
+        break;
+        case ctrl_webconfig_state_macfilter_cfg_rsp_pending:
+            webconfig_send_vap_subdoc_status(ctrl, webconfig_subdoc_type_mac_filter);
+        break;
+        case ctrl_webconfig_state_vap_all_cfg_rsp_pending:
             webconfig_send_dml_subdoc_status(ctrl);
             break;
+        case ctrl_webconfig_state_factoryreset_cfg_rsp_pending:
+            if(ctrl->network_mode == rdk_dev_mode_type_gw) {
+                webconfig_send_dml_subdoc_status(ctrl);
+            } else  if(ctrl->network_mode == rdk_dev_mode_type_ext) {
+                webconfig_send_vap_subdoc_status(ctrl, webconfig_subdoc_type_mesh_sta);
+            }
+        break;
         case ctrl_webconfig_state_wifi_config_cfg_rsp_pending:
             webconfig_send_wifi_config_status(ctrl);
             break;
@@ -151,6 +198,9 @@ int webconfig_analyze_pending_states(wifi_ctrl_t *ctrl)
             break;
         case ctrl_webconfig_state_csi_cfg_rsp_pending:
             webconfig_send_csi_status(ctrl);
+            break;
+        default:
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d - default pending subdoc status:0x%x\r\n", __func__, __LINE__, (ctrl->webconfig_state & CTRL_WEBCONFIG_STATE_MASK));
             break;
     }
 
@@ -233,34 +283,32 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
         }
 
         found_target = false;
-        wifi_util_dbg_print(WIFI_MGR,"%s:%d: Found vap map source and target for vap name: %s\n", __func__, __LINE__, vap_info->vap_name);
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Found vap map source and target for vap name: %s\n", __func__, __LINE__, vap_info->vap_name);
 
         if (memcmp(mgr_vap_info, vap_info, sizeof(wifi_vap_info_t)) != 0) {
             // radio data changed apply
-            wifi_util_dbg_print(WIFI_MGR, "%s:%d: Change detected in received vap config, applying new configuration for vap: %s\n",
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Change detected in received vap config, applying new configuration for vap: %s\n",
                                 __func__, __LINE__, vap_names[i]);
             memset(&tgt_vap_map, 0, sizeof(wifi_vap_info_map_t));
             tgt_vap_map.num_vaps = 1;
             memcpy(&tgt_vap_map.vap_array[0], vap_info, sizeof(wifi_vap_info_t));
             if (svc->update_fn(svc, tgt_radio_idx, &tgt_vap_map) != 0) {
-                wifi_util_dbg_print(WIFI_MGR, "%s:%d: failed to apply\n", __func__, __LINE__);
-                ctrl->webconfig_state |= ctrl_webconfig_state_vap_cfg_rsp_pending;
+                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: failed to apply\n", __func__, __LINE__);
                 return RETURN_ERR;
             }
             memcpy(mgr_vap_info, &tgt_vap_map.vap_array[0], sizeof(wifi_vap_info_t));
-            
+
             if (vap_info->vap_mode == wifi_vap_mode_ap) {
                 if (wifi_setApManagementFramePowerControl(vap_info->vap_index,vap_info->u.bss_info.mgmtPowerControl) == RETURN_OK) {
-                    wifi_util_dbg_print(WIFI_MGR, "%s:%d:ManagementFrame Power control set for vapindex =%d Successful \n",__func__, __LINE__,vap_info->vap_index);
+                    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d:ManagementFrame Power control set for vapindex =%d Successful \n",__func__, __LINE__,vap_info->vap_index);
                 } else {
-                    wifi_util_dbg_print(WIFI_MGR, "%s:%d:ManagementFrame Power control set failed in  \n",__func__, __LINE__);
+                    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d:ManagementFrame Power control set failed in  \n",__func__, __LINE__);
                 }
             }
         } else {
-            wifi_util_dbg_print(WIFI_MGR, "%s:%d: Received vap config is same for %s, not applying\n",
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Received vap config is same for %s, not applying\n",
                         __func__, __LINE__, vap_names[i]);
         }
-        ctrl->webconfig_state |= ctrl_webconfig_state_vap_cfg_rsp_pending;
     }
 
     return RETURN_OK;
@@ -309,7 +357,6 @@ int webconfig_global_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_da
    /* If neither GasConfig nor Global params are modified */
     if(!global_param_changed && !gas_config_changed) {
         wifi_util_dbg_print(WIFI_CTRL,"Neither Gasconfig nor globalparams are modified");
-        ctrl->webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
         return RETURN_ERR;
     }
 
@@ -317,7 +364,6 @@ int webconfig_global_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_da
         wifi_util_dbg_print(WIFI_CTRL,"Global config value is changed hence update the global config in DB\n");
         if(update_wifi_global_config(&data_global_config->global_parameters) == -1) {
             wifi_util_dbg_print(WIFI_CTRL,"Global config value is not updated in DB\n");
-            ctrl->webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
             return RETURN_ERR;
         }
     }
@@ -326,12 +372,9 @@ int webconfig_global_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_da
         wifi_util_dbg_print(WIFI_CTRL,"Gas config value is changed hence update the gas config in DB\n");
         if(update_wifi_gas_config(data_global_config->gas_config.AdvertisementID,&data_global_config->gas_config) == -1) {
             wifi_util_dbg_print(WIFI_CTRL,"Gas config value is not updated in DB\n");
-            ctrl->webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
             return RETURN_ERR;
         }
     }
-
-    ctrl->webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
     return RETURN_OK;
 }
 
@@ -404,6 +447,38 @@ int webconfig_hal_mesh_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_dat
     return webconfig_hal_vap_apply_by_name(ctrl, data, vap_names, num_vaps);
 }
 
+int webconfig_hal_mesh_sta_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
+{
+    unsigned int num_vaps = 0;
+    char *vap_name;
+    char *vap_names[MAX_VAP];
+
+    for (UINT index = 0; index < getTotalNumberVAPs(); index++){
+        if(isVapSTAMesh(index)){
+            vap_name = getVAPName(index);
+            vap_names[num_vaps] = vap_name;
+            num_vaps++;
+        }
+    }
+    return webconfig_hal_vap_apply_by_name(ctrl, data, vap_names, num_vaps);
+}
+
+int webconfig_hal_mesh_backhaul_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
+{
+    unsigned int num_vaps = 0;
+    char *vap_name;
+    char *vap_names[MAX_VAP];
+
+    for (UINT index = 0; index < getTotalNumberVAPs(); index++){
+        if(isVapMeshBackhaul(index)){
+            vap_name = getVAPName(index);
+            vap_names[num_vaps] = vap_name;
+            num_vaps++;
+        }
+    }
+    return webconfig_hal_vap_apply_by_name(ctrl, data, vap_names, num_vaps);
+}
+
 int webconfig_hal_csi_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
     wifi_mgr_t *mgr = get_wifimgr_obj();
@@ -438,7 +513,6 @@ int webconfig_hal_csi_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *
                     num_unique_mac++;
                     if (num_unique_mac > MAX_NUM_CSI_CLIENTS) {
                         wifi_util_dbg_print(WIFI_MGR,"%s %d MAX_NUM_CSI_CLIENTS reached\n", __func__, __LINE__);
-                        ctrl->webconfig_state |= ctrl_webconfig_state_csi_cfg_rsp_pending;
                         goto free_csi_data;
                     } else {
                         memcpy(unique_mac_list[num_unique_mac-1], new_csi_data->csi_client_list[itrj], sizeof(mac_address_t));
@@ -469,7 +543,6 @@ int webconfig_hal_csi_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *
                     free(current_csi_data);
                 }
                 current_config_count = queue_count(current_config);
-                ctrl->webconfig_state |= ctrl_webconfig_state_csi_cfg_rsp_pending;
             }
         }
     }
@@ -511,14 +584,12 @@ int webconfig_hal_csi_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *
                 queue_push(current_config, to_queue);
                 csi_enable_session(new_csi_data->enabled, new_csi_data->csi_session_num);
                 csi_set_client_mac(tmp_cli_list, new_csi_data->csi_session_num);
-                ctrl->webconfig_state |= ctrl_webconfig_state_csi_cfg_rsp_pending;
             }
 
             if(found && data_change) {
                 csi_enable_session(new_csi_data->enabled, new_csi_data->csi_session_num);
                 csi_set_client_mac(tmp_cli_list, new_csi_data->csi_session_num);
                 memcpy(current_csi_data, new_csi_data, sizeof(csi_data_t));
-                ctrl->webconfig_state |= ctrl_webconfig_state_csi_cfg_rsp_pending;
             }
         }
     }
@@ -565,31 +636,35 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
                 continue;
             }
 
-            if (current_config->acl_map != NULL) {
-                current_acl_entry = hash_map_get_first(current_config->acl_map);
-                while (current_acl_entry != NULL) {
-                    to_mac_str(current_acl_entry->mac, current_mac_str);
-                    if ((new_config->acl_map == NULL) || (hash_map_get(new_config->acl_map, current_mac_str) == NULL)) {
-                        wifi_util_dbg_print(WIFI_MGR, "%s:%d: calling wifi_delApAclDevice for mac %s vap_index %d\n", __func__, __LINE__, current_mac_str, current_config->vap_index);
-                        if (wifi_delApAclDevice(current_config->vap_index, current_mac_str) != RETURN_OK) {
-                            wifi_util_dbg_print(WIFI_MGR, "%s:%d: wifi_delApAclDevice failed. vap_index %d, mac %s \n",
-                                    __func__, __LINE__, vap_index, current_mac_str);
-                            ret = RETURN_ERR;
-                            goto free_data;
-                        }
-                        current_acl_entry = hash_map_get_next(current_config->acl_map, current_acl_entry);
-                        temp_acl_entry = hash_map_remove(current_config->acl_map, current_mac_str);
-                        if (temp_acl_entry != NULL) {
-                            snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", current_config->vap_name, current_mac_str);
+            if(current_config->is_mac_filter_initialized == true)  {
+                if (current_config->acl_map != NULL) {
+                    current_acl_entry = hash_map_get_first(current_config->acl_map);
+                    while (current_acl_entry != NULL) {
+                        to_mac_str(current_acl_entry->mac, current_mac_str);
+                        if ((new_config->acl_map == NULL) || (hash_map_get(new_config->acl_map, current_mac_str) == NULL)) {
+                            wifi_util_dbg_print(WIFI_MGR, "%s:%d: calling wifi_delApAclDevice for mac %s vap_index %d\n", __func__, __LINE__, current_mac_str, current_config->vap_index);
+                            if (wifi_delApAclDevice(current_config->vap_index, current_mac_str) != RETURN_OK) {
+                                wifi_util_dbg_print(WIFI_MGR, "%s:%d: wifi_delApAclDevice failed. vap_index %d, mac %s \n",
+                                        __func__, __LINE__, vap_index, current_mac_str);
+                                ret = RETURN_ERR;
+                                goto free_data;
+                            }
+                            current_acl_entry = hash_map_get_next(current_config->acl_map, current_acl_entry);
+                            temp_acl_entry = hash_map_remove(current_config->acl_map, current_mac_str);
+                            if (temp_acl_entry != NULL) {
+                                snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", current_config->vap_name, current_mac_str);
 
-                            wifidb_update_wifi_macfilter_config(macfilterkey, temp_acl_entry, false);
-                            free(temp_acl_entry);
-                            ctrl->webconfig_state |= ctrl_webconfig_state_macfilter_cfg_rsp_pending;
+                                wifidb_update_wifi_macfilter_config(macfilterkey, temp_acl_entry, false);
+                                free(temp_acl_entry);
+                            }
+                        } else {
+                            current_acl_entry = hash_map_get_next(current_config->acl_map, current_acl_entry);
                         }
-                    } else {
-                        current_acl_entry = hash_map_get_next(current_config->acl_map, current_acl_entry);
                     }
                 }
+            } else {
+                wifi_delApAclDevices(vap_index);
+                current_config->is_mac_filter_initialized = true;
             }
 
             if (new_config->acl_map != NULL) {
@@ -614,14 +689,12 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
                         snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", current_config->vap_name, new_mac_str);
 
                         wifidb_update_wifi_macfilter_config(macfilterkey, temp_acl_entry, true);
-                        ctrl->webconfig_state |= ctrl_webconfig_state_macfilter_cfg_rsp_pending;
                     } else {
                         if (strncmp(check_acl_entry->device_name, new_acl_entry->device_name, sizeof(check_acl_entry->device_name)-1) != 0) {
                             strncpy(check_acl_entry->device_name, new_acl_entry->device_name, sizeof(check_acl_entry->device_name)-1);
                             snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", current_config->vap_name, new_mac_str);
 
                             wifidb_update_wifi_macfilter_config(macfilterkey, check_acl_entry, true);
-                            ctrl->webconfig_state |= ctrl_webconfig_state_macfilter_cfg_rsp_pending;
                         }
                     }
                     new_acl_entry = hash_map_get_next(new_config->acl_map, new_acl_entry);
@@ -714,96 +787,224 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
 {
     int ret = RETURN_OK;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: webconfig_state:%02x doc_type:%d doc_name:%s\n", 
+                                        __func__, __LINE__, ctrl->webconfig_state, doc->type, doc->name);
 
     switch (doc->type) {
         case webconfig_subdoc_type_unknown:
             wifi_util_dbg_print(WIFI_MGR, "%s:%d: Unknown webconfig subdoc\n", __func__, __LINE__);
             break;
 
+        case webconfig_subdoc_type_radio:
+            if (data->descriptor & webconfig_data_descriptor_encoded) {
+                if (ctrl->webconfig_state & ctrl_webconfig_state_radio_cfg_rsp_pending) {
+                    ctrl->webconfig_state &= ~ctrl_webconfig_state_radio_cfg_rsp_pending;
+                    ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
+                }
+            } else {
+                ctrl->webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
+                ret = webconfig_hal_radio_apply(ctrl, &data->u.decoded);
+            }
+            break;
+
         case webconfig_subdoc_type_private:
-            wifi_util_dbg_print(WIFI_MGR, "%s:%d: private webconfig subdoc\n", __func__, __LINE__);
-            ret = webconfig_hal_private_vap_apply(ctrl, &data->u.decoded);
+            if (data->descriptor & webconfig_data_descriptor_encoded) {
+                if (ctrl->webconfig_state & ctrl_webconfig_state_vap_private_cfg_rsp_pending) {
+                    ctrl->webconfig_state  &= ~ctrl_webconfig_state_vap_private_cfg_rsp_pending;
+                    ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
+                }
+	        } else {
+                ctrl->webconfig_state |= ctrl_webconfig_state_vap_private_cfg_rsp_pending;
+                ret = webconfig_hal_private_vap_apply(ctrl, &data->u.decoded);
+            }
             //This is for captive_portal_check for private SSID when defaults modified
             captive_portal_check();
             break;
 
         case webconfig_subdoc_type_home:
-            wifi_util_dbg_print(WIFI_MGR, "%s:%d: home webconfig subdoc\n", __func__, __LINE__);
-            ret = webconfig_hal_home_vap_apply(ctrl, &data->u.decoded);
+            if (data->descriptor & webconfig_data_descriptor_encoded) {
+                if (ctrl->webconfig_state & ctrl_webconfig_state_vap_home_cfg_rsp_pending) {
+                    ctrl->webconfig_state &= ~ctrl_webconfig_state_vap_home_cfg_rsp_pending;
+                    ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
+                }
+            } else {
+                ctrl->webconfig_state |= ctrl_webconfig_state_vap_home_cfg_rsp_pending;
+                ret = webconfig_hal_home_vap_apply(ctrl, &data->u.decoded);
+            }
             break;
 
         case webconfig_subdoc_type_xfinity:
-            wifi_util_dbg_print(WIFI_MGR, "%s:%d: xfinity webconfig subdoc\n", __func__, __LINE__);
-            ret = webconfig_hal_xfinity_vap_apply(ctrl, &data->u.decoded);
-            break;
-
-        case webconfig_subdoc_type_radio:
-            wifi_util_dbg_print(WIFI_MGR, "%s:%d: radio webconfig subdoc\n", __func__, __LINE__);
-            ret = webconfig_hal_radio_apply(ctrl, &data->u.decoded);
+            if (data->descriptor & webconfig_data_descriptor_encoded) {
+                if (ctrl->webconfig_state & ctrl_webconfig_state_vap_xfinity_cfg_rsp_pending) {
+                    ctrl->webconfig_state &= ~ctrl_webconfig_state_vap_xfinity_cfg_rsp_pending;
+                    ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
+                }
+            } else {
+                ctrl->webconfig_state |= ctrl_webconfig_state_vap_xfinity_cfg_rsp_pending;
+                ret = webconfig_hal_xfinity_vap_apply(ctrl, &data->u.decoded);
+            }
             break;
 
         case webconfig_subdoc_type_mesh:
-            wifi_util_dbg_print(WIFI_MGR, "%s:%d: mesh webconfig subdoc\n", __func__, __LINE__);
-            ret = webconfig_hal_mesh_vap_apply(ctrl, &data->u.decoded);
-            if (ret != RETURN_OK) {
-                wifi_util_dbg_print(WIFI_MGR, "%s:%d: mesh webconfig subdoc failed\n", __func__, __LINE__);
-                return webconfig_error_apply;
+            if (data->descriptor & webconfig_data_descriptor_encoded) {
+                if (ctrl->webconfig_state & ctrl_webconfig_state_vap_mesh_cfg_rsp_pending) {
+                    ctrl->webconfig_state &= ~ctrl_webconfig_state_vap_mesh_cfg_rsp_pending;
+                    ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
+                }
+            } else {
+                ctrl->webconfig_state |= ctrl_webconfig_state_vap_mesh_cfg_rsp_pending;
+                ret = webconfig_hal_mesh_vap_apply(ctrl, &data->u.decoded);
+                if (ret != RETURN_OK) {
+                    wifi_util_dbg_print(WIFI_MGR, "%s:%d: mesh webconfig subdoc failed\n", __func__, __LINE__);
+                    return webconfig_error_apply;
+                }
+                ret = webconfig_hal_mac_filter_apply(ctrl, &data->u.decoded, doc->type);
+                if (ret != RETURN_OK) {
+                    wifi_util_dbg_print(WIFI_MGR, "%s:%d: macfilter for mesh webconfig subdoc failed\n", __func__, __LINE__);
+                    return webconfig_error_apply;
+                }
             }
-            ret = webconfig_hal_mac_filter_apply(ctrl, &data->u.decoded, doc->type);
+            break;
+
+        case webconfig_subdoc_type_mesh_sta:
+            if (data->descriptor & webconfig_data_descriptor_encoded) {
+                if (ctrl->webconfig_state & (ctrl_webconfig_state_factoryreset_cfg_rsp_pending |
+                                                ctrl_webconfig_state_sta_conn_status_rsp_pending |
+                                                ctrl_webconfig_state_vap_mesh_sta_cfg_rsp_pending)) {
+                    ctrl->webconfig_state &= ~(ctrl_webconfig_state_factoryreset_cfg_rsp_pending |
+                                                ctrl_webconfig_state_sta_conn_status_rsp_pending |
+                                                ctrl_webconfig_state_vap_mesh_sta_cfg_rsp_pending);
+                    ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
+                }
+            } else {
+                ctrl->webconfig_state |= ctrl_webconfig_state_vap_mesh_sta_cfg_rsp_pending;
+                ret = webconfig_hal_mesh_sta_vap_apply(ctrl, &data->u.decoded);
+            }
+            break;
+
+
+        case webconfig_subdoc_type_mesh_backhaul:
+            if (data->descriptor & webconfig_data_descriptor_encoded) {
+                if (ctrl->webconfig_state & ctrl_webconfig_state_vap_mesh_backhaul_cfg_rsp_pending) {
+                    ctrl->webconfig_state &= ~ctrl_webconfig_state_vap_mesh_backhaul_cfg_rsp_pending;
+                    ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
+                }
+            } else {
+                ctrl->webconfig_state |= ctrl_webconfig_state_vap_mesh_backhaul_cfg_rsp_pending;
+                ret = webconfig_hal_mesh_backhaul_vap_apply(ctrl, &data->u.decoded);
+                if (ret != RETURN_OK) {
+                    wifi_util_dbg_print(WIFI_MGR, "%s:%d: mesh webconfig subdoc failed\n", __func__, __LINE__);
+                    return webconfig_error_apply;
+                }
+                ret = webconfig_hal_mac_filter_apply(ctrl, &data->u.decoded, doc->type);
+                if (ret != RETURN_OK) {
+                    wifi_util_dbg_print(WIFI_MGR, "%s:%d: macfilter for mesh webconfig subdoc failed\n", __func__, __LINE__);
+                    return webconfig_error_apply;
+                }
+            }
             break;
 
         case webconfig_subdoc_type_mac_filter:
-            wifi_util_dbg_print(WIFI_MGR, "%s:%d: mac_filter webconfig subdoc\n", __func__, __LINE__);
-            ret = webconfig_hal_mac_filter_apply(ctrl, &data->u.decoded, doc->type);
+            if (data->descriptor & webconfig_data_descriptor_encoded) {
+                if (ctrl->webconfig_state & ctrl_webconfig_state_macfilter_cfg_rsp_pending) {
+                    ctrl->webconfig_state &= ~ctrl_webconfig_state_macfilter_cfg_rsp_pending;
+                    ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
+                }
+            } else {
+                ctrl->webconfig_state |= ctrl_webconfig_state_macfilter_cfg_rsp_pending;
+                ret = webconfig_hal_mac_filter_apply(ctrl, &data->u.decoded, doc->type);
+                if (ret != RETURN_OK) {
+                    wifi_util_dbg_print(WIFI_MGR, "%s:%d: macfilter subdoc failed\n", __func__, __LINE__);
+                    return webconfig_error_apply;
+                }
+            }
             break;
         case webconfig_subdoc_type_blaster:
             wifi_util_dbg_print(WIFI_MGR, "%s:%d: blaster webconfig subdoc\n", __func__, __LINE__);
-            ret = webconfig_blaster_apply(ctrl, &data->u.decoded);
+            if (data->descriptor & webconfig_data_descriptor_encoded) {
+                wifi_util_dbg_print(WIFI_MGR, "%s:%d: Not expected publish of blaster webconfig subdoc\n", __func__, __LINE__);
+            } else {
+                ret = webconfig_blaster_apply(ctrl, &data->u.decoded);
+            }
             break;
 
         case webconfig_subdoc_type_csi:
             wifi_util_dbg_print(WIFI_MGR, "%s:%d: csi webconfig subdoc\n", __func__, __LINE__);
             if (data->descriptor & webconfig_data_descriptor_encoded) {
-                wifi_util_dbg_print(WIFI_MGR, "%s:%d: going for notify\n", __func__, __LINE__);
-                ret = webconfig_csi_notify_apply(ctrl, &data->u.encoded);
+                if (ctrl->webconfig_state & ctrl_webconfig_state_csi_cfg_rsp_pending) {
+                    ctrl->webconfig_state &= ~ctrl_webconfig_state_csi_cfg_rsp_pending;
+                    wifi_util_dbg_print(WIFI_MGR, "%s:%d: going for notify\n", __func__, __LINE__);
+                    ret = webconfig_csi_notify_apply(ctrl, &data->u.encoded);
+                }
             } else {
                 wifi_util_dbg_print(WIFI_MGR, "%s:%d: going for apply\n", __func__, __LINE__);
+                ctrl->webconfig_state |= ctrl_webconfig_state_csi_cfg_rsp_pending;
                 ret = webconfig_hal_csi_apply(ctrl, &data->u.decoded);
             }
             break;
 
         case webconfig_subdoc_type_harvester:
             wifi_util_dbg_print(WIFI_MGR, "%s:%d: havester webconfig subdoc\n", __func__, __LINE__);
-            ret = webconfig_harvester_apply(ctrl, &data->u.decoded);
+            if (data->descriptor & webconfig_data_descriptor_encoded) {
+                wifi_util_dbg_print(WIFI_MGR, "%s:%d: Not expected publish of havester webconfig subdoc\n", __func__, __LINE__);
+            } else {
+                ret = webconfig_harvester_apply(ctrl, &data->u.decoded);
+            }
             break;
         case webconfig_subdoc_type_wifi_config:
             wifi_util_dbg_print(WIFI_MGR, "%s:%d: global webconfig subdoc\n", __func__, __LINE__);
-            ret = webconfig_global_config_apply(ctrl, &data->u.decoded);
+            if (data->descriptor & webconfig_data_descriptor_encoded) {
+                ctrl->webconfig_state &= ~ctrl_webconfig_state_wifi_config_cfg_rsp_pending;
+                wifi_util_dbg_print(WIFI_MGR, "%s:%d: Not expected publish of global wifi webconfig subdoc\n", __func__, __LINE__);
+            } else {
+                ctrl->webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
+                ret = webconfig_global_config_apply(ctrl, &data->u.decoded);
+            }
             break;
 
         case webconfig_subdoc_type_associated_clients:
             wifi_util_dbg_print(WIFI_MGR, "%s:%d: associated clients webconfig subdoc\n", __func__, __LINE__);
-            ret = webconfig_client_notify_apply(ctrl, &data->u.encoded);
+            if (data->descriptor & webconfig_data_descriptor_encoded) {
+                if (ctrl->webconfig_state & ctrl_webconfig_state_associated_clients_cfg_rsp_pending) {
+                    ctrl->webconfig_state &= ~ctrl_webconfig_state_associated_clients_cfg_rsp_pending;
+                    ret = webconfig_client_notify_apply(ctrl, &data->u.encoded);
+                }
+            } else {
+                wifi_util_dbg_print(WIFI_MGR, "%s:%d: Not expected apply to associated clients webconfig subdoc\n", __func__, __LINE__);
+            }
+            break;
+
+        case webconfig_subdoc_type_null: 
+            wifi_util_dbg_print(WIFI_MGR, "%s:%d: null webconfig subdoc\n", __func__, __LINE__);
+            if (data->descriptor & webconfig_data_descriptor_encoded) {
+                ret = webconfig_null_subdoc_notify_apply(ctrl, &data->u.encoded);
+            } else {
+                wifi_util_dbg_print(WIFI_MGR, "%s:%d: Not expected apply to null webconfig subdoc\n", __func__, __LINE__);
+            }
             break;
 
         case webconfig_subdoc_type_dml:
-        case webconfig_subdoc_type_vap_status:
-        case webconfig_subdoc_type_radio_status:
             wifi_util_dbg_print(WIFI_MGR, "%s:%d: sending subdoc:%s\n", __func__, __LINE__, doc->name);
 #ifdef WEBCONFIG_TESTS_OVER_QUEUE
             push_data_to_consumer_queue((unsigned char *)data->u.encoded.raw, strlen(data->u.encoded.raw), consumer_event_type_webconfig, consumer_event_webconfig_set_data);
 #else
-            ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
+            if (data->descriptor & webconfig_data_descriptor_encoded) {
+                if (ctrl->webconfig_state & WEBCONFIG_DML_SUBDOC_STATES) {
+                    ctrl->webconfig_state &= ~WEBCONFIG_DML_SUBDOC_STATES;
+                    ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
+                }
+            } else {
+                wifi_util_dbg_print(WIFI_MGR, "%s:%d: Not expected apply to dml webconfig subdoc\n", __func__, __LINE__);
+            }
 #endif
-            break;
-
-            wifi_util_dbg_print(WIFI_MGR, "%s:%d: vap status webconfig subdoc\n", __func__, __LINE__);
-            ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
             break;
 
         default:
             break;
     }
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: new webconfig_state:%02x\n", 
+                                        __func__, __LINE__, ctrl->webconfig_state);
 
     return ((ret == RETURN_OK) ? webconfig_error_none:webconfig_error_apply);
 }

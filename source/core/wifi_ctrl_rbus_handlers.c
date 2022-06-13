@@ -65,6 +65,35 @@ int webconfig_client_notify_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_encoded_da
     return RETURN_OK;
 }
 
+int webconfig_null_subdoc_notify_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_encoded_data_t *data)
+{
+    rbusEvent_t event;
+    rbusObject_t rdata;
+    rbusValue_t value;
+    int rc;
+
+    rbusValue_Init(&value);
+    rbusObject_Init(&rdata, NULL);
+
+    rbusObject_SetValue(rdata, WIFI_WEBCONFIG_GET_NULL_SUBDOC, value);
+    rbusValue_SetBytes(value, (uint8_t *)data->raw, strlen(data->raw));
+    event.name = WIFI_WEBCONFIG_GET_NULL_SUBDOC;
+    event.data = rdata;
+    event.type = RBUS_EVENT_GENERAL;
+
+    rc = rbusEvent_Publish(ctrl->rbus_handle, &event);
+    if ((rc != RBUS_ERROR_SUCCESS)) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: rbusEvent_Publish Event failed %d\n", __func__, __LINE__, rc);
+        return RETURN_ERR;
+    }
+
+    rbusValue_Release(value);
+    rbusObject_Release(rdata);
+
+    return RETURN_OK;
+}
+
+
 int notify_associated_entries(wifi_ctrl_t *ctrl, int ap_index, ULONG new_count, ULONG old_count)
 {
     int rc;
@@ -162,9 +191,9 @@ int webconfig_rbus_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_encoded_data_t *dat
     rbusValue_Init(&value);
     rbusObject_Init(&rdata, NULL);
 
-    rbusObject_SetValue(rdata, WIFI_WEBCONFIG_DOC_DATA, value);
+    rbusObject_SetValue(rdata, WIFI_WEBCONFIG_DOC_DATA_NORTH, value);
     rbusValue_SetBytes(value, (uint8_t *)data->raw, strlen(data->raw));
-    event.name = WIFI_WEBCONFIG_DOC_DATA;
+    event.name = WIFI_WEBCONFIG_DOC_DATA_NORTH;
     event.data = rdata;
     event.type = RBUS_EVENT_GENERAL;
 
@@ -188,9 +217,70 @@ rbusError_t webconfig_get_subdoc(rbusHandle_t handle, rbusProperty_t property, r
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
-    wifi_util_dbg_print(WIFI_CTRL,"%s Rbus property=%s\n",__FUNCTION__,name);
+   if(ctrl->network_mode == rdk_dev_mode_type_gw) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s Rbus property=%s, Gateway mode\n",__FUNCTION__, name);
+        if (strcmp(name, WIFI_WEBCONFIG_INIT_DATA) != 0) {
+            wifi_util_dbg_print(WIFI_CTRL,"%s Rbus property valid\n",__FUNCTION__);
+            return RBUS_ERROR_INVALID_INPUT;
+        }
 
-    if (strcmp(name, WIFI_WEBCONFIG_INIT_DATA) != 0) {
+        rbusValue_Init(&value);
+        memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+
+        memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&mgr->radio_config, getNumberRadios()*sizeof(rdk_wifi_radio_t));
+        memcpy((unsigned char *)&data.u.decoded.config, (unsigned char *)&mgr->global_config, sizeof(wifi_global_config_t));
+        memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap, sizeof(wifi_hal_capability_t));
+        data.u.decoded.num_radios = getNumberRadios();
+        // tell webconfig to encode
+        webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_dml);
+
+        // the encoded data is a string
+        rbusValue_SetString(value, data.u.encoded.raw);
+        rbusProperty_SetValue(property, value);
+
+        rbusValue_Release(value);
+    } else if (ctrl->network_mode == rdk_dev_mode_type_ext) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s Rbus property=%s, Extender mode\n",__FUNCTION__, name);
+
+        if (ctrl->conn_state != connection_state_connected) {
+            wifi_util_dbg_print(WIFI_CTRL,"%s Extender is not connected\n",__FUNCTION__);
+            return RBUS_ERROR_INVALID_OPERATION;
+        }
+
+        if (strcmp(name, WIFI_WEBCONFIG_INIT_DATA) != 0) {
+            wifi_util_dbg_print(WIFI_CTRL,"%s Rbus property valid\n",__FUNCTION__);
+            return RBUS_ERROR_INVALID_INPUT;
+        }
+
+        rbusValue_Init(&value);
+        memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+
+        memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&mgr->radio_config, getNumberRadios()*sizeof(rdk_wifi_radio_t));
+        memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap, sizeof(wifi_hal_capability_t));
+        data.u.decoded.num_radios = getNumberRadios();
+        // tell webconfig to encode
+        webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_mesh_sta);
+
+        // the encoded data is a string
+        rbusValue_SetString(value, data.u.encoded.raw);
+        rbusProperty_SetValue(property, value);
+
+        rbusValue_Release(value);
+    }
+
+    return RBUS_ERROR_SUCCESS;
+}
+
+rbusError_t webconfig_get_dml_subdoc(rbusHandle_t handle, rbusProperty_t property, rbusGetHandlerOptions_t* opts)
+{
+    char const* name = rbusProperty_GetName(property);
+    rbusValue_t value;
+    webconfig_subdoc_data_t data;
+    wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d Rbus property=%s\r\n", __func__, __LINE__, name);
+    if (strcmp(name, WIFI_WEBCONFIG_INIT_DML_DATA) != 0) {
         wifi_util_dbg_print(WIFI_CTRL,"%s Rbus property valid\n",__FUNCTION__);
         return RBUS_ERROR_INVALID_INPUT;
     }
@@ -213,7 +303,6 @@ rbusError_t webconfig_get_subdoc(rbusHandle_t handle, rbusProperty_t property, r
 
     return RBUS_ERROR_SUCCESS;
 }
-
 
 rbusError_t webconfig_set_subdoc(rbusHandle_t handle, rbusProperty_t property, rbusSetHandlerOptions_t* opts)
 {
@@ -380,6 +469,45 @@ rbusError_t get_assoc_clients_data(rbusHandle_t handle, rbusProperty_t property,
 
     return RBUS_ERROR_SUCCESS;
 }
+
+
+rbusError_t get_null_subdoc_data(rbusHandle_t handle, rbusProperty_t property, rbusGetHandlerOptions_t* opts)
+{
+    char const* name = rbusProperty_GetName(property);
+    rbusValue_t value;
+    webconfig_subdoc_data_t data;
+    wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+
+    if ((mgr == NULL) || (ctrl == NULL)) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d NULL pointers\n", __func__,__LINE__);
+        return RBUS_ERROR_INVALID_INPUT;
+    }
+
+    wifi_util_dbg_print(WIFI_CTRL,"%s Rbus property=%s\n",__FUNCTION__,name);
+
+    if (strcmp(name, WIFI_WEBCONFIG_GET_NULL_SUBDOC) != 0) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s Rbus property valid\n",__FUNCTION__);
+        return RBUS_ERROR_INVALID_INPUT;
+    }
+
+    rbusValue_Init(&value);
+
+    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+
+    memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap, sizeof(wifi_hal_capability_t));
+
+    data.u.decoded.num_radios = getNumberRadios();
+    webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_null);
+
+    rbusValue_SetString(value, data.u.encoded.raw);
+    rbusProperty_SetValue(property, value);
+
+    rbusValue_Release(value);
+
+    return RBUS_ERROR_SUCCESS;
+}
+
 
 rbusError_t set_kickassoc_command(rbusHandle_t handle, rbusProperty_t property, rbusSetHandlerOptions_t* opts)
 {
@@ -938,10 +1066,14 @@ void rbus_register_handlers(wifi_ctrl_t *ctrl)
     unsigned char num_of_radio = 0, index = 0;
     char *component_name = "WifiCtrl";
     rbusDataElement_t dataElements[] = {
-                                { WIFI_WEBCONFIG_DOC_DATA, RBUS_ELEMENT_TYPE_METHOD,
+                                { WIFI_WEBCONFIG_DOC_DATA_SOUTH, RBUS_ELEMENT_TYPE_METHOD,
                                 { NULL, webconfig_set_subdoc, NULL, NULL, NULL, NULL }},
+                                { WIFI_WEBCONFIG_DOC_DATA_NORTH, RBUS_ELEMENT_TYPE_METHOD,
+                                { NULL, NULL, NULL, NULL, NULL, NULL }},
                                 { WIFI_WEBCONFIG_INIT_DATA, RBUS_ELEMENT_TYPE_METHOD,
                                 { webconfig_get_subdoc, NULL, NULL, NULL, NULL, NULL }},
+                                { WIFI_WEBCONFIG_INIT_DML_DATA, RBUS_ELEMENT_TYPE_METHOD,
+                                { webconfig_get_dml_subdoc, NULL, NULL, NULL, NULL, NULL }},
                                 { WIFI_WEBCONFIG_GET_ASSOC, RBUS_ELEMENT_TYPE_METHOD,
                                 { get_assoc_clients_data, NULL, NULL, NULL, NULL, NULL }},
                                 { WIFI_STA_NAMESPACE, RBUS_ELEMENT_TYPE_TABLE,
@@ -968,6 +1100,8 @@ void rbus_register_handlers(wifi_ctrl_t *ctrl)
                                 { NULL, NULL, NULL, NULL, hotspot_event_handler, NULL}},
                                 {WIFI_WEBCONFIG_KICK_MAC, RBUS_ELEMENT_TYPE_METHOD,
                                 { NULL, set_kickassoc_command, NULL, NULL, NULL, NULL }},
+                                { WIFI_WEBCONFIG_GET_NULL_SUBDOC, RBUS_ELEMENT_TYPE_METHOD,
+                                { get_null_subdoc_data, NULL, NULL, NULL, NULL, NULL }},
     };
 
     rc = rbus_open(&ctrl->rbus_handle, component_name);

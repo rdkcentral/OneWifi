@@ -63,7 +63,7 @@ webconfig_error_t encode_blaster_subdoc(webconfig_t *config, webconfig_subdoc_da
 {
     cJSON *json;
     cJSON *obj;
-    const char *str;
+    char *str;
     webconfig_subdoc_decoded_data_t *params;
 
     if (data == NULL) {
@@ -97,6 +97,8 @@ webconfig_error_t encode_blaster_subdoc(webconfig_t *config, webconfig_subdoc_da
     memset(data->u.encoded.raw, 0, MAX_SUBDOC_SIZE);
     str = cJSON_Print(json);
     memcpy(data->u.encoded.raw, str, strlen(str));
+    cJSON_free(str);
+    cJSON_Delete(json);
 
     return webconfig_error_none;
 }

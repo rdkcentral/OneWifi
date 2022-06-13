@@ -215,7 +215,9 @@ void callback_Wifi_Radio_Config(ovsdb_update_monitor_t *mon,
         }
         l_radio_cfg->DCSEnabled = new_rec->dcs_enabled;
         l_radio_cfg->dtimPeriod = new_rec->dtim_period;
-        l_radio_cfg->beaconInterval = new_rec->beacon_interval;
+        if (new_rec->beacon_interval != 0) {
+            l_radio_cfg->beaconInterval = new_rec->beacon_interval;
+        }
         l_radio_cfg->operatingClass = new_rec->operating_class;
         l_radio_cfg->basicDataTransmitRates = new_rec->basic_data_transmit_rate;
         l_radio_cfg->operationalDataTransmitRates = new_rec->operational_data_transmit_rate;
@@ -1317,7 +1319,9 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
     }
     config->DCSEnabled = cfg->dcs_enabled;
     config->dtimPeriod = cfg->dtim_period;
-    config->beaconInterval = cfg->beacon_interval;
+    if (cfg->beacon_interval != 0) {
+        config->beaconInterval = cfg->beacon_interval;
+    }
     config->operatingClass = cfg->operating_class;
     config->basicDataTransmitRates = cfg->basic_data_transmit_rate;
     config->operationalDataTransmitRates = cfg->operational_data_transmit_rate;
@@ -3124,7 +3128,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config)
         else {
             cfg.u.bss_info.showSsid = false;
         }
-        if ((vap_index == 2) || isVapLnf(vap_index) || isVapMeshBackhaul(vap_index) || isVapPrivate(vap_index)) {
+        if ((vap_index == 2) || isVapLnf(vap_index) || isVapPrivate(vap_index)) {
              cfg.u.bss_info.enabled = true;
         }
         cfg.u.bss_info.bssMaxSta = 75;

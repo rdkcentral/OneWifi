@@ -113,6 +113,7 @@ webconfig_error_t encode_radio_subdoc(webconfig_t *config, webconfig_subdoc_data
     memset(data->u.encoded.raw, 0, MAX_SUBDOC_SIZE);
     str = cJSON_Print(json);
     memcpy(data->u.encoded.raw, str, strlen(str));
+    cJSON_free(str);
     cJSON_Delete(json);
     return webconfig_error_none;
 }
@@ -184,7 +185,7 @@ webconfig_error_t decode_radio_subdoc(webconfig_t *config, webconfig_subdoc_data
     params->num_radios = 0;
     for (i = 0; i < size; i++) {
         obj_radio = cJSON_GetArrayItem(obj_radios, i);
-        memset(&params->radios[i], 0, sizeof(rdk_wifi_radio_t));
+//        memset(&params->radios[i], 0, sizeof(rdk_wifi_radio_t));
 
         if (decode_radio_object(obj_radio, &params->radios[i]) != webconfig_error_none) {
             wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Radio object validation failed\n",

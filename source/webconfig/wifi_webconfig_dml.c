@@ -368,6 +368,7 @@ webconfig_error_t encode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
     memcpy(data->u.encoded.raw, str, strlen(str));
 
     // wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Encoded JSON:\n%s\n", __func__, __LINE__, str);
+    cJSON_free(str);
     cJSON_Delete(json);
 
     return webconfig_error_none;
@@ -561,8 +562,8 @@ webconfig_error_t decode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
         vap_array_index = convert_vap_name_to_array_index(wifi_prop, name);
         vap_info = &params->radios[radio_index].vaps.vap_map.vap_array[vap_array_index];
 
-        //wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: radio index: %d , vap name: %s\n%s\n",
-        //            __func__, __LINE__, radio_index, name, cJSON_Print(obj_vap));
+/*        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: radio index: %d , vap name: %s\n%s\n",
+                    __func__, __LINE__, radio_index, name, cJSON_Print(obj_vap));*/
         memset(vap_info, 0, sizeof(wifi_vap_info_t));
         if (strncmp(name, "private_ssid", strlen("private_ssid")) == 0) {
             if (decode_private_vap_object(obj_vap, vap_info, wifi_prop) != webconfig_error_none) {

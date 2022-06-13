@@ -42,7 +42,11 @@ typedef enum {
     consumer_test_state_home_subdoc_test_pending,
     consumer_test_state_home_subdoc_test_complete,
     consumer_test_state_macfilter_subdoc_test_pending,
-    consumer_test_state_macfilter_subdoc_test_complete
+    consumer_test_state_macfilter_subdoc_test_complete,
+    consumer_test_state_null_subdoc_test_pending,
+    consumer_test_state_null_subdoc_test_complete,
+    consumer_test_state_mesh_sta_subdoc_test_pending,
+    consumer_test_state_mesh_sta_subdoc_test_complete
 } consumer_test_state_t;
 
 typedef enum {
@@ -56,6 +60,8 @@ typedef enum {
     consumer_test_start_wan_manager,
     consumer_test_start_client_connection,
     consumer_test_start_macfilter_subdoc,
+    consumer_test_start_null_subdoc,
+    consumer_test_start_mesh_sta_subdoc,
     consumer_all_test_completed
 } consumer_test_sequence_t;
 
@@ -91,6 +97,7 @@ typedef struct {
     unsigned int        xfinity_test_pending_count;
     unsigned int        home_test_pending_count;
     unsigned int        macfilter_test_pending_count;
+    unsigned int        null_test_pending_count;
     unsigned char       sta_connect_test_pending_count;
 } webconfig_consumer_t;
 

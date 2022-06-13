@@ -105,6 +105,7 @@ int update_acl_entries(wifi_vap_info_map_t *tgt_vap_map)
             }
             acl_entry = hash_map_get_next(vap_info->acl_map,acl_entry);
         }
+        vap_info->is_mac_filter_initialized = true;
     }
 
     return RETURN_OK;
@@ -199,6 +200,8 @@ vap_svc_t *get_svc_by_name(wifi_ctrl_t *ct, char *vap_name)
         type = vap_svc_type_public;
     } else if (strncmp(vap_name, "mesh_sta", strlen("mesh_sta")) == 0) {
         type = vap_svc_type_mesh_ext;
+    } else if (strncmp(vap_name, "mesh_backhaul", strlen("mesh_backhaul")) == 0) {
+        type = vap_svc_type_mesh_gw;
     } else if (strncmp(vap_name, "mesh", strlen("mesh")) == 0) {
         type = vap_svc_type_mesh_gw;
     }

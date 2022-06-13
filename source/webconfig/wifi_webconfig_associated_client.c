@@ -68,7 +68,7 @@ webconfig_error_t encode_associated_clients_subdoc(webconfig_t *config, webconfi
 {
     cJSON *json;
     cJSON *assoc_array;
-    const char *str;
+    char *str;
     unsigned int i, j;
     webconfig_subdoc_decoded_data_t *params;
     wifi_vap_info_map_t *vap_map;
@@ -114,7 +114,7 @@ webconfig_error_t encode_associated_clients_subdoc(webconfig_t *config, webconfi
     str = cJSON_Print(json);
     memcpy(data->u.encoded.raw, str, strlen(str));
     wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: %s\n", __func__, __LINE__, str);
-
+    cJSON_free(str);
     cJSON_Delete(json);
     return webconfig_error_none;
 }

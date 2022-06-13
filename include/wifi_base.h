@@ -15,7 +15,7 @@ extern "C" {
 #define WIFI_STA_NAMESPACE                  "Device.WiFi.STA.{i}."
 #define WIFI_STA_CONNECT_STATUS             "Device.WiFi.STA.{i}.Connection.Status"
 #define WIFI_STA_INTERFACE_NAME             "Device.WiFi.STA.{i}.InterfaceName"
-#define WIFI_ACTIVE_GATEWAY_CHECK           "Device.X_RDK_GatewayManagement.CheckForOtherGateway"
+#define WIFI_ACTIVE_GATEWAY_CHECK           "Device.X_RDK_GatewayManagement.ExternalGatewayPresent"
 #define WIFI_WAN_FAILOVER_TEST              "Device.WiFi.WanFailoverTest"
 #define WIFI_LMLITE_NOTIFY                  "Device.Hosts.X_RDKCENTRAL-COM_LMHost_Sync_From_WiFi"
 #define WIFI_HOTSPOT_NOTIFY                 "Device.X_COMCAST-COM_GRE.Hotspot.ClientChange"
@@ -211,6 +211,7 @@ typedef struct {
     hash_map_t              *acl_map;
     int                     kick_device_task_counter;
     bool                    kick_device_config_change;
+    bool                    is_mac_filter_initialized;
 } rdk_wifi_vap_info_t;
 
 typedef struct {

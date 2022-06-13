@@ -18,12 +18,15 @@ void print_help_msg(void)
     printf("-w macfilter [parameters JSON blob file path]{ Test macfilter subdocument }\r\n");
     printf("-w all [parameters JSON blob file path]      { Tests all existing WebConfig Subdocuments one after other }\r\n");
     printf("-w sync                                      { Test dml sync subdocument }\r\n");
+    printf("-w meshsta                                   { Test meshsta subdocument }\r\n");
     printf("-c 0                                         { WAN Manager External gateway absent }\r\n");
     printf("-c 1                                         { WAN Manager External gateway present }\r\n");
     printf("-o sync                                      { Test dml subdocument for ovsdb destination, execute this before any -o test cases}\r\n");
     printf("-o radio                                     { Test radio subdocument for ovsdb }\r\n");
     printf("-o mesh                                      { Test mesh subdocument for ovsdb}\r\n");
     printf("-o macfilter                                 { Test macfilter subdocument for ovsdb}\r\n");
+    printf("-o null                                      { Test null subdocument for ovsdb}\r\n");
+    printf("-o meshsta                                   { Test meshsta subdocument for ovsdb}\r\n");
     printf("-d <1>/<0>                                   { 1 for enable log and 0 for disable the /tmp/log_<subdoc> file creation}\r\n");
     printf("-t 1                                         { Tunnel Up event }\r\n");
     printf("-t 0                                         { Tunnel Down event }\r\n");

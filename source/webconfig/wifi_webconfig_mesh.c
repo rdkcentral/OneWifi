@@ -150,7 +150,7 @@ webconfig_error_t encode_mesh_subdoc(webconfig_t *config, webconfig_subdoc_data_
     memcpy(data->u.encoded.raw, str, strlen(str));
 
     // wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Encoded JSON:\n%s\n", __func__, __LINE__, str);
-
+    cJSON_free(str);
     cJSON_Delete(json);
     return webconfig_error_none;
 }
@@ -220,7 +220,7 @@ webconfig_error_t decode_mesh_subdoc(webconfig_t *config, webconfig_subdoc_data_
     }
 
     // first set the structure to all 0
-    memset(&params->radios, 0, sizeof(rdk_wifi_radio_t)*MAX_NUM_RADIOS);
+//    memset(&params->radios, 0, sizeof(rdk_wifi_radio_t)*params->hal_cap.wifi_prop.numRadios);
 
     for (i = 0; i < MAX_NUM_RADIOS; i++) {
         params->radios[i].vaps.vap_map.num_vaps = params->hal_cap.wifi_prop.radiocap[i].maxNumberVAPs;
@@ -237,6 +237,7 @@ webconfig_error_t decode_mesh_subdoc(webconfig_t *config, webconfig_subdoc_data_
         //            __func__, __LINE__, radio_index, name, cJSON_Print(obj_vap));
 
         if (strncmp(name, "mesh_backhaul", strlen("mesh_backhaul")) == 0) {
+            memset(vap_info, 0, sizeof(wifi_vap_info_t));
             if (decode_mesh_vap_object(obj_vap, vap_info, &params->hal_cap.wifi_prop) != webconfig_error_none) {
                 wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: VAP object validation failed\n",
                         __func__, __LINE__);
@@ -244,6 +245,7 @@ webconfig_error_t decode_mesh_subdoc(webconfig_t *config, webconfig_subdoc_data_
                 return webconfig_error_decode;
             }
         } else if (strncmp(name, "mesh_sta", strlen("mesh_sta")) == 0) {
+            memset(vap_info, 0, sizeof(wifi_vap_info_t));
             if (decode_mesh_sta_object(obj_vap, vap_info, &params->hal_cap.wifi_prop) != webconfig_error_none) {
                 wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: VAP object validation failed\n",
                         __func__, __LINE__);

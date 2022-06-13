@@ -206,8 +206,9 @@ int consumer_events_subscribe(webconfig_consumer_t *consumer)
     char name[64] = { 0 };
     int rc;
     rbusEventSubscription_t rbusEvents[] = {
-        { WIFI_WEBCONFIG_DOC_DATA, NULL, 0, 0, webconfig_consumer_set, NULL, NULL, NULL},
-        { WIFI_WEBCONFIG_GET_ASSOC, NULL, 0, 0, webconfig_consumer_get, NULL, NULL, NULL}
+        { WIFI_WEBCONFIG_DOC_DATA_NORTH, NULL, 0, 0, webconfig_consumer_set, NULL, NULL, NULL},
+        { WIFI_WEBCONFIG_GET_ASSOC, NULL, 0, 0, webconfig_consumer_get, NULL, NULL, NULL},
+        { WIFI_WEBCONFIG_GET_NULL_SUBDOC, NULL, 0, 0, webconfig_consumer_get, NULL, NULL, NULL}
     };
 
     if (rbusEvent_SubscribeEx(consumer->rbus_handle, rbusEvents, ARRAY_SZ(rbusEvents), 0) != RBUS_ERROR_SUCCESS) {
@@ -272,7 +273,7 @@ int initial_sync(webconfig_consumer_t *consumer)
 {
     rbusValue_t value;
     int rc = RBUS_ERROR_SUCCESS;
-    const char *paramNames[] = {WIFI_WEBCONFIG_INIT_DATA};
+    const char *paramNames[] = {WIFI_WEBCONFIG_INIT_DML_DATA};
 
     rc = rbus_get(consumer->rbus_handle, paramNames[0], &value);
     if (rc != RBUS_ERROR_SUCCESS) {

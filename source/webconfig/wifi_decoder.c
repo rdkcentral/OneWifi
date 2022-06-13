@@ -1891,6 +1891,10 @@ webconfig_error_t decode_mesh_sta_object(const cJSON *vap, wifi_vap_info_t *vap_
     decode_param_bool(vap, "Enabled", param);
     vap_info->u.sta_info.enabled = (param->type & cJSON_True) ? true:false;
 
+    // ConnectStatus
+    decode_param_bool(vap, "ConnectStatus", param);
+    vap_info->u.sta_info.conn_status = (param->type & cJSON_True) ? wifi_connection_status_connected:wifi_connection_status_disconnected;
+
     decode_param_object(vap, "Security", security);
     if (decode_personal_security_object(security, &vap_info->u.sta_info.security) != webconfig_error_none) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Security objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
@@ -2181,6 +2185,7 @@ webconfig_error_t decode_radio_setup_object(const cJSON *obj_radio_setup, rdk_wi
         obj = cJSON_GetArrayItem(obj_array, i);
 
         // VapName
+        memset(vap_map->rdk_vap_array[i].vap_name, 0, sizeof(vap_map->rdk_vap_array[i].vap_name));
         decode_param_string(obj, "VapName", param);
         strcpy((char *)vap_map->rdk_vap_array[i].vap_name, param->valuestring);
 
@@ -2208,6 +2213,7 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
         return webconfig_error_decode;
     }
 
+    memset(radio_info, 0, sizeof(wifi_radio_operationParam_t));
     // RadioName
     decode_param_string(obj_radio, "RadioName", param);
     strcpy(radio->name, param->valuestring);
@@ -2419,231 +2425,6 @@ webconfig_error_t decode_config_object(const cJSON *wifi, wifi_global_config_t *
     return webconfig_error_none;
 }
 
-webconfig_error_t decode_radio_state_object(const cJSON *obj_r_state, schema_wifi_radio_state_t *r_state)
-{
-    const cJSON *param;
-
-    //if_name
-    decode_param_string(obj_r_state, "if_name", param);
-    strcpy(r_state->if_name, param->valuestring);
-
-    //freq_band
-    decode_param_string(obj_r_state, "freq_band", param);
-    strcpy(r_state->freq_band, param->valuestring);
-
-    //enabled
-    decode_param_bool(obj_r_state, "enabled", param);
-    r_state->enabled = (param->type & cJSON_True) ? true:false;
-
-    //dfs_demo
-    decode_param_bool(obj_r_state, "dfs_demo", param);
-    r_state->dfs_demo = (param->type & cJSON_True) ? true:false;
-
-    //hw_type
-    decode_param_string(obj_r_state, "hw_type", param);
-    strcpy(r_state->hw_type, param->valuestring);
-
-    //country
-    decode_param_string(obj_r_state, "country", param);
-    strcpy(r_state->country, param->valuestring);
-
-    //channel
-    decode_param_integer(obj_r_state, "channel", param);
-    r_state->channel = param->valuedouble;
-
-    //channel_mode
-    decode_param_string(obj_r_state, "channel_mode", param);
-    strcpy(r_state->channel_mode, param->valuestring);
-
-    //mac
-    decode_param_string(obj_r_state, "mac", param);
-    strcpy(r_state->mac, param->valuestring);
-
-    //hw_mode
-    decode_param_string(obj_r_state, "hw_mode", param);
-    strcpy(r_state->hw_mode, param->valuestring);
-
-    //ht_mode
-    decode_param_string(obj_r_state, "ht_mode", param);
-    strcpy(r_state->ht_mode, param->valuestring);
-
-    //thermal_shutdown
-    decode_param_integer(obj_r_state, "thermal_shutdown", param);
-    r_state->thermal_shutdown = param->valuedouble;
-
-
-    //thermal_downgrade_temp
-    decode_param_integer(obj_r_state, "thermal_downgrade_temp", param);
-    r_state->thermal_downgrade_temp = param->valuedouble;
-
-    //thermal_upgrade_temp
-    decode_param_integer(obj_r_state, "thermal_upgrade_temp", param);
-    r_state->thermal_upgrade_temp = param->valuedouble;
-
-    //thermal_integration
-    decode_param_integer(obj_r_state, "thermal_integration", param);
-    r_state->thermal_integration = param->valuedouble;
-
-    //thermal_downgraded
-    decode_param_bool(obj_r_state, "thermal_downgraded", param);
-    r_state->thermal_downgraded = (param->type & cJSON_True) ? true:false;
-
-    //tx_power
-    decode_param_integer(obj_r_state, "tx_power", param);
-    r_state->tx_power = param->valuedouble;
-
-    //bcn_int
-    decode_param_integer(obj_r_state, "bcn_int", param);
-    r_state->bcn_int = param->valuedouble;
-
-    //tx_chainmask
-    decode_param_integer(obj_r_state, "tx_chainmask", param);
-    r_state->tx_chainmask = param->valuedouble;
-
-    //thermal_tx_chainmask
-    decode_param_integer(obj_r_state, "thermal_tx_chainmask", param);
-    r_state->thermal_tx_chainmask = param->valuedouble;
-
-    /*To do */
-    //hw_config
-    //radar
-    return webconfig_error_none;
-
-}
-
-
-webconfig_error_t decode_vap_state_object(const cJSON *obj_v_state, schema_wifi_vap_state_t *v_state)
-{
-       const cJSON *param;
-
-    if ((obj_v_state == NULL) || (v_state == NULL)) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d VAP state object decode failed\n",__FUNCTION__, __LINE__);
-        return webconfig_error_encode;
-    }
-
-       decode_param_string(obj_v_state, "if_name", param);
-       strcpy(v_state->if_name, param->valuestring);
-
-       //enabled
-       decode_param_bool(obj_v_state, "enabled", param);
-       v_state->enabled = (param->type & cJSON_True) ? true:false;
-
-       //if_name
-       decode_param_string(obj_v_state, "if_name", param);
-       strcpy(v_state->if_name, param->valuestring);
-
-       //mode
-       decode_param_string(obj_v_state, "mode", param);
-       strcpy(v_state->mode, param->valuestring);
-
-       //state
-       decode_param_string(obj_v_state, "state", param);
-       strcpy(v_state->state, param->valuestring);
-
-       //channel
-       decode_param_integer(obj_v_state, "channel", param);
-       v_state->channel = param->valuedouble;
-
-       //mac
-       decode_param_string(obj_v_state, "mac", param);
-       strcpy(v_state->mac, param->valuestring);
-
-       //vif_radio_idx
-       decode_param_integer(obj_v_state, "vif_radio_idx", param);
-       v_state->vif_radio_idx = param->valuedouble;
-
-       //parent
-       decode_param_string(obj_v_state, "parent", param);
-       strcpy(v_state->parent, param->valuestring);
-
-       //ssid
-       decode_param_string(obj_v_state, "ssid", param);
-       strcpy(v_state->ssid, param->valuestring);
-
-       //ssid_broadcast
-       decode_param_string(obj_v_state, "ssid_broadcast", param);
-       strcpy(v_state->ssid_broadcast, param->valuestring);
-
-       //bridge
-       decode_param_string(obj_v_state, "bridge", param);
-       strcpy(v_state->bridge, param->valuestring);
-
-       //mac_list_type
-       decode_param_string(obj_v_state, "mac_list_type", param);
-       strcpy(v_state->mac_list_type, param->valuestring);
-
-       //vlan_id
-       decode_param_integer(obj_v_state, "vlan_id", param);
-       v_state->vlan_id = param->valuedouble;
-
-       //min_hw_mode
-       decode_param_string(obj_v_state, "min_hw_mode", param);
-       strcpy(v_state->min_hw_mode, param->valuestring);
-
-       //uapsd_enable
-       decode_param_bool(obj_v_state, "uapsd_enable", param);
-       v_state->uapsd_enable = (param->type & cJSON_True) ? true:false;
-
-       //group_rekey
-       decode_param_integer(obj_v_state, "group_rekey", param);
-       v_state->group_rekey = param->valuedouble;
-
-       //ap_bridge
-       decode_param_bool(obj_v_state, "ap_bridge", param);
-       v_state->ap_bridge = (param->type & cJSON_True) ? true:false;
-
-       //ft_mobility_domain
-       decode_param_integer(obj_v_state, "ft_mobility_domain", param);
-       v_state->ft_mobility_domain = param->valuedouble;
-
-       //dynamic_beacon
-       decode_param_bool(obj_v_state, "dynamic_beacon", param);
-       v_state->dynamic_beacon = (param->type & cJSON_True) ? true:false;
-
-       //rrm
-       decode_param_integer(obj_v_state, "rrm", param);
-       v_state->rrm = param->valuedouble;
-
-       //btm
-       decode_param_integer(obj_v_state, "btm", param);
-       v_state->btm = param->valuedouble;
-
-       //mcast2ucast
-       decode_param_bool(obj_v_state, "mcast2ucast", param);
-       v_state->mcast2ucast = (param->type & cJSON_True) ? true:false;
-
-       //multi_ap
-       decode_param_string(obj_v_state, "multi_ap", param);
-       strcpy(v_state->multi_ap, param->valuestring);
-
-       //wps
-       decode_param_bool(obj_v_state, "wps", param);
-       v_state->wps = (param->type & cJSON_True) ? true:false;
-
-       //wps_pbc
-       decode_param_bool(obj_v_state, "wps_pbc", param);
-       v_state->wps_pbc = (param->type & cJSON_True) ? true:false;
-
-       //wps_pbc_key_id
-       decode_param_string(obj_v_state, "wps_pbc_key_id", param);
-       strcpy(v_state->wps_pbc_key_id, param->valuestring);
-
-
-       /*To Be Done */
-       //"mac_list"
-       //"wpa":
-       //"wpa_key_mgmt":
-       //"wpa_psks":
-       //"radius_srv_addr":
-       //"radius_srv_port":
-       //"radius_srv_secret":
-       //"dpp_connector":
-       //"dpp_csign_hex":
-       //"dpp_netaccesskey_hex":
-       //associated_clients
-
-       return webconfig_error_none;
-}
 
 webconfig_error_t decode_associated_clients_object(rdk_wifi_vap_info_t *rdk_vap_info, cJSON *assoc_array)
 {
@@ -2962,12 +2743,15 @@ webconfig_error_t decode_mac_object(rdk_wifi_vap_info_t *rdk_vap_info, cJSON *ob
 
     size = cJSON_GetArraySize(obj_acl);
 
+    memset(&rdk_vap_info->acl_map, 0, sizeof(hash_map_t));
+
     for (i=0; i<size; i++) {
         mac_object  = cJSON_GetArrayItem(obj_acl, i);
         client = cJSON_GetObjectItem(mac_object, "MAC");
         char *tmp_mac = cJSON_GetStringValue(client);
 
         to_mac_bytes(tmp_mac, mac);
+
         acl_entry = (acl_entry_t *)malloc(sizeof(acl_entry_t));
         if (acl_entry == NULL) {
             wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer \n", __func__, __LINE__);

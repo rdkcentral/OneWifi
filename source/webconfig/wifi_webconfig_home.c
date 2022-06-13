@@ -124,7 +124,7 @@ webconfig_error_t encode_home_subdoc(webconfig_t *config, webconfig_subdoc_data_
     memcpy(data->u.encoded.raw, str, strlen(str));
 
     // wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Encoded JSON:\n%s\n", __func__, __LINE__, str);
-
+    cJSON_free(str);
     cJSON_Delete(json);
     return webconfig_error_none;
 }
@@ -200,8 +200,8 @@ webconfig_error_t decode_home_subdoc(webconfig_t *config, webconfig_subdoc_data_
 
 
     // first set the structure to all 0
-    memset(&params->radios, 0, sizeof(rdk_wifi_radio_t)*MAX_NUM_RADIOS);
-    for (i = 0; i < MAX_NUM_RADIOS; i++) {
+    //memset(&params->radios, 0, sizeof(rdk_wifi_radio_t)*params->hal_cap.wifi_prop.numRadios);
+    for (i = 0; i < params->hal_cap.wifi_prop.numRadios; i++) {
         params->radios[i].vaps.vap_map.num_vaps = params->hal_cap.wifi_prop.radiocap[i].maxNumberVAPs;
         params->radios[i].vaps.num_vaps = params->hal_cap.wifi_prop.radiocap[i].maxNumberVAPs;
     }
@@ -210,12 +210,16 @@ webconfig_error_t decode_home_subdoc(webconfig_t *config, webconfig_subdoc_data_
         obj_vap = cJSON_GetArrayItem(obj_vaps, i);
         name = cJSON_GetStringValue(cJSON_GetObjectItem(obj_vap, "VapName"));
         radio_index = convert_vap_name_to_radio_array_index(&params->hal_cap.wifi_prop, name);
+        if ((int)radio_index == -1) {
+            continue;
+        }
         vap_array_index = convert_vap_name_to_array_index(&params->hal_cap.wifi_prop, name);
         vap_info = &params->radios[radio_index].vaps.vap_map.vap_array[vap_array_index];
         //wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: radio index: %d , vap name: %s\n%s\n",
         //            __func__, __LINE__, radio_index, name, cJSON_Print(obj_vap));
 
         if (!strncmp(name, "iot_ssid", strlen("iot_ssid"))) {
+            memset(vap_info, 0, sizeof(wifi_vap_info_t));
             if (decode_iot_vap_object(obj_vap, vap_info, &params->hal_cap.wifi_prop) != webconfig_error_none) {
                 wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: VAP object validation failed\n",
                         __func__, __LINE__);

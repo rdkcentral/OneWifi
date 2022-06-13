@@ -261,7 +261,7 @@ void rbus_dmlwebconfig_register(webconfig_dml_t *consumer)
     char *component_name = "WebconfigDML";
 
     rbusEventSubscription_t rbusEvents[] = {
-        { WIFI_WEBCONFIG_DOC_DATA, NULL, 0, 0, set_webconfig_dml_data, NULL, NULL, NULL}, // DML Subdoc
+        { WIFI_WEBCONFIG_DOC_DATA_SOUTH, NULL, 0, 0, set_webconfig_dml_data, NULL, NULL, NULL}, // DML Subdoc
         { WIFI_WEBCONFIG_GET_CSI, NULL, 0, 0, update_csi_data_queue, NULL, NULL, NULL}, // CSI subdoc
     };
 
@@ -421,7 +421,8 @@ hash_map_t** get_acl_hash_map(wifi_vap_info_t *vap_info)
 
 int init(webconfig_dml_t *consumer)
 {
-    const char *paramNames[] = {WIFI_WEBCONFIG_INIT_DATA}, *str;
+    //const char *paramNames[] = {WIFI_WEBCONFIG_INIT_DATA}, *str;
+    const char *paramNames[] = {WIFI_WEBCONFIG_INIT_DML_DATA}, *str;
     rbusValue_t value;
     int rc = RBUS_ERROR_SUCCESS;
     unsigned int len, itr=0, itrj=0;
@@ -458,7 +459,7 @@ int init(webconfig_dml_t *consumer)
         *csi_queue = queue_create();
     }
 
-    wifi_util_dbg_print(WIFI_DMCLI,"%s %d rbus_get WIFI_WEBCONFIG_INIT_DATA successfull \n",__FUNCTION__,__LINE__ );
+    wifi_util_dbg_print(WIFI_DMCLI,"%s %d rbus_get WIFI_WEBCONFIG_INIT_DML_DATA successfull \n",__FUNCTION__,__LINE__ );
     str = rbusValue_GetString(value, (int*) &len);
     if (str == NULL) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s Null pointer,Rbus set string len=%d\n",__FUNCTION__,len);
@@ -787,6 +788,7 @@ wifi_GASConfiguration_t* get_dml_wifi_gas_config(void)
 #define HOME 0b0100
 #define MESH 0b1000
 #define MESH_STA 0b10000
+#define MESH_BACKHAUL 0b100000
 
 int is_vap_config_changed;
 void get_subdoc_type_bit_mask_from_vap_index(uint8_t vap_index, int* subdoc)
@@ -799,6 +801,12 @@ void get_subdoc_type_bit_mask_from_vap_index(uint8_t vap_index, int* subdoc)
         return;
     } else if (isVapXhs(vap_index)) {
         *subdoc = HOME;
+        return;
+    } else if (isVapSTAMesh(vap_index)) {
+        *subdoc = MESH_STA;
+        return;
+    } else if (isVapMeshBackhaul(vap_index)) {
+        *subdoc = MESH_BACKHAUL;
         return;
     } else if (isVapMesh(vap_index)) {
         *subdoc = MESH;
@@ -881,6 +889,14 @@ int push_vap_dml_cache_to_one_wifidb()
     if (is_vap_config_changed & HOME) {
         wifi_util_dbg_print(WIFI_DMCLI, "%s: Subdoc webconfig_subdoc_type_home DML Modified  \n", __FUNCTION__);
         push_subdoc_to_one_wifidb(webconfig_subdoc_type_home);
+    }
+    if (is_vap_config_changed & MESH_STA) {
+        wifi_util_dbg_print(WIFI_DMCLI, "%s: Subdoc webconfig_subdoc_type_mesh_sta DML Modified  \n", __FUNCTION__);
+        push_subdoc_to_one_wifidb(webconfig_subdoc_type_mesh_sta);
+    }
+    if (is_vap_config_changed & MESH_BACKHAUL) {
+        wifi_util_dbg_print(WIFI_DMCLI, "%s: Subdoc webconfig_subdoc_type_mesh_backhaul DML Modified  \n", __FUNCTION__);
+        push_subdoc_to_one_wifidb(webconfig_subdoc_type_mesh_backhaul);
     }
     if (is_vap_config_changed & MESH) {
         wifi_util_dbg_print(WIFI_DMCLI, "%s: Subdoc webconfig_subdoc_type_mesh DML Modified  \n", __FUNCTION__);

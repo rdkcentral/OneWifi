@@ -30,14 +30,17 @@ extern "C" {
 #include <rbus.h>
 #include <cJSON.h>
 
-#define WIFI_WEBCONFIG_DOC_DATA         "Device.WiFi.WebConfig.Data.Subdoc"
+#define WIFI_WEBCONFIG_DOC_DATA_NORTH   "Device.WiFi.WebConfig.Data.Subdoc.North"
+#define WIFI_WEBCONFIG_DOC_DATA_SOUTH   "Device.WiFi.WebConfig.Data.Subdoc.South"
 #define WIFI_WEBCONFIG_INIT_DATA        "Device.WiFi.WebConfig.Data.Init"
+#define WIFI_WEBCONFIG_INIT_DML_DATA    "Device.WiFi.WebConfig.Data.Init_dml"
 #define WIFI_WEBCONFIG_GET_ASSOC        "Device.WiFi.AssociatedClients"
 #define WIFI_WEBCONFIG_GET_ACL          "Device.WiFi.MacFilter"
 #define WIFI_WEBCONFIG_GET_CSI          "Device.WiFi.CSI"
 
 #define WIFI_WEBCONFIG_PRIVATE_VAP      "Device.WiFi.Private"
 #define WIFI_WEBCONFIG_HOME_VAP         "Device.WiFi.Home"
+#define WIFI_WEBCONFIG_GET_NULL_SUBDOC  "Device.WiFi.Null"
 
 #define DEVICE_WIFI_SSID                "Device.WiFi.SSID.%d.SSID"
 #define DEVICE_WIFI_KEYPASSPHRASE       "Device.WiFi.AccessPoint.%d.Security.X_COMCAST-COM_KeyPassphrase"
@@ -94,13 +97,14 @@ typedef struct {
 typedef enum {
     webconfig_subdoc_type_unknown,
     webconfig_subdoc_type_private,
+    webconfig_subdoc_type_null,
     webconfig_subdoc_type_home,
     webconfig_subdoc_type_xfinity,
     webconfig_subdoc_type_radio,
     webconfig_subdoc_type_mesh,
+    webconfig_subdoc_type_mesh_backhaul,
+    webconfig_subdoc_type_mesh_sta,
     webconfig_subdoc_type_dml,
-    webconfig_subdoc_type_radio_status,
-    webconfig_subdoc_type_vap_status,
     webconfig_subdoc_type_associated_clients,
     webconfig_subdoc_type_wifiapiradio,
     webconfig_subdoc_type_wifiapivap,
@@ -226,6 +230,13 @@ webconfig_error_t webconfig_decode(webconfig_t *config, webconfig_subdoc_data_t 
 // internal to webconfig
 webconfig_error_t webconfig_set(webconfig_t *config, webconfig_subdoc_data_t *data);
 
+webconfig_error_t       init_null_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_null_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_null_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_null_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_null_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_null_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
 // private
 webconfig_error_t       init_private_subdoc(webconfig_subdoc_t *doc);
 webconfig_error_t       access_check_private_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
@@ -233,6 +244,22 @@ webconfig_error_t       decode_private_subdoc(webconfig_t *config, webconfig_sub
 webconfig_error_t       encode_private_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_to_private_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_from_private_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+// mesh backhaul
+webconfig_error_t       init_mesh_backhaul_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_mesh_backhaul_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_mesh_backhaul_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_mesh_backhaul_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_mesh_backhaul_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_mesh_backhaul_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+// mesh sta
+webconfig_error_t       init_mesh_sta_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_mesh_sta_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_mesh_sta_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_mesh_sta_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_mesh_sta_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_mesh_sta_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 
 // home
 webconfig_error_t       init_home_subdoc(webconfig_subdoc_t *doc);

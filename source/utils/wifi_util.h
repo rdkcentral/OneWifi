@@ -61,6 +61,17 @@ typedef struct{
     int count;
     LM_wifi_host_t   host[LM_MAX_HOSTS_NUM];
 }__attribute__((packed, aligned(1))) LM_wifi_hosts_t;
+
+#define VAP_PREFIX_PRIVATE          "private_ssid"
+#define VAP_PREFIX_IOT              "iot_ssid"
+#define VAP_PREFIX_MESH_STA         "mesh_sta"
+#define VAP_PREFIX_MESH_BACKHAUL    "mesh_backhaul"
+#define VAP_PREFIX_HOTSPOT          "hotspot"
+#define VAP_PREFIX_HOTSPOT_OPEN     "hotspot_open"
+#define VAP_PREFIX_HOTSPOT_SECURE   "hotspot_secure"
+#define VAP_PREFIX_LNF_PSK          "lnf_psk"
+#define VAP_PREFIX_LNF_RADIUS       "lnf_radius"
+
 /* utility functions declarations */
 int get_number_of_radios(wifi_platform_property_t *wifi_prop);
 int get_total_number_of_vaps(wifi_platform_property_t *wifi_prop);
@@ -91,7 +102,7 @@ int convert_ifname_to_vapname(wifi_platform_property_t *wifi_prop, char *if_name
 int vap_mode_conversion(wifi_vap_mode_t *vapmode_enum, char *vapmode_str, size_t vapmode_str_len, unsigned int conv_type);
 int macfilter_conversion(char *mac_list_type, size_t string_len,  wifi_vap_info_t *vap_info, unsigned int conv_type);
 int ssid_broadcast_conversion(char *broadcast_string, size_t string_len, BOOL *broadcast_bool, unsigned int conv_type);
-void get_vap_and_radio_index_from_vap_instance(wifi_platform_property_t *wifi_prop, uint8_t vap_instance, uint8_t *radio_index, uint8_t *vap_index);
+int get_vap_and_radio_index_from_vap_instance(wifi_platform_property_t *wifi_prop, uint8_t vap_instance, uint8_t *radio_index, uint8_t *vap_index);
 int freq_band_conversion(wifi_freq_bands_t *band_enum, char *freq_band, int freq_band_len, unsigned int conv_type);
 BOOL is_vap_private(wifi_platform_property_t *wifi_prop, unsigned int ap_index);
 BOOL is_vap_xhs(wifi_platform_property_t *wifi_prop, unsigned int ap_index);
@@ -124,4 +135,16 @@ int convert_vapname_to_ifname(wifi_platform_property_t *wifi_prop, char *vap_nam
 unsigned int create_vap_mask(wifi_platform_property_t *wifi_prop, const char *vap_name);
 int get_interface_name_from_radio_index(uint8_t radio_index, char *interface_name);
 unsigned long long int get_current_ms_time(void);
+int get_list_of_vap_names(wifi_platform_property_t *wifi_prop, wifi_vap_name_t vap_names[], int list_size, int num_types, ...);
+int get_list_of_private_ssid(wifi_platform_property_t *wifi_prop, int list_size, wifi_vap_name_t vap_names[]);
+int get_list_of_hotspot_open(wifi_platform_property_t *wifi_prop, int list_size, wifi_vap_name_t vap_names[]);
+int get_list_of_hotspot_secure(wifi_platform_property_t *wifi_prop, int list_size, wifi_vap_name_t vap_names[]);
+int get_list_of_lnf_psk(wifi_platform_property_t *wifi_prop, int list_size, wifi_vap_name_t vap_names[]);
+int get_list_of_lnf_radius(wifi_platform_property_t *wifi_prop, int list_size, wifi_vap_name_t vap_names[]);
+int get_list_of_mesh_backhaul(wifi_platform_property_t *wifi_prop, int list_size, wifi_vap_name_t vap_names[]);
+int get_list_of_mesh_sta(wifi_platform_property_t *wifi_prop, int list_size, wifi_vap_name_t vap_names[]);
+int get_list_of_iot_ssid(wifi_platform_property_t *wifi_prop, int list_size, wifi_vap_name_t vap_names[]);
+int get_radio_index_for_vap_index(wifi_platform_property_t* wifi_prop, int vap_index);
+int  min_hw_mode_conversion(unsigned int vapIndex, char *inputStr, char *outputStr, char *tableType);
+int  vif_radio_idx_conversion(unsigned int vapIndex, int *input, int *output, char *tableType);
 #endif//_WIFI_UTIL_H_

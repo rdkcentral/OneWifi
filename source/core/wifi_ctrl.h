@@ -82,18 +82,29 @@ extern "C" {
 typedef enum {
     ctrl_webconfig_state_none = 0,
     ctrl_webconfig_state_radio_cfg_rsp_pending = 0x0001,
-    ctrl_webconfig_state_vap_cfg_rsp_pending = 0x0002,
-    ctrl_webconfig_state_wifi_config_cfg_rsp_pending = 0x0004,
-    ctrl_webconfig_state_macfilter_cfg_rsp_pending = 0x0008,
-    ctrl_webconfig_state_factoryreset_cfg_rsp_pending = 0x0010,
-    ctrl_webconfig_state_associated_clients_cfg_rsp_pending = 0x0020,
-    ctrl_webconfig_state_csi_cfg_rsp_pending = 0x0040,
-    ctrl_webconfig_state_sta_conn_status_rsp_pending = 0x0080,
-    ctrl_webconfig_state_max = 0x0100
+    ctrl_webconfig_state_vap_all_cfg_rsp_pending = 0x0002,
+    ctrl_webconfig_state_vap_private_cfg_rsp_pending = 0x0004,
+    ctrl_webconfig_state_vap_home_cfg_rsp_pending = 0x0008,
+    ctrl_webconfig_state_vap_xfinity_cfg_rsp_pending = 0x0010,
+    ctrl_webconfig_state_vap_mesh_cfg_rsp_pending = 0x0020,
+    ctrl_webconfig_state_wifi_config_cfg_rsp_pending = 0x0040,
+    ctrl_webconfig_state_macfilter_cfg_rsp_pending = 0x0080,
+    ctrl_webconfig_state_factoryreset_cfg_rsp_pending = 0x0100,
+    ctrl_webconfig_state_associated_clients_cfg_rsp_pending = 0x0200,
+    ctrl_webconfig_state_csi_cfg_rsp_pending = 0x0400,
+    ctrl_webconfig_state_sta_conn_status_rsp_pending = 0x0800,
+    ctrl_webconfig_state_vap_mesh_sta_cfg_rsp_pending = 0x1000,
+    ctrl_webconfig_state_vap_mesh_backhaul_cfg_rsp_pending = 0x2000,
+    ctrl_webconfig_state_max = 0x4000
 } wifi_ctrl_webconfig_state_t;
 
-#define CTRL_WEBCONFIG_STATE_MASK   0x00ff
-                                  
+#define CTRL_WEBCONFIG_STATE_MASK   0xffff
+
+typedef struct {
+    wifi_ctrl_webconfig_state_t type;
+    wifi_vap_name_t  vap_name;
+}__attribute__((packed)) wifi_webconfig_vapname_state_map_t;
+
 typedef struct {
     char *result;
 } wifiapi_t;

@@ -102,7 +102,8 @@ webconfig_error_t encode_csi_subdoc(webconfig_t *config, webconfig_subdoc_data_t
 
     memset(data->u.encoded.raw, 0, MAX_SUBDOC_SIZE);
     str = cJSON_Print(json);
-    memcpy(data->u.encoded.raw, str, strlen(str));
+    memcpy(data->u.encoded.raw, str, strlen(str)); 
+    cJSON_free(str);
     cJSON_Delete(json);
     wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Encoded data is %s\n", __func__, __LINE__, str);
 

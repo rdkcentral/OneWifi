@@ -132,6 +132,7 @@ webconfig_error_t encode_mac_filter_subdoc(webconfig_t *config, webconfig_subdoc
     memset(data->u.encoded.raw, 0, MAX_SUBDOC_SIZE);
     str = cJSON_Print(json);
     memcpy(data->u.encoded.raw, str, strlen(str));
+    cJSON_free(str);
     cJSON_Delete(json);
 
     //Check the descriptor is ovsdb, free it
@@ -196,6 +197,10 @@ webconfig_error_t decode_mac_filter_subdoc(webconfig_t *config, webconfig_subdoc
         obj_acl = cJSON_GetArrayItem(obj_mac, i);
         name = cJSON_GetStringValue(cJSON_GetObjectItem(obj_acl, "VapName"));
         radio_index = convert_vap_name_to_radio_array_index(&params->hal_cap.wifi_prop, name);
+        if((int)radio_index == -1) {
+            continue;
+        }
+
         vap_array_index = convert_vap_name_to_array_index(&params->hal_cap.wifi_prop, name);
         rdk_vap_info = &params->radios[radio_index].vaps.rdk_vap_array[vap_array_index];
         rdk_vap_info->acl_map = NULL;

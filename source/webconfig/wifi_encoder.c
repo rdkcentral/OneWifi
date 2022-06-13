@@ -1055,6 +1055,15 @@ webconfig_error_t encode_mesh_sta_object(const wifi_vap_info_t *vap_info, cJSON 
     // Enabled
     cJSON_AddBoolToObject(vap_obj, "Enabled", vap_info->u.sta_info.enabled);
 
+    //ConnectStatus
+    if (vap_info->u.sta_info.conn_status == wifi_connection_status_connected) {
+        cJSON_AddBoolToObject(vap_obj, "ConnectStatus", true);
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d conn_status:%d true\n",__FUNCTION__, __LINE__, vap_info->u.sta_info.conn_status);
+    } else {
+        cJSON_AddBoolToObject(vap_obj, "ConnectStatus", false);
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d conn_status:%d false\n",__FUNCTION__, __LINE__, vap_info->u.sta_info.conn_status);
+    }
+
     // Security
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(vap_obj, "Security", obj);
@@ -1070,168 +1079,6 @@ webconfig_error_t encode_mesh_sta_object(const wifi_vap_info_t *vap_info, cJSON 
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Scan Params object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
-
-    return webconfig_error_none;
-}
-
-webconfig_error_t encode_radio_state_object(const schema_wifi_radio_state_t *r_state, cJSON *r_state_obj)
-{
-    if ((r_state == NULL) || (r_state_obj == NULL)) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Radio state object encode failed\n",__FUNCTION__, __LINE__);
-        return webconfig_error_encode;
-    }
-
-    /*if_name*/
-    cJSON_AddStringToObject(r_state_obj, "if_name", r_state->if_name);
-
-    //freq_band
-    cJSON_AddStringToObject(r_state_obj, "freq_band", r_state->freq_band);
-
-    //Enabled
-    cJSON_AddBoolToObject(r_state_obj, "enabled", r_state->enabled);
-
-    //dfs_demo
-    cJSON_AddBoolToObject(r_state_obj, "dfs_demo", r_state->dfs_demo);
-
-    /*hw_type*/
-    cJSON_AddStringToObject(r_state_obj, "hw_type", r_state->hw_type);
-
-    /*country*/
-    cJSON_AddStringToObject(r_state_obj, "country", r_state->country);
-
-    /*channel*/
-    cJSON_AddNumberToObject(r_state_obj, "channel", r_state->channel);
-
-    /*channel_mode*/
-    cJSON_AddStringToObject(r_state_obj, "channel_mode", r_state->channel_mode);
-
-    /*mac*/
-    cJSON_AddStringToObject(r_state_obj, "mac", r_state->mac);
-
-    /*hw_mode*/
-    cJSON_AddStringToObject(r_state_obj, "hw_mode", r_state->hw_mode);
-
-    /*ht_mode*/
-    cJSON_AddStringToObject(r_state_obj, "ht_mode", r_state->ht_mode);
-
-    /*thermal_shutdown*/
-    cJSON_AddNumberToObject(r_state_obj, "thermal_shutdown", r_state->thermal_shutdown);
-
-    /*thermal_downgrade_temp*/
-    cJSON_AddNumberToObject(r_state_obj, "thermal_downgrade_temp", r_state->thermal_downgrade_temp);
-
-    /*thermal_upgrade_temp*/
-    cJSON_AddNumberToObject(r_state_obj, "thermal_upgrade_temp", r_state->thermal_upgrade_temp);
-
-    /*thermal_integration*/
-    cJSON_AddNumberToObject(r_state_obj, "thermal_integration", r_state->thermal_integration);
-
-    //thermal_downgraded
-    cJSON_AddBoolToObject(r_state_obj, "thermal_downgraded", r_state->thermal_downgraded);
-
-    /*tx_power*/
-    cJSON_AddNumberToObject(r_state_obj, "tx_power", r_state->tx_power);
-
-    /*bcn_int*/
-    cJSON_AddNumberToObject(r_state_obj, "bcn_int", r_state->bcn_int);
-
-    /*tx_chainmask*/
-    cJSON_AddNumberToObject(r_state_obj, "tx_chainmask", r_state->tx_chainmask);
-
-    /*thermal_tx_chainmask*/
-    cJSON_AddNumberToObject(r_state_obj, "thermal_tx_chainmask",r_state->thermal_tx_chainmask);
-
-    //To Do:
-    //allowed_channels
-
-    return webconfig_error_none;
-}
-
-
-webconfig_error_t encode_vap_state_object(const schema_wifi_vap_state_t *vap_state, cJSON *vap_state_obj)
-{
-    if ((vap_state == NULL) || (vap_state_obj == NULL)) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d VAP state object encode failed\n",__FUNCTION__, __LINE__);
-        return webconfig_error_encode;
-    }
-
-    //Enabled
-    cJSON_AddBoolToObject(vap_state_obj, "enabled", vap_state->enabled);
-
-    //if_name
-    cJSON_AddStringToObject(vap_state_obj, "if_name", vap_state->if_name);
-
-    //mode
-    cJSON_AddStringToObject(vap_state_obj, "mode", vap_state->mode);
-
-    //state
-    cJSON_AddStringToObject(vap_state_obj, "state", vap_state->state);
-
-    /*channel*/
-    cJSON_AddNumberToObject(vap_state_obj, "channel", vap_state->channel);
-
-    //mac
-    cJSON_AddStringToObject(vap_state_obj, "mac", vap_state->mac);
-
-    /*vif_radio_idx*/
-    cJSON_AddNumberToObject(vap_state_obj, "vif_radio_idx", vap_state->vif_radio_idx);
-
-    //parent
-    cJSON_AddStringToObject(vap_state_obj, "parent", vap_state->parent);
-
-    //ssid
-    cJSON_AddStringToObject(vap_state_obj, "ssid", vap_state->ssid);
-
-    //ssid_broadcast
-    cJSON_AddStringToObject(vap_state_obj, "ssid_broadcast", vap_state->ssid_broadcast);
-
-    //bridge
-    cJSON_AddStringToObject(vap_state_obj, "bridge", vap_state->bridge);
-
-    //mac_list_type
-    cJSON_AddStringToObject(vap_state_obj, "mac_list_type", vap_state->mac_list_type);
-
-    /*vlan_id*/
-    cJSON_AddNumberToObject(vap_state_obj, "vlan_id", vap_state->vlan_id);
-
-    //min_hw_mode
-    cJSON_AddStringToObject(vap_state_obj, "min_hw_mode", vap_state->min_hw_mode);
-
-    //uapsd_enable
-    cJSON_AddBoolToObject(vap_state_obj, "uapsd_enable", vap_state->uapsd_enable);
-
-    /*group_rekey*/
-    cJSON_AddNumberToObject(vap_state_obj, "group_rekey", vap_state->group_rekey);
-
-    //ap_bridge
-    cJSON_AddBoolToObject(vap_state_obj, "ap_bridge", vap_state->ap_bridge);
-
-    /*ft_mobility_domain*/
-    cJSON_AddNumberToObject(vap_state_obj, "ft_mobility_domain", vap_state->ft_mobility_domain);
-
-    //dynamic_beacon
-    cJSON_AddBoolToObject(vap_state_obj, "dynamic_beacon", vap_state->dynamic_beacon);
-
-    /*rrm*/
-    cJSON_AddNumberToObject(vap_state_obj, "rrm", vap_state->rrm);
-
-    /*btm*/
-    cJSON_AddNumberToObject(vap_state_obj, "btm", vap_state->btm);
-
-    /*mcast2ucast*/
-    cJSON_AddBoolToObject(vap_state_obj, "mcast2ucast", vap_state->mcast2ucast);
-
-    //multi_ap
-    cJSON_AddStringToObject(vap_state_obj, "multi_ap", vap_state->multi_ap);
-
-    /*wps*/
-    cJSON_AddBoolToObject(vap_state_obj, "wps", vap_state->wps);
-
-    /*wps_pbc*/
-    cJSON_AddBoolToObject(vap_state_obj, "wps_pbc", vap_state->wps_pbc);
-
-    //wps_pbc_key_id
-    cJSON_AddStringToObject(vap_state_obj, "wps_pbc_key_id", vap_state->wps_pbc_key_id);
 
     return webconfig_error_none;
 }

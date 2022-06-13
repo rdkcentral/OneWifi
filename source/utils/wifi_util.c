@@ -23,6 +23,18 @@ static wifi_interface_name_idex_map_t* get_ifname_property(wifi_platform_propert
 #define GET_VAP_NAME_PROPERTY(wifi_prop, vap_name)   ({wifi_interface_name_idex_map_t *__if_prop = get_vap_name_property(wifi_prop, vap_name, __func__); __if_prop;})
 #define GET_IFNAME_PROPERTY(wifi_prop, if_name)      ({wifi_interface_name_idex_map_t *__if_prop = get_ifname_property(wifi_prop, if_name, __func__); __if_prop;})
 
+#define TOTAL_INTERFACES(num_iface, wifi_prop) {\
+    do {\
+        num_iface = 0;\
+        for(UINT i = 0; i < wifi_prop->numRadios*MAX_NUM_VAP_PER_RADIO; ++i) {\
+            if ((wifi_prop->interface_map[i].interface_name[0] != '\0') && (wifi_prop->interface_map[i].vap_name[0] != '\0')) {\
+                ++num_iface;\
+            }\
+        }\
+    } while (0);\
+}
+
+
 //Temporary code to be removed
 #include <sys/types.h>
 #include <unistd.h>
@@ -599,10 +611,11 @@ int convert_vap_name_to_radio_array_index(wifi_platform_property_t *wifi_prop, c
     return (prop) ? (int)prop->rdk_radio_index : RETURN_ERR;
 }
 
-void get_vap_and_radio_index_from_vap_instance(wifi_platform_property_t *wifi_prop, uint8_t vap_instance, uint8_t *radio_index, uint8_t *vap_index)
+int get_vap_and_radio_index_from_vap_instance(wifi_platform_property_t *wifi_prop, uint8_t vap_instance, uint8_t *radio_index, uint8_t *vap_index)
 {
     int vap_array_index = -1;
     wifi_interface_name_idex_map_t *if_prop;
+    int status = RETURN_OK;
 
     *radio_index = 0;
     *vap_index = 0;
@@ -636,8 +649,10 @@ void get_vap_and_radio_index_from_vap_instance(wifi_platform_property_t *wifi_pr
     }
 
     if (vap_array_index == -1) {
+        status = RETURN_ERR;
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Error, could not find vap array index and radio index for vap_index %d\n",__func__, __LINE__, vap_instance);
     }
+    return status;
 }
 
 /* return the pointer of the vap name in hal_cap given a vap index */
@@ -1171,6 +1186,10 @@ int macfilter_conversion(char *mac_list_type, size_t string_len,  wifi_vap_info_
             vap_info->u.bss_info.mac_filter_mode = wifi_mac_filter_mode_black_list;
             return RETURN_OK;
         } else if (strncmp(mac_list_type, "none", strlen("none")) == 0) {
+            vap_info->u.bss_info.mac_filter_enable = FALSE;
+            vap_info->u.bss_info.mac_filter_mode = wifi_mac_filter_mode_white_list;
+            return RETURN_OK;
+        } else if (mac_list_type[0] == '\0') {
             vap_info->u.bss_info.mac_filter_enable = FALSE;
             vap_info->u.bss_info.mac_filter_mode = wifi_mac_filter_mode_white_list;
             return RETURN_OK;
@@ -1856,3 +1875,143 @@ unsigned int create_vap_mask(wifi_platform_property_t *wifi_prop, const char *va
 
     return mask;
 }
+
+int get_list_of_vap_names(wifi_platform_property_t *wifi_prop, wifi_vap_name_t vap_names[], int list_size, int num_types, ...)
+{
+    int total_vaps;
+    int num_vaps = 0;
+    char *vap_type;
+    va_list args;
+
+    va_start(args, num_types);
+
+    memset(&vap_names[0], 0, list_size*sizeof(wifi_vap_name_t));
+    TOTAL_INTERFACES(total_vaps, wifi_prop);
+    for (int num = 0; num < num_types; num++) {
+        vap_type = va_arg(args, char *);
+        for (int index = 0; (index < total_vaps) && (num_vaps < list_size); ++index) {
+            if (!strncmp(wifi_prop->interface_map[index].vap_name, vap_type, strlen(vap_type))) {
+                strncpy(&vap_names[num_vaps++][0], wifi_prop->interface_map[index].vap_name, sizeof(wifi_vap_name_t)-1);
+            }
+        }
+    }
+
+    va_end(args);
+    return num_vaps;
+}
+
+int get_list_of_private_ssid(wifi_platform_property_t *wifi_prop, int list_size, wifi_vap_name_t vap_names[])
+{
+    return get_list_of_vap_names(wifi_prop, vap_names, list_size, 1, VAP_PREFIX_PRIVATE);
+}
+
+int get_list_of_hotspot_open(wifi_platform_property_t *wifi_prop, int list_size, wifi_vap_name_t vap_names[])
+{
+    return get_list_of_vap_names(wifi_prop, vap_names, list_size, 1, VAP_PREFIX_HOTSPOT_OPEN);
+}
+
+int get_list_of_hotspot_secure(wifi_platform_property_t *wifi_prop, int list_size, wifi_vap_name_t vap_names[])
+{
+    return get_list_of_vap_names(wifi_prop, vap_names, list_size, 1, VAP_PREFIX_HOTSPOT_SECURE);
+}
+
+int get_list_of_lnf_psk(wifi_platform_property_t *wifi_prop, int list_size, wifi_vap_name_t vap_names[])
+{
+    return get_list_of_vap_names(wifi_prop, vap_names, list_size, 1, VAP_PREFIX_LNF_PSK);
+}
+
+int get_list_of_lnf_radius(wifi_platform_property_t *wifi_prop, int list_size, wifi_vap_name_t vap_names[])
+{
+    return get_list_of_vap_names(wifi_prop, vap_names, list_size, 1, VAP_PREFIX_LNF_RADIUS);
+}
+
+int get_list_of_mesh_backhaul(wifi_platform_property_t *wifi_prop, int list_size, wifi_vap_name_t vap_names[])
+{
+    return get_list_of_vap_names(wifi_prop, vap_names, list_size, 1, VAP_PREFIX_MESH_BACKHAUL);
+}
+
+int get_list_of_mesh_sta(wifi_platform_property_t *wifi_prop, int list_size, wifi_vap_name_t vap_names[])
+{
+    return get_list_of_vap_names(wifi_prop, vap_names, list_size, 1, VAP_PREFIX_MESH_STA);
+}
+
+int get_list_of_iot_ssid(wifi_platform_property_t *wifi_prop, int list_size, wifi_vap_name_t vap_names[])
+{
+    return get_list_of_vap_names(wifi_prop, vap_names, list_size, 1, VAP_PREFIX_IOT);
+}
+
+int get_radio_index_for_vap_index(wifi_platform_property_t* wifi_prop, int vap_index)
+{
+    wifi_interface_name_idex_map_t *prop = NULL;
+
+    prop = GET_VAP_INDEX_PROPERTY(wifi_prop, vap_index);
+    if (!prop) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s - VAP index %d not found\n", __func__, vap_index);
+    }
+
+    return (prop) ? (int)prop->rdk_radio_index : RETURN_ERR;
+}
+
+
+int  min_hw_mode_conversion(unsigned int vapIndex, char *inputStr, char *outputStr, char *tableType)
+{
+    static char  min_hw_mode[MAX_NUM_VAP_PER_RADIO*MAX_NUM_RADIOS][8];
+    if (tableType == NULL) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: input table type error!!!\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    if (strcmp(tableType, "CONFIG") == 0) {
+        if (inputStr == NULL) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s %d NULL Arguments!!!\n", __func__, __LINE__);
+            return RETURN_ERR;
+        }
+        snprintf(min_hw_mode[vapIndex], sizeof(min_hw_mode[vapIndex]), "%s", inputStr);
+        return RETURN_OK;
+    } else if (strcmp(tableType, "STATE") == 0) {
+        if (outputStr == NULL) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s %d NULL Arguments!!!\n", __func__, __LINE__);
+            return RETURN_ERR;
+        }
+
+        if (strlen(min_hw_mode[vapIndex]) == 0) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s %d min_hw_mode is not filled for vapIndex : %d !!!\n", __func__, __LINE__, vapIndex);
+            return RETURN_ERR;
+        }
+        snprintf(outputStr, sizeof(min_hw_mode[vapIndex]), "%s", min_hw_mode[vapIndex]);
+        return RETURN_OK;
+    }
+
+    return RETURN_ERR;
+}
+
+
+int  vif_radio_idx_conversion(unsigned int vapIndex, int *input, int *output, char *tableType)
+{
+    static int  vif_radio_idx[MAX_NUM_VAP_PER_RADIO*MAX_NUM_RADIOS];
+    if (tableType == NULL) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: input table type error!!!\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    if (strcmp(tableType, "CONFIG") == 0) {
+        if (input == NULL) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s %d NULL Arguments!!!\n", __func__, __LINE__);
+            return RETURN_ERR;
+        }
+        vif_radio_idx[vapIndex] = *input;
+        return RETURN_OK;
+    } else if (strcmp(tableType, "STATE") == 0) {
+        if (output == NULL) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s %d NULL Arguments!!!\n", __func__, __LINE__);
+            return RETURN_ERR;
+        }
+
+        *output = vif_radio_idx[vapIndex];
+        return RETURN_OK;
+    }
+
+    return RETURN_ERR;
+}
+
+

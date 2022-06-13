@@ -484,15 +484,15 @@ void start_extender_vaps(void)
 
 int start_wifi_services(void)
 {
-    unsigned int value;
+    wifi_ctrl_t *ctrl;
+    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     start_radios();
 
-    rbus_get_vap_init_parameter(WIFI_DEVICE_MODE, &value);
-    if (value == rdk_dev_mode_type_gw) {
+    if (ctrl->network_mode == rdk_dev_mode_type_gw) {
         start_gateway_vaps();
         captive_portal_check();
-    } else if (value == rdk_dev_mode_type_ext) {
+    } else if (ctrl->network_mode == rdk_dev_mode_type_ext) {
         start_extender_vaps();
     }
 

@@ -254,6 +254,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
+    rbus_get_vap_init_parameter(WIFI_DEVICE_MODE, &g_wifi_mgr.ctrl.network_mode);
     if (start_wifimgr() != 0) {
         wifi_util_dbg_print(WIFI_MGR,"%s: wifimgr start failed\n", __func__);
         return -1;

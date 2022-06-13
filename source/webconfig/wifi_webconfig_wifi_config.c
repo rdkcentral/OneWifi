@@ -62,7 +62,7 @@ webconfig_error_t encode_wifi_config_subdoc(webconfig_t *config, webconfig_subdo
 {
     cJSON *json;
     cJSON *obj;
-    const char *str;
+    char *str;
     webconfig_subdoc_decoded_data_t *params;
 
     if (data == NULL) {
@@ -97,6 +97,8 @@ webconfig_error_t encode_wifi_config_subdoc(webconfig_t *config, webconfig_subdo
     str = cJSON_Print(json);
     wifi_util_dbg_print(WIFI_WEBCONFIG,"encoded str is %s\n",str);
     memcpy(data->u.encoded.raw, str, strlen(str));
+    cJSON_free(str);
+    cJSON_Delete(json);
 
     return webconfig_error_none;
 }

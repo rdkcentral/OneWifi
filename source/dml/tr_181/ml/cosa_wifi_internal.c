@@ -211,7 +211,6 @@ char* PSM_Get_Record_Status(char *recName, char *strValue)
             return NULL;
         } else {
             wifi_util_dbg_print(WIFI_PSM,"%s:%d PSM_Get_Record_Value2 param (%s) returned error %d retry in 10 seconds \n",__FUNCTION__,__LINE__,recName,retPsmGet);
-            AnscSleep(2000);
             continue;
         }
     }
