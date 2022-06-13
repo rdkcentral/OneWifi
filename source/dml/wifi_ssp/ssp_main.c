@@ -612,14 +612,12 @@ wifi_util_dbg_print(WIFI_MGR,"%s:%d: RDK_LOGGER_INIT done!\n", __func__, __LINE_
     snprintf(uptime, sizeof(uptime), "%ld", l_sSysInfo.uptime);
     print_uptime("boot_to_WIFI_uptime",NULL, uptime);
     CcspTraceWarning(("RDKB_SYSTEM_BOOT_UP_LOG : Entering Wifi loop \n"));
+    ssp_loop_init();
     if ( bRunAsDaemon )
     {
         sem_post (sem);
         sem_close(sem);
-        while(1)
-        {
-            sleep(30);
-        }
+        ssp_loop();
     }
     else
     {

@@ -20,7 +20,8 @@ typedef enum {
     WIFI_DPP,
     WIFI_MON,
     WIFI_DMCLI,
-    WIFI_LIB
+    WIFI_LIB,
+    WIFI_PSM
 }wifi_dbg_type_t;
 
 #define ENUM_TO_STRING 1

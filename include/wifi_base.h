@@ -24,6 +24,7 @@ extern "C" {
 #define PLAN_ID_LENGTH     16
 #define MAX_STEP_COUNT  32 /*Active Measurement Step Count */
 #define  MAC_ADDRESS_LENGTH  13
+#define WIFI_AP_MAX_WPSPIN_LEN  9
 
 typedef enum {
     rdk_dev_mode_type_gw,
@@ -109,6 +110,93 @@ typedef struct {
     bool validate_ssid;
     int device_network_mode;
 } __attribute__((packed)) wifi_global_param_t;
+
+typedef struct {
+    int   vap_index;
+    char  mfp[MAX_STEP_COUNT];
+} __attribute__((packed)) wifi_security_psm_param_t;
+
+typedef struct {
+    bool cts_protection;
+    UINT beacon_interval;
+    UINT dtim_period;
+    UINT fragmentation_threshold;
+    UINT rts_threshold;
+    bool obss_coex;
+    bool stbc_enable;
+    bool greenfield_enable;
+    UINT user_control;
+    UINT admin_control;
+    wifi_guard_interval_t guard_interval;
+    UINT transmit_power;
+    UINT radio_stats_measuring_rate;
+    UINT radio_stats_measuring_interval;
+    UINT chan_util_threshold;
+    bool chan_util_selfheal_enable;
+} __attribute__((packed)) wifi_radio_psm_param_t;
+
+typedef struct {
+    unsigned int data_index;
+    CHAR mac[18];
+    CHAR device_name[64];
+} __attribute__((packed)) wifi_mac_psm_param_t;
+
+typedef struct {
+    hash_map_t *mac_entry[MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO];
+} __attribute__((packed)) wifi_mac_psm_entry_t;
+
+typedef struct {
+    int vlan_cfg_version;
+    bool prefer_private;
+    bool notify_wifi_changes;
+    bool diagnostic_enable;
+    int good_rssi_threshold;
+    int assoc_count_threshold;
+    int assoc_monitor_duration;
+    int assoc_gate_time;
+    bool mfp_config_feature;
+    bool tx_overflow_selfheal;
+    bool force_disable_radio_feature;
+    bool force_disable_radio_status;
+    bool validate_ssid;
+    bool rapid_reconnect_enable;
+    int fixed_wmm_params;
+    bool vap_stats_feature;
+    char wifi_region_code[4];
+    char wps_pin[WIFI_AP_MAX_WPSPIN_LEN];
+} __attribute__((packed)) wifi_global_psm_param_t;
+
+typedef struct {
+    wifi_mac_filter_mode_t mac_filter_mode;
+    bool wmm_enabled;
+    bool uapsd_enabled;
+    UINT  wmm_noack;
+    char  mfp[MAX_STEP_COUNT];
+    UINT  bss_max_sta;
+    bool isolation_enabled;
+    bool bss_transition_activated;
+    bool bss_hotspot;
+    UINT  wps_push_button;
+    bool rapid_connect_enable;
+    UINT  rapid_connect_threshold;
+    bool vap_stats_enable;
+    bool nbr_report_activated;
+    char beacon_rate_ctl[MAX_STEP_COUNT];
+} __attribute__((packed)) wifi_vap_psm_param_t;
+
+typedef struct {
+    wifi_radio_psm_param_t  radio_psm_cfg[MAX_NUM_RADIOS];
+    wifi_vap_psm_param_t    vap_psm_cfg[MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO];
+    wifi_mac_psm_entry_t    mac_psm_cfg;
+    wifi_global_psm_param_t global_psm_cfg;
+} __attribute__((packed)) wifi_psm_param_t;
+
+typedef struct {
+    unsigned char vap_index;
+    hash_map_t    *acl_map;
+    CHAR mac[18];
+    CHAR device_name[64];
+} __attribute__((packed)) wifi_mac_entry_param_t;
 
 typedef struct {
     wifi_GASConfiguration_t gas_config;

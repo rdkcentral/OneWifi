@@ -835,6 +835,18 @@ void wifi_util_dbg_print(wifi_dbg_type_t module, char *format, ...)
             }
             break;
         }
+        case WIFI_PSM:{
+            if ((access("/nvram/wifiPsm", R_OK)) != 0) {
+                return;
+            }
+            fpg = fopen("/tmp/wifiPsm", "a+");
+            if (fpg == NULL) {
+                return;
+            } else {
+                fputs(buff, fpg);
+            }
+            break;
+        }
     }
 
     if(fpg != NULL)
