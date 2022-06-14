@@ -3838,7 +3838,7 @@ int radio_diagnostics(void *arg)
 {
     wifi_radioTrafficStats2_t radioTrafficStats;
     BOOL radio_Enabled=FALSE;
-    char            ChannelsInUse[256] = {0};
+    //char            ChannelsInUse[256] = {0};
     char            RadioFreqBand[64] = {0};
     char            RadioChanBand[64] = {0};
     ULONG           Channel = 0;
@@ -3854,10 +3854,14 @@ int radio_diagnostics(void *arg)
                 g_monitor_module.radio_data[radiocnt].RadioActivityFactor = radioTrafficStats.radio_ActivityFactor;
                 g_monitor_module.radio_data[radiocnt].CarrierSenseThreshold_Exceeded = radioTrafficStats.radio_CarrierSenseThreshold_Exceeded;
                 g_monitor_module.radio_data[radiocnt].channelUtil = radioTrafficStats.radio_ChannelUtilization;
-
+#if 0
+                /* When we trigger below API then Broadcom driver internally trigger offchannel scan.
+                *  We don't want this offchannel scan at every 30 seconds. So, for resolution of
+                *  this issue we commented out below API.
+                */
                 wifi_getRadioChannelsInUse (radiocnt, ChannelsInUse);
                 strncpy((char *)&g_monitor_module.radio_data[radiocnt].ChannelsInUse, ChannelsInUse,sizeof(ChannelsInUse));
-
+#endif
                 wifi_getRadioChannel(radiocnt, &Channel);
                 g_monitor_module.radio_data[radiocnt].primary_radio_channel = Channel;
 
