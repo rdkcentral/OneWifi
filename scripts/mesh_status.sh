@@ -92,26 +92,26 @@ done
 
 echo $maclist
 if $pod_found; then
- echo_t "$maclist"  >> /rdklogs/logs/MeshAgentLog.txt.0 
- echo_t "$linktype" >> /rdklogs/logs/MeshAgentLog.txt.0 
+ echo_t "$maclist"  >> /rdklogs/logs/MeshAgentLog.txt.0
+ echo_t "$linktype" >> /rdklogs/logs/MeshAgentLog.txt.0
  echo_t "$ports"    >> /rdklogs/logs/MeshAgentLog.txt.0
-fi 
-else                                                                 
- if [ "$1" == "0" ]; then                                                 
-  echo_t "pod_detected:xhs_port" >> /rdklogs/logs/MeshAgentLog.txt.0                                                
- else                                                                     
-  echo_t "pod_detected:unsupported_port" >> /rdklogs/logs/MeshAgentLog.txt.0                                  
- fi                                                                       
-fi  
+fi
+else
+ if [ "$1" == "0" ]; then
+  echo_t "pod_detected:xhs_port" >> /rdklogs/logs/MeshAgentLog.txt.0
+ else
+  echo_t "pod_detected:unsupported_port" >> /rdklogs/logs/MeshAgentLog.txt.0
+ fi
+fi
 
 VIF_CONFIG_CHECK=`/usr/plume/tools/ovsh s Wifi_VIF_Config -w ssid==we.connect.yellowstone`
-if [ "$VIF_CONFIG_CHECK" != "" ] && [ $pod_mac != "" ]; then
+if [ "$VIF_CONFIG_CHECK" != "" ] && [ "$pod_mac" != "" ]; then
     SSID_NAME_12=`wifi_api wifi_getSSIDName 12`
     SSID_NAME_13=`wifi_api wifi_getSSIDName 13`
     if [ "$SSID_NAME_12" != "we.connect.yellowstone" ]; then
         echo_t "2G SSID is still default for pod customer" >> /rdklogs/logs/MeshAgentLog.txt.0
     fi
-       
+
     if [ "$SSID_NAME_13" != "we.connect.yellowstone" ]; then
         echo_t "5G SSID is still default for pod customer" >> /rdklogs/logs/MeshAgentLog.txt.0
     fi
