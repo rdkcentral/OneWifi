@@ -306,6 +306,31 @@ struct wifiCountryEnumStrMap wifiCountryMap[] =
 
 static bool b_printed = false;
 
+void write_to_file(const char *file_name, char *fmt, ...)
+{
+    FILE *fp = NULL;
+    va_list args;
+    char buff[1024] = {0};
+    
+    get_formatted_time(buff);
+    strcat(buff, " ");
+
+    va_start(args, fmt);
+    vsnprintf(&buff[strlen(buff)], 1024, fmt, args);
+    va_end(args);
+
+    fp = fopen(file_name, "a+");
+    if (fp == NULL) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Error, open file_name: %s\n",__func__, __LINE__, file_name);
+        return;
+    }
+
+    fputs(buff, fp);
+    fflush(fp);
+    fclose(fp);
+}
+
+
 int get_interface_name_from_radio_index(uint8_t radio_index, char *interface_name)
 {
     uint8_t i = 0;

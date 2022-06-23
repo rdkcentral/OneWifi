@@ -186,24 +186,6 @@ BOOL IsWiFiApStatsEnable(UINT uvAPIndex)
     return ((sWiFiDmlApStatsEnableCfg[uvAPIndex]) ? TRUE : FALSE);
 }
 
-void write_to_file(const char *file_name, char *fmt, ...)
-{
-    FILE *fp = NULL;
-    va_list args;
-
-    fp = fopen(file_name, "a+");
-    if (fp == NULL) {
-        return;
-    }
-
-    va_start(args, fmt);
-    vfprintf(fp, fmt, args);
-    va_end(args);
-
-    fflush(fp);
-    fclose(fp);
-}
-
 /* get_self_bss_chan_statistics () will get channel statistics from driver and calculate self bss channel utilization */
 void get_self_bss_chan_statistics (int radiocnt , UINT *Tx_perc, UINT  *Rx_perc)
 {

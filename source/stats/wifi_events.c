@@ -36,6 +36,7 @@ static queue_t              *g_rbus_events_queue;
 static pthread_mutex_t      g_events_lock;
 static BOOL                 g_isRbusAvailable = false;
 static char                 *gdiag_events_json_buffer[MAX_VAP];
+static const char *wifi_log = "/rdklogs/logs/WiFilog.txt.0";
 
 
 
@@ -368,6 +369,8 @@ rbusError_t events_subHandler(rbusHandle_t handle, rbusEventSubAction_t action, 
                     if(interval < MIN_DIAG_INTERVAL)
                     {
                         wifi_util_dbg_print(WIFI_MON, "WiFi_DiagData_SubscriptionFailed %d\n", idx );
+                        write_to_file(wifi_log, "WiFi_DiagData_SubscriptionFailed %d\n", idx);
+
                         pthread_mutex_unlock(&g_events_lock);
                         wifi_util_dbg_print(WIFI_MON, "Exit %s: Event %s\n", __FUNCTION__, eventName);
                         return RBUS_ERROR_BUS_ERROR;
@@ -378,6 +381,7 @@ rbusError_t events_subHandler(rbusHandle_t handle, rbusEventSubAction_t action, 
                         if(gdiag_events_json_buffer[idx-1] == NULL)
                         {
                             wifi_util_dbg_print(WIFI_MON, "WiFi_DiagData_SubscriptionFailed %d\n", idx );
+                            write_to_file(wifi_log, "WiFi_DiagData_SubscriptionFailed %d\n", idx);
                             pthread_mutex_unlock(&g_events_lock);
                             wifi_util_dbg_print(WIFI_MON, "Exit %s: Event %s\n", __FUNCTION__, eventName);
                             return RBUS_ERROR_BUS_ERROR;
@@ -397,6 +401,7 @@ rbusError_t events_subHandler(rbusHandle_t handle, rbusEventSubAction_t action, 
                                     idx);
                     }
                     wifi_util_dbg_print(WIFI_MON, "WiFi_DiagData_SubscriptionStarted %d\n", idx);
+                    write_to_file(wifi_log, "WiFi_DiagData_SubscriptionStarted %d\n", idx);
 
                     event->num_subscribers++;
                     event->subscribed = TRUE;
@@ -411,6 +416,8 @@ rbusError_t events_subHandler(rbusHandle_t handle, rbusEventSubAction_t action, 
                 else
                 {
                     wifi_util_dbg_print(WIFI_MON, "WiFi_DiagData_SubscriptionCancelled %d\n", idx);
+                    write_to_file(wifi_log, "WiFi_DiagData_SubscriptionCancelled %d\n", idx);
+
                     event->num_subscribers--;
                     if(event->num_subscribers == 0) {
                         event->subscribed = FALSE;
@@ -447,11 +454,13 @@ rbusError_t events_subHandler(rbusHandle_t handle, rbusEventSubAction_t action, 
                 if(action == RBUS_EVENT_ACTION_SUBSCRIBE)
                 {
                     event->num_subscribers++;
+                    write_to_file(wifi_log,  "%s %d\n", telemetry_start, idx);
                     wifi_util_dbg_print(WIFI_MON, "%s %d\n", telemetry_start, idx);
                     event->subscribed = TRUE;
                 }
                 else{
                     wifi_util_dbg_print(WIFI_MON, "%s  %d\n",telemetry_cancel, idx);
+                    write_to_file(wifi_log,  "%s %d\n", telemetry_cancel, idx);
                     event->num_subscribers--;
                     if(event->num_subscribers == 0) {
                         event->subscribed = FALSE;
@@ -470,12 +479,14 @@ rbusError_t events_subHandler(rbusHandle_t handle, rbusEventSubAction_t action, 
                         //telemetry
                         printf("WiFi_Motion_SubscriptionFailed %d\n", csi_session);
                         wifi_util_dbg_print(WIFI_MON, "WiFi_Motion_SubscriptionFailed %d\n", csi_session);
+                        write_to_file(wifi_log,  "WiFi_CSI_SubscriptionFailed %d\n", csi_session);
                         pthread_mutex_unlock(&g_events_lock);
                         wifi_util_dbg_print(WIFI_MON, "Exit %s: Event %s\n", __FUNCTION__, eventName);
                         return RBUS_ERROR_BUS_ERROR;
                     }
                     event->subscribed = TRUE;
                     wifi_util_dbg_print(WIFI_MON, "WiFi_Motion_SubscriptionStarted %d\n", csi_session);
+                    write_to_file(wifi_log,  "WiFi_CSI_SubscriptionStarted %d\n", csi_session);
 
                     //unlock event mutex before updating monitor data to avoid deadlock
                     pthread_mutex_unlock(&g_events_lock);
@@ -488,6 +499,7 @@ rbusError_t events_subHandler(rbusHandle_t handle, rbusEventSubAction_t action, 
                 {
                     event->subscribed = FALSE;
                     wifi_util_dbg_print(WIFI_MON, "WiFi_Motion_SubscriptionStopped %d\n", csi_session);
+                    write_to_file(wifi_log,  "WiFi_CSI_SubscriptionCancelled %d\n", csi_session);
                     //unlock event mutex before updating monitor data to avoid deadlock
                     pthread_mutex_unlock(&g_events_lock);
                     csi_enable_subscription(FALSE, csi_session);

@@ -258,7 +258,6 @@ wifi_stats_flag_change
     );
 wifi_monitor_t *get_wifi_monitor ();
 char *get_formatted_time(char *time);
-void write_to_file(const char *file_name, char *fmt, ...);
 wifi_actvie_msmt_t *get_active_msmt_data();
 int radio_stats_flag_change(int radio_index, bool enable);
 int vap_stats_flag_change(int ap_index, bool enable);

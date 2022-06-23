@@ -65,6 +65,7 @@ int get_number_of_radios(wifi_platform_property_t *wifi_prop);
 int get_total_number_of_vaps(wifi_platform_property_t *wifi_prop);
 char *get_vap_name(wifi_platform_property_t *wifi_prop, int vap_index);
 int convert_vap_index_to_name(wifi_platform_property_t* wifi_prop, int vap_index, char *vap_name);
+void write_to_file(const char *file_name, char *fmt, ...);
 int convert_radio_name_to_index(unsigned int *index,char *name);
 char *get_formatted_time(char *time);
 void wifi_util_dbg_print(wifi_dbg_type_t module, char *format, ...);
