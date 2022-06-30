@@ -55,7 +55,7 @@ libwifi_webconfig_la_SOURCES = wifi_webconfig.c wifi_encoder.c wifi_decoder.c wi
 
 libwifi_webconfig_la_SOURCES += $(top_srcdir)/source/utils/wifi_util.c $(top_srcdir)/source/utils/collection.c
 
-libwifi_webconfig_la_LDFLAGS = -lccsp_common -rdynamic -lsyscfg -lwebconfig_framework -lprint_uptime -lsecure_wrapper $(SYSTEMD_LDFLAGS) -lsecure_wrapper -lsysevent -lmsgpackc -lcjson -lrdk_wifihal -lhal_wifi -lm -ljansson -static
+libwifi_webconfig_la_LDFLAGS = -rdynamic -lwebconfig_framework -lsecure_wrapper $(SYSTEMD_LDFLAGS) -lsecure_wrapper -lmsgpackc -lcjson -lm -ljansson -shared
 
 libwifi_webconfig_la_CPPFLAGS += -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/ -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/ -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/ap -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/utils -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/drivers/ -I$(PKG_CONFIG_SYSROOT_DIR)$(includedir)/qca/qca-wifi/os/linux/include/ -I${PKG_CONFIG_SYSROOT_DIR}${libdir}/ -DEXTERNAL_USE_ONLY
 

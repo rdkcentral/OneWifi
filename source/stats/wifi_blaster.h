@@ -23,6 +23,7 @@
 extern "C" {
 #endif
 
+#include <pthread.h>
 #include "wifi_base.h"
 
 #define OPER_BUFFER_LEN 64

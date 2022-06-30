@@ -38,7 +38,7 @@ struct wifiCountryEnumStrMap {
     wifi_countrycode_type_t countryCode;
     char countryStr[4];
 };
-struct wifiCountryEnumStrMap wifiCountryMap[MAX_WIFI_COUNTRYCODE];
+extern struct wifiCountryEnumStrMap wifiCountryMap[MAX_WIFI_COUNTRYCODE];
 
 typedef struct radio_interface_mapping {
     uint8_t radio_index;

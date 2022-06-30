@@ -5,6 +5,7 @@
 extern "C" {
 #endif
 
+#include <pthread.h>
 #include "ssp_main.h"
 #include "wifi_base.h"
 #include "wifi_db.h"

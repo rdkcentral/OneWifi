@@ -43,7 +43,9 @@ AM_LDFLAGS += -ljansson
 AM_LDFLAGS += -lrt
 AM_LDFLAGS += -L$(top_builddir)/source/utils/
 AM_LDFLAGS += -lwifi_utils
+if WITH_LIBWEBCONFIG
 AM_LDFLAGS += -L$(top_builddir)/source/webconfig/
+endif
 AM_LDFLAGS += -lwifi_webconfig
 
 AM_CPPFLAGS = -Wall -Werror
@@ -83,6 +85,8 @@ OneWifi_LDFLAGS += -lnl-nf-3
 OneWifi_LDFLAGS += -lnl-idiag-3
 OneWifi_LDFLAGS += -L$(top_builddir)/source/utils/
 OneWifi_LDFLAGS += -lwifi_utils
+if WITH_LIBWEBCONFIG
 OneWifi_LDFLAGS += -L$(top_builddir)/source/webconfig/
+endif
 OneWifi_LDFLAGS += -lwifi_webconfig
 #OneWifi_LDFLAGS += -llibnl-3.la llibnl-genl-3.la llibnl-route-3.la llibnl-nf-3.la llibnl-idiag-3

@@ -7,6 +7,7 @@ extern "C" {
 
 #include <ev.h>
 #include <rbus.h>
+#include <pthread.h>
 #include "wifi_base.h"
 #include "wifi_db.h"
 #include "wifi_blaster.h"

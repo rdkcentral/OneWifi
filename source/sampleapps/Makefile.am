@@ -33,7 +33,9 @@ AM_LDFLAGS = -L$(top_builddir)/source/sysevent/lib
 AM_LDFLAGS += -lsysevent
 AM_LDFLAGS += -L$(top_builddir)/source/utils/
 AM_LDFLAGS += -lwifi_utils
+if WITH_LIBWEBCONFIG
 AM_LDFLAGS += -L$(top_builddir)/source/webconfig/
+endif 
 AM_LDFLAGS += -lwifi_webconfig
 
 
@@ -51,7 +53,9 @@ wifi_webconfig_consumer_SOURCES += $(top_srcdir)/source/utils/collection.c $(top
 wifi_webconfig_consumer_LDFLAGS = -lsysevent -lrbus
 wifi_webconfig_consumer_LDFLAGS += -L$(top_builddir)/source/utils/
 wifi_webconfig_consumer_LDFLAGS += -lwifi_utils
+if WITH_LIBWEBCONFIG
 wifi_webconfig_consumer_LDFLAGS += -L$(top_builddir)/source/webconfig/
+endif
 wifi_webconfig_consumer_LDFLAGS += -lwifi_webconfig
 wifi_webconfig_consumer_CPPFLAGS += -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/opensync_headers
 

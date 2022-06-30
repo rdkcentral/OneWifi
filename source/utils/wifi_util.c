@@ -717,7 +717,7 @@ char *get_formatted_time(char *time)
 
     strftime(tmp, 128, "%y%m%d-%T", tm_info);
 
-    snprintf(time, 128, "%s.%06ld", tmp, tv_now.tv_usec);
+    snprintf(time, 128, "%s.%06lld", tmp, (long long)tv_now.tv_usec);
     return time;
 }
 
