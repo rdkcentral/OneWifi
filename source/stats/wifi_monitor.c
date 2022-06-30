@@ -621,7 +621,7 @@ int upload_client_telemetry_data(void *arg)
         wifi_util_dbg_print(WIFI_MON, "%s", buff);
         get_formatted_time(tmp);
         memset(telemetryBuff, 0, TELEMETRY_MAX_BUFFER);
-#if !defined(_XB7_PRODUCT_REQ_) && !defined(_PLATFORM_TURRIS_) && !defined(_HUB4_PRODUCT_REQ_)
+#if !defined(_XB7_PRODUCT_REQ_) && !defined(_PLATFORM_TURRIS_) && !defined(_HUB4_PRODUCT_REQ_) && !defined(_WNXL11BWL_PRODUCT_REQ_)
         wifi_VAPTelemetry_t telemetry;
         char vap_status[16];
         memset(vap_status,0,16);
@@ -3893,7 +3893,7 @@ int associated_devices_diagnostics(void *arg)
     static unsigned int vap_index = 0;
     static wifi_associated_dev3_t *dev_array = NULL;
     static unsigned int num_devs = 0;
-#if !defined(_CBR_PRODUCT_REQ_) && !defined(_HUB4_PRODUCT_REQ_) && !defined(DUAL_CORE_XB3)
+#if !defined(_CBR_PRODUCT_REQ_) && !defined(_HUB4_PRODUCT_REQ_) && !defined(DUAL_CORE_XB3) && !defined(_WNXL11BWL_PRODUCT_REQ_)
     unsigned int i = 0;
 
     static unsigned int current_dev = 0;
