@@ -61,3 +61,8 @@ AM_CFLAGS += -DCONFIG_WPS -DCONFIG_IEEE80211R_AP -DCONFIG_IEEE80211R -DCONFIG_ET
 AM_CFLAGS += -DEAP_SERVER_FAST
 
 include_HEADERS =  wifi_validator.h
+
+bin_PROGRAMS = wifi_db_ovsh
+wifi_db_ovsh_SOURCES = ovsh.c
+wifi_db_ovsh_LDFLAGS = -ljansson
+wifi_db_ovsh_CPPFLAGS = -I$(top_srcdir)/lib/ovsdb -I$(top_srcdir)/lib/common -I$(top_srcdir)/lib/osa -I$(top_srcdir)/lib/ds -I$(top_srcdir)/lib/pjs -I$(top_srcdir)/lib/json_util -I$(top_srcdir)/lib/schema -I$(top_srcdir)/lib/const -I$(top_srcdir)/lib/log -I$(top_srcdir)/lib/inc
