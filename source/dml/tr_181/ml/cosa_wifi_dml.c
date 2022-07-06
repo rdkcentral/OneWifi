@@ -6615,6 +6615,11 @@ AccessPoint_SetParamBoolValue
         }
         vapInfo->u.bss_info.bssTransitionActivated = bValue;
         set_dml_cache_vap_config_changed(instance_number - 1);
+        if (push_vap_dml_cache_to_one_wifidb() == RETURN_ERR)
+        {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Apply BSSTransitionActivated falied \n",__func__, __LINE__);
+            return FALSE;
+        }
         return  TRUE;
     }
 
@@ -6650,6 +6655,11 @@ AccessPoint_SetParamBoolValue
         }
         vapInfo->u.bss_info.nbrReportActivated = bValue;
         set_dml_cache_vap_config_changed(instance_number - 1);
+        if (push_vap_dml_cache_to_one_wifidb() == RETURN_ERR)
+        {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Apply NeighborReportActivated falied \n",__func__, __LINE__);
+            return FALSE;
+        }
         return TRUE;
     }
     
