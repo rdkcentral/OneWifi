@@ -3080,7 +3080,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config)
             cfg.u.bss_info.security.encr = wifi_encryption_aes_tkip;
         } else if (isVapLnfSecure (vap_index)) {
             cfg.u.bss_info.security.mode = wifi_security_mode_wpa2_enterprise;
-            cfg.u.bss_info.security.encr = wifi_encryption_aes_tkip;
+            cfg.u.bss_info.security.encr = wifi_encryption_aes;
         } else if (isVapPrivate(vap_index))  {
             cfg.u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
             cfg.u.bss_info.security.encr = wifi_encryption_aes;
@@ -3122,7 +3122,19 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config)
         } else {
             strcpy(cfg.u.bss_info.security.u.key.key, "123456789");
         }
-       
+
+        if (isVapLnfSecure(vap_index)) {
+            cfg.u.bss_info.enabled = true;
+            cfg.u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
+            strcpy(cfg.u.bss_info.security.u.radius.identity, "lnf_radius_identity");
+            cfg.u.bss_info.security.u.radius.port = 1812;
+            strcpy(cfg.u.bss_info.security.u.radius.key, "LHK1CxyBz6oAJIuv58oH0vpvysApxo7");
+            strcpy((char *)cfg.u.bss_info.security.u.radius.ip, "127.0.0.1");
+            cfg.u.bss_info.security.u.radius.s_port = 1812;
+            strcpy((char *)cfg.u.bss_info.security.u.radius.s_ip, "127.0.0.1");
+            strcpy(cfg.u.bss_info.security.u.radius.s_key, "LHK1CxyBz6oAJIuv58oH0vpvysApxo7");
+        }
+
         char str[600] = {0};
         snprintf(str,sizeof(str),"%s"," { \"ANQP\":{ \"IPAddressTypeAvailabilityANQPElement\":{ \"IPv6AddressType\":0, \"IPv4AddressType\":0}, \"DomainANQPElement\":{\"DomainName\":[]}, \"NAIRealmANQPElement\":{\"Realm\":[]}, \"3GPPCellularANQPElement\":{ \"GUD\":0, \"PLMN\":[]}, \"RoamingConsortiumANQPElement\": { \"OI\": []}, \"VenueNameANQPElement\": { \"VenueInfo\": []}}}");
         snprintf((char *)cfg.u.bss_info.interworking.anqp.anqpParameters,sizeof(cfg.u.bss_info.interworking.anqp.anqpParameters),"%s",str);

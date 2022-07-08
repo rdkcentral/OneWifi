@@ -7330,22 +7330,14 @@ Security_GetParamUlongValue
     if( AnscEqualString(ParamName, "RadiusServerPort", TRUE))
     {
         /* collect value */
-        if (isVapLnfSecure(vap_pcfg->vap_index)){
-            *puLong = 1812;
-        } else {
-            *puLong = pcfg->u.radius.port;
-        }
+        *puLong = pcfg->u.radius.port;
         return TRUE;
     }
 	
 	if( AnscEqualString(ParamName, "SecondaryRadiusServerPort", TRUE))
     {
         /* collect value */
-        if (isVapLnfSecure(vap_pcfg->vap_index)){
-            *puLong = 1812;
-        } else {
-            *puLong = pcfg->u.radius.s_port;
-        }
+        *puLong = pcfg->u.radius.s_port;
         return TRUE;
     }
 
@@ -7581,9 +7573,11 @@ Security_GetParamStringValue
 
     if( AnscEqualString(ParamName, "RadiusServerIPAddr", TRUE))
     {
-        if(isVapLnfSecure(vap_pcfg->vap_index))
+        int result;
+        result=strcmp((char *)&pcfg->u.radius.ip,"");
+        if(result)
         {
-            AnscCopyString(pValue,"127.0.0.1");
+            AnscCopyString(pValue, (char *)&pcfg->u.radius.ip);
         }
         else
         {
