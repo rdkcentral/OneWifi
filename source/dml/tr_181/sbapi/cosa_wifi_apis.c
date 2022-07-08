@@ -1131,13 +1131,13 @@ ANSC_STATUS regDomainStrToEnum(char *pRegDomain, wifi_countrycode_type_t *pCount
     return ANSC_STATUS_SUCCESS;
 }
 
-ANSC_STATUS wifiStdStrToEnum(char *pWifiStdStr, wifi_ieee80211Variant_t *p80211VarEnum)
+ANSC_STATUS wifiStdStrToEnum(char *pWifiStdStr, wifi_ieee80211Variant_t *p80211VarEnum, ULONG instance_number)
 {
     UINT seqCounter = 0;
     bool isWifiStdInvalid = TRUE;
     char *token;
     char tmpInputString[128] = {0};
-
+    wifi_rfc_dml_parameters_t *rfc_pcfg = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
 
     if ((pWifiStdStr == NULL) || (p80211VarEnum == NULL))
     {
@@ -1155,7 +1155,15 @@ ANSC_STATUS wifiStdStrToEnum(char *pWifiStdStr, wifi_ieee80211Variant_t *p80211V
         isWifiStdInvalid = TRUE;
         for (seqCounter = 0; seqCounter < ARRAY_SZ(wifiStdMap); seqCounter++)
         {
-            if (AnscEqualString(token, wifiStdMap[seqCounter].wifiStdName, TRUE))
+            if ((AnscEqualString("ax", token, TRUE)) && (instance_number == 1)
+                && !rfc_pcfg->twoG80211axEnable_rfc)
+            {
+                CcspWifiTrace(("RDK_LOG_INFO, Radio instanceNumber:%lu Device.WiFi.2G80211axEnable"
+                    "is set to FALSE(%d), hence unable to set 'AX' as operating standard\n",
+                    instance_number,rfc_pcfg->twoG80211axEnable_rfc));
+                isWifiStdInvalid = FALSE;
+            }
+            else if (AnscEqualString(token, wifiStdMap[seqCounter].wifiStdName, TRUE))
             {
                 *p80211VarEnum |= wifiStdMap[seqCounter].halWifiStd;
                 ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s input : %s wifiStandard : %d\n", __FUNCTION__, pWifiStdStr, *p80211VarEnum);

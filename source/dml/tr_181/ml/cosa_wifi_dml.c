@@ -259,10 +259,6 @@ WiFi_GetParamBoolValue
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "2G80211axEnable", TRUE))
-    {
-        return TRUE;
-    }
 
     if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_PreferPrivate", TRUE))
     {
@@ -316,6 +312,12 @@ WiFi_GetParamBoolValue
     if (AnscEqualString(ParamName, "DFSatBootUp", TRUE))
     {
         *pBool = rfc_pcfg->dfsatbootup_rfc;
+        return TRUE;
+    }
+
+    if (AnscEqualString(ParamName, "2G80211axEnable", TRUE))
+    {
+        *pBool = rfc_pcfg->twoG80211axEnable_rfc;
         return TRUE;
     }
 
@@ -658,10 +660,6 @@ WiFi_SetParamBoolValue
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "2G80211axEnable", TRUE))
-    {
-        return TRUE;
-    }
 
     if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_WiFiHost_Sync", TRUE))
     {
@@ -838,6 +836,14 @@ WiFi_SetParamBoolValue
         }
         return TRUE;
     }
+    if (AnscEqualString(ParamName, "2G80211axEnable", TRUE))
+    {
+        if(bValue != rfc_pcfg->twoG80211axEnable_rfc) {
+            push_rfc_dml_cache_to_one_wifidb(bValue,ctrl_event_type_twoG80211axEnable_rfc);
+        }
+        return TRUE;
+    }
+
     return FALSE;
 }
 
@@ -2691,6 +2697,7 @@ Radio_GetParamStringValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointerr get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
+    wifi_rfc_dml_parameters_t *rfc_pcfg = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
 
     /* check the parameter name and return the corresponding value */
     if( AnscEqualString(ParamName, "Alias", TRUE))
@@ -2806,13 +2813,16 @@ Radio_GetParamStringValue
         }
         if ( pcfg->variant & WIFI_80211_VARIANT_AX )
         {
-            if (AnscSizeOfString(buf) != 0)
-            {
-                strcat(buf, ",ax");
-            }
-            else
-            {
-                strcat(buf, "ax");
+
+            if ((instance_number -1) || (rfc_pcfg && rfc_pcfg->twoG80211axEnable_rfc)) {
+                if (AnscSizeOfString(buf) != 0)
+                {
+                    strcat(buf, ",ax");
+                }
+                else
+                {
+                    strcat(buf, "ax");
+                }
             }
         }
 
@@ -3861,7 +3871,7 @@ Radio_SetParamStringValue
 
     if(AnscEqualString(ParamName, "OperatingStandards", TRUE)) {
         wifi_ieee80211Variant_t wifi_variant;
-        if (wifiStdStrToEnum(pString, &wifi_variant) != ANSC_STATUS_SUCCESS) {
+        if (wifiStdStrToEnum(pString, &wifi_variant,instance_number) != ANSC_STATUS_SUCCESS) {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: wrong wifi std String=%s\n",__func__, __LINE__,pString);
             return FALSE;
         }

@@ -283,7 +283,7 @@ struct wifiDataTxRateHalMap
 void ccspWifiDbgPrint(int level, char *format, ...);
 ANSC_STATUS txRateStrToUint(char *inputStr, UINT *pTxRate);
 ANSC_STATUS freqBandStrToEnum(char *pFreqBandStr, wifi_freq_bands_t *pFreqBandEnum);
-ANSC_STATUS wifiStdStrToEnum(char *pWifiStdStr, wifi_ieee80211Variant_t *p80211VarEnum);
+ANSC_STATUS wifiStdStrToEnum(char *pWifiStdStr, wifi_ieee80211Variant_t *p80211VarEnum, ULONG instance_num);
 ANSC_STATUS regDomainStrToEnum(char *pRegDomain, wifi_countrycode_type_t *pCountryCode);
 ANSC_STATUS guardIntervalDmlEnumtoHalEnum(UINT ccspGiEnum, wifi_guard_interval_t *halGiEnum);
 ANSC_STATUS operChanBandwidthDmlEnumtoHalEnum(UINT ccspBw, wifi_channelBandwidth_t *halBw);

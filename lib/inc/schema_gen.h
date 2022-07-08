@@ -158,6 +158,7 @@
         PJS_OVS_BOOL(dfsatbootup_rfc) \
         PJS_OVS_BOOL(dfs_rfc) \
         PJS_OVS_BOOL(wpa3_rfc) \
+        PJS_OVS_BOOL(twoG80211axEnable_rfc) \
   )
 
 #define PJS_SCHEMA_Wifi_MacFilter_Config \
@@ -1981,7 +1982,8 @@
     COLUMN(radiusgreylist_rfc) \
     COLUMN(dfsatbootup_rfc) \
     COLUMN(dfs_rfc) \
-    COLUMN(wpa3_rfc)
+    COLUMN(wpa3_rfc) \
+    COLUMN(twoG80211axEnable_rfc)
 
 #define SCHEMA__Wifi_MacFilter_Config "Wifi_MacFilter_Config"
 #define SCHEMA_COLUMN__Wifi_MacFilter_Config(COLUMN) \
@@ -3254,6 +3256,7 @@
 #define SCHEMA__Wifi_Rfc_Config__radiusgreylist_rfc "radiusgreylist_rfc"
 #define SCHEMA__Wifi_Rfc_Config__dfsatbootup_rfc "dfsatbootup_rfc"
 #define SCHEMA__Wifi_Rfc_Config__wpa3_rfc "wpa3_rfc"
+#define SCHEMA__Wifi_Rfc_Config__twoG80211axEnable_rfc "twoG80211axEnable_rfc"
 
 #define SCHEMA__Alarms__code "code"
 #define SCHEMA__Alarms__timestamp "timestamp"

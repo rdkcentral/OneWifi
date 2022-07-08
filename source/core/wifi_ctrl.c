@@ -1083,6 +1083,7 @@ wifi_rfc_dml_parameters_t* get_ctrl_rfc_parameters(void)
     g_wifi_mgr->ctrl.rfc_params.dfsatbootup_rfc  = g_wifi_mgr->rfc_dml_parameters.dfsatbootup_rfc ;
     g_wifi_mgr->ctrl.rfc_params.dfs_rfc = g_wifi_mgr->rfc_dml_parameters.dfs_rfc;
     g_wifi_mgr->ctrl.rfc_params.wpa3_rfc = g_wifi_mgr->rfc_dml_parameters.wpa3_rfc;
+    g_wifi_mgr->ctrl.rfc_params.twoG80211axEnable_rfc = g_wifi_mgr->rfc_dml_parameters.twoG80211axEnable_rfc;
     strcpy(g_wifi_mgr->ctrl.rfc_params.rfc_id,g_wifi_mgr->rfc_dml_parameters.rfc_id);
     return &g_wifi_mgr->ctrl.rfc_params;
 }

@@ -122,8 +122,9 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon,
         rfc_param->dfsatbootup_rfc = new_rec->dfsatbootup_rfc;
         rfc_param->dfs_rfc = new_rec->dfs_rfc;
         rfc_param->wpa3_rfc  = new_rec->wpa3_rfc;
+        rfc_param->twoG80211axEnable_rfc  = new_rec->twoG80211axEnable_rfc;
 
-        wifi_util_dbg_print(WIFI_DB,"%s:%d wifipasspoint_rfc=%d wifiinterworking_rfc=%d radiusgreylist_rfc=%d dfsatbootup_rfc=%d dfs_rfc=%d wpa3_rfc=%d rfc_id=%s\n", __func__, __LINE__,rfc_param->wifipasspoint_rfc,rfc_param->wifiinterworking_rfc,rfc_param->radiusgreylist_rfc,rfc_param->dfsatbootup_rfc, rfc_param->dfs_rfc ,rfc_param->wpa3_rfc,rfc_param->rfc_id);
+        wifi_util_dbg_print(WIFI_DB,"%s:%d wifipasspoint_rfc=%d wifiinterworking_rfc=%d radiusgreylist_rfc=%d dfsatbootup_rfc=%d dfs_rfc=%d wpa3_rfc=%d twoG80211axEnable_rfc=%d rfc_id=%s\n", __func__, __LINE__,rfc_param->wifipasspoint_rfc,rfc_param->wifiinterworking_rfc,rfc_param->radiusgreylist_rfc,rfc_param->dfsatbootup_rfc, rfc_param->dfs_rfc ,rfc_param->wpa3_rfc,rfc_param->twoG80211axEnable_rfc,rfc_param->rfc_id);
        pthread_mutex_unlock(&g_wifidb->data_cache_lock);
 
 	}
@@ -995,6 +996,8 @@ int wifidb_update_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_param)
     cfg.dfsatbootup_rfc = rfc_param->dfsatbootup_rfc;
     cfg.dfs_rfc = rfc_param->dfs_rfc;
     cfg.wpa3_rfc = rfc_param->wpa3_rfc;
+    cfg.twoG80211axEnable_rfc = rfc_param->twoG80211axEnable_rfc;
+
     if (update == true) {
         where = ovsdb_tran_cond(OCLM_STR, "rfc_id", OFUNC_EQ, index); 
         ret = ovsdb_table_update_where(g_wifidb->wifidb_sock_path, &table_Wifi_Rfc_Config, where, &cfg);
@@ -1051,6 +1054,7 @@ int wifidb_get_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_info)
     rfc_info->dfsatbootup_rfc = pcfg->dfsatbootup_rfc;
     rfc_info->dfs_rfc = pcfg->dfs_rfc;
     rfc_info->wpa3_rfc = pcfg->wpa3_rfc;
+    rfc_info->twoG80211axEnable_rfc = pcfg->twoG80211axEnable_rfc;
     free(pcfg);
     return 0;
 }

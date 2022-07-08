@@ -1313,6 +1313,23 @@ void process_dfs_atbootup_rfc(bool type)
     wifidb_update_rfc_config(0, rfc_param);
 }
 
+void process_twoG80211axEnable_rfc(bool type)
+{
+    int ret = 0;
+    wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
+
+    wifi_util_dbg_print(WIFI_DB,"WIFI Enter RFC Func %s: %d : bool %d\n",__FUNCTION__,__LINE__,type);
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
+    ret = wifi_allow2G80211ax(type);
+    if (ret == 0) {
+        rfc_param->twoG80211axEnable_rfc = type;
+        ret = wifidb_update_rfc_config(0, rfc_param);
+        if (ret == 0) {
+            g_wifi_mgr->rfc_dml_parameters.twoG80211axEnable_rfc = type;
+        }
+    }
+}
+
 void process_wps_command_event(unsigned int vap_index)
 {
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi wps test vap index = %d\n",__func__, __LINE__, vap_index);
@@ -1396,6 +1413,9 @@ void handle_command_event(void *data, unsigned int len, ctrl_event_subtype_t sub
             break;
         case ctrl_event_type_dfs_atbootup_rfc:
             process_dfs_atbootup_rfc(*(bool *)data);
+            break;
+        case ctrl_event_type_twoG80211axEnable_rfc:
+            process_twoG80211axEnable_rfc(*(bool *)data);
             break;
 
         case ctrl_event_type_command_kickmac:
