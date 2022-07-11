@@ -198,6 +198,11 @@ int init_wifimgr()
         g_wifi_mgr.csi_data_queue = queue_create();
     }
 
+    //init ssp_loop.
+    if (ssp_loop_init() < 0) {
+        wifi_util_dbg_print(WIFI_MGR,"%s:%d ssp_loop_init failed \n", __func__, __LINE__);
+    }
+
     //Start Wifi DB server, and Initialize data Cache
     init_wifidb();
 

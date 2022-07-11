@@ -1246,7 +1246,8 @@ int push_data_to_ssp_queue(const void *msg, unsigned int len, ssp_event_type_t t
 {
     ssp_event_t *data;
     data = (ssp_event_t *)malloc(sizeof(ssp_event_t));
-    if(data == NULL) {
+    if((data == NULL) || (g_ssp_loop.queue == NULL)){
+        wifi_util_dbg_print(WIFI_PSM, "%s:%d NULL Pointer\n", __func__, __LINE__);
         return -1;
     }
     memset(data, 0, sizeof(ssp_event_t));
@@ -1273,12 +1274,15 @@ int push_data_to_ssp_queue(const void *msg, unsigned int len, ssp_event_type_t t
 
     return 0;
 }
-
 int ssp_loop_init()
 {
     pthread_cond_init(&g_ssp_loop.cond, NULL);
     pthread_mutex_init(&g_ssp_loop.lock, NULL);
     g_ssp_loop.queue = queue_create();
+    if (g_ssp_loop.queue == NULL) {
+        wifi_util_dbg_print(WIFI_PSM, "%s:%d - Failed to create ssp queue\n", __func__, __LINE__);
+        return -1;
+    }
     g_ssp_loop.exit_loop = false;
     g_ssp_loop.post = push_data_to_ssp_queue;
     return 0;
