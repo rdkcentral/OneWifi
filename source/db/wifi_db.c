@@ -3324,8 +3324,8 @@ void wifidb_init_default_value()
 
         for (vap_index = 0; vap_index < MAX_NUM_VAP_PER_RADIO; vap_index++)
         {
-            memset(&l_vap_param_cfg->vap_array[vap_index].u.bss_info, 0, sizeof(wifi_back_haul_sta_t));
-            memset(&l_vap_param_cfg->vap_array[vap_index].u.sta_info, 0, sizeof(wifi_front_haul_bss_t));
+            memset(&l_vap_param_cfg->vap_array[vap_index].u.sta_info, 0, sizeof(wifi_back_haul_sta_t));
+            memset(&l_vap_param_cfg->vap_array[vap_index].u.bss_info, 0, sizeof(wifi_front_haul_bss_t));
             memset(&l_vap_param_cfg->vap_array[vap_index].bridge_name, 0, WIFI_BRIDGE_NAME_LEN);
             memset(&l_vap_param_cfg->vap_array[vap_index].vap_mode, 0, sizeof(wifi_vap_mode_t));
         }

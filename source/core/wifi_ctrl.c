@@ -911,13 +911,31 @@ wifi_vap_info_t* get_wifidb_vap_parameters(uint8_t vapIndex)
 
 int get_wifi_vap_network_status(uint8_t vapIndex, bool *status)
 {
-    wifi_front_haul_bss_t *bss_param = Get_wifi_object_bss_parameter(vapIndex);
-    if(bss_param != NULL) {
-        *status = bss_param->enabled;
-    } else {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d bss_param null for vapIndex:%d \n", __func__, __LINE__, vapIndex);
+    int ret;
+    wifi_vap_info_t vap_cfg;
+    char vap_name[32];
+    memset(vap_name, 0, sizeof(vap_name));
+    memset(&vap_cfg, 0, sizeof(vap_cfg));
+
+    ret = convert_vap_index_to_name(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, vapIndex, vap_name);
+    if (ret != RETURN_OK) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d failure convert vap-index to name vapIndex:%d \n", __func__, __LINE__, vapIndex);
         return RETURN_ERR;
     }
+    ret = wifidb_get_wifi_vap_info(vap_name, &vap_cfg);
+    if (ret != RETURN_OK) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d wifiDb get vapInfo failure :vap_name:%s \n", __func__, __LINE__, vap_name);
+        wifi_front_haul_bss_t *bss_param = Get_wifi_object_bss_parameter(vapIndex);
+        if(bss_param != NULL) {
+            *status = bss_param->enabled;
+        } else {
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d bss_param null for vapIndex:%d \n", __func__, __LINE__, vapIndex);
+            return RETURN_ERR;
+        }
+        return RETURN_OK;
+    }
+    *status = vap_cfg.u.bss_info.enabled;
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d vap_info: vap_name:%s vap_index:%d, bss_status:%d\n", __func__, __LINE__, vap_name, vapIndex, *status);
 
     return RETURN_OK;
 }
