@@ -62,7 +62,7 @@ if [ $# -eq 0 ]; then
  exit 0
 else
  platform_checks
- if [ "$OPENSYNC_ENABLE" == "true" ];then
+ if [ "$OPENSYNC_ENABLE" == "true" ] || [ -f /etc/onewifi_enabled ];then
     if [ -z "$(pidof ovsdb-server)" ]
     then
         /usr/opensync/scripts/managers.init $1
