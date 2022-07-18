@@ -186,13 +186,148 @@ void update_csi_data_queue(rbusHandle_t handle, rbusEvent_t const* event, rbusEv
     *csi_queue = data.u.decoded.csi_data_queue;
 }
 
+void mac_filter_dml_vap_cache_update(int radio_index, int vap_array_index)
+{
+    //webconfig decode allocate mem for the hash map which is getting cleared and destroyed here
+    hash_map_t** acl_dev_map = get_dml_acl_hash_map(radio_index, vap_array_index);
+    if(*acl_dev_map) {
+        acl_entry_t *temp_acl_entry, *acl_entry;
+        mac_addr_str_t mac_str;
+        acl_entry = hash_map_get_first(*acl_dev_map);
+        while (acl_entry != NULL) {
+            to_mac_str(acl_entry->mac,mac_str);
+            acl_entry = hash_map_get_next(*acl_dev_map,acl_entry);
+            temp_acl_entry = hash_map_remove(*acl_dev_map, mac_str);
+            if (temp_acl_entry != NULL) {
+                free(temp_acl_entry);
+            }
+        }
+        hash_map_destroy(*acl_dev_map);
+    }
+}
+
+void update_dml_subdoc_vap_data(webconfig_subdoc_data_t *data)
+{
+    webconfig_subdoc_decoded_data_t *params;
+    unsigned int i, j;
+    wifi_vap_info_map_t *map;
+    wifi_vap_info_t *vap;
+    wifi_vap_info_map_t *dml_map;
+    wifi_vap_info_t *dml_vap;
+
+    params = &data->u.decoded;
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d subdoc parse and update dml global cache:%d\n",__func__, __LINE__, data->type);
+    for (i = 0; i < params->num_radios; i++) {
+        map = &params->radios[i].vaps.vap_map;
+        dml_map = &webconfig_dml.radios[i].vaps.vap_map;
+        for (j = 0; j < map->num_vaps; j++) {
+            vap = &map->vap_array[j];
+            dml_vap = &dml_map->vap_array[j];
+
+            switch (data->type) {
+                case webconfig_subdoc_type_private:
+                    if (is_vap_private(&params->hal_cap.wifi_prop, vap->vap_index) && (strlen(vap->vap_name))) {
+                        memcpy(dml_vap, vap, sizeof(wifi_vap_info_t));
+                    }
+                    break;
+                case webconfig_subdoc_type_home:
+                    if (is_vap_xhs(&params->hal_cap.wifi_prop, vap->vap_index)) {
+                        memcpy(dml_vap, vap, sizeof(wifi_vap_info_t));
+                    }
+                    break;
+                case webconfig_subdoc_type_xfinity:
+                    if (is_vap_hotspot(&params->hal_cap.wifi_prop, vap->vap_index)) {
+                        memcpy(dml_vap, vap, sizeof(wifi_vap_info_t));
+                    }
+                    break;
+                case webconfig_subdoc_type_mesh:
+                    if (is_vap_mesh(&params->hal_cap.wifi_prop, vap->vap_index)) {
+                        mac_filter_dml_vap_cache_update(i, j);
+                        memcpy(dml_vap, vap, sizeof(wifi_vap_info_t));
+                        webconfig_dml.radios[i].vaps.rdk_vap_array[j].acl_map = params->radios[i].vaps.rdk_vap_array[j].acl_map;
+                        webconfig_dml.radios[i].vaps.rdk_vap_array[j].vap_index = params->radios[i].vaps.rdk_vap_array[j].vap_index;
+                    }
+                    break;
+                case webconfig_subdoc_type_mesh_backhaul:
+                    if (is_vap_mesh_backhaul(&params->hal_cap.wifi_prop, vap->vap_index)) {
+                        mac_filter_dml_vap_cache_update(i, j);
+                        memcpy(dml_vap, vap, sizeof(wifi_vap_info_t));
+                        webconfig_dml.radios[i].vaps.rdk_vap_array[j].acl_map = params->radios[i].vaps.rdk_vap_array[j].acl_map;
+                        webconfig_dml.radios[i].vaps.rdk_vap_array[j].vap_index = params->radios[i].vaps.rdk_vap_array[j].vap_index;
+                    }
+                    break;
+                case webconfig_subdoc_type_mesh_sta:
+                    if (is_vap_mesh_sta(&params->hal_cap.wifi_prop, vap->vap_index)) {
+                        memcpy(dml_vap, vap, sizeof(wifi_vap_info_t));
+                    }
+                    break;
+                default:
+                    wifi_util_dbg_print(WIFI_DMCLI,"%s %d Invalid subdoc parse:%d\n",__func__, __LINE__, data->type);
+                    break;
+            }
+        }
+    }
+}
+
+void mac_filter_dml_cache_update(webconfig_subdoc_data_t *data)
+{
+    int itr, itrj;
+
+    //webconfig decode allocate mem for the hash map which is getting cleared and destroyed here
+    for (itr=0; itr<(int)data->u.decoded.num_radios; itr++) {
+        for(itrj = 0; itrj < MAX_NUM_VAP_PER_RADIO; itrj++) {
+            hash_map_t** acl_dev_map = get_dml_acl_hash_map(itr,itrj);
+            if(*acl_dev_map) {
+                acl_entry_t *temp_acl_entry, *acl_entry;
+                mac_addr_str_t mac_str;
+                acl_entry = hash_map_get_first(*acl_dev_map);
+                while (acl_entry != NULL) {
+                    to_mac_str(acl_entry->mac,mac_str);
+                    acl_entry = hash_map_get_next(*acl_dev_map,acl_entry);
+                    temp_acl_entry = hash_map_remove(*acl_dev_map, mac_str);
+                    if (temp_acl_entry != NULL) {
+                        free(temp_acl_entry);
+                    }
+                }
+                hash_map_destroy(*acl_dev_map);
+            }
+        }
+    }
+}
+
+void dml_cache_update(webconfig_subdoc_data_t *data)
+{
+    webconfig_subdoc_decoded_data_t *params;
+    unsigned int i;
+
+    switch(data->type) {
+        case webconfig_subdoc_type_radio:
+            params = &data->u.decoded;
+            for (i = 0; i < params->num_radios; i++) {
+                wifi_util_dbg_print(WIFI_DMCLI,"%s %d dml radio[%d] cache update\r\n", __func__, __LINE__, i);
+                memcpy(&webconfig_dml.radios[i].oper, &params->radios[i].oper, sizeof(params->radios[i].oper));
+            }
+            break;
+        case webconfig_subdoc_type_dml:
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d subdoc parse and update dml global cache:%d\n",__func__, __LINE__, data->type);
+            mac_filter_dml_cache_update(data);
+            memcpy((unsigned char *)&webconfig_dml.radios, (unsigned char *)&data->u.decoded.radios, data->u.decoded.num_radios*sizeof(rdk_wifi_radio_t));
+            memcpy((unsigned char *)&webconfig_dml.config, (unsigned char *)&data->u.decoded.config, sizeof(wifi_global_config_t));
+            memcpy((unsigned char *)&webconfig_dml.hal_cap,(unsigned char *)&data->u.decoded.hal_cap, sizeof(wifi_hal_capability_t));
+            webconfig_dml.hal_cap.wifi_prop.numRadios = data->u.decoded.num_radios;
+            break;
+        default:
+            update_dml_subdoc_vap_data(data);
+            break;
+    }
+}
+
 void set_webconfig_dml_data(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription)
 {
     int len = 0;
     const char * pTmp = NULL;
     webconfig_subdoc_data_t data;
     rbusValue_t value;
-    int itr, itrj;
 
     const char* eventName = event->name;
 
@@ -212,10 +347,16 @@ void set_webconfig_dml_data(rbusHandle_t handle, rbusEvent_t const* event, rbusE
     // setup the raw data
     memset(&data, 0, sizeof(webconfig_subdoc_data_t));
     data.signature = WEBCONFIG_MAGIC_SIGNATUTRE;
-    data.type = webconfig_subdoc_type_dml;
+    data.type = webconfig_subdoc_type_unknown;
     data.descriptor = 0;
-    data.descriptor = webconfig_data_descriptor_encoded;
+    data.descriptor = webconfig_data_descriptor_encoded | webconfig_data_descriptor_translate_to_tr181;
     strcpy(data.u.encoded.raw, pTmp);
+
+    //wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: dml Json:\n%s\r\n", __func__, __LINE__, data.u.encoded.raw);
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: hal capability update\r\n", __func__, __LINE__);
+    memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap, sizeof(wifi_hal_capability_t));
+
+    data.u.decoded.num_radios = webconfig_dml.hal_cap.wifi_prop.numRadios;
 
     // tell webconfig to decode
     if (webconfig_set(&webconfig_dml.webconfig, &data)== webconfig_error_none){
@@ -224,32 +365,7 @@ void set_webconfig_dml_data(rbusHandle_t handle, rbusEvent_t const* event, rbusE
         wifi_util_dbg_print(WIFI_DMCLI,"%s %d webconfig_set fail \n",__FUNCTION__,__LINE__ );
         return;
     }
-
-    //webconfig decode allocate mem for the hash map which is getting cleared and destroyed here
-    for (itr=0; itr<(int)data.u.decoded.num_radios; itr++) {
-        for(itrj = 0; itrj < MAX_NUM_VAP_PER_RADIO; itrj++) {
-            hash_map_t** acl_dev_map = get_dml_acl_hash_map(itr,itrj);
-            if(*acl_dev_map) {
-                acl_entry_t *temp_acl_entry, *acl_entry;
-                mac_addr_str_t mac_str;
-                acl_entry = hash_map_get_first(*acl_dev_map);
-                while (acl_entry != NULL) {
-                    to_mac_str(acl_entry->mac,mac_str);
-                    acl_entry = hash_map_get_next(*acl_dev_map,acl_entry);
-                    temp_acl_entry = hash_map_remove(*acl_dev_map, mac_str);
-                    if (temp_acl_entry != NULL) {
-                        free(temp_acl_entry);
-                    }
-                }
-                hash_map_destroy(*acl_dev_map);
-            }
-        }
-    }
-
-    memcpy((unsigned char *)&webconfig_dml.radios, (unsigned char *)&data.u.decoded.radios, data.u.decoded.num_radios*sizeof(rdk_wifi_radio_t));
-    memcpy((unsigned char *)&webconfig_dml.config, (unsigned char *)&data.u.decoded.config, sizeof(wifi_global_config_t));
-    memcpy((unsigned char *)&webconfig_dml.hal_cap,(unsigned char *)&data.u.decoded.hal_cap, sizeof(wifi_hal_capability_t));
-    webconfig_dml.hal_cap.wifi_prop.numRadios = data.u.decoded.num_radios;
+    dml_cache_update(&data);
 
     return ;
 }
@@ -261,7 +377,7 @@ void rbus_dmlwebconfig_register(webconfig_dml_t *consumer)
     char *component_name = "WebconfigDML";
 
     rbusEventSubscription_t rbusEvents[] = {
-        { WIFI_WEBCONFIG_DOC_DATA_SOUTH, NULL, 0, 0, set_webconfig_dml_data, NULL, NULL, NULL}, // DML Subdoc
+        { WIFI_WEBCONFIG_DOC_DATA_NORTH, NULL, 0, 0, set_webconfig_dml_data, NULL, NULL, NULL}, // DML Subdoc
         { WIFI_WEBCONFIG_GET_CSI, NULL, 0, 0, update_csi_data_queue, NULL, NULL, NULL}, // CSI subdoc
     };
 
@@ -283,6 +399,7 @@ void rbus_dmlwebconfig_register(webconfig_dml_t *consumer)
 
 webconfig_error_t webconfig_dml_apply(webconfig_dml_t *consumer, webconfig_subdoc_data_t *data)
 {
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d webconfig dml apply\n", __func__, __LINE__);
     return webconfig_error_none;
 }
 
@@ -451,6 +568,12 @@ int init(webconfig_dml_t *consumer)
         for (itrj = 0; itrj<MAX_NUM_VAP_PER_RADIO; itrj++) {
             queue_t **new_dev_queue = (queue_t **)get_dml_acl_new_entry_queue(itr, itrj);
             *new_dev_queue = queue_create();
+        }
+    }
+
+    for (itr = 0; itr<MAX_NUM_RADIOS; itr++) {
+        for (itrj = 0; itrj<MAX_NUM_VAP_PER_RADIO; itrj++) {
+            consumer->radios[itr].vaps.rdk_vap_array[itrj].acl_map = NULL;
         }
     }
 
