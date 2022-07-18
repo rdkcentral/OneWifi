@@ -73,8 +73,9 @@ extern "C" {
 #define WIFI_ALL_RADIO_INDICES             0xffff
 #define DEVICE_TUNNEL_UP                   1
 #define DEVICE_TUNNEL_DOWN                 0
-//sta connection 9 seconds retry
-#define STA_CONN_RETRY                     5
+//sta connection 10 seconds retry
+#define STA_CONN_RETRY                     8
+#define STA_MAX_CONNECT_ATTEMPT            1
 
 #define WLAN_RADIUS_GREYLIST_REJECT        100
 #define GREYLIST_TIMEOUT_IN_SECONDS        (24 * 60 * 60)
@@ -130,6 +131,7 @@ typedef enum {
 typedef struct scan_result {
     wifi_bss_info_t      external_ap;
     connection_attempt_t conn_attempt;
+    unsigned int         conn_retry_attempt;
 } scan_list_t;
 
 typedef struct wifi_ctrl {

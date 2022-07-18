@@ -48,12 +48,15 @@ void process_scan_results_event(wifi_bss_info_t *bss, unsigned int len)
 	    if(ctrl->scan_list != NULL) {
             	wifi_util_dbg_print(WIFI_CTRL, "%s:%d: candidate_list is present ctrl->scan_list:%p\n", __func__, __LINE__, ctrl->scan_list);
 	    }
+
+            memset(scan_list, 0, num * sizeof(scan_list_t));
             ctrl->scan_list = scan_list;
             ctrl->scan_count = num;
 
             for (i = 0; i < num; i++) {
                 memcpy(&scan_list->external_ap, tmp_bss, sizeof(wifi_bss_info_t));
 		scan_list->conn_attempt = connection_attempt_wait;
+                scan_list->conn_retry_attempt = 0;
 		wifi_util_dbg_print(WIFI_CTRL, "%s:%d: AP with ssid:%s, bssid:%s, rssi:%d, freq:%d\n",
                             __func__, __LINE__, tmp_bss->ssid, to_mac_str(tmp_bss->bssid, bssid_str), tmp_bss->rssi, tmp_bss->freq);
                 tmp_bss++;
@@ -347,34 +350,41 @@ void process_sta_conn_status_event(rdk_sta_data_t *sta_data, unsigned int len)
                 wifi_util_dbg_print(WIFI_CTRL,"%s:%d Mode: Extender, sta not connected, conn_state:%d\n",__FUNCTION__, __LINE__, ctrl->conn_state);
                 scan_list_t *scan_list;
                 scan_list = ctrl->scan_list;
- 
-                for(i = 0; i < ctrl->scan_count; i++) {
-                    wifi_util_dbg_print(WIFI_CTRL,"%s:%d bssid:%s scan_list->conn_attempt:%d\n",__FUNCTION__, __LINE__,
-       		 				to_mac_str(scan_list->external_ap.bssid, bssid_str), scan_list->conn_attempt);
-                    if(scan_list->conn_attempt == connection_attempt_in_progress) {
-                        scan_list->conn_attempt = connection_attempt_failed;
-                    }
-       	            if(scan_list->conn_attempt == connection_attempt_wait)
-                        scan = false;
 
-                    scan_list++;
-                }
-
-                if(scan) {
-                    ctrl->conn_state = connection_state_disconnected;
-                    if (ctrl->scan_list != NULL) {
-                        free(ctrl->scan_list);
-                        ctrl->scan_list = NULL;
-                        ctrl->scan_count = 0;
-                    }
-        	    wifi_util_dbg_print(WIFI_CTRL,"%s:%d start Scan on 2.4GHz and 5GHz radios\n",__func__, __LINE__);
-                     /* start scan on 2.4Ghz */
-                     get_default_supported_scan_channel_list(WIFI_FREQUENCY_2_4_BAND, &channel_list, &num_of_channels);
-                     wifi_hal_startScan(0, WIFI_RADIO_SCAN_MODE_OFFCHAN, 0, num_of_channels, channel_list);
+                if (scan_list != NULL) {
  
-                     /* start scan on 5Ghz */
-                     get_default_supported_scan_channel_list(WIFI_FREQUENCY_5_BAND, &channel_list, &num_of_channels);
-                     wifi_hal_startScan(1, WIFI_RADIO_SCAN_MODE_OFFCHAN, 0, num_of_channels, channel_list);
+                    for(i = 0; i < ctrl->scan_count; i++) {
+                        wifi_util_dbg_print(WIFI_CTRL,"%s:%d bssid:%s scan_list->conn_attempt:%d\n",__FUNCTION__, __LINE__,
+                                to_mac_str(scan_list->external_ap.bssid, bssid_str), scan_list->conn_attempt);
+                        if(scan_list->conn_attempt == connection_attempt_in_progress) {
+                            scan_list->conn_attempt = connection_attempt_failed;
+                        }
+
+                        if(scan_list->conn_attempt == connection_attempt_wait) {
+                            scan = false;
+                        }
+
+                        scan_list++;
+                    }
+
+                    if(scan) {
+                        ctrl->conn_state = connection_state_disconnected;
+                        if (ctrl->scan_list != NULL) {
+                            free(ctrl->scan_list);
+                            ctrl->scan_list = NULL;
+                            ctrl->scan_count = 0;
+                        }
+                        wifi_util_dbg_print(WIFI_CTRL,"%s:%d start Scan on 2.4GHz and 5GHz radios\n",__func__, __LINE__);
+                        /* start scan on 2.4Ghz */
+                        get_default_supported_scan_channel_list(WIFI_FREQUENCY_2_4_BAND, &channel_list, &num_of_channels);
+                        wifi_hal_startScan(0, WIFI_RADIO_SCAN_MODE_OFFCHAN, 0, num_of_channels, channel_list);
+ 
+                       /* start scan on 5Ghz */
+                       get_default_supported_scan_channel_list(WIFI_FREQUENCY_5_BAND, &channel_list, &num_of_channels);
+                       wifi_hal_startScan(1, WIFI_RADIO_SCAN_MODE_OFFCHAN, 0, num_of_channels, channel_list);
+                    }
+                } else {
+                    wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi_scan list not present\r\n",__func__, __LINE__);
                 }
             } else {
                 wifi_util_dbg_print(WIFI_CTRL,"%s:%d Mode: Extender, sta connected, change it to disconnected, conn_state:%d\n",

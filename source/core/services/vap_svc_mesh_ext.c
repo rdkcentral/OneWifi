@@ -20,7 +20,7 @@ bool vap_svc_is_mesh_ext(unsigned int vap_index)
 
 void get_default_supported_scan_channel_list(uint8_t radio_band, unsigned int **channel_list, unsigned char *num_of_channels)
 {
-    static unsigned int radio_2_4_ghz_channel_list[] = { 1, 6, 11 };
+    static unsigned int radio_2_4_ghz_channel_list[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
     static unsigned int radio_5_ghz_channel_list[] = { 36, 40, 44, 48, 149, 153, 157, 161, 165 };
 
     if (radio_band == WIFI_FREQUENCY_2_4_BAND) {
@@ -32,7 +32,7 @@ void get_default_supported_scan_channel_list(uint8_t radio_band, unsigned int **
         *num_of_channels = ARRAY_SZ(radio_5_ghz_channel_list);
     }
 
-    wifi_util_dbg_print(WIFI_CTRL, "%s:%d: wifi number of scan channels:%d : %d\r\n", __func__, __LINE__, *num_of_channels, *channel_list[0]);
+//    wifi_util_dbg_print(WIFI_CTRL, "%s:%d: wifi number of scan channels:%d : %d\r\n", __func__, __LINE__, *num_of_channels, *channel_list[0]);
 }
 
 int vap_svc_mesh_ext_connect()

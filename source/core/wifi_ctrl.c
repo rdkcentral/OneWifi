@@ -293,6 +293,60 @@ wifi_platform_property_t *get_wifi_hal_cap_prop(void)
     return &wifi_mgr_obj->hal_cap.wifi_prop;
 }
 
+void start_scan(void)
+{
+    unsigned int *channel_list = NULL;
+    unsigned char num_of_channels;
+
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d start Scan on 2.4GHz and 5GHz radios\n",__func__, __LINE__);
+    /* start scan on 2.4Ghz */
+    get_default_supported_scan_channel_list(WIFI_FREQUENCY_2_4_BAND, &channel_list, &num_of_channels);
+    wifi_hal_startScan(0, WIFI_RADIO_SCAN_MODE_OFFCHAN, 0, num_of_channels, channel_list);
+
+    /* start scan on 5Ghz */
+    get_default_supported_scan_channel_list(WIFI_FREQUENCY_5_BAND, &channel_list, &num_of_channels);
+    wifi_hal_startScan(1, WIFI_RADIO_SCAN_MODE_OFFCHAN, 0, num_of_channels, channel_list);
+}
+
+void disconnect_wifi(wifi_platform_property_t *wifi_prop, unsigned int freq)
+{
+    unsigned char band = 0;
+    unsigned int vap_index = 0;
+    int radio_index = 0;
+
+    if (freq >= 2412 && freq <= 2484) {
+        band = WIFI_FREQUENCY_2_4_BAND;
+    } else if (freq >= 5180 && freq <= 5980) {
+        band = WIFI_FREQUENCY_5_BAND;
+    }
+    convert_freq_band_to_radio_index(band, &radio_index);
+    vap_index = get_sta_vap_index_for_radio(wifi_prop, radio_index);
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d sending connection disconnect for vap_index:%d\r\n",__func__, __LINE__, vap_index);
+    wifi_hal_disconnect(vap_index);
+}
+
+void purge_existing_scan_list(unsigned int scan_count, scan_list_t *scan_list)
+{
+    unsigned int index = 0;
+    unsigned int vap_index = 0, band = 0;
+    int radio_index = 0;
+    wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
+
+    for (index = 0; index < scan_count; index++) {
+        if (scan_list->conn_attempt == connection_attempt_failed) {
+            if (scan_list->external_ap.freq >= 2412 && scan_list->external_ap.freq <= 2484) {
+                band = WIFI_FREQUENCY_2_4_BAND;
+            } else if (scan_list->external_ap.freq >= 5180 && scan_list->external_ap.freq <= 5980) {
+                band = WIFI_FREQUENCY_5_BAND;
+            }
+            convert_freq_band_to_radio_index(band, &radio_index);
+            vap_index = get_sta_vap_index_for_radio(&mgr->hal_cap.wifi_prop, radio_index);
+            wifi_hal_purgeScanResult(vap_index, scan_list->external_ap.bssid);
+        }
+        scan_list++;
+    }
+}
+
 void sta_pending_connection_retry(wifi_ctrl_t *ctrl)
 {
     unsigned int *channel_list = NULL;
@@ -304,7 +358,7 @@ void sta_pending_connection_retry(wifi_ctrl_t *ctrl)
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
 
     if(ctrl->conn_state == connection_state_disconnected || ctrl->conn_state == connection_state_in_progress) {
-        wifi_util_dbg_print(WIFI_CTRL,"%s:%d retry timeout, conn_state:%d scan_count:%d\n",__func__, __LINE__, ctrl->conn_state, ctrl->scan_count);
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d retry timeout, scan_count:%d conn_state:%d \n",__func__, __LINE__, ctrl->scan_count, ctrl->conn_state);
         if(ctrl->scan_list != NULL) {
             scan_list_t *scan_list;
             scan_list = ctrl->scan_list;
@@ -328,6 +382,28 @@ void sta_pending_connection_retry(wifi_ctrl_t *ctrl)
                                             scan_list->external_ap.rssi, scan_list->external_ap.freq, vap_index, radio_index);
                     wifi_hal_connect(vap_index, &scan_list->external_ap);
                     break;
+                } else if ((scan_list->conn_attempt == connection_attempt_in_progress)
+                                && (scan_list->conn_retry_attempt < STA_MAX_CONNECT_ATTEMPT)) {
+                    wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi trying to connect with AP\r\n",__func__, __LINE__);
+                    scan_list->conn_retry_attempt++;
+                    break;
+                } else if ((scan_list->conn_attempt == connection_attempt_in_progress)
+                                && (scan_list->conn_retry_attempt >= STA_MAX_CONNECT_ATTEMPT)) {
+                    scan_list->conn_attempt = connection_attempt_failed;
+                    disconnect_wifi(&mgr->hal_cap.wifi_prop, scan_list->external_ap.freq);
+                    break;
+                } else if (scan_list->conn_attempt == connection_attempt_failed) {
+                    if ((i + 1) == ctrl->scan_count) {
+                        purge_existing_scan_list(ctrl->scan_count, ctrl->scan_list);
+                        ctrl->conn_state = connection_state_disconnected;
+                        if (ctrl->scan_list != NULL) {
+                            free(ctrl->scan_list);
+                            ctrl->scan_list = NULL;
+                            ctrl->scan_count = 0;
+                        }
+                        start_scan();
+                        return;
+                    }
                 }
                 scan_list++;
             }
