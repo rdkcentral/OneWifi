@@ -151,7 +151,7 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
             scheduler_execute(ctrl->sched, ctrl->last_polled_time, (ctrl->poll_period*1000));
 
             if ((ctrl->rbus_events_subscribed == false) || (ctrl->tunnel_events_subscribed == false) ||
-                (ctrl->device_mode_subscribed == false) ||
+                (ctrl->device_mode_subscribed == false) || (ctrl->active_gateway_check_subscribed == false) ||
                 (ctrl->device_tunnel_status_subscribed == false) || (ctrl->device_wps_test_subscribed == false) ||
                 (ctrl->test_device_mode_subscribed == false)) {
                 rbus_subscribe_events(ctrl);

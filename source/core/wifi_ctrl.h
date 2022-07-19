@@ -133,6 +133,7 @@ typedef struct wifi_ctrl {
     wifi_ctrl_webconfig_state_t webconfig_state;
     rbusHandle_t        rbus_handle;
     bool                rbus_events_subscribed;
+    bool                active_gateway_check_subscribed;
     bool                tunnel_events_subscribed;
     bool                device_mode_subscribed;
     bool                test_device_mode_subscribed;

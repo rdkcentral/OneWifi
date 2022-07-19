@@ -265,6 +265,31 @@ static void activeGatewayCheckHandler(rbusHandle_t handle, rbusEvent_t const* ev
     UNREFERENCED_PARAMETER(handle);
 }
 
+static void wan_failover_handler(rbusHandle_t handle, rbusEvent_t const* event,
+    rbusEventSubscription_t* subscription)
+{
+    rbusValue_t value;
+    bool data_value = false;
+
+    if(!event || (strcmp(subscription->eventName, WIFI_WAN_FAILOVER_TEST) != 0)) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Invalid Event Received %s",
+                __func__, __LINE__, subscription->eventName);
+        return;
+    }
+
+    value = rbusObject_GetValue(event->data, subscription->eventName);
+    if (!value) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Invalid value in event:%s",
+                    __func__, __LINE__, subscription->eventName);
+        return;
+    }
+
+    data_value = rbusValue_GetBoolean(value);
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d: recv data:%d\r\n", __func__, __LINE__, data_value);
+
+    UNREFERENCED_PARAMETER(handle);
+}
+
 static void hotspotTunnelHandler(rbusHandle_t handle, rbusEvent_t const* event,
     rbusEventSubscription_t* subscription)
 {
@@ -736,17 +761,22 @@ static void wps_test_event_receive_handler(rbusHandle_t handle, rbusEvent_t cons
 
 void rbus_subscribe_events(wifi_ctrl_t *ctrl)
 {
-    rbusEventSubscription_t rbusEvents[] = {
-        { WIFI_ACTIVE_GATEWAY_CHECK, NULL, 0, 0, activeGatewayCheckHandler, NULL, NULL, NULL}, // WAN Manager
-        { WIFI_WAN_FAILOVER_TEST, NULL, 0, 0, activeGatewayCheckHandler, NULL, NULL, NULL}, // Test Module
-    };
 
     if(ctrl->rbus_events_subscribed == false) {
-        if (rbusEvent_SubscribeEx(ctrl->rbus_handle, rbusEvents, ARRAY_SZ(rbusEvents), 0) != RBUS_ERROR_SUCCESS) {
-            //wifi_util_dbg_print(WIFI_CTRL,"%s Rbus events subscribe failed\n",__FUNCTION__);
+        if (rbusEvent_Subscribe(ctrl->rbus_handle, WIFI_WAN_FAILOVER_TEST, wan_failover_handler, NULL, 0) != RBUS_ERROR_SUCCESS) {
+            //wifi_util_dbg_print(WIFI_CTRL,"%s:%d Rbus event:%s subscribe failed\n",__FUNCTION__, __LINE__, WIFI_WAN_FAILOVER_TEST);
         } else {
             ctrl->rbus_events_subscribed = true;
-            wifi_util_dbg_print(WIFI_CTRL,"%s:%d Rbus events subscribe success\n",__FUNCTION__, __LINE__);
+            wifi_util_dbg_print(WIFI_CTRL,"%s:%d Rbus event:%s subscribe success\n",__FUNCTION__, __LINE__, WIFI_WAN_FAILOVER_TEST);
+        }
+    }
+
+    if(ctrl->active_gateway_check_subscribed == false) {
+        if (rbusEvent_Subscribe(ctrl->rbus_handle, WIFI_ACTIVE_GATEWAY_CHECK, activeGatewayCheckHandler, NULL, 0) != RBUS_ERROR_SUCCESS) {
+            //wifi_util_dbg_print(WIFI_CTRL,"%s:%d Rbus event:%s subscribe failed\n",__FUNCTION__, __LINE__, WIFI_ACTIVE_GATEWAY_CHECK);
+        } else {
+            ctrl->active_gateway_check_subscribed = true;
+            wifi_util_dbg_print(WIFI_CTRL,"%s:%d Rbus event:%s subscribe success\n",__FUNCTION__, __LINE__, WIFI_ACTIVE_GATEWAY_CHECK);
         }
     }
 
