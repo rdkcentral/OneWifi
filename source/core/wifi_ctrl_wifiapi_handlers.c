@@ -62,8 +62,14 @@ void wifiapi_printradioconfig(char *buff, unsigned int buff_size, wifi_radio_ope
         idx += snprintf(&buff[idx], buff_size-idx, " 2.4 GHz\n");
     } else if (radio_config->band == WIFI_FREQUENCY_5_BAND) {
         idx += snprintf(&buff[idx], buff_size-idx, " 5 GHz\n");
+    } else if (radio_config->band == WIFI_FREQUENCY_5H_BAND) {
+        idx += snprintf(&buff[idx], buff_size-idx, " 5 GHz High\n");
+    } else if (radio_config->band == WIFI_FREQUENCY_5L_BAND) {
+        idx += snprintf(&buff[idx], buff_size-idx, " 5 GHz Low\n");
     } else if (radio_config->band == WIFI_FREQUENCY_6_BAND) {
         idx += snprintf(&buff[idx], buff_size-idx, " 6 GHz\n");
+    } else {
+        idx += snprintf(&buff[idx], buff_size-idx, "\n");
     }
     if (idx >= buff_size) return;
     idx += snprintf(&buff[idx], buff_size-idx, "autoChannelEnabled: %d\n", radio_config->autoChannelEnabled);

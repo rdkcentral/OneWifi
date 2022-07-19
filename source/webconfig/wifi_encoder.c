@@ -62,11 +62,11 @@ webconfig_error_t encode_radio_object(const rdk_wifi_radio_t *radio, cJSON *radi
 {
     const wifi_radio_operationParam_t *radio_info;
     char channel_list[BUFFER_LENGTH_WIFIDB] = {0}, str[BUFFER_LENGTH_WIFIDB] = {0};
-    char chan_buf[256] = {0};
+    char chan_buf[512] = {0};
     unsigned int num_channels, i, k = 0, len = sizeof(channel_list) - 1;
     int itr = 0, arr_size = 0;
     cJSON *obj;
-    CHAR buf[256] = {'\0'};
+    CHAR buf[512] = {'\0'};
     UINT index = 0;
 
     obj = cJSON_CreateObject();

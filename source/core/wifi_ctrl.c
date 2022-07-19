@@ -418,23 +418,6 @@ wifi_platform_property_t *get_wifi_hal_cap_prop(void)
     return &wifi_mgr_obj->hal_cap.wifi_prop;
 }
 
-void disconnect_wifi(wifi_platform_property_t *wifi_prop, unsigned int freq)
-{
-    unsigned char band = 0;
-    unsigned int vap_index = 0;
-    int radio_index = 0;
-
-    if (freq >= 2412 && freq <= 2484) {
-        band = WIFI_FREQUENCY_2_4_BAND;
-    } else if (freq >= 5180 && freq <= 5980) {
-        band = WIFI_FREQUENCY_5_BAND;
-    }
-    convert_freq_band_to_radio_index(band, &radio_index);
-    vap_index = get_sta_vap_index_for_radio(wifi_prop, radio_index);
-    wifi_util_info_print(WIFI_CTRL,"%s:%d sending connection disconnect for vap_index:%d\r\n",__func__, __LINE__, vap_index);
-    wifi_hal_disconnect(vap_index);
-}
-
 bool check_for_greylisted_mac_filter(void)
 {
 #if DML_SUPPORT
@@ -2255,24 +2238,54 @@ int getVAPArrayIndexFromVAPIndex(unsigned int apIndex, unsigned int *vap_array_i
     return RETURN_OK;
 }
 
-UINT convert_radio_index_to_frequencyNum(UINT radioIndex)
+char* convert_radio_index_to_band_str_g(UINT radioIndex)
 {
     wifi_radio_operationParam_t* radioOperation = getRadioOperationParam(radioIndex);
     if (radioOperation == NULL) {
-        wifi_util_error_print(WIFI_CTRL,"%s : failed to getRadioOperationParam with radio index \n", __FUNCTION__);
-        return 0;
+        wifi_util_dbg_print(WIFI_CTRL,"%s : failed to getRadioOperationParam with radio index \n", __FUNCTION__);
+        return NULL;
     }
+    switch (radioOperation->band) {
+        case WIFI_FREQUENCY_2_4_BAND:
+            return NAME_FREQUENCY_2_4_G;
+        case WIFI_FREQUENCY_5_BAND:
+            return NAME_FREQUENCY_5_G;
+        case WIFI_FREQUENCY_5L_BAND:
+            return NAME_FREQUENCY_5L_G;
+        case WIFI_FREQUENCY_5H_BAND:
+            return NAME_FREQUENCY_5H_G;
+        case WIFI_FREQUENCY_6_BAND:
+            return NAME_FREQUENCY_6_G;
+        default:
+            break;
+    }
+    return NULL;
+}
+
+char *convert_radio_index_to_band_str(UINT radioIndex)
+{
+    wifi_radio_operationParam_t* radioOperation = getRadioOperationParam(radioIndex);
+    if (radioOperation == NULL) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s : failed to getRadioOperationParam with radio index \n", __FUNCTION__);
+        return NULL;
+    }
+
     switch (radioOperation->band) {
         case WIFI_FREQUENCY_2_4_BAND:
             return NAME_FREQUENCY_2_4;
         case WIFI_FREQUENCY_5_BAND:
             return NAME_FREQUENCY_5;
+        case WIFI_FREQUENCY_5L_BAND:
+            return NAME_FREQUENCY_5L;
+        case WIFI_FREQUENCY_5H_BAND:
+            return NAME_FREQUENCY_5H;
         case WIFI_FREQUENCY_6_BAND:
             return NAME_FREQUENCY_6;
         default:
             break;
     }
-    return 0;
+
+    return NULL;
 }
 
 int get_vap_interface_bridge_name(unsigned int vap_index, char *bridge_name)

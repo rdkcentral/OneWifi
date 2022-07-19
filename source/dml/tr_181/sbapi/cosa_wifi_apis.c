@@ -146,10 +146,6 @@
 
 #ifdef WIFI_HAL_VERSION_3
 
-#define NAME_FREQUENCY_2_4     2
-#define NAME_FREQUENCY_5       5
-#define NAME_FREQUENCY_6       6
-
 #define MAX_NEIGHBOURS 250
 #endif
 

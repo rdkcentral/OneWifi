@@ -497,18 +497,19 @@ void CosaDmlWiFiGetFromPSM(void)
         }
        }
 
-       for (unsigned int instance_number = 1; instance_number <= getTotalNumberVAPs(); instance_number++) {
+       for (unsigned int vap_array_index = 0; vap_array_index < getTotalNumberVAPs(); vap_array_index++) {
+            unsigned int instance_number;
 
+            vap_index = VAP_INDEX(((webconfig_dml_t *)get_webconfig_dml())->hal_cap, vap_array_index);
+            instance_number = vap_index + 1;
             memset(&vap_config, 0, sizeof(vap_config));
-            wifidb_init_vap_config_default((instance_number - 1), &vap_config);
+            wifidb_init_vap_config_default(vap_index, &vap_config);
 
-            if (isVapSTAMesh(vap_config.vap_index)) {
+            if (isVapSTAMesh(vap_index)) {
                 continue;
             }
 
             bss_cfg = &vap_config.u.bss_info;
-
-            vap_index = VAP_INDEX(((webconfig_dml_t *)get_webconfig_dml())->hal_cap, instance_number-1);
             psm_vap_param = get_vap_psm_obj(vap_index);
             if (psm_vap_param == NULL) {
                 wifi_util_dbg_print(WIFI_PSM,"%s:%d psm vap param NULL vap_index:%d\r\n", __func__, __LINE__, (instance_number - 1));

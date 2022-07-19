@@ -909,9 +909,9 @@ WiFi_SetParamBoolValue
             return TRUE;
         }
         ULONG instance_number;
-        for(instance_number = 1; instance_number < MAX_NUM_RADIOS; instance_number++)
+        for(instance_number = 0; instance_number < MAX_NUM_RADIOS; instance_number++)
         {
-            wifiRadioOperParam = (wifi_radio_operationParam_t *) get_dml_cache_radio_map(instance_number-1);
+            wifiRadioOperParam = (wifi_radio_operationParam_t *) get_dml_cache_radio_map(instance_number);
             if (wifiRadioOperParam == NULL)
             {
                 wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get Radio Param for instance_number:%d\n", __FUNCTION__,__LINE__,instance_number);
@@ -2334,10 +2334,13 @@ Radio_GetParamBoolValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
-    ULONG instance_number = 0;
-    convert_freq_band_to_dml_radio_index(pcfg->band, &instance_number);
-    dml_radio_default *rcfg = (dml_radio_default *) get_radio_default_obj(instance_number - 1);
-    wifi_radio_capabilities_t radio_capab = ((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop.radiocap[instance_number - 1];
+    INT instance_number = 0;
+    if (convert_freq_band_to_radio_index(pcfg->band, &instance_number) == RETURN_ERR) {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Invalid frequency band %X\n", __FUNCTION__, __LINE__, pcfg->band);
+        return FALSE;
+    }
+    dml_radio_default *rcfg = (dml_radio_default *) get_radio_default_obj(instance_number);
+    wifi_radio_capabilities_t radio_capab = ((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop.radiocap[instance_number];
 
     if(rcfg == NULL) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
@@ -2568,15 +2571,18 @@ Radio_GetParamIntValue
 {
 
     wifi_radio_operationParam_t *pcfg = (wifi_radio_operationParam_t *)hInsContext;
-    ULONG instance_number = 0;
+    INT instance_number = 0;
 
     if (pcfg == NULL)
     {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
-    convert_freq_band_to_dml_radio_index(pcfg->band, &instance_number);
-    dml_radio_default *rcfg = (dml_radio_default *) get_radio_default_obj(instance_number - 1);
+    if (convert_freq_band_to_radio_index(pcfg->band, &instance_number) == RETURN_ERR) {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Invalid frequency band %X\n", __FUNCTION__, __LINE__, pcfg->band);
+        return FALSE;
+    }
+    dml_radio_default *rcfg = (dml_radio_default *) get_radio_default_obj(instance_number);
 
     if(rcfg == NULL) {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointerr get fail\n", __FUNCTION__,__LINE__);
@@ -2702,9 +2708,12 @@ Radio_GetParamUlongValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
-    ULONG instance_number = 0;
-    convert_freq_band_to_dml_radio_index(pcfg->band, &instance_number);
-    dml_radio_default *rcfg = (dml_radio_default *) get_radio_default_obj(instance_number - 1);
+    INT instance_number = 0;
+    if (convert_freq_band_to_radio_index(pcfg->band, &instance_number) == RETURN_ERR) {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Invalid frequency band %X\n", __FUNCTION__, __LINE__, pcfg->band);
+        return FALSE;
+    }
+    dml_radio_default *rcfg = (dml_radio_default *) get_radio_default_obj(instance_number);
 
     if(rcfg == NULL)
     {
@@ -2952,9 +2961,12 @@ Radio_GetParamStringValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
-    ULONG instance_number = 0;
-    convert_freq_band_to_dml_radio_index(pcfg->band, &instance_number);
-    dml_radio_default *rcfg = (dml_radio_default *) get_radio_default_obj(instance_number - 1);
+    INT instance_number = 0;
+    if (convert_freq_band_to_radio_index(pcfg->band, &instance_number) == RETURN_ERR) {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Invalid frequency band %X\n", __FUNCTION__, __LINE__, pcfg->band);
+        return FALSE;
+    }
+    dml_radio_default *rcfg = (dml_radio_default *) get_radio_default_obj(instance_number);
 
     if(rcfg == NULL) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointerr get fail\n", __FUNCTION__,__LINE__);
@@ -2972,10 +2984,13 @@ Radio_GetParamStringValue
     if( AnscEqualString(ParamName, "Name", TRUE))
     {
         /* collect value */
-        ULONG instance_number = 0;
-        convert_freq_band_to_dml_radio_index(pcfg->band, &instance_number);
-        if (get_interface_name_from_radio_index(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop, instance_number-1, pValue) != RETURN_OK) {
+        INT instance_number = 0;
+        if (convert_freq_band_to_radio_index(pcfg->band, &instance_number) == RETURN_ERR) {
             AnscCopyString(pValue, "Invalid_Radio");
+        } else {
+            if (get_interface_name_from_radio_index(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop, instance_number, pValue) != RETURN_OK) {
+                AnscCopyString(pValue, "Invalid_Radio");
+            }
         }
         return 0;
     }
@@ -2993,9 +3008,9 @@ Radio_GetParamStringValue
     if( AnscEqualString(ParamName, "OperatingFrequencyBand", TRUE))
     {
         /* collect value */
-        if(5 < *pUlSize)
-	{
-	    if ( pcfg->band == WIFI_FREQUENCY_2_4_BAND )
+        if(10 < *pUlSize)
+        {
+            if ( pcfg->band == WIFI_FREQUENCY_2_4_BAND )
             {
                 AnscCopyString(pValue, "2.4GHz");
             }
@@ -3003,17 +3018,24 @@ Radio_GetParamStringValue
             {
                 AnscCopyString(pValue, "5GHz");
             }
-	    else if ( pcfg->band == WIFI_FREQUENCY_6_BAND )
+            else if ( pcfg->band == WIFI_FREQUENCY_5L_BAND )
+            {
+                AnscCopyString(pValue, "5GHz Low");
+            }
+            else if ( pcfg->band == WIFI_FREQUENCY_5H_BAND )
+            {
+                AnscCopyString(pValue, "5GHz High");
+            }
+            else if ( pcfg->band == WIFI_FREQUENCY_6_BAND )
             {
                 AnscCopyString(pValue, "6GHz");
             }
-	}
-	else
-	{
-	    *pUlSize = 6;
-
+        }
+        else
+        {
+            *pUlSize = 6;
             return 1;
-	}
+        }
         return 0;
     }
 
@@ -3077,7 +3099,7 @@ Radio_GetParamStringValue
         if ( pcfg->variant & WIFI_80211_VARIANT_AX )
         {
 
-            if ((instance_number -1) || (rfc_pcfg && rfc_pcfg->twoG80211axEnable_rfc)) {
+            if ((instance_number) || (rfc_pcfg && rfc_pcfg->twoG80211axEnable_rfc)) {
                 if (AnscSizeOfString(buf) != 0)
                 {
                     strcat(buf, ",ax");
@@ -3105,12 +3127,9 @@ Radio_GetParamStringValue
 
     if( AnscEqualString(ParamName, "PossibleChannels", TRUE))
     {
-        /* collect value */
-        if(*pUlSize < sizeof(rcfg->PossibleChannels)) {
-            *pUlSize = sizeof(rcfg->PossibleChannels)+1;
-        }
-        snprintf(pValue, *pUlSize, "%s", rcfg->PossibleChannels);
-        return 0;
+        return get_allowed_channels_str(pcfg->band,
+            &((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop.radiocap[instance_number],
+            pValue, *pUlSize) == RETURN_OK ? 0 : -1;
     }
 
     if( AnscEqualString(ParamName, "ChannelsInUse", TRUE))
@@ -3358,9 +3377,12 @@ Radio_SetParamBoolValue
         return FALSE;
     }
 
-    ULONG instance_number = 0;
-    convert_freq_band_to_dml_radio_index(wifi_radio->band, &instance_number); //Temp-Will be modified
-    wifi_radio_operationParam_t *wifiRadioOperParam = (wifi_radio_operationParam_t *) get_dml_cache_radio_map(instance_number-1);
+    INT instance_number = 0;
+    if (convert_freq_band_to_radio_index(wifi_radio->band, &instance_number) == RETURN_ERR) {
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Invalid frequency band %X\n", __FUNCTION__, __LINE__, wifi_radio->band);
+        return FALSE;
+    }
+    wifi_radio_operationParam_t *wifiRadioOperParam = (wifi_radio_operationParam_t *) get_dml_cache_radio_map(instance_number);
     UINT wlanIndex = 0;
 
     if (wifiRadioOperParam == NULL)
@@ -3369,13 +3391,13 @@ Radio_SetParamBoolValue
         return FALSE;
     }
 
-    if ((instance_number == 0) || (instance_number > (UINT)get_num_radio_dml()))
+    if ((instance_number < 0) || (instance_number > (INT)get_num_radio_dml()))
     {
-        CcspWifiTrace(("RDK_LOG_ERROR, Radio instanceNumber:%lu out of range\n", instance_number));
+        CcspWifiTrace(("RDK_LOG_ERROR, Radio instanceNumber:%d out of range\n", instance_number));
         return FALSE;
     }
 
-    wlanIndex = instance_number-1;
+    wlanIndex = instance_number;
     ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s wlanIndex : %d\n", __FUNCTION__, wlanIndex);
 
     if (wifiRadioOperParam == NULL)
@@ -3383,7 +3405,7 @@ Radio_SetParamBoolValue
         CcspWifiTrace(("RDK_LOG_ERROR, %s Input radioIndex = %d not found for wifiRadioOperParam\n", __FUNCTION__, wlanIndex));
         return FALSE;
     }
-    dml_radio_default *rcfg = (dml_radio_default *) get_radio_default_obj(instance_number - 1);
+    dml_radio_default *rcfg = (dml_radio_default *) get_radio_default_obj(instance_number);
 
     if(rcfg == NULL) {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
@@ -3580,15 +3602,19 @@ Radio_SetParamIntValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
-    ULONG instance_number = 0;
-    convert_freq_band_to_dml_radio_index(wifi_radio->band, &instance_number); //Temp-Will be modified
-    dml_radio_default *rcfg = (dml_radio_default *) get_radio_default_obj(instance_number - 1);
+
+    INT instance_number = 0;
+    if (convert_freq_band_to_radio_index(wifi_radio->band, &instance_number) == RETURN_ERR) {
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Invalid frequency band %X\n", __FUNCTION__, __LINE__, wifi_radio->band);
+        return FALSE;
+    }
+    dml_radio_default *rcfg = (dml_radio_default *) get_radio_default_obj(instance_number);
 
     if(rcfg == NULL) {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
-    wifi_radio_operationParam_t *wifiRadioOperParam = (wifi_radio_operationParam_t *) get_dml_cache_radio_map(instance_number-1);
+    wifi_radio_operationParam_t *wifiRadioOperParam = (wifi_radio_operationParam_t *) get_dml_cache_radio_map(instance_number);
     UINT wlanIndex = 0;
 
     if (wifiRadioOperParam == NULL)
@@ -3597,13 +3623,13 @@ Radio_SetParamIntValue
         return FALSE;
     }
 
-    if ((instance_number == 0) || (instance_number > (UINT)get_num_radio_dml()))
+    if ((instance_number < 0) || (instance_number > (INT)get_num_radio_dml()))
     {
-        CcspWifiTrace(("RDK_LOG_ERROR, Radio instanceNumber:%lu out of range\n", instance_number));
+        CcspWifiTrace(("RDK_LOG_ERROR, Radio instanceNumber:%d out of range\n", instance_number));
         return FALSE;
     }
 
-    wlanIndex = instance_number-1;
+    wlanIndex = instance_number;
     ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s wlanIndex : %d\n", __FUNCTION__, wlanIndex);
 
     if (wifiRadioOperParam == NULL)
@@ -3732,9 +3758,13 @@ Radio_SetParamUlongValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
-    ULONG instance_number = 0;
-    convert_freq_band_to_dml_radio_index(wifi_radio->band, &instance_number); //Temp-Will be modified
-    wifi_radio_operationParam_t *wifiRadioOperParam = (wifi_radio_operationParam_t *) get_dml_cache_radio_map(instance_number-1);
+
+    INT instance_number = 0;
+    if (convert_freq_band_to_radio_index(wifi_radio->band, &instance_number) == RETURN_ERR) {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Invalid frequency band %X\n", __FUNCTION__, __LINE__, wifi_radio->band);
+        return FALSE;
+    }
+    wifi_radio_operationParam_t *wifiRadioOperParam = (wifi_radio_operationParam_t *) get_dml_cache_radio_map(instance_number);
     wifi_rfc_dml_parameters_t *rfc_pcfg = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
     UINT wlanIndex = 0;
     wifi_channelBandwidth_t tmpChanWidth = 0;
@@ -3745,13 +3775,13 @@ Radio_SetParamUlongValue
         return FALSE;
     }
 
-    if ((instance_number == 0) || (instance_number > (UINT)get_num_radio_dml()))
+    if ((instance_number < 0) || (instance_number > (INT)get_num_radio_dml()))
     {
-        CcspWifiTrace(("RDK_LOG_ERROR, Radio instanceNumber:%lu out of range\n", instance_number));
+        CcspWifiTrace(("RDK_LOG_ERROR, Radio instanceNumber:%d out of range\n", instance_number));
         return FALSE;
     }
 
-    wlanIndex = instance_number-1;
+    wlanIndex = instance_number;
     ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s wlanIndex : %d\n", __FUNCTION__, wlanIndex);
 
     if (wifiRadioOperParam == NULL)
@@ -3759,7 +3789,7 @@ Radio_SetParamUlongValue
         CcspWifiTrace(("RDK_LOG_ERROR, %s Input radioIndex = %d not found for wifiRadioOperParam\n", __FUNCTION__, wlanIndex));
         return FALSE;
     }
-    dml_radio_default *rcfg = (dml_radio_default *) get_radio_default_obj(instance_number - 1);
+    dml_radio_default *rcfg = (dml_radio_default *) get_radio_default_obj(instance_number);
 
     if(rcfg == NULL) {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
@@ -4037,10 +4067,13 @@ Radio_SetParamStringValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
-    ULONG instance_number = 0;
+    INT instance_number = 0;
     wifi_global_config_t *global_wifi_config;
-    convert_freq_band_to_dml_radio_index(wifi_radio->band, &instance_number); //Temp-Will be modified
-    wifi_radio_operationParam_t *wifiRadioOperParam = (wifi_radio_operationParam_t *) get_dml_cache_radio_map(instance_number-1);
+    if (convert_freq_band_to_radio_index(wifi_radio->band, &instance_number) ==  RETURN_ERR) {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Invalid frequency band %X\n", __FUNCTION__, __LINE__, wifi_radio->band);
+        return FALSE;
+    }
+    wifi_radio_operationParam_t *wifiRadioOperParam = (wifi_radio_operationParam_t *) get_dml_cache_radio_map(instance_number);
     UINT wlanIndex = 0;
     UINT txRate = 0;
 
@@ -4050,13 +4083,13 @@ Radio_SetParamStringValue
         return FALSE;
     }
 
-    if ((instance_number == 0) || (instance_number > (UINT)get_num_radio_dml()))
+    if ((instance_number < 0) || (instance_number > (INT)get_num_radio_dml()))
     {
-        CcspWifiTrace(("RDK_LOG_ERROR, Radio instanceNumber:%lu out of range\n", instance_number));
+        CcspWifiTrace(("RDK_LOG_ERROR, Radio instanceNumber:%d out of range\n", instance_number));
         return FALSE;
     }
 
-    wlanIndex = instance_number-1;
+    wlanIndex = instance_number;
     ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s wlanIndex : %d\n", __FUNCTION__, wlanIndex);
 
     if (wifiRadioOperParam == NULL)
@@ -4064,7 +4097,7 @@ Radio_SetParamStringValue
         CcspWifiTrace(("RDK_LOG_ERROR, %s Input radioIndex = %d not found for wifiRadioOperParam\n", __FUNCTION__, wlanIndex));
         return FALSE;
     }
-    dml_radio_default *rcfg = (dml_radio_default *) get_radio_default_obj(instance_number - 1);
+    dml_radio_default *rcfg = (dml_radio_default *) get_radio_default_obj(instance_number);
 
     if(rcfg == NULL) {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointerr get fail\n", __FUNCTION__,__LINE__);
@@ -4477,9 +4510,12 @@ Stats3_GetParamIntValue
 {
     wifi_radio_operationParam_t *pcfg = (wifi_radio_operationParam_t *)hInsContext;
     wifi_monitor_t *monitor_param = (wifi_monitor_t *)get_wifi_monitor();
-    ULONG instance_number = 0;
-    convert_freq_band_to_dml_radio_index(pcfg->band, &instance_number);
-    dml_stats_default *stats = (dml_stats_default *)get_stats_default_obj(instance_number-1);
+    INT instance_number = 0;
+    if (convert_freq_band_to_radio_index(pcfg->band, &instance_number) == RETURN_ERR) {
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Invalid frequency band %X\n", __FUNCTION__, __LINE__, pcfg->band);
+        return FALSE;
+    }
+    dml_stats_default *stats = (dml_stats_default *)get_stats_default_obj(instance_number);
 
     if(stats == NULL) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointerr get fail\n", __FUNCTION__,__LINE__);
@@ -4493,11 +4529,11 @@ Stats3_GetParamIntValue
 
     /* check the parameter name and return the corresponding value */
     if( AnscEqualString(ParamName, "X_COMCAST-COM_NoiseFloor", TRUE))    {
-        *pInt = monitor_param->radio_data[instance_number-1].NoiseFloor; 
+        *pInt = monitor_param->radio_data[instance_number].NoiseFloor; 
         return TRUE;
     }
     if( AnscEqualString(ParamName, "Noise", TRUE))    {
-	*pInt = monitor_param->radio_data[instance_number-1].NoiseFloor;
+	*pInt = monitor_param->radio_data[instance_number].NoiseFloor;
 	return TRUE;
     }
     if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_AFTX", TRUE) || AnscEqualString(ParamName, "X_RDKCENTRAL-COM_AFRX", TRUE)) {
@@ -4505,11 +4541,11 @@ Stats3_GetParamIntValue
         return TRUE;
     }
     if( AnscEqualString(ParamName, "X_COMCAST-COM_ActivityFactor", TRUE) || AnscEqualString(ParamName, "X_RDKCENTRAL-COM_AF", TRUE))    {
-        *pInt = monitor_param->radio_data[instance_number-1].RadioActivityFactor;
+        *pInt = monitor_param->radio_data[instance_number].RadioActivityFactor;
         return TRUE;
     }
     if( AnscEqualString(ParamName, "X_COMCAST-COM_CarrierSenseThreshold_Exceeded", TRUE) || AnscEqualString(ParamName, "X_RDKCENTRAL-COM_CSTE", TRUE))    {
-        *pInt = monitor_param->radio_data[instance_number-1].CarrierSenseThreshold_Exceeded;
+        *pInt = monitor_param->radio_data[instance_number].CarrierSenseThreshold_Exceeded;
         return TRUE;
     }
     if( AnscEqualString(ParamName, "X_COMCAST-COM_RetransmissionMetric", TRUE))     {
@@ -4581,9 +4617,12 @@ Stats3_GetParamUlongValue
     
     wifi_radio_operationParam_t *pcfg = (wifi_radio_operationParam_t *)hInsContext;
     wifi_monitor_t *monitor_param = (wifi_monitor_t *)get_wifi_monitor();
-    ULONG instance_number = 0;
-    convert_freq_band_to_dml_radio_index(pcfg->band, &instance_number);
-    dml_stats_default *stats = (dml_stats_default *)get_stats_default_obj(instance_number-1);
+    INT instance_number = 0;
+    if (convert_freq_band_to_radio_index(pcfg->band, &instance_number) == RETURN_ERR) {
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Invalid frequency band %X\n", __FUNCTION__, __LINE__, pcfg->band);
+        return FALSE;
+    }
+    dml_stats_default *stats = (dml_stats_default *)get_stats_default_obj(instance_number);
 
     if(stats == NULL) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointerr get fail\n", __FUNCTION__,__LINE__);
@@ -4645,7 +4684,7 @@ Stats3_GetParamUlongValue
         return TRUE;
     }
     if( AnscEqualString(ParamName, "X_COMCAST-COM_ChannelUtilization", TRUE))    {
-        *puLong = monitor_param->radio_data[instance_number-1].channelUtil;
+        *puLong = monitor_param->radio_data[instance_number].channelUtil;
         return TRUE;
     }
     if( AnscEqualString(ParamName, "X_COMCAST-COM_StatisticsStartTime", TRUE))    {
@@ -4703,9 +4742,12 @@ Stats3_SetParamIntValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
-    ULONG instance_number = 0;
-    convert_freq_band_to_dml_radio_index(wifi_radio->band, &instance_number); //Temp-Will be modified
-    wifi_radio_operationParam_t *wifiRadioOperParam = (wifi_radio_operationParam_t *) get_dml_cache_radio_map(instance_number-1);
+    INT instance_number = 0;
+    if (convert_freq_band_to_radio_index(wifi_radio->band, &instance_number) == RETURN_ERR) {
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Invalid frequency band %X\n", __FUNCTION__, __LINE__, wifi_radio->band);
+        return FALSE;
+    }
+    wifi_radio_operationParam_t *wifiRadioOperParam = (wifi_radio_operationParam_t *) get_dml_cache_radio_map(instance_number);
 
     if (wifiRadioOperParam == NULL)
     {
@@ -7683,14 +7725,25 @@ Security_GetParamUlongValue
 
 void get_security_modes_supported(int vap_index, int *mode)
 {
+    int band;
+    int radio_index;
+
+    radio_index = (int) getRadioIndexFromAp((unsigned int)vap_index);
+    convert_radio_index_to_freq_band(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop,
+        radio_index, &band);
+
     if(isVapMeshBackhaul(vap_index))
     {
         *mode = COSA_DML_WIFI_SECURITY_None | COSA_DML_WIFI_SECURITY_WPA2_Personal | COSA_DML_WIFI_SECURITY_WPA2_Enterprise | COSA_DML_WIFI_SECURITY_WPA_WPA2_Enterprise;
     }
+    else if (band == WIFI_FREQUENCY_6_BAND)
+    {
+        *mode = COSA_DML_WIFI_SECURITY_None | COSA_DML_WIFI_SECURITY_WPA3_Personal;
+    }
     else
     {
-	*mode = COSA_DML_WIFI_SECURITY_None | COSA_DML_WIFI_SECURITY_WPA2_Personal | COSA_DML_WIFI_SECURITY_WPA3_Personal | COSA_DML_WIFI_SECURITY_WPA3_Personal_Transition |
-		COSA_DML_WIFI_SECURITY_WPA2_Enterprise | COSA_DML_WIFI_SECURITY_WPA_WPA2_Enterprise;
+        *mode = COSA_DML_WIFI_SECURITY_None | COSA_DML_WIFI_SECURITY_WPA2_Personal | COSA_DML_WIFI_SECURITY_WPA3_Personal | COSA_DML_WIFI_SECURITY_WPA3_Personal_Transition |
+                COSA_DML_WIFI_SECURITY_WPA2_Enterprise | COSA_DML_WIFI_SECURITY_WPA_WPA2_Enterprise;
     }
     return;
 }

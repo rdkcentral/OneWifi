@@ -1751,53 +1751,76 @@ int validate_gas_config(const cJSON *gas, wifi_GASConfiguration_t *gas_info, pEr
 
 int validate_wifi_channel(wifi_freq_bands_t wifi_band, UINT *wifi_radio_channel, UINT wifi_channel)
 {
+    if(wifi_band == WIFI_FREQUENCY_2_4_BAND)
+    {
+        if((wifi_channel >= MIN_CHANNEL_2G) && (wifi_channel <= MAX_CHANNEL_2G))
+        {
+            *wifi_radio_channel = wifi_channel;
+        }
+        else
+        {
+            platform_trace_error(WIFI_PASSPOINT, "%s 2.4 Ghz wrong wifi channel\n",__FUNCTION__);
+            return RETURN_ERR; 
+        }
+    }
+    else if(wifi_band == WIFI_FREQUENCY_5_BAND)
+    {
+        if((wifi_channel >= MIN_CHANNEL_5G) && (wifi_channel <= MAX_CHANNEL_5G))
+        {
+            *wifi_radio_channel = wifi_channel;
+        }
+        else
+        {
+            platform_trace_error(WIFI_PASSPOINT, "%s 5 Ghz wrong wifi channel\n",__FUNCTION__);
+            return RETURN_ERR;
+        }
+    }
+    else if(wifi_band == WIFI_FREQUENCY_5L_BAND)
+    {
+        if((wifi_channel >= MIN_CHANNEL_5GL) && (wifi_channel <= MAX_CHANNEL_5GL))
+        {
+            *wifi_radio_channel = wifi_channel;
+        }
+        else
+        {
+            platform_trace_error(WIFI_PASSPOINT, "%s 5 Ghz Low wrong wifi channel\n",__FUNCTION__);
+            return RETURN_ERR;
+        }
+    }
+    else if(wifi_band == WIFI_FREQUENCY_5H_BAND)
+    {
+        if((wifi_channel >= MIN_CHANNEL_5GH) && (wifi_channel <= MAX_CHANNEL_5GH))
+        {
+            *wifi_radio_channel = wifi_channel;
+        }
+        else
+        {
+            platform_trace_error(WIFI_PASSPOINT, "%s 5 Ghz High wrong wifi channel\n",__FUNCTION__);
+            return RETURN_ERR;
+        }
+    }
+    else if(wifi_band == WIFI_FREQUENCY_6_BAND)
+    {
+        if((wifi_channel >= MIN_CHANNEL_6G) && (wifi_channel <= MAX_CHANNEL_6G))
+        {   
+            *wifi_radio_channel = wifi_channel;
+        }
+        else
+        {
+            platform_trace_error(WIFI_PASSPOINT, "%s 6 Ghz wrong wifi channel\n",__FUNCTION__);
+            return RETURN_ERR;
+        }
+    }
+    else if(wifi_band == WIFI_FREQUENCY_60_BAND)
+    {
 
-	if(wifi_band == WIFI_FREQUENCY_2_4_BAND)
-	{
-		if((wifi_channel >= 1) && (wifi_channel <= 14))
-		{
-			*wifi_radio_channel = wifi_channel;
-		}
-		else
-		{
-			platform_trace_error(WIFI_PASSPOINT, "%s 2.4 Ghz wrong wifi channel\n",__FUNCTION__);
-			return RETURN_ERR; 
-		}
-	}
-	else if(wifi_band == WIFI_FREQUENCY_5_BAND)
-	{
-		if((wifi_channel >= 36) && (wifi_channel <= 165))
-		{
-			*wifi_radio_channel = wifi_channel;
-		}
-		else
-		{
-			platform_trace_error(WIFI_PASSPOINT, "%s 5 Ghz wrong wifi channel\n",__FUNCTION__);
- 			return RETURN_ERR;
-		}
-	}
-	else if(wifi_band == WIFI_FREQUENCY_5L_BAND)
-	{
-
-	}
-	else if(wifi_band == WIFI_FREQUENCY_5H_BAND)
-	{
-		
-	}
-	else if(wifi_band == WIFI_FREQUENCY_6_BAND)
-	{
-		
-	}
-	else if(wifi_band == WIFI_FREQUENCY_60_BAND)
-	{
-		
-	}
-	else
-	{
-	     platform_trace_error(WIFI_PASSPOINT, "%s wrong supported wifi band\n",__FUNCTION__);
-             return RETURN_ERR;
-	}
-	return RETURN_OK;
+    }
+    else
+    {
+        platform_trace_error(WIFI_PASSPOINT, "%s wrong supported wifi band\n",__FUNCTION__);
+        return RETURN_ERR;
+    }
+    return RETURN_OK;
 }
 
 int validate_radio_vap(const cJSON *wifi, wifi_radio_operationParam_t *wifi_radio_info, wifi_vap_info_map_t *vap_map, pErr execRetVal)

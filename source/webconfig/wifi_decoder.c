@@ -2181,28 +2181,45 @@ webconfig_error_t decode_gas_config(const cJSON *gas, wifi_GASConfiguration_t *g
 
 webconfig_error_t decode_wifi_channel(wifi_freq_bands_t wifi_band, UINT *wifi_radio_channel, BOOL dfs_enable, UINT wifi_channel)
 {
+    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s-%d Channel %d Band %d\n", __func__, __LINE__, wifi_channel, wifi_band);
 
     if (wifi_band == WIFI_FREQUENCY_2_4_BAND) {
-        if ((wifi_channel >= 1) && (wifi_channel <= 14)) {
+        if ((wifi_channel >= MIN_CHANNEL_2G) && (wifi_channel <= MAX_CHANNEL_2G)) {
             *wifi_radio_channel = wifi_channel;
         } else {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s-%d Invalid channel %d\n", __func__, __LINE__, wifi_channel);
             return webconfig_error_decode;
         }
     } else if (wifi_band == WIFI_FREQUENCY_5_BAND) {
         if (is_valid_channel(wifi_channel, dfs_enable)) {
             *wifi_radio_channel = wifi_channel;
         } else {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s-%d Invalid channel %d\n", __func__, __LINE__, wifi_channel);
             return webconfig_error_decode;
         }
     } else if (wifi_band == WIFI_FREQUENCY_5L_BAND) {
-
+        if ((wifi_channel >= MIN_CHANNEL_5GL) && (wifi_channel <= MAX_CHANNEL_5GL)) {
+            *wifi_radio_channel = wifi_channel;
+        } else {
+            return webconfig_error_decode;
+        }
     } else if (wifi_band == WIFI_FREQUENCY_5H_BAND) {
-
+        if ((wifi_channel >= MIN_CHANNEL_5GH) && (wifi_channel <= MAX_CHANNEL_5GH)) {
+            *wifi_radio_channel = wifi_channel;
+        } else {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s-%d Invalid channel %d\n", __func__, __LINE__, wifi_channel);
+            return webconfig_error_decode;
+        }
     } else if (wifi_band == WIFI_FREQUENCY_6_BAND) {
-
+        if ((wifi_channel >= MIN_CHANNEL_6G) && (wifi_channel <= MAX_CHANNEL_6G)) {
+            *wifi_radio_channel = wifi_channel;
+        } else {
+            return webconfig_error_decode;
+        }
     } else if (wifi_band == WIFI_FREQUENCY_60_BAND) {
 
     } else {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s-%d Invalid channel %d\n", __func__, __LINE__, wifi_channel);
         return webconfig_error_decode;
     }
 
@@ -2227,7 +2244,7 @@ int validate_wifi_hw_variant(wifi_freq_bands_t radio_band, wifi_ieee80211Variant
             wifi_util_error_print(WIFI_WEBCONFIG, "%s() %d Error wifi_hw_mode %d\n", __FUNCTION__, __LINE__, wifi_hw_mode);
             return RETURN_ERR;
         }
-    } else if (radio_band == WIFI_FREQUENCY_5_BAND) {
+    } else if ((radio_band == WIFI_FREQUENCY_5_BAND) || (radio_band == WIFI_FREQUENCY_5L_BAND) || (radio_band == WIFI_FREQUENCY_5H_BAND)) {
         // Mask hw variant a,n,h,ac,ax bit
         wifi_hw_mode &= ~(1UL << 0);
         wifi_hw_mode &= ~(1UL << 3);
@@ -2295,7 +2312,7 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
     int radio_index = 0;
     char* ctx = NULL;
     int idx = 0;
-    char tmp_buf[256];
+    char tmp_buf[512];
     wifi_radio_operationParam_t *radio_info = &radio->oper;
 
     // WifiRadioSetup
@@ -2363,7 +2380,8 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
     decode_param_integer(obj_radio, "Channel", param);
     ret = decode_wifi_channel(radio_info->band, &radio_info->channel, radio_info->DfsEnabled, param->valuedouble);
     if (ret != webconfig_error_none) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"Invalid wifi radio channel configuration. channel %d\n", radio_info->channel);
+        wifi_util_error_print(WIFI_WEBCONFIG,"Invalid wifi radio channel configuration. channel %d %d\n",
+            radio_info->channel, param->valuedouble);
         //strncpy(execRetVal->ErrorMsg, "Invalid wifi radio channel config",sizeof(execRetVal->ErrorMsg)-1);
         return webconfig_error_decode;
     }

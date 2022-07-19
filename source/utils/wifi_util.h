@@ -118,6 +118,48 @@ typedef struct{
     }\
 }
 
+#define NAME_FREQUENCY_2_4_G        "2g"
+#define NAME_FREQUENCY_5_G          "5g"
+#define NAME_FREQUENCY_6_G          "6g"
+#define NAME_FREQUENCY_5H_G         "5gh"
+#define NAME_FREQUENCY_5L_G         "5gl"
+
+#define NAME_FREQUENCY_2_4          "2"
+#define NAME_FREQUENCY_5            "5"
+#define NAME_FREQUENCY_6            "6"
+#define NAME_FREQUENCY_5H           "5H"
+#define NAME_FREQUENCY_5L           "5L"
+
+/* 2GHz radio */
+#define MIN_FREQ_MHZ_2G             2412
+#define MAX_FREQ_MHZ_2G             2484
+#define MIN_CHANNEL_2G              1
+#define MAX_CHANNEL_2G              11
+
+/* 5GHz radio */
+#define MIN_FREQ_MHZ_5G             5180
+#define MAX_FREQ_MHZ_5G             5825
+#define MIN_CHANNEL_5G              36
+#define MAX_CHANNEL_5G              165
+
+/* 5GHz Low radio */
+#define MIN_FREQ_MHZ_5GL            5180
+#define MAX_FREQ_MHZ_5GL            5320
+#define MIN_CHANNEL_5GL             36
+#define MAX_CHANNEL_5GL             64
+
+/* 5GHz High radio */
+#define MIN_FREQ_MHZ_5GH            5500
+#define MAX_FREQ_MHZ_5GH            5825
+#define MIN_CHANNEL_5GH             100
+#define MAX_CHANNEL_5GH             165
+
+/* 6GHz radio */
+#define MIN_FREQ_MHZ_6G             5955
+#define MAX_FREQ_MHZ_6G             7115
+#define MIN_CHANNEL_6G              1
+#define MAX_CHANNEL_6G              229
+
 /* utility functions declarations */
 int get_number_of_radios(wifi_platform_property_t *wifi_prop);
 int get_total_number_of_vaps(wifi_platform_property_t *wifi_prop);
@@ -166,7 +208,7 @@ int hw_mode_conversion(wifi_ieee80211Variant_t *hw_mode_enum, char *hw_mode, int
 int ht_mode_conversion(wifi_channelBandwidth_t *ht_mode_enum, char *ht_mode, int ht_mode_len, unsigned int conv_type);
 int get_sta_vap_index_for_radio(wifi_platform_property_t *wifi_prop, unsigned int radio_index);
 int channel_mode_conversion(BOOL *auto_channel_bool, char *auto_channel_string, int auto_channel_strlen, unsigned int conv_type);
-int is_wifi_channel_valid(wifi_freq_bands_t wifi_band, UINT wifi_channel);
+int is_wifi_channel_valid(wifi_platform_property_t *wifi_prop, wifi_freq_bands_t wifi_band, UINT wifi_channel);
 int key_mgmt_conversion_legacy(wifi_security_modes_t *mode_enum, wifi_encryption_method_t *encryp_enum, char *str_mode, int mode_len, char *str_encryp, int encryp_len, unsigned int conv_type);
 int key_mgmt_conversion(wifi_security_modes_t *enum_sec, char *str_sec, int sec_len, unsigned int conv_type);
 int get_radio_if_hw_type(char *str, int str_len);
@@ -194,6 +236,7 @@ int get_radio_index_for_vap_index(wifi_platform_property_t* wifi_prop, int vap_i
 int min_hw_mode_conversion(unsigned int vapIndex, char *inputStr, char *outputStr, char *tableType);
 int vif_radio_idx_conversion(unsigned int vapIndex, int *input, int *output, char *tableType);
 int get_allowed_channels(wifi_freq_bands_t band, wifi_radio_capabilities_t *radio_cap, int *channels, int *channels_len);
-int convert_radio_index_to_freq_band(int radio_index, int *band);
+int get_allowed_channels_str(wifi_freq_bands_t band, wifi_radio_capabilities_t *radio_cap, char *buf, size_t buf_size);
+int convert_radio_index_to_freq_band(wifi_platform_property_t *wifi_prop, unsigned int radio_index, int *band);
 void wifidb_print(char *format, ...);
 #endif//_WIFI_UTIL_H_

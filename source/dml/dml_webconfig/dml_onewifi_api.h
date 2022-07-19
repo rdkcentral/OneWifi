@@ -69,7 +69,6 @@ typedef struct {
     BOOL    APIsolation;
     CHAR    Alias[32];
     CHAR    ChannelsInUse[32];
-    CHAR    PossibleChannels[120];
     CHAR    TransmitPowerSupported[32];
     CHAR    SupportedStandards[120];
     ULONG   SupportedFrequencyBands;

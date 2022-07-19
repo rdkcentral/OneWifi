@@ -326,6 +326,7 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
     char password[128] = {0};
     char ssid[128] = {0};
     wifi_radio_operationParam_t  *oper_param;
+    int band;
 
     decoded_params = &data->u.decoded;
     if (decoded_params == NULL) {
@@ -389,6 +390,7 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
         t_vap_info->u.bss_info.bssMaxSta = 75;
         snprintf(t_vap_info->u.bss_info.interworking.interworking.hessid, sizeof(t_vap_info->u.bss_info.interworking.interworking.hessid), "11:22:33:44:55:66");
 
+        convert_radio_index_to_freq_band(&hal_cap->wifi_prop, radioIndx, &band);
 
         if (is_vap_private(&hal_cap->wifi_prop, vapIndex) == TRUE) {
             t_vap_info->u.bss_info.network_initiated_greylist = false;
@@ -396,7 +398,17 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
             t_vap_info->u.bss_info.wpsPushButton = 0;
             t_vap_info->u.bss_info.wps.enable = true;
             t_vap_info->u.bss_info.rapidReconnectEnable = true;
-            t_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
+            if (band == WIFI_FREQUENCY_6_BAND) {
+                t_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa3_personal;
+                t_vap_info->u.bss_info.security.wpa3_transition_disable = true;
+            } else {
+#if defined(_XB8_PRODUCT_REQ_)
+                t_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
+                t_vap_info->u.bss_info.security.wpa3_transition_disable = false;
+#else
+                t_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
+#endif
+            }
             strcpy(t_vap_info->bridge_name, "brlan0");
             memset(ssid, 0, sizeof(ssid));
             strcpy(t_vap_info->u.bss_info.ssid, t_vap_info->vap_name);
@@ -2450,7 +2462,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state_for_dml(webconfig_su
     for (i = 0; i < decoded_params->num_radios; i++) {
         radio = &decoded_params->radios[i];
         vap_map = &radio->vaps.vap_map;
-        if (radio->vaps.num_vaps !=  MAX_NUM_VAP_PER_RADIO) {
+        if ((radio->vaps.num_vaps == 0) || (radio->vaps.num_vaps > MAX_NUM_VAP_PER_RADIO)) {
             wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Invalid number of vaps: %x\n", __func__, __LINE__, radio->vaps.num_vaps);
             return webconfig_error_invalid_subdoc;
         }
@@ -3287,7 +3299,8 @@ webconfig_error_t  translate_vap_object_from_ovsdb_vif_config_for_macfilter(webc
     return webconfig_error_none;
 }
 
-webconfig_error_t translate_radio_object_from_ovsdb(const struct schema_Wifi_Radio_Config *row, wifi_radio_operationParam_t *oper_param)
+webconfig_error_t translate_radio_object_from_ovsdb(const struct schema_Wifi_Radio_Config *row,
+    wifi_radio_operationParam_t *oper_param, wifi_platform_property_t *wifi_prop)
 {
     if ((row == NULL) || (oper_param == NULL)) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: input params is NULL\n", __func__, __LINE__);
@@ -3324,7 +3337,7 @@ webconfig_error_t translate_radio_object_from_ovsdb(const struct schema_Wifi_Rad
 
     oper_param->enable = row->enabled;
 
-    if (is_wifi_channel_valid(oper_param->band, row->channel) != RETURN_OK) {
+    if (is_wifi_channel_valid(wifi_prop, oper_param->band, row->channel) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d Radio Channel failed. band 0x%x channel %d\n", __func__, __LINE__, oper_param->band, row->channel);
         return webconfig_error_translate_from_ovsdb;
     }
@@ -3390,7 +3403,7 @@ webconfig_error_t   translate_radio_object_from_ovsdb_radio_config_for_dml(webco
 
         oper_param = &decoded_params->radios[radio_index].oper;
 
-        if (translate_radio_object_from_ovsdb(row, oper_param) != webconfig_error_none) {
+        if (translate_radio_object_from_ovsdb(row, oper_param, &decoded_params->hal_cap.wifi_prop) != webconfig_error_none) {
             wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to translate ovsdb to radio_object for %d\n", __func__, __LINE__, radio_index);
             return webconfig_error_translate_from_ovsdb;
 
@@ -3539,7 +3552,7 @@ webconfig_error_t   translate_radio_object_from_ovsdb_radio_config_for_radio(web
         oper_param = &radio->oper;
 
         convert_radio_index_to_radio_name(radio_index, radio->name);
-        if (translate_radio_object_from_ovsdb(row, oper_param) != webconfig_error_none) {
+        if (translate_radio_object_from_ovsdb(row, oper_param, &decoded_params->hal_cap.wifi_prop) != webconfig_error_none) {
             wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to translate ovsdb to radio_object for %d\n", __func__, __LINE__, radio_index);
             return webconfig_error_translate_from_ovsdb;
 
@@ -3605,8 +3618,8 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state(webconfig_subdoc_dat
     for (i = 0; i < decoded_params->num_radios; i++) {
         radio = &decoded_params->radios[i];
         vap_map = &radio->vaps.vap_map;
-        if (radio->vaps.num_vaps !=  MAX_NUM_VAP_PER_RADIO) {
-            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid number of vaps: %x\n", __func__, __LINE__, radio->vaps.num_vaps);
+        if ((radio->vaps.num_vaps == 0) || (radio->vaps.num_vaps > MAX_NUM_VAP_PER_RADIO)) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Invalid number of vaps: %x\n", __func__, __LINE__, radio->vaps.num_vaps);
             return webconfig_error_invalid_subdoc;
         }
         for (j = 0; j < radio->vaps.num_vaps; j++) {

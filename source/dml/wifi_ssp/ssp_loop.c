@@ -164,15 +164,6 @@ hash_map_t **get_mac_psm_map(unsigned char vap_index)
     }
 }
 
-int convert_freq_band_to_radio_instance(int band, int *radio_index)
-{
-    if ( band > 0 ) {
-        *radio_index = band;
-        return RETURN_OK;
-    }
-    return RETURN_ERR;
-}
-
 void Psm_Db_Write_Radio(wifi_radio_operationParam_t *rcfg)
 {
     char recName[256];
@@ -182,237 +173,244 @@ void Psm_Db_Write_Radio(wifi_radio_operationParam_t *rcfg)
     int instance_number = 0;
     int retPsmSet;
 
-    convert_freq_band_to_radio_instance(rcfg->band, &instance_number);
-    radio_index = (instance_number - 1);
-    cfg = get_radio_psm_obj(radio_index);
-    if (cfg == NULL) {
-        wifi_util_dbg_print(WIFI_PSM,"%s:%d psm radio param NULL radio_index:%d\r\n", __func__, __LINE__, radio_index);
+    if (convert_freq_band_to_radio_index(rcfg->band, &radio_index) == RETURN_ERR) {
+        wifi_util_error_print(WIFI_PSM, "%s:%d failed to convert band %d to radio index\r\n",
+            __func__, __LINE__, rcfg->band);
+        return;
     }
 
-        if(rcfg->ctsProtection != cfg->cts_protection) {
-            memset(recName, '\0', sizeof(recName));
-            memset(instanceNumStr, '\0', sizeof(instanceNumStr));
-            snprintf(recName, sizeof(recName), CTSProtection, instance_number);
-            _ansc_itoa(rcfg->ctsProtection, instanceNumStr, 10);
-            retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
-            if(retPsmSet == CCSP_SUCCESS) {
-                cfg->cts_protection = rcfg->ctsProtection;
-                wifi_util_dbg_print(WIFI_PSM, "%s:%d CTSprotection cfg->cts_protection is %d\n",__func__, __LINE__,cfg->cts_protection);
-            } else {
-                wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting CTSprotection, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
-            }
+    instance_number = radio_index + 1;
+    cfg = get_radio_psm_obj(radio_index);
+    if (cfg == NULL) {
+        wifi_util_error_print(WIFI_PSM, "%s:%d psm radio param NULL radio_index:%d\r\n", __func__,
+            __LINE__, radio_index);
+        return;
+    }
+
+    if(rcfg->ctsProtection != cfg->cts_protection) {
+        memset(recName, '\0', sizeof(recName));
+        memset(instanceNumStr, '\0', sizeof(instanceNumStr));
+        snprintf(recName, sizeof(recName), CTSProtection, instance_number);
+        _ansc_itoa(rcfg->ctsProtection, instanceNumStr, 10);
+        retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
+        if(retPsmSet == CCSP_SUCCESS) {
+            cfg->cts_protection = rcfg->ctsProtection;
+            wifi_util_dbg_print(WIFI_PSM, "%s:%d CTSprotection cfg->cts_protection is %d\n",__func__, __LINE__,cfg->cts_protection);
+        } else {
+            wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting CTSprotection, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
         }
+    }
 
-        if(rcfg->beaconInterval != cfg->beacon_interval){
-            memset(recName, '\0', sizeof(recName));
-            memset(instanceNumStr, '\0', sizeof(instanceNumStr));
-            snprintf(recName, sizeof(recName), BeaconInterval, instance_number);
-            _ansc_itoa(rcfg->beaconInterval, instanceNumStr, 10);
-            retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
-            if(retPsmSet == CCSP_SUCCESS) {
-                cfg->beacon_interval = rcfg->beaconInterval;
-                wifi_util_dbg_print(WIFI_PSM, "%s:%d BeaconInterval cfg->beacon_interval is %d\n",__func__, __LINE__,cfg->beacon_interval);
-            } else {
-                wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting BeaconInterval, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
-            }
+    if(rcfg->beaconInterval != cfg->beacon_interval){
+        memset(recName, '\0', sizeof(recName));
+        memset(instanceNumStr, '\0', sizeof(instanceNumStr));
+        snprintf(recName, sizeof(recName), BeaconInterval, instance_number);
+        _ansc_itoa(rcfg->beaconInterval, instanceNumStr, 10);
+        retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
+        if(retPsmSet == CCSP_SUCCESS) {
+            cfg->beacon_interval = rcfg->beaconInterval;
+            wifi_util_dbg_print(WIFI_PSM, "%s:%d BeaconInterval cfg->beacon_interval is %d\n",__func__, __LINE__,cfg->beacon_interval);
+        } else {
+            wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting BeaconInterval, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
         }
+    }
 
-        if(rcfg->dtimPeriod != cfg->dtim_period){
-            memset(recName, '\0', sizeof(recName));
-            memset(instanceNumStr, '\0', sizeof(instanceNumStr));
-            snprintf(recName, sizeof(recName), DTIMInterval, instance_number);
-            _ansc_itoa(rcfg->dtimPeriod, instanceNumStr, 10);
-            retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
-            if(retPsmSet == CCSP_SUCCESS) {
-                cfg->dtim_period = rcfg->dtimPeriod;
-                wifi_util_dbg_print(WIFI_PSM, "%s:%d DTIMInterval cfg->dtim_period is %d\n",__func__, __LINE__,cfg->dtim_period);
-            } else {
-                wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting DTIMInterval, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
-            }
+    if(rcfg->dtimPeriod != cfg->dtim_period){
+        memset(recName, '\0', sizeof(recName));
+        memset(instanceNumStr, '\0', sizeof(instanceNumStr));
+        snprintf(recName, sizeof(recName), DTIMInterval, instance_number);
+        _ansc_itoa(rcfg->dtimPeriod, instanceNumStr, 10);
+        retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
+        if(retPsmSet == CCSP_SUCCESS) {
+            cfg->dtim_period = rcfg->dtimPeriod;
+            wifi_util_dbg_print(WIFI_PSM, "%s:%d DTIMInterval cfg->dtim_period is %d\n",__func__, __LINE__,cfg->dtim_period);
+        } else {
+            wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting DTIMInterval, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
         }
+    }
 
-        if(rcfg->fragmentationThreshold != cfg->fragmentation_threshold){
-            memset(recName, '\0', sizeof(recName));
-            memset(instanceNumStr, '\0', sizeof(instanceNumStr));
-            snprintf(recName, sizeof(recName), FragThreshold, instance_number);
-            _ansc_itoa(rcfg->fragmentationThreshold, instanceNumStr, 10);
-            retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
-            if(retPsmSet == CCSP_SUCCESS) {
-                cfg->fragmentation_threshold = rcfg->fragmentationThreshold;
-                wifi_util_dbg_print(WIFI_PSM, "%s:%d FragThreshold cfg->fragmentation_threshold is %d\n",__func__, __LINE__,cfg->fragmentation_threshold);
-            } else {
-                wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting FragThreshold, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
-            }
-	}
-
-        if(rcfg->rtsThreshold != cfg->rts_threshold){
-            memset(recName, '\0', sizeof(recName));
-            memset(instanceNumStr, '\0', sizeof(instanceNumStr));
-            snprintf(recName, sizeof(recName), RTSThreshold, instance_number);
-            _ansc_itoa(rcfg->rtsThreshold, instanceNumStr, 10);
-            retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
-            if(retPsmSet == CCSP_SUCCESS) {
-                cfg->rts_threshold = rcfg->rtsThreshold;
-                wifi_util_dbg_print(WIFI_PSM, "%s:%d RTSThreshold cfg->rts_threshold is %d\n",__func__, __LINE__,cfg->rts_threshold);
-            } else {
-                wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting RTSThreshold, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
-            }
+    if(rcfg->fragmentationThreshold != cfg->fragmentation_threshold){
+        memset(recName, '\0', sizeof(recName));
+        memset(instanceNumStr, '\0', sizeof(instanceNumStr));
+        snprintf(recName, sizeof(recName), FragThreshold, instance_number);
+        _ansc_itoa(rcfg->fragmentationThreshold, instanceNumStr, 10);
+        retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
+        if(retPsmSet == CCSP_SUCCESS) {
+            cfg->fragmentation_threshold = rcfg->fragmentationThreshold;
+            wifi_util_dbg_print(WIFI_PSM, "%s:%d FragThreshold cfg->fragmentation_threshold is %d\n",__func__, __LINE__,cfg->fragmentation_threshold);
+        } else {
+            wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting FragThreshold, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
         }
+    }
 
-
-        if(rcfg->obssCoex != cfg->obss_coex){
-            memset(recName, '\0', sizeof(recName));
-            memset(instanceNumStr, '\0', sizeof(instanceNumStr));
-            snprintf(recName, sizeof(recName), ObssCoex, instance_number);
-            _ansc_itoa(rcfg->obssCoex, instanceNumStr, 10);
-            retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
-            if(retPsmSet == CCSP_SUCCESS) {
-                cfg->obss_coex = rcfg->obssCoex;
-                wifi_util_dbg_print(WIFI_PSM, "%s:%d ObssCoex cfg->obss_coex is %d\n",__func__, __LINE__,cfg->obss_coex);
-            } else {
-                wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting ObssCoex, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
-            }
+    if(rcfg->rtsThreshold != cfg->rts_threshold){
+        memset(recName, '\0', sizeof(recName));
+        memset(instanceNumStr, '\0', sizeof(instanceNumStr));
+        snprintf(recName, sizeof(recName), RTSThreshold, instance_number);
+        _ansc_itoa(rcfg->rtsThreshold, instanceNumStr, 10);
+        retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
+        if(retPsmSet == CCSP_SUCCESS) {
+            cfg->rts_threshold = rcfg->rtsThreshold;
+            wifi_util_dbg_print(WIFI_PSM, "%s:%d RTSThreshold cfg->rts_threshold is %d\n",__func__, __LINE__,cfg->rts_threshold);
+        } else {
+            wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting RTSThreshold, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
         }
+    }
 
-        if(rcfg->stbcEnable != cfg->stbc_enable){
-            memset(recName, '\0', sizeof(recName));
-            memset(instanceNumStr, '\0', sizeof(instanceNumStr));
-            snprintf(recName, sizeof(recName), STBCEnable, instance_number);
-            _ansc_itoa(rcfg->stbcEnable, instanceNumStr, 10);
-            retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
-            if(retPsmSet == CCSP_SUCCESS) {
-                cfg->stbc_enable = rcfg->stbcEnable;
-                wifi_util_dbg_print(WIFI_PSM, "%s:%d STBCEnable cfg->stbc_enable is %d\n",__func__, __LINE__,cfg->stbc_enable);
-            } else {
-                wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting STBCEnable, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
-            }
+
+    if(rcfg->obssCoex != cfg->obss_coex){
+        memset(recName, '\0', sizeof(recName));
+        memset(instanceNumStr, '\0', sizeof(instanceNumStr));
+        snprintf(recName, sizeof(recName), ObssCoex, instance_number);
+        _ansc_itoa(rcfg->obssCoex, instanceNumStr, 10);
+        retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
+        if(retPsmSet == CCSP_SUCCESS) {
+            cfg->obss_coex = rcfg->obssCoex;
+            wifi_util_dbg_print(WIFI_PSM, "%s:%d ObssCoex cfg->obss_coex is %d\n",__func__, __LINE__,cfg->obss_coex);
+        } else {
+            wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting ObssCoex, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
         }
+    }
 
-        if(rcfg->guardInterval != cfg->guard_interval){
-            memset(recName, '\0', sizeof(recName));
-            memset(instanceNumStr, '\0', sizeof(instanceNumStr));
-            snprintf(recName, sizeof(recName), GuardInterval, instance_number);
-            _ansc_itoa(rcfg->guardInterval, instanceNumStr, 10);
-            retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
-            if(retPsmSet == CCSP_SUCCESS) {
-                cfg->guard_interval = rcfg->guardInterval;
-                wifi_util_dbg_print(WIFI_PSM, "%s:%d GuardInterval cfg->guard_interval is %d\n",__func__, __LINE__,cfg->guard_interval);
-            } else {
-                wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting GuardInterval, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
-            }
+    if(rcfg->stbcEnable != cfg->stbc_enable){
+        memset(recName, '\0', sizeof(recName));
+        memset(instanceNumStr, '\0', sizeof(instanceNumStr));
+        snprintf(recName, sizeof(recName), STBCEnable, instance_number);
+        _ansc_itoa(rcfg->stbcEnable, instanceNumStr, 10);
+        retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
+        if(retPsmSet == CCSP_SUCCESS) {
+            cfg->stbc_enable = rcfg->stbcEnable;
+            wifi_util_dbg_print(WIFI_PSM, "%s:%d STBCEnable cfg->stbc_enable is %d\n",__func__, __LINE__,cfg->stbc_enable);
+        } else {
+            wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting STBCEnable, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
         }
+    }
 
-        if(rcfg->greenFieldEnable != cfg->greenfield_enable ){
-            memset(recName, '\0', sizeof(recName));
-            memset(instanceNumStr, '\0', sizeof(instanceNumStr));
-            snprintf(recName, sizeof(recName), GreenField, instance_number);
-            _ansc_itoa(rcfg->greenFieldEnable, instanceNumStr, 10);
-            retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
-            if(retPsmSet == CCSP_SUCCESS) {
-                cfg->greenfield_enable = rcfg->greenFieldEnable;
-                wifi_util_dbg_print(WIFI_PSM, "%s:%d GreenField cfg->greenfield_enable is %d\n",__func__, __LINE__,cfg->greenfield_enable);
-            } else {
-                wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting GreenFieldEnable, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
-            }
+    if(rcfg->guardInterval != cfg->guard_interval){
+        memset(recName, '\0', sizeof(recName));
+        memset(instanceNumStr, '\0', sizeof(instanceNumStr));
+        snprintf(recName, sizeof(recName), GuardInterval, instance_number);
+        _ansc_itoa(rcfg->guardInterval, instanceNumStr, 10);
+        retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
+        if(retPsmSet == CCSP_SUCCESS) {
+            cfg->guard_interval = rcfg->guardInterval;
+            wifi_util_dbg_print(WIFI_PSM, "%s:%d GuardInterval cfg->guard_interval is %d\n",__func__, __LINE__,cfg->guard_interval);
+        } else {
+            wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting GuardInterval, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
         }
+    }
 
-        if(rcfg->transmitPower != cfg->transmit_power){
-            memset(recName, '\0', sizeof(recName));
-            memset(instanceNumStr, '\0', sizeof(instanceNumStr));
-            snprintf(recName, sizeof(recName), TransmitPower, instance_number);
-            _ansc_itoa(rcfg->transmitPower, instanceNumStr, 10);
-            retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
-            if(retPsmSet == CCSP_SUCCESS) {
-                cfg->transmit_power = rcfg->transmitPower;
-                wifi_util_dbg_print(WIFI_PSM, "%s:%d TransmitPower cfg->transmit_power is %d\n",__func__, __LINE__,cfg->transmit_power);
-            } else {
-                wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting TransmitPower, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
-            }
+    if(rcfg->greenFieldEnable != cfg->greenfield_enable ){
+        memset(recName, '\0', sizeof(recName));
+        memset(instanceNumStr, '\0', sizeof(instanceNumStr));
+        snprintf(recName, sizeof(recName), GreenField, instance_number);
+        _ansc_itoa(rcfg->greenFieldEnable, instanceNumStr, 10);
+        retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
+        if(retPsmSet == CCSP_SUCCESS) {
+            cfg->greenfield_enable = rcfg->greenFieldEnable;
+            wifi_util_dbg_print(WIFI_PSM, "%s:%d GreenField cfg->greenfield_enable is %d\n",__func__, __LINE__,cfg->greenfield_enable);
+        } else {
+            wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting GreenFieldEnable, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
         }
+    }
 
-        if(rcfg->userControl != cfg->user_control){
-            memset(recName, '\0', sizeof(recName));
-            memset(instanceNumStr, '\0', sizeof(instanceNumStr));
-            snprintf(recName, sizeof(recName), UserControl, instance_number);
-            _ansc_itoa(rcfg->userControl, instanceNumStr, 10);
-            retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
-            if(retPsmSet == CCSP_SUCCESS) {
-                cfg->user_control = rcfg->userControl;
-                wifi_util_dbg_print(WIFI_PSM, "%s:%d UserControl cfg->user_control is %d\n",__func__, __LINE__,cfg->user_control);
-            } else {
-                wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting UserControl, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
-            }
+    if(rcfg->transmitPower != cfg->transmit_power){
+        memset(recName, '\0', sizeof(recName));
+        memset(instanceNumStr, '\0', sizeof(instanceNumStr));
+        snprintf(recName, sizeof(recName), TransmitPower, instance_number);
+        _ansc_itoa(rcfg->transmitPower, instanceNumStr, 10);
+        retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
+        if(retPsmSet == CCSP_SUCCESS) {
+            cfg->transmit_power = rcfg->transmitPower;
+            wifi_util_dbg_print(WIFI_PSM, "%s:%d TransmitPower cfg->transmit_power is %d\n",__func__, __LINE__,cfg->transmit_power);
+        } else {
+            wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting TransmitPower, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
         }
+    }
 
-        if(rcfg->adminControl != cfg->admin_control){
-            memset(recName, '\0', sizeof(recName));
-            memset(instanceNumStr, '\0', sizeof(instanceNumStr));
-            snprintf(recName, sizeof(recName), AdminControl, instance_number);
-            _ansc_itoa(rcfg->adminControl, instanceNumStr, 10);
-            retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
-            if(retPsmSet == CCSP_SUCCESS) {
-                cfg->admin_control = rcfg->adminControl;
-                wifi_util_dbg_print(WIFI_PSM, "%s:%d AdminControl cfg->admin_control is %d\n",__func__, __LINE__,cfg->admin_control);
-            } else {
-                wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting AdminControl, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
-            }
+    if(rcfg->userControl != cfg->user_control){
+        memset(recName, '\0', sizeof(recName));
+        memset(instanceNumStr, '\0', sizeof(instanceNumStr));
+        snprintf(recName, sizeof(recName), UserControl, instance_number);
+        _ansc_itoa(rcfg->userControl, instanceNumStr, 10);
+        retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
+        if(retPsmSet == CCSP_SUCCESS) {
+            cfg->user_control = rcfg->userControl;
+            wifi_util_dbg_print(WIFI_PSM, "%s:%d UserControl cfg->user_control is %d\n",__func__, __LINE__,cfg->user_control);
+        } else {
+            wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting UserControl, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
         }
+    }
 
-        if(rcfg->radioStatsMeasuringRate != cfg->radio_stats_measuring_rate){
-            memset(recName, '\0', sizeof(recName));
-            memset(instanceNumStr, '\0', sizeof(instanceNumStr));
-            snprintf(recName, sizeof(recName), MeasuringRateRd, instance_number);
-            _ansc_itoa(rcfg->radioStatsMeasuringRate, instanceNumStr, 10);
-            retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
-            if(retPsmSet == CCSP_SUCCESS) {
-                cfg->radio_stats_measuring_rate = rcfg->radioStatsMeasuringRate;
-                wifi_util_dbg_print(WIFI_PSM, "%s:%d cfg->radio_stats_measuring_rate is %d\n",__func__, __LINE__,cfg->radio_stats_measuring_rate);
-            } else {
-                wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting MeasuringRateRd, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
-            }
+    if(rcfg->adminControl != cfg->admin_control){
+        memset(recName, '\0', sizeof(recName));
+        memset(instanceNumStr, '\0', sizeof(instanceNumStr));
+        snprintf(recName, sizeof(recName), AdminControl, instance_number);
+        _ansc_itoa(rcfg->adminControl, instanceNumStr, 10);
+        retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
+        if(retPsmSet == CCSP_SUCCESS) {
+            cfg->admin_control = rcfg->adminControl;
+            wifi_util_dbg_print(WIFI_PSM, "%s:%d AdminControl cfg->admin_control is %d\n",__func__, __LINE__,cfg->admin_control);
+        } else {
+            wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting AdminControl, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
         }
+    }
 
-        if(rcfg->radioStatsMeasuringInterval != cfg->radio_stats_measuring_interval){
-            memset(recName, '\0', sizeof(recName));
-            memset(instanceNumStr, '\0', sizeof(instanceNumStr));
-            snprintf(recName, sizeof(recName), MeasuringIntervalRd, instance_number);
-            _ansc_itoa(rcfg->radioStatsMeasuringInterval, instanceNumStr, 10);
-            retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
-            if(retPsmSet == CCSP_SUCCESS) {
-                cfg->radio_stats_measuring_interval = rcfg->radioStatsMeasuringInterval;
-                wifi_util_dbg_print(WIFI_PSM, "%s:%d cfg->radio_stats_measuring_interval is %d\n",__func__, __LINE__,cfg->radio_stats_measuring_interval);
-            } else {
-                wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting MeasuringIntervalRd, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
-            }
+    if(rcfg->radioStatsMeasuringRate != cfg->radio_stats_measuring_rate){
+        memset(recName, '\0', sizeof(recName));
+        memset(instanceNumStr, '\0', sizeof(instanceNumStr));
+        snprintf(recName, sizeof(recName), MeasuringRateRd, instance_number);
+        _ansc_itoa(rcfg->radioStatsMeasuringRate, instanceNumStr, 10);
+        retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
+        if(retPsmSet == CCSP_SUCCESS) {
+            cfg->radio_stats_measuring_rate = rcfg->radioStatsMeasuringRate;
+            wifi_util_dbg_print(WIFI_PSM, "%s:%d cfg->radio_stats_measuring_rate is %d\n",__func__, __LINE__,cfg->radio_stats_measuring_rate);
+        } else {
+            wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting MeasuringRateRd, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
         }
+    }
 
-        if(rcfg->chanUtilThreshold != cfg->chan_util_threshold){
-            memset(recName, '\0', sizeof(recName));
-            memset(instanceNumStr, '\0', sizeof(instanceNumStr));
-            snprintf(recName, sizeof(recName), SetChanUtilThreshold, instance_number);
-            _ansc_itoa(rcfg->chanUtilThreshold, instanceNumStr, 10);
-            retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
-            if(retPsmSet == CCSP_SUCCESS) {
-                cfg->chan_util_threshold = rcfg->chanUtilThreshold;
-                wifi_util_dbg_print(WIFI_PSM, "%s:%d SetChanUtilThreshold cfg->chan_util_threshold is %d\n",__func__, __LINE__,cfg->chan_util_threshold);
-            } else {
-                wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting SetChanUtilThreshold, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
-            }
-         }
-
-        if(rcfg->chanUtilSelfHealEnable != cfg->chan_util_selfheal_enable){
-            memset(recName, '\0', sizeof(recName));
-            memset(instanceNumStr, '\0', sizeof(instanceNumStr));
-            snprintf(recName, sizeof(recName), SetChanUtilSelfHealEnable, instance_number);
-            _ansc_itoa(rcfg->chanUtilSelfHealEnable, instanceNumStr, 10);
-            retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
-            if(retPsmSet == CCSP_SUCCESS) {
-                cfg->chan_util_selfheal_enable = rcfg->chanUtilSelfHealEnable;
-                wifi_util_dbg_print(WIFI_PSM, "%s:%d SetChanUtilSelfHealEnable cfg->chan_util_selfheal_enable is %d\n",__func__, __LINE__,cfg->chan_util_selfheal_enable);
-            } else {
-                wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting SetChanUtilSelfHealEnable, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
-            }
+    if(rcfg->radioStatsMeasuringInterval != cfg->radio_stats_measuring_interval){
+        memset(recName, '\0', sizeof(recName));
+        memset(instanceNumStr, '\0', sizeof(instanceNumStr));
+        snprintf(recName, sizeof(recName), MeasuringIntervalRd, instance_number);
+        _ansc_itoa(rcfg->radioStatsMeasuringInterval, instanceNumStr, 10);
+        retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
+        if(retPsmSet == CCSP_SUCCESS) {
+            cfg->radio_stats_measuring_interval = rcfg->radioStatsMeasuringInterval;
+            wifi_util_dbg_print(WIFI_PSM, "%s:%d cfg->radio_stats_measuring_interval is %d\n",__func__, __LINE__,cfg->radio_stats_measuring_interval);
+        } else {
+            wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting MeasuringIntervalRd, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
         }
+    }
+
+    if(rcfg->chanUtilThreshold != cfg->chan_util_threshold){
+        memset(recName, '\0', sizeof(recName));
+        memset(instanceNumStr, '\0', sizeof(instanceNumStr));
+        snprintf(recName, sizeof(recName), SetChanUtilThreshold, instance_number);
+        _ansc_itoa(rcfg->chanUtilThreshold, instanceNumStr, 10);
+        retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
+        if(retPsmSet == CCSP_SUCCESS) {
+            cfg->chan_util_threshold = rcfg->chanUtilThreshold;
+            wifi_util_dbg_print(WIFI_PSM, "%s:%d SetChanUtilThreshold cfg->chan_util_threshold is %d\n",__func__, __LINE__,cfg->chan_util_threshold);
+        } else {
+            wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting SetChanUtilThreshold, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
+        }
+     }
+
+    if(rcfg->chanUtilSelfHealEnable != cfg->chan_util_selfheal_enable){
+        memset(recName, '\0', sizeof(recName));
+        memset(instanceNumStr, '\0', sizeof(instanceNumStr));
+        snprintf(recName, sizeof(recName), SetChanUtilSelfHealEnable, instance_number);
+        _ansc_itoa(rcfg->chanUtilSelfHealEnable, instanceNumStr, 10);
+        retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
+        if(retPsmSet == CCSP_SUCCESS) {
+            cfg->chan_util_selfheal_enable = rcfg->chanUtilSelfHealEnable;
+            wifi_util_dbg_print(WIFI_PSM, "%s:%d SetChanUtilSelfHealEnable cfg->chan_util_selfheal_enable is %d\n",__func__, __LINE__,cfg->chan_util_selfheal_enable);
+        } else {
+            wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting SetChanUtilSelfHealEnable, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
+        }
+    }
 }
 
 void Psm_Db_Write_Vapinfo(wifi_vap_info_t *acfg)

@@ -182,6 +182,7 @@ void callback_Wifi_Radio_Config(ovsdb_update_monitor_t *mon,
 {
     int index = 0;
     int i = 0;
+    int band;
     char *tmp, *ptr;
     wifi_mgr_t *g_wifidb;
     g_wifidb = get_wifimgr_obj();
@@ -242,7 +243,20 @@ void callback_Wifi_Radio_Config(ovsdb_update_monitor_t *mon,
         pthread_mutex_lock(&g_wifidb->data_cache_lock);
         strncpy(g_wifidb->radio_config[index].name,new_rec->radio_name,sizeof(g_wifidb->radio_config[index].name)-1);
         l_radio_cfg->enable = new_rec->enabled;
-        l_radio_cfg->band = new_rec->freq_band;
+
+        /* The band is fixed by interface map in HAL */
+        if (convert_radio_index_to_freq_band(&g_wifidb->hal_cap.wifi_prop, index,
+            &band) == RETURN_OK)
+        {
+            l_radio_cfg->band = band;
+        }
+        else
+        {
+            wifi_util_dbg_print(WIFI_DB, "%s:%d Failed to convert radio index %d to band\n",
+                __func__, __LINE__, index);
+            l_radio_cfg->band = new_rec->freq_band;
+        }
+
         l_radio_cfg->autoChannelEnabled = new_rec->auto_channel_enabled;
         l_radio_cfg->channel = new_rec->channel;
         l_radio_cfg->channelWidth = new_rec->channel_width;
@@ -1505,6 +1519,7 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
     int count;
     char name[BUFFER_LENGTH_WIFIDB] = {0};
     int i = 0;
+    int band;
     char *tmp, *ptr;
     wifi_db_t *g_wifidb;
     g_wifidb = (wifi_db_t*) get_wifidb_obj();
@@ -1525,8 +1540,19 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
         wifidb_print("%s:%d Table table_Wifi_Radio_Config not found, entry count=%d\n",__func__, __LINE__, count);
         return RETURN_ERR;
     }
+
+    if (convert_radio_index_to_freq_band(&rdk_wifi_get_hal_capability_map()->wifi_prop, radio_index,
+        &band) == RETURN_ERR)
+    {
+        wifidb_print("%s:%d Failed to convert radio index %d to band, use default\n", __func__,
+            __LINE__, radio_index);
+    }
+    else
+    {
+        config->band = band;
+    }
+
     config->enable = cfg->enabled;
-    config->band = cfg->freq_band;
     config->autoChannelEnabled = cfg->auto_channel_enabled;
     config->channel = cfg->channel;
     config->channelWidth = cfg->channel_width;
@@ -3372,6 +3398,7 @@ int get_wifi_gas_config(wifi_GASConfiguration_t *config)
 ********************************************** ****************************************/
 int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t *config)
 {
+    int band;
     char country_code[4] = {0};
     wifi_mgr_t *g_wifidb;
     g_wifidb = get_wifimgr_obj();
@@ -3380,31 +3407,49 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 
     wifi_radio_capabilities_t radio_capab = g_wifidb->hal_cap.wifi_prop.radiocap[radio_index];
 
-    if (radio_index  == 0) {
+    if (convert_radio_index_to_freq_band(&rdk_wifi_get_hal_capability_map()->wifi_prop, radio_index,
+        &band) == RETURN_ERR)
+    {
+        wifi_util_error_print(WIFI_DB,"%s:%d Failed to convert radio index %d to band, use default\n", __func__,
+            __LINE__, radio_index);
         cfg.band = WIFI_FREQUENCY_2_4_BAND;
-        cfg.enable = true;
-        cfg.op_class = 12;
-        cfg.channel = 1;
-        cfg.channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
-        cfg.variant = WIFI_80211_VARIANT_G | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AX;
-    } else if (radio_index  == 1) {
-        cfg.band = WIFI_FREQUENCY_5_BAND;
-        cfg.enable = true;
-        cfg.op_class = 1;
-        cfg.channel = 36;
-#ifdef _WNXL11BWL_PRODUCT_REQ_
-        cfg.channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
-#else
-        cfg.channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
-#endif
-        cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC | WIFI_80211_VARIANT_AX;
-    } else if (radio_index  == 2) {
-        cfg.band = WIFI_FREQUENCY_6_BAND;
-        cfg.enable = true;
-        cfg.op_class = 131;
-        cfg.channel = 1;
-        cfg.channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
-        cfg.variant = WIFI_80211_VARIANT_AX;
+    }
+    else
+    {
+        cfg.band = band;
+    }
+
+    cfg.enable = true;
+    switch (cfg.band) {
+        case WIFI_FREQUENCY_2_4_BAND:
+            cfg.op_class = 12;
+            cfg.channel = 1;
+            cfg.channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
+            cfg.variant = WIFI_80211_VARIANT_G | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AX;
+            break;
+        case WIFI_FREQUENCY_5_BAND:
+        case WIFI_FREQUENCY_5L_BAND:
+            cfg.op_class = 1;
+            cfg.channel = 36;
+            cfg.channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
+            cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC | WIFI_80211_VARIANT_AX;
+            break;
+        case WIFI_FREQUENCY_5H_BAND:
+            cfg.op_class = 3;
+            cfg.channel = 149;
+            cfg.channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
+            cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC | WIFI_80211_VARIANT_AX;
+            break;
+        case WIFI_FREQUENCY_6_BAND:
+            cfg.op_class = 133;
+            cfg.channel = 181;
+            cfg.channelWidth = WIFI_CHANNELBANDWIDTH_160MHZ;
+            cfg.variant = WIFI_80211_VARIANT_AX;
+            break;
+        default:
+            wifi_util_error_print(WIFI_DB,"%s:%d radio index %d, invalid band %d\n", __func__,
+            __LINE__, radio_index, cfg.band);
+            break;
     }
 
     for (int i=0; i<radio_capab.channel_list[0].num_channels; i++)
@@ -3462,18 +3507,20 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config)
     wifi_mgr_t *g_wifidb;
     g_wifidb = get_wifimgr_obj();
     wifi_hal_capability_t *wifi_hal_cap_obj = rdk_wifi_get_hal_capability_map();
-    unsigned int i, found = 0;
+    unsigned int vap_array_index;
+    unsigned int found = 0;
     wifi_vap_info_t cfg;
     char vap_name[BUFFER_LENGTH_WIFIDB] = {0};
     char password[128] = {0};
     char radius_key[128] = {0};
     char ssid[128] = {0};
+    int band;
 
     memset(&cfg,0,sizeof(cfg));
 
-    for (i = 0; i < getTotalNumberVAPs(); i++)
+    for (vap_array_index = 0; vap_array_index < getTotalNumberVAPs(); vap_array_index++)
     {
-        if (wifi_hal_cap_obj->wifi_prop.interface_map[i].index == (unsigned int)vap_index) {
+        if (wifi_hal_cap_obj->wifi_prop.interface_map[vap_array_index].index == (unsigned int)vap_index) {
             found = 1;
             break;
         }
@@ -3482,14 +3529,15 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config)
         wifi_util_dbg_print(WIFI_DB,"%s:%d: vap_index %d, not found\n",__func__, __LINE__, vap_index);
         return RETURN_OK;
     }
-    wifi_util_dbg_print(WIFI_DB,"%s:%d: i %d vap_index %d vap_name %s\n",__func__, __LINE__, i, vap_index,
-                                        wifi_hal_cap_obj->wifi_prop.interface_map[i].vap_name);
+    wifi_util_dbg_print(WIFI_DB,"%s:%d: vap_array_index %d vap_index %d vap_name %s\n",__func__, __LINE__, vap_array_index, vap_index,
+                                        wifi_hal_cap_obj->wifi_prop.interface_map[vap_array_index].vap_name);
     
     cfg.vap_index = vap_index;
-    strncpy(cfg.bridge_name, (char *)wifi_hal_cap_obj->wifi_prop.interface_map[i].bridge_name, sizeof(cfg.bridge_name)-1);
-    strncpy(vap_name, (char *)wifi_hal_cap_obj->wifi_prop.interface_map[i].vap_name, sizeof(vap_name)-1);
+    strncpy(cfg.bridge_name, (char *)wifi_hal_cap_obj->wifi_prop.interface_map[vap_array_index].bridge_name, sizeof(cfg.bridge_name)-1);
+    strncpy(vap_name, (char *)wifi_hal_cap_obj->wifi_prop.interface_map[vap_array_index].vap_name, sizeof(vap_name)-1);
     strncpy(cfg.vap_name, vap_name, sizeof(cfg.vap_name)-1);
-    cfg.radio_index = wifi_hal_cap_obj->wifi_prop.interface_map[i].rdk_radio_index;
+    cfg.radio_index = wifi_hal_cap_obj->wifi_prop.interface_map[vap_array_index].rdk_radio_index;
+    convert_radio_index_to_freq_band(&wifi_hal_cap_obj->wifi_prop, cfg.radio_index, &band);
 
     if (isVapSTAMesh(vap_index)) {
         cfg.vap_mode = wifi_vap_mode_sta;
@@ -3514,6 +3562,15 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config)
         if (cfg.radio_index == 0) {
             cfg.u.sta_info.scan_params.channel.channel = 3;
             cfg.u.sta_info.scan_params.channel.band = WIFI_FREQUENCY_2_4_BAND;
+#ifdef _WNXL11BWL_PRODUCT_REQ_
+        } else if (cfg.radio_index == 1) {
+            cfg.u.sta_info.scan_params.channel.channel = 36;
+            cfg.u.sta_info.scan_params.channel.band = WIFI_FREQUENCY_5L_BAND;
+        } else if (cfg.radio_index == 2) {
+            cfg.u.sta_info.scan_params.channel.channel = 149;
+            cfg.u.sta_info.scan_params.channel.band = WIFI_FREQUENCY_5H_BAND;
+        }
+#else
         } else if (cfg.radio_index == 1) {
             cfg.u.sta_info.scan_params.channel.channel = 36;
             cfg.u.sta_info.scan_params.channel.band = WIFI_FREQUENCY_5_BAND;
@@ -3521,6 +3578,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config)
             cfg.u.sta_info.scan_params.channel.channel = 5;
             cfg.u.sta_info.scan_params.channel.band = WIFI_FREQUENCY_6_BAND;
         }
+#endif
         cfg.u.sta_info.conn_status = wifi_connection_status_disabled;
         memset(&cfg.u.sta_info.bssid, 0, sizeof(cfg.u.sta_info.bssid));
     } else {
@@ -3552,6 +3610,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config)
         cfg.u.bss_info.UAPSDEnabled = true;
         cfg.u.bss_info.wmmNoAck = false;
         cfg.u.bss_info.wepKeyLength = 128;
+        cfg.u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
         if (isVapHotspotOpen(vap_index)) {
             cfg.u.bss_info.bssHotspot = true;
             cfg.u.bss_info.security.mode = wifi_security_mode_none;
@@ -3564,17 +3623,44 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config)
             cfg.u.bss_info.security.mode = wifi_security_mode_wpa2_enterprise;
             cfg.u.bss_info.security.encr = wifi_encryption_aes;
         } else if (isVapPrivate(vap_index))  {
-            cfg.u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
+            if (band == WIFI_FREQUENCY_6_BAND) {
+                cfg.u.bss_info.security.mode = wifi_security_mode_wpa3_personal;
+                cfg.u.bss_info.security.wpa3_transition_disable = true;
+                cfg.u.bss_info.security.mfp = wifi_mfp_cfg_required;
+                cfg.u.bss_info.security.u.key.type = wifi_security_key_type_sae;
+            } else {
+#if defined(_XB8_PRODUCT_REQ_)
+                cfg.u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
+                cfg.u.bss_info.security.wpa3_transition_disable = false;
+                cfg.u.bss_info.security.mfp = wifi_mfp_cfg_optional;
+                cfg.u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
+#else
+                cfg.u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
+#endif
+            }
             cfg.u.bss_info.security.encr = wifi_encryption_aes;
             cfg.u.bss_info.bssHotspot = false;
         } else  {
-            cfg.u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
+            if (band == WIFI_FREQUENCY_6_BAND) {
+                cfg.u.bss_info.security.mode = wifi_security_mode_wpa3_personal;
+                cfg.u.bss_info.security.wpa3_transition_disable = true;
+                cfg.u.bss_info.security.mfp = wifi_mfp_cfg_required;
+                cfg.u.bss_info.security.u.key.type = wifi_security_key_type_sae;
+            } else {
+#if defined(_XB8_PRODUCT_REQ_)
+                cfg.u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
+                cfg.u.bss_info.security.wpa3_transition_disable = false;
+                cfg.u.bss_info.security.mfp = wifi_mfp_cfg_optional;
+                cfg.u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
+#else
+                cfg.u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
+#endif
+            }
             cfg.u.bss_info.security.encr = wifi_encryption_aes_tkip;
             cfg.u.bss_info.bssHotspot = false;
         }
         cfg.u.bss_info.beaconRate = WIFI_BITRATE_6MBPS;
         strncpy(cfg.u.bss_info.beaconRateCtl,"6Mbps",sizeof(cfg.u.bss_info.beaconRateCtl)-1);
-        cfg.u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
         cfg.vap_mode = wifi_vap_mode_ap;
         if (isVapPrivate(vap_index)) {
             cfg.u.bss_info.showSsid = true;

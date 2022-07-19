@@ -65,6 +65,8 @@ typedef bool (* vap_svc_is_my_fn_t)(unsigned int vap_index);
 #define EXT_SCAN_RESULT_TIMEOUT                4000
 #define EXT_SCAN_RESULT_WAIT_TIMEOUT           4000
 #define EXT_CONN_STATUS_IND_TIMEOUT            5000
+#define EXT_CSA_WAIT_TIMEOUT                   3000
+#define EXT_DISCONNECTION_IND_TIMEOUT          5000
 
 typedef enum {
     connection_attempt_wait,
@@ -74,13 +76,14 @@ typedef enum {
 
 typedef enum {
     connection_state_disconnected_scan_list_none,
-    connection_state_disconnected_scan_list_2g = (int)pow(2, connection_state_disconnected_scan_list_none),
-    connection_state_disconnected_scan_list_5g = (connection_state_disconnected_scan_list_2g << 1),
-    connection_state_disconnected_scan_list_all =
-               (connection_state_disconnected_scan_list_2g | connection_state_disconnected_scan_list_5g),
+    connection_state_disconnected_scan_list_in_progress,
+    connection_state_disconnected_scan_list_all,
     connection_state_connection_in_progress,
     connection_state_connection_to_lcb_in_progress,
     connection_state_connected,
+    connection_state_connected_wait_for_csa,
+    connection_state_connected_scan_list,
+    connection_state_disconnection_in_progress,
 } connection_state_t;
 
 typedef struct scan_result {
@@ -103,10 +106,15 @@ typedef struct {
     unsigned long long int last_connected_time;
     unsigned char          conn_retry;
     unsigned char          wait_scan_result;
+    unsigned char          scanned_radios;
+    unsigned int           go_to_channel;
     int                    ext_connect_algo_processor_id;
     int                    ext_scan_result_timeout_handler_id;
     int                    ext_scan_result_wait_timeout_handler_id;
     int                    ext_conn_status_ind_timeout_handler_id;
+    int                    ext_csa_wait_timeout_handler_id;
+    int                    ext_connected_scan_result_timeout_handler_id;
+    int                    ext_disconnection_event_timeout_handler_id;
 }__attribute__((packed)) vap_svc_ext_t;
 
 typedef struct vap_svc {

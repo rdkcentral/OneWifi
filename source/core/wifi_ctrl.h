@@ -93,10 +93,6 @@ extern "C" {
 #define WIFI_WEBCONFIG_KICK_MAC            "Device.WiFi.KickAssocDevices"
 #define RBUS_WIFI_WPS_PIN_START            "Device.WiFi.WPS.Start"
 
-#define NAME_FREQUENCY_2_4                 2
-#define NAME_FREQUENCY_5                   5
-#define NAME_FREQUENCY_6                   6
-
 #define WIFI_ALL_RADIO_INDICES             0xffff
 #define DEVICE_TUNNEL_UP                   1
 #define DEVICE_TUNNEL_DOWN                 0
@@ -256,7 +252,8 @@ UINT getMaxNumberVAPsPerRadio(UINT radioIndex);
 UINT getNumberVAPsPerRadio(UINT radioIndex);
 int getVAPArrayIndexFromVAPIndex(unsigned int apIndex, unsigned int *vap_array_index);
 rdk_wifi_vap_map_t *getRdkWifiVap(UINT radioIndex);
-UINT convert_radio_index_to_frequencyNum(UINT radioIndex);
+char* convert_radio_index_to_band_str_g(UINT radioIndex);
+char* convert_radio_index_to_band_str(UINT radioIndex);
 wifi_vap_info_map_t * Get_wifi_object(uint8_t radio_index);
 wifi_GASConfiguration_t * Get_wifi_gas_conf_object(void);
 wifi_interworking_t * Get_wifi_object_interworking_parameter(uint8_t vap_instance_number);

@@ -936,12 +936,11 @@ int convert_freq_band_to_radio_index(int band, int *radio_index)
 
         case WIFI_FREQUENCY_5_BAND:
         case WIFI_FREQUENCY_5L_BAND:
-        case WIFI_FREQUENCY_5H_BAND:
             *radio_index = 1;
             break;
 
+        case WIFI_FREQUENCY_5H_BAND:
         case WIFI_FREQUENCY_6_BAND:
-        case WIFI_FREQUENCY_60_BAND:
             *radio_index = 2;
             break;
 
@@ -1168,8 +1167,10 @@ int freq_band_conversion(wifi_freq_bands_t *band_enum, char *freq_band, int freq
         } else if (!strncmp(freq_band, "5GU", strlen("5GU")+1)) {
             *band_enum = WIFI_FREQUENCY_5H_BAND;
             return RETURN_OK;
+        } else if (!strncmp(freq_band, "6G", strlen("6G")+1)) {
+            *band_enum = WIFI_FREQUENCY_6_BAND;
+            return RETURN_OK;
         }
-
     } else if (conv_type == ENUM_TO_STRING) {
         switch(*band_enum){
             case WIFI_FREQUENCY_2_4_BAND:
@@ -1184,8 +1185,11 @@ int freq_band_conversion(wifi_freq_bands_t *band_enum, char *freq_band, int freq
             case WIFI_FREQUENCY_5H_BAND:
                 snprintf(freq_band, freq_band_len, "5GU");
                 return RETURN_OK;
+            case WIFI_FREQUENCY_6_BAND:
+                snprintf(freq_band, freq_band_len, "6G");
+                return RETURN_OK;
             default:
-            break;
+                break;
         }
     }
 
@@ -1455,43 +1459,27 @@ int channel_mode_conversion(BOOL *auto_channel_bool, char *auto_channel_string, 
     return RETURN_ERR;
 }
 
-
-int is_wifi_channel_valid(wifi_freq_bands_t wifi_band, UINT wifi_channel)
+int is_wifi_channel_valid(wifi_platform_property_t *wifi_prop, wifi_freq_bands_t wifi_band,
+    UINT wifi_channel)
 {
-    unsigned int channels_5g[] = {36, 40, 44, 48, 52, 56, 60, 64, 100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140, 144, 149, 153, 157, 161, 165};
-    unsigned int i = 0;
-    bool channel_found = false;
+    int i, radio_index;
+    wifi_channels_list_t *channels;
 
-    if (wifi_band == WIFI_FREQUENCY_2_4_BAND) {
-        if ((wifi_channel >= 1) && (wifi_channel <= 14)) {
-            return RETURN_OK;
-        } else {
-            return RETURN_ERR;
-        }
-    } else if (wifi_band == WIFI_FREQUENCY_5_BAND) {
-        for (i=0; i< ARRAY_SIZE(channels_5g); i++) {
-            if (wifi_channel == channels_5g[i]) {
-                channel_found = true;
-                break;
-            }
-        }
-
-        if (channel_found == false) {
-            return RETURN_ERR;
-        }
-    } else if (wifi_band == WIFI_FREQUENCY_5L_BAND) {
-
-    } else if (wifi_band == WIFI_FREQUENCY_5H_BAND) {
-
-    } else if (wifi_band == WIFI_FREQUENCY_6_BAND) {
-
-    } else if (wifi_band == WIFI_FREQUENCY_60_BAND) {
-
-    } else {
+    if (convert_freq_band_to_radio_index(wifi_band, &radio_index) == RETURN_ERR) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to get radio index for band %d\n",
+            __func__, __LINE__, wifi_band);
         return RETURN_ERR;
     }
 
-    return RETURN_OK;
+    channels = &wifi_prop->radiocap[radio_index].channel_list[0];
+    for (i = 0; i < channels->num_channels; i++)
+    {
+        if (channels->channels_list[i] == (int)wifi_channel) {
+            return RETURN_OK;
+        }
+    }
+
+    return RETURN_ERR;
 }
 
 
@@ -1635,6 +1623,16 @@ int key_mgmt_conversion_legacy(wifi_security_modes_t *mode_enum, wifi_encryption
                 ret = RETURN_ERR;
                 wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Invalid encryption '%s' and mode '%s'\n", __func__, __LINE__, str_encryp, str_mode);
             }
+        } else if (strcmp(str_encryp, "WPA-PSK SAE") == 0) {
+            if (strcmp(str_mode, "2") == 0) {
+                *mode_enum = wifi_security_mode_wpa3_transition;
+                *encryp_enum = wifi_encryption_aes;
+            }
+        } else if (strcmp(str_encryp, "SAE") == 0) {
+            if (strcmp(str_mode, "2") == 0) {
+                *mode_enum = wifi_security_mode_wpa3_personal;
+                *encryp_enum = wifi_encryption_aes;
+            }
         } else {
             ret = RETURN_ERR;
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Invalid encryption '%s'\n", __func__, __LINE__, str_encryp);
@@ -1676,9 +1674,16 @@ int key_mgmt_conversion_legacy(wifi_security_modes_t *mode_enum, wifi_encryption
             snprintf(str_mode, mode_len, "mixed");
             snprintf(str_encryp, encryp_len, "WPA-PSK");
             break;
-        case wifi_security_mode_wpa3_enterprise:
         case wifi_security_mode_wpa3_personal:
+            snprintf(str_mode, mode_len, "2");
+            snprintf(str_encryp, encryp_len, "SAE");
+            break;
         case wifi_security_mode_wpa3_transition:
+            snprintf(str_mode, mode_len, "2");
+            snprintf(str_encryp, encryp_len, "WPA-PSK SAE");
+            break;
+        case wifi_security_mode_wpa3_enterprise:
+        /* fallthrough */
         default:
             ret = RETURN_ERR;
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: unsupported security mode %d\n", __func__, __LINE__, *mode_enum);
@@ -1691,8 +1696,9 @@ int key_mgmt_conversion_legacy(wifi_security_modes_t *mode_enum, wifi_encryption
 
 int key_mgmt_conversion(wifi_security_modes_t *enum_sec, char *str_sec, int sec_len, unsigned int conv_type)
 {
-    char arr_str[][16] = {"wpa-psk", "wpa2-psk", "wpa2-eap", "sae"};
-    wifi_security_modes_t  arr_num[] = {wifi_security_mode_wpa_personal, wifi_security_mode_wpa2_personal, wifi_security_mode_wpa2_enterprise, wifi_security_mode_wpa3_personal};
+    char arr_str[][16] = {"wpa-psk", "wpa2-psk", "wpa2-eap", "sae", "wpa2-psk sae"};
+    wifi_security_modes_t  arr_num[] = {wifi_security_mode_wpa_personal, wifi_security_mode_wpa2_personal, wifi_security_mode_wpa2_enterprise, wifi_security_mode_wpa3_personal,\
+                                        wifi_security_mode_wpa3_transition};
     unsigned int i = 0;
 
     if ((enum_sec == NULL) || (str_sec == NULL)) {
@@ -1932,3 +1938,74 @@ int get_allowed_channels(wifi_freq_bands_t band, wifi_radio_capabilities_t *radi
     *channels_len = radio_cap->channel_list[band_arr_index].num_channels;
     return RETURN_OK;
 }
+
+int get_allowed_channels_str(wifi_freq_bands_t band, wifi_radio_capabilities_t *radio_cap,
+    char *buf, size_t buf_size)
+{
+    int i;
+    char channel_str[8];
+    wifi_channels_list_t *channels;
+
+    if ((radio_cap == NULL) || (buf == NULL)) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Input arguments are NULL: radio_cap : %p "
+            "buf : %p\n", __func__, __LINE__, radio_cap, buf);
+        return RETURN_ERR;
+    }
+
+    channels = &radio_cap->channel_list[0];
+
+    // check buffer can accommodate n * (3 digit channel + comma separator)
+    if (channels->num_channels * 4 >= (int)buf_size) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d The buffer of size %zu cannot accomodate all "
+            "%d channels\n", __func__, __LINE__, buf_size, channels->num_channels);
+        return RETURN_ERR;
+    }
+
+    *buf = '\0';
+    for (i = 0; i < channels->num_channels; i++) {
+        snprintf(channel_str, sizeof(channel_str), i == 0 ? "%u" : ",%u",
+            channels->channels_list[i]);
+        strcat(buf, channel_str);
+    }
+
+    return RETURN_OK;
+}
+
+int convert_radio_index_to_freq_band(wifi_platform_property_t *wifi_prop, unsigned int radio_index,
+    int *band)
+{
+    int index, num_vaps;
+    wifi_interface_name_idex_map_t *if_prop;
+
+    TOTAL_INTERFACES(num_vaps, wifi_prop);
+    if_prop = wifi_prop->interface_map;
+
+    for (index = 0; index < num_vaps; index++) {
+        if (if_prop->rdk_radio_index == radio_index) {
+            if (strstr(if_prop->vap_name, NAME_FREQUENCY_2_4_G)) {
+                *band = WIFI_FREQUENCY_2_4_BAND;
+                return RETURN_OK;
+            }
+            if (strstr(if_prop->vap_name, NAME_FREQUENCY_5L_G)) {
+                *band = WIFI_FREQUENCY_5L_BAND;
+                return RETURN_OK;
+            }
+            if (strstr(if_prop->vap_name, NAME_FREQUENCY_5H_G)) {
+                *band = WIFI_FREQUENCY_5H_BAND;
+                return RETURN_OK;
+            }
+            if (strstr(if_prop->vap_name, NAME_FREQUENCY_5_G)) {
+                *band = WIFI_FREQUENCY_5_BAND;
+                return RETURN_OK;
+            }
+            if (strstr(if_prop->vap_name, NAME_FREQUENCY_6_G)) {
+                *band = WIFI_FREQUENCY_6_BAND;
+                return RETURN_OK;
+            }
+        }
+        if_prop++;
+    }
+
+    return RETURN_ERR;
+}
+

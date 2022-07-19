@@ -673,6 +673,10 @@ int init(webconfig_dml_t *consumer)
     consumer->harvester.u_inst_client_reporting_period=consumer->config.global_parameters.inst_wifi_client_reporting_period;
     consumer->harvester.u_inst_client_def_reporting_period=consumer->config.global_parameters.inst_wifi_client_def_reporting_period;
     strncpy(consumer->harvester.mac_address,(char *)consumer->config.global_parameters.inst_wifi_client_mac,sizeof(consumer->harvester.mac_address));
+    for (itr=0; itr<consumer->hal_cap.wifi_prop.numRadios; itr++) {
+        radio_cfg[itr].SupportedFrequencyBands = consumer->radios[itr].oper.band;
+        snprintf(radio_cfg[itr].Alias, sizeof(radio_cfg[itr].Alias), "Radio%d", itr);
+    }
     update_dml_radio_default();
     update_dml_vap_defaults();
     update_dml_global_default();
@@ -711,16 +715,6 @@ wifi_radio_operationParam_t* get_dml_cache_radio_map(uint8_t radio_index)
 
 bool is_radio_config_changed;
 bool g_update_wifi_region;
-
-int convert_freq_band_to_dml_radio_index(int band, int *radio_index)
-{
-    if(band>0)
-    {
-        *radio_index = band;
-        return RETURN_OK;
-    }
-    return RETURN_ERR;
-}
 
 bool is_dfs_channel_allowed(unsigned int channel)
 {
@@ -1241,21 +1235,26 @@ void update_dml_radio_default() {
         radio_cfg[i].OnOffPushButtonTime = 0;
         radio_cfg[i].MulticastRate = 0;
         radio_cfg[i].MCS = 0;
-        if (i == 0) {
-            strncpy(radio_cfg[i].Alias,"Radio0",sizeof(radio_cfg[i].Alias)-1);
-            radio_cfg[i].SupportedFrequencyBands = WIFI_FREQUENCY_2_4_BAND;
+        if (radio_cfg[i].SupportedFrequencyBands == WIFI_FREQUENCY_2_4_BAND) {
             radio_cfg[i].MaxBitRate = 1147;
-            strncpy(radio_cfg[i].PossibleChannels,"1,2,3,4,5,6,7,8,9,10,11",sizeof(radio_cfg[i].PossibleChannels)-1);
             strncpy(radio_cfg[i].ChannelsInUse,"1",sizeof(radio_cfg[i].ChannelsInUse)-1);
             strncpy(radio_cfg[i].SupportedStandards,"g,n,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
-        }
-        else if (i == 1) {
-            strncpy(radio_cfg[i].Alias,"Radio1",sizeof(radio_cfg[i].Alias)-1);
-            radio_cfg[i].SupportedFrequencyBands = WIFI_FREQUENCY_5_BAND;
+        } else if (radio_cfg[i].SupportedFrequencyBands == WIFI_FREQUENCY_5_BAND) {
             radio_cfg[i].MaxBitRate = 4804;
-            strncpy(radio_cfg[i].PossibleChannels,"36,40,44,48,52,56,60,64,100,104,108,112,116,120,124,128,132,136,140,144,149,153,157,161,165",sizeof(radio_cfg[i].PossibleChannels)-1);
             strncpy(radio_cfg[i].ChannelsInUse,"44",sizeof(radio_cfg[i].ChannelsInUse)-1);
             strncpy(radio_cfg[i].SupportedStandards,"a,n,ac,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
+        } else if (radio_cfg[i].SupportedFrequencyBands == WIFI_FREQUENCY_5L_BAND) {
+            radio_cfg[i].MaxBitRate = 4804;
+            strncpy(radio_cfg[i].ChannelsInUse,"44",sizeof(radio_cfg[i].ChannelsInUse)-1);
+            strncpy(radio_cfg[i].SupportedStandards,"a,n,ac,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
+        } else if (radio_cfg[i].SupportedFrequencyBands == WIFI_FREQUENCY_5H_BAND) {
+            radio_cfg[i].MaxBitRate = 4804;
+            strncpy(radio_cfg[i].ChannelsInUse,"149",sizeof(radio_cfg[i].ChannelsInUse)-1);
+            strncpy(radio_cfg[i].SupportedStandards,"a,n,ac,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
+        } else if (radio_cfg[i].SupportedFrequencyBands == WIFI_FREQUENCY_6_BAND) {
+            radio_cfg[i].MaxBitRate = 9608;
+            strncpy(radio_cfg[i].ChannelsInUse,"181",sizeof(radio_cfg[i].ChannelsInUse)-1);
+            strncpy(radio_cfg[i].SupportedStandards,"ax",sizeof(radio_cfg[i].SupportedStandards)-1);
         }
     }
 }

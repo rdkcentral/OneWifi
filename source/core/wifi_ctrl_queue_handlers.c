@@ -763,47 +763,12 @@ void convert_freq_to_channel(unsigned int freq, unsigned char *channel)
     } else if ((freq >= 5000) && (freq <= 5980)) {
         freq = freq - 5000;
         *channel = (freq / 5);
+    } else if ((freq >= MIN_FREQ_MHZ_6G) && (freq <= MAX_FREQ_MHZ_6G)) {
+        freq = freq - 5950;
+        *channel = (freq / 5);
     } else {
         wifi_util_error_print(WIFI_CTRL, "%s:%d frequency out of range:%d\r\n", __func__,__LINE__, freq);
         return;
-    }
-}
-
-void update_global_cache_radio_channel(unsigned int freq)
-{
-    wifi_radio_operationParam_t *wifi_radio_oper_param = NULL;
-    unsigned char radio_index = 0;
-    unsigned char channel = 0;
-    int ret;
-    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-
-    if ((freq >= 2407) && (freq <= 2484)) {
-        radio_index = 0;
-    } else if ((freq >= 5000) && (freq <= 5980)) {
-        radio_index = 1;
-    } else {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d frequency out of range:%d\r\n", __func__,__LINE__, freq);
-        return;
-    }
-
-    convert_freq_to_channel(freq, &channel);
-
-    wifi_radio_oper_param = (wifi_radio_operationParam_t *)get_wifidb_radio_map(radio_index);
-    if (wifi_radio_oper_param != NULL) {
-        if (wifi_radio_oper_param->channel != channel) {
-            wifi_radio_oper_param->channel = channel;
-            ctrl->webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
-            wifi_util_info_print(WIFI_CTRL, "%s:%d channel updated to global cache:%d\r\n", __func__,__LINE__, channel);
-            ret = wifi_hal_setRadioOperatingParameters(radio_index, wifi_radio_oper_param);
-            if (ret != RETURN_OK) {
-                wifi_util_error_print(WIFI_CTRL,"%s: wifi radio parameter set failure: radio_index:%d\n",__FUNCTION__, radio_index);
-                return;
-            } else {
-                wifi_util_info_print(WIFI_CTRL,"%s: wifi radio parameter set success: radio_index:%d\n",__FUNCTION__, radio_index);
-            }
-        } else {
-            wifi_util_dbg_print(WIFI_CTRL, "%s:%d global cache channel:%d current channel:%d\r\n", __func__,__LINE__, wifi_radio_oper_param->channel, channel);
-        }
     }
 }
 
@@ -1885,8 +1850,13 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg)
     wifi_mgr_t *g_wifidb;
     g_wifidb = get_wifimgr_obj();
     wifi_ctrl_t *ctrl;
+    vap_svc_t *ext_svc;
 
     ctrl = &g_wifidb->ctrl;
+    if (ctrl->network_mode == rdk_dev_mode_type_ext) {
+        ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
+        ext_svc->event_fn(ext_svc, ctrl_event_type_hal_ind, ctrl_event_hal_channel_change, vap_svc_event_none, ch_chg);
+    }
 
     radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(ch_chg->radioIndex);
     if (radio_params == NULL) {

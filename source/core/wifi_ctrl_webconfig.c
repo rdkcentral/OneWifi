@@ -964,6 +964,20 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
             print_wifi_hal_radio_data(WIFI_WEBCONFIG, "old", i, &mgr_radio_data->oper);
             print_wifi_hal_radio_data(WIFI_WEBCONFIG, "New", i, &radio_data->oper);
 
+            if (ctrl->network_mode == rdk_dev_mode_type_ext) {
+                vap_svc_t *ext_svc;
+                ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
+                if (ext_svc != NULL) {
+                    vap_svc_ext_t *ext;
+                    ext = &ext_svc->u.ext;
+                    unsigned int connected_radio_index = 0;
+                    connected_radio_index = get_radio_index_for_vap_index(ext_svc->prop, ext->connected_vap_index);
+                    if ((ext->conn_state == connection_state_connected) && (connected_radio_index == mgr_radio_data->vaps.radio_index) && (mgr_radio_data->oper.channel != radio_data->oper.channel)) {
+                        ext_svc->event_fn(ext_svc, ctrl_event_type_webconfig, ctrl_event_webconfig_set_data, vap_svc_event_none, &radio_data->oper);
+                    }
+                }
+            }
+
             if (wifi_hal_setRadioOperatingParameters(mgr_radio_data->vaps.radio_index, &radio_data->oper) != RETURN_OK) {
                 wifi_util_error_print(WIFI_MGR, "%s:%d: failed to apply\n", __func__, __LINE__);
                 ctrl->webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;

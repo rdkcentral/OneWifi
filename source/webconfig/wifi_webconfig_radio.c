@@ -126,13 +126,16 @@ webconfig_error_t decode_radio_subdoc(webconfig_t *config, webconfig_subdoc_data
     cJSON *obj, *obj_radio;
     unsigned int i, j, size;
     unsigned int presence_count = 0;
-    char *radio_names[MAX_NUM_RADIOS] = {"radio1", "radio2"};
+    char radio_names[MAX_NUM_RADIOS][8];
     cJSON *json = data->u.encoded.json;
     webconfig_subdoc_decoded_data_t *params;
 
     params = &data->u.decoded;
     doc = &config->subdocs[data->type];
 
+    for (i = 0; i < MAX_NUM_RADIOS; i++) {
+        snprintf(radio_names[i], sizeof(radio_names[i]), "radio%d", i+1);
+    }
     // wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Encoded JSON:\n%s\n", __func__, __LINE__, data->u.encoded.raw);
 
     for (i = 0; i < doc->num_objects; i++) {

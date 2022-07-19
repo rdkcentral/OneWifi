@@ -1085,7 +1085,7 @@
             "key": {
               "type": "integer",
               "minInteger": 0,
-              "maxInteger": 3
+              "maxInteger": 32
             },
             "min": 0,
             "max": 1
@@ -1105,7 +1105,7 @@
             "key": {
               "type": "integer",
               "minInteger": 1,
-              "maxInteger": 165
+              "maxInteger": 229
             },
             "min": 0,
             "max": 1
