@@ -200,6 +200,7 @@ typedef enum {
     ctrl_event_type_command_wifi_host_sync,
     ctrl_event_type_device_network_mode,
     ctrl_event_type_twoG80211axEnable_rfc,
+    ctrl_event_type_command_wifi_neighborscan,
 
     // wif_api
     ctrl_event_type_wifiapi_execution = 0x300,

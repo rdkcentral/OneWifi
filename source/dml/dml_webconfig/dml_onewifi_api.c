@@ -1051,6 +1051,13 @@ int push_blaster_config_dml_to_ctrl_queue()
     return RETURN_OK;
 }
 
+int process_neighbor_scan_dml()
+{
+    push_data_to_ctrl_queue(NULL, 0, ctrl_event_type_command, ctrl_event_type_command_wifi_neighborscan);
+    wifi_util_dbg_print(WIFI_DMCLI, "%s: Neighbor scan command pushed to ctrl. queue \n", __FUNCTION__);
+    return RETURN_OK;
+}
+
 instant_measurement_config_t *get_dml_cache_harvester()
 {
     return &webconfig_dml.harvester;

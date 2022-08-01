@@ -81,6 +81,7 @@ extern char g_Subsystem[32];
 #define MIN_MAC_LEN 12
 #define DEFAULT_INSTANT_POLL_TIME 5
 #define DEFAULT_INSTANT_REPORT_TIME 0
+#define MAX_NEIGHBOURS 250
 
 #define DEFAULT_CHANUTIL_LOG_INTERVAL 900
 #define RADIO_HEALTH_TELEMETRY_INTERVAL_MS 900000 //15 minutes
@@ -89,6 +90,8 @@ extern char g_Subsystem[32];
 #define CAPTURE_VAP_STATUS_INTERVAL_MS 5000 // 5 seconds
 #define UPLOAD_AP_TELEMETRY_INTERVAL_MS 24*60*60*1000 // 24 Hours
 #define RADIO_STATS_INTERVAL_MS 30000 //30 seconds
+#define NEIGHBOR_SCAN_INTERVAL 60*60*1000 //1 Hr
+#define NEIGHBOR_SCAN_RESULT_INTERVAL 5000 //5 seconds
 
 #define MIN_TO_MILLISEC 60000
 #define SEC_TO_MILLISEC 1000
@@ -131,6 +134,8 @@ INT assocGateTime = 0;
 INT deauthCountThreshold = 0;
 INT deauthMonitorDuration = 0;
 INT deauthGateTime = 0;//ONE_WIFI
+
+static int neighscan_task_id = -1;
 
 int executeCommand(char* command,char* result);
 void associated_client_diagnostics();
@@ -1937,6 +1942,7 @@ int get_sta_stats_info (assoc_dev_data_t *assoc_dev_data) {
         return -1;
     }
 
+    assoc_dev_data->dev_stats.cli_AuthenticationState = sta_data->dev_stats.cli_AuthenticationState;
     assoc_dev_data->dev_stats.cli_LastDataDownlinkRate = sta_data->dev_stats.cli_LastDataDownlinkRate;
     assoc_dev_data->dev_stats.cli_LastDataUplinkRate = sta_data->dev_stats.cli_LastDataUplinkRate;
     assoc_dev_data->dev_stats.cli_SignalStrength = sta_data->dev_stats.cli_SignalStrength;
@@ -2280,6 +2286,61 @@ int process_instant_msmt_monitor(void *arg)
         stream_client_msmt_data(false);
     }
 
+    return TIMER_TASK_COMPLETE;
+}
+
+int get_neighbor_scan_results() 
+{
+    wifi_monitor_t *monitor_param = (wifi_monitor_t *)get_wifi_monitor();
+    wifi_neighbor_ap2_t *NeighResult = NULL;
+    wifi_neighbor_ap2_t *pTmp;
+    UINT count = 0;
+
+    monitor_param->neighbor_scan_cfg.ResultCount = 0;
+    
+    for(UINT rIdx = 0; rIdx < getNumberRadios(); rIdx++)
+    {
+        if (wifi_getNeighboringWiFiStatus(rIdx, &NeighResult,&count) == RETURN_OK)
+        {
+            pTmp = monitor_param->neighbor_scan_cfg.pResult[rIdx];
+            monitor_param->neighbor_scan_cfg.pResult[rIdx] = NeighResult;
+            monitor_param->neighbor_scan_cfg.resultCountPerRadio[rIdx] = count;
+            if(pTmp) {
+                free(pTmp);
+                pTmp = NULL;
+            }
+        }
+        else if (NeighResult != NULL) {
+            free(NeighResult);
+            NeighResult = NULL;
+        }
+        monitor_param->neighbor_scan_cfg.ResultCount += monitor_param->neighbor_scan_cfg.resultCountPerRadio[rIdx];
+    }
+    monitor_param->neighbor_scan_cfg.ResultCount = (monitor_param->neighbor_scan_cfg.ResultCount > MAX_NEIGHBOURS) ? MAX_NEIGHBOURS : monitor_param->neighbor_scan_cfg.ResultCount;
+    strcpy_s(monitor_param->neighbor_scan_cfg.DiagnosticsState, sizeof(monitor_param->neighbor_scan_cfg.DiagnosticsState) , "Completed");
+    return TIMER_TASK_COMPLETE;
+}
+
+int process_periodical_neighbor_scan(void *arg)
+{
+    wifi_monitor_t *monitor_param = (wifi_monitor_t *)get_wifi_monitor();
+    wifi_radio_operationParam_t *wifi_radio_oper_param = NULL;
+    wifi_neighborScanMode_t scan_mode = WIFI_RADIO_SCAN_MODE_FULL;
+    int dwell_time = 20;
+
+    if(strcmp(monitor_param->neighbor_scan_cfg.DiagnosticsState, "Requested") == 0) {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d: Scan already in Progress!!!\n", __func__, __LINE__);
+    } else {
+        strcpy_s(monitor_param->neighbor_scan_cfg.DiagnosticsState, sizeof(monitor_param->neighbor_scan_cfg.DiagnosticsState) , "Requested");
+
+        for(UINT rIdx = 0; rIdx < getNumberRadios(); rIdx++)
+        {
+            wifi_radio_oper_param = (wifi_radio_operationParam_t *)get_wifidb_radio_map(rIdx);
+            wifi_startNeighborScan(rIdx, scan_mode, ((wifi_radio_oper_param->band == WIFI_FREQUENCY_6_BAND) ? (dwell_time=110) : dwell_time), 0, NULL);
+        }
+        scheduler_add_timer_task(g_monitor_module.sched, FALSE, &neighscan_task_id, get_neighbor_scan_results, NULL,
+                    NEIGHBOR_SCAN_RESULT_INTERVAL, 1);
+    }
     return TIMER_TASK_COMPLETE;
 }
 
@@ -3854,6 +3915,17 @@ int radio_diagnostics(void *arg)
                 g_monitor_module.radio_data[radiocnt].RadioActivityFactor = radioTrafficStats.radio_ActivityFactor;
                 g_monitor_module.radio_data[radiocnt].CarrierSenseThreshold_Exceeded = radioTrafficStats.radio_CarrierSenseThreshold_Exceeded;
                 g_monitor_module.radio_data[radiocnt].channelUtil = radioTrafficStats.radio_ChannelUtilization;
+                g_monitor_module.radio_data[radiocnt].radio_BytesSent = radioTrafficStats.radio_BytesSent;
+                g_monitor_module.radio_data[radiocnt].radio_BytesReceived = radioTrafficStats.radio_BytesReceived;
+                g_monitor_module.radio_data[radiocnt].radio_PacketsSent = radioTrafficStats.radio_PacketsSent;
+                g_monitor_module.radio_data[radiocnt].radio_PacketsReceived = radioTrafficStats.radio_PacketsReceived;
+                g_monitor_module.radio_data[radiocnt].radio_ErrorsSent = radioTrafficStats.radio_ErrorsSent;
+                g_monitor_module.radio_data[radiocnt].radio_ErrorsReceived = radioTrafficStats.radio_ErrorsReceived;
+                g_monitor_module.radio_data[radiocnt].radio_DiscardPacketsSent = radioTrafficStats.radio_DiscardPacketsSent;
+                g_monitor_module.radio_data[radiocnt].radio_DiscardPacketsReceived = radioTrafficStats.radio_DiscardPacketsReceived;
+                g_monitor_module.radio_data[radiocnt].radio_InvalidMACCount = radioTrafficStats.radio_InvalidMACCount;
+                g_monitor_module.radio_data[radiocnt].radio_PacketsOtherReceived = radioTrafficStats.radio_PacketsOtherReceived;
+                g_monitor_module.radio_data[radiocnt].radio_RetransmissionMetirc = radioTrafficStats.radio_RetransmissionMetirc;
 #if 0
                 /* When we trigger below API then Broadcom driver internally trigger offchannel scan.
                 *  We don't want this offchannel scan at every 30 seconds. So, for resolution of
@@ -4212,6 +4284,11 @@ static void scheduler_telemetry_tasks(void)
             scheduler_add_timer_task(g_monitor_module.sched, FALSE, &g_monitor_module.upload_ap_telemetry_pmf_id, upload_ap_telemetry_pmf, NULL,
                     UPLOAD_AP_TELEMETRY_INTERVAL_MS, 0);
         }
+        if (g_monitor_module.neighbor_scan_id == 0) {
+            scheduler_add_timer_task(g_monitor_module.sched, FALSE, &g_monitor_module.neighbor_scan_id, process_periodical_neighbor_scan, NULL,
+                    NEIGHBOR_SCAN_INTERVAL, 0);
+        }
+        
     } else {
         if (g_monitor_module.refresh_task_id != 0) {
             scheduler_cancel_timer_task(g_monitor_module.sched, g_monitor_module.refresh_task_id);
@@ -4257,6 +4334,10 @@ static void scheduler_telemetry_tasks(void)
         if (g_monitor_module.upload_ap_telemetry_pmf_id != 0) {
             scheduler_cancel_timer_task(g_monitor_module.sched, g_monitor_module.upload_ap_telemetry_pmf_id);
             g_monitor_module.upload_ap_telemetry_pmf_id = 0;
+        }
+        if (g_monitor_module.neighbor_scan_id != 0) {
+            scheduler_cancel_timer_task(g_monitor_module.sched, g_monitor_module.neighbor_scan_id);
+            g_monitor_module.neighbor_scan_id= 0;
         }
     }
 }
@@ -4360,6 +4441,7 @@ int init_wifi_monitor ()
     g_monitor_module.upload_ap_telemetry_pmf_id = 0;
     g_monitor_module.csi_sched_id = 0;
     g_monitor_module.csi_sched_interval = 0;
+    g_monitor_module.neighbor_scan_id = 0;
     for (i = 0; i < getTotalNumberVAPs(); i++) {
         g_monitor_module.clientdiag_id[i] = 0;
         g_monitor_module.clientdiag_sched_arg[i] = i;

@@ -4005,7 +4005,7 @@ ReceivedSignalLevel_GetEntryCount
         ANSC_HANDLE                 hInsContext
     )
 {
-	return 0;
+    return 0;
 }
 
 ANSC_HANDLE
@@ -4289,27 +4289,35 @@ Stats3_GetParamUlongValue
 
     /* check the parameter name and return the corresponding value */
     if( AnscEqualString(ParamName, "BytesSent", TRUE))   {
+        *puLong = monitor_param->radio_data[instance_number-1].radio_BytesSent;
         return TRUE;
     }
     if( AnscEqualString(ParamName, "BytesReceived", TRUE))    {
+        *puLong = monitor_param->radio_data[instance_number-1].radio_BytesReceived;
         return TRUE;
     }
     if( AnscEqualString(ParamName, "PacketsSent", TRUE))    {
+        *puLong = monitor_param->radio_data[instance_number-1].radio_PacketsSent;
         return TRUE;
     }
     if( AnscEqualString(ParamName, "PacketsReceived", TRUE))    {
+        *puLong = monitor_param->radio_data[instance_number-1].radio_PacketsReceived;
         return TRUE;
     }
     if( AnscEqualString(ParamName, "ErrorsSent", TRUE))    {
+        *puLong = monitor_param->radio_data[instance_number-1].radio_ErrorsSent;
         return TRUE;
     }
     if( AnscEqualString(ParamName, "ErrorsReceived", TRUE))    {
+        *puLong = monitor_param->radio_data[instance_number-1].radio_ErrorsReceived;
         return TRUE;
     }
     if( AnscEqualString(ParamName, "DiscardPacketsSent", TRUE))    {
+        *puLong = monitor_param->radio_data[instance_number-1].radio_DiscardPacketsSent;
         return TRUE;
     }
     if( AnscEqualString(ParamName, "DiscardPacketsReceived", TRUE))    {
+        *puLong = monitor_param->radio_data[instance_number-1].radio_DiscardPacketsReceived;
         return TRUE;
     }
     if( AnscEqualString(ParamName, "PLCPErrorCount", TRUE))    {
@@ -4321,6 +4329,7 @@ Stats3_GetParamUlongValue
         return TRUE;
     }
     if( AnscEqualString(ParamName, "InvalidMACCount", TRUE))    {
+        *puLong = monitor_param->radio_data[instance_number-1].radio_InvalidMACCount;
         return TRUE;
     }
     if( AnscEqualString(ParamName, "PacketsOtherReceived", TRUE))    {
@@ -14607,10 +14616,17 @@ NeighboringWiFiDiagnostic_GetParamBoolValue
     )
 {
     UNREFERENCED_PARAMETER(hInsContext);
-
+    wifi_global_config_t *global_wifi_config;
+    global_wifi_config = (wifi_global_config_t *) get_dml_cache_global_wifi_config();
+    if (global_wifi_config == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get Global Config\n", __FUNCTION__,__LINE__);
+        return FALSE;
+    }
 
     if (AnscEqualString(ParamName, "Enable", TRUE))
     {
+        *pBool = global_wifi_config->global_parameters.diagnostic_enable;
         return TRUE;
     }
 
@@ -14628,8 +14644,13 @@ NeighboringWiFiDiagnostic_GetParamStringValue
 {
     UNREFERENCED_PARAMETER(hInsContext);
     UNREFERENCED_PARAMETER(pUlSize);
+    errno_t rc = -1;
+
+    wifi_monitor_t *monitor_param = (wifi_monitor_t *)get_wifi_monitor();
     if(AnscEqualString(ParamName, "DiagnosticsState", TRUE))
     {
+        rc = strcpy_s(pValue, *pUlSize, monitor_param->neighbor_scan_cfg.DiagnosticsState);
+        ERR_CHK(rc);
         return 0;
     }
     return -1;
@@ -14678,8 +14699,18 @@ NeighboringWiFiDiagnostic_SetParamStringValue
     )
 {
     UNREFERENCED_PARAMETER(hInsContext);
-  
+    
+    wifi_global_config_t *global_wifi_config;
+    wifi_monitor_t *monitor_param = (wifi_monitor_t *)get_wifi_monitor();
+    global_wifi_config = (wifi_global_config_t *) get_dml_cache_global_wifi_config();
+
     if( AnscEqualString(ParamName, "DiagnosticsState", TRUE))   {
+        if( (strcmp(pString, "Requested") == 0) && (global_wifi_config->global_parameters.diagnostic_enable)) {
+            if(strcmp(monitor_param->neighbor_scan_cfg.DiagnosticsState, "Requested") == 0)
+                return TRUE;
+
+            process_neighbor_scan_dml();
+        }
 	    return TRUE;
     }
 	return FALSE;  
@@ -14694,6 +14725,8 @@ NeighboringScanResult_GetEntryCount
     )
 {
     UNREFERENCED_PARAMETER(hInsContext);
+    wifi_monitor_t *monitor_param = (wifi_monitor_t *)get_wifi_monitor();
+    return monitor_param->neighbor_scan_cfg.ResultCount;
     return 0;
 }
 
@@ -14706,6 +14739,22 @@ NeighboringScanResult_GetEntry
     )
 {
     UNREFERENCED_PARAMETER(hInsContext);
+    UINT count = 0;
+    wifi_monitor_t *monitor_param = (wifi_monitor_t *)get_wifi_monitor();
+    
+    if ( nIndex >= monitor_param->neighbor_scan_cfg.ResultCount )
+        return NULL;
+
+    *pInsNumber  = nIndex + 1;
+
+    for (UINT rIdx = 0; rIdx < (UINT)get_num_radio_dml(); rIdx++)
+    {
+        if (nIndex < (monitor_param->neighbor_scan_cfg.resultCountPerRadio[rIdx] + count))
+        {
+            return (ANSC_HANDLE)&monitor_param->neighbor_scan_cfg.pResult[rIdx][nIndex - count];
+        }
+        count += monitor_param->neighbor_scan_cfg.resultCountPerRadio[rIdx];
+    }
     return NULL;
 }
 
@@ -14730,12 +14779,15 @@ NeighboringScanResult_GetParamIntValue
         int*                        pInt
     )
 {
+    wifi_neighbor_ap2_t *  pResult = (wifi_neighbor_ap2_t *)hInsContext;
 
     if( AnscEqualString(ParamName, "SignalStrength", TRUE))    {
+        *pInt = pResult->ap_SignalStrength;
         return TRUE;
     }
 
     if( AnscEqualString(ParamName, "Noise", TRUE))    {
+        *pInt = pResult->ap_Noise;
         return TRUE;
     }
     return FALSE;
@@ -14749,17 +14801,22 @@ NeighboringScanResult_GetParamUlongValue
         ULONG*                      puLong
     )
 {
-    
+    wifi_neighbor_ap2_t *  pResult = (wifi_neighbor_ap2_t *)hInsContext;
+
     if( AnscEqualString(ParamName, "DTIMPeriod", TRUE))    {
+        *puLong = pResult->ap_DTIMPeriod;
         return TRUE;
     }
     if( AnscEqualString(ParamName, "X_COMCAST-COM_ChannelUtilization", TRUE))    {
+        *puLong = pResult->ap_ChannelUtilization;
         return TRUE;
     }
     if( AnscEqualString(ParamName, "Channel", TRUE))    {
+        *puLong = pResult->ap_Channel;
         return TRUE;  
     }
     if(AnscEqualString(ParamName, "BeaconPeriod", TRUE))   {
+       *puLong = pResult->ap_BeaconPeriod;
        return TRUE;
     }
 
@@ -14775,41 +14832,82 @@ NeighboringScanResult_GetParamStringValue
         ULONG*                      pUlSize
     )
 {
-	UNREFERENCED_PARAMETER(pUlSize);    
+    UNREFERENCED_PARAMETER(pUlSize);
+    wifi_neighbor_ap2_t *  pResult = (wifi_neighbor_ap2_t *)hInsContext;
+    errno_t rc = -1;
+
     if( AnscEqualString(ParamName, "Radio", TRUE))    {
-        return 0;
-    }	
+        wifi_freq_bands_t freqBand;
+
+        if (freqBandStrToEnum(pResult->ap_OperatingFrequencyBand, &freqBand ) != ANSC_STATUS_SUCCESS)
+            return -1;
+
+        wifi_radio_operationParam_t *wifiRadioOperParam = NULL;
+        UINT max_string = 32;
+        for (UINT rIdx = 0; rIdx < (UINT)get_num_radio_dml(); rIdx++)
+        {
+            wifiRadioOperParam = (wifi_radio_operationParam_t *) get_dml_cache_radio_map(rIdx);
+            if (wifiRadioOperParam != NULL && wifiRadioOperParam->band == freqBand)
+            {
+                snprintf(pValue, max_string, "Device.WiFi.Radio.%u", rIdx + 1);
+                return 0;
+            }
+        }
+        return -1;
+    }
     if(AnscEqualString(ParamName, "EncryptionMode", TRUE))    {
+        rc = strcpy_s(pValue, *pUlSize, pResult->ap_EncryptionMode);
+        ERR_CHK(rc);
         return 0;
     }
     if( AnscEqualString(ParamName, "Mode", TRUE))    {
+        rc = strcpy_s(pValue, *pUlSize, pResult->ap_Mode);
+        ERR_CHK(rc);
         return 0;  
     }
     if( AnscEqualString(ParamName, "SecurityModeEnabled", TRUE))    {
+        rc = strcpy_s(pValue, *pUlSize, pResult->ap_SecurityModeEnabled);
+        ERR_CHK(rc);
         return 0;  
     }
     if( AnscEqualString(ParamName, "BasicDataTransferRates", TRUE))    {
+        rc = strcpy_s(pValue, *pUlSize, pResult->ap_BasicDataTransferRates);
+        ERR_CHK(rc);
         return 0;  
     } 
     if( AnscEqualString(ParamName, "SupportedDataTransferRates", TRUE))    {
+        rc = strcpy_s(pValue, *pUlSize, pResult->ap_SupportedDataTransferRates);
+        ERR_CHK(rc);
         return 0;  
     }
     if( AnscEqualString(ParamName, "OperatingChannelBandwidth", TRUE))    {
+        rc = strcpy_s(pValue, *pUlSize, pResult->ap_OperatingChannelBandwidth);
+        ERR_CHK(rc);
         return 0;
     }
     if( AnscEqualString(ParamName, "OperatingStandards", TRUE))    {
+        rc = strcpy_s(pValue, *pUlSize, pResult->ap_OperatingStandards);
+        ERR_CHK(rc);
         return 0;
     } 
     if( AnscEqualString(ParamName, "SupportedStandards", TRUE))    {
-       return 0;
+        rc = strcpy_s(pValue, *pUlSize, pResult->ap_SupportedStandards);
+        ERR_CHK(rc);
+        return 0;
     } 
     if( AnscEqualString(ParamName, "BSSID", TRUE))    {
+        rc = strcpy_s(pValue, *pUlSize, pResult->ap_BSSID);
+        ERR_CHK(rc);
         return 0;
     }     
     if(AnscEqualString(ParamName, "SSID", TRUE))     {
+        rc = strcpy_s(pValue, *pUlSize, pResult->ap_SSID);
+        ERR_CHK(rc);
         return 0;  
     }
     if( AnscEqualString(ParamName, "OperatingFrequencyBand", TRUE))    {
+        rc = strcpy_s(pValue, *pUlSize, pResult->ap_OperatingFrequencyBand);
+        ERR_CHK(rc);
         return 0;
     }    
 

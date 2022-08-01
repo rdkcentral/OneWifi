@@ -141,15 +141,26 @@ typedef struct {
 } bssid_data_t;
 
 typedef struct {
-       char                    frequency_band[64];
-       char                    ChannelsInUse[256];
-       unsigned int            primary_radio_channel;
-       char                    channel_bandwidth[64];
-       unsigned int            RadioActivityFactor;
-       unsigned int            CarrierSenseThreshold_Exceeded;
-       int                     NoiseFloor;
-       int                     channelUtil;
-       int                     channelInterference;
+    char                    frequency_band[64];
+    char                    ChannelsInUse[256];
+    unsigned int            primary_radio_channel;
+    char                    channel_bandwidth[64];
+    unsigned int            RadioActivityFactor;
+    unsigned int            CarrierSenseThreshold_Exceeded;
+    int                     NoiseFloor;
+    int                     channelUtil;
+    int                     channelInterference;
+    ULONG                   radio_BytesSent;
+    ULONG                   radio_BytesReceived;
+    ULONG                   radio_PacketsSent;
+    ULONG                   radio_PacketsReceived;
+    ULONG                   radio_ErrorsSent;
+    ULONG                   radio_ErrorsReceived;
+    ULONG                   radio_DiscardPacketsSent;
+    ULONG                   radio_DiscardPacketsReceived;
+    ULONG                   radio_InvalidMACCount;
+    ULONG                   radio_PacketsOtherReceived;
+    INT                     radio_RetransmissionMetirc;
 } radio_data_t;
 
 typedef struct {
@@ -158,6 +169,13 @@ typedef struct {
        unsigned long long ch_utilization_busy_self;
        unsigned long long LastUpdatedTime;
 } radio_chan_data_t;
+
+typedef struct {
+    CHAR DiagnosticsState[64];
+    ULONG ResultCount;
+    ULONG resultCountPerRadio[MAX_NUM_RADIOS];
+    wifi_neighbor_ap2_t * pResult[MAX_NUM_RADIOS];
+} neighscan_diag_cfg_t;
 
 typedef struct {
     queue_t             *queue;
@@ -169,6 +187,7 @@ typedef struct {
     radio_data_t        radio_data[MAX_RADIOS];
     radio_chan_data_t   radio_channel_data[MAX_RADIOS];
 #endif
+    neighscan_diag_cfg_t neighbor_scan_cfg;
     pthread_cond_t      cond;
     pthread_mutex_t     lock;
     pthread_t           id;
@@ -204,6 +223,7 @@ typedef struct {
     int associated_devices_id;
     int vap_status_id;
     int radio_diagnostics_id;
+    int neighbor_scan_id;
     int radio_health_telemetry_logger_id;
     int upload_ap_telemetry_pmf_id;
     int clientdiag_id[MAX_VAP];
@@ -276,4 +296,5 @@ int GetInstAssocDevSchemaIdBufferSize();
 unsigned int GetINSTPollingPeriod();
 unsigned int GetINSTOverrideTTL();
 unsigned int GetINSTDefReportingPeriod();
+int get_neighbor_scan_results();
 #endif	//_WIFI_MON_H_

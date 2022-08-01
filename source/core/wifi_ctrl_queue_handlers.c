@@ -13,6 +13,13 @@
 #include <pthread.h>
 #include <rbus.h>
 #include "wifi_hal_rdk_framework.h"
+#include "safec_lib_common.h"
+
+#define NEIGHBOR_SCAN_RESULT_INTERVAL 5000 //5sec
+static int neighbor_scan_task_id = -1;
+
+
+
 
 void process_scan_results_event(wifi_bss_info_t *bss, unsigned int len)
 {
@@ -1391,6 +1398,28 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg)
     update_wifi_radio_config(ch_chg->radioIndex, radio_params);
 }
 
+void process_neighbor_scan_command_event()
+{
+    wifi_monitor_t *monitor_param = (wifi_monitor_t *)get_wifi_monitor();
+    wifi_radio_operationParam_t *wifi_radio_oper_param = NULL;
+    wifi_neighborScanMode_t scan_mode = WIFI_RADIO_SCAN_MODE_FULL;
+    int dwell_time = 20;
+
+    if(strcmp(monitor_param->neighbor_scan_cfg.DiagnosticsState, "Requested") == 0) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Scan already in Progress!!!\n", __func__, __LINE__);
+    } else {
+        strcpy_s(monitor_param->neighbor_scan_cfg.DiagnosticsState, sizeof(monitor_param->neighbor_scan_cfg.DiagnosticsState) , "Requested");
+
+        for(UINT rIdx = 0; rIdx < getNumberRadios(); rIdx++)
+        {
+            wifi_radio_oper_param = (wifi_radio_operationParam_t *)get_wifidb_radio_map(rIdx);
+            wifi_startNeighborScan(rIdx, scan_mode, ((wifi_radio_oper_param->band == WIFI_FREQUENCY_6_BAND) ? (dwell_time=110) : dwell_time), 0, NULL);
+        }
+        scheduler_add_timer_task(monitor_param->sched, FALSE, &neighbor_scan_task_id, get_neighbor_scan_results, NULL,
+                    NEIGHBOR_SCAN_RESULT_INTERVAL, 1);
+    }
+}
+
 void handle_command_event(void *data, unsigned int len, ctrl_event_subtype_t subtype)
 {
     switch (subtype) {
@@ -1447,6 +1476,10 @@ void handle_command_event(void *data, unsigned int len, ctrl_event_subtype_t sub
 
         case ctrl_event_type_device_network_mode:
             process_device_mode_command_event(*(int *)data);
+            break;
+        
+        case ctrl_event_type_command_wifi_neighborscan:
+            process_neighbor_scan_command_event();
             break;
 
         default:
