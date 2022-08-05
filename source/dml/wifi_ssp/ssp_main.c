@@ -63,7 +63,7 @@
 #include <sys/sysinfo.h>
 #include "ssp_main.h"
 #include "wifi_util.h"
-
+#include "wifi_ctrl.h"
 #define DEBUG_INI_NAME  "/etc/debug.ini"
 #include "syscfg/syscfg.h"
 #include "cap.h"
@@ -431,7 +431,36 @@ bool drop_root()
   }
   return retval;
 }
-
+void lnf_ssid_updateBootLogTime()
+{
+    BOOL apIsUp = FALSE;
+    wifi_vap_info_t *vapInfo = NULL;
+    int count = 0;
+    UINT total_vap_index = getTotalNumberVAPs();
+    do {
+        count++;
+        for (UINT apIndex = 0; apIndex < total_vap_index; apIndex++) {
+            if(isVapLnf(apIndex)) {
+                vapInfo =  get_wifidb_vap_parameters(apIndex);
+                CcspTraceWarning(("%s-%d LnF SSID %d   \n",__FUNCTION__, __LINE__, apIndex));
+                if(vapInfo != NULL) {
+                    if( vapInfo->u.bss_info.enabled == TRUE ) {
+                        apIsUp = TRUE;
+                        break;
+                    }
+                }
+            }
+        }
+        if (apIsUp) {
+            struct sysinfo l_sSysInfo;
+            sysinfo(&l_sSysInfo);
+            char uptime[16] = {0};
+            snprintf(uptime, sizeof(uptime), "%ld", l_sSysInfo.uptime);
+            print_uptime("boot_to_LnF_SSID_uptime", NULL, uptime);
+            break;
+        }
+    } while (count <= 10);
+}
 int ssp_main(int argc, char* argv[])
 {
     int                             cmdChar            = 0;
@@ -611,6 +640,7 @@ wifi_util_dbg_print(WIFI_MGR,"%s:%d: RDK_LOGGER_INIT done!\n", __func__, __LINE_
     char uptime[16] = {0};
     snprintf(uptime, sizeof(uptime), "%ld", l_sSysInfo.uptime);
     print_uptime("boot_to_WIFI_uptime",NULL, uptime);
+    lnf_ssid_updateBootLogTime();
     CcspTraceWarning(("RDKB_SYSTEM_BOOT_UP_LOG : Entering Wifi loop \n"));
     if ( bRunAsDaemon )
     {
