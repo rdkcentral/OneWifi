@@ -242,6 +242,7 @@ void Psm_Db_Write_Radio(wifi_radio_operationParam_t *rcfg)
             } else {
                 wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting FragThreshold, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
             }
+	}
 
         if(rcfg->rtsThreshold != cfg->rts_threshold){
             memset(recName, '\0', sizeof(recName));
@@ -411,7 +412,6 @@ void Psm_Db_Write_Radio(wifi_radio_operationParam_t *rcfg)
                 wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting SetChanUtilSelfHealEnable, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
             }
         }
-  }
 }
 
 void Psm_Db_Write_Vapinfo(wifi_vap_info_t *acfg)
