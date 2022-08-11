@@ -520,7 +520,7 @@ void sta_pending_connection_retry(wifi_ctrl_t *ctrl)
                                 && (scan_list->conn_retry_attempt >= STA_MAX_CONNECT_ATTEMPT)) {
                     wifi_util_info_print(WIFI_CTRL,"%s:%d connection attempt failed...\r\n",__func__, __LINE__);
                     scan_list->conn_attempt = connection_attempt_failed;
-                    disconnect_wifi(&mgr->hal_cap.wifi_prop, scan_list->external_ap.freq);
+                    //disconnect_wifi(&mgr->hal_cap.wifi_prop, scan_list->external_ap.freq);
                     break;
                 } else if (scan_list->conn_attempt == connection_attempt_failed) {
                     wifi_util_info_print(WIFI_CTRL,"%s:%d scan count:%d index:%d\r\n",__func__, __LINE__, ctrl->scan_count, (i + 1));
