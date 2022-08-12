@@ -752,12 +752,39 @@ int wifi_hal_platform_post_init()
     return RETURN_OK;
 }
 
+void telemetry_bootup_time_wifibroadcast()
+{
+    wifi_vap_info_t *vapInfo = NULL;
+    BOOL advertise_enabled = FALSE;
+    UINT apIndex = 0;
+    int num_radios = getNumberRadios();
+    for (int i = 0; i < num_radios; i++) {
+        apIndex = getPrivateApFromRadioIndex(i);
+        CcspTraceWarning(("bootup_time_wifibroadcast - apIndex %d\n",apIndex));
+        vapInfo =  get_wifidb_vap_parameters(apIndex);
+        if(vapInfo != NULL) {
+            if ( vapInfo->u.bss_info.showSsid == TRUE) {
+                advertise_enabled = TRUE;
+            }
+        }
+        if(advertise_enabled) {
+            advertise_enabled = FALSE;
+            unsigned int uptime;
+            uptime = get_Uptime();
+            CcspTraceWarning(("RDK_LOG_WARN,Wifi_Broadcast_complete:%d\n",uptime));
+            t2_event_d("bootuptime_WifiBroadcasted_split", uptime);
+        }
+    }
+}
+
 int start_wifi_ctrl(wifi_ctrl_t *ctrl)
 {
 
     ctrl->webconfig_state = ctrl_webconfig_state_none;
 
     start_wifi_services();
+
+    telemetry_bootup_time_wifibroadcast(); //Telemetry Marker for btime_wifibcast_split
 
     /* start wifi apps */
     wifi_hal_platform_post_init();
