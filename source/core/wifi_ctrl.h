@@ -76,6 +76,7 @@ extern "C" {
 //sta connection 10 seconds retry
 #define STA_CONN_RETRY                     8
 #define STA_MAX_CONNECT_ATTEMPT            1
+#define MAX_SCAN_RESULT_WAIT               4
 
 #define WLAN_RADIUS_GREYLIST_REJECT        100
 #define GREYLIST_TIMEOUT_IN_SECONDS        (24 * 60 * 60)
@@ -128,6 +129,13 @@ typedef enum {
     connection_state_connected
 } connection_state_t;
 
+typedef enum {
+    received_none_wifi_scan,
+    received_2g_wifi_scan,
+    received_5g_wifi_scan,
+    received_both_wifi_scan
+} scan_wifi_state_t;
+
 typedef struct scan_result {
     wifi_bss_info_t      external_ap;
     connection_attempt_t conn_attempt;
@@ -163,6 +171,9 @@ typedef struct wifi_ctrl {
     connection_state_t  conn_state;
     unsigned int        network_mode; /* 0 - gateway, 1 - extender */
     unsigned int        connected_vap_index;
+    scan_wifi_state_t   scan_wifi_state;
+    wifi_bss_info_t     connected_external_ap;
+    unsigned long long int last_connected_time;
 } wifi_ctrl_t;
 
 typedef enum {
@@ -319,6 +330,7 @@ void sta_pending_connection_retry(wifi_ctrl_t *ctrl);
 bool get_wifi_mesh_vap_enable_status(void);
 int get_wifi_mesh_sta_network_status(uint8_t vapIndex, bool *status);
 bool check_for_greylisted_mac_filter(void);
+void wait_wifi_scan_result(wifi_ctrl_t *ctrl);
 #ifdef __cplusplus
 }
 #endif

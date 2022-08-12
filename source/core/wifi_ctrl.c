@@ -83,6 +83,7 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
     bool greylist_flag = false;
     ctrl_event_t *queue_data = NULL;
     static uint8_t conn_retry = 0;
+    static uint8_t wait_scan_result;
 
     while (ctrl->exit_ctrl == false) {
         gettimeofday(&tv_now, NULL);
@@ -158,6 +159,20 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
             }
 
             webconfig_analyze_pending_states(ctrl);
+
+            if ((ctrl->network_mode == rdk_dev_mode_type_ext) && (ctrl->scan_wifi_state != received_none_wifi_scan)) {
+                if (ctrl->scan_wifi_state == received_both_wifi_scan) {
+                    ctrl->scan_wifi_state = received_none_wifi_scan;
+                } else if (wait_scan_result > MAX_SCAN_RESULT_WAIT) {
+                    wait_wifi_scan_result(ctrl);
+                    ctrl->scan_wifi_state = received_none_wifi_scan;
+                    wait_scan_result = 0;
+                } else {
+                    wait_scan_result++;
+                }
+            } else if(ctrl->network_mode == rdk_dev_mode_type_ext) {
+                wait_scan_result = 0;
+            }
 
 	    if (conn_retry > STA_CONN_RETRY) {
                 if (ctrl->network_mode == rdk_dev_mode_type_ext) {
@@ -347,6 +362,11 @@ void purge_existing_scan_list(unsigned int scan_count, scan_list_t *scan_list)
     }
 }
 
+void wait_wifi_scan_result(wifi_ctrl_t *ctrl)
+{
+    ctrl->conn_state = connection_state_in_progress;
+}
+
 void sta_pending_connection_retry(wifi_ctrl_t *ctrl)
 {
     unsigned int *channel_list = NULL;
@@ -357,7 +377,7 @@ void sta_pending_connection_retry(wifi_ctrl_t *ctrl)
     mac_addr_str_t bssid_str;
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
 
-    if(ctrl->conn_state == connection_state_disconnected || ctrl->conn_state == connection_state_in_progress) {
+    if(ctrl->conn_state == connection_state_in_progress) {
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d retry timeout, scan_count:%d conn_state:%d \n",__func__, __LINE__, ctrl->scan_count, ctrl->conn_state);
         if(ctrl->scan_list != NULL) {
             scan_list_t *scan_list;
@@ -366,6 +386,7 @@ void sta_pending_connection_retry(wifi_ctrl_t *ctrl)
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d: scan_count:%d conn_state:%d\n", __func__, __LINE__, ctrl->scan_count, ctrl->conn_state);
 
             for(i = 0; i < ctrl->scan_count; i++) {
+                wifi_util_dbg_print(WIFI_CTRL, "%s:%d: scan_list->conn_attempt:%d conn retry_attempt:%d\n", __func__, __LINE__, scan_list->conn_attempt, scan_list->conn_retry_attempt);
                 if(scan_list->conn_attempt == connection_attempt_wait) {
                     scan_list->conn_attempt = connection_attempt_in_progress;
                     ctrl->conn_state = connection_state_in_progress;
@@ -389,10 +410,12 @@ void sta_pending_connection_retry(wifi_ctrl_t *ctrl)
                     break;
                 } else if ((scan_list->conn_attempt == connection_attempt_in_progress)
                                 && (scan_list->conn_retry_attempt >= STA_MAX_CONNECT_ATTEMPT)) {
+                    wifi_util_dbg_print(WIFI_CTRL,"%s:%d connection attempt failed...\r\n",__func__, __LINE__);
                     scan_list->conn_attempt = connection_attempt_failed;
                     disconnect_wifi(&mgr->hal_cap.wifi_prop, scan_list->external_ap.freq);
                     break;
                 } else if (scan_list->conn_attempt == connection_attempt_failed) {
+                    wifi_util_dbg_print(WIFI_CTRL,"%s:%d scan count:%d index:%d\r\n",__func__, __LINE__, ctrl->scan_count, (i + 1));
                     if ((i + 1) == ctrl->scan_count) {
                         purge_existing_scan_list(ctrl->scan_count, ctrl->scan_list);
                         ctrl->conn_state = connection_state_disconnected;
@@ -407,8 +430,33 @@ void sta_pending_connection_retry(wifi_ctrl_t *ctrl)
                 }
                 scan_list++;
             }
+        } else {
+          unsigned long long int current_time = get_current_ms_time();
+          wifi_util_dbg_print(WIFI_CTRL,"%s:%d time diff:%lld \n",__FUNCTION__, __LINE__, current_time - ctrl->last_connected_time);
+          if(ctrl->last_connected_time == 0 || ((current_time - ctrl->last_connected_time) > 10*1000)) {
+              if (wifi_hal_disconnect(ctrl->connected_vap_index) == RETURN_ERR) {
+                 wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi_hal_disconnect failed\n",__FUNCTION__, __LINE__);
+              }
+              wifi_util_dbg_print(WIFI_CTRL,"%s:%d start wifi_hal_disconnect\n",__FUNCTION__, __LINE__);
+              ctrl->last_connected_time = 0;
+              ctrl->conn_state = connection_state_disconnected;
+          }
         }
-        if(!ctrl->scan_count) {
+    } else if (ctrl->conn_state == connection_state_disconnected) {
+        if (ctrl->connected_external_ap.freq) {
+            mac_addr_str_t bssid_str;
+            wifi_util_dbg_print(WIFI_CTRL,"%s:%d connecting to ssid:%s bssid:%s rssi:%d frequency:%d on vap:%d\n",
+                                    __func__, __LINE__, ctrl->connected_external_ap.ssid, to_mac_str(ctrl->connected_external_ap.bssid, bssid_str),
+                                    ctrl->connected_external_ap.rssi, ctrl->connected_external_ap.freq, ctrl->connected_vap_index);
+            if (wifi_hal_connect(ctrl->connected_vap_index, &ctrl->connected_external_ap) == RETURN_ERR) {
+                wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi_hal_connect failed\n",__FUNCTION__, __LINE__);
+            } else {
+                ctrl->conn_state = connection_state_in_progress;
+                wifi_util_dbg_print(WIFI_CTRL,"%s:%d start wifi_hal_connect\n",__FUNCTION__, __LINE__);
+            }
+            memset(&ctrl->connected_external_ap, 0, sizeof(wifi_bss_info_t));
+
+        } else if(!ctrl->scan_count) {
             wifi_util_dbg_print(WIFI_CTRL,"%s:%d no scan results, start scan on 2.4GHz and 5GHz radios\n",__FUNCTION__, __LINE__);
             /* start scan on 2.4Ghz */
             get_default_supported_scan_channel_list(WIFI_FREQUENCY_2_4_BAND, &channel_list, &num_of_channels);
