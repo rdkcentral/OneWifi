@@ -221,7 +221,7 @@ unsigned int get_Uptime(void)
     return upSecs;
 }
 
-int start_radios(void)
+int start_radios(rdk_dev_mode_type_t mode)
 {
     wifi_radio_operationParam_t *wifi_radio_oper_param = NULL;
     int ret = RETURN_OK;
@@ -243,6 +243,11 @@ int start_radios(void)
         }
 
         wifi_util_dbg_print(WIFI_CTRL,"%s:index: %d num_of_radios:%d\n",__FUNCTION__, index, num_of_radios);
+
+        if((mode == rdk_dev_mode_type_ext) && (wifi_radio_oper_param->band == WIFI_FREQUENCY_2_4_BAND) && (wifi_radio_oper_param->channel != 1)) {
+            wifi_radio_oper_param->channel = 1;
+            wifi_util_dbg_print(WIFI_CTRL,"%s: initializing radio_index:%d with channel 1\n",__FUNCTION__, index);
+        }
 
         ret = wifi_hal_setRadioOperatingParameters(index, wifi_radio_oper_param);
         if (ret != RETURN_OK) {
@@ -487,12 +492,13 @@ int start_wifi_services(void)
     wifi_ctrl_t *ctrl;
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
-    start_radios();
 
     if (ctrl->network_mode == rdk_dev_mode_type_gw) {
+        start_radios(rdk_dev_mode_type_gw);
         start_gateway_vaps();
         captive_portal_check();
     } else if (ctrl->network_mode == rdk_dev_mode_type_ext) {
+        start_radios(rdk_dev_mode_type_ext);
         start_extender_vaps();
     }
 
