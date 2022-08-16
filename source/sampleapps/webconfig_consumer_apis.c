@@ -1275,7 +1275,7 @@ void test_private_subdoc_change(webconfig_consumer_t *consumer)
         for ( i = 0; i < *num; i++) {
             array_index = convert_vap_name_to_index(&consumer->hal_cap.wifi_prop, vap_names[i]);
             vif_table[i] = ext_proto.vif_config[array_index];
-            snprintf((char *)vif_table[i]->ssid, sizeof(vif_table[i]->ssid), "ovsdb_test_%d", array_index);
+            snprintf((char *)vif_table[i]->ssid, sizeof(vif_table[i]->ssid), "ovsdb_private_test_%d", array_index);
         }
         ext_proto_private.vif_config = vif_table;
 
@@ -1334,6 +1334,7 @@ void test_home_subdoc_change(webconfig_consumer_t *consumer)
 
     char *str;
     webconfig_error_t ret = webconfig_error_none;
+    bool *param;
 
     str = NULL;
 
@@ -1352,6 +1353,9 @@ void test_home_subdoc_change(webconfig_consumer_t *consumer)
         for ( i = 0; i < *num; i++) {
             array_index = convert_vap_name_to_index(&consumer->hal_cap.wifi_prop, vap_names[i]);
             vif_table[i] = ext_proto.vif_config[array_index];
+            param = (bool *)&vif_table[i]->enabled;
+            *param = true;
+            snprintf((char *)vif_table[i]->ssid, sizeof(vif_table[i]->ssid), "ovsdb_home_test_%d", array_index);
         }
         ext_proto_home.vif_config = vif_table;
 
@@ -1406,12 +1410,138 @@ void test_home_subdoc_change(webconfig_consumer_t *consumer)
     }
 }
 
+
+void test_getsubdoctype(webconfig_consumer_t *consumer)
+{
+    int num_vaps;
+    wifi_vap_name_t vap_names[MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO];
+    wifi_interface_name_t *ifname;
+    int vapindex = 0;
+    webconfig_subdoc_type_t type;
+
+    num_vaps = get_list_of_vap_names(&consumer->hal_cap.wifi_prop, vap_names, MAX_NUM_RADIOS*MAX_NUM_VAP_PER_RADIO, \
+            8, VAP_PREFIX_PRIVATE, VAP_PREFIX_HOTSPOT_OPEN, VAP_PREFIX_HOTSPOT_SECURE, \
+            VAP_PREFIX_LNF_PSK, VAP_PREFIX_LNF_RADIUS, VAP_PREFIX_MESH_BACKHAUL, \
+            VAP_PREFIX_MESH_STA, VAP_PREFIX_IOT);
+
+    for (vapindex = 0; vapindex < num_vaps; vapindex++) {
+        ifname = get_interface_name_for_vap_index(vapindex, &consumer->hal_cap.wifi_prop);
+        if (ifname == NULL) {
+            printf("%s:%d: ifname get failed\n", __func__, __LINE__);
+            return;
+        }
+        webconfig_convert_ifname_to_subdoc_type(ifname[0], &type);
+        printf("%s:%d: ifname %s type : %d\n", __func__, __LINE__, ifname[0], type);
+
+    }
+    return;
+}
+
+void test_lnf_subdoc_change(webconfig_consumer_t *consumer)
+{
+    webconfig_subdoc_data_t data;
+    webconfig_error_t ret = webconfig_error_none;
+    char *str;
+    int num_vaps;
+    wifi_vap_name_t vap_names[MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO];
+    int i = 0;
+    unsigned int array_index = 0;
+    unsigned int radio_index = 0;
+    bool *param;
+
+    num_vaps = get_list_of_vap_names(&consumer->hal_cap.wifi_prop, vap_names, MAX_NUM_RADIOS*MAX_NUM_VAP_PER_RADIO, \
+                                     2, VAP_PREFIX_LNF_PSK, VAP_PREFIX_LNF_RADIUS);
+    if (num_vaps == 0) {
+        printf("%s:%d: lnf VAP is not supported\n", __func__, __LINE__);
+        consumer->lnf_test_pending_count = 0;
+        consumer->test_state = consumer_test_state_lnf_subdoc_test_complete;
+        return;
+    }
+
+    str = NULL;
+
+    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+    printf("%s:%d: current time:%llu\n", __func__, __LINE__, get_current_time_ms());
+    if (enable_ovsdb == true) {
+        webconfig_external_ovsdb_t ext_proto_lnf;
+        const struct schema_Wifi_VIF_Config *vif_table[4];
+        unsigned int *num = (unsigned int *)&ext_proto_lnf.vif_config_row_count;
+        *num = num_vaps;
+
+        for ( i = 0; i < num_vaps; i++) {
+            array_index = convert_vap_name_to_index(&consumer->hal_cap.wifi_prop, vap_names[i]);
+            vif_table[i] = ext_proto.vif_config[array_index];
+            param = (bool *)&vif_table[i]->enabled;
+            *param = true;
+            snprintf((char *)vif_table[i]->ssid, sizeof(vif_table[i]->ssid), "ovsdb_lnf_test_%d", array_index);
+        }
+        ext_proto_lnf.vif_config = vif_table;
+
+        printf("%s:%d: start webconfig_ovsdb_encode \n", __func__, __LINE__);
+        ret = webconfig_ovsdb_encode(&consumer->webconfig, &ext_proto_lnf,
+                webconfig_subdoc_type_lnf, &str);
+    } else {
+
+        memcpy((unsigned char *)data.u.decoded.radios, (unsigned char *)consumer->radios, consumer->hal_cap.wifi_prop.numRadios*sizeof(rdk_wifi_radio_t));
+        memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&consumer->hal_cap, sizeof(wifi_hal_capability_t));
+
+        if (parse_subdoc_input_param(consumer, &data) != RETURN_OK) {
+            wifi_vap_info_t *vap_info;
+
+            for ( i = 0; i < num_vaps; i++) {
+                array_index = convert_vap_name_to_index(&consumer->hal_cap.wifi_prop, vap_names[i]);
+                radio_index = convert_vap_name_to_radio_array_index(&consumer->hal_cap.wifi_prop, vap_names[i]);
+                vap_info = get_wifi_radio_vap_info(&data.u.decoded.radios[radio_index], vap_names[i]);
+                snprintf((char *)vap_info->u.bss_info.ssid, sizeof(vap_info->u.bss_info.ssid), "app_lnf_test_%d", array_index);
+                printf("%s:%d: radio_index : %d vap_names[i] : %s\n", __func__, __LINE__, radio_index, vap_names[i]);
+            }
+        }
+        //clearing the descriptor
+        data.descriptor =  0;
+        data.u.decoded.num_radios = consumer->hal_cap.wifi_prop.numRadios;
+
+        printf("%s:%d: start webconfig_encode \n", __func__, __LINE__);
+        ret = webconfig_encode(&consumer->webconfig, &data,
+                webconfig_subdoc_type_lnf);
+        if (ret == webconfig_error_none) {
+            str = data.u.encoded.raw;
+        }
+    }
+
+    if (ret == webconfig_error_none) {
+        printf("%s:%d: webconfig consumer lnf vap start test\n", __func__, __LINE__);
+        dump_subdoc(str, webconfig_subdoc_type_lnf);
+#ifdef WEBCONFIG_TESTS_OVER_QUEUE
+        push_data_to_ctrl_queue(str, strlen(str), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data);
+#else
+        cmd_start_time = get_current_time_ms();
+        printf("%s:%d: command start current time:%llu\n", __func__, __LINE__, cmd_start_time);
+        rbus_setStr(consumer->rbus_handle, WIFI_WEBCONFIG_DOC_DATA_SOUTH, str);
+#endif
+    } else {
+        printf("%s:%d: Webconfig set failed\n", __func__, __LINE__);
+    }
+}
+
+
 void test_xfinity_subdoc_change(webconfig_consumer_t *consumer)
 {
     webconfig_subdoc_data_t data;
     webconfig_error_t ret = webconfig_error_none;
 
     char *str;
+    int num_vaps;
+    wifi_vap_name_t vap_names[MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO];
+    bool *param;
+
+    num_vaps = get_list_of_vap_names(&consumer->hal_cap.wifi_prop, vap_names, MAX_NUM_RADIOS*MAX_NUM_VAP_PER_RADIO, \
+            2, VAP_PREFIX_HOTSPOT_OPEN, VAP_PREFIX_HOTSPOT_SECURE);
+    if (num_vaps == 0) {
+        printf("%s:%d: Xfinity VAP is not supported\n", __func__, __LINE__);
+        consumer->xfinity_test_pending_count = 0;
+        consumer->test_state = consumer_test_state_xfinity_subdoc_test_complete;
+        return;
+    }
 
     str = NULL;
 
@@ -1430,6 +1560,9 @@ void test_xfinity_subdoc_change(webconfig_consumer_t *consumer)
         for ( i = 0; i < *num; i++) {
             array_index = convert_vap_name_to_index(&consumer->hal_cap.wifi_prop, vap_names[i]);
             vif_table[i] = ext_proto.vif_config[array_index];
+            param = (bool *)&vif_table[i]->enabled;
+            *param = true;
+            snprintf((char *)vif_table[i]->ssid, sizeof(vif_table[i]->ssid), "ovsdb_xfinity_test_%d", array_index);
         }
         ext_proto_xfinity.vif_config = vif_table;
 
@@ -1671,6 +1804,12 @@ void consumer_app_trigger_subdoc_test( webconfig_consumer_t *consumer, consumer_
             consumer->test_state = consumer_test_state_mesh_sta_subdoc_test_pending;
             test_mesh_sta_subdoc_change(consumer);
         break;
+
+        case consumer_test_start_lnf_subdoc:
+            consumer->xfinity_test_pending_count = 0;
+            consumer->test_state = consumer_test_state_lnf_subdoc_test_pending;
+            test_lnf_subdoc_change(consumer);
+            break;
 
         case consumer_test_start_all_subdoc:
             reset_all_test_pending_count();
@@ -2067,6 +2206,9 @@ int parse_input_parameters(char *first_input, char *second_input, char *input_fi
             } else if (!strncmp(second_input, "xfinity", strlen("xfinity"))) {
                 copy_data(consumer->user_input_file_name, input_file_name, sizeof(consumer->user_input_file_name));
                 consumer_app_trigger_subdoc_test(consumer, consumer_test_start_xfinity_subdoc);
+            } else if (!strncmp(second_input, "lnf", strlen("lnf"))) {
+                copy_data(consumer->user_input_file_name, input_file_name, sizeof(consumer->user_input_file_name));
+                consumer_app_trigger_subdoc_test(consumer, consumer_test_start_lnf_subdoc);
             } else if (!strncmp(second_input, "home", strlen("home"))) {
                 copy_data(consumer->user_input_file_name, input_file_name, sizeof(consumer->user_input_file_name));
                 consumer_app_trigger_subdoc_test(consumer, consumer_test_start_home_subdoc);
@@ -2137,6 +2279,16 @@ int parse_input_parameters(char *first_input, char *second_input, char *input_fi
                 test_initial_sync();
             } else if (!strncmp(second_input, "null", strlen("null"))) {
                 consumer_app_trigger_subdoc_test(consumer, consumer_test_start_null_subdoc);
+            } else if (!strncmp(second_input, "private", strlen("private"))) {
+                consumer_app_trigger_subdoc_test(consumer, consumer_test_start_private_subdoc);
+            } else if (!strncmp(second_input, "lnf", strlen("lnf"))) {
+                consumer_app_trigger_subdoc_test(consumer, consumer_test_start_lnf_subdoc);
+            } else if (!strncmp(second_input, "home", strlen("home"))) {
+                consumer_app_trigger_subdoc_test(consumer, consumer_test_start_home_subdoc);
+            } else if (!strncmp(second_input, "xfinity", strlen("xfinity"))) {
+                consumer_app_trigger_subdoc_test(consumer, consumer_test_start_xfinity_subdoc);
+            } else if (!strncmp(second_input, "getsubdoc", strlen("getsubdoc"))) {
+                test_getsubdoctype(consumer);
             } else if (!strncmp(second_input, "disable", strlen("disable"))) {
                 free_ovs_schema_structs();
                 is_ovs_init = false;
@@ -2969,6 +3121,9 @@ void dump_subdoc(const char *str, webconfig_subdoc_type_t type)
         break;
         case webconfig_subdoc_type_xfinity:
             strcat(file_name, "/log_xfinity_subdoc");
+        break;
+        case webconfig_subdoc_type_lnf:
+            strcat(file_name, "/log_lnf_subdoc");
         break;
         case webconfig_subdoc_type_home:
             strcat(file_name, "/log_home_subdoc");

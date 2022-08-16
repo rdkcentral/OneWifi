@@ -15,6 +15,7 @@ void print_help_msg(void)
     printf("-w mesh [parameters JSON blob file path]     { Test mesh subdocument }\r\n");
     printf("-w xfinity [parameters JSON blob file path]  { Test xfinity subdocument }\r\n");
     printf("-w home [parameters JSON blob file path]     { Test home subdocument }\r\n");
+    printf("-w lnf [parameters JSON blob file path]      { Test lnf subdocument }\r\n");
     printf("-w macfilter [parameters JSON blob file path]{ Test macfilter subdocument }\r\n");
     printf("-w all [parameters JSON blob file path]      { Tests all existing WebConfig Subdocuments one after other }\r\n");
     printf("-w sync                                      { Test dml sync subdocument }\r\n");
@@ -27,6 +28,10 @@ void print_help_msg(void)
     printf("-o macfilter                                 { Test macfilter subdocument for ovsdb}\r\n");
     printf("-o null                                      { Test null subdocument for ovsdb}\r\n");
     printf("-o meshsta                                   { Test meshsta subdocument for ovsdb}\r\n");
+    printf("-o lnf                                       { Test lnf subdocument for ovsdb}\r\n");
+    printf("-o home                                      { Test home subdocument for ovsdb}\r\n");
+    printf("-o private                                   { Test private subdocument for ovsdb}\r\n");
+    printf("-o getsubdoc                                 { Test to get subdoctype from input ifname}\r\n");
     printf("-d <1>/<0>                                   { 1 for enable log and 0 for disable the /tmp/log_<subdoc> file creation}\r\n");
     printf("-t 1                                         { Tunnel Up event }\r\n");
     printf("-t 0                                         { Tunnel Down event }\r\n");

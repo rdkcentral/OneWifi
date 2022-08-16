@@ -98,10 +98,11 @@ typedef enum {
     ctrl_webconfig_state_sta_conn_status_rsp_pending = 0x0800,
     ctrl_webconfig_state_vap_mesh_sta_cfg_rsp_pending = 0x1000,
     ctrl_webconfig_state_vap_mesh_backhaul_cfg_rsp_pending = 0x2000,
-    ctrl_webconfig_state_max = 0x4000
+    ctrl_webconfig_state_vap_lnf_cfg_rsp_pending = 0x8000,
+    ctrl_webconfig_state_max = 0x10000
 } wifi_ctrl_webconfig_state_t;
 
-#define CTRL_WEBCONFIG_STATE_MASK   0xffff
+#define CTRL_WEBCONFIG_STATE_MASK   0xfffff
 
 typedef struct {
     wifi_ctrl_webconfig_state_t type;

@@ -39,6 +39,8 @@ typedef enum {
     consumer_test_state_mesh_subdoc_test_complete,
     consumer_test_state_xfinity_subdoc_test_pending,
     consumer_test_state_xfinity_subdoc_test_complete,
+    consumer_test_state_lnf_subdoc_test_pending,
+    consumer_test_state_lnf_subdoc_test_complete,
     consumer_test_state_home_subdoc_test_pending,
     consumer_test_state_home_subdoc_test_complete,
     consumer_test_state_macfilter_subdoc_test_pending,
@@ -55,6 +57,7 @@ typedef enum {
     consumer_test_start_private_subdoc,
     consumer_test_start_mesh_subdoc,
     consumer_test_start_xfinity_subdoc,
+    consumer_test_start_lnf_subdoc,
     consumer_test_start_home_subdoc,
     consumer_test_start_all_subdoc,
     consumer_test_start_wan_manager,
@@ -95,6 +98,7 @@ typedef struct {
     unsigned int        private_test_pending_count;
     unsigned int        mesh_test_pending_count;
     unsigned int        xfinity_test_pending_count;
+    unsigned int        lnf_test_pending_count;
     unsigned int        home_test_pending_count;
     unsigned int        macfilter_test_pending_count;
     unsigned int        null_test_pending_count;

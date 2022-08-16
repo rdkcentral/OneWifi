@@ -167,6 +167,9 @@ int webconfig_analyze_pending_states(wifi_ctrl_t *ctrl)
         case ctrl_webconfig_state_vap_xfinity_cfg_rsp_pending:
             webconfig_send_vap_subdoc_status(ctrl, webconfig_subdoc_type_xfinity);
             break;
+        case ctrl_webconfig_state_vap_lnf_cfg_rsp_pending:
+            webconfig_send_vap_subdoc_status(ctrl, webconfig_subdoc_type_lnf);
+            break;
         case ctrl_webconfig_state_vap_mesh_cfg_rsp_pending:
             webconfig_send_vap_subdoc_status(ctrl, webconfig_subdoc_type_mesh);
         break;
@@ -422,6 +425,23 @@ int webconfig_hal_xfinity_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
 
     for (ap_index = 0; ap_index < getTotalNumberVAPs(); ap_index++){
         if(isVapHotspot(ap_index)){
+            vap_name = getVAPName(ap_index);
+            vap_names[num_vaps] = vap_name;
+            num_vaps++;
+        }
+    }
+    return webconfig_hal_vap_apply_by_name(ctrl, data, vap_names, num_vaps);
+}
+
+int webconfig_hal_lnf_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
+{
+    unsigned int ap_index;
+    unsigned int num_vaps = 0;
+    char *vap_name;
+    char *vap_names[MAX_VAP];
+
+    for (ap_index = 0; ap_index < getTotalNumberVAPs(); ap_index++){
+        if(isVapLnf(ap_index)){
             vap_name = getVAPName(ap_index);
             vap_names[num_vaps] = vap_name;
             num_vaps++;
@@ -844,6 +864,18 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                 ret = webconfig_hal_xfinity_vap_apply(ctrl, &data->u.decoded);
             }
             break;
+
+        case webconfig_subdoc_type_lnf:
+            if (data->descriptor & webconfig_data_descriptor_encoded) {
+                if (ctrl->webconfig_state & ctrl_webconfig_state_vap_lnf_cfg_rsp_pending) {
+                    ctrl->webconfig_state &= ~ctrl_webconfig_state_vap_lnf_cfg_rsp_pending;
+                    ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
+                }
+            } else {
+                ctrl->webconfig_state |= ctrl_webconfig_state_vap_lnf_cfg_rsp_pending;
+                ret = webconfig_hal_lnf_vap_apply(ctrl, &data->u.decoded);
+            }
+        break;
 
         case webconfig_subdoc_type_mesh:
             if (data->descriptor & webconfig_data_descriptor_encoded) {

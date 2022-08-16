@@ -315,6 +315,18 @@ webconfig_error_t webconfig_init(webconfig_t *config)
     config->subdocs[webconfig_subdoc_type_mesh_sta].translate_to_subdoc = translate_to_mesh_sta_subdoc;
     config->subdocs[webconfig_subdoc_type_mesh_sta].translate_from_subdoc = translate_from_mesh_sta_subdoc;
 
+    config->subdocs[webconfig_subdoc_type_lnf].type = webconfig_subdoc_type_lnf;
+    strcpy(config->subdocs[webconfig_subdoc_type_lnf].name, "lnf");
+    config->subdocs[webconfig_subdoc_type_lnf].major = 1;
+    config->subdocs[webconfig_subdoc_type_lnf].minor = 1;
+    config->subdocs[webconfig_subdoc_type_lnf].init_subdoc = init_lnf_subdoc;
+    config->subdocs[webconfig_subdoc_type_lnf].init_subdoc(&config->subdocs[webconfig_subdoc_type_lnf]);
+    config->subdocs[webconfig_subdoc_type_lnf].access_check_subdoc = access_check_lnf_subdoc;
+    config->subdocs[webconfig_subdoc_type_lnf].encode_subdoc = encode_lnf_subdoc;
+    config->subdocs[webconfig_subdoc_type_lnf].decode_subdoc = decode_lnf_subdoc;
+    config->subdocs[webconfig_subdoc_type_lnf].translate_to_subdoc = translate_to_lnf_subdoc;
+    config->subdocs[webconfig_subdoc_type_lnf].translate_from_subdoc = translate_from_lnf_subdoc;
+
     config->subdocs[webconfig_subdoc_type_null].type = webconfig_subdoc_type_null;
     strcpy(config->subdocs[webconfig_subdoc_type_null].name, "null");
     config->subdocs[webconfig_subdoc_type_null].major = 1;

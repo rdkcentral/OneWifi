@@ -26,4 +26,6 @@ webconfig_error_t webconfig_ovsdb_decode(webconfig_t *config,
                 webconfig_external_ovsdb_t *out,
                 webconfig_subdoc_type_t *type);
 
+webconfig_error_t webconfig_convert_ifname_to_subdoc_type(const char *ifname, webconfig_subdoc_type_t *type);
+
 #endif //EXTERNAL_PROTO_H

@@ -104,6 +104,7 @@ typedef enum {
     webconfig_subdoc_type_mesh,
     webconfig_subdoc_type_mesh_backhaul,
     webconfig_subdoc_type_mesh_sta,
+    webconfig_subdoc_type_lnf,
     webconfig_subdoc_type_dml,
     webconfig_subdoc_type_associated_clients,
     webconfig_subdoc_type_wifiapiradio,
@@ -383,6 +384,14 @@ webconfig_error_t       encode_wifi_config_subdoc(webconfig_t *config, webconfig
 webconfig_error_t       translate_to_wifi_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_from_wifi_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 
+
+//  lnf
+webconfig_error_t       init_lnf_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_lnf_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_lnf_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_lnf_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_lnf_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_lnf_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 #ifdef __cplusplus
 }
 #endif
