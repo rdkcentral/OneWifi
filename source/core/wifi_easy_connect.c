@@ -81,12 +81,13 @@ void log_dpp_diagnostics(char *format, ...)
 {
 #define BUFF_SIZE 512
     char buff[BUFF_SIZE] = {0};
-	va_list list;
-    
+    va_list list;
+    get_formatted_time(buff);
+    strcat(buff, " ");
+  
     va_start(list, format);
     vsprintf(buff, format, list);
     va_end(list);
-                
     write_to_file(wifi_health_log, buff);
 }
 

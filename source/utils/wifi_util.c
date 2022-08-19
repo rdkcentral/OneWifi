@@ -324,8 +324,6 @@ void write_to_file(const char *file_name, char *fmt, ...)
     va_list args;
     char buff[1024] = {0};
     
-    get_formatted_time(buff);
-    strcat(buff, " ");
 
     va_start(args, fmt);
     vsnprintf(&buff[strlen(buff)], 1024, fmt, args);
