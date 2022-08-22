@@ -1372,7 +1372,13 @@ webconfig_error_t  translate_sta_vap_info_to_ovsdb_common(const wifi_vap_info_t 
      wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: ssid : %s Parent : %s\n", __func__, __LINE__, vap_row->ssid, vap_row->parent);
 
     strncpy(vap_row->bridge, vap->bridge_name, sizeof(vap_row->bridge));
-    vap_row->enabled = vap->u.sta_info.enabled;
+
+    if (vap->u.sta_info.conn_status == wifi_connection_status_connected) {
+        vap_row->enabled = true;
+    } else {
+        vap_row->enabled = false;
+    }
+
     vap_row->vlan_id = iface_map->vlan_id;
 
     return webconfig_error_none;
@@ -2009,7 +2015,13 @@ webconfig_error_t  translate_sta_vap_info_to_vif_state_common(const wifi_vap_inf
 
     strncpy(vap_row->ssid, vap->u.sta_info.ssid, sizeof(vap_row->ssid));
     strncpy(vap_row->bridge, vap->bridge_name, sizeof(vap_row->bridge));
-    vap_row->enabled = vap->u.sta_info.enabled;
+
+    if (vap->u.sta_info.conn_status == wifi_connection_status_connected) {
+        vap_row->enabled = true;
+    } else {
+        vap_row->enabled = false;
+    }
+
     snprintf(vap_row->mac, sizeof(vap_row->mac), "%02X:%02X:%02X:%02X:%02X:%02X", vap->u.sta_info.mac[0], vap->u.sta_info.mac[1],
                                                     vap->u.sta_info.mac[2], vap->u.sta_info.mac[3],
                                                     vap->u.sta_info.mac[4], vap->u.sta_info.mac[5]);
@@ -3652,6 +3664,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state(webconfig_subdoc_dat
                     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Translation of mesh sta to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
+                count++;
                 presence_mask |= (1 << vap->vap_index);
                 count++;
             } else {
@@ -3858,16 +3871,13 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_mesh_sta(webcon
                 return webconfig_error_translate_to_ovsdb;
             }
             if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == TRUE) {
-                if (vap->u.sta_info.conn_status == wifi_connection_status_connected) {
-                    if (translate_mesh_sta_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
-                        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Translation of mesh sta vap to ovsdb failed for %d\n",
-                                                            __func__, __LINE__, vap->vap_index);
-                        return webconfig_error_translate_to_ovsdb;
-                    }
-                    count++;
-                } else {
-                    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: connection status is %d for vap_index %d\n", __func__, __LINE__, vap->u.sta_info.conn_status, vap->vap_index);
+                if (translate_mesh_sta_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
+                    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Translation of mesh sta vap to ovsdb failed for %d\n",
+                                                        __func__, __LINE__, vap->vap_index);
+                    return webconfig_error_translate_to_ovsdb;
                 }
+                count++;
+                wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: connection status is %d for vap_index %d\n", __func__, __LINE__, vap->u.sta_info.conn_status, vap->vap_index);
                 presence_mask  |= (1 << vap->vap_index);
             }
             else {
