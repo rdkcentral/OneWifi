@@ -85,7 +85,9 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
     static uint8_t conn_retry = 0;
     static uint8_t wait_scan_result;
 
+    pthread_mutex_lock(&ctrl->lock);
     while (ctrl->exit_ctrl == false) {
+
         gettimeofday(&tv_now, NULL);
         time_to_wait.tv_nsec = 0;
         time_to_wait.tv_sec = tv_now.tv_sec + ctrl->poll_period;
@@ -97,14 +99,12 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
             }
         }
 
-        pthread_mutex_lock(&ctrl->lock);
         rc = pthread_cond_timedwait(&ctrl->cond, &ctrl->lock, &time_to_wait);
 
-        if (rc == 0) {
+        if ((rc == 0) || (queue_count(ctrl->queue) != 0)) {
             while (queue_count(ctrl->queue)) {
                 queue_data = queue_pop(ctrl->queue);
                 if (queue_data == NULL) {
-                    pthread_mutex_unlock(&ctrl->lock);
                     continue;
                 }
                 switch (queue_data->event_type) {
@@ -197,12 +197,11 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
             greylist_event++;
 
         } else {
-            pthread_mutex_unlock(&ctrl->lock);
             wifi_util_dbg_print(WIFI_CTRL,"RDK_LOG_WARN, WIFI %s: Invalid Return Status %d\n",__FUNCTION__,rc);
             continue;
         }
-        pthread_mutex_unlock(&ctrl->lock);
     }
+    pthread_mutex_unlock(&ctrl->lock);
 
     return;
 }
@@ -726,10 +725,37 @@ int start_wifi_health_monitor_thread(void)
     return RETURN_OK;
 }
 
+void update_empty_wifi_scan_result_status(int radio_index)
+{
+    wifi_ctrl_t *ctrl;
+    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d: wifi connect state:%d radio_index:%d\n", __func__, __LINE__, ctrl->conn_state, radio_index);
+    if (ctrl->conn_state == connection_state_disconnected) {
+        if (radio_index == 1) {
+            ctrl->scan_wifi_state |= received_5g_wifi_scan;
+        } else if (radio_index == 0) {
+            ctrl->scan_wifi_state |= received_2g_wifi_scan;
+        }
+
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: scan count:%d wifi scan state:%d\n", __func__, __LINE__, ctrl->scan_count, ctrl->scan_wifi_state);
+        if ((ctrl->scan_count != 0) && (ctrl->scan_wifi_state == received_both_wifi_scan)) {
+            ctrl->conn_state = connection_state_in_progress;
+            ctrl->scan_wifi_state = received_none_wifi_scan;
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: candidate_list is present, start connecting...\n", __func__, __LINE__);
+            sta_pending_connection_retry(ctrl);
+        }
+    }
+}
+
 int scan_results_callback(int radio_index, wifi_bss_info_t **bss, unsigned int *num)
 {
-    push_data_to_ctrl_queue(*bss, (*num)*sizeof(wifi_bss_info_t), ctrl_event_type_hal_ind, ctrl_event_scan_results);
-    free(*bss);
+    if (*num != 0) {
+        push_data_to_ctrl_queue(*bss, (*num)*sizeof(wifi_bss_info_t), ctrl_event_type_hal_ind, ctrl_event_scan_results);
+        free(*bss);
+    } else {
+        update_empty_wifi_scan_result_status(radio_index);
+    }
 
     return 0;
 }

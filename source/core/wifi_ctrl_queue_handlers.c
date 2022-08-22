@@ -104,6 +104,20 @@ void process_scan_results_event(wifi_bss_info_t *bss, unsigned int len)
 
             if (ctrl->scan_wifi_state == received_both_wifi_scan) {
                 ctrl->conn_state = connection_state_in_progress;
+                ctrl->scan_wifi_state = received_none_wifi_scan;
+                wifi_util_dbg_print(WIFI_CTRL, "%s:%d: candidate_list is present, start connecting\n", __func__, __LINE__);
+                sta_pending_connection_retry(ctrl);
+            }
+        } else if ((ctrl->conn_state == connection_state_disconnected) && (!num)) {
+            if (band == WIFI_FREQUENCY_5_BAND) {
+                ctrl->scan_wifi_state |= received_5g_wifi_scan;
+            } else if (band == WIFI_FREQUENCY_2_4_BAND) {
+                ctrl->scan_wifi_state |= received_2g_wifi_scan;
+            }
+
+            if ((ctrl->scan_count != 0) && (ctrl->scan_wifi_state == received_both_wifi_scan)) {
+                ctrl->conn_state = connection_state_in_progress;
+                ctrl->scan_wifi_state = received_none_wifi_scan;
                 wifi_util_dbg_print(WIFI_CTRL, "%s:%d: candidate_list is present, start connecting\n", __func__, __LINE__);
                 sta_pending_connection_retry(ctrl);
             }
