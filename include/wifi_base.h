@@ -21,11 +21,13 @@ extern "C" {
 #define WIFI_LMLITE_NOTIFY                  "Device.Hosts.X_RDKCENTRAL-COM_LMHost_Sync_From_WiFi"
 #define WIFI_HOTSPOT_NOTIFY                 "Device.X_COMCAST-COM_GRE.Hotspot.ClientChange"
 #define WIFI_NOTIFY_ASSOCIATED_ENTRIES      "Device.NotifyComponent.SetNotifi_ParamName"
+#define MESH_STATUS                         "Device.DeviceInfo.X_RDKCENTRAL-COM_xOpsDeviceMgmt.Mesh.Enable"
 
 #define PLAN_ID_LENGTH     16
 #define MAX_STEP_COUNT  32 /*Active Measurement Step Count */
 #define  MAC_ADDRESS_LENGTH  13
 #define WIFI_AP_MAX_WPSPIN_LEN  9
+#define MAX_BUF_LENGTH 128
 
 typedef enum {
     rdk_dev_mode_type_gw,
@@ -115,6 +117,10 @@ typedef struct {
     bool diagnostic_enable;
     bool validate_ssid;
     int device_network_mode;
+    char normalized_rssi_list[MAX_BUF_LENGTH];
+    char cli_stat_list[MAX_BUF_LENGTH];
+    char snr_list[MAX_BUF_LENGTH];
+    char txrx_rate_list[MAX_BUF_LENGTH];
 } __attribute__((packed)) wifi_global_param_t;
 
 typedef struct {

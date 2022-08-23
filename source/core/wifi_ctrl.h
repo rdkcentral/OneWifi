@@ -55,6 +55,10 @@ extern "C" {
 #define WIFI_RBUS_WIFIAPI_COMMAND          "Device.WiFi.WiFiAPI.command"
 #define WIFI_RBUS_WIFIAPI_RESULT           "Device.WiFi.WiFiAPI.result"
 
+#define WIFI_NORMALIZED_RSSI_LIST          "Device.DeviceInfo.X_RDKCENTRAL-COM_WIFI_TELEMETRY.NormalizedRssiList"
+#define WIFI_SNR_LIST                      "Device.DeviceInfo.X_RDKCENTRAL-COM_WIFI_TELEMETRY.SNRList"
+#define WIFI_CLI_STAT_LIST                 "Device.DeviceInfo.X_RDKCENTRAL-COM_WIFI_TELEMETRY.CliStatList"
+#define WIFI_TxRx_RATE_LIST                "Device.DeviceInfo.X_RDKCENTRAL-COM_WIFI_TELEMETRY.TxRxRateList"
 #define WIFI_DEVICE_MODE                   "Device.X_RDKCENTRAL-COM_DeviceControl.DeviceNetworkingMode"
 #define WIFI_DEVICE_TUNNEL_STATUS          "Device.X_COMCAST-COM_GRE.Tunnel.1.TunnelStatus"
 
@@ -170,11 +174,13 @@ typedef struct wifi_ctrl {
     bool                rbus_events_subscribed;
     bool                active_gateway_check_subscribed;
     bool                tunnel_events_subscribed;
+    bool                mesh_status_subscribed;
     bool                device_mode_subscribed;
     bool                test_device_mode_subscribed;
     bool                device_tunnel_status_subscribed;
     bool                device_wps_test_subscribed;
     bool                factory_reset;
+    bool                marker_list_config_subscribed;
     wifiapi_t           wifiapi;
     wifi_rfc_dml_parameters_t    rfc_params;
     unsigned int        sta_tree_instance_num;
@@ -228,6 +234,11 @@ typedef enum {
     ctrl_event_type_device_network_mode,
     ctrl_event_type_twoG80211axEnable_rfc,
     ctrl_event_type_command_wifi_neighborscan,
+    ctrl_event_type_command_mesh_status,
+    ctrl_event_type_normalized_rssi,
+    ctrl_event_type_snr,
+    ctrl_event_type_cli_stat,
+    ctrl_event_type_txrx_rate,
 
     // wif_api
     ctrl_event_type_wifiapi_execution = 0x300,
@@ -278,6 +289,13 @@ typedef enum {
     acl_action_del,
     acl_action_none
 } acl_action;
+
+typedef enum {
+    normalized_rssi_list_type,
+    snr_list_type,
+    cli_stat_list_type,
+    txrx_rate_list_type
+} marker_list_t;
 
 typedef struct {
     mac_address_t mac;
@@ -335,6 +353,7 @@ wifi_vap_security_t * Get_wifi_object_security_parameter(uint8_t vapIndex);
 wifi_vap_info_t* get_wifidb_vap_parameters(uint8_t vapIndex);
 wifi_rfc_dml_parameters_t* get_wifi_db_rfc_parameters(void);
 rdk_wifi_radio_t* find_radio_config_by_index(uint8_t r_index);
+int get_device_config_list(char *d_list, int size, char *str);
 int get_cm_mac_address(char *mac);
 int get_vap_interface_bridge_name(unsigned int vap_index, char *bridge_name);
 void Load_Hotspot_APIsolation_Settings();

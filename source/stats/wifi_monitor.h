@@ -46,6 +46,8 @@
 
 #define MAX_CSI_CLIENTMACLIST_STR  650
 
+#define MAX_BUF_SIZE 128
+
 typedef unsigned char   mac_addr_t[MAC_ADDR_LEN];
 typedef signed short    rssi_t;
 typedef char			sta_key_t[STA_KEY_LEN];
@@ -131,6 +133,7 @@ typedef struct {
 
 typedef struct {
     unsigned int        rapid_reconnect_threshold;
+    wifi_vapstatus_t    ap_status;
 } ap_params_t;
 
 typedef struct {

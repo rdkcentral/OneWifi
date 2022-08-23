@@ -1450,6 +1450,54 @@ void process_wps_command_event(unsigned int vap_index)
     wifi_hal_setApWpsButtonPush(vap_index);
 }
 
+void marker_list_config_event(char *data, marker_list_t list_type)
+{
+    int ret = -1;
+    wifi_global_param_t *global_param = get_wifidb_wifi_global_param();
+
+    switch (list_type) {
+
+        case normalized_rssi_list_type:
+            if (strcmp(global_param->normalized_rssi_list, data) != 0) {
+                strncpy(global_param->normalized_rssi_list, data, sizeof(global_param->normalized_rssi_list)-1);
+                global_param->normalized_rssi_list[sizeof(global_param->normalized_rssi_list)-1]= '\0';
+            }
+            break;
+
+        case snr_list_type:
+            if (strcmp(global_param->snr_list, data) != 0 ) {
+                strncpy(global_param->snr_list, data, sizeof(global_param->snr_list)-1);
+                global_param->snr_list[sizeof(global_param->snr_list)-1]= '\0';
+            }
+            break;
+
+        case cli_stat_list_type:
+            if (strcmp(global_param->cli_stat_list, data) != 0) {
+                strncpy(global_param->cli_stat_list, data, sizeof(global_param->cli_stat_list)-1);
+                global_param->cli_stat_list[sizeof(global_param->cli_stat_list)-1]= '\0';
+            }
+            break;
+
+        case txrx_rate_list_type:
+            if (strcmp(global_param->txrx_rate_list, data) != 0) {
+                strncpy(global_param->txrx_rate_list, data, sizeof(global_param->txrx_rate_list)-1);
+                global_param->txrx_rate_list[sizeof(global_param->txrx_rate_list)-1]= '\0';
+            }
+            break;
+
+        default:
+            wifi_util_dbg_print(WIFI_CTRL,"[%s]: List type not supported this event %x\r\n",__FUNCTION__, list_type);
+            return;
+    }
+
+    ret = update_wifi_global_config(global_param);
+    if ( ret < 0 ) {
+        wifi_util_dbg_print(WIFI_CTRL,"[%s]: Failed to update global config for type  %x\r\n",__FUNCTION__, list_type);
+    }
+    return;
+
+}
+
 void process_device_mode_command_event(int device_mode)
 {
     wifi_global_param_t *global_param = get_wifidb_wifi_global_param();
@@ -1527,6 +1575,51 @@ void process_neighbor_scan_command_event()
     }
 }
 
+int wifidb_vap_status_update(bool status)
+{
+    wifi_vap_name_t backhauls[MAX_NUM_RADIOS];
+    int count;
+    wifi_vap_info_t vap_config;
+    memset(&vap_config, 0, sizeof(vap_config));
+
+    /* get a list of mesh backhaul names of all radios */
+    count = get_list_of_mesh_backhaul(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, sizeof(backhauls)/sizeof(wifi_vap_name_t), backhauls);
+
+    for (int i = 0; i < count; i++) {
+        if (wifidb_get_wifi_vap_info(&backhauls[i][0], &vap_config) == RETURN_OK) {
+            vap_config.u.bss_info.enabled = status;
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: wifi mesh backhaul status save:%d\n", __func__, __LINE__, status);
+            update_wifi_vap_info(&backhauls[i][0], &vap_config);
+        }
+    }
+
+    return RETURN_OK;
+}
+
+void process_mesh_status_command(bool mesh_enable_status)
+{
+    vap_svc_t *mesh_gw_svc;
+    unsigned int value;
+    wifi_ctrl_t *ctrl;
+
+    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    mesh_gw_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_gw);
+
+    // start mesh gateway if mesh is enabled
+    value = get_wifi_mesh_vap_enable_status();
+    if ((value != true) && (mesh_enable_status == true)) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Mesh_service start\n", __func__, __LINE__);
+        mesh_gw_svc->start_fn(mesh_gw_svc, WIFI_ALL_RADIO_INDICES, NULL);
+        wifidb_vap_status_update(mesh_enable_status);
+        ctrl->webconfig_state |= ctrl_webconfig_state_vap_mesh_backhaul_cfg_rsp_pending;
+    } else if ((value == true) && (mesh_enable_status == false)) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Mesh_service stop\n", __func__, __LINE__);
+        mesh_gw_svc->stop_fn(mesh_gw_svc, WIFI_ALL_RADIO_INDICES, NULL);
+        wifidb_vap_status_update(mesh_enable_status);
+        ctrl->webconfig_state |= ctrl_webconfig_state_vap_mesh_backhaul_cfg_rsp_pending;
+    }
+}
+
 void handle_command_event(void *data, unsigned int len, ctrl_event_subtype_t subtype)
 {
     switch (subtype) {
@@ -1587,6 +1680,26 @@ void handle_command_event(void *data, unsigned int len, ctrl_event_subtype_t sub
         
         case ctrl_event_type_command_wifi_neighborscan:
             process_neighbor_scan_command_event();
+            break;
+
+        case ctrl_event_type_command_mesh_status:
+            process_mesh_status_command(*(bool *)data);
+            break;
+
+        case ctrl_event_type_normalized_rssi:
+            marker_list_config_event((char *)data, normalized_rssi_list_type);
+            break;
+
+        case ctrl_event_type_snr:
+            marker_list_config_event((char *)data, snr_list_type);
+            break;
+
+        case ctrl_event_type_cli_stat:
+            marker_list_config_event((char *)data, cli_stat_list_type);
+            break;
+
+        case ctrl_event_type_txrx_rate:
+            marker_list_config_event((char *)data, txrx_rate_list_type);
             break;
 
         default:

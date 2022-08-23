@@ -239,7 +239,8 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
             if ((ctrl->rbus_events_subscribed == false) || (ctrl->tunnel_events_subscribed == false) ||
                 (ctrl->device_mode_subscribed == false) || (ctrl->active_gateway_check_subscribed == false) ||
                 (ctrl->device_tunnel_status_subscribed == false) || (ctrl->device_wps_test_subscribed == false) ||
-                (ctrl->test_device_mode_subscribed == false)) {
+                (ctrl->test_device_mode_subscribed == false) || (ctrl->mesh_status_subscribed == false) ||
+                (ctrl->marker_list_config_subscribed == false)) {
                 rbus_subscribe_events(ctrl);
             }
 
@@ -1470,6 +1471,43 @@ int set_multi_vap_dml_parameters(uint8_t ap_index, char *str, void *value)
     }
     return ret;
 }
+
+int get_device_config_list(char *d_list, int size, char *str)
+{
+    int ret = RETURN_OK;
+
+    if (d_list == NULL) {
+        return RETURN_ERR;
+    }
+
+    memset(d_list, '\0', size);
+    wifi_mgr_t *g_wifidb = get_wifimgr_obj();
+    wifi_global_param_t *global_param = &g_wifidb->global_config.global_parameters;
+
+    pthread_mutex_lock(&g_wifidb->data_cache_lock);
+    if ((strcmp(str, WIFI_NORMALIZED_RSSI_LIST) == 0)) {
+        strncpy(d_list, global_param->normalized_rssi_list, size-1);
+    } else if ((strcmp(str, WIFI_SNR_LIST) == 0)) {
+        strncpy(d_list, global_param->snr_list, size-1);
+    } else if ((strcmp(str, WIFI_CLI_STAT_LIST) == 0)) {
+        strncpy(d_list, global_param->cli_stat_list, size-1);
+    } else if ((strcmp(str, WIFI_TxRx_RATE_LIST) == 0)) {
+        strncpy(d_list, global_param->txrx_rate_list, size-1);
+    } else {
+        pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+        wifi_util_dbg_print(WIFI_CTRL, "%s get %s device list structure data not match:\n", __FUNCTION__, str);
+        return RETURN_ERR;
+    }
+    pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+
+    // NULL check for copied config list
+    if (d_list == NULL) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Failed to get config for %s \n",__func__, __LINE__, str);
+        return RETURN_ERR;
+    }
+    return ret;
+}
+
 
 int get_vap_dml_parameters(char *str, void *value)
 {

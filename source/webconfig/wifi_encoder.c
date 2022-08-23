@@ -413,6 +413,18 @@ webconfig_error_t encode_wifi_global_config(const wifi_global_param_t *global_in
     // DeviceNetworkMode
     cJSON_AddNumberToObject(global_obj, "DeviceNetworkMode", global_info->device_network_mode);
 
+    //Normalized_Rssi_List
+    cJSON_AddStringToObject(global_obj, "NormalizedRssiList", global_info->normalized_rssi_list);
+
+    //SNRList
+    cJSON_AddStringToObject(global_obj, "SNRList", global_info->snr_list);
+
+    //CliStatList
+    cJSON_AddStringToObject(global_obj, "CliStatList", global_info->cli_stat_list);
+
+    //TxRxRateList
+    cJSON_AddStringToObject(global_obj, "TxRxRateList", global_info->txrx_rate_list);
+
     return webconfig_error_none;
 }
 

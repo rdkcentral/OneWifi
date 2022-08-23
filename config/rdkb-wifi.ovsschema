@@ -1810,6 +1810,42 @@
             "max": 1
           }
         },
+        "txrx_rate_list": {
+          "type": {
+            "key": {
+              "type": "string"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "cli_stat_list": {
+          "type": {
+            "key": {
+              "type": "string"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "snr_list": {
+          "type": {
+            "key": {
+              "type": "string"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "normalized_rssi_list": {
+          "type": {
+            "key": {
+              "type": "string"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
         "device_network_mode": {
           "type": {
             "key": {

@@ -1010,6 +1010,7 @@ void CosaDmlWiFiGetExternalDataFromPSM(void)
     int logInterval = 0;
     int retPsmGet = CCSP_SUCCESS;
     char *strValue = NULL;
+    char list[128] = {0};
 
     retPsmGet = PSM_Get_Record_Value2(bus_handle, g_Subsystem,"dmsb.device.deviceinfo.X_RDKCENTRAL-COM_WHIX.ChUtilityLogInterval",NULL,&strValue);
 
@@ -1049,6 +1050,73 @@ void CosaDmlWiFiGetExternalDataFromPSM(void)
 
     set_vap_dml_parameters(DEVICE_LOG_INTERVAL, &logInterval);
 
+    retPsmGet = PSM_Get_Record_Value2(bus_handle, g_Subsystem,"dmsb.device.deviceinfo.X_RDKCENTRAL-COM_WHIX.NormalizedRssiList",NULL,&strValue);
+
+    if (retPsmGet == CCSP_SUCCESS)
+    {
+        if (strValue && strlen(strValue))
+        {
+            strncpy(list, strValue , strlen(strValue)+1);
+            ((CCSP_MESSAGE_BUS_INFO *)bus_handle)->freefunc(strValue);
+        }
+    } else {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d The PSM_Get_Record_Value2  is failed with %d retval  \n",__FUNCTION__,__LINE__,retPsmGet);
+        strncpy(list, "1,2", sizeof(list)-1);
+    }
+    list[sizeof(list)-1] = '\0';
+
+    push_data_to_ctrl_queue(list, (strlen(list) + 1), ctrl_event_type_command, ctrl_event_type_normalized_rssi);
+
+    retPsmGet = PSM_Get_Record_Value2(bus_handle, g_Subsystem,"dmsb.device.deviceinfo.X_RDKCENTRAL-COM_WIFI_TELEMETRY.SNRList",NULL,&strValue);
+
+    if (retPsmGet == CCSP_SUCCESS)
+    {
+        if (strValue && strlen(strValue))
+        {
+            strncpy(list, strValue , strlen(strValue)+1);
+            ((CCSP_MESSAGE_BUS_INFO *)bus_handle)->freefunc(strValue);
+        }
+    } else {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d The PSM_Get_Record_Value2  is failed with %d retval  \n",__FUNCTION__,__LINE__,retPsmGet);
+        strncpy(list, "1,2", sizeof(list)-1);
+    }
+    list[sizeof(list)-1] = '\0';
+
+    push_data_to_ctrl_queue(list, (strlen(list) + 1), ctrl_event_type_command, ctrl_event_type_snr);
+
+    retPsmGet = PSM_Get_Record_Value2(bus_handle, g_Subsystem,"dmsb.device.deviceinfo.X_RDKCENTRAL-COM_WHIX.CliStatList",NULL,&strValue);
+
+    if (retPsmGet == CCSP_SUCCESS)
+    {
+        if (strValue && strlen(strValue))
+        {
+            strncpy(list, strValue , strlen(strValue)+1);
+            ((CCSP_MESSAGE_BUS_INFO *)bus_handle)->freefunc(strValue);
+        }
+    } else {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d The PSM_Get_Record_Value2  is failed with %d retval  \n",__FUNCTION__,__LINE__,retPsmGet);
+        strncpy(list, "1,2", sizeof(list)-1);
+    }
+    list[sizeof(list)-1] = '\0';
+
+    push_data_to_ctrl_queue(list, (strlen(list) + 1), ctrl_event_type_command, ctrl_event_type_cli_stat);
+
+    retPsmGet = PSM_Get_Record_Value2(bus_handle, g_Subsystem,"dmsb.device.deviceinfo.X_RDKCENTRAL-COM_WHIX.TxRxRateList",NULL,&strValue);
+
+    if (retPsmGet == CCSP_SUCCESS)
+    {
+        if (strValue && strlen(strValue))
+        {
+            strncpy(list, strValue , strlen(strValue)+1);
+            ((CCSP_MESSAGE_BUS_INFO *)bus_handle)->freefunc(strValue);
+        }
+    } else {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d The PSM_Get_Record_Value2  is failed with %d retval  \n",__FUNCTION__,__LINE__,retPsmGet);
+        strncpy(list, "1,2", sizeof(list)-1);
+    }
+    list[sizeof(list)-1] = '\0';
+
+    push_data_to_ctrl_queue(list, (strlen(list) + 1), ctrl_event_type_command, ctrl_event_type_txrx_rate);
 }
 
 void CosaDmlWiFiGetRFCDataFromPSM(void)

@@ -2043,6 +2043,24 @@ webconfig_error_t decode_wifi_global_config(const cJSON *global_cfg, wifi_global
     decode_param_integer(global_cfg, "DeviceNetworkMode", param);
     global_info->device_network_mode = param->valuedouble;
 
+    //NormalizedRssiList
+    decode_param_string(global_cfg, "NormalizedRssiList", param);
+    strncpy(global_info->normalized_rssi_list, param->valuestring, sizeof(global_info->normalized_rssi_list));
+
+    //SNRList
+    decode_param_string(global_cfg, "SNRList", param);
+    strncpy(global_info->snr_list, param->valuestring, sizeof(global_info->snr_list));
+
+
+    //CliStatList
+    decode_param_string(global_cfg, "CliStatList", param);
+    strncpy(global_info->cli_stat_list, param->valuestring, sizeof(global_info->cli_stat_list));
+
+
+    //TxRxRateList
+    decode_param_string(global_cfg, "TxRxRateList", param);
+    strncpy(global_info->txrx_rate_list, param->valuestring, sizeof(global_info->txrx_rate_list));
+
     wifi_util_dbg_print(WIFI_WEBCONFIG,"wifi global Parameters decode successfully\n");
     return webconfig_error_none;
 }

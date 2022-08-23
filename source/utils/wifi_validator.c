@@ -1671,6 +1671,22 @@ int validate_wifi_global_config(const cJSON *global_cfg, wifi_global_param_t *gl
     validate_param_integer(global_cfg, "DeviceNetworkMode", param);
     global_info->device_network_mode = param->valuedouble;
 
+    //NormalizedRssiList
+    validate_param_string(global_cfg, "NormalizedRssiList", param);
+    AnscCopyString(global_info->normalized_rssi_list, param->valuestring);
+
+    //SNRList
+    validate_param_string(global_cfg, "SNRList", param);
+    AnscCopyString(global_info->snr_list, param->valuestring);
+
+    //CliStatList
+    validate_param_string(global_cfg, "CliStatList", param);
+    AnscCopyString(global_info->cli_stat_list, param->valuestring);
+
+    //TxRxRateList
+    validate_param_string(global_cfg, "TxRxRatetList", param);
+    AnscCopyString(global_info->txrx_rate_list, param->valuestring);
+
     wifi_util_dbg_print(WIFI_PASSPOINT,"wifi global Parameters validate successfully\n");
     return RETURN_OK;
 }

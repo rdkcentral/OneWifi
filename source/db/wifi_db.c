@@ -839,7 +839,23 @@ void callback_Wifi_Global_Config(ovsdb_update_monitor_t *mon,
         g_wifidb->global_config.global_parameters.diagnostic_enable = new_rec->diagnostic_enable;
         g_wifidb->global_config.global_parameters.validate_ssid = new_rec->validate_ssid;
         g_wifidb->global_config.global_parameters.device_network_mode = new_rec->device_network_mode;
-        wifi_util_dbg_print(WIFI_DB,"%s:%d  notify_wifi_changes %d  prefer_private %d  prefer_private_configure %d  factory_reset %d  tx_overflow_selfheal %d  inst_wifi_client_enabled %d  inst_wifi_client_reporting_period %d  inst_wifi_client_mac = %s inst_wifi_client_def_reporting_period %d  wifi_active_msmt_enabled %d  wifi_active_msmt_pktsize %d  wifi_active_msmt_num_samples %d  wifi_active_msmt_sample_duration %d  vlan_cfg_version %d  wps_pin = %s bandsteering_enable %d  good_rssi_threshold %d  assoc_count_threshold %d  assoc_gate_time %d  assoc_monitor_duration %d  rapid_reconnect_enable %d  vap_stats_feature %d  mfp_config_feature %d  force_disable_radio_feature %d  force_disable_radio_status %d  fixed_wmm_params %d  wifi_region_code %s diagnostic_enable %d  validate_ssid %d device_network_mode:%d\r\n", __func__, __LINE__, new_rec->notify_wifi_changes,new_rec->prefer_private,new_rec->prefer_private_configure,new_rec->factory_reset,new_rec->tx_overflow_selfheal,new_rec->inst_wifi_client_enabled,new_rec->inst_wifi_client_reporting_period,new_rec->inst_wifi_client_mac, new_rec->inst_wifi_client_def_reporting_period,new_rec->wifi_active_msmt_enabled,new_rec->wifi_active_msmt_pktsize,new_rec->wifi_active_msmt_num_samples,new_rec->wifi_active_msmt_sample_duration,new_rec->vlan_cfg_version,new_rec->wps_pin, new_rec->bandsteering_enable,new_rec->good_rssi_threshold,new_rec->assoc_count_threshold,new_rec->assoc_gate_time,new_rec->assoc_monitor_duration,new_rec->rapid_reconnect_enable,new_rec->vap_stats_feature,new_rec->mfp_config_feature,new_rec->force_disable_radio_feature,new_rec->force_disable_radio_status,new_rec->fixed_wmm_params,new_rec->wifi_region_code,new_rec->diagnostic_enable,new_rec->validate_ssid, new_rec->device_network_mode);
+        if (strlen(new_rec->normalized_rssi_list) != 0) {
+            strncpy(g_wifidb->global_config.global_parameters.normalized_rssi_list,new_rec->normalized_rssi_list,sizeof(g_wifidb->global_config.global_parameters.normalized_rssi_list)-1);
+            g_wifidb->global_config.global_parameters.normalized_rssi_list[sizeof(g_wifidb->global_config.global_parameters.normalized_rssi_list)-1] = '\0';
+        }
+        if (strlen(new_rec->snr_list) != 0) {
+            strncpy(g_wifidb->global_config.global_parameters.snr_list,new_rec->snr_list,sizeof(g_wifidb->global_config.global_parameters.snr_list)-1);
+            g_wifidb->global_config.global_parameters.snr_list[sizeof(g_wifidb->global_config.global_parameters.snr_list)-1] = '\0';
+        }
+        if (strlen(new_rec->cli_stat_list) != 0) {
+            strncpy(g_wifidb->global_config.global_parameters.cli_stat_list,new_rec->cli_stat_list,sizeof(g_wifidb->global_config.global_parameters.cli_stat_list)-1);
+            g_wifidb->global_config.global_parameters.cli_stat_list[sizeof(g_wifidb->global_config.global_parameters.cli_stat_list)-1] = '\0';
+        }
+        if (strlen(new_rec->txrx_rate_list) != 0) {
+            strncpy(g_wifidb->global_config.global_parameters.txrx_rate_list,new_rec->txrx_rate_list,sizeof(g_wifidb->global_config.global_parameters.txrx_rate_list)-1);
+            g_wifidb->global_config.global_parameters.txrx_rate_list[sizeof(g_wifidb->global_config.global_parameters.txrx_rate_list)-1] = '\0';
+        }
+        wifi_util_dbg_print(WIFI_DB,"%s:%d  notify_wifi_changes %d  prefer_private %d  prefer_private_configure %d  factory_reset %d  tx_overflow_selfheal %d  inst_wifi_client_enabled %d  inst_wifi_client_reporting_period %d  inst_wifi_client_mac = %s inst_wifi_client_def_reporting_period %d  wifi_active_msmt_enabled %d  wifi_active_msmt_pktsize %d  wifi_active_msmt_num_samples %d  wifi_active_msmt_sample_duration %d  vlan_cfg_version %d  wps_pin = %s bandsteering_enable %d  good_rssi_threshold %d  assoc_count_threshold %d  assoc_gate_time %d  assoc_monitor_duration %d  rapid_reconnect_enable %d  vap_stats_feature %d  mfp_config_feature %d  force_disable_radio_feature %d  force_disable_radio_status %d  fixed_wmm_params %d  wifi_region_code %s diagnostic_enable %d  validate_ssid %d device_network_mode:%d normalized_rssi_list %s snr_list %s cli_stat_list %s txrx_rate_list %s\r\n", __func__, __LINE__, new_rec->notify_wifi_changes,new_rec->prefer_private,new_rec->prefer_private_configure,new_rec->factory_reset,new_rec->tx_overflow_selfheal,new_rec->inst_wifi_client_enabled,new_rec->inst_wifi_client_reporting_period,new_rec->inst_wifi_client_mac, new_rec->inst_wifi_client_def_reporting_period,new_rec->wifi_active_msmt_enabled,new_rec->wifi_active_msmt_pktsize,new_rec->wifi_active_msmt_num_samples,new_rec->wifi_active_msmt_sample_duration,new_rec->vlan_cfg_version,new_rec->wps_pin, new_rec->bandsteering_enable,new_rec->good_rssi_threshold,new_rec->assoc_count_threshold,new_rec->assoc_gate_time,new_rec->assoc_monitor_duration,new_rec->rapid_reconnect_enable,new_rec->vap_stats_feature,new_rec->mfp_config_feature,new_rec->force_disable_radio_feature,new_rec->force_disable_radio_status,new_rec->fixed_wmm_params,new_rec->wifi_region_code,new_rec->diagnostic_enable,new_rec->validate_ssid, new_rec->device_network_mode, new_rec->normalized_rssi_list, new_rec->snr_list, new_rec->cli_stat_list, new_rec->txrx_rate_list);
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
     }
     else
@@ -2263,9 +2279,21 @@ int wifidb_update_wifi_global_config(wifi_global_param_t *config)
     cfg.validate_ssid = config->validate_ssid;
     cfg.device_network_mode = config->device_network_mode;
 
-    wifi_util_dbg_print(WIFI_DB,"%s:%d  notify_wifi_changes %d  prefer_private %d  prefer_private_configure %d  factory_reset %d  tx_overflow_selfheal %d  inst_wifi_client_enabled %d  inst_wifi_client_reporting_period %d  inst_wifi_client_mac = %s inst_wifi_client_def_reporting_period %d  wifi_active_msmt_enabled %d  wifi_active_msmt_pktsize %d  wifi_active_msmt_num_samples %d  wifi_active_msmt_sample_duration %d  vlan_cfg_version %d  wps_pin = %s bandsteering_enable %d  good_rssi_threshold %d  assoc_count_threshold %d  assoc_gate_time %d  assoc_monitor_duration %d  rapid_reconnect_enable %d  vap_stats_feature %d  mfp_config_feature %d  force_disable_radio_feature %d  force_disable_radio_status %d  fixed_wmm_params %d  wifi_region_code %s diagnostic_enable %d  validate_ssid %d device_network_mode:%d\r\n", __func__, __LINE__, config->notify_wifi_changes,config->prefer_private,config->prefer_private_configure,config->factory_reset,config->tx_overflow_selfheal,config->inst_wifi_client_enabled,config->inst_wifi_client_reporting_period,config->inst_wifi_client_mac, config->inst_wifi_client_def_reporting_period,config->wifi_active_msmt_enabled,config->wifi_active_msmt_pktsize,config->wifi_active_msmt_num_samples,config->wifi_active_msmt_sample_duration,config->vlan_cfg_version,config->wps_pin, config->bandsteering_enable,config->good_rssi_threshold,config->assoc_count_threshold,config->assoc_gate_time,config->assoc_monitor_duration,config->rapid_reconnect_enable,config->vap_stats_feature,config->mfp_config_feature,config->force_disable_radio_feature,config->force_disable_radio_status,config->fixed_wmm_params,config->wifi_region_code,config->diagnostic_enable,config->validate_ssid, config->device_network_mode);
+    strncpy(cfg.normalized_rssi_list,config->normalized_rssi_list,sizeof(cfg.normalized_rssi_list)-1);
+    cfg.normalized_rssi_list[sizeof(cfg.normalized_rssi_list)-1] = '\0';
+
+    strncpy(cfg.snr_list,config->snr_list,sizeof(cfg.snr_list)-1);
+    cfg.snr_list[sizeof(cfg.snr_list)-1] = '\0';
+
+    strncpy(cfg.cli_stat_list,config->cli_stat_list,sizeof(cfg.cli_stat_list)-1);
+    cfg.cli_stat_list[sizeof(cfg.cli_stat_list)-1] = '\0';
+
+    strncpy(cfg.txrx_rate_list,config->txrx_rate_list,sizeof(cfg.txrx_rate_list)-1);
+    cfg.txrx_rate_list[sizeof(cfg.txrx_rate_list)-1] = '\0';
 
     push_data_to_ssp_queue(config, sizeof(wifi_global_param_t), ssp_event_type_psm_write, global_config);
+    wifi_util_dbg_print(WIFI_DB,"\n %s:%d  notify_wifi_changes %d  prefer_private %d  prefer_private_configure %d  factory_reset %d  tx_overflow_selfheal %d  inst_wifi_client_enabled %d  inst_wifi_client_reporting_period %d  inst_wifi_client_mac = %s inst_wifi_client_def_reporting_period %d  wifi_active_msmt_enabled %d  wifi_active_msmt_pktsize %d  wifi_active_msmt_num_samples %d  wifi_active_msmt_sample_duration %d  vlan_cfg_version %d  wps_pin = %s bandsteering_enable %d  good_rssi_threshold %d  assoc_count_threshold %d  assoc_gate_time %d  assoc_monitor_duration %d  rapid_reconnect_enable %d  vap_stats_feature %d  mfp_config_feature %d  force_disable_radio_feature %d  force_disable_radio_status %d  fixed_wmm_params %d  wifi_region_code %s diagnostic_enable %d  validate_ssid %d device_network_mode:%d normalized_rssi_list %s snr_list %s cli_stat_list %s txrx_rate_list %s\r\n", __func__, __LINE__, config->notify_wifi_changes,config->prefer_private,config->prefer_private_configure,config->factory_reset,config->tx_overflow_selfheal,config->inst_wifi_client_enabled,config->inst_wifi_client_reporting_period,config->inst_wifi_client_mac, config->inst_wifi_client_def_reporting_period,config->wifi_active_msmt_enabled,config->wifi_active_msmt_pktsize,config->wifi_active_msmt_num_samples,config->wifi_active_msmt_sample_duration,config->vlan_cfg_version,config->wps_pin, config->bandsteering_enable,config->good_rssi_threshold,config->assoc_count_threshold,config->assoc_gate_time,config->assoc_monitor_duration,config->rapid_reconnect_enable,config->vap_stats_feature,config->mfp_config_feature,config->force_disable_radio_feature,config->force_disable_radio_status,config->fixed_wmm_params,config->wifi_region_code,config->diagnostic_enable,config->validate_ssid, config->device_network_mode,config->normalized_rssi_list,config->snr_list,config->cli_stat_list,config->txrx_rate_list);
+
     if (wifidb_update_table_entry(NULL,NULL,OCLM_UUID,&table_Wifi_Global_Config,&cfg,filter_global) <= 0)
     {
         wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Global Config table \n",__func__, __LINE__);
@@ -2333,9 +2361,25 @@ int wifidb_get_wifi_global_config(wifi_global_param_t *config)
         config->diagnostic_enable = pcfg->diagnostic_enable;
         config->validate_ssid = pcfg->validate_ssid;
         config->device_network_mode = pcfg->device_network_mode;
+        if (strlen(pcfg->normalized_rssi_list) != 0) {
+            strncpy(config->normalized_rssi_list,pcfg->normalized_rssi_list,sizeof(config->normalized_rssi_list)-1);
+            config->normalized_rssi_list[sizeof(config->normalized_rssi_list)-1] = '\0';
+        }
+        if (strlen(pcfg->snr_list) != 0) {
+            strncpy(config->snr_list,pcfg->snr_list,sizeof(config->snr_list)-1);
+            config->snr_list[sizeof(config->snr_list)-1] = '\0';
+        }
+        if (strlen(pcfg->cli_stat_list) != 0) {
+            strncpy(config->cli_stat_list,pcfg->cli_stat_list,sizeof(config->cli_stat_list)-1);
+            config->cli_stat_list[sizeof(config->cli_stat_list)-1] = '\0';
+        }
+        if (strlen(pcfg->txrx_rate_list) != 0) {
+            strncpy(config->txrx_rate_list,pcfg->txrx_rate_list,sizeof(config->txrx_rate_list)-1);
+            config->txrx_rate_list[sizeof(config->txrx_rate_list)-1] = '\0';
+        }
 
-        wifi_util_dbg_print(WIFI_DB,"%s:%d  notify_wifi_changes %d  prefer_private %d  prefer_private_configure %d  factory_reset %d  tx_overflow_selfheal %d  inst_wifi_client_enabled %d  inst_wifi_client_reporting_period %d  inst_wifi_client_mac = %s inst_wifi_client_def_reporting_period %d  wifi_active_msmt_enabled %d  wifi_active_msmt_pktsize %d  wifi_active_msmt_num_samples %d  wifi_active_msmt_sample_duration %d  vlan_cfg_version %d  wps_pin = %s bandsteering_enable %d  good_rssi_threshold %d  assoc_count_threshold %d  assoc_gate_time %d  assoc_monitor_duration %d  rapid_reconnect_enable %d  vap_stats_feature %d  mfp_config_feature %d  force_disable_radio_feature %d  force_disable_radio_status %d  fixed_wmm_params %d  wifi_region_code %s diagnostic_enable %d  validate_ssid %d device_network_mode:%d\r\n", __func__, __LINE__, config->notify_wifi_changes,config->prefer_private,config->prefer_private_configure,config->factory_reset,config->tx_overflow_selfheal,config->inst_wifi_client_enabled,config->inst_wifi_client_reporting_period,config->inst_wifi_client_mac, config->inst_wifi_client_def_reporting_period,config->wifi_active_msmt_enabled,config->wifi_active_msmt_pktsize,config->wifi_active_msmt_num_samples,config->wifi_active_msmt_sample_duration,config->vlan_cfg_version,config->wps_pin, config->bandsteering_enable,config->good_rssi_threshold,config->assoc_count_threshold,config->assoc_gate_time,config->assoc_monitor_duration,config->rapid_reconnect_enable,config->vap_stats_feature,config->mfp_config_feature,config->force_disable_radio_feature,config->force_disable_radio_status,config->fixed_wmm_params,config->wifi_region_code,config->diagnostic_enable,config->validate_ssid, config->device_network_mode);
-    
+        wifi_util_dbg_print(WIFI_DB,"%s:%d  notify_wifi_changes %d  prefer_private %d  prefer_private_configure %d  factory_reset %d  tx_overflow_selfheal %d  inst_wifi_client_enabled %d  inst_wifi_client_reporting_period %d  inst_wifi_client_mac = %s inst_wifi_client_def_reporting_period %d  wifi_active_msmt_enabled %d  wifi_active_msmt_pktsize %d  wifi_active_msmt_num_samples %d  wifi_active_msmt_sample_duration %d  vlan_cfg_version %d  wps_pin = %s bandsteering_enable %d  good_rssi_threshold %d  assoc_count_threshold %d  assoc_gate_time %d  assoc_monitor_duration %d  rapid_reconnect_enable %d  vap_stats_feature %d  mfp_config_feature %d  force_disable_radio_feature %d  force_disable_radio_status %d  fixed_wmm_params %d  wifi_region_code %s diagnostic_enable %d  validate_ssid %d device_network_mode:%d normalized_rssi_list %s snr list %s txrx_rate_list %s cli_stat_list %s\r\n", __func__, __LINE__, config->notify_wifi_changes,config->prefer_private,config->prefer_private_configure,config->factory_reset,config->tx_overflow_selfheal,config->inst_wifi_client_enabled,config->inst_wifi_client_reporting_period,config->inst_wifi_client_mac, config->inst_wifi_client_def_reporting_period,config->wifi_active_msmt_enabled,config->wifi_active_msmt_pktsize,config->wifi_active_msmt_num_samples,config->wifi_active_msmt_sample_duration,config->vlan_cfg_version,config->wps_pin, config->bandsteering_enable,config->good_rssi_threshold,config->assoc_count_threshold,config->assoc_gate_time,config->assoc_monitor_duration,config->rapid_reconnect_enable,config->vap_stats_feature,config->mfp_config_feature,config->force_disable_radio_feature,config->force_disable_radio_status,config->fixed_wmm_params,config->wifi_region_code,config->diagnostic_enable,config->validate_ssid, config->device_network_mode,config->normalized_rssi_list, config->snr_list, config->txrx_rate_list, config->cli_stat_list);
+
     }
     free(pcfg);
     return 0;
@@ -3255,6 +3299,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config)
 int wifidb_init_global_config_default(wifi_global_param_t *config)
 {
     wifi_global_param_t cfg;
+    char temp[8], tempBuf[MAX_BUF_SIZE];
     wifi_mgr_t *g_wifidb;
     g_wifidb = get_wifimgr_obj();
 
@@ -3289,6 +3334,21 @@ int wifidb_init_global_config_default(wifi_global_param_t *config)
     cfg.validate_ssid = true;
     cfg.factory_reset = 0;
     strncpy(cfg.wps_pin, DEFAULT_WPS_PIN, sizeof(cfg.wps_pin)-1);
+    memset(temp, '\0', 8);
+    memset(tempBuf, '\0', MAX_BUF_SIZE);
+    for (UINT i = 0; i < getNumberRadios(); i++) {
+        snprintf(temp, sizeof(temp), "%d,", getPrivateApFromRadioIndex(i)+1);
+        strncat(tempBuf, temp, strlen(temp));
+    }
+    tempBuf[strlen(tempBuf)-1] = '\0';
+    strncpy(cfg.normalized_rssi_list, tempBuf, sizeof(cfg.normalized_rssi_list)-1);
+    cfg.normalized_rssi_list[sizeof(cfg.normalized_rssi_list)-1] = '\0';
+    strncpy(cfg.snr_list, tempBuf, sizeof(cfg.snr_list)-1);
+    cfg.snr_list[sizeof(cfg.snr_list)-1] = '\0';
+    strncpy(cfg.cli_stat_list, tempBuf, sizeof(cfg.cli_stat_list)-1);
+    cfg.cli_stat_list[sizeof(cfg.cli_stat_list)-1] = '\0';
+    strncpy(cfg.txrx_rate_list, tempBuf, sizeof(cfg.txrx_rate_list)-1);
+    cfg.txrx_rate_list[sizeof(cfg.txrx_rate_list)-1] = '\0';
     cfg.device_network_mode = rdk_dev_mode_type_gw;
 
     pthread_mutex_lock(&g_wifidb->data_cache_lock);

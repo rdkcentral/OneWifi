@@ -328,6 +328,55 @@ rbusError_t webconfig_set_subdoc(rbusHandle_t handle, rbusProperty_t property, r
     return rc;
 }
 
+static void MarkerListConfigHandler (rbusHandle_t handle, rbusEvent_t const* event,
+    rbusEventSubscription_t* subscription)
+{
+    rbusValue_t value;
+    marker_list_t list_type;
+    const char * pTmp = NULL;
+    int len = 0;
+
+    if (!event) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Invalid Event Received %s",
+                __func__, __LINE__, subscription->eventName);
+        return;
+    }
+ 
+    if(strcmp(subscription->eventName, WIFI_NORMALIZED_RSSI_LIST) == 0) {
+        list_type = ctrl_event_type_normalized_rssi;
+
+    } else if(strcmp(subscription->eventName, WIFI_SNR_LIST) == 0) {
+        list_type = ctrl_event_type_snr;
+
+    } else if(strcmp(subscription->eventName, WIFI_CLI_STAT_LIST) == 0) {
+        list_type = ctrl_event_type_cli_stat;
+
+    } else if(strcmp(subscription->eventName, WIFI_TxRx_RATE_LIST) == 0) {
+        list_type = ctrl_event_type_txrx_rate;
+
+    } else {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Invalid Event Received %s",
+                __func__, __LINE__, subscription->eventName);
+        return;
+    }
+
+    value = rbusObject_GetValue(event->data, "value");
+    if (!value) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Invalid value in event:%s",
+                    __func__, __LINE__, subscription->eventName);
+        return;
+    }
+
+    pTmp = rbusValue_GetString(value, &len);
+    if(pTmp == NULL) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Unable to get  value in event:%s\n", __func__, __LINE__);
+        return;
+    }
+    push_data_to_ctrl_queue(pTmp, (strlen(pTmp) + 1), ctrl_event_type_command, list_type);
+
+    UNREFERENCED_PARAMETER(handle);
+}
+
 static void activeGatewayCheckHandler(rbusHandle_t handle, rbusEvent_t const* event,
     rbusEventSubscription_t* subscription)
 {
@@ -828,6 +877,34 @@ static void testDeviceModeHandler(rbusHandle_t handle, rbusEvent_t const* event,
     }
 }
 
+static void meshStatusHandler(rbusHandle_t handle, rbusEvent_t const* event,
+    rbusEventSubscription_t* subscription)
+{
+    UNREFERENCED_PARAMETER(handle);
+
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Recvd Event\n",  __func__, __LINE__);
+    if(!event) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d null event\n", __func__, __LINE__);
+        return;
+    }
+
+    if(strcmp(subscription->eventName, MESH_STATUS) != 0) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Invalid event received, %s\n", __func__, __LINE__, subscription->eventName);
+        return;
+    }
+
+    bool mesh_status = false;
+
+    rbusValue_t value = rbusObject_GetValue(event->data, NULL);
+    if (!value) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Invalid value in event:%s\n", __func__, __LINE__, subscription->eventName);
+        return;
+    }
+
+    mesh_status = rbusValue_GetBoolean(value);
+    push_data_to_ctrl_queue(&mesh_status, sizeof(mesh_status), ctrl_event_type_command, ctrl_event_type_command_mesh_status);
+}
+
 static void eventReceiveHandler(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription)
 {
     bool tunnel_status = false;
@@ -905,6 +982,13 @@ static void wps_test_event_receive_handler(rbusHandle_t handle, rbusEvent_t cons
 
 void rbus_subscribe_events(wifi_ctrl_t *ctrl)
 {
+    rbusEventSubscription_t rbusMarkerEvents[] = {
+        { WIFI_NORMALIZED_RSSI_LIST, NULL, 0, 0, MarkerListConfigHandler, NULL, NULL, NULL},
+        { WIFI_SNR_LIST, NULL, 0, 0, MarkerListConfigHandler, NULL, NULL, NULL},
+        { WIFI_CLI_STAT_LIST, NULL, 0, 0, MarkerListConfigHandler, NULL, NULL, NULL},
+        { WIFI_TxRx_RATE_LIST, NULL, 0, 0, MarkerListConfigHandler, NULL, NULL, NULL},
+    };
+
 
     if(ctrl->rbus_events_subscribed == false) {
         if (rbusEvent_Subscribe(ctrl->rbus_handle, WIFI_WAN_FAILOVER_TEST, wan_failover_handler, NULL, 0) != RBUS_ERROR_SUCCESS) {
@@ -912,6 +996,14 @@ void rbus_subscribe_events(wifi_ctrl_t *ctrl)
         } else {
             ctrl->rbus_events_subscribed = true;
             wifi_util_dbg_print(WIFI_CTRL,"%s:%d Rbus event:%s subscribe success\n",__FUNCTION__, __LINE__, WIFI_WAN_FAILOVER_TEST);
+        }
+    }
+
+    if(ctrl->marker_list_config_subscribed == false) {
+        if (rbusEvent_SubscribeEx(ctrl->rbus_handle, rbusMarkerEvents, ARRAY_SZ(rbusMarkerEvents), 0) != RBUS_ERROR_SUCCESS) {
+        } else {
+            ctrl->marker_list_config_subscribed = true;
+            wifi_util_dbg_print(WIFI_CTRL,"%s:%d Rbus event subscribe success\n",__FUNCTION__, __LINE__);
         }
     }
 
@@ -933,6 +1025,16 @@ void rbus_subscribe_events(wifi_ctrl_t *ctrl)
         else {
             ctrl->tunnel_events_subscribed = true;
             wifi_util_dbg_print(WIFI_CTRL,"%s:%d TunnelStatus subscribe success, rc: %d\n",__FUNCTION__, __LINE__, rc);
+        }
+    }
+
+    if(ctrl->mesh_status_subscribed == false) {
+        int rc = rbusEvent_Subscribe(ctrl->rbus_handle, MESH_STATUS, meshStatusHandler, NULL, 0);
+        if(rc != RBUS_ERROR_SUCCESS) {
+            // wifi_util_dbg_print(WIFI_CTRL,"%s:%d MeshStatus subscribe Failed, rc: %d\n",__FUNCTION__, __LINE__, rc);
+        } else {
+            ctrl->mesh_status_subscribed = true;
+            wifi_util_dbg_print(WIFI_CTRL,"%s:%d MeshStatus subscribe success, rc: %d\n",__FUNCTION__, __LINE__, rc);
         }
     }
 

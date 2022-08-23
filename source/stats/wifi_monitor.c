@@ -120,10 +120,11 @@ pthread_mutex_t g_apRegister_lock = PTHREAD_MUTEX_INITIALIZER;
 void deinit_wifi_monitor    (void);
 int device_deauthenticated(int apIndex, char *mac, int reason);
 int device_associated(int apIndex, wifi_associated_dev_t *associated_dev);
+int vapstatus_callback(int apIndex, wifi_vapstatus_t status);
 unsigned int get_upload_period  (int);
 long get_sys_uptime();
 void process_disconnect    (unsigned int ap_index, auth_deauth_dev_t *dev);
-static void get_device_flag(char flag[], char *psmcli);
+static void get_device_flag(char flag[], char *list_name);
 static void logVAPUpStatus();
 //extern BOOL sWiFiDmlvApStatsFeatureEnableCfg;
 BOOL sWiFiDmlvApStatsFeatureEnableCfg = TRUE;//ONE_WIFI
@@ -195,7 +196,7 @@ BOOL IsWiFiApStatsEnable(UINT uvAPIndex)
 /* get_self_bss_chan_statistics () will get channel statistics from driver and calculate self bss channel utilization */
 void get_self_bss_chan_statistics (int radiocnt , UINT *Tx_perc, UINT  *Rx_perc)
 {
-    ULONG timediff = 0, currentchannel = 0;
+    ULONG timediff = 0;
     wifi_channelStats_t chan_stats = {0};
     ULLONG Tx_count = 0, Rx_count = 0;
     struct timeval tv_now;
@@ -205,8 +206,9 @@ void get_self_bss_chan_statistics (int radiocnt , UINT *Tx_perc, UINT  *Rx_perc)
     ULLONG bss_total = 0;
     *Tx_perc = 0;
     *Rx_perc = 0;
-    if (wifi_getRadioChannel(radiocnt, &currentchannel) == RETURN_OK) {
-        chan_stats.ch_number = currentchannel;
+    wifi_radio_operationParam_t* radioOperation = getRadioOperationParam(radiocnt);
+    if (radioOperation != NULL) {
+        chan_stats.ch_number = radioOperation->channel;
         chan_stats.ch_in_pool= TRUE;
         if (wifi_getRadioChannelStats(radiocnt, &chan_stats, 1) == RETURN_OK) {
             timediff = currentTime - g_monitor_module.radio_channel_data[radiocnt].LastUpdatedTime;
@@ -264,14 +266,14 @@ int upload_radio_chan_util_telemetry(void *arg)
     char tmp[128] = {0};
     char log_buf[1024] = {0};
     char telemetry_buf[1024] = {0};
-    BOOL radio_Enabled = FALSE;
     errno_t rc = -1;
 
     if (total_radiocnt == 0) {
         total_radiocnt = (int)getNumberRadios();
     }
-    if (wifi_getRadioEnable(radiocnt, &radio_Enabled) == RETURN_OK) {
-        if (radio_Enabled) {
+    wifi_radio_operationParam_t* radioOperation = getRadioOperationParam(radiocnt);
+    if (radioOperation != NULL) {
+        if (radioOperation->enable) {
             get_self_bss_chan_statistics(radiocnt, &Tx_perc, &Rx_perc);
 
             /* calculate Self bss Tx and Rx channel utilization */
@@ -309,7 +311,7 @@ int upload_radio_chan_util_telemetry(void *arg)
         }
     }
     else {
-        wifi_util_dbg_print(WIFI_MON, "%s : %d wifi_getRadioEnable failed for rdx : %d\n",__func__,__LINE__,radiocnt);
+        wifi_util_dbg_print(WIFI_MON, "%s : %d Failed to get getRadioOperationParam for rdx : %d\n",__func__,__LINE__,radiocnt);
     }
 
     radiocnt++;
@@ -331,26 +333,27 @@ int radio_health_telemetry_logger(void *arg)
     int output_percentage = 0;
     unsigned int i = 0;
     char buff[256] = {0}, tmp[128] = {0}, telemetry_buf[64] = {0};
-    BOOL radio_Enabled=FALSE;
     for (i = 0; i < getNumberRadios(); i++) {
         memset(buff, 0, sizeof(buff));
         memset(tmp, 0, sizeof(tmp));
         get_formatted_time(tmp);
-        wifi_getRadioEnable(i, &radio_Enabled);
+        wifi_radio_operationParam_t* radioOperation = getRadioOperationParam(i);
+        if (radioOperation != NULL) {
         //Printing the utilization of Radio if and only if the radio is enabled
-        if(radio_Enabled) {
-            wifi_getRadioBandUtilization(i, &output_percentage);
-            snprintf(buff, 256, "%s WIFI_BANDUTILIZATION_%d:%d\n", tmp, i + 1, output_percentage);
-            memset(tmp, 0, sizeof(tmp));
-            snprintf(tmp, sizeof(tmp), "Wifi_%dG_utilization_split", convert_radio_index_to_frequencyNum(i));
-            //updating T2 Marker here
-            memset(telemetry_buf, 0, sizeof(telemetry_buf));
-            snprintf(telemetry_buf, sizeof(telemetry_buf), "%d", output_percentage);
-            t2_event_s(tmp, telemetry_buf);
-        } else {
-            snprintf(buff, 256, "%s Radio_%d is down, so not printing WIFI_BANDUTILIZATION marker", tmp, i + 1);
+            if (radioOperation->enable) {
+                wifi_getRadioBandUtilization(i, &output_percentage);
+                snprintf(buff, 256, "%s WIFI_BANDUTILIZATION_%d:%d\n", tmp, i + 1, output_percentage);
+                memset(tmp, 0, sizeof(tmp));
+                snprintf(tmp, sizeof(tmp), "Wifi_%dG_utilization_split", convert_radio_index_to_frequencyNum(i));
+                //updating T2 Marker here
+                memset(telemetry_buf, 0, sizeof(telemetry_buf));
+                snprintf(telemetry_buf, sizeof(telemetry_buf), "%d", output_percentage);
+                t2_event_s(tmp, telemetry_buf);
+            } else {
+                snprintf(buff, 256, "%s Radio_%d is down, so not printing WIFI_BANDUTILIZATION marker", tmp, i + 1);
+            }
+            write_to_file(wifi_health_log, buff);
         }
-        write_to_file(wifi_health_log, buff);
     }
     return TIMER_TASK_COMPLETE;
 }
@@ -362,15 +365,15 @@ int upload_ap_telemetry_data(void *arg)
     char buff[1024];
     char tmp[128];
     unsigned int i;
-    BOOL radio_Enabled=FALSE;
     for (i = 0; i < getNumberRadios(); i++) {
-        wifi_getRadioEnable(i, &radio_Enabled);
-        if(radio_Enabled) {
-            get_formatted_time(tmp);
-            snprintf(buff, 1024, "%s WIFI_NOISE_FLOOR_%d:%d\n", tmp, i + 1, g_monitor_module.radio_data[i].NoiseFloor);
-
-            write_to_file(wifi_health_log, buff);
-            wifi_util_dbg_print(WIFI_MON, "%s", buff);
+        wifi_radio_operationParam_t* radioOperation = getRadioOperationParam(i);
+        if (radioOperation != NULL) {
+            if (radioOperation->enable) {
+                get_formatted_time(tmp);
+                snprintf(buff, 1024, "%s WIFI_NOISE_FLOOR_%d:%d\n", tmp, i + 1, g_monitor_module.radio_data[i].NoiseFloor);
+                write_to_file(wifi_health_log, buff);
+                wifi_util_dbg_print(WIFI_MON, "%s", buff);
+            }
         }
     }
     return TIMER_TASK_COMPLETE;
@@ -523,9 +526,9 @@ int upload_client_telemetry_data(void *arg)
     if (phase == 0) {
         // IsCosaDmlWiFivAPStatsFeatureEnabled needs to be set to get telemetry of some stats, the TR object is 
         // Device.WiFi.X_RDKCENTRAL-COM_vAPStatsEnable
-        get_device_flag(trflag, "dmsb.device.deviceinfo.X_RDKCENTRAL-COM_WHIX.TxRxRateList");
-        get_device_flag(nrflag, "dmsb.device.deviceinfo.X_RDKCENTRAL-COM_WHIX.NormalizedRssiList");
-        get_device_flag(stflag, "dmsb.device.deviceinfo.X_RDKCENTRAL-COM_WHIX.CliStatList");
+        get_device_flag(trflag, WIFI_TxRx_RATE_LIST);
+        get_device_flag(nrflag, WIFI_NORMALIZED_RSSI_LIST);
+        get_device_flag(stflag, WIFI_CLI_STAT_LIST);
         // see if list has changed
         BOOL enableRadioDetailStats[MAX_NUM_RADIOS] = {FALSE};
         if (strncmp(stflag, g_monitor_module.cliStatsList, MAX_VAP) != 0) {
@@ -564,11 +567,8 @@ int upload_client_telemetry_data(void *arg)
                     break;
                 }
             }
-            for (radioIndex = 0; radioIndex < getNumberRadios(); radioIndex++) {
-                wifi_setClientDetailedStatisticsEnable(radioIndex, enableRadioDetailStats[radioIndex]);
-            }
         }
-        get_device_flag(snflag, "dmsb.device.deviceinfo.X_RDKCENTRAL-COM_WIFI_TELEMETRY.SNRList");
+        get_device_flag(snflag, WIFI_SNR_LIST);
         memset(buff, 0, MAX_BUFFER);
         phase++;
         return TIMER_TASK_CONTINUE;
@@ -1141,60 +1141,44 @@ reset_client_stats_info(unsigned int apIndex)
 
 }
 
-void
-get_device_flag(char flag[], char *psmcli)
+void get_device_flag(char flag[], char *list_name)
 {
-    int retPsmGet = CCSP_SUCCESS;
-    char *strValue = NULL;
-    char buf[CLIENT_STATS_MAX_LEN_BUF] = {0};
-    char tempBuf[8] = {0}, tempPsmBuf[64] = {0};
-    bool isPsmsetneeded =  false;
-    retPsmGet = PSM_Get_Record_Value2(bus_handle, g_Subsystem,
-            psmcli, NULL, &strValue);
-    if (retPsmGet == CCSP_SUCCESS) {
-        if (strlen(strValue)) {
-            strncpy(buf, strValue, CLIENT_STATS_MAX_LEN_BUF-1);
-            buf[strlen(strValue)] = '\0';
-            ((CCSP_MESSAGE_BUS_INFO *)bus_handle)->freefunc(strValue);
-            int buf_int[16] = {0}, i = 0, j = 0;
+    int ret = RETURN_ERR;
+    char buf[MAX_BUF_SIZE] = {0};
 
-            for (i = 0; buf[i] != '\0'; i++) {
-                if (buf[i] == ',') {
-                    j++;
-                }
-                else if (buf[i] == '"') {
-                    isPsmsetneeded = true;
-                    continue;
-                }
-                else {
-                    buf_int[j] = buf_int[j] * 10 + (buf[i] - 48);
-                }
+    ret = get_device_config_list(buf, MAX_BUF_SIZE, list_name);
+    wifi_util_dbg_print(WIFI_MON, "\n %s line %d get_device_config_list for %s is %s\n",__func__, __LINE__,list_name, buf);
+
+    if ((ret == RETURN_OK) && (strlen(buf)) ) {
+        int buf_int[16] = {0}, i = 0, j = 0;
+
+        for (i = 0; buf[i] != '\0'; i++)
+        {
+            if (buf[i] == ',')
+            {
+                j++;
+            } else if (buf[i] == '"') {
+
+                continue;
             }
-            int len = sizeof(buf_int)/sizeof(buf_int[0]);
-            for(i = 0;  i < len; i ++) {
-                if((buf_int[i] <= (int)getTotalNumberVAPs()) && (buf_int[i] > 0)) {
-                    flag[(buf_int[i] - 1)] = 1;
-                    if(isPsmsetneeded) {
-                        memset(tempBuf, 0, 8);
-                        snprintf(tempBuf, sizeof(buf_int[i]), "%d,",  buf_int[i]);
-                        strncat(tempPsmBuf, tempBuf, strlen(tempBuf));
-                    }
-                }
-            }
-            if(isPsmsetneeded) {
-                tempPsmBuf[strlen(tempPsmBuf) - 1] = '\0';
-                PSM_Set_Record_Value2(bus_handle,g_Subsystem, psmcli, ccsp_string, tempPsmBuf);
+            else
+            {
+                buf_int[j] = buf_int[j] * 10 + (buf[i] - 48);
             }
         }
-        else {
-            flag[0] = 1;
-            flag[1] = 1;
+        int len = sizeof(buf_int)/sizeof(buf_int[0]);
+        for(i = 0;  i < len; i ++)
+        {
+            if((buf_int[i] <= MAX_VAP) && (buf_int[i] > 0))
+            {
+                flag[i] = 1;
+            }
         }
-    }
-    else {
+    } else {
         flag[0] = 1;
         flag[1] = 1;
     }
+    return;
 }
 
 
@@ -1203,62 +1187,64 @@ static void upload_client_debug_stats_chan_stats(INT apIndex)
     char tmp[128] = {0};
     ULONG channel = 0;
     CHAR eventName[32] = {0};
-    wifi_getRadioChannel(getRadioIndexFromAp(apIndex), &channel);
-    memset(tmp, 0, sizeof(tmp));
-    get_formatted_time(tmp);
-    write_to_file(wifi_health_log, "\n%s WIFI_CHANNEL_%d:%lu\n", tmp, apIndex+1, channel);
-    if (isVapPrivate(apIndex))
-    {
-        snprintf(eventName, sizeof(eventName), "WIFI_CH_%d_split", apIndex + 1 );
-        t2_event_d(eventName, channel);
-        if (getRadioIndexFromAp(apIndex) == 1)
+    wifi_radio_operationParam_t* radioOperation = getRadioOperationParam(getRadioIndexFromAp(apIndex));
+    if (radioOperation != NULL) {
+        channel = radioOperation->channel;
+        memset(tmp, 0, sizeof(tmp));
+        get_formatted_time(tmp);
+        write_to_file(wifi_health_log, "\n%s WIFI_CHANNEL_%d:%lu\n", tmp, apIndex+1, channel);
+        if (isVapPrivate(apIndex))
         {
-            if( 1 == channel )
+            snprintf(eventName, sizeof(eventName), "WIFI_CH_%d_split", apIndex + 1 );
+            t2_event_d(eventName, channel);
+            if (getRadioIndexFromAp(apIndex) == 1)
             {
-                //         "header": "WIFI_INFO_UNI3_channel", "content": "WIFI_CHANNEL_2:1", "type": "wifihealth.txt",
-                t2_event_d("WIFI_INFO_UNI3_channel", 1);
-            } else if (( 3 == channel || 4 == channel)) \
-            {
-                t2_event_d("WIFI_INFO_UNII_channel", 1);
+                if( 1 == channel )
+                {
+                    //         "header": "WIFI_INFO_UNI3_channel", "content": "WIFI_CHANNEL_2:1", "type": "wifihealth.txt",
+                    t2_event_d("WIFI_INFO_UNI3_channel", 1);
+                } else if (( 3 == channel || 4 == channel)) \
+                {
+                    t2_event_d("WIFI_INFO_UNII_channel", 1);
+                }
             }
         }
+    } else {
+        wifi_util_dbg_print(WIFI_MON, "%s :Failed to get channel from global db",__func__);
     }
 }
 static void  upload_client_debug_stats_transmit_power_stats(INT apIndex)
 {
     char tmp[128] = {0};
-    char buf[CLIENT_STATS_MAX_LEN_BUF] = {0};
     ULONG txpower = 0;
     ULONG txpwr_pcntg = 0;
     CHAR eventName[32] = {0};
     if (isVapPrivate(apIndex))
     {
         txpower = 0;
-        memset (buf, 0, CLIENT_STATS_MAX_LEN_BUF);
         /* adding transmit power and countrycode */
-        wifi_getRadioCountryCode(getRadioIndexFromAp(apIndex), buf);
-        memset(tmp, 0, sizeof(tmp));
-        get_formatted_time(tmp);
-        write_to_file(wifi_health_log, "\n%s WIFI_COUNTRY_CODE_%d:%s", tmp, apIndex+1, buf);
-        wifi_getRadioTransmitPower(getRadioIndexFromAp(apIndex), &txpower);
-        memset(tmp, 0, sizeof(tmp));
-        get_formatted_time(tmp);
-        write_to_file(wifi_health_log, "\n%s WIFI_TX_PWR_dBm_%d:%lu", tmp, apIndex+1, txpower);
-        //    "header": "WIFI_TXPWR_1_split",   "content": "WIFI_TX_PWR_dBm_1:", "type": "wifihealth.txt",
-        //    "header": "WIFI_TXPWR_2_split",   "content": "WIFI_TX_PWR_dBm_2:", "type": "wifihealth.txt",
-        snprintf(eventName, sizeof(eventName), "WIFI_TXPWR_%d_split", apIndex + 1 );
-        t2_event_d(eventName, txpower);
-        wifi_radio_operationParam_t *radio_parameters = get_wifidb_radio_map(getRadioIndexFromAp(apIndex));
-        if(radio_parameters != NULL) {
-            txpwr_pcntg = radio_parameters->transmitPower;
+        wifi_radio_operationParam_t* radioOperation = getRadioOperationParam(getRadioIndexFromAp(apIndex));
+        if (radioOperation != NULL) {
+            memset(tmp, 0, sizeof(tmp));
+            get_formatted_time(tmp);
+            write_to_file(wifi_health_log, "%s WIFI_COUNTRY_CODE_%d:%s\n", tmp, apIndex+1, wifiCountryMap[radioOperation->countryCode].countryStr);
+            wifi_getRadioTransmitPower(getRadioIndexFromAp(apIndex), &txpower);
+            memset(tmp, 0, sizeof(tmp));
+            get_formatted_time(tmp);
+            write_to_file(wifi_health_log, "%s WIFI_TX_PWR_dBm_%d:%lu\n", tmp, apIndex+1, txpower);
+            //    "header": "WIFI_TXPWR_1_split",   "content": "WIFI_TX_PWR_dBm_1:", "type": "wifihealth.txt",
+            //    "header": "WIFI_TXPWR_2_split",   "content": "WIFI_TX_PWR_dBm_2:", "type": "wifihealth.txt",
+            snprintf(eventName, sizeof(eventName), "WIFI_TXPWR_%d_split", apIndex + 1 );
+            t2_event_d(eventName, txpower);
+            txpwr_pcntg = radioOperation->transmitPower;
+            memset(tmp, 0, sizeof(tmp));
+            get_formatted_time(tmp);
+            write_to_file(wifi_health_log, "%s WIFI_TX_PWR_PERCENTAGE_%d:%lu\n", tmp, apIndex+1, txpwr_pcntg);
+            snprintf(eventName, sizeof(eventName), "WIFI_TXPWR_PCNTG_%u_split", apIndex + 1 );
+            t2_event_d("WIFI_TXPWR_PCNTG_1_split", txpwr_pcntg);
         } else {
-            wifi_util_dbg_print(WIFI_MON, "%s: wrong radio_index %d for transmit power\n", __FUNCTION__, getRadioIndexFromAp(apIndex)); 
+            wifi_util_dbg_print(WIFI_MON, "%s: getRadioOperationParam failed for ApIdx %d\n", __FUNCTION__, getRadioIndexFromAp(apIndex)); 
         }
-        memset(tmp, 0, sizeof(tmp));
-        get_formatted_time(tmp);
-        write_to_file(wifi_health_log, "\n%s WIFI_TX_PWR_PERCENTAGE_%d:%lu", tmp, apIndex+1, txpwr_pcntg);
-        snprintf(eventName, sizeof(eventName), "WIFI_TXPWR_PCNTG_%u_split", apIndex + 1 );
-        t2_event_d("WIFI_TXPWR_PCNTG_1_split", txpwr_pcntg);
     }
 }
 static void upload_client_debug_stats_acs_stats(INT apIndex) 
@@ -1268,16 +1254,23 @@ static void upload_client_debug_stats_acs_stats(INT apIndex)
     CHAR eventName[32] = {0};
     if (isVapPrivate(apIndex))
     {
-        wifi_getBandSteeringEnable(&enable);
+        wifi_global_param_t *global_param = get_wifidb_wifi_global_param();
+        if (global_param != NULL) {
+            enable = global_param->bandsteering_enable;
+        }
         memset(tmp, 0, sizeof(tmp));
         get_formatted_time(tmp);
-        write_to_file(wifi_health_log, "\n%s WIFI_ACL_%d:%d", tmp, apIndex+1, enable);
-        wifi_getRadioAutoChannelEnable(getRadioIndexFromAp(apIndex), &enable);
+        write_to_file(wifi_health_log, "%s WIFI_ACL_%d:%d\n", tmp, apIndex+1, enable);
+        enable = false;
+        wifi_radio_operationParam_t* radioOperation = getRadioOperationParam(getRadioIndexFromAp(apIndex));
+        if (radioOperation != NULL) {
+            enable = radioOperation->autoChannelEnabled;
+        }
         if (true == enable)
         {
             memset(tmp, 0, sizeof(tmp));
             get_formatted_time(tmp);
-            write_to_file(wifi_health_log, "\n%s WIFI_ACS_%d:true\n", tmp, apIndex+1);
+            write_to_file(wifi_health_log, "%s WIFI_ACS_%d:true\n", tmp, apIndex+1);
             // "header": "WIFI_ACS_1_split",  "content": "WIFI_ACS_1:", "type": "wifihealth.txt",
             // "header": "WIFI_ACS_2_split", "content": "WIFI_ACS_2:", "type": "wifihealth.txt",
             snprintf(eventName, sizeof(eventName), "WIFI_ACS_%d_split", apIndex + 1 );
@@ -1287,7 +1280,7 @@ static void upload_client_debug_stats_acs_stats(INT apIndex)
         {
             memset(tmp, 0, sizeof(tmp));
             get_formatted_time(tmp);
-            write_to_file(wifi_health_log, "\n%s WIFI_ACS_%d:false\n", tmp, apIndex+1);
+            write_to_file(wifi_health_log, "%s WIFI_ACS_%d:false\n", tmp, apIndex+1);
             // "header": "WIFI_ACS_1_split",  "content": "WIFI_ACS_1:", "type": "wifihealth.txt",
             // "header": "WIFI_ACS_2_split", "content": "WIFI_ACS_2:", "type": "wifihealth.txt",
             snprintf(eventName, sizeof(eventName), "WIFI_ACS_%d_split", apIndex + 1 );
@@ -1589,13 +1582,13 @@ static void upload_client_debug_stats_sta_vap_activity_stats(INT apIndex)
 /*
  * This API will Create telemetry and data model for client activity stats
  * like BytesSent, BytesReceived, RetransCount, FailedRetransCount, etc...
- */
+*/
 int upload_client_debug_stats(void *arg)
 {
     static INT itr = 0 ;
     static UINT vap_index = 0;
     static unsigned int phase = 0;
-    static char vap_status[16] = {0};
+    static int vap_status = 0;
     static hash_map_t     *sta_map;
     static sta_data_t *sta;
     static int phase_sta = 0;
@@ -1626,13 +1619,12 @@ int upload_client_debug_stats(void *arg)
             }
             return TIMER_TASK_CONTINUE;
         }
-        memset(vap_status,0,16);
-        wifi_getApStatus(vap_index, vap_status);
+        vap_status = g_monitor_module.bssid_data[vap_index].ap_params.ap_status;
         phase++;
         return TIMER_TASK_CONTINUE;
     }
 
-    if(strncasecmp(vap_status,"Up",2)==0) {
+    if (vap_status) {
         if (phase == 1) {
             upload_client_debug_stats_chan_stats(vap_index);
             phase++;
@@ -1752,10 +1744,14 @@ int upload_channel_width_telemetry(void *arg)
     CHAR eventName[32] = {0};
     BOOL radioEnabled = FALSE;
     UINT numRadios = getNumberRadios();
+    wifi_util_dbg_print(WIFI_MON, "Entering %s:%d \n", __FUNCTION__, __LINE__);
     for (UINT i = 0; i < numRadios; ++i) {
-        if (wifi_getRadioEnable(i, &radioEnabled)) {
-            CcspTraceWarning(("%s : failed to wifi_getRadioEnable with radio index:%d \n", __FUNCTION__, i));
+        wifi_radio_operationParam_t* radioOperation = getRadioOperationParam(i);
+        if (radioOperation == NULL) {
+            CcspTraceWarning(("%s : failed to getRadioOperationParam with radio index:%d \n", __FUNCTION__, i));
             radioEnabled = FALSE;
+        } else {
+            radioEnabled = radioOperation->enable;
         }
         if (radioEnabled) {
             wifi_getRadioOperatingChannelBandwidth(i, buffer);
@@ -1784,7 +1780,6 @@ int upload_ap_telemetry_pmf(void *arg)
     char tmp[128]={0};
     char log_buf[1024]={0};
     char telemetry_buf[1024]={0};
-    char pmf_config[16]={0};
     errno_t rc = -1;
     UINT vap_index;
     wifi_mgr_t *mgr = get_wifimgr_obj();
@@ -1818,24 +1813,39 @@ int upload_ap_telemetry_pmf(void *arg)
         vap_index = VAP_INDEX(mgr->hal_cap, i);
         if (isVapPrivate(vap_index))
         {
-            memset(pmf_config, 0, sizeof(pmf_config));
-            wifi_getApSecurityMFPConfig(vap_index, pmf_config);
-            rc = strcpy_s(telemetry_buf, sizeof(telemetry_buf), pmf_config);
-            ERR_CHK(rc);
-            get_formatted_time(tmp);
-            rc = sprintf_s(log_buf, sizeof(log_buf), "%s WIFI_INFO_PMF_CONFIG_%d:%s\n", tmp, i+1, telemetry_buf);
-            if(rc < EOK)
-            {
-                ERR_CHK(rc);
+            wifi_vap_security_t *vapSecurity = (wifi_vap_security_t *)Get_wifi_object_bss_security_parameter(vap_index);
+            if (vapSecurity != NULL) {
+
+                switch (vapSecurity->mfp)
+                {
+                    case wifi_mfp_cfg_disabled:
+                        snprintf(telemetry_buf, sizeof(telemetry_buf), "Disabled");
+                        break;
+                    case wifi_mfp_cfg_optional:
+                        snprintf(telemetry_buf, sizeof(telemetry_buf), "Optional");
+                        break;
+                    case wifi_mfp_cfg_required:
+                        snprintf(telemetry_buf, sizeof(telemetry_buf), "Required");
+                        break;
+                    default:
+                        wifi_util_dbg_print(WIFI_MON, "%s:%d: unable to find mfp config\n", __func__, __LINE__); 
+                        break;
+                }
+                get_formatted_time(tmp);
+                rc = sprintf_s(log_buf, sizeof(log_buf), "%s WIFI_INFO_PMF_CONFIG_%d:%s\n", tmp, i+1, telemetry_buf);
+                if(rc < EOK)
+                {
+                    ERR_CHK(rc);
+                }
+                write_to_file(wifi_health_log, log_buf);
+                wifi_util_dbg_print(WIFI_MON, "%s", log_buf);
+                rc = sprintf_s(tmp, sizeof(tmp), "WIFI_INFO_PMF_CONFIG_%d", i+1);
+                if(rc < EOK)
+                {
+                    ERR_CHK(rc);
+                }
+                t2_event_s(tmp, telemetry_buf);
             }
-            write_to_file(wifi_health_log, log_buf);
-            wifi_util_dbg_print(WIFI_MON, "%s", log_buf);
-            rc = sprintf_s(tmp, sizeof(tmp), "WIFI_INFO_PMF_CONFIG_%d", i+1);
-            if(rc < EOK)
-            {
-                ERR_CHK(rc);
-            }
-            t2_event_s(tmp, telemetry_buf);
         }
     }
     wifi_util_dbg_print(WIFI_MON, "Exiting %s:%d \n", __FUNCTION__, __LINE__);
@@ -2131,7 +2141,7 @@ void process_connect	(unsigned int ap_index, auth_deauth_dev_t *dev)
     hash_map_t     *sta_map;
     struct timeval tv_now;
     unsigned int i = 0;
-    char vap_status[16];
+    int vap_status = 0;
     wifi_mgr_t *mgr = get_wifimgr_obj();
     unsigned int vap_array_index;
     getVAPArrayIndexFromVAPIndex(ap_index, &vap_array_index);
@@ -2176,15 +2186,13 @@ void process_connect	(unsigned int ap_index, auth_deauth_dev_t *dev)
         UINT vap_index = VAP_INDEX(mgr->hal_cap, i);
         if ( vap_index == ap_index)
             continue;
-        memset(vap_status,0,16);
-        wifi_getApStatus(vap_index, vap_status);
-        if(strncasecmp(vap_status,"Up",2)==0) {
+        vap_status = g_monitor_module.bssid_data[vap_index].ap_params.ap_status;
+        if (vap_status) {
             sta_map = g_monitor_module.bssid_data[i].sta_map;
             sta = (sta_data_t *)hash_map_get(sta_map, to_sta_key(dev->sta_mac, sta_key));
             if ((sta != NULL) && (sta->dev_stats.cli_Active == true)) {
                 sta->dev_stats.cli_Active = false;
             }
-
         }
     }
 }
@@ -2245,8 +2253,6 @@ void process_instant_msmt_start	(unsigned int ap_index, instant_msmt_t *msmt)
     wifi_util_dbg_print(WIFI_MON, "%s:%d: count:%d, maxCount:%d, TTL:%d, poll:%d\n",__func__, __LINE__, 
             g_monitor_module.count, g_monitor_module.maxCount, g_monitor_module.instantDefOverrideTTL, g_monitor_module.instantPollPeriod);
 
-    //Enable Radio channel Stats
-    wifi_setRadioStatsEnable(ap_index, 1);
     //Stopping telemetry while running instant measurement.
     scheduler_telemetry_tasks();
     if (g_monitor_module.instantPollPeriod != 0) {
@@ -2294,8 +2300,6 @@ void process_instant_msmt_stop	(unsigned int ap_index, instant_msmt_t *msmt)
     g_monitor_module.maxCount = 0;
     g_monitor_module.count = 0;
 
-    //Disable Radio channel Stats
-    wifi_setRadioStatsEnable(ap_index, 0);
     //Restarting telemetry after stopping instant measurement.  
     scheduler_telemetry_tasks();
     if (g_monitor_module.inst_msmt_id != 0) {
@@ -3033,7 +3037,7 @@ static void send_ping_data(int ap_idx, unsigned char *mac, char *client_ip, char
         frame_len = frame_icmpv4_ping(buffer, (char *)&cli_ip_str, (char *)&src_ip_str);
         //send buffer
         if(frame_len) {
-              wifi_sendDataFrame(ap_idx,
+              wifi_hal_sendDataFrame(ap_idx,
               (unsigned char*)mac,
               (unsigned char*)buffer,
               frame_len,
@@ -3045,7 +3049,7 @@ static void send_ping_data(int ap_idx, unsigned char *mac, char *client_ip, char
         frame_len = frame_icmpv6_ping(buffer, (char *)&cli_ip_str, (char *)&src_ip_str);
         //send buffer
         if(frame_len) {
-             wifi_sendDataFrame(ap_idx,
+             wifi_hal_sendDataFrame(ap_idx,
               (unsigned char*)mac,
               (unsigned char*)buffer,
               frame_len,
@@ -3863,14 +3867,14 @@ static void logVAPUpStatus()
 int captureVAPUpStatus(void *arg)
 {
     static unsigned int i = 0;
-    char vap_status[16];
+    int vap_status = 0;
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
-    memset(vap_status,0,16);
     UINT vap_index = VAP_INDEX(mgr->hal_cap, i);
     wifi_util_dbg_print(WIFI_MON, "Entering %s:%d for VAP %d\n",__FUNCTION__,__LINE__, vap_index);
-    wifi_getApStatus(vap_index,vap_status);
-    if(strncasecmp(vap_status,"Up",2)==0) {
+
+    vap_status = g_monitor_module.bssid_data[vap_index].ap_params.ap_status;
+    if (vap_status) {
         vap_up_arr[i]=vap_up_arr[i]+1;
         if (!vap_nas_status[i]) {
             vap_nas_status[i] = updateNasIpStatus(i);
@@ -3950,17 +3954,16 @@ void associated_client_diagnostics ()
 int radio_diagnostics(void *arg)
 {
     wifi_radioTrafficStats2_t radioTrafficStats;
-    BOOL radio_Enabled=FALSE;
     //char            ChannelsInUse[256] = {0};
     char            RadioFreqBand[64] = {0};
     char            RadioChanBand[64] = {0};
-    ULONG           Channel = 0;
     static unsigned int radiocnt = 0;
     wifi_util_dbg_print(WIFI_MON, "%s : %d getting radio Traffic stats for Radio %d\n",__func__,__LINE__, radiocnt);
     memset(&radioTrafficStats, 0, sizeof(wifi_radioTrafficStats2_t));
     memset(&g_monitor_module.radio_data[radiocnt], 0, sizeof(radio_data_t));
-    if (wifi_getRadioEnable(radiocnt, &radio_Enabled) == RETURN_OK) {
-        if(radio_Enabled) {
+    wifi_radio_operationParam_t* radioOperation = getRadioOperationParam(radiocnt);
+    if (radioOperation != NULL) {
+        if(radioOperation->enable) {
             if (wifi_getRadioTrafficStats2(radiocnt, &radioTrafficStats) == RETURN_OK) {
                 /* update the g_active_msmt with the radio data */
                 g_monitor_module.radio_data[radiocnt].NoiseFloor = radioTrafficStats.radio_NoiseFloor;
@@ -3986,14 +3989,20 @@ int radio_diagnostics(void *arg)
                 wifi_getRadioChannelsInUse (radiocnt, ChannelsInUse);
                 strncpy((char *)&g_monitor_module.radio_data[radiocnt].ChannelsInUse, ChannelsInUse,sizeof(ChannelsInUse));
 #endif
-                wifi_getRadioChannel(radiocnt, &Channel);
-                g_monitor_module.radio_data[radiocnt].primary_radio_channel = Channel;
+                g_monitor_module.radio_data[radiocnt].primary_radio_channel = radioOperation->channel;
 
-                wifi_getRadioOperatingFrequencyBand(radiocnt,RadioFreqBand);
-                strncpy((char *)&g_monitor_module.radio_data[radiocnt].frequency_band, RadioFreqBand,sizeof(RadioFreqBand));
+                if (freq_band_conversion((wifi_freq_bands_t *)&radioOperation->band, (char *)RadioFreqBand, sizeof(RadioFreqBand), ENUM_TO_STRING) != RETURN_OK)
+                {
+                    wifi_util_dbg_print(WIFI_MON,"%s:%d: frequency band conversion failed\n", __func__, __LINE__);
+                } else {
+                    strncpy((char *)&g_monitor_module.radio_data[radiocnt].frequency_band, RadioFreqBand, sizeof(RadioFreqBand));
+                    g_monitor_module.radio_data[radiocnt].frequency_band[sizeof(g_monitor_module.radio_data[radiocnt].frequency_band)-1] = '\0';
+                    wifi_util_dbg_print(WIFI_MON, "%s:%d: Frequency band is  %s\n", __func__, __LINE__, RadioFreqBand);
+                }
 
                 wifi_getRadioOperatingChannelBandwidth(radiocnt,RadioChanBand);
                 strncpy((char *)&g_monitor_module.radio_data[radiocnt].channel_bandwidth, RadioChanBand,sizeof(RadioChanBand));
+                wifi_util_dbg_print(WIFI_MON, "%s:%d: channelbandwidth is  %s\n", __func__, __LINE__, RadioChanBand);
             } else {
                 wifi_util_dbg_print(WIFI_MON, "%s : %d wifi_getRadioTrafficStats2 failed for rdx : %d\n",__func__,__LINE__,radiocnt);
             }
@@ -4001,7 +4010,7 @@ int radio_diagnostics(void *arg)
             wifi_util_dbg_print(WIFI_MON, "%s : %d Radio : %d is not enabled\n",__func__,__LINE__,radiocnt);
         }
     } else {
-        wifi_util_dbg_print(WIFI_MON, "%s : %d wifi_getRadioEnable failed for rdx : %d\n",__func__,__LINE__,radiocnt);
+        wifi_util_dbg_print(WIFI_MON, "%s : %d Failed to get getRadioOperationParam for rdx : %d\n",__func__,__LINE__,radiocnt);
     }
     radiocnt++;
     if (radiocnt >= getNumberRadios()) {
@@ -4168,6 +4177,13 @@ int device_disassociated(int ap_index, char *mac, int reason)
     pthread_cond_signal(&g_monitor_module.cond);
     pthread_mutex_unlock(&g_monitor_module.lock);
 
+    return 0;
+}
+
+int vapstatus_callback(int apIndex, wifi_vapstatus_t status)
+{
+    wifi_util_dbg_print(WIFI_MON,"%s called for %d and status %d \n",__func__, apIndex, status);
+    g_monitor_module.bssid_data[apIndex].ap_params.ap_status = status;
     return 0;
 }
 
@@ -4402,7 +4418,6 @@ int init_wifi_monitor ()
     int	rssi;
     //int rapid_reconn_max;
     unsigned int uptimeval = 0;
-    char mac_str[32];
     UINT vap_index;
     //ONEWIFI To avoid the st
         //Cleanup all CSI clients configured in driver
@@ -4412,8 +4427,11 @@ int init_wifi_monitor ()
     for (i = 0; i < getTotalNumberVAPs(); i++) {
         /*TODO CID: 110946 Out-of-bounds access - Fix in QTN code*/
         vap_index = VAP_INDEX(mgr->hal_cap, i);
-        if (wifi_getSSIDMACAddress(vap_index, mac_str) == RETURN_OK) {
-            to_mac_bytes(mac_str, g_monitor_module.bssid_data[i].bssid);
+        wifi_front_haul_bss_t *vap_bss_info = Get_wifi_object_bss_parameter(vap_index);
+        if (vap_bss_info != NULL) {
+            mac_addr_str_t mac_str;
+            memcpy(g_monitor_module.bssid_data[i].bssid, vap_bss_info->bssid, sizeof(mac_address_t));
+            wifi_util_dbg_print(WIFI_MON, "%s:%d vap_bss_info->bssid is %s for vap %d", __func__,__LINE__,to_mac_str(g_monitor_module.bssid_data[i].bssid, mac_str), vap_index);
         }
 
         //ONEWIFI To avoid the segmentation Fault
@@ -4555,6 +4573,7 @@ int init_wifi_monitor ()
     }
     pthread_mutex_lock(&g_apRegister_lock);
     wifi_hal_newApAssociatedDevice_callback_register(device_associated);
+    wifi_vapstatus_callback_register(vapstatus_callback);
 #if !defined(_PLATFORM_RASPBERRYPI_) && !defined(_PLATFORM_TURRIS_)
     wifi_hal_apDeAuthEvent_callback_register(device_deauthenticated);
     wifi_hal_apDisassociatedDevice_callback_register(device_disassociated);
@@ -5496,14 +5515,15 @@ unsigned long getCurrentTimeInMicroSeconds()
 
 int isVapEnabled (int wlanIndex)
 {
-    BOOL enabled=FALSE;
 
-    DEBUG_PRINT (("Call wifi_getApEnable\n"));
-    wifi_getApEnable(wlanIndex, &enabled);
+    DEBUG_PRINT (("Get_wifi_object_bss_parameter\n"));
+    wifi_front_haul_bss_t *vap_bss_info = Get_wifi_object_bss_parameter(wlanIndex);
+    if (vap_bss_info != NULL) {
 
-    if (enabled == FALSE) {
-        wifi_util_dbg_print(WIFI_MON, "ERROR> Wifi AP Not enabled for Index: %d\n", wlanIndex );
-        return -1;
+        if (vap_bss_info->enabled == FALSE) {
+            wifi_util_dbg_print(WIFI_MON, "ERROR> Wifi AP Not enabled for Index: %d\n", wlanIndex );
+            return -1;
+        }
     }
 
     return 0;
@@ -5734,6 +5754,8 @@ void *WiFiBlastClient(void* data)
     char command[BUFF_LEN_MAX];
     char result[BUFF_LEN_MAX];
     int     oldcanceltype;
+    wifi_interface_name_t *interface_name = NULL;
+    wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
 
     pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, &oldcanceltype);
 
@@ -5764,7 +5786,10 @@ void *WiFiBlastClient(void* data)
 
                 memset(config.wlanInterface, '\0', sizeof(config.wlanInterface));
                 /*CID: 160057 Out-of-bounds access- updated BUFF_LEN_MIN 64*/
-                wifi_getApName(apIndex, config.wlanInterface);
+                if ((interface_name = get_interface_name_for_vap_index(apIndex, &g_wifi_mgr->hal_cap.wifi_prop)) != NULL) {
+                    memcpy(config.wlanInterface, interface_name, sizeof(config.wlanInterface));
+                    wifi_util_dbg_print(WIFI_MON,"%s : %d Vap_name %s", __func__, __LINE__, config.wlanInterface);
+                }
             }
             /*TODO RDKB-34680 CID: 154402,154401  Data race condition*/
             g_active_msmt.curStepData.ApIndex = apIndex;

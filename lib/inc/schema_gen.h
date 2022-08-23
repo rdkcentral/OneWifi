@@ -1570,6 +1570,10 @@
         PJS_OVS_BOOL(diagnostic_enable) \
         PJS_OVS_BOOL(validate_ssid) \
         PJS_OVS_INT(device_network_mode) \
+        PJS_OVS_STRING(normalized_rssi_list, 128 + 1) \
+        PJS_OVS_STRING(snr_list, 128 + 1) \
+        PJS_OVS_STRING(cli_stat_list, 128 + 1) \
+        PJS_OVS_STRING(txrx_rate_list, 128 + 1) \
     )
 
 #define PJS_GEN_TABLE \
@@ -3144,6 +3148,10 @@
     COLUMN(diagnostic_enable) \
     COLUMN(validate_ssid) \
     COLUMN(device_network_mode) \
+    COLUMN(normalized_rssi_list) \
+    COLUMN(snr_list) \
+    COLUMN(cli_stat_list) \
+    COLUMN(txrx_rate_list) \
 
 #define SCHEMA__AWLAN_Node__id "id"
 #define SCHEMA__AWLAN_Node__model "model"
@@ -4331,3 +4339,7 @@
 #define SCHEMA__Wifi_Global_Config__diagnostic_enable "diagnostic_enable"
 #define SCHEMA__Wifi_Global_Config__validate_ssid "validate_ssid"
 #define SCHEMA__Wifi_Global_Config__device_network_mode "device_network_mode"
+#define SCHEMA__Wifi_Global_Config__normalized_rssi_list "normalized_rssi_list"
+#define SCHEMA__Wifi_Global_Config__snr_list "snr_list"
+#define SCHEMA__Wifi_Global_Config__cli_stat_list "cli_stat_list"
+#define SCHEMA__Wifi_Global_Config__txrx_rate_list "txrx_rate_list"
