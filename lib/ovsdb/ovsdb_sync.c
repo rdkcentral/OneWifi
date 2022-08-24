@@ -48,6 +48,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "wifi_util.h"
 #include "wifi_ctrl.h"
 
+extern void wifidb_add_to_error_log(char *str1, const char *str2);
+
 /* OVSDB response buffers can be HUGE */
 static char ovsdb_write_buf[256*1024];
 
@@ -101,7 +103,7 @@ json_t *ovsdb_write_s(char *ovsdb_sock_path, json_t *jsdata)
     ovs_fd = g_wifidb->wifidb_wfd;
 
     LOGD("SYNC: Writing sync operation: %s", json_dumps_static(jsdata, 0));
-
+    wifidb_add_to_error_log("Input to socket jsdata:", json_dumps_static(jsdata, 0));
     if (json_dump_callback(jsdata, ovsdb_sync_write_fn, (void *)(intptr_t)ovs_fd, JSON_COMPACT) != 0)
     {
         LOGE("SYNC: Error during sync write to OVSDB: %s", strerror(errno));
@@ -144,6 +146,7 @@ json_t *ovsdb_write_s(char *ovsdb_sock_path, json_t *jsdata)
     }
     json_error_t err;
     retval = json_loads(ovsdb_write_buf, 0, &err);
+    wifidb_add_to_error_log("retval from socket:", json_dumps_static(retval, 0));
     if (retval == NULL)
     {
         LOGE("Sync: Error parsing OVSDB response (%s):\n%s", err.text, ovsdb_write_buf);
