@@ -19,7 +19,9 @@
 
 #include <stdio.h>
 #include <stdbool.h>
-#include "ansc_platform.h"
+#include "const.h"
+#include "log.h"
+#include "wifi_passpoint.h"
 #include "wifi_hal.h"
 #include "wifi_ctrl.h"
 #include "wifi_mgr.h"
@@ -27,7 +29,6 @@
 #include "msgpack.h"
 #include <unistd.h>
 #include <rbus.h>
-#include "wifi_passpoint.h"
 
 int webconfig_csi_notify_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_encoded_data_t *data)
 {
@@ -512,7 +513,9 @@ rbusError_t get_assoc_clients_data(rbusHandle_t handle, rbusProperty_t property,
     int itr, itrj;
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+#if DML_SUPPORT
     assoc_dev_data_t *assoc_dev_data;
+#endif // DML_SUPPORT
 
     if ((mgr == NULL) || (ctrl == NULL)) {
         wifi_util_error_print(WIFI_CTRL,"%s:%d NULL pointers\n", __func__,__LINE__);
@@ -531,6 +534,7 @@ rbusError_t get_assoc_clients_data(rbusHandle_t handle, rbusProperty_t property,
     pthread_mutex_lock(&ctrl->lock);
     for (itr=0; itr<MAX_NUM_RADIOS; itr++) {
         for (itrj=0; itrj<MAX_NUM_VAP_PER_RADIO; itrj++) {
+#if DML_SUPPORT
             if (mgr->radio_config[itr].vaps.rdk_vap_array[itrj].associated_devices_map != NULL) {
                 assoc_dev_data = hash_map_get_first(mgr->radio_config[itr].vaps.rdk_vap_array[itrj].associated_devices_map);
                 while (assoc_dev_data != NULL) {
@@ -538,6 +542,7 @@ rbusError_t get_assoc_clients_data(rbusHandle_t handle, rbusProperty_t property,
                    assoc_dev_data = hash_map_get_next(mgr->radio_config[itr].vaps.rdk_vap_array[itrj].associated_devices_map, assoc_dev_data);
                 }
             }
+#endif // DML_SUPPORT
         }
     }
     pthread_mutex_unlock(&ctrl->lock);
@@ -727,7 +732,9 @@ void get_assoc_devices_blob(char *str)
     int itr, itrj;
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+#if DML_SUPPORT
     assoc_dev_data_t *assoc_dev_data;
+#endif // DML_SUPPORT
 
     if ((mgr == NULL) || (ctrl == NULL)) {
         wifi_util_error_print(WIFI_CTRL,"%s:%d NULL pointers\n", __func__,__LINE__);
@@ -737,6 +744,7 @@ void get_assoc_devices_blob(char *str)
     pthread_mutex_lock(&ctrl->lock);
     for (itr=0; itr<MAX_NUM_RADIOS; itr++) {
         for (itrj=0; itrj<MAX_NUM_VAP_PER_RADIO; itrj++) {
+#if DML_SUPPORT
             if (mgr->radio_config[itr].vaps.rdk_vap_array[itrj].associated_devices_map != NULL) {
                 assoc_dev_data = hash_map_get_first(mgr->radio_config[itr].vaps.rdk_vap_array[itrj].associated_devices_map);
                 while (assoc_dev_data != NULL) {
@@ -744,6 +752,7 @@ void get_assoc_devices_blob(char *str)
                     assoc_dev_data = hash_map_get_next(mgr->radio_config[itr].vaps.rdk_vap_array[itrj].associated_devices_map, assoc_dev_data);
                 }
             }
+#endif // DML_SUPPORT
         }
     }
     pthread_mutex_unlock(&ctrl->lock);
@@ -1086,7 +1095,7 @@ void rbus_subscribe_events(wifi_ctrl_t *ctrl)
     }
 
     if(ctrl->marker_list_config_subscribed == false) {
-        if (rbusEvent_SubscribeEx(ctrl->rbus_handle, rbusMarkerEvents, ARRAY_SZ(rbusMarkerEvents), 0) != RBUS_ERROR_SUCCESS) {
+        if (rbusEvent_SubscribeEx(ctrl->rbus_handle, rbusMarkerEvents, ARRAY_SIZE(rbusMarkerEvents), 0) != RBUS_ERROR_SUCCESS) {
         } else {
             ctrl->marker_list_config_subscribed = true;
             wifi_util_dbg_print(WIFI_CTRL,"%s:%d Rbus event subscribe success\n",__FUNCTION__, __LINE__);

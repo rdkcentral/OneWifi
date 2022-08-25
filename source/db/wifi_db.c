@@ -18,16 +18,19 @@
  **************************************************************************/
 
 #include "wifi_data_plane.h"
+#if DML_SUPPORT
 #include "wifi_monitor.h"
 #include "plugin_main_apis.h"
+#endif // DML_SUPPORT
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <sys/sysinfo.h>
 #include <sys/un.h>
 #include <assert.h>
-#include "ansc_status.h"
+#if DML_SUPPORT
 #include <sysevent/sysevent.h>
+#endif // DML_SUPPORT
 #include <cJSON.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -51,7 +54,11 @@
 #include "wifi_ctrl.h"
 #include "wifi_util.h"
 #include "wifi_mgr.h"
+#if DML_SUPPORT
 #include "ssp_loop.h"
+#endif // DML_SUPPORT
+
+#define MAX_BUF_SIZE 128
 
 ovsdb_table_t table_Wifi_Radio_Config;
 ovsdb_table_t table_Wifi_VAP_Config;
@@ -61,7 +68,9 @@ ovsdb_table_t table_Wifi_Interworking_Config;
 ovsdb_table_t table_Wifi_GAS_Config;
 ovsdb_table_t table_Wifi_Global_Config;
 ovsdb_table_t table_Wifi_MacFilter_Config;
+#if DML_SUPPORT
 ovsdb_table_t table_Wifi_Rfc_Config;
+#endif // DML_SUPPORT
 ovsdb_table_t table_Wifi_Passpoint_Config;
 ovsdb_table_t table_Wifi_Anqp_Config;
 
@@ -112,6 +121,7 @@ void callback_Wifi_Device_Config(ovsdb_update_monitor_t *mon,
         wifi_util_dbg_print(WIFI_DB,"%s:%d:Unknown\n", __func__, __LINE__);
     }
 }
+#if DML_SUPPORT
 /************************************************************************************
  ************************************************************************************
   Function    : callback_Wifi_Rfc_Config
@@ -155,6 +165,7 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon,
 
 	}
 }
+#endif // DML_SUPPORT
 /************************************************************************************
  ************************************************************************************
   Function    : callback_Wifi_Radio_Config
@@ -175,7 +186,9 @@ void callback_Wifi_Radio_Config(ovsdb_update_monitor_t *mon,
     wifi_mgr_t *g_wifidb;
     g_wifidb = get_wifimgr_obj();
     wifi_radio_operationParam_t *l_radio_cfg = NULL;
+#if DML_SUPPORT
     wifi_rfc_dml_parameters_t *rfc_param = get_wifi_db_rfc_parameters();
+#endif // DML_SUPPORT
 
     wifi_util_dbg_print(WIFI_DB,"%s:%d\n", __func__, __LINE__);
 
@@ -245,7 +258,9 @@ void callback_Wifi_Radio_Config(ovsdb_update_monitor_t *mon,
         }
         l_radio_cfg->DCSEnabled = new_rec->dcs_enabled;
         l_radio_cfg->DfsEnabled = new_rec->dfs_enabled;
+#if DML_SUPPORT
         l_radio_cfg->DfsEnabledBootup = rfc_param->dfsatbootup_rfc;
+#endif // DML_SUPPORT
         l_radio_cfg->dtimPeriod = new_rec->dtim_period;
         if (new_rec->beacon_interval != 0) {
             l_radio_cfg->beaconInterval = new_rec->beacon_interval;
@@ -1146,6 +1161,7 @@ void wifidb_print_interworking_config ()
     }
 }
 
+#if DML_SUPPORT
 /************************************************************************************
  ************************************************************************************
   Function    : wifidb_update_rfc_config
@@ -1213,7 +1229,9 @@ int wifidb_update_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_param)
     }
     return 0;
 }
+#endif // DML_SUPPORT
 
+#if DML_SUPPORT
 /************************************************************************************
  ************************************************************************************
   Function    : wifidb_get_rfc_config
@@ -1253,6 +1271,7 @@ int wifidb_get_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_info)
     free(pcfg);
     return 0;
 }
+#endif // DML_SUPPORT
 
 /************************************************************************************
  ************************************************************************************
@@ -1463,7 +1482,9 @@ int wifidb_update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t
     else
     {
         wifidb_print("%s:%d Updated WIFI DB. Insert Wifi_Radio_Config table completed successful. \n",__func__, __LINE__);
+#if DML_SUPPORT
         push_data_to_ssp_queue(config, sizeof(wifi_radio_operationParam_t), ssp_event_type_psm_write, radio_config);
+#endif // DML_SUPPORT
     }
 
     return 0;
@@ -1487,12 +1508,14 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
     char *tmp, *ptr;
     wifi_db_t *g_wifidb;
     g_wifidb = (wifi_db_t*) get_wifidb_obj();
+#if DML_SUPPORT
     wifi_rfc_dml_parameters_t *rfc_param = get_wifi_db_rfc_parameters();
+#endif // DML_SUPPORT
 
     if((config == NULL) || (convert_radio_to_name(radio_index,name)!=0))
     {
         wifidb_print("%s:%d Failed to Get Radio Config \n",__func__, __LINE__);
-        return -1;
+        return RETURN_ERR;
     }
     wifi_util_dbg_print(WIFI_DB,"%s:%d:Get radio config for index=%d radio_name=%s \n",__func__, __LINE__,radio_index,name);
     where = ovsdb_tran_cond(OCLM_STR, "radio_name", OFUNC_EQ, name);
@@ -1500,7 +1523,7 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
     if(cfg == NULL)
     {
         wifidb_print("%s:%d Table table_Wifi_Radio_Config not found, entry count=%d\n",__func__, __LINE__, count);
-        return -1;
+        return RETURN_ERR;
     }
     config->enable = cfg->enabled;
     config->band = cfg->freq_band;
@@ -1519,7 +1542,9 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
     }
     config->DCSEnabled = cfg->dcs_enabled;
     config->DfsEnabled = cfg->dfs_enabled;
+#if DML_SUPPORT
     config->DfsEnabledBootup = rfc_param->dfsatbootup_rfc;
+#endif // DML_SUPPORT
     config->dtimPeriod = cfg->dtim_period;
     if (cfg->beacon_interval != 0) {
         config->beaconInterval = cfg->beacon_interval;
@@ -1556,7 +1581,7 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
 
     wifi_util_dbg_print(WIFI_DB,"%s:%d: Wifi_Radio_Config data enabled=%d freq_band=%d auto_channel_enabled=%d channel=%d  channel_width=%d hw_mode=%d csa_beacon_count=%d country=%d operatingEnvironment=%d dcs_enabled=%d numSecondaryChannels=%d channelSecondary=%s dtim_period %d beacon_interval %d operating_class %d basic_data_transmit_rate %d operational_data_transmit_rate %d  fragmentation_threshold %d guard_interval %d transmit_power %d rts_threshold %d factory_reset_ssid = %d, radio_stats_measuring_rate = %d, radio_stats_measuring_interval = %d, cts_protection %d, obss_coex= %d, stbc_enable= %d, greenfield_enable= %d, user_control= %d, admin_control= %d,chan_util_threshold= %d, chan_util_selfheal_enable= %d \n",__func__, __LINE__,config->enable,config->band,config->autoChannelEnabled,config->channel,config->channelWidth,config->variant,config->csa_beacon_count,config->countryCode,config->operatingEnvironment,config->DCSEnabled,config->numSecondaryChannels,cfg->secondary_channels_list,config->dtimPeriod,config->beaconInterval,config->operatingClass,config->basicDataTransmitRates,config->operationalDataTransmitRates,config->fragmentationThreshold,config->guardInterval,config->transmitPower,config->rtsThreshold,config->factoryResetSsid,config->radioStatsMeasuringInterval,config->radioStatsMeasuringInterval,config->ctsProtection,config->obssCoex,config->stbcEnable,config->greenFieldEnable,config->userControl,config->adminControl,config->chanUtilThreshold,config->chanUtilSelfHealEnable);
     free(cfg);
-    return 0;
+    return RETURN_OK;
 }
 
 /************************************************************************************
@@ -1779,7 +1804,7 @@ int wifidb_get_wifi_vap_info(char *vap_name,wifi_vap_info_t *config)
     if(config == NULL)
     {
         wifidb_print("%s:%d Failed to Get VAP info - Null pointer \n",__func__, __LINE__);
-        return -1;
+        return RETURN_ERR;
     }
 
     where = ovsdb_tran_cond(OCLM_STR, "vap_name", OFUNC_EQ, vap_name);
@@ -1788,7 +1813,7 @@ int wifidb_get_wifi_vap_info(char *vap_name,wifi_vap_info_t *config)
     if((pcfg == NULL) || (count== 0))
     {
         wifidb_print("%s:%d Table table_Wifi_VAP_Config table not found, entry count=%d \n",__func__, __LINE__,count);
-        return -1;
+        return RETURN_ERR;
     }
     if(pcfg != NULL)
     {
@@ -1799,7 +1824,7 @@ int wifidb_get_wifi_vap_info(char *vap_name,wifi_vap_info_t *config)
         if((convert_radio_name_to_index(&index,pcfg->radio_name))!=0)
         {
             wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid radio name \n",__func__, __LINE__,pcfg->radio_name);
-            return -1;
+            return RETURN_ERR;
         }
         config->radio_index = index ;
         config->vap_index = convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, pcfg->vap_name);
@@ -1855,7 +1880,7 @@ int wifidb_get_wifi_vap_info(char *vap_name,wifi_vap_info_t *config)
         }
     }
     free(pcfg);
-    return 0;
+    return RETURN_OK;
 }
 
 /************************************************************************************
@@ -1928,7 +1953,7 @@ int wifidb_update_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
     if(sec == NULL)
     {
         wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Security Config table - Null pointer \n",__func__, __LINE__);
-        return -1;
+        return RETURN_ERR;
     }
     vap_index = convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop,vap_name);
     cfg_sec.security_mode = sec->mode;
@@ -1990,12 +2015,14 @@ int wifidb_update_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
     }
     else
     {
+#if DML_SUPPORT
         wifidb_print("%s:%d Updated WIFI DB. Wifi Security Config table updated successful. \n",__func__, __LINE__);
         psm_security_cfg.vap_index = convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, vap_name);
         strncpy(psm_security_cfg.mfp, cfg_sec.mfp_config, sizeof(psm_security_cfg.mfp)-1);
         push_data_to_ssp_queue(&psm_security_cfg, sizeof(wifi_security_psm_param_t), ssp_event_type_psm_write, security_config);
+#endif // DML_SUPPORT
     }
-    return 0;
+    return RETURN_OK;
 }
 
 /************************************************************************************
@@ -2034,7 +2061,9 @@ int wifidb_update_wifi_macfilter_config(char *macfilter_key, acl_entry_t *config
         to_mac_str(config->mac, tmp_mac_str);
         strncpy(l_mac_entry.device_name, config->device_name, sizeof(l_mac_entry.device_name)-1);
         strncpy(l_mac_entry.mac, tmp_mac_str, sizeof(l_mac_entry.mac)-1);
+#if DML_SUPPORT
         push_data_to_ssp_queue(&l_mac_entry, sizeof(l_mac_entry), ssp_event_type_psm_write, mac_config_delete);
+#endif // DML_SUPPORT
 
         if (ret != 1) {
             wifidb_print("%s:%d WIFI DB update error !!!. Failed to delete table_Wifi_MacFilter_Config\n",__func__, __LINE__);
@@ -2074,9 +2103,11 @@ int wifidb_update_wifi_macfilter_config(char *macfilter_key, acl_entry_t *config
         l_mac_entry.acl_map = l_rdk_vap_array->acl_map;
         strncpy(l_mac_entry.device_name, cfg_mac.device_name, sizeof(l_mac_entry.device_name)-1);
         strncpy(l_mac_entry.mac, cfg_mac.device_mac, sizeof(l_mac_entry.mac)-1);
+#if DML_SUPPORT
         push_data_to_ssp_queue(&l_mac_entry, sizeof(l_mac_entry), ssp_event_type_psm_write, mac_config_add);
-        if (ovsdb_table_upsert_with_parent(g_wifidb->wifidb_sock_path, &table_Wifi_MacFilter_Config, &cfg_mac, false, filter_mac, SCHEMA_TABLE(Wifi_VAP_Config), ovsdb_where_simple(SCHEMA_COLUMN(Wifi_VAP_Config,vap_name), vap_name), SCHEMA_COLUMN(Wifi_VAP_Config, mac_filter)) ==  false) {
-            wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Wifi_MacFilter Config table\n",__func__, __LINE__);
+#endif // DML_SUPPORT
+        if (ovsdb_table_upsert_with_parent(g_wifidb->wifidb_sock_path, &table_Wifi_MacFilter_Config, &cfg_mac, false, filter_mac, SCHEMA_TABLE(Wifi_VAP_Config), ovsdb_where_simple(SCHEMA_COLUMN(Wifi_VAP_Config,vap_name), macfilter_key), SCHEMA_COLUMN(Wifi_VAP_Config, mac_filter)) ==  false) {
+            wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Wifi_MacFilter Config table \n",__func__, __LINE__);
         }
         else {
             wifidb_print("%s:%d Updated WIFI DB. Wifi_MacFilter Config table updated successful\n",__func__, __LINE__);
@@ -2396,13 +2427,13 @@ int wifidb_update_wifi_vap_info(char *vap_name,wifi_vap_info_t *config)
     if(config == NULL)
     {
         wifidb_print("%s:%d WIFI DB update error !!!. Failed to update VAP Config \n",__func__, __LINE__);
-        return -1;
+        return RETURN_ERR;
     }
     radio_index = convert_vap_name_to_radio_array_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, vap_name);
     if((convert_radio_to_name(radio_index,radio_name))!=0)
     {
         wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Vap Config - Invalid radio_index %d \n",__func__, __LINE__);
-        return -1;
+        return RETURN_ERR;
     }
     wifi_util_dbg_print(WIFI_DB,"%s:%d:Update radio=%s vap name=%s \n",__func__, __LINE__,radio_name,config->vap_name);
     strncpy(cfg.radio_name,radio_name,sizeof(cfg.radio_name)-1);
@@ -2454,9 +2485,11 @@ int wifidb_update_wifi_vap_info(char *vap_name,wifi_vap_info_t *config)
     else
     {
         wifidb_print("%s:%d Updated WIFI DB. table_Wifi_VAP_Config table updated successful\n",__func__, __LINE__);
+#if DML_SUPPORT
         push_data_to_ssp_queue(config, sizeof(wifi_vap_info_t), ssp_event_type_psm_write, vap_config);
+#endif // DML_SUPPORT
     }
-    return 0;
+    return RETURN_OK;
 }
 
 /************************************************************************************
@@ -2614,7 +2647,9 @@ int wifidb_update_wifi_global_config(wifi_global_param_t *config)
     strncpy(cfg.txrx_rate_list,config->txrx_rate_list,sizeof(cfg.txrx_rate_list)-1);
     cfg.txrx_rate_list[sizeof(cfg.txrx_rate_list)-1] = '\0';
 
+#if DML_SUPPORT
     push_data_to_ssp_queue(config, sizeof(wifi_global_param_t), ssp_event_type_psm_write, global_config);
+#endif // DML_SUPPORT
     wifi_util_dbg_print(WIFI_DB,"\n %s:%d  notify_wifi_changes %d  prefer_private %d  prefer_private_configure %d  factory_reset %d  tx_overflow_selfheal %d  inst_wifi_client_enabled %d  inst_wifi_client_reporting_period %d  inst_wifi_client_mac = %s inst_wifi_client_def_reporting_period %d  wifi_active_msmt_enabled %d  wifi_active_msmt_pktsize %d  wifi_active_msmt_num_samples %d  wifi_active_msmt_sample_duration %d  vlan_cfg_version %d  wps_pin = %s bandsteering_enable %d  good_rssi_threshold %d  assoc_count_threshold %d  assoc_gate_time %d  assoc_monitor_duration %d  rapid_reconnect_enable %d  vap_stats_feature %d  mfp_config_feature %d  force_disable_radio_feature %d  force_disable_radio_status %d  fixed_wmm_params %d  wifi_region_code %s diagnostic_enable %d  validate_ssid %d device_network_mode:%d normalized_rssi_list %s snr_list %s cli_stat_list %s txrx_rate_list %s\r\n", __func__, __LINE__, config->notify_wifi_changes,config->prefer_private,config->prefer_private_configure,config->factory_reset,config->tx_overflow_selfheal,config->inst_wifi_client_enabled,config->inst_wifi_client_reporting_period,config->inst_wifi_client_mac, config->inst_wifi_client_def_reporting_period,config->wifi_active_msmt_enabled,config->wifi_active_msmt_pktsize,config->wifi_active_msmt_num_samples,config->wifi_active_msmt_sample_duration,config->vlan_cfg_version,config->wps_pin, config->bandsteering_enable,config->good_rssi_threshold,config->assoc_count_threshold,config->assoc_gate_time,config->assoc_monitor_duration,config->rapid_reconnect_enable,config->vap_stats_feature,config->mfp_config_feature,config->force_disable_radio_feature,config->force_disable_radio_status,config->fixed_wmm_params,config->wifi_region_code,config->diagnostic_enable,config->validate_ssid, config->device_network_mode,config->normalized_rssi_list,config->snr_list,config->cli_stat_list,config->txrx_rate_list);
 
     if (wifidb_update_table_entry(NULL,NULL,OCLM_UUID,&table_Wifi_Global_Config,&cfg,filter_global) <= 0)
@@ -3140,21 +3175,21 @@ int update_wifi_vap_config(int radio_index, wifi_vap_info_map_t *config)
 **************************************************************************************/
 int update_wifi_vap_info(char *vap_name,wifi_vap_info_t *config)
 {
-    int ret = 0;
+    int ret = RETURN_OK;
 
     if(config == NULL)
     {
         wifidb_print("%s:%d WIFI DB update error !!!. Failed to update VAP info - Null pointer \n",__func__, __LINE__);
-        return -1;
+        return RETURN_ERR;
     } 
     ret = wifidb_update_wifi_vap_info(vap_name,config);
-    if(ret == 0)
+    if(ret == RETURN_OK)
     {
         wifidb_print("%s:%d Updated WIFI DB. Vap Info updated successful. \n",__func__, __LINE__);
-        return 0;
+        return RETURN_OK;
     }
     wifidb_print("%s:%d WIFI DB update error !!!. Failed to update VAP info \n",__func__, __LINE__);
-    return -1;
+    return RETURN_ERR;
 }
 
 /************************************************************************************
@@ -3835,7 +3870,9 @@ void init_wifidb_data()
     int num_radio = getNumberRadios();
     wifi_vap_info_map_t *l_vap_param_cfg = NULL;
     wifi_radio_operationParam_t *l_radio_cfg = NULL;
+#if DML_SUPPORT
     wifi_rfc_dml_parameters_t *rfc_param = get_wifi_db_rfc_parameters();
+#endif // DML_SUPPORT
 
     wifi_util_dbg_print(WIFI_DB,"%s:%d No of radios %d\n",__func__, __LINE__,getNumberRadios());
 
@@ -3846,9 +3883,11 @@ void init_wifidb_data()
         return ;
     }
     wifidb_init_default_value();
+#if DML_SUPPORT
     if (wifidb_get_rfc_config(0,rfc_param) != 0) {
         wifi_util_dbg_print(WIFI_DB,"%s:%d: Error getting RFC config\n",__func__, __LINE__);
     }
+#endif // DML_SUPPORT
     pthread_mutex_lock(&g_wifidb->data_cache_lock);
     for (r_index = 0; r_index < num_radio; r_index++)
     {
@@ -3911,7 +3950,9 @@ int start_wifidb_monitor()
     OVSDB_TABLE_MONITOR(g_wifidb->wifidb_fd, Wifi_Security_Config, true);
     OVSDB_TABLE_MONITOR(g_wifidb->wifidb_fd, Wifi_Interworking_Config, true);
     OVSDB_TABLE_MONITOR(g_wifidb->wifidb_fd, Wifi_GAS_Config, true);
+#if DML_SUPPORT
     OVSDB_TABLE_MONITOR(g_wifidb->wifidb_fd, Wifi_Rfc_Config, true);
+#endif // DML_SUPPORT
     OVSDB_TABLE_MONITOR(g_wifidb->wifidb_fd, Wifi_Global_Config, true);
     OVSDB_TABLE_MONITOR(g_wifidb->wifidb_fd, Wifi_Passpoint_Config, true);
     OVSDB_TABLE_MONITOR(g_wifidb->wifidb_fd, Wifi_Anqp_Config, true);
@@ -3946,7 +3987,9 @@ int init_wifidb_tables()
     OVSDB_TABLE_INIT(Wifi_VAP_Config, vap_name);
     OVSDB_TABLE_INIT(Wifi_Radio_Config, radio_name);
     OVSDB_TABLE_INIT(Wifi_MacFilter_Config, macfilter_key);
+#if DML_SUPPORT
     OVSDB_TABLE_INIT(Wifi_Rfc_Config, rfc_id);
+#endif // DML_SUPPORT
     OVSDB_TABLE_INIT_NO_KEY(Wifi_Global_Config);
     OVSDB_TABLE_INIT(Wifi_Passpoint_Config, vap_name);
     OVSDB_TABLE_INIT(Wifi_Anqp_Config, vap_name);

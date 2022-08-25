@@ -19,15 +19,18 @@
 
 #include <stdio.h>
 #include <stdbool.h>
+#if DML_SUPPORT
 #include "ansc_platform.h"
+#endif // DML_SUPPORT
+#include "const.h"
+#define  WBCFG_MULTI_COMP_SUPPORT 1
+#include "webconfig_framework.h"
 #include "wifi_hal.h"
 #include "wifi_ctrl.h"
 #include "wifi_mgr.h"
 #include "wifi_util.h"
 #include "msgpack.h"
 #include "cJSON.h"
-#define  WBCFG_MULTI_COMP_SUPPORT 1
-#include "webconfig_framework.h"
 #include "scheduler.h"
 #include <unistd.h>
 #include <pthread.h>
@@ -82,6 +85,7 @@ void print_wifi_hal_vap_wps_data(wifi_dbg_type_t log_file_type, char *prefix, un
                                      ctrl_webconfig_state_macfilter_cfg_rsp_pending| \
                                      ctrl_webconfig_state_factoryreset_cfg_rsp_pending)
 
+#if DML_SUPPORT
 int webconfig_blaster_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
     unsigned int i = 0;
@@ -104,6 +108,7 @@ int webconfig_blaster_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *
 
     return RETURN_OK;
 }
+#endif // DML_SUPPORT
 
 static void webconfig_init_subdoc_data(webconfig_subdoc_data_t *data)
 {
@@ -172,6 +177,7 @@ int webconfig_send_dml_subdoc_status(wifi_ctrl_t *ctrl)
 
 int webconfig_send_csi_status(wifi_ctrl_t *ctrl)
 {
+#if DML_SUPPORT
     webconfig_subdoc_data_t data;
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
@@ -182,6 +188,8 @@ int webconfig_send_csi_status(wifi_ctrl_t *ctrl)
     if (webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_csi) != webconfig_error_none) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
     }
+#endif // DML_SUPPORT
+
     return RETURN_OK;
 }
 
@@ -201,9 +209,11 @@ int webconfig_analyze_pending_states(wifi_ctrl_t *ctrl)
 {
     static int pending_state = ctrl_webconfig_state_max;
     webconfig_subdoc_type_t type = webconfig_subdoc_type_unknown;
+#if CCSP_COMMON
     wifi_apps_t *analytics = NULL;
 
     analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
+#endif // CCSP_COMMON
 
     if ((ctrl->webconfig_state & CTRL_WEBCONFIG_STATE_MASK) == 0) {
         return RETURN_OK;
@@ -291,9 +301,11 @@ int webconfig_analyze_pending_states(wifi_ctrl_t *ctrl)
             break;
     }
 
+#if CCSP_COMMON
     if (analytics->event_fn != NULL) {
         analytics->event_fn(analytics, ctrl_event_type_webconfig, ctrl_event_webconfig_set_status, &type);
     }
+#endif // CCSP_COMMON
 
     return RETURN_OK;
 }
@@ -307,9 +319,11 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
     wifi_vap_info_map_t *mgr_vap_map, tgt_vap_map;
     bool found_target = false;
     wifi_mgr_t *mgr = get_wifimgr_obj();
+#if CCSP_COMMON
     int ret = 0;
     wifi_apps_t         *analytics = NULL;
     char update_status[128];
+#endif // CCSP_COMMON
 
     for (i = 0; i < size; i++) {
 
@@ -412,6 +426,7 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
                 return RETURN_ERR;
             }
 
+#if CCSP_COMMON
             analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
             if (analytics->event_fn != NULL) {
                 memset(update_status, 0, sizeof(update_status));
@@ -435,6 +450,7 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
                 wifi_util_dbg_print(WIFI_CTRL,"vapname is %s and %d \n",vap_info->vap_name,vap_info->u.bss_info.enabled);
                 process_xfinity_sec_5g_enabled(vap_info->u.bss_info.enabled);
             }
+#endif // CCSP_COMMON
             memcpy(mgr_vap_info, &tgt_vap_map.vap_array[0], sizeof(wifi_vap_info_t));
 
             if (vap_info->vap_mode == wifi_vap_mode_ap) {
@@ -648,6 +664,7 @@ int webconfig_hal_mesh_backhaul_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_de
 
 int webconfig_hal_csi_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
+#if DML_SUPPORT
     wifi_mgr_t *mgr = get_wifimgr_obj();
     queue_t *new_config, *current_config;
     new_config = data->csi_data_queue;
@@ -771,6 +788,7 @@ free_csi_data:
     if (new_config != NULL) {
         queue_destroy(new_config);
     }
+#endif // DML_SUPPORT
 
     return RETURN_OK;
 }
@@ -970,6 +988,7 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
 
 int webconfig_harvester_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
+#if DML_SUPPORT
     instant_measurement_config_t *ptr;
     mac_address_t sta_mac;
 
@@ -981,6 +1000,7 @@ int webconfig_harvester_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
     instant_msmt_macAddr(ptr->mac_address);
     str_to_mac_bytes(ptr->mac_address,sta_mac);
     monitor_enable_instant_msmt(&sta_mac, ptr->b_inst_client_enabled);
+#endif // DML_SUPPORT
     return RETURN_OK;
 }
 
@@ -1132,6 +1152,7 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                 }
             }
             break;
+#if DML_SUPPORT
         case webconfig_subdoc_type_blaster:
             wifi_util_dbg_print(WIFI_MGR, "%s:%d: blaster webconfig subdoc\n", __func__, __LINE__);
             if (data->descriptor & webconfig_data_descriptor_encoded) {
@@ -1140,6 +1161,7 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                 ret = webconfig_blaster_apply(ctrl, &data->u.decoded);
             }
             break;
+#endif // DML_SUPPORT
 
         case webconfig_subdoc_type_csi:
             wifi_util_dbg_print(WIFI_MGR, "%s:%d: csi webconfig subdoc\n", __func__, __LINE__);
@@ -1717,7 +1739,7 @@ pErr wifi_home_vap_exec_handler(void *data)
 char *unpackDecode(const char* enb)
 {
     unsigned long msg_size = 0L;
-    unsigned char *msg = AnscBase64Decode((unsigned char *)enb, &msg_size);
+    unsigned char *msg = (unsigned char*)AnscBase64Decode((unsigned char *)enb, &msg_size);
     if(!msg) {
         wifi_util_error_print(WIFI_CTRL, "%s: Failed to decode blob\n", __func__);
         return NULL;
@@ -1865,7 +1887,7 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
     }
 
     unsigned long msg_size = 0L;
-    unsigned char *msg = AnscBase64Decode((unsigned char *)data, &msg_size);
+    unsigned char *msg = (unsigned char*)AnscBase64Decode((unsigned char *)data, &msg_size);
 
     if(!msg) {
         wifi_util_error_print(WIFI_CTRL, "%s: Failed to decode blob\n", __func__);

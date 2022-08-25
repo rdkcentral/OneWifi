@@ -137,7 +137,9 @@ typedef enum {
     webconfig_initializer_none,
     webconfig_initializer_onewifi,
     webconfig_initializer_ovsdb,
+#if DML_SUPPORT
     webconfig_initializer_dml,
+#endif
     webconfig_initializer_max
 } webconfig_initializer_t;
 
@@ -294,6 +296,7 @@ webconfig_error_t       encode_mesh_subdoc(webconfig_t *config, webconfig_subdoc
 webconfig_error_t       translate_to_mesh_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_from_mesh_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 
+#if DML_SUPPORT
 // dml
 webconfig_error_t       init_dml_subdoc(webconfig_subdoc_t *doc);
 webconfig_error_t       access_check_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
@@ -301,6 +304,7 @@ webconfig_error_t       decode_dml_subdoc(webconfig_t *config, webconfig_subdoc_
 webconfig_error_t       encode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_to_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_from_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+#endif
 
 // radio_status
 webconfig_error_t       init_radio_status_subdoc(webconfig_subdoc_t *doc);

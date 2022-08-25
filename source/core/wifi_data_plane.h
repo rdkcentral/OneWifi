@@ -21,10 +21,13 @@
 #ifndef WIFI_DATA_PLANE_H
 #define WIFI_DATA_PLANE_H
 
+#if DML_SUPPORT
 #include "cosa_apis.h"
 #include "cosa_dbus_api.h"
 #include "cosa_wifi_apis.h"
 #include "cosa_wifi_internal.h"
+#endif // DML_SUPPORT
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -37,7 +40,9 @@
 #include "collection.h"
 #include "wifi_hal.h"
 #include "wifi_8021x.h"
+#if DML_SUPPORT
 #include "wifi_easy_connect.h"
+#endif // DML_SUPPORT
 #include "wifi_passpoint.h"
 #include "wifi_data_plane_types.h"
 
@@ -78,7 +83,9 @@ typedef struct {
     struct timeval      last_signalled_time;
     struct timeval      last_polled_time;
     wifi_8021x_t        module_8021x;
+#if DML_SUPPORT
     wifi_easy_connect_t module_easy_connect;
+#endif // DML_SUPPORT
 } wifi_data_plane_t;
 
 wifi_data_plane_queue_data_t *data_plane_queue_create_event(void *ptr, wifi_data_plane_event_type_t type, BOOL setSignalThread);

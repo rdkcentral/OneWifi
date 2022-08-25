@@ -25,19 +25,29 @@
 #include <sys/time.h>
 #include <assert.h>
 #include "wifi_data_plane.h"
+#if DML_SUPPORT
 #include "wifi_monitor.h"
+#endif // DML_SUPPORT
 #include "wifi_db.h"
 #include "wifi_mgr.h"
 #include "wifi_ctrl.h"
+#if DML_SUPPORT
 #include "ssp_main.h"
+#else
+#include <stdlib.h>
+#include <cap.h>
+#endif // DML_SUPPORT
 
 #include "wifi_util.h"
 
+#if DML_SUPPORT
 #include <execinfo.h>
+#endif // DML_SUPPORT
 
 #include <semaphore.h>
 #include <fcntl.h>
 
+#if DML_SUPPORT
 extern void* bus_handle;
 extern char g_Subsystem[32];
 
@@ -104,6 +114,7 @@ static char *WiFiActiveMsmtSampleDuration = "eRT.com.cisco.spvtg.ccsp.Device.WiF
 static char *MacFilter = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.MacFilter.%d";
 static char *MacFilterDevice = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.MacFilterDevice.%d";
 static char *MacFilterList      = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.MacFilterList";
+#endif // DML_SUPPORT
 
 wifi_mgr_t g_wifi_mgr;
 sem_t *sem;
@@ -237,6 +248,28 @@ int init_global_radio_config(rdk_wifi_radio_t *radios_cfg, UINT radio_index)
     return RETURN_OK;
 }
 
+bool is_device_type_xb7(void)
+{
+    FILE *fp = NULL;
+    char box_type[64] = {0};
+
+    memset(box_type, '\0', sizeof(box_type)-1);
+    fp = popen("cat /etc/device.properties | grep MODEL_NUM | cut -f 2 -d\"=\"", "r");
+    if (fp != NULL) {
+         while (fgets(box_type, sizeof(box_type), fp) != NULL) {
+                wifi_util_dbg_print(WIFI_MGR,"%s:%d:box_type is %s\n", __func__, __LINE__, box_type);
+        }
+        pclose(fp);
+    }
+
+    if (strncmp(box_type, "CGM4331COM",strlen(box_type)-1) == 0) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+#if DML_SUPPORT
 char* Get_PSM_Record_Status(char *recName, char *strValue)
 {
     int retry = 0;
@@ -1120,27 +1153,6 @@ int wifi_db_update_psm_values()
     return retval;
 }
 
-bool is_device_type_xb7(void)
-{
-    FILE *fp = NULL;
-    char box_type[64] = {0};
-
-    memset(box_type, '\0', sizeof(box_type)-1);
-    fp = popen("cat /etc/device.properties | grep MODEL_NUM | cut -f 2 -d\"=\"", "r");
-    if (fp != NULL) {
-         while (fgets(box_type, sizeof(box_type), fp) != NULL) {
-                wifi_util_dbg_print(WIFI_MGR,"%s:%d:box_type is %s\n", __func__, __LINE__, box_type);
-        }
-        pclose(fp);
-    }
-
-    if (strncmp(box_type, "CGM4331COM",strlen(box_type)-1) == 0) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
 static void rbus_subscription_handler(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription)
 {
 
@@ -1285,6 +1297,7 @@ int get_all_param_from_psm_and_set_into_db(void)
 
     return RETURN_OK;
 }
+#endif // DML_SUPPORT
 
 int init_wifimgr()
 {
@@ -1303,13 +1316,17 @@ int init_wifimgr()
     //Initialize HAL and get Capabilities
     assert(init_wifi_hal() == RETURN_OK);
 
+#if DML_SUPPORT
     int itr=0;
     for (itr=0; itr < (int)getNumberRadios(); itr++) {
         init_global_radio_config(&g_wifi_mgr.radio_config[itr], itr);
     }
+#endif // DML_SUPPORT
 
+#if DML_SUPPORT
     pthread_cond_init(&g_wifi_mgr.dml_init_status, NULL);
     pthread_mutex_init(&g_wifi_mgr.lock, NULL);
+#endif // DML_SUPPORT
 
     sprintf(db_file, "%s/rdkb-wifi.db", WIFIDB_DIR);
     if (stat(db_file, &sb) != 0) {
@@ -1335,10 +1352,12 @@ int init_wifimgr()
         g_wifi_mgr.csi_data_queue = queue_create();
     }
 
+#if DML_SUPPORT
     //init ssp_loop.
     if (ssp_loop_init() < 0) {
         wifi_util_error_print(WIFI_MGR,"%s:%d ssp_loop_init failed \n", __func__, __LINE__);
     }
+#endif // DML_SUPPORT
 
     //Start Wifi DB server, and Initialize data Cache
     init_wifidb();
@@ -1348,6 +1367,7 @@ int init_wifimgr()
 
 int start_wifimgr()
 {
+#if DML_SUPPORT
     start_dml_main(&g_wifi_mgr.ssp);
     wifi_util_info_print(WIFI_MGR,"%s: waiting for dml init\n", __func__);
     pthread_cond_wait(&g_wifi_mgr.dml_init_status,&g_wifi_mgr.lock);
@@ -1355,6 +1375,7 @@ int start_wifimgr()
 
     pthread_cond_destroy(&g_wifi_mgr.dml_init_status);
     pthread_mutex_unlock(&g_wifi_mgr.lock);
+#endif // DML_SUPPORT
 
     if (start_wifi_ctrl(&g_wifi_mgr.ctrl) != 0) {
         wifi_util_error_print(WIFI_MGR,"%s: wifi ctrl start failed\n", __func__);

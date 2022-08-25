@@ -19,6 +19,7 @@
 
 #include <stdio.h>
 #include <stdbool.h>
+#include "const.h"
 #include "wifi_hal.h"
 #include "wifi_ctrl.h"
 #include "wifi_mgr.h"
@@ -366,22 +367,22 @@ void dump_ovs_schema(webconfig_subdoc_type_t type)
         case webconfig_subdoc_type_mesh:
             strcat(file_name, "/log_mesh_schema");
             vap_names = (char **)&mesh_vap_names;
-            array_size = ARRAY_SZ(mesh_vap_names);
+            array_size = ARRAY_SIZE(mesh_vap_names);
         break;
         case webconfig_subdoc_type_mesh_sta:
             strcat(file_name, "/log_mesh_sta_schema");
             vap_names = (char **)&mesh_sta_vap_names;
-            array_size = ARRAY_SZ(mesh_sta_vap_names);
+            array_size = ARRAY_SIZE(mesh_sta_vap_names);
         break;
         case webconfig_subdoc_type_dml:
             strcat(file_name, "/log_init_schema");
             vap_names = (char **)&total_vap_names;
-            array_size = ARRAY_SZ(total_vap_names);
+            array_size = ARRAY_SIZE(total_vap_names);
         break;
         case webconfig_subdoc_type_mac_filter:
             strcat(file_name, "/log_macfilter_schema");
             vap_names = (char **)&total_vap_names;
-            array_size = ARRAY_SZ(total_vap_names);
+            array_size = ARRAY_SIZE(total_vap_names);
         break;
         case webconfig_subdoc_type_associated_clients:
             strcat(file_name, "/log_assoc_client_schema");
@@ -389,7 +390,7 @@ void dump_ovs_schema(webconfig_subdoc_type_t type)
         case webconfig_subdoc_type_null:
             strcat(file_name, "/log_null_schema");
             vap_names = (char **)&total_vap_names;
-            array_size = ARRAY_SZ(total_vap_names);
+            array_size = ARRAY_SIZE(total_vap_names);
         break;
 
         default:
@@ -982,7 +983,7 @@ void test_mesh_sta_subdoc_change(webconfig_consumer_t *consumer)
         bool *param;
         //unsigned int *param_int;
 
-        *num = ARRAY_SZ(vap_names);
+        *num = ARRAY_SIZE(vap_names);
 
         for ( i = 0; i < *num; i++) {
             array_index = convert_vap_name_to_index(&consumer->hal_cap.wifi_prop, vap_names[i]);
@@ -1072,7 +1073,7 @@ void test_mesh_subdoc_change(webconfig_consumer_t *consumer)
         bool *param;
         unsigned int *param_int;
 
-        *num = ARRAY_SZ(vap_names);
+        *num = ARRAY_SIZE(vap_names);
 
         for ( i = 0; i < *num; i++) {
             array_index = convert_vap_name_to_index(&consumer->hal_cap.wifi_prop, vap_names[i]);
@@ -1199,7 +1200,7 @@ void test_macfilter_subdoc_change(webconfig_consumer_t *consumer)
         bool *param;
         unsigned int *param_int;
 
-        *num = ARRAY_SZ(vap_names);
+        *num = ARRAY_SIZE(vap_names);
         for ( i = 0; i < *num; i++) {
             array_index = convert_vap_name_to_index(&consumer->hal_cap.wifi_prop, vap_names[i]);
             vif_table[i] = ext_proto.vif_config[array_index];
@@ -1298,7 +1299,7 @@ void test_private_subdoc_change(webconfig_consumer_t *consumer)
         unsigned int i = 0;
         unsigned int array_index = 0;
 
-        *num = ARRAY_SZ(vap_names);
+        *num = ARRAY_SIZE(vap_names);
 
         for ( i = 0; i < *num; i++) {
             array_index = convert_vap_name_to_index(&consumer->hal_cap.wifi_prop, vap_names[i]);
@@ -1385,7 +1386,7 @@ void test_home_subdoc_change(webconfig_consumer_t *consumer)
         unsigned int i = 0;
         unsigned int array_index = 0;
 
-        *num = ARRAY_SZ(vap_names);
+        *num = ARRAY_SIZE(vap_names);
 
         for ( i = 0; i < *num; i++) {
             array_index = convert_vap_name_to_index(&consumer->hal_cap.wifi_prop, vap_names[i]);
@@ -1591,7 +1592,7 @@ void test_xfinity_subdoc_change(webconfig_consumer_t *consumer)
         unsigned int i = 0;
         unsigned int array_index = 0;
 
-        *num = ARRAY_SZ(vap_names);
+        *num = ARRAY_SIZE(vap_names);
 
         for ( i = 0; i < *num; i++) {
             array_index = convert_vap_name_to_index(&consumer->hal_cap.wifi_prop, vap_names[i]);
@@ -1687,7 +1688,7 @@ void de_init_rbus_object(void)
 
     if (consumer->rbus_handle != NULL) {
         printf("%s:%d: un-register rbus data element\n", __func__, __LINE__);
-        rbus_unregDataElements(consumer->rbus_handle, ARRAY_SZ(rbusEvents), rbusEvents);
+        rbus_unregDataElements(consumer->rbus_handle, ARRAY_SIZE(rbusEvents), rbusEvents);
         rbus_close(consumer->rbus_handle);
     }
 }

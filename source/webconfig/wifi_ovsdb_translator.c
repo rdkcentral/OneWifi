@@ -33,6 +33,7 @@
 #include "cJSON.h"
 #include "wifi_webconfig.h"
 #include "ctype.h"
+#include "const.h"
 #include "wifi_ctrl.h"
 #include "wifi_util.h"
 #include "ovsdb.h"
@@ -1350,7 +1351,7 @@ webconfig_error_t translate_vap_info_to_ovsdb_common(const wifi_vap_info_t *vap,
         return webconfig_error_translate_to_ovsdb;
     }
 
-    if (vap_mode_conversion((wifi_vap_mode_t *)&vap->vap_mode, vap_row->mode, ARRAY_SZ(vap_row->mode), ENUM_TO_STRING) != RETURN_OK) {
+    if (vap_mode_conversion((wifi_vap_mode_t *)&vap->vap_mode, vap_row->mode, ARRAY_SIZE(vap_row->mode), ENUM_TO_STRING) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vap mode conversion failed. vap mode %d\n", __func__, __LINE__, vap->vap_mode);
         return webconfig_error_translate_to_ovsdb;
     }
@@ -1380,7 +1381,7 @@ webconfig_error_t  translate_sta_vap_info_to_ovsdb_common(const wifi_vap_info_t 
         return webconfig_error_translate_to_ovsdb;
     }
 
-    if (vap_mode_conversion((wifi_vap_mode_t *)&vap->vap_mode, vap_row->mode, ARRAY_SZ(vap_row->mode), ENUM_TO_STRING) != RETURN_OK) {
+    if (vap_mode_conversion((wifi_vap_mode_t *)&vap->vap_mode, vap_row->mode, ARRAY_SIZE(vap_row->mode), ENUM_TO_STRING) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vap mode conversion failed. vap mode %d\n", __func__, __LINE__, vap->vap_mode);
         return webconfig_error_translate_to_ovsdb;
     }
@@ -1842,7 +1843,7 @@ webconfig_error_t translate_vap_info_to_vif_state_common(const wifi_vap_info_t *
         return webconfig_error_translate_to_ovsdb;
     }
 
-    if (vap_mode_conversion((wifi_vap_mode_t *)&vap->vap_mode, vap_row->mode, ARRAY_SZ(vap_row->mode), ENUM_TO_STRING) != RETURN_OK) {
+    if (vap_mode_conversion((wifi_vap_mode_t *)&vap->vap_mode, vap_row->mode, ARRAY_SIZE(vap_row->mode), ENUM_TO_STRING) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vap mode conversion failed. vap mode %d\n", __func__, __LINE__, vap->vap_mode);
         return webconfig_error_translate_to_ovsdb;
     }
@@ -2034,7 +2035,7 @@ webconfig_error_t  translate_sta_vap_info_to_vif_state_common(const wifi_vap_inf
         return webconfig_error_translate_to_ovsdb;
     }
 
-    if (vap_mode_conversion((wifi_vap_mode_t *)&vap->vap_mode, vap_row->mode, ARRAY_SZ(vap_row->mode), ENUM_TO_STRING) != RETURN_OK) {
+    if (vap_mode_conversion((wifi_vap_mode_t *)&vap->vap_mode, vap_row->mode, ARRAY_SIZE(vap_row->mode), ENUM_TO_STRING) != RETURN_OK) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: vap mode conversion failed\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
@@ -2778,7 +2779,7 @@ webconfig_error_t translate_ovsdb_to_vap_info_common(const struct schema_Wifi_VI
     }
 
 
-    if (vap_mode_conversion(&vap->vap_mode, (char *)vap_row->mode, ARRAY_SZ(vap_row->mode), STRING_TO_ENUM) != RETURN_OK) {
+    if (vap_mode_conversion(&vap->vap_mode, (char *)vap_row->mode, ARRAY_SIZE(vap_row->mode), STRING_TO_ENUM) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vap mode conversion failed. mode '%s'\n", __func__, __LINE__, (vap_row->mode) ? vap_row->mode : "NULL");
         return webconfig_error_translate_from_ovsdb;
     }
@@ -2926,7 +2927,7 @@ webconfig_error_t translate_ovsdb_to_sta_vap_info_common(const struct schema_Wif
         return webconfig_error_translate_from_ovsdb;
     }
 
-    if (vap_mode_conversion(&vap->vap_mode, (char *)vap_row->mode, ARRAY_SZ(vap_row->mode), STRING_TO_ENUM) != RETURN_OK) {
+    if (vap_mode_conversion(&vap->vap_mode, (char *)vap_row->mode, ARRAY_SIZE(vap_row->mode), STRING_TO_ENUM) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vap mode conversion failed. mode '%s'\n", __func__, __LINE__, (vap_row->mode) ? vap_row->mode : "NULL");
         return webconfig_error_translate_from_ovsdb;
     }

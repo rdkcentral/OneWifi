@@ -27,6 +27,7 @@
 #include <msgpack.h>
 #include <errno.h>
 #include <cJSON.h>
+#include "const.h"
 #include "dml_onewifi_api.h"
 #include "wifi_util.h"
 
@@ -426,7 +427,7 @@ void rbus_dmlwebconfig_register(webconfig_dml_t *consumer)
     }
 
     wifi_util_info_print(WIFI_DMCLI,"%s  rbus open success\n",__FUNCTION__);
-    rc = rbusEvent_SubscribeEx(consumer->rbus_handle, rbusEvents, ARRAY_SZ(rbusEvents), 0);
+    rc = rbusEvent_SubscribeEx(consumer->rbus_handle, rbusEvents, ARRAY_SIZE(rbusEvents), 0);
     if(rc != RBUS_ERROR_SUCCESS) {
             wifi_util_error_print(WIFI_DMCLI,"Unable to subscribe to event  with rbus error code : %d\n", rc);
     }

@@ -26,7 +26,6 @@
 #include "collection.h"
 #include "msgpack.h"
 #include "wifi_webconfig.h"
-#include "wifi_monitor.h"
 #include "wifi_util.h"
 #include "wifi_ctrl.h"
 webconfig_subdoc_object_t   wifi_config_objects[3] = {

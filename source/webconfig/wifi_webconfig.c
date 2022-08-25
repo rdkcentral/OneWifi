@@ -26,7 +26,9 @@
 #include "collection.h"
 #include "msgpack.h"
 #include "wifi_webconfig.h"
+#if DML_SUPPORT
 #include "wifi_monitor.h"
+#endif // DML_SUPPORT
 #include "wifi_util.h"
 #include "wifi_ctrl.h"
 
@@ -208,7 +210,11 @@ webconfig_error_t webconfig_init(webconfig_t *config)
 {
 
     if ((config->initializer <= webconfig_initializer_none) || (config->initializer >= webconfig_initializer_max)) {
+#if DML_SUPPORT
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: initializer must be set to onewifi or dml or ovsdbmgr", __func__, __LINE__);
+#else
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: initializer must be set to onewifi or ovsdbmgr", __func__, __LINE__);
+#endif // DML_SUPPORT
         return webconfig_error_init;
     }
 
@@ -254,6 +260,7 @@ webconfig_error_t webconfig_init(webconfig_t *config)
     config->subdocs[webconfig_subdoc_type_xfinity].translate_to_subdoc = translate_to_xfinity_subdoc;
     config->subdocs[webconfig_subdoc_type_xfinity].translate_from_subdoc = translate_from_xfinity_subdoc;
 
+#if DML_SUPPORT
     config->subdocs[webconfig_subdoc_type_dml].type = webconfig_subdoc_type_dml;
     strcpy(config->subdocs[webconfig_subdoc_type_dml].name, "dml");
     config->subdocs[webconfig_subdoc_type_dml].major = 1;
@@ -265,7 +272,7 @@ webconfig_error_t webconfig_init(webconfig_t *config)
     config->subdocs[webconfig_subdoc_type_dml].decode_subdoc = decode_dml_subdoc;
     config->subdocs[webconfig_subdoc_type_dml].translate_to_subdoc = translate_to_dml_subdoc;
     config->subdocs[webconfig_subdoc_type_dml].translate_from_subdoc = translate_from_dml_subdoc;
-
+#endif // DML_SUPPORT
 
     config->subdocs[webconfig_subdoc_type_radio].type = webconfig_subdoc_type_radio;
     strcpy(config->subdocs[webconfig_subdoc_type_radio].name, "radio");

@@ -17,20 +17,31 @@
   limitations under the License.
 **************************************************************************/
 
+#include "webconfig_framework.h"
+#if DML_SUPPORT
 #include "wifi_data_plane.h"
 #include "wifi_monitor.h"
 #include "plugin_main_apis.h"
+#else
+#include "wifi_passpoint.h"
+#include "wifi_data_plane_types.h"
+#endif // DML_SUPPORT
 #include <sys/socket.h>
 #include <sys/sysinfo.h>
 #include <sys/un.h>
 #include <assert.h>
+#if DML_SUPPORT
 #include <sysevent/sysevent.h>
+#endif // DML_SUPPORT
 #include <cJSON.h>
 #include <dirent.h>
 #include <errno.h>
-#include "webconfig_framework.h"
 
 #include "wifi_util.h"//ONE_WIFI
+
+#if !(DML_SUPPORT)
+#include "log.h"
+#endif // DML_SUPPORT
 
 #define GAS_CFG_TYPE_SUPPORTED 1
 #define GAS_STATS_FIXED_WINDOW_SIZE 10
@@ -50,6 +61,7 @@ wifi_GASConfiguration_t g_gas_config;
 
 wifi_vap_info_map_t g_vap_maps[2];
 
+#if DML_SUPPORT
 #ifndef FEATURE_SUPPORT_PASSPOINT
 static long readFileToBuffer(const char *fileName, char **buffer)
 {
@@ -109,6 +121,7 @@ static long readFileToBuffer(const char *fileName, char **buffer)
     return numbytes;
 }
 #endif
+#endif // DML_SUPPORT
 
 void process_passpoint_timeout()
 {
@@ -571,16 +584,16 @@ int init_passpoint (void)
     return RETURN_OK;
 }
 
-ANSC_STATUS WiFi_initPasspoint(void)
+INT WiFi_initPasspoint(void)
 {
     if ((init_passpoint() < 0)) {
         wifi_util_dbg_print(WIFI_PASSPOINT, "%s %d: init_passpoint Failed\n", __func__, __LINE__);
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }
-    return ANSC_STATUS_SUCCESS;
+    return RETURN_OK;
 }
 
-ANSC_STATUS WiFi_SaveGasCfg(char *buffer, int len)
+INT WiFi_SaveGasCfg(char *buffer, int len)
 {
     DIR     *passPointDir = NULL;
    
@@ -590,20 +603,20 @@ ANSC_STATUS WiFi_SaveGasCfg(char *buffer, int len)
     }else if(ENOENT == errno){
         if(0 != mkdir(WIFI_PASSPOINT_DIR, 0777)){
             wifi_util_dbg_print(WIFI_PASSPOINT,"Failed to Create Passpoint Configuration directory. Setting Default\n");
-            return ANSC_STATUS_FAILURE;;
+            return RETURN_ERR;;
         }
     }else{
         wifi_util_dbg_print(WIFI_PASSPOINT,"Error opening Passpoint Configuration directory. Setting Default\n");
-        return ANSC_STATUS_FAILURE;;
+        return RETURN_ERR;;
     } 
  
     FILE *fPasspointGasCfg = fopen(WIFI_PASSPOINT_GAS_CFG_FILE, "w");
     if(0 == fwrite(buffer, len,1, fPasspointGasCfg)){
         fclose(fPasspointGasCfg);
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }else{
         fclose(fPasspointGasCfg);
-        return ANSC_STATUS_SUCCESS;
+        return RETURN_OK;
     }
 }
 
@@ -645,7 +658,7 @@ void WiFi_GetGasConfig(char *pString)
     return;
 }
 
-ANSC_STATUS WiFi_SetGasConfig(char *JSON_STR)
+INT WiFi_SetGasConfig(char *JSON_STR)
 {
 #if defined (FEATURE_SUPPORT_PASSPOINT)
     wifi_GASConfiguration_t gasConfig_struct = {0, 0, 0, 0, 0, 0};
@@ -654,7 +667,7 @@ ANSC_STATUS WiFi_SetGasConfig(char *JSON_STR)
 
     if(!p_gas_config){
         wifi_util_dbg_print(WIFI_PASSPOINT,"Wifi Context is NULL\n");
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }
 
     cJSON *gasList = NULL;
@@ -662,21 +675,21 @@ ANSC_STATUS WiFi_SetGasConfig(char *JSON_STR)
 
     if(!JSON_STR){
         wifi_util_dbg_print(WIFI_PASSPOINT,"Failed to read JSON\n");
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }
 
     cJSON *passPointCfg = cJSON_Parse(JSON_STR);
 
     if (NULL == passPointCfg) {
         wifi_util_dbg_print(WIFI_PASSPOINT,"Failed to parse JSON\n");
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }
 
     gasList = cJSON_GetObjectItem(passPointCfg,"GASConfig");
     if(NULL == gasList){
         wifi_util_dbg_print(WIFI_PASSPOINT,"gasList is NULL\n");
         cJSON_Delete(passPointCfg);
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     } 
 
     memset((char *)&gasConfig_struct,0,sizeof(gasConfig_struct));
@@ -686,7 +699,7 @@ ANSC_STATUS WiFi_SetGasConfig(char *JSON_STR)
         if(RETURN_OK!= validate_gas_config(gasEntry, &gasConfig_struct, &execRetVal)) {
             wifi_util_dbg_print(WIFI_PASSPOINT,"Invalid GAS Configuration. %s\n",execRetVal.ErrorMsg);
             cJSON_Delete(passPointCfg);
-            return ANSC_STATUS_FAILURE;
+            return RETURN_ERR;
         }
 #endif
     }
@@ -709,50 +722,49 @@ ANSC_STATUS WiFi_SetGasConfig(char *JSON_STR)
             wifi_util_dbg_print(WIFI_PASSPOINT,"Failed to update OVSDB with GAS Config. Adv-ID:%d\n",gasConfig_struct.AdvertisementID);
         }
 #else
-        if (ANSC_STATUS_SUCCESS != WiFi_SaveGasCfg (JSON_STR, strlen(JSON_STR))) {
+        if (RETURN_OK != WiFi_SaveGasCfg (JSON_STR, strlen(JSON_STR))) {
             wifi_util_dbg_print(WIFI_PASSPOINT,"Failed to update OVSDB with GAS Config. Adv-ID:%d\n",gasConfig_struct.AdvertisementID);
         }
 #endif
-        return ANSC_STATUS_SUCCESS;
+        return RETURN_OK;
       }
       wifi_util_dbg_print(WIFI_PASSPOINT,"Failed to update HAL with GAS Config. Adv-ID:%d\n",gasConfig_struct.AdvertisementID);
-      return ANSC_STATUS_FAILURE;
+      return RETURN_ERR;
 #else
     UNREFERENCED_PARAMETER(JSON_STR);
-    UNREFERENCED_PARAMETER(phContext);
 #endif 
-    return ANSC_STATUS_FAILURE;
+    return RETURN_ERR;
 }
 
 #if 1
-ANSC_STATUS WiFi_DefaultGasConfig(void)
+INT WiFi_DefaultGasConfig(void)
 {
     char *JSON_STR = malloc(strlen(WIFI_PASSPOINT_DEFAULT_GAS_CFG)+1);
     /*CID: 121790 Dereference before null check*/
     if (JSON_STR == NULL) {
         wifi_util_dbg_print(WIFI_PASSPOINT,"malloc failure\n");
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }
     memset(JSON_STR,0,(strlen(WIFI_PASSPOINT_DEFAULT_GAS_CFG)+1));
     AnscCopyString(JSON_STR, WIFI_PASSPOINT_DEFAULT_GAS_CFG);
 
-    if(!JSON_STR || (ANSC_STATUS_SUCCESS != WiFi_SetGasConfig(JSON_STR))){
+    if(!JSON_STR || (RETURN_OK != WiFi_SetGasConfig(JSON_STR))){
         if(JSON_STR){
             free(JSON_STR);
             JSON_STR = NULL;
         }
         wifi_util_dbg_print(WIFI_PASSPOINT,"Failed to update HAL with default GAS Config.\n");
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }
     if(JSON_STR){
         free(JSON_STR);
         JSON_STR = NULL;
     }
-    return ANSC_STATUS_SUCCESS; 
+    return RETURN_OK;
 }
 #endif
 
-ANSC_STATUS WiFi_InitGasConfig(void)
+INT WiFi_InitGasConfig(void)
 {
 #if defined (FEATURE_SUPPORT_PASSPOINT)  
     char *JSON_STR = NULL;
@@ -803,7 +815,7 @@ ANSC_STATUS WiFi_InitGasConfig(void)
     }
 #endif
 
-    if((ANSC_STATUS_SUCCESS != WiFi_SetGasConfig(JSON_STR))){
+    if((RETURN_OK != WiFi_SetGasConfig(JSON_STR))){
         wifi_util_dbg_print(WIFI_PASSPOINT,"Failed to Initialize GAS Configuration from memory. Setting Default\n");
         return WiFi_DefaultGasConfig();
     }
@@ -812,25 +824,23 @@ ANSC_STATUS WiFi_InitGasConfig(void)
         free(JSON_STR);
         JSON_STR = NULL;
     }
-#else
-    UNREFERENCED_PARAMETER(phContext);
 #endif
-    return ANSC_STATUS_SUCCESS;
+    return RETURN_OK;
 }
 
-ANSC_STATUS WiFi_GetGasStats(wifi_gas_stats_t *pGASStats)
+INT WiFi_GetGasStats(wifi_gas_stats_t *pGASStats)
 {
     if(!pGASStats){
         wifi_util_dbg_print(WIFI_PASSPOINT,"Wifi GAS Context is NULL\n");
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }
 
     memset(pGASStats,0,sizeof(wifi_gas_stats_t));
     memcpy(pGASStats,&gasStats[GAS_CFG_TYPE_SUPPORTED - 1],sizeof(gasStats));
-    return ANSC_STATUS_SUCCESS;
+    return RETURN_OK;
 }
 
-ANSC_STATUS WiFi_SetANQPConfig(uint8_t vapIndex, char *JSON_STR)
+INT WiFi_SetANQPConfig(uint8_t vapIndex, char *JSON_STR)
 {
     Err execRetVal;
     int apIns = vapIndex - 1;
@@ -844,28 +854,28 @@ ANSC_STATUS WiFi_SetANQPConfig(uint8_t vapIndex, char *JSON_STR)
     if(pCfg == NULL)
     {
         wifi_util_dbg_print(WIFI_CTRL, "%s: wrong vapIndex:%d \n", __FUNCTION__, apIns);
-	return ANSC_STATUS_FAILURE;
+	return RETURN_ERR;
     }
     wifi_interworking_t anqpData;
     cJSON *mainEntry = NULL;
 
     if(!JSON_STR){
         wifi_util_dbg_print(WIFI_PASSPOINT,"JSON String is NULL\n");
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }
 
     cJSON *passPointCfg = cJSON_Parse(JSON_STR);
 
     if (NULL == passPointCfg) {
         wifi_util_dbg_print(WIFI_PASSPOINT,"Failed to parse JSON\n");
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }
 
     mainEntry = cJSON_GetObjectItem(passPointCfg,"ANQP");
     if(NULL == mainEntry){
         wifi_util_dbg_print(WIFI_PASSPOINT,"ANQP entry is NULL\n");
         cJSON_Delete(passPointCfg);
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }
    
     memset((char *)&anqpData,0,sizeof(wifi_interworking_t));
@@ -875,7 +885,7 @@ ANSC_STATUS WiFi_SetANQPConfig(uint8_t vapIndex, char *JSON_STR)
     if (validate_anqp(mainEntry, &anqpData, &execRetVal) != 0) {
         wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Validation failed. Error: %s\n", __func__, __LINE__,execRetVal.ErrorMsg);
         cJSON_Delete(passPointCfg);
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }
 #endif
 
@@ -888,7 +898,7 @@ ANSC_STATUS WiFi_SetANQPConfig(uint8_t vapIndex, char *JSON_STR)
             wifi_util_dbg_print(WIFI_PASSPOINT, "%s: Failed to push Roaming Consotrium to hal for wlan %d\n",
                             __FUNCTION__, apIns);
             cJSON_Delete(passPointCfg);
-            return ANSC_STATUS_FAILURE;
+            return RETURN_ERR;
         }
         wifi_util_dbg_print(WIFI_PASSPOINT, "%s: Applied Roaming Consortium configuration successfully for wlan %d\n",
                    __FUNCTION__, apIns);
@@ -909,10 +919,10 @@ ANSC_STATUS WiFi_SetANQPConfig(uint8_t vapIndex, char *JSON_STR)
 
     cJSON_Delete(passPointCfg);
 
-    return ANSC_STATUS_SUCCESS;
+    return RETURN_OK;
 }
 
-ANSC_STATUS WiFi_SaveANQPCfg(uint8_t vapIndex)
+INT WiFi_SaveANQPCfg(uint8_t vapIndex)
 {
     char cfgFile[64];
     DIR     *passPointDir = NULL;
@@ -924,19 +934,19 @@ ANSC_STATUS WiFi_SaveANQPCfg(uint8_t vapIndex)
     if(pCfg == NULL)
     {
         wifi_util_dbg_print(WIFI_CTRL, "%s: wrong vapIndex:%d \n", __FUNCTION__, vapIndex);
-	return ANSC_STATUS_FAILURE;
+	return RETURN_ERR;
     }
 
     buffer = (char *)pCfg->anqp.anqpParameters;
     if (!buffer) {
         wifi_util_dbg_print(WIFI_PASSPOINT,"ANQP Parameters is NULL.\n");
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }
 
     len = AnscSizeOfString((char *)pCfg->anqp.anqpParameters);
     if (!len) {
         wifi_util_dbg_print(WIFI_PASSPOINT,"ANQP Parameters Length is 0.\n");
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }
  
     passPointDir = opendir(WIFI_PASSPOINT_DIR);
@@ -945,11 +955,11 @@ ANSC_STATUS WiFi_SaveANQPCfg(uint8_t vapIndex)
     }else if(ENOENT == errno){
         if(0 != mkdir(WIFI_PASSPOINT_DIR, 0777)){
             wifi_util_dbg_print(WIFI_PASSPOINT,"Failed to Create Passpoint Configuration directory.\n");
-            return ANSC_STATUS_FAILURE;
+            return RETURN_ERR;
         }
     }else{
         wifi_util_dbg_print(WIFI_PASSPOINT,"Error opening Passpoint Configuration directory.\n");
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     } 
  
     apIns = vapIndex;//ONE_WIFI
@@ -958,16 +968,16 @@ ANSC_STATUS WiFi_SaveANQPCfg(uint8_t vapIndex)
     FILE *fPasspointAnqpCfg = fopen(cfgFile, "w");
     if(0 == fwrite(buffer, len,1, fPasspointAnqpCfg)){
         fclose(fPasspointAnqpCfg);
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }else{
         fclose(fPasspointAnqpCfg);
-        return ANSC_STATUS_SUCCESS;
+        return RETURN_OK;
     }
 }
 
 #if 0
-ANSC_STATUS CosaDmlWiFi_InitANQPConfig(PCOSA_DML_WIFI_AP_CFG pCfg_t)
-//ANSC_STATUS WiFi_InitANQPConfig(void)
+INT CosaDmlWiFi_InitANQPConfig(PCOSA_DML_WIFI_AP_CFG pCfg_t)
+//INT WiFi_InitANQPConfig(void)
 {
     char cfgFile[64];
     char *JSON_STR = NULL;
@@ -980,13 +990,13 @@ ANSC_STATUS CosaDmlWiFi_InitANQPConfig(PCOSA_DML_WIFI_AP_CFG pCfg_t)
 #if 0
     if(!pCfg){
         wifi_util_dbg_print(WIFI_PASSPOINT,"AP Context is NULL\n");
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }
     pCfg->IEEE80211uCfg.PasspointCfg.ANQPConfigParameters = NULL;
     apIns = pCfg->InstanceNumber;
     if((apIns < 1) || (apIns > 16)){
         wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Invalid AP Index. Return\n", __func__, __LINE__);
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }
 #else 
     apIns = (radio_index * MAX_NUM_VAP_PER_RADIO) + vap_index;
@@ -996,8 +1006,8 @@ ANSC_STATUS CosaDmlWiFi_InitANQPConfig(PCOSA_DML_WIFI_AP_CFG pCfg_t)
    
     confSize = readFileToBuffer(cfgFile,&JSON_STR);
 
-    if(!confSize || !JSON_STR || (ANSC_STATUS_SUCCESS != WiFi_SetANQPConfig(apIns, JSON_STR))){
-   //if(!confSize || !JSON_STR || (ANSC_STATUS_SUCCESS != CosaDmlWiFi_SetANQPConfig(pCfg_t, JSON_STR))){
+    if(!confSize || !JSON_STR || (RETURN_OK != WiFi_SetANQPConfig(apIns, JSON_STR))){
+   //if(!confSize || !JSON_STR || (RETURN_OK != CosaDmlWiFi_SetANQPConfig(pCfg_t, JSON_STR))){
         if(JSON_STR){
             free(JSON_STR);
             JSON_STR = NULL;
@@ -1008,7 +1018,7 @@ ANSC_STATUS CosaDmlWiFi_InitANQPConfig(PCOSA_DML_WIFI_AP_CFG pCfg_t)
         wifi_util_dbg_print(WIFI_PASSPOINT,"Initialized ANQP Configuration from memory for AP: %d.\n",apIns);
         strcpy(pCfg->anqp.anqpParameters, JSON_STR);
     }
-    return ANSC_STATUS_SUCCESS;
+    return RETURN_OK;
 }
 #endif//ONE_WIFI
 
@@ -1034,7 +1044,7 @@ void WiFi_UpdateANQPVenueInfo(uint8_t vapIndex)
 
 }
 
-ANSC_STATUS WiFi_SetHS2Config(uint8_t vapIndex, char *JSON_STR)
+INT WiFi_SetHS2Config(uint8_t vapIndex, char *JSON_STR)
 {
 #if defined (FEATURE_SUPPORT_PASSPOINT)
     Err execRetVal;
@@ -1048,7 +1058,7 @@ ANSC_STATUS WiFi_SetHS2Config(uint8_t vapIndex, char *JSON_STR)
     if(pCfg == NULL)
     {
         wifi_util_dbg_print(WIFI_CTRL, "%s: wrong vapIndex:%d \n", __FUNCTION__, apIns);
-	return ANSC_STATUS_FAILURE;
+	return RETURN_ERR;
     }
     
     wifi_interworking_t passpointCfg;
@@ -1056,21 +1066,21 @@ ANSC_STATUS WiFi_SetHS2Config(uint8_t vapIndex, char *JSON_STR)
     
     if(!JSON_STR){
         wifi_util_dbg_print(WIFI_PASSPOINT,"JSON String is NULL\n");
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }
     
     cJSON *passPointObj = cJSON_Parse(JSON_STR);
     
     if (NULL == passPointObj) {
         wifi_util_dbg_print(WIFI_PASSPOINT,"Failed to parse JSON\n");
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }
     
     mainEntry = cJSON_GetObjectItem(passPointObj,"Passpoint");
     if(NULL == mainEntry){
         wifi_util_dbg_print(WIFI_PASSPOINT,"Passpoint entry is NULL\n");
         cJSON_Delete(passPointObj);
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }
 
 #ifndef LINUX_VM_PORT
@@ -1085,7 +1095,7 @@ ANSC_STATUS WiFi_SetHS2Config(uint8_t vapIndex, char *JSON_STR)
     if (validate_passpoint(mainEntry, &passpointCfg, &execRetVal) != 0) {   
        wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Validation failed. Error: %s\n", __func__, __LINE__,execRetVal.ErrorMsg);
        cJSON_Delete(passPointObj);
-       return ANSC_STATUS_FAILURE;
+       return RETURN_ERR;
     }
 #endif
    
@@ -1107,7 +1117,7 @@ ANSC_STATUS WiFi_SetHS2Config(uint8_t vapIndex, char *JSON_STR)
          }else{
              wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Error Setting Passpoint Enable Status on AP: %d\n", __func__, __LINE__,apIns);
              cJSON_Delete(passPointObj);
-             return ANSC_STATUS_FAILURE;
+             return RETURN_ERR;
         }
     } else {
         wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: VAP is disabled. Not Initializing Passpoint Enable Status on AP: %d\n", __func__, __LINE__,apIns);
@@ -1116,25 +1126,24 @@ ANSC_STATUS WiFi_SetHS2Config(uint8_t vapIndex, char *JSON_STR)
 
     cJSON_Delete(passPointObj);
 #else
-    UNREFERENCED_PARAMETER(pCfg);
     UNREFERENCED_PARAMETER(JSON_STR);
 #endif
 
-    return ANSC_STATUS_SUCCESS;
+    return RETURN_OK;
 }
 
-ANSC_STATUS WiFi_SetHS2Status(uint8_t vapIndex, BOOL bValue, BOOL setToPSM)
+INT WiFi_SetHS2Status(uint8_t vapIndex, BOOL bValue, BOOL setToPSM)
 {
     int apIns = vapIndex;
     if((apIns < 1) || (apIns > 16)){
         wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Invalid AP Index. Return\n", __func__, __LINE__);
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }
     wifi_interworking_t *pCfg = Get_wifi_object_interworking_parameter(apIns - 1);//ONE_WIFI
     if(pCfg == NULL)
     {
         wifi_util_dbg_print(WIFI_CTRL, "%s: wrong vapIndex:%d \n", __FUNCTION__, apIns);
-	return ANSC_STATUS_FAILURE;
+	return RETURN_ERR;
     }
 
 #if defined (FEATURE_SUPPORT_PASSPOINT)    
@@ -1143,7 +1152,7 @@ ANSC_STATUS WiFi_SetHS2Status(uint8_t vapIndex, BOOL bValue, BOOL setToPSM)
         pCfg->passpoint.enable = g_interworking_data[apIns-1].passpoint.enable = bValue;//ONE_WIFI
     }else{
       wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Error Setting Passpoint Enable Status on AP: %d\n", __func__, __LINE__,apIns);
-      return ANSC_STATUS_FAILURE;
+      return RETURN_ERR;
     }
 
     if(true == bValue){
@@ -1155,11 +1164,11 @@ ANSC_STATUS WiFi_SetHS2Status(uint8_t vapIndex, BOOL bValue, BOOL setToPSM)
     UNREFERENCED_PARAMETER(bValue);
 #endif
     UNREFERENCED_PARAMETER(setToPSM);
-    return ANSC_STATUS_SUCCESS;
+    return RETURN_OK;
 }
     
         
-ANSC_STATUS WiFi_SaveHS2Cfg(uint8_t vapIndex)
+INT WiFi_SaveHS2Cfg(uint8_t vapIndex)
 {
     char cfgFile[64];
     DIR     *passPointDir = NULL;
@@ -1172,19 +1181,19 @@ ANSC_STATUS WiFi_SaveHS2Cfg(uint8_t vapIndex)
     if(pCfg == NULL)
     {
         wifi_util_dbg_print(WIFI_CTRL, "%s: wrong vapIndex:%d \n", __FUNCTION__, apIns);
-	return ANSC_STATUS_FAILURE;
+	return RETURN_ERR;
     }
 
     buffer = (char *)pCfg->passpoint.hs2Parameters;
     if (!buffer) {
         wifi_util_dbg_print(WIFI_PASSPOINT,"Passpoint Parameters is NULL.\n");
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }
 
     len = AnscSizeOfString((char *)pCfg->passpoint.hs2Parameters);
     if (!len) {
         wifi_util_dbg_print(WIFI_PASSPOINT,"Passpoint Parameters Length is 0.\n");
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }//ONE_WIFI
     
     passPointDir = opendir(WIFI_PASSPOINT_DIR);
@@ -1193,27 +1202,28 @@ ANSC_STATUS WiFi_SaveHS2Cfg(uint8_t vapIndex)
     }else if(ENOENT == errno){
         if(0 != mkdir(WIFI_PASSPOINT_DIR, 0777)){
             wifi_util_dbg_print(WIFI_PASSPOINT,"Failed to Create Passpoint Configuration directory.\n");
-            return ANSC_STATUS_FAILURE;
+            return RETURN_ERR;
         }
     }else{
         wifi_util_dbg_print(WIFI_PASSPOINT,"Error opening Passpoint Configuration directory.\n");
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }
     
     sprintf(cfgFile,"%s.%d",WIFI_PASSPOINT_HS2_CFG_FILE,apIns);
     FILE *fPasspointCfg = fopen(cfgFile, "w");
     if(0 == fwrite(buffer, len,1, fPasspointCfg)){
         fclose(fPasspointCfg);
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }else{
         fclose(fPasspointCfg);
-        return ANSC_STATUS_SUCCESS;
+        return RETURN_OK;
     }
 }
 
+#if DML_SUPPORT
 #if 0
-//ANSC_STATUS CosaDmlWiFi_InitHS2Config(PCOSA_DML_WIFI_AP_CFG pCfg_t)
-ANSC_STATUS WiFi_InitHS2Config(uint8_t vapIndex)
+//INT CosaDmlWiFi_InitHS2Config(PCOSA_DML_WIFI_AP_CFG pCfg_t)
+INT WiFi_InitHS2Config(uint8_t vapIndex)
 {
     char cfgFile[64];
     char *JSON_STR = NULL;
@@ -1222,7 +1232,7 @@ ANSC_STATUS WiFi_InitHS2Config(uint8_t vapIndex)
 #if 0 
     if(!pCfg){
         wifi_util_dbg_print(WIFI_PASSPOINT,"AP Context is NULL\n");
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }
 #else
     UINT radio_index = 0;
@@ -1234,7 +1244,7 @@ ANSC_STATUS WiFi_InitHS2Config(uint8_t vapIndex)
     apIns = pCfg->InstanceNumber;
     if((apIns < 1) || (apIns > 16)){
         wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Invalid AP Index. Return\n", __func__, __LINE__);
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }
    
     //Set Default DGAF value to true
@@ -1244,7 +1254,7 @@ ANSC_STATUS WiFi_InitHS2Config(uint8_t vapIndex)
     apIns = (radio_index * MAX_NUM_VAP_PER_RADIO) + vap_index;
     if((apIns < 1) || (apIns > 16)){
         wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Invalid AP Index. Return\n", __func__, __LINE__);
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }
    
     //Set Default DGAF value to true
@@ -1255,7 +1265,7 @@ ANSC_STATUS WiFi_InitHS2Config(uint8_t vapIndex)
     
     confSize = readFileToBuffer(cfgFile,&JSON_STR);
     
-    if(!confSize || !JSON_STR || (ANSC_STATUS_SUCCESS != WiFi_SetHS2Config(vapIndex, JSON_STR))){
+    if(!confSize || !JSON_STR || (RETURN_OK != WiFi_SetHS2Config(vapIndex, JSON_STR))){
         if(JSON_STR){
             free(JSON_STR);
             JSON_STR = NULL;
@@ -1273,11 +1283,12 @@ ANSC_STATUS WiFi_InitHS2Config(uint8_t vapIndex)
 
     }
 
-    return ANSC_STATUS_SUCCESS;
+    return RETURN_OK;
 }
 #endif//ONE_WIFI
+#endif // DML_SUPPORT
 
-ANSC_STATUS WiFi_GetWANMetrics(uint8_t vapIndex, char *WANMetrics, UINT WANMetrics_length)
+INT WiFi_GetWANMetrics(uint8_t vapIndex, char *WANMetrics, UINT WANMetrics_length)
 {
     cJSON *mainEntry = NULL;
     int apIns; 
@@ -1292,7 +1303,7 @@ ANSC_STATUS WiFi_GetWANMetrics(uint8_t vapIndex, char *WANMetrics, UINT WANMetri
     if(pCfg == NULL)
     {
         wifi_util_dbg_print(WIFI_CTRL, "%s: wrong vapIndex:%d \n", __FUNCTION__, apIns);
-	return ANSC_STATUS_FAILURE;
+	return RETURN_ERR;
     }
 #if 0
     //memset(&pCfg->IEEE80211uCfg.PasspointCfg.WANMetrics, 0, sizeof(pCfg->IEEE80211uCfg.PasspointCfg.WANMetrics));
@@ -1303,7 +1314,7 @@ ANSC_STATUS WiFi_GetWANMetrics(uint8_t vapIndex, char *WANMetrics, UINT WANMetri
     cJSON *passPointCfg = cJSON_CreateObject();
     if (NULL == passPointCfg) {
         wifi_util_dbg_print(WIFI_PASSPOINT,"Failed to create JSON\n");
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }
 
     mainEntry = cJSON_AddObjectToObject(passPointCfg,"WANMetrics");
@@ -1321,7 +1332,7 @@ ANSC_STATUS WiFi_GetWANMetrics(uint8_t vapIndex, char *WANMetrics, UINT WANMetri
     cJSON_PrintPreallocated(passPointCfg, (char *)WANMetrics, WANMetrics_length, false);
 #endif//ONE_WIFI
     cJSON_Delete(passPointCfg);
-    return ANSC_STATUS_SUCCESS;
+    return RETURN_OK;
 }
 
 void WiFi_GetHS2Stats(uint8_t vapIndex)
@@ -1393,15 +1404,16 @@ void WiFi_GetHS2Stats(uint8_t vapIndex)
     return;
 }
 
+#if DML_SUPPORT
 #if 0
-//ANSC_STATUS CosaDmlWiFi_RestoreAPInterworking (int apIndex)
-ANSC_STATUS WiFi_RestoreAPInterworking (int apIndex)
+//INT CosaDmlWiFi_RestoreAPInterworking (int apIndex)
+INT WiFi_RestoreAPInterworking (int apIndex)
 {
 #if defined (FEATURE_SUPPORT_PASSPOINT)
     //PCOSA_DML_WIFI_AP_CFG pCfg; 
     if((apIndex < 0) || (apIndex> 15)){
         wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Invalid AP Index: %d.\n", __func__, __LINE__,apIndex);
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }
 
 #if 0
@@ -1409,7 +1421,7 @@ ANSC_STATUS WiFi_RestoreAPInterworking (int apIndex)
   
     if (pCfg == NULL)
     {
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }
 #else
     uint8_t radio_index = 0;
@@ -1422,22 +1434,22 @@ ANSC_STATUS WiFi_RestoreAPInterworking (int apIndex)
 #if 0
     if(!pCfg->InterworkingEnable){
         wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Interworking is disabled on AP: %d. Returning Success\n", __func__, __LINE__, apIndex);
-        return ANSC_STATUS_SUCCESS;
+        return RETURN_OK;
     }
 #else
     if(!pCfg->interworking.interworkingEnabled){
         wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Interworking is disabled on AP: %d. Returning Success\n", __func__, __LINE__, apIndex);
-        return ANSC_STATUS_SUCCESS;
+        return RETURN_OK;
     }
 #endif//ONE_WIFI
 
 #if 0
-    if ((CosaDmlWiFi_ApplyInterworkingElement(pCfg)) != ANSC_STATUS_SUCCESS)
+    if ((CosaDmlWiFi_ApplyInterworkingElement(pCfg)) != RETURN_OK)
     {
         wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: CosaDmlWiFi_ApplyInterworkingElement Failed.\n", __func__, __LINE__);
     }
   
-    if(ANSC_STATUS_SUCCESS != CosaDmlWiFi_ApplyRoamingConsortiumElement(pCfg)){
+    if(RETURN_OK != CosaDmlWiFi_ApplyRoamingConsortiumElement(pCfg)){
         wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: CosaDmlWiFi_ApplyRoamingConsortiumElement Failed.\n", __func__, __LINE__);
     }
 #else
@@ -1447,7 +1459,7 @@ ANSC_STATUS WiFi_RestoreAPInterworking (int apIndex)
 
     if ((g_interworking_data[apIndex].passpoint.enable) && (RETURN_OK != enablePassPointSettings (apIndex, g_interworking_data[apIndex].passpoint.enable, g_interworking_data[apIndex].passpoint.gafDisable, g_interworking_data[apIndex].passpoint.p2pDisable, g_interworking_data[apIndex].passpoint.l2tif))){
       wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Error Setting Passpoint Enable Status on AP: %d\n", __func__, __LINE__,apIndex);
-      return ANSC_STATUS_FAILURE;
+      return RETURN_ERR;
     }
     //pCfg->IEEE80211uCfg.PasspointCfg.Status = g_interworking_data[apIndex].passpoint.enable;//TBD -N
     pCfg->passpoint.enable = g_interworking_data[apIndex].passpoint.enable;//ONE_WIFI
@@ -1455,31 +1467,32 @@ ANSC_STATUS WiFi_RestoreAPInterworking (int apIndex)
 #else
     UNREFERENCED_PARAMETER(apIndex);
 #endif
-    return ANSC_STATUS_SUCCESS;
+    return RETURN_OK;
 }
 #endif//ONE_WIFI TBD -N
+#endif // DML_SUPPORT
 
-ANSC_STATUS WiFi_SaveInterworkingWebconfig( wifi_interworking_t *interworking_data, int apIns) 
+INT WiFi_SaveInterworkingWebconfig( wifi_interworking_t *interworking_data, int apIns)
 {
 #if defined (FEATURE_SUPPORT_PASSPOINT)
 
     if(!interworking_data) {
         wifi_util_dbg_print(WIFI_PASSPOINT,"NULL Interworking Configuration\n");
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }//ONE_WIFI
     
     wifi_interworking_t *pCfg = Get_wifi_object_interworking_parameter(apIns);
     if(pCfg == NULL)
     {
         wifi_util_dbg_print(WIFI_CTRL, "%s: wrong vapIndex:%d \n", __FUNCTION__, apIns);
-	return ANSC_STATUS_FAILURE;
+	return RETURN_ERR;
     }
 
     //Copy ANQP Parameters.
     memset(pCfg->anqp.anqpParameters, 0, sizeof(pCfg->anqp.anqpParameters));
     AnscCopyString((char *)pCfg->anqp.anqpParameters, (char *)interworking_data->anqp.anqpParameters);//ONE_WIFI
 
-    if(ANSC_STATUS_FAILURE == WiFi_SaveANQPCfg(apIns)){
+    if(RETURN_ERR == WiFi_SaveANQPCfg(apIns)){
         wifi_util_dbg_print(WIFI_PASSPOINT,"Failed to Save ANQP Configuration\n");
     }//ONE_WIFI
     
@@ -1487,7 +1500,7 @@ ANSC_STATUS WiFi_SaveInterworkingWebconfig( wifi_interworking_t *interworking_da
     memset(pCfg->passpoint.hs2Parameters, 0, sizeof(pCfg->passpoint.hs2Parameters));
     AnscCopyString((char *)pCfg->passpoint.hs2Parameters, (char *)interworking_data->passpoint.hs2Parameters);//ONE_WIFI
 
-    if(ANSC_STATUS_FAILURE == WiFi_SaveHS2Cfg(apIns)){
+    if(RETURN_ERR == WiFi_SaveHS2Cfg(apIns)){
         wifi_util_dbg_print(WIFI_PASSPOINT,"Failed to Save  Configuration\n");
     }//ONE_WIFI
 
@@ -1501,23 +1514,24 @@ ANSC_STATUS WiFi_SaveInterworkingWebconfig( wifi_interworking_t *interworking_da
     memcpy(pCfg->anqp.passpointStats,g_interworking_data[apIns].anqp.passpointStats, sizeof(pCfg->anqp.passpointStats)); //ONE_WIFI
 #else
     UNREFERENCED_PARAMETER(apIns);
-    UNREFERENCED_PARAMETER(pCfg);
     UNREFERENCED_PARAMETER(interworking_data);
 #endif
 
-    return ANSC_STATUS_SUCCESS;
+    return RETURN_OK;
 }
+
+#if DML_SUPPORT
 #if 0
 /***********************************************************************
 Funtion     : CosaDmlWiFi_ReadInterworkingConfig
 Input       : Pointer to vAP object, JSON String
 Description : Parses JSON String JSON_STR, and populates the vAP object pCfg 
 ***********************************************************************/
-ANSC_STATUS CosaDmlWiFi_ReadInterworkingConfig (PCOSA_DML_WIFI_AP_CFG pCfg, char *JSON_STR)     
+INT CosaDmlWiFi_ReadInterworkingConfig (PCOSA_DML_WIFI_AP_CFG pCfg, char *JSON_STR)
 {
     if(!pCfg){
         wifi_util_dbg_print(WIFI_PASSPOINT,"AP Context is NULL\n");
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }
 
     int apIns = pCfg->InstanceNumber -1;
@@ -1532,21 +1546,21 @@ ANSC_STATUS CosaDmlWiFi_ReadInterworkingConfig (PCOSA_DML_WIFI_AP_CFG pCfg, char
 
     if(!JSON_STR){
         wifi_util_dbg_print(WIFI_PASSPOINT,"JSON String is NULL\n");
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }
 
     cJSON *interworkingCfg = cJSON_Parse(JSON_STR);
 
     if (NULL == interworkingCfg) {
         wifi_util_dbg_print(WIFI_PASSPOINT,"Failed to parse JSON\n");
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }
 
     mainEntry = cJSON_GetObjectItem(interworkingCfg,"Interworking");
     if(NULL == mainEntry){
         wifi_util_dbg_print(WIFI_PASSPOINT,"Interworking entry is NULL\n");
         cJSON_Delete(interworkingCfg);
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }
 
 //Interworking Status
@@ -1602,7 +1616,7 @@ ANSC_STATUS CosaDmlWiFi_ReadInterworkingConfig (PCOSA_DML_WIFI_AP_CFG pCfg, char
         pCfg->IEEE80211uCfg.IntwrkCfg.iVenueType = venueParam ? venueParam->valuedouble : 0;
     }
     cJSON_Delete(interworkingCfg);
-    return ANSC_STATUS_SUCCESS;
+    return RETURN_OK;
 }
 
 /***********************************************************************
@@ -1611,7 +1625,7 @@ Input       : Pointer to vAP object, JSON String, length of string
 Description : Saves Interworking coinfiguration as JSON String into file.
               File is saved for each vap in format InterworkingCfg_<apIns>.json
 ***********************************************************************/
-ANSC_STATUS CosaDmlWiFi_SaveInterworkingCfg(PCOSA_DML_WIFI_AP_CFG pCfg, char *buffer, int len)
+INT CosaDmlWiFi_SaveInterworkingCfg(PCOSA_DML_WIFI_AP_CFG pCfg, char *buffer, int len)
 {   
     char cfgFile[64];
     DIR     *passPointDir = NULL;
@@ -1623,26 +1637,26 @@ ANSC_STATUS CosaDmlWiFi_SaveInterworkingCfg(PCOSA_DML_WIFI_AP_CFG pCfg, char *bu
     }else if(ENOENT == errno){
         if(0 != mkdir(WIFI_PASSPOINT_DIR, 0777)){ 
             wifi_util_dbg_print(WIFI_PASSPOINT,"Failed to Create Passpoint Configuration directory.\n");
-            return ANSC_STATUS_FAILURE;
+            return RETURN_ERR;
         }
     }else{
         wifi_util_dbg_print(WIFI_PASSPOINT,"Error opening Passpoint Configuration directory.\n");
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }
     
     if(!pCfg){
         wifi_util_dbg_print(WIFI_PASSPOINT,"AP Context is NULL\n");
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }
     apIns = pCfg->InstanceNumber;
     sprintf(cfgFile,WIFI_INTERWORKING_CFG_FILE,apIns);
     FILE *fPasspointCfg = fopen(cfgFile, "w");
     if(0 == fwrite(buffer, len,1, fPasspointCfg)){
         fclose(fPasspointCfg);
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }else{
         fclose(fPasspointCfg);
-        return ANSC_STATUS_SUCCESS;
+        return RETURN_OK;
     }
 }
 
@@ -1653,7 +1667,7 @@ Description : Convert Interworking parameters to JSON String JSON_STR,
               and pass it to CosaDmlWiFi_SaveInterworkingCfg for persistent
               storage
 ***********************************************************************/
-ANSC_STATUS CosaDmlWiFi_WriteInterworkingConfig (PCOSA_DML_WIFI_AP_CFG pCfg)
+INT CosaDmlWiFi_WriteInterworkingConfig (PCOSA_DML_WIFI_AP_CFG pCfg)
 {
     cJSON *mainEntry = NULL;
     cJSON *venueEntry = NULL;
@@ -1662,18 +1676,18 @@ ANSC_STATUS CosaDmlWiFi_WriteInterworkingConfig (PCOSA_DML_WIFI_AP_CFG pCfg)
     
     if(!pCfg){
         wifi_util_dbg_print(WIFI_PASSPOINT,"AP Context is NULL\n");
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }
     
     apIns = pCfg->InstanceNumber;
     if((apIns < 1) || (apIns > 16)){
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }
     
     cJSON *interworkingCfg = cJSON_CreateObject();
     if (NULL == interworkingCfg) {
         wifi_util_dbg_print(WIFI_PASSPOINT,"Failed to create JSON\n");
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }
     
     memset(JSON_STR, 0, sizeof(JSON_STR));
@@ -1697,6 +1711,7 @@ ANSC_STATUS CosaDmlWiFi_WriteInterworkingConfig (PCOSA_DML_WIFI_AP_CFG pCfg)
     return CosaDmlWiFi_SaveInterworkingCfg(pCfg, JSON_STR, sizeof(JSON_STR));
 }
 #endif //TBD -N
+#endif // DML_SUPPORT
 /***********************************************************************
 Funtion     : CosaDmlWiFi_DefaultInterworkingConfig
 Input       : Pointer to vAP object
@@ -1704,13 +1719,13 @@ Description : Populates the vAP object pCfg with default values for
               Interworking parameters
 ***********************************************************************/
 
-ANSC_STATUS WiFi_DefaultInterworkingConfig(uint8_t vapIndex)
+INT WiFi_DefaultInterworkingConfig(uint8_t vapIndex)
 {      	
     wifi_interworking_t *pCfg = Get_wifi_object_interworking_parameter(vapIndex);
     if(pCfg == NULL)
     {
         wifi_util_dbg_print(WIFI_CTRL, "%s: wrong vapIndex:%d \n", __FUNCTION__, vapIndex);
-	return ANSC_STATUS_FAILURE;
+	return RETURN_ERR;
     }
     UINT InstanceNumber = vapIndex;
 
@@ -1735,7 +1750,7 @@ ANSC_STATUS WiFi_DefaultInterworkingConfig(uint8_t vapIndex)
     pCfg->interworking.venueOptionPresent = 1;
     pCfg->interworking.venueGroup = 0;
     pCfg->interworking.venueType = 0;//ONE_WIFI
-    return ANSC_STATUS_SUCCESS;
+    return RETURN_OK;
 }
 
 /***********************************************************************
@@ -1745,14 +1760,14 @@ Description : Check for Saved Configuration.
               If not present, call CosaDmlWiFi_DefaultInterworkingConfig
               to populate default values
 ***********************************************************************/
-ANSC_STATUS WiFi_InitInterworkingElement (uint8_t vapIndex)
+INT WiFi_InitInterworkingElement (uint8_t vapIndex)
 {
 #if defined (FEATURE_SUPPORT_PASSPOINT)
     wifi_interworking_t *pCfg = Get_wifi_object_interworking_parameter(vapIndex);
     if(pCfg == NULL)
     {
         wifi_util_dbg_print(WIFI_CTRL, "%s: wrong vapIndex:%d \n", __FUNCTION__, vapIndex);
-	return ANSC_STATUS_FAILURE;
+	return RETURN_ERR;
     }
     UINT InstanceNumber = vapIndex;
 
@@ -1791,20 +1806,20 @@ ANSC_STATUS WiFi_InitInterworkingElement (uint8_t vapIndex)
 
     if(!pCfg){
         wifi_util_dbg_print(WIFI_PASSPOINT,"AP Context is NULL\n");
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }    
 
     apIns = InstanceNumber;
     if((apIns < 1) || (apIns > 16)){
         wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Invalid AP Index. Return\n", __func__, __LINE__);
-        return ANSC_STATUS_FAILURE;
+        return RETURN_ERR;
     }    
 
     sprintf(cfgFile,WIFI_INTERWORKING_CFG_FILE,apIns);
 
     confSize = readFileToBuffer(cfgFile,&JSON_STR);
 
-    if(!confSize || !JSON_STR || (ANSC_STATUS_SUCCESS != CosaDmlWiFi_ReadInterworkingConfig(pCfg,JSON_STR))){
+    if(!confSize || !JSON_STR || (RETURN_OK != CosaDmlWiFi_ReadInterworkingConfig(pCfg,JSON_STR))){
         if(JSON_STR){
             free(JSON_STR);
             JSON_STR = NULL;
@@ -1815,7 +1830,7 @@ ANSC_STATUS WiFi_InitInterworkingElement (uint8_t vapIndex)
     wifi_util_dbg_print(WIFI_PASSPOINT,"Initialized Interworking Configuration from memory for AP: %d.\n",apIns);
 
 #endif
-    return ANSC_STATUS_SUCCESS;
+    return RETURN_OK;
 #else
     return WiFi_DefaultInterworkingConfig(vapIndex);
 #endif
@@ -1844,7 +1859,7 @@ void update_json_gas_config(wifi_GASConfiguration_t *gasConfig_struct) {
     memset(JSON_STR, 0, 512);
     cJSON_PrintPreallocated(gasCfg, JSON_STR,512,false);
 
-    if (ANSC_STATUS_SUCCESS != WiFi_SaveGasCfg(JSON_STR, strlen(JSON_STR))) {
+    if (RETURN_OK != WiFi_SaveGasCfg(JSON_STR, strlen(JSON_STR))) {
         wifi_util_dbg_print(WIFI_PASSPOINT,"Failed to update OVSDB with GAS Config. Adv-ID:%d\n",gasConfig_struct->AdvertisementID);
     }
     cJSON_Delete(gasCfg);

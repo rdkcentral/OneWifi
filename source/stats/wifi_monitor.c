@@ -30,6 +30,7 @@
 #include <errno.h>
 #include <sys/time.h>
 #include "collection.h"
+#include "wifi_passpoint.h"
 #include "wifi_hal.h"
 #include "wifi_monitor.h"
 #include "wifi_blaster.h"
@@ -43,10 +44,12 @@
 #include <sysevent/sysevent.h>
 #include "ccsp_base_api.h"
 #include "harvester.h"
-#include "wifi_passpoint.h"
+#if CCSP_COMMON
 #include "ccsp_trace.h"
+#endif // CCSP_COMMON
 #include "safec_lib_common.h"
 #include "ccsp_WifiLog_wrapper.h"
+#include "platform-logger.h"
 #include <sched.h>
 #include "scheduler.h"
 
@@ -556,7 +559,7 @@ int upload_client_telemetry_data(void *arg)
             for (radioIndex = 0; radioIndex < getNumberRadios(); ++radioIndex) {
                 wifi_radio_operationParam_t* radioOperation = getRadioOperationParam(radioIndex);
                 if (radioOperation == NULL) {
-                    CcspTraceWarning(("%s : failed to getRadioOperationParam with radio index \n", __FUNCTION__));
+                    platform_trace_warning(WIFI_MON, "%s : failed to getRadioOperationParam with radio index \n", __FUNCTION__);
                     phase = 0;
                     return TIMER_TASK_COMPLETE;
                 }
@@ -1759,7 +1762,7 @@ int upload_channel_width_telemetry(void *arg)
     for (UINT i = 0; i < numRadios; ++i) {
         wifi_radio_operationParam_t* radioOperation = getRadioOperationParam(i);
         if (radioOperation == NULL) {
-            CcspTraceWarning(("%s : failed to getRadioOperationParam with radio index:%d \n", __FUNCTION__, i));
+            platform_trace_warning(WIFI_MON, "%s : failed to getRadioOperationParam with radio index:%d \n", __FUNCTION__, i);
             radioEnabled = FALSE;
         } else {
             radioEnabled = radioOperation->enable;

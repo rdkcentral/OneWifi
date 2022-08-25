@@ -27,13 +27,10 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <sys/time.h>
-#include "ansc_wrapper_base.h"
 #include "collection.h"
-#include "cosa_wifi_apis.h"
+#include "log.h"
 #include "wifi_hal.h"
 #include "wifi_8021x.h"
-#include "cosa_wifi_internal.h"
-#include "wifi_monitor.h"
 #include "wifi_util.h"
 #if 0
 static void to_mac_bytes   (mac_addr_str_t key, mac_address_t bmac) {

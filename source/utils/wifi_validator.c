@@ -17,10 +17,13 @@
   limitations under the License.
 **************************************************************************/
 
+#if DML_SUPPORT
 #include "cosa_apis.h"
 #include "cosa_dbus_api.h"
 #include "cosa_wifi_apis.h"
 #include "cosa_wifi_internal.h"
+#include "wifi_passpoint.h"
+#endif // DML_SUPPORT
 #include "wifi_webconfig.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -35,9 +38,9 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include "platform-logger.h"
 #include "wifi_hal.h"
 #include "cJSON.h"
-#include "wifi_passpoint.h"
 #include "ctype.h"
 #include "webconfig_framework.h"
 
@@ -118,7 +121,7 @@ int validate_ipv4_address(char *ip) {
     struct sockaddr_in sa;
 
     if (inet_pton(AF_INET,ip, &(sa.sin_addr)) != 1 ) {
-        CcspTraceError(("%s: Invalid IP address: %s\n",__FUNCTION__,ip));
+        platform_trace_error(WIFI_PASSPOINT, "%s: Invalid IP address: %s\n",__FUNCTION__,ip);
         return RETURN_ERR;
     }
     return RETURN_OK;
@@ -920,7 +923,7 @@ int validate_radius_settings(const cJSON *radius, wifi_vap_info_t *vap_info, pEr
     } else if(inet_pton(AF_INET6, param->valuestring, &(vap_info->u.bss_info.security.u.radius.ip.u.IPv6addr)) > 0) {
        vap_info->u.bss_info.security.u.radius.ip.family = wifi_ip_family_ipv6;
     } else {
-       CcspTraceError(("<%s> <%d> : inet_pton falied for primary radius IP\n", __FUNCTION__, __LINE__));
+       platform_trace_error(WIFI_PASSPOINT, "<%s> <%d> : inet_pton falied for primary radius IP\n", __FUNCTION__, __LINE__);
        return RETURN_ERR;
     }
 #endif
@@ -946,7 +949,7 @@ int validate_radius_settings(const cJSON *radius, wifi_vap_info_t *vap_info, pEr
         } else if(inet_pton(AF_INET6, param->valuestring, &(vap_info->u.bss_info.security.u.radius.s_ip.u.IPv6addr)) > 0) {
            vap_info->u.bss_info.security.u.radius.s_ip.family = wifi_ip_family_ipv6;
         } else {
-          CcspTraceError(("<%s> <%d> : inet_pton falied for primary radius IP\n", __FUNCTION__, __LINE__));
+          platform_trace_error(WIFI_PASSPOINT, "<%s> <%d> : inet_pton falied for primary radius IP\n", __FUNCTION__, __LINE__);
           return RETURN_ERR;
         }
 #endif
@@ -1102,14 +1105,14 @@ int validate_personal_security(const cJSON *security, wifi_vap_info_t *vap_info,
         } else if(strcmp(param->valuestring, "AES+TKIP") == 0) {
             vap_info->u.bss_info.security.encr = wifi_encryption_aes_tkip;
         } else {
-            CcspTraceError(("%s: Invalid Encryption method for private vap\n", __FUNCTION__));
+            platform_trace_error(WIFI_PASSPOINT, "%s: Invalid Encryption method for private vap\n", __FUNCTION__);
             strncpy(execRetVal->ErrorMsg, "Invalid Encryption method",sizeof(execRetVal->ErrorMsg)-1);
             return RETURN_ERR;
         }
 
         if ((vap_info->u.bss_info.security.mode == wifi_security_mode_wpa_wpa2_personal) &&
             (vap_info->u.bss_info.security.encr == wifi_encryption_tkip)) {
-            CcspTraceError(("%s: Invalid Encryption method combination for private vap\n",__FUNCTION__));
+            platform_trace_error(WIFI_PASSPOINT, "%s: Invalid Encryption method combination for private vap\n",__FUNCTION__);
             strncpy(execRetVal->ErrorMsg, "Invalid Encryption method combinaiton",sizeof(execRetVal->ErrorMsg)-1);
             return RETURN_ERR;
         }
@@ -1119,7 +1122,7 @@ int validate_personal_security(const cJSON *security, wifi_vap_info_t *vap_info,
 
         if ((strlen(param->valuestring) < MIN_PWD_LEN) || (strlen(param->valuestring) > MAX_PWD_LEN)) {
             strncpy(execRetVal->ErrorMsg, "Invalid Key passphrase length",sizeof(execRetVal->ErrorMsg)-1);
-            CcspTraceError(("%s: Invalid Key passphrase length\n",__FUNCTION__));
+            platform_trace_error(WIFI_PASSPOINT, "%s: Invalid Key passphrase length\n",__FUNCTION__);
             return RETURN_ERR;
         }
         strncpy(vap_info->u.bss_info.security.u.key.key, param->valuestring,
@@ -1138,8 +1141,8 @@ int validate_ssid_name(char *ssid_name, pErr execRetVal)
     }
         
     ssid_len = strlen(ssid_name);
-    if ((ssid_len == 0) || (ssid_len > COSA_DML_WIFI_MAX_SSID_NAME_LEN)) {
-        CcspTraceError(("%s: Invalid SSID size \n",__FUNCTION__));
+    if ((ssid_len == 0) || (ssid_len > WIFI_MAX_SSID_NAME_LEN)) {
+        platform_trace_error(WIFI_PASSPOINT, "%s: Invalid SSID size \n",__FUNCTION__);
         strncpy(execRetVal->ErrorMsg, "Invalid SSID Size",sizeof(execRetVal->ErrorMsg)-1); 
         return RETURN_ERR;
     }
@@ -1147,7 +1150,7 @@ int validate_ssid_name(char *ssid_name, pErr execRetVal)
 
     for (i = 0; i < ssid_len; i++) {
         if (!((ssid_name[i] >= ' ') && (ssid_name[i] <= '~'))) {
-            CcspTraceError(("%s: Invalid character present in SSID Name \n",__FUNCTION__));
+            platform_trace_error(WIFI_PASSPOINT, "%s: Invalid character present in SSID Name \n",__FUNCTION__);
             strncpy(execRetVal->ErrorMsg, "Invalid character in SSID",sizeof(execRetVal->ErrorMsg)-1);
             return RETURN_ERR;
         }
@@ -1188,7 +1191,7 @@ int validate_xfinity_open_vap(const cJSON *vap, wifi_vap_info_t *vap_info, pErr 
 
         validate_param_string(security, "Mode", param);
         if (strcmp(param->valuestring, "None") != 0) {
-            CcspTraceError(("[%s] Xfinity open security is not OPEN\n", __FUNCTION__));
+            platform_trace_error(WIFI_PASSPOINT, "[%s] Xfinity open security is not OPEN\n", __FUNCTION__);
             strncpy(execRetVal->ErrorMsg, "Invalid security for hotspot open vap",sizeof(execRetVal->ErrorMsg)-1);
             return RETURN_ERR;
         }
@@ -1225,7 +1228,7 @@ int validate_xfinity_open_vap(const cJSON *vap, wifi_vap_info_t *vap_info, pErr 
         }
 
         if (vap_info->u.bss_info.interworking.passpoint.enable) {
-            CcspTraceError(("[%s] Passpoint cannot be enabled on hotspot open vap\n", __FUNCTION__));
+            platform_trace_error(WIFI_PASSPOINT, "[%s] Passpoint cannot be enabled on hotspot open vap\n", __FUNCTION__);
             strncpy(execRetVal->ErrorMsg, "Passpoint cannot be enabled on hotspot open vap",sizeof(execRetVal->ErrorMsg)-1);
             return RETURN_ERR;
         }
@@ -1257,7 +1260,7 @@ int validate_private_vap(const cJSON *vap, wifi_vap_info_t *vap_info, pErr execR
             vap_info->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
 #endif
         } else {
-            CcspTraceError(("%s: Invalid Authentication mode for private vap", __FUNCTION__));
+            platform_trace_error(WIFI_PASSPOINT, "%s: Invalid Authentication mode for private vap", __FUNCTION__);
             strncpy(execRetVal->ErrorMsg, "Invalid Authentication mode for private vap",sizeof(execRetVal->ErrorMsg)-1);  
             return RETURN_ERR;
         }
@@ -1287,7 +1290,7 @@ int validate_private_vap(const cJSON *vap, wifi_vap_info_t *vap_info, pErr execR
 
         if ((vap_info->u.bss_info.security.mode != wifi_security_mode_none) &&
             (validate_personal_security(security, vap_info, execRetVal) != RETURN_OK)) {
-            CcspTraceError(("%s: Failed to validate security for vap %s", __FUNCTION__, vap_info->vap_name));
+            platform_trace_error(WIFI_PASSPOINT, "%s: Failed to validate security for vap %s", __FUNCTION__, vap_info->vap_name);
             return RETURN_ERR;
         } 
          
@@ -1298,7 +1301,7 @@ int validate_private_vap(const cJSON *vap, wifi_vap_info_t *vap_info, pErr execR
         }
 
         if (vap_info->u.bss_info.interworking.passpoint.enable) {
-            CcspTraceError(("[%s] Passpoint cannot be enabled on private vap\n", __FUNCTION__));
+            platform_trace_error(WIFI_PASSPOINT, "[%s] Passpoint cannot be enabled on private vap\n", __FUNCTION__);
             strncpy(execRetVal->ErrorMsg, "Passpoint cannot be enabled on private vap",sizeof(execRetVal->ErrorMsg)-1);
             return RETURN_ERR;
         }
@@ -1331,7 +1334,7 @@ int validate_xhome_vap(const cJSON *vap, wifi_vap_info_t *vap_info, pErr execRet
             vap_info->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
 #endif
         } else {
-            CcspTraceError(("%s: Invalid Authentication mode for vap %s", __FUNCTION__, vap_info->vap_name));
+            platform_trace_error(WIFI_PASSPOINT, "%s: Invalid Authentication mode for vap %s", __FUNCTION__, vap_info->vap_name);
             strncpy(execRetVal->ErrorMsg,"Invalid Authentication mode for xhome vap",sizeof(execRetVal->ErrorMsg)-1);
             return RETURN_ERR;
         }
@@ -1360,7 +1363,7 @@ int validate_xhome_vap(const cJSON *vap, wifi_vap_info_t *vap_info, pErr execRet
 
         if ((vap_info->u.bss_info.security.mode != wifi_security_mode_none) &&
             (validate_personal_security(security, vap_info, execRetVal) != RETURN_OK)) {
-            CcspTraceError(("%s: Failed to validate security for vap %s", __FUNCTION__, vap_info->vap_name));
+            platform_trace_error(WIFI_PASSPOINT, "%s: Failed to validate security for vap %s", __FUNCTION__, vap_info->vap_name);
             return RETURN_ERR;
         }
 
@@ -1371,7 +1374,7 @@ int validate_xhome_vap(const cJSON *vap, wifi_vap_info_t *vap_info, pErr execRet
         }
 
         if (vap_info->u.bss_info.interworking.passpoint.enable) {
-            CcspTraceError(("[%s] Passpoint cannot be enabled on private vap\n", __FUNCTION__));
+            platform_trace_error(WIFI_PASSPOINT, "[%s] Passpoint cannot be enabled on private vap\n", __FUNCTION__);
             strncpy(execRetVal->ErrorMsg, "Passpoint cannot be enabled on private vap",sizeof(execRetVal->ErrorMsg)-1);
             return RETURN_ERR;
         }
@@ -1393,7 +1396,7 @@ int validate_contry_code(wifi_countrycode_type_t *contry_code, char *contry)
 
     if(i == MAX_WIFI_COUNTRYCODE)
     {
-        CcspTraceError(("RDK_LOG_ERROR, %s Invalid Country code %s\n", __func__,contry));
+        platform_trace_error(WIFI_PASSPOINT, "RDK_LOG_ERROR, %s Invalid Country code %s\n", __func__,contry);
     }
     return RETURN_ERR;
 }
@@ -1757,7 +1760,7 @@ int validate_wifi_channel(wifi_freq_bands_t wifi_band, UINT *wifi_radio_channel,
 		}
 		else
 		{
-			CcspTraceError(("%s 2.4 Ghz wrong wifi channel\n",__FUNCTION__));
+			platform_trace_error(WIFI_PASSPOINT, "%s 2.4 Ghz wrong wifi channel\n",__FUNCTION__);
 			return RETURN_ERR; 
 		}
 	}
@@ -1769,7 +1772,7 @@ int validate_wifi_channel(wifi_freq_bands_t wifi_band, UINT *wifi_radio_channel,
 		}
 		else
 		{
-			CcspTraceError(("%s 5 Ghz wrong wifi channel\n",__FUNCTION__));
+			platform_trace_error(WIFI_PASSPOINT, "%s 5 Ghz wrong wifi channel\n",__FUNCTION__);
  			return RETURN_ERR;
 		}
 	}
@@ -1791,7 +1794,7 @@ int validate_wifi_channel(wifi_freq_bands_t wifi_band, UINT *wifi_radio_channel,
 	}
 	else
 	{
-	     CcspTraceError(("%s wrong supported wifi band\n",__FUNCTION__));
+	     platform_trace_error(WIFI_PASSPOINT, "%s wrong supported wifi band\n",__FUNCTION__);
              return RETURN_ERR;
 	}
 	return RETURN_OK;
@@ -2040,7 +2043,7 @@ int wifi_validate_config(const cJSON *root_json, wifi_global_config_t *wifi_conf
 	//cJSON_Delete(root_json);
         err = cJSON_GetErrorPtr();
         if (err) {
-            CcspTraceError(("%s: Json delete error %s\n",__FUNCTION__,err));
+            platform_trace_error(WIFI_PASSPOINT, "%s: Json delete error %s\n",__FUNCTION__,err);
         }
 	return RETURN_ERR;
     }
@@ -2053,12 +2056,12 @@ int wifi_validate_config(const cJSON *root_json, wifi_global_config_t *wifi_conf
      //Parse wifi Radio Config
      radio_vaps = cJSON_GetObjectItem(root_json, "WifiRadioConfig");
      if (radio_vaps == NULL) {
-           	CcspTraceError(("%s: Getting WifiRadioConfig json objet fail\n",__FUNCTION__));
+           	platform_trace_error(WIFI_PASSPOINT, "%s: Getting WifiRadioConfig json objet fail\n",__FUNCTION__);
                 strncpy(execRetVal->ErrorMsg,"WifiRadioConfig object get fail",sizeof(execRetVal->ErrorMsg)-1);
 //                cJSON_Delete(root_json);
                 err = cJSON_GetErrorPtr();
                 if (err) {
-                CcspTraceError(("%s: Json delete error %s\n",__FUNCTION__,err));
+                platform_trace_error(WIFI_PASSPOINT, "%s: Json delete error %s\n",__FUNCTION__,err);
                 }
                 return RETURN_ERR;
         }

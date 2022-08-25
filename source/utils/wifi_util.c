@@ -23,6 +23,7 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <fcntl.h>
+#include "const.h"
 #include "wifi_util.h"
 #include "wifi_ctrl.h"
 #include "wifi_mgr.h"
@@ -1354,14 +1355,14 @@ int hw_mode_conversion(wifi_ieee80211Variant_t *hw_mode_enum, char *hw_mode, int
         return RETURN_ERR;
     }
     if (conv_type == STRING_TO_ENUM) {
-        for (i = 0; i < ARRAY_SZ(arr_str); i++) {
+        for (i = 0; i < ARRAY_SIZE(arr_str); i++) {
             if (strcmp(arr_str[i], hw_mode) == 0) {
                 *hw_mode_enum = arr_enum[i];
                 return RETURN_OK;
             }
         }
     } else if (conv_type == ENUM_TO_STRING) {
-        for (i = 0; i < ARRAY_SZ(arr_enum); i++) {
+        for (i = 0; i < ARRAY_SIZE(arr_enum); i++) {
             if ((arr_enum[i] & *hw_mode_enum) == arr_enum[i]) {
                 snprintf(hw_mode, hw_mode_len, "%s", arr_str[i]);
                 is_mode_valid = true;
@@ -1386,14 +1387,14 @@ int ht_mode_conversion(wifi_channelBandwidth_t *ht_mode_enum, char *ht_mode, int
         return RETURN_ERR;
     }
     if (conv_type == STRING_TO_ENUM) {
-        for (i = 0; i < ARRAY_SZ(arr_str); i++) {
+        for (i = 0; i < ARRAY_SIZE(arr_str); i++) {
             if (strcmp(arr_str[i], ht_mode) == 0) {
                 *ht_mode_enum = arr_enum[i];
                 return RETURN_OK;
             }
         }
     } else if (conv_type == ENUM_TO_STRING) {
-        for (i = 0; i < ARRAY_SZ(arr_enum); i++) {
+        for (i = 0; i < ARRAY_SIZE(arr_enum); i++) {
             if (arr_enum[i] == *ht_mode_enum) {
                 snprintf(ht_mode, ht_mode_len, "%s", arr_str[i]);
                 return RETURN_OK;
@@ -1468,7 +1469,7 @@ int is_wifi_channel_valid(wifi_freq_bands_t wifi_band, UINT wifi_channel)
             return RETURN_ERR;
         }
     } else if (wifi_band == WIFI_FREQUENCY_5_BAND) {
-        for (i=0; i< ARRAY_SZ(channels_5g); i++) {
+        for (i=0; i< ARRAY_SIZE(channels_5g); i++) {
             if (wifi_channel == channels_5g[i]) {
                 channel_found = true;
                 break;
@@ -1699,14 +1700,14 @@ int key_mgmt_conversion(wifi_security_modes_t *enum_sec, char *str_sec, int sec_
     }
 
     if (conv_type == STRING_TO_ENUM) {
-        for (i = 0; i < ARRAY_SZ(arr_str); i++) {
+        for (i = 0; i < ARRAY_SIZE(arr_str); i++) {
             if (strcmp(arr_str[i], str_sec) == 0) {
                 *enum_sec = arr_num[i];
                 return RETURN_OK;
             }
         }
     } else if (conv_type == ENUM_TO_STRING) {
-        for (i = 0; i < ARRAY_SZ(arr_num); i++) {
+        for (i = 0; i < ARRAY_SIZE(arr_num); i++) {
             if (arr_num[i]  == *enum_sec) {
                 snprintf(str_sec, sec_len, "%s", arr_str[i]);
                 return RETURN_OK;

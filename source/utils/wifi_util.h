@@ -27,7 +27,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "wifi_hal.h"
-#include "wifi_blaster.h"
+#include <pthread.h>
 #include "wifi_ctrl.h"
 
 typedef enum {
@@ -59,7 +59,6 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
 
 #define ENUM_TO_STRING 1
 #define STRING_TO_ENUM 2
-#define ARRAY_SZ(x)    (sizeof(x) / sizeof((x)[0]))
 
 #define MIN_MAC_LEN 12
 #define MAC_ADDR_LEN 6
@@ -79,12 +78,6 @@ struct wifiEnvironmentEnumStrMap {
 
 extern struct wifiEnvironmentEnumStrMap wifiEnviromentMap[4];
 extern struct wifiCountryEnumStrMap wifiCountryMap[MAX_WIFI_COUNTRYCODE];
-
-typedef struct radio_interface_mapping {
-    uint8_t radio_index;
-    char radio_name[16];
-    char interface_name[16];
-} radio_interface_mapping_t;
 
 #define LM_GEN_STR_SIZE     64
 #define LM_MAX_HOSTS_NUM    256

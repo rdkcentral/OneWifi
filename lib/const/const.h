@@ -100,7 +100,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // Return number of elements in array
 #ifndef ARRAY_SIZE
-#define ARRAY_SIZE(x)       (sizeof(x) / sizeof(x[0]))
+#define ARRAY_SIZE(x)       ((unsigned int)(sizeof(x) / sizeof(x[0])))
 #endif /* ARRAY_SIZE */
 
 // Same as ARRAY_SIZE, except returned signed value

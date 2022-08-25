@@ -21,12 +21,13 @@
 #include <stdbool.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#if DML_SUPPORT
 #include "ansc_platform.h"
+#endif // DML_SUPPORT
 #include "wifi_hal.h"
 #include "wifi_ctrl.h"
 #include "wifi_mgr.h"
 #include "wifi_util.h"
-#include "webconfig_framework.h"
 
 char help[] = "Usage: wifi_api2 <WiFi API name> <args>";
 

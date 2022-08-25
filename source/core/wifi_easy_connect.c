@@ -44,7 +44,6 @@
 #include <sys/sysinfo.h>
 #include <sys/un.h>
 #include <assert.h>
-#include "ansc_status.h"
 #include <sysevent/sysevent.h>
 #include "wifi_monitor.h"
 #include "wifi_data_plane.h"
@@ -114,6 +113,9 @@ static char *resp_status[] = {
     "RESPONDER_STATUS_NOT_AVAILABLE"
 };
 
+#define SET_DPP_DEVICE_CONTEXT_STATES(ctx, state, status, enrollee_status) \
+        set_dpp_device_context_states(ctx, state, status, enrollee_status, pWifiDppSta)
+
 void set_dpp_device_context_states(wifi_device_dpp_context_t *ctx, wifi_dpp_state_t state, 
 					wifi_activation_status_t activation_status, wifi_enrollee_responder_status_t enrollee_status, 
 					PCOSA_DML_WIFI_DPP_STA_CFG pWifiDppSta)
@@ -134,9 +136,9 @@ void process_easy_connect_event(wifi_device_dpp_context_t *ctx, wifi_easy_connec
     UNREFERENCED_PARAMETER(module);
     int rc;
     ssid_t ssid;
+    char passphrase[64] = {0x0};
     PCOSA_DML_WIFI_DPP_CFG pWifiDppCfg;
     PCOSA_DML_WIFI_DPP_STA_CFG pWifiDppSta = NULL;
-    char passphrase[64] = {0x0};
 #if 0
     pWifiDppCfg = find_dpp_dml_wifi_ap(ctx->ap_index);
     if (pWifiDppCfg == NULL) {
@@ -153,8 +155,8 @@ void process_easy_connect_event(wifi_device_dpp_context_t *ctx, wifi_easy_connec
             if (ctx->session_data.state == STATE_DPP_UNPROVISIONED) { 
                 if (wifi_dppInitiate(ctx) == RETURN_OK) {
                     wifi_util_dbg_print(WIFI_DPP, "%s:%d: DPP Authentication Request Frame send success\n", __func__, __LINE__);
-                    set_dpp_device_context_states(ctx, STATE_DPP_AUTH_RSP_PENDING, 
-                            ActStatus_In_Progress, RESPONDER_STATUS_RESPONSE_PENDING, pWifiDppSta);
+                    SET_DPP_DEVICE_CONTEXT_STATES(ctx, STATE_DPP_AUTH_RSP_PENDING,
+                            ActStatus_In_Progress, RESPONDER_STATUS_RESPONSE_PENDING);
                     log_dpp_diagnostics("Wifi DPP: STATE_DPP_AUTH_RSP_PENDING\n");
                 } else {
                     wifi_util_dbg_print(WIFI_DPP, "%s:%d: DPP Authentication Request Frame send failed\n", __func__, __LINE__);
@@ -171,19 +173,19 @@ void process_easy_connect_event(wifi_device_dpp_context_t *ctx, wifi_easy_connec
 					if (rc == RETURN_OK) {
                         rc = wifi_dppSendAuthCnf(ctx);
                     if (rc == RETURN_OK) {
-                        set_dpp_device_context_states(ctx, STATE_DPP_AUTHENTICATED, 
-                                ActStatus_In_Progress, RESPONDER_STATUS_RESPONSE_PENDING, pWifiDppSta);
+                        SET_DPP_DEVICE_CONTEXT_STATES(ctx, STATE_DPP_AUTHENTICATED,
+                                ActStatus_In_Progress, RESPONDER_STATUS_RESPONSE_PENDING);
                         //log_dpp_diagnostics("%s MAC: %s\n", "Wifi DPP: STATE_DPP_AUTHENTICATED", pWifiDppSta->ClientMac);//ONE_WIFI
                         data_plane_queue_push(data_plane_queue_create_event(ctx,wifi_data_plane_event_type_dpp, FALSE)); //need to pass NoLock
                     } else {
-                        set_dpp_device_context_states(ctx, STATE_DPP_AUTH_FAILED, 
-                                ActStatus_No_Response, RESPONDER_STATUS_AUTH_FAILURE, pWifiDppSta);
+                        SET_DPP_DEVICE_CONTEXT_STATES(ctx, STATE_DPP_AUTH_FAILED,
+                                ActStatus_No_Response, RESPONDER_STATUS_AUTH_FAILURE);
                         end_device_provisioning(ctx);
                         //log_dpp_diagnostics("%s MAC: %s\n", "Wifi DPP: RESPONSE PENDING FAILURE", pWifiDppSta->ClientMac);//ONE_WIFI
                     }
                     } else {
-                        set_dpp_device_context_states(ctx, STATE_DPP_AUTH_FAILED, 
-                                ActStatus_No_Response, RESPONDER_STATUS_AUTH_FAILURE, pWifiDppSta);
+                        SET_DPP_DEVICE_CONTEXT_STATES(ctx, STATE_DPP_AUTH_FAILED,
+                                ActStatus_No_Response, RESPONDER_STATUS_AUTH_FAILURE);
                         end_device_provisioning(ctx);
                         //log_dpp_diagnostics("%s MAC: %s\n", "Wifi DPP: RESPONSE PENDING FAILURE", pWifiDppSta->ClientMac);//ONE_WIFI
                     }
@@ -205,13 +207,13 @@ void process_easy_connect_event(wifi_device_dpp_context_t *ctx, wifi_easy_connec
                     free(ctx->received_frame.frame);
                     ctx->received_frame.length = 0;
                     if (rc == RETURN_OK) {
-                        set_dpp_device_context_states(ctx, STATE_DPP_CFG_RSP_SENT, 
-                                ActStatus_In_Progress, RESPONDER_STATUS_RESPONSE_PENDING, pWifiDppSta);
+                        SET_DPP_DEVICE_CONTEXT_STATES(ctx, STATE_DPP_CFG_RSP_SENT,
+                                ActStatus_In_Progress, RESPONDER_STATUS_RESPONSE_PENDING);
                         log_dpp_diagnostics("Wifi DPP: STATE_DPP_CFG_RSP_SENT\n");
                         data_plane_queue_push(data_plane_queue_create_event(ctx,wifi_data_plane_event_type_dpp, FALSE)); //need to pass NoLock
                     } else {
-                        set_dpp_device_context_states(ctx, STATE_DPP_CFG_FAILED, 
-                                ActStatus_Config_Error, RESPONDER_STATUS_CONFIGURATION_FAILURE, pWifiDppSta);
+                        SET_DPP_DEVICE_CONTEXT_STATES(ctx, STATE_DPP_CFG_FAILED,
+                                ActStatus_Config_Error, RESPONDER_STATUS_CONFIGURATION_FAILURE);
                         //log_dpp_diagnostics("%s MAC: %s\n", "Wifi DPP: RESPONDER_STATUS_CONFIGURATION_FAILURE", pWifiDppSta->ClientMac);//ONE_WIFI
                         //pWifiDppSta->Activate = FALSE;//ONE_WIFI
                         end_device_provisioning(ctx);
@@ -224,14 +226,14 @@ void process_easy_connect_event(wifi_device_dpp_context_t *ctx, wifi_easy_connec
                     free(ctx->received_frame.frame);
                     ctx->received_frame.length = 0;
                     if (rc == RETURN_OK) {
-                        set_dpp_device_context_states(ctx, STATE_DPP_PROVISIONED, 
-                                ActStatus_OK, RESPONDER_STATUS_OK, pWifiDppSta);
+                        SET_DPP_DEVICE_CONTEXT_STATES(ctx, STATE_DPP_PROVISIONED,
+                                ActStatus_OK, RESPONDER_STATUS_OK);
                         //pWifiDppSta->Activate = FALSE;//ONE_WIFI
                         log_dpp_diagnostics("Wifi DPP: RESPONDER_STATUS_OK\n");
                         end_device_provisioning(ctx);
                     } else {
-                        set_dpp_device_context_states(ctx, STATE_DPP_CFG_FAILED, 
-                                ActStatus_Config_Error, RESPONDER_STATUS_CONFIG_REJECTED, pWifiDppSta);
+                        SET_DPP_DEVICE_CONTEXT_STATES(ctx, STATE_DPP_CFG_FAILED,
+                                ActStatus_Config_Error, RESPONDER_STATUS_CONFIG_REJECTED);
                         //pWifiDppSta->Activate = FALSE;//ONE_WIFI
                         //log_dpp_diagnostics("%s MAC: %s\n", "Wifi DPP: RESPONDER_STATUS_CONFIG_REJECTED", pWifiDppSta->ClientMac);//ONE_WIFI
                         end_device_provisioning(ctx);
@@ -247,8 +249,8 @@ void process_easy_connect_event(wifi_device_dpp_context_t *ctx, wifi_easy_connec
                         wifi_util_dbg_print(WIFI_DPP, "%s:%d: DPP Authentication Request Frame send failed\n", __func__, __LINE__);
                         ctx->dpp_init_retries++;
                     }
-                    set_dpp_device_context_states(ctx, STATE_DPP_RECFG_AUTH_RSP_PENDING, 
-                            ActStatus_In_Progress, RESPONDER_STATUS_RESPONSE_PENDING, pWifiDppSta);
+                    SET_DPP_DEVICE_CONTEXT_STATES(ctx, STATE_DPP_RECFG_AUTH_RSP_PENDING,
+                            ActStatus_In_Progress, RESPONDER_STATUS_RESPONSE_PENDING);
                     data_plane_queue_push(data_plane_queue_create_event(ctx,wifi_data_plane_event_type_dpp, FALSE)); //need to pass NoLock
                 }
             } else if (ctx->session_data.state == STATE_DPP_RECFG_AUTH_RSP_PENDING) {
@@ -261,19 +263,19 @@ void process_easy_connect_event(wifi_device_dpp_context_t *ctx, wifi_easy_connec
                         wifi_util_dbg_print(WIFI_DPP, "%s:%d: Sending DPP Authentication Cnf ... \n", __func__, __LINE__);
                         rc = wifi_dppSendReconfigAuthCnf(ctx);
                         if (rc == RETURN_OK) {
-                            set_dpp_device_context_states(ctx, STATE_DPP_AUTHENTICATED,
-                                    ActStatus_In_Progress, RESPONDER_STATUS_RESPONSE_PENDING, pWifiDppSta);
+                            SET_DPP_DEVICE_CONTEXT_STATES(ctx, STATE_DPP_AUTHENTICATED,
+                                    ActStatus_In_Progress, RESPONDER_STATUS_RESPONSE_PENDING);
                             //log_dpp_diagnostics("%s MAC: %s\n", "Wifi DPP: STATE_DPP_AUTHENTICATED", pWifiDppSta->ClientMac);//ONE_WIFI
                             data_plane_queue_push(data_plane_queue_create_event(ctx,wifi_data_plane_event_type_dpp, FALSE)); //need to pass NoLock
                         } else {
-                            set_dpp_device_context_states(ctx, STATE_DPP_RECFG_AUTH_FAILED,
-                                    ActStatus_No_Response, RESPONDER_STATUS_AUTH_FAILURE, pWifiDppSta);
+                            SET_DPP_DEVICE_CONTEXT_STATES(ctx, STATE_DPP_RECFG_AUTH_FAILED,
+                                    ActStatus_No_Response, RESPONDER_STATUS_AUTH_FAILURE);
                             end_device_provisioning(ctx);
                             //log_dpp_diagnostics("%s MAC: %s\n", "Wifi DPP: RESPONSE PENDING FAILURE", pWifiDppSta->ClientMac);//ONE_WIFI
                         }
                     } else {
-                        set_dpp_device_context_states(ctx, STATE_DPP_RECFG_AUTH_FAILED,
-                                ActStatus_No_Response, RESPONDER_STATUS_AUTH_FAILURE, pWifiDppSta);
+                        SET_DPP_DEVICE_CONTEXT_STATES(ctx, STATE_DPP_RECFG_AUTH_FAILED,
+                                ActStatus_No_Response, RESPONDER_STATUS_AUTH_FAILURE);
                         end_device_provisioning(ctx);
                         //log_dpp_diagnostics("%s MAC: %s\n", "Wifi DPP: RESPONSE PENDING FAILURE", pWifiDppSta->ClientMac);//ONE_WIFI
                     }
@@ -307,8 +309,8 @@ void process_easy_connect_event_timeout(wifi_device_dpp_context_t *ctx, wifi_eas
                 if (ctx->dpp_init_retries < ctx->max_retries) {
                     wifi_util_dbg_print(WIFI_DPP, "%s:%d: Trying to send DPP Authentication Request Frame ... \n", __func__, __LINE__);
                     if (wifi_dppInitiate(ctx) == RETURN_OK) {
-                        set_dpp_device_context_states(ctx, STATE_DPP_AUTH_RSP_PENDING, 
-                                ActStatus_No_Response, RESPONDER_STATUS_RESPONSE_PENDING, pWifiDppSta);
+                        SET_DPP_DEVICE_CONTEXT_STATES(ctx, STATE_DPP_AUTH_RSP_PENDING,
+                                ActStatus_No_Response, RESPONDER_STATUS_RESPONSE_PENDING);
                         log_dpp_diagnostics("Wifi DPP: STATE_DPP_AUTH_RSP_PENDING\n");
                         wifi_util_dbg_print(WIFI_DPP, "%s:%d: DPP Authentication Request Frame send success\n", __func__, __LINE__);
                     } else {
@@ -320,8 +322,8 @@ void process_easy_connect_event_timeout(wifi_device_dpp_context_t *ctx, wifi_eas
                     ctx->dpp_init_retries = 0;
                     ctx->session_data.channel = next_ch;
                     if (wifi_dppInitiate(ctx) == RETURN_OK) {
-                        set_dpp_device_context_states(ctx, STATE_DPP_AUTH_RSP_PENDING, 
-                                ActStatus_No_Response, RESPONDER_STATUS_RESPONSE_PENDING, pWifiDppSta);
+                        SET_DPP_DEVICE_CONTEXT_STATES(ctx, STATE_DPP_AUTH_RSP_PENDING,
+                                ActStatus_No_Response, RESPONDER_STATUS_RESPONSE_PENDING);
                         log_dpp_diagnostics("Wifi DPP: STATE_DPP_AUTH_RSP_PENDING\n");
                         wifi_util_dbg_print(WIFI_DPP, "%s:%d: DPP Authentication Request Frame send success\n", __func__, __LINE__);
                     } else {
@@ -330,8 +332,8 @@ void process_easy_connect_event_timeout(wifi_device_dpp_context_t *ctx, wifi_eas
                     ctx->dpp_init_retries++;
                     data_plane_queue_push(data_plane_queue_create_event(ctx,wifi_data_plane_event_type_dpp, FALSE)); //need to pass NoLock
                 } else {
-                    set_dpp_device_context_states(ctx, STATE_DPP_AUTH_FAILED, 
-                            ActStatus_Failed, RESPONDER_STATUS_AUTH_FAILURE, pWifiDppSta);
+                    SET_DPP_DEVICE_CONTEXT_STATES(ctx, STATE_DPP_AUTH_FAILED,
+                            ActStatus_Failed, RESPONDER_STATUS_AUTH_FAILURE);
                     //log_dpp_diagnostics("%s MAC: %s\n", "Wifi DPP: RESPONDER_STATUS_AUTH_FAILURE", pWifiDppSta->ClientMac);//ONE_WIFI
                     //pWifiDppSta->Activate = FALSE;//ONE_WIFI
                     end_device_provisioning(ctx);
@@ -346,13 +348,13 @@ void process_easy_connect_event_timeout(wifi_device_dpp_context_t *ctx, wifi_eas
                     } else {
                         wifi_util_dbg_print(WIFI_DPP, "%s:%d: DPP Reconfig Authentication Request Frame send failed\n", __func__, __LINE__);
                     } 
-                    set_dpp_device_context_states(ctx, STATE_DPP_RECFG_AUTH_RSP_PENDING, 
-                            ActStatus_No_Response, RESPONDER_STATUS_RESPONSE_PENDING, pWifiDppSta);
+                    SET_DPP_DEVICE_CONTEXT_STATES(ctx, STATE_DPP_RECFG_AUTH_RSP_PENDING,
+                            ActStatus_No_Response, RESPONDER_STATUS_RESPONSE_PENDING);
                     ctx->session_data.state = STATE_DPP_RECFG_AUTH_RSP_PENDING;
                     data_plane_queue_push(data_plane_queue_create_event(ctx,wifi_data_plane_event_type_dpp, FALSE)); //need to pass NoLock
                 } else {
-                    set_dpp_device_context_states(ctx, STATE_DPP_RECFG_AUTH_FAILED, 
-                            ActStatus_Failed, RESPONDER_STATUS_AUTH_FAILURE, pWifiDppSta);
+                    SET_DPP_DEVICE_CONTEXT_STATES(ctx, STATE_DPP_RECFG_AUTH_FAILED,
+                            ActStatus_Failed, RESPONDER_STATUS_AUTH_FAILURE);
                     //log_dpp_diagnostics("%s MAC: %s\n", "Wifi DPP: RESPONDER_STATUS_AUTH_FAILURE", pWifiDppSta->ClientMac);//ONE_WIFI
                     //pWifiDppSta->Activate = FALSE;//ONE_WIFI
                     end_device_provisioning(ctx);
@@ -360,15 +362,15 @@ void process_easy_connect_event_timeout(wifi_device_dpp_context_t *ctx, wifi_eas
             } else if (ctx->session_data.state == STATE_DPP_AUTHENTICATED) {
                 // DPP Config Request never arrived
                 if (ctx->check_for_config_requested >= ctx->max_retries/*5*/) {
-                    set_dpp_device_context_states(ctx, STATE_DPP_UNPROVISIONED, 
-                            ActStatus_Failed, RESPONDER_STATUS_AUTH_FAILURE, pWifiDppSta);
+                    SET_DPP_DEVICE_CONTEXT_STATES(ctx, STATE_DPP_UNPROVISIONED,
+                            ActStatus_Failed, RESPONDER_STATUS_AUTH_FAILURE);
                     //log_dpp_diagnostics("%s MAC: %s\n", "Wifi DPP: RESPONDER_STATUS_AUTH_FAILURE", pWifiDppSta->ClientMac);//ONE_WIFI
                     //pWifiDppSta->Activate = FALSE;//ONE_WIFI
                     end_device_provisioning(ctx);
                 } else {
                     ctx->check_for_config_requested++;
-                    set_dpp_device_context_states(ctx, STATE_DPP_AUTHENTICATED, 
-                            ActStatus_In_Progress, RESPONDER_STATUS_RESPONSE_PENDING, pWifiDppSta);
+                    SET_DPP_DEVICE_CONTEXT_STATES(ctx, STATE_DPP_AUTHENTICATED,
+                            ActStatus_In_Progress, RESPONDER_STATUS_RESPONSE_PENDING);
                     data_plane_queue_push(data_plane_queue_create_event(ctx,wifi_data_plane_event_type_dpp, FALSE)); //need to pass NoLock
                 }
             } else if (ctx->session_data.state == STATE_DPP_CFG_RSP_SENT) {
@@ -376,14 +378,14 @@ void process_easy_connect_event_timeout(wifi_device_dpp_context_t *ctx, wifi_eas
                 if ((ctx->enrollee_version == 1)) { /* configurator shall support both 2.0 & 1.0, hence check only enrollee */
                     to_mac_str(ctx->session_data.sta_mac, mac_str);
                     if (wifi_api_is_device_associated(ctx->ap_index, mac_str) == true) {
-                        set_dpp_device_context_states(ctx, STATE_DPP_PROVISIONED, 
-                                ActStatus_OK, RESPONDER_STATUS_OK, pWifiDppSta);
+                        SET_DPP_DEVICE_CONTEXT_STATES(ctx, STATE_DPP_PROVISIONED,
+                                ActStatus_OK, RESPONDER_STATUS_OK);
                         //pWifiDppSta->Activate = FALSE;//ONE_WIFI
                         log_dpp_diagnostics("Wifi DPP: RESPONDER_STATUS_OK\n");
                         end_device_provisioning(ctx);
                     } else if (ctx->check_for_associated >= ctx->max_retries/*5*/) {
-                        set_dpp_device_context_states(ctx, STATE_DPP_UNPROVISIONED, 
-                                ActStatus_Config_Error, RESPONDER_STATUS_CONFIG_REJECTED, pWifiDppSta);
+                        SET_DPP_DEVICE_CONTEXT_STATES(ctx, STATE_DPP_UNPROVISIONED,
+                                ActStatus_Config_Error, RESPONDER_STATUS_CONFIG_REJECTED);
                         //pWifiDppSta->Activate = FALSE;//ONE_WIFI
                         //log_dpp_diagnostics("%s MAC: %s\n", "Wifi DPP: RESPONDER_STATUS_CONFIG_REJECTED", pWifiDppSta->ClientMac);//ONE_WIFI
                         end_device_provisioning(ctx);
@@ -394,8 +396,8 @@ void process_easy_connect_event_timeout(wifi_device_dpp_context_t *ctx, wifi_eas
                 }
             } else if ((ctx->session_data.state == STATE_DPP_AUTH_FAILED) || (ctx->session_data.state == STATE_DPP_RECFG_AUTH_FAILED)) {
                 // Authentication Cnf send failure
-                set_dpp_device_context_states(ctx, STATE_DPP_UNPROVISIONED, 
-                        ActStatus_Failed, RESPONDER_STATUS_AUTH_FAILURE, pWifiDppSta);
+                SET_DPP_DEVICE_CONTEXT_STATES(ctx, STATE_DPP_UNPROVISIONED,
+                        ActStatus_Failed, RESPONDER_STATUS_AUTH_FAILURE);
                 //pWifiDppSta->Activate = FALSE;//ONE_WIFI
                 //log_dpp_diagnostics("%s MAC: %s\n", "Wifi DPP: RESPONDER_STATUS_AUTH_FAILURE", pWifiDppSta->ClientMac);//ONE_WIFI
                 end_device_provisioning(ctx);

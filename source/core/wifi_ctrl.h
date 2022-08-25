@@ -29,7 +29,9 @@ extern "C" {
 #include <pthread.h>
 #include "wifi_base.h"
 #include "wifi_db.h"
+#if DML_SUPPORT
 #include "wifi_blaster.h"
+#endif // DML_SUPPORT
 #include "vap_svc.h"
 #include "cJSON.h"
 #include "collection.h"
@@ -180,7 +182,9 @@ typedef struct wifi_ctrl {
     bool                factory_reset;
     bool                marker_list_config_subscribed;
     wifiapi_t           wifiapi;
+#if DML_SUPPORT
     wifi_rfc_dml_parameters_t    rfc_params;
+#endif // DML_SUPPORT
     unsigned int        sta_tree_instance_num;
     vap_svc_t           ctrl_svc[vap_svc_type_max];
     wifi_apps_t         fi_apps[wifi_apps_type_max];
@@ -268,7 +272,9 @@ wifi_interworking_t * Get_wifi_object_interworking_parameter(uint8_t vapIndex);
 wifi_front_haul_bss_t * Get_wifi_object_bss_parameter(uint8_t vapIndex);
 wifi_vap_security_t * Get_wifi_object_security_parameter(uint8_t vapIndex);
 wifi_vap_info_t* get_wifidb_vap_parameters(uint8_t vapIndex);
+#if DML_SUPPORT
 wifi_rfc_dml_parameters_t* get_wifi_db_rfc_parameters(void);
+#endif // DML_SUPPORT
 rdk_wifi_radio_t* find_radio_config_by_index(uint8_t r_index);
 int get_device_config_list(char *d_list, int size, char *str);
 int get_cm_mac_address(char *mac);

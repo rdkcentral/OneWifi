@@ -45,6 +45,7 @@
 #include "harvester.h"
 #include "ccsp_WifiLog_wrapper.h"
 #include "ccsp_trace.h"
+#include "platform-logger.h"
 #include "wifi_util.h"
 
 // UUID - 8b27dafc-0c4d-40a1-b62c-f24a34074914
@@ -353,7 +354,7 @@ void upload_single_client_msmt_data(bssid_data_t *bssid_info, sta_data_t *sta_in
     avro_value_set_fixed(&optional, transaction_id, 16);
     if (CHK_AVRO_ERR) wifi_util_dbg_print(WIFI_MON, "%s:%d: Avro error: %s\n", __func__, __LINE__, avro_strerror());
     wifi_util_dbg_print(WIFI_MON, "Report transaction uuid generated is %s\n", trans_id);
-    CcspTraceInfo(("Single client report transaction uuid generated is %s\n", trans_id ));
+    platform_trace_warning(WIFI_MON, "Single client report transaction uuid generated is %s\n", trans_id );
 
     //source - string
     avro_value_get_by_name(&adr, "header", &adrField, NULL);
@@ -938,7 +939,7 @@ void upload_single_client_active_msmt_data(bssid_data_t *bssid_info, sta_data_t 
     }
 
     wifi_util_dbg_print(WIFI_MON, "Report transaction uuid generated is %s\n", trans_id);
-    CcspTraceInfo(("Single client report transaction uuid generated is %s\n", trans_id ));
+    platform_trace_warning(WIFI_MON, "Single client report transaction uuid generated is %s\n", trans_id );
 
     avro_value_get_by_name(&adr, "header", &adrField, NULL);
 

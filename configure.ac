@@ -59,6 +59,58 @@ AC_PREFIX_DEFAULT(`pwd`)
 AC_ENABLE_SHARED
 AC_DISABLE_STATIC
 
+CCSP_COMMON_FLAG = " "
+AC_ARG_ENABLE([ccsp_common],
+             AS_HELP_STRING([--enable-ccsp-common],[enable ccsp-common support (default is no)]),
+             [
+              case "${enableval}" in
+               yes) CCSP_COMMON_SUPPORT_ENABLE=true
+                    CCSP_COMMON_FLAG="-DCCSP_COMMON"
+                    ;;
+               no)  CCSP_COMMON_SUPPORT_ENABLE=false AC_MSG_ERROR([ccsp-common support is disabled]);;
+               *)   AC_MSG_ERROR([bad value ${enableval} for --enable-ccsp-common ]);;
+              esac
+             ],
+             [echo "ccsp-common is disabled"])
+AM_CONDITIONAL([CCSP_COMMON_SUPPORT], [test x$CCSP_COMMON_SUPPORT_ENABLE = xtrue])
+AC_SUBST(CCSP_COMMON_FLAG)
+
+DML_ENABLE_FLAG = " "
+AC_ARG_ENABLE([dml],
+             AS_HELP_STRING([--enable-dml],[enable DML support (default is no)]),
+             [
+              case "${enableval}" in
+               yes) if test x$CCSP_COMMON_SUPPORT_ENABLE = xtrue; then
+                        ONEWIFI_DML_SUPPORT_ENABLE=true
+                        DML_ENABLE_FLAG="-DDML_SUPPORT"
+                    else
+                        ONEWIFI_DML_SUPPORT_ENABLE=false
+                        AC_MSG_ERROR([--enable-dml cannot be enabled without --enable-ccsp-common])
+                    fi
+                    ;;
+               no)  ONEWIFI_DML_SUPPORT_ENABLE=false AC_MSG_ERROR([DML support is disabled]);;
+               *)   AC_MSG_ERROR([bad value ${enableval} for --enable-dml ]);;
+              esac
+             ],
+             [echo "DML is disabled"])
+AM_CONDITIONAL([ONEWIFI_DML_SUPPORT], [test x$ONEWIFI_DML_SUPPORT_ENABLE = xtrue])
+AC_SUBST(DML_ENABLE_FLAG)
+
+JOURNALCTL_ENABLE_FLAG = " "
+AC_ARG_ENABLE([journalctl],
+             AS_HELP_STRING([--enable-journalctl],[enable journalctl logging support (default is no)]),
+             [
+              case "${enableval}" in
+               yes) JOURNALCTL_SUPPORT_ENABLE=true
+                    JOURNALCTL_ENABLE_FLAG="-DJOURNALCTL_SUPPORT";;
+               no)  JOURNALCTL_SUPPORT_ENABLE=false AC_MSG_ERROR([journalctl logging support is disabled]);;
+               *)   AC_MSG_ERROR([bad value ${enableval} for --enable-journalctl ]);;
+              esac
+             ],
+             [echo "journalctl logging is disabled"])
+AM_CONDITIONAL([JOURNALCTL_SUPPORT], [test x$JOURNALCTL_SUPPORT_ENABLE = xtrue])
+AC_SUBST(JOURNALCTL_ENABLE_FLAG)
+
 # Specify ccsp cpu arch
 
 AC_ARG_WITH([ccsp-arch],

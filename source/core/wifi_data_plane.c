@@ -19,7 +19,11 @@
  ****************************************************************************/
 
 #include "wifi_data_plane.h"
+#if DML_SUPPORT
 #include "wifi_monitor.h"
+#else
+#include "log.h"
+#endif // DML_SUPPORT
 #include "wifi_util.h"
 
 wifi_data_plane_t g_data_plane_module;
@@ -377,11 +381,11 @@ int init_wifi_data_plane()
         pthread_attr_destroy( attrp );
     }
 #if 0
-    if(ANSC_STATUS_SUCCESS != CosaDmlWiFi_initPasspoint()){
+    if(RETURN_OK != CosaDmlWiFi_initPasspoint()){
         wifi_util_dbg_print(WIFI_MON,"CosaWifiInitialize Error - WiFi failed to Initialize Passpoint.\n");
     }
 #else
-    if(ANSC_STATUS_SUCCESS != WiFi_initPasspoint()){
+    if(RETURN_OK != WiFi_initPasspoint()){
         wifi_util_dbg_print(WIFI_MON,"CosaWifiInitialize Error - WiFi failed to Initialize Passpoint.\n");
     }
 #endif//ONE_WIFI

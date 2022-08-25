@@ -142,11 +142,13 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
     tgt_created_vap_map.num_vaps = 0;
 
 
+#if DML_SUPPORT
     wifi_rfc_dml_parameters_t *rfc_info = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
     if (rfc_info) {
         greylist_rfc = rfc_info->radiusgreylist_rfc;
         rfc_passpoint_enable = rfc_info->wifipasspoint_rfc;
     }
+#endif // DML_SUPPORT
     wifi_global_param_t *pcfg = (wifi_global_param_t *) get_wifidb_wifi_global_param();
 
     for (i = 0; i < map->num_vaps; i++) {

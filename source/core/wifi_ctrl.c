@@ -19,17 +19,21 @@
 
 #include <stdio.h>
 #include <stdbool.h>
+#if DML_SUPPORT
 #include "ansc_platform.h"
+#else
+#include <sys/types.h>
+#endif // DML_SUPPORT
 #include "wifi_hal.h"
+#include "wifi_hal_rdk_framework.h"
 #include "wifi_ctrl.h"
 #include "wifi_mgr.h"
 #include "wifi_util.h"
-#include "webconfig_framework.h"
 #include "scheduler.h"
+#include <errno.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <rbus.h>
-#include "wifi_hal_rdk_framework.h"
 #include "ieee80211.h"
 
 #ifdef CMWIFI_RDKB
@@ -230,7 +234,9 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
     ctrl_event_t *queue_data = NULL;
     static uint8_t max_conn_retry_timeout = 0;
     vap_svc_t *ext_svc;
+#if CCSP_COMMON
     wifi_apps_t *analytics = NULL;
+#endif // CCSP_COMMON
 
     pthread_mutex_lock(&ctrl->lock);
     while (ctrl->exit_ctrl == false) {
@@ -330,10 +336,12 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
             }
             greylist_event++;
 
+#if CCSP_COMMON
             analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
             if (analytics->event_fn != NULL) {
                 analytics->event_fn(analytics, ctrl_event_type_exec, ctrl_event_exec_timeout, NULL);
             }
+#endif // CCSP_COMMON
         } else {
             wifi_util_dbg_print(WIFI_CTRL,"RDK_LOG_WARN, WIFI %s: Invalid Return Status %d\n",__FUNCTION__,rc);
             continue;
@@ -460,6 +468,7 @@ void disconnect_wifi(wifi_platform_property_t *wifi_prop, unsigned int freq)
 
 bool check_for_greylisted_mac_filter(void)
 {
+#if DML_SUPPORT
     acl_entry_t *acl_entry = NULL;
     rdk_wifi_vap_info_t *l_rdk_vap_array = NULL;
     unsigned int itr, itrj;
@@ -490,6 +499,7 @@ bool check_for_greylisted_mac_filter(void)
             }
         }
     }
+#endif // DML_SUPPORT
     return false;
 }
 void rbus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
@@ -659,6 +669,7 @@ int start_wifi_services(void)
     return RETURN_OK;
 }
 
+#if DML_SUPPORT
 bool get_notify_wifi_from_psm(char *PsmParamName)
 {
     int rc = 0;
@@ -739,6 +750,7 @@ void factory_reset_wifi(void)
     if (p_dml_param->WifiFactoryReset) {
     }
 }
+#endif // DML_SUPPORT
 
 int captive_portal_check(void)
 {
@@ -748,11 +760,14 @@ int captive_portal_check(void)
     wifi_vap_info_map_t *wifi_vap_map = NULL;
     UINT i =0;
     int rc = 0;
-    bool default_private_credentials = false,get_config_wifi = false,psm_notify_flag=false;
+    bool default_private_credentials = false,get_config_wifi = false;
+#if DML_SUPPORT
+    bool psm_notify_flag=false;
+    char *PsmParamName = "eRT.com.cisco.spvtg.ccsp.Device.WiFi.NotifyWiFiChanges";
+    char pInValue[32] = "";
+#endif // DML_SUPPORT
     char default_ssid[32] = {0}, default_password[32] = {0};
     rbusValue_t value = NULL, config_wifi_value = NULL;
-    char pInValue[32] = "";
-    char *PsmParamName = "eRT.com.cisco.spvtg.ccsp.Device.WiFi.NotifyWiFiChanges";
 
     get_ssid_from_device_mac(default_ssid);
     rbusValue_Init(&value);
@@ -779,6 +794,7 @@ int captive_portal_check(void)
     }
     wifi_util_dbg_print(WIFI_CTRL,"Private vaps credentials= %d\n",default_private_credentials);
  
+#if DML_SUPPORT
     // Get PSM value of eRT.com.cisco.spvtg.ccsp.Device.WiFi.NotifyWiFiChanges
     psm_notify_flag = get_notify_wifi_from_psm(PsmParamName);
 
@@ -793,6 +809,7 @@ int captive_portal_check(void)
         // set PSM value of eRT.com.cisco.spvtg.ccsp.Device.WiFi.NotifyWiFiChanges
         set_notify_wifi_to_psm(PsmParamName,pInValue);
     }
+#endif // DML_SUPPORT
     //Get CONFIG_WIFI
     rc = rbus_get(g_wifi_mgr->ctrl.rbus_handle, CONFIG_WIFI, &value);
 
@@ -835,6 +852,7 @@ int captive_portal_check(void)
 
 int start_wifi_health_monitor_thread(void)
 {
+#if DML_SUPPORT
     static BOOL monitor_running = false;
 
     if (monitor_running == true) {
@@ -848,6 +866,7 @@ int start_wifi_health_monitor_thread(void)
     }
 
     monitor_running = true;
+#endif // DML_SUPPORT
 
     return RETURN_OK;
 }
@@ -1039,6 +1058,7 @@ void channel_change_callback(wifi_channel_change_event_t radio_channel_param)
     return;
 }
 
+#if CCSP_COMMON
 int analytics_callback(char *fmt, ...)
 {
     va_list args;
@@ -1052,6 +1072,7 @@ int analytics_callback(char *fmt, ...)
 
     return 0;
 }
+#endif // CCSP_COMMON
 
 int init_wifi_ctrl(wifi_ctrl_t *ctrl)
 {
@@ -1094,10 +1115,12 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
         svc_init(&ctrl->ctrl_svc[i], (vap_svc_type_t)i);
     }
 
+#if DML_SUPPORT
     // initialize mgmt frame handling params
     for (i = 0; i < wifi_apps_type_max; i++) {
         wifi_apps_init(&ctrl->fi_apps[i], (wifi_apps_type_t)i);
     }
+#endif // DML_SUPPORT
 
     //Register to RBUS for webconfig interactions
     rbus_register_handlers(ctrl);
@@ -1163,7 +1186,7 @@ void telemetry_bootup_time_wifibroadcast()
     int num_radios = getNumberRadios();
     for (int i = 0; i < num_radios; i++) {
         apIndex = getPrivateApFromRadioIndex(i);
-        CcspTraceWarning(("bootup_time_wifibroadcast - apIndex %d\n",apIndex));
+        wifi_util_dbg_print(WIFI_CTRL, "bootup_time_wifibroadcast - apIndex %d\n",apIndex);
         vapInfo =  get_wifidb_vap_parameters(apIndex);
         if(vapInfo != NULL) {
             if ( vapInfo->u.bss_info.showSsid == TRUE) {
@@ -1174,7 +1197,7 @@ void telemetry_bootup_time_wifibroadcast()
             advertise_enabled = FALSE;
             unsigned int uptime;
             uptime = get_Uptime();
-            CcspTraceWarning(("RDK_LOG_WARN,Wifi_Broadcast_complete:%d\n",uptime));
+            wifi_util_dbg_print(WIFI_CTRL, "RDK_LOG_WARN,Wifi_Broadcast_complete:%d\n",uptime);
             t2_event_d("bootuptime_WifiBroadcasted_split", uptime);
         }
     }
@@ -1190,9 +1213,11 @@ void check_log_upload_cron_job()
 
 int start_wifi_ctrl(wifi_ctrl_t *ctrl)
 {
+#if CCSP_COMMON
     wifi_apps_t     *analytics = NULL;
 
     analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
+#endif // CCSP_COMMON
 
     ctrl->webconfig_state = ctrl_webconfig_state_none;
 
@@ -1210,18 +1235,22 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
     //Start Wifi Monitor Thread
     start_wifi_health_monitor_thread();
 
+#if CCSP_COMMON
     if (analytics->event_fn != NULL) {
         analytics->event_fn(analytics, ctrl_event_type_exec, ctrl_event_exec_start, NULL);
     }
 
     wifi_hal_analytics_callback_register(analytics_callback);
+#endif // CCSP_COMMON
 
     ctrl->exit_ctrl = false;
     ctrl_queue_loop(ctrl);
 
+#if CCSP_COMMON
     if (analytics->event_fn != NULL) {
         analytics->event_fn(analytics, ctrl_event_type_exec, ctrl_event_exec_stop, NULL);
     }
+#endif // CCSP_COMMON
     wifi_util_info_print(WIFI_CTRL,"%s:%d Exited queue_wifi_ctrl_task.\n",__FUNCTION__,__LINE__);
     return RETURN_OK;
 }
@@ -1585,7 +1614,7 @@ void set_wifi_public_vap_enable_status(void)
     }
 }
 
-int get_wifi_rfc_parameters(char *str, void *value)
+int  get_wifi_rfc_parameters(char *str, void *value)
 {
     int ret = RETURN_OK;
 
@@ -1593,6 +1622,7 @@ int get_wifi_rfc_parameters(char *str, void *value)
         return RETURN_ERR;
     }
 
+#if DML_SUPPORT
     wifi_mgr_t *l_wifi_mgr = get_wifimgr_obj();
     wifi_util_dbg_print(WIFI_CTRL, "%s get wifi rfc parameter %s\n", __FUNCTION__, str);
     if ((strcmp(str, RFC_WIFI_PASSPOINT) == 0)) {
@@ -1607,10 +1637,20 @@ int get_wifi_rfc_parameters(char *str, void *value)
         wifi_util_dbg_print(WIFI_CTRL, "%s get wifi rfc parameter not found %s\n", __FUNCTION__, str);
         ret = RETURN_ERR;
     }
+#else
+    if (strncmp(str, RFC_WIFI_PASSPOINT, strlen(RFC_WIFI_PASSPOINT)) == 0) {
+        *(bool*)value = false;
+    } else if (strncmp(str, RFC_WIFI_INTERWORKING, strlen(RFC_WIFI_INTERWORKING)) == 0) {
+        *(bool*)value = false;
+    } else {
+        ret = RETURN_ERR;
+    }
+#endif // CCSP_COMMON
 
     return ret;
 }
 
+#if DML_SUPPORT
 wifi_dml_parameters_t* get_wifi_dml_parameters(void)
 {
     wifi_mgr_t *p_wifi_db_data = get_wifimgr_obj();
@@ -1823,6 +1863,7 @@ int set_dml_init_status(bool status)
     pthread_cond_signal(&wifi_mgr->dml_init_status);
     return ret;
 }
+#endif // DML_SUPPORT
 
 rdk_wifi_radio_t* find_radio_config_by_index(uint8_t index)
 {

@@ -19,6 +19,7 @@
 
 #include <stdio.h>
 #include <stdbool.h>
+#include "const.h"
 #include "wifi_hal.h"
 #include "wifi_ctrl.h"
 #include "wifi_mgr.h"
@@ -175,10 +176,10 @@ int webconfig_consumer_rbus_register_events(webconfig_consumer_t *consumer)
                                 { NULL, NULL, NULL, NULL, NULL, NULL }},
     };
 
-    rc = rbus_regDataElements(consumer->rbus_handle, ARRAY_SZ(rbusEvents), rbusEvents);
+    rc = rbus_regDataElements(consumer->rbus_handle, ARRAY_SIZE(rbusEvents), rbusEvents);
     if (rc != RBUS_ERROR_SUCCESS) {
         printf("%s:%d rbus_regDataElements failed\n",__FUNCTION__, __LINE__);
-        rbus_unregDataElements(consumer->rbus_handle, ARRAY_SZ(rbusEvents), rbusEvents);
+        rbus_unregDataElements(consumer->rbus_handle, ARRAY_SIZE(rbusEvents), rbusEvents);
         rbus_close(consumer->rbus_handle);
         return RETURN_ERR;
     } else {
@@ -232,7 +233,7 @@ int consumer_events_subscribe(webconfig_consumer_t *consumer)
         { WIFI_WEBCONFIG_GET_NULL_SUBDOC, NULL, 0, 0, webconfig_consumer_get, NULL, NULL, NULL}
     };
 
-    if (rbusEvent_SubscribeEx(consumer->rbus_handle, rbusEvents, ARRAY_SZ(rbusEvents), 0) != RBUS_ERROR_SUCCESS) {
+    if (rbusEvent_SubscribeEx(consumer->rbus_handle, rbusEvents, ARRAY_SIZE(rbusEvents), 0) != RBUS_ERROR_SUCCESS) {
         printf("%s Rbus events subscribe failed\n",__FUNCTION__);
         return -1;
     } else {

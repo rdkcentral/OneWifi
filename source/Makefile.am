@@ -16,13 +16,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ##########################################################################
-SUBDIRS = dml utils core sampleapps
-SUBDIRS += dml sampleapps test/core
+SUBDIRS = utils core
 
 if WITH_LIBWEBCONFIG
 SUBDIRS += webconfig
 endif
 
+if CCSP_COMMON_SUPPORT
+SUBDIRS += test/core
+SUBDIRS += sampleapps
+SUBDIRS += dml
+
 if WITH_GTEST_SUPPORT
 SUBDIRS += test
+endif
+
 endif

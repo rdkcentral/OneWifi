@@ -20,23 +20,28 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <sys/stat.h>
+#if DML_SUPPORT
 #include "ansc_platform.h"
+#include "wifi_passpoint.h"
+#endif // DML_SUPPORT
 #include "wifi_hal.h"
 #include "wifi_ctrl.h"
 #include "wifi_mgr.h"
 #include "wifi_util.h"
+#if DML_SUPPORT
 #include "wifi_monitor.h"
-#include "webconfig_framework.h"
+#endif // DML_SUPPORT
 #include "scheduler.h"
 #include <unistd.h>
 #include <pthread.h>
 #include <rbus.h>
 #include "wifi_hal_rdk_framework.h"
+#if DML_SUPPORT
 #include "safec_lib_common.h"
-#include "wifi_passpoint.h"
 
 #define NEIGHBOR_SCAN_RESULT_INTERVAL 5000 //5sec
 static int neighbor_scan_task_id = -1;
+#endif // DML_SUPPORT
 
 void process_scan_results_event(scan_results_t *results, unsigned int len)
 {
@@ -112,31 +117,41 @@ int remove_xfinity_acl_entries(bool remove_all_greylist_entry,bool prefer_privat
 void process_unknown_frame_event(frame_data_t *msg, uint32_t msg_length)
 {
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir);
+#if DML_SUPPORT
     send_app_event(ctrl_event_type_hal_ind, msg);
+#endif // DML_SUPPORT
 }
 
 void process_probe_req_frame_event(frame_data_t *msg, uint32_t msg_length)
 {
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir);
+#if DML_SUPPORT
     send_app_event(ctrl_event_type_hal_ind, msg);
+#endif // DML_SUPPORT
 }
 
 void process_auth_frame_event(frame_data_t *msg, uint32_t msg_length)
 {
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir);
+#if DML_SUPPORT
     send_app_event(ctrl_event_type_hal_ind, msg);
+#endif // DML_SUPPORT
 }
 
 void process_assoc_req_frame_event(frame_data_t *msg, uint32_t msg_length)
 {
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir);
+#if DML_SUPPORT
     send_app_event(ctrl_event_type_hal_ind, msg);
+#endif // DML_SUPPORT
 }
 
 void process_assoc_rsp_frame_event(frame_data_t *msg, uint32_t msg_length)
 {
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir);
+#if DML_SUPPORT
     send_app_event(ctrl_event_type_hal_ind, msg);
+#endif // DML_SUPPORT
 }
 
 void process_dpp_public_action_frame_event(frame_data_t *msg, uint32_t msg_length)
@@ -150,6 +165,7 @@ void process_dpp_config_req_frame_event(frame_data_t *msg, uint32_t msg_length)
 }
 
 
+#if DML_SUPPORT
 static wifi_anqp_node_t* convert_frame_data_to_anqp(int ap_index, mac_address_t sta, unsigned char token, unsigned char *attrib, unsigned int len)
 {
     char macStr[MAC_STR_LEN];
@@ -626,6 +642,7 @@ void process_anqp_gas_init_frame_event(frame_data_t *msg, uint32_t msg_length)
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Failed to send ANQP Response\n", __func__, __LINE__);
     }
 }
+#endif // DML_SUPPORT
 
 void send_hotspot_status(char* vap_name, bool up)
 {
@@ -672,9 +689,11 @@ void process_xfinity_vaps(int vap_enable, bool hs_evt)
     vap_svc_t  *pub_svc = NULL;
     wifi_ctrl_t *ctrl;
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    bool open_2g_enabled = false, open_5g_enabled = false,sec_2g_enabled = false,sec_5g_enabled = false;
     uint8_t num_radios = getNumberRadios();
+#if DML_SUPPORT
+    bool open_2g_enabled = false, open_5g_enabled = false,sec_2g_enabled = false,sec_5g_enabled = false;
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
+#endif // DML_SUPPORT
 
     pub_svc = get_svc_by_type(ctrl, vap_svc_type_public);
     for(int radio_indx = 0; radio_indx < num_radios; ++radio_indx) {
@@ -692,6 +711,7 @@ void process_xfinity_vaps(int vap_enable, bool hs_evt)
                 tmp_vap_map.vap_array[0].u.bss_info.enabled = false;
             }
             if(vap_enable == 1 ) {
+#if DML_SUPPORT
               if (rfc_param) {
                   open_2g_enabled = rfc_param->hotspot_open_2g_last_enabled;
                   open_5g_enabled = rfc_param->hotspot_open_5g_last_enabled;
@@ -713,6 +733,9 @@ void process_xfinity_vaps(int vap_enable, bool hs_evt)
                   tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
 
               wifi_util_dbg_print(WIFI_CTRL,"enabled is %d\n",tmp_vap_map.vap_array[0].u.bss_info.enabled);
+#else
+              tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
+#endif // DML_SUPPORT
             }
 
             if(pub_svc->update_fn(pub_svc,radio_indx, &tmp_vap_map) != RETURN_OK) {
@@ -1188,12 +1211,14 @@ void process_greylist_mac_filter(void *data)
     unsigned int itr = 0, itrj = 0;
     int reason = 0;
     int vap_index = 0;
+#if DML_SUPPORT
     const char *wifi_health_log = "/rdklogs/logs/wifihealth.txt";
     char log_buf[1024] = {0};
     char time_str[20] = {0};
     time_t now;
     struct tm *time_info;
     bool greylist_client_added = false;
+#endif // DML_SUPPORT
 
     rdk_wifi_vap_info_t *rdk_vap_info = NULL;
     mac_address_t zero_mac = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
@@ -1269,9 +1294,12 @@ void process_greylist_mac_filter(void *data)
 
             snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", rdk_vap_info->vap_name, new_mac_str);
             wifidb_update_wifi_macfilter_config(macfilterkey, acl_entry, true);
+#if DML_SUPPORT
             greylist_client_added = true;
+#endif // DML_SUPPORT
         }
     }
+#if DML_SUPPORT
     //Add time and Mac address to wifihealth.txt
     if (greylist_client_added) {
         time(&now);
@@ -1282,6 +1310,7 @@ void process_greylist_mac_filter(void *data)
         write_to_file(wifi_health_log, log_buf);
         wifi_util_dbg_print(WIFI_CTRL,"%s",log_buf);
    }
+#endif // DML_SUPPORT
 }
 
 void process_wifi_host_sync()
@@ -1576,6 +1605,7 @@ void process_factory_reset_command(bool type)
     p_wifi_mgr->ctrl.webconfig_state |= ctrl_webconfig_state_factoryreset_cfg_rsp_pending;
 }
 
+#if DML_SUPPORT
 void process_radius_grey_list_rfc(bool type)
 {
     bool public_xfinity_vap_status = false;
@@ -1739,6 +1769,8 @@ void process_twoG80211axEnable_rfc(bool type)
         }
     }
 }
+#endif // DML_SUPPORT
+
 void process_prefer_private_rfc(bool type)
 {
     wifi_mgr_t *p_wifi_mgr = get_wifimgr_obj();
@@ -1970,6 +2002,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg)
 
 void process_neighbor_scan_command_event()
 {
+#if DML_SUPPORT
     wifi_monitor_t *monitor_param = (wifi_monitor_t *)get_wifi_monitor();
     wifi_radio_operationParam_t *wifi_radio_oper_param = NULL;
     wifi_neighborScanMode_t scan_mode = WIFI_RADIO_SCAN_MODE_FULL;
@@ -1988,6 +2021,7 @@ void process_neighbor_scan_command_event()
         scheduler_add_timer_task(monitor_param->sched, FALSE, &neighbor_scan_task_id, get_neighbor_scan_results, NULL,
                     NEIGHBOR_SCAN_RESULT_INTERVAL, 1);
     }
+#endif // DML_SUPPORT
 }
 
 int wifidb_vap_status_update(bool status)
@@ -2037,9 +2071,11 @@ void process_mesh_status_command(bool mesh_enable_status)
 
 void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len, ctrl_event_subtype_t subtype)
 {
+#if CCSP_COMMON
     wifi_apps_t     *analytics = NULL;
 
     analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
+#endif // CCSP_COMMON
 
     switch (subtype) {
         case ctrl_event_type_command_sta_connect:
@@ -2049,6 +2085,7 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len, ctrl_
         case ctrl_event_type_command_factory_reset:
             process_factory_reset_command(*(bool *)data);
             break;
+#if DML_SUPPORT
         case ctrl_event_type_radius_grey_list_rfc:
             process_radius_grey_list_rfc(*(bool *)data);
             break;
@@ -2070,6 +2107,7 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len, ctrl_
         case ctrl_event_type_twoG80211axEnable_rfc:
             process_twoG80211axEnable_rfc(*(bool *)data);
             break;
+#endif // DML_SUPPORT
 
         case ctrl_event_type_command_kickmac:
             break;
@@ -2124,25 +2162,31 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len, ctrl_
             marker_list_config_event((char *)data, txrx_rate_list_type);
             break;
 
+#if DML_SUPPORT
         case ctrl_event_type_mgmt_frame_rbus_rfc:
             process_mgmt_frame_rbus_enable_event(*(bool *)data);
             break;
+#endif // DML_SUPPORT
 
         default:
             wifi_util_error_print(WIFI_CTRL,"[%s]:WIFI hal handler not supported this event %d\r\n",__FUNCTION__, subtype);
             break;
     }
 
+#if CCSP_COMMON
     if (analytics->event_fn != NULL) {
         analytics->event_fn(analytics, ctrl_event_type_command, subtype, data);
     }
+#endif // CCSP_COMMON
 }
 
 void handle_hal_indication(wifi_ctrl_t *ctrl, void *data, unsigned int len, ctrl_event_subtype_t subtype)
 {
+#if CCSP_COMMON
     wifi_apps_t     *analytics = NULL;
 
     analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
+#endif // CCSP_COMMON
 
     switch (subtype) {
         case ctrl_event_hal_unknown_frame:
@@ -2173,9 +2217,11 @@ void handle_hal_indication(wifi_ctrl_t *ctrl, void *data, unsigned int len, ctrl
             process_dpp_config_req_frame_event(data, len);
             break;
 
+#if DML_SUPPORT
         case ctrl_event_hal_anqp_gas_init_frame:
             process_anqp_gas_init_frame_event(data, len);
             break;
+#endif // DML_SUPPORT
 
         case ctrl_event_hal_sta_conn_status:
             process_sta_conn_status_event(data, len);
@@ -2207,9 +2253,11 @@ void handle_hal_indication(wifi_ctrl_t *ctrl, void *data, unsigned int len, ctrl
             break;
     }
 
+#if CCSP_COMMON
     if (analytics->event_fn != NULL) {
         analytics->event_fn(analytics, ctrl_event_type_hal_ind, subtype, data);
     }
+#endif // CCSP_COMMON
 }
 
 void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len, ctrl_event_subtype_t subtype)
@@ -2217,10 +2265,12 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
     webconfig_t *config;
     webconfig_subdoc_data_t data = {0};
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
-    wifi_apps_t    *analytics = NULL;
 
     config = &ctrl->webconfig;
+#if CCSP_COMMON
+    wifi_apps_t    *analytics = NULL;
     analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
+#endif // CCSP_COMMON
 
     switch (subtype) {
         case ctrl_event_webconfig_set_data:
@@ -2228,13 +2278,17 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
         case ctrl_event_webconfig_set_data_webconfig:
         case ctrl_event_webconfig_set_data_ovsm:
             memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap, sizeof(wifi_hal_capability_t));
+#if CCSP_COMMON
             if (analytics->event_fn != NULL) {
                 analytics->event_fn(analytics, ctrl_event_type_webconfig, subtype, NULL);
             }
+#endif // CCSP_COMMON
             webconfig_decode(config, &data, raw);
+#if CCSP_COMMON
             if (analytics->event_fn != NULL) {
                 analytics->event_fn(analytics, ctrl_event_type_webconfig, subtype, &data);
             }
+#endif // CCSP_COMMON
             break;
 
         case ctrl_event_webconfig_set_data_tunnel:

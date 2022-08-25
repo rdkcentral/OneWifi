@@ -23,6 +23,7 @@
 #include "stdlib.h"
 #include <sys/time.h>
 #include <assert.h>
+#include "const.h"
 #include "vap_svc.h"
 #include "wifi_ctrl.h"
 #include "wifi_mgr.h"
@@ -274,8 +275,10 @@ void ext_try_connecting(vap_svc_t *svc)
 
     ctrl = svc->ctrl;
     ext = &svc->u.ext;
+#if CCSP_COMMON
     wifi_apps_t    *analytics = NULL;
     analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
+#endif // CCSP_COMMON
 
     if (ext->conn_state == connection_state_connection_to_lcb_in_progress) {
         found_at_least_one_candidate = true;
@@ -322,7 +325,9 @@ void ext_try_connecting(vap_svc_t *svc)
                 process_ext_connect_algorithm, svc,
                 EXT_CONN_STATUS_IND_TIMEOUT, 1);
         wifi_util_info_print(WIFI_CTRL,"%s:%d Triggered wifi connect.. vap_index:%d\r\n", __func__, __LINE__, vap_index);
+#if CCSP_COMMON
         analytics->event_fn(analytics, ctrl_event_type_command, ctrl_event_type_sta_connect_in_progress, candidate);
+#endif // CCSP_COMMON
     } else {
         ext->conn_state = connection_state_disconnected_scan_list_none;
         scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,

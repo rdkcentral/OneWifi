@@ -26,6 +26,7 @@ extern "C" {
 
 #include "collection.h"
 #include <sys/time.h>
+#include <pthread.h>
 
 /*
     Return value of scheduled functions.

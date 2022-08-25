@@ -32,8 +32,11 @@
 #define WIFI_INTERWORKING_CFG_FILE        "/nvram/passpoint/InterworkingCfg_%d.json"
 
 #include "collection.h"
+#if DML_SUPPORT
 #include "cosa_wifi_internal.h"
+#else
 #include "wifi_hal.h"
+#endif // DML_SUPPORT
 
 typedef struct {
     UCHAR apIndex;
@@ -64,31 +67,33 @@ typedef struct
 void process_passpoint_timeout();
 void wifi_anqpStartReceivingTestFrame();
 //void process_passpoint_event(cosa_wifi_anqp_context_t *anqpReq);
-//ANSC_STATUS CosaDmlWiFi_RestoreAPInterworking (int apIndex);
-ANSC_STATUS WiFi_initPasspoint(void);
+//INT CosaDmlWiFi_RestoreAPInterworking (int apIndex);
+INT WiFi_initPasspoint(void);
 int enablePassPointSettings(int ap_index, BOOL passpoint_enable, BOOL downstream_disable, BOOL p2p_disable, BOOL layer2TIF);
-ANSC_STATUS WiFi_InitANQPConfig(void);
-ANSC_STATUS WiFi_InitHS2Config(void);
+INT WiFi_InitANQPConfig(void);
+INT WiFi_InitHS2Config(void);
 void WiFi_UpdateANQPVenueInfo(uint8_t vapIndex);
-ANSC_STATUS WiFi_SetGasConfig(char *JSON_STR);
-ANSC_STATUS WiFi_InitGasConfig(void);
-ANSC_STATUS WiFi_SetHS2Status(uint8_t vapIndex, BOOL bValue, BOOL setToPSM);
+INT WiFi_SetGasConfig(char *JSON_STR);
+INT WiFi_InitGasConfig(void);
+INT WiFi_SetHS2Status(uint8_t vapIndex, BOOL bValue, BOOL setToPSM);
 void WiFi_GetGasConfig(char *pString);
-ANSC_STATUS WiFi_SetANQPConfig(uint8_t vapIndex, char *JSON_STR);
-ANSC_STATUS WiFi_SaveANQPCfg(uint8_t vapIndex);
-ANSC_STATUS WiFi_GetWANMetrics(uint8_t vapIndex, char *WANMetrics, UINT WANMetrics_length);
+INT WiFi_SetANQPConfig(uint8_t vapIndex, char *JSON_STR);
+INT WiFi_SaveANQPCfg(uint8_t vapIndex);
+INT WiFi_GetWANMetrics(uint8_t vapIndex, char *WANMetrics, UINT WANMetrics_length);
 void WiFi_GetHS2Stats(uint8_t vapIndex);
-ANSC_STATUS WiFi_SetHS2Config(uint8_t vapIndex, char *JSON_STR);
-ANSC_STATUS WiFi_SaveHS2Cfg(uint8_t vapIndex);
+INT WiFi_SetHS2Config(uint8_t vapIndex, char *JSON_STR);
+INT WiFi_SaveHS2Cfg(uint8_t vapIndex);
 #if defined (DUAL_CORE_XB3)
 int wifi_restoreAPInterworkingElement(int apIndex);
 #endif
-ANSC_STATUS WiFi_DefaultInterworkingConfig(uint8_t vapIndex);
-ANSC_STATUS WiFi_WriteInterworkingConfig (uint8_t vapIndex);
-ANSC_STATUS WiFi_InitInterworkingElement (uint8_t vapIndex);
+INT WiFi_DefaultInterworkingConfig(uint8_t vapIndex);
+INT WiFi_WriteInterworkingConfig (uint8_t vapIndex);
+INT WiFi_InitInterworkingElement (uint8_t vapIndex);
 
+#if DML_SUPPORT
 typedef struct {
     PCOSA_DATAMODEL_WIFI    wifi_dml;
 } wifi_passpoint_t;
+#endif // DML_SUPPORT
         
 #endif //_WIFI_PASSPOINT_H
