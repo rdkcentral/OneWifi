@@ -14886,7 +14886,8 @@ NeighboringScanResult_GetParamStringValue
 
     if( AnscEqualString(ParamName, "Capability", TRUE))
     {
-            return TRUE;
+        *pBool = TRUE;
+        return TRUE;
     }
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     return FALSE;
