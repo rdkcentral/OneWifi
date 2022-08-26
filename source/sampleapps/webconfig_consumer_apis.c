@@ -2384,7 +2384,9 @@ void webconfig_consumer_sta_conn_status(rbusHandle_t handle, rbusEvent_t const* 
     bool conn_status;
     unsigned int index = 0;
     int len = 0;
-    rdk_sta_data_t  sta_data = { 0 };
+    wifi_sta_conn_info_t sta_conn_info;
+    memset(&sta_conn_info, 0, sizeof(wifi_sta_conn_info_t));
+    mac_addr_str_t mac_str;
     const unsigned char *temp_buff;
     rbusValue_t value = rbusObject_GetValue(event->data, NULL );
     if(!value)
@@ -2402,8 +2404,8 @@ void webconfig_consumer_sta_conn_status(rbusHandle_t handle, rbusEvent_t const* 
         return;
     }
 
-    memcpy(&sta_data.stats.connect_status, temp_buff, len);
-    conn_status = (sta_data.stats.connect_status == wifi_connection_status_connected) ? true:false;
+    memcpy(&sta_conn_info, temp_buff, len);
+    conn_status = (sta_conn_info.connect_status == wifi_connection_status_connected) ? true:false;
     if (conn_status == true) {
         printf("%s:%d: Station successfully connected with external AP radio:%d\r\n",
                     __func__, __LINE__, index - 1);
@@ -2416,6 +2418,7 @@ void webconfig_consumer_sta_conn_status(rbusHandle_t handle, rbusEvent_t const* 
         printf("%s:%d: Station disconnected with external AP:%d radio:%d\r\n",
                 __func__, __LINE__, conn_status, index - 1);
     }
+    printf("%s:%d: MAC address info:%s\r\n", __func__, __LINE__, to_mac_str(sta_conn_info.bssid, mac_str));
 
     return;
 }

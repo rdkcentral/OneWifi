@@ -150,6 +150,11 @@ typedef struct scan_result {
     unsigned int         conn_retry_attempt;
 } scan_list_t;
 
+typedef struct {
+    wifi_connection_status_t    connect_status;
+    bssid_t                     bssid;
+}__attribute__((packed)) wifi_sta_conn_info_t;
+
 typedef struct wifi_ctrl {
     bool                exit_ctrl;
     queue_t             *queue;

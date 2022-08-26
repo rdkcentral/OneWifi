@@ -470,8 +470,13 @@ void process_sta_conn_status_event(rdk_sta_data_t *sta_data, unsigned int len)
         rbusValue_Init(&value);
         rbusObject_Init(&rdata, NULL);
 
+        wifi_sta_conn_info_t sta_conn_info;
+        memset(&sta_conn_info, 0, sizeof(wifi_sta_conn_info_t));
+        sta_conn_info.connect_status = sta_data->stats.connect_status;
+        memcpy (sta_conn_info.bssid, sta_data->bss_info.bssid, sizeof(sta_conn_info.bssid));
+
         rbusObject_SetValue(rdata, name, value);
-        rbusValue_SetBytes(value, (uint8_t *)&sta_data->stats.connect_status, sizeof(sta_data->stats.connect_status));
+        rbusValue_SetBytes(value, (uint8_t *)&sta_conn_info, sizeof(sta_conn_info));
         event.name = name;
         event.data = rdata;
         event.type = RBUS_EVENT_GENERAL;

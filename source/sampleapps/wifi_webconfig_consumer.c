@@ -241,6 +241,14 @@ int consumer_events_subscribe(webconfig_consumer_t *consumer)
         return -1;
     }
 
+    strcpy(name, "Device.WiFi.STA.*.Bssid");
+    printf("%s:%d Rbus events subscription start name:%s\n",__FUNCTION__, __LINE__, name);
+    rc = rbusEvent_Subscribe(consumer->rbus_handle, name, eventReceiveHandler, NULL, 0);
+    if (rc != RBUS_ERROR_SUCCESS) {
+        printf("%s:%d Rbus events subscribe failed:%d\n",__FUNCTION__, __LINE__, rc);
+        return -1;
+    }
+
     consumer->rbus_events_subscribed = true;
 
     return 0;

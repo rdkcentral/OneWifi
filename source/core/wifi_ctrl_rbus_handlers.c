@@ -982,8 +982,11 @@ rbusError_t get_sta_attribs(rbusHandle_t handle, rbusProperty_t property, rbusGe
     char extension[64] = {0};
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
     wifi_vap_info_map_t *vap_map;
-    wifi_connection_status_t status = wifi_connection_status_disabled;
+    wifi_sta_conn_info_t sta_conn_info;
+    memset(&sta_conn_info, 0, sizeof(wifi_sta_conn_info_t));
     wifi_interface_name_t *l_interface_name;
+    mac_address_t l_bssid = {0};
+    memset(l_bssid, 0, sizeof(l_bssid));
 
     wifi_util_dbg_print(WIFI_CTRL,"%s Rbus property=%s\n",__FUNCTION__,name);
 
@@ -1001,12 +1004,22 @@ rbusError_t get_sta_attribs(rbusHandle_t handle, rbusProperty_t property, rbusGe
     if (strcmp(extension, "Connection.Status") == 0) {
         for (i = 0; i < vap_map->num_vaps; i++) {
             if (vap_map->vap_array[i].vap_index == vap_index) {
-                status = vap_map->vap_array[i].u.sta_info.conn_status;
+                sta_conn_info.connect_status = vap_map->vap_array[i].u.sta_info.conn_status;
+                memcpy (sta_conn_info.bssid, vap_map->vap_array[i].u.sta_info.bssid, sizeof(vap_map->vap_array[i].u.sta_info.bssid));
                 break;
             }
         }
 
-        rbusValue_SetBytes(value, (uint8_t *)&status, sizeof(status));
+        rbusValue_SetBytes(value, (uint8_t *)&sta_conn_info, sizeof(sta_conn_info));
+    } else if (strcmp(extension, "Bssid") == 0) {
+        for (i = 0; i < vap_map->num_vaps; i++) {
+            if (vap_map->vap_array[i].vap_index == vap_index) {
+                memcpy(l_bssid, vap_map->vap_array[i].u.sta_info.bssid, sizeof(l_bssid));
+                break;
+            }
+        }
+
+        rbusValue_SetBytes(value, (uint8_t *)l_bssid, sizeof(l_bssid));
     } else if (strcmp(extension, "InterfaceName") == 0) {
         l_interface_name = get_interface_name_for_vap_index(vap_index, &mgr->hal_cap.wifi_prop);
         rbusValue_SetString(value, *l_interface_name);
@@ -1093,6 +1106,8 @@ void rbus_register_handlers(wifi_ctrl_t *ctrl)
                                 { WIFI_STA_CONNECT_STATUS, RBUS_ELEMENT_TYPE_PROPERTY,
                                 { get_sta_attribs, set_sta_attribs, NULL, NULL, eventSubHandler, NULL }},
                                 { WIFI_STA_INTERFACE_NAME, RBUS_ELEMENT_TYPE_PROPERTY,
+                                { get_sta_attribs, set_sta_attribs, NULL, NULL, eventSubHandler, NULL }},
+                                { WIFI_STA_CONNECTED_GW_BSSID, RBUS_ELEMENT_TYPE_PROPERTY,
                                 { get_sta_attribs, set_sta_attribs, NULL, NULL, eventSubHandler, NULL }},
                                 { WIFI_RBUS_WIFIAPI_COMMAND, RBUS_ELEMENT_TYPE_METHOD,
                                 { NULL, set_wifiapi_command, NULL, NULL, NULL, NULL }},
