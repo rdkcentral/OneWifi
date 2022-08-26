@@ -2012,4 +2012,17 @@ int  vif_radio_idx_conversion(unsigned int vapIndex, int *input, int *output, ch
     return RETURN_ERR;
 }
 
-
+int get_allowed_channels(wifi_freq_bands_t band, wifi_radio_capabilities_t *radio_cap, int *channels, int *channels_len)
+{
+    unsigned int band_arr_index = 0;
+    int chan_arr_index = 0;
+    if ((radio_cap == NULL) || (channels == NULL) || (channels_len == NULL)) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Input arguements are NULL radio_cap : %p channels : %p channels_len : %p\n", __func__, __LINE__, radio_cap, channels, channels_len);
+        return RETURN_ERR;
+    }
+    for (chan_arr_index = 0; chan_arr_index < radio_cap->channel_list[band_arr_index].num_channels; chan_arr_index++) {
+        channels[chan_arr_index] =  radio_cap->channel_list[band_arr_index].channels_list[chan_arr_index];
+    }
+    *channels_len = radio_cap->channel_list[band_arr_index].num_channels;
+    return RETURN_OK;
+}

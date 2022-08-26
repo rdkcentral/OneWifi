@@ -77,6 +77,7 @@ const char* testapp_security_state_find_by_key(
 
 void print_radio_state_ovs_schema(FILE  *fp, const struct schema_Wifi_Radio_State *radio)
 {
+    int  i;
     fprintf(fp, "if_name                   : %s\n",   radio->if_name);
     fprintf(fp, "freq_band                 : %s\n",   radio->freq_band);
     fprintf(fp, "enabled                   : %d\n",   radio->enabled);
@@ -99,6 +100,11 @@ void print_radio_state_ovs_schema(FILE  *fp, const struct schema_Wifi_Radio_Stat
     fprintf(fp, "tx_chainmask              : %d\n",   radio->tx_chainmask);
     fprintf(fp, "thermal_tx_chainmask      : %d\n",   radio->thermal_tx_chainmask);
     fprintf(fp, "zero_wait_dfs             : %s\n",   radio->zero_wait_dfs);
+    fprintf(fp, "allowedchannels           : ");
+    for (i = 0; i< radio->allowed_channels_len; i++) {
+            fprintf(fp, "%d,", radio->allowed_channels[i]);
+    }
+    fprintf(fp, "\n");
     //mac
     //allowed_channels
     //channels

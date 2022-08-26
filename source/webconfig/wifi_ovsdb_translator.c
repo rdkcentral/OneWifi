@@ -84,12 +84,13 @@ void radio_config_ovs_schema_dump(const struct schema_Wifi_Radio_Config *radio)
 
 void radio_state_ovs_schema_dump(const struct schema_Wifi_Radio_State *radio)
 {
+    int i = 0;
     wifi_util_dbg_print(WIFI_WEBCONFIG, "if_name                   : %s\n",   radio->if_name);
     wifi_util_dbg_print(WIFI_WEBCONFIG, "freq_band                 : %s\n",   radio->freq_band);
     wifi_util_dbg_print(WIFI_WEBCONFIG, "enabled                   : %d\n",   radio->enabled);
     wifi_util_dbg_print(WIFI_WEBCONFIG, "dfs_demo                  : %d\n",   radio->dfs_demo);
-    wifi_util_dbg_print(WIFI_WEBCONFIG, "hw_type                   : %s\n", radio->hw_type);
-    wifi_util_dbg_print(WIFI_WEBCONFIG, "hw_config                 : %s\n", radio->hw_config);
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "hw_type                   : %s\n",   radio->hw_type);
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "hw_config                 : %s\n",   radio->hw_config);
     wifi_util_dbg_print(WIFI_WEBCONFIG, "country                   : %s\n",   radio->country);
     wifi_util_dbg_print(WIFI_WEBCONFIG, "channel                   : %d\n",   radio->channel);
     wifi_util_dbg_print(WIFI_WEBCONFIG, "channel_sync              : %d\n",   radio->channel_sync);
@@ -107,7 +108,11 @@ void radio_state_ovs_schema_dump(const struct schema_Wifi_Radio_State *radio)
     wifi_util_dbg_print(WIFI_WEBCONFIG, "thermal_tx_chainmask      : %d\n",   radio->thermal_tx_chainmask);
     wifi_util_dbg_print(WIFI_WEBCONFIG, "zero_wait_dfs             : %s\n",   radio->zero_wait_dfs);
     wifi_util_dbg_print(WIFI_WEBCONFIG, "mac                       : %s\n",   radio->mac);
-    //allowed_channels
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "allowedchannels           : ");
+    for (i = 0; i < radio->allowed_channels_len; i++) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%d,", radio->allowed_channels[i]);
+    }
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "\n");
     //channels
 
     return;
@@ -794,6 +799,11 @@ webconfig_error_t translate_radio_obj_to_ovsdb_radio_state(const wifi_radio_oper
 
     if (get_radio_if_hw_type(row->hw_type, sizeof(row->hw_type)) != RETURN_OK) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: get hw type failed\n", __func__, __LINE__);
+        return webconfig_error_translate_to_ovsdb;
+    }
+
+    if (get_allowed_channels(oper_param->band, &wifi_prop->radiocap[radio_index], row->allowed_channels, &row->allowed_channels_len) != RETURN_OK) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: get allowed channels failed\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
 

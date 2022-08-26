@@ -1213,7 +1213,7 @@ webconfig_error_t encode_blaster_object(const active_msmt_t *blaster_info, cJSON
     return webconfig_error_none;
 }
 
-webconfig_error_t encode_wificap(wifi_interface_name_idex_map_t *interface_map, cJSON *hal_obj)
+webconfig_error_t encode_wifivapcap(wifi_interface_name_idex_map_t *interface_map, cJSON *hal_obj)
 {
     cJSON *object;
     if (interface_map->vap_name[0] != '\0') {
@@ -1277,3 +1277,21 @@ webconfig_error_t encode_csi_object(queue_t *csi_queue, cJSON *csi_obj)
     return webconfig_error_none;
 }
 
+webconfig_error_t encode_wifiradiocap(wifi_radio_capabilities_t *radiocap, cJSON *radio_obj)
+{
+    unsigned int freq_band_count = 0;
+    cJSON *object;
+
+    if ((radiocap == NULL) || (radio_obj == NULL)) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer radiocap : %p radio_obj : %p\n", __func__, __LINE__, radiocap, radio_obj);
+        return webconfig_error_encode;
+    }
+    object =  cJSON_CreateObject();
+    cJSON_AddItemToArray(radio_obj, object);
+    cJSON_AddNumberToObject(object, "RadioIndex", radiocap->index);
+
+    for (freq_band_count = 0; freq_band_count < radiocap->numSupportedFreqBand; freq_band_count++) {
+        cJSON_AddItemToObject(object, "PossibleChannels",  cJSON_CreateIntArray(radiocap->channel_list[freq_band_count].channels_list, radiocap->channel_list[freq_band_count].num_channels));
+    }
+    return webconfig_error_none;
+}

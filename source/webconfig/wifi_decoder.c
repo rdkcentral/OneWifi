@@ -2847,7 +2847,7 @@ webconfig_error_t decode_harvester_object(const cJSON *obj, instant_measurement_
     return webconfig_error_none;
 }
 
-webconfig_error_t decode_wificap(wifi_interface_name_idex_map_t *interface_map, cJSON *object)
+webconfig_error_t decode_wifivapcap(wifi_interface_name_idex_map_t *interface_map, cJSON *object)
 {
     cJSON *value_object;
     char *tmp_string;
@@ -3007,6 +3007,42 @@ webconfig_error_t decode_csi_object(queue_t** csi_queue, cJSON *object)
         *csi_queue = queue_create();
     }
     queue_push(*csi_queue, csi_data);
+    return webconfig_error_none;
+}
+
+webconfig_error_t decode_wifiradiocap(wifi_radio_capabilities_t *radio_cap, cJSON *object)
+{
+    cJSON *allowed_channels, *iterator;
+    int count = 0;
+    cJSON *value_object;
+
+    if (radio_cap == NULL) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s %d: Input arguements is NULL\n",__FUNCTION__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    value_object = cJSON_GetObjectItem(object, "RadioIndex");
+    if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    radio_cap->index = value_object->valuedouble;
+
+    /*allowed_channels*/
+    allowed_channels = cJSON_GetObjectItem(object, "PossibleChannels");
+    if (allowed_channels == NULL) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s %d: allowed_channels is NULL for index : %d radio_cap->ifaceName : %s\n",__FUNCTION__, __LINE__, radio_cap->index, radio_cap->ifaceName);
+        return webconfig_error_decode;
+    }
+
+    cJSON_ArrayForEach(iterator, allowed_channels) {
+        if (cJSON_IsNumber(iterator)) {
+            radio_cap->channel_list[0].channels_list[count] = iterator->valuedouble;
+            count++;
+        }
+    }
+    radio_cap->channel_list[0].num_channels = count;
     return webconfig_error_none;
 }
 

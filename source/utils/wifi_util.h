@@ -145,6 +145,7 @@ int get_list_of_mesh_backhaul(wifi_platform_property_t *wifi_prop, int list_size
 int get_list_of_mesh_sta(wifi_platform_property_t *wifi_prop, int list_size, wifi_vap_name_t vap_names[]);
 int get_list_of_iot_ssid(wifi_platform_property_t *wifi_prop, int list_size, wifi_vap_name_t vap_names[]);
 int get_radio_index_for_vap_index(wifi_platform_property_t* wifi_prop, int vap_index);
-int  min_hw_mode_conversion(unsigned int vapIndex, char *inputStr, char *outputStr, char *tableType);
-int  vif_radio_idx_conversion(unsigned int vapIndex, int *input, int *output, char *tableType);
+int min_hw_mode_conversion(unsigned int vapIndex, char *inputStr, char *outputStr, char *tableType);
+int vif_radio_idx_conversion(unsigned int vapIndex, int *input, int *output, char *tableType);
+int get_allowed_channels(wifi_freq_bands_t band, wifi_radio_capabilities_t *radio_cap, int *channels, int *channels_len);
 #endif//_WIFI_UTIL_H_
