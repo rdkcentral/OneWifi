@@ -3844,6 +3844,7 @@ int get_chan_util_upload_period()
     int logInterval = DEFAULT_CHANUTIL_LOG_INTERVAL;//Default Value 15mins.
 
     get_vap_dml_parameters(CH_UTILITY_LOG_INTERVAL, &logInterval);
+    wifi_util_dbg_print(WIFI_MON, " %s:%d logInterval %d \n",__FUNCTION__,__LINE__,logInterval);  
     return logInterval;
 }
 

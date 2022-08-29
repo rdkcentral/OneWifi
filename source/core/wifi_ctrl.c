@@ -939,6 +939,9 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
     /* start wifi apps */
     wifi_hal_platform_post_init();
 
+    //Start Wifi Monitor Thread
+    start_wifi_health_monitor_thread();
+
     ctrl->exit_ctrl = false;
     ctrl_queue_loop(ctrl);
 

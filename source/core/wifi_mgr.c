@@ -209,9 +209,6 @@ int init_wifimgr()
     //Set Wifi Global Parameters
     init_wifi_global_config();
 
-    //Start Wifi Monitor Thread
-    start_wifi_health_monitor_thread();
-
     return 0;
 }
 

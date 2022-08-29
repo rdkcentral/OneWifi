@@ -26,6 +26,7 @@ struct timer_task {
 static int scheduler_calculate_timeout(struct scheduler *sched, struct timeval *t_now);
 static int scheduler_get_number_tasks_pending(struct scheduler *sched, bool high_prio);
 static int scheduler_remove_complete_tasks(struct scheduler *sched);
+static int scheduler_update_timeout(struct scheduler *sched, struct timeval *t_diff);
 
 struct scheduler * scheduler_init(void)
 {
@@ -243,9 +244,29 @@ int scheduler_execute(struct scheduler *sched, struct timeval t_start, unsigned 
     int timeout_ms_margin;
     struct timer_task *tt;
     int ret;
+    static struct timeval last_t_start = {0,0};
+    struct timeval t_diff;
+
     if (sched == NULL ) {
         return -1;
     }
+
+
+    //detect system time change and update the timers
+    if (last_t_start.tv_sec != 0) {
+        t_diff.tv_sec = t_start.tv_sec - last_t_start.tv_sec;
+        t_diff.tv_usec = t_start.tv_usec - last_t_start.tv_usec;
+        if(t_diff.tv_usec < 0) {
+            t_diff.tv_usec = t_diff.tv_usec + 1000000;
+            t_diff.tv_sec = t_diff.tv_sec - 1;
+        }
+        if ( (unsigned int)((t_diff.tv_sec*1000) + (t_diff.tv_usec/1000)) > (timeout_ms*1000)) {
+            //system time changed
+            scheduler_update_timeout(sched, &t_diff);
+        }
+    }
+    last_t_start = t_start;
+
     sched->t_start = t_start;
     t_now = t_start;
     /* return if reach 90% of the timeout */
@@ -316,6 +337,31 @@ int scheduler_execute(struct scheduler *sched, struct timeval t_start, unsigned 
     return 0;
 }
 
+static int scheduler_update_timeout(struct scheduler *sched, struct timeval *t_diff)
+{
+    unsigned int i;
+    struct timer_task *tt;
+    struct timeval new_timeout;
+
+    if (sched == NULL || t_diff == NULL) {
+        return -1;
+    }
+    for (i = 0; i < sched->num_tasks; i++) {
+        tt = queue_peek(sched->timer_list, i);
+        if (tt != NULL) {
+            timeradd(&(tt->timeout), t_diff, &new_timeout);
+            tt->timeout = new_timeout;
+        }
+    }
+    for (i = 0; i < sched->num_hp_tasks; i++) {
+        tt = queue_peek(sched->high_priority_timer_list, i);
+        if (tt != NULL) {
+            timeradd(&(tt->timeout), t_diff, &new_timeout);
+            tt->timeout = new_timeout;
+        }
+    }
+    return 0;
+}
 
 static int scheduler_calculate_timeout(struct scheduler *sched, struct timeval *t_now)
 {
