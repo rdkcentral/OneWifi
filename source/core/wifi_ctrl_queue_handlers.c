@@ -378,6 +378,9 @@ void process_sta_conn_status_event(rdk_sta_data_t *sta_data, unsigned int len)
 
         ctrl->conn_state = connection_state_connected;
 
+        ctrl->disconnected_time = 0;
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d reset disconnected_time\n",__FUNCTION__, __LINE__);
+
         ctrl->connected_vap_index = sta_data->stats.vap_index;
         memcpy(&ctrl->connected_external_ap, &sta_data->bss_info, sizeof(wifi_bss_info_t));
         update_global_cache_radio_channel(sta_data->bss_info.freq);

@@ -182,6 +182,7 @@ typedef struct wifi_ctrl {
     scan_wifi_state_t   scan_wifi_state;
     wifi_bss_info_t     connected_external_ap;
     unsigned long long int last_connected_time;
+    unsigned int        disconnected_time;
 } wifi_ctrl_t;
 
 typedef enum {

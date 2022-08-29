@@ -73,6 +73,90 @@ int push_data_to_ctrl_queue(const void *msg, unsigned int len, ctrl_event_type_t
     return RETURN_OK;
 }
 
+int both_wifi_radio_set_enable(bool status)
+{
+    wifi_radio_operationParam_t *wifi_radio_oper_param = NULL;
+    int ret = RETURN_OK;
+    uint8_t index = 0;
+    uint8_t num_of_radios = getNumberRadios();
+    wifi_radio_operationParam_t temp_wifi_radio_oper_param;
+
+    memset(&temp_wifi_radio_oper_param, 0, sizeof(temp_wifi_radio_oper_param));
+
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d num_of_radios:%d\n", __func__, __LINE__, num_of_radios);
+    for (index = 0; index < num_of_radios; index++) {
+        wifi_radio_oper_param = (wifi_radio_operationParam_t *)get_wifidb_radio_map(index);
+        if (wifi_radio_oper_param == NULL) {
+            wifi_util_dbg_print(WIFI_CTRL,"%s:%d wrong index for radio map: %d\n", __func__, __LINE__, index);
+            return RETURN_ERR;
+        }
+
+        if (wifi_radio_oper_param->enable == false) {
+            wifi_util_dbg_print(WIFI_CTRL,"%s:%d index: %d skip, wifi radio already disable:%d\n",
+                            __func__, __LINE__, index, wifi_radio_oper_param->enable);
+            continue;
+        }
+
+        memcpy(&temp_wifi_radio_oper_param, wifi_radio_oper_param, sizeof(wifi_radio_operationParam_t));
+        temp_wifi_radio_oper_param.enable = status;
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d index: %d radio enable status:%d\n", __func__, __LINE__, index, status);
+
+        ret = wifi_hal_setRadioOperatingParameters(index, &temp_wifi_radio_oper_param);
+        if (ret != RETURN_OK) {
+            wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi radio parameter set failure: radio_index:%d\n", __func__, __LINE__, index);
+        } else {
+            wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi radio parameter set success: radio_index:%d\n", __func__, __LINE__, index);
+        }
+
+    }
+
+    return ret;
+}
+
+void reset_both_wifi_radio(void)
+{
+    both_wifi_radio_set_enable(false);
+    both_wifi_radio_set_enable(true);
+}
+
+unsigned int reboot_time(void)
+{
+     FILE *fp;
+     char buff[64];
+     char *ptr;
+
+     if ((fp = fopen("/nvram/reboot_time", "r")) == NULL) {
+         return 10; /* default is 10 minutes */
+     }
+
+     fgets(buff, 64, fp);
+     if ((ptr = strchr(buff, '\n')) != NULL) {
+         *ptr = 0;
+     }
+     fclose(fp);
+
+     return atoi(buff) ? atoi(buff) : 1;
+}
+
+int reboot_device(wifi_ctrl_t *ctrl)
+{
+    int rc = 0;
+
+    rc = rbus_setStr(ctrl->rbus_handle, "Device.DeviceInfo.X_RDKCENTRAL-COM_LastRebootReason", "sta-conn-failed");
+    if (rc != RBUS_ERROR_SUCCESS) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: rbusWrite Failed %d\n", __func__, __LINE__, rc);
+        return RETURN_ERR;
+    }
+
+    rc = rbus_setStr(ctrl->rbus_handle, "Device.X_CISCO_COM_DeviceControl.RebootDevice", "Device");
+    if (rc != RBUS_ERROR_SUCCESS) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: rbusWrite Failed %d\n", __func__, __LINE__, rc);
+        return RETURN_ERR;
+    }
+
+    return RETURN_OK;
+}
+
 void ctrl_queue_loop(wifi_ctrl_t *ctrl)
 {
     struct timespec time_to_wait;
@@ -84,6 +168,7 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
     ctrl_event_t *queue_data = NULL;
     static uint8_t conn_retry = 0;
     static uint8_t wait_scan_result;
+    static bool radio_reset_triggered;
 
     pthread_mutex_lock(&ctrl->lock);
     while (ctrl->exit_ctrl == false) {
@@ -174,9 +259,27 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
                 wait_scan_result = 0;
             }
 
-	    if (conn_retry > STA_CONN_RETRY) {
+            if (conn_retry > STA_CONN_RETRY) {
                 if (ctrl->network_mode == rdk_dev_mode_type_ext) {
                     sta_pending_connection_retry(ctrl);
+
+                    /* Reboot device is STA connection is unsuccessful */
+                    if (ctrl->conn_state == connection_state_disconnected || ctrl->conn_state == connection_state_in_progress) {
+                        ctrl->disconnected_time++;
+                        wifi_util_dbg_print(WIFI_CTRL,"%s:%d reboot time is set to %d minutes, disconnected_time:%d\n",
+                                                      __FUNCTION__, __LINE__, reboot_time(), ctrl->disconnected_time);
+                        if ((ctrl->disconnected_time * 10) > (reboot_time() * 60)) {
+                            wifi_util_dbg_print(WIFI_CTRL,"%s:%d selfheal: STA connection failed for %d minutes, reboot the device\n",
+                                                           __FUNCTION__, __LINE__, reboot_time());
+                            /* reboot the device */
+                            reboot_device(ctrl);
+                        } else if (((ctrl->disconnected_time * 10) >= ((reboot_time() * 60) / 2)) && (radio_reset_triggered == false)) {
+                            reset_both_wifi_radio();
+                            radio_reset_triggered = true;
+                        }
+                    } else if (ctrl->conn_state == connection_state_connected) {
+                        radio_reset_triggered = false;
+                    }
                 } else if (ctrl->conn_state == connection_state_connected) {
                     wifi_util_dbg_print(WIFI_CTRL,"%s:%d gateway mode, disconnect sta on vap:%d\n",__FUNCTION__, __LINE__, ctrl->connected_vap_index);
                     wifi_hal_disconnect(ctrl->connected_vap_index);
