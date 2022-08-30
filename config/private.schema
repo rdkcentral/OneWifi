@@ -2,31 +2,31 @@
    "private_security_2g":{
       "EncryptionMethod":"AES",
       "ModeEnabled":"WPA2-Personal",
-      "Passphrase":"sapphire_pwd_private_2g"
+      "Passphrase":""
    },
 
    "private_security_5g":{
       "EncryptionMethod":"AES",
       "ModeEnabled":"WPA2-Personal",
-      "Passphrase":"sapphire_pwd_private_5g"
+      "Passphrase":""
    },
 
    "private_security_5gl":{
       "EncryptionMethod":"AES",
       "ModeEnabled":"WPA2-Personal",
-      "Passphrase":"sapphire_pwd_private_5gl"
+      "Passphrase":""
    },
 
    "private_security_5gu":{
       "EncryptionMethod":"AES",
       "ModeEnabled":"WPA2-Personal",
-      "Passphrase":"sapphire_pwd_private_5gu"
+      "Passphrase":""
    },
 
    "private_security_6g":{
       "EncryptionMethod":"AES",
       "ModeEnabled":"WPA3-Personal",
-      "Passphrase":"sapphire_pwd_private_6g"
+      "Passphrase":""
    },
 
    "private_ssid_2g":{

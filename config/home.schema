@@ -2,31 +2,31 @@
    "home_security_2g":{
       "EncryptionMethod":"AES",
       "ModeEnabled":"WPA2-Personal",
-      "Passphrase":"emerald_pwd_home_2g"
+      "Passphrase":""
    },
 
    "home_security_5g":{
       "EncryptionMethod":"AES",
       "ModeEnabled":"WPA2-Personal",
-      "Passphrase":"emerald_pwd_home_5g"
+      "Passphrase":""
    },
 
    "home_security_5gl":{
       "EncryptionMethod":"AES",
       "ModeEnabled":"WPA2-Personal",
-      "Passphrase":"emerald_pwd_home_5gl"
+      "Passphrase":""
    },
 
    "home_security_5gu":{
       "EncryptionMethod":"AES",
       "ModeEnabled":"WPA2-Personal",
-      "Passphrase":"emerald_pwd_home_5gu"
+      "Passphrase":""
    },
 
    "home_security_6g":{
       "EncryptionMethod":"AES",
       "ModeEnabled":"WPA3-Personal",
-      "Passphrase":"emerald_pwd_home_6g"
+      "Passphrase":""
    },
 
    "home_ssid_2g":{
