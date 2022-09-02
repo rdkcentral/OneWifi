@@ -394,7 +394,7 @@ static void activeGatewayCheckHandler(rbusHandle_t handle, rbusEvent_t const* ev
         return;
     }
 
-    value = rbusObject_GetValue(event->data, subscription->eventName);
+    value = rbusObject_GetValue(event->data, NULL);
     if (!value) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: Invalid value in event:%s",
                     __func__, __LINE__, subscription->eventName);

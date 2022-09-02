@@ -158,6 +158,7 @@ typedef struct wifi_ctrl {
     vap_svc_t           ctrl_svc[vap_svc_type_max];
     wifi_apps_t         fi_apps[wifi_apps_type_max];
     unsigned int        network_mode; /* 0 - gateway, 1 - extender */
+    bool                active_gw_sta_status;
 } wifi_ctrl_t;
 
 typedef struct {
@@ -255,6 +256,7 @@ bool check_for_greylisted_mac_filter(void);
 void wait_wifi_scan_result(wifi_ctrl_t *ctrl);
 int get_rbus_param(rbusHandle_t rbus_handle, rbus_data_type_t data_type, const char *paramNames, void *data_value);
 int set_rbus_bool_param(rbusHandle_t rbus_handle, const char *paramNames, bool data_value);
+bool is_sta_enabled(void);
 #ifdef __cplusplus
 }
 #endif

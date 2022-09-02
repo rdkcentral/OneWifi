@@ -18,9 +18,6 @@
 #define NEIGHBOR_SCAN_RESULT_INTERVAL 5000 //5sec
 static int neighbor_scan_task_id = -1;
 
-
-
-
 void process_scan_results_event(scan_results_t *results, unsigned int len)
 {
     wifi_ctrl_t *ctrl;
@@ -30,10 +27,11 @@ void process_scan_results_event(scan_results_t *results, unsigned int len)
     ctrl = &mgr->ctrl;
 
     ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
-    if (ctrl->network_mode == rdk_dev_mode_type_ext) {
+    if (is_sta_enabled()) {
         ext_svc->event_fn(ext_svc, ctrl_event_type_hal_ind, ctrl_event_scan_results, vap_svc_event_none, results);
     }
 }
+
 int remove_xfinity_acl_entries(bool remove_all_greylist_entry,bool prefer_private)
 {
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d  Enter \n", __FUNCTION__, __LINE__);
@@ -264,90 +262,26 @@ void process_sta_conn_status_event(rdk_sta_data_t *sta_data, unsigned int len)
 
     ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
 
-    if(ctrl->network_mode == rdk_dev_mode_type_ext) {
+    if(is_sta_enabled()) {
         ext_svc->event_fn(ext_svc, ctrl_event_type_hal_ind, ctrl_event_hal_sta_conn_status, vap_svc_event_none, sta_data);
     }
 }
 
 void process_sta_connect_command(bool connect)
 {
-    unsigned int i, j, sta_vap_index;
-    wifi_channel_t channel;
-    ssid_t sta_ssid;
-    wifi_bss_info_t *bss_array, *tmp_bss, target_bss;
-    unsigned int num_bss;
-    bool found_sta_ssid = false;
-    rdk_wifi_radio_t *radio;
-    wifi_vap_info_map_t *vap_map;
-    wifi_vap_info_t *vap;
-    uint8_t num_of_radios = getNumberRadios();
-    wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
+    wifi_ctrl_t *ctrl;
+    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d: sta connect command:%d\n", __func__, __LINE__, connect);
     if (connect == false) {
-        // disconnect from STA and return
-        for (i = 0; i < num_of_radios; i++) {
-            vap_map = &mgr->radio_config[i].vaps.vap_map;
-            for (j = 0; j < vap_map->num_vaps; ++j) {
-                if (!strncmp(vap_map->vap_array[j].vap_name, "mesh_sta", strlen("mesh_sta"))) {
-                    break;
-                }
-            }
-            vap = &vap_map->vap_array[j];
-            if ((vap->vap_mode == wifi_vap_mode_sta) &&
-                    (vap->u.sta_info.conn_status == wifi_connection_status_connected)) {
-                wifi_util_info_print(WIFI_CTRL, "%s:%d: wifi disconnect :%d\n", __func__, __LINE__, vap->vap_index);
-                wifi_hal_disconnect(vap->vap_index);
-            }
-        }
+        ctrl->active_gw_sta_status = false;
+
         process_xfinity_vaps(1, false); //reenable public vaps
-        return;
-    }
-
-    process_xfinity_vaps(0, false); // disable public vaps
-    // try finding STA bssid on 2.4 first and then on 5GHz
-    for (i = 0; i < num_of_radios; i++) {
-        if (get_sta_ssid_from_radio_config_by_radio_index(i, sta_ssid) == -1) {
-            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Could not find sta ssid for radio index:%d\n",
-                            __func__, __LINE__, i);
-            continue;
-        }
-        radio = find_radio_config_by_index(i);
-        channel.band = radio->oper.band;
-        channel.channel = radio->oper.channel;
-        sta_vap_index = get_sta_vap_index_for_radio(&mgr->hal_cap.wifi_prop, i);
-        if (wifi_hal_findNetworks(sta_vap_index, &channel, &bss_array, &num_bss) == RETURN_ERR) {
-            wifi_util_error_print(WIFI_CTRL, "%s:%d: wifi_hal_findNetworks failed for radio index:%d\n",
-                        __func__, __LINE__, i);
-            continue;
-        }
-
-        tmp_bss = bss_array;
-        for (j = 0; j < num_bss; j++) {
-            if (strcmp(tmp_bss->ssid, sta_ssid) == 0) {
-                wifi_util_dbg_print(WIFI_CTRL, "%s:%d: ssid match found for radio index:%d\n",
-                        __func__, __LINE__, i);
-                found_sta_ssid = true;
-                memcpy(&target_bss, tmp_bss, sizeof(wifi_bss_info_t));
-                break;
-            }
-            tmp_bss++;
-        }
-
-        free(bss_array);
-
-        if (found_sta_ssid == true) {
-            break;
-        }
-    }
-
-    if (found_sta_ssid == true) {
-        wifi_hal_connect(sta_vap_index, &target_bss);
-    } else {
-    // start a scan procedure for 2.4 and 5 Ghz Radio
-        wifi_util_info_print(WIFI_CTRL,"%s:%d start scan on 2.4GHz and 5GHz radios\n",__func__, __LINE__);
-        wifi_hal_startScan(0, WIFI_RADIO_SCAN_MODE_ONCHAN, 0, 0, NULL);
-	wifi_hal_startScan(1, WIFI_RADIO_SCAN_MODE_ONCHAN, 0, 0, NULL);
+        stop_extender_vaps();
+    } else if (ctrl->active_gw_sta_status != true) {
+        process_xfinity_vaps(0, false); // disable public vaps
+        start_extender_vaps();
+        ctrl->active_gw_sta_status = true;
     }
 }
 

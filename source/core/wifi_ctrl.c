@@ -190,6 +190,13 @@ void sta_selfheal_handing(wifi_ctrl_t *ctrl, vap_svc_t *l_svc)
     }
 }
 
+bool is_sta_enabled(void)
+{
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    //wifi_util_dbg_print(WIFI_CTRL,"[%s:%d] device mode:%d active_gw_sta_status:%d\r\n", __func__, __LINE__, ctrl->network_mode, ctrl->active_gw_sta_status);
+    return ((ctrl->network_mode == rdk_dev_mode_type_ext) || (ctrl->active_gw_sta_status == true));
+}
+
 void ctrl_queue_loop(wifi_ctrl_t *ctrl)
 {
     struct timespec time_to_wait;
@@ -280,7 +287,7 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
             webconfig_analyze_pending_states(ctrl);
 
             ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
-            if (ctrl->network_mode == rdk_dev_mode_type_ext) {
+            if (is_sta_enabled()) {
                 if (max_conn_retry_timeout >= STA_CONN_RETRY_TIMEOUT) {
 
                     // check sta connectivity selfheal
@@ -535,6 +542,36 @@ void rbus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d rbus_get for %s: value:%d\n",__func__, __LINE__, name, *ret_val);
 }
 
+void rbus_get_active_gw_parameter(const char *name, unsigned int *ret_val)
+{
+    rbusValue_t value;
+    int rc = RBUS_ERROR_SUCCESS;
+    wifi_ctrl_t *ctrl;
+
+    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+
+    rc = rbus_get(ctrl->rbus_handle, name, &value);
+
+    if(rc != RBUS_ERROR_SUCCESS) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d rbus_get failed for [%s] with error [%d]\n",__func__, __LINE__, name, rc);
+        return;
+    }
+
+    *ret_val = rbusValue_GetBoolean(value);
+
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d rbus_get for %s: value:%d\n",__func__, __LINE__, name, *ret_val);
+}
+
+void start_extender_vaps(void)
+{
+    wifi_ctrl_t *ctrl;
+    vap_svc_t *ext_svc;
+
+    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
+    ext_svc->start_fn(ext_svc, WIFI_ALL_RADIO_INDICES, NULL);
+}
+
 void start_gateway_vaps()
 {
     vap_svc_t *priv_svc, *pub_svc, *mesh_gw_svc;
@@ -562,6 +599,14 @@ void start_gateway_vaps()
         set_wifi_public_vap_enable_status();
         pub_svc->start_fn(pub_svc, WIFI_ALL_RADIO_INDICES, NULL);
     }
+
+    rbus_get_active_gw_parameter(WIFI_ACTIVE_GATEWAY_CHECK, &value);
+
+    if(value == true) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d start extender vaps and initiate sta conn\n",__func__, __LINE__);
+        start_extender_vaps();
+        ctrl->active_gw_sta_status = true;
+    }
 }
 
 void stop_gateway_vaps()
@@ -588,16 +633,6 @@ void stop_extender_vaps(void)
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
     ext_svc->stop_fn(ext_svc, WIFI_ALL_RADIO_INDICES, NULL);
-}
-
-void start_extender_vaps(void)
-{
-    wifi_ctrl_t *ctrl;
-    vap_svc_t *ext_svc;
-
-    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
-    ext_svc->start_fn(ext_svc, WIFI_ALL_RADIO_INDICES, NULL);
 }
 
 int start_wifi_services(void)
