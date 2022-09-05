@@ -84,3 +84,8 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
     update_acl_entries(&tgt_created_vap_map);
     return 0;
 }
+
+int vap_svc_public_event(vap_svc_t *svc, ctrl_event_type_t type, ctrl_event_subtype_t sub_type, void *arg)
+{
+    return 0;
+}

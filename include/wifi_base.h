@@ -118,6 +118,14 @@ typedef struct {
     wifi_direction_t dir;
 } __attribute__((__packed__)) frame_data_t;
 
+#define MAX_SCANNED_VAPS       32
+
+typedef struct {
+    unsigned int radio_index;
+    wifi_bss_info_t bss[MAX_SCANNED_VAPS];
+    unsigned int num;
+} scan_results_t;
+
 typedef enum {
     rdk_dev_mode_type_gw,
     rdk_dev_mode_type_ext

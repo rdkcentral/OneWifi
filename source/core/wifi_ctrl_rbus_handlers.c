@@ -216,6 +216,7 @@ rbusError_t webconfig_get_subdoc(rbusHandle_t handle, rbusProperty_t property, r
     webconfig_subdoc_data_t data;
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    vap_svc_t *ext_svc;
 
    if(ctrl->network_mode == rdk_dev_mode_type_gw) {
         wifi_util_dbg_print(WIFI_CTRL,"%s Rbus property=%s, Gateway mode\n",__FUNCTION__, name);
@@ -242,7 +243,8 @@ rbusError_t webconfig_get_subdoc(rbusHandle_t handle, rbusProperty_t property, r
     } else if (ctrl->network_mode == rdk_dev_mode_type_ext) {
         wifi_util_dbg_print(WIFI_CTRL,"%s Rbus property=%s, Extender mode\n",__FUNCTION__, name);
 
-        if (ctrl->conn_state != connection_state_connected) {
+        ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
+        if (ext_svc->u.ext.conn_state != connection_state_connected) {
             wifi_util_dbg_print(WIFI_CTRL,"%s Extender is not connected\n",__FUNCTION__);
             return RBUS_ERROR_INVALID_OPERATION;
         }

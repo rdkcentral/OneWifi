@@ -10,7 +10,11 @@
 
 int svc_init(vap_svc_t *svc, vap_svc_type_t type)
 {
+    wifi_mgr_t *wifi_mgr_obj = get_wifimgr_obj();
     memset(svc, 0, sizeof(vap_svc_t));
+
+    svc->ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    svc->prop = &wifi_mgr_obj->hal_cap.wifi_prop;
 
     svc->type = type;
     switch (type) {
@@ -18,6 +22,7 @@ int svc_init(vap_svc_t *svc, vap_svc_type_t type)
             svc->start_fn = vap_svc_private_start;
             svc->stop_fn = vap_svc_private_stop;
             svc->update_fn = vap_svc_private_update;
+            svc->event_fn = vap_svc_private_event;
             svc->is_my_fn = vap_svc_is_private;
             break;
 
@@ -25,6 +30,7 @@ int svc_init(vap_svc_t *svc, vap_svc_type_t type)
             svc->start_fn = vap_svc_public_start;
             svc->stop_fn = vap_svc_public_stop;
             svc->update_fn = vap_svc_public_update;
+            svc->event_fn = vap_svc_public_event;
             svc->is_my_fn = vap_svc_is_public;
             break;
 
@@ -32,6 +38,7 @@ int svc_init(vap_svc_t *svc, vap_svc_type_t type)
             svc->start_fn = vap_svc_mesh_gw_start;
             svc->stop_fn = vap_svc_mesh_gw_stop;
             svc->update_fn = vap_svc_mesh_gw_update;
+            svc->event_fn = vap_svc_mesh_gw_event;
             svc->is_my_fn = vap_svc_is_mesh_gw;
             break;
 
@@ -39,6 +46,7 @@ int svc_init(vap_svc_t *svc, vap_svc_type_t type)
             svc->start_fn = vap_svc_mesh_ext_start;
             svc->stop_fn = vap_svc_mesh_ext_stop;
             svc->update_fn = vap_svc_mesh_ext_update;
+            svc->event_fn = vap_svc_mesh_ext_event;
             svc->is_my_fn = vap_svc_is_mesh_ext;
             break;
 

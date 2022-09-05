@@ -21,107 +21,17 @@ static int neighbor_scan_task_id = -1;
 
 
 
-void process_scan_results_event(wifi_bss_info_t *bss, unsigned int len)
+void process_scan_results_event(scan_results_t *results, unsigned int len)
 {
-    unsigned int i, num = len/sizeof(wifi_bss_info_t);
-    wifi_bss_info_t *tmp_bss = bss;
     wifi_ctrl_t *ctrl;
+    vap_svc_t *ext_svc;
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
-    mac_addr_str_t bssid_str;
-    unsigned int band = 0;
 
     ctrl = &mgr->ctrl;
 
-    if(num && (tmp_bss->freq >= 2412 && tmp_bss->freq <= 2484)) {
-        band = WIFI_FREQUENCY_2_4_BAND;
-    } else if (num && (tmp_bss->freq >= 5160 && tmp_bss->freq <= 5885)) {
-        band = WIFI_FREQUENCY_5_BAND;
-    }
-
-    if(ctrl->network_mode == rdk_dev_mode_type_ext) {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Extender Mode num of scan results:%d, conn_state:%d\n",__FUNCTION__,__LINE__, num, ctrl->conn_state);
-        if(ctrl->conn_state == connection_state_disconnected && num) {
-            wifi_util_dbg_print(WIFI_CTRL, "%s:%d Copy scanresults and initiate sta connection\n",__FUNCTION__,__LINE__);
-
-            scan_list_t *scan_list;
-
-            if (ctrl->scan_list != NULL) {
-                scan_list = (scan_list_t *) realloc(ctrl->scan_list, ((num + ctrl->scan_count) * sizeof(scan_list_t)));
-                if(scan_list == NULL) {
-                    wifi_util_error_print(WIFI_CTRL, "%s:%d: wifi scan result list realloc failure:%d\r\n",
-                                            __func__, __LINE__, ((num + ctrl->scan_count) * sizeof(scan_list_t)));
-                    return;
-                }
-                //memset(scan_list, 0, (num + ctrl->scan_count) * sizeof(scan_list_t));
-                //memcpy(scan_list, ctrl->scan_list, (ctrl->scan_count * sizeof(scan_list_t)));
-                wifi_util_dbg_print(WIFI_CTRL, "%s:%d scan count:%d:num:%d scan_list:%p\n",__func__,__LINE__, ctrl->scan_count, num, scan_list);
-                ctrl->scan_list = scan_list;
-                scan_list += ctrl->scan_count;
-                ctrl->scan_count += num;
-
-                wifi_util_info_print(WIFI_CTRL, "%s:%d scan count:%d:num:%d scan_list:%p\n",__func__,__LINE__, ctrl->scan_count, num, scan_list);
-                //memset(scan_list, 0, num * sizeof(scan_list_t));
-                for (i = 0; i < num; i++) {
-                    memcpy(&scan_list->external_ap, tmp_bss, sizeof(wifi_bss_info_t));
-                    scan_list->conn_attempt = connection_attempt_wait;
-                    scan_list->conn_retry_attempt = 0;
-                    wifi_util_dbg_print(WIFI_CTRL, "%s:%d: AP with ssid:%s, bssid:%s, rssi:%d, freq:%d\n",
-                                __func__, __LINE__, tmp_bss->ssid, to_mac_str(tmp_bss->bssid, bssid_str), tmp_bss->rssi, tmp_bss->freq);
-                    wifi_util_info_print(WIFI_CTRL, "%s:%d: AP with ssid:%s, bssid:%s, rssi:%d, freq:%d\n",
-                                __func__, __LINE__, scan_list->external_ap.ssid, to_mac_str(scan_list->external_ap.bssid, bssid_str), scan_list->external_ap.rssi, scan_list->external_ap.freq);
-                    tmp_bss++;
-                    scan_list++;
-                }
-            } else {
-                scan_list = (scan_list_t *) malloc(num * sizeof(scan_list_t));
-                if(ctrl->scan_list != NULL) {
-                    wifi_util_dbg_print(WIFI_CTRL, "%s:%d: candidate_list is present ctrl->scan_list:%p\n", __func__, __LINE__, ctrl->scan_list);
-                }
-
-                memset(scan_list, 0, num * sizeof(scan_list_t));
-                ctrl->scan_list = scan_list;
-                ctrl->scan_count = num;
-
-                wifi_util_dbg_print(WIFI_CTRL, "%s:%d scan count:%d:num:%d scan_list:%p\n",__func__,__LINE__, ctrl->scan_count, num, scan_list);
-                for (i = 0; i < num; i++) {
-                    memcpy(&scan_list->external_ap, tmp_bss, sizeof(wifi_bss_info_t));
-                    scan_list->conn_attempt = connection_attempt_wait;
-                    scan_list->conn_retry_attempt = 0;
-                    wifi_util_dbg_print(WIFI_CTRL, "%s:%d: AP with ssid:%s, bssid:%s, rssi:%d, freq:%d\n",
-                                __func__, __LINE__, tmp_bss->ssid, to_mac_str(tmp_bss->bssid, bssid_str), tmp_bss->rssi, tmp_bss->freq);
-                    wifi_util_info_print(WIFI_CTRL, "%s:%d: AP with ssid:%s, bssid:%s, rssi:%d, freq:%d\n",
-                                __func__, __LINE__, scan_list->external_ap.ssid, to_mac_str(scan_list->external_ap.bssid, bssid_str), scan_list->external_ap.rssi, scan_list->external_ap.freq);
-                    tmp_bss++;
-                    scan_list++;
-                }
-            }
-
-            if (band == WIFI_FREQUENCY_5_BAND) {
-                ctrl->scan_wifi_state |= received_5g_wifi_scan;
-            } else if (band == WIFI_FREQUENCY_2_4_BAND) {
-                ctrl->scan_wifi_state |= received_2g_wifi_scan;
-            }
-
-            if (ctrl->scan_wifi_state == received_both_wifi_scan) {
-                ctrl->conn_state = connection_state_in_progress;
-                ctrl->scan_wifi_state = received_none_wifi_scan;
-                wifi_util_info_print(WIFI_CTRL, "%s:%d: candidate_list is present, start connecting\n", __func__, __LINE__);
-                sta_pending_connection_retry(ctrl);
-            }
-        } else if ((ctrl->conn_state == connection_state_disconnected) && (!num)) {
-            if (band == WIFI_FREQUENCY_5_BAND) {
-                ctrl->scan_wifi_state |= received_5g_wifi_scan;
-            } else if (band == WIFI_FREQUENCY_2_4_BAND) {
-                ctrl->scan_wifi_state |= received_2g_wifi_scan;
-            }
-
-            if ((ctrl->scan_count != 0) && (ctrl->scan_wifi_state == received_both_wifi_scan)) {
-                ctrl->conn_state = connection_state_in_progress;
-                ctrl->scan_wifi_state = received_none_wifi_scan;
-                wifi_util_info_print(WIFI_CTRL, "%s:%d: candidate_list is present, start connecting\n", __func__, __LINE__);
-                sta_pending_connection_retry(ctrl);
-            }
-        }
+    ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
+    if (ctrl->network_mode == rdk_dev_mode_type_ext) {
+        ext_svc->event_fn(ext_svc, ctrl_event_type_hal_ind, ctrl_event_scan_results, results);
     }
 }
 int remove_greylist_acl_entries(bool remove_all_greylist_entry)
@@ -337,157 +247,15 @@ void update_global_cache_radio_channel(unsigned int freq)
 
 void process_sta_conn_status_event(rdk_sta_data_t *sta_data, unsigned int len)
 {
-    rbusEvent_t event;
-    rbusObject_t rdata;
-    rbusValue_t value;
-    char name[64];
-    unsigned int index, i;
-    wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
-    wifi_vap_info_map_t *vap_map;
-    wifi_ctrl_t *ctrl;
-    wifi_vap_info_t *temp_vap_info = NULL;
-    bool scan = true;
-    mac_addr_str_t bssid_str;
-    unsigned int rbus_send_connected = 0;
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    vap_svc_t *ext_svc;
 
-    ctrl = &mgr->ctrl;
+    ctrl->webconfig_state |= ctrl_webconfig_state_sta_conn_status_rsp_pending;
 
-    /* first update the internal cache */
-    index = get_radio_index_for_vap_index(&mgr->hal_cap.wifi_prop, sta_data->stats.vap_index);
-    wifi_util_dbg_print(WIFI_CTRL,"%s:%d - radio index %d, VAP index %d\n", __func__, __LINE__, index, sta_data->stats.vap_index);
-    vap_map = &mgr->radio_config[index].vaps.vap_map;
+    ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
 
-    for (i = 0; i < vap_map->num_vaps; i++) {
-        if (vap_map->vap_array[i].vap_index == sta_data->stats.vap_index) {
-            vap_map->vap_array[i].u.sta_info.conn_status = sta_data->stats.connect_status;
-            memset(vap_map->vap_array[i].u.sta_info.bssid, 0, sizeof(vap_map->vap_array[i].u.sta_info.bssid));
-            temp_vap_info = &vap_map->vap_array[i];
-            break;
-        }
-    }
-
-    wifi_util_info_print(WIFI_CTRL,"%s:%d connect_status:%d\n",__FUNCTION__, __LINE__, sta_data->stats.connect_status);
-    if (sta_data->stats.connect_status == wifi_connection_status_connected) {
-        if (temp_vap_info != NULL) {
-            memcpy (temp_vap_info->u.sta_info.bssid, sta_data->bss_info.bssid, sizeof(temp_vap_info->u.sta_info.bssid));
-        }
-
-        if(ctrl->conn_state == connection_state_in_progress) {
-            wifi_util_dbg_print(WIFI_CTRL,"%s:%d sending STA connected event over RBUS\n",__FUNCTION__, __LINE__);
-            rbus_send_connected = 1;
-        }
-
-        ctrl->conn_state = connection_state_connected;
-
-        ctrl->disconnected_time = 0;
-        wifi_util_dbg_print(WIFI_CTRL,"%s:%d reset disconnected_time\n",__FUNCTION__, __LINE__);
-
-        ctrl->connected_vap_index = sta_data->stats.vap_index;
-        memcpy(&ctrl->connected_external_ap, &sta_data->bss_info, sizeof(wifi_bss_info_t));
-        update_global_cache_radio_channel(sta_data->bss_info.freq);
-        if(ctrl->network_mode == rdk_dev_mode_type_ext) {
-            wifi_util_dbg_print(WIFI_CTRL,"%s:%d Mode: Extender, sta connected, delete scan candidates\n",__FUNCTION__, __LINE__);
-        } else {
-            wifi_util_dbg_print(WIFI_CTRL,"%s:%d Mode: Gateway, delete scan candidates and disconnect sta on vap:%d\n",__FUNCTION__, __LINE__, sta_data->stats.vap_index);
-            wifi_hal_disconnect(sta_data->stats.vap_index);
-            ctrl->conn_state = connection_state_disconnected;
-        }
-        if(ctrl->scan_list != NULL) {
-            free(ctrl->scan_list);
-            ctrl->scan_list = NULL;
-            ctrl->scan_count = 0;
-        }
-    } else if (sta_data->stats.connect_status == wifi_connection_status_ap_not_found || sta_data->stats.connect_status == wifi_connection_status_disconnected) {
-        if(ctrl->network_mode == rdk_dev_mode_type_ext) {
-            wifi_util_dbg_print(WIFI_CTRL,"%s:%d Mode: Extender, conn_state:%d\n",__FUNCTION__, __LINE__, ctrl->conn_state);
-            if (ctrl->conn_state == connection_state_in_progress) {
-                wifi_util_dbg_print(WIFI_CTRL,"%s:%d Mode: Extender, sta not connected, conn_state:%d\n",__FUNCTION__, __LINE__, ctrl->conn_state);
-                scan_list_t *scan_list;
-                scan_list = ctrl->scan_list;
-
-                if (scan_list != NULL) {
-
-                    for(i = 0; i < ctrl->scan_count; i++) {
-                        wifi_util_dbg_print(WIFI_CTRL,"%s:%d bssid:%s scan_list->conn_attempt:%d\n",__FUNCTION__, __LINE__,
-                                to_mac_str(scan_list->external_ap.bssid, bssid_str), scan_list->conn_attempt);
-                        if(scan_list->conn_attempt == connection_attempt_in_progress) {
-                            scan_list->conn_attempt = connection_attempt_failed;
-                        }
-
-                        if(scan_list->conn_attempt == connection_attempt_wait) {
-                            scan = false;
-                        }
-
-                        scan_list++;
-                    }
-
-                    if(scan) {
-                        ctrl->conn_state = connection_state_disconnected;
-                        if (ctrl->scan_list != NULL) {
-                            free(ctrl->scan_list);
-                            ctrl->scan_list = NULL;
-                            ctrl->scan_count = 0;
-                        }
-
-                        start_scan();
-                    }
-                } else {
-                    wifi_util_info_print(WIFI_CTRL,"%s:%d wifi_scan list not present, start scanning\r\n",__func__, __LINE__);
-                    ctrl->conn_state = connection_state_disconnected;
-                    start_scan();
-                }
-            } else {
-                wifi_util_dbg_print(WIFI_CTRL,"%s:%d Mode: Extender, sta connected, change it to disconnected, conn_state:%d\n",
-                                    __FUNCTION__, __LINE__, ctrl->conn_state);
-
-                ctrl->conn_state = connection_state_disconnected;
-
-                if (ctrl->connected_external_ap.freq) {
-                   mac_addr_str_t bssid_str;
-                   wifi_util_info_print(WIFI_CTRL,"%s:%d connecting to ssid:%s bssid:%s rssi:%d frequency:%d on vap:%d\n",
-                                    __func__, __LINE__, ctrl->connected_external_ap.ssid, to_mac_str(ctrl->connected_external_ap.bssid, bssid_str),
-                                    ctrl->connected_external_ap.rssi, ctrl->connected_external_ap.freq, ctrl->connected_vap_index);
-                   if (wifi_hal_connect(ctrl->connected_vap_index, &ctrl->connected_external_ap) == RETURN_ERR) {
-                      wifi_util_error_print(WIFI_CTRL,"%s:%d wifi_hal_connect failed\n",__FUNCTION__, __LINE__);
-                      memset(&ctrl->connected_external_ap, 0, sizeof(wifi_bss_info_t));
-                   } else {
-                      ctrl->conn_state = connection_state_in_progress;
-                      wifi_util_info_print(WIFI_CTRL,"%s:%d start wifi_hal_connect\n",__FUNCTION__, __LINE__);
-                      ctrl->last_connected_time = get_current_ms_time();
-                   }
-                }
-            }
-         }
-    }
-
-    /* publish connection status over rbus */
-    if (rbus_send_connected || sta_data->stats.connect_status == wifi_connection_status_disconnected) {
-        ctrl->webconfig_state |= ctrl_webconfig_state_sta_conn_status_rsp_pending;
-        sprintf(name, "Device.WiFi.STA.%d.Connection.Status", index+1);
-
-        wifi_util_dbg_print(WIFI_CTRL,"%s:%d Rbus name:%s:connection status:%d\r\n", __func__, __LINE__,
-                                       name, sta_data->stats.connect_status);
-        rbusValue_Init(&value);
-        rbusObject_Init(&rdata, NULL);
-
-        wifi_sta_conn_info_t sta_conn_info;
-        memset(&sta_conn_info, 0, sizeof(wifi_sta_conn_info_t));
-        sta_conn_info.connect_status = sta_data->stats.connect_status;
-        memcpy (sta_conn_info.bssid, sta_data->bss_info.bssid, sizeof(sta_conn_info.bssid));
-
-        rbusObject_SetValue(rdata, name, value);
-        rbusValue_SetBytes(value, (uint8_t *)&sta_conn_info, sizeof(sta_conn_info));
-        event.name = name;
-        event.data = rdata;
-        event.type = RBUS_EVENT_GENERAL;
-
-        if (rbusEvent_Publish(ctrl->rbus_handle, &event) != RBUS_ERROR_SUCCESS) {
-            wifi_util_error_print(WIFI_CTRL, "%s:%d: rbusEvent_Publish Event failed\n", __func__, __LINE__);
-            return;
-        }
-
-        rbusValue_Release(value);
-        rbusObject_Release(rdata);
+    if(ctrl->network_mode == rdk_dev_mode_type_ext) {
+        ext_svc->event_fn(ext_svc, ctrl_event_type_hal_ind, ctrl_event_hal_sta_conn_status, sta_data);
     }
 }
 
@@ -1501,6 +1269,7 @@ void marker_list_config_event(char *data, marker_list_t list_type)
 
 void process_device_mode_command_event(int device_mode)
 {
+    vap_svc_t *ext_svc;
     wifi_global_param_t *global_param = get_wifidb_wifi_global_param();
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
@@ -1510,17 +1279,19 @@ void process_device_mode_command_event(int device_mode)
         global_param->device_network_mode = device_mode;
         update_wifi_global_config(global_param);
         if (device_mode == rdk_dev_mode_type_ext) {
-            wifi_util_info_print(WIFI_CTRL, "%s:%d: disable all vaps and start station mode, scan_count:%d\r\n", __func__, __LINE__, ctrl->scan_count);
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: disable all vaps and start station mode\r\n", __func__, __LINE__);
             stop_gateway_vaps();
             start_extender_vaps();
         } else if (device_mode == rdk_dev_mode_type_gw) {
             wifi_util_info_print(WIFI_CTRL, "%s:%d: disable station, delete all scan results and start accesspoint mode\r\n", __func__, __LINE__);
             stop_extender_vaps();
             start_gateway_vaps();
-            if(ctrl->conn_state == connection_state_connected) {
-                wifi_util_info_print(WIFI_CTRL,"%s:%d disconnect sta on vap:%d\n",__FUNCTION__, __LINE__, ctrl->connected_vap_index);
-                wifi_hal_disconnect(ctrl->connected_vap_index);
-		ctrl->conn_state = connection_state_disconnected;
+            ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
+
+            if(ext_svc->u.ext.conn_state == connection_state_connected) {
+                wifi_util_dbg_print(WIFI_CTRL,"%s:%d disconnect sta on vap:%d\n",__FUNCTION__, __LINE__, ext_svc->u.ext.connected_vap_index);
+                wifi_hal_disconnect(ext_svc->u.ext.connected_vap_index);
+                ext_svc->u.ext.conn_state = connection_state_disconnected_scan_list_none;
             }
         }
     }

@@ -157,6 +157,39 @@ int reboot_device(wifi_ctrl_t *ctrl)
     return RETURN_OK;
 }
 
+void sta_selfheal_handing(wifi_ctrl_t *ctrl, vap_svc_t *l_svc)
+{
+    static bool radio_reset_triggered      = false;
+    static unsigned int disconnected_time  = 0;
+    static unsigned int connection_timeout = 0;
+    vap_svc_ext_t   *ext;
+    ext = &l_svc->u.ext;
+
+    /* Reboot device is STA connection is unsuccessful */
+    if ((ext != NULL) && (ext->conn_state != connection_state_connected)) {
+        disconnected_time++;
+        connection_timeout++;
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d reboot time is set to %d minutes, disconnected_time:%d\n",
+                        __func__, __LINE__, reboot_time(), disconnected_time);
+        if ((disconnected_time * STA_CONN_RETRY_TIMEOUT) > (reboot_time() * 60)) {
+            wifi_util_dbg_print(WIFI_CTRL,"%s:%d selfheal: STA connection failed for %d minutes, reboot the device\n",
+                            __func__, __LINE__, reboot_time());
+            /* reboot the device */
+            reboot_device(ctrl);
+        } else if (((disconnected_time * STA_CONN_RETRY_TIMEOUT) >= ((reboot_time() * 60) / 2)) && (radio_reset_triggered == false)) {
+            reset_both_wifi_radio();
+            radio_reset_triggered = true;
+        } else if ((connection_timeout * STA_CONN_RETRY_TIMEOUT) >= MAX_CONNECTION_ALGO_TIMEOUT) {
+            l_svc->event_fn(l_svc, ctrl_event_type_exec, ctrl_event_exec_timeout, NULL);
+            connection_timeout = 0;
+        }
+    } else {
+        radio_reset_triggered = false;
+        disconnected_time = 0;
+        connection_timeout = 0;
+    }
+}
+
 void ctrl_queue_loop(wifi_ctrl_t *ctrl)
 {
     struct timespec time_to_wait;
@@ -166,9 +199,8 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
     int greylist_event = 0;
     bool greylist_flag = false;
     ctrl_event_t *queue_data = NULL;
-    static uint8_t conn_retry = 0;
-    static uint8_t wait_scan_result;
-    static bool radio_reset_triggered;
+    static uint8_t max_conn_retry_timeout = 0;
+    vap_svc_t *ext_svc;
     wifi_apps_t *analytics = NULL;
 
     pthread_mutex_lock(&ctrl->lock);
@@ -247,48 +279,16 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
 
             webconfig_analyze_pending_states(ctrl);
 
-            if ((ctrl->network_mode == rdk_dev_mode_type_ext) && (ctrl->scan_wifi_state != received_none_wifi_scan)) {
-                if (ctrl->scan_wifi_state == received_both_wifi_scan) {
-                    ctrl->scan_wifi_state = received_none_wifi_scan;
-                } else if (wait_scan_result > MAX_SCAN_RESULT_WAIT) {
-                    wait_wifi_scan_result(ctrl);
-                    ctrl->scan_wifi_state = received_none_wifi_scan;
-                    wait_scan_result = 0;
+            ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
+            if (ctrl->network_mode == rdk_dev_mode_type_ext) {
+                if (max_conn_retry_timeout >= STA_CONN_RETRY_TIMEOUT) {
+
+                    // check sta connectivity selfheal
+                    sta_selfheal_handing(ctrl, ext_svc);
+                    max_conn_retry_timeout = 0;
                 } else {
-                    wait_scan_result++;
+                    max_conn_retry_timeout++;
                 }
-            } else if(ctrl->network_mode == rdk_dev_mode_type_ext) {
-                wait_scan_result = 0;
-            }
-
-            if (conn_retry > STA_CONN_RETRY) {
-                if (ctrl->network_mode == rdk_dev_mode_type_ext) {
-                    sta_pending_connection_retry(ctrl);
-
-                    /* Reboot device is STA connection is unsuccessful */
-                    if (ctrl->conn_state == connection_state_disconnected || ctrl->conn_state == connection_state_in_progress) {
-                        ctrl->disconnected_time++;
-                        wifi_util_dbg_print(WIFI_CTRL,"%s:%d reboot time is set to %d minutes, disconnected_time:%d\n",
-                                                      __FUNCTION__, __LINE__, reboot_time(), ctrl->disconnected_time);
-                        if ((ctrl->disconnected_time * 10) > (reboot_time() * 60)) {
-                            wifi_util_dbg_print(WIFI_CTRL,"%s:%d selfheal: STA connection failed for %d minutes, reboot the device\n",
-                                                           __FUNCTION__, __LINE__, reboot_time());
-                            /* reboot the device */
-                            reboot_device(ctrl);
-                        } else if (((ctrl->disconnected_time * 10) >= ((reboot_time() * 60) / 2)) && (radio_reset_triggered == false)) {
-                            reset_both_wifi_radio();
-                            radio_reset_triggered = true;
-                        }
-                    } else if (ctrl->conn_state == connection_state_connected) {
-                        radio_reset_triggered = false;
-                    }
-                } else if (ctrl->conn_state == connection_state_connected) {
-                    wifi_util_dbg_print(WIFI_CTRL,"%s:%d gateway mode, disconnect sta on vap:%d\n",__FUNCTION__, __LINE__, ctrl->connected_vap_index);
-                    wifi_hal_disconnect(ctrl->connected_vap_index);
-                }
-                conn_retry = 0;
-            } else {
-                conn_retry++;
             }
 
             if (greylist_event >= GREYLIST_CHECK_IN_SECONDS) {
@@ -446,135 +446,6 @@ void disconnect_wifi(wifi_platform_property_t *wifi_prop, unsigned int freq)
     vap_index = get_sta_vap_index_for_radio(wifi_prop, radio_index);
     wifi_util_info_print(WIFI_CTRL,"%s:%d sending connection disconnect for vap_index:%d\r\n",__func__, __LINE__, vap_index);
     wifi_hal_disconnect(vap_index);
-}
-
-void purge_existing_scan_list(unsigned int scan_count, scan_list_t *scan_list)
-{
-    unsigned int index = 0;
-    unsigned int vap_index = 0, band = 0;
-    int radio_index = 0;
-    wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
-
-    for (index = 0; index < scan_count; index++) {
-        if (scan_list->conn_attempt == connection_attempt_failed) {
-            if (scan_list->external_ap.freq >= 2412 && scan_list->external_ap.freq <= 2484) {
-                band = WIFI_FREQUENCY_2_4_BAND;
-            } else if (scan_list->external_ap.freq >= 5180 && scan_list->external_ap.freq <= 5980) {
-                band = WIFI_FREQUENCY_5_BAND;
-            }
-            convert_freq_band_to_radio_index(band, &radio_index);
-            vap_index = get_sta_vap_index_for_radio(&mgr->hal_cap.wifi_prop, radio_index);
-            wifi_hal_purgeScanResult(vap_index, scan_list->external_ap.bssid);
-        }
-        scan_list++;
-    }
-}
-
-void wait_wifi_scan_result(wifi_ctrl_t *ctrl)
-{
-    ctrl->conn_state = connection_state_in_progress;
-}
-
-void sta_pending_connection_retry(wifi_ctrl_t *ctrl)
-{
-    unsigned int *channel_list = NULL;
-    unsigned char num_of_channels;
-    unsigned int i;
-    unsigned int vap_index = 0, band = 0;
-    int radio_index = 0;
-    mac_addr_str_t bssid_str;
-    wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
-
-    if(ctrl->conn_state == connection_state_in_progress) {
-        wifi_util_info_print(WIFI_CTRL,"%s:%d retry timeout, scan_count:%d conn_state:%d \n",__func__, __LINE__, ctrl->scan_count, ctrl->conn_state);
-        if(ctrl->scan_list != NULL) {
-            scan_list_t *scan_list;
-            scan_list = ctrl->scan_list;
-
-            wifi_util_info_print(WIFI_CTRL, "%s:%d: scan_count:%d conn_state:%d\n", __func__, __LINE__, ctrl->scan_count, ctrl->conn_state);
-
-            for(i = 0; i < ctrl->scan_count; i++) {
-                wifi_util_info_print(WIFI_CTRL, "%s:%d: scan_list->conn_attempt:%d conn retry_attempt:%d\n", __func__, __LINE__, scan_list->conn_attempt, scan_list->conn_retry_attempt);
-                if(scan_list->conn_attempt == connection_attempt_wait) {
-                    scan_list->conn_attempt = connection_attempt_in_progress;
-                    ctrl->conn_state = connection_state_in_progress;
-                    if (scan_list->external_ap.freq >= 2412 && scan_list->external_ap.freq <= 2484) {
-                        band = WIFI_FREQUENCY_2_4_BAND;
-                    } else if (scan_list->external_ap.freq >= 5180 && scan_list->external_ap.freq <= 5980) {
-                        band = WIFI_FREQUENCY_5_BAND;
-                    }
-                    convert_freq_band_to_radio_index(band, &radio_index);
-                    vap_index = get_sta_vap_index_for_radio(&mgr->hal_cap.wifi_prop, radio_index);
-
-                    wifi_util_info_print(WIFI_CTRL,"%s:%d connecting to ssid:%s bssid:%s rssi:%d frequency:%d on vap:%d radio:%d\n",
-                                            __FUNCTION__, __LINE__, scan_list->external_ap.ssid, to_mac_str(scan_list->external_ap.bssid, bssid_str),
-                                            scan_list->external_ap.rssi, scan_list->external_ap.freq, vap_index, radio_index);
-                    wifi_hal_connect(vap_index, &scan_list->external_ap);
-                    break;
-                } else if ((scan_list->conn_attempt == connection_attempt_in_progress)
-                                && (scan_list->conn_retry_attempt < STA_MAX_CONNECT_ATTEMPT)) {
-                    wifi_util_info_print(WIFI_CTRL,"%s:%d wifi trying to connect with AP\r\n",__func__, __LINE__);
-                    scan_list->conn_retry_attempt++;
-                    break;
-                } else if ((scan_list->conn_attempt == connection_attempt_in_progress)
-                                && (scan_list->conn_retry_attempt >= STA_MAX_CONNECT_ATTEMPT)) {
-                    wifi_util_info_print(WIFI_CTRL,"%s:%d connection attempt failed...\r\n",__func__, __LINE__);
-                    scan_list->conn_attempt = connection_attempt_failed;
-                    //disconnect_wifi(&mgr->hal_cap.wifi_prop, scan_list->external_ap.freq);
-                    break;
-                } else if (scan_list->conn_attempt == connection_attempt_failed) {
-                    wifi_util_info_print(WIFI_CTRL,"%s:%d scan count:%d index:%d\r\n",__func__, __LINE__, ctrl->scan_count, (i + 1));
-                    if ((i + 1) == ctrl->scan_count) {
-                        purge_existing_scan_list(ctrl->scan_count, ctrl->scan_list);
-                        ctrl->conn_state = connection_state_disconnected;
-                        if (ctrl->scan_list != NULL) {
-                            free(ctrl->scan_list);
-                            ctrl->scan_list = NULL;
-                            ctrl->scan_count = 0;
-                        }
-                        start_scan();
-                        return;
-                    }
-                }
-                scan_list++;
-            }
-        } else {
-          unsigned long long int current_time = get_current_ms_time();
-          wifi_util_dbg_print(WIFI_CTRL,"%s:%d time diff:%lld \n",__FUNCTION__, __LINE__, current_time - ctrl->last_connected_time);
-          if(ctrl->last_connected_time == 0 || ((current_time - ctrl->last_connected_time) > 10*1000)) {
-              if (wifi_hal_disconnect(ctrl->connected_vap_index) == RETURN_ERR) {
-                 wifi_util_error_print(WIFI_CTRL,"%s:%d wifi_hal_disconnect failed\n",__FUNCTION__, __LINE__);
-              }
-              wifi_util_info_print(WIFI_CTRL,"%s:%d start wifi_hal_disconnect\n",__FUNCTION__, __LINE__);
-              ctrl->last_connected_time = 0;
-              ctrl->conn_state = connection_state_disconnected;
-          }
-        }
-    } else if (ctrl->conn_state == connection_state_disconnected) {
-        if (ctrl->connected_external_ap.freq) {
-            mac_addr_str_t bssid_str;
-            wifi_util_dbg_print(WIFI_CTRL,"%s:%d connecting to ssid:%s bssid:%s rssi:%d frequency:%d on vap:%d\n",
-                                    __func__, __LINE__, ctrl->connected_external_ap.ssid, to_mac_str(ctrl->connected_external_ap.bssid, bssid_str),
-                                    ctrl->connected_external_ap.rssi, ctrl->connected_external_ap.freq, ctrl->connected_vap_index);
-            if (wifi_hal_connect(ctrl->connected_vap_index, &ctrl->connected_external_ap) == RETURN_ERR) {
-                wifi_util_info_print(WIFI_CTRL,"%s:%d wifi_hal_connect failed\n",__FUNCTION__, __LINE__);
-            } else {
-                ctrl->conn_state = connection_state_in_progress;
-                wifi_util_info_print(WIFI_CTRL,"%s:%d start wifi_hal_connect\n",__FUNCTION__, __LINE__);
-            }
-            memset(&ctrl->connected_external_ap, 0, sizeof(wifi_bss_info_t));
-
-        } else if(!ctrl->scan_count) {
-            wifi_util_info_print(WIFI_CTRL,"%s:%d no scan results, start scan on 2.4GHz and 5GHz radios\n",__FUNCTION__, __LINE__);
-            /* start scan on 2.4Ghz */
-            get_default_supported_scan_channel_list(WIFI_FREQUENCY_2_4_BAND, &channel_list, &num_of_channels);
-            wifi_hal_startScan(0, WIFI_RADIO_SCAN_MODE_OFFCHAN, 0, num_of_channels, channel_list);
-
-            /* start scan on 5Ghz */
-            get_default_supported_scan_channel_list(WIFI_FREQUENCY_5_BAND, &channel_list, &num_of_channels);
-            wifi_hal_startScan(1, WIFI_RADIO_SCAN_MODE_OFFCHAN, 0, num_of_channels, channel_list);
-        }
-    }
 }
 
 bool check_for_greylisted_mac_filter(void)
@@ -858,37 +729,17 @@ int start_wifi_health_monitor_thread(void)
     return RETURN_OK;
 }
 
-void update_empty_wifi_scan_result_status(int radio_index)
-{
-    wifi_ctrl_t *ctrl;
-    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-
-    wifi_util_dbg_print(WIFI_CTRL, "%s:%d: wifi connect state:%d radio_index:%d\n", __func__, __LINE__, ctrl->conn_state, radio_index);
-    if (ctrl->conn_state == connection_state_disconnected) {
-        if (radio_index == 1) {
-            ctrl->scan_wifi_state |= received_5g_wifi_scan;
-        } else if (radio_index == 0) {
-            ctrl->scan_wifi_state |= received_2g_wifi_scan;
-        }
-
-        wifi_util_info_print(WIFI_CTRL, "%s:%d: scan count:%d wifi scan state:%d\n", __func__, __LINE__, ctrl->scan_count, ctrl->scan_wifi_state);
-        if ((ctrl->scan_count != 0) && (ctrl->scan_wifi_state == received_both_wifi_scan)) {
-            ctrl->conn_state = connection_state_in_progress;
-            ctrl->scan_wifi_state = received_none_wifi_scan;
-            wifi_util_info_print(WIFI_CTRL, "%s:%d: candidate_list is present, start connecting...\n", __func__, __LINE__);
-            sta_pending_connection_retry(ctrl);
-        }
-    }
-}
-
 int scan_results_callback(int radio_index, wifi_bss_info_t **bss, unsigned int *num)
 {
-    if (*num != 0) {
-        push_data_to_ctrl_queue(*bss, (*num)*sizeof(wifi_bss_info_t), ctrl_event_type_hal_ind, ctrl_event_scan_results);
-        free(*bss);
-    } else {
-        update_empty_wifi_scan_result_status(radio_index);
+    scan_results_t  res;
+
+    res.radio_index = radio_index;
+    res.num = *num;
+    if (res.num) {
+        memcpy((unsigned char *)res.bss, (unsigned char *)(*bss), (*num)*sizeof(wifi_bss_info_t));
     }
+    push_data_to_ctrl_queue(&res, sizeof(scan_results_t), ctrl_event_type_hal_ind, ctrl_event_scan_results);
+    free(*bss);
 
     return 0;
 }
@@ -1018,7 +869,6 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
 
     ctrl->rbus_events_subscribed = false;
     ctrl->tunnel_events_subscribed = false;
-    ctrl->scan_list = NULL;
 
     register_with_webconfig_framework();
 

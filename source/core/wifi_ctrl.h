@@ -77,10 +77,6 @@ extern "C" {
 #define WIFI_ALL_RADIO_INDICES             0xffff
 #define DEVICE_TUNNEL_UP                   1
 #define DEVICE_TUNNEL_DOWN                 0
-//sta connection 10 seconds retry
-#define STA_CONN_RETRY                     8
-#define STA_MAX_CONNECT_ATTEMPT            1
-#define MAX_SCAN_RESULT_WAIT               4
 
 #define WLAN_RADIUS_GREYLIST_REJECT        100
 #define GREYLIST_TIMEOUT_IN_SECONDS        (24 * 60 * 60)
@@ -129,31 +125,6 @@ typedef struct kick_details {
     int vap_index;
 }kick_details_t;
 
-typedef enum {
-    connection_attempt_wait,
-    connection_attempt_in_progress,
-    connection_attempt_failed
-} connection_attempt_t;
-
-typedef enum {
-    connection_state_disconnected,
-    connection_state_in_progress,
-    connection_state_connected
-} connection_state_t;
-
-typedef enum {
-    received_none_wifi_scan,
-    received_2g_wifi_scan,
-    received_5g_wifi_scan,
-    received_both_wifi_scan
-} scan_wifi_state_t;
-
-typedef struct scan_result {
-    wifi_bss_info_t      external_ap;
-    connection_attempt_t conn_attempt;
-    unsigned int         conn_retry_attempt;
-} scan_list_t;
-
 typedef struct {
     wifi_connection_status_t    connect_status;
     bssid_t                     bssid;
@@ -185,16 +156,8 @@ typedef struct wifi_ctrl {
     wifi_rfc_dml_parameters_t    rfc_params;
     unsigned int        sta_tree_instance_num;
     vap_svc_t           ctrl_svc[vap_svc_type_max];
-    scan_list_t         *scan_list;
-    unsigned int        scan_count;
-    connection_state_t  conn_state;
     wifi_apps_t         fi_apps[wifi_apps_type_max];
     unsigned int        network_mode; /* 0 - gateway, 1 - extender */
-    unsigned int        connected_vap_index;
-    scan_wifi_state_t   scan_wifi_state;
-    wifi_bss_info_t     connected_external_ap;
-    unsigned long long int last_connected_time;
-    unsigned int        disconnected_time;
 } wifi_ctrl_t;
 
 typedef struct {

@@ -57,6 +57,10 @@ int vap_svc_mesh_gw_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
             &map->vap_array[i].u.bss_info.security);
     }
 
+    return 0;
+}
 
+int vap_svc_mesh_gw_event(vap_svc_t *svc, ctrl_event_type_t type, ctrl_event_subtype_t sub_type, void *arg)
+{
     return 0;
 }
