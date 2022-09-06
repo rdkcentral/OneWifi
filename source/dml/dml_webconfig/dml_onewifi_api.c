@@ -912,6 +912,7 @@ wifi_GASConfiguration_t* get_dml_wifi_gas_config(void)
 #define MESH 0b1000
 #define MESH_STA 0b10000
 #define MESH_BACKHAUL 0b100000
+#define LNF 0b1000000
 
 int is_vap_config_changed;
 void get_subdoc_type_bit_mask_from_vap_index(uint8_t vap_index, int* subdoc)
@@ -934,8 +935,8 @@ void get_subdoc_type_bit_mask_from_vap_index(uint8_t vap_index, int* subdoc)
     } else if (isVapMesh(vap_index)) {
         *subdoc = MESH;
         return;
-    } else if (isVapLnfSecure(vap_index)) {
-        *subdoc = 0;
+    } else if (isVapLnf(vap_index)) {
+        *subdoc = LNF;
         return;
     } else {
         *subdoc = MESH_STA;
@@ -1024,6 +1025,10 @@ int push_vap_dml_cache_to_one_wifidb()
     if (is_vap_config_changed & MESH) {
         wifi_util_dbg_print(WIFI_DMCLI, "%s: Subdoc webconfig_subdoc_type_mesh DML Modified  \n", __FUNCTION__);
         push_subdoc_to_one_wifidb(webconfig_subdoc_type_mesh);
+    }
+    if (is_vap_config_changed & LNF) {
+        wifi_util_dbg_print(WIFI_DMCLI, "%s: Subdoc webconfig_subdoc_type_lnf DML Modified  \n", __FUNCTION__);
+        push_subdoc_to_one_wifidb(webconfig_subdoc_type_lnf);
     }
 
     wifi_util_dbg_print(WIFI_DMCLI, "%s:  VAP DML cache pushed to queue \n", __FUNCTION__);
