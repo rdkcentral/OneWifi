@@ -10,7 +10,7 @@
 #include <rbus.h>
 #include <libgen.h>
 #include "wifi_webconfig_consumer.h"
-
+#define CONSUMER_APP_FILE "/tmp/wifi_webconfig_consumer_app"
 void webconfig_consumer_set(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription)
 {
     int len = 0;
@@ -293,11 +293,26 @@ int initial_sync(webconfig_consumer_t *consumer)
 
     return 0;
 }
-
+void sig_handler(int sig)
+{
+    exit(0);
+}
+void cleanup_function()
+{
+    remove(CONSUMER_APP_FILE);
+}
 int main (int argc, char *argv[])
 {
+    atexit(cleanup_function);
+    signal(SIGINT,sig_handler);
+    signal(SIGTERM,sig_handler);
+    signal(SIGTSTP,sig_handler);
+    signal(SIGKILL,sig_handler);
     printf("%s:%d: Enter\n", __func__, __LINE__);
-
+    FILE *fp = fopen(CONSUMER_APP_FILE, "a+");
+    if(fp != NULL) {
+        fclose(fp);
+    }
     run_tests();
     return 0;
 }

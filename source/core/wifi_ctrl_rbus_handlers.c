@@ -377,6 +377,8 @@ static void MarkerListConfigHandler (rbusHandle_t handle, rbusEvent_t const* eve
     UNREFERENCED_PARAMETER(handle);
 }
 
+
+#if defined(GATEWAY_FAILOVER_SUPPORTED)
 static void activeGatewayCheckHandler(rbusHandle_t handle, rbusEvent_t const* event,
     rbusEventSubscription_t* subscription)
 {
@@ -402,7 +404,7 @@ static void activeGatewayCheckHandler(rbusHandle_t handle, rbusEvent_t const* ev
 
     UNREFERENCED_PARAMETER(handle);
 }
-
+#endif
 static void wan_failover_handler(rbusHandle_t handle, rbusEvent_t const* event,
     rbusEventSubscription_t* subscription)
 {
@@ -820,6 +822,7 @@ rbusError_t get_home_vap(rbusHandle_t handle, rbusProperty_t property, rbusSetHa
     return rc;
 }
 
+#if defined (RDKB_EXTENDER_ENABLED) || defined (WAN_FAILOVER_SUPPORTED) 
 static void deviceModeHandler(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription)
 {
     int device_mode;
@@ -848,7 +851,7 @@ static void deviceModeHandler(rbusHandle_t handle, rbusEvent_t const* event, rbu
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Unsupported event:%s\n", __func__, __LINE__, event->name);
     }
 }
-
+#endif
 static void testDeviceModeHandler(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription)
 {
     int device_mode;
@@ -989,8 +992,11 @@ void rbus_subscribe_events(wifi_ctrl_t *ctrl)
         { WIFI_TxRx_RATE_LIST, NULL, 0, 0, MarkerListConfigHandler, NULL, NULL, NULL},
     };
 
+    int consumer_app_file = -1;
+    char file_name[512] = "/tmp/wifi_webconfig_consumer_app";
+    consumer_app_file =  access(file_name, F_OK);
 
-    if(ctrl->rbus_events_subscribed == false) {
+    if(consumer_app_file == 0 && ctrl->rbus_events_subscribed == false) {
         if (rbusEvent_Subscribe(ctrl->rbus_handle, WIFI_WAN_FAILOVER_TEST, wan_failover_handler, NULL, 0) != RBUS_ERROR_SUCCESS) {
             //wifi_util_dbg_print(WIFI_CTRL,"%s:%d Rbus event:%s subscribe failed\n",__FUNCTION__, __LINE__, WIFI_WAN_FAILOVER_TEST);
         } else {
@@ -1007,6 +1013,7 @@ void rbus_subscribe_events(wifi_ctrl_t *ctrl)
         }
     }
 
+#if defined(GATEWAY_FAILOVER_SUPPORTED)
     if(ctrl->active_gateway_check_subscribed == false) {
         if (rbusEvent_Subscribe(ctrl->rbus_handle, WIFI_ACTIVE_GATEWAY_CHECK, activeGatewayCheckHandler, NULL, 0) != RBUS_ERROR_SUCCESS) {
             //wifi_util_dbg_print(WIFI_CTRL,"%s:%d Rbus event:%s subscribe failed\n",__FUNCTION__, __LINE__, WIFI_ACTIVE_GATEWAY_CHECK);
@@ -1015,8 +1022,9 @@ void rbus_subscribe_events(wifi_ctrl_t *ctrl)
             wifi_util_dbg_print(WIFI_CTRL,"%s:%d Rbus event:%s subscribe success\n",__FUNCTION__, __LINE__, WIFI_ACTIVE_GATEWAY_CHECK);
         }
     }
+#endif
 
-    if(ctrl->tunnel_events_subscribed == false) {
+    if(consumer_app_file == 0 && ctrl->tunnel_events_subscribed == false) {
         //TODO - what's the namespace for the event
         int rc = rbusEvent_Subscribe(ctrl->rbus_handle, "TunnelStatus", hotspotTunnelHandler, NULL, 0);
         if(rc != RBUS_ERROR_SUCCESS) {
@@ -1038,6 +1046,7 @@ void rbus_subscribe_events(wifi_ctrl_t *ctrl)
         }
     }
 
+#if defined (RDKB_EXTENDER_ENABLED) || defined (WAN_FAILOVER_SUPPORTED)
     if(ctrl->device_mode_subscribed == false) {
         if (rbusEvent_Subscribe(ctrl->rbus_handle, WIFI_DEVICE_MODE, deviceModeHandler, NULL, 0) != RBUS_ERROR_SUCCESS) {
             //wifi_util_dbg_print(WIFI_CTRL,"%s:%d Rbus event:%s subscribe failed\n",__FUNCTION__, __LINE__, WIFI_DEVICE_MODE);
@@ -1046,6 +1055,7 @@ void rbus_subscribe_events(wifi_ctrl_t *ctrl)
             wifi_util_dbg_print(WIFI_CTRL,"%s:%d Rbus event:%s subscribe success\n",__FUNCTION__, __LINE__, WIFI_DEVICE_MODE);
         }
     }
+#endif
 
     if(ctrl->device_tunnel_status_subscribed == false) {
         if (rbusEvent_Subscribe(ctrl->rbus_handle, WIFI_DEVICE_TUNNEL_STATUS, eventReceiveHandler, NULL, 0) != RBUS_ERROR_SUCCESS) {
@@ -1056,7 +1066,7 @@ void rbus_subscribe_events(wifi_ctrl_t *ctrl)
         }
     }
 
-    if(ctrl->device_wps_test_subscribed == false) {
+    if(consumer_app_file == 0 && ctrl->device_wps_test_subscribed == false) {
         if (rbusEvent_Subscribe(ctrl->rbus_handle, RBUS_WIFI_WPS_PIN_START, wps_test_event_receive_handler, NULL, 0) != RBUS_ERROR_SUCCESS) {
             //wifi_util_dbg_print(WIFI_CTRL,"%s:%d Rbus event:%s subscribe failed\n",__FUNCTION__, __LINE__, RBUS_WIFI_WPS_PIN_START);
         } else {
@@ -1065,7 +1075,7 @@ void rbus_subscribe_events(wifi_ctrl_t *ctrl)
         }
     }
 
-    if(ctrl->test_device_mode_subscribed == false) {
+    if(consumer_app_file == 0 && ctrl->test_device_mode_subscribed == false) {
         if (rbusEvent_Subscribe(ctrl->rbus_handle, TEST_WIFI_DEVICE_MODE, testDeviceModeHandler, NULL, 0) != RBUS_ERROR_SUCCESS) {
             //wifi_util_dbg_print(WIFI_CTRL,"%s:%d Rbus event:%s subscribe failed\n",__FUNCTION__, __LINE__, TEST_WIFI_DEVICE_MODE);
         } else {
@@ -1073,6 +1083,7 @@ void rbus_subscribe_events(wifi_ctrl_t *ctrl)
             wifi_util_dbg_print(WIFI_CTRL,"%s:%d Rbus event:%s subscribe success\n",__FUNCTION__, __LINE__, TEST_WIFI_DEVICE_MODE);
         }
     }
+
 
 }
 
