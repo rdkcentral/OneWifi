@@ -1450,7 +1450,14 @@ pErr private_home_exec_common_handler(void *data, bool priv_sd)
             wps_push_n = cJSON_GetNumberValue(wps_push);
         }
         cJSON *beacon_rate_ctrl = cJSON_GetObjectItem(pg, "BeaconRateCtl");
-
+        if(strstr(p2g_vap_name, "private") != NULL){
+            UINT wps_cfg_en_b =  wifi_vap_map->vap_array[vindx].u.bss_info.wps.methods;
+            cJSON *wps_methods = cJSON_GetObjectItem(pg, "WpsConfigMethodsEnabled");
+            if(wps_methods != NULL) {
+                wps_cfg_en_b = cJSON_GetNumberValue(wps_methods);
+            }
+            cJSON_AddNumberToObject(vb_entry, "WpsConfigMethodsEnabled", wps_cfg_en_b);
+        }
         cJSON_AddBoolToObject(vb_entry, "IsolationEnable", iso_en_b);
         cJSON_AddNumberToObject(vb_entry, "ManagementFramePowerControl", m_frm_c_n);
         cJSON_AddNumberToObject(vb_entry, "BssMaxNumSta", bss_max_n);
@@ -1470,6 +1477,7 @@ pErr private_home_exec_common_handler(void *data, bool priv_sd)
         cJSON_AddBoolToObject(vb_entry, "BssHotspot", false);
         cJSON_AddNumberToObject(vb_entry, "WpsPushButton", wps_push_n);
         cJSON_AddBoolToObject(vb_entry, "WpsEnable", true);
+
         if(beacon_rate_ctrl != NULL) {
             cJSON_AddStringToObject(vb_entry, "BeaconRateCtl", cJSON_GetStringValue(beacon_rate_ctrl));
         }
@@ -1835,6 +1843,9 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
         cJSON_AddBoolToObject(vb_entry, "BssHotspot", true);
         cJSON_AddNumberToObject(vb_entry, "WpsPushButton", 0);
         cJSON_AddBoolToObject(vb_entry, "WpsEnable", false);
+        if(strstr(nm_s, "private") != NULL) {
+            cJSON_AddNumberToObject(vb_entry, "WpsConfigMethodsEnabled", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.wps.methods);
+        }
         if(wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.beaconRateCtl[0] != 0) {
             cJSON_AddStringToObject(vb_entry, "BeaconRateCtl", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.beaconRateCtl);
         }

@@ -36,6 +36,7 @@ typedef struct {
     ULONG   long_retry_limit;
     ULONG   txoverflow;
     INT     wps_methods;
+    CHAR    wps_pin[128];
 }dml_vap_default;
 
 typedef struct {

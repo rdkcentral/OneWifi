@@ -1891,6 +1891,7 @@ int wifidb_update_wifi_macfilter_config(char *macfilter_key, acl_entry_t *config
         where = ovsdb_tran_cond(OCLM_STR, "macfilter_key", OFUNC_EQ, macfilter_key);
         ret = ovsdb_table_delete_where(g_wifidb->wifidb_sock_path, &table_Wifi_MacFilter_Config, where);
         l_mac_entry.vap_index = convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, vap_name);
+        wifidb_print("%s:%d vap_name:%s key:%s\n",__func__, __LINE__, vap_name, macfilter_key);
         memset(tmp_mac_str, 0, sizeof(tmp_mac_str));
         to_mac_str(config->mac, tmp_mac_str);
         strncpy(l_mac_entry.device_name, config->device_name, sizeof(l_mac_entry.device_name)-1);
@@ -1904,6 +1905,7 @@ int wifidb_update_wifi_macfilter_config(char *macfilter_key, acl_entry_t *config
             wifidb_destroy_error_log();
             return -1;
         }
+        wifidb_print("%s:%d Updated WIFI DB. Deleted entry and updated Wifi_MacFilter Config table successfully\n",__func__, __LINE__);
     } else {
 
         memset(tmp_mac_str, 0, sizeof(tmp_mac_str));
@@ -3082,7 +3084,6 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config)
     unsigned int i, found = 0;
     wifi_vap_info_t cfg;
     char vap_name[BUFFER_LENGTH_WIFIDB] = {0};
-    char wps_pin[128] = {0};
     char password[128] = {0};
     char ssid[128] = {0};
 
@@ -3196,12 +3197,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config)
         cfg.vap_mode = wifi_vap_mode_ap;
         if (isVapPrivate(vap_index)) {
             cfg.u.bss_info.showSsid = true;
-            memset(wps_pin, 0, sizeof(wps_pin));
-            if (wifi_hal_get_default_wps_pin(wps_pin) == RETURN_OK) {
-                strcpy(cfg.u.bss_info.wps.pin, wps_pin);
-            } else {
-                strcpy(cfg.u.bss_info.wps.pin, "12345678");
-            }
+            cfg.u.bss_info.wps.methods = WIFI_ONBOARDINGMETHODS_PUSHBUTTON;
         }
         else {
             cfg.u.bss_info.showSsid = false;

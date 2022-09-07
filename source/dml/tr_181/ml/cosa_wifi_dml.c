@@ -8809,6 +8809,7 @@ WPS_GetParamStringValue
 {
     wifi_vap_info_t *pcfg = (wifi_vap_info_t *)hInsContext;
     ULONG vap_index = 0;
+    errno_t  rc           = -1;
     if (pcfg == NULL)
     {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
@@ -8824,49 +8825,213 @@ WPS_GetParamStringValue
 
     if( AnscEqualString(ParamName, "ConfigMethodsSupported", TRUE)) {
         char buf[512] = {0};
-        if (cfg->wps_methods & WIFI_ONBOARDINGMETHODS_PUSHBUTTON) {
-            strcat(buf,"PushButton");
+        if (cfg->wps_methods & WIFI_ONBOARDINGMETHODS_USBFLASHDRIVE )
+        {
+            rc = strcat_s(buf, sizeof(buf), "USBFlashDrive");
+            ERR_CHK(rc);
         }
-        if (cfg->wps_methods & WIFI_ONBOARDINGMETHODS_PIN) {
-            if (AnscSizeOfString(buf) != 0) {
-                strcat(buf, ",PIN");
-            } else {
-                strcat(buf, "PIN");
+        if (cfg->wps_methods & WIFI_ONBOARDINGMETHODS_ETHERNET )
+        {
+            if (AnscSizeOfString(buf) != 0)
+            {
+               rc = strcat_s(buf, sizeof(buf), ",Ethernet");
+               ERR_CHK(rc);
+            }
+            else
+            {
+               rc = strcat_s(buf, sizeof(buf), "Ethernet");
+               ERR_CHK(rc);
+            }
+
+        }
+        if (cfg->wps_methods & WIFI_ONBOARDINGMETHODS_EXTERNALNFCTOKEN )
+        {
+            if (AnscSizeOfString(buf) != 0)
+            {
+               rc = strcat_s(buf, sizeof(buf), ",ExternalNFCToken");
+               ERR_CHK(rc);
+            }
+            else
+            {
+               rc = strcat_s(buf, sizeof(buf), "ExternalNFCToken");
+               ERR_CHK(rc);
             }
         }
-        if ( AnscSizeOfString(buf) < *pUlSize) {
-            AnscCopyString(pValue, buf);
-            return 0;
-        } else {
-            *pUlSize = AnscSizeOfString(buf)+1;
-            return 1;
+        if (cfg->wps_methods & WIFI_ONBOARDINGMETHODS_INTEGRATEDNFCTOKEN )
+        {
+            if (AnscSizeOfString(buf) != 0)
+            {
+               rc = strcat_s(buf, sizeof(buf), ",IntegratedNFCToken");
+               ERR_CHK(rc);
+            }
+            else
+            {
+               rc = strcat_s(buf, sizeof(buf), "IntegratedNFCToken");
+               ERR_CHK(rc);
+            }
         }
-        return 0;
+        if (cfg->wps_methods & WIFI_ONBOARDINGMETHODS_NFCINTERFACE )
+        {
+            if (AnscSizeOfString(buf) != 0)
+            {
+               rc = strcat_s(buf, sizeof(buf), ",NFCInterface");
+               ERR_CHK(rc);
+            }
+            else
+            {
+               rc = strcat_s(buf, sizeof(buf), "NFCInterface");
+               ERR_CHK(rc);
+            }
+        }
+        if (cfg->wps_methods & WIFI_ONBOARDINGMETHODS_PUSHBUTTON )
+        {
+            if (AnscSizeOfString(buf) != 0)
+            {
+               rc = strcat_s(buf, sizeof(buf), ",PushButton");
+               ERR_CHK(rc);
+            }
+            else
+            {
+               rc = strcat_s(buf, sizeof(buf), "PushButton");
+               ERR_CHK(rc);
+            }
+         }
+         if (cfg->wps_methods & WIFI_ONBOARDINGMETHODS_PIN )
+         {
+            if (AnscSizeOfString(buf) != 0)
+            {
+               rc = strcat_s(buf, sizeof(buf), ",PIN");
+               ERR_CHK(rc);
+            }
+            else
+            {
+               rc = strcat_s(buf, sizeof(buf), "PIN");
+               ERR_CHK(rc);
+            }
+        }
+        if ( AnscSizeOfString(buf) < *pUlSize)
+        {
+            rc = strcpy_s(pValue, *pUlSize, buf);
+            ERR_CHK(rc);
+            return 0;
+        }
+        else
+        {
+           *pUlSize = AnscSizeOfString(buf)+1;
+           return 1;
+        }
     }
 
-    if( AnscEqualString(ParamName, "ConfigMethodsEnabled", TRUE)) {
+    if( AnscEqualString(ParamName, "ConfigMethodsEnabled", TRUE))
+    {
+        /* collect value */
         char buf[512] = {0};
-        if (cfg->wps_methods & WIFI_ONBOARDINGMETHODS_PUSHBUTTON) {
-            strcat(buf,"PushButton");
-        } 
-        if ( AnscSizeOfString(buf) < *pUlSize) {
-            AnscCopyString(pValue, buf);
-            return 0;
-        } else {
-            *pUlSize = AnscSizeOfString(buf)+1;
-            return 1;
+
+        if (pcfg->u.bss_info.wps.methods & WIFI_ONBOARDINGMETHODS_USBFLASHDRIVE )
+        {
+            rc = strcat_s(buf, sizeof(buf), "USBFlashDrive");
+            ERR_CHK(rc);
         }
-        return 0;
+        if (pcfg->u.bss_info.wps.methods & WIFI_ONBOARDINGMETHODS_ETHERNET )
+        {
+            if (AnscSizeOfString(buf) != 0)
+            {
+               rc = strcat_s(buf, sizeof(buf), ",Ethernet");
+               ERR_CHK(rc);
+            }
+            else
+            {
+               rc = strcat_s(buf, sizeof(buf), "Ethernet");
+               ERR_CHK(rc);
+            }
+
+        }
+        if (pcfg->u.bss_info.wps.methods & WIFI_ONBOARDINGMETHODS_EXTERNALNFCTOKEN )
+        {
+            if (AnscSizeOfString(buf) != 0)
+            {
+               rc = strcat_s(buf, sizeof(buf), ",ExternalNFCToken");
+               ERR_CHK(rc);
+            }
+            else
+            {
+               rc = strcat_s(buf, sizeof(buf), "ExternalNFCToken");
+               ERR_CHK(rc);
+            }
+        }
+        if (pcfg->u.bss_info.wps.methods & WIFI_ONBOARDINGMETHODS_INTEGRATEDNFCTOKEN )
+        {
+            if (AnscSizeOfString(buf) != 0)
+            {
+               rc = strcat_s(buf, sizeof(buf), ",IntegratedNFCToken");
+               ERR_CHK(rc);
+            }
+            else
+            {
+               rc = strcat_s(buf, sizeof(buf), "IntegratedNFCToken");
+               ERR_CHK(rc);
+            }
+        }
+        if (pcfg->u.bss_info.wps.methods & WIFI_ONBOARDINGMETHODS_NFCINTERFACE )
+        {
+            if (AnscSizeOfString(buf) != 0)
+            {
+               rc = strcat_s(buf, sizeof(buf), ",NFCInterface");
+               ERR_CHK(rc);
+            }
+            else
+            {
+               rc = strcat_s(buf, sizeof(buf), "NFCInterface");
+               ERR_CHK(rc);
+            }
+        }
+        if (pcfg->u.bss_info.wps.methods & WIFI_ONBOARDINGMETHODS_PUSHBUTTON )
+        {
+            if (AnscSizeOfString(buf) != 0)
+            {
+               rc = strcat_s(buf, sizeof(buf), ",PushButton");
+               ERR_CHK(rc);
+            }
+            else
+            {
+               rc = strcat_s(buf, sizeof(buf), "PushButton");
+               ERR_CHK(rc);
+            }
+         }
+         if (pcfg->u.bss_info.wps.methods & WIFI_ONBOARDINGMETHODS_PIN )
+         {
+            if (AnscSizeOfString(buf) != 0)
+            {
+               rc = strcat_s(buf, sizeof(buf), ",PIN");
+               ERR_CHK(rc);
+            }
+            else
+            {
+               rc = strcat_s(buf, sizeof(buf), "PIN");
+               ERR_CHK(rc);
+            }
+        }
+        if ( AnscSizeOfString(buf) < *pUlSize)
+        {
+            rc = strcpy_s(pValue, *pUlSize, buf);
+            ERR_CHK(rc);
+            return 0;
+        }
+        else
+        {
+           *pUlSize = AnscSizeOfString(buf)+1;
+           return 1;
+        }
     }
 
     if (AnscEqualString(ParamName, "X_CISCO_COM_Pin", TRUE)) {
-        if ( AnscSizeOfString(pcfg->u.bss_info.wps.pin) > 0 )
+        if ( AnscSizeOfString(cfg->wps_pin) > 0 )
         {
-            if  ( AnscSizeOfString(pcfg->u.bss_info.wps.pin) < *pUlSize) {
-                AnscCopyString(pValue, pcfg->u.bss_info.wps.pin);
+            if  ( AnscSizeOfString(cfg->wps_pin) < *pUlSize) {
+                AnscCopyString(pValue, cfg->wps_pin);
                 return 0;
             } else {
-                *pUlSize = AnscSizeOfString(pcfg->u.bss_info.wps.pin)+1;
+                *pUlSize = AnscSizeOfString(cfg->wps_pin)+1;
                 return 1;
             }
         } else  {
@@ -9129,7 +9294,6 @@ WPS_SetParamStringValue
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s does not support configuration\n", __FUNCTION__,__LINE__,pcfg->vap_name);
             return TRUE;
         }
-
         //Needs to initialize by 0 before setting
         vapInfo->u.bss_info.wps.methods = 0;
         /* save update to backup */
@@ -9168,21 +9332,21 @@ WPS_SetParamStringValue
             match++;
             vapInfo->u.bss_info.wps.methods = (vapInfo->u.bss_info.wps.methods  | WIFI_ONBOARDINGMETHODS_PIN);
         }
-	if (_ansc_strstr(pString, "NONE"))
+        if (_ansc_strstr(pString, "NONE"))
         {
             match++;
             vapInfo->u.bss_info.wps.methods = 0;
-	    set_dml_cache_vap_config_changed(instance_number - 1);
+            set_dml_cache_vap_config_changed(instance_number - 1);
         }
 
-	//If match is not there then return error
+        //If match is not there then return error
         if (match == 0)
         {   // Might have passed value that is invalid
             return FALSE;
         }
         if (vapInfo->u.bss_info.wps.methods != 0)
         {
-	    set_dml_cache_vap_config_changed(instance_number - 1);
+            set_dml_cache_vap_config_changed(instance_number - 1);
         }
         return TRUE;
     }

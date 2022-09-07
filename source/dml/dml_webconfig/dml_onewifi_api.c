@@ -1129,7 +1129,7 @@ int push_harvester_dml_cache_to_one_wifidb()
 
 void update_dml_vap_defaults() {
     int i = 0;
-
+    char wps_pin[128];
     for(i = 0; i<MAX_VAP; i++) {
         vap_default[i].kick_assoc_devices = FALSE;
         vap_default[i].multicast_rate = 123;
@@ -1137,12 +1137,17 @@ void update_dml_vap_defaults() {
         vap_default[i].long_retry_limit = 16;
         vap_default[i].bss_count_sta_as_cpe = TRUE;
         vap_default[i].retry_limit = 7;
-	if (i<2)
-            vap_default[i].wps_methods = WIFI_ONBOARDINGMETHODS_PUSHBUTTON;
-	else
-	    vap_default[i].wps_methods = 0;
+        vap_default[i].wps_methods = (WIFI_ONBOARDINGMETHODS_PUSHBUTTON | WIFI_ONBOARDINGMETHODS_PIN);
+        if (i<2) {
+            memset(wps_pin, 0, sizeof(wps_pin));
+            if (wifi_hal_get_default_wps_pin(wps_pin) == RETURN_OK) {
+                strcpy(vap_default[i].wps_pin, wps_pin);
+            } else {
+                strcpy(vap_default[i].wps_pin, "12345678");
+            }
+        }
         vap_default[i].txoverflow = 0;
-	vap_default[i].router_enabled = TRUE;
+        vap_default[i].router_enabled = TRUE;
     }
 }
 

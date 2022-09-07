@@ -1566,6 +1566,12 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
     decode_param_bool(vap, "WpsEnable", param);
     vap_info->u.bss_info.wps.enable  = (param->type & cJSON_True) ? true:false;
 
+    //wpsConfigMethodsEnabled
+    if(strstr(vap_info->vap_name, "private") != NULL) {
+        decode_param_integer(vap, "WpsConfigMethodsEnabled", param);
+        vap_info->u.bss_info.wps.methods = param->valuedouble;
+    }
+
     // BeaconRateCtl
     decode_param_string(vap, "BeaconRateCtl", param);
     strcpy(vap_info->u.bss_info.beaconRateCtl, param->valuestring);
