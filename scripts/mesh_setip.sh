@@ -26,6 +26,13 @@ MESHBR50_IP="169.254.1.1 netmask 255.255.255.0"
 IF_MESHEB="brebhaul"
 MESHEB_IP="169.254.85.1 netmask 255.255.255.0"
 BRIDGE_MTU=1600
+if [ "$MODEL_NUM" == "WNXL11BWL" ]; then
+MESHBR24_DEFAULT_IP="169.254.70.1"
+MESHBR50_DEFAULT_IP="169.254.71.1"
+else
+MESHBR24_DEFAULT_IP="169.254.0.1"
+MESHBR50_DEFAULT_IP="169.254.1.1"
+fi
 
 MESH_EXTENDER_BRIDGE="br-home"
 DEVICE_MODE="`syscfg get Device_Mode`"
@@ -34,12 +41,15 @@ if [ "$DEVICE_MODE" == "1" ]; then
  ovs-vsctl add-br $MESH_EXTENDER_BRIDGE
  ifconfig $MESH_EXTENDER_BRIDGE up
  exit 0
+elif [ "$MODEL_NUM" == "WNXL11BWL" ]; then
+ MESHBR24_IP="169.254.70.1 netmask 255.255.255.0"
+ MESHBR50_IP="169.254.71.1 netmask 255.255.255.0"
 fi
 
 ovs_enable=false
 
 if [ -d "/sys/module/openvswitch/" ];then
-   ovs_enable=true 
+   ovs_enable=true
 fi
 
 bridgeUtilEnable=`syscfg get bridge_util_enable`
@@ -61,9 +71,14 @@ if [ "$MODEL_NUM" == "PX5001" ] || [ "$MODEL_NUM" == "CGM4331COM" ] || [ "$MODEL
  PLUME_BH2_NAME="brlan113"
  PLUME_BHAUL_NAME="br403"
  DEFAULT_MESHBHUAL_IPV4_ADDR="192.168.245.1"
- DEFAULT_PLUME_BH1_IPV4_ADDR="169.254.0.1"
- DEFAULT_PLUME_BH2_IPV4_ADDR="169.254.1.1"
- DEFAULT_PLUME_BH_NETMASK="255.255.255.0"
+ if [ "$MODEL_NUM" == "WNXL11BWL" ]; then
+  DEFAULT_PLUME_BH1_IPV4_ADDR="169.254.70.1"
+  DEFAULT_PLUME_BH2_IPV4_ADDR="169.254.71.1"
+ else
+  DEFAULT_PLUME_BH1_IPV4_ADDR="169.254.0.1"
+  DEFAULT_PLUME_BH2_IPV4_ADDR="169.254.1.1"
+ fi
+  DEFAULT_PLUME_BH_NETMASK="255.255.255.0"
 fi
 
 #SKYHUB4 specific changes
@@ -212,6 +227,14 @@ fi
 
 if [ "$MODEL_NUM" == "SR201" ] || [ "$MODEL_NUM" == "SR203" ]  || [ "$MODEL_NUM" == "SR300" ] ||  [ "$MODEL_NUM" == "SE501" ] || [ "$MODEL_NUM" == "CGM4981COM" ] || [ "$MODEL_NUM" == "CGM4331COM" ] || [ "$MODEL_NUM" == "TG4482A" ] || [ "$MODEL_NUM" == "WNXL11BWL" ]; then
   if [ $USE_BRIDGEUTILS -eq 1 ]; then
+    if [ "$MODEL_NUM" == "WNXL11BWL" ]; then
+      if [ "`psmcli get dmsb.l3net.10.V4Addr`" != "$MESHBR24_DEFAULT_IP" ]; then
+         psmcli set dmsb.l3net.10.V4Addr "$MESHBR24_DEFAULT_IP"
+      fi
+      if [ "`psmcli get dmsb.l3net.11.V4Addr`" != "$MESHBR50_DEFAULT_IP" ]; then
+         psmcli set dmsb.l3net.11.V4Addr "$MESHBR50_DEFAULT_IP"
+      fi
+    fi
     sysevent set multinet-up 13
     sysevent set multinet-up 14
   else
