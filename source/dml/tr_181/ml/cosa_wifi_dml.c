@@ -3735,6 +3735,7 @@ Radio_SetParamUlongValue
     ULONG instance_number = 0;
     convert_freq_band_to_dml_radio_index(wifi_radio->band, &instance_number); //Temp-Will be modified
     wifi_radio_operationParam_t *wifiRadioOperParam = (wifi_radio_operationParam_t *) get_dml_cache_radio_map(instance_number-1);
+    wifi_rfc_dml_parameters_t *rfc_pcfg = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
     UINT wlanIndex = 0;
     wifi_channelBandwidth_t tmpChanWidth = 0;
 
@@ -3802,6 +3803,13 @@ Radio_SetParamUlongValue
         {
             return TRUE;
         }
+        
+        if ( (tmpChanWidth == WIFI_CHANNELBANDWIDTH_160MHZ) && (wifiRadioOperParam->band == WIFI_FREQUENCY_5_BAND) && (rfc_pcfg->dfs_rfc != true) )
+        {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: DFS Disabled!! Cannot set to tmpChanWidth = %d  \n",__func__, __LINE__,tmpChanWidth);
+            return FALSE;
+        }
+        
         wifiRadioOperParam->channelWidth = tmpChanWidth;
 	wifi_radio->channelWidth = tmpChanWidth;
         ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s OperatingChannelBandwidth : %d\n", __FUNCTION__, wifiRadioOperParam->channelWidth);
