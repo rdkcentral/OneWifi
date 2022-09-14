@@ -1742,7 +1742,7 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
         return execRetVal;
     }
 
-    // wifi_util_dbg_print(WIFI_CTRL, "%s, blob\n%s\n", __func__, blob_buf);
+    //wifi_util_dbg_print(WIFI_CTRL, "%s, blob\n%s\n", __func__, blob_buf);
 
     cJSON *root = cJSON_Parse(blob_buf);
     if(root == NULL) {
@@ -1787,8 +1787,14 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
             continue;
         }
         unsigned int vindx;
+        int vapArrayIndex = 0;
         if(getVAPIndexFromName(nm_s, &vindx) != RETURN_OK) {
             wifi_util_dbg_print(WIFI_CTRL, "%s: Failed to get vap_index for %s\n", __func__, nm_s);
+            continue;
+        }
+        vapArrayIndex = convert_vap_name_to_array_index(&mgr->hal_cap.wifi_prop, nm_s);
+        if (vapArrayIndex == -1) {
+            wifi_util_dbg_print(WIFI_CTRL, "%s: Failed to get vap_array_index for %s\n", __func__, nm_s);
             continue;
         }
         char br_name[32];
@@ -1808,18 +1814,18 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
         cJSON_AddItemToObject(vb_entry, "BridgeName", cJSON_CreateString(br_name));
         cJSON_AddItemToObject(vb_entry, "BSSID", cJSON_CreateString("00:00:00:00:00:00"));
 
-        cJSON_AddBoolToObject(vb_entry, "MacFilterEnable", wifi_vap_map->vap_array[vindx].u.bss_info.mac_filter_enable);
-        cJSON_AddNumberToObject(vb_entry, "MacFilterMode", wifi_vap_map->vap_array[vindx].u.bss_info.mac_filter_mode);
-        cJSON_AddBoolToObject(vb_entry, "WmmEnabled", wifi_vap_map->vap_array[vindx].u.bss_info.wmm_enabled);
-        cJSON_AddBoolToObject(vb_entry, "UapsdEnabled", wifi_vap_map->vap_array[vindx].u.bss_info.UAPSDEnabled);
-        cJSON_AddNumberToObject(vb_entry, "BeaconRate", wifi_vap_map->vap_array[vindx].u.bss_info.beaconRate);
-        cJSON_AddNumberToObject(vb_entry, "WmmNoAck", wifi_vap_map->vap_array[vindx].u.bss_info.wmmNoAck);
-        cJSON_AddNumberToObject(vb_entry, "WepKeyLength", wifi_vap_map->vap_array[vindx].u.bss_info.wepKeyLength);
+        cJSON_AddBoolToObject(vb_entry, "MacFilterEnable", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.mac_filter_enable);
+        cJSON_AddNumberToObject(vb_entry, "MacFilterMode", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.mac_filter_mode);
+        cJSON_AddBoolToObject(vb_entry, "WmmEnabled", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.wmm_enabled);
+        cJSON_AddBoolToObject(vb_entry, "UapsdEnabled", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.UAPSDEnabled);
+        cJSON_AddNumberToObject(vb_entry, "BeaconRate", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.beaconRate);
+        cJSON_AddNumberToObject(vb_entry, "WmmNoAck", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.wmmNoAck);
+        cJSON_AddNumberToObject(vb_entry, "WepKeyLength", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.wepKeyLength);
         cJSON_AddBoolToObject(vb_entry, "BssHotspot", true);
         cJSON_AddNumberToObject(vb_entry, "WpsPushButton", 0);
         cJSON_AddBoolToObject(vb_entry, "WpsEnable", false);
-        if(wifi_vap_map->vap_array[vindx].u.bss_info.beaconRateCtl[0] != 0) {
-            cJSON_AddStringToObject(vb_entry, "BeaconRateCtl", wifi_vap_map->vap_array[vindx].u.bss_info.beaconRateCtl);
+        if(wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.beaconRateCtl[0] != 0) {
+            cJSON_AddStringToObject(vb_entry, "BeaconRateCtl", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.beaconRateCtl);
         }
         else {
             cJSON_AddStringToObject(vb_entry, "BeaconRateCtl", "6Mbps");
@@ -1833,16 +1839,16 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
             continue;
         }
 
-        cJSON_AddBoolToObject(sec_o, "Wpa3_transition_disable", wifi_vap_map->vap_array[vindx].u.bss_info.security.wpa3_transition_disable);
-        cJSON_AddNumberToObject(sec_o, "RekeyInterval", wifi_vap_map->vap_array[vindx].u.bss_info.security.rekey_interval);
-        cJSON_AddBoolToObject(sec_o, "StrictRekey", wifi_vap_map->vap_array[vindx].u.bss_info.security.strict_rekey);
-        cJSON_AddNumberToObject(sec_o, "EapolKeyTimeout", wifi_vap_map->vap_array[vindx].u.bss_info.security.eapol_key_timeout);
-        cJSON_AddNumberToObject(sec_o, "EapolKeyRetries", wifi_vap_map->vap_array[vindx].u.bss_info.security.eapol_key_retries);
-        cJSON_AddNumberToObject(sec_o, "EapIdentityReqTimeout", wifi_vap_map->vap_array[vindx].u.bss_info.security.eap_identity_req_timeout);
-        cJSON_AddNumberToObject(sec_o, "EapIdentityReqRetries", wifi_vap_map->vap_array[vindx].u.bss_info.security.eap_identity_req_retries);
-        cJSON_AddNumberToObject(sec_o, "EapReqTimeout", wifi_vap_map->vap_array[vindx].u.bss_info.security.eap_req_timeout);
-        cJSON_AddNumberToObject(sec_o, "EapReqRetries", wifi_vap_map->vap_array[vindx].u.bss_info.security.eap_req_retries);
-        cJSON_AddBoolToObject(sec_o, "DisablePmksaCaching", wifi_vap_map->vap_array[vindx].u.bss_info.security.disable_pmksa_caching);
+        cJSON_AddBoolToObject(sec_o, "Wpa3_transition_disable", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.security.wpa3_transition_disable);
+        cJSON_AddNumberToObject(sec_o, "RekeyInterval", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.security.rekey_interval);
+        cJSON_AddBoolToObject(sec_o, "StrictRekey", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.security.strict_rekey);
+        cJSON_AddNumberToObject(sec_o, "EapolKeyTimeout", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.security.eapol_key_timeout);
+        cJSON_AddNumberToObject(sec_o, "EapolKeyRetries", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.security.eapol_key_retries);
+        cJSON_AddNumberToObject(sec_o, "EapIdentityReqTimeout", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.security.eap_identity_req_timeout);
+        cJSON_AddNumberToObject(sec_o, "EapIdentityReqRetries", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.security.eap_identity_req_retries);
+        cJSON_AddNumberToObject(sec_o, "EapReqTimeout", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.security.eap_req_timeout);
+        cJSON_AddNumberToObject(sec_o, "EapReqRetries", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.security.eap_req_retries);
+        cJSON_AddBoolToObject(sec_o, "DisablePmksaCaching", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.security.disable_pmksa_caching);
 
         cJSON *rad_o = cJSON_GetObjectItem(sec_o, "RadiusSettings");
         if(rad_o == NULL) {
@@ -1851,24 +1857,24 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
         }
         char dasIpAddr[32];
         memset(dasIpAddr, 0, sizeof(dasIpAddr));
-        int das_ip_r = getIpStringFromAdrress(dasIpAddr, &wifi_vap_map->vap_array[vindx].u.bss_info.security.u.radius.dasip);
+        int das_ip_r = getIpStringFromAdrress(dasIpAddr, &wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.security.u.radius.dasip);
         if(das_ip_r == 1) {
             cJSON_AddItemToObject(rad_o, "DasServerIPAddr", cJSON_CreateString(dasIpAddr));
         }
         else {
             cJSON_AddItemToObject(rad_o, "DasServerIPAddr", cJSON_CreateString("0.0.0.0"));
         }
-        cJSON_AddNumberToObject(rad_o, "DasServerPort", wifi_vap_map->vap_array[vindx].u.bss_info.security.u.radius.dasport);
-        if(wifi_vap_map->vap_array[vindx].u.bss_info.security.u.radius.daskey[0] != 0) {
-            cJSON_AddStringToObject(rad_o, "DasSecret", wifi_vap_map->vap_array[vindx].u.bss_info.security.u.radius.daskey);
+        cJSON_AddNumberToObject(rad_o, "DasServerPort", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.security.u.radius.dasport);
+        if(wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.security.u.radius.daskey[0] != 0) {
+            cJSON_AddStringToObject(rad_o, "DasSecret", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.security.u.radius.daskey);
         }
         else {
             cJSON_AddStringToObject(rad_o, "DasSecret", "123456789");
         }
-	cJSON_AddNumberToObject(rad_o, "MaxAuthAttempts", wifi_vap_map->vap_array[vindx].u.bss_info.security.u.radius.max_auth_attempts);
-        cJSON_AddNumberToObject(rad_o, "BlacklistTableTimeout", wifi_vap_map->vap_array[vindx].u.bss_info.security.u.radius.blacklist_table_timeout);
-        cJSON_AddNumberToObject(rad_o, "IdentityReqRetryInterval", wifi_vap_map->vap_array[vindx].u.bss_info.security.u.radius.identity_req_retry_interval);
-        cJSON_AddNumberToObject(rad_o, "ServerRetries", wifi_vap_map->vap_array[vindx].u.bss_info.security.u.radius.server_retries);
+	cJSON_AddNumberToObject(rad_o, "MaxAuthAttempts", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.security.u.radius.max_auth_attempts);
+        cJSON_AddNumberToObject(rad_o, "BlacklistTableTimeout", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.security.u.radius.blacklist_table_timeout);
+        cJSON_AddNumberToObject(rad_o, "IdentityReqRetryInterval", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.security.u.radius.identity_req_retry_interval);
+        cJSON_AddNumberToObject(rad_o, "ServerRetries", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.security.u.radius.server_retries);
     }
 
     cJSON *n_blob = cJSON_CreateObject();
