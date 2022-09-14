@@ -215,20 +215,24 @@ void send_hotspot_status(char* vap_name, bool up)
     rbusValue_Release(value);
     rbusObject_Release(data);
 }
+/* process_xfinity_vaps()  vap_enable param can take values 0,1 and 2
+    0 ---To disable xfinityvaps,
+    1 --To enable xfinty vaps
+    0 and 1 are  used for TunnelUp/Down event
+    2 --- To not change the enable param of xfinityvaps
+    This is used in case of Radius greylist, station disconnect
+*/
 
-void process_xfinity_vaps(bool disable, bool hs_evt)
+void process_xfinity_vaps(int vap_enable, bool hs_evt)
 {
-    wifi_rfc_dml_parameters_t *rfc_info = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
-    bool greylist_rfc = false;
+    vap_svc_t  *pub_svc = NULL;
+    wifi_ctrl_t *ctrl;
+    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    bool open_2g_enabled = false, open_5g_enabled = false,sec_2g_enabled = false,sec_5g_enabled = false;
     uint8_t num_radios = getNumberRadios();
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
 
-    wifi_vap_info_map_t tmp_created_vap_map;
-    memset((unsigned char *)&tmp_created_vap_map, 0, sizeof(wifi_vap_info_map_t));
-    tmp_created_vap_map.num_vaps = 0;
-
-    if (rfc_info) {
-        greylist_rfc = rfc_info->radiusgreylist_rfc;
-    }
+    pub_svc = get_svc_by_type(ctrl, vap_svc_type_public);
     for(int radio_indx = 0; radio_indx < num_radios; ++radio_indx) {
         wifi_vap_info_map_t *wifi_vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(radio_indx);
         for(unsigned int j = 0; j < wifi_vap_map->num_vaps; ++j) {
@@ -240,62 +244,43 @@ void process_xfinity_vaps(bool disable, bool hs_evt)
             memset((unsigned char *)&tmp_vap_map, 0, sizeof(wifi_vap_info_map_t));
             tmp_vap_map.num_vaps = 1;
             memcpy((unsigned char *)&tmp_vap_map.vap_array[0], (unsigned char *)&wifi_vap_map->vap_array[j], sizeof(wifi_vap_info_t));
-            if(disable) {
+            if(vap_enable == 0 ) {
                 tmp_vap_map.vap_array[0].u.bss_info.enabled = false;
             }
+            if(vap_enable == 1 ) {
+              if (rfc_param) {
+                  open_2g_enabled = rfc_param->hotspot_open_2g_last_enabled;
+                  open_5g_enabled = rfc_param->hotspot_open_5g_last_enabled;
+                  sec_2g_enabled = rfc_param->hotspot_secure_2g_last_enabled;
+                  sec_5g_enabled = rfc_param->hotspot_secure_5g_last_enabled;
+              }
+              wifi_util_dbg_print(WIFI_CTRL," vap_name is %s and bool is %d:%d:%d:%d\n",tmp_vap_map.vap_array[0].vap_name,open_2g_enabled,open_5g_enabled,sec_2g_enabled,sec_5g_enabled);
+              if ((strcmp(wifi_vap_map->vap_array[0].vap_name,"hotspot_open_2g") == 0) && open_2g_enabled)
+                  tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
+              else if ((strcmp(wifi_vap_map->vap_array[0].vap_name,"hotspot_open_5g") == 0) && open_5g_enabled)
+                  tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
+              else if((strcmp(wifi_vap_map->vap_array[0].vap_name,"hotspot_secure_2g") == 0) && sec_2g_enabled)
+                  tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
+              else if((strcmp(wifi_vap_map->vap_array[0].vap_name,"hotspot_secure_5g") == 0) && sec_5g_enabled)
+                  tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
+              wifi_util_dbg_print(WIFI_CTRL,"enabled is %d\n",tmp_vap_map.vap_array[0].u.bss_info.enabled);
+            }
 
-            tmp_vap_map.vap_array[0].u.bss_info.network_initiated_greylist = greylist_rfc;
-
-            if(wifi_hal_createVAP(radio_indx, &tmp_vap_map) != RETURN_OK) {
-                wifi_util_dbg_print(WIFI_CTRL, "%s:%d Unable to create vap %s\n", __func__,__LINE__, wifi_vap_map->vap_array[j].vap_name);
+            if(pub_svc->update_fn(pub_svc,radio_indx, &tmp_vap_map) != RETURN_OK) {
+                wifi_util_dbg_print(WIFI_CTRL, "%s:%d Unable to create vaps\n", __func__,__LINE__);
                 if(hs_evt) {
-                    send_hotspot_status(wifi_vap_map->vap_array[j].vap_name, disable);
-                }
+                    send_hotspot_status(wifi_vap_map->vap_array[j].vap_name, false);
+               }
             } else {
-                wifidb_print("%s:%d [Stop] Current time:[%llu]\r\n", __func__, __LINE__, get_current_ms_time());
+                wifi_util_dbg_print(WIFI_CTRL, "%s:%d Able to create vaps\n", __func__,__LINE__);
                 wifidb_print("%s:%d radio_index:%d create vap %s successful\n", __func__,__LINE__, radio_indx, wifi_vap_map->vap_array[j].vap_name);
-                memcpy((unsigned char *)&wifi_vap_map->vap_array[j],&tmp_vap_map.vap_array[0],sizeof(wifi_vap_info_t));
-
-                // Also update db and cache with new info
-                wifidb_update_wifi_vap_info(getVAPName(wifi_vap_map->vap_array[j].vap_index),&wifi_vap_map->vap_array[j]);
-                wifidb_update_wifi_interworking_config(getVAPName(wifi_vap_map->vap_array[j].vap_index), &wifi_vap_map->vap_array[j].u.bss_info.interworking);
-                wifidb_update_wifi_security_config(getVAPName(wifi_vap_map->vap_array[j].vap_index), &wifi_vap_map->vap_array[j].u.bss_info.security);
                 if(hs_evt) {
-                    send_hotspot_status(wifi_vap_map->vap_array[j].vap_name, !disable);
+                    send_hotspot_status(wifi_vap_map->vap_array[j].vap_name, true);
                 }
-                memcpy((unsigned char *)&tmp_created_vap_map.vap_array[tmp_created_vap_map.num_vaps],&tmp_vap_map.vap_array[0],sizeof(wifi_vap_info_t));
-                tmp_created_vap_map.num_vaps++;
 
-                if (greylist_rfc) {
-                    wifi_setApMacAddressControlMode(wifi_vap_map->vap_array[j].vap_index, 2);
-                }
-                wifi_util_dbg_print(WIFI_CTRL, "%s:%d create vap %s successful\n", __func__,__LINE__, wifi_vap_map->vap_array[j].vap_name);
-                update_global_cache(&tmp_vap_map);
             }
         }
     }
-    //Load all the Acl entries related to the created public vaps
-    update_acl_entries(&tmp_created_vap_map);
-}
-
-static int s_xfinity_vaps_task_id = -1;
-static int s_xfinity_vaps_timer = 0;
-int sched_task_xfinity_vaps(void *arg)
-{
-    wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
-    wifi_ctrl_t *ctrl = &mgr->ctrl;
-
-    s_xfinity_vaps_timer++;
-
-    if(s_xfinity_vaps_timer >= 2) {
-        process_xfinity_vaps(false, false);
-        scheduler_cancel_timer_task(ctrl->sched, s_xfinity_vaps_task_id);
-        s_xfinity_vaps_timer = 0;
-        s_xfinity_vaps_task_id = -1;
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d After process_xfinity_vaps, Cancel Timer Task\n", __func__,__LINE__);
-    }
-
-    return 0;
 }
 
 void convert_freq_to_channel(unsigned int freq, unsigned char *channel)
@@ -528,11 +513,11 @@ void process_sta_connect_command(bool connect)
                 wifi_hal_disconnect(vap->vap_index);
             }
         }
-        process_xfinity_vaps(false, false); //reenable public vaps
+        process_xfinity_vaps(1, false); //reenable public vaps
         return;
     }
 
-    process_xfinity_vaps(true, false); // disable public vaps
+    process_xfinity_vaps(0, false); // disable public vaps
     // try finding STA bssid on 2.4 first and then on 5GHz
     for (i = 0; i < num_of_radios; i++) {
         if (get_sta_ssid_from_radio_config_by_radio_index(i, sta_ssid) == -1) {
@@ -1356,7 +1341,7 @@ void process_radius_grey_list_rfc(bool type)
 
     if (public_xfinity_vap_status) {
         wifi_util_dbg_print(WIFI_CTRL,"public xfinity vaps are up and running\n");
-        process_xfinity_vaps(false,false);
+        process_xfinity_vaps(2,false);
     }
 
     if (!rfc_param->radiusgreylist_rfc) {
@@ -1373,6 +1358,34 @@ void process_wifi_passpoint_rfc(bool type)
     wifidb_update_rfc_config(0, rfc_param);
 }
 
+void process_xfinity_open_2g_enabled(bool open_2g)
+{
+    wifi_util_dbg_print(WIFI_DB,"WIFI Enter RFC Func %s: %d : bool %d\n",__FUNCTION__,__LINE__,open_2g);
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
+    rfc_param->hotspot_open_2g_last_enabled = open_2g;
+    wifidb_update_rfc_config(0, rfc_param);
+}
+void process_xfinity_open_5g_enabled(bool open_5g)
+{
+    wifi_util_dbg_print(WIFI_DB,"WIFI Enter RFC Func %s: %d : bool %d\n",__FUNCTION__,__LINE__,open_5g);
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
+    rfc_param->hotspot_open_5g_last_enabled = open_5g;
+    wifidb_update_rfc_config(0, rfc_param);
+}
+void process_xfinity_sec_2g_enabled(bool secure_2g)
+{
+    wifi_util_dbg_print(WIFI_DB,"WIFI Enter RFC Func %s: %d : bool %d\n",__FUNCTION__,__LINE__,secure_2g);
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
+    rfc_param->hotspot_secure_2g_last_enabled = secure_2g;
+    wifidb_update_rfc_config(0, rfc_param);
+}
+void process_xfinity_sec_5g_enabled(bool secure_5g)
+{
+    wifi_util_dbg_print(WIFI_DB,"WIFI Enter RFC Func %s: %d : bool %d\n",__FUNCTION__,__LINE__,secure_5g);
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
+    rfc_param->hotspot_secure_5g_last_enabled = secure_5g;
+    wifidb_update_rfc_config(0, rfc_param);
+}
 void process_wifi_interworking_rfc(bool type)
 {
     wifi_util_dbg_print(WIFI_DB,"WIFI Enter RFC Func %s: %d : bool %d\n",__FUNCTION__,__LINE__,type);
@@ -1541,11 +1554,11 @@ void handle_command_event(void *data, unsigned int len, ctrl_event_subtype_t sub
             break;
 
         case ctrl_event_type_xfinity_tunnel_up:
-            process_xfinity_vaps(false, true);
+            process_xfinity_vaps(1, true);
             break;
 
         case ctrl_event_type_xfinity_tunnel_down:
-            process_xfinity_vaps(true, true);
+            process_xfinity_vaps(0, true);
             break;
         case ctrl_event_type_command_kick_assoc_devices:
             process_kick_assoc_devices_event(data);
@@ -1628,7 +1641,6 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
 
         case ctrl_event_webconfig_set_data_tunnel:
             webconfig_decode(config, &data, raw);
-            scheduler_add_timer_task(ctrl->sched, FALSE, &s_xfinity_vaps_task_id, sched_task_xfinity_vaps, NULL, 2000, 0);
             break;
 
         case ctrl_event_webconfig_get_data:

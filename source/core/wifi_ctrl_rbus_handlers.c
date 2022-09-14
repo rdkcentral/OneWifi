@@ -830,16 +830,17 @@ static void testDeviceModeHandler(rbusHandle_t handle, rbusEvent_t const* event,
 
 static void eventReceiveHandler(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription)
 {
-    bool status;
+    bool tunnel_status = false;
+    int len =0 ;
     UNREFERENCED_PARAMETER(handle);
 
-    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Recvd Event\n",  __func__, __LINE__);
+    wifi_util_dbg_print(WIFI_CTRL, " %s:%d Recvd Event\n",  __func__, __LINE__);
     if(!event) {
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d null event\n", __func__, __LINE__);
         return;
     }
 
-    rbusValue_t value = rbusObject_GetValue(event->data, subscription->eventName);
+    rbusValue_t value = rbusObject_GetValue(event->data, NULL);
     if (!value) {
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Invalid value in event:%s\n",
                     __func__, __LINE__, event->name);
@@ -847,12 +848,27 @@ static void eventReceiveHandler(rbusHandle_t handle, rbusEvent_t const* event, r
     }
 
     if (strcmp(event->name, WIFI_DEVICE_TUNNEL_STATUS) == 0) {
-        status = rbusValue_GetBoolean(value);
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: event:%s: value:%d\n", __func__, __LINE__, event->name, status);
+        const char * pTmp = rbusValue_GetString(value, &len);
+        if(pTmp == NULL) {
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Unable to get  value in event:%s\n", __func__, __LINE__);
+            return;
+        }
+        if(strcmp(pTmp,"Up") == 0) {
+            tunnel_status = true;
+        } else if(strcmp(pTmp,"Down") == 0) {
+            tunnel_status = false;
+        } else {
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Received Unsupported value\n", __func__, __LINE__);
+            return;
+        }
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: event:%s: value:%d\n", __func__, __LINE__, event->name, tunnel_status);
 
     } else {
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Unsupported event:%s\n", __func__, __LINE__, event->name);
+        return;
     }
+    ctrl_event_subtype_t ces_t = tunnel_status ? ctrl_event_type_xfinity_tunnel_up : ctrl_event_type_xfinity_tunnel_down;
+    push_data_to_ctrl_queue(&tunnel_status, sizeof(tunnel_status), ctrl_event_type_command, ces_t);
 }
 
 static void wps_test_event_receive_handler(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription)

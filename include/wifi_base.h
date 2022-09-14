@@ -76,6 +76,10 @@ typedef struct {
     bool dfs_rfc;
     bool wpa3_rfc;
     bool twoG80211axEnable_rfc;
+    bool hotspot_open_2g_last_enabled;
+    bool hotspot_open_5g_last_enabled;
+    bool hotspot_secure_2g_last_enabled;
+    bool hotspot_secure_5g_last_enabled;
     char rfc_id[4];
 } wifi_rfc_dml_parameters_t;
 

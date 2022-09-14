@@ -56,7 +56,7 @@ extern "C" {
 #define WIFI_RBUS_WIFIAPI_RESULT           "Device.WiFi.WiFiAPI.result"
 
 #define WIFI_DEVICE_MODE                   "Device.X_RDKCENTRAL-COM_DeviceControl.DeviceNetworkingMode"
-#define WIFI_DEVICE_TUNNEL_STATUS          "Device.TunnelStatus"
+#define WIFI_DEVICE_TUNNEL_STATUS          "Device.X_COMCAST-COM_GRE.Tunnel.1.TunnelStatus"
 
 #define TEST_WIFI_DEVICE_MODE              "Device.X_RDKCENTRAL-COM_DeviceControl.DeviceNetworkingMode_1"
 

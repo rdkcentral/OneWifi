@@ -299,6 +299,22 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
                 wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: failed to apply\n", __func__, __LINE__);
                 return RETURN_ERR;
             }
+            if (strcmp(vap_info->vap_name,"hotspot_open_2g") == 0) {
+                process_xfinity_open_2g_enabled(vap_info->u.bss_info.enabled);
+                wifi_util_dbg_print(WIFI_CTRL,"vapname is %s and %d \n",vap_info->vap_name,vap_info->u.bss_info.enabled);
+            }
+            else if (strcmp(vap_info->vap_name,"hotspot_open_5g") == 0) {
+                wifi_util_dbg_print(WIFI_CTRL,"vapname is %s and %d\n",vap_info->vap_name,vap_info->u.bss_info.enabled);
+                process_xfinity_open_5g_enabled(vap_info->u.bss_info.enabled);
+            }
+            else if (strcmp(vap_info->vap_name,"hotspot_secure_2g") == 0) {
+                wifi_util_dbg_print(WIFI_CTRL,"vapname is %s and %d \n",vap_info->vap_name,vap_info->u.bss_info.enabled);
+                process_xfinity_sec_2g_enabled(vap_info->u.bss_info.enabled);
+            }
+            else if (strcmp(vap_info->vap_name,"hotspot_secure_5g") == 0) {
+                wifi_util_dbg_print(WIFI_CTRL,"vapname is %s and %d \n",vap_info->vap_name,vap_info->u.bss_info.enabled);
+                process_xfinity_sec_5g_enabled(vap_info->u.bss_info.enabled);
+            }
             memcpy(mgr_vap_info, &tgt_vap_map.vap_array[0], sizeof(wifi_vap_info_t));
 
             if (vap_info->vap_mode == wifi_vap_mode_ap) {

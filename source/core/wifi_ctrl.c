@@ -505,6 +505,7 @@ bool check_for_greylisted_mac_filter(void)
 void rbus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
 {
     rbusValue_t value;
+    int len = 0;
     int rc = RBUS_ERROR_SUCCESS;
     unsigned int total_slept = 0;
     //rdk_dev_mode_type_t mode;
@@ -539,10 +540,19 @@ void rbus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
             update_wifi_global_config(&global_param);
         }
     } else if (strcmp(name, WIFI_DEVICE_TUNNEL_STATUS) == 0) {
-        *ret_val = rbusValue_GetBoolean(value);
+        const char * pTmp = rbusValue_GetString(value, &len);
+        if(pTmp == NULL) {
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Unable to get  value in event:%s\n", __func__, __LINE__);
+            return;
+        }
+        if(strcmp(pTmp,"Up") == 0) {
+            *ret_val = 1;
+        }
+        else {
+            *ret_val = 0;
+        }
     }
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d rbus_get for %s: value:%d\n",__func__, __LINE__, name, *ret_val);
-
 }
 
 void start_gateway_vaps()
@@ -1270,6 +1280,10 @@ wifi_rfc_dml_parameters_t* get_ctrl_rfc_parameters(void)
     g_wifi_mgr->ctrl.rfc_params.dfs_rfc = g_wifi_mgr->rfc_dml_parameters.dfs_rfc;
     g_wifi_mgr->ctrl.rfc_params.wpa3_rfc = g_wifi_mgr->rfc_dml_parameters.wpa3_rfc;
     g_wifi_mgr->ctrl.rfc_params.twoG80211axEnable_rfc = g_wifi_mgr->rfc_dml_parameters.twoG80211axEnable_rfc;
+    g_wifi_mgr->ctrl.rfc_params.hotspot_open_2g_last_enabled = g_wifi_mgr->rfc_dml_parameters.hotspot_open_2g_last_enabled;
+    g_wifi_mgr->ctrl.rfc_params.hotspot_open_5g_last_enabled = g_wifi_mgr->rfc_dml_parameters.hotspot_open_5g_last_enabled;
+    g_wifi_mgr->ctrl.rfc_params.hotspot_secure_2g_last_enabled = g_wifi_mgr->rfc_dml_parameters.hotspot_secure_2g_last_enabled;
+    g_wifi_mgr->ctrl.rfc_params.hotspot_secure_2g_last_enabled = g_wifi_mgr->rfc_dml_parameters.hotspot_secure_2g_last_enabled;
     strcpy(g_wifi_mgr->ctrl.rfc_params.rfc_id,g_wifi_mgr->rfc_dml_parameters.rfc_id);
     return &g_wifi_mgr->ctrl.rfc_params;
 }

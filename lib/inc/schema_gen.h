@@ -159,6 +159,10 @@
         PJS_OVS_BOOL(dfs_rfc) \
         PJS_OVS_BOOL(wpa3_rfc) \
         PJS_OVS_BOOL(twoG80211axEnable_rfc) \
+        PJS_OVS_BOOL(hotspot_open_2g_last_enabled) \
+        PJS_OVS_BOOL(hotspot_open_5g_last_enabled) \
+        PJS_OVS_BOOL(hotspot_secure_2g_last_enabled) \
+        PJS_OVS_BOOL(hotspot_secure_5g_last_enabled) \
   )
 
 #define PJS_SCHEMA_Wifi_MacFilter_Config \
@@ -1983,7 +1987,11 @@
     COLUMN(dfsatbootup_rfc) \
     COLUMN(dfs_rfc) \
     COLUMN(wpa3_rfc) \
-    COLUMN(twoG80211axEnable_rfc)
+    COLUMN(twoG80211axEnable_rfc) \
+    COLUMN(hotspot_open_2g_last_enabled) \
+    COLUMN(hotspot_open_5g_last_enabled) \
+    COLUMN(hotspot_secure_2g_last_enabled) \
+    COLUMN(hotspot_secure_5g_last_enabled)
 
 #define SCHEMA__Wifi_MacFilter_Config "Wifi_MacFilter_Config"
 #define SCHEMA_COLUMN__Wifi_MacFilter_Config(COLUMN) \
@@ -3257,6 +3265,10 @@
 #define SCHEMA__Wifi_Rfc_Config__dfsatbootup_rfc "dfsatbootup_rfc"
 #define SCHEMA__Wifi_Rfc_Config__wpa3_rfc "wpa3_rfc"
 #define SCHEMA__Wifi_Rfc_Config__twoG80211axEnable_rfc "twoG80211axEnable_rfc"
+#define SCHEMA__Wifi_Rfc_Config__hotspot_open_2g_last_enabled "hotspot_open_2g_last_enabled"
+#define SCHEMA__Wifi_Rfc_Config__hotspot_open_5g_last_enabled "hotspot_open_5g_last_enabled"
+#define SCHEMA__Wifi_Rfc_Config__hotspot_secure_2g_last_enabled "hotspot_secure_2g_last_enabled"
+#define SCHEMA__Wifi_Rfc_Config__hotspot_secure_5g_last_enabled "hotspot_secure_5g_last_enabled"
 
 #define SCHEMA__Alarms__code "code"
 #define SCHEMA__Alarms__timestamp "timestamp"
