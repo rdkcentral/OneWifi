@@ -12,11 +12,6 @@ extern "C" {
 #define RBUS_CLI_MAX_PARAM  25
 
 typedef enum {
-    rbus_bool_data,
-    rbus_int_data
-} rbus_data_type_t;
-
-typedef enum {
     consumer_event_type_webconfig,
     consumer_event_type_max
 } consumer_event_type_t;

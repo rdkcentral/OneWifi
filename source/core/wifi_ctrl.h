@@ -83,6 +83,13 @@ extern "C" {
 #define GREYLIST_CHECK_IN_SECONDS          (1 * 60 * 60)
 
 typedef enum {
+    rbus_bool_data,
+    rbus_int_data,
+    rbus_uint_data,
+    rbus_string_data
+} rbus_data_type_t;
+
+typedef enum {
     ctrl_webconfig_state_none = 0,
     ctrl_webconfig_state_radio_cfg_rsp_pending = 0x0001,
     ctrl_webconfig_state_vap_all_cfg_rsp_pending = 0x0002,
@@ -332,6 +339,8 @@ bool get_wifi_mesh_vap_enable_status(void);
 int get_wifi_mesh_sta_network_status(uint8_t vapIndex, bool *status);
 bool check_for_greylisted_mac_filter(void);
 void wait_wifi_scan_result(wifi_ctrl_t *ctrl);
+int get_rbus_param(rbusHandle_t rbus_handle, rbus_data_type_t data_type, const char *paramNames, void *data_value);
+int set_rbus_bool_param(rbusHandle_t rbus_handle, const char *paramNames, bool data_value);
 #ifdef __cplusplus
 }
 #endif

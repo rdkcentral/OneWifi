@@ -528,7 +528,7 @@ void init_wifidb(void)
 {
     start_wifidb();
     init_wifidb_tables();
-    init_wifidb_data();
+    //init_wifidb_data();//TBD
     start_wifidb_monitor();
 }
 

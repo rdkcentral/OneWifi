@@ -1184,6 +1184,8 @@ CosaWifiInitialize
     v_secure_system("uptime > /tmp/wifi_dml_complete");
     #endif
 
+    get_all_param_from_psm_and_set_into_db();
+
     webconfig_dml = (webconfig_dml_t *)get_webconfig_dml(); 
     if(webconfig_dml == NULL){
         wifi_util_dbg_print(WIFI_DMCLI, "%s: get_webconfig_dml return NULLL pointer\n", __FUNCTION__);

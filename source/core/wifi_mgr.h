@@ -12,6 +12,9 @@ extern "C" {
 #include "wifi_blaster.h"
 #include "wifi_ctrl.h"
 
+#define WIFI_PSM_DB_NAMESPACE         "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.WiFi-PSM-DB.Enable"
+#define LAST_REBOOT_REASON_NAMESPACE  "Device.DeviceInfo.X_RDKCENTRAL-COM_LastRebootReason"
+
 typedef struct {
     wifi_db_t                       wifidb;
     pthread_mutex_t                 data_cache_lock;

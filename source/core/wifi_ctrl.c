@@ -1850,3 +1850,46 @@ void Load_Hotspot_APIsolation_Settings(void)
         }
     }
 }
+
+int get_rbus_param(rbusHandle_t rbus_handle, rbus_data_type_t data_type, const char *paramNames, void *data_value)
+{
+    rbusValue_t value;
+    int rc = RETURN_ERR;
+
+    rc = rbus_get(rbus_handle, paramNames, &value);
+    if (rc != RBUS_ERROR_SUCCESS) {
+        wifi_util_dbg_print(WIFI_MGR,"[%s:%d] rbus_get failed for [%s] with error [%d]\n", __func__, __LINE__, paramNames, rc);
+        return RETURN_ERR;
+    }
+
+    if (data_type == rbus_string_data) {
+        strcpy((char *)data_value, rbusValue_GetString(value, NULL));
+        wifi_util_dbg_print(WIFI_MGR,":%s:%d rbus get[%s] data value = [%s]\n", __func__, __LINE__, paramNames, (char *)data_value);
+    } else if (data_type == rbus_bool_data) {
+        *(bool *)data_value = rbusValue_GetBoolean(value);
+        wifi_util_dbg_print(WIFI_MGR,":%s:%d rbus get[%s] data value = [%d]\n", __func__, __LINE__, paramNames, *(bool *)data_value);
+    } else if (data_type == rbus_uint_data) {
+        *(unsigned int *)data_value = rbusValue_GetUInt32(value);
+        wifi_util_dbg_print(WIFI_MGR,":%s:%d rbus get[%s] data value = [%d]\n", __func__, __LINE__, paramNames, *(unsigned int *)data_value);
+    }
+
+    return RETURN_OK;
+}
+
+int set_rbus_bool_param(rbusHandle_t rbus_handle, const char *paramNames, bool data_value)
+{
+    rbusValue_t value;
+    int rc = RETURN_ERR;
+
+    rbusValue_Init(&value);
+    rbusValue_SetBoolean(value, data_value);
+
+    rc = rbus_set(rbus_handle, paramNames, value, NULL);
+    if(rc != RBUS_ERROR_SUCCESS) {
+        wifi_util_dbg_print(WIFI_MGR,"[%s:%d] Rbus error param: %s\r\n", __func__, __LINE__, paramNames);
+        return RETURN_ERR;
+    }
+    wifi_util_dbg_print(WIFI_MGR,"[%s:%d] wifi rbus set[%s]:value:%d\r\n", __func__, __LINE__, paramNames, data_value);
+
+    return RETURN_OK;
+}
