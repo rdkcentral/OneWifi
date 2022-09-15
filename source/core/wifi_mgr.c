@@ -4,6 +4,7 @@
 #include <pthread.h>
 #include <ev.h>
 #include <sys/time.h>
+#include <assert.h>
 #include "wifi_data_plane.h"
 #include "wifi_monitor.h"
 #include "wifi_db.h"
@@ -1270,7 +1271,7 @@ int init_wifimgr()
     }
 
     //Initialize HAL and get Capabilities
-    init_wifi_hal();
+    assert(init_wifi_hal() == RETURN_OK);
 
     int itr=0;
     for (itr=0; itr < (int)getNumberRadios(); itr++) {

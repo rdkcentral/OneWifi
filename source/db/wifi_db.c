@@ -745,16 +745,21 @@ void callback_Wifi_GAS_Config(ovsdb_update_monitor_t *mon,
             wifi_util_dbg_print(WIFI_DB,"%s:%d: Null pointer Gas config update failed \n",__func__, __LINE__);
             return;
         }
-	pthread_mutex_lock(&g_wifidb->data_cache_lock);
-	ad_id = atoi(new_rec->advertisement_id);
-        g_wifidb->global_config.gas_config.AdvertisementID = ad_id;
-        g_wifidb->global_config.gas_config.PauseForServerResponse = new_rec->pause_for_server_response;
-        g_wifidb->global_config.gas_config.ResponseTimeout =  new_rec->response_timeout;
-        g_wifidb->global_config.gas_config.ComeBackDelay = new_rec->comeback_delay;
-        g_wifidb->global_config.gas_config.ResponseBufferingTime = new_rec->response_buffering_time;
-        g_wifidb->global_config.gas_config.QueryResponseLengthLimit = new_rec->query_responselength_limit;   
-        
-        wifi_util_dbg_print(WIFI_DB,"%s:%d advertisement_id=%d pause_for_server_response=%d response_timeout=%d comeback_delay=%d response_buffering_time=%d query_responselength_limit=%d\n", __func__, __LINE__,g_wifidb->global_config.gas_config.AdvertisementID,g_wifidb->global_config.gas_config.PauseForServerResponse,g_wifidb->global_config.gas_config.ResponseTimeout, g_wifidb->global_config.gas_config.ComeBackDelay,g_wifidb->global_config.gas_config.ResponseBufferingTime,g_wifidb->global_config.gas_config.QueryResponseLengthLimit);
+        pthread_mutex_lock(&g_wifidb->data_cache_lock);
+        if  ((new_rec->advertisement_id[0] == '0') && (new_rec->advertisement_id[1] == '\0'))  {
+            ad_id = atoi(new_rec->advertisement_id);
+            g_wifidb->global_config.gas_config.AdvertisementID = ad_id;
+            g_wifidb->global_config.gas_config.PauseForServerResponse = new_rec->pause_for_server_response;
+            g_wifidb->global_config.gas_config.ResponseTimeout =  new_rec->response_timeout;
+            g_wifidb->global_config.gas_config.ComeBackDelay = new_rec->comeback_delay;
+            g_wifidb->global_config.gas_config.ResponseBufferingTime = new_rec->response_buffering_time;
+            g_wifidb->global_config.gas_config.QueryResponseLengthLimit = new_rec->query_responselength_limit;
+
+            wifi_util_dbg_print(WIFI_DB,"%s:%d advertisement_id=%d pause_for_server_response=%d response_timeout=%d comeback_delay=%d response_buffering_time=%d query_responselength_limit=%d\n", __func__, __LINE__,g_wifidb->global_config.gas_config.AdvertisementID,g_wifidb->global_config.gas_config.PauseForServerResponse,g_wifidb->global_config.gas_config.ResponseTimeout, g_wifidb->global_config.gas_config.ComeBackDelay,g_wifidb->global_config.gas_config.ResponseBufferingTime,g_wifidb->global_config.gas_config.QueryResponseLengthLimit);
+        } else {
+             wifidb_print("%s:%d Invalid Wifi GAS Config table entry advertisement_id : '%s'\n",__func__, __LINE__, new_rec->advertisement_id);
+        }
+
        pthread_mutex_unlock(&g_wifidb->data_cache_lock);
     }
     else
@@ -1141,6 +1146,7 @@ int wifidb_update_gas_config(UINT advertisement_id, wifi_GASConfiguration_t *gas
         update = true;
         free(pcfg);
     }
+
     cfg.pause_for_server_response = gas_info->PauseForServerResponse;
     cfg.response_timeout = gas_info->ResponseTimeout;
     cfg.comeback_delay = gas_info->ComeBackDelay;
