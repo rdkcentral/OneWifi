@@ -476,6 +476,8 @@ void process_sta_conn_status_event(rdk_sta_data_t *sta_data, unsigned int len)
         ctrl->webconfig_state |= ctrl_webconfig_state_sta_conn_status_rsp_pending;
         sprintf(name, "Device.WiFi.STA.%d.Connection.Status", index+1);
 
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d Rbus name:%s:connection status:%d\r\n", __func__, __LINE__,
+                                       name, sta_data->stats.connect_status);
         rbusValue_Init(&value);
         rbusObject_Init(&rdata, NULL);
 
