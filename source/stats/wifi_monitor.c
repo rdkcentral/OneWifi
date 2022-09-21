@@ -2560,7 +2560,7 @@ bool is_device_associated(int ap_index, char *mac)
     
     getVAPArrayIndexFromVAPIndex((unsigned int)ap_index, &vap_array_index);
 
-    to_mac_bytes(mac, bmac);
+    str_to_mac_bytes(mac, bmac);
     sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
     sta = hash_map_get_first(sta_map);
     while (sta != NULL) {
@@ -3177,7 +3177,7 @@ void csi_set_client_mac(char *r_mac_list, int csi_session_number)
         while((mac_tok = strtok_r(rest, ",", &rest))) {
 
             wifi_util_dbg_print(WIFI_MON, "%s: Mac %s\n",__func__, mac_tok);
-            to_mac_bytes(mac_tok,(unsigned char*)&csi->mac_list[mac_ctr]);
+            str_to_mac_bytes(mac_tok,(unsigned char*)&csi->mac_list[mac_ctr]);
             ap_index= getApIndexfromClientMac((char *)&csi->mac_list[mac_ctr]);
             if(ap_index >= 0) {
                 csi->ap_index[mac_ctr] = ap_index;
@@ -4745,7 +4745,7 @@ void instant_msmt_macAddr(char *mac_addr)
     wifi_util_dbg_print(WIFI_MON, "%s:%d: get new client %s stats\n", __func__, __LINE__, mac_addr);
     strncpy(g_monitor_module.instantMac, mac_addr, MIN_MAC_LEN);
 
-    to_mac_bytes(mac_addr, bmac);
+    str_to_mac_bytes(mac_addr, bmac);
     for (i = 0; i < (int)getTotalNumberVAPs(); i++) {
         if( is_device_associated(i, mac_addr)  == true) {
             wifi_util_dbg_print(WIFI_MON, "%s:%d: found client %s on ap %d\n", __func__, __LINE__, mac_addr,i);
@@ -5200,7 +5200,7 @@ void SetActiveMsmtStepSrcMac(char *SrcMac, ULONG StepIns)
     mac_address_t bmac;
     wifi_util_dbg_print(WIFI_MON, "%s:%d: Active Measurement Step Src Mac changed to %s for ins : %d\n", __func__, __LINE__,SrcMac,StepIns);
     pthread_mutex_lock(&g_active_msmt.lock);
-    to_mac_bytes(SrcMac, bmac);
+    str_to_mac_bytes(SrcMac, bmac);
     memset(g_active_msmt.active_msmt.Step[StepIns].SrcMac, 0, sizeof(mac_address_t));
     memcpy(g_active_msmt.active_msmt.Step[StepIns].SrcMac, bmac, sizeof(mac_address_t));
     pthread_mutex_unlock(&g_active_msmt.lock);
@@ -5231,7 +5231,7 @@ void SetActiveMsmtStepDstMac(char *DstMac, ULONG StepIns)
     wifi_util_dbg_print(WIFI_MON, "%s:%d: Active Measurement Step Destination Mac changed to %s for step ins : %d\n", __func__, __LINE__,DstMac,StepIns);
 
     memset(g_active_msmt.active_msmt.Step[StepIns].DestMac, 0, sizeof(mac_address_t));
-    to_mac_bytes(DstMac, bmac);
+    str_to_mac_bytes(DstMac, bmac);
 
     for (i = 0; i < (int)getTotalNumberVAPs(); i++) {
         UINT vap_index = VAP_INDEX(mgr->hal_cap, i);

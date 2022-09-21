@@ -139,7 +139,6 @@ int key_mgmt_conversion_legacy(wifi_security_modes_t *mode_enum, wifi_encryption
 int key_mgmt_conversion(wifi_security_modes_t *enum_sec, char *str_sec, int sec_len, unsigned int conv_type);
 int get_radio_if_hw_type(char *str, int str_len);
 char *to_mac_str(mac_address_t mac, mac_addr_str_t key);
-void to_mac_bytes (mac_addr_str_t key, mac_address_t bmac);
 int is_ssid_name_valid(char *ssid_name);
 void str_to_mac_bytes (char *key, mac_addr_t bmac);
 int get_cm_mac_address(char *mac);

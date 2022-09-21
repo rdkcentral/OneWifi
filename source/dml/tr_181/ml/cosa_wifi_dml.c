@@ -1679,7 +1679,7 @@ CSI_SetParamStringValue
         str_dup = strdup(pString);
         str = strtok_r(str_dup, ",", &cptr);
         while (str != NULL) {
-            to_mac_bytes(str, l_client_list[itr]);
+            str_to_mac_bytes(str, l_client_list[itr]);
             str = strtok_r(NULL, ",", &cptr);
             itr++;
             if (itr > CSI_CLIENT_PER_SESSION) {
@@ -14683,7 +14683,7 @@ MacFiltTab_SetParamStringValue
 
     if( AnscEqualString(ParamName, "MACAddress", TRUE))
     {
-        to_mac_bytes(pString, new_mac);
+        str_to_mac_bytes(pString, new_mac);
         if (memcmp(new_mac, zero_mac, sizeof(mac_address_t)) == 0){
             //Invalid value returning FALSE
             return FALSE;

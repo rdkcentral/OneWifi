@@ -2489,7 +2489,7 @@ webconfig_error_t decode_associated_clients_object(rdk_wifi_vap_info_t *rdk_vap_
             return webconfig_error_decode;
         }
 
-        to_mac_bytes(tmp_string, mac);
+        str_to_mac_bytes(tmp_string, mac);
         memcpy(assoc_dev_data->dev_stats.cli_MACAddress, mac, 6);
 
         value_object = cJSON_GetObjectItem(assoc_client, "AuthenticationState");
@@ -2758,7 +2758,7 @@ webconfig_error_t decode_mac_object(rdk_wifi_vap_info_t *rdk_vap_info, cJSON *ob
         client = cJSON_GetObjectItem(mac_object, "MAC");
         char *tmp_mac = cJSON_GetStringValue(client);
 
-        to_mac_bytes(tmp_mac, mac);
+        str_to_mac_bytes(tmp_mac, mac);
 
         acl_entry = (acl_entry_t *)malloc(sizeof(acl_entry_t));
         if (acl_entry == NULL) {
@@ -2989,7 +2989,7 @@ webconfig_error_t decode_csi_object(queue_t** csi_queue, cJSON *object)
             free(csi_data);
             return webconfig_error_decode;
         }
-        to_mac_bytes(tmp_string, csi_data->csi_client_list[itr]);
+        str_to_mac_bytes(tmp_string, csi_data->csi_client_list[itr]);
         count++;
     }
     csi_data->csi_client_count = count;

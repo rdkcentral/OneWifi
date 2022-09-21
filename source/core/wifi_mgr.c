@@ -457,7 +457,7 @@ int wifi_db_update_global_config(wifi_global_param_t *global_cfg)
     memset(strValue, 0, sizeof(strValue));
     str = Get_PSM_Record_Status(InstWifiClientMacAddress, strValue);
     if (str != NULL) {
-        to_mac_bytes(str, global_cfg->inst_wifi_client_mac);
+        str_to_mac_bytes(str, global_cfg->inst_wifi_client_mac);
         //strncpy(global_cfg->inst_wifi_client_mac,str,sizeof(global_cfg->inst_wifi_client_mac)-1);
         wifi_util_dbg_print(WIFI_MGR,"global_cfg->inst_wifi_client_mac is %s and str is %s \r\n", global_cfg->inst_wifi_client_mac, str);
     } else {
@@ -801,7 +801,7 @@ void get_psm_mac_list_entry(unsigned int instance_number, char *l_vap_name, unsi
         snprintf(recName, sizeof(recName), MacFilter, instance_number, index);
         str = Get_PSM_Record_Status(recName, strValue);
         if (str != NULL) {
-            to_mac_bytes(str, temp_psm_mac_param->mac);
+            str_to_mac_bytes(str, temp_psm_mac_param->mac);
             wifi_util_dbg_print(WIFI_MGR,"psm get mac is %s\n", str);
 
             snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", l_vap_name, str);

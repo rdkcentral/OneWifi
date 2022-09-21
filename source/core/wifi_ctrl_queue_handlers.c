@@ -584,7 +584,7 @@ bool  IsClientConnected(rdk_wifi_vap_info_t* rdk_vap_info, char *check_mac)
         return false;
     }
 
-    to_mac_bytes(check_mac, mac);
+    str_to_mac_bytes(check_mac, mac);
     queue_t *associated_devices_queue;
     associated_devices_queue = rdk_vap_info->associated_devices_queue;
     if (associated_devices_queue == NULL) {
@@ -869,7 +869,7 @@ void process_kick_assoc_devices_event(void *data)
         }
         return;
     }
-    to_mac_bytes(str_str, mac_bytes);
+    str_to_mac_bytes(str_str, mac_bytes);
     if (memcmp(mac_bytes, kick_all, sizeof(mac_address_t)) == 0) {
         kick_all_macs(vap_index, timeout, rdk_vap_info, ctrl, vap_info);
         if (str_dup) {
@@ -900,7 +900,7 @@ void process_kick_assoc_devices_event(void *data)
     memset(kick_details, 0, sizeof(kick_details_t));
 
     while(str_str != NULL) {
-        to_mac_bytes(str_str, mac_bytes);
+        str_to_mac_bytes(str_str, mac_bytes);
         if (memcmp(mac_bytes, kick_all, sizeof(mac_address_t)) == 0) {
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d: ff mac\n", __func__, __LINE__);
             continue;

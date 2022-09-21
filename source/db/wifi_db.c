@@ -2019,7 +2019,7 @@ void wifidb_get_wifi_macfilter_config()
             }
             memset(tmp_acl_entry, 0, sizeof(acl_entry_t));
 
-            to_mac_bytes(pcfg->device_mac, mac);
+            str_to_mac_bytes(pcfg->device_mac, mac);
             memcpy(tmp_acl_entry->mac, mac, sizeof(mac_address_t));
 
             strncpy(tmp_acl_entry->device_name, pcfg->device_name, strlen(pcfg->device_name)+1);
