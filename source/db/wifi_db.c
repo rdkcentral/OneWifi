@@ -3068,53 +3068,6 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 
 /************************************************************************************
  ************************************************************************************
-  Function    : get_default_wifi_password
-  Parameter   : password - Default password for private VAPs
-  Description : Get few values from /tmp/factory_nvram.data
- *************************************************************************************
-**************************************************************************************/
-int get_default_wifi_password(char *password, int vap_index)
-{
-
-    char value[BUFFER_LENGTH_WIFIDB] = {0};
-    FILE *fp = NULL;
-
-    if(isVapPrivate(vap_index)) {
-        fp = popen("grep \"Default WIFI Password:\" /tmp/factory_nvram.data | cut -d ':' -f2 | cut -d ' ' -f2","r");
-
-        if(fp != NULL) {
-            while (fgets(value, sizeof(value), fp) != NULL){
-                wifi_util_dbg_print(WIFI_DB,"Default password is found \n");
-            }
-        }
-        pclose(fp);
-        strncpy(password,value,strlen(value)-1);
-        return RETURN_OK;
-    } else if(isVapXhs(vap_index)) {
-        fp = popen("grep \"Default XHS Password:\" /tmp/factory_nvram.data | cut -d ':' -f2 | cut -d ' ' -f2","r");
-
-        if(fp != NULL) {
-            while (fgets(value, sizeof(value), fp) != NULL){
-                wifi_util_dbg_print(WIFI_DB,"Default password is found \n");
-            }
-        }
-        pclose(fp);
-        strncpy(password,value,strlen(value)-1);
-        return RETURN_OK;
-    } else if(isVapLnfPsk(vap_index)) {
-        strncpy(password, "AEF9D58B978A103B04016D600FD4B1E6943A3FF538B98B84F1C177B414F7018",
-                strlen("AEF9D58B978A103B04016D600FD4B1E6943A3FF538B98B84F1C177B414F7018"));
-        return RETURN_OK;
-    } else {
-        strncpy(password,"1234567890",strlen("1234567890"));
-        return RETURN_OK;
-    }
-
-    return RETURN_ERR;
-}
-
-/************************************************************************************
- ************************************************************************************
   Function    : wifidb_init_vap_config_default
   Parameter   : vap_index - Index of vap
   Description : Update global cache with default value for wifi_vap_info_t

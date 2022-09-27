@@ -785,7 +785,7 @@ int captive_portal_check(void)
 
         for ( i = 0; i < wifi_vap_map->num_vaps; i++) {
             if (strncmp(wifi_vap_map->vap_array[i].vap_name,"private_ssid",strlen("private_ssid"))== 0) {
-                get_default_wifi_password(default_password, wifi_vap_map->vap_array[i].vap_index);
+                wifi_hal_get_default_keypassphrase(default_password, wifi_vap_map->vap_array[i].vap_index);
                 sprintf(path,DEVICE_WIFI_SSID,wifi_vap_map->vap_array[i].vap_index+1);
                 wifi_util_dbg_print(WIFI_CTRL," private ssid is %s and vap_name is %s path is %s and default_password is %s\n", wifi_vap_map->vap_array[i].u.bss_info.ssid,wifi_vap_map->vap_array[i].vap_name,path,default_password);
                 sprintf(path,DEVICE_WIFI_KEYPASSPHRASE,wifi_vap_map->vap_array[i].vap_index+1);
