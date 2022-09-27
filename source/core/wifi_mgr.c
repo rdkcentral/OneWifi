@@ -1210,6 +1210,8 @@ int get_all_param_from_psm_and_set_into_db(void)
 **      last reboot reason(Device.DeviceInfo.X_RDKCENTRAL-COM_LastRebootReason)
 **      if psm-db is false and last reboot reason if not factory-reset,
 **      then update wifi-db with values from psm */
+    wifi_mgr_t *g_wifidb;
+    g_wifidb = get_wifimgr_obj();
 
     if (is_device_type_xb7() == true) {
         bool wifi_psm_db_enabled = false;
@@ -1229,7 +1231,7 @@ int get_all_param_from_psm_and_set_into_db(void)
             get_wifi_last_reboot_reason_psm_value(last_reboot_reason);
         }
 
-        if ((wifi_psm_db_enabled == false) && (strncmp(last_reboot_reason, "factory-reset", strlen("factory-reset")) != 0)) {
+        if (((wifi_psm_db_enabled == false) && (strncmp(last_reboot_reason, "factory-reset", strlen("factory-reset")) != 0)) || (g_wifidb->is_db_update_required == true)) {
             int retval;
             retval = wifi_db_update_psm_values();
             if (retval == RETURN_OK) {

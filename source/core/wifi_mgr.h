@@ -28,6 +28,7 @@ typedef struct {
     wifi_dml_parameters_t           dml_parameters;
     wifi_rfc_dml_parameters_t       rfc_dml_parameters;
     pthread_cond_t                  dml_init_status;
+    bool                            is_db_update_required;
 } wifi_mgr_t;
 
 wifi_mgr_t *get_wifimgr_obj();

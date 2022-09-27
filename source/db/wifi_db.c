@@ -3603,12 +3603,21 @@ void *start_wifidb_func(void *arg)
     struct stat sb;
     bool debug_option = true;
     DIR     *wifiDbDir = NULL;
-    
+    char version_str[BUFFER_LENGTH_WIFIDB] = {0};
+    int  version_int = 0;
+    FILE *fp = NULL;
+    int i = 0;
+    //bool isOvsSchemaCreate = false;
+    wifi_mgr_t *g_wifidb;
+    g_wifidb = get_wifimgr_obj();
+
+    g_wifidb->is_db_update_required = false;
+
     wifiDbDir = opendir(WIFIDB_DIR);
     if(wifiDbDir){
         closedir(wifiDbDir);
     }else if(ENOENT == errno){
-        if(0 != mkdir(WIFIDB_DIR, 0777)){ 
+        if(0 != mkdir(WIFIDB_DIR, 0777)){
             wifi_util_dbg_print(WIFI_DB,"Failed to Create WIFIDB directory.\n");
             return NULL;
         }
@@ -3616,24 +3625,61 @@ void *start_wifidb_func(void *arg)
         wifi_util_dbg_print(WIFI_DB,"Error opening Db Configuration directory. Setting Default\n");
         return NULL;
     }
-//create a copy of ovs-db server
+    //create a copy of ovs-db server
     sprintf(cmd, "cp /usr/sbin/ovsdb-server %s/wifidb-server", WIFIDB_RUN_DIR);
     system(cmd);
-    sprintf(db_file, "%s/rdkb-wifi.db", WIFIDB_DIR);	
+    sprintf(db_file, "%s/rdkb-wifi.db", WIFIDB_DIR);
     if (stat(db_file, &sb) != 0) {
         wifi_util_dbg_print(WIFI_DB,"%s:%d: Could not find rdkb database, ..creating\n", __func__, __LINE__);
         sprintf(cmd, "ovsdb-tool create %s %s/rdkb-wifi.ovsschema", db_file, WIFIDB_SCHEMA_DIR);
         system(cmd);
     } else {
+        /*check for db-version of the db file. If db-version is less than than the OneWiFi Schema db version, then
+         * Delete the exisiting schema file and create it. So that OneWiFi will update the configuration based on
+         * PSM and NVRAM values
+         * */
+
         wifi_util_dbg_print(WIFI_DB,"%s:%d: rdkb database already present\n", __func__, __LINE__);
-        sprintf(cmd,"ovsdb-tool convert %s %s/rdkb-wifi.ovsschema",db_file,WIFIDB_SCHEMA_DIR);
-        wifi_util_dbg_print(WIFI_DB,"%s:%d: rdkb database check for version upgrade/downgrade %s \n", __func__, __LINE__,cmd);
-        system(cmd);
+        memset(cmd, 0, sizeof(cmd));
+        sprintf(cmd, "ovsdb-tool db-version %s", db_file);
+        /*Get the Existing db-version*/
+        fp = popen(cmd,"r");
+        if(fp != NULL) {
+            while (fgets(version_str, sizeof(version_str), fp) != NULL){
+                wifi_util_dbg_print(WIFI_DB,"%s:%d: DB Version before upgrade found\n", __func__, __LINE__);
+            }
+            pclose(fp);
+            for(i=0;version_str[i];i++) {
+                if ((version_str[i]!='.') && (isdigit(version_str[i]))) {
+                    version_int=version_int*10+(version_str[i]-'0');
+                }
+            }
+            wifi_util_dbg_print(WIFI_DB,"%s:%d:DB Version before upgrade %d\n", __func__, __LINE__, version_int);
+
+            if (version_int < ONEWIFI_SCHEMA_DEF_VERSION) {
+                /*version less than OneWiFi default version
+                 * so, Delete the db file and re-create the schema file
+                 */
+                if (remove(db_file) == 0) {
+                    wifi_util_dbg_print(WIFI_DB,"%s:%d: %s file deleted succesfully\n", __func__, __LINE__, db_file);
+                }
+                wifi_util_dbg_print(WIFI_DB,"%s:%d: creating the new DB file\n", __func__, __LINE__);
+                sprintf(cmd, "ovsdb-tool create %s %s/rdkb-wifi.ovsschema", db_file, WIFIDB_SCHEMA_DIR);
+                system(cmd);
+                g_wifidb->is_db_update_required = true;
+            }
+        }
+
+        if (g_wifidb->is_db_update_required == false) {
+            sprintf(cmd,"ovsdb-tool convert %s %s/rdkb-wifi.ovsschema",db_file,WIFIDB_SCHEMA_DIR);
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: rdkb database check for version upgrade/downgrade %s \n", __func__, __LINE__,cmd);
+            system(cmd);
+        }
     }
-    
+
     sprintf(cmd, "%s/wifidb-server %s --remote=punix:%s/wifidb.sock %s --unixctl=%s/wifi.ctl --log-file=%s/wifidb.log --detach", WIFIDB_RUN_DIR, db_file, WIFIDB_RUN_DIR, (debug_option == true)?"--verbose=dbg":"", WIFIDB_RUN_DIR, WIFIDB_RUN_DIR);
-    
-    system(cmd); 
+
+    system(cmd);
     return NULL;
 }
 
