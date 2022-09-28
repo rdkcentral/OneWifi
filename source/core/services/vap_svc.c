@@ -141,7 +141,9 @@ int vap_svc_start_stop(vap_svc_t *svc, bool enable)
             if (tgt_vap_map.vap_array[tgt_vap_map.num_vaps].vap_mode == wifi_vap_mode_sta) {
                 tgt_vap_map.vap_array[tgt_vap_map.num_vaps].u.sta_info.enabled = enable;
             } else {
-                tgt_vap_map.vap_array[tgt_vap_map.num_vaps].u.bss_info.enabled = enable;
+                    if(tgt_vap_map.vap_array[tgt_vap_map.num_vaps].u.bss_info.enabled) {
+                        tgt_vap_map.vap_array[tgt_vap_map.num_vaps].u.bss_info.enabled = enable;
+                    }
             }
             tgt_vap_map.num_vaps++;
         }
