@@ -60,14 +60,14 @@ int vap_svc_mesh_ext_disconnect()
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     if ((num_of_radios = getNumberRadios()) > MAX_NUM_RADIOS) {
-        wifi_util_dbg_print(WIFI_CTRL,"WIFI %s : Number of Radios %d exceeds supported %d Radios \n",__FUNCTION__, getNumberRadios(), MAX_NUM_RADIOS);
+        wifi_util_error_print(WIFI_CTRL,"WIFI %s : Number of Radios %d exceeds supported %d Radios \n",__FUNCTION__, getNumberRadios(), MAX_NUM_RADIOS);
         return -1;
     }
 
     for (i = 0; i < num_of_radios; i++) {
         vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(i);
         if (vap_map == NULL) {
-            wifi_util_dbg_print(WIFI_CTRL,"%s:failed to get vap map for radio index: %d\n",__FUNCTION__, i);
+            wifi_util_error_print(WIFI_CTRL,"%s:failed to get vap map for radio index: %d\n",__FUNCTION__, i);
             return -1;
         }
 
@@ -76,7 +76,7 @@ int vap_svc_mesh_ext_disconnect()
                 vap = &vap_map->vap_array[j];
                 if ((vap->vap_mode == wifi_vap_mode_sta) &&
                     (vap->u.sta_info.conn_status == wifi_connection_status_connected)) {
-                    wifi_util_dbg_print(WIFI_CTRL, "%s:%d: wifi disconnect :%d\n", __func__, __LINE__, vap->vap_index);
+                    wifi_util_info_print(WIFI_CTRL, "%s:%d: wifi disconnect :%d\n", __func__, __LINE__, vap->vap_index);
                     wifi_hal_disconnect(vap->vap_index);
 		    ctrl->conn_state = connection_state_disconnected;
                 }
@@ -117,11 +117,11 @@ int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_i
         tgt_vap_map.num_vaps = 1;
 
         if (wifi_hal_createVAP(radio_index, &tgt_vap_map) != RETURN_OK) {
-            wifi_util_dbg_print(WIFI_CTRL,"%s: wifi vap create failure: radio_index:%d vap_index:%d\n",__FUNCTION__,
+            wifi_util_error_print(WIFI_CTRL,"%s: wifi vap create failure: radio_index:%d vap_index:%d\n",__FUNCTION__,
                                                 radio_index, map->vap_array[i].vap_index);
             continue;
         }
-        wifi_util_dbg_print(WIFI_CTRL,"%s: wifi vap create success: radio_index:%d vap_index:%d\n",__FUNCTION__,
+        wifi_util_info_print(WIFI_CTRL,"%s: wifi vap create success: radio_index:%d vap_index:%d\n",__FUNCTION__,
                                                 radio_index, map->vap_array[i].vap_index);
         memcpy((unsigned char *)&map->vap_array[i], (unsigned char *)&tgt_vap_map.vap_array[0],
                     sizeof(wifi_vap_info_t));

@@ -95,7 +95,7 @@ static void daemonize(void) {
     /* initialize semaphores for shared processes */
     sem = sem_open ("pSemCcspWifi", O_CREAT | O_EXCL, 0644, 0);
     if (SEM_FAILED == sem) {
-        wifi_util_dbg_print(WIFI_MGR,"Failed to create semaphore %d - %s\n", errno, strerror(errno));
+        wifi_util_error_print(WIFI_MGR,"Failed to create semaphore %d - %s\n", errno, strerror(errno));
         _exit(1);
     }
     /* name of semaphore is "pSemCcspWifi", semaphore is reached using this name */
@@ -109,7 +109,7 @@ static void daemonize(void) {
             break;
         case -1:
             // Error
-            wifi_util_dbg_print(WIFI_MGR,"Error daemonizing (fork)! %d - %s\n", errno, strerror(errno));
+            wifi_util_error_print(WIFI_MGR,"Error daemonizing (fork)! %d - %s\n", errno, strerror(errno));
             exit(0);
             break;
         default:
@@ -119,7 +119,7 @@ static void daemonize(void) {
     }
 
     if (setsid() < 0) {
-        wifi_util_dbg_print(WIFI_MGR,"Error demonizing (setsid)! %d - %s\n", errno, strerror(errno));
+        wifi_util_error_print(WIFI_MGR,"Error demonizing (setsid)! %d - %s\n", errno, strerror(errno));
         exit(0);
     }
 
@@ -159,18 +159,18 @@ int init_wifi_hal()
 {
     int ret = RETURN_OK;
 
-    wifi_util_dbg_print(WIFI_CTRL,"%s: start wifi hal init\n",__FUNCTION__);
+    wifi_util_info_print(WIFI_CTRL,"%s: start wifi hal init\n",__FUNCTION__);
 
     ret = wifi_hal_init();
     if (ret != RETURN_OK) {
-        wifi_util_dbg_print(WIFI_CTRL,"%s wifi_init failed:ret :%d\n",__FUNCTION__, ret);
+        wifi_util_error_print(WIFI_CTRL,"%s wifi_init failed:ret :%d\n",__FUNCTION__, ret);
         return RETURN_ERR;
     }
 
     /* Get the wifi capabilities from from hal*/
     ret = wifi_hal_getHalCapability(&g_wifi_mgr.hal_cap);
     if (ret != RETURN_OK) {
-        wifi_util_dbg_print(WIFI_CTRL,"RDK_LOG_ERROR, %s wifi_getHalCapability returned with error %d\n", __FUNCTION__, ret);
+        wifi_util_error_print(WIFI_CTRL,"RDK_LOG_ERROR, %s wifi_getHalCapability returned with error %d\n", __FUNCTION__, ret);
         return RETURN_ERR;
     }
 
@@ -184,7 +184,7 @@ int init_global_radio_config(rdk_wifi_radio_t *radios_cfg, UINT radio_index)
     wifi_hal_capability_t *wifi_hal_cap_obj = rdk_wifi_get_hal_capability_map();
 
     if (radios_cfg == NULL) {
-        wifi_util_dbg_print(WIFI_CTRL,"%s:%d NULL Pointer\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_CTRL,"%s:%d NULL Pointer\n", __func__, __LINE__);
         return RETURN_ERR;
     }
 
@@ -200,7 +200,7 @@ int init_global_radio_config(rdk_wifi_radio_t *radios_cfg, UINT radio_index)
 
             radios_cfg->vaps.rdk_vap_array[vap_array_index].associated_devices_queue = queue_create();
             if (radios_cfg->vaps.rdk_vap_array[vap_array_index].associated_devices_queue == NULL) {
-                wifi_util_dbg_print(WIFI_CTRL,"%s:%d queue_create(associated_devices_queue) failed\n",__FUNCTION__, __LINE__);
+                wifi_util_info_print(WIFI_CTRL,"%s:%d queue_create(associated_devices_queue) failed\n",__FUNCTION__, __LINE__);
             }
             radios_cfg->vaps.rdk_vap_array[vap_array_index].acl_map = hash_map_create();
             if (radios_cfg->vaps.rdk_vap_array[vap_array_index].acl_map == NULL) {
@@ -1261,14 +1261,14 @@ int get_all_param_from_psm_and_set_into_db(void)
 int init_wifimgr()
 {
     if (!drop_root()) {
-        wifi_util_dbg_print(WIFI_MGR,"%s: drop_root function failed!\n", __func__);
+        wifi_util_error_print(WIFI_MGR,"%s: drop_root function failed!\n", __func__);
         gain_root_privilege();
     }
     struct stat sb;
     char db_file[128];
 
     if(wifi_hal_pre_init() != RETURN_OK) {
-        wifi_util_dbg_print(WIFI_MGR,"%s wifi hal pre_init failed\n", __func__);
+        wifi_util_error_print(WIFI_MGR,"%s wifi hal pre_init failed\n", __func__);
         return -1;
     }
 
@@ -1285,21 +1285,21 @@ int init_wifimgr()
 
     sprintf(db_file, "%s/rdkb-wifi.db", WIFIDB_DIR);
     if (stat(db_file, &sb) != 0) {
-        wifi_util_dbg_print(WIFI_MGR,"WiFiDB file not present FRcase\n");
+        wifi_util_info_print(WIFI_MGR,"WiFiDB file not present FRcase\n");
         g_wifi_mgr.ctrl.factory_reset = true;
-        wifi_util_dbg_print(WIFI_MGR,"WiFiDB  FRcase factory_reset is true\n");
+        wifi_util_info_print(WIFI_MGR,"WiFiDB  FRcase factory_reset is true\n");
     } else {
         g_wifi_mgr.ctrl.factory_reset = false;
-        wifi_util_dbg_print(WIFI_MGR,"WiFiDB FRcase factory_reset is false\n");
+        wifi_util_info_print(WIFI_MGR,"WiFiDB FRcase factory_reset is false\n");
 
         //get_all_param_from_psm_and_set_into_db();
     }
 
     if (init_wifi_ctrl(&g_wifi_mgr.ctrl) != 0) {
-        wifi_util_dbg_print(WIFI_MGR,"%s: wifi ctrl init failed\n", __func__);
+        wifi_util_error_print(WIFI_MGR,"%s: wifi ctrl init failed\n", __func__);
         return -1;
     } else {
-        wifi_util_dbg_print(WIFI_MGR,"%s: wifi ctrl initalization success\n", __func__);
+        wifi_util_info_print(WIFI_MGR,"%s: wifi ctrl initalization success\n", __func__);
     }
 
     //Init csi_data_queue
@@ -1309,7 +1309,7 @@ int init_wifimgr()
 
     //init ssp_loop.
     if (ssp_loop_init() < 0) {
-        wifi_util_dbg_print(WIFI_MGR,"%s:%d ssp_loop_init failed \n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_MGR,"%s:%d ssp_loop_init failed \n", __func__, __LINE__);
     }
 
     //Start Wifi DB server, and Initialize data Cache
@@ -1321,16 +1321,15 @@ int init_wifimgr()
 int start_wifimgr()
 {
     start_dml_main(&g_wifi_mgr.ssp);
-    wifi_util_dbg_print(WIFI_MGR,"%s: waiting for dml init\n", __func__);
+    wifi_util_info_print(WIFI_MGR,"%s: waiting for dml init\n", __func__);
     pthread_cond_wait(&g_wifi_mgr.dml_init_status,&g_wifi_mgr.lock);
-    wifi_util_dbg_print(WIFI_MGR,"%s: dml init complete\n", __func__);
+    wifi_util_info_print(WIFI_MGR,"%s: dml init complete\n", __func__);
 
     pthread_cond_destroy(&g_wifi_mgr.dml_init_status);
     pthread_mutex_unlock(&g_wifi_mgr.lock);
 
-
     if (start_wifi_ctrl(&g_wifi_mgr.ctrl) != 0) {
-        wifi_util_dbg_print(WIFI_MGR,"%s: wifi ctrl start failed\n", __func__);
+        wifi_util_error_print(WIFI_MGR,"%s: wifi ctrl start failed\n", __func__);
         return -1;
     }
 
@@ -1353,16 +1352,16 @@ int main(int argc, char *argv[])
     }
 
     if (init_wifimgr() != 0) {
-        wifi_util_dbg_print(WIFI_MGR,"%s: wifimgr init failed\n", __func__);
+        wifi_util_error_print(WIFI_MGR,"%s: wifimgr init failed\n", __func__);
         return -1;
     }
 
     rbus_get_vap_init_parameter(WIFI_DEVICE_MODE, &g_wifi_mgr.ctrl.network_mode);
     if (start_wifimgr() != 0) {
-        wifi_util_dbg_print(WIFI_MGR,"%s: wifimgr start failed\n", __func__);
+        wifi_util_error_print(WIFI_MGR,"%s: wifimgr start failed\n", __func__);
         return -1;
     }
 
-    wifi_util_dbg_print(WIFI_MGR,"%s: Exiting Wifi mgr\n", __func__);
+    wifi_util_info_print(WIFI_MGR,"%s: Exiting Wifi mgr\n", __func__);
     return 0;
 }

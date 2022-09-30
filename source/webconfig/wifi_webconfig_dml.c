@@ -112,7 +112,7 @@ webconfig_error_t encode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(json, "WifiConfig", obj);
     if (encode_config_object(&params->config, obj) != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode wifi global config\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode wifi global config\n", __func__, __LINE__);
         cJSON_Delete(json);
         return webconfig_error_encode;
     }
@@ -127,7 +127,7 @@ webconfig_error_t encode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
         cJSON_AddItemToArray(obj_array, obj);
 
         if (encode_radio_object(radio, obj) != webconfig_error_none) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode radio object\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode radio object\n", __func__, __LINE__);
             cJSON_Delete(json);
             return webconfig_error_encode;
 
@@ -144,7 +144,7 @@ webconfig_error_t encode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
     for(i = 0; i < params->num_radios; i++) {
         radiocap = &params->hal_cap.wifi_prop.radiocap[i];
         if (encode_wifiradiocap(radiocap, obj_array) != webconfig_error_none) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode radiocap object\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode radiocap object\n", __func__, __LINE__);
             cJSON_Delete(json);
             return webconfig_error_encode;
         }
@@ -158,7 +158,7 @@ webconfig_error_t encode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
     for(i = 0; i < array_size; i++) {
         interface_map = &params->hal_cap.wifi_prop.interface_map[i];
         if (encode_wifivapcap(interface_map, obj_array) != webconfig_error_none) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode halcap object\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode halcap object\n", __func__, __LINE__);
             cJSON_Delete(json);
             return webconfig_error_encode;
         }
@@ -177,7 +177,7 @@ webconfig_error_t encode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
                 obj = cJSON_CreateObject();
                 cJSON_AddItemToArray(obj_array, obj);
                 if (encode_private_vap_object(vap, obj) != webconfig_error_none) {
-                    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode private vap object\n", __func__, __LINE__);
+                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode private vap object\n", __func__, __LINE__);
                     cJSON_Delete(json);
                     return webconfig_error_encode;
 
@@ -186,7 +186,7 @@ webconfig_error_t encode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
                 obj = cJSON_CreateObject();
                 cJSON_AddItemToArray(obj_array, obj);
                 if (encode_private_vap_object(vap, obj) != webconfig_error_none) {
-                    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode private vap object\n", __func__, __LINE__);
+                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode private vap object\n", __func__, __LINE__);
                     cJSON_Delete(json);
                     return webconfig_error_encode;
 
@@ -195,7 +195,7 @@ webconfig_error_t encode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
                 obj = cJSON_CreateObject();
                 cJSON_AddItemToArray(obj_array, obj);
                 if (encode_hotspot_open_vap_object(vap, obj) != webconfig_error_none) {
-                    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode hotspot open vap object\n", __func__, __LINE__);
+                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode hotspot open vap object\n", __func__, __LINE__);
                     cJSON_Delete(json);
                     return webconfig_error_encode;
 
@@ -204,7 +204,7 @@ webconfig_error_t encode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
                 obj = cJSON_CreateObject();
                 cJSON_AddItemToArray(obj_array, obj);
                 if (encode_hotspot_secure_vap_object(vap, obj) != webconfig_error_none) {
-                    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode hotspot secure vap object\n", __func__, __LINE__);
+                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode hotspot secure vap object\n", __func__, __LINE__);
                     cJSON_Delete(json);
                     return webconfig_error_encode;
 
@@ -213,7 +213,7 @@ webconfig_error_t encode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
                 obj = cJSON_CreateObject();
                 cJSON_AddItemToArray(obj_array, obj);
                 if (encode_lnf_psk_vap_object(vap, obj) != webconfig_error_none) {
-                    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode lnf psk vap object\n", __func__, __LINE__);
+                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode lnf psk vap object\n", __func__, __LINE__);
                     cJSON_Delete(json);
                     return webconfig_error_encode;
 
@@ -222,7 +222,7 @@ webconfig_error_t encode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
                 obj = cJSON_CreateObject();
                 cJSON_AddItemToArray(obj_array, obj);
                 if (encode_lnf_radius_vap_object(vap, obj) != webconfig_error_none) {
-                    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode lnf radius vap object\n", __func__, __LINE__);
+                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode lnf radius vap object\n", __func__, __LINE__);
                     cJSON_Delete(json);
                     return webconfig_error_encode;
 
@@ -231,7 +231,7 @@ webconfig_error_t encode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
                 obj = cJSON_CreateObject();
                 cJSON_AddItemToArray(obj_array, obj);
                 if (encode_mesh_backhaul_vap_object(vap, obj) != webconfig_error_none) {
-                    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode mesh backhaul vap object\n", __func__, __LINE__);
+                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode mesh backhaul vap object\n", __func__, __LINE__);
                     cJSON_Delete(json);
                     return webconfig_error_encode;
 
@@ -240,7 +240,7 @@ webconfig_error_t encode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
                 obj = cJSON_CreateObject();
                 cJSON_AddItemToArray(obj_array, obj);
                 if (encode_mesh_sta_object(vap, obj) != webconfig_error_none) {
-                    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode mesh sta object\n", __func__, __LINE__);
+                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode mesh sta object\n", __func__, __LINE__);
                     cJSON_Delete(json);
                     return webconfig_error_encode;
 
@@ -258,7 +258,7 @@ webconfig_error_t encode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
             rdk_vap_info = &params->radios[i].vaps.rdk_vap_array[j];
 
             if (encode_mac_object(rdk_vap_info, obj_array) != webconfig_error_none) {
-                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode mac object\n", __func__, __LINE__);
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode mac object\n", __func__, __LINE__);
                 cJSON_Delete(json);
                 return webconfig_error_encode;
 
@@ -278,14 +278,14 @@ webconfig_error_t encode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
     for (i = 0; i < NUM_RADIO_OBJS; i++) {
         radio_state = &data->u.decoded.radios[i].radio_state;
         if (radio_state == NULL) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Failed to get radio state for %d\n", __func__, __LINE__, i);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to get radio state for %d\n", __func__, __LINE__, i);
             return webconfig_error_encode;
         }
 
         obj = cJSON_CreateObject();
         cJSON_AddItemToArray(obj_array, obj);
         if (encode_radio_state_object(radio_state, obj) != webconfig_error_none) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode radio state object for %d\n", __func__, __LINE__, i);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode radio state object for %d\n", __func__, __LINE__, i);
             return webconfig_error_encode;
 
         }
@@ -310,7 +310,7 @@ webconfig_error_t encode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
                 obj = cJSON_CreateObject();
                 cJSON_AddItemToArray(obj_array, obj);
                 if (encode_vap_state_object(vap_state, obj) != webconfig_error_none) {
-                    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode wifi vap status for vap %d of radio %d\n", __func__, __LINE__, j, i);
+                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode wifi vap status for vap %d of radio %d\n", __func__, __LINE__, j, i);
                     return webconfig_error_encode;
                 }
             } else if ((strcmp(vap_name, "iot_ssid_2g") == 0) ||
@@ -319,7 +319,7 @@ webconfig_error_t encode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
                 obj = cJSON_CreateObject();
                 cJSON_AddItemToArray(obj_array, obj);
                 if (encode_vap_state_object(vap_state, obj) != webconfig_error_none) {
-                    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode wifi vap status for vap %d of radio %d\n", __func__, __LINE__, j, i);
+                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode wifi vap status for vap %d of radio %d\n", __func__, __LINE__, j, i);
                     return webconfig_error_encode;
                 }
             } else if ((strcmp(vap_name, "hotspot_open_2g") == 0) ||
@@ -328,7 +328,7 @@ webconfig_error_t encode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
                 obj = cJSON_CreateObject();
                 cJSON_AddItemToArray(obj_array, obj);
                 if (encode_vap_state_object(vap_state, obj) != webconfig_error_none) {
-                    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode wifi vap status for vap %d of radio %d\n", __func__, __LINE__, j, i);
+                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode wifi vap status for vap %d of radio %d\n", __func__, __LINE__, j, i);
                     return webconfig_error_encode;
                 }
             } else if ((strcmp(vap_name, "lnf_psk_2g") == 0) ||
@@ -337,7 +337,7 @@ webconfig_error_t encode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
                 obj = cJSON_CreateObject();
                 cJSON_AddItemToArray(obj_array, obj);
                 if (encode_vap_state_object(vap_state, obj) != webconfig_error_none) {
-                    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode wifi vap status for vap %d of radio %d\n", __func__, __LINE__, j, i);
+                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode wifi vap status for vap %d of radio %d\n", __func__, __LINE__, j, i);
                     return webconfig_error_encode;
                 }
             } else if ((strcmp(vap_name, "hotspot_secure_2g") == 0) ||
@@ -346,7 +346,7 @@ webconfig_error_t encode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
                 obj = cJSON_CreateObject();
                 cJSON_AddItemToArray(obj_array, obj);
                 if (encode_vap_state_object(vap_state, obj) != webconfig_error_none) {
-                    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode wifi vap status for vap %d of radio %d\n", __func__, __LINE__, j, i);
+                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode wifi vap status for vap %d of radio %d\n", __func__, __LINE__, j, i);
                     return webconfig_error_encode;
                 }
             } else if ((strcmp(vap_name, "lnf_radius_2g") == 0) ||
@@ -355,7 +355,7 @@ webconfig_error_t encode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
                 obj = cJSON_CreateObject();
                 cJSON_AddItemToArray(obj_array, obj);
                 if (encode_vap_state_object(vap_state, obj) != webconfig_error_none) {
-                    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode wifi vap status for vap %d of radio %d\n", __func__, __LINE__, j, i);
+                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode wifi vap status for vap %d of radio %d\n", __func__, __LINE__, j, i);
                     return webconfig_error_encode;
                 }
             } else if ((strcmp(vap_name, "mesh_backhaul_2g") == 0) ||
@@ -364,7 +364,7 @@ webconfig_error_t encode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
                 obj = cJSON_CreateObject();
                 cJSON_AddItemToArray(obj_array, obj);
                 if (encode_vap_state_object(vap_state, obj) != webconfig_error_none) {
-                    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode wifi vap status for vap %d of radio %d\n", __func__, __LINE__, j, i);
+                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode wifi vap status for vap %d of radio %d\n", __func__, __LINE__, j, i);
                     return webconfig_error_encode;
                 }
             }
@@ -378,6 +378,7 @@ webconfig_error_t encode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
     // wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Encoded JSON:\n%s\n", __func__, __LINE__, str);
     cJSON_free(str);
     cJSON_Delete(json);
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: encode success\n", __func__, __LINE__);
 
     return webconfig_error_none;
 }
@@ -408,9 +409,10 @@ webconfig_error_t decode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
 
     for (i = 0; i < doc->num_objects; i++) {
         if ((cJSON_GetObjectItem(json, doc->objects[i].name)) == NULL) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: object:%s not present, validation failed\n",
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: object:%s not present, validation failed\n",
                     __func__, __LINE__, doc->objects[i].name);
             cJSON_Delete(json);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
             return webconfig_error_invalid_subdoc;
         }
     }
@@ -419,9 +421,10 @@ webconfig_error_t decode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
     memset(&params->config, 0, sizeof(wifi_global_config_t));
     obj_config = cJSON_GetObjectItem(json, "WifiConfig");
     if (decode_config_object(obj_config, &params->config) != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Config Object validation failed\n",
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Config Object validation failed\n",
                 __func__, __LINE__);
         cJSON_Delete(json);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
         return webconfig_error_invalid_subdoc;
     }
 
@@ -430,8 +433,9 @@ webconfig_error_t decode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
 
     obj_wificap = cJSON_GetObjectItem(hal_cap, "WiFiRadioCap");
     if (cJSON_IsArray(obj_wificap) == false) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: HAL Cap not present\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: HAL Cap not present\n", __func__, __LINE__);
         cJSON_Delete(json);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
         return webconfig_error_invalid_subdoc;
     }
 
@@ -441,16 +445,18 @@ webconfig_error_t decode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
         object  = cJSON_GetArrayItem(obj_wificap, i);
         radio_cap = &params->hal_cap.wifi_prop.radiocap[i];
         if (decode_wifiradiocap(radio_cap, object) != webconfig_error_none) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: hal cap object validation failed for %d\n", __func__, __LINE__,radio_cap->index);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: hal cap object validation failed for %d\n", __func__, __LINE__,radio_cap->index);
             cJSON_Delete(json);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
             return webconfig_error_decode;
         }
     }
 
     obj_wificap = cJSON_GetObjectItem(hal_cap, "WiFiVapCap");
     if (cJSON_IsArray(obj_wificap) == false) {
-         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: HAL Cap not present\n", __func__, __LINE__);
+         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: HAL Cap not present\n", __func__, __LINE__);
          cJSON_Delete(json);
+         wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
          return webconfig_error_invalid_subdoc;
     }
 
@@ -460,8 +466,9 @@ webconfig_error_t decode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
         object  = cJSON_GetArrayItem(obj_wificap, i);
         interface_map = &params->hal_cap.wifi_prop.interface_map[i];
         if (decode_wifivapcap(interface_map, object) != webconfig_error_none) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: hal cap object validation failed\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: hal cap object validation failed\n", __func__, __LINE__);
             cJSON_Delete(json);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
             return webconfig_error_decode;
         }
     }
@@ -482,17 +489,19 @@ webconfig_error_t decode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
     // decode radio objects
     obj_radios = cJSON_GetObjectItem(json, "WifiRadioConfig");
     if (cJSON_IsArray(obj_radios) == false) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Radio object not present\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Radio object not present\n", __func__, __LINE__);
         cJSON_Delete(json);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
         return webconfig_error_invalid_subdoc;
     }
 
     size = cJSON_GetArraySize(obj_radios);
     if (size < MIN_NUM_RADIOS || size > MAX_NUM_RADIOS) {
 
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Not correct number of radio objects: %d\n",
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Not correct number of radio objects: %d\n",
                 __func__, __LINE__, size);
         cJSON_Delete(json);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
         return webconfig_error_invalid_subdoc;
     }
 
@@ -500,9 +509,10 @@ webconfig_error_t decode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
         obj_radio = cJSON_GetArrayItem(obj_radios, i);
         // check presence of all radio names
         if ((obj = cJSON_GetObjectItem(obj_radio, "RadioName")) == NULL) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Not all radio names present\n",
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Not all radio names present\n",
                     __func__, __LINE__);
             cJSON_Delete(json);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
             return webconfig_error_invalid_subdoc;
         }
 
@@ -514,8 +524,9 @@ webconfig_error_t decode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
     }
 
     if (size < MIN_NUM_RADIOS || size > MAX_NUM_RADIOS) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Invalid radio count\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid radio count\n", __func__, __LINE__);
         cJSON_Delete(json);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
         return webconfig_error_invalid_subdoc;
     }
 
@@ -523,9 +534,10 @@ webconfig_error_t decode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
         obj_radio = cJSON_GetArrayItem(obj_radios, i);
         memset(&params->radios[i], 0, sizeof(rdk_wifi_radio_t));
         if (decode_radio_object(obj_radio, &params->radios[i]) != webconfig_error_none) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Radio object validation failed\n",
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Radio object validation failed\n",
                     __func__, __LINE__);
             cJSON_Delete(json);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
             return webconfig_error_decode;
         }
         params->radios[i].vaps.vap_map.num_vaps = params->hal_cap.wifi_prop.radiocap[i].maxNumberVAPs;
@@ -533,11 +545,6 @@ webconfig_error_t decode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
     }
     params->num_radios = size;
     params->hal_cap.wifi_prop.numRadios = size;
-/*
-    for (i = 0; i < params->num_radios; i++) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: damiano params->radios[i].vaps.num_vaps  %u \n", __func__, __LINE__, i, params->radios[0].vaps.num_vaps);
-    }
-    */
 
     /* get the vap names interested */
     num_vaps = get_list_of_vap_names(wifi_prop, vap_names, MAX_NUM_RADIOS*MAX_NUM_VAP_PER_RADIO, \
@@ -548,16 +555,18 @@ webconfig_error_t decode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
     // decode VAP objects
     obj_vaps = cJSON_GetObjectItem(json, "WifiVapConfig");
     if (cJSON_IsArray(obj_vaps) == false) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: vap object not present\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: vap object not present\n", __func__, __LINE__);
         cJSON_Delete(json);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
         return webconfig_error_invalid_subdoc;
     }
 
     size = cJSON_GetArraySize(obj_vaps);
     if (num_vaps > (int)size) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Not correct number of vap objects: %d, expected: %d\n",
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Not correct number of vap objects: %d, expected: %d\n",
                 __func__, __LINE__, size, num_vaps);
         cJSON_Delete(json);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
         return webconfig_error_invalid_subdoc;
     }
 
@@ -568,6 +577,7 @@ webconfig_error_t decode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
         // check presence of all vap names
         if ((obj = cJSON_GetObjectItem(obj_vap, "VapName")) == NULL) {
             cJSON_Delete(json);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
             return webconfig_error_invalid_subdoc;
         }
 
@@ -581,9 +591,10 @@ webconfig_error_t decode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
 //    if (presence_mask != pow(2, MAX_NUM_VAP_PER_RADIO*params->num_radios) - 1) {
     /* check the present count against number of vaps found in vap_names array */
     if (presence_mask != (pow(2, num_vaps) - 1)) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: VAP object not present, mask:%x\n",
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: VAP object not present, mask:%x\n",
                 __func__, __LINE__, presence_mask);
         cJSON_Delete(json);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
         return webconfig_error_invalid_subdoc;
     }
 
@@ -605,58 +616,66 @@ webconfig_error_t decode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
         memset(vap_info, 0, sizeof(wifi_vap_info_t));
         if (strncmp(name, "private_ssid", strlen("private_ssid")) == 0) {
             if (decode_private_vap_object(obj_vap, vap_info, wifi_prop) != webconfig_error_none) {
-                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: VAP object validation failed\n",
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: VAP object validation failed\n",
                         __func__, __LINE__);
                 cJSON_Delete(json);
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
                 return webconfig_error_decode;
             }
         } else if (strncmp(name, "hotspot_open", strlen("hotspot_open")) == 0) {
             if (decode_hotspot_open_vap_object(obj_vap, vap_info, wifi_prop) != webconfig_error_none) {
-                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: VAP object validation failed\n",
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: VAP object validation failed\n",
                         __func__, __LINE__);
                 cJSON_Delete(json);
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
                 return webconfig_error_decode;
             }
         } else if (strncmp(name, "hotspot_secure", strlen("hotspot_secure")) == 0) {
             if (decode_hotspot_secure_vap_object(obj_vap, vap_info, wifi_prop) != webconfig_error_none) {
-                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: VAP object validation failed\n",
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: VAP object validation failed\n",
                         __func__, __LINE__);
                 cJSON_Delete(json);
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
                 return webconfig_error_decode;
             }
         } else if (strncmp(name, "lnf_psk", strlen("lnf_psk")) == 0) {
             if (decode_lnf_psk_vap_object(obj_vap, vap_info, wifi_prop) != webconfig_error_none) {
-                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: VAP object validation failed\n",
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: VAP object validation failed\n",
                         __func__, __LINE__);
                 cJSON_Delete(json);
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
                 return webconfig_error_decode;
             }
         } else if (strncmp(name, "lnf_radius", strlen("lnf_radius")) == 0) {
             if (decode_lnf_radius_vap_object(obj_vap, vap_info, wifi_prop) != webconfig_error_none) {
-                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: VAP object validation failed\n",
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: VAP object validation failed\n",
                         __func__, __LINE__);
                 cJSON_Delete(json);
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
                 return webconfig_error_decode;
             }
         } else if (strncmp(name, "iot_ssid", strlen("iot_ssid")) == 0) {
             if (decode_iot_vap_object(obj_vap, vap_info, wifi_prop) != webconfig_error_none) {
-                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: VAP object validation failed\n",
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: VAP object validation failed\n",
                         __func__, __LINE__);
                 cJSON_Delete(json);
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
                 return webconfig_error_decode;
             }
         } else if (strncmp(name, "mesh_backhaul", strlen("mesh_backhaul")) == 0) {
             if (decode_mesh_backhaul_vap_object(obj_vap, vap_info, wifi_prop) != webconfig_error_none) {
-                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: VAP object validation failed\n",
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: VAP object validation failed\n",
                         __func__, __LINE__);
                 cJSON_Delete(json);
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
                 return webconfig_error_decode;
             }
         } else if (strncmp(name, "mesh_sta", strlen("mesh_sta")) == 0) {
             if (decode_mesh_sta_object(obj_vap, vap_info, wifi_prop) != webconfig_error_none) {
-                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: VAP object validation failed\n",
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: VAP object validation failed\n",
                         __func__, __LINE__);
                 cJSON_Delete(json);
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
                 return webconfig_error_decode;
             }
         }
@@ -666,16 +685,18 @@ webconfig_error_t decode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
 
     obj_mac = cJSON_GetObjectItem(json, "WifiMacFilter");
     if (cJSON_IsArray(obj_mac) == false) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Mac object not present\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Mac object not present\n", __func__, __LINE__);
         cJSON_Delete(json);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
         return webconfig_error_invalid_subdoc;
     }
 
     size = cJSON_GetArraySize(obj_mac);
     if (num_vaps > (int)size) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Not correct number of mac objects: %d\n",
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Not correct number of mac objects: %d\n",
                 __func__, __LINE__, size);
         cJSON_Delete(json);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
         return webconfig_error_invalid_subdoc;
     }
     for (i = 0; i < size; i++) {
@@ -690,14 +711,15 @@ webconfig_error_t decode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
         rdk_vap_info = &params->radios[radio_index].vaps.rdk_vap_array[vap_array_index];
         rdk_vap_info->vap_index = convert_vap_name_to_index(wifi_prop, name);
         if (decode_mac_object(rdk_vap_info, obj_acl) != webconfig_error_none) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: mac state object validation failed\n",
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: mac state object validation failed\n",
                     __func__, __LINE__);
             cJSON_Delete(json);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
             return webconfig_error_decode;
         }
     }
 
-    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Validation success\n", __func__, __LINE__);
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: decode success\n", __func__, __LINE__);
     cJSON_Delete(json);
 
     return webconfig_error_none;

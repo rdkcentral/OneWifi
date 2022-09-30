@@ -41,11 +41,11 @@ int vap_svc_mesh_gw_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
         tgt_vap_map.num_vaps = 1;
 
         if (wifi_hal_createVAP(radio_index, &tgt_vap_map) != RETURN_OK) {
-            wifi_util_dbg_print(WIFI_CTRL,"%s: wifi vap create failure: radio_index:%d vap_index:%d\n",__FUNCTION__,
+            wifi_util_error_print(WIFI_CTRL,"%s: wifi vap create failure: radio_index:%d vap_index:%d\n",__FUNCTION__,
                                                 radio_index, map->vap_array[i].vap_index);
             continue;
         }
-        wifi_util_dbg_print(WIFI_CTRL,"%s: wifi vap create success: radio_index:%d vap_index:%d\n",__FUNCTION__,
+        wifi_util_info_print(WIFI_CTRL,"%s: wifi vap create success: radio_index:%d vap_index:%d\n",__FUNCTION__,
                                                 radio_index, map->vap_array[i].vap_index);
         memcpy((unsigned char *)&map->vap_array[i], (unsigned char *)&tgt_vap_map.vap_array[0],
                     sizeof(wifi_vap_info_t));
@@ -58,5 +58,5 @@ int vap_svc_mesh_gw_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
     }
 
 
-	return 0;
+    return 0;
 }

@@ -27,7 +27,7 @@ int webconfig_csi_notify_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_encoded_data_
 
     rc = rbusEvent_Publish(ctrl->rbus_handle, &event);
     if ((rc != RBUS_ERROR_SUCCESS) && (rc != RBUS_ERROR_NOSUBSCRIBERS)) {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: rbusEvent_Publish Event failed %d\n", __func__, __LINE__, rc);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: rbusEvent_Publish Event failed %d\n", __func__, __LINE__, rc);
         return RETURN_ERR;
     }
 
@@ -55,7 +55,7 @@ int webconfig_client_notify_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_encoded_da
 
     rc = rbusEvent_Publish(ctrl->rbus_handle, &event);
     if ((rc != RBUS_ERROR_SUCCESS) && (rc != RBUS_ERROR_NOSUBSCRIBERS)) {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: rbusEvent_Publish Event failed %d\n", __func__, __LINE__, rc);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: rbusEvent_Publish Event failed %d\n", __func__, __LINE__, rc);
         return RETURN_ERR;
     }
 
@@ -83,7 +83,7 @@ int webconfig_null_subdoc_notify_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_encod
 
     rc = rbusEvent_Publish(ctrl->rbus_handle, &event);
     if ((rc != RBUS_ERROR_SUCCESS)) {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: rbusEvent_Publish Event failed %d\n", __func__, __LINE__, rc);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: rbusEvent_Publish Event failed %d\n", __func__, __LINE__, rc);
         return RETURN_ERR;
     }
 
@@ -101,14 +101,14 @@ int notify_associated_entries(wifi_ctrl_t *ctrl, int ap_index, ULONG new_count, 
     memset(str, 0, 2048);
 
     if (ctrl == NULL ) {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: NULL Pointer \n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: NULL Pointer \n", __func__, __LINE__);
         return RETURN_ERR;
     }
 
     snprintf(str, sizeof(str), "Device.WiFi.AccessPoint.%d.AssociatedDeviceNumberOfEntries,%d,%lu,%lu,%d", ap_index+1, 0, new_count, old_count, 2);
     rc = rbus_setStr(ctrl->rbus_handle, WIFI_NOTIFY_ASSOCIATED_ENTRIES, str);
     if (rc != RBUS_ERROR_SUCCESS) {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: rbusWrite Failed %d\n", __func__, __LINE__, rc);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: rbusWrite Failed %d\n", __func__, __LINE__, rc);
         return RETURN_ERR;
     }
     return RETURN_OK;
@@ -122,7 +122,7 @@ int notify_hotspot(wifi_ctrl_t *ctrl, assoc_dev_data_t *assoc_device)
     memset(str, 0, 2048);
 
     if (ctrl == NULL ) {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: NULL Pointer \n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: NULL Pointer \n", __func__, __LINE__);
         return RETURN_ERR;
     }
 
@@ -132,7 +132,7 @@ int notify_hotspot(wifi_ctrl_t *ctrl, assoc_dev_data_t *assoc_device)
 
     rc = rbus_setStr(ctrl->rbus_handle, WIFI_HOTSPOT_NOTIFY, str);
     if (rc != RBUS_ERROR_SUCCESS) {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: rbusWrite Failed %d\n", __func__, __LINE__, rc);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: rbusWrite Failed %d\n", __func__, __LINE__, rc);
         return RETURN_ERR;
     }
     return RETURN_OK;
@@ -145,7 +145,7 @@ int notify_LM_Lite(wifi_ctrl_t *ctrl, LM_wifi_hosts_t* phosts, bool sync)
     memset(str, 0, 2048);
 
     if (ctrl == NULL ) {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: NULL Pointer \n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: NULL Pointer \n", __func__, __LINE__);
         return RETURN_ERR;
     }
 
@@ -159,7 +159,7 @@ int notify_LM_Lite(wifi_ctrl_t *ctrl, LM_wifi_hosts_t* phosts, bool sync)
 
         rc = rbus_setStr(ctrl->rbus_handle, WIFI_LMLITE_NOTIFY, str);
         if (rc != RBUS_ERROR_SUCCESS) {
-            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: rbusWrite Failed %d\n", __func__, __LINE__, rc);
+            wifi_util_error_print(WIFI_CTRL, "%s:%d: rbusWrite Failed %d\n", __func__, __LINE__, rc);
             return RETURN_ERR;
         }
     } else {
@@ -173,7 +173,7 @@ int notify_LM_Lite(wifi_ctrl_t *ctrl, LM_wifi_hosts_t* phosts, bool sync)
 
            rc = rbus_setStr(ctrl->rbus_handle, WIFI_LMLITE_NOTIFY, str);
            if (rc != RBUS_ERROR_SUCCESS) {
-               wifi_util_dbg_print(WIFI_CTRL, "%s:%d: rbusWrite Failed %d\n", __func__, __LINE__, rc);
+               wifi_util_error_print(WIFI_CTRL, "%s:%d: rbusWrite Failed %d\n", __func__, __LINE__, rc);
                return RETURN_ERR;
            }
         }
@@ -199,7 +199,7 @@ int webconfig_rbus_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_encoded_data_t *dat
 
     rc = rbusEvent_Publish(ctrl->rbus_handle, &event);
     if ((rc != RBUS_ERROR_SUCCESS) && (rc != RBUS_ERROR_NOSUBSCRIBERS)) {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: rbusEvent_Publish Event failed %d\n", __func__, __LINE__, rc);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: rbusEvent_Publish Event failed %d\n", __func__, __LINE__, rc);
         return RETURN_ERR;
     }
 
@@ -220,7 +220,7 @@ rbusError_t webconfig_get_subdoc(rbusHandle_t handle, rbusProperty_t property, r
    if(ctrl->network_mode == rdk_dev_mode_type_gw) {
         wifi_util_dbg_print(WIFI_CTRL,"%s Rbus property=%s, Gateway mode\n",__FUNCTION__, name);
         if (strcmp(name, WIFI_WEBCONFIG_INIT_DATA) != 0) {
-            wifi_util_dbg_print(WIFI_CTRL,"%s Rbus property valid\n",__FUNCTION__);
+            wifi_util_error_print(WIFI_CTRL,"%s Rbus property invalid '%s'\n",__FUNCTION__, name);
             return RBUS_ERROR_INVALID_INPUT;
         }
 
@@ -248,7 +248,7 @@ rbusError_t webconfig_get_subdoc(rbusHandle_t handle, rbusProperty_t property, r
         }
 
         if (strcmp(name, WIFI_WEBCONFIG_INIT_DATA) != 0) {
-            wifi_util_dbg_print(WIFI_CTRL,"%s Rbus property valid\n",__FUNCTION__);
+            wifi_util_error_print(WIFI_CTRL,"%s Rbus property valid\n",__FUNCTION__);
             return RBUS_ERROR_INVALID_INPUT;
         }
 
@@ -281,7 +281,7 @@ rbusError_t webconfig_get_dml_subdoc(rbusHandle_t handle, rbusProperty_t propert
 
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d Rbus property=%s\r\n", __func__, __LINE__, name);
     if (strcmp(name, WIFI_WEBCONFIG_INIT_DML_DATA) != 0) {
-        wifi_util_dbg_print(WIFI_CTRL,"%s Rbus property valid\n",__FUNCTION__);
+        wifi_util_error_print(WIFI_CTRL,"%s Rbus property invalid '%s'\n",__FUNCTION__, name);
         return RBUS_ERROR_INVALID_INPUT;
     }
 
@@ -315,7 +315,7 @@ rbusError_t webconfig_set_subdoc(rbusHandle_t handle, rbusProperty_t property, r
 
     wifi_util_dbg_print(WIFI_CTRL,"%s Rbus property=%s\n",__FUNCTION__,name);
     if (type != RBUS_STRING) {
-        wifi_util_dbg_print(WIFI_CTRL,"%sWrong data type %s\n",__FUNCTION__,name);
+        wifi_util_error_print(WIFI_CTRL,"%sWrong data type %s\n",__FUNCTION__,name);
         return rc;
     }
 
@@ -387,14 +387,14 @@ static void activeGatewayCheckHandler(rbusHandle_t handle, rbusEvent_t const* ev
     bool other_gateway_present = false;
 
     if(!event || (strcmp(subscription->eventName, WIFI_ACTIVE_GATEWAY_CHECK) != 0)) {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Invalid Event Received %s",
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Invalid Event Received %s",
                 __func__, __LINE__, subscription->eventName);
         return;
     }
 
     value = rbusObject_GetValue(event->data, subscription->eventName);
     if (!value) {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Invalid value in event:%s",
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Invalid value in event:%s",
                     __func__, __LINE__, subscription->eventName);
         return;
     }
@@ -412,14 +412,14 @@ static void wan_failover_handler(rbusHandle_t handle, rbusEvent_t const* event,
     bool data_value = false;
 
     if(!event || (strcmp(subscription->eventName, WIFI_WAN_FAILOVER_TEST) != 0)) {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Invalid Event Received %s",
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Invalid Event Received %s",
                 __func__, __LINE__, subscription->eventName);
         return;
     }
 
     value = rbusObject_GetValue(event->data, subscription->eventName);
     if (!value) {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Invalid value in event:%s",
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Invalid value in event:%s",
                     __func__, __LINE__, subscription->eventName);
         return;
     }
@@ -437,18 +437,18 @@ static void hotspotTunnelHandler(rbusHandle_t handle, rbusEvent_t const* event,
 
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d Recvd Event\n",  __func__, __LINE__);
     if(!event) {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d null event\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d null event\n", __func__, __LINE__);
         return;
     }
 
     if(strcmp(subscription->eventName, "TunnelStatus") != 0) {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d Not Tunnel event, %s\n", __func__, __LINE__, subscription->eventName);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Not Tunnel event, %s\n", __func__, __LINE__, subscription->eventName);
         return;
     }
 
     rbusValue_t value = rbusObject_GetValue(event->data, subscription->eventName);
     if (!value) {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Invalid value in event:%s\n",
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Invalid value in event:%s\n",
                     __func__, __LINE__, subscription->eventName);
         return;
     }
@@ -456,7 +456,7 @@ static void hotspotTunnelHandler(rbusHandle_t handle, rbusEvent_t const* event,
     int len = 0;
     const char * pTmp = rbusValue_GetString(value, &len);
     if(pTmp == NULL) {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Unable to get  value in event:%s\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Unable to get  value in event:%s\n", __func__, __LINE__);
         return;
     }
 
@@ -479,14 +479,14 @@ rbusError_t get_assoc_clients_data(rbusHandle_t handle, rbusProperty_t property,
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     if ((mgr == NULL) || (ctrl == NULL)) {
-        wifi_util_dbg_print(WIFI_CTRL,"%s:%d NULL pointers\n", __func__,__LINE__);
+        wifi_util_error_print(WIFI_CTRL,"%s:%d NULL pointers\n", __func__,__LINE__);
         return RBUS_ERROR_INVALID_INPUT;
     }
 
     wifi_util_dbg_print(WIFI_CTRL,"%s Rbus property=%s\n",__FUNCTION__,name);
 
     if (strcmp(name, WIFI_WEBCONFIG_GET_ASSOC) != 0) {
-        wifi_util_dbg_print(WIFI_CTRL,"%s Rbus property valid\n",__FUNCTION__);
+        wifi_util_error_print(WIFI_CTRL,"%s Rbus property invalid '%s'\n",__FUNCTION__, name);
         return RBUS_ERROR_INVALID_INPUT;
     }
 
@@ -531,14 +531,14 @@ rbusError_t get_null_subdoc_data(rbusHandle_t handle, rbusProperty_t property, r
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     if ((mgr == NULL) || (ctrl == NULL)) {
-        wifi_util_dbg_print(WIFI_CTRL,"%s:%d NULL pointers\n", __func__,__LINE__);
+        wifi_util_error_print(WIFI_CTRL,"%s:%d NULL pointers\n", __func__,__LINE__);
         return RBUS_ERROR_INVALID_INPUT;
     }
 
     wifi_util_dbg_print(WIFI_CTRL,"%s Rbus property=%s\n",__FUNCTION__,name);
 
     if (strcmp(name, WIFI_WEBCONFIG_GET_NULL_SUBDOC) != 0) {
-        wifi_util_dbg_print(WIFI_CTRL,"%s Rbus property valid\n",__FUNCTION__);
+        wifi_util_error_print(WIFI_CTRL,"%s Rbus property invalid '%s'\n",__FUNCTION__, name);
         return RBUS_ERROR_INVALID_INPUT;
     }
 
@@ -646,7 +646,7 @@ int wifiapi_result_publish(void)
     int rc = RBUS_ERROR_SUCCESS;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     if (ctrl == NULL) {
-        wifi_util_dbg_print(WIFI_CTRL,"%s:%d NULL pointers\n", __func__,__LINE__);
+        wifi_util_error_print(WIFI_CTRL,"%s:%d NULL pointers\n", __func__,__LINE__);
         return RBUS_ERROR_BUS_ERROR;
     }
     rbusValue_t value;
@@ -675,7 +675,7 @@ int wifiapi_result_publish(void)
     pthread_mutex_unlock(&ctrl->lock);
 
     if(rc != RBUS_ERROR_SUCCESS)
-        wifi_util_dbg_print(WIFI_CTRL,"%s:%d rbusEvent_Publish %s failed: %d\n", __func__,
+        wifi_util_error_print(WIFI_CTRL,"%s:%d rbusEvent_Publish %s failed: %d\n", __func__,
                                     event.name ,__LINE__, rc);
 
     rbusValue_Release(value);
@@ -694,7 +694,7 @@ void get_assoc_devices_blob(char *str)
 
 
     if ((mgr == NULL) || (ctrl == NULL)) {
-        wifi_util_dbg_print(WIFI_CTRL,"%s:%d NULL pointers\n", __func__,__LINE__);
+        wifi_util_error_print(WIFI_CTRL,"%s:%d NULL pointers\n", __func__,__LINE__);
         return;
     }
 
@@ -732,14 +732,14 @@ rbusError_t get_acl_device_data(rbusHandle_t handle, rbusProperty_t property, rb
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     if ((mgr == NULL) || (ctrl == NULL)) {
-        wifi_util_dbg_print(WIFI_CTRL,"%s:%d NULL pointers\n", __func__,__LINE__);
+        wifi_util_error_print(WIFI_CTRL,"%s:%d NULL pointers\n", __func__,__LINE__);
         return RBUS_ERROR_INVALID_INPUT;
     }
 
     wifi_util_dbg_print(WIFI_CTRL,"%s Rbus property=%s\n",__FUNCTION__,name);
 
     if (strncmp(name, WIFI_WEBCONFIG_GET_ACL, strlen(WIFI_WEBCONFIG_GET_ACL)+1) != 0) {
-        wifi_util_dbg_print(WIFI_CTRL,"%s Rbus property valid\n",__FUNCTION__);
+        wifi_util_error_print(WIFI_CTRL,"%s Rbus property invalid '%s'\n",__FUNCTION__, name);
         return RBUS_ERROR_INVALID_INPUT;
     }
 
@@ -753,9 +753,9 @@ rbusError_t get_acl_device_data(rbusHandle_t handle, rbusProperty_t property, rb
     if (webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_mac_filter) == webconfig_error_none) {
         rbusValue_SetString(value, data.u.encoded.raw);
         rbusProperty_SetValue(property, value);
-        wifi_util_dbg_print(WIFI_DMCLI, "%s: ACL DML cache encoded successfully  \n", __FUNCTION__);
+        wifi_util_info_print(WIFI_DMCLI, "%s: ACL DML cache encoded successfully  \n", __FUNCTION__);
     } else {
-        wifi_util_dbg_print(WIFI_DMCLI, "%s: ACL DML cache encode failed  \n", __FUNCTION__);
+        wifi_util_error_print(WIFI_DMCLI, "%s: ACL DML cache encode failed  \n", __FUNCTION__);
     }
 
     rbusValue_Release(value);
@@ -774,14 +774,14 @@ rbusError_t get_private_vap(rbusHandle_t handle, rbusProperty_t property, rbusSe
 
     wifi_util_dbg_print(WIFI_CTRL,"%s Rbus property=%s\n",__FUNCTION__,name);
     if (type != RBUS_STRING) {
-        wifi_util_dbg_print(WIFI_CTRL,"%sWrong data type %s\n",__FUNCTION__,name);
+        wifi_util_error_print(WIFI_CTRL,"%sWrong data type %s\n",__FUNCTION__,name);
         return rc;
     }
 
     int len = 0;
     const char* pTmp = rbusValue_GetString(value, &len);
     if(pTmp == NULL) {
-        wifi_util_dbg_print(WIFI_CTRL,"%s null string data recvd\n", __FUNCTION__ );
+        wifi_util_error_print(WIFI_CTRL,"%s null string data recvd\n", __FUNCTION__ );
         return rc;
     }
 
@@ -806,7 +806,7 @@ rbusError_t get_home_vap(rbusHandle_t handle, rbusProperty_t property, rbusSetHa
 
     wifi_util_dbg_print(WIFI_CTRL,"%s Rbus property=%s\n",__FUNCTION__,name);
     if (type != RBUS_STRING) {
-        wifi_util_dbg_print(WIFI_CTRL,"%sWrong data type %s\n",__FUNCTION__,name);
+        wifi_util_error_print(WIFI_CTRL,"%sWrong data type %s\n",__FUNCTION__,name);
         return rc;
     }
 
@@ -829,7 +829,7 @@ static void deviceModeHandler(rbusHandle_t handle, rbusEvent_t const* event, rbu
     UNREFERENCED_PARAMETER(handle);
 
     if(!event) {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d null event\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d null event\n", __func__, __LINE__);
         return;
     }
 
@@ -837,7 +837,7 @@ static void deviceModeHandler(rbusHandle_t handle, rbusEvent_t const* event, rbu
 
     rbusValue_t value = rbusObject_GetValue(event->data, NULL);
     if (!value) {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Invalid value for event:%s \n",
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Invalid value for event:%s \n",
                                        __func__, __LINE__, event->name);
         return;
     }
@@ -848,7 +848,7 @@ static void deviceModeHandler(rbusHandle_t handle, rbusEvent_t const* event, rbu
         push_data_to_ctrl_queue(&device_mode, sizeof(device_mode), ctrl_event_type_command, ctrl_event_type_device_network_mode);
 
     } else {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Unsupported event:%s\n", __func__, __LINE__, event->name);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Unsupported event:%s\n", __func__, __LINE__, event->name);
     }
 }
 #endif
@@ -858,7 +858,7 @@ static void testDeviceModeHandler(rbusHandle_t handle, rbusEvent_t const* event,
     UNREFERENCED_PARAMETER(handle);
 
     if(!event) {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d null event\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d null event\n", __func__, __LINE__);
         return;
     }
 
@@ -866,7 +866,7 @@ static void testDeviceModeHandler(rbusHandle_t handle, rbusEvent_t const* event,
 
     rbusValue_t value = rbusObject_GetValue(event->data, subscription->eventName);
     if (!value) {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Invalid value in event:%s\n",
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Invalid value in event:%s\n",
                     __func__, __LINE__, event->name);
         return;
     }
@@ -876,7 +876,7 @@ static void testDeviceModeHandler(rbusHandle_t handle, rbusEvent_t const* event,
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d: event:%s: value:%d\n", __func__, __LINE__, event->name, device_mode);
         push_data_to_ctrl_queue(&device_mode, sizeof(device_mode), ctrl_event_type_command, ctrl_event_type_device_network_mode);
     } else {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Unsupported event:%s\n", __func__, __LINE__, event->name);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Unsupported event:%s\n", __func__, __LINE__, event->name);
     }
 }
 
@@ -916,7 +916,7 @@ static void eventReceiveHandler(rbusHandle_t handle, rbusEvent_t const* event, r
 
     wifi_util_dbg_print(WIFI_CTRL, " %s:%d Recvd Event\n",  __func__, __LINE__);
     if(!event) {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d null event\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d null event\n", __func__, __LINE__);
         return;
     }
 
@@ -930,7 +930,7 @@ static void eventReceiveHandler(rbusHandle_t handle, rbusEvent_t const* event, r
     if (strcmp(event->name, WIFI_DEVICE_TUNNEL_STATUS) == 0) {
         const char * pTmp = rbusValue_GetString(value, &len);
         if(pTmp == NULL) {
-            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Unable to get  value in event:%s\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_CTRL, "%s:%d: Unable to get  value in event:%s\n", __func__, __LINE__);
             return;
         }
         if(strcmp(pTmp,"Up") == 0) {
@@ -938,13 +938,13 @@ static void eventReceiveHandler(rbusHandle_t handle, rbusEvent_t const* event, r
         } else if(strcmp(pTmp,"Down") == 0) {
             tunnel_status = false;
         } else {
-            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Received Unsupported value\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_CTRL, "%s:%d: Received Unsupported value\n", __func__, __LINE__);
             return;
         }
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d: event:%s: value:%d\n", __func__, __LINE__, event->name, tunnel_status);
 
     } else {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Unsupported event:%s\n", __func__, __LINE__, event->name);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Unsupported event:%s\n", __func__, __LINE__, event->name);
         return;
     }
     ctrl_event_subtype_t ces_t = tunnel_status ? ctrl_event_type_xfinity_tunnel_up : ctrl_event_type_xfinity_tunnel_down;
@@ -959,13 +959,13 @@ static void wps_test_event_receive_handler(rbusHandle_t handle, rbusEvent_t cons
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d Recvd Event\n",  __func__, __LINE__);
 
     if(!event) {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d null event\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d null event\n", __func__, __LINE__);
         return;
     }
 
     rbusValue_t value = rbusObject_GetValue(event->data, subscription->eventName);
     if (!value) {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Invalid value in event:%s\n",
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Invalid value in event:%s\n",
                     __func__, __LINE__, event->name);
         return;
     }
@@ -978,7 +978,7 @@ static void wps_test_event_receive_handler(rbusHandle_t handle, rbusEvent_t cons
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi wps test vap_index:%d\n",__func__, __LINE__, vap_index);
         push_data_to_ctrl_queue(&vap_index, sizeof(vap_index), ctrl_event_type_command, ctrl_event_type_command_wps);
     } else {
-        wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi wps test invalid vap_index:%d max_vap:%d\n",__func__, __LINE__,
+        wifi_util_error_print(WIFI_CTRL,"%s:%d wifi wps test invalid vap_index:%d max_vap:%d\n",__func__, __LINE__,
                 vap_index, getTotalNumberVAPs());
     }
 }
@@ -998,10 +998,10 @@ void rbus_subscribe_events(wifi_ctrl_t *ctrl)
 
     if(consumer_app_file == 0 && ctrl->rbus_events_subscribed == false) {
         if (rbusEvent_Subscribe(ctrl->rbus_handle, WIFI_WAN_FAILOVER_TEST, wan_failover_handler, NULL, 0) != RBUS_ERROR_SUCCESS) {
-            //wifi_util_dbg_print(WIFI_CTRL,"%s:%d Rbus event:%s subscribe failed\n",__FUNCTION__, __LINE__, WIFI_WAN_FAILOVER_TEST);
+            //wifi_util_dbg_print(WIFI_CTRL, "%s:%d Rbus event:%s subscribe failed\n",__FUNCTION__, __LINE__, WIFI_WAN_FAILOVER_TEST);
         } else {
             ctrl->rbus_events_subscribed = true;
-            wifi_util_dbg_print(WIFI_CTRL,"%s:%d Rbus event:%s subscribe success\n",__FUNCTION__, __LINE__, WIFI_WAN_FAILOVER_TEST);
+            wifi_util_info_print(WIFI_CTRL,"%s:%d Rbus event:%s subscribe success\n",__FUNCTION__, __LINE__, WIFI_WAN_FAILOVER_TEST);
         }
     }
 
@@ -1016,10 +1016,10 @@ void rbus_subscribe_events(wifi_ctrl_t *ctrl)
 #if defined(GATEWAY_FAILOVER_SUPPORTED)
     if(ctrl->active_gateway_check_subscribed == false) {
         if (rbusEvent_Subscribe(ctrl->rbus_handle, WIFI_ACTIVE_GATEWAY_CHECK, activeGatewayCheckHandler, NULL, 0) != RBUS_ERROR_SUCCESS) {
-            //wifi_util_dbg_print(WIFI_CTRL,"%s:%d Rbus event:%s subscribe failed\n",__FUNCTION__, __LINE__, WIFI_ACTIVE_GATEWAY_CHECK);
+            //wifi_util_dbg_print(WIFI_CTRL, "%s:%d Rbus event:%s subscribe failed\n",__FUNCTION__, __LINE__, WIFI_ACTIVE_GATEWAY_CHECK);
         } else {
             ctrl->active_gateway_check_subscribed = true;
-            wifi_util_dbg_print(WIFI_CTRL,"%s:%d Rbus event:%s subscribe success\n",__FUNCTION__, __LINE__, WIFI_ACTIVE_GATEWAY_CHECK);
+            wifi_util_info_print(WIFI_CTRL,"%s:%d Rbus event:%s subscribe success\n",__FUNCTION__, __LINE__, WIFI_ACTIVE_GATEWAY_CHECK);
         }
     }
 #endif
@@ -1028,11 +1028,11 @@ void rbus_subscribe_events(wifi_ctrl_t *ctrl)
         //TODO - what's the namespace for the event
         int rc = rbusEvent_Subscribe(ctrl->rbus_handle, "TunnelStatus", hotspotTunnelHandler, NULL, 0);
         if(rc != RBUS_ERROR_SUCCESS) {
-            // wifi_util_dbg_print(WIFI_CTRL,"%s:%d TunnelStatus subscribe Failed, rc: %d\n",__FUNCTION__, __LINE__, rc);
+            //wifi_util_dbg_print(WIFI_CTRL,"%s:%d TunnelStatus subscribe Failed, rc: %d\n",__FUNCTION__, __LINE__, rc);
         }
         else {
             ctrl->tunnel_events_subscribed = true;
-            wifi_util_dbg_print(WIFI_CTRL,"%s:%d TunnelStatus subscribe success, rc: %d\n",__FUNCTION__, __LINE__, rc);
+            wifi_util_info_print(WIFI_CTRL,"%s:%d TunnelStatus subscribe success, rc: %d\n",__FUNCTION__, __LINE__, rc);
         }
     }
 
@@ -1052,7 +1052,7 @@ void rbus_subscribe_events(wifi_ctrl_t *ctrl)
             //wifi_util_dbg_print(WIFI_CTRL,"%s:%d Rbus event:%s subscribe failed\n",__FUNCTION__, __LINE__, WIFI_DEVICE_MODE);
         } else {
             ctrl->device_mode_subscribed = true;
-            wifi_util_dbg_print(WIFI_CTRL,"%s:%d Rbus event:%s subscribe success\n",__FUNCTION__, __LINE__, WIFI_DEVICE_MODE);
+            wifi_util_info_print(WIFI_CTRL,"%s:%d Rbus event:%s subscribe success\n",__FUNCTION__, __LINE__, WIFI_DEVICE_MODE);
         }
     }
 #endif
@@ -1062,7 +1062,7 @@ void rbus_subscribe_events(wifi_ctrl_t *ctrl)
             //wifi_util_dbg_print(WIFI_CTRL,"%s:%d Rbus event:%s subscribe failed\n",__FUNCTION__, __LINE__, WIFI_DEVICE_TUNNEL_STATUS);
         } else {
             ctrl->device_tunnel_status_subscribed = true;
-            wifi_util_dbg_print(WIFI_CTRL,"%s:%d Rbus event:%s subscribe success\n",__FUNCTION__, __LINE__, WIFI_DEVICE_TUNNEL_STATUS);
+            wifi_util_info_print(WIFI_CTRL,"%s:%d Rbus event:%s subscribe success\n",__FUNCTION__, __LINE__, WIFI_DEVICE_TUNNEL_STATUS);
         }
     }
 
@@ -1071,7 +1071,7 @@ void rbus_subscribe_events(wifi_ctrl_t *ctrl)
             //wifi_util_dbg_print(WIFI_CTRL,"%s:%d Rbus event:%s subscribe failed\n",__FUNCTION__, __LINE__, RBUS_WIFI_WPS_PIN_START);
         } else {
             ctrl->device_wps_test_subscribed = true;
-            wifi_util_dbg_print(WIFI_CTRL,"%s:%d Rbus event:%s subscribe success\n",__FUNCTION__, __LINE__, RBUS_WIFI_WPS_PIN_START);
+            wifi_util_info_print(WIFI_CTRL,"%s:%d Rbus event:%s subscribe success\n",__FUNCTION__, __LINE__, RBUS_WIFI_WPS_PIN_START);
         }
     }
 
@@ -1080,7 +1080,7 @@ void rbus_subscribe_events(wifi_ctrl_t *ctrl)
             //wifi_util_dbg_print(WIFI_CTRL,"%s:%d Rbus event:%s subscribe failed\n",__FUNCTION__, __LINE__, TEST_WIFI_DEVICE_MODE);
         } else {
             ctrl->test_device_mode_subscribed = true;
-            wifi_util_dbg_print(WIFI_CTRL,"%s:%d Rbus event:%s subscribe success\n",__FUNCTION__, __LINE__, TEST_WIFI_DEVICE_MODE);
+            wifi_util_info_print(WIFI_CTRL,"%s:%d Rbus event:%s subscribe success\n",__FUNCTION__, __LINE__, TEST_WIFI_DEVICE_MODE);
         }
     }
 
@@ -1105,7 +1105,7 @@ rbusError_t get_sta_attribs(rbusHandle_t handle, rbusProperty_t property, rbusGe
 
     sscanf(name, "Device.WiFi.STA.%d.%s", &index, extension);
     if (index > getNumberRadios()) {
-        wifi_util_dbg_print(WIFI_CTRL,"%s Rbus property valid\n",__FUNCTION__);
+        wifi_util_error_print(WIFI_CTRL,"%s Invalid index %d\n",__FUNCTION__, index);
         return RBUS_ERROR_INVALID_INPUT;
     }
 
@@ -1247,15 +1247,15 @@ void rbus_register_handlers(wifi_ctrl_t *ctrl)
     rc = rbus_open(&ctrl->rbus_handle, component_name);
 
     if (rc != RBUS_ERROR_SUCCESS) {
-        wifi_util_dbg_print(WIFI_CTRL,"%s Rbus open failed\n",__FUNCTION__);
+        wifi_util_error_print(WIFI_CTRL,"%s Rbus open failed\n",__FUNCTION__);
         return;
     }
 
-    wifi_util_dbg_print(WIFI_CTRL,"%s rbus open success\n",__FUNCTION__);
+    wifi_util_info_print(WIFI_CTRL,"%s rbus open success\n",__FUNCTION__);
 
     rc = rbus_regDataElements(ctrl->rbus_handle, sizeof(dataElements)/sizeof(rbusDataElement_t), dataElements);
     if (rc != RBUS_ERROR_SUCCESS) {
-        wifi_util_dbg_print(WIFI_CTRL,"%s rbus_regDataElements failed\n",__FUNCTION__);
+        wifi_util_error_print(WIFI_CTRL,"%s rbus_regDataElements failed\n",__FUNCTION__);
         rbus_unregDataElements(ctrl->rbus_handle, sizeof(dataElements)/sizeof(rbusDataElement_t), dataElements);
         rbus_close(ctrl->rbus_handle);
     }
@@ -1265,11 +1265,11 @@ void rbus_register_handlers(wifi_ctrl_t *ctrl)
         rc = rbusTable_addRow(ctrl->rbus_handle, "Device.WiFi.STA.", NULL, NULL);
         if(rc != RBUS_ERROR_SUCCESS)
         {
-            wifi_util_dbg_print(WIFI_MON, "%s() rbusTable_addRow failed %d\n", __FUNCTION__, rc);
+            wifi_util_info_print(WIFI_MON, "%s() rbusTable_addRow failed for Device.WiFi.STA.%d\n", __FUNCTION__, rc);
         }
     }
 
-    wifi_util_dbg_print(WIFI_CTRL,"%s rbus event register:[%s]:%s\r\n",__FUNCTION__, WIFI_STA_2G_VAP_CONNECT_STATUS, WIFI_STA_5G_VAP_CONNECT_STATUS);
+    wifi_util_info_print(WIFI_CTRL,"%s rbus event register:[%s]:%s\r\n",__FUNCTION__, WIFI_STA_2G_VAP_CONNECT_STATUS, WIFI_STA_5G_VAP_CONNECT_STATUS);
 
     return;
 }

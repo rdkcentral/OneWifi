@@ -68,7 +68,7 @@ webconfig_error_t encode_radio_object(const rdk_wifi_radio_t *radio, cJSON *radi
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(radio_object, "WifiRadioSetup", obj);
     if (encode_radio_setup_object(&radio->vaps, obj) != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Radio setup encode failed\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d Radio setup encode failed\n", __func__, __LINE__);
         return webconfig_error_encode;
     }
 
@@ -95,7 +95,7 @@ webconfig_error_t encode_radio_object(const rdk_wifi_radio_t *radio, cJSON *radi
     num_channels = (int) radio_info->numSecondaryChannels;
     for (i = 0; i < num_channels; i++) {
         if (k >= (len - 1)) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Wifi_Radio_Config table Maximum size reached for secondary_channels_list\n",__func__, __LINE__);
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d Wifi_Radio_Config table Maximum size reached for secondary_channels_list\n",__func__, __LINE__);
             break;
         }
 
@@ -128,7 +128,7 @@ webconfig_error_t encode_radio_object(const rdk_wifi_radio_t *radio, cJSON *radi
     if ((k >= 0) && (k <= MAX_WIFI_COUNTRYCODE)) {
         snprintf(str,sizeof(str),"%s",wifiCountryMap[k].countryStr);
     } else {
-        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s Set failed invalid Country code %d.\n",__FUNCTION__,k);
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s Set failed invalid Country code %d.\n",__FUNCTION__,k);
         return webconfig_error_encode;
     }
 
@@ -437,12 +437,12 @@ webconfig_error_t encode_config_object(const wifi_global_config_t *config_info, 
     cJSON_AddItemToObject(config_obj, "GASConfig", obj);
 
     if (encode_gas_config(&config_info->gas_config, obj) != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode gas config\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode gas config\n", __func__, __LINE__);
         return webconfig_error_encode;
     }
 
     if (encode_wifi_global_config(&config_info->global_parameters, config_obj) != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode wifi global config\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode wifi global config\n", __func__, __LINE__);
         return webconfig_error_encode;
     }
 
@@ -474,7 +474,7 @@ webconfig_error_t encode_interworking_common_object(const wifi_interworking_t *i
     cJSON_AddBoolToObject(interworking, "InterworkingEnable", interworking_info->interworking.interworkingEnabled);
 
     if (interworking_info->interworking.accessNetworkType > 5) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Encode failed for AccessNetworkType\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Encode failed for AccessNetworkType\n", __func__, __LINE__);
         //strncpy(execRetVal->ErrorMsg, "Invalid Access Network type",sizeof(execRetVal->ErrorMsg)-1);
         return webconfig_error_encode;
     }
@@ -489,7 +489,7 @@ webconfig_error_t encode_interworking_common_object(const wifi_interworking_t *i
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(interworking, "Venue", obj);
     if (interworking_info->interworking.venueType > 15) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Encode failed for VenueGroup\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Encode failed for VenueGroup\n", __func__, __LINE__);
         //strncpy(execRetVal->ErrorMsg, "Invalid Venue Group",sizeof(execRetVal->ErrorMsg)-1);
         return webconfig_error_encode;
     }
@@ -570,7 +570,7 @@ webconfig_error_t encode_interworking_common_object(const wifi_interworking_t *i
     }
 
     if (invalid_venue_group_type == true) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Invalid venue group and type, encode failed\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Invalid venue group and type, encode failed\n", __func__, __LINE__);
         return webconfig_error_encode;
     }
 
@@ -648,7 +648,7 @@ webconfig_error_t encode_no_security_object(const wifi_vap_security_t *security_
             break;
 
         default:
-            wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Security Mode not valid, value:%d\n",
+            wifi_util_error_print(WIFI_PASSPOINT,"%s:%d: Security Mode not valid, value:%d\n",
                             __func__, __LINE__, security_info->mode);
             return webconfig_error_encode;
     }
@@ -656,7 +656,7 @@ webconfig_error_t encode_no_security_object(const wifi_vap_security_t *security_
     cJSON_AddItemToObject(security, "RadiusSettings", obj);
 
     if (encode_radius_object(&security_info->u.radius, obj) != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Encoding radius settings failed\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_PASSPOINT,"%s:%d: Encoding radius settings failed\n", __func__, __LINE__);
         return webconfig_error_encode;
     }
         wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Encoding radius settings passed\n", __func__, __LINE__);
@@ -675,7 +675,7 @@ webconfig_error_t encode_enterprise_security_object(const wifi_vap_security_t *s
     } else if (security_info->mfp == wifi_mfp_cfg_optional) {
         cJSON_AddStringToObject(security, "MFPConfig", "Optional");
     } else {
-        wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: MFPConfig not valid, value:%d\n",
+        wifi_util_error_print(WIFI_PASSPOINT,"%s:%d: MFPConfig not valid, value:%d\n",
                             __func__, __LINE__, security_info->mfp);
         return webconfig_error_encode;
     }
@@ -698,7 +698,7 @@ webconfig_error_t encode_enterprise_security_object(const wifi_vap_security_t *s
             break;
 
         default:
-            wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Security Mode not valid, value:%d\n",
+            wifi_util_error_print(WIFI_PASSPOINT,"%s:%d: Security Mode not valid, value:%d\n",
                             __func__, __LINE__, security_info->mode);
             return webconfig_error_encode;
     }
@@ -717,7 +717,7 @@ webconfig_error_t encode_enterprise_security_object(const wifi_vap_security_t *s
             break;
 
         default:
-            wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Encryption Method not valid, value:%d\n",
+            wifi_util_error_print(WIFI_PASSPOINT,"%s:%d: Encryption Method not valid, value:%d\n",
                             __func__, __LINE__, security_info->encr);
             return webconfig_error_encode;
     }
@@ -737,7 +737,7 @@ webconfig_error_t encode_enterprise_security_object(const wifi_vap_security_t *s
     cJSON_AddItemToObject(security, "RadiusSettings", obj);
 
     if (encode_radius_object(&security_info->u.radius, obj) != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Encoding radius settings failed\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_PASSPOINT,"%s:%d: Encoding radius settings failed\n", __func__, __LINE__);
         return webconfig_error_encode;
     }
 
@@ -753,7 +753,7 @@ webconfig_error_t encode_personal_security_object(const wifi_vap_security_t *sec
     } else if (security_info->mfp == wifi_mfp_cfg_optional) {
         cJSON_AddStringToObject(security, "MFPConfig", "Optional");
     } else {
-        wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: MFPConfig not valid, value:%d\n",
+        wifi_util_error_print(WIFI_PASSPOINT,"%s:%d: MFPConfig not valid, value:%d\n",
                             __func__, __LINE__, security_info->mfp);
         return webconfig_error_encode;
     }
@@ -784,7 +784,7 @@ webconfig_error_t encode_personal_security_object(const wifi_vap_security_t *sec
             break;
 
         default:
-            wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Security Mode not valid, value:%d\n",
+            wifi_util_error_print(WIFI_PASSPOINT,"%s:%d: Security Mode not valid, value:%d\n",
                             __func__, __LINE__, security_info->mode);
             return webconfig_error_encode;
     }
@@ -803,14 +803,14 @@ webconfig_error_t encode_personal_security_object(const wifi_vap_security_t *sec
             break;
         case wifi_encryption_none:
             if (security_info->mode != wifi_security_mode_none) {
-                wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Encryption Method not valid, value:%d\n",
+                wifi_util_error_print(WIFI_PASSPOINT,"%s:%d: Encryption Method not valid, value:%d\n",
                             __func__, __LINE__, security_info->encr);
             } else {
                 cJSON_AddStringToObject(security, "EncryptionMethod", "None");
             }
             break;
         default:
-            wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Encryption Method not valid, value:%d\n",
+            wifi_util_error_print(WIFI_PASSPOINT,"%s:%d: Encryption Method not valid, value:%d\n",
                             __func__, __LINE__, security_info->encr);
             return webconfig_error_encode;
     }
@@ -818,7 +818,7 @@ webconfig_error_t encode_personal_security_object(const wifi_vap_security_t *sec
     if (((strlen(security_info->u.key.key) < MIN_PWD_LEN) && security_info->mode != wifi_security_mode_none)
                 || (strlen(security_info->u.key.key) > MAX_PWD_LEN)) {
         //strncpy(execRetVal->ErrorMsg, "Invalid Key passphrase length",sizeof(execRetVal->ErrorMsg)-1);
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Incorrect password length\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Incorrect password length %d\n", __func__, __LINE__, strlen(security_info->u.key.key));
         return webconfig_error_encode;
     }
 
@@ -834,21 +834,21 @@ webconfig_error_t encode_hotspot_open_vap_object(const wifi_vap_info_t *vap_info
 
     // the input vap_object is an array
     if (encode_vap_common_object(vap_info, vap_obj) != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d :common vap objects encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d :common vap objects encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
 
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(vap_obj, "Security", obj);
     if (encode_no_security_object(&vap_info->u.bss_info.security, obj) != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Security object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Security object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
 
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(vap_obj, "Interworking", obj);
     if (encode_interworking_common_object(&vap_info->u.bss_info.interworking, obj) != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Interworking object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Interworking object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
 
     }
@@ -862,21 +862,21 @@ webconfig_error_t encode_hotspot_secure_vap_object(const wifi_vap_info_t *vap_in
 
     // the input vap_object is an array
     if (encode_vap_common_object(vap_info, vap_obj) != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d :common vap objects encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d :common vap objects encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
 
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(vap_obj, "Security", obj);
     if (encode_enterprise_security_object(&vap_info->u.bss_info.security, obj) != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Security object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Security object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
 
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(vap_obj, "Interworking", obj);
     if (encode_interworking_common_object(&vap_info->u.bss_info.interworking, obj) != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Interworking object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Interworking object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
 
     }
@@ -890,21 +890,21 @@ webconfig_error_t encode_lnf_psk_vap_object(const wifi_vap_info_t *vap_info, cJS
 
     // the input vap_object is an array
     if (encode_vap_common_object(vap_info, vap_obj) != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d :common vap objects encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d :common vap objects encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
 
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(vap_obj, "Security", obj);
     if (encode_personal_security_object(&vap_info->u.bss_info.security, obj) != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Security object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Security object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
 
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(vap_obj, "Interworking", obj);
     if (encode_interworking_common_object(&vap_info->u.bss_info.interworking, obj) != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Interworking object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Interworking object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
 
     }
@@ -918,21 +918,21 @@ webconfig_error_t encode_lnf_radius_vap_object(const wifi_vap_info_t *vap_info, 
 
     // the input vap_object is an array
     if (encode_vap_common_object(vap_info, vap_obj) != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d :common vap objects encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d :common vap objects encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
 
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(vap_obj, "Security", obj);
     if (encode_enterprise_security_object(&vap_info->u.bss_info.security, obj) != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Security object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Security object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
 
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(vap_obj, "Interworking", obj);
     if (encode_interworking_common_object(&vap_info->u.bss_info.interworking, obj) != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Interworking object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Interworking object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
 
     }
@@ -946,21 +946,21 @@ webconfig_error_t encode_mesh_backhaul_vap_object(const wifi_vap_info_t *vap_inf
 
     // the input vap_object is an array
     if (encode_vap_common_object(vap_info, vap_obj) != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d :common vap objects encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d :common vap objects encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
 
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(vap_obj, "Security", obj);
     if (encode_personal_security_object(&vap_info->u.bss_info.security, obj) != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Security object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Security object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
 
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(vap_obj, "Interworking", obj);
     if (encode_interworking_common_object(&vap_info->u.bss_info.interworking, obj) != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Interworking object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Interworking object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
 
     }
@@ -974,21 +974,21 @@ webconfig_error_t encode_iot_vap_object(const wifi_vap_info_t *vap_info, cJSON *
 
     // the input vap_object is an array
     if (encode_vap_common_object(vap_info, vap_obj) != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d :common vap objects encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d :common vap objects encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
 
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(vap_obj, "Security", obj);
     if (encode_personal_security_object(&vap_info->u.bss_info.security, obj) != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Security object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Security object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
 
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(vap_obj, "Interworking", obj);
     if (encode_interworking_common_object(&vap_info->u.bss_info.interworking, obj) != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Interworking object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Interworking object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
 
     }
@@ -1002,21 +1002,21 @@ webconfig_error_t encode_private_vap_object(const wifi_vap_info_t *vap_info, cJS
 
     // the input vap_object is an array
     if (encode_vap_common_object(vap_info, vap_obj) != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d :common vap objects encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d :common vap objects encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
 
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(vap_obj, "Security", obj);
     if (encode_personal_security_object(&vap_info->u.bss_info.security, obj) != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Security object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Security object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
 
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(vap_obj, "Interworking", obj);
     if (encode_interworking_common_object(&vap_info->u.bss_info.interworking, obj) != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Interworking object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Interworking object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
 
     }
@@ -1085,7 +1085,7 @@ webconfig_error_t encode_mesh_sta_object(const wifi_vap_info_t *vap_info, cJSON 
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(vap_obj, "Security", obj);
     if (encode_personal_security_object(&vap_info->u.sta_info.security, obj) != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Security object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Security object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
 
@@ -1093,7 +1093,7 @@ webconfig_error_t encode_mesh_sta_object(const wifi_vap_info_t *vap_info, cJSON 
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(vap_obj, "ScanParameters", obj);
     if (encode_scan_params_object(&vap_info->u.sta_info.scan_params, obj) != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Scan Params object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Scan Params object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
 
@@ -1103,7 +1103,7 @@ webconfig_error_t encode_mesh_sta_object(const wifi_vap_info_t *vap_info, cJSON 
 webconfig_error_t encode_associated_client_object(rdk_wifi_vap_info_t *rdk_vap_info, cJSON *assoc_array)
 {
     if ((rdk_vap_info == NULL) || (assoc_array == NULL)) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Associated Client encode failed\n",__FUNCTION__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Associated Client encode failed\n",__FUNCTION__, __LINE__);
         return webconfig_error_encode;
     }
 
@@ -1130,7 +1130,7 @@ webconfig_error_t encode_associated_client_object(rdk_wifi_vap_info_t *rdk_vap_i
         char mac_string[18];
         assoc_dev_data = (assoc_dev_data_t *)queue_peek(rdk_vap_info->associated_devices_queue, i);
         if (assoc_dev_data == NULL) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL pointer\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d NULL pointer\n", __func__, __LINE__);
             return webconfig_error_encode;
         }
 
@@ -1170,7 +1170,7 @@ webconfig_error_t encode_associated_client_object(rdk_wifi_vap_info_t *rdk_vap_i
 webconfig_error_t encode_mac_object(rdk_wifi_vap_info_t *rdk_vap_info, cJSON *obj_array)
 {
     if ((rdk_vap_info == NULL) || (obj_array == NULL)) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Mac Object encode failed\n",__FUNCTION__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Mac Object encode failed\n",__FUNCTION__, __LINE__);
         return webconfig_error_encode;
     }
 
@@ -1254,7 +1254,7 @@ webconfig_error_t encode_csi_object(queue_t *csi_queue, cJSON *csi_obj)
     unsigned int itr, itrj;
     mac_addr_str_t mac_str;
     if ((csi_queue == NULL) && (csi_obj == NULL)) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer\n", __func__, __LINE__);
         return webconfig_error_encode;
     }
 
@@ -1263,7 +1263,7 @@ webconfig_error_t encode_csi_object(queue_t *csi_queue, cJSON *csi_obj)
     for (itr=0; itr<count; itr++) {
         csi_data_t* csi_data = queue_peek(csi_queue, itr);
         if (csi_data == NULL) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer\n", __func__, __LINE__);
             return webconfig_error_encode;
         }
 
@@ -1274,7 +1274,7 @@ webconfig_error_t encode_csi_object(queue_t *csi_queue, cJSON *csi_obj)
 
         obj_array = cJSON_CreateArray();
         if (obj_array == NULL) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer\n", __func__, __LINE__);
             return webconfig_error_encode;
         }
 
@@ -1282,7 +1282,7 @@ webconfig_error_t encode_csi_object(queue_t *csi_queue, cJSON *csi_obj)
         for (itrj=0; itrj<csi_data->csi_client_count; itrj++) {
             obj = cJSON_CreateObject();
             if (obj == NULL) {
-                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer\n", __func__, __LINE__);
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer\n", __func__, __LINE__);
                 return webconfig_error_encode;
             }
 
@@ -1300,7 +1300,7 @@ webconfig_error_t encode_wifiradiocap(wifi_radio_capabilities_t *radiocap, cJSON
     cJSON *object;
 
     if ((radiocap == NULL) || (radio_obj == NULL)) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer radiocap : %p radio_obj : %p\n", __func__, __LINE__, radiocap, radio_obj);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer radiocap : %p radio_obj : %p\n", __func__, __LINE__, radiocap, radio_obj);
         return webconfig_error_encode;
     }
     object =  cJSON_CreateObject();

@@ -108,7 +108,7 @@ webconfig_error_t encode_xfinity_subdoc(webconfig_t *config, webconfig_subdoc_da
                 obj = cJSON_CreateObject();
                 cJSON_AddItemToArray(obj_array, obj);
                 if (encode_hotspot_open_vap_object(vap, obj) != webconfig_error_none) {
-                    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode hotspot open vap object\n", __func__, __LINE__);
+                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode hotspot open vap object\n", __func__, __LINE__);
                     cJSON_Delete(json);
                     return webconfig_error_encode;
                 }
@@ -117,7 +117,7 @@ webconfig_error_t encode_xfinity_subdoc(webconfig_t *config, webconfig_subdoc_da
                     obj = cJSON_CreateObject();
                     cJSON_AddItemToArray(obj_array, obj);
                     if (encode_hotspot_secure_vap_object(vap, obj) != webconfig_error_none) {
-                        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode hotspot open vap object\n", __func__, __LINE__);
+                        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode hotspot open vap object\n", __func__, __LINE__);
                         cJSON_Delete(json);
                         return webconfig_error_encode;
                     }
@@ -132,6 +132,7 @@ webconfig_error_t encode_xfinity_subdoc(webconfig_t *config, webconfig_subdoc_da
     
     cJSON_free(str);
     cJSON_Delete(json);
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: encode success\n", __func__, __LINE__);
     return webconfig_error_none;
 }
 
@@ -162,9 +163,10 @@ webconfig_error_t decode_xfinity_subdoc(webconfig_t *config, webconfig_subdoc_da
 
     for (i = 0; i < doc->num_objects; i++) {
         if ((cJSON_GetObjectItem(json, doc->objects[i].name)) == NULL) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: object:%s not present, validation failed\n",
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: object:%s not present, validation failed\n",
                     __func__, __LINE__, doc->objects[i].name);
             cJSON_Delete(json);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
             return webconfig_error_invalid_subdoc;
         }
     }
@@ -172,16 +174,18 @@ webconfig_error_t decode_xfinity_subdoc(webconfig_t *config, webconfig_subdoc_da
     // decode VAP objects
     obj_vaps = cJSON_GetObjectItem(json, "WifiVapConfig");
     if (cJSON_IsArray(obj_vaps) == false) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: vap object not present\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: vap object not present\n", __func__, __LINE__);
         cJSON_Delete(json);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
         return webconfig_error_invalid_subdoc;
     }
 
     size = cJSON_GetArraySize(obj_vaps);
     if (num_xfinity_ssid > size) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Not correct number of vap objects: %d, expected: %d\n",
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Not correct number of vap objects: %d, expected: %d\n",
                 __func__, __LINE__, size, params->hal_cap.wifi_prop.numRadios);
         cJSON_Delete(json);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
         return webconfig_error_invalid_subdoc;
     }
 
@@ -190,6 +194,7 @@ webconfig_error_t decode_xfinity_subdoc(webconfig_t *config, webconfig_subdoc_da
         // check presence of all vap names
         if ((obj = cJSON_GetObjectItem(obj_vap, "VapName")) == NULL) {
             cJSON_Delete(json);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
             return webconfig_error_invalid_subdoc;
         }
 
@@ -201,7 +206,9 @@ webconfig_error_t decode_xfinity_subdoc(webconfig_t *config, webconfig_subdoc_da
     }
 
     if (presence_count != num_xfinity_ssid) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: vap object not present\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: vap object not present\n", __func__, __LINE__);
+        cJSON_Delete(json);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
         return webconfig_error_invalid_subdoc;
     }
 
@@ -222,24 +229,24 @@ webconfig_error_t decode_xfinity_subdoc(webconfig_t *config, webconfig_subdoc_da
         vap_array_index = convert_vap_name_to_array_index(&params->hal_cap.wifi_prop, name);
 
         vap_info = &params->radios[radio_index].vaps.vap_map.vap_array[vap_array_index];
-        //wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: radio index: %d , vap name: %s\n%s\n",
-        //            __func__, __LINE__, radio_index, name, cJSON_Print(obj_vap));
 
         if (!strncmp(name, "hotspot_open", strlen("hotspot_open"))) {
             memset(vap_info, 0, sizeof(wifi_vap_info_t));
             if (decode_hotspot_open_vap_object(obj_vap, vap_info, &params->hal_cap.wifi_prop) != webconfig_error_none) {
-                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: VAP object validation failed\n",
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: VAP object validation failed\n",
                         __func__, __LINE__);
                 cJSON_Delete(json);
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
                 return webconfig_error_decode;
             }
         } else {
             if (!strncmp(name, "hotspot_secure", strlen("hotspot_secure"))) {
                 memset(vap_info, 0, sizeof(wifi_vap_info_t));
                 if (decode_hotspot_secure_vap_object(obj_vap, vap_info, &params->hal_cap.wifi_prop) != webconfig_error_none) {
-                    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: VAP object validation failed\n",
+                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: VAP object validation failed\n",
                             __func__, __LINE__);
                     cJSON_Delete(json);
+                    wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
                     return webconfig_error_decode;
                 }
             }
@@ -247,7 +254,7 @@ webconfig_error_t decode_xfinity_subdoc(webconfig_t *config, webconfig_subdoc_da
         }
     }
 
-    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Validation success\n", __func__, __LINE__);
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: decode success\n", __func__, __LINE__);
     cJSON_Delete(json);
     return webconfig_error_none;
 }

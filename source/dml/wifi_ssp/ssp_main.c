@@ -697,11 +697,11 @@ int start_dml_main(wifi_ssp_t *ssp)
 {
 
     if (pthread_create(&ssp->tid, NULL, ssp_func, ssp) != 0) {
-        wifi_util_dbg_print(WIFI_MGR,"%s:%d:ssp_main create failed\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_MGR,"%s:%d:ssp_main create failed\n", __func__, __LINE__);
         return -1;
     }
 
-    wifi_util_dbg_print(WIFI_MGR,"%s:%d:ssp_main thread started\n", __func__, __LINE__);
+    wifi_util_info_print(WIFI_MGR,"%s:%d:ssp_main thread started\n", __func__, __LINE__);
 
     return 0;
 }

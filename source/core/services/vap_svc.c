@@ -60,7 +60,7 @@ int update_global_cache(wifi_vap_info_map_t *tgt_vap_map)
         vap_index = tgt_vap_map->vap_array[i].vap_index;
         vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(tgt_vap_map->vap_array[i].radio_index);
         if (vap_map == NULL) {
-            wifi_util_dbg_print(WIFI_CTRL,"%s:%d global vap_map null radio_index:%d\n", __func__, __LINE__,
+            wifi_util_error_print(WIFI_CTRL,"%s:%d global vap_map null radio_index:%d\n", __func__, __LINE__,
                 tgt_vap_map->vap_array[i].radio_index);
             return RETURN_ERR;
         }
@@ -100,7 +100,7 @@ int update_acl_entries(wifi_vap_info_map_t *tgt_vap_map)
                 to_mac_str(acl_device_mac, mac_str);
                 wifi_util_dbg_print(WIFI_CTRL, "%s:%d: calling wifi_addApAclDevice for mac %s vap_index %d\n", __func__, __LINE__, mac_str, vap_index);
                 if (wifi_addApAclDevice(vap_index, (CHAR *) mac_str) != RETURN_OK) {
-                    wifi_util_dbg_print(WIFI_CTRL,"%s: wifi_addApAclDevice failed. vap_index:%d MAC:'%s'\n",__FUNCTION__, vap_index, mac_str);
+                    wifi_util_error_print(WIFI_CTRL,"%s: wifi_addApAclDevice failed. vap_index:%d MAC:'%s'\n",__FUNCTION__, vap_index, mac_str);
                 }
             }
             acl_entry = hash_map_get_next(vap_info->acl_map,acl_entry);
@@ -118,7 +118,7 @@ int vap_svc_start_stop(vap_svc_t *svc, bool enable)
     wifi_vap_info_map_t *vap_map = NULL, tgt_vap_map;
 
     if ((num_of_radios = getNumberRadios()) > MAX_NUM_RADIOS) {
-        wifi_util_dbg_print(WIFI_CTRL,"WIFI %s : Number of Radios %d exceeds supported %d Radios \n",__FUNCTION__, getNumberRadios(), MAX_NUM_RADIOS);
+        wifi_util_error_print(WIFI_CTRL,"WIFI %s : Number of Radios %d exceeds supported %d Radios \n",__FUNCTION__, getNumberRadios(), MAX_NUM_RADIOS);
         return -1;
     }
 
@@ -127,7 +127,7 @@ int vap_svc_start_stop(vap_svc_t *svc, bool enable)
     for (i = 0; i < num_of_radios; i++) {
         vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(i);
         if (vap_map == NULL) {
-            wifi_util_dbg_print(WIFI_CTRL,"%s:failed to get vap map for radio index: %d\n",__FUNCTION__, i);
+            wifi_util_error_print(WIFI_CTRL,"%s:failed to get vap map for radio index: %d\n",__FUNCTION__, i);
             return -1;
         }
 
@@ -149,10 +149,10 @@ int vap_svc_start_stop(vap_svc_t *svc, bool enable)
         }
 
         if (wifi_hal_createVAP(i, &tgt_vap_map) != RETURN_OK) {
-            wifi_util_dbg_print(WIFI_CTRL,"%s: wifi vap create failure: radio_index:%d\n",__FUNCTION__, i);
+            wifi_util_error_print(WIFI_CTRL,"%s: wifi vap create failure: radio_index:%d\n",__FUNCTION__, i);
             return -1;
         } else {
-            wifi_util_dbg_print(WIFI_CTRL,"%s: wifi vap create success : radio_index:%d\n",__FUNCTION__, i);
+            wifi_util_info_print(WIFI_CTRL,"%s: wifi vap create success : radio_index:%d\n",__FUNCTION__, i);
             update_acl_entries(&tgt_vap_map);
             update_global_cache(&tgt_vap_map);
         }

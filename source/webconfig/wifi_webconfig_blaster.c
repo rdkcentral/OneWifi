@@ -67,19 +67,19 @@ webconfig_error_t encode_blaster_subdoc(webconfig_t *config, webconfig_subdoc_da
     webconfig_subdoc_decoded_data_t *params;
 
     if (data == NULL) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: NULL data Pointer\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL data Pointer\n", __func__, __LINE__);
         return webconfig_error_encode;
     }
 
     params = &data->u.decoded;
     if (params == NULL) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: NULL Pointer\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL Pointer\n", __func__, __LINE__);
         return webconfig_error_encode;
     }
 
     json = cJSON_CreateObject();
     if (json == NULL) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__, __LINE__);
         return webconfig_error_encode;
     }
 
@@ -91,7 +91,7 @@ webconfig_error_t encode_blaster_subdoc(webconfig_t *config, webconfig_subdoc_da
 
 
     if (encode_blaster_object(&params->blaster, obj) != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode wifi blaster config\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode wifi blaster config\n", __func__, __LINE__);
         return webconfig_error_encode;
     }
     memset(data->u.encoded.raw, 0, MAX_SUBDOC_SIZE);
@@ -99,7 +99,7 @@ webconfig_error_t encode_blaster_subdoc(webconfig_t *config, webconfig_subdoc_da
     memcpy(data->u.encoded.raw, str, strlen(str));
     cJSON_free(str);
     cJSON_Delete(json);
-
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: encode success\n", __func__, __LINE__);
     return webconfig_error_none;
 }
 
@@ -114,19 +114,20 @@ webconfig_error_t decode_blaster_subdoc(webconfig_t *config, webconfig_subdoc_da
     }
     json = data->u.encoded.json;
     if (json == NULL) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: NULL json pointer\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL json pointer\n", __func__, __LINE__);
         return webconfig_error_decode;
     }
 
     memset(&params->blaster, 0, sizeof(active_msmt_t));
     obj_config = cJSON_GetObjectItem(json, "Parameters");
     if (decode_blaster_object(obj_config, &params->blaster) != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Config Object validation failed\n",
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Config Object validation failed\n",
                 __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
         return webconfig_error_invalid_subdoc;
     }
     cJSON_Delete(json);
-    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Validation success\n", __func__, __LINE__);
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: decode success\n", __func__, __LINE__);
     return webconfig_error_none;
 }
 

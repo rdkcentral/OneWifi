@@ -80,8 +80,10 @@ webconfig_error_t decode_wifiapiradio_subdoc(webconfig_t *config, webconfig_subd
 
     for (i = 0; i < doc->num_objects; i++) {
         if ((cJSON_GetObjectItem(json, doc->objects[i].name)) == NULL) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: object:%s not present, validation failed\n",
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: object:%s not present, validation failed\n",
                 __func__, __LINE__, doc->objects[i].name);
+            cJSON_Delete(json);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
             return webconfig_error_invalid_subdoc;
         }
     }
@@ -89,14 +91,18 @@ webconfig_error_t decode_wifiapiradio_subdoc(webconfig_t *config, webconfig_subd
     // decode radio objects
     obj_radios = cJSON_GetObjectItem(json, "WifiRadioConfig");
     if (cJSON_IsArray(obj_radios) == false) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Radio object not present\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Radio object not present\n", __func__, __LINE__);
+        cJSON_Delete(json);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
         return webconfig_error_invalid_subdoc;
     }
 
     size = cJSON_GetArraySize(obj_radios);
     if (size != 1) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Not correct number of radio objects: %d\n",
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Not correct number of radio objects: %d\n",
             __func__, __LINE__, size);
+        cJSON_Delete(json);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
         return webconfig_error_invalid_subdoc;
     }
 
@@ -104,18 +110,24 @@ webconfig_error_t decode_wifiapiradio_subdoc(webconfig_t *config, webconfig_subd
     obj_radio = cJSON_GetArrayItem(obj_radios, 0);
     
     if ((obj = cJSON_GetObjectItem(obj_radio, "RadioName")) == NULL) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: radio name is not present\n",
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: radio name is not present\n",
             __func__, __LINE__);
+        cJSON_Delete(json);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
         return webconfig_error_invalid_subdoc;
     }
 
     convert_radio_name_to_index(&radio_index,cJSON_GetStringValue(obj));
 
     if (decode_radio_object(obj_radio, &params->radios[radio_index]) != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Radio object validation failed\n",
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Radio object validation failed\n",
             __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
+        cJSON_Delete(json);
         return webconfig_error_decode;
     }
-
+    
+    cJSON_Delete(json);
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: decode success\n", __func__, __LINE__);
     return webconfig_error_none;
 }

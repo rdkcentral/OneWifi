@@ -24,6 +24,18 @@ typedef enum {
     WIFI_PSM
 }wifi_dbg_type_t;
 
+typedef enum {
+    WIFI_LOG_LVL_DEBUG,
+    WIFI_LOG_LVL_INFO,
+    WIFI_LOG_LVL_ERROR
+}wifi_log_level_t;
+
+void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *format, ...);
+
+#define wifi_util_dbg_print(module, format, ...)  wifi_util_print(WIFI_LOG_LVL_DEBUG, module, format, ##__VA_ARGS__)
+#define wifi_util_info_print(module, format, ...)  wifi_util_print(WIFI_LOG_LVL_INFO, module, format, ##__VA_ARGS__)
+#define wifi_util_error_print(module, format, ...)  wifi_util_print(WIFI_LOG_LVL_ERROR, module, format, ##__VA_ARGS__)
+
 #define ENUM_TO_STRING 1
 #define STRING_TO_ENUM 2
 #define ARRAY_SZ(x)    (sizeof(x) / sizeof((x)[0]))
@@ -93,7 +105,6 @@ int convert_vap_index_to_name(wifi_platform_property_t* wifi_prop, int vap_index
 void write_to_file(const char *file_name, char *fmt, ...);
 int convert_radio_name_to_index(unsigned int *index,char *name);
 char *get_formatted_time(char *time);
-void wifi_util_dbg_print(wifi_dbg_type_t module, char *format, ...);
 int WiFi_IsValidMacAddr(const char* mac);
 INT getIpAddressFromString (const char * ipString, ip_addr_t * ip);
 INT getIpStringFromAdrress (char * ipString, const ip_addr_t * ip);

@@ -609,18 +609,106 @@ char *get_formatted_time(char *time)
     return time;
 }
 
-void wifi_util_dbg_print(wifi_dbg_type_t module, char *format, ...)
+void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *format, ...)
 {
     char buff[2048*200] = {0};
     va_list list;
     FILE *fpg = NULL;
 #if defined(__ENABLE_PID__) && (__ENABLE_PID__)
-    pid_t pid = syscall(__NR_gettid);
+    pid_t pid;
+#endif
+    char filename_dbg_enable[32];
+    char module_filename[32];
+    char filename[100];
+
+#ifndef LINUX_VM_PORT
+    switch(module)
+    {
+        case WIFI_DB:{
+            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), "/nvram/wifiDbDbg");
+            snprintf(module_filename, sizeof(module_filename), "wifiDb");
+            break;
+        }
+        case WIFI_MGR:{
+            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), "/nvram/wifiMgrDbg");
+            snprintf(module_filename, sizeof(module_filename), "wifiMgr");
+            break;
+        }
+        case WIFI_WEBCONFIG:{
+            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), "/nvram/wifiWebConfigDbg");
+            snprintf(module_filename, sizeof(module_filename), "wifiWebConfig");
+            break;
+        }
+        case WIFI_CTRL:{
+            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), "/nvram/wifiCtrlDbg");
+            snprintf(module_filename, sizeof(module_filename), "wifiCtrl");
+            break;
+        }
+        case WIFI_PASSPOINT:{
+            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), "/nvram/wifiPasspointDbg");
+            snprintf(module_filename, sizeof(module_filename), "wifiPasspointDbg");
+            break;
+        }
+        case WIFI_DPP:{
+            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), "/nvram/wifiDppDbg");
+            snprintf(module_filename, sizeof(module_filename), "wifiDPP");
+            break;
+        }
+        case WIFI_MON:{
+            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), "/nvram/wifiMonDbg");
+            snprintf(module_filename, sizeof(module_filename), "wifiMon");
+            break;
+        }
+        case WIFI_DMCLI:{
+            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), "/nvram/wifiDMCLI");
+            snprintf(module_filename, sizeof(module_filename), "wifiDMCLI");
+            break;
+        }
+        case WIFI_LIB:{
+            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), "/nvram/wifiLib");
+            snprintf(module_filename, sizeof(module_filename), "wifiLib");
+            break;
+        }
+        case WIFI_PSM:{
+            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), "/nvram/wifiPsm");
+            snprintf(module_filename, sizeof(module_filename), "wifiPsm");
+            break;
+        }
+        default:
+            return;
+    }
+
+    if ((access(filename_dbg_enable, R_OK)) == 0) {
+        snprintf(filename, sizeof(filename), "/tmp/%s", module_filename);
+        fpg = fopen(filename, "a+");
+        if (fpg == NULL) {
+            return;
+        }
+    } else {
+        switch (level) {
+            case WIFI_LOG_LVL_INFO:
+            case WIFI_LOG_LVL_ERROR:
+                snprintf(filename, sizeof(filename), "/rdklogs/logs/%s", module_filename);
+                fpg = fopen(filename, "a+");
+                if (fpg == NULL) {
+                    return;
+                }
+                break;
+            case WIFI_LOG_LVL_DEBUG:
+            default:
+                return;
+        }
+    }
+#endif
+
+#if defined(__ENABLE_PID__) && (__ENABLE_PID__)
+    pid = syscall(__NR_gettid);
     sprintf(&buff[0], "%d - ", pid);
     get_formatted_time(&buff[strlen(buff)]);
 #else
     get_formatted_time(buff);
 #endif
+
     strcat(buff, " ");
 
     va_start(list, format);
@@ -628,138 +716,13 @@ void wifi_util_dbg_print(wifi_dbg_type_t module, char *format, ...)
     va_end(list);
 
 #ifndef LINUX_VM_PORT
-    switch(module)
-    {
-        case WIFI_DB:{
-            if ((access("/nvram/wifiDbDbg", R_OK)) != 0) {
-                return;
-            }
-            fpg = fopen("/tmp/wifiDb", "a+");
-            if (fpg == NULL) {
-                return;
-            } else {
-                fputs(buff, fpg);
-            }
-            break;
-        }
-        case WIFI_MGR:{
-            if ((access("/nvram/wifiMgrDbg", R_OK)) != 0) {
-                return;
-            }
-            fpg = fopen("/tmp/wifiMgr", "a+");
-            if (fpg == NULL) {
-                return;
-            } else {
-                fputs(buff, fpg);
-            }
-            break;
-        }
-        case WIFI_WEBCONFIG:{
-            if ((access("/nvram/wifiWebConfigDbg", R_OK)) != 0) {
-                return;
-            }
-            fpg = fopen("/tmp/wifiWebConfig", "a+");
-            if (fpg == NULL) {
-                return;
-            } else {
-                fputs(buff, fpg);
-            }
-            break;
-        }
-        case WIFI_CTRL:{
-            if ((access("/nvram/wifiCtrlDbg", R_OK)) != 0) {
-                return;
-            }
-            fpg = fopen("/tmp/wifiCtrl", "a+");
-            if (fpg == NULL) {
-                return;
-            } else {
-                fputs(buff, fpg);
-            }
-            break;
-        }
-        case WIFI_PASSPOINT:{
-            if ((access("/nvram/wifiPasspointDbg", R_OK)) != 0) {
-                return;
-            }
-            fpg = fopen("/tmp/wifiPasspoint", "a+");
-            if (fpg == NULL) {
-                return;
-            } else {
-                fputs(buff, fpg);
-            }
-            break;
-        }
-        case WIFI_DPP:{
-            if ((access("/nvram/wifiDppDbg", R_OK)) != 0) {
-                return;
-            }
-            fpg = fopen("/tmp/wifiDPP", "a+");
-            if (fpg == NULL) {
-                return;
-            } else {
-                fputs(buff, fpg);
-            }
-            break;
-        }
-        case WIFI_MON:{
-            if ((access("/nvram/wifiMonDbg", R_OK)) != 0) {
-                return;
-            }
-            fpg = fopen("/tmp/wifiMon", "a+");
-            if (fpg == NULL) {
-                return;
-            } else {
-                fputs(buff, fpg);
-            }
-            break;
-        }
-        case WIFI_DMCLI:{
-            if ((access("/nvram/wifiDMCLI", R_OK)) != 0) {
-                return;
-            }
-            fpg = fopen("/tmp/wifiDMCLI", "a+");
-            if (fpg == NULL) {
-                return;
-            } else {
-                fputs(buff, fpg);
-            }
-            break;
-        }
-        case WIFI_LIB:{
-            if ((access("/nvram/wifiLib", R_OK)) != 0) {
-                return;
-            }
-            fpg = fopen("/tmp/wifiLib", "a+");
-            if (fpg == NULL) {
-                return;
-            } else {
-                fputs(buff, fpg);
-            }
-            break;
-        }
-        case WIFI_PSM:{
-            if ((access("/nvram/wifiPsm", R_OK)) != 0) {
-                return;
-            }
-            fpg = fopen("/tmp/wifiPsm", "a+");
-            if (fpg == NULL) {
-                return;
-            } else {
-                fputs(buff, fpg);
-            }
-            break;
-        }
-    }
-
-    if(fpg != NULL)
-    {
-        fflush(fpg);
-        fclose(fpg);
-    }
+    fputs(buff, fpg);
+    fflush(fpg);
+    fclose(fpg);
 #else
     printf("%s\n", buff);
 #endif
+
 }
 
 int WiFi_IsValidMacAddr(const char* mac)
@@ -1122,7 +1085,7 @@ int macfilter_conversion(char *mac_list_type, size_t string_len,  wifi_vap_info_
 int ssid_broadcast_conversion(char *broadcast_string, size_t string_len, BOOL *broadcast_bool, unsigned int conv_type)
 {
     if ((broadcast_string == NULL) || (broadcast_bool == NULL)) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Input arguments is NULL \n",__func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Input arguments is NULL \n",__func__, __LINE__);
         return RETURN_ERR;
     }
     if (conv_type == STRING_TO_ENUM) {
@@ -1922,7 +1885,7 @@ int get_allowed_channels(wifi_freq_bands_t band, wifi_radio_capabilities_t *radi
     unsigned int band_arr_index = 0;
     int chan_arr_index = 0;
     if ((radio_cap == NULL) || (channels == NULL) || (channels_len == NULL)) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Input arguements are NULL radio_cap : %p channels : %p channels_len : %p\n", __func__, __LINE__, radio_cap, channels, channels_len);
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Input arguements are NULL radio_cap : %p channels : %p channels_len : %p\n", __func__, __LINE__, radio_cap, channels, channels_len);
         return RETURN_ERR;
     }
     for (chan_arr_index = 0; chan_arr_index < radio_cap->channel_list[band_arr_index].num_channels; chan_arr_index++) {

@@ -3615,7 +3615,7 @@ int init_wifidb_tables()
     unsigned int attempts = 0;
     g_wifidb->wifidb_ev_loop = ev_loop_new(0);
     if (!g_wifidb->wifidb_ev_loop) {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d: Could not find default target_loop\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_DB,"%s:%d: Could not find default target_loop\n", __func__, __LINE__);
         return -1;
     }
     OVSDB_TABLE_INIT(Wifi_Device_Config, device_mac);
@@ -3631,7 +3631,7 @@ int init_wifidb_tables()
     snprintf(g_wifidb->wifidb_sock_path, sizeof(g_wifidb->wifidb_sock_path), "%s/wifidb.sock", WIFIDB_RUN_DIR);
     while (attempts < 3) {
         if ((g_wifidb->wifidb_fd = ovsdb_conn(g_wifidb->wifidb_sock_path)) < 0) {
-            wifi_util_dbg_print(WIFI_DB,"%s:%d:Failed to connect to wifidb at %s\n",
+            wifi_util_error_print(WIFI_DB,"%s:%d:Failed to connect to wifidb at %s\n",
                 __func__, __LINE__, g_wifidb->wifidb_sock_path);
             attempts++;
             sleep(1);
@@ -3642,12 +3642,12 @@ int init_wifidb_tables()
             break;
         }
     }
-    wifi_util_dbg_print(WIFI_DB,"%s:%d:Connection to wifidb at %s successful\n",
+    wifi_util_info_print(WIFI_DB,"%s:%d:Connection to wifidb at %s successful\n",
             __func__, __LINE__, g_wifidb->wifidb_sock_path);
     //init evloop for wifidb
     if (ovsdb_init_loop(g_wifidb->wifidb_fd, &g_wifidb->wifidb_ev_io, g_wifidb->wifidb_ev_loop) == false) 
     {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d: Could not find default target_loop\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_DB,"%s:%d: Could not find default target_loop\n", __func__, __LINE__);
         return -1;
     }
     //create thread to receive notification for wifidb server

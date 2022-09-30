@@ -84,13 +84,13 @@ webconfig_subdoc_type_t find_subdoc_type(webconfig_t *config, cJSON *json)
     char *name;
 
     if ((obj = cJSON_GetObjectItem(json, "SubDocName")) == NULL) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Could not find SubDocName key in data",
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Could not find SubDocName key in data",
             __func__, __LINE__);
         return webconfig_subdoc_type_unknown;
     }
 
     if (cJSON_IsString(obj) == false) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Invalid value for subdoc", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Invalid value for subdoc", __func__, __LINE__);
         return webconfig_subdoc_type_unknown;
     }
 
@@ -117,20 +117,20 @@ bool validate_subdoc_data(webconfig_t *config, webconfig_subdoc_data_t *data)
     webconfig_subdoc_type_t type;
 
     if (data->signature != WEBCONFIG_MAGIC_SIGNATUTRE) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: webconfig subdoc data validation failed\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: webconfig subdoc data validation failed\n", __func__, __LINE__);
         return false;
     }
 
 
     if (((data->descriptor & webconfig_data_descriptor_decoded) == webconfig_data_descriptor_decoded) &&
             ((data->descriptor & webconfig_data_descriptor_encoded) == webconfig_data_descriptor_encoded)) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Invalid descriptor, both encoded and decoded are set\n",
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Invalid descriptor, both encoded and decoded are set\n",
                 __func__, __LINE__);
             return false;
 
     } else if ((data->descriptor & webconfig_data_descriptor_decoded) == webconfig_data_descriptor_decoded) {
         if ((data->type < webconfig_subdoc_type_private) || (data->type >= webconfig_subdoc_type_max)) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Invalid subdoc type for decoded descriptor\n",
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Invalid subdoc type for decoded descriptor\n",
                 __func__, __LINE__);
             return false;
         }
@@ -138,12 +138,12 @@ bool validate_subdoc_data(webconfig_t *config, webconfig_subdoc_data_t *data)
         // data is encoded in the form of json
         data->u.encoded.json = cJSON_Parse(data->u.encoded.raw);
         if (data->u.encoded.json == NULL) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Could not parse raw data\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Could not parse raw data\n", __func__, __LINE__);
             return false;
         }
 
         if ((type = find_subdoc_type(config, data->u.encoded.json)) == webconfig_subdoc_type_unknown) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Invalid value for subdoc", __func__, __LINE__);
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Invalid value for subdoc", __func__, __LINE__);
             cJSON_Delete(data->u.encoded.json);
             return false;
         }
@@ -151,7 +151,7 @@ bool validate_subdoc_data(webconfig_t *config, webconfig_subdoc_data_t *data)
         data->type = type;
     } else {
 
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: webconfig subdoc data validation failed\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: webconfig subdoc data validation failed\n", __func__, __LINE__);
         return false;
     }
 
@@ -164,35 +164,35 @@ webconfig_error_t webconfig_set(webconfig_t *config, webconfig_subdoc_data_t *da
     webconfig_error_t err = RETURN_OK;
 
     if (validate_subdoc_data(config, data) == false) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Invalid data .. not parsable", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Invalid data .. not parsable", __func__, __LINE__);
         return webconfig_error_invalid_subdoc;
     }
 
     doc = &config->subdocs[data->type];
     if (doc->access_check_subdoc(config, data) != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: invalid access for subdocument type:%d in entity:%d\n",
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: invalid access for subdocument type:%d in entity:%d\n",
             __func__, __LINE__, doc->type, config->initializer);
         return webconfig_error_not_permitted;
     }
 
     if ((data->descriptor & webconfig_data_descriptor_decoded) == webconfig_data_descriptor_decoded) {
         if ((err = doc->translate_to_subdoc(config, data)) != webconfig_error_none) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Subdocument translation failed\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Subdocument translation failed\n", __func__, __LINE__);
         } else if ((err = doc->encode_subdoc(config, data)) != webconfig_error_none) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Subdocument encode failed\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Subdocument encode failed\n", __func__, __LINE__);
         } else if ((data->descriptor = webconfig_data_descriptor_encoded)
                     && (config->apply_data(doc, data)) != webconfig_error_none) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Subdocument apply failed\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Subdocument apply failed\n", __func__, __LINE__);
             err = webconfig_error_apply;
         }
     } else if ((data->descriptor & webconfig_data_descriptor_encoded) == webconfig_data_descriptor_encoded) {
         if ((err = doc->decode_subdoc(config, data)) != webconfig_error_none) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Subdocument decode failed\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Subdocument decode failed\n", __func__, __LINE__);
         } else if ((err = doc->translate_from_subdoc(config, data)) != webconfig_error_none) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Subdocument translation failed\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Subdocument translation failed\n", __func__, __LINE__);
         } else if ((data->descriptor = webconfig_data_descriptor_decoded)
                     && (config->apply_data(doc, data)) != webconfig_error_none) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Subdocument apply failed\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Subdocument apply failed\n", __func__, __LINE__);
             err = webconfig_error_apply;
         }
     }
@@ -208,12 +208,12 @@ webconfig_error_t webconfig_init(webconfig_t *config)
 {
 
     if ((config->initializer <= webconfig_initializer_none) || (config->initializer >= webconfig_initializer_max)) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: initializer must be set to onewifi or dml or ovsdbmgr", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: initializer must be set to onewifi or dml or ovsdbmgr", __func__, __LINE__);
         return webconfig_error_init;
     }
 
     if (config->apply_data == NULL) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: apply function must not be null\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: apply function must not be null\n", __func__, __LINE__);
         return webconfig_error_init;
 
     }

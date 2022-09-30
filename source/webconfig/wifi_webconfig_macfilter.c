@@ -89,19 +89,19 @@ webconfig_error_t encode_mac_filter_subdoc(webconfig_t *config, webconfig_subdoc
     char *str;
 
     if (data == NULL) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: NULL data Pointer\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL data Pointer\n", __func__, __LINE__);
         return webconfig_error_encode;
     }
 
     params = &data->u.decoded;
     if (params == NULL) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: NULL Pointer\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL Pointer\n", __func__, __LINE__);
         return webconfig_error_encode;
     }
 
     json = cJSON_CreateObject();
     if (json == NULL) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__, __LINE__);
         return webconfig_error_encode;
     }
 
@@ -121,7 +121,7 @@ webconfig_error_t encode_mac_filter_subdoc(webconfig_t *config, webconfig_subdoc
             rdk_vap_info = &params->radios[i].vaps.rdk_vap_array[j];
 
             if (encode_mac_object(rdk_vap_info, obj_array) != webconfig_error_none) {
-                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode mac object\n", __func__, __LINE__);
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode mac object\n", __func__, __LINE__);
                 cJSON_Delete(json);
                 return webconfig_error_encode;
 
@@ -138,11 +138,11 @@ webconfig_error_t encode_mac_filter_subdoc(webconfig_t *config, webconfig_subdoc
     //Check the descriptor is ovsdb, free it
     if ((data->descriptor & webconfig_data_descriptor_translate_from_ovsdb) == webconfig_data_descriptor_translate_from_ovsdb) {
         if (free_vap_object_macfilter_entries(data) != webconfig_error_none) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: mac entries free failed\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: mac entries free failed\n", __func__, __LINE__);
             return webconfig_error_encode;
         }
     }
-
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: encode success\n", __func__, __LINE__);
     return webconfig_error_none;
 }
 
@@ -165,7 +165,7 @@ webconfig_error_t decode_mac_filter_subdoc(webconfig_t *config, webconfig_subdoc
     }
     json = data->u.encoded.json;
     if (json == NULL) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: NULL json pointer\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL json pointer\n", __func__, __LINE__);
         return webconfig_error_decode;
     }
     doc = &config->subdocs[data->type];
@@ -174,9 +174,10 @@ webconfig_error_t decode_mac_filter_subdoc(webconfig_t *config, webconfig_subdoc
 
     for (i = 0; i < doc->num_objects; i++) {
         if ((cJSON_GetObjectItem(json, doc->objects[i].name)) == NULL) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: object:%s not present, validation failed\n",
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: object:%s not present, validation failed\n",
                     __func__, __LINE__, doc->objects[i].name);
             cJSON_Delete(json);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
             return webconfig_error_invalid_subdoc;
         }
     }
@@ -188,16 +189,18 @@ webconfig_error_t decode_mac_filter_subdoc(webconfig_t *config, webconfig_subdoc
 
     obj_mac = cJSON_GetObjectItem(json, "WifiMacFilter");
     if (cJSON_IsArray(obj_mac) == false) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Mac object not present\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Mac object not present\n", __func__, __LINE__);
         cJSON_Delete(json);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
         return webconfig_error_invalid_subdoc;
     }
 
     size = cJSON_GetArraySize(obj_mac);
     if (num_vaps > (int)size) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Not correct number of mac objects: %d\n",
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Not correct number of mac objects: %d\n",
                 __func__, __LINE__, size);
         cJSON_Delete(json);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
         return webconfig_error_invalid_subdoc;
     }
     for (i = 0; i < size; i++) {
@@ -213,14 +216,15 @@ webconfig_error_t decode_mac_filter_subdoc(webconfig_t *config, webconfig_subdoc
         rdk_vap_info->acl_map = NULL;
         rdk_vap_info->vap_index = convert_vap_name_to_index(&params->hal_cap.wifi_prop, name);
         if (decode_mac_object(rdk_vap_info, obj_acl) != webconfig_error_none) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: mac state object validation failed\n",
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: mac state object validation failed\n",
                     __func__, __LINE__);
             cJSON_Delete(json);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
             return webconfig_error_decode;
         }
     }
 
-    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Validation success\n", __func__, __LINE__);
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: decode success\n", __func__, __LINE__);
     cJSON_Delete(json);
 
     return webconfig_error_none;

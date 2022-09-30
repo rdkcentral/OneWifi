@@ -75,19 +75,19 @@ webconfig_error_t encode_associated_clients_subdoc(webconfig_t *config, webconfi
     rdk_wifi_vap_info_t *rdk_vap_info;
 
     if (data == NULL) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: NULL data Pointer\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL data Pointer\n", __func__, __LINE__);
         return webconfig_error_encode;
     }
 
     params = &data->u.decoded;
     if (params == NULL) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: NULL Pointer\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL Pointer\n", __func__, __LINE__);
         return webconfig_error_encode;
     }
 
     json = cJSON_CreateObject();
     if (json == NULL) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__, __LINE__);
         return webconfig_error_encode;
     }
 
@@ -116,6 +116,7 @@ webconfig_error_t encode_associated_clients_subdoc(webconfig_t *config, webconfi
     wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: %s\n", __func__, __LINE__, str);
     cJSON_free(str);
     cJSON_Delete(json);
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: encode success\n", __func__, __LINE__);
     return webconfig_error_none;
 }
 
@@ -136,21 +137,23 @@ webconfig_error_t decode_associated_clients_subdoc(webconfig_t *config, webconfi
 
     json = data->u.encoded.json;
     if (json == NULL) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: NULL json pointer\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL json pointer\n", __func__, __LINE__);
         return webconfig_error_decode;
     }
 
     obj_vaps = cJSON_GetObjectItem(json, "WiFiAssociatedClients");
     if ( (obj_vaps == NULL) && (cJSON_IsArray(obj_vaps) == false)) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: associated clients object not present\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: associated clients object not present\n", __func__, __LINE__);
         cJSON_Delete(json);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
         return webconfig_error_invalid_subdoc;
     }
 
     size = cJSON_GetArraySize(obj_vaps);
     if (size == 0) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Invalid schema\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid schema\n", __func__, __LINE__);
         cJSON_Delete(json);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
         return webconfig_error_decode;
     }
 
@@ -171,50 +174,56 @@ webconfig_error_t decode_associated_clients_subdoc(webconfig_t *config, webconfi
     for (i = 0; i < size; i++) {
         obj_vap = cJSON_GetArrayItem(obj_vaps, i);
         if (obj_vap == NULL) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: null Json Pointer \n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: null Json Pointer \n", __func__, __LINE__);
             cJSON_Delete(json);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
             return webconfig_error_decode;
         }
 
         name = cJSON_GetStringValue(cJSON_GetObjectItem(obj_vap, "VapName"));
         if (name == NULL) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: NULL pointer\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL pointer\n", __func__, __LINE__);
             cJSON_Delete(json);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
             return webconfig_error_decode;
         }
 
         radio_index = convert_vap_name_to_radio_array_index(&params->hal_cap.wifi_prop, name);
         if (radio_index < 0) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Invalid radio_index\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid radio_index\n", __func__, __LINE__);
             cJSON_Delete(json);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
             return webconfig_error_decode;
         }
 
         vap_array_index = convert_vap_name_to_array_index(&params->hal_cap.wifi_prop, name);
         if (vap_array_index < 0) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Invalid  vap_array_index\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid  vap_array_index\n", __func__, __LINE__);
             cJSON_Delete(json);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
             return webconfig_error_decode;
         }
 
         rdk_vap_info = &params->radios[radio_index].vaps.rdk_vap_array[vap_array_index];
         if (rdk_vap_info == NULL ) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: NULL pointer\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL pointer\n", __func__, __LINE__);
             cJSON_Delete(json);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
             return webconfig_error_decode;
         }
 
         rdk_vap_info->vap_index = convert_vap_name_to_index(&params->hal_cap.wifi_prop, name);
         
         if (decode_associated_clients_object(rdk_vap_info, obj_vap) != webconfig_error_none) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: vap state object validation failed\n",
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: vap state object validation failed\n",
                     __func__, __LINE__);
             cJSON_Delete(json);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
             return webconfig_error_decode;
         }
     }
 
-    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Validation success\n", __func__, __LINE__);
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: decode success\n", __func__, __LINE__);
 
     cJSON_Delete(json);
     return webconfig_error_none;

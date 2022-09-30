@@ -67,19 +67,19 @@ webconfig_error_t encode_csi_subdoc(webconfig_t *config, webconfig_subdoc_data_t
     webconfig_subdoc_decoded_data_t *params;
 
     if (data == NULL) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: NULL data Pointer\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL data Pointer\n", __func__, __LINE__);
         return webconfig_error_encode;
     }
 
     params = &data->u.decoded;
     if (params == NULL) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: NULL Pointer\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL Pointer\n", __func__, __LINE__);
         return webconfig_error_encode;
     }
 
     json = cJSON_CreateObject();
     if (json == NULL) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__, __LINE__);
         return webconfig_error_encode;
     }
 
@@ -94,7 +94,7 @@ webconfig_error_t encode_csi_subdoc(webconfig_t *config, webconfig_subdoc_data_t
     cJSON_AddItemToObject(json, "WifiCSI", obj_array);
 
     if (encode_csi_object(params->csi_data_queue, obj_array) != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode mac object\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode mac object\n", __func__, __LINE__);
         cJSON_Delete(json);
         return webconfig_error_encode;
 
@@ -106,7 +106,7 @@ webconfig_error_t encode_csi_subdoc(webconfig_t *config, webconfig_subdoc_data_t
     cJSON_free(str);
     cJSON_Delete(json);
     wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Encoded data is %s\n", __func__, __LINE__, str);
-
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: encode success\n", __func__, __LINE__);
     return webconfig_error_none;
 }
 
@@ -119,13 +119,13 @@ webconfig_error_t decode_csi_subdoc(webconfig_t *config, webconfig_subdoc_data_t
 
     params = &data->u.decoded;
     if (params == NULL) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: NULL Pointer\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL Pointer\n", __func__, __LINE__);
         return webconfig_error_decode;
     }
 
     json = data->u.encoded.json;
     if (json == NULL) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: NULL json pointer\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL json pointer\n", __func__, __LINE__);
         return webconfig_error_decode;
     }
 
@@ -134,17 +134,19 @@ webconfig_error_t decode_csi_subdoc(webconfig_t *config, webconfig_subdoc_data_t
 
     for (i = 0; i < doc->num_objects; i++) {
         if ((cJSON_GetObjectItem(json, doc->objects[i].name)) == NULL) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: object:%s not present, validation failed\n",
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: object:%s not present, validation failed\n",
                 __func__, __LINE__, doc->objects[i].name);
             cJSON_Delete(json);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
             return webconfig_error_invalid_subdoc;
         }
     }
 
     obj_csi = cJSON_GetObjectItem(json, "WifiCSI");
     if ((obj_csi == NULL) && (cJSON_IsArray(obj_csi) == false)) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: CSI object not present\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: CSI object not present\n", __func__, __LINE__);
         cJSON_Delete(json);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
         return webconfig_error_invalid_subdoc;
     }
 
@@ -152,14 +154,16 @@ webconfig_error_t decode_csi_subdoc(webconfig_t *config, webconfig_subdoc_data_t
     for (i = 0; i < size; i++){
         obj = cJSON_GetArrayItem(obj_csi, i);
         if (decode_csi_object(&params->csi_data_queue, obj) != webconfig_error_none) {
-             wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: csi object validation failed\n",
+             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: csi object validation failed\n",
                   __func__, __LINE__);
              cJSON_Delete(json);
+             wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
              return webconfig_error_decode;
         }
     }
 
     cJSON_Delete(json);
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: decode success\n", __func__, __LINE__);
     return webconfig_error_none;
 }
 

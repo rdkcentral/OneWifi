@@ -109,7 +109,7 @@ webconfig_error_t encode_home_subdoc(webconfig_t *config, webconfig_subdoc_data_
                 obj = cJSON_CreateObject();
                 cJSON_AddItemToArray(obj_array, obj);
                 if (encode_iot_vap_object(vap, obj) != webconfig_error_none) {
-                    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode iot vap object\n", __func__, __LINE__);
+                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode iot vap object\n", __func__, __LINE__);
                     cJSON_Delete(json);
                     return webconfig_error_encode;
 
@@ -126,6 +126,7 @@ webconfig_error_t encode_home_subdoc(webconfig_t *config, webconfig_subdoc_data_
     // wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Encoded JSON:\n%s\n", __func__, __LINE__, str);
     cJSON_free(str);
     cJSON_Delete(json);
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: encode success\n", __func__, __LINE__);
     return webconfig_error_none;
 }
 
@@ -154,9 +155,10 @@ webconfig_error_t decode_home_subdoc(webconfig_t *config, webconfig_subdoc_data_
 
     for (i = 0; i < doc->num_objects; i++) {
         if ((cJSON_GetObjectItem(json, doc->objects[i].name)) == NULL) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: object:%s not present, validation failed\n",
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: object:%s not present, validation failed\n",
                     __func__, __LINE__, doc->objects[i].name);
             cJSON_Delete(json);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
             return webconfig_error_invalid_subdoc;
         }
     }
@@ -164,16 +166,18 @@ webconfig_error_t decode_home_subdoc(webconfig_t *config, webconfig_subdoc_data_
     // decode VAP objects
     obj_vaps = cJSON_GetObjectItem(json, "WifiVapConfig");
     if (cJSON_IsArray(obj_vaps) == false) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: vap object not present\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: vap object not present\n", __func__, __LINE__);
         cJSON_Delete(json);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
         return webconfig_error_invalid_subdoc;
     }
 
     size = cJSON_GetArraySize(obj_vaps);
     if (num_home_ssid > size) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Not correct number of vap objects: %d, expected: %d\n",
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Not correct number of vap objects: %d, expected: %d\n",
                 __func__, __LINE__, size, params->hal_cap.wifi_prop.numRadios);
         cJSON_Delete(json);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
         return webconfig_error_invalid_subdoc;
     }
 
@@ -183,6 +187,7 @@ webconfig_error_t decode_home_subdoc(webconfig_t *config, webconfig_subdoc_data_
         // check presence of all vap names
         if ((obj = cJSON_GetObjectItem(obj_vap, "VapName")) == NULL) {
             cJSON_Delete(json);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
             return webconfig_error_invalid_subdoc;
         }
 
@@ -195,9 +200,10 @@ webconfig_error_t decode_home_subdoc(webconfig_t *config, webconfig_subdoc_data_
 
 
     if (presence_count != num_home_ssid) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: iot objects not found object mask : %x\n",
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: iot objects not found object mask : %x\n",
                         __func__, __LINE__, presence_count);
         cJSON_Delete(json);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
         return webconfig_error_invalid_subdoc;
     }
 
@@ -224,15 +230,16 @@ webconfig_error_t decode_home_subdoc(webconfig_t *config, webconfig_subdoc_data_
         if (!strncmp(name, "iot_ssid", strlen("iot_ssid"))) {
             memset(vap_info, 0, sizeof(wifi_vap_info_t));
             if (decode_iot_vap_object(obj_vap, vap_info, &params->hal_cap.wifi_prop) != webconfig_error_none) {
-                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: VAP object validation failed\n",
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: VAP object validation failed\n",
                         __func__, __LINE__);
                 cJSON_Delete(json);
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
                 return webconfig_error_decode;
             }
         }
     }
 
-    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Validation success\n", __func__, __LINE__);
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: decode success\n", __func__, __LINE__);
     cJSON_Delete(json);
 
     return webconfig_error_none;

@@ -57,14 +57,14 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
         tgt_vap_map.num_vaps = 1;
 
         if (wifi_hal_createVAP(radio_index, &tgt_vap_map) != RETURN_OK) {
-            wifi_util_dbg_print(WIFI_CTRL,"%s: wifi vap create failure: radio_index:%d vap_index:%d\n",__FUNCTION__,
+            wifi_util_error_print(WIFI_CTRL,"%s: wifi vap create failure: radio_index:%d vap_index:%d\n",__FUNCTION__,
                                                 radio_index, map->vap_array[i].vap_index);
             continue;
         }
         if (greylist_rfc) {
                     wifi_setApMacAddressControlMode(tgt_vap_map.vap_array[0].vap_index, 2);
           }
-        wifi_util_dbg_print(WIFI_CTRL,"%s: wifi vap create success: radio_index:%d vap_index:%d greylist_rfc:%d\n",__FUNCTION__,
+        wifi_util_info_print(WIFI_CTRL,"%s: wifi vap create success: radio_index:%d vap_index:%d greylist_rfc:%d\n",__FUNCTION__,
                                                 radio_index, map->vap_array[i].vap_index,greylist_rfc);
         wifidb_print("%s: wifi vap create success: radio_index:%d vap_index:%d \n",__FUNCTION__,
                                                 radio_index, map->vap_array[i].vap_index);
