@@ -660,7 +660,13 @@ void Psm_Db_Write_Global(wifi_global_param_t *gcfg)
 
     if(gcfg->notify_wifi_changes != cfg->notify_wifi_changes){
         memset(instanceNumStr, '\0', sizeof(instanceNumStr));
-        _ansc_itoa(gcfg->notify_wifi_changes, instanceNumStr, 10);
+        if (gcfg->notify_wifi_changes) {
+            strcpy(instanceNumStr,"true");
+        }
+        else {
+            strcpy(instanceNumStr,"false");
+        }
+
         retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, NotifyWiFiChanges, ccsp_string, instanceNumStr);
         if(retPsmSet == CCSP_SUCCESS) {
             cfg->notify_wifi_changes = gcfg->notify_wifi_changes;

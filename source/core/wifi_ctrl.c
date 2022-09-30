@@ -756,37 +756,40 @@ void factory_reset_wifi(void)
 }
 int captive_portal_check(void)
 {
-
     uint8_t num_of_radios = getNumberRadios();
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
-    bool factory_reset = g_wifi_mgr->ctrl.factory_reset;
     UINT radio_index =0;
     wifi_vap_info_map_t *wifi_vap_map = NULL;
     UINT i =0;
     int rc = 0;
     UINT reset_count = 0;
-    rbusValue_t value;
     char path[128] = "";
     char default_ssid[32] = {0};
     char default_password[32] = {0};
-    get_ssid_from_device_mac(default_ssid);
-    get_default_wifi_password(default_password);
+    rbusValue_t value = NULL;
+    rbusValue_t config_wifi_value = NULL;
+    rbusProperty_t prop = NULL;
+    rbusObject_t inParams = NULL;
+    char pInValue[32] = "";
+    char *PsmParamName = "eRT.com.cisco.spvtg.ccsp.Device.WiFi.NotifyWiFiChanges";
+    rbusObject_t outParams = NULL;
 
-    wifi_util_dbg_print(WIFI_CTRL,"captive_portal check factory_rest is %d def ssid is %s and def pwd is %s\n",factory_reset,default_ssid,default_password);
+    get_ssid_from_device_mac(default_ssid);
+    rbusObject_Init(&inParams, NULL);
+    rbusValue_Init(&value);
+    rbusValue_Init(&config_wifi_value);
+
+
     for (radio_index = 0; radio_index < num_of_radios; radio_index++) {
         wifi_vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(radio_index);
-        wifi_util_dbg_print(WIFI_CTRL,"FactoryReset radio_index is %d: num_vaps %d \n",radio_index,wifi_vap_map->num_vaps);
+
         for ( i = 0; i < wifi_vap_map->num_vaps; i++) {
-            wifi_util_dbg_print(WIFI_CTRL,"FactoryReset vap_index is %d: \n",i);
             if (strncmp(wifi_vap_map->vap_array[i].vap_name,"private_ssid",strlen("private_ssid"))== 0) {
-                sprintf(path,DEVICE_WIFI_SSID,radio_index+1);
-                wifi_util_dbg_print(WIFI_CTRL,"FactoryReset  private ssid is %s and vap_name is %s path is %s\n", wifi_vap_map->vap_array[i].u.bss_info.ssid,wifi_vap_map->vap_array[i].vap_name,path);
-                //rbus_setStr(g_wifi_mgr->ctrl.rbus_handle,path,wifi_vap_map->vap_array[i].u.bss_info.ssid);
-                wifi_util_dbg_print(WIFI_CTRL,"rbus_set SSID is done\n");
-                sprintf(path,DEVICE_WIFI_KEYPASSPHRASE,radio_index+1);
-                wifi_util_dbg_print(WIFI_CTRL,"FactoryReset password is %s path is %s\n", wifi_vap_map->vap_array[i].u.bss_info.security.u.key.key,path);
-                //rbus_setStr(g_wifi_mgr->ctrl.rbus_handle,path,wifi_vap_map->vap_array[i].u.bss_info.security.u.key.key);
-                wifi_util_dbg_print(WIFI_CTRL,"rbus_set SSID is done\n");
+                get_default_wifi_password(default_password, wifi_vap_map->vap_array[i].vap_index);
+                sprintf(path,DEVICE_WIFI_SSID,wifi_vap_map->vap_array[i].vap_index+1);
+                wifi_util_dbg_print(WIFI_CTRL," private ssid is %s and vap_name is %s path is %s and default_password is %s\n", wifi_vap_map->vap_array[i].u.bss_info.ssid,wifi_vap_map->vap_array[i].vap_name,path,default_password);
+                sprintf(path,DEVICE_WIFI_KEYPASSPHRASE,wifi_vap_map->vap_array[i].vap_index+1);
+                wifi_util_dbg_print(WIFI_CTRL,"password is %s path is %s\n", wifi_vap_map->vap_array[i].u.bss_info.security.u.key.key,path);
                 if( strcmp(wifi_vap_map->vap_array[i].u.bss_info.ssid,default_ssid) && strcmp(wifi_vap_map->vap_array[i].u.bss_info.security.u.key.key,default_password)) {
                     reset_count++;
                 }
@@ -794,27 +797,37 @@ int captive_portal_check(void)
         }
     }
     wifi_util_dbg_print(WIFI_CTRL,"resetcount %d\n",reset_count);
-    if (g_wifi_mgr->ctrl.factory_reset) {
-        g_wifi_mgr->ctrl.factory_reset = false;
-        wifi_util_dbg_print(WIFI_CTRL," FactoryReset  was true NotifyWifiChanges\n");
-    }
-    wifi_util_dbg_print(WIFI_CTRL," FactoryReset  before NotifyWifiChanges\n");
-    rbusValue_Init(&value);
-    rbusValue_SetBoolean(value, g_wifi_mgr->ctrl.factory_reset);
-    //rbus_set(g_wifi_mgr->ctrl.rbus_handle,FACTORY_RESET_NOTIFICATION,value,NULL);
-    rbusValue_Release(value);
-    rbusValue_Init(&value);
+
     if (reset_count == num_of_radios) {
-        rbusValue_SetBoolean(value, false);
+        strcpy(pInValue,"false");
+        rbusValue_SetBoolean(config_wifi_value, false);
     }
     else {
-        rbusValue_SetBoolean(value, true);
+        strcpy(pInValue,"true");
+        rbusValue_SetBoolean(config_wifi_value, true);
     }
-    wifi_util_dbg_print(WIFI_CTRL,"Before setting rbus_set of Device.DeviceInfo.X_RDKCENTRAL-COM_ConfigureWiFi\n");
-    rc = rbus_set(g_wifi_mgr->ctrl.rbus_handle,CONFIG_WIFI,value,NULL);
-    if(rc != RBUS_ERROR_SUCCESS) {
+    if (false == rbusValue_SetFromString(value, RBUS_STRING, pInValue)) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s: Invalid value '%s' for the parameter %s\n\r", __FUNCTION__, pInValue, PsmParamName);
+    }
+    rbusProperty_Init(&prop, PsmParamName, value);
+    rbusObject_SetProperty(inParams,prop);
+    rbusValue_Release(value);
+    rbusProperty_Release(prop);
+
+    rc = rbusMethod_Invoke(g_wifi_mgr->ctrl.rbus_handle,"SetPSMRecordValue()" , inParams, &outParams);
+    if(inParams) {
+        rbusObject_Release(inParams);
+    }
+    if (RBUS_ERROR_SUCCESS != rc) {
+
+        wifi_util_dbg_print(WIFI_CTRL," %s failed for  with err: '%s'\n\r",__FUNCTION__,rbusError_ToString(rc));
+
+    }
+    rc = rbus_set(g_wifi_mgr->ctrl.rbus_handle,CONFIG_WIFI,config_wifi_value,NULL);
+    if (rc != RBUS_ERROR_SUCCESS) {
         wifi_util_dbg_print(WIFI_CTRL,"Rbus error Device.DeviceInfo.X_RDKCENTRAL-COM_ConfigureWiFi\n");
     }
+    rbusValue_Release(config_wifi_value);
     wifi_util_dbg_print(WIFI_CTRL," Captive_portal Ends after NotifyWifiChanges\n");
 
     return RETURN_OK;
