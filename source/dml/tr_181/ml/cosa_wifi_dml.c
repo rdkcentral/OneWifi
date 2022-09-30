@@ -4972,14 +4972,13 @@ SSID_GetParamStringValue
 
     if( AnscEqualString(ParamName, "X_COMCAST-COM_DefaultSSID", TRUE))
     {
-	/* collect value */
-        if(isVapSTAMesh(pcfg->vap_index)){
-            AnscCopyString(pValue, pcfg->u.sta_info.ssid);
-            return 0;
-        } else {
-            AnscCopyString(pValue, pcfg->u.bss_info.ssid);
+        /* collect value */
+        char ssid[128] = {0};
+        if (wifi_hal_get_default_ssid(ssid, pcfg->vap_index) == RETURN_OK) {
+            AnscCopyString(pValue, ssid);
             return 0;
         }
+
     }
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     return -1;
@@ -7521,17 +7520,22 @@ Security_GetParamStringValue
 
     if( AnscEqualString(ParamName, "X_COMCAST-COM_DefaultKeyPassphrase", TRUE))
     {
-        if ( AnscSizeOfString(pcfg->u.key.key) > 0 )
+        char password[128] = {0};
+
+        if (wifi_hal_get_default_keypassphrase(password, vap_index) == RETURN_OK)
         {
-            if  ( AnscSizeOfString(pcfg->u.key.key) < *pUlSize)
+            if ( AnscSizeOfString(password) > 0 )
             {
-                AnscCopyString(pValue, pcfg->u.key.key);
-                return 0;
-            }
-           else
-            {
-                *pUlSize = AnscSizeOfString(pcfg->u.key.key)+1;
-                return 1;
+                if  ( AnscSizeOfString(password) < *pUlSize)
+                {
+                    AnscCopyString(pValue, password);
+                    return 0;
+                }
+                else
+                {
+                    *pUlSize = AnscSizeOfString(password)+1;
+                    return 1;
+                }
             }
         }
     }
