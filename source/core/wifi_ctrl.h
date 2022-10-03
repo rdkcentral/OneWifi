@@ -16,6 +16,7 @@ extern "C" {
 #include "collection.h"
 #include "wifi_util.h"
 #include "wifi_webconfig.h"
+#include "wifi_apps.h"
 
 #define WIFI_WEBCONFIG_PRIVATESSID         1
 #define WIFI_WEBCONFIG_HOMESSID            2
@@ -24,7 +25,6 @@ extern "C" {
 #define WIFI_FEATURE_LoadDefaults          0
 
 #define WIFI_MAX_SSID_NAME_LEN             33
-#define QUEUE_WIFI_CTRL_TASK_TIMEOUT       1
 
 #define RFC_WIFI_PASSPOINT          "RfcWifiPasspointEnable"
 #define RFC_WIFI_INTERWORKING       "RfcWifiInterworkingEnable"
@@ -188,6 +188,7 @@ typedef struct wifi_ctrl {
     scan_list_t         *scan_list;
     unsigned int        scan_count;
     connection_state_t  conn_state;
+    wifi_apps_t         fi_apps[wifi_apps_type_max];
     unsigned int        network_mode; /* 0 - gateway, 1 - extender */
     unsigned int        connected_vap_index;
     scan_wifi_state_t   scan_wifi_state;
@@ -196,81 +197,12 @@ typedef struct wifi_ctrl {
     unsigned int        disconnected_time;
 } wifi_ctrl_t;
 
-typedef enum {
-    ctrl_event_type_webconfig,
-    ctrl_event_type_hal_ind,
-    ctrl_event_type_command,
-    ctrl_event_type_wifiapi,
-    ctrl_event_type_max
-} ctrl_event_type_t;
-
-typedef enum {
-    // WebConfig event sub types
-    ctrl_event_webconfig_set_data,
-    ctrl_event_webconfig_get_data,
-    ctrl_event_webconfig_set_data_tunnel,
-
-    // HAL events
-    ctrl_event_hal_mgmt_farmes = 0x100,
-    ctrl_event_hal_sta_conn_status,
-    ctrl_event_hal_assoc_device,
-    ctrl_event_hal_disassoc_device,
-    ctrl_event_scan_results,
-    ctrl_event_hal_channel_change,
-    ctrl_event_radius_greylist,
-    // Commands
-    ctrl_event_type_command_sta_connect = 0x200,
-    ctrl_event_type_command_factory_reset,
-    ctrl_event_type_radius_grey_list_rfc,
-    ctrl_event_type_wifi_passpoint_rfc,
-    ctrl_event_type_wifi_interworking_rfc,
-    ctrl_event_type_wpa3_rfc,
-    ctrl_event_type_dfs_rfc,
-    ctrl_event_type_dfs_atbootup_rfc,
-    ctrl_event_type_command_kickmac,
-    ctrl_event_type_command_kick_assoc_devices,
-    ctrl_event_type_command_wps,
-    ctrl_event_type_command_wifi_host_sync,
-    ctrl_event_type_device_network_mode,
-    ctrl_event_type_twoG80211axEnable_rfc,
-    ctrl_event_type_command_wifi_neighborscan,
-    ctrl_event_type_command_mesh_status,
-    ctrl_event_type_normalized_rssi,
-    ctrl_event_type_snr,
-    ctrl_event_type_cli_stat,
-    ctrl_event_type_txrx_rate,
-
-    // wif_api
-    ctrl_event_type_wifiapi_execution = 0x300,
-
-    // Tunnel
-    ctrl_event_type_xfinity_tunnel_up = 0x400,
-    ctrl_event_type_xfinity_tunnel_down,
-
-} ctrl_event_subtype_t;
-
 typedef struct {
     ctrl_event_type_t     event_type;
     ctrl_event_subtype_t  sub_type;
     void *msg;
     unsigned int len;
 } __attribute__((__packed__)) ctrl_event_t;
-
-typedef struct {
-    int ap_index;
-    mac_address_t sta_mac;
-    void *frame;
-    uint32_t len;
-    wifi_mgmtFrameType_t type;
-    wifi_direction_t dir;
-} frame_data_t;
-
-
-typedef struct {
-    int ap_index;
-    wifi_associated_dev3_t dev_stats;
-}__attribute__((__packed__)) assoc_dev_data_t;
-
 
 typedef struct {
     mac_address_t sta_mac;

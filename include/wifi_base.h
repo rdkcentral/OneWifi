@@ -22,12 +22,101 @@ extern "C" {
 #define WIFI_HOTSPOT_NOTIFY                 "Device.X_COMCAST-COM_GRE.Hotspot.ClientChange"
 #define WIFI_NOTIFY_ASSOCIATED_ENTRIES      "Device.NotifyComponent.SetNotifi_ParamName"
 #define MESH_STATUS                         "Device.DeviceInfo.X_RDKCENTRAL-COM_xOpsDeviceMgmt.Mesh.Enable"
+#define WIFI_ANALYTICS_FRAME_EVENTS         "Device.WiFi.Events.Frames"
 
 #define PLAN_ID_LENGTH     16
 #define MAX_STEP_COUNT  32 /*Active Measurement Step Count */
 #define  MAC_ADDRESS_LENGTH  13
 #define WIFI_AP_MAX_WPSPIN_LEN  9
 #define MAX_BUF_LENGTH 128
+
+#define QUEUE_WIFI_CTRL_TASK_TIMEOUT  1
+#define MAX_FRAME_SZ                  2048
+
+typedef enum {
+    ctrl_event_type_exec,
+    ctrl_event_type_webconfig,
+    ctrl_event_type_hal_ind,
+    ctrl_event_type_command,
+    ctrl_event_type_wifiapi,
+    ctrl_event_type_max
+} ctrl_event_type_t;
+
+typedef enum {
+    // Controller loop execution
+    ctrl_event_exec_start = 0x100,
+    ctrl_event_exec_stop,
+    ctrl_event_exec_timeout,
+    ctrl_event_exec_max,
+
+    // WebConfig event sub types
+    ctrl_event_webconfig_set_data = 0x200,
+    ctrl_event_webconfig_set_status,
+    ctrl_event_webconfig_get_data,
+    ctrl_event_webconfig_set_data_tunnel,
+    ctrl_event_webconfig_max,
+
+    // HAL events
+    ctrl_event_hal_unknown_frame = 0x300,
+    ctrl_event_hal_mgmt_farmes,
+    ctrl_event_hal_probe_req_frame,
+    ctrl_event_hal_auth_frame,
+    ctrl_event_hal_assoc_req_frame,
+    ctrl_event_hal_assoc_rsp_frame,
+    ctrl_event_hal_dpp_public_action_frame,
+    ctrl_event_hal_dpp_config_req_frame,
+    ctrl_event_hal_anqp_gas_init_frame,
+    ctrl_event_hal_sta_conn_status,
+    ctrl_event_hal_assoc_device,
+    ctrl_event_hal_disassoc_device,
+    ctrl_event_scan_results,
+    ctrl_event_hal_channel_change,
+    ctrl_event_radius_greylist,
+    ctrl_event_hal_max,
+
+    // Commands
+    ctrl_event_type_command_sta_connect = 0x400,
+    ctrl_event_type_command_factory_reset,
+    ctrl_event_type_radius_grey_list_rfc,
+    ctrl_event_type_wifi_passpoint_rfc,
+    ctrl_event_type_wifi_interworking_rfc,
+    ctrl_event_type_wpa3_rfc,
+    ctrl_event_type_ow_core_thread_rfc,
+    ctrl_event_type_dfs_rfc,
+    ctrl_event_type_dfs_atbootup_rfc,
+    ctrl_event_type_command_kickmac,
+    ctrl_event_type_command_kick_assoc_devices,
+    ctrl_event_type_command_wps,
+    ctrl_event_type_command_wifi_host_sync,
+    ctrl_event_type_device_network_mode,
+    ctrl_event_type_twoG80211axEnable_rfc,
+    ctrl_event_type_command_wifi_neighborscan,
+    ctrl_event_type_command_mesh_status,
+    ctrl_event_type_normalized_rssi,
+    ctrl_event_type_snr,
+    ctrl_event_type_cli_stat,
+    ctrl_event_type_txrx_rate,
+    ctrl_event_command_max,
+
+    // wif_api
+    ctrl_event_type_wifiapi_execution = 0x500,
+    ctrl_event_type_wifiapi_max,
+
+    // Tunnel
+    ctrl_event_type_xfinity_tunnel_up = 0x600,
+    ctrl_event_type_xfinity_tunnel_down,
+    ctrl_event_type_xfinity_tunnel_maxi,
+
+} ctrl_event_subtype_t;
+
+typedef struct {
+    int ap_index;
+    mac_address_t sta_mac;
+    void *frame;
+    uint32_t len;
+    wifi_mgmtFrameType_t type;
+    wifi_direction_t dir;
+} __attribute__((__packed__)) frame_data_t;
 
 typedef enum {
     rdk_dev_mode_type_gw,
@@ -321,6 +410,11 @@ typedef struct {
     wifi_interface_name_t  interface_name;
     wifi_bss_info_t        bss_info;
 } __attribute__((packed)) rdk_sta_data_t;
+
+typedef struct {
+    int ap_index;
+    wifi_associated_dev3_t dev_stats;
+}__attribute__((__packed__)) assoc_dev_data_t;
 
 #ifdef __cplusplus
 }

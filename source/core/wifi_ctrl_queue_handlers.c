@@ -1621,8 +1621,12 @@ void process_mesh_status_command(bool mesh_enable_status)
     }
 }
 
-void handle_command_event(void *data, unsigned int len, ctrl_event_subtype_t subtype)
+void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len, ctrl_event_subtype_t subtype)
 {
+    wifi_apps_t     *analytics = NULL;
+
+    analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
+
     switch (subtype) {
         case ctrl_event_type_command_sta_connect:
             process_sta_connect_command(*(bool *)data);
@@ -1708,10 +1712,17 @@ void handle_command_event(void *data, unsigned int len, ctrl_event_subtype_t sub
             break;
     }
 
+    if (analytics->event_fn != NULL) {
+        analytics->event_fn(analytics, ctrl_event_type_command, subtype, data);
+    }
 }
 
-void handle_hal_indication(void *data, unsigned int len, ctrl_event_subtype_t subtype)
+void handle_hal_indication(wifi_ctrl_t *ctrl, void *data, unsigned int len, ctrl_event_subtype_t subtype)
 {
+    wifi_apps_t     *analytics = NULL;
+
+    analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
+
     switch (subtype) {
         case ctrl_event_hal_mgmt_farmes:
             process_mgmt_ctrl_frame_event(data, len);
@@ -1746,6 +1757,10 @@ void handle_hal_indication(void *data, unsigned int len, ctrl_event_subtype_t su
             wifi_util_error_print(WIFI_CTRL,"[%s]:WIFI hal handler not supported this event %d\r\n",__FUNCTION__, subtype);
             break;
     }
+
+    if (analytics->event_fn != NULL) {
+        analytics->event_fn(analytics, ctrl_event_type_hal_ind, subtype, data);
+    }
 }
 
 void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len, ctrl_event_subtype_t subtype)
@@ -1753,13 +1768,16 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
     webconfig_t *config;
     webconfig_subdoc_data_t data = {0};
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
+    wifi_apps_t    *analytics = NULL;
 
     config = &ctrl->webconfig;
+    analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
 
     switch (subtype) {
         case ctrl_event_webconfig_set_data:
             memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap, sizeof(wifi_hal_capability_t));
             webconfig_decode(config, &data, raw);
+            analytics->event_fn(analytics, ctrl_event_type_webconfig, ctrl_event_webconfig_set_data, &data);
             break;
 
         case ctrl_event_webconfig_set_data_tunnel:

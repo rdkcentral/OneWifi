@@ -169,6 +169,7 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
     static uint8_t conn_retry = 0;
     static uint8_t wait_scan_result;
     static bool radio_reset_triggered;
+    wifi_apps_t *analytics = NULL;
 
     pthread_mutex_lock(&ctrl->lock);
     while (ctrl->exit_ctrl == false) {
@@ -198,11 +199,11 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
                         break;
 
                     case ctrl_event_type_hal_ind:
-                        handle_hal_indication(queue_data->msg, queue_data->len, queue_data->sub_type);
+                        handle_hal_indication(ctrl, queue_data->msg, queue_data->len, queue_data->sub_type);
                         break;
 
                     case ctrl_event_type_command:
-                        handle_command_event(queue_data->msg, queue_data->len, queue_data->sub_type);
+                        handle_command_event(ctrl, queue_data->msg, queue_data->len, queue_data->sub_type);
                         break;
 
                     case ctrl_event_type_wifiapi:
@@ -300,6 +301,10 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
             }
             greylist_event++;
 
+            analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
+            if (analytics->event_fn != NULL) {
+                analytics->event_fn(analytics, ctrl_event_type_exec, ctrl_event_exec_timeout, NULL);
+            }
         } else {
             wifi_util_dbg_print(WIFI_CTRL,"RDK_LOG_WARN, WIFI %s: Invalid Return Status %d\n",__FUNCTION__,rc);
             continue;
@@ -933,6 +938,7 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
         free(wifi_mgmt_frame.frame);
         wifi_mgmt_frame.frame = NULL;
     }
+
     return RETURN_OK;
 }
 
@@ -986,6 +992,10 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
     // initialize the vap service objects
     for (i = 0; i < vap_svc_type_max; i++) {
         svc_init(&ctrl->ctrl_svc[i], (vap_svc_type_t)i);
+    }
+
+    for (i = 0; i < wifi_apps_type_max; i++) {
+        wifi_apps_init(&ctrl->fi_apps[i], (wifi_apps_type_t)i);
     }
 
     //Register to RBUS for webconfig interactions
@@ -1057,6 +1067,9 @@ void telemetry_bootup_time_wifibroadcast()
 
 int start_wifi_ctrl(wifi_ctrl_t *ctrl)
 {
+    wifi_apps_t     *analytics = NULL;
+
+    analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
 
     ctrl->webconfig_state = ctrl_webconfig_state_none;
 
@@ -1070,8 +1083,12 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
     //Start Wifi Monitor Thread
     start_wifi_health_monitor_thread();
 
+    analytics->event_fn(analytics, ctrl_event_type_exec, ctrl_event_exec_start, NULL);
+
     ctrl->exit_ctrl = false;
     ctrl_queue_loop(ctrl);
+
+    analytics->event_fn(analytics, ctrl_event_type_exec, ctrl_event_exec_stop, NULL);
 
     wifi_util_info_print(WIFI_CTRL,"%s:%d Exited queue_wifi_ctrl_task.\n",__FUNCTION__,__LINE__);
     return RETURN_OK;

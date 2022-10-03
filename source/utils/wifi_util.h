@@ -21,7 +21,8 @@ typedef enum {
     WIFI_MON,
     WIFI_DMCLI,
     WIFI_LIB,
-    WIFI_PSM
+    WIFI_PSM,
+    WIFI_ANALYTICS
 }wifi_dbg_type_t;
 
 typedef enum {

@@ -674,6 +674,11 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
             snprintf(module_filename, sizeof(module_filename), "wifiPsm");
             break;
         }
+        case WIFI_ANALYTICS:{
+            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), "/nvram/wifiAnalytics");
+            snprintf(module_filename, sizeof(module_filename), "wifiAnalytics");
+            break;
+        }
         default:
             return;
     }

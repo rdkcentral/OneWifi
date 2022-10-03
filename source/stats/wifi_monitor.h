@@ -300,4 +300,5 @@ unsigned int GetINSTPollingPeriod();
 unsigned int GetINSTOverrideTTL();
 unsigned int GetINSTDefReportingPeriod();
 int get_neighbor_scan_results();
+int get_dev_stats_for_radio(unsigned int radio_index, radio_data_t *radio_stats);
 #endif	//_WIFI_MON_H_

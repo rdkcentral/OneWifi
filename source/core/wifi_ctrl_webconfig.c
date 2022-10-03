@@ -139,6 +139,10 @@ int webconfig_send_associate_status(wifi_ctrl_t *ctrl)
 int webconfig_analyze_pending_states(wifi_ctrl_t *ctrl)
 {
     static int pending_state = ctrl_webconfig_state_max;
+    webconfig_subdoc_type_t type = webconfig_subdoc_type_unknown;
+    wifi_apps_t *analytics = NULL;
+
+    analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
 
     if ((ctrl->webconfig_state & CTRL_WEBCONFIG_STATE_MASK) == 0) {
         return RETURN_OK;
@@ -156,55 +160,74 @@ int webconfig_analyze_pending_states(wifi_ctrl_t *ctrl)
     // this may move to scheduler task
     switch ((ctrl->webconfig_state & pending_state)) {
         case ctrl_webconfig_state_radio_cfg_rsp_pending:
-            webconfig_send_radio_subdoc_status(ctrl, webconfig_subdoc_type_radio);
+            type = webconfig_subdoc_type_radio;
+            webconfig_send_radio_subdoc_status(ctrl, type);
             break;
         case ctrl_webconfig_state_vap_private_cfg_rsp_pending:
-            webconfig_send_vap_subdoc_status(ctrl, webconfig_subdoc_type_private);
+            type = webconfig_subdoc_type_private;
+            webconfig_send_vap_subdoc_status(ctrl, type);
             break;
         case ctrl_webconfig_state_vap_home_cfg_rsp_pending:
-            webconfig_send_vap_subdoc_status(ctrl, webconfig_subdoc_type_home);
+            type = webconfig_subdoc_type_home;
+            webconfig_send_vap_subdoc_status(ctrl, type);
             break;
         case ctrl_webconfig_state_vap_xfinity_cfg_rsp_pending:
-            webconfig_send_vap_subdoc_status(ctrl, webconfig_subdoc_type_xfinity);
+            type = webconfig_subdoc_type_xfinity;
+            webconfig_send_vap_subdoc_status(ctrl, type);
             break;
         case ctrl_webconfig_state_vap_lnf_cfg_rsp_pending:
-            webconfig_send_vap_subdoc_status(ctrl, webconfig_subdoc_type_lnf);
+            type = webconfig_subdoc_type_lnf;
+            webconfig_send_vap_subdoc_status(ctrl, type);
             break;
         case ctrl_webconfig_state_vap_mesh_cfg_rsp_pending:
-            webconfig_send_vap_subdoc_status(ctrl, webconfig_subdoc_type_mesh);
+            type = webconfig_subdoc_type_mesh;
+            webconfig_send_vap_subdoc_status(ctrl, type);
         break;
         case ctrl_webconfig_state_sta_conn_status_rsp_pending:
         case ctrl_webconfig_state_vap_mesh_sta_cfg_rsp_pending:
-            webconfig_send_vap_subdoc_status(ctrl, webconfig_subdoc_type_mesh_sta);
+            type = webconfig_subdoc_type_mesh_sta;
+            webconfig_send_vap_subdoc_status(ctrl, type);
         break;
         case ctrl_webconfig_state_vap_mesh_backhaul_cfg_rsp_pending:
-            webconfig_send_vap_subdoc_status(ctrl, webconfig_subdoc_type_mesh_backhaul);
+            type = webconfig_subdoc_type_mesh_backhaul;
+            webconfig_send_vap_subdoc_status(ctrl, type);
         break;
         case ctrl_webconfig_state_macfilter_cfg_rsp_pending:
+            type = webconfig_subdoc_type_mac_filter;
             webconfig_send_vap_subdoc_status(ctrl, webconfig_subdoc_type_mac_filter);
         break;
         case ctrl_webconfig_state_vap_all_cfg_rsp_pending:
+            type = webconfig_subdoc_type_dml;
             webconfig_send_dml_subdoc_status(ctrl);
             break;
         case ctrl_webconfig_state_factoryreset_cfg_rsp_pending:
             if(ctrl->network_mode == rdk_dev_mode_type_gw) {
+                type = webconfig_subdoc_type_dml;
                 webconfig_send_dml_subdoc_status(ctrl);
             } else  if(ctrl->network_mode == rdk_dev_mode_type_ext) {
-                webconfig_send_vap_subdoc_status(ctrl, webconfig_subdoc_type_mesh_sta);
+                type = webconfig_subdoc_type_mesh_sta;
+                webconfig_send_vap_subdoc_status(ctrl, type);
             }
         break;
         case ctrl_webconfig_state_wifi_config_cfg_rsp_pending:
+            type = webconfig_subdoc_type_wifi_config;
             webconfig_send_wifi_config_status(ctrl);
             break;
         case ctrl_webconfig_state_associated_clients_cfg_rsp_pending:
+            type = webconfig_subdoc_type_associated_clients;
             webconfig_send_associate_status(ctrl);
             break;
         case ctrl_webconfig_state_csi_cfg_rsp_pending:
+            type = webconfig_subdoc_type_csi;
             webconfig_send_csi_status(ctrl);
             break;
         default:
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d - default pending subdoc status:0x%x\r\n", __func__, __LINE__, (ctrl->webconfig_state & CTRL_WEBCONFIG_STATE_MASK));
             break;
+    }
+
+    if (analytics->event_fn != NULL) {
+        analytics->event_fn(analytics, ctrl_event_type_webconfig, ctrl_event_webconfig_set_status, &type);
     }
 
     return RETURN_OK;

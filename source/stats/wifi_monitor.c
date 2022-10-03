@@ -5961,3 +5961,39 @@ void process_active_msmt_diagnostics (int ap_index)
     }
     wifi_util_dbg_print(WIFI_MON, "%s : %d exiting the function\n",__func__,__LINE__);
 }
+
+wifi_associated_dev3_t *get_dev_stats_for_sta(unsigned int apIndex, mac_addr_t mac)
+{
+    sta_data_t  *sta;
+    hash_map_t  *sta_map;
+    unsigned int vap_array_index;
+
+    getVAPArrayIndexFromVAPIndex(apIndex, &vap_array_index);
+
+    pthread_mutex_lock(&g_monitor_module.lock);
+    sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
+
+    sta = hash_map_get_first(sta_map);
+    while (sta != NULL) {
+        if (memcmp(mac, sta->sta_mac, sizeof(mac_addr_t)) == 0) {
+            pthread_mutex_unlock(&g_monitor_module.lock);
+            return &sta->dev_stats;
+        }
+        sta = hash_map_get_next(sta_map, sta);
+    }
+
+    pthread_mutex_unlock(&g_monitor_module.lock);
+    return NULL;
+}
+
+int get_dev_stats_for_radio(unsigned int radio_index, radio_data_t *radio_stats)
+{
+    if (radio_index < getNumberRadios()) {
+        memcpy(radio_stats, &g_monitor_module.radio_data[radio_index], sizeof(radio_data_t));
+        return RETURN_OK;
+    } else {
+        wifi_util_error_print(WIFI_MON, "%s : %d wrong radio index:%d\n", __func__, __LINE__, radio_index);
+    }
+
+    return RETURN_ERR;
+}
