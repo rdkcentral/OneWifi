@@ -349,26 +349,32 @@ static int check_ethernet_wan_status()
 char * getDeviceMac()
 {
 
+    wifi_ctrl_t *ctrl;
+    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    int rc = RBUS_ERROR_SUCCESS;
+    rbusValue_t value;
+    const char *str;
+    int len = 0;
     while(!strlen(webpa_interface.deviceMAC))
     {
         pthread_mutex_lock(&webpa_interface.device_mac_mutex);
-        int ret = -1, val_size =0,cnt =0, fd = 0;
-        parameterValStruct_t **parameterval = NULL;
-	char* dstComp = NULL, *dstPath = NULL;
+        int  fd = 0;
 #if defined(_COSA_BCM_MIPS_)
-	char getList[256] = "Device.DPoE.Mac_address";
-	char* getList1[] = {"Device.DPoE.Mac_address"};
+#define CPE_MAC_NAMESPACE "Device.DPoE.Mac_address"
 #else
-        char getList[256] = "Device.X_CISCO_COM_CableModem.MACAddress";
-        char* getList1[] = {"Device.X_CISCO_COM_CableModem.MACAddress"};
+#if defined (_HUB4_PRODUCT_REQ_) || defined(_SR300_PRODUCT_REQ_)
+#define CPE_MAC_NAMESPACE "Device.DeviceInfo.X_COMCAST-COM_WAN_MAC"
+#else
+#define CPE_MAC_NAMESPACE "Device.X_CISCO_COM_CableModem.MACAddress"
 #endif
+#endif /*_COSA_BCM_MIPS_*/
         token_t  token;
         char deviceMACValue[32] = { '\0' };
 
         if (strlen(webpa_interface.deviceMAC))
         {
             pthread_mutex_unlock(&webpa_interface.device_mac_mutex);
-            break;
+            return NULL;
         }
 
         fd = s_sysevent_connect(&token);
@@ -378,62 +384,28 @@ char * getDeviceMac()
         }
         else
         {
-            if(!Cosa_FindDestComp((char*)&getList, &dstComp, &dstPath) || !dstComp || !dstPath)
-            {
+            pthread_mutex_lock(&ctrl->lock);
+            rc = rbus_get(ctrl->rbus_handle, CPE_MAC_NAMESPACE, &value);
+            if(rc != RBUS_ERROR_SUCCESS) {
+                wifi_util_dbg_print(WIFI_MON, "%s:%d rbus_get failed for [%s] with error [%d]\n",__func__, __LINE__, CPE_MAC_NAMESPACE, rc);
+                pthread_mutex_unlock(&ctrl->lock);
                 pthread_mutex_unlock(&webpa_interface.device_mac_mutex);
-                sleep(10);
-                /*CID: 54087,60662 Resource leak*/
-                if(dstComp)
-                {
-                    AnscFreeMemory(dstComp);
-                }
-                if(dstPath)
-                {
-                    AnscFreeMemory(dstPath);
-                }
-
-                continue;
-            }            
-
-            ret = CcspBaseIf_getParameterValues(bus_handle,
-                        dstComp, dstPath,
-                        getList1,
-                        1, &val_size, &parameterval);
-
-            /*CID: 54087,60662 Resource leak*/
-            if(dstComp)
-            {
-                    AnscFreeMemory(dstComp);
-            }
-            if(dstPath)
-            {
-                    AnscFreeMemory(dstPath);
+                return NULL;
             }
 
-            if(ret == CCSP_SUCCESS)
-            {
-                for (cnt = 0; cnt < val_size; cnt++)
-                {
-                
-                }
-                AnscMacToLower(webpa_interface.deviceMAC, parameterval[0]->parameterValue, sizeof(webpa_interface.deviceMAC));
-        
+            str = rbusValue_GetString(value, &len);
+            if (str == NULL) {
+                wifi_util_dbg_print(WIFI_MON,"%s Null pointer,Rbus get string len=%d for : %s\n",__FUNCTION__,len, CPE_MAC_NAMESPACE);
+                pthread_mutex_unlock(&ctrl->lock);
+                pthread_mutex_unlock(&webpa_interface.device_mac_mutex);
+                return NULL;
             }
-            else
-            {
-			pthread_mutex_unlock(&webpa_interface.device_mac_mutex);
-	        	sleep(10);
-			free_parameterValStruct_t(bus_handle, val_size, parameterval);
-                        continue;
-
-            }
-         
-            free_parameterValStruct_t(bus_handle, val_size, parameterval);
+            pthread_mutex_unlock(&ctrl->lock);
+            AnscMacToLower(webpa_interface.deviceMAC, str, sizeof(webpa_interface.deviceMAC));
         }
 
-		pthread_mutex_unlock(&webpa_interface.device_mac_mutex);
+        pthread_mutex_unlock(&webpa_interface.device_mac_mutex);
     }
-        
     return webpa_interface.deviceMAC;
 }
 

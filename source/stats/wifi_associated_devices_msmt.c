@@ -234,12 +234,10 @@ void upload_associated_devices_msmt_data(bssid_data_t *bssid_info, sta_data_t *s
     /* MAC - Get CPE mac address, do it only pointer is NULL */
     if ( macStr == NULL )
     {
-#if 0
         macStr = getDeviceMac();
 
         strncpy( CpemacStr, macStr, sizeof(CpemacStr));
-        wifi_util_dbg_print(WIFI_MON, "RDK_LOG_DEBUG, Received DeviceMac from Atom side: %s\n",macStr);
-#endif//ONE_WIFI
+        wifi_util_dbg_print(WIFI_MON, "%s:%d: RDK_LOG_DEBUG, Received DeviceMac from Atom side: %s\n", __func__, __LINE__, macStr);
     }
     wifi_util_dbg_print(WIFI_MON, "%s:%d\n", __func__, __LINE__);
     unsigned char CpeMacHoldingBuf[ 20 ] = {0};

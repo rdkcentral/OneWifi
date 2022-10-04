@@ -255,11 +255,9 @@ void upload_single_client_msmt_data(bssid_data_t *bssid_info, sta_data_t *sta_in
     /* MAC - Get CPE mac address, do it only pointer is NULL */
     if ( macStr == NULL )
     {
-#if 0
-        macStr = getDeviceMac();//ONE_WIFI TBD
+        macStr = getDeviceMac();
         strncpy( CpemacStr, macStr, sizeof(CpemacStr));
-        wifi_util_dbg_print(WIFI_MON, "RDK_LOG_DEBUG, Received DeviceMac from Atom side: %s\n",macStr);
-#endif//ONE_WIFI
+        wifi_util_dbg_print(WIFI_MON, "%s:%d: RDK_LOG_DEBUG, Received DeviceMac from Atom side: %s\n",__func__, __LINE__, macStr);
     }
 
     char CpeMacHoldingBuf[ 20 ] = {0};
@@ -853,11 +851,9 @@ void upload_single_client_active_msmt_data(bssid_data_t *bssid_info, sta_data_t 
     /* MAC - Get CPE mac address, do it only pointer is NULL */
     if ( macStr == NULL )
     {
-#if 0
-            macStr = getDeviceMac();//ONE_WIFI
-            strncpy( CpemacStr, macStr, sizeof(CpemacStr));
-            wifi_util_dbg_print(WIFI_MON, "RDK_LOG_DEBUG, Received DeviceMac from Atom side: %s\n",macStr);
-#endif//ONE_WIFI
+        macStr = getDeviceMac();
+        strncpy( CpemacStr, macStr, sizeof(CpemacStr));
+        wifi_util_dbg_print(WIFI_MON, "%s:%d: RDK_LOG_DEBUG, Received DeviceMac from Atom side: %s\n",__func__, __LINE__, macStr);
     }
 
     char CpeMacHoldingBuf[ 20 ] = {0};
