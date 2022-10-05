@@ -237,6 +237,7 @@ int events_publish(wifi_monitor_data_t data)
     bool should_publish = FALSE;
     char eventName[MAX_EVENT_NAME_SIZE];
     int rc;
+    unsigned int vap_array_index;
 
     if(g_isRbusAvailable == FALSE)
     {
@@ -252,9 +253,10 @@ int events_publish(wifi_monitor_data_t data)
     {
         case monitor_event_type_diagnostics:
             sprintf(eventName, "Device.WiFi.AccessPoint.%d.X_RDK_DiagData", data.ap_index + 1);
-            if(events_getSubscribed(eventName) == TRUE && (gdiag_events_json_buffer[data.ap_index] != NULL))
+            getVAPArrayIndexFromVAPIndex((unsigned int) data.ap_index, &vap_array_index);
+            if(gdiag_events_json_buffer[vap_array_index] != NULL)
             {
-                rbusValue_SetString(value, gdiag_events_json_buffer[data.ap_index]);
+                rbusValue_SetString(value, gdiag_events_json_buffer[vap_array_index]);
                 wifi_util_dbg_print(WIFI_MON, "%s(): device_diagnostics Event %d %s \n", __FUNCTION__, data.event_type, eventName);
                 should_publish = TRUE;
             }
@@ -279,13 +281,13 @@ int events_publish(wifi_monitor_data_t data)
             }
             break;
         case monitor_event_type_csi:
-            sprintf(eventName, "Device.WiFi.X_RDK_CSI.%d.data", data.csi_session);
-            if(events_getSubscribed(eventName) == TRUE)
             {
                 char buffer[(strlen("CSI") + 1) + sizeof(unsigned int) + sizeof(time_t) + (sizeof(unsigned int)) + (1 *(sizeof(mac_addr_t) + sizeof(unsigned int) + sizeof(wifi_csi_dev_t)))];
                 unsigned int total_length, num_csi_clients, csi_data_lenght;
                 time_t datetime;
                 char *pbuffer = (char *)buffer;
+
+                sprintf(eventName, "Device.WiFi.X_RDK_CSI.%d.data", data.csi_session);
 
                 //ASCII characters "CSI"
                 memcpy(pbuffer,"CSI", (strlen("CSI") + 1));
@@ -358,6 +360,7 @@ rbusError_t events_subHandler(rbusHandle_t handle, rbusEventSubAction_t action, 
     char *telemetry_start = NULL;
     char *telemetry_cancel = NULL;
     char tmp[128] = {0};
+    unsigned int vap_array_index;
 
     wifi_util_dbg_print(WIFI_MON, "Entering %s: Event %s\n", __FUNCTION__, eventName);
 
@@ -369,6 +372,7 @@ rbusError_t events_subHandler(rbusHandle_t handle, rbusEventSubAction_t action, 
         {
             case monitor_event_type_diagnostics:
                 idx = event->idx;
+                getVAPArrayIndexFromVAPIndex((unsigned int) idx-1, &vap_array_index);
                 if(action == RBUS_EVENT_ACTION_SUBSCRIBE)
                 {
                     if(interval < MIN_DIAG_INTERVAL)
@@ -381,12 +385,12 @@ rbusError_t events_subHandler(rbusHandle_t handle, rbusEventSubAction_t action, 
                         wifi_util_dbg_print(WIFI_MON, "Exit %s: Event %s\n", __FUNCTION__, eventName);
                         return RBUS_ERROR_BUS_ERROR;
                     }
-                    if(gdiag_events_json_buffer[idx-1] == NULL)
+                    if(gdiag_events_json_buffer[vap_array_index] == NULL)
                     {
                         memset(tmp, 0, sizeof(tmp));
                         get_formatted_time(tmp);
-                        gdiag_events_json_buffer[idx-1] = (char *) malloc(CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*MAX_ASSOCIATED_WIFI_DEVS);
-                        if(gdiag_events_json_buffer[idx-1] == NULL)
+                        gdiag_events_json_buffer[vap_array_index] = (char *) malloc(CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*MAX_ASSOCIATED_WIFI_DEVS);
+                        if(gdiag_events_json_buffer[vap_array_index] == NULL)
                         {
                             wifi_util_dbg_print(WIFI_MON, "WiFi_DiagData_SubscriptionFailed %d\n", idx );
                             write_to_file(wifi_log, "%s WiFi_DiagData_SubscriptionFailed %d\n",tmp, idx);
@@ -394,8 +398,8 @@ rbusError_t events_subHandler(rbusHandle_t handle, rbusEventSubAction_t action, 
                             wifi_util_dbg_print(WIFI_MON, "Exit %s: Event %s\n", __FUNCTION__, eventName);
                             return RBUS_ERROR_BUS_ERROR;
                         }
-                        memset(gdiag_events_json_buffer[idx-1], 0, (CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*MAX_ASSOCIATED_WIFI_DEVS));
-                        snprintf(gdiag_events_json_buffer[idx-1], 
+                        memset(gdiag_events_json_buffer[vap_array_index], 0, (CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*MAX_ASSOCIATED_WIFI_DEVS));
+                        snprintf(gdiag_events_json_buffer[vap_array_index], 
                                     CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*MAX_ASSOCIATED_WIFI_DEVS,
                                     "{"
                                     "\"Version\":\"1.0\","
@@ -433,10 +437,10 @@ rbusError_t events_subHandler(rbusHandle_t handle, rbusEventSubAction_t action, 
                     event->num_subscribers--;
                     if(event->num_subscribers == 0) {
                         event->subscribed = FALSE;
-                        if(gdiag_events_json_buffer[idx-1] != NULL)
+                        if(gdiag_events_json_buffer[vap_array_index] != NULL)
                         {
-                            free(gdiag_events_json_buffer[idx-1]);
-                            gdiag_events_json_buffer[idx-1] = NULL;
+                            free(gdiag_events_json_buffer[vap_array_index]);
+                            gdiag_events_json_buffer[vap_array_index] = NULL;
                         }
                         //unlock event mutex before updating monitor data to avoid deadlock
                         pthread_mutex_unlock(&g_events_lock);
@@ -542,15 +546,14 @@ rbusError_t events_subHandler(rbusHandle_t handle, rbusEventSubAction_t action, 
 
 rbusError_t events_APtable_addrowhandler(rbusHandle_t handle, char const* tableName, char const* aliasName, uint32_t* instNum)
 {
-    static int instanceCounter = 0;
+    static int instanceCounter = 1;
     event_element_t *event;
     unsigned int vap_index;
-    wifi_mgr_t *mgr = get_wifimgr_obj();
 
-    vap_index = VAP_INDEX(mgr->hal_cap, instanceCounter);
-    *instNum = vap_index + 1;
+    *instNum = instanceCounter++;
+    vap_index = *instNum;
+
     wifi_util_dbg_print(WIFI_MON, "%s(): %s %d\n", __FUNCTION__, tableName, *instNum);
-    instanceCounter++;
 
     pthread_mutex_lock(&g_events_lock);
 
@@ -610,27 +613,13 @@ rbusError_t events_APtable_addrowhandler(rbusHandle_t handle, char const* tableN
     return RBUS_ERROR_SUCCESS;
 }
 
-unsigned int getInstanceNumber() {
-    int b_InstanceNumber=0, itr;
-    int count  = queue_count(g_rbus_events_queue);
-    event_element_t* check_event;
-
-    if (g_rbus_events_queue != NULL) {
-        for (itr=0; itr<count; itr++) {
-            check_event = (event_element_t *)queue_peek(g_rbus_events_queue, itr);
-            if ((check_event->type == monitor_event_type_csi) && (b_InstanceNumber < check_event->idx)) {
-                b_InstanceNumber = check_event->idx;
-            }
-        }
-    }
-    return b_InstanceNumber;
-}
 
 rbusError_t events_CSItable_addrowhandler(rbusHandle_t handle, char const* tableName, char const* aliasName, uint32_t* instNum)
 {
+    static int instanceCounter = 1;
     event_element_t *event;
-    
-    *instNum = getInstanceNumber() + 1;
+
+    *instNum = instanceCounter++;
 
     wifi_util_dbg_print(WIFI_MON, "%s(): %s %d\n", __FUNCTION__, tableName, *instNum);
 
@@ -640,7 +629,7 @@ rbusError_t events_CSItable_addrowhandler(rbusHandle_t handle, char const* table
     if(event != NULL)
     {
         sprintf(event->name, "Device.WiFi.X_RDK_CSI.%d.data", *instNum);
-        event->idx = *instNum - 1;
+        event->idx = *instNum;
         event->type = monitor_event_type_csi;
         event->subscribed = FALSE;
         queue_push(g_rbus_events_queue, event);
@@ -729,6 +718,7 @@ rbusError_t events_GetHandler(rbusHandle_t handle, rbusProperty_t property, rbus
     rbusValue_t value;
     unsigned int idx = 0;
     int ret;
+    unsigned int vap_array_index;
 
     pthread_mutex_lock(&g_events_lock);
     name = rbusProperty_GetName(property);
@@ -745,9 +735,10 @@ rbusError_t events_GetHandler(rbusHandle_t handle, rbusProperty_t property, rbus
     {
         rbusValue_Init(&value);
 
-        if(gdiag_events_json_buffer[idx-1] != NULL)
+        getVAPArrayIndexFromVAPIndex((unsigned int) idx-1, &vap_array_index);
+        if(gdiag_events_json_buffer[vap_array_index] != NULL)
         {
-            rbusValue_SetString(value, gdiag_events_json_buffer[idx-1]);
+            rbusValue_SetString(value, gdiag_events_json_buffer[vap_array_index]);
         }
         else
         {

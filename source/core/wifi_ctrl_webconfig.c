@@ -574,42 +574,45 @@ int webconfig_hal_csi_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *
     mac_address_t unique_mac_list[MAX_NUM_CSI_CLIENTS];
     current_config = mgr->csi_data_queue;
 
-    if (new_config == NULL || current_config == NULL) {
+    if (current_config == NULL) {
         wifi_util_error_print(WIFI_MGR,"%s %d NULL pointer \n", __func__, __LINE__);
         return RETURN_ERR;
     }
-    
-    new_config_count  = queue_count(new_config);
-    for (itr=0; itr<new_config_count; itr++) {
-        new_csi_data = (csi_data_t *)queue_peek(new_config, itr);
-        if ((new_csi_data != NULL) && (new_csi_data->enabled)) {
-            for (itrj=0; itrj<new_csi_data->csi_client_count; itrj ++) {
-                found  = false;
-                for (i=0; i<num_unique_mac; i++) {
-                    if (memcmp(new_csi_data->csi_client_list[itrj], unique_mac_list[i], sizeof(mac_address_t)) == 0) {
-                        found  = true;
-                        break;
+
+    //check new configuration did not exceed the max number of csi clients 
+    if(new_config != NULL) {
+        new_config_count = queue_count(new_config);
+        for (itr=0; itr<new_config_count; itr++) {
+            new_csi_data = (csi_data_t *)queue_peek(new_config, itr);
+            if ((new_csi_data != NULL) && (new_csi_data->enabled)) {
+                for (itrj=0; itrj<new_csi_data->csi_client_count; itrj ++) {
+                    found  = false;
+                    for (i=0; i<num_unique_mac; i++) {
+                        if (memcmp(new_csi_data->csi_client_list[itrj], unique_mac_list[i], sizeof(mac_address_t)) == 0) {
+                            found  = true;
+                            break;
+                        }
                     }
-                }
-                if (!found) {
-                    num_unique_mac++;
-                    if (num_unique_mac > MAX_NUM_CSI_CLIENTS) {
-                        wifi_util_error_print(WIFI_MGR,"%s %d MAX_NUM_CSI_CLIENTS reached\n", __func__, __LINE__);
-                        goto free_csi_data;
-                    } else {
-                        memcpy(unique_mac_list[num_unique_mac-1], new_csi_data->csi_client_list[itrj], sizeof(mac_address_t));
+                    if (!found) {
+                        num_unique_mac++;
+                        if (num_unique_mac > MAX_NUM_CSI_CLIENTS) {
+                            wifi_util_error_print(WIFI_MGR,"%s %d MAX_NUM_CSI_CLIENTS reached\n", __func__, __LINE__);
+                            goto free_csi_data;
+                        } else {
+                            memcpy(unique_mac_list[num_unique_mac-1], new_csi_data->csi_client_list[itrj], sizeof(mac_address_t));
+                        }
                     }
                 }
             }
         }
     }
 
-    if (current_config != NULL) {
-        current_config_count = queue_count(current_config);
-        for (itr=0; itr<current_config_count; itr++) {
-            current_csi_data = (csi_data_t *)queue_peek(current_config, itr);
+    current_config_count = queue_count(current_config);
+    for (itr=0; itr<current_config_count; itr++) {
+        current_csi_data = (csi_data_t *)queue_peek(current_config, itr);
+        found = false;
+        if(new_config != NULL) {
             new_config_count = queue_count(new_config);
-            found = false;
             for (itrj=0; itrj<new_config_count; itrj++) {
                 new_csi_data = (csi_data_t *)queue_peek(new_config, itrj);
                 if (new_csi_data != NULL) {
@@ -618,34 +621,37 @@ int webconfig_hal_csi_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *
                     }
                } 
             }
-            if (!found) {
-                csi_del_session(current_csi_data->csi_session_num);
-                current_csi_data = (csi_data_t *)queue_remove(current_config, itr);
-                if (current_csi_data != NULL) {
-                    free(current_csi_data);
-                }
-                current_config_count = queue_count(current_config);
+        }
+        if (!found) {
+            csi_del_session(current_csi_data->csi_session_num);
+            current_csi_data = (csi_data_t *)queue_remove(current_config, itr);
+            if (current_csi_data != NULL) {
+                free(current_csi_data);
             }
+            current_config_count = queue_count(current_config);
         }
     }
+
 
     if (new_config != NULL) {
         new_config_count = queue_count(new_config);
         for (itr=0; itr<new_config_count; itr++) {
             new_csi_data = (csi_data_t *)queue_peek(new_config, itr);
-            current_config_count = queue_count(current_config);
             memset(tmp_cli_list, 0, sizeof(tmp_cli_list));
             found = false;
             data_change = false;
-            for (itrj=0; itrj<current_config_count; itrj++) {
-                current_csi_data = (csi_data_t *)queue_peek(current_config, itrj);
-                if (current_csi_data != NULL) {
-                    if (new_csi_data->csi_session_num == current_csi_data->csi_session_num) {
-                        found = true;
-                        if (memcmp(new_csi_data, current_csi_data, sizeof(csi_data_t)) != 0) {
-                            data_change = true;
+            if (current_config != NULL) {
+                current_config_count = queue_count(current_config);
+                for (itrj=0; itrj<current_config_count; itrj++) {
+                    current_csi_data = (csi_data_t *)queue_peek(current_config, itrj);
+                    if (current_csi_data != NULL) {
+                        if (new_csi_data->csi_session_num == current_csi_data->csi_session_num) {
+                            found = true;
+                            if (memcmp(new_csi_data, current_csi_data, sizeof(csi_data_t)) != 0) {
+                                data_change = true;
+                            }
+                            break;
                         }
-                        break;
                     }
                 }
             }

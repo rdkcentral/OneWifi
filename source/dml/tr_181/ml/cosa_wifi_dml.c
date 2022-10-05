@@ -1533,15 +1533,17 @@ CSI_AddEntry
         ULONG*                      pInsNumber
     )
 {
+    static int instanceCounter = 1;
     wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Inside AddEntry \n",__func__, __LINE__);
     queue_t** csi_entry_queue = (queue_t**)get_csi_entry_queue();
-    unsigned int b_session_num=0, qcount=0,itr;
-    csi_data_t *check_csi_data = NULL;
 
     csi_data_t *csi_data;
     if (*csi_entry_queue == NULL) {
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d NULL Pointer\n", __func__, __LINE__);
-        return (ANSC_HANDLE)NULL;
+        *csi_entry_queue = queue_create();
+        if (*csi_entry_queue == NULL) {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d fail to create csi queue\n", __func__, __LINE__);
+            return (ANSC_HANDLE)NULL;
+        }
     }
 
     csi_data = (csi_data_t *)malloc(sizeof(csi_data_t));
@@ -1551,16 +1553,7 @@ CSI_AddEntry
     }
     memset(csi_data, 0, sizeof(csi_data_t));
 
-    qcount  = queue_count(*csi_entry_queue);
-    if (qcount > 0 ) {
-        for (itr=0; itr<qcount; itr++) {
-            check_csi_data = (csi_data_t *)queue_peek(*csi_entry_queue, itr);
-            if (b_session_num < check_csi_data->csi_session_num) {
-                b_session_num = check_csi_data->csi_session_num;
-            }
-        }
-    }
-    csi_data->csi_session_num = b_session_num + 1;
+    csi_data->csi_session_num = instanceCounter++;
     *pInsNumber = csi_data->csi_session_num;
     queue_push(*csi_entry_queue, csi_data);
     

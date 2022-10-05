@@ -139,6 +139,14 @@ INT deauthGateTime = 0;//ONE_WIFI
 
 static int neighscan_task_id = -1;
 
+#if defined (_XB7_PRODUCT_REQ_) && defined (_COSA_BCM_ARM_)
+#define FEATURE_CSI_CALLBACK 1
+#endif
+
+#if defined (FEATURE_CSI_CALLBACK)
+INT process_csi(mac_address_t mac_addr, wifi_csi_data_t  *csi_data);
+#endif
+
 int executeCommand(char* command,char* result);
 void associated_client_diagnostics();
 void process_instant_msmt_stop (unsigned int ap_index, instant_msmt_t *msmt);
@@ -3086,7 +3094,7 @@ static csi_session_t* csi_get_session(bool create, int csi_session_number) {
     }
 
     memset(csi, 0, sizeof(csi_session_t));
-    csi->csi_time_interval = MIN_CSI_INTERVAL * MILLISEC_TO_MICROSEC;
+    csi->csi_time_interval = MIN_CSI_INTERVAL;
     csi->csi_sess_number = csi_session_number;
     csi->enable = FALSE;
     csi->subscribed = FALSE;
@@ -3515,6 +3523,7 @@ static int csi_sheduler_enable(void)
         }
         free(interval_list);
     }
+#if !defined(FEATURE_CSI_CALLBACK)
     if (enable == TRUE) {
         if (g_monitor_module.csi_sched_id == 0) {
             scheduler_add_timer_task(g_monitor_module.sched, TRUE,
@@ -3534,6 +3543,7 @@ static int csi_sheduler_enable(void)
             g_monitor_module.csi_sched_id = 0;
         }
     }
+#endif
     return 0;
 }
 
@@ -3576,6 +3586,82 @@ static void csi_publish(wifi_monitor_data_t *evtData)
     }
     pthread_mutex_unlock(&g_events_monitor.lock);
 }
+
+#if defined (FEATURE_CSI_CALLBACK)
+bool csi_check_timeout(csi_session_t *csi, struct timeval* t_now)
+{
+    struct timeval interval;
+    int  interval_ms_margin;
+    struct timeval timeout;
+
+    if (csi == NULL || t_now == NULL) {
+        wifi_util_dbg_print(WIFI_MON, "%s: Invalid arguments. csi %p, t_now %p\n",__func__, csi, t_now);
+        return FALSE;
+    }
+    //Need to support the fluctuation of csi interval coming from the driver
+    interval_ms_margin = csi->csi_time_interval - (MIN_CSI_INTERVAL/2);
+
+    interval.tv_sec = (interval_ms_margin / 1000);
+    interval.tv_usec = (interval_ms_margin % 1000) * 1000;
+    timeradd(&(csi->last_snapshot_time), &interval, &timeout);
+    if (timercmp(t_now, &timeout, >)) {
+        return TRUE;
+    } else {
+        return FALSE;
+    }
+}
+
+INT process_csi(mac_address_t mac_addr, wifi_csi_data_t  *csi_data)
+{
+    struct timeval t_now;
+    int i, j;
+    int csi_subscribers_count = 0;
+    bool mac_found = FALSE;
+    csi_session_t *csi = NULL;
+    wifi_monitor_data_t evtData;
+
+    wifi_util_dbg_print(WIFI_MON, "%s: CSI data received - MAC  %02x:%02x:%02x:%02x:%02x:%02x\n",__func__, mac_addr[0], mac_addr[1],
+                                                        mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
+    gettimeofday(&t_now, NULL);
+
+    evtData.event_type = monitor_event_type_csi;
+    memcpy(evtData.u.csi.sta_mac, mac_addr, sizeof(mac_addr_t));
+    memcpy(&evtData.u.csi.csi, csi_data, sizeof(wifi_csi_data_t));
+
+    pthread_mutex_lock(&g_events_monitor.lock);
+    csi_subscribers_count = queue_count(g_events_monitor.csi_queue);
+
+    for (i =0; i < csi_subscribers_count; i++) {
+        mac_found = FALSE;
+        csi = queue_peek(g_events_monitor.csi_queue, i);
+        if (csi == NULL || !(csi->enable && csi->subscribed)) {
+            continue;
+        }
+        for (j = 0; j < csi->no_of_mac; j++) {
+            if (csi->mac_is_connected[j] == FALSE) {
+                continue;
+            }
+            if (memcmp(mac_addr, csi->mac_list[j], sizeof(mac_addr_t)) == 0) {
+                mac_found = TRUE;
+                break;
+            }
+        }
+        if (mac_found == TRUE) {
+            evtData.csi_session = csi->csi_sess_number;
+            //check interval
+            if (csi->csi_time_interval == MIN_CSI_INTERVAL || csi_check_timeout(csi, &t_now)) {
+                evtData.csi_session = csi->csi_sess_number;
+                wifi_util_dbg_print(WIFI_MON, "%s: Publish CSI Event - MAC  %02x:%02x:%02x:%02x:%02x:%02x Session %d\n",__func__, mac_addr[0], mac_addr[1],
+                                                        mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5], csi->csi_sess_number);
+                events_publish(evtData);
+                csi->last_snapshot_time = t_now;
+            }
+        }
+    }
+    pthread_mutex_unlock(&g_events_monitor.lock);
+    return 0;
+}
+#endif
 
 int csi_getCSIData(void *arg)
 {
@@ -4523,8 +4609,9 @@ int init_wifi_monitor ()
     g_monitor_module.csi_sched_interval = 0;
     g_monitor_module.neighbor_scan_id = 0;
     for (i = 0; i < getTotalNumberVAPs(); i++) {
+        vap_index = VAP_INDEX(mgr->hal_cap, i);
         g_monitor_module.clientdiag_id[i] = 0;
-        g_monitor_module.clientdiag_sched_arg[i] = i;
+        g_monitor_module.clientdiag_sched_arg[i] = vap_index;
         g_monitor_module.clientdiag_sched_interval[i] = 0;
     }
     memset(g_events_monitor.vap_ip, '\0', sizeof(g_events_monitor.vap_ip));
@@ -4581,6 +4668,9 @@ int init_wifi_monitor ()
 #if !defined(_PLATFORM_RASPBERRYPI_) && !defined(_PLATFORM_TURRIS_)
     wifi_hal_apDeAuthEvent_callback_register(device_deauthenticated);
     wifi_hal_apDisassociatedDevice_callback_register(device_disassociated);
+#endif
+#if defined(FEATURE_CSI_CALLBACK)
+    wifi_csi_callback_register(process_csi);
 #endif
     pthread_mutex_unlock(&g_apRegister_lock);
 
