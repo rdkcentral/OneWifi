@@ -1065,6 +1065,14 @@ void telemetry_bootup_time_wifibroadcast()
     }
 }
 
+void check_log_upload_cron_job()
+{
+    if (access("/nvram/wifi_log_upload",F_OK) == 0) {
+        wifi_util_dbg_print(WIFI_CTRL,"Device.WiFi.Log_Uploadd cronjob was added\n");
+        v_secure_system("/usr/ccsp/wifi/wifi_logupload.sh start");
+    }
+}
+
 int start_wifi_ctrl(wifi_ctrl_t *ctrl)
 {
     wifi_apps_t     *analytics = NULL;
@@ -1076,6 +1084,10 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
     start_wifi_services();
 
     telemetry_bootup_time_wifibroadcast(); //Telemetry Marker for btime_wifibcast_split
+
+    /* Check for whether Log_Upload was enabled or not
+       If Enabled add cron job to do log upload */
+    check_log_upload_cron_job();
 
     /* start wifi apps */
     wifi_hal_platform_post_init();

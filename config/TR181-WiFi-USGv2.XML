@@ -283,6 +283,18 @@
             <syntax>bool</syntax>
             <writable>true</writable>
         </parameter>
+        <parameter>
+            <name>Log_Enable</name>
+            <type>string</type>
+            <syntax>string</syntax>
+            <writable>true</writable>
+        </parameter>
+        <parameter>
+            <name>Log_Upload</name>
+            <type>boolean</type>
+            <syntax>bool</syntax>
+            <writable>true</writable>
+        </parameter>
 	</parameters>
 	<objects>
         <object>

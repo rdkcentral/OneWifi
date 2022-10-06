@@ -821,6 +821,26 @@ CosaDmlWiFi_EnableTelnet(BOOL bEnabled)
 
 }
 
+int
+CosaDmlWiFi_Logfiles_validation(char *param)
+{
+    char * pch = strtok (param,",");
+    while (pch != NULL)
+    {
+        if ((strcmp(pch,"wifiDbDbg")== 0)  || (strcmp(pch,"wifiMgrDbg")== 0)  || (strcmp(pch,"wifiWebConfigDbg")== 0)  ||(strcmp(pch,"wifiCtrlDbg")== 0) \
+          || (strcmp(pch,"wifiPasspointDbg")== 0)  || (strcmp(pch,"wifiDppDbg")== 0)  || (strcmp(pch,"wifiMonDbg")== 0)  ||(strcmp(pch,"wifiDMCLI")== 0)  || (strcmp(pch,"wifiLib")== 0) \
+          || (strcmp(pch,"wifiPsm")== 0)  || (strcmp(pch,"wifiLibhostapDbg")== 0)  || (strcmp(pch,"wifiHalDbg")== 0) ) {
+            wifi_util_dbg_print(WIFI_DMCLI,"continue to strtok %s\n",pch);
+        }
+        else if (strlen(pch)!=0 || (strcmp(pch,"") == 0)) {
+            wifi_util_dbg_print(WIFI_DMCLI,"api invalid param %s\n",pch);
+            return -1;
+        }
+        pch = strtok (NULL, ",");
+    }
+    return 0;
+}
+
 ANSC_STATUS
 CosaDmlWiFi_setWebConfig(char *webconfstr, int size,uint8_t ssid)
 {

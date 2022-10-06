@@ -198,6 +198,7 @@ static BOOL IsSsidHotspot(ULONG ins)
                 The instance handle;
 
                 char*                       ParamName,
+ 
                 The parameter name;
 
                 BOOL*                       pBool
@@ -215,6 +216,9 @@ WiFi_GetParamBoolValue
     )
 {
     UNREFERENCED_PARAMETER(hInsContext);
+    FILE *fp;
+    char path[32] = {0};
+    int val =0 ;
     wifi_global_param_t *pcfg = (wifi_global_param_t *) get_dml_wifi_global_param();
 
     if(pcfg== NULL)
@@ -339,6 +343,22 @@ WiFi_GetParamBoolValue
     if (AnscEqualString(ParamName, "WiFi-Interworking", TRUE))
     {
         *pBool = rfc_pcfg->wifiinterworking_rfc;
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "Log_Upload", TRUE))
+    {
+        fp = popen("crontab -l | grep -c copy_wifi_logs.sh","r");
+        while(fgets(path,sizeof(path) , fp) != NULL) {
+            val = atoi(path);
+            if(val == 1) {
+                *pBool = TRUE;
+            }
+            else  {
+                *pBool = FALSE;
+            }
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Log_upload got %s and val=%d\n", __FUNCTION__,__LINE__,path,val);
+        }
+        fclose(fp);
         return TRUE;
     }
     return FALSE;
@@ -489,7 +509,6 @@ WiFi_GetParamUlongValue
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     return FALSE;
 }
-
 /**********************************************************************  
 
     caller:     owner of this object 
@@ -537,8 +556,8 @@ WiFi_GetParamStringValue
         ULONG*                      pUlSize
     )
 {
+    errno_t  rc  = -1;
     UNREFERENCED_PARAMETER(hInsContext);
-
     if (!ParamName || !pValue || !pUlSize || *pUlSize < 1)
         return -1;
 
@@ -570,7 +589,150 @@ WiFi_GetParamStringValue
 	WiFi_GetGasConfig(pValue);
         return 0;
     }
-
+    if (AnscEqualString(ParamName, "Log_Enable", TRUE))
+    {
+        char dest[512] = {0};
+        if(access("/nvram/wifiDbDbg",F_OK) == 0)
+        {
+            if (AnscSizeOfString(dest)!= 0) {
+                rc = strcat_s(dest,sizeof(dest),",wifiDbDbg");
+                ERR_CHK(rc);
+            }
+            else {
+                rc = strcat_s(dest,sizeof(dest),"wifiDbDbg");
+                ERR_CHK(rc);
+           }
+        }
+        if(access("/nvram/wifiMgrDbg",F_OK) == 0)
+        {
+            if (AnscSizeOfString(dest)!= 0) {
+                rc = strcat_s(dest,sizeof(dest),",wifiMgrDbg");
+                ERR_CHK(rc);
+            }
+            else {
+                rc = strcat_s(dest,sizeof(dest),"wifiMgrDbg");
+                ERR_CHK(rc);
+           }
+        }
+        if(access("/nvram/wifiCtrlDbg",F_OK) == 0)
+        {
+            if (AnscSizeOfString(dest)!= 0) {
+                rc = strcat_s(dest,sizeof(dest),",wifiCtrlDbg");
+                ERR_CHK(rc);
+            }
+            else {
+                rc = strcat_s(dest,sizeof(dest),"wifiCtrlDbg");
+                ERR_CHK(rc);
+           }
+        }
+        if(access("/nvram/wifiLib",F_OK) == 0)
+        {
+            if (AnscSizeOfString(dest)!= 0) {
+                rc = strcat_s(dest,sizeof(dest),",wifiLib");
+                ERR_CHK(rc);
+            }
+            else {
+                rc = strcat_s(dest,sizeof(dest),"wifiLib");
+                ERR_CHK(rc);
+           }
+        }
+        if(access("/nvram/wifiWebConfigDbg",F_OK) == 0)
+        {
+            if (AnscSizeOfString(dest)!= 0) {
+                rc = strcat_s(dest,sizeof(dest),",wifiWebConfigDbg");
+                ERR_CHK(rc);
+            }
+            else {
+                rc = strcat_s(dest,sizeof(dest),"wifiWebConfigDbg");
+                ERR_CHK(rc);
+           }
+        }
+        if(access("/nvram/wifiPasspointDbg",F_OK) == 0)
+        {
+            if (AnscSizeOfString(dest)!= 0) {
+                rc = strcat_s(dest,sizeof(dest),",wifiPasspointDbg");
+                ERR_CHK(rc);
+            }
+            else {
+                rc = strcat_s(dest,sizeof(dest),"wifiPasspointDbg");
+                ERR_CHK(rc);
+           }
+        }
+        if(access("/nvram/wifiDppDbg",F_OK) == 0)
+        {
+            if (AnscSizeOfString(dest)!= 0) {
+                rc = strcat_s(dest,sizeof(dest),",wifiDppDbg");
+                ERR_CHK(rc);
+            }
+            else {
+                rc = strcat_s(dest,sizeof(dest),"wifiDppDbg");
+                ERR_CHK(rc);
+           }
+        }
+        if(access("/nvram/wifiMonDbg",F_OK) == 0)
+        {
+            if (AnscSizeOfString(dest)!= 0) {
+                rc = strcat_s(dest,sizeof(dest),",wifiMonDbg");
+                ERR_CHK(rc);
+            }
+            else {
+                rc = strcat_s(dest,sizeof(dest),"wifiMonDbg");
+                ERR_CHK(rc);
+           }
+        }
+        if(access("/nvram/wifiDMCLI",F_OK) == 0)
+        {
+            if (AnscSizeOfString(dest)!= 0) {
+                rc = strcat_s(dest,sizeof(dest),",wifiDMCLI");
+                ERR_CHK(rc);
+            }
+            else {
+                rc = strcat_s(dest,sizeof(dest),"wifiDMCLI");
+                ERR_CHK(rc);
+           }
+        }
+        if(access("/nvram/wifiPsm",F_OK) == 0)
+        {
+            if (AnscSizeOfString(dest)!= 0) {
+                rc = strcat_s(dest,sizeof(dest),",wifiPsm");
+                ERR_CHK(rc);
+            }
+            else {
+                rc = strcat_s(dest,sizeof(dest),"wifiPsm");
+                ERR_CHK(rc);
+           }
+        }
+        if(access("/nvram/wifiLibhostapDbg",F_OK) == 0)
+        {
+            if (AnscSizeOfString(dest)!= 0) {
+                rc = strcat_s(dest,sizeof(dest),",wifiLibhostapDbg");
+                ERR_CHK(rc);
+            }
+            else {
+                rc = strcat_s(dest,sizeof(dest),"wifiLibhostapDbg");
+                ERR_CHK(rc);
+           }
+        }
+        if(access("/nvram/wifiHalDbg",F_OK) == 0)
+        {
+            if (AnscSizeOfString(dest)!= 0) {
+                rc = strcat_s(dest,sizeof(dest),",wifiHalDbg");
+                ERR_CHK(rc);
+            }
+            else {
+                rc = strcat_s(dest,sizeof(dest),"wifiHalDbg");
+                ERR_CHK(rc);
+           }
+        }
+        if ( AnscSizeOfString(dest) < *pUlSize) {
+            AnscCopyString(pValue, dest);
+            return 0;
+        }
+        else {
+            *pUlSize = AnscSizeOfString(dest)+1;
+            return 1;
+        }
+    }  
     return 0;
 }
 
@@ -844,9 +1006,21 @@ WiFi_SetParamBoolValue
         return TRUE;
     }
 
+    if (AnscEqualString(ParamName, "Log_Upload", TRUE))
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Log_upload set\n", __FUNCTION__,__LINE__);
+        if (bValue) {
+            v_secure_system("/usr/ccsp/wifi/wifi_logupload.sh start");
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Log_upload started\n", __FUNCTION__,__LINE__);
+        } else {
+            v_secure_system("/usr/ccsp/wifi/wifi_logupload.sh stop");
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Log_upload stopped\n", __FUNCTION__,__LINE__);
+        }
+        return TRUE;
+    }
+
     return FALSE;
 }
-
 BOOL
 WiFi_SetParamStringValue
     (
@@ -864,6 +1038,7 @@ WiFi_SetParamStringValue
     }
 
         errno_t rc = -1;
+        int flag = 0;
         int ind = -1;
 
     if (!ParamName || !pString)
@@ -996,7 +1171,42 @@ WiFi_SetParamStringValue
         return FALSE;
 #endif
     }
-    return FALSE;	
+    rc = strcmp_s("Log_Enable", strlen("Log_Enable"), ParamName, &ind);
+    ERR_CHK(rc);
+    if((rc == EOK) && (!ind)) {
+        char str[1024] = "";
+        strcpy(str,pString);
+        flag = CosaDmlWiFi_Logfiles_validation(str);
+        if(flag == -1) {
+            wifi_util_dbg_print(WIFI_DMCLI,"Log_Enable has invalid params in string\n");
+            return FALSE;
+        }
+        remove("/nvram/wifiDbDbg");
+        remove("/nvram/wifiMgrDbg");
+        remove("/nvram/wifiWebConfigDbg");
+        remove("/nvram/wifiCtrlDbg");
+        remove("/nvram/wifiPasspointDbg");
+        remove("/nvram/wifiDppDbg");
+        remove("/nvram/wifiMonDbg");
+        remove("/nvram/wifiDMCLI");
+        remove("/nvram/wifiLib");
+        remove("/nvram/wifiPsm");
+        remove("/nvram/wifiLibhostapDbg");
+        remove("/nvram/wifiHalDbg");
+        FILE *fp = NULL;
+        char * token = strtok(pString, ",");
+        while( token != NULL ) {
+            char dest[128]="/nvram/";
+            strncat(dest,token,strlen(token));
+            fp = fopen(dest,"w" );
+            if (fp != NULL) {
+                fclose(fp);
+            }
+            token = strtok(NULL, ",");
+        }
+        return TRUE;
+    }
+    return FALSE;
 }
 
 /**********************************************************************  
