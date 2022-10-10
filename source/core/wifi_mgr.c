@@ -1231,7 +1231,7 @@ int get_all_param_from_psm_and_set_into_db(void)
             get_wifi_last_reboot_reason_psm_value(last_reboot_reason);
         }
 
-        if (((wifi_psm_db_enabled == false) && (strncmp(last_reboot_reason, "factory-reset", strlen("factory-reset")) != 0)) || (g_wifidb->is_db_update_required == true)) {
+        if (g_wifidb->is_db_update_required == true) {
             int retval;
             retval = wifi_db_update_psm_values();
             if (retval == RETURN_OK) {
@@ -1241,11 +1241,10 @@ int get_all_param_from_psm_and_set_into_db(void)
                 return RETURN_ERR;
             }
             sleep(1);
-            set_rbus_bool_param(rbus_handle, WIFI_PSM_DB_NAMESPACE, true);
-            set_bool_psm_value(true, WIFI_PSM_DB_NAMESPACE);
-        } else if ((wifi_psm_db_enabled == false) && (strncmp(last_reboot_reason, "factory-reset", strlen("factory-reset")) == 0)) {
-            set_rbus_bool_param(rbus_handle, WIFI_PSM_DB_NAMESPACE, true);
-            set_bool_psm_value(true, WIFI_PSM_DB_NAMESPACE);
+        }
+
+        if (wifi_psm_db_enabled == true) {
+            set_bool_psm_value(false, WIFI_PSM_DB_NAMESPACE);
         }
 
     }
