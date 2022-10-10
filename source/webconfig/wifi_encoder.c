@@ -62,9 +62,12 @@ webconfig_error_t encode_radio_object(const rdk_wifi_radio_t *radio, cJSON *radi
 {
     const wifi_radio_operationParam_t *radio_info;
     char channel_list[BUFFER_LENGTH_WIFIDB] = {0}, str[BUFFER_LENGTH_WIFIDB] = {0};
+    char chan_buf[256] = {0};
     unsigned int num_channels, i, k = 0, len = sizeof(channel_list) - 1;
     int itr = 0, arr_size = 0;
     cJSON *obj;
+    CHAR buf[256] = {'\0'};
+    UINT index = 0;
 
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(radio_object, "WifiRadioSetup", obj);
@@ -151,6 +154,29 @@ webconfig_error_t encode_radio_object(const rdk_wifi_radio_t *radio, cJSON *radi
     // OperatingEnvironment
     cJSON_AddStringToObject(radio_object, "OperatingEnvironment", str);
     
+    // DFS Enable
+    cJSON_AddBoolToObject(radio_object, "DFSEnable", radio_info->DfsEnabled);
+
+    //DFSAtBootup
+    cJSON_AddBoolToObject(radio_object, "DfsEnabledBootup", radio_info->DfsEnabledBootup);
+
+    // ChannelAvailability
+    memset(chan_buf,0,sizeof(chan_buf));
+    i=0;
+    while (radio_info->channel_map[i].ch_number != 0)
+    {
+      index+=sprintf(&buf[index],"%d:%d,", radio_info->channel_map[i].ch_number, radio_info->channel_map[i].ch_state);
+      i++;
+    }
+    if (strlen(buf) > 0) {
+      strncpy(chan_buf,buf,strlen(buf)-1);
+    }
+    else { 
+      strcpy(chan_buf, " ");
+    }
+    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s Channel Availability State Buffer %s\n",__FUNCTION__,chan_buf);
+    cJSON_AddStringToObject(radio_object, "ChannelAvailability", chan_buf);
+
     // DcsEnabled
     cJSON_AddBoolToObject(radio_object, "DcsEnabled", radio_info->DCSEnabled);
 

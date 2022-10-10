@@ -193,6 +193,7 @@ void callback_Wifi_Radio_Config(ovsdb_update_monitor_t *mon,
     wifi_mgr_t *g_wifidb;
     g_wifidb = get_wifimgr_obj();
     wifi_radio_operationParam_t *l_radio_cfg = NULL;
+    wifi_rfc_dml_parameters_t *rfc_param = get_wifi_db_rfc_parameters();
 
     wifi_util_dbg_print(WIFI_DB,"%s:%d\n", __func__, __LINE__);
 
@@ -261,6 +262,8 @@ void callback_Wifi_Radio_Config(ovsdb_update_monitor_t *mon,
             l_radio_cfg->operatingEnvironment = new_rec->operating_environment;
         }
         l_radio_cfg->DCSEnabled = new_rec->dcs_enabled;
+        l_radio_cfg->DfsEnabled = new_rec->dfs_enabled;
+        l_radio_cfg->DfsEnabledBootup = rfc_param->dfsatbootup_rfc;
         l_radio_cfg->dtimPeriod = new_rec->dtim_period;
         if (new_rec->beacon_interval != 0) {
             l_radio_cfg->beaconInterval = new_rec->beacon_interval;
@@ -1304,6 +1307,7 @@ int wifidb_update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t
     cfg.country = config->countryCode;
     cfg.operating_environment = config->operatingEnvironment;
     cfg.dcs_enabled = config->DCSEnabled;
+    cfg.dfs_enabled = config->DfsEnabled;
     cfg.dtim_period = config->dtimPeriod;
     cfg.beacon_interval = config->beaconInterval;
     cfg.operating_class = config->operatingClass;
@@ -1373,6 +1377,7 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
     char *tmp, *ptr;
     wifi_db_t *g_wifidb;
     g_wifidb = (wifi_db_t*) get_wifidb_obj();
+    wifi_rfc_dml_parameters_t *rfc_param = get_wifi_db_rfc_parameters();
 
     if((config == NULL) || (convert_radio_to_name(radio_index,name)!=0))
     {
@@ -1403,6 +1408,8 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
         config->operatingEnvironment = cfg->operating_environment;
     }
     config->DCSEnabled = cfg->dcs_enabled;
+    config->DfsEnabled = cfg->dfs_enabled;
+    config->DfsEnabledBootup = rfc_param->dfsatbootup_rfc;
     config->dtimPeriod = cfg->dtim_period;
     if (cfg->beacon_interval != 0) {
         config->beaconInterval = cfg->beacon_interval;
@@ -3028,6 +3035,8 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
     wifi_radio_operationParam_t cfg;
     memset(&cfg,0,sizeof(cfg));
 
+    wifi_radio_capabilities_t radio_capab = g_wifidb->hal_cap.wifi_prop.radiocap[radio_index];
+
     if (radio_index  == 0) {
         cfg.band = WIFI_FREQUENCY_2_4_BAND;
         cfg.enable = true;
@@ -3055,6 +3064,15 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
         cfg.variant = WIFI_80211_VARIANT_AX;
     }
 
+    for (int i=0; i<radio_capab.channel_list[0].num_channels; i++)
+    {
+        cfg.channel_map[i].ch_number = radio_capab.channel_list[0].channels_list[i];
+        if ( (cfg.band == WIFI_FREQUENCY_5_BAND || cfg.band == WIFI_FREQUENCY_5L_BAND || cfg.band == WIFI_FREQUENCY_5H_BAND ) && ((radio_capab.channel_list[0].channels_list[i] >= 52) && (radio_capab.channel_list[0].channels_list[i] <= 144))) {
+            cfg.channel_map[i].ch_state = CHAN_STATE_DFS_NOP_FINISHED;
+        } else {
+            cfg.channel_map[i].ch_state = CHAN_STATE_AVAILABLE;
+        }
+    }
     cfg.autoChannelEnabled = true;
     cfg.csa_beacon_count = 100;
     cfg.countryCode = wifi_countrycode_US;
@@ -3500,6 +3518,7 @@ void init_wifidb_data()
     int num_radio = getNumberRadios();
     wifi_vap_info_map_t *l_vap_param_cfg = NULL;
     wifi_radio_operationParam_t *l_radio_cfg = NULL;
+    wifi_rfc_dml_parameters_t *rfc_param = get_wifi_db_rfc_parameters();
 
     wifi_util_dbg_print(WIFI_DB,"%s:%d No of radios %d\n",__func__, __LINE__,getNumberRadios());
 
@@ -3510,6 +3529,9 @@ void init_wifidb_data()
         return ;
     }
     wifidb_init_default_value();
+    if (wifidb_get_rfc_config(0,rfc_param) != 0) {
+        wifi_util_dbg_print(WIFI_DB,"%s:%d: Error getting RFC config\n",__func__, __LINE__);
+    }
     pthread_mutex_lock(&g_wifidb->data_cache_lock);
     for (r_index = 0; r_index < num_radio; r_index++)
     {

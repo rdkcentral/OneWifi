@@ -106,6 +106,21 @@
     }   \
 }   \
 
+bool is_valid_channel(unsigned int channel, bool dfs)
+{
+    if (channel >= 50 && channel <= 144) {
+        if (dfs == true) {
+            return true;
+        } else {
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: invalid channel=%d  dfc = %d\r\n",__func__, __LINE__, channel, dfs);
+        }
+    } else {
+        return true;
+    }
+
+    return false;
+}
+
 webconfig_error_t decode_ipv4_address(char *ip) {
     struct sockaddr_in sa;
 
@@ -2161,7 +2176,7 @@ webconfig_error_t decode_gas_config(const cJSON *gas, wifi_GASConfiguration_t *g
     return webconfig_error_none;
 }
 
-webconfig_error_t decode_wifi_channel(wifi_freq_bands_t wifi_band, UINT *wifi_radio_channel, UINT wifi_channel)
+webconfig_error_t decode_wifi_channel(wifi_freq_bands_t wifi_band, UINT *wifi_radio_channel, BOOL dfs_enable, UINT wifi_channel)
 {
 
     if (wifi_band == WIFI_FREQUENCY_2_4_BAND) {
@@ -2171,7 +2186,7 @@ webconfig_error_t decode_wifi_channel(wifi_freq_bands_t wifi_band, UINT *wifi_ra
             return webconfig_error_decode;
         }
     } else if (wifi_band == WIFI_FREQUENCY_5_BAND) {
-        if ((wifi_channel >= 36) && (wifi_channel <= 165)) {
+        if (is_valid_channel(wifi_channel, dfs_enable)) {
             *wifi_radio_channel = wifi_channel;
         } else {
             return webconfig_error_decode;
@@ -2275,6 +2290,9 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
     unsigned int num_of_channel = 0;
     int ret;
     int radio_index = 0;
+    char* ctx = NULL;
+    int idx = 0;
+    char tmp_buf[256];
     wifi_radio_operationParam_t *radio_info = &radio->oper;
 
     // WifiRadioSetup
@@ -2320,9 +2338,27 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
     decode_param_bool(obj_radio, "AutoChannelEnabled", param);
     radio_info->autoChannelEnabled = (param->type & cJSON_True) ? true:false;
 
+    // DFSEnable
+    decode_param_bool(obj_radio, "DFSEnable", param);
+    radio_info->DfsEnabled = (param->type & cJSON_True) ? true:false;
+
+    // DfsEnabledBootup
+    decode_param_bool(obj_radio, "DfsEnabledBootup", param);
+    radio_info->DfsEnabledBootup = (param->type & cJSON_True) ? true:false;
+
+    // ChannelAvailability
+    decode_param_string(obj_radio, "ChannelAvailability", param);
+    strncpy(tmp_buf,param->valuestring,strlen(param->valuestring));
+    char* token = strtok_r(tmp_buf, ",", &ctx);
+    while (token != NULL){
+        sscanf( token, "%d:%d", &radio_info->channel_map[idx].ch_number, (int*)&radio_info->channel_map[idx].ch_state );
+        idx++;
+        token = strtok_r(NULL, ",", &ctx);
+    }
+
     // Channel
     decode_param_integer(obj_radio, "Channel", param);
-    ret = decode_wifi_channel(radio_info->band, &radio_info->channel, param->valuedouble);
+    ret = decode_wifi_channel(radio_info->band, &radio_info->channel, radio_info->DfsEnabled, param->valuedouble);
     if (ret != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"Invalid wifi radio channel configuration. channel %d\n", radio_info->channel);
         //strncpy(execRetVal->ErrorMsg, "Invalid wifi radio channel config",sizeof(execRetVal->ErrorMsg)-1);
@@ -2360,8 +2396,12 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
     radio_info->channelWidth = param->valuedouble;
     if ((radio_info->channelWidth < WIFI_CHANNELBANDWIDTH_20MHZ)
             || (radio_info->channelWidth > WIFI_CHANNELBANDWIDTH_80_80MHZ)) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"Invalid wifi radio channelWidth[%d] configuration,\
-            should be between %d and %d\n", radio_info->channelWidth, WIFI_CHANNELBANDWIDTH_20MHZ,
+        if ( (radio_info->channelWidth == WIFI_CHANNELBANDWIDTH_160MHZ) && (radio_info->band == WIFI_FREQUENCY_5_BAND || radio_info->band == WIFI_FREQUENCY_5L_BAND || radio_info->band == WIFI_FREQUENCY_5H_BAND) && (radio_info->DfsEnabled != true) )
+        {
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: DFS Disabled!! Cannot set to ChanWidth = %d  \n",__func__, __LINE__,radio_info->channelWidth);
+            return webconfig_error_decode;
+        }
+        wifi_util_error_print(WIFI_WEBCONFIG,"Invalid wifi radio channelWidth[%d] configuration, should be between %d and %d\n", radio_info->channelWidth, WIFI_CHANNELBANDWIDTH_20MHZ,
                                             WIFI_CHANNELBANDWIDTH_80_80MHZ);
         return webconfig_error_decode;
     }

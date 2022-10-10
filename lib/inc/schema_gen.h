@@ -1514,6 +1514,7 @@
         PJS_OVS_INT(country) \
         PJS_OVS_INT(operating_environment) \
         PJS_OVS_BOOL(dcs_enabled) \
+        PJS_OVS_BOOL(dfs_enabled) \
         PJS_OVS_UUID(vap_configs) \
         PJS_OVS_INT(dtim_period) \
         PJS_OVS_INT(beacon_interval) \
@@ -3097,6 +3098,7 @@
     COLUMN(country) \
     COLUMN(operating_environment) \
     COLUMN(dcs_enabled) \
+    COLUMN(dfs_enabled) \
     COLUMN(vap_configs) \
     COLUMN(dtim_period) \
     COLUMN(beacon_interval) \
@@ -4292,6 +4294,7 @@
 #define SCHEMA__Wifi_Radio_Config__country "country"
 #define SCHEMA__Wifi_Radio_Config__operating_environment "operating_environment"
 #define SCHEMA__Wifi_Radio_Config__dcs_enabled "dcs_enabled"
+#define SCHEMA__Wifi_Radio_Config__dfs_enabled "dfs_enabled"
 #define SCHEMA__Wifi_Radio_Config__vap_configs "vap_configs"
 #define SCHEMA__Wifi_Radio_Config__dtim_period "dtim_period"
 #define SCHEMA__Wifi_Radio_Config__beacon_interva  "beacon_interval"

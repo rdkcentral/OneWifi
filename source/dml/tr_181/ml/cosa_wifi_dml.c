@@ -2337,6 +2337,7 @@ Radio_GetParamBoolValue
     ULONG instance_number = 0;
     convert_freq_band_to_dml_radio_index(pcfg->band, &instance_number);
     dml_radio_default *rcfg = (dml_radio_default *) get_radio_default_obj(instance_number - 1);
+    wifi_radio_capabilities_t radio_capab = ((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop.radiocap[instance_number - 1];
 
     if(rcfg == NULL) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
@@ -2385,19 +2386,22 @@ Radio_GetParamBoolValue
 
     if (AnscEqualString(ParamName, "X_COMCAST_COM_DFSSupport", TRUE))
     {
-        if(instance_number == 1) {
-           *pBool = FALSE;
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d X_COMCAST_COM_DFSSupport band %d num_channels %d\n", __FUNCTION__,__LINE__, pcfg->band, radio_capab.channel_list[0].num_channels);
+        for (int i=0; i<radio_capab.channel_list[0].num_channels; i++) {
+            if ( (pcfg->band == WIFI_FREQUENCY_5_BAND || pcfg->band == WIFI_FREQUENCY_5L_BAND || pcfg->band == WIFI_FREQUENCY_5H_BAND) && (radio_capab.channel_list[0].channels_list[i] >=52 && radio_capab.channel_list[0].channels_list[i] <=144) )
+            {
+                *pBool = TRUE;
+                return TRUE;
+            }
         }
-        else {
-           *pBool = TRUE;
-        }
+        *pBool = FALSE;
         return TRUE;
     }
 
     if( AnscEqualString(ParamName, "X_COMCAST_COM_DFSEnable", TRUE))
     {
         /* collect value */
-        *pBool = rcfg->DFSEnabled;
+        *pBool = pcfg->DfsEnabled;
         return TRUE;
     }
 
@@ -3435,7 +3439,13 @@ Radio_SetParamBoolValue
 
     if( AnscEqualString(ParamName, "X_COMCAST_COM_DFSEnable", TRUE))
     {
-        rcfg->DFSEnabled = bValue;
+        wifi_rfc_dml_parameters_t *rfc_pcfg = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
+        if (!(rfc_pcfg->dfs_rfc)) {
+            CcspWifiTrace(("RDK_LOG_ERROR, DFS RFC DISABLED\n" ));
+            return FALSE;
+        }
+        wifiRadioOperParam->DfsEnabled = bValue;
+        is_radio_config_changed = TRUE;
         return TRUE;
     }
 

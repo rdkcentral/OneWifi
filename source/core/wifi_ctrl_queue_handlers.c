@@ -1214,16 +1214,62 @@ void process_dfs_rfc(bool type)
 {
     wifi_util_dbg_print(WIFI_DB,"WIFI Enter RFC Func %s: %d : bool %d\n",__FUNCTION__,__LINE__,type);
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
-	rfc_param->dfs_rfc = type;
+    wifi_mgr_t *g_wifidb;
+    g_wifidb = get_wifimgr_obj();
+
+    rfc_param->dfs_rfc = type;
     wifidb_update_rfc_config(0, rfc_param);
+
+    for(UINT rIdx = 0; rIdx < getNumberRadios(); rIdx++) {
+        wifi_radio_operationParam_t *radio_params = NULL;
+        int ret;
+        radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(rIdx);
+        if (radio_params->band == WIFI_FREQUENCY_5_BAND || radio_params->band == WIFI_FREQUENCY_5L_BAND || radio_params->band == WIFI_FREQUENCY_5H_BAND) {
+            pthread_mutex_lock(&g_wifidb->data_cache_lock);
+            radio_params->DfsEnabled = type;
+            pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+            ret = wifi_hal_setRadioOperatingParameters(rIdx, radio_params);
+            if (ret != RETURN_OK) {
+                wifi_util_error_print(WIFI_CTRL,"%s: wifi radio parameter set failure\n",__FUNCTION__);
+                return;
+            } else {
+                wifi_util_info_print(WIFI_CTRL,"%s: wifi radio parameter set success\n",__FUNCTION__);
+            }
+            g_wifidb->ctrl.webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
+            update_wifi_radio_config(rIdx, radio_params);
+        }
+    }
 }
 
 void process_dfs_atbootup_rfc(bool type)
 {
     wifi_util_dbg_print(WIFI_DB,"WIFI Enter RFC Func %s: %d : bool %d\n",__FUNCTION__,__LINE__,type);
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
+    wifi_mgr_t *g_wifidb;
+    g_wifidb = get_wifimgr_obj();
+
     rfc_param->dfsatbootup_rfc = type;
     wifidb_update_rfc_config(0, rfc_param);
+
+    for(UINT rIdx = 0; rIdx < getNumberRadios(); rIdx++) {
+        int ret;
+        wifi_radio_operationParam_t *radio_params = NULL;
+        radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(rIdx);
+        if (radio_params->band == WIFI_FREQUENCY_5_BAND || radio_params->band == WIFI_FREQUENCY_5L_BAND || radio_params->band == WIFI_FREQUENCY_5H_BAND) {
+            pthread_mutex_lock(&g_wifidb->data_cache_lock);
+            radio_params->DfsEnabledBootup = type;
+            pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+            ret = wifi_hal_setRadioOperatingParameters(rIdx, radio_params);
+            if (ret != RETURN_OK) {
+                wifi_util_error_print(WIFI_CTRL,"%s: wifi radio parameter set failure\n",__FUNCTION__);
+                return;
+            } else {
+                wifi_util_info_print(WIFI_CTRL,"%s: wifi radio parameter set success\n",__FUNCTION__);
+            }
+            g_wifidb->ctrl.webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
+            update_wifi_radio_config(rIdx, radio_params);
+        }
+    }
 }
 
 void process_twoG80211axEnable_rfc(bool type)
@@ -1352,19 +1398,107 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg)
     wifi_radio_operationParam_t *radio_params = NULL;
     wifi_mgr_t *g_wifidb;
     g_wifidb = get_wifimgr_obj();
-
+    
     radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(ch_chg->radioIndex);
     if (radio_params == NULL) {
         wifi_util_error_print(WIFI_CTRL,"%s: wrong index for radio map: %d\n",__FUNCTION__, ch_chg->radioIndex);
         return;
     }
-    wifi_util_info_print(WIFI_CTRL,"%s:%d channel change on radio:%d old channel:%d new channel:%d channel change event type:%d op_class:%d\n",
-                       __func__, __LINE__, ch_chg->radioIndex, radio_params->channel, ch_chg->channel, ch_chg->event, ch_chg->op_class);
-    pthread_mutex_lock(&g_wifidb->data_cache_lock);
-    radio_params->channel = ch_chg->channel;
-    radio_params->channelWidth = ch_chg->channelWidth;
-    radio_params->op_class = ch_chg->op_class;
-    pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+
+    wifi_radio_capabilities_t radio_capab = g_wifidb->hal_cap.wifi_prop.radiocap[ch_chg->radioIndex];
+
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d channel change on radio:%d old channel:%d new channel:%d channel change event type:%d radar_event_type %d op_class:%d\n",
+            __func__, __LINE__, ch_chg->radioIndex, radio_params->channel, ch_chg->channel, ch_chg->event, ch_chg->sub_event, ch_chg->op_class);
+
+    if (ch_chg->event == WIFI_EVENT_CHANNELS_CHANGED) {
+        pthread_mutex_lock(&g_wifidb->data_cache_lock);
+        radio_params->channel = ch_chg->channel;
+        radio_params->channelWidth = ch_chg->channelWidth;
+        radio_params->op_class = ch_chg->op_class;
+        pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+    }
+    else if ( (ch_chg->event == WIFI_EVENT_DFS_RADAR_DETECTED) && (radio_params->band == WIFI_FREQUENCY_5_BAND || radio_params->band == WIFI_FREQUENCY_5L_BAND || radio_params->band == WIFI_FREQUENCY_5H_BAND) ) {
+        UINT channelsInBlock = 0;
+        UINT inputChannelBlock = 0;
+        UINT firstChannelInBand = 36;
+        //UINT lastChannelInRadar = 144;
+        int blockStartChannel = 0;
+        //UINT blockEndChannel = 0;
+        UINT channelGap = 4;
+        wifi_channelState_t chan_state = CHAN_STATE_DFS_NOP_FINISHED;
+
+        switch (ch_chg->sub_event)
+        {
+            case WIFI_EVENT_RADAR_DETECTED :
+                chan_state = CHAN_STATE_DFS_NOP_START;
+                break;
+            case WIFI_EVENT_RADAR_CAC_FINISHED :
+                chan_state = CHAN_STATE_DFS_CAC_COMPLETED;
+                break;
+            case WIFI_EVENT_RADAR_CAC_ABORTED :
+                chan_state = CHAN_STATE_DFS_CAC_COMPLETED;
+                break;
+            case WIFI_EVENT_RADAR_NOP_FINISHED :
+                chan_state = CHAN_STATE_DFS_NOP_FINISHED;
+                break;
+            case WIFI_EVENT_RADAR_PRE_CAC_EXPIRED :
+                chan_state = CHAN_STATE_DFS_CAC_COMPLETED;
+                break;
+            case WIFI_EVENT_RADAR_CAC_STARTED :
+                chan_state = CHAN_STATE_DFS_CAC_START;
+                break;
+        }
+
+        if (ch_chg->sub_event == WIFI_EVENT_RADAR_DETECTED) {
+            wifi_util_info_print(WIFI_CTRL,"%s:%d DFS RADAR_DETECTED on ch %d and will not be available for 30 mins\n",
+                                 __func__, __LINE__, ch_chg->channel);
+        } else if (ch_chg->sub_event == WIFI_EVENT_RADAR_NOP_FINISHED) {
+            wifi_util_info_print(WIFI_CTRL,"%s:%d DFS Blocked RADAR channel %d is now ready for use\n",
+                                 __func__, __LINE__, ch_chg->channel);
+        }
+
+        switch (ch_chg->channelWidth)
+        {
+            case WIFI_CHANNELBANDWIDTH_20MHZ:
+                channelsInBlock = 1;
+                break;
+            case WIFI_CHANNELBANDWIDTH_40MHZ:
+                channelsInBlock = 2;
+                break;
+            case WIFI_CHANNELBANDWIDTH_80MHZ:
+                channelsInBlock = 4;
+                break;
+            case WIFI_CHANNELBANDWIDTH_160MHZ:
+                channelsInBlock = 8;
+                break;
+            case WIFI_CHANNELBANDWIDTH_80_80MHZ:
+            default:
+                wifi_util_error_print(WIFI_CTRL,"%s: Invaliid BW for radio %d\n",__FUNCTION__, ch_chg->radioIndex);
+                break;
+        }
+        inputChannelBlock = (ch_chg->channel - firstChannelInBand)/(channelGap*channelsInBlock);
+        blockStartChannel = firstChannelInBand + (inputChannelBlock*channelGap*channelsInBlock);
+        //blockEndChannel = firstChannelInBand + (inputChannelBlock*channelGap*channelsInBlock) + (channelGap*(channelsInBlock-1));
+        if (blockStartChannel < 52) {
+            blockStartChannel = 52;
+            channelsInBlock -= 4;
+        } 
+
+        for (int i=0; i<radio_capab.channel_list[0].num_channels; i++)
+        {
+            if ( blockStartChannel == radio_capab.channel_list[0].channels_list[i] )
+            {
+                for (UINT j = i; j < i+channelsInBlock; j++)
+                {
+                    radio_params->channel_map[j].ch_state = chan_state;
+                }
+                break;
+            }
+        }
+    } else {
+        wifi_util_error_print(WIFI_CTRL,"%s: Invalid event for radio %d\n",__FUNCTION__, ch_chg->radioIndex);
+        return;
+    }
     g_wifidb->ctrl.webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
     update_wifi_radio_config(ch_chg->radioIndex, radio_params);
 }
