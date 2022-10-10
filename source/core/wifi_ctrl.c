@@ -761,37 +761,41 @@ int sta_connection_status(int apIndex, wifi_bss_info_t *bss_dev, wifi_station_st
     return RETURN_OK;
 }
 
+#ifdef WIFI_HAL_VERSION_3_PHASE2
+int mgmt_wifi_frame_recv(int ap_index, wifi_frame_t *frame)
+{
+    frame_data_t wifi_mgmt_frame;
+
+    memset(&wifi_mgmt_frame, 0, sizeof(wifi_mgmt_frame));
+
+    memcpy(wifi_mgmt_frame.data, frame->data, frame->len);
+    memcpy(&mgmt_frame.frame, frame, sizeof(wifi_frame_t));
+
+    //In side this API we have allocate memory and send it to control queue
+    push_data_to_ctrl_queue((frame_data_t *)&wifi_mgmt_frame, (sizeof(wifi_mgmt_frame) + len), ctrl_event_type_hal_ind, ctrl_event_hal_mgmt_farmes);
+
+    return RETURN_OK;
+}
+#else
 int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, uint32_t len, wifi_mgmtFrameType_t type, wifi_direction_t dir)
 {
     frame_data_t wifi_mgmt_frame;
 
     memset(&wifi_mgmt_frame, 0, sizeof(wifi_mgmt_frame));
-    if (len) {
-        wifi_mgmt_frame.frame = malloc(len);
-        if (wifi_mgmt_frame.frame == NULL) {
-            wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to allocate memory in wifi mgmt frame Object\n", __FUNCTION__, __LINE__);
-            return RETURN_ERR;
-        }
-        memset(wifi_mgmt_frame.frame, 0, len);
-        memcpy(wifi_mgmt_frame.frame, frame, len);
-    }
+    memcpy(wifi_mgmt_frame.data, frame, len);
 
-    wifi_mgmt_frame.ap_index = ap_index;
-    memcpy(wifi_mgmt_frame.sta_mac, sta_mac, sizeof(mac_address_t));
-    wifi_mgmt_frame.len = len;
-    wifi_mgmt_frame.type = type;
-    wifi_mgmt_frame.dir = dir;
+    wifi_mgmt_frame.frame.ap_index = ap_index;
+    memcpy(wifi_mgmt_frame.frame.sta_mac, sta_mac, sizeof(mac_address_t));
+    wifi_mgmt_frame.frame.len = len;
+    wifi_mgmt_frame.frame.type = type;
+    wifi_mgmt_frame.frame.dir = dir;
 
     //In side this API we have allocate memory and send it to control queue
     push_data_to_ctrl_queue((frame_data_t *)&wifi_mgmt_frame, (sizeof(wifi_mgmt_frame) + len), ctrl_event_type_hal_ind, ctrl_event_hal_mgmt_farmes);
 
-    if (wifi_mgmt_frame.frame != NULL) {
-        free(wifi_mgmt_frame.frame);
-        wifi_mgmt_frame.frame = NULL;
-    }
-
     return RETURN_OK;
 }
+#endif
 
 void channel_change_callback(wifi_channel_change_event_t radio_channel_param)
 {

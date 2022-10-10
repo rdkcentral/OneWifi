@@ -94,7 +94,7 @@ int remove_xfinity_acl_entries(bool remove_all_greylist_entry,bool prefer_privat
 
 void process_mgmt_ctrl_frame_event(frame_data_t *msg, uint32_t msg_length)
 {
-    wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n", __FUNCTION__, __LINE__, msg->ap_index, msg->len, msg->type, msg->dir);
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir);
 }
 
 void send_hotspot_status(char* vap_name, bool up)

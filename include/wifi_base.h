@@ -112,12 +112,8 @@ typedef enum {
 } ctrl_event_subtype_t;
 
 typedef struct {
-    int ap_index;
-    mac_address_t sta_mac;
-    void *frame;
-    uint32_t len;
-    wifi_mgmtFrameType_t type;
-    wifi_direction_t dir;
+    wifi_frame_t    frame;
+    unsigned char data[MAX_FRAME_SZ];
 } __attribute__((__packed__)) frame_data_t;
 
 #define MAX_SCANNED_VAPS       32
