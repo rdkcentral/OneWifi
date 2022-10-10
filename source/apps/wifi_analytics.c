@@ -11,6 +11,7 @@
 #include "wifi_hal_rdk_framework.h"
 #include "wifi_monitor.h"
 #include <rbus.h>
+#include <sys/resource.h>
 
 const char *subdoc_type_to_string(webconfig_subdoc_type_t type)
 {
@@ -26,7 +27,7 @@ const char *subdoc_type_to_string(webconfig_subdoc_type_t type)
         DOC2S(webconfig_subdoc_type_mesh_sta)
         DOC2S(webconfig_subdoc_type_associated_clients)
         default:
-            wifi_util_error_print(WIFI_ANALYTICS,"%s:%d: event not handle[%d]\r\n",__func__, __LINE__, type);
+            wifi_util_error_print(WIFI_APPS,"%s:%d: event not handle[%d]\r\n",__func__, __LINE__, type);
             break;
     }
 
@@ -47,26 +48,43 @@ int analytics_event_exec_stop(wifi_apps_t *apps, void *arg)
 
 int analytics_event_exec_timeout(wifi_apps_t *apps, void *arg)
 {
-    apps->u.analytics.tick_demultiplexer++;
-
-    /* We process every 60 seconds. Since this function will be executed every QUEUE_WIFI_CTRL_TASK_TIMEOUT
-       seconds, the following equation should do the trick */
-
-    if ((apps->u.analytics.tick_demultiplexer % (ANAYLYTICS_PERIOD/QUEUE_WIFI_CTRL_TASK_TIMEOUT)) != 0) {
-        return -1;
-    }
-
     hash_map_t   *sta_map;
     char         temp_str[128];
     unsigned int radio_index = 0;
     radio_data_t radio_stats;
-    char   client_mac[32], rssi_str[32];
+    char   client_mac[32], sta_stats_str[256];
     analytics_sta_info_t    *sta_info;
     wifi_associated_dev3_t  *dev_stats;
-    memset(client_mac, 0, sizeof(client_mac));
-    memset(rssi_str, 0, sizeof(rssi_str));
+    sta_data_t *sta_data;
+    struct rusage usage;
+    float user, system;
+    analytics_data_t        *data;
 
-    wifi_util_info_print(WIFI_ANALYTICS, analytics_format_mgr_core, "keep-alive", "");
+    data = &apps->u.analytics;
+    data->tick_demultiplexer++;
+
+    /* We process every 60 seconds. Since this function will be executed every QUEUE_WIFI_CTRL_TASK_TIMEOUT
+       seconds, the following equation should do the trick */
+
+    if ((data->tick_demultiplexer % (ANAYLYTICS_PERIOD/QUEUE_WIFI_CTRL_TASK_TIMEOUT)) != 0) {
+        return 0;
+    }
+
+    getrusage(RUSAGE_SELF, &usage);
+    data->minutes_alive++;
+
+    user = (usage.ru_utime.tv_sec - data->last_usage.ru_utime.tv_sec) +
+                               1e-6*(usage.ru_utime.tv_usec - data->last_usage.ru_utime.tv_usec);
+    system = (usage.ru_stime.tv_sec - data->last_usage.ru_stime.tv_sec) +
+                               1e-6*(usage.ru_stime.tv_usec - data->last_usage.ru_stime.tv_usec);
+
+    sprintf(temp_str, "minutes:%d user:%f system:%f", data->minutes_alive, user, system);
+    wifi_util_info_print(WIFI_ANALYTICS, analytics_format_mgr_core, "keep-alive", temp_str);
+
+    memcpy(&data->last_usage, &usage, sizeof(struct rusage));
+
+    memset(client_mac, 0, sizeof(client_mac));
+    memset(sta_stats_str, 0, sizeof(sta_stats_str));
 
     for (radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
         memset(&radio_stats, 0, sizeof(radio_stats));
@@ -74,23 +92,30 @@ int analytics_event_exec_timeout(wifi_apps_t *apps, void *arg)
         if (get_dev_stats_for_radio(radio_index, (radio_data_t *)&radio_stats) == RETURN_OK) {
             sprintf(temp_str, "Radio%d_Stats noise_floor:%d channel_util:%d channel_interference:%d", radio_index,
                         radio_stats.NoiseFloor, radio_stats.channelUtil, radio_stats.channelInterference);
-            wifi_util_info_print(WIFI_ANALYTICS, analytics_format_mgr_core, temp_str, "");
+            wifi_util_info_print(WIFI_ANALYTICS, analytics_format_hal_core, "radio_stats", temp_str);
         }
     }
 
-    sta_map = apps->u.analytics.sta_map;
+    sta_map = data->sta_map;
     sta_info = hash_map_get_first(sta_map);
     while (sta_info != NULL) {
-        dev_stats = (wifi_associated_dev3_t *)get_dev_stats_for_sta(sta_info->ap_index, sta_info->sta_mac);
-        if (dev_stats != NULL) {
+        memset(temp_str, 0, sizeof(temp_str));
+        memset(client_mac, 0, sizeof(client_mac));
+        memset(sta_stats_str, 0, sizeof(sta_stats_str));
+        sta_data = (sta_data_t *)get_stats_for_sta(sta_info->ap_index, sta_info->sta_mac);
+        if (sta_data != NULL) {
+            dev_stats = &sta_data->dev_stats;
             to_mac_str(sta_info->sta_mac, client_mac);
-            sprintf(rssi_str, "%ddbm vap index:%d", dev_stats->cli_RSSI, sta_info->ap_index);
-            wifi_util_info_print(WIFI_ANALYTICS, analytics_format_generic, client_mac, "CORE", "rssi", rssi_str);
+            sprintf(sta_stats_str, "rssi:%ddbm good/bad rssi:%d/%d rapid reconnects:%d vap index:%d",
+                               dev_stats->cli_RSSI, sta_data->good_rssi_time, sta_data->bad_rssi_time,
+                               sta_data->rapid_reconnects, sta_info->ap_index);
+            sprintf(temp_str, "\"%s\"", client_mac);
+            wifi_util_info_print(WIFI_ANALYTICS, analytics_format_generic, temp_str, "CORE", "stats", sta_stats_str);
         }
         sta_info = hash_map_get_next(sta_map, sta_info);
     }
 
-    apps->u.analytics.tick_demultiplexer = 0;
+    data->tick_demultiplexer = 0;
     return 0;
 }
 
@@ -103,11 +128,21 @@ int analytics_event_webconfig_set_data(wifi_apps_t *apps, void *arg)
     return 0;
 }
 
+int analytics_event_webconfig_hal_result(wifi_apps_t *apps, void *arg)
+{
+    int *ret = (int *)arg;
+
+    wifi_util_info_print(WIFI_ANALYTICS, analytics_format_hal_core, "result",
+               (*ret == RETURN_OK)?"success":"fail");
+
+    return 0;
+}
+
 int analytics_event_webconfig_set_status(wifi_apps_t *apps, void *arg)
 {
     webconfig_subdoc_type_t *type = (webconfig_subdoc_type_t *)arg;
 
-    wifi_util_info_print(WIFI_ANALYTICS, analytics_format_core_ovsm, "set", subdoc_type_to_string(*type));
+    wifi_util_info_print(WIFI_ANALYTICS, analytics_format_core_ovsm, "status", subdoc_type_to_string(*type));
 
     return 0;
 }
@@ -282,7 +317,7 @@ int exec_event_analytics(wifi_apps_t *apps, ctrl_event_subtype_t sub_type, void 
             analytics_event_exec_timeout(apps, arg);
             break;
         default:
-            wifi_util_error_print(WIFI_ANALYTICS,"%s:%d: event not handle[%d]\r\n",__func__, __LINE__, sub_type);
+            wifi_util_error_print(WIFI_APPS,"%s:%d: event not handle[%d]\r\n",__func__, __LINE__, sub_type);
             break;
     }
     return 0;
@@ -299,6 +334,10 @@ int webconfig_event_analytics(wifi_apps_t *apps, ctrl_event_subtype_t sub_type, 
             analytics_event_webconfig_set_status(apps, arg);
             break;
 
+        case ctrl_event_webconfig_hal_result:
+            analytics_event_webconfig_hal_result(apps, arg);
+            break;
+
         case ctrl_event_webconfig_get_data:
             analytics_event_webconfig_get_data(apps, arg);
             break;
@@ -307,7 +346,7 @@ int webconfig_event_analytics(wifi_apps_t *apps, ctrl_event_subtype_t sub_type, 
             analytics_event_webconfig_set_data_tunnel(apps, arg);
             break;
         default:
-            wifi_util_error_print(WIFI_ANALYTICS,"%s:%d: event not handle[%d]\r\n",__func__, __LINE__, sub_type);
+            wifi_util_error_print(WIFI_APPS,"%s:%d: event not handle[%d]\r\n",__func__, __LINE__, sub_type);
             break;
     }
 
@@ -366,7 +405,7 @@ int hal_event_analytics(wifi_apps_t *apps, ctrl_event_subtype_t sub_type, void *
             break;
 
         default:
-            wifi_util_error_print(WIFI_ANALYTICS,"%s:%d: event not handle[%d]\r\n",__func__, __LINE__, sub_type);
+            wifi_util_error_print(WIFI_APPS,"%s:%d: event not handle[%d]\r\n",__func__, __LINE__, sub_type);
             break;
     }
 
@@ -443,7 +482,7 @@ int command_event_analytics(wifi_apps_t *apps, ctrl_event_subtype_t sub_type, vo
         case ctrl_event_type_txrx_rate:
             break;
         default:
-            wifi_util_error_print(WIFI_ANALYTICS,"%s:%d: event not handle[%d]\r\n",__func__, __LINE__, sub_type);
+            wifi_util_error_print(WIFI_APPS,"%s:%d: event not handle[%d]\r\n",__func__, __LINE__, sub_type);
             break;
     }
     return 0;
@@ -471,6 +510,27 @@ int wifi_apps_analytics_event(wifi_apps_t *apps, ctrl_event_type_t type, ctrl_ev
         default:
             break;
     }
+
+    return 0;
+}
+
+int wifi_apps_analytics_init(wifi_apps_t *apps)
+{
+    apps->u.analytics.tick_demultiplexer = 0;
+    apps->u.analytics.minutes_alive = 0;
+    memset(&apps->u.analytics.last_usage, 0, sizeof(struct rusage));
+    apps->u.analytics.sta_map = hash_map_create();
+    apps->event_fn = wifi_apps_analytics_event;
+
+    wifi_util_info_print(WIFI_ANALYTICS, "@startuml\n");
+    wifi_util_info_print(WIFI_ANALYTICS, "hide footbox\n");
+    wifi_util_info_print(WIFI_ANALYTICS, "skinparam SequenceMessageAlign center\n");
+    wifi_util_info_print(WIFI_ANALYTICS, "\n");
+    wifi_util_info_print(WIFI_ANALYTICS, "participant OVSM as \"Ctrl/Ovsm\"\n");
+    wifi_util_info_print(WIFI_ANALYTICS, "participant MGR as \"Mgr\"\n");
+    wifi_util_info_print(WIFI_ANALYTICS, "participant CORE as \"Core\"\n");
+    wifi_util_info_print(WIFI_ANALYTICS, "participant HAL as \"HAL\"\n");
+    wifi_util_info_print(WIFI_ANALYTICS, "participant HOSTAP as \"LibHostap\"\n");
 
     return 0;
 }

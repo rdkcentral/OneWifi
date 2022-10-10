@@ -121,7 +121,7 @@ static void deviceConnectHandler(rbusHandle_t handle, rbusEvent_t const* event,
     rbusValue_t value;
     int vap, len;
     uint8_t const *data_ptr;
-    mac_addr_t  sta_mac;
+    mac_address_t  sta_mac;
 
     if(!event || (sscanf(subscription->eventName,
         "Device.WiFi.AccessPoint.%d.X_RDK_deviceConnected", &vap) != 1))
@@ -134,9 +134,9 @@ static void deviceConnectHandler(rbusHandle_t handle, rbusEvent_t const* event,
     if (value)
     {
         data_ptr = rbusValue_GetBytes(value, &len);
-        if(data_ptr != NULL && len == sizeof(mac_addr_t))
+        if(data_ptr != NULL && len == sizeof(mac_address_t))
         {
-            memcpy(&sta_mac, data_ptr, sizeof(mac_addr_t));
+            memcpy(&sta_mac, data_ptr, sizeof(mac_address_t));
             WIFI_EVENT_CONSUMER_DGB("Device %02x:%02x:%02x:%02x:%02x:%02x connected to VAP %d\n", sta_mac[0], sta_mac[1], sta_mac[2], 
                                                                             sta_mac[3], sta_mac[4], sta_mac[5], vap);
         }
@@ -155,7 +155,7 @@ static void deviceDisonnectHandler(rbusHandle_t handle, rbusEvent_t const* event
     rbusValue_t value;
     int vap, len;
     uint8_t const *data_ptr;
-    mac_addr_t  sta_mac;
+    mac_address_t  sta_mac;
 
     if(!event || (sscanf(subscription->eventName,
         "Device.WiFi.AccessPoint.%d.X_RDK_deviceDisconnected", &vap) != 1))
@@ -167,9 +167,9 @@ static void deviceDisonnectHandler(rbusHandle_t handle, rbusEvent_t const* event
     if (value)
     {
         data_ptr = rbusValue_GetBytes(value, &len);
-        if(data_ptr != NULL && len == sizeof(mac_addr_t))
+        if(data_ptr != NULL && len == sizeof(mac_address_t))
         {
-            memcpy(&sta_mac, data_ptr, sizeof(mac_addr_t));
+            memcpy(&sta_mac, data_ptr, sizeof(mac_address_t));
             WIFI_EVENT_CONSUMER_DGB("Device %02x:%02x:%02x:%02x:%02x:%02x disconnected from VAP %d\n", sta_mac[0], sta_mac[1], sta_mac[2], 
                                                                                 sta_mac[3], sta_mac[4], sta_mac[5], vap);
         }
@@ -188,7 +188,7 @@ static void deviceDeauthHandler(rbusHandle_t handle, rbusEvent_t const* event,
     rbusValue_t value;
     int vap, len;
     uint8_t const *data_ptr;
-    mac_addr_t  sta_mac;
+    mac_address_t  sta_mac;
 
     if(!event || (sscanf(subscription->eventName,
         "Device.WiFi.AccessPoint.%d.X_RDK_deviceDeauthenticated", &vap) != 1))
@@ -201,9 +201,9 @@ static void deviceDeauthHandler(rbusHandle_t handle, rbusEvent_t const* event,
     if (value)
     {
         data_ptr = rbusValue_GetBytes(value, &len);
-        if(data_ptr != NULL && len == sizeof(mac_addr_t))
+        if(data_ptr != NULL && len == sizeof(mac_address_t))
         {
-            memcpy(&sta_mac, data_ptr, sizeof(mac_addr_t));
+            memcpy(&sta_mac, data_ptr, sizeof(mac_address_t));
             WIFI_EVENT_CONSUMER_DGB("Device %02x:%02x:%02x:%02x:%02x:%02x deauthenticated from VAP %d\n", sta_mac[0], sta_mac[1], sta_mac[2], 
                                                                                 sta_mac[3], sta_mac[4], sta_mac[5], vap);
         }
@@ -261,7 +261,7 @@ static void csiMacListHandler(rbusHandle_t handle, rbusEvent_t const* event,
     UNREFERENCED_PARAMETER(handle);
 }
 
-void rotate_and_write_CSIData(mac_addr_t sta_mac, wifi_csi_data_t *csi) {
+void rotate_and_write_CSIData(mac_address_t sta_mac, wifi_csi_data_t *csi) {
 #define MB(x)   ((long int) (x) << 20)
 #define CSI_FILE "/tmp/CSI.bin"
 #define CSI_TMP_FILE "/tmp/CSI_tmp.bin"
@@ -271,7 +271,7 @@ void rotate_and_write_CSIData(mac_addr_t sta_mac, wifi_csi_data_t *csi) {
     FILE                *csifptr;
     FILE                *csifptr_tmp;
     struct stat         st;
-    mac_addr_t          tmp_mac;
+    mac_address_t          tmp_mac;
     wifi_csi_matrix_t   tmp_csi_matrix;
     wifi_frame_info_t   tmp_frame_info;
 
@@ -285,26 +285,26 @@ void rotate_and_write_CSIData(mac_addr_t sta_mac, wifi_csi_data_t *csi) {
         stat(filename, &st);
         if(st.st_size > MB(1)) // if file size is greate than 1 mb
         {
-            mac_addr_t tmp_mac;
+            mac_address_t tmp_mac;
             wifi_frame_info_t tmp_frame_info;
             wifi_csi_matrix_t tmp_csi_matrix;
 
-            fread(&tmp_mac, sizeof(mac_addr_t), 1, csifptr);
+            fread(&tmp_mac, sizeof(mac_address_t), 1, csifptr);
             fread(&tmp_frame_info, sizeof(wifi_frame_info_t), 1, csifptr);
             fread(&tmp_csi_matrix, sizeof(wifi_csi_matrix_t), 1, csifptr);
         }
         //copy rest of the content in to the temp file
-        while(csifptr != NULL && fread(&tmp_mac, sizeof(mac_addr_t), 1, csifptr)) {
+        while(csifptr != NULL && fread(&tmp_mac, sizeof(mac_address_t), 1, csifptr)) {
             fread(&tmp_frame_info, sizeof(wifi_frame_info_t), 1, csifptr);
             fread(&tmp_csi_matrix, sizeof(wifi_csi_matrix_t), 1, csifptr);
-            fwrite(&tmp_mac, sizeof(mac_addr_t), 1, csifptr_tmp);
+            fwrite(&tmp_mac, sizeof(mac_address_t), 1, csifptr_tmp);
             fwrite(&tmp_frame_info, sizeof(wifi_frame_info_t), 1, csifptr_tmp);
             fwrite(&tmp_csi_matrix, sizeof(wifi_csi_matrix_t), 1, csifptr_tmp);
         }
     }
 
     if(csifptr_tmp!=NULL) {
-        fwrite(sta_mac, sizeof(mac_addr_t), 1, csifptr_tmp);
+        fwrite(sta_mac, sizeof(mac_address_t), 1, csifptr_tmp);
         fwrite(&(csi->frame_info), sizeof(wifi_frame_info_t), 1, csifptr_tmp);
         fwrite(&(csi->csi_matrix), sizeof(wifi_csi_matrix_t), 1, csifptr_tmp);
     }
@@ -333,7 +333,7 @@ static void csiDataHandler(rbusHandle_t handle, rbusEvent_t const* event,
     unsigned int total_length, num_csi_clients, csi_data_length;
     time_t datetime;
     wifi_csi_data_t csi;
-    mac_addr_t  sta_mac;
+    mac_address_t  sta_mac;
     char buf[128] = {0};
 
     if(!event || (sscanf(subscription->eventName,
@@ -378,8 +378,8 @@ static void csiDataHandler(rbusHandle_t handle, rbusEvent_t const* event,
     WIFI_EVENT_CONSUMER_DGB("num_csi_clients %u\n", num_csi_clients);
 
     //clientMacAddress:  <client mac address>
-    memcpy(&sta_mac, data_ptr, sizeof(mac_addr_t));
-    data_ptr = data_ptr + sizeof(mac_addr_t);
+    memcpy(&sta_mac, data_ptr, sizeof(mac_address_t));
+    data_ptr = data_ptr + sizeof(mac_address_t);
     WIFI_EVENT_CONSUMER_DGB("==========================================================");
     WIFI_EVENT_CONSUMER_DGB("MAC %02x%02x%02x%02x%02x%02x\n", sta_mac[0], sta_mac[1], sta_mac[2], sta_mac[3], sta_mac[4], sta_mac[5]);
 

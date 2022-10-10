@@ -71,17 +71,17 @@ typedef struct _pktGenFrameCountSamples {
         int             WaitAndLatencyInMs;             //Wait duration + API Latency in millsecs
 } pktGenFrameCountSamples;
 
-typedef struct {
-unsigned int   MaxTxRate;
-unsigned int   MaxRxRate;
-int            rssi;
-unsigned long  TxPhyRate;
-unsigned long  RxPhyRate;
-int            SNR;
-int            ReTransmission;
-double         throughput;
-char           Operating_standard[OPER_BUFFER_LEN + 1];
-char           Operating_channelwidth[OPER_BUFFER_LEN + 1];
+typedef struct active_msmt_data {
+    unsigned int   MaxTxRate;
+    unsigned int   MaxRxRate;
+    int            rssi;
+    unsigned long  TxPhyRate;
+    unsigned long  RxPhyRate;
+    int            SNR;
+    int            ReTransmission;
+    double         throughput;
+    char           Operating_standard[OPER_BUFFER_LEN + 1];
+    char           Operating_channelwidth[OPER_BUFFER_LEN + 1];
 } active_msmt_data_t;
 
 

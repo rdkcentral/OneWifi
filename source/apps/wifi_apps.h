@@ -7,6 +7,7 @@ extern "C" {
 
 #include "wifi_hal.h"
 #include "wifi_base.h"
+#include <sys/resource.h>
 
 #define MAX_PROBE_MAP_TTL    32
 
@@ -32,8 +33,10 @@ typedef struct {
 } analytics_sta_info_t;
 
 typedef struct {
+    unsigned int    minutes_alive;
     unsigned int    tick_demultiplexer;
     hash_map_t      *sta_map;
+    struct rusage   last_usage;
 } analytics_data_t;
 
 typedef struct wifi_apps {

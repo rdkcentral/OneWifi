@@ -621,7 +621,6 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
     char module_filename[32];
     char filename[100];
 
-#ifndef LINUX_VM_PORT
     switch(module)
     {
         case WIFI_DB:{
@@ -679,6 +678,11 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
             snprintf(module_filename, sizeof(module_filename), "wifiAnalytics");
             break;
         }
+        case WIFI_APPS:{
+            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), "/nvram/wifiApps");
+            snprintf(module_filename, sizeof(module_filename), "wifiApps");
+            break;
+        }
         default:
             return;
     }
@@ -704,29 +708,32 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
                 return;
         }
     }
-#endif
 
+    // formatting here. For analytics, do not need any time formatting, need timestamp for all others
+    switch (module) {
+        case WIFI_ANALYTICS:
+            buff[0] = 0;
+            break;
+
+        default:
 #if defined(__ENABLE_PID__) && (__ENABLE_PID__)
-    pid = syscall(__NR_gettid);
-    sprintf(&buff[0], "%d - ", pid);
-    get_formatted_time(&buff[strlen(buff)]);
+            pid = syscall(__NR_gettid);
+            sprintf(&buff[0], "%d - ", pid);
+            get_formatted_time(&buff[strlen(buff)]);
 #else
-    get_formatted_time(buff);
+            get_formatted_time(buff);
 #endif
-
-    strcat(buff, " ");
+            strcat(buff, " ");
+            break;
+    }
 
     va_start(list, format);
     vsprintf(&buff[strlen(buff)], format, list);
     va_end(list);
 
-#ifndef LINUX_VM_PORT
     fputs(buff, fpg);
     fflush(fpg);
     fclose(fpg);
-#else
-    printf("%s\n", buff);
-#endif
 
 }
 

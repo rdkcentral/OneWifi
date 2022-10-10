@@ -5966,7 +5966,7 @@ void process_active_msmt_diagnostics (int ap_index)
     wifi_util_dbg_print(WIFI_MON, "%s : %d exiting the function\n",__func__,__LINE__);
 }
 
-wifi_associated_dev3_t *get_dev_stats_for_sta(unsigned int apIndex, mac_addr_t mac)
+sta_data_t *get_stats_for_sta(unsigned int apIndex, mac_addr_t mac)
 {
     sta_data_t  *sta;
     hash_map_t  *sta_map;
@@ -5981,7 +5981,7 @@ wifi_associated_dev3_t *get_dev_stats_for_sta(unsigned int apIndex, mac_addr_t m
     while (sta != NULL) {
         if (memcmp(mac, sta->sta_mac, sizeof(mac_addr_t)) == 0) {
             pthread_mutex_unlock(&g_monitor_module.lock);
-            return &sta->dev_stats;
+            return sta;
         }
         sta = hash_map_get_next(sta_map, sta);
     }

@@ -52,6 +52,7 @@ typedef enum {
     // WebConfig event sub types
     ctrl_event_webconfig_set_data = 0x200,
     ctrl_event_webconfig_set_status,
+    ctrl_event_webconfig_hal_result,
     ctrl_event_webconfig_get_data,
     ctrl_event_webconfig_set_data_tunnel,
     ctrl_event_webconfig_max,
@@ -424,6 +425,31 @@ typedef struct {
     wifi_associated_dev3_t dev_stats;
     int reason;
 } __attribute__((__packed__)) assoc_dev_data_t;
+
+struct active_msmt_data;
+
+typedef struct {
+    mac_address_t  sta_mac;
+    unsigned int    good_rssi_time;
+    unsigned int    bad_rssi_time;
+    unsigned int    connected_time;
+    unsigned int    disconnected_time;
+    unsigned int    total_connected_time;
+    unsigned int    total_disconnected_time;
+    struct timeval  last_connected_time;
+    struct timeval  last_disconnected_time;
+    unsigned int    rapid_reconnects;
+    bool            updated;
+    wifi_associated_dev3_t dev_stats;
+    wifi_associated_dev3_t dev_stats_last;
+    unsigned int    reconnect_count;
+    long            assoc_monitor_start_time;
+    long            gate_time;
+    unsigned int    redeauth_count;
+    long            deauth_monitor_start_time;
+    long            deauth_gate_time;
+    struct active_msmt_data *sta_active_msmt_data;
+} __attribute__((__packed__)) sta_data_t;
 
 #ifdef __cplusplus
 }

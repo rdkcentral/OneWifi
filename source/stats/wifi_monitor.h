@@ -48,7 +48,6 @@
 
 #define MAX_BUF_SIZE 128
 
-typedef unsigned char   mac_addr_t[MAC_ADDR_LEN];
 typedef signed short    rssi_t;
 typedef char			sta_key_t[STA_KEY_LEN];
 
@@ -74,8 +73,8 @@ typedef struct {
     wifi_associated_dev3_t  devs[MAX_ASSOCIATED_WIFI_DEVS];
 } associated_devs_t;
 typedef struct {
-    mac_addr_t  sta_mac;
-    int 	reason;
+    mac_address_t  sta_mac;
+    int 	   reason;
 } auth_deauth_dev_t;
 
 typedef struct {
@@ -84,13 +83,13 @@ typedef struct {
 } client_stats_enable_t;
 
 typedef struct {
-    mac_addr_t  sta_mac;
-	unsigned int ap_index;
-	bool active;
+    mac_address_t  sta_mac;
+    unsigned int   ap_index;
+    bool           active;
 } instant_msmt_t;
 
 typedef struct {
-    mac_addr_t  sta_mac;
+    mac_address_t   sta_mac;
     wifi_csi_data_t csi;
 } __attribute__((packed)) wifi_csi_dev_t;
 
@@ -107,29 +106,6 @@ typedef struct {
         wifi_csi_dev_t csi;
     } u;
 } __attribute__((__packed__)) wifi_monitor_data_t;
-
-typedef struct {
-    mac_addr_t  sta_mac;
-    unsigned int    good_rssi_time;
-    unsigned int    bad_rssi_time;
-    unsigned int    connected_time;
-    unsigned int    disconnected_time;
-    unsigned int    total_connected_time;
-    unsigned int    total_disconnected_time;
-    struct timeval  last_connected_time;
-    struct timeval  last_disconnected_time;
-    unsigned int    rapid_reconnects;
-	bool			updated;
-    wifi_associated_dev3_t dev_stats;
-    wifi_associated_dev3_t dev_stats_last;
-    unsigned int    reconnect_count;
-    long            assoc_monitor_start_time;
-    long            gate_time;
-    unsigned int    redeauth_count;
-    long            deauth_monitor_start_time;
-    long            deauth_gate_time;
-    active_msmt_data_t *sta_active_msmt_data;
-} sta_data_t;
 
 typedef struct {
     unsigned int        rapid_reconnect_threshold;
@@ -257,13 +233,13 @@ typedef struct {
     int  no_of_mac;
     int  csi_sess_number;
     int  ap_index[MAX_CSI_CLIENTS_PER_SESSION];
-    mac_addr_t mac_list[MAX_CSI_CLIENTS_PER_SESSION];
+    mac_address_t mac_list[MAX_CSI_CLIENTS_PER_SESSION];
     char client_ip[MAX_CSI_CLIENTS_PER_SESSION][IP_STR_LEN];
     long  client_ip_age[MAX_CSI_CLIENTS_PER_SESSION];
     struct timeval last_snapshot_time;
 } __attribute__((__packed__)) csi_session_t;
 
-void csi_update_client_mac_status(mac_addr_t mac, bool connected, int ap_idx);
+void csi_update_client_mac_status(mac_address_t mac, bool connected, int ap_idx);
 void csi_set_client_mac(char *mac_list, int csi_session_number);
 void csi_enable_session(bool enable, int csi_session_number);
 void csi_enable_subscription(bool subscribe, int csi_session_number);
