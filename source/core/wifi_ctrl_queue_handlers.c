@@ -164,15 +164,20 @@ void process_xfinity_vaps(int vap_enable, bool hs_evt)
                   sec_2g_enabled = rfc_param->hotspot_secure_2g_last_enabled;
                   sec_5g_enabled = rfc_param->hotspot_secure_5g_last_enabled;
               }
-              wifi_util_info_print(WIFI_CTRL," vap_name is %s and bool is %d:%d:%d:%d\n",tmp_vap_map.vap_array[0].vap_name,open_2g_enabled,open_5g_enabled,sec_2g_enabled,sec_5g_enabled);
-              if ((strcmp(wifi_vap_map->vap_array[0].vap_name,"hotspot_open_2g") == 0) && open_2g_enabled)
+              wifi_util_dbg_print(WIFI_CTRL," vap_name is %s and bool is %d:%d:%d:%d\n",tmp_vap_map.vap_array[0].vap_name,open_2g_enabled,open_5g_enabled,sec_2g_enabled,sec_5g_enabled);
+
+              if ((strcmp(tmp_vap_map.vap_array[0].vap_name,"hotspot_open_2g") == 0) && open_2g_enabled)
                   tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
-              else if ((strcmp(wifi_vap_map->vap_array[0].vap_name,"hotspot_open_5g") == 0) && open_5g_enabled)
+
+              else if ((strcmp(tmp_vap_map.vap_array[0].vap_name,"hotspot_open_5g") == 0) && open_5g_enabled)
                   tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
-              else if((strcmp(wifi_vap_map->vap_array[0].vap_name,"hotspot_secure_2g") == 0) && sec_2g_enabled)
+
+              else if ((strcmp(tmp_vap_map.vap_array[0].vap_name,"hotspot_secure_2g") == 0) && sec_2g_enabled)
                   tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
-              else if((strcmp(wifi_vap_map->vap_array[0].vap_name,"hotspot_secure_5g") == 0) && sec_5g_enabled)
+
+              else if ((strcmp(tmp_vap_map.vap_array[0].vap_name,"hotspot_secure_5g") == 0) && sec_5g_enabled)
                   tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
+
               wifi_util_dbg_print(WIFI_CTRL,"enabled is %d\n",tmp_vap_map.vap_array[0].u.bss_info.enabled);
             }
 

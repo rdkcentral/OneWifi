@@ -816,7 +816,11 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
 {
     const cJSON *param;
 
-    decode_param_string(radius, "RadiusServerIPAddr", param);
+    decode_param_allow_empty_string(radius, "RadiusServerIPAddr", param);
+    if (strlen(param->valuestring) == 0) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: RadiusServerIPAddr is NULL\n", __func__, __LINE__);
+            strcpy(param->valuestring,"0.0.0.0");
+    }
     if (decode_ipv4_address(param->valuestring) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed for RadiusServerIPAddr\n", __func__, __LINE__);
         //strncpy(execRetVal->ErrorMsg, "Invalid Radius server IP",sizeof(execRetVal->ErrorMsg)-1);
@@ -841,7 +845,11 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
     decode_param_string(radius, "RadiusSecret", param);
     strcpy(radius_info->key, param->valuestring);
 
-    decode_param_string(radius, "SecondaryRadiusServerIPAddr", param);
+    decode_param_allow_empty_string(radius, "SecondaryRadiusServerIPAddr", param);
+    if (strlen(param->valuestring) == 0) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: SecondaryRadiusServerIPAddr is NULL\n", __func__, __LINE__);
+            strcpy(param->valuestring,"0.0.0.0");
+    }
     if (decode_ipv4_address(param->valuestring) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed for SecondaryRadiusServerIPAddr\n", __func__, __LINE__);
         //strncpy(execRetVal->ErrorMsg, "Invalid Secondary Radius server IP",sizeof(execRetVal->ErrorMsg)-1);
@@ -866,7 +874,11 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
     decode_param_string(radius, "SecondaryRadiusSecret", param);
     strcpy(radius_info->s_key, param->valuestring);
 
-    decode_param_string(radius, "DasServerIPAddr", param);
+    decode_param_allow_empty_string(radius, "DasServerIPAddr", param);
+    if (strlen(param->valuestring) == 0) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: DasServerIPAddr is NULL\n", __func__, __LINE__);
+            strcpy(param->valuestring,"0.0.0.0");
+    }
     if (decode_ipv4_address(param->valuestring) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed for DasServerIPAddr\n", __func__, __LINE__);
         //strncpy(execRetVal->ErrorMsg, "Invalid Das Server IP Addr",sizeof(execRetVal->ErrorMsg)-1);
@@ -913,7 +925,11 @@ webconfig_error_t decode_open_radius_object(const cJSON *radius, wifi_radius_set
     object = cJSON_GetObjectItem(radius, "RadiusServerIPAddr");
 
     if (object != NULL) {
-        decode_param_string(radius, "RadiusServerIPAddr", param);
+        decode_param_allow_empty_string(radius, "RadiusServerIPAddr", param);
+        if(strlen(param->valuestring) == 0) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: open_radius_object RadiusServerIPAddr is NULL \n", __func__, __LINE__);
+            strcpy(param->valuestring,"0.0.0.0");
+        }
         if (decode_ipv4_address(param->valuestring) != webconfig_error_none) {
             wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed for RadiusServerIPAddr\n", __func__, __LINE__);
             //strncpy(execRetVal->ErrorMsg, "Invalid Radius server IP",sizeof(execRetVal->ErrorMsg)-1);
@@ -949,7 +965,11 @@ webconfig_error_t decode_open_radius_object(const cJSON *radius, wifi_radius_set
     object = cJSON_GetObjectItem(radius, "SecondaryRadiusServerIPAddr");
 
     if (object != NULL) {
-        decode_param_string(radius, "SecondaryRadiusServerIPAddr", param);
+        decode_param_allow_empty_string(radius, "SecondaryRadiusServerIPAddr", param);
+        if (strlen(param->valuestring) == 0) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: In open_radius SecondaryRadiusServerIPAddr is NULL\n", __func__, __LINE__);
+            strcpy(param->valuestring,"0.0.0.0");
+        }
         if (decode_ipv4_address(param->valuestring) != webconfig_error_none) {
             wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed for SecondaryRadiusServerIPAddr\n", __func__, __LINE__);
             //strncpy(execRetVal->ErrorMsg, "Invalid Secondary Radius server IP",sizeof(execRetVal->ErrorMsg)-1);
@@ -987,7 +1007,11 @@ webconfig_error_t decode_open_radius_object(const cJSON *radius, wifi_radius_set
     object = cJSON_GetObjectItem(radius, "DasServerIPAddr");
 
     if (object != NULL) {
-        decode_param_string(radius, "DasServerIPAddr", param);
+        decode_param_allow_empty_string(radius, "DasServerIPAddr", param);
+        if (strlen(param->valuestring) == 0) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: In open_radius DasServerIPAddr is NULL\n", __func__, __LINE__);
+            strcpy(param->valuestring,"0.0.0.0");
+        }
         if (decode_ipv4_address(param->valuestring) != webconfig_error_none) {
             wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed for DasServerIPAddr\n", __func__, __LINE__);
             return webconfig_error_decode;
