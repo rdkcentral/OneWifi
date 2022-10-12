@@ -3037,7 +3037,11 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
         cfg.enable = true;
         cfg.op_class = 1;
         cfg.channel = 36;
+#ifdef _WNXL11BWL_PRODUCT_REQ_
+        cfg.channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
+#else
         cfg.channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
+#endif
         cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC | WIFI_80211_VARIANT_AX;
     } else if (radio_index  == 2) {
         cfg.band = WIFI_FREQUENCY_6_BAND;
