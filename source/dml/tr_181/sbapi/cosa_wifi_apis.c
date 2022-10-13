@@ -333,10 +333,10 @@ INT getCountryCodeFromInt(wifi_countrycode_type_t countryCode, char *countryStr)
         {
             strncpy(countryStr, wifiCountryMap[i].countryStr, strlen(wifiCountryMap[i].countryStr));
             return strlen(wifiCountryMap[i].countryStr);
-	}
+        }
     }
 
-    if(i == ARRAY_SZ(wifiCountryMap))
+    if(strlen(countryStr) == 0)
     {
         CcspWifiTrace(("RDK_LOG_ERROR, %s Invalid Country code enum\n", __func__));
     }
@@ -356,7 +356,7 @@ INT getTxDataRateFromInt(wifi_bitrate_t DataTxRate, char *DataTxRateStr)
         }
     }
 
-    if(i == ARRAY_SZ(wifiDataTxRateMap))
+    if(strlen(DataTxRateStr) == 0)
     {
         CcspWifiTrace(("RDK_LOG_ERROR, %s Invalid DataTxRate enum\n", __func__));
     }
@@ -370,20 +370,20 @@ INT getSecurityStringFromInt(wifi_security_modes_t securityType, char *securityN
     for (i = 0 ; i < ARRAY_SZ(wifiSecMap) ; ++i)
     {
         if(securityType == wifiSecMap[i].halSecCfgMethod)
-	{
+        {
             if (AnscSizeOfString(securityName) != 0)
             {
                 strcat(securityName, ",");
-		strcat(securityName, wifiSecMap[i].wifiSecType);
+                strcat(securityName, wifiSecMap[i].wifiSecType);
             }
             else
             {
                 strcpy(securityName, wifiSecMap[i].wifiSecType);
             }
-	}
+       }
     }
-    
-    if(i == ARRAY_SZ(wifiSecMap))
+
+    if(strlen(securityName) == 0)
     {
         CcspWifiTrace(("RDK_LOG_ERROR, %s Invalid Security type enum\n", __func__));
     }
@@ -403,7 +403,7 @@ INT getBeaconRateStringFromEnum (char *beaconName, int length, wifi_bitrate_t be
         if (beaconType == wifiDataTxRateMap[seqCounter].DataTxRateEnum)
         {
             snprintf(beaconName, length, "%sMbps", wifiDataTxRateMap[seqCounter].DataTxRateStr);
-	    return 0;
+            return 0;
         }
     }
     return 0;
