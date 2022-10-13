@@ -3864,6 +3864,12 @@ void wifidb_init_default_value()
 ********************************************** ****************************************/
 void init_wifidb_data()
 {
+    static bool db_param_init = false;
+    if (db_param_init == true) {
+        wifi_util_dbg_print(WIFI_DB, "%s:%d db params already initialized\r\n",__func__, __LINE__);
+        return;
+    }
+
     int r_index = 0;
     wifi_mgr_t *g_wifidb;
     g_wifidb = get_wifimgr_obj();
@@ -3915,6 +3921,7 @@ void init_wifidb_data()
     pthread_mutex_unlock(&g_wifidb->data_cache_lock);
 
     wifi_util_dbg_print(WIFI_DB,"%s:%d Wifi data init complete\n",__func__, __LINE__);
+    db_param_init = true;
 }
 
 /************************************************************************************

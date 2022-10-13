@@ -1290,7 +1290,7 @@ int get_all_param_from_psm_and_set_into_db(void)
 
     }
 
-    init_wifidb_data();//TBD
+    init_wifidb_data();
 
     //Set Wifi Global Parameters
     init_wifi_global_config();
@@ -1365,6 +1365,14 @@ int init_wifimgr()
     return 0;
 }
 
+void init_wifi_db_param(void)
+{
+    init_wifidb_data();
+
+    /* Set Wifi Global Parameters */
+    init_wifi_global_config();
+}
+
 int start_wifimgr()
 {
 #if DML_SUPPORT
@@ -1375,6 +1383,8 @@ int start_wifimgr()
 
     pthread_cond_destroy(&g_wifi_mgr.dml_init_status);
     pthread_mutex_unlock(&g_wifi_mgr.lock);
+#else
+    init_wifi_db_param();
 #endif // DML_SUPPORT
 
     if (start_wifi_ctrl(&g_wifi_mgr.ctrl) != 0) {

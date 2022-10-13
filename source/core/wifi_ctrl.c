@@ -354,10 +354,18 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
 
 int init_wifi_global_config(void)
 {
+    static bool wifi_global_param_init = false;
+    if (wifi_global_param_init == true) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d wifi global params already initialized\r\n",__func__, __LINE__);
+        return RETURN_OK;
+    }
+
     if (RETURN_OK != WiFi_InitGasConfig()) {
         wifi_util_error_print(WIFI_CTRL,"RDK_LOG_WARN, RDKB_SYSTEM_BOOT_UP_LOG : CosaWifiInitialize - WiFi failed to Initialize GAS Configuration.\n");
         return RETURN_ERR;
     }
+
+    wifi_global_param_init = true;
     return RETURN_OK;
 }
 
