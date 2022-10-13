@@ -249,7 +249,7 @@ void get_self_bss_chan_statistics (int radiocnt , UINT *Tx_perc, UINT  *Rx_perc)
             g_monitor_module.radio_channel_data[radiocnt].ch_utilization_busy_self = chan_stats.ch_utilization_busy_self;
         }
         else {
-            wifi_util_dbg_print(WIFI_MON, "%s : %d wifi_getRadioChannelStats failed for rdx : %d\n",__func__,__LINE__,radiocnt);
+            wifi_util_error_print(WIFI_MON, "%s : %d wifi_getRadioChannelStats failed for rdx : %d\n",__func__,__LINE__,radiocnt);
         }
     }
     return;
@@ -311,7 +311,7 @@ int upload_radio_chan_util_telemetry(void *arg)
         }
     }
     else {
-        wifi_util_dbg_print(WIFI_MON, "%s : %d Failed to get getRadioOperationParam for rdx : %d\n",__func__,__LINE__,radiocnt);
+        wifi_util_error_print(WIFI_MON, "%s : %d Failed to get getRadioOperationParam for rdx : %d\n",__func__,__LINE__,radiocnt);
     }
 
     radiocnt++;
@@ -392,7 +392,7 @@ BOOL client_fast_reconnect(unsigned int apIndex, char *mac)
     gettimeofday(&tv_now, NULL);
 
     if(!assocMonitorDuration) {
-        wifi_util_dbg_print(WIFI_MON, "%s: Client fast reconnection check disabled, assocMonitorDuration:%d \n", __func__, assocMonitorDuration);
+        wifi_util_error_print(WIFI_MON, "%s: Client fast reconnection check disabled, assocMonitorDuration:%d \n", __func__, assocMonitorDuration);
         return FALSE;
     }
 
@@ -403,7 +403,7 @@ BOOL client_fast_reconnect(unsigned int apIndex, char *mac)
     sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
     sta = (sta_data_t *)hash_map_get(sta_map, mac);
     if (sta == NULL) {
-        wifi_util_dbg_print(WIFI_MON, "%s: Client:%s could not be found on sta map of ap:%d\n", __func__, mac, apIndex);
+        wifi_util_error_print(WIFI_MON, "%s: Client:%s could not be found on sta map of ap:%d\n", __func__, mac, apIndex);
         pthread_mutex_unlock(&g_monitor_module.lock);
         return FALSE;
     }
@@ -451,7 +451,7 @@ BOOL client_fast_redeauth(unsigned int apIndex, char *mac)
     gettimeofday(&tv_now, NULL);
 
     if(!deauthMonitorDuration) {
-        wifi_util_dbg_print(WIFI_MON, "%s: Client fast deauth check disabled, deauthMonitorDuration:%d \n", __func__, deauthMonitorDuration);
+        wifi_util_error_print(WIFI_MON, "%s: Client fast deauth check disabled, deauthMonitorDuration:%d \n", __func__, deauthMonitorDuration);
         return FALSE;
     }
 
@@ -1100,7 +1100,7 @@ int upload_client_telemetry_data(void *arg)
             g_monitor_module.bssid_data[i].ap_params.rapid_reconnect_threshold = vap_bss_info->rapidReconnThreshold;
             wifi_util_dbg_print(WIFI_MON, "%s:rapidReconnThreshold:%d vapIndex:%d \n", __FUNCTION__, vap_bss_info->rapidReconnThreshold, vap_index);
         } else {
-            wifi_util_dbg_print(WIFI_MON, "%s: wrong vapIndex:%d \n", __FUNCTION__, vap_index);
+            wifi_util_error_print(WIFI_MON, "%s: wrong vapIndex:%d \n", __FUNCTION__, vap_index);
         }
 
     }    
@@ -1210,7 +1210,7 @@ static void upload_client_debug_stats_chan_stats(INT apIndex)
             }
         }
     } else {
-        wifi_util_dbg_print(WIFI_MON, "%s :Failed to get channel from global db",__func__);
+        wifi_util_error_print(WIFI_MON, "%s :Failed to get channel from global db",__func__);
     }
 }
 static void  upload_client_debug_stats_transmit_power_stats(INT apIndex)
@@ -1243,7 +1243,7 @@ static void  upload_client_debug_stats_transmit_power_stats(INT apIndex)
             snprintf(eventName, sizeof(eventName), "WIFI_TXPWR_PCNTG_%u_split", apIndex + 1 );
             t2_event_d("WIFI_TXPWR_PCNTG_1_split", txpwr_pcntg);
         } else {
-            wifi_util_dbg_print(WIFI_MON, "%s: getRadioOperationParam failed for ApIdx %d\n", __FUNCTION__, getRadioIndexFromAp(apIndex)); 
+            wifi_util_error_print(WIFI_MON, "%s: getRadioOperationParam failed for ApIdx %d\n", __FUNCTION__, getRadioIndexFromAp(apIndex)); 
         }
     }
 }
@@ -1352,11 +1352,11 @@ static void upload_client_debug_stats_sta_fa_info(INT apIndex, sta_data_t *sta)
             }
         }
         else {
-            wifi_util_dbg_print(WIFI_MON, "Failed to run popen command\n");
+            wifi_util_error_print(WIFI_MON, " %s Failed to run popen command\n", __FUNCTION__);
         }
     }
     else {
-        wifi_util_dbg_print(WIFI_MON, "NULL sta\n");
+        wifi_util_error_print(WIFI_MON, "%s NULL sta\n", __FUNCTION__);
     }
 }
 static void upload_client_debug_stats_sta_fa_lmac_data_stats(INT apIndex, sta_data_t *sta)
@@ -1413,11 +1413,11 @@ static void upload_client_debug_stats_sta_fa_lmac_data_stats(INT apIndex, sta_da
             }
         }
         else {
-            wifi_util_dbg_print(WIFI_MON, "Failed to run popen command\n" );
+            wifi_util_error_print(WIFI_MON, "%s Failed to run popen command\n", __FUNCTION__);
         }
     }
     else {
-        wifi_util_dbg_print(WIFI_MON, "NULL sta\n" );
+        wifi_util_error_print(WIFI_MON, "%s NULL sta\n", __FUNCTION__);
     }
 }
 static void upload_client_debug_stats_sta_fa_lmac_mgmt_stats(INT apIndex, sta_data_t *sta)
@@ -1475,11 +1475,11 @@ static void upload_client_debug_stats_sta_fa_lmac_mgmt_stats(INT apIndex, sta_da
             }
         }
         else {
-            wifi_util_dbg_print(WIFI_MON, "Failed to run popen command\n" );
+            wifi_util_error_print(WIFI_MON, "%s Failed to run popen command\n", __FUNCTION__ );
         }
     }
     else {
-        wifi_util_dbg_print(WIFI_MON, "NULL sta\n");
+        wifi_util_error_print(WIFI_MON, "%s NULL sta\n", __FUNCTION__);
     }
 }
 static void upload_client_debug_stats_sta_vap_activity_stats(INT apIndex)
@@ -1531,7 +1531,7 @@ static void upload_client_debug_stats_sta_vap_activity_stats(INT apIndex)
             }
         }
         else {
-            wifi_util_dbg_print(WIFI_MON, "Failed to run popen command\n" );
+            wifi_util_error_print(WIFI_MON, "%s Failed to run popen command\n", __FUNCTION__ );
         }
     }
     if (1 == apIndex) {
@@ -1575,7 +1575,7 @@ static void upload_client_debug_stats_sta_vap_activity_stats(INT apIndex)
         }
         else
         {
-            wifi_util_dbg_print(WIFI_MON, "Failed to run popen command\n" );
+            wifi_util_error_print(WIFI_MON, "%s Failed to run popen command\n", __FUNCTION__);
         }
     }
 }
@@ -1599,7 +1599,7 @@ int upload_client_debug_stats(void *arg)
 
     if  (false == sWiFiDmlvApStatsFeatureEnableCfg)
     {
-        wifi_util_dbg_print(WIFI_MON, "Client activity stats feature is disabled\n");
+        wifi_util_info_print(WIFI_MON, "%s Client activity stats feature is disabled\n", __FUNCTION__);
         phase_sta = 0;
         phase_fp = 0;
         itr = 0;
@@ -1955,7 +1955,7 @@ int get_sta_stats_info (assoc_dev_data_t *assoc_dev_data) {
 
     unsigned int vap_array_index;
     if (assoc_dev_data == NULL) {
-        wifi_util_dbg_print(WIFI_MON, "%s:%d: NULL pointer\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_MON, "%s:%d: NULL pointer\n", __func__, __LINE__);
         return -1;
     }
 
@@ -1971,7 +1971,7 @@ int get_sta_stats_info (assoc_dev_data_t *assoc_dev_data) {
 
     sta_data = (sta_data_t *)hash_map_get(sta_map, to_sta_key(assoc_dev_data->dev_stats.cli_MACAddress, sta_key));
     if (sta_data == NULL) {
-        wifi_util_dbg_print(WIFI_MON, "%s:%d: NULL pointer\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_MON, "%s:%d: NULL pointer\n", __func__, __LINE__);
         pthread_mutex_unlock(&g_monitor_module.lock);
         return -1;
     }
@@ -2112,7 +2112,7 @@ void process_deauthenticate	(unsigned int ap_index, auth_deauth_dev_t *dev)
     char tmp[128];
     sta_key_t sta_key;
 
-    wifi_util_dbg_print(WIFI_MON, "%s:%d Device:%s deauthenticated on ap:%d with reason : %d\n", __func__, __LINE__, to_sta_key(dev->sta_mac, sta_key), ap_index, dev->reason);
+    wifi_util_info_print(WIFI_MON, "%s:%d Device:%s deauthenticated on ap:%d with reason : %d\n", __func__, __LINE__, to_sta_key(dev->sta_mac, sta_key), ap_index, dev->reason);
 
     /*Wrong password on private, Xfinity Home and LNF SSIDs*/
     if ((dev->reason == 2) && ( isVapPrivate(ap_index) || isVapXhs(ap_index) || isVapLnfPsk(ap_index) ) ) {
@@ -2148,7 +2148,7 @@ void process_connect	(unsigned int ap_index, auth_deauth_dev_t *dev)
 
     sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
 
-    wifi_util_dbg_print(WIFI_MON, "sta map: %p Device:%s connected on ap:%d\n", sta_map, to_sta_key(dev->sta_mac, sta_key), ap_index);
+    wifi_util_info_print(WIFI_MON, "sta map: %p Device:%s connected on ap:%d\n", sta_map, to_sta_key(dev->sta_mac, sta_key), ap_index);
     sta = (sta_data_t *)hash_map_get(sta_map, to_sta_key(dev->sta_mac, sta_key));
     if (sta == NULL) { /* new client */
         sta = (sta_data_t *)malloc(sizeof(sta_data_t));
@@ -2208,10 +2208,10 @@ void process_disconnect	(unsigned int ap_index, auth_deauth_dev_t *dev)
 
     getVAPArrayIndexFromVAPIndex(ap_index, &vap_array_index);
     sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
-    wifi_util_dbg_print(WIFI_MON, "Device:%s disconnected on ap:%d\n", to_sta_key(dev->sta_mac, sta_key), ap_index);
+    wifi_util_info_print(WIFI_MON, "Device:%s disconnected on ap:%d\n", to_sta_key(dev->sta_mac, sta_key), ap_index);
     sta = (sta_data_t *)hash_map_get(sta_map, to_sta_key(dev->sta_mac, sta_key));
     if (sta == NULL) {
-        wifi_util_dbg_print(WIFI_MON, "Device:%s could not be found on sta map of ap:%d\n", to_sta_key(dev->sta_mac, sta_key), ap_index);
+        wifi_util_error_print(WIFI_MON, "Device:%s could not be found on sta map of ap:%d\n", to_sta_key(dev->sta_mac, sta_key), ap_index);
         return;
     }
 
@@ -2485,7 +2485,7 @@ void *monitor_function  (void *data)
             gettimeofday(&t_start, NULL);
             scheduler_execute(g_monitor_module.sched, t_start, interval.tv_usec/1000);
         } else {
-            wifi_util_dbg_print(WIFI_MON,"%s:%d Monitor Thread exited with rc - %d",__func__,__LINE__,rc);
+            wifi_util_error_print(WIFI_MON,"%s:%d Monitor Thread exited with rc - %d",__func__,__LINE__,rc);
             pthread_mutex_unlock(&proc_data->lock);
             return NULL;
         }
@@ -2614,7 +2614,7 @@ int  getApIndexfromClientMac(char *check_mac)
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
     if(check_mac == NULL) {
-        wifi_util_dbg_print(WIFI_MON, "%s: Null arguments %p \n",__func__, check_mac);
+        wifi_util_error_print(WIFI_MON, "%s: Null arguments %p \n",__func__, check_mac);
         return -1;
     }
 
@@ -2639,7 +2639,7 @@ static void rtattr_parse(struct rtattr *table[], int max, struct rtattr *rta, in
 {
     unsigned short type;
     if(table == NULL || rta == NULL) {
-        wifi_util_dbg_print(WIFI_MON, "%s: Null arguments %p %p\n",__func__,table, rta);
+        wifi_util_error_print(WIFI_MON, "%s: Null arguments %p %p\n",__func__,table, rta);
         return;
     }
     memset(table, 0, sizeof(struct rtattr *) * (max + 1));
@@ -2669,13 +2669,13 @@ int getlocalIPAddress(char *ifname, char *ip, bool af_family)
     char if_name[IFNAMSIZ] = {'\0'};
 
     if(ifname == NULL || ip == NULL) {
-        wifi_util_dbg_print(WIFI_MON, "%s: Null arguments %p %p\n",__func__, ifname, ip);
+        wifi_util_error_print(WIFI_MON, "%s: Null arguments %p %p\n",__func__, ifname, ip);
         return -1;
     }
 
     fd = socket(AF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE);
     if (fd < 0 ) {
-        wifi_util_dbg_print(WIFI_MON, "Socket error\n");
+        wifi_util_error_print(WIFI_MON, "Socket error\n");
         return -1;
     }
 
@@ -2691,14 +2691,14 @@ int getlocalIPAddress(char *ifname, char *ip, bool af_family)
     }
     status = send(fd, &req, req.n.nlmsg_len, 0);
     if(status<0) {
-        wifi_util_dbg_print(WIFI_MON, "Send error\n");
+        wifi_util_error_print(WIFI_MON, "Send error\n");
         close(fd);
         return -1;
     }
 
     status = recv(fd, buf, sizeof(buf), 0);
     if(status<0) {
-        wifi_util_dbg_print(WIFI_MON, "receive error\n");
+        wifi_util_error_print(WIFI_MON, "receive error\n");
         close(fd);
         return -1;
     }
@@ -2708,7 +2708,7 @@ int getlocalIPAddress(char *ifname, char *ip, bool af_family)
         int req_len = len - sizeof(*nlm);
 
         if (req_len<0 || len>status || !NLMSG_OK(nlm, status)) {
-            wifi_util_dbg_print(WIFI_MON, "length error\n");
+            wifi_util_error_print(WIFI_MON, "length error\n");
             close(fd);
             return -1;
         }
@@ -2735,13 +2735,13 @@ int csi_getInterfaceAddress(unsigned char *tmpmac, char *ip, char *interface, bo
     unsigned char mac[18];
 
     if(tmpmac == NULL || ip == NULL || interface == NULL || af_family == NULL) {
-        wifi_util_dbg_print(WIFI_MON, "%s: Null arguments %p %p %p %p\n",__func__, tmpmac, ip, interface, af_family);
+        wifi_util_error_print(WIFI_MON, "%s: Null arguments %p %p %p %p\n",__func__, tmpmac, ip, interface, af_family);
         return -1;
     }
     macbytes_to_string((unsigned char*)tmpmac, mac);
     ret = csi_getClientIpAddress(mac, ip, interface, 1);
     if(ret < 0 ) {
-        wifi_util_dbg_print(WIFI_MON, "Not able to find v4 address\n");
+        wifi_util_error_print(WIFI_MON, "Not able to find v4 address\n");
     }
     else {
         *af_family = TRUE;
@@ -2750,7 +2750,7 @@ int csi_getInterfaceAddress(unsigned char *tmpmac, char *ip, char *interface, bo
     ret = csi_getClientIpAddress(mac, ip, interface, 0);
     if(ret < 0) {
         *af_family = FALSE;
-        wifi_util_dbg_print(WIFI_MON, "Not able to find v4 or v6 addresses\n");
+        wifi_util_error_print(WIFI_MON, "Not able to find v4 or v6 addresses\n");
         return -1;
     }
     return 0;
@@ -2774,11 +2774,11 @@ int csi_getClientIpAddress(char *mac, char *ip, char *interface, int check)
     unsigned char af_family;
 
     if(mac == NULL || ip == NULL || interface == NULL) {
-        wifi_util_dbg_print(WIFI_MON, "%s: Null arguments %p %p %p\n",__func__, mac, ip, interface);
+        wifi_util_error_print(WIFI_MON, "%s: Null arguments %p %p %p\n",__func__, mac, ip, interface);
         return -1;
     }
     if (fd < 0 ) {
-        wifi_util_dbg_print(WIFI_MON, "Socket error\n");
+        wifi_util_error_print(WIFI_MON, "Socket error\n");
         return -1;
     }
     req.n.nlmsg_len = NLMSG_LENGTH(sizeof(struct ndmsg));
@@ -2794,14 +2794,14 @@ int csi_getClientIpAddress(char *mac, char *ip, char *interface, int check)
 
     status = send(fd, &req, req.n.nlmsg_len, 0);
     if (status < 0) {
-        wifi_util_dbg_print(WIFI_MON, "Socket send error\n");
+        wifi_util_error_print(WIFI_MON, "Socket send error\n");
         close(fd);
         return -1;
     }
 
     status = recv(fd, buf, sizeof(buf), 0);
     if (status < 0) {
-        wifi_util_dbg_print(WIFI_MON, "Socket receive error\n");
+        wifi_util_error_print(WIFI_MON, "Socket receive error\n");
         close(fd);
         return -1;
     }
@@ -2811,7 +2811,7 @@ int csi_getClientIpAddress(char *mac, char *ip, char *interface, int check)
         int req_len = len - sizeof(*nlm);
 
         if (req_len<0 || len>status || !NLMSG_OK(nlm, status)) {
-            wifi_util_dbg_print(WIFI_MON, "packet length error\n");
+            wifi_util_error_print(WIFI_MON, "packet length error\n");
             close(fd);
             return -1;
         }
@@ -2848,7 +2848,7 @@ unsigned short csum(unsigned short *ptr,int nbytes)
     register short answer;
 
     if(ptr == NULL) {
-        wifi_util_dbg_print(WIFI_MON, "%s: Null arguments %p\n",__func__, ptr);
+        wifi_util_error_print(WIFI_MON, "%s: Null arguments %p\n",__func__, ptr);
         return 0;
     }
 
@@ -2880,7 +2880,7 @@ int frame_icmpv4_ping(char *buffer, char *dest_ip, char *source_ip)
     //ICMP header
     struct icmphdr *icmp = (struct icmphdr *) (buffer + sizeof (struct iphdr));
     if(buffer == NULL || dest_ip == NULL || source_ip == NULL) {
-        wifi_util_dbg_print(WIFI_MON, "%s: Null arguments %p %p %p\n",__func__, buffer, dest_ip, source_ip);
+        wifi_util_error_print(WIFI_MON, "%s: Null arguments %p %p %p\n",__func__, buffer, dest_ip, source_ip);
         return 0;
     }
     data = buffer + sizeof(struct iphdr) + sizeof(struct icmphdr);
@@ -2985,7 +2985,7 @@ static void send_ping_data(int ap_idx, unsigned char *mac, char *client_ip, char
     char        cli_ip_str[IP_STR_LEN];
 
     if(mac == NULL ) {
-        wifi_util_dbg_print(WIFI_MON, "%s: Mac is NULL\n",__func__);
+        wifi_util_error_print(WIFI_MON, "%s: Mac is NULL\n",__func__);
         return;
     }
 
@@ -2994,21 +2994,21 @@ static void send_ping_data(int ap_idx, unsigned char *mac, char *client_ip, char
     if(ap_idx < 0 || mac == NULL) {
         return;
     }
-    wifi_util_dbg_print(WIFI_MON, "%s: Got the csi client for index  %02x..%02x\n",__func__,mac[0], mac[5]);
+    wifi_util_info_print(WIFI_MON, "%s: Got the csi client for index  %02x..%02x\n",__func__,mac[0], mac[5]);
     if(refresh) {
         //Find the interface through which this client was seen
         rc = csi_getInterfaceAddress(mac, cli_ip_str, cli_interface_str, &af_family); //pass mac_addr_t
         if(rc<0)
         {
-            wifi_util_dbg_print(WIFI_MON, "%s Failed to get ipv4 client address\n",__func__);
+            wifi_util_error_print(WIFI_MON, "%s Failed to get ipv4 client address\n",__func__);
             return;
         } else {
             if(isValidIpAddress(cli_ip_str, af_family)) {
                 *client_ip_age = 0;
                 strncpy(client_ip, cli_ip_str, IP_STR_LEN);
-                wifi_util_dbg_print(WIFI_MON, "%s Returned ipv4 client address is %s interface %s \n",__func__,  cli_ip_str, cli_interface_str );
+                wifi_util_info_print(WIFI_MON, "%s Returned ipv4 client address is %s interface %s \n",__func__,  cli_ip_str, cli_interface_str );
             } else {
-                wifi_util_dbg_print(WIFI_MON, "%s Was not a valid client ip string\n", __func__);
+                wifi_util_error_print(WIFI_MON, "%s Was not a valid client ip string\n", __func__);
                 return;
             }
         }
@@ -3016,14 +3016,14 @@ static void send_ping_data(int ap_idx, unsigned char *mac, char *client_ip, char
         if(*vap_ip == '\0') {
             rc = getlocalIPAddress(cli_interface_str, src_ip_str, af_family);
             if(rc<0) {
-                wifi_util_dbg_print(WIFI_MON, "%s Failed to get ipv4 address\n",__func__);
+                wifi_util_error_print(WIFI_MON, "%s Failed to get ipv4 address\n",__func__);
                 return;
             } else {
                 if(isValidIpAddress(src_ip_str, af_family)) {
                     strncpy(vap_ip, src_ip_str, IP_STR_LEN);
-                    wifi_util_dbg_print(WIFI_MON, "%s Returned interface ip addr is %s\n", __func__,src_ip_str);
+                    wifi_util_info_print(WIFI_MON, "%s Returned interface ip addr is %s\n", __func__,src_ip_str);
                 } else {
-                    wifi_util_dbg_print(WIFI_MON, "%s Was not a valid client ip string\n", __func__);
+                    wifi_util_error_print(WIFI_MON, "%s Was not a valid client ip string\n", __func__);
                     return;
                 }
             }
@@ -3105,7 +3105,7 @@ void csi_update_client_mac_status(mac_addr_t mac, bool connected, int ap_idx) {
     bool client_csi_monitored = FALSE;
     pthread_mutex_lock(&g_events_monitor.lock);
     count = queue_count(g_events_monitor.csi_queue);
-    wifi_util_dbg_print(WIFI_MON, "%s: Received Mac %d %d %02x %02x\n",__func__, connected, count, mac[0], mac[5]);
+    wifi_util_info_print(WIFI_MON, "%s: Received Mac %d %d %02x %02x\n",__func__, connected, count, mac[0], mac[5]);
     for(i = 0; i<count; i++) {
         csi = queue_peek(g_events_monitor.csi_queue, i);
         if(csi == NULL){
@@ -3151,19 +3151,19 @@ void csi_set_client_mac(char *r_mac_list, int csi_session_number)
     wifi_monitor_data_t *data;
 
     if(r_mac_list == NULL) {
-        wifi_util_dbg_print(WIFI_MON, "%s: mac_list is NULL \n",__func__);
+        wifi_util_error_print(WIFI_MON, "%s: mac_list is NULL \n",__func__);
         return;
     }
 
     pthread_mutex_lock(&g_events_monitor.lock);
     csi = csi_get_session(FALSE, csi_session_number);
     if(!csi) {
-        wifi_util_dbg_print(WIFI_MON, "%s: csi session not present \n",__func__);
+        wifi_util_error_print(WIFI_MON, "%s: csi session not present \n",__func__);
         pthread_mutex_unlock(&g_events_monitor.lock);
         return;
     }
     if(csi->no_of_mac > 0) {
-        wifi_util_dbg_print(WIFI_MON, "%s: Mac already configured %d\n",__func__, csi->no_of_mac);
+        wifi_util_info_print(WIFI_MON, "%s: Mac already configured %d\n",__func__, csi->no_of_mac);
         csi_disable_client(csi);
         for(i = 0; i<csi->no_of_mac; i++) {
             csi->mac_is_connected[i] = FALSE;
@@ -3175,7 +3175,7 @@ void csi_set_client_mac(char *r_mac_list, int csi_session_number)
 
     strncpy(mac_list, r_mac_list, MAX_CSI_CLIENTMACLIST_STR);
     csi->no_of_mac = (strlen(mac_list)+1) / (MIN_MAC_LEN + 1);
-    wifi_util_dbg_print(WIFI_MON, "%s: Total mac's present -  %d %s\n",__func__, csi->no_of_mac, mac_list);
+    wifi_util_info_print(WIFI_MON, "%s: Total mac's present -  %d %s\n",__func__, csi->no_of_mac, mac_list);
     rest = mac_list;
     if(csi->no_of_mac > 0)  {
         while((mac_tok = strtok_r(rest, ",", &rest))) {
@@ -3187,11 +3187,11 @@ void csi_set_client_mac(char *r_mac_list, int csi_session_number)
                 csi->ap_index[mac_ctr] = ap_index;
                 csi->mac_is_connected[mac_ctr] = TRUE;
                 if(csi->enable && csi->subscribed) {
-                    wifi_util_dbg_print(WIFI_MON, "%s: Enabling csi collection for Mac %s\n",__func__, mac_tok);
+                    wifi_util_info_print(WIFI_MON, "%s: Enabling csi collection for Mac %s\n",__func__, mac_tok);
                     wifi_enableCSIEngine(ap_index, csi->mac_list[mac_ctr], TRUE);
                 }
             } else {
-                wifi_util_dbg_print(WIFI_MON, "%s: Not Enabling csi collection for Mac %s\n",__func__, mac_tok);
+                wifi_util_info_print(WIFI_MON, "%s: Not Enabling csi collection for Mac %s\n",__func__, mac_tok);
                 csi->ap_index[mac_ctr] = -1;
                 csi->mac_is_connected[mac_ctr] = FALSE;
             }
@@ -3224,7 +3224,7 @@ static void csi_enable_client(csi_session_t *csi)
 
     for(i =0; i<csi->no_of_mac; i++) {
         if((csi->ap_index[i] != -1) && (csi->mac_is_connected[i] == TRUE)) {
-            wifi_util_dbg_print(WIFI_MON, "%s: Enabling csi collection for Mac %02x..%02x\n",__func__, csi->mac_list[i][0] , csi->mac_list[i][5]  );
+            wifi_util_info_print(WIFI_MON, "%s: Enabling csi collection for Mac %02x..%02x\n",__func__, csi->mac_list[i][0] , csi->mac_list[i][5]  );
             wifi_enableCSIEngine(csi->ap_index[i], csi->mac_list[i], TRUE);
         }
         //check if client is connected now
@@ -3233,7 +3233,7 @@ static void csi_enable_client(csi_session_t *csi)
             if(ap_index >= 0) {
                 csi->ap_index[i] = ap_index;
                 csi->mac_is_connected[i] = TRUE;
-                wifi_util_dbg_print(WIFI_MON, "%s: Enabling csi collection for Mac %02x..%02x\n",__func__, csi->mac_list[i][0] , csi->mac_list[i][5]  );
+                wifi_util_info_print(WIFI_MON, "%s: Enabling csi collection for Mac %02x..%02x\n",__func__, csi->mac_list[i][0] , csi->mac_list[i][5]  );
                 wifi_enableCSIEngine(csi->ap_index[i], csi->mac_list[i], TRUE);
             }
         }
@@ -3306,7 +3306,7 @@ void csi_enable_subscription(bool subscribe, int csi_session_number)
     pthread_mutex_lock(&g_events_monitor.lock);
     csi = csi_get_session(TRUE, csi_session_number);
     if(csi) {
-        wifi_util_dbg_print(WIFI_MON, "%s: subscription for session %d\n",__func__, csi_session_number);
+        wifi_util_info_print(WIFI_MON, "%s: subscription for session %d\n",__func__, csi_session_number);
         if(subscribe) {
             csi->subscribed = subscribe;
             csi_enable_client(csi);
@@ -3358,7 +3358,7 @@ static void csi_disable_client(csi_session_t *r_csi)
     bool client_in_diff_subscriber = FALSE;
 
     if(r_csi == NULL) {
-        wifi_util_dbg_print(WIFI_MON, "%s: r_csi is NULL\n",__func__);
+        wifi_util_error_print(WIFI_MON, "%s: r_csi is NULL\n",__func__);
         return;
     }
 
@@ -3379,7 +3379,7 @@ static void csi_disable_client(csi_session_t *r_csi)
             for(k = 0; k < csi->no_of_mac; k++) {
                 if(memcmp(r_csi->mac_list[j], csi->mac_list[k], sizeof(mac_addr_t))== 0) {
                     //Client is also monitored by a different subscriber
-                    wifi_util_dbg_print(WIFI_MON, "%s: Not Disabling csi for client mac %02x..%02x\n",__func__,r_csi->mac_list[j][0],r_csi->mac_list[j][5]);
+                    wifi_util_info_print(WIFI_MON, "%s: Not Disabling csi for client mac %02x..%02x\n",__func__,r_csi->mac_list[j][0],r_csi->mac_list[j][5]);
                     client_in_diff_subscriber = TRUE;
                     break;
                 }
@@ -3388,7 +3388,7 @@ static void csi_disable_client(csi_session_t *r_csi)
                 break;
         }
         if((client_in_diff_subscriber == FALSE) && (r_csi->mac_is_connected[j] == TRUE)) {
-            wifi_util_dbg_print(WIFI_MON, "%s: Disabling for client mac %02x..%02x\n",__func__,r_csi->mac_list[j][0],r_csi->mac_list[j][5]);
+            wifi_util_info_print(WIFI_MON, "%s: Disabling for client mac %02x..%02x\n",__func__,r_csi->mac_list[j][0],r_csi->mac_list[j][5]);
             wifi_enableCSIEngine(r_csi->ap_index[j], r_csi->mac_list[j], FALSE);
         }
     }
@@ -3426,7 +3426,7 @@ void csi_del_session(int csi_sess_number)
 
     pthread_mutex_lock(&g_events_monitor.lock);
     count = queue_count(g_events_monitor.csi_queue);
-    wifi_util_dbg_print(WIFI_MON, "%s: Deleting Element %d\n",__func__, csi_sess_number);
+    wifi_util_info_print(WIFI_MON, "%s: Deleting Element %d\n",__func__, csi_sess_number);
     for(i = 0; i<count; i++) {
         csi = queue_peek(g_events_monitor.csi_queue, i);
 
@@ -3673,7 +3673,7 @@ int csi_getCSIData(void *arg)
                             }
                         }
                     } else {
-                        wifi_util_dbg_print(WIFI_MON, "%s: wifi_getApAssociatedDeviceDiagnosticResult3 api returned error\n", __func__);
+                        wifi_util_error_print(WIFI_MON, "%s: wifi_getApAssociatedDeviceDiagnosticResult3 api returned error\n", __func__);
                     }
                     if (total_events == count) {
                         break;
@@ -3681,7 +3681,7 @@ int csi_getCSIData(void *arg)
                 }
                 free(dev_array);
             } else {
-                wifi_util_dbg_print(WIFI_MON, "%s: Failed to allocate mem to dev_array\n",__func__);
+                wifi_util_error_print(WIFI_MON, "%s: Failed to allocate mem to dev_array\n",__func__);
             }
         }
     }
@@ -3728,7 +3728,7 @@ void diagdata_set_interval(int interval, unsigned int ap_idx)
     unsigned int vap_array_index;
 
     if(ap_idx >= MAX_VAP) {
-        wifi_util_dbg_print(WIFI_MON, "%s: ap_idx %d not valid\n",__func__, ap_idx);
+        wifi_util_error_print(WIFI_MON, "%s: ap_idx %d not valid\n",__func__, ap_idx);
     }
 
     getVAPArrayIndexFromVAPIndex(ap_idx, &vap_array_index);
@@ -3758,7 +3758,7 @@ int associated_device_diagnostics_send_event(void* arg)
     wifi_monitor_data_t data = {0};
 
     if (arg == NULL) {
-        wifi_util_dbg_print(WIFI_MON, "%s(): Error arg NULL\n",__func__);
+        wifi_util_error_print(WIFI_MON, "%s(): Error arg NULL\n",__func__);
         return TIMER_TASK_ERROR;
     }
     ap_index = (int *) arg;
@@ -3993,24 +3993,24 @@ int radio_diagnostics(void *arg)
 
                 if (freq_band_conversion((wifi_freq_bands_t *)&radioOperation->band, (char *)RadioFreqBand, sizeof(RadioFreqBand), ENUM_TO_STRING) != RETURN_OK)
                 {
-                    wifi_util_dbg_print(WIFI_MON,"%s:%d: frequency band conversion failed\n", __func__, __LINE__);
+                    wifi_util_error_print(WIFI_MON,"%s:%d: frequency band conversion failed\n", __func__, __LINE__);
                 } else {
                     strncpy((char *)&g_monitor_module.radio_data[radiocnt].frequency_band, RadioFreqBand, sizeof(RadioFreqBand));
                     g_monitor_module.radio_data[radiocnt].frequency_band[sizeof(g_monitor_module.radio_data[radiocnt].frequency_band)-1] = '\0';
-                    wifi_util_dbg_print(WIFI_MON, "%s:%d: Frequency band is  %s\n", __func__, __LINE__, RadioFreqBand);
+                    wifi_util_info_print(WIFI_MON, "%s:%d: Frequency band is  %s\n", __func__, __LINE__, RadioFreqBand);
                 }
 
                 wifi_getRadioOperatingChannelBandwidth(radiocnt,RadioChanBand);
                 strncpy((char *)&g_monitor_module.radio_data[radiocnt].channel_bandwidth, RadioChanBand,sizeof(RadioChanBand));
                 wifi_util_dbg_print(WIFI_MON, "%s:%d: channelbandwidth is  %s\n", __func__, __LINE__, RadioChanBand);
             } else {
-                wifi_util_dbg_print(WIFI_MON, "%s : %d wifi_getRadioTrafficStats2 failed for rdx : %d\n",__func__,__LINE__,radiocnt);
+                wifi_util_error_print(WIFI_MON, "%s : %d wifi_getRadioTrafficStats2 failed for rdx : %d\n",__func__,__LINE__,radiocnt);
             }
         } else {
             wifi_util_dbg_print(WIFI_MON, "%s : %d Radio : %d is not enabled\n",__func__,__LINE__,radiocnt);
         }
     } else {
-        wifi_util_dbg_print(WIFI_MON, "%s : %d Failed to get getRadioOperationParam for rdx : %d\n",__func__,__LINE__,radiocnt);
+        wifi_util_error_print(WIFI_MON, "%s : %d Failed to get getRadioOperationParam for rdx : %d\n",__func__,__LINE__,radiocnt);
     }
     radiocnt++;
     if (radiocnt >= getNumberRadios()) {
@@ -4154,14 +4154,14 @@ int device_disassociated(int ap_index, char *mac, int reason)
     data->u.dev.sta_mac[3] = mac_addr[3]; data->u.dev.sta_mac[4] = mac_addr[4]; data->u.dev.sta_mac[5] = mac_addr[5];
     data->u.dev.reason = reason;
 
-    wifi_util_dbg_print(WIFI_MON, "%s:%d:Device diaassociated on interface:%d mac:%02x:%02x:%02x:%02x:%02x:%02x\n",
+    wifi_util_info_print(WIFI_MON, "%s:%d:Device diaassociated on interface:%d mac:%02x:%02x:%02x:%02x:%02x:%02x\n",
             __func__, __LINE__, ap_index,
             data->u.dev.sta_mac[0], data->u.dev.sta_mac[1], data->u.dev.sta_mac[2],
             data->u.dev.sta_mac[3], data->u.dev.sta_mac[4], data->u.dev.sta_mac[5]);
     csi_update_client_mac_status(data->u.dev.sta_mac, FALSE, ap_index);
 
     if (reason == WLAN_RADIUS_GREYLIST_REJECT) {
-        wifi_util_dbg_print(WIFI_MON,"Device disassociated due to Greylist\n");
+        wifi_util_info_print(WIFI_MON,"Device disassociated due to Greylist\n");
         greylist_data.reason = reason;
         memcpy(greylist_data.sta_mac, data->u.dev.sta_mac, sizeof(mac_address_t));
         push_data_to_ctrl_queue(&greylist_data, sizeof(greylist_data), ctrl_event_type_hal_ind, ctrl_event_radius_greylist);
@@ -4212,14 +4212,14 @@ int device_deauthenticated(int ap_index, char *mac, int reason)
     data->u.dev.sta_mac[3] = mac_addr[3]; data->u.dev.sta_mac[4] = mac_addr[4]; data->u.dev.sta_mac[5] = mac_addr[5];
     data->u.dev.reason = reason;
 
-    wifi_util_dbg_print(WIFI_MON, "%s:%d   Device deauthenticated on interface:%d mac:%02x:%02x:%02x:%02x:%02x:%02x with reason %d\n",
+    wifi_util_info_print(WIFI_MON, "%s:%d   Device deauthenticated on interface:%d mac:%02x:%02x:%02x:%02x:%02x:%02x with reason %d\n",
             __func__, __LINE__, ap_index,
             data->u.dev.sta_mac[0], data->u.dev.sta_mac[1], data->u.dev.sta_mac[2],
             data->u.dev.sta_mac[3], data->u.dev.sta_mac[4], data->u.dev.sta_mac[5], reason);
     csi_update_client_mac_status(data->u.dev.sta_mac, FALSE, ap_index);
 
     if (reason == WLAN_RADIUS_GREYLIST_REJECT) {
-        wifi_util_dbg_print(WIFI_MON,"Device deauthenticated due to Greylist\n");
+        wifi_util_info_print(WIFI_MON,"Device deauthenticated due to Greylist\n");
         greylist_data.reason = reason;
         memcpy(greylist_data.sta_mac, data->u.dev.sta_mac, sizeof(mac_address_t));
         push_data_to_ctrl_queue(&greylist_data, sizeof(greylist_data), ctrl_event_type_hal_ind, ctrl_event_radius_greylist);
@@ -4259,7 +4259,7 @@ int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
     data->u.dev.sta_mac[2] = associated_dev->cli_MACAddress[2]; data->u.dev.sta_mac[3] = associated_dev->cli_MACAddress[3];
     data->u.dev.sta_mac[4] = associated_dev->cli_MACAddress[4]; data->u.dev.sta_mac[5] = associated_dev->cli_MACAddress[5];
 
-    wifi_util_dbg_print(WIFI_MON, "%s:%d:Device associated on interface:%d mac:%02x:%02x:%02x:%02x:%02x:%02x\n",
+    wifi_util_info_print(WIFI_MON, "%s:%d:Device associated on interface:%d mac:%02x:%02x:%02x:%02x:%02x:%02x\n",
             __func__, __LINE__, ap_index,
             data->u.dev.sta_mac[0], data->u.dev.sta_mac[1], data->u.dev.sta_mac[2],
             data->u.dev.sta_mac[3], data->u.dev.sta_mac[4], data->u.dev.sta_mac[5]);
@@ -4490,7 +4490,7 @@ int init_wifi_monitor ()
         g_monitor_module.bssid_data[i].sta_map = hash_map_create();
         if (g_monitor_module.bssid_data[i].sta_map == NULL) {
             deinit_wifi_monitor();
-            wifi_util_dbg_print(WIFI_MON, "sta map create error\n");
+            wifi_util_error_print(WIFI_MON, "sta map create error\n");
             return -1;
         }
     }
@@ -4498,14 +4498,14 @@ int init_wifi_monitor ()
     g_monitor_module.queue = queue_create();
     if (g_monitor_module.queue == NULL) {
         deinit_wifi_monitor();
-        wifi_util_dbg_print(WIFI_MON, "monitor queue create error\n");
+        wifi_util_error_print(WIFI_MON, "monitor queue create error\n");
         return -1;
     }
 
     g_monitor_module.sched = scheduler_init();
     if (g_monitor_module.sched == NULL) {
         deinit_wifi_monitor();
-        wifi_util_dbg_print(WIFI_MON, "monitor scheduler init error\n");
+        wifi_util_error_print(WIFI_MON, "monitor scheduler init error\n");
         return -1;
     }
     g_monitor_module.chutil_id = 0;
@@ -4534,7 +4534,7 @@ int init_wifi_monitor ()
     g_events_monitor.csi_queue = queue_create();
     if (g_events_monitor.csi_queue == NULL) {
         deinit_wifi_monitor();
-        wifi_util_dbg_print(WIFI_MON, "monitor csi queue create error\n");
+        wifi_util_error_print(WIFI_MON, "monitor csi queue create error\n");
         return -1;
     }
 
@@ -4550,7 +4550,7 @@ int init_wifi_monitor ()
         if(attrp != NULL)
             pthread_attr_destroy( attrp );
         deinit_wifi_monitor();
-        wifi_util_dbg_print(WIFI_MON, "monitor thread create error\n");
+        wifi_util_error_print(WIFI_MON, "monitor thread create error\n");
         return -1;
     }
 
@@ -4558,15 +4558,15 @@ int init_wifi_monitor ()
         pthread_attr_destroy( attrp );
 
     if(events_init() < 0) {
-        wifi_util_dbg_print(WIFI_MON,"%s:%d: Failed to open socket for wifi event send\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_MON,"%s:%d: Failed to open socket for wifi event send\n", __func__, __LINE__);
     } else {
-        wifi_util_dbg_print(WIFI_MON, "%s:%d: Opened socket for wif event\n", __func__, __LINE__);
+        wifi_util_info_print(WIFI_MON, "%s:%d: Opened socket for wifi event\n", __func__, __LINE__);
     }
     g_monitor_module.sysevent_fd = sysevent_open("127.0.0.1", SE_SERVER_WELL_KNOWN_PORT, SE_VERSION, "wifiMonitor", &g_monitor_module.sysevent_token);
     if (g_monitor_module.sysevent_fd < 0) {
-        wifi_util_dbg_print(WIFI_MON, "%s:%d: Failed to opne sysevent\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_MON, "%s:%d: Failed to open sysevent\n", __func__, __LINE__);
     } else {
-        wifi_util_dbg_print(WIFI_MON, "%s:%d: Opened sysevent\n", __func__, __LINE__);
+        wifi_util_info_print(WIFI_MON, "%s:%d: Opened sysevent\n", __func__, __LINE__);
     }
 
     /* Initializing the lock for active measurement g_active_msmt.lock */
@@ -5055,7 +5055,7 @@ void SetActiveMsmtEnable(bool enable)
     event = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
 
     if ( event == NULL) {
-        wifi_util_dbg_print(WIFI_MON, "%s:%d: memory allocation for event failed.\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_MON, "%s:%d: memory allocation for event failed.\n", __func__, __LINE__);
         return;
     }
 
@@ -5627,7 +5627,7 @@ void pktGen_BlastClient ()
     g_active_msmt.active_msmt_data = (active_msmt_data_t *) calloc ((config.packetCount+1), sizeof(active_msmt_data_t));
 
     if (g_active_msmt.active_msmt_data == NULL) {
-        wifi_util_dbg_print(WIFI_MON, "%s : %d  ERROR> Memory allocation failed for active_msmt_data\n",__func__,__LINE__);
+        wifi_util_error_print(WIFI_MON, "%s : %d  ERROR> Memory allocation failed for active_msmt_data\n",__func__,__LINE__);
         if (index >= 0) {
 #if defined (DUAL_CORE_XB3)
             wifi_setClientDetailedStatisticsEnable(getRadioIndexFromAp(index), FALSE);
@@ -5769,7 +5769,7 @@ void *WiFiBlastClient(void* data)
     frameCountSample = (pktGenFrameCountSamples *) calloc ((NoOfSamples + 1), sizeof(pktGenFrameCountSamples));
 
     if (frameCountSample == NULL) {
-        wifi_util_dbg_print(WIFI_MON,"Memory allocation failed for frameCountSample\n");
+        wifi_util_error_print(WIFI_MON,"Memory allocation failed for frameCountSample\n");
     }
     /* fill the packetgen config with the incoming parameter */
     memset(&config,0,sizeof(pktGenConfig));
@@ -5784,7 +5784,7 @@ void *WiFiBlastClient(void* data)
 
             if (apIndex >= 0) {
                 if ( isVapEnabled (apIndex) != 0 ) {
-                    wifi_util_dbg_print(WIFI_MON, "ERROR running wifiblaster: Init Failed\n" );
+                    wifi_util_error_print(WIFI_MON, "ERROR running wifiblaster: Init Failed\n" );
                     continue;
                 }
 
@@ -5834,7 +5834,7 @@ void *WiFiBlastClient(void* data)
                 if ( ret == 0) {
                     wifi_util_dbg_print(WIFI_MON,"startpkt_thread_id is killed\n");
                 } else {
-                    wifi_util_dbg_print(WIFI_MON,"pthread_kill returns error : %d\n", ret);
+                    wifi_util_error_print(WIFI_MON,"pthread_kill returns error : %d\n", ret);
                 }
 
                 /* stop blasting */
@@ -5927,7 +5927,7 @@ void process_active_msmt_diagnostics (int ap_index)
     sta->sta_active_msmt_data = (active_msmt_data_t *) calloc (g_active_msmt.active_msmt.ActiveMsmtNumberOfSamples,sizeof(active_msmt_data_t));
 
     if (sta->sta_active_msmt_data == NULL) {
-        wifi_util_dbg_print(WIFI_MON, "%s : %d allocating memory for sta_active_msmt_data failed\n",__func__,__LINE__);
+        wifi_util_error_print(WIFI_MON, "%s : %d allocating memory for sta_active_msmt_data failed\n",__func__,__LINE__);
         /*CID: 146766 Dereference after null check*/
         return;
     }

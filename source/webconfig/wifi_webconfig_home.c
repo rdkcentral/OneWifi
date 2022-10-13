@@ -80,8 +80,6 @@ webconfig_error_t translate_to_home_subdoc(webconfig_t *config, webconfig_subdoc
 
 webconfig_error_t encode_home_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
 {
-    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s: Enter\n", __FUNCTION__);
-
     cJSON *json;
     cJSON *obj, *obj_array;
     unsigned int i, j;
@@ -132,8 +130,6 @@ webconfig_error_t encode_home_subdoc(webconfig_t *config, webconfig_subdoc_data_
 
 webconfig_error_t decode_home_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
 {
-    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s: Enter\n", __FUNCTION__);
-
     webconfig_subdoc_t  *doc;
     cJSON *obj_vaps;
     cJSON *obj, *obj_vap;

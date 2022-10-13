@@ -64,7 +64,7 @@ int events_init(void)
     }
     else
     {
-        wifi_util_dbg_print(WIFI_MON, "%s(): RBUS not available. WifiEvents is not supported\n", __FUNCTION__);
+        wifi_util_error_print(WIFI_MON, "%s(): RBUS not available. WifiEvents is not supported\n", __FUNCTION__);
         return 0;
     }
 
@@ -73,7 +73,7 @@ int events_init(void)
     rc = rbus_open(&g_rbus_handle, componentName);
     if(rc != RBUS_ERROR_SUCCESS)
     {
-        wifi_util_dbg_print(WIFI_MON, "%s():fail to open rbus_open\n", __FUNCTION__);
+        wifi_util_error_print(WIFI_MON, "%s():fail to open rbus_open\n", __FUNCTION__);
         return -1;
     }
 
@@ -81,7 +81,7 @@ int events_init(void)
     if(g_rbus_events_queue == NULL)
     {
         rbus_close(g_rbus_handle);
-        wifi_util_dbg_print(WIFI_MON, "%s(): fail to create rbus events queue\n", __FUNCTION__);
+        wifi_util_error_print(WIFI_MON, "%s(): fail to create rbus events queue\n", __FUNCTION__);
         return -1;
     }
    
@@ -90,7 +90,7 @@ int events_init(void)
     rc = rbus_regDataElements(g_rbus_handle, 7, dataElement);
     if(rc != RBUS_ERROR_SUCCESS)
     {
-        wifi_util_dbg_print(WIFI_MON, "%s() rbus_regDataElements failed %d\n", __FUNCTION__, rc);
+        wifi_util_error_print(WIFI_MON, "%s() rbus_regDataElements failed %d\n", __FUNCTION__, rc);
     }
     else
     {
@@ -247,7 +247,7 @@ int events_publish(wifi_monitor_data_t data)
     rbusValue_Init(&value);
     rbusObject_Init(&rdata, NULL);
 
-    wifi_util_dbg_print(WIFI_MON, "%s(): rbusEvent_Publish Event %d\n", __FUNCTION__, data.event_type);
+    wifi_util_info_print(WIFI_MON, "%s(): rbusEvent_Publish Event %d\n", __FUNCTION__, data.event_type);
     switch(data.event_type)
     {
         case monitor_event_type_diagnostics:
@@ -337,7 +337,7 @@ int events_publish(wifi_monitor_data_t data)
 
         if(rc != RBUS_ERROR_SUCCESS)
         {
-            wifi_util_dbg_print(WIFI_MON, "%s(): rbusEvent_Publish Event failed: %d\n", __FUNCTION__, rc);
+            wifi_util_error_print(WIFI_MON, "%s(): rbusEvent_Publish Event failed: %d\n", __FUNCTION__, rc);
         }
     }
     rbusValue_Release(value);

@@ -705,7 +705,7 @@ int captive_portal_check(void)
         wifi_util_dbg_print(WIFI_CTRL,"Rbus error Device.DeviceInfo.X_RDKCENTRAL-COM_ConfigureWiFi\n");
     }
     rbusValue_Release(config_wifi_value);
-    wifi_util_dbg_print(WIFI_CTRL," Captive_portal Ends after NotifyWifiChanges\n");
+    wifi_util_info_print(WIFI_CTRL," Captive_portal Ends after NotifyWifiChanges\n");
 
     return RETURN_OK;
 }

@@ -1319,7 +1319,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg)
         wifi_util_error_print(WIFI_CTRL,"%s: wrong index for radio map: %d\n",__FUNCTION__, ch_chg->radioIndex);
         return;
     }
-    wifi_util_dbg_print(WIFI_CTRL,"%s:%d channel change on radio:%d old channel:%d new channel:%d channel change event type:%d op_class:%d\n",
+    wifi_util_info_print(WIFI_CTRL,"%s:%d channel change on radio:%d old channel:%d new channel:%d channel change event type:%d op_class:%d\n",
                        __func__, __LINE__, ch_chg->radioIndex, radio_params->channel, ch_chg->channel, ch_chg->event, ch_chg->op_class);
     pthread_mutex_lock(&g_wifidb->data_cache_lock);
     radio_params->channel = ch_chg->channel;
@@ -1552,6 +1552,9 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
     switch (subtype) {
         case ctrl_event_webconfig_set_data:
             memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap, sizeof(wifi_hal_capability_t));
+#if DML_SUPPORT
+            analytics->event_fn(analytics, ctrl_event_type_webconfig, ctrl_event_webconfig_set_data, NULL);
+#endif
             webconfig_decode(config, &data, raw);
             analytics->event_fn(analytics, ctrl_event_type_webconfig, ctrl_event_webconfig_set_data, &data);
             break;

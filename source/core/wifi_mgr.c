@@ -1245,9 +1245,9 @@ int get_all_param_from_psm_and_set_into_db(void)
             int retval;
             retval = wifi_db_update_psm_values();
             if (retval == RETURN_OK) {
-                wifi_util_dbg_print(WIFI_MGR,"%s updated WIFI DB from psm\n",__func__);
+                wifi_util_info_print(WIFI_MGR,"%s updated WIFI DB from psm\n",__func__);
             } else {
-                wifi_util_dbg_print(WIFI_MGR,"%s: failed to update WIFI DB from psm\n",__func__);
+                wifi_util_error_print(WIFI_MGR,"%s: failed to update WIFI DB from psm\n",__func__);
                 return RETURN_ERR;
             }
             sleep(1);

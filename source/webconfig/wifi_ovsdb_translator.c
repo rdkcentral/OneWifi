@@ -535,6 +535,7 @@ webconfig_error_t webconfig_ovsdb_decode(webconfig_t *config, const char *str,
         webconfig_subdoc_type_t *type)
 {
     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d\n", __func__, __LINE__);
+
     webconfig_ovsdb_data.u.decoded.external_protos = (webconfig_external_ovsdb_t *)data;
     webconfig_ovsdb_data.descriptor = webconfig_data_descriptor_translate_to_ovsdb;
 
@@ -3167,7 +3168,6 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_dml(webconfig
     return webconfig_error_none;
 }
 
-
 webconfig_error_t  translate_vap_object_from_ovsdb_vif_config_for_macfilter(webconfig_subdoc_data_t *data)
 {
     const struct schema_Wifi_VIF_Config **table;
@@ -3223,7 +3223,8 @@ webconfig_error_t  translate_vap_object_from_ovsdb_vif_config_for_macfilter(webc
         vap_index = convert_vap_name_to_index(wifi_prop, vapname);
 
         if ((vap_array_index == -1) || (radio_index == -1) || (vap_index == -1)) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: invalid index radio_index %d vap_array_index  %d vap index: %d for vapname : %s\n", __func__, __LINE__, radio_index, vap_array_index, vap_index, vapname);
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: invalid index radio_index %d vap_array_index  %d vap index: %d for vapname : %s\n",
+                    __func__, __LINE__, radio_index, vap_array_index, vap_index, vapname);
             return webconfig_error_translate_from_ovsdb;
         }
 

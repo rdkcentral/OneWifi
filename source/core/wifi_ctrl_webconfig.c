@@ -244,6 +244,7 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
     wifi_mgr_t *mgr = get_wifimgr_obj();
     int ret = 0;
     wifi_apps_t         *analytics = NULL;
+    char update_status[128];
 
     for (i = 0; i < size; i++) {
 
@@ -328,8 +329,9 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
 
             analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
             if (analytics->event_fn != NULL) {
-                analytics->event_fn(analytics, ctrl_event_type_webconfig, ctrl_event_webconfig_hal_result, &ret);
-                wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: analytics event status:%d\n", __func__, __LINE__, ret);
+                memset(update_status, 0, sizeof(update_status));
+                snprintf(update_status, sizeof(update_status), "%s %s", vap_names[i], (ret == RETURN_OK)?"success":"fail");
+                analytics->event_fn(analytics, ctrl_event_type_webconfig, ctrl_event_webconfig_hal_result, update_status);
             }
 
             if (strcmp(vap_info->vap_name,"hotspot_open_2g") == 0) {

@@ -25,7 +25,16 @@ const char *subdoc_type_to_string(webconfig_subdoc_type_t type)
         DOC2S(webconfig_subdoc_type_mesh)
         DOC2S(webconfig_subdoc_type_mesh_backhaul)
         DOC2S(webconfig_subdoc_type_mesh_sta)
+        DOC2S(webconfig_subdoc_type_lnf)
+        DOC2S(webconfig_subdoc_type_dml)
         DOC2S(webconfig_subdoc_type_associated_clients)
+        DOC2S(webconfig_subdoc_type_wifiapiradio)
+        DOC2S(webconfig_subdoc_type_wifiapivap)
+        DOC2S(webconfig_subdoc_type_mac_filter)
+        DOC2S(webconfig_subdoc_type_blaster)
+        DOC2S(webconfig_subdoc_type_harvester)
+        DOC2S(webconfig_subdoc_type_wifi_config)
+        DOC2S(webconfig_subdoc_type_csi)
         default:
             wifi_util_error_print(WIFI_APPS,"%s:%d: event not handle[%d]\r\n",__func__, __LINE__, type);
             break;
@@ -122,18 +131,92 @@ int analytics_event_exec_timeout(wifi_apps_t *apps, void *arg)
 int analytics_event_webconfig_set_data(wifi_apps_t *apps, void *arg)
 {
     webconfig_subdoc_data_t *doc = (webconfig_subdoc_data_t *)arg;
+    char temp_str[512];
+    webconfig_subdoc_decoded_data_t *decoded_params = NULL;
+    rdk_wifi_radio_t *radio;
+    wifi_vap_info_map_t *vap_map;
+    wifi_vap_info_t *vap;
+    int out_bytes = 0;
+    unsigned int i = 0, j = 0;
+    int  radio_index = 0;
 
-    wifi_util_info_print(WIFI_ANALYTICS, analytics_format_ovsm_core, "set", subdoc_type_to_string(doc->type));
+    if (doc == NULL) {
+       /*Note : This is not error case, but this check is used to denote webconfig_set_data event
+        * is received by the handle_webconfig_event() function and decode is not happened yet
+        * to determine the subdoc type.
+        */
+        wifi_util_info_print(WIFI_ANALYTICS, analytics_format_ovsm_core, "set", "webconfig");
+        return 0;
+    }
+
+    decoded_params = &doc->u.decoded;
+    if (decoded_params == NULL) {
+        wifi_util_error_print(WIFI_APPS,"%s:%d: decoded data is NULL : %p\n", __func__, __LINE__, decoded_params);
+        return -1;
+    }
+    memset(temp_str, 0, sizeof(temp_str));
+    switch (doc->type) {
+        case webconfig_subdoc_type_private:
+        case webconfig_subdoc_type_home:
+        case webconfig_subdoc_type_xfinity:
+        case webconfig_subdoc_type_lnf:
+        case webconfig_subdoc_type_mesh_backhaul:
+            out_bytes += snprintf(&temp_str[out_bytes], (sizeof(temp_str)-out_bytes), "%s:", subdoc_type_to_string(doc->type));
+            for (i = 0; i < getNumberRadios(); i++) {
+                radio = &decoded_params->radios[i];
+                vap_map = &radio->vaps.vap_map;
+                for (j = 0; j < radio->vaps.num_vaps; j++) {
+                    vap = &vap_map->vap_array[j];
+
+                    if(vap->vap_name[0] != '\0') {
+                        out_bytes += snprintf(&temp_str[out_bytes], (sizeof(temp_str)-out_bytes)," %d,%s,%s",
+                                vap->vap_index, vap->u.bss_info.ssid, (vap->u.bss_info.enabled==TRUE)?"enb":"dis");
+                    }
+                }
+            }
+            wifi_util_info_print(WIFI_ANALYTICS, analytics_format_core_core, "set", temp_str);
+        break;
+        case webconfig_subdoc_type_mesh_sta:
+            out_bytes += snprintf(&temp_str[out_bytes], (sizeof(temp_str)-out_bytes), "%s:", subdoc_type_to_string(doc->type));
+            for (i = 0; i < getNumberRadios(); i++) {
+                radio = &decoded_params->radios[i];
+                vap_map = &radio->vaps.vap_map;
+                for (j = 0; j < radio->vaps.num_vaps; j++) {
+                    vap = &vap_map->vap_array[j];
+
+                    if(vap->vap_name[0] != '\0') {
+                        out_bytes += snprintf(&temp_str[out_bytes], (sizeof(temp_str)-out_bytes)," %d,%s,%s",
+                                vap->vap_index, vap->u.sta_info.ssid, (vap->u.sta_info.conn_status==wifi_connection_status_connected)?"con":"discon");
+
+                    }
+                }
+            }
+            wifi_util_info_print(WIFI_ANALYTICS, analytics_format_core_core, "set", temp_str);
+        break;
+        case webconfig_subdoc_type_radio:
+            out_bytes += snprintf(&temp_str[out_bytes], (sizeof(temp_str)-out_bytes), "%s:", subdoc_type_to_string(doc->type));
+            for (i = 0; i < getNumberRadios(); i++) {
+                radio = &decoded_params->radios[i];
+                radio_index = convert_radio_name_to_radio_index(radio->name);
+                out_bytes += snprintf(&temp_str[out_bytes], (sizeof(temp_str)-out_bytes)," %d,%s,%d",
+                        radio_index, (radio->oper.enable==TRUE)?"enb":"dis", radio->oper.channel);
+            }
+            wifi_util_info_print(WIFI_ANALYTICS, analytics_format_core_core, "set", temp_str);
+        break;
+        default:
+            out_bytes += snprintf(&temp_str[out_bytes], (sizeof(temp_str)-out_bytes), "%s:", subdoc_type_to_string(doc->type));
+            wifi_util_info_print(WIFI_ANALYTICS, analytics_format_core_core, "set", temp_str);
+        break;
+    }
 
     return 0;
 }
 
 int analytics_event_webconfig_hal_result(wifi_apps_t *apps, void *arg)
 {
-    int *ret = (int *)arg;
+    char *hal_result = (char *)arg;
 
-    wifi_util_info_print(WIFI_ANALYTICS, analytics_format_hal_core, "result",
-               (*ret == RETURN_OK)?"success":"fail");
+    wifi_util_info_print(WIFI_ANALYTICS, analytics_format_hal_core, "result", hal_result);
 
     return 0;
 }

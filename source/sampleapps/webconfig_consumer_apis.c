@@ -468,7 +468,7 @@ webconfig_error_t   app_free_macfilter_entries(webconfig_subdoc_data_t *data)
 
     decoded_params = &data->u.decoded;
     if (decoded_params == NULL) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: decoded_params is NULL\n", __func__, __LINE__);
+        printf("%s:%d: decoded_params is NULL\n", __func__, __LINE__);
         return webconfig_error_invalid_subdoc;
     }
 
@@ -569,7 +569,7 @@ int init_tests(webconfig_consumer_t *consumer)
     consumer->webconfig.apply_data = (webconfig_apply_data_t)webconfig_consumer_apply;
 
     if (webconfig_init(&consumer->webconfig) != webconfig_error_none) {
-        wifi_util_dbg_print(WIFI_MGR, "[%s]:%d Init WiFi Web Config  fail\n",__FUNCTION__,__LINE__);
+        printf("[%s]:%d Init WiFi Web Config  fail\n",__FUNCTION__,__LINE__);
         return -1;
     }
 
@@ -1873,7 +1873,7 @@ void generate_tunnel_event(bool status, rbusHandle_t handle)
 
     int rc = rbusEvent_Publish(handle, &event);
     if(rc != RBUS_ERROR_SUCCESS){
-        wifi_util_dbg_print(WIFI_CTRL,"%s:%d rbusEvent_Publish %s failed\n", __func__, __LINE__, event.name );
+        printf("%s:%d rbusEvent_Publish %s failed\n", __func__, __LINE__, event.name );
     }
 
     rbusValue_Release(value);

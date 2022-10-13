@@ -94,13 +94,13 @@ void upload_associated_devices_msmt_data(bssid_data_t *bssid_info, sta_data_t *s
     int radio_idx = 0;
     bssid_data_t *bssid_data;
     hash_map_t *sta_map;
-    sta_data_t  *sta_data = NULL;
+    sta_data_t	*sta_data = NULL;
     wifi_monitor_t *monitor;
     associated_devices_msmt_type_t msmt_type;
-    
+
     avro_writer_t writer;
     avro_schema_t inst_msmt_schema = NULL;
-    avro_schema_error_t error = NULL;
+    avro_schema_error_t	error = NULL;
     avro_value_iface_t  *iface = NULL;
     avro_value_t  adr = {0}; /*RDKB-7463, CID-33353, init before use */
     avro_value_t  adrField = {0}; /*RDKB-7463, CID-33485, init before use */
@@ -108,7 +108,7 @@ void upload_associated_devices_msmt_data(bssid_data_t *bssid_info, sta_data_t *s
 
     if (bssid_info == NULL) { 
         if (sta_info != NULL) {
-            wifi_util_dbg_print(WIFI_MON, "%s:%d: Invalid arguments\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_MON, "%s:%d: Invalid arguments\n", __func__, __LINE__);
             return;
         } else {
             msmt_type = associated_devices_msmt_type_all;
@@ -121,16 +121,15 @@ void upload_associated_devices_msmt_data(bssid_data_t *bssid_info, sta_data_t *s
             msmt_type = associated_devices_msmt_type_one;
         }
     }
-        
     wifi_util_dbg_print(WIFI_MON, "%s:%d: Measurement Type: %d\n", __func__, __LINE__, msmt_type);
-    
+
     monitor = get_wifi_monitor();
-        radio_idx = getRadioIndexFromAp(monitor->inst_msmt.ap_index);
+    radio_idx = getRadioIndexFromAp(monitor->inst_msmt.ap_index);
 
     /* open schema file */
     fp = fopen (INTERFACE_DEVICES_WIFI_AVRO_FILENAME , "rb");
     if (fp == NULL) {
-        wifi_util_dbg_print(WIFI_MON, "%s:%d: Unable to open schema file: %s\n", __func__, __LINE__, INTERFACE_DEVICES_WIFI_AVRO_FILENAME);
+        wifi_util_error_print(WIFI_MON, "%s:%d: Unable to open schema file: %s\n", __func__, __LINE__, INTERFACE_DEVICES_WIFI_AVRO_FILENAME);
         return;
     }
 
@@ -139,9 +138,9 @@ void upload_associated_devices_msmt_data(bssid_data_t *bssid_info, sta_data_t *s
     size = ftell(fp);
     if(size < 0)
     {
-      wifi_util_dbg_print(WIFI_MON, "%s:%d: ftell error\n", __func__, __LINE__);
-      fclose(fp);
-      return;
+        wifi_util_error_print(WIFI_MON, "%s:%d: ftell error\n", __func__, __LINE__);
+        fclose(fp);
+        return;
     }
 
     /*back to the start of the file*/
