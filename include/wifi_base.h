@@ -422,7 +422,8 @@ typedef struct {
 typedef struct {
     int ap_index;
     wifi_associated_dev3_t dev_stats;
-}__attribute__((__packed__)) assoc_dev_data_t;
+    int reason;
+} __attribute__((__packed__)) assoc_dev_data_t;
 
 #ifdef __cplusplus
 }

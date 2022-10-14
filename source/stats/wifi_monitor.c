@@ -4169,6 +4169,7 @@ int device_disassociated(int ap_index, char *mac, int reason)
     }
     memcpy(assoc_data.dev_stats.cli_MACAddress, data->u.dev.sta_mac, sizeof(mac_address_t));
     assoc_data.ap_index = data->ap_index;
+    assoc_data.reason = reason;
     push_data_to_ctrl_queue(&assoc_data, sizeof(assoc_data), ctrl_event_type_hal_ind, ctrl_event_hal_disassoc_device);
 
     pthread_mutex_lock(&g_monitor_module.lock);
@@ -4227,6 +4228,7 @@ int device_deauthenticated(int ap_index, char *mac, int reason)
 
     memcpy(assoc_data.dev_stats.cli_MACAddress, data->u.dev.sta_mac, sizeof(mac_address_t));
     assoc_data.ap_index = data->ap_index;
+    assoc_data.reason = reason;
     push_data_to_ctrl_queue(&assoc_data, sizeof(assoc_data), ctrl_event_type_hal_ind, ctrl_event_hal_disassoc_device);
 
     pthread_mutex_lock(&g_monitor_module.lock);
@@ -4242,6 +4244,8 @@ int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
 {
     wifi_monitor_data_t *data;
     assoc_dev_data_t assoc_data;
+
+    memset(&assoc_data, 0, sizeof(assoc_data));
 
     data = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
     data->id = msg_id++;

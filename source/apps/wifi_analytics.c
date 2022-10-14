@@ -84,7 +84,7 @@ int analytics_event_exec_timeout(wifi_apps_t *apps, void *arg)
         dev_stats = (wifi_associated_dev3_t *)get_dev_stats_for_sta(sta_info->ap_index, sta_info->sta_mac);
         if (dev_stats != NULL) {
             to_mac_str(sta_info->sta_mac, client_mac);
-            sprintf(rssi_str, "%ddbm", dev_stats->cli_RSSI);
+            sprintf(rssi_str, "%ddbm vap index:%d", dev_stats->cli_RSSI, sta_info->ap_index);
             wifi_util_info_print(WIFI_ANALYTICS, analytics_format_generic, client_mac, "CORE", "rssi", rssi_str);
         }
         sta_info = hash_map_get_next(sta_map, sta_info);
@@ -160,16 +160,22 @@ int analytics_event_hal_sta_conn_status(wifi_apps_t *apps, void *arg)
 int analytics_event_hal_assoc_device(wifi_apps_t *apps, void *arg)
 {
     char client_mac[32];
+    char temp_str[64];
     hash_map_t           *sta_map;
     analytics_sta_info_t *sta_info;
     char *tmp;
+
     memset(client_mac, 0, sizeof(client_mac));
+    memset(temp_str, 0, sizeof(temp_str));
 
     assoc_dev_data_t *assoc_data = (assoc_dev_data_t *)arg;
 
     tmp = (char *)to_mac_str(assoc_data->dev_stats.cli_MACAddress, client_mac);
 
-    wifi_util_info_print(WIFI_ANALYTICS, analytics_format_hal_core, "connect", client_mac);
+    sprintf(temp_str, "\"%s\" vap index:%d", client_mac, assoc_data->ap_index);
+
+    wifi_util_info_print(WIFI_ANALYTICS, analytics_format_hal_core, "connect", temp_str);
+
     sta_map = apps->u.analytics.sta_map;
 
     if ((sta_info = (analytics_sta_info_t *)hash_map_get(sta_map, tmp)) == NULL) {
@@ -188,17 +194,21 @@ int analytics_event_hal_assoc_device(wifi_apps_t *apps, void *arg)
 int analytics_event_hal_disassoc_device(wifi_apps_t *apps, void *arg)
 {
     char client_mac[32];
+    char temp_str[64];
     hash_map_t            *sta_map;
     analytics_sta_info_t  *sta_info;
     char *tmp;
     memset(client_mac, 0, sizeof(client_mac));
+    memset(temp_str, 0, sizeof(temp_str));
 
     assoc_dev_data_t *assoc_data = (assoc_dev_data_t *)arg;
 
     sta_map = apps->u.analytics.sta_map;
 
     tmp = (char *)to_mac_str(assoc_data->dev_stats.cli_MACAddress, client_mac);
-    wifi_util_info_print(WIFI_ANALYTICS, analytics_format_hal_core, "disconnect", client_mac);
+    sprintf(temp_str, "\"%s\" vap index:%d reason:%d", client_mac, assoc_data->ap_index, assoc_data->reason);
+    wifi_util_info_print(WIFI_ANALYTICS, analytics_format_hal_core, "disconnect", temp_str);
+
     sta_info = (analytics_sta_info_t *)hash_map_get(sta_map, tmp);
     if (sta_info != NULL) {
         sta_info = hash_map_remove(sta_map, tmp);

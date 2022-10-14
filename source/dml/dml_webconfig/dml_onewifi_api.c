@@ -807,7 +807,7 @@ int push_kick_assoc_to_ctrl_queue(int vap_index)
     memset(tmp_str, 0, sizeof(tmp_str));
     wifi_util_info_print(WIFI_DMCLI, "%s:%d Pushing kick assoc to ctrl queue for vap_index %d\n", __func__, __LINE__, vap_index);
     snprintf(tmp_str, sizeof(tmp_str), "%d-ff:ff:ff:ff:ff:ff-0", vap_index);
-    push_data_to_ctrl_queue(tmp_str, strlen(tmp_str), ctrl_event_type_command, ctrl_event_type_command_kick_assoc_devices);
+    push_data_to_ctrl_queue(tmp_str, (strlen(tmp_str) + 1), ctrl_event_type_command, ctrl_event_type_command_kick_assoc_devices);
 
     return RETURN_OK;
 }
