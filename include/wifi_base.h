@@ -97,6 +97,7 @@ typedef enum {
     ctrl_event_type_snr,
     ctrl_event_type_cli_stat,
     ctrl_event_type_txrx_rate,
+    ctrl_event_type_prefer_private_rfc,
     ctrl_event_command_max,
 
     // wif_api
@@ -451,6 +452,17 @@ typedef struct {
     struct active_msmt_data *sta_active_msmt_data;
 } __attribute__((__packed__)) sta_data_t;
 
+typedef enum {
+    WLAN_RADIUS_GREYLIST_REJECT=100,
+    PREFER_PRIVATE_RFC_REJECT=101
+} acl_entry_reason_t;
+
+typedef struct {
+    mac_address_t mac;
+    CHAR device_name[64];
+    acl_entry_reason_t  reason;
+    int expiry_time;
+}__attribute__((__packed__)) acl_entry_t;
 #ifdef __cplusplus
 }
 #endif

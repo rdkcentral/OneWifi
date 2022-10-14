@@ -1010,6 +1010,12 @@ int push_factory_reset_to_ctrl_queue()
     push_data_to_ctrl_queue(&factory_reset_flag, sizeof(factory_reset_flag), ctrl_event_type_command, ctrl_event_type_command_factory_reset);
     return RETURN_OK;
 }
+int push_prefer_private_ctrl_queue(bool flag)
+{
+    wifi_util_dbg_print(WIFI_DMCLI, "Inside :%s flag=%d \n", __FUNCTION__,flag);
+    push_data_to_ctrl_queue(&flag, sizeof(flag), ctrl_event_type_command, ctrl_event_type_prefer_private_rfc);
+    return RETURN_OK;
+}
 
 int push_rfc_dml_cache_to_one_wifidb(bool rfc_value,ctrl_event_subtype_t rfc)
 {

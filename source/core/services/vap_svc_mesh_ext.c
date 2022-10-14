@@ -680,7 +680,7 @@ int process_ext_exec(vap_svc_t *svc, ctrl_event_subtype_t sub_type, void *arg)
     return 0;
 }
 
-int vap_svc_mesh_ext_event(vap_svc_t *svc, ctrl_event_type_t type, ctrl_event_subtype_t sub_type, void *arg)
+int vap_svc_mesh_ext_event(vap_svc_t *svc, ctrl_event_type_t type, ctrl_event_subtype_t sub_type, vap_svc_event_t event, void *arg)
 {
     switch (type) {
         case ctrl_event_type_exec:

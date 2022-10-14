@@ -180,7 +180,7 @@ void sta_selfheal_handing(wifi_ctrl_t *ctrl, vap_svc_t *l_svc)
             reset_both_wifi_radio();
             radio_reset_triggered = true;
         } else if ((connection_timeout * STA_CONN_RETRY_TIMEOUT) >= MAX_CONNECTION_ALGO_TIMEOUT) {
-            l_svc->event_fn(l_svc, ctrl_event_type_exec, ctrl_event_exec_timeout, NULL);
+            l_svc->event_fn(l_svc, ctrl_event_type_exec, ctrl_event_exec_timeout, vap_svc_event_none, NULL);
             connection_timeout = 0;
         }
     } else {
@@ -296,7 +296,7 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
                 greylist_flag = check_for_greylisted_mac_filter();
                 if (greylist_flag) {
                     wifi_util_dbg_print(WIFI_CTRL,"greylist_mac present\n");
-                    remove_greylist_acl_entries(false);
+                    remove_xfinity_acl_entries(false,false);
                 }
             }
             greylist_event++;

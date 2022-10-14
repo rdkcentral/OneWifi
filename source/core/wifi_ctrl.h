@@ -78,7 +78,6 @@ extern "C" {
 #define DEVICE_TUNNEL_UP                   1
 #define DEVICE_TUNNEL_DOWN                 0
 
-#define WLAN_RADIUS_GREYLIST_REJECT        100
 #define GREYLIST_TIMEOUT_IN_SECONDS        (24 * 60 * 60)
 #define GREYLIST_CHECK_IN_SECONDS          (1 * 60 * 60)
 
@@ -191,13 +190,6 @@ typedef enum {
     cli_stat_list_type,
     txrx_rate_list_type
 } marker_list_t;
-
-typedef struct {
-    mac_address_t mac;
-    CHAR device_name[64];
-    int reason;
-    int expiry_time;
-}__attribute__((__packed__)) acl_entry_t;
 
 void process_mgmt_ctrl_frame_event(frame_data_t *msg, uint32_t msg_length);
 wifi_db_t *get_wifidb_obj();

@@ -31,10 +31,10 @@ void process_scan_results_event(scan_results_t *results, unsigned int len)
 
     ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
     if (ctrl->network_mode == rdk_dev_mode_type_ext) {
-        ext_svc->event_fn(ext_svc, ctrl_event_type_hal_ind, ctrl_event_scan_results, results);
+        ext_svc->event_fn(ext_svc, ctrl_event_type_hal_ind, ctrl_event_scan_results, vap_svc_event_none, results);
     }
 }
-int remove_greylist_acl_entries(bool remove_all_greylist_entry)
+int remove_xfinity_acl_entries(bool remove_all_greylist_entry,bool prefer_private)
 {
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d  Enter \n", __FUNCTION__, __LINE__);
     acl_entry_t *tmp_acl_entry = NULL, *acl_entry = NULL;
@@ -54,15 +54,18 @@ int remove_greylist_acl_entries(bool remove_all_greylist_entry)
         wifi_vap_map = get_wifidb_vap_map(itr);
         for (itrj = 0; itrj < getMaxNumberVAPsPerRadio(itr); itrj++) {
             vap_index = wifi_vap_map->vap_array[itrj].vap_index;
+            if ((vap_svc_is_public(vap_index) == false)) {
+                continue;
+            }
+
             l_rdk_vap_array = get_wifidb_rdk_vap_info(vap_index);
 
             if (l_rdk_vap_array->acl_map != NULL) {
                 acl_entry = hash_map_get_first(l_rdk_vap_array->acl_map);
 
-                while(acl_entry != NULL) {
-
-                    if ((acl_entry->reason == WLAN_RADIUS_GREYLIST_REJECT) &&
-                        ((acl_entry->expiry_time <= tv_now.tv_sec) || remove_all_greylist_entry)) {
+                while (acl_entry != NULL) {
+                    if ((prefer_private && (acl_entry->reason == PREFER_PRIVATE_RFC_REJECT)) || ((acl_entry->reason == WLAN_RADIUS_GREYLIST_REJECT) &&
+                        ((acl_entry->expiry_time <= tv_now.tv_sec) || remove_all_greylist_entry))) {
 
                         to_mac_str(acl_entry->mac, mac_str);
                         ret = wifi_delApAclDevice(l_rdk_vap_array->vap_index, mac_str);
@@ -72,14 +75,15 @@ int remove_greylist_acl_entries(bool remove_all_greylist_entry)
                              __func__, __LINE__, l_rdk_vap_array->vap_index, mac_str);
                             ret = RETURN_ERR;
                         }
+                           acl_entry = hash_map_get_next(l_rdk_vap_array->acl_map, acl_entry);
 
-                        if (ret == RETURN_OK || remove_all_greylist_entry) {
                             tmp_acl_entry = hash_map_remove(l_rdk_vap_array->acl_map, mac_str);
                             snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", l_rdk_vap_array->vap_name, mac_str);
                             wifidb_update_wifi_macfilter_config(macfilterkey, tmp_acl_entry, false);
-                        }
                     }
-                    acl_entry = hash_map_get_next(l_rdk_vap_array->acl_map, acl_entry);
+                    else {
+                       acl_entry = hash_map_get_next(l_rdk_vap_array->acl_map, acl_entry);
+                    }
                 }
             }
        }
@@ -260,7 +264,7 @@ void process_sta_conn_status_event(rdk_sta_data_t *sta_data, unsigned int len)
     ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
 
     if(ctrl->network_mode == rdk_dev_mode_type_ext) {
-        ext_svc->event_fn(ext_svc, ctrl_event_type_hal_ind, ctrl_event_hal_sta_conn_status, sta_data);
+        ext_svc->event_fn(ext_svc, ctrl_event_type_hal_ind, ctrl_event_hal_sta_conn_status, vap_svc_event_none, sta_data);
     }
 }
 
@@ -1015,6 +1019,9 @@ void process_assoc_device_event(void *data)
     ULONG old_count = 0, new_count = 0;
     assoc_dev_data_t *p_assoc_data;
     int itr = 0, itrj = 0;
+    vap_svc_t  *pub_svc;
+    mac_addr_t prefer_private_mac;
+    wifi_global_param_t *pcfg = (wifi_global_param_t *) get_wifidb_wifi_global_param();
 
     if (data == NULL) {
         return;
@@ -1057,7 +1064,16 @@ void process_assoc_device_event(void *data)
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d NULL assoc_device_queue\n", __func__,__LINE__);
         free(assoc_data_to_queue);
     }
-
+    if ((isVapPrivate(rdk_vap_info->vap_index))) {
+        if (pcfg != NULL && pcfg->prefer_private) {
+            pub_svc = get_svc_by_type(&p_wifi_mgr->ctrl, vap_svc_type_public);
+            if (pub_svc->event_fn != NULL) {
+                memcpy(prefer_private_mac, assoc_data->dev_stats.cli_MACAddress, sizeof(mac_address_t));
+                pub_svc->event_fn(pub_svc, ctrl_event_type_command, ctrl_event_type_prefer_private_rfc,
+                                    add_prefer_private_acl_to_public, &prefer_private_mac);
+            }
+        }
+    }
     //Code to publish event to LMLite.
     if ((isVapPrivate(rdk_vap_info->vap_index)) || (isVapXhs(rdk_vap_info->vap_index))) {
         snprintf(ssid, sizeof(ssid), "Device.WiFi.SSID.%d", rdk_vap_info->vap_index+1);
@@ -1129,7 +1145,7 @@ void process_radius_grey_list_rfc(bool type)
 
     if (!rfc_param->radiusgreylist_rfc) {
         wifi_util_info_print(WIFI_CTRL,"Greylist RFC is disabled remove all greylisted entries from DB\n");
-        remove_greylist_acl_entries(true);
+        remove_xfinity_acl_entries(true,false);
     }
 }
 
@@ -1217,7 +1233,21 @@ void process_twoG80211axEnable_rfc(bool type)
         }
     }
 }
+void process_prefer_private_rfc(bool type)
+{
+    wifi_mgr_t *p_wifi_mgr = get_wifimgr_obj();
+    vap_svc_t  *pub_svc;
 
+    if (!type) {
+        wifi_util_dbg_print(WIFI_CTRL,"Prefer private is set to false\n");
+        remove_xfinity_acl_entries(false,true);
+    }
+    pub_svc = get_svc_by_type(&p_wifi_mgr->ctrl, vap_svc_type_public);
+    if (pub_svc->event_fn != NULL) {
+        pub_svc->event_fn(pub_svc, ctrl_event_type_command, ctrl_event_type_prefer_private_rfc,
+                            add_macmode_to_public, &type);
+    }
+}
 void process_wps_command_event(unsigned int vap_index)
 {
     wifi_util_info_print(WIFI_CTRL,"%s:%d wifi wps test vap index = %d\n",__func__, __LINE__, vap_index);
@@ -1461,6 +1491,9 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len, ctrl_
         
         case ctrl_event_type_command_wifi_neighborscan:
             process_neighbor_scan_command_event();
+            break;
+        case ctrl_event_type_prefer_private_rfc:
+            process_prefer_private_rfc(*(bool *)data);
             break;
 
         case ctrl_event_type_command_mesh_status:

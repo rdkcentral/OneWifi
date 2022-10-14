@@ -840,6 +840,7 @@ WiFi_SetParamBoolValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:prefer_private=%d Value = %d  \n",__func__, __LINE__,global_wifi_config->global_parameters.prefer_private,bValue);
         global_wifi_config->global_parameters.prefer_private = bValue;
         push_global_config_dml_cache_to_one_wifidb();
+        push_prefer_private_ctrl_queue(bValue);
         return TRUE;
     }
 

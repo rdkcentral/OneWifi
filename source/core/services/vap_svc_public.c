@@ -28,6 +28,77 @@ int vap_svc_public_stop(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_
     }
     return 0;
 }
+void process_prefer_private_mac_filter(mac_address_t prefer_private_mac)
+{
+    unsigned int itr = 0, itrj = 0;
+    int vap_index = 0;
+
+    rdk_wifi_vap_info_t *rdk_vap_info = NULL;
+    mac_address_t zero_mac = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    acl_entry_t *acl_entry = NULL;
+    acl_entry_t *temp_acl_entry = NULL;
+    mac_address_t new_mac;
+    mac_addr_str_t new_mac_str;
+    char macfilterkey[128];
+    wifi_vap_info_map_t *wifi_vap_map = NULL;
+    memset(macfilterkey, 0, sizeof(macfilterkey));
+
+    memcpy(new_mac,prefer_private_mac, sizeof(mac_address_t));
+    if (memcmp(new_mac, zero_mac, sizeof(mac_address_t)) == 0){
+        wifi_util_dbg_print(WIFI_CTRL," new_mac is zero mac \n");
+        return ;
+    }
+
+    to_mac_str(new_mac, new_mac_str);
+    wifi_util_dbg_print(WIFI_CTRL,"macstring to addi %s\n",new_mac_str);
+
+    for (itr = 0; itr < getNumberRadios(); itr++) {
+        wifi_vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(itr);
+        for (itrj = 0; itrj < getMaxNumberVAPsPerRadio(itr); itrj++) {
+
+            vap_index = wifi_vap_map->vap_array[itrj].vap_index;
+            rdk_vap_info = get_wifidb_rdk_vap_info(vap_index);
+
+            if (rdk_vap_info == NULL) {
+                 return;
+            }
+
+            if ((vap_svc_is_public(rdk_vap_info->vap_index) == false)) {
+                continue;
+            }
+
+            if (rdk_vap_info->acl_map == NULL) {
+                wifi_util_dbg_print(WIFI_CTRL,"PreferPrivate acl_map is NULL\n");
+                rdk_vap_info->acl_map = hash_map_create();
+            }
+
+            temp_acl_entry = hash_map_get(rdk_vap_info->acl_map,strdup(new_mac_str));
+
+            if (temp_acl_entry != NULL) {
+                wifi_util_dbg_print(WIFI_CTRL,"Mac is already present in macfilter \n");
+                return;
+            }
+
+            acl_entry = (acl_entry_t *)malloc(sizeof(acl_entry_t));
+            memcpy(acl_entry->mac, new_mac, sizeof(mac_address_t));
+            to_mac_str(acl_entry->mac, new_mac_str);
+            strcpy(acl_entry->device_name,"");
+            acl_entry->reason = PREFER_PRIVATE_RFC_REJECT;
+            acl_entry->expiry_time = 0;
+
+            if (wifi_addApAclDevice(rdk_vap_info->vap_index, new_mac_str) != RETURN_OK) {
+                wifi_util_dbg_print(WIFI_MGR, "%s:%d: wifi_addApAclDevice failed. vap_index %d, MAC %s \n",
+                   __func__, __LINE__, rdk_vap_info->vap_index, new_mac_str);
+                return;
+            }
+
+            hash_map_put(rdk_vap_info->acl_map, strdup(new_mac_str), acl_entry);
+            snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", rdk_vap_info->vap_name, new_mac_str);
+            wifidb_update_wifi_macfilter_config(macfilterkey, acl_entry, true);
+            wifi_util_dbg_print(WIFI_CTRL,"add %s mac to %s\n",new_mac_str,rdk_vap_info->vap_name);
+        }
+    }
+}
 
 int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map)
 {
@@ -37,12 +108,13 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
     memset((unsigned char *)&tgt_created_vap_map, 0, sizeof(wifi_vap_info_map_t));
     tgt_created_vap_map.num_vaps = 0;
 
-    wifi_util_dbg_print(WIFI_CTRL,"vap_svc_public_update\n");
 
     wifi_rfc_dml_parameters_t *rfc_info = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
     if (rfc_info) {
         greylist_rfc = rfc_info->radiusgreylist_rfc;
     }
+    wifi_global_param_t *pcfg = (wifi_global_param_t *) get_wifidb_wifi_global_param();
+
     for (i = 0; i < map->num_vaps; i++) {
 
         // Create xfinity vaps as part of the flow and update db and caches - just the way
@@ -61,9 +133,12 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
                                                 radio_index, map->vap_array[i].vap_index);
             continue;
         }
-        if (greylist_rfc) {
-                    wifi_setApMacAddressControlMode(tgt_vap_map.vap_array[0].vap_index, 2);
-          }
+        if (greylist_rfc || ((pcfg != NULL && pcfg->prefer_private))) {
+            wifi_setApMacAddressControlMode(tgt_vap_map.vap_array[0].vap_index, 2);
+        }
+        else {
+            wifi_setApMacAddressControlMode(tgt_vap_map.vap_array[0].vap_index, 0);
+        }
         wifi_util_info_print(WIFI_CTRL,"%s: wifi vap create success: radio_index:%d vap_index:%d greylist_rfc:%d\n",__FUNCTION__,
                                                 radio_index, map->vap_array[i].vap_index,greylist_rfc);
         wifidb_print("%s: wifi vap create success: radio_index:%d vap_index:%d \n",__FUNCTION__,
@@ -81,11 +156,124 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
     }
      update_global_cache(&tgt_created_vap_map);
     //Load all the Acl entries related to the created public vaps
-    update_acl_entries(&tgt_created_vap_map);
+    update_xfinity_acl_entries();
+    wifi_util_dbg_print(WIFI_CTRL,"After updating xfinity acl entries\n");
     return 0;
 }
 
-int vap_svc_public_event(vap_svc_t *svc, ctrl_event_type_t type, ctrl_event_subtype_t sub_type, void *arg)
+int update_xfinity_acl_entries()
 {
+    mac_addr_str_t mac_str;
+    mac_address_t acl_device_mac;
+    acl_entry_t *acl_entry;
+    uint8_t itr = 0,itrj = 0, vap_index = 0;
+
+    rdk_wifi_vap_info_t *rdk_vap_info = NULL;
+    wifi_vap_info_map_t *wifi_vap_map = NULL;
+
+    wifi_util_dbg_print(WIFI_CTRL,"In update_xfinity_acl_entries \n");
+    for (itr = 0; itr < getNumberRadios(); itr++) {
+        wifi_vap_map =(wifi_vap_info_map_t *) get_wifidb_vap_map(itr);
+        for (itrj = 0; itrj < getMaxNumberVAPsPerRadio(itr); itrj++) {
+            vap_index = wifi_vap_map->vap_array[itrj].vap_index;
+            rdk_vap_info = get_wifidb_rdk_vap_info(vap_index);
+
+            if (rdk_vap_info == NULL) {
+                 return -1;
+            }
+
+            if ((vap_svc_is_public(rdk_vap_info->vap_index) == false)) {
+                continue;
+            }
+
+            acl_entry = hash_map_get_first(rdk_vap_info->acl_map);
+            while(acl_entry != NULL) {
+                if (acl_entry->mac != NULL) {
+                    memcpy(&acl_device_mac,&acl_entry->mac,sizeof(mac_address_t));
+                    to_mac_str(acl_device_mac, mac_str);
+                    if (wifi_addApAclDevice(vap_index, (CHAR *) mac_str) != RETURN_OK) {
+                        wifi_util_error_print(WIFI_CTRL,"%s: wifi_addApAclDevice failed. vap_index:%d MAC:'%s'\n",__FUNCTION__, vap_index, mac_str);
+                    }
+                }
+                acl_entry = hash_map_get_next(rdk_vap_info->acl_map,acl_entry);
+            }
+            rdk_vap_info->is_mac_filter_initialized = true;
+        }
+    }
+    return RETURN_OK;
+}
+
+void add_mac_mode_to_public_vaps(bool mac_mode)
+{
+    unsigned int itr = 0, itrj = 0;
+    int vap_index = 0;
+    rdk_wifi_vap_info_t *rdk_vap_info = NULL;
+    wifi_vap_info_map_t *wifi_vap_map = NULL;
+
+    for (itr = 0; itr < getNumberRadios(); itr++) {
+        wifi_vap_map =(wifi_vap_info_map_t *) get_wifidb_vap_map(itr);
+        for (itrj = 0; itrj < getMaxNumberVAPsPerRadio(itr); itrj++) {
+            vap_index = wifi_vap_map->vap_array[itrj].vap_index;
+            rdk_vap_info = get_wifidb_rdk_vap_info(vap_index);
+
+            if (rdk_vap_info == NULL) {
+                 return;
+            }
+
+            if ((vap_svc_is_public(rdk_vap_info->vap_index) == false)) {
+                continue;
+            }
+            if (mac_mode) {
+                wifi_setApMacAddressControlMode(rdk_vap_info->vap_index, 2);
+            }
+            else {
+                wifi_setApMacAddressControlMode(rdk_vap_info->vap_index, 0);
+            }
+        }
+    }
+}
+
+void process_prefer_private_rfc_event(vap_svc_event_t event, void *data)
+{
+    switch(event) {
+        case add_prefer_private_acl_to_public:
+            process_prefer_private_mac_filter(*(mac_address_t *)data);
+            break;
+
+        case add_macmode_to_public:
+            add_mac_mode_to_public_vaps(*(bool *)data);
+            break;
+
+        default:
+            break;
+
+    }
+}
+
+void process_public_service_command(vap_svc_event_t event,ctrl_event_subtype_t sub_type,void *data)
+{
+
+     switch(sub_type) {
+
+        case ctrl_event_type_prefer_private_rfc:
+            process_prefer_private_rfc_event(event, data);
+        break;
+
+        default:
+            break;
+    }
+}
+
+int vap_svc_public_event(vap_svc_t *svc, ctrl_event_type_t type, ctrl_event_subtype_t sub_type, vap_svc_event_t event, void *arg)
+{
+
+    switch(type) {
+        case ctrl_event_type_command:
+            process_public_service_command(event, sub_type, arg);
+            break;
+
+        default:
+            break;
+    }
     return 0;
 }
