@@ -889,7 +889,17 @@ int get_vap_params_from_psm(unsigned int vap_index, wifi_vap_info_t *vap_config)
     snprintf(recName, sizeof(recName), MacFilterMode, instance_number);
     str = Get_PSM_Record_Status(recName, strValue);
     if (str != NULL) {
-        bss_cfg->mac_filter_mode = _ansc_atoi(str);
+        unsigned int mf_mode = _ansc_atoi(str);
+        if (mf_mode == 0) {
+            bss_cfg->mac_filter_enable = false;
+            bss_cfg->mac_filter_mode  = wifi_mac_filter_mode_black_list;
+        } else if(mf_mode == 1) {
+            bss_cfg->mac_filter_enable = true;
+            bss_cfg->mac_filter_mode  = wifi_mac_filter_mode_white_list;
+        } else if(mf_mode == 2) {
+            bss_cfg->mac_filter_enable = true;
+            bss_cfg->mac_filter_mode  = wifi_mac_filter_mode_black_list;
+        }
         wifi_util_dbg_print(WIFI_MGR,"bss_cfg->mac_filter_mode is %d and str is %s and _ansc_atoi(str) is %d\n", bss_cfg->mac_filter_mode, str, _ansc_atoi(str));
     } else {
         wifi_util_dbg_print(WIFI_MGR,"%s:%d str value for mac_filter_mode:%s \r\n", __func__, __LINE__, str);

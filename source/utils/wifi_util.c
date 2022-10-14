@@ -693,7 +693,7 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
         switch (level) {
             case WIFI_LOG_LVL_INFO:
             case WIFI_LOG_LVL_ERROR:
-                snprintf(filename, sizeof(filename), "/rdklogs/logs/%s", module_filename);
+                snprintf(filename, sizeof(filename), "/rdklogs/logs/%s.txt", module_filename);
                 fpg = fopen(filename, "a+");
                 if (fpg == NULL) {
                     return;

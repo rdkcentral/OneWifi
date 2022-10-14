@@ -878,10 +878,25 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
 int wifi_hal_platform_post_init()
 {
     int ret = RETURN_OK;
+    unsigned int num_of_radios = getNumberRadios();
+    unsigned int index = 0;
+    wifi_vap_info_map_t vap_map[MAX_NUM_RADIOS];
+    wifi_vap_info_map_t *p_vap_map = NULL;
+
+    memset(vap_map, 0, sizeof(vap_map));
+
+    for (index = 0; index < num_of_radios; index++) {
+        p_vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(index);
+        if (p_vap_map != NULL) {
+            memcpy(&vap_map[index], p_vap_map, sizeof(wifi_vap_info_map_t));
+        } else {
+            wifi_util_error_print(WIFI_CTRL,"%s:%d vap_map NULL for radio_index:%d\r\n",__func__, __LINE__, index);
+        }
+    }
 
     wifi_util_info_print(WIFI_CTRL,"%s: start wifi apps\n",__FUNCTION__);
 
-    ret = wifi_hal_post_init();
+    ret = wifi_hal_post_init(vap_map);
     if (ret != RETURN_OK) {
         wifi_util_error_print(WIFI_CTRL,"%s start wifi apps failed, ret:%d\n",__FUNCTION__, ret);
         return RETURN_ERR;
