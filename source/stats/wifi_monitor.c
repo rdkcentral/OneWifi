@@ -4114,82 +4114,26 @@ int associated_devices_diagnostics(void *arg)
     static unsigned int vap_index = 0;
     static wifi_associated_dev3_t *dev_array = NULL;
     static unsigned int num_devs = 0;
-    wifi_mgr_t *mgr = get_wifimgr_obj();
-#if !defined(_CBR_PRODUCT_REQ_) && !defined(_HUB4_PRODUCT_REQ_) && !defined(DUAL_CORE_XB3) && !(defined (_XB7_PRODUCT_REQ_) && defined (_COSA_BCM_ARM_)) && !defined(_WNXL11BWL_PRODUCT_REQ_)
-    unsigned int i = 0;
-    static unsigned int current_dev = 0;
-    static int last_valid_dev = 0;
-    char s_mac[MIN_MAC_LEN+1]={0};
-    int itr = 0;
-    int jtr = 0;
-    static char assoc_list[(MAX_ASSOCIATED_WIFI_DEVS*18)+1];
 
-    if (phase == 0) { /* phase 0: collect diag data */
-        if (dev_array == NULL) {
-            current_dev = 0;
-            last_valid_dev = 0;
-            memset(assoc_list, 0, sizeof(assoc_list));
-           vap_index = VAP_INDEX(mgr->hal_cap, idx);
-            if (wifi_getApAssociatedDevice(vap_index, assoc_list, sizeof(assoc_list)) == RETURN_OK) {
-                num_devs = (strlen(assoc_list)+1)/18;
-                if (num_devs > 0) {
-                    dev_array = (wifi_associated_dev3_t *) malloc(sizeof(wifi_associated_dev3_t) * num_devs);
-                    if (dev_array == NULL) {
-                        wifi_dbg_print(1,"%s,malloc failed ! vap_index=%u\n",__func__,vap_index);
-                        goto exit_task;
-                    }
-                    for(i=1;i<num_devs;i++) {
-                        //remove ','
-                        assoc_list[(i*18)-1] = '\0';
-                    }
-                } else {
-                    /* No devices are associated with the current vap_index */
-                    phase = 1;
-                    return TIMER_TASK_CONTINUE;
-                }
-            } else {
-                /* wifi_getApAssociatedDevice dint return RETURN_OK for the current vap_index.
-                 * Continue the task in the next cycle  */
-                wifi_dbg_print(1,"%s,wifi_getApAssociatedDevice returned error ! vap_index=%u\n",__func__,vap_index);
-                goto exit_task;
-            }
-            return TIMER_TASK_CONTINUE;
-        }
-        if(current_dev < num_devs) {
-            for(itr=0; assoc_list[(current_dev*18) + itr] != '\0'; itr++) {
-                if((assoc_list[(current_dev*18) + itr] != ':') && (jtr < MIN_MAC_LEN)) {
-                    s_mac[jtr] = assoc_list[(current_dev*18) + itr];
-                    jtr++;
-                }
-            }
-            s_mac[jtr] = '\0';
-            if (wifi_getApAssociatedClientDiagnosticResult(vap_index, s_mac,
-                                                        &dev_array[last_valid_dev]) == RETURN_OK){
-                last_valid_dev++;
-            }
-            current_dev++;
-            return TIMER_TASK_CONTINUE;
-        }
-        num_devs = last_valid_dev;
-        phase = 1;
-    }
-#else //!defined(_CBR_PRODUCT_REQ_) && !defined(_HUB4_PRODUCT_REQ_) && !defined(DUAL_CORE_XB3)
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+ 
     if (phase == 0) { /* phase 0: collect diag data */
         if (dev_array == NULL) {
             num_devs = 0;
             vap_index = VAP_INDEX(mgr->hal_cap, idx);
+
             if (wifi_getApAssociatedDeviceDiagnosticResult3(vap_index, &dev_array, &num_devs) != RETURN_OK) {
                 if (dev_array) {
                     free(dev_array);
                     dev_array = NULL;
                 }
                 goto exit_task;
-             }
+            }
             phase = 1;
             return TIMER_TASK_CONTINUE;
         }
     }
-#endif
+
     if (phase == 1) { /* phase 1: process diag data */
         vap_index = VAP_INDEX(mgr->hal_cap, idx);
         events_update_clientdiagdata(num_devs, vap_index, dev_array);
@@ -4204,11 +4148,7 @@ int associated_devices_diagnostics(void *arg)
 exit_task:
     idx++;
     phase = 0;
-#ifdef WIFI_HAL_VERSION_3
     if (idx >= getTotalNumberVAPs()) {
-#else
-    if (idx >= MAX_VAP) {
-#endif
         idx = 0;
         return TIMER_TASK_COMPLETE;
     }

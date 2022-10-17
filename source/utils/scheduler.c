@@ -271,8 +271,8 @@ int scheduler_execute(struct scheduler *sched, struct timeval t_start, unsigned 
 
     sched->t_start = t_start;
     t_now = t_start;
-    /* return if reach 90% of the timeout */
-    timeout_ms_margin = (timeout_ms*0.9);
+    /* return if reach 70% of the timeout */
+    timeout_ms_margin = (timeout_ms*0.7);
     interval.tv_sec = (timeout_ms_margin / 1000);
     interval.tv_usec = (timeout_ms_margin % 1000) * 1000;
     timeradd(&t_start, &interval, &timeout);
