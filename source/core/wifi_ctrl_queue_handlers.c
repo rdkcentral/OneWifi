@@ -91,10 +91,10 @@ int remove_xfinity_acl_entries(bool remove_all_greylist_entry,bool prefer_privat
     return RETURN_OK;
 }
 
-
 void process_mgmt_ctrl_frame_event(frame_data_t *msg, uint32_t msg_length)
 {
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir);
+    send_app_event(ctrl_event_type_hal_ind, msg);
 }
 
 void send_hotspot_status(char* vap_name, bool up)
@@ -1193,6 +1193,14 @@ void process_wifi_interworking_rfc(bool type)
     wifidb_update_rfc_config(0, rfc_param);
 }
 
+void process_mgmt_frame_rbus_enable_event(bool status)
+{
+    wifi_util_dbg_print(WIFI_DB,"WIFI Enter RFC Func %s: %d : bool %d\n",__FUNCTION__,__LINE__,status);
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
+    rfc_param->mgmt_frame_rbus_enabled_rfc = status;
+    wifidb_update_rfc_config(0, rfc_param);
+}
+
 void process_wpa3_rfc(bool type)
 {
     wifi_util_dbg_print(WIFI_DB,"WIFI Enter RFC Func %s: %d : bool %d\n",__FUNCTION__,__LINE__,type);
@@ -1516,6 +1524,10 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len, ctrl_
             marker_list_config_event((char *)data, txrx_rate_list_type);
             break;
 
+        case ctrl_event_type_mgmt_frame_rbus_rfc:
+            process_mgmt_frame_rbus_enable_event(*(bool *)data);
+            break;
+
         default:
             wifi_util_error_print(WIFI_CTRL,"[%s]:WIFI hal handler not supported this event %d\r\n",__FUNCTION__, subtype);
             break;
@@ -1585,9 +1597,13 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
     switch (subtype) {
         case ctrl_event_webconfig_set_data:
             memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap, sizeof(wifi_hal_capability_t));
-            analytics->event_fn(analytics, ctrl_event_type_webconfig, ctrl_event_webconfig_set_data, NULL);
+            if (analytics->event_fn != NULL) {
+                analytics->event_fn(analytics, ctrl_event_type_webconfig, ctrl_event_webconfig_set_data, NULL);
+            }
             webconfig_decode(config, &data, raw);
-            analytics->event_fn(analytics, ctrl_event_type_webconfig, ctrl_event_webconfig_set_data, &data);
+            if (analytics->event_fn != NULL) {
+                analytics->event_fn(analytics, ctrl_event_type_webconfig, ctrl_event_webconfig_set_data, &data);
+            }
             break;
 
         case ctrl_event_webconfig_set_data_tunnel:

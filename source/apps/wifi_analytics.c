@@ -355,6 +355,17 @@ int analytics_event_hal_channel_change(wifi_apps_t *apps, void *arg)
     return 0;
 }
 
+int analytics_event_hal_potential_misconfiguration(wifi_apps_t *apps, void *arg)
+{
+    probe_ttl_data_t *ttl_data = (probe_ttl_data_t *)arg;
+    char temp_str[128];
+    memset(temp_str, 0, sizeof(temp_str));
+
+    sprintf(temp_str, "authentication frame not received from mac:\"%s\" after %d frame", ttl_data->mac_str, ttl_data->max_probe_ttl_cnt);
+    wifi_util_info_print(WIFI_ANALYTICS, analytics_format_hal_core, "no_auth", temp_str);
+    return 0;
+}
+
 int analytics_event_hal_radius_greylist(wifi_apps_t *apps, void *arg)
 {
     return 0;
@@ -487,6 +498,10 @@ int hal_event_analytics(wifi_apps_t *apps, ctrl_event_subtype_t sub_type, void *
             analytics_event_hal_radius_greylist(apps, arg);
             break;
 
+        case ctrl_event_hal_potential_misconfiguration:
+            analytics_event_hal_potential_misconfiguration(apps, arg);
+            break;
+
         default:
             wifi_util_error_print(WIFI_APPS,"%s:%d: event not handle[%d]\r\n",__func__, __LINE__, sub_type);
             break;
@@ -564,6 +579,10 @@ int command_event_analytics(wifi_apps_t *apps, ctrl_event_subtype_t sub_type, vo
 
         case ctrl_event_type_txrx_rate:
             break;
+
+        case ctrl_event_type_mgmt_frame_rbus_rfc:
+            break;
+
         default:
             wifi_util_error_print(WIFI_APPS,"%s:%d: event not handle[%d]\r\n",__func__, __LINE__, sub_type);
             break;

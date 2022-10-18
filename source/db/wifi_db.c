@@ -166,8 +166,9 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon,
         rfc_param->hotspot_open_5g_last_enabled  = new_rec->hotspot_open_5g_last_enabled;
         rfc_param->hotspot_secure_2g_last_enabled  = new_rec->hotspot_secure_2g_last_enabled;
         rfc_param->hotspot_secure_5g_last_enabled  = new_rec->hotspot_secure_5g_last_enabled;
+        rfc_param->mgmt_frame_rbus_enabled_rfc =  new_rec->mgmt_frame_rbus_enabled_rfc;
 
-        wifi_util_dbg_print(WIFI_DB,"%s:%d wifipasspoint_rfc=%d wifiinterworking_rfc=%d radiusgreylist_rfc=%d dfsatbootup_rfc=%d dfs_rfc=%d wpa3_rfc=%d twoG80211axEnable_rfc=%d hotspot_open_2g_last_enabled=%d hotspot_open_5g_last_enabled=%d hotspot_secure_2g_last_enabled=%d hotspot_secure_2g_last_enabled=%d rfc_id=%s\n", __func__, __LINE__,rfc_param->wifipasspoint_rfc,rfc_param->wifiinterworking_rfc,rfc_param->radiusgreylist_rfc,rfc_param->dfsatbootup_rfc, rfc_param->dfs_rfc ,rfc_param->wpa3_rfc,rfc_param->twoG80211axEnable_rfc,rfc_param->hotspot_open_2g_last_enabled,rfc_param->hotspot_open_5g_last_enabled,rfc_param->hotspot_secure_2g_last_enabled,rfc_param->hotspot_secure_5g_last_enabled,rfc_param->rfc_id);
+        wifi_util_dbg_print(WIFI_DB,"%s:%d wifipasspoint_rfc=%d wifiinterworking_rfc=%d radiusgreylist_rfc=%d dfsatbootup_rfc=%d dfs_rfc=%d wpa3_rfc=%d twoG80211axEnable_rfc=%d hotspot_open_2g_last_enabled=%d hotspot_open_5g_last_enabled=%d hotspot_secure_2g_last_enabled=%d hotspot_secure_2g_last_enabled=%d mgmt_frame_rbus_enabled_rfc=%d rfc_id=%s\n", __func__, __LINE__,rfc_param->wifipasspoint_rfc,rfc_param->wifiinterworking_rfc,rfc_param->radiusgreylist_rfc,rfc_param->dfsatbootup_rfc, rfc_param->dfs_rfc ,rfc_param->wpa3_rfc,rfc_param->twoG80211axEnable_rfc,rfc_param->hotspot_open_2g_last_enabled,rfc_param->hotspot_open_5g_last_enabled,rfc_param->hotspot_secure_2g_last_enabled,rfc_param->hotspot_secure_5g_last_enabled,rfc_param->mgmt_frame_rbus_enabled_rfc,rfc_param->rfc_id);
        pthread_mutex_unlock(&g_wifidb->data_cache_lock);
 
 	}
@@ -1072,6 +1073,7 @@ int wifidb_update_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_param)
     cfg.hotspot_open_5g_last_enabled = rfc_param->hotspot_open_5g_last_enabled;
     cfg.hotspot_secure_2g_last_enabled = rfc_param->hotspot_secure_2g_last_enabled;
     cfg.hotspot_secure_5g_last_enabled = rfc_param->hotspot_secure_5g_last_enabled;
+    cfg.mgmt_frame_rbus_enabled_rfc = rfc_param->mgmt_frame_rbus_enabled_rfc;
 
     if (update == true) {
         where = ovsdb_tran_cond(OCLM_STR, "rfc_id", OFUNC_EQ, index); 
@@ -1134,6 +1136,7 @@ int wifidb_get_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_info)
     rfc_info->hotspot_open_5g_last_enabled= pcfg->hotspot_open_5g_last_enabled;
     rfc_info->hotspot_secure_2g_last_enabled= pcfg->hotspot_secure_2g_last_enabled;
     rfc_info->hotspot_secure_2g_last_enabled= pcfg->hotspot_secure_5g_last_enabled;
+    rfc_info->mgmt_frame_rbus_enabled_rfc = pcfg->mgmt_frame_rbus_enabled_rfc;
     free(pcfg);
     return 0;
 }
@@ -3157,8 +3160,6 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config)
         }
         cfg.u.sta_info.conn_status = wifi_connection_status_disabled;
         memset(&cfg.u.sta_info.bssid, 0, sizeof(cfg.u.sta_info.bssid));
-        cfg.u.bss_info.beaconRate = WIFI_BITRATE_6MBPS;
-        cfg.u.bss_info.showSsid = false;
     } else {
         cfg.u.bss_info.wmm_enabled = true;
         if (isVapHotspot(vap_index)) {

@@ -849,6 +849,7 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
         svc_init(&ctrl->ctrl_svc[i], (vap_svc_type_t)i);
     }
 
+    // initialize mgmt frame handling params
     for (i = 0; i < wifi_apps_type_max; i++) {
         wifi_apps_init(&ctrl->fi_apps[i], (wifi_apps_type_t)i);
     }
@@ -964,13 +965,14 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
     //Start Wifi Monitor Thread
     start_wifi_health_monitor_thread();
 
-    analytics->event_fn(analytics, ctrl_event_type_exec, ctrl_event_exec_start, NULL);
-
+    if (analytics->event_fn != NULL) {
+        analytics->event_fn(analytics, ctrl_event_type_exec, ctrl_event_exec_start, NULL);
+    }
     ctrl->exit_ctrl = false;
     ctrl_queue_loop(ctrl);
-
-    analytics->event_fn(analytics, ctrl_event_type_exec, ctrl_event_exec_stop, NULL);
-
+    if (analytics->event_fn != NULL) {
+        analytics->event_fn(analytics, ctrl_event_type_exec, ctrl_event_exec_stop, NULL);
+    }
     wifi_util_info_print(WIFI_CTRL,"%s:%d Exited queue_wifi_ctrl_task.\n",__FUNCTION__,__LINE__);
     return RETURN_OK;
 }
@@ -1280,6 +1282,32 @@ void set_wifi_public_vap_enable_status(void)
     }
 }
 
+int get_wifi_rfc_parameters(char *str, void *value)
+{
+    int ret = RETURN_OK;
+
+    if (!value) {
+        return RETURN_ERR;
+    }
+
+    wifi_mgr_t *l_wifi_mgr = get_wifimgr_obj();
+    wifi_util_dbg_print(WIFI_CTRL, "%s get wifi rfc parameter %s\n", __FUNCTION__, str);
+    if ((strcmp(str, RFC_WIFI_PASSPOINT) == 0)) {
+        *(bool*)value = l_wifi_mgr->rfc_dml_parameters.wifipasspoint_rfc;
+    } else if ((strcmp(str, RFC_WIFI_INTERWORKING) == 0)) {
+        *(bool*)value = l_wifi_mgr->rfc_dml_parameters.wifiinterworking_rfc;
+    } else if ((strcmp(str, RFC_WIFI_RADIUS_GREYLIST) == 0)) {
+        *(bool*)value = l_wifi_mgr->rfc_dml_parameters.radiusgreylist_rfc;
+    } else if ((strcmp(str, RFC_WIFI_MGMT_FRAME_RBUS) == 0)) {
+        *(bool*)value = l_wifi_mgr->rfc_dml_parameters.mgmt_frame_rbus_enabled_rfc;
+    } else {
+        wifi_util_dbg_print(WIFI_CTRL, "%s get wifi rfc parameter not found %s\n", __FUNCTION__, str);
+        ret = RETURN_ERR;
+    }
+
+    return ret;
+}
+
 wifi_dml_parameters_t* get_wifi_dml_parameters(void)
 {
     wifi_mgr_t *p_wifi_db_data = get_wifimgr_obj();
@@ -1306,26 +1334,9 @@ wifi_rfc_dml_parameters_t* get_ctrl_rfc_parameters(void)
     g_wifi_mgr->ctrl.rfc_params.hotspot_open_5g_last_enabled = g_wifi_mgr->rfc_dml_parameters.hotspot_open_5g_last_enabled;
     g_wifi_mgr->ctrl.rfc_params.hotspot_secure_2g_last_enabled = g_wifi_mgr->rfc_dml_parameters.hotspot_secure_2g_last_enabled;
     g_wifi_mgr->ctrl.rfc_params.hotspot_secure_2g_last_enabled = g_wifi_mgr->rfc_dml_parameters.hotspot_secure_2g_last_enabled;
+    g_wifi_mgr->ctrl.rfc_params.mgmt_frame_rbus_enabled_rfc = g_wifi_mgr->rfc_dml_parameters.mgmt_frame_rbus_enabled_rfc;
     strcpy(g_wifi_mgr->ctrl.rfc_params.rfc_id,g_wifi_mgr->rfc_dml_parameters.rfc_id);
     return &g_wifi_mgr->ctrl.rfc_params;
-}
-
-int get_wifi_rfc_parameters(char *str, void *value)
-{
-    int ret = RETURN_OK;
-    wifi_mgr_t *l_wifi_mgr = get_wifimgr_obj();
-    wifi_util_dbg_print(WIFI_CTRL, "%s get wifi rfc parameter %s\n", __FUNCTION__, str);
-    if ((strcmp(str, RFC_WIFI_PASSPOINT) == 0)) {
-        *(bool*)value = l_wifi_mgr->rfc_dml_parameters.wifipasspoint_rfc;
-    } else if ((strcmp(str, RFC_WIFI_INTERWORKING) == 0)) {
-        *(bool*)value = l_wifi_mgr->rfc_dml_parameters.wifiinterworking_rfc;
-    } else if ((strcmp(str, RFC_WIFI_RADIUS_GREYLIST) == 0)) {
-        *(bool*)value = l_wifi_mgr->rfc_dml_parameters.radiusgreylist_rfc;
-    } else {
-        wifi_util_dbg_print(WIFI_CTRL, "%s get wifi rfc parameter not found %s\n", __FUNCTION__, str);
-        ret = RETURN_ERR;
-    }
-    return ret;
 }
 
 int get_multi_radio_dml_parameters(uint8_t radio_index, char *str, void *value)

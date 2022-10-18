@@ -22,7 +22,8 @@ extern "C" {
 #define WIFI_HOTSPOT_NOTIFY                 "Device.X_COMCAST-COM_GRE.Hotspot.ClientChange"
 #define WIFI_NOTIFY_ASSOCIATED_ENTRIES      "Device.NotifyComponent.SetNotifi_ParamName"
 #define MESH_STATUS                         "Device.DeviceInfo.X_RDKCENTRAL-COM_xOpsDeviceMgmt.Mesh.Enable"
-#define WIFI_ANALYTICS_FRAME_EVENTS         "Device.WiFi.Events.Frames"
+#define WIFI_ANALYTICS_FRAME_EVENTS         "Device.WiFi.Events.Frames.Mgmt"
+#define WIFI_ANALYTICS_DATA_EVENTS          "Device.WiFi.Events.Frames.Data"
 
 #define PLAN_ID_LENGTH     16
 #define MAX_STEP_COUNT  32 /*Active Measurement Step Count */
@@ -61,7 +62,9 @@ typedef enum {
     ctrl_event_hal_unknown_frame = 0x300,
     ctrl_event_hal_mgmt_farmes,
     ctrl_event_hal_probe_req_frame,
+    ctrl_event_hal_probe_rsp_frame,
     ctrl_event_hal_auth_frame,
+    ctrl_event_hal_deauth_frame,
     ctrl_event_hal_assoc_req_frame,
     ctrl_event_hal_assoc_rsp_frame,
     ctrl_event_hal_dpp_public_action_frame,
@@ -73,6 +76,7 @@ typedef enum {
     ctrl_event_scan_results,
     ctrl_event_hal_channel_change,
     ctrl_event_radius_greylist,
+    ctrl_event_hal_potential_misconfiguration,
     ctrl_event_hal_max,
 
     // Commands
@@ -98,6 +102,7 @@ typedef enum {
     ctrl_event_type_cli_stat,
     ctrl_event_type_txrx_rate,
     ctrl_event_type_prefer_private_rfc,
+    ctrl_event_type_mgmt_frame_rbus_rfc,
     ctrl_event_command_max,
 
     // wif_api
@@ -178,6 +183,7 @@ typedef struct {
     bool hotspot_open_5g_last_enabled;
     bool hotspot_secure_2g_last_enabled;
     bool hotspot_secure_5g_last_enabled;
+    bool mgmt_frame_rbus_enabled_rfc;
     char rfc_id[4];
 } wifi_rfc_dml_parameters_t;
 

@@ -9,7 +9,12 @@ extern "C" {
 #include "wifi_base.h"
 #include <sys/resource.h>
 
-#define MAX_PROBE_MAP_TTL    32
+#define MAX_PROBE_MAP_TTL    64
+
+typedef struct {
+    unsigned int    max_probe_ttl_cnt;
+    mac_addr_str_t  mac_str;
+} __attribute__((__packed__)) probe_ttl_data_t;
 
 typedef enum {
     wifi_apps_type_frame_dist,
@@ -18,9 +23,9 @@ typedef enum {
 } wifi_apps_type_t;
 
 typedef struct {
-    frame_data_t    data;
-    unsigned int    curr_time_alive;
-} probe_req_elem_t;
+    unsigned int       curr_time_alive;
+    frame_data_t       msg_data;
+} __attribute__((__packed__)) probe_req_elem_t;
 
 typedef struct wifi_ctrl wifi_ctrl_t;
 typedef struct wifi_apps wifi_apps_t;
@@ -49,7 +54,7 @@ typedef struct wifi_apps {
         analytics_data_t     analytics;
     } u;
     wifi_apps_event_fn_t     event_fn;
-} wifi_apps_t;
+} __attribute__((__packed__)) wifi_apps_t;
 
 wifi_apps_t *get_app_by_type(wifi_ctrl_t *ctrl, wifi_apps_type_t type);
 
