@@ -80,6 +80,7 @@ int remove_xfinity_acl_entries(bool remove_all_greylist_entry,bool prefer_privat
                             tmp_acl_entry = hash_map_remove(l_rdk_vap_array->acl_map, mac_str);
                             snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", l_rdk_vap_array->vap_name, mac_str);
                             wifidb_update_wifi_macfilter_config(macfilterkey, tmp_acl_entry, false);
+                            free(tmp_acl_entry);
                     }
                     else {
                        acl_entry = hash_map_get_next(l_rdk_vap_array->acl_map, acl_entry);

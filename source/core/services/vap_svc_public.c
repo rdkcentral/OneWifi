@@ -6,6 +6,9 @@
 #include "wifi_ctrl.h"
 #include "wifi_util.h"
 
+//Broadcom driver max acl count for each vap
+#define MAX_ACL_COUNT 20
+
 bool vap_svc_is_public(unsigned int vap_index)
 {
     return isVapHotspot(vap_index) ? true : false;
@@ -41,6 +44,7 @@ void process_prefer_private_mac_filter(mac_address_t prefer_private_mac)
     mac_addr_str_t new_mac_str;
     char macfilterkey[128];
     wifi_vap_info_map_t *wifi_vap_map = NULL;
+    int acl_count = 0;
     memset(macfilterkey, 0, sizeof(macfilterkey));
 
     memcpy(new_mac,prefer_private_mac, sizeof(mac_address_t));
@@ -71,7 +75,13 @@ void process_prefer_private_mac_filter(mac_address_t prefer_private_mac)
                 wifi_util_dbg_print(WIFI_CTRL,"PreferPrivate acl_map is NULL\n");
                 rdk_vap_info->acl_map = hash_map_create();
             }
+            acl_count = hash_map_count(rdk_vap_info->acl_map);
+            wifi_util_dbg_print(WIFI_CTRL,"acl_count =%d \n",acl_count);
 
+            if (acl_count >= MAX_ACL_COUNT) {
+                wifi_util_dbg_print(WIFI_CTRL,"acl_count =%d greater than max acl entry\n",acl_count);
+                continue;
+            }
             temp_acl_entry = hash_map_get(rdk_vap_info->acl_map,strdup(new_mac_str));
 
             if (temp_acl_entry != NULL) {
@@ -89,6 +99,9 @@ void process_prefer_private_mac_filter(mac_address_t prefer_private_mac)
             if (wifi_addApAclDevice(rdk_vap_info->vap_index, new_mac_str) != RETURN_OK) {
                 wifi_util_dbg_print(WIFI_MGR, "%s:%d: wifi_addApAclDevice failed. vap_index %d, MAC %s \n",
                    __func__, __LINE__, rdk_vap_info->vap_index, new_mac_str);
+                if(acl_entry) {
+                    free(acl_entry);
+                }
                 return;
             }
 
@@ -156,22 +169,21 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
     }
      update_global_cache(&tgt_created_vap_map);
     //Load all the Acl entries related to the created public vaps
-    update_xfinity_acl_entries();
-    wifi_util_dbg_print(WIFI_CTRL,"After updating xfinity acl entries\n");
+    update_xfinity_acl_entries(tgt_vap_map.vap_array[0].vap_name);
     return 0;
 }
 
-int update_xfinity_acl_entries()
+int update_xfinity_acl_entries(char* tgt_vap_name)
 {
     mac_addr_str_t mac_str;
     mac_address_t acl_device_mac;
     acl_entry_t *acl_entry;
-    uint8_t itr = 0,itrj = 0, vap_index = 0;
+    uint8_t itr = 0,itrj = 0, vap_index = 0, acl_count= 0;
 
     rdk_wifi_vap_info_t *rdk_vap_info = NULL;
     wifi_vap_info_map_t *wifi_vap_map = NULL;
 
-    wifi_util_dbg_print(WIFI_CTRL,"In update_xfinity_acl_entries \n");
+    wifi_util_dbg_print(WIFI_CTRL,"Enter %s tgt_vap_name=%s \n",__func__,tgt_vap_name);
     for (itr = 0; itr < getNumberRadios(); itr++) {
         wifi_vap_map =(wifi_vap_info_map_t *) get_wifidb_vap_map(itr);
         for (itrj = 0; itrj < getMaxNumberVAPsPerRadio(itr); itrj++) {
@@ -182,20 +194,23 @@ int update_xfinity_acl_entries()
                  return -1;
             }
 
-            if ((vap_svc_is_public(rdk_vap_info->vap_index) == false)) {
+           if ((strcmp(rdk_vap_info->vap_name,tgt_vap_name) != 0 )) {
                 continue;
             }
+            wifi_delApAclDevices(vap_index);
 
             acl_entry = hash_map_get_first(rdk_vap_info->acl_map);
-            while(acl_entry != NULL) {
+            while(acl_entry != NULL && acl_count < MAX_ACL_COUNT ) {
                 if (acl_entry->mac != NULL) {
                     memcpy(&acl_device_mac,&acl_entry->mac,sizeof(mac_address_t));
                     to_mac_str(acl_device_mac, mac_str);
+                    wifi_util_dbg_print(WIFI_CTRL, "%s:%d: calling wifi_addApAclDevice for mac %s vap_index %d\n", __func__, __LINE__, mac_str, vap_index);
                     if (wifi_addApAclDevice(vap_index, (CHAR *) mac_str) != RETURN_OK) {
                         wifi_util_error_print(WIFI_CTRL,"%s: wifi_addApAclDevice failed. vap_index:%d MAC:'%s'\n",__FUNCTION__, vap_index, mac_str);
                     }
                 }
                 acl_entry = hash_map_get_next(rdk_vap_info->acl_map,acl_entry);
+                acl_count++;
             }
             rdk_vap_info->is_mac_filter_initialized = true;
         }
