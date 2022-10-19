@@ -618,71 +618,55 @@ int start_wifi_services(void)
     return RETURN_OK;
 }
 
-void factory_reset_wifi(void)
+bool get_notify_wifi_from_psm(char *PsmParamName)
 {
-    //bool_reset_flag =  false;
-    wifi_util_dbg_print(WIFI_CTRL,"FactoryReset before factory_reset\n");
-    wifi_mgr_t *p_wifi_data = get_wifimgr_obj();
-
-    wifi_dml_parameters_t *p_dml_param = &p_wifi_data->dml_parameters;
-    wifi_util_dbg_print(WIFI_CTRL,"%s: Factory_Reset_wifi start:%d\n",__FUNCTION__, p_dml_param->WifiFactoryReset);
-
-    if (p_dml_param->WifiFactoryReset) {
-    }
-}
-int captive_portal_check(void)
-{
-    uint8_t num_of_radios = getNumberRadios();
-    wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
-    UINT radio_index =0;
-    wifi_vap_info_map_t *wifi_vap_map = NULL;
-    UINT i =0;
     int rc = 0;
-    UINT reset_count = 0;
-    char path[128] = "";
-    char default_ssid[32] = {0};
-    char default_password[32] = {0};
+    wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
+    bool psm_notify_flag = false;
+    char psm_notify_get[32] = "";
     rbusValue_t value = NULL;
-    rbusValue_t config_wifi_value = NULL;
     rbusProperty_t prop = NULL;
-    rbusObject_t inParams = NULL;
-    char pInValue[32] = "";
-    char *PsmParamName = "eRT.com.cisco.spvtg.ccsp.Device.WiFi.NotifyWiFiChanges";
-    rbusObject_t outParams = NULL;
+    rbusObject_t inParams = NULL,outParams = NULL;
 
-    get_ssid_from_device_mac(default_ssid);
+    wifi_util_dbg_print(WIFI_CTRL,"%s PSMParam %s \n",__func__,PsmParamName);
+
     rbusObject_Init(&inParams, NULL);
     rbusValue_Init(&value);
-    rbusValue_Init(&config_wifi_value);
+    // Get PSM value of eRT.com.cisco.spvtg.ccsp.Device.WiFi.NotifyWiFiChanges
+    rbusProperty_Init(&prop, PsmParamName, value);
+    rbusObject_SetProperty(inParams,prop);
+    rbusProperty_Release(prop);
 
-
-    for (radio_index = 0; radio_index < num_of_radios; radio_index++) {
-        wifi_vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(radio_index);
-
-        for ( i = 0; i < wifi_vap_map->num_vaps; i++) {
-            if (strncmp(wifi_vap_map->vap_array[i].vap_name,"private_ssid",strlen("private_ssid"))== 0) {
-                wifi_hal_get_default_keypassphrase(default_password, wifi_vap_map->vap_array[i].vap_index);
-                sprintf(path,DEVICE_WIFI_SSID,wifi_vap_map->vap_array[i].vap_index+1);
-                wifi_util_dbg_print(WIFI_CTRL," private ssid is %s and vap_name is %s path is %s and default_password is %s\n", wifi_vap_map->vap_array[i].u.bss_info.ssid,wifi_vap_map->vap_array[i].vap_name,path,default_password);
-                sprintf(path,DEVICE_WIFI_KEYPASSPHRASE,wifi_vap_map->vap_array[i].vap_index+1);
-                wifi_util_dbg_print(WIFI_CTRL,"password is %s path is %s\n", wifi_vap_map->vap_array[i].u.bss_info.security.u.key.key,path);
-                if( strcmp(wifi_vap_map->vap_array[i].u.bss_info.ssid,default_ssid) && strcmp(wifi_vap_map->vap_array[i].u.bss_info.security.u.key.key,default_password)) {
-                    wifi_util_info_print(WIFI_CTRL,"%s() radio_index %d is not using default\n", __FUNCTION__, radio_index);
-                    reset_count++;
-                }
-            }
-        }
+    rc = rbusMethod_Invoke(g_wifi_mgr->ctrl.rbus_handle,"GetPSMRecordValue()" , inParams, &outParams);
+    if(inParams) {
+        rbusObject_Release(inParams);
     }
-    wifi_util_dbg_print(WIFI_CTRL,"resetcount %d\n",reset_count);
+    if (RBUS_ERROR_SUCCESS == rc) {
+        prop = rbusObject_GetProperties(outParams);
+        value = rbusProperty_GetValue(prop);
+        strcpy(psm_notify_get,rbusValue_ToString(value,NULL,0));
+        wifi_util_dbg_print(WIFI_CTRL," PSMDB value=%s\n",psm_notify_get);
+        if (strcmp(psm_notify_get,"true") == 0)
+            psm_notify_flag = true;
+        else
+            psm_notify_flag = false;
+    }
+    rbusValue_Release(value);
+    wifi_util_dbg_print(WIFI_CTRL,"get_notify_wifi_from_psm ends\n");
+    return psm_notify_flag;
+}
 
-    if (reset_count == num_of_radios) {
-        strcpy(pInValue,"false");
-        rbusValue_SetBoolean(config_wifi_value, false);
-    }
-    else {
-        strcpy(pInValue,"true");
-        rbusValue_SetBoolean(config_wifi_value, true);
-    }
+void set_notify_wifi_to_psm(char *PsmParamName,char *pInValue)
+{
+    rbusProperty_t prop = NULL;
+    rbusValue_t value = NULL;
+    rbusObject_t inParams = NULL,outParams = NULL;
+    wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
+    rbusValue_Init(&value);
+    rbusObject_Init(&inParams, NULL);
+    int rc = 0;
+    wifi_util_dbg_print(WIFI_CTRL,"Notify flag and values are different PSMParam %s pInValue %s\n",PsmParamName,pInValue);
+
     if (false == rbusValue_SetFromString(value, RBUS_STRING, pInValue)) {
         wifi_util_dbg_print(WIFI_CTRL,"%s: Invalid value '%s' for the parameter %s\n\r", __FUNCTION__, pInValue, PsmParamName);
     }
@@ -697,17 +681,108 @@ int captive_portal_check(void)
     }
     if (RBUS_ERROR_SUCCESS != rc) {
 
-        wifi_util_dbg_print(WIFI_CTRL," %s failed for  with err: '%s'\n\r",__FUNCTION__,rbusError_ToString(rc));
-
+        wifi_util_error_print(WIFI_CTRL," %s failed for  with err: '%s'\n\r",__FUNCTION__,rbusError_ToString(rc));
     }
-    rc = rbus_set(g_wifi_mgr->ctrl.rbus_handle,CONFIG_WIFI,config_wifi_value,NULL);
+    wifi_util_dbg_print(WIFI_CTRL,"set_notify_wifi_to_psm ends\n");
+}
+
+void factory_reset_wifi(void)
+{
+    //bool_reset_flag =  false;
+    wifi_util_dbg_print(WIFI_CTRL,"FactoryReset before factory_reset\n");
+    wifi_mgr_t *p_wifi_data = get_wifimgr_obj();
+
+    wifi_dml_parameters_t *p_dml_param = &p_wifi_data->dml_parameters;
+    wifi_util_dbg_print(WIFI_CTRL,"%s: Factory_Reset_wifi start:%d\n",__FUNCTION__, p_dml_param->WifiFactoryReset);
+
+    if (p_dml_param->WifiFactoryReset) {
+    }
+}
+
+int captive_portal_check(void)
+{
+    uint8_t num_of_radios = getNumberRadios();
+    wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
+    UINT radio_index =0;
+    wifi_vap_info_map_t *wifi_vap_map = NULL;
+    UINT i =0;
+    int rc = 0;
+    bool default_private_credentials = false,get_config_wifi = false,psm_notify_flag=false;
+    char default_ssid[32] = {0}, default_password[32] = {0};
+    rbusValue_t value = NULL, config_wifi_value = NULL;
+    char pInValue[32] = "";
+    char *PsmParamName = "eRT.com.cisco.spvtg.ccsp.Device.WiFi.NotifyWiFiChanges";
+
+    get_ssid_from_device_mac(default_ssid);
+    rbusValue_Init(&value);
+    rbusValue_Init(&config_wifi_value);
+
+    for (radio_index = 0; radio_index < num_of_radios && !default_private_credentials; radio_index++) {
+
+        wifi_vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(radio_index);
+        for ( i = 0; i < wifi_vap_map->num_vaps; i++) {
+
+            if (strncmp(wifi_vap_map->vap_array[i].vap_name,"private_ssid",strlen("private_ssid"))== 0) {
+
+                wifi_hal_get_default_keypassphrase(default_password, wifi_vap_map->vap_array[i].vap_index);
+
+                if ((strcmp(wifi_vap_map->vap_array[i].u.bss_info.ssid,default_ssid) == 0) || \
+                      ((strcmp(wifi_vap_map->vap_array[i].u.bss_info.security.u.key.key,default_password) == 0))) {
+
+                    wifi_util_dbg_print(WIFI_CTRL,"private vaps have default credentials\n");
+                    default_private_credentials = true;
+                    break;
+                }
+            }
+        }
+    }
+    wifi_util_dbg_print(WIFI_CTRL,"Private vaps credentials= %d\n",default_private_credentials);
+ 
+    // Get PSM value of eRT.com.cisco.spvtg.ccsp.Device.WiFi.NotifyWiFiChanges
+    psm_notify_flag = get_notify_wifi_from_psm(PsmParamName);
+
+    if (default_private_credentials != psm_notify_flag) {
+        wifi_util_dbg_print(WIFI_CTRL,"PSM Notify flag and wifi values are different\n");
+        if (default_private_credentials) {
+            strcpy(pInValue,"true");
+        }
+        else {
+            strcpy(pInValue,"false");
+        }
+        // set PSM value of eRT.com.cisco.spvtg.ccsp.Device.WiFi.NotifyWiFiChanges
+        set_notify_wifi_to_psm(PsmParamName,pInValue);
+    }
+    //Get CONFIG_WIFI
+    rc = rbus_get(g_wifi_mgr->ctrl.rbus_handle, CONFIG_WIFI, &value);
+
     if (rc != RBUS_ERROR_SUCCESS) {
-        wifi_util_dbg_print(WIFI_CTRL,"Rbus error Device.DeviceInfo.X_RDKCENTRAL-COM_ConfigureWiFi\n");
+        wifi_util_error_print(WIFI_CTRL, "%s:%d rbus_get failed for [] with error [%d]\n",__func__, __LINE__, rc);
+    }
+    get_config_wifi = rbusValue_GetBoolean(value);
+
+    wifi_util_dbg_print(WIFI_CTRL,"CONFIG_WIFI= %d fun %s  and wifi_value %d \n",get_config_wifi,__func__,default_private_credentials);
+
+    if (default_private_credentials != get_config_wifi) {
+        wifi_util_dbg_print(WIFI_CTRL,"set CONFIG_WIFI value to %d\n",default_private_credentials);
+        if (default_private_credentials) {
+            rbusValue_SetBoolean(config_wifi_value, true);
+        }
+        else {
+            rbusValue_SetBoolean(config_wifi_value, false);
+        }
+ 
+        rc = rbus_set(g_wifi_mgr->ctrl.rbus_handle,CONFIG_WIFI,config_wifi_value,NULL);
+
+        if (rc != RBUS_ERROR_SUCCESS) {
+            wifi_util_error_print(WIFI_CTRL,"Rbus error Device.DeviceInfo.X_RDKCENTRAL-COM_ConfigureWiFi\n");
+        }
+
     }
     rbusValue_Release(config_wifi_value);
     wifi_util_info_print(WIFI_CTRL," Captive_portal Ends after NotifyWifiChanges\n");
 
     return RETURN_OK;
+
 }
 
 int start_wifi_health_monitor_thread(void)
