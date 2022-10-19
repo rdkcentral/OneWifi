@@ -4364,8 +4364,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_lnf(webconfig_s
     }
 
     presence_mask = 0;
-//    lnf_vap_mask = create_vap_mask(wifi_prop, 2, VAP_PREFIX_LNF_PSK, VAP_PREFIX_LNF_RADIUS);
-    lnf_vap_mask = ((1 << convert_vap_name_to_index(wifi_prop, "lnf_psk")) | (1 << convert_vap_name_to_index(wifi_prop, "lnf_radius")));
+    lnf_vap_mask = create_vap_mask(wifi_prop, 2, VAP_PREFIX_LNF_PSK, VAP_PREFIX_LNF_RADIUS);
 
     hal_cap = &decoded_params->hal_cap;
 
