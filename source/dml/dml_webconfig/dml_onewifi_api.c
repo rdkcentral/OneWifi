@@ -668,6 +668,7 @@ wifi_radio_operationParam_t* get_dml_cache_radio_map(uint8_t radio_index)
 }
 
 bool is_radio_config_changed;
+bool g_update_wifi_region;
 
 int convert_freq_band_to_dml_radio_index(int band, int *radio_index)
 {
@@ -789,7 +790,7 @@ int push_global_config_dml_cache_to_one_wifidb()
     }
 
     wifi_util_dbg_print(WIFI_DMCLI, "%s:  Global DML cache pushed to queue \n", __FUNCTION__);
-
+    g_update_wifi_region = FALSE;
     return RETURN_OK;
 }
 

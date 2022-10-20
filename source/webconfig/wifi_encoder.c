@@ -63,6 +63,7 @@ webconfig_error_t encode_radio_object(const rdk_wifi_radio_t *radio, cJSON *radi
     const wifi_radio_operationParam_t *radio_info;
     char channel_list[BUFFER_LENGTH_WIFIDB] = {0}, str[BUFFER_LENGTH_WIFIDB] = {0};
     unsigned int num_channels, i, k = 0, len = sizeof(channel_list) - 1;
+    int itr = 0, arr_size = 0;
     cJSON *obj;
 
     obj = cJSON_CreateObject();
@@ -134,7 +135,22 @@ webconfig_error_t encode_radio_object(const rdk_wifi_radio_t *radio, cJSON *radi
 
     // Country
     cJSON_AddStringToObject(radio_object, "Country", str);
+    
+    k = radio_info->operatingEnvironment;
+    memset(str,0,sizeof(str));
+    arr_size = ((int)(sizeof(wifiEnviromentMap)/sizeof(wifiEnviromentMap[0])));
+    for (itr = 0; itr < arr_size; itr++)
+    {
+        if (k == wifiEnviromentMap[itr].operatingEnvironment)
+        {
+            strncpy(str, wifiEnviromentMap[itr].environment, sizeof(wifiEnviromentMap[itr].environment)-1);
+            break;
+        }
+    }
 
+    // OperatingEnvironment
+    cJSON_AddStringToObject(radio_object, "OperatingEnvironment", str);
+    
     // DcsEnabled
     cJSON_AddBoolToObject(radio_object, "DcsEnabled", radio_info->DCSEnabled);
 

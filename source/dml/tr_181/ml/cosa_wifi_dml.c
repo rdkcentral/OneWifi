@@ -96,6 +96,7 @@ extern bool is_radio_config_changed;
 static int radio_reset_count;
 ULONG last_vap_change;
 ULONG last_radio_change;
+extern bool g_update_wifi_region;
 
 #include "wifi_passpoint.h"
 #include "wifi_util.h"
@@ -111,7 +112,6 @@ uint8_t g_radio_instance_num = 0;
 extern void* g_pDslhDmlAgent;
 extern int gChannelSwitchingCount;
 extern bool wifi_api_is_device_associated(int ap_index, char *mac);
-
 /***********************************************************************
  IMPORTANT NOTE:
 
@@ -773,6 +773,10 @@ WiFi_SetParamBoolValue
             }
             radio_reset_count++;
             last_radio_change = AnscGetTickInSeconds();
+            if (g_update_wifi_region)
+            {
+                push_global_config_dml_cache_to_one_wifidb();
+            }
             return TRUE;
         }
         return TRUE;
@@ -2055,7 +2059,6 @@ WiFiRegion_GetParamStringValue
     return -1;
 }
 
-#if defined(_COSA_BCM_MIPS_) || defined(_XB6_PRODUCT_REQ_) || defined(_COSA_BCM_ARM_) || defined(_PLATFORM_TURRIS_)
 #define BS_SOURCE_WEBPA_STR "webpa"
 #define BS_SOURCE_RFC_STR "rfc"
 #define PARTNER_ID_LEN 64
@@ -2087,7 +2090,6 @@ char * getTime()
     strftime(buffer, 50, "%Y-%m-%d %H:%M:%S ", tm_info);
     return buffer;
 }
-#endif
 
 BOOL
 WiFiRegion_SetParamStringValue
@@ -2101,6 +2103,11 @@ WiFiRegion_SetParamStringValue
 
 {
     UNREFERENCED_PARAMETER(hInsContext);
+    int r_itr = 0;
+    char PartnerID[PARTNER_ID_LEN] = {0};
+    char * currentTime = getTime();
+    char * requestorStr = getRequestorString();
+    wifi_radio_operationParam_t *wifiRadioOperParam;
     wifi_global_config_t *global_wifi_config;
     global_wifi_config = (wifi_global_config_t *) get_dml_cache_global_wifi_config();
 
@@ -2112,8 +2119,42 @@ WiFiRegion_SetParamStringValue
 
     if (AnscEqualString(ParamName, "Code", TRUE))
     {
+        if (strcmp(requestorStr, BS_SOURCE_RFC_STR) == 0 && strcmp(wifiRegionUpdateSource, BS_SOURCE_WEBPA_STR) == 0)
+        {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Do NOT allow override\n", __func__, __LINE__);
+            return FALSE;
+        }
+
+        for (r_itr = 0; r_itr < get_num_radio_dml(); r_itr++) {
+            wifiRadioOperParam = (wifi_radio_operationParam_t *) get_dml_cache_radio_map(r_itr);
+            if (wifiRadioOperParam == NULL)
+            {
+                wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to fetch Operating params for radio index %d\n", __func__, __LINE__, r_itr);
+                continue;
+            }
+            if (regDomainStrToEnums(pString, &wifiRadioOperParam->countryCode, &wifiRadioOperParam->operatingEnvironment) == ANSC_STATUS_SUCCESS)
+            {
+                is_radio_config_changed = TRUE;
+            } else {
+                wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to convert country code for radio_index %d\n", __func__, __LINE__, r_itr);
+                return FALSE;
+            }
+        }
+
         AnscCopyString( global_wifi_config->global_parameters.wifi_region_code, pString );
         push_global_config_dml_cache_to_one_wifidb();
+        push_radio_dml_cache_to_one_wifidb();
+        last_radio_change = AnscGetTickInSeconds();
+
+        if((CCSP_SUCCESS == getPartnerId(PartnerID) ) && (PartnerID[ 0 ] != '\0') )
+        {
+            if (UpdateJsonParam("Device.WiFi.X_RDKCENTRAL-COM_Syndication.WiFiRegion.Code",PartnerID, pString, requestorStr, currentTime) != ANSC_STATUS_SUCCESS)
+            {
+                wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to update WifiRegion to Json file\n", __func__, __LINE__);
+            }
+        }
+        snprintf(wifiRegionUpdateSource, 16, "%s", requestorStr);
+
         return TRUE;
     }
 
@@ -3075,18 +3116,19 @@ Radio_GetParamStringValue
     if( AnscEqualString(ParamName, "RegulatoryDomain", TRUE))
     {
         /* collect value */
-	char *countryCode[4];
-	getCountryCodeFromInt(pcfg->countryCode, countryCode);
-        if ( AnscSizeOfString( (char *)countryCode ) < *pUlSize)
+        char regulatoryDomain[4];
+        memset(regulatoryDomain, 0, sizeof(regulatoryDomain));
+        getRegulatoryDomainFromEnums(pcfg->countryCode, pcfg->operatingEnvironment, regulatoryDomain);
+        if ( AnscSizeOfString(regulatoryDomain ) < *pUlSize)
         {
-            AnscCopyString(pValue, (char *)countryCode);
+            AnscCopyString(pValue, regulatoryDomain);
             return 0;
         }
         else
         {
-            *pUlSize = AnscSizeOfString((char *)countryCode)+1;
+            *pUlSize = AnscSizeOfString(regulatoryDomain)+1;
             return 1;
-        }	
+        }
         return 0;
     }
 
@@ -3965,10 +4007,10 @@ Radio_SetParamStringValue
         return FALSE;
     }
     ULONG instance_number = 0;
+    wifi_global_config_t *global_wifi_config;
     convert_freq_band_to_dml_radio_index(wifi_radio->band, &instance_number); //Temp-Will be modified
     wifi_radio_operationParam_t *wifiRadioOperParam = (wifi_radio_operationParam_t *) get_dml_cache_radio_map(instance_number-1);
     UINT wlanIndex = 0;
-    wifi_countrycode_type_t tmpCountryCode = 0;
     UINT txRate = 0;
 
     if (wifiRadioOperParam == NULL)
@@ -4019,18 +4061,48 @@ Radio_SetParamStringValue
 
     if( AnscEqualString(ParamName, "RegulatoryDomain", TRUE))
     {
-        if (regDomainStrToEnum(pString, &tmpCountryCode) != ANSC_STATUS_SUCCESS)
+        char regulatoryDomainStr[4];
+        size_t reg_len;
+        size_t p_len;
+        char PartnerID[PARTNER_ID_LEN] = {0};
+        char * currentTime = getTime();
+        char * requestorStr = getRequestorString();
+
+        memset(regulatoryDomainStr, 0, sizeof(regulatoryDomainStr));
+        getRegulatoryDomainFromEnums(wifiRadioOperParam->countryCode, wifiRadioOperParam->operatingEnvironment, regulatoryDomainStr);
+        reg_len = strlen(regulatoryDomainStr);
+        p_len = strlen(pString);
+
+        if (p_len == reg_len)
+        {
+            if (!strncmp(pString, regulatoryDomainStr, strlen(regulatoryDomainStr)))
+            {
+                return TRUE;
+            }
+        }
+
+        if (regDomainStrToEnums(pString, &wifiRadioOperParam->countryCode, &wifiRadioOperParam->operatingEnvironment) != ANSC_STATUS_SUCCESS)
         {
             return FALSE;
         }
-
-        if (wifiRadioOperParam->countryCode  == tmpCountryCode)
+        
+        if (instance_number == 1) 
         {
-            return TRUE;
+            global_wifi_config = (wifi_global_config_t *) get_dml_cache_global_wifi_config();
+            snprintf(global_wifi_config->global_parameters.wifi_region_code, sizeof(global_wifi_config->global_parameters.wifi_region_code), "%s", pString);
+            g_update_wifi_region = TRUE;
+            if((CCSP_SUCCESS == getPartnerId(PartnerID) ) && (PartnerID[ 0 ] != '\0') )
+            {
+                if (UpdateJsonParam("Device.WiFi.X_RDKCENTRAL-COM_Syndication.WiFiRegion.Code",PartnerID, pString, requestorStr, currentTime) != ANSC_STATUS_SUCCESS)
+                {
+                    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to update WifiRegion to Json file\n", __func__, __LINE__);
+                }
+            }
+            snprintf(wifiRegionUpdateSource, 16, "%s", requestorStr);
+
         }
 
-        wifiRadioOperParam->countryCode = tmpCountryCode;
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:variant=%d  = %d  pString=%s\n",__func__, __LINE__,wifiRadioOperParam->countryCode,tmpCountryCode,pString);
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: country code=%d  environment=%d  pString=%s\n",__func__, __LINE__,wifiRadioOperParam->countryCode, wifiRadioOperParam->operatingEnvironment, pString);
         is_radio_config_changed = TRUE;
         return TRUE;
     }

@@ -1465,6 +1465,27 @@ webconfig_error_t decode_contry_code(wifi_countrycode_type_t *contry_code, char 
     return webconfig_error_decode;
 }
 
+webconfig_error_t decode_operating_environment(wifi_operating_env_t *operating_env, char *environment)
+{
+    int i, arr_size = 0;
+    bool valid_env =  FALSE;
+    
+    arr_size = ((int)(sizeof(wifiEnviromentMap)/sizeof(wifiEnviromentMap[0])));
+    for(i = 0; i < arr_size; i++) {
+        if (strcasecmp(environment, wifiEnviromentMap[i].environment) == 0) {
+            *operating_env = wifiEnviromentMap[i].operatingEnvironment;
+            valid_env  = TRUE;
+            break;
+        }
+    }
+
+    if (!valid_env) {
+        return webconfig_error_decode;
+    }
+
+    return webconfig_error_none;
+}
+
 webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_property_t *wifi_prop)
 {
     const cJSON  *param;
@@ -2364,6 +2385,14 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
     if (ret != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"Invalid wifi radio contry code '%s'\n", param->valuestring);
         //strncpy(execRetVal->ErrorMsg, "Invalid wifi radio code",sizeof(execRetVal->ErrorMsg)-1);
+        return webconfig_error_decode;
+    }
+    
+    //OperatingEnvironment
+    decode_param_string(obj_radio, "OperatingEnvironment", param);
+    ret = decode_operating_environment(&radio_info->operatingEnvironment, param->valuestring);
+    if (ret != webconfig_error_none) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"Invalid wifi Operating Environment '%s'\n", param->valuestring);
         return webconfig_error_decode;
     }
 

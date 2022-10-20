@@ -1,6 +1,6 @@
 {
   "name": "Wifi_Rdk_Database",
-  "version": "1.00.007",
+  "version": "1.00.009",
   "cksum": "2353365742 523",
   "tables": {
     "Wifi_Device_Config": {
@@ -1161,6 +1161,17 @@
             "min": 0,
             "max": 1
           }
+        },
+        "operating_environment": {
+            "type": {
+              "key": {
+                "type": "integer",
+                "minInteger": 0,
+                "maxInteger": 248
+              },
+              "min": 0,
+              "max": 1
+            }
         },
         "dcs_enabled": {
           "type": {

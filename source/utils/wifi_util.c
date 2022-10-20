@@ -296,6 +296,13 @@ struct wifiCountryEnumStrMap wifiCountryMap[] =
     {wifi_countrycode_ZW,"ZW"} /**< ZIMBABWE */
 };
 
+struct wifiEnvironmentEnumStrMap wifiEnviromentMap[] =
+{
+    {wifi_operating_env_all, " "},
+    {wifi_operating_env_indoor, "I"},
+    {wifi_operating_env_outdoor, "O"},
+    {wifi_operating_env_non_country, "X"}
+};
 
 void write_to_file(const char *file_name, char *fmt, ...)
 {

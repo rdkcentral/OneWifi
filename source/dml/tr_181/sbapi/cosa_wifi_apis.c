@@ -324,24 +324,39 @@ struct wifiDataTxRateHalMap wifiDataTxRateMap[] =
 *
 **************************************************************************/
 
-INT getCountryCodeFromInt(wifi_countrycode_type_t countryCode, char *countryStr)
+UINT getRegulatoryDomainFromEnums(wifi_countrycode_type_t countryCode, wifi_operating_env_t operatingEnvironment, char *regulatoryDomainStr)
 {
     unsigned int i;
-    for (i = 0 ; i < ARRAY_SZ(wifiCountryMap) ; ++i)
+    char tmp_countryStr[4];
+    char tmp_environment[4];
+
+    memset(tmp_countryStr, 0, sizeof(tmp_countryStr));
+    memset(tmp_environment, 0, sizeof(tmp_environment));
+    for (i = 0 ; i < ARRAY_SZ(wifiCountryMap); ++i)
     {
         if(countryCode == wifiCountryMap[i].countryCode)
         {
-            strncpy(countryStr, wifiCountryMap[i].countryStr, strlen(wifiCountryMap[i].countryStr));
-            return strlen(wifiCountryMap[i].countryStr);
+            strncpy(tmp_countryStr, wifiCountryMap[i].countryStr, sizeof(tmp_countryStr)-1);
+            break;
         }
     }
 
-    if(strlen(countryStr) == 0)
+    for (i = 0; i < ARRAY_SZ(wifiEnviromentMap); ++i)
     {
-        CcspWifiTrace(("RDK_LOG_ERROR, %s Invalid Country code enum\n", __func__));
+        if (operatingEnvironment == wifiEnviromentMap[i].operatingEnvironment)
+        {
+            strncpy(tmp_environment, wifiEnviromentMap[i].environment, sizeof(wifiEnviromentMap[i].environment)-1);
+            break;
+        }
     }
 
-    return 0;
+    snprintf(regulatoryDomainStr, 4, "%s%s", tmp_countryStr, tmp_environment);
+    if (strlen(regulatoryDomainStr) == 0)
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s Invalid Country code enum\n", __func__));
+        return 0;
+    }
+    return strlen(regulatoryDomainStr);
 }
 
 INT getTxDataRateFromInt(wifi_bitrate_t DataTxRate, char *DataTxRateStr)
@@ -1128,23 +1143,59 @@ ANSC_STATUS operChanBandwidthHalEnumtoDmlEnum(wifi_channelBandwidth_t halBw, UIN
     return ANSC_STATUS_SUCCESS;
 }
 
-ANSC_STATUS regDomainStrToEnum(char *pRegDomain, wifi_countrycode_type_t *pCountryCode)
+#define REG_DOMAIN_SZ 3
+#define ENV_SZ 1
+
+ANSC_STATUS regDomainStrToEnums(char *pRegDomain, wifi_countrycode_type_t *countryCode, wifi_operating_env_t *operatingEnvironment)
 {
     UINT seqCounter = 0;
     bool isregDomainInvalid = TRUE;
+    char tmp_regDomain[REG_DOMAIN_SZ+1];
+    char environment[ENV_SZ+1] = {'I', '\0'};
+    unsigned int len = 0;
 
-    if ((pRegDomain == NULL) || (pCountryCode == NULL))
+    if ((pRegDomain == NULL) || (countryCode == NULL) || (operatingEnvironment == NULL))
     {
         CcspWifiTrace(("RDK_LOG_ERROR, %s Invalid Argument\n", __FUNCTION__));
         return ANSC_STATUS_FAILURE;
     }
 
+    len = strlen(pRegDomain);
+    if ((len > REG_DOMAIN_SZ) || (len < ENV_SZ)) {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Invalid country code \n", __func__, __LINE__);
+        return ANSC_STATUS_FAILURE;
+    }
+
+    memset(tmp_regDomain, 0, sizeof(tmp_regDomain));
+    strncpy(tmp_regDomain, pRegDomain, sizeof(tmp_regDomain));
+    environment[0] = tmp_regDomain[REG_DOMAIN_SZ-1];
+    if (environment[0] == '\0') {
+        environment[0] = ' ';
+    } else if(environment[0] != 'I' && environment[0] != 'O' && environment[0] != ' ' && environment[0] != 'X') {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Invalid environment \n", __func__, __LINE__);
+        return ANSC_STATUS_FAILURE;
+    }
+
+    tmp_regDomain[REG_DOMAIN_SZ-1] = '\0';
+
+
     for (seqCounter = 0; seqCounter < ARRAY_SZ(wifiCountryMap); seqCounter++)
     {
-        if (AnscEqualString(pRegDomain, wifiCountryMap[seqCounter].countryStr, TRUE))
+        if (AnscEqualString(tmp_regDomain, wifiCountryMap[seqCounter].countryStr, TRUE))
         {
-            *pCountryCode = wifiCountryMap[seqCounter].countryCode;
-            ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s input : %s Countrycode : %d\n", __FUNCTION__, pRegDomain, *pCountryCode);
+            *countryCode = wifiCountryMap[seqCounter].countryCode;
+            ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s input : %s Countrycode : %d\n", __FUNCTION__, pRegDomain, *countryCode);
+            isregDomainInvalid = FALSE;
+            break;
+        }
+    }
+
+    for (seqCounter = 0; seqCounter < ARRAY_SZ(wifiEnviromentMap); seqCounter++)
+    {
+        if (AnscEqualString(environment, wifiEnviromentMap[seqCounter].environment, TRUE))
+        {
+            *operatingEnvironment = wifiEnviromentMap[seqCounter].operatingEnvironment;
+            ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s input : %s OperatingEnvironment : %d\n", __FUNCTION__, pRegDomain, *operatingEnvironment);
             isregDomainInvalid = FALSE;
             break;
         }
@@ -1509,6 +1560,390 @@ ValidateActiveMsmtPlanID(UCHAR *pPlanId)
         CcspTraceError(("%s:%d : Plan ID is not configured\n",__func__, __LINE__));
         return ANSC_STATUS_FAILURE;
     }
+    return ANSC_STATUS_SUCCESS;
+}
+
+#define PARTNERS_INFO_FILE              "/nvram/partners_defaults.json"
+#define BOOTSTRAP_INFO_FILE             "/nvram/bootstrap.json"
+
+static int writeToJson(char *data, char *file)
+{
+    FILE *fp;
+    fp = fopen(file, "w");
+    if (fp == NULL)
+    {
+        CcspTraceWarning(("%s : %d Failed to open file %s\n", __FUNCTION__,__LINE__,file));
+        return -1;
+    }
+
+    fwrite(data, strlen(data), 1, fp);
+    fclose(fp);
+    return 0;
+}
+
+ANSC_STATUS UpdateJsonParamLegacy
+(
+ char*                       pKey,
+ char*           PartnerId,
+ char*           pValue
+ )
+{
+    cJSON *partnerObj = NULL;
+    cJSON *json = NULL;
+    FILE *fileRead = NULL;
+    char * cJsonOut = NULL;
+    char* data = NULL;
+    int len ;
+    int configUpdateStatus = -1;
+    fileRead = fopen( PARTNERS_INFO_FILE, "r" );
+    if( fileRead == NULL )
+    {
+        CcspTraceWarning(("%s-%d : Error in opening JSON file\n" , __FUNCTION__, __LINE__ ));
+        return ANSC_STATUS_FAILURE;
+    }
+
+    fseek( fileRead, 0, SEEK_END );
+    len = ftell( fileRead );
+    /*CID: 55623 Argument cannot be negative*/
+    if (len < 0) {
+        CcspTraceWarning(("%s-%d : FileRead Negative \n", __FUNCTION__, __LINE__));
+        fclose( fileRead );
+        return ANSC_STATUS_FAILURE;
+    }
+    fseek( fileRead, 0, SEEK_SET );
+    data = ( char* )malloc( sizeof(char) * (len + 1) );
+    if (data != NULL)
+    {
+        memset( data, 0, ( sizeof(char) * (len + 1) ));
+        /*CID: 70535 Ignoring number of bytes read*/
+        if(1 != fread( data, len, 1, fileRead )) {
+            fclose( fileRead );
+            return ANSC_STATUS_FAILURE;
+        }
+        /*CID: 135238 String not null terminated*/
+        data[len] ='\0';
+    }
+    else
+    {
+        CcspTraceWarning(("%s-%d : Memory allocation failed \n", __FUNCTION__, __LINE__));
+        fclose( fileRead );
+        return ANSC_STATUS_FAILURE;
+    }
+    fclose( fileRead );
+    if ( data == NULL )
+    {
+        CcspTraceWarning(("%s-%d : fileRead failed \n", __FUNCTION__, __LINE__));
+        return ANSC_STATUS_FAILURE;
+    }
+    else if ( strlen(data) != 0)
+    {
+        json = cJSON_Parse( data );
+        if( !json )
+        {
+            CcspTraceWarning((  "%s : json file parser error : [%d]\n", __FUNCTION__,__LINE__));
+            free(data);
+            return ANSC_STATUS_FAILURE;
+        }
+        else
+        {
+            partnerObj = cJSON_GetObjectItem( json, PartnerId );
+            if ( NULL != partnerObj)
+            {
+                if (NULL != cJSON_GetObjectItem( partnerObj, pKey) )
+                {
+                    cJSON_ReplaceItemInObject(partnerObj, pKey, cJSON_CreateString(pValue));
+                    cJsonOut = cJSON_Print(json);
+                    CcspTraceWarning(( "Updated json content is %s\n", cJsonOut));
+                    configUpdateStatus = writeToJson(cJsonOut, PARTNERS_INFO_FILE);
+                    if ( !configUpdateStatus)
+                    {
+                        CcspTraceWarning(( "Updated Value for %s partner\n",PartnerId));
+                        CcspTraceWarning(( "Param:%s - Value:%s\n",pKey,pValue));
+                    }
+                    else
+                    {
+                        CcspTraceWarning(( "Failed to update value for %s partner\n",PartnerId));
+                        CcspTraceWarning(( "Param:%s\n",pKey));
+                        cJSON_Delete(json);
+                        return ANSC_STATUS_FAILURE;
+                    }
+                }
+                else
+                {
+                    CcspTraceWarning(("%s - OBJECT  Value is NULL %s\n", pKey,__FUNCTION__ ));
+                    cJSON_Delete(json);
+                    return ANSC_STATUS_FAILURE;
+                }
+
+            }
+            else
+            {
+                CcspTraceWarning(("%s - PARTNER ID OBJECT Value is NULL\n", __FUNCTION__ ));
+                cJSON_Delete(json);
+                return ANSC_STATUS_FAILURE;
+            }
+            cJSON_Delete(json);
+        }
+    }
+    else
+    {
+        CcspTraceWarning(("PARTNERS_INFO_FILE %s is empty\n", PARTNERS_INFO_FILE));
+        /*CID: 65542 Resource leak*/
+        free(data);
+        return ANSC_STATUS_FAILURE;
+    }
+    return ANSC_STATUS_SUCCESS;
+}
+
+char wifiRegionUpdateSource[16];
+
+void FillPartnerIDJournal(cJSON *json, char *partnerID, char *pwifiregion)
+{
+    cJSON *partnerObj = cJSON_GetObjectItem( json, partnerID );
+    if( partnerObj != NULL)
+    {
+        cJSON *paramObj = cJSON_GetObjectItem(partnerObj, "Device.WiFi.X_RDKCENTRAL-COM_Syndication.WiFiRegion.Code");
+        if (paramObj != NULL)
+        {
+            char *valuestr = NULL;
+            cJSON *paramObjVal = cJSON_GetObjectItem(paramObj, "UpdateSource");
+            if (paramObjVal)
+                valuestr = paramObjVal->valuestring;
+            if (valuestr != NULL)
+            {
+                snprintf(pwifiregion, 16, "%s", valuestr);
+            }
+            else
+            {
+                CcspTraceWarning(("%s UpdateSource is NULL\n", __FUNCTION__));
+            }
+        }
+        else
+        {
+            CcspTraceWarning(("%s Object is NULL\n", __FUNCTION__));
+        }
+    }
+    else
+    {
+        CcspTraceWarning(("%s - PARTNER ID OBJECT Value is NULL\n", __FUNCTION__ ));
+    }
+}
+
+#define PARTNER_ID_LEN 64
+
+void getParamWifiRegionUpdateSource(void)
+{
+    char *data = NULL;
+    cJSON *json = NULL;
+    FILE *fileRead = NULL;
+    char PartnerID[PARTNER_ID_LEN] = {0};
+    int len;
+    memset(wifiRegionUpdateSource, 0, 16);
+
+    fileRead = fopen( BOOTSTRAP_INFO_FILE, "r" );
+    if( fileRead == NULL )
+    {
+        CcspTraceWarning(("%s-%d : Error in opening JSON file\n" , __FUNCTION__, __LINE__ ));
+        return;
+    }
+
+    fseek( fileRead, 0, SEEK_END );
+    len = ftell( fileRead );
+
+    if (len <0)
+    {
+        CcspTraceWarning(("%s-%d : File size reads negative \n", __FUNCTION__, __LINE__));
+        fclose( fileRead );
+        return;
+    }
+    fseek( fileRead, 0, SEEK_SET );
+    data = ( char* )malloc( sizeof(char) * (len + 1) );
+    if (data != NULL)
+    {
+        memset( data, 0, ( sizeof(char) * (len + 1) ));
+        if(1 != fread( data, len, 1, fileRead ))
+        {
+            fclose( fileRead );
+            return;
+        }
+        data[len] = '\0';
+    }
+    else
+    {
+        CcspTraceWarning(("%s-%d : Memory allocation failed \n", __FUNCTION__, __LINE__));
+        fclose(fileRead);
+        return;
+    }
+    fclose(fileRead);
+    if (data == NULL)
+    {
+        CcspTraceWarning(("%s-%d : fileRead failed \n", __FUNCTION__, __LINE__));
+        return;
+    }
+    else if ( strlen(data) != 0)
+    {
+        json = cJSON_Parse(data);
+        if(!json)
+        {
+            CcspTraceWarning((  "%s : json file parser error : [%d]\n", __FUNCTION__,__LINE__));
+            free(data);
+            return;
+        }
+        else
+        {
+            if( CCSP_SUCCESS == getPartnerId(PartnerID) )
+            {
+                if (PartnerID[0] != '\0')
+                {
+                    CcspTraceWarning(("%s : Partner = %s \n", __FUNCTION__, PartnerID));
+                    FillPartnerIDJournal(json, PartnerID, wifiRegionUpdateSource);
+                }
+                else
+                {
+                    CcspTraceWarning(( "Reading Deafult PartnerID Values \n" ));
+                    snprintf(PartnerID, sizeof(PartnerID), "%s", "comcast");
+                    FillPartnerIDJournal(json, PartnerID, wifiRegionUpdateSource);
+                }
+            }
+            else
+            {
+                CcspTraceWarning(("Failed to get Partner ID\n"));
+            }
+            cJSON_Delete(json);
+        }
+        free(data);
+        data=NULL;
+    }
+    else
+    {
+        CcspTraceWarning(("BOOTSTRAP_INFO_FILE %s is empty\n", BOOTSTRAP_INFO_FILE));
+        free(data);
+        data=NULL;
+        return;
+
+    }
+    return;
+}
+
+ANSC_STATUS UpdateJsonParam
+(
+ char*                       pKey,
+ char*                   PartnerId,
+ char*                   pValue,
+ char*                   pSource,
+ char*                   pCurrentTime
+ )
+{
+    cJSON *partnerObj = NULL;
+    cJSON *json = NULL;
+    FILE *fileRead = NULL;
+    char * cJsonOut = NULL;
+    char* data = NULL;
+    int len ;
+    int configUpdateStatus = -1;
+    fileRead = fopen( BOOTSTRAP_INFO_FILE, "r" );
+    if( fileRead == NULL )
+    {
+        CcspTraceWarning(("%s-%d : Error in opening JSON file\n" , __FUNCTION__, __LINE__ ));
+        return ANSC_STATUS_FAILURE;
+    }
+    fseek( fileRead, 0, SEEK_END );
+    len = ftell( fileRead );
+    /*CID: 56120 Argument cannot be negative*/
+    if (len < 0) {
+        CcspTraceWarning(("%s-%d : fileRead negative \n", __FUNCTION__, __LINE__));
+        fclose( fileRead );
+        return ANSC_STATUS_FAILURE;
+    }
+    fseek( fileRead, 0, SEEK_SET );
+    data = ( char* )malloc( sizeof(char) * (len + 1) );
+    if (data != NULL)
+    {
+        memset( data, 0, ( sizeof(char) * (len + 1) ));
+        /*CID: 70144 Ignoring number of bytes read*/
+        if( 1 != fread( data, len, 1, fileRead )) {
+            fclose( fileRead );
+            return ANSC_STATUS_FAILURE;
+        }
+        /*CID: 135285 String not null terminated*/
+        data[len] ='\0';
+    }
+    else
+    {
+        CcspTraceWarning(("%s-%d : Memory allocation failed \n", __FUNCTION__, __LINE__));
+        fclose( fileRead );
+        return ANSC_STATUS_FAILURE;
+    }
+
+    fclose( fileRead );
+    if ( data == NULL )
+    {
+        CcspTraceWarning(("%s-%d : fileRead failed \n", __FUNCTION__, __LINE__));
+        return ANSC_STATUS_FAILURE;
+    }
+    else if ( strlen(data) != 0)
+    {
+        json = cJSON_Parse( data );
+        if( !json )
+        {
+            CcspTraceWarning((  "%s : json file parser error : [%d]\n", __FUNCTION__,__LINE__));
+            free(data);
+            return ANSC_STATUS_FAILURE;
+        }
+        else
+        {
+            partnerObj = cJSON_GetObjectItem( json, PartnerId );
+            if ( NULL != partnerObj)
+            {
+                cJSON *paramObj = cJSON_GetObjectItem( partnerObj, pKey);
+                if (NULL != paramObj )
+                {
+                    cJSON_ReplaceItemInObject(paramObj, "ActiveValue", cJSON_CreateString(pValue));
+                    cJSON_ReplaceItemInObject(paramObj, "UpdateTime", cJSON_CreateString(pCurrentTime));
+                    cJSON_ReplaceItemInObject(paramObj, "UpdateSource", cJSON_CreateString(pSource));
+
+                    cJsonOut = cJSON_Print(json);
+                    CcspTraceWarning(( "Updated json content is %s\n", cJsonOut));
+                    configUpdateStatus = writeToJson(cJsonOut, BOOTSTRAP_INFO_FILE);
+                    if ( !configUpdateStatus)
+                    {
+                        CcspTraceWarning(( "Bootstrap config update: %s, %s, %s, %s \n", pKey, pValue, PartnerId, pSource));
+                    }
+                    else
+                    {
+                        CcspTraceWarning(( "Failed to update value for %s partner\n",PartnerId));
+                        CcspTraceWarning(( "Param:%s\n",pKey));
+                        cJSON_Delete(json);
+                        return ANSC_STATUS_FAILURE;
+                    }
+                }
+                else
+                {
+                    CcspTraceWarning(("%s - OBJECT  Value is NULL %s\n", pKey,__FUNCTION__ ));
+                    cJSON_Delete(json);
+                    return ANSC_STATUS_FAILURE;
+                }
+
+            }
+            else
+            {
+                CcspTraceWarning(("%s - PARTNER ID OBJECT Value is NULL\n", __FUNCTION__ ));
+                cJSON_Delete(json);
+                return ANSC_STATUS_FAILURE;
+            }
+            cJSON_Delete(json);
+        }
+    }
+    else
+    {
+        CcspTraceWarning(("BOOTSTRAP_INFO_FILE %s is empty\n", BOOTSTRAP_INFO_FILE));
+        /*CID: 72622 Resource leak*/
+        free(data);
+        return ANSC_STATUS_FAILURE;
+    }
+
+    //Also update in the legacy file /nvram/partners_defaults.json for firmware roll over purposes.
+    UpdateJsonParamLegacy(pKey, PartnerId, pValue);
     return ANSC_STATUS_SUCCESS;
 }
 

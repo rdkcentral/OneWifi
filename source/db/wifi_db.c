@@ -256,6 +256,9 @@ void callback_Wifi_Radio_Config(ovsdb_update_monitor_t *mon,
         if (new_rec->country != 0) {
             l_radio_cfg->countryCode = new_rec->country;
         }
+        if (new_rec->operating_environment != 0) {
+            l_radio_cfg->operatingEnvironment = new_rec->operating_environment;
+        }
         l_radio_cfg->DCSEnabled = new_rec->dcs_enabled;
         l_radio_cfg->dtimPeriod = new_rec->dtim_period;
         if (new_rec->beacon_interval != 0) {
@@ -289,7 +292,7 @@ void callback_Wifi_Radio_Config(ovsdb_update_monitor_t *mon,
             i++;
         }
         l_radio_cfg->numSecondaryChannels = new_rec->num_secondary_channels;
-        wifi_util_dbg_print(WIFI_DB,"%s:%d: Wifi_Radio_Config data enabled=%d freq_band=%d auto_channel_enabled=%d channel=%d  channel_width=%d hw_mode=%d csa_beacon_count=%d country=%d dcs_enabled=%d numSecondaryChannels=%d channelSecondary=%s dtim_period %d beacon_interval %d operating_class %d basic_data_transmit_rate %d operational_data_transmit_rate %d  fragmentation_threshold %d guard_interval %d transmit_power %d rts_threshold %d factory_reset_ssid = %d, radio_stats_measuring_rate = %d, radio_stats_measuring_interval = %d, cts_protection %d, obss_coex= %d, stbc_enable= %d, greenfield_enable= %d, user_control= %d, admin_control= %d,chan_util_threshold= %d, chan_util_selfheal_enable= %d \n",__func__, __LINE__,l_radio_cfg->enable,l_radio_cfg->band,l_radio_cfg->autoChannelEnabled,l_radio_cfg->channel,l_radio_cfg->channelWidth,l_radio_cfg->variant,l_radio_cfg->csa_beacon_count,l_radio_cfg->countryCode,l_radio_cfg->DCSEnabled,l_radio_cfg->numSecondaryChannels,new_rec->secondary_channels_list,l_radio_cfg->dtimPeriod,l_radio_cfg->beaconInterval,l_radio_cfg->operatingClass,l_radio_cfg->basicDataTransmitRates,l_radio_cfg->operationalDataTransmitRates,l_radio_cfg->fragmentationThreshold,l_radio_cfg->guardInterval,l_radio_cfg->transmitPower,l_radio_cfg->rtsThreshold,l_radio_cfg->factoryResetSsid,l_radio_cfg->radioStatsMeasuringInterval,l_radio_cfg->radioStatsMeasuringInterval,l_radio_cfg->ctsProtection,l_radio_cfg->obssCoex,l_radio_cfg->stbcEnable,l_radio_cfg->greenFieldEnable,l_radio_cfg->userControl,l_radio_cfg->adminControl,l_radio_cfg->chanUtilThreshold,l_radio_cfg->chanUtilSelfHealEnable);
+        wifi_util_dbg_print(WIFI_DB,"%s:%d: Wifi_Radio_Config data enabled=%d freq_band=%d auto_channel_enabled=%d channel=%d  channel_width=%d hw_mode=%d csa_beacon_count=%d country=%d OperatingEnviroment=%d dcs_enabled=%d numSecondaryChannels=%d channelSecondary=%s dtim_period %d beacon_interval %d operating_class %d basic_data_transmit_rate %d operational_data_transmit_rate %d  fragmentation_threshold %d guard_interval %d transmit_power %d rts_threshold %d factory_reset_ssid = %d, radio_stats_measuring_rate = %d, radio_stats_measuring_interval = %d, cts_protection %d, obss_coex= %d, stbc_enable= %d, greenfield_enable= %d, user_control= %d, admin_control= %d,chan_util_threshold= %d, chan_util_selfheal_enable= %d \n",__func__, __LINE__,l_radio_cfg->enable,l_radio_cfg->band,l_radio_cfg->autoChannelEnabled,l_radio_cfg->channel,l_radio_cfg->channelWidth,l_radio_cfg->variant,l_radio_cfg->csa_beacon_count,l_radio_cfg->countryCode,l_radio_cfg->operatingEnvironment,l_radio_cfg->DCSEnabled,l_radio_cfg->numSecondaryChannels,new_rec->secondary_channels_list,l_radio_cfg->dtimPeriod,l_radio_cfg->beaconInterval,l_radio_cfg->operatingClass,l_radio_cfg->basicDataTransmitRates,l_radio_cfg->operationalDataTransmitRates,l_radio_cfg->fragmentationThreshold,l_radio_cfg->guardInterval,l_radio_cfg->transmitPower,l_radio_cfg->rtsThreshold,l_radio_cfg->factoryResetSsid,l_radio_cfg->radioStatsMeasuringInterval,l_radio_cfg->radioStatsMeasuringInterval,l_radio_cfg->ctsProtection,l_radio_cfg->obssCoex,l_radio_cfg->stbcEnable,l_radio_cfg->greenFieldEnable,l_radio_cfg->userControl,l_radio_cfg->adminControl,l_radio_cfg->chanUtilThreshold,l_radio_cfg->chanUtilSelfHealEnable);
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
     }
     else
@@ -1296,6 +1299,7 @@ int wifidb_update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t
     cfg.hw_mode = config->variant;
     cfg.csa_beacon_count = config->csa_beacon_count;
     cfg.country = config->countryCode;
+    cfg.operating_environment = config->operatingEnvironment;
     cfg.dcs_enabled = config->DCSEnabled;
     cfg.dtim_period = config->dtimPeriod;
     cfg.beacon_interval = config->beaconInterval;
@@ -1392,6 +1396,9 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
     if (cfg->country != 0) {
         config->countryCode = cfg->country;
     }
+    if (cfg->operating_environment != 0) {
+        config->operatingEnvironment = cfg->operating_environment;
+    }
     config->DCSEnabled = cfg->dcs_enabled;
     config->dtimPeriod = cfg->dtim_period;
     if (cfg->beacon_interval != 0) {
@@ -1427,7 +1434,7 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
     }
     config->numSecondaryChannels = cfg->num_secondary_channels;
 
-    wifi_util_dbg_print(WIFI_DB,"%s:%d: Wifi_Radio_Config data enabled=%d freq_band=%d auto_channel_enabled=%d channel=%d  channel_width=%d hw_mode=%d csa_beacon_count=%d country=%d dcs_enabled=%d numSecondaryChannels=%d channelSecondary=%s dtim_period %d beacon_interval %d operating_class %d basic_data_transmit_rate %d operational_data_transmit_rate %d  fragmentation_threshold %d guard_interval %d transmit_power %d rts_threshold %d factory_reset_ssid = %d, radio_stats_measuring_rate = %d, radio_stats_measuring_interval = %d, cts_protection %d, obss_coex= %d, stbc_enable= %d, greenfield_enable= %d, user_control= %d, admin_control= %d,chan_util_threshold= %d, chan_util_selfheal_enable= %d \n",__func__, __LINE__,config->enable,config->band,config->autoChannelEnabled,config->channel,config->channelWidth,config->variant,config->csa_beacon_count,config->countryCode,config->DCSEnabled,config->numSecondaryChannels,cfg->secondary_channels_list,config->dtimPeriod,config->beaconInterval,config->operatingClass,config->basicDataTransmitRates,config->operationalDataTransmitRates,config->fragmentationThreshold,config->guardInterval,config->transmitPower,config->rtsThreshold,config->factoryResetSsid,config->radioStatsMeasuringInterval,config->radioStatsMeasuringInterval,config->ctsProtection,config->obssCoex,config->stbcEnable,config->greenFieldEnable,config->userControl,config->adminControl,config->chanUtilThreshold,config->chanUtilSelfHealEnable);
+    wifi_util_dbg_print(WIFI_DB,"%s:%d: Wifi_Radio_Config data enabled=%d freq_band=%d auto_channel_enabled=%d channel=%d  channel_width=%d hw_mode=%d csa_beacon_count=%d country=%d operatingEnvironment=%d dcs_enabled=%d numSecondaryChannels=%d channelSecondary=%s dtim_period %d beacon_interval %d operating_class %d basic_data_transmit_rate %d operational_data_transmit_rate %d  fragmentation_threshold %d guard_interval %d transmit_power %d rts_threshold %d factory_reset_ssid = %d, radio_stats_measuring_rate = %d, radio_stats_measuring_interval = %d, cts_protection %d, obss_coex= %d, stbc_enable= %d, greenfield_enable= %d, user_control= %d, admin_control= %d,chan_util_threshold= %d, chan_util_selfheal_enable= %d \n",__func__, __LINE__,config->enable,config->band,config->autoChannelEnabled,config->channel,config->channelWidth,config->variant,config->csa_beacon_count,config->countryCode,config->operatingEnvironment,config->DCSEnabled,config->numSecondaryChannels,cfg->secondary_channels_list,config->dtimPeriod,config->beaconInterval,config->operatingClass,config->basicDataTransmitRates,config->operationalDataTransmitRates,config->fragmentationThreshold,config->guardInterval,config->transmitPower,config->rtsThreshold,config->factoryResetSsid,config->radioStatsMeasuringInterval,config->radioStatsMeasuringInterval,config->ctsProtection,config->obssCoex,config->stbcEnable,config->greenFieldEnable,config->userControl,config->adminControl,config->chanUtilThreshold,config->chanUtilSelfHealEnable);
     free(cfg);
     return 0;
 }
@@ -3012,6 +3019,7 @@ int get_wifi_gas_config(wifi_GASConfiguration_t *config)
 ********************************************** ****************************************/
 int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t *config)
 {
+    char country_code[4] = {0};
     wifi_mgr_t *g_wifidb;
     g_wifidb = get_wifimgr_obj();
     wifi_radio_operationParam_t cfg;
@@ -3043,6 +3051,14 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
     cfg.autoChannelEnabled = true;
     cfg.csa_beacon_count = 100;
     cfg.countryCode = wifi_countrycode_US;
+    if (wifi_hal_get_default_country_code(country_code) < 0) {
+        wifi_util_dbg_print(WIFI_DB,"%s:%d: unable to get default country code setting a US\n", __func__, __LINE__);
+    } else {
+        if (country_code_conversion(&cfg.countryCode, country_code, sizeof(country_code), STRING_TO_ENUM) < 0) {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: unable to convert country string\n", __func__, __LINE__);
+        }
+    }
+    cfg.operatingEnvironment = wifi_operating_env_indoor;
     cfg.dtimPeriod = 1;
     cfg.beaconInterval = 100;
     cfg.fragmentationThreshold = 2346;
@@ -3275,7 +3291,13 @@ int wifidb_init_global_config_default(wifi_global_param_t *config)
     cfg.force_disable_radio_feature = false;
     cfg.force_disable_radio_status = false;
     cfg.fixed_wmm_params = 3;
-    strncpy(cfg.wifi_region_code, "USI",sizeof(cfg.wifi_region_code)-1);
+    memset(temp, 0, 8);
+    if (wifi_hal_get_default_country_code(temp) < 0) {
+        wifi_util_dbg_print(WIFI_DB,"%s:%d: unable to get default country code setting a USI\n", __func__, __LINE__);
+        strncpy(cfg.wifi_region_code, "USI",sizeof(cfg.wifi_region_code)-1);
+    } else {
+        snprintf(cfg.wifi_region_code, sizeof(cfg.wifi_region_code), "%sI", temp);
+    }
     cfg.inst_wifi_client_enabled = false;
     cfg.inst_wifi_client_reporting_period = 0;
     cfg.inst_wifi_client_def_reporting_period = 0;

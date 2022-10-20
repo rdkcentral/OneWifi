@@ -52,6 +52,13 @@ struct wifiCountryEnumStrMap {
     wifi_countrycode_type_t countryCode;
     char countryStr[4];
 };
+
+struct wifiEnvironmentEnumStrMap {
+    wifi_operating_env_t operatingEnvironment;
+    char environment[2];
+};
+
+extern struct wifiEnvironmentEnumStrMap wifiEnviromentMap[4];
 extern struct wifiCountryEnumStrMap wifiCountryMap[MAX_WIFI_COUNTRYCODE];
 
 typedef struct radio_interface_mapping {

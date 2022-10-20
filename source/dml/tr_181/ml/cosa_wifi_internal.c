@@ -137,7 +137,6 @@ static char *MacFilter = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoi
 
 
 extern void* g_pDslhDmlAgent;
-
 /**************************************************************************
 *
 *	Function Definitions
@@ -1275,6 +1274,7 @@ CosaWifiInitialize
     t2_event_d("WIFI_INFO_CosaWifiinit",1);
 
     set_dml_init_status(true);
+    getParamWifiRegionUpdateSource();
     CosaDmlWiFiGetDataFromPSM();
     CosaDmlWiFiGetExternalDataFromPSM();
     CosaDmlWiFiGetRFCDataFromPSM();
