@@ -17,6 +17,48 @@
 #include "wifi_webconfig_consumer.h"
 #endif
 
+void print_wifi_hal_radio_data(wifi_dbg_type_t log_file_type, char *prefix, unsigned int radio_index, wifi_radio_operationParam_t *radio_config)
+{
+    wifi_util_info_print(log_file_type, "%s:%d: [%s] Wifi_Radio[%d]_Config data: enable = %d\n band = %d\n autoChannelEnabled = %d\n op_class = %d\n channel = %d\n numSecondaryChannels = %d\n channelSecondary = %s\n channelWidth = %d\n variant = %d\n csa_beacon_count = %d\n countryCode = %d\n DCSEnabled = %d\n dtimPeriod = %d\n beaconInterval = %d\n operatingClass = %d\n basicDataTransmitRates = %d\n operationalDataTransmitRates = %d\n fragmentationThreshold = %d\n guardInterval = %d\n transmitPower = %d\n rtsThreshold = %d\n factoryResetSsid = %d\n radioStatsMeasuringRate = %d\n radioStatsMeasuringInterval = %d\n ctsProtection = %d\n obssCoex = %d\n stbcEnable = %d\n greenFieldEnable = %d\n userControl = %d\n adminControl = %d\n chanUtilThreshold = %d\n chanUtilSelfHealEnable = %d\r\n", __func__, __LINE__, prefix, radio_index, radio_config->enable, radio_config->band, radio_config->autoChannelEnabled, radio_config->op_class, radio_config->channel, radio_config->numSecondaryChannels, radio_config->channelSecondary, radio_config->channelWidth, radio_config->variant, radio_config->csa_beacon_count, radio_config->countryCode, radio_config->DCSEnabled, radio_config->dtimPeriod, radio_config->beaconInterval, radio_config->operatingClass, radio_config->basicDataTransmitRates, radio_config->operationalDataTransmitRates, radio_config->fragmentationThreshold, radio_config->guardInterval, radio_config->transmitPower, radio_config->rtsThreshold, radio_config->factoryResetSsid, radio_config->radioStatsMeasuringRate, radio_config->radioStatsMeasuringInterval, radio_config->ctsProtection, radio_config->obssCoex, radio_config->stbcEnable, radio_config->greenFieldEnable, radio_config->userControl, radio_config->adminControl, radio_config->chanUtilThreshold, radio_config->chanUtilSelfHealEnable);
+}
+
+void print_wifi_hal_bss_vap_data(wifi_dbg_type_t log_file_type, char *prefix, unsigned int vap_index, wifi_vap_info_t *l_vap_info)
+{
+    wifi_front_haul_bss_t    *l_bss_info = &l_vap_info->u.bss_info;
+    wifi_back_haul_sta_t     *l_sta_info = &l_vap_info->u.sta_info;
+    char mac_str[32] = {0};
+    char l_bssid_str[32] = {0};
+
+    if (isVapSTAMesh(vap_index)) {
+        to_mac_str(l_sta_info->bssid, l_bssid_str);
+        to_mac_str(l_sta_info->mac, mac_str);
+        wifi_util_info_print(log_file_type, "%s:%d: [%s] Mesh VAP Config Data: radioindex=%d\n vap_name=%s\n vap_index=%d\n ssid=%s\n bssid:%s\n enabled=%d\n conn_status=%d\n scan_period=%d\n scan_channel=%d\n scan_band =%d\n mac=%s\r\n",__func__, __LINE__, prefix, l_vap_info->radio_index, l_vap_info->vap_name, l_vap_info->vap_index, l_sta_info->ssid, l_bssid_str, l_sta_info->enabled, l_sta_info->conn_status, l_sta_info->scan_params.period, l_sta_info->scan_params.channel.channel, l_sta_info->scan_params.channel.band, mac_str);
+    } else {
+        to_mac_str(l_bss_info->bssid, l_bssid_str);
+        wifi_util_info_print(log_file_type, "%s:%d: [%s] VAP Config Data: radioindex=%d\n vap_name=%s\n vap_index=%d\n ssid=%s\n enabled=%d\n ssid_advertisement_enable=%d\n isolation_enabled=%d\n mgmt_power_control=%d\n bss_max_sta =%d\n bss_transition_activated=%d\n nbr_report_activated=%d\n rapid_connect_enabled=%d\n rapid_connect_threshold=%d\n vap_stats_enable=%d\n mac_filter_enabled =%d\n mac_filter_mode=%d\n wmm_enabled=%d\n uapsd_enabled =%d\n beacon_rate=%d\n bridge_name=%s\n mac=%s\n wmm_noack = %d\n wep_key_length = %d\n bss_hotspot = %d\n wps_push_button = %d\n beacon_rate_ctl =%s\n network_initiated_greylist=%d\n mcast2ucast=%d\r\n",__func__, __LINE__, prefix, l_vap_info->radio_index, l_vap_info->vap_name, l_vap_info->vap_index, l_bss_info->ssid, l_bss_info->enabled, l_bss_info->showSsid, l_bss_info->isolation, l_bss_info->mgmtPowerControl, l_bss_info->bssMaxSta, l_bss_info->bssTransitionActivated, l_bss_info->nbrReportActivated, l_bss_info->rapidReconnectEnable, l_bss_info->rapidReconnThreshold, l_bss_info->vapStatsEnable, l_bss_info->mac_filter_enable, l_bss_info->mac_filter_mode, l_bss_info->wmm_enabled, l_bss_info->UAPSDEnabled, l_bss_info->beaconRate, l_vap_info->bridge_name, l_bssid_str, l_bss_info->wmmNoAck, l_bss_info->wepKeyLength, l_bss_info->bssHotspot, l_bss_info->wpsPushButton, l_bss_info->beaconRateCtl, l_bss_info->network_initiated_greylist, l_bss_info->mcast2ucast);
+    }
+}
+
+void print_wifi_hal_vap_security_param(wifi_dbg_type_t log_file_type, char *prefix, unsigned int vap_index, wifi_vap_security_t *l_security)
+{
+    char   address[64] = {0};
+
+    wifi_util_info_print(log_file_type,"%s:%d: [%s] Wifi_Security_Config table vap_index=%d\n Sec_mode=%d\n enc_mode=%d\n mfg_config=%d\n rekey_interval=%d\n strict_rekey=%d\n eapol_key_timeout=%d\n eapol_key_retries=%d\n eap_identity_req_timeout=%d\n eap_identity_req_retries=%d\n eap_req_timeout=%d\n eap_req_retries=%d\n disable_pmksa_caching = %d \r\n", __func__, __LINE__, prefix, vap_index, l_security->mode,l_security->encr,l_security->mfp,l_security->rekey_interval,l_security->strict_rekey,l_security->eapol_key_timeout,l_security->eapol_key_retries,l_security->eap_identity_req_timeout,l_security->eap_identity_req_retries,l_security->eap_req_timeout,l_security->eap_req_retries,l_security->disable_pmksa_caching);
+
+    if ((l_security->mode == wifi_security_mode_wpa_enterprise) || (l_security->mode == wifi_security_mode_wpa2_enterprise ) ||
+          (l_security->mode == wifi_security_mode_wpa3_enterprise) || (l_security->mode == wifi_security_mode_wpa_wpa2_enterprise)) {
+        getIpStringFromAdrress(address, &l_security->u.radius.dasip);
+        wifi_util_info_print(log_file_type,"%s:%d: [%s] Wifi_Security_Config table radius server ip=%s\n port=%d\n sec key=%s\n Secondary radius server ip=%s\n port=%d\n key=%s\n max_auth_attempts=%d\n blacklist_table_timeout=%d\n identity_req_retry_interval=%d\n server_retries=%d\n das_ip=%s\n das_port=%d\n das_key=%s\r\n",__func__, __LINE__, prefix, l_security->u.radius.ip,l_security->u.radius.port,l_security->u.radius.key,l_security->u.radius.s_ip,l_security->u.radius.s_port,l_security->u.radius.s_key,l_security->u.radius.max_auth_attempts,l_security->u.radius.blacklist_table_timeout,l_security->u.radius.identity_req_retry_interval,l_security->u.radius.server_retries,address,l_security->u.radius.dasport,l_security->u.radius.daskey);
+    } else {
+        wifi_util_info_print(log_file_type,"%s:%d: [%s] Wifi_Security_Config table sec type=%d\n sec key=%s\r\n",__func__, __LINE__, prefix, l_security->u.key.type, l_security->u.key.key);
+    }
+}
+
+void print_wifi_hal_vap_wps_data(wifi_dbg_type_t log_file_type, char *prefix, unsigned int vap_index, wifi_wps_t *l_wifi_wps)
+{
+    wifi_util_info_print(log_file_type,"%s:%d: [%s] Wifi_wps_Config vap_index=%d\n enable:%d\n methods:%d\n pin:%s\r\n", __func__, __LINE__, prefix, vap_index, l_wifi_wps->enable, l_wifi_wps->methods, l_wifi_wps->pin);
+}
+
 #define WEBCONFIG_DML_SUBDOC_STATES (ctrl_webconfig_state_vap_all_cfg_rsp_pending| \
                                      ctrl_webconfig_state_macfilter_cfg_rsp_pending| \
                                      ctrl_webconfig_state_factoryreset_cfg_rsp_pending)
@@ -322,6 +364,26 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
             // radio data changed apply
             wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: Change detected in received vap config, applying new configuration for vap: %s\n",
                                 __func__, __LINE__, vap_names[i]);
+
+            print_wifi_hal_bss_vap_data(WIFI_WEBCONFIG, "Old", tgt_vap_index, mgr_vap_info);
+            print_wifi_hal_bss_vap_data(WIFI_WEBCONFIG, "New", tgt_vap_index, vap_info);
+
+            if (isVapSTAMesh(tgt_vap_index)) {
+                if (memcmp(&mgr_vap_info->u.sta_info.security, &vap_info->u.sta_info.security, sizeof(wifi_vap_security_t))) {
+                    print_wifi_hal_vap_security_param(WIFI_WEBCONFIG, "Old", tgt_vap_index, &mgr_vap_info->u.sta_info.security);
+                    print_wifi_hal_vap_security_param(WIFI_WEBCONFIG, "New", tgt_vap_index, &vap_info->u.sta_info.security);
+                }
+            } else {
+                if (memcmp(&mgr_vap_info->u.bss_info.security, &vap_info->u.bss_info.security, sizeof(wifi_vap_security_t))) {
+                    print_wifi_hal_vap_security_param(WIFI_WEBCONFIG, "Old", tgt_vap_index, &mgr_vap_info->u.bss_info.security);
+                    print_wifi_hal_vap_security_param(WIFI_WEBCONFIG, "New", tgt_vap_index, &vap_info->u.bss_info.security);
+                }
+                if (memcmp(&mgr_vap_info->u.bss_info.wps, &vap_info->u.bss_info.wps, sizeof(wifi_wps_t))) {
+                    print_wifi_hal_vap_wps_data(WIFI_WEBCONFIG, "Old", tgt_vap_index, &mgr_vap_info->u.bss_info.wps);
+                    print_wifi_hal_vap_wps_data(WIFI_WEBCONFIG, "New", tgt_vap_index, &vap_info->u.bss_info.wps);
+                }
+            }
+
             memset(&tgt_vap_map, 0, sizeof(wifi_vap_info_map_t));
             tgt_vap_map.num_vaps = 1;
             memcpy(&tgt_vap_map.vap_array[0], vap_info, sizeof(wifi_vap_info_t));
@@ -849,6 +911,10 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
             // radio data changed apply
             wifi_util_info_print(WIFI_MGR, "%s:%d: Change detected in received radio config, applying new configuration for radio: %s\n",
                             __func__, __LINE__, radio_data->name);
+
+            print_wifi_hal_radio_data(WIFI_WEBCONFIG, "old", i, &mgr_radio_data->oper);
+            print_wifi_hal_radio_data(WIFI_WEBCONFIG, "New", i, &radio_data->oper);
+
             if (wifi_hal_setRadioOperatingParameters(mgr_radio_data->vaps.radio_index, &radio_data->oper) != RETURN_OK) {
                 wifi_util_error_print(WIFI_MGR, "%s:%d: failed to apply\n", __func__, __LINE__);
                 ctrl->webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
