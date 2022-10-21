@@ -38,6 +38,11 @@ MESH_EXTENDER_BRIDGE="br-home"
 DEVICE_MODE="`syscfg get Device_Mode`"
 if [ "$DEVICE_MODE" == "1" ]; then
  echo "Extender mode bridge configuration"
+ ifbr403=`ovs-vsctl show | grep br403`
+ if [ "$ifbr403" != "" ]; then
+    PLUME_BHAUL_NAME="br403"
+    ovs-vsctl del-br $PLUME_BHAUL_NAME
+ fi
  ovs-vsctl add-br $MESH_EXTENDER_BRIDGE
  ifconfig $MESH_EXTENDER_BRIDGE up
  exit 0
