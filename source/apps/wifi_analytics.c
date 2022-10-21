@@ -61,7 +61,7 @@ int analytics_event_exec_timeout(wifi_apps_t *apps, void *arg)
     char         temp_str[128];
     unsigned int radio_index = 0;
     radio_data_t radio_stats;
-    char   client_mac[32], sta_stats_str[256];
+    char   client_mac[32], sta_stats_str[256], tm_str[64];
     analytics_sta_info_t    *sta_info;
     wifi_associated_dev3_t  *dev_stats;
     sta_data_t *sta_data;
@@ -87,7 +87,13 @@ int analytics_event_exec_timeout(wifi_apps_t *apps, void *arg)
     system = (usage.ru_stime.tv_sec - data->last_usage.ru_stime.tv_sec) +
                                1e-6*(usage.ru_stime.tv_usec - data->last_usage.ru_stime.tv_usec);
 
-    sprintf(temp_str, "minutes:%d user:%f system:%f", data->minutes_alive, user, system);
+    if ((data->minutes_alive % 60) == 0) {
+        // print time of day every hour
+        get_formatted_time(tm_str);
+        sprintf(temp_str, "utc:%s user:%f system:%f", tm_str, user, system);
+    } else {
+        sprintf(temp_str, "minutes:%d user:%f system:%f", data->minutes_alive, user, system);
+    }
     wifi_util_info_print(WIFI_ANALYTICS, analytics_format_mgr_core, "keep-alive", temp_str);
 
     memcpy(&data->last_usage, &usage, sizeof(struct rusage));
@@ -384,6 +390,14 @@ int analytics_event_hal_radius_greylist(wifi_apps_t *apps, void *arg)
     return 0;
 }
 
+int analytics_event_hal_analytics(wifi_apps_t *apps, void *arg)
+{
+    char *str = (char *)arg;
+
+    wifi_util_info_print(WIFI_ANALYTICS, analytics_format_hal_core, "hal incident", str);
+    return 0;
+}
+
 int analytics_event_command_sta_connect(wifi_apps_t *apps, void *arg)
 {
     wifi_util_info_print(WIFI_ANALYTICS, analytics_format_other_core, "sta connect", (*(bool *)arg == true) ? "true":"false");
@@ -516,6 +530,10 @@ int hal_event_analytics(wifi_apps_t *apps, ctrl_event_subtype_t sub_type, void *
 
         case ctrl_event_hal_potential_misconfiguration:
             analytics_event_hal_potential_misconfiguration(apps, arg);
+            break;
+
+        case ctrl_event_hal_analytics:
+            analytics_event_hal_analytics(apps, arg);
             break;
 
         default:

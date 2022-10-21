@@ -80,6 +80,7 @@ typedef enum {
     ctrl_event_hal_channel_change,
     ctrl_event_radius_greylist,
     ctrl_event_hal_potential_misconfiguration,
+    ctrl_event_hal_analytics,
     ctrl_event_hal_max,
 
     // Commands

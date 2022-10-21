@@ -883,6 +883,20 @@ void channel_change_callback(wifi_channel_change_event_t radio_channel_param)
     return;
 }
 
+int analytics_callback(char *fmt, ...)
+{
+    va_list args;
+    char buff[1024] = {0};
+
+    va_start(args, fmt);
+    vsnprintf(&buff[strlen(buff)], 1024, fmt, args);
+    va_end(args);
+
+    push_data_to_ctrl_queue(buff, sizeof(buff), ctrl_event_type_hal_ind, ctrl_event_hal_analytics);
+
+    return 0;
+}
+
 int init_wifi_ctrl(wifi_ctrl_t *ctrl)
 {
     unsigned int i;
@@ -1043,8 +1057,12 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
     if (analytics->event_fn != NULL) {
         analytics->event_fn(analytics, ctrl_event_type_exec, ctrl_event_exec_start, NULL);
     }
+
+    wifi_hal_analytics_callback_register(analytics_callback);
+
     ctrl->exit_ctrl = false;
     ctrl_queue_loop(ctrl);
+
     if (analytics->event_fn != NULL) {
         analytics->event_fn(analytics, ctrl_event_type_exec, ctrl_event_exec_stop, NULL);
     }
