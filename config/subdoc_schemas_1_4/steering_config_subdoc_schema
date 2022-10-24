@@ -1,0 +1,36 @@
+{
+	"Version": "1.0",
+	"SubDocName": "steering config",
+	"WifiSteeringConfig": [
+		{
+			"VapNames": [
+				{
+					"VapName": "private_ssid_2g"
+				},
+				{
+					"VapName": "private_ssid_5g"
+				}
+			],
+			"ChanUtilAvgCount": 0,
+			"ChanUtilCheckSec": 0,
+			"ChanUtilHWM": 80,
+			"ChanUtilLWM": 50,
+			"Dbg2gRawChUtil": false,
+			"Dbg2gRawRSSI": false,
+			"Dbg5gRawChUtil": false,
+			"Dbg5gRawChRSSI": false,
+			"DbgLevel": 0,
+			"DefRssiInactXing": 0,
+			"DefRssiLowXing": 0,
+			"DefRssiXing": 0,
+			"GwOnly": false,
+			"InactChkSec": 10,
+			"InactToutSecNormal": 60,
+			"InactToutSecOverload": 30,
+			"KickDebouncePeriod": 60,
+			"KickDebounceThresh": 20,
+			"StatsReportInterval": 1,
+			"SuccesssThreshSecs": 15
+		}
+	]
+}

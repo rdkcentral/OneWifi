@@ -1,0 +1,21 @@
+{
+	"Version": "1.0",
+	"SubDocName": "csi data",
+	"WifiCSI": [
+		{
+			"SessionID": 1,
+			"Enabled": true,
+			"MACArray": [
+				{
+					"macaddress": "c0:e4:34:f9:c3:8b"
+				},
+				{
+					"macaddress": "60:f8:1d:c4:13:e8"
+				},
+				{
+					"macaddress": "ce:46:d0:6b:f3:dd"
+				}
+			]
+		}
+	]
+}

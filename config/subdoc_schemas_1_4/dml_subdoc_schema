@@ -1,0 +1,1336 @@
+{
+	"Version": "1.0",
+	"SubDocName": "dml",
+	"WifiConfig": {
+		"GASConfig": {
+			"AdvertisementId": 0,
+			"PauseForServerResp": true,
+			"RespTimeout": 5000,
+			"ComebackDelay": 1000,
+			"RespBufferTime": 1000,
+			"QueryRespLengthLimit": 127
+		},
+		"NotifyWifiChanges": true,
+		"PreferPrivate": true,
+		"PreferPrivateConfigure": true,
+		"FactoryReset": false,
+		"TxOverflowSelfheal": false,
+		"InstWifiClientEnabled": false,
+		"InstWifiClientReportingPeriod": 0,
+		"InstWifiClientMac": "00:00:00:00:00:00",
+		"InstWifiClientDefReportingPeriod": 0,
+		"WifiActiveMsmtEnabled": false,
+		"WifiActiveMsmtPktsize": 1470,
+		"WifiActiveMsmtNumSamples": 5,
+		"WifiActiveMsmtSampleDuration": 400,
+		"VlanCfgVersion": 2,
+		"WpsPin": "1234",
+		"BandsteeringEnable": false,
+		"GoodRssiThreshold": -65,
+		"AssocCountThreshold": 0,
+		"AssocGateTime": 0,
+		"AssocMonitorDuration": 0,
+		"RapidReconnectEnable": true,
+		"VapStatsFeature": true,
+		"MfpConfigFeature": false,
+		"ForceDisableRadioFeature": false,
+		"ForceDisableRadioStatus": false,
+		"FixedWmmParams": 3,
+		"WifiRegionCode": "USI",
+		"DiagnosticEnable": false,
+		"ValidateSsid": true,
+		"DeviceNetworkMode": 0,
+		"NormalizedRssiList": "1,2",
+		"SNRList": "1,2",
+		"CliStatList": "1,2",
+		"TxRxRateList": "1,2"
+	},
+	"WifiRadioConfig": [
+		{
+			"WifiRadioSetup": {
+				"RadioIndex": 0,
+				"VapMap": [
+					{
+						"VapName": "private_ssid_2g",
+						"VapIndex": 0
+					},
+					{
+						"VapName": "iot_ssid_2g",
+						"VapIndex": 2
+					},
+					{
+						"VapName": "hotspot_open_2g",
+						"VapIndex": 4
+					},
+					{
+						"VapName": "lnf_psk_2g",
+						"VapIndex": 6
+					},
+					{
+						"VapName": "hotspot_secure_2g",
+						"VapIndex": 8
+					},
+					{
+						"VapName": "lnf_radius_2g",
+						"VapIndex": 10
+					},
+					{
+						"VapName": "mesh_backhaul_2g",
+						"VapIndex": 12
+					},
+					{
+						"VapName": "mesh_sta_2g",
+						"VapIndex": 14
+					}
+				]
+			},
+			"RadioName": "radio1",
+			"Enabled": true,
+			"FreqBand": 1,
+			"AutoChannelEnabled": true,
+			"Channel": 6,
+			"NumSecondaryChannels": 0,
+			"SecondaryChannelsList": " ",
+			"ChannelWidth": 2,
+			"HwMode": 12,
+			"CsaBeaconCount": 100,
+			"Country": "US",
+			"DcsEnabled": false,
+			"DtimPeriod": 1,
+			"OperatingClass": 0,
+			"BasicDataTransmitRates": 656,
+			"OperationalDataTransmitRates": 8112,
+			"FragmentationThreshold": 2346,
+			"GuardInterval": 16,
+			"TransmitPower": 100,
+			"BeaconInterval": 100,
+			"RtsThreshold": 2347,
+			"FactoryResetSsid": false,
+			"RadioStatsMeasuringRate": 0,
+			"RadioStatsMeasuringInterval": 0,
+			"CtsProtection": false,
+			"ObssCoex": false,
+			"StbcEnable": false,
+			"GreenFieldEnable": false,
+			"UserControl": 0,
+			"AdminControl": 0,
+			"ChanUtilThreshold": 90,
+			"ChanUtilSelfHealEnable": false
+		},
+		{
+			"WifiRadioSetup": {
+				"RadioIndex": 1,
+				"VapMap": [
+					{
+						"VapName": "private_ssid_5g",
+						"VapIndex": 1
+					},
+					{
+						"VapName": "iot_ssid_5g",
+						"VapIndex": 3
+					},
+					{
+						"VapName": "hotspot_open_5g",
+						"VapIndex": 5
+					},
+					{
+						"VapName": "lnf_psk_5g",
+						"VapIndex": 7
+					},
+					{
+						"VapName": "hotspot_secure_5g",
+						"VapIndex": 9
+					},
+					{
+						"VapName": "lnf_radius_5g",
+						"VapIndex": 11
+					},
+					{
+						"VapName": "mesh_backhaul_5g",
+						"VapIndex": 13
+					},
+					{
+						"VapName": "mesh_sta_5g",
+						"VapIndex": 15
+					}
+				]
+			},
+			"RadioName": "radio2",
+			"Enabled": true,
+			"FreqBand": 2,
+			"AutoChannelEnabled": true,
+			"Channel": 40,
+			"NumSecondaryChannels": 0,
+			"SecondaryChannelsList": " ",
+			"ChannelWidth": 1,
+			"HwMode": 169,
+			"CsaBeaconCount": 100,
+			"Country": "US",
+			"DcsEnabled": false,
+			"DtimPeriod": 1,
+			"OperatingClass": 0,
+			"BasicDataTransmitRates": 656,
+			"OperationalDataTransmitRates": 8112,
+			"FragmentationThreshold": 2346,
+			"GuardInterval": 16,
+			"TransmitPower": 100,
+			"BeaconInterval": 100,
+			"RtsThreshold": 2347,
+			"FactoryResetSsid": false,
+			"RadioStatsMeasuringRate": 0,
+			"RadioStatsMeasuringInterval": 0,
+			"CtsProtection": false,
+			"ObssCoex": false,
+			"StbcEnable": false,
+			"GreenFieldEnable": false,
+			"UserControl": 0,
+			"AdminControl": 0,
+			"ChanUtilThreshold": 90,
+			"ChanUtilSelfHealEnable": false
+		}
+	],
+	"WiFiCap": {
+		"WiFiRadioCap": [
+			{
+				"RadioIndex": 0,
+				"PossibleChannels": [
+					1,
+					2,
+					3,
+					4,
+					5,
+					6,
+					7,
+					8,
+					9,
+					10,
+					11
+				]
+			},
+			{
+				"RadioIndex": 1,
+				"PossibleChannels": [
+					36,
+					40,
+					44,
+					48,
+					52,
+					56,
+					60,
+					64,
+					100,
+					104,
+					108,
+					112,
+					116,
+					120,
+					124,
+					128,
+					132,
+					136,
+					140,
+					144,
+					149,
+					153,
+					157,
+					161,
+					165
+				]
+			}
+		],
+		"WiFiVapCap": [
+			{
+				"VapName": "private_ssid_2g",
+				"PhyIndex": 0,
+				"RadioIndex": 0,
+				"InterfaceName": "wl0.1",
+				"BridgeName": "brlan0",
+				"VLANID": 100,
+				"Primary": false,
+				"Index": 0
+			},
+			{
+				"VapName": "private_ssid_5g",
+				"PhyIndex": 1,
+				"RadioIndex": 1,
+				"InterfaceName": "wl1.1",
+				"BridgeName": "brlan0",
+				"VLANID": 100,
+				"Primary": false,
+				"Index": 1
+			},
+			{
+				"VapName": "iot_ssid_2g",
+				"PhyIndex": 0,
+				"RadioIndex": 0,
+				"InterfaceName": "wl0.2",
+				"BridgeName": "brlan1",
+				"VLANID": 101,
+				"Primary": false,
+				"Index": 2
+			},
+			{
+				"VapName": "iot_ssid_5g",
+				"PhyIndex": 1,
+				"RadioIndex": 1,
+				"InterfaceName": "wl1.2",
+				"BridgeName": "brlan1",
+				"VLANID": 101,
+				"Primary": false,
+				"Index": 3
+			},
+			{
+				"VapName": "hotspot_open_2g",
+				"PhyIndex": 0,
+				"RadioIndex": 0,
+				"InterfaceName": "wl0.3",
+				"BridgeName": "brlan2",
+				"VLANID": 102,
+				"Primary": false,
+				"Index": 4
+			},
+			{
+				"VapName": "hotspot_open_5g",
+				"PhyIndex": 1,
+				"RadioIndex": 1,
+				"InterfaceName": "wl1.3",
+				"BridgeName": "brlan3",
+				"VLANID": 103,
+				"Primary": false,
+				"Index": 5
+			},
+			{
+				"VapName": "lnf_psk_2g",
+				"PhyIndex": 0,
+				"RadioIndex": 0,
+				"InterfaceName": "wl0.4",
+				"BridgeName": "br106",
+				"VLANID": 106,
+				"Primary": false,
+				"Index": 6
+			},
+			{
+				"VapName": "lnf_psk_5g",
+				"PhyIndex": 1,
+				"RadioIndex": 1,
+				"InterfaceName": "wl1.4",
+				"BridgeName": "br106",
+				"VLANID": 106,
+				"Primary": false,
+				"Index": 7
+			},
+			{
+				"VapName": "hotspot_secure_2g",
+				"PhyIndex": 0,
+				"RadioIndex": 0,
+				"InterfaceName": "wl0.5",
+				"BridgeName": "brlan4",
+				"VLANID": 104,
+				"Primary": false,
+				"Index": 8
+			},
+			{
+				"VapName": "hotspot_secure_5g",
+				"PhyIndex": 1,
+				"RadioIndex": 1,
+				"InterfaceName": "wl1.5",
+				"BridgeName": "brlan5",
+				"VLANID": 105,
+				"Primary": false,
+				"Index": 9
+			},
+			{
+				"VapName": "lnf_radius_2g",
+				"PhyIndex": 0,
+				"RadioIndex": 0,
+				"InterfaceName": "wl0.6",
+				"BridgeName": "br106",
+				"VLANID": 106,
+				"Primary": false,
+				"Index": 10
+			},
+			{
+				"VapName": "lnf_radius_5g",
+				"PhyIndex": 1,
+				"RadioIndex": 1,
+				"InterfaceName": "wl1.6",
+				"BridgeName": "br106",
+				"VLANID": 106,
+				"Primary": false,
+				"Index": 11
+			},
+			{
+				"VapName": "mesh_backhaul_2g",
+				"PhyIndex": 0,
+				"RadioIndex": 0,
+				"InterfaceName": "wl0.7",
+				"BridgeName": "brlan112",
+				"VLANID": 0,
+				"Primary": false,
+				"Index": 12
+			},
+			{
+				"VapName": "mesh_backhaul_5g",
+				"PhyIndex": 1,
+				"RadioIndex": 1,
+				"InterfaceName": "wl1.7",
+				"BridgeName": "brlan113",
+				"VLANID": 0,
+				"Primary": false,
+				"Index": 13
+			},
+			{
+				"VapName": "mesh_sta_2g",
+				"PhyIndex": 0,
+				"RadioIndex": 0,
+				"InterfaceName": "wl0",
+				"BridgeName": "brlan1",
+				"VLANID": 0,
+				"Primary": true,
+				"Index": 14
+			},
+			{
+				"VapName": "mesh_sta_5g",
+				"PhyIndex": 1,
+				"RadioIndex": 1,
+				"InterfaceName": "wl1",
+				"BridgeName": "brlan1",
+				"VLANID": 0,
+				"Primary": true,
+				"Index": 15
+			}
+		]
+	},
+	"WifiVapConfig": [
+		{
+			"VapName": "private_ssid_2g",
+			"BridgeName": "brlan0",
+			"RadioIndex": 0,
+			"VapMode": 0,
+			"SSID": "XFSETUP-E45C",
+			"BSSID": "0a:7e:64:fe:e4:61",
+			"Enabled": true,
+			"SSIDAdvertisementEnabled": true,
+			"IsolationEnable": false,
+			"ManagementFramePowerControl": 0,
+			"BssMaxNumSta": 75,
+			"BSSTransitionActivated": false,
+			"NeighborReportActivated": false,
+			"NetworkGreyList": false,
+			"RapidReconnCountEnable": true,
+			"RapidReconnThreshold": 180,
+			"VapStatsEnable": true,
+			"MacFilterEnable": false,
+			"MacFilterMode": 0,
+			"WmmEnabled": true,
+			"UapsdEnabled": true,
+			"BeaconRate": 16,
+			"WmmNoAck": 0,
+			"WepKeyLength": 128,
+			"BssHotspot": false,
+			"WpsPushButton": 0,
+			"WpsEnable": true,
+			"WpsConfigMethodsEnabled": 128,
+			"BeaconRateCtl": "6Mbps",
+			"Security": {
+				"MFPConfig": "Disabled",
+				"Mode": "WPA2-Personal",
+				"EncryptionMethod": "AES",
+				"Passphrase": "folded9656angle"
+			},
+			"Interworking": {
+				"InterworkingEnable": false,
+				"AccessNetworkType": 0,
+				"Internet": false,
+				"ASRA": false,
+				"ESR": false,
+				"UESA": false,
+				"HESSOptionPresent": true,
+				"HESSID": "11:22:33:44:55:66",
+				"Venue": {
+					"VenueType": 0,
+					"VenueGroup": 0
+				}
+			}
+		},
+		{
+			"VapName": "iot_ssid_2g",
+			"BridgeName": "brlan1",
+			"RadioIndex": 0,
+			"VapMode": 0,
+			"SSID": "XHS-64FDE45C",
+			"BSSID": "0a:7e:64:fe:e4:62",
+			"Enabled": true,
+			"SSIDAdvertisementEnabled": false,
+			"IsolationEnable": false,
+			"ManagementFramePowerControl": 0,
+			"BssMaxNumSta": 75,
+			"BSSTransitionActivated": false,
+			"NeighborReportActivated": false,
+			"NetworkGreyList": false,
+			"RapidReconnCountEnable": false,
+			"RapidReconnThreshold": 180,
+			"VapStatsEnable": false,
+			"MacFilterEnable": false,
+			"MacFilterMode": 0,
+			"WmmEnabled": true,
+			"UapsdEnabled": true,
+			"BeaconRate": 16,
+			"WmmNoAck": 0,
+			"WepKeyLength": 128,
+			"BssHotspot": false,
+			"WpsPushButton": 0,
+			"WpsEnable": false,
+			"BeaconRateCtl": "6Mbps",
+			"Security": {
+				"MFPConfig": "Disabled",
+				"Mode": "WPA2-Personal",
+				"EncryptionMethod": "AES+TKIP",
+				"Passphrase": "C84C198145462313A4"
+			},
+			"Interworking": {
+				"InterworkingEnable": false,
+				"AccessNetworkType": 0,
+				"Internet": false,
+				"ASRA": false,
+				"ESR": false,
+				"UESA": false,
+				"HESSOptionPresent": true,
+				"HESSID": "11:22:33:44:55:66",
+				"Venue": {
+					"VenueType": 0,
+					"VenueGroup": 0
+				}
+			}
+		},
+		{
+			"VapName": "hotspot_open_2g",
+			"BridgeName": "brlan2",
+			"RadioIndex": 0,
+			"VapMode": 0,
+			"SSID": "OutOfService",
+			"BSSID": "00:00:00:00:00:00",
+			"Enabled": false,
+			"SSIDAdvertisementEnabled": false,
+			"IsolationEnable": true,
+			"ManagementFramePowerControl": 0,
+			"BssMaxNumSta": 75,
+			"BSSTransitionActivated": false,
+			"NeighborReportActivated": false,
+			"NetworkGreyList": false,
+			"RapidReconnCountEnable": false,
+			"RapidReconnThreshold": 180,
+			"VapStatsEnable": false,
+			"MacFilterEnable": false,
+			"MacFilterMode": 0,
+			"WmmEnabled": true,
+			"UapsdEnabled": true,
+			"BeaconRate": 16,
+			"WmmNoAck": 0,
+			"WepKeyLength": 128,
+			"BssHotspot": true,
+			"WpsPushButton": 0,
+			"WpsEnable": false,
+			"BeaconRateCtl": "6Mbps",
+			"Security": {
+				"Mode": "None",
+				"RadiusSettings": {
+					"RadiusServerIPAddr": "0.0.0.0",
+					"RadiusServerPort": 0,
+					"RadiusSecret": "123456789",
+					"SecondaryRadiusServerIPAddr": "0.0.0.0",
+					"SecondaryRadiusServerPort": 0,
+					"SecondaryRadiusSecret": "123456789",
+					"DasServerIPAddr": "0.0.0.0",
+					"DasServerPort": 0,
+					"DasSecret": "123456789",
+					"MaxAuthAttempts": 0,
+					"BlacklistTableTimeout": 0,
+					"IdentityReqRetryInterval": 0,
+					"ServerRetries": 0
+				}
+			},
+			"Interworking": {
+				"InterworkingEnable": false,
+				"AccessNetworkType": 2,
+				"Internet": false,
+				"ASRA": false,
+				"ESR": false,
+				"UESA": false,
+				"HESSOptionPresent": true,
+				"HESSID": "11:22:33:44:55:66",
+				"Venue": {
+					"VenueType": 0,
+					"VenueGroup": 0
+				}
+			}
+		},
+		{
+			"VapName": "lnf_psk_2g",
+			"BridgeName": "br106",
+			"RadioIndex": 0,
+			"VapMode": 0,
+			"SSID": "A16746DF2466410CA2ED9FB2E32FE7D9",
+			"BSSID": "0a:7e:64:fe:e4:64",
+			"Enabled": true,
+			"SSIDAdvertisementEnabled": false,
+			"IsolationEnable": false,
+			"ManagementFramePowerControl": 0,
+			"BssMaxNumSta": 75,
+			"BSSTransitionActivated": false,
+			"NeighborReportActivated": false,
+			"NetworkGreyList": false,
+			"RapidReconnCountEnable": false,
+			"RapidReconnThreshold": 180,
+			"VapStatsEnable": false,
+			"MacFilterEnable": false,
+			"MacFilterMode": 0,
+			"WmmEnabled": true,
+			"UapsdEnabled": true,
+			"BeaconRate": 16,
+			"WmmNoAck": 0,
+			"WepKeyLength": 128,
+			"BssHotspot": false,
+			"WpsPushButton": 0,
+			"WpsEnable": false,
+			"BeaconRateCtl": "6Mbps",
+			"Security": {
+				"MFPConfig": "Disabled",
+				"Mode": "WPA2-Personal",
+				"EncryptionMethod": "AES+TKIP",
+				"Passphrase": "AEF9D58B978A103B04016D600FD4B1E6943A3FF538B98B84F1C177B414F7018"
+			},
+			"Interworking": {
+				"InterworkingEnable": false,
+				"AccessNetworkType": 0,
+				"Internet": false,
+				"ASRA": false,
+				"ESR": false,
+				"UESA": false,
+				"HESSOptionPresent": true,
+				"HESSID": "11:22:33:44:55:66",
+				"Venue": {
+					"VenueType": 0,
+					"VenueGroup": 0
+				}
+			}
+		},
+		{
+			"VapName": "hotspot_secure_2g",
+			"BridgeName": "brlan4",
+			"RadioIndex": 0,
+			"VapMode": 0,
+			"SSID": "OutOfService",
+			"BSSID": "00:00:00:00:00:00",
+			"Enabled": false,
+			"SSIDAdvertisementEnabled": false,
+			"IsolationEnable": true,
+			"ManagementFramePowerControl": 0,
+			"BssMaxNumSta": 75,
+			"BSSTransitionActivated": false,
+			"NeighborReportActivated": false,
+			"NetworkGreyList": false,
+			"RapidReconnCountEnable": false,
+			"RapidReconnThreshold": 180,
+			"VapStatsEnable": false,
+			"MacFilterEnable": false,
+			"MacFilterMode": 0,
+			"WmmEnabled": true,
+			"UapsdEnabled": true,
+			"BeaconRate": 16,
+			"WmmNoAck": 0,
+			"WepKeyLength": 128,
+			"BssHotspot": true,
+			"WpsPushButton": 0,
+			"WpsEnable": false,
+			"BeaconRateCtl": "6Mbps",
+			"Security": {
+				"MFPConfig": "Disabled",
+				"Mode": "WPA2-Enterprise",
+				"EncryptionMethod": "AES+TKIP",
+				"Wpa3_transition_disable": false,
+				"RekeyInterval": 0,
+				"StrictRekey": false,
+				"EapolKeyTimeout": 0,
+				"EapolKeyRetries": 0,
+				"EapIdentityReqTimeout": 0,
+				"EapIdentityReqRetries": 0,
+				"EapReqTimeout": 0,
+				"EapReqRetries": 0,
+				"DisablePmksaCaching": false,
+				"RadiusSettings": {
+					"RadiusServerIPAddr": "0.0.0.0",
+					"RadiusServerPort": 0,
+					"RadiusSecret": "123456789",
+					"SecondaryRadiusServerIPAddr": "0.0.0.0",
+					"SecondaryRadiusServerPort": 0,
+					"SecondaryRadiusSecret": "123456789",
+					"DasServerIPAddr": "0.0.0.0",
+					"DasServerPort": 0,
+					"DasSecret": "123456789",
+					"MaxAuthAttempts": 0,
+					"BlacklistTableTimeout": 0,
+					"IdentityReqRetryInterval": 0,
+					"ServerRetries": 0
+				}
+			},
+			"Interworking": {
+				"InterworkingEnable": false,
+				"AccessNetworkType": 2,
+				"Internet": false,
+				"ASRA": false,
+				"ESR": false,
+				"UESA": false,
+				"HESSOptionPresent": true,
+				"HESSID": "11:22:33:44:55:66",
+				"Venue": {
+					"VenueType": 0,
+					"VenueGroup": 0
+				}
+			}
+		},
+		{
+			"VapName": "lnf_radius_2g",
+			"BridgeName": "br106",
+			"RadioIndex": 0,
+			"VapMode": 0,
+			"SSID": "D375C1D9F8B041E2A1995B784064977B",
+			"BSSID": "0a:7e:64:fe:e4:66",
+			"Enabled": true,
+			"SSIDAdvertisementEnabled": false,
+			"IsolationEnable": false,
+			"ManagementFramePowerControl": 0,
+			"BssMaxNumSta": 75,
+			"BSSTransitionActivated": false,
+			"NeighborReportActivated": false,
+			"NetworkGreyList": false,
+			"RapidReconnCountEnable": false,
+			"RapidReconnThreshold": 180,
+			"VapStatsEnable": false,
+			"MacFilterEnable": false,
+			"MacFilterMode": 0,
+			"WmmEnabled": true,
+			"UapsdEnabled": true,
+			"BeaconRate": 16,
+			"WmmNoAck": 0,
+			"WepKeyLength": 128,
+			"BssHotspot": false,
+			"WpsPushButton": 0,
+			"WpsEnable": false,
+			"BeaconRateCtl": "6Mbps",
+			"Security": {
+				"MFPConfig": "Disabled",
+				"Mode": "WPA2-Enterprise",
+				"EncryptionMethod": "AES",
+				"Wpa3_transition_disable": false,
+				"RekeyInterval": 0,
+				"StrictRekey": false,
+				"EapolKeyTimeout": 0,
+				"EapolKeyRetries": 0,
+				"EapIdentityReqTimeout": 0,
+				"EapIdentityReqRetries": 0,
+				"EapReqTimeout": 0,
+				"EapReqRetries": 0,
+				"DisablePmksaCaching": false,
+				"RadiusSettings": {
+					"RadiusServerIPAddr": "127.0.0.1",
+					"RadiusServerPort": 1812,
+					"RadiusSecret": "LHK1CxyBz6oAJIuv58oH0vpvysApxo7",
+					"SecondaryRadiusServerIPAddr": "127.0.0.1",
+					"SecondaryRadiusServerPort": 1812,
+					"SecondaryRadiusSecret": "LHK1CxyBz6oAJIuv58oH0vpvysApxo7",
+					"DasServerIPAddr": "0.0.0.0",
+					"DasServerPort": 0,
+					"DasSecret": "123456789",
+					"MaxAuthAttempts": 0,
+					"BlacklistTableTimeout": 0,
+					"IdentityReqRetryInterval": 0,
+					"ServerRetries": 0
+				}
+			},
+			"Interworking": {
+				"InterworkingEnable": false,
+				"AccessNetworkType": 0,
+				"Internet": false,
+				"ASRA": false,
+				"ESR": false,
+				"UESA": false,
+				"HESSOptionPresent": true,
+				"HESSID": "11:22:33:44:55:66",
+				"Venue": {
+					"VenueType": 0,
+					"VenueGroup": 0
+				}
+			}
+		},
+		{
+			"VapName": "mesh_backhaul_2g",
+			"BridgeName": "brlan112",
+			"RadioIndex": 0,
+			"VapMode": 0,
+			"SSID": "onewifi_13",
+			"BSSID": "0a:7e:64:fe:e4:67",
+			"Enabled": true,
+			"SSIDAdvertisementEnabled": false,
+			"IsolationEnable": false,
+			"ManagementFramePowerControl": 0,
+			"BssMaxNumSta": 75,
+			"BSSTransitionActivated": false,
+			"NeighborReportActivated": false,
+			"NetworkGreyList": false,
+			"RapidReconnCountEnable": false,
+			"RapidReconnThreshold": 180,
+			"VapStatsEnable": false,
+			"MacFilterEnable": true,
+			"MacFilterMode": 1,
+			"WmmEnabled": true,
+			"UapsdEnabled": true,
+			"BeaconRate": 16,
+			"WmmNoAck": 0,
+			"WepKeyLength": 128,
+			"BssHotspot": false,
+			"WpsPushButton": 0,
+			"WpsEnable": false,
+			"BeaconRateCtl": "6Mbps",
+			"Security": {
+				"MFPConfig": "Disabled",
+				"Mode": "WPA2-Personal",
+				"EncryptionMethod": "AES+TKIP",
+				"Passphrase": "1234567890"
+			},
+			"Interworking": {
+				"InterworkingEnable": false,
+				"AccessNetworkType": 0,
+				"Internet": false,
+				"ASRA": false,
+				"ESR": false,
+				"UESA": false,
+				"HESSOptionPresent": true,
+				"HESSID": "11:22:33:44:55:66",
+				"Venue": {
+					"VenueType": 0,
+					"VenueGroup": 0
+				}
+			}
+		},
+		{
+			"VapName": "mesh_sta_2g",
+			"BridgeName": "brlan1",
+			"VapMode": 1,
+			"RadioIndex": 0,
+			"SSID": "we.connect.yellowstone",
+			"BSSID": "00:00:00:00:00:00",
+			"MAC": "00:00:00:00:00:00",
+			"Enabled": false,
+			"ConnectStatus": false,
+			"Security": {
+				"MFPConfig": "Disabled",
+				"Mode": "WPA2-Personal",
+				"EncryptionMethod": "AES+TKIP",
+				"Passphrase": "SA2mNb5p8KHN=A8nDzxj-^HWZpAbjX4q"
+			},
+			"ScanParameters": {
+				"Period": 0,
+				"Channel": 0
+			}
+		},
+		{
+			"VapName": "private_ssid_5g",
+			"BridgeName": "brlan0",
+			"RadioIndex": 1,
+			"VapMode": 0,
+			"SSID": "XFSETUP-E45C",
+			"BSSID": "0a:7e:64:05:e4:62",
+			"Enabled": true,
+			"SSIDAdvertisementEnabled": true,
+			"IsolationEnable": false,
+			"ManagementFramePowerControl": 0,
+			"BssMaxNumSta": 75,
+			"BSSTransitionActivated": false,
+			"NeighborReportActivated": false,
+			"NetworkGreyList": false,
+			"RapidReconnCountEnable": true,
+			"RapidReconnThreshold": 180,
+			"VapStatsEnable": true,
+			"MacFilterEnable": false,
+			"MacFilterMode": 0,
+			"WmmEnabled": true,
+			"UapsdEnabled": true,
+			"BeaconRate": 16,
+			"WmmNoAck": 0,
+			"WepKeyLength": 128,
+			"BssHotspot": false,
+			"WpsPushButton": 0,
+			"WpsEnable": true,
+			"WpsConfigMethodsEnabled": 128,
+			"BeaconRateCtl": "6Mbps",
+			"Security": {
+				"MFPConfig": "Disabled",
+				"Mode": "WPA2-Personal",
+				"EncryptionMethod": "AES",
+				"Passphrase": "folded9656angle"
+			},
+			"Interworking": {
+				"InterworkingEnable": false,
+				"AccessNetworkType": 0,
+				"Internet": false,
+				"ASRA": false,
+				"ESR": false,
+				"UESA": false,
+				"HESSOptionPresent": true,
+				"HESSID": "11:22:33:44:55:66",
+				"Venue": {
+					"VenueType": 0,
+					"VenueGroup": 0
+				}
+			}
+		},
+		{
+			"VapName": "iot_ssid_5g",
+			"BridgeName": "brlan1",
+			"RadioIndex": 1,
+			"VapMode": 0,
+			"SSID": "XHS-64FDE45C",
+			"BSSID": "0a:7e:64:05:e4:63",
+			"Enabled": false,
+			"SSIDAdvertisementEnabled": false,
+			"IsolationEnable": false,
+			"ManagementFramePowerControl": 0,
+			"BssMaxNumSta": 75,
+			"BSSTransitionActivated": false,
+			"NeighborReportActivated": false,
+			"NetworkGreyList": false,
+			"RapidReconnCountEnable": false,
+			"RapidReconnThreshold": 180,
+			"VapStatsEnable": false,
+			"MacFilterEnable": false,
+			"MacFilterMode": 0,
+			"WmmEnabled": true,
+			"UapsdEnabled": true,
+			"BeaconRate": 16,
+			"WmmNoAck": 0,
+			"WepKeyLength": 128,
+			"BssHotspot": false,
+			"WpsPushButton": 0,
+			"WpsEnable": false,
+			"BeaconRateCtl": "6Mbps",
+			"Security": {
+				"MFPConfig": "Disabled",
+				"Mode": "WPA2-Personal",
+				"EncryptionMethod": "AES+TKIP",
+				"Passphrase": "C84C198145462313A4"
+			},
+			"Interworking": {
+				"InterworkingEnable": false,
+				"AccessNetworkType": 0,
+				"Internet": false,
+				"ASRA": false,
+				"ESR": false,
+				"UESA": false,
+				"HESSOptionPresent": true,
+				"HESSID": "11:22:33:44:55:66",
+				"Venue": {
+					"VenueType": 0,
+					"VenueGroup": 0
+				}
+			}
+		},
+		{
+			"VapName": "hotspot_open_5g",
+			"BridgeName": "brlan3",
+			"RadioIndex": 1,
+			"VapMode": 0,
+			"SSID": "OutOfService",
+			"BSSID": "00:00:00:00:00:00",
+			"Enabled": false,
+			"SSIDAdvertisementEnabled": false,
+			"IsolationEnable": true,
+			"ManagementFramePowerControl": 0,
+			"BssMaxNumSta": 75,
+			"BSSTransitionActivated": false,
+			"NeighborReportActivated": false,
+			"NetworkGreyList": false,
+			"RapidReconnCountEnable": false,
+			"RapidReconnThreshold": 180,
+			"VapStatsEnable": false,
+			"MacFilterEnable": false,
+			"MacFilterMode": 0,
+			"WmmEnabled": true,
+			"UapsdEnabled": true,
+			"BeaconRate": 16,
+			"WmmNoAck": 0,
+			"WepKeyLength": 128,
+			"BssHotspot": true,
+			"WpsPushButton": 0,
+			"WpsEnable": false,
+			"BeaconRateCtl": "6Mbps",
+			"Security": {
+				"Mode": "None",
+				"RadiusSettings": {
+					"RadiusServerIPAddr": "0.0.0.0",
+					"RadiusServerPort": 0,
+					"RadiusSecret": "123456789",
+					"SecondaryRadiusServerIPAddr": "0.0.0.0",
+					"SecondaryRadiusServerPort": 0,
+					"SecondaryRadiusSecret": "123456789",
+					"DasServerIPAddr": "0.0.0.0",
+					"DasServerPort": 0,
+					"DasSecret": "123456789",
+					"MaxAuthAttempts": 0,
+					"BlacklistTableTimeout": 0,
+					"IdentityReqRetryInterval": 0,
+					"ServerRetries": 0
+				}
+			},
+			"Interworking": {
+				"InterworkingEnable": false,
+				"AccessNetworkType": 2,
+				"Internet": false,
+				"ASRA": false,
+				"ESR": false,
+				"UESA": false,
+				"HESSOptionPresent": true,
+				"HESSID": "11:22:33:44:55:66",
+				"Venue": {
+					"VenueType": 0,
+					"VenueGroup": 0
+				}
+			}
+		},
+		{
+			"VapName": "lnf_psk_5g",
+			"BridgeName": "br106",
+			"RadioIndex": 1,
+			"VapMode": 0,
+			"SSID": "A16746DF2466410CA2ED9FB2E32FE7D9",
+			"BSSID": "0a:7e:64:05:e4:65",
+			"Enabled": true,
+			"SSIDAdvertisementEnabled": false,
+			"IsolationEnable": false,
+			"ManagementFramePowerControl": 0,
+			"BssMaxNumSta": 75,
+			"BSSTransitionActivated": false,
+			"NeighborReportActivated": false,
+			"NetworkGreyList": false,
+			"RapidReconnCountEnable": false,
+			"RapidReconnThreshold": 180,
+			"VapStatsEnable": false,
+			"MacFilterEnable": false,
+			"MacFilterMode": 0,
+			"WmmEnabled": true,
+			"UapsdEnabled": true,
+			"BeaconRate": 16,
+			"WmmNoAck": 0,
+			"WepKeyLength": 128,
+			"BssHotspot": false,
+			"WpsPushButton": 0,
+			"WpsEnable": false,
+			"BeaconRateCtl": "6Mbps",
+			"Security": {
+				"MFPConfig": "Disabled",
+				"Mode": "WPA2-Personal",
+				"EncryptionMethod": "AES+TKIP",
+				"Passphrase": "AEF9D58B978A103B04016D600FD4B1E6943A3FF538B98B84F1C177B414F7018"
+			},
+			"Interworking": {
+				"InterworkingEnable": false,
+				"AccessNetworkType": 0,
+				"Internet": false,
+				"ASRA": false,
+				"ESR": false,
+				"UESA": false,
+				"HESSOptionPresent": true,
+				"HESSID": "11:22:33:44:55:66",
+				"Venue": {
+					"VenueType": 0,
+					"VenueGroup": 0
+				}
+			}
+		},
+		{
+			"VapName": "hotspot_secure_5g",
+			"BridgeName": "brlan5",
+			"RadioIndex": 1,
+			"VapMode": 0,
+			"SSID": "OutOfService",
+			"BSSID": "00:00:00:00:00:00",
+			"Enabled": false,
+			"SSIDAdvertisementEnabled": false,
+			"IsolationEnable": true,
+			"ManagementFramePowerControl": 0,
+			"BssMaxNumSta": 75,
+			"BSSTransitionActivated": false,
+			"NeighborReportActivated": false,
+			"NetworkGreyList": false,
+			"RapidReconnCountEnable": false,
+			"RapidReconnThreshold": 180,
+			"VapStatsEnable": false,
+			"MacFilterEnable": false,
+			"MacFilterMode": 0,
+			"WmmEnabled": true,
+			"UapsdEnabled": true,
+			"BeaconRate": 16,
+			"WmmNoAck": 0,
+			"WepKeyLength": 128,
+			"BssHotspot": true,
+			"WpsPushButton": 0,
+			"WpsEnable": false,
+			"BeaconRateCtl": "6Mbps",
+			"Security": {
+				"MFPConfig": "Disabled",
+				"Mode": "WPA2-Enterprise",
+				"EncryptionMethod": "AES+TKIP",
+				"Wpa3_transition_disable": false,
+				"RekeyInterval": 0,
+				"StrictRekey": false,
+				"EapolKeyTimeout": 0,
+				"EapolKeyRetries": 0,
+				"EapIdentityReqTimeout": 0,
+				"EapIdentityReqRetries": 0,
+				"EapReqTimeout": 0,
+				"EapReqRetries": 0,
+				"DisablePmksaCaching": false,
+				"RadiusSettings": {
+					"RadiusServerIPAddr": "0.0.0.0",
+					"RadiusServerPort": 0,
+					"RadiusSecret": "123456789",
+					"SecondaryRadiusServerIPAddr": "0.0.0.0",
+					"SecondaryRadiusServerPort": 0,
+					"SecondaryRadiusSecret": "123456789",
+					"DasServerIPAddr": "0.0.0.0",
+					"DasServerPort": 0,
+					"DasSecret": "123456789",
+					"MaxAuthAttempts": 0,
+					"BlacklistTableTimeout": 0,
+					"IdentityReqRetryInterval": 0,
+					"ServerRetries": 0
+				}
+			},
+			"Interworking": {
+				"InterworkingEnable": false,
+				"AccessNetworkType": 2,
+				"Internet": false,
+				"ASRA": false,
+				"ESR": false,
+				"UESA": false,
+				"HESSOptionPresent": true,
+				"HESSID": "11:22:33:44:55:66",
+				"Venue": {
+					"VenueType": 0,
+					"VenueGroup": 0
+				}
+			}
+		},
+		{
+			"VapName": "lnf_radius_5g",
+			"BridgeName": "br106",
+			"RadioIndex": 1,
+			"VapMode": 0,
+			"SSID": "D375C1D9F8B041E2A1995B784064977B",
+			"BSSID": "0a:7e:64:05:e4:67",
+			"Enabled": true,
+			"SSIDAdvertisementEnabled": false,
+			"IsolationEnable": false,
+			"ManagementFramePowerControl": 0,
+			"BssMaxNumSta": 75,
+			"BSSTransitionActivated": false,
+			"NeighborReportActivated": false,
+			"NetworkGreyList": false,
+			"RapidReconnCountEnable": false,
+			"RapidReconnThreshold": 180,
+			"VapStatsEnable": false,
+			"MacFilterEnable": false,
+			"MacFilterMode": 0,
+			"WmmEnabled": true,
+			"UapsdEnabled": true,
+			"BeaconRate": 16,
+			"WmmNoAck": 0,
+			"WepKeyLength": 128,
+			"BssHotspot": false,
+			"WpsPushButton": 0,
+			"WpsEnable": false,
+			"BeaconRateCtl": "6Mbps",
+			"Security": {
+				"MFPConfig": "Disabled",
+				"Mode": "WPA2-Enterprise",
+				"EncryptionMethod": "AES",
+				"Wpa3_transition_disable": false,
+				"RekeyInterval": 0,
+				"StrictRekey": false,
+				"EapolKeyTimeout": 0,
+				"EapolKeyRetries": 0,
+				"EapIdentityReqTimeout": 0,
+				"EapIdentityReqRetries": 0,
+				"EapReqTimeout": 0,
+				"EapReqRetries": 0,
+				"DisablePmksaCaching": false,
+				"RadiusSettings": {
+					"RadiusServerIPAddr": "127.0.0.1",
+					"RadiusServerPort": 1812,
+					"RadiusSecret": "LHK1CxyBz6oAJIuv58oH0vpvysApxo7",
+					"SecondaryRadiusServerIPAddr": "127.0.0.1",
+					"SecondaryRadiusServerPort": 1812,
+					"SecondaryRadiusSecret": "LHK1CxyBz6oAJIuv58oH0vpvysApxo7",
+					"DasServerIPAddr": "0.0.0.0",
+					"DasServerPort": 0,
+					"DasSecret": "123456789",
+					"MaxAuthAttempts": 0,
+					"BlacklistTableTimeout": 0,
+					"IdentityReqRetryInterval": 0,
+					"ServerRetries": 0
+				}
+			},
+			"Interworking": {
+				"InterworkingEnable": false,
+				"AccessNetworkType": 0,
+				"Internet": false,
+				"ASRA": false,
+				"ESR": false,
+				"UESA": false,
+				"HESSOptionPresent": true,
+				"HESSID": "11:22:33:44:55:66",
+				"Venue": {
+					"VenueType": 0,
+					"VenueGroup": 0
+				}
+			}
+		},
+		{
+			"VapName": "mesh_backhaul_5g",
+			"BridgeName": "brlan113",
+			"RadioIndex": 1,
+			"VapMode": 0,
+			"SSID": "onewifi_14",
+			"BSSID": "0a:7e:64:05:e4:60",
+			"Enabled": true,
+			"SSIDAdvertisementEnabled": false,
+			"IsolationEnable": false,
+			"ManagementFramePowerControl": 0,
+			"BssMaxNumSta": 75,
+			"BSSTransitionActivated": false,
+			"NeighborReportActivated": false,
+			"NetworkGreyList": false,
+			"RapidReconnCountEnable": false,
+			"RapidReconnThreshold": 180,
+			"VapStatsEnable": false,
+			"MacFilterEnable": true,
+			"MacFilterMode": 1,
+			"WmmEnabled": true,
+			"UapsdEnabled": true,
+			"BeaconRate": 16,
+			"WmmNoAck": 0,
+			"WepKeyLength": 128,
+			"BssHotspot": false,
+			"WpsPushButton": 0,
+			"WpsEnable": false,
+			"BeaconRateCtl": "6Mbps",
+			"Security": {
+				"MFPConfig": "Disabled",
+				"Mode": "WPA2-Personal",
+				"EncryptionMethod": "AES+TKIP",
+				"Passphrase": "1234567890"
+			},
+			"Interworking": {
+				"InterworkingEnable": false,
+				"AccessNetworkType": 0,
+				"Internet": false,
+				"ASRA": false,
+				"ESR": false,
+				"UESA": false,
+				"HESSOptionPresent": true,
+				"HESSID": "11:22:33:44:55:66",
+				"Venue": {
+					"VenueType": 0,
+					"VenueGroup": 0
+				}
+			}
+		},
+		{
+			"VapName": "mesh_sta_5g",
+			"BridgeName": "brlan1",
+			"VapMode": 1,
+			"RadioIndex": 1,
+			"SSID": "we.connect.yellowstone",
+			"BSSID": "00:00:00:00:00:00",
+			"MAC": "00:00:00:00:00:00",
+			"Enabled": false,
+			"ConnectStatus": false,
+			"Security": {
+				"MFPConfig": "Disabled",
+				"Mode": "WPA2-Personal",
+				"EncryptionMethod": "AES+TKIP",
+				"Passphrase": "SA2mNb5p8KHN=A8nDzxj-^HWZpAbjX4q"
+			},
+			"ScanParameters": {
+				"Period": 0,
+				"Channel": 0
+			}
+		}
+	],
+	"WifiMacFilter": [
+		{
+			"VapName": "private_ssid_2g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "iot_ssid_2g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "hotspot_open_2g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "lnf_psk_2g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "hotspot_secure_2g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "lnf_radius_2g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "mesh_backhaul_2g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "mesh_sta_2g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "private_ssid_5g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "iot_ssid_5g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "hotspot_open_5g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "lnf_psk_5g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "hotspot_secure_5g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "lnf_radius_5g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "mesh_backhaul_5g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "mesh_sta_5g",
+			"MACFilterList": []
+		}
+	]
+}

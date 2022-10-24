@@ -1,0 +1,77 @@
+{
+	"Version": "1.0",
+	"SubDocName": "mac filter",
+	"WifiMacFilter": [
+		{
+			"VapName": "private_ssid_2g",
+			"MACFilterList": [
+				{
+					"MAC": "34:13:e8:cc:06:0c",
+					"DeviceName": "",
+					"reason": 0,
+					"expiry_time": 0
+				}
+			]
+		},
+		{
+			"VapName": "iot_ssid_2g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "hotspot_open_2g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "lnf_psk_2g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "hotspot_secure_2g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "lnf_radius_2g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "mesh_backhaul_2g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "mesh_sta_2g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "private_ssid_5g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "iot_ssid_5g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "hotspot_open_5g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "lnf_psk_5g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "hotspot_secure_5g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "lnf_radius_5g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "mesh_backhaul_5g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "mesh_sta_5g",
+			"MACFilterList": []
+		}
+	]
+}

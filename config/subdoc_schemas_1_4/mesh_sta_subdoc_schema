@@ -1,0 +1,404 @@
+{
+	"Version": "1.0",
+	"SubDocName": "mesh sta",
+	"WifiRadioConfig": [
+		{
+			"WifiRadioSetup": {
+				"RadioIndex": 0,
+				"VapMap": [
+					{
+						"VapName": "mesh_sta_2g",
+						"VapIndex": 14
+					},
+					{
+						"VapName": "private_ssid_2g",
+						"VapIndex": 0
+					},
+					{
+						"VapName": "iot_ssid_2g",
+						"VapIndex": 2
+					},
+					{
+						"VapName": "hotspot_open_2g",
+						"VapIndex": 4
+					},
+					{
+						"VapName": "lnf_psk_2g",
+						"VapIndex": 6
+					},
+					{
+						"VapName": "hotspot_secure_2g",
+						"VapIndex": 8
+					},
+					{
+						"VapName": "lnf_radius_2g",
+						"VapIndex": 10
+					},
+					{
+						"VapName": "mesh_backhaul_2g",
+						"VapIndex": 12
+					}
+				]
+			},
+			"RadioName": "radio1",
+			"Enabled": true,
+			"FreqBand": 1,
+			"AutoChannelEnabled": true,
+			"Channel": 1,
+			"NumSecondaryChannels": 0,
+			"SecondaryChannelsList": " ",
+			"ChannelWidth": 2,
+			"HwMode": 12,
+			"CsaBeaconCount": 100,
+			"Country": "US",
+			"DcsEnabled": false,
+			"DtimPeriod": 1,
+			"OperatingClass": 0,
+			"BasicDataTransmitRates": 656,
+			"OperationalDataTransmitRates": 8112,
+			"FragmentationThreshold": 2346,
+			"GuardInterval": 16,
+			"TransmitPower": 100,
+			"BeaconInterval": 100,
+			"RtsThreshold": 2347,
+			"FactoryResetSsid": false,
+			"RadioStatsMeasuringRate": 0,
+			"RadioStatsMeasuringInterval": 0,
+			"CtsProtection": false,
+			"ObssCoex": false,
+			"StbcEnable": false,
+			"GreenFieldEnable": false,
+			"UserControl": 0,
+			"AdminControl": 0,
+			"ChanUtilThreshold": 90,
+			"ChanUtilSelfHealEnable": false
+		},
+		{
+			"WifiRadioSetup": {
+				"RadioIndex": 1,
+				"VapMap": [
+					{
+						"VapName": "mesh_sta_5g",
+						"VapIndex": 15
+					},
+					{
+						"VapName": "private_ssid_5g",
+						"VapIndex": 1
+					},
+					{
+						"VapName": "iot_ssid_5g",
+						"VapIndex": 3
+					},
+					{
+						"VapName": "hotspot_open_5g",
+						"VapIndex": 5
+					},
+					{
+						"VapName": "lnf_psk_5g",
+						"VapIndex": 7
+					},
+					{
+						"VapName": "hotspot_secure_5g",
+						"VapIndex": 9
+					},
+					{
+						"VapName": "lnf_radius_5g",
+						"VapIndex": 11
+					},
+					{
+						"VapName": "mesh_backhaul_5g",
+						"VapIndex": 13
+					}
+				]
+			},
+			"RadioName": "radio2",
+			"Enabled": true,
+			"FreqBand": 2,
+			"AutoChannelEnabled": true,
+			"Channel": 36,
+			"NumSecondaryChannels": 0,
+			"SecondaryChannelsList": " ",
+			"ChannelWidth": 4,
+			"HwMode": 169,
+			"CsaBeaconCount": 100,
+			"Country": "US",
+			"DcsEnabled": false,
+			"DtimPeriod": 1,
+			"OperatingClass": 0,
+			"BasicDataTransmitRates": 656,
+			"OperationalDataTransmitRates": 8112,
+			"FragmentationThreshold": 2346,
+			"GuardInterval": 16,
+			"TransmitPower": 100,
+			"BeaconInterval": 100,
+			"RtsThreshold": 2347,
+			"FactoryResetSsid": false,
+			"RadioStatsMeasuringRate": 0,
+			"RadioStatsMeasuringInterval": 0,
+			"CtsProtection": false,
+			"ObssCoex": false,
+			"StbcEnable": false,
+			"GreenFieldEnable": false,
+			"UserControl": 0,
+			"AdminControl": 0,
+			"ChanUtilThreshold": 90,
+			"ChanUtilSelfHealEnable": false
+		}
+	],
+	"WiFiCap": {
+		"WiFiRadioCap": [
+			{
+				"RadioIndex": 0,
+				"PossibleChannels": [
+					1,
+					2,
+					3,
+					4,
+					5,
+					6,
+					7,
+					8,
+					9,
+					10,
+					11
+				]
+			},
+			{
+				"RadioIndex": 1,
+				"PossibleChannels": [
+					36,
+					40,
+					44,
+					48,
+					52,
+					56,
+					60,
+					64,
+					100,
+					104,
+					108,
+					112,
+					116,
+					120,
+					124,
+					128,
+					132,
+					136,
+					140,
+					144,
+					149,
+					153,
+					157,
+					161,
+					165
+				]
+			}
+		],
+		"WiFiVapCap": [
+			{
+				"VapName": "mesh_sta_2g",
+				"PhyIndex": 0,
+				"RadioIndex": 0,
+				"InterfaceName": "wl0",
+				"BridgeName": "brlan1",
+				"VLANID": 0,
+				"Primary": true,
+				"Index": 14
+			},
+			{
+				"VapName": "private_ssid_2g",
+				"PhyIndex": 0,
+				"RadioIndex": 0,
+				"InterfaceName": "wl0.1",
+				"BridgeName": "brlan0",
+				"VLANID": 100,
+				"Primary": false,
+				"Index": 0
+			},
+			{
+				"VapName": "iot_ssid_2g",
+				"PhyIndex": 0,
+				"RadioIndex": 0,
+				"InterfaceName": "wl0.2",
+				"BridgeName": "brlan1",
+				"VLANID": 101,
+				"Primary": false,
+				"Index": 2
+			},
+			{
+				"VapName": "hotspot_open_2g",
+				"PhyIndex": 0,
+				"RadioIndex": 0,
+				"InterfaceName": "wl0.3",
+				"BridgeName": "brlan2",
+				"VLANID": 102,
+				"Primary": false,
+				"Index": 4
+			},
+			{
+				"VapName": "lnf_psk_2g",
+				"PhyIndex": 0,
+				"RadioIndex": 0,
+				"InterfaceName": "wl0.4",
+				"BridgeName": "br106",
+				"VLANID": 106,
+				"Primary": false,
+				"Index": 6
+			},
+			{
+				"VapName": "hotspot_secure_2g",
+				"PhyIndex": 0,
+				"RadioIndex": 0,
+				"InterfaceName": "wl0.5",
+				"BridgeName": "brlan4",
+				"VLANID": 104,
+				"Primary": false,
+				"Index": 8
+			},
+			{
+				"VapName": "lnf_radius_2g",
+				"PhyIndex": 0,
+				"RadioIndex": 0,
+				"InterfaceName": "wl0.6",
+				"BridgeName": "br106",
+				"VLANID": 106,
+				"Primary": false,
+				"Index": 10
+			},
+			{
+				"VapName": "mesh_backhaul_2g",
+				"PhyIndex": 0,
+				"RadioIndex": 0,
+				"InterfaceName": "wl0.7",
+				"BridgeName": "brlan112",
+				"VLANID": 112,
+				"Primary": false,
+				"Index": 12
+			},
+			{
+				"VapName": "mesh_sta_5g",
+				"PhyIndex": 1,
+				"RadioIndex": 1,
+				"InterfaceName": "wl1",
+				"BridgeName": "brlan1",
+				"VLANID": 0,
+				"Primary": true,
+				"Index": 15
+			},
+			{
+				"VapName": "private_ssid_5g",
+				"PhyIndex": 1,
+				"RadioIndex": 1,
+				"InterfaceName": "wl1.1",
+				"BridgeName": "brlan0",
+				"VLANID": 100,
+				"Primary": false,
+				"Index": 1
+			},
+			{
+				"VapName": "iot_ssid_5g",
+				"PhyIndex": 1,
+				"RadioIndex": 1,
+				"InterfaceName": "wl1.2",
+				"BridgeName": "brlan1",
+				"VLANID": 101,
+				"Primary": false,
+				"Index": 3
+			},
+			{
+				"VapName": "hotspot_open_5g",
+				"PhyIndex": 1,
+				"RadioIndex": 1,
+				"InterfaceName": "wl1.3",
+				"BridgeName": "brlan3",
+				"VLANID": 103,
+				"Primary": false,
+				"Index": 5
+			},
+			{
+				"VapName": "lnf_psk_5g",
+				"PhyIndex": 1,
+				"RadioIndex": 1,
+				"InterfaceName": "wl1.4",
+				"BridgeName": "br106",
+				"VLANID": 106,
+				"Primary": false,
+				"Index": 7
+			},
+			{
+				"VapName": "hotspot_secure_5g",
+				"PhyIndex": 1,
+				"RadioIndex": 1,
+				"InterfaceName": "wl1.5",
+				"BridgeName": "brlan5",
+				"VLANID": 105,
+				"Primary": false,
+				"Index": 9
+			},
+			{
+				"VapName": "lnf_radius_5g",
+				"PhyIndex": 1,
+				"RadioIndex": 1,
+				"InterfaceName": "wl1.6",
+				"BridgeName": "br106",
+				"VLANID": 106,
+				"Primary": false,
+				"Index": 11
+			},
+			{
+				"VapName": "mesh_backhaul_5g",
+				"PhyIndex": 1,
+				"RadioIndex": 1,
+				"InterfaceName": "wl1.7",
+				"BridgeName": "brlan113",
+				"VLANID": 113,
+				"Primary": false,
+				"Index": 13
+			}
+		]
+	},
+	"WifiVapConfig": [
+		{
+			"VapName": "mesh_sta_2g",
+			"BridgeName": "brlan1",
+			"VapMode": 1,
+			"RadioIndex": 0,
+			"SSID": "we.connect.yellowstone",
+			"BSSID": "e2:db:d1:dd:d7:ee",
+			"MAC": "60:e6:f0:d4:e5:20",
+			"Enabled": true,
+			"ConnectStatus": true,
+			"Security": {
+				"MFPConfig": "Disabled",
+				"Mode": "WPA2-Personal",
+				"EncryptionMethod": "AES+TKIP",
+				"Passphrase": "SA2mNb5p8KHN=A8nDzxj-^HWZpAbjX4q"
+			},
+			"ScanParameters": {
+				"Period": 0,
+				"Channel": 0
+			}
+		},
+		{
+			"VapName": "mesh_sta_5g",
+			"BridgeName": "brlan1",
+			"VapMode": 1,
+			"RadioIndex": 1,
+			"SSID": "we.connect.yellowstone",
+			"BSSID": "00:00:00:00:00:00",
+			"MAC": "60:e6:f0:d4:e5:21",
+			"Enabled": true,
+			"ConnectStatus": false,
+			"Security": {
+				"MFPConfig": "Disabled",
+				"Mode": "WPA2-Personal",
+				"EncryptionMethod": "AES+TKIP",
+				"Passphrase": "SA2mNb5p8KHN=A8nDzxj-^HWZpAbjX4q"
+			},
+			"ScanParameters": {
+				"Period": 0,
+				"Channel": 0
+			}
+		}
+	]
+}

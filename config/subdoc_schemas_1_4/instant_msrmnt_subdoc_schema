@@ -1,0 +1,13 @@
+{
+	"Version": "1.0",
+	"SubDocName": "instant measurement config",
+	"Schema": "WifiSingleClient.avsc",
+	"SchemaID": "8b27dafc-0c4d-40a1-b62c-f24a34074914/4388e585dd7c0d32ac47e71f634b579b",
+	"Parameters": {
+		"Enabled": true,
+		"MacAddress": "CEE07FC1DD68",
+		"ReportingPeriod": 1,
+		"DefReportingPeriod": 0,
+		"DefOverrideTTL": 5
+	}
+}

@@ -1,0 +1,68 @@
+{
+	"Version": "1.0",
+	"SubDocName": "steering clients",
+	"WifiSteeringClients": [
+		{
+			"CsParams": [],
+			"SteeringBtmParams": [
+				{
+					"Key": "abridged",
+					"Value": "1"
+				},
+				{
+					"Key": "bss_term",
+					"Value": "0"
+				},
+				{
+					"Key": "btm_max_retries",
+					"Value": "1"
+				},
+				{
+					"Key": "btm_retry_interval",
+					"Value": "10"
+				},
+				{
+					"Key": "disassoc_imminent",
+					"Value": "0"
+				},
+				{
+					"Key": "pref",
+					"Value": "1"
+				},
+				{
+					"Key": "valid_interval",
+					"Value": "255"
+				}
+			],
+			"RrmBcnRptParams": [],
+			"ScBtmParams": [],
+			"Mac": "b8:27:eb:17:0c:5e",
+			"BackoffExpBase": 0,
+			"BackoffSecs": 120,
+			"Hwm": 35,
+			"Lwm": 10,
+			"KickDebouncePeriod": 60,
+			"KickReason": 1,
+			"KickUponIdle": true,
+			"MaxRejects": 7,
+			"PreAssocAuthBlock": true,
+			"RejectsTmoutSecs": 120,
+			"ScKickDebouncePeriod": 0,
+			"ScKickReason": 0,
+			"SteerDuringBackoff": false,
+			"SteeringFailCnt": 0,
+			"SteeringKickCnt": 0,
+			"SteeringSuccessCnt": 0,
+			"StickyKickCnt": 0,
+			"StickyKickDebouncePeriod": 60,
+			"StickyKickReason": 1,
+			"CsMode": 0,
+			"ForceKick": 0,
+			"KickType": 5,
+			"Pref5g": 2,
+			"RejectDetection": 1,
+			"ScKickType": 0,
+			"StickyKickType": 5
+		}
+	]
+}

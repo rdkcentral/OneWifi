@@ -1,0 +1,100 @@
+{
+	"Version": "1.0",
+	"SubDocName": "associated clients",
+	"WiFiAssociatedClients": [
+		{
+			"VapName": "private_ssid_2g",
+			"associatedClients": []
+		},
+		{
+			"VapName": "iot_ssid_2g",
+			"associatedClients": []
+		},
+		{
+			"VapName": "hotspot_open_2g",
+			"associatedClients": []
+		},
+		{
+			"VapName": "lnf_psk_2g",
+			"associatedClients": []
+		},
+		{
+			"VapName": "hotspot_secure_2g",
+			"associatedClients": []
+		},
+		{
+			"VapName": "lnf_radius_2g",
+			"associatedClients": []
+		},
+		{
+			"VapName": "mesh_backhaul_2g",
+			"associatedClients": []
+		},
+		{
+			"VapName": "mesh_sta_2g",
+			"associatedClients": []
+		},
+		{
+			"VapName": "private_ssid_5g",
+			"associatedClients": [
+				{
+					"MACAddress": "ce:e0:7f:c1:dd:68",
+					"AuthenticationState": false,
+					"LastDataDownlinkRate": 0,
+					"LastDataUplinkRate": 0,
+					"SignalStrength": 0,
+					"Retransmissions": 0,
+					"Active": true,
+					"OperatingStandard": "",
+					"OperatingChannelBandwidth": "",
+					"SNR": 0,
+					"InterferenceSources": "",
+					"DataFramesSentAck": 0,
+					"DataFramesSentNoAck": 0,
+					"BytesSent": 0,
+					"BytesReceived": 0,
+					"RSSI": -40,
+					"MinRSSI": 0,
+					"MaxRSSI": 0,
+					"Disassociations": 0,
+					"AuthenticationFailures": 0,
+					"PacketsSent": 0,
+					"PacketsReceived": 0,
+					"ErrorsSent": 0,
+					"RetransCount": 0,
+					"FailedRetransCount": 0,
+					"RetryCount": 0,
+					"MultipleRetryCount": 0
+				}
+			]
+		},
+		{
+			"VapName": "iot_ssid_5g",
+			"associatedClients": []
+		},
+		{
+			"VapName": "hotspot_open_5g",
+			"associatedClients": []
+		},
+		{
+			"VapName": "lnf_psk_5g",
+			"associatedClients": []
+		},
+		{
+			"VapName": "hotspot_secure_5g",
+			"associatedClients": []
+		},
+		{
+			"VapName": "lnf_radius_5g",
+			"associatedClients": []
+		},
+		{
+			"VapName": "mesh_backhaul_5g",
+			"associatedClients": []
+		},
+		{
+			"VapName": "mesh_sta_5g",
+			"associatedClients": []
+		}
+	]
+}

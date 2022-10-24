@@ -1,0 +1,106 @@
+{
+	"Version": "1.0",
+	"SubDocName": "home",
+	"WifiVapConfig": [
+		{
+			"VapName": "iot_ssid_2g",
+			"BridgeName": "brlan1",
+			"RadioIndex": 0,
+			"VapMode": 0,
+			"SSID": "onewifi_home_3",
+			"BSSID": "0a:7e:64:fe:e4:62",
+			"Enabled": true,
+			"SSIDAdvertisementEnabled": false,
+			"IsolationEnable": false,
+			"ManagementFramePowerControl": 0,
+			"BssMaxNumSta": 75,
+			"BSSTransitionActivated": false,
+			"NeighborReportActivated": false,
+			"NetworkGreyList": false,
+			"RapidReconnCountEnable": false,
+			"RapidReconnThreshold": 180,
+			"VapStatsEnable": false,
+			"MacFilterEnable": false,
+			"MacFilterMode": 0,
+			"WmmEnabled": true,
+			"UapsdEnabled": true,
+			"BeaconRate": 16,
+			"WmmNoAck": 0,
+			"WepKeyLength": 128,
+			"BssHotspot": false,
+			"WpsPushButton": 0,
+			"WpsEnable": false,
+			"BeaconRateCtl": "6Mbps",
+			"Security": {
+				"MFPConfig": "Disabled",
+				"Mode": "WPA2-Personal",
+				"EncryptionMethod": "AES+TKIP",
+				"Passphrase": "C84C198145462313A4"
+			},
+			"Interworking": {
+				"InterworkingEnable": false,
+				"AccessNetworkType": 0,
+				"Internet": false,
+				"ASRA": false,
+				"ESR": false,
+				"UESA": false,
+				"HESSOptionPresent": true,
+				"HESSID": "11:22:33:44:55:66",
+				"Venue": {
+					"VenueType": 0,
+					"VenueGroup": 0
+				}
+			}
+		},
+		{
+			"VapName": "iot_ssid_5g",
+			"BridgeName": "brlan1",
+			"RadioIndex": 1,
+			"VapMode": 0,
+			"SSID": "XHS-64FDE45C",
+			"BSSID": "0a:7e:64:05:e4:63",
+			"Enabled": false,
+			"SSIDAdvertisementEnabled": false,
+			"IsolationEnable": false,
+			"ManagementFramePowerControl": 0,
+			"BssMaxNumSta": 75,
+			"BSSTransitionActivated": false,
+			"NeighborReportActivated": false,
+			"NetworkGreyList": false,
+			"RapidReconnCountEnable": false,
+			"RapidReconnThreshold": 180,
+			"VapStatsEnable": false,
+			"MacFilterEnable": false,
+			"MacFilterMode": 0,
+			"WmmEnabled": true,
+			"UapsdEnabled": true,
+			"BeaconRate": 16,
+			"WmmNoAck": 0,
+			"WepKeyLength": 128,
+			"BssHotspot": false,
+			"WpsPushButton": 0,
+			"WpsEnable": false,
+			"BeaconRateCtl": "6Mbps",
+			"Security": {
+				"MFPConfig": "Disabled",
+				"Mode": "WPA2-Personal",
+				"EncryptionMethod": "AES+TKIP",
+				"Passphrase": "C84C198145462313A4"
+			},
+			"Interworking": {
+				"InterworkingEnable": false,
+				"AccessNetworkType": 0,
+				"Internet": false,
+				"ASRA": false,
+				"ESR": false,
+				"UESA": false,
+				"HESSOptionPresent": true,
+				"HESSID": "11:22:33:44:55:66",
+				"Venue": {
+					"VenueType": 0,
+					"VenueGroup": 0
+				}
+			}
+		}
+	]
+}

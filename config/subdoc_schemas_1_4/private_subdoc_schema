@@ -1,0 +1,108 @@
+{
+	"Version": "1.0",
+	"SubDocName": "private",
+	"WifiVapConfig": [
+		{
+			"VapName": "private_ssid_2g",
+			"BridgeName": "brlan0",
+			"RadioIndex": 0,
+			"VapMode": 0,
+			"SSID": "onewifi_Private_1",
+			"BSSID": "0a:7e:64:fe:e4:61",
+			"Enabled": true,
+			"SSIDAdvertisementEnabled": true,
+			"IsolationEnable": false,
+			"ManagementFramePowerControl": 0,
+			"BssMaxNumSta": 75,
+			"BSSTransitionActivated": false,
+			"NeighborReportActivated": false,
+			"NetworkGreyList": false,
+			"RapidReconnCountEnable": true,
+			"RapidReconnThreshold": 180,
+			"VapStatsEnable": true,
+			"MacFilterEnable": false,
+			"MacFilterMode": 0,
+			"WmmEnabled": true,
+			"UapsdEnabled": true,
+			"BeaconRate": 16,
+			"WmmNoAck": 0,
+			"WepKeyLength": 128,
+			"BssHotspot": false,
+			"WpsPushButton": 0,
+			"WpsEnable": true,
+			"WpsConfigMethodsEnabled": 128,
+			"BeaconRateCtl": "6Mbps",
+			"Security": {
+				"MFPConfig": "Disabled",
+				"Mode": "WPA2-Personal",
+				"EncryptionMethod": "AES",
+				"Passphrase": "folded9656angle"
+			},
+			"Interworking": {
+				"InterworkingEnable": false,
+				"AccessNetworkType": 0,
+				"Internet": false,
+				"ASRA": false,
+				"ESR": false,
+				"UESA": false,
+				"HESSOptionPresent": true,
+				"HESSID": "11:22:33:44:55:66",
+				"Venue": {
+					"VenueType": 0,
+					"VenueGroup": 0
+				}
+			}
+		},
+		{
+			"VapName": "private_ssid_5g",
+			"BridgeName": "brlan0",
+			"RadioIndex": 1,
+			"VapMode": 0,
+			"SSID": "XFSETUP-E45C",
+			"BSSID": "0a:7e:64:05:e4:62",
+			"Enabled": true,
+			"SSIDAdvertisementEnabled": true,
+			"IsolationEnable": false,
+			"ManagementFramePowerControl": 0,
+			"BssMaxNumSta": 75,
+			"BSSTransitionActivated": false,
+			"NeighborReportActivated": false,
+			"NetworkGreyList": false,
+			"RapidReconnCountEnable": true,
+			"RapidReconnThreshold": 180,
+			"VapStatsEnable": true,
+			"MacFilterEnable": false,
+			"MacFilterMode": 0,
+			"WmmEnabled": true,
+			"UapsdEnabled": true,
+			"BeaconRate": 16,
+			"WmmNoAck": 0,
+			"WepKeyLength": 128,
+			"BssHotspot": false,
+			"WpsPushButton": 0,
+			"WpsEnable": true,
+			"WpsConfigMethodsEnabled": 128,
+			"BeaconRateCtl": "6Mbps",
+			"Security": {
+				"MFPConfig": "Disabled",
+				"Mode": "WPA2-Personal",
+				"EncryptionMethod": "AES",
+				"Passphrase": "folded9656angle"
+			},
+			"Interworking": {
+				"InterworkingEnable": false,
+				"AccessNetworkType": 0,
+				"Internet": false,
+				"ASRA": false,
+				"ESR": false,
+				"UESA": false,
+				"HESSOptionPresent": true,
+				"HESSID": "11:22:33:44:55:66",
+				"Venue": {
+					"VenueType": 0,
+					"VenueGroup": 0
+				}
+			}
+		}
+	]
+}

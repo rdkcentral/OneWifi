@@ -1,0 +1,172 @@
+{
+	"Version": "1.0",
+	"SubDocName": "mesh backhaul",
+	"WifiVapConfig": [
+		{
+			"VapName": "mesh_backhaul_2g",
+			"BridgeName": "brlan112",
+			"RadioIndex": 0,
+			"VapMode": 0,
+			"SSID": "onewifi_mesh_backhaul_13",
+			"BSSID": "0a:7e:64:fe:e4:67",
+			"Enabled": true,
+			"SSIDAdvertisementEnabled": false,
+			"IsolationEnable": false,
+			"ManagementFramePowerControl": 0,
+			"BssMaxNumSta": 75,
+			"BSSTransitionActivated": false,
+			"NeighborReportActivated": false,
+			"NetworkGreyList": false,
+			"RapidReconnCountEnable": false,
+			"RapidReconnThreshold": 180,
+			"VapStatsEnable": false,
+			"MacFilterEnable": true,
+			"MacFilterMode": 1,
+			"WmmEnabled": true,
+			"UapsdEnabled": true,
+			"BeaconRate": 16,
+			"WmmNoAck": 0,
+			"WepKeyLength": 128,
+			"BssHotspot": false,
+			"WpsPushButton": 0,
+			"WpsEnable": false,
+			"BeaconRateCtl": "6Mbps",
+			"Security": {
+				"MFPConfig": "Disabled",
+				"Mode": "WPA2-Personal",
+				"EncryptionMethod": "AES+TKIP",
+				"Passphrase": "1234567890"
+			},
+			"Interworking": {
+				"InterworkingEnable": false,
+				"AccessNetworkType": 0,
+				"Internet": false,
+				"ASRA": false,
+				"ESR": false,
+				"UESA": false,
+				"HESSOptionPresent": true,
+				"HESSID": "11:22:33:44:55:66",
+				"Venue": {
+					"VenueType": 0,
+					"VenueGroup": 0
+				}
+			}
+		},
+		{
+			"VapName": "mesh_backhaul_5g",
+			"BridgeName": "brlan113",
+			"RadioIndex": 1,
+			"VapMode": 0,
+			"SSID": "onewifi_14",
+			"BSSID": "0a:7e:64:05:e4:60",
+			"Enabled": true,
+			"SSIDAdvertisementEnabled": false,
+			"IsolationEnable": false,
+			"ManagementFramePowerControl": 0,
+			"BssMaxNumSta": 75,
+			"BSSTransitionActivated": false,
+			"NeighborReportActivated": false,
+			"NetworkGreyList": false,
+			"RapidReconnCountEnable": false,
+			"RapidReconnThreshold": 180,
+			"VapStatsEnable": false,
+			"MacFilterEnable": true,
+			"MacFilterMode": 1,
+			"WmmEnabled": true,
+			"UapsdEnabled": true,
+			"BeaconRate": 16,
+			"WmmNoAck": 0,
+			"WepKeyLength": 128,
+			"BssHotspot": false,
+			"WpsPushButton": 0,
+			"WpsEnable": false,
+			"BeaconRateCtl": "6Mbps",
+			"Security": {
+				"MFPConfig": "Disabled",
+				"Mode": "WPA2-Personal",
+				"EncryptionMethod": "AES+TKIP",
+				"Passphrase": "1234567890"
+			},
+			"Interworking": {
+				"InterworkingEnable": false,
+				"AccessNetworkType": 0,
+				"Internet": false,
+				"ASRA": false,
+				"ESR": false,
+				"UESA": false,
+				"HESSOptionPresent": true,
+				"HESSID": "11:22:33:44:55:66",
+				"Venue": {
+					"VenueType": 0,
+					"VenueGroup": 0
+				}
+			}
+		}
+	],
+	"WifiMacFilter": [
+		{
+			"VapName": "private_ssid_2g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "iot_ssid_2g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "hotspot_open_2g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "lnf_psk_2g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "hotspot_secure_2g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "lnf_radius_2g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "mesh_backhaul_2g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "mesh_sta_2g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "private_ssid_5g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "iot_ssid_5g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "hotspot_open_5g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "lnf_psk_5g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "hotspot_secure_5g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "lnf_radius_5g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "mesh_backhaul_5g",
+			"MACFilterList": []
+		},
+		{
+			"VapName": "mesh_sta_5g",
+			"MACFilterList": []
+		}
+	]
+}

@@ -1,0 +1,163 @@
+{
+	"Version": "1.0",
+	"SubDocName": "stats config",
+	"WifiStatsConfig": [
+		{
+			"StatsType": 0,
+			"ReportType": 0,
+			"RadioType": 1,
+			"SurveyType": 0,
+			"ReportingInterval": 60,
+			"ReportingCount": 0,
+			"SamplingInterval": 0,
+			"SurveyInterval": 0,
+			"ThresholdUtil": 0,
+			"ThresholdMaxDelay": 0,
+			"ChannelList": []
+		},
+		{
+			"StatsType": 0,
+			"ReportType": 0,
+			"RadioType": 2,
+			"SurveyType": 0,
+			"ReportingInterval": 60,
+			"ReportingCount": 0,
+			"SamplingInterval": 0,
+			"SurveyInterval": 0,
+			"ThresholdUtil": 0,
+			"ThresholdMaxDelay": 0,
+			"ChannelList": []
+		},
+		{
+			"StatsType": 1,
+			"ReportType": 0,
+			"RadioType": 2,
+			"SurveyType": 1,
+			"ReportingInterval": 120,
+			"ReportingCount": 0,
+			"SamplingInterval": 10,
+			"SurveyInterval": 10,
+			"ThresholdUtil": 10,
+			"ThresholdMaxDelay": 600,
+			"ChannelList": [
+				44,
+				157
+			]
+		},
+		{
+			"StatsType": 1,
+			"ReportType": 0,
+			"RadioType": 1,
+			"SurveyType": 1,
+			"ReportingInterval": 120,
+			"ReportingCount": 0,
+			"SamplingInterval": 10,
+			"SurveyInterval": 50,
+			"ThresholdUtil": 10,
+			"ThresholdMaxDelay": 600,
+			"ChannelList": [
+				1,
+				6,
+				11
+			]
+		},
+		{
+			"StatsType": 0,
+			"ReportType": 0,
+			"RadioType": 2,
+			"SurveyType": 1,
+			"ReportingInterval": 120,
+			"ReportingCount": 0,
+			"SamplingInterval": 0,
+			"SurveyInterval": 10,
+			"ThresholdUtil": 0,
+			"ThresholdMaxDelay": 0,
+			"ChannelList": [
+				44,
+				157
+			]
+		},
+		{
+			"StatsType": 1,
+			"ReportType": 0,
+			"RadioType": 1,
+			"SurveyType": 0,
+			"ReportingInterval": 60,
+			"ReportingCount": 0,
+			"SamplingInterval": 10,
+			"SurveyInterval": 0,
+			"ThresholdUtil": 0,
+			"ThresholdMaxDelay": 0,
+			"ChannelList": []
+		},
+		{
+			"StatsType": 0,
+			"ReportType": 0,
+			"RadioType": 1,
+			"SurveyType": 1,
+			"ReportingInterval": 120,
+			"ReportingCount": 0,
+			"SamplingInterval": 0,
+			"SurveyInterval": 0,
+			"ThresholdUtil": 0,
+			"ThresholdMaxDelay": 0,
+			"ChannelList": [
+				1,
+				6,
+				11
+			]
+		},
+		{
+			"StatsType": 1,
+			"ReportType": 0,
+			"RadioType": 2,
+			"SurveyType": 0,
+			"ReportingInterval": 60,
+			"ReportingCount": 0,
+			"SamplingInterval": 10,
+			"SurveyInterval": 0,
+			"ThresholdUtil": 0,
+			"ThresholdMaxDelay": 0,
+			"ChannelList": []
+		},
+		{
+			"StatsType": 2,
+			"ReportType": 0,
+			"RadioType": 2,
+			"SurveyType": 0,
+			"ReportingInterval": 60,
+			"ReportingCount": 0,
+			"SamplingInterval": 10,
+			"SurveyInterval": 0,
+			"ThresholdUtil": 0,
+			"ThresholdMaxDelay": 0,
+			"ChannelList": []
+		},
+		{
+			"StatsType": 7,
+			"ReportType": 0,
+			"RadioType": 1,
+			"SurveyType": 0,
+			"ReportingInterval": 900,
+			"ReportingCount": 0,
+			"SamplingInterval": 0,
+			"SurveyInterval": 0,
+			"ThresholdUtil": 0,
+			"ThresholdMaxDelay": 0,
+			"ChannelList": []
+		},
+		{
+			"StatsType": 2,
+			"ReportType": 0,
+			"RadioType": 1,
+			"SurveyType": 0,
+			"ReportingInterval": 60,
+			"ReportingCount": 0,
+			"SamplingInterval": 10,
+			"SurveyInterval": 0,
+			"ThresholdUtil": 0,
+			"ThresholdMaxDelay": 0,
+			"ChannelList": []
+		}
+	]
+}
