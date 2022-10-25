@@ -542,7 +542,7 @@ void rbus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d rbus_get for %s: value:%d\n",__func__, __LINE__, name, *ret_val);
 }
 
-void rbus_get_active_gw_parameter(const char *name, unsigned int *ret_val)
+int rbus_get_active_gw_parameter(const char *name, unsigned int *ret_val)
 {
     rbusValue_t value;
     int rc = RBUS_ERROR_SUCCESS;
@@ -553,13 +553,14 @@ void rbus_get_active_gw_parameter(const char *name, unsigned int *ret_val)
     rc = rbus_get(ctrl->rbus_handle, name, &value);
 
     if(rc != RBUS_ERROR_SUCCESS) {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d rbus_get failed for [%s] with error [%d]\n",__func__, __LINE__, name, rc);
-        return;
+        wifi_util_error_print(WIFI_CTRL, "%s:%d rbus_get failed for [%s] with error [%d]\n",__func__, __LINE__, name, rc);
+        return RETURN_ERR;
     }
 
     *ret_val = rbusValue_GetBoolean(value);
 
-    wifi_util_dbg_print(WIFI_CTRL,"%s:%d rbus_get for %s: value:%d\n",__func__, __LINE__, name, *ret_val);
+    wifi_util_info_print(WIFI_CTRL,"%s:%d rbus_get for %s: value:%d\n",__func__, __LINE__, name, *ret_val);
+    return RETURN_OK;
 }
 
 void start_extender_vaps(void)
@@ -593,6 +594,7 @@ void start_gateway_vaps()
         mesh_gw_svc->start_fn(mesh_gw_svc, WIFI_ALL_RADIO_INDICES, NULL);
     }
 
+    value = false;
     // start public if tunnel is up
     rbus_get_vap_init_parameter(WIFI_DEVICE_TUNNEL_STATUS, &value);
     if (value == true) {
@@ -600,12 +602,13 @@ void start_gateway_vaps()
         pub_svc->start_fn(pub_svc, WIFI_ALL_RADIO_INDICES, NULL);
     }
 
-    rbus_get_active_gw_parameter(WIFI_ACTIVE_GATEWAY_CHECK, &value);
-
-    if(value == true) {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d start extender vaps and initiate sta conn\n",__func__, __LINE__);
-        start_extender_vaps();
-        ctrl->active_gw_sta_status = true;
+    value = false;
+    if (rbus_get_active_gw_parameter(WIFI_ACTIVE_GATEWAY_CHECK, &value) == RETURN_OK) {
+        if(value == true) {
+            wifi_util_info_print(WIFI_CTRL, "%s:%d start extender vaps and initiate sta conn\n",__func__, __LINE__);
+            start_extender_vaps();
+            ctrl->active_gw_sta_status = true;
+        }
     }
 }
 

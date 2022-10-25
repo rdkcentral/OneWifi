@@ -345,11 +345,35 @@ int vap_svc_mesh_ext_start(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
     return 0;
 }
 
+int vap_svc_mesh_ext_clear_variable(vap_svc_t *svc)
+{
+    unsigned int  index = 0;
+    unsigned char radio_index = 0;
+    unsigned char num_of_radios = getNumberRadios();
+    wifi_vap_info_map_t *map;
+
+    for (radio_index = 0; radio_index < num_of_radios; radio_index++) {
+        map = (wifi_vap_info_map_t *)get_wifidb_vap_map(radio_index);
+        if (map == NULL) {
+            wifi_util_error_print(WIFI_CTRL,"%s:%d failed to get vap map for radio index: %d\n", __func__, __LINE__, radio_index);
+            return -1;
+        }
+        for (index = 0; index < map->num_vaps; index++) {
+            if (svc->is_my_fn(map->vap_array[index].vap_index) == true) {
+                map->vap_array[index].u.sta_info.conn_status = wifi_connection_status_disabled;
+                memset(map->vap_array[index].u.sta_info.bssid, 0, sizeof(mac_address_t));
+            }
+        }
+    }
+    return 0;
+}
+
 int vap_svc_mesh_ext_stop(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map)
 {
     vap_svc_mesh_ext_disconnect(svc);
     cancel_all_running_timer(svc);
     vap_svc_stop(svc);
+    vap_svc_mesh_ext_clear_variable(svc);
     return 0;
 }
 
