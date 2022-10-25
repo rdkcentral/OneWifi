@@ -1359,8 +1359,20 @@ webconfig_error_t encode_wifivapcap(wifi_interface_name_idex_map_t *interface_ma
         cJSON_AddStringToObject(object, "InterfaceName", interface_map->interface_name);
         cJSON_AddStringToObject(object, "BridgeName", interface_map->bridge_name);
         cJSON_AddNumberToObject(object, "VLANID", interface_map->vlan_id);
-        cJSON_AddBoolToObject(object, "Primary", interface_map->primary);
         cJSON_AddNumberToObject(object, "Index", interface_map->index);
+    }
+    return webconfig_error_none;
+}
+
+webconfig_error_t encode_wifiradiointerfacecap(radio_interface_mapping_t *radio_interface_map, cJSON *hal_obj)
+{
+    cJSON *object;
+    if (radio_interface_map->radio_name[0] != '\0') {
+        object =  cJSON_CreateObject();
+        cJSON_AddItemToArray(hal_obj, object);
+        cJSON_AddNumberToObject(object, "PhyIndex", radio_interface_map->phy_index);
+        cJSON_AddNumberToObject(object, "RadioIndex", radio_interface_map->radio_index);
+        cJSON_AddStringToObject(object, "InterfaceName", radio_interface_map->interface_name);
     }
     return webconfig_error_none;
 }

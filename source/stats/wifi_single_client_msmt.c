@@ -388,7 +388,7 @@ void upload_single_client_msmt_data(bssid_data_t *bssid_info, sta_data_t *sta_in
     if (CHK_AVRO_ERR) wifi_util_dbg_print(WIFI_MON, "%s:%d: Avro error: %s\n", __func__, __LINE__, avro_strerror());
 
     const char *macStr = NULL;
-    char CpemacStr[32];
+    char CpemacStr[32] = { 0 };
 
     //cpe_id block
     /* MAC - Get CPE mac address, do it only pointer is NULL */
@@ -1000,7 +1000,7 @@ void upload_single_client_active_msmt_data(bssid_data_t *bssid_info, sta_data_t 
     }
 
     const char *macStr = NULL;
-    char CpemacStr[32];
+    char CpemacStr[32] = { 0 };
 
     //cpe_id block
     /* MAC - Get CPE mac address, do it only pointer is NULL */

@@ -345,25 +345,6 @@ void write_to_file(const char *file_name, char *fmt, ...)
     fclose(fp);
 }
 
-
-int get_interface_name_from_radio_index(wifi_platform_property_t *wifi_prop, uint8_t radio_index, char *interface_name)
-{
-    uint8_t i = 0;
-    UINT total_vaps;
-
-    wifi_interface_name_idex_map_t *tmp = wifi_prop->interface_map;
-    TOTAL_INTERFACES(total_vaps, wifi_prop);
-
-    for (i = 0; i < total_vaps; i++) {
-        if (tmp[i].rdk_radio_index == radio_index) {
-            strncpy(interface_name, tmp[i].interface_name, strlen(tmp[i].interface_name));
-            return RETURN_OK;
-        }
-    }
-
-    return RETURN_ERR;
-}
-
 void copy_string(char*  destination, char*  source)
 {
     if ( !source )
@@ -401,21 +382,27 @@ void print_interface_map(wifi_platform_property_t *wifi_prop)
 
     wifi_util_dbg_print(WIFI_WEBCONFIG, "   Interface Map: Number of Radios = %u\n", wifi_prop->numRadios);
     for (unsigned int i = 0; i < total_vaps; ++i) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "      phy=%u, radio=%u, ifname=%s, bridge=%s, primary=%s, index=%u, vap_name=%s\n", \
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "      phy=%u, radio=%u, ifname=%s, bridge=%s, index=%u, vap_name=%s\n", \
                                              wifi_prop->interface_map[i].phy_index, \
                                              wifi_prop->interface_map[i].rdk_radio_index, \
                                              wifi_prop->interface_map[i].interface_name, \
                                              wifi_prop->interface_map[i].bridge_name, \
-                                             (wifi_prop->interface_map[i].primary) ? "true" : "false", \
                                              wifi_prop->interface_map[i].index, \
                                              wifi_prop->interface_map[i].vap_name);
+    }
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "  Radio Interface Map: Number of Radios = %u\n", wifi_prop->numRadios);
+    for (unsigned int i = 0; i < total_vaps; ++i) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "      phy=%u, radio=%u, ifname=%s\n", \
+                                             wifi_prop->radio_interface_map[i].phy_index, \
+                                             wifi_prop->radio_interface_map[i].radio_index, \
+                                             wifi_prop->radio_interface_map[i].interface_name);
     }
 }
 
 static wifi_interface_name_idex_map_t* get_vap_index_property(wifi_platform_property_t *wifi_prop, unsigned int vap_index, const char *func)
 {
     wifi_interface_name_idex_map_t *if_prop = NULL;
-
     UINT total_vaps;
 
     TOTAL_INTERFACES(total_vaps, wifi_prop);
@@ -432,7 +419,6 @@ static wifi_interface_name_idex_map_t* get_vap_index_property(wifi_platform_prop
 static wifi_interface_name_idex_map_t* get_vap_name_property(wifi_platform_property_t *wifi_prop, char *vap_name, const char *func)
 {
     wifi_interface_name_idex_map_t *if_prop = NULL;
-
     UINT total_vaps;
 
     TOTAL_INTERFACES(total_vaps, wifi_prop);
@@ -449,7 +435,6 @@ static wifi_interface_name_idex_map_t* get_vap_name_property(wifi_platform_prope
 static wifi_interface_name_idex_map_t* get_ifname_property(wifi_platform_property_t *wifi_prop, const char *if_name, const char *func)
 {
     wifi_interface_name_idex_map_t *if_prop = NULL;
-
     UINT total_vaps = wifi_prop->numRadios * MAX_NUM_VAP_PER_RADIO;
 
     for (UINT i = 0; i < total_vaps ; ++i) {
@@ -550,9 +535,9 @@ int convert_vap_name_to_radio_array_index(wifi_platform_property_t *wifi_prop, c
 
 int get_vap_and_radio_index_from_vap_instance(wifi_platform_property_t *wifi_prop, uint8_t vap_instance, uint8_t *radio_index, uint8_t *vap_index)
 {
+    int status = RETURN_OK;
     int vap_array_index = -1;
     wifi_interface_name_idex_map_t *if_prop;
-    int status = RETURN_OK;
 
     *radio_index = 0;
     *vap_index = 0;
@@ -986,8 +971,8 @@ int convert_ifname_to_radio_index(wifi_platform_property_t *wifi_prop, char *if_
 int convert_radio_index_to_ifname(wifi_platform_property_t *wifi_prop, unsigned int radio_index, char *if_name, int ifname_len)
 {
     bool b_valid = false;
-    unsigned int num_radios, num_vaps;
-    wifi_interface_name_idex_map_t *vap;
+    unsigned int num_radios;
+    radio_interface_mapping_t *radio;
 
     if (if_name == NULL) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"WIFI %s:%d input if_name is NULL \n",__FUNCTION__, __LINE__);
@@ -995,16 +980,16 @@ int convert_radio_index_to_ifname(wifi_platform_property_t *wifi_prop, unsigned 
     }
 
     num_radios = wifi_prop->numRadios;
-    TOTAL_INTERFACES(num_vaps, wifi_prop);
-    vap = &wifi_prop->interface_map[0];
+    radio = &wifi_prop->radio_interface_map[0];
+
     if (radio_index >= num_radios) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: invalid radioIndex : %d!!!\n", __FUNCTION__, __LINE__, radio_index);
         return RETURN_ERR;
     }
 
-    for (unsigned int index = 0; index < num_vaps; ++index) {
-        if ((vap[index].rdk_radio_index == radio_index) && (vap[index].primary == TRUE)) {
-            strncpy(if_name, &vap[index].interface_name[0], ifname_len);
+    for (unsigned int index = 0; index < num_radios; ++index) {
+        if (radio[index].radio_index == radio_index) {
+            strncpy(if_name, &radio[index].interface_name[0], ifname_len);
             b_valid = true;
             break;
         }
@@ -1797,8 +1782,8 @@ unsigned int create_vap_mask(wifi_platform_property_t *wifi_prop, unsigned int n
     wifi_interface_name_idex_map_t *interface_map;
 
     interface_map = &wifi_prop->interface_map[0];
-    TOTAL_INTERFACES(num_vaps, wifi_prop);
 
+    TOTAL_INTERFACES(num_vaps, wifi_prop);
     va_start(args, num_names);
     for (UINT num = 0; num < num_names; num++) {
         vap_type = va_arg(args, char *);

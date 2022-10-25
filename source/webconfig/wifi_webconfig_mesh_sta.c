@@ -117,6 +117,7 @@ webconfig_error_t encode_mesh_sta_subdoc(webconfig_t *config, webconfig_subdoc_d
 
     unsigned int array_size = 0;
     wifi_interface_name_idex_map_t *interface_map;
+    radio_interface_mapping_t *radio_interface_map;
     wifi_radio_capabilities_t *radiocap;
     //encode hal cap
 
@@ -144,6 +145,20 @@ webconfig_error_t encode_mesh_sta_subdoc(webconfig_t *config, webconfig_subdoc_d
         interface_map = &params->hal_cap.wifi_prop.interface_map[i];
         if (encode_wifivapcap(interface_map, obj_array) != webconfig_error_none) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode halcap object\n", __func__, __LINE__);
+            cJSON_Delete(json);
+            return webconfig_error_encode;
+        }
+    }
+
+    obj_array = cJSON_CreateArray();
+    cJSON_AddItemToObject(hal_cap, "WiFiRadioInterfaceCap", obj_array);
+
+    array_size = sizeof(params->hal_cap.wifi_prop.radio_interface_map)/sizeof(radio_interface_mapping_t);
+
+    for(i = 0; i < array_size; i++) {
+        radio_interface_map = &params->hal_cap.wifi_prop.radio_interface_map[i];
+        if (encode_wifiradiointerfacecap(radio_interface_map, obj_array) != webconfig_error_none) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode radiointerfacecap object\n", __func__, __LINE__);
             cJSON_Delete(json);
             return webconfig_error_encode;
         }
@@ -198,6 +213,7 @@ webconfig_error_t decode_mesh_sta_subdoc(webconfig_t *config, webconfig_subdoc_d
     webconfig_subdoc_decoded_data_t *params;
     cJSON *obj_wificap, *object, *obj_radios, *obj_radio, *hal_cap;
     wifi_interface_name_idex_map_t *interface_map;
+    radio_interface_mapping_t *radio_interface_map;
     wifi_radio_capabilities_t *radio_cap;
 
     params = &data->u.decoded;
@@ -271,6 +287,28 @@ webconfig_error_t decode_mesh_sta_subdoc(webconfig_t *config, webconfig_subdoc_d
             params->hal_cap.wifi_prop.radiocap[interface_map->rdk_radio_index].maxNumberVAPs++;
         }
     }
+
+    obj_wificap = cJSON_GetObjectItem(hal_cap, "WiFiRadioInterfaceCap");
+    if (cJSON_IsArray(obj_wificap) == false) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Radio Interface Cap not present\n", __func__, __LINE__);
+        cJSON_Delete(json);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
+        return webconfig_error_invalid_subdoc;
+    }
+
+    memset(&params->hal_cap.wifi_prop.radio_interface_map[0], 0, sizeof(radio_interface_mapping_t)* (MAX_NUM_RADIOS));
+    size = cJSON_GetArraySize(obj_wificap);
+    for (i=0; i<size; i++) {
+        object  = cJSON_GetArrayItem(obj_wificap, i);
+        radio_interface_map = &params->hal_cap.wifi_prop.radio_interface_map[i];
+        if (decode_wifiradiointerfacecap(radio_interface_map, object) != webconfig_error_none) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: radio interface cap object validation failed\n", __func__, __LINE__);
+            cJSON_Delete(json);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
+            return webconfig_error_decode;
+        }
+    }
+
     // decode radio objects
     obj_radios = cJSON_GetObjectItem(json, "WifiRadioConfig");
     if (cJSON_IsArray(obj_radios) == false) {

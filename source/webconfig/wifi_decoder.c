@@ -3078,13 +3078,6 @@ webconfig_error_t decode_wifivapcap(wifi_interface_name_idex_map_t *interface_ma
             return webconfig_error_decode;
         }
         interface_map->vlan_id = value_object->valuedouble;
- 
-        value_object = cJSON_GetObjectItem(object, "Primary");
-        if ((value_object == NULL) || (cJSON_IsBool(value_object) == false)) {
-            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
-            return webconfig_error_decode;
-        }
-        interface_map->primary = (value_object->type & cJSON_True) ? true:false;
 
         value_object = cJSON_GetObjectItem(object, "Index");
         if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
@@ -3095,6 +3088,44 @@ webconfig_error_t decode_wifivapcap(wifi_interface_name_idex_map_t *interface_ma
         interface_map->index = value_object->valuedouble;
 
         return webconfig_error_none;
+}
+
+webconfig_error_t decode_wifiradiointerfacecap(radio_interface_mapping_t *radio_interface_map, cJSON *object)
+{
+    cJSON *value_object;
+    char *tmp_string;
+
+    value_object = cJSON_GetObjectItem(object, "PhyIndex");
+    if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    radio_interface_map->phy_index = value_object->valuedouble;
+
+    value_object = cJSON_GetObjectItem(object, "RadioIndex");
+    if ((value_object == NULL) || (cJSON_IsNumber(value_object) == false)) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    radio_interface_map->radio_index = value_object->valuedouble;
+
+    value_object = cJSON_GetObjectItem(object, "InterfaceName");
+    if ((value_object == NULL) || (cJSON_IsString(value_object) == false)){
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    tmp_string = cJSON_GetStringValue(value_object);
+    if (tmp_string == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL pointer \n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    strncpy(radio_interface_map->interface_name, tmp_string, sizeof(radio_interface_map->interface_name) - 1);
+
+    return webconfig_error_none;
 }
 
 webconfig_error_t decode_csi_object(queue_t** csi_queue, cJSON *object)
