@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdbool.h>
+#include <errno.h>
 #include "stdlib.h"
 #include <sys/time.h>
 #include <assert.h>
@@ -8,6 +9,9 @@
 #include "wifi_mgr.h"
 #include "wifi_util.h"
 #include <rbus.h>
+
+#define PATH_TO_RSSI_NORMALIZER_FILE "/tmp/rssi_normalizer_2_4.cfg"
+#define DEFAULT_RSSI_NORMALIZER_2_4_VALUE 20
 
 int convert_radio_index_to_freq_band(int radio_index, int *band);
 
@@ -24,6 +28,75 @@ int convert_radio_index_to_freq_band(int radio_index, int *band)
     }
 
     return status;
+}
+
+static void swap_bss(bss_candidate_t *a, bss_candidate_t *b)
+{
+    bss_candidate_t t = *a;
+    *a = *b;
+    *b = t;
+}
+static int partition(bss_candidate_t *bss, int start, int end, int rssi_2_4_normalizer_val)
+{
+    int normalizer_val = 0;
+    int pivot = bss[end].external_ap.rssi;
+    int pidx = start;
+
+    if (bss[end].radio_freq_band == WIFI_FREQUENCY_2_4_BAND) {
+        pivot = bss[end].external_ap.rssi - rssi_2_4_normalizer_val;
+    }
+
+    for (int i = start; i < end; i++) {
+        normalizer_val = 0;
+        if (bss[i].radio_freq_band == WIFI_FREQUENCY_2_4_BAND) {
+            normalizer_val = rssi_2_4_normalizer_val;
+        }
+        if ((bss[i].external_ap.rssi - normalizer_val) > pivot) {
+            swap_bss(&bss[pidx], &bss[i]);
+            pidx++;
+        }
+    }
+    swap_bss(&bss[pidx], &bss[end]);
+    return pidx;
+}
+
+static void get_rssi_normalizer_value(char *path_to_file, int *rssi_2_4_normalizer_val)
+{
+    FILE *fp = fopen(path_to_file, "r");
+    char buff[512] = {0};
+
+    *rssi_2_4_normalizer_val = DEFAULT_RSSI_NORMALIZER_2_4_VALUE;
+
+    if (fp) {
+        int rc = fread(buff, 1, sizeof(buff) - 1, fp);
+        fclose(fp);
+        if (rc > 0 && isdigit(*buff)) {
+            *rssi_2_4_normalizer_val = atoi(buff);
+        }
+    }
+    else {
+        wifi_util_dbg_print(WIFI_CTRL, "%s():[%d] Unable to open file \'%s\' to get RSSI normalizer value [%s]. Setting default value.\r\n", 
+            __FUNCTION__, __LINE__, path_to_file, strerror(errno));
+    }
+}
+
+static void start_sorting_by_rssi(bss_candidate_t *bss, int start, int end, int rssi_2_4_normalizer_val)
+{
+    if (start < end) {
+        int pidx = partition(bss, start, end, rssi_2_4_normalizer_val);
+
+        start_sorting_by_rssi(bss, start, pidx - 1, rssi_2_4_normalizer_val);
+        start_sorting_by_rssi(bss, pidx + 1, end, rssi_2_4_normalizer_val);
+    }
+}
+
+void sort_bss_results_by_rssi(bss_candidate_t *bss, int start, int end)
+{
+    int rssi_2_4_normalizer_val = 0;
+
+    get_rssi_normalizer_value(PATH_TO_RSSI_NORMALIZER_FILE, &rssi_2_4_normalizer_val);
+    wifi_util_dbg_print(WIFI_CTRL, "%s():[%d] RSSI normalizer value [%d]\n", __FUNCTION__, __LINE__, rssi_2_4_normalizer_val);
+    start_sorting_by_rssi(bss, start, end, rssi_2_4_normalizer_val);
 }
 
 bool vap_svc_is_mesh_ext(unsigned int vap_index)
@@ -456,7 +529,7 @@ int process_ext_scan_results(vap_svc_t *svc, void *arg)
     num = results->num;
 
     tmp_bss = bss;
-
+    
     if (ext->conn_state >= connection_state_disconnected_scan_list_all) {
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d Received scan resuts when already have result or connection in progress, should not happen\n",
                         __FUNCTION__,__LINE__);
@@ -496,6 +569,8 @@ int process_ext_scan_results(vap_svc_t *svc, void *arg)
         tmp_bss++;
         scan_list++;
     }
+
+    sort_bss_results_by_rssi(ext->candidates_list.scan_list, 0, ext->candidates_list.scan_count - 1);
 
     if (ext->conn_state == connection_state_disconnected_scan_list_none) {
         if (band == WIFI_FREQUENCY_2_4_BAND) {
