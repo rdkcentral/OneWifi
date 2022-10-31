@@ -1585,9 +1585,7 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
     switch (subtype) {
         case ctrl_event_webconfig_set_data:
             memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap, sizeof(wifi_hal_capability_t));
-#if DML_SUPPORT
             analytics->event_fn(analytics, ctrl_event_type_webconfig, ctrl_event_webconfig_set_data, NULL);
-#endif
             webconfig_decode(config, &data, raw);
             analytics->event_fn(analytics, ctrl_event_type_webconfig, ctrl_event_webconfig_set_data, &data);
             break;
