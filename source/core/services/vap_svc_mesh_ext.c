@@ -31,21 +31,6 @@ bool vap_svc_is_mesh_ext(unsigned int vap_index)
     return isVapSTAMesh(vap_index) ? true : false;
 }
 
-void get_default_supported_scan_channel_list(uint8_t radio_band, unsigned int **channel_list, unsigned char *num_of_channels)
-{
-    static unsigned int radio_2_4_ghz_channel_list[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
-    static unsigned int radio_5_ghz_channel_list[] = { 36, 40, 44, 48, 149, 153, 157, 161, 165 };
-
-    if (radio_band == WIFI_FREQUENCY_2_4_BAND) {
-        *channel_list = radio_2_4_ghz_channel_list;
-        *num_of_channels = ARRAY_SZ(radio_2_4_ghz_channel_list);
-    } else if (radio_band == WIFI_FREQUENCY_5_BAND) {
-        *channel_list = radio_5_ghz_channel_list;
-        *num_of_channels = ARRAY_SZ(radio_5_ghz_channel_list);
-    }
-
-    //wifi_util_dbg_print(WIFI_CTRL, "%s:%d: wifi number of scan channels:%d : %d\r\n", __func__, __LINE__, *num_of_channels, *channel_list[0]);
-}
 
 void cancel_all_running_timer(vap_svc_t *svc)
 {
@@ -126,10 +111,11 @@ void cancel_scan_result_timer(wifi_ctrl_t *l_ctrl, vap_svc_ext_t *l_ext)
 
 void ext_start_scan(vap_svc_t *svc)
 {
-    unsigned int *channel_list = NULL;
-    unsigned char num_of_channels;
     vap_svc_ext_t   *ext;
     wifi_ctrl_t *ctrl;
+    unsigned int radio_index;
+    wifi_channels_list_t *channels;
+    wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
 
     ctrl = svc->ctrl;
     ext = &svc->u.ext;
@@ -148,14 +134,15 @@ void ext_start_scan(vap_svc_t *svc)
         ext->candidates_list.scan_list = NULL;
     }
 
-    /* start scan on 2.4Ghz */
-    wifi_util_dbg_print(WIFI_CTRL,"%s:%d start Scan on 2.4GHz and 5GHz radios\n",__func__, __LINE__);
-    get_default_supported_scan_channel_list(WIFI_FREQUENCY_2_4_BAND, &channel_list, &num_of_channels);
-    wifi_hal_startScan(0, WIFI_RADIO_SCAN_MODE_OFFCHAN, 0, num_of_channels, channel_list);
+    for (radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d start Scan on radio index %u\n", __func__, __LINE__,
+            radio_index);
 
-    /* start scan on 5Ghz */
-    get_default_supported_scan_channel_list(WIFI_FREQUENCY_5_BAND, &channel_list, &num_of_channels);
-    wifi_hal_startScan(1, WIFI_RADIO_SCAN_MODE_OFFCHAN, 0, num_of_channels, channel_list);
+        channels = &mgr->hal_cap.wifi_prop.radiocap[radio_index].channel_list[0];
+        wifi_hal_startScan(radio_index, WIFI_RADIO_SCAN_MODE_OFFCHAN, 0, channels->num_channels,
+            channels->channels_list);
+    }
+
     scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_scan_result_timeout_handler_id,
                 process_scan_result_timeout, svc,
                 EXT_SCAN_RESULT_TIMEOUT, 0);

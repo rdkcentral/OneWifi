@@ -423,21 +423,6 @@ wifi_platform_property_t *get_wifi_hal_cap_prop(void)
     return &wifi_mgr_obj->hal_cap.wifi_prop;
 }
 
-void start_scan(void)
-{
-    unsigned int *channel_list = NULL;
-    unsigned char num_of_channels;
-
-    wifi_util_info_print(WIFI_CTRL,"%s:%d start Scan on 2.4GHz and 5GHz radios\n",__func__, __LINE__);
-    /* start scan on 2.4Ghz */
-    get_default_supported_scan_channel_list(WIFI_FREQUENCY_2_4_BAND, &channel_list, &num_of_channels);
-    wifi_hal_startScan(0, WIFI_RADIO_SCAN_MODE_OFFCHAN, 0, num_of_channels, channel_list);
-
-    /* start scan on 5Ghz */
-    get_default_supported_scan_channel_list(WIFI_FREQUENCY_5_BAND, &channel_list, &num_of_channels);
-    wifi_hal_startScan(1, WIFI_RADIO_SCAN_MODE_OFFCHAN, 0, num_of_channels, channel_list);
-}
-
 void disconnect_wifi(wifi_platform_property_t *wifi_prop, unsigned int freq)
 {
     unsigned char band = 0;
