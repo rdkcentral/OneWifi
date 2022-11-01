@@ -15,6 +15,8 @@ extern "C" {
 #define analytics_format_other_core  "OMGR -> CORE : %s : %s\r\n"
 #define analytics_format_dml_core    "DML -> CORE : %s : %s\r\n"
 #define analytics_format_core_core   "CORE -> CORE : %s : %s\r\n"
+#define analytics_format_webconfig_core   "WEBCONFIG -> CORE : %s : %s\r\n"
+#define analytics_format_note_over_core "note over CORE : %s\r\n"
 
 #ifdef __cplusplus
 }

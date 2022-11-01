@@ -784,7 +784,7 @@ int push_global_config_dml_cache_to_one_wifidb()
     if (webconfig_encode(&webconfig_dml.webconfig, &data, webconfig_subdoc_type_wifi_config) == webconfig_error_none) {
         str = data.u.encoded.raw;
         wifi_util_dbg_print(WIFI_DMCLI, "%s:  GlobalConfig DML cache encoded successfully  \n", __FUNCTION__);
-        push_data_to_ctrl_queue(str, strlen(str), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data);
+        push_data_to_ctrl_queue(str, strlen(str), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data_dml);
     } else {
         wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: Webconfig set failed\n", __func__, __LINE__);
     }
@@ -832,7 +832,7 @@ int push_radio_dml_cache_to_one_wifidb()
     if (webconfig_encode(&webconfig_dml.webconfig, &data, webconfig_subdoc_type_radio) == webconfig_error_none) {
         str = data.u.encoded.raw;
         wifi_util_info_print(WIFI_DMCLI, "%s:  Radio DML cache encoded successfully  \n", __FUNCTION__);
-        push_data_to_ctrl_queue(str, strlen(str), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data);
+        push_data_to_ctrl_queue(str, strlen(str), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data_dml);
     } else {
         wifi_util_error_print(WIFI_DMCLI, "%s:%d: Webconfig set failed\n", __func__, __LINE__);
     }
@@ -854,7 +854,7 @@ int push_csi_data_dml_cache_to_one_wifidb() {
     if (webconfig_encode(&webconfig_dml.webconfig, &data, webconfig_subdoc_type_csi) == webconfig_error_none) {
         str = data.u.encoded.raw;
         wifi_util_info_print(WIFI_DMCLI, "%s: CSI cache encoded successfully  \n", __FUNCTION__);
-        push_data_to_ctrl_queue(str, strlen(str), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data);
+        push_data_to_ctrl_queue(str, strlen(str), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data_dml);
     } else {
         wifi_util_error_print(WIFI_DMCLI, "%s:%d: Webconfig set failed\n", __func__, __LINE__);
         return RETURN_ERR;
@@ -879,7 +879,7 @@ int push_acl_list_dml_cache_to_one_wifidb(wifi_vap_info_t *vap_info)
     if (webconfig_encode(&webconfig_dml.webconfig, &data, webconfig_subdoc_type_mac_filter) == webconfig_error_none) {
         str = data.u.encoded.raw;
         wifi_util_info_print(WIFI_DMCLI, "%s: ACL DML cache encoded successfully  \n", __FUNCTION__);
-        push_data_to_ctrl_queue(str, strlen(str), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data);
+        push_data_to_ctrl_queue(str, strlen(str), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data_dml);
     } else {
         wifi_util_error_print(WIFI_DMCLI, "%s:%d: Webconfig set failed\n", __func__, __LINE__);
     }
@@ -996,7 +996,7 @@ int push_subdoc_to_one_wifidb(uint8_t subdoc)
     if (webconfig_encode(&webconfig_dml.webconfig, &data, subdoc) == webconfig_error_none) {
         str = data.u.encoded.raw;
         wifi_util_info_print(WIFI_DMCLI, "%s:  VAP DML cache encoded successfully  \n", __FUNCTION__);
-        push_data_to_ctrl_queue(str, strlen(str), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data);
+        push_data_to_ctrl_queue(str, strlen(str), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data_dml);
     } else {
         wifi_util_error_print(WIFI_DMCLI, "%s:%d: Webconfig set failed\n", __func__, __LINE__);
     }
@@ -1081,7 +1081,7 @@ int push_blaster_config_dml_to_ctrl_queue()
     if (webconfig_encode(&webconfig_dml.webconfig, &data, webconfig_subdoc_type_blaster) == webconfig_error_none) {
         str = data.u.encoded.raw;
         wifi_util_info_print(WIFI_DMCLI, "%s:  Blaster subdoc encoded successfully  \n", __FUNCTION__);
-        push_data_to_ctrl_queue(str, strlen(str), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data);
+        push_data_to_ctrl_queue(str, strlen(str), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data_dml);
     } else {
         wifi_util_error_print(WIFI_DMCLI, "%s:%d: Webconfig set failed\n", __func__, __LINE__);
     }
@@ -1117,7 +1117,7 @@ int push_harvester_dml_cache_to_one_wifidb()
     if (webconfig_encode(&webconfig_dml.webconfig, &data, webconfig_subdoc_type_harvester) == webconfig_error_none) {
         str = data.u.encoded.raw;
         wifi_util_info_print(WIFI_DMCLI, "%s:  Harvester DML cache encoded successfully  \n", __FUNCTION__);
-        push_data_to_ctrl_queue(str, strlen(str), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data);
+        push_data_to_ctrl_queue(str, strlen(str), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data_dml);
     } else {
         wifi_util_error_print(WIFI_DMCLI, "%s:%d: Webconfig set failed\n", __func__, __LINE__);
     }

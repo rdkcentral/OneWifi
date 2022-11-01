@@ -1171,7 +1171,7 @@ pErr webconf_config_handler(void *blob)
     exec_ret_val->ErrorCode = BLOB_EXEC_SUCCESS;
 
     // push blob to ctrl queue
-    push_data_to_ctrl_queue(blob, strlen(blob), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data);
+    push_data_to_ctrl_queue(blob, strlen(blob), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data_webconfig);
 
     wifi_util_dbg_print(WIFI_CTRL, "%s: return success\n", __func__);
     return exec_ret_val;
@@ -1579,7 +1579,7 @@ pErr private_home_exec_common_handler(void *data, bool priv_sd)
     wifi_util_dbg_print(WIFI_CTRL, "%s, vap_blob:\n%s\n", __func__, vap_blob_str);
 
     // push blob to ctrl queue
-    push_data_to_ctrl_queue(vap_blob_str, strlen(vap_blob_str), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data);
+    push_data_to_ctrl_queue(vap_blob_str, strlen(vap_blob_str), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data_webconfig);
 
     cJSON_free(vap_blob_str);
     cJSON_Delete(n_blob);

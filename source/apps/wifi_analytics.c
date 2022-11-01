@@ -99,8 +99,8 @@ int analytics_event_exec_timeout(wifi_apps_t *apps, void *arg)
         memset(&radio_stats, 0, sizeof(radio_stats));
         memset(temp_str, 0, sizeof(temp_str));
         if (get_dev_stats_for_radio(radio_index, (radio_data_t *)&radio_stats) == RETURN_OK) {
-            sprintf(temp_str, "Radio%d_Stats noise_floor:%d channel_util:%d channel_interference:%d", radio_index,
-                        radio_stats.NoiseFloor, radio_stats.channelUtil, radio_stats.channelInterference);
+            sprintf(temp_str, "Radio%d_Stats channel: %d bw:%s noise_floor:%d channel_util:%d channel_interference:%d", radio_index,
+                       radio_stats.primary_radio_channel, radio_stats.channel_bandwidth, radio_stats.NoiseFloor, radio_stats.channelUtil, radio_stats.channelInterference);
             wifi_util_info_print(WIFI_ANALYTICS, analytics_format_hal_core, "radio_stats", temp_str);
         }
     }
@@ -128,7 +128,7 @@ int analytics_event_exec_timeout(wifi_apps_t *apps, void *arg)
     return 0;
 }
 
-int analytics_event_webconfig_set_data(wifi_apps_t *apps, void *arg)
+int analytics_event_webconfig_set_data(wifi_apps_t *apps, void *arg, ctrl_event_subtype_t sub_type)
 {
     webconfig_subdoc_data_t *doc = (webconfig_subdoc_data_t *)arg;
     char temp_str[512];
@@ -139,15 +139,28 @@ int analytics_event_webconfig_set_data(wifi_apps_t *apps, void *arg)
     int out_bytes = 0;
     unsigned int i = 0, j = 0;
     int  radio_index = 0;
+    char *analytics_format = NULL;
+
+    if (sub_type == ctrl_event_webconfig_set_data_dml) {
+        analytics_format = analytics_format_dml_core;
+    } else if (sub_type == ctrl_event_webconfig_set_data_ovsm) {
+        analytics_format = analytics_format_ovsm_core;
+    } else if (sub_type == ctrl_event_webconfig_set_data_webconfig) {
+        analytics_format = analytics_format_webconfig_core;
+    } else if (sub_type == ctrl_event_webconfig_set_data) {
+        analytics_format = analytics_format_core_core;
+    }
+
 
     if (doc == NULL) {
        /*Note : This is not error case, but this check is used to denote webconfig_set_data event
         * is received by the handle_webconfig_event() function and decode is not happened yet
         * to determine the subdoc type.
         */
-        wifi_util_info_print(WIFI_ANALYTICS, analytics_format_ovsm_core, "set", "webconfig");
+        wifi_util_info_print(WIFI_ANALYTICS, analytics_format, "set", "webconfig");
         return 0;
     }
+
 
     decoded_params = &doc->u.decoded;
     if (decoded_params == NULL) {
@@ -174,7 +187,7 @@ int analytics_event_webconfig_set_data(wifi_apps_t *apps, void *arg)
                     }
                 }
             }
-            wifi_util_info_print(WIFI_ANALYTICS, analytics_format_core_core, "set", temp_str);
+            wifi_util_info_print(WIFI_ANALYTICS, analytics_format_note_over_core, temp_str);
         break;
         case webconfig_subdoc_type_mesh_sta:
             out_bytes += snprintf(&temp_str[out_bytes], (sizeof(temp_str)-out_bytes), "%s:", subdoc_type_to_string(doc->type));
@@ -191,21 +204,21 @@ int analytics_event_webconfig_set_data(wifi_apps_t *apps, void *arg)
                     }
                 }
             }
-            wifi_util_info_print(WIFI_ANALYTICS, analytics_format_core_core, "set", temp_str);
+            wifi_util_info_print(WIFI_ANALYTICS, analytics_format_note_over_core, temp_str);
         break;
         case webconfig_subdoc_type_radio:
             out_bytes += snprintf(&temp_str[out_bytes], (sizeof(temp_str)-out_bytes), "%s:", subdoc_type_to_string(doc->type));
             for (i = 0; i < getNumberRadios(); i++) {
                 radio = &decoded_params->radios[i];
                 radio_index = convert_radio_name_to_radio_index(radio->name);
-                out_bytes += snprintf(&temp_str[out_bytes], (sizeof(temp_str)-out_bytes)," %d,%s,%d",
-                        radio_index, (radio->oper.enable==TRUE)?"enb":"dis", radio->oper.channel);
+                out_bytes += snprintf(&temp_str[out_bytes], (sizeof(temp_str)-out_bytes)," %d,%s,%d,%d",
+                        radio_index, (radio->oper.enable==TRUE)?"enb":"dis", radio->oper.channelWidth, radio->oper.channel);
             }
-            wifi_util_info_print(WIFI_ANALYTICS, analytics_format_core_core, "set", temp_str);
+            wifi_util_info_print(WIFI_ANALYTICS, analytics_format_note_over_core, temp_str);
         break;
         default:
             out_bytes += snprintf(&temp_str[out_bytes], (sizeof(temp_str)-out_bytes), "%s:", subdoc_type_to_string(doc->type));
-            wifi_util_info_print(WIFI_ANALYTICS, analytics_format_core_core, "set", temp_str);
+            wifi_util_info_print(WIFI_ANALYTICS, analytics_format_note_over_core, temp_str);
         break;
     }
 
@@ -421,7 +434,10 @@ int webconfig_event_analytics(wifi_apps_t *apps, ctrl_event_subtype_t sub_type, 
 {
     switch (sub_type) {
         case ctrl_event_webconfig_set_data:
-            analytics_event_webconfig_set_data(apps, arg);
+        case ctrl_event_webconfig_set_data_dml:
+        case ctrl_event_webconfig_set_data_webconfig:
+        case ctrl_event_webconfig_set_data_ovsm:
+            analytics_event_webconfig_set_data(apps, arg, sub_type);
             break;
 
         case ctrl_event_webconfig_set_status:
@@ -628,7 +644,9 @@ int wifi_apps_analytics_init(wifi_apps_t *apps)
     wifi_util_info_print(WIFI_ANALYTICS, "hide footbox\n");
     wifi_util_info_print(WIFI_ANALYTICS, "skinparam SequenceMessageAlign center\n");
     wifi_util_info_print(WIFI_ANALYTICS, "\n");
+    wifi_util_info_print(WIFI_ANALYTICS, "participant WEBCONFIG as \"Webconfig\"\n");
     wifi_util_info_print(WIFI_ANALYTICS, "participant OVSM as \"Ctrl/Ovsm\"\n");
+    wifi_util_info_print(WIFI_ANALYTICS, "participant DML as \"Dml\"\n");
     wifi_util_info_print(WIFI_ANALYTICS, "participant MGR as \"Mgr\"\n");
     wifi_util_info_print(WIFI_ANALYTICS, "participant CORE as \"Core\"\n");
     wifi_util_info_print(WIFI_ANALYTICS, "participant HAL as \"HAL\"\n");

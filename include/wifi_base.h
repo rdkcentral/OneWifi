@@ -56,6 +56,9 @@ typedef enum {
     ctrl_event_webconfig_hal_result,
     ctrl_event_webconfig_get_data,
     ctrl_event_webconfig_set_data_tunnel,
+    ctrl_event_webconfig_set_data_dml,
+    ctrl_event_webconfig_set_data_webconfig,
+    ctrl_event_webconfig_set_data_ovsm,
     ctrl_event_webconfig_max,
 
     // HAL events
