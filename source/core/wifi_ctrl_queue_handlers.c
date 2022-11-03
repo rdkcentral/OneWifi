@@ -1762,6 +1762,19 @@ void process_wps_command_event(unsigned int vap_index)
     wifi_hal_setApWpsButtonPush(vap_index);
 }
 
+void process_wps_pin_command_event(void *data)
+{
+    wps_pin_config_t  *wps_config = (wps_pin_config_t *)data;
+    if (wps_config == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d wps pin config data is NULL\n",__func__, __LINE__);
+        return;
+    }
+
+    wifi_util_info_print(WIFI_CTRL,"%s:%d wifi wps pin vap index = %d, wps_pin:%s\n",__func__, __LINE__,
+                                        wps_config->vap_index, wps_config->wps_pin);
+    wifi_hal_setApWpsPin(wps_config->vap_index, wps_config->wps_pin);
+}
+
 void marker_list_config_event(char *data, marker_list_t list_type)
 {
     int ret = -1;
@@ -2125,6 +2138,10 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len, ctrl_
 
         case ctrl_event_type_command_wps:
             process_wps_command_event(*(unsigned int *)data);
+            break;
+
+        case ctrl_event_type_command_wps_pin:
+            process_wps_pin_command_event(data);
             break;
 
         case ctrl_event_type_command_wifi_host_sync:

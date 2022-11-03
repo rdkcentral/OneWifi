@@ -970,6 +970,23 @@ int push_prefer_private_ctrl_queue(bool flag)
     return RETURN_OK;
 }
 
+int push_wps_pin_dml_to_ctrl_queue(unsigned int vap_index, char *wps_pin)
+{
+    wps_pin_config_t  wps_config;
+    memset(&wps_config, 0, sizeof(wps_config));
+
+    if (wps_pin == NULL) {
+        wifi_util_error_print(WIFI_DMCLI, "Inside :%s:%d vap_index:%d wps pin value is NULL\r\n", __func__, __LINE__, vap_index);
+        return RETURN_ERR;
+    }
+
+    wifi_util_dbg_print(WIFI_DMCLI, "Inside :%s:%d vap_index:%d wps_pin:%s\r\n", __func__, __LINE__, vap_index, wps_pin);
+    wps_config.vap_index = vap_index;
+    strncpy(wps_config.wps_pin, wps_pin, strlen(wps_pin));
+    push_data_to_ctrl_queue(&wps_config, sizeof(wps_config), ctrl_event_type_command, ctrl_event_type_command_wps_pin);
+    return RETURN_OK;
+}
+
 int push_rfc_dml_cache_to_one_wifidb(bool rfc_value,ctrl_event_subtype_t rfc)
 {
     wifi_util_info_print(WIFI_DMCLI, "Enter:%s  \n", __FUNCTION__);

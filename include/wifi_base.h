@@ -119,6 +119,7 @@ typedef enum {
     ctrl_event_type_command_kickmac,
     ctrl_event_type_command_kick_assoc_devices,
     ctrl_event_type_command_wps,
+    ctrl_event_type_command_wps_pin,
     ctrl_event_type_command_wifi_host_sync,
     ctrl_event_type_device_network_mode,
     ctrl_event_type_twoG80211axEnable_rfc,
@@ -151,6 +152,11 @@ typedef struct {
     wifi_frame_t    frame;
     unsigned char data[MAX_FRAME_SZ];
 } __attribute__((__packed__)) frame_data_t;
+
+typedef struct {
+    unsigned int  vap_index;
+    char          wps_pin[10];
+} __attribute__((__packed__)) wps_pin_config_t;
 
 #define MAX_SCANNED_VAPS       32
 

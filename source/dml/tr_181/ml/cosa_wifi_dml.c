@@ -9056,6 +9056,11 @@ WPS_SetParamStringValue
 
     if (AnscEqualString(ParamName, "X_CISCO_COM_ClientPin", TRUE))
     {
+        if ((strlen(pString) >= 4) && (strlen(pString) <= 8)) {
+            push_wps_pin_dml_to_ctrl_queue((instance_number - 1), pString);
+        } else {
+            return FALSE;
+        }
         return TRUE;
     }
 

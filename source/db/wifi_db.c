@@ -3582,6 +3582,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config)
     unsigned int found = 0;
     wifi_vap_info_t cfg;
     char vap_name[BUFFER_LENGTH_WIFIDB] = {0};
+    char wps_pin[128] = {0};
     char password[128] = {0};
     char radius_key[128] = {0};
     char ssid[128] = {0};
@@ -3735,6 +3736,12 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config)
         if (isVapPrivate(vap_index)) {
             cfg.u.bss_info.showSsid = true;
             cfg.u.bss_info.wps.methods = WIFI_ONBOARDINGMETHODS_PUSHBUTTON;
+            memset(wps_pin, 0, sizeof(wps_pin));
+            if (wifi_hal_get_default_wps_pin(wps_pin) == RETURN_OK) {
+                strcpy(cfg.u.bss_info.wps.pin, wps_pin);
+            } else {
+                strcpy(cfg.u.bss_info.wps.pin, "12345678");
+            }
         }
         else {
             cfg.u.bss_info.showSsid = false;

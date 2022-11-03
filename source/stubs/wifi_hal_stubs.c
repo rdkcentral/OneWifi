@@ -148,4 +148,9 @@ INT wifi_hal_get_default_country_code(char *code)
 INT wifi_hal_get_default_radius_key(char *radius_key)
 {
     return RETURN_OK;
+} 
+
+INT wifi_hal_setApWpsPin(INT ap_index, char *wps_pin)
+{
+    return RETURN_OK;
 }
