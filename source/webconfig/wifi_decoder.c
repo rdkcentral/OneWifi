@@ -3162,6 +3162,7 @@ webconfig_error_t decode_wifiradiocap(wifi_radio_capabilities_t *radio_cap, cJSO
         }
     }
     radio_cap->channel_list[0].num_channels = count;
+    radio_cap->numSupportedFreqBand = 1;
     return webconfig_error_none;
 }
 
