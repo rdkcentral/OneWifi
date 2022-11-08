@@ -2062,7 +2062,15 @@ int wifidb_update_wifi_macfilter_config(char *macfilter_key, acl_entry_t *config
         wifi_util_dbg_print(WIFI_DB,"%s:%d: updating table wifi_macfilter_config table entry is device_mac %s, device_name %s,macfilter_key %s reason %d and expiry_time %d\n", __func__, __LINE__, cfg_mac.device_mac, cfg_mac.device_name, cfg_mac.macfilter_key,cfg_mac.reason,cfg_mac.expiry_time);
 
         l_mac_entry.vap_index = convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, vap_name);
+        if (l_mac_entry.vap_index == -1) {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: Unable to get vap index for vap_name %s\n", __func__, __LINE__, vap_name);
+            return -1;
+        }
         l_rdk_vap_array = get_wifidb_rdk_vap_info(l_mac_entry.vap_index);
+        if (l_rdk_vap_array ==  NULL) {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: Unable to find vap_array for vap_index %d\n", __func__, __LINE__, l_mac_entry.vap_index);
+            return -1;
+        }
         l_mac_entry.acl_map = l_rdk_vap_array->acl_map;
         strncpy(l_mac_entry.device_name, cfg_mac.device_name, sizeof(l_mac_entry.device_name)-1);
         strncpy(l_mac_entry.mac, cfg_mac.device_mac, sizeof(l_mac_entry.mac)-1);
@@ -2284,6 +2292,10 @@ void wifidb_reset_macfilter_hashmap()
             continue;
         }
         l_rdk_vap_array = get_wifidb_rdk_vap_info(vap_index);
+        if (l_rdk_vap_array == NULL) {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: VAP Array for VAP Index %d not found\n", __func__, __LINE__, vap_index);
+            continue;
+        }
 
         if (l_rdk_vap_array->acl_map != NULL) {
             acl_entry = (acl_entry_t *)hash_map_get_first(l_rdk_vap_array->acl_map);
@@ -2311,7 +2323,7 @@ void wifidb_get_wifi_macfilter_config()
     wifi_db_t *g_wifidb;
     acl_entry_t *tmp_acl_entry = NULL;
     mac_address_t mac;
-    unsigned int vap_index;
+    int vap_index;
 
     g_wifidb = (wifi_db_t*) get_wifidb_obj();
     pcfg = ovsdb_table_select_where(g_wifidb->wifidb_sock_path, &table_Wifi_MacFilter_Config, NULL, &count);
@@ -2325,15 +2337,22 @@ void wifidb_get_wifi_macfilter_config()
         if (tmp != NULL) {
             tmp_vap_name = strtok_r(tmp, delim, &ptr_t);
             vap_index = convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, tmp_vap_name);
+            if (vap_index == -1) {
+                wifi_util_dbg_print(WIFI_DB,"%s:%d: Unable to find vap_index for vap_name %s\n", __func__, __LINE__, tmp_vap_name);
+                pcfg++;
+                free(tmp);
+                continue;
+            }
             free(tmp);
         } else {
             wifi_util_dbg_print(WIFI_DB,"%s:%d: NULL Pointer \n", __func__, __LINE__);
-            return;
+            pcfg++;
+            continue;
         }
 
         l_rdk_vap_array = get_wifidb_rdk_vap_info(vap_index);
 
-        if (l_rdk_vap_array->acl_map != NULL) {
+        if ((l_rdk_vap_array != NULL) && (l_rdk_vap_array->acl_map != NULL)) {
             tmp_acl_entry = (acl_entry_t *)malloc(sizeof(acl_entry_t));
             if (tmp_acl_entry == NULL) {
                 wifi_util_dbg_print(WIFI_DB,"%s:%d: NULL Pointer \n", __func__, __LINE__);
