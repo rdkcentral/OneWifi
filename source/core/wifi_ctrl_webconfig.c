@@ -160,8 +160,12 @@ int webconfig_analyze_pending_states(wifi_ctrl_t *ctrl)
     // this may move to scheduler task
     switch ((ctrl->webconfig_state & pending_state)) {
         case ctrl_webconfig_state_radio_cfg_rsp_pending:
-            type = webconfig_subdoc_type_radio;
-            webconfig_send_radio_subdoc_status(ctrl, type);
+            if (check_wifi_csa_sched_timeout_active_status(ctrl) == false) {
+                type = webconfig_subdoc_type_radio;
+                webconfig_send_radio_subdoc_status(ctrl, type);
+            } else {
+                return RETURN_OK;
+            }
             break;
         case ctrl_webconfig_state_vap_private_cfg_rsp_pending:
             type = webconfig_subdoc_type_private;
@@ -807,6 +811,15 @@ free_data:
     return ret;
 }
 
+bool is_csa_sched_timer_trigger(wifi_radio_operationParam_t old_radio_cfg, wifi_radio_operationParam_t new_radio_cfg)
+{
+    if (new_radio_cfg.enable && ((old_radio_cfg.channel != new_radio_cfg.channel) ||
+            (old_radio_cfg.channelWidth != new_radio_cfg.channelWidth))) {
+        return true;
+    }
+    return false;
+}
+
 int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
     unsigned int i, j;
@@ -842,11 +855,16 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
                 return RETURN_ERR;
             }
 
+            if (is_csa_sched_timer_trigger(mgr_radio_data->oper, radio_data->oper) == true) {
+                start_wifi_csa_sched_timer(&mgr_radio_data->vaps.radio_index, ctrl);
+            } else {
+                ctrl->webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
+            }
+
             // write the value to database
 #ifndef LINUX_VM_PORT
             wifidb_update_wifi_radio_config(mgr_radio_data->vaps.radio_index, &radio_data->oper);
 #endif
-            ctrl->webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
         } else {
             wifi_util_info_print(WIFI_MGR, "%s:%d: Received radio config is same, not applying\n", __func__, __LINE__);
         }
@@ -890,7 +908,6 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                     ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
                 }
             } else {
-                ctrl->webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
                 ret = webconfig_hal_radio_apply(ctrl, &data->u.decoded);
             }
             break;
@@ -1057,7 +1074,7 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                 ctrl->webconfig_state &= ~ctrl_webconfig_state_wifi_config_cfg_rsp_pending;
                 wifi_util_error_print(WIFI_MGR, "%s:%d: Not expected publish of global wifi webconfig subdoc\n", __func__, __LINE__);
             } else {
-                ctrl->webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
+                ctrl->webconfig_state |= ctrl_webconfig_state_wifi_config_cfg_rsp_pending;
                 ret = webconfig_global_config_apply(ctrl, &data->u.decoded);
             }
             break;

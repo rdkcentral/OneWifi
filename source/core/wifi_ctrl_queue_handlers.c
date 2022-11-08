@@ -1332,7 +1332,10 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg)
     wifi_radio_operationParam_t *radio_params = NULL;
     wifi_mgr_t *g_wifidb;
     g_wifidb = get_wifimgr_obj();
-    
+    wifi_ctrl_t *ctrl;
+
+    ctrl = &g_wifidb->ctrl;
+
     radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(ch_chg->radioIndex);
     if (radio_params == NULL) {
         wifi_util_error_print(WIFI_CTRL,"%s: wrong index for radio map: %d\n",__FUNCTION__, ch_chg->radioIndex);
@@ -1341,8 +1344,19 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg)
 
     wifi_radio_capabilities_t radio_capab = g_wifidb->hal_cap.wifi_prop.radiocap[ch_chg->radioIndex];
 
-    wifi_util_dbg_print(WIFI_CTRL,"%s:%d channel change on radio:%d old channel:%d new channel:%d channel change event type:%d radar_event_type %d op_class:%d\n",
-            __func__, __LINE__, ch_chg->radioIndex, radio_params->channel, ch_chg->channel, ch_chg->event, ch_chg->sub_event, ch_chg->op_class);
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d channel change on radio:%d old channel:%d new channel:%d channel change event type:%d \
+                            radar_event_type %d op_class:%d\n", __func__, __LINE__, ch_chg->radioIndex, radio_params->channel,
+                            ch_chg->channel, ch_chg->event, ch_chg->sub_event, ch_chg->op_class);
+
+    stop_wifi_csa_sched_timer(ch_chg->radioIndex, ctrl);
+
+    if ((ch_chg->event == WIFI_EVENT_CHANNELS_CHANGED) && ((radio_params->channel == ch_chg->channel)
+                && (radio_params->channelWidth == ch_chg->channelWidth))) {
+        return;
+    }
+
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d channel change: old channelWidth:%d new channelWidth:%d\r\n",
+                            __func__, __LINE__, radio_params->channelWidth, ch_chg->channelWidth);
 
     if (ch_chg->event == WIFI_EVENT_CHANNELS_CHANGED) {
         pthread_mutex_lock(&g_wifidb->data_cache_lock);

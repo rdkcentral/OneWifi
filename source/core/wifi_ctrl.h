@@ -82,6 +82,8 @@ extern "C" {
 #define GREYLIST_TIMEOUT_IN_SECONDS        (24 * 60 * 60)
 #define GREYLIST_CHECK_IN_SECONDS          (1 * 60 * 60)
 
+#define MAX_WIFI_CSA_SCHED_TIMEOUT         (4 * 1000)
+
 typedef enum {
     rbus_bool_data,
     rbus_int_data,
@@ -130,6 +132,10 @@ typedef struct {
     bssid_t                     bssid;
 }__attribute__((packed)) wifi_sta_conn_info_t;
 
+typedef struct {
+    int  wifi_csa_sched_handler_id[MAX_NUM_RADIOS];
+}__attribute__((packed)) wifi_scheduler_id_t;
+
 typedef struct wifi_ctrl {
     bool                exit_ctrl;
     queue_t             *queue;
@@ -159,6 +165,7 @@ typedef struct wifi_ctrl {
     wifi_apps_t         fi_apps[wifi_apps_type_max];
     unsigned int        network_mode; /* 0 - gateway, 1 - extender */
     bool                active_gw_sta_status;
+    wifi_scheduler_id_t wifi_sched_id;
 } wifi_ctrl_t;
 
 typedef struct {

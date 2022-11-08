@@ -3811,7 +3811,6 @@ Radio_SetParamUlongValue
         }
         
         wifiRadioOperParam->channelWidth = tmpChanWidth;
-	wifi_radio->channelWidth = tmpChanWidth;
         ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s OperatingChannelBandwidth : %d\n", __FUNCTION__, wifiRadioOperParam->channelWidth);
 	wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:channelWidth=%d tmpChanWidth = %d  \n",__func__, __LINE__,wifiRadioOperParam->channelWidth,tmpChanWidth);
         is_radio_config_changed = TRUE; 
