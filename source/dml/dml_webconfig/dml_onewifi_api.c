@@ -86,14 +86,14 @@ active_msmt_t *get_dml_cache_blaster(void)
     return &webconfig_dml.blaster;
 }
 
-queue_t** get_dml_assoc_dev_queue(unsigned int radio_index, unsigned int vap_array_index)
+hash_map_t** get_dml_assoc_dev_hash_map(unsigned int radio_index, unsigned int vap_array_index)
 {
     webconfig_dml_t* dml = get_webconfig_dml();
     if (dml == NULL) {
         return NULL;
     }
 
-    return &(dml->assoc_dev_queue[radio_index][vap_array_index]);
+    return &(dml->assoc_dev_hash_map[radio_index][vap_array_index]);
 }
 
 hash_map_t** get_dml_acl_hash_map(unsigned int radio_index, unsigned int vap_index)
@@ -444,6 +444,8 @@ void get_associated_devices_data(unsigned int radio_index)
     int itr=0, itrj=0;
     webconfig_subdoc_data_t data;
     char str[MAX_SUBDOC_SIZE];
+    assoc_dev_data_t *assoc_dev_data, *temp_assoc_dev_data;
+    char key[64] = {0};
 
 #if 0
     //This part of code will be enabled once the rbus_get issue is resolved
@@ -472,11 +474,22 @@ void get_associated_devices_data(unsigned int radio_index)
     }
     for (itr=0; itr < (int)get_num_radio_dml(); itr++) {
         for (itrj=0; itrj<MAX_NUM_VAP_PER_RADIO; itrj++) {
-            queue_t** assoc_dev_queue = get_dml_assoc_dev_queue(itr, itrj);
-            if ((assoc_dev_queue != NULL) && (*assoc_dev_queue != NULL)) {
-                queue_destroy(*assoc_dev_queue);
+            hash_map_t** assoc_dev_map = get_dml_assoc_dev_hash_map(itr, itrj);
+            if ((assoc_dev_map != NULL) && (*assoc_dev_map != NULL)) {
+                //                hash_map_destroy(*assoc_dev_map);
+                assoc_dev_data = hash_map_get_first(*assoc_dev_map);
+                while (assoc_dev_data != NULL) {
+                    memset(key, 0, sizeof(key));
+                    to_mac_str(assoc_dev_data->dev_stats.cli_MACAddress, key);
+                    assoc_dev_data = hash_map_get_next(*assoc_dev_map, assoc_dev_data);
+                    temp_assoc_dev_data = hash_map_remove(*assoc_dev_map, key);
+                    if (temp_assoc_dev_data != NULL) {
+                        free(temp_assoc_dev_data);
+                    }
+                }
+                hash_map_destroy(*assoc_dev_map);
             }
-            *assoc_dev_queue = data.u.decoded.radios[itr].vaps.rdk_vap_array[itrj].associated_devices_queue;
+            *assoc_dev_map = data.u.decoded.radios[itr].vaps.rdk_vap_array[itrj].associated_devices_map;
         }
     }
 }
@@ -487,19 +500,19 @@ unsigned long get_associated_devices_count(wifi_vap_info_t *vap_info)
 
     int radio_index = convert_vap_name_to_radio_array_index(&((webconfig_dml_t*) get_webconfig_dml())->hal_cap.wifi_prop, vap_info->vap_name);
     int vap_array_index = convert_vap_name_to_array_index(&((webconfig_dml_t*) get_webconfig_dml())->hal_cap.wifi_prop, vap_info->vap_name);
-    queue_t **assoc_dev_queue = get_dml_assoc_dev_queue(radio_index, vap_array_index);
+    hash_map_t **assoc_dev_hash_map = get_dml_assoc_dev_hash_map(radio_index, vap_array_index);
 
-    if ((assoc_dev_queue == NULL) && (*assoc_dev_queue == NULL)) {
-        wifi_util_dbg_print(WIFI_DMCLI,"%s %d No queue returning zero\n", __func__, __LINE__);
+    if ((assoc_dev_hash_map == NULL) || (*assoc_dev_hash_map == NULL)) {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s %d No hash_map returning zero\n", __func__, __LINE__);
         return count;
     }
 
-    count  = (unsigned long)queue_count(*assoc_dev_queue);
-    wifi_util_dbg_print(WIFI_DMCLI,"%s %d returning queue count as %d\n", __func__, __LINE__, count);
+    count  = (unsigned long)hash_map_count(*assoc_dev_hash_map);
+    wifi_util_dbg_print(WIFI_DMCLI,"%s %d returning hash_map count as %d\n", __func__, __LINE__, count);
     return count;
 }
 
-queue_t* get_associated_devices_queue(wifi_vap_info_t *vap_info)
+hash_map_t* get_associated_devices_hash_map(wifi_vap_info_t *vap_info)
 {
     if (vap_info == NULL) {
         wifi_util_error_print(WIFI_DMCLI,"%s %d NULL Pointer\n", __func__, __LINE__);
@@ -514,13 +527,13 @@ queue_t* get_associated_devices_queue(wifi_vap_info_t *vap_info)
         return NULL;
     }
 
-    queue_t **assoc_dev_queue = get_dml_assoc_dev_queue(radio_index, vap_array_index);
-    if (assoc_dev_queue == NULL) {
+    hash_map_t **assoc_dev_hash_map = get_dml_assoc_dev_hash_map(radio_index, vap_array_index);
+    if (assoc_dev_hash_map == NULL) {
         wifi_util_error_print(WIFI_DMCLI,"%s %d NULL pointer \n", __func__, __LINE__);
         return NULL;
     }
 
-    return *assoc_dev_queue;
+    return *assoc_dev_hash_map;
 }
 
 queue_t** get_acl_new_entry_queue(wifi_vap_info_t *vap_info)
@@ -597,8 +610,7 @@ int init(webconfig_dml_t *consumer)
         // unregister and deinit everything
         return RETURN_ERR;
     }
-
-    memset(consumer->assoc_dev_queue, 0, sizeof(consumer->assoc_dev_queue));
+    memset(consumer->assoc_dev_hash_map, 0, sizeof(consumer->assoc_dev_hash_map));
 
     for (itr = 0; itr<MAX_NUM_RADIOS; itr++) {
         for (itrj = 0; itrj<MAX_NUM_VAP_PER_RADIO; itrj++) {

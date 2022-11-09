@@ -217,9 +217,9 @@ int init_global_radio_config(rdk_wifi_radio_t *radios_cfg, UINT radio_index)
             strcpy((char *)radios_cfg->vaps.rdk_vap_array[vap_array_index].vap_name, (char *)wifi_hal_cap_obj->wifi_prop.interface_map[i].vap_name);
             strcpy((char *)radios_cfg->vaps.vap_map.vap_array[vap_array_index].vap_name, (char *)wifi_hal_cap_obj->wifi_prop.interface_map[i].vap_name);
 
-            radios_cfg->vaps.rdk_vap_array[vap_array_index].associated_devices_queue = queue_create();
-            if (radios_cfg->vaps.rdk_vap_array[vap_array_index].associated_devices_queue == NULL) {
-                wifi_util_info_print(WIFI_CTRL,"%s:%d queue_create(associated_devices_queue) failed\n",__FUNCTION__, __LINE__);
+            radios_cfg->vaps.rdk_vap_array[vap_array_index].associated_devices_map = hash_map_create();
+            if (radios_cfg->vaps.rdk_vap_array[vap_array_index].associated_devices_map == NULL) {
+                wifi_util_info_print(WIFI_CTRL,"%s:%d hash_map_create (associated_devices_hash_map) failed\n",__FUNCTION__, __LINE__);
             }
             radios_cfg->vaps.rdk_vap_array[vap_array_index].acl_map = hash_map_create();
             if (radios_cfg->vaps.rdk_vap_array[vap_array_index].acl_map == NULL) {

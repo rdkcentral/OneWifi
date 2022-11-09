@@ -509,9 +509,10 @@ rbusError_t get_assoc_clients_data(rbusHandle_t handle, rbusProperty_t property,
     char const* name = rbusProperty_GetName(property);
     rbusValue_t value;
     webconfig_subdoc_data_t data;
-    int itr, itrj, citr;
+    int itr, itrj;
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    assoc_dev_data_t *assoc_dev_data;
 
     if ((mgr == NULL) || (ctrl == NULL)) {
         wifi_util_error_print(WIFI_CTRL,"%s:%d NULL pointers\n", __func__,__LINE__);
@@ -530,12 +531,12 @@ rbusError_t get_assoc_clients_data(rbusHandle_t handle, rbusProperty_t property,
     pthread_mutex_lock(&ctrl->lock);
     for (itr=0; itr<MAX_NUM_RADIOS; itr++) {
         for (itrj=0; itrj<MAX_NUM_VAP_PER_RADIO; itrj++) {
-            if (mgr->radio_config[itr].vaps.rdk_vap_array[itrj].associated_devices_queue != NULL) {
-               int count = queue_count(mgr->radio_config[itr].vaps.rdk_vap_array[itrj].associated_devices_queue);
-               for (citr=0; citr<count; citr++) {
-                   assoc_dev_data_t *assoc_dev_data = (assoc_dev_data_t *)queue_peek(mgr->radio_config[itr].vaps.rdk_vap_array[itrj].associated_devices_queue, citr);
+            if (mgr->radio_config[itr].vaps.rdk_vap_array[itrj].associated_devices_map != NULL) {
+                assoc_dev_data = hash_map_get_first(mgr->radio_config[itr].vaps.rdk_vap_array[itrj].associated_devices_map);
+                while (assoc_dev_data != NULL) {
                    get_sta_stats_info(assoc_dev_data);
-               }
+                   assoc_dev_data = hash_map_get_next(mgr->radio_config[itr].vaps.rdk_vap_array[itrj].associated_devices_map, assoc_dev_data);
+                }
             }
         }
     }
@@ -723,10 +724,10 @@ int wifiapi_result_publish(void)
 void get_assoc_devices_blob(char *str)
 {
     webconfig_subdoc_data_t data;
-    int itr, itrj, citr;
+    int itr, itrj;
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-
+    assoc_dev_data_t *assoc_dev_data;
 
     if ((mgr == NULL) || (ctrl == NULL)) {
         wifi_util_error_print(WIFI_CTRL,"%s:%d NULL pointers\n", __func__,__LINE__);
@@ -736,12 +737,12 @@ void get_assoc_devices_blob(char *str)
     pthread_mutex_lock(&ctrl->lock);
     for (itr=0; itr<MAX_NUM_RADIOS; itr++) {
         for (itrj=0; itrj<MAX_NUM_VAP_PER_RADIO; itrj++) {
-            if (mgr->radio_config[itr].vaps.rdk_vap_array[itrj].associated_devices_queue != NULL) {
-               int count = queue_count(mgr->radio_config[itr].vaps.rdk_vap_array[itrj].associated_devices_queue);
-               for (citr=0; citr<count; citr++) {
-                   assoc_dev_data_t *assoc_dev_data = (assoc_dev_data_t *)queue_peek(mgr->radio_config[itr].vaps.rdk_vap_array[itrj].associated_devices_queue, citr);
-                   get_sta_stats_info(assoc_dev_data);
-               }
+            if (mgr->radio_config[itr].vaps.rdk_vap_array[itrj].associated_devices_map != NULL) {
+                assoc_dev_data = hash_map_get_first(mgr->radio_config[itr].vaps.rdk_vap_array[itrj].associated_devices_map);
+                while (assoc_dev_data != NULL) {
+                    get_sta_stats_info(assoc_dev_data);
+                    assoc_dev_data = hash_map_get_next(mgr->radio_config[itr].vaps.rdk_vap_array[itrj].associated_devices_map, assoc_dev_data);
+                }
             }
         }
     }

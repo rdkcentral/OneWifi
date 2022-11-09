@@ -38,7 +38,7 @@ typedef struct {
     wifi_hal_capability_t   hal_cap;
     rdk_wifi_radio_t    radios[MAX_NUM_RADIOS];
     active_msmt_t blaster;
-    queue_t    *assoc_dev_queue[MAX_NUM_RADIOS][MAX_NUM_VAP_PER_RADIO];
+    hash_map_t    *assoc_dev_hash_map[MAX_NUM_RADIOS][MAX_NUM_VAP_PER_RADIO];
     acl_data_t acl_data;
     rbusHandle_t	rbus_handle;
     instant_measurement_config_t harvester;

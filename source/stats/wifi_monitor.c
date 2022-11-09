@@ -4619,6 +4619,8 @@ int init_wifi_monitor ()
 void deinit_wifi_monitor()
 {
     unsigned int i;
+    sta_data_t *sta, *temp_sta;
+    char key[64] = {0};
 
     events_deinit();
 
@@ -4632,8 +4634,19 @@ void deinit_wifi_monitor()
         queue_destroy(g_events_monitor.csi_queue);
     }
     for (i = 0; i < getTotalNumberVAPs(); i++) {
-        if(g_monitor_module.bssid_data[i].sta_map != NULL)
+        if(g_monitor_module.bssid_data[i].sta_map != NULL) {
+            sta = hash_map_get_first(g_monitor_module.bssid_data[i].sta_map);
+            while (sta != NULL) {
+                memset(key, 0, sizeof(key));
+                to_sta_key(sta->sta_mac, key);
+                sta = hash_map_get_next(g_monitor_module.bssid_data[i].sta_map, sta);
+                temp_sta = hash_map_remove(g_monitor_module.bssid_data[i].sta_map, key);
+                if (temp_sta != NULL) {
+                    free(temp_sta);
+                }
+            }
             hash_map_destroy(g_monitor_module.bssid_data[i].sta_map);
+        }
     }
     pthread_mutex_destroy(&g_monitor_module.lock);
     pthread_cond_destroy(&g_monitor_module.cond);

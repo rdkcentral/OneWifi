@@ -13327,25 +13327,31 @@ AssociatedDevice1_GetEntry
     )
 {
     wifi_vap_info_t *vap_info = (wifi_vap_info_t *)hInsContext;
+    unsigned int itr = 0;
+    assoc_dev_data_t* assoc_dev_data;
     if (vap_info == NULL) {
         return (ANSC_HANDLE) NULL;
     }
 
     //Will be returning the entire stats structure later just returning mac address as of now
-    queue_t *assoc_vap_info_queue = (queue_t *)get_associated_devices_queue(vap_info);
-    if (assoc_vap_info_queue == NULL) {
+    hash_map_t *assoc_vap_info_map = (hash_map_t *)get_associated_devices_hash_map(vap_info);
+    if (assoc_vap_info_map == NULL) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d NULL pointer\n", __func__, __LINE__);
         return (ANSC_HANDLE) NULL;
     }
-
-    unsigned int count = queue_count(assoc_vap_info_queue);
+    unsigned int count = hash_map_count(assoc_vap_info_map);
     if (nIndex > count) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d NULL Pointer\n", __func__, __LINE__);
         return (ANSC_HANDLE) NULL;
     }
 
-    assoc_dev_data_t* assoc_dev_data = (assoc_dev_data_t *)queue_peek(assoc_vap_info_queue, nIndex);
+    assoc_dev_data = hash_map_get_first(assoc_vap_info_map);
+    for (itr=0; (itr<nIndex) && (assoc_dev_data != NULL); itr++) {
+        assoc_dev_data = hash_map_get_next(assoc_vap_info_map, assoc_dev_data);
+    }
+
     *pInsNumber = nIndex + 1;
+
     return (ANSC_HANDLE) assoc_dev_data; /* return the handle */
 }
 

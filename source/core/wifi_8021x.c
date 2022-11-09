@@ -231,16 +231,29 @@ void process_8021x_data_timeout(wifi_8021x_t *module)
 
 void deinit_8021x(wifi_8021x_t *module)
 {
-       unsigned int i;
+    unsigned int i;
+    wifi_8021x_data_t *sta_data, *temp_sta_data;
+    char key[64] = {0};
 
 #ifdef WIFI_HAL_VERSION_3
-        for (i = 0; i < (UINT)getTotalNumberVAPs(); i++) {
+    for (i = 0; i < (UINT)getTotalNumberVAPs(); i++) {
 #else
-        for (i = 0; i < MAX_VAP; i++) {
+    for (i = 0; i < MAX_VAP; i++) {
 #endif
-               hash_map_destroy(module->bssid[i].sta_map);
-       }
-
+        if (module->bssid[i].sta_map != NULL) {
+            sta_data = hash_map_get_first(module->bssid[i].sta_map);
+            while (sta_data != NULL) {
+                memset(key, 0, sizeof(key));
+                snprintf(key, sizeof(key), "%s", sta_data->mac);
+                sta_data = hash_map_get_next(module->bssid[i].sta_map, sta_data);
+                temp_sta_data = hash_map_remove(module->bssid[i].sta_map, key);
+                if (temp_sta_data != NULL) {
+                    free(temp_sta_data);
+                }
+            }
+            hash_map_destroy(module->bssid[i].sta_map);
+        }
+    }
 }
 
 int init_8021x(wifi_8021x_t *module)

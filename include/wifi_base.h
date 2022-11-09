@@ -345,8 +345,8 @@ typedef struct {
 typedef struct {
     wifi_vap_name_t         vap_name;
     UINT                    vap_index;
-    queue_t                 *associated_devices_queue;
     hash_map_t              *acl_map;
+    hash_map_t              *associated_devices_map;
     int                     kick_device_task_counter;
     bool                    kick_device_config_change;
     bool                    is_mac_filter_initialized;

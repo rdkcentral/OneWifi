@@ -558,6 +558,8 @@ webconfig_error_t free_vap_object_assoc_client_entries(webconfig_subdoc_data_t *
     rdk_wifi_radio_t *radio;
     rdk_wifi_vap_info_t *rdk_vap_info;
     webconfig_subdoc_decoded_data_t *decoded_params;
+    assoc_dev_data_t *assoc_dev_data, *temp_assoc_dev_data;
+    mac_addr_str_t mac_str;
 
     decoded_params = &data->u.decoded;
     if (decoded_params == NULL) {
@@ -569,14 +571,23 @@ webconfig_error_t free_vap_object_assoc_client_entries(webconfig_subdoc_data_t *
         radio = &decoded_params->radios[i];
         for (j = 0; j < radio->vaps.num_vaps; j++) {
             rdk_vap_info = &decoded_params->radios[i].vaps.rdk_vap_array[j];
-            if (rdk_vap_info == NULL){
+            if (rdk_vap_info == NULL) {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: rdk_vap_info is null", __func__, __LINE__);
                 return webconfig_error_invalid_subdoc;
             }
-            if (rdk_vap_info->associated_devices_queue != NULL) {
-                queue_destroy(rdk_vap_info->associated_devices_queue);
+            if (rdk_vap_info->associated_devices_map != NULL) {
+                assoc_dev_data = hash_map_get_first(rdk_vap_info->associated_devices_map);
+                while(assoc_dev_data != NULL) {
+                    to_mac_str(assoc_dev_data->dev_stats.cli_MACAddress, mac_str);
+                    assoc_dev_data = hash_map_get_next(rdk_vap_info->associated_devices_map, assoc_dev_data);
+                    temp_assoc_dev_data = hash_map_remove(rdk_vap_info->associated_devices_map, mac_str);
+                    if (temp_assoc_dev_data != NULL) {
+                        free(temp_assoc_dev_data);
+                    }
+                }
+                hash_map_destroy(rdk_vap_info->associated_devices_map);
+                rdk_vap_info->associated_devices_map =  NULL;
             }
-            rdk_vap_info->associated_devices_queue =  NULL;
         }
     }
     return webconfig_error_none;
@@ -2230,7 +2241,7 @@ webconfig_error_t translate_mesh_sta_vap_info_to_vif_state(const wifi_vap_info_t
 
 webconfig_error_t translate_vap_object_to_ovsdb_associated_clients(const rdk_wifi_vap_info_t *rdk_vap_info, const struct schema_Wifi_Associated_Clients **clients_table, unsigned int *client_count, wifi_platform_property_t *wifi_prop)
 {
-    int count = 0, i = 0;
+    //	int count = 0, i = 0;
     assoc_dev_data_t *assoc_dev_data = NULL;
     struct schema_Wifi_Associated_Clients *client_row;
     unsigned int associated_client_count = 0;
@@ -2239,42 +2250,38 @@ webconfig_error_t translate_vap_object_to_ovsdb_associated_clients(const rdk_wif
         return webconfig_error_translate_to_ovsdb;
     }
 
-    if (rdk_vap_info->associated_devices_queue != NULL) {
-        count = queue_count(rdk_vap_info->associated_devices_queue);
-    }
-
     associated_client_count = *client_count;
-    for (i=0; i<count; i++) {
-        assoc_dev_data = (assoc_dev_data_t *)queue_peek(rdk_vap_info->associated_devices_queue, i);
-        if (assoc_dev_data == NULL) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL pointer\n", __func__, __LINE__);
-            return webconfig_error_encode;
-        }
-        client_row = (struct schema_Wifi_Associated_Clients *)clients_table[associated_client_count];
-        if (client_row == NULL) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: client row empty for the client number %d\n", __func__, __LINE__, associated_client_count);
-            return webconfig_error_translate_to_ovsdb;
-        }
-        snprintf(client_row->mac, sizeof(client_row->mac), "%02x:%02x:%02x:%02x:%02x:%02x", assoc_dev_data->dev_stats.cli_MACAddress[0], assoc_dev_data->dev_stats.cli_MACAddress[1],
-                assoc_dev_data->dev_stats.cli_MACAddress[2], assoc_dev_data->dev_stats.cli_MACAddress[3], assoc_dev_data->dev_stats.cli_MACAddress[4],
-                assoc_dev_data->dev_stats.cli_MACAddress[5]);
+    if (rdk_vap_info->associated_devices_map != NULL) {
+        assoc_dev_data = hash_map_get_first(rdk_vap_info->associated_devices_map);
 
-        if (assoc_dev_data->dev_stats.cli_Active == true) {
-            snprintf(client_row->state, sizeof(client_row->state), "active");
-        } else {
-            snprintf(client_row->state, sizeof(client_row->state), "idle");
+        while (assoc_dev_data != NULL) {
+            client_row = (struct schema_Wifi_Associated_Clients *)clients_table[associated_client_count];
+            if (client_row == NULL) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: client row empty for the client number %d\n", __func__, __LINE__, associated_client_count);
+                return webconfig_error_translate_to_ovsdb;
+            }
+            snprintf(client_row->mac, sizeof(client_row->mac), "%02x:%02x:%02x:%02x:%02x:%02x", assoc_dev_data->dev_stats.cli_MACAddress[0], assoc_dev_data->dev_stats.cli_MACAddress[1],
+                    assoc_dev_data->dev_stats.cli_MACAddress[2], assoc_dev_data->dev_stats.cli_MACAddress[3], assoc_dev_data->dev_stats.cli_MACAddress[4],
+                    assoc_dev_data->dev_stats.cli_MACAddress[5]);
+
+            if (assoc_dev_data->dev_stats.cli_Active == true) {
+                snprintf(client_row->state, sizeof(client_row->state), "active");
+            } else {
+                snprintf(client_row->state, sizeof(client_row->state), "idle");
+            }
+            if ((strlen( assoc_dev_data->dev_stats.cli_OperatingStandard) != 0)) {
+                snprintf(client_row->capabilities[0], sizeof(client_row->capabilities[0]), "11%s", assoc_dev_data->dev_stats.cli_OperatingStandard);
+            } else {
+                wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Invalid Capabilities\n", __func__, __LINE__);
+                //return webconfig_error_translate_to_ovsdb;
+            }
+            if (convert_vapname_to_ifname(wifi_prop, (char *)rdk_vap_info->vap_name, client_row->_uuid.uuid, sizeof(client_row->_uuid.uuid)) != RETURN_OK) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: vapname to interface name conversion failed\n", __func__, __LINE__);
+                return webconfig_error_translate_to_ovsdb;
+            }
+            associated_client_count++;
+            assoc_dev_data = hash_map_get_next(rdk_vap_info->associated_devices_map, assoc_dev_data);
         }
-        if ((strlen( assoc_dev_data->dev_stats.cli_OperatingStandard) != 0)) {
-            snprintf(client_row->capabilities[0], sizeof(client_row->capabilities[0]), "11%s", assoc_dev_data->dev_stats.cli_OperatingStandard);
-        } else {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Invalid Capabilities\n", __func__, __LINE__);
-            //return webconfig_error_translate_to_ovsdb;
-        }
-        if (convert_vapname_to_ifname(wifi_prop, (char *)rdk_vap_info->vap_name, client_row->_uuid.uuid, sizeof(client_row->_uuid.uuid)) != RETURN_OK) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: vapname to interface name conversion failed\n", __func__, __LINE__);
-            return webconfig_error_translate_to_ovsdb;
-        }
-        associated_client_count++;
     }
     *client_count = associated_client_count;
 

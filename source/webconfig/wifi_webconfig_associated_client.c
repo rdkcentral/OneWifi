@@ -157,8 +157,7 @@ webconfig_error_t decode_associated_clients_subdoc(webconfig_t *config, webconfi
         return webconfig_error_decode;
     }
 
-
-    for (i = 0; i < params->num_radios; i++) {
+     for (i = 0; i < params->num_radios; i++) {
 
         //vap_info_map data
         vap_map = &params->radios[i].vaps.vap_map;
@@ -166,7 +165,7 @@ webconfig_error_t decode_associated_clients_subdoc(webconfig_t *config, webconfi
         for (j = 0; j < vap_map->num_vaps; j++) {
             rdk_vap_info = &params->radios[i].vaps.rdk_vap_array[j];
             if (rdk_vap_info != NULL) {
-                rdk_vap_info->associated_devices_queue = NULL;
+                rdk_vap_info->associated_devices_map = NULL;
             }
         }
     }
@@ -213,7 +212,7 @@ webconfig_error_t decode_associated_clients_subdoc(webconfig_t *config, webconfi
         }
 
         rdk_vap_info->vap_index = convert_vap_name_to_index(&params->hal_cap.wifi_prop, name);
-        
+
         if (decode_associated_clients_object(rdk_vap_info, obj_vap) != webconfig_error_none) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: vap state object validation failed\n",
                     __func__, __LINE__);

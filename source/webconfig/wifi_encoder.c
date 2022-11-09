@@ -1221,7 +1221,6 @@ webconfig_error_t encode_associated_client_object(rdk_wifi_vap_info_t *rdk_vap_i
         return webconfig_error_encode;
     }
 
-    int count = 0, i = 0;
     cJSON *obj_array, *obj_vaps;
     assoc_dev_data_t *assoc_dev_data = NULL;
 
@@ -1232,51 +1231,46 @@ webconfig_error_t encode_associated_client_object(rdk_wifi_vap_info_t *rdk_vap_i
     cJSON_AddStringToObject(obj_vaps, "VapName", rdk_vap_info->vap_name);
     cJSON_AddItemToObject(obj_vaps, "associatedClients", obj_array);
 
-    if (rdk_vap_info->associated_devices_queue != NULL) {
-        count = queue_count(rdk_vap_info->associated_devices_queue);
-    }
+    if (rdk_vap_info->associated_devices_map != NULL) {
+        assoc_dev_data = hash_map_get_first(rdk_vap_info->associated_devices_map);
+        while (assoc_dev_data != NULL) {
+            cJSON *obj_assoc_client;
+            obj_assoc_client = cJSON_CreateObject();
+            cJSON_AddItemToArray(obj_array, obj_assoc_client);
 
-    for (i=0; i<count; i++) {
-        cJSON *obj_assoc_client;
-        obj_assoc_client = cJSON_CreateObject();
-        cJSON_AddItemToArray(obj_array, obj_assoc_client);
+            char mac_string[18];
 
-        char mac_string[18];
-        assoc_dev_data = (assoc_dev_data_t *)queue_peek(rdk_vap_info->associated_devices_queue, i);
-        if (assoc_dev_data == NULL) {
-            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d NULL pointer\n", __func__, __LINE__);
-            return webconfig_error_encode;
+            snprintf(mac_string, 18, "%02x:%02x:%02x:%02x:%02x:%02x", assoc_dev_data->dev_stats.cli_MACAddress[0], assoc_dev_data->dev_stats.cli_MACAddress[1],
+                    assoc_dev_data->dev_stats.cli_MACAddress[2], assoc_dev_data->dev_stats.cli_MACAddress[3], assoc_dev_data->dev_stats.cli_MACAddress[4], assoc_dev_data->dev_stats.cli_MACAddress[5]);
+            cJSON_AddStringToObject(obj_assoc_client, "MACAddress", mac_string);
+            cJSON_AddBoolToObject(obj_assoc_client, "AuthenticationState", assoc_dev_data->dev_stats.cli_AuthenticationState);
+            cJSON_AddNumberToObject(obj_assoc_client, "LastDataDownlinkRate", assoc_dev_data->dev_stats.cli_LastDataDownlinkRate);
+            cJSON_AddNumberToObject(obj_assoc_client, "LastDataUplinkRate", assoc_dev_data->dev_stats.cli_LastDataUplinkRate);
+            cJSON_AddNumberToObject(obj_assoc_client, "SignalStrength", assoc_dev_data->dev_stats.cli_SignalStrength);
+            cJSON_AddNumberToObject(obj_assoc_client, "Retransmissions", assoc_dev_data->dev_stats.cli_Retransmissions);
+            cJSON_AddBoolToObject(obj_assoc_client, "Active", assoc_dev_data->dev_stats.cli_Active);
+            cJSON_AddStringToObject(obj_assoc_client, "OperatingStandard", assoc_dev_data->dev_stats.cli_OperatingStandard);
+            cJSON_AddStringToObject(obj_assoc_client, "OperatingChannelBandwidth", assoc_dev_data->dev_stats.cli_OperatingChannelBandwidth);
+            cJSON_AddNumberToObject(obj_assoc_client, "SNR", assoc_dev_data->dev_stats.cli_SNR);
+            cJSON_AddStringToObject(obj_assoc_client, "InterferenceSources", assoc_dev_data->dev_stats.cli_InterferenceSources);
+            cJSON_AddNumberToObject(obj_assoc_client, "DataFramesSentAck", assoc_dev_data->dev_stats.cli_DataFramesSentAck);
+            cJSON_AddNumberToObject(obj_assoc_client, "DataFramesSentNoAck", assoc_dev_data->dev_stats.cli_DataFramesSentNoAck);
+            cJSON_AddNumberToObject(obj_assoc_client, "BytesSent", assoc_dev_data->dev_stats.cli_BytesSent);
+            cJSON_AddNumberToObject(obj_assoc_client, "BytesReceived", assoc_dev_data->dev_stats.cli_BytesReceived);
+            cJSON_AddNumberToObject(obj_assoc_client, "RSSI", assoc_dev_data->dev_stats.cli_RSSI);
+            cJSON_AddNumberToObject(obj_assoc_client, "MinRSSI", assoc_dev_data->dev_stats.cli_MinRSSI);
+            cJSON_AddNumberToObject(obj_assoc_client, "MaxRSSI", assoc_dev_data->dev_stats.cli_MaxRSSI);
+            cJSON_AddNumberToObject(obj_assoc_client, "Disassociations", assoc_dev_data->dev_stats.cli_Disassociations);
+            cJSON_AddNumberToObject(obj_assoc_client, "AuthenticationFailures", assoc_dev_data->dev_stats.cli_AuthenticationFailures);
+            cJSON_AddNumberToObject(obj_assoc_client, "PacketsSent", assoc_dev_data->dev_stats.cli_PacketsSent);
+            cJSON_AddNumberToObject(obj_assoc_client, "PacketsReceived", assoc_dev_data->dev_stats.cli_PacketsReceived);
+            cJSON_AddNumberToObject(obj_assoc_client, "ErrorsSent", assoc_dev_data->dev_stats.cli_ErrorsSent);
+            cJSON_AddNumberToObject(obj_assoc_client, "RetransCount", assoc_dev_data->dev_stats.cli_RetransCount);
+            cJSON_AddNumberToObject(obj_assoc_client, "FailedRetransCount", assoc_dev_data->dev_stats.cli_FailedRetransCount);
+            cJSON_AddNumberToObject(obj_assoc_client, "RetryCount", assoc_dev_data->dev_stats.cli_RetryCount);
+            cJSON_AddNumberToObject(obj_assoc_client, "MultipleRetryCount", assoc_dev_data->dev_stats.cli_MultipleRetryCount);
+            assoc_dev_data = hash_map_get_next(rdk_vap_info->associated_devices_map, assoc_dev_data);
         }
-
-        snprintf(mac_string, 18, "%02x:%02x:%02x:%02x:%02x:%02x", assoc_dev_data->dev_stats.cli_MACAddress[0], assoc_dev_data->dev_stats.cli_MACAddress[1],
-                   assoc_dev_data->dev_stats.cli_MACAddress[2], assoc_dev_data->dev_stats.cli_MACAddress[3], assoc_dev_data->dev_stats.cli_MACAddress[4], assoc_dev_data->dev_stats.cli_MACAddress[5]);
-        cJSON_AddStringToObject(obj_assoc_client, "MACAddress", mac_string);
-        cJSON_AddBoolToObject(obj_assoc_client, "AuthenticationState", assoc_dev_data->dev_stats.cli_AuthenticationState);
-        cJSON_AddNumberToObject(obj_assoc_client, "LastDataDownlinkRate", assoc_dev_data->dev_stats.cli_LastDataDownlinkRate);
-        cJSON_AddNumberToObject(obj_assoc_client, "LastDataUplinkRate", assoc_dev_data->dev_stats.cli_LastDataUplinkRate);
-        cJSON_AddNumberToObject(obj_assoc_client, "SignalStrength", assoc_dev_data->dev_stats.cli_SignalStrength);
-        cJSON_AddNumberToObject(obj_assoc_client, "Retransmissions", assoc_dev_data->dev_stats.cli_Retransmissions);
-        cJSON_AddBoolToObject(obj_assoc_client, "Active", assoc_dev_data->dev_stats.cli_Active);
-        cJSON_AddStringToObject(obj_assoc_client, "OperatingStandard", assoc_dev_data->dev_stats.cli_OperatingStandard);
-        cJSON_AddStringToObject(obj_assoc_client, "OperatingChannelBandwidth", assoc_dev_data->dev_stats.cli_OperatingChannelBandwidth);
-        cJSON_AddNumberToObject(obj_assoc_client, "SNR", assoc_dev_data->dev_stats.cli_SNR);
-        cJSON_AddStringToObject(obj_assoc_client, "InterferenceSources", assoc_dev_data->dev_stats.cli_InterferenceSources);
-        cJSON_AddNumberToObject(obj_assoc_client, "DataFramesSentAck", assoc_dev_data->dev_stats.cli_DataFramesSentAck);
-        cJSON_AddNumberToObject(obj_assoc_client, "DataFramesSentNoAck", assoc_dev_data->dev_stats.cli_DataFramesSentNoAck);
-        cJSON_AddNumberToObject(obj_assoc_client, "BytesSent", assoc_dev_data->dev_stats.cli_BytesSent);
-        cJSON_AddNumberToObject(obj_assoc_client, "BytesReceived", assoc_dev_data->dev_stats.cli_BytesReceived);
-        cJSON_AddNumberToObject(obj_assoc_client, "RSSI", assoc_dev_data->dev_stats.cli_RSSI);
-        cJSON_AddNumberToObject(obj_assoc_client, "MinRSSI", assoc_dev_data->dev_stats.cli_MinRSSI);
-        cJSON_AddNumberToObject(obj_assoc_client, "MaxRSSI", assoc_dev_data->dev_stats.cli_MaxRSSI);
-        cJSON_AddNumberToObject(obj_assoc_client, "Disassociations", assoc_dev_data->dev_stats.cli_Disassociations);
-        cJSON_AddNumberToObject(obj_assoc_client, "AuthenticationFailures", assoc_dev_data->dev_stats.cli_AuthenticationFailures);
-        cJSON_AddNumberToObject(obj_assoc_client, "PacketsSent", assoc_dev_data->dev_stats.cli_PacketsSent);
-        cJSON_AddNumberToObject(obj_assoc_client, "PacketsReceived", assoc_dev_data->dev_stats.cli_PacketsReceived);
-        cJSON_AddNumberToObject(obj_assoc_client, "ErrorsSent", assoc_dev_data->dev_stats.cli_ErrorsSent);
-        cJSON_AddNumberToObject(obj_assoc_client, "RetransCount", assoc_dev_data->dev_stats.cli_RetransCount);
-        cJSON_AddNumberToObject(obj_assoc_client, "FailedRetransCount", assoc_dev_data->dev_stats.cli_FailedRetransCount);
-        cJSON_AddNumberToObject(obj_assoc_client, "RetryCount", assoc_dev_data->dev_stats.cli_RetryCount);
-        cJSON_AddNumberToObject(obj_assoc_client, "MultipleRetryCount", assoc_dev_data->dev_stats.cli_MultipleRetryCount);
     }
     return webconfig_error_none;
 }
