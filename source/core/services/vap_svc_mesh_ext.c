@@ -67,6 +67,22 @@ static int partition(bss_candidate_t *bss, int start, int end, int rssi_2_4_norm
     return pidx;
 }
 
+#define DWELL_TIME_PATH "/nvram/wifi_dwell_time"
+#define DEFAULT_DWELL_TIME_MS 50
+static int get_dwell_time()
+{
+    FILE *fp = NULL;
+    int dwell_time = DEFAULT_DWELL_TIME_MS;
+    if (access(DWELL_TIME_PATH, R_OK) == 0) {
+        fp = fopen(DWELL_TIME_PATH, "r");
+        if (fp == NULL) {
+            return dwell_time;
+        }
+        fscanf(fp, "%d", &dwell_time);
+    }
+    return dwell_time;
+}
+
 static void get_rssi_normalizer_value(char *path_to_file, int *rssi_2_4_normalizer_val)
 {
     FILE *fp = fopen(path_to_file, "r");
@@ -352,13 +368,14 @@ void ext_start_scan(vap_svc_t *svc)
         ext->candidates_list.scan_list = NULL;
     }
     ext->scanned_radios = 0;
-
+    
+    int dwell_time = get_dwell_time();
     for (radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d start Scan on radio index %u\n", __func__, __LINE__,
             radio_index);
 
         channels = &mgr->hal_cap.wifi_prop.radiocap[radio_index].channel_list[0];
-        wifi_hal_startScan(radio_index, WIFI_RADIO_SCAN_MODE_OFFCHAN, 0, channels->num_channels,
+        wifi_hal_startScan(radio_index, WIFI_RADIO_SCAN_MODE_OFFCHAN, dwell_time, channels->num_channels,
             channels->channels_list);
     }
 
@@ -428,6 +445,7 @@ void ext_connected_scan(vap_svc_t *svc)
     ext = &svc->u.ext;
     unsigned int radio_index = 0;
     radio_index = get_radio_index_for_vap_index(svc->prop, ext->connected_vap_index);
+    int dwell_time = get_dwell_time();
 
     if (ext->conn_state == connection_state_connected_scan_list) {
         cancel_scan_result_timer(ctrl, ext);
@@ -438,7 +456,7 @@ void ext_connected_scan(vap_svc_t *svc)
         }
 
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d start Scan on radio index %d channel %d\n", __func__, __LINE__, radio_index, ext->go_to_channel);
-        wifi_hal_startScan(radio_index, WIFI_RADIO_SCAN_MODE_OFFCHAN, 0, 1, &ext->go_to_channel); 
+        wifi_hal_startScan(radio_index, WIFI_RADIO_SCAN_MODE_OFFCHAN, dwell_time, 1, &ext->go_to_channel); 
     }
     
     scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connected_scan_result_timeout_handler_id,
