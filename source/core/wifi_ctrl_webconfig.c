@@ -1575,6 +1575,11 @@ pErr private_home_exec_common_handler(void *data, bool priv_sd)
             wifi_util_error_print(WIFI_CTRL, "%s: Failed to get vap_index for %s\n", __func__, nm_s);
             continue;
         }
+        int array_index;
+        if ((array_index = convert_vap_name_to_array_index(&mgr->hal_cap.wifi_prop, nm_s)) == -1) {
+            wifi_util_error_print(WIFI_CTRL, "%s: Failed to get array index for %s\n", __func__, nm_s);
+            continue;
+        }
         char br_name[32];
         memset(br_name, 0, sizeof(br_name));
         if(get_vap_interface_bridge_name(vindx, br_name) != RETURN_OK) {
@@ -1605,107 +1610,107 @@ pErr private_home_exec_common_handler(void *data, bool priv_sd)
 
         // Elements like IsolationEnable, BssMaxNumSta use values from the cache unless
         // overridden by equivalent elements in the webcfg blob(aka 1.0 blob)
-        bool iso_en_b = wifi_vap_map->vap_array[vindx].u.bss_info.isolation;
+        bool iso_en_b = wifi_vap_map->vap_array[array_index].u.bss_info.isolation;
         cJSON *iso_en = cJSON_GetObjectItem(pg, "IsolationEnable");
         if(iso_en != NULL) {
             if(cJSON_IsBool(iso_en)) {
                 iso_en_b = cJSON_IsTrue(iso_en) ? true : false;
             }
         }
-        int m_frm_c_n = wifi_vap_map->vap_array[vindx].u.bss_info.mgmtPowerControl;
+        int m_frm_c_n = wifi_vap_map->vap_array[array_index].u.bss_info.mgmtPowerControl;
         cJSON *m_frm_c = cJSON_GetObjectItem(pg, "ManagementFramePowerControl");
         if(m_frm_c != NULL) {
             m_frm_c_n = cJSON_GetNumberValue(m_frm_c);
         }
-        UINT bss_max_n = wifi_vap_map->vap_array[vindx].u.bss_info.bssMaxSta;
+        UINT bss_max_n = wifi_vap_map->vap_array[array_index].u.bss_info.bssMaxSta;
         cJSON *bss_max = cJSON_GetObjectItem(pg, "BssMaxNumSta");
         if(bss_max != NULL) {
             bss_max_n = cJSON_GetNumberValue(bss_max);
         }
         bss_max_n = (bss_max_n == 0) ? 75 : bss_max_n;
 
-        bool bss_trans_b = wifi_vap_map->vap_array[vindx].u.bss_info.bssTransitionActivated;
+        bool bss_trans_b = wifi_vap_map->vap_array[array_index].u.bss_info.bssTransitionActivated;
         cJSON *bss_trans = cJSON_GetObjectItem(pg, "BSSTransitionActivated");
         if(bss_trans != NULL) {
             if(cJSON_IsBool(bss_trans)) {
                 bss_trans_b = cJSON_IsTrue(bss_trans) ? true : false;
             }
         }
-        bool neigh_b = wifi_vap_map->vap_array[vindx].u.bss_info.nbrReportActivated;
+        bool neigh_b = wifi_vap_map->vap_array[array_index].u.bss_info.nbrReportActivated;
         cJSON *neigh = cJSON_GetObjectItem(pg, "NeighborReportActivated");
         if(neigh != NULL) {
             if(cJSON_IsBool(neigh)) {
                 neigh_b = cJSON_IsTrue(neigh) ? true : false;
             }
         }
-        bool rrc_en_b = wifi_vap_map->vap_array[vindx].u.bss_info.rapidReconnectEnable;
+        bool rrc_en_b = wifi_vap_map->vap_array[array_index].u.bss_info.rapidReconnectEnable;
         cJSON *rrc_en = cJSON_GetObjectItem(pg, "RapidReconnCountEnable");
         if(rrc_en != NULL) {
             if(cJSON_IsBool(rrc_en)) {
                 rrc_en_b = cJSON_IsTrue(rrc_en) ? true : false;
             }
         }
-        UINT rrt_n = wifi_vap_map->vap_array[vindx].u.bss_info.rapidReconnThreshold;
+        UINT rrt_n = wifi_vap_map->vap_array[array_index].u.bss_info.rapidReconnThreshold;
         cJSON *rrt = cJSON_GetObjectItem(pg, "RapidReconnThreshold");
         if(rrt != NULL) {
             rrt_n = cJSON_GetNumberValue(rrt);
         }
-        bool vs_en_b = wifi_vap_map->vap_array[vindx].u.bss_info.vapStatsEnable;
+        bool vs_en_b = wifi_vap_map->vap_array[array_index].u.bss_info.vapStatsEnable;
         cJSON *vs_en = cJSON_GetObjectItem(pg, "VapStatsEnable");
         if(vs_en != NULL) {
             if(cJSON_IsBool(vs_en)) {
                 vs_en_b = cJSON_IsTrue(vs_en) ? true : false;
             }
         }
-        bool mac_fil_en_b = wifi_vap_map->vap_array[vindx].u.bss_info.mac_filter_enable;
+        bool mac_fil_en_b = wifi_vap_map->vap_array[array_index].u.bss_info.mac_filter_enable;
         cJSON *mac_fil_en = cJSON_GetObjectItem(pg, "MacFilterEnable");
         if(mac_fil_en != NULL) {
             if(cJSON_IsBool(mac_fil_en)) {
                 mac_fil_en_b = cJSON_IsTrue(mac_fil_en) ? true : false;
             }
         }
-        UINT mac_fil_mode_n = (UINT)(wifi_vap_map->vap_array[vindx].u.bss_info.mac_filter_mode);
+        UINT mac_fil_mode_n = (UINT)(wifi_vap_map->vap_array[array_index].u.bss_info.mac_filter_mode);
         cJSON *mac_fil_mode = cJSON_GetObjectItem(pg, "MacFilterMode");
         if(mac_fil_mode != NULL) {
             mac_fil_mode_n = cJSON_GetNumberValue(mac_fil_mode);
         }
-        bool wnm_en_b = wifi_vap_map->vap_array[vindx].u.bss_info.wmm_enabled;
+        bool wnm_en_b = wifi_vap_map->vap_array[array_index].u.bss_info.wmm_enabled;
         cJSON *wnm_en = cJSON_GetObjectItem(pg, "WmmEnabled");
         if(wnm_en != NULL) {
             if(cJSON_IsBool(wnm_en)) {
                 wnm_en_b = cJSON_IsTrue(wnm_en) ? true : false;
             }
         }
-        bool uapsd_en_b = wifi_vap_map->vap_array[vindx].u.bss_info.UAPSDEnabled;
+        bool uapsd_en_b = wifi_vap_map->vap_array[array_index].u.bss_info.UAPSDEnabled;
         cJSON *uapsd_en = cJSON_GetObjectItem(pg, "UapsdEnabled");
         if(uapsd_en != NULL) {
             if(cJSON_IsBool(uapsd_en)) {
                 uapsd_en_b = cJSON_IsTrue(uapsd_en) ? true : false;
             }
         }
-        UINT beacon_rate_n = wifi_vap_map->vap_array[vindx].u.bss_info.beaconRate;
+        UINT beacon_rate_n = wifi_vap_map->vap_array[array_index].u.bss_info.beaconRate;
         cJSON *beacon_rate = cJSON_GetObjectItem(pg, "BeaconRate");
         if(beacon_rate != NULL) {
             beacon_rate_n = cJSON_GetNumberValue(beacon_rate);
         }
-        UINT wmm_noack_n = wifi_vap_map->vap_array[vindx].u.bss_info.wmmNoAck;
+        UINT wmm_noack_n = wifi_vap_map->vap_array[array_index].u.bss_info.wmmNoAck;
         cJSON *wmm_noack = cJSON_GetObjectItem(pg, "WmmNoAck");
         if(wmm_noack != NULL) {
             wmm_noack_n = cJSON_GetNumberValue(wmm_noack);
         }
-        UINT wep_key_n = wifi_vap_map->vap_array[vindx].u.bss_info.wepKeyLength;
+        UINT wep_key_n = wifi_vap_map->vap_array[array_index].u.bss_info.wepKeyLength;
         cJSON *wep_key = cJSON_GetObjectItem(pg, "WepKeyLength");
         if(wep_key != NULL) {
             wep_key_n = cJSON_GetNumberValue(wep_key);
         }
-        UINT wps_push_n = wifi_vap_map->vap_array[vindx].u.bss_info.wpsPushButton;
+        UINT wps_push_n = wifi_vap_map->vap_array[array_index].u.bss_info.wpsPushButton;
         cJSON *wps_push = cJSON_GetObjectItem(pg, "WpsPushButton");
         if(wps_push != NULL) {
             wps_push_n = cJSON_GetNumberValue(wps_push);
         }
         cJSON *beacon_rate_ctrl = cJSON_GetObjectItem(pg, "BeaconRateCtl");
         if(strstr(p2g_vap_name, "private") != NULL){
-            UINT wps_cfg_en_b =  wifi_vap_map->vap_array[vindx].u.bss_info.wps.methods;
+            UINT wps_cfg_en_b =  wifi_vap_map->vap_array[array_index].u.bss_info.wps.methods;
             cJSON *wps_methods = cJSON_GetObjectItem(pg, "WpsConfigMethodsEnabled");
             if(wps_methods != NULL) {
                 wps_cfg_en_b = cJSON_GetNumberValue(wps_methods);
@@ -1742,41 +1747,35 @@ pErr private_home_exec_common_handler(void *data, bool priv_sd)
         cJSON *sec = cJSON_GetObjectItem(vb_entry, "Security");
         if(sec != NULL) {
             char *mfpc = "Optional";
-#if defined(WIFI_HAL_VERSION_3)
-            if(wifi_vap_map->vap_array[vindx].u.bss_info.security.mfp == wifi_mfp_cfg_disabled) {
+            if(wifi_vap_map->vap_array[array_index].u.bss_info.security.mfp == wifi_mfp_cfg_disabled) {
                 mfpc = "Disabled";
             }
             else
-            if(wifi_vap_map->vap_array[vindx].u.bss_info.security.mfp == wifi_mfp_cfg_required) {
+            if(wifi_vap_map->vap_array[array_index].u.bss_info.security.mfp == wifi_mfp_cfg_required) {
                 mfpc = "Required";
             }
-#else
-            if(wifi_vap_map->vap_array[vindx].u.bss_info.security.mfpConfig[0] != 0) {
-                mfpc = wifi_vap_map->vap_array[vindx].u.bss_info.security.mfpConfig;
-            }
-#endif
             cJSON_AddItemToObject(sec, "MFPConfig", cJSON_CreateString(mfpc));
         }
 
         cJSON *inter = cJSON_GetObjectItem(vb_entry, "Interworking");
         if(inter == NULL) {
             inter = cJSON_CreateObject();
-            cJSON_AddBoolToObject(inter, "InterworkingEnable", wifi_vap_map->vap_array[vindx].u.bss_info.interworking.interworking.interworkingEnabled);
-            cJSON_AddNumberToObject(inter, "AccessNetworkType", wifi_vap_map->vap_array[vindx].u.bss_info.interworking.interworking.accessNetworkType);
-            cJSON_AddBoolToObject(inter, "Internet", wifi_vap_map->vap_array[vindx].u.bss_info.interworking.interworking.internetAvailable);
-            cJSON_AddBoolToObject(inter, "ASRA", wifi_vap_map->vap_array[vindx].u.bss_info.interworking.interworking.asra);
-            cJSON_AddBoolToObject(inter, "ESR", wifi_vap_map->vap_array[vindx].u.bss_info.interworking.interworking.esr);
-            cJSON_AddBoolToObject(inter, "UESA", wifi_vap_map->vap_array[vindx].u.bss_info.interworking.interworking.uesa);
-            cJSON_AddBoolToObject(inter, "HESSOptionPresent", wifi_vap_map->vap_array[vindx].u.bss_info.interworking.interworking.hessOptionPresent);
+            cJSON_AddBoolToObject(inter, "InterworkingEnable", wifi_vap_map->vap_array[array_index].u.bss_info.interworking.interworking.interworkingEnabled);
+            cJSON_AddNumberToObject(inter, "AccessNetworkType", wifi_vap_map->vap_array[array_index].u.bss_info.interworking.interworking.accessNetworkType);
+            cJSON_AddBoolToObject(inter, "Internet", wifi_vap_map->vap_array[array_index].u.bss_info.interworking.interworking.internetAvailable);
+            cJSON_AddBoolToObject(inter, "ASRA", wifi_vap_map->vap_array[array_index].u.bss_info.interworking.interworking.asra);
+            cJSON_AddBoolToObject(inter, "ESR", wifi_vap_map->vap_array[array_index].u.bss_info.interworking.interworking.esr);
+            cJSON_AddBoolToObject(inter, "UESA", wifi_vap_map->vap_array[array_index].u.bss_info.interworking.interworking.uesa);
+            cJSON_AddBoolToObject(inter, "HESSOptionPresent", wifi_vap_map->vap_array[array_index].u.bss_info.interworking.interworking.hessOptionPresent);
             if(wifi_vap_map->vap_array[vindx].u.bss_info.interworking.interworking.hessid[0] != 0) {
-                cJSON_AddItemToObject(inter, "HESSID", cJSON_CreateString(wifi_vap_map->vap_array[vindx].u.bss_info.interworking.interworking.hessid));
+                cJSON_AddItemToObject(inter, "HESSID", cJSON_CreateString(wifi_vap_map->vap_array[array_index].u.bss_info.interworking.interworking.hessid));
             }
             else {
                 cJSON_AddItemToObject(inter, "HESSID", cJSON_CreateString("11:22:33:44:55:66"));
             }
             cJSON *ven = cJSON_CreateObject();
-            cJSON_AddNumberToObject(ven, "VenueType", wifi_vap_map->vap_array[vindx].u.bss_info.interworking.interworking.venueType);
-            cJSON_AddNumberToObject(ven, "VenueGroup", wifi_vap_map->vap_array[vindx].u.bss_info.interworking.interworking.venueGroup);
+            cJSON_AddNumberToObject(ven, "VenueType", wifi_vap_map->vap_array[array_index].u.bss_info.interworking.interworking.venueType);
+            cJSON_AddNumberToObject(ven, "VenueGroup", wifi_vap_map->vap_array[array_index].u.bss_info.interworking.interworking.venueGroup);
             cJSON_AddItemToObject(inter, "Venue", ven);
             cJSON_AddItemToObject(vb_entry, "Interworking", inter);
       }

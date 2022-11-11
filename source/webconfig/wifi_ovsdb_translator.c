@@ -429,6 +429,7 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
         if (get_bridgename_from_vapname(&hal_cap->wifi_prop, (char *)t_vap_info->vap_name, t_vap_info->bridge_name, sizeof(t_vap_info->bridge_name)) != RETURN_OK) {
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: vapname to bridge name conversion failed\n", __func__, __LINE__);
         }
+
         if (is_vap_private(&hal_cap->wifi_prop, vapIndex) == TRUE) {
             t_vap_info->u.bss_info.network_initiated_greylist = false;
             t_vap_info->u.bss_info.vapStatsEnable = true;
@@ -438,10 +439,14 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
             if (band == WIFI_FREQUENCY_6_BAND) {
                 t_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa3_personal;
                 t_vap_info->u.bss_info.security.wpa3_transition_disable = true;
+                t_vap_info->u.bss_info.security.encr = wifi_encryption_aes;
+                t_vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_required;
             } else {
 #if defined(_XB8_PRODUCT_REQ_)
                 t_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
                 t_vap_info->u.bss_info.security.wpa3_transition_disable = false;
+                t_vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
+                t_vap_info->u.bss_info.security.encr = wifi_encryption_aes;
 #else
                 t_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
 #endif
