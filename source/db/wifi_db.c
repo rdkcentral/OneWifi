@@ -3043,7 +3043,7 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
         cfg.op_class = 12;
         cfg.channel = 1;
         cfg.channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
-        cfg.variant = WIFI_80211_VARIANT_G | WIFI_80211_VARIANT_N;
+        cfg.variant = WIFI_80211_VARIANT_G | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AX;
     } else if (radio_index  == 1) {
         cfg.band = WIFI_FREQUENCY_5_BAND;
         cfg.enable = true;
