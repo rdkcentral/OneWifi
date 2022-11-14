@@ -486,11 +486,21 @@ void Psm_Db_Write_Vapinfo(wifi_vap_info_t *acfg)
             memset(recName, '\0', sizeof(recName));
             memset(instanceNumStr, '\0', sizeof(instanceNumStr));
             snprintf(recName, sizeof(recName),MacFilterMode, instance_number);
-            _ansc_itoa(acfg->u.bss_info.mac_filter_mode, instanceNumStr, 10);
+            if (acfg->u.bss_info.mac_filter_enable == false) {
+                strcpy(instanceNumStr, "0");
+            } else if ((acfg->u.bss_info.mac_filter_enable == true) &&
+                        (acfg->u.bss_info.mac_filter_mode != wifi_mac_filter_mode_black_list)) {
+                strcpy(instanceNumStr, "1");
+            }  else if ((acfg->u.bss_info.mac_filter_enable == true) &&
+                        (acfg->u.bss_info.mac_filter_mode == wifi_mac_filter_mode_black_list)) {
+                strcpy(instanceNumStr, "2");
+            }
+
             retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
             if(retPsmSet == CCSP_SUCCESS) {
                 cfg->mac_filter_mode = acfg->u.bss_info.mac_filter_mode;
-                wifi_util_dbg_print(WIFI_PSM,"%s:%d MacFilterMode cfg->mac_filter_mode is %d\n",__func__, __LINE__,cfg->mac_filter_mode);
+                wifi_util_dbg_print(WIFI_PSM,"%s:%d MacFilterMode cfg->mac_filter_mode is %d str_mac_mode:%s\r\n",
+                                                __func__, __LINE__, cfg->mac_filter_mode, instanceNumStr);
             } else {
                 wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting MacFilterMode, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
             }

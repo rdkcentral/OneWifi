@@ -575,7 +575,17 @@ void CosaDmlWiFiGetFromPSM(void)
             snprintf(recName, sizeof(recName), MacFilterMode, instance_number);
             str = PSM_Get_Record_Status(recName, strValue);
             if (str != NULL) {
-                psm_vap_param->mac_filter_mode = _ansc_atoi(str);
+                unsigned int mf_mode = _ansc_atoi(str);
+                if (mf_mode == 0) {
+                    // mac_filter_enable = false
+                    psm_vap_param->mac_filter_mode  = wifi_mac_filter_mode_black_list;
+                } else if(mf_mode == 1) {
+                    // mac_filter_enable = true
+                    psm_vap_param->mac_filter_mode  = wifi_mac_filter_mode_white_list;
+                } else if(mf_mode == 2) {
+                    // mac_filter_enable = true
+                    psm_vap_param->mac_filter_mode  = wifi_mac_filter_mode_black_list;
+                }
                 wifi_util_dbg_print(WIFI_PSM,"cfg->mac_filter_mode is %d and str is %s and _ansc_atoi(str) is %d\n", psm_vap_param->mac_filter_mode, str, _ansc_atoi(str));
             } else {
                 psm_vap_param->mac_filter_mode = bss_cfg->mac_filter_mode;
