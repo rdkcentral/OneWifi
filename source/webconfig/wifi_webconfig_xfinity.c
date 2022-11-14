@@ -136,6 +136,54 @@ webconfig_error_t encode_xfinity_subdoc(webconfig_t *config, webconfig_subdoc_da
     return webconfig_error_none;
 }
 
+#define NUM_HOTSPOTS 4
+
+static char passpoint_json[NUM_HOTSPOTS][1024];
+static char anqp_json[NUM_HOTSPOTS][4096];
+
+static inline unsigned int get_hs_index(const char* vap_name) {
+    unsigned int indx = NUM_HOTSPOTS;
+    if(strcmp(vap_name, "hotspot_open_2g") == 0) { indx = 0; }
+    else
+    if(strcmp(vap_name, "hotspot_open_5g") == 0) { indx = 1; }
+    else
+    if(strcmp(vap_name, "hotspot_secure_2g") == 0) { indx = 2; }
+    else
+    if(strcmp(vap_name, "hotspot_secure_5g") == 0) { indx = 3; }
+
+    return indx;
+}
+
+const char* get_passpoint_json_by_vap_name(const char* vap_name) {
+
+    unsigned int indx = get_hs_index(vap_name);
+    if(indx >= NUM_HOTSPOTS) { return NULL; }
+
+    return passpoint_json[indx];
+}
+
+const char* get_anqp_json_by_vap_name(const char* vap_name) {
+    unsigned int indx = get_hs_index(vap_name);
+    if(indx >= NUM_HOTSPOTS) { return NULL; }
+
+    return anqp_json[indx];
+
+}
+
+void reset_passpoint_json(const char* vap_name) {
+    unsigned int indx = get_hs_index(vap_name);
+    if(indx >= NUM_HOTSPOTS) { return; }
+
+    memset(passpoint_json[indx], 0, sizeof(passpoint_json[indx]));
+}
+
+void reset_anqp_json(const char* vap_name) {
+    unsigned int indx = get_hs_index(vap_name);
+    if(indx >= NUM_HOTSPOTS) { return; }
+
+    memset(anqp_json[indx], 0, sizeof(anqp_json[indx]));
+}
+
 webconfig_error_t decode_xfinity_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
 {
     // wifi_util_dbg_print(WIFI_WEBCONFIG, "%s: Enter\n", __FUNCTION__);
@@ -249,6 +297,31 @@ webconfig_error_t decode_xfinity_subdoc(webconfig_t *config, webconfig_subdoc_da
                     wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
                     return webconfig_error_decode;
                 }
+            }
+        }
+        unsigned int indx = get_hs_index(name);
+        if (indx >= NUM_HOTSPOTS) { continue; }
+
+        memset(passpoint_json[indx], 0, sizeof(passpoint_json[indx]));
+        memset(anqp_json[indx], 0, sizeof(anqp_json[indx]));
+
+        cJSON *cinter = cJSON_GetObjectItem(obj_vap, "Interworking");
+        if (cinter != NULL) {
+            cJSON *cpass = cJSON_GetObjectItem(cinter, "Passpoint");
+            cJSON *canqp = cJSON_GetObjectItem(cinter, "ANQP");
+        if (cpass != NULL) {
+                char *t_str = cJSON_Print(cpass);
+                strncpy(passpoint_json[indx], t_str, sizeof(passpoint_json[indx]) - 1);
+                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: passpoint json len: %d\n",
+                            __func__, __LINE__, strlen(t_str));
+                cJSON_free(t_str);
+            }
+        if (canqp != NULL) {
+                char *t_str = cJSON_Print(canqp);
+                strncpy(anqp_json[indx], t_str, sizeof(anqp_json[indx]) - 1);
+                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: anqp json len: %d\n",
+                            __func__, __LINE__, strlen(t_str));
+                cJSON_free(t_str);
             }
 
         }

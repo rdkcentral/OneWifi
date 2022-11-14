@@ -141,6 +141,11 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
     cJSON *subParam = NULL;
     UCHAR *next_pos = NULL;
 
+    if(!anqp || !interworking_info){
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"Anqp entry is NULL\n");
+        return webconfig_error_decode;
+    }
+
     //VenueNameANQPElement
     decode_param_object(anqp, "VenueNameANQPElement", anqpElement);
 
@@ -190,7 +195,7 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
     int ouiCount = 0;
     cJSON_ArrayForEach(anqpEntry, anqpList){
         wifi_ouiDuple_t *ouiBuf = (wifi_ouiDuple_t *)next_pos;
-        UCHAR ouiStr[30+1];
+        UCHAR ouiStr[64];
         int i, ouiStrLen = 0;
         memset(ouiStr,0,sizeof(ouiStr));
         anqpParam = cJSON_GetObjectItem(anqpEntry,"OI");
@@ -290,12 +295,12 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
         strcpy((char*)next_pos, anqpParam->valuestring);
         next_pos += realmInfoBuf->realm_length;
 
-        cJSON *realmStats = cJSON_CreateObject();//Create a stats Entry here for each Realm
+/**        cJSON *realmStats = cJSON_CreateObject();//Create a stats Entry here for each Realm
         cJSON_AddStringToObject(realmStats, "Name", anqpParam->valuestring);
         cJSON_AddNumberToObject(realmStats, "EntryType", 1);//1-NAI Realm
         cJSON_AddNumberToObject(realmStats, "Sent", 0);
         cJSON_AddNumberToObject(realmStats, "Failed", 0);
-        cJSON_AddNumberToObject(realmStats, "Timeout", 0);
+        cJSON_AddNumberToObject(realmStats, "Timeout", 0);**/
 
         decode_param_array(anqpEntry,"EAP",subList);
         realmInfoBuf->eap_method_count = cJSON_GetArraySize(subList);
@@ -434,14 +439,14 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
         plmnBuf->PLMN[2] = (UCHAR)((mncStr[0] - '0') | ((mncStr[1] - '0') << 4));
         next_pos += sizeof(wifi_plmn_t);
 
-        char  nameStr[8];
+        /*char  nameStr[8];
         snprintf(nameStr, sizeof(nameStr), "%s:%s", mccStr, mncStr);
         cJSON *realmStats = cJSON_CreateObject();//Create a stats Entry here for each Realm
         cJSON_AddStringToObject(realmStats, "Name", nameStr);
         cJSON_AddNumberToObject(realmStats, "EntryType", 3);//3-3GPP
         cJSON_AddNumberToObject(realmStats, "Sent", 0);
         cJSON_AddNumberToObject(realmStats, "Failed", 0);
-        cJSON_AddNumberToObject(realmStats, "Timeout", 0);
+        cJSON_AddNumberToObject(realmStats, "Timeout", 0);*/
     }
     gppBuf->uhdLength = next_pos - uhd_pos;
     plmnInfoBuf->plmn_length = next_pos - plmn_pos;
@@ -472,12 +477,12 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
         strcpy((char*)next_pos, anqpParam->valuestring);
         next_pos += nameBuf->length;
 
-        cJSON *realmStats = cJSON_CreateObject();//Create a stats Entry here for each Realm
+        /*cJSON *realmStats = cJSON_CreateObject();//Create a stats Entry here for each Realm
         cJSON_AddStringToObject(realmStats, "Name", anqpParam->valuestring);
         cJSON_AddNumberToObject(realmStats, "EntryType", 2);//2-Domain
         cJSON_AddNumberToObject(realmStats, "Sent", 0);
         cJSON_AddNumberToObject(realmStats, "Failed", 0);
-        cJSON_AddNumberToObject(realmStats, "Timeout", 0);
+        cJSON_AddNumberToObject(realmStats, "Timeout", 0);*/
     }
 
     interworking_info->anqp.domainInfoLength = next_pos - (UCHAR *)&interworking_info->anqp.domainNameInfo;
@@ -799,28 +804,33 @@ webconfig_error_t decode_interworking_object(const cJSON *interworking, wifi_int
         return webconfig_error_decode;
     }
 
-    decode_param_object(interworking, "ANQP", anqp);
 
-    if (decode_anqp_object(anqp, interworking_info) != webconfig_error_none) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed\n", __func__, __LINE__);
-        return webconfig_error_decode;
-    } else {
-        cJSON *anqpString = cJSON_CreateObject();
-        cJSON_AddItemReferenceToObject(anqpString, "ANQP", (cJSON *)anqp);
-        cJSON_PrintPreallocated(anqpString, (char *)&interworking_info->anqp.anqpParameters, sizeof(interworking_info->anqp.anqpParameters),false);
-        cJSON_Delete(anqpString);
+    if(cJSON_HasObjectItem(interworking, "ANQP") == true) {
+        decode_param_object(interworking, "ANQP", anqp);
+
+        if (decode_anqp_object(anqp, interworking_info) != webconfig_error_none) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Validation failed\n", __func__, __LINE__);
+            return webconfig_error_decode;
+        } else {
+            cJSON *anqpString = cJSON_CreateObject();
+            cJSON_AddItemReferenceToObject(anqpString, "ANQP", (cJSON *)anqp);
+            cJSON_PrintPreallocated(anqpString, (char *)&interworking_info->anqp.anqpParameters, sizeof(interworking_info->anqp.anqpParameters),false);
+            cJSON_Delete(anqpString);
+        }
     }
 
-    decode_param_object(interworking, "Passpoint", passpoint);
+    if(cJSON_HasObjectItem(interworking, "Passpoint") == true) {
+        decode_param_object(interworking, "Passpoint", passpoint);
 
-    if (decode_passpoint_object(passpoint, interworking_info) != webconfig_error_none) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed\n", __func__, __LINE__);
-        return webconfig_error_decode;
-    } else {
-        cJSON *hs2String = cJSON_CreateObject();
-        cJSON_AddItemReferenceToObject(hs2String, "Passpoint", (cJSON *)passpoint);
-        cJSON_PrintPreallocated(hs2String, (char *)&interworking_info->passpoint.hs2Parameters, sizeof(interworking_info->passpoint.hs2Parameters),false);
-        cJSON_Delete(hs2String);
+        if (decode_passpoint_object(passpoint, interworking_info) != webconfig_error_none) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Validation failed\n", __func__, __LINE__);
+            return webconfig_error_decode;
+        } else {
+            cJSON *hs2String = cJSON_CreateObject();
+            cJSON_AddItemReferenceToObject(hs2String, "Passpoint", (cJSON *)passpoint);
+            cJSON_PrintPreallocated(hs2String, (char *)&interworking_info->passpoint.hs2Parameters, sizeof(interworking_info->passpoint.hs2Parameters),false);
+            cJSON_Delete(hs2String);
+        }
     }
 
     return webconfig_error_none;
@@ -1658,13 +1668,8 @@ webconfig_error_t decode_hotspot_open_vap_object(const cJSON *vap, wifi_vap_info
 
     decode_param_object(vap, "Interworking", interworking);
 
-    if (decode_interworking_common_object(interworking, &vap_info->u.bss_info.interworking) != webconfig_error_none) {
+    if (decode_interworking_object(interworking, &vap_info->u.bss_info.interworking) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Interworking objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
-        return webconfig_error_decode;
-    }
-
-    if (vap_info->u.bss_info.interworking.passpoint.enable) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Passpoint enabled, so decode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
 
@@ -1690,13 +1695,8 @@ webconfig_error_t decode_hotspot_secure_vap_object(const cJSON *vap, wifi_vap_in
 
     decode_param_object(vap, "Interworking", interworking);
 
-    if (decode_interworking_common_object(interworking, &vap_info->u.bss_info.interworking) != webconfig_error_none) {
+    if (decode_interworking_object(interworking, &vap_info->u.bss_info.interworking) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Interworking objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
-        return webconfig_error_decode;
-    }
-
-    if (vap_info->u.bss_info.interworking.passpoint.enable) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Passpoint enabled, so decode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
 

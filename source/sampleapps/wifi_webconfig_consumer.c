@@ -171,6 +171,8 @@ int webconfig_consumer_rbus_register_events(webconfig_consumer_t *consumer)
                                 { get_device_param, NULL, NULL, NULL, NULL, NULL }},
                                 { RBUS_WIFI_WPS_PIN_START, RBUS_ELEMENT_TYPE_METHOD,
                                 { NULL, NULL, NULL, NULL, NULL, NULL }},
+                                { WIFI_FRAME_INJECTOR_TO_ONEWIFI, RBUS_ELEMENT_TYPE_METHOD,
+                                { NULL, NULL, NULL, NULL, NULL, NULL }},
     };
 
     rc = rbus_regDataElements(consumer->rbus_handle, ARRAY_SZ(rbusEvents), rbusEvents);

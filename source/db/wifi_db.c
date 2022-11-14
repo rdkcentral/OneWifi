@@ -62,6 +62,8 @@ ovsdb_table_t table_Wifi_GAS_Config;
 ovsdb_table_t table_Wifi_Global_Config;
 ovsdb_table_t table_Wifi_MacFilter_Config;
 ovsdb_table_t table_Wifi_Rfc_Config;
+ovsdb_table_t table_Wifi_Passpoint_Config;
+ovsdb_table_t table_Wifi_Anqp_Config;
 
 void wifidb_print(char *format, ...)
 {
@@ -849,6 +851,133 @@ void callback_Wifi_Global_Config(ovsdb_update_monitor_t *mon,
     else
     {
         wifi_util_dbg_print(WIFI_DB,"%s:%d:Unknown\n", __func__, __LINE__);
+    }
+
+}
+
+void callback_Wifi_Passpoint_Config(ovsdb_update_monitor_t *mon,
+        struct schema_Wifi_Passpoint_Config *old_rec,
+        struct schema_Wifi_Passpoint_Config *new_rec)
+{
+    wifi_util_dbg_print(WIFI_DB,"%s:%d: Enter\n", __func__, __LINE__);
+    wifi_mgr_t *g_wifidb = get_wifimgr_obj();
+    if (mon->mon_type == OVSDB_UPDATE_DEL) {
+        wifi_util_dbg_print(WIFI_DB,"%s:%d: Delete\n", __func__, __LINE__);
+    }
+    else if ((mon->mon_type == OVSDB_UPDATE_NEW) || (mon->mon_type == OVSDB_UPDATE_MODIFY)) {
+        if(new_rec == NULL) {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: Passpoint update failed\n", __func__, __LINE__);
+            return;
+        }
+        int i = convert_vap_name_to_index(&g_wifidb->hal_cap.wifi_prop, new_rec->vap_name);
+        if(i == -1) {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid vap name \n",__func__, __LINE__,new_rec->vap_name);
+            return;
+        }
+        wifi_interworking_t *l_interworking_cfg = Get_wifi_object_interworking_parameter(i);
+        if(l_interworking_cfg == NULL) {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid Get_wifi_object_interworking_parameter \n",__func__, __LINE__,new_rec->vap_name);
+            return;
+        }
+        cJSON *cpass_o = cJSON_CreateObject();
+        cJSON *nai_h_o = cJSON_Parse((char*)new_rec->nai_home_realm_element);
+        cJSON *op_f_o = cJSON_Parse((char*)new_rec->operator_friendly_name_element);
+        cJSON *cc_o = cJSON_Parse((char*)new_rec->connection_capability_element);
+        if((cpass_o == NULL) || (nai_h_o == NULL) || (op_f_o == NULL) || (cc_o == NULL)) {
+            wifi_util_dbg_print(WIFI_DB, "%s:%d Null json objs - Failed to update cache\n", __func__, __LINE__);
+            if(cc_o != NULL) { cJSON_Delete(cc_o); }
+            if(op_f_o != NULL) { cJSON_Delete(op_f_o); }
+            if(nai_h_o != NULL) { cJSON_Delete(nai_h_o); }
+            if(cpass_o != NULL) { cJSON_Delete(cpass_o); }
+            return;
+        }
+        cJSON_AddBoolToObject(cpass_o, "PasspointEnable", new_rec->enable);
+        cJSON_AddBoolToObject(cpass_o, "GroupAddressedForwardingDisable", new_rec->group_addressed_forwarding_disable);
+        cJSON_AddBoolToObject(cpass_o, "P2pCrossConnectionDisable", new_rec->p2p_cross_connect_disable);
+        cJSON_AddItemToObject(cpass_o, "NAIHomeRealmANQPElement", nai_h_o);
+        cJSON_AddItemToObject(cpass_o, "OperatorFriendlyNameANQPElement", op_f_o);
+        cJSON_AddItemToObject(cpass_o, "ConnectionCapabilityListANQPElement", cc_o);
+        pthread_mutex_lock(&g_wifidb->data_cache_lock);
+        l_interworking_cfg->passpoint.capabilityInfoLength = 0;
+        webconfig_error_t ret = decode_passpoint_object(cpass_o, l_interworking_cfg);
+        pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+        if(ret == webconfig_error_none) {
+            wifi_util_dbg_print(WIFI_DB, "%s:%d  updated cache\n", __func__, __LINE__);
+        }
+        else {
+            wifi_util_dbg_print(WIFI_DB, "%s:%d  decode error - Failed to update cache\n", __func__, __LINE__);
+        }
+        cJSON_Delete(cpass_o);
+    }
+}
+void callback_Wifi_Anqp_Config(ovsdb_update_monitor_t *mon,
+        struct schema_Wifi_Anqp_Config *old_rec,
+        struct schema_Wifi_Anqp_Config *new_rec)
+{
+    wifi_util_dbg_print(WIFI_DB,"%s:%d: Enter\n", __func__, __LINE__);
+    if(mon == NULL) {
+       wifi_util_dbg_print(WIFI_DB,"%s:%d: NULL mon, Unable to proceed\n", __func__, __LINE__);
+       return;
+    }
+    wifi_mgr_t *g_wifidb = get_wifimgr_obj();
+    if (mon->mon_type == OVSDB_UPDATE_DEL) {
+        wifi_util_dbg_print(WIFI_DB,"%s:%d: Delete\n", __func__, __LINE__);
+    }
+    else if ((mon->mon_type == OVSDB_UPDATE_NEW) || (mon->mon_type == OVSDB_UPDATE_MODIFY)) {
+        if(new_rec == NULL) {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: Anqp update failed\n", __func__, __LINE__);
+            return;
+        }
+        int i = convert_vap_name_to_index(&g_wifidb->hal_cap.wifi_prop, new_rec->vap_name);
+        if(i == -1) {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid vap name \n",__func__, __LINE__,new_rec->vap_name);
+            return;
+        }
+        wifi_interworking_t *l_interworking_cfg = Get_wifi_object_interworking_parameter(i);
+        if(l_interworking_cfg == NULL) {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid Get_wifi_object_interworking_parameter \n",__func__, __LINE__,new_rec->vap_name);
+            return;
+        }
+        cJSON *canqp_o = cJSON_CreateObject();
+        cJSON *caddr_o = cJSON_CreateObject();
+        cJSON *ven_o = cJSON_Parse((char*)new_rec->venue_name_element);
+        cJSON *dom_o = cJSON_Parse((char*)new_rec->domain_name_element);
+        cJSON *roam_o = cJSON_Parse((char*)new_rec->roaming_consortium_element);
+        cJSON *realm_o = cJSON_Parse((char*)new_rec->nai_realm_element);
+        cJSON *gpp_o = cJSON_Parse((char*)new_rec->gpp_cellular_element);
+        if((canqp_o == NULL) || (caddr_o == NULL) || (ven_o == NULL) || (dom_o == NULL) ||
+           (roam_o == NULL) || (realm_o == NULL) || (gpp_o == NULL)) {
+            if(canqp_o != NULL) { cJSON_Delete(canqp_o); }
+            if(caddr_o != NULL) { cJSON_Delete(caddr_o); }
+            if(ven_o != NULL) { cJSON_Delete(ven_o); }
+            if(dom_o != NULL) { cJSON_Delete(dom_o); }
+            if(roam_o != NULL) { cJSON_Delete(roam_o); }
+            if(realm_o != NULL) { cJSON_Delete(realm_o); }
+            if(gpp_o != NULL) { cJSON_Delete(gpp_o); }
+            wifi_util_dbg_print(WIFI_DB, "%s:%d Null json objs - Failed to update cache\n", __func__, __LINE__);
+            return;
+        }
+        cJSON_AddNumberToObject(caddr_o, "IPv4AddressType", new_rec->ipv4_address_type);
+        cJSON_AddNumberToObject(caddr_o, "IPv6AddressType", new_rec->ipv6_address_type);
+        cJSON_AddItemToObject(canqp_o, "IPAddressTypeAvailabilityANQPElement", caddr_o);
+        cJSON_AddItemToObject(canqp_o, "DomainANQPElement", dom_o);
+        cJSON_AddItemToObject(canqp_o, "RoamingConsortiumANQPElement", roam_o);
+        cJSON_AddItemToObject(canqp_o, "NAIRealmANQPElement", realm_o);
+        cJSON_AddItemToObject(canqp_o, "VenueNameANQPElement", ven_o);
+        cJSON_AddItemToObject(canqp_o, "3GPPCellularANQPElement", gpp_o);
+        pthread_mutex_lock(&g_wifidb->data_cache_lock);
+        l_interworking_cfg->anqp.capabilityInfoLength = 0;
+        webconfig_error_t ret = webconfig_error_none;
+        ret = decode_anqp_object(canqp_o, l_interworking_cfg);
+
+        pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+        if(ret == webconfig_error_none) {
+            wifi_util_dbg_print(WIFI_DB, "%s:%d  updated cache\n", __func__, __LINE__);
+        }
+        else {
+            wifi_util_dbg_print(WIFI_DB, "%s:%d  decode error - Failed to update cache\n", __func__, __LINE__);
+        }
+        cJSON_Delete(canqp_o);
     }
 
 }
@@ -1946,6 +2075,196 @@ int wifidb_update_wifi_macfilter_config(char *macfilter_key, acl_entry_t *config
         }
     }
 
+    return 0;
+}
+
+
+extern const char* get_passpoint_json_by_vap_name(const char* vap_name);
+extern const char* get_anqp_json_by_vap_name(const char* vap_name);
+extern void reset_passpoint_json(const char* vap_name);
+extern void reset_anqp_json(const char* vap_name);
+/************************************************************************************
+ ************************************************************************************
+  Function    : wifidb_update_wifi_passpoint_config
+  Parameter   : vap_name     - Name of vap
+                config      - wifi_InterworkingElement_t
+  Description : Update passpoint config to wifidb
+ *************************************************************************************
+**************************************************************************************/
+int wifidb_update_wifi_passpoint_config(char *vap_name, wifi_interworking_t *config)
+{
+    struct schema_Wifi_Passpoint_Config cfg_passpoint;
+//     char *filter_passpoint[] = {"-",NULL};
+    wifi_db_t *g_wifidb;
+   g_wifidb = (wifi_db_t*) get_wifidb_obj();
+    memset(&cfg_passpoint,0,sizeof(cfg_passpoint));
+    wifi_util_dbg_print(WIFI_DB,"%s:%d:Passpoint update for vap name=%s\n",__func__, __LINE__,vap_name);
+    if(config == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DB,"%s:%d:Null config - Passpoint update failed \n",__func__, __LINE__);
+        return -1;
+    }
+    wifi_passpoint_settings_t *cpass = &(config->passpoint);
+    const char *p_json = get_passpoint_json_by_vap_name(vap_name);
+    if(p_json == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DB,"%s:%d:Null p_json - passpoint update failed \n",__func__, __LINE__);
+        return -1;
+    }
+    cJSON *p_root = cJSON_Parse(p_json);
+    if(p_root == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DB,"%s:%d:Unable to parse json  - passpoint update failed \n",__func__, __LINE__);
+        return -1;
+    }
+    cfg_passpoint.enable = cpass->enable;
+    cfg_passpoint.group_addressed_forwarding_disable = cpass->gafDisable;
+    cfg_passpoint.p2p_cross_connect_disable = cpass->p2pDisable;
+    if( ((unsigned int)cpass->capabilityInfoLength < (sizeof(cfg_passpoint.capability_element)-1)) &&
+        ((unsigned int)cpass->capabilityInfoLength < sizeof(cpass->capabilityInfo.capabilityList)) ){
+        cfg_passpoint.capability_length = cpass->capabilityInfoLength;
+        memcpy(&cfg_passpoint.capability_element, cpass->capabilityInfo.capabilityList, cpass->capabilityInfoLength);
+    }
+    cfg_passpoint.nai_home_realm_length = cpass->realmInfoLength;
+    cJSON *nai_home_anqp_j = cJSON_GetObjectItem(p_root, "NAIHomeRealmANQPElement");
+    if(nai_home_anqp_j != NULL) {
+        char *tstr = cJSON_Print(nai_home_anqp_j);
+        strncpy(cfg_passpoint.nai_home_realm_element, tstr, sizeof(cfg_passpoint.nai_home_realm_element)-1);
+        wifi_util_dbg_print(WIFI_DB,"%s:%d: len: %d, tstr: %s and its value is%s\n",__func__, __LINE__, strlen(tstr), tstr,nai_home_anqp_j->valuestring);
+        cJSON_free(tstr);
+    }
+    cfg_passpoint.operator_friendly_name_length = cpass->opFriendlyNameInfoLength;
+    cJSON *op_f_j = cJSON_GetObjectItem(p_root, "OperatorFriendlyNameANQPElement");
+    if(op_f_j != NULL) {
+        char *tstr = cJSON_Print(op_f_j);
+        strncpy(cfg_passpoint.operator_friendly_name_element, tstr, sizeof(cfg_passpoint.operator_friendly_name_element)-1);
+        wifi_util_dbg_print(WIFI_DB,"%s:%d: len: %d, tstr: %s and its value is%s\n",__func__, __LINE__, strlen(tstr), tstr,op_f_j->valuestring);
+        cJSON_free(tstr);
+    }
+    cfg_passpoint.connection_capability_length = cpass->connCapabilityLength;
+    cJSON *cc_j = cJSON_GetObjectItem(p_root, "ConnectionCapabilityListANQPElement");
+    if(cc_j != NULL) {
+        char *tstr = cJSON_Print(cc_j);
+        strncpy(cfg_passpoint.connection_capability_element, tstr, sizeof(cfg_passpoint.connection_capability_element)-1);
+        wifi_util_dbg_print(WIFI_DB,"%s:%d: len: %d, tstr: %s and its value is%s\n",__func__, __LINE__, strlen(tstr), tstr,cc_j->valuestring);
+        cJSON_free(tstr);
+    }
+    cJSON_Delete(p_root);
+    strncpy(cfg_passpoint.vap_name, vap_name,(sizeof(cfg_passpoint.vap_name)-1));
+    wifi_util_dbg_print(WIFI_DB,"%s:%d: Update Wifi_Passpoint_Config table vap_name=%s Enable=%d gafDisable=%d p2pDisable=%d capability_length=%d nai_home_realm_length=%d operator_friendly_name_length=%d connection_capability_length=%d \n",__func__, __LINE__,cfg_passpoint.vap_name,cfg_passpoint.enable,cfg_passpoint.group_addressed_forwarding_disable,cfg_passpoint.p2p_cross_connect_disable,cfg_passpoint.capability_length,cfg_passpoint.nai_home_realm_length,cfg_passpoint.operator_friendly_name_length,cfg_passpoint.connection_capability_length);
+    if(ovsdb_table_upsert_simple(g_wifidb->wifidb_sock_path, &table_Wifi_Passpoint_Config, SCHEMA_COLUMN(Wifi_Passpoint_Config, vap_name), vap_name, &cfg_passpoint, NULL) == false)
+    {
+        wifi_util_dbg_print(WIFI_DB,"%s:%d: failed to update Wifi_Passpoint_Config table\n",__func__, __LINE__);
+    }
+    else
+    {
+        reset_passpoint_json(vap_name);
+        wifi_util_dbg_print(WIFI_DB,"%s:%d: update table Wifi_Passpoint_Config table successful\n",__func__, __LINE__);
+     }
+    return 0;
+}
+/************************************************************************************
+ ************************************************************************************
+  Function    : wifidb_update_wifi_anqp_config
+  Parameter   : vap_name     - Name of vap
+                config      - wifi_InterworkingElement_t
+  Description : Update anqp config to wifidb
+ *************************************************************************************
+**************************************************************************************/
+int wifidb_update_wifi_anqp_config(char *vap_name, wifi_interworking_t *config)
+{
+    struct schema_Wifi_Anqp_Config cfg_anqp;
+//    char *filter_anqp[] = {"-",NULL};
+    wifi_db_t *g_wifidb;
+    g_wifidb = (wifi_db_t*) get_wifidb_obj();
+    memset(&cfg_anqp,0,sizeof(cfg_anqp));
+    wifi_util_dbg_print(WIFI_DB,"%s:%d:anqp update for vap name=%s\n",__func__, __LINE__,vap_name);
+    if(config == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DB,"%s:%d:Null config - Anqp update failed \n",__func__, __LINE__);
+        return -1;
+    }
+    wifi_anqp_settings_t *canqp = &(config->anqp);
+    const char *p_json = get_anqp_json_by_vap_name(vap_name);
+    if(p_json == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DB,"%s:%d:Null p_json - Anqp update failed \n",__func__, __LINE__);
+        return -1;
+    }
+    cJSON *p_root = cJSON_Parse(p_json);
+    if(p_root == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DB,"%s:%d:Unable to parse json  - Anqp update failed \n",__func__, __LINE__);
+        return -1;
+    }
+    if( ((unsigned int)canqp->capabilityInfoLength < (sizeof(cfg_anqp.capability_element)-1)) &&
+        ((unsigned int)canqp->capabilityInfoLength < sizeof(canqp->capabilityInfo.capabilityList)) ){
+        cfg_anqp.capability_length = canqp->capabilityInfoLength;
+        memcpy(&cfg_anqp.capability_element, canqp->capabilityInfo.capabilityList, canqp->capabilityInfoLength);
+    }
+    cfg_anqp.venue_name_length = canqp->venueInfoLength;
+    cJSON *venueInfo_j = cJSON_GetObjectItem(p_root, "VenueNameANQPElement");
+    if(venueInfo_j != NULL) {
+        char *tstr = cJSON_Print(venueInfo_j);
+        strncpy(cfg_anqp.venue_name_element, tstr, sizeof(cfg_anqp.venue_name_element)-1);
+        wifi_util_dbg_print(WIFI_DB,"%s:%d: len: %d, tstr: %s and its value is%s\n",__func__, __LINE__, strlen(tstr), tstr,cfg_anqp.venue_name_element);
+        cJSON_free(tstr);
+    }
+    cfg_anqp.domain_name_length = canqp->domainInfoLength;
+    cJSON *dom_j = cJSON_GetObjectItem(p_root, "DomainANQPElement");
+    if(dom_j != NULL) {
+        char *tstr = cJSON_Print(dom_j);
+        strncpy(cfg_anqp.domain_name_element, tstr, sizeof(cfg_anqp.domain_name_element)-1);
+        wifi_util_dbg_print(WIFI_DB,"%s:%d: len: %d, tstr: %s and its value is%s\n",__func__, __LINE__, strlen(tstr), tstr,cfg_anqp.domain_name_element);
+        cJSON_free(tstr);
+    }
+    cfg_anqp.roaming_consortium_length = canqp->roamInfoLength;
+    cJSON *roam_j = cJSON_GetObjectItem(p_root, "RoamingConsortiumANQPElement");
+    if(roam_j != NULL) {
+        char *tstr = cJSON_Print(roam_j);
+        strncpy(cfg_anqp.roaming_consortium_element, tstr, sizeof(cfg_anqp.roaming_consortium_element)-1);
+        wifi_util_dbg_print(WIFI_DB,"%s:%d: len: %d, tstr: %s and its value is%s\n",__func__, __LINE__, strlen(tstr), tstr,cfg_anqp.domain_name_element);
+        cJSON_free(tstr);
+    }
+    cfg_anqp.nai_realm_length = canqp->realmInfoLength;
+    cJSON *realm_j = cJSON_GetObjectItem(p_root, "NAIRealmANQPElement");
+    if(realm_j != NULL) {
+        char *tstr = cJSON_Print(realm_j);
+        strncpy(cfg_anqp.nai_realm_element, tstr, sizeof(cfg_anqp.nai_realm_element)-1);
+        wifi_util_dbg_print(WIFI_DB,"%s:%d: len: %d, tstr: %s and its value is %s\n",__func__, __LINE__, strlen(tstr), tstr,cfg_anqp.nai_realm_element);
+        cJSON_free(tstr);
+    } else {
+        wifi_util_dbg_print(WIFI_DB,"%s:%d:Unable to get NAIRealmANQPElement\n",__func__, __LINE__);
+    }
+    cfg_anqp.gpp_cellular_length = canqp->gppInfoLength;
+    cJSON *gpp_j = cJSON_GetObjectItem(p_root, "3GPPCellularANQPElement");
+    if(gpp_j != NULL) {
+        char *tstr = cJSON_Print(gpp_j);
+        strncpy(cfg_anqp.gpp_cellular_element, tstr, sizeof(cfg_anqp.gpp_cellular_element)-1);
+        wifi_util_dbg_print(WIFI_DB,"%s:%d: len: %d, tstr: %s and its value is%s\n",__func__, __LINE__, strlen(tstr), tstr,cfg_anqp.gpp_cellular_element);
+        cJSON_free(tstr);
+    }
+    cfg_anqp.ipv4_address_type = 0;
+    cfg_anqp.ipv6_address_type = 0;
+    cJSON *addr_j = cJSON_GetObjectItem(p_root, "IPAddressTypeAvailabilityANQPElement");
+    if(addr_j != NULL) {
+        cJSON *addr_j_ip4 = cJSON_GetObjectItem(addr_j, "IPv4AddressType");
+        if(addr_j_ip4 != NULL) { cfg_anqp.ipv4_address_type = cJSON_GetNumberValue(addr_j_ip4); }
+        cJSON *addr_j_ip6 = cJSON_GetObjectItem(addr_j, "IPv6AddressType");
+        if(addr_j_ip6 != NULL) { cfg_anqp.ipv6_address_type = cJSON_GetNumberValue(addr_j_ip6); }
+    }
+    cJSON_Delete(p_root);
+    strncpy(cfg_anqp.vap_name, vap_name,(sizeof(cfg_anqp.vap_name)-1));
+    wifi_util_dbg_print(WIFI_DB,"%s:%d: Update Wifi_Anqp_Config table vap_name=%s capability_length=%d nai_realm_length=%d venue_name_length=%d domain_name_length=%d roaming_consortium_length=%d gpp_cellular_length=%d\n",__func__, __LINE__,cfg_anqp.vap_name,cfg_anqp.capability_length,cfg_anqp.nai_realm_length,cfg_anqp.domain_name_length,cfg_anqp.roaming_consortium_length,cfg_anqp.gpp_cellular_length);
+    if(ovsdb_table_upsert_simple(g_wifidb->wifidb_sock_path, &table_Wifi_Anqp_Config, SCHEMA_COLUMN(Wifi_Anqp_Config, vap_name), vap_name, &cfg_anqp, NULL) == false)
+    {
+        reset_anqp_json(vap_name);
+        wifi_util_dbg_print(WIFI_DB,"%s:%d: failed to update Wifi_Anqp_Config table\n",__func__, __LINE__);
+    }
+    else
+    {
+        wifi_util_dbg_print(WIFI_DB,"%s:%d: update table Wifi_Anqp_Config table successful\n",__func__, __LINE__);
+    }
     return 0;
 }
 
@@ -3564,6 +3883,8 @@ int start_wifidb_monitor()
     OVSDB_TABLE_MONITOR(g_wifidb->wifidb_fd, Wifi_GAS_Config, true);
     OVSDB_TABLE_MONITOR(g_wifidb->wifidb_fd, Wifi_Rfc_Config, true);
     OVSDB_TABLE_MONITOR(g_wifidb->wifidb_fd, Wifi_Global_Config, true);
+    OVSDB_TABLE_MONITOR(g_wifidb->wifidb_fd, Wifi_Passpoint_Config, true);
+    OVSDB_TABLE_MONITOR(g_wifidb->wifidb_fd, Wifi_Anqp_Config, true);
     return 0;
 }
 
@@ -3597,7 +3918,10 @@ int init_wifidb_tables()
     OVSDB_TABLE_INIT(Wifi_MacFilter_Config, macfilter_key);
     OVSDB_TABLE_INIT(Wifi_Rfc_Config, rfc_id);
     OVSDB_TABLE_INIT_NO_KEY(Wifi_Global_Config);
-    //connect to wifidb with sock path
+    OVSDB_TABLE_INIT(Wifi_Passpoint_Config, vap_name);
+    OVSDB_TABLE_INIT(Wifi_Anqp_Config, vap_name);
+
+	//connect to wifidb with sock path
     snprintf(g_wifidb->wifidb_sock_path, sizeof(g_wifidb->wifidb_sock_path), "%s/wifidb.sock", WIFIDB_RUN_DIR);
     while (attempts < 3) {
         if ((g_wifidb->wifidb_fd = ovsdb_conn(g_wifidb->wifidb_sock_path)) < 0) {

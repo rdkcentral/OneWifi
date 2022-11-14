@@ -28,6 +28,8 @@
 #include <pthread.h>
 #include <rbus.h>
 #include <libgen.h>
+#include <pcap.h>
+#include "wifi_hal_rdk.h"
 #include "errno.h"
 #include "ovsdb.h"
 #include "ovsdb_update.h"
@@ -37,6 +39,7 @@
 #include "schema.h"
 #include "webconfig_external_proto_ovsdb.h"
 #include "wifi_webconfig_consumer.h"
+#include "ieee80211.h"
 
 #define MAX_NUM_CLIENTS 64
 
@@ -2206,6 +2209,219 @@ int rbus_multi_get(webconfig_consumer_t *consumer, char *first_arg, char *next_a
     return 0;
 }
 
+int decode_802_11_frame(webconfig_consumer_t *consumer, unsigned int vap_index, char *file_name)
+{
+    rbusEvent_t event;
+    rbusObject_t rdata;
+    rbusValue_t value;
+    int rc;
+    frame_data_t frame_data;
+    FILE *fp = NULL;
+    char tmp_buff[MAX_FRAME_SZ], *tmp;
+    unsigned int count = 0, nlen = 0, pos = 0;
+    struct ieee80211_frame *frame;
+
+    if ((fp = fopen(file_name, "r")) == NULL) {
+        printf("%s:%d: Can not open file to read 802.11 frame\n", __func__, __LINE__);
+        return -1;
+    }
+
+    memset(tmp_buff, 0, MAX_FRAME_SZ);
+    memset(frame_data.frame.data, 0, MAX_FRAME_SZ);
+    while ((tmp = fgets(tmp_buff, MAX_FRAME_SZ, fp)) != NULL) {
+        nlen = strlen(tmp);
+        pos = 2;
+        while (pos <= (nlen - 1)) {
+            tmp_buff[pos] = 0;
+            sscanf(tmp, "%02hhx", (uint8_t *)&frame_data.frame.data[count]);
+            count++; pos += 3; tmp += 3;
+        }
+        memset(tmp_buff, 0, MAX_FRAME_SZ);
+    }
+
+    fclose(fp);
+
+    frame = (struct ieee80211_frame *)&frame_data.frame;
+    memcpy((uint8_t *)&frame_data.frame.sta_mac, (uint8_t *)&frame->i_addr2, sizeof(mac_address_t));
+    frame_data.frame.ap_index = vap_index;
+    frame_data.frame.len = count;
+    frame_data.frame.type = WIFI_MGMT_FRAME_TYPE_ACTION;
+    frame_data.frame.dir = wifi_direction_uplink;
+
+    rbusValue_Init(&value);
+    rbusObject_Init(&rdata, NULL);
+
+    rbusObject_SetValue(rdata, WIFI_FRAME_INJECTOR_TO_ONEWIFI, value);
+    rbusValue_SetBytes(value, (uint8_t *)&frame_data, (sizeof(frame_data) - MAX_FRAME_SZ + count));
+    event.name = WIFI_FRAME_INJECTOR_TO_ONEWIFI;
+    event.data = rdata;
+    event.type = RBUS_EVENT_GENERAL;
+
+    rc = rbusEvent_Publish(consumer->rbus_handle, &event);
+    if ((rc != RBUS_ERROR_SUCCESS) && (rc != RBUS_ERROR_NOSUBSCRIBERS)) {
+        return -1;
+    }
+
+    rbusValue_Release(value);
+    rbusObject_Release(rdata);
+    return 0;
+}
+
+int decode_pcap(webconfig_consumer_t *consumer, unsigned int vap_index, char *file_name)
+{
+    // mac_address_t sta;
+    FILE *fp = NULL;
+    unsigned char buff[MAX_FRAME_SZ];
+    struct ieee80211_frame *frame;
+    wireshark_pkthdr_t  pkt_hdr;
+    struct ieee80211_radiotap_header *radiotap_hdr;
+    struct pcap_file_header  file_hdr;
+    size_t sz;
+    // int ret = 0, frames_parsed = 0, start_frame = 0, end_frame = 0;
+    // bool all_frames = false;
+    int frames_parsed = 0, start_frame = 0, end_frame = 0;
+    bool is_mgmt_frame = false;
+    wifi_mgmtFrameType_t    mgmt_frame_type = WIFI_MGMT_FRAME_TYPE_INVALID;
+
+    frame_data_t frame_data;
+
+    rbusEvent_t event;
+    rbusObject_t rdata;
+    rbusValue_t value;
+
+    if ((fp = fopen(file_name, "r")) == NULL) {
+        printf("%s:%d: Can not open file\n", __func__, __LINE__);
+        return -1;
+    }
+
+    sz = fread(&file_hdr, 1, sizeof(struct pcap_file_header), fp);
+    if (sz != sizeof(struct pcap_file_header)) {
+        fclose(fp);
+        return -1;
+    }
+
+    if (file_hdr.magic !=  0xa1b2c3d4) {
+        fclose(fp);
+        return -1;
+    }
+   start_frame = 1386;
+   end_frame  = 1388;
+
+
+/*  if (strcasecmp(frame_range, "all") == 0) {
+        all_frames = true;
+    } else {
+        sscanf(frame_range, "%d-%d", &start_frame, &end_frame);
+    } */
+
+    while ((sz = fread(&pkt_hdr, 1, sizeof(wireshark_pkthdr_t), fp)) == sizeof(wireshark_pkthdr_t)) {
+        memset(buff, 0, MAX_FRAME_SZ);
+        sz = fread(buff, 1, pkt_hdr.caplen, fp);
+
+        frames_parsed++;
+        if(frames_parsed<start_frame)
+               continue;
+
+        if (sz != pkt_hdr.caplen) {
+            continue;
+        }
+
+        is_mgmt_frame = false;
+        mgmt_frame_type = WIFI_MGMT_FRAME_TYPE_INVALID;
+
+        radiotap_hdr = (struct ieee80211_radiotap_header *)buff;
+        frame = (struct ieee80211_frame *)&buff[radiotap_hdr->it_len];
+        if ((frame->i_fc[0] & 0x0c) == 0) {
+            is_mgmt_frame = true;
+            switch (frame->i_fc[0] >> 4) {
+                case 0:
+                    mgmt_frame_type = WIFI_MGMT_FRAME_TYPE_ASSOC_REQ;
+                    break;
+                case 1:
+                    mgmt_frame_type = WIFI_MGMT_FRAME_TYPE_ASSOC_RSP;
+                    break;
+                case 2:
+                    mgmt_frame_type = WIFI_MGMT_FRAME_TYPE_REASSOC_REQ;
+                    break;
+                case 3:
+                    mgmt_frame_type = WIFI_MGMT_FRAME_TYPE_REASSOC_RSP;
+                    break;
+                case 4:
+                    mgmt_frame_type = WIFI_MGMT_FRAME_TYPE_PROBE_REQ;
+                    break;
+                case 5:
+                    mgmt_frame_type = WIFI_MGMT_FRAME_TYPE_PROBE_RSP;
+                    break;
+                case 8:
+                    // mgmt_frame_type = WIFI_MGMT_FRAME_TYPE_BEACON;
+                    break;
+                case 9:
+                    // mgmt_frame_type = WIFI_MGMT_FRAME_TYPE_ATIMS;
+                    break;
+                case 10:
+                    mgmt_frame_type = WIFI_MGMT_FRAME_TYPE_DISASSOC;
+                    break;
+                case 11:
+                    mgmt_frame_type = WIFI_MGMT_FRAME_TYPE_AUTH;
+                    break;
+                case 12:
+                    mgmt_frame_type = WIFI_MGMT_FRAME_TYPE_DEAUTH;
+                    break;
+                case 13:
+                    mgmt_frame_type = WIFI_MGMT_FRAME_TYPE_ACTION;
+                    break;
+                default:
+                    break;
+            }
+        }
+        // memcpy(&sta, frame->i_addr2, sizeof(mac_address_t));
+        memcpy((uint8_t *)&frame_data.frame.sta_mac, (uint8_t *)&frame->i_addr2, sizeof(mac_address_t));
+        frame_data.frame.ap_index = vap_index;
+        frame_data.frame.len = (uint32_t)(sz - radiotap_hdr->it_len);
+        frame_data.frame.type = mgmt_frame_type;
+        memcpy((uint8_t *)&frame_data.data, &buff[radiotap_hdr->it_len], frame_data.frame.len);
+        frame_data.frame.dir = wifi_direction_uplink;
+
+        if(is_mgmt_frame && (mgmt_frame_type != WIFI_MGMT_FRAME_TYPE_INVALID)) {
+            rbusValue_Init(&value);
+            rbusObject_Init(&rdata, NULL);
+
+            rbusObject_SetValue(rdata, WIFI_FRAME_INJECTOR_TO_ONEWIFI, value);
+            rbusValue_SetBytes(value, (uint8_t *)&frame_data, (sizeof(frame_data) - MAX_FRAME_SZ + frame_data.frame.len));
+            event.name = WIFI_FRAME_INJECTOR_TO_ONEWIFI;
+            event.data = rdata;
+            event.type = RBUS_EVENT_GENERAL;
+
+            int rc = rbusEvent_Publish(consumer->rbus_handle, &event);
+            if ((rc != RBUS_ERROR_SUCCESS) && (rc != RBUS_ERROR_NOSUBSCRIBERS)) {
+                fclose(fp);
+                printf("%s:%d: rbus Publish Failure\n", __func__, __LINE__);
+                return -1;
+            }
+
+	    rbusValue_Release(value);
+            rbusObject_Release(rdata);
+        }
+
+   /**  if (all_frames == true) {
+            ret = ((is_mgmt_frame == true) && (mgmt_frame_type != WIFI_MGMT_FRAME_TYPE_INVALID)) ?
+                mgmt_wifi_frame_recv(1, sta, &buff[radiotap_hdr->it_len], (uint32_t)(sz - radiotap_hdr->it_len), mgmt_frame_type, wifi_direction_uplink):-1;
+        } else if ((frames_parsed >= start_frame) && (frames_parsed <= end_frame)) {
+            ret = ((is_mgmt_frame == true) && (mgmt_frame_type != WIFI_MGMT_FRAME_TYPE_INVALID)) ?
+                mgmt_wifi_frame_recv(1, sta, &buff[radiotap_hdr->it_len], (uint32_t)(sz - radiotap_hdr->it_len), mgmt_frame_type, wifi_direction_uplink):-1;
+
+        } **/
+        if(frames_parsed >end_frame)
+           return 0;
+
+    }
+
+    fclose(fp);
+
+    printf("%s:%d: Frames Parsed: %d\n", __func__, __LINE__, frames_parsed);
+    return 0;
+}
+
 int parse_input_parameters(char *first_input, char *second_input, char *input_file_name)
 {
     webconfig_consumer_t *consumer = get_consumer_object();
@@ -2372,6 +2588,23 @@ int parse_input_parameters(char *first_input, char *second_input, char *input_fi
 
     } else if (!strncmp(first_input, "rbusGet", strlen("rbusGet"))) {
         rbus_multi_get(consumer, second_input, input_file_name);
+    } else if (!strncmp(first_input, "mgmtFrameSend", strlen("mgmtFrameSend"))) {
+        vap_index = atoi(second_input);
+        if (vap_index < MAX_VAP) {
+            decode_802_11_frame(consumer, vap_index, input_file_name);
+        } else {
+            printf("%s:%d: wrong second argument:%s:vap_index:%d:%d\r\n", __func__, __LINE__, second_input, vap_index, MAX_VAP);
+            return RETURN_ERR;
+        }
+
+    } else if (!strncmp(first_input, "mpcap", strlen("mpcap"))) {
+        vap_index = atoi(second_input);
+        if (vap_index < MAX_VAP) {
+            decode_pcap(consumer, vap_index, input_file_name);
+        } else {
+            printf("%s:%d: wrong second argument:%s:vap_index:%d:%d\r\n", __func__, __LINE__, second_input, vap_index, MAX_VAP);
+            return RETURN_ERR;
+        }
 
     } else {
         printf("%s:%d: wrong first argument:%s\r\n", __func__, __LINE__, first_input);

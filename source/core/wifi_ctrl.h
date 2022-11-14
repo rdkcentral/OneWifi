@@ -44,6 +44,7 @@ extern "C" {
 #define WIFI_FEATURE_LoadDefaults          0
 
 #define WIFI_MAX_SSID_NAME_LEN             33
+#define MAX_FRAME_SZ       2048
 
 #define RFC_WIFI_PASSPOINT          "RfcWifiPasspointEnable"
 #define RFC_WIFI_INTERWORKING       "RfcWifiInterworkingEnable"
@@ -175,6 +176,7 @@ typedef struct wifi_ctrl {
     bool                test_device_mode_subscribed;
     bool                device_tunnel_status_subscribed;
     bool                device_wps_test_subscribed;
+    bool                frame_802_11_injector_subscribed;
     bool                factory_reset;
     bool                marker_list_config_subscribed;
     wifiapi_t           wifiapi;

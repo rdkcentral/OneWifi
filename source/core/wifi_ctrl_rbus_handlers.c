@@ -27,6 +27,7 @@
 #include "msgpack.h"
 #include <unistd.h>
 #include <rbus.h>
+#include "wifi_passpoint.h"
 
 int webconfig_csi_notify_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_encoded_data_t *data)
 {
@@ -972,6 +973,50 @@ static void eventReceiveHandler(rbusHandle_t handle, rbusEvent_t const* event, r
     push_data_to_ctrl_queue(&tunnel_status, sizeof(tunnel_status), ctrl_event_type_command, ces_t);
 }
 
+static void frame_802_11_injector_Handler(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription)
+{
+    frame_data_t *data_ptr;
+    const unsigned char *rbus_data;
+    int len = 0;
+    frame_data_t frame_data;
+    UNREFERENCED_PARAMETER(handle);
+    memset(&frame_data, 0, sizeof(frame_data));
+
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Recvd Event\n",  __func__, __LINE__);
+    if(!event) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d null event\n", __func__, __LINE__);
+        return;
+    }
+
+    rbusValue_t value = rbusObject_GetValue(event->data, subscription->eventName);
+    if (!value) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Invalid value in event:%s\n",
+                    __func__, __LINE__, event->name);
+        return;
+    }
+
+    rbus_data = rbusValue_GetBytes(value, &len);
+    data_ptr = (frame_data_t *)rbus_data;
+    if (data_ptr != NULL && len != 0) {
+        memcpy((uint8_t *)&frame_data.frame.sta_mac, (uint8_t *)&data_ptr->frame.sta_mac, sizeof(mac_address_t));
+        frame_data.frame.ap_index = data_ptr->frame.ap_index;
+        frame_data.frame.len = data_ptr->frame.len;
+        frame_data.frame.type = data_ptr->frame.type;
+        frame_data.frame.dir = data_ptr->frame.dir;
+        frame_data.frame.data = data_ptr->frame.data;
+
+        memcpy(&frame_data.data, data_ptr->data, data_ptr->frame.len);
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: vap_index:%d len:%d frame_byte:%d\r\n", __func__, __LINE__, frame_data.frame.ap_index, len, frame_data.frame.len);
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: frame_data.type:%d frame_data.dir:%d\r\n", __func__, __LINE__, frame_data.frame.type, frame_data.frame.dir);
+#ifdef WIFI_HAL_VERSION_3_PHASE2
+        mgmt_wifi_frame_recv(frame_data.frame.ap_index, &frame_data.frame);
+#else
+        mgmt_wifi_frame_recv(frame_data.frame.ap_index,frame_data.frame.sta_mac,frame_data.data,frame_data.frame.len,frame_data.frame.type,frame_data.frame.dir);
+#endif
+
+    }
+}
+
 static void wps_test_event_receive_handler(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription)
 {
     uint32_t vap_index = 0;
@@ -1105,6 +1150,14 @@ void rbus_subscribe_events(wifi_ctrl_t *ctrl)
         }
     }
 
+    if (consumer_app_file == 0 && ctrl->frame_802_11_injector_subscribed == false) {
+        if (rbusEvent_Subscribe(ctrl->rbus_handle, WIFI_FRAME_INJECTOR_TO_ONEWIFI, frame_802_11_injector_Handler, NULL, 0) != RBUS_ERROR_SUCCESS) {
+            //wifi_util_dbg_print(WIFI_CTRL,"%s:%d Rbus event:%s subscribe failed\n",__FUNCTION__, __LINE__, WIFI_FRAME_INJECTOR_TO_ONEWIFI);
+        } else {
+            ctrl->frame_802_11_injector_subscribed = true;
+            wifi_util_dbg_print(WIFI_CTRL,"%s:%d Rbus event:%s subscribe success\n",__FUNCTION__, __LINE__, WIFI_FRAME_INJECTOR_TO_ONEWIFI);
+        }
+    }
 
 }
 

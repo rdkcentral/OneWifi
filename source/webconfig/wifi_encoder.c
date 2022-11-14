@@ -491,19 +491,68 @@ webconfig_error_t encode_config_object(const wifi_global_config_t *config_info, 
     return webconfig_error_none;
 }
 
-webconfig_error_t encode_anqp_object(const wifi_anqp_settings_t *anqp_info, cJSON *anqp)
+
+extern const char* get_anqp_json_by_vap_name(const char* vap_name);
+extern const char* get_passpoint_json_by_vap_name(const char* vap_name);
+
+webconfig_error_t encode_anqp_object(const char *vap_name, cJSON *inter)
 {
-    //cJSON *obj;
+    if(inter == NULL) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Null interworking obj\n", __func__, __LINE__);
+        return webconfig_error_encode;
+    }
 
-    // IPAddressTypeAvailabilityANQPElement
+    const char *p_json = get_anqp_json_by_vap_name(vap_name);
 
-    // DomainANQPElement
+    if(p_json == NULL) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Unable  to get anqp json str\n", __func__, __LINE__);
+        return webconfig_error_none;
+    }
 
-    // 3GPPCellularANQPElement
+    if(strlen(p_json) == 0) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Unable  to encode anqp json, zero len\n", __func__, __LINE__);
+        return webconfig_error_none;
+    }
 
-    // RoamingConsolrtium ANQPElemet
+    cJSON *p_root = cJSON_Parse(p_json);
+    if(p_root == NULL) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Unable  to encode anqp json\n", __func__, __LINE__);
+        return webconfig_error_none;
+        //return webconfig_error_encode;
+    }
 
-    // VenueNameANQPElement
+    cJSON_AddItemToObject(inter, "ANQP", p_root);
+
+
+    return webconfig_error_none;
+}
+
+webconfig_error_t encode_passpoint_object(const char *vap_name, cJSON *inter)
+{
+    if(inter == NULL) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Null interworking obj\n", __func__, __LINE__);
+        return webconfig_error_encode;
+    }
+
+    const char *p_json = get_passpoint_json_by_vap_name(vap_name);
+
+    if(p_json == NULL) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Unable  to get passpoint json str\n", __func__, __LINE__);
+        return webconfig_error_none;
+    }
+
+    if(strlen(p_json) == 0) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Unable  to encode passpoint json, zero len\n", __func__, __LINE__);
+        return webconfig_error_none;
+    }
+
+    cJSON *p_root = cJSON_Parse(p_json);
+    if(p_root == NULL) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Unable  to encode passpoint json\n", __func__, __LINE__);
+        return webconfig_error_none;
+    }
+
+    cJSON_AddItemToObject(inter, "Passpoint", p_root);
 
     return webconfig_error_none;
 }
@@ -894,6 +943,17 @@ webconfig_error_t encode_hotspot_open_vap_object(const wifi_vap_info_t *vap_info
         return webconfig_error_encode;
 
     }
+    webconfig_error_t ret = encode_anqp_object(vap_info->vap_name, obj);
+    if(ret != webconfig_error_none) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d anqp encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        return webconfig_error_encode;
+    }
+
+    ret = encode_passpoint_object(vap_info->vap_name, obj);
+    if(ret != webconfig_error_none) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d passpoint encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        return webconfig_error_encode;
+    }
 
     return webconfig_error_none;
 }
@@ -921,6 +981,18 @@ webconfig_error_t encode_hotspot_secure_vap_object(const wifi_vap_info_t *vap_in
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Interworking object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
 
+    }
+
+    webconfig_error_t ret = encode_anqp_object(vap_info->vap_name, obj);
+    if(ret != webconfig_error_none) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d anqp encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        return webconfig_error_encode;
+    }
+
+    ret = encode_passpoint_object(vap_info->vap_name, obj);
+    if(ret != webconfig_error_none) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d passpoint encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        return webconfig_error_encode;
     }
 
     return webconfig_error_none;

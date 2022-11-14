@@ -58,6 +58,8 @@ void print_help_msg(void)
     printf("-kickmac <ap_index-maclist-timeout>          { kick associated devices , to kick all <ap_index-ff:ff:ff:ff:ff:ff-timeout>}\r\n");
     printf("wps <vap_index>                              { Trigger wps test case }\r\n");
     printf("rbusGet <properties> [properties1]           { Trigger rbus get command }\r\n");
+    printf("mgmtFrameSend <ap_index> <packet_input.txt>  { Trigger this command to injecting 802.11 frames }\r\n");
+    printf("mpcap <ap_index> <pcap file>                 { Trigger this command to injecting 802.11 frames from pcap files}\r\n");
     printf("help\r\n");
     printf("exit                                         { exit wifi webconfig consumer sample app}\r\n");
     printf("|**************************************************************|\r\n");

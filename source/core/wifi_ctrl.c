@@ -30,6 +30,8 @@
 #include <pthread.h>
 #include <rbus.h>
 #include "wifi_hal_rdk_framework.h"
+#include "ieee80211.h"
+
 #ifdef CMWIFI_RDKB
 #define FILE_SYSTEM_UPTIME         "/var/systemUptime.txt"
 #else
@@ -39,6 +41,7 @@ unsigned int get_Uptime(void);
 unsigned int startTime[MAX_NUM_RADIOS];
 #define BUF_SIZE              256
 extern webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc_data_t *data);
+void get_action_frame_evt_params(uint8_t *frame, uint32_t len, frame_data_t *mgmt_frame, ctrl_event_subtype_t *evt_subtype);
 
 void deinit_wifi_ctrl(wifi_ctrl_t *ctrl)
 {
@@ -345,10 +348,6 @@ int init_wifi_global_config(void)
 {
     if (RETURN_OK != WiFi_InitGasConfig()) {
         wifi_util_error_print(WIFI_CTRL,"RDK_LOG_WARN, RDKB_SYSTEM_BOOT_UP_LOG : CosaWifiInitialize - WiFi failed to Initialize GAS Configuration.\n");
-        return RETURN_ERR;
-    }
-    if (RETURN_OK != init_wifi_data_plane()) {
-        wifi_util_error_print(WIFI_CTRL,"RDK_LOG_WARN, RDKB_SYSTEM_BOOT_UP_LOG : CosaWifiInitialize - WiFi failed to Initialize Wifi Data/Mgmt Handler.\n");
         return RETURN_ERR;
     }
     return RETURN_OK;
@@ -903,23 +902,131 @@ int mgmt_wifi_frame_recv(int ap_index, wifi_frame_t *frame)
 #else
 int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, uint32_t len, wifi_mgmtFrameType_t type, wifi_direction_t dir)
 {
-    frame_data_t wifi_mgmt_frame;
+    wifi_actionFrameHdr_t *paction = NULL;
+    frame_data_t mgmt_frame;
+    ctrl_event_subtype_t evt_subtype = ctrl_event_hal_unknown_frame;
 
-    memset(&wifi_mgmt_frame, 0, sizeof(wifi_mgmt_frame));
-    memcpy(wifi_mgmt_frame.data, frame, len);
+    if (len == 0) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d Recived zero length frame\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
 
-    wifi_mgmt_frame.frame.ap_index = ap_index;
-    memcpy(wifi_mgmt_frame.frame.sta_mac, sta_mac, sizeof(mac_address_t));
-    wifi_mgmt_frame.frame.len = len;
-    wifi_mgmt_frame.frame.type = type;
-    wifi_mgmt_frame.frame.dir = dir;
+    if (len > MAX_FRAME_SZ) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d Recived frame len: %d, more than allowed allocation\n", __func__, __LINE__, len);
+        return RETURN_ERR;
+    }
 
-    //In side this API we have allocate memory and send it to control queue
-    push_data_to_ctrl_queue((frame_data_t *)&wifi_mgmt_frame, (sizeof(wifi_mgmt_frame) + len), ctrl_event_type_hal_ind, ctrl_event_hal_mgmt_farmes);
+    memset(&mgmt_frame, 0, sizeof(mgmt_frame));
+    mgmt_frame.frame.ap_index = ap_index;
+    memcpy(mgmt_frame.frame.sta_mac, sta_mac, sizeof(mac_address_t));
+    mgmt_frame.frame.type = type;
+    mgmt_frame.frame.dir = dir;
 
-    return RETURN_OK;
+    if (type == WIFI_MGMT_FRAME_TYPE_PROBE_REQ) {
+        memcpy(mgmt_frame.data, frame, len);
+        mgmt_frame.frame.len = len;
+        evt_subtype = ctrl_event_hal_probe_req_frame;
+    } else if (type == WIFI_MGMT_FRAME_TYPE_AUTH) {
+        memcpy(mgmt_frame.data, frame, len);
+        mgmt_frame.frame.len = len;
+        evt_subtype = ctrl_event_hal_auth_frame;
+    } else if (type == WIFI_MGMT_FRAME_TYPE_ASSOC_REQ) {
+        memcpy(mgmt_frame.data, frame, len);
+        mgmt_frame.frame.len = len;
+        evt_subtype = ctrl_event_hal_assoc_req_frame;
+    } else if (type == WIFI_MGMT_FRAME_TYPE_ASSOC_RSP) {
+        memcpy(mgmt_frame.data, frame, len);
+        mgmt_frame.frame.len = len;
+        evt_subtype = ctrl_event_hal_assoc_rsp_frame;
+    } else if (type == WIFI_MGMT_FRAME_TYPE_ACTION) {
+        paction = (wifi_actionFrameHdr_t *)(frame + sizeof(struct ieee80211_frame));
+        switch (paction->cat) {
+            case wifi_action_frame_type_public:
+                get_action_frame_evt_params(frame, len, &mgmt_frame, &evt_subtype);
+                break;
+            default:
+                break;
+        }
+    }
+
+    push_data_to_ctrl_queue((frame_data_t *)&mgmt_frame, sizeof(mgmt_frame), ctrl_event_type_hal_ind, evt_subtype);
+	    return RETURN_OK;
 }
 #endif
+
+
+void get_gas_init_frame_evt_params(uint8_t *frame, uint32_t len, frame_data_t *mgmt_frame, ctrl_event_subtype_t *evt_subtype)
+{
+    unsigned short query_len, *pquery_len;
+    unsigned char *query_req;
+    wifi_advertisementProtoElement_t *adv_proto_elem;
+    wifi_advertisementProtoTuple_t *adv_tuple;
+    const char dpp_oui[3] = {0x50, 0x6f, 0x9a};
+    wifi_gasInitialRequestFrame_t *pgas_req = (wifi_gasInitialRequestFrame_t *)frame;
+
+    adv_proto_elem = &pgas_req->proto_elem;
+    adv_tuple = &adv_proto_elem->proto_tuple;
+
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d: advertisement proto element id:%d length:%d\n", __func__, __LINE__, adv_proto_elem->id, adv_proto_elem->len);
+
+    pquery_len = (unsigned short*)((unsigned char *)&adv_proto_elem->proto_tuple + adv_proto_elem->len);
+    query_len = *pquery_len;
+    query_req = (unsigned char *)((unsigned char *)pquery_len + sizeof(unsigned short));
+
+    switch (adv_tuple->adv_proto_id) {
+
+        case wifi_adv_proto_id_vendor_specific:
+            if ((adv_tuple->len == sizeof(dpp_oui) + 2) && (memcmp(adv_tuple->oui, dpp_oui, sizeof(dpp_oui)) == 0) &&
+                    (*(adv_tuple->oui + sizeof(dpp_oui)) == DPP_OUI_TYPE) && (*(adv_tuple->oui + sizeof(dpp_oui) + 1) == DPP_CONFPROTO)) {
+                wifi_util_dbg_print(WIFI_CTRL,"%s:%d dpp gas initial req frame received callback, length:%d\n", __func__, __LINE__, query_len);
+                *evt_subtype = ctrl_event_hal_dpp_config_req_frame;
+                memcpy(mgmt_frame->data, query_req, query_len);
+                mgmt_frame->frame.len = query_len;
+                mgmt_frame->frame.token = pgas_req->token;
+
+            }
+            break;
+
+        case wifi_adv_proto_id_anqp:
+            wifi_util_dbg_print(WIFI_CTRL,"%s:%d anqp gas initial req frame received call back, length:%d\n", __func__, __LINE__, query_len);
+            *evt_subtype = ctrl_event_hal_anqp_gas_init_frame;
+            memcpy(mgmt_frame->data, query_req, query_len);
+            mgmt_frame->frame.len = query_len;
+            mgmt_frame->frame.token = pgas_req->token;
+            break;
+
+        default:
+            break;
+    }
+}
+
+void get_action_frame_evt_params(uint8_t *frame, uint32_t len, frame_data_t *mgmt_frame, ctrl_event_subtype_t *evt_subtype)
+{
+    unsigned char *public_action_data;
+    wifi_publicActionFrameHdr_t *ppublic_hdr = (wifi_publicActionFrameHdr_t *)(frame + sizeof(struct ieee80211_frame)); // frame_control + duration + da + sa + bssid + seq
+
+    len -= sizeof(struct ieee80211_frame);
+
+    public_action_data = (unsigned char *)ppublic_hdr + sizeof(wifi_publicActionFrameHdr_t);
+    len -= sizeof(wifi_publicActionFrameHdr_t);
+
+    switch (ppublic_hdr->action) {
+
+        case wifi_public_action_type_vendor:
+            break;
+
+        case wifi_public_action_type_gas_init_req:
+            get_gas_init_frame_evt_params(public_action_data, len, mgmt_frame, evt_subtype);
+            break;
+
+        case wifi_public_action_type_gas_comeback_req:
+            break;
+
+        default:
+            break;
+    }
+
+}
 
 void channel_change_callback(wifi_channel_change_event_t radio_channel_param)
 {

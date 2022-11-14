@@ -1491,7 +1491,7 @@
         PJS_OVS_INT(roaming_consortium_length) \
         PJS_OVS_STRING(roaming_consortium_element, 128 + 1) \
         PJS_OVS_INT(nai_realm_length) \
-        PJS_OVS_STRING(nai_realm_element, 128 + 1) \
+        PJS_OVS_STRING(nai_realm_element, 1024 + 1) \
         PJS_OVS_INT(gpp_cellular_length) \
         PJS_OVS_STRING(gpp_cellular_element, 128 + 1) \
         PJS_OVS_INT(venue_name_length) \
