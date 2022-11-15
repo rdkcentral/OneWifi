@@ -36,7 +36,7 @@
 				"MFPConfig": "Disabled",
 				"Mode": "WPA2-Personal",
 				"EncryptionMethod": "AES",
-				"Passphrase": "folded9656angle"
+				"Passphrase": ""
 			},
 			"Interworking": {
 				"InterworkingEnable": false,
@@ -87,7 +87,7 @@
 				"MFPConfig": "Disabled",
 				"Mode": "WPA2-Personal",
 				"EncryptionMethod": "AES",
-				"Passphrase": "folded9656angle"
+				"Passphrase": ""
 			},
 			"Interworking": {
 				"InterworkingEnable": false,

@@ -24,7 +24,7 @@
 		"WifiActiveMsmtNumSamples": 5,
 		"WifiActiveMsmtSampleDuration": 400,
 		"VlanCfgVersion": 2,
-		"WpsPin": "1234",
+		"WpsPin": "",
 		"BandsteeringEnable": false,
 		"GoodRssiThreshold": -65,
 		"AssocCountThreshold": 0,
@@ -436,7 +436,7 @@
 				"MFPConfig": "Disabled",
 				"Mode": "WPA2-Personal",
 				"EncryptionMethod": "AES",
-				"Passphrase": "folded9656angle"
+				"Passphrase": ""
 			},
 			"Interworking": {
 				"InterworkingEnable": false,
@@ -486,7 +486,7 @@
 				"MFPConfig": "Disabled",
 				"Mode": "WPA2-Personal",
 				"EncryptionMethod": "AES+TKIP",
-				"Passphrase": "C84C198145462313A4"
+				"Passphrase": ""
 			},
 			"Interworking": {
 				"InterworkingEnable": false,
@@ -598,7 +598,7 @@
 				"MFPConfig": "Disabled",
 				"Mode": "WPA2-Personal",
 				"EncryptionMethod": "AES+TKIP",
-				"Passphrase": "AEF9D58B978A103B04016D600FD4B1E6943A3FF538B98B84F1C177B414F7018"
+				"Passphrase": ""
 			},
 			"Interworking": {
 				"InterworkingEnable": false,
@@ -796,7 +796,7 @@
 				"MFPConfig": "Disabled",
 				"Mode": "WPA2-Personal",
 				"EncryptionMethod": "AES+TKIP",
-				"Passphrase": "1234567890"
+				"Passphrase": ""
 			},
 			"Interworking": {
 				"InterworkingEnable": false,
@@ -827,7 +827,7 @@
 				"MFPConfig": "Disabled",
 				"Mode": "WPA2-Personal",
 				"EncryptionMethod": "AES+TKIP",
-				"Passphrase": "SA2mNb5p8KHN=A8nDzxj-^HWZpAbjX4q"
+				"Passphrase": ""
 			},
 			"ScanParameters": {
 				"Period": 0,
@@ -868,7 +868,7 @@
 				"MFPConfig": "Disabled",
 				"Mode": "WPA2-Personal",
 				"EncryptionMethod": "AES",
-				"Passphrase": "folded9656angle"
+				"Passphrase": ""
 			},
 			"Interworking": {
 				"InterworkingEnable": false,
@@ -918,7 +918,7 @@
 				"MFPConfig": "Disabled",
 				"Mode": "WPA2-Personal",
 				"EncryptionMethod": "AES+TKIP",
-				"Passphrase": "C84C198145462313A4"
+				"Passphrase": ""
 			},
 			"Interworking": {
 				"InterworkingEnable": false,
@@ -1030,7 +1030,7 @@
 				"MFPConfig": "Disabled",
 				"Mode": "WPA2-Personal",
 				"EncryptionMethod": "AES+TKIP",
-				"Passphrase": "AEF9D58B978A103B04016D600FD4B1E6943A3FF538B98B84F1C177B414F7018"
+				"Passphrase": ""
 			},
 			"Interworking": {
 				"InterworkingEnable": false,
@@ -1228,7 +1228,7 @@
 				"MFPConfig": "Disabled",
 				"Mode": "WPA2-Personal",
 				"EncryptionMethod": "AES+TKIP",
-				"Passphrase": "1234567890"
+				"Passphrase": ""
 			},
 			"Interworking": {
 				"InterworkingEnable": false,
@@ -1259,7 +1259,7 @@
 				"MFPConfig": "Disabled",
 				"Mode": "WPA2-Personal",
 				"EncryptionMethod": "AES+TKIP",
-				"Passphrase": "SA2mNb5p8KHN=A8nDzxj-^HWZpAbjX4q"
+				"Passphrase": ""
 			},
 			"ScanParameters": {
 				"Period": 0,

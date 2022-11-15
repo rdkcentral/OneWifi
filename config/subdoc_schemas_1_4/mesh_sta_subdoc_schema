@@ -372,7 +372,7 @@
 				"MFPConfig": "Disabled",
 				"Mode": "WPA2-Personal",
 				"EncryptionMethod": "AES+TKIP",
-				"Passphrase": "SA2mNb5p8KHN=A8nDzxj-^HWZpAbjX4q"
+				"Passphrase": ""
 			},
 			"ScanParameters": {
 				"Period": 0,
@@ -393,7 +393,7 @@
 				"MFPConfig": "Disabled",
 				"Mode": "WPA2-Personal",
 				"EncryptionMethod": "AES+TKIP",
-				"Passphrase": "SA2mNb5p8KHN=A8nDzxj-^HWZpAbjX4q"
+				"Passphrase": ""
 			},
 			"ScanParameters": {
 				"Period": 0,

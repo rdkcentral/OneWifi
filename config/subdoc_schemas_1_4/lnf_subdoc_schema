@@ -35,7 +35,7 @@
 				"MFPConfig": "Disabled",
 				"Mode": "WPA2-Personal",
 				"EncryptionMethod": "AES+TKIP",
-				"Passphrase": "AEF9D58B978A103B04016D600FD4B1E6943A3FF538B98B84F1C177B414F7018"
+				"Passphrase": ""
 			},
 			"Interworking": {
 				"InterworkingEnable": false,
@@ -159,7 +159,7 @@
 				"MFPConfig": "Disabled",
 				"Mode": "WPA2-Personal",
 				"EncryptionMethod": "AES+TKIP",
-				"Passphrase": "AEF9D58B978A103B04016D600FD4B1E6943A3FF538B98B84F1C177B414F7018"
+				"Passphrase": ""
 			},
 			"Interworking": {
 				"InterworkingEnable": false,

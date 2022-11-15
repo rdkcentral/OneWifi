@@ -6,7 +6,7 @@
 		"ActiveMsmtSampleDuration": 2000,
 		"ActiveMsmtNumberOfSamples": 10,
 		"ActiveMsmtEnable": true,
-		"PlanId": "39ae3a1b90754d0398ec483a6012fd45",
+		"PlanId": "",
 		"Step": [
 			{
 				"StepId": 1,
