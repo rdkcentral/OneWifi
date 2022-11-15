@@ -1149,7 +1149,7 @@ void telemetry_bootup_time_wifibroadcast()
             advertise_enabled = FALSE;
             unsigned int uptime;
             uptime = get_Uptime();
-            wifi_util_dbg_print(WIFI_CTRL, "RDK_LOG_WARN,Wifi_Broadcast_complete:%d\n",uptime);
+            wifi_util_info_print(WIFI_CTRL, "Wifi_Broadcast_complete:%d\n",uptime);
             t2_event_d("bootuptime_WifiBroadcasted_split", uptime);
         }
     }
