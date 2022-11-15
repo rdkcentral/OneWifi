@@ -349,7 +349,7 @@ int radio_health_telemetry_logger(void *arg)
         if (radioOperation != NULL) {
         //Printing the utilization of Radio if and only if the radio is enabled
             if (radioOperation->enable) {
-                wifi_getRadioBandUtilization(i, &output_percentage);
+                get_radio_channel_utilization(i, &output_percentage);
                 snprintf(buff, 256, "%s WIFI_BANDUTILIZATION_%d:%d\n", tmp, i + 1, output_percentage);
                 memset(tmp, 0, sizeof(tmp));
                 snprintf(tmp, sizeof(tmp), "Wifi_%dG_utilization_split", convert_radio_index_to_frequencyNum(i));
@@ -4017,7 +4017,7 @@ void associated_client_diagnostics ()
     wifi_util_dbg_print(WIFI_MON, "%s:%d: get radio NF %d\n", __func__, __LINE__, g_monitor_module.radio_data[radioIndex].NoiseFloor);
 
     /* ToDo: We can get channel_util percentage now, channel_ineterference percentage is 0 */
-    if (wifi_getRadioBandUtilization(index, &chan_util) == RETURN_OK) {
+    if (get_radio_channel_utilization(radioIndex, &chan_util) == RETURN_OK) {
         wifi_util_dbg_print(WIFI_MON, "%s:%d: get channel stats for radio %d\n", __func__, __LINE__, radioIndex);
         g_monitor_module.radio_data[radioIndex].channelUtil = chan_util;
         g_monitor_module.radio_data[radioIndex].channelInterference = 0;
@@ -6030,4 +6030,18 @@ int get_dev_stats_for_radio(unsigned int radio_index, radio_data_t *radio_stats)
     }
 
     return RETURN_ERR;
+}
+
+int get_radio_channel_utilization(unsigned int radio_index, int *chan_util)
+{
+    int ret = RETURN_ERR;
+    radio_data_t radio_stats;
+    memset(&radio_stats, 0, sizeof(radio_stats));
+
+    ret = get_dev_stats_for_radio(radio_index, &radio_stats);
+    if (ret == RETURN_OK) {
+        *chan_util = radio_stats.channelUtil;
+    }
+
+    return ret;
 }
