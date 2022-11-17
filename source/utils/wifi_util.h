@@ -183,4 +183,5 @@ int min_hw_mode_conversion(unsigned int vapIndex, char *inputStr, char *outputSt
 int vif_radio_idx_conversion(unsigned int vapIndex, int *input, int *output, char *tableType);
 int get_allowed_channels(wifi_freq_bands_t band, wifi_radio_capabilities_t *radio_cap, int *channels, int *channels_len);
 int convert_radio_index_to_freq_band(int radio_index, int *band);
+void wifidb_print(char *format, ...);
 #endif//_WIFI_UTIL_H_

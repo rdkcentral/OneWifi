@@ -48,7 +48,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "wifi_util.h"
 #include "wifi_ctrl.h"
 
-extern void wifidb_add_to_error_log(char *str1, const char *str2);
 
 /* OVSDB response buffers can be HUGE */
 static char ovsdb_write_buf[256*1024];
@@ -97,16 +96,18 @@ json_t *ovsdb_write_s(char *ovsdb_sock_path, json_t *jsdata)
         if (g_wifidb->wifidb_wfd < 0)
         {
             LOGE("SYNC: Error initiating connection to OVSDB.");
+            wifidb_print("SYNC: Error initiating connection to OVSDB.\r\n");
             goto error;
         }
     }
     ovs_fd = g_wifidb->wifidb_wfd;
 
     LOGD("SYNC: Writing sync operation: %s", json_dumps_static(jsdata, 0));
-    wifidb_add_to_error_log("Input to socket jsdata:", json_dumps_static(jsdata, 0));
     if (json_dump_callback(jsdata, ovsdb_sync_write_fn, (void *)(intptr_t)ovs_fd, JSON_COMPACT) != 0)
     {
         LOGE("SYNC: Error during sync write to OVSDB: %s", strerror(errno));
+        wifidb_print("Input(writing) operation to socket jsdata: %s\r\n", json_dumps_static(jsdata, 0));
+        wifidb_print("SYNC: Error during sync write to OVSDB: %s\r\n", strerror(errno));
         goto error;
     }
 
@@ -121,6 +122,7 @@ json_t *ovsdb_write_s(char *ovsdb_sock_path, json_t *jsdata)
         {
             /* Treat errors and short reads the same -- error while reading response. */
             LOGE("Sync: Short read or EOF while waiting for JSON response.");
+            wifidb_print("Sync: Short read or EOF while waiting for JSON response.\r\n");
             goto error;
         }
 
@@ -132,6 +134,7 @@ json_t *ovsdb_write_s(char *ovsdb_sock_path, json_t *jsdata)
         if (res == JSON_SPLIT_ERROR)
         {
             LOGE("Sync: Error parsing JSON-RPC response: %s\n", ovsdb_write_buf);
+            wifidb_print("Sync: Error parsing JSON-RPC response: %s\r\n", ovsdb_write_buf);
             goto error;
         }
 
@@ -146,10 +149,10 @@ json_t *ovsdb_write_s(char *ovsdb_sock_path, json_t *jsdata)
     }
     json_error_t err;
     retval = json_loads(ovsdb_write_buf, 0, &err);
-    wifidb_add_to_error_log("retval from socket:", json_dumps_static(retval, 0));
     if (retval == NULL)
     {
         LOGE("Sync: Error parsing OVSDB response (%s):\n%s", err.text, ovsdb_write_buf);
+        wifidb_print("Sync: Error parsing OVSDB response (%s):\n%s\r\n", err.text, ovsdb_write_buf);
     }
 
 error:
