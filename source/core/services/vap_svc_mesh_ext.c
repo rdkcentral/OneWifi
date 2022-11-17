@@ -612,7 +612,7 @@ void ext_try_connecting(vap_svc_t *svc)
                     candidate->external_ap.rssi, candidate->external_ap.freq, vap_index, radio_index);
         wifi_hal_connect(vap_index, &candidate->external_ap);
         if (ext->ext_conn_status_ind_timeout_handler_id != 0) {
-            wifi_util_dbg_print(WIFI_CTRL,"%s:%d cancel wifi connect.. vap_index:%d\r\n", __func__, __LINE__, vap_index);
+            wifi_util_dbg_print(WIFI_CTRL,"%s:%d last connect status timeout.. timer task cancelled for vap_index:%d\r\n", __func__, __LINE__, vap_index);
             scheduler_cancel_timer_task(ctrl->sched, ext->ext_conn_status_ind_timeout_handler_id);
             ext->ext_conn_status_ind_timeout_handler_id = 0;
         }
@@ -1090,7 +1090,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
     wifi_ctrl_t *ctrl;
     bss_candidate_t *candidate = NULL;
     bool found_candidate = false, send_event = false;
-    unsigned int i, index;
+    unsigned int i = 0, index, j = 0;
     rbusEvent_t event;
     rbusObject_t rdata;
     rbusValue_t value;
@@ -1115,6 +1115,10 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
 
     for (i = 0; i < vap_map->num_vaps; i++) {
         if (vap_map->vap_array[i].vap_index == sta_data->stats.vap_index) {
+            if (vap_map->vap_array[i].u.sta_info.conn_status != sta_data->stats.connect_status) {
+                // send rbus connect indication
+                send_event = true;
+            }
             temp_vap_info = &vap_map->vap_array[i];
             if (temp_vap_info->u.sta_info.conn_status == sta_data->stats.connect_status &&
                 memcmp(temp_vap_info->u.sta_info.bssid, sta_data->bss_info.bssid, sizeof(bssid_t)) == 0) {
@@ -1125,6 +1129,11 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
             memset(temp_vap_info->u.sta_info.bssid, 0, sizeof(bssid_t));
             break;
         }
+    }
+
+    if (temp_vap_info == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: temp_vap_info is NULL \n", __func__, __LINE__);
+        return RETURN_ERR;
     }
 
     if (sta_data->stats.connect_status == wifi_connection_status_connected) {
@@ -1139,9 +1148,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
             wifi_util_dbg_print(WIFI_CTRL,"%s:%d - connected radio_band:%d\r\n", __func__, __LINE__, ext->last_connected_bss.radio_freq_band);
 
             // copy the bss bssid info to global chache
-            if (temp_vap_info != NULL) {
-                memcpy (temp_vap_info->u.sta_info.bssid, sta_data->bss_info.bssid, sizeof(temp_vap_info->u.sta_info.bssid));
-            }
+            memcpy (temp_vap_info->u.sta_info.bssid, sta_data->bss_info.bssid, sizeof(temp_vap_info->u.sta_info.bssid));
 
             // change the state
             ext->conn_state = connection_state_connected;
@@ -1181,8 +1188,25 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
                 }
             }
 
-            // send rbus connect indication
-            send_event = true;
+        }
+        if (ext->conn_state == connection_state_connected) {
+            //After moving to connected state, check if there is another sta interface in connected state.
+            for (i = 0; i < getNumberRadios(); i++) {
+                vap_map = &mgr->radio_config[i].vaps.vap_map;
+                for (j = 0; j< vap_map->num_vaps; j++) {
+                    //Check for the station vaps and connect_status
+                    if ((vap_svc_is_mesh_ext(vap_map->vap_array[j].vap_index) == true) &&
+                            (vap_map->vap_array[j].vap_index != temp_vap_info->vap_index) &&
+                            (vap_map->vap_array[j].vap_index == wifi_connection_status_connected)) {
+                        //Send the disconnect for the other station vap_index
+                        wifi_hal_disconnect(vap_map->vap_array[j].vap_index);
+                        vap_map->vap_array[j].u.sta_info.conn_status = wifi_connection_status_disconnected;
+                        wifi_util_error_print(WIFI_CTRL,"%s:%d - Error : More than one sta's associated, disconnecting vapIndex %d...\n",
+                                __func__, __LINE__,  vap_map->vap_array[j].vap_index);
+                        break;
+                    }
+                }
+            }
         }
     } else if (sta_data->stats.connect_status == wifi_connection_status_ap_not_found || sta_data->stats.connect_status == wifi_connection_status_disconnected) {
         // send rbus connect indication
@@ -1197,7 +1221,6 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
             candidate = &ext->last_connected_bss;
             found_candidate = true;
             ext->conn_state = connection_state_connection_to_lcb_in_progress;
-            send_event = true;
             if (ext->ext_udhcp_ip_check_id != 0) {
                 scheduler_cancel_timer_task(ctrl->sched, ext->ext_udhcp_ip_check_id);
                 ext->ext_udhcp_ip_check_id = 0;
