@@ -780,8 +780,14 @@ int captive_portal_check(void)
 
     if (rc != RBUS_ERROR_SUCCESS) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d rbus_get failed for [] with error [%d]\n",__func__, __LINE__, rc);
+        if (value != NULL) {
+            rbusValue_Release(value);
+        }
+        return RETURN_ERR;
     }
+
     get_config_wifi = rbusValue_GetBoolean(value);
+
 
     wifi_util_dbg_print(WIFI_CTRL,"CONFIG_WIFI= %d fun %s  and wifi_value %d \n",get_config_wifi,__func__,default_private_credentials);
 
@@ -801,6 +807,7 @@ int captive_portal_check(void)
         }
 
     }
+    rbusValue_Release(value);
     rbusValue_Release(config_wifi_value);
     wifi_util_info_print(WIFI_CTRL," Captive_portal Ends after NotifyWifiChanges\n");
 
