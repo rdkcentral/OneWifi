@@ -107,6 +107,7 @@ typedef enum {
     ctrl_event_type_txrx_rate,
     ctrl_event_type_prefer_private_rfc,
     ctrl_event_type_mgmt_frame_rbus_rfc,
+    ctrl_event_type_sta_connect_in_progress,
     ctrl_event_command_max,
 
     // wif_api

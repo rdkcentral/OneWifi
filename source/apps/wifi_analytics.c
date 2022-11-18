@@ -204,8 +204,9 @@ int analytics_event_webconfig_set_data(wifi_apps_t *apps, void *arg, ctrl_event_
                     vap = &vap_map->vap_array[j];
 
                     if(vap->vap_name[0] != '\0') {
-                        out_bytes += snprintf(&temp_str[out_bytes], (sizeof(temp_str)-out_bytes)," %d,%s,%s",
-                                vap->vap_index, vap->u.sta_info.ssid, (vap->u.sta_info.conn_status==wifi_connection_status_connected)?"con":"discon");
+                        out_bytes += snprintf(&temp_str[out_bytes], (sizeof(temp_str)-out_bytes)," %d,%s,%s,%s",
+                                vap->vap_index, vap->u.sta_info.ssid, (vap->u.sta_info.enabled==TRUE)?"enb":"dis",
+                                (vap->u.sta_info.conn_status==wifi_connection_status_connected)?"con":"discon");
 
                     }
                 }
@@ -291,6 +292,35 @@ int analytics_event_hal_assoc_rsp_frame(wifi_apps_t *apps, void *arg)
 
 int analytics_event_hal_sta_conn_status(wifi_apps_t *apps, void *arg)
 {
+    rdk_sta_data_t *sta_data = (rdk_sta_data_t *)arg;
+    char temp_str[128];
+
+    if (sta_data == NULL) {
+        wifi_util_error_print(WIFI_APPS,"%s:%d: input arg is NULL\n",__func__, __LINE__);
+        return -1;
+    }
+
+    memset(temp_str, 0, sizeof(temp_str));
+    switch(sta_data->stats.connect_status) {
+        case wifi_connection_status_connected:
+            snprintf(temp_str, sizeof(temp_str), "connected : vap_index %d",
+                    sta_data->stats.vap_index);
+            wifi_util_info_print(WIFI_ANALYTICS, analytics_format_hal_core, "sta status", temp_str);
+        break;
+        case wifi_connection_status_disconnected:
+            snprintf(temp_str, sizeof(temp_str), "disconnected : vap_index %d",
+                    sta_data->stats.vap_index);
+            wifi_util_info_print(WIFI_ANALYTICS, analytics_format_hal_core, "sta status", temp_str);
+        break;
+        case wifi_connection_status_ap_not_found:
+            snprintf(temp_str, sizeof(temp_str), "disconnected AP not found : vap_index %d",
+                    sta_data->stats.vap_index);
+            wifi_util_info_print(WIFI_ANALYTICS, analytics_format_hal_core, "sta status", temp_str);
+        break;
+        default:
+        break;
+    }
+
     return 0;
 }
 
@@ -359,6 +389,18 @@ int analytics_event_hal_disassoc_device(wifi_apps_t *apps, void *arg)
 
 int analytics_event_hal_scan_results(wifi_apps_t *apps, void *arg)
 {
+    scan_results_t *results = (scan_results_t *)arg;
+    char    str[128] = { 0 };
+
+    if (results == NULL) {
+        wifi_util_error_print(WIFI_APPS,"%s:%d: input arg is NULL\n",__func__, __LINE__);
+        return -1;
+    }
+
+    snprintf(str, sizeof(str), "radio:%u scancount:%d", results->radio_index, results->num);
+
+    wifi_util_info_print(WIFI_ANALYTICS, analytics_format_hal_core, "scan results", str);
+
     return 0;
 }
 
@@ -420,6 +462,22 @@ int analytics_event_command_kick_assoc_devices(wifi_apps_t *apps, void *arg)
     char *str = (char *)arg;
 
     wifi_util_info_print(WIFI_ANALYTICS, analytics_format_dml_core, "kick_mac", str);
+    return 0;
+}
+
+int analytics_event_sta_connect_in_progress(wifi_apps_t *apps, void *arg)
+{
+    bss_candidate_t  *candidate = (bss_candidate_t *)arg;
+    char temp_str[512];
+    mac_addr_str_t bssid_str;
+    if (candidate == NULL) {
+        wifi_util_error_print(WIFI_APPS,"%s:%d: input arg is NULL\n",__func__, __LINE__);
+        return -1;
+    }
+
+    to_mac_str(candidate->external_ap.bssid, bssid_str);
+    snprintf(temp_str, sizeof(temp_str), "start connection : bssid:%s", bssid_str);
+    wifi_util_info_print(WIFI_ANALYTICS, analytics_format_core_hal, "sta status", temp_str);
     return 0;
 }
 
@@ -615,6 +673,10 @@ int command_event_analytics(wifi_apps_t *apps, ctrl_event_subtype_t sub_type, vo
             break;
 
         case ctrl_event_type_mgmt_frame_rbus_rfc:
+            break;
+
+        case ctrl_event_type_sta_connect_in_progress:
+            analytics_event_sta_connect_in_progress(apps, arg);
             break;
 
         default:
