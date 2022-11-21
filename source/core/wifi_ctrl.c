@@ -1124,7 +1124,6 @@ int radio_csa_sched_timeout(void *arg)
     wifi_util_info_print(WIFI_CTRL,"%s:%d - wifi radio_index:%d csa scheduler timeout\r\n",
                                     __func__, __LINE__, radio_index);
     sched_id->wifi_csa_sched_handler_id[radio_index] = 0;
-    l_ctrl->webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
     return 0;
 }
 
@@ -1152,7 +1151,6 @@ void stop_wifi_csa_sched_timer(unsigned int radio_index, wifi_ctrl_t *l_ctrl)
         wifi_util_info_print(WIFI_CTRL,"%s:%d - stop wifi radio_index:%d csa scheduler timer\r\n", __func__, __LINE__, radio_index);
         scheduler_cancel_timer_task(l_ctrl->sched, sched_id->wifi_csa_sched_handler_id[radio_index]);
         sched_id->wifi_csa_sched_handler_id[radio_index] = 0;
-        l_ctrl->webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
     }
 }
 

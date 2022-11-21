@@ -882,6 +882,17 @@ bool is_csa_sched_timer_trigger(wifi_radio_operationParam_t old_radio_cfg, wifi_
     return false;
 }
 
+bool is_radio_param_config_changed(wifi_radio_operationParam_t *current_radio_cfg, wifi_radio_operationParam_t *new_radio_cfg)
+{
+    new_radio_cfg->op_class = current_radio_cfg->op_class;
+
+    if (memcmp(current_radio_cfg, new_radio_cfg, sizeof(wifi_radio_operationParam_t)) != 0) {
+        return true;
+    }
+
+    return false;
+}
+
 int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
     unsigned int i, j;
@@ -906,7 +917,8 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
         }
 
         found_radio_index = false;
-        if (memcmp(&mgr_radio_data->oper, &radio_data->oper, sizeof(wifi_radio_operationParam_t)) != 0) {
+
+        if (is_radio_param_config_changed(&mgr_radio_data->oper, &radio_data->oper) == true) {
 
             // radio data changed apply
             wifi_util_info_print(WIFI_MGR, "%s:%d: Change detected in received radio config, applying new configuration for radio: %s\n",
@@ -923,8 +935,6 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
 
             if (is_csa_sched_timer_trigger(mgr_radio_data->oper, radio_data->oper) == true) {
                 start_wifi_csa_sched_timer(&mgr_radio_data->vaps.radio_index, ctrl);
-            } else {
-                ctrl->webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
             }
 
             // write the value to database
@@ -974,6 +984,7 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                     ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
                 }
             } else {
+                ctrl->webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
                 ret = webconfig_hal_radio_apply(ctrl, &data->u.decoded);
             }
             break;
