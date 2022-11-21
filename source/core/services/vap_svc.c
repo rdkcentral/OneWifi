@@ -204,7 +204,7 @@ vap_svc_t *get_svc_by_type(wifi_ctrl_t *ct, vap_svc_type_t type)
     unsigned int i;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)ct;
 
-    for (i = 0; i < ctrl_event_type_max; i++) {
+    for (i = 0; i < vap_svc_type_max; i++) {
         if (ctrl->ctrl_svc[i].type == type) {
             return &ctrl->ctrl_svc[i];
         }
@@ -247,7 +247,7 @@ vap_svc_t *get_svc_by_vap_index(wifi_ctrl_t *ct, unsigned int vap_index)
     unsigned int i;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)ct;
 
-    for (i = 0; i < ctrl_event_type_max; i++) {
+    for (i = 0; i < vap_svc_type_max; i++) {
         if (ctrl->ctrl_svc[i].is_my_fn(vap_index) == true) {
             return &ctrl->ctrl_svc[i];
         }

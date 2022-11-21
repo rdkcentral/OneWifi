@@ -605,7 +605,7 @@ void stop_extender_vaps(void)
 
 int start_wifi_services(void)
 {
-    wifi_ctrl_t *ctrl;
+    wifi_ctrl_t *ctrl = NULL;
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
 
@@ -826,6 +826,8 @@ int start_wifi_health_monitor_thread(void)
 int scan_results_callback(int radio_index, wifi_bss_info_t **bss, unsigned int *num)
 {
     scan_results_t  res;
+    memset(&res, 0, sizeof(scan_results_t));
+
 
     res.radio_index = radio_index;
     res.num = *num;
@@ -841,6 +843,7 @@ int scan_results_callback(int radio_index, wifi_bss_info_t **bss, unsigned int *
 int sta_connection_status(int apIndex, wifi_bss_info_t *bss_dev, wifi_station_stats_t *sta)
 {
     rdk_sta_data_t        sta_data;
+    memset(&sta_data, 0, sizeof(rdk_sta_data_t));
     wifi_interface_name_t *interface_name;
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
 

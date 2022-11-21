@@ -1316,11 +1316,11 @@ void process_wifi_host_sync()
                 assoc_dev_data = hash_map_get_first(rdk_vap_info->associated_devices_map);
                 while (assoc_dev_data != NULL) {
                     snprintf(ssid, sizeof(ssid), "Device.WiFi.SSID.%d", rdk_vap_info->vap_index+1);
-                    strncpy((char *)hosts.host[hosts.count].ssid, ssid, sizeof(hosts.host[hosts.count].ssid));
+                    snprintf((char *)hosts.host[hosts.count].ssid, sizeof(hosts.host[hosts.count].ssid), "%s", ssid);
                     to_mac_str(assoc_dev_data->dev_stats.cli_MACAddress, mac_str);
-                    strncpy((char *)hosts.host[hosts.count].phyAddr, mac_str, sizeof(hosts.host[hosts.count].phyAddr));
+                    snprintf((char *)hosts.host[hosts.count].phyAddr, sizeof(hosts.host[hosts.count].phyAddr), "%s", mac_str);
                     snprintf(assoc_device, sizeof(assoc_device), "Device.WiFi.AccessPoint.%d.AssociatedDevice.%d", rdk_vap_info->vap_index+1, itrj+1);
-                    strncpy((char *)hosts.host[hosts.count].AssociatedDevice, assoc_device, sizeof(hosts.host[hosts.count].AssociatedDevice));
+                    snprintf((char *)hosts.host[hosts.count].AssociatedDevice, sizeof(hosts.host[hosts.count].AssociatedDevice), "%s", assoc_device);
                     if (assoc_dev_data->dev_stats.cli_Active) {
                         hosts.host[hosts.count].Status = TRUE;
                     } else {
