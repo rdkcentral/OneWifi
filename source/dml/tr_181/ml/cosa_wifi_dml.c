@@ -16580,6 +16580,11 @@ InterworkingService_SetParamStringValue
         if( AnscEqualString((char*)vapInfo->u.bss_info.interworking.anqp.anqpParameters, (char*) pString, TRUE)){
             return TRUE;
         }else{
+            cJSON *p_root = cJSON_Parse(pString);
+            if(p_root == NULL) {
+                wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Invalid json for vap %s\n", __FUNCTION__,__LINE__,pcfg->vap_name);
+                return FALSE;
+            }
             AnscCopyString((char*)vapInfo->u.bss_info.interworking.anqp.anqpParameters,(char*)pString);
 	    set_dml_cache_vap_config_changed(instance_number - 1);
             return TRUE;
@@ -16938,7 +16943,11 @@ Passpoint_SetParamStringValue
         if( AnscEqualString((char*)vapInfo->u.bss_info.interworking.passpoint.hs2Parameters, pString, TRUE)){
             return TRUE;
         }else {
-
+             cJSON *p_root = cJSON_Parse(pString);
+            if(p_root == NULL) {
+                wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Invalid json for vap %s\n", __FUNCTION__,__LINE__,pcfg->vap_name);
+                return FALSE;
+            }
             AnscCopyString((char*)vapInfo->u.bss_info.interworking.passpoint.hs2Parameters,pString);
 	    set_dml_cache_vap_config_changed(instance_number - 1);
             return TRUE;

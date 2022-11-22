@@ -820,29 +820,51 @@ webconfig_error_t decode_interworking_object(const cJSON *interworking, wifi_int
     if(cJSON_HasObjectItem(interworking, "ANQP") == true) {
         decode_param_object(interworking, "ANQP", anqp);
 
+/*
         if (decode_anqp_object(anqp, interworking_info) != webconfig_error_none) {
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Validation failed\n", __func__, __LINE__);
             return webconfig_error_decode;
         } else {
+
             cJSON *anqpString = cJSON_CreateObject();
             cJSON_AddItemReferenceToObject(anqpString, "ANQP", (cJSON *)anqp);
             cJSON_PrintPreallocated(anqpString, (char *)&interworking_info->anqp.anqpParameters, sizeof(interworking_info->anqp.anqpParameters),false);
             cJSON_Delete(anqpString);
         }
+*/
+        if (decode_anqp_object(anqp, interworking_info) != webconfig_error_none) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Validation failed\n", __func__, __LINE__);
+            //Not returning error since anqp is optional configuration
+        }
+        cJSON *anqpString = cJSON_CreateObject();
+        cJSON_AddItemReferenceToObject(anqpString, "ANQP", (cJSON *)anqp);
+        cJSON_PrintPreallocated(anqpString, (char *)&interworking_info->anqp.anqpParameters, sizeof(interworking_info->anqp.anqpParameters),false);
+        cJSON_Delete(anqpString);
     }
 
     if(cJSON_HasObjectItem(interworking, "Passpoint") == true) {
         decode_param_object(interworking, "Passpoint", passpoint);
 
+/*
         if (decode_passpoint_object(passpoint, interworking_info) != webconfig_error_none) {
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Validation failed\n", __func__, __LINE__);
             return webconfig_error_decode;
         } else {
+ 
             cJSON *hs2String = cJSON_CreateObject();
             cJSON_AddItemReferenceToObject(hs2String, "Passpoint", (cJSON *)passpoint);
             cJSON_PrintPreallocated(hs2String, (char *)&interworking_info->passpoint.hs2Parameters, sizeof(interworking_info->passpoint.hs2Parameters),false);
             cJSON_Delete(hs2String);
         }
+*/
+        if (decode_passpoint_object(passpoint, interworking_info) != webconfig_error_none) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Validation failed\n", __func__, __LINE__);
+            // Not returning error since Passpoint is optional configuration
+        }
+        cJSON *hs2String = cJSON_CreateObject();
+        cJSON_AddItemReferenceToObject(hs2String, "Passpoint", (cJSON *)passpoint);
+        cJSON_PrintPreallocated(hs2String, (char *)&interworking_info->passpoint.hs2Parameters, sizeof(interworking_info->passpoint.hs2Parameters),false);
+        cJSON_Delete(hs2String);
     }
 
     return webconfig_error_none;
