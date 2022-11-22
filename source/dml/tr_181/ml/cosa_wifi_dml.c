@@ -11691,7 +11691,7 @@ MacFilter_GetParamBoolValue
     if( AnscEqualString(ParamName, "FilterAsBlackList", TRUE))
     {
         /* collect value */
-        if (vapInfo->u.bss_info.mac_filter_mode == wifi_mac_filter_mode_black_list) {
+        if ((vapInfo->u.bss_info.mac_filter_enable == true) && vapInfo->u.bss_info.mac_filter_mode == wifi_mac_filter_mode_black_list) {
             *pBool = TRUE;
         } else {
             *pBool = FALSE;

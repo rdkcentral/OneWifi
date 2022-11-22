@@ -284,6 +284,7 @@ typedef struct {
 } __attribute__((packed)) wifi_global_psm_param_t;
 
 typedef struct {
+    bool mac_filter_enable;
     wifi_mac_filter_mode_t mac_filter_mode;
     bool wmm_enabled;
     bool uapsd_enabled;
