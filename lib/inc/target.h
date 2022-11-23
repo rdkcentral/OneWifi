@@ -1,5 +1,5 @@
 /************************************************************************************
-  If not stated otherwise in this file or this component's Licenses.txt file the
+  If not stated otherwise in this file or this component's LICENSE file the
   following copyright and licenses apply:
 
   Copyright 2018 RDK Management
@@ -15,6 +15,12 @@
   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   See the License for the specific language governing permissions and
   limitations under the License.
+**************************************************************************/
+
+/**************************************************************************
+  Some material is:
+  Copyright (c) 2015, Plume Design Inc. All rights reserved.
+  Licensed under the BSD-3 License
 **************************************************************************/
 
 #ifndef TARGET_H_INCLUDED

@@ -1,5 +1,5 @@
 /************************************************************************************
-  If not stated otherwise in this file or this component's Licenses.txt file the
+  If not stated otherwise in this file or this component's LICENSE file the
   following copyright and licenses apply:
 
   Copyright 2018 RDK Management
@@ -2585,30 +2585,29 @@ bool is_device_associated(int ap_index, char *mac)
 }
 
 int
-timeval_subtract (struct timeval *result, struct timeval *end, struct timeval *begin)
+timeval_subtract (struct timeval *result, struct timeval *end, struct timeval *start)
 {
-    if(result == NULL || end == NULL || begin == NULL) {
+    if(result == NULL || end == NULL || start == NULL) {
         return 1;
     }
-    /* Perform the carry for the later subtraction by updating y. */
-    if (end->tv_usec < begin->tv_usec) {
-        int nsec = (begin->tv_usec - end->tv_usec) / 1000000 + 1;
-        begin->tv_usec -= 1000000 * nsec;
-        begin->tv_sec += nsec;
+    /* Refer to https://www.gnu.org/software/libc/manual/html_node/Calculating-Elapsed-Time.html" */
+
+    if (end->tv_usec < start->tv_usec) {
+        int adjust_sec = (start->tv_usec - end->tv_usec) / 1000000 + 1;
+        start->tv_usec -= 1000000 * adjust_sec;
+        start->tv_sec += adjust_sec;
     }
-    if (end->tv_usec - begin->tv_usec > 1000000) {
-        int nsec = (end->tv_usec - begin->tv_usec) / 1000000;
-        begin->tv_usec += 1000000 * nsec;
-        begin->tv_sec -= nsec;
+    if (end->tv_usec - start->tv_usec > 1000000) {
+        int adjust_sec = (end->tv_usec - start->tv_usec) / 1000000;
+        start->tv_usec += 1000000 * adjust_sec;
+        start->tv_sec -= adjust_sec;
     }
 
-    /* Compute the time remaining to wait.
-      tv_usec is certainly positive. */
-    result->tv_sec = end->tv_sec - begin->tv_sec;
-    result->tv_usec = end->tv_usec - begin->tv_usec;
+    
+    result->tv_sec = end->tv_sec - start->tv_sec;
+    result->tv_usec = end->tv_usec - start->tv_usec;
 
-    /* Return 1 if result is negative. */
-    return (end->tv_sec < begin->tv_sec);
+    return (end->tv_sec < start->tv_sec);
 }
 
 int  getApIndexfromClientMac(char *check_mac)
