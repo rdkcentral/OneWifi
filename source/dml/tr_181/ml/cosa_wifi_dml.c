@@ -5789,6 +5789,13 @@ AccessPoint_GetParamBoolValue
         return TRUE;
     }
 
+    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_InterworkingApplySettings", TRUE))
+    {
+        /* always return true when get */
+        *pBool = TRUE;
+        return TRUE;
+    }
+
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     return FALSE;
 }
@@ -6378,6 +6385,21 @@ AccessPoint_SetParamBoolValue
         vapInfo->u.bss_info.interworking.interworking.interworkingEnabled = bValue;
         set_dml_cache_vap_config_changed(instance_number - 1);
 
+        return TRUE;
+    }
+
+    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_InterworkingApplySettings", TRUE ))
+    {
+        if (bValue == TRUE){
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d X_RDKCENTRAL-COM_InterworkingApplySettings push to queue \n",__func__, __LINE__);
+            if (push_vap_dml_cache_to_one_wifidb() == RETURN_ERR)
+            {
+                wifi_util_dbg_print(WIFI_DMCLI,"%s:%d X_RDKCENTRAL-COM_InterworkingApplySettings falied \n",__func__, __LINE__);
+                return FALSE;
+            }
+            last_vap_change = AnscGetTickInSeconds();
+            return TRUE;
+        }
         return TRUE;
     }
 

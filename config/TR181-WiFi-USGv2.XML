@@ -2134,6 +2134,12 @@ INSTMSMT_PH2 -->
                            <syntax>bool</syntax>
                            <writable>true</writable>
                          </parameter>
+                        <parameter>
+                           <name>X_RDKCENTRAL-COM_InterworkingApplySettings</name>
+                           <type>boolean</type>
+                           <syntax>bool</syntax>
+                           <writable>true</writable>
+                         </parameter>
                           <parameter>
                             <name>X_COMCAST-COM_MAC_FilteringMode</name>
                              <type>string</type>
