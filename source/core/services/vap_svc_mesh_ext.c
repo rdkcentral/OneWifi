@@ -544,6 +544,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
     rbusObject_t rdata;
     rbusValue_t value;
     char name[64];
+    wifi_sta_conn_info_t sta_conn_info;
 
     ctrl = svc->ctrl;
     ext = &svc->u.ext;
@@ -616,11 +617,15 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d Rbus name:%s:connection status:%d\r\n", __func__, __LINE__,
                     name, sta_data->stats.connect_status);
 
+        memset(&sta_conn_info, 0, sizeof(wifi_sta_conn_info_t));
+
         rbusValue_Init(&value);
         rbusObject_Init(&rdata, NULL);
-
         rbusObject_SetValue(rdata, name, value);
-        rbusValue_SetBytes(value, (uint8_t *)&sta_data->stats.connect_status, sizeof(sta_data->stats.connect_status));
+        sta_conn_info.connect_status =  sta_data->stats.connect_status;
+        memcpy(sta_conn_info.bssid, sta_data->bss_info.bssid, sizeof(sta_conn_info.bssid));
+        rbusValue_SetBytes(value, (uint8_t *)&sta_conn_info, sizeof(sta_conn_info));
+
         event.name = name;
         event.data = rdata;
         event.type = RBUS_EVENT_GENERAL;
