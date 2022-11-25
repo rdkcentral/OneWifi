@@ -380,6 +380,10 @@ webconfig_error_t decode_mesh_sta_subdoc(webconfig_t *config, webconfig_subdoc_d
         name = cJSON_GetStringValue(cJSON_GetObjectItem(obj_vap, "VapName"));
         radio_index = convert_vap_name_to_radio_array_index(&params->hal_cap.wifi_prop, name);
         vap_array_index = convert_vap_name_to_array_index(&params->hal_cap.wifi_prop, name);
+        if (((int)radio_index < 0) || ((int)vap_array_index < 0)) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid index\n", __func__, __LINE__);
+            continue;
+        }
         vap_info = &params->radios[radio_index].vaps.vap_map.vap_array[vap_array_index];
 
         if (strncmp(name, "mesh_sta", strlen("mesh_sta")) == 0) {

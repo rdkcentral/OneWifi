@@ -212,7 +212,7 @@ typedef struct {
     bool hotspot_secure_2g_last_enabled;
     bool hotspot_secure_5g_last_enabled;
     bool mgmt_frame_rbus_enabled_rfc;
-    char rfc_id[4];
+    char rfc_id[5];
 } wifi_rfc_dml_parameters_t;
 #endif
 

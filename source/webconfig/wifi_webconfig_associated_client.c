@@ -211,6 +211,10 @@ webconfig_error_t decode_associated_clients_subdoc(webconfig_t *config, webconfi
         }
 
         rdk_vap_info->vap_index = convert_vap_name_to_index(&params->hal_cap.wifi_prop, name);
+        if ((int)rdk_vap_info->vap_index < 0) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid  vap_index\n", __func__, __LINE__);
+            return webconfig_error_decode;
+        }
 
         if (decode_associated_clients_object(rdk_vap_info, obj_vap) != webconfig_error_none) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: vap state object validation failed\n",

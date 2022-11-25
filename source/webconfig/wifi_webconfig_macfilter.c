@@ -206,14 +206,18 @@ webconfig_error_t decode_mac_filter_subdoc(webconfig_t *config, webconfig_subdoc
         obj_acl = cJSON_GetArrayItem(obj_mac, i);
         name = cJSON_GetStringValue(cJSON_GetObjectItem(obj_acl, "VapName"));
         radio_index = convert_vap_name_to_radio_array_index(&params->hal_cap.wifi_prop, name);
-        if((int)radio_index == -1) {
+        vap_array_index = convert_vap_name_to_array_index(&params->hal_cap.wifi_prop, name);
+        if (((int)radio_index < 0) || ((int)vap_array_index < 0)) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid index\n", __func__, __LINE__);
             continue;
         }
-
-        vap_array_index = convert_vap_name_to_array_index(&params->hal_cap.wifi_prop, name);
         rdk_vap_info = &params->radios[radio_index].vaps.rdk_vap_array[vap_array_index];
         rdk_vap_info->acl_map = NULL;
         rdk_vap_info->vap_index = convert_vap_name_to_index(&params->hal_cap.wifi_prop, name);
+        if ((int)rdk_vap_info->vap_index < 0) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid  vap_index\n", __func__, __LINE__);
+            continue;
+        }
         if (decode_mac_object(rdk_vap_info, obj_acl) != webconfig_error_none) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: mac state object validation failed\n",
                     __func__, __LINE__);

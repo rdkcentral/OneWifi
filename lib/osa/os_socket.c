@@ -97,6 +97,7 @@ int32_t server_socket_create(os_sock_type sock_type,
     if (inet_pton(AF_INET, listen_addr, &server_addr.sin_addr.s_addr) != 1)
     {
         LOG(ERR, "Server socket inet_pton() failed::error=%s", strerror(errno));
+        close(sock_fd);
         return -1;
     }
 
@@ -118,7 +119,6 @@ int32_t server_socket_create(os_sock_type sock_type,
         close(sock_fd);
         return -1;
     }
-
     return sock_fd;
 }
 

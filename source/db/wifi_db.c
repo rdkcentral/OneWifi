@@ -655,6 +655,10 @@ void callback_Wifi_VAP_Config(ovsdb_update_monitor_t *mon,
             pthread_mutex_lock(&g_wifidb->data_cache_lock);
             l_vap_param_cfg->radio_index = radio_index;
             l_vap_param_cfg->vap_index = convert_vap_name_to_index(&g_wifidb->hal_cap.wifi_prop, new_rec->vap_name);
+            if ((int)l_vap_param_cfg->vap_index < 0) {
+                wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid vap name \n",__func__, __LINE__,new_rec->vap_name);
+                return;
+            }
             strncpy(l_vap_param_cfg->vap_name, new_rec->vap_name,(sizeof(l_vap_param_cfg->vap_name)-1));
             if (strlen(new_rec->bridge_name) != 0){
                 strncpy(l_vap_param_cfg->bridge_name, new_rec->bridge_name,(sizeof(l_vap_param_cfg->bridge_name)-1));
@@ -684,6 +688,10 @@ void callback_Wifi_VAP_Config(ovsdb_update_monitor_t *mon,
             pthread_mutex_lock(&g_wifidb->data_cache_lock);
             l_vap_param_cfg->radio_index = radio_index;
             l_vap_param_cfg->vap_index = convert_vap_name_to_index(&g_wifidb->hal_cap.wifi_prop, new_rec->vap_name);
+            if ((int)l_vap_param_cfg->vap_index < 0) {
+                wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid vap name \n",__func__, __LINE__, new_rec->vap_name);
+                return;
+            }
             strncpy(l_vap_param_cfg->vap_name, new_rec->vap_name,(sizeof(l_vap_param_cfg->vap_name)-1));
             if (strlen(new_rec->ssid) != 0) {
                 strncpy(l_bss_param_cfg->ssid,new_rec->ssid,(sizeof(l_bss_param_cfg->ssid)-1));
@@ -1667,6 +1675,10 @@ int wifidb_get_wifi_vap_config(int radio_index,wifi_vap_info_map_t *config)
             }
             config->vap_array[vap_index].radio_index = radio_index;
             l_vap_index = convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, vap_name);
+            if (l_vap_index < 0) {
+                wifi_util_dbg_print(WIFI_DB,"%s:%d: %s vap_name is invalid\n",__func__, __LINE__,vap_name);
+                continue;
+            }
             config->vap_array[vap_index].vap_index = l_vap_index;
             wifidb_get_wifi_vap_info(vap_name,&config->vap_array[vap_index]);
             wifi_util_dbg_print(WIFI_DB,"%s:%d: %svap name vap_index=%d radio_ondex=%d\n",__func__, __LINE__,vap_name,vap_index,radio_index);
@@ -1730,6 +1742,10 @@ int wifidb_update_wifi_vap_config(int radio_index, wifi_vap_info_map_t *config)
         wifidb_print("%s:%d Updated WIFI DB. vap Config updated successful for radio %s and vap_name %s. \n",__func__, __LINE__,name,config->vap_array[i].vap_name);
         wifidb_update_wifi_vap_info(config->vap_array[i].vap_name,&config->vap_array[i]);
         vap_index = convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, config->vap_array[i].vap_name);
+        if ((int)vap_index < 0) {
+            wifi_util_error_print(WIFI_DB,"%s:%d: %s invalid vap name \n",__func__, __LINE__,config->vap_array[i].vap_name);
+            continue;
+        }
         if (isVapSTAMesh(vap_index)) {
             wifidb_update_wifi_security_config(config->vap_array[i].vap_name,&config->vap_array[i].u.sta_info.security);
         } else {
@@ -1770,6 +1786,10 @@ int wifidb_get_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
         return -1;
     }
     vap_index = convert_vap_name_to_array_index(&((wifi_mgr_t*)get_wifimgr_obj())->hal_cap.wifi_prop, vap_name);
+    if(vap_index < 0) {
+        wifi_util_dbg_print(WIFI_DB,"%s:%d: %s vap_name is invalid\n",__func__, __LINE__,vap_name);
+        return -1;
+    }
     wifi_util_dbg_print(WIFI_DB,"%s:%d: Get Wifi_Security_Config table Sec_mode=%d enc_mode=%d r_ser_ip=%s r_ser_port=%d r_ser_key=%s rs_ser_ip=%s rs_ser_ip sec_rad_ser_port=%d rs_ser_key=%s mfg=%s cfg_key_type=%d keyphrase=%s vap_name=%s rekey_interval = %d strict_rekey  = %d eapol_key_timeout  = %d eapol_key_retries  = %d eap_identity_req_timeout  = %d eap_identity_req_retries  = %d eap_req_timeout = %d eap_req_retries = %d disable_pmksa_caching = %d max_auth_attempts=%d blacklist_table_timeout=%d identity_req_retry_interval=%d server_retries=%d das_ip = %s das_port=%d das_key=%s\n",__func__, __LINE__,pcfg->security_mode,pcfg->encryption_method,pcfg->radius_server_ip,pcfg->radius_server_port,pcfg->radius_server_key,pcfg->secondary_radius_server_ip,pcfg->secondary_radius_server_port,pcfg->secondary_radius_server_key,pcfg->mfp_config,pcfg->key_type,pcfg->keyphrase,pcfg->vap_name,pcfg->rekey_interval,pcfg->strict_rekey,pcfg->eapol_key_timeout,pcfg->eapol_key_retries,pcfg->eap_identity_req_timeout,pcfg->eap_identity_req_retries,pcfg->eap_req_timeout,pcfg->eap_req_retries,pcfg->disable_pmksa_caching,pcfg->max_auth_attempts,pcfg->blacklist_table_timeout,pcfg->identity_req_retry_interval,pcfg->server_retries,pcfg->das_ip,pcfg->das_port,pcfg->das_key);
 
     sec->mode = pcfg->security_mode;
@@ -1862,8 +1882,16 @@ int wifidb_get_wifi_vap_info(char *vap_name,wifi_vap_info_t *config)
         }
         config->radio_index = index ;
         config->vap_index = convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, pcfg->vap_name);
+        if ((int)config->vap_index < 0) {
+            wifi_util_error_print(WIFI_DB,"%s:%d: %s invalid vap name \n",__func__, __LINE__,pcfg->vap_name);
+            return RETURN_ERR;
+        }
         strncpy(config->vap_name, pcfg->vap_name,(sizeof(config->vap_name)-1));
         vap_index = convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, pcfg->vap_name);
+        if ((int)vap_index < 0) {
+            wifi_util_error_print(WIFI_DB,"%s:%d: %s invalid vap name \n",__func__, __LINE__,pcfg->vap_name);
+            return RETURN_ERR;
+        }
         if (strlen(pcfg->bridge_name) != 0) {
             strncpy(config->bridge_name, pcfg->bridge_name,(sizeof(config->bridge_name)-1));
         } else {
@@ -1990,6 +2018,10 @@ int wifidb_update_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
         return RETURN_ERR;
     }
     vap_index = convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop,vap_name);
+    if (vap_index < 0) {
+        wifi_util_error_print(WIFI_DB,"%s:%d: %s invalid vap name \n",__func__, __LINE__,vap_name);
+        return RETURN_ERR;
+    }
     cfg_sec.security_mode = sec->mode;
     cfg_sec.encryption_method = sec->encr;
     convert_security_mode_integer_to_string(sec->mfp,(char *)&cfg_sec.mfp_config);
@@ -2084,7 +2116,8 @@ int wifidb_update_wifi_macfilter_config(char *macfilter_key, acl_entry_t *config
     wifi_mac_entry_param_t l_mac_entry;
     memset(&l_mac_entry, 0, sizeof(l_mac_entry));
     memset(buff, 0, sizeof(buff));
-    strncpy(buff, macfilter_key, sizeof(buff)-1);
+    snprintf(buff,sizeof(buff),"%s",macfilter_key);
+  
     vap_name = strtok_r(buff,"-",&saveptr);
     if (!add) {
         where = ovsdb_tran_cond(OCLM_STR, "macfilter_key", OFUNC_EQ, macfilter_key);
@@ -2464,9 +2497,13 @@ int wifidb_update_wifi_vap_info(char *vap_name,wifi_vap_info_t *config)
         return RETURN_ERR;
     }
     radio_index = convert_vap_name_to_radio_array_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, vap_name);
+    if (radio_index < 0) {
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Vap Config - Invalid radio_index %d \n",__func__, __LINE__,radio_index);
+        return RETURN_ERR;
+    }
     if((convert_radio_to_name(radio_index,radio_name))!=0)
     {
-        wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Vap Config - Invalid radio_index %d \n",__func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Vap Config - Invalid radio_index %d \n",__func__, __LINE__,radio_index);
         return RETURN_ERR;
     }
     wifi_util_dbg_print(WIFI_DB,"%s:%d:Update radio=%s vap name=%s \n",__func__, __LINE__,radio_name,config->vap_name);
@@ -2474,6 +2511,10 @@ int wifidb_update_wifi_vap_info(char *vap_name,wifi_vap_info_t *config)
     strncpy(cfg.vap_name, config->vap_name,(sizeof(cfg.vap_name)-1));
     strncpy(cfg.bridge_name, config->bridge_name,(sizeof(cfg.bridge_name)-1));
     l_vap_index = convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, config->vap_name);
+    if (l_vap_index < 0) {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: Unable to get vap index for vap_name %s\n", __func__, __LINE__, config->vap_name);
+            return RETURN_ERR;
+    }
     if (isVapSTAMesh(l_vap_index)) {
         strncpy(cfg.ssid, config->u.sta_info.ssid, (sizeof(cfg.ssid)-1));
         cfg.enabled = config->u.sta_info.enabled;
@@ -3812,9 +3853,8 @@ int wifidb_init_interworking_config_default(int vapIndex,wifi_InterworkingElemen
 {
     wifi_InterworkingElement_t interworking;
     char vap_name[BUFFER_LENGTH_WIFIDB] = {0};
-    wifi_mgr_t *g_wifidb;
-    g_wifidb = get_wifimgr_obj();
-
+    wifi_mgr_t *g_wifidb = get_wifimgr_obj();
+    memset((char *)&interworking, 0, sizeof(wifi_InterworkingElement_t));
     convert_vap_index_to_name(&g_wifidb->hal_cap.wifi_prop, vapIndex,vap_name);
     interworking.interworkingEnabled = 0;
     interworking.asra = 0;

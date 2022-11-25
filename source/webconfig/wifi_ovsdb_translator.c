@@ -469,6 +469,10 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
     }
     for (i= 0; i < decoded_params->num_radios; i++) {
         radioIndx = convert_radio_name_to_radio_index(decoded_params->radios[i].name);
+        if ((int)radioIndx < 0) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid  radio_index\n", __func__, __LINE__);
+            continue;
+        }
         oper_param = &decoded_params->radios[radioIndx].oper;
         memcpy(&webconfig_ovsdb_default_data.u.decoded.radios[radioIndx].oper, oper_param, sizeof(wifi_radio_operationParam_t));
         strncpy(webconfig_ovsdb_default_data.u.decoded.radios[radioIndx].name, decoded_params->radios[radioIndx].name,  sizeof(webconfig_ovsdb_default_data.u.decoded.radios[radioIndx].name));
@@ -1028,6 +1032,10 @@ webconfig_error_t   translate_radio_object_to_ovsdb_radio_config_for_mesh_sta(we
 
     for (i= 0; i < decoded_params->num_radios; i++) {
         radio_index = convert_radio_name_to_radio_index(decoded_params->radios[i].name);
+        if ((int)radio_index < 0) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid  radio_index\n", __func__, __LINE__);
+            continue;
+        }
         oper_param = &decoded_params->radios[radio_index].oper;
         memcpy(&webconfig_ovsdb_data.u.decoded.radios[radio_index].oper, oper_param, sizeof(wifi_radio_operationParam_t));
         strncpy(webconfig_ovsdb_data.u.decoded.radios[radio_index].name, decoded_params->radios[radio_index].name,  sizeof(webconfig_ovsdb_data.u.decoded.radios[radio_index].name));
@@ -1111,6 +1119,10 @@ webconfig_error_t   translate_radio_object_to_ovsdb_radio_config_for_dml(webconf
 
     for (i= 0; i < decoded_params->num_radios; i++) {
         radio_index = convert_radio_name_to_radio_index(decoded_params->radios[i].name);
+        if ((int)radio_index < 0) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid  radio_index\n", __func__, __LINE__);
+            continue;
+        }
         oper_param = &decoded_params->radios[radio_index].oper;
         memcpy(&webconfig_ovsdb_data.u.decoded.radios[radio_index].oper, oper_param, sizeof(wifi_radio_operationParam_t));
         strncpy(webconfig_ovsdb_data.u.decoded.radios[radio_index].name, decoded_params->radios[radio_index].name,  sizeof(webconfig_ovsdb_data.u.decoded.radios[radio_index].name));
@@ -2807,14 +2819,14 @@ webconfig_error_t translate_ovsdb_to_vap_info_common(const struct schema_Wifi_VI
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: invalid ssid name. ssid '%s'\n", __func__, __LINE__, vap_row->ssid);
         return webconfig_error_translate_from_ovsdb;
     }
-    strncpy(vap->u.bss_info.ssid, vap_row->ssid, sizeof(vap->u.bss_info.ssid));
-    strncpy(vap->bridge_name, vap_row->bridge, sizeof(vap->bridge_name));
+    snprintf(vap->u.bss_info.ssid,sizeof(vap->u.bss_info.ssid),"%s",vap_row->ssid);
+    snprintf(vap->bridge_name,sizeof(vap->bridge_name),"%s",vap_row->bridge);
     vap->u.bss_info.UAPSDEnabled = vap_row->uapsd_enable;
     vap->u.bss_info.isolation = vap_row->ap_bridge;
     vap->u.bss_info.bssTransitionActivated = vap_row->btm;
     vap->u.bss_info.nbrReportActivated = vap_row->rrm;
     vap->u.bss_info.wps.enable = vap_row->wps;
-    strncpy(vap->u.bss_info.wps.pin, vap_row->wps_pbc_key_id, sizeof(vap->u.bss_info.wps.pin));
+    snprintf(vap->u.bss_info.wps.pin, sizeof(vap->u.bss_info.wps.pin),"%s",vap_row->wps_pbc_key_id);
     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: vapIndex : %d min_hw_mode %s\n", __func__, __LINE__, vap->vap_index, vap_row->min_hw_mode);
     min_hw_mode_conversion(vap->vap_index, (char *)vap_row->min_hw_mode, "", "CONFIG");
     vif_radio_idx_conversion(vap->vap_index, (int *)&vap_row->vif_radio_idx, NULL, "CONFIG");
@@ -2950,7 +2962,7 @@ webconfig_error_t translate_ovsdb_to_sta_vap_info_common(const struct schema_Wif
     }
 
     vap->u.sta_info.enabled = vap_row->enabled;
-    strncpy(vap->bridge_name, vap_row->bridge, sizeof(vap->bridge_name));
+    snprintf(vap->bridge_name,sizeof(vap->bridge_name),"%s",vap_row->bridge);
     str_to_mac_bytes((char *)vap_row->parent, vap->u.sta_info.bssid);
     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Parent : %s bssid : %02x%02x%02x%02x%02x%02x\n", __func__, __LINE__, vap_row->parent,
             vap->u.sta_info.bssid[0], vap->u.sta_info.bssid[1],
@@ -4686,6 +4698,10 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_private(webco
             memcpy(vap, tempVap, sizeof(wifi_vap_info_t));
             for (rcount = 0; rcount < webconfig_ovsdb_default_data.u.decoded.num_radios; rcount++) {
                 radio_index = convert_radio_name_to_radio_index(webconfig_ovsdb_default_data.u.decoded.radios[rcount].name);
+                if ((int)radio_index < 0) {
+                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid  radio_index\n", __func__, __LINE__);
+                    continue;
+                }
                 decoded_params->radios[radio_index].vaps.vap_map.num_vaps = webconfig_ovsdb_default_data.u.decoded.radios[rcount].vaps.vap_map.num_vaps;
             }
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: presence_mask : %x  missingVapIndex : %d missingRadioIndex : %d missingVapArrayIndex : %d vap->vap_index : %d\n",
@@ -4829,6 +4845,10 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_mesh_backhaul
             memcpy(vap, tempVap, sizeof(wifi_vap_info_t));
             for (rcount = 0; rcount < webconfig_ovsdb_default_data.u.decoded.num_radios; rcount++) {
                 radio_index = convert_radio_name_to_radio_index(webconfig_ovsdb_default_data.u.decoded.radios[rcount].name);
+                if ((int)radio_index < 0) {
+                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid  radio_index\n", __func__, __LINE__);                  
+                    continue;
+                }
                 decoded_params->radios[radio_index].vaps.vap_map.num_vaps = webconfig_ovsdb_default_data.u.decoded.radios[rcount].vaps.vap_map.num_vaps;
             }
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: presence_mask : %x  missingVapIndex : %d missingRadioIndex : %d missingVapArrayIndex : %d vap->vap_index : %d\n",
@@ -5048,6 +5068,10 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_home(webconfi
             memcpy(vap, tempVap, sizeof(wifi_vap_info_t));
             for (rcount = 0; rcount < webconfig_ovsdb_default_data.u.decoded.num_radios; rcount++) {
                 radio_index = convert_radio_name_to_radio_index(webconfig_ovsdb_default_data.u.decoded.radios[rcount].name);
+                if ((int)radio_index < 0) {
+                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid  radio_index\n", __func__, __LINE__);
+                    continue;
+                }
                 decoded_params->radios[radio_index].vaps.vap_map.num_vaps = webconfig_ovsdb_default_data.u.decoded.radios[rcount].vaps.vap_map.num_vaps;
             }
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: presence_mask : %x  missingVapIndex : %d missingRadioIndex : %d missingVapArrayIndex : %d vap->vap_index : %d\n",
@@ -5188,6 +5212,10 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_lnf(webconfig
             memcpy(vap, tempVap, sizeof(wifi_vap_info_t));
             for (rcount = 0; rcount < webconfig_ovsdb_default_data.u.decoded.num_radios; rcount++) {
                 radio_index = convert_radio_name_to_radio_index(webconfig_ovsdb_default_data.u.decoded.radios[rcount].name);
+                if ((int)radio_index < 0) {
+                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid  radio_index\n", __func__, __LINE__);
+                    continue;
+                }
                 decoded_params->radios[radio_index].vaps.vap_map.num_vaps = webconfig_ovsdb_default_data.u.decoded.radios[rcount].vaps.vap_map.num_vaps;
             }
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: presence_mask : %x  missingVapIndex : %d missingRadioIndex : %d missingVapArrayIndex : %d vap->vap_index : %d\n",

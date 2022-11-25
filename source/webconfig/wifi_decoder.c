@@ -1521,7 +1521,10 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
     strcpy(vap_info->vap_name, param->valuestring);
 
     vap_info->vap_index = convert_vap_name_to_index(wifi_prop, vap_info->vap_name);
-
+    if ((int)vap_info->vap_index < 0) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s %d :Invalid vapname %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        return webconfig_error_decode;
+    }
     // Radio Index
     decode_param_integer(vap, "RadioIndex", param);
     vap_info->radio_index = param->valuedouble;
@@ -1926,6 +1929,10 @@ webconfig_error_t decode_mesh_sta_object(const cJSON *vap, wifi_vap_info_t *vap_
     strcpy(vap_info->vap_name, param->valuestring);
 
     vap_info->vap_index = convert_vap_name_to_index(wifi_prop, vap_info->vap_name);
+    if ((int)vap_info->vap_index < 0) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s %d :Invalid vapname %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        return webconfig_error_decode;
+    }
 
     // Radio Index
     decode_param_integer(vap, "RadioIndex", param);

@@ -420,7 +420,10 @@ void dump_ovs_schema(webconfig_subdoc_type_t type)
         for (i = 0; i < array_size; i++) {
 
             vap_array_index = convert_vap_name_to_index(&consumer->hal_cap.wifi_prop, vap_names[i]);
-
+            if ((int)vap_array_index < 0) {
+                printf("%s:%d: Invalid vap_array_index\n", __func__, __LINE__);
+                continue;
+            }
             vif_row = ext_proto.vif_config[vap_array_index];
             if (vif_row == NULL) {
                 printf("%s:%d: vif_row is empty for : %d\n", __func__, __LINE__, i);
@@ -449,6 +452,10 @@ void dump_ovs_schema(webconfig_subdoc_type_t type)
         for (i = 0; i < array_size; i++) {
 
             vap_array_index = convert_vap_name_to_index(&consumer->hal_cap.wifi_prop, vap_names[i]);
+            if ((int)vap_array_index < 0) {
+                printf("%s:%d: Invalid vap_array_index\n", __func__, __LINE__);
+                continue;
+            }
 
             vif_state = ext_proto.vif_state[vap_array_index];
             if (vif_state == NULL) {
@@ -550,7 +557,6 @@ int push_data_to_consumer_queue(const void *msg, unsigned int len, ctrl_event_ty
     queue_push(consumer->queue, data);
     pthread_cond_signal(&consumer->cond);
     pthread_mutex_unlock(&consumer->lock);
-
     return RETURN_OK;
 }
 
@@ -612,11 +618,12 @@ int init_tests(webconfig_consumer_t *consumer)
 
 void handle_webconfig_consumer_event(webconfig_consumer_t *consumer, const char *str, unsigned int len, consumer_event_subtype_t subtype)
 {
-    webconfig_t *config;
+    webconfig_t *config = NULL;
     webconfig_subdoc_data_t data;
     webconfig_subdoc_type_t subdoc_type;
     webconfig_error_t ret = webconfig_error_none;
-
+    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+    memset(&subdoc_type, 0, sizeof(webconfig_subdoc_type_t));
     config = &consumer->webconfig;
 
     printf( "%s:%d:webconfig initializ:%d\n", __func__, __LINE__, config->initializer);
@@ -987,6 +994,10 @@ void test_mesh_sta_subdoc_change(webconfig_consumer_t *consumer)
 
         for ( i = 0; i < *num; i++) {
             array_index = convert_vap_name_to_index(&consumer->hal_cap.wifi_prop, vap_names[i]);
+            if ((int)array_index < 0) {
+                printf("%s:%d: Invalid array_index\n", __func__, __LINE__);
+                continue;
+            }
             vif_table[i] = ext_proto.vif_config[array_index];
             param = (bool *)&vif_table[i]->enabled;
             *param = true;
@@ -1077,6 +1088,10 @@ void test_mesh_subdoc_change(webconfig_consumer_t *consumer)
 
         for ( i = 0; i < *num; i++) {
             array_index = convert_vap_name_to_index(&consumer->hal_cap.wifi_prop, vap_names[i]);
+            if ((int)array_index < 0) {
+                printf("%s:%d: Invalid array_index\n", __func__, __LINE__);
+                continue;
+            }
             vif_table[i] = ext_proto.vif_config[array_index];
             snprintf((char *)vif_table[i]->ssid, sizeof(vif_table[i]->ssid), "mesh_test_%d", array_index);
             param = (bool *)&vif_table[i]->enabled;
@@ -1203,6 +1218,10 @@ void test_macfilter_subdoc_change(webconfig_consumer_t *consumer)
         *num = ARRAY_SIZE(vap_names);
         for ( i = 0; i < *num; i++) {
             array_index = convert_vap_name_to_index(&consumer->hal_cap.wifi_prop, vap_names[i]);
+            if ((int)array_index < 0) {
+                printf("%s:%d: Invalid array_index\n", __func__, __LINE__);
+                continue;
+            }
             vif_table[i] = ext_proto.vif_config[array_index];
             if (is_vap_mesh_backhaul(&consumer->hal_cap.wifi_prop, array_index) == TRUE) {
                 snprintf((char *)vif_table[i]->ssid, sizeof(vif_table[i]->ssid), "macfilter_test_%d", array_index);
@@ -1303,6 +1322,10 @@ void test_private_subdoc_change(webconfig_consumer_t *consumer)
 
         for ( i = 0; i < *num; i++) {
             array_index = convert_vap_name_to_index(&consumer->hal_cap.wifi_prop, vap_names[i]);
+            if ((int)array_index < 0) {
+                printf("%s:%d: Invalid array_index\n", __func__, __LINE__);
+                continue;
+            }
             vif_table[i] = ext_proto.vif_config[array_index];
             snprintf((char *)vif_table[i]->ssid, sizeof(vif_table[i]->ssid), "ovsdb_private_test_%d", array_index);
         }
@@ -1390,6 +1413,10 @@ void test_home_subdoc_change(webconfig_consumer_t *consumer)
 
         for ( i = 0; i < *num; i++) {
             array_index = convert_vap_name_to_index(&consumer->hal_cap.wifi_prop, vap_names[i]);
+            if ((int)array_index < 0) {
+                printf("%s:%d: Invalid array_index\n", __func__, __LINE__);
+                continue;
+            }
             vif_table[i] = ext_proto.vif_config[array_index];
             param = (bool *)&vif_table[i]->enabled;
             *param = true;
@@ -1508,6 +1535,10 @@ void test_lnf_subdoc_change(webconfig_consumer_t *consumer)
 
         for ( i = 0; i < num_vaps; i++) {
             array_index = convert_vap_name_to_index(&consumer->hal_cap.wifi_prop, vap_names[i]);
+            if ((int)array_index < 0) {
+                printf("%s:%d: Invalid array_index\n", __func__, __LINE__);
+                continue;
+            }
             vif_table[i] = ext_proto.vif_config[array_index];
             param = (bool *)&vif_table[i]->enabled;
             *param = true;
@@ -1529,6 +1560,10 @@ void test_lnf_subdoc_change(webconfig_consumer_t *consumer)
             for ( i = 0; i < num_vaps; i++) {
                 array_index = convert_vap_name_to_index(&consumer->hal_cap.wifi_prop, vap_names[i]);
                 radio_index = convert_vap_name_to_radio_array_index(&consumer->hal_cap.wifi_prop, vap_names[i]);
+                if (((int)array_index < 0) || ((int)radio_index < 0)) {
+                    printf("%s:%d: Invalid index\n", __func__, __LINE__);
+                    continue;
+                }
                 vap_info = get_wifi_radio_vap_info(&data.u.decoded.radios[radio_index], vap_names[i]);
                 snprintf((char *)vap_info->u.bss_info.ssid, sizeof(vap_info->u.bss_info.ssid), "app_lnf_test_%d", array_index);
                 printf("%s:%d: radio_index : %d vap_names[i] : %s\n", __func__, __LINE__, radio_index, vap_names[i]);
@@ -1596,6 +1631,10 @@ void test_xfinity_subdoc_change(webconfig_consumer_t *consumer)
 
         for ( i = 0; i < *num; i++) {
             array_index = convert_vap_name_to_index(&consumer->hal_cap.wifi_prop, vap_names[i]);
+            if ((int)array_index < 0) {
+                printf("%s:%d: Invalid array_index\n", __func__, __LINE__);
+                continue;
+            }
             vif_table[i] = ext_proto.vif_config[array_index];
             param = (bool *)&vif_table[i]->enabled;
             *param = true;

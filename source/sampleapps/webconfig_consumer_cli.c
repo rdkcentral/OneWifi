@@ -83,14 +83,16 @@ int read_subdoc_input_param_from_file(char *file_path, char *read_data)
                 printf("%s:%d file read success:%s data len:%d\r\n", __func__, __LINE__, file_path, data_len);
             } else {
                 printf("%s:%d file read failure:%s data len:%d\r\n", __func__, __LINE__, file_path, data_len);
+                fclose(file_ptr);
                 return RETURN_ERR;
             }
         } else {
             printf("%s:%d Empty file:%s\r\n", __func__, __LINE__, file_path);
+            fclose(file_ptr);
             return RETURN_ERR;
         }
     }
-
+    fclose(file_ptr);
     return RETURN_OK;
 }
 
