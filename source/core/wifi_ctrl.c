@@ -47,6 +47,13 @@ unsigned int startTime[MAX_NUM_RADIOS];
 extern webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc_data_t *data);
 void get_action_frame_evt_params(uint8_t *frame, uint32_t len, frame_data_t *mgmt_frame, ctrl_event_subtype_t *evt_subtype);
 
+static void ctrl_queue_timeout_scheduler_tasks(wifi_ctrl_t *ctrl);
+static int rbus_check_and_subscribe_events(void* arg);
+static int sta_connectivity_selfheal(void* arg);
+static int run_greylist_event(void *arg);
+static int run_analytics_event(void* arg);
+static int pending_states_webconfig_analyzer(void *arg);
+
 void deinit_wifi_ctrl(wifi_ctrl_t *ctrl)
 {
     if(ctrl->queue != NULL) {
@@ -229,14 +236,7 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
     struct timeval tv_now;
     time_t  time_diff;
     int rc;
-    int greylist_event = 0;
-    bool greylist_flag = false;
     ctrl_event_t *queue_data = NULL;
-    static uint8_t max_conn_retry_timeout = 0;
-    vap_svc_t *ext_svc;
-#if CCSP_COMMON
-    wifi_apps_t *analytics = NULL;
-#endif // CCSP_COMMON
 
     pthread_mutex_lock(&ctrl->lock);
     while (ctrl->exit_ctrl == false) {
@@ -303,45 +303,6 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
 
             /*Run the scheduler*/
             scheduler_execute(ctrl->sched, ctrl->last_polled_time, (ctrl->poll_period*1000));
-
-            if ((ctrl->rbus_events_subscribed == false) || (ctrl->tunnel_events_subscribed == false) ||
-                (ctrl->device_mode_subscribed == false) || (ctrl->active_gateway_check_subscribed == false) ||
-                (ctrl->device_tunnel_status_subscribed == false) || (ctrl->device_wps_test_subscribed == false) ||
-                (ctrl->test_device_mode_subscribed == false) || (ctrl->mesh_status_subscribed == false) ||
-                (ctrl->marker_list_config_subscribed == false)) {
-                rbus_subscribe_events(ctrl);
-            }
-
-            webconfig_analyze_pending_states(ctrl);
-
-            ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
-            if (is_sta_enabled()) {
-                if (max_conn_retry_timeout >= STA_CONN_RETRY_TIMEOUT) {
-
-                    // check sta connectivity selfheal
-                    sta_selfheal_handing(ctrl, ext_svc);
-                    max_conn_retry_timeout = 0;
-                } else {
-                    max_conn_retry_timeout++;
-                }
-            }
-
-            if (greylist_event >= GREYLIST_CHECK_IN_SECONDS) {
-                greylist_event = 0;
-                greylist_flag = check_for_greylisted_mac_filter();
-                if (greylist_flag) {
-                    wifi_util_dbg_print(WIFI_CTRL,"greylist_mac present\n");
-                    remove_xfinity_acl_entries(false,false);
-                }
-            }
-            greylist_event++;
-
-#if CCSP_COMMON
-            analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
-            if (analytics->event_fn != NULL) {
-                analytics->event_fn(analytics, ctrl_event_type_exec, ctrl_event_exec_timeout, NULL);
-            }
-#endif // CCSP_COMMON
         } else {
             wifi_util_dbg_print(WIFI_CTRL,"RDK_LOG_WARN, WIFI %s: Invalid Return Status %d\n",__FUNCTION__,rc);
             continue;
@@ -1251,6 +1212,8 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
     wifi_hal_analytics_callback_register(analytics_callback);
 #endif // CCSP_COMMON
 
+    ctrl_queue_timeout_scheduler_tasks(ctrl);
+
     ctrl->exit_ctrl = false;
     ctrl_queue_loop(ctrl);
 
@@ -1315,6 +1278,90 @@ void stop_wifi_csa_sched_timer(unsigned int radio_index, wifi_ctrl_t *l_ctrl)
         scheduler_cancel_timer_task(l_ctrl->sched, sched_id->wifi_csa_sched_handler_id[radio_index]);
         sched_id->wifi_csa_sched_handler_id[radio_index] = 0;
     }
+}
+
+static int rbus_check_and_subscribe_events(void* arg)
+{
+    wifi_ctrl_t *ctrl = NULL;
+
+    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+
+    if ((ctrl->rbus_events_subscribed == false) || (ctrl->tunnel_events_subscribed == false) ||
+        (ctrl->device_mode_subscribed == false) || (ctrl->active_gateway_check_subscribed == false) ||
+        (ctrl->device_tunnel_status_subscribed == false) || (ctrl->device_wps_test_subscribed == false) ||
+        (ctrl->test_device_mode_subscribed == false) || (ctrl->mesh_status_subscribed == false) ||
+        (ctrl->marker_list_config_subscribed == false)) {
+        rbus_subscribe_events(ctrl);
+    }
+    return TIMER_TASK_COMPLETE;
+}
+
+static int sta_connectivity_selfheal(void* arg)
+{
+    wifi_ctrl_t *ctrl = NULL;
+    vap_svc_t *ext_svc;
+
+    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    
+    ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
+    if (is_sta_enabled()) {
+        // check sta connectivity selfheal
+        sta_selfheal_handing(ctrl, ext_svc);
+    }
+    return TIMER_TASK_COMPLETE;
+}
+
+static int run_greylist_event(void *arg)
+{
+    bool greylist_flag = false;
+
+    greylist_flag = check_for_greylisted_mac_filter();
+    if (greylist_flag) {
+        wifi_util_dbg_print(WIFI_CTRL,"greylist_mac present\n");
+        remove_xfinity_acl_entries(false,false);
+    }
+    return TIMER_TASK_COMPLETE;
+}
+
+static int run_analytics_event(void* arg)
+{
+#if CCSP_COMMON
+    wifi_ctrl_t *ctrl = NULL;
+    wifi_apps_t *analytics = NULL;
+
+    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+
+    analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
+    if (analytics->event_fn != NULL) {
+        analytics->event_fn(analytics, ctrl_event_type_exec, ctrl_event_exec_timeout, NULL);
+    }
+    return TIMER_TASK_COMPLETE;
+#endif //CCSP_COMMON
+}
+
+static int pending_states_webconfig_analyzer(void *arg)
+{
+    wifi_ctrl_t *ctrl = NULL;
+
+    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+
+    webconfig_analyze_pending_states(ctrl);
+    return TIMER_TASK_COMPLETE;
+}
+
+static void ctrl_queue_timeout_scheduler_tasks(wifi_ctrl_t *ctrl)
+{
+    scheduler_add_timer_task(ctrl->sched, FALSE, NULL, run_analytics_event, NULL, (ctrl->poll_period * 1000), 0);
+
+    scheduler_add_timer_task(ctrl->sched, FALSE, NULL, run_greylist_event, NULL, (GREYLIST_CHECK_IN_SECONDS * 1000), 0);
+
+    scheduler_add_timer_task(ctrl->sched, FALSE, NULL, sta_connectivity_selfheal, NULL, (STA_CONN_RETRY_TIMEOUT * 1000), 0);
+
+    scheduler_add_timer_task(ctrl->sched, FALSE, NULL, pending_states_webconfig_analyzer, NULL, (ctrl->poll_period * 1000), 0);
+
+    scheduler_add_timer_task(ctrl->sched, FALSE, NULL, rbus_check_and_subscribe_events, NULL, (ctrl->poll_period * 1000), 0);
+
+    wifi_util_dbg_print(WIFI_CTRL, "%s():%d Ctrl queue timeout tasks scheduled\n", __FUNCTION__, __LINE__);
 }
 
 wifi_radio_index_t get_wifidb_radio_index(uint8_t radio_index)
