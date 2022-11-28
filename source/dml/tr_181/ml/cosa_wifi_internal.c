@@ -265,6 +265,7 @@ void psm_get_mac_list_entry(hash_map_t *psm_mac_map, unsigned int instance_numbe
             wifi_util_dbg_print(WIFI_PSM,"psm get mac is %s\n", str);
             hash_map_put(psm_mac_map, strdup(temp_psm_mac_param->mac), temp_psm_mac_param);
         } else {
+            free(temp_psm_mac_param);
             wifi_util_dbg_print(WIFI_PSM,"[Failure] psm record_name: %s\n", recName);
         }
         total_entry--;
@@ -878,7 +879,7 @@ void CosaDmlWiFiGetDataFromPSM(void)
     char recName[256];
     char *strValue = NULL;
     int retPsmGet = CCSP_SUCCESS;
-    int resetSSID[2] = {0,0};
+    int resetSSID[MAX_NUM_RADIOS] = {0};
     char *FactoryResetSSID           = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.Radio.%d.FactoryResetSSID";
     char *FixedWmmParams             = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.FixedWmmParamsValues";
     char *WiFiForceDisableRadioStatus = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.X_RDK-CENTRAL_COM_ForceDisable_RadioStatus";
@@ -955,6 +956,7 @@ void CosaDmlWiFiGetDataFromPSM(void)
     } else 
     {
         /* Set default value */
+        l_intValue = 0;
 	    //TBD -N
     }
     set_vap_dml_parameters(FIXED_WMM_PARAMS, &l_intValue);

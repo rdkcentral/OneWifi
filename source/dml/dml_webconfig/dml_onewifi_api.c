@@ -500,7 +500,17 @@ unsigned long get_associated_devices_count(wifi_vap_info_t *vap_info)
     unsigned long count = 0;
 
     int radio_index = convert_vap_name_to_radio_array_index(&((webconfig_dml_t*) get_webconfig_dml())->hal_cap.wifi_prop, vap_info->vap_name);
+    if (radio_index < 0) {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s %d invalid radio index \n", __func__, __LINE__);
+        return count;
+    }
+
     int vap_array_index = convert_vap_name_to_array_index(&((webconfig_dml_t*) get_webconfig_dml())->hal_cap.wifi_prop, vap_info->vap_name);
+    if (vap_array_index < 0) {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s %d invalid vap index \n", __func__, __LINE__);
+        return count;
+    }
+
     hash_map_t **assoc_dev_hash_map = get_dml_assoc_dev_hash_map(radio_index, vap_array_index);
 
     if ((assoc_dev_hash_map == NULL) || (*assoc_dev_hash_map == NULL)) {

@@ -309,7 +309,7 @@ WifiClient_SetParamStringValue
     if( AnscEqualString(ParamName, "MacAddress", TRUE))
     {
         if (validate_inst_client_mac(pValue)){
-            strncpy(pcfg->mac_address, pValue, sizeof(pcfg->mac_address));
+            strncpy(pcfg->mac_address, pValue, sizeof(pcfg->mac_address)-1);
             return TRUE;
         }else{
             return FALSE;

@@ -1904,7 +1904,7 @@ CSI_SetParamStringValue
             str_to_mac_bytes(str, l_client_list[itr]);
             str = strtok_r(NULL, ",", &cptr);
             itr++;
-            if (itr > CSI_CLIENT_PER_SESSION) {
+            if (itr >= CSI_CLIENT_PER_SESSION) {
                 wifi_util_dbg_print(WIFI_DMCLI,"%s:%d client list is big %d\n", __func__, __LINE__, itr);
                 if (str_dup) {
                     free(str_dup);

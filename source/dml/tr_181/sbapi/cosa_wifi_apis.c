@@ -1167,7 +1167,7 @@ ANSC_STATUS regDomainStrToEnums(char *pRegDomain, wifi_countrycode_type_t *count
     }
 
     memset(tmp_regDomain, 0, sizeof(tmp_regDomain));
-    strncpy(tmp_regDomain, pRegDomain, sizeof(tmp_regDomain));
+    strncpy(tmp_regDomain, pRegDomain, sizeof(tmp_regDomain)-1);
     environment[0] = tmp_regDomain[REG_DOMAIN_SZ-1];
     if (environment[0] == '\0') {
         environment[0] = ' ';
@@ -1763,6 +1763,7 @@ void getParamWifiRegionUpdateSource(void)
         memset( data, 0, ( sizeof(char) * (len + 1) ));
         if(1 != fread( data, len, 1, fileRead ))
         {
+            free(data);
             fclose( fileRead );
             return;
         }

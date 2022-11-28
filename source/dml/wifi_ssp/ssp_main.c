@@ -510,9 +510,13 @@ wifi_util_dbg_print(WIFI_MGR,"%s:%d: RDK_LOGGER_INIT done!\n", __func__, __LINE_
     {
         if ( (strcmp(argv[idx], "-subsys") == 0) )
         {
-            AnscCopyString(g_Subsystem, argv[idx+1]);
-            CcspTraceWarning(("\nSubsystem is %s\n", g_Subsystem));
-            wifi_util_dbg_print(WIFI_MGR,"%s:%d: Subsystem is %s\n", __func__, __LINE__, g_Subsystem);
+            /* Coverity Fix */
+            if ((idx+1) < argc)
+            {
+                AnscCopyString(g_Subsystem, argv[idx+1]);
+                CcspTraceWarning(("\nSubsystem is %s\n", g_Subsystem));
+                wifi_util_dbg_print(WIFI_MGR,"%s:%d: Subsystem is %s\n", __func__, __LINE__, g_Subsystem);
+            }
         }
         else if ( strcmp(argv[idx], "-c" ) == 0 )
         {
