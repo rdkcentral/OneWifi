@@ -62,6 +62,10 @@ typedef struct {
     BOOL    AutoChannelSupported;
     BOOL    DCSSupported;
     BOOL    ReverseDirectionGrant;
+    BOOL    AggregationMSDU;
+    BOOL    AutoBlockAck;
+    BOOL    DeclineBARequest;
+    BOOL    WirelessOnOffButton;
     BOOL    IEEE80211hEnabled;
     BOOL    DFSEnabled;
     BOOL    IGMPSnoopingEnabled;

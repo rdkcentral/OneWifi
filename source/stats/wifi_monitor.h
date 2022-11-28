@@ -168,7 +168,8 @@ typedef struct {
 #endif
     neighscan_diag_cfg_t neighbor_scan_cfg;
     pthread_cond_t      cond;
-    pthread_mutex_t     lock;
+    pthread_mutex_t     queue_lock;
+    pthread_mutex_t     data_lock;
     pthread_t           id;
     bool                exit_monitor;
     unsigned int        blastReqInQueueCount;

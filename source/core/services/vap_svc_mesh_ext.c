@@ -1347,7 +1347,8 @@ int process_ext_scan_results(vap_svc_t *svc, void *arg)
         scan_list++;
     }
 
-    sort_bss_results_by_rssi(ext->candidates_list.scan_list, 0, ext->candidates_list.scan_count - 1);
+    if (ext->candidates_list.scan_list && (ext->candidates_list.scan_count > 1))
+        sort_bss_results_by_rssi(ext->candidates_list.scan_list, 0, ext->candidates_list.scan_count - 1);
 
     ext->scanned_radios++;
     if (ext->scanned_radios >= getNumberRadios()) {

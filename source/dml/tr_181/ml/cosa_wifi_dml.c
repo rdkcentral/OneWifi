@@ -1834,19 +1834,19 @@ Radio_GetParamBoolValue
 
     if (AnscEqualString(ParamName, "X_CISCO_COM_AggregationMSDU", TRUE))
     {
-        *pBool = FALSE;
+        *pBool = rcfg->AggregationMSDU;
         return TRUE;
     }
 
     if (AnscEqualString(ParamName, "X_CISCO_COM_AutoBlockAck", TRUE))
     {
-        *pBool = FALSE;
+        *pBool = rcfg->AutoBlockAck;
         return TRUE;
     }
 
     if (AnscEqualString(ParamName, "X_CISCO_COM_DeclineBARequest", TRUE))
     {
-        *pBool = FALSE;
+        *pBool = rcfg->DeclineBARequest;
         return TRUE;
     }
 
@@ -1864,7 +1864,7 @@ Radio_GetParamBoolValue
 
     if (AnscEqualString(ParamName, "X_CISCO_COM_WirelessOnOffButton", TRUE))
     {
-        *pBool = FALSE;
+        *pBool = rcfg->WirelessOnOffButton;
         return TRUE;
     }
 
@@ -2083,7 +2083,12 @@ Radio_GetParamUlongValue
             *puLong = 2;
             return TRUE;
         }
-        *puLong = pcfg->enable;
+        if (pcfg->enable == TRUE) {
+            *puLong = 1;
+        }
+        else {
+            *puLong = 2;
+        }
         return TRUE;
     }
 
@@ -2852,26 +2857,50 @@ Radio_SetParamBoolValue
 
     if( AnscEqualString(ParamName, "X_CISCO_COM_ReverseDirectionGrant", TRUE))
     {
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Cannot set ReverseDirectionGrant \n",__func__,__LINE__);
-        return FALSE;
+        if (rcfg->ReverseDirectionGrant == bValue)
+        {
+            return TRUE;
+        }
+        rcfg->ReverseDirectionGrant = bValue;
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:ReverseDirectionGrant=%d  = %d  \n",__func__, __LINE__,rcfg->ReverseDirectionGrant,bValue);
+        is_radio_config_changed = TRUE;
+        return TRUE;
     }
 
     if( AnscEqualString(ParamName, "X_CISCO_COM_AggregationMSDU", TRUE))
     {
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Does not support modification\n", __FUNCTION__,__LINE__);
-        return FALSE;
+	if (rcfg->AggregationMSDU == bValue)
+        {
+            return TRUE;
+        }
+        rcfg->AggregationMSDU = bValue;
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:AggregationMSDU=%d  = %d  \n",__func__, __LINE__,rcfg->AggregationMSDU,bValue);
+        is_radio_config_changed = TRUE;
+        return TRUE;
     }
 
     if( AnscEqualString(ParamName, "X_CISCO_COM_AutoBlockAck", TRUE))
     {
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Does not support modification\n", __FUNCTION__,__LINE__);
-        return FALSE;
+	if (rcfg->AutoBlockAck == bValue)
+        {
+            return TRUE;
+        }
+        rcfg->AutoBlockAck = bValue;
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:AutoBlockAck=%d  = %d  \n",__func__, __LINE__,rcfg->AutoBlockAck,bValue);
+        is_radio_config_changed = TRUE;
+        return TRUE;
     }
 
     if( AnscEqualString(ParamName, "X_CISCO_COM_DeclineBARequest", TRUE))
     {
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Does not support modification\n", __FUNCTION__,__LINE__);
-        return FALSE;
+	if (rcfg->DeclineBARequest == bValue)
+        {
+            return TRUE;
+        }
+        rcfg->DeclineBARequest = bValue;
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:DeclineBARequest=%d  = %d  \n",__func__, __LINE__,rcfg->DeclineBARequest,bValue);
+        is_radio_config_changed = TRUE;
+        return TRUE;
     }
 
     if( AnscEqualString(ParamName, "X_CISCO_COM_STBCEnable", TRUE))
@@ -2892,8 +2921,14 @@ Radio_SetParamBoolValue
 
     if( AnscEqualString(ParamName, "X_CISCO_COM_WirelessOnOffButton", TRUE))
     {
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Does not support modification\n", __FUNCTION__,__LINE__);
-        return FALSE;
+	if (rcfg->WirelessOnOffButton == bValue)
+        {
+            return TRUE;
+        }
+        rcfg->WirelessOnOffButton = bValue;
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:WirelessOnOffButton=%d  = %d  \n",__func__, __LINE__,rcfg->WirelessOnOffButton,bValue);
+        is_radio_config_changed = TRUE;
+        return TRUE;
     }
 
     return FALSE;
@@ -3277,7 +3312,7 @@ Radio_SetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_COMCAST-COM_BeaconInterval", TRUE))
+    if( AnscEqualString(ParamName, "X_COMCAST-COM_BeaconInterval", TRUE) || AnscEqualString(ParamName,"BeaconPeriod", TRUE))
     {
         if(wifiRadioOperParam->beaconInterval == uValue)
 	{
@@ -3287,18 +3322,6 @@ Radio_SetParamUlongValue
         wifiRadioOperParam->beaconInterval = uValue;
         ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s beaconInterval : %d\n", __FUNCTION__, wifiRadioOperParam->beaconInterval);
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:beaconInterval=%d  = %d  \n",__func__, __LINE__,wifiRadioOperParam->beaconInterval,uValue);
-        is_radio_config_changed = TRUE;
-        return TRUE;
-    }
-    if( AnscEqualString(ParamName,"BeaconPeriod", TRUE))
-    {
-        if(wifiRadioOperParam->csa_beacon_count == uValue)
-        {
-            return  TRUE;
-        }
-
-        wifiRadioOperParam->csa_beacon_count = uValue;
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:csa_beacon_count=%d  = %d  \n",__func__, __LINE__,wifiRadioOperParam->csa_beacon_count,uValue);
         is_radio_config_changed = TRUE;
         return TRUE;
     }
@@ -3542,9 +3565,10 @@ Radio_SetParamStringValue
             {
                 return TRUE;
             }
-            
-            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Cannot set BasicDataTransmitRates\n",__func__,__LINE__);
-            return FALSE;
+            wifiRadioOperParam->basicDataTransmitRates = txRate;
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:BasicDataTransmitRates=%d =%d\n",__func__,__LINE__,wifiRadioOperParam->basicDataTransmitRates,txRate);
+            is_radio_config_changed = TRUE;
+            return TRUE;
         }
 
     }

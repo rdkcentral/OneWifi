@@ -254,77 +254,6 @@ int init_wifi_hal()
     return RETURN_OK;
 }
 
-int init_wireless_interface_mac()
-{
-    unsigned int itr=0;
-    unsigned int j = 0;
-    unsigned int k = 0;
-    int ret = RETURN_OK;
-    wifi_vap_info_map_t  hal_vap_info_map;
-    wifi_vap_info_t *wifi_vap_info = NULL;
-    wifi_vap_info_map_t *mgr_vap_info_map;
-
-    for (itr=0; itr < getNumberRadios(); itr++) {
-        memset(&hal_vap_info_map, 0, sizeof(hal_vap_info_map));
-
-        //wifi_hal_getRadioVapInfoMap is used  to get the macaddress of wireless interfaces
-        ret = wifi_hal_getRadioVapInfoMap(itr, &hal_vap_info_map);
-        if (ret != RETURN_OK) {
-            wifi_util_error_print(WIFI_CTRL,"RDK_LOG_ERROR, %s wifi_hal_getRadioVapInfoMap returned with error %d for radio : %d\n",
-                    __FUNCTION__, ret, itr);
-            return RETURN_ERR;
-        }
-
-        //get the mgr map_info_map
-        mgr_vap_info_map = get_wifidb_vap_map(itr);
-        if (mgr_vap_info_map == NULL) {
-            wifi_util_error_print(WIFI_CTRL,"RDK_LOG_ERROR, %s get_wifidb_vap_map returned with error %d for radio : %d\n",
-                    __FUNCTION__, ret, itr);
-            return RETURN_ERR;
-        }
-
-        for (j = 0; j < hal_vap_info_map.num_vaps; j++) {
-            for (k = 0; k < mgr_vap_info_map->num_vaps; k++) {
-
-                //compare the vap_names from hal_vap_info_map and mgr_vap_info_map to get the wifi_vap_info structure
-                if (strncmp(hal_vap_info_map.vap_array[j].vap_name, mgr_vap_info_map->vap_array[k].vap_name, strlen(hal_vap_info_map.vap_array[j].vap_name)) == 0) {
-                    wifi_vap_info = &mgr_vap_info_map->vap_array[k];
-                    break;
-                }
-            }
-
-            //For backhaul interfaces, update the sta_info.mac
-            if (strncmp((char *)hal_vap_info_map.vap_array[j].vap_name, "mesh_sta", strlen("mesh_sta")) == 0) {
-                memcpy(wifi_vap_info->u.sta_info.mac, hal_vap_info_map.vap_array[j].u.sta_info.mac, sizeof(wifi_vap_info->u.sta_info.mac));
-                wifi_util_dbg_print(WIFI_CTRL,"%s:%d: vapindex %d vap_name : %s Mac address : %02X:%02X:%02X:%02X:%02X:%02X\n",__func__, __LINE__,
-                        wifi_vap_info->vap_index,
-                        wifi_vap_info->vap_name,
-                        wifi_vap_info->u.sta_info.mac[0],
-                        wifi_vap_info->u.sta_info.mac[1],
-                        wifi_vap_info->u.sta_info.mac[2],
-                        wifi_vap_info->u.sta_info.mac[3],
-                        wifi_vap_info->u.sta_info.mac[4],
-                        wifi_vap_info->u.sta_info.mac[5]
-                        );
-            } else {
-                //For fronthaul interfaces, update the bss_info.bssid
-                memcpy(wifi_vap_info->u.bss_info.bssid, hal_vap_info_map.vap_array[j].u.bss_info.bssid, sizeof(wifi_vap_info->u.bss_info.bssid));
-                wifi_util_dbg_print(WIFI_CTRL,"%s:%d: vapindex %d vap_name : %s Mac address : %02X:%02X:%02X:%02X:%02X:%02X\n",__func__, __LINE__,
-                        wifi_vap_info->vap_index,
-                        wifi_vap_info->vap_name,
-                        wifi_vap_info->u.bss_info.bssid[0],
-                        wifi_vap_info->u.bss_info.bssid[1],
-                        wifi_vap_info->u.bss_info.bssid[2],
-                        wifi_vap_info->u.bss_info.bssid[3],
-                        wifi_vap_info->u.bss_info.bssid[4],
-                        wifi_vap_info->u.bss_info.bssid[5]
-                        );
-            }
-        }
-    }
-    return RETURN_OK;
-}
-
 int init_global_radio_config(rdk_wifi_radio_t *radios_cfg, UINT radio_index)
 {
     UINT vap_array_index = 0;
@@ -1407,7 +1336,7 @@ int get_all_param_from_psm_and_set_into_db(void)
     wifi_mgr_t *g_wifidb;
     g_wifidb = get_wifimgr_obj();
 
-    if (is_device_type_xb7() == true || is_device_type_xb8() == true || is_device_type_sr213() == true) {
+    if (is_device_type_xb7() == true || is_device_type_xb8() == true || is_device_type_sr213() == true || is_device_type_cmxb7() == true) {
         bool wifi_psm_db_enabled = false;
         char last_reboot_reason[32];
         memset(last_reboot_reason, 0, sizeof(last_reboot_reason));
@@ -1480,9 +1409,6 @@ int init_wifimgr()
     for (itr=0; itr < (int)getNumberRadios(); itr++) {
         init_global_radio_config(&g_wifi_mgr.radio_config[itr], itr);
     }
-
-    //Update the  wireless interface mac in mgr structure
-    init_wireless_interface_mac();
 
 #if DML_SUPPORT
     pthread_cond_init(&g_wifi_mgr.dml_init_status, NULL);

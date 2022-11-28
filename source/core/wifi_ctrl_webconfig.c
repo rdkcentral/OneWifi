@@ -1810,7 +1810,11 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
                         str_tolower(current_mac_str);
                         if ((new_config->acl_map == NULL) || (hash_map_get(new_config->acl_map, current_mac_str) == NULL)) {
                             wifi_util_info_print(WIFI_MGR, "%s:%d: calling wifi_delApAclDevice for mac %s vap_index %d\n", __func__, __LINE__, current_mac_str, current_config->vap_index);
+#ifdef NL80211_ACL
+			    if (wifi_hal_delApAclDevice(current_config->vap_index, current_mac_str) != RETURN_OK) {
+#else
                             if (wifi_delApAclDevice(current_config->vap_index, current_mac_str) != RETURN_OK) {
+#endif
                                 wifi_util_error_print(WIFI_MGR, "%s:%d: wifi_delApAclDevice failed. vap_index %d, mac %s \n",
                                         __func__, __LINE__, vap_index, current_mac_str);
                                 ret = RETURN_ERR;
@@ -1830,7 +1834,11 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
                     }
                 }
             } else {
-                wifi_delApAclDevices(vap_index);
+#ifdef NL80211_ACL
+                wifi_hal_delApAclDevices(vap_index);
+#else
+		wifi_delApAclDevices(vap_index);
+#endif
                 current_config->is_mac_filter_initialized = true;
             }
 
@@ -1842,7 +1850,11 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
                     acl_entry_t *check_acl_entry = hash_map_get(current_config->acl_map, new_mac_str);
                     if (check_acl_entry == NULL) { //mac is in new_config but not in running config need to update HAL
                         wifi_util_info_print(WIFI_MGR, "%s:%d: calling wifi_addApAclDevice for mac %s vap_index %d\n", __func__, __LINE__, new_mac_str, current_config->vap_index);
+#ifdef NL80211_ACL
+                        if (wifi_hal_addApAclDevice(current_config->vap_index, new_mac_str) != RETURN_OK) {
+#else
                         if (wifi_addApAclDevice(current_config->vap_index, new_mac_str) != RETURN_OK) {
+#endif
                             wifi_util_error_print(WIFI_MGR, "%s:%d: wifi_addApAclDevice failed. vap_index %d, MAC %s \n",
                                     __func__, __LINE__, vap_index, new_mac_str);
                             ret = RETURN_ERR;

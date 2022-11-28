@@ -117,7 +117,11 @@ void process_prefer_private_mac_filter(mac_address_t prefer_private_mac)
             acl_entry->reason = PREFER_PRIVATE_RFC_REJECT;
             acl_entry->expiry_time = 0;
 
+#ifdef NL80211_ACL
+            if (wifi_hal_addApAclDevice(rdk_vap_info->vap_index, new_mac_str) != RETURN_OK) {
+#else
             if (wifi_addApAclDevice(rdk_vap_info->vap_index, new_mac_str) != RETURN_OK) {
+#endif
                 wifi_util_dbg_print(WIFI_MGR, "%s:%d: wifi_addApAclDevice failed. vap_index %d, MAC %s \n",
                    __func__, __LINE__, rdk_vap_info->vap_index, new_mac_str);
                 if(acl_entry) {
@@ -242,7 +246,11 @@ int update_xfinity_acl_entries(char* tgt_vap_name)
            if ((strcmp(rdk_vap_info->vap_name,tgt_vap_name) != 0 )) {
                 continue;
             }
-            wifi_delApAclDevices(vap_index);
+#ifdef NL80211_ACL
+	   wifi_hal_delApAclDevices(vap_index);
+#else
+	   wifi_delApAclDevices(vap_index);
+#endif
 
             acl_entry = hash_map_get_first(rdk_vap_info->acl_map);
             while(acl_entry != NULL && acl_count < MAX_ACL_COUNT ) {
@@ -250,7 +258,11 @@ int update_xfinity_acl_entries(char* tgt_vap_name)
                     memcpy(&acl_device_mac,&acl_entry->mac,sizeof(mac_address_t));
                     to_mac_str(acl_device_mac, mac_str);
                     wifi_util_dbg_print(WIFI_CTRL, "%s:%d: calling wifi_addApAclDevice for mac %s vap_index %d\n", __func__, __LINE__, mac_str, vap_index);
+#ifdef NL80211_ACL
+                    if (wifi_hal_addApAclDevice(vap_index, (CHAR *) mac_str) != RETURN_OK) {
+#else
                     if (wifi_addApAclDevice(vap_index, (CHAR *) mac_str) != RETURN_OK) {
+#endif
                         wifi_util_error_print(WIFI_CTRL,"%s: wifi_addApAclDevice failed. vap_index:%d MAC:'%s'\n",__FUNCTION__, vap_index, mac_str);
                     }
                 }

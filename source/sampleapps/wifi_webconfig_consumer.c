@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include "const.h"
+#include <sys/resource.h>
 #include "wifi_hal.h"
 #include "wifi_ctrl.h"
 #include "wifi_mgr.h"
@@ -336,11 +337,34 @@ void cleanup_function()
 }
 int main (int argc, char *argv[])
 {
+    struct rlimit rl;
+    int result;
+    const rlim_t stack_size = 8L * 1024L * 1024L; // 8mb
+
     atexit(cleanup_function);
     signal(SIGINT,sig_handler);
     signal(SIGTERM,sig_handler);
     signal(SIGTSTP,sig_handler);
     signal(SIGKILL,sig_handler);
+
+    result = getrlimit(RLIMIT_STACK, &rl);
+
+    if (result == 0)
+    {
+        if (rl.rlim_cur < stack_size)
+        {
+            rl.rlim_cur = stack_size;
+            rl.rlim_max = stack_size;
+            result = setrlimit(RLIMIT_STACK, &rl);
+
+            if (result != 0)
+            {
+                printf("%s:%d: setrlimit failed\n", __func__, __LINE__);
+                return -1;
+            }
+        }
+    }
+    
     printf("%s:%d: Enter\n", __func__, __LINE__);
     FILE *fp = fopen(CONSUMER_APP_FILE, "a+");
     if(fp != NULL) {

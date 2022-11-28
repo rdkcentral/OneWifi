@@ -60,7 +60,7 @@ bridgeUtilEnable=`syscfg get bridge_util_enable`
 USE_BRIDGEUTILS=0
 
 if [ "x$ovs_enable" = "xtrue" ] || [ "x$bridgeUtilEnable" = "xtrue" ] ; then
-	if [ "$MODEL_NUM" == "CGM4331COM" ] || [ "$MODEL_NUM" == "CGM4981COM" ] || [ "$MODEL_NUM" == "SR300" ] || [ "$MODEL_NUM" == "SE501" ] || [ "$MODEL_NUM" == "WNXL11BWL" ]; then
+	if [ "$MODEL_NUM" == "CGM4331COM" ] || [ "$MODEL_NUM" == "CGM4981COM" ] || [ "$MODEL_NUM" == "SR300" ] || [ "$MODEL_NUM" == "SE501" ] || [ "$MODEL_NUM" == "WNXL11BWL" ] || [ "$MODEL_NUM" == "TG4482A" ]; then
 	  USE_BRIDGEUTILS=1
 	fi
 fi

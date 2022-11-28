@@ -1512,9 +1512,9 @@ void upload_single_client_active_msmt_data(bssid_data_t *bssid_info, sta_data_t 
     {
         if (sta_data != NULL)
         {
-            pthread_mutex_lock(&g_monitor->lock);
+            pthread_mutex_lock(&g_monitor->data_lock);
             sta_del = (sta_data_t *) hash_map_remove(bssid_info->sta_map, to_sta_key(sta_data->sta_mac, sta_key));
-            pthread_mutex_unlock(&g_monitor->lock);
+            pthread_mutex_unlock(&g_monitor->data_lock);
             if (sta_del != NULL)
             {
                 wifi_util_dbg_print(WIFI_MON, "%s : %d removed offline client %s from sta_map\n",__func__,__LINE__, sta_del->sta_mac);
@@ -2128,7 +2128,6 @@ Error:
     free(buf);
     return;
 }
-
 /* This function calls the ODP streamer function with station and radio data.
    If ActiveMsmtFlag is true then the streamer for active measurement is called or
    streamer for instant measurement has been triggered.

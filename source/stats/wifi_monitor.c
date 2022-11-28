@@ -45,12 +45,10 @@
 #include <sysevent/sysevent.h>
 #include "ccsp_base_api.h"
 #include "harvester.h"
-#if CCSP_COMMON
+#include "wifi_passpoint.h"
 #include "ccsp_trace.h"
-#endif // CCSP_COMMON
 #include "safec_lib_common.h"
 #include "ccsp_WifiLog_wrapper.h"
-#include "platform-logger.h"
 #include <sched.h>
 #include "scheduler.h"
 
@@ -218,7 +216,7 @@ int harvester_get_associated_device_info(int vap_index, char **harvester_buf)
                 "\"VapIndex\":\"%d\","
                 "\"AssociatedClientDiagnostics\":[",
                 (vap_index+1));
-    pthread_mutex_lock(&g_monitor_module.lock);
+    pthread_mutex_lock(&g_monitor_module.data_lock);
     sta_data = hash_map_get_first(g_monitor_module.bssid_data[vap_index].sta_map);
     while (sta_data != NULL) {
         pos += snprintf(&harvester_buf[vap_index][pos],
@@ -282,7 +280,7 @@ int harvester_get_associated_device_info(int vap_index, char **harvester_buf)
         sta_data = hash_map_get_next(g_monitor_module.bssid_data[vap_index].sta_map, sta_data);
 
     }
-    pthread_mutex_unlock(&g_monitor_module.lock);
+    pthread_mutex_unlock(&g_monitor_module.data_lock);
     tr_pos = pos-1;
 
     snprintf(&harvester_buf[vap_index][tr_pos], (
@@ -515,18 +513,18 @@ BOOL client_fast_reconnect(unsigned int apIndex, char *mac)
     wifi_util_dbg_print(WIFI_MON, "%s: Checking for client:%s connection on ap:%d\n", __func__, mac, apIndex);
     getVAPArrayIndexFromVAPIndex(apIndex, &vap_array_index);
 
-    pthread_mutex_lock(&g_monitor_module.lock);
+    pthread_mutex_lock(&g_monitor_module.data_lock);
     sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
     sta = (sta_data_t *)hash_map_get(sta_map, mac);
     if (sta == NULL) {
         wifi_util_error_print(WIFI_MON, "%s: Client:%s could not be found on sta map of ap:%d\n", __func__, mac, apIndex);
-        pthread_mutex_unlock(&g_monitor_module.lock);
+        pthread_mutex_unlock(&g_monitor_module.data_lock);
         return FALSE;
     }
 
     if(sta->gate_time && (tv_now.tv_sec < sta->gate_time)) {
         wifi_util_dbg_print(WIFI_MON, "%s: Blocking burst client connections for few more seconds\n", __func__);
-        pthread_mutex_unlock(&g_monitor_module.lock);
+        pthread_mutex_unlock(&g_monitor_module.data_lock);
         return TRUE;
     } else {
         wifi_util_dbg_print(WIFI_MON, "%s: processing further\n", __func__);
@@ -542,7 +540,7 @@ BOOL client_fast_reconnect(unsigned int apIndex, char *mac)
             t2_event_d("SYS_INFO_ClientConnBlock", 1);
             sta->reconnect_count = 0;
             sta->gate_time = tv_now.tv_sec + assocGateTime;
-            pthread_mutex_unlock(&g_monitor_module.lock);
+            pthread_mutex_unlock(&g_monitor_module.data_lock);
             return TRUE;
         }
     } else {
@@ -550,10 +548,10 @@ BOOL client_fast_reconnect(unsigned int apIndex, char *mac)
         sta->reconnect_count = 0;
         sta->gate_time = 0;
         wifi_util_dbg_print(WIFI_MON, "%s: resetting reconnect_count and assoc_monitor_start_time \n", __func__);
-        pthread_mutex_unlock(&g_monitor_module.lock);
+        pthread_mutex_unlock(&g_monitor_module.data_lock);
         return FALSE;
     }
-    pthread_mutex_unlock(&g_monitor_module.lock);
+    pthread_mutex_unlock(&g_monitor_module.data_lock);
     return FALSE;
 }
 
@@ -574,20 +572,20 @@ BOOL client_fast_redeauth(unsigned int apIndex, char *mac)
 
     wifi_util_dbg_print(WIFI_MON, "%s: Checking for client:%s deauth on ap:%d\n", __func__, mac, apIndex);
 
-    pthread_mutex_lock(&g_monitor_module.lock);
+    pthread_mutex_lock(&g_monitor_module.data_lock);
     getVAPArrayIndexFromVAPIndex(apIndex, &vap_array_index);
     sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
     sta = (sta_data_t *)hash_map_get(sta_map, mac);
 
     if (sta == NULL  ) {
         wifi_util_dbg_print(WIFI_MON, "%s: Client:%s could not be found on sta map of ap:%d,  Blocking client deauth notification\n", __func__, mac, apIndex);
-        pthread_mutex_unlock(&g_monitor_module.lock);
+        pthread_mutex_unlock(&g_monitor_module.data_lock);
         return TRUE;
     }
 
     if(sta->deauth_gate_time && (tv_now.tv_sec < sta->deauth_gate_time)) {
         wifi_util_dbg_print(WIFI_MON, "%s: Blocking burst client deauth for few more seconds\n", __func__);
-        pthread_mutex_unlock(&g_monitor_module.lock);
+        pthread_mutex_unlock(&g_monitor_module.data_lock);
         return TRUE;
     } else {
         wifi_util_dbg_print(WIFI_MON, "%s: processing further\n", __func__);
@@ -602,7 +600,7 @@ BOOL client_fast_redeauth(unsigned int apIndex, char *mac)
             wifi_util_dbg_print(WIFI_MON, "%s: Blocking client deauth for deauthGateTime:%d \n", __func__, deauthGateTime);
             sta->redeauth_count = 0;
             sta->deauth_gate_time = tv_now.tv_sec + deauthGateTime;
-            pthread_mutex_unlock(&g_monitor_module.lock);
+            pthread_mutex_unlock(&g_monitor_module.data_lock);
             return TRUE;
         }
     } else {
@@ -610,10 +608,10 @@ BOOL client_fast_redeauth(unsigned int apIndex, char *mac)
         sta->redeauth_count = 0;
         sta->deauth_gate_time = 0;
         wifi_util_dbg_print(WIFI_MON, "%s: resetting redeauth_count and deauth_monitor_start_time \n", __func__);
-        pthread_mutex_unlock(&g_monitor_module.lock);
+        pthread_mutex_unlock(&g_monitor_module.data_lock);
         return FALSE;
     }
-    pthread_mutex_unlock(&g_monitor_module.lock);
+    pthread_mutex_unlock(&g_monitor_module.data_lock);
     return FALSE;
 }
 
@@ -665,7 +663,7 @@ int upload_client_telemetry_data(void *arg)
             for (radioIndex = 0; radioIndex < getNumberRadios(); ++radioIndex) {
                 wifi_radio_operationParam_t* radioOperation = getRadioOperationParam(radioIndex);
                 if (radioOperation == NULL) {
-                    platform_trace_warning(WIFI_MON, "%s : failed to getRadioOperationParam with radio index \n", __FUNCTION__);
+                    CcspTraceWarning(("%s : failed to getRadioOperationParam with radio index \n", __FUNCTION__));
                     phase = 0;
                     return TIMER_TASK_COMPLETE;
                 }
@@ -1905,7 +1903,7 @@ int upload_channel_width_telemetry(void *arg)
     for (UINT i = 0; i < numRadios; ++i) {
         wifi_radio_operationParam_t* radioOperation = getRadioOperationParam(i);
         if (radioOperation == NULL) {
-            platform_trace_warning(WIFI_MON, "%s : failed to getRadioOperationParam with radio index:%d \n", __FUNCTION__, i);
+            CcspTraceWarning(("%s : failed to getRadioOperationParam with radio index:%d \n", __FUNCTION__, i));
             radioEnabled = FALSE;
         } else {
             radioEnabled = radioOperation->enable;
@@ -2043,11 +2041,11 @@ int wifi_stats_flag_change(int ap_index, bool enable, int type)
     wifi_util_dbg_print(WIFI_MON, "%s:%d: flag changed apIndex=%d enable=%d type=%d\n",
             __func__, __LINE__, ap_index, enable, type);
 
-    pthread_mutex_lock(&g_monitor_module.lock);
+    pthread_mutex_lock(&g_monitor_module.queue_lock);
     queue_push(g_monitor_module.queue, data);
 
     pthread_cond_signal(&g_monitor_module.cond);
-    pthread_mutex_unlock(&g_monitor_module.lock);
+    pthread_mutex_unlock(&g_monitor_module.queue_lock);
 
     return 0;
 }
@@ -2074,11 +2072,11 @@ int radio_stats_flag_change(int radio_index, bool enable)
     wifi_util_dbg_print(WIFI_MON, "%s:%d: flag changed radioIndex=%d enable=%d\n",
             __func__, __LINE__, radio_index, enable);
 
-    pthread_mutex_lock(&g_monitor_module.lock);
+    pthread_mutex_lock(&g_monitor_module.queue_lock);
     queue_push(g_monitor_module.queue, data);
 
     pthread_cond_signal(&g_monitor_module.cond);
-    pthread_mutex_unlock(&g_monitor_module.lock);
+    pthread_mutex_unlock(&g_monitor_module.queue_lock);
 
     return 0;
 }
@@ -2105,14 +2103,14 @@ int vap_stats_flag_change(int ap_index, bool enable)
     wifi_util_dbg_print(WIFI_MON, "%s:%d: flag changed vapIndex=%d enable=%d \n",
             __func__, __LINE__, ap_index, enable);
 
-    pthread_mutex_lock(&g_monitor_module.lock);
+    pthread_mutex_lock(&g_monitor_module.queue_lock);
     if(enable == FALSE) {
         csi_vap_down_update(ap_index);
     }
     queue_push(g_monitor_module.queue, data);
 
     pthread_cond_signal(&g_monitor_module.cond);
-    pthread_mutex_unlock(&g_monitor_module.lock);
+    pthread_mutex_unlock(&g_monitor_module.queue_lock);
 
     return 0;
 }
@@ -2129,7 +2127,7 @@ int get_sta_stats_info (assoc_dev_data_t *assoc_dev_data) {
     sta_data_t *sta_data = NULL;
     sta_key_t sta_key;
 
-    pthread_mutex_lock(&g_monitor_module.lock);
+    pthread_mutex_lock(&g_monitor_module.data_lock);
 
     getVAPArrayIndexFromVAPIndex((unsigned int)assoc_dev_data->ap_index, &vap_array_index);
     sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
@@ -2138,7 +2136,7 @@ int get_sta_stats_info (assoc_dev_data_t *assoc_dev_data) {
     sta_data = (sta_data_t *)hash_map_get(sta_map, to_sta_key(assoc_dev_data->dev_stats.cli_MACAddress, sta_key));
     if (sta_data == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d: NULL pointer\n", __func__, __LINE__);
-        pthread_mutex_unlock(&g_monitor_module.lock);
+        pthread_mutex_unlock(&g_monitor_module.data_lock);
         return -1;
     }
 
@@ -2169,7 +2167,7 @@ int get_sta_stats_info (assoc_dev_data_t *assoc_dev_data) {
     assoc_dev_data->dev_stats.cli_RetryCount = sta_data->dev_stats.cli_RetryCount;
     assoc_dev_data->dev_stats.cli_MultipleRetryCount = sta_data->dev_stats.cli_MultipleRetryCount;
 
-    pthread_mutex_unlock(&g_monitor_module.lock);
+    pthread_mutex_unlock(&g_monitor_module.data_lock);
     return 0;
 }
 
@@ -2572,7 +2570,7 @@ void *monitor_function  (void *data)
 
     proc_data = (wifi_monitor_t *)data;
 
-    pthread_mutex_lock(&proc_data->lock);
+    pthread_mutex_lock(&proc_data->queue_lock);
     while (proc_data->exit_monitor == false) {
         gettimeofday(&tv_now, NULL);
 
@@ -2583,7 +2581,7 @@ void *monitor_function  (void *data)
         time_to_wait.tv_sec = timeout.tv_sec;
         time_to_wait.tv_nsec = timeout.tv_usec*1000;
 
-        rc = pthread_cond_timedwait(&proc_data->cond, &proc_data->lock, &time_to_wait);
+        rc = pthread_cond_timedwait(&proc_data->cond, &proc_data->queue_lock, &time_to_wait);
         if ((rc == 0) || (queue_count(proc_data->queue) != 0)) {
             // dequeue data
             while (queue_count(proc_data->queue)) {
@@ -2662,12 +2660,12 @@ void *monitor_function  (void *data)
             scheduler_execute(g_monitor_module.sched, t_start, interval.tv_usec/1000);
         } else {
             wifi_util_error_print(WIFI_MON,"%s:%d Monitor Thread exited with rc - %d",__func__,__LINE__,rc);
-            pthread_mutex_unlock(&proc_data->lock);
+            pthread_mutex_unlock(&proc_data->queue_lock);
             return NULL;
         }
 
     }
-    pthread_mutex_unlock(&proc_data->lock);
+    pthread_mutex_unlock(&proc_data->queue_lock);
 
 
     return NULL;
@@ -3385,11 +3383,11 @@ void csi_set_client_mac(char *r_mac_list, int csi_session_number)
         data->id = msg_id++;
         data->event_type = monitor_event_type_csi_update_config;
 
-        pthread_mutex_lock(&g_monitor_module.lock);
+        pthread_mutex_lock(&g_monitor_module.queue_lock);
         queue_push(g_monitor_module.queue, data);
 
         pthread_cond_signal(&g_monitor_module.cond);
-        pthread_mutex_unlock(&g_monitor_module.lock);
+        pthread_mutex_unlock(&g_monitor_module.queue_lock);
     }
 }
 
@@ -3444,11 +3442,11 @@ void csi_enable_session(bool enable, int csi_session_number)
         data->id = msg_id++;
         data->event_type = monitor_event_type_csi_update_config;
 
-        pthread_mutex_lock(&g_monitor_module.lock);
+        pthread_mutex_lock(&g_monitor_module.queue_lock);
         queue_push(g_monitor_module.queue, data);
 
         pthread_cond_signal(&g_monitor_module.cond);
-        pthread_mutex_unlock(&g_monitor_module.lock);
+        pthread_mutex_unlock(&g_monitor_module.queue_lock);
     }
 
 }
@@ -3502,11 +3500,11 @@ void csi_enable_subscription(bool subscribe, int csi_session_number)
         data->id = msg_id++;
         data->event_type = monitor_event_type_csi_update_config;
 
-        pthread_mutex_lock(&g_monitor_module.lock);
+        pthread_mutex_lock(&g_monitor_module.queue_lock);
         queue_push(g_monitor_module.queue, data);
 
         pthread_cond_signal(&g_monitor_module.cond);
-        pthread_mutex_unlock(&g_monitor_module.lock);
+        pthread_mutex_unlock(&g_monitor_module.queue_lock);
     }
 }
 
@@ -4002,11 +4000,11 @@ void diagdata_set_interval(int interval, unsigned int ap_idx)
         data->event_type = monitor_event_type_clientdiag_update_config;
         data->ap_index = ap_idx;
 
-        pthread_mutex_lock(&g_monitor_module.lock);
+        pthread_mutex_lock(&g_monitor_module.queue_lock);
         queue_push(g_monitor_module.queue, data);
 
         pthread_cond_signal(&g_monitor_module.cond);
-        pthread_mutex_unlock(&g_monitor_module.lock);
+        pthread_mutex_unlock(&g_monitor_module.queue_lock);
     }
 }
 
@@ -4411,11 +4409,11 @@ int device_disassociated(int ap_index, char *mac, int reason)
     assoc_data.reason = reason;
     push_data_to_ctrl_queue(&assoc_data, sizeof(assoc_data), ctrl_event_type_hal_ind, ctrl_event_hal_disassoc_device);
 
-    pthread_mutex_lock(&g_monitor_module.lock);
+    pthread_mutex_lock(&g_monitor_module.queue_lock);
     queue_push(g_monitor_module.queue, data);
 
     pthread_cond_signal(&g_monitor_module.cond);
-    pthread_mutex_unlock(&g_monitor_module.lock);
+    pthread_mutex_unlock(&g_monitor_module.queue_lock);
 
     return 0;
 }
@@ -4480,11 +4478,11 @@ int device_deauthenticated(int ap_index, char *mac, int reason)
     assoc_data.reason = reason;
     push_data_to_ctrl_queue(&assoc_data, sizeof(assoc_data), ctrl_event_type_hal_ind, ctrl_event_hal_disassoc_device);
 
-    pthread_mutex_lock(&g_monitor_module.lock);
+    pthread_mutex_lock(&g_monitor_module.queue_lock);
     queue_push(g_monitor_module.queue, data);
 
     pthread_cond_signal(&g_monitor_module.cond);
-    pthread_mutex_unlock(&g_monitor_module.lock);
+    pthread_mutex_unlock(&g_monitor_module.queue_lock);
 
     return 0;
 }
@@ -4542,10 +4540,10 @@ int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
     assoc_data.ap_index = data->ap_index;
     push_data_to_ctrl_queue(&assoc_data, sizeof(assoc_data), ctrl_event_type_hal_ind, ctrl_event_hal_assoc_device);
 
-    pthread_mutex_lock(&g_monitor_module.lock);
+    pthread_mutex_lock(&g_monitor_module.queue_lock);
     queue_push(g_monitor_module.queue, data);
     pthread_cond_signal(&g_monitor_module.cond);
-    pthread_mutex_unlock(&g_monitor_module.lock);
+    pthread_mutex_unlock(&g_monitor_module.queue_lock);
 
     return 0;
 }
@@ -4713,7 +4711,8 @@ int init_wifi_monitor()
     gettimeofday(&g_monitor_module.last_signalled_time, NULL);
     gettimeofday(&g_monitor_module.last_polled_time, NULL);
     pthread_cond_init(&g_monitor_module.cond, NULL);
-    pthread_mutex_init(&g_monitor_module.lock, NULL);
+    pthread_mutex_init(&g_monitor_module.queue_lock, NULL);
+    pthread_mutex_init(&g_monitor_module.data_lock, NULL);
 
     for (i = 0; i < getTotalNumberVAPs(); i++) {
         g_monitor_module.bssid_data[i].sta_map = hash_map_create();
@@ -4877,7 +4876,8 @@ void deinit_wifi_monitor()
             hash_map_destroy(g_monitor_module.bssid_data[i].sta_map);
         }
     }
-    pthread_mutex_destroy(&g_monitor_module.lock);
+    pthread_mutex_destroy(&g_monitor_module.queue_lock);
+    pthread_mutex_destroy(&g_monitor_module.data_lock);
     pthread_cond_destroy(&g_monitor_module.cond);
 
     /* destory the active measurement g_active_msmt.lock */
@@ -4947,7 +4947,7 @@ void instant_msmt_reporting_period(int pollPeriod)
     int timeLeft = 0;
 
     wifi_util_dbg_print(WIFI_MON, "%s:%d: reporting period changed\n", __func__, __LINE__);
-    pthread_mutex_lock(&g_monitor_module.lock);
+    pthread_mutex_lock(&g_monitor_module.queue_lock);
 
     if(pollPeriod == 0){
         g_monitor_module.maxCount = 0;
@@ -4969,7 +4969,7 @@ void instant_msmt_reporting_period(int pollPeriod)
         scheduler_update_timer_task_interval(g_monitor_module.sched, g_monitor_module.inst_msmt_id,
                 (g_monitor_module.instantPollPeriod*1000));
     }
-    pthread_mutex_unlock(&g_monitor_module.lock);
+    pthread_mutex_unlock(&g_monitor_module.queue_lock);
 }
 
 void instant_msmt_def_period(int defPeriod)
@@ -4981,7 +4981,7 @@ void instant_msmt_def_period(int defPeriod)
     g_monitor_module.instantDefReportPeriod = defPeriod;
 
     if(g_monitor_module.instntMsmtenable == false) {
-        pthread_mutex_lock(&g_monitor_module.lock);
+        pthread_mutex_lock(&g_monitor_module.queue_lock);
 
         curCount = g_monitor_module.count;
         newCount = g_monitor_module.instantDefReportPeriod / DEFAULT_INSTANT_POLL_TIME;
@@ -4994,7 +4994,7 @@ void instant_msmt_def_period(int defPeriod)
             g_monitor_module.maxCount = 0;
         }
         pthread_cond_signal(&g_monitor_module.cond);
-        pthread_mutex_unlock(&g_monitor_module.lock);
+        pthread_mutex_unlock(&g_monitor_module.queue_lock);
     }
 }
 
@@ -5009,7 +5009,7 @@ void instant_msmt_ttl(int overrideTTL)
     if(g_monitor_module.instantPollPeriod == 0)
         return;
 
-    pthread_mutex_lock(&g_monitor_module.lock);
+    pthread_mutex_lock(&g_monitor_module.queue_lock);
 
     if(overrideTTL == 0){
         g_monitor_module.maxCount = 0;
@@ -5028,7 +5028,7 @@ void instant_msmt_ttl(int overrideTTL)
     if(g_monitor_module.instntMsmtenable == true) {
         pthread_cond_signal(&g_monitor_module.cond);
     }
-    pthread_mutex_unlock(&g_monitor_module.lock);
+    pthread_mutex_unlock(&g_monitor_module.queue_lock);
 }
 
 void instant_msmt_macAddr(char *mac_addr)
@@ -5045,12 +5045,12 @@ void instant_msmt_macAddr(char *mac_addr)
         UINT vap_index = VAP_INDEX(mgr->hal_cap, i);
         if( is_device_associated(vap_index, mac_addr)  == true) {
             wifi_util_dbg_print(WIFI_MON, "%s:%d: found client %s on ap %d\n", __func__, __LINE__, mac_addr, vap_index);
-            pthread_mutex_lock(&g_monitor_module.lock);
+            pthread_mutex_lock(&g_monitor_module.queue_lock);
             g_monitor_module.inst_msmt.ap_index = vap_index;
             memcpy(g_monitor_module.inst_msmt.sta_mac, bmac, sizeof(mac_address_t));
 
             pthread_cond_signal(&g_monitor_module.cond);
-            pthread_mutex_unlock(&g_monitor_module.lock);
+            pthread_mutex_unlock(&g_monitor_module.queue_lock);
 
             break;
         }
@@ -5068,7 +5068,7 @@ void monitor_enable_instant_msmt(mac_address_t sta_mac, bool enable)
     wifi_util_dbg_print(WIFI_MON, "%s:%d: instant measurements %s for sta:%s\n", __func__, __LINE__, (enable == true)?"start":"stop", sta);
 
     g_monitor_module.instntMsmtenable = enable;
-    pthread_mutex_lock(&g_monitor_module.lock);
+    pthread_mutex_lock(&g_monitor_module.queue_lock);
 
     if (g_monitor_module.inst_msmt.active == true) {
         if (enable == false) {
@@ -5093,7 +5093,7 @@ void monitor_enable_instant_msmt(mac_address_t sta_mac, bool enable)
             wifi_util_dbg_print(WIFI_MON, "%s:%d: instant measurements active for sta:%s, should just return\n", __func__, __LINE__, sta);
         }
 
-        pthread_mutex_unlock(&g_monitor_module.lock);
+        pthread_mutex_unlock(&g_monitor_module.queue_lock);
 
         return;
 
@@ -5121,7 +5121,7 @@ void monitor_enable_instant_msmt(mac_address_t sta_mac, bool enable)
         }
     }
 
-    pthread_mutex_unlock(&g_monitor_module.lock);
+    pthread_mutex_unlock(&g_monitor_module.queue_lock);
 }
 
 bool monitor_is_instant_msmt_enabled()
@@ -5343,14 +5343,14 @@ void SetActiveMsmtEnable(bool enable)
 
     /* push the event to the monitor queue */
     wifi_util_dbg_print(WIFI_MON, "%s:%d: Acquiring lock\n", __func__, __LINE__);
-    pthread_mutex_lock(&g_monitor_module.lock);
+    pthread_mutex_lock(&g_monitor_module.queue_lock);
     queue_push(g_monitor_module.queue, event);
     g_monitor_module.blastReqInQueueCount++;
     wifi_util_dbg_print(WIFI_MON, "%s:%d: pushed the step info into monitor queue with queucount : %d \n", __func__, __LINE__,g_monitor_module.blastReqInQueueCount);
     wifi_util_dbg_print(WIFI_MON, "%s:%d: released the mutex lock for monitor queue\n", __func__, __LINE__);
 
     pthread_cond_signal(&g_monitor_module.cond);
-    pthread_mutex_unlock(&g_monitor_module.lock);
+    pthread_mutex_unlock(&g_monitor_module.queue_lock);
     wifi_util_dbg_print(WIFI_MON, "%s:%d: signalled the monitor thread for active measurement\n", __func__, __LINE__);
 
     g_active_msmt.active_msmt.ActiveMsmtEnable = enable;
@@ -6291,13 +6291,13 @@ void process_active_msmt_diagnostics (int ap_index)
         wifi_util_dbg_print(WIFI_MON, "%s : %d station info is null \n",__func__,__LINE__);
         sta = (sta_data_t *) malloc (sizeof(sta_data_t));
         memset(sta, 0, sizeof(sta_data_t));
-        pthread_mutex_lock(&g_monitor_module.lock);
+        pthread_mutex_lock(&g_monitor_module.data_lock);
         memcpy(sta->sta_mac, g_active_msmt.curStepData.DestMac, sizeof(mac_addr_t));
         sta->updated = true;
         sta->dev_stats.cli_Active = true;
         hash_map_put(sta_map, strdup(to_sta_key(g_active_msmt.curStepData.DestMac, sta_key)), sta);
         memcpy(&sta->dev_stats.cli_MACAddress, g_active_msmt.curStepData.DestMac, sizeof(mac_addr_t));
-        pthread_mutex_unlock(&g_monitor_module.lock);
+        pthread_mutex_unlock(&g_monitor_module.data_lock);
     } else {
         wifi_util_dbg_print(WIFI_MON, "%s : %d copying mac : %02x:%02x:%02x:%02x:%02x:%02x to station info \n",__func__,__LINE__,
                 g_active_msmt.curStepData.DestMac[0], g_active_msmt.curStepData.DestMac[1], g_active_msmt.curStepData.DestMac[2], g_active_msmt.curStepData.DestMac[3], g_active_msmt.curStepData.DestMac[4], g_active_msmt.curStepData.DestMac[5]);
@@ -6370,19 +6370,19 @@ sta_data_t *get_stats_for_sta(unsigned int apIndex, mac_addr_t mac)
 
     getVAPArrayIndexFromVAPIndex(apIndex, &vap_array_index);
 
-    pthread_mutex_lock(&g_monitor_module.lock);
+    pthread_mutex_lock(&g_monitor_module.data_lock);
     sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
 
     sta = hash_map_get_first(sta_map);
     while (sta != NULL) {
         if (memcmp(mac, sta->sta_mac, sizeof(mac_addr_t)) == 0) {
-            pthread_mutex_unlock(&g_monitor_module.lock);
+            pthread_mutex_unlock(&g_monitor_module.data_lock);
             return sta;
         }
         sta = hash_map_get_next(sta_map, sta);
     }
 
-    pthread_mutex_unlock(&g_monitor_module.lock);
+    pthread_mutex_unlock(&g_monitor_module.data_lock);
     return NULL;
 }
 

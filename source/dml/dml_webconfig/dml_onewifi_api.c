@@ -1159,6 +1159,10 @@ void update_dml_radio_default() {
         radio_cfg[i].ThresholdRange = 100;
         radio_cfg[i].ThresholdInUse = -99;
         radio_cfg[i].ReverseDirectionGrant = 0;
+	radio_cfg[i].AggregationMSDU = 0;
+        radio_cfg[i].AutoBlockAck = 0;
+        radio_cfg[i].DeclineBARequest = 0;
+        radio_cfg[i].WirelessOnOffButton = 0;
         radio_cfg[i].AutoChannelRefreshPeriod = 0;
         radio_cfg[i].IEEE80211hEnabled = FALSE;
         radio_cfg[i].DFSEnabled = FALSE;

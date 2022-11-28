@@ -94,7 +94,11 @@ int remove_xfinity_acl_entries(bool remove_all_greylist_entry,bool prefer_privat
                         ((acl_entry->expiry_time <= tv_now.tv_sec) || remove_all_greylist_entry))) {
 
                         to_mac_str(acl_entry->mac, mac_str);
+#ifdef NL80211_ACL
+                        ret = wifi_hal_delApAclDevice(l_rdk_vap_array->vap_index, mac_str);
+#else
                         ret = wifi_delApAclDevice(l_rdk_vap_array->vap_index, mac_str);
+#endif
                         if (ret != RETURN_OK) {
 
                             wifi_util_error_print(WIFI_MGR, "%s:%d: wifi_delApAclDevice failed. vap_index %d, mac %s \n",
@@ -869,18 +873,30 @@ int process_maclist_timeout(void *arg)
     str_str = strtok_r(str_dup, ",", &cptr);
     while (str_str != NULL) {
         if ((rdk_vap_info->kick_device_config_change) && (!vap_info->u.bss_info.mac_filter_enable)){
+#ifdef NL80211_ACL
+            if (wifi_hal_delApAclDevice(kick->vap_index, str_str) != RETURN_OK) {
+#else
             if (wifi_delApAclDevice(kick->vap_index, str_str) != RETURN_OK) {
+#endif
                 wifi_util_error_print(WIFI_CTRL, "%s:%d: wifi_delApAclDevice failed. vap_index %d, mac %s \n",
                         __func__, __LINE__, kick->vap_index, str_str);
             }
         } else {
             if (vap_info->u.bss_info.mac_filter_mode == wifi_mac_filter_mode_black_list) {
+#ifdef NL80211_ACL
+                if (wifi_hal_delApAclDevice(kick->vap_index, str_str) != RETURN_OK) {
+#else
                 if (wifi_delApAclDevice(kick->vap_index, str_str) != RETURN_OK) {
+#endif
                     wifi_util_error_print(WIFI_CTRL, "%s:%d: wifi_delApAclDevice failed. vap_index %d, mac %s \n",
                             __func__, __LINE__, kick->vap_index, str_str);
                 }
             } else if (vap_info->u.bss_info.mac_filter_mode == wifi_mac_filter_mode_white_list) {
-                if (wifi_addApAclDevice(kick->vap_index, str_str) != RETURN_OK) {
+#ifdef NL80211_ACL
+                if (wifi_hal_addApAclDevice(kick->vap_index, str_str) != RETURN_OK) {
+#else
+		if (wifi_addApAclDevice(kick->vap_index, str_str) != RETURN_OK) {
+#endif
                     wifi_util_error_print(WIFI_CTRL, "%s:%d: wifi_addApAclDevice failed. vap_index %d, mac %s \n",
                             __func__, __LINE__, kick->vap_index, str_str);
                 }
@@ -959,18 +975,30 @@ void kick_all_macs(int vap_index, int timeout, rdk_wifi_vap_info_t* rdk_vap_info
         memset(mac_str, 0, sizeof(mac_addr_str_t));
         to_mac_str(assoc_dev_data->dev_stats.cli_MACAddress, mac_str);
         if (rdk_vap_info->kick_device_config_change == TRUE) {
+#ifdef NL80211_ACL
+            if (wifi_hal_addApAclDevice(vap_index, mac_str) != RETURN_OK) {
+#else
             if (wifi_addApAclDevice(vap_index, mac_str) != RETURN_OK) {
+#endif
                 wifi_util_dbg_print(WIFI_CTRL, "%s:%d: wifi_addApAclDevice failed. vap_index %d\n",
                         __func__, __LINE__, vap_index);
             }
         } else {
             if (vap_info->u.bss_info.mac_filter_mode == wifi_mac_filter_mode_black_list) {
+#ifdef NL80211_ACL
+                if (wifi_hal_addApAclDevice(vap_index, mac_str) != RETURN_OK) {
+#else
                 if (wifi_addApAclDevice(vap_index, mac_str) != RETURN_OK) {
+#endif
                     wifi_util_dbg_print(WIFI_CTRL, "%s:%d: wifi_addApAclDevice failed. vap_index %d\n",
                             __func__, __LINE__, vap_index);
                 }
             } else if (vap_info->u.bss_info.mac_filter_mode == wifi_mac_filter_mode_white_list) {
+#ifdef NL80211_ACL
+                if (wifi_hal_delApAclDevice(vap_index, mac_str) != RETURN_OK) {
+#else
                 if (wifi_delApAclDevice(vap_index, mac_str) != RETURN_OK) {
+#endif
                     wifi_util_dbg_print(WIFI_CTRL, "%s:%d: wifi_delApAclDevice failed. vap_index %d\n",
                             __func__, __LINE__, vap_index);
                 }
@@ -1134,18 +1162,30 @@ void process_kick_assoc_devices_event(void *data)
             }
 
             if (rdk_vap_info->kick_device_config_change == TRUE) {
+#ifdef NL80211_ACL
+                if (wifi_hal_addApAclDevice(vap_index, str_str) != RETURN_OK) {
+#else
                 if (wifi_addApAclDevice(vap_index, str_str) != RETURN_OK) {
+#endif
                     wifi_util_error_print(WIFI_CTRL, "%s:%d: wifi_addApAclDevice failed. vap_index %d, mac %s \n",
                             __func__, __LINE__, vap_index, str_str);
                 }
             } else {
                 if (vap_info->u.bss_info.mac_filter_mode == wifi_mac_filter_mode_black_list) {
+#ifdef NL80211_ACL
+                    if (wifi_hal_addApAclDevice(vap_index, str_str) != RETURN_OK) {
+#else
                     if (wifi_addApAclDevice(vap_index, str_str) != RETURN_OK) {
+#endif
                         wifi_util_error_print(WIFI_CTRL, "%s:%d: wifi_addApAclDevice failed. vap_index %d, mac %s \n",
                                 __func__, __LINE__, vap_index, str_str);
                     }
                 } else if (vap_info->u.bss_info.mac_filter_mode == wifi_mac_filter_mode_white_list) {
+#ifdef NL80211_ACL
+                    if (wifi_hal_delApAclDevice(vap_index, str_str) != RETURN_OK) {
+#else
                     if (wifi_delApAclDevice(vap_index, str_str) != RETURN_OK) {
+#endif
                         wifi_util_error_print(WIFI_CTRL, "%s:%d: wifi_delApAclDevice failed. vap_index %d, mac %s \n",
                                 __func__, __LINE__, vap_index, str_str);
                     }
@@ -1254,7 +1294,11 @@ void process_greylist_mac_filter(void *data)
             acl_entry->reason = WLAN_RADIUS_GREYLIST_REJECT;
             acl_entry->expiry_time = expiry_time;
 
+#ifdef NL80211_ACL
+            if (wifi_hal_addApAclDevice(rdk_vap_info->vap_index, new_mac_str) != RETURN_OK) {
+#else
             if (wifi_addApAclDevice(rdk_vap_info->vap_index, new_mac_str) != RETURN_OK) {
+#endif
                 wifi_util_dbg_print(WIFI_MGR, "%s:%d: wifi_addApAclDevice failed. vap_index %d, MAC %s \n",
                    __func__, __LINE__, rdk_vap_info->vap_index, new_mac_str);
                 return;

@@ -810,14 +810,11 @@ int captive_portal_check(void)
     wifi_vap_info_map_t *wifi_vap_map = NULL;
     UINT i =0;
     int rc = 0;
-    bool default_private_credentials = false,get_config_wifi = false;
-#if DML_SUPPORT
-    bool psm_notify_flag=false;
-    char *PsmParamName = "eRT.com.cisco.spvtg.ccsp.Device.WiFi.NotifyWiFiChanges";
-    char pInValue[32] = "";
-#endif // DML_SUPPORT
-    char default_ssid[32] = {0}, default_password[32] = {0};
+    bool default_private_credentials = false,get_config_wifi = false,psm_notify_flag=false;
+    char default_ssid[128] = {0}, default_password[128] = {0};
     rbusValue_t value = NULL, config_wifi_value = NULL;
+    char pInValue[32] = "";
+    char *PsmParamName = "eRT.com.cisco.spvtg.ccsp.Device.WiFi.NotifyWiFiChanges";
 
     rbusValue_Init(&value);
     rbusValue_Init(&config_wifi_value);
@@ -951,12 +948,17 @@ int scan_results_callback(int radio_index, wifi_bss_info_t **bss, unsigned int *
     scan_results_t  res;
     memset(&res, 0, sizeof(scan_results_t));
 
-
     res.radio_index = radio_index;
-    res.num = *num;
-    if (res.num) {
+
+    if (*num) {
+        // if number of scanned AP's is more than size of res.bss array - truncate
+        if (*num > MAX_SCANNED_VAPS){
+            *num = MAX_SCANNED_VAPS;
+        }
+        res.num = *num;
         memcpy((unsigned char *)res.bss, (unsigned char *)(*bss), (*num)*sizeof(wifi_bss_info_t));
     }
+
     push_data_to_ctrl_queue(&res, sizeof(scan_results_t), ctrl_event_type_hal_ind, ctrl_event_scan_results);
     free(*bss);
 
@@ -1005,7 +1007,7 @@ int mgmt_wifi_frame_recv(int ap_index, wifi_frame_t *frame)
     return RETURN_OK;
 }
 #else
-#if defined (_XB7_PRODUCT_REQ_) && defined (_COSA_BCM_ARM_) && !defined(_XB8_PRODUCT_REQ_)
+#if defined (_XB7_PRODUCT_REQ_)
 int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, uint32_t len, wifi_mgmtFrameType_t type, wifi_direction_t dir, int sig_dbm)
 #else
 int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, uint32_t len, wifi_mgmtFrameType_t type, wifi_direction_t dir)
@@ -1030,7 +1032,7 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
     memcpy(mgmt_frame.frame.sta_mac, sta_mac, sizeof(mac_address_t));
     mgmt_frame.frame.type = type;
     mgmt_frame.frame.dir = dir;
-#if defined (_XB7_PRODUCT_REQ_) && defined (_COSA_BCM_ARM_) && !defined(_XB8_PRODUCT_REQ_)
+#if defined (_XB7_PRODUCT_REQ_)
     mgmt_frame.frame.sig_dbm = sig_dbm;
 #endif
 
@@ -1325,6 +1327,78 @@ void check_log_upload_cron_job()
     }
 }
 
+int init_wireless_interface_mac()
+{
+    unsigned int itr=0;
+    unsigned int j = 0;
+    unsigned int k = 0;
+    int ret = RETURN_OK;
+    wifi_vap_info_map_t  hal_vap_info_map;
+    wifi_vap_info_t *wifi_vap_info = NULL;
+    wifi_vap_info_map_t *mgr_vap_info_map = NULL;
+
+    for (itr=0; itr < getNumberRadios(); itr++) {
+        memset(&hal_vap_info_map, 0, sizeof(hal_vap_info_map));
+
+        //wifi_hal_getRadioVapInfoMap is used  to get the macaddress of wireless interfaces
+        ret = wifi_hal_getRadioVapInfoMap(itr, &hal_vap_info_map);
+        if (ret != RETURN_OK) {
+            wifi_util_error_print(WIFI_CTRL,"RDK_LOG_ERROR, %s wifi_hal_getRadioVapInfoMap returned with error %d for radio : %d\n",
+                    __FUNCTION__, ret, itr);
+            return RETURN_ERR;
+        }
+
+        //get the mgr map_info_map
+        mgr_vap_info_map = get_wifidb_vap_map(itr);
+        if (mgr_vap_info_map == NULL) {
+            wifi_util_error_print(WIFI_CTRL,"RDK_LOG_ERROR, %s get_wifidb_vap_map returned with error %d for radio : %d\n",
+                    __FUNCTION__, ret, itr);
+            return RETURN_ERR;
+        }
+
+        for (j = 0; j < hal_vap_info_map.num_vaps; j++) {
+            for (k = 0; k < mgr_vap_info_map->num_vaps; k++) {
+
+                //compare the vap_names from hal_vap_info_map and mgr_vap_info_map to get the wifi_vap_info structure
+                if (strncmp(hal_vap_info_map.vap_array[j].vap_name, mgr_vap_info_map->vap_array[k].vap_name, strlen(hal_vap_info_map.vap_array[j].vap_name)) == 0) {
+                    wifi_vap_info = &mgr_vap_info_map->vap_array[k];
+                    break;
+                }
+            }
+
+            //For backhaul interfaces, update the sta_info.mac
+            if (strncmp((char *)hal_vap_info_map.vap_array[j].vap_name, "mesh_sta", strlen("mesh_sta")) == 0) {
+                memcpy(wifi_vap_info->u.sta_info.mac, hal_vap_info_map.vap_array[j].u.sta_info.mac, sizeof(wifi_vap_info->u.sta_info.mac));
+                wifi_util_dbg_print(WIFI_CTRL,"%s:%d: vapindex %d vap_name : %s Mac address : %02X:%02X:%02X:%02X:%02X:%02X\n",__func__, __LINE__,
+                        wifi_vap_info->vap_index,
+                        wifi_vap_info->vap_name,
+                        wifi_vap_info->u.sta_info.mac[0],
+                        wifi_vap_info->u.sta_info.mac[1],
+                        wifi_vap_info->u.sta_info.mac[2],
+                        wifi_vap_info->u.sta_info.mac[3],
+                        wifi_vap_info->u.sta_info.mac[4],
+                        wifi_vap_info->u.sta_info.mac[5]
+                        );
+            } else {
+                //For fronthaul interfaces, update the bss_info.bssid
+                memcpy(wifi_vap_info->u.bss_info.bssid, hal_vap_info_map.vap_array[j].u.bss_info.bssid, sizeof(wifi_vap_info->u.bss_info.bssid));
+                wifi_util_dbg_print(WIFI_CTRL,"%s:%d: vapindex %d vap_name : %s Mac address : %02X:%02X:%02X:%02X:%02X:%02X\n",__func__, __LINE__,
+                        wifi_vap_info->vap_index,
+                        wifi_vap_info->vap_name,
+                        wifi_vap_info->u.bss_info.bssid[0],
+                        wifi_vap_info->u.bss_info.bssid[1],
+                        wifi_vap_info->u.bss_info.bssid[2],
+                        wifi_vap_info->u.bss_info.bssid[3],
+                        wifi_vap_info->u.bss_info.bssid[4],
+                        wifi_vap_info->u.bss_info.bssid[5]
+                        );
+            }
+        }
+    }
+
+    return RETURN_OK;
+}
+
 int start_wifi_ctrl(wifi_ctrl_t *ctrl)
 {
 #if CCSP_COMMON
@@ -1334,15 +1408,16 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
     analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
 #endif // CCSP_COMMON
 
-    ctrl->webconfig_state = ctrl_webconfig_state_none;
-
-#if CCSP_COMMON
+#if DML_SUPPORT
     monitor_ret = init_wifi_monitor();
 #endif
 
     start_wifi_services();
+    
+    init_wireless_interface_mac();
 
-#if CCSP_COMMON
+    ctrl->webconfig_state = ctrl_webconfig_state_vap_all_cfg_rsp_pending;
+
     telemetry_bootup_time_wifibroadcast(); //Telemetry Marker for btime_wifibcast_split
 
     /* Check for whether Log_Upload was enabled or not
@@ -1358,8 +1433,7 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
     } else {
         wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to start Wifi Monitor\n", __func__, __LINE__);
     }
-#endif
-    
+  
 #if CCSP_WIFI_HAL
     if (analytics->event_fn != NULL) {
         analytics->event_fn(analytics, ctrl_event_type_exec, ctrl_event_exec_start, NULL);

@@ -63,9 +63,9 @@ do
         if [[ `wifi_api wifi_getApBridgeInfo $idx "" "" "" | head -n 1` != "$brname" ]]; then
          wifi_api wifi_setApBridgeInfo  $idx $brname "" ""
         fi
-        
+
         wifi_api wifi_setApVlanID $idx $vlan
-        
+
         if [ -z `wifi_api wifi_getApSsidAdvertisementEnable $idx` ] || [ `wifi_api wifi_getApSsidAdvertisementEnable $idx` != "FALSE" ]; then
          wifi_api wifi_setApSsidAdvertisementEnable $idx 0
         fi
@@ -76,7 +76,7 @@ do
 
         #AP_SECFILE_13:=PSK
         wifi_api wifi_setApBasicAuthenticationMode $idx "PSKAuthentication"
-      
+
         if [ -z `wifi_api wifi_getApWpaEncryptionMode $idx` ] || [ `wifi_api wifi_getApWpaEncryptionMode $idx` != "TKIPandAESEncryption" ]; then
          wifi_api wifi_setApWpaEncryptionMode $idx "TKIPandAESEncryption"
         fi
@@ -87,19 +87,19 @@ do
          cfg -a AP_SSID_$((idx+1))="we.piranha.off"
         fi
 
-        #PSK_KEY_13:=welcome8
+        pwd=$(dd if=/dev/urandom of=/dev/stdout count=1 bs=31 2> /dev/null |  hexdump -ve '/1 "%02x"'; echo)
         if [ $qca_cfg == 0 ]; then
-            if [[ -z `wifi_api wifi_getApSecurityPreSharedKey $idx` ]] || [[ `wifi_api wifi_getApSecurityPreSharedKey $idx` != "welcome8" ]]; then
-                wifi_api wifi_setApSecurityPreSharedKey $idx "welcome8"
+            if [[ -z `wifi_api wifi_getApSecurityPreSharedKey $idx` ]] || [[ `wifi_api wifi_getApSecurityPreSharedKey $idx` != "$pwd" ]]; then
+                wifi_api wifi_setApSecurityPreSharedKey $idx "$pwd"
             fi
         else
-         cfg -a PSK_KEY_$((idx+1))=welcome8
+         cfg -a PSK_KEY_$((idx+1))=$pwd
         fi
 
         if [ -z `wifi_api wifi_getApWpsEnable $idx` ] || [ `wifi_api wifi_getApWpsEnable $idx` != "FALSE" ]; then
          wifi_api wifi_setApWpsEnable $idx 0
         fi
-        
+
         if [ -z `wifi_api wifi_getApEnable $idx` ] || [ `wifi_api wifi_getApEnable $idx` != "TRUE" ]; then
           wifi_api wifi_setApEnable $idx 1
         fi

@@ -3737,7 +3737,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config)
         cfg.u.bss_info.network_initiated_greylist = false;
         if (isVapPrivate(vap_index)) {
             cfg.u.bss_info.vapStatsEnable = true;
-            cfg.u.bss_info.wpsPushButton = 1;
+            cfg.u.bss_info.wpsPushButton = 0;
             cfg.u.bss_info.wps.enable = true;
             cfg.u.bss_info.rapidReconnectEnable = true;
         } else {
@@ -4383,7 +4383,7 @@ void *start_wifidb_func(void *arg)
         }
     }
 
-    sprintf(cmd, "%s/wifidb-server %s --remote=punix:%s/wifidb.sock %s --unixctl=%s/wifi.ctl --log-file=%s/wifidb.log --detach", WIFIDB_RUN_DIR, db_file, WIFIDB_RUN_DIR, (debug_option == true)?"--verbose=dbg":"", WIFIDB_RUN_DIR, WIFIDB_RUN_DIR);
+    sprintf(cmd, "%s/wifidb-server %s --remote=punix:%s/wifidb.sock %s --unixctl=%s/wifi.ctl --log-file=/dev/null --detach", WIFIDB_RUN_DIR, db_file, WIFIDB_RUN_DIR, (debug_option == true)?"--verbose=dbg":"", WIFIDB_RUN_DIR);
 
     system(cmd);
     return NULL;
