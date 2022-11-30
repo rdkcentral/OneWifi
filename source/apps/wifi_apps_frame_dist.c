@@ -282,7 +282,7 @@ int mgmt_frame_rbus_apply(rbusHandle_t rbus_handle, char *rbus_namespace, frame_
     rbusObject_Init(&rdata, NULL);
 
     rbusObject_SetValue(rdata, rbus_namespace, value);
-    rbusValue_SetBytes(value, (uint8_t *)&l_data, (sizeof(l_data->frame) + l_data->frame.len));
+    rbusValue_SetBytes(value, (uint8_t *)l_data, (sizeof(l_data->frame) + l_data->frame.len));
     event.name = rbus_namespace;
     event.data = rdata;
     event.type = RBUS_EVENT_GENERAL;
