@@ -3429,6 +3429,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config)
     wifi_vap_info_t cfg;
     char vap_name[BUFFER_LENGTH_WIFIDB] = {0};
     char password[128] = {0};
+    char radius_key[128] = {0};
     char ssid[128] = {0};
 
     memset(&cfg,0,sizeof(cfg));
@@ -3469,6 +3470,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config)
         if (wifi_hal_get_default_keypassphrase(password,vap_index) == 0) {
             strcpy(cfg.u.sta_info.security.u.key.key, password);
         } else {
+            //This is an example of password default if password not configured.
             strcpy(cfg.u.sta_info.security.u.key.key, "123456789");
         }
         cfg.u.bss_info.bssMaxSta = 75;
@@ -3558,6 +3560,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config)
         if (wifi_hal_get_default_keypassphrase(password,vap_index) == 0) {
             strcpy(cfg.u.bss_info.security.u.key.key, password);
         } else {
+            //This is an example of password default if password not configured.
             strcpy(cfg.u.bss_info.security.u.key.key, "123456789");
         }
 
@@ -3566,11 +3569,19 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config)
             cfg.u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
             strcpy(cfg.u.bss_info.security.u.radius.identity, "lnf_radius_identity");
             cfg.u.bss_info.security.u.radius.port = 1812;
-            strcpy(cfg.u.bss_info.security.u.radius.key, "LHK1CxyBz6oAJIuv58oH0vpvysApxo7");
+            if (wifi_hal_get_default_radius_key(radius_key,vap_index) == 0) {
+                wifi_util_dbg_print(WIFI_DB,"radius_key %s\n",radius_key);
+                strcpy(cfg.u.bss_info.security.u.radius.key, radius_key);
+                strcpy(cfg.u.bss_info.security.u.radius.s_key, radius_key);
+            }
+            else {
+                 //This is an example of radius keys default if its not configured.
+                strcpy(cfg.u.bss_info.security.u.radius.key, "1234567890");
+                strcpy(cfg.u.bss_info.security.u.radius.s_key, "1234567890");
+            }
             strcpy((char *)cfg.u.bss_info.security.u.radius.ip, "127.0.0.1");
             cfg.u.bss_info.security.u.radius.s_port = 1812;
             strcpy((char *)cfg.u.bss_info.security.u.radius.s_ip, "127.0.0.1");
-            strcpy(cfg.u.bss_info.security.u.radius.s_key, "LHK1CxyBz6oAJIuv58oH0vpvysApxo7");
         }
 
         char str[600] = {0};

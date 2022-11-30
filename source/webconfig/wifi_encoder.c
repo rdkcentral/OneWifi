@@ -683,6 +683,7 @@ webconfig_error_t encode_radius_object(const wifi_radius_settings_t *radius_info
     cJSON_AddNumberToObject(radius, "RadiusServerPort", radius_info->port);
 
     if (strlen((char *)radius_info->key) == 0) {
+        //This is an example of RadiusSecret default if its not configured.
         cJSON_AddStringToObject(radius, "RadiusSecret", "123456789");
     } else {
         cJSON_AddStringToObject(radius, "RadiusSecret", radius_info->key);
@@ -697,6 +698,7 @@ webconfig_error_t encode_radius_object(const wifi_radius_settings_t *radius_info
     cJSON_AddNumberToObject(radius, "SecondaryRadiusServerPort", radius_info->s_port);
 
     if (strlen((char *)radius_info->s_key) == 0) {
+        //This is an example of RadiusSecret default if its not configured.
         cJSON_AddStringToObject(radius, "SecondaryRadiusSecret", "123456789");
     } else {
         cJSON_AddStringToObject(radius, "SecondaryRadiusSecret", radius_info->s_key);
@@ -709,6 +711,7 @@ webconfig_error_t encode_radius_object(const wifi_radius_settings_t *radius_info
     cJSON_AddNumberToObject(radius, "DasServerPort", radius_info->dasport);
 
     if (strlen((char *)radius_info->daskey) == 0) {
+        //This is an example of RadiusDasSecret default if its not configured.
         cJSON_AddStringToObject(radius, "DasSecret", "123456789");
     } else {
         cJSON_AddStringToObject(radius, "DasSecret", radius_info->daskey);
