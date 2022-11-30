@@ -112,26 +112,41 @@ int remove_xfinity_acl_entries(bool remove_all_greylist_entry,bool prefer_privat
 void process_unknown_frame_event(frame_data_t *msg, uint32_t msg_length)
 {
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir);
+#if DML_SUPPORT
+    send_app_event(ctrl_event_type_hal_ind, msg);
+#endif // DML_SUPPORT
 }
 
 void process_probe_req_frame_event(frame_data_t *msg, uint32_t msg_length)
 {
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir);
+#if DML_SUPPORT
+    send_app_event(ctrl_event_type_hal_ind, msg);
+#endif // DML_SUPPORT
 }
 
 void process_auth_frame_event(frame_data_t *msg, uint32_t msg_length)
 {
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir);
+#if DML_SUPPORT
+    send_app_event(ctrl_event_type_hal_ind, msg);
+#endif // DML_SUPPORT
 }
 
 void process_assoc_req_frame_event(frame_data_t *msg, uint32_t msg_length)
 {
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir);
+#if DML_SUPPORT
+    send_app_event(ctrl_event_type_hal_ind, msg);
+#endif // DML_SUPPORT
 }
 
 void process_assoc_rsp_frame_event(frame_data_t *msg, uint32_t msg_length)
 {
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir);
+#if DML_SUPPORT
+    send_app_event(ctrl_event_type_hal_ind, msg);
+#endif // DML_SUPPORT
 }
 
 void process_dpp_public_action_frame_event(frame_data_t *msg, uint32_t msg_length)
@@ -142,7 +157,6 @@ void process_dpp_public_action_frame_event(frame_data_t *msg, uint32_t msg_lengt
 void process_dpp_config_req_frame_event(frame_data_t *msg, uint32_t msg_length)
 {
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir);
-    send_app_event(ctrl_event_type_hal_ind, msg);
 }
 
 
