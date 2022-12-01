@@ -3136,8 +3136,15 @@ Radio_SetParamUlongValue
         if (wifiRadioOperParam->channel == uValue)
         {
             return  TRUE;
-        } else if (is_dfs_channel_allowed(uValue) == false) {
-            return FALSE;
+        }
+        else if ((wifiRadioOperParam->band == WIFI_FREQUENCY_5_BAND) ||
+                 (wifiRadioOperParam->band == WIFI_FREQUENCY_5L_BAND) ||
+                 (wifiRadioOperParam->band == WIFI_FREQUENCY_5H_BAND))
+        {
+            if (is_dfs_channel_allowed(uValue) == false) 
+            {
+                return FALSE;
+            }
         }
 
         wifiRadioOperParam->channel = uValue;

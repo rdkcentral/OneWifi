@@ -3532,8 +3532,8 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
             cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC | WIFI_80211_VARIANT_AX;
             break;
         case WIFI_FREQUENCY_6_BAND:
-            cfg.op_class = 133;
-            cfg.channel = 181;
+            cfg.op_class = 131;
+            cfg.channel = 197;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_160MHZ;
             cfg.variant = WIFI_80211_VARIANT_AX;
             break;
