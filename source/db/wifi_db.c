@@ -1620,6 +1620,7 @@ int wifidb_get_wifi_vap_config(int radio_index,wifi_vap_info_map_t *config)
         wifidb_print("%s:%d Table table_Wifi_VAP_Config not found, entry count=%d \n",__func__, __LINE__,vap_count);
         return -1;
     }
+
     for (i = 0; i < vap_count; i++)
     {
         if(pcfg != NULL)
@@ -1630,10 +1631,11 @@ int wifidb_get_wifi_vap_config(int radio_index,wifi_vap_info_map_t *config)
             if(vap_index == -1)
             {
                 wifi_util_dbg_print(WIFI_DB,"%s:%d: %s vap_name is invalid\n",__func__, __LINE__,vap_name);
-            	continue;
+                continue;
             }
             config->vap_array[vap_index].radio_index = radio_index;
-            config->vap_array[vap_index].vap_index = convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, vap_name);
+            l_vap_index = convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, vap_name);
+            config->vap_array[vap_index].vap_index = l_vap_index;
             wifidb_get_wifi_vap_info(vap_name,&config->vap_array[vap_index]);
             wifi_util_dbg_print(WIFI_DB,"%s:%d: %svap name vap_index=%d radio_ondex=%d\n",__func__, __LINE__,vap_name,vap_index,radio_index);
             wifi_util_dbg_print(WIFI_DB,"%s:%d: table_Wifi_VAP_Config verify count=%d\n",__func__, __LINE__,vap_count);
@@ -1642,7 +1644,7 @@ int wifidb_get_wifi_vap_config(int radio_index,wifi_vap_info_map_t *config)
             wifidb_get_interworking_config(vap_name,&config->vap_array[vap_index].u.bss_info.interworking.interworking);
             wifi_util_dbg_print(WIFI_DB,"%s:%d: Get Wifi_Interworking_Config table vap_name=%s Enable=%d accessNetworkType=%d internetAvailable=%d asra=%d esr=%d uesa=%d hess_present=%d hessid=%s venueGroup=%d venueType=%d \n",__func__, __LINE__,vap_name,config->vap_array[vap_index].u.bss_info.interworking.interworking.interworkingEnabled,config->vap_array[vap_index].u.bss_info.interworking.interworking.accessNetworkType,config->vap_array[vap_index].u.bss_info.interworking.interworking.internetAvailable,config->vap_array[vap_index].u.bss_info.interworking.interworking.asra,config->vap_array[vap_index].u.bss_info.interworking.interworking.esr,config->vap_array[vap_index].u.bss_info.interworking.interworking.uesa,config->vap_array[vap_index].u.bss_info.interworking.interworking.hessOptionPresent,config->vap_array[vap_index].u.bss_info.interworking.interworking.hessid,config->vap_array[vap_index].u.bss_info.interworking.interworking.venueGroup,config->vap_array[vap_index].u.bss_info.interworking.interworking.venueType);
 
-            l_vap_index = convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, vap_name);
+
             if (isVapSTAMesh(l_vap_index)) {
                 wifidb_get_wifi_security_config(vap_name,&config->vap_array[vap_index].u.sta_info.security);
 
@@ -3786,6 +3788,8 @@ void wifidb_init_default_value()
     int num_radio = getNumberRadios();
     wifi_radio_operationParam_t *l_radio_cfg = NULL;
     wifi_vap_info_map_t *l_vap_param_cfg = NULL;
+    mac_address_t temp_mac_address[MAX_NUM_RADIOS*MAX_NUM_VAP_PER_RADIO];
+    int l_vap_index = 0;
 
     //Check for the number of radios
     if (num_radio > MAX_NUM_RADIOS)
@@ -3816,6 +3820,17 @@ void wifidb_init_default_value()
 
         for (vap_index = 0; vap_index < MAX_NUM_VAP_PER_RADIO; vap_index++)
         {
+            l_vap_index = convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, l_vap_param_cfg->vap_array[vap_index].vap_name);
+            memset(&temp_mac_address[l_vap_index], 0, sizeof(temp_mac_address[l_vap_index]));
+
+            //Copy the vap's interface mac address to temporary array before the memset, to avoid loosing the
+            //interface mac
+            if (isVapSTAMesh(l_vap_index) == TRUE) {
+                memcpy(&temp_mac_address[l_vap_index], l_vap_param_cfg->vap_array[vap_index].u.sta_info.mac, sizeof(temp_mac_address[l_vap_index]));
+            } else {
+                memcpy(&temp_mac_address[l_vap_index], l_vap_param_cfg->vap_array[vap_index].u.bss_info.bssid, sizeof(temp_mac_address[l_vap_index]));
+            }
+
             memset(&l_vap_param_cfg->vap_array[vap_index].u.sta_info, 0, sizeof(wifi_back_haul_sta_t));
             memset(&l_vap_param_cfg->vap_array[vap_index].u.bss_info, 0, sizeof(wifi_front_haul_bss_t));
             memset(&l_vap_param_cfg->vap_array[vap_index].bridge_name, 0, WIFI_BRIDGE_NAME_LEN);
@@ -3845,6 +3860,14 @@ void wifidb_init_default_value()
         }
         wifidb_init_vap_config_default(vap_index,vapInfo);
         wifidb_init_interworking_config_default(vap_index, &vapInfo->u.bss_info.interworking.interworking);
+
+      //As wifidb_init_vap_config_default() does memcpy of wifi_vap_info_t structure
+      //so here we are restoring the interface mac into wifi_vap_info_t from temporary array
+        if (isVapSTAMesh(vap_index) == TRUE) {
+            memcpy(vapInfo->u.sta_info.mac, &temp_mac_address[vap_index], sizeof(vapInfo->u.sta_info.mac));
+        } else {
+            memcpy(vapInfo->u.bss_info.bssid, &temp_mac_address[vap_index], sizeof(vapInfo->u.bss_info.bssid));
+        }
     }
 
     wifidb_init_global_config_default(&g_wifidb->global_config.global_parameters);
