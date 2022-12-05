@@ -53,13 +53,10 @@ unsigned int get_max_probe_ttl_cnt(void)
     return (atoi(buff) ? atoi(buff) : MAX_PROBE_MAP_TTL);
 }
 
-void update_probe_map(wifi_app_t *app)
+void update_probe_map(wifi_app_t *apps, char *mac_key)
 {
-    probe_req_elem_t *elem, *tmp;
-    struct ieee80211_mgmt *frame;
-    mac_addr_str_t mac_str;
-    char *str;
-    hash_map_t *probe_map = app->data.u.probe_req_map;
+    probe_req_elem_t *elem;
+    hash_map_t *probe_map = apps->data.u.probe_req_map;
     unsigned int max_probe_map_ttl_cnt = get_max_probe_ttl_cnt();
 #if DML_SUPPORT
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
@@ -68,30 +65,29 @@ void update_probe_map(wifi_app_t *app)
     memset(&ttl_data, 0, sizeof(ttl_data));
 #endif
 
-    elem = (probe_req_elem_t *)hash_map_get_first(probe_map);
-    while (elem != NULL) {
-        tmp = elem;
+    if ((mac_key == NULL) || (probe_map == NULL)) {
+        wifi_util_error_print(WIFI_APPS,"%s:%d mac str key or probe hash map is null\r\n", __func__, __LINE__);
+        return;
+    }
+
+    elem = (probe_req_elem_t *)hash_map_get(probe_map, mac_key);
+    if (elem != NULL) {
         elem->curr_time_alive++;
-        //wifi_util_dbg_print(WIFI_APPS,"%s:%d max probe ttl cnt:%d current probe ttl count:%d\r\n", __func__, __LINE__, max_probe_map_ttl_cnt, elem->curr_time_alive);
 
-        if (tmp->curr_time_alive > max_probe_map_ttl_cnt) {
-            frame = (struct ieee80211_mgmt *)tmp->msg_data.data;
-            str = to_mac_str((unsigned char *)frame->sa, mac_str);
-
+        if (elem->curr_time_alive > max_probe_map_ttl_cnt) {
 #if DML_SUPPORT
-            ttl_data.max_probe_ttl_cnt = tmp->curr_time_alive;
-            strcpy(ttl_data.mac_str, str);
+            ttl_data.max_probe_ttl_cnt = elem->curr_time_alive;
+            strcpy(ttl_data.mac_str, mac_key);
             apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_hal_ind, wifi_event_hal_potential_misconfiguration, &ttl_data);
 #endif
 
-            if (str != NULL) {
-                tmp = hash_map_remove(probe_map, str);
-                if (tmp != NULL) {
-                    free(tmp);
+            if (mac_key != NULL) {
+                elem = hash_map_remove(probe_map, mac_key);
+                if (elem != NULL) {
+                    free(elem);
                 }
             }
         }
-        elem = (probe_req_elem_t *)hash_map_get_next(probe_map, elem);
     }
 }
 
@@ -107,8 +103,6 @@ void apps_probe_req_frame_event(wifi_app_t *app, frame_data_t *msg)
     char *str;
     probe_req_elem_t *elem;
 
-    update_probe_map(app);
-
     frame = (struct ieee80211_mgmt *)msg->data;
     str = to_mac_str((unsigned char *)frame->sa, mac_str);
     if (str == NULL) {
@@ -116,7 +110,9 @@ void apps_probe_req_frame_event(wifi_app_t *app, frame_data_t *msg)
         return;
     }
 
-    wifi_util_dbg_print(WIFI_APPS,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d src mac:%s\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir, str);
+    update_probe_map(app, str);
+
+    wifi_util_dbg_print(WIFI_APPS,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d src mac:%s rssi:%d\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir, str, msg->frame.sig_dbm);
 
     if ((elem = (probe_req_elem_t *)hash_map_get(app->data.u.probe_req_map, mac_str)) == NULL) {
         elem = (probe_req_elem_t *)malloc(sizeof(probe_req_elem_t));
@@ -124,6 +120,7 @@ void apps_probe_req_frame_event(wifi_app_t *app, frame_data_t *msg)
         memcpy(&elem->msg_data, msg, sizeof(frame_data_t));
         hash_map_put(app->data.u.probe_req_map, strdup(mac_str), elem);
     } else {
+        memset(&elem->msg_data, 0, sizeof(elem->msg_data));
         memcpy(&elem->msg_data, msg, sizeof(frame_data_t));
     }
 }

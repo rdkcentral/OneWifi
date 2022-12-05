@@ -24,7 +24,7 @@
 extern "C" {
 #endif
 
-#define MAX_PROBE_MAP_TTL    64
+#define MAX_PROBE_MAP_TTL    500
 
 typedef struct {
     unsigned int    max_probe_ttl_cnt;
