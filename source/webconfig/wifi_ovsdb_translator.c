@@ -415,7 +415,7 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
         t_vap_info->u.bss_info.UAPSDEnabled = true;
         t_vap_info->u.bss_info.wmmNoAck = false;
         t_vap_info->u.bss_info.wepKeyLength = 128;
-        t_vap_info->u.bss_info.security.encr = wifi_encryption_aes_tkip;
+        t_vap_info->u.bss_info.security.encr = wifi_encryption_aes;
         t_vap_info->u.bss_info.bssHotspot = false;
         t_vap_info->u.bss_info.beaconRate = WIFI_BITRATE_6MBPS;
         strncpy(t_vap_info->u.bss_info.beaconRateCtl,"6Mbps",sizeof(t_vap_info->u.bss_info.beaconRateCtl)-1);

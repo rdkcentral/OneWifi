@@ -3613,8 +3613,16 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config)
 
     if (isVapSTAMesh(vap_index)) {
         cfg.vap_mode = wifi_vap_mode_sta;
-        cfg.u.sta_info.security.mode = wifi_security_mode_wpa2_personal;
-        cfg.u.sta_info.security.encr = wifi_encryption_aes_tkip;
+        if (band == WIFI_FREQUENCY_6_BAND) {
+            cfg.u.sta_info.security.mode = wifi_security_mode_wpa3_personal;
+            cfg.u.sta_info.security.wpa3_transition_disable = true;
+            cfg.u.sta_info.security.mfp = wifi_mfp_cfg_required;
+            cfg.u.sta_info.security.u.key.type = wifi_security_key_type_sae;
+        } else {
+            cfg.u.sta_info.security.mfp = wifi_mfp_cfg_disabled;
+            cfg.u.sta_info.security.mode = wifi_security_mode_wpa2_personal;
+        }
+        cfg.u.sta_info.security.encr = wifi_encryption_aes;
         cfg.u.sta_info.enabled = false;
         cfg.u.sta_info.scan_params.period = 10;
         memset(ssid, 0, sizeof(ssid));
@@ -3646,7 +3654,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config)
             cfg.u.sta_info.scan_params.channel.channel = 36;
             cfg.u.sta_info.scan_params.channel.band = WIFI_FREQUENCY_5_BAND;
         } else if (cfg.radio_index == 2) {
-            cfg.u.sta_info.scan_params.channel.channel = 5;
+            cfg.u.sta_info.scan_params.channel.channel = 197;
             cfg.u.sta_info.scan_params.channel.band = WIFI_FREQUENCY_6_BAND;
         }
 #endif
@@ -3689,7 +3697,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config)
         } else if (isVapHotspotSecure(vap_index)) {
             cfg.u.bss_info.bssHotspot = true;
             cfg.u.bss_info.security.mode = wifi_security_mode_wpa2_enterprise;
-            cfg.u.bss_info.security.encr = wifi_encryption_aes_tkip;
+            cfg.u.bss_info.security.encr = wifi_encryption_aes;
         } else if (isVapLnfSecure (vap_index)) {
             cfg.u.bss_info.security.mode = wifi_security_mode_wpa2_enterprise;
             cfg.u.bss_info.security.encr = wifi_encryption_aes;
@@ -3718,16 +3726,9 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config)
                 cfg.u.bss_info.security.mfp = wifi_mfp_cfg_required;
                 cfg.u.bss_info.security.u.key.type = wifi_security_key_type_sae;
             } else {
-#if defined(_XB8_PRODUCT_REQ_)
-                cfg.u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
-                cfg.u.bss_info.security.wpa3_transition_disable = false;
-                cfg.u.bss_info.security.mfp = wifi_mfp_cfg_optional;
-                cfg.u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
-#else
                 cfg.u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
-#endif
             }
-            cfg.u.bss_info.security.encr = wifi_encryption_aes_tkip;
+            cfg.u.bss_info.security.encr = wifi_encryption_aes;
             cfg.u.bss_info.bssHotspot = false;
         }
         cfg.u.bss_info.beaconRate = WIFI_BITRATE_6MBPS;

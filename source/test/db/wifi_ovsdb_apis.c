@@ -132,7 +132,7 @@ int ovsdb_get_vap_info_map(unsigned int real_index, unsigned int index, wifi_vap
         strcpy(params->u.sta_info.ssid, "wifi_test_private_2");
         params->u.sta_info.scan_params.period = 10;
         params->u.sta_info.security.mode = wifi_security_mode_wpa2_personal;
-        params->u.sta_info.security.encr = wifi_encryption_aes_tkip;
+        params->u.sta_info.security.encr = wifi_encryption_aes;
         strcpy(params->u.sta_info.security.u.key.key, INVALID_KEY);
     } else if (index == 1) {
         map->num_vaps = 3;
@@ -145,7 +145,7 @@ int ovsdb_get_vap_info_map(unsigned int real_index, unsigned int index, wifi_vap
         params->u.bss_info.showSsid = true;
         params->u.bss_info.isolation = true;
         params->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
-        params->u.bss_info.security.encr = wifi_encryption_aes_tkip;
+        params->u.bss_info.security.encr = wifi_encryption_aes;
         strcpy(params->u.bss_info.security.u.key.key, INVALID_KEY);
         params->u.bss_info.bssMaxSta = 20;
     } else if (index == 2) {
@@ -159,7 +159,7 @@ int ovsdb_get_vap_info_map(unsigned int real_index, unsigned int index, wifi_vap
         params->u.bss_info.showSsid = true;
         params->u.bss_info.isolation = true;
         params->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
-        params->u.bss_info.security.encr = wifi_encryption_aes_tkip;
+        params->u.bss_info.security.encr = wifi_encryption_aes;
         strcpy(params->u.bss_info.security.u.key.key, INVALID_KEY);
         params->u.bss_info.bssMaxSta = 20;
     }
