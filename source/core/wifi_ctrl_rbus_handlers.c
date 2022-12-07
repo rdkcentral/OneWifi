@@ -1062,13 +1062,13 @@ static void wps_test_event_receive_handler(rbusHandle_t handle, rbusEvent_t cons
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d Rbus event name=%s\n",__func__, __LINE__, event->name);
 
     vap_index = rbusValue_GetUInt32(value);
-
-    if ( vap_index < getTotalNumberVAPs() ) {
+    if (wifi_util_is_vap_index_valid(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, (int)vap_index)) {
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi wps test vap_index:%d\n",__func__, __LINE__, vap_index);
         push_data_to_ctrl_queue(&vap_index, sizeof(vap_index), ctrl_event_type_command, ctrl_event_type_command_wps);
     } else {
+        uint32_t max_vaps = MAX_NUM_VAP_PER_RADIO * getNumberRadios();
         wifi_util_error_print(WIFI_CTRL,"%s:%d wifi wps test invalid vap_index:%d max_vap:%d\n",__func__, __LINE__,
-                vap_index, getTotalNumberVAPs());
+                vap_index, max_vaps);
     }
 }
 

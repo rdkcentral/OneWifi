@@ -62,6 +62,7 @@
 #include "print_uptime.h"
 #include <sys/sysinfo.h>
 #include "ssp_main.h"
+#include "wifi_mgr.h"
 #include "wifi_util.h"
 #include "wifi_ctrl.h"
 #define DEBUG_INI_NAME  "/etc/debug.ini"
@@ -436,10 +437,14 @@ void lnf_ssid_updateBootLogTime()
     BOOL apIsUp = FALSE;
     wifi_vap_info_t *vapInfo = NULL;
     int count = 0;
+    UINT apIndex;
     UINT total_vap_index = getTotalNumberVAPs();
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+
     do {
         count++;
-        for (UINT apIndex = 0; apIndex < total_vap_index; apIndex++) {
+        for (UINT index = 0; index < total_vap_index; index++) {
+            apIndex = VAP_INDEX(mgr->hal_cap, index);
             if(isVapLnf(apIndex)) {
                 vapInfo =  get_wifidb_vap_parameters(apIndex);
                 CcspTraceWarning(("%s-%d LnF SSID %d   \n",__FUNCTION__, __LINE__, apIndex));

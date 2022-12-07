@@ -220,8 +220,11 @@ void init_mac_filter_hash_map(void)
 {
     hash_map_t **psm_mac_entry;
     unsigned int l_index = 0;
+    unsigned int vap_index;
+
     for (l_index = 0; l_index < getTotalNumberVAPs(); l_index++) {
-        psm_mac_entry = get_mac_psm_map(l_index);
+        vap_index = VAP_INDEX(((webconfig_dml_t *)get_webconfig_dml())->hal_cap, l_index);
+        psm_mac_entry = get_mac_psm_map(vap_index);
         *psm_mac_entry = hash_map_create();
     }
 }

@@ -1696,18 +1696,21 @@ int upload_client_debug_stats(void *arg)
 static void
 process_stats_flag_changed(unsigned int ap_index, client_stats_enable_t *flag)
 {
+    wifi_mgr_t *mgr = get_wifimgr_obj();
 
     //Device.WiFi.X_RDKCENTRAL-COM_vAPStatsEnable = 0
     if (0 == flag->type) {
         int idx;
+        int vap_index;
 
         write_to_file(wifi_health_log, "WIFI_STATS_FEATURE_ENABLE:%s\n",
                 (flag->enable) ? "true" : "false");
         for(idx = 0; idx < (int)getTotalNumberVAPs(); idx++) {
-            reset_client_stats_info(idx);
+            vap_index = VAP_INDEX(mgr->hal_cap, idx);
+            reset_client_stats_info(vap_index);
         }
     } else if (1 == flag->type) { //Device.WiFi.AccessPoint.<vAP>.X_RDKCENTRAL-COM_StatsEnable = 1
-        if(ap_index < getTotalNumberVAPs()) {
+        if (wifi_util_is_vap_index_valid(&mgr->hal_cap.wifi_prop, (int)ap_index)) {
             reset_client_stats_info(ap_index);
             write_to_file(wifi_health_log, "WIFI_STATS_ENABLE_%d:%s\n", ap_index+1,
                     (flag->enable) ? "true" : "false");

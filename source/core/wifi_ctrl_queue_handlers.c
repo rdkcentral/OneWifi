@@ -1330,8 +1330,11 @@ void process_wifi_host_sync()
     memset(assoc_device, 0, sizeof(assoc_device));
 
     for (itr=0; itr<getTotalNumberVAPs(); itr++) {
-        if ((isVapPrivate(itr)) || (isVapXhs(itr))) {
-            rdk_vap_info = get_wifidb_rdk_vap_info(itr);
+        unsigned int vap_index;
+
+        vap_index = VAP_INDEX(p_wifi_mgr->hal_cap, itr);
+        if ((isVapPrivate(vap_index)) || (isVapXhs(vap_index))) {
+            rdk_vap_info = get_wifidb_rdk_vap_info(vap_index);
             if (rdk_vap_info == NULL) {
                 wifi_util_error_print(WIFI_CTRL, "%s:%d ERROR Null Pointer\n", __func__, __LINE__);
                 continue;

@@ -1109,7 +1109,7 @@ int get_vap_params_from_psm(unsigned int vap_index, wifi_vap_info_t *vap_config)
     snprintf(recName, sizeof(recName), ApMFPConfig, instance_number);
     str = Get_PSM_Record_Status(recName, strValue);
     if (str != NULL) {
-        bss_cfg->security.mfp = _ansc_atoi(str);
+        convert_security_mode_string_to_integer((int *)&bss_cfg->security.mfp, str);
         wifi_util_dbg_print(WIFI_MGR,"cfg->mfp is %d and str is %s\n", bss_cfg->security.mfp, str);
     } else {
         wifi_util_dbg_print(WIFI_MGR,"%s:%d str value for mfp:%s \r\n", __func__, __LINE__, str);
@@ -1167,12 +1167,15 @@ int wifi_db_update_vap_config()
     unsigned int mac_index_list[128];
     unsigned int total_mac_list;
     char strValue[256] = {0};
+    wifi_mgr_t *mgr = get_wifimgr_obj();
 
     memset(mac_index_list, 0, sizeof(mac_index_list));
 
     /* read values from psm and update db */
-    for (unsigned int vap_index = 0; vap_index < getTotalNumberVAPs(); vap_index++) {
+    for (unsigned int index = 0; index < getTotalNumberVAPs(); index++) {
+        unsigned int vap_index;
 
+        vap_index = VAP_INDEX(mgr->hal_cap, index);
         get_vap_params_from_psm(vap_index, &vap_cfg);
 
         if (!isVapHotspot(vap_index)) {

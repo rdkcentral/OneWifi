@@ -144,7 +144,7 @@ hash_map_t *get_mac_psm_obj(unsigned char vap_index)
 {
     wifi_psm_param_t *p_wifi_psm_param = get_psm_obj();
 
-    if ((vap_index < getTotalNumberVAPs())) {
+    if (wifi_util_is_vap_index_valid(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, (int)vap_index)) {
         return p_wifi_psm_param->mac_psm_cfg.mac_entry[vap_index];
     } else {
         wifi_util_dbg_print(WIFI_PSM, "%s:%d wrong vap_index %d \r\n", __func__, __LINE__, vap_index);
@@ -156,10 +156,10 @@ hash_map_t **get_mac_psm_map(unsigned char vap_index)
 {
     wifi_psm_param_t *p_wifi_psm_param = get_psm_obj();
 
-    if ((vap_index < getTotalNumberVAPs())) {
+    if (wifi_util_is_vap_index_valid(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, (int)vap_index)) {
         return &p_wifi_psm_param->mac_psm_cfg.mac_entry[vap_index];
     } else {
-        wifi_util_dbg_print(WIFI_PSM, "%s:%d wrong vap_index %d and index is %d\n", __func__, __LINE__, vap_index, index);
+        wifi_util_dbg_print(WIFI_PSM, "%s:%d wrong vap_index %d\n", __func__, __LINE__, vap_index);
         return NULL;
     }
 }
