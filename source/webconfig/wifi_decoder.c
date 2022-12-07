@@ -1950,6 +1950,9 @@ webconfig_error_t decode_mesh_sta_object(const cJSON *vap, wifi_vap_info_t *vap_
     // BSSID
     decode_param_string(vap, "BSSID", param);
     string_mac_to_uint8_mac(vap_info->u.sta_info.bssid, param->valuestring);
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: vapname : %s bssid : %02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx\n",__FUNCTION__, __LINE__, vap_info->vap_name,
+            vap_info->u.sta_info.bssid[0], vap_info->u.sta_info.bssid[1], vap_info->u.sta_info.bssid[2],
+            vap_info->u.sta_info.bssid[3], vap_info->u.sta_info.bssid[4], vap_info->u.sta_info.bssid[5]);
 
     // MAC
     decode_param_string(vap, "MAC", param);

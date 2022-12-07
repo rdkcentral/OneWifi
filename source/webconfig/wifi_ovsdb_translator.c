@@ -2050,11 +2050,13 @@ webconfig_error_t  translate_sta_vap_info_to_vif_state_common(const wifi_vap_inf
     }
 
     snprintf(vap_row->mac, sizeof(vap_row->mac), "%02X:%02X:%02X:%02X:%02X:%02X", vap->u.sta_info.mac[0], vap->u.sta_info.mac[1],
-                                                    vap->u.sta_info.mac[2], vap->u.sta_info.mac[3],
-                                                    vap->u.sta_info.mac[4], vap->u.sta_info.mac[5]);
-     snprintf(vap_row->parent, sizeof(vap_row->parent), "%02X:%02X:%02X:%02X:%02X:%02X", vap->u.sta_info.bssid[0], vap->u.sta_info.bssid[1],
-                                                    vap->u.sta_info.bssid[2], vap->u.sta_info.bssid[3],
-                                                    vap->u.sta_info.bssid[4], vap->u.sta_info.bssid[5]);
+            vap->u.sta_info.mac[2], vap->u.sta_info.mac[3],
+            vap->u.sta_info.mac[4], vap->u.sta_info.mac[5]);
+    snprintf(vap_row->parent, sizeof(vap_row->parent), "%02X:%02X:%02X:%02X:%02X:%02X", vap->u.sta_info.bssid[0], vap->u.sta_info.bssid[1],
+            vap->u.sta_info.bssid[2], vap->u.sta_info.bssid[3],
+            vap->u.sta_info.bssid[4], vap->u.sta_info.bssid[5]);
+
+    wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: vap_index : %d Parent : %s\n", __func__, __LINE__, vap->vap_index, vap_row->parent);
 
     vap_row->vlan_id = iface_map->vlan_id;
 

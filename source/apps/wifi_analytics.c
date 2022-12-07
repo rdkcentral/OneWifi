@@ -226,7 +226,6 @@ int analytics_event_webconfig_set_data(wifi_apps_t *apps, void *arg, ctrl_event_
                         out_bytes += snprintf(&temp_str[out_bytes], (sizeof(temp_str)-out_bytes)," %d,%s,%s,%s",
                                 vap->vap_index, vap->u.sta_info.ssid, (vap->u.sta_info.enabled==TRUE)?"enb":"dis",
                                 (vap->u.sta_info.conn_status==wifi_connection_status_connected)?"con":"discon");
-
                     }
                 }
             }
@@ -322,13 +321,17 @@ int analytics_event_hal_sta_conn_status(wifi_apps_t *apps, void *arg)
     memset(temp_str, 0, sizeof(temp_str));
     switch(sta_data->stats.connect_status) {
         case wifi_connection_status_connected:
-            snprintf(temp_str, sizeof(temp_str), "connected : vap_index %d",
-                    sta_data->stats.vap_index);
+            snprintf(temp_str, sizeof(temp_str), "connected : vap_index %d bssid %02x:%02x:%02x:%02x:%02x:%02x",
+                    sta_data->stats.vap_index, sta_data->bss_info.bssid[0], sta_data->bss_info.bssid[1],
+        sta_data->bss_info.bssid[2], sta_data->bss_info.bssid[3],
+        sta_data->bss_info.bssid[4], sta_data->bss_info.bssid[5]);
             wifi_util_info_print(WIFI_ANALYTICS, analytics_format_hal_core, "sta status", temp_str);
         break;
         case wifi_connection_status_disconnected:
-            snprintf(temp_str, sizeof(temp_str), "disconnected : vap_index %d",
-                    sta_data->stats.vap_index);
+            snprintf(temp_str, sizeof(temp_str), "disconnected : vap_index %d bssid %02x:%02x:%02x:%02x:%02x:%02x",
+                    sta_data->stats.vap_index, sta_data->bss_info.bssid[0], sta_data->bss_info.bssid[1],
+                    sta_data->bss_info.bssid[2], sta_data->bss_info.bssid[3],
+                    sta_data->bss_info.bssid[4], sta_data->bss_info.bssid[5]);
             wifi_util_info_print(WIFI_ANALYTICS, analytics_format_hal_core, "sta status", temp_str);
         break;
         case wifi_connection_status_ap_not_found:
