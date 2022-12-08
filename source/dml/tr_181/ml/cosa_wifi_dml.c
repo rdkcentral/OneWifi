@@ -6477,7 +6477,17 @@ AccessPoint_SetParamIntValue
             return  TRUE;
         }
         /* save update to backup */
-        vapInfo->u.bss_info.bssMaxSta = iValue;
+	if (iValue == 100)
+	{
+		if(vapInfo->u.bss_info.bssMaxSta == 74)
+		{
+			vapInfo->u.bss_info.bssMaxSta = 75;
+		} else if(vapInfo->u.bss_info.bssMaxSta == 75) {
+			vapInfo->u.bss_info.bssMaxSta = 74;
+		}
+	} else {
+        	vapInfo->u.bss_info.bssMaxSta = iValue;
+	}
         set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
