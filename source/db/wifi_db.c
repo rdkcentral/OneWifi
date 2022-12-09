@@ -1411,7 +1411,6 @@ int convert_radio_to_name(int index,char *name)
     return -1;
 }
 
-
 /************************************************************************************
  ************************************************************************************
   Function    : wifidb_update_wifi_radio_config
@@ -1554,7 +1553,14 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
 
     config->enable = cfg->enabled;
     config->autoChannelEnabled = cfg->auto_channel_enabled;
-    config->channel = cfg->channel;
+
+    if (is_wifi_channel_valid(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, band, cfg->channel) == RETURN_OK) {
+        config->channel = cfg->channel;
+    }
+    else {
+        wifi_util_info_print(WIFI_DB,"%s:%d Radio Channel failed. band %d channel %d\n", __func__, __LINE__, band, cfg->channel);
+    }
+
     config->channelWidth = cfg->channel_width;
     if ((cfg->hw_mode != 0) && (validate_wifi_hw_variant(cfg->freq_band, cfg->hw_mode) == RETURN_OK)) {
         config->variant = cfg->hw_mode;
