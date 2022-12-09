@@ -237,12 +237,25 @@ rbusError_t webconfig_get_subdoc(rbusHandle_t handle, rbusProperty_t property, r
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     vap_svc_t *ext_svc;
+    #define MAX_ACSD_SYNC_TIME_WAIT 12
+    static int sync_retries = 0;
 
    if(ctrl->network_mode == rdk_dev_mode_type_gw) {
         wifi_util_dbg_print(WIFI_CTRL,"%s Rbus property=%s, Gateway mode\n",__FUNCTION__, name);
         if (strcmp(name, WIFI_WEBCONFIG_INIT_DATA) != 0) {
             wifi_util_error_print(WIFI_CTRL,"%s Rbus property invalid '%s'\n",__FUNCTION__, name);
             return RBUS_ERROR_INVALID_INPUT;
+        }
+        if (is_device_type_xb7() == true) {
+            if ((sync_retries < MAX_ACSD_SYNC_TIME_WAIT) && (((access("/tmp/acs_0",F_OK) != 0)) || (access("/tmp/acs_1",F_OK) != 0))) {
+                sync_retries++;
+                wifi_util_info_print(WIFI_CTRL,"%s sync_retries=%d acsd not finished\n",__FUNCTION__,sync_retries);
+                return RBUS_ERROR_INVALID_OPERATION;
+            }
+            wifi_util_info_print(WIFI_CTRL,"%s sync_retries=%d acsd finished \n",__FUNCTION__,sync_retries);
+            sync_retries = MAX_ACSD_SYNC_TIME_WAIT;
+            unlink("/tmp/acs_0");
+            unlink("/tmp/acs_1");
         }
 
         rbusValue_Init(&value);
