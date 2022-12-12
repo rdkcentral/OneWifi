@@ -6482,8 +6482,10 @@ AccessPoint_SetParamIntValue
 		if(vapInfo->u.bss_info.bssMaxSta == 74)
 		{
 			vapInfo->u.bss_info.bssMaxSta = 75;
+                        wifi_util_info_print(WIFI_DMCLI,"selfheal, configuring max assoc clients to 75\n");
 		} else if(vapInfo->u.bss_info.bssMaxSta == 75) {
 			vapInfo->u.bss_info.bssMaxSta = 74;
+                        wifi_util_info_print(WIFI_DMCLI,"selfheal, configuring max assoc clients to 74\n");
 		}
 	} else {
         	vapInfo->u.bss_info.bssMaxSta = iValue;
