@@ -157,6 +157,9 @@ webconfig_error_t decode_csi_subdoc(webconfig_t *config, webconfig_subdoc_data_t
              wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: csi object validation failed\n",
                   __func__, __LINE__);
              cJSON_Delete(json);
+             if (params->csi_data_queue != NULL) {
+                queue_destroy(params->csi_data_queue);
+             }
              wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
              return webconfig_error_decode;
         }

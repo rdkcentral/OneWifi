@@ -765,7 +765,9 @@ int webconfig_hal_csi_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *
                 strcat(tmp_cli_list, ",");
             }
             int len  = strlen(tmp_cli_list);
-            tmp_cli_list[len-1] = '\0';
+            if (len > 0) {
+                tmp_cli_list[len-1] = '\0';
+            }
 
             if (!found) {
                 csi_create_session(new_csi_data->csi_session_num);

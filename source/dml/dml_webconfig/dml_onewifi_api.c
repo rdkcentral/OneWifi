@@ -48,17 +48,6 @@ webconfig_dml_t* get_webconfig_dml()
     return &webconfig_dml;
 }
 
-queue_t** get_csi_entry_queue()
-{
-    webconfig_dml_t* dml = get_webconfig_dml();
-    if (dml == NULL) {
-        wifi_util_error_print(WIFI_DMCLI,"%s %d NULL Pointer\n", __func__, __LINE__);
-        return NULL;
-    }
-
-    return &(dml->csi_data_queue);
-}
-
 active_msmt_t* get_dml_blaster(void)
 {
     wifi_global_param_t *pcfg = get_wifidb_wifi_global_param();
@@ -176,51 +165,6 @@ UINT get_max_num_vap_dml()
         }
     }
     return maxNumberOfVaps;
-}
-
-void update_csi_data_queue(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription)
-{
-    int len = 0;
-    const char * pTmp = NULL;
-    webconfig_subdoc_data_t data;
-    rbusValue_t value;
-
-    const char* eventName = event->name;
-
-    wifi_util_dbg_print(WIFI_DMCLI,"rbus event callback Event is %s \n",eventName);
-    value = rbusObject_GetValue(event->data, NULL );
-    if(!value)
-    {
-        wifi_util_error_print(WIFI_DMCLI,"%s FAIL: value is NULL\n",__FUNCTION__);
-        return;
-    }
-    pTmp = rbusValue_GetString(value, &len);
-    if (pTmp == NULL) {
-        wifi_util_error_print(WIFI_DMCLI,"%s Null pointer,Rbus set string len=%d\n",__FUNCTION__,len);
-        return;
-    }
-
-    // setup the raw data
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-    data.signature = WEBCONFIG_MAGIC_SIGNATUTRE;
-    data.type = webconfig_subdoc_type_dml;
-    data.descriptor = 0;
-    data.descriptor = webconfig_data_descriptor_encoded;
-    strncpy(data.u.encoded.raw, pTmp, sizeof(data.u.encoded.raw) - 1);
-
-    // tell webconfig to decode
-    if (webconfig_set(&webconfig_dml.webconfig, &data)== webconfig_error_none){
-        wifi_util_info_print(WIFI_DMCLI,"%s %d webconfig_set success \n",__FUNCTION__,__LINE__ );
-    } else {
-        wifi_util_error_print(WIFI_DMCLI,"%s %d webconfig_set fail \n",__FUNCTION__,__LINE__ );
-        return;
-    }
-    
-    queue_t** csi_queue = (queue_t **)get_csi_entry_queue();
-    if ((csi_queue != NULL) && (*csi_queue != NULL)) {
-        queue_destroy(*csi_queue);
-    }
-    *csi_queue = data.u.decoded.csi_data_queue;
 }
 
 void mac_filter_dml_vap_cache_update(int radio_index, int vap_array_index)
@@ -415,7 +359,6 @@ void rbus_dmlwebconfig_register(webconfig_dml_t *consumer)
 
     rbusEventSubscription_t rbusEvents[] = {
         { WIFI_WEBCONFIG_DOC_DATA_NORTH, NULL, 0, 0, set_webconfig_dml_data, NULL, NULL, NULL}, // DML Subdoc
-        { WIFI_WEBCONFIG_GET_CSI, NULL, 0, 0, update_csi_data_queue, NULL, NULL, NULL}, // CSI subdoc
     };
 
     wifi_util_dbg_print(WIFI_DMCLI,"%s rbus open \n",__FUNCTION__);
@@ -634,11 +577,6 @@ int init(webconfig_dml_t *consumer)
         for (itrj = 0; itrj<MAX_NUM_VAP_PER_RADIO; itrj++) {
             consumer->radios[itr].vaps.rdk_vap_array[itrj].acl_map = NULL;
         }
-    }
-
-    queue_t **csi_queue = (queue_t**)get_csi_entry_queue();
-    if (*csi_queue == NULL) {
-        *csi_queue = queue_create();
     }
 
     wifi_util_info_print(WIFI_DMCLI,"%s %d rbus_get WIFI_WEBCONFIG_INIT_DML_DATA successfull \n",__FUNCTION__,__LINE__ );
@@ -875,28 +813,6 @@ int push_radio_dml_cache_to_one_wifidb()
 
     wifi_util_error_print(WIFI_DMCLI, "%s:  Radio DML cache pushed to queue \n", __FUNCTION__);
     is_radio_config_changed = FALSE;
-    return RETURN_OK;
-}
-
-int push_csi_data_dml_cache_to_one_wifidb() {
-    webconfig_subdoc_data_t data;
-    char *str = NULL;
-
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-    wifi_util_dbg_print(WIFI_DMCLI, "%s: queue count is %lu\n", __func__, queue_count(webconfig_dml.csi_data_queue));
-    memcpy((unsigned char *)&data.u.decoded.csi_data_queue, (unsigned char *)&webconfig_dml.csi_data_queue, sizeof(queue_t *));
-    memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap, sizeof(wifi_hal_capability_t));
-
-    if (webconfig_encode(&webconfig_dml.webconfig, &data, webconfig_subdoc_type_csi) == webconfig_error_none) {
-        str = data.u.encoded.raw;
-        wifi_util_info_print(WIFI_DMCLI, "%s: CSI cache encoded successfully  \n", __FUNCTION__);
-        push_data_to_ctrl_queue(str, strlen(str), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data_dml);
-    } else {
-        wifi_util_error_print(WIFI_DMCLI, "%s:%d: Webconfig set failed\n", __func__, __LINE__);
-        return RETURN_ERR;
-    }
-
-    wifi_util_info_print(WIFI_DMCLI, "%s:  CSI cache pushed to queue encoded data is %s\n", __FUNCTION__, str);
     return RETURN_OK;
 }
 
