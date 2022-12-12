@@ -87,6 +87,28 @@ void print_wifi_hal_vap_wps_data(wifi_dbg_type_t log_file_type, char *prefix, un
 int webconfig_blaster_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
     unsigned int i = 0;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    if ((mgr == NULL) || (data == NULL)) {
+        wifi_util_error_print(WIFI_CTRL,"%s %d Mgr or Data is NULL\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    mgr->blaster_config_global = data->blaster;
+
+    /* If Device operating in POD mode, Send the blaster status as new to the cloud */
+    if (ctrl->network_mode == rdk_dev_mode_type_ext) {
+        /* MQTT Topic is required to publish data to QM */
+	if (strcmp((char *)mgr->blaster_config_global.blaster_mqtt_topic, "") == 0) {
+            wifi_util_error_print(WIFI_CTRL, "%s %d MQTT topic seems empty\n", __func__, __LINE__);
+            return RETURN_ERR;
+        }
+        wifi_util_info_print(WIFI_CTRL, "%s %d POD MOde Activated. Sending Blaster status to cloud\n", __func__, __LINE__);
+        mgr->ctrl.webconfig_state |= ctrl_webconfig_state_blaster_cfg_init_rsp_pending;
+        webconfig_send_blaster_status(ctrl);
+    }
+    else if (ctrl->network_mode == rdk_dev_mode_type_gw) {
+            wifi_util_info_print(WIFI_CTRL, "GW doesnot dependant on MQTT topic\n");
+    }
 
     active_msmt_t *cfg = &data->blaster;
 
@@ -94,6 +116,7 @@ int webconfig_blaster_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *
     SetActiveMsmtSampleDuration(cfg->ActiveMsmtSampleDuration);
     SetActiveMsmtNumberOfSamples(cfg->ActiveMsmtNumberOfSamples);
     SetActiveMsmtPlanID((char *)cfg->PlanId);
+    SetBlasterMqttTopic((char *)cfg->blaster_mqtt_topic);
 
     for (i = 0; i < MAX_STEP_COUNT; i++) {
         if(strlen((char *) cfg->Step[i].DestMac) != 0) {
@@ -102,6 +125,7 @@ int webconfig_blaster_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *
             SetActiveMsmtStepSrcMac((char *)cfg->Step[i].SrcMac, i);
         }
     }
+
     SetActiveMsmtEnable(cfg->ActiveMsmtEnable);
 
     return RETURN_OK;
@@ -196,8 +220,27 @@ int webconfig_send_associate_status(wifi_ctrl_t *ctrl)
     webconfig_subdoc_data_t data;
 
     webconfig_init_subdoc_data(&data);
-
     if (webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_associated_clients) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
+    }
+    return RETURN_OK;
+}
+
+/* This function is responsible for encoding the data and trigger rbus call */
+int webconfig_send_blaster_status(wifi_ctrl_t *ctrl)
+{
+    webconfig_subdoc_data_t data;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+
+    if ((mgr == NULL) || (ctrl == NULL)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Mgr or ctrl is NULL\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    memset(&data,0,sizeof(webconfig_subdoc_data_t));
+    memcpy((unsigned char *)&data.u.decoded.blaster, (unsigned char *)&mgr->blaster_config_global, sizeof(active_msmt_t));
+
+    if (webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_blaster) != webconfig_error_none) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
     }
     return RETURN_OK;
@@ -213,6 +256,7 @@ int webconfig_analyze_pending_states(wifi_ctrl_t *ctrl)
     analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
 #endif // CCSP_COMMON
 
+    wifi_mgr_t *mgr = get_wifimgr_obj();
     if ((ctrl->webconfig_state & CTRL_WEBCONFIG_STATE_MASK) == 0) {
         return RETURN_OK;
     }
@@ -293,6 +337,11 @@ int webconfig_analyze_pending_states(wifi_ctrl_t *ctrl)
         case ctrl_webconfig_state_csi_cfg_rsp_pending:
             type = webconfig_subdoc_type_csi;
             webconfig_send_csi_status(ctrl);
+            break;
+        case ctrl_webconfig_state_blaster_cfg_complete_rsp_pending:
+                /* Once the blaster triggered successfully, update the status as completed and pass it to OVSM */
+                mgr->blaster_config_global.Status = blaster_state_completed;
+                webconfig_send_blaster_status(ctrl);
             break;
         default:
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d - default pending subdoc status:0x%x\r\n", __func__, __LINE__, (ctrl->webconfig_state & CTRL_WEBCONFIG_STATE_MASK));
@@ -1050,7 +1099,7 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                     ctrl->webconfig_state  &= ~ctrl_webconfig_state_vap_private_cfg_rsp_pending;
                     ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
                 }
-	        } else {
+            } else {
                 ctrl->webconfig_state |= ctrl_webconfig_state_vap_private_cfg_rsp_pending;
                 ret = webconfig_hal_private_vap_apply(ctrl, &data->u.decoded);
             }
@@ -1170,9 +1219,22 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
             break;
 #if DML_SUPPORT
         case webconfig_subdoc_type_blaster:
-            wifi_util_dbg_print(WIFI_MGR, "%s:%d: blaster webconfig subdoc\n", __func__, __LINE__);
             if (data->descriptor & webconfig_data_descriptor_encoded) {
-                wifi_util_error_print(WIFI_MGR, "%s:%d: Not expected publish of blaster webconfig subdoc\n", __func__, __LINE__);
+                /* If Device is operating in POD Mode, send the status to cloud */
+                if (ctrl->network_mode == rdk_dev_mode_type_ext) {
+                    if (ctrl->webconfig_state & ctrl_webconfig_state_blaster_cfg_init_rsp_pending) {
+                        wifi_util_info_print(WIFI_CTRL, "%s:%d: Blaster Status updated as new\n", __func__, __LINE__);
+                        ctrl->webconfig_state &= ~ctrl_webconfig_state_blaster_cfg_init_rsp_pending;
+                        ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
+                    } else if (ctrl->webconfig_state & ctrl_webconfig_state_blaster_cfg_complete_rsp_pending) {
+                        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Blaster Status updated as complete\n", __func__, __LINE__);
+                        ctrl->webconfig_state &= ~ctrl_webconfig_state_blaster_cfg_complete_rsp_pending;
+                        ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
+
+                    }
+                } else if (ctrl->network_mode == rdk_dev_mode_type_gw) {
+                    wifi_util_error_print(WIFI_CTRL, "%s:%d: Device is in GW Mode. No need to send blaster status\n", __func__, __LINE__);
+                }
             } else {
                 ret = webconfig_blaster_apply(ctrl, &data->u.decoded);
             }

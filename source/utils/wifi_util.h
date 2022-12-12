@@ -241,4 +241,5 @@ int get_allowed_channels_str(wifi_freq_bands_t band, wifi_radio_capabilities_t *
 int convert_radio_index_to_freq_band(wifi_platform_property_t *wifi_prop, unsigned int radio_index, int *band);
 void wifidb_print(char *format, ...);
 void copy_string(char*  destination, char*  source);
+bool wifiStandardStrToEnum(char *pWifiStdStr, wifi_ieee80211Variant_t *p80211VarEnum, ULONG instance_number, bool twoG80211axEnable);
 #endif//_WIFI_UTIL_H_

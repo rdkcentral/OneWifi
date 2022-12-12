@@ -1551,7 +1551,7 @@ ANSC_STATUS
 ValidateActiveMsmtPlanID(UCHAR *pPlanId)
 {
     CHAR CheckStr[PLAN_ID_LENGTH] = {0};
-    if ((strncmp((char*)pPlanId, CheckStr, PLAN_ID_LENGTH)) == 0) {
+    if ((strncmp((char*)pPlanId, CheckStr, strlen((char *)pPlanId))) == 0) {
         CcspTraceError(("%s:%d : Plan ID is not configured\n",__func__, __LINE__));
         return ANSC_STATUS_FAILURE;
     }

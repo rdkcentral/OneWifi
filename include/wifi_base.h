@@ -47,7 +47,7 @@ extern "C" {
 #define WIFI_ANALYTICS_DATA_EVENTS          "Device.WiFi.Events.Frames.Data"
 #define WIFI_FRAME_INJECTOR_TO_ONEWIFI      "Device.WiFi.TestFrameInput"
 
-#define PLAN_ID_LENGTH     16
+#define PLAN_ID_LENGTH     38
 #define MAX_STEP_COUNT  32 /*Active Measurement Step Count */
 #define  MAC_ADDRESS_LENGTH  13
 #define WIFI_AP_MAX_WPSPIN_LEN  9
@@ -162,6 +162,14 @@ typedef enum {
     rdk_dev_mode_type_ext
 } rdk_dev_mode_type_t;
 
+#define MAX_MQTT_TOPIC_LEN 256
+char awlan_mqtt_topic[MAX_MQTT_TOPIC_LEN];
+
+typedef enum {
+    blaster_state_new,
+    blaster_state_completed
+} blaster_state_t;
+
 typedef struct {
     unsigned char SrcMac[MAC_ADDRESS_LENGTH];
     unsigned char DestMac[MAC_ADDRESS_LENGTH];
@@ -177,8 +185,9 @@ typedef struct {
     unsigned char       PlanId[PLAN_ID_LENGTH];
     unsigned char       StepInstance[MAX_STEP_COUNT];
     active_msmt_step_t    Step[MAX_STEP_COUNT];
+    blaster_state_t     Status;
+    unsigned char       blaster_mqtt_topic[MAX_MQTT_TOPIC_LEN];
 } active_msmt_t;
-
 
 #if DML_SUPPORT
 typedef struct {

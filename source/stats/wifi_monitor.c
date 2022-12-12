@@ -32,6 +32,7 @@
 #include "collection.h"
 #include "wifi_passpoint.h"
 #include "wifi_hal.h"
+#include "wifi_mgr.h"
 #include "wifi_monitor.h"
 #include "wifi_blaster.h"
 #include <sys/socket.h>
@@ -193,14 +194,6 @@ static inline char *to_sta_key    (mac_addr_t mac, sta_key_t key)
     return (char *)key;
 }
 
-static void to_plan_id (unsigned char *PlanId, unsigned char Plan[])
-{
-    int i=0;
-    for (i=0; i < PLAN_ID_LENGTH; i++) {
-        sscanf((char*)PlanId,"%2hhx",(char*)&Plan[i]);
-        PlanId += 2;
-    }
-}
 BOOL IsWiFiApStatsEnable(UINT uvAPIndex)
 {
     return ((sWiFiDmlApStatsEnableCfg[uvAPIndex]) ? TRUE : FALSE);
@@ -2483,17 +2476,13 @@ void *monitor_function  (void *data)
 
         time_to_wait.tv_sec = timeout.tv_sec;
         time_to_wait.tv_nsec = timeout.tv_usec*1000;
-        wifi_util_dbg_print(WIFI_MON,"Time - %s:%d n - %lu %lu w - %lu %lu "
-                "l - %lu %lu s - %lu %lu\n" ,__func__,__LINE__,tv_now.tv_sec, tv_now.tv_usec, time_to_wait.tv_sec, (time_to_wait.tv_nsec/1000),
-                proc_data->last_polled_time.tv_sec, proc_data->last_polled_time.tv_usec,
-                proc_data->last_signalled_time.tv_sec, proc_data->last_signalled_time.tv_usec);
 
         rc = pthread_cond_timedwait(&proc_data->cond, &proc_data->lock, &time_to_wait);
         if ((rc == 0) || (queue_count(proc_data->queue) != 0)) {
             // dequeue data
             while (queue_count(proc_data->queue)) {
                 queue_data = queue_pop(proc_data->queue);
-                if (queue_data == NULL) { 
+                if (queue_data == NULL) {
                     continue;
                 }
 
@@ -5097,7 +5086,7 @@ unsigned int GetActiveMsmtStepID()
 void GetActiveMsmtPlanID(unsigned int *pPlanID)
 {
     if (pPlanID != NULL) {
-        memcpy(pPlanID, g_active_msmt.active_msmt.PlanId, PLAN_ID_LENGTH);
+        memcpy(pPlanID, g_active_msmt.active_msmt.PlanId, strlen((char *)g_active_msmt.active_msmt.PlanId));
     }
     return;
 }
@@ -5290,18 +5279,31 @@ void SetActiveMsmtNumberOfSamples(unsigned int NoOfSamples)
 
 void SetActiveMsmtPlanID(char *pPlanID)
 {
-    wifi_util_dbg_print(WIFI_MON, "%s:%d: changing the plan ID to %s \n", __func__, __LINE__,pPlanID);
-    unsigned char       PlanId[PLAN_ID_LENGTH];
     int                 StepCount = 0;
 
+    if (pPlanID == NULL) {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d pPlanID is NULL\n", __func__, __LINE__);
+        return;
+    }
+
+    unsigned int planid_len = 0;
+    planid_len = strlen(pPlanID);
+    if (planid_len > PLAN_ID_LENGTH) { 
+        wifi_util_error_print(WIFI_MON, "%s:%d Plan ID is not in range\n", __func__, __LINE__);
+        return;
+    }
+
     pthread_mutex_lock(&g_active_msmt.lock);
-    to_plan_id((UCHAR*)pPlanID, PlanId);
-    if (strncasecmp((char*)PlanId, (char*)g_active_msmt.active_msmt.PlanId, PLAN_ID_LENGTH) != 0) {
+
+    if (strncasecmp(pPlanID, (char*)g_active_msmt.active_msmt.PlanId, strlen(pPlanID)) != 0) {
         /* reset all the step information under the existing plan */
         for (StepCount = 0; StepCount < MAX_STEP_COUNT; StepCount++) {
             g_active_msmt.active_msmt.StepInstance[StepCount] = 0;
         }
-        to_plan_id((UCHAR*)pPlanID, g_active_msmt.active_msmt.PlanId);
+        memset((char *)g_active_msmt.active_msmt.PlanId, '\0', PLAN_ID_LENGTH);
+        strncpy((char *)g_active_msmt.active_msmt.PlanId, pPlanID,planid_len);
+        g_active_msmt.active_msmt.PlanId[strlen((char *)g_active_msmt.active_msmt.PlanId)] = '\0';
+        wifi_util_dbg_print(WIFI_MON, "%s:%d Plan id updated as %s\n", __func__, __LINE__, (char *)g_active_msmt.active_msmt.PlanId);
     }
     pthread_mutex_unlock(&g_active_msmt.lock);
 }
@@ -5329,6 +5331,46 @@ void SetActiveMsmtStepID(unsigned int StepId, ULONG StepIns)
     g_active_msmt.active_msmt.Step[StepIns].StepId = StepId;
     pthread_mutex_unlock(&g_active_msmt.lock);
 }
+
+
+/*********************************************************************************/
+/*                                                                               */
+/* FUNCTION NAME : SetBlasterMqttTopic                                           */
+/*                                                                               */
+/* DESCRIPTION   : This function set the MQTT topic configured for               */
+/*                 Blaster                                                       */
+/*                                                                               */
+/* INPUT         : BlasterMqttTopic - MQTT Topic for Blaster                     */
+/*                                                                               */
+/* OUTPUT        : NONE                                                          */
+/*                                                                               */
+/* RETURN VALUE  : NONE                                                          */
+/*                                                                               */
+/*********************************************************************************/
+
+void SetBlasterMqttTopic(char *mqtt_topic)
+{
+    if (mqtt_topic == NULL) {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d MQTT Topic is NULL\n", __func__, __LINE__);
+        return;
+    }
+    unsigned int mqtt_len = 0;
+    mqtt_len = strlen(mqtt_topic);
+    if (mqtt_len > MAX_MQTT_TOPIC_LEN) {
+        wifi_util_error_print(WIFI_MON, "%s:%d MQTT Topic length is not in range\n", __func__, __LINE__);
+        return;
+    }
+    pthread_mutex_lock(&g_active_msmt.lock);
+    memset(g_active_msmt.active_msmt.blaster_mqtt_topic, '\0', MAX_MQTT_TOPIC_LEN);
+
+    strncpy((char *)g_active_msmt.active_msmt.blaster_mqtt_topic, mqtt_topic, mqtt_len);
+    g_active_msmt.active_msmt.blaster_mqtt_topic[strlen((char *)g_active_msmt.active_msmt.blaster_mqtt_topic)] = '\0';
+    wifi_util_dbg_print(WIFI_MON, "%s:%d: Active Measurement topic changed %s\n", __func__, __LINE__, g_active_msmt.active_msmt.blaster_mqtt_topic);
+    pthread_mutex_unlock(&g_active_msmt.lock);
+}
+
+
+
 /*********************************************************************************/
 /*                                                                               */
 /* FUNCTION NAME : SetActiveMsmtStepSrcMac                                       */
@@ -5910,6 +5952,7 @@ void *WiFiBlastClient(void* data)
     int     oldcanceltype;
     wifi_interface_name_t *interface_name = NULL;
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
+    wifi_ctrl_t *g_wifi_ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, &oldcanceltype);
 
@@ -6025,6 +6068,20 @@ void *WiFiBlastClient(void* data)
         free(frameCountSample);
         frameCountSample = NULL;
     }
+
+    if (g_wifi_ctrl == NULL) {
+        wifi_util_dbg_print(WIFI_MON, "%s : %d g_wifi_ctrl is NULL\n", __func__, __LINE__);
+    }
+    else {
+        if (g_wifi_ctrl->network_mode == rdk_dev_mode_type_ext) {
+            g_wifi_mgr->ctrl.webconfig_state |= ctrl_webconfig_state_blaster_cfg_complete_rsp_pending;
+            wifi_util_dbg_print(WIFI_MON, "%s : %d  Extender Mode Activated. Updated the blaster state as complete\n", __func__, __LINE__);
+        }
+        else if (g_wifi_ctrl->network_mode == rdk_dev_mode_type_gw) {
+            wifi_util_dbg_print(WIFI_MON, "%s : %d Device operating in GW mode. No need to update status\n", __func__, __LINE__);
+        }
+    }
+
     g_monitor_module.blastReqInQueueCount--;
     wifi_util_dbg_print(WIFI_MON, "%s : %d decrementing blastReqInQueueCount to %d\n",__func__,__LINE__,g_monitor_module.blastReqInQueueCount);
 

@@ -46,6 +46,7 @@
 #include "webconfig_external_proto.h"
 
 #define CONFIG_RDK_LEGACY_SECURITY_SCHEMA
+#define BLASTER_STATE_LEN    10
 
 static webconfig_subdoc_data_t  webconfig_ovsdb_data;
 static webconfig_subdoc_data_t  webconfig_ovsdb_default_data;
@@ -118,6 +119,20 @@ void radio_state_ovs_schema_dump(const struct schema_Wifi_Radio_State *radio)
 
     return;
 }
+
+void blaster_config_ovs_schema_dump(const struct schema_Wifi_Blaster_Config *blaster)
+{
+    wifi_util_dbg_print(WIFI_WEBCONFIG,  " plan_id                  : %s\n",   blaster->plan_id);
+    wifi_util_dbg_print(WIFI_WEBCONFIG, " blast_packet_size         : %d\n",   blaster->blast_packet_size);
+    wifi_util_dbg_print(WIFI_WEBCONFIG, " blast_duration            : %d\n",   blaster->blast_duration);
+    wifi_util_dbg_print(WIFI_WEBCONFIG, " blast_sample_count        : %d\n",   blaster->blast_sample_count);
+}
+
+void blaster_state_ovs_schema_dump(const struct schema_Wifi_Blaster_State *blaster)
+{
+    wifi_util_dbg_print(WIFI_WEBCONFIG, " plan id                   : %s\n",   blaster->plan_id);
+}
+
 
 void vif_config_ovs_schema_dump(const struct schema_Wifi_VIF_Config *vif)
 {
@@ -241,6 +256,8 @@ void debug_external_protos(const webconfig_subdoc_data_t *data, const char *func
     webconfig_external_ovsdb_t *proto;
     const struct schema_Wifi_Radio_Config *radio_config_row;
     const struct schema_Wifi_Radio_State *radio_state_row;
+    const struct schema_Wifi_Blaster_Config *blaster_config_row;
+    const struct schema_Wifi_Blaster_State  *blaster_state_row;
     const struct schema_Wifi_VIF_Config *vif_config_row;
     const struct schema_Wifi_VIF_State *vif_state_row;
     unsigned int i;
@@ -250,8 +267,6 @@ void debug_external_protos(const webconfig_subdoc_data_t *data, const char *func
         return;
     }
 
-    wifi_util_info_print(WIFI_WEBCONFIG, "%s: calling from %s:%d\n", __func__, func, line);
-
     proto = (webconfig_external_ovsdb_t *) data->u.decoded.external_protos;
     if (proto == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: proto is NULL\n", __func__, __LINE__);
@@ -259,9 +274,12 @@ void debug_external_protos(const webconfig_subdoc_data_t *data, const char *func
     }
     wifi_util_info_print(WIFI_WEBCONFIG, "%s: radio_config_row_count %d \n", __func__, proto->radio_config_row_count);
     wifi_util_info_print(WIFI_WEBCONFIG, "%s: vif_config_row_count %d\n", __func__, proto->vif_config_row_count);
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s: Blaster_config_row_count %d\n", __func__, proto->blaster_config_row_count);
     wifi_util_info_print(WIFI_WEBCONFIG, "%s: radio_state_row_count %d\n", __func__, proto->radio_state_row_count);
     wifi_util_info_print(WIFI_WEBCONFIG, "%s: vif_state_row_count %d\n", __func__, proto->vif_state_row_count);
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s: Blaster_state_row_count %d\n", __func__, proto->blaster_state_row_count);
     wifi_util_info_print(WIFI_WEBCONFIG, "%s: assoc_clients_row_count %d\n", __func__, proto->assoc_clients_row_count);
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s: AWLAN_MQTT_Topic : %s\n", __func__, proto->awlan_mqtt_topic);
 
     if ((access("/tmp/wifiOvsdbDbg", F_OK)) != 0) {
         return;
@@ -272,6 +290,7 @@ void debug_external_protos(const webconfig_subdoc_data_t *data, const char *func
         if (radio_config_row == NULL) {
             wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: radio_config_row is NULL\n", __func__, __LINE__);
             return;
+
         }
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s: Radio Config radio[%d] ifname '%s'\n", __func__, i, radio_config_row->if_name);
         radio_config_ovs_schema_dump(radio_config_row);
@@ -308,8 +327,24 @@ void debug_external_protos(const webconfig_subdoc_data_t *data, const char *func
         vif_state_ovs_schema_dump(vif_state_row);
     }
 
-}
+    for (i=0; i<proto->blaster_config_row_count; i++) {
+        blaster_config_row = (struct schema_Wifi_Blaster_Config *)proto->blaster_config[i];
+        if (blaster_config_row == NULL) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Blaster_config_row is NULL\n", __func__, __LINE__);
+            return;
+        }
+        blaster_config_ovs_schema_dump(blaster_config_row);
+    }
 
+    for (i=0; i<proto->blaster_state_row_count; i++) {
+        blaster_state_row = (struct schema_Wifi_Blaster_State *)proto->blaster_state[i];
+        if (blaster_state_row == NULL) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Blaster_state_row is NULL\n", __func__, __LINE__);
+            return;
+        }
+        blaster_state_ovs_schema_dump(blaster_state_row);
+    }
+}
 
 webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
 {
@@ -544,8 +579,6 @@ webconfig_error_t webconfig_ovsdb_decode(webconfig_t *config, const char *str,
         webconfig_external_ovsdb_t *data,
         webconfig_subdoc_type_t *type)
 {
-    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d\n", __func__, __LINE__);
-
     webconfig_ovsdb_data.u.decoded.external_protos = (webconfig_external_ovsdb_t *)data;
     webconfig_ovsdb_data.descriptor = webconfig_data_descriptor_translate_to_ovsdb;
 
@@ -2261,7 +2294,7 @@ webconfig_error_t translate_mesh_sta_vap_info_to_vif_state(const wifi_vap_info_t
 
 webconfig_error_t translate_vap_object_to_ovsdb_associated_clients(const rdk_wifi_vap_info_t *rdk_vap_info, const struct schema_Wifi_Associated_Clients **clients_table, unsigned int *client_count, wifi_platform_property_t *wifi_prop)
 {
-    //	int count = 0, i = 0;
+    //  int count = 0, i = 0;
     assoc_dev_data_t *assoc_dev_data = NULL;
     struct schema_Wifi_Associated_Clients *client_row;
     unsigned int associated_client_count = 0;
@@ -2782,6 +2815,67 @@ webconfig_error_t translate_ovsdb_to_vap_info_no_sec(const struct schema_Wifi_VI
 }
 
 
+void remove_colon_from_mac(const char *mac_row, char *mac_wo_colon)
+{
+    int wo_colon_loop = 0;
+    int with_colon_loop = 0;
+
+    if ((mac_row == NULL) || (mac_wo_colon == NULL)) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Incoming Argument is NULL\n", __func__, __LINE__);
+        return;
+    }
+
+    for (with_colon_loop = 0; with_colon_loop < 17; with_colon_loop++) {
+        if ((*(mac_row + with_colon_loop)) != ':') {
+            *(mac_wo_colon + wo_colon_loop) = *(mac_row + with_colon_loop);
+        } else {
+            continue;
+        }
+        wo_colon_loop++;
+    }
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Incoming MAC : %s Outgoing MAC : %s\n", __func__, __LINE__, mac_row, mac_wo_colon);
+}
+
+webconfig_error_t translate_ovsdb_to_blaster_info_common(const struct schema_Wifi_Blaster_Config *blaster_row, const char *blaster_mqtt_topic, active_msmt_t *blaster_info)
+{
+    if ((blaster_row == NULL) || (blaster_info == NULL)) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Input argument is NULL\n", __func__, __LINE__);
+        return webconfig_error_translate_from_ovsdb;
+    }
+
+    unsigned int mqtt_len = 0;
+    mqtt_len = strlen(blaster_mqtt_topic);
+    memset(blaster_info, 0, sizeof(active_msmt_t));
+    strncpy((char *)blaster_info->PlanId, blaster_row->plan_id, strlen(blaster_row->plan_id));
+    blaster_info->PlanId[strlen((char *)blaster_info->PlanId)] = '\0';
+    blaster_info->ActiveMsmtNumberOfSamples = blaster_row->blast_sample_count;
+    blaster_info->ActiveMsmtSampleDuration = blaster_row->blast_duration;
+    blaster_info->ActiveMsmtPktSize = blaster_row->blast_packet_size;
+
+    for (int i = 0; i < blaster_row->step_id_and_dest_len; i++)
+    {
+        blaster_info->Step[i].StepId = atoi(blaster_row->step_id_and_dest_keys[i]);
+        char mac_str_without_colon[MAC_ADDRESS_LENGTH] = {'\0'};
+        remove_colon_from_mac(blaster_row->step_id_and_dest[i], mac_str_without_colon);
+        strncpy((char *)blaster_info->Step[i].DestMac, mac_str_without_colon, MAC_ADDRESS_LENGTH);
+        blaster_info->Step[i].DestMac[MAC_ADDRESS_LENGTH - 1] = '\0';
+    }
+
+    blaster_info->ActiveMsmtEnable = true;
+    blaster_info->Status = blaster_state_new;
+
+    if (blaster_mqtt_topic == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d:MQTT topic is NULL\n", __func__, __LINE__);
+        return webconfig_error_translate_from_ovsdb;
+    }
+    else {
+        if ((mqtt_len > 0) && (mqtt_len <= MAX_MQTT_TOPIC_LEN)) {
+            strncpy((char *)blaster_info->blaster_mqtt_topic, blaster_mqtt_topic, mqtt_len);
+            blaster_info->blaster_mqtt_topic[strlen((char *)blaster_info->blaster_mqtt_topic)] = '\0';
+        }    
+    }
+    return webconfig_error_none;
+}
 
 webconfig_error_t translate_ovsdb_to_vap_info_common(const struct schema_Wifi_VIF_Config *vap_row, wifi_vap_info_t *vap)
 {
@@ -2837,6 +2931,15 @@ webconfig_error_t translate_private_vif_config_to_vap_info(const struct schema_W
     return webconfig_error_none;
 }
 
+webconfig_error_t translate_blaster_config_to_blast_info(const struct schema_Wifi_Blaster_Config *blaster_row, const char *blaster_mqtt_topic, active_msmt_t *blaster_info)
+{
+    if (translate_ovsdb_to_blaster_info_common(blaster_row, blaster_mqtt_topic, blaster_info) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for common\n", __func__, __LINE__);
+        return webconfig_error_translate_from_ovsdb;
+    }
+
+    return webconfig_error_none;
+}
 
 webconfig_error_t translate_iot_vif_config_to_vap_info(const struct schema_Wifi_VIF_Config *vap_row, wifi_vap_info_t *vap)
 {
@@ -3568,6 +3671,71 @@ webconfig_error_t   translate_radio_object_from_ovsdb_radio_config_for_radio(web
     return webconfig_error_none;
 }
 
+webconfig_error_t translate_blaster_info_to_blaster_table(const active_msmt_t *blaster_info, struct schema_Wifi_Blaster_State *blaster_row)
+{
+    if ((blaster_info == NULL) || (blaster_row == NULL))  {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d Incoming Parameter is NULL\n", __func__, __LINE__);
+        return webconfig_error_translate_to_ovsdb;
+    }
+
+    memset(blaster_row->plan_id, '\0', PLAN_ID_LENGTH);
+    strncpy(blaster_row->plan_id, (char *)blaster_info->PlanId, strlen((char *)blaster_info->PlanId));
+    blaster_row->plan_id[strlen(blaster_row->plan_id)] = '\0';
+
+    memset(blaster_row->state, '\0', BLASTER_STATE_LEN);
+    if (blaster_info->Status == blaster_state_new) {
+        strncpy(blaster_row->state, "new", strlen("new"));
+    } else if (blaster_info->Status == blaster_state_completed) {
+        strncpy(blaster_row->state, "complete", strlen("complete"));
+    }
+    blaster_row->state[strlen(blaster_row->state)] = '\0';
+    return webconfig_error_none;
+}
+
+webconfig_error_t   translate_blaster_config_to_ovsdb_for_blaster(webconfig_subdoc_data_t *data)
+{
+    const struct schema_Wifi_Blaster_State   **blaster_table = NULL;
+    struct schema_Wifi_Blaster_State *blaster_row = NULL;
+    webconfig_subdoc_decoded_data_t *decoded_params = NULL;
+    active_msmt_t *blaster_info = NULL;
+    webconfig_external_ovsdb_t *proto = NULL;
+
+    decoded_params = &data->u.decoded;
+    if (decoded_params == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: decoded_params is NULL\n", __func__, __LINE__);
+        return webconfig_error_translate_to_ovsdb;
+    }
+
+    proto = (webconfig_external_ovsdb_t *) data->u.decoded.external_protos;
+    if (proto == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: external_protos is NULL\n", __func__, __LINE__);
+        return webconfig_error_translate_to_ovsdb;
+    }
+
+    blaster_table = proto->blaster_state;
+    if (blaster_table == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: table is NULL\n", __func__, __LINE__);
+        return webconfig_error_translate_to_ovsdb;
+    }
+
+    int count = 0;
+    blaster_row = (struct schema_Wifi_Blaster_State *)blaster_table[count];
+    if (blaster_row == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the blaster schema ro\n", __func__, __LINE__);
+        return webconfig_error_translate_to_ovsdb;
+    }
+
+    blaster_info = &decoded_params->blaster;
+
+    if (translate_blaster_info_to_blaster_table(blaster_info, blaster_row) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of Blaster to ovsdb failed\n", __func__, __LINE__);
+        return webconfig_error_translate_to_ovsdb;
+    }
+
+    return webconfig_error_none;
+}
+
+
 webconfig_error_t   translate_vap_object_to_ovsdb_vif_state(webconfig_subdoc_data_t *data, char *vap_name)
 {
     struct schema_Wifi_VIF_State *vap_row;
@@ -4206,8 +4374,8 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_mesh(webconfig_
 
             //get the corresponding row
             //vap_row = get_vif_schema_from_vapindex(vap->vap_index, vif_table, proto->vif_config_row_count, wifi_prop);
-	    //vap_row = (struct schema_Wifi_VIF_Config *)vif_table[vap->vap_index];
-	    vap_row = (struct schema_Wifi_VIF_Config *)vif_table[count];
+            //vap_row = (struct schema_Wifi_VIF_Config *)vif_table[vap->vap_index];
+            vap_row = (struct schema_Wifi_VIF_Config *)vif_table[count];
             if (vap_row == NULL) {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the vap schema row for %d\n", __func__, __LINE__, vap->vap_index);
                 return webconfig_error_translate_to_ovsdb;
@@ -5310,6 +5478,53 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_xfinity(webco
     return webconfig_error_none;
 }
 
+webconfig_error_t translate_config_from_ovsdb_for_blaster_config(webconfig_subdoc_data_t *data)
+{
+    struct schema_Wifi_Blaster_Config *blaster_row = NULL;
+    const struct schema_Wifi_Blaster_Config **blaster_table = NULL;
+    const char blaster_mqtt_topic[MAX_MQTT_TOPIC_LEN] = {'\0'};
+    webconfig_subdoc_decoded_data_t *decoded_params = NULL;
+    active_msmt_t *blaster_info =  NULL;
+    webconfig_external_ovsdb_t *proto = NULL;
+    decoded_params = &data->u.decoded;
+    if (decoded_params == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: decoded_params is NULL\n", __func__, __LINE__);
+        return webconfig_error_translate_to_ovsdb;
+    }
+
+    proto = (webconfig_external_ovsdb_t *) data->u.decoded.external_protos;
+    if (proto == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: external_protos is NULL\n", __func__, __LINE__);
+        return webconfig_error_translate_to_ovsdb;
+    }
+
+    blaster_table=proto->blaster_config;
+    if (blaster_table == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: table is NULL\n", __func__, __LINE__);
+        return webconfig_error_translate_to_ovsdb;
+    }
+
+    strncpy((char *)blaster_mqtt_topic, proto->awlan_mqtt_topic, strlen(proto->awlan_mqtt_topic));
+    int count = 0;
+    blaster_row = (struct schema_Wifi_Blaster_Config *)blaster_table[count];
+    if (blaster_row == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the blaster schema row\n", __func__, __LINE__);
+        return webconfig_error_translate_to_ovsdb;
+    }
+
+    blaster_info = &decoded_params->blaster;
+    if (blaster_info == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Allocation failed\n", __func__, __LINE__);
+        return webconfig_error_translate_to_ovsdb;
+    }
+
+    if (translate_blaster_config_to_blast_info(blaster_row, blaster_mqtt_topic, blaster_info) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of Blaster to ovsdb failed\n", __func__, __LINE__);
+        return webconfig_error_translate_from_ovsdb;
+    }
+    return webconfig_error_none;
+}
+
 
 webconfig_error_t  translate_vap_object_from_ovsdb_config_for_null(webconfig_subdoc_data_t *data)
 {
@@ -5568,6 +5783,13 @@ webconfig_error_t   translate_to_ovsdb_tables(webconfig_subdoc_type_t type, webc
             }
         break;
 
+        case webconfig_subdoc_type_blaster:
+            if (translate_blaster_config_to_ovsdb_for_blaster(data) != webconfig_error_none) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Blaster config translation to ovsdb failed\n", __func__, __LINE__);
+                return webconfig_error_translate_to_ovsdb;
+            }
+        break;
+
         case webconfig_subdoc_type_null:
             if (translate_radio_object_to_ovsdb_radio_config_for_radio(data) != webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: webconfig_subdoc_type_null radio_object translation to ovsdb failed for null\n", __func__, __LINE__);
@@ -5672,7 +5894,14 @@ webconfig_error_t   translate_from_ovsdb_tables(webconfig_subdoc_type_t type, we
             }
         break;
 
-        case webconfig_subdoc_type_null:
+        case webconfig_subdoc_type_blaster:
+            if (translate_config_from_ovsdb_for_blaster_config(data) != webconfig_error_none) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Blaster config translation from ovsdb failed\n", __func__, __LINE__);
+                return webconfig_error_translate_from_ovsdb;
+            }
+        break;
+        
+	case webconfig_subdoc_type_null:
             if (translate_vap_object_from_ovsdb_config_for_null(data) != webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: webconfig_subdoc_type_null vap_object translation from ovsdb failed\n", __func__, __LINE__);
                 return webconfig_error_translate_from_ovsdb;

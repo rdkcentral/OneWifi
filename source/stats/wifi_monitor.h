@@ -278,4 +278,5 @@ unsigned int GetINSTDefReportingPeriod();
 int get_neighbor_scan_results();
 int get_dev_stats_for_radio(unsigned int radio_index, radio_data_t *radio_stats);
 int get_radio_channel_utilization(unsigned int radio_index, int *chan_util);
+int  getApIndexfromClientMac(char *check_mac);
 #endif	//_WIFI_MON_H_

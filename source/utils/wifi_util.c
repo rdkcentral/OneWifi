@@ -2038,3 +2038,70 @@ int convert_radio_index_to_freq_band(wifi_platform_property_t *wifi_prop, unsign
     return RETURN_ERR;
 }
 
+struct wifiStdHalMap
+{
+    wifi_ieee80211Variant_t halWifiStd;
+    char wifiStdName[4];
+};
+
+struct  wifiStdHalMap wifiStdMap[] =
+{
+    {WIFI_80211_VARIANT_A, "a"},
+    {WIFI_80211_VARIANT_B, "b"},
+    {WIFI_80211_VARIANT_G, "g"},
+    {WIFI_80211_VARIANT_N, "n"},
+    {WIFI_80211_VARIANT_H, "h"},
+    {WIFI_80211_VARIANT_AC, "ac"},
+    {WIFI_80211_VARIANT_AD, "ad"},
+    {WIFI_80211_VARIANT_AX, "ax"}
+};
+
+bool wifiStandardStrToEnum(char *pWifiStdStr, wifi_ieee80211Variant_t *p80211VarEnum, ULONG instance_number, bool twoG80211axEnable)
+{
+    unsigned int seqCounter = 0;
+    bool isWifiStdInvalid = TRUE;
+    char *token;
+    char tmpInputString[128] = {0};
+
+    if ((pWifiStdStr == NULL) || (p80211VarEnum == NULL))
+    {
+        wifi_util_dbg_print(WIFI_MON, "%s Invalid Argument\n",__func__);
+        return FALSE;
+    }
+
+    *p80211VarEnum = 0;
+    snprintf(tmpInputString, sizeof(tmpInputString), "%s", pWifiStdStr);
+
+    token = strtok(tmpInputString, ",");
+    while (token != NULL)
+    {
+
+        isWifiStdInvalid = TRUE;
+        for (seqCounter = 0; seqCounter < (unsigned int)ARRAY_SIZE(wifiStdMap); seqCounter++)
+        {
+            if ((!strcmp("ax", token)) && (instance_number == 0)
+                    && !twoG80211axEnable)
+            {
+                wifi_util_dbg_print(WIFI_MON, "RDK_LOG_INFO, Radio instanceNumber:%lu Device.WiFi.2G80211axEnable"
+                            "is set to FALSE(%d), hence unable to set 'AX' as operating standard\n",
+                            instance_number,twoG80211axEnable);
+                isWifiStdInvalid = FALSE;
+            }
+            else if (!strcmp(token, wifiStdMap[seqCounter].wifiStdName))
+            {
+                *p80211VarEnum |= wifiStdMap[seqCounter].halWifiStd;
+                wifi_util_dbg_print(WIFI_MON, "%s input : %s wifiStandard : %d\n", __func__, pWifiStdStr, *p80211VarEnum);
+                isWifiStdInvalid = FALSE;
+            }
+        }
+
+        if (isWifiStdInvalid == TRUE)
+        {
+            wifi_util_dbg_print(WIFI_MON, "RDK_LOG_ERROR, %s Invalid Wifi Standard : %s\n", __func__, pWifiStdStr);
+            return FALSE;
+        }
+
+        token = strtok(NULL, ",");
+    }
+    return TRUE;
+}

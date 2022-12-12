@@ -57,6 +57,7 @@ libwifi_utils_la_CFLAGS += $(DML_ENABLE_FLAG)
 libwifi_utils_la_CFLAGS += $(CCSP_COMMON_FLAG)
 
 libwifi_utils_la_SOURCES = wifi_validator.c
+libwifi_utils_la_SOURCES += ext_blaster.pb-c.c
 
 
 libwifi_utils_la_LDFLAGS = -rdynamic -lwebconfig_framework -lsecure_wrapper $(SYSTEMD_LDFLAGS) -lsecure_wrapper -lmsgpackc -lcjson -lm -ljansson -static
@@ -69,7 +70,7 @@ libwifi_utils_la_CPPFLAGS += -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-l
 AM_CFLAGS += -DCONFIG_WPS -DCONFIG_IEEE80211R_AP -DCONFIG_IEEE80211R -DCONFIG_ETH_P_OUI -DCONFIG_IEEE80211W
 AM_CFLAGS += -DEAP_SERVER_FAST
 
-include_HEADERS =  wifi_validator.h
+include_HEADERS =  wifi_validator.h ext_blaster.pb-c.h
 
 bin_PROGRAMS = wifi_db_ovsh
 wifi_db_ovsh_SOURCES = ovsh.c

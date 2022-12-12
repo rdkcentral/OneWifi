@@ -1321,6 +1321,11 @@ webconfig_error_t encode_blaster_object(const active_msmt_t *blaster_info, cJSON
    cJSON *obj_array;
 
     unsigned int i =0;
+    if (blaster_info == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Blaster info is NULL\n", __func__, __LINE__);
+        return webconfig_error_encode;
+    }
+
     cJSON_AddNumberToObject(blaster_obj, "ActiveMsmtPktSize", blaster_info->ActiveMsmtPktSize);
     cJSON_AddNumberToObject(blaster_obj, "ActiveMsmtSampleDuration", blaster_info->ActiveMsmtSampleDuration);
     cJSON_AddNumberToObject(blaster_obj, "ActiveMsmtNumberOfSamples", blaster_info->ActiveMsmtNumberOfSamples);
@@ -1337,6 +1342,8 @@ webconfig_error_t encode_blaster_object(const active_msmt_t *blaster_info, cJSON
         cJSON_AddStringToObject(stepobj, "DestMac",(char *)blaster_info->Step[i].DestMac);
         cJSON_AddItemToArray(obj_array, stepobj);
     }
+    cJSON_AddNumberToObject(blaster_obj, "Status", blaster_info->Status);
+    cJSON_AddStringToObject(blaster_obj, "MQTT Topic", (char *)blaster_info->blaster_mqtt_topic);
     return webconfig_error_none;
 }
 

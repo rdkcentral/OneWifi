@@ -96,6 +96,18 @@
     }   \
 }   \
 
+#define decode_param_blaster_mqtt_topic(json, key, value) \
+{   \
+    value = cJSON_GetObjectItem(json, key);     \
+    wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d\n", __func__, __LINE__);    \
+    if ((value == NULL) || (cJSON_IsString(value) == false) ||  \
+            (value->valuestring == NULL) ) {    \
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed for key:%s\n", __func__, __LINE__, key);   \
+        return webconfig_error_decode;  \
+    }   \
+}   \
+
+
 #define decode_param_blaster_mac(json, key, value) \
 {   \
     value = cJSON_GetObjectItem(json, key);     \
@@ -2928,6 +2940,7 @@ webconfig_error_t decode_blaster_object(const cJSON *blaster_cfg, active_msmt_t 
     cJSON *stepobj;
     const cJSON  *obj_array;
     int length = 0, i = 0;
+
     // ActiveMsmtEnabled
     decode_param_bool(blaster_cfg, "ActiveMsmtEnable", param);
     blaster_info->ActiveMsmtEnable = (param->type & cJSON_True) ? true:false;
@@ -2961,6 +2974,13 @@ webconfig_error_t decode_blaster_object(const cJSON *blaster_cfg, active_msmt_t 
         decode_param_blaster_mac(stepobj, "DestMac", param);
         strcpy((char *)blaster_info->Step[i].DestMac, param->valuestring);
     }
+
+    decode_param_integer(blaster_cfg, "Status", param);
+    blaster_info->Status = param->valuedouble;
+
+    decode_param_blaster_mqtt_topic(blaster_cfg, "MQTT Topic", param);
+    strcpy((char *)blaster_info->blaster_mqtt_topic, param->valuestring);
+
     return webconfig_error_none;
 }
 

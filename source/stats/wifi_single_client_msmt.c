@@ -46,16 +46,35 @@
 #include "ccsp_WifiLog_wrapper.h"
 #include "ccsp_trace.h"
 #include "platform-logger.h"
+#include "ext_blaster.pb-c.h"
+#include "qm_conn.h"
 #include "wifi_util.h"
+#include "wifi_mgr.h"
+#define PROTOBUF_MAC_SIZE 13
 
 // UUID - 8b27dafc-0c4d-40a1-b62c-f24a34074914
 
 // HASH - 4388e585dd7c0d32ac47e71f634b579b
 
+static void to_plan_id (unsigned char *PlanId, unsigned char Plan[])
+{
+    int i=0;
+    if (PlanId == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s %d PlanId is NULL\n", __func__, __LINE__);
+        return;
+    }
+    for (i=0; i < 16; i++) {
+        sscanf((char*)PlanId,"%2hhx",(char*)&Plan[i]);
+        PlanId += 2;
+    }
+}
+
 static void to_plan_char(unsigned char *plan, unsigned char *key)
 {
     int i = 0;
-    for(i=0; i<16; i++)
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    int size = (ctrl->network_mode == rdk_dev_mode_type_gw) ? 16 : 36;
+    for(i=0; i<size; i++)
     {
         sscanf((char*)plan,"%c",(char*)&key[i]);
         plan++;
@@ -94,7 +113,9 @@ char CPE_TYPE_STR[] = "Gateway";
 #define MAGIC_NUMBER      0x85
 #define MAGIC_NUMBER_SIZE 1
 #define SCHEMA_ID_LENGTH  32
+#define PLAN_ID_LENGTH_POD 48
 #define MAC_KEY_LEN 13
+#define  ARRAY_SZ(x)    (sizeof(x) / sizeof((x)[0]))
 
 typedef enum {
     single_client_msmt_type_all,
@@ -911,7 +932,19 @@ void upload_single_client_active_msmt_data(bssid_data_t *bssid_info, sta_data_t 
     // uuid - fixed 16 bytes
     uuid_generate_random(transaction_id);
     uuid_unparse(transaction_id, trans_id);
-    to_plan_char(monitor->active_msmt.PlanId, PlanId);
+    unsigned char PlanId_hex[16];
+    int loop = 0;
+    memset(PlanId_hex, '\0', 16);
+    to_plan_id(monitor->active_msmt.PlanId, PlanId_hex);
+    for (loop =0; loop < 16; loop++) {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d:planid in hex[%d] : %2hhx\n", __func__, __LINE__, loop, PlanId_hex[loop]);
+    }
+
+    to_plan_char(PlanId_hex, PlanId);
+    for (loop =0; loop < 16; loop++) {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d:planid in character[%d] : %c\n", __func__, __LINE__, loop, PlanId_hex[loop]);
+    }
+
     wifi_util_dbg_print(WIFI_MON, "%s:%d: Plan Id is %s\n", __func__, __LINE__,PlanId);
     avro_value_get_by_name(&adr, "header", &adrField, NULL);
 
@@ -1519,6 +1552,577 @@ void upload_single_client_active_msmt_data(bssid_data_t *bssid_info, sta_data_t 
     CcspTraceInfo(("%s-%d Blaster report successfully sent to Parodus WebPA component\n", __FUNCTION__, __LINE__));
 }
 
+#define LINUX_PROC_MEMINFO_FILE  "/proc/meminfo"
+#define LINUX_PROC_LOADAVG_FILE  "/proc/loadavg"
+
+typedef struct blaster_report_pb {
+    size_t  len;   /* Length of the serialized protobuf */
+    void    *buf;  /* Allocated pointer for serialized data */
+} blaster_report_pb_t;
+
+static void ext_blaster_report_device_struct_free(ExtBlaster__WifiBlastResult__DeviceMetrics *wb_dm_pb)
+{
+    if (wb_dm_pb == NULL) {
+        return;
+    }
+
+    free(wb_dm_pb->client_mac);
+    free(wb_dm_pb->throughput_samples);
+    free(wb_dm_pb->tx_packet_retransmissions);
+    free(wb_dm_pb);
+}
+
+static void ext_blaster_report_radio_struct_free(ExtBlaster__WifiBlastResult__RadioMetrics *wb_rm_pb)
+{
+    free(wb_rm_pb);
+}
+
+static void ext_blaster_report_health_struct_free(ExtBlaster__WifiBlastResult__HealthMetrics *wb_hm_pb)
+{
+    if (wb_hm_pb == NULL) {
+        return;
+    }
+
+    free(wb_hm_pb->load_avg);
+    free(wb_hm_pb);
+}
+
+static void ext_blaster_report_status_struct_free(ExtBlaster__WifiBlastResult__Status *status)
+{
+    if (status == NULL) {
+        return;
+    }
+
+    free(status->description);
+    free(status);
+}
+
+static bool DeviceMemory_DataGet(uint32_t *util_mem)
+{
+    const char *filename = LINUX_PROC_MEMINFO_FILE;
+    FILE *proc_file = NULL;
+    char buf[256] = {'\0'};
+    uint32_t mem_total = 0;
+    uint32_t mem_free = 0;
+
+    proc_file = fopen(filename, "r");
+    if (proc_file == NULL)
+    {
+        wifi_util_dbg_print(WIFI_MON,"Failed opening file: %s\n", filename);
+        return -1;
+    }
+
+    while (fgets(buf, sizeof(buf), proc_file) != NULL)
+    {
+        if (strncmp(buf, "MemTotal:", strlen("MemTotal:")) == 0)
+        {
+            if (sscanf(buf, "MemTotal: %u", &mem_total) != 1)
+                goto parse_error;
+        } else if (strncmp(buf, "MemFree:", strlen("MemFree:")) == 0) {
+            if (sscanf(buf, "MemFree: %u", &mem_free) != 1)
+                goto parse_error;
+        }
+    }
+    wifi_util_dbg_print(WIFI_MON," Returned MemTotal is %d and MemFree is %d\n", mem_total, mem_free);
+    *util_mem = mem_total - mem_free;
+    fclose(proc_file);
+    return 1;
+parse_error:
+    fclose(proc_file);
+    wifi_util_dbg_print(WIFI_MON,"Error parsing %s.\n", filename);
+    return 0;
+}
+
+static bool DeviceLoad_DataGet(ExtBlaster__WifiBlastResult__HealthMetrics__LoadAvg *LAvg_Protbuf)
+{
+    int32_t     rc;
+    const char  *filename = LINUX_PROC_LOADAVG_FILE;
+    FILE        *proc_file = NULL;
+
+    proc_file = fopen(filename, "r");
+    if (proc_file == NULL)
+    {
+        wifi_util_dbg_print(WIFI_MON,"Parsing device stats (Failed to open %s)\n", filename);
+        return false;
+    }
+
+    rc = fscanf(proc_file,
+            "%lf %lf %lf",
+            &LAvg_Protbuf->one,
+            &LAvg_Protbuf->five,
+            &LAvg_Protbuf->fifteen);
+
+    fclose(proc_file);
+
+    wifi_util_dbg_print(WIFI_MON," Returned %d and Parsed device load %0.2f %0.2f %0.2f\n", rc,
+            LAvg_Protbuf->one,
+            LAvg_Protbuf->five,
+            LAvg_Protbuf->fifteen);
+
+    return true;
+}
+
+static ExtBlaster__WifiBlastResult__Status* ExtBlaster_report_status_struct_create()
+{
+    ExtBlaster__WifiBlastResult__Status *res_status;
+
+    res_status = calloc(1, sizeof(*res_status));
+    if (res_status == NULL) {
+      wifi_util_dbg_print(WIFI_MON,"%s: Failed to allocate Status memory\n", __func__);
+      return NULL;
+    }
+
+    ext_blaster__wifi_blast_result__status__init(res_status);
+
+    res_status->code = EXT_BLASTER__RESULT_CODE__RESULT_CODE_SUCCEED;
+
+    res_status->description = strdup("SUCCEED");
+    if (res_status->description == NULL)
+    {
+      wifi_util_dbg_print(WIFI_MON,"%s: Failed to allocate Description memory\n", __func__);
+      free(res_status);
+      return NULL;
+    }
+
+    return res_status;
+}
+
+static void ext_blaster_report_pb_struct_free(ExtBlaster__WifiBlastResult *wb_res_pb)
+{
+    if (wb_res_pb == NULL)
+        return;
+
+    ext_blaster_report_device_struct_free(wb_res_pb->device_metrics);
+    ext_blaster_report_health_struct_free(wb_res_pb->health_metrics);
+    ext_blaster_report_radio_struct_free(wb_res_pb->radio_metrics);
+    ext_blaster_report_status_struct_free(wb_res_pb->status);
+    free(wb_res_pb->plan_id);
+    free(wb_res_pb);
+}
+
+
+static ExtBlaster__WifiBlastResult__HealthMetrics__LoadAvg* ExtBlaster_report_load_avg_struct_create()
+{
+    ExtBlaster__WifiBlastResult__HealthMetrics__LoadAvg *LoadAvg_Protbuf;
+    LoadAvg_Protbuf = calloc(1, sizeof(*LoadAvg_Protbuf));
+    if (LoadAvg_Protbuf == NULL) {
+        wifi_util_dbg_print(WIFI_MON,"%s: Failed to allocate HealthMetrics__LoadAvg memory\n", __func__);
+        return NULL;
+    }
+    ext_blaster__wifi_blast_result__health_metrics__load_avg__init(LoadAvg_Protbuf);
+
+    if (DeviceLoad_DataGet(LoadAvg_Protbuf))
+    {
+        LoadAvg_Protbuf->has_one = true;
+        LoadAvg_Protbuf->has_five = true;
+        LoadAvg_Protbuf->has_fifteen = true;
+    }
+    return LoadAvg_Protbuf;
+}
+
+static ExtBlaster__WifiBlastResult__HealthMetrics* ExtBlaster_report_health_struct_create()
+{
+    ExtBlaster__WifiBlastResult__HealthMetrics *HealthMtrx_Protbuf;
+    uint32_t UtilMem = 0;
+
+    HealthMtrx_Protbuf = calloc(1, sizeof(*HealthMtrx_Protbuf));
+    if (HealthMtrx_Protbuf == NULL) {
+        wifi_util_dbg_print(WIFI_MON,"%s: Failed to allocate HealthMetrics memory\n", __func__);
+        return NULL;
+    }
+
+    ext_blaster__wifi_blast_result__health_metrics__init(HealthMtrx_Protbuf);
+
+    DeviceMemory_DataGet(&UtilMem);
+
+    HealthMtrx_Protbuf->cpu_util = 0;
+    HealthMtrx_Protbuf->has_cpu_util = true;
+    HealthMtrx_Protbuf->mem_util = UtilMem;
+    HealthMtrx_Protbuf->has_mem_util = true;
+    HealthMtrx_Protbuf->load_avg = ExtBlaster_report_load_avg_struct_create();
+    if (HealthMtrx_Protbuf->load_avg == NULL) {
+        free(HealthMtrx_Protbuf);
+        return NULL;
+    }
+
+    return HealthMtrx_Protbuf;
+}
+
+static ExtBlaster__RadioBandType ExtBlaster_report_wifi_band_get(char * band_desc)
+{
+    ExtBlaster__RadioBandType band;
+
+    if (strstr("2.4GHz", band_desc))
+        band = EXT_BLASTER__RADIO_BAND_TYPE__BAND2G;
+    else if (strstr("5GHz", band_desc))
+        band = EXT_BLASTER__RADIO_BAND_TYPE__BAND5G;
+    else
+        band = EXT_BLASTER__RADIO_BAND_TYPE__BAND_UNKNOWN;
+
+    return band;
+}
+
+static ExtBlaster__WiFiStandard ExtBlaster_report_wifi_standard_get(wifi_ieee80211Variant_t variant)
+{
+    ExtBlaster__WiFiStandard standard;
+
+    if (variant & WIFI_80211_VARIANT_A)
+        standard = EXT_BLASTER__WI_FI_STANDARD__WIFI_STD_80211_A;
+    else if (variant & WIFI_80211_VARIANT_B)
+        standard = EXT_BLASTER__WI_FI_STANDARD__WIFI_STD_80211_B;
+    else if (variant & WIFI_80211_VARIANT_G)
+        standard = EXT_BLASTER__WI_FI_STANDARD__WIFI_STD_80211_G;
+    else if (variant & WIFI_80211_VARIANT_N)
+        standard = EXT_BLASTER__WI_FI_STANDARD__WIFI_STD_80211_N;
+    else if (variant & WIFI_80211_VARIANT_AC)
+        standard = EXT_BLASTER__WI_FI_STANDARD__WIFI_STD_80211_AC;
+    else if (variant & WIFI_80211_VARIANT_AX)
+        standard = EXT_BLASTER__WI_FI_STANDARD__WIFI_STD_80211_AX;
+    else
+        standard = EXT_BLASTER__WI_FI_STANDARD__WIFI_STD_UNKNOWN;
+
+    return standard;
+}
+
+static ExtBlaster__ChanWidth ExtBlaster_report_wifi_chanwidth_get(char * width)
+{
+    ExtBlaster__ChanWidth chan_w;
+
+    if(strstr("20MHz", width))
+        chan_w = EXT_BLASTER__CHAN_WIDTH__CHAN_WIDTH_20MHZ;
+    else if(strstr("40MHz", width))
+        chan_w = EXT_BLASTER__CHAN_WIDTH__CHAN_WIDTH_40MHZ;
+    else if(strstr("80MHz", width))
+        chan_w = EXT_BLASTER__CHAN_WIDTH__CHAN_WIDTH_80MHZ;
+    else if(strstr("160MHz", width))
+        chan_w = EXT_BLASTER__CHAN_WIDTH__CHAN_WIDTH_160MHZ;
+    else
+        chan_w = EXT_BLASTER__CHAN_WIDTH__CHAN_WIDTH_UNKNOWN;
+
+    return chan_w;
+}
+static ExtBlaster__WifiBlastResult__RadioMetrics* ExtBlaster_report_radio_struct_create(sta_data_t *sta_data)
+{
+    ExtBlaster__WifiBlastResult__RadioMetrics *RadioMetrics_protbuf;
+    wifi_monitor_t *g_monitor;
+    g_monitor = get_wifi_monitor();
+    wifi_ieee80211Variant_t wifi_variant;
+    int ap_index = 0;
+    int num_of_samples = GetActiveMsmtNumberOfSamples();
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_rfc_dml_parameters_t *rfc_pcfg = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
+
+    if(g_monitor == NULL)
+    {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d: global wifi monitor data is null \n", __func__, __LINE__);
+    }
+
+    ap_index= getApIndexfromClientMac((char *)sta_data->dev_stats.cli_MACAddress);
+    vap_svc_t *ext_svc;
+    ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
+    if (ext_svc == NULL) {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d: EXT SVC is NULL\n", __func__, __LINE__);
+        return NULL;
+    }
+    int connected_radio_index = 0;
+    connected_radio_index = get_radio_index_for_vap_index(ext_svc->prop, ap_index);
+
+    if (connected_radio_index == -1) {
+	wifi_util_error_print(WIFI_MON, "%s:%d: Radio index returned as error %u\n", __func__, __LINE__, connected_radio_index);
+	return NULL;
+    }
+
+    if (wifiStandardStrToEnum(sta_data->sta_active_msmt_data[num_of_samples-1].Operating_standard, &wifi_variant,connected_radio_index, rfc_pcfg->twoG80211axEnable_rfc) != TRUE) {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d: wifiStandardStrToEnum Failed\n", __func__, __LINE__);
+        return NULL;
+    }
+
+    RadioMetrics_protbuf = calloc(1, sizeof(*RadioMetrics_protbuf));
+    if (RadioMetrics_protbuf == NULL) {
+        wifi_util_dbg_print(WIFI_MON,"%s: Failed to allocate RadioMetrics memory\n", __func__);
+        return NULL;
+    }
+
+    ext_blaster__wifi_blast_result__radio_metrics__init(RadioMetrics_protbuf);
+
+    RadioMetrics_protbuf->activity_factor = (int)g_monitor->radio_data[connected_radio_index].RadioActivityFactor;
+    RadioMetrics_protbuf->has_activity_factor = true;
+    RadioMetrics_protbuf->carriersense_threshold_exceeded = (int)g_monitor->radio_data[connected_radio_index].CarrierSenseThreshold_Exceeded;
+    RadioMetrics_protbuf->has_carriersense_threshold_exceeded = true;
+    RadioMetrics_protbuf->noise_floor = (int)g_monitor->radio_data[connected_radio_index].NoiseFloor;
+    RadioMetrics_protbuf->has_noise_floor = true;
+    RadioMetrics_protbuf->channel_utilization = (uint)g_monitor->radio_data[connected_radio_index].channelUtil;
+    RadioMetrics_protbuf->has_channel_utilization = true;
+    RadioMetrics_protbuf->channel = g_monitor->radio_data[connected_radio_index].primary_radio_channel;
+    RadioMetrics_protbuf->has_channel = true;
+    RadioMetrics_protbuf->wifi_standard = ExtBlaster_report_wifi_standard_get(wifi_variant);
+    RadioMetrics_protbuf->has_wifi_standard = true;
+    RadioMetrics_protbuf->chan_width = ExtBlaster_report_wifi_chanwidth_get(sta_data->sta_active_msmt_data[num_of_samples-1].Operating_channelwidth);
+    RadioMetrics_protbuf->has_chan_width = true;
+    RadioMetrics_protbuf->radio_band = ExtBlaster_report_wifi_band_get(g_monitor->radio_data[connected_radio_index].frequency_band);
+    RadioMetrics_protbuf->has_radio_band = true;
+    wifi_util_dbg_print(WIFI_MON, "%s:%d: Returned data is Activity Factor %d, CS Threshold %d, NF %d, Ch. Util %d, Channel %d, Standard %d, Ch. Width %d, Radio Band %d\n",
+                                 __func__, __LINE__, RadioMetrics_protbuf->activity_factor, RadioMetrics_protbuf->carriersense_threshold_exceeded,
+                                 RadioMetrics_protbuf->noise_floor, RadioMetrics_protbuf->channel_utilization, RadioMetrics_protbuf->channel, RadioMetrics_protbuf->wifi_standard,
+                                 RadioMetrics_protbuf->chan_width, RadioMetrics_protbuf->radio_band);
+
+    return RadioMetrics_protbuf;
+}
+
+static int ExtBlaster_device_metrics_blast_sample_fill(
+        ExtBlaster__WifiBlastResult__DeviceMetrics *DMetric_pbuf,
+        bssid_data_t *ap_data, sta_data_t *cli_data)
+{
+    int count;
+    int num_of_samples = GetActiveMsmtNumberOfSamples();
+
+    if (num_of_samples <= 0) {
+        wifi_util_dbg_print(WIFI_MON,"%s: Invalid number of samples is received [%d]\n", __func__, num_of_samples);
+        return -1;
+    }
+
+    DMetric_pbuf->throughput_samples = calloc(num_of_samples, sizeof(*DMetric_pbuf->throughput_samples));
+    if (DMetric_pbuf->throughput_samples == NULL) {
+        wifi_util_dbg_print(WIFI_MON,"%s: Failed to allocate throughput_samples memory\n", __func__);
+        return -1;
+    }
+
+    DMetric_pbuf->tx_packet_retransmissions = calloc(num_of_samples,
+            sizeof(*DMetric_pbuf->tx_packet_retransmissions));
+    if (DMetric_pbuf->tx_packet_retransmissions == NULL)
+    {
+        wifi_util_dbg_print(WIFI_MON,"%s: Failed to allocate tx_packet_retransmissions memory\n", __func__);
+        free(DMetric_pbuf->throughput_samples);
+        DMetric_pbuf->throughput_samples = NULL;
+        return -1;
+    }
+
+    DMetric_pbuf->n_throughput_samples = num_of_samples;
+    DMetric_pbuf->n_tx_packet_retransmissions = num_of_samples;
+    wifi_util_dbg_print(WIFI_MON,"%s: Returned Throughput samples and PKT retrans %d\n", __func__, num_of_samples);
+    for (count = 0; count < num_of_samples; count++)
+    {
+        DMetric_pbuf->throughput_samples[count] = cli_data->sta_active_msmt_data[count].throughput;
+        DMetric_pbuf->tx_packet_retransmissions[count] = cli_data->sta_active_msmt_data[count].ReTransmission;
+        wifi_util_dbg_print(WIFI_MON,"%s: Returned Throughput Samples and Tx Pkt Retransmissions for Sample-ID %d are %lf and %llu\n", __func__, count, DMetric_pbuf->throughput_samples[count], DMetric_pbuf->tx_packet_retransmissions[count]);
+    }
+  return 0;
+}
+
+static ExtBlaster__WifiBlastResult__DeviceMetrics* ExtBlaster_report_device_struct_create(bssid_data_t *bss_data, sta_data_t *sta_data)
+{
+    ExtBlaster__WifiBlastResult__DeviceMetrics *DevMetrics_protbuf;
+    int sampleCount = GetActiveMsmtNumberOfSamples();
+
+    DevMetrics_protbuf = calloc(1, sizeof(*DevMetrics_protbuf));
+    if (DevMetrics_protbuf == NULL) {
+      wifi_util_dbg_print(WIFI_MON,"%s: Failed to allocate DeviceMetrics memory\n", __func__);
+      return NULL;
+    }
+
+    ext_blaster__wifi_blast_result__device_metrics__init(DevMetrics_protbuf);
+    DevMetrics_protbuf->client_mac = (char *)malloc(PROTOBUF_MAC_SIZE);
+    if (DevMetrics_protbuf->client_mac == NULL)
+    {
+        wifi_util_dbg_print(WIFI_MON,"%s: Failed to allocate Client MAC memory\n", __func__);
+        free(DevMetrics_protbuf);
+        return NULL;
+    }
+    memset(DevMetrics_protbuf->client_mac,'\0', PROTOBUF_MAC_SIZE);
+    snprintf(DevMetrics_protbuf->client_mac, PROTOBUF_MAC_SIZE, "%02hhx%02hhx%02hhx%02hhx%02hhx%02hhx", sta_data->dev_stats.cli_MACAddress[0], sta_data->dev_stats.cli_MACAddress[1], sta_data->dev_stats.cli_MACAddress[2], sta_data->dev_stats.cli_MACAddress[3], sta_data->dev_stats.cli_MACAddress[4], sta_data->dev_stats.cli_MACAddress[5]);
+    DevMetrics_protbuf->rssi = (int)sta_data->sta_active_msmt_data[sampleCount-1].rssi;
+    DevMetrics_protbuf->has_rssi = true;
+    DevMetrics_protbuf->rx_phyrate = (int)sta_data->sta_active_msmt_data[sampleCount-1].RxPhyRate;
+    DevMetrics_protbuf->has_rx_phyrate = true;
+    DevMetrics_protbuf->tx_phyrate = (int)sta_data->sta_active_msmt_data[sampleCount-1].TxPhyRate;
+    DevMetrics_protbuf->has_tx_phyrate = true;
+    DevMetrics_protbuf->snr = (int)sta_data->sta_active_msmt_data[sampleCount-1].SNR;
+    DevMetrics_protbuf->has_snr = true;
+    wifi_util_dbg_print(WIFI_MON,"%s: Client MAC: %s \n", __func__, DevMetrics_protbuf->client_mac);
+    wifi_util_dbg_print(WIFI_MON,"%s: Returned RSSI is %d, rx_phyrate is %d, tx_phyrate is %d, snr is %d\n", __func__, DevMetrics_protbuf->rssi, DevMetrics_protbuf->rx_phyrate, DevMetrics_protbuf->tx_phyrate, DevMetrics_protbuf->snr);
+
+    // fill blast device details
+    if (ExtBlaster_device_metrics_blast_sample_fill(DevMetrics_protbuf, bss_data, sta_data) != 0)
+    {
+      wifi_util_dbg_print(WIFI_MON,"%s: Failed ExtBlaster_device_metrics_blast_sample_fill\n", __func__);
+      free(DevMetrics_protbuf->client_mac);
+      free(DevMetrics_protbuf);
+      DevMetrics_protbuf = NULL;
+      return NULL;
+    }
+
+    return DevMetrics_protbuf;
+}
+
+static int ExtBlaster_report_metrics_struct_create(ExtBlaster__WifiBlastResult *wb_res_pb, bssid_data_t *bssid_data, sta_data_t *station_info)
+{
+    ExtBlaster__WifiBlastResult__HealthMetrics *Health_metrics_pb;
+    ExtBlaster__WifiBlastResult__RadioMetrics *Radio_metrics_pb;
+    ExtBlaster__WifiBlastResult__DeviceMetrics *Device_metrics_pb;
+
+    Health_metrics_pb = ExtBlaster_report_health_struct_create();
+    if (Health_metrics_pb == NULL) {
+        return -1;
+    }
+
+    Radio_metrics_pb = ExtBlaster_report_radio_struct_create(station_info);
+    if (Radio_metrics_pb == NULL) {
+        ext_blaster_report_health_struct_free(Health_metrics_pb);
+        return -1;
+    }
+
+    Device_metrics_pb = ExtBlaster_report_device_struct_create(bssid_data, station_info);
+    if (Device_metrics_pb == NULL)
+    {
+        ext_blaster_report_health_struct_free(Health_metrics_pb);
+        ext_blaster_report_radio_struct_free(Radio_metrics_pb);
+        return -1;
+    }
+
+    wb_res_pb->health_metrics = Health_metrics_pb;
+    wb_res_pb->device_metrics = Device_metrics_pb;
+    wb_res_pb->radio_metrics = Radio_metrics_pb;
+
+    return 0;
+}
+
+static ExtBlaster__WifiBlastResult* ExtBlaster_report_pb_struct_create(bssid_data_t *bss_info, sta_data_t *sta_data)
+{
+    ExtBlaster__WifiBlastResult *Result_protbuf;
+    struct timeval ts;
+    unsigned char PlanId[PLAN_ID_LENGTH_POD];
+    wifi_monitor_t *g_monitor;
+    wifi_actvie_msmt_t *monitor;
+
+
+    g_monitor = get_wifi_monitor();
+    if(g_monitor == NULL)
+    {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d: global wifi monitor data is null \n", __func__, __LINE__);
+    }
+    monitor = (wifi_actvie_msmt_t *)get_active_msmt_data();
+
+    if(monitor == NULL)
+    {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d: wifi monitor active msmt data is null \n", __func__, __LINE__);
+    }
+
+    Result_protbuf = calloc(1, sizeof(*Result_protbuf));
+    if (Result_protbuf == NULL) {
+        wifi_util_dbg_print(WIFI_MON,"%s: Failed to allocate WifiBlastResult memory\n", __func__);
+        return NULL;
+    }
+
+    //bssid_data = bssid_info;
+    //sta_data = sta_info;
+
+    ext_blaster__wifi_blast_result__init(Result_protbuf);
+
+    memset(PlanId, 0, sizeof(PlanId));
+
+    gettimeofday(&ts, NULL);
+    int64_t tstamp_av_main = ((int64_t) (ts.tv_sec) * 1000000) + (int64_t) ts.tv_usec;
+    //Set timestamp value in the report
+    tstamp_av_main = tstamp_av_main/1000;
+
+    to_plan_char(monitor->active_msmt.PlanId, PlanId);
+
+    Result_protbuf->time_stamp = tstamp_av_main;
+    Result_protbuf->has_time_stamp = true;
+    Result_protbuf->step_id = monitor->curStepData.StepId;
+    Result_protbuf->has_step_id = true;
+    Result_protbuf->plan_id = strdup((char *)PlanId);
+    if (Result_protbuf->plan_id == NULL)
+    {
+        wifi_util_dbg_print(WIFI_MON,"%s: Failed to strdup PlanID\n", __func__);
+        free(Result_protbuf);
+        return NULL;
+    }
+
+    wifi_util_dbg_print(WIFI_MON,"%s: PlanID %s, StepID %d\n", __func__, Result_protbuf->plan_id, Result_protbuf->step_id);
+    if (ExtBlaster_report_metrics_struct_create(Result_protbuf, bss_info, sta_data) != 0) {
+        ext_blaster_report_pb_struct_free(Result_protbuf);
+        return NULL;
+    }
+
+    Result_protbuf->status = ExtBlaster_report_status_struct_create();
+    if (Result_protbuf->status == NULL) {
+        ext_blaster_report_pb_struct_free(Result_protbuf);
+        return NULL;
+    }
+
+    return Result_protbuf;
+}
+
+void pod_upload_single_client_active_msmt_data(bssid_data_t *bssid_info, sta_data_t *sta_info)
+{
+    ExtBlaster__WifiBlastResult *Result_pbuf;
+    blaster_report_pb_t *report_pb;
+    void *buf = NULL;
+    wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
+    char *mqtt_topic = (char *)mgr->blaster_config_global.blaster_mqtt_topic;
+    qm_response_t res;
+
+    wifi_util_dbg_print(WIFI_MON, "%s: Enter\n", __func__);
+    report_pb = calloc(1, sizeof(*report_pb));
+    if (report_pb == NULL) {
+        wifi_util_dbg_print(WIFI_MON, "%s: Failed to allocate xle_wbm_report_pb_t memory\n", __func__);
+        return;
+    }
+
+    Result_pbuf = ExtBlaster_report_pb_struct_create(bssid_info, sta_info);
+    if (Result_pbuf == NULL) {
+        goto Error;
+    }
+    wifi_util_dbg_print(WIFI_MON, "%s: Struct create done\n", __func__);
+
+    report_pb->len = ext_blaster__wifi_blast_result__get_packed_size(Result_pbuf);
+    if (report_pb->len == 0) {
+        wifi_util_dbg_print(WIFI_MON, "%s: Invalid packed size for result buff\n", __func__);
+        goto Error;
+    }
+    wifi_util_dbg_print(WIFI_MON, "%s: Packed Size is %d\n", __func__, report_pb->len);
+
+    buf = calloc(1, report_pb->len);
+    if (buf == NULL) {
+        wifi_util_dbg_print(WIFI_MON, "%s: Failed to allocate buf memory\n", __func__);
+        goto Error;
+    }
+
+    report_pb->len = ext_blaster__wifi_blast_result__pack(Result_pbuf, buf);
+    if (report_pb->len <= 0) {
+        wifi_util_dbg_print(WIFI_MON, "%s: Failed to pack result protobuf! Lengh [%zu]\n", __func__, report_pb->len);
+        goto Error;
+    }
+    report_pb->buf = buf;
+    wifi_util_dbg_print(WIFI_MON, "%s: Packed buf is %s\n", __func__, (char *)report_pb->buf);
+
+    //Send the Data
+    if (!qm_conn_get_status(NULL)) {
+        wifi_util_dbg_print(WIFI_MON,"%s: Cannot connect to QM (QM not running?)\n", __func__);
+        goto Error;
+    }
+    
+    ext_blaster_report_pb_struct_free(Result_pbuf);
+
+    wifi_util_dbg_print(WIFI_MON,"%s: Publishing message with msg len: %zu, to topic: %s\n", __func__, report_pb->len, mqtt_topic);
+    if (!qm_conn_send_direct(QM_REQ_COMPRESS_IF_CFG, mqtt_topic, report_pb->buf, report_pb->len, &res)) {
+        wifi_util_dbg_print(WIFI_MON,"%s: Error sending message\n", __func__);
+    }
+
+    if (report_pb != NULL) {
+        free(report_pb->buf);
+        free(report_pb);
+        report_pb = NULL;
+    }
+    return;
+Error:
+    ext_blaster_report_pb_struct_free(Result_pbuf);
+    free(report_pb);
+    free(buf);
+    return;
+}
+
 /* This function calls the ODP streamer function with station and radio data.
    If ActiveMsmtFlag is true then the streamer for active measurement is called or
    streamer for instant measurement has been triggered.
@@ -1533,6 +2137,7 @@ void stream_client_msmt_data(bool ActiveMsmtFlag)
     mac_addr_str_t key;
     int ap_index = 0;
     unsigned int vap_array_index;
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
 
     monitor = get_wifi_monitor();
@@ -1560,7 +2165,11 @@ void stream_client_msmt_data(bool ActiveMsmtFlag)
 
         data = (sta_data_t *)hash_map_get(sta_map, key);
         if (data != NULL) {
-            upload_single_client_active_msmt_data(&monitor->bssid_data[vap_array_index], data);
+            if (ctrl->network_mode == rdk_dev_mode_type_gw) {
+                upload_single_client_active_msmt_data(&monitor->bssid_data[vap_array_index], data);
+            } else if (ctrl->network_mode == rdk_dev_mode_type_ext) {
+                pod_upload_single_client_active_msmt_data(&monitor->bssid_data[vap_array_index], data);
+            }
         }
     }
 }

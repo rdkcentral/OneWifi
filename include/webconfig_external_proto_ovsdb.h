@@ -20,18 +20,24 @@
 #ifndef EXTERNAL_PROTO_OVSDB_H
 #define EXTERNAL_PROTO_OVSDB_H
 
+#define MAX_MQTT_TOPIC_LEN 256
 typedef struct {
     const struct schema_Wifi_Radio_Config **radio_config;
     const struct schema_Wifi_VIF_Config **vif_config;
+    const struct schema_Wifi_Blaster_Config **blaster_config;
+    const char awlan_mqtt_topic[MAX_MQTT_TOPIC_LEN];
     const struct schema_Wifi_Credential_Config **cred_config;
     const struct schema_Wifi_Radio_State **radio_state;
     const struct schema_Wifi_VIF_State   **vif_state;
+    const struct schema_Wifi_Blaster_State   **blaster_state;
     const struct schema_Wifi_Associated_Clients **assoc_clients;
 
     const unsigned int radio_config_row_count;
     const unsigned int vif_config_row_count;
+    const unsigned int blaster_config_row_count;
     const unsigned int radio_state_row_count;
     const unsigned int vif_state_row_count;
+    const unsigned int blaster_state_row_count;
     const unsigned int assoc_clients_row_count;
 
 /* TBD: place for next arrays and other data, in particular

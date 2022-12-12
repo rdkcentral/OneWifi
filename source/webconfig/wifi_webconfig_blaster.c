@@ -52,12 +52,23 @@ webconfig_error_t access_blaster_subdoc(webconfig_t *config, webconfig_subdoc_da
 
 webconfig_error_t translate_from_blaster_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
 {
-    //no translation required
-    return webconfig_error_none;
+      if ((data->descriptor & webconfig_data_descriptor_translate_to_ovsdb) == webconfig_data_descriptor_translate_to_ovsdb) {
+          if (translate_to_ovsdb_tables(webconfig_subdoc_type_blaster, data) != webconfig_error_none) {
+               wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Translate from Blaster subdoc failed\n", __func__, __LINE__);
+              return webconfig_error_translate_to_ovsdb;
+          }
+      }
+      return webconfig_error_none;
 }
 
 webconfig_error_t translate_to_blaster_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
 {
+      if ((data->descriptor & webconfig_data_descriptor_translate_from_ovsdb) == webconfig_data_descriptor_translate_from_ovsdb) {
+          if (translate_from_ovsdb_tables(webconfig_subdoc_type_blaster, data) != webconfig_error_none) {
+              wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Translate to Blaster subdoc failed\n", __func__, __LINE__);
+              return webconfig_error_translate_from_ovsdb;
+          }
+      }
     return webconfig_error_none;
 }
 
@@ -91,7 +102,6 @@ webconfig_error_t encode_blaster_subdoc(webconfig_t *config, webconfig_subdoc_da
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(json, "Parameters", obj);
 
-
     if (encode_blaster_object(&params->blaster, obj) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode wifi blaster config\n", __func__, __LINE__);
         return webconfig_error_encode;
@@ -99,9 +109,9 @@ webconfig_error_t encode_blaster_subdoc(webconfig_t *config, webconfig_subdoc_da
     memset(data->u.encoded.raw, 0, MAX_SUBDOC_SIZE);
     str = cJSON_Print(json);
     memcpy(data->u.encoded.raw, str, strlen(str));
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: encode success %s\n", __func__, __LINE__, str);
     cJSON_free(str);
     cJSON_Delete(json);
-    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: encode success\n", __func__, __LINE__);
     return webconfig_error_none;
 }
 
