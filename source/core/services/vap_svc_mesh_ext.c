@@ -23,6 +23,8 @@
 #include "stdlib.h"
 #include <sys/time.h>
 #include <assert.h>
+#include <arpa/inet.h>
+#include <unistd.h>
 #include "const.h"
 #include <unistd.h>
 #include "vap_svc.h"
@@ -150,6 +152,16 @@ void cancel_all_running_timer(vap_svc_t *svc)
         scheduler_cancel_timer_task(l_ctrl->sched, l_ext->ext_disconnection_event_timeout_handler_id);
         l_ext->ext_disconnection_event_timeout_handler_id = 0;
     }
+    if (l_ext->ext_udhcp_ip_check_id != 0) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d - cancel started timer\r\n", __func__, __LINE__);
+        scheduler_cancel_timer_task(l_ctrl->sched, l_ext->ext_udhcp_ip_check_id);
+        l_ext->ext_udhcp_ip_check_id = 0;
+    }
+    if (l_ext->ext_udhcp_disconnect_event_timeout_handler_id != 0) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d - cancel started timer\r\n", __func__, __LINE__);
+        scheduler_cancel_timer_task(l_ctrl->sched, l_ext->ext_udhcp_disconnect_event_timeout_handler_id);
+        l_ext->ext_udhcp_disconnect_event_timeout_handler_id = 0;
+    }
 }
 
 void ext_incomplete_scan_list(vap_svc_t *svc)
@@ -206,6 +218,98 @@ int process_disconnection_event_timeout(vap_svc_t *svc)
                 EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1);
     }
 
+    return 0;
+}
+
+int process_udhcp_disconnect_event_timeout(vap_svc_t *svc)
+{
+    vap_svc_ext_t   *ext;
+    wifi_ctrl_t *ctrl;
+
+    ctrl = svc->ctrl;
+    ext = &svc->u.ext;
+
+    if (ext->conn_state == connection_state_connected) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d Not received disconnection event \n", __func__, __LINE__);
+        ext->conn_state = connection_state_disconnected_scan_list_none;
+        scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
+                process_ext_connect_algorithm, svc,
+                EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1);
+    }
+
+    return 0;
+}
+
+int process_udhcp_ip_check(vap_svc_t *svc)
+{
+    static int ip_check_count = 0;
+    struct sockaddr_in sa;
+    char value[128];
+    char file_name[128];
+    char command[256];
+    size_t len = 0;
+    wifi_interface_name_t *interface_name;
+    FILE *fp = NULL;
+
+    vap_svc_ext_t   *ext;
+    wifi_ctrl_t *ctrl;
+    ctrl = svc->ctrl;
+    ext = &svc->u.ext;
+
+#if CCSP_COMMON 
+    wifi_apps_t    *analytics = NULL;
+    analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
+#endif
+
+    memset(value, '\0', sizeof(value));
+    memset(value, '\0', sizeof(file_name));
+    memset(command, '\0', sizeof(command));
+
+    interface_name = get_interface_name_for_vap_index(ext->connected_vap_index, svc->prop);
+    if ((interface_name == NULL) && (ip_check_count <= 2)) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d Unable to fetch proper Interface name for connected index%d\n", __func__, __LINE__, ext->connected_vap_index);
+        ip_check_count++;
+        return 0;
+    }
+
+    snprintf(file_name, sizeof(file_name), "/var/run/udhcpc-%s.opts", *interface_name);
+    snprintf(command, sizeof(command), "grep \"ip=\" %s | cut -d '=' -f 2", file_name);
+
+    if ((ip_check_count <= 2) && (ext->conn_state == connection_state_connected)) {
+        if (access(file_name , F_OK) == 0) {
+            fp = popen(command, "r");
+            if (fp != NULL) {
+                fgets(value, sizeof(value), fp);
+                len  = strlen(value);
+                if (len > 0) {
+                    value[len-1] = '\0';
+                    if ((inet_pton(AF_INET, value, &(sa.sin_addr)) == 1) || (inet_pton(AF_INET6, value, &(sa.sin_addr)) == 1)) {
+                        scheduler_cancel_timer_task(ctrl->sched, ext->ext_udhcp_ip_check_id);
+                        ip_check_count = 0;
+                        pclose(fp);
+                        return 0;
+                    }
+                }
+                pclose(fp);
+            }
+        }
+    }
+
+    if (ip_check_count > 2) {
+        scheduler_cancel_timer_task(ctrl->sched, ext->ext_udhcp_ip_check_id);
+        ip_check_count = 0;
+        wifi_util_error_print(WIFI_CTRL,"%s:%d No IP on connected interface triggering a disconnect\n", __func__, __LINE__);
+#if CCSP_COMMON
+        analytics->event_fn(analytics, ctrl_event_type_command, ctrl_event_type_udhcp_ip_fail, ext);
+#endif
+        wifi_hal_disconnect(ext->connected_vap_index);
+        scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_udhcp_disconnect_event_timeout_handler_id,
+                process_udhcp_disconnect_event_timeout, svc,
+                EXT_DISCONNECTION_IND_TIMEOUT, 1);
+        return 0;
+    }
+
+    ip_check_count++;
     return 0;
 }
 
@@ -962,6 +1066,20 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
             // change the state
             ext->conn_state = connection_state_connected;
 
+            /* Self heal to check if the connected interface received valid ip after a timeout if not trigger a reconnection */
+
+            if (ext->ext_udhcp_ip_check_id != 0) {
+                scheduler_cancel_timer_task(ctrl->sched, ext->ext_udhcp_ip_check_id);
+            }
+
+            if (ext->ext_udhcp_disconnect_event_timeout_handler_id != 0) {
+                scheduler_cancel_timer_task(ctrl->sched,  ext->ext_udhcp_disconnect_event_timeout_handler_id);
+            }
+
+            scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_udhcp_ip_check_id,
+                process_udhcp_ip_check, svc,
+                EXT_UDHCP_IP_CHECK_INTERVAL, 0);
+
             radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(index);
             if (radio_params != NULL) {
                 if ((radio_params->channel != sta_data->stats.channel) || (radio_params->channelWidth != sta_data->stats.channelWidth)) {
@@ -988,6 +1106,13 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
             found_candidate = true;
             ext->conn_state = connection_state_connection_to_lcb_in_progress;
             send_event = true;
+            if (ext->ext_udhcp_ip_check_id != 0) {
+                scheduler_cancel_timer_task(ctrl->sched, ext->ext_udhcp_ip_check_id);
+            }
+
+            if (ext->ext_udhcp_disconnect_event_timeout_handler_id != 0) {
+                scheduler_cancel_timer_task(ctrl->sched, ext->ext_udhcp_disconnect_event_timeout_handler_id);
+            }
         } else if (ext->conn_state == connection_state_connection_in_progress) {
             candidate = ext->candidates_list.scan_list;
             for (i = 0; i < ext->candidates_list.scan_count; i++) {
