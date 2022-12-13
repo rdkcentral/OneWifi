@@ -45,7 +45,6 @@ if [ "$DEVICE_MODE" == "1" ]; then
  fi
  ovs-vsctl add-br $MESH_EXTENDER_BRIDGE
  ifconfig $MESH_EXTENDER_BRIDGE up
- exit 0
 elif [ "$MODEL_NUM" == "WNXL11BWL" ]; then
  MESHBR24_IP="169.254.70.1 netmask 255.255.255.0"
  MESHBR50_IP="169.254.71.1 netmask 255.255.255.0"
@@ -281,14 +280,24 @@ if [ "$MODEL_NUM" == "PX5001" ] || [ "$MODEL_NUM" == "CGM4331COM" ] || [ "$MODEL
 	    else
 		ifbr403=`brctl show | grep br403`
 	    fi
-            if [ "$ifbr403" == "" ]; then
+            if [ "$DEVICE_MODE" == "1" ]; then
+                echo "XLE is in Extender Mode skipping backhaul bridge configuration"
+            elif [ "$ifbr403" == "" ]; then
                 sysevent set meshbhaul-setup 10
             fi
         else
             brctl403=`brctl show | grep br403`
-            if [ "$brctl403" == "" ]; then
+            if [ "$DEVICE_MODE" == "1" ]; then
+                echo "XLE is in Extender Mode skipping backhaul bridge configuration"
+            elif [ "$brctl403" == "" ]; then
                 mesh_bhaul
             fi
+        fi
+        if [ "$DEVICE_MODE" == "1" ] && [ "$MODEL_NUM" == "WNXL11BWL" ]; then
+            echo "....................sysevent set dhcp_conf_change.............."
+            sysevent set dhcp_conf_change "interface=brlan113|dhcp-range=169.254.71.2,169.254.71.254,255.255.255.0,infinite"
+            sleep 1
+            sysevent set dhcp_conf_change "interface=brlan112|dhcp-range=169.254.70.2,169.254.70.254,255.255.255.0,infinite"
         fi
 
 fi
