@@ -1162,6 +1162,13 @@ void check_log_upload_cron_job()
         v_secure_system("/usr/ccsp/wifi/wifi_logupload.sh start");
     }
 }
+void check_self_heal_cron_job()
+{
+    if (access("/nvram/wifi_self_heal",F_OK) != 0) {
+        wifi_util_info_print(WIFI_CTRL,"Device.WiFi.SelfHeal cronjob was added\n");
+        v_secure_system("/usr/ccsp/wifi/wifi_self_heal_cron.sh start");
+    }
+}
 
 int start_wifi_ctrl(wifi_ctrl_t *ctrl)
 {
@@ -1185,6 +1192,9 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
     /* Check for whether Log_Upload was enabled or not
        If Enabled add cron job to do log upload */
     check_log_upload_cron_job();
+
+    /* Check for selfHeal RFC enabled if enabled start the cronjob */
+    check_self_heal_cron_job();
 
     /* start wifi apps */
     wifi_hal_platform_post_init();

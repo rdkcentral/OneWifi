@@ -368,6 +368,23 @@ WiFi_GetParamBoolValue
         fclose(fp);
         return TRUE;
     }
+    if (AnscEqualString(ParamName, "TCXB7_5342_Heal_Enable", TRUE))
+    {
+        *pBool = FALSE;
+        fp = popen("crontab -l | grep -c wifi_self_heal_command.sh","r");
+        while(fgets(path,sizeof(path) , fp) != NULL) {
+            val = atoi(path);
+            if(val == 1) {
+                *pBool = TRUE;
+            }
+            else  {
+                *pBool = FALSE;
+            }
+            wifi_util_info_print(WIFI_DMCLI,"%s:%d TCXB7_5342_Heal_Enable %s and val=%d\n", __FUNCTION__,__LINE__,path,val);
+        }
+        fclose(fp);
+        return TRUE;
+    }
     return FALSE;
 }
 
@@ -1021,6 +1038,19 @@ WiFi_SetParamBoolValue
         } else {
             v_secure_system("/usr/ccsp/wifi/wifi_logupload.sh stop");
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Log_upload stopped\n", __FUNCTION__,__LINE__);
+        }
+        return TRUE;
+    }
+
+    if (AnscEqualString(ParamName, "TCXB7_5342_Heal_Enable", TRUE))
+    {
+      
+        if (bValue) {
+            v_secure_system("/usr/ccsp/wifi/wifi_self_heal_cron.sh start");
+            wifi_util_info_print(WIFI_DMCLI,"%s:%d Selfheal_Enable started\n", __FUNCTION__,__LINE__);
+        } else {
+            v_secure_system("/usr/ccsp/wifi/wifi_self_heal_cron.sh stop");
+            wifi_util_info_print(WIFI_DMCLI,"%s:%d Selfheal_Enable stopped\n", __FUNCTION__,__LINE__);
         }
         return TRUE;
     }
@@ -6486,6 +6516,12 @@ AccessPoint_SetParamIntValue
 		} else if(vapInfo->u.bss_info.bssMaxSta == 75) {
 			vapInfo->u.bss_info.bssMaxSta = 74;
                         wifi_util_info_print(WIFI_DMCLI,"selfheal, configuring max assoc clients to 74\n");
+		} else if(vapInfo->u.bss_info.bssMaxSta == 5) {
+			vapInfo->u.bss_info.bssMaxSta = 6;
+                        wifi_util_info_print(WIFI_DMCLI,"selfheal, configuring max assoc clients to 6\n");
+		} else if(vapInfo->u.bss_info.bssMaxSta == 6) {
+			vapInfo->u.bss_info.bssMaxSta = 5;
+                        wifi_util_info_print(WIFI_DMCLI,"selfheal, configuring max assoc clients to 5\n");
 		}
 	} else {
         	vapInfo->u.bss_info.bssMaxSta = iValue;
