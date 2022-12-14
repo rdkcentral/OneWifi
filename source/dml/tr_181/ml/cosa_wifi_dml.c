@@ -909,7 +909,7 @@ WiFi_SetParamBoolValue
             return TRUE;
         }
         ULONG instance_number;
-        for(instance_number = 0; instance_number < MAX_NUM_RADIOS; instance_number++)
+        for(instance_number = 0; instance_number < getNumberRadios(); instance_number++)
         {
             wifiRadioOperParam = (wifi_radio_operationParam_t *) get_dml_cache_radio_map(instance_number);
             if (wifiRadioOperParam == NULL)
