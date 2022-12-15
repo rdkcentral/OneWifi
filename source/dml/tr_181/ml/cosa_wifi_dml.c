@@ -2329,7 +2329,7 @@ Radio_GetParamStringValue
         if (convert_freq_band_to_radio_index(pcfg->band, &instance_number) == RETURN_ERR) {
             AnscCopyString(pValue, "Invalid_Radio");
         } else {
-            if (get_interface_name_from_radio_index(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop, instance_number, pValue) != RETURN_OK) {
+            if (convert_radio_index_to_ifname(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop, instance_number, pValue, *pUlSize) != RETURN_OK) {
                 AnscCopyString(pValue, "Invalid_Radio");
             }
         }
