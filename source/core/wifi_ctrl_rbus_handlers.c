@@ -1227,6 +1227,29 @@ void rbus_subscribe_events(wifi_ctrl_t *ctrl)
 
 }
 
+rbusError_t get_sta_connection_timeout(rbusHandle_t handle, rbusProperty_t property, rbusGetHandlerOptions_t* opts)
+{
+    char const* name = rbusProperty_GetName(property);
+    rbusValue_t value;
+    vap_svc_t *ext_svc;
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+
+    wifi_util_dbg_print(WIFI_CTRL,"%s Rbus property=%s\n",__FUNCTION__,name);
+
+    rbusValue_Init(&value);
+    ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
+    if (ext_svc != NULL) {
+        if (strcmp(name, WIFI_STA_SELFHEAL_CONNECTION_TIMEOUT) == 0) {
+            rbusValue_SetBoolean(value, ext_svc->u.ext.selfheal_status);
+        }
+    }
+
+    rbusProperty_SetValue(property, value);
+    rbusValue_Release(value);
+
+    return RBUS_ERROR_SUCCESS;
+}
+
 rbusError_t get_sta_attribs(rbusHandle_t handle, rbusProperty_t property, rbusGetHandlerOptions_t* opts)
 {
     char const* name = rbusProperty_GetName(property);
@@ -1242,6 +1265,8 @@ rbusError_t get_sta_attribs(rbusHandle_t handle, rbusProperty_t property, rbusGe
     memset(l_bssid, 0, sizeof(l_bssid));
 
     wifi_util_dbg_print(WIFI_CTRL,"%s Rbus property=%s\n",__FUNCTION__,name);
+
+
 
     sscanf(name, "Device.WiFi.STA.%d.%s", &index, extension);
     if (index > getNumberRadios()) {
@@ -1384,6 +1409,8 @@ void rbus_register_handlers(wifi_ctrl_t *ctrl)
                                 { get_null_subdoc_data, NULL, NULL, NULL, NULL, NULL }},
                                 { WIFI_STA_TRIGGER_DISCONNECTION, RBUS_ELEMENT_TYPE_METHOD,
                                 { get_sta_disconnection, set_sta_disconnection, NULL, NULL, NULL, NULL}}, 
+                                { WIFI_STA_SELFHEAL_CONNECTION_TIMEOUT, RBUS_ELEMENT_TYPE_EVENT,
+                                { get_sta_connection_timeout, NULL, NULL, NULL, NULL, NULL}},
     };
 
     rc = rbus_open(&ctrl->rbus_handle, component_name);

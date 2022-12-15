@@ -1174,6 +1174,9 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
                 process_udhcp_ip_check, svc,
                 EXT_UDHCP_IP_CHECK_INTERVAL, 0);
 
+            /* Make Self Heal Timeout to flase once connected */
+            ext->selfheal_status = false;
+
             radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(index);
             if (radio_params != NULL) {
                 if ((radio_params->channel != sta_data->stats.channel) || (radio_params->channelWidth != sta_data->stats.channelWidth)) {

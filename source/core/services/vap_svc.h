@@ -103,6 +103,7 @@ typedef struct {
     bss_candidate_list_t   candidates_list;
     bss_candidate_t        last_connected_bss;
     connection_state_t     conn_state;
+    unsigned int           selfheal_status;
     unsigned int           connected_vap_index;
     unsigned long long int last_connected_time;
     unsigned char          conn_retry;

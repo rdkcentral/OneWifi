@@ -157,13 +157,13 @@ void reset_both_wifi_radio(void)
     both_wifi_radio_set_enable(true);
 }
 
-unsigned int reboot_time(void)
+unsigned int selfheal_event_publish_time(void)
 {
      FILE *fp;
      char buff[64];
      char *ptr;
 
-     if ((fp = fopen("/nvram/reboot_time", "r")) == NULL) {
+     if ((fp = fopen("/nvram/selfheal_event_publish_time", "r")) == NULL) {
          return 10; /* default is 10 minutes */
      }
 
@@ -195,6 +195,48 @@ int reboot_device(wifi_ctrl_t *ctrl)
     return RETURN_OK;
 }
 
+void selfheal_event_publish(wifi_ctrl_t *ctrl)
+{
+    rbusEvent_t event;
+    rbusObject_t rdata;
+    rbusValue_t value;
+    vap_svc_t *ext_svc;
+    int rc;
+    
+    if (ctrl == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: NULL Pointer\n", __func__, __LINE__);
+        return;
+    }
+
+    ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
+    if (ext_svc != NULL) {
+        rbusValue_Init(&value);
+        rbusObject_Init(&rdata, NULL);
+        ext_svc->u.ext.selfheal_status = true;
+
+        rbusObject_SetValue(rdata, WIFI_STA_SELFHEAL_CONNECTION_TIMEOUT, value);
+        rbusValue_SetBoolean(value, ext_svc->u.ext.selfheal_status);
+
+
+        event.name = WIFI_STA_SELFHEAL_CONNECTION_TIMEOUT;
+        event.data = rdata;
+        event.type = RBUS_EVENT_GENERAL;
+        
+        rc = rbusEvent_Publish(ctrl->rbus_handle, &event);
+        if ((rc != RBUS_ERROR_SUCCESS) && (rc != RBUS_ERROR_NOSUBSCRIBERS)){
+            wifi_util_error_print(WIFI_CTRL, "%s:%d: rbusEvent_Publish Event failed\n", __func__, __LINE__);
+            ext_svc->u.ext.selfheal_status = false;
+            rbusValue_Release(value);
+            rbusObject_Release(rdata);
+            return;
+        }
+
+        rbusValue_Release(value);
+        rbusObject_Release(rdata);
+    }
+    return;
+}
+
 void sta_selfheal_handing(wifi_ctrl_t *ctrl, vap_svc_t *l_svc)
 {
     static bool radio_reset_triggered      = false;
@@ -207,14 +249,16 @@ void sta_selfheal_handing(wifi_ctrl_t *ctrl, vap_svc_t *l_svc)
     if ((ext != NULL) && (ext->conn_state != connection_state_connected)) {
         disconnected_time++;
         connection_timeout++;
-        wifi_util_dbg_print(WIFI_CTRL,"%s:%d reboot time is set to %d minutes, disconnected_time:%d\n",
-                        __func__, __LINE__, reboot_time(), disconnected_time);
-        if ((disconnected_time * STA_CONN_RETRY_TIMEOUT) > (reboot_time() * 60)) {
-            wifi_util_dbg_print(WIFI_CTRL,"%s:%d selfheal: STA connection failed for %d minutes, reboot the device\n",
-                            __func__, __LINE__, reboot_time());
-            /* reboot the device */
-            reboot_device(ctrl);
-        } else if (((disconnected_time * STA_CONN_RETRY_TIMEOUT) >= ((reboot_time() * 60) / 2)) && (radio_reset_triggered == false)) {
+        wifi_util_info_print(WIFI_CTRL,"%s:%d selfheal STA Connection Timeout  event publish time is set to %d minutes, disconnected_time:%d\n",
+                        __func__, __LINE__, selfheal_event_publish_time(), disconnected_time);
+        if ((disconnected_time * STA_CONN_RETRY_TIMEOUT) > (selfheal_event_publish_time() * 60)) {
+            wifi_util_error_print(WIFI_CTRL,"%s:%d selfheal: STA connection failed for %d minutes, publish selfheal connection timeout\n",
+                            __func__, __LINE__, selfheal_event_publish_time());
+            /* publish selfheal STA Connection Timeout  device */
+            selfheal_event_publish(ctrl);
+            disconnected_time = 0;
+            connection_timeout = 0;
+        } else if (((disconnected_time * STA_CONN_RETRY_TIMEOUT) >= ((selfheal_event_publish_time() * 60) / 2)) && (radio_reset_triggered == false)) {
             reset_both_wifi_radio();
             radio_reset_triggered = true;
         } else if ((connection_timeout * STA_CONN_RETRY_TIMEOUT) >= MAX_CONNECTION_ALGO_TIMEOUT) {
