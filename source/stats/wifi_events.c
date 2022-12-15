@@ -165,7 +165,7 @@ int events_init(void)
         {"Device.WiFi.X_RDK_CSINumberOfEntries",                   RBUS_ELEMENT_TYPE_PROPERTY, {events_CSIGetHandler, NULL, NULL, NULL, NULL, NULL}}
     };
     rbusEventSubscription_t rbusEvents[] = {
-        { WIFI_WEBCONFIG_GET_CSI, NULL, 0, 0, update_csi_data_queue, NULL, NULL, NULL}, // CSI subdoc
+        { WIFI_WEBCONFIG_GET_CSI, NULL, 0, 0, update_csi_data_queue, NULL, NULL, NULL, false}, // CSI subdoc
     };
 
     wifi_util_dbg_print(WIFI_MON, "%s():\n", __FUNCTION__);

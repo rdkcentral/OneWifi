@@ -358,7 +358,7 @@ void rbus_dmlwebconfig_register(webconfig_dml_t *consumer)
     char *component_name = "WebconfigDML";
 
     rbusEventSubscription_t rbusEvents[] = {
-        { WIFI_WEBCONFIG_DOC_DATA_NORTH, NULL, 0, 0, set_webconfig_dml_data, NULL, NULL, NULL}, // DML Subdoc
+        { WIFI_WEBCONFIG_DOC_DATA_NORTH, NULL, 0, 0, set_webconfig_dml_data, NULL, NULL, NULL, false}, // DML Subdoc
     };
 
     wifi_util_dbg_print(WIFI_DMCLI,"%s rbus open \n",__FUNCTION__);

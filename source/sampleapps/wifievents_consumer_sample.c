@@ -449,14 +449,14 @@ static void csiEnableHandler(rbusHandle_t handle, rbusEvent_t const* event,
 
 rbusEventSubscription_t g_subscriptions[8] = {
     /* Event Name,                                             filter, interval,   duration,   handler,                user data, handle */
-    {"Device.WiFi.AccessPoint.%d.X_RDK_DiagData",              NULL,   0,          0,          diagHandler,            NULL, NULL, NULL},
-    {"Device.WiFi.AccessPoint.%d.X_RDK_deviceConnected",       NULL,   0,          0,          deviceConnectHandler,   NULL, NULL, NULL},
-    {"Device.WiFi.AccessPoint.%d.X_RDK_deviceDisconnected",    NULL,   0,          0,          deviceDisonnectHandler, NULL, NULL, NULL},
-    {"Device.WiFi.AccessPoint.%d.X_RDK_deviceDeauthenticated", NULL,   0,          0,          deviceDeauthHandler,    NULL, NULL, NULL},
-    {"Device.WiFi.AccessPoint.%d.Status",                       NULL,   0,          0,          statusHandler,          NULL, NULL, NULL},
-    {"Device.WiFi.X_RDK_CSI.%d.ClientMaclist",                  NULL,   0,          0,          csiMacListHandler,      NULL, NULL, NULL},
-    {"Device.WiFi.X_RDK_CSI.%d.data",                          NULL,   100,        0,          csiDataHandler,         NULL, NULL, NULL},
-    {"Device.WiFi.X_RDK_CSI.%d.Enable",                         NULL,   0,          0,          csiEnableHandler,       NULL, NULL, NULL},
+    {"Device.WiFi.AccessPoint.%d.X_RDK_DiagData",              NULL,   0,          0,          diagHandler,            NULL, NULL, NULL, false},
+    {"Device.WiFi.AccessPoint.%d.X_RDK_deviceConnected",       NULL,   0,          0,          deviceConnectHandler,   NULL, NULL, NULL, false},
+    {"Device.WiFi.AccessPoint.%d.X_RDK_deviceDisconnected",    NULL,   0,          0,          deviceDisonnectHandler, NULL, NULL, NULL, false},
+    {"Device.WiFi.AccessPoint.%d.X_RDK_deviceDeauthenticated", NULL,   0,          0,          deviceDeauthHandler,    NULL, NULL, NULL, false},
+    {"Device.WiFi.AccessPoint.%d.Status",                       NULL,   0,          0,          statusHandler,          NULL, NULL, NULL, false},
+    {"Device.WiFi.X_RDK_CSI.%d.ClientMaclist",                  NULL,   0,          0,          csiMacListHandler,      NULL, NULL, NULL, false},
+    {"Device.WiFi.X_RDK_CSI.%d.data",                          NULL,   100,        0,          csiDataHandler,         NULL, NULL, NULL, false},
+    {"Device.WiFi.X_RDK_CSI.%d.Enable",                         NULL,   0,          0,          csiEnableHandler,       NULL, NULL, NULL, false},
 };
 
 static int isCsiEventSet(void)

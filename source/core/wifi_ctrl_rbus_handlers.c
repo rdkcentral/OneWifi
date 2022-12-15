@@ -1123,10 +1123,10 @@ static void wps_test_event_receive_handler(rbusHandle_t handle, rbusEvent_t cons
 void rbus_subscribe_events(wifi_ctrl_t *ctrl)
 {
     rbusEventSubscription_t rbusMarkerEvents[] = {
-        { WIFI_NORMALIZED_RSSI_LIST, NULL, 0, 0, MarkerListConfigHandler, NULL, NULL, NULL},
-        { WIFI_SNR_LIST, NULL, 0, 0, MarkerListConfigHandler, NULL, NULL, NULL},
-        { WIFI_CLI_STAT_LIST, NULL, 0, 0, MarkerListConfigHandler, NULL, NULL, NULL},
-        { WIFI_TxRx_RATE_LIST, NULL, 0, 0, MarkerListConfigHandler, NULL, NULL, NULL},
+        { WIFI_NORMALIZED_RSSI_LIST, NULL, 0, 0, MarkerListConfigHandler, NULL, NULL, NULL, false},
+        { WIFI_SNR_LIST, NULL, 0, 0, MarkerListConfigHandler, NULL, NULL, NULL, false},
+        { WIFI_CLI_STAT_LIST, NULL, 0, 0, MarkerListConfigHandler, NULL, NULL, NULL, false},
+        { WIFI_TxRx_RATE_LIST, NULL, 0, 0, MarkerListConfigHandler, NULL, NULL, NULL, false},
     };
 
     int consumer_app_file = -1;

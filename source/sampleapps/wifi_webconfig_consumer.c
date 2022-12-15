@@ -228,9 +228,9 @@ int consumer_events_subscribe(webconfig_consumer_t *consumer)
     char name[64] = { 0 };
     int rc;
     rbusEventSubscription_t rbusEvents[] = {
-        { WIFI_WEBCONFIG_DOC_DATA_NORTH, NULL, 0, 0, webconfig_consumer_set, NULL, NULL, NULL},
-        { WIFI_WEBCONFIG_GET_ASSOC, NULL, 0, 0, webconfig_consumer_get, NULL, NULL, NULL},
-        { WIFI_WEBCONFIG_GET_NULL_SUBDOC, NULL, 0, 0, webconfig_consumer_get, NULL, NULL, NULL}
+        { WIFI_WEBCONFIG_DOC_DATA_NORTH, NULL, 0, 0, webconfig_consumer_set, NULL, NULL, NULL, false},
+        { WIFI_WEBCONFIG_GET_ASSOC, NULL, 0, 0, webconfig_consumer_get, NULL, NULL, NULL, false},
+        { WIFI_WEBCONFIG_GET_NULL_SUBDOC, NULL, 0, 0, webconfig_consumer_get, NULL, NULL, NULL, false}
     };
 
     if (rbusEvent_SubscribeEx(consumer->rbus_handle, rbusEvents, ARRAY_SIZE(rbusEvents), 0) != RBUS_ERROR_SUCCESS) {
