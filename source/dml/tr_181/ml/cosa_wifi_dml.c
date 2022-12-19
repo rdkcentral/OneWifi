@@ -8245,13 +8245,6 @@ Security_SetParamUlongValue
     /* check the parameter name and set the corresponding value */
     if( AnscEqualString(ParamName, "RekeyingInterval", TRUE))
     {
-
-        if ((!security_mode_support_radius(l_security_cfg->mode)) && (!isVapHotspotOpen(instance_number -1)))
-        {
-            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Security mode %d does not support radius configuration \n",__func__, __LINE__,l_security_cfg->mode);
-            return FALSE;
-        }
-
         if ( l_security_cfg->rekey_interval != uValue )
         {
 	    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:RekeyingInterval=%d Value = %d  \n",__func__, __LINE__,l_security_cfg->rekey_interval,uValue);

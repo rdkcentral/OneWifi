@@ -993,9 +993,6 @@ int validate_radius_settings(const cJSON *radius, wifi_vap_info_t *vap_info, pEr
 	validate_param_bool(radius, "Wpa3_transition_disable", param);
         vap_info->u.bss_info.security.wpa3_transition_disable =  (param->type & cJSON_True) ? true:false;
 
-        validate_param_integer(radius, "RekeyInterval", param);
-        vap_info->u.bss_info.security.rekey_interval = param->valuedouble;
-
         validate_param_bool(radius, "StrictRekey", param);
         vap_info->u.bss_info.security.strict_rekey =  (param->type & cJSON_True) ? true:false;
 
@@ -1078,6 +1075,9 @@ int validate_enterprise_security(const cJSON *security, wifi_vap_info_t *vap_inf
 #else
         AnscCopyString(vap_info->u.bss_info.security.mfpConfig, param->valuestring);
 #endif
+
+        validate_param_integer(security, "RekeyInterval", param);
+        vap_info->u.bss_info.security.rekey_interval = param->valuedouble;
 
 	validate_param_object(security, "RadiusSettings",param);
 	if (validate_radius_settings(param, vap_info, execRetVal) != 0) {
@@ -1221,6 +1221,9 @@ int validate_xfinity_open_vap(const cJSON *vap, wifi_vap_info_t *vap_info, pErr 
         AnscCopyString(vap_info->u.bss_info.security.mfpConfig, param->valuestring);
 #endif
 
+        validate_param_integer(security, "RekeyInterval", param);
+        vap_info->u.bss_info.security.rekey_interval = param->valuedouble;
+
         validate_param_object(vap, "Interworking",interworking);
 
         if (validate_interworking(interworking, vap_info, execRetVal) != RETURN_OK) {
@@ -1293,7 +1296,10 @@ int validate_private_vap(const cJSON *vap, wifi_vap_info_t *vap_info, pErr execR
             platform_trace_error(WIFI_PASSPOINT, "%s: Failed to validate security for vap %s", __FUNCTION__, vap_info->vap_name);
             return RETURN_ERR;
         } 
-         
+
+        validate_param_integer(security, "RekeyInterval", param);
+        vap_info->u.bss_info.security.rekey_interval = param->valuedouble;
+
         validate_param_object(vap, "Interworking",interworking);
 
         if (validate_interworking(interworking, vap_info, execRetVal) != RETURN_OK) {
@@ -1366,6 +1372,9 @@ int validate_xhome_vap(const cJSON *vap, wifi_vap_info_t *vap_info, pErr execRet
             platform_trace_error(WIFI_PASSPOINT, "%s: Failed to validate security for vap %s", __FUNCTION__, vap_info->vap_name);
             return RETURN_ERR;
         }
+
+        validate_param_integer(security, "RekeyInterval", param);
+        vap_info->u.bss_info.security.rekey_interval = param->valuedouble;
 
         validate_param_object(vap, "Interworking",interworking);
 

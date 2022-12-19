@@ -1109,6 +1109,9 @@ webconfig_error_t decode_no_security_object(const cJSON *security, wifi_vap_secu
         return webconfig_error_decode;
     }
 
+    decode_param_integer(security, "RekeyInterval", param);
+    security_info->rekey_interval = param->valuedouble;
+
     security_info->mode = wifi_security_mode_none;
     object = cJSON_GetObjectItem(security, "RadiusSettings");
     if (object != NULL) {
@@ -1294,6 +1297,9 @@ webconfig_error_t decode_personal_security_object(const cJSON *security, wifi_va
     strncpy(security_info->u.key.key, param->valuestring,
             sizeof(security_info->u.key.key) - 1);
 
+    decode_param_integer(security, "RekeyInterval", param);
+    security_info->rekey_interval = param->valuedouble;
+
     return webconfig_error_none;
 }
 
@@ -1441,6 +1447,10 @@ webconfig_error_t decode_security_object(const cJSON *security, wifi_vap_securit
 
         strncpy(security_info->u.key.key, param->valuestring,
                 sizeof(security_info->u.key.key) - 1);
+
+        decode_param_integer(security, "RekeyInterval", param);
+        security_info->rekey_interval = param->valuedouble;
+
     }
     return webconfig_error_none;
 }
