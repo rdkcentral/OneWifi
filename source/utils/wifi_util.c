@@ -1759,6 +1759,23 @@ int convert_vapname_to_ifname(wifi_platform_property_t *wifi_prop, char *vap_nam
     return (if_prop) ? RETURN_OK : RETURN_ERR;
 }
 
+int get_bridgename_from_vapname(wifi_platform_property_t *wifi_prop, char *vap_name, char *bridge_name, int bridge_name_len)
+{
+    wifi_interface_name_idex_map_t *if_prop = NULL;
+ 
+    if ((bridge_name == NULL) || (vap_name == NULL)) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: input_string parameter error!!!\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    if_prop = GET_VAP_NAME_PROPERTY(wifi_prop, vap_name);
+    if (if_prop) {
+        strncpy(bridge_name, if_prop->bridge_name, bridge_name_len);
+    }
+
+    return (if_prop) ? RETURN_OK : RETURN_ERR;
+}
+
 unsigned int create_vap_mask(wifi_platform_property_t *wifi_prop, unsigned int num_names, ...)
 {
     char *vap_type;

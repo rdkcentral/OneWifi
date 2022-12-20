@@ -389,9 +389,11 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
         t_vap_info->u.bss_info.enabled = false;
         t_vap_info->u.bss_info.bssMaxSta = 75;
         snprintf(t_vap_info->u.bss_info.interworking.interworking.hessid, sizeof(t_vap_info->u.bss_info.interworking.interworking.hessid), "11:22:33:44:55:66");
-
         convert_radio_index_to_freq_band(&hal_cap->wifi_prop, radioIndx, &band);
 
+        if (get_bridgename_from_vapname(&hal_cap->wifi_prop, (char *)t_vap_info->vap_name, t_vap_info->bridge_name, sizeof(t_vap_info->bridge_name)) != RETURN_OK) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: vapname to bridge name conversion failed\n", __func__, __LINE__);
+        }
         if (is_vap_private(&hal_cap->wifi_prop, vapIndex) == TRUE) {
             t_vap_info->u.bss_info.network_initiated_greylist = false;
             t_vap_info->u.bss_info.vapStatsEnable = true;
@@ -409,7 +411,6 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
                 t_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
 #endif
             }
-            strcpy(t_vap_info->bridge_name, "brlan0");
             memset(ssid, 0, sizeof(ssid));
             strcpy(t_vap_info->u.bss_info.ssid, t_vap_info->vap_name);
             memset(password, 0, sizeof(password));
@@ -424,11 +425,6 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
             t_vap_info->u.bss_info.rapidReconnectEnable = false;
             t_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa_personal;
             t_vap_info->u.bss_info.showSsid = false;
-            if (strcmp(t_vap_info->vap_name, "mesh_backhaul_2g") == 0) {
-                strcpy(t_vap_info->bridge_name, "brlan112");
-            } else if (strcmp(t_vap_info->vap_name, "mesh_backhaul_5g") == 0) {
-                strcpy(t_vap_info->bridge_name, "brlan113");
-            }
             memset(ssid, 0, sizeof(ssid));
             strcpy(t_vap_info->u.bss_info.ssid, "we.connect.yellowstone");
             memset(password, 0, sizeof(password));
@@ -445,11 +441,9 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
             strcpy(t_vap_info->u.bss_info.security.u.radius.s_key, "1234567890");
 
             strcpy(t_vap_info->u.bss_info.ssid, t_vap_info->vap_name);
-            strcpy(t_vap_info->bridge_name, "brlan106");
             t_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa2_enterprise;
         }   else if(is_vap_lnf_psk(&hal_cap->wifi_prop, vapIndex) == TRUE) {
             t_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
-            strcpy(t_vap_info->bridge_name, "brlan106");
             memset(ssid, 0, sizeof(ssid));
             strcpy(t_vap_info->u.bss_info.ssid, t_vap_info->vap_name);
             memset(password, 0, sizeof(password));
@@ -458,7 +452,6 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
             t_vap_info->u.bss_info.showSsid = false;
         }   else if(is_vap_xhs(&hal_cap->wifi_prop, vapIndex) == TRUE) {
             t_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
-            strcpy(t_vap_info->bridge_name, "brlan1");
             memset(ssid, 0, sizeof(ssid));
             strcpy(t_vap_info->u.bss_info.ssid, t_vap_info->vap_name);
             memset(password, 0, sizeof(password));

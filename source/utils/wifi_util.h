@@ -219,6 +219,7 @@ int get_cm_mac_address(char *mac);
 int get_ssid_from_device_mac(char *ssid);
 wifi_interface_name_t *get_interface_name_for_vap_index(unsigned int vap_index, wifi_platform_property_t *wifi_prop);
 int convert_vapname_to_ifname(wifi_platform_property_t *wifi_prop, char *vap_name, char *if_name, int ifname_len);
+int get_bridgename_from_vapname(wifi_platform_property_t *wifi_prop, char *vap_name, char *bridge_name, int bridge_name_len);
 unsigned int create_vap_mask(wifi_platform_property_t *wifi_prop, unsigned int num_names, ...);
 int get_interface_name_from_radio_index(wifi_platform_property_t *wifi_prop, uint8_t radio_index, char *interface_name);
 unsigned long long int get_current_ms_time(void);
