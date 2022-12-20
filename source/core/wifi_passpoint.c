@@ -123,6 +123,7 @@ static long readFileToBuffer(const char *fileName, char **buffer)
 #endif
 #endif // DML_SUPPORT
 
+
 void process_passpoint_timeout()
 {
 //GAS Rate computation variables
@@ -630,7 +631,7 @@ void WiFi_GetGasConfig(char *pString)
 #if defined (FEATURE_SUPPORT_PASSPOINT)
     if(RETURN_OK != wifidb_get_gas_config(0,&gasConfig_struct)){
 #endif  
-        AnscCopyString(pString,WIFI_PASSPOINT_DEFAULT_GAS_CFG);
+        copy_string(pString,WIFI_PASSPOINT_DEFAULT_GAS_CFG);
         return;
 #if defined (FEATURE_SUPPORT_PASSPOINT)
     }
@@ -639,7 +640,7 @@ void WiFi_GetGasConfig(char *pString)
     gasCfg = cJSON_CreateObject();
     if (NULL == gasCfg) {
         wifi_util_dbg_print(WIFI_PASSPOINT,"Failed to create GAS JSON Object\n");
-        AnscCopyString(pString,WIFI_PASSPOINT_DEFAULT_GAS_CFG);
+        copy_string(pString,WIFI_PASSPOINT_DEFAULT_GAS_CFG);
         return;
     }
     
@@ -653,7 +654,7 @@ void WiFi_GetGasConfig(char *pString)
     cJSON_AddNumberToObject(mainEntry,"QueryRespLengthLimit",gasConfig_struct.QueryResponseLengthLimit);
     
     cJSON_PrintPreallocated(gasCfg, JSON_STR, sizeof(JSON_STR),false);
-    AnscCopyString(pString,JSON_STR);
+    copy_string(pString,JSON_STR);
     cJSON_Delete(gasCfg);
     return;
 }
@@ -746,7 +747,7 @@ INT WiFi_DefaultGasConfig(void)
         return RETURN_ERR;
     }
     memset(JSON_STR,0,(strlen(WIFI_PASSPOINT_DEFAULT_GAS_CFG)+1));
-    AnscCopyString(JSON_STR, WIFI_PASSPOINT_DEFAULT_GAS_CFG);
+    copy_string(JSON_STR, WIFI_PASSPOINT_DEFAULT_GAS_CFG);
 
     if(!JSON_STR || (RETURN_OK != WiFi_SetGasConfig(JSON_STR))){
         if(JSON_STR){
@@ -943,7 +944,7 @@ INT WiFi_SaveANQPCfg(uint8_t vapIndex)
         return RETURN_ERR;
     }
 
-    len = AnscSizeOfString((char *)pCfg->anqp.anqpParameters);
+    len = strlen((char *)pCfg->anqp.anqpParameters);
     if (!len) {
         wifi_util_dbg_print(WIFI_PASSPOINT,"ANQP Parameters Length is 0.\n");
         return RETURN_ERR;
@@ -1190,7 +1191,7 @@ INT WiFi_SaveHS2Cfg(uint8_t vapIndex)
         return RETURN_ERR;
     }
 
-    len = AnscSizeOfString((char *)pCfg->passpoint.hs2Parameters);
+    len = strlen((char *)pCfg->passpoint.hs2Parameters);
     if (!len) {
         wifi_util_dbg_print(WIFI_PASSPOINT,"Passpoint Parameters Length is 0.\n");
         return RETURN_ERR;
@@ -1490,7 +1491,7 @@ INT WiFi_SaveInterworkingWebconfig( wifi_interworking_t *interworking_data, int 
 
     //Copy ANQP Parameters.
     memset(pCfg->anqp.anqpParameters, 0, sizeof(pCfg->anqp.anqpParameters));
-    AnscCopyString((char *)pCfg->anqp.anqpParameters, (char *)interworking_data->anqp.anqpParameters);//ONE_WIFI
+    copy_string((char *)pCfg->anqp.anqpParameters, (char *)interworking_data->anqp.anqpParameters);//ONE_WIFI
 
     if(RETURN_ERR == WiFi_SaveANQPCfg(apIns)){
         wifi_util_dbg_print(WIFI_PASSPOINT,"Failed to Save ANQP Configuration\n");
@@ -1498,7 +1499,7 @@ INT WiFi_SaveInterworkingWebconfig( wifi_interworking_t *interworking_data, int 
     
     //Copy Passpoint Parameters.
     memset(pCfg->passpoint.hs2Parameters, 0, sizeof(pCfg->passpoint.hs2Parameters));
-    AnscCopyString((char *)pCfg->passpoint.hs2Parameters, (char *)interworking_data->passpoint.hs2Parameters);//ONE_WIFI
+    copy_string((char *)pCfg->passpoint.hs2Parameters, (char *)interworking_data->passpoint.hs2Parameters);//ONE_WIFI
 
     if(RETURN_ERR == WiFi_SaveHS2Cfg(apIns)){
         wifi_util_dbg_print(WIFI_PASSPOINT,"Failed to Save  Configuration\n");
@@ -1595,9 +1596,9 @@ INT CosaDmlWiFi_ReadInterworkingConfig (PCOSA_DML_WIFI_AP_CFG pCfg, char *JSON_S
 //HESSID
     InterworkingElement = cJSON_GetObjectItem(mainEntry,"HESSID");
     if(InterworkingElement && InterworkingElement->valuestring){
-        AnscCopyString(pCfg->IEEE80211uCfg.IntwrkCfg.iHESSID, InterworkingElement->valuestring);
+        copy_string(pCfg->IEEE80211uCfg.IntwrkCfg.iHESSID, InterworkingElement->valuestring);
     } else {
-        AnscCopyString(pCfg->IEEE80211uCfg.IntwrkCfg.iHESSID, "11:22:33:44:55:66");
+        copy_string(pCfg->IEEE80211uCfg.IntwrkCfg.iHESSID, "11:22:33:44:55:66");
     }
 
 //VenueOptionPresent

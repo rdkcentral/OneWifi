@@ -116,7 +116,6 @@ bool g_passpoint_RFC;
     }	\
 }	\
 
-
 int validate_ipv4_address(char *ip) {
     struct sockaddr_in sa;
 
@@ -185,17 +184,17 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
         wifi_venueName_t *venueBuf = (wifi_venueName_t *)next_pos;
         next_pos += sizeof(venueBuf->length); //Will be filled at the end
         validate_param_string(anqpEntry,"Language",anqpParam);
-        AnscCopyString((char*)next_pos, anqpParam->valuestring);
-        next_pos += AnscSizeOfString(anqpParam->valuestring);
+        copy_string(anqpParam->valuestring,(char*)next_pos);
+        next_pos += strlen(anqpParam->valuestring);
         anqpParam = cJSON_GetObjectItem(anqpEntry,"Name");
-        if(AnscSizeOfString(anqpParam->valuestring) > 255){
+        if(strlen(anqpParam->valuestring) > 255){
             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Venue name cannot be more than 255. Discarding Configuration\n", __func__, __LINE__);
             strncpy(execRetVal->ErrorMsg, "Invalid size for Venue name",sizeof(execRetVal->ErrorMsg)-1);
             cJSON_Delete(passPointStats);
             return RETURN_ERR;
         }
-        AnscCopyString((char*)next_pos, anqpParam->valuestring);
-        next_pos += AnscSizeOfString(anqpParam->valuestring);
+        copy_string((char*)next_pos, anqpParam->valuestring);
+        next_pos += strlen(anqpParam->valuestring);
         venueBuf->length = next_pos - &venueBuf->language[0];
     }
     vap_info->anqp.venueInfoLength = next_pos - (UCHAR *)&vap_info->anqp.venueInfo;
@@ -219,14 +218,14 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
         memset(ouiStr,0,sizeof(ouiStr));
         anqpParam = cJSON_GetObjectItem(anqpEntry,"OI");
         if(anqpParam){
-            ouiStrLen = AnscSizeOfString(anqpParam->valuestring);
+            ouiStrLen = strlen(anqpParam->valuestring);
             if((ouiStrLen < 6) || (ouiStrLen > 30) || (ouiStrLen % 2)){
                 wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Invalid OUI Length in RoamingConsortiumANQPElement Data. Discarding Configuration\n", __func__, __LINE__);
                 strncpy(execRetVal->ErrorMsg, "Invalid OUI Length",sizeof(execRetVal->ErrorMsg)-1);
                 cJSON_Delete(passPointStats);
                 return RETURN_ERR;
             }
-            AnscCopyString((char*)ouiStr, anqpParam->valuestring);
+            copy_string((char*)ouiStr, anqpParam->valuestring);
         }
         //Covert the incoming string to HEX
         for(i = 0; i < ouiStrLen; i++){
@@ -315,15 +314,15 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
         next_pos += sizeof(realmInfoBuf->encoding);
 
         validate_param_string(anqpEntry,"Realms",anqpParam);
-        if(AnscSizeOfString(anqpParam->valuestring) > 255){
+        if(strlen(anqpParam->valuestring) > 255){
             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Realm Length cannot be more than 255. Discarding Configuration\n", __func__, __LINE__);
             strncpy(execRetVal->ErrorMsg, "Invalid Realm Length",sizeof(execRetVal->ErrorMsg)-1);
             cJSON_Delete(passPointStats);
             return RETURN_ERR;
         }
-        realmInfoBuf->realm_length = AnscSizeOfString(anqpParam->valuestring);
+        realmInfoBuf->realm_length = strlen(anqpParam->valuestring);
         next_pos += sizeof(realmInfoBuf->realm_length);
-        AnscCopyString((char*)next_pos, anqpParam->valuestring);
+        copy_string((char*)next_pos, anqpParam->valuestring);
         next_pos += realmInfoBuf->realm_length;
 
         cJSON *realmStats = cJSON_CreateObject();//Create a stats Entry here for each Realm
@@ -381,14 +380,14 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
                     authBuf->length = 1;
                     authBuf->val[0] = subParam_1->valuedouble;
                 } else {
-                    authStrLen = AnscSizeOfString(subParam_1->valuestring);
+                    authStrLen = strlen(subParam_1->valuestring);
                     if((authStrLen != 2) && (authStrLen != 14)){
                         wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Invalid EAP Value Length in NAIRealmANQPElement Data. Has to be 1 to 7 bytes Long. Discarding Configuration\n", __func__, __LINE__);
                         strncpy(execRetVal->ErrorMsg, "Invalid EAP Length in NAIRealmANQPElement Data",sizeof(execRetVal->ErrorMsg)-1);
                         cJSON_Delete(passPointStats);
                         return RETURN_ERR;
                     }
-                    AnscCopyString((char*)authStr,subParam_1->valuestring);
+                    copy_string((char*)authStr,subParam_1->valuestring);
                                 
                     //Covert the incoming string to HEX
                     for(i = 0; i < authStrLen; i++){ 
@@ -454,11 +453,11 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
         memset(mncStr,0,sizeof(mncStr));
 
         validate_param_string(anqpEntry,"MCC",anqpParam);
-        if(AnscSizeOfString(anqpParam->valuestring) == (sizeof(mccStr) -1)){
-            AnscCopyString((char*)mccStr,anqpParam->valuestring);
-        }else if(AnscSizeOfString(anqpParam->valuestring) == (sizeof(mccStr) -2)){
+        if(strlen(anqpParam->valuestring) == (sizeof(mccStr) -1)){
+            copy_string((char*)mccStr,anqpParam->valuestring);
+        }else if(strlen(anqpParam->valuestring) == (sizeof(mccStr) -2)){
             mccStr[0] = '0';
-            AnscCopyString((char*)&mccStr[1], anqpParam->valuestring);
+            copy_string((char*)&mccStr[1], anqpParam->valuestring);
         }else{
             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Invalid MCC in 3GPPCellularANQPElement Data. Discarding Configuration\n", __func__, __LINE__);
             strncpy(execRetVal->ErrorMsg, "Invalid MCC in 3GPP Element",sizeof(execRetVal->ErrorMsg)-1);
@@ -467,11 +466,11 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
         }
 
         validate_param_string(anqpEntry,"MNC",anqpParam);
-        if(AnscSizeOfString(anqpParam->valuestring) == (sizeof(mccStr) -1)){
-            AnscCopyString((char*)mncStr, anqpParam->valuestring);
-        }else if(AnscSizeOfString(anqpParam->valuestring) ==  (sizeof(mccStr) -2)){
+        if(strlen(anqpParam->valuestring) == (sizeof(mccStr) -1)){
+            copy_string((char*)mncStr, anqpParam->valuestring);
+        }else if(strlen(anqpParam->valuestring) ==  (sizeof(mccStr) -2)){
             mncStr[0] = '0';
-            AnscCopyString((char*)&mncStr[1], anqpParam->valuestring);
+            copy_string((char*)&mncStr[1], anqpParam->valuestring);
         }else{
             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Invalid MNC in 3GPPCellularANQPElement Data. Discarding Configuration\n", __func__, __LINE__);
             strncpy(execRetVal->ErrorMsg, "Invalid MNC in 3GPP Element",sizeof(execRetVal->ErrorMsg)-1); 
@@ -514,15 +513,15 @@ int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRet
     cJSON_ArrayForEach(anqpEntry, anqpList){
         wifi_domainNameTuple_t *nameBuf = (wifi_domainNameTuple_t *)next_pos;
         validate_param_string(anqpEntry,"Name",anqpParam);
-        if(AnscSizeOfString(anqpParam->valuestring) > 255){ 
+        if(strlen(anqpParam->valuestring) > 255){ 
             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Domain name length cannot be more than 255. Discarding Configuration\n", __func__, __LINE__);
             strncpy(execRetVal->ErrorMsg, "Invalid Domain name length",sizeof(execRetVal->ErrorMsg)-1);
             cJSON_Delete(passPointStats);
             return RETURN_ERR;
         }
-        nameBuf->length = AnscSizeOfString(anqpParam->valuestring);
+        nameBuf->length = strlen(anqpParam->valuestring);
         next_pos += sizeof(nameBuf->length);
-        AnscCopyString((char*)next_pos, anqpParam->valuestring);
+        copy_string((char*)next_pos, anqpParam->valuestring);
         next_pos += nameBuf->length;
 
         cJSON *realmStats = cJSON_CreateObject();//Create a stats Entry here for each Realm
@@ -612,23 +611,23 @@ int validate_passpoint(const cJSON *passpoint, wifi_interworking_t *vap_info, pE
         next_pos += sizeof(opNameBuf->length);//Fill length after reading the remaining fields
 
         validate_param_string(anqpEntry,"LanguageCode",anqpParam);
-        if(AnscSizeOfString(anqpParam->valuestring) > 3){
+        if(strlen(anqpParam->valuestring) > 3){
             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Invalid Language Code. Discarding Configuration\n", __func__, __LINE__);
             strncpy(execRetVal->ErrorMsg, "Invalid Language Code",sizeof(execRetVal->ErrorMsg)-1);
             return RETURN_ERR;
         }
-        AnscCopyString((char*)next_pos, anqpParam->valuestring);
+        copy_string((char*)next_pos, anqpParam->valuestring);
         next_pos += sizeof(opNameBuf->languageCode);
 
         validate_param_string(anqpEntry,"OperatorName",anqpParam);
-        if(AnscSizeOfString(anqpParam->valuestring) > 252){
+        if(strlen(anqpParam->valuestring) > 252){
             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Invalid OperatorFriendlyName. Discarding Configuration\n", __func__, __LINE__);
             strncpy(execRetVal->ErrorMsg, "Invalid OperatorFriendlyName",sizeof(execRetVal->ErrorMsg)-1);
             return RETURN_ERR;
         }
-        AnscCopyString((char*)next_pos, anqpParam->valuestring);
-        next_pos += AnscSizeOfString(anqpParam->valuestring);
-        opNameBuf->length = AnscSizeOfString(anqpParam->valuestring) +  sizeof(opNameBuf->languageCode);
+        copy_string((char*)next_pos, anqpParam->valuestring);
+        next_pos += strlen(anqpParam->valuestring);
+        opNameBuf->length = strlen(anqpParam->valuestring) +  sizeof(opNameBuf->languageCode);
     }
     vap_info->passpoint.opFriendlyNameInfoLength = next_pos - (UCHAR *)&vap_info->passpoint.opFriendlyNameInfo;
     if(vap_info->passpoint.opFriendlyNameInfoLength) {
@@ -679,14 +678,14 @@ int validate_passpoint(const cJSON *passpoint, wifi_interworking_t *vap_info, pE
         realmInfoBuf->encoding = anqpParam->valuedouble;
         next_pos += sizeof(realmInfoBuf->encoding);
         validate_param_string(anqpEntry,"Name",anqpParam);
-        if(AnscSizeOfString(anqpParam->valuestring) > 255){
+        if(strlen(anqpParam->valuestring) > 255){
             wifi_util_dbg_print(WIFI_PASSPOINT, "%s:%d: Invalid NAI Home Realm Name. Discarding Configuration\n", __func__, __LINE__);
             strncpy(execRetVal->ErrorMsg, "Invalid NAI Home Realm Name", sizeof(execRetVal->ErrorMsg)-1);
             return RETURN_ERR;
         }
-        realmInfoBuf->length = AnscSizeOfString(anqpParam->valuestring);
+        realmInfoBuf->length = strlen(anqpParam->valuestring);
         next_pos += sizeof(realmInfoBuf->length);
-        AnscCopyString((char*)next_pos, anqpParam->valuestring);
+        copy_string((char*)next_pos, anqpParam->valuestring);
         next_pos += realmInfoBuf->length;
     }
     vap_info->passpoint.realmInfoLength = next_pos - (UCHAR *)&vap_info->passpoint.realmInfo;
@@ -749,7 +748,7 @@ int validate_interworking(const cJSON *interworking, wifi_vap_info_t *vap_info, 
     vap_info->u.bss_info.interworking.interworking.hessOptionPresent = (param->type & cJSON_True) ? true:false;
 
     validate_param_string(interworking, "HESSID", param);
-    AnscCopyString(vap_info->u.bss_info.interworking.interworking.hessid,param->valuestring);
+    copy_string(vap_info->u.bss_info.interworking.interworking.hessid,param->valuestring);
     if (WiFi_IsValidMacAddr(vap_info->u.bss_info.interworking.interworking.hessid) != TRUE) {
         wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Validation failed for HESSID\n", __func__, __LINE__);
         strncpy(execRetVal->ErrorMsg, "Invalid HESSID",sizeof(execRetVal->ErrorMsg)-1);
@@ -915,7 +914,7 @@ int validate_radius_settings(const cJSON *radius, wifi_vap_info_t *vap_info, pEr
 		return RETURN_ERR;
 	}
 #ifndef WIFI_HAL_VERSION_3_PHASE2
-	AnscCopyString((char *)vap_info->u.bss_info.security.u.radius.ip,param->valuestring);
+	copy_string((char *)vap_info->u.bss_info.security.u.radius.ip,param->valuestring);
 #else
     /* check the INET family and update the radius ip address */
     if(inet_pton(AF_INET, param->valuestring, &(vap_info->u.bss_info.security.u.radius.ip.u.IPv4addr)) > 0) {
@@ -932,7 +931,7 @@ int validate_radius_settings(const cJSON *radius, wifi_vap_info_t *vap_info, pEr
 	vap_info->u.bss_info.security.u.radius.port = param->valuedouble;
 
 	validate_param_string(radius, "RadiusSecret", param);
-	AnscCopyString(vap_info->u.bss_info.security.u.radius.key, param->valuestring);
+	copy_string(vap_info->u.bss_info.security.u.radius.key, param->valuestring);
 
 	validate_param_string(radius, "SecondaryRadiusServerIPAddr", param);
 	if (validate_ipv4_address(param->valuestring) != RETURN_OK) {
@@ -941,7 +940,7 @@ int validate_radius_settings(const cJSON *radius, wifi_vap_info_t *vap_info, pEr
 		return RETURN_ERR;
 	}
 #ifndef WIFI_HAL_VERSION_3_PHASE2
-        AnscCopyString((char *)vap_info->u.bss_info.security.u.radius.s_ip,param->valuestring);
+        copy_string((char *)vap_info->u.bss_info.security.u.radius.s_ip,param->valuestring);
 #else
         /* check the INET family and update the radius ip address */
         if(inet_pton(AF_INET, param->valuestring, &(vap_info->u.bss_info.security.u.radius.s_ip.u.IPv4addr)) > 0) {
@@ -957,7 +956,7 @@ int validate_radius_settings(const cJSON *radius, wifi_vap_info_t *vap_info, pEr
 	validate_param_integer(radius, "SecondaryRadiusServerPort", param);
 	vap_info->u.bss_info.security.u.radius.s_port = param->valuedouble;
 	validate_param_string(radius, "SecondaryRadiusSecret", param);
-	AnscCopyString(vap_info->u.bss_info.security.u.radius.s_key, param->valuestring);
+	copy_string(vap_info->u.bss_info.security.u.radius.s_key, param->valuestring);
 
         validate_param_string(radius, "DasServerIPAddr", param);
         if (validate_ipv4_address(param->valuestring) != RETURN_OK) {
@@ -971,7 +970,7 @@ int validate_radius_settings(const cJSON *radius, wifi_vap_info_t *vap_info, pEr
         vap_info->u.bss_info.security.u.radius.dasport = param->valuedouble;
 
         validate_param_string(radius, "DasSecret", param);
-        AnscCopyString(vap_info->u.bss_info.security.u.radius.daskey, param->valuestring);
+        copy_string(vap_info->u.bss_info.security.u.radius.daskey, param->valuestring);
 
         //max_auth_attempts
         validate_param_integer(radius, "MaxAuthAttempts", param);
@@ -1073,7 +1072,7 @@ int validate_enterprise_security(const cJSON *security, wifi_vap_info_t *vap_inf
             vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
         }
 #else
-        AnscCopyString(vap_info->u.bss_info.security.mfpConfig, param->valuestring);
+        copy_string(vap_info->u.bss_info.security.mfpConfig, param->valuestring);
 #endif
 
         validate_param_integer(security, "RekeyInterval", param);
@@ -1218,7 +1217,7 @@ int validate_xfinity_open_vap(const cJSON *vap, wifi_vap_info_t *vap_info, pErr 
             vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
         }
 #else
-        AnscCopyString(vap_info->u.bss_info.security.mfpConfig, param->valuestring);
+        copy_string(vap_info->u.bss_info.security.mfpConfig, param->valuestring);
 #endif
 
         validate_param_integer(security, "RekeyInterval", param);
@@ -1288,7 +1287,7 @@ int validate_private_vap(const cJSON *vap, wifi_vap_info_t *vap_info, pErr execR
             vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
         }
 #else
-        AnscCopyString(vap_info->u.bss_info.security.mfpConfig, param->valuestring);
+        copy_string(vap_info->u.bss_info.security.mfpConfig, param->valuestring);
 #endif
 
         if ((vap_info->u.bss_info.security.mode != wifi_security_mode_none) &&
@@ -1364,7 +1363,7 @@ int validate_xhome_vap(const cJSON *vap, wifi_vap_info_t *vap_info, pErr execRet
             vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
         }
 #else
-        AnscCopyString(vap_info->u.bss_info.security.mfpConfig, param->valuestring);
+        copy_string(vap_info->u.bss_info.security.mfpConfig, param->valuestring);
 #endif
 
         if ((vap_info->u.bss_info.security.mode != wifi_security_mode_none) &&
@@ -1592,7 +1591,7 @@ int validate_wifi_global_config(const cJSON *global_cfg, wifi_global_param_t *gl
 
     //InstWifiClientMac
     validate_param_string(global_cfg, "InstWifiClientMac", param);
-    //AnscCopyString((unsigned char *)global_info->inst_wifi_client_mac, param->valuestring);
+    //copy_string((unsigned char *)global_info->inst_wifi_client_mac, param->valuestring);
     string_mac_to_uint8_mac((uint8_t *)&global_info->inst_wifi_client_mac, param->valuestring);
 
     //InstWifiClientDefReportingPeriod
@@ -1621,7 +1620,7 @@ int validate_wifi_global_config(const cJSON *global_cfg, wifi_global_param_t *gl
 
     //WpsPin
     validate_param_string(global_cfg, "WpsPin", param);
-    AnscCopyString(global_info->wps_pin, param->valuestring);
+    copy_string(global_info->wps_pin, param->valuestring);
 
     // BandsteeringEnable
     validate_param_bool(global_cfg, "BandsteeringEnable", param);
@@ -1669,7 +1668,7 @@ int validate_wifi_global_config(const cJSON *global_cfg, wifi_global_param_t *gl
 
     //WifiRegionCode
     validate_param_string(global_cfg, "WifiRegionCode", param);
-    AnscCopyString(global_info->wifi_region_code, param->valuestring);
+    copy_string(global_info->wifi_region_code, param->valuestring);
 
     // DiagnosticEnable
     validate_param_bool(global_cfg, "DiagnosticEnable", param);
@@ -1685,19 +1684,19 @@ int validate_wifi_global_config(const cJSON *global_cfg, wifi_global_param_t *gl
 
     //NormalizedRssiList
     validate_param_string(global_cfg, "NormalizedRssiList", param);
-    AnscCopyString(global_info->normalized_rssi_list, param->valuestring);
+    copy_string(global_info->normalized_rssi_list, param->valuestring);
 
     //SNRList
     validate_param_string(global_cfg, "SNRList", param);
-    AnscCopyString(global_info->snr_list, param->valuestring);
+    copy_string(global_info->snr_list, param->valuestring);
 
     //CliStatList
     validate_param_string(global_cfg, "CliStatList", param);
-    AnscCopyString(global_info->cli_stat_list, param->valuestring);
+    copy_string(global_info->cli_stat_list, param->valuestring);
 
     //TxRxRateList
     validate_param_string(global_cfg, "TxRxRatetList", param);
-    AnscCopyString(global_info->txrx_rate_list, param->valuestring);
+    copy_string(global_info->txrx_rate_list, param->valuestring);
 
     wifi_util_dbg_print(WIFI_PASSPOINT,"wifi global Parameters validate successfully\n");
     return RETURN_OK;

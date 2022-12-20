@@ -240,4 +240,5 @@ int get_allowed_channels(wifi_freq_bands_t band, wifi_radio_capabilities_t *radi
 int get_allowed_channels_str(wifi_freq_bands_t band, wifi_radio_capabilities_t *radio_cap, char *buf, size_t buf_size);
 int convert_radio_index_to_freq_band(wifi_platform_property_t *wifi_prop, unsigned int radio_index, int *band);
 void wifidb_print(char *format, ...);
+void copy_string(char*  destination, char*  source);
 #endif//_WIFI_UTIL_H_

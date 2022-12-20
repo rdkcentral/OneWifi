@@ -58,9 +58,6 @@ libwifi_utils_la_CFLAGS += $(CCSP_COMMON_FLAG)
 
 libwifi_utils_la_SOURCES = wifi_validator.c
 
-if ! CCSP_COMMON_SUPPORT
-libwifi_utils_la_SOURCES += ansc.c
-endif
 
 libwifi_utils_la_LDFLAGS = -rdynamic -lwebconfig_framework -lsecure_wrapper $(SYSTEMD_LDFLAGS) -lsecure_wrapper -lmsgpackc -lcjson -lm -ljansson -static
 

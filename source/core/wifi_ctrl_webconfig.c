@@ -19,9 +19,6 @@
 
 #include <stdio.h>
 #include <stdbool.h>
-#if DML_SUPPORT
-#include "ansc_platform.h"
-#endif // DML_SUPPORT
 #include "const.h"
 #define  WBCFG_MULTI_COMP_SUPPORT 1
 #include "webconfig_framework.h"
@@ -32,6 +29,7 @@
 #include "msgpack.h"
 #include "cJSON.h"
 #include "scheduler.h"
+#include "base64.h"
 #include <unistd.h>
 #include <pthread.h>
 #include <rbus.h>
@@ -1755,9 +1753,21 @@ pErr wifi_home_vap_exec_handler(void *data)
 char *unpackDecode(const char* enb)
 {
     unsigned long msg_size = 0L;
-    unsigned char *msg = (unsigned char*)AnscBase64Decode((unsigned char *)enb, &msg_size);
-    if(!msg) {
-        wifi_util_error_print(WIFI_CTRL, "%s: Failed to decode blob\n", __func__);
+    unsigned char *msg = NULL;
+
+    msg_size = b64_get_decoded_buffer_size(strlen((char *)enb));
+    msg = (unsigned char *) calloc(1,sizeof(unsigned char *) * msg_size);
+    if (!msg) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s: Failed to allocate memory.\n",__FUNCTION__);
+        return NULL;
+    }
+
+    msg_size = 0;
+    msg_size = b64_decode((unsigned char *)enb, strlen((char *)enb),msg );
+
+    if (msg_size == 0) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s: Failed in Decoding multicomp blob\n",__FUNCTION__);
+        free(msg);
         return NULL;
     }
 
@@ -1903,12 +1913,22 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
     }
 
     unsigned long msg_size = 0L;
-    unsigned char *msg = (unsigned char*)AnscBase64Decode((unsigned char *)data, &msg_size);
+    unsigned char *msg = NULL;
 
-    if(!msg) {
-        wifi_util_error_print(WIFI_CTRL, "%s: Failed to decode blob\n", __func__);
-        return execRetVal;
+    msg_size = b64_get_decoded_buffer_size(strlen((char *)data));
+    msg = (unsigned char *) calloc(1,sizeof(unsigned char *) * msg_size);
+    if (!msg) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s: Failed to allocate memory.\n",__FUNCTION__);
+        return NULL;
     }
+
+    msg_size = 0;
+    msg_size = b64_decode((unsigned char *)data, strlen((char *)data), msg );
+    if (msg_size == 0) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s: Failed in Decoding multicomp blob\n",__FUNCTION__);
+        free(msg);
+        return NULL;
+    } 
 
     wifidb_print("%s:%d [Start] Current time:[%llu]\r\n", __func__, __LINE__, get_current_ms_time());
     execRetVal = (pErr)malloc(sizeof(Err));

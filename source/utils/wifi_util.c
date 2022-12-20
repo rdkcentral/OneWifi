@@ -364,6 +364,18 @@ int get_interface_name_from_radio_index(wifi_platform_property_t *wifi_prop, uin
     return RETURN_ERR;
 }
 
+void copy_string(char*  destination, char*  source)
+{
+    if ( !source )
+    {
+        destination[0] = 0;
+    }
+    else
+    {
+        strcpy(destination, source);
+    }
+}
+
 wifi_interface_name_t *get_interface_name_for_vap_index(unsigned int vap_index, wifi_platform_property_t *wifi_prop)
 {
     unsigned int i, total_vaps=0;
