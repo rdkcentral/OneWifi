@@ -3845,9 +3845,12 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config)
                 strcpy(cfg.u.bss_info.security.u.radius.key, INVALID_KEY);
                 strcpy(cfg.u.bss_info.security.u.radius.s_key, INVALID_KEY);
             }
-            strcpy((char *)cfg.u.bss_info.security.u.radius.ip, "127.0.0.1");
+            memset(cfg.u.bss_info.security.u.radius.ip,0,sizeof(cfg.u.bss_info.security.u.radius.ip));
+            strncpy((char *)cfg.u.bss_info.security.u.radius.ip, "192.168.106.254",sizeof(cfg.u.bss_info.security.u.radius.ip));
             cfg.u.bss_info.security.u.radius.s_port = 1812;
-            strcpy((char *)cfg.u.bss_info.security.u.radius.s_ip, "127.0.0.1");
+            memset(cfg.u.bss_info.security.u.radius.s_ip,0,sizeof(cfg.u.bss_info.security.u.radius.s_ip));
+            strncpy((char *)cfg.u.bss_info.security.u.radius.s_ip, "192.168.106.254",sizeof(cfg.u.bss_info.security.u.radius.s_ip));
+            wifi_util_dbg_print(WIFI_DB,"Primary Ip and Secondry Ip: %s , %s\n", (char *)cfg.u.bss_info.security.u.radius.ip, (char *)cfg.u.bss_info.security.u.radius.s_ip);
         }
 
         char str[600] = {0};
