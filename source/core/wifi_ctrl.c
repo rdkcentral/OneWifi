@@ -812,7 +812,7 @@ int start_wifi_health_monitor_thread(void)
         return RETURN_OK;
     }
 
-    if ((init_wifi_monitor() < RETURN_OK)) {
+    if ((start_wifi_monitor() < RETURN_OK)) {
         wifi_util_error_print(WIFI_CTRL, "-- %s %d start_wifi_health_monitor_thread fail\n", __func__, __LINE__);
         return RETURN_ERR;
     }
@@ -1165,6 +1165,7 @@ void check_log_upload_cron_job()
 
 int start_wifi_ctrl(wifi_ctrl_t *ctrl)
 {
+    int monitor_ret = 0;
 #if CCSP_COMMON
     wifi_apps_t     *analytics = NULL;
 
@@ -1172,6 +1173,10 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
 #endif // CCSP_COMMON
 
     ctrl->webconfig_state = ctrl_webconfig_state_none;
+
+#if DML_SUPPORT
+    monitor_ret = init_wifi_monitor();
+#endif
 
     start_wifi_services();
 
@@ -1184,9 +1189,12 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
     /* start wifi apps */
     wifi_hal_platform_post_init();
 
-    //Start Wifi Monitor Thread
-    start_wifi_health_monitor_thread();
-
+    if (monitor_ret == 0) {
+        //Start Wifi Monitor Thread
+        start_wifi_health_monitor_thread();
+    } else {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to start Wifi Monitor\n", __func__, __LINE__);
+    }
 #if CCSP_COMMON
     if (analytics->event_fn != NULL) {
         analytics->event_fn(analytics, ctrl_event_type_exec, ctrl_event_exec_start, NULL);

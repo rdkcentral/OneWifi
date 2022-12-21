@@ -237,7 +237,6 @@ struct  wifiStdCosaHalMap wifiStdMap[] =
 
 extern BOOL client_fast_reconnect(unsigned int apIndex, char *mac);
 extern BOOL client_fast_redeauth(unsigned int apIndex, char *mac);
-extern pthread_mutex_t g_apRegister_lock;
 int sMac_to_cMac(char *sMac, unsigned char *cMac);
 
 BOOL g_wifidb_rfc = FALSE;

@@ -122,7 +122,6 @@ ULONG lastupdatedtime = 0;
 ULONG chutil_last_updated_time = 0;
 time_t lastpolledtime = 0;
 
-pthread_mutex_t g_apRegister_lock = PTHREAD_MUTEX_INITIALIZER;
 void deinit_wifi_monitor    (void);
 int device_deauthenticated(int apIndex, char *mac, int reason);
 int device_associated(int apIndex, wifi_associated_dev_t *associated_dev);
@@ -4515,40 +4514,21 @@ static void scheduler_telemetry_tasks(void)
     }
 }
 
-int init_wifi_monitor ()
+int init_wifi_monitor()
 {
+    int rssi;
     unsigned int i;
-    int	rssi;
-    //int rapid_reconn_max;
     unsigned int uptimeval = 0;
-    UINT vap_index;
-    //ONEWIFI To avoid the st
-        //Cleanup all CSI clients configured in driver
-    unsigned char def_mac[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
     wifi_mgr_t *mgr = get_wifimgr_obj();
-
-    for (i = 0; i < getTotalNumberVAPs(); i++) {
-        /*TODO CID: 110946 Out-of-bounds access - Fix in QTN code*/
-        vap_index = VAP_INDEX(mgr->hal_cap, i);
-        wifi_front_haul_bss_t *vap_bss_info = Get_wifi_object_bss_parameter(vap_index);
-        if (vap_bss_info != NULL) {
-            mac_addr_str_t mac_str;
-            memcpy(g_monitor_module.bssid_data[i].bssid, vap_bss_info->bssid, sizeof(mac_address_t));
-            wifi_util_dbg_print(WIFI_MON, "%s:%d vap_bss_info->bssid is %s for vap %d", __func__,__LINE__,to_mac_str(g_monitor_module.bssid_data[i].bssid, mac_str), vap_index);
-        }
-
-        //ONEWIFI To avoid the segmentation Fault
-        //Cleanup all CSI clients configured in driver
-        wifi_enableCSIEngine(vap_index, def_mac, FALSE);
-    }
-
+    UINT vap_index;
+    
     memset(g_monitor_module.cliStatsList, 0, MAX_VAP);
     g_monitor_module.poll_period = 5;
     g_monitor_module.upload_period = get_upload_period(60);//Default value 60
     uptimeval=get_sys_uptime();
     chan_util_upload_period = get_chan_util_upload_period();
     wifi_util_dbg_print(WIFI_MON, "%s:%d system uptime val is %ld and upload period is %d in secs\n",
-            __FUNCTION__,__LINE__,uptimeval,(g_monitor_module.upload_period*60));
+             __FUNCTION__,__LINE__,uptimeval,(g_monitor_module.upload_period*60));
     /* If uptime is less than the upload period then we should calculate the current
       VAP iteration for measuring correct VAP UP percentatage. Becaues we should show
       the uptime value as VAP down percentatage.
@@ -4577,7 +4557,6 @@ int init_wifi_monitor ()
         } else {
             wifi_util_dbg_print(WIFI_MON, "%s: wrong vapIndex:%d \n", __FUNCTION__, i);
         }
-
     }
 
     gettimeofday(&g_monitor_module.last_signalled_time, NULL);
@@ -4607,6 +4586,7 @@ int init_wifi_monitor ()
         wifi_util_error_print(WIFI_MON, "monitor scheduler init error\n");
         return -1;
     }
+
     g_monitor_module.chutil_id = 0;
     g_monitor_module.client_telemetry_id = 0;
     g_monitor_module.client_debug_id = 0;
@@ -4640,6 +4620,45 @@ int init_wifi_monitor ()
 
     g_monitor_module.exit_monitor = false;
     g_monitor_module.blastReqInQueueCount = 0;
+    /* Initializing the lock for active measurement g_active_msmt.lock */
+    pthread_mutex_init(&g_active_msmt.lock, NULL);
+    wifi_hal_newApAssociatedDevice_callback_register(device_associated);
+    wifi_vapstatus_callback_register(vapstatus_callback);
+#if !defined(_PLATFORM_RASPBERRYPI_) && !defined(_PLATFORM_TURRIS_)
+    wifi_hal_apDeAuthEvent_callback_register(device_deauthenticated);
+    wifi_hal_apDisassociatedDevice_callback_register(device_disassociated);
+#endif
+#if defined(FEATURE_CSI_CALLBACK)
+    wifi_csi_callback_register(process_csi);
+#endif
+
+    return 0;
+}
+
+int start_wifi_monitor ()
+{
+    unsigned int i;
+    UINT vap_index;
+    //ONEWIFI To avoid the st
+        //Cleanup all CSI clients configured in driver
+    unsigned char def_mac[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+
+    for (i = 0; i < getTotalNumberVAPs(); i++) {
+        /*TODO CID: 110946 Out-of-bounds access - Fix in QTN code*/
+        vap_index = VAP_INDEX(mgr->hal_cap, i);
+        wifi_front_haul_bss_t *vap_bss_info = Get_wifi_object_bss_parameter(vap_index);
+        if (vap_bss_info != NULL) {
+            mac_addr_str_t mac_str;
+            memcpy(g_monitor_module.bssid_data[i].bssid, vap_bss_info->bssid, sizeof(mac_address_t));
+            wifi_util_dbg_print(WIFI_MON, "%s:%d vap_bss_info->bssid is %s for vap %d", __func__,__LINE__,to_mac_str(g_monitor_module.bssid_data[i].bssid, mac_str), vap_index);
+        }
+
+        //ONEWIFI To avoid the segmentation Fault
+        //Cleanup all CSI clients configured in driver
+        wifi_enableCSIEngine(vap_index, def_mac, FALSE);
+    }
+    
     pthread_attr_t attr;
     pthread_attr_t *attrp = NULL;
 
@@ -4668,25 +4687,10 @@ int init_wifi_monitor ()
     } else {
         wifi_util_info_print(WIFI_MON, "%s:%d: Opened sysevent\n", __func__, __LINE__);
     }
-
-    /* Initializing the lock for active measurement g_active_msmt.lock */
-    pthread_mutex_init(&g_active_msmt.lock, NULL);
     if (initparodusTask() == -1) {
         //wifi_util_dbg_print(WIFI_MON, "%s:%d: Failed to initialize paroduc task\n", __func__, __LINE__);
 
     }
-    pthread_mutex_lock(&g_apRegister_lock);
-    wifi_hal_newApAssociatedDevice_callback_register(device_associated);
-    wifi_vapstatus_callback_register(vapstatus_callback);
-#if !defined(_PLATFORM_RASPBERRYPI_) && !defined(_PLATFORM_TURRIS_)
-    wifi_hal_apDeAuthEvent_callback_register(device_deauthenticated);
-    wifi_hal_apDisassociatedDevice_callback_register(device_disassociated);
-#endif
-#if defined(FEATURE_CSI_CALLBACK)
-    wifi_csi_callback_register(process_csi);
-#endif
-    pthread_mutex_unlock(&g_apRegister_lock);
-
     return 0;
 }
 
