@@ -4196,7 +4196,7 @@ void *start_wifidb_func(void *arg)
     char cmd[1024];
     char db_file[128];
     struct stat sb;
-    bool debug_option = true;
+    bool debug_option = false;
     DIR     *wifiDbDir = NULL;
     char version_str[BUFFER_LENGTH_WIFIDB] = {0};
     int  version_int = 0;
