@@ -1011,7 +1011,10 @@ rbusError_t events_CSIGetHandler(rbusHandle_t handle, rbusProperty_t property, r
             memset(tmp_cli_list, 0, sizeof(tmp_cli_list));
             if (csi_data->csi_client_count > 0) {
                 for (itr=0; itr<csi_data->csi_client_count; itr++) {
-                    to_mac_str(csi_data->csi_client_list[itr], mac_str);
+                    snprintf(mac_str, sizeof(mac_str), "%02x%02x%02x%02x%02x%02x",
+                            csi_data->csi_client_list[itr][0], csi_data->csi_client_list[itr][1], 
+                            csi_data->csi_client_list[itr][2], csi_data->csi_client_list[itr][3],
+                            csi_data->csi_client_list[itr][4], csi_data->csi_client_list[itr][5]);
                     strcat(tmp_cli_list, mac_str);
                     strcat(tmp_cli_list, ",");
                 }
