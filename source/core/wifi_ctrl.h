@@ -102,6 +102,9 @@ extern "C" {
 
 #define MAX_WIFI_CSA_SCHED_TIMEOUT         (4 * 1000)
 
+//This is a dummy string if the value is not passed.
+#define INVALID_KEY                      "12345678"
+
 typedef enum {
     rbus_bool_data,
     rbus_int_data,

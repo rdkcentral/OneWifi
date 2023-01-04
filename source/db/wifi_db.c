@@ -3602,8 +3602,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config)
         if (wifi_hal_get_default_keypassphrase(password,vap_index) == 0) {
             strcpy(cfg.u.sta_info.security.u.key.key, password);
         } else {
-            //This is an example of password default if password not configured.
-            strcpy(cfg.u.sta_info.security.u.key.key, "123456789");
+            strcpy(cfg.u.sta_info.security.u.key.key, INVALID_KEY);
         }
         cfg.u.bss_info.bssMaxSta = 75;
         if (cfg.radio_index == 0) {
@@ -3730,8 +3729,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config)
         if (wifi_hal_get_default_keypassphrase(password,vap_index) == 0) {
             strcpy(cfg.u.bss_info.security.u.key.key, password);
         } else {
-            //This is an example of password default if password not configured.
-            strcpy(cfg.u.bss_info.security.u.key.key, "123456789");
+            strcpy(cfg.u.bss_info.security.u.key.key, INVALID_KEY);
         }
 
         if (isVapLnfSecure(vap_index)) {
@@ -3745,9 +3743,8 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config)
                 strcpy(cfg.u.bss_info.security.u.radius.s_key, radius_key);
             }
             else {
-                 //This is an example of radius keys default if its not configured.
-                strcpy(cfg.u.bss_info.security.u.radius.key, "1234567890");
-                strcpy(cfg.u.bss_info.security.u.radius.s_key, "1234567890");
+                strcpy(cfg.u.bss_info.security.u.radius.key, INVALID_KEY);
+                strcpy(cfg.u.bss_info.security.u.radius.s_key, INVALID_KEY);
             }
             strcpy((char *)cfg.u.bss_info.security.u.radius.ip, "127.0.0.1");
             cfg.u.bss_info.security.u.radius.s_port = 1812;

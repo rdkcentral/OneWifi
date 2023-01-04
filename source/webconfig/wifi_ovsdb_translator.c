@@ -414,10 +414,9 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
             memset(ssid, 0, sizeof(ssid));
             strcpy(t_vap_info->u.bss_info.ssid, t_vap_info->vap_name);
             memset(password, 0, sizeof(password));
-            //This is an example of password default if its not configured.
-            strcpy(t_vap_info->u.bss_info.security.u.key.key, "123456789");
+            strcpy(t_vap_info->u.bss_info.security.u.key.key, INVALID_KEY);
             memset(wps_pin, 0, sizeof(wps_pin));
-            strcpy(t_vap_info->u.bss_info.wps.pin, "12345678");
+            strcpy(t_vap_info->u.bss_info.wps.pin, INVALID_KEY);
             t_vap_info->u.bss_info.showSsid = true;
 
         } else if(is_vap_mesh_backhaul(&hal_cap->wifi_prop, vapIndex) == TRUE) {
@@ -428,17 +427,15 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
             memset(ssid, 0, sizeof(ssid));
             strcpy(t_vap_info->u.bss_info.ssid, "we.connect.yellowstone");
             memset(password, 0, sizeof(password));
-            //This is an example of password default if its not configured.
-            strcpy(t_vap_info->u.bss_info.security.u.key.key, "1234567890");
+            strcpy(t_vap_info->u.bss_info.security.u.key.key, INVALID_KEY);
         } else if(is_vap_lnf_radius(&hal_cap->wifi_prop, vapIndex) == TRUE) {
             strcpy(t_vap_info->u.bss_info.security.u.radius.identity, "lnf_radius_identity");
             t_vap_info->u.bss_info.security.u.radius.port = 1812;
             strcpy((char *)t_vap_info->u.bss_info.security.u.radius.ip, "127.0.0.1");
             t_vap_info->u.bss_info.security.u.radius.s_port = 1812;
             strcpy((char *)t_vap_info->u.bss_info.security.u.radius.s_ip, "127.0.0.1");
-            //This is an example of radius keys default if its not configured.
-            strcpy(t_vap_info->u.bss_info.security.u.radius.key, "1234567890");
-            strcpy(t_vap_info->u.bss_info.security.u.radius.s_key, "1234567890");
+            strcpy(t_vap_info->u.bss_info.security.u.radius.key, INVALID_KEY);
+            strcpy(t_vap_info->u.bss_info.security.u.radius.s_key, INVALID_KEY);
 
             strcpy(t_vap_info->u.bss_info.ssid, t_vap_info->vap_name);
             t_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa2_enterprise;
@@ -447,16 +444,14 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
             memset(ssid, 0, sizeof(ssid));
             strcpy(t_vap_info->u.bss_info.ssid, t_vap_info->vap_name);
             memset(password, 0, sizeof(password));
-            //This is an example of password default if its not configured.
-            strcpy(t_vap_info->u.bss_info.security.u.key.key, "123456789");
+            strcpy(t_vap_info->u.bss_info.security.u.key.key, INVALID_KEY);
             t_vap_info->u.bss_info.showSsid = false;
         }   else if(is_vap_xhs(&hal_cap->wifi_prop, vapIndex) == TRUE) {
             t_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
             memset(ssid, 0, sizeof(ssid));
             strcpy(t_vap_info->u.bss_info.ssid, t_vap_info->vap_name);
             memset(password, 0, sizeof(password));
-            //This is an example of password default if its not configured.
-            strcpy(t_vap_info->u.bss_info.security.u.key.key, "123456789");
+            strcpy(t_vap_info->u.bss_info.security.u.key.key, INVALID_KEY);
             t_vap_info->u.bss_info.showSsid = false;
         }
     }

@@ -2103,8 +2103,7 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
             cJSON_AddStringToObject(rad_o, "DasSecret", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.security.u.radius.daskey);
         }
         else {
-            //This is an example of Radius Dassecret  default if its not configured.
-            cJSON_AddStringToObject(rad_o, "DasSecret", "123456789");
+            cJSON_AddStringToObject(rad_o, "DasSecret", INVALID_KEY);
         }
         cJSON_AddNumberToObject(rad_o, "MaxAuthAttempts", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.security.u.radius.max_auth_attempts);
         cJSON_AddNumberToObject(rad_o, "BlacklistTableTimeout", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.security.u.radius.blacklist_table_timeout);

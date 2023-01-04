@@ -1102,7 +1102,7 @@ void update_dml_vap_defaults() {
             if (wifi_hal_get_default_wps_pin(wps_pin) == RETURN_OK) {
                 strcpy(vap_default[i].wps_pin, wps_pin);
             } else {
-                strcpy(vap_default[i].wps_pin, "12345678");
+                strcpy(vap_default[i].wps_pin, INVALID_KEY);
             }
         }
         vap_default[i].txoverflow = 0;
