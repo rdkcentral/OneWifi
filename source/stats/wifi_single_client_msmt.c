@@ -1000,16 +1000,22 @@ void upload_single_client_active_msmt_data(bssid_data_t *bssid_info, sta_data_t 
     }
 
     const char *macStr = NULL;
-    char CpemacStr[32] = { 0 };
+    char CpemacStr[32] = {0};
 
     //cpe_id block
     /* MAC - Get CPE mac address, do it only pointer is NULL */
     if ( macStr == NULL )
     {
         macStr = getDeviceMac();
-        strncpy( CpemacStr, macStr, sizeof(CpemacStr));
-        wifi_util_dbg_print(WIFI_MON, "%s:%d: RDK_LOG_DEBUG, Received DeviceMac from Atom side: %s\n",__func__, __LINE__, macStr);
-        CcspTraceInfo(("%s-%d Received DeviceMac from Atom side: %s\n", __FUNCTION__, __LINE__, macStr));
+        if (macStr != NULL) {
+            strncpy( CpemacStr, macStr, sizeof(CpemacStr));
+            wifi_util_dbg_print(WIFI_MON, "%s:%d: RDK_LOG_DEBUG, Received DeviceMac from Atom side: %s\n",__func__, __LINE__, macStr);
+            CcspTraceInfo(("%s-%d Received DeviceMac from Atom side: %s\n", __FUNCTION__, __LINE__, macStr));
+        }
+        else {
+            wifi_util_error_print(WIFI_MON, "%s:%d: RDK_LOG_DEBUG, Device MAC Received as NULL\n", __func__, __LINE__);
+            CcspTraceError(("%s-%d Device MAC Received as NULL\n", __func__, __LINE__));
+        }
     }
 
     char CpeMacHoldingBuf[ 20 ] = {0};
