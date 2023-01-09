@@ -925,7 +925,8 @@ void get_psm_mac_list_entry(unsigned int instance_number, char *l_vap_name, unsi
         if (str != NULL) {
             str_to_mac_bytes(str, temp_psm_mac_param->mac);
             wifi_util_dbg_print(WIFI_MGR,"psm get mac is %s\n", str);
-
+            str_tolower(str);
+            wifi_util_dbg_print(WIFI_MGR,"psm get mac after lower is %s\n", str);
             snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", l_vap_name, str);
             wifidb_update_wifi_macfilter_config(macfilterkey, temp_psm_mac_param, true);
         } else {

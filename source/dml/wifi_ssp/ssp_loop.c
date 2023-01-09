@@ -1165,6 +1165,11 @@ void Psm_Db_Delete_MacFilter(wifi_mac_entry_param_t *mcfg)
     }
 
     temp_mac_entry = hash_map_remove(psm_mac_map, mcfg->mac);
+    if (temp_mac_entry == NULL) {
+        wifi_util_error_print(WIFI_PSM, "%s:%d mac filter entry not found for vap_index:%d hash_map_address:%p \r\n",
+                                __func__, __LINE__, mcfg->vap_index, psm_mac_map);
+        return;
+    }
     wifi_util_dbg_print(WIFI_PSM, "%s:%d remove mac filter enetry:%s:%s\r\n",__func__, __LINE__, mcfg->mac, temp_mac_entry->mac);
     delete_psm_entry(MacFilter, mcfg->vap_index, temp_mac_entry->data_index);
     delete_psm_entry(MacFilterDevice, mcfg->vap_index, temp_mac_entry->data_index);

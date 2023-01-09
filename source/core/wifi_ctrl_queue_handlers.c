@@ -1236,6 +1236,8 @@ void process_greylist_mac_filter(void *data)
             }
 
             to_mac_str(new_mac, new_mac_str);
+            str_tolower(new_mac_str);
+            wifi_util_dbg_print(WIFI_CTRL,"new_mac_str %s\n",new_mac_str);
             temp_acl_entry = hash_map_get(rdk_vap_info->acl_map,strdup(new_mac_str));
 
             if (temp_acl_entry != NULL) {

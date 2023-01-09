@@ -832,6 +832,7 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
                     current_acl_entry = hash_map_get_first(current_config->acl_map);
                     while (current_acl_entry != NULL) {
                         to_mac_str(current_acl_entry->mac, current_mac_str);
+                        str_tolower(current_mac_str);
                         if ((new_config->acl_map == NULL) || (hash_map_get(new_config->acl_map, current_mac_str) == NULL)) {
                             wifi_util_info_print(WIFI_MGR, "%s:%d: calling wifi_delApAclDevice for mac %s vap_index %d\n", __func__, __LINE__, current_mac_str, current_config->vap_index);
                             if (wifi_delApAclDevice(current_config->vap_index, current_mac_str) != RETURN_OK) {
@@ -862,6 +863,7 @@ int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_d
                 new_acl_entry = hash_map_get_first(new_config->acl_map);
                 while (new_acl_entry != NULL) {
                     to_mac_str(new_acl_entry->mac, new_mac_str);
+                    str_tolower(new_mac_str);
                     acl_entry_t *check_acl_entry = hash_map_get(current_config->acl_map, new_mac_str);
                     if (check_acl_entry == NULL) { //mac is in new_config but not in running config need to update HAL
                         wifi_util_info_print(WIFI_MGR, "%s:%d: calling wifi_addApAclDevice for mac %s vap_index %d\n", __func__, __LINE__, new_mac_str, current_config->vap_index);

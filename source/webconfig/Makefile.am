@@ -67,7 +67,7 @@ if ONEWIFI_DML_SUPPORT
 libwifi_webconfig_la_SOURCES += wifi_webconfig_dml.c
 endif
 
-libwifi_webconfig_la_SOURCES += $(top_srcdir)/source/utils/wifi_util.c $(top_srcdir)/source/utils/collection.c
+libwifi_webconfig_la_SOURCES +=  $(top_srcdir)/lib/common/util.c $(top_srcdir)/source/utils/wifi_util.c $(top_srcdir)/source/utils/collection.c
 
 libwifi_webconfig_la_LDFLAGS = -rdynamic -lwebconfig_framework -lsecure_wrapper $(SYSTEMD_LDFLAGS) -lsecure_wrapper -lmsgpackc -lcjson -lm -ljansson -shared
 

@@ -64,6 +64,7 @@ void process_prefer_private_mac_filter(mac_address_t prefer_private_mac)
     char macfilterkey[128];
     wifi_vap_info_map_t *wifi_vap_map = NULL;
     int acl_count = 0;
+
     memset(macfilterkey, 0, sizeof(macfilterkey));
 
     memcpy(new_mac,prefer_private_mac, sizeof(mac_address_t));
@@ -73,6 +74,7 @@ void process_prefer_private_mac_filter(mac_address_t prefer_private_mac)
     }
 
     to_mac_str(new_mac, new_mac_str);
+    str_tolower(new_mac_str);
     wifi_util_dbg_print(WIFI_CTRL,"macstring to addi %s\n",new_mac_str);
 
     for (itr = 0; itr < getNumberRadios(); itr++) {

@@ -2915,6 +2915,7 @@ webconfig_error_t decode_mac_object(rdk_wifi_vap_info_t *rdk_vap_info, cJSON *ob
         decode_param_integer(mac_object, "expiry_time", param);
         acl_entry->expiry_time = param->valuedouble;
 
+        str_tolower(tmp_mac);
         hash_map_put(rdk_vap_info->acl_map, strdup(tmp_mac), acl_entry);
     }
 

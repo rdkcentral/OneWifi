@@ -2115,6 +2115,7 @@ int wifidb_update_wifi_macfilter_config(char *macfilter_key, acl_entry_t *config
     rdk_wifi_vap_info_t *l_rdk_vap_array = NULL;
     wifi_mac_entry_param_t l_mac_entry;
     memset(&l_mac_entry, 0, sizeof(l_mac_entry));
+    str_tolower(macfilter_key);
     memset(buff, 0, sizeof(buff));
     snprintf(buff,sizeof(buff),"%s",macfilter_key);
   
@@ -2126,6 +2127,7 @@ int wifidb_update_wifi_macfilter_config(char *macfilter_key, acl_entry_t *config
         wifidb_print("%s:%d vap_name:%s key:%s\n",__func__, __LINE__, vap_name, macfilter_key);
         memset(tmp_mac_str, 0, sizeof(tmp_mac_str));
         to_mac_str(config->mac, tmp_mac_str);
+        str_tolower(tmp_mac_str);
         strncpy(l_mac_entry.device_name, config->device_name, sizeof(l_mac_entry.device_name)-1);
         strncpy(l_mac_entry.mac, tmp_mac_str, sizeof(l_mac_entry.mac)-1);
 #if DML_SUPPORT
@@ -2149,6 +2151,7 @@ int wifidb_update_wifi_macfilter_config(char *macfilter_key, acl_entry_t *config
         }
 
         to_mac_str(config->mac, tmp_mac_str);
+        str_tolower(tmp_mac_str);
         strncpy(cfg_mac.device_mac, tmp_mac_str, sizeof(cfg_mac.device_mac)-1);
         strncpy(cfg_mac.device_name, config->device_name, sizeof(cfg_mac.device_name)-1);
         cfg_mac.reason = config->reason;
@@ -2416,7 +2419,7 @@ void wifidb_get_wifi_macfilter_config()
 {
     struct schema_Wifi_MacFilter_Config *pcfg;
     int count, itr;
-    char *ptr_t, *tmp, *tmp_vap_name, delim[2] = "-";
+    char *ptr_t, *tmp, *tmp_mac, *tmp_vap_name, delim[2] = "-";
     rdk_wifi_vap_info_t *l_rdk_vap_array = NULL;
     wifi_db_t *g_wifidb;
     acl_entry_t *tmp_acl_entry = NULL;
@@ -2451,21 +2454,42 @@ void wifidb_get_wifi_macfilter_config()
         l_rdk_vap_array = get_wifidb_rdk_vap_info(vap_index);
 
         if ((l_rdk_vap_array != NULL) && (l_rdk_vap_array->acl_map != NULL)) {
-            tmp_acl_entry = (acl_entry_t *)malloc(sizeof(acl_entry_t));
+            tmp_mac = strdup(pcfg->device_mac);
+            str_tolower(tmp_mac);
+            tmp_acl_entry = hash_map_get(l_rdk_vap_array->acl_map, tmp_mac);
             if (tmp_acl_entry == NULL) {
-                wifi_util_dbg_print(WIFI_DB,"%s:%d: NULL Pointer \n", __func__, __LINE__);
-                return;
+                tmp_acl_entry = (acl_entry_t *)malloc(sizeof(acl_entry_t));
+                if (tmp_acl_entry == NULL) {
+                    wifi_util_dbg_print(WIFI_DB,"%s:%d: NULL Pointer \n", __func__, __LINE__);
+                    if(tmp_mac) {
+                        free(tmp_mac);
+                    }
+                    return;
+                }
+                memset(tmp_acl_entry, 0, sizeof(acl_entry_t));
+
+                str_to_mac_bytes(tmp_mac, mac);
+                memcpy(tmp_acl_entry->mac, mac, sizeof(mac_address_t));
+
+                strncpy(tmp_acl_entry->device_name, pcfg->device_name, strlen(pcfg->device_name)+1);
+                tmp_acl_entry->reason = pcfg->reason;
+                tmp_acl_entry->expiry_time = pcfg->expiry_time;
+
+                hash_map_put(l_rdk_vap_array->acl_map, tmp_mac, tmp_acl_entry);
+            } else {
+                memset(tmp_acl_entry, 0, sizeof(acl_entry_t));
+
+                str_to_mac_bytes(tmp_mac, mac);
+                memcpy(tmp_acl_entry->mac, mac, sizeof(mac_address_t));
+
+                strncpy(tmp_acl_entry->device_name, pcfg->device_name, strlen(pcfg->device_name)+1);
+                tmp_acl_entry->reason = pcfg->reason;
+                tmp_acl_entry->expiry_time = pcfg->expiry_time;
             }
-            memset(tmp_acl_entry, 0, sizeof(acl_entry_t));
+            if(tmp_mac) {
+               free(tmp_mac);
+            }
 
-            str_to_mac_bytes(pcfg->device_mac, mac);
-            memcpy(tmp_acl_entry->mac, mac, sizeof(mac_address_t));
-
-            strncpy(tmp_acl_entry->device_name, pcfg->device_name, strlen(pcfg->device_name)+1);
-            tmp_acl_entry->reason = pcfg->reason;
-            tmp_acl_entry->expiry_time = pcfg->expiry_time;
-
-            hash_map_put(l_rdk_vap_array->acl_map, strdup(pcfg->device_mac), tmp_acl_entry);
         }
         pcfg++;
     }
