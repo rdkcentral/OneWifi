@@ -295,14 +295,8 @@
             <syntax>bool</syntax>
             <writable>true</writable>
         </parameter>
-        <parameter>
-            <name>TCXB7_5342_Heal_Enable</name>
-            <type>boolean</type>
-            <syntax>bool</syntax>
-            <writable>true</writable>
-        </parameter>
-    </parameters>
-    <objects>
+	</parameters>
+	<objects>
         <object>
             <name>X_RDKCENTRAL-COM_GASConfig</name>
             <objectType>dynamicTable</objectType>
