@@ -503,6 +503,23 @@ int analytics_event_sta_connect_in_progress(wifi_apps_t *apps, void *arg)
     return 0;
 }
 
+int analytics_event_trigger_disconnection_analytics(wifi_apps_t *apps, void *arg)
+{
+    vap_svc_ext_t   *ext = (vap_svc_ext_t *)arg;
+    char temp_str[512];
+    mac_addr_str_t bssid_str;
+
+    if (ext == NULL) {
+        wifi_util_error_print(WIFI_APPS,"%s:%d: input arg is NULL\n",__func__, __LINE__);
+        return -1;
+    }
+
+    to_mac_str(ext->last_connected_bss.external_ap.bssid, bssid_str);
+    snprintf(temp_str, sizeof(temp_str), "Triggered Disconnection from vap_index %d bssid:%s", ext->connected_vap_index, bssid_str);
+    wifi_util_info_print(WIFI_ANALYTICS, analytics_format_core_hal, "sta status", temp_str);
+    return 0;
+}
+
 int analytics_event_udhcp_ip_fail(wifi_apps_t *apps, void *arg)
 {
     vap_svc_ext_t   *ext = (vap_svc_ext_t *)arg;
@@ -719,6 +736,10 @@ int command_event_analytics(wifi_apps_t *apps, ctrl_event_subtype_t sub_type, vo
 
         case ctrl_event_type_udhcp_ip_fail:
             analytics_event_udhcp_ip_fail(apps, arg);
+            break;
+
+        case ctrl_event_type_trigger_disconnection_analytics:
+            analytics_event_trigger_disconnection_analytics(apps, arg);
             break;
 
         default:

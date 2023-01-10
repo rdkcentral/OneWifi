@@ -178,6 +178,11 @@ void cancel_all_running_timer(vap_svc_t *svc)
         scheduler_cancel_timer_task(l_ctrl->sched, l_ext->ext_udhcp_disconnect_event_timeout_handler_id);
         l_ext->ext_udhcp_disconnect_event_timeout_handler_id = 0;
     }
+    if (l_ext->ext_trigger_disconnection_timeout_handler_id != 0) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d - cancel started timer\r\n", __func__, __LINE__);
+        scheduler_cancel_timer_task(l_ctrl->sched, l_ext->ext_trigger_disconnection_timeout_handler_id);
+        l_ext->ext_trigger_disconnection_timeout_handler_id = 0;
+    }
 }
 
 void ext_incomplete_scan_list(vap_svc_t *svc)
@@ -256,6 +261,24 @@ int process_udhcp_disconnect_event_timeout(vap_svc_t *svc)
     return 0;
 }
 
+int process_trigger_disconnection_event_timeout(vap_svc_t *svc)
+{
+    vap_svc_ext_t   *ext;
+    wifi_ctrl_t *ctrl;
+
+    ctrl = svc->ctrl;
+    ext = &svc->u.ext;
+
+    if (ext->conn_state == connection_state_connected) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d Not received disconnection event \n", __func__, __LINE__);
+        ext->conn_state = connection_state_disconnected_scan_list_none;
+        scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
+                process_ext_connect_algorithm, svc,
+                EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1);
+    }
+
+    return 0;
+}
 int process_udhcp_ip_check(vap_svc_t *svc)
 {
     static int ip_check_count = 0;
@@ -816,6 +839,39 @@ int process_ext_webconfig_set_data(vap_svc_t *svc, void *arg)
     return 0;
 }
 
+void process_ext_trigger_disconnection(vap_svc_t *svc, void *arg)
+{
+
+    if (svc == NULL) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d NULL pointer\n", __func__, __LINE__);
+        return;
+    }
+
+    vap_svc_ext_t *ext;
+    wifi_ctrl_t *ctrl;
+
+    ctrl = svc->ctrl;
+    ext = &svc->u.ext;
+
+#if DML_SUPPORT
+    wifi_apps_t    *analytics = NULL;
+    analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
+#endif
+
+    if (ext->conn_state == connection_state_connected) {
+#if DML_SUPPORT
+        if (analytics) {
+            analytics->event_fn(analytics, ctrl_event_type_command, ctrl_event_type_trigger_disconnection_analytics, ext);
+        }
+#endif
+        wifi_hal_disconnect(ext->connected_vap_index);
+        scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_trigger_disconnection_timeout_handler_id,
+                    process_trigger_disconnection_event_timeout, svc,
+                    EXT_DISCONNECTION_IND_TIMEOUT, 1);
+    }
+    return;
+}
+
 int process_ext_exec_timeout(vap_svc_t *svc, void *arg)
 {
     vap_svc_ext_t *ext;
@@ -1088,10 +1144,17 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
 
             if (ext->ext_udhcp_ip_check_id != 0) {
                 scheduler_cancel_timer_task(ctrl->sched, ext->ext_udhcp_ip_check_id);
+                ext->ext_udhcp_ip_check_id = 0;
             }
 
             if (ext->ext_udhcp_disconnect_event_timeout_handler_id != 0) {
                 scheduler_cancel_timer_task(ctrl->sched,  ext->ext_udhcp_disconnect_event_timeout_handler_id);
+                ext->ext_udhcp_disconnect_event_timeout_handler_id = 0;
+            }
+
+            if (ext->ext_trigger_disconnection_timeout_handler_id != 0) {
+                scheduler_cancel_timer_task(ctrl->sched, ext->ext_trigger_disconnection_timeout_handler_id);
+                ext->ext_trigger_disconnection_timeout_handler_id = 0;
             }
 
             scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_udhcp_ip_check_id,
@@ -1126,11 +1189,19 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
             send_event = true;
             if (ext->ext_udhcp_ip_check_id != 0) {
                 scheduler_cancel_timer_task(ctrl->sched, ext->ext_udhcp_ip_check_id);
+                ext->ext_udhcp_ip_check_id = 0;
             }
 
             if (ext->ext_udhcp_disconnect_event_timeout_handler_id != 0) {
                 scheduler_cancel_timer_task(ctrl->sched, ext->ext_udhcp_disconnect_event_timeout_handler_id);
+                ext->ext_udhcp_disconnect_event_timeout_handler_id = 0;
             }
+
+            if (ext->ext_trigger_disconnection_timeout_handler_id != 0) {
+                scheduler_cancel_timer_task(ctrl->sched, ext->ext_trigger_disconnection_timeout_handler_id);
+                ext->ext_trigger_disconnection_timeout_handler_id = 0;
+            }
+
         } else if (ext->conn_state == connection_state_connection_in_progress) {
             candidate = ext->candidates_list.scan_list;
             for (i = 0; i < ext->candidates_list.scan_count; i++) {
@@ -1264,6 +1335,10 @@ int process_ext_command(vap_svc_t *svc, ctrl_event_subtype_t sub_type, void *arg
 {
     switch (sub_type) {
         case ctrl_event_type_device_network_mode:
+            break;
+
+        case ctrl_event_type_trigger_disconnection:
+            process_ext_trigger_disconnection(svc, arg);
             break;
 
         default:

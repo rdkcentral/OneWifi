@@ -1846,6 +1846,31 @@ void process_device_mode_command_event(int device_mode)
     }
 }
 
+void process_sta_trigger_disconnection(bool sta_disconnection)
+{
+    wifi_mgr_t *g_wifidb;
+    wifi_ctrl_t *ctrl;
+    vap_svc_t *ext_svc;
+    g_wifidb = get_wifimgr_obj();
+
+    if (g_wifidb != NULL) {
+        ctrl = &g_wifidb->ctrl;
+        if (ctrl->network_mode == rdk_dev_mode_type_ext) {
+            ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
+            if (ext_svc != NULL) {
+                if (sta_disconnection) {
+                    ext_svc->event_fn(ext_svc, ctrl_event_type_command, ctrl_event_type_trigger_disconnection, vap_svc_event_none, NULL);
+                }
+            } else {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d NULL svc Pointer not triggering disconnection\r\n", __func__, __LINE__);
+            }
+        }
+    } else {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d NULL Pointer not triggering disconnection\r\n", __func__, __LINE__);
+    }
+    return;
+}
+
 void process_channel_change_event(wifi_channel_change_event_t *ch_chg)
 {
     wifi_radio_operationParam_t *radio_params = NULL;
@@ -2141,7 +2166,10 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len, ctrl_
         case ctrl_event_type_mgmt_frame_rbus_rfc:
             process_mgmt_frame_rbus_enable_event(*(bool *)data);
             break;
-#endif // DML_SUPPORT
+#endif // CCSP_COMMON
+        case ctrl_event_type_trigger_disconnection:
+            process_sta_trigger_disconnection(*(bool *)data);
+            break;
 
         default:
             wifi_util_error_print(WIFI_CTRL,"[%s]:WIFI hal handler not supported this event %d\r\n",__FUNCTION__, subtype);

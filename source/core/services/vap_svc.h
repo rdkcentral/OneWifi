@@ -118,6 +118,7 @@ typedef struct {
     int                    ext_disconnection_event_timeout_handler_id;
     int                    ext_udhcp_ip_check_id;
     int                    ext_udhcp_disconnect_event_timeout_handler_id;
+    int                    ext_trigger_disconnection_timeout_handler_id;
 }__attribute__((packed)) vap_svc_ext_t;
 
 typedef struct vap_svc {

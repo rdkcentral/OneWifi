@@ -600,6 +600,44 @@ rbusError_t get_null_subdoc_data(rbusHandle_t handle, rbusProperty_t property, r
     return RBUS_ERROR_SUCCESS;
 }
 
+rbusError_t get_sta_disconnection(rbusHandle_t handle, rbusProperty_t property, rbusGetHandlerOptions_t* opts)
+{
+    char const* name = rbusProperty_GetName(property);
+    rbusValue_t value;
+
+    rbusValue_Init(&value);
+    if (strcmp(name, WIFI_STA_TRIGGER_DISCONNECTION) == 0) {
+        rbusValue_SetBoolean(value, false);
+        rbusProperty_SetValue(property, value);
+    }
+
+    rbusValue_Release(value);
+
+    return RBUS_ERROR_SUCCESS;
+}
+
+rbusError_t set_sta_disconnection(rbusHandle_t handle, rbusProperty_t property, rbusSetHandlerOptions_t* opts)
+{
+    char const* name = rbusProperty_GetName(property);
+    rbusValue_t value = rbusProperty_GetValue(property);
+    rbusValueType_t type = rbusValue_GetType(value);
+    int rc = RBUS_ERROR_INVALID_INPUT;
+    bool sta_disconnect = false;
+
+    if (type != RBUS_BOOLEAN) {
+        wifi_util_dbg_print(WIFI_CTRL,"%sWrong data type %s\n",__FUNCTION__,name);
+        return rc;
+    }
+
+    sta_disconnect = rbusValue_GetBoolean(value);
+    if (sta_disconnect) {
+        rc = RBUS_ERROR_SUCCESS;
+        wifi_util_dbg_print(WIFI_CTRL,"%s Rbus set bool %d\n",__FUNCTION__, sta_disconnect);
+        push_data_to_ctrl_queue(&sta_disconnect, sizeof(sta_disconnect), ctrl_event_type_command, ctrl_event_type_trigger_disconnection);
+    }
+
+    return rc;
+}
 
 rbusError_t set_kickassoc_command(rbusHandle_t handle, rbusProperty_t property, rbusSetHandlerOptions_t* opts)
 {
@@ -1339,6 +1377,8 @@ void rbus_register_handlers(wifi_ctrl_t *ctrl)
                                 { NULL, set_kickassoc_command, NULL, NULL, NULL, NULL }},
                                 { WIFI_WEBCONFIG_GET_NULL_SUBDOC, RBUS_ELEMENT_TYPE_METHOD,
                                 { get_null_subdoc_data, NULL, NULL, NULL, NULL, NULL }},
+                                { WIFI_STA_TRIGGER_DISCONNECTION, RBUS_ELEMENT_TYPE_METHOD,
+                                { get_sta_disconnection, set_sta_disconnection, NULL, NULL, NULL, NULL}}, 
     };
 
     rc = rbus_open(&ctrl->rbus_handle, component_name);

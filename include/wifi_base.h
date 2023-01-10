@@ -46,6 +46,7 @@ extern "C" {
 #define WIFI_ANALYTICS_FRAME_EVENTS         "Device.WiFi.Events.Frames.Mgmt"
 #define WIFI_ANALYTICS_DATA_EVENTS          "Device.WiFi.Events.Frames.Data"
 #define WIFI_FRAME_INJECTOR_TO_ONEWIFI      "Device.WiFi.TestFrameInput"
+#define WIFI_STA_TRIGGER_DISCONNECTION      "Device.WiFi.STATriggerDisconnection"
 
 #define PLAN_ID_LENGTH     38
 #define MAX_STEP_COUNT  32 /*Active Measurement Step Count */
@@ -131,6 +132,8 @@ typedef enum {
     ctrl_event_type_mgmt_frame_rbus_rfc,
     ctrl_event_type_sta_connect_in_progress,
     ctrl_event_type_udhcp_ip_fail,
+    ctrl_event_type_trigger_disconnection,
+    ctrl_event_type_trigger_disconnection_analytics,
     ctrl_event_command_max,
 
     // wif_api
