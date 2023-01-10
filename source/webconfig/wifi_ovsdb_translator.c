@@ -1151,7 +1151,7 @@ webconfig_error_t   translate_radio_object_to_ovsdb_radio_config_for_dml(webconf
     hal_cap = &decoded_params->hal_cap;
     memcpy(&webconfig_ovsdb_data.u.decoded.hal_cap, hal_cap, sizeof(wifi_hal_capability_t));
 
-     translator_ovsdb_init(data);
+    translator_ovsdb_init(data);
 
     for (i= 0; i < decoded_params->num_radios; i++) {
         radio_index = convert_radio_name_to_radio_index(decoded_params->radios[i].name);
@@ -1162,7 +1162,10 @@ webconfig_error_t   translate_radio_object_to_ovsdb_radio_config_for_dml(webconf
         oper_param = &decoded_params->radios[radio_index].oper;
         memcpy(&webconfig_ovsdb_data.u.decoded.radios[radio_index].oper, oper_param, sizeof(wifi_radio_operationParam_t));
         strncpy(webconfig_ovsdb_data.u.decoded.radios[radio_index].name, decoded_params->radios[radio_index].name,  sizeof(webconfig_ovsdb_data.u.decoded.radios[radio_index].name));
+        memcpy(&webconfig_ovsdb_default_data.u.decoded.radios[radio_index].vaps.vap_map, &decoded_params->radios[radio_index].vaps.vap_map , sizeof(wifi_vap_info_map_t));
+        webconfig_ovsdb_default_data.u.decoded.radios[radio_index].vaps.num_vaps = decoded_params->radios[radio_index].vaps.num_vaps;
     }
+
     return webconfig_error_none;
 }
 
