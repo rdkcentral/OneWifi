@@ -2883,7 +2883,7 @@ webconfig_error_t decode_mac_object(rdk_wifi_vap_info_t *rdk_vap_info, cJSON *ob
     cJSON *client, *obj_acl, *mac_object, *device_name;
     const cJSON  *param;
     unsigned int size = 0, i = 0;
-    acl_entry_t *acl_entry;
+    acl_entry_t *acl_entry, *tmp_acl_entry;
 
     obj_acl =  cJSON_GetObjectItem(obj_array, "MACFilterList");
 
@@ -2928,7 +2928,14 @@ webconfig_error_t decode_mac_object(rdk_wifi_vap_info_t *rdk_vap_info, cJSON *ob
         acl_entry->expiry_time = param->valuedouble;
 
         str_tolower(tmp_mac);
-        hash_map_put(rdk_vap_info->acl_map, strdup(tmp_mac), acl_entry);
+        tmp_acl_entry = hash_map_get(rdk_vap_info->acl_map, tmp_mac);
+        if (tmp_acl_entry == NULL) {
+            hash_map_put(rdk_vap_info->acl_map, strdup(tmp_mac), acl_entry);
+        } else {
+            memcpy(tmp_acl_entry, acl_entry, sizeof(acl_entry_t));
+            free(acl_entry);
+            acl_entry = NULL;
+        }
     }
 
     return webconfig_error_none;

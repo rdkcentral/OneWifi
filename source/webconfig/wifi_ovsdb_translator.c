@@ -781,10 +781,14 @@ webconfig_error_t translate_macfilter_from_ovsdb_to_rdk_vap(const struct schema_
         return webconfig_error_translate_from_ovsdb;
     }
 
-    rdk_vap->acl_map = hash_map_create();
     if (rdk_vap->acl_map == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: hash map create failed\n", __func__, __LINE__);
-        return webconfig_error_translate_from_ovsdb;
+        rdk_vap->acl_map = hash_map_create();
+        if (rdk_vap->acl_map == NULL) {
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: hash map create failed\n", __func__, __LINE__);
+            return webconfig_error_translate_from_ovsdb;
+        }
+    } else {
+        wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: acl hash map already avaialble:%p\n", __func__, __LINE__, rdk_vap->acl_map);
     }
 
     for (i = 0; i < row->mac_list_len; i++) {
@@ -793,16 +797,22 @@ webconfig_error_t translate_macfilter_from_ovsdb_to_rdk_vap(const struct schema_
             wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: mac_str is NULL\n", __func__, __LINE__);
             return webconfig_error_translate_from_ovsdb;
         }
-        str_to_mac_bytes(mac_str, mac);
-        acl_entry = (acl_entry_t *)malloc(sizeof(acl_entry_t));
+        str_tolower(mac_str);
+        acl_entry = hash_map_get(rdk_vap->acl_map, mac_str);
         if (acl_entry == NULL) {
-            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer \n", __func__, __LINE__);
-            return webconfig_error_translate_from_ovsdb;
-        }
-        memset(acl_entry, 0, (sizeof(acl_entry_t)));
+            str_to_mac_bytes(mac_str, mac);
+            acl_entry = (acl_entry_t *)malloc(sizeof(acl_entry_t));
+            if (acl_entry == NULL) {
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer \n", __func__, __LINE__);
+                return webconfig_error_translate_from_ovsdb;
+            }
+            memset(acl_entry, 0, (sizeof(acl_entry_t)));
 
-        memcpy(&acl_entry->mac, mac, sizeof(mac_address_t));
-        hash_map_put(rdk_vap->acl_map, strdup(mac_str), acl_entry);
+            memcpy(&acl_entry->mac, mac, sizeof(mac_address_t));
+            hash_map_put(rdk_vap->acl_map, strdup(mac_str), acl_entry);
+        } else {
+            wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d:mac filter entry already avaialble for mac[%s] index:%d\n", __func__, __LINE__, mac_str, i);
+        }
     }
 
     return webconfig_error_none;

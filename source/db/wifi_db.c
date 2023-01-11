@@ -2475,7 +2475,7 @@ void wifidb_get_wifi_macfilter_config()
                 tmp_acl_entry->reason = pcfg->reason;
                 tmp_acl_entry->expiry_time = pcfg->expiry_time;
 
-                hash_map_put(l_rdk_vap_array->acl_map, tmp_mac, tmp_acl_entry);
+                hash_map_put(l_rdk_vap_array->acl_map, strdup(tmp_mac), tmp_acl_entry);
             } else {
                 memset(tmp_acl_entry, 0, sizeof(acl_entry_t));
 
@@ -2486,10 +2486,10 @@ void wifidb_get_wifi_macfilter_config()
                 tmp_acl_entry->reason = pcfg->reason;
                 tmp_acl_entry->expiry_time = pcfg->expiry_time;
             }
-            if(tmp_mac) {
-               free(tmp_mac);
-            }
 
+            if(tmp_mac) {
+                free(tmp_mac);
+            }
         }
         pcfg++;
     }
