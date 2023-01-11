@@ -3115,10 +3115,15 @@ Radio_SetParamIntValue
     }
     if( AnscEqualString(ParamName, "X_CISCO_COM_ObssCoex", TRUE))
     {
-        if( wifiRadioOperParam->obssCoex == FALSE  || iValue == 0) {
-            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d ObssCoex should always enabled \n",__func__,__LINE__);
+        if((iValue != 0) && (iValue != 1)) 
+        {
+            ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s Invalid value obssCoex: %d\n", __FUNCTION__,iValue);
             return FALSE;
         }
+        wifiRadioOperParam->obssCoex = iValue;
+        ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s obssCoex: %d\n", __FUNCTION__, wifiRadioOperParam->obssCoex);
+        is_radio_config_changed = TRUE;
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:obssCoex=%d bValue = %d  \n",__func__, __LINE__,wifiRadioOperParam->obssCoex,iValue);
         return TRUE;
     }
     if( AnscEqualString(ParamName, "X_CISCO_COM_MulticastRate", TRUE))
