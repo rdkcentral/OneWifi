@@ -46,7 +46,8 @@
 #include "collection.h"
 #include "wifi_ovsdb.h"
 #include "ccsp_base_api.h"
-
+//This is a dummy string if the value is not passed.
+#define INVALID_KEY "12345678"
 int ovsdb_get_factory_reset_data(bool *data)
 {
 	return 0;
@@ -132,7 +133,7 @@ int ovsdb_get_vap_info_map(unsigned int real_index, unsigned int index, wifi_vap
         params->u.sta_info.scan_params.period = 10;
         params->u.sta_info.security.mode = wifi_security_mode_wpa2_personal;
         params->u.sta_info.security.encr = wifi_encryption_aes_tkip;
-        strcpy(params->u.sta_info.security.u.key.key, "123456789");
+        strcpy(params->u.sta_info.security.u.key.key, INVALID_KEY);
     } else if (index == 1) {
         map->num_vaps = 3;
         params->vap_index = 0;
@@ -145,7 +146,7 @@ int ovsdb_get_vap_info_map(unsigned int real_index, unsigned int index, wifi_vap
         params->u.bss_info.isolation = true;
         params->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
         params->u.bss_info.security.encr = wifi_encryption_aes_tkip;
-        strcpy(params->u.bss_info.security.u.key.key, "123456789");
+        strcpy(params->u.bss_info.security.u.key.key, INVALID_KEY);
         params->u.bss_info.bssMaxSta = 20;
     } else if (index == 2) {
         map->num_vaps = 3;
@@ -159,7 +160,7 @@ int ovsdb_get_vap_info_map(unsigned int real_index, unsigned int index, wifi_vap
         params->u.bss_info.isolation = true;
         params->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
         params->u.bss_info.security.encr = wifi_encryption_aes_tkip;
-        strcpy(params->u.bss_info.security.u.key.key, "123456789");
+        strcpy(params->u.bss_info.security.u.key.key, INVALID_KEY);
         params->u.bss_info.bssMaxSta = 20;
     }
 

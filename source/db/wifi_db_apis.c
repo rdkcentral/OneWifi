@@ -637,7 +637,7 @@ int ovsdb_get_vap_info_map(unsigned int real_index, unsigned int radio_index, wi
         params->u.bss_info.isolation = true;
         params->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
         params->u.bss_info.security.encr = wifi_encryption_aes_tkip;
-        strcpy(params->u.bss_info.security.u.key.key, "123456789");
+        strcpy(params->u.bss_info.security.u.key.key, INVALID_KEY);
         params->u.sta_info.scan_params.period = 10;
         params->u.bss_info.bssMaxSta = 20;
     } else if (radio_index == 1) {
@@ -652,7 +652,7 @@ int ovsdb_get_vap_info_map(unsigned int real_index, unsigned int radio_index, wi
         params->u.bss_info.isolation = true;
         params->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
         params->u.bss_info.security.encr = wifi_encryption_aes_tkip;
-        strcpy(params->u.bss_info.security.u.key.key, "123456789");
+        strcpy(params->u.bss_info.security.u.key.key, INVALID_KEY);
         params->u.sta_info.scan_params.period = 10;
         params->u.bss_info.bssMaxSta = 20;
     } else if (radio_index == 2) {
@@ -667,7 +667,7 @@ int ovsdb_get_vap_info_map(unsigned int real_index, unsigned int radio_index, wi
         params->u.bss_info.isolation = true;
         params->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
         params->u.bss_info.security.encr = wifi_encryption_aes_tkip;
-        strcpy(params->u.bss_info.security.u.key.key, "123456789");
+        strcpy(params->u.bss_info.security.u.key.key, INVALID_KEY);
         params->u.bss_info.bssMaxSta = 20;
     } else if (radio_index == 3) {
 	map->num_vaps = 1;
@@ -679,7 +679,7 @@ int ovsdb_get_vap_info_map(unsigned int real_index, unsigned int radio_index, wi
         params->u.sta_info.scan_params.period = 10;
         params->u.sta_info.security.mode = wifi_security_mode_wpa2_personal;
         params->u.sta_info.security.encr = wifi_encryption_aes_tkip;
-        strcpy(params->u.sta_info.security.u.key.key, "123456789");
+        strcpy(params->u.sta_info.security.u.key.key, INVALID_KEY);
     }
 
 
