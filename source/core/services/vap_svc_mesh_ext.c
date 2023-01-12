@@ -1112,11 +1112,17 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
             sta_data->stats.connect_status);
     vap_map = &mgr->radio_config[index].vaps.vap_map;
 
+
     for (i = 0; i < vap_map->num_vaps; i++) {
         if (vap_map->vap_array[i].vap_index == sta_data->stats.vap_index) {
-            vap_map->vap_array[i].u.sta_info.conn_status = sta_data->stats.connect_status;
-            memset(vap_map->vap_array[i].u.sta_info.bssid, 0, sizeof(vap_map->vap_array[i].u.sta_info.bssid));
             temp_vap_info = &vap_map->vap_array[i];
+            if (temp_vap_info->u.sta_info.conn_status == sta_data->stats.connect_status &&
+                memcmp(temp_vap_info->u.sta_info.bssid, sta_data->bss_info.bssid, sizeof(bssid_t)) == 0) {
+                wifi_util_info_print(WIFI_CTRL, "%s:%d: received duplicated ctrl_event_hal_sta_conn_status event\n", __func__, __LINE__);
+                return 0;
+            }
+            temp_vap_info->u.sta_info.conn_status = sta_data->stats.connect_status;
+            memset(temp_vap_info->u.sta_info.bssid, 0, sizeof(bssid_t));
             break;
         }
     }
@@ -1183,6 +1189,11 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
 
         if ((ext->conn_state == connection_state_connection_to_lcb_in_progress) ||
                 (ext->conn_state == connection_state_connected)) {
+
+            if (ext->conn_state == connection_state_connected && ext->connected_vap_index != sta_data->stats.vap_index) {
+                wifi_util_info_print(WIFI_CTRL, "%s:%d: vap index %d is connected and received disconnection event on vap index %d\n", __func__, __LINE__, ext->connected_vap_index, sta_data->stats.vap_index);
+                return 0;
+            }
             candidate = &ext->last_connected_bss;
             found_candidate = true;
             ext->conn_state = connection_state_connection_to_lcb_in_progress;
