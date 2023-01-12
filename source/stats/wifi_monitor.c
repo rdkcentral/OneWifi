@@ -4197,6 +4197,8 @@ int associated_devices_diagnostics(void *arg)
             vap_index = VAP_INDEX(mgr->hal_cap, idx);
 
             if (wifi_getApAssociatedDeviceDiagnosticResult3(vap_index, &dev_array, &num_devs) != RETURN_OK) {
+                wifi_util_error_print(WIFI_MON, "[%s:%d]Wi-Fi hal get Associated Device failure dev_array:[%p] for vap_index:%d number of device:%d\r\n",
+                            __func__, __LINE__, dev_array, vap_index, num_devs);
                 if (dev_array) {
                     free(dev_array);
                     dev_array = NULL;
