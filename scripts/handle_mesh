@@ -63,7 +63,7 @@ if [ $# -eq 0 ]; then
  exit 0
 else
  platform_checks
- if [ "$OPENSYNC_ENABLE" == "true" ] || [ -f /etc/onewifi_enabled ];then
+ if [ "$OPENSYNC_ENABLE" == "true" ] || [ -f /etc/onewifi_enabled ] || [ -f /etc/WFO_enabled ];then
     export SM_WIFI_STATS_DISABLE=$HAL_WRAPPER_ENABLE
     if [ -z "$(pidof ovsdb-server)" ]
     then
