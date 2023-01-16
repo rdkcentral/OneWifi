@@ -1064,15 +1064,20 @@ static void frame_802_11_injector_Handler(rbusHandle_t handle, rbusEvent_t const
         frame_data.frame.len = data_ptr->frame.len;
         frame_data.frame.type = data_ptr->frame.type;
         frame_data.frame.dir = data_ptr->frame.dir;
+        frame_data.frame.sig_dbm = data_ptr->frame.sig_dbm;
         frame_data.frame.data = data_ptr->frame.data;
 
         memcpy(&frame_data.data, data_ptr->data, data_ptr->frame.len);
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d: vap_index:%d len:%d frame_byte:%d\r\n", __func__, __LINE__, frame_data.frame.ap_index, len, frame_data.frame.len);
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: frame_data.type:%d frame_data.dir:%d\r\n", __func__, __LINE__, frame_data.frame.type, frame_data.frame.dir);
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: frame_data.type:%d frame_data.dir:%d frame_data.sig_dbm:%d\r\n", __func__, __LINE__, frame_data.frame.type, frame_data.frame.dir, frame_data.frame.sig_dbm);
 #ifdef WIFI_HAL_VERSION_3_PHASE2
         mgmt_wifi_frame_recv(frame_data.frame.ap_index, &frame_data.frame);
 #else
+#if defined (_XB7_PRODUCT_REQ_) && defined (_COSA_BCM_ARM_) && !defined(_XB8_PRODUCT_REQ_)
+        mgmt_wifi_frame_recv(frame_data.frame.ap_index,frame_data.frame.sta_mac,frame_data.data,frame_data.frame.len,frame_data.frame.type,frame_data.frame.dir, frame_data.frame.sig_dbm);
+#else
         mgmt_wifi_frame_recv(frame_data.frame.ap_index,frame_data.frame.sta_mac,frame_data.data,frame_data.frame.len,frame_data.frame.type,frame_data.frame.dir);
+#endif
 #endif
 
     }

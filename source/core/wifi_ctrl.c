@@ -874,7 +874,11 @@ int mgmt_wifi_frame_recv(int ap_index, wifi_frame_t *frame)
     return RETURN_OK;
 }
 #else
+#if defined (_XB7_PRODUCT_REQ_) && defined (_COSA_BCM_ARM_) && !defined(_XB8_PRODUCT_REQ_)
+int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, uint32_t len, wifi_mgmtFrameType_t type, wifi_direction_t dir, int sig_dbm)
+#else
 int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, uint32_t len, wifi_mgmtFrameType_t type, wifi_direction_t dir)
+#endif
 {
     wifi_actionFrameHdr_t *paction = NULL;
     frame_data_t mgmt_frame;
@@ -895,6 +899,9 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
     memcpy(mgmt_frame.frame.sta_mac, sta_mac, sizeof(mac_address_t));
     mgmt_frame.frame.type = type;
     mgmt_frame.frame.dir = dir;
+#if defined (_XB7_PRODUCT_REQ_) && defined (_COSA_BCM_ARM_) && !defined(_XB8_PRODUCT_REQ_)
+    mgmt_frame.frame.sig_dbm = sig_dbm;
+#endif
 
     if (type == WIFI_MGMT_FRAME_TYPE_PROBE_REQ) {
         memcpy(mgmt_frame.data, frame, len);
