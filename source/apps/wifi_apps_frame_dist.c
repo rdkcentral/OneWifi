@@ -131,7 +131,8 @@ void apps_probe_rsp_frame_event(wifi_apps_t *apps, frame_data_t *msg)
 
 void apps_auth_frame_event(wifi_apps_t *apps, frame_data_t *msg)
 {
-    //wifi_util_dbg_print(WIFI_APPS,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir);
+    wifi_util_dbg_print(WIFI_APPS,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir);
+    mgmt_frame_rbus_send(apps->rbus_handle, WIFI_ANALYTICS_FRAME_EVENTS, msg);
 }
 
 void apps_assoc_req_frame_event(wifi_apps_t *apps, frame_data_t *msg)
@@ -195,6 +196,9 @@ int wifi_apps_frame_dist_event(wifi_apps_t *apps, ctrl_event_type_t type, ctrl_e
                     break;
                 case ctrl_event_hal_probe_rsp_frame:
                     apps_probe_rsp_frame_event(apps, mgmt_data);
+                    break;
+                case ctrl_event_hal_auth_frame:
+                    apps_auth_frame_event(apps, mgmt_data);
                     break;
                 case ctrl_event_hal_assoc_req_frame:
                     apps_assoc_req_frame_event(apps, mgmt_data);
