@@ -46,6 +46,7 @@ const char *subdoc_type_to_string(webconfig_subdoc_type_t type)
         DOC2S(webconfig_subdoc_type_mesh)
         DOC2S(webconfig_subdoc_type_mesh_backhaul)
         DOC2S(webconfig_subdoc_type_mesh_sta)
+        DOC2S(webconfig_subdoc_type_mesh_backhaul_sta)
         DOC2S(webconfig_subdoc_type_lnf)
         DOC2S(webconfig_subdoc_type_dml)
         DOC2S(webconfig_subdoc_type_associated_clients)
@@ -217,6 +218,7 @@ int analytics_event_webconfig_set_data(wifi_apps_t *apps, void *arg, ctrl_event_
             }
         break;
         case webconfig_subdoc_type_mesh_sta:
+        case webconfig_subdoc_type_mesh_backhaul_sta:
             out_bytes += snprintf(&temp_str[out_bytes], (sizeof(temp_str)-out_bytes), "%s:", subdoc_type_to_string(doc->type));
             for (i = 0; i < getNumberRadios(); i++) {
                 radio = &decoded_params->radios[i];
@@ -543,6 +545,24 @@ int analytics_event_udhcp_ip_fail(wifi_apps_t *apps, void *arg)
     return 0;
 }
 
+static int analytics_event_new_bssid(wifi_apps_t *apps, void *arg)
+{
+    char temp_str[512];
+    mac_addr_str_t bssid_str;
+    vap_svc_ext_t *ext = (vap_svc_ext_t *)arg;
+
+    if (ext == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d: input arg is NULL\n", __func__, __LINE__);
+        return -1;
+    }
+
+    to_mac_str(ext->new_bss.external_ap.bssid, bssid_str);
+    snprintf(temp_str, sizeof(temp_str), "new bssid : vap_index:%d bssid:%s freq:%d",
+        ext->new_bss.vap_index, bssid_str, ext->new_bss.external_ap.freq);
+    wifi_util_info_print(WIFI_ANALYTICS, analytics_format_core_hal, "sta status", temp_str);
+    return 0;
+}
+
 int exec_event_analytics(wifi_apps_t *apps, ctrl_event_subtype_t sub_type, void *arg)
 {
     switch (sub_type) {
@@ -750,6 +770,10 @@ int command_event_analytics(wifi_apps_t *apps, ctrl_event_subtype_t sub_type, vo
 
         case ctrl_event_type_trigger_disconnection_analytics:
             analytics_event_trigger_disconnection_analytics(apps, arg);
+            break;
+
+        case ctrl_event_type_new_bssid:
+            analytics_event_new_bssid(apps, arg);
             break;
 
         default:

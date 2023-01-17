@@ -259,5 +259,6 @@ int sc_kick_type_conversion(sc_kick_type_t *sc_kick_enum, char *sc_kick, int sc_
 int sticky_kick_type_conversion(sticky_kick_type_t *sticky_kick_enum, char *sticky_kick, int sticky_kick_len, unsigned int conv_type);
 int get_vif_neighbor_id(char *key, int key_len, unsigned char *id, int id_len, const char *mac);
 int vif_neighbor_htmode_conversion(ht_mode_t *ht_mode_enum, char *ht_mode, int ht_mode_len, unsigned int conv_type);
+int convert_channel_to_freq(int band, unsigned char chan);
 BOOL is_bssid_valid(const bssid_t bssid);
 #endif//_WIFI_UTIL_H_

@@ -56,7 +56,7 @@ typedef bool (* vap_svc_is_my_fn_t)(unsigned int vap_index);
 
 //sta connection 10 seconds retry
 #define STA_CONN_RETRY_TIMEOUT                 9
-#define STA_MAX_CONNECT_ATTEMPT                1
+#define STA_MAX_CONNECT_ATTEMPT                2
 #define MAX_SCAN_RESULT_WAIT                   2
 // max connection algoritham timeout 4 minutes
 #define MAX_CONNECTION_ALGO_TIMEOUT            4 * 60
@@ -81,6 +81,7 @@ typedef enum {
     connection_state_disconnected_scan_list_all,
     connection_state_connection_in_progress,
     connection_state_connection_to_lcb_in_progress,
+    connection_state_connection_to_nb_in_progress,
     connection_state_connected,
     connection_state_connected_wait_for_csa,
     connection_state_connected_scan_list,
@@ -92,6 +93,7 @@ typedef struct scan_result {
     wifi_freq_bands_t    radio_freq_band;
     connection_attempt_t conn_attempt;
     unsigned int         conn_retry_attempt;
+    wifi_vap_index_t     vap_index;
 }__attribute__((packed)) bss_candidate_t;
 
 typedef struct {
@@ -102,6 +104,7 @@ typedef struct {
 typedef struct {
     bss_candidate_list_t   candidates_list;
     bss_candidate_t        last_connected_bss;
+    bss_candidate_t        new_bss;
     connection_state_t     conn_state;
     unsigned int           selfheal_status;
     unsigned int           connected_vap_index;
@@ -110,6 +113,8 @@ typedef struct {
     unsigned char          wait_scan_result;
     unsigned char          scanned_radios;
     unsigned int           go_to_channel;
+    unsigned int           go_to_channel_width;
+    unsigned int           channel_change_pending_map;
     int                    ext_connect_algo_processor_id;
     int                    ext_scan_result_timeout_handler_id;
     int                    ext_scan_result_wait_timeout_handler_id;

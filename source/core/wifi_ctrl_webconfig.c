@@ -43,7 +43,8 @@
 
 #define OW_CONF_BARRIER_TIMEOUT_MSEC (60 * 1000)
 #define IS_CHANGED(old, new) ((old != new)? wifi_util_dbg_print(WIFI_CTRL,"%s:Changed param %s: [%d] -> [%d].\n",__func__,#old,old,new),1: 0)
-
+#define IS_STR_CHANGED(old, new, size) ((strncmp(old, new, size) != 0)? wifi_util_dbg_print(WIFI_CTRL,"%s:Changed param %s: [%s] -> [%s].\n",__func__,#old,old,new), 1 : 0)
+#define IS_BIN_CHANGED(old, new, size) ((memcmp(old, new, size) != 0)? wifi_util_dbg_print(WIFI_CTRL,"%s:Changed param %s.\n",__func__,#old), 1 : 0)
 
 struct ow_conf_vif_config_cb_arg
 {
@@ -741,6 +742,97 @@ int webconfig_analyze_pending_states(wifi_ctrl_t *ctrl)
     return RETURN_OK;
 }
 
+static bool is_vap_param_config_changed(wifi_vap_info_t *old, wifi_vap_info_t *new, bool isSta)
+{
+    if (IS_CHANGED(old->vap_index, new->vap_index) ||
+            IS_STR_CHANGED(old->vap_name, new->vap_name, sizeof(wifi_vap_name_t)) ||
+            IS_CHANGED(old->radio_index, new->radio_index) ||
+            IS_STR_CHANGED(old->bridge_name, new->bridge_name, sizeof(old->bridge_name)) ||
+            IS_CHANGED(old->vap_mode, new->vap_mode)) {
+        return true;
+    }
+
+    if (isSta) {
+        // Ignore change of conn_status, scan_params, mac to avoid reconfiguration and disconnection
+        // BSSID change is handled by event.
+        if (IS_STR_CHANGED(old->u.sta_info.ssid, new->u.sta_info.ssid, sizeof(ssid_t)) ||
+                IS_CHANGED(old->u.sta_info.enabled, new->u.sta_info.enabled) ||
+                IS_BIN_CHANGED(&old->u.sta_info.security, &new->u.sta_info.security,
+                sizeof(wifi_vap_security_t))) {
+            return true;
+        }
+    } else {
+        // Ignore bssid change to avoid reconfiguration and disconnection
+        if (IS_STR_CHANGED(old->u.bss_info.ssid, new->u.bss_info.ssid,
+                sizeof(old->u.bss_info.ssid)) ||
+                IS_CHANGED(old->u.bss_info.enabled, new->u.bss_info.enabled) ||
+                IS_CHANGED(old->u.bss_info.showSsid, new->u.bss_info.showSsid) ||
+                IS_CHANGED(old->u.bss_info.isolation, new->u.bss_info.isolation) ||
+                IS_CHANGED(old->u.bss_info.mgmtPowerControl, new->u.bss_info.mgmtPowerControl) ||
+                IS_CHANGED(old->u.bss_info.bssMaxSta, new->u.bss_info.bssMaxSta) ||
+                IS_CHANGED(old->u.bss_info.bssTransitionActivated,
+                new->u.bss_info.bssTransitionActivated) ||
+                IS_CHANGED(old->u.bss_info.nbrReportActivated,
+                new->u.bss_info.nbrReportActivated) ||
+                IS_CHANGED(old->u.bss_info.rapidReconnectEnable,
+                new->u.bss_info.rapidReconnectEnable) ||
+                IS_CHANGED(old->u.bss_info.rapidReconnThreshold,
+                new->u.bss_info.rapidReconnThreshold) ||
+                IS_CHANGED(old->u.bss_info.vapStatsEnable, new->u.bss_info.vapStatsEnable) ||
+                IS_BIN_CHANGED(&old->u.bss_info.security, &new->u.bss_info.security,
+                sizeof(wifi_vap_security_t)) ||
+                IS_BIN_CHANGED(&old->u.bss_info.interworking, &new->u.bss_info.interworking,
+                sizeof(wifi_interworking_t)) ||
+                IS_CHANGED(old->u.bss_info.mac_filter_enable, new->u.bss_info.mac_filter_enable) ||
+                IS_CHANGED(old->u.bss_info.mac_filter_mode, new->u.bss_info.mac_filter_mode) ||
+                IS_CHANGED(old->u.bss_info.sec_changed, new->u.bss_info.sec_changed) ||
+                IS_BIN_CHANGED(&old->u.bss_info.wps, &new->u.bss_info.wps, sizeof(wifi_wps_t)) ||
+                IS_CHANGED(old->u.bss_info.wmm_enabled, new->u.bss_info.wmm_enabled) ||
+                IS_CHANGED(old->u.bss_info.UAPSDEnabled, new->u.bss_info.UAPSDEnabled) ||
+                IS_CHANGED(old->u.bss_info.beaconRate, new->u.bss_info.beaconRate) ||
+                IS_CHANGED(old->u.bss_info.wmmNoAck, new->u.bss_info.wmmNoAck) ||
+                IS_CHANGED(old->u.bss_info.wepKeyLength, new->u.bss_info.wepKeyLength) ||
+                IS_CHANGED(old->u.bss_info.bssHotspot, new->u.bss_info.bssHotspot) ||
+                IS_CHANGED(old->u.bss_info.wpsPushButton, new->u.bss_info.wpsPushButton) ||
+                IS_BIN_CHANGED(&old->u.bss_info.beaconRateCtl, &new->u.bss_info.beaconRateCtl,
+                sizeof(old->u.bss_info.beaconRateCtl)) ||
+                IS_CHANGED(old->u.bss_info.network_initiated_greylist,
+                new->u.bss_info.network_initiated_greylist) ||
+                IS_CHANGED(old->u.bss_info.mcast2ucast, new->u.bss_info.mcast2ucast)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static void webconfig_send_sta_bssid_change_event(wifi_ctrl_t *ctrl, wifi_vap_info_t *old,
+    wifi_vap_info_t *new)
+{
+    vap_svc_t *ext_svc;
+    char old_bssid_str[32], new_bssid_str[32];
+
+    if (ctrl->network_mode != rdk_dev_mode_type_ext ||
+            !isVapSTAMesh(new->vap_index) ||
+            memcmp(old->u.sta_info.bssid, new->u.sta_info.bssid, sizeof(bssid_t)) == 0) {
+        return;
+    }
+
+    uint8_mac_to_string_mac(old->u.sta_info.bssid, old_bssid_str);
+    uint8_mac_to_string_mac(new->u.sta_info.bssid, new_bssid_str);
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: mesh sta bssid changed %s -> %s\n", __func__,
+        __LINE__, old_bssid_str, new_bssid_str);
+
+    ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
+    if (ext_svc == NULL) {
+        return;
+    }
+
+    ext_svc->event_fn(ext_svc, ctrl_event_type_webconfig, ctrl_event_webconfig_set_data_sta_bssid,
+        vap_svc_event_none, new);
+
+    memcpy(old->u.sta_info.bssid, new->u.sta_info.bssid, sizeof(bssid_t));
+}
+
 int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data, char **vap_names, unsigned int size)
 {
     unsigned int i, j, k;
@@ -831,9 +923,11 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
         found_target = false;
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Found vap map source and target for vap name: %s\n", __func__, __LINE__, vap_info->vap_name);
 
+        // STA BSSID change is handled by event to avoid disconnection.
+        webconfig_send_sta_bssid_change_event(ctrl, mgr_vap_info, vap_info);
 
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Comparing VAP [%s] with [%s]. \n",__func__, __LINE__,mgr_vap_info->vap_name,vap_info->vap_name);
-        if (memcmp(mgr_vap_info, vap_info, sizeof(wifi_vap_info_t)) != 0) {
+        if (is_vap_param_config_changed(mgr_vap_info, vap_info, isVapSTAMesh(tgt_vap_index))) {
             // radio data changed apply
             wifi_util_info_print(WIFI_CTRL, "%s:%d: Change detected in received vap config, applying new configuration for vap: %s\n",
                                 __func__, __LINE__, vap_names[i]);
@@ -1884,7 +1978,11 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
                     unsigned int connected_radio_index = 0;
                     connected_radio_index = get_radio_index_for_vap_index(ext_svc->prop, ext->connected_vap_index);
                     if ((ext->conn_state == connection_state_connected) && (connected_radio_index == mgr_radio_data->vaps.radio_index) && (mgr_radio_data->oper.channel != radio_data->oper.channel)) {
+                        start_wifi_sched_timer(&mgr_radio_data->vaps.radio_index, ctrl, wifi_csa_sched);
                         ext_svc->event_fn(ext_svc, ctrl_event_type_webconfig, ctrl_event_webconfig_set_data, vap_svc_event_none, &radio_data->oper);
+                        // driver does not change channel in STA connected state therefore skip
+                        // wifi_hal_setRadioOperatingParameters and update channel on disconnection/CSA
+                        continue;
                     }
                 }
             }
@@ -2175,14 +2273,21 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                     ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
                 }
             } else {
-                ctrl->webconfig_state |= ctrl_webconfig_state_vap_mesh_backhaul_sta_cfg_rsp_pending;
-                ret = webconfig_hal_mesh_backhaul_vap_apply(ctrl, &data->u.decoded);
-                if (ret != RETURN_OK) {
-                    wifi_util_error_print(WIFI_MGR, "%s:%d: mesh webconfig subdoc failed\n", __func__, __LINE__);
-                    return webconfig_error_apply;
+                if (check_wifi_csa_sched_timeout_active_status(ctrl) == true) {
+                    if (push_data_to_apply_pending_queue(data) != RETURN_OK) {
+                        return webconfig_error_apply;
+                    }
+                } else {
+                    ctrl->webconfig_state |= ctrl_webconfig_state_vap_mesh_backhaul_sta_cfg_rsp_pending;
+                    webconfig_analytic_event_data_to_hal_apply(data);
+                    ret = webconfig_hal_mesh_sta_vap_apply(ctrl, &data->u.decoded);
+                    if (ret != RETURN_OK) {
+                        wifi_util_error_print(WIFI_MGR, "%s:%d: mesh webconfig subdoc failed\n", __func__, __LINE__);
+                        return webconfig_error_apply;
+                    }
                 }
             }
-        break;
+            break;
 
         case webconfig_subdoc_type_mac_filter:
             if (data->descriptor & webconfig_data_descriptor_encoded) {

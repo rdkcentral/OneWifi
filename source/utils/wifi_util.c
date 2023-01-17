@@ -2622,6 +2622,36 @@ int vif_neighbor_htmode_conversion(ht_mode_t *ht_mode_enum, char *ht_mode, int h
     return RETURN_ERR;
 }
 
+int convert_channel_to_freq(int band, unsigned char chan)
+{
+    switch (band) {
+        case WIFI_FREQUENCY_2_4_BAND:
+            if (chan >= MIN_CHANNEL_2G && chan <= MAX_CHANNEL_2G) {
+                return 2407 + 5 * chan;
+            }
+            break;
+        case WIFI_FREQUENCY_5_BAND:
+        case WIFI_FREQUENCY_5L_BAND:
+        case WIFI_FREQUENCY_5H_BAND:
+            if (chan >= MIN_CHANNEL_5G && chan <= MAX_CHANNEL_5G) {
+                return 5000 + 5 * chan;
+            }
+            break;
+        case WIFI_FREQUENCY_6_BAND:
+            if (chan >= MIN_CHANNEL_6G && chan <= MAX_CHANNEL_6G) {
+                return chan == 2 ? 5935 : 5950 + chan * 5;
+            }
+            break;
+        default:
+            break;
+    }
+
+    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to convert channel %u to frequency for "
+        "band %d\n", __func__, __LINE__, chan, band);
+
+    return -1;
+}
+
 BOOL is_bssid_valid(const bssid_t bssid)
 {
     for (size_t i = 0; i < sizeof(bssid_t); i++) {

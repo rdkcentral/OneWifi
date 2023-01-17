@@ -88,6 +88,7 @@ typedef enum {
     ctrl_event_webconfig_data_resched_to_ctrl_queue,
     ctrl_event_webconfig_data_to_apply_pending_queue,
     ctrl_event_webconfig_data_to_hal_apply,
+    ctrl_event_webconfig_set_data_sta_bssid,
     ctrl_event_webconfig_max,
 
     // HAL events
@@ -141,6 +142,7 @@ typedef enum {
     ctrl_event_type_udhcp_ip_fail,
     ctrl_event_type_trigger_disconnection,
     ctrl_event_type_trigger_disconnection_analytics,
+    ctrl_event_type_new_bssid,
     ctrl_event_command_max,
 
     // wif_api
