@@ -1955,7 +1955,7 @@ void webconf_process_home_vap(const char* enb)
         execDataPf->txid = tx_id;
         execDataPf->version = t_version;
         execDataPf->numOfEntries = 1;
-        strncpy(execDataPf->subdoc_name, "home", sizeof(execDataPf->subdoc_name)-1);
+        strncpy(execDataPf->subdoc_name, "homessid", sizeof(execDataPf->subdoc_name)-1);
         execDataPf->user_data = (void*) blob_buf;
         execDataPf->calcTimeout = webconf_timeout_handler;
         execDataPf->executeBlobRequest = wifi_home_vap_exec_handler;
@@ -2240,7 +2240,7 @@ int register_multicomp_subdocs()
 }
 
 // static char *sub_docs[] = { "privatessid", "home", "xfinity", (char *) 0 };
-static char *sub_docs[] = { "privatessid", "home", (char *)0 };
+static char *sub_docs[] = { "privatessid", "homessid", (char *)0 };
 
 // register subdocs with webconfig_framework
 int register_with_webconfig_framework()
