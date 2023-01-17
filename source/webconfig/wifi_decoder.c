@@ -1227,7 +1227,7 @@ webconfig_error_t decode_enterprise_security_object(const cJSON *security, wifi_
     return webconfig_error_none;
 }
 
-webconfig_error_t decode_personal_security_object(const cJSON *security, wifi_vap_security_t *security_info)
+webconfig_error_t decode_personal_security_object(const cJSON *security, wifi_vap_security_t *security_info, int band)
 {
     const cJSON *param;
 
@@ -1267,6 +1267,10 @@ webconfig_error_t decode_personal_security_object(const cJSON *security, wifi_va
         security_info->u.key.type = wifi_security_key_type_psk_sae;
     } else {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s: Invalid Authentication mode for private vap '%s'", __FUNCTION__, param->valuestring);
+        return webconfig_error_decode;
+    }
+    if ((band == WIFI_FREQUENCY_6_BAND) && (security_info->mode != wifi_security_mode_wpa3_personal)) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s: Invalid security Mode %d for 6G interface\n", __func__, security_info->mode);
         return webconfig_error_decode;
     }
 
@@ -1315,7 +1319,7 @@ webconfig_error_t decode_personal_security_object(const cJSON *security, wifi_va
     return webconfig_error_none;
 }
 
-webconfig_error_t decode_security_object(const cJSON *security, wifi_vap_security_t *security_info)
+webconfig_error_t decode_security_object(const cJSON *security, wifi_vap_security_t *security_info, int band)
 {
     const cJSON *param;
     int enterprise_mode = 0;
@@ -1364,7 +1368,11 @@ webconfig_error_t decode_security_object(const cJSON *security, wifi_vap_securit
         wifi_util_error_print(WIFI_WEBCONFIG, "%s: Invalid Authentication mode for private vap %s", __FUNCTION__, param->valuestring);
         return webconfig_error_decode;
     }
-    
+
+    if ((band == WIFI_FREQUENCY_6_BAND) && (security_info->mode != wifi_security_mode_wpa3_personal)) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s: Invalid security Mode %d for 6G interface\n", __func__, security_info->mode);
+        return webconfig_error_decode;
+    }
     
     if (enterprise_mode == 1) {
         
@@ -1732,6 +1740,9 @@ webconfig_error_t decode_lnf_psk_vap_object(const cJSON *vap, wifi_vap_info_t *v
 {
     const cJSON *security, *interworking;
     webconfig_error_t ret = webconfig_error_none;
+    int radio_index = -1;
+    int band = -1;
+
 
     // first decode the common objects
     if ((ret = decode_vap_common_object(vap, vap_info, wifi_prop)) != webconfig_error_none) {
@@ -1739,8 +1750,19 @@ webconfig_error_t decode_lnf_psk_vap_object(const cJSON *vap, wifi_vap_info_t *v
         return webconfig_error_decode;
     }
 
+    radio_index = convert_vap_name_to_radio_array_index(wifi_prop, vap_info->vap_name);
+    if (radio_index < 0) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid radio Index\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    if (convert_radio_index_to_freq_band(wifi_prop, radio_index, &band) != RETURN_OK) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Unable to fetch proper band\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
     decode_param_object(vap, "Security", security);
-    if (decode_personal_security_object(security, &vap_info->u.bss_info.security) != webconfig_error_none) {
+    if (decode_personal_security_object(security, &vap_info->u.bss_info.security, band) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Security objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -1795,6 +1817,8 @@ webconfig_error_t decode_lnf_radius_vap_object(const cJSON *vap, wifi_vap_info_t
 webconfig_error_t decode_iot_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_property_t *wifi_prop)
 {
     const cJSON *security, *interworking;
+    int radio_index = -1;
+    int band = -1;
     webconfig_error_t ret = webconfig_error_none;
 
     // first decode the common objects
@@ -1802,9 +1826,20 @@ webconfig_error_t decode_iot_vap_object(const cJSON *vap, wifi_vap_info_t *vap_i
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Common vap objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
+    
+    radio_index = convert_vap_name_to_radio_array_index(wifi_prop, vap_info->vap_name);
+    if (radio_index < 0) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid radio Index\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+    
+    if (convert_radio_index_to_freq_band(wifi_prop, radio_index, &band) != RETURN_OK) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Unable to fetch proper band\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
 
     decode_param_object(vap, "Security", security);
-    if (decode_personal_security_object(security, &vap_info->u.bss_info.security) != webconfig_error_none) {
+    if (decode_personal_security_object(security, &vap_info->u.bss_info.security, band) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Security objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -1827,6 +1862,8 @@ webconfig_error_t decode_iot_vap_object(const cJSON *vap, wifi_vap_info_t *vap_i
 webconfig_error_t decode_mesh_backhaul_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_property_t *wifi_prop)
 {
     const cJSON *security, *interworking;
+    int radio_index = -1;
+    int band = -1;
     webconfig_error_t ret = webconfig_error_none;
 
     // first decode the common objects
@@ -1835,8 +1872,19 @@ webconfig_error_t decode_mesh_backhaul_vap_object(const cJSON *vap, wifi_vap_inf
         return webconfig_error_decode;
     }
 
+    radio_index = convert_vap_name_to_radio_array_index(wifi_prop, vap_info->vap_name);
+    if (radio_index < 0) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid radio Index\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    if (convert_radio_index_to_freq_band(wifi_prop, radio_index, &band) != RETURN_OK) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Unable to fetch proper band\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
     decode_param_object(vap, "Security", security);
-    if (decode_personal_security_object(security, &vap_info->u.bss_info.security) != webconfig_error_none) {
+    if (decode_personal_security_object(security, &vap_info->u.bss_info.security, band) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Security objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -1859,6 +1907,8 @@ webconfig_error_t decode_mesh_backhaul_vap_object(const cJSON *vap, wifi_vap_inf
 webconfig_error_t decode_private_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_property_t *wifi_prop)
 {
     const cJSON *security, *interworking;
+    int radio_index = -1;
+    int band = -1;
     webconfig_error_t ret = webconfig_error_none;
 
     // first decode the common objects
@@ -1867,8 +1917,19 @@ webconfig_error_t decode_private_vap_object(const cJSON *vap, wifi_vap_info_t *v
         return webconfig_error_decode;
     }
 
+    radio_index = convert_vap_name_to_radio_array_index(wifi_prop, vap_info->vap_name);
+    if (radio_index < 0) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid radio Index\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    if (convert_radio_index_to_freq_band(wifi_prop, radio_index, &band) != RETURN_OK) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Unable to fetch proper band\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
     decode_param_object(vap, "Security", security);
-    if (decode_personal_security_object(security, &vap_info->u.bss_info.security) != webconfig_error_none) {
+    if (decode_personal_security_object(security, &vap_info->u.bss_info.security, band) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Security objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -1898,6 +1959,8 @@ webconfig_error_t decode_wifiapi_vap_object(const cJSON *vap, wifi_vap_info_t *v
 {
     const cJSON *security, *interworking;
     webconfig_error_t ret = webconfig_error_none;
+    int radio_index = -1;
+    int band = -1;
 
     // first decode the common objects
     if ((ret = decode_vap_common_object(vap, vap_info, wifi_prop)) != webconfig_error_none) {
@@ -1905,8 +1968,19 @@ webconfig_error_t decode_wifiapi_vap_object(const cJSON *vap, wifi_vap_info_t *v
         return webconfig_error_decode;
     }
 
+    radio_index = convert_vap_name_to_radio_array_index(wifi_prop, vap_info->vap_name);
+    if (radio_index < 0) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid radio Index\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    if (convert_radio_index_to_freq_band(wifi_prop, radio_index, &band) != RETURN_OK) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Unable to fetch proper band\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
     decode_param_object(vap, "Security", security);
-    if (decode_security_object(security, &vap_info->u.bss_info.security) != webconfig_error_none) {
+    if (decode_security_object(security, &vap_info->u.bss_info.security, band) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Security objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -1945,7 +2019,8 @@ webconfig_error_t decode_scan_params_object(const cJSON *scan_obj, wifi_scan_par
 webconfig_error_t decode_mesh_sta_object(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_property_t *wifi_prop)
 {
     const cJSON  *param, *security, *scan;
-
+    int radio_index = -1;
+    int band = -1;
     //VAP Name
     decode_param_string(vap, "VapName", param);
     strcpy(vap_info->vap_name, param->valuestring);
@@ -1995,8 +2070,19 @@ webconfig_error_t decode_mesh_sta_object(const cJSON *vap, wifi_vap_info_t *vap_
     decode_param_bool(vap, "ConnectStatus", param);
     vap_info->u.sta_info.conn_status = (param->type & cJSON_True) ? wifi_connection_status_connected:wifi_connection_status_disconnected;
 
+    radio_index = convert_vap_name_to_radio_array_index(wifi_prop, vap_info->vap_name);
+    if (radio_index < 0) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid radio Index\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    if (convert_radio_index_to_freq_band(wifi_prop, radio_index, &band) != RETURN_OK) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Unable to fetch proper band\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
     decode_param_object(vap, "Security", security);
-    if (decode_personal_security_object(security, &vap_info->u.sta_info.security) != webconfig_error_none) {
+    if (decode_personal_security_object(security, &vap_info->u.sta_info.security, band) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Security objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }

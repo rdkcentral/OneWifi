@@ -7084,7 +7084,7 @@ void get_security_modes_supported(int vap_index, int *mode)
     }
     else if (band == WIFI_FREQUENCY_6_BAND)
     {
-        *mode = COSA_DML_WIFI_SECURITY_None | COSA_DML_WIFI_SECURITY_WPA3_Personal;
+        *mode = COSA_DML_WIFI_SECURITY_WPA3_Personal;
     }
     else
     {
