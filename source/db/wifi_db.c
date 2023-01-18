@@ -406,6 +406,7 @@ void callback_Wifi_Security_Config(ovsdb_update_monitor_t *mon,
             if(l_security_cfg == NULL)
             {
                 wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid Get_wifi_object_bss_security_parameter \n",__func__, __LINE__,new_rec->vap_name);
+                return;
             }
         }
 
