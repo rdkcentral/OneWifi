@@ -81,7 +81,23 @@ struct ovs_vapname_cloudvifname_map  cloud_vif_map[] = {
     {"wl2",   "mesh_sta_6g"},
     {"wl2.1", "private_ssid_6g"},
     {"wl2.2", "iot_ssid_6g"},
-    {"wl2.7", "mesh_backhaul_6g"}
+    {"wl2.7", "mesh_backhaul_6g"},
+    {"wl1",   "mesh_sta_5gl"},
+    {"wl1.1", "private_ssid_5gl"},
+    {"wl1.2", "iot_ssid_5gl"},
+    {"wl1.3", "hotspot_open_5gl"},
+    {"wl1.4", "lnf_psk_5gl"},
+    {"wl1.5", "hotspot_secure_5gl"},
+    {"wl1.6", "lnf_radius_5gl"},
+    {"wl1.7", "mesh_backhaul_5gl"},
+    {"wl2",   "mesh_sta_5gh"},
+    {"wl2.1", "private_ssid_5gh"},
+    {"wl2.2", "iot_ssid_5gh"},
+    {"wl2.3", "hotspot_open_5gh"},
+    {"wl2.4", "lnf_psk_5gh"},
+    {"wl2.5", "hotspot_secure_5gh"},
+    {"wl2.6", "lnf_radius_5gh"},
+    {"wl2.7", "mesh_backhaul_5gh"}
 };
 
 struct ovs_radioname_cloudradioname_map {
@@ -95,7 +111,7 @@ struct ovs_radioname_cloudradioname_map cloud_radio_map[] = {
     {2, "wl2"},
 };
 
-int convert_cloudifname_to_vapname(char *if_name, char *vap_name, int vapname_len)
+int convert_cloudifname_to_vapname(wifi_platform_property_t *wifi_prop, char *if_name, char *vap_name, int vapname_len)
 {
     unsigned int i = 0;
     if ((if_name == NULL) || (vap_name == NULL)) {
@@ -104,7 +120,7 @@ int convert_cloudifname_to_vapname(char *if_name, char *vap_name, int vapname_le
     }
 
     for (i = 0; i < ARRAY_SIZE(cloud_vif_map); i++) {
-        if (strcmp(if_name, cloud_vif_map[i].cloudvifname) == 0) {
+        if ((strcmp(if_name, cloud_vif_map[i].cloudvifname) == 0) && (convert_vap_name_to_index(wifi_prop, cloud_vif_map[i].vapname) != RETURN_ERR))   {
             snprintf(vap_name, vapname_len, "%s", cloud_vif_map[i].vapname);
             return RETURN_OK;
         }
@@ -695,7 +711,7 @@ webconfig_error_t webconfig_convert_ifname_to_subdoc_type(const char *ifname, we
     }
 
 
-    if (convert_cloudifname_to_vapname((char *)ifname, vapname, sizeof(vapname)) != RETURN_OK) {
+    if (convert_cloudifname_to_vapname(wifi_prop, (char *)ifname, vapname, sizeof(vapname)) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Convert cloud ifname to vapname failed for : %s\n", __func__, __LINE__, ifname);
         return webconfig_error_translate_from_ovsdb;
     }
@@ -3629,7 +3645,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_dml(webconfig
         }
 
         //Ovsdb is only restricted to mesh related vaps
-        if (convert_cloudifname_to_vapname((char *)&table[i]->if_name[0], vapname, sizeof(vapname)) != RETURN_OK) {
+        if (convert_cloudifname_to_vapname(wifi_prop, (char *)&table[i]->if_name[0], vapname, sizeof(vapname)) != RETURN_OK) {
             wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Convert cloud ifname to vapname failed, if_name '%s'\n", __func__, __LINE__, table[i]->if_name);
             return webconfig_error_translate_from_ovsdb;
         }
@@ -4632,7 +4648,7 @@ webconfig_error_t  translate_vap_object_from_ovsdb_vif_config_for_macfilter(webc
         }
 
         //Ovsdb is only restricted to mesh related vaps
-        if (convert_cloudifname_to_vapname((char *)&table[i]->if_name[0], vapname, sizeof(vapname)) != RETURN_OK) {
+        if (convert_cloudifname_to_vapname(wifi_prop, (char *)&table[i]->if_name[0], vapname, sizeof(vapname)) != RETURN_OK) {
             wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Convert cloud ifname to vapname failed, if_name '%s'\n", __func__, __LINE__, table[i]->if_name);
             return webconfig_error_translate_from_ovsdb;
         }
@@ -5485,7 +5501,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_mesh_sta(webc
         }
 
         //Ovsdb is only restricted to mesh related vaps
-        if (convert_cloudifname_to_vapname((char *)&table[i]->if_name[0], vapname, sizeof(vapname)) != RETURN_OK) {
+        if (convert_cloudifname_to_vapname(wifi_prop, (char *)&table[i]->if_name[0], vapname, sizeof(vapname)) != RETURN_OK) {
             wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Convert cloud ifname to vapname failed, if_name '%s'\n", __func__, __LINE__, table[i]->if_name);
             return webconfig_error_translate_from_ovsdb;
         }
@@ -6112,7 +6128,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_private(webco
         }
 
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: ifname  : %s\n", __func__, __LINE__, table[i]->if_name);
-        if (convert_cloudifname_to_vapname((char *)&table[i]->if_name[0], vapname, sizeof(vapname)) != RETURN_OK) {
+        if (convert_cloudifname_to_vapname(wifi_prop, (char *)&table[i]->if_name[0], vapname, sizeof(vapname)) != RETURN_OK) {
             wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Convert ifname to vapname failed\n", __func__, __LINE__);
             return webconfig_error_translate_from_ovsdb;
         }
@@ -6249,7 +6265,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_mesh_backhaul
         }
 
         //Ovsdb is only restricted to mesh related vaps
-        if (convert_cloudifname_to_vapname((char *)&table[i]->if_name[0], vapname, sizeof(vapname)) != RETURN_OK) {
+        if (convert_cloudifname_to_vapname(wifi_prop, (char *)&table[i]->if_name[0], vapname, sizeof(vapname)) != RETURN_OK) {
             wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Convert cloud ifname to vapname failed, if_name '%s'\n", __func__, __LINE__, table[i]->if_name);
             return webconfig_error_translate_from_ovsdb;
         }
@@ -6392,7 +6408,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_mesh(webconfi
         }
 
         //Ovsdb is only restricted to mesh related vaps
-        if (convert_cloudifname_to_vapname((char *)&table[i]->if_name[0], vapname, sizeof(vapname)) != RETURN_OK) {
+        if (convert_cloudifname_to_vapname(wifi_prop, (char *)&table[i]->if_name[0], vapname, sizeof(vapname)) != RETURN_OK) {
             wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Convert cloud ifname to vapname failed, if_name '%s'\n", __func__, __LINE__, table[i]->if_name);
             return webconfig_error_translate_from_ovsdb;
         }
@@ -6488,7 +6504,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_home(webconfi
         }
 
         //Ovsdb is only restricted to mesh related vaps
-        if (convert_cloudifname_to_vapname((char *)&table[i]->if_name[0], vapname, sizeof(vapname)) != RETURN_OK) {
+        if (convert_cloudifname_to_vapname(wifi_prop, (char *)&table[i]->if_name[0], vapname, sizeof(vapname)) != RETURN_OK) {
             wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Convert cloud ifname to vapname failed, if_name '%s'\n", __func__, __LINE__, table[i]->if_name[0]);
             return webconfig_error_translate_from_ovsdb;
         }
@@ -6624,7 +6640,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_lnf(webconfig
             return webconfig_error_translate_from_ovsdb;
         }
 
-        if (convert_cloudifname_to_vapname((char *)&table[i]->if_name[0], vapname, sizeof(vapname)) != RETURN_OK) {
+        if (convert_cloudifname_to_vapname(wifi_prop, (char *)&table[i]->if_name[0], vapname, sizeof(vapname)) != RETURN_OK) {
             wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Convert cloud ifname to vapname failed, if_name '%s'\n", __func__, __LINE__, table[i]->if_name[0]);
             return webconfig_error_translate_from_ovsdb;
         }
@@ -6767,7 +6783,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_xfinity(webco
             return webconfig_error_translate_from_ovsdb;
         }
 
-        if (convert_cloudifname_to_vapname((char *)&table[i]->if_name[0], vapname, sizeof(vapname)) != RETURN_OK) {
+        if (convert_cloudifname_to_vapname(wifi_prop, (char *)&table[i]->if_name[0], vapname, sizeof(vapname)) != RETURN_OK) {
             wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Convert cloud ifname to vapname failed, if_name '%s' \n", __func__, __LINE__, table[i]->if_name[0]);
             return webconfig_error_translate_from_ovsdb;
         }
