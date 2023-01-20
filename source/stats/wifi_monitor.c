@@ -3218,6 +3218,7 @@ void csi_set_client_mac(char *r_mac_list, int csi_session_number)
     char* rest = NULL;
     char mac_list[MAX_CSI_CLIENTMACLIST_STR] = {0};
     wifi_monitor_data_t *data;
+    struct timeval t_now;
 
     if(r_mac_list == NULL) {
         wifi_util_error_print(WIFI_MON, "%s: mac_list is NULL \n",__func__);
@@ -3247,6 +3248,7 @@ void csi_set_client_mac(char *r_mac_list, int csi_session_number)
     wifi_util_info_print(WIFI_MON, "%s: Total mac's present -  %d %s\n",__func__, csi->no_of_mac, mac_list);
     rest = mac_list;
     if(csi->no_of_mac > 0)  {
+        gettimeofday(&t_now, NULL);
         while((mac_tok = strtok_r(rest, ",", &rest))) {
 
             wifi_util_dbg_print(WIFI_MON, "%s: Mac %s\n",__func__, mac_tok);
@@ -3265,6 +3267,9 @@ void csi_set_client_mac(char *r_mac_list, int csi_session_number)
                 csi->mac_is_connected[mac_ctr] = FALSE;
             }
             mac_ctr++;
+        }
+        for(i = 0; i<csi->no_of_mac; i++) {
+            memcpy(&csi->last_publish_time[i], &t_now, sizeof(struct timeval));
         }
     }
     pthread_mutex_unlock(&g_events_monitor.lock);
@@ -3649,7 +3654,7 @@ static void csi_publish(wifi_monitor_data_t *evtData)
 }
 
 #if defined (FEATURE_CSI_CALLBACK)
-bool csi_check_timeout(csi_session_t *csi, struct timeval* t_now)
+bool csi_check_timeout(csi_session_t *csi, int client_idx, struct timeval* t_now)
 {
     struct timeval interval;
     int  interval_ms_margin;
@@ -3664,7 +3669,7 @@ bool csi_check_timeout(csi_session_t *csi, struct timeval* t_now)
 
     interval.tv_sec = (interval_ms_margin / 1000);
     interval.tv_usec = (interval_ms_margin % 1000) * 1000;
-    timeradd(&(csi->last_snapshot_time), &interval, &timeout);
+    timeradd(&(csi->last_publish_time[client_idx]), &interval, &timeout);
     if (timercmp(t_now, &timeout, >)) {
         return TRUE;
     } else {
@@ -3710,12 +3715,12 @@ INT process_csi(mac_address_t mac_addr, wifi_csi_data_t  *csi_data)
         if (mac_found == TRUE) {
             evtData.csi_session = csi->csi_sess_number;
             //check interval
-            if (csi->csi_time_interval == MIN_CSI_INTERVAL || csi_check_timeout(csi, &t_now)) {
+            if (csi->csi_time_interval == MIN_CSI_INTERVAL || csi_check_timeout(csi, j, &t_now)) {
                 evtData.csi_session = csi->csi_sess_number;
                 wifi_util_dbg_print(WIFI_MON, "%s: Publish CSI Event - MAC  %02x:%02x:%02x:%02x:%02x:%02x Session %d\n",__func__, mac_addr[0], mac_addr[1],
                                                         mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5], csi->csi_sess_number);
                 events_publish(evtData);
-                csi->last_snapshot_time = t_now;
+                csi->last_publish_time[j] = t_now;
             }
         }
     }

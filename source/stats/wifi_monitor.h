@@ -236,6 +236,7 @@ typedef struct {
     mac_address_t mac_list[MAX_CSI_CLIENTS_PER_SESSION];
     char client_ip[MAX_CSI_CLIENTS_PER_SESSION][IP_STR_LEN];
     long  client_ip_age[MAX_CSI_CLIENTS_PER_SESSION];
+    struct timeval last_publish_time[MAX_CSI_CLIENTS_PER_SESSION];
     struct timeval last_snapshot_time;
 } __attribute__((__packed__)) csi_session_t;
 
