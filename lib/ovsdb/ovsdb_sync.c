@@ -92,7 +92,7 @@ json_t *ovsdb_write_s(char *ovsdb_sock_path, json_t *jsdata)
     pthread_mutex_lock(&ovsdb_lock);
     if (g_wifidb->wifidb_wfd < 0) {
         /* Initiate new connection to OVSDB if current connection is inactive*/
-        g_wifidb->wifidb_wfd = ovsdb_conn(ovsdb_sock_path);
+        g_wifidb->wifidb_wfd = onewifi_ovsdb_conn(ovsdb_sock_path);
         if (g_wifidb->wifidb_wfd < 0)
         {
             LOGE("SYNC: Error initiating connection to OVSDB.");
@@ -163,7 +163,7 @@ error:
 /**
  * Issue a synchronous request to OVSDB
  */
-json_t *ovsdb_method_send_s(const char *ovsdb_sock_path,
+json_t *onewifi_ovsdb_method_send_s(const char *ovsdb_sock_path,
         ovsdb_mt_t mt,
         json_t * jparams)
 {
@@ -207,7 +207,7 @@ json_t *ovsdb_method_send_s(const char *ovsdb_sock_path,
         json_decref(jparams);
     }
 
-    rpc_id = ovsdb_jsonrpc_id_new();
+    rpc_id = onewifi_ovsdb_jsonrpc_id_new();
     if (0 < json_object_set_new(js, "id", json_integer(rpc_id)))
     {
         LOGE("Error adding id key.");
@@ -256,7 +256,7 @@ error:
 }
 
 /*
- * ovsdb_tran_call_s() -- synchronous replacement for ovsdb_tran_call()
+ * onewifi_ovsdb_tran_call_s() -- synchronous replacement for onewifi_ovsdb_tran_call()
  *
  * Returns:
  *      NULL - on error
@@ -268,34 +268,34 @@ error:
  *  If the JSON RPC server returns an error, it *WILL RETURN A VALID RESPONSE*. The error message indication
  *  and message is contained within the JSON message.
  */
-json_t *ovsdb_tran_call_s(const char *ovsdb_sock_path,
+json_t *onewifi_ovsdb_tran_call_s(const char *ovsdb_sock_path,
         const char * table,
         ovsdb_tro_t oper,
         json_t * where,
         json_t * row)
 {
-    return ovsdb_method_send_s(ovsdb_sock_path, MT_TRANS, ovsdb_tran_multi(NULL, NULL, table, oper, where, row));
+    return onewifi_ovsdb_method_send_s(ovsdb_sock_path, MT_TRANS, ovsdb_tran_multi(NULL, NULL, table, oper, where, row));
 }
 
 /*
- * This function uses ovsdb_method_send_s() to send a
- * transaction created with ovsdb_tran_insert_with_parent()
+ * This function uses onewifi_ovsdb_method_send_s() to send a
+ * transaction created with onewifi_ovsdb_tran_insert_with_parent()
  */
-bool ovsdb_insert_with_parent_s(const char *ovsdb_sock_path,
+bool onewifi_ovsdb_insert_with_parent_s(const char *ovsdb_sock_path,
 								char * table,
                                 json_t * row,
                                 char * parent_table,
                                 json_t * parent_where,
                                 char * parent_column)
 {
-    json_t *tran = ovsdb_tran_insert_with_parent(ovsdb_sock_path,
+    json_t *tran = onewifi_ovsdb_tran_insert_with_parent(ovsdb_sock_path,
                                             table,
                                             row,
                                             parent_table,
                                             parent_where,
                                             parent_column);
 
-    json_t *resp = ovsdb_method_send_s(ovsdb_sock_path, MT_TRANS, tran);
+    json_t *resp = onewifi_ovsdb_method_send_s(ovsdb_sock_path, MT_TRANS, tran);
 
     json_decref(resp);
     return true;
@@ -304,10 +304,10 @@ bool ovsdb_insert_with_parent_s(const char *ovsdb_sock_path,
 
 /*
  * This function builds a uuid list from where clause,
- * then uses ovsdb_method_send_s() to send a * transaction
- * created with ovsdb_tran_delete_with_parent()
+ * then uses onewifi_ovsdb_method_send_s() to send a * transaction
+ * created with onewifi_ovsdb_tran_delete_with_parent()
  */
-json_t* ovsdb_delete_with_parent_res_s(const char *ovsdb_sock_path,
+json_t* onewifi_ovsdb_delete_with_parent_res_s(const char *ovsdb_sock_path,
 								const char * table,
                                 json_t *where,
                                 const char * parent_table,
@@ -323,7 +323,7 @@ json_t* ovsdb_delete_with_parent_res_s(const char *ovsdb_sock_path,
     json_t *row;
     size_t index;
 
-    result = ovsdb_tran_call_s(ovsdb_sock_path, table, OTR_SELECT, where, NULL);
+    result = onewifi_ovsdb_tran_call_s(ovsdb_sock_path, table, OTR_SELECT, where, NULL);
     if (!result) {
         json_decref(parent_where);
         return false;
@@ -346,20 +346,20 @@ json_t* ovsdb_delete_with_parent_res_s(const char *ovsdb_sock_path,
     }
     json_decref(result);
 
-    tran = ovsdb_tran_delete_with_parent(ovsdb_sock_path,
+    tran = onewifi_ovsdb_tran_delete_with_parent(ovsdb_sock_path,
 										table,
                                          uuids,
                                          parent_table,
                                          parent_where,
                                          parent_column);
 
-    resp = ovsdb_method_send_s(ovsdb_sock_path, MT_TRANS, tran);
+    resp = onewifi_ovsdb_method_send_s(ovsdb_sock_path, MT_TRANS, tran);
 
     return resp;
 }
 
 
-bool ovsdb_delete_with_parent_s(const char *ovsdb_sock_path,
+bool onewifi_ovsdb_delete_with_parent_s(const char *ovsdb_sock_path,
 								char * table,
                                 json_t *where,
                                 char * parent_table,
@@ -368,7 +368,7 @@ bool ovsdb_delete_with_parent_s(const char *ovsdb_sock_path,
 {
     json_t *resp;
 
-    resp = ovsdb_delete_with_parent_res_s(ovsdb_sock_path, table,
+    resp = onewifi_ovsdb_delete_with_parent_res_s(ovsdb_sock_path, table,
             where, parent_table, parent_where, parent_column);
 
     json_decref(resp);

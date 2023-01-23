@@ -23,7 +23,6 @@
 #include <wifi_hal_ap.h>
 #include <wifi_hal_generic.h>
 
-
 #define RETURN_OK 0
 
 INT wifi_anqpSendResponse(UINT apIndex, mac_address_t sta, unsigned char token, wifi_anqp_node_t *head)
@@ -145,12 +144,34 @@ INT wifi_hal_get_default_country_code(char *code)
     return RETURN_OK;
 }
 
+INT wifi_hal_getRadioVapInfoMap(wifi_radio_index_t index, wifi_vap_info_map_t *map)
+{
+    return RETURN_OK;
+}
+
 INT wifi_hal_get_default_radius_key(char *radius_key)
 {
     return RETURN_OK;
 } 
 
 INT wifi_hal_setApWpsPin(INT ap_index, char *wps_pin)
+{
+    return RETURN_OK;
+}
+
+INT wifi_delApAclDevice(INT apIndex, CHAR *DeviceMacAddress)
+{
+    return RETURN_OK;
+}
+INT wifi_addApAclDevice(INT apIndex, CHAR *DeviceMacAddress)
+{
+    return RETURN_OK;
+}
+INT wifi_setApMacAddressControlMode(INT apIndex, INT filterMode)
+{
+    return RETURN_OK;
+}
+INT wifi_delApAclDevices(INT apINdex)
 {
     return RETURN_OK;
 }

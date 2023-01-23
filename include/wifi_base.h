@@ -174,6 +174,11 @@ typedef struct {
 } scan_results_t;
 
 typedef enum {
+    dev_subtype_rdk,
+    dev_subtype_pod
+} dev_subtype_t;
+
+typedef enum {
     rdk_dev_mode_type_gw,
     rdk_dev_mode_type_ext
 } rdk_dev_mode_type_t;

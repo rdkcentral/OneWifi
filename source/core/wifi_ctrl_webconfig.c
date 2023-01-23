@@ -23,7 +23,6 @@
 #include "const.h"
 #define  WBCFG_MULTI_COMP_SUPPORT 1
 #include "webconfig_framework.h"
-#include "ansc_platform.h"
 #include "wifi_hal.h"
 #include "wifi_ctrl.h"
 #include "wifi_mgr.h"
@@ -43,6 +42,8 @@
 #include <opensync/ow_webconfig.h>
 
 #define OW_CONF_BARRIER_TIMEOUT_MSEC (60 * 1000)
+#define IS_CHANGED(old, new) ((old != new)? wifi_util_dbg_print(WIFI_CTRL,"%s:Changed param %s: [%d] -> [%d].\n",__func__,#old,old,new),1: 0)
+
 
 struct ow_conf_vif_config_cb_arg
 {
@@ -69,27 +70,6 @@ webconfig_set_ow_core_state(webconfig_subdoc_data_t *data)
     return 0;
 }
 
-static char *
-webconfig_get_wifihal_radio_idx_to_name(int rix)
-{
-    char buf[64] = {0};
-
-    /* FIXME: This is deprecated but this is the only
-     * reliable of getting the actual radio name without
-     * some weird mappings. Asking the WifiHAL
-     * implementation seems like the best place.
-     */
-    if (wifi_getRadioIfName(rix, buf) != RETURN_OK) {
-        wifi_util_dbg_print(WIFI_CTRL,
-                            "%s:%s:%d: failed to convert radio index (%d) to name\n",
-                            __FILE__, __func__, __LINE__, rix);
-        return NULL;
-    }
-
-    buf[sizeof(buf) - 1] = 0; /* defensive nul termination */
-    return strdup(buf);
-}
-
 /* FIXME: The wifi_vap_info_t is missing a bunch of things
  * including ACL. This is unable to control ACLs for now.
  */
@@ -99,9 +79,18 @@ webconfig_set_ow_core_vif_config_priv(const struct ow_conf_vif_config_cb_arg *vi
     const wifi_vap_info_t *vap = vif_cb_arg->vap_info;
     const char *vn = vif_cb_arg->vap_info->vap_name;
     const int rix = vif_cb_arg->vap_info->radio_index;
-    char *rn = webconfig_get_wifihal_radio_idx_to_name(rix);
-
+    char if_name[MAXIFACENAMESIZE] = {0};
     acl_entry_t *new_acl_entry = NULL;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    int ret = 0;
+
+    ret = convert_radio_index_to_ifname(&mgr->hal_cap.wifi_prop,rix,if_name,sizeof(if_name));
+    if (ret == RETURN_ERR)
+    {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d:Failed to get radio name for index [%d] \n",__func__,__LINE__,rix);
+        return ret;
+    }
+
     rdk_wifi_vap_info_t *rdk_vap_info = vif_cb_arg->rdk_vap_info;
 
     if(rdk_vap_info->acl_map == NULL)
@@ -109,9 +98,6 @@ webconfig_set_ow_core_vif_config_priv(const struct ow_conf_vif_config_cb_arg *vi
          wifi_util_dbg_print(WIFI_CTRL,
                             "%s:RDK vap info acl map is NULL\n",__func__);
     }
-
-    if (rn == NULL)
-        return RETURN_ERR;
 
     ow_conf_vif_flush_ap_acl(vn);
 
@@ -127,9 +113,8 @@ webconfig_set_ow_core_vif_config_priv(const struct ow_conf_vif_config_cb_arg *vi
             new_acl_entry = hash_map_get_next(rdk_vap_info->acl_map, new_acl_entry);
         }
     }
-
-    ow_webconfig_set_vif(rn, vn, vap);
-    free(rn);
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d: OW Configuring VIF [%s]. \n",__func__,__LINE__,vn);
+    ow_webconfig_set_vif(if_name, vn, vap);
 
     return RETURN_OK;
 }
@@ -144,7 +129,14 @@ static int
 webconfig_set_ow_core_vif_config(const struct ow_conf_vif_config_cb_arg *vap)
 {
     ow_core_thread_call(webconfig_set_ow_core_vif_config_cb, vap);
-    return ow_conf_barrier_wait(OW_CONF_BARRIER_TIMEOUT_MSEC);
+#if CCSP_COMMON
+    ow_conf_barrier_wait(OW_CONF_BARRIER_TIMEOUT_MSEC);
+#else 
+    ow_state_barrier_wait(OW_CONF_BARRIER_TIMEOUT_MSEC);
+    ow_core_update_vap_mac(vap->vap_info->vap_name, vap->vap_info);
+#endif
+
+    return RETURN_OK;
 }
 
 static int
@@ -155,27 +147,29 @@ webconfig_set_ow_core_phy_config_priv(rdk_wifi_radio_t *r)
     const size_t len = vmap->num_vaps;
     const size_t n = len > max ? max : len;
     const int rix = r->vaps.radio_index;
-    char *rn;
+    char rn[MAXIFACENAMESIZE] = {0};
+    wifi_mgr_t *mgr = get_wifimgr_obj();
     size_t i;
+    int ret;
 
-    rn = webconfig_get_wifihal_radio_idx_to_name(rix);
-    if (rn == NULL) {
-        return RETURN_ERR;
+    ret = convert_radio_index_to_ifname(&mgr->hal_cap.wifi_prop,rix,rn,sizeof(rn));
+    if (ret == RETURN_ERR)
+    {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d:Failed to get radio name for index [%d] \n",__func__,__LINE__,rix);
+        return ret;
     }
 
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d: OW Configuring Phy [%s]. \n",__func__,__LINE__,rn);
     ow_webconfig_set_phy(rn, &r->oper);
 
     for (i = 0; i < n; i++) {
         wifi_vap_info_t *vap = &vmap->vap_array[i];
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d: OW Phy [%s] changed updating VIF [%s]. \n",__func__,__LINE__,rn,vap->vap_name);
         rdk_wifi_vap_info_t *rdk_vap = &r->vaps.rdk_vap_array[i];
         const struct ow_conf_vif_config_cb_arg vif_cb_arg = {.vap_info = vap,
                 .rdk_vap_info = rdk_vap};
         webconfig_set_ow_core_vif_config_priv(&vif_cb_arg);
     }
-
-    free(rn);
-    rn = NULL;
-
     return RETURN_OK;
 }
 
@@ -189,7 +183,11 @@ static int
 webconfig_set_ow_core_phy_config(const rdk_wifi_radio_t *r)
 {
     ow_core_thread_call(webconfig_set_ow_core_phy_config_cb, r);
+#if CCSP_COMMON
     return ow_conf_barrier_wait(OW_CONF_BARRIER_TIMEOUT_MSEC);
+#else 
+    return ow_state_barrier_wait(OW_CONF_BARRIER_TIMEOUT_MSEC);
+#endif
 }
 
 static enum ow_stats_conf_stats_type
@@ -570,7 +568,8 @@ int webconfig_analyze_pending_states(wifi_ctrl_t *ctrl)
     // this may move to scheduler task
     switch ((ctrl->webconfig_state & pending_state)) {
         case ctrl_webconfig_state_radio_cfg_rsp_pending:
-            if (check_wifi_csa_sched_timeout_active_status(ctrl) == false) {
+            if (check_wifi_radio_sched_timeout_active_status(ctrl) == false &&
+                check_wifi_csa_sched_timeout_active_status(ctrl) == false) {
                 type = webconfig_subdoc_type_radio;
                 webconfig_send_radio_subdoc_status(ctrl, type);
             } else {
@@ -578,32 +577,67 @@ int webconfig_analyze_pending_states(wifi_ctrl_t *ctrl)
             }
             break;
         case ctrl_webconfig_state_vap_private_cfg_rsp_pending:
-            type = webconfig_subdoc_type_private;
-            webconfig_send_vap_subdoc_status(ctrl, type);
+            if (check_wifi_vap_sched_timeout_active_status(ctrl, isVapPrivate) == false) {
+                type = webconfig_subdoc_type_private;
+                webconfig_send_vap_subdoc_status(ctrl, type);
+            } else {
+                return RETURN_OK;
+            }
             break;
         case ctrl_webconfig_state_vap_home_cfg_rsp_pending:
-            type = webconfig_subdoc_type_home;
-            webconfig_send_vap_subdoc_status(ctrl, type);
+            if (check_wifi_vap_sched_timeout_active_status(ctrl, isVapXhs) == false) {
+                type = webconfig_subdoc_type_home;
+                webconfig_send_vap_subdoc_status(ctrl, type);
+            } else {
+                return RETURN_OK;
+            }
             break;
         case ctrl_webconfig_state_vap_xfinity_cfg_rsp_pending:
-            type = webconfig_subdoc_type_xfinity;
-            webconfig_send_vap_subdoc_status(ctrl, type);
+            if (check_wifi_vap_sched_timeout_active_status(ctrl, isVapHotspot) == false) {
+                type = webconfig_subdoc_type_xfinity;
+                webconfig_send_vap_subdoc_status(ctrl, type);
+            } else {
+                return RETURN_OK;
+            }
             break;
         case ctrl_webconfig_state_vap_lnf_cfg_rsp_pending:
-            type = webconfig_subdoc_type_lnf;
-            webconfig_send_vap_subdoc_status(ctrl, type);
+            if (check_wifi_vap_sched_timeout_active_status(ctrl, isVapLnf) == false) {
+                type = webconfig_subdoc_type_lnf;
+                webconfig_send_vap_subdoc_status(ctrl, type);
+            } else {
+                return RETURN_OK;
+            }
             break;
         case ctrl_webconfig_state_vap_mesh_cfg_rsp_pending:
-            type = webconfig_subdoc_type_mesh;
-            webconfig_send_vap_subdoc_status(ctrl, type);
+            if (check_wifi_vap_sched_timeout_active_status(ctrl, isVapMesh) == false) {
+                type = webconfig_subdoc_type_mesh;
+                webconfig_send_vap_subdoc_status(ctrl, type);
+            } else {
+                return RETURN_OK;
+            }
         break;
         case ctrl_webconfig_state_sta_conn_status_rsp_pending:
-        case ctrl_webconfig_state_vap_mesh_sta_cfg_rsp_pending:
             type = webconfig_subdoc_type_mesh_sta;
             webconfig_send_vap_subdoc_status(ctrl, type);
         break;
+        case ctrl_webconfig_state_vap_mesh_sta_cfg_rsp_pending:
+            if (check_wifi_vap_sched_timeout_active_status(ctrl, isVapSTAMesh) == false) {
+                type = webconfig_subdoc_type_mesh_sta;
+                webconfig_send_vap_subdoc_status(ctrl, type);
+            } else {
+                return RETURN_OK;
+            }
+        break;
         case ctrl_webconfig_state_vap_mesh_backhaul_cfg_rsp_pending:
-            type = webconfig_subdoc_type_mesh_backhaul;
+            if (check_wifi_vap_sched_timeout_active_status(ctrl, isVapMeshBackhaul) == false) {
+                type = webconfig_subdoc_type_mesh_backhaul;
+                webconfig_send_vap_subdoc_status(ctrl, type);
+            } else {
+                return RETURN_OK;
+            }
+        break;
+        case ctrl_webconfig_state_vap_mesh_backhaul_sta_cfg_rsp_pending:
+            type = webconfig_subdoc_type_mesh_backhaul_sta;
             webconfig_send_vap_subdoc_status(ctrl, type);
         break;
         case ctrl_webconfig_state_macfilter_cfg_rsp_pending:
@@ -667,14 +701,16 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
     bool found_target = false;
     wifi_mgr_t *mgr = get_wifimgr_obj();
 #if CCSP_COMMON
-    int ret = 0;
     wifi_apps_t         *analytics = NULL;
     char update_status[128];
 #endif // CCSP_COMMON
     struct ow_conf_vif_config_cb_arg arg_vif_cb;
     rdk_wifi_vap_info_t *rdk_vap_info;
     rdk_wifi_vap_info_t tgt_rdk_vap_info;
+    wifi_vap_name_t  vap_name;
+    char if_name[MAXIFACENAMESIZE]; 
     bool rfc_status;
+    int ret = 0;
 
     for (i = 0; i < size; i++) {
 
@@ -743,11 +779,13 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
         }
 
         found_target = false;
-        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Found vap map source and target for vap name: %s\n", __func__, __LINE__, vap_info->vap_name);
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Found vap map source and target for vap name: %s\n", __func__, __LINE__, vap_info->vap_name);
 
+
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Comparing VAP [%s] with [%s]. \n",__func__, __LINE__,mgr_vap_info->vap_name,vap_info->vap_name);
         if (memcmp(mgr_vap_info, vap_info, sizeof(wifi_vap_info_t)) != 0) {
             // radio data changed apply
-            wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: Change detected in received vap config, applying new configuration for vap: %s\n",
+            wifi_util_info_print(WIFI_CTRL, "%s:%d: Change detected in received vap config, applying new configuration for vap: %s\n",
                                 __func__, __LINE__, vap_names[i]);
 
             print_wifi_hal_bss_vap_data(WIFI_WEBCONFIG, "Old", tgt_vap_index, mgr_vap_info);
@@ -771,10 +809,11 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
 
             memset(&tgt_vap_map, 0, sizeof(wifi_vap_info_map_t));
             tgt_vap_map.num_vaps = 1;
-            memcpy(&tgt_vap_map.vap_array[0], vap_info, sizeof(wifi_vap_info_t));
 
+            memcpy(&tgt_vap_map.vap_array[0], vap_info, sizeof(wifi_vap_info_t));
             memset(&tgt_rdk_vap_info, 0, sizeof(rdk_wifi_vap_info_t));
             memcpy(&tgt_rdk_vap_info, rdk_vap_info, sizeof(rdk_wifi_vap_info_t));
+
             get_wifi_rfc_parameters(RFC_WIFI_OW_CORE_THREAD, (bool *)&rfc_status);
             if (true == rfc_status) {
                 wifi_util_dbg_print(WIFI_WEBCONFIG,"[%s]:WIFI RFC OW CORE THREAD ENABLED \r\n",__FUNCTION__);
@@ -784,16 +823,31 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
                 {
                     wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: tgt_rdk_vap_info->acp_map == NULL\n", __func__, __LINE__);
                 }
+
+                // For pods hal wrapper expects interface name
+                if (ctrl->dev_type == dev_subtype_pod) {
+                    memset(if_name,0,sizeof(if_name));
+                    memset(vap_name,0,sizeof(vap_name));
+                    convert_apindex_to_ifname(&mgr->hal_cap.wifi_prop,vap_info->vap_index, if_name,sizeof(if_name));
+                    wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Converted if_name=[%s]\n", __func__, __LINE__,if_name);
+                    strncpy(vap_name,arg_vif_cb.vap_info->vap_name,sizeof(vap_name));
+                    strncpy(arg_vif_cb.vap_info->vap_name,if_name,sizeof(wifi_vap_name_t));
+                }
                 ret = webconfig_set_ow_core_vif_config(&arg_vif_cb);
+                if (ctrl->dev_type == dev_subtype_pod) {
+                    strncpy(arg_vif_cb.vap_info->vap_name,vap_name,sizeof(wifi_vap_name_t));
+                }
+
             } else {
                 wifi_util_dbg_print(WIFI_WEBCONFIG,"[%s]:WIFI RFC OW CORE THREAD DISABLED \r\n",__FUNCTION__);
-                ret = svc->update_fn(svc, tgt_radio_idx, &tgt_vap_map);
             }
 
-            if (ret != RETURN_OK) {
+            if (ret != RETURN_OK || svc->update_fn(svc, tgt_radio_idx, &tgt_vap_map) != RETURN_OK) {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: failed to apply\n", __func__, __LINE__);
                 return RETURN_ERR;
             }
+
+            start_wifi_sched_timer(&vap_info->vap_index, ctrl, wifi_vap_sched);
 
 #if CCSP_COMMON
             analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
@@ -820,8 +874,16 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
                 process_xfinity_sec_5g_enabled(vap_info->u.bss_info.enabled);
             }
 #endif // CCSP_COMMON
+            /* XXX: This memcpy should be deleted later. Mgr's cache should be
+             * updated only from WifiDb callbacks (see update_fn).
+             *
+             * Problems:
+             * 1. memcpy would be executed even if wifi_hal_createVAP/webconfig_set_ow_core_vif_config failed
+             * 2. MAC is updated by ow_core_update_vap_mac for XE2. Currently, schema_Wifi_VAP_Config doesn't have mac field
+             * So, it won't be updated within update_fn -> wifidb_update_wifi_vap_info. Thats the reason why I leaved memcpy here. 
+             */
             memcpy(mgr_vap_info, &tgt_vap_map.vap_array[0], sizeof(wifi_vap_info_t));
-
+#if CCSP_WIFI_HAL
             if (vap_info->vap_mode == wifi_vap_mode_ap) {
                 if (wifi_setApManagementFramePowerControl(vap_info->vap_index,vap_info->u.bss_info.mgmtPowerControl) == RETURN_OK) {
                     wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d:ManagementFrame Power control set for vapindex =%d Successful \n",__func__, __LINE__,vap_info->vap_index);
@@ -829,6 +891,7 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
                     wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d:ManagementFrame Power control set failed in  \n",__func__, __LINE__);
                 }
             }
+#endif // CCSP_WIFI_HAL
         } else {
             wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: Received vap config is same for %s, not applying\n",
                         __func__, __LINE__, vap_names[i]);
@@ -1369,7 +1432,7 @@ int webconfig_hal_mesh_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_dat
 {
     unsigned int ap_index;
     unsigned int num_vaps = 0;
-    char *vap_name;
+    char *vap_name = NULL;
     char *vap_names[MAX_VAP];
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
@@ -1680,13 +1743,42 @@ bool is_csa_sched_timer_trigger(wifi_radio_operationParam_t old_radio_cfg, wifi_
     return false;
 }
 
-bool is_radio_param_config_changed(wifi_radio_operationParam_t *current_radio_cfg, wifi_radio_operationParam_t *new_radio_cfg)
+static bool is_radio_param_config_changed(wifi_radio_operationParam_t *old , wifi_radio_operationParam_t *new)
 {
-    new_radio_cfg->op_class = current_radio_cfg->op_class;
+    // Compare only which are changed from Wifi_Radio_Config
+    new->op_class = old->op_class;
 
-    if (memcmp(current_radio_cfg, new_radio_cfg, sizeof(wifi_radio_operationParam_t)) != 0) {
-        return true;
-    }
+    if (IS_CHANGED(old->enable,new->enable)) return true;
+    if (IS_CHANGED(old->band,new->band)) return true;
+    if (IS_CHANGED(old->autoChannelEnabled,new->autoChannelEnabled)) return true;
+    if (IS_CHANGED(old->op_class,new->op_class)) return true;
+    if (IS_CHANGED(old->channel,new->channel)) return true;
+    if (IS_CHANGED(old->numSecondaryChannels,new->numSecondaryChannels)) return true;
+    if (IS_CHANGED(old->channelWidth,new->channelWidth)) return true;
+    if (IS_CHANGED(old->csa_beacon_count,new->csa_beacon_count)) return true;
+    if (IS_CHANGED(old->countryCode,new->countryCode)) return true;
+    if (IS_CHANGED(old->operatingEnvironment,new->operatingEnvironment)) return true;
+    if (IS_CHANGED(old->DCSEnabled,new->DCSEnabled)) return true;
+    if (IS_CHANGED(old->dtimPeriod,new->dtimPeriod)) return true;
+    if (IS_CHANGED(old->beaconInterval,new->beaconInterval)) return true;
+    if (IS_CHANGED(old->operatingClass,new->operatingClass)) return true;
+    if (IS_CHANGED(old->basicDataTransmitRates,new->basicDataTransmitRates)) return true;
+    if (IS_CHANGED(old->operationalDataTransmitRates,new->operationalDataTransmitRates)) return true;
+    if (IS_CHANGED(old->fragmentationThreshold,new->fragmentationThreshold)) return true;
+    if (IS_CHANGED(old->guardInterval,new->guardInterval)) return true;
+    if (IS_CHANGED(old->transmitPower,new->transmitPower)) return true;
+    if (IS_CHANGED(old->rtsThreshold,new->rtsThreshold)) return true;
+    if (IS_CHANGED(old->factoryResetSsid,new->factoryResetSsid)) return true;
+    if (IS_CHANGED(old->radioStatsMeasuringRate,new->radioStatsMeasuringRate)) return true;
+    if (IS_CHANGED(old->radioStatsMeasuringInterval,new->radioStatsMeasuringInterval)) return true;
+    if (IS_CHANGED(old->ctsProtection,new->ctsProtection)) return true;
+    if (IS_CHANGED(old->obssCoex,new->obssCoex)) return true;
+    if (IS_CHANGED(old->stbcEnable,new->stbcEnable)) return true;
+    if (IS_CHANGED(old->greenFieldEnable,new->greenFieldEnable)) return true;
+    if (IS_CHANGED(old->userControl,new->userControl)) return true;
+    if (IS_CHANGED(old->adminControl,new->adminControl)) return true;
+    if (IS_CHANGED(old->chanUtilThreshold,new->chanUtilThreshold)) return true;
+    if (IS_CHANGED(old->chanUtilSelfHealEnable,new->chanUtilSelfHealEnable)) return true;
 
     return false;
 }
@@ -1756,8 +1848,10 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
                 return RETURN_ERR;
             }
 
+            start_wifi_sched_timer(&mgr_radio_data->vaps.radio_index, ctrl, wifi_radio_sched);
+
             if (is_csa_sched_timer_trigger(mgr_radio_data->oper, radio_data->oper) == true) {
-                start_wifi_csa_sched_timer(&mgr_radio_data->vaps.radio_index, ctrl);
+                start_wifi_sched_timer(&mgr_radio_data->vaps.radio_index, ctrl, wifi_csa_sched);
             }
 
             // write the value to database
@@ -1800,7 +1894,7 @@ int push_data_to_apply_pending_queue(webconfig_subdoc_data_t *data)
 #endif // CCSP_COMMON
     temp_data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
     if (temp_data == NULL) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d: Unable to allocate memory for subdoc_data %s\n", __func__, __LINE__, subdoc_type_to_string(data->type));
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Unable to allocate memory for subdoc_data type:%d\n", __func__, __LINE__, data->type);
         return RETURN_ERR;
     }
     memcpy(temp_data, data, sizeof(webconfig_subdoc_data_t));
@@ -1875,9 +1969,11 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                     ret = webconfig_hal_private_vap_apply(ctrl, &data->u.decoded);
                 }
             }
+#if CCSP_COMMON
             //This is for captive_portal_check for private SSID when defaults modified
             captive_portal_check();
-        break;
+#endif
+            break;
 
         case webconfig_subdoc_type_home:
             if (data->descriptor & webconfig_data_descriptor_encoded) {
@@ -2012,6 +2108,22 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                         wifi_util_error_print(WIFI_MGR, "%s:%d: macfilter for mesh webconfig subdoc failed\n", __func__, __LINE__);
                         return webconfig_error_apply;
                     }
+                }
+            }
+            break;
+
+        case webconfig_subdoc_type_mesh_backhaul_sta:
+            if (data->descriptor & webconfig_data_descriptor_encoded) {
+                if (ctrl->webconfig_state & ctrl_webconfig_state_vap_mesh_backhaul_sta_cfg_rsp_pending) {
+                    ctrl->webconfig_state &= ~ctrl_webconfig_state_vap_mesh_backhaul_sta_cfg_rsp_pending;
+                    ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
+                }
+            } else {
+                ctrl->webconfig_state |= ctrl_webconfig_state_vap_mesh_backhaul_sta_cfg_rsp_pending;
+                ret = webconfig_hal_mesh_backhaul_vap_apply(ctrl, &data->u.decoded);
+                if (ret != RETURN_OK) {
+                    wifi_util_error_print(WIFI_MGR, "%s:%d: mesh webconfig subdoc failed\n", __func__, __LINE__);
+                    return webconfig_error_apply;
                 }
             }
         break;

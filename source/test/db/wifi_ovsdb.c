@@ -125,8 +125,8 @@ int update_wifi_ovsdb_security(wifi_ovsdb_t *ovsdb, wifi_vap_info_t *vap_info, s
 	int ret;
 
 	if (update == true) {
-		where = ovsdb_tran_cond(OCLM_UUID, "_uuid", OFUNC_EQ, cfg->_uuid.uuid);
-    pcfg = ovsdb_table_select_where(ovsdb->ovsdb_sock_path, &table_Wifi_Security_Config, where, &count);
+		where = onewifi_ovsdb_tran_cond(OCLM_UUID, "_uuid", OFUNC_EQ, cfg->_uuid.uuid);
+    pcfg = onewifi_ovsdb_table_select_where(ovsdb->ovsdb_sock_path, &table_Wifi_Security_Config, where, &count);
 		if ((count != 0) && (pcfg != NULL)) {
 			assert(count == 1);
 			memcpy(cfg, pcfg, sizeof(struct schema_Wifi_Security_Config));
@@ -162,8 +162,8 @@ int update_wifi_ovsdb_security(wifi_ovsdb_t *ovsdb, wifi_vap_info_t *vap_info, s
 	}
 
 	if (update == true) {
-		where = ovsdb_tran_cond(OCLM_UUID, "_uuid", OFUNC_EQ, cfg->_uuid.uuid);
-    	ret = ovsdb_table_update_where(ovsdb->ovsdb_sock_path, &table_Wifi_Security_Config, where, cfg);
+		where = onewifi_ovsdb_tran_cond(OCLM_UUID, "_uuid", OFUNC_EQ, cfg->_uuid.uuid);
+    	ret = onewifi_ovsdb_table_update_where(ovsdb->ovsdb_sock_path, &table_Wifi_Security_Config, where, cfg);
 		if (ret == -1) {
 			printf("%s:%d: failed to update to table_Wifi_Security_Config table\n", 
 				__func__, __LINE__);
@@ -177,7 +177,7 @@ int update_wifi_ovsdb_security(wifi_ovsdb_t *ovsdb, wifi_vap_info_t *vap_info, s
 		}
 
 	} else {
-    	if (ovsdb_table_insert(ovsdb->ovsdb_sock_path, &table_Wifi_Security_Config, cfg) 
+    	if (onewifi_ovsdb_table_insert(ovsdb->ovsdb_sock_path, &table_Wifi_Security_Config, cfg) 
 				== false) {
 			printf("%s:%d: failed to insert in table_Wifi_Security_Config table\n", 
 				__func__, __LINE__);
@@ -201,8 +201,8 @@ int update_wifi_ovsdb_mac_filter(wifi_ovsdb_t *ovsdb, wifi_vap_info_t *vap_info,
 	json_t *where;
 
 	// remove all filters from the table and insert
-	where = ovsdb_tran_cond(OCLM_STR, "vap_name", OFUNC_EQ, vap_info->vap_name);
-	ret = ovsdb_table_delete_where(ovsdb->ovsdb_sock_path, &table_Wifi_Device_Config, where);
+	where = onewifi_ovsdb_tran_cond(OCLM_STR, "vap_name", OFUNC_EQ, vap_info->vap_name);
+	ret = onewifi_ovsdb_table_delete_where(ovsdb->ovsdb_sock_path, &table_Wifi_Device_Config, where);
 	if (ret == -1) {
 		printf("%s:%d: failed to delete from table_Wifi_Device_Config table\n", 
 			__func__, __LINE__);
@@ -220,7 +220,7 @@ int update_wifi_ovsdb_mac_filter(wifi_ovsdb_t *ovsdb, wifi_vap_info_t *vap_info,
 		strcpy(cfg.vap_name, vap_info->vap_name);
 		strcpy(cfg.device_name, filter_data->dev_name);
 		strcpy(cfg.device_mac, filter_data->mac);
-    	if (ovsdb_table_insert(ovsdb->ovsdb_sock_path, &table_Wifi_Device_Config, &cfg) == false) {
+    	if (onewifi_ovsdb_table_insert(ovsdb->ovsdb_sock_path, &table_Wifi_Device_Config, &cfg) == false) {
 			printf("%s:%d: failed to insert in table_Wifi_Device_Config table\n", 
 				__func__, __LINE__);
 			return -1;
@@ -232,8 +232,8 @@ int update_wifi_ovsdb_mac_filter(wifi_ovsdb_t *ovsdb, wifi_vap_info_t *vap_info,
 		filter_data = hash_map_get_next(mac_filter_map, filter_data);
 		free(tmp);
 	}
-	where = ovsdb_tran_cond(OCLM_STR, "vap_name", OFUNC_EQ, vap_info->vap_name);
-    ovsdb_table_select_where(ovsdb->ovsdb_sock_path, &table_Wifi_Device_Config, where, &count);
+	where = onewifi_ovsdb_tran_cond(OCLM_STR, "vap_name", OFUNC_EQ, vap_info->vap_name);
+    onewifi_ovsdb_table_select_where(ovsdb->ovsdb_sock_path, &table_Wifi_Device_Config, where, &count);
 	printf("%s:%d: mac filter count in table_Wifi_Device_Config table:%d \n", 
 		__func__, __LINE__, count);
 #endif
@@ -250,8 +250,8 @@ int update_wifi_ovsdb_vap(wifi_ovsdb_t *ovsdb, wifi_vap_info_t *vap_info, hash_m
 	unsigned int count;
 	int ret;
 
-	where = ovsdb_tran_cond(OCLM_STR, "vap_name", OFUNC_EQ, vap_info->vap_name);
-    pcfg = ovsdb_table_select_where(ovsdb->ovsdb_sock_path, &table_Wifi_VAP_Config, where, &count);
+	where = onewifi_ovsdb_tran_cond(OCLM_STR, "vap_name", OFUNC_EQ, vap_info->vap_name);
+    pcfg = onewifi_ovsdb_table_select_where(ovsdb->ovsdb_sock_path, &table_Wifi_VAP_Config, where, &count);
 	if ((count != 0) && (pcfg != NULL)) {
 		assert(count == 1);
 		memcpy(&cfg, pcfg, sizeof(struct schema_Wifi_VAP_Config));
@@ -286,8 +286,8 @@ int update_wifi_ovsdb_vap(wifi_ovsdb_t *ovsdb, wifi_vap_info_t *vap_info, hash_m
 	memcpy(&cfg.Security, &cfg_sec._uuid, sizeof(cfg_sec._uuid));
 
 	if (update == true) {
-		where = ovsdb_tran_cond(OCLM_STR, "vap_name", OFUNC_EQ, vap_info->vap_name);
-    	ret = ovsdb_table_update_where(ovsdb->ovsdb_sock_path, &table_Wifi_VAP_Config, where, &cfg);
+		where = onewifi_ovsdb_tran_cond(OCLM_STR, "vap_name", OFUNC_EQ, vap_info->vap_name);
+    	ret = onewifi_ovsdb_table_update_where(ovsdb->ovsdb_sock_path, &table_Wifi_VAP_Config, where, &cfg);
 		if (ret == -1) {
 			printf("%s:%d: failed to update to table_Wifi_VAP_Config table\n", 
 				__func__, __LINE__);
@@ -301,7 +301,7 @@ int update_wifi_ovsdb_vap(wifi_ovsdb_t *ovsdb, wifi_vap_info_t *vap_info, hash_m
 		}
 
 	} else {
-    	if (ovsdb_table_insert(ovsdb->ovsdb_sock_path, &table_Wifi_VAP_Config, &cfg) == false) {
+    	if (onewifi_ovsdb_table_insert(ovsdb->ovsdb_sock_path, &table_Wifi_VAP_Config, &cfg) == false) {
 			printf("%s:%d: failed to insert in table_Wifi_VAP_Config table\n", 
 				__func__, __LINE__);
 			return -1;
@@ -353,21 +353,21 @@ int init_ovsdb_tables(wifi_ovsdb_t *ovsdb)
     }
 
 	pthread_create(&ovsdb->evloop_thr_id, NULL, evloop_func, ovsdb);
-    if (ovsdb_init_loop(ovsdb->ovsdb_fd, &ovsdb->wovsdb, ovsdb->ovs_ev_loop) == false) {
+    if (onewifi_ovsdb_init_loop(ovsdb->ovsdb_fd, &ovsdb->wovsdb, ovsdb->ovs_ev_loop) == false) {
         printf("%s:%d: Could not find default target_loop\n", __func__, __LINE__);
         return -1;
 
     }
 
-	OVSDB_TABLE_INIT(Wifi_Device_Config, device_mac);
-	OVSDB_TABLE_INIT_NO_KEY(Wifi_Security_Config);
-	OVSDB_TABLE_INIT(Wifi_VAP_Config, vap_name);
-	OVSDB_TABLE_INIT_NO_KEY(Wifi_Config);
+	ONEWIFI_OVSDB_TABLE_INIT(Wifi_Device_Config, device_mac);
+	ONEWIFI_OVSDB_TABLE_INIT_NO_KEY(Wifi_Security_Config);
+	ONEWIFI_OVSDB_TABLE_INIT(Wifi_VAP_Config, vap_name);
+	ONEWIFI_OVSDB_TABLE_INIT_NO_KEY(Wifi_Config);
 
     snprintf(ovsdb->ovsdb_sock_path, sizeof(ovsdb->ovsdb_sock_path), "%s/ovs.ctl", ovsdb->ovsdb_run_dir);
 
     while (attempts < 3) {
-        if ((ovsdb->ovsdb_fd = ovsdb_conn(ovsdb->ovsdb_sock_path)) < 0) {
+        if ((ovsdb->ovsdb_fd = onewifi_ovsdb_conn(ovsdb->ovsdb_sock_path)) < 0) {
             printf("%s:%d:Failed to connect to ovsdb at %s\n",
                 __func__, __LINE__, ovsdb->ovsdb_sock_path);
             attempts++;
@@ -384,10 +384,10 @@ int init_ovsdb_tables(wifi_ovsdb_t *ovsdb)
     printf("%s:%d:Connection to ovsdb at %s successful\n",
             __func__, __LINE__, ovsdb->ovsdb_sock_path);
 
-	OVSDB_TABLE_MONITOR(ovsdb->ovsdb_fd, Wifi_Device_Config, true);
-	OVSDB_TABLE_MONITOR(ovsdb->ovsdb_fd, Wifi_Security_Config, true);
-	OVSDB_TABLE_MONITOR(ovsdb->ovsdb_fd, Wifi_VAP_Config, true);
-	OVSDB_TABLE_MONITOR(ovsdb->ovsdb_fd, Wifi_Config, true);
+	ONEWIFI_OVSDB_TABLE_MONITOR(ovsdb->ovsdb_fd, Wifi_Device_Config, true);
+	ONEWIFI_OVSDB_TABLE_MONITOR(ovsdb->ovsdb_fd, Wifi_Security_Config, true);
+	ONEWIFI_OVSDB_TABLE_MONITOR(ovsdb->ovsdb_fd, Wifi_VAP_Config, true);
+	ONEWIFI_OVSDB_TABLE_MONITOR(ovsdb->ovsdb_fd, Wifi_Config, true);
 #endif
 	return 0;
 }
@@ -524,7 +524,7 @@ int device_config_update_test(wifi_ovsdb_t *ovsdb)
 	strcpy(cfg.device_name, "test_dev");
 	strcpy(cfg.device_mac, "00:11:22:33:44:55");
 
-    ret = ovsdb_table_upsert_simple(ovsdb->ovsdb_sock_path, &table_Wifi_Device_Config,
+    ret = onewifi_ovsdb_table_upsert_simple(ovsdb->ovsdb_sock_path, &table_Wifi_Device_Config,
                                    SCHEMA_COLUMN(Wifi_Device_Config, device_mac),
                                    cfg.device_mac,
                                    &cfg,
@@ -547,7 +547,7 @@ int vap_config_update_test(wifi_ovsdb_t *ovsdb)
 	strcpy(cfg.vap_name, "private_ssid_2g");
 	strcpy(cfg.ssid, "sams_home_2g");
 
-    ret = ovsdb_table_upsert_simple(ovsdb->ovsdb_sock_path, &table_Wifi_VAP_Config,
+    ret = onewifi_ovsdb_table_upsert_simple(ovsdb->ovsdb_sock_path, &table_Wifi_VAP_Config,
                                    SCHEMA_COLUMN(Wifi_VAP_Config, vap_name),
                                    cfg.vap_name,
                                    &cfg,

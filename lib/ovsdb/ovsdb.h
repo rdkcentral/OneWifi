@@ -78,8 +78,8 @@ extern "C" {
  */
 
 /* Generate the regular function declaration */
-#define OVSDB_GEN_DECL(method, ...) method(__VA_ARGS__, ...)
-#define OVSDB_GEN_CALL(method, ...)                                             \
+#define ONEWIFI_OVSDB_GEN_DECL(method, ...) method(__VA_ARGS__, ...)
+#define ONEWIFI_OVSDB_GEN_CALL(method, ...)                                             \
 {                                                                               \
     va_list  va;                                                                \
     char    *argv[256];                                                         \
@@ -105,8 +105,8 @@ extern "C" {
     return method  ## _argv(__VA_ARGS__, argc, argv);                           \
 }
 
-#define OVSDB_VA_DECL(method, ...) method ## _va(__VA_ARGS__, va_list va)
-#define OVSDB_VA_CALL(method, ...)                                              \
+#define ONEWIFI_OVSDB_VA_DECL(method, ...) method ## _va(__VA_ARGS__, va_list va)
+#define ONEWIFI_OVSDB_VA_CALL(method, ...)                                              \
 {                                                                               \
     char *argv[256];                                                            \
     char *parg;                                                                 \
@@ -204,9 +204,9 @@ ovsdb_col_t;
 #define OMT_ALL         (OMT_INITIAL | OMT_INSERT | OMT_DELETE | OMT_MODIFY)
 
 /* API */
-bool ovsdb_init_loop(int ovsdb_fd, struct ev_io *watcher, struct ev_loop *loop);
+bool onewifi_ovsdb_init_loop(int ovsdb_fd, struct ev_io *watcher, struct ev_loop *loop);
 #if 0
-bool ovsdb_init_loop(const char *sock_path, struct ev_loop *loop);
+bool onewifi_ovsdb_init_loop(const char *sock_path, struct ev_loop *loop);
 //bool ovsdb_init(const char *sock_path, const char *name);
 bool ovsdb_ready(const char *sock_path, struct ev_loop *loop);
 bool ovsdb_stop_loop(int sock_fd, struct ev_loop *loop);
@@ -219,13 +219,13 @@ bool ovsdb_stop_loop(int sock_fd, struct ev_loop *loop);
  * At the moment it is used in dm CLI, but maybe used elsewhere
  * It is recommended not to (mis)use this functions
  */
-bool ovsdb_method_json(int fd,
+bool onewifi_ovsdb_method_json(int fd,
 					   json_rpc_response_t *callback,
                        void * data,
                        char * buffer,
                        size_t sz);
 
-bool ovsdb_method_send(int fd,
+bool onewifi_ovsdb_method_send(int fd,
 					   json_rpc_response_t *callback,
                        void * data,
                        ovsdb_mt_t mt,
@@ -234,24 +234,24 @@ bool ovsdb_method_send(int fd,
 /*
  * Sync version of method send function
  */
-json_t *ovsdb_method_send_s(const char *ovsdb_sock_path, ovsdb_mt_t mt, json_t * jparams);
+json_t *onewifi_ovsdb_method_send_s(const char *ovsdb_sock_path, ovsdb_mt_t mt, json_t * jparams);
 
 /*
  * The following functions generate and send echo json method request
  *
  */
-bool ovsdb_echo_call_argv(int ovsdb_fd,
+bool onewifi_ovsdb_echo_call_argv(int ovsdb_fd,
 		json_rpc_response_t *cb,
         void * data,
         int argc,
         char ** argv);
 
-bool OVSDB_GEN_DECL(ovsdb_echo_call,
+bool ONEWIFI_OVSDB_GEN_DECL(ovsdb_echo_call,
 		int ovsdb_fd,
         json_rpc_response_t *callback,
         void *data);
 
-bool OVSDB_VA_DECL(ovsdb_echo_call,
+bool ONEWIFI_OVSDB_VA_DECL(ovsdb_echo_call,
 		int ovsdb_fd,
         json_rpc_response_t *callback,
         void *data);
@@ -261,13 +261,13 @@ bool OVSDB_VA_DECL(ovsdb_echo_call,
  * The following functions generate and send echo json method request
  * - synchronous versions
  */
-bool ovsdb_echo_call_s_argv(int argc, char ** argv);
+bool onewifi_ovsdb_echo_call_s_argv(int argc, char ** argv);
 
 /*
  * The following functions generate and send monitor method json request
  *
  */
-bool ovsdb_monit_call_argv(int ovsdb_fd,
+bool onewifi_ovsdb_monit_call_argv(int ovsdb_fd,
 		json_rpc_response_t *cb,
         void *data,
         int monid,
@@ -276,7 +276,7 @@ bool ovsdb_monit_call_argv(int ovsdb_fd,
         int argc,
         char **argv);
 
-bool OVSDB_GEN_DECL(ovsdb_monit_call,
+bool ONEWIFI_OVSDB_GEN_DECL(ovsdb_monit_call,
 		int ovsdb_fd,
         json_rpc_response_t *callback,
         void *data,
@@ -284,7 +284,7 @@ bool OVSDB_GEN_DECL(ovsdb_monit_call,
         char *table,
         int mon_flags);
 
-bool OVSDB_VA_DECL(ovsdb_monit_call,
+bool ONEWIFI_OVSDB_VA_DECL(ovsdb_monit_call,
 		int ovsdb_fd,
         json_rpc_response_t *callback,
         void *data,
@@ -296,7 +296,7 @@ bool OVSDB_VA_DECL(ovsdb_monit_call,
  * The following function creates and sends transaction method json
  *
  */
-bool ovsdb_tran_call(int ovsdb_fd,
+bool onewifi_ovsdb_tran_call(int ovsdb_fd,
 					 json_rpc_response_t *cb,
                      void * data,
                      char * table,
@@ -314,7 +314,7 @@ bool ovsdb_tran_call(int ovsdb_fd,
  * it would be used as the base transaction object
  *
  * After creating complex transaction with this API, call
- * ovsdb_method_json to send it to ovsdb
+ * onewifi_ovsdb_method_json to send it to ovsdb
  */
 json_t * ovsdb_tran_multi(json_t * jarray,
                           json_t * js_obj,
@@ -328,7 +328,7 @@ json_t * ovsdb_tran_multi(json_t * jarray,
  * inserts a new row, and inserts it's UUID into a parent
  * table's column using mutate
  */
-json_t * ovsdb_tran_insert_with_parent(const char *ovsdb_sock_path, 
+json_t * onewifi_ovsdb_tran_insert_with_parent(const char *ovsdb_sock_path, 
 									const char * table,
                                        json_t * row,
                                        const char * parent_table,
@@ -340,7 +340,7 @@ json_t * ovsdb_tran_insert_with_parent(const char *ovsdb_sock_path,
  * deletes a rows by uuid in one table, and then removes
  * them from a parent table's column using mutate
  */
-json_t * ovsdb_tran_delete_with_parent(const char *ovsdb_sock_path, 
+json_t * onewifi_ovsdb_tran_delete_with_parent(const char *ovsdb_sock_path, 
 										const char * table,
                                        json_t * uuids,
                                        const char * parent_table,
@@ -350,25 +350,25 @@ json_t * ovsdb_tran_delete_with_parent(const char *ovsdb_sock_path,
 /*
  * OVSDB special value
  */
-json_t *ovsdb_tran_special_value(const char *type, const char *value);
+json_t *onewifi_ovsdb_tran_special_value(const char *type, const char *value);
 
 /*
  * OVSDB UUID value
  */
-json_t *ovsdb_tran_uuid_json(const char *uuid);
+json_t *onewifi_ovsdb_tran_uuid_json(const char *uuid);
 
 /*
  * Convert JSON array to OVSDB set.
  * NULL array creates empty set.
  * If raw == true, assume full array passed in
  */
-json_t * ovsdb_tran_array_to_set(json_t *js_array, bool raw);
+json_t * onewifi_ovsdb_tran_array_to_set(json_t *js_array, bool raw);
 
 /**
  * The following function creates "where" part of json request
  * used in transaction calls
  */
-json_t * ovsdb_tran_cond(ovsdb_col_t,
+json_t * onewifi_ovsdb_tran_cond(ovsdb_col_t,
                          const char * column,
                          ovsdb_func_t func,
                          const void * value);
@@ -378,11 +378,11 @@ json_t * ovsdb_tran_cond(ovsdb_col_t,
  * used in transaction calls, without enclosing [] -- this
  * function does not create a complete where selector.
  */
-json_t * ovsdb_tran_cond_single(char * column,
+json_t * onewifi_ovsdb_tran_cond_single(char * column,
                                 ovsdb_func_t func,
                                 char * value);
 
-json_t * ovsdb_tran_cond_single_json(const char * column,
+json_t * onewifi_ovsdb_tran_cond_single_json(const char * column,
                                 ovsdb_func_t func,
                                 json_t * value);
 
@@ -390,14 +390,14 @@ json_t * ovsdb_tran_cond_single_json(const char * column,
  * Issue a synchronous request to OVSDB
  *
  */
-json_t *ovsdb_method_send_s(const char *ovsdb_sock_path,
+json_t *onewifi_ovsdb_method_send_s(const char *ovsdb_sock_path,
         ovsdb_mt_t mt,
         json_t * jparams);
 
 /**
- * Synchronous version of ovsdb_tran_call()
+ * Synchronous version of onewifi_ovsdb_tran_call()
  */
-json_t *ovsdb_tran_call_s(
+json_t *onewifi_ovsdb_tran_call_s(
 		const char *ovsdb_sock_path,
         const char * table,
         ovsdb_tro_t oper,
@@ -405,10 +405,10 @@ json_t *ovsdb_tran_call_s(
         json_t * row);
 
 /*
- * This function uses ovsdb_method_send_s() to send a
- * transaction created with ovsdb_tran_insert_with_parent()
+ * This function uses onewifi_ovsdb_method_send_s() to send a
+ * transaction created with onewifi_ovsdb_tran_insert_with_parent()
  */
-bool ovsdb_insert_with_parent_s(const char *ovsdb_sock_path,
+bool onewifi_ovsdb_insert_with_parent_s(const char *ovsdb_sock_path,
 								char * table,
                                 json_t * row,
                                 char * parent_table,
@@ -417,17 +417,17 @@ bool ovsdb_insert_with_parent_s(const char *ovsdb_sock_path,
 
 /*
  * This function builds a uuid list from where clause,
- * then uses ovsdb_method_send_s() to send a * transaction
- * created with ovsdb_tran_delete_with_parent()
+ * then uses onewifi_ovsdb_method_send_s() to send a * transaction
+ * created with onewifi_ovsdb_tran_delete_with_parent()
  */
-json_t* ovsdb_delete_with_parent_res_s(const char *ovsdb_sock_path,
+json_t* onewifi_ovsdb_delete_with_parent_res_s(const char *ovsdb_sock_path,
 								const char * table,
                                 json_t *where,
                                 const char * parent_table,
                                 json_t * parent_where,
                                 const char * parent_column);
 
-bool ovsdb_delete_with_parent_s(const char *ovsdb_sock_path,
+bool onewifi_ovsdb_delete_with_parent_s(const char *ovsdb_sock_path,
 								char * table,
                                 json_t *where,
                                 char * parent_table,
@@ -438,21 +438,21 @@ bool ovsdb_delete_with_parent_s(const char *ovsdb_sock_path,
  * The following set of functions filters all json key-value pairs
  * except those for which key names are submitted
  */
-json_t *ovsdb_row_filter_argv(json_t * js, int argc, char ** argv);
-json_t *OVSDB_GEN_DECL(ovsdb_row_filter, json_t *row);
-json_t *OVSDB_VA_DECL(ovsdb_row_filter, json_t *row);
+json_t *onewifi_ovsdb_row_filter_argv(json_t * js, int argc, char ** argv);
+json_t *ONEWIFI_OVSDB_GEN_DECL(ovsdb_row_filter, json_t *row);
+json_t *ONEWIFI_OVSDB_VA_DECL(ovsdb_row_filter, json_t *row);
 
 /*
  * Same as above, except it filters out the listed columns
  */
-json_t *ovsdb_row_filtout_argv(json_t * js, int argc, char ** argv);
-json_t *OVSDB_GEN_DECL(ovsdb_row_filtout, json_t *row);
-json_t *OVSDB_VA_DECL(ovsdb_row_filtout, json_t *row);
+json_t *onewifi_ovsdb_row_filtout_argv(json_t * js, int argc, char ** argv);
+json_t *ONEWIFI_OVSDB_GEN_DECL(ovsdb_row_filtout, json_t *row);
+json_t *ONEWIFI_OVSDB_VA_DECL(ovsdb_row_filtout, json_t *row);
 
-int ovsdb_get_jsonrpc_id(void);
+int onewifi_ovsdb_get_jsonrpc_id(void);
 
-int ovsdb_register_update_cb(ovsdb_update_process_t *fn, void *data);
-int ovsdb_unregister_update_cb(int mon_id);
+int onewifi_ovsdb_register_update_cb(ovsdb_update_process_t *fn, void *data);
+int onewifi_ovsdb_unregister_update_cb(int mon_id);
 
 /*
  * Global list of JSON-RPC handlers

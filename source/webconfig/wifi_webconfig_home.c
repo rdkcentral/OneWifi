@@ -102,7 +102,7 @@ webconfig_error_t encode_home_subdoc(webconfig_t *config, webconfig_subdoc_data_
         map = &params->radios[i].vaps.vap_map;
         for (j = 0; j < map->num_vaps; j++) {
             vap = &map->vap_array[j];
-            if (is_vap_xhs(&params->hal_cap.wifi_prop, vap->vap_index)) {
+            if (is_vap_xhs(&params->hal_cap.wifi_prop, vap->vap_index) && (strlen(vap->vap_name) != 0)) {
                 obj = cJSON_CreateObject();
                 cJSON_AddItemToArray(obj_array, obj);
                 if (encode_iot_vap_object(vap, obj) != webconfig_error_none) {
@@ -114,7 +114,6 @@ webconfig_error_t encode_home_subdoc(webconfig_t *config, webconfig_subdoc_data_
             }
         }
     }
-
 
     memset(data->u.encoded.raw, 0, MAX_SUBDOC_SIZE);
     str = cJSON_Print(json);

@@ -135,36 +135,75 @@ int scheduler_add_timer_task(struct scheduler *sched, bool high_prio, int *id,
     return 0;
 }
 
-int scheduler_cancel_timer_task(struct scheduler *sched, int id)
+static struct timer_task *scheduler_find_timer_task(struct scheduler *sched, int id)
 {
     struct timer_task *tt;
     unsigned int i;
 
     if (sched == NULL) {
-        return -1;
+        return NULL;
     }
-    pthread_mutex_lock(&sched->lock);
     for (i = 0; i < sched->num_hp_tasks; i++) {
         tt = queue_peek(sched->high_priority_timer_list, i);
         if (tt != NULL && tt->id == id) {
-            tt->cancel = true;
-            pthread_mutex_unlock(&sched->lock);
-            return 0;
+            return tt;
         }
     }
     for (i = 0; i < sched->num_tasks; i++) {
         tt = queue_peek(sched->timer_list, i);
         if (tt != NULL && tt->id == id) {
-            tt->cancel = true;
-            pthread_mutex_unlock(&sched->lock);
-            return 0;
+            return tt;
         }
     }
-    pthread_mutex_unlock(&sched->lock);
+
     /* could not find the task */
-    return -1;
+    return NULL;
 }
 
+int scheduler_cancel_timer_task(struct scheduler *sched, int id)
+{
+    struct timer_task *tt;
+    int ret = -1;
+
+    if (sched == NULL) {
+        return ret;
+    }
+
+    pthread_mutex_lock(&sched->lock);
+    tt = scheduler_find_timer_task(sched, id);
+
+    if (tt) {
+        tt->cancel = true;
+        ret = 0;
+    }
+
+    pthread_mutex_unlock(&sched->lock);
+
+    return ret;
+}
+
+int scheduler_free_timer_task_arg(struct scheduler *sched, int id)
+{
+    struct timer_task *tt;
+    int ret = -1;
+
+    if (sched == NULL) {
+        return ret;
+    }
+
+    pthread_mutex_lock(&sched->lock);
+    tt = scheduler_find_timer_task(sched, id);
+
+    if (tt) {
+        free(tt->arg);
+        tt->arg = NULL;
+        ret = 0;
+    }
+
+    pthread_mutex_unlock(&sched->lock);
+
+    return ret;
+}
 
 int scheduler_update_timer_task_interval(struct scheduler *sched, int id, unsigned int interval_ms)
 {

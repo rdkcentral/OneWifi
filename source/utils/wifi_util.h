@@ -165,6 +165,7 @@ int get_number_of_radios(wifi_platform_property_t *wifi_prop);
 int get_total_number_of_vaps(wifi_platform_property_t *wifi_prop);
 char *get_vap_name(wifi_platform_property_t *wifi_prop, int vap_index);
 int convert_vap_index_to_name(wifi_platform_property_t* wifi_prop, int vap_index, char *vap_name);
+int convert_vap_index_to_name(wifi_platform_property_t* wifi_prop, int vap_index, char *vap_name);
 void write_to_file(const char *file_name, char *fmt, ...);
 int convert_radio_name_to_index(unsigned int *index,char *name);
 char *get_formatted_time(char *time);
@@ -257,4 +258,5 @@ int sc_kick_type_conversion(sc_kick_type_t *sc_kick_enum, char *sc_kick, int sc_
 int sticky_kick_type_conversion(sticky_kick_type_t *sticky_kick_enum, char *sticky_kick, int sticky_kick_len, unsigned int conv_type);
 int get_vif_neighbor_id(char *key, int key_len, unsigned char *id, int id_len, const char *mac);
 int vif_neighbor_htmode_conversion(ht_mode_t *ht_mode_enum, char *ht_mode, int ht_mode_len, unsigned int conv_type);
+BOOL is_bssid_valid(const bssid_t bssid);
 #endif//_WIFI_UTIL_H_

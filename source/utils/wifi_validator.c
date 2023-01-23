@@ -22,7 +22,6 @@
 #include "cosa_dbus_api.h"
 #include "cosa_wifi_apis.h"
 #include "cosa_wifi_internal.h"
-#include "wifi_passpoint.h"
 #endif // DML_SUPPORT
 #include "wifi_webconfig.h"
 #include <stdio.h>
@@ -41,6 +40,7 @@
 #include "platform-logger.h"
 #include "wifi_hal.h"
 #include "cJSON.h"
+#include "wifi_passpoint.h"
 #include "ctype.h"
 #include "webconfig_framework.h"
 

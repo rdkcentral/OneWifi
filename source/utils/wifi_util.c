@@ -65,6 +65,10 @@ void test_names(wifi_platform_property_t *wifi_prop);
     } while (0);\
 }
 
+#ifndef LOG_PATH_PREFIX
+#define LOG_PATH_PREFIX "/nvram/"
+#endif // LOG_PATH_PREFIX
+
 struct wifiCountryEnumStrMap wifiCountryMap[] =
 {
     {wifi_countrycode_AC,"AC"}, /**< ASCENSION ISLAND */
@@ -635,75 +639,75 @@ char *get_formatted_time(char *time)
 
 void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *format, ...)
 {
-    char buff[2048*200] = {0};
+    char buff[256] = {0};
     va_list list;
     FILE *fpg = NULL;
 #if defined(__ENABLE_PID__) && (__ENABLE_PID__)
     pid_t pid;
 #endif
-    char filename_dbg_enable[32];
+    char filename_dbg_enable[64];
     char module_filename[32];
     char filename[100];
 
     switch(module)
     {
         case WIFI_DB:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), "/nvram/wifiDbDbg");
+            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiDbDbg");
             snprintf(module_filename, sizeof(module_filename), "wifiDb");
             break;
         }
         case WIFI_MGR:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), "/nvram/wifiMgrDbg");
+            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiMgrDbg");
             snprintf(module_filename, sizeof(module_filename), "wifiMgr");
             break;
         }
         case WIFI_WEBCONFIG:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), "/nvram/wifiWebConfigDbg");
+            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiWebConfigDbg");
             snprintf(module_filename, sizeof(module_filename), "wifiWebConfig");
             break;
         }
         case WIFI_CTRL:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), "/nvram/wifiCtrlDbg");
+            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiCtrlDbg");
             snprintf(module_filename, sizeof(module_filename), "wifiCtrl");
             break;
         }
         case WIFI_PASSPOINT:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), "/nvram/wifiPasspointDbg");
+            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiPasspointDbg");
             snprintf(module_filename, sizeof(module_filename), "wifiPasspointDbg");
             break;
         }
         case WIFI_DPP:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), "/nvram/wifiDppDbg");
+            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiDppDbg");
             snprintf(module_filename, sizeof(module_filename), "wifiDPP");
             break;
         }
         case WIFI_MON:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), "/nvram/wifiMonDbg");
+            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiMonDbg");
             snprintf(module_filename, sizeof(module_filename), "wifiMon");
             break;
         }
         case WIFI_DMCLI:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), "/nvram/wifiDMCLI");
+            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiDMCLI");
             snprintf(module_filename, sizeof(module_filename), "wifiDMCLI");
             break;
         }
         case WIFI_LIB:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), "/nvram/wifiLib");
+            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiLib");
             snprintf(module_filename, sizeof(module_filename), "wifiLib");
             break;
         }
         case WIFI_PSM:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), "/nvram/wifiPsm");
+            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiPsm");
             snprintf(module_filename, sizeof(module_filename), "wifiPsm");
             break;
         }
         case WIFI_ANALYTICS:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), "/nvram/wifiAnalytics");
+            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiAnalytics");
             snprintf(module_filename, sizeof(module_filename), "wifiAnalytics");
             break;
         }
         case WIFI_APPS:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), "/nvram/wifiApps");
+            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiApps");
             snprintf(module_filename, sizeof(module_filename), "wifiApps");
             break;
         }
@@ -747,18 +751,17 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
 #else
             get_formatted_time(buff);
 #endif
-            strcat(buff, " ");
             break;
     }
 
+    fprintf(fpg, "%s ", buff);
+
     va_start(list, format);
-    vsprintf(&buff[strlen(buff)], format, list);
+    vfprintf(fpg, format, list);
     va_end(list);
 
-    fputs(buff, fpg);
     fflush(fpg);
     fclose(fpg);
-
 }
 
 int WiFi_IsValidMacAddr(const char* mac)
@@ -952,14 +955,16 @@ int convert_freq_band_to_radio_index(int band, int *radio_index)
 
 int convert_ifname_to_radio_index(wifi_platform_property_t *wifi_prop, char *if_name, unsigned int *radio_index)
 {
-    wifi_interface_name_idex_map_t *prop;
-    
+
     //return the radio Index based in Interface Name
     if (if_name == NULL) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"WIFI %s:%d input if_name is NULL \n",__FUNCTION__, __LINE__);
         return RETURN_ERR;
     }
 
+#if DML_SUPPORT
+    wifi_interface_name_idex_map_t *prop;
+    
     prop = GET_IFNAME_PROPERTY(wifi_prop, if_name);
     if (prop) {
         *radio_index = prop->rdk_radio_index;
@@ -967,6 +972,19 @@ int convert_ifname_to_radio_index(wifi_platform_property_t *wifi_prop, char *if_
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d - No interface %s found\n", __FUNCTION__, __LINE__, if_name);
     }
     return (prop) ? RETURN_OK : RETURN_ERR;
+#else
+    wifi_util_dbg_print(WIFI_WEBCONFIG,"WIFI %s:%d Getting radio_idx for %s \n",__FUNCTION__, __LINE__,if_name);
+    if (strcmp(if_name,"wifi0") == 0)
+        *radio_index = 0;
+    else if (strcmp(if_name,"wifi1") == 0)
+        *radio_index = 1;
+    else if (strcmp(if_name,"wifi2") == 0)
+        *radio_index = 2;
+    else
+        return RETURN_ERR;
+
+    return RETURN_OK;
+#endif
 }
 
 int convert_radio_index_to_ifname(wifi_platform_property_t *wifi_prop, unsigned int radio_index, char *if_name, int ifname_len)
@@ -1033,8 +1051,6 @@ int convert_ifname_to_vapname(wifi_platform_property_t *wifi_prop, char *if_name
 
     return (prop) ? RETURN_OK : RETURN_ERR;
 }
-
-
 
 int vap_mode_conversion(wifi_vap_mode_t *vapmode_enum, char *vapmode_str, size_t vapmode_str_len, unsigned int conv_type)
 {
@@ -1156,14 +1172,14 @@ int freq_band_conversion(wifi_freq_bands_t *band_enum, char *freq_band, int freq
         if (!strncmp(freq_band, "2.4G", strlen("2.4G")+1)) {
             *band_enum = WIFI_FREQUENCY_2_4_BAND;
             return RETURN_OK;
-        } else if (!strncmp(freq_band, "5G", strlen("5G")+1)) {
-            *band_enum = WIFI_FREQUENCY_5_BAND;
-            return RETURN_OK;
         } else if (!strncmp(freq_band, "5GL", strlen("5GL")+1)) {
             *band_enum = WIFI_FREQUENCY_5L_BAND;
             return RETURN_OK;
         } else if (!strncmp(freq_band, "5GU", strlen("5GU")+1)) {
             *band_enum = WIFI_FREQUENCY_5H_BAND;
+            return RETURN_OK;
+        } else if (!strncmp(freq_band, "5G", strlen("5G")+1)) {
+            *band_enum = WIFI_FREQUENCY_5_BAND;
             return RETURN_OK;
         } else if (!strncmp(freq_band, "6G", strlen("6G")+1)) {
             *band_enum = WIFI_FREQUENCY_6_BAND;
@@ -1509,6 +1525,12 @@ int is_ssid_name_valid(char *ssid_name)
 
 void str_to_mac_bytes (char *key, mac_addr_t bmac) {
     unsigned int mac[6];
+
+    if (strlen(key) == 0) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Input mac address is empty.\n", __func__, __LINE__);
+        return;
+    }
+
     if(strlen(key) > MIN_MAC_LEN)
         sscanf(key, "%02x:%02x:%02x:%02x:%02x:%02x",
                 &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]);
@@ -1727,8 +1749,11 @@ int get_radio_if_hw_type(char *str, int str_len)
     if (str == NULL) {
         return RETURN_ERR;
     }
-
+#if defined (_PP203X_PRODUCT_REQ_)
+    snprintf(str, str_len, "qca4019");
+#else 
     snprintf(str, str_len, "BCM43684");
+#endif
     return RETURN_OK;
 }
 
@@ -2559,4 +2584,14 @@ int vif_neighbor_htmode_conversion(ht_mode_t *ht_mode_enum, char *ht_mode, int h
     }
 
     return RETURN_ERR;
+}
+
+BOOL is_bssid_valid(const bssid_t bssid)
+{
+    for (size_t i = 0; i < sizeof(bssid_t); i++) {
+        if (bssid[i]) {
+            return true;
+        }
+    }
+    return false;
 }

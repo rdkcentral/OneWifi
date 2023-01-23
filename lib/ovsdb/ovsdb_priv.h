@@ -42,12 +42,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 /* Return new JSON-RPC ID */
-extern int ovsdb_jsonrpc_id_new(void);
+extern int onewifi_ovsdb_jsonrpc_id_new(void);
 
 /* Insert a comment into an OVSDB transaction */
-extern bool ovsdb_tran_comment(json_t *js_array, ovsdb_tro_t oper, json_t *where);
+extern bool onewifi_ovsdb_tran_comment(json_t *js_array, ovsdb_tro_t oper, json_t *where);
 
 /* Return a transaction operation as JSON string */
-extern json_t *ovsdb_tran_operation(ovsdb_tro_t tran);
+extern json_t *onewifi_ovsdb_tran_operation(ovsdb_tro_t tran);
 
 #endif /* OVSDB_PRIV_H_INCLUDED */

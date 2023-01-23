@@ -58,7 +58,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /*global to avoid any potential issues with stack */
 //struct ev_io wovsdb;
-/* Don't use this buffer unless you are cb_ovsdb_read */
+/* Don't use this buffer unless you are onewifi_cb_ovsdb_read */
 static char *ovs_buffer;
 static int ovs_buffer_size;
 //const char *ovsdb_comment = NULL;
@@ -80,22 +80,22 @@ ds_tree_t json_rpc_update_handler_list = DS_TREE_INIT(rpc_update_handler_cmp, st
  *  PROTECTED declarations
  *****************************************************************************/
 
-static bool ovsdb_process_recv(json_t *js);
-static bool ovsdb_process_event(json_t *js);
-static bool ovsdb_process_result(json_t *id, json_t *js);
-static bool ovsdb_process_error(json_t *id, json_t *js);
-static bool ovsdb_process_update(json_t *jsup);
-static bool ovsdb_rpc_callback(int id, bool is_error, json_t *jsmsg);
+static bool onewifi_ovsdb_process_recv(json_t *js);
+static bool onewifi_ovsdb_process_event(json_t *js);
+static bool onewifi_ovsdb_process_result(json_t *id, json_t *js);
+static bool onewifi_ovsdb_process_error(json_t *id, json_t *js);
+static bool onewifi_ovsdb_process_update(json_t *jsup);
+static bool onewifi_ovsdb_rpc_callback(int id, bool is_error, json_t *jsmsg);
 
-static void cb_ovsdb_read(struct ev_loop *loop, struct ev_io *watcher, int revents);
-static bool cb_ovsdb_read_json(char *buffer);
+static void onewifi_cb_ovsdb_read(struct ev_loop *loop, struct ev_io *watcher, int revents);
+static bool onewifi_cb_ovsdb_read_json(char *buffer);
 
 /******************************************************************************
  *  PROTECTED definitions
  *****************************************************************************/
 
 /* on-connection callback */
-static void cb_ovsdb_read(struct ev_loop *loop, struct ev_io *watcher, int revents)
+static void onewifi_cb_ovsdb_read(struct ev_loop *loop, struct ev_io *watcher, int revents)
 {
     ssize_t nr = 0;
     ssize_t used_size = ovs_buffer ? strlen(ovs_buffer) : 0;
@@ -105,7 +105,7 @@ static void cb_ovsdb_read(struct ev_loop *loop, struct ev_io *watcher, int reven
 
     if (EV_ERROR & revents)
     {
-        LOG(ERR,"cb_ovsdb_read: got invalid event");
+        LOG(ERR,"onewifi_cb_ovsdb_read: got invalid event");
         return;
     }
 
@@ -114,12 +114,12 @@ static void cb_ovsdb_read(struct ev_loop *loop, struct ev_io *watcher, int reven
         new_size = ovs_buffer_size + CHUNK_SIZE;
         new_buf = realloc(ovs_buffer, new_size);
         if (!new_buf) {
-            LOG(ERR,"cb_ovsdb_read: realloc(%p, %d -> %d)", ovs_buffer, (int)ovs_buffer_size, (int)new_size);
+            LOG(ERR,"onewifi_cb_ovsdb_read: realloc(%p, %d -> %d)", ovs_buffer, (int)ovs_buffer_size, (int)new_size);
             goto error;
         }
         if (ovs_buffer_size > 0) {
             // only log trace when increasing size, skip initial allocs
-            LOG(TRACE,"cb_ovsdb_read: realloc(%p, %d -> %d) = %p",
+            LOG(TRACE,"onewifi_cb_ovsdb_read: realloc(%p, %d -> %d) = %p",
                     ovs_buffer, (int)ovs_buffer_size, (int)new_size, new_buf);
         }
         ovs_buffer = new_buf;
@@ -128,7 +128,7 @@ static void cb_ovsdb_read(struct ev_loop *loop, struct ev_io *watcher, int reven
     }
     // check if buffer full (need at least 2 bytes free: 1 is for zero termination)
     if (free_size < 2) {
-        LOG(ERR,"cb_ovsdb_read: buffer full %d/%d", (int)free_size, (int)ovs_buffer_size);
+        LOG(ERR,"onewifi_cb_ovsdb_read: buffer full %d/%d", (int)free_size, (int)ovs_buffer_size);
         goto error;
     }
 
@@ -157,7 +157,7 @@ static void cb_ovsdb_read(struct ev_loop *loop, struct ev_io *watcher, int reven
     used_size += nr;
     ovs_buffer[used_size] = '\0';
 
-    if (!cb_ovsdb_read_json(ovs_buffer))
+    if (!onewifi_cb_ovsdb_read_json(ovs_buffer))
     {
         LOG(WARNING, "OVSDB read: Error parsing JSON.");
         goto error;
@@ -188,7 +188,7 @@ error:
     int retry = 0;
     while (retry < 3)
     {
-        bool ret = ovsdb_init_loop(sock_path, loop);
+        bool ret = onewifi_ovsdb_init_loop(sock_path, loop);
         if ((ret == false) && (retry >= 2) && (nr == 0))
         {
             if (!strcmp(ovsdb_comment, "DM"))
@@ -206,7 +206,7 @@ error:
     return;
 }
 
-static bool cb_ovsdb_read_json(char *buf)
+static bool onewifi_cb_ovsdb_read_json(char *buf)
 {
     char *next;
     json_error_t jerror;
@@ -243,7 +243,7 @@ static bool cb_ovsdb_read_json(char *buf)
         /* Patch it back */
         *next = save;
 
-        if (!ovsdb_process_recv(js))
+        if (!onewifi_ovsdb_process_recv(js))
         {
             char *msg;
 
@@ -267,7 +267,7 @@ static bool cb_ovsdb_read_json(char *buf)
 /**
  * Dispatch message JSON-RPC
  */
-bool ovsdb_process_recv(json_t *jsrpc)
+bool onewifi_ovsdb_process_recv(json_t *jsrpc)
 {
     json_t *jsid;
     json_t *jst;
@@ -286,7 +286,7 @@ bool ovsdb_process_recv(json_t *jsrpc)
         const char * method;
         method = json_string_value(jst);
         if (!strcmp(method, "update")) {
-            return ovsdb_process_update(jsrpc);
+            return onewifi_ovsdb_process_update(jsrpc);
         } else  {
             LOG(ERR, "Received unsupported SYNCHRONOUS method request.::method=%s", json_string_value(jst));
             return false;
@@ -298,7 +298,7 @@ bool ovsdb_process_recv(json_t *jsrpc)
     if (jsid == NULL || json_is_null(jsid))
     {
         /* We dont have an ID, at this point this must be an EVENT */
-        return ovsdb_process_event(jsrpc);
+        return onewifi_ovsdb_process_event(jsrpc);
     }
 
     /* 2) Check if we have a result response */
@@ -306,7 +306,7 @@ bool ovsdb_process_recv(json_t *jsrpc)
     if (jst != NULL && !json_is_null(jst))
     {
         /* Result message */
-        return ovsdb_process_result(jsid, jst);
+        return onewifi_ovsdb_process_result(jsid, jst);
     }
 
     /* 3) CHeck if we have an error response */
@@ -314,7 +314,7 @@ bool ovsdb_process_recv(json_t *jsrpc)
     if (jst != NULL && !json_is_null(jst))
     {
        /* Error message */
-        return ovsdb_process_error(jsid, jst);
+        return onewifi_ovsdb_process_error(jsid, jst);
     }
 
     /* Nothing looks familiar, lets drop it */
@@ -325,7 +325,7 @@ bool ovsdb_process_recv(json_t *jsrpc)
 /**
  * Process signle JSON-RPC "event" message (asynchronous method call)
  */
-bool ovsdb_process_event(json_t *js)
+bool onewifi_ovsdb_process_event(json_t *js)
 {
     (void)js;
     return false;
@@ -334,7 +334,7 @@ bool ovsdb_process_event(json_t *js)
 /**
  * Process single JSON-RPC "result" message
  */
-bool ovsdb_process_result(json_t *jsid, json_t *jsresult)
+bool onewifi_ovsdb_process_result(json_t *jsid, json_t *jsresult)
 {
     int id;
 
@@ -350,13 +350,13 @@ bool ovsdb_process_result(json_t *jsid, json_t *jsresult)
     /*
      * Lookup result handler
      */
-    return ovsdb_rpc_callback(id, false, jsresult);
+    return onewifi_ovsdb_rpc_callback(id, false, jsresult);
 }
 
 /**
  * Process single JSON-RPC "error" message
  */
-bool ovsdb_process_error(json_t *jsid, json_t *jserror)
+bool onewifi_ovsdb_process_error(json_t *jsid, json_t *jserror)
 {
     int id;
 
@@ -372,10 +372,10 @@ bool ovsdb_process_error(json_t *jsid, json_t *jserror)
     /*
      * Lookup result handler
      */
-    return ovsdb_rpc_callback(id, true, jserror);
+    return onewifi_ovsdb_rpc_callback(id, true, jserror);
 }
 
-int ovsdb_register_update_cb(ovsdb_update_process_t *fn, void *data)
+int onewifi_ovsdb_register_update_cb(ovsdb_update_process_t *fn, void *data)
 {
     struct rpc_update_handler *rh;
 
@@ -399,7 +399,7 @@ int ovsdb_register_update_cb(ovsdb_update_process_t *fn, void *data)
     return json_update_monitor_id;
 }
 
-int ovsdb_unregister_update_cb(int mon_id)
+int onewifi_ovsdb_unregister_update_cb(int mon_id)
 {
     struct rpc_update_handler *rh;
 
@@ -413,7 +413,7 @@ int ovsdb_unregister_update_cb(int mon_id)
 /**
  * Process single JSON-RPC "update" message
  */
-static bool ovsdb_process_update(json_t *jsup)
+static bool onewifi_ovsdb_process_update(json_t *jsup)
 {
     int mon_id = 0;
     struct rpc_update_handler *rh;
@@ -432,7 +432,7 @@ static bool ovsdb_process_update(json_t *jsup)
     return true;
 }
 
-bool ovsdb_rpc_callback(int id, bool is_error, json_t *jsmsg)
+bool onewifi_ovsdb_rpc_callback(int id, bool is_error, json_t *jsmsg)
 {
     struct rpc_response_handler *rh;
 
@@ -492,10 +492,10 @@ static int rpc_update_handler_cmp(void *a, void *b)
 /******************************************************************************
  *  PUBLIC definitions
  *****************************************************************************/
-bool ovsdb_init_loop(int ovsdb_fd, struct ev_io *watcher, struct ev_loop *loop)
+bool onewifi_ovsdb_init_loop(int ovsdb_fd, struct ev_io *watcher, struct ev_loop *loop)
 {
         
-	ev_io_init(watcher, cb_ovsdb_read, ovsdb_fd, EV_READ);
+	ev_io_init(watcher, onewifi_cb_ovsdb_read, ovsdb_fd, EV_READ);
     ev_io_start(loop, watcher);
 
 	return true;
@@ -504,10 +504,10 @@ bool ovsdb_init_loop(int ovsdb_fd, struct ev_io *watcher, struct ev_loop *loop)
 #if 0
 bool ovsdb_init(const char *sock_path, struct ev_loop *loop, const char *name)
 {
-    return ovsdb_init_loop(sock_path, loop, name);
+    return onewifi_ovsdb_init_loop(sock_path, loop, name);
 }
 
-bool ovsdb_init_loop(const char *sock_path, struct ev_loop *loop)
+bool onewifi_ovsdb_init_loop(const char *sock_path, struct ev_loop *loop)
 {
     bool success = false;
 
@@ -515,13 +515,13 @@ bool ovsdb_init_loop(const char *sock_path, struct ev_loop *loop)
         loop = ev_default_loop(0);
     }
 
-    json_rpc_fd = ovsdb_conn(sock_path);
+    json_rpc_fd = onewifi_ovsdb_conn(sock_path);
 
     if (json_rpc_fd > 0)
     {
         LOG(NOTICE, "OVSDB connection established");
 
-        ev_io_init(&wovsdb, cb_ovsdb_read, json_rpc_fd, EV_READ);
+        ev_io_init(&wovsdb, onewifi_cb_ovsdb_read, json_rpc_fd, EV_READ);
         ev_io_start(loop, &wovsdb);
 
         success = true;
@@ -547,7 +547,7 @@ bool ovsdb_ready(const char *sock_path, struct ev_loop *loop)
     int wait = OVSDB_WAIT_TIME;
     while (wait >= 0)
     {
-        if (ovsdb_init_loop(sock_path, loop)) {
+        if (onewifi_ovsdb_init_loop(sock_path, loop)) {
             return true;
         }
         LOG(INFO, "OVSDB not ready. Need to Zzzz ...");

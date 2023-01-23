@@ -25,7 +25,9 @@
 #include "wifi_ctrl.h"
 #include "wifi_mgr.h"
 #include "wifi_util.h"
+#if DML_SUPPORT
 #include "wifi_apps.h"
+#endif
 #include <rbus.h>
 //#include <ieee80211.h>
 #include "common/ieee802_11_defs.h"

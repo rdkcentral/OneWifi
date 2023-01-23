@@ -54,25 +54,25 @@ struct ovsdb_update_parse
     const char          *up_uuid;           /* The UUID */
 };
 
-extern bool ovsdb_update_parse_start(ovsdb_update_parse_t *self, json_t *js);
-extern bool ovsdb_update_parse_next(ovsdb_update_parse_t *self);
+extern bool onewifi_ovsdb_update_parse_start(ovsdb_update_parse_t *self, json_t *js);
+extern bool onewifi_ovsdb_update_parse_next(ovsdb_update_parse_t *self);
 
-static inline const char *ovsdb_update_parse_get_table(ovsdb_update_parse_t *self)
+static inline const char *onewifi_ovsdb_update_parse_get_table(ovsdb_update_parse_t *self)
 {
     return json_object_iter_key(self->up_itable);
 }
 
-static inline const char *ovsdb_update_parse_get_uuid(ovsdb_update_parse_t *self)
+static inline const char *onewifi_ovsdb_update_parse_get_uuid(ovsdb_update_parse_t *self)
 {
     return self->up_uuid;
 }
 
-static inline json_t *ovsdb_update_parse_get_new(ovsdb_update_parse_t *self)
+static inline json_t *onewifi_ovsdb_update_parse_get_new(ovsdb_update_parse_t *self)
 {
     return self->up_jnew;
 }
 
-static inline json_t *ovsdb_update_parse_get_old(ovsdb_update_parse_t *self)
+static inline json_t *onewifi_ovsdb_update_parse_get_old(ovsdb_update_parse_t *self)
 {
     return self->up_jold;
 }
@@ -125,7 +125,7 @@ struct ovsdb_update_monitor_s
 /*
  * Start monitoring a table for updates
  */
-extern bool ovsdb_update_monitor_ex(int ovsdb_fd,
+extern bool onewifi_ovsdb_update_monitor_ex(int ovsdb_fd,
         ovsdb_update_monitor_t *self,
         ovsdb_update_cbk_t *callback,
         char *mon_table,
@@ -136,15 +136,15 @@ extern bool ovsdb_update_monitor_ex(int ovsdb_fd,
 /*
  * Start monitoring a table for updates -- monitors all columns
  */
-extern bool ovsdb_update_monitor(int ovsdb_fd,
+extern bool onewifi_ovsdb_update_monitor(int ovsdb_fd,
         ovsdb_update_monitor_t *self,
         ovsdb_update_cbk_t *callback,
         char *mon_table,
         int mon_flags);
 
-bool ovsdb_update_changed(ovsdb_update_monitor_t *self, char *field);
+bool onewifi_ovsdb_update_changed(ovsdb_update_monitor_t *self, char *field);
 
-char* ovsdb_update_type_to_str(ovsdb_update_type_t update_type);
+char* onewifi_ovsdb_update_type_to_str(ovsdb_update_type_t update_type);
 #ifdef __cplusplus
 }
 #endif

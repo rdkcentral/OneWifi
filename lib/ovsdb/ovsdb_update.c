@@ -48,7 +48,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * NOTE, the first element is retrieved by calling ovsdb_update_next()!
  */
-bool ovsdb_update_parse_start(ovsdb_update_parse_t *self, json_t *jtable)
+bool onewifi_ovsdb_update_parse_start(ovsdb_update_parse_t *self, json_t *jtable)
 {
     if (!json_is_object(jtable))
     {
@@ -65,7 +65,7 @@ bool ovsdb_update_parse_start(ovsdb_update_parse_t *self, json_t *jtable)
 /**
  * Move to the next update request
  */
-bool ovsdb_update_parse_next(ovsdb_update_parse_t *self)
+bool onewifi_ovsdb_update_parse_next(ovsdb_update_parse_t *self)
 {
     if (self->up_itable != NULL)
     {
@@ -149,13 +149,13 @@ parse_next:
  * ===========================================================================
  */
 
-static ovsdb_update_process_t   ovsdb_update_monitor_call_cbk;
-static json_rpc_response_t      ovsdb_update_monitor_resp_cbk;
-static void                     ovsdb_update_monitor_process(ovsdb_update_monitor_t *self, json_t *js);
+static ovsdb_update_process_t   onewifi_ovsdb_update_monitor_call_cbk;
+static json_rpc_response_t      onewifi_ovsdb_update_monitor_resp_cbk;
+static void                     onewifi_ovsdb_update_monitor_process(ovsdb_update_monitor_t *self, json_t *js);
 static void                     ovsdb_update_monitor_error(ovsdb_update_monitor_t *self);
 
 /*
- * ovsdb_update_monitor(_ex) -- Start monitoring an OVS table. For each update to the table, call the
+ * onewifi_ovsdb_update_monitor(_ex) -- Start monitoring an OVS table. For each update to the table, call the
  * callback function.
  *
  * Parameters:
@@ -172,7 +172,7 @@ static void                     ovsdb_update_monitor_error(ovsdb_update_monitor_
  * are JSON RPC calls from OVS to us! In order to handle all 4 types, we must
  * handle both the monitor RPC response and update RPC call!
  */
-bool ovsdb_update_monitor_ex(int ovsdb_fd,
+bool onewifi_ovsdb_update_monitor_ex(int ovsdb_fd,
         ovsdb_update_monitor_t *self,
         ovsdb_update_cbk_t *callback,
         char *mon_table,
@@ -185,12 +185,12 @@ bool ovsdb_update_monitor_ex(int ovsdb_fd,
     self->mon_cb = callback;
 
     /* Regiter update handler */
-    int monid = ovsdb_register_update_cb(
-            ovsdb_update_monitor_call_cbk,
+    int monid = onewifi_ovsdb_register_update_cb(
+            onewifi_ovsdb_update_monitor_call_cbk,
             self);
 
-    if (!ovsdb_monit_call_argv(ovsdb_fd,
-            ovsdb_update_monitor_resp_cbk,
+    if (!onewifi_ovsdb_monit_call_argv(ovsdb_fd,
+            onewifi_ovsdb_update_monitor_resp_cbk,
             self,
             monid,
             mon_table,
@@ -209,19 +209,19 @@ bool ovsdb_update_monitor_ex(int ovsdb_fd,
 /*
  * Shorthand wrapper around ovsb_update_monitor_ex() -- see that function for explanation of parameters.
  */
-bool ovsdb_update_monitor(int ovsdb_fd,
+bool onewifi_ovsdb_update_monitor(int ovsdb_fd,
         ovsdb_update_monitor_t *self,
         ovsdb_update_cbk_t *callback,
         char *table,
         int monit_flags)
 {
-    return ovsdb_update_monitor_ex(ovsdb_fd, self, callback, table, monit_flags, 0, NULL);
+    return onewifi_ovsdb_update_monitor_ex(ovsdb_fd, self, callback, table, monit_flags, 0, NULL);
 }
 
 /*
- * This is the callback for ovsdb_register_update_cb()
+ * This is the callback for onewifi_ovsdb_register_update_cb()
  */
-void ovsdb_update_monitor_call_cbk(int id, json_t *js, void *data)
+void onewifi_ovsdb_update_monitor_call_cbk(int id, json_t *js, void *data)
 {
     (void)id;
 
@@ -264,7 +264,7 @@ void ovsdb_update_monitor_call_cbk(int id, json_t *js, void *data)
     /* Initialize the object iterator for the 2nd argument in the list */
     jtable = json_array_get(jparams, 1);
 
-    ovsdb_update_monitor_process(self, jtable);
+    onewifi_ovsdb_update_monitor_process(self, jtable);
     return;
 
 error:
@@ -274,7 +274,7 @@ error:
 /*
  * This function is used as the callback for ovsdb_monit_call()
  */
-void ovsdb_update_monitor_resp_cbk(int id, bool is_error, json_t *js, void *data)
+void onewifi_ovsdb_update_monitor_resp_cbk(int id, bool is_error, json_t *js, void *data)
 {
     (void)id;
 
@@ -289,32 +289,32 @@ void ovsdb_update_monitor_resp_cbk(int id, bool is_error, json_t *js, void *data
     }
 
     /* Process the message */
-    ovsdb_update_monitor_process(self, js);
+    onewifi_ovsdb_update_monitor_process(self, js);
 }
 
 /*
  * Process an update request
  */
-void ovsdb_update_monitor_process(ovsdb_update_monitor_t *self, json_t *js)
+void onewifi_ovsdb_update_monitor_process(ovsdb_update_monitor_t *self, json_t *js)
 {
     ovsdb_update_parse_t parse;
     MEMZERO(parse);
 
     /* Start parsing the message */
-    if (!ovsdb_update_parse_start(&parse, js))
+    if (!onewifi_ovsdb_update_parse_start(&parse, js))
     {
         LOG(ERR, "UPDATE: Error parsing OVSDB uppdate notification.");
         ovsdb_update_monitor_error(self);
         return;
     }
 
-    while (ovsdb_update_parse_next(&parse))
+    while (onewifi_ovsdb_update_parse_next(&parse))
     {
         self->mon_type      = OVSDB_UPDATE_ERROR;
-        self->mon_table     = ovsdb_update_parse_get_table(&parse);
-        self->mon_uuid      = ovsdb_update_parse_get_uuid(&parse);
-        self->mon_json_new  = ovsdb_update_parse_get_new(&parse);
-        self->mon_json_old  = ovsdb_update_parse_get_old(&parse);
+        self->mon_table     = onewifi_ovsdb_update_parse_get_table(&parse);
+        self->mon_uuid      = onewifi_ovsdb_update_parse_get_uuid(&parse);
+        self->mon_json_new  = onewifi_ovsdb_update_parse_get_new(&parse);
+        self->mon_json_old  = onewifi_ovsdb_update_parse_get_old(&parse);
 
         /* Figure out the type of the event */
         if (self->mon_json_old == NULL && self->mon_json_new != NULL)
@@ -401,7 +401,7 @@ void ovsdb_update_monitor_error(ovsdb_update_monitor_t *self)
 }
 
 // return true if a field has changed in an update
-bool ovsdb_update_changed(ovsdb_update_monitor_t *self, char *field)
+bool onewifi_ovsdb_update_changed(ovsdb_update_monitor_t *self, char *field)
 {
     bool changed = false;
     char *tname = "UNK";
@@ -454,7 +454,7 @@ bool ovsdb_update_changed(ovsdb_update_monitor_t *self, char *field)
     return changed;
 }
 
-char* ovsdb_update_type_to_str(ovsdb_update_type_t update_type)
+char* onewifi_ovsdb_update_type_to_str(ovsdb_update_type_t update_type)
 {
     switch (update_type) {
         case OVSDB_UPDATE_DEL:

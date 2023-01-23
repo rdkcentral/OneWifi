@@ -164,12 +164,14 @@ bool log_open(char *name, int flags)
         log_register_logger(&logger_stdout);
     }
 
+#if JOURNALCTL_SUPPORT
     static logger_t logger_journal;
     if (flags & LOG_OPEN_JOURNAL)
     {
         logger_journal_new(&logger_journal);
         log_register_logger(&logger_journal);
     }
+#endif // JOURNALCTL_SUPPORT
 
 #ifdef CONFIG_LOG_REMOTE
     static logger_t logger_remote;

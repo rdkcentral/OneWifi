@@ -20,10 +20,9 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <sys/stat.h>
-#include <syscfg/syscfg.h>
 #if DML_SUPPORT
+#include <syscfg/syscfg.h>
 #include "ansc_platform.h"
-#include "wifi_passpoint.h"
 #endif // DML_SUPPORT
 #include "wifi_hal.h"
 #include "wifi_ctrl.h"
@@ -37,6 +36,7 @@
 #include <pthread.h>
 #include <rbus.h>
 #include "wifi_hal_rdk_framework.h"
+#include "wifi_passpoint.h"
 #if DML_SUPPORT
 #include "safec_lib_common.h"
 
@@ -1671,7 +1671,7 @@ void process_ow_core_thread_rfc(bool type)
     rfc_param->ow_core_thread_rfc = type;
     if(type == true) {
         if(syscfg_set_commit(NULL, "ow_core_thread", "true") != 0) {
-            wifi_util_dbg_print(WIFI_DB,"syscfg_set failed for WIFI ow_core_thread enable %s\n",__FUNCTION__);
+           wifi_util_error_print(WIFI_DB,"syscfg_set failed for WIFI ow_core_thread enable %s\n",__FUNCTION__);
         }
     } else {
         if(syscfg_set_commit(NULL, "ow_core_thread", "false") != 0) {
@@ -1759,7 +1759,6 @@ void process_twoG80211axEnable_rfc(bool type)
         }
     }
 }
-#endif // DML_SUPPORT
 
 void process_prefer_private_rfc(bool type)
 {
@@ -1776,11 +1775,15 @@ void process_prefer_private_rfc(bool type)
                             add_macmode_to_public, &type);
     }
 }
+#endif // DML_SUPPORT
+
+#if CCSP_WIFI_HAL
 void process_wps_command_event(unsigned int vap_index)
 {
     wifi_util_info_print(WIFI_CTRL,"%s:%d wifi wps test vap index = %d\n",__func__, __LINE__, vap_index);
     wifi_hal_setApWpsButtonPush(vap_index);
 }
+#endif
 
 void process_wps_pin_command_event(void *data)
 {
@@ -1930,7 +1933,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg)
                             radar_event_type %d op_class:%d\n", __func__, __LINE__, ch_chg->radioIndex, radio_params->channel,
                             ch_chg->channel, ch_chg->event, ch_chg->sub_event, ch_chg->op_class);
 
-    stop_wifi_csa_sched_timer(ch_chg->radioIndex, ctrl);
+    stop_wifi_sched_timer(ch_chg->radioIndex, ctrl, wifi_csa_sched);
 
     if ((ch_chg->event == WIFI_EVENT_CHANNELS_CHANGED) && ((radio_params->channel == ch_chg->channel)
                 && (radio_params->channelWidth == ch_chg->channelWidth))) {
@@ -2118,7 +2121,7 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len, ctrl_
         case ctrl_event_type_command_factory_reset:
             process_factory_reset_command(*(bool *)data);
             break;
-#if DML_SUPPORT
+#if CCSP_COMMON
         case ctrl_event_type_radius_grey_list_rfc:
             process_radius_grey_list_rfc(*(bool *)data);
             break;
@@ -2143,7 +2146,7 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len, ctrl_
         case ctrl_event_type_twoG80211axEnable_rfc:
             process_twoG80211axEnable_rfc(*(bool *)data);
             break;
-#endif // DML_SUPPORT
+#endif // CCSP_COMMON
 
         case ctrl_event_type_command_kickmac:
             break;
@@ -2159,9 +2162,11 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len, ctrl_
             process_kick_assoc_devices_event(data);
             break;
 
+#if CCSP_COMMON
         case ctrl_event_type_command_wps:
             process_wps_command_event(*(unsigned int *)data);
             break;
+#endif // CCSP_COMMON
 
         case ctrl_event_type_command_wps_pin:
             process_wps_pin_command_event(data);
@@ -2177,9 +2182,6 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len, ctrl_
         
         case ctrl_event_type_command_wifi_neighborscan:
             process_neighbor_scan_command_event();
-            break;
-        case ctrl_event_type_prefer_private_rfc:
-            process_prefer_private_rfc(*(bool *)data);
             break;
 
         case ctrl_event_type_command_mesh_status:
@@ -2202,7 +2204,11 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len, ctrl_
             marker_list_config_event((char *)data, txrx_rate_list_type);
             break;
 
-#if DML_SUPPORT
+#if CCSP_COMMON
+        case ctrl_event_type_prefer_private_rfc:
+            process_prefer_private_rfc(*(bool *)data);
+            break;
+
         case ctrl_event_type_mgmt_frame_rbus_rfc:
             process_mgmt_frame_rbus_enable_event(*(bool *)data);
             break;

@@ -118,6 +118,7 @@ typedef enum {
     webconfig_subdoc_type_steering_config,
     webconfig_subdoc_type_steering_clients,
     webconfig_subdoc_type_vif_neighbors,
+    webconfig_subdoc_type_mesh_backhaul_sta,
     webconfig_subdoc_type_max
 } webconfig_subdoc_type_t;
 
@@ -269,6 +270,14 @@ webconfig_error_t       encode_mesh_backhaul_subdoc(webconfig_t *config, webconf
 webconfig_error_t       translate_to_mesh_backhaul_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_from_mesh_backhaul_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 
+// mesh backhaul sta
+webconfig_error_t       init_mesh_backhaul_sta_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_mesh_backhaul_sta_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_mesh_backhaul_sta_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_mesh_backhaul_sta_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_mesh_backhaul_sta_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_mesh_backhaul_sta_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
 // mesh sta
 webconfig_error_t       init_mesh_sta_subdoc(webconfig_subdoc_t *doc);
 webconfig_error_t       access_check_mesh_sta_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
@@ -309,7 +318,6 @@ webconfig_error_t       encode_mesh_subdoc(webconfig_t *config, webconfig_subdoc
 webconfig_error_t       translate_to_mesh_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_from_mesh_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 
-#if DML_SUPPORT
 // dml
 webconfig_error_t       init_dml_subdoc(webconfig_subdoc_t *doc);
 webconfig_error_t       access_check_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
@@ -317,7 +325,6 @@ webconfig_error_t       decode_dml_subdoc(webconfig_t *config, webconfig_subdoc_
 webconfig_error_t       encode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_to_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_from_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
-#endif
 
 // radio_status
 webconfig_error_t       init_radio_status_subdoc(webconfig_subdoc_t *doc);

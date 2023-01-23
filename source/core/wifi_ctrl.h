@@ -37,7 +37,9 @@ extern "C" {
 #include "collection.h"
 #include "wifi_util.h"
 #include "wifi_webconfig.h"
+#if DML_SUPPORT
 #include "wifi_apps.h"
+#endif
 
 #define WIFI_WEBCONFIG_PRIVATESSID         1
 #define WIFI_WEBCONFIG_HOMESSID            2
@@ -101,7 +103,7 @@ extern "C" {
 #define GREYLIST_TIMEOUT_IN_SECONDS        (24 * 60 * 60)
 #define GREYLIST_CHECK_IN_SECONDS          (1 * 60 * 60)
 
-#define MAX_WIFI_CSA_SCHED_TIMEOUT         (4 * 1000)
+#define MAX_WIFI_SCHED_TIMEOUT         (4 * 1000)
 
 //This is a dummy string if the value is not passed.
 #define INVALID_KEY                      "12345678"
@@ -133,7 +135,8 @@ typedef enum {
     ctrl_webconfig_state_vap_lnf_cfg_rsp_pending = 0x8000,
     ctrl_webconfig_state_blaster_cfg_init_rsp_pending = 0x10000,
     ctrl_webconfig_state_blaster_cfg_complete_rsp_pending = 0x20000,
-    ctrl_webconfig_state_max = 0x40000
+    ctrl_webconfig_state_vap_mesh_backhaul_sta_cfg_rsp_pending = 0x40000,
+    ctrl_webconfig_state_max = 0x80000
 } wifi_ctrl_webconfig_state_t;
 
 #define CTRL_WEBCONFIG_STATE_MASK   0xfffff
@@ -159,7 +162,20 @@ typedef struct {
 
 typedef struct {
     int  wifi_csa_sched_handler_id[MAX_NUM_RADIOS];
+    int  wifi_radio_sched_handler_id[MAX_NUM_RADIOS];
+    int  wifi_vap_sched_handler_id[MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO];
 }__attribute__((packed)) wifi_scheduler_id_t;
+
+typedef enum {
+    wifi_csa_sched,
+    wifi_radio_sched,
+    wifi_vap_sched,
+} wifi_scheduler_type_t;
+
+typedef struct {
+    wifi_scheduler_type_t type;
+    unsigned int index;
+}__attribute__((packed)) wifi_scheduler_id_arg_t;
 
 typedef struct wifi_ctrl {
     bool                exit_ctrl;
@@ -191,11 +207,15 @@ typedef struct wifi_ctrl {
 #endif // DML_SUPPORT
     unsigned int        sta_tree_instance_num;
     vap_svc_t           ctrl_svc[vap_svc_type_max];
+#if DML_SUPPORT
     wifi_apps_t         fi_apps[wifi_apps_type_max];
-    unsigned int        network_mode; /* 0 - gateway, 1 - extender */
+#endif // DML_SUPPORT
+    rdk_dev_mode_type_t  network_mode; /* 0 - gateway, 1 - extender */
+    dev_subtype_t        dev_type;
     bool                active_gw_sta_status;
     wifi_scheduler_id_t wifi_sched_id;
     queue_t             *vif_apply_pending_queue;
+    bool                ctrl_initialized; 
 } wifi_ctrl_t;
 
 typedef struct {

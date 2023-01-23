@@ -241,6 +241,11 @@ rbusError_t webconfig_get_subdoc(rbusHandle_t handle, rbusProperty_t property, r
     #define MAX_ACSD_SYNC_TIME_WAIT 12
     static int sync_retries = 0;
 
+    if (!ctrl->ctrl_initialized) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s Ctrl not initialized skip request.\n",__FUNCTION__);
+        return RBUS_ERROR_INVALID_OPERATION;
+     }
+
    if(ctrl->network_mode == rdk_dev_mode_type_gw) {
         wifi_util_dbg_print(WIFI_CTRL,"%s Rbus property=%s, Gateway mode\n",__FUNCTION__, name);
         if (strcmp(name, WIFI_WEBCONFIG_INIT_DATA) != 0) {
@@ -277,15 +282,15 @@ rbusError_t webconfig_get_subdoc(rbusHandle_t handle, rbusProperty_t property, r
     } else if (ctrl->network_mode == rdk_dev_mode_type_ext) {
         wifi_util_dbg_print(WIFI_CTRL,"%s Rbus property=%s, Extender mode\n",__FUNCTION__, name);
 
+        if (strcmp(name, WIFI_WEBCONFIG_INIT_DATA) != 0) {
+            wifi_util_error_print(WIFI_CTRL,"%s Rbus property valid\n",__FUNCTION__);
+            return RBUS_ERROR_INVALID_INPUT;
+        }
+        
         ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
         if (ext_svc->u.ext.conn_state != connection_state_connected) {
             wifi_util_dbg_print(WIFI_CTRL,"%s Extender is not connected\n",__FUNCTION__);
             return RBUS_ERROR_INVALID_OPERATION;
-        }
-
-        if (strcmp(name, WIFI_WEBCONFIG_INIT_DATA) != 0) {
-            wifi_util_error_print(WIFI_CTRL,"%s Rbus property valid\n",__FUNCTION__);
-            return RBUS_ERROR_INVALID_INPUT;
         }
 
         rbusValue_Init(&value);
@@ -510,12 +515,12 @@ rbusError_t get_assoc_clients_data(rbusHandle_t handle, rbusProperty_t property,
     char const* name = rbusProperty_GetName(property);
     rbusValue_t value;
     webconfig_subdoc_data_t data;
-    int itr, itrj;
-    wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
-    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 #if DML_SUPPORT
     assoc_dev_data_t *assoc_dev_data;
-#endif // DML_SUPPORT
+    int itr, itrj;
+#endif
+    wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     if ((mgr == NULL) || (ctrl == NULL)) {
         wifi_util_error_print(WIFI_CTRL,"%s:%d NULL pointers\n", __func__,__LINE__);
@@ -531,10 +536,10 @@ rbusError_t get_assoc_clients_data(rbusHandle_t handle, rbusProperty_t property,
 
     rbusValue_Init(&value);
 
+#if DML_SUPPORT
     pthread_mutex_lock(&ctrl->lock);
     for (itr=0; itr<MAX_NUM_RADIOS; itr++) {
         for (itrj=0; itrj<MAX_NUM_VAP_PER_RADIO; itrj++) {
-#if DML_SUPPORT
             if (mgr->radio_config[itr].vaps.rdk_vap_array[itrj].associated_devices_map != NULL) {
                 assoc_dev_data = hash_map_get_first(mgr->radio_config[itr].vaps.rdk_vap_array[itrj].associated_devices_map);
                 while (assoc_dev_data != NULL) {
@@ -542,10 +547,10 @@ rbusError_t get_assoc_clients_data(rbusHandle_t handle, rbusProperty_t property,
                    assoc_dev_data = hash_map_get_next(mgr->radio_config[itr].vaps.rdk_vap_array[itrj].associated_devices_map, assoc_dev_data);
                 }
             }
-#endif // DML_SUPPORT
         }
     }
     pthread_mutex_unlock(&ctrl->lock);
+#endif
     memset(&data, 0, sizeof(webconfig_subdoc_data_t));
 
     memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&mgr->radio_config, getNumberRadios()*sizeof(rdk_wifi_radio_t));
@@ -767,22 +772,22 @@ int wifiapi_result_publish(void)
 void get_assoc_devices_blob(char *str)
 {
     webconfig_subdoc_data_t data;
-    int itr, itrj;
-    wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
-    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 #if DML_SUPPORT
     assoc_dev_data_t *assoc_dev_data;
-#endif // DML_SUPPORT
+    int itr, itrj;
+#endif
+    wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     if ((mgr == NULL) || (ctrl == NULL)) {
         wifi_util_error_print(WIFI_CTRL,"%s:%d NULL pointers\n", __func__,__LINE__);
         return;
     }
 
+#if DML_SUPPORT
     pthread_mutex_lock(&ctrl->lock);
     for (itr=0; itr<MAX_NUM_RADIOS; itr++) {
         for (itrj=0; itrj<MAX_NUM_VAP_PER_RADIO; itrj++) {
-#if DML_SUPPORT
             if (mgr->radio_config[itr].vaps.rdk_vap_array[itrj].associated_devices_map != NULL) {
                 assoc_dev_data = hash_map_get_first(mgr->radio_config[itr].vaps.rdk_vap_array[itrj].associated_devices_map);
                 while (assoc_dev_data != NULL) {
@@ -790,11 +795,11 @@ void get_assoc_devices_blob(char *str)
                     assoc_dev_data = hash_map_get_next(mgr->radio_config[itr].vaps.rdk_vap_array[itrj].associated_devices_map, assoc_dev_data);
                 }
             }
-#endif // DML_SUPPORT
         }
     }
     pthread_mutex_unlock(&ctrl->lock);
 
+#endif
     memset(&data, 0, sizeof(webconfig_subdoc_data_t));
     memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&mgr->radio_config, getNumberRadios()*sizeof(rdk_wifi_radio_t));
     memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap, sizeof(wifi_hal_capability_t));

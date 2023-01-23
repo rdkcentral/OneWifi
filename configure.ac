@@ -60,12 +60,14 @@ AC_ENABLE_SHARED
 AC_DISABLE_STATIC
 
 CCSP_COMMON_FLAG = " "
+CCSP_WIFI_HAL_FLAG = " "
 AC_ARG_ENABLE([ccsp_common],
              AS_HELP_STRING([--enable-ccsp-common],[enable ccsp-common support (default is no)]),
              [
               case "${enableval}" in
                yes) CCSP_COMMON_SUPPORT_ENABLE=true
                     CCSP_COMMON_FLAG="-DCCSP_COMMON"
+                    CCSP_WIFI_HAL_FLAG="-DCCSP_WIFI_HAL"
                     ;;
                no)  CCSP_COMMON_SUPPORT_ENABLE=false AC_MSG_ERROR([ccsp-common support is disabled]);;
                *)   AC_MSG_ERROR([bad value ${enableval} for --enable-ccsp-common ]);;
@@ -74,6 +76,7 @@ AC_ARG_ENABLE([ccsp_common],
              [echo "ccsp-common is disabled"])
 AM_CONDITIONAL([CCSP_COMMON_SUPPORT], [test x$CCSP_COMMON_SUPPORT_ENABLE = xtrue])
 AC_SUBST(CCSP_COMMON_FLAG)
+AC_SUBST(CCSP_WIFI_HAL_FLAG)
 
 DML_ENABLE_FLAG = " "
 AC_ARG_ENABLE([dml],

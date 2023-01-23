@@ -47,9 +47,9 @@ typedef struct {
 } wifi_db_t;
 
 #define WIFIDB_SCHEMA_DIR "/usr/ccsp/wifi"
-#if CCSP_COMMON
+#ifndef WIFIDB_DIR
 #define WIFIDB_DIR "/nvram/wifi"
-#endif // CCSP_COMMON
+#endif // WIFIDB_DIR
 #define WIFIDB_RUN_DIR "/var/tmp"
 #define DEFAULT_WPS_PIN  "1234"
 #define ONEWIFI_SCHEMA_DEF_VERSION 100007

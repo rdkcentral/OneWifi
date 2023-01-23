@@ -70,7 +70,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     }                                    \
 }
 
-int32_t server_socket_create(os_sock_type sock_type,
+int32_t onewifi_server_socket_create(os_sock_type sock_type,
                              char *listen_addr,
                              uint32_t server_port)
 {
@@ -123,7 +123,7 @@ int32_t server_socket_create(os_sock_type sock_type,
 }
 
 
-int32_t client_socket_create(os_sock_type sock_type)
+int32_t onewifi_client_socket_create(os_sock_type sock_type)
 {
     int32_t sock_fd;
 
@@ -143,7 +143,7 @@ int32_t client_socket_create(os_sock_type sock_type)
     return sock_fd;
 }
 
-bool client_connect(int32_t sock_fd,
+bool onewifi_client_connect(int32_t sock_fd,
                                 char *server_ip,
                                 uint32_t port)
 {
@@ -174,7 +174,7 @@ bool client_connect(int32_t sock_fd,
     return true;
 }
 
-int32_t tcp_server_listen(int32_t sock_fd)
+int32_t onewifi_tcp_server_listen(int32_t sock_fd)
 {
 #define MAX_NUM_CONNECTIONS 32
 #define MAX_SEND_RECV_BUFFER_SIZE 1024
@@ -244,7 +244,7 @@ bool socket_set_keepalive(int fd)
 }
 
 
-int ovsdb_conn(const char *sock_path)
+int onewifi_ovsdb_conn(const char *sock_path)
 {
     struct sockaddr_un peer_addr;
     int sock_fd;
@@ -287,7 +287,7 @@ int ovsdb_conn(const char *sock_path)
 }
 
 
-bool ovsdb_disconn(int sock_fd)
+bool onewifi_ovsdb_disconn(int sock_fd)
 {
     close(sock_fd);
     return true;

@@ -58,6 +58,15 @@
     }   \
 }   \
 
+#define decode_param_allow_optional_string(json, key, value) \
+{   \
+    value = cJSON_GetObjectItem(json, key);     \
+    if ((value == NULL) || (cJSON_IsString(value) != true) ||  \
+            (value->valuestring == NULL) ) {    \
+        value = NULL;\
+    }   \
+}   \
+
 #define decode_param_integer(json, key, value) \
 {   \
     value = cJSON_GetObjectItem(json, key);     \
@@ -1338,6 +1347,11 @@ webconfig_error_t decode_personal_security_object(const cJSON *security, wifi_va
     decode_param_integer(security, "RekeyInterval", param);
     security_info->rekey_interval = param->valuedouble;
 
+    decode_param_allow_optional_string(security,"KeyId",param);
+    if (param != NULL) {
+        strncpy(security_info->key_id, param->valuestring,sizeof(security_info->key_id) - 1);
+    }
+    
     return webconfig_error_none;
 }
 
@@ -1586,7 +1600,7 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
     vap_info->vap_mode = param->valuedouble;
 
     //Bridge Name
-    decode_param_string(vap, "BridgeName", param);
+    decode_param_allow_empty_string(vap, "BridgeName", param);
     strncpy(vap_info->bridge_name, param->valuestring,WIFI_BRIDGE_NAME_LEN-1);
 
     // SSID
@@ -2375,8 +2389,9 @@ int validate_wifi_hw_variant(wifi_freq_bands_t radio_band, wifi_ieee80211Variant
         wifi_hw_mode &= ~(1UL << 1);
         wifi_hw_mode &= ~(1UL << 2);
         wifi_hw_mode &= ~(1UL << 3);
+#if !defined (_PP203X_PRODUCT_REQ_)
         wifi_hw_mode &= ~(1UL << 7);
-
+#endif
         if(wifi_hw_mode != 0) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s() %d Error wifi_hw_mode %d\n", __FUNCTION__, __LINE__, wifi_hw_mode);
             return RETURN_ERR;
@@ -2387,8 +2402,9 @@ int validate_wifi_hw_variant(wifi_freq_bands_t radio_band, wifi_ieee80211Variant
         wifi_hw_mode &= ~(1UL << 3);
         wifi_hw_mode &= ~(1UL << 4);
         wifi_hw_mode &= ~(1UL << 5);
+#if !defined (_PP203X_PRODUCT_REQ_)
         wifi_hw_mode &= ~(1UL << 7);
-
+#endif
         if (wifi_hw_mode != 0) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s() %d Error wifi_hw_mode %d\n", __FUNCTION__, __LINE__, wifi_hw_mode);
             return RETURN_ERR;

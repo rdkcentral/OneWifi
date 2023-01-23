@@ -354,7 +354,9 @@ bool logger_syslog_new(logger_t *self);
 bool logger_stdout_new(logger_t *self, bool quiet_mode);
 bool logger_remote_new(logger_t *self);
 bool logger_traceback_new(logger_t *);
+#if DML_SUPPORT
 void logger_journal_new(logger_t *self);
+#endif // DML_SUPPORT
 #ifdef __cplusplus
 }
 #endif

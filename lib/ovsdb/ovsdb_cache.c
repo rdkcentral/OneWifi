@@ -47,36 +47,36 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define MODULE_ID LOG_MODULE_ID_OVSDB
 
-void ovsdb_cache_update_cb(ovsdb_update_monitor_t *self);
+void onewifi_ovsdb_cache_update_cb(ovsdb_update_monitor_t *self);
 
 // ignore_version can be used if we are not interested in receiving
 // updates for when a referenced table has been modified
 bool ovsdb_cache_monitor_columns(int ovsdb_fd, ovsdb_table_t *table,
         ovsdb_cache_callback_t *callback, char **columns)
 {
-    table->monitor_callback = ovsdb_cache_update_cb;
+    table->monitor_callback = onewifi_ovsdb_cache_update_cb;
     table->cache_callback = callback;
-    return ovsdb_table_monitor_columns(ovsdb_fd, table, NULL, columns);
+    return onewifi_ovsdb_table_monitor_columns(ovsdb_fd, table, NULL, columns);
 }
 
-bool ovsdb_cache_monitor(int ovsdb_fd, ovsdb_table_t *table,
+bool onewifi_ovsdb_cache_monitor(int ovsdb_fd, ovsdb_table_t *table,
         ovsdb_cache_callback_t *callback, bool ignore_version)
 {
-    table->monitor_callback = ovsdb_cache_update_cb;
+    table->monitor_callback = onewifi_ovsdb_cache_update_cb;
     table->cache_callback = callback;
-    return ovsdb_table_monitor(ovsdb_fd, table, NULL, ignore_version);
+    return onewifi_ovsdb_table_monitor(ovsdb_fd, table, NULL, ignore_version);
 }
 
-bool ovsdb_cache_monitor_filter(int ovsdb_fd, ovsdb_table_t *table,
+bool onewifi_ovsdb_cache_monitor_filter(int ovsdb_fd, ovsdb_table_t *table,
         ovsdb_cache_callback_t *callback, char **filter)
 {
-    table->monitor_callback = ovsdb_cache_update_cb;
+    table->monitor_callback = onewifi_ovsdb_cache_update_cb;
     table->cache_callback = callback;
-    return ovsdb_table_monitor(ovsdb_fd, table, NULL, filter);
+    return onewifi_ovsdb_table_monitor(ovsdb_fd, table, NULL, filter);
 }
 
 // debug dump table
-void ovsdb_cache_dump_table(ovsdb_table_t *table, char *str)
+void onewifi_ovsdb_cache_dump_table(ovsdb_table_t *table, char *str)
 {
     ovsdb_cache_row_t *row, *prev = NULL;
     char *uuid;
@@ -125,10 +125,10 @@ void _ovsdb_cache_insert_row(ovsdb_table_t *table, ovsdb_cache_row_t *row)
         ds_tree_insert(&table->rows_k2, row, key2);
     }
     snprintf(msg, sizeof(msg), "insert %s key: %s", row_uuid, key);
-    ovsdb_cache_dump_table(table, msg);
+    onewifi_ovsdb_cache_dump_table(table, msg);
 }
 
-void ovsdb_cache_update_cb(ovsdb_update_monitor_t *self)
+void onewifi_ovsdb_cache_update_cb(ovsdb_update_monitor_t *self)
 {
     ovsdb_table_t *table;
     ovsdb_cache_row_t *row;
@@ -351,62 +351,62 @@ ovsdb_cache_row_t* _ovsdb_cache_find_row_by_offset(ovsdb_table_t *table, int off
     return NULL;
 }
 
-ovsdb_cache_row_t* ovsdb_cache_find_row_by_uuid(ovsdb_table_t *table, const char *uuid)
+ovsdb_cache_row_t* onewifi_ovsdb_cache_find_row_by_uuid(ovsdb_table_t *table, const char *uuid)
 {
     return _ovsdb_cache_find_row_by_offset(table, table->uuid_offset, "uuid", uuid);
 }
 
-ovsdb_cache_row_t* ovsdb_cache_find_row_by_key(ovsdb_table_t *table, const char *key)
+ovsdb_cache_row_t* onewifi_ovsdb_cache_find_row_by_key(ovsdb_table_t *table, const char *key)
 {
     return _ovsdb_cache_find_row_by_offset(table, table->key_offset, "key", key);
 }
 
-ovsdb_cache_row_t* ovsdb_cache_find_row_by_key2(ovsdb_table_t *table, const char *key2)
+ovsdb_cache_row_t* onewifi_ovsdb_cache_find_row_by_key2(ovsdb_table_t *table, const char *key2)
 {
     return _ovsdb_cache_find_row_by_offset(table, table->key2_offset, "key2", key2);
 }
 
-void* ovsdb_cache_find_by_uuid(ovsdb_table_t *table, const char *uuid)
+void* onewifi_ovsdb_cache_find_by_uuid(ovsdb_table_t *table, const char *uuid)
 {
-    ovsdb_cache_row_t *row = ovsdb_cache_find_row_by_uuid(table, uuid);
+    ovsdb_cache_row_t *row = onewifi_ovsdb_cache_find_row_by_uuid(table, uuid);
     if (row) return row->record;
     return NULL;
 }
 
-void* ovsdb_cache_find_by_key(ovsdb_table_t *table, const char *key)
+void* onewifi_ovsdb_cache_find_by_key(ovsdb_table_t *table, const char *key)
 {
-    ovsdb_cache_row_t *row = ovsdb_cache_find_row_by_key(table, key);
+    ovsdb_cache_row_t *row = onewifi_ovsdb_cache_find_row_by_key(table, key);
     if (row) return row->record;
     return NULL;
 }
 
-void* ovsdb_cache_find_by_key2(ovsdb_table_t *table, const char *key2)
+void* onewifi_ovsdb_cache_find_by_key2(ovsdb_table_t *table, const char *key2)
 {
-    ovsdb_cache_row_t *row = ovsdb_cache_find_row_by_key2(table, key2);
+    ovsdb_cache_row_t *row = onewifi_ovsdb_cache_find_row_by_key2(table, key2);
     if (row) return row->record;
     return NULL;
 }
 
 
-void* ovsdb_cache_get_by_uuid(ovsdb_table_t *table, const char *uuid, void *record)
+void* onewifi_ovsdb_cache_get_by_uuid(ovsdb_table_t *table, const char *uuid, void *record)
 {
-    ovsdb_cache_row_t *row = ovsdb_cache_find_row_by_uuid(table, uuid);
+    ovsdb_cache_row_t *row = onewifi_ovsdb_cache_find_row_by_uuid(table, uuid);
     if (!row) return NULL;
     memcpy(record, row->record, table->schema_size);
     return record;
 }
 
-void* ovsdb_cache_get_by_key(ovsdb_table_t *table, const char *key, void *record)
+void* onewifi_ovsdb_cache_get_by_key(ovsdb_table_t *table, const char *key, void *record)
 {
-    ovsdb_cache_row_t *row = ovsdb_cache_find_row_by_key(table, key);
+    ovsdb_cache_row_t *row = onewifi_ovsdb_cache_find_row_by_key(table, key);
     if (!row) return NULL;
     memcpy(record, row->record, table->schema_size);
     return record;
 }
 
-void* ovsdb_cache_get_by_key2(ovsdb_table_t *table, const char *key2, void *record)
+void* onewifi_ovsdb_cache_get_by_key2(ovsdb_table_t *table, const char *key2, void *record)
 {
-    ovsdb_cache_row_t *row = ovsdb_cache_find_row_by_key2(table, key2);
+    ovsdb_cache_row_t *row = onewifi_ovsdb_cache_find_row_by_key2(table, key2);
     if (!row)
     {
         memset(record, 0, table->schema_size);
@@ -420,7 +420,7 @@ void* ovsdb_cache_get_by_key2(ovsdb_table_t *table, const char *key2, void *reco
 }
 
 
-int ovsdb_cache_upsert(const char *ovsdb_sock_path, ovsdb_table_t *table, void *record)
+int onewifi_ovsdb_cache_upsert(const char *ovsdb_sock_path, ovsdb_table_t *table, void *record)
 {
     char *rec = record;
     ovsdb_cache_row_t *row;
@@ -435,7 +435,7 @@ int ovsdb_cache_upsert(const char *ovsdb_sock_path, ovsdb_table_t *table, void *
     }
     // find existing
     key = rec + table->key_offset;
-    row = ovsdb_cache_find_row_by_key(table, key);
+    row = onewifi_ovsdb_cache_find_row_by_key(table, key);
     if (row)
     {
         // copy uuid and version for compare
@@ -459,7 +459,7 @@ int ovsdb_cache_upsert(const char *ovsdb_sock_path, ovsdb_table_t *table, void *
     // if already have row, skip retrieve uuid
     bool have_uuid = row && (rec[table->uuid_offset] != 0);
 
-    ret = ovsdb_sync_upsert(ovsdb_sock_path, table->table_name, table->key_name, key, jrow, have_uuid ? NULL : &uuid);
+    ret = onewifi_ovsdb_sync_upsert(ovsdb_sock_path, table->table_name, table->key_name, key, jrow, have_uuid ? NULL : &uuid);
     if (!ret)
     {
         LOG(ERR, "upsert %s %s: error", table->table_name, key);
@@ -484,11 +484,11 @@ int ovsdb_cache_upsert(const char *ovsdb_sock_path, ovsdb_table_t *table, void *
     return 0;
 }
 
-int ovsdb_cache_upsert_get_uuid(const char *ovsdb_sock_path, ovsdb_table_t *table, void *record, ovs_uuid_t *uuid)
+int onewifi_ovsdb_cache_upsert_get_uuid(const char *ovsdb_sock_path, ovsdb_table_t *table, void *record, ovs_uuid_t *uuid)
 {
     int ret;
     char *rec = record;
-    ret = ovsdb_cache_upsert(ovsdb_sock_path, table, record);
+    ret = onewifi_ovsdb_cache_upsert(ovsdb_sock_path, table, record);
     if (ret) return ret;
     if (uuid)
     {
@@ -497,7 +497,7 @@ int ovsdb_cache_upsert_get_uuid(const char *ovsdb_sock_path, ovsdb_table_t *tabl
     return ret;
 }
 
-int ovsdb_cache_pre_fetch(const char *ovsdb_sock_path, ovsdb_table_t *table, char *key)
+int onewifi_ovsdb_cache_pre_fetch(const char *ovsdb_sock_path, ovsdb_table_t *table, char *key)
 {
     ovsdb_cache_row_t *row;
     pjs_errmsg_t perr;
@@ -509,14 +509,14 @@ int ovsdb_cache_pre_fetch(const char *ovsdb_sock_path, ovsdb_table_t *table, cha
     const char *uuid;
     int ret;
 
-    if (ovsdb_cache_find_row_by_key(table, key))
+    if (onewifi_ovsdb_cache_find_row_by_key(table, key))
     {
         // already exists
         return 0;
     }
 
-    where = ovsdb_tran_cond(OCLM_STR, table->key_name, OFUNC_EQ, key);
-    result = ovsdb_tran_call_s(ovsdb_sock_path, table->table_name, OTR_SELECT, where, NULL);
+    where = onewifi_ovsdb_tran_cond(OCLM_STR, table->key_name, OFUNC_EQ, key);
+    result = onewifi_ovsdb_tran_call_s(ovsdb_sock_path, table->table_name, OTR_SELECT, where, NULL);
     if (!result)
     {
         LOG(WARNING, "%s query: %s %s no result", __FUNCTION__, table->table_name, key);

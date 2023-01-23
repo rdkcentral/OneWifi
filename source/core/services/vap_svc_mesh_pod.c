@@ -1,0 +1,668 @@
+#include <stdio.h>
+#include <stdbool.h>
+#include "stdlib.h"
+#include <sys/time.h>
+#include <assert.h>
+#include "const.h"
+#include "vap_svc.h"
+#include "wifi_ctrl.h"
+#include "wifi_mgr.h"
+#include "wifi_util.h"
+#include "wifi_hal_generic.h"
+#include <rbus.h>
+
+#include <opensync/ow_state_barrier.h>
+#include <opensync/ow_cbs_register.h>
+#include <opensync/ow_webconfig.h>
+#include <opensync/osw_drv_target.h>
+
+#define OW_SETTLED_TIMEOUT (60 * 1000)
+
+#define WIFI_HOME_AP_IF_PREFIX     "home-ap-"
+#define WIFI_BHAUL_AP_IF_PREFIX    "bhaul-ap-"
+#define WIFI_BHAUL_STA_IF_PREFIX   "bhaul-sta-"
+#define WIFI_LNF_AP_IF_PREFIX      "svc-d-ap-"
+#define WIFI_IOT_AP_IF_PREFIX      "svc-e-ap-"
+
+typedef struct {
+    char *if_name;
+    int vif_index;
+    int phy_index;
+    char *vap_name;
+} ow_state_barrier_vif_info_t;
+
+typedef struct {
+    wifi_radio_operationParam_t *phy;
+    char if_name[MAXIFACENAMESIZE];
+} ow_phy_oper_param_t;
+
+typedef struct 
+{
+    wifi_vap_info_t *vap;
+    char phy_name[MAXIFACENAMESIZE];
+    char vif_name[MAXIFACENAMESIZE];
+} ow_vif_config_param_t;
+
+ow_state_barrier_vif_info_t vif_list[] = {
+    {"bhaul-ap-24",   0,  0, "mesh_backhaul_2g"},
+    {"bhaul-ap-l50",  1,  1, "mesh_backhaul_5gl"},
+    {"bhaul-ap-u50",  2,  2, "mesh_backhaul_5gh"},
+    {"home-ap-24",    3,  0, "private_ssid_2g"},
+    {"home-ap-l50",   4,  1, "private_ssid_5gl"},
+    {"home-ap-u50",   5,  2, "private_ssid_5gh"},
+    {"bhaul-sta-24",  6,  0, "mesh_sta_2g"},
+    {"bhaul-sta-l50", 7,  1, "mesh_sta_5gl"},
+    {"bhaul-sta-u50", 8,  2, "mesh_sta_5gh"},
+    {"svc-d-ap-24",   9,  0, "lnf_psk_2g"},
+    {"svc-d-ap-l50",  10, 1, "lnf_psk_5gl"},
+    {"svc-d-ap-u50",  11, 2, "lnf_psk_5gh"},
+    {"svc-e-ap-24",   12, 0, "iot_ssid_2g"},
+    {"svc-e-ap-l50",  13, 1, "iot_ssid_5gl"},
+    {"svc-e-ap-u50",  14, 2, "iot_ssid_5gh"},
+};
+
+
+static int if_name_to_phy_index(const char *if_name)
+{
+    for(unsigned int i = 0; i < ARRAY_SIZE(vif_list) ; i++) {
+        if (strcmp(vif_list[i].if_name, if_name) == 0) {
+            return vif_list[i].phy_index;
+        }
+    }
+
+    return -1;
+}
+
+bool vap_svc_is_mesh_ext(unsigned int vap_index)
+{
+    return isVapSTAMesh(vap_index) ? true : false;
+}
+
+BOOL vap_svc_is_mesh_sta(char *vap_name)
+{
+    if (!vap_name)
+        return FALSE;
+    
+    return (strncmp(vap_name, "mesh_sta", strlen("mesh_sta"))) ? FALSE :TRUE;
+}
+
+int vap_svc_mesh_ext_disconnect(vap_svc_t *svc)
+{
+   return 0;
+}
+
+void vap_svc_mesh_pod_ap_connection_handler(struct ow_barrier_sta_conn_info *sta_conn_info, wifi_bss_info_t *bss_info, wifi_station_stats_t *sta, int index)
+{
+    ctrl_event_subtype_t type;
+    assoc_dev_data_t assoc_data = { 0 };
+    char mac_str[32] = { 0 };
+
+    if (!bss_info || !sta) {
+        return;
+    }
+
+    switch (sta->connect_status) {
+        case wifi_connection_status_connected:
+            assoc_data.dev_stats.cli_Active = TRUE;
+            type = ctrl_event_hal_assoc_device;
+            break;
+
+        case wifi_connection_status_disconnected:
+            assoc_data.dev_stats.cli_Active = FALSE;
+            type = ctrl_event_hal_disassoc_device;
+            break;
+
+        default:
+            return;
+    }
+
+    memcpy(assoc_data.dev_stats.cli_MACAddress, sta_conn_info->mac, sizeof(mac_address_t));
+    assoc_data.ap_index = index;
+    push_data_to_ctrl_queue(&assoc_data, sizeof(assoc_data), ctrl_event_type_hal_ind, type);
+
+    uint8_mac_to_string_mac(sta_conn_info->mac, mac_str);
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d: STA [%s] %s\n", __func__, __LINE__, mac_str, (sta->connect_status == wifi_connection_status_connected) ? "connected" : "disconnected");
+}
+
+void ow_mesh_ext_sta_conn_connection_callback(struct ow_barrier_sta_conn_info *sta_conn_info, 
+                                          wifi_bss_info_t *bss_info, wifi_station_stats_t *sta)
+{
+    int vap_index = 0;
+    wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
+    wifi_vap_name_t vap_name;
+    
+    if (convert_ifname_to_vapname(&g_wifi_mgr->hal_cap.wifi_prop, (char *)sta_conn_info->if_name, vap_name, sizeof(vap_name)) != RETURN_OK) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d: cannot convert vif_name=%s to vap_name\n", __func__, __LINE__, sta_conn_info->if_name);
+        return;
+    }
+    vap_index = convert_vap_name_to_index(&g_wifi_mgr->hal_cap.wifi_prop, vap_name); 
+
+    if (isVapSTAMesh(vap_index)) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d: STA connection status changed [%s]\n", __func__, __LINE__,sta_conn_info->if_name);
+        sta->vap_index = vap_index;
+        sta_connection_handler(sta_conn_info->if_name, bss_info, sta);
+    }
+    else {
+        vap_svc_mesh_pod_ap_connection_handler(sta_conn_info, bss_info, sta, vap_index);
+    }
+}
+
+
+void
+ow_mesh_ext_sta_conn_status_cb_register(ow_cbs_register_staConnected_fn_t *conn_fn)
+{
+    struct ow_cbs_register_observer g_ow_cbs;
+
+    memset(&g_ow_cbs,0,sizeof(g_ow_cbs));
+    g_ow_cbs.staConnectedfn = conn_fn;
+    g_ow_cbs.staDisconnectedfn = conn_fn;
+    ow_register_observer(&g_ow_cbs);
+}
+
+void
+ow_mesh_ext_chan_event_cb_register(ow_state_barrier_channel_event_fn_t *cb)
+{
+    ow_state_barrier_channel_event_register(cb);
+}
+
+void vap_mesh_svc_pod_phy_config_cb(ow_phy_oper_param_t  *phy_param)
+{
+    ow_webconfig_set_phy(phy_param->if_name, phy_param->phy);
+}
+
+int ow_mesh_ext_set_phy_config(int phy_index,wifi_radio_operationParam_t *phy)
+{
+    ow_phy_oper_param_t phy_param;
+    wifi_platform_property_t *prop = NULL;
+
+    memset(&phy_param,0,sizeof(phy_param));
+    phy_param.phy = phy;
+
+    prop = (wifi_platform_property_t *) get_wifi_hal_cap_prop();
+    strncpy(phy_param.if_name,prop->radio_interface_map[phy_index].interface_name,sizeof(phy_param.if_name));
+
+    wifi_util_dbg_print(WIFI_CTRL,"WIFI %s : Setting Phy %s with channel:[%d], enable:[%d], band[%d],width[%d] \n",__FUNCTION__,phy_param.if_name,phy->channel,phy->enable,phy->band,phy->channelWidth);
+    
+    ow_core_thread_call(vap_mesh_svc_pod_phy_config_cb, &phy_param);
+    return RETURN_OK;
+}
+
+void ow_core_update_vap_mac(char *if_name, wifi_vap_info_t *vap_info)
+{
+    int phy_index;
+    mac_address_t mac_addr;
+    char mac_str[32] = { 0 };
+
+    if (vap_info->vap_mode == wifi_vap_mode_ap) {
+        if (ow_state_barrier_get_vif_mac(if_name, mac_addr) != 0) {
+
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d Not able to get MAC address for %s\n", __FUNCTION__, __LINE__, if_name);
+            return;
+        }
+
+        memcpy(vap_info->u.bss_info.bssid, mac_addr, sizeof(mac_address_t));
+        uint8_mac_to_string_mac(vap_info->u.bss_info.bssid, mac_str);
+    }
+    else {
+        if ((phy_index = if_name_to_phy_index(if_name)) < 0 ||
+            ow_state_barrier_get_phy_mac(phy_index, mac_addr) != 0) {
+
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d Not able to get MAC address for %s\n", __FUNCTION__, __LINE__, if_name);
+            return;
+        }
+
+        memcpy(vap_info->u.sta_info.mac, mac_addr, sizeof(mac_address_t));
+        uint8_mac_to_string_mac(vap_info->u.sta_info.mac, mac_str);
+    }
+
+    wifi_util_dbg_print(WIFI_CTRL, "%s : Updated MAC [%s] for %s\n", __FUNCTION__, mac_str, if_name);
+}
+
+void vap_mesh_svc_pod_vif_config_cb(ow_vif_config_param_t *vif_param)
+{
+    ow_webconfig_set_vif(vif_param->phy_name, vif_param->vif_name, vif_param->vap);    
+}
+
+void vap_mesh_svc_pod_vif_config(ow_vif_config_param_t *vif_param)
+{
+    wifi_vap_info_map_t *vap_map;
+    uint8_t num_radios = getNumberRadios();
+
+    ow_core_thread_call(vap_mesh_svc_pod_vif_config_cb, vif_param);
+
+    for (uint8_t i = 0; i < num_radios; i++) {
+        vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(i);
+
+        for (uint8_t j = 0; j < vap_map->num_vaps; j++) {
+            wifi_vap_info_t *vap = &vap_map->vap_array[j];
+
+            if (strcmp(vap->vap_name, vif_param->vap->vap_name) == 0) {
+
+                ow_core_update_vap_mac(vif_param->vif_name, vap);
+                return;
+            }
+        }
+    }
+}
+
+int vap_svc_mesh_ext_start(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map)
+{
+
+    uint8_t num_of_radios;
+    uint8_t j;
+    int i;
+    int ret;
+    wifi_vap_info_map_t *vap_map = NULL, tgt_vap_map;
+    ow_vif_config_param_t vif_config;
+
+
+    if ((num_of_radios = getNumberRadios()) > MAX_NUM_RADIOS) {
+        wifi_util_dbg_print(WIFI_CTRL,"WIFI %s : Number of Radios %d exceeds supported %d Radios \n",__FUNCTION__, getNumberRadios(), MAX_NUM_RADIOS);
+        return RETURN_ERR;
+    }
+
+    vap_svc_ext_t *ext;
+    ext = &svc->u.ext;
+    ext->conn_state = connection_state_connection_in_progress;
+    for (i = num_of_radios-1; i >= 0; i--) {
+        vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(i);
+        if (vap_map == NULL) {
+            wifi_util_dbg_print(WIFI_CTRL,"%s:failed to get vap map for radio index: %d\n",__FUNCTION__, i);
+            return RETURN_ERR;
+        }
+
+        memset(&tgt_vap_map, 0, sizeof(wifi_vap_info_map_t));
+        for (j = 0; j < vap_map->num_vaps; j++) {
+            if (svc->is_my_fn(vap_map->vap_array[j].vap_index) == false) {
+                continue;
+            }
+           
+            memcpy((unsigned char *)&tgt_vap_map.vap_array[tgt_vap_map.num_vaps], (unsigned char *)&vap_map->vap_array[j], sizeof(wifi_vap_info_t));
+            if (tgt_vap_map.vap_array[tgt_vap_map.num_vaps].vap_mode == wifi_vap_mode_sta) {
+                tgt_vap_map.vap_array[tgt_vap_map.num_vaps].u.sta_info.enabled = true;
+            }
+
+            wifi_util_dbg_print(WIFI_CTRL,"%s:Configuting backhaul vap with ssid : %s\n",__FUNCTION__,tgt_vap_map.vap_array[tgt_vap_map.num_vaps].u.sta_info.ssid );
+            memset(&vif_config,0,sizeof(vif_config));
+            vif_config.vap = &tgt_vap_map.vap_array[tgt_vap_map.num_vaps];
+            ret = convert_radio_index_to_ifname(svc->prop,tgt_vap_map.vap_array[tgt_vap_map.num_vaps].radio_index,vif_config.phy_name,sizeof(vif_config.phy_name));
+            if (ret != RETURN_OK) {
+                wifi_util_dbg_print(WIFI_CTRL,"%s:Failed to get phy name.",__FUNCTION__);
+                return RETURN_ERR;
+            }
+            ret = convert_apindex_to_ifname(svc->prop,tgt_vap_map.vap_array[tgt_vap_map.num_vaps].vap_index,vif_config.vif_name ,sizeof(vif_config.vif_name));
+            if (ret != RETURN_OK) {
+                wifi_util_dbg_print(WIFI_CTRL,"%s:Failed to get interface name.",__FUNCTION__);
+                return RETURN_ERR;
+            }
+            vap_mesh_svc_pod_vif_config(&vif_config);
+            tgt_vap_map.num_vaps++;
+        }
+   }
+   return RETURN_OK;
+}
+
+int vap_svc_mesh_ext_stop(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map)
+{
+    uint8_t j;
+    int ret;
+    wifi_vap_info_map_t *vap_map = NULL, tgt_vap_map;
+    ow_vif_config_param_t vif_config;
+    wifi_vap_name_t  vap_name;
+
+    wifi_util_dbg_print(WIFI_CTRL,"%s:Disabling STA vap for radio [%d]\n",__FUNCTION__,radio_index);
+
+    vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(radio_index);
+    if (vap_map == NULL) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:failed to get vap map for radio index: %d\n",__FUNCTION__,radio_index);
+        return RETURN_ERR;
+    }
+
+    memset(&tgt_vap_map, 0, sizeof(wifi_vap_info_map_t));
+    memset(&vif_config,0,sizeof(vif_config));
+
+    for (j = 0; j < vap_map->num_vaps; j++) {
+
+        if (svc->is_my_fn(vap_map->vap_array[j].vap_index) == false) {
+            continue;
+        }
+       
+        memcpy((unsigned char *)&tgt_vap_map.vap_array[tgt_vap_map.num_vaps], (unsigned char *)&vap_map->vap_array[j], sizeof(wifi_vap_info_t));
+        tgt_vap_map.vap_array[tgt_vap_map.num_vaps].u.sta_info.enabled = false;
+
+        wifi_util_dbg_print(WIFI_CTRL,"%s:Stopping vap [%s]\n",__FUNCTION__,tgt_vap_map.vap_array[tgt_vap_map.num_vaps].vap_name );
+        vif_config.vap = &tgt_vap_map.vap_array[tgt_vap_map.num_vaps];
+        ret = convert_radio_index_to_ifname(svc->prop,tgt_vap_map.vap_array[tgt_vap_map.num_vaps].radio_index,vif_config.phy_name,sizeof(vif_config.phy_name));
+        if (ret != RETURN_OK) {
+            wifi_util_dbg_print(WIFI_CTRL,"%s:Failed to get phy name.\n",__FUNCTION__);
+            return RETURN_ERR;
+        }
+        ret = convert_apindex_to_ifname(svc->prop,tgt_vap_map.vap_array[tgt_vap_map.num_vaps].vap_index,vif_config.vif_name ,sizeof(vif_config.vif_name));
+        if (ret != RETURN_OK) {
+            wifi_util_dbg_print(WIFI_CTRL,"%s:Failed to get interface name.\n",__FUNCTION__);
+            return RETURN_ERR;
+        }
+
+        // Convert VAP name to vif_name
+        memset(vap_name,0,sizeof(vap_name)); 
+        strncpy(vap_name,tgt_vap_map.vap_array[tgt_vap_map.num_vaps].vap_name,sizeof(vap_name));
+        strncpy(tgt_vap_map.vap_array[tgt_vap_map.num_vaps].vap_name,vif_config.vif_name,sizeof(wifi_vap_name_t));
+        wifi_util_dbg_print(WIFI_CTRL,"%s:Calling vap_mesh_svc_pod_vif_config vap name [%s]\n",__FUNCTION__,tgt_vap_map.vap_array[tgt_vap_map.num_vaps].vap_name);
+        vap_mesh_svc_pod_vif_config(&vif_config);
+        wifi_util_dbg_print(WIFI_CTRL,"%s:Copying back VAP name [%s]->[%s]\n",__FUNCTION__,tgt_vap_map.vap_array[tgt_vap_map.num_vaps].vap_name,vap_name);
+        strncpy(tgt_vap_map.vap_array[tgt_vap_map.num_vaps].vap_name,vap_name,sizeof(wifi_vap_name_t));
+        tgt_vap_map.num_vaps++;
+    }
+
+    return RETURN_OK;
+}
+
+int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map)
+{
+    unsigned int i;
+
+    for (i = 0; i < map->num_vaps; i++) {
+        wifidb_update_wifi_vap_info(getVAPName(map->vap_array[i].vap_index), &map->vap_array[i]);
+        wifidb_update_wifi_interworking_config(getVAPName(map->vap_array[i].vap_index),
+            &map->vap_array[i].u.bss_info.interworking);
+        wifidb_update_wifi_security_config(getVAPName(map->vap_array[i].vap_index),
+            &map->vap_array[i].u.bss_info.security);
+    }
+
+    return 0;
+}
+
+int process_ext_scan_results(vap_svc_t *svc, void *arg)
+{
+    return 0;
+}
+
+int publish_ext_sta_connection_status(wifi_ctrl_t *ctrl,int index, wifi_connection_status_t connect_status)
+{
+    rbusEvent_t event;
+    rbusObject_t rdata;
+    rbusValue_t value;
+    char name[64];
+
+    memset (name,0,sizeof(name));
+
+    sprintf(name, "Device.WiFi.STA.%d.Connection.Status", index + 1);
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d Rbus name:%s:connection status:%d\r\n", __func__, __LINE__,
+                    name, connect_status);
+
+    rbusValue_Init(&value);
+    rbusObject_Init(&rdata, NULL);
+
+    rbusObject_SetValue(rdata, name, value);
+    rbusValue_SetBytes(value, (uint8_t *)&connect_status, sizeof(wifi_connection_status_t));
+    event.name = name;
+    event.data = rdata;
+    event.type = RBUS_EVENT_GENERAL;
+
+    if (rbusEvent_Publish(ctrl->rbus_handle, &event) != RBUS_ERROR_SUCCESS) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: rbusEvent_Publish Event failed\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    rbusValue_Release(value);
+    rbusObject_Release(rdata);
+
+    return RETURN_OK;
+}
+
+int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
+{
+    wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
+    wifi_vap_info_map_t *vap_map;
+    wifi_vap_info_t *temp_vap_info = NULL;
+    rdk_sta_data_t *sta_data = (rdk_sta_data_t *)arg;
+    vap_svc_ext_t *ext;
+    wifi_ctrl_t *ctrl;
+    bool  send_event = false;
+    unsigned int i, index;
+
+    ctrl = svc->ctrl;
+    ext = &svc->u.ext;
+
+    if (ext->ext_conn_status_ind_timeout_handler_id != 0) {
+        scheduler_cancel_timer_task(ctrl->sched, ext->ext_conn_status_ind_timeout_handler_id);
+        ext->ext_conn_status_ind_timeout_handler_id = 0;
+    }
+
+    /* first update the internal cache */
+    index = get_radio_index_for_vap_index(svc->prop, sta_data->stats.vap_index);
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d - radio index %d, VAP index %d.\n", __func__, __LINE__, index, sta_data->stats.vap_index);
+    vap_map = &mgr->radio_config[index].vaps.vap_map;
+
+    for (i = 0; i < vap_map->num_vaps; i++) {
+        if (vap_map->vap_array[i].vap_index == sta_data->stats.vap_index) {
+            vap_map->vap_array[i].u.sta_info.conn_status = sta_data->stats.connect_status;
+            memset(vap_map->vap_array[i].u.sta_info.bssid, 0, sizeof(vap_map->vap_array[i].u.sta_info.bssid));
+            temp_vap_info = &vap_map->vap_array[i];
+            break;
+        }
+    }
+
+    if (sta_data->stats.connect_status == wifi_connection_status_connected) {
+
+        if (ext->conn_state == connection_state_connection_in_progress) {
+             memset(&ext->last_connected_bss, 0, sizeof(bss_candidate_t));
+             memcpy(&ext->last_connected_bss.external_ap, &sta_data->bss_info, sizeof(wifi_bss_info_t));
+             ext->connected_vap_index = sta_data->stats.vap_index;
+
+             convert_radio_index_to_freq_band(svc->prop, index, (int*)&ext->last_connected_bss.radio_freq_band);
+             wifi_util_dbg_print(WIFI_CTRL,"%s:%d - Connected radio_band:%d\r\n", __func__, __LINE__, ext->last_connected_bss.radio_freq_band);
+
+              if (temp_vap_info != NULL) {
+                memcpy (temp_vap_info->u.sta_info.bssid, sta_data->bss_info.bssid, sizeof(temp_vap_info->u.sta_info.bssid));
+            }
+
+            ext->conn_state = connection_state_connected;
+            //send_event = true;
+
+            // Stop other STA vaps
+            for (i = 0; i < getNumberRadios(); i++) {
+                if (i != temp_vap_info->radio_index) {
+                     wifi_util_dbg_print(WIFI_CTRL,"%s:%d - Stopping STA vap on Radio [%d]\r\n", __func__, __LINE__,i);
+                     vap_svc_mesh_ext_stop(svc, i, NULL);
+                }
+            }
+        }
+    } else if (sta_data->stats.connect_status == wifi_connection_status_disconnected) { 
+
+         wifi_util_dbg_print(WIFI_CTRL,"%s:%d STA DISCONNECT. last_index = %d, new index = %d\n", __func__, __LINE__,ext->connected_vap_index,sta_data->stats.vap_index);
+        if (ext->conn_state == connection_state_connected && ext->connected_vap_index == sta_data->stats.vap_index) {
+
+            wifi_util_dbg_print(WIFI_CTRL,"%s:%d - STA disconnected vap index: %d.\n", __func__, __LINE__,sta_data->stats.vap_index);
+            memset(&temp_vap_info->u.sta_info.bssid, 0, sizeof(temp_vap_info->u.sta_info.bssid));
+            ext->connected_vap_index = 0;
+
+            // Enable all other STA VAPs 
+            wifi_util_dbg_print(WIFI_CTRL,"%s:%d - TEST: Enabling STA vaps for backhaul connection.\n", __func__, __LINE__);
+            vap_svc_mesh_ext_start(svc, WIFI_ALL_RADIO_INDICES, NULL);
+            //send_event = true;
+            ext->conn_state = connection_state_connection_in_progress;
+        }
+        
+    }
+
+    if (send_event == true) {
+        if (publish_ext_sta_connection_status(ctrl,index,sta_data->stats.connect_status) != RETURN_OK) {
+             wifi_util_dbg_print(WIFI_CTRL, "%s:%d: rbusEvent_Publish Event failed\n", __func__, __LINE__);
+             return RETURN_ERR;
+         }
+    }
+    return RETURN_OK;
+}
+
+int process_ext_hal_ind(vap_svc_t *svc, ctrl_event_subtype_t sub_type, void *arg)
+{
+    switch (sub_type) {
+        case ctrl_event_scan_results:
+            process_ext_scan_results(svc, arg);
+            break;
+            
+        case ctrl_event_hal_sta_conn_status:
+            process_ext_sta_conn_status(svc, arg);
+            break;
+
+        case ctrl_event_hal_channel_change:
+            break;
+
+        default:
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: assert - sub_type:%d\r\n", __func__, __LINE__, sub_type);
+            assert(sub_type >= ctrl_event_hal_max);
+        break;
+    }
+
+    return 0;
+}
+
+int process_ext_connect_algorithm(vap_svc_t *svc)
+{
+    return 0;
+}
+
+int vap_svc_mesh_ext_event(vap_svc_t *svc, ctrl_event_type_t type, ctrl_event_subtype_t sub_type, vap_svc_event_t event, void *arg)
+{
+    switch (type) {
+        case ctrl_event_type_exec:
+            break;
+
+        case ctrl_event_type_command:
+            break;
+
+        case ctrl_event_type_hal_ind:
+            process_ext_hal_ind(svc, sub_type, arg);
+            break;
+
+        default:
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: default - sub_type:%d\r\n", __func__, __LINE__, sub_type);
+            break;
+    }
+
+    return 0;
+}
+
+static wifi_freq_bands_t freq_band_from_radio_idx(int idx)
+{
+    switch(idx) {
+        case 0:
+            return WIFI_FREQUENCY_2_4_BAND;
+        case 1:
+            return WIFI_FREQUENCY_5L_BAND;
+        case 2:
+            return WIFI_FREQUENCY_5H_BAND;
+    }
+    return WIFI_FREQUENCY_2_4_BAND;
+}
+
+int get_vif_radio_index(const char *if_name)
+{
+    int vif_radio_index = -1;
+
+    if(! strncmp(if_name, WIFI_BHAUL_STA_IF_PREFIX, strlen(WIFI_BHAUL_STA_IF_PREFIX))) 
+    {
+        vif_radio_index = 0;
+    }
+    else if(! strncmp(if_name, WIFI_BHAUL_AP_IF_PREFIX, strlen(WIFI_BHAUL_AP_IF_PREFIX)))
+    {
+        vif_radio_index = 1;
+    }
+    else if(! strncmp(if_name, WIFI_HOME_AP_IF_PREFIX, strlen(WIFI_HOME_AP_IF_PREFIX)))
+    {
+        vif_radio_index = 2;
+    }
+    else if(! strncmp(if_name, WIFI_LNF_AP_IF_PREFIX, strlen(WIFI_LNF_AP_IF_PREFIX)))
+    {
+        vif_radio_index = 4;
+    }
+    else if(! strncmp(if_name, WIFI_IOT_AP_IF_PREFIX, strlen(WIFI_IOT_AP_IF_PREFIX)))
+    {
+        vif_radio_index = 5;
+    }
+
+    return vif_radio_index;
+}
+
+void vap_svc_mesh_pod_set_capab_priv()
+{
+    struct osw_drv_target *target = osw_drv_target_get_ref();
+    char phy_name[20];
+    int vif_radio_idx = -1;
+
+    for(unsigned int i = 0 ; i < ARRAY_SIZE(vif_list) ; i++)
+    {
+        ow_state_barrier_vif_info_t *vif = &vif_list[i];
+        snprintf(phy_name, sizeof(phy_name), "wifi%d", vif->phy_index);
+        osw_drv_target_vif_set_phy(target, vif->if_name, phy_name);
+	    vif_radio_idx = get_vif_radio_index(vif->if_name);
+        
+        if(vif_radio_idx == -1)
+        {
+            wifi_util_dbg_print(WIFI_CTRL, "VIF not found = %s\n", vif->if_name);
+            return;
+        }
+        osw_drv_target_vif_set_idx(target, vif->if_name, vif_radio_idx);
+        osw_drv_target_phy_set_hw_type(target, phy_name, "qca4019");
+
+        osw_drv_target_vif_set_mode(target, vif->if_name, vap_svc_is_mesh_sta(vif->vap_name) ? "sta" : "ap");
+        osw_drv_target_vif_set_exists(target, vif->if_name, true);
+        //osw_drv_target_phy_set_hw_config(target, phy_name, hw_config);
+    }
+}
+
+
+void ow_mesh_ext_set_capab()
+{
+    ow_state_barrier_wait(OW_SETTLED_TIMEOUT);
+    ow_core_thread_call(vap_svc_mesh_pod_set_capab_priv, NULL);
+}
+
+int ow_mesh_ext_get_hal_capab(wifi_hal_capability_t *halCapab)
+{
+    unsigned int num_radios;
+    unsigned int num_vaps;
+    unsigned int i,j;
+
+    wifi_radio_capabilities_t *radio_capab = NULL;
+    wifi_interface_name_idex_map_t *interface_map = NULL;
+    ow_state_barrier_vif_info_t *vif = NULL;
+
+    // Get HAL capability from HW
+    if (ow_state_barrier_wait(OW_SETTLED_TIMEOUT) != RETURN_OK) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d : Failed in ow_state_barrier_wait.\n",__func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    if (ow_state_barrier_get_hal_capab(halCapab) != RETURN_OK) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d : Failed to get hal capabilities.\n",__func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    num_radios = halCapab->wifi_prop.numRadios;
+    num_vaps = ARRAY_SIZE(vif_list);
+    radio_capab = halCapab->wifi_prop.radiocap;
+    interface_map = halCapab->wifi_prop.interface_map;
+
+    // Fill rest of the parameters
+    for(i = 0; i < num_radios; i++)
+    {
+        radio_capab[i].numSupportedFreqBand = 1;
+        radio_capab[i].maxNumberVAPs = num_vaps/num_radios;
+        radio_capab[i].band[0] = freq_band_from_radio_idx(i);
+    }
+
+    for(j = 0; j < num_vaps; j++)
+    {
+        vif = &vif_list[j];
+        strncpy(interface_map[j].interface_name, vif->if_name,sizeof(wifi_interface_name_t));
+        strncpy(interface_map[j].vap_name, vif->vap_name,sizeof(wifi_vap_name_t));
+        interface_map[j].phy_index = vif->phy_index;
+        interface_map[j].index = vif->vif_index;
+        interface_map[j].rdk_radio_index = vif->phy_index ;
+    }
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d ow: Hal caps initialized for %d radios. \r\n",__func__, __LINE__,num_radios);
+    return RETURN_OK;
+}
+

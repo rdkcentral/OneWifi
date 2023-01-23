@@ -40,9 +40,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define MODULE_ID LOG_MODULE_ID_OVSDB
 
-void ovsdb_table_update_cb(ovsdb_update_monitor_t *self);
+void onewifi_ovsdb_table_update_cb(ovsdb_update_monitor_t *self);
 
-int ovsdb_table_init(
+int onewifi_ovsdb_table_init(
     char                *table_name,
     ovsdb_table_t       *table,
     int                 schema_size,
@@ -66,7 +66,7 @@ int ovsdb_table_init(
     table->to_json = to_json;
     table->mark_changed = mark_changed;
     table->columns = columns;
-    table->monitor_callback = ovsdb_table_update_cb;
+    table->monitor_callback = onewifi_ovsdb_table_update_cb;
     // cache
     table->row_size = sizeof(ovsdb_cache_row_t) + schema_size;
     ds_tree_init(&table->rows, (ds_key_cmp_t*)strcmp, ovsdb_cache_row_t, node);
@@ -79,7 +79,7 @@ int ovsdb_table_init(
 // SCHEMA CONVERT
 
 // first column has to be "+" or "-" to select filter in/out
-json_t* ovsdb_table_filter_row(json_t *row, char *columns[])
+json_t* onewifi_ovsdb_table_filter_row(json_t *row, char *columns[])
 {
     int argc = 0;
     char *op;
@@ -105,17 +105,17 @@ json_t* ovsdb_table_filter_row(json_t *row, char *columns[])
     columns++;
     if (*op == '+')
     {
-        return ovsdb_row_filter_argv(row, argc, columns);
+        return onewifi_ovsdb_row_filter_argv(row, argc, columns);
     }
     else if (*op == '-')
     {
-        return ovsdb_row_filtout_argv(row, argc, columns);
+        return onewifi_ovsdb_row_filtout_argv(row, argc, columns);
     }
     return row;
 }
 
 
-bool ovsdb_table_from_json(ovsdb_table_t *table, json_t *jrow, void *record)
+bool onewifi_ovsdb_table_from_json(ovsdb_table_t *table, json_t *jrow, void *record)
 {
     pjs_errmsg_t perr;
     bool ret;
@@ -129,7 +129,7 @@ bool ovsdb_table_from_json(ovsdb_table_t *table, json_t *jrow, void *record)
 }
 
 
-json_t* ovsdb_table_to_json(ovsdb_table_t *table, void *record)
+json_t* onewifi_ovsdb_table_to_json(ovsdb_table_t *table, void *record)
 {
     pjs_errmsg_t perr;
     json_t *jrow = table->to_json(record, perr);
@@ -141,10 +141,10 @@ json_t* ovsdb_table_to_json(ovsdb_table_t *table, void *record)
     return jrow;
 }
 
-json_t* ovsdb_table_to_json_f(ovsdb_table_t *table, void *record, char *filter[])
+json_t* onewifi_ovsdb_table_to_json_f(ovsdb_table_t *table, void *record, char *filter[])
 {
-    json_t *jrow = ovsdb_table_to_json(table, record);
-    return ovsdb_table_filter_row(jrow, filter);
+    json_t *jrow = onewifi_ovsdb_table_to_json(table, record);
+    return onewifi_ovsdb_table_filter_row(jrow, filter);
 }
 
 
@@ -156,7 +156,7 @@ json_t* ovsdb_table_where(ovsdb_table_t *table, void *record)
 {
     if (record && table->key_offset >= 0 && *table->key_name)
     {
-        return ovsdb_where_simple(table->key_name, record + table->key_offset);
+        return onewifi_ovsdb_where_simple(table->key_name, record + table->key_offset);
     }
     return NULL;
 }
@@ -166,7 +166,7 @@ json_t* ovsdb_table_where(ovsdb_table_t *table, void *record)
 // SELECT
 
 // return array of records[*count]
-void* ovsdb_table_select_where(const char *ovsdb_sock_path, ovsdb_table_t *table, json_t *where, int *count)
+void* onewifi_ovsdb_table_select_where(const char *ovsdb_sock_path, ovsdb_table_t *table, json_t *where, int *count)
 {
     int i;
     int cnt = 0;
@@ -177,7 +177,7 @@ void* ovsdb_table_select_where(const char *ovsdb_sock_path, ovsdb_table_t *table
     void *retval = NULL;
 
     *count = 0;
-    jrows = ovsdb_sync_select_where(ovsdb_sock_path, table->table_name, where);
+    jrows = onewifi_ovsdb_sync_select_where(ovsdb_sock_path, table->table_name, where);
     if (!jrows) return NULL;
     cnt = json_array_size(jrows);
     if (!cnt) goto out;
@@ -188,7 +188,7 @@ void* ovsdb_table_select_where(const char *ovsdb_sock_path, ovsdb_table_t *table
         jrow = json_array_get(jrows, i);
         if (!jrow) goto out;
         record = records_array + table->schema_size * i;
-        if (!ovsdb_table_from_json(table, jrow, record)) goto out;
+        if (!onewifi_ovsdb_table_from_json(table, jrow, record)) goto out;
     }
     retval = records_array;
     *count = cnt;
@@ -200,31 +200,31 @@ out:
     return retval;
 }
 
-void* ovsdb_table_select(const char *ovsdb_sock_path, ovsdb_table_t *table, char *column, char *value, int *count)
+void* onewifi_ovsdb_table_select(const char *ovsdb_sock_path, ovsdb_table_t *table, char *column, char *value, int *count)
 {
-    return ovsdb_table_select_where(ovsdb_sock_path, table, ovsdb_where_simple(column, value), count);
+    return onewifi_ovsdb_table_select_where(ovsdb_sock_path, table, onewifi_ovsdb_where_simple(column, value), count);
 }
 
-void* ovsdb_table_select_typed(const char *ovsdb_sock_path, ovsdb_table_t *table, char *column, ovsdb_col_t col_type, void *value, int *count)
+void* onewifi_ovsdb_table_select_typed(const char *ovsdb_sock_path, ovsdb_table_t *table, char *column, ovsdb_col_t col_type, void *value, int *count)
 {
-    return ovsdb_table_select_where(ovsdb_sock_path, table, ovsdb_where_simple_typed(column, value, col_type), count);
+    return onewifi_ovsdb_table_select_where(ovsdb_sock_path, table, onewifi_ovsdb_where_simple_typed(column, value, col_type), count);
 }
 
 // where has to match a single record otherwise error is returned
-bool ovsdb_table_select_one_where(const char *ovsdb_sock_path, ovsdb_table_t *table, json_t *where, void *record)
+bool onewifi_ovsdb_table_select_one_where(const char *ovsdb_sock_path, ovsdb_table_t *table, json_t *where, void *record)
 {
     int cnt = 0;
     json_t *jrows = NULL;
     json_t *jrow = NULL;
     bool retval = false;
 
-    jrows = ovsdb_sync_select_where(ovsdb_sock_path, table->table_name, where);
+    jrows = onewifi_ovsdb_sync_select_where(ovsdb_sock_path, table->table_name, where);
     if (!jrows) goto out;
     cnt = json_array_size(jrows);
     if (cnt != 1) goto out;
     jrow = json_array_get(jrows, 0);
     if (!jrow) goto out;
-    if (!ovsdb_table_from_json(table, jrow, record)) goto out;
+    if (!onewifi_ovsdb_table_from_json(table, jrow, record)) goto out;
     retval = true;
 
 out:
@@ -232,23 +232,23 @@ out:
     return retval;
 }
 
-bool ovsdb_table_select_one(const char *ovsdb_sock_path, ovsdb_table_t *table, const char *column, const char *value, void *record)
+bool onewifi_ovsdb_table_select_one(const char *ovsdb_sock_path, ovsdb_table_t *table, const char *column, const char *value, void *record)
 {
-    return ovsdb_table_select_one_where(ovsdb_sock_path, table, ovsdb_where_simple(column, value), record);
+    return onewifi_ovsdb_table_select_one_where(ovsdb_sock_path, table, onewifi_ovsdb_where_simple(column, value), record);
 }
 
 
 
 // INSERT
 
-bool ovsdb_table_insert(const char *ovsdb_sock_path, ovsdb_table_t *table, void *record)
+bool onewifi_ovsdb_table_insert(const char *ovsdb_sock_path, ovsdb_table_t *table, void *record)
 {
     json_t *jrow = NULL;
     bool ret;
 
-    jrow = ovsdb_table_to_json(table, record);
+    jrow = onewifi_ovsdb_table_to_json(table, record);
     if (!jrow) return false;
-    ret = ovsdb_sync_insert(ovsdb_sock_path, table->table_name, jrow, record + table->uuid_offset);
+    ret = onewifi_ovsdb_sync_insert(ovsdb_sock_path, table->table_name, jrow, record + table->uuid_offset);
     return ret;
 }
 
@@ -256,65 +256,65 @@ bool ovsdb_table_insert(const char *ovsdb_sock_path, ovsdb_table_t *table, void 
 // DELETE
 
 // if where is NULL, delete all rows in table
-int ovsdb_table_delete_where(const char *ovsdb_sock_path, ovsdb_table_t *table, json_t *where)
+int onewifi_ovsdb_table_delete_where(const char *ovsdb_sock_path, ovsdb_table_t *table, json_t *where)
 {
-    return ovsdb_sync_delete_where(ovsdb_sock_path, table->table_name, where);
+    return onewifi_ovsdb_sync_delete_where(ovsdb_sock_path, table->table_name, where);
 }
 
-int ovsdb_table_delete_simple(const char *ovsdb_sock_path, ovsdb_table_t *table, const char *column, const char *value)
+int onewifi_ovsdb_table_delete_simple(const char *ovsdb_sock_path, ovsdb_table_t *table, const char *column, const char *value)
 {
-    json_t *where = ovsdb_where_simple(column, value);
-    return ovsdb_sync_delete_where(ovsdb_sock_path, table->table_name, where);
+    json_t *where = onewifi_ovsdb_where_simple(column, value);
+    return onewifi_ovsdb_sync_delete_where(ovsdb_sock_path, table->table_name, where);
 }
 
 // if the table has no key, or record is NULL then delete all rows
-int ovsdb_table_delete(const char *ovsdb_sock_path, ovsdb_table_t *table, void *record)
+int onewifi_ovsdb_table_delete(const char *ovsdb_sock_path, ovsdb_table_t *table, void *record)
 {
     json_t *where = ovsdb_table_where(table, record);
-    return ovsdb_sync_delete_where(ovsdb_sock_path, table->table_name, where);
+    return onewifi_ovsdb_sync_delete_where(ovsdb_sock_path, table->table_name, where);
 }
 
 
 // UPDATE
 
 // if where is NULL, update all rows in table
-int ovsdb_table_update_where_f(const char *ovsdb_sock_path, ovsdb_table_t *table, json_t *where, void *record, char *filter[])
+int onewifi_ovsdb_table_update_where_f(const char *ovsdb_sock_path, ovsdb_table_t *table, json_t *where, void *record, char *filter[])
 {
     json_t *jrow = NULL;
     int ret;
 
-    jrow = ovsdb_table_to_json_f(table, record, filter);
+    jrow = onewifi_ovsdb_table_to_json_f(table, record, filter);
     if (!jrow) {
         json_decref(where);
         return 0;
     }
-    ret = ovsdb_sync_update_where(ovsdb_sock_path, table->table_name, where, jrow);
+    ret = onewifi_ovsdb_sync_update_where(ovsdb_sock_path, table->table_name, where, jrow);
     return ret;
 }
 
 
-int ovsdb_table_update_where(const char *ovsdb_sock_path, ovsdb_table_t *table, json_t *where, void *record)
+int onewifi_ovsdb_table_update_where(const char *ovsdb_sock_path, ovsdb_table_t *table, json_t *where, void *record)
 {
-    return ovsdb_table_update_where_f(ovsdb_sock_path, table, where, record, NULL);
+    return onewifi_ovsdb_table_update_where_f(ovsdb_sock_path, table, where, record, NULL);
 }
 
-int ovsdb_table_update_simple_f(const char *ovsdb_sock_path, ovsdb_table_t *table, char *column, char *value, void *record, char *filter[])
+int onewifi_ovsdb_table_update_simple_f(const char *ovsdb_sock_path, ovsdb_table_t *table, char *column, char *value, void *record, char *filter[])
 {
-    json_t *where = ovsdb_where_simple(column, value);
-    return ovsdb_table_update_where_f(ovsdb_sock_path, table, where, record, filter);
+    json_t *where = onewifi_ovsdb_where_simple(column, value);
+    return onewifi_ovsdb_table_update_where_f(ovsdb_sock_path, table, where, record, filter);
 }
 
-int ovsdb_table_update_simple(const char *ovsdb_sock_path, ovsdb_table_t *table, char *column, char *value, void *record)
+int onewifi_ovsdb_table_update_simple(const char *ovsdb_sock_path, ovsdb_table_t *table, char *column, char *value, void *record)
 {
-    return ovsdb_table_update_simple_f(ovsdb_sock_path, table, column, value, record, NULL);
+    return onewifi_ovsdb_table_update_simple_f(ovsdb_sock_path, table, column, value, record, NULL);
 }
 
 // update using table primary key
 // if the table has no key, then update all rows (1 expected)
-int ovsdb_table_update_f(const char *ovsdb_sock_path, ovsdb_table_t *table, void *record, char *filter[])
+int onewifi_ovsdb_table_update_f(const char *ovsdb_sock_path, ovsdb_table_t *table, void *record, char *filter[])
 {
     json_t *where = ovsdb_table_where(table, record);
-    int ret = ovsdb_table_update_where_f(ovsdb_sock_path, table, where, record, filter);
+    int ret = onewifi_ovsdb_table_update_where_f(ovsdb_sock_path, table, where, record, filter);
     if (ret > 1)
     {
         LOG(ERR, "%s: count > 1: %d", __FUNCTION__, ret);
@@ -322,72 +322,72 @@ int ovsdb_table_update_f(const char *ovsdb_sock_path, ovsdb_table_t *table, void
     return ret;
 }
 
-int ovsdb_table_update(const char *ovsdb_sock_path, ovsdb_table_t *table, void *record)
+int onewifi_ovsdb_table_update(const char *ovsdb_sock_path, ovsdb_table_t *table, void *record)
 {
-    return ovsdb_table_update_f(ovsdb_sock_path, table, record, NULL);
+    return onewifi_ovsdb_table_update_f(ovsdb_sock_path, table, record, NULL);
 }
 
 // UPSERT
 
-bool ovsdb_table_upsert_where_f(const char *ovsdb_sock_path, ovsdb_table_t *table,
+bool onewifi_ovsdb_table_upsert_where_f(const char *ovsdb_sock_path, ovsdb_table_t *table,
         json_t *where, void *record, bool update_uuid, char *filter[])
 {
     json_t *jrow = NULL;
     ovs_uuid_t *uuid = update_uuid ?  uuid = record + table->uuid_offset : NULL;
     bool ret;
 
-    jrow = ovsdb_table_to_json_f(table, record, filter);
+    jrow = onewifi_ovsdb_table_to_json_f(table, record, filter);
     if (!jrow) return false;
-    ret = ovsdb_sync_upsert_where(ovsdb_sock_path, table->table_name, where, jrow, uuid);
+    ret = onewifi_ovsdb_sync_upsert_where(ovsdb_sock_path, table->table_name, where, jrow, uuid);
     LOG(DEBUG, "%s: %s %s", __FUNCTION__, table->table_name, ret?"success":"error");
     return ret;
 }
 
-bool ovsdb_table_upsert_where(const char *ovsdb_sock_path, ovsdb_table_t *table, json_t *where, void *record, bool update_uuid)
+bool onewifi_ovsdb_table_upsert_where(const char *ovsdb_sock_path, ovsdb_table_t *table, json_t *where, void *record, bool update_uuid)
 {
-    return ovsdb_table_upsert_where_f(ovsdb_sock_path, table, where, record, update_uuid, NULL);
+    return onewifi_ovsdb_table_upsert_where_f(ovsdb_sock_path, table, where, record, update_uuid, NULL);
 }
 
 
-bool ovsdb_table_upsert_simple_f(const char *ovsdb_sock_path, ovsdb_table_t *table,
+bool onewifi_ovsdb_table_upsert_simple_f(const char *ovsdb_sock_path, ovsdb_table_t *table,
         char *column, char *value, void *record, bool update_uuid, char *filter[])
 {
-    return ovsdb_table_upsert_where_f(ovsdb_sock_path, table,
-            ovsdb_where_simple(column, value),
+    return onewifi_ovsdb_table_upsert_where_f(ovsdb_sock_path, table,
+            onewifi_ovsdb_where_simple(column, value),
             record, update_uuid, filter);
 }
 
-bool ovsdb_table_upsert_simple(const char *ovsdb_sock_path, ovsdb_table_t *table,
+bool onewifi_ovsdb_table_upsert_simple(const char *ovsdb_sock_path, ovsdb_table_t *table,
         char *column, char *value, void *record, bool update_uuid)
 {
-    return ovsdb_table_upsert_simple_f(ovsdb_sock_path, table, column, value, record, update_uuid, NULL);
+    return onewifi_ovsdb_table_upsert_simple_f(ovsdb_sock_path, table, column, value, record, update_uuid, NULL);
 }
 
 // upsert using table primary key
 // if the table has no key, then update all rows (1 expected)
-bool ovsdb_table_upsert_f(const char *ovsdb_sock_path, ovsdb_table_t *table, void *record, bool update_uuid, char *filter[])
+bool onewifi_ovsdb_table_upsert_f(const char *ovsdb_sock_path, ovsdb_table_t *table, void *record, bool update_uuid, char *filter[])
 {
     json_t *where = ovsdb_table_where(table, record);
-    return ovsdb_table_upsert_where_f(ovsdb_sock_path, table, where, record, update_uuid, filter);
+    return onewifi_ovsdb_table_upsert_where_f(ovsdb_sock_path, table, where, record, update_uuid, filter);
 }
 
-bool ovsdb_table_upsert(const char *ovsdb_sock_path, ovsdb_table_t *table, void *record, bool update_uuid)
+bool onewifi_ovsdb_table_upsert(const char *ovsdb_sock_path, ovsdb_table_t *table, void *record, bool update_uuid)
 {
-    return ovsdb_table_upsert_f(ovsdb_sock_path, table, record, update_uuid, NULL);
+    return onewifi_ovsdb_table_upsert_f(ovsdb_sock_path, table, record, update_uuid, NULL);
 }
 
 
 // MUTATE
 
 
-int ovsdb_table_mutate_uuid_set(const char *ovsdb_sock_path, ovsdb_table_t *table,
+int onewifi_ovsdb_table_mutate_uuid_set(const char *ovsdb_sock_path, ovsdb_table_t *table,
         json_t *where, char *column, ovsdb_tro_t op, char *uuid)
 {
-    return ovsdb_sync_mutate_uuid_set(ovsdb_sock_path, table->table_name,
+    return onewifi_ovsdb_sync_mutate_uuid_set(ovsdb_sock_path, table->table_name,
             where, column, op, uuid);
 }
 
-bool ovsdb_table_upsert_with_parent_where(const char *ovsdb_sock_path, ovsdb_table_t *table,
+bool onewifi_ovsdb_table_upsert_with_parent_where(const char *ovsdb_sock_path, ovsdb_table_t *table,
         json_t *where, void *record, bool update_uuid, char *filter[],
         char *parent_table, json_t *parent_where, char *parent_column)
 {
@@ -395,9 +395,9 @@ bool ovsdb_table_upsert_with_parent_where(const char *ovsdb_sock_path, ovsdb_tab
     ovs_uuid_t *uuid = update_uuid ?  uuid = record + table->uuid_offset : NULL;
     bool ret;
 
-    jrow = ovsdb_table_to_json_f(table, record, filter);
+    jrow = onewifi_ovsdb_table_to_json_f(table, record, filter);
     if (!jrow) return false;
-    ret = ovsdb_sync_upsert_with_parent(ovsdb_sock_path, table->table_name, where, jrow, uuid,
+    ret = onewifi_ovsdb_sync_upsert_with_parent(ovsdb_sock_path, table->table_name, where, jrow, uuid,
         parent_table, parent_where, parent_column);
     LOG(DEBUG, "%s: %s %s", __FUNCTION__, table->table_name, ret?"success":"error");
     return ret;
@@ -405,20 +405,20 @@ bool ovsdb_table_upsert_with_parent_where(const char *ovsdb_sock_path, ovsdb_tab
 
 // upsert using table primary key
 // if the table has no key, then update all rows (1 expected)
-bool ovsdb_table_upsert_with_parent(const char *ovsdb_sock_path, ovsdb_table_t *table,
+bool onewifi_ovsdb_table_upsert_with_parent(const char *ovsdb_sock_path, ovsdb_table_t *table,
         void *record, bool update_uuid, char *filter[],
         char *parent_table, json_t *parent_where, char *parent_column)
 {
     json_t *where = ovsdb_table_where(table, record);
-    return ovsdb_table_upsert_with_parent_where(ovsdb_sock_path, table,
+    return onewifi_ovsdb_table_upsert_with_parent_where(ovsdb_sock_path, table,
         where, record, update_uuid, filter,
         parent_table, parent_where, parent_column);
 }
 
-int ovsdb_table_delete_where_with_parent(const char *ovsdb_sock_path, ovsdb_table_t *table, json_t *where,
+int onewifi_ovsdb_table_delete_where_with_parent(const char *ovsdb_sock_path, ovsdb_table_t *table, json_t *where,
         char *parent_table, json_t *parent_where, char *parent_column)
 {
-    return ovsdb_sync_delete_with_parent(ovsdb_sock_path, table->table_name, where,
+    return onewifi_ovsdb_sync_delete_with_parent(ovsdb_sock_path, table->table_name, where,
         parent_table, parent_where, parent_column);
 }
 
@@ -426,7 +426,7 @@ int ovsdb_table_delete_where_with_parent(const char *ovsdb_sock_path, ovsdb_tabl
 // MONITOR
 
 
-bool ovsdb_table_monitor_columns(int ovsdb_fd, ovsdb_table_t *table,
+bool onewifi_ovsdb_table_monitor_columns(int ovsdb_fd, ovsdb_table_t *table,
         ovsdb_table_callback_t *callback, char **columns)
 {
     bool ret;
@@ -435,7 +435,7 @@ bool ovsdb_table_monitor_columns(int ovsdb_fd, ovsdb_table_t *table,
     if (!columns || !count)
     {
         LOG(NOTICE, "Monitor: %s: ALL", table->table_name);
-        ret = ovsdb_update_monitor(ovsdb_fd, 
+        ret = onewifi_ovsdb_update_monitor(ovsdb_fd, 
                 &table->monitor,
                 table->monitor_callback,
                 table->table_name,
@@ -455,7 +455,7 @@ bool ovsdb_table_monitor_columns(int ovsdb_fd, ovsdb_table_t *table,
                 have_version ? "true" : "false",
                 table->partial_update ? "true" : "false", count,
                 strfmt_nt_array(tmp, sizeof(tmp), columns));
-        ret = ovsdb_update_monitor_ex(ovsdb_fd, 
+        ret = onewifi_ovsdb_update_monitor_ex(ovsdb_fd, 
                 &table->monitor,
                 table->monitor_callback,
                 table->table_name,
@@ -475,7 +475,7 @@ bool ovsdb_table_monitor_columns(int ovsdb_fd, ovsdb_table_t *table,
 
 // ignore_version can be used if we are not interested in receiving
 // updates for when a referenced table has been modified
-bool ovsdb_table_monitor(int ovsdb_fd, ovsdb_table_t *table,
+bool onewifi_ovsdb_table_monitor(int ovsdb_fd, ovsdb_table_t *table,
         ovsdb_table_callback_t *callback, bool ignore_version)
 {
     char **columns;
@@ -487,10 +487,10 @@ bool ovsdb_table_monitor(int ovsdb_fd, ovsdb_table_t *table,
     {
         columns = NULL;
     }
-    return ovsdb_table_monitor_columns(ovsdb_fd, table, callback, columns);
+    return onewifi_ovsdb_table_monitor_columns(ovsdb_fd, table, callback, columns);
 }
 
-bool ovsdb_table_monitor_filter(int ovsdb_fd, ovsdb_table_t *table,
+bool onewifi_ovsdb_table_monitor_filter(int ovsdb_fd, ovsdb_table_t *table,
         ovsdb_table_callback_t *callback, char **filter)
 {
     int schema_count = count_nt_array(table->columns);
@@ -518,10 +518,10 @@ bool ovsdb_table_monitor_filter(int ovsdb_fd, ovsdb_table_t *table,
     {
         columns = filter;
     }
-    return ovsdb_table_monitor_columns(ovsdb_fd, table, callback, columns);
+    return onewifi_ovsdb_table_monitor_columns(ovsdb_fd, table, callback, columns);
 }
 
-void ovsdb_table_update_cb(ovsdb_update_monitor_t *self)
+void onewifi_ovsdb_table_update_cb(ovsdb_update_monitor_t *self)
 {
     ovsdb_table_t *table;
     pjs_errmsg_t perr;

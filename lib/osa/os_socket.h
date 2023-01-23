@@ -60,21 +60,21 @@ typedef bool socket_cbk_t(int fd,
 /**
  * Socket Related definitions
  */
-int32_t server_socket_create(os_sock_type sock_type,
+int32_t onewifi_server_socket_create(os_sock_type sock_type,
                              char *listen_addr,
                              uint32_t server_port);
 
-int32_t client_socket_create(os_sock_type sock_type);
+int32_t onewifi_client_socket_create(os_sock_type sock_type);
 
-bool client_connect(int32_t sock_fd,
+bool onewifi_client_connect(int32_t sock_fd,
                     char *server_addr,
                     uint32_t port);
 
-int32_t tcp_server_listen(int32_t sock_fd);
+int32_t onewifi_tcp_server_listen(int32_t sock_fd);
 
 /* open ovsdb server socket */
-int ovsdb_conn(const char *sock_path);
-bool ovsdb_disconn(int sock_fd);
+int onewifi_ovsdb_conn(const char *sock_path);
+bool onewifi_ovsdb_disconn(int sock_fd);
 
 #ifdef __cplusplus
 }

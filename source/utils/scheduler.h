@@ -130,6 +130,16 @@ int scheduler_update_timer_task_repetitions(struct scheduler *sched, int id, uns
   */
 int scheduler_execute(struct scheduler *sched, struct timeval t_start, unsigned int timeout_ms);
 
+/* Description:
+  *      This API is used to free task's arg if such was allocated
+  * Arguments:
+  *      sched - Pointer to the scheduler struct
+  *      id - unique identifier to denote the timer task
+  * Returns:
+  *       Returns 0 on Success, -1 on Failure
+  */
+int scheduler_free_timer_task_arg(struct scheduler *sched, int id);
+
 #ifdef __cplusplus
 }
 #endif

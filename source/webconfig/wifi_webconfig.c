@@ -260,7 +260,6 @@ webconfig_error_t webconfig_init(webconfig_t *config)
     config->subdocs[webconfig_subdoc_type_xfinity].translate_to_subdoc = translate_to_xfinity_subdoc;
     config->subdocs[webconfig_subdoc_type_xfinity].translate_from_subdoc = translate_from_xfinity_subdoc;
 
-#if DML_SUPPORT
     config->subdocs[webconfig_subdoc_type_dml].type = webconfig_subdoc_type_dml;
     strcpy(config->subdocs[webconfig_subdoc_type_dml].name, "dml");
     config->subdocs[webconfig_subdoc_type_dml].major = 1;
@@ -272,7 +271,6 @@ webconfig_error_t webconfig_init(webconfig_t *config)
     config->subdocs[webconfig_subdoc_type_dml].decode_subdoc = decode_dml_subdoc;
     config->subdocs[webconfig_subdoc_type_dml].translate_to_subdoc = translate_to_dml_subdoc;
     config->subdocs[webconfig_subdoc_type_dml].translate_from_subdoc = translate_from_dml_subdoc;
-#endif // DML_SUPPORT
 
     config->subdocs[webconfig_subdoc_type_radio].type = webconfig_subdoc_type_radio;
     strcpy(config->subdocs[webconfig_subdoc_type_radio].name, "radio");
@@ -309,6 +307,18 @@ webconfig_error_t webconfig_init(webconfig_t *config)
     config->subdocs[webconfig_subdoc_type_mesh_backhaul].encode_subdoc = encode_mesh_backhaul_subdoc;
     config->subdocs[webconfig_subdoc_type_mesh_backhaul].translate_to_subdoc = translate_to_mesh_backhaul_subdoc;
     config->subdocs[webconfig_subdoc_type_mesh_backhaul].translate_from_subdoc = translate_from_mesh_backhaul_subdoc;
+
+    config->subdocs[webconfig_subdoc_type_mesh_backhaul_sta].type = webconfig_subdoc_type_mesh_backhaul_sta;
+    strcpy(config->subdocs[webconfig_subdoc_type_mesh_backhaul_sta].name, "mesh backhaul sta");
+    config->subdocs[webconfig_subdoc_type_mesh_backhaul_sta].major = 1;
+    config->subdocs[webconfig_subdoc_type_mesh_backhaul_sta].minor = 1;
+    config->subdocs[webconfig_subdoc_type_mesh_backhaul_sta].access_check_subdoc = access_check_mesh_backhaul_sta_subdoc;
+    config->subdocs[webconfig_subdoc_type_mesh_backhaul_sta].init_subdoc = init_mesh_backhaul_sta_subdoc;
+    config->subdocs[webconfig_subdoc_type_mesh_backhaul_sta].init_subdoc(&config->subdocs[webconfig_subdoc_type_mesh_backhaul_sta]);
+    config->subdocs[webconfig_subdoc_type_mesh_backhaul_sta].decode_subdoc = decode_mesh_backhaul_sta_subdoc;
+    config->subdocs[webconfig_subdoc_type_mesh_backhaul_sta].encode_subdoc = encode_mesh_backhaul_sta_subdoc;
+    config->subdocs[webconfig_subdoc_type_mesh_backhaul_sta].translate_to_subdoc = translate_to_mesh_backhaul_sta_subdoc;
+    config->subdocs[webconfig_subdoc_type_mesh_backhaul_sta].translate_from_subdoc = translate_from_mesh_backhaul_sta_subdoc;
 
     config->subdocs[webconfig_subdoc_type_mesh_sta].type = webconfig_subdoc_type_mesh_sta;
     strcpy(config->subdocs[webconfig_subdoc_type_mesh_sta].name, "mesh sta");

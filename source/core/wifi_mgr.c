@@ -23,7 +23,9 @@
 #include <pthread.h>
 #include <ev.h>
 #include <sys/time.h>
+#if DML_SUPPORT
 #include <syscfg/syscfg.h>
+#endif
 #include <assert.h>
 #include "wifi_data_plane.h"
 #if DML_SUPPORT
@@ -190,17 +192,59 @@ wifi_mgr_t *get_wifimgr_obj(void)
 int init_wifi_hal()
 {
     int ret = RETURN_OK;
+    bool rfc_status;
 
     wifi_util_info_print(WIFI_CTRL,"%s: start wifi hal init\n",__FUNCTION__);
 
+#if CCSP_WIFI_HAL
     ret = wifi_hal_init();
     if (ret != RETURN_OK) {
         wifi_util_error_print(WIFI_CTRL,"%s wifi_init failed:ret :%d\n",__FUNCTION__, ret);
         return RETURN_ERR;
     }
+#endif
+
+    get_wifi_rfc_parameters(RFC_WIFI_OW_CORE_THREAD, (bool *)&rfc_status);
+    if (true == rfc_status) {
+        /* This will spawn the OneWifi Core Thread that is taken from
+         * OpenSync. The function returns only after the thread has been
+         * spawned and it has performed it's basic setup. Once the
+         * function returns other ow_ functions can be called.
+         */
+         ow_core_thread_start();
+         wifi_util_dbg_print(WIFI_MGR,"%s: ow core thread started\n", __func__);
+#if DML_SUPPORT
+         if(syscfg_set_commit(NULL, "ow_core_thread", "true") != 0) {
+             wifi_util_error_print(WIFI_MGR,"%s: syscfg_set failed for ow_core_thread enable\n", __func__);
+         }
+#endif // DML_SUPPORT
+    }
+    else
+    {
+         wifi_util_error_print(WIFI_MGR,"%s: ow core thread disabled\n", __func__);
+#if DML_SUPPORT
+         if(syscfg_set_commit(NULL, "ow_core_thread", "false") != 0)
+         {
+             wifi_util_error_print(WIFI_MGR,"%s: syscfg_set failed for ow_core_thread disable\n", __func__);
+         }
+#endif // DML_SUPPORT
+    }
 
     /* Get the wifi capabilities from from hal*/
+#ifdef CCSP_WIFI_HAL
     ret = wifi_hal_getHalCapability(&g_wifi_mgr.hal_cap);
+#else
+    wifi_util_dbg_print(WIFI_MGR,"%s: Calling HW hal caps.\n", __func__);
+    if (rfc_status) {
+        ow_mesh_ext_set_capab();
+        ret = ow_mesh_ext_get_hal_capab(&g_wifi_mgr.hal_cap);
+    }
+    else {
+        wifi_util_dbg_print(WIFI_MGR,"%s: OW rfc disabled, could not fetch hal capability.\n", __func__);
+        return RETURN_ERR;
+    }
+#endif
+
     if (ret != RETURN_OK) {
         wifi_util_error_print(WIFI_CTRL,"RDK_LOG_ERROR, %s wifi_getHalCapability returned with error %d\n", __FUNCTION__, ret);
         return RETURN_ERR;
@@ -1404,12 +1448,10 @@ int init_wifimgr()
     //Initialize HAL and get Capabilities
     assert(init_wifi_hal() == RETURN_OK);
 
-#if DML_SUPPORT
     int itr=0;
     for (itr=0; itr < (int)getNumberRadios(); itr++) {
         init_global_radio_config(&g_wifi_mgr.radio_config[itr], itr);
     }
-#endif // DML_SUPPORT
 
     //Update the  wireless interface mac in mgr structure
     init_wireless_interface_mac();
@@ -1491,29 +1533,11 @@ int start_wifimgr()
 
     pthread_cond_destroy(&g_wifi_mgr.dml_init_status);
     pthread_mutex_unlock(&g_wifi_mgr.lock);
-
-    bool rfc_status;
-    get_wifi_rfc_parameters(RFC_WIFI_OW_CORE_THREAD, (bool *)&rfc_status);
-    if (true == rfc_status) {
-        /* This will spawn the OneWifi Core Thread that is taken from
-         * OpenSync. The function returns only after the thread has been
-         * spawned and it has performed it's basic setup. Once the
-         * function returns other ow_ functions can be called.
-         */
-         ow_core_thread_start();
-         wifi_util_dbg_print(WIFI_MGR,"%s: ow core thread started\n", __func__);
-         if(syscfg_set_commit(NULL, "ow_core_thread", "true") != 0) {
-             wifi_util_error_print(WIFI_MGR,"%s: syscfg_set failed for ow_core_thread enable\n", __func__);
-         }
-    } else {
-         wifi_util_dbg_print(WIFI_MGR,"%s: ow core thread disabled\n", __func__);
-         if(syscfg_set_commit(NULL, "ow_core_thread", "false") != 0) {
-             wifi_util_error_print(WIFI_MGR,"%s: syscfg_set failed for ow_core_thread disable\n", __func__);
-         }
-    }
 #else
     init_wifi_db_param();
 #endif // DML_SUPPORT
+
+    g_wifi_mgr.ctrl.ctrl_initialized = true;
 
     if (start_wifi_ctrl(&g_wifi_mgr.ctrl) != 0) {
         wifi_util_error_print(WIFI_MGR,"%s: wifi ctrl start failed\n", __func__);

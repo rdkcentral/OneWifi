@@ -911,6 +911,9 @@ webconfig_error_t encode_personal_security_object(const wifi_vap_security_t *sec
     }
 
     cJSON_AddStringToObject(security, "Passphrase", security_info->u.key.key);
+
+    cJSON_AddStringToObject(security, "KeyId", security_info->key_id);
+
     cJSON_AddNumberToObject(security, "RekeyInterval", security_info->rekey_interval);
 
     return webconfig_error_none;

@@ -38,28 +38,28 @@ extern "C" {
 
 // ovsdb sync api
 
-json_t* ovsdb_where_simple(const char *column, const char *value);
-json_t* ovsdb_where_simple_typed(const char *column, const void *value, ovsdb_col_t col_type);
-json_t* ovsdb_where_uuid(const char *column, const char *uuid);
-json_t* ovsdb_where_multi(json_t *where, ...);
-json_t* ovsdb_mutation(const char *column, json_t *mutation, json_t *value);
-int     ovsdb_get_update_result_count(json_t *result, const char *table, const char *oper);
-bool    ovsdb_get_insert_result_uuid(json_t *result, const char *table, const char *oper, ovs_uuid_t *uuid);
-json_t* ovsdb_sync_select_where(const char *ovsdb_sock_path, const char *table, json_t *where);
-json_t* ovsdb_sync_select(const char *table, const char *column, const char *value);
-bool    ovsdb_sync_insert(const char *ovsdb_sock_path, const char *table, json_t *row, ovs_uuid_t *uuid);
-int     ovsdb_sync_delete_where(const char *ovsdb_sock_path, const char *table, json_t *where);
-int     ovsdb_sync_update_where(const char *ovsdb_sock_path, const char *table, json_t *where, json_t *row);
-int     ovsdb_sync_update(const char *ovsdb_sock_path, const char *table, const char *column, const char *value, json_t *row);
-int     ovsdb_sync_update_one_get_uuid(const char *table, json_t *where, json_t *row, ovs_uuid_t *uuid);
-bool    ovsdb_sync_upsert_where(const char *ovsdb_sock_path, const char *table, json_t *where, json_t *row, ovs_uuid_t *uuid);
-bool    ovsdb_sync_upsert(const char *ovsdb_sock_path, const char *table, const char *column, const char *value, json_t *row, ovs_uuid_t *uuid);
-int     ovsdb_sync_mutate_uuid_set(const char *ovsdb_sock_path, const char *table, json_t *where, const char *column, ovsdb_tro_t op, const char *uuid);
-bool    ovsdb_sync_insert_with_parent(const char *ovsdb_sock_path, const char *table, json_t *row, ovs_uuid_t *uuid,
+json_t* onewifi_ovsdb_where_simple(const char *column, const char *value);
+json_t* onewifi_ovsdb_where_simple_typed(const char *column, const void *value, ovsdb_col_t col_type);
+json_t* onewifi_ovsdb_where_uuid(const char *column, const char *uuid);
+json_t* onewifi_ovsdb_where_multi(json_t *where, ...);
+json_t* onewifi_ovsdb_mutation(const char *column, json_t *mutation, json_t *value);
+int     onewifi_ovsdb_get_update_result_count(json_t *result, const char *table, const char *oper);
+bool    onewifi_ovsdb_get_insert_result_uuid(json_t *result, const char *table, const char *oper, ovs_uuid_t *uuid);
+json_t* onewifi_ovsdb_sync_select_where(const char *ovsdb_sock_path, const char *table, json_t *where);
+json_t* onewifi_ovsdb_sync_select(const char *table, const char *column, const char *value);
+bool    onewifi_ovsdb_sync_insert(const char *ovsdb_sock_path, const char *table, json_t *row, ovs_uuid_t *uuid);
+int     onewifi_ovsdb_sync_delete_where(const char *ovsdb_sock_path, const char *table, json_t *where);
+int     onewifi_ovsdb_sync_update_where(const char *ovsdb_sock_path, const char *table, json_t *where, json_t *row);
+int     onewifi_ovsdb_sync_update(const char *ovsdb_sock_path, const char *table, const char *column, const char *value, json_t *row);
+int     onewifi_ovsdb_sync_update_one_get_uuid(const char *table, json_t *where, json_t *row, ovs_uuid_t *uuid);
+bool    onewifi_ovsdb_sync_upsert_where(const char *ovsdb_sock_path, const char *table, json_t *where, json_t *row, ovs_uuid_t *uuid);
+bool    onewifi_ovsdb_sync_upsert(const char *ovsdb_sock_path, const char *table, const char *column, const char *value, json_t *row, ovs_uuid_t *uuid);
+int     onewifi_ovsdb_sync_mutate_uuid_set(const char *ovsdb_sock_path, const char *table, json_t *where, const char *column, ovsdb_tro_t op, const char *uuid);
+bool    onewifi_ovsdb_sync_insert_with_parent(const char *ovsdb_sock_path, const char *table, json_t *row, ovs_uuid_t *uuid,
         const char *parent_table, json_t *parent_where, const char *parent_column);
-bool    ovsdb_sync_upsert_with_parent(const char *ovsdb_sock_path, const char *table, json_t *where, json_t *row, ovs_uuid_t *uuid,
+bool    onewifi_ovsdb_sync_upsert_with_parent(const char *ovsdb_sock_path, const char *table, json_t *where, json_t *row, ovs_uuid_t *uuid,
         const char *parent_table, json_t *parent_where, const char *parent_column);
-int     ovsdb_sync_delete_with_parent(const char *ovsdb_sock_path, const char *table, json_t *where,
+int     onewifi_ovsdb_sync_delete_with_parent(const char *ovsdb_sock_path, const char *table, json_t *where,
         const char *parent_table, json_t *parent_where, const char *parent_column);
 
 #ifdef __cplusplus

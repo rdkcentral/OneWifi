@@ -81,7 +81,7 @@ extern ds_tree_t json_rpc_handler_list;
  *
  * Note that function is not thread safe
  */
-int ovsdb_jsonrpc_id_new(void)
+int onewifi_ovsdb_jsonrpc_id_new(void)
 {
     static int jsonrpc_id = 1;  /* Start RPC sequence */
 
@@ -92,12 +92,12 @@ int ovsdb_jsonrpc_id_new(void)
  * Return an OVDSB transaction operation identifer derived from the @p tran
  * parameter.
  */
-json_t *ovsdb_tran_operation(ovsdb_tro_t tran)
+json_t *onewifi_ovsdb_tran_operation(ovsdb_tro_t tran)
 {
     if (tran > OTR_WAIT)
     {
         LOGE("OVSDB: Invalid transaction operation id: %d\n", tran);
-        assert(!"ovsdb_tran_operation() received invalid transaction operation id.");
+        assert(!"onewifi_ovsdb_tran_operation() received invalid transaction operation id.");
     }
 
     return json_string(tran_operations[tran]);
@@ -271,7 +271,7 @@ int ovsdb_write_callback(const char *buf, size_t sz, void *data)
  * jparams  - json array, needed to matched with mt type
  *
  */
-bool ovsdb_method_send(int ovsdb_fd,
+bool onewifi_ovsdb_method_send(int ovsdb_fd,
 							  json_rpc_response_t *callback,
                               void * data,
                               ovsdb_mt_t mt,
@@ -314,7 +314,7 @@ bool ovsdb_method_send(int ovsdb_fd,
         LOG(ERR, "Error adding params array.");
     }
 
-    if (0 < json_object_set_new(js, "id", json_integer(ovsdb_jsonrpc_id_new())))
+    if (0 < json_object_set_new(js, "id", json_integer(onewifi_ovsdb_jsonrpc_id_new())))
     {
         LOG(ERR, "Error adding id key.");
     }
@@ -339,7 +339,7 @@ bool ovsdb_method_send(int ovsdb_fd,
  *
  * NOTE: This function is meant to be used mainly for ovsdb raw CLI
  */
-bool ovsdb_method_json(int ovsdb_fd, json_rpc_response_t *callback, void * data,
+bool onewifi_ovsdb_method_json(int ovsdb_fd, json_rpc_response_t *callback, void * data,
                        char * buffer, size_t sz)
 {
     (void)sz;
@@ -359,7 +359,7 @@ bool ovsdb_method_json(int ovsdb_fd, json_rpc_response_t *callback, void * data,
     {
         if (NULL != json_object_get(js, "id"))
         {
-            json_object_set(js, "id", json_integer(ovsdb_jsonrpc_id_new()));
+            json_object_set(js, "id", json_integer(onewifi_ovsdb_jsonrpc_id_new()));
 
             /* send this object to ovsdb */
             retval = ovsdb_write(ovsdb_fd, callback, data, js);
@@ -390,7 +390,7 @@ bool ovsdb_method_json(int ovsdb_fd, json_rpc_response_t *callback, void * data,
  * If 0 is specified, OMT_ALL is assumed (monitor all operations).
  */
 
-bool ovsdb_monit_call_argv(int ovsdb_fd,
+bool onewifi_ovsdb_monit_call_argv(int ovsdb_fd,
 		json_rpc_response_t *callback,
         void *data,
         int monid,
@@ -422,19 +422,19 @@ bool ovsdb_monit_call_argv(int ovsdb_fd,
     /* Third parameter is table name */
     json_array_append_new(jparams, jtbl);
 
-    retval = ovsdb_method_send(ovsdb_fd, callback, data, MT_MONITOR, jparams);
+    retval = onewifi_ovsdb_method_send(ovsdb_fd, callback, data, MT_MONITOR, jparams);
 
     return retval;
 }
 
-bool OVSDB_GEN_DECL(ovsdb_monit_call, int ovsdb_fd, json_rpc_response_t *callback, void *data, int monid, char *table, int mon_flags)
+bool ONEWIFI_OVSDB_GEN_DECL(ovsdb_monit_call, int ovsdb_fd, json_rpc_response_t *callback, void *data, int monid, char *table, int mon_flags)
 {
-    OVSDB_GEN_CALL(ovsdb_monit_call, ovsdb_fd, callback, data, monid, table, mon_flags);
+    ONEWIFI_OVSDB_GEN_CALL(ovsdb_monit_call, ovsdb_fd, callback, data, monid, table, mon_flags);
 }
 
-bool OVSDB_VA_DECL(ovsdb_monit_call, int ovsdb_fd, json_rpc_response_t *callback, void *data, int monid, char *table, int mon_flags)
+bool ONEWIFI_OVSDB_VA_DECL(ovsdb_monit_call, int ovsdb_fd, json_rpc_response_t *callback, void *data, int monid, char *table, int mon_flags)
 {
-    OVSDB_VA_CALL(ovsdb_monit_call, ovsdb_fd, callback, data, monid, table, mon_flags);
+    ONEWIFI_OVSDB_VA_CALL(ovsdb_monit_call, ovsdb_fd, callback, data, monid, table, mon_flags);
 }
 
 
@@ -442,7 +442,7 @@ bool OVSDB_VA_DECL(ovsdb_monit_call, int ovsdb_fd, json_rpc_response_t *callback
  * Following three functions are different forms for
  * creating and sending echo json request
  */
-bool ovsdb_echo_call_argv(int ovsdb_fd,
+bool onewifi_ovsdb_echo_call_argv(int ovsdb_fd,
 						  json_rpc_response_t *callback,
                           void * data,
                           int argc,
@@ -461,22 +461,22 @@ bool ovsdb_echo_call_argv(int ovsdb_fd,
         json_array_append_new(jparams, json_string(argv[i]));
     }
 
-    retval = ovsdb_method_send(ovsdb_fd, callback, data, MT_ECHO, jparams);
+    retval = onewifi_ovsdb_method_send(ovsdb_fd, callback, data, MT_ECHO, jparams);
 
     return retval;
 }
 
 
 /* printf style echo API  ovsdb_echo_call*/
-bool OVSDB_GEN_DECL(ovsdb_echo_call, int ovsdb_fd, json_rpc_response_t *callback, void *data)
+bool ONEWIFI_OVSDB_GEN_DECL(ovsdb_echo_call, int ovsdb_fd, json_rpc_response_t *callback, void *data)
 {
-    OVSDB_GEN_CALL(ovsdb_echo_call, ovsdb_fd, callback, data);
+    ONEWIFI_OVSDB_GEN_CALL(ovsdb_echo_call, ovsdb_fd, callback, data);
 }
 
 /* vsprintf style echo API - ovsdb echo call */
-bool OVSDB_VA_DECL(ovsdb_echo_call, int ovsdb_fd, json_rpc_response_t *callback, void *data)
+bool ONEWIFI_OVSDB_VA_DECL(ovsdb_echo_call, int ovsdb_fd, json_rpc_response_t *callback, void *data)
 {
-    OVSDB_VA_CALL(ovsdb_echo_call, ovsdb_fd, callback, data);
+    ONEWIFI_OVSDB_VA_CALL(ovsdb_echo_call, ovsdb_fd, callback, data);
 }
 
 
@@ -484,7 +484,7 @@ bool OVSDB_VA_DECL(ovsdb_echo_call, int ovsdb_fd, json_rpc_response_t *callback,
  * Following three functions are different forms for
  * creating and sending echo json request
  */
-bool ovsdb_echo_call_s_argv(int argc, char *argv[])
+bool onewifi_ovsdb_echo_call_s_argv(int argc, char *argv[])
 {
 
     json_t *    jparams;
@@ -502,7 +502,7 @@ bool ovsdb_echo_call_s_argv(int argc, char *argv[])
         json_array_append_new(jparams, json_string(argv[i]));
     }
 
-    response = ovsdb_method_send_s(db_path, MT_ECHO, jparams);
+    response = onewifi_ovsdb_method_send_s(db_path, MT_ECHO, jparams);
 
     if (response == NULL)
     {
@@ -534,7 +534,7 @@ bool ovsdb_echo_call_s_argv(int argc, char *argv[])
  * rows needed for modify, mu
  *
  */
-json_t *ovsdb_row_filter_argv(json_t * row, int argc, char ** argv)
+json_t *onewifi_ovsdb_row_filter_argv(json_t * row, int argc, char ** argv)
 {
     const char *key;
     json_t *value;
@@ -567,20 +567,20 @@ end:
     return row;
 }
 
-json_t *OVSDB_GEN_DECL(ovsdb_row_filter, json_t *row)
+json_t *ONEWIFI_OVSDB_GEN_DECL(onewifi_ovsdb_row_filter, json_t *row)
 {
-     OVSDB_GEN_CALL(ovsdb_row_filter, row);
+     ONEWIFI_OVSDB_GEN_CALL(onewifi_ovsdb_row_filter, row);
 }
 
-json_t *OVSDB_VA_DECL(ovsdb_row_filter, json_t *row)
+json_t *ONEWIFI_OVSDB_VA_DECL(onewifi_ovsdb_row_filter, json_t *row)
 {
-     OVSDB_VA_CALL(ovsdb_row_filter, row);
+     ONEWIFI_OVSDB_VA_CALL(onewifi_ovsdb_row_filter, row);
 }
 
 /*
  * Same as ovsdb_row_filter..(), except it filters out the columns present IN the list
  */
-json_t *ovsdb_row_filtout_argv(json_t * row, int argc, char ** argv)
+json_t *onewifi_ovsdb_row_filtout_argv(json_t * row, int argc, char ** argv)
 {
     const char *key;
     json_t *value;
@@ -605,21 +605,21 @@ end:
     return row;
 }
 
-json_t *OVSDB_GEN_DECL(ovsdb_row_filtout, json_t *row)
+json_t *ONEWIFI_OVSDB_GEN_DECL(onewifi_ovsdb_row_filtout, json_t *row)
 {
-     OVSDB_GEN_CALL(ovsdb_row_filtout, row);
+     ONEWIFI_OVSDB_GEN_CALL(onewifi_ovsdb_row_filtout, row);
 }
 
-json_t *OVSDB_VA_DECL(ovsdb_row_filtout, json_t *row)
+json_t *ONEWIFI_OVSDB_VA_DECL(onewifi_ovsdb_row_filtout, json_t *row)
 {
-     OVSDB_VA_CALL(ovsdb_row_filtout, row);
+     ONEWIFI_OVSDB_VA_CALL(onewifi_ovsdb_row_filtout, row);
 }
 
 
 
 /*
  * The following is a set of functions used for ovsdb transaction method
- * the top functions is ovsdb_tran_call, whiles other are utility functions
+ * the top functions is onewifi_ovsdb_tran_call, whiles other are utility functions
  * created to enable easy & fast creation of where conditions or creation
  * of raw to be inserted
  */
@@ -627,7 +627,7 @@ json_t *OVSDB_VA_DECL(ovsdb_row_filtout, json_t *row)
 /*
  * OVSDB special value
  */
-json_t *ovsdb_tran_special_value(const char *type, const char *value)
+json_t *onewifi_ovsdb_tran_special_value(const char *type, const char *value)
 {
     json_t *js;
 
@@ -641,15 +641,15 @@ json_t *ovsdb_tran_special_value(const char *type, const char *value)
 /*
  * OVSDB UUID value
  */
-json_t *ovsdb_tran_uuid_json(const char *uuid)
+json_t *onewifi_ovsdb_tran_uuid_json(const char *uuid)
 {
-    return ovsdb_tran_special_value("uuid", uuid);
+    return onewifi_ovsdb_tran_special_value("uuid", uuid);
 }
 
 /**
  * Create a OVS "where" selector
  */
-json_t * ovsdb_tran_cond_single_json(
+json_t * onewifi_ovsdb_tran_cond_single_json(
         const char * column,
         ovsdb_func_t func,
         json_t * value)
@@ -665,18 +665,18 @@ json_t * ovsdb_tran_cond_single_json(
     return js;
 }
 
-json_t * ovsdb_tran_cond_single(
+json_t * onewifi_ovsdb_tran_cond_single(
         char * column,
         ovsdb_func_t func,
         char * value)
 {
-    return ovsdb_tran_cond_single_json(column, func, json_string(value));
+    return onewifi_ovsdb_tran_cond_single_json(column, func, json_string(value));
 }
 
 /*
  * This functions generates conditional array in <where:<> filed
  */
-json_t * ovsdb_tran_cond(ovsdb_col_t col_type,
+json_t * onewifi_ovsdb_tran_cond(ovsdb_col_t col_type,
                          const char * column,
                          ovsdb_func_t func,
                          const void * value)
@@ -697,7 +697,7 @@ json_t * ovsdb_tran_cond(ovsdb_col_t col_type,
 
         // Value is a UUID
         case OCLM_UUID:
-            jval = ovsdb_tran_uuid_json(value);
+            jval = onewifi_ovsdb_tran_uuid_json(value);
             break;
 
         case OCLM_BOOL:
@@ -709,11 +709,11 @@ json_t * ovsdb_tran_cond(ovsdb_col_t col_type,
             break;
 
         default:
-            assert(!"Invalid col_type passed to ovsdb_tran_cond()");
+            assert(!"Invalid col_type passed to onewifi_ovsdb_tran_cond()");
 
     }
 
-    json_array_append_new(jtop, ovsdb_tran_cond_single_json(column, func, jval));
+    json_array_append_new(jtop, onewifi_ovsdb_tran_cond_single_json(column, func, jval));
     return jtop;
 }
 
@@ -722,7 +722,7 @@ json_t * ovsdb_tran_cond(ovsdb_col_t col_type,
  * NULL array creates empty set
  * If raw == true, assume full array passed in
  */
-json_t * ovsdb_tran_array_to_set(json_t *js_array, bool raw)
+json_t * onewifi_ovsdb_tran_array_to_set(json_t *js_array, bool raw)
 {
     json_t * js;
     json_t * js_set_array;
@@ -746,7 +746,7 @@ json_t * ovsdb_tran_array_to_set(json_t *js_array, bool raw)
     return js;
 }
 
-bool ovsdb_tran_comment(json_t *js_array, ovsdb_tro_t oper, json_t *where)
+bool onewifi_ovsdb_tran_comment(json_t *js_array, ovsdb_tro_t oper, json_t *where)
 {
     char comment[128];
 
@@ -852,7 +852,7 @@ error:
  * it would be used as the base transaction object
  *
  * After creating complex transaction with this API, call
- * ovsdb_method_json to send it to ovsdb
+ * onewifi_ovsdb_method_json to send it to ovsdb
  */
 json_t * ovsdb_tran_multi(json_t * jarray,
                           json_t * js_obj,
@@ -869,7 +869,7 @@ json_t * ovsdb_tran_multi(json_t * jarray,
     }
 
     /* Insert comment as the first thing */
-    ovsdb_tran_comment(jarray, oper, where);
+    onewifi_ovsdb_tran_comment(jarray, oper, where);
 
     if (js_obj == NULL)
     {
@@ -877,7 +877,7 @@ json_t * ovsdb_tran_multi(json_t * jarray,
     }
 
     json_object_set_new(js_obj, "table", json_string(table));
-    json_object_set_new(js_obj, "op", ovsdb_tran_operation(oper));
+    json_object_set_new(js_obj, "op", onewifi_ovsdb_tran_operation(oper));
 
     /* In case there  is not select statement, where has to empty array*/
     if (NULL != where)
@@ -909,7 +909,7 @@ json_t * ovsdb_tran_multi(json_t * jarray,
  * inserts a new row, and inserts it's UUID into a parent
  * table's column using mutate
  */
-json_t * ovsdb_tran_insert_with_parent(const char *ovsdb_sock_path, const char * table,
+json_t * onewifi_ovsdb_tran_insert_with_parent(const char *ovsdb_sock_path, const char * table,
                                        json_t * row,
                                        const char * parent_table,
                                        json_t * parent_where,
@@ -939,8 +939,8 @@ json_t * ovsdb_tran_insert_with_parent(const char *ovsdb_sock_path, const char *
 
     js = json_array();
     json_array_append_new(js, json_string(parent_column));
-    json_array_append_new(js, ovsdb_tran_operation(OTR_INSERT));
-    json_array_append_new(js, ovsdb_tran_array_to_set(js_named_uuid, false));
+    json_array_append_new(js, onewifi_ovsdb_tran_operation(OTR_INSERT));
+    json_array_append_new(js, onewifi_ovsdb_tran_array_to_set(js_named_uuid, false));
 
     js_mutations = json_array();
     json_array_append_new(js_mutations, js);
@@ -960,7 +960,7 @@ json_t * ovsdb_tran_insert_with_parent(const char *ovsdb_sock_path, const char *
  * deletes a rows by uuid in one table, and then removes
  * them from a parent table's column using mutate
  */
-json_t * ovsdb_tran_delete_with_parent(const char *ovsdb_sock_path, const char * table,
+json_t * onewifi_ovsdb_tran_delete_with_parent(const char *ovsdb_sock_path, const char * table,
                                        json_t * uuids,
                                        const char * parent_table,
                                        json_t * parent_where,
@@ -978,7 +978,7 @@ json_t * ovsdb_tran_delete_with_parent(const char *ovsdb_sock_path, const char *
     /* Create a sub-transaction per UUID to be deleted */
     json_array_foreach(uuids, index, js_uuid) {
         uuid = json_string_value(json_array_get(js_uuid, 1));
-        jwhere = ovsdb_tran_cond(OCLM_UUID, "_uuid", OFUNC_EQ, uuid);
+        jwhere = onewifi_ovsdb_tran_cond(OCLM_UUID, "_uuid", OFUNC_EQ, uuid);
         jarray = ovsdb_tran_multi(jarray,       // Append transaction
                                   NULL,         // New trans obj
                                   table,        // Table for insert
@@ -990,8 +990,8 @@ json_t * ovsdb_tran_delete_with_parent(const char *ovsdb_sock_path, const char *
     /* Final sub-transaction: Parent table mutation to delete UUIDs */
     js = json_array();
     json_array_append_new(js, json_string(parent_column));
-    json_array_append_new(js, ovsdb_tran_operation(OTR_DELETE));
-    json_array_append_new(js, ovsdb_tran_array_to_set(uuids, true));
+    json_array_append_new(js, onewifi_ovsdb_tran_operation(OTR_DELETE));
+    json_array_append_new(js, onewifi_ovsdb_tran_array_to_set(uuids, true));
 
     js_mutations = json_array();
     json_array_append_new(js_mutations, js);
@@ -1007,7 +1007,7 @@ json_t * ovsdb_tran_delete_with_parent(const char *ovsdb_sock_path, const char *
 }
 
 /* main function for sending transaction JSON requests */
-bool ovsdb_tran_call(int ovsdb_fd,
+bool onewifi_ovsdb_tran_call(int ovsdb_fd,
 					 json_rpc_response_t *cb,
                      void * data,
                      char * table,
@@ -1015,7 +1015,7 @@ bool ovsdb_tran_call(int ovsdb_fd,
                      json_t * where,
                      json_t * row)
 {
-    return ovsdb_method_send(ovsdb_fd, cb, data, MT_TRANS,
+    return onewifi_ovsdb_method_send(ovsdb_fd, cb, data, MT_TRANS,
               ovsdb_tran_multi(NULL, NULL, table, oper, where, row));
 }
 

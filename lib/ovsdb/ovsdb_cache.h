@@ -44,8 +44,8 @@ extern "C" {
 
 // ovsdb cache api
 
-#define DECL_CACHE_CALLBACK_CAST(TABLE)                         \
-    static inline ovsdb_cache_callback_t* cache_cb_cast_##TABLE(\
+#define ONEWIFI_DECL_CACHE_CALLBACK_CAST(TABLE)                         \
+    static inline ovsdb_cache_callback_t* onewifi_cache_cb_cast_##TABLE(\
             void (*cb)(ovsdb_update_monitor_t *self,            \
                 struct schema_##TABLE *old,                     \
                 struct schema_##TABLE *record,                  \
@@ -53,31 +53,31 @@ extern "C" {
         return (ovsdb_cache_callback_t*)(void*)cb;              \
     }
 
-SCHEMA_LISTX(DECL_CACHE_CALLBACK_CAST)
+SCHEMA_LISTX(ONEWIFI_DECL_CACHE_CALLBACK_CAST)
 
-#define OVSDB_CACHE_MONITOR(DB_FD, TABLE, IGN_VER) \
-    ovsdb_cache_monitor(DB_FD, &table_ ## TABLE, cache_cb_cast_##TABLE(callback_ ## TABLE), IGN_VER)
+#define ONEWIFI_OVSDB_CACHE_MONITOR(DB_FD, TABLE, IGN_VER) \
+    onewifi_ovsdb_cache_monitor(DB_FD, &table_ ## TABLE, onewifi_cache_cb_cast_##TABLE(callback_ ## TABLE), IGN_VER)
 
-#define OVSDB_CACHE_MONITOR_F(DB_FD, TABLE, FILTER) \
-    ovsdb_cache_monitor_filter(DB_FD, &table_ ## TABLE, callback_ ## TABLE, FILTER)
+#define ONEWIFI_OVSDB_CACHE_MONITOR_F(DB_FD, TABLE, FILTER) \
+    onewifi_ovsdb_cache_monitor_filter(DB_FD, &table_ ## TABLE, callback_ ## TABLE, FILTER)
 
-bool ovsdb_cache_monitor(int ovsdb_fd, ovsdb_table_t *table, ovsdb_cache_callback_t *callback, bool ignore_version);
-bool ovsdb_cache_monitor_filter(int ovsdb_fd, ovsdb_table_t *table,
+bool onewifi_ovsdb_cache_monitor(int ovsdb_fd, ovsdb_table_t *table, ovsdb_cache_callback_t *callback, bool ignore_version);
+bool onewifi_ovsdb_cache_monitor_filter(int ovsdb_fd, ovsdb_table_t *table,
         ovsdb_cache_callback_t *callback, char **filter);
-void ovsdb_cache_dump_table(ovsdb_table_t *table, char *str);
-void ovsdb_cache_update_cb(ovsdb_update_monitor_t *self);
-ovsdb_cache_row_t* ovsdb_cache_find_row_by_uuid(ovsdb_table_t *table, const char *uuid);
-ovsdb_cache_row_t* ovsdb_cache_find_row_by_key(ovsdb_table_t *table, const char *key);
-ovsdb_cache_row_t* ovsdb_cache_find_row_by_key2(ovsdb_table_t *table, const char *key2);
-void* ovsdb_cache_find_by_uuid(ovsdb_table_t *table, const char *uuid);
-void* ovsdb_cache_find_by_key(ovsdb_table_t *table, const char *key);
-void* ovsdb_cache_find_by_key2(ovsdb_table_t *table, const char *key2);
-void* ovsdb_cache_get_by_uuid(ovsdb_table_t *table, const char *uuid, void *record);
-void* ovsdb_cache_get_by_key(ovsdb_table_t *table, const char *key, void *record);
-void* ovsdb_cache_get_by_key2(ovsdb_table_t *table, const char *key2, void *record);
-int ovsdb_cache_upsert(ovsdb_table_t *table, void *record);
-int ovsdb_cache_upsert_get_uuid(ovsdb_table_t *table, void *record, ovs_uuid_t *uuid);
-int ovsdb_cache_pre_fetch(ovsdb_table_t *table, char *key);
+void onewifi_ovsdb_cache_dump_table(ovsdb_table_t *table, char *str);
+void onewifi_ovsdb_cache_update_cb(ovsdb_update_monitor_t *self);
+ovsdb_cache_row_t* onewifi_ovsdb_cache_find_row_by_uuid(ovsdb_table_t *table, const char *uuid);
+ovsdb_cache_row_t* onewifi_ovsdb_cache_find_row_by_key(ovsdb_table_t *table, const char *key);
+ovsdb_cache_row_t* onewifi_ovsdb_cache_find_row_by_key2(ovsdb_table_t *table, const char *key2);
+void* onewifi_ovsdb_cache_find_by_uuid(ovsdb_table_t *table, const char *uuid);
+void* onewifi_ovsdb_cache_find_by_key(ovsdb_table_t *table, const char *key);
+void* onewifi_ovsdb_cache_find_by_key2(ovsdb_table_t *table, const char *key2);
+void* onewifi_ovsdb_cache_get_by_uuid(ovsdb_table_t *table, const char *uuid, void *record);
+void* onewifi_ovsdb_cache_get_by_key(ovsdb_table_t *table, const char *key, void *record);
+void* onewifi_ovsdb_cache_get_by_key2(ovsdb_table_t *table, const char *key2, void *record);
+int onewifi_ovsdb_cache_upsert(ovsdb_table_t *table, void *record);
+int onewifi_ovsdb_cache_upsert_get_uuid(ovsdb_table_t *table, void *record, ovs_uuid_t *uuid);
+int onewifi_ovsdb_cache_pre_fetch(ovsdb_table_t *table, char *key);
 
 #ifdef __cplusplus
 }

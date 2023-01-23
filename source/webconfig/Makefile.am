@@ -32,7 +32,6 @@ AM_CFLAGS += -D_ANSC_LITTLE_ENDIAN_
 endif
 
 AM_LDFLAGS =  -L$(top_builddir)/../hal/lib
-AM_LDFLAGS += -lhal_wifi
 AM_LDFLAGS += -lwebconfig_framework
 AM_LDFLAGS += -lsecure_wrapper
 AM_LDFLAGS += -lev
@@ -41,6 +40,7 @@ AM_LDFLAGS += -ldl
 AM_LDFLAGS += -ljansson
 AM_LDFLAGS += -lrt
 if CCSP_COMMON_SUPPORT
+AM_LDFLAGS += -lhal_wifi
 AM_LDFLAGS += -L$(top_builddir)/../CcspCommonLibrary/lib
 AM_LDFLAGS += -lccsp_common
 AM_LDFLAGS += -lrdk_wifihal
@@ -62,11 +62,7 @@ libwifi_webconfig_la_CFLAGS =  $(SYSTEMD_CFLAGS)
 libwifi_webconfig_la_CFLAGS += $(DML_ENABLE_FLAG)
 libwifi_webconfig_la_CFLAGS += $(CCSP_COMMON_FLAG)
 
-libwifi_webconfig_la_SOURCES = wifi_webconfig.c wifi_encoder.c wifi_decoder.c wifi_ovsdb_translator.c wifi_webconfig_home.c wifi_webconfig_mesh.c wifi_webconfig_private.c wifi_webconfig_radio.c  wifi_webconfig_xfinity.c wifi_webconfig_associated_client.c wifi_webconfig_wifiapi_radio.c wifi_webconfig_wifiapi_vap.c wifi_webconfig_macfilter.c wifi_webconfig_blaster.c wifi_webconfig_harvester.c wifi_webconfig_wifi_config.c wifi_webconfig_csi.c wifi_webconfig_mesh_sta.c wifi_webconfig_mesh_backhaul.c wifi_webconfig_null.c wifi_webconfig_lnf.c wifi_webconfig_stats_config.c wifi_webconfig_steering_config.c wifi_webconfig_steering_clients.c wifi_webconfig_vif_neighbors.c
-
-if ONEWIFI_DML_SUPPORT
-libwifi_webconfig_la_SOURCES += wifi_webconfig_dml.c
-endif
+libwifi_webconfig_la_SOURCES = wifi_webconfig.c wifi_encoder.c wifi_decoder.c wifi_ovsdb_translator.c  wifi_webconfig_home.c wifi_webconfig_mesh.c wifi_webconfig_private.c wifi_webconfig_radio.c  wifi_webconfig_xfinity.c wifi_webconfig_associated_client.c wifi_webconfig_wifiapi_radio.c wifi_webconfig_wifiapi_vap.c wifi_webconfig_macfilter.c wifi_webconfig_blaster.c wifi_webconfig_harvester.c wifi_webconfig_wifi_config.c wifi_webconfig_csi.c wifi_webconfig_mesh_sta.c wifi_webconfig_mesh_backhaul.c wifi_webconfig_null.c wifi_webconfig_stats_config.c wifi_webconfig_steering_config.c wifi_webconfig_steering_clients.c wifi_webconfig_lnf.c wifi_webconfig_vif_neighbors.c wifi_webconfig_mesh_backhaul_sta.c wifi_webconfig_dml.c
 
 libwifi_webconfig_la_SOURCES +=  $(top_srcdir)/lib/common/util.c $(top_srcdir)/source/utils/wifi_util.c $(top_srcdir)/source/utils/collection.c
 

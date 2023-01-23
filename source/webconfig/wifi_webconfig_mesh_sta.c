@@ -173,6 +173,10 @@ webconfig_error_t encode_mesh_sta_subdoc(webconfig_t *config, webconfig_subdoc_d
         for (j = 0; j < map->num_vaps; j++) {
             vap = &map->vap_array[j];
             vap_name = get_vap_name(&params->hal_cap.wifi_prop, vap->vap_index);
+            if (strnlen(vap_name,sizeof(wifi_vap_name_t)) == 0) {
+                continue;
+            }
+
             if (strncmp("mesh_sta", vap_name, strlen("mesh_sta")) == 0) {
                 obj = cJSON_CreateObject();
                 cJSON_AddItemToArray(obj_array, obj);
@@ -206,7 +210,7 @@ webconfig_error_t decode_mesh_sta_subdoc(webconfig_t *config, webconfig_subdoc_d
     unsigned int num_mesh_ssid;
     wifi_vap_name_t vap_names[MAX_NUM_RADIOS];
     unsigned int presence_mask = 0;
-    char *radio_names[MAX_NUM_RADIOS] = {"radio1", "radio2"};
+    char radio_names[MAX_NUM_RADIOS][8];
     char *name;
     wifi_vap_info_t *vap_info;
     cJSON *json = data->u.encoded.json;
@@ -218,6 +222,10 @@ webconfig_error_t decode_mesh_sta_subdoc(webconfig_t *config, webconfig_subdoc_d
 
     params = &data->u.decoded;
     doc = &config->subdocs[data->type];
+
+    for (i = 0; i < MAX_NUM_RADIOS; i++) {
+        snprintf(radio_names[i], sizeof(radio_names[i]), "radio%d", i+1);
+    }
 
     wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: decoded JSON:\n%s\n", __func__, __LINE__, cJSON_Print(json));
     for (i = 0; i < doc->num_objects; i++) {
