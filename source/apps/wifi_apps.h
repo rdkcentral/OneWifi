@@ -82,6 +82,7 @@ int wifi_apps_frame_dist_event(wifi_apps_t *apps, ctrl_event_type_t type, ctrl_e
 // analytics
 int wifi_apps_analytics_event(wifi_apps_t *apps, ctrl_event_type_t type, ctrl_event_subtype_t sub_type, void *arg);
 
+const char *subdoc_type_to_string(webconfig_subdoc_type_t type);
 #ifdef __cplusplus
 }
 #endif

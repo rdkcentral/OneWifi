@@ -1079,17 +1079,54 @@ int webconfig_harvester_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
     return RETURN_OK;
 }
 
+int push_data_to_apply_pending_queue(webconfig_subdoc_data_t *data)
+{
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    webconfig_subdoc_data_t *temp_data;
+#if CCSP_COMMON
+    wifi_apps_t *analytics = NULL;
+    analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
+#endif // CCSP_COMMON
+    temp_data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
+    if (temp_data == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Unable to allocate memory for subdoc_data %s\n", __func__, __LINE__, subdoc_type_to_string(data->type));
+        return RETURN_ERR;
+    }
+    memcpy(temp_data, data, sizeof(webconfig_subdoc_data_t));
+    queue_push(ctrl->vif_apply_pending_queue, temp_data);
+#if CCSP_COMMON
+    if (analytics->event_fn != NULL) {
+        analytics->event_fn(analytics, ctrl_event_type_webconfig, ctrl_event_webconfig_data_to_apply_pending_queue, data);
+    }
+#endif // CCSP_COMMON
+
+    return RETURN_OK;
+}
+
+void webconfig_analytic_event_data_to_hal_apply(webconfig_subdoc_data_t *data)
+{
+#if CCSP_COMMON
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_apps_t *analytics = NULL;
+    analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
+    if (analytics->event_fn != NULL) {
+        analytics->event_fn(analytics, ctrl_event_type_webconfig, ctrl_event_webconfig_data_to_hal_apply, data);
+    }
+#endif // CCSP_COMMON
+    return;
+}
+
 webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc_data_t *data)
 {
     int ret = RETURN_OK;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: webconfig_state:%02x doc_type:%d doc_name:%s\n", 
-                                        __func__, __LINE__, ctrl->webconfig_state, doc->type, doc->name);
+            __func__, __LINE__, ctrl->webconfig_state, doc->type, doc->name);
 
     switch (doc->type) {
         case webconfig_subdoc_type_unknown:
             wifi_util_error_print(WIFI_MGR, "%s:%d: Unknown webconfig subdoc\n", __func__, __LINE__);
-            break;
+        break;
 
         case webconfig_subdoc_type_radio:
             if (data->descriptor & webconfig_data_descriptor_encoded) {
@@ -1098,10 +1135,17 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                     ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
                 }
             } else {
-                ctrl->webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
-                ret = webconfig_hal_radio_apply(ctrl, &data->u.decoded);
+                if (check_wifi_csa_sched_timeout_active_status(ctrl) == true) {
+                    if (push_data_to_apply_pending_queue(data) != RETURN_OK) {
+                        return webconfig_error_apply;
+                    }
+                } else {
+                    ctrl->webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
+                    webconfig_analytic_event_data_to_hal_apply(data);
+                    ret = webconfig_hal_radio_apply(ctrl, &data->u.decoded);
+                }
             }
-            break;
+        break;
 
         case webconfig_subdoc_type_private:
             if (data->descriptor & webconfig_data_descriptor_encoded) {
@@ -1110,12 +1154,19 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                     ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
                 }
             } else {
-                ctrl->webconfig_state |= ctrl_webconfig_state_vap_private_cfg_rsp_pending;
-                ret = webconfig_hal_private_vap_apply(ctrl, &data->u.decoded);
+                if (check_wifi_csa_sched_timeout_active_status(ctrl) == true) {
+                    if (push_data_to_apply_pending_queue(data) != RETURN_OK) {
+                        return webconfig_error_apply;
+                    }
+                } else {
+                    ctrl->webconfig_state |= ctrl_webconfig_state_vap_private_cfg_rsp_pending;
+                    webconfig_analytic_event_data_to_hal_apply(data);
+                    ret = webconfig_hal_private_vap_apply(ctrl, &data->u.decoded);
+                }
             }
             //This is for captive_portal_check for private SSID when defaults modified
             captive_portal_check();
-            break;
+        break;
 
         case webconfig_subdoc_type_home:
             if (data->descriptor & webconfig_data_descriptor_encoded) {
@@ -1124,10 +1175,17 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                     ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
                 }
             } else {
-                ctrl->webconfig_state |= ctrl_webconfig_state_vap_home_cfg_rsp_pending;
-                ret = webconfig_hal_home_vap_apply(ctrl, &data->u.decoded);
+                if (check_wifi_csa_sched_timeout_active_status(ctrl) == true) {
+                    if (push_data_to_apply_pending_queue(data) != RETURN_OK) {
+                        return webconfig_error_apply;
+                    }
+                } else {
+                    ctrl->webconfig_state |= ctrl_webconfig_state_vap_home_cfg_rsp_pending;
+                    webconfig_analytic_event_data_to_hal_apply(data);
+                    ret = webconfig_hal_home_vap_apply(ctrl, &data->u.decoded);
+                }
             }
-            break;
+        break;
 
         case webconfig_subdoc_type_xfinity:
             if (data->descriptor & webconfig_data_descriptor_encoded) {
@@ -1136,10 +1194,17 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                     ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
                 }
             } else {
-                ctrl->webconfig_state |= ctrl_webconfig_state_vap_xfinity_cfg_rsp_pending;
-                ret = webconfig_hal_xfinity_vap_apply(ctrl, &data->u.decoded);
+                if (check_wifi_csa_sched_timeout_active_status(ctrl) == true) {
+                    if (push_data_to_apply_pending_queue(data) != RETURN_OK) {
+                        return webconfig_error_apply;
+                    }
+                } else {
+                    ctrl->webconfig_state |= ctrl_webconfig_state_vap_xfinity_cfg_rsp_pending;
+                    webconfig_analytic_event_data_to_hal_apply(data);
+                    ret = webconfig_hal_xfinity_vap_apply(ctrl, &data->u.decoded);
+                }
             }
-            break;
+        break;
 
         case webconfig_subdoc_type_lnf:
             if (data->descriptor & webconfig_data_descriptor_encoded) {
@@ -1148,8 +1213,15 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                     ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
                 }
             } else {
-                ctrl->webconfig_state |= ctrl_webconfig_state_vap_lnf_cfg_rsp_pending;
-                ret = webconfig_hal_lnf_vap_apply(ctrl, &data->u.decoded);
+                if (check_wifi_csa_sched_timeout_active_status(ctrl) == true) {
+                    if (push_data_to_apply_pending_queue(data) != RETURN_OK) {
+                        return webconfig_error_apply;
+                    }
+                } else {
+                    ctrl->webconfig_state |= ctrl_webconfig_state_vap_lnf_cfg_rsp_pending;
+                    webconfig_analytic_event_data_to_hal_apply(data);
+                    ret = webconfig_hal_lnf_vap_apply(ctrl, &data->u.decoded);
+                }
             }
         break;
 
@@ -1160,19 +1232,26 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                     ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
                 }
             } else {
-                ctrl->webconfig_state |= ctrl_webconfig_state_vap_mesh_cfg_rsp_pending;
-                ret = webconfig_hal_mesh_vap_apply(ctrl, &data->u.decoded);
-                if (ret != RETURN_OK) {
-                    wifi_util_error_print(WIFI_MGR, "%s:%d: mesh webconfig subdoc failed\n", __func__, __LINE__);
-                    return webconfig_error_apply;
-                }
-                ret = webconfig_hal_mac_filter_apply(ctrl, &data->u.decoded, doc->type);
-                if (ret != RETURN_OK) {
-                    wifi_util_error_print(WIFI_MGR, "%s:%d: macfilter for mesh webconfig subdoc failed\n", __func__, __LINE__);
-                    return webconfig_error_apply;
+                if (check_wifi_csa_sched_timeout_active_status(ctrl) == true) {
+                    if (push_data_to_apply_pending_queue(data) != RETURN_OK) {
+                        return webconfig_error_apply;
+                    }
+                } else {
+                    ctrl->webconfig_state |= ctrl_webconfig_state_vap_mesh_cfg_rsp_pending;
+                    webconfig_analytic_event_data_to_hal_apply(data);
+                    ret = webconfig_hal_mesh_vap_apply(ctrl, &data->u.decoded);
+                    if (ret != RETURN_OK) {
+                        wifi_util_error_print(WIFI_MGR, "%s:%d: mesh webconfig subdoc failed\n", __func__, __LINE__);
+                        return webconfig_error_apply;
+                    }
+                    ret = webconfig_hal_mac_filter_apply(ctrl, &data->u.decoded, doc->type);
+                    if (ret != RETURN_OK) {
+                        wifi_util_error_print(WIFI_MGR, "%s:%d: macfilter for mesh webconfig subdoc failed\n", __func__, __LINE__);
+                        return webconfig_error_apply;
+                    }
                 }
             }
-            break;
+        break;
 
         case webconfig_subdoc_type_mesh_sta:
             if (data->descriptor & webconfig_data_descriptor_encoded) {
@@ -1185,8 +1264,15 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                     ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
                 }
             } else {
-                ctrl->webconfig_state |= ctrl_webconfig_state_vap_mesh_sta_cfg_rsp_pending;
-                ret = webconfig_hal_mesh_sta_vap_apply(ctrl, &data->u.decoded);
+                if (check_wifi_csa_sched_timeout_active_status(ctrl) == true) {
+                    if (push_data_to_apply_pending_queue(data) != RETURN_OK) {
+                        return webconfig_error_apply;
+                    }
+                } else {
+                    ctrl->webconfig_state |= ctrl_webconfig_state_vap_mesh_sta_cfg_rsp_pending;
+                    webconfig_analytic_event_data_to_hal_apply(data);
+                    ret = webconfig_hal_mesh_sta_vap_apply(ctrl, &data->u.decoded);
+                }
             }
             break;
 
@@ -1198,19 +1284,26 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                     ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
                 }
             } else {
-                ctrl->webconfig_state |= ctrl_webconfig_state_vap_mesh_backhaul_cfg_rsp_pending;
-                ret = webconfig_hal_mesh_backhaul_vap_apply(ctrl, &data->u.decoded);
-                if (ret != RETURN_OK) {
-                    wifi_util_error_print(WIFI_MGR, "%s:%d: mesh webconfig subdoc failed\n", __func__, __LINE__);
-                    return webconfig_error_apply;
-                }
-                ret = webconfig_hal_mac_filter_apply(ctrl, &data->u.decoded, doc->type);
-                if (ret != RETURN_OK) {
-                    wifi_util_error_print(WIFI_MGR, "%s:%d: macfilter for mesh webconfig subdoc failed\n", __func__, __LINE__);
-                    return webconfig_error_apply;
+                if (check_wifi_csa_sched_timeout_active_status(ctrl) == true) {
+                    if (push_data_to_apply_pending_queue(data) != RETURN_OK) {
+                        return webconfig_error_apply;
+                    }
+                } else {
+                    ctrl->webconfig_state |= ctrl_webconfig_state_vap_mesh_backhaul_cfg_rsp_pending;
+                    webconfig_analytic_event_data_to_hal_apply(data);
+                    ret = webconfig_hal_mesh_backhaul_vap_apply(ctrl, &data->u.decoded);
+                    if (ret != RETURN_OK) {
+                        wifi_util_error_print(WIFI_MGR, "%s:%d: mesh webconfig subdoc failed\n", __func__, __LINE__);
+                        return webconfig_error_apply;
+                    }
+                    ret = webconfig_hal_mac_filter_apply(ctrl, &data->u.decoded, doc->type);
+                    if (ret != RETURN_OK) {
+                        wifi_util_error_print(WIFI_MGR, "%s:%d: macfilter for mesh webconfig subdoc failed\n", __func__, __LINE__);
+                        return webconfig_error_apply;
+                    }
                 }
             }
-            break;
+        break;
 
         case webconfig_subdoc_type_mac_filter:
             if (data->descriptor & webconfig_data_descriptor_encoded) {
@@ -1326,7 +1419,8 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
             break;
     }
 
-    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: new webconfig_state:%02x\n", 
+
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: new webconfig_state:%02x\n",
                                         __func__, __LINE__, ctrl->webconfig_state);
 
     return ((ret == RETURN_OK) ? webconfig_error_none:webconfig_error_apply);

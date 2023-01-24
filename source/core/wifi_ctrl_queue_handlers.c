@@ -2297,6 +2297,7 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
         case ctrl_event_webconfig_set_data_dml:
         case ctrl_event_webconfig_set_data_webconfig:
         case ctrl_event_webconfig_set_data_ovsm:
+        case ctrl_event_webconfig_data_resched_to_ctrl_queue:
             memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap, sizeof(wifi_hal_capability_t));
 #if CCSP_COMMON
             if (analytics->event_fn != NULL) {
@@ -2305,7 +2306,7 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
 #endif // CCSP_COMMON
             webconfig_decode(config, &data, raw);
 #if CCSP_COMMON
-            if (analytics->event_fn != NULL) {
+            if ((analytics->event_fn != NULL) && (subtype != ctrl_event_webconfig_data_resched_to_ctrl_queue)){
                 analytics->event_fn(analytics, ctrl_event_type_webconfig, subtype, &data);
             }
 #endif // CCSP_COMMON

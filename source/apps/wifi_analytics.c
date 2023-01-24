@@ -207,12 +207,11 @@ int analytics_event_webconfig_set_data(wifi_apps_t *apps, void *arg, ctrl_event_
                     vap = &vap_map->vap_array[j];
 
                     if(vap->vap_name[0] != '\0') {
-                        out_bytes += snprintf(&temp_str[out_bytes], (sizeof(temp_str)-out_bytes)," %d,%s,%s",
+                        out_bytes += snprintf(&temp_str[out_bytes], (sizeof(temp_str)-out_bytes),"\\n%d,%s,%s",
                                 vap->vap_index, vap->u.bss_info.ssid, (vap->u.bss_info.enabled==TRUE)?"enb":"dis");
                     }
                 }
             }
-            wifi_util_info_print(WIFI_ANALYTICS, analytics_format_note_over_core, temp_str);
         break;
         case webconfig_subdoc_type_mesh_sta:
             out_bytes += snprintf(&temp_str[out_bytes], (sizeof(temp_str)-out_bytes), "%s:", subdoc_type_to_string(doc->type));
@@ -223,28 +222,33 @@ int analytics_event_webconfig_set_data(wifi_apps_t *apps, void *arg, ctrl_event_
                     vap = &vap_map->vap_array[j];
 
                     if(vap->vap_name[0] != '\0') {
-                        out_bytes += snprintf(&temp_str[out_bytes], (sizeof(temp_str)-out_bytes)," %d,%s,%s,%s",
+                        out_bytes += snprintf(&temp_str[out_bytes], (sizeof(temp_str)-out_bytes),"\\n%d,%s,%s,%s",
                                 vap->vap_index, vap->u.sta_info.ssid, (vap->u.sta_info.enabled==TRUE)?"enb":"dis",
                                 (vap->u.sta_info.conn_status==wifi_connection_status_connected)?"con":"discon");
                     }
                 }
             }
-            wifi_util_info_print(WIFI_ANALYTICS, analytics_format_note_over_core, temp_str);
         break;
         case webconfig_subdoc_type_radio:
             out_bytes += snprintf(&temp_str[out_bytes], (sizeof(temp_str)-out_bytes), "%s:", subdoc_type_to_string(doc->type));
             for (i = 0; i < getNumberRadios(); i++) {
                 radio = &decoded_params->radios[i];
                 radio_index = convert_radio_name_to_radio_index(radio->name);
-                out_bytes += snprintf(&temp_str[out_bytes], (sizeof(temp_str)-out_bytes)," %d,%s,%d,%d",
+                out_bytes += snprintf(&temp_str[out_bytes], (sizeof(temp_str)-out_bytes),"\\n%d,%s,%d,%d",
                         radio_index, (radio->oper.enable==TRUE)?"enb":"dis", radio->oper.channelWidth, radio->oper.channel);
             }
-            wifi_util_info_print(WIFI_ANALYTICS, analytics_format_note_over_core, temp_str);
         break;
         default:
             out_bytes += snprintf(&temp_str[out_bytes], (sizeof(temp_str)-out_bytes), "%s:", subdoc_type_to_string(doc->type));
-            wifi_util_info_print(WIFI_ANALYTICS, analytics_format_note_over_core, temp_str);
         break;
+    }
+
+    if (sub_type == ctrl_event_webconfig_data_resched_to_ctrl_queue) {
+        wifi_util_info_print(WIFI_ANALYTICS, analytics_format_core_core_reverse, "resched", temp_str);
+    } else if (sub_type == ctrl_event_webconfig_data_to_apply_pending_queue) {
+        wifi_util_info_print(WIFI_ANALYTICS, analytics_format_core_core, "pending", temp_str);
+    } else if (sub_type == ctrl_event_webconfig_data_to_hal_apply) {
+        wifi_util_info_print(WIFI_ANALYTICS, analytics_format_core_hal, "apply", temp_str);
     }
 
     return 0;
@@ -564,6 +568,9 @@ int webconfig_event_analytics(wifi_apps_t *apps, ctrl_event_subtype_t sub_type, 
         case ctrl_event_webconfig_set_data_dml:
         case ctrl_event_webconfig_set_data_webconfig:
         case ctrl_event_webconfig_set_data_ovsm:
+        case ctrl_event_webconfig_data_resched_to_ctrl_queue:
+        case ctrl_event_webconfig_data_to_hal_apply:
+        case ctrl_event_webconfig_data_to_apply_pending_queue:
             analytics_event_webconfig_set_data(apps, arg, sub_type);
             break;
 

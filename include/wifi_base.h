@@ -82,6 +82,9 @@ typedef enum {
     ctrl_event_webconfig_set_data_dml,
     ctrl_event_webconfig_set_data_webconfig,
     ctrl_event_webconfig_set_data_ovsm,
+    ctrl_event_webconfig_data_resched_to_ctrl_queue,
+    ctrl_event_webconfig_data_to_apply_pending_queue,
+    ctrl_event_webconfig_data_to_hal_apply,
     ctrl_event_webconfig_max,
 
     // HAL events

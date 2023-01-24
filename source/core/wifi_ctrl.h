@@ -164,6 +164,7 @@ typedef struct wifi_ctrl {
     queue_t             *queue;
     pthread_mutex_t     lock;
     pthread_cond_t      cond;
+    pthread_mutexattr_t attr;
     unsigned int        poll_period;
     struct timeval      last_signalled_time;
     struct timeval      last_polled_time;
@@ -192,6 +193,7 @@ typedef struct wifi_ctrl {
     unsigned int        network_mode; /* 0 - gateway, 1 - extender */
     bool                active_gw_sta_status;
     wifi_scheduler_id_t wifi_sched_id;
+    queue_t             *vif_apply_pending_queue;
 } wifi_ctrl_t;
 
 typedef struct {

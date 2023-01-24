@@ -56,6 +56,10 @@ static int pending_states_webconfig_analyzer(void *arg);
 
 void deinit_wifi_ctrl(wifi_ctrl_t *ctrl)
 {
+    if(ctrl->vif_apply_pending_queue != NULL) {
+        queue_destroy(ctrl->vif_apply_pending_queue);
+    }
+
     if(ctrl->queue != NULL) {
         queue_destroy(ctrl->queue);
     }
@@ -65,6 +69,7 @@ void deinit_wifi_ctrl(wifi_ctrl_t *ctrl)
         scheduler_deinit(&ctrl->sched);
     }
 
+    pthread_mutexattr_destroy(&ctrl->attr);
     pthread_mutex_destroy(&ctrl->lock);
     pthread_cond_destroy(&ctrl->cond);
 }
@@ -1054,7 +1059,9 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
     gettimeofday(&ctrl->last_signalled_time, NULL);
     gettimeofday(&ctrl->last_polled_time, NULL);
     pthread_cond_init(&ctrl->cond, NULL);
-    pthread_mutex_init(&ctrl->lock, NULL);
+    pthread_mutexattr_init(&ctrl->attr);
+    pthread_mutexattr_settype(&ctrl->attr, PTHREAD_MUTEX_RECURSIVE);
+    pthread_mutex_init(&ctrl->lock, &ctrl->attr);
     ctrl->poll_period = QUEUE_WIFI_CTRL_TASK_TIMEOUT;
 
     /*Intialize the scheduler*/
@@ -1069,6 +1076,13 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
     if (ctrl->queue == NULL) {
         deinit_wifi_ctrl(ctrl);
         wifi_util_error_print(WIFI_CTRL,"RDK_LOG_WARN, WIFI %s: control monitor queue create failed\n",__FUNCTION__);
+        return RETURN_ERR;
+    }
+
+    ctrl->vif_apply_pending_queue = queue_create();
+    if (ctrl->vif_apply_pending_queue == NULL) {
+        deinit_wifi_ctrl(ctrl);
+        wifi_util_error_print(WIFI_CTRL,"RDK_LOG_WARN, WIFI %s: vif apply pending queue create failed\n",__FUNCTION__);
         return RETURN_ERR;
     }
 
@@ -1241,6 +1255,41 @@ bool check_wifi_csa_sched_timeout_active_status(wifi_ctrl_t *l_ctrl)
     return false;
 }
 
+void resched_data_to_ctrl_queue()
+{
+    wifi_ctrl_t *l_ctrl;
+    l_ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    webconfig_subdoc_data_t *queue_data;
+    char *str;
+
+#if CCSP_COMMON
+    wifi_apps_t *analytics = NULL;
+    analytics = get_app_by_type(l_ctrl, wifi_apps_type_analytics);
+#endif // CCSP_COMMON
+
+    if((l_ctrl->vif_apply_pending_queue != NULL) && (queue_count(l_ctrl->vif_apply_pending_queue) != 0)) {
+        // dequeue data
+        while (queue_count(l_ctrl->vif_apply_pending_queue)) {
+            queue_data = queue_pop(l_ctrl->vif_apply_pending_queue);
+            if (queue_data == NULL) {
+                continue;
+            }
+            str = queue_data->u.encoded.raw;
+#if CCSP_COMMON
+            if (analytics->event_fn != NULL) {
+                analytics->event_fn(analytics, ctrl_event_type_webconfig, ctrl_event_webconfig_data_resched_to_ctrl_queue, queue_data);
+            }
+#endif
+            push_data_to_ctrl_queue(str, strlen(str), ctrl_event_type_webconfig, ctrl_event_webconfig_data_resched_to_ctrl_queue);
+
+            //Free the allocated memory
+            if (queue_data) {
+                free(queue_data);
+            }
+        }
+    }
+}
+
 int radio_csa_sched_timeout(void *arg)
 {
     wifi_ctrl_t *l_ctrl;
@@ -1249,8 +1298,11 @@ int radio_csa_sched_timeout(void *arg)
     unsigned int radio_index = *(unsigned int *)arg;
 
     wifi_util_info_print(WIFI_CTRL,"%s:%d - wifi radio_index:%d csa scheduler timeout\r\n",
-                                    __func__, __LINE__, radio_index);
+            __func__, __LINE__, radio_index);
     sched_id->wifi_csa_sched_handler_id[radio_index] = 0;
+
+    resched_data_to_ctrl_queue();
+
     return 0;
 }
 
@@ -1278,6 +1330,8 @@ void stop_wifi_csa_sched_timer(unsigned int radio_index, wifi_ctrl_t *l_ctrl)
         wifi_util_info_print(WIFI_CTRL,"%s:%d - stop wifi radio_index:%d csa scheduler timer\r\n", __func__, __LINE__, radio_index);
         scheduler_cancel_timer_task(l_ctrl->sched, sched_id->wifi_csa_sched_handler_id[radio_index]);
         sched_id->wifi_csa_sched_handler_id[radio_index] = 0;
+
+        resched_data_to_ctrl_queue();
     }
 }
 

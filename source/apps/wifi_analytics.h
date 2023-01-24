@@ -37,6 +37,7 @@ extern "C" {
 #define analytics_format_webconfig_core   "WEBCONFIG -> CORE : %s : %s\r\n"
 #define analytics_format_note_over_core "note over CORE : %s\r\n"
 #define analytics_format_core_hal    "CORE -> HAL : %s : %s\r\n"
+#define analytics_format_core_core_reverse   "CORE <- CORE : %s : %s\r\n"
 
 #ifdef __cplusplus
 }
