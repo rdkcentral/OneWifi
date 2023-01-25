@@ -733,7 +733,6 @@ webconfig_error_t encode_no_security_object(const wifi_vap_security_t *security_
                             __func__, __LINE__, security_info->mode);
             return webconfig_error_encode;
     }
-    cJSON_AddNumberToObject(security, "RekeyInterval", security_info->rekey_interval);
 
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(security, "RadiusSettings", obj);

@@ -1152,9 +1152,6 @@ webconfig_error_t decode_no_security_object(const cJSON *security, wifi_vap_secu
         return webconfig_error_decode;
     }
 
-    decode_param_integer(security, "RekeyInterval", param);
-    security_info->rekey_interval = param->valuedouble;
-
     security_info->mode = wifi_security_mode_none;
     object = cJSON_GetObjectItem(security, "RadiusSettings");
     if (object != NULL) {
