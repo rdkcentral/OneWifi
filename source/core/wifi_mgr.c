@@ -318,7 +318,7 @@ int init_global_radio_config(rdk_wifi_radio_t *radios_cfg, UINT radio_index)
     return RETURN_OK;
 }
 
-bool is_device_type_xb7(void)
+bool is_supported_gateway_device(const char *model)
 {
     FILE *fp = NULL;
     char box_type[64] = {0};
@@ -332,11 +332,17 @@ bool is_device_type_xb7(void)
         pclose(fp);
     }
 
-    if (strncmp(box_type, "CGM4331COM",strlen(box_type)-1) == 0) {
-        return true;
-    } else {
-        return false;
-    }
+    return (strncmp(box_type, model, strlen(box_type)-1)) ? false : true;
+}
+
+bool is_device_type_xb7(void)
+{
+    return is_supported_gateway_device("CGM4331COM");
+}
+
+bool is_device_type_xb8(void)
+{
+    return is_supported_gateway_device("CGM4981COM");
 }
 
 #if DML_SUPPORT
@@ -1328,7 +1334,7 @@ int get_all_param_from_psm_and_set_into_db(void)
     wifi_mgr_t *g_wifidb;
     g_wifidb = get_wifimgr_obj();
 
-    if (is_device_type_xb7() == true) {
+    if (is_device_type_xb7() == true || is_device_type_xb8() == true) {
         bool wifi_psm_db_enabled = false;
         char last_reboot_reason[32];
         memset(last_reboot_reason, 0, sizeof(last_reboot_reason));
