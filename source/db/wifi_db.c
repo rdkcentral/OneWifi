@@ -4271,6 +4271,11 @@ int init_wifidb_tables()
     wifi_db_t *g_wifidb;
     g_wifidb = (wifi_db_t*) get_wifidb_obj();
 
+    if (is_db_consolidated()) {
+        g_wifidb->wifidb_fd = -1;
+        g_wifidb->wifidb_wfd = -1;
+    }
+
     unsigned int attempts = 0;
     g_wifidb->wifidb_ev_loop = ev_loop_new(0);
     if (!g_wifidb->wifidb_ev_loop) {
@@ -4291,7 +4296,11 @@ int init_wifidb_tables()
     ONEWIFI_OVSDB_TABLE_INIT(Wifi_Passpoint_Config, vap_name);
     ONEWIFI_OVSDB_TABLE_INIT(Wifi_Anqp_Config, vap_name);
     //connect to wifidb with sock path
-    snprintf(g_wifidb->wifidb_sock_path, sizeof(g_wifidb->wifidb_sock_path), "%s/wifidb.sock", WIFIDB_RUN_DIR);
+    if (is_db_consolidated()) {
+        snprintf(g_wifidb->wifidb_sock_path, sizeof(g_wifidb->wifidb_sock_path), WIFIDB_CONSOLIDATED_PATH);
+    } else {
+        snprintf(g_wifidb->wifidb_sock_path, sizeof(g_wifidb->wifidb_sock_path), "%s/wifidb.sock", WIFIDB_RUN_DIR);
+    }
     // XXX: attemps == 3 sometimes is reached on XE2. Should be refactored
     while (attempts < 5) {
         if ((g_wifidb->wifidb_fd = onewifi_ovsdb_conn(g_wifidb->wifidb_sock_path)) < 0) {

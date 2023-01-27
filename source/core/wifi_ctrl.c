@@ -1179,6 +1179,8 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
 {
     unsigned int i;
 
+    ctrl->db_consolidated = (0 == access("/tmp/db_consolidated", F_OK));
+
     //Initialize Webconfig Framework
     ctrl->webconfig.initializer = webconfig_initializer_onewifi;
     ctrl->webconfig.apply_data = (webconfig_apply_data_t) webconfig_ctrl_apply;

@@ -545,7 +545,9 @@ int rdk_wifi_radio_get_parameters(uint8_t r_index, wifi_radio_operationParam_t *
 
 void init_wifidb(void)
 {
-    start_wifidb();
+    if (!is_db_consolidated()) {
+        start_wifidb();
+    }
     init_wifidb_tables();
     //init_wifidb_data();//TBD
     start_wifidb_monitor();

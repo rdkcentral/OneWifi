@@ -52,6 +52,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /* OVSDB response buffers can be HUGE */
 static char ovsdb_write_buf[256*1024];
 
+#define PERSISTENT_DB_BACKUP      "/nvram/wifi/rdkb-wifi.db"
+#define PERSISTENT_DB_BACKUP_TMP  PERSISTENT_DB_BACKUP".tmp"
+
+#define BACKUP_SNAPSHOT_CMD    "ovsdb-client backup " OVSDB_DEF_DB " > " PERSISTENT_DB_BACKUP_TMP
+#define BACKUP_SAVE_CMD        "mv " PERSISTENT_DB_BACKUP_TMP " " PERSISTENT_DB_BACKUP
+
 /**
  * Callback for json_dump_callback() -- called from ovsb_write_s()
  *
@@ -71,6 +77,50 @@ int ovsdb_sync_write_fn(const char *buf, size_t sz, void *self)
     }
 
     return 0;
+}
+
+static bool exec_cmd(char *cmd)
+{
+    if (!cmd || !cmd[0]) {
+        LOGE("%s: No command provided", __func__);
+        return false;
+    }
+
+    int status = system(cmd);
+    if (status == 0) {
+        return true;
+    }
+    else if (WIFEXITED(status)) {
+        LOGE("%s: Command '%s' exited with status=%d", __func__, cmd, WEXITSTATUS(status));
+    }
+    else {
+        LOGE("%s: Command '%s' failed or interrupted", __func__, cmd);
+    }
+
+    return false;
+}
+
+static pthread_mutex_t backup_lock;
+static bool ovsdb_backup()
+{
+    bool status = false;
+
+    if (!is_db_consolidated()) {
+        LOGE("%s: Database consolidation is not supported", __func__);
+        return status;
+    }
+
+    pthread_mutex_lock(&backup_lock);
+    /*  This command cannot be applied directly for writing to nvram DB,
+        because the command is heavy and the fail (e.g. reboot) may happen
+        in the middle of command run. So to avoid persistent DB corruction,
+        need to write to the temporary file on the same filesystem first,
+        then use mv to a persistent DB file, which is less probably be interrupted
+     */
+    status = exec_cmd(BACKUP_SNAPSHOT_CMD) && exec_cmd(BACKUP_SAVE_CMD);
+    pthread_mutex_unlock(&backup_lock);
+
+    return status;
 }
 
 static pthread_mutex_t ovsdb_lock;
@@ -154,6 +204,9 @@ json_t *ovsdb_write_s(char *ovsdb_sock_path, json_t *jsdata)
         LOGE("Sync: Error parsing OVSDB response (%s):\n%s", err.text, ovsdb_write_buf);
         wifidb_print("Sync: Error parsing OVSDB response (%s):\n%s\r\n", err.text, ovsdb_write_buf);
     }
+    wifidb_print("Write done --- syncing database\n");
+    bool backup_success = ovsdb_backup();
+    wifidb_print("Backup database %s\n", backup_success ? "succeeded" : "failed");
 
 error:
     pthread_mutex_unlock(&ovsdb_lock);

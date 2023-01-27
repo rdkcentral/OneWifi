@@ -54,8 +54,10 @@ typedef struct {
 #endif // WIFIDB_DIR
 #define WIFIDB_RUN_DIR "/var/tmp"
 #define DEFAULT_WPS_PIN  "1234"
-#define ONEWIFI_SCHEMA_DEF_VERSION 100007
-
+//Schema version also needs to be
+//updated in the managers.init if opensync code 
+#define ONEWIFI_SCHEMA_DEF_VERSION 100007 
+#define WIFIDB_CONSOLIDATED_PATH "/var/run/openvswitch/db.sock"
 #define BUFFER_LENGTH_WIFIDB 32
 
 int start_wifidb();

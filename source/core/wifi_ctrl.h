@@ -218,6 +218,8 @@ typedef struct wifi_ctrl {
     queue_t             *vif_apply_pending_queue;
     bool                ctrl_initialized; 
     bool                acs_pending[MAX_NUM_RADIOS];
+
+    bool                db_consolidated;
 } wifi_ctrl_t;
 
 typedef struct {
@@ -256,6 +258,7 @@ void process_mgmt_ctrl_frame_event(frame_data_t *msg, uint32_t msg_length);
 wifi_db_t *get_wifidb_obj();
 wifi_ctrl_t *get_wifictrl_obj();
 void deinit_ctrl_monitor(wifi_ctrl_t *ctrl);
+bool is_db_consolidated();
 
 UINT getRadioIndexFromAp(UINT apIndex);
 UINT getPrivateApFromRadioIndex(UINT radioIndex);

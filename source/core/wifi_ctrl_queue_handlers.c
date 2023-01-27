@@ -1712,15 +1712,25 @@ void process_assoc_device_event(void *data)
     }
 }
 
+#if CCSP_COMMON
 void process_factory_reset_command(bool type)
 {
     wifi_mgr_t *p_wifi_mgr = get_wifimgr_obj();
     p_wifi_mgr->ctrl.factory_reset = type;
     wifi_util_info_print(WIFI_CTRL,"%s:%d and type is %d\n",__func__,__LINE__,type);
-    system("killall -9 wifidb-server");
+
+    bool db_consolidated = is_db_consolidated();
+
+    if (db_consolidated) {
+        system("killall -9 ovsdb-server");
+    } else {
+        system("killall -9 wifidb-server");
+    }
     system("rm -f /nvram/wifi/rdkb-wifi.db");
     wifidb_cleanup();
-    start_wifidb();
+    if (!db_consolidated) {
+        start_wifidb();
+    }
     wifi_util_dbg_print(WIFI_DB,"WIFI Factory reset started wifi db %d\n",__LINE__);
     init_wifidb_tables();
     wifidb_init_default_value();
@@ -1730,6 +1740,7 @@ void process_factory_reset_command(bool type)
     start_wifidb_monitor();
     p_wifi_mgr->ctrl.webconfig_state |= ctrl_webconfig_state_factoryreset_cfg_rsp_pending;
 }
+#endif
 
 #if DML_SUPPORT
 void process_radius_grey_list_rfc(bool type)
@@ -2345,10 +2356,10 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len, ctrl_
             process_sta_connect_command(*(bool *)data);
             break;
 
+#if CCSP_COMMON
         case ctrl_event_type_command_factory_reset:
             process_factory_reset_command(*(bool *)data);
             break;
-#if CCSP_COMMON
         case ctrl_event_type_radius_grey_list_rfc:
             process_radius_grey_list_rfc(*(bool *)data);
             break;
