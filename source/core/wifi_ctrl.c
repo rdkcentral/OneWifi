@@ -1460,7 +1460,7 @@ static int pending_states_webconfig_analyzer(void *arg)
 
 static void ctrl_queue_timeout_scheduler_tasks(wifi_ctrl_t *ctrl)
 {
-    scheduler_add_timer_task(ctrl->sched, FALSE, NULL, run_analytics_event, NULL, (ctrl->poll_period * 1000), 0);
+    scheduler_add_timer_task(ctrl->sched, FALSE, NULL, run_analytics_event, NULL, (ANAYLYTICS_PERIOD * 1000), 0);
 
     scheduler_add_timer_task(ctrl->sched, FALSE, NULL, run_greylist_event, NULL, (GREYLIST_CHECK_IN_SECONDS * 1000), 0);
 

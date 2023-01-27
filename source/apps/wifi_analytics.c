@@ -74,7 +74,7 @@ int analytics_event_exec_stop(wifi_apps_t *apps, void *arg)
     return 0;
 }
 
-int analytics_event_exec_timeout(wifi_apps_t *apps, void *arg)
+void device_statistics_info(analytics_data_t *data)
 {
     hash_map_t   *sta_map;
     char         temp_str[128];
@@ -86,20 +86,8 @@ int analytics_event_exec_timeout(wifi_apps_t *apps, void *arg)
     sta_data_t *sta_data;
     struct rusage usage;
     float user, system;
-    analytics_data_t        *data;
-
-    data = &apps->u.analytics;
-    data->tick_demultiplexer++;
-
-    /* We process every 60 seconds. Since this function will be executed every QUEUE_WIFI_CTRL_TASK_TIMEOUT
-       seconds, the following equation should do the trick */
-
-    if ((data->tick_demultiplexer % (ANAYLYTICS_PERIOD/QUEUE_WIFI_CTRL_TASK_TIMEOUT)) != 0) {
-        return 0;
-    }
 
     getrusage(RUSAGE_SELF, &usage);
-    data->minutes_alive++;
 
     user = (usage.ru_utime.tv_sec - data->last_usage.ru_utime.tv_sec) +
                                1e-6*(usage.ru_utime.tv_usec - data->last_usage.ru_utime.tv_usec);
@@ -148,8 +136,21 @@ int analytics_event_exec_timeout(wifi_apps_t *apps, void *arg)
         }
         sta_info = hash_map_get_next(sta_map, sta_info);
     }
+}
 
-    data->tick_demultiplexer = 0;
+int analytics_event_exec_timeout(wifi_apps_t *apps, void *arg)
+{
+    analytics_data_t        *data;
+
+    data = &apps->u.analytics;
+
+    data->minutes_alive++;
+
+    /* print device statistics info at every 5 minutes */
+    if ((data->minutes_alive % 5) == 0) {
+        device_statistics_info(data);
+    }
+
     return 0;
 }
 

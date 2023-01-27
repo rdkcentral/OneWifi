@@ -24,8 +24,6 @@
 extern "C" {
 #endif
 
-#define ANAYLYTICS_PERIOD            60
-
 #define analytics_format_mgr_core    "MGR -> CORE : %s : %s\r\n"
 #define analytics_format_ovsm_core   "OVSM -> CORE : %s : %s\r\n"
 #define analytics_format_core_ovsm   "CORE -> OVSM : %s : %s\r\n"
