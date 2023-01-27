@@ -316,8 +316,8 @@ void process_anqp_gas_init_frame_event(frame_data_t *msg, uint32_t msg_length)
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir);
 
     wifi_interworking_t *l_inter = Get_wifi_object_interworking_parameter(msg->frame.ap_index);
-    if(l_inter == NULL) {
-        wifi_util_dbg_print(WIFI_CTRL,"%s:%d Unable to get interworking data for vap_indx: %d\n", __func__,__LINE__, msg->frame.ap_index);
+    if (l_inter == NULL ||!(l_inter->interworking.interworkingEnabled) || !(l_inter->passpoint.enable)) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d interworking data or passpoint is not enabled for vap_indx: %d\n", __func__,__LINE__, msg->frame.ap_index);
         return;
     }
 
