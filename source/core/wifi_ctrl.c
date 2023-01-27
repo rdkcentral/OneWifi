@@ -755,6 +755,7 @@ void factory_reset_wifi(void)
 
 int captive_portal_check(void)
 {
+#ifdef WIFI_CAPTIVE_PORTAL
     uint8_t num_of_radios = getNumberRadios();
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
     UINT radio_index =0;
@@ -846,7 +847,23 @@ int captive_portal_check(void)
     rbusValue_Release(value);
     rbusValue_Release(config_wifi_value);
     wifi_util_info_print(WIFI_CTRL," Captive_portal Ends after NotifyWifiChanges\n");
+#else //WIFI_CAPTIVE_PORTAL
+    // Some devices use captive portal only for SelfHelp, and the UI need not be redirected to captive portal.
+    int rc =0;
+    rbusValue_t config_wifi_value = NULL;
 
+    wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
+
+    rbusValue_Init(&config_wifi_value);
+    rbusValue_SetBoolean(config_wifi_value, false);
+
+    rc = rbus_set(g_wifi_mgr->ctrl.rbus_handle,CONFIG_WIFI,config_wifi_value,NULL);
+
+    if (rc != RBUS_ERROR_SUCCESS) {
+        wifi_util_error_print(WIFI_CTRL,"Rbus error Device.DeviceInfo.X_RDKCENTRAL-COM_ConfigureWiFi\n");
+    }
+
+#endif //WIFI_CAPTIVE_PORTAL
     return RETURN_OK;
 
 }
