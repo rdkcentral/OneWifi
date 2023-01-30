@@ -138,7 +138,10 @@ static int push_csi_data_dml_cache_to_one_wifidb() {
     if (webconfig_encode(&g_wifievents_webconfig, &data, webconfig_subdoc_type_csi) == webconfig_error_none) {
         str = data.u.encoded.raw;
         wifi_util_info_print(WIFI_MON, "%s: CSI cache encoded successfully  \n", __FUNCTION__);
+        //unlock event mutex before pushing data ctrl queue to avoid deadlock
+        pthread_mutex_unlock(&g_events_lock);
         push_data_to_ctrl_queue(str, strlen(str), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data_dml);
+        pthread_mutex_lock(&g_events_lock);
     } else {
         wifi_util_error_print(WIFI_MON, "%s:%d: Webconfig set failed\n", __func__, __LINE__);
         return RBUS_ERROR_BUS_ERROR;
