@@ -33,7 +33,6 @@
 #include "wifi_util.h"
 
 #define MAX_EVENT_NAME_SIZE     200
-#define CLIENTDIAG_JSON_BUFFER_SIZE 665
 
 typedef struct {
     char name[MAX_EVENT_NAME_SIZE];
@@ -326,8 +325,17 @@ void events_update_clientdiagdata(unsigned int num_devs, int vap_idx, wifi_assoc
                         "\"SNR\":\"%d\","
                         "\"OperatingStandard\":\"%s\","
                         "\"OperatingChannelBandwidth\":\"%s\","
-                        "\"AuthenticationFailures\":\"%d\""
-                        "},",     
+                        "\"AuthenticationFailures\":\"%d\","
+                        "\"AuthenticationState\":\"%d\","
+                        "\"Active\":\"%d\","
+                        "\"InterferenceSources\":\"%s\","
+                        "\"DataFramesSentNoAck\":\"%lu\","
+                        "\"RSSI\":\"%d\","
+                        "\"MinRSSI\":\"%d\","
+                        "\"MaxRSSI\":\"%d\","
+                        "\"Disassociations\":\"%u\","
+                        "\"Retransmissions\":\"%u\""
+                        "},",
                         dev_array->cli_MACAddress[0],
                         dev_array->cli_MACAddress[1],
                         dev_array->cli_MACAddress[2],
@@ -347,7 +355,16 @@ void events_update_clientdiagdata(unsigned int num_devs, int vap_idx, wifi_assoc
                         dev_array->cli_SNR,
                         dev_array->cli_OperatingStandard,
                         dev_array->cli_OperatingChannelBandwidth,
-                        dev_array->cli_AuthenticationFailures);
+                        dev_array->cli_AuthenticationFailures,
+                        dev_array->cli_AuthenticationState,
+                        dev_array->cli_Active,
+                        dev_array->cli_InterferenceSources,
+                        dev_array->cli_DataFramesSentNoAck,
+                        dev_array->cli_RSSI,
+                        dev_array->cli_MinRSSI,
+                        dev_array->cli_MaxRSSI,
+                        dev_array->cli_Disassociations,
+                        dev_array->cli_Retransmissions);
                 dev_array++;
             }
             t_pos = pos;
@@ -924,19 +941,32 @@ rbusError_t events_GetHandler(rbusHandle_t handle, rbusProperty_t property, rbus
         }
         else
         {
-            char buffer[500];
-            snprintf(buffer,sizeof(buffer),
-                                    "{"
-                                    "\"Version\":\"1.0\","
-                                    "\"AssociatedClientsDiagnostics\":["
-                                    "{"
-                                    "\"VapIndex\":\"%d\","
-                                    "\"AssociatedClientDiagnostics\":[]"
-                                    "}"
-                                    "]"
-                                    "}",
-                                    idx);
-            rbusValue_SetString(value, buffer);
+            //unlock event mutex before updating monitor data to avoid deadlock
+            pthread_mutex_unlock(&g_events_lock);
+            char *harvester_buf[MAX_VAP];
+            harvester_buf[vap_array_index] = (char *) malloc(CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*MAX_ASSOCIATED_WIFI_DEVS);
+            if (harvester_buf[vap_array_index] == NULL) {
+                wifi_util_error_print(WIFI_MON, "%s %d Memory allocation failed\n", __func__, __LINE__);
+                return  RBUS_ERROR_BUS_ERROR;
+            }
+
+            wifi_util_error_print(WIFI_MON, "%s %d vap index : %u\n", __func__, __LINE__, vap_array_index);
+            int res = harvester_get_associated_device_info(vap_array_index, harvester_buf);
+            if (res < 0) {
+                wifi_util_error_print(WIFI_MON, "%s %d Associated Device Info collection failed\n", __func__, __LINE__);
+                if (harvester_buf[vap_array_index] != NULL) {
+                    wifi_util_error_print(WIFI_MON, "%s %d Freeing Harvester Memory\n", __func__, __LINE__);
+                    free(harvester_buf[vap_array_index]);
+                    harvester_buf[vap_array_index] = NULL;
+                }
+                return RBUS_ERROR_BUS_ERROR;
+           }
+           pthread_mutex_lock(&g_events_lock);
+           rbusValue_SetString(value, harvester_buf[vap_array_index]);
+           if (harvester_buf[vap_array_index] != NULL) {
+               free(harvester_buf[vap_array_index]);
+               harvester_buf[vap_array_index] = NULL;
+           }
         }
         rbusProperty_SetValue(property, value);
         rbusValue_Release(value);

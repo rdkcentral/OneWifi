@@ -24,7 +24,7 @@
 #include "collection.h"
 #include "wifi_monitor.h"
 
-
+#define CLIENTDIAG_JSON_BUFFER_SIZE 665
 #define MAX_CSI_INTERVAL    30000
 #define MIN_CSI_INTERVAL    100
 

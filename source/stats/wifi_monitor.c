@@ -83,6 +83,8 @@ static struct timeval csi_prune_timer;
 #include "wifi_mgr.h"
 #include "wifi_util.h"
 
+int harvester_get_associated_device_info(int vap_index, char **harvester_buf);
+
 extern void* bus_handle;
 extern char g_Subsystem[32];
 #define SINGLE_CLIENT_WIFI_AVRO_FILENAME "WifiSingleClient.avsc"
@@ -198,6 +200,102 @@ BOOL IsWiFiApStatsEnable(UINT uvAPIndex)
 {
     return ((sWiFiDmlApStatsEnableCfg[uvAPIndex]) ? TRUE : FALSE);
 }
+
+int harvester_get_associated_device_info(int vap_index, char **harvester_buf)
+{
+    unsigned int pos = 0, tr_pos = 0;
+    sta_data_t *sta_data = NULL;
+    if (harvester_buf[vap_index] == NULL) {
+        wifi_util_dbg_print(WIFI_MON, "%s %d Harvester Buffer is NULL\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    pos = snprintf(harvester_buf[vap_index],
+                CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*MAX_ASSOCIATED_WIFI_DEVS,
+                "{"
+                "\"Version\":\"1.0\","
+                "\"AssociatedClientsDiagnostics\":["
+                "{"
+                "\"VapIndex\":\"%d\","
+                "\"AssociatedClientDiagnostics\":[",
+                (vap_index+1));
+    pthread_mutex_lock(&g_monitor_module.lock);
+    sta_data = hash_map_get_first(g_monitor_module.bssid_data[vap_index].sta_map);
+    while (sta_data != NULL) {
+        pos += snprintf(&harvester_buf[vap_index][pos],
+                (CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*MAX_ASSOCIATED_WIFI_DEVS)-pos, "{"
+                        "\"MAC\":\"%02x%02x%02x%02x%02x%02x\","
+                        "\"DownlinkDataRate\":\"%d\","
+                        "\"UplinkDataRate\":\"%d\","
+                        "\"BytesSent\":\"%lu\","
+                        "\"BytesReceived\":\"%lu\","
+                        "\"PacketsSent\":\"%lu\","
+                        "\"PacketsRecieved\":\"%lu\","
+                        "\"Errors\":\"%lu\","
+                        "\"RetransCount\":\"%lu\","
+                        "\"Acknowledgements\":\"%lu\","
+                        "\"SignalStrength\":\"%d\","
+                        "\"SNR\":\"%d\","
+                        "\"OperatingStandard\":\"%s\","
+                        "\"OperatingChannelBandwidth\":\"%s\","
+                        "\"AuthenticationFailures\":\"%d\","
+                        "\"AuthenticationState\":\"%d\","
+                        "\"Active\":\"%d\","
+                        "\"InterferenceSources\":\"%s\","
+                        "\"DataFramesSentNoAck\":\"%lu\","
+                        "\"RSSI\":\"%d\","
+                        "\"MinRSSI\":\"%d\","
+                        "\"MaxRSSI\":\"%d\","
+                        "\"Disassociations\":\"%u\","
+                        "\"Retransmissions\":\"%u\""
+                        "},",
+                        sta_data->dev_stats.cli_MACAddress[0],
+                        sta_data->dev_stats.cli_MACAddress[1],
+                        sta_data->dev_stats.cli_MACAddress[2],
+                        sta_data->dev_stats.cli_MACAddress[3],
+                        sta_data->dev_stats.cli_MACAddress[4],
+                        sta_data->dev_stats.cli_MACAddress[5],
+                        sta_data->dev_stats.cli_MaxDownlinkRate,
+                        sta_data->dev_stats.cli_MaxUplinkRate,
+                        sta_data->dev_stats.cli_BytesSent,
+                        sta_data->dev_stats.cli_BytesReceived,
+                        sta_data->dev_stats.cli_PacketsSent,
+                        sta_data->dev_stats.cli_PacketsReceived,
+                        sta_data->dev_stats.cli_ErrorsSent,
+                        sta_data->dev_stats.cli_RetransCount,
+                        sta_data->dev_stats.cli_DataFramesSentAck,
+                        sta_data->dev_stats.cli_SignalStrength,
+                        sta_data->dev_stats.cli_SNR,
+                        sta_data->dev_stats.cli_OperatingStandard,
+                        sta_data->dev_stats.cli_OperatingChannelBandwidth,
+                        sta_data->dev_stats.cli_AuthenticationFailures,
+                        sta_data->dev_stats.cli_AuthenticationState,
+                        sta_data->dev_stats.cli_Active,
+                        sta_data->dev_stats.cli_InterferenceSources,
+                        sta_data->dev_stats.cli_DataFramesSentNoAck,
+                        sta_data->dev_stats.cli_RSSI,
+                        sta_data->dev_stats.cli_MinRSSI,
+                        sta_data->dev_stats.cli_MaxRSSI,
+                        sta_data->dev_stats.cli_Disassociations,
+                        sta_data->dev_stats.cli_Retransmissions);
+
+
+        sta_data = hash_map_get_next(g_monitor_module.bssid_data[vap_index].sta_map, sta_data);
+
+    }
+    pthread_mutex_unlock(&g_monitor_module.lock);
+    tr_pos = pos-1;
+
+    snprintf(&harvester_buf[vap_index][tr_pos], (
+             CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*MAX_ASSOCIATED_WIFI_DEVS)-tr_pos,"]"
+             "}"
+             "]"
+             "}");
+
+    wifi_util_dbg_print(WIFI_MON, "%s %d pos : %u tr_pos : %u Buffer for vap %d updated as %s\n", __func__, __LINE__, pos, tr_pos, vap_index, harvester_buf[vap_index]);
+    return RETURN_OK;
+}
+
+
 
 /* get_self_bss_chan_statistics () will get channel statistics from driver and calculate self bss channel utilization */
 void get_self_bss_chan_statistics (int radiocnt , UINT *Tx_perc, UINT  *Rx_perc)
