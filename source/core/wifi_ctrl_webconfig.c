@@ -500,13 +500,63 @@ int webconfig_send_csi_status(wifi_ctrl_t *ctrl)
     return RETURN_OK;
 }
 
+int  webconfig_free_vap_object_diff_assoc_client_entries(webconfig_subdoc_data_t *data)
+{
+    unsigned int i=0, j=0;
+    rdk_wifi_radio_t *radio;
+    rdk_wifi_vap_info_t *rdk_vap_info, *tmp_rdk_vap_info;
+    webconfig_subdoc_decoded_data_t *decoded_params;
+    assoc_dev_data_t *assoc_dev_data, *temp_assoc_dev_data;
+    mac_addr_str_t mac_str;
+
+    decoded_params = &data->u.decoded;
+    if (decoded_params == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: decoded_params is NULL\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    for (i = 0; i < decoded_params->num_radios; i++) {
+        radio = &decoded_params->radios[i];
+        for (j = 0; j < radio->vaps.num_vaps; j++) {
+            rdk_vap_info = &decoded_params->radios[i].vaps.rdk_vap_array[j];
+            if (rdk_vap_info == NULL) {
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: rdk_vap_info is null", __func__, __LINE__);
+                return RETURN_ERR;
+            }
+            if (rdk_vap_info->associated_devices_diff_map != NULL) {
+                assoc_dev_data = hash_map_get_first(rdk_vap_info->associated_devices_diff_map);
+                while(assoc_dev_data != NULL) {
+                    to_mac_str(assoc_dev_data->dev_stats.cli_MACAddress, mac_str);
+                    assoc_dev_data = hash_map_get_next(rdk_vap_info->associated_devices_diff_map, assoc_dev_data);
+                    temp_assoc_dev_data = hash_map_remove(rdk_vap_info->associated_devices_diff_map, mac_str);
+                    if (temp_assoc_dev_data != NULL) {
+                        free(temp_assoc_dev_data);
+                    }
+                }
+                hash_map_destroy(rdk_vap_info->associated_devices_diff_map);
+                rdk_vap_info->associated_devices_diff_map =  NULL;
+            }
+            //Clearing the global memory
+            tmp_rdk_vap_info = get_wifidb_rdk_vap_info(decoded_params->radios[i].vaps.rdk_vap_array[j].vap_index);
+            if (tmp_rdk_vap_info == NULL) {
+                wifi_util_error_print(WIFI_CTRL,"%s:%d NULL rdk_vap_info pointer\n", __func__, __LINE__);
+                return RETURN_ERR;
+            }
+            tmp_rdk_vap_info->associated_devices_diff_map = NULL;
+        }
+    }
+    return RETURN_OK;
+}
+
 int webconfig_send_associate_status(wifi_ctrl_t *ctrl)
 {
     webconfig_subdoc_data_t data;
     webconfig_init_subdoc_data(&data);
+    data.u.decoded.assoclist_notifier_type = assoclist_notifier_diff;
     if (webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_associated_clients) != webconfig_error_none) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
     }
+    webconfig_free_vap_object_diff_assoc_client_entries(&data);
     return RETURN_OK;
 }
 

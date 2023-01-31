@@ -153,6 +153,17 @@ typedef enum {
     webconfig_initializer_max
 } webconfig_initializer_t;
 
+typedef enum {
+    assoclist_notifier_full,
+    assoclist_notifier_diff,
+} assoclist_notifier_type_t;
+
+typedef enum {
+    assoclist_type_full,
+    assoclist_type_add,
+    assoclist_type_remove
+} assoclist_type_t;
+
 typedef struct {
     wifi_global_config_t    config;
     wifi_hal_capability_t   hal_cap;
@@ -166,6 +177,7 @@ typedef struct {
     hash_map_t  *vif_neighbors_map;
     // external structures that need translation to above structures
     unsigned int num_radios;
+    assoclist_notifier_type_t assoclist_notifier_type;
     void *external_protos;
 } webconfig_subdoc_decoded_data_t;
 

@@ -382,7 +382,8 @@ typedef struct {
     wifi_vap_name_t         vap_name;
     UINT                    vap_index;
     hash_map_t              *acl_map;
-    hash_map_t              *associated_devices_map;
+    hash_map_t              *associated_devices_map; //Full
+    hash_map_t              *associated_devices_diff_map; //Add,Remove
     int                     kick_device_task_counter;
     bool                    kick_device_config_change;
     bool                    is_mac_filter_initialized;
@@ -563,10 +564,16 @@ typedef struct {
     wifi_bss_info_t        bss_info;
 } __attribute__((packed)) rdk_sta_data_t;
 
+typedef enum {
+    client_state_connected,
+    client_state_disconnected
+} client_state_t;
+
 typedef struct {
     int ap_index;
     wifi_associated_dev3_t dev_stats;
     int reason;
+    client_state_t client_state;
 } __attribute__((__packed__)) assoc_dev_data_t;
 
 struct active_msmt_data;

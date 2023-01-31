@@ -1383,6 +1383,41 @@ void lm_notify_disassoc(assoc_dev_data_t *assoc_dev_data, unsigned int vap_index
     }
 }
 
+int add_client_diff_assoclist(hash_map_t **diff_map, char *mac,  assoc_dev_data_t *assoc_dev_data)
+{
+    char trk_mac_string[18] = {0};
+    assoc_dev_data_t *tmp_assoc_dev_data = NULL;
+    if ((assoc_dev_data == NULL) || (mac == NULL)) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d input arguements are NULL assocdata : %p mac : %p\n", __func__, __LINE__, assoc_dev_data, mac);
+        return RETURN_ERR;
+    }
+
+    if (*diff_map == NULL) {
+        *diff_map = hash_map_create();
+    }
+
+    if (*diff_map != NULL) {
+        str_tolower(mac);
+        tmp_assoc_dev_data = hash_map_get(*diff_map, mac);
+        if (tmp_assoc_dev_data == NULL) {
+            tmp_assoc_dev_data =  (assoc_dev_data_t *)malloc(sizeof(assoc_dev_data_t));
+            if (tmp_assoc_dev_data == NULL) {
+                wifi_util_error_print(WIFI_CTRL,"%s:%d unable to allocate memory for assoclist of mac : %s\n", __func__, __LINE__,  mac);
+                return RETURN_ERR;
+            }
+            memcpy(tmp_assoc_dev_data, assoc_dev_data, sizeof(assoc_dev_data_t));
+            hash_map_put(*diff_map, strdup(mac), tmp_assoc_dev_data);
+            to_mac_str(assoc_dev_data->dev_stats.cli_MACAddress, trk_mac_string);
+        } else {
+            wifi_util_info_print(WIFI_CTRL,"%s:%d assoclist of mac : %s is already present\n", __func__, __LINE__,  mac);
+            memcpy(tmp_assoc_dev_data, assoc_dev_data, sizeof(assoc_dev_data_t));
+        }
+    }
+
+    return RETURN_OK;
+}
+
+
 void process_disassoc_device_event(void *data)
 {
     rdk_wifi_vap_info_t *rdk_vap_info = NULL;
@@ -1420,7 +1455,15 @@ void process_disassoc_device_event(void *data)
                 to_mac_str(assoc_dev_data->dev_stats.cli_MACAddress, mac_str);
                 assoc_dev_data = hash_map_get_next(rdk_vap_info->associated_devices_map, assoc_dev_data);
                 temp_assoc_dev_data = hash_map_remove(rdk_vap_info->associated_devices_map, mac_str);
+                //Adding to the associated_devices_diff_map
+
                 if (temp_assoc_dev_data != NULL) {
+                    temp_assoc_dev_data->client_state = client_state_disconnected;
+                    if (add_client_diff_assoclist(&rdk_vap_info->associated_devices_diff_map, mac_str, temp_assoc_dev_data) == RETURN_ERR) {
+                        wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to update diff assoclist for vap %d mac_str : %s\n", __func__, __LINE__, rdk_vap_info->vap_index, mac_str);
+                        free(temp_assoc_dev_data);
+                        return;
+                    }
                     lm_notify_disassoc(temp_assoc_dev_data, rdk_vap_info->vap_index);
                     free(temp_assoc_dev_data);
                 }
@@ -1442,6 +1485,12 @@ void process_disassoc_device_event(void *data)
 
         temp_assoc_dev_data = hash_map_remove(rdk_vap_info->associated_devices_map, mac_str);
         if (temp_assoc_dev_data != NULL) {
+            temp_assoc_dev_data->client_state = client_state_disconnected;
+            if (add_client_diff_assoclist(&rdk_vap_info->associated_devices_diff_map, mac_str, temp_assoc_dev_data) == RETURN_ERR) {
+                wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to update diff assoclist for vap %d mac_str : %s\n", __func__, __LINE__, rdk_vap_info->vap_index, mac_str);
+                free(temp_assoc_dev_data);
+                return;
+            }
             lm_notify_disassoc(temp_assoc_dev_data, rdk_vap_info->vap_index);
             free(temp_assoc_dev_data);
         }
@@ -1500,8 +1549,14 @@ void process_assoc_device_event(void *data)
             wifi_util_error_print(WIFI_CTRL,"%s:%d NULL tmp_assoc_dev_data pointer for vap %d\n", __func__, __LINE__, rdk_vap_info->vap_index);
             return;
         }
-        memset(tmp_assoc_dev_data, 0, sizeof(assoc_dev_data_t));
         memcpy(tmp_assoc_dev_data, assoc_data, sizeof(assoc_dev_data_t));
+        tmp_assoc_dev_data->client_state = client_state_connected;
+        if (add_client_diff_assoclist(&rdk_vap_info->associated_devices_diff_map, mac_str, tmp_assoc_dev_data) == RETURN_ERR) {
+            wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to update diff assoclist for vap %d mac_str : %s\n", __func__, __LINE__, rdk_vap_info->vap_index, mac_str);
+            free(tmp_assoc_dev_data);
+            return;
+        }
+        str_tolower(mac_str);
         hash_map_put(rdk_vap_info->associated_devices_map, strdup(mac_str), tmp_assoc_dev_data);
         p_wifi_mgr->ctrl.webconfig_state |= ctrl_webconfig_state_associated_clients_cfg_rsp_pending;
         new_count = old_count + 1;

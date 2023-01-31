@@ -563,6 +563,7 @@ rbusError_t get_assoc_clients_data(rbusHandle_t handle, rbusProperty_t property,
     memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap, sizeof(wifi_hal_capability_t));
 
     data.u.decoded.num_radios = getNumberRadios();
+    data.u.decoded.assoclist_notifier_type = assoclist_notifier_full;
     webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_associated_clients);
 
     rbusValue_SetString(value, data.u.encoded.raw);
@@ -811,6 +812,8 @@ void get_assoc_devices_blob(char *str)
     memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap, sizeof(wifi_hal_capability_t));
 
     data.u.decoded.num_radios = getNumberRadios();
+    data.u.decoded.assoclist_notifier_type = assoclist_notifier_full;
+
     webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_associated_clients);
     memcpy(str, data.u.encoded.raw, strlen(data.u.encoded.raw));
 

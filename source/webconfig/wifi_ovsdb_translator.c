@@ -600,6 +600,7 @@ webconfig_error_t webconfig_ovsdb_decode(webconfig_t *config, const char *str,
     return webconfig_error_none;
 }
 
+
 webconfig_error_t free_vap_object_assoc_client_entries(webconfig_subdoc_data_t *data)
 {
     unsigned int i=0, j=0;
@@ -635,6 +636,47 @@ webconfig_error_t free_vap_object_assoc_client_entries(webconfig_subdoc_data_t *
                 }
                 hash_map_destroy(rdk_vap_info->associated_devices_map);
                 rdk_vap_info->associated_devices_map =  NULL;
+            }
+        }
+    }
+    return webconfig_error_none;
+}
+
+webconfig_error_t free_vap_object_diff_assoc_client_entries(webconfig_subdoc_data_t *data)
+{
+    unsigned int i=0, j=0;
+    rdk_wifi_radio_t *radio;
+    rdk_wifi_vap_info_t *rdk_vap_info;
+    webconfig_subdoc_decoded_data_t *decoded_params;
+    assoc_dev_data_t *assoc_dev_data, *temp_assoc_dev_data;
+    mac_addr_str_t mac_str;
+
+    decoded_params = &data->u.decoded;
+    if (decoded_params == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: decoded_params is NULL\n", __func__, __LINE__);
+        return webconfig_error_invalid_subdoc;
+    }
+
+    for (i = 0; i < decoded_params->num_radios; i++) {
+        radio = &decoded_params->radios[i];
+        for (j = 0; j < radio->vaps.num_vaps; j++) {
+            rdk_vap_info = &decoded_params->radios[i].vaps.rdk_vap_array[j];
+            if (rdk_vap_info == NULL) {
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: rdk_vap_info is null", __func__, __LINE__);
+                return webconfig_error_invalid_subdoc;
+            }
+            if (rdk_vap_info->associated_devices_diff_map != NULL) {
+                assoc_dev_data = hash_map_get_first(rdk_vap_info->associated_devices_diff_map);
+                while(assoc_dev_data != NULL) {
+                    to_mac_str(assoc_dev_data->dev_stats.cli_MACAddress, mac_str);
+                    assoc_dev_data = hash_map_get_next(rdk_vap_info->associated_devices_diff_map, assoc_dev_data);
+                    temp_assoc_dev_data = hash_map_remove(rdk_vap_info->associated_devices_diff_map, mac_str);
+                    if (temp_assoc_dev_data != NULL) {
+                        free(temp_assoc_dev_data);
+                    }
+                }
+                hash_map_destroy(rdk_vap_info->associated_devices_diff_map);
+                rdk_vap_info->associated_devices_diff_map =  NULL;
             }
         }
     }
@@ -2405,15 +2447,75 @@ webconfig_error_t translate_mesh_sta_vap_info_to_vif_state(const wifi_vap_info_t
     return webconfig_error_none;
 }
 
-webconfig_error_t translate_vap_object_to_ovsdb_associated_clients(const rdk_wifi_vap_info_t *rdk_vap_info, const struct schema_Wifi_Associated_Clients **clients_table, unsigned int *client_count, wifi_platform_property_t *wifi_prop)
+webconfig_error_t assoclist_update_assoc_map(rdk_wifi_vap_info_t *rdk_vap_info)
 {
-    //  int count = 0, i = 0;
+    hash_map_t *current_assoc_map = NULL, *diff_assoc_map = NULL;
+    assoc_dev_data_t *diff_assoc_dev_data = NULL, *temp_assoc_dev_data = NULL;
+    mac_addr_str_t diff_mac_str;
+
+    current_assoc_map = rdk_vap_info->associated_devices_map;
+    diff_assoc_map = rdk_vap_info->associated_devices_diff_map;
+
+    if ((current_assoc_map == NULL) || (diff_assoc_map == NULL)) {
+        return webconfig_error_none;
+    }
+
+    diff_assoc_dev_data = hash_map_get_first(diff_assoc_map);
+    while (diff_assoc_dev_data != NULL) {
+        to_mac_str(diff_assoc_dev_data->dev_stats.cli_MACAddress, diff_mac_str);
+        str_tolower(diff_mac_str);
+        if (diff_assoc_dev_data->client_state == client_state_disconnected) {
+            //in disconnected state, remove diff_mac from current_assoc_map
+            temp_assoc_dev_data = hash_map_remove(current_assoc_map, diff_mac_str);
+            if (temp_assoc_dev_data != NULL) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: diff mac : %s is removed from current assoc map for index : %d\n",
+                        __func__, __LINE__, diff_mac_str, diff_assoc_dev_data->ap_index);
+                free(temp_assoc_dev_data);
+            } else {
+                wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: diff mac : %s is not present in current assoc map for index : %d\n",
+                        __func__, __LINE__, diff_mac_str, diff_assoc_dev_data->ap_index);
+            }
+        } else if (diff_assoc_dev_data->client_state == client_state_connected) {
+            //in connected state, add diff_mac to current_assoc_map
+            temp_assoc_dev_data = hash_map_get(current_assoc_map, diff_mac_str);
+            if (temp_assoc_dev_data == NULL) {
+                temp_assoc_dev_data = (assoc_dev_data_t *)malloc(sizeof(assoc_dev_data_t));
+                if (temp_assoc_dev_data == NULL) {
+                    wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: allocate memory failed for diff mac : %s for index : %d\n",
+                            __func__, __LINE__, diff_mac_str, diff_assoc_dev_data->ap_index);
+                    return webconfig_error_translate_to_ovsdb;
+                }
+                memcpy(temp_assoc_dev_data, diff_assoc_dev_data, sizeof(assoc_dev_data_t));
+                hash_map_put(current_assoc_map, strdup(diff_mac_str), temp_assoc_dev_data);
+                wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: diff mac : %s is added to current assoc map for index : %d\n",
+                        __func__, __LINE__, diff_mac_str, diff_assoc_dev_data->ap_index);
+            } else {
+                wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: diff mac : %s is already present in current assoc map for index : %d, updating\n",
+                        __func__, __LINE__, diff_mac_str, diff_assoc_dev_data->ap_index);
+                memcpy(temp_assoc_dev_data, diff_assoc_dev_data, sizeof(assoc_dev_data_t));
+            }
+        }
+        diff_assoc_dev_data = hash_map_get_next(diff_assoc_map, diff_assoc_dev_data);
+    }
+
+    return webconfig_error_none;
+}
+
+webconfig_error_t translate_vap_object_to_ovsdb_associated_clients(const rdk_wifi_vap_info_t *rdk_vap_info, const struct schema_Wifi_Associated_Clients **clients_table, unsigned int *client_count, wifi_platform_property_t *wifi_prop, assoclist_notifier_type_t assoclist_notifier_type)
+{
     assoc_dev_data_t *assoc_dev_data = NULL;
     struct schema_Wifi_Associated_Clients *client_row;
     unsigned int associated_client_count = 0;
+
     if ((rdk_vap_info == NULL) || (clients_table == NULL)) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Input arguments are NULL\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
+    }
+
+    if (assoclist_notifier_type == assoclist_notifier_diff) {
+        if (assoclist_update_assoc_map((rdk_wifi_vap_info_t *)rdk_vap_info) != webconfig_error_none) {
+            return webconfig_error_translate_to_ovsdb;
+        }
     }
 
     associated_client_count = *client_count;
@@ -2532,7 +2634,7 @@ webconfig_error_t translate_vap_object_to_ovsdb_associated_clients_for_assoclist
                 return webconfig_error_translate_to_ovsdb;
             }
 
-            if (translate_vap_object_to_ovsdb_associated_clients(&decoded_params->radios[i].vaps.rdk_vap_array[j], clients_table, &client_count, &decoded_params->hal_cap.wifi_prop) != webconfig_error_none) {
+            if (translate_vap_object_to_ovsdb_associated_clients(&decoded_params->radios[i].vaps.rdk_vap_array[j], clients_table, &client_count, &decoded_params->hal_cap.wifi_prop, decoded_params->assoclist_notifier_type) != webconfig_error_none) {
                 wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: update of associated clients failed for %d\n", __func__, __LINE__, vap->vap_index);
                 return webconfig_error_translate_to_ovsdb;
             }
@@ -6798,8 +6900,8 @@ webconfig_error_t   translate_to_ovsdb_tables(webconfig_subdoc_type_t type, webc
                 return webconfig_error_translate_to_ovsdb;
             }
 
-            if (free_vap_object_assoc_client_entries(data) != webconfig_error_none) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: webconfig_subdoc_type_associated_clients assoc clients free failed\n", __func__, __LINE__);
+            if (free_vap_object_diff_assoc_client_entries(data) != webconfig_error_none) {
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: webconfig_subdoc_type_associated_clients diff assoc clients free failed\n", __func__, __LINE__);
                 return webconfig_error_translate_to_ovsdb;
             }
         break;
@@ -6807,9 +6909,9 @@ webconfig_error_t   translate_to_ovsdb_tables(webconfig_subdoc_type_t type, webc
         case webconfig_subdoc_type_blaster:
             if (translate_blaster_config_to_ovsdb_for_blaster(data) != webconfig_error_none) {
                 wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Blaster config translation to ovsdb failed\n", __func__, __LINE__);
-		return webconfig_error_translate_to_ovsdb;
-	    }
-	break;
+                return webconfig_error_translate_to_ovsdb;
+            }
+        break;
         case webconfig_subdoc_type_stats_config:
             if (translate_config_to_ovsdb_for_stats_config(data) != webconfig_error_none) {
                 wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: stats config translation to ovsdb failed\n", __func__, __LINE__);
