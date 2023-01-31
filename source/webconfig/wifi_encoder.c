@@ -82,6 +82,11 @@ webconfig_error_t encode_radio_object(const rdk_wifi_radio_t *radio, cJSON *radi
 
     radio_info = &radio->oper;
 
+    if (validate_radio_parameters(radio_info) != RETURN_OK) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d Radio parameters validatation failed\n", __func__, __LINE__);
+        return webconfig_error_encode;
+    }
+
     // Enabled
     cJSON_AddBoolToObject(radio_object, "Enabled", radio_info->enable);
 

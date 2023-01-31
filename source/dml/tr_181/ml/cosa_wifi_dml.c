@@ -3193,6 +3193,11 @@ Radio_SetParamUlongValue
             return FALSE;
         }
         
+        if (is_bandwidth_and_hw_variant_compatible(wifiRadioOperParam->variant, tmpChanWidth) != true) {
+            wifi_util_error_print(WIFI_DMCLI,"%s:%d:tmpChanWidth = %d variant:%d \n",__func__, __LINE__, tmpChanWidth, wifiRadioOperParam->variant);
+            return FALSE;
+        }
+
         wifiRadioOperParam->channelWidth = tmpChanWidth;
         ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s OperatingChannelBandwidth : %d\n", __FUNCTION__, wifiRadioOperParam->channelWidth);
 	wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:channelWidth=%d tmpChanWidth = %d  \n",__func__, __LINE__,wifiRadioOperParam->channelWidth,tmpChanWidth);
@@ -3565,6 +3570,16 @@ Radio_SetParamStringValue
 
     if(AnscEqualString(ParamName, "OperatingStandards", TRUE)) {
         wifi_ieee80211Variant_t wifi_variant;
+        wifi_rfc_dml_parameters_t *rfc_pcfg = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
+
+        if ((wifi_radio->band == WIFI_FREQUENCY_2_4_BAND) &&
+                (rfc_pcfg->twoG80211axEnable_rfc == false) &&
+                (strstr(pString, "ax") != NULL)) {
+            wifi_util_error_print(WIFI_DMCLI,"%s:%d: wifi hw variant:%s radio_band:%d 80211axEnable rfc:%d\n",
+                    __func__, __LINE__, pString, wifi_radio->band, rfc_pcfg->twoG80211axEnable_rfc);
+            return FALSE;
+        }
+
         if (wifiStdStrToEnum(pString, &wifi_variant,instance_number) != ANSC_STATUS_SUCCESS) {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: wrong wifi std String=%s\n",__func__, __LINE__,pString);
             return FALSE;
@@ -3573,6 +3588,12 @@ Radio_SetParamStringValue
         if (validate_wifi_hw_variant(wifi_radio->band, wifi_variant) != RETURN_OK) {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: wifi hw mode std validation failure string=%s hw variant:%d\n",__func__, __LINE__,pString, wifi_variant);
             return FALSE;
+        }
+
+        uint32_t temp_channel_width = sync_bandwidth_and_hw_variant(wifi_variant, wifiRadioOperParam->channelWidth);
+        if (temp_channel_width != 0) {
+            wifi_util_info_print(WIFI_DMCLI,"%s:%d:change bandwidth from %d to %d\r\n",__func__, __LINE__, wifiRadioOperParam->channelWidth, temp_channel_width);
+            wifiRadioOperParam->channelWidth = temp_channel_width;
         }
 
         wifiRadioOperParam->variant = wifi_variant;

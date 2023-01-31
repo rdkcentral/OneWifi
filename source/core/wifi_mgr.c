@@ -386,6 +386,11 @@ bool is_supported_gateway_device(const char *model)
     return (strncmp(box_type, model, strlen(box_type)-1)) ? false : true;
 }
 
+bool is_device_type_cmxb7(void)
+{
+    return is_supported_gateway_device("TG4482A");
+}
+
 bool is_device_type_xb7(void)
 {
     return is_supported_gateway_device("CGM4331COM");

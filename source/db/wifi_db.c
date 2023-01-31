@@ -3531,10 +3531,12 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #if defined (_PP203X_PRODUCT_REQ_)
             cfg.variant = WIFI_80211_VARIANT_G | WIFI_80211_VARIANT_N ;
 #else
-            cfg.variant = WIFI_80211_VARIANT_G | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AX;
-            break;
+            cfg.variant = WIFI_80211_VARIANT_G | WIFI_80211_VARIANT_N;
+            if (is_device_type_cmxb7() == true) {
+                cfg.variant |= WIFI_80211_VARIANT_AX;
+            }
 #endif
-        break;
+            break;
         case WIFI_FREQUENCY_5_BAND:
         case WIFI_FREQUENCY_5L_BAND:
             cfg.op_class = 1;

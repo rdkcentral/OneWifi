@@ -1231,3 +1231,55 @@ void update_dml_stats_default()
     }
 }
 
+wifi_channelBandwidth_t sync_bandwidth_and_hw_variant(uint32_t variant, wifi_channelBandwidth_t current_bw)
+{
+    wifi_channelBandwidth_t supported_bw = 0;
+
+    if ( variant & WIFI_80211_VARIANT_A ) {
+        if (supported_bw < WIFI_CHANNELBANDWIDTH_20MHZ) {
+            supported_bw = WIFI_CHANNELBANDWIDTH_20MHZ;
+        }
+    }
+    if ( variant & WIFI_80211_VARIANT_B ) {
+        if (supported_bw < WIFI_CHANNELBANDWIDTH_20MHZ) {
+            supported_bw = WIFI_CHANNELBANDWIDTH_20MHZ;
+        }
+    }
+    if ( variant & WIFI_80211_VARIANT_G ) {
+        if (supported_bw < WIFI_CHANNELBANDWIDTH_20MHZ) {
+            supported_bw = WIFI_CHANNELBANDWIDTH_20MHZ;
+        }
+    }
+    if ( variant & WIFI_80211_VARIANT_N ) {
+        if (supported_bw < WIFI_CHANNELBANDWIDTH_40MHZ) {
+            supported_bw = WIFI_CHANNELBANDWIDTH_40MHZ;
+        }
+    }
+    if ( variant & WIFI_80211_VARIANT_H ) {
+        if (supported_bw < WIFI_CHANNELBANDWIDTH_40MHZ) {
+            supported_bw = WIFI_CHANNELBANDWIDTH_40MHZ;
+        }
+    }
+    if ( variant & WIFI_80211_VARIANT_AC ) {
+        if (supported_bw < WIFI_CHANNELBANDWIDTH_160MHZ) {
+            supported_bw = WIFI_CHANNELBANDWIDTH_160MHZ;
+        }
+    }
+    if ( variant & WIFI_80211_VARIANT_AD ) {
+        if (supported_bw < WIFI_CHANNELBANDWIDTH_80MHZ) {
+            supported_bw = WIFI_CHANNELBANDWIDTH_80MHZ;
+        }
+    }
+    if ( variant & WIFI_80211_VARIANT_AX ) {
+        if (supported_bw < WIFI_CHANNELBANDWIDTH_160MHZ) {
+            supported_bw = WIFI_CHANNELBANDWIDTH_160MHZ;
+        }
+    }
+
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d variant:%d supported bandwidth:%d current_bw:%d \r\n", __func__, __LINE__, variant, supported_bw, current_bw);
+    if (supported_bw < current_bw) {
+        return supported_bw;
+    } else {
+        return 0;
+    }
+}

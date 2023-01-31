@@ -1931,6 +1931,7 @@ static bool is_radio_param_config_changed(wifi_radio_operationParam_t *old , wif
     if (IS_CHANGED(old->adminControl,new->adminControl)) return true;
     if (IS_CHANGED(old->chanUtilThreshold,new->chanUtilThreshold)) return true;
     if (IS_CHANGED(old->chanUtilSelfHealEnable,new->chanUtilSelfHealEnable)) return true;
+    if (IS_CHANGED(old->variant,new->variant)) return true;
 
     return false;
 }

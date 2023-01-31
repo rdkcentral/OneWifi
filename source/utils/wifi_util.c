@@ -2661,3 +2661,73 @@ BOOL is_bssid_valid(const bssid_t bssid)
     }
     return false;
 }
+
+bool is_bandwidth_and_hw_variant_compatible(uint32_t variant, wifi_channelBandwidth_t current_bw)
+{
+    wifi_channelBandwidth_t supported_bw = 0;
+
+    if ( variant & WIFI_80211_VARIANT_A ) {
+        if (supported_bw < WIFI_CHANNELBANDWIDTH_20MHZ) {
+            supported_bw = WIFI_CHANNELBANDWIDTH_20MHZ;
+        }
+    }
+    if ( variant & WIFI_80211_VARIANT_B ) {
+        if (supported_bw < WIFI_CHANNELBANDWIDTH_20MHZ) {
+            supported_bw = WIFI_CHANNELBANDWIDTH_20MHZ;
+        }
+    }
+    if ( variant & WIFI_80211_VARIANT_G ) {
+        if (supported_bw < WIFI_CHANNELBANDWIDTH_20MHZ) {
+            supported_bw = WIFI_CHANNELBANDWIDTH_20MHZ;
+        }
+    }
+    if ( variant & WIFI_80211_VARIANT_N ) {
+        if (supported_bw < WIFI_CHANNELBANDWIDTH_40MHZ) {
+            supported_bw = WIFI_CHANNELBANDWIDTH_40MHZ;
+        }
+    }
+    if ( variant & WIFI_80211_VARIANT_H ) {
+        if (supported_bw < WIFI_CHANNELBANDWIDTH_40MHZ) {
+            supported_bw = WIFI_CHANNELBANDWIDTH_40MHZ;
+        }
+    }
+    if ( variant & WIFI_80211_VARIANT_AC ) {
+        if (supported_bw < WIFI_CHANNELBANDWIDTH_160MHZ) {
+            supported_bw = WIFI_CHANNELBANDWIDTH_160MHZ;
+        }
+    }
+    if ( variant & WIFI_80211_VARIANT_AD ) {
+        if (supported_bw < WIFI_CHANNELBANDWIDTH_80MHZ) {
+            supported_bw = WIFI_CHANNELBANDWIDTH_80MHZ;
+        }
+    }
+    if ( variant & WIFI_80211_VARIANT_AX ) {
+        if (supported_bw < WIFI_CHANNELBANDWIDTH_160MHZ) {
+            supported_bw = WIFI_CHANNELBANDWIDTH_160MHZ;
+        }
+    }
+
+    if (supported_bw < current_bw) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d variant:%d supported bandwidth:%d current_bw:%d \r\n", __func__, __LINE__, variant, supported_bw, current_bw);
+        return false;
+    } else {
+        return true;
+    }
+}
+
+int validate_radio_parameters(const wifi_radio_operationParam_t *radio_info)
+{
+    bool l_bool_status;
+
+    if (validate_wifi_hw_variant(radio_info->band, radio_info->variant) != RETURN_OK) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: wifi hw mode[%d] validation failure\n",__func__, __LINE__, radio_info->variant);
+        return RETURN_ERR;
+    }
+
+    l_bool_status = is_bandwidth_and_hw_variant_compatible(radio_info->variant, radio_info->channelWidth);
+    if (l_bool_status == false) {
+        return RETURN_ERR;
+    }
+
+    return RETURN_OK;
+}

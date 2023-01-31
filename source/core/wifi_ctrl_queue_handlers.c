@@ -1798,15 +1798,68 @@ void process_dfs_atbootup_rfc(bool type)
     }
 }
 
+int enable_wifi_radio_ax_mode(unsigned int radio_index, wifi_radio_operationParam_t *radio_params, bool value)
+{
+    wifi_mgr_t *g_wifidb;
+    int ret = RETURN_ERR;
+    unsigned int old_variant = 0;
+    g_wifidb = get_wifimgr_obj();
+
+    if (radio_params == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d wifi radio[%d] param is NULL\n", __func__, __LINE__, radio_index);
+        return RETURN_ERR;
+    }
+
+    old_variant = radio_params->variant;
+    pthread_mutex_lock(&g_wifidb->data_cache_lock);
+    if (value == true) {
+        radio_params->variant |= WIFI_80211_VARIANT_AX;
+    } else {
+        radio_params->variant ^= WIFI_80211_VARIANT_AX;
+    }
+    pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+
+    ret = wifi_hal_setRadioOperatingParameters(radio_index, radio_params);
+    if (ret != RETURN_OK) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d wifi radio[%d] parameter set[%d] failure\n",__func__, __LINE__, radio_index, radio_params->variant);
+        radio_params->variant = old_variant;
+        return RETURN_ERR;
+    } else {
+        wifi_util_info_print(WIFI_CTRL,"%s:%d wifi radio[%d] parameter set[%d] success\n",__func__, __LINE__, radio_index, radio_params->variant);
+    }
+    g_wifidb->ctrl.webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
+    update_wifi_radio_config(radio_index, radio_params);
+
+    return RETURN_OK;
+}
+
 void process_twoG80211axEnable_rfc(bool type)
 {
+    unsigned int radio_index = 0;
     int ret = 0;
+    wifi_radio_operationParam_t *radio_params = NULL;
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
 
     wifi_util_info_print(WIFI_DB,"WIFI Enter RFC Func %s: %d : bool %d\n",__FUNCTION__,__LINE__,type);
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
-    ret = wifi_allow2G80211ax(type);
-    if (ret == 0) {
+
+    for(radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
+        radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(radio_index);
+        if (radio_params == NULL) {
+            wifi_util_error_print(WIFI_CTRL,"%s:%d wifi radio[%d] param global cache failure\n", __func__, __LINE__, radio_index);
+            return;
+        }
+        if (radio_params->band == WIFI_FREQUENCY_2_4_BAND) {
+            break;
+        }
+    }
+
+    if (radio_index >= getNumberRadios()) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d Input radio_index=%d not found, out of range\n", __func__, __LINE__, radio_index);
+        return;
+    }
+    ret = enable_wifi_radio_ax_mode(radio_index, radio_params, type);
+    if (ret == RETURN_OK) {
         rfc_param->twoG80211axEnable_rfc = type;
         ret = wifidb_update_rfc_config(0, rfc_param);
         if (ret == 0) {

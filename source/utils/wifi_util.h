@@ -262,4 +262,6 @@ int get_vif_neighbor_id(char *key, int key_len, unsigned char *id, int id_len, c
 int vif_neighbor_htmode_conversion(ht_mode_t *ht_mode_enum, char *ht_mode, int ht_mode_len, unsigned int conv_type);
 int convert_channel_to_freq(int band, unsigned char chan);
 BOOL is_bssid_valid(const bssid_t bssid);
+bool is_bandwidth_and_hw_variant_compatible(uint32_t variant, wifi_channelBandwidth_t current_bw);
+int validate_radio_parameters(const wifi_radio_operationParam_t *radio_info);
 #endif//_WIFI_UTIL_H_
