@@ -774,12 +774,13 @@ webconfig_error_t translate_macfilter_from_rdk_vap_to_ovsdb_vif_state(const rdk_
     return webconfig_error_none;
 }
 
-webconfig_error_t translate_macfilter_from_ovsdb_to_rdk_vap(const struct schema_Wifi_VIF_Config *row, rdk_wifi_vap_info_t *rdk_vap)
+webconfig_error_t translate_macfilter_from_ovsdb_to_rdk_vap(const struct schema_Wifi_VIF_Config *row, rdk_wifi_vap_info_t *rdk_vap, wifi_platform_property_t *wifi_prop)
 {
     int i = 0;
     mac_address_t mac;
     char *mac_str;
-    acl_entry_t *acl_entry;
+    mac_addr_str_t acl_str;
+    acl_entry_t *acl_entry, *temp_acl_entry;
 
     if ((rdk_vap == NULL) || (row == NULL)) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: input arguments are NULL\n", __func__, __LINE__);
@@ -793,7 +794,21 @@ webconfig_error_t translate_macfilter_from_ovsdb_to_rdk_vap(const struct schema_
             return webconfig_error_translate_from_ovsdb;
         }
     } else {
-        wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: acl hash map already avaialble:%p\n", __func__, __LINE__, rdk_vap->acl_map);
+        wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: acl hash map already avaialble:%p for vap_index:%d\n", __func__, __LINE__, rdk_vap->acl_map, rdk_vap->vap_index);
+
+        if (is_vap_mesh_backhaul(wifi_prop, rdk_vap->vap_index)) {
+            wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: delete all the entries for vap_index:%d\n", __func__, __LINE__, rdk_vap->vap_index);
+            acl_entry = hash_map_get_first(rdk_vap->acl_map);
+            while(acl_entry != NULL) {
+                to_mac_str(acl_entry->mac, acl_str);
+                str_tolower(acl_str);
+                acl_entry = hash_map_get_next(rdk_vap->acl_map, acl_entry);
+                temp_acl_entry = hash_map_remove(rdk_vap->acl_map, acl_str);
+                if (temp_acl_entry != NULL) {
+                    free(temp_acl_entry);
+                }
+            }
+        }
     }
 
     for (i = 0; i < row->mac_list_len; i++) {
@@ -4355,7 +4370,7 @@ webconfig_error_t  translate_vap_object_from_ovsdb_vif_config_for_macfilter(webc
         }
         //Update the Macfilter
         if ((is_vap_hotspot(wifi_prop, vap_index) != TRUE) && (is_vap_mesh_sta(wifi_prop, vap_index) != TRUE)) {
-            if (translate_macfilter_from_ovsdb_to_rdk_vap(vap_row, &decoded_params->radios[radio_index].vaps.rdk_vap_array[vap_array_index]) != webconfig_error_none) {
+            if (translate_macfilter_from_ovsdb_to_rdk_vap(vap_row, &decoded_params->radios[radio_index].vaps.rdk_vap_array[vap_array_index], wifi_prop) != webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: update of mac filter failed for %d\n", __func__, __LINE__, vap_index);
                 return webconfig_error_translate_from_ovsdb;
             }
@@ -5924,7 +5939,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_mesh_backhaul
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: invalid ifname %s from ovsdb schema\n", __func__, __LINE__, table[i]->if_name);
             return webconfig_error_translate_from_ovsdb;
             }*/
-        if (translate_macfilter_from_ovsdb_to_rdk_vap(vap_row, &decoded_params->radios[radio_index].vaps.rdk_vap_array[vap_array_index]) != webconfig_error_none) {
+        if (translate_macfilter_from_ovsdb_to_rdk_vap(vap_row, &decoded_params->radios[radio_index].vaps.rdk_vap_array[vap_array_index], wifi_prop) != webconfig_error_none) {
             wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: update of mac filter failed for %d\n", __func__, __LINE__, vap_index);
             return webconfig_error_translate_from_ovsdb;
         }
@@ -6067,7 +6082,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_mesh(webconfi
             return webconfig_error_translate_from_ovsdb;
             }*/
         if (is_vap_mesh_sta(wifi_prop, vap_index) != TRUE) {
-            if (translate_macfilter_from_ovsdb_to_rdk_vap(vap_row, &decoded_params->radios[radio_index].vaps.rdk_vap_array[vap_array_index]) != webconfig_error_none) {
+            if (translate_macfilter_from_ovsdb_to_rdk_vap(vap_row, &decoded_params->radios[radio_index].vaps.rdk_vap_array[vap_array_index], wifi_prop) != webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: update of mac filter failed for %d\n", __func__, __LINE__, vap_index);
                 return webconfig_error_translate_from_ovsdb;
             }
