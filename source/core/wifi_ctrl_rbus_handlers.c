@@ -49,6 +49,10 @@ int webconfig_csi_notify_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_encoded_data_
     rc = rbusEvent_Publish(ctrl->rbus_handle, &event);
     if ((rc != RBUS_ERROR_SUCCESS) && (rc != RBUS_ERROR_NOSUBSCRIBERS)) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: rbusEvent_Publish Event failed %d\n", __func__, __LINE__, rc);
+
+        rbusValue_Release(value);
+        rbusObject_Release(rdata);
+
         return RETURN_ERR;
     }
 
@@ -77,6 +81,10 @@ int webconfig_client_notify_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_encoded_da
     rc = rbusEvent_Publish(ctrl->rbus_handle, &event);
     if ((rc != RBUS_ERROR_SUCCESS) && (rc != RBUS_ERROR_NOSUBSCRIBERS)) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: rbusEvent_Publish Event failed %d\n", __func__, __LINE__, rc);
+
+        rbusValue_Release(value);
+        rbusObject_Release(rdata);
+
         return RETURN_ERR;
     }
 
@@ -105,6 +113,10 @@ int webconfig_null_subdoc_notify_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_encod
     rc = rbusEvent_Publish(ctrl->rbus_handle, &event);
     if ((rc != RBUS_ERROR_SUCCESS)) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: rbusEvent_Publish Event failed %d\n", __func__, __LINE__, rc);
+
+        rbusValue_Release(value);
+        rbusObject_Release(rdata);
+
         return RETURN_ERR;
     }
 
@@ -221,6 +233,10 @@ int webconfig_rbus_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_encoded_data_t *dat
     rc = rbusEvent_Publish(ctrl->rbus_handle, &event);
     if ((rc != RBUS_ERROR_SUCCESS) && (rc != RBUS_ERROR_NOSUBSCRIBERS)) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: rbusEvent_Publish Event failed %d\n", __func__, __LINE__, rc);
+
+        rbusValue_Release(value);
+        rbusObject_Release(rdata);
+
         return RETURN_ERR;
     }
 

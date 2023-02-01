@@ -296,6 +296,10 @@ int mgmt_frame_rbus_apply(rbusHandle_t rbus_handle, char *rbus_namespace, frame_
     rc = rbusEvent_Publish(rbus_handle, &event);
     if ((rc != RBUS_ERROR_SUCCESS) && (rc != RBUS_ERROR_NOSUBSCRIBERS)) {
         wifi_util_dbg_print(WIFI_APPS, "%s:%d: rbusEvent_Publish Event failed %d\n", __func__, __LINE__, rc);
+
+        rbusValue_Release(value);
+        rbusObject_Release(rdata);
+
         return RETURN_ERR;
     } else {
         wifi_util_dbg_print(WIFI_APPS, "%s:%d: rbusEvent_Publish Event for %s: len:%d\n", __func__, __LINE__, rbus_namespace, (sizeof(l_data->frame) + l_data->frame.len));

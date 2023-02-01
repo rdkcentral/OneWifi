@@ -403,6 +403,10 @@ int publish_ext_sta_connection_status(wifi_ctrl_t *ctrl,int index, wifi_connecti
 
     if (rbusEvent_Publish(ctrl->rbus_handle, &event) != RBUS_ERROR_SUCCESS) {
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d: rbusEvent_Publish Event failed\n", __func__, __LINE__);
+
+        rbusValue_Release(value);
+        rbusObject_Release(rdata);
+
         return RETURN_ERR;
     }
 
