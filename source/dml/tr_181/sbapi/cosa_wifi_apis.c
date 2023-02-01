@@ -209,7 +209,7 @@ struct wifiGuardIntervalMap wifiGuardIntervalMap[] ={
       {wifi_guard_interval_auto,  COSA_DML_WIFI_GUARD_INTVL_Auto,   "Auto"}
 };
 
-struct  wifiStdCosaHalMap wifiStdMap[] =
+struct  wifiStdCosaHalMap wifiStdDmlMap[] =
 {
     {WIFI_80211_VARIANT_A,  COSA_DML_WIFI_STD_a,  "a"},
     {WIFI_80211_VARIANT_B,  COSA_DML_WIFI_STD_b,  "b"},
@@ -1227,7 +1227,7 @@ ANSC_STATUS wifiStdStrToEnum(char *pWifiStdStr, wifi_ieee80211Variant_t *p80211V
     {
 
         isWifiStdInvalid = TRUE;
-        for (seqCounter = 0; seqCounter < ARRAY_SZ(wifiStdMap); seqCounter++)
+        for (seqCounter = 0; seqCounter < ARRAY_SZ(wifiStdDmlMap); seqCounter++)
         {
             if ((AnscEqualString("ax", token, TRUE)) && (instance_number == 1)
                 && !rfc_pcfg->twoG80211axEnable_rfc)
@@ -1237,9 +1237,9 @@ ANSC_STATUS wifiStdStrToEnum(char *pWifiStdStr, wifi_ieee80211Variant_t *p80211V
                     instance_number,rfc_pcfg->twoG80211axEnable_rfc));
                 isWifiStdInvalid = FALSE;
             }
-            else if (AnscEqualString(token, wifiStdMap[seqCounter].wifiStdName, TRUE))
+            else if (AnscEqualString(token, wifiStdDmlMap[seqCounter].wifiStdName, TRUE))
             {
-                *p80211VarEnum |= wifiStdMap[seqCounter].halWifiStd;
+                *p80211VarEnum |= wifiStdDmlMap[seqCounter].halWifiStd;
                 ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s input : %s wifiStandard : %d\n", __FUNCTION__, pWifiStdStr, *p80211VarEnum);
                 isWifiStdInvalid = FALSE;
             }

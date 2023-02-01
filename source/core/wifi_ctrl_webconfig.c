@@ -1810,6 +1810,7 @@ static bool is_radio_param_config_changed(wifi_radio_operationParam_t *old , wif
     if (IS_CHANGED(old->channel,new->channel)) return true;
     if (IS_CHANGED(old->numSecondaryChannels,new->numSecondaryChannels)) return true;
     if (IS_CHANGED(old->channelWidth,new->channelWidth)) return true;
+    if (IS_CHANGED(old->variant,new->variant)) return true;
     if (IS_CHANGED(old->csa_beacon_count,new->csa_beacon_count)) return true;
     if (IS_CHANGED(old->countryCode,new->countryCode)) return true;
     if (IS_CHANGED(old->operatingEnvironment,new->operatingEnvironment)) return true;
