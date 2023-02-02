@@ -1473,6 +1473,42 @@ int channel_mode_conversion(BOOL *auto_channel_bool, char *auto_channel_string, 
     return RETURN_ERR;
 }
 
+int channel_state_enum_to_str(wifi_channelState_t channel_state_enum, char *channel_state_string, unsigned int channel_state_strlen)
+{
+    if (channel_state_string == NULL) {
+        return RETURN_ERR;
+    }
+
+    static const char arr_str[][16] = {
+        "allowed",
+        "nop_finished",
+        "nop_started",
+        "cac_started",
+        "cac_completed"
+    };
+
+    static const wifi_channelState_t arr_enum[] = {
+        CHAN_STATE_AVAILABLE,
+        CHAN_STATE_DFS_NOP_FINISHED,
+        CHAN_STATE_DFS_NOP_START,
+        CHAN_STATE_DFS_CAC_START,
+        CHAN_STATE_DFS_CAC_COMPLETED
+    };
+
+    if (ARRAY_SIZE(arr_str) != ARRAY_SIZE(arr_enum)) {
+        return RETURN_ERR;
+    }
+
+    for (unsigned int i = 0; i < ARRAY_SIZE(arr_enum); i++) {
+        if (arr_enum[i] == channel_state_enum) {
+            snprintf(channel_state_string, channel_state_strlen, "{\"state\": \"%s\"}", arr_str[i]);
+            return RETURN_OK;
+        }
+    }
+
+    return RETURN_ERR;
+}
+
 int is_wifi_channel_valid(wifi_platform_property_t *wifi_prop, wifi_freq_bands_t wifi_band,
     UINT wifi_channel)
 {
