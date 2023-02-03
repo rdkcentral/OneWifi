@@ -592,6 +592,7 @@ typedef struct {
     long            deauth_monitor_start_time;
     long            deauth_gate_time;
     struct active_msmt_data *sta_active_msmt_data;
+    bool            connection_authorized;
 } __attribute__((__packed__)) sta_data_t;
 
 typedef enum {
