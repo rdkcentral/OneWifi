@@ -1134,7 +1134,7 @@
             "key": {
               "type": "integer",
               "minInteger": 0,
-              "maxInteger": 4
+              "maxInteger": 16
             },
             "min": 0,
             "max": 1
