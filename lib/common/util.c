@@ -614,6 +614,17 @@ char *str_toupper(char *str)
     return str;
 }
 
+void create_onewifi_factory_reset_flag()
+{
+    FILE *fp=fopen(ONEWIFI_FR_FLAG, "a");
+    if (fp != NULL) {
+        fclose(fp);
+    }
+}
+void remove_onewifi_factory_reset_flag()
+{
+    remove(ONEWIFI_FR_FLAG);
+}
 
 bool str_is_mac_address(const char *mac)
 {

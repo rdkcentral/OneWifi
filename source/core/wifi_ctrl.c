@@ -41,6 +41,7 @@
 #else
 #define FILE_SYSTEM_UPTIME         "/tmp/systemUptime.txt"
 #endif
+#define ONEWIFI_FR_FLAG  "/nvram/wifi/onewifi_factory_reset_flag"
 unsigned int get_Uptime(void);
 unsigned int startTime[MAX_NUM_RADIOS];
 #define BUF_SIZE              256
@@ -771,9 +772,31 @@ int captive_portal_check(void)
     char default_ssid[32] = {0}, default_password[32] = {0};
     rbusValue_t value = NULL, config_wifi_value = NULL;
 
-    get_ssid_from_device_mac(default_ssid);
     rbusValue_Init(&value);
     rbusValue_Init(&config_wifi_value);
+
+    //Get CONFIG_WIFI
+    rc = rbus_get(g_wifi_mgr->ctrl.rbus_handle, CONFIG_WIFI, &value);
+
+    if (rc != RBUS_ERROR_SUCCESS) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d rbus_get failed for [] with error [%d]\n",__func__, __LINE__, rc);
+        if (value != NULL) {
+            rbusValue_Release(value);
+        }
+        return RETURN_ERR;
+    }
+
+    get_config_wifi = rbusValue_GetBoolean(value);
+
+    wifi_util_info_print(WIFI_CTRL,"CONFIG_WIFI=%d is_factory_reset_done=%d fun %s \n",get_config_wifi,access(ONEWIFI_FR_FLAG,F_OK),__func__);
+
+    //From previous release and captive portal is already customized then need not customize here
+    if ((access(ONEWIFI_FR_FLAG,F_OK) != 0) && get_config_wifi == false) {
+        wifi_util_info_print(WIFI_CTRL,"FactoryReset is not done and captive portal customization already done fun %s return\n",__func__);
+        rbusValue_Release(value);
+        return RETURN_OK;
+    }
+    get_ssid_from_device_mac(default_ssid);
 
     for (radio_index = 0; radio_index < num_of_radios && !default_private_credentials; radio_index++) {
 
@@ -812,19 +835,6 @@ int captive_portal_check(void)
         set_notify_wifi_to_psm(PsmParamName,pInValue);
     }
 #endif // DML_SUPPORT
-    //Get CONFIG_WIFI
-    rc = rbus_get(g_wifi_mgr->ctrl.rbus_handle, CONFIG_WIFI, &value);
-
-    if (rc != RBUS_ERROR_SUCCESS) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d rbus_get failed for [] with error [%d]\n",__func__, __LINE__, rc);
-        if (value != NULL) {
-            rbusValue_Release(value);
-        }
-        return RETURN_ERR;
-    }
-
-    get_config_wifi = rbusValue_GetBoolean(value);
-
 
     wifi_util_dbg_print(WIFI_CTRL,"CONFIG_WIFI= %d fun %s  and wifi_value %d \n",get_config_wifi,__func__,default_private_credentials);
 

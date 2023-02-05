@@ -50,7 +50,7 @@ extern "C"
     __typeof__ (b) _b = (b); \
     _a > _b ? _a : _b; })
 #endif
-
+#define ONEWIFI_FR_FLAG  "/nvram/wifi/onewifi_factory_reset_flag"
 int csnprintf(char **str, size_t *size, const char *fmt, ...);
 #define append_snprintf csnprintf
 int tsnprintf(char *str, size_t size, const char *fmt, ...) __attribute__((format(printf, 3, 4)));

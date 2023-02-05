@@ -1362,10 +1362,16 @@ int get_all_param_from_psm_and_set_into_db(void)
                 return RETURN_ERR;
             }
             sleep(1);
+            remove_onewifi_factory_reset_flag();
+            wifi_util_info_print(WIFI_MGR,"%s FactoryReset flag removed  \n",__func__);
         }
 
         if (wifi_psm_db_enabled == true) {
             set_bool_psm_value(false, WIFI_PSM_DB_NAMESPACE);
+        }
+        if ((strncmp(last_reboot_reason, "factory-reset", strlen("factory-reset")) == 0) || (strncmp(last_reboot_reason, "WPS-Factory-Reset", strlen("WPS-Factory-Reset")) == 0)) {
+            create_onewifi_factory_reset_flag();
+            wifi_util_info_print(WIFI_MGR,"%s FactoryReset is done \n",__func__);
         }
 
     }
