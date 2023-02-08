@@ -1771,7 +1771,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_dml(webconfig_s
 {
     struct schema_Wifi_VIF_Config *vap_row;
     const struct schema_Wifi_VIF_Config **vif_table;
-    unsigned int i, j, k;
+    unsigned int i, j, k, vap_array_index;
     webconfig_subdoc_decoded_data_t *decoded_params;
     rdk_wifi_radio_t *radio;
     wifi_vap_info_map_t *vap_map;
@@ -1839,7 +1839,8 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_dml(webconfig_s
             }
 
             //get the corresponding row
-            vap_row = (struct schema_Wifi_VIF_Config *)vif_table[vap->vap_index];
+            VAP_ARRAY_INDEX(vap_array_index, decoded_params->hal_cap, vap->vap_index);
+            vap_row = (struct schema_Wifi_VIF_Config *)vif_table[vap_array_index];
             if (vap_row == NULL) {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the vap schema row for %d\n", __func__, __LINE__, vap->vap_index);
                 return webconfig_error_translate_to_ovsdb;
@@ -2660,7 +2661,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state_for_dml(webconfig_su
 {
     struct schema_Wifi_VIF_State *vap_row;
     const struct schema_Wifi_VIF_State **vif_table;
-    unsigned int i, j, k;
+    unsigned int i, j, k, vap_array_index;
     webconfig_subdoc_decoded_data_t *decoded_params;
     rdk_wifi_radio_t *radio;
     wifi_vap_info_map_t *vap_map;
@@ -2731,7 +2732,8 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state_for_dml(webconfig_su
             }
 
             //get the corresponding row
-            vap_row = (struct schema_Wifi_VIF_State *)vif_table[vap->vap_index];
+            VAP_ARRAY_INDEX(vap_array_index, decoded_params->hal_cap, vap->vap_index);
+            vap_row = (struct schema_Wifi_VIF_State *)vif_table[vap_array_index];
             if (vap_row == NULL) {
                 wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the vap schema row for %d\n", __func__, __LINE__, vap->vap_index);
                 return webconfig_error_translate_to_ovsdb;
