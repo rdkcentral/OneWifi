@@ -3771,7 +3771,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config)
                 cfg.u.bss_info.security.mfp = wifi_mfp_cfg_required;
                 cfg.u.bss_info.security.u.key.type = wifi_security_key_type_sae;
             } else {
-#if defined(_XB8_PRODUCT_REQ_)
+#if defined(_XB8_PRODUCT_REQ_) || defined(_SR213_PRODUCT_REQ_)
                 cfg.u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
                 cfg.u.bss_info.security.wpa3_transition_disable = false;
                 cfg.u.bss_info.security.mfp = wifi_mfp_cfg_optional;
