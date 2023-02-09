@@ -1550,8 +1550,6 @@ int start_wifimgr()
     init_wifi_db_param();
 #endif // DML_SUPPORT
 
-    g_wifi_mgr.ctrl.ctrl_initialized = true;
-
     if (start_wifi_ctrl(&g_wifi_mgr.ctrl) != 0) {
         wifi_util_error_print(WIFI_MGR,"%s: wifi ctrl start failed\n", __func__);
         return -1;

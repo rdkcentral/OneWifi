@@ -253,7 +253,6 @@ rbusError_t webconfig_get_subdoc(rbusHandle_t handle, rbusProperty_t property, r
     webconfig_subdoc_data_t data;
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    vap_svc_t *ext_svc;
     unsigned int num_of_radios = getNumberRadios();
     #define MAX_ACSD_SYNC_TIME_WAIT 12
     static int sync_retries = 0;
@@ -263,7 +262,7 @@ rbusError_t webconfig_get_subdoc(rbusHandle_t handle, rbusProperty_t property, r
         return RBUS_ERROR_INVALID_OPERATION;
      }
 
-   if(ctrl->network_mode == rdk_dev_mode_type_gw) {
+   if (ctrl->network_mode == rdk_dev_mode_type_gw) {
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Rbus property=%s, Gateway mode\n",__FUNCTION__, __LINE__, name);
         if (strcmp(name, WIFI_WEBCONFIG_INIT_DATA) != 0) {
             wifi_util_error_print(WIFI_CTRL,"%s:%d Rbus property invalid '%s'\n",__FUNCTION__, __LINE__, name);
@@ -307,12 +306,6 @@ rbusError_t webconfig_get_subdoc(rbusHandle_t handle, rbusProperty_t property, r
         if (strcmp(name, WIFI_WEBCONFIG_INIT_DATA) != 0) {
             wifi_util_error_print(WIFI_CTRL,"%s Rbus property valid\n",__FUNCTION__);
             return RBUS_ERROR_INVALID_INPUT;
-        }
-        
-        ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
-        if (ext_svc->u.ext.conn_state != connection_state_connected) {
-            wifi_util_dbg_print(WIFI_CTRL,"%s Extender is not connected\n",__FUNCTION__);
-            return RBUS_ERROR_INVALID_OPERATION;
         }
 
         if (check_wifi_radio_sched_timeout_active_status(ctrl) == true) {

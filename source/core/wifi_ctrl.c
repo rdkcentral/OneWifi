@@ -1371,6 +1371,7 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
     ctrl_queue_timeout_scheduler_tasks(ctrl);
 
     ctrl->exit_ctrl = false;
+    ctrl->ctrl_initialized = true;
     ctrl_queue_loop(ctrl);
 
 #if CCSP_COMMON
