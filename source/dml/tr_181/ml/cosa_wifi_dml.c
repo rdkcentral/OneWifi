@@ -745,11 +745,6 @@ WiFi_SetParamBoolValue
     )
 {
     UNREFERENCED_PARAMETER(hInsContext);
-    wifi_vap_info_t default_vap;
-    wifi_vap_info_t *p_vapInfo = NULL;
-    acl_entry_t *temp_acl_entry, *acl_entry;
-    mac_addr_str_t mac_str;
-
     wifi_global_config_t *global_wifi_config;
     global_wifi_config = (wifi_global_config_t*) get_dml_cache_global_wifi_config();
 
@@ -801,52 +796,9 @@ WiFi_SetParamBoolValue
     }
     if(AnscEqualString(ParamName, "X_CISCO_COM_FactoryReset", TRUE))
     {
-
-        for (UINT index = 0; index < getTotalNumberVAPs(); index++) {
-
-            if (!isVapPrivate(index))
-                continue;
-
-            p_vapInfo = (wifi_vap_info_t *) get_dml_cache_vap_info(index);
-            hash_map_t** acl_dev_map = (hash_map_t **)get_acl_hash_map(p_vapInfo);
-
-            if (*acl_dev_map) {
-                acl_entry =(acl_entry_t *)hash_map_get_first(*acl_dev_map);
-                while (acl_entry != NULL) {
-                    to_mac_str(acl_entry->mac,mac_str);
-                    wifi_util_dbg_print(WIFI_DMCLI,"Mac address in  acl_entry %s\n",mac_str);
-                    acl_entry = hash_map_get_next(*acl_dev_map,acl_entry);
-                    temp_acl_entry = hash_map_remove(*acl_dev_map, mac_str);
-                    if (temp_acl_entry != NULL) {
-                        free(temp_acl_entry);
-                    }
-                }
-            }
-
-            if (*acl_dev_map) {
-                hash_map_destroy(*acl_dev_map);
-                *acl_dev_map = NULL;
-            }
-
-            wifidb_init_vap_config_default(index,&default_vap);
-            wifidb_init_interworking_config_default(index,&default_vap.u.bss_info.interworking);
-            memcpy((unsigned char *)p_vapInfo,(unsigned char *)&default_vap,sizeof(wifi_vap_info_t));
-            set_dml_cache_vap_config_changed(index);
-        }
-        if (push_acl_list_dml_cache_to_one_wifidb(&p_vapInfo) != RETURN_OK) {
-            wifi_util_info_print(WIFI_DMCLI,"%s:%d MacFilter deletion  falied \n",__func__, __LINE__);
+        if (wifi_factory_reset() != TRUE)
             return FALSE;
-        }
-        create_onewifi_factory_reset_flag();
-        wifi_util_info_print(WIFI_MGR,"%s FactoryReset is done \n",__func__);
-
-        if (push_vap_dml_cache_to_one_wifidb() == RETURN_ERR)
-        {
-                wifi_util_info_print(WIFI_DMCLI,"%s:%d ApplyAccessPointSettings falied \n",__func__, __LINE__);
-                return FALSE;
-        }
-
-	   return TRUE;
+        return TRUE;
 	}
 
     if(AnscEqualString(ParamName, "X_CISCO_COM_EnableTelnet", TRUE))
@@ -1084,10 +1036,6 @@ WiFi_SetParamStringValue
     )
 {
     UNREFERENCED_PARAMETER(hInsContext);
-    wifi_vap_info_t default_vap;
-    wifi_vap_info_t *p_vapInfo = NULL;
-    acl_entry_t *temp_acl_entry, *acl_entry;
-    mac_addr_str_t mac_str;
 
     dml_global_default *gcfg = (dml_global_default *) get_global_default_obj();
     if(gcfg == NULL) {
@@ -1173,53 +1121,9 @@ WiFi_SetParamStringValue
     ERR_CHK(rc);
     if((rc == EOK) && (!ind))
     {
-    
         fprintf(stderr, "-- %s X_CISCO_COM_FactoryResetRadioAndAp %s\n", __func__, pString);
-
-        for (UINT index = 0; index < getTotalNumberVAPs(); index++) {
-
-            if (!isVapPrivate(index))
-                continue;
-
-            p_vapInfo = (wifi_vap_info_t *) get_dml_cache_vap_info(index);
-            hash_map_t** acl_dev_map = (hash_map_t **)get_acl_hash_map(p_vapInfo);
-
-            if (*acl_dev_map) {
-                acl_entry =(acl_entry_t *)hash_map_get_first(*acl_dev_map);
-                while (acl_entry != NULL) {
-                    to_mac_str(acl_entry->mac,mac_str);
-                    wifi_util_dbg_print(WIFI_DMCLI,"Mac address in  acl_entry %s\n",mac_str);
-                    acl_entry = hash_map_get_next(*acl_dev_map,acl_entry);
-                    temp_acl_entry = hash_map_remove(*acl_dev_map, mac_str);
-                    if (temp_acl_entry != NULL) {
-                        free(temp_acl_entry);
-                    }
-                }
-            }
-
-            if (*acl_dev_map) {
-                hash_map_destroy(*acl_dev_map);
-                *acl_dev_map = NULL;
-            }
-
-            wifidb_init_vap_config_default(index,&default_vap);
-            wifidb_init_interworking_config_default(index,&default_vap.u.bss_info.interworking);
-            memcpy((unsigned char *)p_vapInfo,(unsigned char *)&default_vap,sizeof(wifi_vap_info_t));
-            set_dml_cache_vap_config_changed(index);
-        }
-        if (push_acl_list_dml_cache_to_one_wifidb(&p_vapInfo) != RETURN_OK) {
-            wifi_util_info_print(WIFI_DMCLI,"%s:%d MacFilter deletion  falied \n",__func__, __LINE__);
+        if (wifi_factory_reset() != TRUE)
             return FALSE;
-        }
-        create_onewifi_factory_reset_flag();
-        wifi_util_info_print(WIFI_MGR,"%s FactoryReset is done \n",__func__);
-
-        if (push_vap_dml_cache_to_one_wifidb() == RETURN_ERR)
-        {
-            wifi_util_info_print(WIFI_DMCLI,"%s:%d ApplyAccessPointSettings falied \n",__func__, __LINE__);
-            return FALSE;
-        }
-
         return TRUE;
     }
 	

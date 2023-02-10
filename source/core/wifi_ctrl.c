@@ -783,18 +783,6 @@ void set_notify_wifi_to_psm(char *PsmParamName,char *pInValue)
     wifi_util_dbg_print(WIFI_CTRL,"set_notify_wifi_to_psm ends\n");
 }
 
-void factory_reset_wifi(void)
-{
-    //bool_reset_flag =  false;
-    wifi_util_dbg_print(WIFI_CTRL,"FactoryReset before factory_reset\n");
-    wifi_mgr_t *p_wifi_data = get_wifimgr_obj();
-
-    wifi_dml_parameters_t *p_dml_param = &p_wifi_data->dml_parameters;
-    wifi_util_dbg_print(WIFI_CTRL,"%s: Factory_Reset_wifi start:%d\n",__FUNCTION__, p_dml_param->WifiFactoryReset);
-
-    if (p_dml_param->WifiFactoryReset) {
-    }
-}
 #endif // DML_SUPPORT
 
 int captive_portal_check(void)

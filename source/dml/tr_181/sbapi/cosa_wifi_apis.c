@@ -1990,3 +1990,58 @@ bool get_inst_override_ttl()
     return pcfg->u_inst_client_def_override_ttl;
 }
 
+bool wifi_factory_reset()
+{
+    wifi_vap_info_t default_vap;
+    wifi_vap_info_t *p_vapInfo = NULL;
+    acl_entry_t *temp_acl_entry, *acl_entry;
+    mac_addr_str_t mac_str;
+
+    wifi_util_info_print(WIFI_DMCLI,"Enter %s:%d \n",__func__, __LINE__);
+
+    for (UINT index = 0; index < getTotalNumberVAPs(); index++) {
+
+        if (!isVapPrivate(index))
+            continue;
+
+        p_vapInfo = (wifi_vap_info_t *) get_dml_cache_vap_info(index);
+        hash_map_t** acl_dev_map = (hash_map_t **)get_acl_hash_map(p_vapInfo);
+
+        if (*acl_dev_map) {
+            acl_entry =(acl_entry_t *)hash_map_get_first(*acl_dev_map);
+            while (acl_entry != NULL) {
+                to_mac_str(acl_entry->mac,mac_str);
+                wifi_util_dbg_print(WIFI_DMCLI,"Mac address in  acl_entry %s\n",mac_str);
+                acl_entry = hash_map_get_next(*acl_dev_map,acl_entry);
+                temp_acl_entry = hash_map_remove(*acl_dev_map, mac_str);
+                if (temp_acl_entry != NULL) {
+                        free(temp_acl_entry);
+                    }
+                }
+            }
+
+            if (*acl_dev_map) {
+                hash_map_destroy(*acl_dev_map);
+                *acl_dev_map = NULL;
+            }
+
+            wifidb_init_vap_config_default(index,&default_vap);
+            wifidb_init_interworking_config_default(index,&default_vap.u.bss_info.interworking);
+            memcpy((unsigned char *)p_vapInfo,(unsigned char *)&default_vap,sizeof(wifi_vap_info_t));
+            set_dml_cache_vap_config_changed(index);
+        }
+        if (push_acl_list_dml_cache_to_one_wifidb(&p_vapInfo) != RETURN_OK) {
+            wifi_util_info_print(WIFI_DMCLI,"%s:%d MacFilter deletion  falied \n",__func__, __LINE__);
+            return FALSE;
+        }
+        //create_onewifi_factory_reset_flag();
+        create_onewifi_factory_reset_flag();
+        wifi_util_info_print(WIFI_MGR,"%s FactoryReset is done \n",__func__);
+        if (push_vap_dml_cache_to_one_wifidb() == RETURN_ERR)
+        {
+                wifi_util_info_print(WIFI_DMCLI,"%s:%d ApplyAccessPointSettings falied \n",__func__, __LINE__);
+                return FALSE;
+        }
+        wifi_util_info_print(WIFI_DMCLI,"Exit %s:%d \n",__func__, __LINE__);
+        return TRUE;
+}
