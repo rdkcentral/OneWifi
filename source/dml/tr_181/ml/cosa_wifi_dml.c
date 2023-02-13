@@ -828,6 +828,10 @@ WiFi_SetParamBoolValue
         {
             return TRUE;
         }
+        if (bValue && rfc_pcfg->radiusgreylist_rfc) {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:RadiussGreyList enabled=%d hence cannot enable preferPrivate \n",__func__, __LINE__,rfc_pcfg->radiusgreylist_rfc);
+            return FALSE;
+        }
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:prefer_private=%d Value = %d  \n",__func__, __LINE__,global_wifi_config->global_parameters.prefer_private,bValue);
         global_wifi_config->global_parameters.prefer_private = bValue;
         push_global_config_dml_cache_to_one_wifidb();
@@ -940,6 +944,12 @@ WiFi_SetParamBoolValue
 #if defined (FEATURE_SUPPORT_RADIUSGREYLIST)
         if(bValue != rfc_pcfg->radiusgreylist_rfc) {
             push_rfc_dml_cache_to_one_wifidb(bValue,ctrl_event_type_radius_grey_list_rfc);
+        }
+        if(bValue && global_wifi_config->global_parameters.prefer_private) {
+            wifi_util_dbg_print(WIFI_DMCLI,"prefer_private is set to false when radiusgreylist is enabled\n");
+            global_wifi_config->global_parameters.prefer_private = false;
+            push_global_config_dml_cache_to_one_wifidb();
+            push_prefer_private_ctrl_queue(false);
         }
         if (ANSC_STATUS_SUCCESS == CosaDmlWiFiSetEnableRadiusGreylist( bValue ))
         {
@@ -1126,7 +1136,7 @@ WiFi_SetParamStringValue
             return FALSE;
         return TRUE;
     }
-	
+
     rc = strcmp_s("X_CISCO_COM_RadioPower", strlen("X_CISCO_COM_RadioPower"), ParamName, &ind);
     ERR_CHK(rc);
     if((rc == EOK) && (!ind))

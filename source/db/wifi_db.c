@@ -3884,7 +3884,7 @@ int wifidb_init_global_config_default(wifi_global_param_t *config)
     memset(&cfg,0,sizeof(cfg));
 
     cfg.notify_wifi_changes = true;
-    cfg.prefer_private =  true;
+    cfg.prefer_private =  false;
     cfg.prefer_private_configure = true;
     cfg.tx_overflow_selfheal = false;
     cfg.vlan_cfg_version = 2;

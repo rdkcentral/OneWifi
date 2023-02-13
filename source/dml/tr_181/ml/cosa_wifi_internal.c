@@ -1142,6 +1142,16 @@ void CosaDmlWiFiGetRFCDataFromPSM(void)
 #if defined (FEATURE_SUPPORT_RADIUSGREYLIST)
     bool wifi_radius_greylist_status;
 #endif
+    wifi_global_config_t *global_wifi_config;
+    global_wifi_config = (wifi_global_config_t*) get_dml_cache_global_wifi_config();
+
+    wifi_util_dbg_print(WIFI_DMCLI,"Enter %s:%d \n",__func__, __LINE__);
+    if (global_wifi_config == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get Global Config\n", __FUNCTION__,__LINE__);
+        return ;
+    }
+
    // bool rfc;
     char recName[256] = {0x0};
 
@@ -1175,7 +1185,13 @@ void CosaDmlWiFiGetRFCDataFromPSM(void)
 
 #if defined (FEATURE_SUPPORT_RADIUSGREYLIST)
     CosaDmlWiFiGetEnableRadiusGreylist((BOOLEAN *)&wifi_radius_greylist_status);
-    push_rfc_dml_cache_to_one_wifidb(wifi_radius_greylist_status,ctrl_event_type_wifi_passpoint_rfc);
+    push_rfc_dml_cache_to_one_wifidb(wifi_radius_greylist_status,ctrl_event_type_radius_grey_list_rfc);
+    wifi_util_info_print(WIFI_DMCLI,"radiusGrey list value=%d preferpriv=%d\n",wifi_radius_greylist_status,global_wifi_config->global_parameters.prefer_private);
+    if (wifi_radius_greylist_status && global_wifi_config->global_parameters.prefer_private) {
+        global_wifi_config->global_parameters.prefer_private = false;
+        push_global_config_dml_cache_to_one_wifidb();
+        push_prefer_private_ctrl_queue(false);
+    }
 #endif
 }
 

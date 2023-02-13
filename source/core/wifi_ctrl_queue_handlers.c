@@ -1819,10 +1819,15 @@ void process_prefer_private_rfc(bool type)
 {
     wifi_mgr_t *p_wifi_mgr = get_wifimgr_obj();
     vap_svc_t  *pub_svc;
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
 
     if (!type) {
         wifi_util_dbg_print(WIFI_CTRL,"Prefer private is set to false\n");
         remove_xfinity_acl_entries(false,true);
+    }
+    if (!type &&  rfc_param->radiusgreylist_rfc) {
+        wifi_util_dbg_print(WIFI_CTRL,"RadiusGreylist is enabled hence not setting macmode\n");
+        return ;
     }
     pub_svc = get_svc_by_type(&p_wifi_mgr->ctrl, vap_svc_type_public);
     if (pub_svc->event_fn != NULL) {

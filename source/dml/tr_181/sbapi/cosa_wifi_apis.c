@@ -1996,8 +1996,14 @@ bool wifi_factory_reset()
     wifi_vap_info_t *p_vapInfo = NULL;
     acl_entry_t *temp_acl_entry, *acl_entry;
     mac_addr_str_t mac_str;
+    wifi_global_config_t *global_wifi_config;
+    global_wifi_config = (wifi_global_config_t*) get_dml_cache_global_wifi_config();
 
     wifi_util_info_print(WIFI_DMCLI,"Enter %s:%d \n",__func__, __LINE__);
+    if (global_wifi_config == NULL) {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get Global Config\n", __FUNCTION__,__LINE__);
+        return FALSE;
+    }
 
     for (UINT index = 0; index < getTotalNumberVAPs(); index++) {
 
@@ -2036,7 +2042,12 @@ bool wifi_factory_reset()
         }
         //create_onewifi_factory_reset_flag();
         create_onewifi_factory_reset_flag();
-        wifi_util_info_print(WIFI_MGR,"%s FactoryReset is done \n",__func__);
+        wifi_util_info_print(WIFI_MGR,"%s FactoryReset is done and preferPprivate=%d \n",__func__, global_wifi_config->global_parameters.prefer_private);
+        if (global_wifi_config->global_parameters.prefer_private) {
+            global_wifi_config->global_parameters.prefer_private = false;
+            push_global_config_dml_cache_to_one_wifidb();
+            push_prefer_private_ctrl_queue(false);
+        }
         if (push_vap_dml_cache_to_one_wifidb() == RETURN_ERR)
         {
                 wifi_util_info_print(WIFI_DMCLI,"%s:%d ApplyAccessPointSettings falied \n",__func__, __LINE__);
