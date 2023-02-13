@@ -380,7 +380,6 @@ int events_publish(wifi_monitor_data_t data)
     rbusValue_Init(&value);
     rbusObject_Init(&rdata, NULL);
 
-    wifi_util_info_print(WIFI_MON, "%s(): rbusEvent_Publish Event %d\n", __FUNCTION__, data.event_type);
     switch(data.event_type)
     {
         case monitor_event_type_diagnostics:
