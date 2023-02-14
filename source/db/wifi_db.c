@@ -3813,7 +3813,11 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config)
         if ((vap_index == 2) || isVapLnf(vap_index) || isVapPrivate(vap_index)) {
              cfg.u.bss_info.enabled = true;
         }
+#if defined(_SKY_HUB_COMMON_PRODUCT_REQ_)
+        cfg.u.bss_info.bssMaxSta = 64;
+#else
         cfg.u.bss_info.bssMaxSta = 75;
+#endif
         memset(ssid, 0, sizeof(ssid));
         if (wifi_hal_get_default_ssid(ssid, vap_index) == 0) {
             strcpy(cfg.u.bss_info.ssid, ssid);
