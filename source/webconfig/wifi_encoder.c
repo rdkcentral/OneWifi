@@ -245,6 +245,9 @@ webconfig_error_t encode_radio_object(const rdk_wifi_radio_t *radio, cJSON *radi
     // ChanUtilSelfHealEnable
     cJSON_AddBoolToObject(radio_object, "ChanUtilSelfHealEnable", radio_info->chanUtilSelfHealEnable);
 
+    // EcoPowerDown
+    cJSON_AddBoolToObject(radio_object, "EcoPowerDown", radio_info->EcoPowerDown);
+
     return webconfig_error_none;
 }
 
@@ -1457,21 +1460,27 @@ webconfig_error_t encode_csi_object(queue_t *csi_queue, cJSON *csi_obj)
     return webconfig_error_none;
 }
 
-webconfig_error_t encode_wifiradiocap(wifi_radio_capabilities_t *radiocap, cJSON *radio_obj)
+webconfig_error_t encode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON *radio_obj, int numRadios)
 {
     unsigned int freq_band_count = 0;
+    int i;
     cJSON *object;
+    wifi_radio_capabilities_t *radiocap;
 
-    if ((radiocap == NULL) || (radio_obj == NULL)) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer radiocap : %p radio_obj : %p\n", __func__, __LINE__, radiocap, radio_obj);
+    if ((wifi_prop == NULL) || (radio_obj == NULL)) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer radiocap : %p radio_obj : %p\n", __func__, __LINE__, wifi_prop, radio_obj);
         return webconfig_error_encode;
     }
-    object =  cJSON_CreateObject();
-    cJSON_AddItemToArray(radio_obj, object);
-    cJSON_AddNumberToObject(object, "RadioIndex", radiocap->index);
+    for (i = 0; i < numRadios; i++) {
+         radiocap = &wifi_prop->radiocap[i];
+         object =  cJSON_CreateObject();
+         cJSON_AddItemToArray(radio_obj, object);
+         cJSON_AddNumberToObject(object, "RadioIndex", radiocap->index);
 
-    for (freq_band_count = 0; freq_band_count < radiocap->numSupportedFreqBand; freq_band_count++) {
-        cJSON_AddItemToObject(object, "PossibleChannels",  cJSON_CreateIntArray(radiocap->channel_list[freq_band_count].channels_list, radiocap->channel_list[freq_band_count].num_channels));
+         for (freq_band_count = 0; freq_band_count < radiocap->numSupportedFreqBand; freq_band_count++) {
+              cJSON_AddItemToObject(object, "PossibleChannels",  cJSON_CreateIntArray(radiocap->channel_list[freq_band_count].channels_list, radiocap->channel_list[freq_band_count].num_channels));
+         }
+         cJSON_AddNumberToObject(object, "RadioPresence", wifi_prop->radio_presence[i]);
     }
     return webconfig_error_none;
 }

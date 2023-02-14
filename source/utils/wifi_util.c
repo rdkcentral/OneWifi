@@ -466,6 +466,11 @@ int get_total_number_of_vaps(wifi_platform_property_t *wifi_prop)
     return total_vaps;
 }
 
+bool get_radio_presence(wifi_platform_property_t *wifi_prop, int radio_index)
+{
+    return wifi_prop->radio_presence[radio_index];
+}
+
 int get_number_of_interfaces(wifi_platform_property_t *wifi_prop)
 {
     int num_vaps;

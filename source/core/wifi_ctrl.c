@@ -197,7 +197,7 @@ int reboot_device(wifi_ctrl_t *ctrl)
 {
     int rc = 0;
 
-    rc = rbus_setStr(ctrl->rbus_handle, "Device.DeviceInfo.X_RDKCENTRAL-COM_LastRebootReason", "sta-conn-failed");
+    rc = rbus_setStr(ctrl->rbus_handle, "Device.DeviceInfo.X_RDKCENTRAL-COM_LastRebootReason", "ECO Mode Reboot");
     if (rc != RBUS_ERROR_SUCCESS) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: rbusWrite Failed %d\n", __func__, __LINE__, rc);
         return RETURN_ERR;
@@ -449,6 +449,10 @@ int start_radios(rdk_dev_mode_type_t mode)
         }
 
 #ifdef CCSP_WIFI_HAL
+        wifi_platform_property_t *wifi_prop =  (wifi_platform_property_t *) get_wifi_hal_cap_prop();
+        if ((wifi_radio_oper_param->EcoPowerDown == false) && (wifi_prop->radio_presence[index] == false)) {
+            wifi_util_error_print(WIFI_CTRL,"%s: !!!!-ALERT-!!!-Radio not present-!!!-Kernel driver interface down-!!!.Index %d\n",__FUNCTION__, index);
+        }
         ret = wifi_hal_setRadioOperatingParameters(index, wifi_radio_oper_param);
 #else 
         bool rfc_status;

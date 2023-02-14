@@ -438,6 +438,9 @@ int radio_health_telemetry_logger(void *arg)
     unsigned long int itr = 0;
     char *t_str = NULL;
     for (i = 0; i < getNumberRadios(); i++) {
+        if (g_monitor_module.radio_presence[i] == false) {
+           continue;
+        }
         memset(buff, 0, sizeof(buff));
         memset(tmp, 0, sizeof(tmp));
         get_formatted_time(tmp);
@@ -480,6 +483,9 @@ int upload_ap_telemetry_data(void *arg)
     char tmp[128];
     unsigned int i;
     for (i = 0; i < getNumberRadios(); i++) {
+        if (g_monitor_module.radio_presence[i] == false) {
+           continue;
+        }
         wifi_radio_operationParam_t* radioOperation = getRadioOperationParam(i);
         if (radioOperation != NULL) {
             if (radioOperation->enable) {
@@ -655,12 +661,19 @@ int upload_client_telemetry_data(void *arg)
             UINT radioIndex = 0; 
             for (itr = 0; itr < (UINT)getTotalNumberVAPs(); itr++)  {
                 UINT vap_index = VAP_INDEX(mgr->hal_cap, itr);
+                UINT radio = RADIO_INDEX(mgr->hal_cap, itr);
+                if (g_monitor_module.radio_presence[radio] == false) {
+                   continue;
+                }
                 if (stflag[itr] == 1) {
                     radioIndex = getRadioIndexFromAp(vap_index);
                     enableRadioDetailStats[radioIndex] = TRUE;
                 }
             }
             for (radioIndex = 0; radioIndex < getNumberRadios(); ++radioIndex) {
+                if (g_monitor_module.radio_presence[radioIndex] == false) {
+                    continue;
+                }
                 wifi_radio_operationParam_t* radioOperation = getRadioOperationParam(radioIndex);
                 if (radioOperation == NULL) {
                     CcspTraceWarning(("%s : failed to getRadioOperationParam with radio index \n", __FUNCTION__));
@@ -700,6 +713,15 @@ int upload_client_telemetry_data(void *arg)
         return TIMER_TASK_CONTINUE;
     }
     if (phase == 1) {
+        UINT radio = RADIO_INDEX(mgr->hal_cap, i);
+        if (g_monitor_module.radio_presence[radio] == false) {
+            i++;
+            if (i >= getTotalNumberVAPs()) {
+                i = 0;
+                phase++;
+            }
+            return TIMER_TASK_CONTINUE;
+        }
         sta_map = g_monitor_module.bssid_data[i].sta_map;
         memset(telemetryBuff, 0, TELEMETRY_MAX_BUFFER);
         get_formatted_time(tmp);
@@ -1239,8 +1261,13 @@ int upload_client_telemetry_data(void *arg)
 
     for (i = 0; i < getTotalNumberVAPs(); i++) {
         UINT vap_index;
+        UINT radio;
 
         vap_index = VAP_INDEX(mgr->hal_cap, i);
+        radio = RADIO_INDEX(mgr->hal_cap, i);
+        if (g_monitor_module.radio_presence[radio] == false) {
+            continue;
+        }
         // update rapid reconnect time limit if changed
         wifi_front_haul_bss_t *vap_bss_info = Get_wifi_object_bss_parameter(vap_index);
         if(vap_bss_info != NULL) {
@@ -1743,8 +1770,20 @@ int upload_client_debug_stats(void *arg)
     static int phase_sta = 0;
     static int phase_fp = 0;
     wifi_mgr_t *mgr = get_wifimgr_obj();
-
+    unsigned int radio;
     vap_index = VAP_INDEX(mgr->hal_cap, itr);
+    radio = RADIO_INDEX(mgr->hal_cap, itr);
+
+    if (g_monitor_module.radio_presence[radio] == false) {
+        itr++;
+        if (itr >= (int)getTotalNumberVAPs())
+        {
+            itr = 0;
+            phase = 0;
+            return TIMER_TASK_COMPLETE;
+        }
+       return TIMER_TASK_COMPLETE;
+    }
 
     if  (false == sWiFiDmlvApStatsFeatureEnableCfg)
     {
@@ -1837,11 +1876,16 @@ process_stats_flag_changed(unsigned int ap_index, client_stats_enable_t *flag)
     if (0 == flag->type) {
         int idx;
         int vap_index;
+        int radio;
 
         write_to_file(wifi_health_log, "WIFI_STATS_FEATURE_ENABLE:%s\n",
                 (flag->enable) ? "true" : "false");
         for(idx = 0; idx < (int)getTotalNumberVAPs(); idx++) {
             vap_index = VAP_INDEX(mgr->hal_cap, idx);
+            radio = RADIO_INDEX(mgr->hal_cap, idx);
+            if (g_monitor_module.radio_presence[radio] == false) {
+               continue;
+            }
             reset_client_stats_info(vap_index);
         }
     } else if (1 == flag->type) { //Device.WiFi.AccessPoint.<vAP>.X_RDKCENTRAL-COM_StatsEnable = 1
@@ -1860,6 +1904,10 @@ radio_stats_flag_changed(unsigned int radio_index, client_stats_enable_t *flag)
     for(UINT apIndex = 0; apIndex <= getTotalNumberVAPs(); apIndex++)
     {
         UINT vap_index = VAP_INDEX(mgr->hal_cap, apIndex);
+        UINT radio = RADIO_INDEX(mgr->hal_cap, apIndex);
+        if (g_monitor_module.radio_presence[radio] == false) {
+            continue;
+        }
         if (radio_index == getRadioIndexFromAp(vap_index))
         {
             reset_client_stats_info(apIndex);
@@ -1901,6 +1949,9 @@ int upload_channel_width_telemetry(void *arg)
     UINT numRadios = getNumberRadios();
     wifi_util_dbg_print(WIFI_MON, "Entering %s:%d \n", __FUNCTION__, __LINE__);
     for (UINT i = 0; i < numRadios; ++i) {
+        if (g_monitor_module.radio_presence[i] == false) {
+           continue;
+        }
         wifi_radio_operationParam_t* radioOperation = getRadioOperationParam(i);
         if (radioOperation == NULL) {
             CcspTraceWarning(("%s : failed to getRadioOperationParam with radio index:%d \n", __FUNCTION__, i));
@@ -1945,7 +1996,7 @@ int upload_ap_telemetry_pmf(void *arg)
     char log_buf[1024]={0};
     char telemetry_buf[1024]={0};
     errno_t rc = -1;
-    UINT vap_index;
+    UINT vap_index, radio;
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
     wifi_util_dbg_print(WIFI_MON, "Entering %s:%d \n", __FUNCTION__, __LINE__);
@@ -1975,6 +2026,10 @@ int upload_ap_telemetry_pmf(void *arg)
     for(i = 0; i < (int)getTotalNumberVAPs(); i++) 
     {
         vap_index = VAP_INDEX(mgr->hal_cap, i);
+        radio = RADIO_INDEX(mgr->hal_cap, i);
+        if (g_monitor_module.radio_presence[radio] == false) {
+            continue;
+        }
         if (isVapPrivate(vap_index))
         {
             wifi_vap_security_t *vapSecurity = (wifi_vap_security_t *)Get_wifi_object_bss_security_parameter(vap_index);
@@ -2353,6 +2408,10 @@ void process_connect	(unsigned int ap_index, auth_deauth_dev_t *dev)
       Also when clients moved away from a vAP and connect back to other vAP this will be usefull*/
     for (i = 0; i < getTotalNumberVAPs(); i++) {
         UINT vap_index = VAP_INDEX(mgr->hal_cap, i);
+        UINT radio = RADIO_INDEX(mgr->hal_cap, i);
+        if (g_monitor_module.radio_presence[radio] == false) {
+            continue;
+        }
         if ( vap_index == ap_index)
             continue;
         vap_status = g_monitor_module.bssid_data[vap_index].ap_params.ap_status;
@@ -2512,6 +2571,9 @@ int get_neighbor_scan_results()
     
     for(UINT rIdx = 0; rIdx < getNumberRadios(); rIdx++)
     {
+        if (g_monitor_module.radio_presence[rIdx] == false) {
+           continue;
+        }
         if (wifi_getNeighboringWiFiStatus(rIdx, &NeighResult,&count) == RETURN_OK)
         {
             pTmp = monitor_param->neighbor_scan_cfg.pResult[rIdx];
@@ -2547,6 +2609,9 @@ int process_periodical_neighbor_scan(void *arg)
 
         for(UINT rIdx = 0; rIdx < getNumberRadios(); rIdx++)
         {
+            if (g_monitor_module.radio_presence[rIdx] == false) {
+                continue;
+            }
             wifi_radio_oper_param = (wifi_radio_operationParam_t *)get_wifidb_radio_map(rIdx);
             wifi_startNeighborScan(rIdx, scan_mode, ((wifi_radio_oper_param->band == WIFI_FREQUENCY_6_BAND) ? (dwell_time=110) : dwell_time), 0, NULL);
         }
@@ -2794,6 +2859,10 @@ int  getApIndexfromClientMac(char *check_mac)
     macbytes_to_string((unsigned char *)check_mac, tmpmac);
     for (i = 0; i < getTotalNumberVAPs(); i++) {
         UINT vap_index = VAP_INDEX(mgr->hal_cap, i);
+        UINT radio = RADIO_INDEX(mgr->hal_cap, i);
+        if (g_monitor_module.radio_presence[radio] == false) {
+            continue;
+        }
         memset(tmpassoc, 0, sizeof(tmpassoc));
         ret = wifi_getApAssociatedDevice(vap_index, tmpassoc, sizeof(tmpassoc));
         rest = tmpassoc;
@@ -3853,6 +3922,10 @@ int csi_getCSIData(void *arg)
     //Iterating through each VAP and collecting data
     for (i = 0; i < (int) getTotalNumberVAPs(); i++) {
         UINT vap_index = VAP_INDEX(mgr->hal_cap, i);
+        UINT radio = RADIO_INDEX(mgr->hal_cap, i);
+        if (g_monitor_module.radio_presence[radio] == false) {
+            continue;
+        }
         count=0;
         memset(tmp_csiClientMac, 0, sizeof(tmp_csiClientMac));
         pthread_mutex_lock(&g_events_monitor.lock);
@@ -4286,7 +4359,12 @@ int associated_devices_diagnostics(void *arg)
     static unsigned int num_devs = 0;
 
     wifi_mgr_t *mgr = get_wifimgr_obj();
- 
+
+    UINT radio = RADIO_INDEX(mgr->hal_cap, idx);
+    if (g_monitor_module.radio_presence[radio] == false) {
+        goto exit_task;
+    }
+
     if (phase == 0) { /* phase 0: collect diag data */
         if (dev_array == NULL) {
             num_devs = 0;
@@ -4663,17 +4741,29 @@ static void scheduler_telemetry_tasks(void)
     }
 }
 
+void update_ecomode_radios()
+{
+    unsigned int radio;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+
+    for (radio = 0; radio < getNumberRadios(); radio++)
+    {
+        g_monitor_module.radio_presence[radio] = mgr->hal_cap.wifi_prop.radio_presence[radio];
+    }
+}
+
 int init_wifi_monitor()
 {
     int rssi;
     unsigned int i;
     unsigned int uptimeval = 0;
     wifi_mgr_t *mgr = get_wifimgr_obj();
-    UINT vap_index;
+    UINT vap_index, radio;
     
     memset(g_monitor_module.cliStatsList, 0, MAX_VAP);
     g_monitor_module.poll_period = 5;
     g_monitor_module.upload_period = get_upload_period(60);//Default value 60
+    update_ecomode_radios();
     uptimeval=get_sys_uptime();
     chan_util_upload_period = get_chan_util_upload_period();
     wifi_util_dbg_print(WIFI_MON, "%s:%d system uptime val is %ld and upload period is %d in secs\n",
@@ -4698,6 +4788,10 @@ int init_wifi_monitor()
     }
     for (i = 0; i < getTotalNumberVAPs(); i++) {
         UINT vap_index = VAP_INDEX(mgr->hal_cap, i);
+        radio = RADIO_INDEX(mgr->hal_cap, i);
+        if (g_monitor_module.radio_presence[radio] == false) {
+            continue;
+        }
         // update rapid reconnect time limit if changed
         wifi_front_haul_bss_t *vap_bss_info = Get_wifi_object_bss_parameter(vap_index);
         if(vap_bss_info != NULL) {
@@ -4753,6 +4847,10 @@ int init_wifi_monitor()
     g_monitor_module.neighbor_scan_id = 0;
     for (i = 0; i < getTotalNumberVAPs(); i++) {
         vap_index = VAP_INDEX(mgr->hal_cap, i);
+        radio = RADIO_INDEX(mgr->hal_cap, i);
+        if (g_monitor_module.radio_presence[radio] == false) {
+            continue;
+        }
         g_monitor_module.clientdiag_id[i] = 0;
         g_monitor_module.clientdiag_sched_arg[i] = vap_index;
         g_monitor_module.clientdiag_sched_interval[i] = 0;
@@ -4788,7 +4886,7 @@ int init_wifi_monitor()
 int start_wifi_monitor ()
 {
     unsigned int i;
-    UINT vap_index;
+    UINT vap_index, radio;
     //ONEWIFI To avoid the st
         //Cleanup all CSI clients configured in driver
     unsigned char def_mac[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
@@ -4797,6 +4895,10 @@ int start_wifi_monitor ()
     for (i = 0; i < getTotalNumberVAPs(); i++) {
         /*TODO CID: 110946 Out-of-bounds access - Fix in QTN code*/
         vap_index = VAP_INDEX(mgr->hal_cap, i);
+        radio = RADIO_INDEX(mgr->hal_cap, i);
+        if (g_monitor_module.radio_presence[radio] == false) {
+            continue;
+        }
         wifi_front_haul_bss_t *vap_bss_info = Get_wifi_object_bss_parameter(vap_index);
         if (vap_bss_info != NULL) {
             mac_addr_str_t mac_str;
@@ -5043,6 +5145,10 @@ void instant_msmt_macAddr(char *mac_addr)
     str_to_mac_bytes(mac_addr, bmac);
     for (i = 0; i < (int)getTotalNumberVAPs(); i++) {
         UINT vap_index = VAP_INDEX(mgr->hal_cap, i);
+        UINT radio = RADIO_INDEX(mgr->hal_cap, i);
+        if (g_monitor_module.radio_presence[radio] == false) {
+            continue;
+        }
         if( is_device_associated(vap_index, mac_addr)  == true) {
             wifi_util_dbg_print(WIFI_MON, "%s:%d: found client %s on ap %d\n", __func__, __LINE__, mac_addr, vap_index);
             pthread_mutex_lock(&g_monitor_module.queue_lock);
@@ -5103,6 +5209,10 @@ void monitor_enable_instant_msmt(mac_address_t sta_mac, bool enable)
 
     for (i = 0; i < getTotalNumberVAPs(); i++) {
         UINT vap_index = VAP_INDEX(mgr->hal_cap, i);
+        UINT radio = RADIO_INDEX(mgr->hal_cap, i);
+        if (g_monitor_module.radio_presence[radio] == false) {
+            continue;
+        }
         if ( is_device_associated(vap_index, sta) == true ) {
             wifi_util_dbg_print(WIFI_MON, "%s:%d: found sta:%s on ap index:%d starting instant measurements\n", __func__, __LINE__, sta, vap_index);
             event = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
@@ -5589,6 +5699,10 @@ void SetActiveMsmtStepDstMac(char *DstMac, ULONG StepIns)
 
     for (i = 0; i < (int)getTotalNumberVAPs(); i++) {
         UINT vap_index = VAP_INDEX(mgr->hal_cap, i);
+        UINT radio = RADIO_INDEX(mgr->hal_cap, i);
+        if (g_monitor_module.radio_presence[radio] == false) {
+            continue;
+        }
         if ( is_device_associated(vap_index, DstMac)  == true) {
             wifi_util_dbg_print(WIFI_MON, "%s:%d: found client %s on ap %d\n", __func__, __LINE__, DstMac,vap_index);
             is_found = true;

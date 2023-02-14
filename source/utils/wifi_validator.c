@@ -2019,6 +2019,10 @@ int validate_radio_vap(const cJSON *wifi, wifi_radio_operationParam_t *wifi_radi
         validate_param_bool(wifi, "ChanUtilSelfHealEnable", param);
         wifi_radio_info->chanUtilSelfHealEnable = (param->type & cJSON_True) ? true:false;
 
+        // EcoPowerDown
+        validate_param_bool(wifi, "EcoPowerDown", param);
+        wifi_radio_info->EcoPowerDown = (param->type & cJSON_True) ? true:false;
+
     return RETURN_OK;
 }
 

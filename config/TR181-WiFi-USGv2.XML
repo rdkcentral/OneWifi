@@ -904,7 +904,7 @@ INSTMSMT_PH2 -->
                         </parameter>
                         <parameter>
                             <name>Status</name>
-                            <type>string: Up(1),Down(2),Unknown(3),Dormant(4),NotPresent(5),LowerLayerDown(6),Error(7)</type>
+                            <type>string: Up(1),Down(2),Unknown(3),Dormant(4),NotPresent(5),LowerLayerDown(6),Error(7),DeepSleep(8)</type>
                             <syntax>uint32/mapped</syntax>
                         </parameter>
                         <parameter>
@@ -1368,6 +1368,12 @@ INSTMSMT_PH2 -->
                             <type>int</type>
                             <syntax>int</syntax>
                             <writable>false</writable>
+                        </parameter>
+                        <parameter>
+                            <name>X_RDK_EcoPowerDown</name>
+                            <type>boolean</type>
+                            <syntax>bool</syntax>
+                            <writable>true</writable>
                         </parameter>
                     </parameters>
                     <objects>

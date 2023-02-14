@@ -211,7 +211,7 @@ typedef struct {
     unsigned int clientdiag_sched_interval[MAX_VAP];
     int csi_sched_id;
     unsigned int csi_sched_interval;
-
+    bool radio_presence[MAX_NUM_RADIOS];
 } wifi_monitor_t;
 
 typedef struct {
@@ -281,4 +281,5 @@ int get_neighbor_scan_results();
 int get_dev_stats_for_radio(unsigned int radio_index, radio_data_t *radio_stats);
 int get_radio_channel_utilization(unsigned int radio_index, int *chan_util);
 int  getApIndexfromClientMac(char *check_mac);
+void update_ecomode_radios(void);
 #endif	//_WIFI_MON_H_

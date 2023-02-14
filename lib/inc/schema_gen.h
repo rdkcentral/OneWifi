@@ -1557,6 +1557,7 @@
         PJS_OVS_INT(admin_control) \
         PJS_OVS_INT(chan_util_threshold) \
         PJS_OVS_BOOL(chan_util_selfheal_enable) \
+        PJS_OVS_BOOL(eco_power_down) \
     )
 
 #define PJS_SCHEMA_Wifi_Global_Config \
@@ -3142,7 +3143,8 @@
     COLUMN(user_control) \
     COLUMN(admin_control) \
     COLUMN(chan_util_threshold) \
-    COLUMN(chan_util_selfheal_enable)
+    COLUMN(chan_util_selfheal_enable) \
+    COLUMN(eco_power_down)
 
 #define SCHEMA__Wifi_Global_Config "Wifi_Global_Config"
 #define SCHEMA_COLUMN__Wifi_Global_Config(COLUMN) \
@@ -4341,6 +4343,7 @@
 #define SCHEMA__Wifi_Radio_Config__admin_control "admin_control"
 #define SCHEMA__Wifi_Radio_Config__chan_util_threshold "chan_util_threshold"
 #define SCHEMA__Wifi_Radio_Config__chan_util_selfheal_enable "chan_util_selfheal_enable"
+#define SCHEMA__Wifi_Radio_Config__eco_power_down "eco_power_down"
 
 #define SCHEMA__Wifi_Global_Config__gas_config "gas_config"
 #define SCHEMA__Wifi_Global_Config__notify_wifi_changes "notify_wifi_changes"

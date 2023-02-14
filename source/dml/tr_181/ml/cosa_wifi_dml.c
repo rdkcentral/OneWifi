@@ -1716,6 +1716,17 @@ Radio_GetParamBoolValue
         return TRUE;
     }
 
+    if( AnscEqualString(ParamName, "X_RDK_EcoPowerDown", TRUE))
+    {
+        /* collect value */
+#if defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+        *pBool = pcfg->EcoPowerDown;
+#else
+        *pBool = false;
+#endif // defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+        return TRUE;
+    }
+
     if( AnscEqualString(ParamName, "IEEE80211hSupported", TRUE))
     {
         *pBool = TRUE;
@@ -2081,6 +2092,10 @@ Radio_GetParamUlongValue
         if (global_wifi_config->global_parameters.force_disable_radio_feature == TRUE )
         {
             *puLong = 2;
+            return TRUE;
+        }
+        if (get_radio_presence(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop, instance_number) == false) {
+            *puLong = 8;
             return TRUE;
         }
         if (pcfg->enable == TRUE) {
@@ -2931,6 +2946,21 @@ Radio_SetParamBoolValue
         return TRUE;
     }
 
+    if( AnscEqualString(ParamName, "X_RDK_EcoPowerDown", TRUE))
+    {
+#if defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: EcoPowerDown = %d bValue = %d  \n", __func__, __LINE__, wifiRadioOperParam->EcoPowerDown, bValue);
+        if (wifiRadioOperParam->EcoPowerDown == bValue)
+        {
+            return  TRUE;
+        }
+        /* save update to backup */
+        wifiRadioOperParam->EcoPowerDown = bValue;
+        is_radio_config_changed = TRUE;
+        ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s EcoPowerDown : %d\n", __FUNCTION__, wifiRadioOperParam->EcoPowerDown);
+#endif // defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+        return TRUE;
+    }
     return FALSE;
 }
 

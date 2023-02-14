@@ -205,7 +205,8 @@
 					9,
 					10,
 					11
-				]
+				],
+				"RadioPresence": 0
 			},
 			{
 				"RadioIndex": 1,
@@ -235,7 +236,8 @@
 					157,
 					161,
 					165
-				]
+				],
+				"RadioPresence": 0
 			}
 		],
 		"WiFiVapCap": [

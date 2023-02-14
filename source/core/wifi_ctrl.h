@@ -319,6 +319,7 @@ int get_rbus_param(rbusHandle_t rbus_handle, rbus_data_type_t data_type, const c
 int set_rbus_bool_param(rbusHandle_t rbus_handle, const char *paramNames, bool data_value);
 bool is_sta_enabled(void);
 void reset_wifi_radios();
+wifi_platform_property_t *get_wifi_hal_cap_prop(void);
 #ifdef __cplusplus
 }
 #endif
