@@ -4236,13 +4236,16 @@ bool active_sta_connection_status(int ap_index, char *mac)
 {
     sta_data_t  *sta;
     hash_map_t  *sta_map;
+    unsigned int vap_array_index;
 
     if (mac == NULL) {
         wifi_util_dbg_print(WIFI_MON,"%s:%d input mac adrress is NULL for ap_index:%d\n", __func__, __LINE__, ap_index);
         return false;
     }
 
-    sta_map = g_monitor_module.bssid_data[ap_index].sta_map;
+    getVAPArrayIndexFromVAPIndex(ap_index, &vap_array_index);
+
+    sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
     if (sta_map == NULL) {
         wifi_util_dbg_print(WIFI_MON,"%s:%d: return, stamap is NULL for vap:%d\n", __func__, __LINE__, ap_index);
         return false;
