@@ -318,6 +318,7 @@ void wait_wifi_scan_result(wifi_ctrl_t *ctrl);
 int get_rbus_param(rbusHandle_t rbus_handle, rbus_data_type_t data_type, const char *paramNames, void *data_value);
 int set_rbus_bool_param(rbusHandle_t rbus_handle, const char *paramNames, bool data_value);
 bool is_sta_enabled(void);
+void reset_wifi_radios();
 #ifdef __cplusplus
 }
 #endif

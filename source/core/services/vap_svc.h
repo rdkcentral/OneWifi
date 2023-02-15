@@ -57,6 +57,7 @@ typedef bool (* vap_svc_is_my_fn_t)(unsigned int vap_index);
 //sta connection 10 seconds retry
 #define STA_CONN_RETRY_TIMEOUT                 9
 #define STA_MAX_CONNECT_ATTEMPT                2
+#define STA_MAX_DISCONNECT_ATTEMPT             2
 #define MAX_SCAN_RESULT_WAIT                   2
 // max connection algoritham timeout 4 minutes
 #define MAX_CONNECTION_ALGO_TIMEOUT            4 * 60
@@ -110,6 +111,7 @@ typedef struct {
     unsigned int           connected_vap_index;
     unsigned long long int last_connected_time;
     unsigned char          conn_retry;
+    unsigned char          disconn_retry;
     unsigned char          wait_scan_result;
     unsigned char          scanned_radios;
     unsigned int           go_to_channel;

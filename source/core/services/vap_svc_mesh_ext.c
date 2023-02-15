@@ -241,6 +241,17 @@ static void ext_set_conn_state(vap_svc_ext_t *ext, connection_state_t new_conn_s
     ext->conn_state = new_conn_state;
 }
 
+static void ext_reset_radios(vap_svc_t *svc)
+{
+    wifi_ctrl_t *ctrl = svc->ctrl;
+    vap_svc_ext_t *ext = &svc->u.ext;
+
+    reset_wifi_radios();
+    ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
+    scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
+        process_ext_connect_algorithm, svc, EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1);
+}
+
 void ext_incomplete_scan_list(vap_svc_t *svc)
 {
     vap_svc_ext_t *ext;
@@ -279,6 +290,39 @@ int process_scan_result_timeout(vap_svc_t *svc)
     return 0;
 }
 
+static int process_ext_connect_event_timeout(vap_svc_t *svc)
+{
+    wifi_ctrl_t *ctrl = svc->ctrl;
+    vap_svc_ext_t *ext = &svc->u.ext;
+
+    ext->ext_conn_status_ind_timeout_handler_id = 0;
+
+    if (ext->conn_state != connection_state_connection_in_progress &&
+            ext->conn_state != connection_state_connection_to_lcb_in_progress &&
+            ext->conn_state != connection_state_connection_to_nb_in_progress) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d not received connection event, exit due to "
+            "connection state: %s\n", __func__, __LINE__, ext_conn_state_to_str(ext->conn_state));
+        ext->conn_retry = 0;
+        return 0;
+    }
+
+    if (ext->conn_retry >= STA_MAX_CONNECT_ATTEMPT) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d not received connection event, reset radios\n",
+            __func__, __LINE__);
+        ext_reset_radios(svc);
+        ext->conn_retry = 0;
+        return 0;
+    }
+
+    ext->conn_retry++;
+    wifi_util_error_print(WIFI_CTRL, "%s:%d not received connection event, retry\n", __func__,
+        __LINE__);
+    scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
+        process_ext_connect_algorithm, svc, EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1);
+
+    return 0;
+}
+
 int process_disconnection_event_timeout(vap_svc_t *svc)
 {
     vap_svc_ext_t   *ext;
@@ -298,43 +342,87 @@ int process_disconnection_event_timeout(vap_svc_t *svc)
     return 0;
 }
 
-int process_udhcp_disconnect_event_timeout(vap_svc_t *svc)
+static int process_udhcp_disconnect_event_timeout(vap_svc_t *svc)
 {
-    vap_svc_ext_t   *ext;
-    wifi_ctrl_t *ctrl;
+    wifi_ctrl_t *ctrl = svc->ctrl;
+    vap_svc_ext_t *ext = &svc->u.ext;
 
-    ctrl = svc->ctrl;
-    ext = &svc->u.ext;
+    ext->ext_udhcp_disconnect_event_timeout_handler_id = 0;
 
-    if (ext->conn_state == connection_state_connected) {
-        wifi_util_dbg_print(WIFI_CTRL,"%s:%d Not received disconnection event \n", __func__, __LINE__);
-        ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
-        scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
-                process_ext_connect_algorithm, svc,
-                EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1);
+    if (ext->conn_state != connection_state_connected) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d not received disconnection event, exit due to "
+            "connection state: %s\n", __func__, __LINE__, ext_conn_state_to_str(ext->conn_state));
+        ext->disconn_retry = 0;
+        return 0;
     }
+
+    if (ext->disconn_retry >= STA_MAX_DISCONNECT_ATTEMPT) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d not received disconnection event, reset radios\n",
+            __func__, __LINE__);
+        ext_reset_radios(svc);
+        ext->disconn_retry = 0;
+        return 0;
+    }
+
+    wifi_util_error_print(WIFI_CTRL, "%s:%d not received disconnection event, retry\n", __func__,
+        __LINE__);
+
+    ext->disconn_retry++;
+
+    wifi_util_info_print(WIFI_CTRL, "%s:%d execute sta disconnect for vap index: %d\n",
+        __func__, __LINE__, ext->connected_vap_index);
+    if (wifi_hal_disconnect(ext->connected_vap_index) == RETURN_ERR) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d sta disconnect failed for vap index: %d, "
+            "retry after timeout\n", __func__, __LINE__, ext->connected_vap_index);
+    }
+
+    scheduler_add_timer_task(ctrl->sched, FALSE,
+        &ext->ext_udhcp_disconnect_event_timeout_handler_id, process_udhcp_disconnect_event_timeout,
+        svc, EXT_DISCONNECTION_IND_TIMEOUT, 1);
 
     return 0;
 }
 
-int process_trigger_disconnection_event_timeout(vap_svc_t *svc)
+static int process_trigger_disconnection_event_timeout(vap_svc_t *svc)
 {
-    vap_svc_ext_t   *ext;
-    wifi_ctrl_t *ctrl;
+    wifi_ctrl_t *ctrl = svc->ctrl;
+    vap_svc_ext_t *ext = &svc->u.ext;
 
-    ctrl = svc->ctrl;
-    ext = &svc->u.ext;
+    ext->ext_trigger_disconnection_timeout_handler_id = 0;
 
-    if (ext->conn_state == connection_state_connected) {
-        wifi_util_dbg_print(WIFI_CTRL,"%s:%d Not received disconnection event \n", __func__, __LINE__);
-        ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
-        scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
-                process_ext_connect_algorithm, svc,
-                EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1);
+    if (ext->conn_state != connection_state_connected) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d not received disconnection event, exit due to "
+            "connection state: %s\n", __func__, __LINE__, ext_conn_state_to_str(ext->conn_state));
+        ext->disconn_retry = 0;
+        return 0;
     }
+
+    if (ext->disconn_retry >= STA_MAX_DISCONNECT_ATTEMPT) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d not received disconnection event, reset radios\n",
+            __func__, __LINE__);
+        ext_reset_radios(svc);
+        ext->disconn_retry = 0;
+        return 0;
+    }
+
+    wifi_util_error_print(WIFI_CTRL, "%s:%d not received disconnection event, retry\n", __func__,
+        __LINE__);
+
+    ext->disconn_retry++;
+
+    wifi_util_info_print(WIFI_CTRL, "%s:%d execute sta disconnect for vap index: %d\n", __func__,
+        __LINE__, ext->connected_vap_index);
+    if (wifi_hal_disconnect(ext->connected_vap_index) == RETURN_ERR) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d sta disconnect failed for vap index: %d, "
+            "retry after timeout\n", __func__, __LINE__, ext->connected_vap_index);
+    }
+
+    scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_trigger_disconnection_timeout_handler_id,
+        process_trigger_disconnection_event_timeout, svc, EXT_DISCONNECTION_IND_TIMEOUT, 1);
 
     return 0;
 }
+
 int process_udhcp_ip_check(vap_svc_t *svc)
 {
     static int ip_check_count = 0;
@@ -397,7 +485,14 @@ int process_udhcp_ip_check(vap_svc_t *svc)
 #if CCSP_COMMON
         analytics->event_fn(analytics, ctrl_event_type_command, ctrl_event_type_udhcp_ip_fail, ext);
 #endif
-        wifi_hal_disconnect(ext->connected_vap_index);
+        ext->disconn_retry++;
+        wifi_util_info_print(WIFI_CTRL, "%s:%d execute sta disconnect for vap index: %d\n",
+            __func__, __LINE__, ext->connected_vap_index);
+        if (wifi_hal_disconnect(ext->connected_vap_index) == RETURN_ERR) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d sta disconnect failed for vap index:%d, "
+                "retry after timeout\n", __func__, __LINE__, ext->connected_vap_index);
+        }
+
         scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_udhcp_disconnect_event_timeout_handler_id,
                 process_udhcp_disconnect_event_timeout, svc,
                 EXT_DISCONNECTION_IND_TIMEOUT, 1);
@@ -595,26 +690,29 @@ void ext_wait_for_csa(vap_svc_t *svc)
     return;
 }
 
-void ext_try_disconnecting(vap_svc_t *svc)
+static void ext_try_disconnecting(vap_svc_t *svc)
 {
-    if (svc == NULL) {
-        wifi_util_dbg_print(WIFI_CTRL,"%s:%d NULL pointer\n", __func__, __LINE__);
+    vap_svc_ext_t *ext = &svc->u.ext;
+    wifi_ctrl_t *ctrl = svc->ctrl;
+
+    if (ext->conn_state != connection_state_disconnection_in_progress) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d ignore disconnection request due to "
+            "connection state: %s\n", __func__, __LINE__, ext_conn_state_to_str(ext->conn_state));
         return;
     }
 
+    wifi_util_info_print(WIFI_CTRL, "%s:%d execute sta disconnect for vap index: %d\n", __func__,
+        __LINE__, ext->connected_vap_index);
 
-    vap_svc_ext_t   *ext;
-    wifi_ctrl_t *ctrl;
-    ctrl = svc->ctrl;
-    ext = &svc->u.ext;
-
-    if (ext->conn_state == connection_state_disconnection_in_progress) {
-        wifi_hal_disconnect(ext->connected_vap_index);
-        scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_disconnection_event_timeout_handler_id,
-                    process_disconnection_event_timeout, svc,
-                    EXT_DISCONNECTION_IND_TIMEOUT, 1);
+    if (wifi_hal_disconnect(ext->connected_vap_index) == RETURN_ERR) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d sta disconnect failed for vap index: %d\n",
+            __func__, __LINE__, ext->connected_vap_index);
+        process_disconnection_event_timeout(svc);
+        return;
     }
-    return;
+
+    scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_disconnection_event_timeout_handler_id,
+        process_disconnection_event_timeout, svc, EXT_DISCONNECTION_IND_TIMEOUT, 1);
 }
 
 static void reset_sta_state(vap_svc_t *svc, unsigned int vap_index)
@@ -698,16 +796,20 @@ void ext_try_connecting(vap_svc_t *svc)
                     candidate->external_ap.rssi, candidate->external_ap.freq, vap_index, radio_index);
         // Set to disabled in order to detect state change on connection retry
         reset_sta_state(svc, vap_index);
-        wifi_hal_connect(vap_index, &candidate->external_ap);
+        ext->conn_retry++;
+        if (wifi_hal_connect(vap_index, &candidate->external_ap) == RETURN_ERR) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d sta connect failed for vap index: %d, "
+                "retry after timeout\n", __func__, __LINE__, vap_index);
+        }
+
         if (ext->ext_conn_status_ind_timeout_handler_id != 0) {
-            wifi_util_dbg_print(WIFI_CTRL,"%s:%d last connect status timeout.. timer task cancelled for vap_index:%d\r\n", __func__, __LINE__, vap_index);
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d connect status timer is in progress, cancel\n",
+                __func__, __LINE__);
             scheduler_cancel_timer_task(ctrl->sched, ext->ext_conn_status_ind_timeout_handler_id);
-            ext->ext_conn_status_ind_timeout_handler_id = 0;
         }
         scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_conn_status_ind_timeout_handler_id,
-                process_ext_connect_algorithm, svc,
-                EXT_CONN_STATUS_IND_TIMEOUT, 1);
-        wifi_util_info_print(WIFI_CTRL,"%s:%d Triggered wifi connect.. vap_index:%d\r\n", __func__, __LINE__, vap_index);
+            process_ext_connect_event_timeout, svc, EXT_CONN_STATUS_IND_TIMEOUT, 1);
+
 #if CCSP_COMMON
         analytics->event_fn(analytics, ctrl_event_type_command, ctrl_event_type_sta_connect_in_progress, candidate);
 #endif // CCSP_COMMON
@@ -792,8 +894,12 @@ int vap_svc_mesh_ext_disconnect(vap_svc_t *svc)
                 vap = &vap_map->vap_array[j];
                 if ((vap->vap_mode == wifi_vap_mode_sta) &&
                     (vap->u.sta_info.conn_status == wifi_connection_status_connected)) {
-                    wifi_util_info_print(WIFI_CTRL, "%s:%d: wifi disconnect :%d\n", __func__, __LINE__, vap->vap_index);
-                    wifi_hal_disconnect(vap->vap_index);
+                    wifi_util_info_print(WIFI_CTRL, "%s:%d execute sta disconnect for "
+                        "vap index: %d\n", __func__, __LINE__, vap->vap_index);
+                    if (wifi_hal_disconnect(vap->vap_index) == RETURN_ERR) {
+                        wifi_util_error_print(WIFI_CTRL, "%s:%d sta disconnect failed for "
+                            "vap index: %d\n", __func__, __LINE__, vap->vap_index);
+                    }
                     ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__,
                         __LINE__);
                 }
@@ -944,7 +1050,12 @@ static int process_ext_webconfig_set_data_sta_bssid(vap_svc_t *svc, void *arg)
     // If BSSID changed on the same band need to initiate disconnection before connection to avoid
     // HAL error. On different band try to connect to new BSSID before disconnection.
     if (ext->connected_vap_index == vap_info->vap_index) {
-        wifi_hal_disconnect(ext->connected_vap_index);
+        wifi_util_info_print(WIFI_CTRL, "%s:%d execute sta disconnect for vap index: %d\n",
+            __func__, __LINE__, ext->connected_vap_index);
+        if (wifi_hal_disconnect(ext->connected_vap_index) == RETURN_ERR) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d sta disconnect failed for vap index: %d\n",
+                __func__, __LINE__, ext->connected_vap_index);
+        }
         return 0;
     }
 
@@ -1021,37 +1132,36 @@ int process_ext_webconfig_set_data(vap_svc_t *svc, void *arg)
     return 0;
 }
 
-void process_ext_trigger_disconnection(vap_svc_t *svc, void *arg)
+static void process_ext_trigger_disconnection(vap_svc_t *svc, void *arg)
 {
+    wifi_ctrl_t *ctrl = svc->ctrl;
+    vap_svc_ext_t *ext = &svc->u.ext;
 
-    if (svc == NULL) {
-        wifi_util_dbg_print(WIFI_CTRL,"%s:%d NULL pointer\n", __func__, __LINE__);
+    if (ext->conn_state != connection_state_connected) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d ignore disconnection event due to "
+            "connection state: %s\n", __func__, __LINE__, ext_conn_state_to_str(ext->conn_state));
         return;
     }
 
-    vap_svc_ext_t *ext;
-    wifi_ctrl_t *ctrl;
-
-    ctrl = svc->ctrl;
-    ext = &svc->u.ext;
-
 #if DML_SUPPORT
-    wifi_apps_t    *analytics = NULL;
-    analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
-#endif
-
-    if (ext->conn_state == connection_state_connected) {
-#if DML_SUPPORT
-        if (analytics) {
-            analytics->event_fn(analytics, ctrl_event_type_command, ctrl_event_type_trigger_disconnection_analytics, ext);
-        }
-#endif
-        wifi_hal_disconnect(ext->connected_vap_index);
-        scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_trigger_disconnection_timeout_handler_id,
-                    process_trigger_disconnection_event_timeout, svc,
-                    EXT_DISCONNECTION_IND_TIMEOUT, 1);
+    wifi_apps_t *analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
+    if (analytics) {
+        analytics->event_fn(analytics, ctrl_event_type_command,
+            ctrl_event_type_trigger_disconnection_analytics, ext);
     }
-    return;
+#endif
+
+    wifi_util_info_print(WIFI_CTRL, "%s:%d execute sta disconnect for vap index: %d\n", __func__,
+        __LINE__, ext->connected_vap_index);
+
+    ext->disconn_retry++;
+    if (wifi_hal_disconnect(ext->connected_vap_index) == RETURN_ERR) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d sta disconnect failed for vap index: %d, "
+            "retry after timeout\n", __func__, __LINE__, ext->connected_vap_index);
+    }
+
+    scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_trigger_disconnection_timeout_handler_id,
+        process_trigger_disconnection_event_timeout, svc, EXT_DISCONNECTION_IND_TIMEOUT, 1);
 }
 
 int process_ext_exec_timeout(vap_svc_t *svc, void *arg)
@@ -1351,6 +1461,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
     ctrl = svc->ctrl;
     ext = &svc->u.ext;
 
+    ext->conn_retry = 0;
     if (ext->ext_conn_status_ind_timeout_handler_id != 0) {
         scheduler_cancel_timer_task(ctrl->sched, ext->ext_conn_status_ind_timeout_handler_id);
         ext->ext_conn_status_ind_timeout_handler_id = 0;
@@ -1467,9 +1578,14 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
                             (vap_map->vap_array[j].vap_index != temp_vap_info->vap_index) &&
                             (vap_map->vap_array[j].u.sta_info.conn_status == wifi_connection_status_connected)) {
                         //Send the disconnect for the other station vap_index
-                        wifi_hal_disconnect(vap_map->vap_array[j].vap_index);
-                        wifi_util_info_print(WIFI_CTRL,"%s:%d - More than one sta's associated, disconnecting vapIndex %d...\n",
-                                __func__, __LINE__,  vap_map->vap_array[j].vap_index);
+                        wifi_util_info_print(WIFI_CTRL, "%s:%d more than one sta associated, "
+                            "execute sta disconnect for vap index: %d\n", __func__, __LINE__,
+                            vap_map->vap_array[j].vap_index);
+                        if (wifi_hal_disconnect(vap_map->vap_array[j].vap_index) == RETURN_ERR) {
+                            wifi_util_error_print(WIFI_CTRL, "%s:%d sta disconnect failed for "
+                                "vap index: %d\n", __func__, __LINE__,
+                                vap_map->vap_array[j].vap_index);
+                        }
                         break;
                     }
                 }
@@ -1499,6 +1615,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
                 ext->ext_udhcp_ip_check_id = 0;
             }
 
+            ext->disconn_retry = 0;
             if (ext->ext_udhcp_disconnect_event_timeout_handler_id != 0) {
                 scheduler_cancel_timer_task(ctrl->sched, ext->ext_udhcp_disconnect_event_timeout_handler_id);
                 ext->ext_udhcp_disconnect_event_timeout_handler_id = 0;

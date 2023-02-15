@@ -117,7 +117,7 @@ int push_data_to_ctrl_queue(const void *msg, unsigned int len, ctrl_event_type_t
     return RETURN_OK;
 }
 
-int both_wifi_radio_set_enable(bool status)
+static int wifi_radio_set_enable(bool status)
 {
     wifi_radio_operationParam_t *wifi_radio_oper_param = NULL;
     int ret = RETURN_OK;
@@ -168,10 +168,10 @@ int both_wifi_radio_set_enable(bool status)
     return ret;
 }
 
-void reset_both_wifi_radio(void)
+void reset_wifi_radios(void)
 {
-    both_wifi_radio_set_enable(false);
-    both_wifi_radio_set_enable(true);
+    wifi_radio_set_enable(false);
+    wifi_radio_set_enable(true);
 }
 
 unsigned int selfheal_event_publish_time(void)
@@ -276,7 +276,7 @@ void sta_selfheal_handing(wifi_ctrl_t *ctrl, vap_svc_t *l_svc)
             disconnected_time = 0;
             connection_timeout = 0;
         } else if (((disconnected_time * STA_CONN_RETRY_TIMEOUT) >= ((selfheal_event_publish_time() * 60) / 2)) && (radio_reset_triggered == false)) {
-            reset_both_wifi_radio();
+            reset_wifi_radios();
             radio_reset_triggered = true;
         } else if ((connection_timeout * STA_CONN_RETRY_TIMEOUT) >= MAX_CONNECTION_ALGO_TIMEOUT) {
             l_svc->event_fn(l_svc, ctrl_event_type_exec, ctrl_event_exec_timeout, vap_svc_event_none, NULL);
