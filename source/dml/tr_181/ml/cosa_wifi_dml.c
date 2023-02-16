@@ -796,7 +796,7 @@ WiFi_SetParamBoolValue
     }
     if(AnscEqualString(ParamName, "X_CISCO_COM_FactoryReset", TRUE))
     {
-        if (wifi_factory_reset() != TRUE)
+        if (wifi_factory_reset(true) != TRUE)
             return FALSE;
         return TRUE;
 	}
@@ -1132,7 +1132,7 @@ WiFi_SetParamStringValue
     if((rc == EOK) && (!ind))
     {
         fprintf(stderr, "-- %s X_CISCO_COM_FactoryResetRadioAndAp %s\n", __func__, pString);
-        if (wifi_factory_reset() != TRUE)
+        if (wifi_factory_reset(false) != TRUE)
             return FALSE;
         return TRUE;
     }

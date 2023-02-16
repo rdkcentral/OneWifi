@@ -150,7 +150,7 @@
 #endif
 
 static char *FactoryReset       = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.FactoryReset";
-
+extern bool is_radio_config_changed;
 struct wifiSecEncrCosaHalMap wifiSecEncrMap[] =
 {
       {wifi_encryption_none,     COSA_DML_WIFI_AP_SEC_NONE,     "None"},
@@ -1989,8 +1989,7 @@ bool get_inst_override_ttl()
     instant_measurement_config_t *pcfg = (instant_measurement_config_t *) get_dml_harvester();
     return pcfg->u_inst_client_def_override_ttl;
 }
-
-bool wifi_factory_reset()
+bool wifi_factory_reset(bool factory_reset_all_vaps)
 {
     wifi_vap_info_t default_vap;
     wifi_vap_info_t *p_vapInfo = NULL;
@@ -1998,6 +1997,8 @@ bool wifi_factory_reset()
     mac_addr_str_t mac_str;
     wifi_global_config_t *global_wifi_config;
     global_wifi_config = (wifi_global_config_t*) get_dml_cache_global_wifi_config();
+    wifi_radio_operationParam_t *wifiRadioOperParam = NULL;
+    wifi_radio_operationParam_t rcfg ;
 
     wifi_util_info_print(WIFI_DMCLI,"Enter %s:%d \n",__func__, __LINE__);
     if (global_wifi_config == NULL) {
@@ -2005,9 +2006,22 @@ bool wifi_factory_reset()
         return FALSE;
     }
 
+    //Reset to all radios params to default
+    for (UINT i= 0; i < getNumberRadios(); i++) {
+        wifiRadioOperParam = (wifi_radio_operationParam_t *) get_dml_cache_radio_map(i);
+        if (wifiRadioOperParam == NULL) {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get Radio Param for instance_number:%d\n", __FUNCTION__,__LINE__,i);
+            return FALSE;
+        }
+        wifidb_init_radio_config_default(i,&rcfg);
+        memcpy((unsigned char *)wifiRadioOperParam,(unsigned char *)&rcfg,sizeof(wifi_radio_operationParam_t));
+        is_radio_config_changed = TRUE;
+    }
+
+
     for (UINT index = 0; index < getTotalNumberVAPs(); index++) {
 
-        if (!isVapPrivate(index))
+        if (!factory_reset_all_vaps && !isVapPrivate(index))
             continue;
 
         p_vapInfo = (wifi_vap_info_t *) get_dml_cache_vap_info(index);
@@ -2036,6 +2050,12 @@ bool wifi_factory_reset()
             memcpy((unsigned char *)p_vapInfo,(unsigned char *)&default_vap,sizeof(wifi_vap_info_t));
             set_dml_cache_vap_config_changed(index);
         }
+        if (push_radio_dml_cache_to_one_wifidb() == RETURN_ERR) {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Failed in setting Radios to default\n",__func__, __LINE__);
+            return FALSE;
+        }
+        wifi_util_info_print(WIFI_DMCLI,"%s:%d RadioSettings are set to default \n",__func__, __LINE__);
+
         if (push_acl_list_dml_cache_to_one_wifidb(&p_vapInfo) != RETURN_OK) {
             wifi_util_info_print(WIFI_DMCLI,"%s:%d MacFilter deletion  falied \n",__func__, __LINE__);
             return FALSE;
