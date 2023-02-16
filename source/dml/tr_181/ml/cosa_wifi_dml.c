@@ -5901,6 +5901,8 @@ AccessPoint_GetParamIntValue
         }
 
         *pInt = pcfg->u.bss_info.mgmtPowerControl;
+        CcspWifiTrace(("RDK_LOG_INFO,X_RDKCENTRAL-COM_ManagementFramePowerControl:%d\n",pcfg->u.bss_info.mgmtPowerControl));
+        CcspTraceWarning(("X_RDKCENTRAL-COM_ManagementFramePowerControl_Get:<%d>\n", pcfg->u.bss_info.mgmtPowerControl));
         return TRUE;
     }
     if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_rapidReconnectMaxTime", TRUE) )
@@ -6537,6 +6539,8 @@ AccessPoint_SetParamIntValue
         }
         /* save update to backup */
         vapInfo->u.bss_info.mgmtPowerControl = iValue;
+        CcspWifiTrace(("RDK_LOG_INFO,X_RDKCENTRAL-COM_ManagementFramePowerControl:%d\n", iValue));
+        CcspTraceWarning(("X_RDKCENTRAL-COM_ManagementFramePowerControl_Get:<%d>\n", iValue));
         set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
@@ -7870,6 +7874,7 @@ Security_SetParamStringValue
         }
         set_dml_cache_vap_config_changed(instance_number - 1);
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Set Value=%d success  \n",__func__, __LINE__,TmpMode);
+        CcspWifiTrace(("RDK_LOG_WARN,RDKB_WIFI_CONFIG_CHANGED : Wifi security mode %s is Enabled\n",pString));
         return TRUE;
     }
 
