@@ -35,7 +35,6 @@
 #include <pthread.h>
 #include <rbus.h>
 #include "ieee80211.h"
-
 #ifdef CMWIFI_RDKB
 #define FILE_SYSTEM_UPTIME         "/var/systemUptime.txt"
 #else
@@ -1296,6 +1295,7 @@ void telemetry_bootup_time_wifibroadcast()
             uptime = get_Uptime();
             wifi_util_info_print(WIFI_CTRL, "Wifi_Broadcast_complete:%d\n",uptime);
             t2_event_d("bootuptime_WifiBroadcasted_split", uptime);
+            wifi_util_info_print(WIFI_CTRL,"Wifi_Name_Broadcasted:%s\n",vapInfo->u.bss_info.ssid);
         }
     }
 }
