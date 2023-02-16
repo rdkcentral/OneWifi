@@ -1997,6 +1997,7 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
     global_wifi_config = (wifi_global_config_t*) get_dml_cache_global_wifi_config();
     wifi_radio_operationParam_t *wifiRadioOperParam = NULL;
     wifi_radio_operationParam_t rcfg ;
+    unsigned int vap_index;
 
     wifi_util_info_print(WIFI_DMCLI,"Enter %s:%d \n",__func__, __LINE__);
     if (global_wifi_config == NULL) {
@@ -2018,59 +2019,67 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
 
 
     for (UINT index = 0; index < getTotalNumberVAPs(); index++) {
+        vap_index = VAP_INDEX(((webconfig_dml_t *)get_webconfig_dml())->hal_cap, index);
 
-        if (!factory_reset_all_vaps && !isVapPrivate(index))
+        if (!factory_reset_all_vaps && !isVapPrivate(vap_index))
             continue;
 
-        p_vapInfo = (wifi_vap_info_t *) get_dml_cache_vap_info(index);
-        hash_map_t** acl_dev_map = (hash_map_t **)get_acl_hash_map(p_vapInfo);
+        p_vapInfo = (wifi_vap_info_t *) get_dml_cache_vap_info(vap_index);
 
-        if (*acl_dev_map) {
-            acl_entry =(acl_entry_t *)hash_map_get_first(*acl_dev_map);
-            while (acl_entry != NULL) {
-                to_mac_str(acl_entry->mac,mac_str);
-                wifi_util_dbg_print(WIFI_DMCLI,"Mac address in  acl_entry %s\n",mac_str);
-                acl_entry = hash_map_get_next(*acl_dev_map,acl_entry);
-                temp_acl_entry = hash_map_remove(*acl_dev_map, mac_str);
-                if (temp_acl_entry != NULL) {
-                        free(temp_acl_entry);
-                    }
+        if (p_vapInfo != NULL) {
+            hash_map_t** acl_dev_map = (hash_map_t **)get_acl_hash_map(p_vapInfo);
+
+            if ((acl_dev_map != NULL) && (*acl_dev_map)) {
+                acl_entry =(acl_entry_t *)hash_map_get_first(*acl_dev_map);
+                while (acl_entry != NULL) {
+                       to_mac_str(acl_entry->mac,mac_str);
+                       wifi_util_dbg_print(WIFI_DMCLI,"Mac address in  acl_entry %s\n",mac_str);
+                       acl_entry = hash_map_get_next(*acl_dev_map,acl_entry);
+                       temp_acl_entry = hash_map_remove(*acl_dev_map, mac_str);
+                       if (temp_acl_entry != NULL) {
+                           free(temp_acl_entry);
+                       }
                 }
             }
 
-            if (*acl_dev_map) {
+            if ((acl_dev_map != NULL) && (*acl_dev_map)) {
                 hash_map_destroy(*acl_dev_map);
                 *acl_dev_map = NULL;
             }
 
-            wifidb_init_vap_config_default(index,&default_vap);
-            wifidb_init_interworking_config_default(index,&default_vap.u.bss_info.interworking);
+            wifidb_init_vap_config_default(vap_index,&default_vap);
+            wifidb_init_interworking_config_default(vap_index,&default_vap.u.bss_info.interworking);
             memcpy((unsigned char *)p_vapInfo,(unsigned char *)&default_vap,sizeof(wifi_vap_info_t));
-            set_dml_cache_vap_config_changed(index);
+            set_dml_cache_vap_config_changed(vap_index);
         }
-        if (push_radio_dml_cache_to_one_wifidb() == RETURN_ERR) {
-            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Failed in setting Radios to default\n",__func__, __LINE__);
-            return FALSE;
-        }
-        wifi_util_info_print(WIFI_DMCLI,"%s:%d RadioSettings are set to default \n",__func__, __LINE__);
+    }
 
-        if (push_acl_list_dml_cache_to_one_wifidb(&p_vapInfo) != RETURN_OK) {
-            wifi_util_info_print(WIFI_DMCLI,"%s:%d MacFilter deletion  falied \n",__func__, __LINE__);
-            return FALSE;
-        }
-        //create_onewifi_factory_reset_flag();
-        create_onewifi_factory_reset_flag();
-        wifi_util_info_print(WIFI_MGR,"%s FactoryReset is done and preferPprivate=%d \n",__func__, global_wifi_config->global_parameters.prefer_private);
-        if (global_wifi_config->global_parameters.prefer_private) {
-            global_wifi_config->global_parameters.prefer_private = false;
-            push_global_config_dml_cache_to_one_wifidb();
-            push_prefer_private_ctrl_queue(false);
-        }
-        if (push_vap_dml_cache_to_one_wifidb() == RETURN_ERR)
-        {
-                wifi_util_info_print(WIFI_DMCLI,"%s:%d ApplyAccessPointSettings falied \n",__func__, __LINE__);
-                return FALSE;
-        }
-        wifi_util_info_print(WIFI_DMCLI,"Exit %s:%d \n",__func__, __LINE__);
-        return TRUE;
+    if (push_radio_dml_cache_to_one_wifidb() == RETURN_ERR) {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Failed in setting Radios to default\n",__func__, __LINE__);
+        return FALSE;
+    }
+
+    wifi_util_info_print(WIFI_DMCLI,"%s:%d RadioSettings are set to default \n",__func__, __LINE__);
+
+    if (push_acl_list_dml_cache_to_one_wifidb(&p_vapInfo) != RETURN_OK) {
+        wifi_util_info_print(WIFI_DMCLI,"%s:%d MacFilter deletion  falied \n",__func__, __LINE__);
+        return FALSE;
+    }
+
+    //create_onewifi_factory_reset_flag();
+    create_onewifi_factory_reset_flag();
+    wifi_util_info_print(WIFI_MGR,"%s FactoryReset is done and preferPprivate=%d \n",__func__, global_wifi_config->global_parameters.prefer_private);
+    if (global_wifi_config->global_parameters.prefer_private) {
+        global_wifi_config->global_parameters.prefer_private = false;
+        push_global_config_dml_cache_to_one_wifidb();
+        push_prefer_private_ctrl_queue(false);
+    }
+
+    if (push_vap_dml_cache_to_one_wifidb() == RETURN_ERR)
+    {
+        wifi_util_info_print(WIFI_DMCLI,"%s:%d ApplyAccessPointSettings falied \n",__func__, __LINE__);
+        return FALSE;
+    }
+    wifi_util_info_print(WIFI_DMCLI,"Exit %s:%d \n",__func__, __LINE__);
+    return TRUE;
 }
