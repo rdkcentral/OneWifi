@@ -238,39 +238,45 @@ rbusError_t webconfig_get_subdoc(rbusHandle_t handle, rbusProperty_t property, r
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     vap_svc_t *ext_svc;
+    unsigned int num_of_radios = getNumberRadios();
     #define MAX_ACSD_SYNC_TIME_WAIT 12
     static int sync_retries = 0;
 
     if (!ctrl->ctrl_initialized) {
-        wifi_util_dbg_print(WIFI_CTRL,"%s Ctrl not initialized skip request.\n",__FUNCTION__);
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Ctrl not initialized skip request.\n",__FUNCTION__, __LINE__);
         return RBUS_ERROR_INVALID_OPERATION;
      }
 
    if(ctrl->network_mode == rdk_dev_mode_type_gw) {
-        wifi_util_dbg_print(WIFI_CTRL,"%s Rbus property=%s, Gateway mode\n",__FUNCTION__, name);
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Rbus property=%s, Gateway mode\n",__FUNCTION__, __LINE__, name);
         if (strcmp(name, WIFI_WEBCONFIG_INIT_DATA) != 0) {
-            wifi_util_error_print(WIFI_CTRL,"%s Rbus property invalid '%s'\n",__FUNCTION__, name);
+            wifi_util_error_print(WIFI_CTRL,"%s:%d Rbus property invalid '%s'\n",__FUNCTION__, __LINE__, name);
             return RBUS_ERROR_INVALID_INPUT;
         }
-        if (is_device_type_xb7() == true) {
-            if ((sync_retries < MAX_ACSD_SYNC_TIME_WAIT) && (((access("/tmp/acs_0",F_OK) != 0)) || (access("/tmp/acs_1",F_OK) != 0))) {
+        if ((sync_retries < MAX_ACSD_SYNC_TIME_WAIT)) {
+            if ((is_acs_channel_updated(num_of_radios) == false) || (check_wifi_radio_sched_timeout_active_status(ctrl) == true)) {
                 sync_retries++;
-                wifi_util_info_print(WIFI_CTRL,"%s sync_retries=%d acsd not finished\n",__FUNCTION__,sync_retries);
+                wifi_util_info_print(WIFI_CTRL,"%s:%d: sync_retries=%d wifidb and global radio config not updated\n",__FUNCTION__,__LINE__, sync_retries);
                 return RBUS_ERROR_INVALID_OPERATION;
             }
-            wifi_util_info_print(WIFI_CTRL,"%s sync_retries=%d acsd finished \n",__FUNCTION__,sync_retries);
-            sync_retries = MAX_ACSD_SYNC_TIME_WAIT;
-            unlink("/tmp/acs_0");
-            unlink("/tmp/acs_1");
         }
+
+        wifi_util_info_print(WIFI_CTRL,"%s:%d: sync_retries=%d wifidb and global radio config updated\n",__FUNCTION__,__LINE__, sync_retries);
+
+        for (unsigned int index = 0; index < num_of_radios; index++) {
+            if (ctrl->acs_pending[index] == true) {
+                ctrl->acs_pending[index] = false;
+            }
+        }
+        sync_retries = MAX_ACSD_SYNC_TIME_WAIT;
 
         rbusValue_Init(&value);
         memset(&data, 0, sizeof(webconfig_subdoc_data_t));
 
-        memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&mgr->radio_config, getNumberRadios()*sizeof(rdk_wifi_radio_t));
+        memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&mgr->radio_config, num_of_radios*sizeof(rdk_wifi_radio_t));
         memcpy((unsigned char *)&data.u.decoded.config, (unsigned char *)&mgr->global_config, sizeof(wifi_global_config_t));
         memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap, sizeof(wifi_hal_capability_t));
-        data.u.decoded.num_radios = getNumberRadios();
+        data.u.decoded.num_radios = num_of_radios;
         // tell webconfig to encode
         webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_dml);
 
@@ -296,9 +302,9 @@ rbusError_t webconfig_get_subdoc(rbusHandle_t handle, rbusProperty_t property, r
         rbusValue_Init(&value);
         memset(&data, 0, sizeof(webconfig_subdoc_data_t));
 
-        memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&mgr->radio_config, getNumberRadios()*sizeof(rdk_wifi_radio_t));
+        memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&mgr->radio_config, num_of_radios*sizeof(rdk_wifi_radio_t));
         memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap, sizeof(wifi_hal_capability_t));
-        data.u.decoded.num_radios = getNumberRadios();
+        data.u.decoded.num_radios = num_of_radios;
         // tell webconfig to encode
         webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_mesh_sta);
 

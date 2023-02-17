@@ -216,6 +216,7 @@ typedef struct wifi_ctrl {
     wifi_scheduler_id_t wifi_sched_id;
     queue_t             *vif_apply_pending_queue;
     bool                ctrl_initialized; 
+    bool                acs_pending[MAX_NUM_RADIOS];
 } wifi_ctrl_t;
 
 typedef struct {

@@ -421,6 +421,7 @@ int start_radios(rdk_dev_mode_type_t mode)
     int ret = RETURN_OK;
     uint8_t index = 0;
     uint8_t num_of_radios = getNumberRadios();
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     wifi_util_info_print(WIFI_CTRL,"%s(): Start radios\n", __FUNCTION__);
     //Check for the number of radios
@@ -441,6 +442,11 @@ int start_radios(rdk_dev_mode_type_t mode)
         if((mode == rdk_dev_mode_type_ext) && (wifi_radio_oper_param->band == WIFI_FREQUENCY_2_4_BAND) && (wifi_radio_oper_param->channel != 1)) {
             wifi_radio_oper_param->channel = 1;
             wifi_util_dbg_print(WIFI_CTRL,"%s: initializing radio_index:%d with channel 1\n",__FUNCTION__, index);
+        }
+
+        ctrl->acs_pending[index] = false;
+        if (wifi_radio_oper_param->autoChannelEnabled == true) {
+            ctrl->acs_pending[index] = true;
         }
 
 #ifdef CCSP_WIFI_HAL
@@ -497,6 +503,17 @@ wifi_platform_property_t *get_wifi_hal_cap_prop(void)
 {
     wifi_mgr_t *wifi_mgr_obj = get_wifimgr_obj();
     return &wifi_mgr_obj->hal_cap.wifi_prop;
+}
+
+bool is_acs_channel_updated(unsigned int num_radios)
+{
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    for (unsigned int i = 0; i < num_radios; i++) {
+        if (ctrl->acs_pending[i] == true) {
+            return false;
+        }
+    }
+    return true;
 }
 
 #if CCSP_COMMON
