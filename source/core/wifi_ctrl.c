@@ -1416,8 +1416,9 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
     
     init_wireless_interface_mac();
 
-    ctrl->webconfig_state = ctrl_webconfig_state_vap_all_cfg_rsp_pending;
 
+#if CCSP_COMMON
+    ctrl->webconfig_state = ctrl_webconfig_state_vap_all_cfg_rsp_pending;
     telemetry_bootup_time_wifibroadcast(); //Telemetry Marker for btime_wifibcast_split
 
     /* Check for whether Log_Upload was enabled or not
@@ -1434,6 +1435,10 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
         wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to start Wifi Monitor\n", __func__, __LINE__);
     }
   
+#else 
+  ctrl->webconfig_state = ctrl_webconfig_state_none;
+#endif
+    
 #if CCSP_WIFI_HAL
     if (analytics->event_fn != NULL) {
         analytics->event_fn(analytics, ctrl_event_type_exec, ctrl_event_exec_start, NULL);
