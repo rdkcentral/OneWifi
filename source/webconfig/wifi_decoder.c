@@ -3425,6 +3425,7 @@ webconfig_error_t decode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
              return webconfig_error_decode;
          }
 
+         count = 0;
          cJSON_ArrayForEach(iterator, allowed_channels) {
              if (cJSON_IsNumber(iterator)) {
                  radio_cap->channel_list[0].channels_list[count] = iterator->valuedouble;
