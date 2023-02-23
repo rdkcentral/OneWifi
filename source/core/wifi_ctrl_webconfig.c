@@ -1467,8 +1467,10 @@ int webconfig_hal_lnf_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data
     unsigned int num_vaps = 0;
     char *vap_name;
     char *vap_names[MAX_VAP];
+    wifi_mgr_t *mgr = get_wifimgr_obj();
 
-    for (ap_index = 0; ap_index < getTotalNumberVAPs(); ap_index++){
+    for (UINT index = 0; index < getTotalNumberVAPs(); index++){
+        ap_index = VAP_INDEX(mgr->hal_cap, index);
         if(isVapLnf(ap_index)){
             vap_name = getVAPName(ap_index);
             vap_names[num_vaps] = vap_name;
@@ -1519,12 +1521,15 @@ int webconfig_hal_mesh_sta_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded
 int webconfig_hal_mesh_backhaul_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
     unsigned int num_vaps = 0;
+    unsigned int ap_index;
     char *vap_name;
     char *vap_names[MAX_VAP];
+    wifi_mgr_t *mgr = get_wifimgr_obj();
 
     for (UINT index = 0; index < getTotalNumberVAPs(); index++){
-        if(isVapMeshBackhaul(index)){
-            vap_name = getVAPName(index);
+        ap_index = VAP_INDEX(mgr->hal_cap, index);
+        if(isVapMeshBackhaul(ap_index)){
+            vap_name = getVAPName(ap_index);
             vap_names[num_vaps] = vap_name;
             num_vaps++;
         }

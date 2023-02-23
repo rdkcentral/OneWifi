@@ -1502,27 +1502,33 @@ int wifi_sched_timeout(void *arg)
 void start_wifi_sched_timer(unsigned int *index, wifi_ctrl_t *l_ctrl, wifi_scheduler_type_t type)
 {
     int *handler_id;
+    unsigned int handler_index, vap_array_index;
     wifi_scheduler_id_arg_t *args;
     wifi_scheduler_id_t  *sched_id = &l_ctrl->wifi_sched_id;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
 
     switch(type) {
         case wifi_csa_sched:
             handler_id = sched_id->wifi_csa_sched_handler_id;
+            handler_index = *index;
             break;
         case wifi_radio_sched:
             handler_id = sched_id->wifi_radio_sched_handler_id;
+            handler_index = *index;
             break;
         case wifi_vap_sched:
             handler_id = sched_id->wifi_vap_sched_handler_id;
+            VAP_ARRAY_INDEX(vap_array_index, mgr->hal_cap, (unsigned int)index);
+            handler_index = vap_array_index;
             break;
         default:
             wifi_util_error_print(WIFI_CTRL, "%s:%d: wifi index:%d invalid type:%d\n", __func__, __LINE__, *index, type);
             return;
     }
 
-    if (handler_id[*index] == 0) {
+    if (handler_id[handler_index] == 0) {
         wifi_util_info_print(WIFI_CTRL,"%s:%d - start wifi index:%d type:%d scheduler timer\r\n",
-            __func__, __LINE__, *index, type);
+            __func__, __LINE__, handler_index, type);
 
         if ((args = calloc(1, sizeof(wifi_scheduler_id_arg_t))) == NULL) {
             wifi_util_error_print(WIFI_CTRL, "%s:%d: Unable to allocate memory!\n", __func__, __LINE__);
@@ -1530,41 +1536,47 @@ void start_wifi_sched_timer(unsigned int *index, wifi_ctrl_t *l_ctrl, wifi_sched
         }
 
         args->type = type;
-        args->index = *index;
+        args->index = handler_index;
 
-        scheduler_add_timer_task(l_ctrl->sched, FALSE, &handler_id[*index],
+        scheduler_add_timer_task(l_ctrl->sched, FALSE, &handler_id[handler_index],
             wifi_sched_timeout, args, MAX_WIFI_SCHED_TIMEOUT, 1);
     } else {
         wifi_util_info_print(WIFI_CTRL,"%s:%d - Already wifi index:%d type:%d scheduler timer started\r\n",
-                                __func__, __LINE__, *index, type);
+                                __func__, __LINE__, handler_index, type);
     }
 }
 
 void stop_wifi_sched_timer(unsigned int index, wifi_ctrl_t *l_ctrl, wifi_scheduler_type_t type)
 {
     int *handler_id;
+    unsigned int handler_index, vap_array_index;
     wifi_scheduler_id_t  *sched_id = &l_ctrl->wifi_sched_id;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
 
     switch(type) {
         case wifi_csa_sched:
             handler_id = sched_id->wifi_csa_sched_handler_id;
+            handler_index = index;
             break;
         case wifi_radio_sched:
             handler_id = sched_id->wifi_radio_sched_handler_id;
+            handler_index = index;
             break;
         case wifi_vap_sched:
             handler_id = sched_id->wifi_vap_sched_handler_id;
+            VAP_ARRAY_INDEX(vap_array_index, mgr->hal_cap, index);
+            handler_index = vap_array_index;
             break;
         default:
             wifi_util_error_print(WIFI_CTRL, "%s:%d: wifi index:%d invalid type:%d\n", __func__, __LINE__, index, type);
             return;
-    }
+   }
 
-    if (handler_id[index] != 0) {
-        wifi_util_info_print(WIFI_CTRL,"%s:%d - stop wifi index:%d type:%d scheduler timer\r\n", __func__, __LINE__, index, type);
-        scheduler_free_timer_task_arg(l_ctrl->sched, handler_id[index]);
-        scheduler_cancel_timer_task(l_ctrl->sched, handler_id[index]);
-        handler_id[index] = 0;
+    if (handler_id[handler_index] != 0) {
+        wifi_util_info_print(WIFI_CTRL,"%s:%d - stop wifi index:%d type:%d scheduler timer\r\n", __func__, __LINE__, handler_index, type);
+        scheduler_free_timer_task_arg(l_ctrl->sched, handler_id[handler_index]);
+        scheduler_cancel_timer_task(l_ctrl->sched, handler_id[handler_index]);
+        handler_id[handler_index] = 0;
 
         if (type == wifi_csa_sched) {
             resched_data_to_ctrl_queue();
