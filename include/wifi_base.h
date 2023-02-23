@@ -89,6 +89,7 @@ typedef enum {
     ctrl_event_webconfig_data_to_apply_pending_queue,
     ctrl_event_webconfig_data_to_hal_apply,
     ctrl_event_webconfig_set_data_sta_bssid,
+    ctrl_event_webconfig_data_req_from_dml,
     ctrl_event_webconfig_max,
 
     // HAL events

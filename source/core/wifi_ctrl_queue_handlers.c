@@ -1429,7 +1429,6 @@ void lm_notify_disassoc(assoc_dev_data_t *assoc_dev_data, unsigned int vap_index
 
 int add_client_diff_assoclist(hash_map_t **diff_map, char *mac,  assoc_dev_data_t *assoc_dev_data)
 {
-    char trk_mac_string[18] = {0};
     assoc_dev_data_t *tmp_assoc_dev_data = NULL;
     if ((assoc_dev_data == NULL) || (mac == NULL)) {
         wifi_util_error_print(WIFI_CTRL,"%s:%d input arguements are NULL assocdata : %p mac : %p\n", __func__, __LINE__, assoc_dev_data, mac);
@@ -1451,7 +1450,6 @@ int add_client_diff_assoclist(hash_map_t **diff_map, char *mac,  assoc_dev_data_
             }
             memcpy(tmp_assoc_dev_data, assoc_dev_data, sizeof(assoc_dev_data_t));
             hash_map_put(*diff_map, strdup(mac), tmp_assoc_dev_data);
-            to_mac_str(assoc_dev_data->dev_stats.cli_MACAddress, trk_mac_string);
         } else {
             wifi_util_info_print(WIFI_CTRL,"%s:%d assoclist of mac : %s is already present\n", __func__, __LINE__,  mac);
             memcpy(tmp_assoc_dev_data, assoc_dev_data, sizeof(assoc_dev_data_t));
@@ -1797,6 +1795,16 @@ void process_dfs_rfc(bool type)
         if (radio_params->band == WIFI_FREQUENCY_5_BAND || radio_params->band == WIFI_FREQUENCY_5L_BAND || radio_params->band == WIFI_FREQUENCY_5H_BAND) {
             pthread_mutex_lock(&g_wifidb->data_cache_lock);
             radio_params->DfsEnabled = type;
+            //Note : while disabling the dfs, changing the channel from DFS channel
+            if (radio_params->DfsEnabled == 0) {
+                if ((radio_params->channel >= 52) && (radio_params->channel < 149)) {
+                    if ((radio_params->band == WIFI_FREQUENCY_5_BAND) || (radio_params->band == WIFI_FREQUENCY_5L_BAND)) {
+                        radio_params->channel = 36;
+                    } else if (radio_params->band == WIFI_FREQUENCY_5H_BAND) {
+                        radio_params->channel = 149;
+                    }
+                }
+            }
             pthread_mutex_unlock(&g_wifidb->data_cache_lock);
             ret = wifi_hal_setRadioOperatingParameters(rIdx, radio_params);
             if (ret != RETURN_OK) {
@@ -2264,6 +2272,7 @@ void process_mesh_status_command(bool mesh_enable_status)
     }
 }
 
+
 void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len, ctrl_event_subtype_t subtype)
 {
 #if CCSP_COMMON
@@ -2525,6 +2534,15 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
 
             // tell webconfig to encode
             webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_dml);
+            break;
+
+        case ctrl_event_webconfig_data_req_from_dml:
+#if CCSP_COMMON
+            if (analytics->event_fn != NULL) {
+                analytics->event_fn(analytics, ctrl_event_type_webconfig, subtype, NULL);
+            }
+#endif // CCSP_COMMON
+            ctrl->webconfig_state |= ctrl_webconfig_state_trigger_dml_thread_data_update_pending;
             break;
 
         default:

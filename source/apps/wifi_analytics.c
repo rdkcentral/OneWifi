@@ -157,6 +157,24 @@ int analytics_event_exec_timeout(wifi_apps_t *apps, void *arg)
     return 0;
 }
 
+
+int analytics_event_webconfig_get_data_for_dmlthread(wifi_apps_t *apps, void *arg, ctrl_event_subtype_t sub_type)
+{
+    webconfig_subdoc_data_t *doc = (webconfig_subdoc_data_t *)arg;
+
+    if (doc == NULL) {
+       /*Note : This is not error case, but this check is used to denote webconfig_set_data event
+        * is received by the handle_webconfig_event() function and decode is not happened yet
+        * to determine the subdoc type.
+        */
+        wifi_util_info_print(WIFI_ANALYTICS, analytics_format_dml_core, "get", "webconfig");
+        return 0;
+    }
+
+    return 0;
+}
+
+
 int analytics_event_webconfig_set_data(wifi_apps_t *apps, void *arg, ctrl_event_subtype_t sub_type)
 {
     webconfig_subdoc_data_t *doc = (webconfig_subdoc_data_t *)arg;
@@ -612,6 +630,9 @@ int webconfig_event_analytics(wifi_apps_t *apps, ctrl_event_subtype_t sub_type, 
         case ctrl_event_webconfig_set_data_tunnel:
             analytics_event_webconfig_set_data_tunnel(apps, arg);
             break;
+        case ctrl_event_webconfig_data_req_from_dml:
+            analytics_event_webconfig_get_data_for_dmlthread(apps, arg, sub_type);
+        break;
         default:
             wifi_util_error_print(WIFI_APPS,"%s:%d: event not handle[%d]\r\n",__func__, __LINE__, sub_type);
             break;

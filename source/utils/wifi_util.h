@@ -265,4 +265,5 @@ int convert_channel_to_freq(int band, unsigned char chan);
 BOOL is_bssid_valid(const bssid_t bssid);
 bool is_bandwidth_and_hw_variant_compatible(uint32_t variant, wifi_channelBandwidth_t current_bw);
 int validate_radio_parameters(const wifi_radio_operationParam_t *radio_info);
+int wifi_radio_operationParam_validation(wifi_hal_capability_t  *hal_cap, wifi_radio_operationParam_t *oper);
 #endif//_WIFI_UTIL_H_

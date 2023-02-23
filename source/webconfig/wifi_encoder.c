@@ -1466,6 +1466,9 @@ webconfig_error_t encode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
     int i;
     cJSON *object;
     wifi_radio_capabilities_t *radiocap;
+    int count = 0, temp_count = 0;
+    wifi_channelBandwidth_t chan_width_arr_enum[] = {WIFI_CHANNELBANDWIDTH_20MHZ, WIFI_CHANNELBANDWIDTH_40MHZ, WIFI_CHANNELBANDWIDTH_80MHZ, WIFI_CHANNELBANDWIDTH_160MHZ};
+    int sup_chan_width[8];
 
     if ((wifi_prop == NULL) || (radio_obj == NULL)) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer radiocap : %p radio_obj : %p\n", __func__, __LINE__, wifi_prop, radio_obj);
@@ -1478,8 +1481,21 @@ webconfig_error_t encode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
          cJSON_AddNumberToObject(object, "RadioIndex", radiocap->index);
 
          for (freq_band_count = 0; freq_band_count < radiocap->numSupportedFreqBand; freq_band_count++) {
-              cJSON_AddItemToObject(object, "PossibleChannels",  cJSON_CreateIntArray(radiocap->channel_list[freq_band_count].channels_list, radiocap->channel_list[freq_band_count].num_channels));
+             cJSON_AddItemToObject(object, "PossibleChannels",  cJSON_CreateIntArray(radiocap->channel_list[freq_band_count].channels_list, radiocap->channel_list[freq_band_count].num_channels));
          }
+         freq_band_count = 0;
+         temp_count = 0;
+         memset(sup_chan_width, 0, sizeof(sup_chan_width));
+         for (count = 0; count < (int)(sizeof(chan_width_arr_enum)/sizeof(chan_width_arr_enum[0])); count++) {
+             if (radiocap->channelWidth[freq_band_count] & chan_width_arr_enum[count]) {
+                 sup_chan_width[temp_count] = chan_width_arr_enum[count];
+                 temp_count++;
+             }
+         }
+         if (temp_count != 0) {
+             cJSON_AddItemToObject(object, "PossibleChannelWidths",  cJSON_CreateIntArray(sup_chan_width, temp_count));
+         }
+
          cJSON_AddNumberToObject(object, "RadioPresence", wifi_prop->radio_presence[i]);
     }
     return webconfig_error_none;
@@ -1749,3 +1765,4 @@ webconfig_error_t encode_vif_neighbors_object(hash_map_t *neighbors_map, cJSON *
 
     return webconfig_error_none;
 }
+

@@ -2736,3 +2736,101 @@ int validate_radio_parameters(const wifi_radio_operationParam_t *radio_info)
 
     return RETURN_OK;
 }
+
+int wifi_radio_operationParam_validation(wifi_hal_capability_t  *hal_cap, wifi_radio_operationParam_t *oper)
+{
+    int i;
+    int radio_index = 0;
+    bool is_valid = false;
+    wifi_radio_capabilities_t *radiocap;
+    unsigned int band_arr_index = 0;
+
+
+    if (convert_freq_band_to_radio_index(oper->band, &radio_index) != RETURN_OK) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to convert freq_band 0x%x to radio_index\n", __func__, __LINE__, oper->band);
+        return RETURN_ERR;
+    }
+    //from the operation band, get the list of allowed channels and compare the whether the channel is valid
+    radiocap = &hal_cap->wifi_prop.radiocap[radio_index];
+
+    is_valid = false;
+    //Channel check from the capability
+    for (i = 0; i < radiocap->channel_list[band_arr_index].num_channels; i++) {
+        if (radiocap->channel_list[band_arr_index].channels_list[i] == (int)oper->channel) {
+            is_valid = true;
+            break;
+        }
+    }
+    if (is_valid == false) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid channel %d for the radio_index : %d\n", __func__, __LINE__, oper->channel, radio_index);
+        return RETURN_ERR;
+    }
+
+    //Channelwidth check from the capability
+    if (!(oper->channelWidth & radiocap->channelWidth[band_arr_index])) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid Channelwidth 0x%x for the radio_index : %d supported width : 0x%x\n",
+                __func__, __LINE__, oper->channelWidth, radio_index, radiocap->channelWidth[band_arr_index]);
+        return RETURN_ERR;
+    }
+
+    if ((oper->band == WIFI_FREQUENCY_5_BAND) || (oper->band == WIFI_FREQUENCY_5H_BAND) || (oper->band == WIFI_FREQUENCY_5L_BAND)) {
+        if ((oper->channel == 165) && (oper->channelWidth != WIFI_CHANNELBANDWIDTH_20MHZ)) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid Channel %d for Channelwidth 0x%x for the radio_index : %d\n",
+                    __func__, __LINE__, oper->channel, oper->channelWidth, radio_index);
+            return RETURN_ERR;
+        }
+
+        if (oper->channelWidth == WIFI_CHANNELBANDWIDTH_160MHZ) {
+            switch (oper->channel) {
+                case 132:
+                case 136:
+                case 140:
+                case 144:
+                case 149:
+                case 153:
+                case 157:
+                case 161:
+                case 165:
+                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid Channel %d for the radio_index : %d\n",
+                            __func__, __LINE__, oper->channel, radio_index);
+                    return RETURN_ERR;
+                default:
+                break;
+            }
+        }
+
+        if (oper->DfsEnabled == false) {
+            if (oper->channelWidth == WIFI_CHANNELBANDWIDTH_160MHZ)  {
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid Chanwidth %d as DFS is %s for the radio_index : %d\n",
+                        __func__, __LINE__, oper->channelWidth, (oper->DfsEnabled == false) ? "false" : "true", radio_index);
+                return RETURN_ERR;
+            }
+
+            switch (oper->channel) {
+                case 52:
+                case 56:
+                case 60:
+                case 64:
+                case 100:
+                case 104:
+                case 108:
+                case 112:
+                case 116:
+                case 120:
+                case 124:
+                case 128:
+                case 132:
+                case 136:
+                case 140:
+                case 144:
+                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid Channel %d as DFS is %s for the radio_index : %d\n",
+                            __func__, __LINE__, oper->channel, (oper->DfsEnabled == false) ? "false" : "true", radio_index);
+                    return RETURN_ERR;
+                default:
+                break;
+            }
+        }
+
+    }
+    return RETURN_OK;
+}

@@ -477,7 +477,7 @@ int webconfig_send_vap_subdoc_status(wifi_ctrl_t *ctrl, webconfig_subdoc_type_t 
 int webconfig_send_dml_subdoc_status(wifi_ctrl_t *ctrl)
 {
     webconfig_subdoc_data_t data;
-    
+
     webconfig_init_subdoc_data(&data);
     if (webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_dml) != webconfig_error_none) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
@@ -729,6 +729,10 @@ int webconfig_analyze_pending_states(wifi_ctrl_t *ctrl)
             break;
         case ctrl_webconfig_state_steering_clients_rsp_pending:
             webconfig_send_steering_clients_status(ctrl);
+            break;
+        case ctrl_webconfig_state_trigger_dml_thread_data_update_pending:
+            type = webconfig_subdoc_type_dml;
+            webconfig_send_dml_subdoc_status(ctrl);
             break;
         default:
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d - default pending subdoc status:0x%x\r\n", __func__, __LINE__, (ctrl->webconfig_state & CTRL_WEBCONFIG_STATE_MASK));
@@ -2494,7 +2498,11 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                 if (ctrl->webconfig_state & WEBCONFIG_DML_SUBDOC_STATES) {
                     ctrl->webconfig_state &= ~WEBCONFIG_DML_SUBDOC_STATES;
                     ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
+                } else if (ctrl->webconfig_state & ctrl_webconfig_state_trigger_dml_thread_data_update_pending) {
+                    ctrl->webconfig_state &= ~ctrl_webconfig_state_trigger_dml_thread_data_update_pending;
+                    ret = webconfig_rbus_apply_for_dml_thread_update(ctrl, &data->u.encoded);
                 }
+
             } else {
                 wifi_util_error_print(WIFI_MGR, "%s:%d: Not expected apply to dml webconfig subdoc\n", __func__, __LINE__);
             }

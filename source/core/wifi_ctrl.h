@@ -136,7 +136,8 @@ typedef enum {
     ctrl_webconfig_state_blaster_cfg_init_rsp_pending = 0x10000,
     ctrl_webconfig_state_blaster_cfg_complete_rsp_pending = 0x20000,
     ctrl_webconfig_state_vap_mesh_backhaul_sta_cfg_rsp_pending = 0x40000,
-    ctrl_webconfig_state_max = 0x80000
+    ctrl_webconfig_state_trigger_dml_thread_data_update_pending = 0x80000,
+    ctrl_webconfig_state_max = 0x100000
 } wifi_ctrl_webconfig_state_t;
 
 #define CTRL_WEBCONFIG_STATE_MASK   0xfffff

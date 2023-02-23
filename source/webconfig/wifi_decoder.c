@@ -3395,8 +3395,8 @@ webconfig_error_t decode_csi_object(queue_t** csi_queue, cJSON *object)
 
 webconfig_error_t decode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON *obj_wificap)
 {
-    cJSON *allowed_channels, *iterator;
-    int count = 0, i, size = 0;
+    cJSON *allowed_channels, *iterator, *allowed_channelwidths;
+    int count = 0, i, size = 0, chanwidth = 0;
     cJSON *value_object, *object;
     wifi_radio_capabilities_t *radio_cap;
 
@@ -3433,6 +3433,21 @@ webconfig_error_t decode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
              }
          }
          radio_cap->channel_list[0].num_channels = count;
+
+         /*allowed_channelwidths*/
+         allowed_channelwidths = cJSON_GetObjectItem(object, "PossibleChannelWidths");
+         if (allowed_channelwidths == NULL) {
+             wifi_util_error_print(WIFI_WEBCONFIG,"%s %d: PossibleChannelWidths is NULL for index : %d radio_cap->ifaceName : %s\n",__FUNCTION__, __LINE__, radio_cap->index, radio_cap->ifaceName);
+             return webconfig_error_decode;
+         }
+
+         chanwidth = 0 ;
+         cJSON_ArrayForEach(iterator, allowed_channelwidths) {
+             if (cJSON_IsNumber(iterator)) {
+                 chanwidth = iterator->valuedouble;
+                 radio_cap->channelWidth[0] |= chanwidth;
+             }
+         }
          radio_cap->numSupportedFreqBand = 1;
 
          value_object = cJSON_GetObjectItem(object, "RadioPresence");

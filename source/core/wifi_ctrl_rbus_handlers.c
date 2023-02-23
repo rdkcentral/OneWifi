@@ -214,6 +214,38 @@ int notify_LM_Lite(wifi_ctrl_t *ctrl, LM_wifi_hosts_t* phosts, bool sync)
     return RETURN_OK;
 }
 
+ int webconfig_rbus_apply_for_dml_thread_update(wifi_ctrl_t *ctrl, webconfig_subdoc_encoded_data_t *data)
+ {
+     rbusEvent_t event;
+     rbusObject_t rdata;
+     rbusValue_t value;
+     int rc;
+     rbusValue_Init(&value);
+     rbusObject_Init(&rdata, NULL);
+
+     rbusObject_SetValue(rdata, WIFI_WEBCONFIG_INIT_DML_DATA, value);
+     rbusValue_SetBytes(value, (uint8_t *)data->raw, strlen(data->raw));
+     event.name = WIFI_WEBCONFIG_INIT_DML_DATA;
+     event.data = rdata;
+     event.type = RBUS_EVENT_GENERAL;
+
+     rc = rbusEvent_Publish(ctrl->rbus_handle, &event);
+     if ((rc != RBUS_ERROR_SUCCESS) && (rc != RBUS_ERROR_NOSUBSCRIBERS)) {
+         wifi_util_error_print(WIFI_CTRL, "%s:%d: rbusEvent_Publish Event failed %d\n", __func__, __LINE__, rc);
+
+         rbusValue_Release(value);
+         rbusObject_Release(rdata);
+
+         return RETURN_ERR;
+     }
+
+     rbusValue_Release(value);
+     rbusObject_Release(rdata);
+
+     return RETURN_OK;
+ }
+
+
 int webconfig_rbus_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_encoded_data_t *data)
 {
     rbusEvent_t event;
