@@ -299,6 +299,11 @@ rbusError_t webconfig_get_subdoc(rbusHandle_t handle, rbusProperty_t property, r
             return RBUS_ERROR_INVALID_OPERATION;
         }
 
+        if (check_wifi_radio_sched_timeout_active_status(ctrl) == true) {
+            wifi_util_dbg_print(WIFI_CTRL,"%s wifidb and cache are not synced!\n", __FUNCTION__);
+            return RBUS_ERROR_INVALID_OPERATION;
+        }
+
         rbusValue_Init(&value);
         memset(&data, 0, sizeof(webconfig_subdoc_data_t));
 

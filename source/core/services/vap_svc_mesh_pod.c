@@ -422,6 +422,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
     wifi_ctrl_t *ctrl;
     bool  send_event = false;
     unsigned int i, index;
+    wifi_radio_operationParam_t *radio_params = NULL;
 
     ctrl = svc->ctrl;
     ext = &svc->u.ext;
@@ -461,6 +462,22 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
 
             ext->conn_state = connection_state_connected;
             //send_event = true;
+
+            radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(index);
+            if (radio_params != NULL) {
+                if ((sta_data->stats.channel != 0 && radio_params->channel != sta_data->stats.channel) ||
+                    (sta_data->stats.channelWidth != 0 && radio_params->channelWidth != sta_data->stats.channelWidth)) {
+                    pthread_mutex_lock(&mgr->data_cache_lock);
+                    radio_params->channel = sta_data->stats.channel;
+                    radio_params->channelWidth = sta_data->stats.channelWidth;
+                    radio_params->op_class = sta_data->stats.op_class;
+                    pthread_mutex_unlock(&mgr->data_cache_lock);
+
+                    mgr->ctrl.webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
+                    start_wifi_sched_timer(&index, ctrl, wifi_radio_sched);
+                    update_wifi_radio_config(index, radio_params);
+                }
+            }
 
             // Stop other STA vaps
             for (i = 0; i < getNumberRadios(); i++) {

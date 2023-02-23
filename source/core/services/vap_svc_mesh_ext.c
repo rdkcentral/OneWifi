@@ -1187,6 +1187,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
                     pthread_mutex_unlock(&mgr->data_cache_lock);
 
                     mgr->ctrl.webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
+                    start_wifi_sched_timer(&index, ctrl, wifi_radio_sched);
                     update_wifi_radio_config(index, radio_params);
                 }
             }
