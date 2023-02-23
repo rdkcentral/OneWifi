@@ -296,6 +296,7 @@ int vap_svc_mesh_ext_start(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
                 return RETURN_ERR;
             }
             vap_mesh_svc_pod_vif_config(&vif_config);
+            vap_map->vap_array[j].u.sta_info.enabled = true;
             tgt_vap_map.num_vaps++;
         }
    }
@@ -351,6 +352,7 @@ int vap_svc_mesh_ext_stop(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
         vap_mesh_svc_pod_vif_config(&vif_config);
         wifi_util_dbg_print(WIFI_CTRL,"%s:Copying back VAP name [%s]->[%s]\n",__FUNCTION__,tgt_vap_map.vap_array[tgt_vap_map.num_vaps].vap_name,vap_name);
         strncpy(tgt_vap_map.vap_array[tgt_vap_map.num_vaps].vap_name,vap_name,sizeof(wifi_vap_name_t));
+        vap_map->vap_array[j].u.sta_info.enabled = false;
         tgt_vap_map.num_vaps++;
     }
 
