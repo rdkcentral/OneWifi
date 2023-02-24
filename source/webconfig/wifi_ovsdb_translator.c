@@ -162,7 +162,7 @@ int convert_apindex_to_cloudifname(wifi_platform_property_t *wifi_prop, int idx,
         return RETURN_OK;
     }
 
-    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: unable to find if_name for idx : '%s'\n", __FUNCTION__, __LINE__, idx);
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: unable to find if_name for idx : '%d'\n", __FUNCTION__, __LINE__, idx);
     return RETURN_ERR;
 }
 
@@ -6505,7 +6505,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_home(webconfi
 
         //Ovsdb is only restricted to mesh related vaps
         if (convert_cloudifname_to_vapname(wifi_prop, (char *)&table[i]->if_name[0], vapname, sizeof(vapname)) != RETURN_OK) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Convert cloud ifname to vapname failed, if_name '%s'\n", __func__, __LINE__, table[i]->if_name[0]);
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Convert cloud ifname to vapname failed, if_name '%s'\n", __func__, __LINE__, table[i]->if_name);
             return webconfig_error_translate_from_ovsdb;
         }
 
@@ -6641,7 +6641,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_lnf(webconfig
         }
 
         if (convert_cloudifname_to_vapname(wifi_prop, (char *)&table[i]->if_name[0], vapname, sizeof(vapname)) != RETURN_OK) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Convert cloud ifname to vapname failed, if_name '%s'\n", __func__, __LINE__, table[i]->if_name[0]);
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Convert cloud ifname to vapname failed, if_name '%s'\n", __func__, __LINE__, table[i]->if_name);
             return webconfig_error_translate_from_ovsdb;
         }
 
@@ -6784,7 +6784,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_xfinity(webco
         }
 
         if (convert_cloudifname_to_vapname(wifi_prop, (char *)&table[i]->if_name[0], vapname, sizeof(vapname)) != RETURN_OK) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Convert cloud ifname to vapname failed, if_name '%s' \n", __func__, __LINE__, table[i]->if_name[0]);
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Convert cloud ifname to vapname failed, if_name '%s' \n", __func__, __LINE__, table[i]->if_name);
             return webconfig_error_translate_from_ovsdb;
         }
 
