@@ -621,9 +621,15 @@ void create_onewifi_factory_reset_flag()
         fclose(fp);
     }
 }
+
 void remove_onewifi_factory_reset_flag()
 {
     remove(ONEWIFI_FR_FLAG);
+}
+
+void remove_onewifi_migration_flag()
+{
+    remove(ONEWIFI_MIGRATION_FLAG);
 }
 
 bool str_is_mac_address(const char *mac)

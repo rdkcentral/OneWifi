@@ -51,6 +51,8 @@
 #include <semaphore.h>
 #include <fcntl.h>
 
+#include "util.h"
+
 #if DML_SUPPORT
 extern void* bus_handle;
 extern char g_Subsystem[32];
@@ -392,6 +394,11 @@ bool is_device_type_xb7(void)
 bool is_device_type_xb8(void)
 {
     return is_supported_gateway_device("CGM4981COM");
+}
+
+bool is_device_type_sr213(void)
+{
+    return is_supported_gateway_device("SR213");
 }
 
 #if DML_SUPPORT
@@ -1183,6 +1190,8 @@ int get_vap_params_from_psm(unsigned int vap_index, wifi_vap_info_t *vap_config)
     }
 
     nvram_get_current_ssid(bss_cfg->ssid, (instance_number - 1));
+    nvram_get_current_security_mode(&bss_cfg->security.mode, (instance_number - 1));
+
     wifi_security_modes_t mode = bss_cfg->security.mode;
     if ((mode == wifi_security_mode_wpa_enterprise) || (mode == wifi_security_mode_wpa2_enterprise ) || (mode == wifi_security_mode_wpa3_enterprise) || (mode == wifi_security_mode_wpa_wpa2_enterprise)) {
         //TBD
@@ -1383,7 +1392,7 @@ int get_all_param_from_psm_and_set_into_db(void)
     wifi_mgr_t *g_wifidb;
     g_wifidb = get_wifimgr_obj();
 
-    if (is_device_type_xb7() == true || is_device_type_xb8() == true) {
+    if (is_device_type_xb7() == true || is_device_type_xb8() == true || is_device_type_sr213() == true) {
         bool wifi_psm_db_enabled = false;
         char last_reboot_reason[32];
         memset(last_reboot_reason, 0, sizeof(last_reboot_reason));
@@ -1401,7 +1410,7 @@ int get_all_param_from_psm_and_set_into_db(void)
             get_wifi_last_reboot_reason_psm_value(last_reboot_reason);
         }
 
-        if (g_wifidb->is_db_update_required == true) {
+        if (g_wifidb->is_db_update_required == true || (access(ONEWIFI_MIGRATION_FLAG, F_OK) == 0)) {
             int retval;
             retval = wifi_db_update_psm_values();
             if (retval == RETURN_OK) {
@@ -1412,6 +1421,7 @@ int get_all_param_from_psm_and_set_into_db(void)
             }
             sleep(1);
             remove_onewifi_factory_reset_flag();
+            remove_onewifi_migration_flag();
             wifi_util_info_print(WIFI_MGR,"%s FactoryReset flag removed  \n",__func__);
         }
 
