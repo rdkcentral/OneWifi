@@ -80,7 +80,7 @@ static char *WmmNoAck           = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.
 static char *BssMaxNumSta       = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.BssMaxNumSta";
 static char *MacFilterMode      = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.MacFilterMode";
 static char *ApIsolationEnable    = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.ApIsolationEnable";
-static char *BeaconRateCtl   = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.BeaconRateCtl";
+static char *BeaconRateCtl   = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.Radio.AccessPoint.%d.BeaconRateCtl";
 static char *BSSTransitionActivated    = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.BSSTransitionActivated";
 static char *BssHotSpot        = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.HotSpot";
 static char *WpsPushButton = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.WpsPushButton";
@@ -1129,18 +1129,10 @@ int get_vap_params_from_psm(unsigned int vap_index, wifi_vap_info_t *vap_config)
     memset(strValue, 0, sizeof(strValue));
     snprintf(recName, sizeof(recName), ApMFPConfig, instance_number);
     str = Get_PSM_Record_Status(recName, strValue);
+    int security_mfp = 0;
     if (str != NULL) {
-        convert_security_mode_string_to_integer((int *)&bss_cfg->security.mfp, str);
-        wifi_util_dbg_print(WIFI_MGR,"cfg->mfp is %d and str is %s\n", bss_cfg->security.mfp, str);
-        /* make sure the MFP Config is set properly */
-        /* PSM are returning wrong MFP config */
-        if ((bss_cfg->security.mode == wifi_security_mode_wpa3_personal) && (bss_cfg->security.mfp != wifi_mfp_cfg_required)) {
-            wifi_util_error_print(WIFI_MGR, "%s:%d - Wrong MFP Config from PSM for WPA3-Personal. Changed \"%s\" to \"Required\"\n", __func__, __LINE__, str);
-            bss_cfg->security.mfp = wifi_mfp_cfg_required;
-        } else if ((bss_cfg->security.mode == wifi_security_mode_wpa3_transition) && (bss_cfg->security.mfp != wifi_mfp_cfg_optional)) {
-            wifi_util_error_print(WIFI_MGR, "%s:%d - Wrong MFP Config from PSM for WPA3-Personal-Transition. Changed \"%s\" to \"Optional\"\n", __func__, __LINE__, str);
-            bss_cfg->security.mfp = wifi_mfp_cfg_optional;
-        }
+        convert_security_mode_string_to_integer((int *)&security_mfp, str);
+        wifi_util_dbg_print(WIFI_MGR,"cfg->mfp is %d and str is %s\n", security_mfp, str);
     } else {
         wifi_util_dbg_print(WIFI_MGR,"%s:%d str value for mfp:%s \r\n", __func__, __LINE__, str);
     }
@@ -1157,14 +1149,36 @@ int get_vap_params_from_psm(unsigned int vap_index, wifi_vap_info_t *vap_config)
     }
 
     nvram_get_current_ssid(bss_cfg->ssid, (instance_number - 1));
-    nvram_get_current_security_mode(&bss_cfg->security.mode, (instance_number - 1));
     nvram_get_vap_enable_status(&bss_cfg->enabled, (instance_number - 1));
+
+    int security_mode = bss_cfg->security.mode;
+    if (nvram_get_current_security_mode(&security_mode, (instance_number - 1)) == 0) {
+        /* use defaults if security and mfp do not match the specs */
+        if ((security_mode == wifi_security_mode_wpa3_personal) && (security_mfp != wifi_mfp_cfg_required)) {
+            wifi_util_error_print(WIFI_MGR, "%s:%d Using default security mode 0x%x and MFP %d for %s\n", \
+                                  __func__, __LINE__, bss_cfg->security.mode, bss_cfg->security.mfp, vap_config->vap_name);
+        } else if ((security_mode == wifi_security_mode_wpa3_transition) && (security_mfp != wifi_mfp_cfg_optional)) {
+            wifi_util_error_print(WIFI_MGR, "%s:%d Using default security mode 0x%x and MFP %d for %s\n", \
+                                  __func__, __LINE__, bss_cfg->security.mode, bss_cfg->security.mfp, vap_config->vap_name);
+        } else {
+            bss_cfg->security.mode = security_mode;
+            bss_cfg->security.mfp = security_mfp;
+        }
+    } else {
+        wifi_util_error_print(WIFI_MGR, "%s:%d - Error getting security mode from NVRAM. Using default security mode 0x%x and mfp %d for $%s\n", __func__, __LINE__, bss_cfg->security.mode, bss_cfg->security.mfp, vap_config->vap_name);
+    }
 
     wifi_security_modes_t mode = bss_cfg->security.mode;
     if ((mode == wifi_security_mode_wpa_enterprise) || (mode == wifi_security_mode_wpa2_enterprise ) || (mode == wifi_security_mode_wpa3_enterprise) || (mode == wifi_security_mode_wpa_wpa2_enterprise)) {
         //TBD
     } else {
         nvram_get_current_password(bss_cfg->security.u.key.key, (instance_number - 1));
+    }
+
+    if (nvram_get_mgmt_frame_power_control(vap_index, &bss_cfg->mgmtPowerControl) == RETURN_OK) {
+        wifi_util_dbg_print(WIFI_MGR,"%s:%d bss_cfg->mgmtPowerControl is %d for VAP Index %d\n", __func__, __LINE__, bss_cfg->mgmtPowerControl, vap_index);
+    } else {
+        wifi_util_dbg_print(WIFI_MGR,"%s:%d wifi_hal_get_mgmt_frame_power_control(VAP_index %d) failed\n", __func__, __LINE__, vap_index);
     }
 
     return RETURN_OK;

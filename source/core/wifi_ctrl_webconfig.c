@@ -1062,15 +1062,6 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
              * So, it won't be updated within update_fn -> wifidb_update_wifi_vap_info. Thats the reason why I leaved memcpy here. 
              */
             memcpy(mgr_vap_info, &tgt_vap_map.vap_array[0], sizeof(wifi_vap_info_t));
-#if CCSP_WIFI_HAL
-            if (vap_info->vap_mode == wifi_vap_mode_ap) {
-                if (wifi_setApManagementFramePowerControl(vap_info->vap_index,vap_info->u.bss_info.mgmtPowerControl) == RETURN_OK) {
-                    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d:ManagementFrame Power control set for vapindex =%d Successful \n",__func__, __LINE__,vap_info->vap_index);
-                } else {
-                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d:ManagementFrame Power control set failed in  \n",__func__, __LINE__);
-                }
-            }
-#endif // CCSP_WIFI_HAL
         } else {
             wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: Received vap config is same for %s, not applying\n",
                         __func__, __LINE__, vap_names[i]);

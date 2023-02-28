@@ -784,7 +784,9 @@
         "mgmt_power_control": {
           "type": {
             "key": {
-              "type": "integer"
+              "type": "integer",
+              "minInteger":-20,
+              "maxInteger":0
             },
             "min": 0,
             "max": 1
