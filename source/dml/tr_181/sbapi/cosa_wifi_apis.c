@@ -1228,7 +1228,7 @@ ANSC_STATUS wifiStdStrToEnum(char *pWifiStdStr, wifi_ieee80211Variant_t *p80211V
         isWifiStdInvalid = TRUE;
         for (seqCounter = 0; seqCounter < ARRAY_SZ(wifiStdDmlMap); seqCounter++)
         {
-            if ((AnscEqualString("ax", token, TRUE)) && (instance_number == 1)
+            if ((AnscEqualString("ax", token, TRUE)) && (instance_number == 0)
                 && !rfc_pcfg->twoG80211axEnable_rfc)
             {
                 CcspWifiTrace(("RDK_LOG_INFO, Radio instanceNumber:%lu Device.WiFi.2G80211axEnable"
