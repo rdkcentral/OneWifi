@@ -2686,6 +2686,11 @@ webconfig_error_t translate_vap_object_to_ovsdb_associated_clients(const rdk_wif
         assoc_dev_data = hash_map_get_first(rdk_vap_info->associated_devices_map);
 
         while (assoc_dev_data != NULL) {
+
+            if (associated_client_count >= WEBCONFIG_MAX_ASSOCIATED_CLIENTS) {
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Exceeded max number of associated clients %d, vap_name '%s'\n", __func__, __LINE__, WEBCONFIG_MAX_ASSOCIATED_CLIENTS, rdk_vap_info->vap_name);
+                break;
+            }
             client_row = (struct schema_Wifi_Associated_Clients *)clients_table[associated_client_count];
             if (client_row == NULL) {
                 wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: client row empty for the client number %d\n", __func__, __LINE__, associated_client_count);

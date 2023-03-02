@@ -52,6 +52,7 @@ extern "C" {
 
 #define     WEBCONFIG_MAGIC_SIGNATUTRE  0xdecddecd
 #define     MAX_SUBDOC_SIZE 1024*100
+#define     WEBCONFIG_MAX_ASSOCIATED_CLIENTS 75 * MAX_NUM_RADIOS
 
 typedef enum {
     webconfig_error_none,
