@@ -302,3 +302,35 @@ if [ "$MODEL_NUM" == "PX5001" ] || [ "$MODEL_NUM" == "CGM4331COM" ] || [ "$MODEL
 
 fi
 
+mesh_bridge_ip()
+{
+    /sbin/ifconfig "$1" "$2" netmask $DEFAULT_PLUME_BH_NETMASK
+}
+if [ "$MODEL_NUM" == "WNXL11BWL" ]; then
+    IF_MESHBR24="brlan112"
+    IF_MESHBR50="brlan113"
+    BRLAN112IP="`ip addr | awk '/inet/ && /brlan112/{sub(/\/.*$/,"",$2); print $2}'`"
+    BRLAN113IP="`ip addr | awk '/inet/ && /brlan113/{sub(/\/.*$/,"",$2); print $2}'`"
+    BRLAN112MTU="`ip addr | awk '/mtu/ && /brlan112/{sub(/\/.*$/,"",$2); print $5}'`"
+    BRLAN113MTU="`ip addr | awk '/mtu/ && /brlan113/{sub(/\/.*$/,"",$2); print $5}'`"
+    if [ "`psmcli get dmsb.l3net.10.V4Addr`" != "$MESHBR24_DEFAULT_IP" ]; then
+        psmcli set dmsb.l3net.10.V4Addr "$MESHBR24_DEFAULT_IP"
+    fi
+    if [ "`psmcli get dmsb.l3net.11.V4Addr`" != "$MESHBR50_DEFAULT_IP" ]; then
+        psmcli set dmsb.l3net.11.V4Addr "$MESHBR50_DEFAULT_IP"
+    fi
+    if [ "$BRLAN112IP" == "" ]; then
+        mesh_bridge_ip $IF_MESHBR24 "`psmcli get dmsb.l3net.10.V4Addr`"
+    fi
+    if [ "$BRLAN113IP" == "" ]; then
+        mesh_bridge_ip $IF_MESHBR50 "`psmcli get dmsb.l3net.11.V4Addr`"
+    fi
+    if [ "$BRLAN112MTU" != "$BRIDGE_MTU" ]; then
+        ifconfig $IF_MESHBR24 mtu $BRIDGE_MTU
+    fi
+    if [ "$BRLAN113MTU" != "$BRIDGE_MTU" ]; then
+        ifconfig $IF_MESHBR50 mtu $BRIDGE_MTU
+    fi
+
+fi
+
