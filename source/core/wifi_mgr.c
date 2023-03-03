@@ -1415,6 +1415,7 @@ int init_wifimgr()
     }
     struct stat sb;
     char db_file[128];
+    int hal_initialized = RETURN_ERR;
 
     if(wifi_hal_pre_init() != RETURN_OK) {
         wifi_util_error_print(WIFI_MGR,"%s wifi hal pre_init failed\n", __func__);
@@ -1422,7 +1423,12 @@ int init_wifimgr()
     }
 
     //Initialize HAL and get Capabilities
-    assert(init_wifi_hal() == RETURN_OK);
+    hal_initialized = init_wifi_hal();
+    if (hal_initialized != RETURN_OK) {
+        v_secure_system("touch /tmp/hal_initialize_failed");
+        wifi_util_info_print(WIFI_MGR,"Hal initialization failed rebooting the device\n");
+    }
+    assert(hal_initialized == RETURN_OK);
 
     int itr=0;
     for (itr=0; itr < (int)getNumberRadios(); itr++) {

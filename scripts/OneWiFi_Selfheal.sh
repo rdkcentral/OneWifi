@@ -10,6 +10,10 @@ cur_timestamp=0
 private_2g_instance=1
 private_5g_instance=2
 private_6g_instance=17
+hal_indication="/tmp/hal_initialize_failed"
+prev_reboot_timestamp=0
+cur_reboot_timestamp=0
+hal_error_reboot="/nvram/hal_error_reboot"
 
 MODEL_NUM=`grep MODEL_NUM /etc/device.properties | cut -d "=" -f2`
 LOG_FILE="/rdklogs/logs/wifi_selfheal.txt"
@@ -111,6 +115,20 @@ while true
                     vap_6g_down=0
                 fi
             fi
+        fi
+ fi
+ if [ -f  $hal_indication ]; then
+        cur_reboot_timestamp="`date +"%s"` $1"
+        if [ -f $hal_error_reboot ]; then
+            prev_reboot_timestamp=`cat $hal_error_reboot`
+        fi
+        time_diff=`expr $cur_reboot_timestamp - $prev_reboot_timestamp`
+        if [ $time_diff -ge 86400 ]; then
+            echo $cur_reboot_timestamp > $hal_error_reboot
+            echo_t "wifi-interface-problem self heal executed" >>  /rdklogs/logs/wifi_selfheal.txt
+            echo_t "Rebooting the device" >>  /rdklogs/logs/wifi_selfheal.txt
+            dmcli eRT setv Device.DeviceInfo.X_RDKCENTRAL-COM_LastRebootReason string "wifi-interface-problem"
+            dmcli eRT setv Device.X_CISCO_COM_DeviceControl.RebootDevice string "Device"
         fi
  fi
  sleep 5m
