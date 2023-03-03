@@ -359,7 +359,8 @@ int vap_svc_mesh_ext_stop(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
     return RETURN_OK;
 }
 
-int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map)
+int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map,
+    rdk_wifi_vap_info_t *rdk_vap_info)
 {
     unsigned int i;
 

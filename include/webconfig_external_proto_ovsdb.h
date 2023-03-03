@@ -20,6 +20,14 @@
 #ifndef EXTERNAL_PROTO_OVSDB_H
 #define EXTERNAL_PROTO_OVSDB_H
 
+#define EXTERNAL_PROTO_IF_NAME_SIZE 32
+#define EXTERNAL_PROTO_MAX_VAPS 24
+
+typedef struct {
+    char if_name[EXTERNAL_PROTO_IF_NAME_SIZE];
+    bool exists;
+} webconfig_external_vap_info_t;
+
 #define MAX_MQTT_TOPIC_LEN 256
 typedef struct {
     const struct schema_Wifi_Radio_Config **radio_config;
@@ -47,6 +55,9 @@ typedef struct {
     const unsigned int steer_row_count;
     const unsigned int steering_client_row_count;
     const unsigned int vif_neighbor_row_count;
+
+    webconfig_external_vap_info_t vap_info[EXTERNAL_PROTO_MAX_VAPS];
+    unsigned int num_vaps;
 
 /* TBD: place for next arrays and other data, in particular
  *

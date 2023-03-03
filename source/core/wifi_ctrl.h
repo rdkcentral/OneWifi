@@ -290,6 +290,7 @@ wifi_GASConfiguration_t * Get_wifi_gas_conf_object(void);
 wifi_interworking_t * Get_wifi_object_interworking_parameter(uint8_t vap_instance_number);
 wifi_back_haul_sta_t * get_wifi_object_sta_parameter(uint8_t vapIndex);
 rdk_wifi_vap_info_t* get_wifidb_rdk_vap_info(uint8_t vapIndex);
+rdk_wifi_vap_info_t* get_wifidb_rdk_vaps(uint8_t radio_index);
 int convert_radio_index_to_radio_name(int index,char *name);
 wifi_global_param_t* get_wifidb_wifi_global_param(void);
 wifi_global_config_t* get_wifidb_wifi_global_config(void);

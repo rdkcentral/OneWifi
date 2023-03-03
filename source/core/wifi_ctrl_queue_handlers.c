@@ -693,6 +693,7 @@ void send_hotspot_status(char* vap_name, bool up)
 
 void process_xfinity_vaps(int vap_enable, bool hs_evt)
 {
+    rdk_wifi_vap_info_t *rdk_vap_info;
     vap_svc_t  *pub_svc = NULL;
     wifi_ctrl_t *ctrl;
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
@@ -714,6 +715,14 @@ void process_xfinity_vaps(int vap_enable, bool hs_evt)
             memset((unsigned char *)&tmp_vap_map, 0, sizeof(wifi_vap_info_map_t));
             tmp_vap_map.num_vaps = 1;
             memcpy((unsigned char *)&tmp_vap_map.vap_array[0], (unsigned char *)&wifi_vap_map->vap_array[j], sizeof(wifi_vap_info_t));
+
+            rdk_vap_info = get_wifidb_rdk_vap_info(wifi_vap_map->vap_array[j].vap_index);
+            if (rdk_vap_info == NULL) {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to get rdk vap info for index %d\n",
+                    __func__, __LINE__, wifi_vap_map->vap_array[j].vap_index);
+                continue;
+            }
+
             if(vap_enable == 0 ) {
                 tmp_vap_map.vap_array[0].u.bss_info.enabled = false;
             }
@@ -745,7 +754,7 @@ void process_xfinity_vaps(int vap_enable, bool hs_evt)
 #endif // DML_SUPPORT
             }
 
-            if(pub_svc->update_fn(pub_svc,radio_indx, &tmp_vap_map) != RETURN_OK) {
+            if(pub_svc->update_fn(pub_svc,radio_indx, &tmp_vap_map, rdk_vap_info) != RETURN_OK) {
                 wifi_util_error_print(WIFI_CTRL, "%s:%d Unable to create vaps\n", __func__,__LINE__);
                 if(hs_evt) {
                     send_hotspot_status(wifi_vap_map->vap_array[j].vap_name, false);
@@ -779,10 +788,57 @@ void convert_freq_to_channel(unsigned int freq, unsigned char *channel)
     }
 }
 
+static void update_sta_presence(rdk_sta_data_t *sta_data)
+{
+    unsigned int i, j, vap_index;
+    wifi_vap_info_map_t *wifi_vap_map;
+    rdk_wifi_vap_info_t *rdk_vap_info;
+
+    if (sta_data->stats.connect_status != wifi_connection_status_connected) {
+        return;
+    }
+
+    vap_index = sta_data->stats.vap_index;
+    rdk_vap_info = get_wifidb_rdk_vap_info(vap_index);
+    if (rdk_vap_info == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d failed to get rdk vap info for index %d\n",
+            __func__, __LINE__, vap_index);
+        return;
+    }
+
+    if (rdk_vap_info->exists == true) {
+        return;
+    }
+
+    wifi_util_info_print(WIFI_CTRL, "%s:%d sta connected on deleted vap %s, reset state\n",
+        __func__, __LINE__, rdk_vap_info->vap_name);
+
+    // STA connected to deleted by cloud VAP therefore reset state and send all STA VAPs
+    for (i = 0; i < getNumberRadios(); i++) {
+        wifi_vap_map = get_wifidb_vap_map(i);
+        for (j = 0; j < getMaxNumberVAPsPerRadio(i); j++) {
+            vap_index = wifi_vap_map->vap_array[j].vap_index;
+            if (vap_svc_is_mesh_ext(vap_index) == false) {
+                continue;
+            }
+
+            rdk_vap_info = get_wifidb_rdk_vap_info(vap_index);
+            if (rdk_vap_info == NULL) {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d failed to get rdk vap info for index %d\n",
+                    __func__, __LINE__, vap_index);
+                return;
+            }
+            rdk_vap_info->exists = true;
+        }
+    }
+}
+
 void process_sta_conn_status_event(rdk_sta_data_t *sta_data, unsigned int len)
 {
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     vap_svc_t *ext_svc;
+
+    update_sta_presence(sta_data);
 
     ctrl->webconfig_state |= ctrl_webconfig_state_sta_conn_status_rsp_pending;
 

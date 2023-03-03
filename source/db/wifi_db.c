@@ -3873,6 +3873,11 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config)
         memset(str,0,sizeof(str));
         snprintf(str,sizeof(str),"%s","{ \"Passpoint\":{ \"PasspointEnable\":false, \"NAIHomeRealmANQPElement\":{\"Realms\":[]}, \"OperatorFriendlyNameANQPElement\":{\"Name\":[]}, \"ConnectionCapabilityListANQPElement\":{\"ProtoPort\":[]}, \"GroupAddressedForwardingDisable\":true, \"P2pCrossConnectionDisable\":false}}");
         snprintf((char *)cfg.u.bss_info.interworking.passpoint.hs2Parameters,sizeof(cfg.u.bss_info.interworking.passpoint.hs2Parameters),"%s",str);
+
+#if defined(_WNXL11BWL_PRODUCT_REQ_)
+        //Disabling all vaps except STA Vaps by default in XLE
+        cfg.u.bss_info.enabled = false;
+#endif //_WNXL11BWL_PRODUCT_REQ_
     }
 
     pthread_mutex_lock(&g_wifidb->data_cache_lock);

@@ -1971,20 +1971,18 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_dml(webconfig_s
 {
     struct schema_Wifi_VIF_Config *vap_row;
     const struct schema_Wifi_VIF_Config **vif_table;
-    unsigned int i, j, k, vap_array_index;
+    unsigned int i, j, k;
     webconfig_subdoc_decoded_data_t *decoded_params;
     rdk_wifi_radio_t *radio;
     wifi_vap_info_map_t *vap_map;
     wifi_vap_info_t *vap;
+    rdk_wifi_vap_info_t *rdk_vap;
     wifi_hal_capability_t *hal_cap;
     wifi_interface_name_idex_map_t *iface_map;
     webconfig_external_ovsdb_t *proto;
-    wifi_vap_name_t vap_names[MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO];
-    //  struct schema_Wifi_Credential_Config **cred_table;
-    //   struct schema_Wifi_Credential_Config  *cred_row;
 
     unsigned int presence_mask = 0;
-    unsigned int *row_count = NULL;
+    unsigned int count = 0, *row_count = NULL;
     wifi_platform_property_t *wifi_prop = &data->u.decoded.hal_cap.wifi_prop;
     unsigned int dml_vap_mask = 0;
 
@@ -2025,6 +2023,12 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_dml(webconfig_s
         for (j = 0; j < radio->vaps.num_vaps; j++) {
             //Get the corresponding vap
             vap = &vap_map->vap_array[j];
+            rdk_vap = &radio->vaps.rdk_vap_array[j];
+
+            if (rdk_vap->exists == false) {
+                presence_mask |= (1 << vap->vap_index);
+                continue;
+            }
 
             iface_map = NULL;
             for (k = 0; k < (sizeof(hal_cap->wifi_prop.interface_map)/sizeof(wifi_interface_name_idex_map_t)); k++) {
@@ -2038,9 +2042,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_dml(webconfig_s
                 return webconfig_error_translate_to_ovsdb;
             }
 
-            //get the corresponding row
-            VAP_ARRAY_INDEX(vap_array_index, decoded_params->hal_cap, vap->vap_index);
-            vap_row = (struct schema_Wifi_VIF_Config *)vif_table[vap_array_index];
+            vap_row = (struct schema_Wifi_VIF_Config *)vif_table[count];
             if (vap_row == NULL) {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the vap schema row for %d\n", __func__, __LINE__, vap->vap_index);
                 return webconfig_error_translate_to_ovsdb;
@@ -2052,13 +2054,14 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_dml(webconfig_s
                     return webconfig_error_translate_to_ovsdb;
                 }
                 presence_mask |= (1 << vap->vap_index);
+                count++;
             } else  if (is_vap_xhs(wifi_prop, vap->vap_index) == TRUE) {
                 if (translate_iot_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
                     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of iot vap to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
                 presence_mask |= (1 << vap->vap_index);
-
+                count++;
             } else  if (is_vap_hotspot_open(wifi_prop, vap->vap_index) == TRUE) {
 
                 if (translate_hotspot_open_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
@@ -2066,7 +2069,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_dml(webconfig_s
                     return webconfig_error_translate_to_ovsdb;
                 }
                 presence_mask |= (1 << vap->vap_index);
-
+                count++;
             } else  if (is_vap_lnf_psk(wifi_prop, vap->vap_index) == TRUE) {
 
                 if (translate_lnf_psk_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
@@ -2074,27 +2077,28 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_dml(webconfig_s
                     return webconfig_error_translate_to_ovsdb;
                 }
                 presence_mask |= (1 << vap->vap_index);
-
+                count++;
             } else  if (is_vap_hotspot_secure(wifi_prop, vap->vap_index) == TRUE) {
                 if (translate_hotspot_secure_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
                     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of hotspot secure vap to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
                 presence_mask |= (1 << vap->vap_index);
-
+                count++;
             } else  if (is_vap_lnf_radius(wifi_prop, vap->vap_index) == TRUE) {
                 if (translate_lnf_radius_secure_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
                     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of radius secure vap to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
                 presence_mask |= (1 << vap->vap_index);
-
+                count++;
             } else  if (is_vap_mesh_backhaul(wifi_prop, vap->vap_index) == TRUE) {
                 if (translate_mesh_backhaul_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
                     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of mesh backhaul to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
                 presence_mask |= (1 << vap->vap_index);
+                count++;
             } else  if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == TRUE) {
                 wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: for %d\n", __func__, __LINE__, vap->vap_index);
                 if (vap->u.sta_info.conn_status == wifi_connection_status_connected) {
@@ -2106,6 +2110,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_dml(webconfig_s
                     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: connection status is %d for vap_index %d\n", __func__, __LINE__, vap->u.sta_info.conn_status, vap->vap_index);
                 }
                 presence_mask |= (1 << vap->vap_index);
+                count++;
             } else {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid vap_index %d\n", __func__, __LINE__, vap->vap_index);
                 return webconfig_error_translate_to_ovsdb;
@@ -2126,10 +2131,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_dml(webconfig_s
     }
 
     row_count = (unsigned int *)&proto->vif_config_row_count;
-    *row_count = get_list_of_vap_names(wifi_prop, vap_names, MAX_NUM_RADIOS*MAX_NUM_VAP_PER_RADIO, \
-            8, VAP_PREFIX_PRIVATE, VAP_PREFIX_HOTSPOT_OPEN, VAP_PREFIX_HOTSPOT_SECURE, \
-            VAP_PREFIX_LNF_PSK, VAP_PREFIX_LNF_RADIUS, VAP_PREFIX_MESH_BACKHAUL, \
-            VAP_PREFIX_MESH_STA, VAP_PREFIX_IOT);;
+    *row_count = count;
 
     for (i = 0; i < decoded_params->num_radios; i++) {
         memcpy(&webconfig_ovsdb_data.u.decoded.radios[i].vaps, &decoded_params->radios[i].vaps, sizeof(rdk_wifi_vap_map_t));
@@ -2862,11 +2864,12 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state_for_dml(webconfig_su
 {
     struct schema_Wifi_VIF_State *vap_row;
     const struct schema_Wifi_VIF_State **vif_table;
-    unsigned int i, j, k, vap_array_index;
+    unsigned int i, j, k;
     webconfig_subdoc_decoded_data_t *decoded_params;
     rdk_wifi_radio_t *radio;
     wifi_vap_info_map_t *vap_map;
     wifi_vap_info_t *vap;
+    rdk_wifi_vap_info_t *rdk_vap;
     wifi_hal_capability_t *hal_cap;
     wifi_interface_name_idex_map_t *iface_map;
     webconfig_external_ovsdb_t *proto;
@@ -2874,9 +2877,8 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state_for_dml(webconfig_su
     //   struct schema_Wifi_Credential_Config  *cred_row;
 
     unsigned int presence_mask = 0;
-    unsigned int *row_count = NULL;
+    unsigned int count = 0, *row_count = NULL;
     unsigned int dml_vap_mask = 0;
-    wifi_vap_name_t vap_names[MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO];
     wifi_platform_property_t *wifi_prop = &data->u.decoded.hal_cap.wifi_prop;
     dml_vap_mask = create_vap_mask(wifi_prop, 8, VAP_PREFIX_PRIVATE, VAP_PREFIX_IOT, VAP_PREFIX_HOTSPOT_OPEN, VAP_PREFIX_HOTSPOT_SECURE, \
                                                  VAP_PREFIX_MESH_BACKHAUL, VAP_PREFIX_MESH_STA, VAP_PREFIX_LNF_PSK, VAP_PREFIX_LNF_RADIUS);
@@ -2919,6 +2921,22 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state_for_dml(webconfig_su
         for (j = 0; j < radio->vaps.num_vaps; j++) {
             //Get the corresponding vap
             vap = &vap_map->vap_array[j];
+            rdk_vap = &radio->vaps.rdk_vap_array[j];
+
+            if (convert_vapname_to_cloudifname(rdk_vap->vap_name,
+                    proto->vap_info[proto->num_vaps].if_name,
+                    sizeof(proto->vap_info[proto->num_vaps].if_name)) != RETURN_OK) {
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: vap name to interface name "
+                    "conversion failed for %s\n", __func__, __LINE__, rdk_vap->vap_name);
+                return webconfig_error_translate_to_ovsdb;
+            }
+            proto->vap_info[proto->num_vaps].exists = rdk_vap->exists;
+            proto->num_vaps++;
+
+            if (rdk_vap->exists == false) {
+                presence_mask |= (1 << vap->vap_index);
+                continue;
+            }
 
             iface_map = NULL;
             for (k = 0; k < (sizeof(hal_cap->wifi_prop.interface_map)/sizeof(wifi_interface_name_idex_map_t)); k++) {
@@ -2932,9 +2950,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state_for_dml(webconfig_su
                 return webconfig_error_translate_to_ovsdb;
             }
 
-            //get the corresponding row
-            VAP_ARRAY_INDEX(vap_array_index, decoded_params->hal_cap, vap->vap_index);
-            vap_row = (struct schema_Wifi_VIF_State *)vif_table[vap_array_index];
+            vap_row = (struct schema_Wifi_VIF_State *)vif_table[count];
             if (vap_row == NULL) {
                 wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the vap schema row for %d\n", __func__, __LINE__, vap->vap_index);
                 return webconfig_error_translate_to_ovsdb;
@@ -2946,13 +2962,14 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state_for_dml(webconfig_su
                     return webconfig_error_translate_to_ovsdb;
                 }
                 presence_mask |= (1 << vap->vap_index);
+                count++;
             } else  if (is_vap_xhs(wifi_prop, vap->vap_index) == TRUE) {
                 if (translate_iot_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
                     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Translation of iot vap to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
                 presence_mask |= (1 << vap->vap_index);
-
+                count++;
             } else  if (is_vap_hotspot_open(wifi_prop, vap->vap_index) == TRUE) {
 
                 if (translate_hotspot_open_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
@@ -2960,7 +2977,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state_for_dml(webconfig_su
                     return webconfig_error_translate_to_ovsdb;
                 }
                 presence_mask |= (1 << vap->vap_index);
-
+                count++;
             } else  if (is_vap_lnf_psk(wifi_prop, vap->vap_index) == TRUE) {
 
                 if (translate_lnf_psk_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
@@ -2968,33 +2985,35 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state_for_dml(webconfig_su
                     return webconfig_error_translate_to_ovsdb;
                 }
                 presence_mask |= (1 << vap->vap_index);
-
+                count++;
             } else  if (is_vap_hotspot_secure(wifi_prop, vap->vap_index) == TRUE) {
                 if (translate_hotspot_secure_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
                     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Translation of hotspot secure vap to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
                 presence_mask |= (1 << vap->vap_index);
-
+                count++;
             } else  if (is_vap_lnf_radius(wifi_prop, vap->vap_index) == TRUE) {
                 if (translate_lnf_radius_secure_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
                     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Translation of radius secure vap to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
                 presence_mask |= (1 << vap->vap_index);
-
+                count++;
             } else  if (is_vap_mesh_backhaul(wifi_prop, vap->vap_index) == TRUE) {
                 if (translate_mesh_backhaul_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
                     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Translation of mesh backhaul to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
                 presence_mask |= (1 << vap->vap_index);
+                count++;
             } else  if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == TRUE) {
                 if (translate_mesh_sta_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
                     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Translation of mesh sta to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
                 presence_mask |= (1 << vap->vap_index);
+                count++;
             } else {
                 wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Invalid vap_index %d\n", __func__, __LINE__, vap->vap_index);
                 return webconfig_error_translate_to_ovsdb;
@@ -3014,10 +3033,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state_for_dml(webconfig_su
         return webconfig_error_translate_to_ovsdb;
     }
     row_count = (unsigned int *)&proto->vif_state_row_count;
-    *row_count = get_list_of_vap_names(wifi_prop, vap_names, MAX_NUM_RADIOS*MAX_NUM_VAP_PER_RADIO, \
-            8, VAP_PREFIX_PRIVATE, VAP_PREFIX_HOTSPOT_OPEN, VAP_PREFIX_HOTSPOT_SECURE, \
-            VAP_PREFIX_LNF_PSK, VAP_PREFIX_LNF_RADIUS, VAP_PREFIX_MESH_BACKHAUL, \
-            VAP_PREFIX_MESH_STA, VAP_PREFIX_IOT);
+    *row_count = count;
 
     return webconfig_error_none;
 }
@@ -3602,6 +3618,47 @@ webconfig_error_t translate_mesh_sta_vap_config_to_vap_info(const struct schema_
     return webconfig_error_none;
 }
 
+static webconfig_error_t set_deleted_entries_to_default(webconfig_subdoc_data_t *data,
+    unsigned int *presence_mask, unsigned int vap_mask)
+{
+    rdk_wifi_vap_info_t *rdk_vap;
+    wifi_vap_info_t *vap, *default_vap;
+    rdk_wifi_radio_t *radio, *default_radio;
+    uint8_t radio_index, vap_arr_index, missing_vap_index = 0;
+    wifi_platform_property_t *wifi_prop = &data->u.decoded.hal_cap.wifi_prop;
+    webconfig_subdoc_decoded_data_t *decoded_params = &data->u.decoded;
+    unsigned int missing_vap_index_map = *presence_mask ^ vap_mask;
+
+    while (missing_vap_index_map) {
+        if (missing_vap_index_map & 0x01) {
+            if (get_vap_and_radio_index_from_vap_instance(wifi_prop, missing_vap_index,
+                    &radio_index, &vap_arr_index) == RETURN_ERR) {
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: failed to get radio and vap array"
+                    " index for vap index %u\n", __func__, __LINE__, missing_vap_index);
+                return webconfig_error_translate_from_ovsdb;
+            }
+
+            radio = &decoded_params->radios[radio_index];
+            default_radio = &webconfig_ovsdb_default_data.u.decoded.radios[radio_index];
+
+            vap = &radio->vaps.vap_map.vap_array[vap_arr_index];
+            default_vap = &default_radio->vaps.vap_map.vap_array[vap_arr_index];
+            rdk_vap = &radio->vaps.rdk_vap_array[vap_arr_index];
+
+            memcpy(vap, default_vap, sizeof(wifi_vap_info_t));
+            radio->vaps.vap_map.num_vaps = default_radio->vaps.vap_map.num_vaps;
+            rdk_vap->exists = false;
+
+            *presence_mask  |= (1 << missing_vap_index);
+        }
+
+        missing_vap_index_map >>= 1;
+        missing_vap_index += 1;
+    }
+
+    return webconfig_error_none;
+}
+
 //Translate from ovsdb schema to webconfig structures
 webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_dml(webconfig_subdoc_data_t *data)
 {
@@ -3609,12 +3666,13 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_dml(webconfig
     unsigned int i = 0;
     webconfig_subdoc_decoded_data_t *decoded_params;
     wifi_vap_info_t *vap;
+    rdk_wifi_vap_info_t *rdk_vap;
     webconfig_external_ovsdb_t *proto;
     int radio_index = 0, vap_array_index = 0;
     struct schema_Wifi_VIF_Config *vap_row;
     char vapname[32];
     int vap_index = 0;
-    unsigned int presence_mask =0;
+    unsigned int vap_mask, presence_mask;
     wifi_platform_property_t *wifi_prop;
 
     decoded_params = &data->u.decoded;
@@ -3629,14 +3687,18 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_dml(webconfig
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vif table is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
     }
-    presence_mask = 0;
 
-    if (proto->vif_config_row_count < (MIN_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO) || proto->vif_config_row_count > (MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO)) {
+    presence_mask = 0;
+    wifi_prop = &decoded_params->hal_cap.wifi_prop;
+    vap_mask = create_vap_mask(wifi_prop, 8, VAP_PREFIX_PRIVATE, VAP_PREFIX_IOT,
+        VAP_PREFIX_HOTSPOT_OPEN, VAP_PREFIX_HOTSPOT_SECURE, VAP_PREFIX_MESH_BACKHAUL,
+        VAP_PREFIX_MESH_STA, VAP_PREFIX_LNF_PSK, VAP_PREFIX_LNF_RADIUS);
+
+    if (proto->vif_config_row_count > (MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO)) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: invalid vif config row count : %x\n", __func__, __LINE__, proto->vif_config_row_count);
         return webconfig_error_translate_to_ovsdb;
     }
 
-    wifi_prop = &decoded_params->hal_cap.wifi_prop;
     for (i = 0; i < proto->vif_config_row_count; i++) {
         vap_row = (struct schema_Wifi_VIF_Config *)table[i];
         if (vap_row == NULL) {
@@ -3665,10 +3727,8 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_dml(webconfig
 
         //get the vap
         vap = &decoded_params->radios[radio_index].vaps.vap_map.vap_array[vap_array_index];
-        if (vap == NULL) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vap is NULL for vapname : %s\n", __func__, __LINE__, vapname);
-            return webconfig_error_translate_from_ovsdb;
-        }
+        rdk_vap = &decoded_params->radios[radio_index].vaps.rdk_vap_array[vap_array_index];
+        rdk_vap->exists = true;
 
         if (is_vap_private(wifi_prop, vap_index) == TRUE) {
             if (translate_private_vif_config_to_vap_info(vap_row, vap) != webconfig_error_none) {
@@ -3724,7 +3784,13 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_dml(webconfig
         }
     }
 
-    if (presence_mask != (pow(2, proto->vif_config_row_count) - 1)) {
+    if (set_deleted_entries_to_default(data, &presence_mask, vap_mask) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to set deleted entries to default\n",
+            __func__, __LINE__);
+        return webconfig_error_translate_from_ovsdb;
+    }
+
+    if (presence_mask != vap_mask) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: vapindex conf missing presence_mask : %x\n", __func__, __LINE__, presence_mask);
         return webconfig_error_translate_from_ovsdb;
     }
@@ -5054,6 +5120,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state(webconfig_subdoc_dat
     rdk_wifi_radio_t *radio;
     wifi_vap_info_map_t *vap_map;
     wifi_vap_info_t *vap;
+    rdk_wifi_vap_info_t *rdk_vap;
     wifi_hal_capability_t *hal_cap;
     wifi_interface_name_idex_map_t *iface_map;
     webconfig_external_ovsdb_t *proto;
@@ -5102,12 +5169,28 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state(webconfig_subdoc_dat
         for (j = 0; j < radio->vaps.num_vaps; j++) {
             //Get the corresponding vap
             vap = &vap_map->vap_array[j];
+            rdk_vap = &radio->vaps.rdk_vap_array[j];
 
             if (strncmp(vap->vap_name, vap_name, strlen(vap_name)) != 0) {
                 continue;
             }
 
             private_vap_mask |= (1 << vap->vap_index);
+
+            if (convert_vapname_to_cloudifname(rdk_vap->vap_name,
+                    proto->vap_info[proto->num_vaps].if_name,
+                    sizeof(proto->vap_info[proto->num_vaps].if_name)) != RETURN_OK) {
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: vap name to interface name "
+                    "conversion failed for %s\n", __func__, __LINE__, rdk_vap->vap_name);
+                return webconfig_error_translate_to_ovsdb;
+            }
+            proto->vap_info[proto->num_vaps].exists = rdk_vap->exists;
+            proto->num_vaps++;
+
+            if (rdk_vap->exists == false) {
+                presence_mask |= (1 << vap->vap_index);
+                continue;
+            }
 
             iface_map = NULL;
             for (k = 0; k < (sizeof(hal_cap->wifi_prop.interface_map)/sizeof(wifi_interface_name_idex_map_t)); k++) {
@@ -5198,7 +5281,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state(webconfig_subdoc_dat
             }
 
             if ((is_vap_mesh_sta(wifi_prop, vap->vap_index) != TRUE) && (is_vap_hotspot(wifi_prop, vap->vap_index) != TRUE) ) {
-                if (translate_macfilter_from_rdk_vap_to_ovsdb_vif_state(&decoded_params->radios[i].vaps.rdk_vap_array[j], vap_row) != webconfig_error_none) {
+                if (translate_macfilter_from_rdk_vap_to_ovsdb_vif_state(rdk_vap, vap_row) != webconfig_error_none) {
                     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: update of mac filter failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
@@ -5227,6 +5310,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_private(webconf
     rdk_wifi_radio_t *radio;
     wifi_vap_info_map_t *vap_map;
     wifi_vap_info_t *vap;
+    rdk_wifi_vap_info_t *rdk_vap;
     wifi_hal_capability_t *hal_cap;
     wifi_interface_name_idex_map_t *iface_map;
     webconfig_external_ovsdb_t *proto;
@@ -5265,11 +5349,18 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_private(webconf
         for (j = 0; j < radio->vaps.num_vaps; j++) {
             //Get the corresponding vap
             vap = &vap_map->vap_array[j];
+            rdk_vap = &radio->vaps.rdk_vap_array[j];
+
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: vap->vap_name:%s \r\n", __func__, __LINE__, vap->vap_name);
             if (strncmp(vap->vap_name, "private_ssid", strlen("private_ssid")) != 0) {
                 continue;
             }
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: vap->vap_name:%s vap_index:%d\r\n", __func__, __LINE__, vap->vap_name, vap->vap_index);
+
+            if (rdk_vap->exists == false) {
+                presence_mask |= (1 << vap->vap_index);
+                continue;
+            }
 
             iface_map = NULL;
             for (k = 0; k < (sizeof(hal_cap->wifi_prop.interface_map)/sizeof(wifi_interface_name_idex_map_t)); k++) {
@@ -5330,6 +5421,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_mesh_sta(webcon
     rdk_wifi_radio_t *radio;
     wifi_vap_info_map_t *vap_map;
     wifi_vap_info_t *vap;
+    rdk_wifi_vap_info_t *rdk_vap;
     wifi_hal_capability_t *hal_cap;
     wifi_interface_name_idex_map_t *iface_map;
     webconfig_external_ovsdb_t *proto;
@@ -5369,8 +5461,14 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_mesh_sta(webcon
         for (j = 0; j < radio->vaps.num_vaps; j++) {
             //Get the corresponding vap
             vap = &vap_map->vap_array[j];
+            rdk_vap = &radio->vaps.rdk_vap_array[j];
 
             if (strncmp(vap->vap_name, "mesh_sta_", strlen("mesh_sta_")) != 0) {
+                continue;
+            }
+
+            if (rdk_vap->exists == false) {
+                presence_mask |= (1 << vap->vap_index);
                 continue;
             }
 
@@ -5424,50 +5522,13 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_mesh_sta(webcon
     return webconfig_error_none;
 }
 
-static webconfig_error_t mesh_sta_fill_deleted_entries(webconfig_subdoc_data_t *data,
-    unsigned int *presence_mask, unsigned int private_vap_mask)
-{
-    wifi_vap_info_t *vap, *default_vap;
-    rdk_wifi_radio_t *radio, *default_radio;
-    uint8_t radio_index, vap_arr_index, missing_vap_index = 0;
-    wifi_platform_property_t *wifi_prop = &data->u.decoded.hal_cap.wifi_prop;
-    webconfig_subdoc_decoded_data_t *decoded_params = &data->u.decoded;
-    unsigned int missing_vap_index_map = *presence_mask ^ private_vap_mask;
-
-    while (missing_vap_index_map) {
-        if (missing_vap_index_map & 0x01) {
-            if (get_vap_and_radio_index_from_vap_instance(wifi_prop, missing_vap_index,
-                    &radio_index, &vap_arr_index) == RETURN_ERR) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: failed to get radio and vap array"
-                    " index for vap index %u\n", __func__, __LINE__, missing_vap_index);
-                return webconfig_error_translate_from_ovsdb;
-            }
-
-            radio = &decoded_params->radios[radio_index];
-            default_radio = &webconfig_ovsdb_default_data.u.decoded.radios[radio_index];
-
-            vap = &radio->vaps.vap_map.vap_array[vap_arr_index];
-            default_vap = &default_radio->vaps.vap_map.vap_array[vap_arr_index];
-
-            memcpy(vap, default_vap, sizeof(wifi_vap_info_t));
-            radio->vaps.vap_map.num_vaps = default_radio->vaps.vap_map.num_vaps;
-
-            *presence_mask  |= (1 << missing_vap_index);
-        }
-
-        missing_vap_index_map >>= 1;
-        missing_vap_index += 1;
-    }
-
-    return webconfig_error_none;
-}
-
 webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_mesh_sta(webconfig_subdoc_data_t *data)
 {
     const struct schema_Wifi_VIF_Config **table;
     unsigned int i = 0;
     webconfig_subdoc_decoded_data_t *decoded_params;
     wifi_vap_info_t *vap;
+    rdk_wifi_vap_info_t *rdk_vap;
     webconfig_external_ovsdb_t *proto;
     int radio_index = 0, vap_array_index = 0;
     struct schema_Wifi_VIF_Config *vap_row;
@@ -5484,7 +5545,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_mesh_sta(webc
     }
 
     table = proto->vif_config;
-    if (table == NULL) {
+    if (proto->vif_config_row_count > 0 && table == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vif table is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
     }
@@ -5522,10 +5583,9 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_mesh_sta(webc
 
         //get the vap
         vap = &decoded_params->radios[radio_index].vaps.vap_map.vap_array[vap_array_index];
-        if (vap == NULL) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vap is NULL for vapname : %s\n", __func__, __LINE__, vapname);
-            return webconfig_error_translate_from_ovsdb;
-        }
+        rdk_vap = &decoded_params->radios[radio_index].vaps.rdk_vap_array[vap_array_index];
+        rdk_vap->exists = true;
+
         if (is_vap_mesh_sta(wifi_prop, vap_index) == TRUE) {
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: conn_status:%d\n", __func__, __LINE__, vap->u.sta_info.conn_status);
             if (translate_mesh_sta_vap_config_to_vap_info(vap_row, vap) != webconfig_error_none) {
@@ -5536,9 +5596,10 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_mesh_sta(webc
         } 
     }
 
-    // fill deleted entries with default values
-    if (presence_mask != mesh_vap_mask && mesh_sta_fill_deleted_entries(data, &presence_mask,
-            mesh_vap_mask) != webconfig_error_none) {
+    if (set_deleted_entries_to_default(data, &presence_mask, mesh_vap_mask) !=
+            webconfig_error_none) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to set deleted entries to default\n",
+            __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
     }
 
@@ -5560,6 +5621,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_mesh_backhaul(w
     rdk_wifi_radio_t *radio;
     wifi_vap_info_map_t *vap_map;
     wifi_vap_info_t *vap;
+    rdk_wifi_vap_info_t *rdk_vap;
     wifi_hal_capability_t *hal_cap;
     wifi_interface_name_idex_map_t *iface_map;
     webconfig_external_ovsdb_t *proto;
@@ -5599,11 +5661,17 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_mesh_backhaul(w
         for (j = 0; j < radio->vaps.num_vaps; j++) {
             //Get the corresponding vap
             vap = &vap_map->vap_array[j];
+            rdk_vap = &radio->vaps.rdk_vap_array[j];
 
             if (strncmp(vap->vap_name, "mesh_backhaul", strlen("mesh_backhaul")) != 0) {
                 continue;
             }
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: vap->vap_name:%s vap_index:%d\r\n", __func__, __LINE__, vap->vap_name, vap->vap_index);
+
+            if (rdk_vap->exists == false) {
+                presence_mask |= (1 << vap->vap_index);
+                continue;
+            }
 
             iface_map = NULL;
             for (k = 0; k < (sizeof(hal_cap->wifi_prop.interface_map)/sizeof(wifi_interface_name_idex_map_t)); k++) {
@@ -5663,6 +5731,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_mesh(webconfig_
     rdk_wifi_radio_t *radio;
     wifi_vap_info_map_t *vap_map;
     wifi_vap_info_t *vap;
+    rdk_wifi_vap_info_t *rdk_vap;
     wifi_hal_capability_t *hal_cap;
     wifi_interface_name_idex_map_t *iface_map;
     webconfig_external_ovsdb_t *proto;
@@ -5690,8 +5759,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_mesh(webconfig_
     }
 
     presence_mask = 0;
-    mesh_vap_mask = ((1 << convert_vap_name_to_index(wifi_prop, "mesh_backhaul_2g")) | (1 << convert_vap_name_to_index(wifi_prop, "mesh_backhaul_5g")) |
-            (1 << convert_vap_name_to_index(wifi_prop, "mesh_sta_2g")) | (1 << convert_vap_name_to_index(wifi_prop, "mesh_sta_5g")));
+    mesh_vap_mask = create_vap_mask(wifi_prop, 2, VAP_PREFIX_MESH_STA, VAP_PREFIX_MESH_BACKHAUL);
 
     hal_cap = &decoded_params->hal_cap;
 
@@ -5702,12 +5770,18 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_mesh(webconfig_
         for (j = 0; j < radio->vaps.num_vaps; j++) {
             //Get the corresponding vap
             vap = &vap_map->vap_array[j];
+            rdk_vap = &radio->vaps.rdk_vap_array[j];
 
             if ((strncmp(vap->vap_name, "mesh_backhaul", strlen("mesh_backhaul")) != 0) &&
                 (strncmp(vap->vap_name, "mesh_sta", strlen("mesh_sta")) != 0)) {
                 continue;
             }
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: vap->vap_name:%s vap_index:%d\r\n", __func__, __LINE__, vap->vap_name, vap->vap_index);
+
+            if (rdk_vap->exists == false) {
+                presence_mask |= (1 << vap->vap_index);
+                continue;
+            }
 
             iface_map = NULL;
             for (k = 0; k < (sizeof(hal_cap->wifi_prop.interface_map)/sizeof(wifi_interface_name_idex_map_t)); k++) {
@@ -5780,6 +5854,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_home(webconfig_
     rdk_wifi_radio_t *radio;
     wifi_vap_info_map_t *vap_map;
     wifi_vap_info_t *vap;
+    rdk_wifi_vap_info_t *rdk_vap;
     wifi_hal_capability_t *hal_cap;
     wifi_interface_name_idex_map_t *iface_map;
     webconfig_external_ovsdb_t *proto;
@@ -5818,7 +5893,14 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_home(webconfig_
         for (j = 0; j < radio->vaps.num_vaps; j++) {
             //Get the corresponding vap
             vap = &vap_map->vap_array[j];
+            rdk_vap = &radio->vaps.rdk_vap_array[j];
+
             if (strncmp(vap->vap_name, "iot_ssid", strlen("iot_ssid")) != 0) {
+                continue;
+            }
+
+            if (rdk_vap->exists == false) {
+                presence_mask |= (1 << vap->vap_index);
                 continue;
             }
 
@@ -5882,6 +5964,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_lnf(webconfig_s
     rdk_wifi_radio_t *radio;
     wifi_vap_info_map_t *vap_map;
     wifi_vap_info_t *vap;
+    rdk_wifi_vap_info_t *rdk_vap;
     wifi_hal_capability_t *hal_cap;
     wifi_interface_name_idex_map_t *iface_map;
     webconfig_external_ovsdb_t *proto;
@@ -5920,11 +6003,18 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_lnf(webconfig_s
         for (j = 0; j < radio->vaps.num_vaps; j++) {
             //Get the corresponding vap
             vap = &vap_map->vap_array[j];
+            rdk_vap = &radio->vaps.rdk_vap_array[j];
+
             if ((strncmp(vap->vap_name, "lnf_psk", strlen("lnf_psk")) != 0) &&
                 (strncmp(vap->vap_name, "lnf_radius", strlen("lnf_radius")) != 0)) {
                 continue;
             }
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: vap->vap_name:%s vap_index:%d\r\n", __func__, __LINE__, vap->vap_name, vap->vap_index);
+
+            if (rdk_vap->exists == false) {
+                presence_mask |= (1 << vap->vap_index);
+                continue;
+            }
 
             iface_map = NULL;
             for (k = 0; k < (sizeof(hal_cap->wifi_prop.interface_map)/sizeof(wifi_interface_name_idex_map_t)); k++) {
@@ -5988,6 +6078,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_xfinity(webconf
     rdk_wifi_radio_t *radio;
     wifi_vap_info_map_t *vap_map;
     wifi_vap_info_t *vap;
+    rdk_wifi_vap_info_t *rdk_vap;
     wifi_hal_capability_t *hal_cap;
     wifi_interface_name_idex_map_t *iface_map;
     webconfig_external_ovsdb_t *proto;
@@ -6025,11 +6116,18 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_xfinity(webconf
         for (j = 0; j < radio->vaps.num_vaps; j++) {
             //Get the corresponding vap
             vap = &vap_map->vap_array[j];
+            rdk_vap = &radio->vaps.rdk_vap_array[j];
+
             if ((strncmp(vap->vap_name, "hotspot_open", strlen("hotspot_open")) != 0) &&
                 (strncmp(vap->vap_name, "hotspot_secure", strlen("hotspot_secure")) != 0)) {
                 continue;
             }
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: vap->vap_name:%s vap_index:%d\r\n", __func__, __LINE__, vap->vap_name, vap->vap_index);
+
+            if (rdk_vap->exists == false) {
+                presence_mask |= (1 << vap->vap_index);
+                continue;
+            }
 
             iface_map = NULL;
             for (k = 0; k < (sizeof(hal_cap->wifi_prop.interface_map)/sizeof(wifi_interface_name_idex_map_t)); k++) {
@@ -6096,6 +6194,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_private(webco
     unsigned int i = 0;
     webconfig_subdoc_decoded_data_t *decoded_params;
     wifi_vap_info_t *vap;
+    rdk_wifi_vap_info_t *rdk_vap;
     webconfig_external_ovsdb_t *proto;
     int radio_index = 0, vap_array_index = 0;
     struct schema_Wifi_VIF_Config *vap_row;
@@ -6113,7 +6212,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_private(webco
     }
 
     table = proto->vif_config;
-    if (table == NULL) {
+    if (proto->vif_config_row_count > 0 && table == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vif table is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
     }
@@ -6150,10 +6249,9 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_private(webco
 
         //get the vap
         vap = &decoded_params->radios[radio_index].vaps.vap_map.vap_array[vap_array_index];
-        if (vap == NULL) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vap is NULL for vapname : %s\n", __func__, __LINE__, vapname);
-            return webconfig_error_translate_from_ovsdb;
-        }
+        rdk_vap = &decoded_params->radios[radio_index].vaps.rdk_vap_array[vap_array_index];
+        rdk_vap->exists = true;
+
         if (is_vap_private(wifi_prop, vap_index) == TRUE) {
             if (strlen(vap->vap_name) == 0) {
                 tempVap = &webconfig_ovsdb_default_data.u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index];
@@ -6168,53 +6266,11 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_private(webco
         }
     }
 
-    if ((presence_mask != private_vap_mask)) {
-        unsigned int missingVapIndexMask =0;
-        unsigned int missingVapIndex = 0;
-        uint8_t missingRadioIndex = 0, missingVapArrayIndex = 0;
-        unsigned int rcount = 0;
-        wifi_vap_info_t *tempVap;
-        missingVapIndexMask = presence_mask ^ private_vap_mask;
-        unsigned int missingVapIndexCount = 0;
-        int missingVapIndexArr[MAX_NUM_VAP_PER_RADIO*MAX_NUM_RADIOS] = {0};
-        while (missingVapIndexMask) {
-            if ((missingVapIndexMask & 0x1) && ((is_vap_private(wifi_prop, missingVapIndex) == TRUE))) {
-                missingVapIndexArr[missingVapIndexCount] = missingVapIndex;
-                missingVapIndexCount++;
-            }
-
-            missingVapIndexMask = missingVapIndexMask>>1;
-            if (missingVapIndexMask == 0) {
-                break;
-            }
-            missingVapIndex++;
-        }
-
-        for (i = 0; i < missingVapIndexCount; i++) {
-            missingVapIndex = missingVapIndexArr[i];
-            if (get_vap_and_radio_index_from_vap_instance(wifi_prop, missingVapIndex, &missingRadioIndex, &missingVapArrayIndex) == RETURN_ERR) {
-                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: get_vap_and_radio_index_from_vap_instance failed for %d\n", __func__, __LINE__, missingVapIndex);
-                return webconfig_error_translate_from_ovsdb;
-            }
-
-            vap = &decoded_params->radios[missingRadioIndex].vaps.vap_map.vap_array[missingVapArrayIndex];
-            tempVap = &webconfig_ovsdb_default_data.u.decoded.radios[missingRadioIndex].vaps.vap_map.vap_array[missingVapArrayIndex];
-
-            memcpy(vap, tempVap, sizeof(wifi_vap_info_t));
-            for (rcount = 0; rcount < webconfig_ovsdb_default_data.u.decoded.num_radios; rcount++) {
-                radio_index = convert_radio_name_to_radio_index(webconfig_ovsdb_default_data.u.decoded.radios[rcount].name);
-                if ((int)radio_index < 0) {
-                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid  radio_index\n", __func__, __LINE__);
-                    continue;
-                }
-                decoded_params->radios[radio_index].vaps.vap_map.num_vaps = webconfig_ovsdb_default_data.u.decoded.radios[rcount].vaps.vap_map.num_vaps;
-            }
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: presence_mask : %x  missingVapIndex : %d missingRadioIndex : %d missingVapArrayIndex : %d vap->vap_index : %d\n",
-                    __func__, __LINE__, presence_mask, missingVapIndex, missingRadioIndex, missingVapArrayIndex, vap->vap_index);
-
-            presence_mask  |= (1 << missingVapIndex);
-        }
-
+    if (set_deleted_entries_to_default(data, &presence_mask, private_vap_mask) !=
+            webconfig_error_none) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to set deleted entries to default\n",
+            __func__, __LINE__);
+        return webconfig_error_translate_from_ovsdb;
     }
 
     if (presence_mask != private_vap_mask) {
@@ -6232,6 +6288,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_mesh_backhaul
     unsigned int i = 0;
     webconfig_subdoc_decoded_data_t *decoded_params;
     wifi_vap_info_t *vap;
+    rdk_wifi_vap_info_t *rdk_vap;
     webconfig_external_ovsdb_t *proto;
     int radio_index = 0, vap_array_index = 0;
     struct schema_Wifi_VIF_Config *vap_row;
@@ -6249,7 +6306,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_mesh_backhaul
     }
 
     table = proto->vif_config;
-    if (table == NULL) {
+    if (proto->vif_config_row_count > 0 && table == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vif table is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
     }
@@ -6286,10 +6343,8 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_mesh_backhaul
 
         //get the vap
         vap = &decoded_params->radios[radio_index].vaps.vap_map.vap_array[vap_array_index];
-        if (vap == NULL) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vap is NULL for vapname : %s\n", __func__, __LINE__, vapname);
-            return webconfig_error_translate_from_ovsdb;
-        }
+        rdk_vap = &decoded_params->radios[radio_index].vaps.rdk_vap_array[vap_array_index];
+        rdk_vap->exists = true;
 
         if (is_vap_mesh_backhaul(wifi_prop, vap_index) == TRUE) {
             if (strlen(vap->vap_name) == 0) {
@@ -6313,54 +6368,11 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_mesh_backhaul
         }
     }
 
-    if ((presence_mask != mesh_vap_mask)) {
-        unsigned int missingVapIndexMask =0;
-        unsigned int missingVapIndex = 0;
-        uint8_t missingRadioIndex = 0, missingVapArrayIndex = 0;
-        unsigned int rcount = 0;
-        wifi_vap_info_t *tempVap;
-        missingVapIndexMask = presence_mask ^ mesh_vap_mask;
-        unsigned int missingVapIndexCount = 0;
-        int missingVapIndexArr[MAX_NUM_VAP_PER_RADIO*MAX_NUM_RADIOS] = {0};
-        while (missingVapIndexMask) {
-            if ((missingVapIndexMask & 0x1) && ((is_vap_mesh_backhaul(wifi_prop, missingVapIndex) == TRUE))) {
-                missingVapIndexArr[missingVapIndexCount] = missingVapIndex;
-                missingVapIndexCount++;
-            }
-
-            missingVapIndexMask = missingVapIndexMask>>1;
-            if (missingVapIndexMask == 0) {
-                break;
-            }
-            missingVapIndex++;
-        }
-
-        for (i = 0; i < missingVapIndexCount; i++) {
-            missingVapIndex = missingVapIndexArr[i];
-            if (get_vap_and_radio_index_from_vap_instance(wifi_prop, missingVapIndex, &missingRadioIndex, &missingVapArrayIndex) == RETURN_ERR) {
-                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: get_vap_and_radio_index_from_vap_instance failed for %d\n", __func__, __LINE__, missingVapIndex);
-                return webconfig_error_translate_from_ovsdb;
-            }
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: presence_mask : %x  missingVapIndex : %d missingRadioIndex : %d missingVapArrayIndex : %d\n",
-                    __func__, __LINE__, presence_mask, missingVapIndex, missingRadioIndex, missingVapArrayIndex);
-
-            vap = &decoded_params->radios[missingRadioIndex].vaps.vap_map.vap_array[missingVapArrayIndex];
-            tempVap = &webconfig_ovsdb_default_data.u.decoded.radios[missingRadioIndex].vaps.vap_map.vap_array[missingVapArrayIndex];
-
-            memcpy(vap, tempVap, sizeof(wifi_vap_info_t));
-            for (rcount = 0; rcount < webconfig_ovsdb_default_data.u.decoded.num_radios; rcount++) {
-                radio_index = convert_radio_name_to_radio_index(webconfig_ovsdb_default_data.u.decoded.radios[rcount].name);
-                if ((int)radio_index < 0) {
-                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid  radio_index\n", __func__, __LINE__);                  
-                    continue;
-                }
-                decoded_params->radios[radio_index].vaps.vap_map.num_vaps = webconfig_ovsdb_default_data.u.decoded.radios[rcount].vaps.vap_map.num_vaps;
-            }
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: presence_mask : %x  missingVapIndex : %d missingRadioIndex : %d missingVapArrayIndex : %d vap->vap_index : %d\n",
-                    __func__, __LINE__, presence_mask, missingVapIndex, missingRadioIndex, missingVapArrayIndex, vap->vap_index);
-
-            presence_mask  |= (1 << missingVapIndex);
-        }
+    if (set_deleted_entries_to_default(data, &presence_mask, mesh_vap_mask) !=
+            webconfig_error_none) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to set deleted entries to default\n",
+            __func__, __LINE__);
+        return webconfig_error_translate_from_ovsdb;
     }
 
     if (presence_mask != mesh_vap_mask) {
@@ -6378,6 +6390,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_mesh(webconfi
     unsigned int i = 0;
     webconfig_subdoc_decoded_data_t *decoded_params;
     wifi_vap_info_t *vap;
+    rdk_wifi_vap_info_t *rdk_vap;
     webconfig_external_ovsdb_t *proto;
     int radio_index = 0, vap_array_index = 0;
     struct schema_Wifi_VIF_Config *vap_row;
@@ -6394,7 +6407,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_mesh(webconfi
     }
 
     table = proto->vif_config;
-    if (table == NULL) {
+    if (proto->vif_config_row_count > 0 && table == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vif table is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
     }
@@ -6429,10 +6442,9 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_mesh(webconfi
 
         //get the vap
         vap = &decoded_params->radios[radio_index].vaps.vap_map.vap_array[vap_array_index];
-        if (vap == NULL) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vap is NULL for vapname : %s\n", __func__, __LINE__, vapname);
-            return webconfig_error_translate_from_ovsdb;
-        }
+        rdk_vap = &decoded_params->radios[radio_index].vaps.rdk_vap_array[vap_array_index];
+        rdk_vap->exists = true;
+
         if (is_vap_mesh_backhaul(wifi_prop, vap_index) == TRUE) {
             if (translate_mesh_backhaul_vif_config_to_vap_info(vap_row, vap) != webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: update of mesh backhaul failed\n", __func__, __LINE__);
@@ -6457,6 +6469,13 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_mesh(webconfi
         }
     }
 
+    if (set_deleted_entries_to_default(data, &presence_mask, mesh_vap_mask) !=
+            webconfig_error_none) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to set deleted entries to default\n",
+            __func__, __LINE__);
+        return webconfig_error_translate_from_ovsdb;
+    }
+
     if (presence_mask != mesh_vap_mask) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: vapindex conf missing presence_mask : %x\n", __func__, __LINE__, presence_mask);
         return webconfig_error_translate_from_ovsdb;
@@ -6472,6 +6491,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_home(webconfi
     unsigned int i = 0;
     webconfig_subdoc_decoded_data_t *decoded_params;
     wifi_vap_info_t *vap;
+    rdk_wifi_vap_info_t *rdk_vap;
     webconfig_external_ovsdb_t *proto;
     int radio_index = 0, vap_array_index = 0;
     struct schema_Wifi_VIF_Config *vap_row;
@@ -6489,7 +6509,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_home(webconfi
     }
 
     table = proto->vif_config;
-    if (table == NULL) {
+    if (proto->vif_config_row_count > 0 && table == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vif table is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
     }
@@ -6525,10 +6545,9 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_home(webconfi
 
         //get the vap
         vap = &decoded_params->radios[radio_index].vaps.vap_map.vap_array[vap_array_index];
-        if (vap == NULL) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vap is NULL for vapname : %s\n", __func__, __LINE__, vapname);
-            return webconfig_error_translate_from_ovsdb;
-        }
+        rdk_vap = &decoded_params->radios[radio_index].vaps.rdk_vap_array[vap_array_index];
+        rdk_vap->exists = true;
+
         if (is_vap_xhs(wifi_prop, vap_index) == TRUE) {
 
             if (strlen(vap->vap_name) == 0) {
@@ -6546,52 +6565,11 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_home(webconfi
         }
     }
 
-    if (presence_mask != home_vap_mask) {
-        unsigned int missingVapIndexMask =0;
-        unsigned int missingVapIndex = 0;
-        uint8_t missingRadioIndex = 0, missingVapArrayIndex = 0;
-        unsigned int rcount = 0;
-        wifi_vap_info_t *tempVap;
-        missingVapIndexMask = presence_mask ^ home_vap_mask;
-        unsigned int missingVapIndexCount = 0;
-        int missingVapIndexArr[MAX_NUM_VAP_PER_RADIO*MAX_NUM_RADIOS] = {0};
-        while (missingVapIndexMask) {
-            if ((missingVapIndexMask & 0x1) && ((is_vap_xhs(wifi_prop, missingVapIndex) == TRUE))) {
-                missingVapIndexArr[missingVapIndexCount] = missingVapIndex;
-                missingVapIndexCount++;
-            }
-
-            missingVapIndexMask = missingVapIndexMask>>1;
-            if (missingVapIndexMask == 0) {
-                break;
-            }
-            missingVapIndex++;
-        }
-        
-        for (i = 0; i < missingVapIndexCount; i++) {
-            missingVapIndex = missingVapIndexArr[i];
-            if (get_vap_and_radio_index_from_vap_instance(wifi_prop, missingVapIndex, &missingRadioIndex, &missingVapArrayIndex) == RETURN_ERR) {
-                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: get_vap_and_radio_index_from_vap_instance failed for %d\n", __func__, __LINE__, missingVapIndex);
-            return webconfig_error_translate_from_ovsdb;
-            }
-
-            vap = &decoded_params->radios[missingRadioIndex].vaps.vap_map.vap_array[missingVapArrayIndex];
-            tempVap = &webconfig_ovsdb_default_data.u.decoded.radios[missingRadioIndex].vaps.vap_map.vap_array[missingVapArrayIndex];
-
-            memcpy(vap, tempVap, sizeof(wifi_vap_info_t));
-            for (rcount = 0; rcount < webconfig_ovsdb_default_data.u.decoded.num_radios; rcount++) {
-                radio_index = convert_radio_name_to_radio_index(webconfig_ovsdb_default_data.u.decoded.radios[rcount].name);
-                if ((int)radio_index < 0) {
-                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid  radio_index\n", __func__, __LINE__);
-                    continue;
-                }
-                decoded_params->radios[radio_index].vaps.vap_map.num_vaps = webconfig_ovsdb_default_data.u.decoded.radios[rcount].vaps.vap_map.num_vaps;
-            }
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: presence_mask : %x  missingVapIndex : %d missingRadioIndex : %d missingVapArrayIndex : %d vap->vap_index : %d\n",
-                    __func__, __LINE__, presence_mask, missingVapIndex, missingRadioIndex, missingVapArrayIndex, vap->vap_index);
-
-            presence_mask  |= (1 << missingVapIndex);
-        }
+    if (set_deleted_entries_to_default(data, &presence_mask, home_vap_mask) !=
+            webconfig_error_none) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to set deleted entries to default\n",
+            __func__, __LINE__);
+        return webconfig_error_translate_from_ovsdb;
     }
 
     if (presence_mask != home_vap_mask) {
@@ -6609,6 +6587,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_lnf(webconfig
     unsigned int i = 0;
     webconfig_subdoc_decoded_data_t *decoded_params;
     wifi_vap_info_t *vap;
+    rdk_wifi_vap_info_t *rdk_vap;
     webconfig_external_ovsdb_t *proto;
     int radio_index = 0, vap_array_index = 0;
     struct schema_Wifi_VIF_Config *vap_row;
@@ -6626,7 +6605,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_lnf(webconfig
     }
 
     table = proto->vif_config;
-    if (table == NULL) {
+    if (proto->vif_config_row_count > 0 && table == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vif table is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
     }
@@ -6661,6 +6640,9 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_lnf(webconfig
 
         //get the vap
         vap = &decoded_params->radios[radio_index].vaps.vap_map.vap_array[vap_array_index];
+        rdk_vap = &decoded_params->radios[radio_index].vaps.rdk_vap_array[vap_array_index];
+        rdk_vap->exists = true;
+
         if (vap == NULL) {
             wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vap is NULL for vapname : %s\n", __func__, __LINE__, vapname);
             return webconfig_error_translate_from_ovsdb;
@@ -6690,53 +6672,12 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_lnf(webconfig
             presence_mask  |= (1 << vap_index);
         }
     }
-    if (presence_mask != lnf_vap_mask) {
-        unsigned int missingVapIndexMask =0;
-        unsigned int missingVapIndex = 0;
-        uint8_t missingRadioIndex = 0, missingVapArrayIndex = 0;
-        unsigned int rcount = 0;
-        wifi_vap_info_t *tempVap;
-        missingVapIndexMask = presence_mask ^ lnf_vap_mask;
-        unsigned int missingVapIndexCount = 0;
-        int missingVapIndexArr[MAX_NUM_VAP_PER_RADIO*MAX_NUM_RADIOS] = {0};
-        while (missingVapIndexMask) {
-            if ((missingVapIndexMask & 0x1) && ((is_vap_lnf_psk(wifi_prop, missingVapIndex) == TRUE) || (is_vap_lnf_radius(wifi_prop, missingVapIndex) == TRUE))) {
-                missingVapIndexArr[missingVapIndexCount] = missingVapIndex;
-                missingVapIndexCount++;
-            }
 
-            missingVapIndexMask = missingVapIndexMask>>1;
-            if (missingVapIndexMask == 0) {
-                break;
-            }
-            missingVapIndex++;
-        }
-
-        for (i = 0; i < missingVapIndexCount; i++) {
-            missingVapIndex = missingVapIndexArr[i];
-            if (get_vap_and_radio_index_from_vap_instance(wifi_prop, missingVapIndex, &missingRadioIndex, &missingVapArrayIndex) == RETURN_ERR) {
-                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: get_vap_and_radio_index_from_vap_instance failed for %d\n", __func__, __LINE__, missingVapIndex);
-                return webconfig_error_translate_from_ovsdb;
-            }
-
-            vap = &decoded_params->radios[missingRadioIndex].vaps.vap_map.vap_array[missingVapArrayIndex];
-            tempVap = &webconfig_ovsdb_default_data.u.decoded.radios[missingRadioIndex].vaps.vap_map.vap_array[missingVapArrayIndex];
-
-            memcpy(vap, tempVap, sizeof(wifi_vap_info_t));
-            for (rcount = 0; rcount < webconfig_ovsdb_default_data.u.decoded.num_radios; rcount++) {
-                radio_index = convert_radio_name_to_radio_index(webconfig_ovsdb_default_data.u.decoded.radios[rcount].name);
-                if ((int)radio_index < 0) {
-                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid  radio_index\n", __func__, __LINE__);
-                    continue;
-                }
-                decoded_params->radios[radio_index].vaps.vap_map.num_vaps = webconfig_ovsdb_default_data.u.decoded.radios[rcount].vaps.vap_map.num_vaps;
-            }
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: presence_mask : %x  missingVapIndex : %d missingRadioIndex : %d missingVapArrayIndex : %d vap->vap_index : %d\n",
-                    __func__, __LINE__, presence_mask, missingVapIndex, missingRadioIndex, missingVapArrayIndex, vap->vap_index);
-
-            presence_mask  |= (1 << missingVapIndex);
-        }
-
+    if (set_deleted_entries_to_default(data, &presence_mask, lnf_vap_mask) !=
+            webconfig_error_none) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to set deleted entries to default\n",
+            __func__, __LINE__);
+        return webconfig_error_translate_from_ovsdb;
     }
 
     if (presence_mask != lnf_vap_mask) {
@@ -6753,6 +6694,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_xfinity(webco
     unsigned int i = 0;
     webconfig_subdoc_decoded_data_t *decoded_params;
     wifi_vap_info_t *vap;
+    rdk_wifi_vap_info_t *rdk_vap;
     webconfig_external_ovsdb_t *proto;
     int radio_index = 0, vap_array_index = 0;
     struct schema_Wifi_VIF_Config *vap_row;
@@ -6769,7 +6711,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_xfinity(webco
     }
 
     table = proto->vif_config;
-    if (table == NULL) {
+    if (proto->vif_config_row_count > 0 && table == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vif table is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
     }
@@ -6804,10 +6746,8 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_xfinity(webco
 
         //get the vap
         vap = &decoded_params->radios[radio_index].vaps.vap_map.vap_array[vap_array_index];
-        if (vap == NULL) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vap is NULL for vapname : %s\n", __func__, __LINE__, vapname);
-            return webconfig_error_translate_from_ovsdb;
-        }
+        rdk_vap = &decoded_params->radios[radio_index].vaps.rdk_vap_array[vap_array_index];
+        rdk_vap->exists = true;
 
         if (is_vap_hotspot_open(wifi_prop, vap_index) == TRUE) {
             if (translate_hotspot_open_vif_config_to_vap_info(vap_row, vap) != webconfig_error_none) {
@@ -6825,6 +6765,13 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_xfinity(webco
             wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: invalid ifname %s from ovsdb schema\n", __func__, __LINE__, table[i]->if_name);
             return webconfig_error_translate_from_ovsdb;
         }
+    }
+
+    if (set_deleted_entries_to_default(data, &presence_mask, xfinity_vap_mask) !=
+            webconfig_error_none) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to set deleted entries to default\n",
+            __func__, __LINE__);
+        return webconfig_error_translate_from_ovsdb;
     }
 
     if (presence_mask != xfinity_vap_mask) {

@@ -1574,7 +1574,8 @@ webconfig_error_t decode_operating_environment(wifi_operating_env_t *operating_e
     return webconfig_error_none;
 }
 
-webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_property_t *wifi_prop)
+webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *vap_info,
+    rdk_wifi_vap_info_t *rdk_vap_info, wifi_platform_property_t *wifi_prop)
 {
     const cJSON  *param;
     cJSON *object = NULL;
@@ -1595,6 +1596,10 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
     // VAP Mode
     decode_param_integer(vap, "VapMode", param);
     vap_info->vap_mode = param->valuedouble;
+
+    // Exists
+    decode_param_bool(vap, "Exists", param);
+    rdk_vap_info->exists = (param->type & cJSON_True) ? true : false;
 
     //Bridge Name
     decode_param_allow_empty_string(vap, "BridgeName", param);
@@ -1715,13 +1720,14 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
     return webconfig_error_none;
 }
 
-webconfig_error_t decode_hotspot_open_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_property_t *wifi_prop)
+webconfig_error_t decode_hotspot_open_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info,
+    rdk_wifi_vap_info_t *rdk_vap_info, wifi_platform_property_t *wifi_prop)
 {
     const cJSON *security, *interworking;
     webconfig_error_t ret = webconfig_error_none;
 
     // first decode the common objects
-    if ((ret = decode_vap_common_object(vap, vap_info, wifi_prop)) != webconfig_error_none) {
+    if ((ret = decode_vap_common_object(vap, vap_info, rdk_vap_info, wifi_prop)) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Common vap objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -1742,13 +1748,14 @@ webconfig_error_t decode_hotspot_open_vap_object(const cJSON *vap, wifi_vap_info
     return webconfig_error_none;
 }
 
-webconfig_error_t decode_hotspot_secure_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_property_t *wifi_prop)
+webconfig_error_t decode_hotspot_secure_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info,
+    rdk_wifi_vap_info_t *rdk_vap_info, wifi_platform_property_t *wifi_prop)
 {
     const cJSON *security, *interworking;
     webconfig_error_t ret = webconfig_error_none;
 
     // first decode the common objects
-    if ((ret = decode_vap_common_object(vap, vap_info, wifi_prop)) != webconfig_error_none) {
+    if ((ret = decode_vap_common_object(vap, vap_info, rdk_vap_info, wifi_prop)) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Common vap objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -1769,7 +1776,8 @@ webconfig_error_t decode_hotspot_secure_vap_object(const cJSON *vap, wifi_vap_in
     return webconfig_error_none;
 }
 
-webconfig_error_t decode_lnf_psk_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_property_t *wifi_prop)
+webconfig_error_t decode_lnf_psk_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info,
+    rdk_wifi_vap_info_t *rdk_vap_info, wifi_platform_property_t *wifi_prop)
 {
     const cJSON *security, *interworking;
     webconfig_error_t ret = webconfig_error_none;
@@ -1778,7 +1786,7 @@ webconfig_error_t decode_lnf_psk_vap_object(const cJSON *vap, wifi_vap_info_t *v
 
 
     // first decode the common objects
-    if ((ret = decode_vap_common_object(vap, vap_info, wifi_prop)) != webconfig_error_none) {
+    if ((ret = decode_vap_common_object(vap, vap_info, rdk_vap_info, wifi_prop)) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Common vap objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -1815,13 +1823,14 @@ webconfig_error_t decode_lnf_psk_vap_object(const cJSON *vap, wifi_vap_info_t *v
     return webconfig_error_none;
 }
 
-webconfig_error_t decode_lnf_radius_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_property_t *wifi_prop)
+webconfig_error_t decode_lnf_radius_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info,
+    rdk_wifi_vap_info_t *rdk_vap_info, wifi_platform_property_t *wifi_prop)
 {
     const cJSON *security, *interworking;
     webconfig_error_t ret = webconfig_error_none;
 
     // first decode the common objects
-    if ((ret = decode_vap_common_object(vap, vap_info, wifi_prop)) != webconfig_error_none) {
+    if ((ret = decode_vap_common_object(vap, vap_info, rdk_vap_info, wifi_prop)) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Common vap objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -1847,7 +1856,8 @@ webconfig_error_t decode_lnf_radius_vap_object(const cJSON *vap, wifi_vap_info_t
     return webconfig_error_none;
 }
 
-webconfig_error_t decode_iot_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_property_t *wifi_prop)
+webconfig_error_t decode_iot_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info,
+    rdk_wifi_vap_info_t *rdk_vap_info, wifi_platform_property_t *wifi_prop)
 {
     const cJSON *security, *interworking;
     int radio_index = -1;
@@ -1855,7 +1865,7 @@ webconfig_error_t decode_iot_vap_object(const cJSON *vap, wifi_vap_info_t *vap_i
     webconfig_error_t ret = webconfig_error_none;
 
     // first decode the common objects
-    if ((ret = decode_vap_common_object(vap, vap_info, wifi_prop)) != webconfig_error_none) {
+    if ((ret = decode_vap_common_object(vap, vap_info, rdk_vap_info, wifi_prop)) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Common vap objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -1892,7 +1902,8 @@ webconfig_error_t decode_iot_vap_object(const cJSON *vap, wifi_vap_info_t *vap_i
     return webconfig_error_none;
 }
 
-webconfig_error_t decode_mesh_backhaul_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_property_t *wifi_prop)
+webconfig_error_t decode_mesh_backhaul_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info,
+    rdk_wifi_vap_info_t *rdk_vap_info, wifi_platform_property_t *wifi_prop)
 {
     const cJSON *security, *interworking;
     int radio_index = -1;
@@ -1900,7 +1911,7 @@ webconfig_error_t decode_mesh_backhaul_vap_object(const cJSON *vap, wifi_vap_inf
     webconfig_error_t ret = webconfig_error_none;
 
     // first decode the common objects
-    if ((ret = decode_vap_common_object(vap, vap_info, wifi_prop)) != webconfig_error_none) {
+    if ((ret = decode_vap_common_object(vap, vap_info, rdk_vap_info, wifi_prop)) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Common vap objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -1937,7 +1948,8 @@ webconfig_error_t decode_mesh_backhaul_vap_object(const cJSON *vap, wifi_vap_inf
     return webconfig_error_none;
 }
 
-webconfig_error_t decode_private_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_property_t *wifi_prop)
+webconfig_error_t decode_private_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info,
+    rdk_wifi_vap_info_t *rdk_vap_info, wifi_platform_property_t *wifi_prop)
 {
     const cJSON *security, *interworking;
     int radio_index = -1;
@@ -1945,7 +1957,7 @@ webconfig_error_t decode_private_vap_object(const cJSON *vap, wifi_vap_info_t *v
     webconfig_error_t ret = webconfig_error_none;
 
     // first decode the common objects
-    if ((ret = decode_vap_common_object(vap, vap_info, wifi_prop)) != webconfig_error_none) {
+    if ((ret = decode_vap_common_object(vap, vap_info, rdk_vap_info, wifi_prop)) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Common vap objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -1983,12 +1995,14 @@ webconfig_error_t decode_private_vap_object(const cJSON *vap, wifi_vap_info_t *v
     return webconfig_error_none;
 }
 
-webconfig_error_t decode_mesh_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_property_t *wifi_prop)
+webconfig_error_t decode_mesh_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info,
+    rdk_wifi_vap_info_t *rdk_vap_info, wifi_platform_property_t *wifi_prop)
 {
-    return decode_private_vap_object(vap, vap_info, wifi_prop);
+    return decode_private_vap_object(vap, vap_info, rdk_vap_info, wifi_prop);
 }
 
-webconfig_error_t decode_wifiapi_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_property_t *wifi_prop)
+webconfig_error_t decode_wifiapi_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info,
+    rdk_wifi_vap_info_t *rdk_vap_info, wifi_platform_property_t *wifi_prop)
 {
     const cJSON *security, *interworking;
     webconfig_error_t ret = webconfig_error_none;
@@ -1996,7 +2010,7 @@ webconfig_error_t decode_wifiapi_vap_object(const cJSON *vap, wifi_vap_info_t *v
     int band = -1;
 
     // first decode the common objects
-    if ((ret = decode_vap_common_object(vap, vap_info, wifi_prop)) != webconfig_error_none) {
+    if ((ret = decode_vap_common_object(vap, vap_info, rdk_vap_info, wifi_prop)) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Common vap objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -2049,7 +2063,8 @@ webconfig_error_t decode_scan_params_object(const cJSON *scan_obj, wifi_scan_par
     return webconfig_error_none;
 }
 
-webconfig_error_t decode_mesh_sta_object(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_property_t *wifi_prop)
+webconfig_error_t decode_mesh_sta_object(const cJSON *vap, wifi_vap_info_t *vap_info,
+    rdk_wifi_vap_info_t *rdk_vap_info, wifi_platform_property_t *wifi_prop)
 {
     const cJSON  *param, *security, *scan;
     int radio_index = -1;
@@ -2071,6 +2086,10 @@ webconfig_error_t decode_mesh_sta_object(const cJSON *vap, wifi_vap_info_t *vap_
     // VAP Mode
     decode_param_integer(vap, "VapMode", param);
     vap_info->vap_mode = param->valuedouble;
+
+    // Exists
+    decode_param_bool(vap, "Exists", param);
+    rdk_vap_info->exists = (param->type & cJSON_True) ? true : false;
 
     //Bridge Name
     param = cJSON_GetObjectItem(vap, "BridgeName");

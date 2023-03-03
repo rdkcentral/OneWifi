@@ -390,6 +390,7 @@ typedef struct {
     int                     kick_device_task_counter;
     bool                    kick_device_config_change;
     bool                    is_mac_filter_initialized;
+    bool                    exists;
 } rdk_wifi_vap_info_t;
 
 typedef struct {

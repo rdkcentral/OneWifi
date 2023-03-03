@@ -75,6 +75,7 @@ webconfig_error_t decode_wifiapivap_subdoc(webconfig_t *config, webconfig_subdoc
     const cJSON  *obj_vap_mode;
     char *name;
     wifi_vap_info_t *vap_info;
+    rdk_wifi_vap_info_t *rdk_vap_info;
     cJSON *json = data->u.encoded.json;
     webconfig_subdoc_decoded_data_t *params;
 
@@ -135,6 +136,7 @@ webconfig_error_t decode_wifiapivap_subdoc(webconfig_t *config, webconfig_subdoc
             continue;
         }
         vap_info = &params->radios[radio_index].vaps.vap_map.vap_array[vap_array_index];
+        rdk_vap_info = &params->radios[radio_index].vaps.rdk_vap_array[vap_array_index];
 
         obj_vap_mode = cJSON_GetObjectItem(obj_vap, "VapMode");
         if (obj_vap_mode == NULL || cJSON_IsNumber(obj_vap_mode) == false) {
@@ -145,7 +147,8 @@ webconfig_error_t decode_wifiapivap_subdoc(webconfig_t *config, webconfig_subdoc
         }
         vap_mode = obj_vap_mode->valuedouble;
         if (vap_mode == wifi_vap_mode_sta) {
-            if (decode_mesh_sta_object(obj_vap, vap_info, &params->hal_cap.wifi_prop) != webconfig_error_none) {
+            if (decode_mesh_sta_object(obj_vap, vap_info, rdk_vap_info,
+                    &params->hal_cap.wifi_prop) != webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: VAP object validation failed\n",
                     __func__, __LINE__);
                 cJSON_Delete(json);

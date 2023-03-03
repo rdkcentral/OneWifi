@@ -84,7 +84,9 @@ webconfig_error_t encode_xfinity_subdoc(webconfig_t *config, webconfig_subdoc_da
     cJSON *json;
     cJSON *obj, *obj_array;
     wifi_vap_info_map_t *map;
+    rdk_wifi_radio_t *radio;
     wifi_vap_info_t *vap;
+    rdk_wifi_vap_info_t *rdk_vap;
     webconfig_subdoc_decoded_data_t *params;
     char *str;
 
@@ -100,13 +102,15 @@ webconfig_error_t encode_xfinity_subdoc(webconfig_t *config, webconfig_subdoc_da
     cJSON_AddItemToObject(json, "WifiVapConfig", obj_array);
 
     for( unsigned int i = 0; i < params->num_radios; i++ ) {
-        map = &params->radios[i].vaps.vap_map;
+        radio = &params->radios[i];
+        map = &radio->vaps.vap_map;
         for ( unsigned int j = 0; j < map->num_vaps; j++) {
             vap = &map->vap_array[j];
+            rdk_vap = &radio->vaps.rdk_vap_array[j];
             if (strncmp("hotspot_open", vap->vap_name, strlen("hotspot_open")) == 0) {
                 obj = cJSON_CreateObject();
                 cJSON_AddItemToArray(obj_array, obj);
-                if (encode_hotspot_open_vap_object(vap, obj) != webconfig_error_none) {
+                if (encode_hotspot_open_vap_object(vap, rdk_vap, obj) != webconfig_error_none) {
                     wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode hotspot open vap object\n", __func__, __LINE__);
                     cJSON_Delete(json);
                     return webconfig_error_encode;
@@ -115,7 +119,7 @@ webconfig_error_t encode_xfinity_subdoc(webconfig_t *config, webconfig_subdoc_da
                 if (strncmp("hotspot_secure", vap->vap_name, strlen("hotspot_secure")) == 0) {
                     obj = cJSON_CreateObject();
                     cJSON_AddItemToArray(obj_array, obj);
-                    if (encode_hotspot_secure_vap_object(vap, obj) != webconfig_error_none) {
+                    if (encode_hotspot_secure_vap_object(vap, rdk_vap, obj) != webconfig_error_none) {
                         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode hotspot open vap object\n", __func__, __LINE__);
                         cJSON_Delete(json);
                         return webconfig_error_encode;
@@ -196,6 +200,7 @@ webconfig_error_t decode_xfinity_subdoc(webconfig_t *config, webconfig_subdoc_da
     unsigned int num_xfinity_ssid;
     wifi_vap_name_t vap_names[MAX_NUM_RADIOS * 2];
     wifi_vap_info_t *vap_info;
+    rdk_wifi_vap_info_t *rdk_vap_info;
     cJSON *json = data->u.encoded.json;
     webconfig_subdoc_decoded_data_t *params;
     unsigned int i = 0, j = 0;
@@ -276,10 +281,12 @@ webconfig_error_t decode_xfinity_subdoc(webconfig_t *config, webconfig_subdoc_da
             continue;
         }
         vap_info = &params->radios[radio_index].vaps.vap_map.vap_array[vap_array_index];
+        rdk_vap_info = &params->radios[radio_index].vaps.rdk_vap_array[vap_array_index];
 
         if (!strncmp(name, "hotspot_open", strlen("hotspot_open"))) {
             memset(vap_info, 0, sizeof(wifi_vap_info_t));
-            if (decode_hotspot_open_vap_object(obj_vap, vap_info, &params->hal_cap.wifi_prop) != webconfig_error_none) {
+            if (decode_hotspot_open_vap_object(obj_vap, vap_info, rdk_vap_info,
+                    &params->hal_cap.wifi_prop) != webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: VAP object validation failed\n",
                         __func__, __LINE__);
                 cJSON_Delete(json);
@@ -289,7 +296,8 @@ webconfig_error_t decode_xfinity_subdoc(webconfig_t *config, webconfig_subdoc_da
         } else {
             if (!strncmp(name, "hotspot_secure", strlen("hotspot_secure"))) {
                 memset(vap_info, 0, sizeof(wifi_vap_info_t));
-                if (decode_hotspot_secure_vap_object(obj_vap, vap_info, &params->hal_cap.wifi_prop) != webconfig_error_none) {
+                if (decode_hotspot_secure_vap_object(obj_vap, vap_info, rdk_vap_info,
+                        &params->hal_cap.wifi_prop) != webconfig_error_none) {
                     wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: VAP object validation failed\n",
                             __func__, __LINE__);
                     cJSON_Delete(json);

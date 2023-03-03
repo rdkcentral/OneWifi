@@ -85,7 +85,9 @@ webconfig_error_t encode_lnf_subdoc(webconfig_t *config, webconfig_subdoc_data_t
     cJSON *json;
     cJSON *obj, *obj_array;
     wifi_vap_info_map_t *map;
+    rdk_wifi_radio_t *radio;
     wifi_vap_info_t *vap;
+    rdk_wifi_vap_info_t *rdk_vap;
     webconfig_subdoc_decoded_data_t *params;
     char *str;
 
@@ -101,13 +103,15 @@ webconfig_error_t encode_lnf_subdoc(webconfig_t *config, webconfig_subdoc_data_t
     cJSON_AddItemToObject(json, "WifiVapConfig", obj_array);
 
     for( unsigned int i = 0; i < params->num_radios; i++ ) {
-        map = &params->radios[i].vaps.vap_map;
+        radio = &params->radios[i];
+        map = &radio->vaps.vap_map;
         for ( unsigned int j = 0; j < map->num_vaps; j++) {
             vap = &map->vap_array[j];
+            rdk_vap = &radio->vaps.rdk_vap_array[j];
             if (strncmp("lnf_psk", vap->vap_name, strlen("lnf_psk")) == 0) {
                 obj = cJSON_CreateObject();
                 cJSON_AddItemToArray(obj_array, obj);
-                if (encode_lnf_psk_vap_object(vap, obj) != webconfig_error_none) {
+                if (encode_lnf_psk_vap_object(vap, rdk_vap, obj) != webconfig_error_none) {
                     wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode lnf_psk psk vap object\n", __func__, __LINE__);
                     cJSON_Delete(json);
                     return webconfig_error_encode;
@@ -116,7 +120,7 @@ webconfig_error_t encode_lnf_subdoc(webconfig_t *config, webconfig_subdoc_data_t
                 if (strncmp("lnf_radius", vap->vap_name, strlen("lnf_radius")) == 0) {
                     obj = cJSON_CreateObject();
                     cJSON_AddItemToArray(obj_array, obj);
-                    if (encode_lnf_radius_vap_object(vap, obj) != webconfig_error_none) {
+                    if (encode_lnf_radius_vap_object(vap, rdk_vap, obj) != webconfig_error_none) {
                         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode lnf_radius vap object\n", __func__, __LINE__);
                         cJSON_Delete(json);
                         return webconfig_error_encode;
@@ -152,6 +156,7 @@ webconfig_error_t decode_lnf_subdoc(webconfig_t *config, webconfig_subdoc_data_t
     unsigned int num_lnf_ssid;
     wifi_vap_name_t vap_names[MAX_NUM_RADIOS * 2];
     wifi_vap_info_t *vap_info;
+    rdk_wifi_vap_info_t *rdk_vap_info;
     cJSON *json = data->u.encoded.json;
     webconfig_subdoc_decoded_data_t *params;
     unsigned int i = 0, j = 0;
@@ -237,12 +242,14 @@ webconfig_error_t decode_lnf_subdoc(webconfig_t *config, webconfig_subdoc_data_t
             continue;
         }
         vap_info = &params->radios[radio_index].vaps.vap_map.vap_array[vap_array_index];
+        rdk_vap_info = &params->radios[radio_index].vaps.rdk_vap_array[vap_array_index];
         //wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: radio index: %d , vap name: %s\n%s\n",
         //            __func__, __LINE__, radio_index, name, cJSON_Print(obj_vap));
 
         if (!strncmp(name, "lnf_psk", strlen("lnf_psk"))) {
             memset(vap_info, 0, sizeof(wifi_vap_info_t));
-            if (decode_lnf_psk_vap_object(obj_vap, vap_info, &params->hal_cap.wifi_prop) != webconfig_error_none) {
+            if (decode_lnf_psk_vap_object(obj_vap, vap_info, rdk_vap_info,
+                    &params->hal_cap.wifi_prop) != webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: VAP object validation failed\n",
                         __func__, __LINE__);
                 cJSON_Delete(json);
@@ -252,7 +259,8 @@ webconfig_error_t decode_lnf_subdoc(webconfig_t *config, webconfig_subdoc_data_t
         } else {
             if (!strncmp(name, "lnf_radius", strlen("lnf_radius"))) {
                 memset(vap_info, 0, sizeof(wifi_vap_info_t));
-                if (decode_lnf_radius_vap_object(obj_vap, vap_info, &params->hal_cap.wifi_prop) != webconfig_error_none) {
+                if (decode_lnf_radius_vap_object(obj_vap, vap_info, rdk_vap_info,
+                        &params->hal_cap.wifi_prop) != webconfig_error_none) {
                     wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: VAP object validation failed\n",
                             __func__, __LINE__);
                     cJSON_Delete(json);

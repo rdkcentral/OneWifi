@@ -251,7 +251,8 @@ webconfig_error_t encode_radio_object(const rdk_wifi_radio_t *radio, cJSON *radi
     return webconfig_error_none;
 }
 
-webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info, cJSON *vap_object)
+webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
+    const rdk_wifi_vap_info_t *rdk_vap_info, cJSON *vap_object)
 {
     char mac_str[32];
 
@@ -266,6 +267,9 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info, cJSO
 
     //VAP Mode
     cJSON_AddNumberToObject(vap_object, "VapMode", vap_info->vap_mode);
+
+    // Exists
+    cJSON_AddBoolToObject(vap_object, "Exists", rdk_vap_info->exists);
 
     // SSID
     cJSON_AddStringToObject(vap_object, "SSID", vap_info->u.bss_info.ssid);
@@ -926,12 +930,13 @@ webconfig_error_t encode_personal_security_object(const wifi_vap_security_t *sec
     return webconfig_error_none;
 }
 
-webconfig_error_t encode_hotspot_open_vap_object(const wifi_vap_info_t *vap_info, cJSON *vap_obj)
+webconfig_error_t encode_hotspot_open_vap_object(const wifi_vap_info_t *vap_info,
+    const rdk_wifi_vap_info_t *rdk_vap_info, cJSON *vap_obj)
 {
     cJSON *obj;
 
     // the input vap_object is an array
-    if (encode_vap_common_object(vap_info, vap_obj) != webconfig_error_none) {
+    if (encode_vap_common_object(vap_info, rdk_vap_info, vap_obj) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d :common vap objects encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
@@ -965,12 +970,13 @@ webconfig_error_t encode_hotspot_open_vap_object(const wifi_vap_info_t *vap_info
     return webconfig_error_none;
 }
 
-webconfig_error_t encode_hotspot_secure_vap_object(const wifi_vap_info_t *vap_info, cJSON *vap_obj)
+webconfig_error_t encode_hotspot_secure_vap_object(const wifi_vap_info_t *vap_info,
+    const rdk_wifi_vap_info_t *rdk_vap_info, cJSON *vap_obj)
 {
     cJSON *obj;
 
     // the input vap_object is an array
-    if (encode_vap_common_object(vap_info, vap_obj) != webconfig_error_none) {
+    if (encode_vap_common_object(vap_info, rdk_vap_info, vap_obj) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d :common vap objects encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
@@ -1005,12 +1011,13 @@ webconfig_error_t encode_hotspot_secure_vap_object(const wifi_vap_info_t *vap_in
     return webconfig_error_none;
 }
 
-webconfig_error_t encode_lnf_psk_vap_object(const wifi_vap_info_t *vap_info, cJSON *vap_obj)
+webconfig_error_t encode_lnf_psk_vap_object(const wifi_vap_info_t *vap_info,
+    const rdk_wifi_vap_info_t *rdk_vap_info, cJSON *vap_obj)
 {
     cJSON *obj;
 
     // the input vap_object is an array
-    if (encode_vap_common_object(vap_info, vap_obj) != webconfig_error_none) {
+    if (encode_vap_common_object(vap_info, rdk_vap_info, vap_obj) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d :common vap objects encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
@@ -1035,12 +1042,13 @@ webconfig_error_t encode_lnf_psk_vap_object(const wifi_vap_info_t *vap_info, cJS
     return webconfig_error_none;
 }
 
-webconfig_error_t encode_lnf_radius_vap_object(const wifi_vap_info_t *vap_info, cJSON *vap_obj)
+webconfig_error_t encode_lnf_radius_vap_object(const wifi_vap_info_t *vap_info,
+    const rdk_wifi_vap_info_t *rdk_vap_info, cJSON *vap_obj)
 {
     cJSON *obj;
 
     // the input vap_object is an array
-    if (encode_vap_common_object(vap_info, vap_obj) != webconfig_error_none) {
+    if (encode_vap_common_object(vap_info, rdk_vap_info, vap_obj) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d :common vap objects encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
@@ -1063,12 +1071,13 @@ webconfig_error_t encode_lnf_radius_vap_object(const wifi_vap_info_t *vap_info, 
     return webconfig_error_none;
 }
 
-webconfig_error_t encode_mesh_backhaul_vap_object(const wifi_vap_info_t *vap_info, cJSON *vap_obj)
+webconfig_error_t encode_mesh_backhaul_vap_object(const wifi_vap_info_t *vap_info,
+    const rdk_wifi_vap_info_t *rdk_vap_info, cJSON *vap_obj)
 {
     cJSON *obj;
 
     // the input vap_object is an array
-    if (encode_vap_common_object(vap_info, vap_obj) != webconfig_error_none) {
+    if (encode_vap_common_object(vap_info, rdk_vap_info, vap_obj) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d :common vap objects encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
@@ -1092,12 +1101,13 @@ webconfig_error_t encode_mesh_backhaul_vap_object(const wifi_vap_info_t *vap_inf
     return webconfig_error_none;
 }
 
-webconfig_error_t encode_iot_vap_object(const wifi_vap_info_t *vap_info, cJSON *vap_obj)
+webconfig_error_t encode_iot_vap_object(const wifi_vap_info_t *vap_info,
+    const rdk_wifi_vap_info_t *rdk_vap_info, cJSON *vap_obj)
 {
     cJSON *obj;
 
     // the input vap_object is an array
-    if (encode_vap_common_object(vap_info, vap_obj) != webconfig_error_none) {
+    if (encode_vap_common_object(vap_info, rdk_vap_info, vap_obj) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d :common vap objects encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
@@ -1121,12 +1131,13 @@ webconfig_error_t encode_iot_vap_object(const wifi_vap_info_t *vap_info, cJSON *
     return webconfig_error_none;
 }
 
-webconfig_error_t encode_private_vap_object(const wifi_vap_info_t *vap_info, cJSON *vap_obj)
+webconfig_error_t encode_private_vap_object(const wifi_vap_info_t *vap_info,
+    const rdk_wifi_vap_info_t *rdk_vap_info, cJSON *vap_obj)
 {
     cJSON *obj;
 
     // the input vap_object is an array
-    if (encode_vap_common_object(vap_info, vap_obj) != webconfig_error_none) {
+    if (encode_vap_common_object(vap_info, rdk_vap_info, vap_obj) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d :common vap objects encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
@@ -1150,9 +1161,10 @@ webconfig_error_t encode_private_vap_object(const wifi_vap_info_t *vap_info, cJS
     return webconfig_error_none;
 }
 
-webconfig_error_t encode_mesh_vap_object(const wifi_vap_info_t *vap_info, cJSON *vap_obj)
+webconfig_error_t encode_mesh_vap_object(const wifi_vap_info_t *vap_info,
+    const rdk_wifi_vap_info_t *rdk_vap_info, cJSON *vap_obj)
 {
-    return encode_private_vap_object(vap_info, vap_obj);
+    return encode_private_vap_object(vap_info, rdk_vap_info, vap_obj);
 }
 
 webconfig_error_t encode_scan_params_object(const wifi_scan_params_t *scan_info, cJSON *scan_obj)
@@ -1167,7 +1179,8 @@ webconfig_error_t encode_scan_params_object(const wifi_scan_params_t *scan_info,
     return webconfig_error_none;
 }
 
-webconfig_error_t encode_mesh_sta_object(const wifi_vap_info_t *vap_info, cJSON *vap_obj)
+webconfig_error_t encode_mesh_sta_object(const wifi_vap_info_t *vap_info,
+    const rdk_wifi_vap_info_t *rdk_vap_info, cJSON *vap_obj)
 {
     cJSON *obj;
     char mac_str[32];
@@ -1183,6 +1196,9 @@ webconfig_error_t encode_mesh_sta_object(const wifi_vap_info_t *vap_info, cJSON 
 
     // Radio Index
     cJSON_AddNumberToObject(vap_obj, "RadioIndex", vap_info->radio_index);
+
+    // Exists
+    cJSON_AddBoolToObject(vap_obj, "Exists", rdk_vap_info->exists);
 
     // SSID
     cJSON_AddStringToObject(vap_obj, "SSID", vap_info->u.sta_info.ssid);

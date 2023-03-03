@@ -138,8 +138,10 @@ void process_prefer_private_mac_filter(mac_address_t prefer_private_mac)
     }
 }
 
-int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map)
+int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map,
+    rdk_wifi_vap_info_t *rdk_vap_info)
 {
+    bool enabled;
     unsigned int i;
     wifi_vap_info_map_t tgt_vap_map, tgt_created_vap_map;
     bool greylist_rfc = false;
@@ -179,11 +181,19 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
                 }
         }
 
+        // VAP is enabled in HAL if it is present in VIF_Config and enabled. Absent VAP entries are
+        // saved to VAP_Config with exist flag set to 0 and default values.
+        enabled = tgt_vap_map.vap_array[0].u.bss_info.enabled;
+        tgt_vap_map.vap_array[0].u.bss_info.enabled &= rdk_vap_info[i].exists;
+
         if (wifi_hal_createVAP(radio_index, &tgt_vap_map) != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL,"%s: wifi vap create failure: radio_index:%d vap_index:%d\n",__FUNCTION__,
                                                 radio_index, map->vap_array[i].vap_index);
             continue;
         }
+
+        tgt_vap_map.vap_array[0].u.bss_info.enabled = enabled;
+
         if (greylist_rfc || ((pcfg != NULL && pcfg->prefer_private))) {
             wifi_setApMacAddressControlMode(tgt_vap_map.vap_array[0].vap_index, 2);
         }
@@ -216,7 +226,7 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
         wifidb_update_wifi_anqp_config(map->vap_array[i].vap_name,
              &map->vap_array[i].u.bss_info.interworking);
     }
-     update_global_cache(&tgt_created_vap_map);
+     update_global_cache(&tgt_created_vap_map, rdk_vap_info);
     //Load all the Acl entries related to the created public vaps
     update_xfinity_acl_entries(tgt_vap_map.vap_array[0].vap_name);
     return 0;

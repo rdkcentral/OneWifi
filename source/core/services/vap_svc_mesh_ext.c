@@ -1066,7 +1066,8 @@ static int process_ext_webconfig_set_data_sta_bssid(vap_svc_t *svc, void *arg)
     return 0;
 }
 
-int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map)
+int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map,
+    rdk_wifi_vap_info_t *rdk_vap_info)
 {
     unsigned int i;
     wifi_vap_info_map_t tgt_vap_map;

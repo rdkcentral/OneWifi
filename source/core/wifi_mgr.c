@@ -286,6 +286,7 @@ int init_global_radio_config(rdk_wifi_radio_t *radios_cfg, UINT radio_index)
             if (radios_cfg->vaps.rdk_vap_array[vap_array_index].acl_map == NULL) {
                 wifi_util_dbg_print(WIFI_CTRL,"%s:%d hash_map_create(acl_map) failed\n",__FUNCTION__, __LINE__);
             }
+            radios_cfg->vaps.rdk_vap_array[vap_array_index].exists = true;
             vap_array_index++;
             if (vap_array_index >= MAX_NUM_VAP_PER_RADIO) {
                 break;

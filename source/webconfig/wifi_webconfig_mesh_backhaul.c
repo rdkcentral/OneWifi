@@ -85,10 +85,11 @@ webconfig_error_t encode_mesh_backhaul_subdoc(webconfig_t *config, webconfig_sub
     cJSON *obj, *obj_array;
     unsigned int i, j;
     wifi_vap_info_map_t *map;
+    rdk_wifi_radio_t *radio;
     wifi_vap_info_t *vap;
+    rdk_wifi_vap_info_t *rdk_vap;
     webconfig_subdoc_decoded_data_t *params;
     wifi_vap_info_map_t      *vap_map;
-    rdk_wifi_vap_info_t *rdk_vap_info;
     char *str;
 
 
@@ -104,10 +105,11 @@ webconfig_error_t encode_mesh_backhaul_subdoc(webconfig_t *config, webconfig_sub
     cJSON_AddItemToObject(json, "WifiVapConfig", obj_array);
 
     for (i = 0; i < params->num_radios; i++) {
-        map = &params->radios[i].vaps.vap_map;
+        radio = &params->radios[i];
+        map = &radio->vaps.vap_map;
         for (j = 0; j < map->num_vaps; j++) {
             vap = &map->vap_array[j];
-            
+            rdk_vap = &radio->vaps.rdk_vap_array[j];
             if (strlen(vap->vap_name) == 0) {
                 continue;
             }
@@ -115,7 +117,7 @@ webconfig_error_t encode_mesh_backhaul_subdoc(webconfig_t *config, webconfig_sub
             if (strncmp("mesh_backhaul", vap->vap_name, strlen("mesh_backhaul")) == 0) {
                 obj = cJSON_CreateObject();
                 cJSON_AddItemToArray(obj_array, obj);
-                if (encode_mesh_vap_object(vap, obj) != webconfig_error_none) {
+                if (encode_mesh_vap_object(vap, rdk_vap, obj) != webconfig_error_none) {
                     wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode mesh vap object\n", __func__, __LINE__);
                     cJSON_Delete(json);
                     return webconfig_error_encode;
@@ -130,9 +132,9 @@ webconfig_error_t encode_mesh_backhaul_subdoc(webconfig_t *config, webconfig_sub
     for(i = 0; i < params->num_radios; i++) {
         vap_map = &params->radios[i].vaps.vap_map;
         for (j = 0; j < vap_map->num_vaps; j++) {
-            rdk_vap_info = &params->radios[i].vaps.rdk_vap_array[j];
+            rdk_vap = &params->radios[i].vaps.rdk_vap_array[j];
 
-            if (encode_mac_object(rdk_vap_info, obj_array) != webconfig_error_none) {
+            if (encode_mac_object(rdk_vap, obj_array) != webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode mac object\n", __func__, __LINE__);
                 cJSON_Delete(json);
                 return webconfig_error_encode;
@@ -244,10 +246,12 @@ webconfig_error_t decode_mesh_backhaul_subdoc(webconfig_t *config, webconfig_sub
             continue;
         }
         vap_info = &params->radios[radio_index].vaps.vap_map.vap_array[vap_array_index];
+        rdk_vap_info = &params->radios[radio_index].vaps.rdk_vap_array[vap_array_index];
 
         if (strncmp(name, "mesh_backhaul", strlen("mesh_backhaul")) == 0) {
             memset(vap_info, 0, sizeof(wifi_vap_info_t));
-            if (decode_mesh_vap_object(obj_vap, vap_info, &params->hal_cap.wifi_prop) != webconfig_error_none) {
+            if (decode_mesh_vap_object(obj_vap, vap_info, rdk_vap_info,
+                    &params->hal_cap.wifi_prop) != webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: VAP object validation failed\n",
                         __func__, __LINE__);
                 cJSON_Delete(json);
