@@ -1174,6 +1174,15 @@ int get_vap_params_from_psm(unsigned int vap_index, wifi_vap_info_t *vap_config)
     if (str != NULL) {
         convert_security_mode_string_to_integer((int *)&bss_cfg->security.mfp, str);
         wifi_util_dbg_print(WIFI_MGR,"cfg->mfp is %d and str is %s\n", bss_cfg->security.mfp, str);
+        /* make sure the MFP Config is set properly */
+        /* PSM are returning wrong MFP config */
+        if ((bss_cfg->security.mode == wifi_security_mode_wpa3_personal) && (bss_cfg->security.mfp != wifi_mfp_cfg_required)) {
+            wifi_util_error_print(WIFI_MGR, "%s:%d - Wrong MFP Config from PSM for WPA3-Personal. Changed \"%s\" to \"Required\"\n", __func__, __LINE__, str);
+            bss_cfg->security.mfp = wifi_mfp_cfg_required;
+        } else if ((bss_cfg->security.mode == wifi_security_mode_wpa3_transition) && (bss_cfg->security.mfp != wifi_mfp_cfg_optional)) {
+            wifi_util_error_print(WIFI_MGR, "%s:%d - Wrong MFP Config from PSM for WPA3-Personal-Transition. Changed \"%s\" to \"Optional\"\n", __func__, __LINE__, str);
+            bss_cfg->security.mfp = wifi_mfp_cfg_optional;
+        }
     } else {
         wifi_util_dbg_print(WIFI_MGR,"%s:%d str value for mfp:%s \r\n", __func__, __LINE__, str);
     }
