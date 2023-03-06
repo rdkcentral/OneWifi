@@ -1008,8 +1008,7 @@ ANSC_STATUS wifiApIsSecmodeOpenForPrivateAP(UINT vapIndex)
         return ANSC_STATUS_FAILURE;
     }
 
-    if ((wifiVapInfo->u.bss_info.security.mode == wifi_security_mode_wpa3_personal) || (wifiVapInfo->u.bss_info.security.mode == wifi_security_mode_wpa3_enterprise) ||
-            (wifiVapInfo->u.bss_info.security.mode == wifi_security_mode_wpa3_transition))
+    if ((wifiVapInfo->u.bss_info.security.mode == wifi_security_mode_wpa3_personal) || (wifiVapInfo->u.bss_info.security.mode == wifi_security_mode_wpa3_enterprise))
     {
         CcspWifiTrace(("RDK_LOG_ERROR, %s Input radioIndex = %d WPS doesnot support WPA3 Mode: %d\n", __FUNCTION__, wifiVapInfo->radio_index, wifiVapInfo->u.bss_info.security.mode));
         return ANSC_STATUS_FAILURE;
