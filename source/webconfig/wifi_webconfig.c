@@ -166,7 +166,7 @@ webconfig_error_t webconfig_set(webconfig_t *config, webconfig_subdoc_data_t *da
     webconfig_error_t err = RETURN_OK;
 
     if (validate_subdoc_data(config, data) == false) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Invalid data .. not parsable", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Invalid data .. not parsable\n", __func__, __LINE__);
         return webconfig_error_invalid_subdoc;
     }
 

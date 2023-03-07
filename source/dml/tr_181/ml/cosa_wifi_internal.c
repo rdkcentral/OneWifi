@@ -133,6 +133,11 @@ static char *ValidateSSIDName        = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.
 #define TR181_WIFIREGION_Code    "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.X_RDKCENTRAL-COM_Syndication.WiFiRegion.Code"
 static char *MacFilterDevice = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.MacFilterDevice.%d";
 static char *MacFilter = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.MacFilter.%d";
+#if defined(FEATURE_OFF_CHANNEL_SCAN_5G)
+static char *Tscan = "Device.WiFi.Radio.%d.Radio_X_RDK_OffChannelTscan";
+static char *Nscan = "Device.WiFi.Radio.%d.Radio_X_RDK_OffChannelNscan";
+static char *Tidle = "Device.WiFi.Radio.%d.Radio_X_RDK_OffChannelTidle";
+#endif //FEATURE_OFF_CHANNEL_SCAN_5G
 
 
 
@@ -284,10 +289,12 @@ void CosaDmlWiFiGetFromPSM(void)
     unsigned int mac_index_list[128];
     unsigned int total_mac_list;
     wifi_radio_psm_param_t *psm_radio_param;
+    wifi_radio_feat_psm_param_t *psm_radio_feat_param = NULL;
     wifi_vap_psm_param_t *psm_vap_param;
     wifi_global_psm_param_t *psm_global_param;
     hash_map_t *psm_mac_map;
     wifi_radio_operationParam_t radio_cfg;
+    wifi_radio_feature_param_t radio_feat_cfg;
     wifi_vap_info_t vap_config;
     rdk_wifi_vap_info_t rdk_vap_config;
     wifi_front_haul_bss_t *bss_cfg;
@@ -297,19 +304,64 @@ void CosaDmlWiFiGetFromPSM(void)
     init_mac_filter_hash_map();
 
     for (unsigned int instance_number = 1; instance_number <= getNumberRadios(); instance_number++) {
-
         memset(&radio_cfg, 0, sizeof(radio_cfg));
-        wifidb_init_radio_config_default((instance_number - 1), &radio_cfg);
+        memset(&radio_feat_cfg, 0, sizeof(radio_feat_cfg));
+        wifidb_init_radio_config_default((instance_number - 1), &radio_cfg, &radio_feat_cfg);
         psm_radio_param = get_radio_psm_obj((instance_number - 1));
         if (psm_radio_param == NULL) {
-            wifi_util_dbg_print(WIFI_PSM,"%s:%d psm radio param NULL radio_index:%d\r\n", __func__, __LINE__, (instance_number - 1));
+            wifi_util_error_print(WIFI_PSM,"%s:%d psm radio param NULL radio_index:%d\r\n", __func__, __LINE__, (instance_number - 1));
+            return;
         }
+        psm_radio_feat_param = get_radio_feat_psm_obj(instance_number - 1);
+        if (psm_radio_feat_param == NULL) {
+            wifi_util_error_print(WIFI_PSM,"%s:%d psm radio feature param NULL radio_index:%d\r\n", __func__, __LINE__, (instance_number - 1));
+            return;
+        }
+#if defined(FEATURE_OFF_CHANNEL_SCAN_5G)
+        if (is_radio_band_5G(radio_cfg.band)) {
+            memset(recName, 0, sizeof(recName));
+            memset(strValue, 0, sizeof(strValue));
+            snprintf(recName, sizeof(recName), Tscan, instance_number);
+            str = PSM_Get_Record_Status(recName, strValue);
+            if (str != NULL) {
+                psm_radio_feat_param->Tscan = _ansc_atoi(str);
+                wifi_util_dbg_print(WIFI_PSM,"psm_radio_feat_param->Tscan is %d and str is %s and _ansc_atoi(str) is %d\n", psm_radio_feat_param->Tscan, str, _ansc_atoi(str));
+            } else {
+                psm_radio_feat_param->Tscan = radio_feat_cfg.OffChanTscanInMsec;
+                wifi_util_dbg_print(WIFI_PSM,"%s:%d: Set default value:%d psm_radio_feat_param->Tscan: %d\r\n", __func__, __LINE__, radio_feat_cfg.OffChanTscanInMsec, psm_radio_feat_param->Tscan);
+            }
+
+            memset(recName, 0, sizeof(recName));
+            memset(strValue, 0, sizeof(strValue));
+            snprintf(recName, sizeof(recName), Nscan, instance_number);
+            str = PSM_Get_Record_Status(recName, strValue);
+            if (str != NULL) {
+                psm_radio_feat_param->Nscan = _ansc_atoi(str);
+                wifi_util_dbg_print(WIFI_PSM,"psm_radio_feat_param->Nscan is %d and str is %s and _ansc_atoi(str) is %d\n", psm_radio_feat_param->Nscan, str, _ansc_atoi(str));
+            } else {
+                psm_radio_feat_param->Nscan = radio_feat_cfg.OffChanNscanInSec;
+                wifi_util_dbg_print(WIFI_PSM,"%s:%d: Set default value:%d psm_radio_feat_param->Nscan: %d\r\n", __func__, __LINE__, radio_feat_cfg.OffChanNscanInSec, psm_radio_feat_param->Nscan);
+            }
+
+            memset(recName, 0, sizeof(recName));
+            memset(strValue, 0, sizeof(strValue));
+            snprintf(recName, sizeof(recName), Tidle, instance_number);
+            str = PSM_Get_Record_Status(recName, strValue);
+            if (str != NULL) {
+                psm_radio_feat_param->Tidle = _ansc_atoi(str);
+                wifi_util_dbg_print(WIFI_PSM,"psm_radio_feat_param->Tidle is %d and str is %s and _ansc_atoi(str) is %d\n",psm_radio_feat_param->Tidle, str, _ansc_atoi(str));
+            } else {
+                psm_radio_feat_param->Tidle = radio_feat_cfg.OffChanTidleInSec;
+                wifi_util_dbg_print(WIFI_PSM,"%s:%d: Set default value:%d psm_radio_feat_param->Tidle: %d\r\n", __func__, __LINE__, radio_feat_cfg.OffChanTidleInSec, psm_radio_feat_param->Tidle);
+            }
+        }
+#endif //FEATURE_OFF_CHANNEL_SCAN_5G
 
         memset(recName, 0, sizeof(recName));
         memset(strValue, 0, sizeof(strValue));
-         snprintf(recName, sizeof(recName), CTSProtection, instance_number);
-         str = PSM_Get_Record_Status(recName, strValue);
-         if (str != NULL) {
+        snprintf(recName, sizeof(recName), CTSProtection, instance_number);
+        str = PSM_Get_Record_Status(recName, strValue);
+        if (str != NULL) {
             psm_radio_param->cts_protection = _ansc_atoi(str);
             wifi_util_dbg_print(WIFI_PSM,"psm_radio_param->cts_protection is %d and str is %s and _ansc_atoi(str) is %d\n", psm_radio_param->cts_protection, str, _ansc_atoi(str));
         } else {
@@ -317,11 +369,11 @@ void CosaDmlWiFiGetFromPSM(void)
             wifi_util_dbg_print(WIFI_PSM,"%s:%d: Set default value:%d cfg->cts_protection: %d\r\n", __func__, __LINE__, radio_cfg.ctsProtection, psm_radio_param->cts_protection);
         }
 
-         memset(recName, 0, sizeof(recName));
+        memset(recName, 0, sizeof(recName));
         memset(strValue, 0, sizeof(strValue));
-         snprintf(recName, sizeof(recName), BeaconInterval, instance_number);
-         str = PSM_Get_Record_Status(recName, strValue);
-         if (str != NULL) {
+        snprintf(recName, sizeof(recName), BeaconInterval, instance_number);
+        str = PSM_Get_Record_Status(recName, strValue);
+        if (str != NULL) {
             psm_radio_param->beacon_interval = _ansc_atoi(str);
             wifi_util_dbg_print(WIFI_PSM,"cfg->beacon_interval is %d and str is %s and _ansc_atoi(str) is %d\n", psm_radio_param->beacon_interval, str, _ansc_atoi(str));
         } else {
@@ -1167,7 +1219,7 @@ void CosaDmlWiFiGetRFCDataFromPSM(void)
     else
     {
         /* Set default value */
-	l_interworking_RFC = 0;
+        l_interworking_RFC = 0;
     }
     push_rfc_dml_cache_to_one_wifidb(l_interworking_RFC,ctrl_event_type_wifi_interworking_rfc);
     retPsmGet = PSM_Get_Record_Value2(bus_handle,g_Subsystem, "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.WiFi-Passpoint.Enable", NULL, &strValue);
@@ -1178,11 +1230,26 @@ void CosaDmlWiFiGetRFCDataFromPSM(void)
     else
     {
         /* Set default value */
-	l_passpoint_RFC = 0;
+        l_passpoint_RFC = 0;
     }
 
     push_rfc_dml_cache_to_one_wifidb(l_passpoint_RFC,ctrl_event_type_wifi_passpoint_rfc);
 
+#if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
+    bool l_offchannelscan_RFC;
+    char *str = NULL;
+    str = PSM_Get_Record_Status("Device.DeviceInfo.X_RDK_RFC.Feature.OffChannelScan.Enable", strValue);
+    if (str != NULL){
+        l_offchannelscan_RFC = _ansc_atoi(str);
+    }
+    else
+    {
+        /* Set default value */
+        l_offchannelscan_RFC = 0;
+    }
+
+    push_rfc_dml_cache_to_one_wifidb(l_offchannelscan_RFC,ctrl_event_type_wifi_offchannelscan_rfc);
+#endif //FEATURE_OFF_CHANNEL_SCAN_5G
 
 #if defined (FEATURE_SUPPORT_RADIUSGREYLIST)
     CosaDmlWiFiGetEnableRadiusGreylist((BOOLEAN *)&wifi_radius_greylist_status);

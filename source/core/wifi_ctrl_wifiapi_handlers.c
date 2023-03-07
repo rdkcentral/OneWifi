@@ -413,7 +413,7 @@ void process_wifiapi_command(char *command, unsigned int len)
         }
         //update db/global memory
 #ifndef LINUX_VM_PORT
-        wifidb_update_wifi_radio_config(radio_index, &(data.u.decoded.radios[radio_index].oper));
+        wifidb_update_wifi_radio_config(radio_index, &(data.u.decoded.radios[radio_index].oper), &(data.u.decoded.radios[radio_index].feature));
 #endif
         //update result
         wifiapi_printradioconfig(buff, sizeof(buff), &(data.u.decoded.radios[radio_index].oper));

@@ -272,6 +272,12 @@
             <writable>true</writable>
         </parameter>
         <parameter>
+            <name>WiFi-OffChannelScan</name>
+            <type>boolean</type>
+            <syntax>bool</syntax>
+            <writable>true</writable>
+        </parameter>
+        <parameter>
             <name>WiFi_Mgmt_Frame_Rbus_Enable</name>
             <type>boolean</type>
             <syntax>bool</syntax>
@@ -900,6 +906,30 @@ INSTMSMT_PH2 -->
                             <name>Enable</name>
                             <type>boolean</type>
                             <syntax>bool</syntax>
+                            <writable>true</writable>
+                        </parameter>
+                        <parameter>
+                            <name>X_RDK_OffChannelTscan</name>
+                            <type>unsignedInt[0:63]</type>
+                            <syntax>uint32</syntax>
+                            <writable>true</writable>
+                        </parameter>
+                        <parameter>
+                            <name>X_RDK_OffChannelNscan</name>
+                            <type>unsignedInt[0:15]</type>
+                            <syntax>uint32</syntax>
+                            <writable>true</writable>
+                        </parameter>
+                        <parameter>
+                            <name>X_RDK_OffChannelNchannel</name>
+                            <type>unsignedInt</type>
+                            <syntax>uint32</syntax>
+                            <writable>false</writable>
+                        </parameter>
+                        <parameter>
+                            <name>X_RDK_OffChannelTidle</name>
+                            <type>unsignedInt[0:63]</type>
+                            <syntax>uint32</syntax>
                             <writable>true</writable>
                         </parameter>
                         <parameter>

@@ -98,6 +98,11 @@ static char *FixedWmmParams        = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.Wi
 static char *MacFilter = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.MacFilter.%d";
 static char *MacFilterDevice = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.MacFilterDevice.%d";
 static char *MacFilterList      = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.MacFilterList";
+#if defined(FEATURE_OFF_CHANNEL_SCAN_5G)
+static char *Tscan = "Device.WiFi.Radio.%d.Radio_X_RDK_OffChannelTscan";
+static char *Nscan = "Device.WiFi.Radio.%d.Radio_X_RDK_OffChannelNscan";
+static char *Tidle = "Device.WiFi.Radio.%d.Radio_X_RDK_OffChannelTidle";
+#endif //FEATURE_OFF_CHANNEL_SCAN_5G
 
 ssp_loop_t g_ssp_loop;
 extern ANSC_HANDLE bus_handle;
@@ -109,6 +114,22 @@ wifi_psm_param_t *get_psm_obj(void)
     return &g_psm_obj;
 }
 
+wifi_radio_feat_psm_param_t *get_radio_feat_psm_obj(unsigned char radio_index)
+{
+#if defined(FEATURE_OFF_CHANNEL_SCAN_5G) //CAN BE REMOVED IF MORE PARAMS ARE ADDED
+    wifi_psm_param_t *p_wifi_psm_param = get_psm_obj();
+
+    if ((radio_index < getNumberRadios())) {
+        return &p_wifi_psm_param->radio_feat_psm_cfg[radio_index];
+    } else {
+        wifi_util_error_print(WIFI_PSM, "%s:%d wrong radio_index %d\n", __func__, __LINE__, radio_index);
+        return NULL;
+    }
+#else //FEATURE_OFF_CHANNEL_SCAN_5G
+    return NULL;
+#endif //FEATURE_OFF_CHANNEL_SCAN_5G
+}
+
 wifi_radio_psm_param_t *get_radio_psm_obj(unsigned char radio_index)
 {
     wifi_psm_param_t *p_wifi_psm_param = get_psm_obj();
@@ -116,7 +137,7 @@ wifi_radio_psm_param_t *get_radio_psm_obj(unsigned char radio_index)
     if ((radio_index < getNumberRadios())) {
         return &p_wifi_psm_param->radio_psm_cfg[radio_index];
     } else {
-        wifi_util_dbg_print(WIFI_PSM, "%s:%d wrong radio_index %d\n", __func__, __LINE__, radio_index);
+        wifi_util_error_print(WIFI_PSM, "%s:%d wrong radio_index %d\n", __func__, __LINE__, radio_index);
         return NULL;
     }
 }
@@ -162,6 +183,69 @@ hash_map_t **get_mac_psm_map(unsigned char vap_index)
         wifi_util_dbg_print(WIFI_PSM, "%s:%d wrong vap_index %d\n", __func__, __LINE__, vap_index);
         return NULL;
     }
+}
+
+void Psm_Db_Write_Radio_Feat(wifi_radio_feature_param_t *fcfg)
+{
+#if defined (FEATURE_OFF_CHANNEL_SCAN_5G) //this can be removed and the below macro can be used if additional members are added into wifi_radio_feature_param_t
+    char recName[256];
+    char instanceNumStr[64] = {0};
+    wifi_radio_feat_psm_param_t *cfg;
+    int retPsmSet;
+    int instance_number = fcfg->radio_index + 1;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    cfg = get_radio_feat_psm_obj(fcfg->radio_index);
+    if (cfg == NULL) {
+        wifi_util_error_print(WIFI_PSM, "%s:%d psm radio param NULL\r\n", __func__, __LINE__);
+        return;
+    }
+
+    if(is_radio_band_5G(mgr->radio_config[fcfg->radio_index].oper.band)) {
+        if(fcfg->OffChanTscanInMsec != cfg->Tscan) {
+            memset(recName, '\0', sizeof(recName));
+            memset(instanceNumStr, '\0', sizeof(instanceNumStr));
+            snprintf(recName, sizeof(recName), Tscan, instance_number);
+            _ansc_itoa(fcfg->OffChanTscanInMsec, instanceNumStr, 10);
+            retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
+            if(retPsmSet == CCSP_SUCCESS) {
+                cfg->Tscan = fcfg->OffChanTscanInMsec;
+                wifi_util_dbg_print(WIFI_PSM, "%s:%d Tscan cfg->Tscan is %d\n",__func__, __LINE__,cfg->Tscan);
+            } else {
+                wifi_util_error_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting Tscan, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
+            }
+        }
+
+        if(fcfg->OffChanNscanInSec != cfg->Nscan) {
+            memset(recName, '\0', sizeof(recName));
+            memset(instanceNumStr, '\0', sizeof(instanceNumStr));
+            snprintf(recName, sizeof(recName), Nscan, instance_number);
+            _ansc_itoa(fcfg->OffChanNscanInSec, instanceNumStr, 10);
+            retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
+            if(retPsmSet == CCSP_SUCCESS) {
+                cfg->Nscan = fcfg->OffChanNscanInSec;
+                wifi_util_dbg_print(WIFI_PSM, "%s:%d Nscan cfg->Nscan is %d\n",__func__, __LINE__,cfg->Nscan);
+            } else {
+                wifi_util_error_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting Nscan, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
+            }
+        }
+
+        if(fcfg->OffChanTidleInSec != cfg->Tidle) {
+            memset(recName, '\0', sizeof(recName));
+            memset(instanceNumStr, '\0', sizeof(instanceNumStr));
+            snprintf(recName, sizeof(recName), Tidle, instance_number);
+            _ansc_itoa(fcfg->OffChanTidleInSec, instanceNumStr, 10);
+            retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
+            if(retPsmSet == CCSP_SUCCESS) {
+                cfg->Tidle = fcfg->OffChanTidleInSec;
+                wifi_util_dbg_print(WIFI_PSM, "%s:%d Tidle cfg->Tidle is %d\n",__func__, __LINE__,cfg->Tidle);
+            } else {
+                wifi_util_error_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting Tidle, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
+            }
+        }
+    }
+#else //FEATURE_OFF_CHANNEL_SCAN_5G
+    return;
+#endif //FEATURE_OFF_CHANNEL_SCAN_5G
 }
 
 void Psm_Db_Write_Radio(wifi_radio_operationParam_t *rcfg)
@@ -1187,6 +1271,7 @@ void Psm_Db_Write(void *msg, ssp_event_subtype_t sub_type)
     wifi_global_param_t *gcfg;
     wifi_security_psm_param_t *scfg;
     wifi_mac_entry_param_t *mcfg;
+    wifi_radio_feature_param_t *fcfg;
 
         switch(sub_type) {
             case radio_config: {
@@ -1194,6 +1279,13 @@ void Psm_Db_Write(void *msg, ssp_event_subtype_t sub_type)
                 Psm_Db_Write_Radio(rcfg);
                 break;
             }
+
+            case radio_feature_config: {
+                fcfg = (wifi_radio_feature_param_t*)msg;
+                Psm_Db_Write_Radio_Feat(fcfg);
+                break;
+            }
+
             case vap_config: {
                 acfg = (wifi_vap_info_t*)msg;
                 Psm_Db_Write_Vapinfo(acfg);

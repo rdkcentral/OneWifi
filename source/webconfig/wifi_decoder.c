@@ -2511,6 +2511,7 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
     int idx = 0;
     char tmp_buf[512];
     wifi_radio_operationParam_t *radio_info = &radio->oper;
+    wifi_radio_feature_param_t *radio_feat = &radio->feature;
 
     // WifiRadioSetup
     decode_param_object(obj_radio, "WifiRadioSetup", param);
@@ -2520,6 +2521,8 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
     }
 
     memset(radio_info, 0, sizeof(wifi_radio_operationParam_t));
+    memset(radio_feat, 0, sizeof(wifi_radio_feature_param_t));
+
     // RadioName
     decode_param_string(obj_radio, "RadioName", param);
     strcpy(radio->name, param->valuestring);
@@ -2545,6 +2548,7 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
         wifi_util_error_print(WIFI_WEBCONFIG, "%s %d failed for convert_freq_band_to_radio_index for band 0x%x\n", __FUNCTION__, __LINE__, radio_info->band);
         return webconfig_error_decode;
     }
+    radio_feat->radio_index = radio_index; //Required for decoded radio_feat value
 
     // Enabled
     decode_param_bool(obj_radio, "Enabled", param);
@@ -2741,6 +2745,18 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
     // EcoPowerDown
     decode_param_bool(obj_radio, "EcoPowerDown", param);
     radio_info->EcoPowerDown = (param->type & cJSON_True) ? true:false;
+
+    // Tscan
+    decode_param_integer(obj_radio, "Tscan", param);
+    radio_feat->OffChanTscanInMsec = param->valuedouble;
+
+    // Nscan
+    decode_param_integer(obj_radio, "Nscan", param);
+    radio_feat->OffChanNscanInSec = (param->valuedouble != 0) ? (24*3600)/(param->valuedouble) : 0; //Converting to seconds
+
+    // Tidle
+    decode_param_integer(obj_radio, "Tidle", param);
+    radio_feat->OffChanTidleInSec = param->valuedouble;
 
     return webconfig_error_none;
 }

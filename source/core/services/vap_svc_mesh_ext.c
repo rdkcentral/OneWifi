@@ -1459,6 +1459,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
     char name[64];
     wifi_sta_conn_info_t sta_conn_info;
     wifi_radio_operationParam_t *radio_params = NULL;
+    wifi_radio_feature_param_t *radio_feat = NULL;
 
     ctrl = svc->ctrl;
     ext = &svc->u.ext;
@@ -1554,6 +1555,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
             /* Make Self Heal Timeout to flase once connected */
             ext->selfheal_status = false;
 
+            radio_feat = (wifi_radio_feature_param_t *)get_wifidb_radio_feat_map(index);
             radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(index);
             if (radio_params != NULL) {
                 if ((radio_params->channel != sta_data->stats.channel) || (radio_params->channelWidth != sta_data->stats.channelWidth)) {
@@ -1565,7 +1567,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
 
                     mgr->ctrl.webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
                     start_wifi_sched_timer(&index, ctrl, wifi_radio_sched);
-                    update_wifi_radio_config(index, radio_params);
+                    update_wifi_radio_config(index, radio_params, radio_feat);
                 }
             }
 

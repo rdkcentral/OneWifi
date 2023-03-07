@@ -1911,8 +1911,10 @@ void process_dfs_rfc(bool type)
 
     for(UINT rIdx = 0; rIdx < getNumberRadios(); rIdx++) {
         wifi_radio_operationParam_t *radio_params = NULL;
+        wifi_radio_feature_param_t *radio_feat = NULL;
         int ret;
         radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(rIdx);
+        radio_feat = (wifi_radio_feature_param_t *)get_wifidb_radio_feat_map(rIdx);
         if (radio_params->band == WIFI_FREQUENCY_5_BAND || radio_params->band == WIFI_FREQUENCY_5L_BAND || radio_params->band == WIFI_FREQUENCY_5H_BAND) {
             pthread_mutex_lock(&g_wifidb->data_cache_lock);
             radio_params->DfsEnabled = type;
@@ -1938,7 +1940,7 @@ void process_dfs_rfc(bool type)
                 wifi_util_info_print(WIFI_CTRL,"%s: wifi radio parameter set success\n",__FUNCTION__);
             }
             g_wifidb->ctrl.webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
-            update_wifi_radio_config(rIdx, radio_params);
+            update_wifi_radio_config(rIdx, radio_params, radio_feat);
         }
     }
 }
@@ -1956,7 +1958,9 @@ void process_dfs_atbootup_rfc(bool type)
     for(UINT rIdx = 0; rIdx < getNumberRadios(); rIdx++) {
         int ret;
         wifi_radio_operationParam_t *radio_params = NULL;
+        wifi_radio_feature_param_t *radio_feat = NULL;
         radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(rIdx);
+        radio_feat = (wifi_radio_feature_param_t *)get_wifidb_radio_feat_map(rIdx);
         if (radio_params->band == WIFI_FREQUENCY_5_BAND || radio_params->band == WIFI_FREQUENCY_5L_BAND || radio_params->band == WIFI_FREQUENCY_5H_BAND) {
             pthread_mutex_lock(&g_wifidb->data_cache_lock);
             radio_params->DfsEnabledBootup = type;
@@ -1969,19 +1973,19 @@ void process_dfs_atbootup_rfc(bool type)
                 wifi_util_info_print(WIFI_CTRL,"%s: wifi radio parameter set success\n",__FUNCTION__);
             }
             g_wifidb->ctrl.webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
-            update_wifi_radio_config(rIdx, radio_params);
+            update_wifi_radio_config(rIdx, radio_params, radio_feat);
         }
     }
 }
 
-int enable_wifi_radio_ax_mode(unsigned int radio_index, wifi_radio_operationParam_t *radio_params, bool value)
+int enable_wifi_radio_ax_mode(unsigned int radio_index, wifi_radio_operationParam_t *radio_params, wifi_radio_feature_param_t *radio_feat_params, bool value)
 {
     wifi_mgr_t *g_wifidb;
     int ret = RETURN_ERR;
     unsigned int old_variant = 0;
     g_wifidb = get_wifimgr_obj();
 
-    if (radio_params == NULL) {
+    if (radio_params == NULL || radio_feat_params == NULL) {
         wifi_util_error_print(WIFI_CTRL,"%s:%d wifi radio[%d] param is NULL\n", __func__, __LINE__, radio_index);
         return RETURN_ERR;
     }
@@ -2006,7 +2010,7 @@ int enable_wifi_radio_ax_mode(unsigned int radio_index, wifi_radio_operationPara
         wifi_util_info_print(WIFI_CTRL,"%s:%d wifi radio[%d] parameter set[%d] success\n",__func__, __LINE__, radio_index, radio_params->variant);
     }
     g_wifidb->ctrl.webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
-    update_wifi_radio_config(radio_index, radio_params);
+    update_wifi_radio_config(radio_index, radio_params, radio_feat_params);
 
     return RETURN_OK;
 }
@@ -2016,6 +2020,7 @@ void process_twoG80211axEnable_rfc(bool type)
     unsigned int radio_index = 0;
     int ret = 0;
     wifi_radio_operationParam_t *radio_params = NULL;
+    wifi_radio_feature_param_t *radio_feat_params = NULL;
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
 
     wifi_util_info_print(WIFI_DB,"WIFI Enter RFC Func %s: %d : bool %d\n",__FUNCTION__,__LINE__,type);
@@ -2023,10 +2028,12 @@ void process_twoG80211axEnable_rfc(bool type)
 
     for(radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
         radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(radio_index);
-        if (radio_params == NULL) {
+        radio_feat_params = (wifi_radio_feature_param_t *)get_wifidb_radio_feat_map(radio_index);
+        if (radio_params == NULL || radio_feat_params == NULL) {
             wifi_util_error_print(WIFI_CTRL,"%s:%d wifi radio[%d] param global cache failure\n", __func__, __LINE__, radio_index);
             return;
         }
+
         if (radio_params->band == WIFI_FREQUENCY_2_4_BAND) {
             break;
         }
@@ -2036,7 +2043,7 @@ void process_twoG80211axEnable_rfc(bool type)
         wifi_util_error_print(WIFI_CTRL,"%s:%d Input radio_index=%d not found, out of range\n", __func__, __LINE__, radio_index);
         return;
     }
-    ret = enable_wifi_radio_ax_mode(radio_index, radio_params, type);
+    ret = enable_wifi_radio_ax_mode(radio_index, radio_params, radio_feat_params, type);
     if (ret == RETURN_OK) {
         rfc_param->twoG80211axEnable_rfc = type;
         ret = wifidb_update_rfc_config(0, rfc_param);
@@ -2065,6 +2072,14 @@ void process_prefer_private_rfc(bool type)
         pub_svc->event_fn(pub_svc, ctrl_event_type_command, ctrl_event_type_prefer_private_rfc,
                             add_macmode_to_public, &type);
     }
+}
+
+void process_wifi_offchannelscan_rfc(bool type)
+{
+    wifi_util_dbg_print(WIFI_DB,"WIFI Enter RFC Func %s: %d : bool %d\n",__FUNCTION__,__LINE__,type);
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
+    rfc_param->wifioffchannelscan_rfc = type;
+    wifidb_update_rfc_config(0, rfc_param);
 }
 #endif // DML_SUPPORT
 
@@ -2236,6 +2251,7 @@ void process_sta_trigger_disconnection(bool sta_disconnection)
 void process_channel_change_event(wifi_channel_change_event_t *ch_chg)
 {
     wifi_radio_operationParam_t *radio_params = NULL;
+    wifi_radio_feature_param_t *radio_feat = NULL;
     wifi_mgr_t *g_wifidb;
     g_wifidb = get_wifimgr_obj();
     wifi_ctrl_t *ctrl;
@@ -2253,8 +2269,13 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg)
         return;
     }
 
-    wifi_radio_capabilities_t radio_capab = g_wifidb->hal_cap.wifi_prop.radiocap[ch_chg->radioIndex];
+    radio_feat = (wifi_radio_feature_param_t *)get_wifidb_radio_feat_map(ch_chg->radioIndex);
+    if (radio_feat == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s: wrong index for radio map: %d\n",__FUNCTION__, ch_chg->radioIndex);
+        return;
+    }
 
+    wifi_radio_capabilities_t radio_capab = g_wifidb->hal_cap.wifi_prop.radiocap[ch_chg->radioIndex];
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d channel change on radio:%d old channel:%d new channel:%d channel change event type:%d \
                             radar_event_type %d op_class:%d\n", __func__, __LINE__, ch_chg->radioIndex, radio_params->channel,
                             ch_chg->channel, ch_chg->event, ch_chg->sub_event, ch_chg->op_class);
@@ -2360,7 +2381,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg)
     }
     g_wifidb->ctrl.webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
     start_wifi_sched_timer(&ch_chg->radioIndex, ctrl, wifi_radio_sched);
-    update_wifi_radio_config(ch_chg->radioIndex, radio_params);
+    update_wifi_radio_config(ch_chg->radioIndex, radio_params, radio_feat);
     ctrl->acs_pending[ch_chg->radioIndex] = false;
 }
 
@@ -2458,6 +2479,9 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len, ctrl_
             break;
         case ctrl_event_type_wifi_passpoint_rfc:
             process_wifi_passpoint_rfc(*(bool *)data);
+            break;
+        case ctrl_event_type_wifi_offchannelscan_rfc:
+            process_wifi_offchannelscan_rfc(*(bool *)data);
             break;
         case ctrl_event_type_wifi_interworking_rfc:
             process_wifi_interworking_rfc(*(bool *)data);

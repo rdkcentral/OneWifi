@@ -61,6 +61,7 @@ webconfig_error_t encode_radio_setup_object(const rdk_wifi_vap_map_t *vap_map, c
 webconfig_error_t encode_radio_object(const rdk_wifi_radio_t *radio, cJSON *radio_object)
 {
     const wifi_radio_operationParam_t *radio_info;
+    const wifi_radio_feature_param_t *radio_feat;
     char channel_list[BUFFER_LENGTH_WIFIDB] = {0}, str[BUFFER_LENGTH_WIFIDB] = {0};
     char chan_buf[512] = {0};
     unsigned int num_channels, i, k = 0, len = sizeof(channel_list) - 1;
@@ -81,6 +82,7 @@ webconfig_error_t encode_radio_object(const rdk_wifi_radio_t *radio, cJSON *radi
     cJSON_AddStringToObject(radio_object, "RadioName", radio->name);
 
     radio_info = &radio->oper;
+    radio_feat = &radio->feature;
 
     if (validate_radio_parameters(radio_info) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d Radio parameters validatation failed\n", __func__, __LINE__);
@@ -247,6 +249,15 @@ webconfig_error_t encode_radio_object(const rdk_wifi_radio_t *radio, cJSON *radi
 
     // EcoPowerDown
     cJSON_AddBoolToObject(radio_object, "EcoPowerDown", radio_info->EcoPowerDown);
+
+    //Tscan
+    cJSON_AddNumberToObject(radio_object, "Tscan", radio_feat->OffChanTscanInMsec);
+
+    //Nscan
+    cJSON_AddNumberToObject(radio_object, "Nscan", (radio_feat->OffChanNscanInSec != 0) ? ((24*3600)/(radio_feat->OffChanNscanInSec)) : 0); //We store Nscan as number of scans in the subdoc
+
+    //Tidle
+    cJSON_AddNumberToObject(radio_object, "Tidle", radio_feat->OffChanTidleInSec);
 
     return webconfig_error_none;
 }

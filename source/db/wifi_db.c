@@ -63,6 +63,10 @@
 #define MAX_BUF_SIZE 128
 #define ONEWIFI_DB_VERSION_EXISTS_FLAG 100017
 #define ONEWIFI_DB_OLD_VERSION_FILE "/tmp/wifi_db_old_version"
+#define ONEWIFI_DB_VERSION_OFFCHANNELSCAN_FLAG 100018
+#define OFFCHAN_DEFAULT_TSCAN_IN_MSEC 63
+#define OFFCHAN_DEFAULT_NSCAN_IN_SEC 10800
+#define OFFCHAN_DEFAULT_TIDLE_IN_SEC 5
 
 ovsdb_table_t table_Wifi_Radio_Config;
 ovsdb_table_t table_Wifi_VAP_Config;
@@ -164,11 +168,17 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon,
         rfc_param->hotspot_secure_2g_last_enabled  = new_rec->hotspot_secure_2g_last_enabled;
         rfc_param->hotspot_secure_5g_last_enabled  = new_rec->hotspot_secure_5g_last_enabled;
         rfc_param->mgmt_frame_rbus_enabled_rfc =  new_rec->mgmt_frame_rbus_enabled_rfc;
+        rfc_param->wifioffchannelscan_rfc = new_rec->wifioffchannelscan_rfc;
 
-        wifi_util_dbg_print(WIFI_DB,"%s:%d wifipasspoint_rfc=%d wifiinterworking_rfc=%d radiusgreylist_rfc=%d dfsatbootup_rfc=%d dfs_rfc=%d wpa3_rfc=%d ow_core_thread_rfc=%d twoG80211axEnable_rfc=%d hotspot_open_2g_last_enabled=%d hotspot_open_5g_last_enabled=%d hotspot_secure_2g_last_enabled=%d hotspot_secure_2g_last_enabled=%d mgmt_frame_rbus_enabled_rfc=%d rfc_id=%s\n", __func__, __LINE__,rfc_param->wifipasspoint_rfc,rfc_param->wifiinterworking_rfc,rfc_param->radiusgreylist_rfc,rfc_param->dfsatbootup_rfc, rfc_param->dfs_rfc ,rfc_param->wpa3_rfc,rfc_param->ow_core_thread_rfc,rfc_param->twoG80211axEnable_rfc,rfc_param->hotspot_open_2g_last_enabled,rfc_param->hotspot_open_5g_last_enabled,rfc_param->hotspot_secure_2g_last_enabled,rfc_param->hotspot_secure_5g_last_enabled,rfc_param->mgmt_frame_rbus_enabled_rfc,rfc_param->rfc_id);
-       pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+        wifi_util_dbg_print(WIFI_DB,"%s:%d wifipasspoint_rfc=%d wifiinterworking_rfc=%d radiusgreylist_rfc=%d dfsatbootup_rfc=%d dfs_rfc=%d wpa3_rfc=%d ow_core_thread_rfc=%d twoG80211axEnable_rfc=%d hotspot_open_2g_last_enabled=%dhotspot_open_5g_last_enabled=%d hotspot_secure_2g_last_enabled=%d hotspot_secure_2g_last_enabled=%d mgmt_frame_rbus_enabled_rfc=%d offchannelscan=%d rfc_id=%s\n", 
+            __func__, __LINE__, rfc_param->wifipasspoint_rfc,rfc_param->wifiinterworking_rfc,rfc_param->radiusgreylist_rfc,
+            rfc_param->dfsatbootup_rfc, rfc_param->dfs_rfc ,rfc_param->wpa3_rfc,rfc_param->ow_core_thread_rfc,
+            rfc_param->twoG80211axEnable_rfc,rfc_param->hotspot_open_2g_last_enabled,rfc_param->hotspot_open_5g_last_enabled,
+            rfc_param->hotspot_secure_2g_last_enabled,rfc_param->hotspot_secure_5g_last_enabled,rfc_param->mgmt_frame_rbus_enabled_rfc,
+            rfc_param->wifioffchannelscan_rfc,rfc_param->rfc_id);
+        pthread_mutex_unlock(&g_wifidb->data_cache_lock);
 
-	}
+    }
 }
 #endif // DML_SUPPORT
 /************************************************************************************
@@ -192,6 +202,7 @@ void callback_Wifi_Radio_Config(ovsdb_update_monitor_t *mon,
     wifi_mgr_t *g_wifidb = get_wifimgr_obj();
     wifi_ctrl_t *ctrl = get_wifictrl_obj();
     wifi_radio_operationParam_t *l_radio_cfg = NULL;
+    wifi_radio_feature_param_t *f_radio_cfg = NULL;
 #if DML_SUPPORT
     wifi_rfc_dml_parameters_t *rfc_param = get_wifi_db_rfc_parameters();
 #endif // DML_SUPPORT
@@ -215,10 +226,16 @@ void callback_Wifi_Radio_Config(ovsdb_update_monitor_t *mon,
         l_radio_cfg = get_wifidb_radio_map(index);
         if(l_radio_cfg == NULL)
         {
-            wifi_util_dbg_print(WIFI_DB,"%s:%d: %d invalide get_wifidb_radio_map \n",__func__, __LINE__,index);
-            return ;
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: %d invalid get_wifidb_radio_map \n",__func__, __LINE__,index);
+            return;
         }
-        wifidb_init_radio_config_default(index, l_radio_cfg);
+        f_radio_cfg = get_wifidb_radio_feat_map(index);
+        if(f_radio_cfg == NULL)
+        {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: %d invalid get_wifidb_radio_feat_map \n",__func__, __LINE__,index);
+            return;
+        }
+        wifidb_init_radio_config_default(index, l_radio_cfg, f_radio_cfg);
     }
     else if ((mon->mon_type == OVSDB_UPDATE_NEW) || (mon->mon_type == OVSDB_UPDATE_MODIFY))
     {
@@ -236,14 +253,20 @@ void callback_Wifi_Radio_Config(ovsdb_update_monitor_t *mon,
         wifi_util_dbg_print(WIFI_DB,"%s:%d: Update radio data for radio index=%d \n",__func__, __LINE__,index);
         if(index > (int)getNumberRadios())
         {
-         wifi_util_dbg_print(WIFI_DB,"%s:%d: %d invalide radio index, Data not fount \n",__func__, __LINE__,index);
-         return ;
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: %d invalid radio index, Data not fount \n",__func__, __LINE__,index);
+            return;
         }
         l_radio_cfg = get_wifidb_radio_map(index);
         if(l_radio_cfg == NULL)
         {
             wifi_util_dbg_print(WIFI_DB,"%s:%d: %d invalide get_wifidb_radio_map \n",__func__, __LINE__,index);
-            return ;
+            return;
+        }
+        f_radio_cfg = get_wifidb_radio_feat_map(index);
+        if(f_radio_cfg == NULL)
+        {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: %d invalid get_wifidb_radio_feat_map \n",__func__, __LINE__,index);
+            return;
         }
         pthread_mutex_lock(&g_wifidb->data_cache_lock);
         strncpy(g_wifidb->radio_config[index].name,new_rec->radio_name,sizeof(g_wifidb->radio_config[index].name)-1);
@@ -314,7 +337,12 @@ void callback_Wifi_Radio_Config(ovsdb_update_monitor_t *mon,
             i++;
         }
         l_radio_cfg->numSecondaryChannels = new_rec->num_secondary_channels;
+        f_radio_cfg->OffChanTscanInMsec = new_rec->Tscan;
+        f_radio_cfg->OffChanNscanInSec = (new_rec->Nscan == 0) ? 0 : (24*3600)/(new_rec->Nscan);
+        f_radio_cfg->OffChanTidleInSec = new_rec->Tidle;
+        f_radio_cfg->radio_index = index;
         wifi_util_dbg_print(WIFI_DB,"%s:%d: Wifi_Radio_Config data enabled=%d freq_band=%d auto_channel_enabled=%d channel=%d  channel_width=%d hw_mode=%d csa_beacon_count=%d country=%d OperatingEnviroment=%d dcs_enabled=%d numSecondaryChannels=%d channelSecondary=%s dtim_period %d beacon_interval %d operating_class %d basic_data_transmit_rate %d operational_data_transmit_rate %d  fragmentation_threshold %d guard_interval %d transmit_power %d rts_threshold %d factory_reset_ssid = %d, radio_stats_measuring_rate = %d, radio_stats_measuring_interval = %d, cts_protection %d, obss_coex= %d, stbc_enable= %d, greenfield_enable= %d, user_control= %d, admin_control= %d,chan_util_threshold= %d, chan_util_selfheal_enable= %d, eco_power_down= %d \n",__func__, __LINE__,l_radio_cfg->enable,l_radio_cfg->band,l_radio_cfg->autoChannelEnabled,l_radio_cfg->channel,l_radio_cfg->channelWidth,l_radio_cfg->variant,l_radio_cfg->csa_beacon_count,l_radio_cfg->countryCode,l_radio_cfg->operatingEnvironment,l_radio_cfg->DCSEnabled,l_radio_cfg->numSecondaryChannels,new_rec->secondary_channels_list,l_radio_cfg->dtimPeriod,l_radio_cfg->beaconInterval,l_radio_cfg->operatingClass,l_radio_cfg->basicDataTransmitRates,l_radio_cfg->operationalDataTransmitRates,l_radio_cfg->fragmentationThreshold,l_radio_cfg->guardInterval,l_radio_cfg->transmitPower,l_radio_cfg->rtsThreshold,l_radio_cfg->factoryResetSsid,l_radio_cfg->radioStatsMeasuringInterval,l_radio_cfg->radioStatsMeasuringInterval,l_radio_cfg->ctsProtection,l_radio_cfg->obssCoex,l_radio_cfg->stbcEnable,l_radio_cfg->greenFieldEnable,l_radio_cfg->userControl,l_radio_cfg->adminControl,l_radio_cfg->chanUtilThreshold,l_radio_cfg->chanUtilSelfHealEnable, l_radio_cfg->EcoPowerDown);
+        wifi_util_dbg_print(WIFI_DB, "%s:%d Wifi_Radio_Config data Tscan=%lu Nscan=%lu, Tidle=%lu\n", __FUNCTION__, __LINE__, f_radio_cfg->OffChanTscanInMsec, f_radio_cfg->OffChanNscanInSec, f_radio_cfg->OffChanTidleInSec);
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
     }
     else
@@ -1259,6 +1287,7 @@ int wifidb_update_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_param)
     cfg.hotspot_secure_5g_last_enabled = rfc_param->hotspot_secure_5g_last_enabled;
     cfg.hotspot_secure_6g_last_enabled = rfc_param->hotspot_secure_6g_last_enabled;
     cfg.mgmt_frame_rbus_enabled_rfc = rfc_param->mgmt_frame_rbus_enabled_rfc;
+    cfg.wifioffchannelscan_rfc = rfc_param->wifioffchannelscan_rfc;
 
     if (update == true) {
         where = onewifi_ovsdb_tran_cond(OCLM_STR, "rfc_id", OFUNC_EQ, index); 
@@ -1327,6 +1356,7 @@ int wifidb_get_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_info)
     rfc_info->hotspot_secure_2g_last_enabled= pcfg->hotspot_secure_5g_last_enabled;
     rfc_info->hotspot_secure_6g_last_enabled= pcfg->hotspot_secure_6g_last_enabled;
     rfc_info->mgmt_frame_rbus_enabled_rfc = pcfg->mgmt_frame_rbus_enabled_rfc;
+    rfc_info->wifioffchannelscan_rfc = pcfg->wifioffchannelscan_rfc;
     free(pcfg);
     return 0;
 }
@@ -1461,10 +1491,11 @@ int convert_radio_to_name(int index,char *name)
   Function    : wifidb_update_wifi_radio_config
   Parameter   : radio_index - Radio index
                 config      - update wifi_radio_operationParam_t to wifidb
-  Description : update wifi_radio_operationParam_t structure to wifidb
+                feat_config - update wifi_radio_feature_param_t structure to db (currently only for offchannel scan)
+  Description : update wifi_radio_operationParam_t and wifi_radio_feature_param_t structure to wifidb
  *************************************************************************************
 **************************************************************************************/
-int wifidb_update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *config)
+int wifidb_update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *config, wifi_radio_feature_param_t *feat_config)
 {
     struct schema_Wifi_Radio_Config cfg;
     char name[BUFFER_LENGTH_WIFIDB] = {0};
@@ -1481,8 +1512,13 @@ int wifidb_update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t
     wifi_util_dbg_print(WIFI_DB,"%s:%d:Update Radio Config for radio_index=%d \n",__func__, __LINE__,radio_index);
     if((config == NULL) || (convert_radio_to_name(radio_index,name)!=0))
     {
-        wifidb_print("%s:%d Failed to update Radio Config for radio_index %d \n",__func__, __LINE__,radio_index);
+        wifidb_print("%s:%d Failed to update Radio Config and Radio Feat Config for radio_index %d \n",__func__, __LINE__,radio_index);
         return -1;
+    }
+    if(feat_config == NULL)
+    {
+        wifidb_print("%s:%d Failed to Get Radio Feature Config \n",__func__, __LINE__);
+        return RETURN_ERR;
     }
     cfg.enabled = config->enable;
     cfg.freq_band = config->band;
@@ -1516,6 +1552,9 @@ int wifidb_update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t
     cfg.chan_util_threshold = config->chanUtilThreshold;
     cfg.chan_util_selfheal_enable = config->chanUtilSelfHealEnable;
     cfg.eco_power_down = config->EcoPowerDown;
+    cfg.Tscan = feat_config->OffChanTscanInMsec;
+    cfg.Nscan = (feat_config->OffChanNscanInSec == 0) ? 0 : (24*3600)/(feat_config->OffChanNscanInSec);
+    cfg.Tidle = feat_config->OffChanTidleInSec;
 
     for(i=0;i<(config->numSecondaryChannels);i++)
     {
@@ -1533,6 +1572,7 @@ int wifidb_update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t
     strncpy(cfg.radio_name,name,sizeof(cfg.radio_name)-1);
 
     wifi_util_dbg_print(WIFI_DB,"%s:%d: Wifi_Radio_Config data enabled=%d freq_band=%d auto_channel_enabled=%d channel=%d  channel_width=%d hw_mode=%d csa_beacon_count=%d country=%d dcs_enabled=%d numSecondaryChannels=%d channelSecondary=%s dtim_period %d beacon_interval %d operating_class %d basic_data_transmit_rate %d operational_data_transmit_rate %d  fragmentation_threshold %d guard_interval %d transmit_power %d rts_threshold %d factory_reset_ssid = %d  radio_stats_measuring_rate = %d   radio_stats_measuring_interval = %d cts_protection = %d obss_coex = %d  stbc_enable = %d  greenfield_enable = %d user_control = %d  admin_control = %d  chan_util_threshold = %d  chan_util_selfheal_enable = %d  eco_power_down = %d\n",__func__, __LINE__,config->enable,config->band,config->autoChannelEnabled,config->channel,config->channelWidth,config->variant,config->csa_beacon_count,config->countryCode,config->DCSEnabled,config->numSecondaryChannels,cfg.secondary_channels_list,config->dtimPeriod,config->beaconInterval,config->operatingClass,config->basicDataTransmitRates,config->operationalDataTransmitRates,config->fragmentationThreshold,config->guardInterval,config->transmitPower,config->rtsThreshold,config->factoryResetSsid,config->radioStatsMeasuringRate,config->radioStatsMeasuringInterval,config->ctsProtection,config->obssCoex,config->stbcEnable,config->greenFieldEnable,config->userControl,config->adminControl,config->chanUtilThreshold,config->chanUtilSelfHealEnable,config->EcoPowerDown);
+    wifi_util_dbg_print(WIFI_DB, " %s:%d Wifi_Radio_Config data Tscan=%lu Nscan=%lu Tidle=%lu \n", __FUNCTION__, __LINE__, feat_config->OffChanTscanInMsec, feat_config->OffChanNscanInSec, feat_config->OffChanTidleInSec);
     if(onewifi_ovsdb_table_upsert_f(g_wifidb->wifidb_sock_path,&table_Wifi_Radio_Config,&cfg,false,insert_filter) == false)
     {
         wifidb_print("%s:%d WIFI DB update error !!!. Failed to insert Wifi_Radio_Config table \n",__func__, __LINE__);
@@ -1543,6 +1583,7 @@ int wifidb_update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t
         wifidb_print("%s:%d Updated WIFI DB. Insert Wifi_Radio_Config table completed successful. \n",__func__, __LINE__);
 #if DML_SUPPORT
         push_data_to_ssp_queue(config, sizeof(wifi_radio_operationParam_t), ssp_event_type_psm_write, radio_config);
+        push_data_to_ssp_queue(feat_config, sizeof(wifi_radio_feature_param_t), ssp_event_type_psm_write, radio_feature_config);
 #endif // DML_SUPPORT
     }
 
@@ -1554,10 +1595,11 @@ int wifidb_update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t
   Function    : wifidb_get_wifi_radio_config
   Parameter   : radio_index - Radio index
                 config      - wifi_radio_operationParam_t to be updated from wifidb
-  Description : Get wifi_radio_operationParam_t structure from wifidb
+                feat_config - wifi_radio_feature_param_t to be updated from wifidb (currently only for offchan)
+  Description : Get wifi_radio_operationParam_t and wifi_radio_feature_param_t structure from wifidb
  *************************************************************************************
 **************************************************************************************/
-int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *config)
+int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *config, wifi_radio_feature_param_t *feat_config)
 {
     struct schema_Wifi_Radio_Config *cfg;
     json_t *where;
@@ -1576,6 +1618,11 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
     if((config == NULL) || (convert_radio_to_name(radio_index,name)!=0))
     {
         wifidb_print("%s:%d Failed to Get Radio Config \n",__func__, __LINE__);
+        return RETURN_ERR;
+    }
+    if(feat_config == NULL)
+    {
+        wifidb_print("%s:%d Failed to Get Radio Feature Config \n",__func__, __LINE__);
         return RETURN_ERR;
     }
     wifi_util_dbg_print(WIFI_DB,"%s:%d:Get radio config for index=%d radio_name=%s \n",__func__, __LINE__,radio_index,name);
@@ -1653,6 +1700,10 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
     config->chanUtilThreshold = cfg->chan_util_threshold;
     config->chanUtilSelfHealEnable = cfg->chan_util_selfheal_enable;
     config->EcoPowerDown = cfg->eco_power_down;
+    feat_config->OffChanTscanInMsec = cfg->Tscan;
+    feat_config->OffChanNscanInSec = (cfg->Nscan == 0) ? 0 : (24*3600)/(cfg->Nscan);
+    feat_config->OffChanTidleInSec = cfg->Tidle;
+    feat_config->radio_index = radio_index;
 
     tmp = cfg->secondary_channels_list;
     while ((ptr = strchr(tmp, ',')) != NULL)
@@ -1666,6 +1717,7 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
     config->numSecondaryChannels = cfg->num_secondary_channels;
 
     wifi_util_dbg_print(WIFI_DB,"%s:%d: Wifi_Radio_Config data enabled=%d freq_band=%d auto_channel_enabled=%d channel=%d  channel_width=%d hw_mode=%d csa_beacon_count=%d country=%d operatingEnvironment=%d dcs_enabled=%d numSecondaryChannels=%d channelSecondary=%s dtim_period %d beacon_interval %d operating_class %d basic_data_transmit_rate %d operational_data_transmit_rate %d  fragmentation_threshold %d guard_interval %d transmit_power %d rts_threshold %d factory_reset_ssid = %d, radio_stats_measuring_rate = %d, radio_stats_measuring_interval = %d, cts_protection %d, obss_coex= %d, stbc_enable= %d, greenfield_enable= %d, user_control= %d, admin_control= %d,chan_util_threshold= %d, chan_util_selfheal_enable= %d, eco_power_down=%d \n",__func__, __LINE__,config->enable,config->band,config->autoChannelEnabled,config->channel,config->channelWidth,config->variant,config->csa_beacon_count,config->countryCode,config->operatingEnvironment,config->DCSEnabled,config->numSecondaryChannels,cfg->secondary_channels_list,config->dtimPeriod,config->beaconInterval,config->operatingClass,config->basicDataTransmitRates,config->operationalDataTransmitRates,config->fragmentationThreshold,config->guardInterval,config->transmitPower,config->rtsThreshold,config->factoryResetSsid,config->radioStatsMeasuringInterval,config->radioStatsMeasuringInterval,config->ctsProtection,config->obssCoex,config->stbcEnable,config->greenFieldEnable,config->userControl,config->adminControl,config->chanUtilThreshold,config->chanUtilSelfHealEnable, config->EcoPowerDown);
+    wifi_util_dbg_print(WIFI_DB, " %s:%d Wifi_Radio_Config data Tscan=%lu Nscan=%lu Tidle=%lu \n", __FUNCTION__, __LINE__, feat_config->OffChanTscanInMsec, feat_config->OffChanNscanInSec, feat_config->OffChanTidleInSec);
     free(cfg);
     return RETURN_OK;
 }
@@ -3441,11 +3493,11 @@ int update_wifi_interworking_config(char *vap_name, wifi_InterworkingElement_t *
  ************************************************************************************
   Function    : update_wifi_radio_config
   Parameter   : radio_index - Index of radio
-                config      - Update wifi_radio_operationParam_t to wifidb
+                config      - Update wifi_radio_operationParam_t and wifi_radio_feature_param_t to wifidb
   Description : Wrapper API for wifidb_update_wifi_radio_config
  *************************************************************************************
 **************************************************************************************/
-int update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *config)
+int update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *config, wifi_radio_feature_param_t *feat_config)
 {
     int ret = 0;
 
@@ -3453,8 +3505,13 @@ int update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *confi
     {
         wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Radio Config - Null pointer \n",__func__, __LINE__);
         return -1;
-    } 
-    ret = wifidb_update_wifi_radio_config(radio_index,config);
+    }
+    if (feat_config == NULL)
+    {
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Radio Feature Config - Null pointer \n",__func__, __LINE__);
+        return -1;
+    }
+    ret = wifidb_update_wifi_radio_config(radio_index,config,feat_config);
     if(ret == 0)
     {
         wifidb_print("%s:%d Updated WIFI DB. Radio Config updated successful. \n",__func__, __LINE__);
@@ -3469,24 +3526,30 @@ int update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *confi
   Function    : get_wifi_radio_config
   Parameter   : radio_index - Index of radio
                 config      - wifi_radio_operationParam_t will be updated from Global cache
-  Description : Get wifi_radio_operationParam_t from Global cache
+                feat_config - wifi_radio_feature_param_t will be updated from Global cache
+  Description : Get wifi_radio_operationParam_t and wifi_radio_feature_param_t from Global cache
  *************************************************************************************
 **************************************************************************************/
-int get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *config)
+int get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *config, wifi_radio_feature_param_t *feat_config)
 {
     int ret = 0;
     wifi_mgr_t *g_wifidb;
     wifi_radio_operationParam_t *l_radio_cfg = NULL;
-
+    wifi_radio_feature_param_t *f_radio_cfg = NULL;
     if(config == NULL)
     {
         wifi_util_dbg_print(WIFI_DB,"%s:%d:Get Radio Config failed \n",__func__, __LINE__);
         return -1;
     }
+    if(feat_config == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DB,"%s:%d:Get Radio Feature Config failed \n",__func__, __LINE__);
+        return -1;
+    }
     if(radio_index > (int)getNumberRadios())
     {
-         wifi_util_dbg_print(WIFI_DB,"%s:%d: %d invalid radio index, Data not fount \n",__func__, __LINE__,radio_index);
-         return -1;
+        wifi_util_dbg_print(WIFI_DB,"%s:%d: %d invalid radio index, Data not fount \n",__func__, __LINE__,radio_index);
+        return -1;
     }
     l_radio_cfg = get_wifidb_radio_map(radio_index);
     if(l_radio_cfg == NULL)
@@ -3494,9 +3557,17 @@ int get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *config)
         wifi_util_dbg_print(WIFI_DB,"%s:%d:Get Radio Config failed radio_index:%d \n",__func__, __LINE__,radio_index);
         return -1;
     }
+    f_radio_cfg = get_wifidb_radio_feat_map(radio_index);
+    if(f_radio_cfg == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DB,"%s:%d:Get Radio Feature Config failed radio_index:%d \n",__func__, __LINE__, radio_index);
+        return -1;
+    }
+
     g_wifidb = get_wifimgr_obj();
     pthread_mutex_lock(&g_wifidb->data_cache_lock);
     memcpy(config, l_radio_cfg, sizeof(wifi_radio_operationParam_t));
+    memcpy(feat_config, f_radio_cfg, sizeof(wifi_radio_feature_param_t));
     pthread_mutex_unlock(&g_wifidb->data_cache_lock);
     return ret;
 }
@@ -3559,13 +3630,15 @@ int get_wifi_gas_config(wifi_GASConfiguration_t *config)
   Description : Update global cache with default value for wifi_radio_operationParam_t
  *************************************************************************************
 ********************************************** ****************************************/
-int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t *config)
+int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t *config, wifi_radio_feature_param_t *feat_config)
 {
     int band;
     char country_code[4] = {0};
     wifi_mgr_t *g_wifidb;
     g_wifidb = get_wifimgr_obj();
     wifi_radio_operationParam_t cfg;
+    wifi_radio_feature_param_t Fcfg;
+    memset(&Fcfg,0,sizeof(Fcfg));
     memset(&cfg,0,sizeof(cfg));
 
     wifi_radio_capabilities_t radio_capab = g_wifidb->hal_cap.wifi_prop.radiocap[radio_index];
@@ -3667,8 +3740,21 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
     cfg.factoryResetSsid = 0;
     cfg.basicDataTransmitRates = WIFI_BITRATE_6MBPS | WIFI_BITRATE_12MBPS | WIFI_BITRATE_24MBPS;
     cfg.operationalDataTransmitRates = WIFI_BITRATE_6MBPS | WIFI_BITRATE_9MBPS | WIFI_BITRATE_12MBPS | WIFI_BITRATE_18MBPS | WIFI_BITRATE_24MBPS | WIFI_BITRATE_36MBPS | WIFI_BITRATE_48MBPS | WIFI_BITRATE_54MBPS;
+    Fcfg.radio_index = radio_index;
+    if (is_radio_band_5G(cfg.band)) {
+        Fcfg.OffChanTscanInMsec = OFFCHAN_DEFAULT_TSCAN_IN_MSEC;
+        Fcfg.OffChanNscanInSec = OFFCHAN_DEFAULT_NSCAN_IN_SEC;
+        Fcfg.OffChanTidleInSec = OFFCHAN_DEFAULT_TIDLE_IN_SEC;
+    } else {
+        Fcfg.OffChanTscanInMsec = 0;
+        Fcfg.OffChanNscanInSec = 0;
+        Fcfg.OffChanTidleInSec = 0;
+    }
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Tscan:%lu Nscan:%lu Nidle:%lu\n", __func__, __LINE__, Fcfg.OffChanTscanInMsec, Fcfg.OffChanNscanInSec, Fcfg.OffChanTidleInSec);
     pthread_mutex_lock(&g_wifidb->data_cache_lock);
     memcpy(config,&cfg,sizeof(cfg));
+    memcpy(feat_config, &Fcfg, sizeof(Fcfg));
     pthread_mutex_unlock(&g_wifidb->data_cache_lock);
     return RETURN_OK;
 }
@@ -4122,6 +4208,7 @@ void wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config)
     rfc_config.hotspot_secure_2g_last_enabled = false;
     rfc_config.hotspot_secure_5g_last_enabled = false;
     rfc_config.mgmt_frame_rbus_enabled_rfc = false;
+    rfc_config.wifioffchannelscan_rfc = false;
 
     pthread_mutex_lock(&g_wifidb->data_cache_lock);
     memcpy(config,&rfc_config,sizeof(wifi_rfc_dml_parameters_t));
@@ -4143,6 +4230,7 @@ void wifidb_init_default_value()
     int vap_index = 0;
     int num_radio = getNumberRadios();
     wifi_radio_operationParam_t *l_radio_cfg = NULL;
+    wifi_radio_feature_param_t *f_radio_cfg = NULL;
     wifi_vap_info_map_t *l_vap_param_cfg = NULL;
     mac_address_t temp_mac_address[MAX_NUM_RADIOS*MAX_NUM_VAP_PER_RADIO];
     int l_vap_index = 0;
@@ -4151,7 +4239,7 @@ void wifidb_init_default_value()
     if (num_radio > MAX_NUM_RADIOS)
     {
         wifi_util_dbg_print(WIFI_DB,"WIFI %s : Number of Radios %d exceeds supported %d Radios \n",__FUNCTION__, getNumberRadios(), MAX_NUM_RADIOS);
-        return ;
+        return;
     }
 
     wifi_mgr_t *g_wifidb;
@@ -4163,17 +4251,24 @@ void wifidb_init_default_value()
         l_radio_cfg = get_wifidb_radio_map(r_index);
         if(l_radio_cfg == NULL)
         {
-            wifi_util_dbg_print(WIFI_DB,"%s:%d: %d invalide get_wifidb_radio_map \n",__func__, __LINE__,index);
-            return ;
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: %d invalid get_wifidb_radio_map \n",__func__, __LINE__,index);
+            return;
+        }
+        f_radio_cfg = get_wifidb_radio_feat_map(r_index);
+        if(f_radio_cfg == NULL)
+        {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: %d invalid get_wifidb_radio_feat_map \n",__func__, __LINE__, r_index);
+            return;
         }
         l_vap_param_cfg = get_wifidb_vap_map(r_index);
+
         if(l_vap_param_cfg == NULL)
         {
             wifi_util_dbg_print(WIFI_DB,"%s:%d invalid get_wifidb_vap_parameters \n",__func__, __LINE__);
-            return ;
+            return;
         }
         memset(l_radio_cfg, 0, sizeof(wifi_radio_operationParam_t));
-
+        memset(f_radio_cfg, 0, sizeof(wifi_radio_feature_param_t));
         for (vap_index = 0; vap_index < MAX_NUM_VAP_PER_RADIO; vap_index++)
         {
             l_vap_index = convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, l_vap_param_cfg->vap_array[vap_index].vap_name);
@@ -4205,10 +4300,16 @@ void wifidb_init_default_value()
         l_radio_cfg = get_wifidb_radio_map(r_index);
         if(l_radio_cfg == NULL)
         {
-            wifi_util_dbg_print(WIFI_DB,"%s:%d: %d invalide get_wifidb_radio_map \n",__func__, __LINE__,index);
-            return ;
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: %d invalid get_wifidb_radio_map \n",__func__, __LINE__,index);
+            return;
         }
-        wifidb_init_radio_config_default(r_index, l_radio_cfg);
+        f_radio_cfg = get_wifidb_radio_feat_map(r_index);
+        if(f_radio_cfg == NULL)
+        {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: %d invalid get_wifidb_radio_feat_map \n",__func__, __LINE__, r_index);
+            return;
+        }
+        wifidb_init_radio_config_default(r_index, l_radio_cfg, f_radio_cfg);
     }
 
     for (UINT index = 0; index < getTotalNumberVAPs(); index++)
@@ -4246,7 +4347,54 @@ void wifidb_init_default_value()
     wifi_util_dbg_print(WIFI_DB,"%s:%d Wifi db update completed\n",__func__, __LINE__);
 
 }
+/************************************************************************************
+*************************************************************************************
+  Function    : wifidb_radio_config_upgrade
+  Parameter   : config      - wifi_radio_operationParam_t updated to wifidb
+              : rdk_config  - wifi_radio_feature_param_t updated to wifidb
+  Description : Upgrade radio parameters to new db version
+**************************************************************************************
+**************************************************************************************/
+static void wifidb_radio_config_upgrade(unsigned int index, wifi_radio_operationParam_t *config, wifi_radio_feature_param_t *rdk_config)
+{
+    wifi_mgr_t *g_wifidb = get_wifimgr_obj();
+    unsigned int total_radios = getNumberRadios();
 
+    if (index < 0 || index >= total_radios)
+    {
+        wifi_util_error_print(WIFI_DB,"%s:%d Invalid radio index\n", __func__, __LINE__);
+        return;
+    }
+
+    if (g_wifidb->db_version == 0) {
+        return;
+    }
+
+    if (g_wifidb->db_version < ONEWIFI_DB_VERSION_OFFCHANNELSCAN_FLAG) {
+        wifi_util_info_print(WIFI_DB, "%s:%d upgrade radio config, old db version %d total radios %u\n", __func__,
+        __LINE__, g_wifidb->db_version, total_radios);
+        //Feature not required for 2G radio, can be added later for 5GH and 6G
+        if (is_radio_band_5G(config->band)) {
+            rdk_config->OffChanTscanInMsec = OFFCHAN_DEFAULT_TSCAN_IN_MSEC;
+            rdk_config->OffChanNscanInSec = OFFCHAN_DEFAULT_NSCAN_IN_SEC;
+            rdk_config->OffChanTidleInSec = OFFCHAN_DEFAULT_TIDLE_IN_SEC;
+            rdk_config->radio_index = index;
+            if(wifidb_update_wifi_radio_config(index, config, rdk_config) != RETURN_OK) {
+                wifi_util_error_print(WIFI_DB,"%s:%d error in updating radio config\n", __func__,__LINE__);
+                return;
+            }
+        } else {
+            rdk_config->OffChanTscanInMsec = 0;
+            rdk_config->OffChanNscanInSec = 0;
+            rdk_config->OffChanTidleInSec = 0;
+            rdk_config->radio_index = index;
+            if(wifidb_update_wifi_radio_config(index, config, rdk_config) != RETURN_OK) {
+                wifi_util_error_print(WIFI_DB,"%s:%d error in updating radio config\n", __func__,__LINE__);
+                return;
+            }
+        }
+    }
+}
 /************************************************************************************
  ************************************************************************************
   Function    : wifidb_vap_config_upgrade
@@ -4326,6 +4474,7 @@ void init_wifidb_data()
     rdk_wifi_vap_info_t *l_rdk_vap_param_cfg;
     wifi_vap_info_map_t *l_vap_param_cfg = NULL;
     wifi_radio_operationParam_t *l_radio_cfg = NULL;
+    wifi_radio_feature_param_t *f_radio_cfg = NULL;
 #if DML_SUPPORT
     wifi_rfc_dml_parameters_t *rfc_param = get_wifi_db_rfc_parameters();
 #endif // DML_SUPPORT
@@ -4336,7 +4485,7 @@ void init_wifidb_data()
     if (num_radio > MAX_NUM_RADIOS)
     {
         wifi_util_dbg_print(WIFI_DB,"WIFI %s : Number of Radios %d exceeds supported %d Radios \n",__FUNCTION__, getNumberRadios(), MAX_NUM_RADIOS);
-        return ;
+        return;
     }
     wifidb_init_default_value();
 #if DML_SUPPORT
@@ -4365,12 +4514,18 @@ void init_wifidb_data()
             wifi_util_dbg_print(WIFI_DB,"%s:%d: invalid get_wifidb_radio_map \n",__func__, __LINE__);
             return;
         }
-        wifidb_get_wifi_radio_config(r_index, l_radio_cfg);
+        f_radio_cfg = get_wifidb_radio_feat_map(r_index);
+        if(f_radio_cfg == NULL)
+        {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: %d invalid get_wifidb_radio_feat_map \n",__func__, __LINE__, r_index);
+            return;
+        }
+        wifidb_get_wifi_radio_config(r_index, l_radio_cfg, f_radio_cfg);
         if (wifidb_get_wifi_vap_config(r_index, l_vap_param_cfg, l_rdk_vap_param_cfg) == -1) {
             wifidb_print("%s:%d wifidb_get_wifi_vap_config failed\n",__func__, __LINE__);
             wifidb_update_wifi_vap_config(r_index, l_vap_param_cfg, l_rdk_vap_param_cfg);
         }
-
+        wifidb_radio_config_upgrade(r_index, l_radio_cfg, f_radio_cfg);
         wifidb_vap_config_upgrade(l_vap_param_cfg, l_rdk_vap_param_cfg);
         wifidb_vap_config_ext(l_vap_param_cfg, l_rdk_vap_param_cfg);
     }

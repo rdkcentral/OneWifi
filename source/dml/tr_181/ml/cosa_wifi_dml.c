@@ -227,7 +227,7 @@ WiFi_GetParamBoolValue
         return FALSE;
     }
 
-   wifi_rfc_dml_parameters_t *rfc_pcfg = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
+    wifi_rfc_dml_parameters_t *rfc_pcfg = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
     if (AnscEqualString(ParamName, "ApplyRadioSettings", TRUE))
     {
         /* always return true when get */
@@ -338,6 +338,15 @@ WiFi_GetParamBoolValue
     if (AnscEqualString(ParamName, "WiFi-Passpoint", TRUE))
     {
         *pBool = rfc_pcfg->wifipasspoint_rfc;
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "WiFi-OffChannelScan", TRUE))
+    {
+#if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
+        *pBool = rfc_pcfg->wifioffchannelscan_rfc;
+#else //FEATURE_OFF_CHANNEL_SCAN_5G
+        *pBool = FALSE;
+#endif //FEATURE_OFF_CHANNEL_SCAN_5G
         return TRUE;
     }
     if (AnscEqualString(ParamName, "WiFi-Interworking", TRUE))
@@ -992,6 +1001,17 @@ WiFi_SetParamBoolValue
             push_rfc_dml_cache_to_one_wifidb(bValue,ctrl_event_type_wifi_passpoint_rfc);
         }
         return TRUE;
+    }
+    if (AnscEqualString(ParamName, "WiFi-OffChannelScan", TRUE))
+    {
+#if defined(FEATURE_OFF_CHANNEL_SCAN_5G)
+        if(bValue != rfc_pcfg->wifioffchannelscan_rfc) {
+            push_rfc_dml_cache_to_one_wifidb(bValue,ctrl_event_type_wifi_offchannelscan_rfc);
+        }
+        return TRUE;
+#else //FEATURE_OFF_CHANNEL_SCAN_5G
+        return FALSE;
+#endif //FEATURE_OFF_CHANNEL_SCAN_5G
     }
     if (AnscEqualString(ParamName, "WiFi-Interworking", TRUE))
     {
@@ -2072,6 +2092,23 @@ Radio_GetParamUlongValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
+#if defined(FEATURE_OFF_CHANNEL_SCAN_5G)
+    wifi_radio_feature_param_t *fcfg = (wifi_radio_feature_param_t *) get_dml_cache_radio_feat_map(instance_number);
+    if(fcfg == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
+        return FALSE;
+    }
+
+    wifi_monitor_t *monitor_param = (wifi_monitor_t *)get_wifi_monitor();
+    if (monitor_param == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
+        return FALSE;
+    }
+#else //FEATURE_OFF_CHANNEL_SCAN_5G
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Offchannel distro not present\n", __FUNCTION__,__LINE__);
+#endif //FEATURE_OFF_CHANNEL_SCAN_5G
     wifi_global_config_t *global_wifi_config;
     global_wifi_config = (wifi_global_config_t*) get_dml_cache_global_wifi_config();
     if (global_wifi_config == NULL)
@@ -2261,6 +2298,56 @@ Radio_GetParamUlongValue
     {
 
         *puLong = pcfg->chanUtilThreshold;
+        return TRUE;
+    }
+
+    if( AnscEqualString(ParamName, "X_RDK_OffChannelTscan", TRUE))
+    {
+#if defined(FEATURE_OFF_CHANNEL_SCAN_5G)
+        *puLong = fcfg->OffChanTscanInMsec;
+#else
+        *puLong = 0;
+#endif
+        return TRUE;
+    }
+
+    if( AnscEqualString(ParamName, "X_RDK_OffChannelNscan", TRUE))
+    {
+#if defined(FEATURE_OFF_CHANNEL_SCAN_5G)
+        if (fcfg->OffChanNscanInSec != 0)
+        {
+            *puLong = (fcfg->OffChanNscanInSec == 0) ? 0 : (24*3600)/(fcfg->OffChanNscanInSec); //Converting to number from sec
+            return TRUE;
+        }
+        *puLong = 0;
+#else
+        *puLong = 0;
+#endif
+        return TRUE;
+    }
+
+    if( AnscEqualString(ParamName, "X_RDK_OffChannelTidle", TRUE))
+    {
+#if defined(FEATURE_OFF_CHANNEL_SCAN_5G)
+        *puLong = fcfg->OffChanTidleInSec;
+#else
+        *puLong = 0;
+#endif
+        return TRUE;
+    }
+
+    if( AnscEqualString(ParamName, "X_RDK_OffChannelNchannel", TRUE))
+    {
+#if defined(FEATURE_OFF_CHANNEL_SCAN_5G)
+        if (is_radio_band_5G(pcfg->band))
+        {
+            *puLong = monitor_param->off_channel_cfg[instance_number].Nchannel;
+            return TRUE;
+        }
+        *puLong = 0;
+#else
+        *puLong = 0;
+#endif
         return TRUE;
     }
   
@@ -3214,6 +3301,16 @@ Radio_SetParamUlongValue
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
+#if defined(FEATURE_OFF_CHANNEL_SCAN_5G)
+    wifi_radio_feature_param_t *fcfg = (wifi_radio_feature_param_t *) get_dml_cache_radio_feat_map(instance_number);
+    if(fcfg == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
+        return FALSE;
+    }
+#else //FEATURE_OFF_CHANNEL_SCAN_5G
+    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Offchannel distro not present\n", __FUNCTION__,__LINE__);
+#endif //FEATURE_OFF_CHANNEL_SCAN_5G
 
     /* check the parameter name and set the corresponding value */
     if( AnscEqualString(ParamName, "Channel", TRUE))
@@ -3273,7 +3370,7 @@ Radio_SetParamUlongValue
 
         wifiRadioOperParam->channelWidth = tmpChanWidth;
         ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s OperatingChannelBandwidth : %d\n", __FUNCTION__, wifiRadioOperParam->channelWidth);
-	wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:channelWidth=%d tmpChanWidth = %d  \n",__func__, __LINE__,wifiRadioOperParam->channelWidth,tmpChanWidth);
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:channelWidth=%d tmpChanWidth = %d  \n",__func__, __LINE__,wifiRadioOperParam->channelWidth,tmpChanWidth);
         is_radio_config_changed = TRUE; 
         return TRUE;
     }
@@ -3408,6 +3505,82 @@ Radio_SetParamUlongValue
         }
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Cannot set ChannelUtilThreshold \n",__func__,__LINE__);
         return FALSE;
+    }
+
+    if( AnscEqualString(ParamName, "X_RDK_OffChannelTscan", TRUE))
+    {
+#if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
+        if(!(is_radio_band_5G(wifiRadioOperParam->band)))
+        {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Not set for 5GHz radio\n", __func__, __LINE__);
+            return TRUE;
+        }
+
+        if(fcfg->OffChanTscanInMsec != uValue)
+        {
+            fcfg->OffChanTscanInMsec = uValue;
+            is_radio_config_changed = TRUE;
+        }
+        return TRUE;
+#else //FEATURE_OFF_CHANNEL_SCAN_5G
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d OffChannel distro absent\n", __func__, __LINE__);
+        return FALSE;
+#endif //FEATURE_OFF_CHANNEL_SCAN_5G
+    }
+
+    if( AnscEqualString(ParamName, "X_RDK_OffChannelNscan", TRUE))
+    {
+#if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
+        if(!(is_radio_band_5G(wifiRadioOperParam->band)))
+        {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Not set for 5GHz radio\n", __func__, __LINE__);
+            return TRUE;
+        }
+        //Converting from number to sec
+        if (uValue != 0)
+        {
+            ULONG Nscan_sec = 24*3600/(uValue);
+            if (fcfg->OffChanNscanInSec != Nscan_sec)
+            {
+                fcfg->OffChanNscanInSec = Nscan_sec;
+                is_radio_config_changed = TRUE;
+            }
+            return TRUE;
+        }
+        else
+        {
+            if (fcfg->OffChanNscanInSec != 0)
+            {
+                fcfg->OffChanNscanInSec = 0;
+                is_radio_config_changed = TRUE;
+            }
+            return TRUE;
+        }
+#else //FEATURE_OFF_CHANNEL_SCAN_5G
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d OffChannel distro absent\n", __func__, __LINE__);
+        return FALSE;
+#endif //FEATURE_OFF_CHANNEL_SCAN_5G
+    }
+
+    if( AnscEqualString(ParamName, "X_RDK_OffChannelTidle", TRUE))
+    {
+#if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
+        if(!(is_radio_band_5G(wifiRadioOperParam->band)))
+        {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Not set for 5GHz radio\n", __func__, __LINE__);
+            return TRUE;
+        }
+
+        if(fcfg->OffChanTidleInSec != uValue)
+        {
+            fcfg->OffChanTidleInSec = uValue;
+            is_radio_config_changed = TRUE;
+        }
+        return TRUE;
+#else //FEATURE_OFF_CHANNEL_SCAN_5G
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d OffChannel distro absent\n", __func__, __LINE__);
+        return FALSE;
+#endif //FEATURE_OFF_CHANNEL_SCAN_5G
     }
 
     return FALSE;

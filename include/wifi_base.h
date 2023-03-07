@@ -148,6 +148,7 @@ typedef enum {
     ctrl_event_type_new_bssid,
     ctrl_event_type_xfinity_enable,
     ctrl_event_command_max,
+    ctrl_event_type_wifi_offchannelscan_rfc,
 
     // wif_api
     ctrl_event_type_wifiapi_execution = 0x500,
@@ -237,6 +238,7 @@ typedef struct {
 } wifi_dml_parameters_t;
 
 typedef struct {
+    bool wifioffchannelscan_rfc;
     bool wifipasspoint_rfc;
     bool wifiinterworking_rfc;
     bool radiusgreylist_rfc;
@@ -318,6 +320,21 @@ typedef struct {
 } __attribute__((packed)) wifi_radio_psm_param_t;
 
 typedef struct {
+    ULONG Tscan;
+    ULONG Nscan;
+    ULONG Tidle;
+} __attribute__((packed)) wifi_radio_feat_psm_param_t;
+
+typedef struct {
+//This structure is used for all the feature developments for radio
+// offchannel scan params
+    ULONG OffChanTscanInMsec; // time that a single channel is scanned (unit: msec)
+    ULONG OffChanNscanInSec; // number of scans/channel (stored in sec)
+    ULONG OffChanTidleInSec; // time to account for network idleness (sec)
+    unsigned int radio_index;
+} __attribute__((packed)) wifi_radio_feature_param_t;
+
+typedef struct {
     unsigned int data_index;
     CHAR mac[18];
     CHAR device_name[64];
@@ -372,6 +389,7 @@ typedef struct {
     wifi_vap_psm_param_t    vap_psm_cfg[MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO];
     wifi_mac_psm_entry_t    mac_psm_cfg;
     wifi_global_psm_param_t global_psm_cfg;
+    wifi_radio_feat_psm_param_t radio_feat_psm_cfg[MAX_NUM_RADIOS];
 } __attribute__((packed)) wifi_psm_param_t;
 
 typedef struct {
@@ -555,6 +573,7 @@ typedef struct {
     char    name[16];
     wifi_radio_operationParam_t oper;
     rdk_wifi_vap_map_t          vaps;
+    wifi_radio_feature_param_t  feature;
 //  schema_wifi_radio_state_t   radio_state;
 }  __attribute__((packed)) rdk_wifi_radio_t;
 

@@ -958,6 +958,14 @@ int convert_freq_band_to_radio_index(int band, int *radio_index)
     return status;
 }
 
+BOOL is_radio_band_5G(int band)
+{
+    if (band == WIFI_FREQUENCY_5_BAND || band == WIFI_FREQUENCY_5L_BAND || band == WIFI_FREQUENCY_5H_BAND) {
+        return TRUE;
+    }
+    return FALSE;
+}
+
 int convert_ifname_to_radio_index(wifi_platform_property_t *wifi_prop, char *if_name, unsigned int *radio_index)
 {
 

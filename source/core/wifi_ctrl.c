@@ -1825,6 +1825,17 @@ wifi_radio_operationParam_t* get_wifidb_radio_map(uint8_t radio_index)
     }
 }
 
+wifi_radio_feature_param_t* get_wifidb_radio_feat_map(uint8_t radio_index)
+{
+    wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
+    if (radio_index < getNumberRadios()) {
+        return &g_wifi_mgr->radio_config[radio_index].feature;
+    } else {
+        wifi_util_error_print(WIFI_CTRL, "%s: wrong radio_index %d\n", __FUNCTION__, radio_index);
+        return NULL;
+    }
+}
+
 wifi_GASConfiguration_t* get_wifidb_gas_config(void)
 {
      wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
@@ -2153,6 +2164,7 @@ wifi_rfc_dml_parameters_t* get_ctrl_rfc_parameters(void)
     g_wifi_mgr->ctrl.rfc_params.hotspot_secure_5g_last_enabled = g_wifi_mgr->rfc_dml_parameters.hotspot_secure_5g_last_enabled;
     g_wifi_mgr->ctrl.rfc_params.hotspot_secure_6g_last_enabled = g_wifi_mgr->rfc_dml_parameters.hotspot_secure_6g_last_enabled;
     g_wifi_mgr->ctrl.rfc_params.mgmt_frame_rbus_enabled_rfc = g_wifi_mgr->rfc_dml_parameters.mgmt_frame_rbus_enabled_rfc;
+    g_wifi_mgr->ctrl.rfc_params.wifioffchannelscan_rfc = g_wifi_mgr->rfc_dml_parameters.wifioffchannelscan_rfc;
     strcpy(g_wifi_mgr->ctrl.rfc_params.rfc_id,g_wifi_mgr->rfc_dml_parameters.rfc_id);
     return &g_wifi_mgr->ctrl.rfc_params;
 }

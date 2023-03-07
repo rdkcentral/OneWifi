@@ -443,6 +443,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
     bool  send_event = false;
     unsigned int i, index;
     wifi_radio_operationParam_t *radio_params = NULL;
+    wifi_radio_feature_param_t *radio_feat = NULL;
 
     ctrl = svc->ctrl;
     ext = &svc->u.ext;
@@ -482,7 +483,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
 
             ext->conn_state = connection_state_connected;
             //send_event = true;
-
+            radio_feat = (wifi_radio_feature_param_t *)get_wifidb_radio_feat_map(index);
             radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(index);
             if (radio_params != NULL) {
                 if ((sta_data->stats.channel != 0 && radio_params->channel != sta_data->stats.channel) ||
@@ -495,7 +496,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
 
                     mgr->ctrl.webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
                     start_wifi_sched_timer(&index, ctrl, wifi_radio_sched);
-                    update_wifi_radio_config(index, radio_params);
+                    update_wifi_radio_config(index, radio_params, radio_feat);
                 }
             }
 

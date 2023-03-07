@@ -181,6 +181,16 @@ typedef struct {
 #endif // CCSP_COMMON
 
 typedef struct {
+    //Off channel params
+    ULONG TscanMsec;
+    ULONG NscanSec;
+    ULONG TidleSec;
+    ULONG Nchannel;
+    int curr_off_channel_scan_period; //holds old value of Nscan
+    unsigned int radio_index;
+} off_channel_param_t;
+
+typedef struct {
     queue_t             *queue;
     bssid_data_t        bssid_data[MAX_VAP];
 #ifdef WIFI_HAL_VERSION_3
@@ -198,6 +208,7 @@ typedef struct {
 #ifdef CCSP_COMMON
     neighscan_diag_cfg_t neighbor_scan_cfg;
 #endif // CCSP_COMMON
+    off_channel_param_t off_channel_cfg[MAX_NUM_RADIOS];
     pthread_cond_t      cond;
     pthread_mutex_t     queue_lock;
     pthread_mutex_t     data_lock;
@@ -240,6 +251,9 @@ typedef struct {
     int vap_status_id;
 #endif // CCSP_COMMON
     int radio_diagnostics_id;
+#if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
+    int off_channel_scan_id[MAX_NUM_RADIOS];
+#endif //FEATURE_OFF_CHANNEL_SCAN_5G
 #ifdef CCSP_COMMON
     int neighbor_scan_id;
     int radio_health_telemetry_logger_id;

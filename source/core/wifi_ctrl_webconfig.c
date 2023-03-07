@@ -1928,6 +1928,17 @@ bool is_csa_sched_timer_trigger(wifi_radio_operationParam_t old_radio_cfg, wifi_
     return false;
 }
 
+bool is_radio_feat_config_changed(rdk_wifi_radio_t *old, rdk_wifi_radio_t *new)
+{
+    if (IS_CHANGED(old->feature.OffChanTscanInMsec, new->feature.OffChanTscanInMsec)
+        || (IS_CHANGED(old->feature.OffChanNscanInSec, new->feature.OffChanNscanInSec))
+        || (IS_CHANGED(old->feature.OffChanTidleInSec, new->feature.OffChanTidleInSec))) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 static bool is_radio_param_config_changed(wifi_radio_operationParam_t *old , wifi_radio_operationParam_t *new)
 {
     // Compare only which are changed from Wifi_Radio_Config
@@ -1992,6 +2003,7 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
     bool found_radio_index = false;
     bool rfc_status;
     int ret;
+    int is_changed = 0;
     // apply the radio and vap data
     for (i = 0; i < getNumberRadios(); i++) {
         radio_data = &data->radios[i];
@@ -2010,9 +2022,22 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
 
         found_radio_index = false;
 
-        if (is_radio_param_config_changed(&mgr_radio_data->oper, &radio_data->oper) == true) {
+        if (is_radio_band_5G(radio_data->oper.band) && is_radio_feat_config_changed(mgr_radio_data, radio_data))
+        {
+            //Not required currently for 2.4GHz, can be added later for 5GH and 6G after support is added
+            is_changed = 1;
+            mgr_radio_data->feature = radio_data->feature;
+            wifi_util_dbg_print(WIFI_MGR,"%s:%d Tscan:%lu, Nscan:%lu, Tidle:%lu \n",__func__,__LINE__,radio_data->feature.OffChanTscanInMsec, radio_data->feature.OffChanNscanInSec, radio_data->feature.OffChanTidleInSec);
+            ret = SetOffChanParams(radio_data->vaps.radio_index,radio_data->feature.OffChanTscanInMsec,radio_data->vaps.radio_index,radio_data->feature.OffChanNscanInSec,radio_data->feature.OffChanTidleInSec);
+            if (ret != RETURN_OK) {
+                wifi_util_error_print(WIFI_MGR,"%s:%d: OffChanParams set failed\n",__func__,__LINE__);
+                return RETURN_ERR;
+            }
+        }
 
+        if ((is_radio_param_config_changed(&mgr_radio_data->oper, &radio_data->oper) == true)) {
             // radio data changed apply
+            is_changed = 1;
             wifi_util_info_print(WIFI_MGR, "%s:%d: Change detected in received radio config, applying new configuration for radio: %s\n",
                             __func__, __LINE__, radio_data->name);
 
@@ -2059,16 +2084,18 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
             if (is_csa_sched_timer_trigger(mgr_radio_data->oper, radio_data->oper) == true) {
                 start_wifi_sched_timer(&mgr_radio_data->vaps.radio_index, ctrl, wifi_csa_sched);
             }
+        }
 
+        if (is_changed) {
 #if defined (FEATURE_SUPPORT_ECOPOWERDOWN)
             // Save the ECO mode state before update to the DB
             bool old_ecomode = mgr_radio_data->oper.EcoPowerDown;
             bool new_ecomode = radio_data->oper.EcoPowerDown;
 #endif // defined (FEATURE_SUPPORT_ECOPOWERDOWN)
 
-            // write the value to database
+// write the value to database
 #ifndef LINUX_VM_PORT
-            wifidb_update_wifi_radio_config(mgr_radio_data->vaps.radio_index, &radio_data->oper);
+            wifidb_update_wifi_radio_config(mgr_radio_data->vaps.radio_index, &radio_data->oper, &radio_data->feature);
 #endif
 
 #if defined (FEATURE_SUPPORT_ECOPOWERDOWN)
@@ -2076,14 +2103,15 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
             //only if there is a change in the DM Device.WiFi.Radio.{i}.X_RDK_EcoPowerDown
             wifi_util_info_print(WIFI_MGR, "%s:%d: oldEco = %d  newEco = %d\n", __func__, __LINE__, old_ecomode, new_ecomode);
             if (old_ecomode != new_ecomode) {
+                // write the value to database and reboot
                 ecomode_telemetry_update_and_reboot(i, new_ecomode);
             }
 #endif // defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+
         } else {
-            wifi_util_info_print(WIFI_MGR, "%s:%d: Received radio config is same, not applying\n", __func__, __LINE__);
+            wifi_util_info_print(WIFI_MGR, "%s:%d: Received radio config for radio %u is same, not applying\n", __func__, __LINE__, mgr_radio_data->vaps.radio_index);
         }
     }
-
     return RETURN_OK;
 }
 

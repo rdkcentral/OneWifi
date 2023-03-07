@@ -120,6 +120,11 @@ static char *WiFiActiveMsmtSampleDuration = "eRT.com.cisco.spvtg.ccsp.Device.WiF
 static char *MacFilter = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.MacFilter.%d";
 static char *MacFilterDevice = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.MacFilterDevice.%d";
 static char *MacFilterList      = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.MacFilterList";
+#if defined(FEATURE_OFF_CHANNEL_SCAN_5G)
+static char *Tscan = "Device.WiFi.Radio.%d.Radio_X_RDK_OffChannelTscan";
+static char *Nscan = "Device.WiFi.Radio.%d.Radio_X_RDK_OffChannelNscan";
+static char *Tidle = "Device.WiFi.Radio.%d.Radio_X_RDK_OffChannelTidle";
+#endif //FEATURE_OFF_CHANNEL_SCAN_5G
 #endif // DML_SUPPORT
 
 wifi_mgr_t g_wifi_mgr;
@@ -674,7 +679,7 @@ int get_total_mac_list_from_psm(int instance_number, unsigned int *total_entries
     return RETURN_ERR;
 }
 
-void get_radio_params_from_psm(unsigned int radio_index, wifi_radio_operationParam_t *radio_cfg)
+void get_radio_params_from_psm(unsigned int radio_index, wifi_radio_operationParam_t *radio_cfg, wifi_radio_feature_param_t *radio_feat_cfg)
 {
     char *str = NULL;
     char recName[256] = {0};
@@ -682,7 +687,46 @@ void get_radio_params_from_psm(unsigned int radio_index, wifi_radio_operationPar
     unsigned int instance_number = radio_index + 1;
 
     memset(radio_cfg, 0, sizeof(wifi_radio_operationParam_t));
-    wifidb_init_radio_config_default((instance_number - 1), radio_cfg);
+    memset(radio_feat_cfg, 0, sizeof(wifi_radio_feature_param_t));
+    wifidb_init_radio_config_default((instance_number - 1), radio_cfg, radio_feat_cfg);
+
+#if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
+    //5GH and 6G can be added later after support is added
+    if (is_radio_band_5G(radio_cfg->band)) {
+        memset(recName, 0, sizeof(recName));
+        memset(strValue, 0, sizeof(strValue));
+        snprintf(recName, sizeof(recName), Tscan, instance_number);
+        str = Get_PSM_Record_Status(recName, strValue);
+        if (str != NULL) {
+            radio_feat_cfg->OffChanTscanInMsec = _ansc_atoi(str);
+            wifi_util_dbg_print(WIFI_MGR,"radio_feat_cfg->OffChanTscanInMsec is %d and str is %s and _ansc_atoi(str) is %d\n", radio_feat_cfg->OffChanTscanInMsec, str, _ansc_atoi(str));
+        } else {
+            wifi_util_dbg_print(WIFI_MGR,"%s:%d: str value for Tscan:%s \r\n", __func__, __LINE__, str);
+        }
+
+        memset(recName, 0, sizeof(recName));
+        memset(strValue, 0, sizeof(strValue));
+        snprintf(recName, sizeof(recName), Nscan, instance_number);
+        str = Get_PSM_Record_Status(recName, strValue);
+        if (str != NULL) {
+            radio_feat_cfg->OffChanNscanInSec = _ansc_atoi(str);
+            wifi_util_dbg_print(WIFI_MGR,"radio_feat_cfg->OffChanNscanInSec is %d and str is %s and _ansc_atoi(str) is %d\n", radio_feat_cfg->OffChanNscanInSec, str, _ansc_atoi(str));
+        } else {
+            wifi_util_dbg_print(WIFI_MGR,"%s:%d: str value for Nscan:%s \r\n", __func__, __LINE__, str);
+        }
+
+        memset(recName, 0, sizeof(recName));
+        memset(strValue, 0, sizeof(strValue));
+        snprintf(recName, sizeof(recName), Tidle, instance_number);
+        str = Get_PSM_Record_Status(recName, strValue);
+        if (str != NULL) {
+            radio_feat_cfg->OffChanTidleInSec = _ansc_atoi(str);
+            wifi_util_dbg_print(WIFI_MGR,"radio_feat_cfg->OffChanTidleInSec is %d and str is %s and _ansc_atoi(str) is %d\n", radio_feat_cfg->OffChanTidleInSec, str, _ansc_atoi(str));
+        } else {
+            wifi_util_dbg_print(WIFI_MGR,"%s:%d: str value for Tidle:%s \r\n", __func__, __LINE__, str);
+        }
+    }
+#endif //FEATURE_OFF_CHANNEL_SCAN_5G
 
     memset(recName, 0, sizeof(recName));
     memset(strValue, 0, sizeof(strValue));
@@ -1187,18 +1231,20 @@ int get_vap_params_from_psm(unsigned int vap_index, wifi_vap_info_t *vap_config,
 int wifi_db_update_radio_config()
 {
     wifi_radio_operationParam_t radio_cfg;
+    wifi_radio_feature_param_t radio_feat_cfg;
     unsigned int radio_index;
     int retval=0;
 
     for(radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
         memset(&radio_cfg, 0, sizeof(wifi_radio_operationParam_t));
+        memset(&radio_feat_cfg, 0, sizeof(wifi_radio_feature_param_t));
 
         /* read values from psm and update db */
-        get_radio_params_from_psm(radio_index, &radio_cfg);
+        get_radio_params_from_psm(radio_index, &radio_cfg, &radio_feat_cfg);
         get_radio_params_from_db(radio_index, &radio_cfg);
         wifi_util_dbg_print(WIFI_MGR,"%s:%d: %u ****success to get bandwidth value in wifi db\n",__func__, __LINE__,radio_cfg.channelWidth);
 
-        retval = wifidb_update_wifi_radio_config(radio_index, &radio_cfg);
+        retval = wifidb_update_wifi_radio_config(radio_index, &radio_cfg, &radio_feat_cfg);
         if (retval != 0) {
             wifi_util_dbg_print(WIFI_MGR,"%s:%d: Failed to update radio config in wifi db\n",__func__, __LINE__);
         } else {

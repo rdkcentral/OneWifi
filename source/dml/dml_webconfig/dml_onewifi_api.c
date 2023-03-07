@@ -659,6 +659,19 @@ wifi_radio_operationParam_t* get_dml_cache_radio_map(uint8_t radio_index)
     }
 }
 
+wifi_radio_feature_param_t* get_dml_cache_radio_feat_map(uint8_t radio_index)
+{
+    if(radio_index < get_num_radio_dml())
+    {
+        return &webconfig_dml.radios[radio_index].feature;
+    }
+    else
+    {
+        wifi_util_error_print(WIFI_DMCLI, "%s: wrong radio_index %d\n", __FUNCTION__, radio_index);
+        return NULL;
+    }
+}
+
 bool is_radio_config_changed;
 bool g_update_wifi_region;
 

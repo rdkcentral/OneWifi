@@ -1999,8 +1999,10 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
     wifi_global_config_t *global_wifi_config;
     global_wifi_config = (wifi_global_config_t*) get_dml_cache_global_wifi_config();
     wifi_radio_operationParam_t *wifiRadioOperParam = NULL;
-    wifi_radio_operationParam_t rcfg ;
     unsigned int vap_index;
+    wifi_radio_operationParam_t rcfg;
+    wifi_radio_feature_param_t *wifiRadioFeatParam = NULL;
+    wifi_radio_feature_param_t fcfg;
 
     wifi_util_info_print(WIFI_DMCLI,"Enter %s:%d \n",__func__, __LINE__);
     if (global_wifi_config == NULL) {
@@ -2011,12 +2013,14 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
     //Reset to all radios params to default
     for (UINT i= 0; i < getNumberRadios(); i++) {
         wifiRadioOperParam = (wifi_radio_operationParam_t *) get_dml_cache_radio_map(i);
-        if (wifiRadioOperParam == NULL) {
-            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get Radio Param for instance_number:%d\n", __FUNCTION__,__LINE__,i);
+        wifiRadioFeatParam = (wifi_radio_feature_param_t *) get_dml_cache_radio_feat_map(i);
+        if (wifiRadioOperParam == NULL || wifiRadioFeatParam == NULL) {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get Radio Param and Radio Feat Param for instance_number:%d\n", __FUNCTION__,__LINE__,i);
             return FALSE;
         }
-        wifidb_init_radio_config_default(i,&rcfg);
+        wifidb_init_radio_config_default(i,&rcfg,&fcfg);
         memcpy((unsigned char *)wifiRadioOperParam,(unsigned char *)&rcfg,sizeof(wifi_radio_operationParam_t));
+        memcpy((unsigned char *)wifiRadioFeatParam, (unsigned char *)&fcfg, sizeof(wifi_radio_feature_param_t));
         is_radio_config_changed = TRUE;
     }
 

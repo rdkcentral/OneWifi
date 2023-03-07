@@ -303,6 +303,7 @@ int convert_radio_index_to_radio_name(int index,char *name);
 wifi_global_param_t* get_wifidb_wifi_global_param(void);
 wifi_global_config_t* get_wifidb_wifi_global_config(void);
 wifi_radio_operationParam_t* get_wifidb_radio_map(uint8_t radio_index);
+wifi_radio_feature_param_t* get_wifidb_radio_feat_map(uint8_t radio_index);
 wifi_vap_info_map_t* get_wifidb_vap_map(uint8_t radio_index);
 wifi_GASConfiguration_t* get_wifidb_gas_config(void);
 wifi_interworking_t * Get_wifi_object_interworking_parameter(uint8_t vapIndex);

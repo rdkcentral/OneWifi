@@ -51,6 +51,7 @@ typedef enum {
 
 typedef enum {
     radio_config,
+    radio_feature_config,
     vap_config,
     global_config,
     security_config,
@@ -77,6 +78,7 @@ typedef struct {
 
 wifi_psm_param_t *get_psm_obj(void);
 wifi_radio_psm_param_t *get_radio_psm_obj(unsigned char radio_index);
+wifi_radio_feat_psm_param_t *get_radio_feat_psm_obj(unsigned char radio_index);
 wifi_vap_psm_param_t *get_vap_psm_obj(unsigned char vap_index);
 hash_map_t *get_mac_psm_obj(unsigned char vap_index);
 hash_map_t **get_mac_psm_map(unsigned char vap_index);

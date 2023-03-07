@@ -112,29 +112,35 @@ int wifidb_set_reset_hotspot_required(bool req)
 void rdk_wifi_radio_get_status(uint8_t r_index, bool *status)
 {
     wifi_radio_operationParam_t radio_vap_map;
+    wifi_radio_feature_param_t radio_feat;
     memset(&radio_vap_map, 0, sizeof(radio_vap_map));
+    memset(&radio_feat, 0, sizeof(radio_feat));
 
     rdk_wifi_dbg_print(1, "wifidb radio get status %s\n", __FUNCTION__);
-    wifidb_get_wifi_radio_config(r_index, &radio_vap_map);
+    wifidb_get_wifi_radio_config(r_index, &radio_vap_map, &radio_feat);
     *status = radio_vap_map.enable;
 }
 
 void rdk_wifi_radio_get_autochannel_status(uint8_t r_index, bool *autochannel_status)
 {
     wifi_radio_operationParam_t radio_vap_map;
+    wifi_radio_feature_param_t radio_feat;
     memset(&radio_vap_map, 0, sizeof(radio_vap_map));
+    memset(&radio_feat, 0, sizeof(radio_feat));
 
     rdk_wifi_dbg_print(1, "wifidb radio get auto channel status %s\n", __FUNCTION__);
-    wifidb_get_wifi_radio_config(r_index, &radio_vap_map);
+    wifidb_get_wifi_radio_config(r_index, &radio_vap_map, &radio_feat);
     *autochannel_status = radio_vap_map.autoChannelEnabled;
 }
 
 void rdk_wifi_radio_get_frequency_band(uint8_t r_index, char *band)
 {
     wifi_radio_operationParam_t radio_vap_map;
+    wifi_radio_feature_param_t radio_feat;
     memset(&radio_vap_map, 0, sizeof(radio_vap_map));
+    memset(&radio_feat, 0, sizeof(radio_feat));
 
-    wifidb_get_wifi_radio_config(r_index, &radio_vap_map);
+    wifidb_get_wifi_radio_config(r_index, &radio_vap_map, &radio_feat);
     if ( radio_vap_map.band == 1 )
     {
         strcpy(band, "2.4GHz");
@@ -148,28 +154,34 @@ void rdk_wifi_radio_get_frequency_band(uint8_t r_index, char *band)
 void rdk_wifi_radio_get_dcs_status(uint8_t r_index, bool *dcs_status)
 {
     wifi_radio_operationParam_t radio_vap_map;
+    wifi_radio_feature_param_t radio_feat;
     memset(&radio_vap_map, 0, sizeof(radio_vap_map));
+    memset(&radio_feat, 0, sizeof(radio_feat));
 
     rdk_wifi_dbg_print(1, "wifidb radio get dcs status %s\n", __FUNCTION__);
-    wifidb_get_wifi_radio_config(r_index, &radio_vap_map);
+    wifidb_get_wifi_radio_config(r_index, &radio_vap_map, &radio_feat);
     *dcs_status = radio_vap_map.DCSEnabled;
 }
 
 void rdk_wifi_radio_get_channel(uint8_t r_index, ULONG *channel)
 {
     wifi_radio_operationParam_t radio_vap_map;
+    wifi_radio_feature_param_t radio_feat;
     memset(&radio_vap_map, 0, sizeof(radio_vap_map));
+    memset(&radio_feat, 0, sizeof(radio_feat));
 
-    wifidb_get_wifi_radio_config(r_index, &radio_vap_map);
+    wifidb_get_wifi_radio_config(r_index, &radio_vap_map, &radio_feat);
     *channel = radio_vap_map.channel;
 }
 
 void rdk_wifi_radio_get_channel_bandwidth(uint8_t r_index, ULONG *channel_bandwidth)
 {
     wifi_radio_operationParam_t radio_vap_map;
+    wifi_radio_feature_param_t radio_feat;
     memset(&radio_vap_map, 0, sizeof(radio_vap_map));
+    memset(&radio_feat, 0, sizeof(radio_feat));
 
-    wifidb_get_wifi_radio_config(r_index, &radio_vap_map);
+    wifidb_get_wifi_radio_config(r_index, &radio_vap_map, &radio_feat);
     *channel_bandwidth = radio_vap_map.channelWidth;
 }
 
@@ -177,9 +189,11 @@ void rdk_wifi_radio_get_operating_standards(uint8_t r_index, char *buf)
 {
 
     wifi_radio_operationParam_t radio_vap_map;
+    wifi_radio_feature_param_t radio_feat;
     memset(&radio_vap_map, 0, sizeof(radio_vap_map));
+    memset(&radio_feat, 0, sizeof(radio_feat));
 
-    wifidb_get_wifi_radio_config(r_index, &radio_vap_map);
+    wifidb_get_wifi_radio_config(r_index, &radio_vap_map, &radio_feat);
 
         if (radio_vap_map.variant & WIFI_80211_VARIANT_A )
         {
@@ -526,9 +540,11 @@ int rdk_wifi_radio_get_BeaconInterval(uint8_t r_index, int *BeaconInterval)
     int ret = RETURN_OK;
 
     wifi_radio_operationParam_t radio_vap_map;
+    wifi_radio_feature_param_t radio_feat;
     memset(&radio_vap_map, 0, sizeof(radio_vap_map));
+    memset(&radio_feat, 0, sizeof(radio_feat));
 
-    ret = wifidb_get_wifi_radio_config(r_index, &radio_vap_map);
+    ret = wifidb_get_wifi_radio_config(r_index, &radio_vap_map, &radio_feat);
     if(ret == RETURN_OK)
     {
        rdk_wifi_dbg_print(1, "wifidb radio beacon info get success %s: r_index:%d\n", __FUNCTION__, r_index);
@@ -541,12 +557,13 @@ int rdk_wifi_radio_get_BeaconInterval(uint8_t r_index, int *BeaconInterval)
     return ret;
 }
 
-int rdk_wifi_radio_get_parameters(uint8_t r_index, wifi_radio_operationParam_t *radio_vap_map)
+int rdk_wifi_radio_get_parameters(uint8_t r_index, wifi_radio_operationParam_t *radio_vap_map, wifi_radio_feature_param_t *radio_feat)
 {
     int ret = RETURN_OK;
     memset(radio_vap_map, 0, sizeof(wifi_radio_operationParam_t));
+    memset(radio_feat, 0, sizeof(wifi_radio_feature_param_t));
 
-    ret = wifidb_get_wifi_radio_config(r_index, radio_vap_map);
+    ret = wifidb_get_wifi_radio_config(r_index, radio_vap_map, radio_feat);
     if(ret == RETURN_OK)
     {
        rdk_wifi_dbg_print(1, "wifidb radio info get success %s r_index:%d\n", __FUNCTION__, r_index);

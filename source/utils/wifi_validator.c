@@ -1849,7 +1849,7 @@ int validate_wifi_channel(wifi_freq_bands_t wifi_band, UINT *wifi_radio_channel,
     return RETURN_OK;
 }
 
-int validate_radio_vap(const cJSON *wifi, wifi_radio_operationParam_t *wifi_radio_info, wifi_vap_info_map_t *vap_map, pErr execRetVal)
+int validate_radio_vap(const cJSON *wifi, wifi_radio_operationParam_t *wifi_radio_info, wifi_vap_info_map_t *vap_map,  wifi_radio_feature_param_t *wifi_radio_feat_info, pErr execRetVal)
 {
     const cJSON  *param;
     char *ptr, *tmp;
@@ -1876,7 +1876,7 @@ int validate_radio_vap(const cJSON *wifi, wifi_radio_operationParam_t *wifi_radi
             return RETURN_ERR;
         }
 
-        get_wifi_radio_config(radio_index,wifi_radio_info);
+        get_wifi_radio_config(radio_index,wifi_radio_info,wifi_radio_feat_info);
  
 	// Enabled
 	validate_param_bool(wifi, "Enabled", param);
@@ -2041,6 +2041,18 @@ int validate_radio_vap(const cJSON *wifi, wifi_radio_operationParam_t *wifi_radi
         validate_param_bool(wifi, "EcoPowerDown", param);
         wifi_radio_info->EcoPowerDown = (param->type & cJSON_True) ? true:false;
 
+        //Tscan
+        validate_param_integer(wifi, "Tscan", param);
+        wifi_radio_feat_info->OffChanTscanInMsec = param->valuedouble;
+
+        //Nscan
+        validate_param_integer(wifi, "Nscan", param);
+        wifi_radio_feat_info->OffChanNscanInSec = (param->valuedouble != 0) ? (24*3600)/(param->valuedouble) : 0;
+
+        //Tidle
+        validate_param_integer(wifi, "Tidle", param);
+        wifi_radio_feat_info->OffChanTidleInSec = param->valuedouble;
+
     return RETURN_OK;
 }
 
@@ -2073,7 +2085,7 @@ int validate_wifi_config(const cJSON *wifi, wifi_global_config_t *wifi_info, pEr
     return RETURN_OK;
 }
 
-int wifi_validate_config(const cJSON *root_json, wifi_global_config_t *wifi_config, wifi_vap_info_map_t *vap_map, wifi_radio_operationParam_t *radio_vap_map, char *num_of_radio, wifi_platform_property_t *wifi_prop, pErr execRetVal)
+int wifi_validate_config(const cJSON *root_json, wifi_global_config_t *wifi_config, wifi_vap_info_map_t *vap_map, wifi_radio_operationParam_t *radio_vap_map, wifi_radio_feature_param_t *radio_feat_map, char *num_of_radio, wifi_platform_property_t *wifi_prop, pErr execRetVal)
 {
     const cJSON *wifi, *radio_vaps, *radio_vap, *param_vap, *param_radio;
     int num_radio;
@@ -2123,7 +2135,7 @@ int wifi_validate_config(const cJSON *root_json, wifi_global_config_t *wifi_conf
 
     //Filling the global cache, Need to be optimized.
     for (radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
-        get_wifi_radio_config(radio_index, &radio_vap_map[radio_index]);
+        get_wifi_radio_config(radio_index, &radio_vap_map[radio_index], &radio_feat_map);
         get_wifi_vap_config(radio_index, &vap_map[radio_index]);
     }
 
@@ -2134,7 +2146,7 @@ int wifi_validate_config(const cJSON *root_json, wifi_global_config_t *wifi_conf
             return RETURN_ERR;
         }
 
-        if (validate_radio_vap(radio_vap, &radio_vap_map[num_radio], &vap_map[num_radio], execRetVal) != RETURN_OK) {
+        if (validate_radio_vap(radio_vap, &radio_vap_map[num_radio], &vap_map[num_radio], radio_feat_map, execRetVal) != RETURN_OK) {
             wifi_util_dbg_print(WIFI_PASSPOINT, "%s %d validate_wifi_config Failed\n",__FUNCTION__, __LINE__);
             return RETURN_ERR;
         }

@@ -189,6 +189,7 @@
         PJS_OVS_BOOL(hotspot_secure_5g_last_enabled) \
         PJS_OVS_BOOL(hotspot_secure_6g_last_enabled) \
         PJS_OVS_BOOL(mgmt_frame_rbus_enabled_rfc) \
+        PJS_OVS_BOOL(wifioffchannelscan_rfc) \
   )
 
 #define PJS_SCHEMA_Wifi_MacFilter_Config \
@@ -1562,6 +1563,9 @@
         PJS_OVS_INT(chan_util_threshold) \
         PJS_OVS_BOOL(chan_util_selfheal_enable) \
         PJS_OVS_BOOL(eco_power_down) \
+        PJS_OVS_INT(Tscan) \
+        PJS_OVS_INT(Nscan) \
+        PJS_OVS_INT(Tidle) \
     )
 
 #define PJS_SCHEMA_Wifi_Global_Config \
@@ -2031,7 +2035,8 @@
     COLUMN(hotspot_secure_2g_last_enabled) \
     COLUMN(hotspot_secure_5g_last_enabled) \
     COLUMN(hotspot_secure_6g_last_enabled) \
-    COLUMN(mgmt_frame_rbus_enabled_rfc)
+    COLUMN(mgmt_frame_rbus_enabled_rfc) \
+    COLUMN(wifioffchannelscan_rfc)
 
 #define SCHEMA__Wifi_MacFilter_Config "Wifi_MacFilter_Config"
 #define SCHEMA_COLUMN__Wifi_MacFilter_Config(COLUMN) \
@@ -3152,7 +3157,10 @@
     COLUMN(admin_control) \
     COLUMN(chan_util_threshold) \
     COLUMN(chan_util_selfheal_enable) \
-    COLUMN(eco_power_down)
+    COLUMN(eco_power_down) \
+    COLUMN(Tscan) \
+    COLUMN(Nscan) \
+    COLUMN(Tidle)
 
 #define SCHEMA__Wifi_Global_Config "Wifi_Global_Config"
 #define SCHEMA_COLUMN__Wifi_Global_Config(COLUMN) \
@@ -3323,6 +3331,7 @@
 #define SCHEMA__Wifi_Rfc_Config__hotspot_secure_5g_last_enabled "hotspot_secure_5g_last_enabled"
 #define SCHEMA__Wifi_Rfc_Config__hotspot_secure_6g_last_enabled "hotspot_secure_6g_last_enabled"
 #define SCHEMA__Wifi_Rfc_Config__mgmt_frame_rbus_enabled_rfc  "mgmt_frame_rbus_enabled_rfc"
+#define SCHEMA__Wifi_Rfc_Config__wifioffchannelscan_rfc "wifioffchannelscan_rfc"
 
 #define SCHEMA__Alarms__code "code"
 #define SCHEMA__Alarms__timestamp "timestamp"
@@ -4356,6 +4365,9 @@
 #define SCHEMA__Wifi_Radio_Config__chan_util_threshold "chan_util_threshold"
 #define SCHEMA__Wifi_Radio_Config__chan_util_selfheal_enable "chan_util_selfheal_enable"
 #define SCHEMA__Wifi_Radio_Config__eco_power_down "eco_power_down"
+#define SCHEMA__Wifi_Radio_Config__Tscan "Tscan"
+#define SCHEMA__Wifi_Radio_Config__Nscan "Nscan"
+#define SCHEMA__Wifi_Radio_Config__Tidle "Tidle"
 
 #define SCHEMA__Wifi_Global_Config__gas_config "gas_config"
 #define SCHEMA__Wifi_Global_Config__notify_wifi_changes "notify_wifi_changes"

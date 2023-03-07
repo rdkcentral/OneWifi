@@ -1,6 +1,6 @@
 {
   "name": "Wifi_Rdk_Database",
-  "version": "1.00.017",
+  "version": "1.00.018",
   "cksum": "2353365742 523",
   "tables": {
     "Wifi_Device_Config": {
@@ -1419,8 +1419,35 @@
             "min": 0,
             "max": 1
           }
+        },
+        "Tscan": {
+          "type": {
+            "key": {
+              "type": "integer"
+            },
+            "min": 0,
+            "max": 63
+          }
+        },
+        "Nscan": {
+          "type": {
+            "key": {
+              "type": "integer"
+            },
+            "min": 0,
+            "max": 15
+          }
+        },
+        "Tidle": {
+          "type": {
+            "key": {
+              "type": "integer"
+            },
+            "min": 0,
+            "max": 63
+          }
         }
-    },
+      },
     "isRoot": true
     },
 
@@ -1611,6 +1638,15 @@
           }
         },
         "mgmt_frame_rbus_enabled_rfc": {
+          "type": {
+            "key": {
+              "type": "boolean"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "wifioffchannelscan_rfc": {
           "type": {
             "key": {
               "type": "boolean"
