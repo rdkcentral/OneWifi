@@ -46,6 +46,16 @@
 #define IS_STR_CHANGED(old, new, size) ((strncmp(old, new, size) != 0)? wifi_util_dbg_print(WIFI_CTRL,"%s:Changed param %s: [%s] -> [%s].\n",__func__,#old,old,new), 1 : 0)
 #define IS_BIN_CHANGED(old, new, size) ((memcmp(old, new, size) != 0)? wifi_util_dbg_print(WIFI_CTRL,"%s:Changed param %s.\n",__func__,#old), 1 : 0)
 
+/* local functions */
+static int decode_ssid_blob(wifi_vap_info_t *vap_info, cJSON *ssid, pErr execRetVal);
+static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr execRetVal);
+static int update_vap_info(void *data, wifi_vap_info_t *vap_info, pErr execRetVal);
+static int update_vap_info_with_blob_info(void *blob, webconfig_subdoc_data_t *data, const char *vap_prefix, pErr execRetVal);
+static int push_blob_data(webconfig_subdoc_data_t *data, webconfig_subdoc_type_t subdoc_type);
+static pErr create_execRetVal(void);
+static pErr private_home_exec_common_handler(void *blob, const char *vap_prefix, webconfig_subdoc_type_t subdoc_type);
+static int validate_private_home_ssid_param(char *str, pErr execRetVal);
+static int validate_private_home_security_param(char *mode_enabled, char*encryption_method, pErr execRetVal);
 struct ow_conf_vif_config_cb_arg
 {
     rdk_wifi_vap_info_t *rdk_vap_info;
@@ -313,14 +323,6 @@ webconfig_clear_ow_stats_config(void)
     ow_core_thread_call(webconfig_clear_ow_stats_config_cb, NULL);
 }
 
-/* local functions */
-static int decode_ssid_blob(wifi_vap_info_t *vap_info, cJSON *ssid);
-static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security);
-static int update_vap_info(void *data, wifi_vap_info_t *vap_info);
-static int update_vap_info_with_blob_info(void *blob, webconfig_subdoc_data_t *data, const char *vap_prefix);
-static int push_blob_data(webconfig_subdoc_data_t *data, webconfig_subdoc_type_t subdoc_type);
-static pErr create_execRetVal(void);
-static pErr private_home_exec_common_handler(void *blob, const char *vap_prefix, webconfig_subdoc_type_t subdoc_type);
 
 
 void print_wifi_hal_radio_data(wifi_dbg_type_t log_file_type, char *prefix, unsigned int radio_index, wifi_radio_operationParam_t *radio_config)
@@ -2536,8 +2538,86 @@ pErr webconf_config_handler(void *blob)
     wifi_util_dbg_print(WIFI_CTRL, "%s: return success\n", __func__);
     return exec_ret_val;
 }
+static int validate_private_home_security_param(char *mode_enabled, char *encryption_method, pErr execRetVal)
+{
+     wifi_util_info_print(WIFI_CTRL,"Enter %s mode_enabled=%s,encryption_method=%s\n",__func__,mode_enabled,encryption_method);
 
-static int decode_ssid_blob(wifi_vap_info_t *vap_info, cJSON *ssid)
+    if ((strcmp(mode_enabled, "None") != 0) &&
+        ((strcmp(encryption_method, "TKIP") != 0) && (strcmp(encryption_method, "AES") != 0) &&
+        (strcmp(encryption_method, "AES+TKIP") != 0))) {
+         wifi_util_error_print(WIFI_CTRL,"%s: Invalid Encryption Method \n",__FUNCTION__);
+        if (execRetVal) {
+            strncpy(execRetVal->ErrorMsg,"Invalid Encryption Method",sizeof(execRetVal->ErrorMsg)-1);
+        }
+        return RETURN_ERR;
+    }
+
+    if (((strcmp(mode_enabled, "WPA-WPA2-Enterprise") == 0) || (strcmp(mode_enabled, "WPA-WPA2-Personal") == 0)) &&
+        ((strcmp(encryption_method, "AES+TKIP") != 0) && (strcmp(encryption_method, "AES") != 0))) {
+         wifi_util_error_print(WIFI_CTRL,"%s: Invalid Encryption Security Combination\n",__FUNCTION__);
+        if (execRetVal) {
+            strncpy(execRetVal->ErrorMsg,"Invalid Encryption Security Combination",sizeof(execRetVal->ErrorMsg)-1);
+        }
+     return RETURN_ERR;
+    }
+     wifi_util_info_print(WIFI_CTRL,"%s: securityparam validation passed \n",__FUNCTION__);
+    return RETURN_OK;
+
+}
+static int validate_private_home_ssid_param(char *ssid_name, pErr execRetVal)
+{
+    int ssid_len = 0;
+    int i = 0, j = 0;
+    char ssid_char[MAX_SSID_NAME_LEN] = {0};
+    char ssid_lower[MAX_SSID_NAME_LEN] = {0};
+
+     wifi_util_info_print(WIFI_CTRL,"Enter %s and ssid_name=%s\n",__func__,ssid_name);
+    ssid_len = strlen(ssid_name);
+    if ((ssid_len == 0) || (ssid_len > MAX_SSID_NAME_LEN)) {
+        if (execRetVal) {
+            strncpy(execRetVal->ErrorMsg,"Invalid SSID string size",sizeof(execRetVal->ErrorMsg)-1);
+        }
+        wifi_util_error_print(WIFI_CTRL,"%s: Invalid SSID size for ssid_name %s \n",__FUNCTION__, ssid_name);
+        return RETURN_ERR;
+    }
+
+
+    while (i < ssid_len) {
+        ssid_lower[i] = tolower(ssid_name[i]);
+        if (isalnum(ssid_name[i]) != 0) {
+            ssid_char[j++] = ssid_lower[i];
+        }
+        i++;
+    }
+    ssid_lower[i] = '\0';
+    ssid_char[j] = '\0';
+
+    for (i = 0; i < ssid_len; i++) {
+        if (!((ssid_name[i] >= ' ') && (ssid_name[i] <= '~'))) {
+            wifi_util_error_print(WIFI_CTRL,"%s: Invalid character present in SSID \n",__FUNCTION__);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg,"Invalid character in SSID",sizeof(execRetVal->ErrorMsg)-1);
+            }
+            return RETURN_ERR;
+        }
+    }
+    /* SSID containing "optimumwifi", "TWCWiFi", "cablewifi" and "xfinitywifi" are reserved */
+    if ((strstr(ssid_char, "cablewifi") != NULL) || (strstr(ssid_char, "twcwifi") != NULL) || (strstr(ssid_char, "optimumwifi") != NULL) ||
+        (strstr(ssid_char, "xfinitywifi") != NULL) || (strstr(ssid_char, "xfinity") != NULL) || (strstr(ssid_char, "coxwifi") != NULL) ||
+        (strstr(ssid_char, "spectrumwifi") != NULL) || (strstr(ssid_char, "shawopen") != NULL) || (strstr(ssid_char, "shawpasspoint") != NULL) ||
+        (strstr(ssid_char, "shawguest") != NULL) || (strstr(ssid_char, "shawmobilehotspot") != NULL)) {
+
+        wifi_util_error_print(WIFI_CTRL,"%s: Reserved SSID format used for ssid \n",__FUNCTION__);
+        if (execRetVal) {
+            strncpy(execRetVal->ErrorMsg,"Reserved SSID format used",sizeof(execRetVal->ErrorMsg)-1);
+        }
+        return RETURN_ERR;
+    }
+
+   wifi_util_info_print(WIFI_CTRL,"%s: ssidparam validation passed \n",__FUNCTION__);
+  return RETURN_OK;
+}
+static int decode_ssid_blob(wifi_vap_info_t *vap_info, cJSON *ssid, pErr execRetVal)
 {
     char *value;
     cJSON *param;
@@ -2547,6 +2627,10 @@ static int decode_ssid_blob(wifi_vap_info_t *vap_info, cJSON *ssid)
     if (param) {
         value = cJSON_GetStringValue(param);
         wifi_util_info_print(WIFI_CTRL, "   \"SSID\": %s\n", value);
+        if (validate_private_home_ssid_param(value,execRetVal) != RETURN_OK) {
+            wifi_util_error_print(WIFI_CTRL, "SSID validation failed\n");
+            return -1;
+        }
         snprintf(vap_info->u.bss_info.ssid, sizeof(vap_info->u.bss_info.ssid), "%s", value);
     } else {
         wifi_util_error_print(WIFI_CTRL, "%s: missing \"SSID\"\n", __func__);
@@ -2584,10 +2668,12 @@ static int decode_ssid_blob(wifi_vap_info_t *vap_info, cJSON *ssid)
     return 0;
 }
 
-static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security)
+static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security,pErr execRetVal)
 {
     char *value;
     cJSON *param;
+    int pass_len =0;
+    char encryption_method[128] = "";
 
     wifi_util_info_print(WIFI_CTRL, "Security blob:\n");
     param = cJSON_GetObjectItem(security, "Passphrase");
@@ -2595,11 +2681,24 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security)
         value = cJSON_GetStringValue(param);
         snprintf(vap_info->u.bss_info.security.u.key.key, sizeof(vap_info->u.bss_info.security.u.key.key), "%s", value);
         wifi_util_info_print(WIFI_CTRL, "   \"Passphrase\": <Masked>\n");
-    } else {
+        pass_len = strlen(value);
+
+    if ((pass_len < MIN_PWD_LEN) || (pass_len > MAX_PWD_LEN)) {
+         wifi_util_error_print(WIFI_CTRL,"%s: Invalid Key passphrase length \n",__FUNCTION__);
+        if (execRetVal) {
+            strncpy(execRetVal->ErrorMsg,"Invalid Passphrase length",sizeof(execRetVal->ErrorMsg)-1);
+        }
+        return RETURN_ERR;
+
+    }
+    if (pass_len == 0) {
         wifi_util_error_print(WIFI_CTRL, "%s: missing \"Passphrase\"\n", __func__);
+        if (execRetVal) {
+            strncpy(execRetVal->ErrorMsg,"Invalid Passphrase length",sizeof(execRetVal->ErrorMsg)-1);
+        }
         return RETURN_ERR;
     }
-
+    }
     param = cJSON_GetObjectItem(security, "EncryptionMethod");
     if (param) {
         value = cJSON_GetStringValue(param);
@@ -2612,12 +2711,19 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security)
             vap_info->u.bss_info.security.encr = wifi_encryption_tkip;
         } else {
             wifi_util_error_print(WIFI_CTRL, "%s: unknown \"EncryptionMethod\n: %s\n", __func__, value);
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg,"Invalid Encryption Method",sizeof(execRetVal->ErrorMsg)-1);
+            }
             return RETURN_ERR;
         }
     } else {
         wifi_util_error_print(WIFI_CTRL, "%s: missing \"EncryptionMethod\"\n", __func__);
+         if (execRetVal) {
+            strncpy(execRetVal->ErrorMsg,"Invalid Encryption Method",sizeof(execRetVal->ErrorMsg)-1);
+        }
         return RETURN_ERR;
     }
+    strcpy(encryption_method,value);
 
     param = cJSON_GetObjectItem(security, "ModeEnabled");
     if (param) {
@@ -2648,18 +2754,28 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security)
             vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
             vap_info->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
         } else {
+            if (execRetVal) {
+                strncpy(execRetVal->ErrorMsg,"Invalid Security Mode",sizeof(execRetVal->ErrorMsg)-1);
+            }
+
             wifi_util_error_print(WIFI_CTRL, "%s: unknown \"ModeEnabled\": %s\n", __func__, value);
             return RETURN_ERR;
         }
     } else {
         wifi_util_error_print(WIFI_CTRL, "%s: missing \"ModeEnabled\"\n", __func__);
+        if (execRetVal) {
+            strncpy(execRetVal->ErrorMsg,"Invalid Security Mode",sizeof(execRetVal->ErrorMsg)-1);
+        }
         return RETURN_ERR;
     }
-
+    if (validate_private_home_security_param(value,encryption_method,execRetVal) != RETURN_OK) {
+        wifi_util_error_print(WIFI_CTRL, "%s: Invalid Encryption Security Combination \n", __func__);
+        return RETURN_ERR;
+    }
     return RETURN_OK;
 }
 
-static int update_vap_info(void *data, wifi_vap_info_t *vap_info)
+static int update_vap_info(void *data, wifi_vap_info_t *vap_info,pErr execRetVal)
 {
     int status = RETURN_OK;
     char *suffix;
@@ -2703,7 +2819,6 @@ static int update_vap_info(void *data, wifi_vap_info_t *vap_info)
     }
 
     wifi_util_dbg_print(WIFI_CTRL, "%s: parsing %s and %s blob\n", __func__, ssid, security);
-
     ssid_obj = cJSON_GetObjectItem(root, ssid);
     if (ssid_obj == NULL) {
         status = RETURN_ERR;
@@ -2719,14 +2834,14 @@ static int update_vap_info(void *data, wifi_vap_info_t *vap_info)
     }
 
     /* get SSID */
-    if (decode_ssid_blob(vap_info, ssid_obj) != 0) {
+    if (decode_ssid_blob(vap_info, ssid_obj, execRetVal) != 0) {
         wifi_util_error_print(WIFI_CTRL, "%s: Failed to decode SSID blob\n", __func__);
         status = RETURN_ERR;
         goto done;
     }
 
     /* decode security blob */
-    if (decode_security_blob(vap_info, security_obj) != 0) {
+    if (decode_security_blob(vap_info, security_obj, execRetVal) != 0) {
         wifi_util_error_print(WIFI_CTRL, "%s: Failed to decode security blob\n", __func__);
         status = RETURN_ERR;
         goto done;
@@ -2739,7 +2854,7 @@ done:
     return status;
 }
 
-static int update_vap_info_with_blob_info(void *blob, webconfig_subdoc_data_t *data, const char *vap_prefix)
+static int update_vap_info_with_blob_info(void *blob, webconfig_subdoc_data_t *data, const char *vap_prefix, pErr execRetVal)
 {
     int status = RETURN_OK;
     int num_vaps;
@@ -2759,7 +2874,7 @@ static int update_vap_info_with_blob_info(void *blob, webconfig_subdoc_data_t *d
             break;
         }
         /* fill the VAP info with current settings */
-        if (update_vap_info(blob, &data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index]) == RETURN_ERR) {
+        if (update_vap_info(blob, &data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index], execRetVal) == RETURN_ERR) {
             status = RETURN_ERR;
             break;
         }
@@ -2805,7 +2920,6 @@ static pErr private_home_exec_common_handler(void *blob, const char *vap_prefix,
 {
     pErr execRetVal = NULL;
     webconfig_subdoc_data_t *data = NULL;
-
     if (blob == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s: Null blob\n", __func__);
         return NULL;
@@ -2823,17 +2937,17 @@ static pErr private_home_exec_common_handler(void *blob, const char *vap_prefix,
         wifi_util_error_print(WIFI_CTRL, "%s: malloc failure\n", __func__);
         goto done;
     }
-
     webconfig_init_subdoc_data(data);
 
-    if (update_vap_info_with_blob_info(blob, data, vap_prefix) != 0) {
+    if (update_vap_info_with_blob_info(blob, data, vap_prefix, execRetVal) != 0) {
         wifi_util_error_print(WIFI_CTRL, "%s: json parse failure\n", __func__);
         execRetVal->ErrorCode = VALIDATION_FALIED;
         goto done;
     }
 
     if (push_blob_data(data, subdoc_type) != RETURN_OK) {
-        execRetVal->ErrorCode = VALIDATION_FALIED;
+        execRetVal->ErrorCode = WIFI_HAL_FAILURE;
+        strncpy(execRetVal->ErrorMsg, "push_blob_to_ctrl_queue failed", sizeof(execRetVal->ErrorMsg)-1);
         wifi_util_error_print(WIFI_CTRL, "%s: failed to encode %s subdoc\n", \
                               __func__, (subdoc_type == webconfig_subdoc_type_private) ? "private" : "home");
         goto done;
@@ -3012,20 +3126,32 @@ void webconf_process_home_vap(const char* enb)
 pErr wifi_vap_cfg_subdoc_handler(void *data)
 {
     pErr execRetVal = NULL;
+    unsigned long msg_size = 0L;
+    unsigned char *msg = NULL;
 
+    execRetVal = create_execRetVal();
+    if (execRetVal == NULL ) {
+        wifi_util_error_print(WIFI_CTRL, "%s: malloc failure\n", __func__);
+        return NULL;
+    }
+    memset(execRetVal,0,(sizeof(Err)));
     if(data == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s: Null blob\n", __func__);
+        if (execRetVal) {
+            execRetVal->ErrorCode = VALIDATION_FALIED;
+            strncpy(execRetVal->ErrorMsg, "Empty subdoc", sizeof(execRetVal->ErrorMsg)-1);
+        }
         return execRetVal;
     }
 
-    unsigned long msg_size = 0L;
-    unsigned char *msg = NULL;
 
     msg_size = b64_get_decoded_buffer_size(strlen((char *)data));
     msg = (unsigned char *) calloc(1,sizeof(unsigned char *) * msg_size);
     if (!msg) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s: Failed to allocate memory.\n",__FUNCTION__);
-        return NULL;
+        strncpy(execRetVal->ErrorMsg, "Failed to allocate memory", sizeof(execRetVal->ErrorMsg)-1);
+        execRetVal->ErrorCode = VALIDATION_FALIED;
+        return execRetVal;
     }
 
     msg_size = 0;
@@ -3037,13 +3163,6 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
     } 
 
     wifidb_print("%s:%d [Start] Current time:[%llu]\r\n", __func__, __LINE__, get_current_ms_time());
-    execRetVal = (pErr)malloc(sizeof(Err));
-    if (execRetVal == NULL ) {
-        free(msg);
-        wifi_util_error_print(WIFI_CTRL, "%s: malloc failure\n", __func__);
-        return execRetVal;
-    }
-    memset(execRetVal,0,(sizeof(Err)));
 
     msgpack_zone msg_z;
     msgpack_object msg_obj;

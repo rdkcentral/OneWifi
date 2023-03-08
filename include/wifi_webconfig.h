@@ -46,7 +46,7 @@ extern "C" {
 #define DEVICE_WIFI_KEYPASSPHRASE       "Device.WiFi.AccessPoint.%d.Security.X_COMCAST-COM_KeyPassphrase"
 #define FACTORY_RESET_NOTIFICATION      "Device.WiFi.NotifyWiFiChanges"
 #define CONFIG_WIFI                     "Device.DeviceInfo.X_RDKCENTRAL-COM_ConfigureWiFi"
-
+#define MAX_SSID_NAME_LEN          33
 #define MIN_PWD_LEN                8
 #define MAX_PWD_LEN                63
 
