@@ -830,7 +830,9 @@ static void webconfig_send_sta_bssid_change_event(wifi_ctrl_t *ctrl, wifi_vap_in
     ext_svc->event_fn(ext_svc, ctrl_event_type_webconfig, ctrl_event_webconfig_set_data_sta_bssid,
         vap_svc_event_none, new);
 
-    memcpy(old->u.sta_info.bssid, new->u.sta_info.bssid, sizeof(bssid_t));
+    if (is_bssid_valid(new->u.sta_info.bssid)) {
+        memcpy(old->u.sta_info.bssid, new->u.sta_info.bssid, sizeof(bssid_t));
+    }
 }
 
 int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data, char **vap_names, unsigned int size)
