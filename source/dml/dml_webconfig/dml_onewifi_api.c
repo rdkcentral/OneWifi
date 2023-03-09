@@ -1204,7 +1204,7 @@ void update_dml_radio_default() {
 
     for(i =0; i<MAX_NUM_RADIOS; i++) {
         radio_cfg[i].AutoChannelSupported = TRUE;
-        strncpy(radio_cfg[i].TransmitPowerSupported,"0,12,25,50,75,100",sizeof(radio_cfg[i].TransmitPowerSupported)-1);
+        strncpy(radio_cfg[i].TransmitPowerSupported,"12,25,50,75,100",sizeof(radio_cfg[i].TransmitPowerSupported)-1);
         radio_cfg[i].DCSSupported = TRUE;
         radio_cfg[i].ExtensionChannel = 3;
         radio_cfg[i].BasicRate = WIFI_BITRATE_DEFAULT;
