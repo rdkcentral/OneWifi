@@ -6078,9 +6078,9 @@ void pktGen_BlastClient ()
     AvgAckThroughput = AckSum/(config.packetCount);
     AvgThroughput = Sum/(config.packetCount);
     wifi_util_dbg_print(WIFI_MON,"\nTotal number of ACK Packets = %lu   Total number of Packets = %lu   Total Duration = %lu ms\n", TotalAckSamples, TotalSamples, totalduration );
-    wifi_util_dbg_print(WIFI_MON,"Calculated Average : ACK Packets Throughput[%.2f Mbps]  Total Packets Throughput[%.2f Mbps]\n\n", AvgAckThroughput, AvgThroughput );
+    wifi_util_dbg_print(WIFI_MON,"Calculated Average : ACK Packets Throughput[%.2lf Mbps]  Total Packets Throughput[%.2lf Mbps]\n\n", AvgAckThroughput, AvgThroughput );
     CcspTraceDebug(("Total number of ACK Packets = %lu   Total number of Packets = %lu   Total Duration = %lu ms\n", TotalAckSamples, TotalSamples, totalduration));
-    CcspTraceDebug(("Calculated Average : ACK Packets Throughput[%.2f Mbps]  Total Packets Throughput[%.2f Mbps]\n", AvgAckThroughput, AvgThroughput));
+    CcspTraceDebug(("Calculated Average : ACK Packets Throughput[%.2lf Mbps]  Total Packets Throughput[%.2lf Mbps]\n", AvgAckThroughput, AvgThroughput));
 
     return;
 }
@@ -6329,7 +6329,7 @@ void process_active_msmt_diagnostics (int ap_index)
         sta->sta_active_msmt_data[count].throughput = g_active_msmt.active_msmt_data[count].throughput;
 
         wifi_util_dbg_print(WIFI_MON,"count[%d] : standard[%s] chan_width[%s] Retransmission [%d]"
-                "RSSI[%d] TxRate[%lu Mbps] RxRate[%lu Mbps] SNR[%d] throughput[%.5f Mbms]"
+                "RSSI[%d] TxRate[%lu Mbps] RxRate[%lu Mbps] SNR[%d] throughput[%.5lf Mbms]"
                 "MaxTxRate[%d] MaxRxRate[%d]\n",
                 count, sta->sta_active_msmt_data[count].Operating_standard,
                 sta->sta_active_msmt_data[count].Operating_channelwidth,
@@ -6342,7 +6342,7 @@ void process_active_msmt_diagnostics (int ap_index)
 
         CcspTraceDebug(("Sampled data - [%d] : {standard[%s],\t chan_width[%s]\t"
            "Retransmission [%d]\t RSSI[%d]\t TxRate[%lu Mbps]\t RxRate[%lu Mbps]\t SNR[%d]\t"
-           "throughput[%.5f Mbms]\t MaxTxRate[%d]\t MaxRxRate[%d]\n}\n",
+           "throughput[%.5lf Mbms]\t MaxTxRate[%d]\t MaxRxRate[%d]\n}\n",
            count, sta->sta_active_msmt_data[count].Operating_standard,
              sta->sta_active_msmt_data[count].Operating_channelwidth,
              sta->sta_active_msmt_data[count].ReTransmission,

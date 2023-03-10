@@ -235,7 +235,7 @@ static void printBlastMetricData(single_client_msmt_type_t msmtType, wifi_monito
         {
             CcspTraceInfo(("{\n \t SampleCount: %d\n \t\t{signalStrength: %d,\n"
                                 "\t\tSNR: %d,\n \t\ttx_phy_rate: %ld,\n \t\trx_phy_rate: %ld,\n"
-                                "\t\tthroughput: %f }\n}\n", sampleCount, staData->sta_active_msmt_data[sampleCount].rssi,
+                                "\t\tthroughput: %lf }\n}\n", sampleCount, staData->sta_active_msmt_data[sampleCount].rssi,
                                 staData->sta_active_msmt_data[sampleCount].SNR,
                                 staData->sta_active_msmt_data[sampleCount].TxPhyRate,
                                 staData->sta_active_msmt_data[sampleCount].RxPhyRate,
@@ -1485,7 +1485,7 @@ void upload_single_client_active_msmt_data(bssid_data_t *bssid_info, sta_data_t 
         }
 
         //throughput
-        wifi_util_dbg_print(WIFI_MON, "%s : %d count = %d throughput = %f\n",__func__,__LINE__,sampleCount,sta_data->sta_active_msmt_data[sampleCount].throughput);
+        wifi_util_dbg_print(WIFI_MON, "%s : %d count = %d throughput = %lf\n",__func__,__LINE__,sampleCount,sta_data->sta_active_msmt_data[sampleCount].throughput);
         avro_value_get_by_name(&dr, "throughput", &bdrField, NULL);
         if ( CHK_AVRO_ERR ) {
             wifi_util_dbg_print(WIFI_MON, "%s:%d: Avro error: %s\n", __func__, __LINE__, avro_strerror());
