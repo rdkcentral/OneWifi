@@ -1200,6 +1200,7 @@ int get_vap_params_from_psm(unsigned int vap_index, wifi_vap_info_t *vap_config)
 
     nvram_get_current_ssid(bss_cfg->ssid, (instance_number - 1));
     nvram_get_current_security_mode(&bss_cfg->security.mode, (instance_number - 1));
+    nvram_get_vap_enable_status(&bss_cfg->enabled, (instance_number - 1));
 
     wifi_security_modes_t mode = bss_cfg->security.mode;
     if ((mode == wifi_security_mode_wpa_enterprise) || (mode == wifi_security_mode_wpa2_enterprise ) || (mode == wifi_security_mode_wpa3_enterprise) || (mode == wifi_security_mode_wpa_wpa2_enterprise)) {
