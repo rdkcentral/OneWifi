@@ -233,7 +233,7 @@ void rdk_wifi_radio_get_operating_standards(uint8_t r_index, char *buf)
                 strcat(buf, "ac");
             }
         }
-#ifdef _WIFI_AX_SUPPORT_
+
         if (radio_vap_map.variant & WIFI_80211_VARIANT_AX )
         {
             if (strlen(buf) != 0)
@@ -245,8 +245,6 @@ void rdk_wifi_radio_get_operating_standards(uint8_t r_index, char *buf)
                 strcat(buf, "ax");
             }
         }
-#endif
-
 }
 
 int rdk_wifi_vap_get_from_index(int wlanIndex, wifi_vap_info_t *vap_map)
