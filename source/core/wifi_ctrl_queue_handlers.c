@@ -161,6 +161,22 @@ void process_assoc_rsp_frame_event(frame_data_t *msg, uint32_t msg_length)
 #endif // DML_SUPPORT
 }
 
+void process_reassoc_req_frame_event(frame_data_t *msg, uint32_t msg_length)
+{
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d rssi:%d\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir, msg->frame.sig_dbm);
+#if DML_SUPPORT
+    send_app_event(ctrl_event_type_hal_ind, msg);
+#endif // DML_SUPPORT
+}
+
+void process_reassoc_rsp_frame_event(frame_data_t *msg, uint32_t msg_length)
+{
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir);
+#if DML_SUPPORT
+    send_app_event(ctrl_event_type_hal_ind, msg);
+#endif // DML_SUPPORT
+}
+
 void process_dpp_public_action_frame_event(frame_data_t *msg, uint32_t msg_length)
 {
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir);
@@ -2494,6 +2510,14 @@ void handle_hal_indication(wifi_ctrl_t *ctrl, void *data, unsigned int len, ctrl
 
         case ctrl_event_hal_assoc_rsp_frame:
             process_assoc_rsp_frame_event(data, len);
+            break;
+
+        case ctrl_event_hal_reassoc_req_frame:
+            process_reassoc_req_frame_event(data, len);
+            break;
+
+        case ctrl_event_hal_reassoc_rsp_frame:
+            process_reassoc_rsp_frame_event(data, len);
             break;
 
         case ctrl_event_hal_dpp_public_action_frame:

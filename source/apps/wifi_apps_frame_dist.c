@@ -185,6 +185,17 @@ void apps_assoc_rsp_frame_event(wifi_apps_t *apps, frame_data_t *msg)
     wifi_util_dbg_print(WIFI_APPS,"%s:%d wifi assoc rsp mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir);
 }
 
+void apps_reassoc_req_frame_event(wifi_apps_t *apps, frame_data_t *msg)
+{
+    wifi_util_dbg_print(WIFI_APPS,"%s:%d wifi reassoc req mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir);
+    mgmt_frame_rbus_send(apps->rbus_handle, WIFI_ANALYTICS_FRAME_EVENTS, msg);
+}
+
+void apps_reassoc_rsp_frame_event(wifi_apps_t *apps, frame_data_t *msg)
+{
+    wifi_util_dbg_print(WIFI_APPS,"%s:%d wifi reassoc rsp mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir);
+}
+
 int wifi_apps_frame_dist_event(wifi_apps_t *apps, ctrl_event_type_t type, ctrl_event_subtype_t sub_type, void *arg)
 {
     frame_data_t *mgmt_data = (frame_data_t *)arg;
@@ -207,6 +218,12 @@ int wifi_apps_frame_dist_event(wifi_apps_t *apps, ctrl_event_type_t type, ctrl_e
                     break;
                 case ctrl_event_hal_assoc_rsp_frame:
                     apps_assoc_rsp_frame_event(apps, mgmt_data);
+                    break;
+                case ctrl_event_hal_reassoc_req_frame:
+                    apps_reassoc_req_frame_event(apps, mgmt_data);
+                    break;
+                case ctrl_event_hal_reassoc_rsp_frame:
+                    apps_reassoc_rsp_frame_event(apps, mgmt_data);
                     break;
                 default:
                     wifi_util_dbg_print(WIFI_APPS,"%s:%d apps sub_event:%d not handle\r\n", __func__, __LINE__, sub_type);
@@ -231,6 +248,10 @@ int convert_mgmt_frame_type_from_hal_to_ctrl(wifi_mgmtFrameType_t hal_type, ctrl
         *ctrl_type = ctrl_event_hal_assoc_req_frame;
     } else if (hal_type == WIFI_MGMT_FRAME_TYPE_ASSOC_RSP) {
         *ctrl_type = ctrl_event_hal_assoc_rsp_frame;
+    } else if (hal_type == WIFI_MGMT_FRAME_TYPE_REASSOC_REQ) {
+        *ctrl_type = ctrl_event_hal_reassoc_req_frame;
+    } else if (hal_type == WIFI_MGMT_FRAME_TYPE_REASSOC_RSP) {
+        *ctrl_type = ctrl_event_hal_reassoc_rsp_frame;
     } else if (hal_type == WIFI_MGMT_FRAME_TYPE_AUTH) {
         *ctrl_type = ctrl_event_hal_auth_frame;
     } else if (hal_type == WIFI_MGMT_FRAME_TYPE_DEAUTH) {

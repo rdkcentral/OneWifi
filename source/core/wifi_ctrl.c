@@ -1058,6 +1058,14 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
         memcpy(mgmt_frame.data, frame, len);
         mgmt_frame.frame.len = len;
         evt_subtype = ctrl_event_hal_assoc_rsp_frame;
+    } else if (type == WIFI_MGMT_FRAME_TYPE_REASSOC_REQ) {
+        memcpy(mgmt_frame.data, frame, len);
+        mgmt_frame.frame.len = len;
+        evt_subtype = ctrl_event_hal_reassoc_req_frame;
+    } else if (type == WIFI_MGMT_FRAME_TYPE_REASSOC_RSP) {
+        memcpy(mgmt_frame.data, frame, len);
+        mgmt_frame.frame.len = len;
+        evt_subtype = ctrl_event_hal_reassoc_rsp_frame;
     } else if (type == WIFI_MGMT_FRAME_TYPE_ACTION) {
         paction = (wifi_actionFrameHdr_t *)(frame + sizeof(struct ieee80211_frame));
         switch (paction->cat) {

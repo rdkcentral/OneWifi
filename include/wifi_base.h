@@ -101,6 +101,8 @@ typedef enum {
     ctrl_event_hal_deauth_frame,
     ctrl_event_hal_assoc_req_frame,
     ctrl_event_hal_assoc_rsp_frame,
+    ctrl_event_hal_reassoc_req_frame,
+    ctrl_event_hal_reassoc_rsp_frame,
     ctrl_event_hal_dpp_public_action_frame,
     ctrl_event_hal_dpp_config_req_frame,
     ctrl_event_hal_anqp_gas_init_frame,

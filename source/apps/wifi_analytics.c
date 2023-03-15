@@ -335,6 +335,16 @@ int analytics_event_hal_assoc_rsp_frame(wifi_apps_t *apps, void *arg)
     return 0;
 }
 
+int analytics_event_hal_reassoc_req_frame(wifi_apps_t *apps, void *arg)
+{
+    return 0;
+}
+
+int analytics_event_hal_reassoc_rsp_frame(wifi_apps_t *apps, void *arg)
+{
+    return 0;
+}
+
 int analytics_event_hal_sta_conn_status(wifi_apps_t *apps, void *arg)
 {
     rdk_sta_data_t *sta_data = (rdk_sta_data_t *)arg;
@@ -666,6 +676,14 @@ int hal_event_analytics(wifi_apps_t *apps, ctrl_event_subtype_t sub_type, void *
 
         case ctrl_event_hal_assoc_rsp_frame:
             analytics_event_hal_assoc_rsp_frame(apps, arg);
+            break;
+
+        case ctrl_event_hal_reassoc_req_frame:
+            analytics_event_hal_reassoc_req_frame(apps, arg);
+            break;
+
+        case ctrl_event_hal_reassoc_rsp_frame:
+            analytics_event_hal_reassoc_rsp_frame(apps, arg);
             break;
 
         case ctrl_event_hal_sta_conn_status:
