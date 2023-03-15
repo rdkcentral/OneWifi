@@ -175,3 +175,24 @@ INT wifi_delApAclDevices(INT apINdex)
 {
     return RETURN_OK;
 }
+
+// XXX: Temporary stubs
+INT wifi_getRadioTrafficStats2(INT radioIndex, wifi_radioTrafficStats2_t *output_struct)
+{
+    return RETURN_OK;
+}
+
+INT wifi_getRadioOperatingChannelBandwidth(INT radioIndex, CHAR *output_string)
+{
+    return RETURN_OK;
+}
+
+INT wifi_getApAssociatedClientDiagnosticResult(INT apIndex, char *mac_addr, wifi_associated_dev3_t *dev_conn)
+{
+    return RETURN_OK;
+}
+
+INT wifi_getApAssociatedDevice(INT ap_index, CHAR *output_buf, INT output_buf_size)
+{
+    return RETURN_OK;
+}

@@ -20,6 +20,8 @@
 #ifndef WIFI_DB_H
 #define WIFI_DB_H
 
+#include <ev.h>
+
 #ifdef __cplusplus
 extern "C"
 {

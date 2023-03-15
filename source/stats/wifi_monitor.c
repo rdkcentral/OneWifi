@@ -17,9 +17,11 @@
   limitations under the License.
  **************************************************************************/
 
+#ifdef CCSP_COMMON
 #include <telemetry_busmessage_sender.h>
 #include "cosa_wifi_apis.h"
 #include "ccsp_psm_helper.h"
+#endif // CCSP_COMMON
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -30,9 +32,9 @@
 #include <errno.h>
 #include <sys/time.h>
 #include "collection.h"
-#include "wifi_passpoint.h"
 #include "wifi_hal.h"
 #include "wifi_mgr.h"
+#include "wifi_util.h"
 #include "wifi_monitor.h"
 #include "wifi_blaster.h"
 #include <sys/socket.h>
@@ -41,6 +43,7 @@
 #include <time.h>
 #include <sys/un.h>
 #include <assert.h>
+#ifdef CCSP_COMMON
 #include "ansc_status.h"
 #include <sysevent/sysevent.h>
 #include "ccsp_base_api.h"
@@ -49,10 +52,11 @@
 #include "ccsp_trace.h"
 #include "safec_lib_common.h"
 #include "ccsp_WifiLog_wrapper.h"
+#endif // CCSP_COMMON
 #include <sched.h>
 #include "scheduler.h"
 
-
+#ifdef CCSP_COMMON
 #include <netinet/tcp.h>    //Provides declarations for tcp header
 #include <netinet/ip.h> //Provides declarations for ip header
 #include <arpa/inet.h> // inet_addr
@@ -71,22 +75,27 @@
 #include <netinet/icmp6.h>
 #include <netinet/ip6.h>
 #include "wifi_events.h"
+#endif // CCSP_COMMON
 
+#ifndef  UNREFERENCED_PARAMETER
+#define UNREFERENCED_PARAMETER(_p_)         (void)(_p_)
+#endif
+
+#define MIN_MAC_LEN 12
+#define RADIO_STATS_INTERVAL_MS 30000 //30 seconds
+
+#ifdef CCSP_COMMON
 #define NDA_RTA(r) \
   ((struct rtattr *)(((char *)(r)) + NLMSG_ALIGN(sizeof(struct ndmsg))))
 
 static events_monitor_t g_events_monitor;
 static struct timeval csi_prune_timer;
 
-#include "wifi_mgr.h"
-#include "wifi_util.h"
-
 int harvester_get_associated_device_info(int vap_index, char **harvester_buf);
 
 extern void* bus_handle;
 extern char g_Subsystem[32];
 #define SINGLE_CLIENT_WIFI_AVRO_FILENAME "WifiSingleClient.avsc"
-#define MIN_MAC_LEN 12
 #define DEFAULT_INSTANT_POLL_TIME 5
 #define DEFAULT_INSTANT_REPORT_TIME 0
 #define MAX_NEIGHBOURS 250
@@ -97,7 +106,6 @@ extern char g_Subsystem[32];
 #define ASSOCIATED_DEVICE_DIAG_INTERVAL_MS 5000 // 5 seconds
 #define CAPTURE_VAP_STATUS_INTERVAL_MS 5000 // 5 seconds
 #define UPLOAD_AP_TELEMETRY_INTERVAL_MS 24*60*60*1000 // 24 Hours
-#define RADIO_STATS_INTERVAL_MS 30000 //30 seconds
 #define NEIGHBOR_SCAN_INTERVAL 60*60*1000 //1 Hr
 #define NEIGHBOR_SCAN_RESULT_INTERVAL 5000 //5 seconds
 
@@ -105,9 +113,12 @@ extern char g_Subsystem[32];
 #define SEC_TO_MILLISEC 1000
 
 char *instSchemaIdBuffer = "8b27dafc-0c4d-40a1-b62c-f24a34074914/4388e585dd7c0d32ac47e71f634b579b";
+#endif // CCSP_COMMON
 
 static wifi_monitor_t g_monitor_module;
 static wifi_actvie_msmt_t g_active_msmt;
+
+#ifdef CCSP_COMMON
 static unsigned msg_id = 1000;
 static const char *wifi_health_log = "/rdklogs/logs/wifihealth.txt";
 static unsigned int vap_up_arr[MAX_VAP]={0};
@@ -123,7 +134,6 @@ ULONG lastupdatedtime = 0;
 ULONG chutil_last_updated_time = 0;
 time_t lastpolledtime = 0;
 
-void deinit_wifi_monitor    (void);
 int device_deauthenticated(int apIndex, char *mac, int reason);
 int device_associated(int apIndex, wifi_associated_dev_t *associated_dev);
 int vapstatus_callback(int apIndex, wifi_vapstatus_t status);
@@ -153,18 +163,14 @@ static int neighscan_task_id = -1;
 INT process_csi(mac_address_t mac_addr, wifi_csi_data_t  *csi_data);
 #endif
 
-int executeCommand(char* command,char* result);
 void associated_client_diagnostics();
 void process_instant_msmt_stop (unsigned int ap_index, instant_msmt_t *msmt);
 void process_instant_msmt_start        (unsigned int ap_index, instant_msmt_t *msmt);
-void process_active_msmt_step();
 void get_self_bss_chan_statistics (int radiocnt , UINT *Tx_perc, UINT  *Rx_perc);
 int get_chan_util_upload_period(void);
-static int configurePktgen(pktGenConfig* config);
 int process_instant_msmt_monitor(void *arg);
 static int refresh_task_period(void *arg);
 int upload_radio_chan_util_telemetry(void *arg); 
-int radio_diagnostics(void *arg); 
 int associated_device_diagnostics_send_event(void *arg);
 static void scheduler_telemetry_tasks(void);
 int csi_getCSIData(void * arg);
@@ -181,6 +187,13 @@ static void upload_client_debug_stats_sta_fa_lmac_mgmt_stats(int apIndex, sta_da
 static void upload_client_debug_stats_sta_vap_activity_stats(int apIndex);
 static void upload_client_debug_stats_transmit_power_stats(int apIndex);
 static void upload_client_debug_stats_chan_stats(int apIndex);
+#endif // CCSP_COMMON
+
+void deinit_wifi_monitor(void);
+int executeCommand(char* command, char* result);
+void process_active_msmt_step();
+static int configurePktgen(pktGenConfig* config);
+int radio_diagnostics(void *arg);
 
 pktGenConfig config;
 pktGenFrameCountSamples  *frameCountSample = NULL;
@@ -194,6 +207,7 @@ static inline char *to_sta_key    (mac_addr_t mac, sta_key_t key)
     return (char *)key;
 }
 
+#ifdef CCSP_COMMON
 BOOL IsWiFiApStatsEnable(UINT uvAPIndex)
 {
     return ((sWiFiDmlApStatsEnableCfg[uvAPIndex]) ? TRUE : FALSE);
@@ -1283,6 +1297,7 @@ int upload_client_telemetry_data(void *arg)
     phase = 0;
     return TIMER_TASK_COMPLETE;
 }
+#endif // CCSP_COMMON
 
 
 static char*
@@ -1298,6 +1313,7 @@ macbytes_to_string(mac_address_t mac, unsigned char* string)
     return (char *)string;
 }
 
+#ifdef CCSP_COMMON
 static void
 reset_client_stats_info(unsigned int apIndex)
 {
@@ -2491,6 +2507,7 @@ void process_instant_msmt_start	(unsigned int ap_index, instant_msmt_t *msmt)
                 process_instant_msmt_monitor, NULL, (g_monitor_module.instantPollPeriod*1000), 0);
     }
 }
+#endif // CCSP_COMMON
 
 /* This function process the active measurement step info
   from the active_msmt_monitor thread and calls wifiblaster. 
@@ -2506,13 +2523,21 @@ void process_active_msmt_step()
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate( &attr, PTHREAD_CREATE_DETACHED );
     if (pthread_create(&id, attrp, WiFiBlastClient, NULL) != 0) {
+#ifdef CCSP_COMMON
         CcspTraceError(("%s:%d: Fail to spawn 'WiFiBlastClient' thread errno: %d - %s\n", __FUNCTION__, __LINE__, errno, strerror(errno)));
+#else
+        wifi_util_dbg_print(WIFI_MON, "%s:%d: Fail to spawn 'WiFiBlastClient' thread errno: %d - %s\n", __FUNCTION__, __LINE__, errno, strerror(errno));
+#endif // CCSP_COMMON
         if(attrp != NULL) {
             pthread_attr_destroy( attrp );
         }
     }
     else {
+#ifdef CCSP_COMMON
         CcspTraceDebug(("%s:%d: Sucessfully created thread for starting blast\n", __FUNCTION__, __LINE__));
+#else
+        wifi_util_dbg_print(WIFI_MON, "%s:%d: Sucessfully created thread for starting blast\n", __FUNCTION__, __LINE__);
+#endif // CCSP_COMMON
     }
     if(attrp != NULL) {
         pthread_attr_destroy( attrp );
@@ -2521,6 +2546,7 @@ void process_active_msmt_step()
     return;
 }
 
+#ifdef CCSP_COMMON
 void process_instant_msmt_stop  (unsigned int ap_index, instant_msmt_t *msmt)
 {
     /*if ((g_monitor_module.inst_msmt.active == true) && (memcmp(g_monitor_module.inst_msmt.sta_mac, msmt->sta_mac, sizeof(mac_address_t)) == 0)) {
@@ -2620,6 +2646,7 @@ int process_periodical_neighbor_scan(void *arg)
     }
     return TIMER_TASK_COMPLETE;
 }
+#endif // CCSP_COMMON
 
 void *monitor_function  (void *data)
 {
@@ -2655,9 +2682,12 @@ void *monitor_function  (void *data)
                     continue;
                 }
 
+#ifdef CCSP_COMMON
                 //Send data to wifi_events library
                 events_publish(*queue_data);
+#endif // CCSP_COMMON
                 switch (queue_data->event_type) {
+#ifdef CCSP_COMMON
                     case monitor_event_type_diagnostics:
                         //process_diagnostics(queue_data->ap_index, &queue_data->.devs);
                     break;
@@ -2691,26 +2721,33 @@ void *monitor_function  (void *data)
                     case monitor_event_type_VapStatsFlagChange:
                         vap_stats_flag_changed(queue_data->ap_index, &queue_data->u.flag);
                     break;
+#endif // CCSP_COMMON
                     case monitor_event_type_process_active_msmt:
                         if (proc_data->blastReqInQueueCount == 1)
                         {
                             wifi_util_dbg_print(WIFI_MON, "%s:%d: calling process_active_msmt_step \n",__func__, __LINE__);
+#ifdef CCSP_COMMON
                             CcspTraceInfo(("%s-%d calling process_active_msmt_step\n", __FUNCTION__, __LINE__));
+#endif // CCSP_COMMON
                             process_active_msmt_step();
                         }
                         else
                         {
                             wifi_util_dbg_print(WIFI_MON, "%s:%d: skipping old request as blastReqInQueueCount is %d \n",__func__, __LINE__,proc_data->blastReqInQueueCount);
+#ifdef CCSP_COMMON
                             CcspTraceInfo(("%s-%d skipping old request as blastReqInQueueCount is %d\n", __FUNCTION__, __LINE__, proc_data->blastReqInQueueCount));
+#endif // CCSP_COMMON
                             proc_data->blastReqInQueueCount--;
                         }
                     break;
+#ifdef CCSP_COMMON
                     case monitor_event_type_csi_update_config:
                         csi_sheduler_enable();
                     break;
                     case monitor_event_type_clientdiag_update_config:
                         clientdiag_sheduler_enable(queue_data->ap_index);
                     break;
+#endif // CCSP_COMMON
                     default:
                     break;
 
@@ -2736,6 +2773,7 @@ void *monitor_function  (void *data)
     return NULL;
 }
 
+#ifdef CCSP_COMMON
 static int refresh_task_period(void *arg)
 {
     unsigned int    new_upload_period;
@@ -2792,7 +2830,7 @@ static int refresh_task_period(void *arg)
     }
     return TIMER_TASK_COMPLETE;
 }
-
+#endif // CCSP_COMMON
 
 bool is_device_associated(int ap_index, char *mac)
 {
@@ -2815,6 +2853,7 @@ bool is_device_associated(int ap_index, char *mac)
     return false;
 }
 
+#ifdef CCSP_COMMON
 int
 timeval_subtract (struct timeval *result, struct timeval *end, struct timeval *start)
 {
@@ -2840,6 +2879,7 @@ timeval_subtract (struct timeval *result, struct timeval *end, struct timeval *s
 
     return (end->tv_sec < start->tv_sec);
 }
+#endif // CCSP_COMMON
 
 int  getApIndexfromClientMac(char *check_mac)
 {
@@ -2877,6 +2917,7 @@ int  getApIndexfromClientMac(char *check_mac)
     return -1;
 }
 
+#ifdef CCSP_COMMON
 static void rtattr_parse(struct rtattr *table[], int max, struct rtattr *rta, int len)
 {
     unsigned short type;
@@ -4279,6 +4320,7 @@ void associated_client_diagnostics ()
     process_diagnostics(index, &dev_conn, 1);
 #endif
 }
+#endif // CCSP_COMMON
 
 int radio_diagnostics(void *arg)
 {
@@ -4349,7 +4391,7 @@ int radio_diagnostics(void *arg)
     return TIMER_TASK_CONTINUE;
 }
 
-
+#ifdef CCSP_COMMON
 int associated_devices_diagnostics(void *arg)
 {
     static unsigned int idx = 0;
@@ -4740,6 +4782,7 @@ static void scheduler_telemetry_tasks(void)
         }
     }
 }
+#endif // CCSP_COMMON
 
 void update_ecomode_radios()
 {
@@ -4754,16 +4797,20 @@ void update_ecomode_radios()
 
 int init_wifi_monitor()
 {
-    int rssi;
     unsigned int i;
+#ifdef CCSP_COMMON
     unsigned int uptimeval = 0;
+    int rssi;
     wifi_mgr_t *mgr = get_wifimgr_obj();
     UINT vap_index, radio;
+#endif // CCSP_COMMON
+
+    update_ecomode_radios();
     
+#if CCSP_COMMON
     memset(g_monitor_module.cliStatsList, 0, MAX_VAP);
     g_monitor_module.poll_period = 5;
     g_monitor_module.upload_period = get_upload_period(60);//Default value 60
-    update_ecomode_radios();
     uptimeval=get_sys_uptime();
     chan_util_upload_period = get_chan_util_upload_period();
     wifi_util_dbg_print(WIFI_MON, "%s:%d system uptime val is %ld and upload period is %d in secs\n",
@@ -4801,9 +4848,12 @@ int init_wifi_monitor()
             wifi_util_dbg_print(WIFI_MON, "%s: wrong vapIndex:%d \n", __FUNCTION__, i);
         }
     }
+#endif // CCSP_COMMON
 
     gettimeofday(&g_monitor_module.last_signalled_time, NULL);
+#ifdef CCSP_COMMON
     gettimeofday(&g_monitor_module.last_polled_time, NULL);
+#endif // CCSP_COMMON
     pthread_cond_init(&g_monitor_module.cond, NULL);
     pthread_mutex_init(&g_monitor_module.queue_lock, NULL);
     pthread_mutex_init(&g_monitor_module.data_lock, NULL);
@@ -4831,6 +4881,7 @@ int init_wifi_monitor()
         return -1;
     }
 
+#ifdef CCSP_COMMON
     g_monitor_module.chutil_id = 0;
     g_monitor_module.client_telemetry_id = 0;
     g_monitor_module.client_debug_id = 0;
@@ -4839,7 +4890,9 @@ int init_wifi_monitor()
     g_monitor_module.refresh_task_id = 0;
     g_monitor_module.associated_devices_id = 0;
     g_monitor_module.vap_status_id = 0;
+#endif // CCSP_COMMON
     g_monitor_module.radio_diagnostics_id = 0;
+#ifdef CCSP_COMMON
     g_monitor_module.radio_health_telemetry_logger_id = 0;
     g_monitor_module.upload_ap_telemetry_pmf_id = 0;
     g_monitor_module.csi_sched_id = 0;
@@ -4855,8 +4908,18 @@ int init_wifi_monitor()
         g_monitor_module.clientdiag_sched_arg[i] = vap_index;
         g_monitor_module.clientdiag_sched_interval[i] = 0;
     }
-    memset(g_events_monitor.vap_ip, '\0', sizeof(g_events_monitor.vap_ip));
+#endif // CCSP_COMMON
+
+#ifdef CCSP_COMMON
     scheduler_telemetry_tasks();
+#else
+    //RADIO_STATS_INTERVAL - 30 seconds
+    scheduler_add_timer_task(g_monitor_module.sched, FALSE, &g_monitor_module.radio_diagnostics_id, radio_diagnostics, NULL,
+        RADIO_STATS_INTERVAL_MS, 0);
+#endif // CCSP_COMMON
+
+#ifdef CCSP_COMMON
+    memset(g_events_monitor.vap_ip, '\0', sizeof(g_events_monitor.vap_ip));
     pthread_mutex_init(&g_events_monitor.lock, NULL);
 
     g_events_monitor.csi_queue = queue_create();
@@ -4865,11 +4928,14 @@ int init_wifi_monitor()
         wifi_util_error_print(WIFI_MON, "monitor csi queue create error\n");
         return -1;
     }
+#endif // CCSP_COMMON
 
     g_monitor_module.exit_monitor = false;
     g_monitor_module.blastReqInQueueCount = 0;
     /* Initializing the lock for active measurement g_active_msmt.lock */
     pthread_mutex_init(&g_active_msmt.lock, NULL);
+
+#if CCSP_COMMON
     wifi_hal_newApAssociatedDevice_callback_register(device_associated);
     wifi_vapstatus_callback_register(vapstatus_callback);
 #if !defined(_PLATFORM_RASPBERRYPI_) && !defined(_PLATFORM_TURRIS_)
@@ -4880,6 +4946,10 @@ int init_wifi_monitor()
     wifi_csi_callback_register(process_csi);
 #endif
 
+#endif // CCSP_COMMON
+
+    wifi_util_dbg_print(WIFI_MON, "%s:%d Wi-Fi monitor is initialized successfully\n", __func__, __LINE__);
+
     return 0;
 }
 
@@ -4887,9 +4957,11 @@ int start_wifi_monitor ()
 {
     unsigned int i;
     UINT vap_index, radio;
+#ifdef CCSP_COMMON
     //ONEWIFI To avoid the st
         //Cleanup all CSI clients configured in driver
     unsigned char def_mac[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+#endif // CCSP_COMMON
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
     for (i = 0; i < getTotalNumberVAPs(); i++) {
@@ -4906,9 +4978,11 @@ int start_wifi_monitor ()
             wifi_util_dbg_print(WIFI_MON, "%s:%d vap_bss_info->bssid is %s for vap %d", __func__,__LINE__,to_mac_str(g_monitor_module.bssid_data[i].bssid, mac_str), vap_index);
         }
 
+#ifdef CCSP_COMMON
         //ONEWIFI To avoid the segmentation Fault
         //Cleanup all CSI clients configured in driver
         wifi_enableCSIEngine(vap_index, def_mac, FALSE);
+#endif // CCSP_COMMON
     }
     
     pthread_attr_t attr;
@@ -4925,9 +4999,12 @@ int start_wifi_monitor ()
         return -1;
     }
 
+    wifi_util_dbg_print(WIFI_MON, "%s:%d Monitor thread is started successfully\n", __func__, __LINE__);
+
     if(attrp != NULL)
         pthread_attr_destroy( attrp );
 
+#ifdef CCSP_COMMON
     if(events_init() < 0) {
         wifi_util_error_print(WIFI_MON,"%s:%d: Failed to open socket for wifi event send\n", __func__, __LINE__);
     } else {
@@ -4943,6 +5020,8 @@ int start_wifi_monitor ()
         //wifi_util_dbg_print(WIFI_MON, "%s:%d: Failed to initialize paroduc task\n", __func__, __LINE__);
 
     }
+#endif // CCSP_COMMON
+
     return 0;
 }
 
@@ -4952,17 +5031,21 @@ void deinit_wifi_monitor()
     sta_data_t *sta, *temp_sta;
     char key[64] = {0};
 
+#ifdef CCSP_COMMON
     events_deinit();
 
     sysevent_close(g_monitor_module.sysevent_fd, g_monitor_module.sysevent_token);
+#endif // CCSP_COMMON
     if(g_monitor_module.queue != NULL)
         queue_destroy(g_monitor_module.queue);
 
     scheduler_deinit(&(g_monitor_module.sched));
+#ifdef CCSP_COMMON
     pthread_mutex_destroy(&g_events_monitor.lock);
     if(g_events_monitor.csi_queue != NULL) {
         queue_destroy(g_events_monitor.csi_queue);
     }
+#endif // CCSP_COMMON
     for (i = 0; i < getTotalNumberVAPs(); i++) {
         if(g_monitor_module.bssid_data[i].sta_map != NULL) {
             sta = hash_map_get_first(g_monitor_module.bssid_data[i].sta_map);
@@ -4988,6 +5071,7 @@ void deinit_wifi_monitor()
     g_monitor_module.blastReqInQueueCount = 0;
 }
 
+#ifdef CCSP_COMMON
 unsigned int get_poll_period 	()
 {
     return g_monitor_module.poll_period;
@@ -5238,6 +5322,7 @@ bool monitor_is_instant_msmt_enabled()
 {
     return g_monitor_module.instntMsmtenable;
 }
+#endif // CCSP_COMMON 
 
 
 /* Active Measurement GET Calls */
@@ -5428,7 +5513,9 @@ void SetActiveMsmtEnable(bool enable)
 {
     wifi_monitor_data_t *event;
     wifi_util_dbg_print(WIFI_MON, "%s:%d: changing the Active Measurement Flag to %s\n", __func__, __LINE__,(enable ? "true" : "false"));
+#ifdef CCSP_COMMON
     CcspTraceInfo(("%s-%d changing the Active Measurement Flag to %s\n", __FUNCTION__, __LINE__, (enable ? "true" : "false")));
+#endif // CCSP_COMMON
 
 
     /* return if enable is false and there is no more step to process */
@@ -5436,7 +5523,11 @@ void SetActiveMsmtEnable(bool enable)
         g_active_msmt.active_msmt.ActiveMsmtEnable = enable;
         wifi_util_dbg_print(WIFI_MON, "%s:%d: changed the Active Measurement Flag to false\n", __func__, __LINE__);
         if (g_monitor_module.blastReqInQueueCount)
+#ifdef CCSP_COMMON
             CcspTraceInfo(("%s-%d Blaster stopped, pending queue value %d\n!!", __FUNCTION__, __LINE__, g_monitor_module.blastReqInQueueCount));
+#else
+            wifi_util_dbg_print(WIFI_MON, "%s-%d Blaster stopped, pending queue value %d\n!!", __FUNCTION__, __LINE__, g_monitor_module.blastReqInQueueCount);
+#endif // CCSP_COMMON
         return;
     }
     wifi_util_dbg_print(WIFI_MON, "%s:%d: allocating memory for event data\n", __func__, __LINE__);
@@ -5728,7 +5819,7 @@ void SetActiveMsmtStepDstMac(char *DstMac, ULONG StepIns)
     }
 }
 
-
+#ifdef CCSP_COMMON
 /* This function returns the system uptime at the time of init */
 long get_sys_uptime()
 {
@@ -5774,6 +5865,7 @@ long get_sys_uptime()
 
      return atoi(buff);
 }
+#endif // CCSP_COMMON
 
 wifi_monitor_t *get_wifi_monitor()
 {
@@ -5919,9 +6011,15 @@ static int configurePktgen(pktGenConfig* config)
     snprintf(command,BUFF_LEN_MAX,"echo \"pkt_size %d \" >> %s%s",config->packetSize, PKTGEN_DEVICE_FILE, config->wlanInterface);
     executeCommand(command,result);
 
+#ifdef CCSP_COMMON
     CcspTraceDebug(("Pkt gen control file %s Pkt gen device file %s\n", PKTGEN_CNTRL_FILE, PKTGEN_DEVICE_FILE));
     CcspTraceDebug(("%s:%d Configured pktgen with configs {Interface:%s,\t queue_map_min:2,\t queue_map_max:2,\t count:0,\t pkt_size:%d}\n",
            __FUNCTION__, __LINE__, config->wlanInterface, config->packetSize));
+#else
+    wifi_util_dbg_print(WIFI_MON, "Pkt gen control file %s Pkt gen device file %s\n", PKTGEN_CNTRL_FILE, PKTGEN_DEVICE_FILE);
+    wifi_util_dbg_print(WIFI_MON, "%s:%d Configured pktgen with configs {Interface:%s,\t queue_map_min:2,\t queue_map_max:2,\t count:0,\t pkt_size:%d}\n",
+           __FUNCTION__, __LINE__, config->wlanInterface, config->packetSize);
+#endif // CCSP_COMMON
     return 1;
 }
 /*********************************************************************************/
@@ -6049,10 +6147,17 @@ void pktGen_BlastClient ()
     int index = g_active_msmt.curStepData.ApIndex;
     pthread_attr_t  Attr;
 
+#ifdef CCSP_COMMON
     CcspTraceDebug(("%s:%d Start pktGen utility and analyse received samples for active clients [%02x%02x%02x%02x%02x%02x]\n",
             __FUNCTION__, __LINE__,  g_active_msmt.curStepData.DestMac[0], g_active_msmt.curStepData.DestMac[1],
             g_active_msmt.curStepData.DestMac[2], g_active_msmt.curStepData.DestMac[3],
             g_active_msmt.curStepData.DestMac[4], g_active_msmt.curStepData.DestMac[5]));
+#else
+    wifi_util_dbg_print(WIFI_MON, "%s:%d Start pktGen utility and analyse received samples for active clients [%02x%02x%02x%02x%02x%02x]\n",
+            __FUNCTION__, __LINE__,  g_active_msmt.curStepData.DestMac[0], g_active_msmt.curStepData.DestMac[1],
+            g_active_msmt.curStepData.DestMac[2], g_active_msmt.curStepData.DestMac[3],
+            g_active_msmt.curStepData.DestMac[4], g_active_msmt.curStepData.DestMac[5]);
+#endif // CCSP_COMMON
 
 
     snprintf(s_mac, MIN_MAC_LEN+1, "%02x%02x%02x%02x%02x%02x", g_active_msmt.curStepData.DestMac[0],
@@ -6068,13 +6173,23 @@ void pktGen_BlastClient ()
         /* spawn a thread to start the packetgen as this will trigger multiple threads which will hang the calling thread*/
         wifi_util_dbg_print(WIFI_MON, "%s : %d spawn a thread to start the packetgen\n",__func__,__LINE__);
         if (pthread_create(&startpkt_thread_id, &Attr, startWifiBlast, NULL) != 0) {
+#ifdef CCSP_COMMON
             CcspTraceError(("%s:%d: Failed to spawn thread to start the packet gen\n", __FUNCTION__, __LINE__));
+#else
+            wifi_util_dbg_print(WIFI_MON, "%s:%d: Failed to spawn thread to start the packet gen\n", __FUNCTION__, __LINE__);
+#endif // CCSP_COMMON
         } else {
+#ifdef CCSP_COMMON
             CcspTraceInfo(("%s:%d Created thread to start packet gen\n", __FUNCTION__, __LINE__));
+#else
+            wifi_util_dbg_print(WIFI_MON, "%s:%d Created thread to start packet gen\n", __FUNCTION__, __LINE__);
+#endif // CCSP_COMMON
         }
         pthread_attr_destroy(&Attr);
     } else {
+#ifdef CCSP_COMMON
         CcspTraceDebug(("%s : %d no need to start pktgen for offline client %s\n" ,__FUNCTION__, __LINE__, s_mac));
+#endif // CCSP_COMMON
         wifi_util_dbg_print(WIFI_MON, "%s : %d no need to start pktgen for offline client %s\n",__func__,__LINE__,s_mac);
     }
 
@@ -6092,7 +6207,11 @@ void pktGen_BlastClient ()
             wifi_setClientDetailedStatisticsEnable(getRadioIndexFromAp(index), FALSE);
 #endif
         }
+#ifdef CCSP_COMMON
         CcspTraceError(("%s:%d ERROR: Failed to allocate memory for active_msmt_data\n", __FUNCTION__, __LINE__));
+#else
+        wifi_util_dbg_print(WIFI_MON, "%s:%d ERROR: Failed to allocate memory for active_msmt_data\n", __FUNCTION__, __LINE__);
+#endif // CCSP_COMMON
         return;
     }
 
@@ -6102,8 +6221,10 @@ void pktGen_BlastClient ()
 
 #if !defined(_XF3_PRODUCT_REQ_) && !defined(_CBR_PRODUCT_REQ_) && !defined(_HUB4_PRODUCT_REQ_)
         wifi_util_dbg_print(WIFI_MON,"%s : %d WIFI_HAL enabled, calling wifi_getApAssociatedClientDiagnosticResult with mac : %s\n",__func__,__LINE__,s_mac);
+#ifdef CCSP_COMMON
         CcspTraceDebug(("%s-%d WIFI_HAL enabled, calling wifi_getApAssociatedClientDiagnosticResult with mac : %s for sampling process",
                    __FUNCTION__, __LINE__, s_mac));
+#endif // CCSP_COMMON
 
         unsigned long start = getCurrentTimeInMicroSeconds ();
         WaitForDuration ( waittime );
@@ -6113,7 +6234,9 @@ void pktGen_BlastClient ()
 
                 frameCountSample[SampleCount].WaitAndLatencyInMs = ((getCurrentTimeInMicroSeconds () - start) / 1000);
                 wifi_util_dbg_print(WIFI_MON, "PKTGEN_WAIT_IN_MS duration : %lu\n", ((getCurrentTimeInMicroSeconds () - start)/1000));
+#ifdef CCSP_COMMON
                 CcspTraceDebug(("PKTGEN_WAIT_IN_MS duration : %lu\n", ((getCurrentTimeInMicroSeconds () - start)/1000)));
+#endif // CCSP_COMMON
 
                 g_active_msmt.active_msmt_data[SampleCount].rssi = dev_conn.cli_RSSI;
                 g_active_msmt.active_msmt_data[SampleCount].TxPhyRate = dev_conn.cli_LastDataDownlinkRate;
@@ -6138,14 +6261,18 @@ void pktGen_BlastClient ()
                         frameCountSample[SampleCount].WaitAndLatencyInMs, dev_conn.cli_RSSI, dev_conn.cli_LastDataDownlinkRate, dev_conn.cli_LastDataUplinkRate, dev_conn.cli_SNR,g_active_msmt.active_msmt_data[SampleCount].Operating_channelwidth ,g_active_msmt.active_msmt_data[SampleCount].Operating_standard,g_active_msmt.active_msmt_data[SampleCount].MaxTxRate, g_active_msmt.active_msmt_data[SampleCount].MaxRxRate);
             } else {
                 wifi_util_dbg_print(WIFI_MON,"%s : %d wifi_getApAssociatedClientDiagnosticResult failed for mac : %s\n",__func__,__LINE__,s_mac);
+#ifdef CCSP_COMMON
                 CcspTraceError(("%s:%d wifi_getApAssociatedClientDiagnosticResult failed for mac : %s\n", __FUNCTION__, __LINE__, s_mac));
+#endif // CCSP_COMMON
                 frameCountSample[SampleCount].PacketsSentAck = 0;
                 frameCountSample[SampleCount].PacketsSentTotal = 0;
                 frameCountSample[SampleCount].WaitAndLatencyInMs = 0;
             }
         } else {
             wifi_util_dbg_print(WIFI_MON,"%s : %d client is offline so setting the default values.\n",__func__,__LINE__);
+#ifdef CCSP_COMMON
             CcspTraceDebug(("client is offline so setting the default values.\n"));
+#endif // CCSP_COMMON
             frameCountSample[SampleCount].PacketsSentAck = 0;
             frameCountSample[SampleCount].PacketsSentTotal = 0;
             frameCountSample[SampleCount].WaitAndLatencyInMs = 0;
@@ -6193,8 +6320,10 @@ void pktGen_BlastClient ()
     AvgThroughput = Sum/(config.packetCount);
     wifi_util_dbg_print(WIFI_MON,"\nTotal number of ACK Packets = %lu   Total number of Packets = %lu   Total Duration = %lu ms\n", TotalAckSamples, TotalSamples, totalduration );
     wifi_util_dbg_print(WIFI_MON,"Calculated Average : ACK Packets Throughput[%.2lf Mbps]  Total Packets Throughput[%.2lf Mbps]\n\n", AvgAckThroughput, AvgThroughput );
+#ifdef CCSP_COMMON
     CcspTraceDebug(("Total number of ACK Packets = %lu   Total number of Packets = %lu   Total Duration = %lu ms\n", TotalAckSamples, TotalSamples, totalduration));
     CcspTraceDebug(("Calculated Average : ACK Packets Throughput[%.2lf Mbps]  Total Packets Throughput[%.2lf Mbps]\n", AvgAckThroughput, AvgThroughput));
+#endif // CCSP_COMMON
 
     return;
 }
@@ -6275,10 +6404,11 @@ void *WiFiBlastClient(void* data)
                     g_active_msmt.curStepData.DestMac[0], g_active_msmt.curStepData.DestMac[1],
                     g_active_msmt.curStepData.DestMac[2], g_active_msmt.curStepData.DestMac[3],
                     g_active_msmt.curStepData.DestMac[4], g_active_msmt.curStepData.DestMac[5]);
-
+#ifdef CCSP_COMMON
             CcspTraceInfo(("Blaster test is initiated for Dest mac [%s]\n", macStr));
             CcspTraceInfo(("Interface [%s], Send Duration: [%d msecs], Packet Size: [%d bytes], Sample count: [%d]\n",
                 config.wlanInterface, config.sendDuration, config.packetSize, config.packetCount));
+#endif // CCSP_COMMON
 
             wifi_util_dbg_print(WIFI_MON, "\n=========START THE TEST=========\n");
             wifi_util_dbg_print(WIFI_MON,"Interface [%s], Send Duration: [%d msecs], Packet Size: [%d bytes], Sample count: [%d]\n",
@@ -6306,10 +6436,14 @@ void *WiFiBlastClient(void* data)
 
                 if ( ret == 0) {
                     wifi_util_dbg_print(WIFI_MON,"startpkt_thread_id is killed\n");
+#ifdef CCSP_COMMON
                     CcspTraceDebug(("startpkt_thread_id is killed\n"));
+#endif // CCSP_COMMON
                 } else {
                     wifi_util_error_print(WIFI_MON,"pthread_kill returns error : %d\n", ret);
+#ifdef CCSP_COMMON
                     CcspTraceDebug(("pthread_cance returns error : %d errno :%d - %s\n", ret, errno, strerror(errno)));
+#endif // CCSP_COMMON
                 }
 
                 /* stop blasting */
@@ -6318,12 +6452,16 @@ void *WiFiBlastClient(void* data)
 
             /* calling process_active_msmt_diagnostics to update the station info */
             wifi_util_dbg_print(WIFI_MON, "%s : %d calling process_active_msmt_diagnostics\n",__func__,__LINE__);
+#ifdef CCSP_COMMON
             CcspTraceDebug(("%s-%d: calling process_active_msmt_diagnostics to update the station info\n", __FUNCTION__, __LINE__));
+#endif // CCSP_COMMON
             process_active_msmt_diagnostics(apIndex);
 
             /* calling stream_client_msmt_data to upload the data to AVRO schema */
             wifi_util_dbg_print(WIFI_MON, "%s : %d calling stream_client_msmt_data\n",__func__,__LINE__);
+#ifdef CCSP_COMMON
             CcspTraceDebug(("%s : %d calling stream_client_msmt_data\n", __FUNCTION__, __LINE__));
+#endif // CCSP_COMMON
             stream_client_msmt_data(true);
 
             wifi_util_dbg_print(WIFI_MON, "%s : %d updated stepIns to 0 for step : %d\n",__func__,__LINE__,StepCount);
@@ -6333,9 +6471,11 @@ void *WiFiBlastClient(void* data)
             for (StepCount = StepCount+1; StepCount < MAX_STEP_COUNT; StepCount++) {
                 g_active_msmt.active_msmt.StepInstance[StepCount] = 0;
             }
+#ifdef CCSP_COMMON
             CcspTraceInfo(("ActiveMsmtEnable changed from TRUE to FALSE"
                   "Setting remaining [%d] step count to 0 and STOPPING further processing\n",
                   (MAX_STEP_COUNT - StepCount)));
+#endif // CCSP_COMMON
             break;
         }
     }
@@ -6426,9 +6566,15 @@ void process_active_msmt_diagnostics (int ap_index)
         return;
     }
 
+#ifdef CCSP_COMMON
     CcspTraceDebug(("%s:%d Number of sample %d for client [%02x:%02x:%02x:%02x:%02x:%02x]\n", __FUNCTION__, __LINE__,
          g_active_msmt.active_msmt.ActiveMsmtNumberOfSamples, g_active_msmt.curStepData.DestMac[0], g_active_msmt.curStepData.DestMac[1],
          g_active_msmt.curStepData.DestMac[2], g_active_msmt.curStepData.DestMac[3], g_active_msmt.curStepData.DestMac[4], g_active_msmt.curStepData.DestMac[5]));
+#else
+    wifi_util_dbg_print(WIFI_MON, "%s:%d Number of sample %d for client [%02x:%02x:%02x:%02x:%02x:%02x]\n", __FUNCTION__, __LINE__,
+         g_active_msmt.active_msmt.ActiveMsmtNumberOfSamples, g_active_msmt.curStepData.DestMac[0], g_active_msmt.curStepData.DestMac[1],
+         g_active_msmt.curStepData.DestMac[2], g_active_msmt.curStepData.DestMac[3], g_active_msmt.curStepData.DestMac[4], g_active_msmt.curStepData.DestMac[5]);
+#endif // CCSP_COMMON
 
     for (count = 0; count < g_active_msmt.active_msmt.ActiveMsmtNumberOfSamples; count++) {
         sta->sta_active_msmt_data[count].rssi = g_active_msmt.active_msmt_data[count].rssi;
@@ -6454,6 +6600,7 @@ void process_active_msmt_diagnostics (int ap_index)
                 sta->sta_active_msmt_data[count].MaxTxRate,
                 sta->sta_active_msmt_data[count].MaxRxRate);
 
+#ifdef CCSP_COMMON
         CcspTraceDebug(("Sampled data - [%d] : {standard[%s],\t chan_width[%s]\t"
            "Retransmission [%d]\t RSSI[%d]\t TxRate[%lu Mbps]\t RxRate[%lu Mbps]\t SNR[%d]\t"
            "throughput[%.5lf Mbms]\t MaxTxRate[%d]\t MaxRxRate[%d]\n}\n",
@@ -6465,6 +6612,7 @@ void process_active_msmt_diagnostics (int ap_index)
              sta->sta_active_msmt_data[count].throughput,
              sta->sta_active_msmt_data[count].MaxTxRate,
              sta->sta_active_msmt_data[count].MaxRxRate));
+#endif // CCSP_COMMON
     }
 
     /* free the g_active_msmt.active_msmt_data allocated memory */
@@ -6476,6 +6624,7 @@ void process_active_msmt_diagnostics (int ap_index)
     wifi_util_dbg_print(WIFI_MON, "%s : %d exiting the function\n",__func__,__LINE__);
 }
 
+#ifdef CCSP_COMMON
 sta_data_t *get_stats_for_sta(unsigned int apIndex, mac_addr_t mac)
 {
     sta_data_t  *sta;
@@ -6525,3 +6674,4 @@ int get_radio_channel_utilization(unsigned int radio_index, int *chan_util)
 
     return ret;
 }
+#endif // CCSP_COMMON

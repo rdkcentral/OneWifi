@@ -23,7 +23,10 @@
 #include "wifi_blaster.h"
 #include "collection.h"
 #include <math.h>
+
+#ifdef CCSP_COMMON
 #define MAX_ASSOCIATED_WIFI_DEVS    64
+#endif // CCSP_COMMON
 
 #ifndef WIFI_HAL_VERSION_3
 #define MAX_RADIOS  2
@@ -31,6 +34,9 @@
 
 #define MAC_ADDR_LEN	6
 #define STA_KEY_LEN		2*MAC_ADDR_LEN + 6
+#define MONITOR_RUNNING_INTERVAL_IN_MILLISEC    100
+
+#ifdef CCSP_COMMON
 #define MAX_IPC_DATA_LEN    1024
 #define KMSG_WRAPPER_FILE_NAME  "/tmp/goodbad-rssi"
 
@@ -42,32 +48,39 @@
 #define IPREFRESH_PERIOD_IN_MILLISECONDS 24 * 60 * 60 * 1000
 #define MAX_CSI_CLIENTS_PER_SESSION 50
 
-#define MONITOR_RUNNING_INTERVAL_IN_MILLISEC    100
 
 #define MAX_CSI_CLIENTMACLIST_STR  650
 
 #define MAX_BUF_SIZE 128
+#endif // CCSP_COMMON
 
+#ifdef CCSP_COMMON
 typedef signed short    rssi_t;
+#endif // CCSP_COMMON
 typedef char			sta_key_t[STA_KEY_LEN];
 
 typedef enum {
+#ifdef CCSP_COMMON
     monitor_event_type_diagnostics,
     monitor_event_type_connect,
     monitor_event_type_disconnect,
     monitor_event_type_deauthenticate,
-	monitor_event_type_start_inst_msmt,
-	monitor_event_type_stop_inst_msmt,
+    monitor_event_type_start_inst_msmt,
+    monitor_event_type_stop_inst_msmt,
     monitor_event_type_StatsFlagChange,
     monitor_event_type_RadioStatsFlagChange,
     monitor_event_type_VapStatsFlagChange,
+#endif // CCSP_COMMON
     monitor_event_type_process_active_msmt,
+#ifdef CCSP_COMMON
     monitor_event_type_csi,
     monitor_event_type_csi_update_config,
     monitor_event_type_clientdiag_update_config,
+#endif // CCSP_COMMON
     monitor_event_type_max
 } wifi_monitor_event_type_t;
 
+#ifdef CCSP_COMMON
 typedef struct {
     unsigned int num;
     wifi_associated_dev3_t  devs[MAX_ASSOCIATED_WIFI_DEVS];
@@ -92,12 +105,16 @@ typedef struct {
     mac_address_t   sta_mac;
     wifi_csi_data_t csi;
 } __attribute__((packed)) wifi_csi_dev_t;
+#endif // CCSP_COMMON
 
 typedef struct {
     unsigned int id;
+#ifdef CCSP_COMMON
     int  csi_session;
+#endif // CCSP_COMMON
     wifi_monitor_event_type_t   event_type;
     unsigned int    ap_index;
+#ifdef CCSP_COMMON
     union {
         auth_deauth_dev_t	dev;
         client_stats_enable_t   flag;
@@ -105,17 +122,22 @@ typedef struct {
         associated_devs_t   devs;
         wifi_csi_dev_t csi;
     } u;
+#endif // CCSP_COMMON
 } __attribute__((__packed__)) wifi_monitor_data_t;
 
+#ifdef CCSP_COMMON
 typedef struct {
     unsigned int        rapid_reconnect_threshold;
     wifi_vapstatus_t    ap_status;
 } ap_params_t;
+#endif // CCSP_COMMON
 
 typedef struct {
 	unsigned char		bssid[32];
 	hash_map_t		*sta_map;
+#ifdef CCSP_COMMON
 	ap_params_t		ap_params;
+#endif // CCSP_COMMON
 	ssid_t                  ssid;
 } bssid_data_t;
 
@@ -142,6 +164,7 @@ typedef struct {
     INT                     radio_RetransmissionMetirc;
 } radio_data_t;
 
+#ifdef CCSP_COMMON
 typedef struct {
        int       ch_number;
        unsigned long long ch_utilization_busy_tx;
@@ -155,29 +178,40 @@ typedef struct {
     ULONG resultCountPerRadio[MAX_NUM_RADIOS];
     wifi_neighbor_ap2_t * pResult[MAX_NUM_RADIOS];
 } neighscan_diag_cfg_t;
+#endif // CCSP_COMMON
 
 typedef struct {
     queue_t             *queue;
     bssid_data_t        bssid_data[MAX_VAP];
 #ifdef WIFI_HAL_VERSION_3
     radio_data_t        radio_data[MAX_NUM_RADIOS];
+#ifdef CCSP_COMMON
     radio_chan_data_t   radio_channel_data[MAX_NUM_RADIOS];
+#endif // CCSP_COMMON
 #else
     radio_data_t        radio_data[MAX_RADIOS];
+#ifdef CCSP_COMMON
     radio_chan_data_t   radio_channel_data[MAX_RADIOS];
-#endif
+#endif // CCSP_COMMON
+#endif // WIFI_HAL_VERSION_3
+
+#ifdef CCSP_COMMON
     neighscan_diag_cfg_t neighbor_scan_cfg;
+#endif // CCSP_COMMON
     pthread_cond_t      cond;
     pthread_mutex_t     queue_lock;
     pthread_mutex_t     data_lock;
     pthread_t           id;
     bool                exit_monitor;
     unsigned int        blastReqInQueueCount;
+#ifdef CCSP_COMMON
     unsigned int        poll_period;
     unsigned int        upload_period;
     unsigned int        current_poll_iter;
 	instant_msmt_t		inst_msmt;
+#endif // CCSP_COMMON
     struct timeval      last_signalled_time;
+#ifdef CCSP_COMMON
     struct timeval      last_polled_time;
     rssi_t		sta_health_rssi_threshold;
     int                 sysevent_fd;
@@ -191,7 +225,9 @@ typedef struct {
     int			instantPollPeriod;
     bool        instntMsmtenable;
     char        instantMac[MIN_MAC_ADDR_LEN];
+#endif // CCSP_COMMON
     struct scheduler *sched;
+#ifdef CCSP_COMMON
     int chutil_id;
     int client_telemetry_id;
     int client_debug_id;
@@ -202,7 +238,9 @@ typedef struct {
     int refresh_task_id;
     int associated_devices_id;
     int vap_status_id;
+#endif // CCSP_COMMON
     int radio_diagnostics_id;
+#ifdef CCSP_COMMON
     int neighbor_scan_id;
     int radio_health_telemetry_logger_id;
     int upload_ap_telemetry_pmf_id;
@@ -211,9 +249,11 @@ typedef struct {
     unsigned int clientdiag_sched_interval[MAX_VAP];
     int csi_sched_id;
     unsigned int csi_sched_interval;
+#endif // CCSP_COMMON
     bool radio_presence[MAX_NUM_RADIOS];
 } wifi_monitor_t;
 
+#ifdef CCSP_COMMON
 typedef struct {
     unsigned int        interval;
     struct timeval      last_publish_time;
@@ -257,12 +297,8 @@ wifi_stats_flag_change
         bool            enable,
         int             type
     );
-wifi_monitor_t *get_wifi_monitor ();
-char *get_formatted_time(char *time);
-wifi_actvie_msmt_t *get_active_msmt_data();
 int radio_stats_flag_change(int radio_index, bool enable);
 int vap_stats_flag_change(int ap_index, bool enable);
-int init_wifi_monitor();
 void monitor_enable_instant_msmt(mac_address_t sta_mac, bool enable);
 bool monitor_is_instant_msmt_enabled();
 void instant_msmt_reporting_period(int pollPeriod);
@@ -280,6 +316,12 @@ unsigned int GetINSTDefReportingPeriod();
 int get_neighbor_scan_results();
 int get_dev_stats_for_radio(unsigned int radio_index, radio_data_t *radio_stats);
 int get_radio_channel_utilization(unsigned int radio_index, int *chan_util);
+#endif // CCSP_COMMON
+
+wifi_monitor_t *get_wifi_monitor ();
+char *get_formatted_time(char *time);
+wifi_actvie_msmt_t *get_active_msmt_data();
+int init_wifi_monitor();
 int  getApIndexfromClientMac(char *check_mac);
 void update_ecomode_radios(void);
 #endif	//_WIFI_MON_H_

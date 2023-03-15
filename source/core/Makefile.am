@@ -86,10 +86,11 @@ OneWifi_SOURCES += $(top_srcdir)/source/core/services/vap_svc_mesh_pod.c
 endif 
 
 OneWifi_SOURCES += $(top_srcdir)/source/utils/jsonconv.c $(top_srcdir)/source/utils/collection.c $(top_srcdir)/source/utils/scheduler.c $(top_srcdir)/source/utils/caps.c
+OneWifi_SOURCES += $(top_srcdir)/source/stats/wifi_monitor.c $(top_srcdir)/source/stats/wifi_single_client_msmt.c $(top_srcdir)/source/utils/ext_blaster.pb-c.c
 
 if CCSP_COMMON_SUPPORT
 OneWifi_SOURCES += wifi_easy_connect.c
-OneWifi_SOURCES += $(top_srcdir)/source/stats/wifi_monitor.c $(top_srcdir)/source/stats/wifi_associated_devices_msmt.c $(top_srcdir)/source/stats/wifi_single_client_msmt.c  $(top_srcdir)/source/stats/wifi_events.c $(top_srcdir)/source/utils/ext_blaster.pb-c.c
+OneWifi_SOURCES += $(top_srcdir)/source/stats/wifi_associated_devices_msmt.c $(top_srcdir)/source/stats/wifi_events.c
 OneWifi_SOURCES += $(top_srcdir)/lib/log/log_journal.c
 OneWifi_SOURCES += $(top_srcdir)/source/apps/wifi_apps.c $(top_srcdir)/source/apps/wifi_analytics.c $(top_srcdir)/source/apps/wifi_apps_frame_dist.c
 else

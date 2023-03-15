@@ -926,7 +926,6 @@ int captive_portal_check(void)
 
 }
 
-#if CCSP_COMMON
 int start_wifi_health_monitor_thread(void)
 {
     static BOOL monitor_running = false;
@@ -945,7 +944,6 @@ int start_wifi_health_monitor_thread(void)
 
     return RETURN_OK;
 }
-#endif // CCSP_COMMON
 
 int scan_results_callback(int radio_index, wifi_bss_info_t **bss, unsigned int *num)
 {
@@ -1405,16 +1403,14 @@ int init_wireless_interface_mac()
 
 int start_wifi_ctrl(wifi_ctrl_t *ctrl)
 {
-#if CCSP_COMMON
     int monitor_ret = 0;
+#if CCSP_COMMON
     wifi_apps_t     *analytics = NULL;
 
     analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
 #endif // CCSP_COMMON
 
-#if DML_SUPPORT
     monitor_ret = init_wifi_monitor();
-#endif
 
     start_wifi_services();
     

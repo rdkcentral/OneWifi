@@ -18,7 +18,9 @@
 
  ****************************************************************************/
 
+#ifdef CCSP_COMMON
 #include <avro.h>
+#endif // CCSP_COMMON
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,7 +31,9 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <sys/time.h>
+#ifdef CCSP_COMMON
 #include "cosa_apis.h"
+#endif // CCSP_COMMON
 #include "wifi_hal.h"
 #include "collection.h"
 #include "wifi_monitor.h"
@@ -39,12 +43,14 @@
 #include <sys/un.h>
 #include <assert.h>
 #include <uuid/uuid.h>
+#ifdef CCSP_COMMON
 #include "ansc_status.h"
 #include <sysevent/sysevent.h>
 #include "ccsp_base_api.h"
 #include "harvester.h"
 #include "ccsp_WifiLog_wrapper.h"
 #include "ccsp_trace.h"
+#endif // CCSP_COMMON
 #include "platform-logger.h"
 #include "ext_blaster.pb-c.h"
 #include "qm_conn.h"
@@ -56,6 +62,7 @@
 
 // HASH - 4388e585dd7c0d32ac47e71f634b579b
 
+#ifdef CCSP_COMMON
 static void to_plan_id (unsigned char *PlanId, unsigned char Plan[])
 {
     int i=0;
@@ -68,6 +75,7 @@ static void to_plan_id (unsigned char *PlanId, unsigned char Plan[])
         PlanId += 2;
     }
 }
+#endif // CCSP_COMMON
 
 static void to_plan_char(unsigned char *plan, unsigned char *key)
 {
@@ -81,6 +89,7 @@ static void to_plan_char(unsigned char *plan, unsigned char *key)
     }
 }
 
+#ifdef CCSP_COMMON
 uint8_t HASHVAL[16] = {0x43, 0x88, 0xe5, 0x85, 0xdd, 0x7c, 0x0d, 0x32,
                        0xac, 0x47, 0xe7, 0x1f, 0x63, 0x4b, 0x57, 0x9b
                       };
@@ -113,15 +122,19 @@ char CPE_TYPE_STR[] = "Gateway";
 #define MAGIC_NUMBER      0x85
 #define MAGIC_NUMBER_SIZE 1
 #define SCHEMA_ID_LENGTH  32
-#define PLAN_ID_LENGTH_POD 48
 #define MAC_KEY_LEN 13
 #define  ARRAY_SZ(x)    (sizeof(x) / sizeof((x)[0]))
+#endif // CCSP_COMMON
 
+#define PLAN_ID_LENGTH_POD 48
+
+#ifdef CCSP_COMMON
 typedef enum {
     single_client_msmt_type_all,
     single_client_msmt_type_all_per_bssid,
     single_client_msmt_type_one,
 } single_client_msmt_type_t;
+#endif // CCSP_COMMON
 
 static char *to_sta_key    (mac_addr_t mac, sta_key_t key) {
     snprintf(key, STA_KEY_LEN, "%02x:%02x:%02x:%02x:%02x:%02x",
@@ -129,6 +142,7 @@ static char *to_sta_key    (mac_addr_t mac, sta_key_t key) {
     return (char *)key;
 }
 
+#ifdef CCSP_COMMON
 static void printBlastMetricData(single_client_msmt_type_t msmtType, wifi_monitor_t *monRadio,
                                 sta_data_t *staData, wifi_actvie_msmt_t *monitor,
                                 bool activeClient, const char *callerFunc)
@@ -738,9 +752,11 @@ void upload_single_client_msmt_data(bssid_data_t *bssid_info, sta_data_t *sta_in
     wifi_util_dbg_print(WIFI_MON, "Creating telemetry record successful\n");
     CcspTraceInfo(("%s-%d Creation of Telemetry record is successful\n", __FUNCTION__, __LINE__));
 }
+#endif // CCSP_COMMON
 
 void upload_single_client_active_msmt_data(bssid_data_t *bssid_info, sta_data_t *sta_info)
 {
+#ifdef CCSP_COMMON
     const char * serviceName = "wifi";
     const char * dest = "event:raw.kestrel.reports.WifiSingleClientActiveMeasurement";
     const char * contentType = "avro/binary"; // contentType "application/json", "avro/binary"
@@ -1556,6 +1572,7 @@ void upload_single_client_active_msmt_data(bssid_data_t *bssid_info, sta_data_t 
     sendWebpaMsg((char *)(serviceName),  (char *)(dest), trans_id, (char *)(contentType), buff, size);//ONE_WIFI TBD
     wifi_util_dbg_print(WIFI_MON, "Creation of Telemetry record is successful\n");
     CcspTraceInfo(("%s-%d Blaster report successfully sent to Parodus WebPA component\n", __FUNCTION__, __LINE__));
+#endif // CCSP_COMMON
 }
 
 #define LINUX_PROC_MEMINFO_FILE  "/proc/meminfo"
@@ -1816,7 +1833,11 @@ static ExtBlaster__WifiBlastResult__RadioMetrics* ExtBlaster_report_radio_struct
     int ap_index = 0;
     int num_of_samples = GetActiveMsmtNumberOfSamples();
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    bool twoG80211axEnable = false;
+#ifdef CCSP_COMMON
     wifi_rfc_dml_parameters_t *rfc_pcfg = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
+    twoG80211axEnable = rfc_pcfg->twoG80211axEnable_rfc;
+#endif // CCSP_COMMON
 
     if(g_monitor == NULL)
     {
@@ -1838,7 +1859,7 @@ static ExtBlaster__WifiBlastResult__RadioMetrics* ExtBlaster_report_radio_struct
 	return NULL;
     }
 
-    if (wifiStandardStrToEnum(sta_data->sta_active_msmt_data[num_of_samples-1].Operating_standard, &wifi_variant,connected_radio_index, rfc_pcfg->twoG80211axEnable_rfc) != TRUE) {
+    if (wifiStandardStrToEnum(sta_data->sta_active_msmt_data[num_of_samples-1].Operating_standard, &wifi_variant,connected_radio_index, twoG80211axEnable) != TRUE) {
         wifi_util_dbg_print(WIFI_MON, "%s:%d: wifiStandardStrToEnum Failed\n", __func__, __LINE__);
         return NULL;
     }
@@ -2148,6 +2169,7 @@ void stream_client_msmt_data(bool ActiveMsmtFlag)
     monitor = get_wifi_monitor();
     act_monitor = (wifi_actvie_msmt_t *)get_active_msmt_data();
 
+#ifdef CCSP_COMMON
     if (!ActiveMsmtFlag)
     {
         getVAPArrayIndexFromVAPIndex((unsigned int)monitor->inst_msmt.ap_index, &vap_array_index);
@@ -2161,6 +2183,7 @@ void stream_client_msmt_data(bool ActiveMsmtFlag)
         }
     }
     else
+#endif // CCSP_COMMON
     {
         ap_index = (act_monitor->curStepData.ApIndex < 0) ? 0 : act_monitor->curStepData.ApIndex;
         getVAPArrayIndexFromVAPIndex((unsigned int)ap_index, &vap_array_index);
