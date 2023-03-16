@@ -2800,12 +2800,15 @@ int wifi_radio_operationParam_validation(wifi_hal_capability_t  *hal_cap, wifi_r
         return RETURN_ERR;
     }
 
+// TODO: remove #if after reading channel width from driver to hal-wrapper is fixed
+#if CCSP_COMMON
     //Channelwidth check from the capability
     if (!(oper->channelWidth & radiocap->channelWidth[band_arr_index])) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid Channelwidth 0x%x for the radio_index : %d supported width : 0x%x\n",
                 __func__, __LINE__, oper->channelWidth, radio_index, radiocap->channelWidth[band_arr_index]);
         return RETURN_ERR;
     }
+#endif
 
     if ((oper->band == WIFI_FREQUENCY_5_BAND) || (oper->band == WIFI_FREQUENCY_5H_BAND) || (oper->band == WIFI_FREQUENCY_5L_BAND)) {
         if ((oper->channel == 165) && (oper->channelWidth != WIFI_CHANNELBANDWIDTH_20MHZ)) {
