@@ -695,11 +695,14 @@ rbusError_t events_subHandler(rbusHandle_t handle, rbusEventSubAction_t action, 
 rbusError_t events_APtable_addrowhandler(rbusHandle_t handle, char const* tableName, char const* aliasName, uint32_t* instNum)
 {
     static int instanceCounter = 1;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+
     event_element_t *event;
     unsigned int vap_index;
 
-    *instNum = instanceCounter++;
-    vap_index = *instNum;
+    vap_index  = VAP_INDEX(mgr->hal_cap, (instanceCounter-1)) + 1;
+    *instNum = vap_index;
+    instanceCounter++;
 
     wifi_util_dbg_print(WIFI_MON, "%s(): %s %d\n", __FUNCTION__, tableName, *instNum);
 

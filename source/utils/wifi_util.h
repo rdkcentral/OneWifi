@@ -105,7 +105,8 @@ typedef struct{
 #define VAP_PREFIX_LNF_PSK          "lnf_psk"
 #define VAP_PREFIX_LNF_RADIUS       "lnf_radius"
 
-#define VAP_INDEX(hal_cap, map_index)   hal_cap.wifi_prop.interface_map[map_index].index;
+#define VAP_INDEX(hal_cap, map_index)   hal_cap.wifi_prop.interface_map[map_index].index
+#define RADIO_INDEX(hal_cap, map_index) hal_cap.wifi_prop.interface_map[map_index].rdk_radio_index
 
 #define VAP_ARRAY_INDEX(i, hal_cap, vap_index) {\
     i = 0;\
