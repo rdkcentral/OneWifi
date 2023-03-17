@@ -2317,17 +2317,11 @@ Radio_GetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_COMCAST-COM_BeaconInterval", TRUE))
+    if( AnscEqualString(ParamName, "X_COMCAST-COM_BeaconInterval", TRUE) || AnscEqualString(ParamName, "BeaconPeriod", TRUE))
     {
         /* collect value */
         *puLong = pcfg->beaconInterval;
 
-        return TRUE;
-    }
-    if(AnscEqualString(ParamName, "BeaconPeriod", TRUE))
-    {
-        /* collect value */
-        *puLong = pcfg->csa_beacon_count;
         return TRUE;
     }
 
