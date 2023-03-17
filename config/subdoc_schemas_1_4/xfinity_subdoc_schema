@@ -1,278 +1,488 @@
 {
-	"Version": "1.0",
-	"SubDocName": "xfinity",
-	"WifiVapConfig": [
-		{
-			"VapName": "hotspot_open_2g",
-			"BridgeName": "brlan2",
-			"RadioIndex": 0,
-			"VapMode": 0,
-			"SSID": "onewifi_hotspot_open_5",
-			"BSSID": "0a:7e:64:fe:e4:63",
-			"Enabled": false,
-			"SSIDAdvertisementEnabled": false,
-			"IsolationEnable": true,
-			"ManagementFramePowerControl": 0,
-			"BssMaxNumSta": 75,
-			"BSSTransitionActivated": false,
-			"NeighborReportActivated": false,
-			"NetworkGreyList": false,
-			"RapidReconnCountEnable": false,
-			"RapidReconnThreshold": 180,
-			"VapStatsEnable": false,
-			"MacFilterEnable": false,
-			"MacFilterMode": 0,
-			"WmmEnabled": true,
-			"UapsdEnabled": true,
-			"BeaconRate": 16,
-			"WmmNoAck": 0,
-			"WepKeyLength": 128,
-			"BssHotspot": true,
-			"WpsPushButton": 0,
-			"WpsEnable": false,
-			"BeaconRateCtl": "6Mbps",
-			"Security": {
-				"Mode": "None",
-				"RadiusSettings": {
-					"RadiusServerIPAddr": "0.0.0.0",
-					"RadiusServerPort": 0,
-					"RadiusSecret": "",
-					"SecondaryRadiusServerIPAddr": "0.0.0.0",
-					"SecondaryRadiusServerPort": 0,
-					"SecondaryRadiusSecret": "",
-					"DasServerIPAddr": "0.0.0.0",
-					"DasServerPort": 0,
-					"DasSecret": "123456789",
-					"MaxAuthAttempts": 0,
-					"BlacklistTableTimeout": 0,
-					"IdentityReqRetryInterval": 0,
-					"ServerRetries": 0
-				}
-			},
-			"Interworking": {
-				"InterworkingEnable": false,
-				"AccessNetworkType": 2,
-				"Internet": false,
-				"ASRA": false,
-				"ESR": false,
-				"UESA": false,
-				"HESSOptionPresent": true,
-				"HESSID": "11:22:33:44:55:66",
-				"Venue": {
-					"VenueType": 0,
-					"VenueGroup": 0
-				}
-			}
-		},
-		{
-			"VapName": "hotspot_secure_2g",
-			"BridgeName": "brlan4",
-			"RadioIndex": 0,
-			"VapMode": 0,
-			"SSID": "OutOfService",
-			"BSSID": "0a:7e:64:fe:e4:65",
-			"Enabled": false,
-			"SSIDAdvertisementEnabled": false,
-			"IsolationEnable": true,
-			"ManagementFramePowerControl": 0,
-			"BssMaxNumSta": 75,
-			"BSSTransitionActivated": false,
-			"NeighborReportActivated": false,
-			"NetworkGreyList": false,
-			"RapidReconnCountEnable": false,
-			"RapidReconnThreshold": 180,
-			"VapStatsEnable": false,
-			"MacFilterEnable": false,
-			"MacFilterMode": 0,
-			"WmmEnabled": true,
-			"UapsdEnabled": true,
-			"BeaconRate": 16,
-			"WmmNoAck": 0,
-			"WepKeyLength": 128,
-			"BssHotspot": true,
-			"WpsPushButton": 0,
-			"WpsEnable": false,
-			"BeaconRateCtl": "6Mbps",
-			"Security": {
-				"MFPConfig": "Disabled",
-				"Mode": "WPA2-Enterprise",
-				"EncryptionMethod": "AES+TKIP",
-				"Wpa3_transition_disable": false,
-				"RekeyInterval": 0,
-				"StrictRekey": false,
-				"EapolKeyTimeout": 0,
-				"EapolKeyRetries": 0,
-				"EapIdentityReqTimeout": 0,
-				"EapIdentityReqRetries": 0,
-				"EapReqTimeout": 0,
-				"EapReqRetries": 0,
-				"DisablePmksaCaching": false,
-				"RadiusSettings": {
-					"RadiusServerIPAddr": "0.0.0.0",
-					"RadiusServerPort": 0,
-					"RadiusSecret": "",
-					"SecondaryRadiusServerIPAddr": "0.0.0.0",
-					"SecondaryRadiusServerPort": 0,
-					"SecondaryRadiusSecret": "",
-					"DasServerIPAddr": "0.0.0.0",
-					"DasServerPort": 0,
-					"DasSecret": "",
-					"MaxAuthAttempts": 0,
-					"BlacklistTableTimeout": 0,
-					"IdentityReqRetryInterval": 0,
-					"ServerRetries": 0
-				}
-			},
-			"Interworking": {
-				"InterworkingEnable": false,
-				"AccessNetworkType": 2,
-				"Internet": false,
-				"ASRA": false,
-				"ESR": false,
-				"UESA": false,
-				"HESSOptionPresent": true,
-				"HESSID": "11:22:33:44:55:66",
-				"Venue": {
-					"VenueType": 0,
-					"VenueGroup": 0
-				}
-			}
-		},
-		{
-			"VapName": "hotspot_open_5g",
-			"BridgeName": "brlan3",
-			"RadioIndex": 1,
-			"VapMode": 0,
-			"SSID": "OutOfService",
-			"BSSID": "0a:7e:64:05:e4:64",
-			"Enabled": false,
-			"SSIDAdvertisementEnabled": false,
-			"IsolationEnable": true,
-			"ManagementFramePowerControl": 0,
-			"BssMaxNumSta": 75,
-			"BSSTransitionActivated": false,
-			"NeighborReportActivated": false,
-			"NetworkGreyList": false,
-			"RapidReconnCountEnable": false,
-			"RapidReconnThreshold": 180,
-			"VapStatsEnable": false,
-			"MacFilterEnable": false,
-			"MacFilterMode": 0,
-			"WmmEnabled": true,
-			"UapsdEnabled": true,
-			"BeaconRate": 16,
-			"WmmNoAck": 0,
-			"WepKeyLength": 128,
-			"BssHotspot": true,
-			"WpsPushButton": 0,
-			"WpsEnable": false,
-			"BeaconRateCtl": "6Mbps",
-			"Security": {
-				"Mode": "None",
-				"RadiusSettings": {
-					"RadiusServerIPAddr": "0.0.0.0",
-					"RadiusServerPort": 0,
-					"RadiusSecret": "",
-					"SecondaryRadiusServerIPAddr": "0.0.0.0",
-					"SecondaryRadiusServerPort": 0,
-					"SecondaryRadiusSecret": "",
-					"DasServerIPAddr": "0.0.0.0",
-					"DasServerPort": 0,
-					"DasSecret": "",
-					"MaxAuthAttempts": 0,
-					"BlacklistTableTimeout": 0,
-					"IdentityReqRetryInterval": 0,
-					"ServerRetries": 0
-				}
-			},
-			"Interworking": {
-				"InterworkingEnable": false,
-				"AccessNetworkType": 2,
-				"Internet": false,
-				"ASRA": false,
-				"ESR": false,
-				"UESA": false,
-				"HESSOptionPresent": true,
-				"HESSID": "11:22:33:44:55:66",
-				"Venue": {
-					"VenueType": 0,
-					"VenueGroup": 0
-				}
-			}
-		},
-		{
-			"VapName": "hotspot_secure_5g",
-			"BridgeName": "brlan5",
-			"RadioIndex": 1,
-			"VapMode": 0,
-			"SSID": "OutOfService",
-			"BSSID": "0a:7e:64:05:e4:66",
-			"Enabled": false,
-			"SSIDAdvertisementEnabled": false,
-			"IsolationEnable": true,
-			"ManagementFramePowerControl": 0,
-			"BssMaxNumSta": 75,
-			"BSSTransitionActivated": false,
-			"NeighborReportActivated": false,
-			"NetworkGreyList": false,
-			"RapidReconnCountEnable": false,
-			"RapidReconnThreshold": 180,
-			"VapStatsEnable": false,
-			"MacFilterEnable": false,
-			"MacFilterMode": 0,
-			"WmmEnabled": true,
-			"UapsdEnabled": true,
-			"BeaconRate": 16,
-			"WmmNoAck": 0,
-			"WepKeyLength": 128,
-			"BssHotspot": true,
-			"WpsPushButton": 0,
-			"WpsEnable": false,
-			"BeaconRateCtl": "6Mbps",
-			"Security": {
-				"MFPConfig": "Disabled",
-				"Mode": "WPA2-Enterprise",
-				"EncryptionMethod": "AES+TKIP",
-				"Wpa3_transition_disable": false,
-				"RekeyInterval": 0,
-				"StrictRekey": false,
-				"EapolKeyTimeout": 0,
-				"EapolKeyRetries": 0,
-				"EapIdentityReqTimeout": 0,
-				"EapIdentityReqRetries": 0,
-				"EapReqTimeout": 0,
-				"EapReqRetries": 0,
-				"DisablePmksaCaching": false,
-				"RadiusSettings": {
-					"RadiusServerIPAddr": "0.0.0.0",
-					"RadiusServerPort": 0,
-					"RadiusSecret": "",
-					"SecondaryRadiusServerIPAddr": "0.0.0.0",
-					"SecondaryRadiusServerPort": 0,
-					"SecondaryRadiusSecret": "",
-					"DasServerIPAddr": "0.0.0.0",
-					"DasServerPort": 0,
-					"DasSecret": "123456789",
-					"MaxAuthAttempts": 0,
-					"BlacklistTableTimeout": 0,
-					"IdentityReqRetryInterval": 0,
-					"ServerRetries": 0
-				}
-			},
-			"Interworking": {
-				"InterworkingEnable": false,
-				"AccessNetworkType": 2,
-				"Internet": false,
-				"ASRA": false,
-				"ESR": false,
-				"UESA": false,
-				"HESSOptionPresent": true,
-				"HESSID": "11:22:33:44:55:66",
-				"Venue": {
-					"VenueType": 0,
-					"VenueGroup": 0
-				}
-			}
-		}
-	]
+    "Version": "1.0",
+    "SubDocName": "xfinity",
+    "WifiConfig": {
+        "GASConfig": [
+            {
+                "AdvertisementId": 0,
+                "ComebackDelay": 1000,
+                "PauseForServerResp": true,
+                "QueryRespLengthLimit": 127,
+                "RespBufferTime": 1000,
+                "RespTimeout": 5000
+            }
+        ]
+    },
+    "WifiVapConfig": [
+        {
+            "VapName": "hotspot_open_2g",
+            "SSID": "OutOfService",
+            "Enabled": false,
+            "SSIDAdvertisementEnabled": false,
+            "IsolationEnable": true,
+            "ManagementFramePowerControl": 0,
+            "BssMaxNumSta": 5,
+            "BSSTransitionActivated": false,
+            "NeighborReportActivated": false,
+            "RapidReconnCountEnable": false,
+            "RapidReconnThreshold": 180,
+            "VapStatsEnable": false,
+            "Security": {
+                "Mode": "None",
+                "Passphrase": "",
+                "RadiusSettings": {
+                    "RadiusServerIPAddr": "0.0.0.0",
+                    "RadiusServerPort": 0,
+                    "RadiusSecret": "",
+                    "SecondaryRadiusServerIPAddr": "0.0.0.0",
+                    "SecondaryRadiusServerPort": 0,
+                    "SecondaryRadiusSecret": "",
+                }
+            },
+            "Interworking": {
+              "ANQP": {
+                    "3GPPCellularANQPElement": {
+                       "GUD": 0,
+                       "PLMN": []
+                    },
+                    "DomainANQPElement": {
+                       "DomainName": []
+                    },
+                    "IPAddressTypeAvailabilityANQPElement": {
+                       "IPv4AddressType": 0,
+                       "IPv6AddressType": 0
+                    },
+                    "NAIRealmANQPElement": {
+                       "Realm": []
+                    },
+                    "RoamingConsortiumANQPElement": {
+                       "OI": []
+                    },
+                    "VenueNameANQPElement": {
+                       "VenueInfo": []
+                    }
+                },
+                "InterworkingEnable": false,
+                "AccessNetworkType": 0,
+                "Internet": false,
+                "ASRA": false,
+                "ESR": false,
+                "UESA": false,
+                "HESSOptionPresent": false,
+                "HESSID": "11:22:33:44:55:66",
+                "Passpoint": {
+                    "ConnectionCapabilityListANQPElement": {
+                       "ProtoPort": []
+                    },
+                    "GroupAddressedForwardingDisable": true,
+                    "NAIHomeRealmANQPElement": {
+                       "Realms": []
+                    },
+                    "OperatorFriendlyNameANQPElement": {
+                       "Name": []
+                    },
+                    "P2pCrossConnectionDisable": false,
+                    "PasspointEnable": false
+                },
+                "UESA": false,
+                "Venue": {
+                    "VenueGroup": 0,
+                    "VenueType": 0
+                }
+            }
+    },
+    {
+        "VapName": "hotspot_secure_2g",
+        "SSID": "OutOfService",
+        "BSSID": "0a:7e:64:fe:e4:65",
+        "Enabled": false,
+        "SSIDAdvertisementEnabled": false,
+        "IsolationEnable": true,
+        "ManagementFramePowerControl": 0,
+        "BssMaxNumSta": 5,
+        "BSSTransitionActivated": false,
+        "NeighborReportActivated": false,
+        "RapidReconnCountEnable": false,
+        "RapidReconnThreshold": 180,
+        "VapStatsEnable": false,
+        "Security": {
+            "MFPConfig": "Disabled",
+            "Mode": "WPA2-Enterprise",
+            "EncryptionMethod": "AES",
+            "RadiusSettings": {
+                "RadiusServerIPAddr": "0.0.0.0",
+                "RadiusServerPort": 0,
+                "RadiusSecret": "",
+                "SecondaryRadiusServerIPAddr": "0.0.0.0",
+                "SecondaryRadiusServerPort": 0,
+                "SecondaryRadiusSecret": "",
+            }
+        },
+        "Interworking": {
+            "ANQP": {
+                "3GPPCellularANQPElement": {
+                    "GUD": 0,
+                    "PLMN": []
+                },
+                "DomainANQPElement": {
+                    "DomainName": []
+                },
+                "IPAddressTypeAvailabilityANQPElement": {
+                    "IPv4AddressType": 0,
+                    "IPv6AddressType": 0
+                },
+                "NAIRealmANQPElement": {
+                    "Realm": []
+                },
+                "RoamingConsortiumANQPElement": {   
+                    "OI": []
+                },
+                "VenueNameANQPElement": {
+                    "VenueInfo": []
+                }
+                },
+            "InterworkingEnable": false,
+            "AccessNetworkType": 0,
+            "Internet": false,
+            "ASRA": false,
+            "ESR": false,
+            "UESA": false,
+            "HESSOptionPresent": false,
+            "HESSID": "11:22:33:44:55:66",
+            "Passpoint": {
+                "ConnectionCapabilityListANQPElement": {
+                    "ProtoPort": []
+                },
+                "GroupAddressedForwardingDisable": true,
+                "NAIHomeRealmANQPElement": {
+                    "Realms": []
+                },
+                "OperatorFriendlyNameANQPElement": {
+                    "Name": []
+                },
+                "P2pCrossConnectionDisable": false,
+                "PasspointEnable": false
+            },
+            "UESA": false,
+            "Venue": {
+                "VenueGroup": 0,
+                "VenueType": 0
+            }
+        }
+    },
+    {
+        "VapName": "hotspot_open_5g",
+        "SSID": "OutOfService",
+        "BSSID": "0a:7e:64:05:e4:64",
+        "Enabled": false,
+        "SSIDAdvertisementEnabled": false,
+        "IsolationEnable": true,
+        "ManagementFramePowerControl": 0,
+        "BssMaxNumSta": 5,
+        "BSSTransitionActivated": false,
+        "NeighborReportActivated": false,
+        "RapidReconnCountEnable": false,
+        "RapidReconnThreshold": 180,
+        "VapStatsEnable": false,
+        "Security": {
+            "Mode": "None",
+            "RadiusSettings": {
+                "RadiusServerIPAddr": "0.0.0.0",
+                "RadiusServerPort": 0,
+                "RadiusSecret": "",
+                "SecondaryRadiusServerIPAddr": "0.0.0.0",
+                    "SecondaryRadiusServerPort": 0,
+                    "SecondaryRadiusSecret": "",
+                }
+            },
+            "Interworking": {
+            "ANQP": {
+                "3GPPCellularANQPElement": {
+                    "GUD": 0,
+                    "PLMN": []
+                },
+                "DomainANQPElement": {
+                    "DomainName": []
+                },
+                "IPAddressTypeAvailabilityANQPElement": {
+                    "IPv4AddressType": 0,
+                    "IPv6AddressType": 0
+                },
+                "NAIRealmANQPElement": {
+                    "Realm": []
+                },
+                "RoamingConsortiumANQPElement": {
+                    "OI": []
+                },
+                "VenueNameANQPElement": {
+                    "VenueInfo": []
+                }
+            },
+            "InterworkingEnable": false,
+            "AccessNetworkType": 0,
+            "Internet": false,
+            "ASRA": false,
+            "ESR": false,
+            "UESA": false,
+            "HESSOptionPresent": false,
+            "HESSID": "11:22:33:44:55:66",
+            "Passpoint": {
+                "ConnectionCapabilityListANQPElement": {
+                    "ProtoPort": []
+                },
+                "GroupAddressedForwardingDisable": true,
+                "NAIHomeRealmANQPElement": {
+                    "Realms": []
+                },
+                "OperatorFriendlyNameANQPElement": {
+                  "Name": []
+                },
+                "P2pCrossConnectionDisable": false,
+                "PasspointEnable": false
+            },
+            "UESA": false,
+            "Venue": {
+                "VenueGroup": 0,
+                "VenueType": 0
+            }
+        }
+    },
+    {
+        "VapName": "hotspot_secure_5g",
+        "SSID": "OutOfService",
+        "BSSID": "0a:7e:64:05:e4:66",
+        "Enabled": false,
+        "SSIDAdvertisementEnabled": false,
+        "IsolationEnable": true,
+        "ManagementFramePowerControl": 0,
+        "BssMaxNumSta": 5,
+        "BSSTransitionActivated": false,
+        "NeighborReportActivated": false,
+        "RapidReconnCountEnable": false,
+        "RapidReconnThreshold": 180,
+        "VapStatsEnable": false,
+        "Security": {
+            "MFPConfig": "Disabled",
+            "Mode": "WPA2-Enterprise",
+            "EncryptionMethod": "AES",
+             "RadiusSettings": {
+                "RadiusServerIPAddr": "0.0.0.0",
+                "RadiusServerPort": 0,
+                "RadiusSecret": "",
+                "SecondaryRadiusServerIPAddr": "0.0.0.0",
+                "SecondaryRadiusServerPort": 0,
+                "SecondaryRadiusSecret": "",
+            },
+        },
+        "Interworking": {
+            "ANQP": {
+                "3GPPCellularANQPElement": {
+                    "GUD": 0,
+                    "PLMN": []
+                },
+                "DomainANQPElement": {
+                    "DomainName": []
+                },
+                "IPAddressTypeAvailabilityANQPElement": {
+                    "IPv4AddressType": 0,
+                    "IPv6AddressType": 0
+                },
+                "NAIRealmANQPElement": {
+                  "Realm": []
+                },
+                "RoamingConsortiumANQPElement": {
+                  "OI": []
+                },
+                "VenueNameANQPElement": {
+                  "VenueInfo": []
+                }
+            },
+            "InterworkingEnable": false,
+            "AccessNetworkType": 0,
+            "Internet": false,
+            "ASRA": false,
+            "ESR": false,
+            "UESA": false,
+            "HESSOptionPresent": false,
+            "HESSID": "11:22:33:44:55:66",
+            "Passpoint": {
+                "ConnectionCapabilityListANQPElement": {
+                    "ProtoPort": []
+                },
+                "GroupAddressedForwardingDisable": true,
+                "NAIHomeRealmANQPElement": {
+                    "Realms": []
+                },
+                "OperatorFriendlyNameANQPElement": {
+                    "Name": []
+                },
+                "P2pCrossConnectionDisable": false,
+                "PasspointEnable": false
+            },
+            "UESA": false,
+            "Venue": {
+                "VenueGroup": 0,
+                "VenueType": 0
+            }
+        }
+     },
+     {
+        "VapName": "hotspot_open_6g",
+        "SSID": "OutOfService",
+        "Enabled": false,
+        "SSIDAdvertisementEnabled": false,
+        "IsolationEnable": true,
+        "ManagementFramePowerControl": 0,
+        "BssMaxNumSta": 5,
+        "BSSTransitionActivated": false,
+        "NeighborReportActivated": false,
+        "RapidReconnCountEnable": false,
+        "RapidReconnThreshold": 180,
+        "VapStatsEnable": false,
+        "Security": {
+            "Mode": "Enhanced-Open",
+            "MFPConfig": "Required",
+            "EncryptionMethod": "AES",
+            "Passphrase": "",
+            "RadiusSettings": {
+                "RadiusServerIPAddr": "0.0.0.0",
+                "RadiusServerPort": 0,
+                "RadiusSecret": "",
+                "SecondaryRadiusServerIPAddr": "0.0.0.0",
+                "SecondaryRadiusServerPort": 0,
+                "SecondaryRadiusSecret": "",
+            }
+        },
+        "Interworking": {
+            "ANQP": {
+                "3GPPCellularANQPElement": {
+                    "GUD": 0,
+                    "PLMN": []
+                },
+                "DomainANQPElement": {
+                    "DomainName": []
+                },
+                "IPAddressTypeAvailabilityANQPElement": {
+                    "IPv4AddressType": 0,
+                    "IPv6AddressType": 0
+                },
+                "NAIRealmANQPElement": {
+                    "Realm": []
+                },
+                "RoamingConsortiumANQPElement": {
+                    "OI": []
+                },
+                "VenueNameANQPElement": {
+                    "VenueInfo": []
+               }
+            },
+            "InterworkingEnable": false,
+            "AccessNetworkType": 0,
+            "Internet": false,
+            "ASRA": false,
+            "ESR": false,
+            "UESA": false,
+            "HESSOptionPresent": false,
+            "HESSID": "11:22:33:44:55:66",
+            "Passpoint": {
+                "ConnectionCapabilityListANQPElement": {
+                    "ProtoPort": []
+                },
+                "GroupAddressedForwardingDisable": true,
+                "NAIHomeRealmANQPElement": {
+                    "Realms": []
+                },
+                "OperatorFriendlyNameANQPElement": {
+                    "Name": []
+                },
+                "P2pCrossConnectionDisable": false,
+                "PasspointEnable": false
+            },
+            "UESA": false,
+            "Venue": {
+                "VenueGroup": 0,
+                "VenueType": 0
+            }
+        }
+    },
+    {
+        "VapName": "hotspot_secure_6g",
+        "SSID": "OutOfService",
+        "Enabled": false,
+        "SSIDAdvertisementEnabled": false,
+        "IsolationEnable": true,
+        "ManagementFramePowerControl": 0,
+        "BssMaxNumSta": 5,
+        "BSSTransitionActivated": false,
+        "NeighborReportActivated": false,
+        "RapidReconnCountEnable": false,
+        "RapidReconnThreshold": 180,
+        "VapStatsEnable": false,
+        "Security": {
+            "Mode": "WPA3-Enterprise",
+            "MFPConfig": "Required",
+            "EncryptionMethod": "AES",
+            "Passphrase": "",
+            "RadiusSettings": {
+                "RadiusServerIPAddr": "0.0.0.0",
+                "RadiusServerPort": 0,
+                "RadiusSecret": "",
+                "SecondaryRadiusServerIPAddr": "0.0.0.0",
+                "SecondaryRadiusServerPort": 0,
+                "SecondaryRadiusSecret": "",
+            }
+        },
+        "Interworking": {
+            "ANQP": {
+                "3GPPCellularANQPElement": {
+                    "GUD": 0,
+                    "PLMN": []
+                  },
+                "DomainANQPElement": {
+                    "DomainName": []
+                 },
+                "IPAddressTypeAvailabilityANQPElement": {
+                    "IPv4AddressType": 0,
+                    "IPv6AddressType": 0
+                },
+                "NAIRealmANQPElement": {
+                    "Realm": []
+                },
+                "RoamingConsortiumANQPElement": {
+                    "OI": []
+                },
+                "VenueNameANQPElement": {
+                    "VenueInfo": []
+                }
+            },
+            "InterworkingEnable": false,
+            "AccessNetworkType": 0,
+            "Internet": false,
+            "ASRA": false,
+            "ESR": false,
+            "UESA": false,
+            "HESSOptionPresent": false,
+            "HESSID": "11:22:33:44:55:66",
+            "Passpoint": {
+                "ConnectionCapabilityListANQPElement": {
+                    "ProtoPort": []
+                },
+                "GroupAddressedForwardingDisable": true,
+                "NAIHomeRealmANQPElement": {
+                    "Realms": []
+                },
+                "OperatorFriendlyNameANQPElement": {
+                    "Name": []
+                },
+                "P2pCrossConnectionDisable": false,
+                "PasspointEnable": false
+            },
+            "UESA": false,
+            "Venue": {
+                "VenueGroup": 0,
+                "VenueType": 0
+            }
+        }
+    }
+    ]
 }
