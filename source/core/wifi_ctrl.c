@@ -2147,8 +2147,10 @@ wifi_rfc_dml_parameters_t* get_ctrl_rfc_parameters(void)
     g_wifi_mgr->ctrl.rfc_params.twoG80211axEnable_rfc = g_wifi_mgr->rfc_dml_parameters.twoG80211axEnable_rfc;
     g_wifi_mgr->ctrl.rfc_params.hotspot_open_2g_last_enabled = g_wifi_mgr->rfc_dml_parameters.hotspot_open_2g_last_enabled;
     g_wifi_mgr->ctrl.rfc_params.hotspot_open_5g_last_enabled = g_wifi_mgr->rfc_dml_parameters.hotspot_open_5g_last_enabled;
+    g_wifi_mgr->ctrl.rfc_params.hotspot_open_6g_last_enabled = g_wifi_mgr->rfc_dml_parameters.hotspot_open_6g_last_enabled;
     g_wifi_mgr->ctrl.rfc_params.hotspot_secure_2g_last_enabled = g_wifi_mgr->rfc_dml_parameters.hotspot_secure_2g_last_enabled;
-    g_wifi_mgr->ctrl.rfc_params.hotspot_secure_2g_last_enabled = g_wifi_mgr->rfc_dml_parameters.hotspot_secure_2g_last_enabled;
+    g_wifi_mgr->ctrl.rfc_params.hotspot_secure_5g_last_enabled = g_wifi_mgr->rfc_dml_parameters.hotspot_secure_5g_last_enabled;
+    g_wifi_mgr->ctrl.rfc_params.hotspot_secure_6g_last_enabled = g_wifi_mgr->rfc_dml_parameters.hotspot_secure_6g_last_enabled;
     g_wifi_mgr->ctrl.rfc_params.mgmt_frame_rbus_enabled_rfc = g_wifi_mgr->rfc_dml_parameters.mgmt_frame_rbus_enabled_rfc;
     strcpy(g_wifi_mgr->ctrl.rfc_params.rfc_id,g_wifi_mgr->rfc_dml_parameters.rfc_id);
     return &g_wifi_mgr->ctrl.rfc_params;

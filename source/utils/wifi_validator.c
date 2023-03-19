@@ -1029,17 +1029,20 @@ int validate_enterprise_security(const cJSON *security, wifi_vap_info_t *vap_inf
         }
 
 	validate_param_string(security, "Mode", param);
-	if ((strcmp(param->valuestring, "WPA2-Enterprise") != 0) && (strcmp(param->valuestring, "WPA-WPA2-Enterprise") != 0)) {
+	if ((strcmp(param->valuestring, "WPA2-Enterprise") != 0) && (strcmp(param->valuestring, "WPA-WPA2-Enterprise") != 0) && (strcmp(param->valuestring, "WPA3-Enterprise") != 0)) {
 		wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Xfinity WiFi VAP security is not WPA2 Eneterprise, value:%s\n", 
 			__func__, __LINE__, param->valuestring);
                 strncpy(execRetVal->ErrorMsg, "Invalid sec mode for hotspot secure vap",sizeof(execRetVal->ErrorMsg)-1); 
 		return RETURN_ERR;
 	}
-        if (strcmp(param->valuestring, "WPA2-Enterprise") == 0) { 
-    	    vap_info->u.bss_info.security.mode = wifi_security_mode_wpa2_enterprise;
-        } else {
-	    vap_info->u.bss_info.security.mode = wifi_security_mode_wpa_wpa2_enterprise;
-        }
+    if (strcmp(param->valuestring, "WPA2-Enterprise") == 0) { 
+        vap_info->u.bss_info.security.mode = wifi_security_mode_wpa2_enterprise;
+    } else if (strcmp(param->valuestring, "WPA3-Enterprise") == 0) { 
+        vap_info->u.bss_info.security.mode = wifi_security_mode_wpa3_enterprise;
+    } else {
+        vap_info->u.bss_info.security.mode = wifi_security_mode_wpa_wpa2_enterprise;
+    }
+
         validate_param_string(security, "EncryptionMethod", param);
         if ((strcmp(param->valuestring, "AES") != 0) && (strcmp(param->valuestring, "AES+TKIP") != 0)) {
             wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Xfinity WiFi VAP Encrytpion mode is Invalid:%s\n", 
@@ -1061,6 +1064,11 @@ int validate_enterprise_security(const cJSON *security, wifi_vap_info_t *vap_inf
                 wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: MFPConfig not valid, value:%s\n",
                         __func__, __LINE__, param->valuestring);
                 strncpy(execRetVal->ErrorMsg, "Invalid  MFPConfig for hotspot secure vap",sizeof(execRetVal->ErrorMsg)-1);
+                return RETURN_ERR;
+        }
+        if ( vap_info->u.bss_info.security.mode == wifi_security_mode_wpa3_enterprise && (strcmp(param->valuestring, "Required") != 0)) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: MFPConfig not valid, value:%s\n",
+                        __func__, __LINE__, param->valuestring);
                 return RETURN_ERR;
         }
 #if defined(WIFI_HAL_VERSION_3)
@@ -1189,15 +1197,19 @@ int validate_xfinity_open_vap(const cJSON *vap, wifi_vap_info_t *vap_info, pErr 
         validate_param_object(vap, "Security",security);
 
         validate_param_string(security, "Mode", param);
-        if (strcmp(param->valuestring, "None") != 0) {
-            platform_trace_error(WIFI_PASSPOINT, "[%s] Xfinity open security is not OPEN\n", __FUNCTION__);
+        if ((strcmp(param->valuestring, "None") != 0) && (strcmp(param->valuestring, "Enhanced-Open") != 0)) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "[%s] Passed Xfinity open security %s is invalid \n", __FUNCTION__,param->valuestring);
             strncpy(execRetVal->ErrorMsg, "Invalid security for hotspot open vap",sizeof(execRetVal->ErrorMsg)-1);
             return RETURN_ERR;
         }
-
-        vap_info->u.bss_info.security.mode = wifi_security_mode_none;
-	vap_info->u.bss_info.security.encr = wifi_encryption_none;
-        
+        if (strcmp(param->valuestring, "None") == 0) {
+            vap_info->u.bss_info.security.mode = wifi_security_mode_none;
+            vap_info->u.bss_info.security.encr = wifi_encryption_none;
+        }
+        if (strcmp(param->valuestring, "Enhanced-Open") == 0) {
+            vap_info->u.bss_info.security.mode = wifi_security_mode_enhanced_open;
+            vap_info->u.bss_info.security.encr = wifi_encryption_aes;
+        }
         // MFPConfig
         validate_param_string(security, "MFPConfig", param);
         if ((strcmp(param->valuestring, "Disabled") != 0) 
@@ -1207,6 +1219,12 @@ int validate_xfinity_open_vap(const cJSON *vap, wifi_vap_info_t *vap_info, pErr 
                         __func__, __LINE__, param->valuestring);
                 strncpy(execRetVal->ErrorMsg, "Invalid  MFPConfig for hotspot secure vap",sizeof(execRetVal->ErrorMsg)-1);
                 return RETURN_ERR;
+        }
+
+        if (vap_info->u.bss_info.security.mode == wifi_security_mode_enhanced_open && (strcmp(param->valuestring, "Required") != 0)) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: MFPConfig not valid for Enhanced-Open, value:%s\n",
+                        __func__, __LINE__, param->valuestring);
+            return RETURN_ERR;
         }
 #if defined(WIFI_HAL_VERSION_3)
         if (strstr(param->valuestring, "Disabled")) {

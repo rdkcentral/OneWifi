@@ -1776,13 +1776,7 @@ INT WiFi_InitInterworkingElement (uint8_t vapIndex)
     wifi_InterworkingElement_t  elem;
     memset((char *)&elem, 0, sizeof(wifi_InterworkingElement_t));
     //Update OVS DB
-#ifdef WIFI_HAL_VERSION_3
     if(-1 == wifidb_get_interworking_config(getVAPName(vapIndex - 1),&elem)) {
-#else
-    char *vap_name[] = {"private_ssid_2g", "private_ssid_5g", "iot_ssid_2g", "iot_ssid_5g", "hotspot_open_2g", "hotspot_open_5g", "lnf_psk_2g", "lnf_psk_5g", "hotspot_secure_2g", "hotspot_secure_5g"};
-    if(-1 == wifidb_get_interworking_config(vap_name[vapIndex - 1],&elem)) {
-#endif
-
         wifi_util_dbg_print(WIFI_PASSPOINT,"Failed to Initialize Interwokring Configuration from DB for AP: %d. Setting Default\n",InstanceNumber);
         return WiFi_DefaultInterworkingConfig(vapIndex);//ONE_WIFI
     }

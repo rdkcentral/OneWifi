@@ -146,6 +146,7 @@ typedef enum {
     ctrl_event_type_trigger_disconnection,
     ctrl_event_type_trigger_disconnection_analytics,
     ctrl_event_type_new_bssid,
+    ctrl_event_type_xfinity_enable,
     ctrl_event_command_max,
 
     // wif_api
@@ -246,8 +247,10 @@ typedef struct {
     bool twoG80211axEnable_rfc;
     bool hotspot_open_2g_last_enabled;
     bool hotspot_open_5g_last_enabled;
+    bool hotspot_open_6g_last_enabled;
     bool hotspot_secure_2g_last_enabled;
     bool hotspot_secure_5g_last_enabled;
+    bool hotspot_secure_6g_last_enabled;
     bool mgmt_frame_rbus_enabled_rfc;
     char rfc_id[5];
 } wifi_rfc_dml_parameters_t;

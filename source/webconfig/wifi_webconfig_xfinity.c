@@ -139,7 +139,7 @@ webconfig_error_t encode_xfinity_subdoc(webconfig_t *config, webconfig_subdoc_da
     return webconfig_error_none;
 }
 
-#define NUM_HOTSPOTS 4
+#define NUM_HOTSPOTS 6
 
 static char passpoint_json[NUM_HOTSPOTS][1024];
 static char anqp_json[NUM_HOTSPOTS][4096];
@@ -150,9 +150,13 @@ static inline unsigned int get_hs_index(const char* vap_name) {
     else
     if(strcmp(vap_name, "hotspot_open_5g") == 0) { indx = 1; }
     else
-    if(strcmp(vap_name, "hotspot_secure_2g") == 0) { indx = 2; }
+    if(strcmp(vap_name, "hotspot_open_6g") == 0) { indx = 2; }
     else
-    if(strcmp(vap_name, "hotspot_secure_5g") == 0) { indx = 3; }
+    if(strcmp(vap_name, "hotspot_secure_2g") == 0) { indx = 3; }
+    else
+    if(strcmp(vap_name, "hotspot_secure_5g") == 0) { indx = 4; }
+    else
+    if(strcmp(vap_name, "hotspot_secure_6g") == 0) { indx = 5; }
 
     return indx;
 }

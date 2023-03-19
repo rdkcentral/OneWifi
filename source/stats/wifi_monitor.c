@@ -4484,12 +4484,23 @@ int device_disassociated(int ap_index, char *mac, int reason)
     assoc_dev_data_t assoc_data;
     greylist_data_t greylist_data;
     unsigned int mac_addr[MAC_ADDR_LEN];
+    mac_address_t grey_list_mac;
 
     if (mac == NULL) {
         wifi_util_dbg_print(WIFI_MON,"%s:%d input mac adrress is NULL for ap_index:%d reason:%d\n", __func__, __LINE__, ap_index, reason);
         return -1;
     }
 
+    if (reason == WLAN_RADIUS_GREYLIST_REJECT) {
+        wifi_util_dbg_print(WIFI_MON,"Device disassociated due to Greylist\n");
+        greylist_data.reason = reason;
+
+        str_to_mac_bytes(mac, grey_list_mac);
+        memcpy(greylist_data.sta_mac, &grey_list_mac, sizeof(mac_address_t));
+        wifi_util_dbg_print(WIFI_MON," sending Greylist mac to  ctrl queue %s\n",mac);
+        push_data_to_ctrl_queue(&greylist_data, sizeof(greylist_data), ctrl_event_type_hal_ind, ctrl_event_radius_greylist);
+
+    }
     if (active_sta_connection_status(ap_index, mac) == false) {
         wifi_util_dbg_print(WIFI_MON,"%s:%d: sta[%s] not connected with ap:[%d]\r\n", __func__, __LINE__, mac, ap_index);
         return 0;
@@ -4517,13 +4528,6 @@ int device_disassociated(int ap_index, char *mac, int reason)
             data->u.dev.sta_mac[3], data->u.dev.sta_mac[4], data->u.dev.sta_mac[5]);
     csi_update_client_mac_status(data->u.dev.sta_mac, FALSE, ap_index);
 
-    if (reason == WLAN_RADIUS_GREYLIST_REJECT) {
-        wifi_util_info_print(WIFI_MON,"Device disassociated due to Greylist\n");
-        greylist_data.reason = reason;
-        memcpy(greylist_data.sta_mac, data->u.dev.sta_mac, sizeof(mac_address_t));
-        push_data_to_ctrl_queue(&greylist_data, sizeof(greylist_data), ctrl_event_type_hal_ind, ctrl_event_radius_greylist);
-
-    }
     memcpy(assoc_data.dev_stats.cli_MACAddress, data->u.dev.sta_mac, sizeof(mac_address_t));
     assoc_data.ap_index = data->ap_index;
     assoc_data.reason = reason;
@@ -4551,12 +4555,22 @@ int device_deauthenticated(int ap_index, char *mac, int reason)
     unsigned int mac_addr[MAC_ADDR_LEN];
     greylist_data_t greylist_data;
     assoc_dev_data_t assoc_data;
+    mac_address_t grey_list_mac;
 
     if (mac == NULL) {
         wifi_util_dbg_print(WIFI_MON,"%s:%d input mac adrress is NULL for ap_index:%d reason:%d\n", __func__, __LINE__, ap_index, reason);
         return -1;
     }
 
+    if (reason == WLAN_RADIUS_GREYLIST_REJECT) {
+        str_to_mac_bytes(mac, grey_list_mac);
+        wifi_util_dbg_print(WIFI_MON,"Device disassociated due to Greylist\n");
+        greylist_data.reason = reason;
+        memcpy(greylist_data.sta_mac, &grey_list_mac, sizeof(mac_address_t));
+        wifi_util_dbg_print(WIFI_MON,"Sending Greylist mac to ctrl queue %s\n",mac);
+        push_data_to_ctrl_queue(&greylist_data, sizeof(greylist_data), ctrl_event_type_hal_ind, ctrl_event_radius_greylist);
+
+    }
     if (active_sta_connection_status(ap_index, mac) == false) {
         wifi_util_dbg_print(WIFI_MON,"%s:%d: sta[%s] not connected with ap:[%d]\r\n", __func__, __LINE__, mac, ap_index);
         return 0;
@@ -4585,13 +4599,6 @@ int device_deauthenticated(int ap_index, char *mac, int reason)
             data->u.dev.sta_mac[3], data->u.dev.sta_mac[4], data->u.dev.sta_mac[5], reason);
     csi_update_client_mac_status(data->u.dev.sta_mac, FALSE, ap_index);
 
-    if (reason == WLAN_RADIUS_GREYLIST_REJECT) {
-        wifi_util_info_print(WIFI_MON,"Device deauthenticated due to Greylist\n");
-        greylist_data.reason = reason;
-        memcpy(greylist_data.sta_mac, data->u.dev.sta_mac, sizeof(mac_address_t));
-        push_data_to_ctrl_queue(&greylist_data, sizeof(greylist_data), ctrl_event_type_hal_ind, ctrl_event_radius_greylist);
-
-    }
 
     memcpy(assoc_data.dev_stats.cli_MACAddress, data->u.dev.sta_mac, sizeof(mac_address_t));
     assoc_data.ap_index = data->ap_index;

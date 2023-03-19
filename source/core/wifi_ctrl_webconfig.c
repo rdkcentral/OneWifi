@@ -873,6 +873,7 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
 #if CCSP_COMMON
     wifi_apps_t         *analytics = NULL;
     char update_status[128];
+    public_vaps_data_t pub;
 #endif // CCSP_COMMON
     struct ow_conf_vif_config_cb_arg arg_vif_cb;
     rdk_wifi_vap_info_t *mgr_rdk_vap_info, *rdk_vap_info;
@@ -1042,22 +1043,14 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
                 snprintf(update_status, sizeof(update_status), "%s %s", vap_names[i], (ret == RETURN_OK)?"success":"fail");
                 analytics->event_fn(analytics, ctrl_event_type_webconfig, ctrl_event_webconfig_hal_result, update_status);
             }
-
-            if (strcmp(vap_info->vap_name,"hotspot_open_2g") == 0) {
-                process_xfinity_open_2g_enabled(vap_info->u.bss_info.enabled);
+            if (vap_svc_is_public(tgt_vap_index)) {
                 wifi_util_dbg_print(WIFI_CTRL,"vapname is %s and %d \n",vap_info->vap_name,vap_info->u.bss_info.enabled);
-            }
-            else if (strcmp(vap_info->vap_name,"hotspot_open_5g") == 0) {
-                wifi_util_dbg_print(WIFI_CTRL,"vapname is %s and %d\n",vap_info->vap_name,vap_info->u.bss_info.enabled);
-                process_xfinity_open_5g_enabled(vap_info->u.bss_info.enabled);
-            }
-            else if (strcmp(vap_info->vap_name,"hotspot_secure_2g") == 0) {
-                wifi_util_dbg_print(WIFI_CTRL,"vapname is %s and %d \n",vap_info->vap_name,vap_info->u.bss_info.enabled);
-                process_xfinity_sec_2g_enabled(vap_info->u.bss_info.enabled);
-            }
-            else if (strcmp(vap_info->vap_name,"hotspot_secure_5g") == 0) {
-                wifi_util_dbg_print(WIFI_CTRL,"vapname is %s and %d \n",vap_info->vap_name,vap_info->u.bss_info.enabled);
-                process_xfinity_sec_5g_enabled(vap_info->u.bss_info.enabled);
+                if (svc->event_fn != NULL) {
+                    snprintf(pub.vap_name,sizeof(pub.vap_name),"%s",vap_info->vap_name);
+                    pub.enabled = vap_info->u.bss_info.enabled;
+                    svc->event_fn(svc, ctrl_event_type_command, ctrl_event_type_xfinity_enable,
+                       vap_svc_event_none, &pub);
+                }
             }
 #endif // CCSP_COMMON
             /* XXX: This memcpy should be deleted later. Mgr's cache should be

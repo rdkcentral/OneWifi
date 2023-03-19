@@ -735,13 +735,19 @@ webconfig_error_t encode_no_security_object(const wifi_vap_security_t *security_
 {
 
     cJSON *obj;
+
     switch (security_info->mode) {
         case wifi_security_mode_none:
             cJSON_AddStringToObject(security, "Mode", "None");
             break;
+        case wifi_security_mode_enhanced_open:
+            cJSON_AddStringToObject(security, "Mode", "Enhanced-Open");
+            cJSON_AddStringToObject(security, "MFPConfig", "Required");
+            cJSON_AddStringToObject(security, "EncryptionMethod", "AES");
+            break;
 
         default:
-            wifi_util_error_print(WIFI_PASSPOINT,"%s:%d: Security Mode not valid, value:%d\n",
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Security Mode not valid, value:%d\n",
                             __func__, __LINE__, security_info->mode);
             return webconfig_error_encode;
     }
@@ -791,7 +797,7 @@ webconfig_error_t encode_enterprise_security_object(const wifi_vap_security_t *s
     } else if (security_info->mfp == wifi_mfp_cfg_optional) {
         cJSON_AddStringToObject(security, "MFPConfig", "Optional");
     } else {
-        wifi_util_error_print(WIFI_PASSPOINT,"%s:%d: MFPConfig not valid, value:%d\n",
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: MFPConfig not valid, value:%d\n",
                             __func__, __LINE__, security_info->mfp);
         return webconfig_error_encode;
     }

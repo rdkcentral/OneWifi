@@ -173,7 +173,7 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
         tgt_vap_map.num_vaps = 1;
 
 
-        if ((strcmp(map->vap_array[i].vap_name,"hotspot_secure_2g") == 0) || (strcmp(map->vap_array[i].vap_name,"hotspot_secure_5g") == 0)) {
+        if (isVapHotspotSecure(map->vap_array[i].vap_index)) {
                if ((rfc_passpoint_enable == false) && (tgt_vap_map.vap_array[0].u.bss_info.interworking.passpoint.enable == true)) {
                     wifi_util_error_print(WIFI_CTRL,"%s:: radio_index:%d vap_index:%d Passpoint cannot be enabled when RFC is disabled RFC=%d\n",__FUNCTION__,
                                                 radio_index, map->vap_array[i].vap_index,rfc_passpoint_enable);
@@ -207,7 +207,7 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
         wifidb_print("%s:%d [Stop] Current time:[%llu]\r\n", __func__, __LINE__, get_current_ms_time());
         wifi_util_error_print(WIFI_CTRL,"%s: passpoint.enable %d\n", __FUNCTION__,map->vap_array[i].u.bss_info.interworking.passpoint.enable);
         //Storing the config of passpoint in DB as received from blob though RFC is disabled
-        if ((strcmp(map->vap_array[i].vap_name,"hotspot_secure_2g") == 0) || (strcmp(map->vap_array[i].vap_name,"hotspot_secure_5g") == 0)) {
+        if (isVapHotspotSecure(map->vap_array[i].vap_index)) {
                if ((rfc_passpoint_enable == false) && (map->vap_array[i].u.bss_info.interworking.passpoint.enable == true)) {
                    tgt_vap_map.vap_array[0].u.bss_info.interworking.passpoint.enable = true;
                 }
@@ -332,6 +332,29 @@ void process_prefer_private_rfc_event(vap_svc_event_t event, void *data)
     }
 }
 
+void process_xfinity_enable(vap_svc_event_t event, void *data)
+{
+#if DML_SUPPORT
+    public_vaps_data_t *public = ((public_vaps_data_t *)data);
+    wifi_util_dbg_print(WIFI_CTRL,"WIFI Enter RFC Func %s: %d : vap_name:%s:bool %d\n",__FUNCTION__,__LINE__,public->vap_name,public->enabled);
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
+    if (strcmp(public->vap_name,"hotspot_open_2g") == 0)
+        rfc_param->hotspot_open_2g_last_enabled = public->enabled;
+    else if (strcmp(public->vap_name,"hotspot_open_5g") == 0)
+        rfc_param->hotspot_open_5g_last_enabled = public->enabled;
+    else if(strcmp(public->vap_name,"hotspot_open_6g") == 0)
+        rfc_param->hotspot_open_6g_last_enabled = public->enabled;
+    else if(strcmp(public->vap_name,"hotspot_secure_2g") == 0)
+        rfc_param->hotspot_secure_2g_last_enabled = public->enabled;
+    else if (strcmp(public->vap_name,"hotspot_secure_5g") == 0)
+        rfc_param->hotspot_secure_5g_last_enabled = public->enabled;
+   else if (strcmp(public->vap_name,"hotspot_secure_6g") == 0)
+        rfc_param->hotspot_secure_6g_last_enabled = public->enabled;
+
+    wifidb_update_rfc_config(0, rfc_param);
+#endif
+}
+
 void process_public_service_command(vap_svc_event_t event,ctrl_event_subtype_t sub_type,void *data)
 {
 
@@ -339,6 +362,9 @@ void process_public_service_command(vap_svc_event_t event,ctrl_event_subtype_t s
 
         case ctrl_event_type_prefer_private_rfc:
             process_prefer_private_rfc_event(event, data);
+        break;
+        case ctrl_event_type_xfinity_enable:
+            process_xfinity_enable(event, data);
         break;
 
         default:

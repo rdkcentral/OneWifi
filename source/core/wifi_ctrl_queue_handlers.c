@@ -715,7 +715,7 @@ void process_xfinity_vaps(int vap_enable, bool hs_evt)
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     uint8_t num_radios = getNumberRadios();
 #if DML_SUPPORT
-    bool open_2g_enabled = false, open_5g_enabled = false,sec_2g_enabled = false,sec_5g_enabled = false;
+    bool open_2g_enabled = false, open_5g_enabled = false, open_6g_enabled = false,sec_2g_enabled = false,sec_5g_enabled = false, sec_6g_enabled = false;
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
 #endif // DML_SUPPORT
 
@@ -747,10 +747,12 @@ void process_xfinity_vaps(int vap_enable, bool hs_evt)
               if (rfc_param) {
                   open_2g_enabled = rfc_param->hotspot_open_2g_last_enabled;
                   open_5g_enabled = rfc_param->hotspot_open_5g_last_enabled;
+                  open_6g_enabled = rfc_param->hotspot_open_6g_last_enabled;
                   sec_2g_enabled = rfc_param->hotspot_secure_2g_last_enabled;
                   sec_5g_enabled = rfc_param->hotspot_secure_5g_last_enabled;
+                  sec_6g_enabled = rfc_param->hotspot_secure_6g_last_enabled;
               }
-              wifi_util_dbg_print(WIFI_CTRL," vap_name is %s and bool is %d:%d:%d:%d\n",tmp_vap_map.vap_array[0].vap_name,open_2g_enabled,open_5g_enabled,sec_2g_enabled,sec_5g_enabled);
+              wifi_util_dbg_print(WIFI_CTRL," vap_name is %s and bool is %d:%d:%d:%d:%d:%d\n",tmp_vap_map.vap_array[0].vap_name,open_2g_enabled,open_5g_enabled,open_6g_enabled,sec_2g_enabled,sec_5g_enabled,sec_6g_enabled);
 
               if ((strcmp(tmp_vap_map.vap_array[0].vap_name,"hotspot_open_2g") == 0) && open_2g_enabled)
                   tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
@@ -758,10 +760,16 @@ void process_xfinity_vaps(int vap_enable, bool hs_evt)
               else if ((strcmp(tmp_vap_map.vap_array[0].vap_name,"hotspot_open_5g") == 0) && open_5g_enabled)
                   tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
 
+              else if ((strcmp(tmp_vap_map.vap_array[0].vap_name,"hotspot_open_6g") == 0) && open_6g_enabled)
+                  tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
+
               else if ((strcmp(tmp_vap_map.vap_array[0].vap_name,"hotspot_secure_2g") == 0) && sec_2g_enabled)
                   tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
 
               else if ((strcmp(tmp_vap_map.vap_array[0].vap_name,"hotspot_secure_5g") == 0) && sec_5g_enabled)
+                  tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
+
+              else if ((strcmp(tmp_vap_map.vap_array[0].vap_name,"hotspot_secure_6g") == 0) && sec_6g_enabled)
                   tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
 
               wifi_util_dbg_print(WIFI_CTRL,"enabled is %d\n",tmp_vap_map.vap_array[0].u.bss_info.enabled);
@@ -1792,34 +1800,6 @@ void process_wifi_passpoint_rfc(bool type)
     process_xfinity_vaps(2,false);
 }
 
-void process_xfinity_open_2g_enabled(bool open_2g)
-{
-    wifi_util_dbg_print(WIFI_DB,"WIFI Enter RFC Func %s: %d : bool %d\n",__FUNCTION__,__LINE__,open_2g);
-    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
-    rfc_param->hotspot_open_2g_last_enabled = open_2g;
-    wifidb_update_rfc_config(0, rfc_param);
-}
-void process_xfinity_open_5g_enabled(bool open_5g)
-{
-    wifi_util_dbg_print(WIFI_DB,"WIFI Enter RFC Func %s: %d : bool %d\n",__FUNCTION__,__LINE__,open_5g);
-    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
-    rfc_param->hotspot_open_5g_last_enabled = open_5g;
-    wifidb_update_rfc_config(0, rfc_param);
-}
-void process_xfinity_sec_2g_enabled(bool secure_2g)
-{
-    wifi_util_dbg_print(WIFI_DB,"WIFI Enter RFC Func %s: %d : bool %d\n",__FUNCTION__,__LINE__,secure_2g);
-    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
-    rfc_param->hotspot_secure_2g_last_enabled = secure_2g;
-    wifidb_update_rfc_config(0, rfc_param);
-}
-void process_xfinity_sec_5g_enabled(bool secure_5g)
-{
-    wifi_util_dbg_print(WIFI_DB,"WIFI Enter RFC Func %s: %d : bool %d\n",__FUNCTION__,__LINE__,secure_5g);
-    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
-    rfc_param->hotspot_secure_5g_last_enabled = secure_5g;
-    wifidb_update_rfc_config(0, rfc_param);
-}
 void process_wifi_interworking_rfc(bool type)
 {
     wifi_util_dbg_print(WIFI_DB,"WIFI Enter RFC Func %s: %d : bool %d\n",__FUNCTION__,__LINE__,type);

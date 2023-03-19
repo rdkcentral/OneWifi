@@ -100,6 +100,8 @@ struct ovs_vapname_cloudvifname_map  cloud_vif_map[] = {
     {"wl2",   "mesh_sta_6g"},
     {"wl2.1", "private_ssid_6g"},
     {"wl2.2", "iot_ssid_6g"},
+    {"wl2.3", "hotspot_open_6g"},
+    {"wl2.5", "hotspot_secure_6g"},
     {"wl2.7", "mesh_backhaul_6g"},
     {"wl1",   "mesh_sta_5gl"},
     {"wl1.1", "private_ssid_5gl"},
@@ -1554,8 +1556,18 @@ BOOL update_secmode_for_wpa3(wifi_vap_info_t *vap_info, char *mode_str, int mode
             snprintf(encrypt_str, encrypt_len, "WPA-PSK");
             ret = true;
         }
+        else if (vap_info->u.bss_info.security.mode == wifi_security_mode_wpa3_enterprise) {
+            snprintf(mode_str, mode_len, "2");
+            snprintf(encrypt_str, encrypt_len, "WPA-EAP");
+            ret = true;
+        }
+        else if (vap_info->u.bss_info.security.mode == wifi_security_mode_enhanced_open) {
+            snprintf(encrypt_str, encrypt_len, "OPEN");
+            ret = true;
+        }
     } else {
-        if ((vap_info->u.bss_info.security.mode == wifi_security_mode_wpa3_transition) || (vap_info->u.bss_info.security.mode == wifi_security_mode_wpa3_personal)) {
+        if ((vap_info->u.bss_info.security.mode == wifi_security_mode_wpa3_transition) || (vap_info->u.bss_info.security.mode == wifi_security_mode_wpa3_personal)
+        || (vap_info->u.bss_info.security.mode == wifi_security_mode_wpa3_enterprise) || (vap_info->u.bss_info.security.mode == wifi_security_mode_enhanced_open)) {
             ret = true;
         }
     }
@@ -1699,11 +1711,12 @@ webconfig_error_t translate_vap_info_to_ovsdb_enterprise_sec(const wifi_vap_info
 
     memset(str_mode, 0, sizeof(str_mode));
     memset(str_encryp, 0, sizeof(str_encryp));
-    if ((key_mgmt_conversion_legacy((wifi_security_modes_t *)&vap->u.bss_info.security.mode, (wifi_encryption_method_t *)&vap->u.bss_info.security.encr, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), ENUM_TO_STRING)) != RETURN_OK) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. security mode 0x%x encr 0x%x\n", __func__, __LINE__, vap->u.bss_info.security.mode, vap->u.bss_info.security.encr);
-        return webconfig_error_translate_to_ovsdb;
+    if (!update_secmode_for_wpa3((wifi_vap_info_t *)vap, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), true)) {
+        if ((key_mgmt_conversion_legacy((wifi_security_modes_t *)&vap->u.bss_info.security.mode, (wifi_encryption_method_t *)&vap->u.bss_info.security.encr, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), ENUM_TO_STRING)) != RETURN_OK)    {
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. security mode 0x%x encr 0x%x\n", __func__, __LINE__, vap->u.bss_info.security.mode, vap->u.bss_info.security.encr);
+            return webconfig_error_translate_to_ovsdb;
+        }
     }
-
     set_translator_config_security_key_value(vap_row, &index, "encryption", str_encryp);
     set_translator_config_security_key_value(vap_row, &index, "mode", str_mode);
 
@@ -2426,11 +2439,12 @@ webconfig_error_t translate_vap_info_to_vif_state_enterprise_sec(const wifi_vap_
 
     memset(str_mode, 0, sizeof(str_mode));
     memset(str_encryp, 0, sizeof(str_encryp));
-    if ((key_mgmt_conversion_legacy((wifi_security_modes_t *)&vap->u.bss_info.security.mode, (wifi_encryption_method_t *)&vap->u.bss_info.security.encr, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), ENUM_TO_STRING)) != RETURN_OK) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed\n", __func__, __LINE__);
-        return webconfig_error_translate_to_ovsdb;
+    if (!update_secmode_for_wpa3((wifi_vap_info_t *)vap, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), true)) {
+        if ((key_mgmt_conversion_legacy((wifi_security_modes_t *)&vap->u.bss_info.security.mode, (wifi_encryption_method_t *)&vap->u.bss_info.security.encr, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), ENUM_TO_STRING)) != RETURN_OK)   {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed\n", __func__, __LINE__);
+            return webconfig_error_translate_to_ovsdb;
+       }
     }
-
     set_translator_state_security_key_value(vap_row, &index, "encryption", str_encryp);
     set_translator_state_security_key_value(vap_row, &index, "mode", str_mode);
 
@@ -3236,11 +3250,12 @@ webconfig_error_t translate_ovsdb_to_vap_info_enterprise_sec(const struct schema
         return webconfig_error_translate_from_ovsdb;
     }
 
-    if ((key_mgmt_conversion_legacy(&vap->u.bss_info.security.mode, &vap->u.bss_info.security.encr, (char *)str_mode, strlen(str_mode)+1, (char *)str_encryp, strlen(str_encryp)+1, STRING_TO_ENUM)) != RETURN_OK) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. str_mode '%s'\n", __func__, __LINE__, str_mode);
-        return webconfig_error_translate_from_ovsdb;
+    if (!update_secmode_for_wpa3((wifi_vap_info_t *)vap, (char *)str_mode, strlen(str_mode)+1, (char *)str_encryp, strlen(str_encryp)+1, false)) {
+        if ((key_mgmt_conversion_legacy(&vap->u.bss_info.security.mode, &vap->u.bss_info.security.encr, (char *)str_mode, strlen(str_mode)+1, (char *)str_encryp, strlen(str_encryp)+1, STRING_TO_ENUM)) != RETURN_OK) {
+           wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. str_mode '%s'\n", __func__, __LINE__, str_mode);
+           return webconfig_error_translate_from_ovsdb;
+        }
     }
-
 #else
     if (vap_row->wpa == false) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Open security is not supported\n", __func__, __LINE__);

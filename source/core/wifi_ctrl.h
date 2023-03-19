@@ -254,6 +254,11 @@ typedef enum {
     txrx_rate_list_type
 } marker_list_t;
 
+typedef struct {
+    wifi_vap_name_t  vap_name;;
+    bool enabled;
+} public_vaps_data_t;
+
 void process_mgmt_ctrl_frame_event(frame_data_t *msg, uint32_t msg_length);
 wifi_db_t *get_wifidb_obj();
 wifi_ctrl_t *get_wifictrl_obj();

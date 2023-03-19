@@ -1147,12 +1147,32 @@ webconfig_error_t decode_no_security_object(const cJSON *security, wifi_vap_secu
     cJSON *object = NULL;
 
     decode_param_string(security, "Mode", param);
-    if (strcmp(param->valuestring, "None") != 0) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Decode error\n", __func__, __LINE__);
+    if (strcmp(param->valuestring, "None") == 0) {
+        security_info->mode = wifi_security_mode_none;
+    } else if (strcmp(param->valuestring, "Enhanced-Open") == 0) {
+        security_info->mode = wifi_security_mode_enhanced_open;
+        decode_param_string(security, "MFPConfig", param);
+        if (strstr(param->valuestring, "Disabled") || strstr(param->valuestring, "Optional")) {
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed\n", __func__, __LINE__);
+            return webconfig_error_decode;
+        }
+        else {
+            security_info->mfp = wifi_mfp_cfg_required;
+        }
+        decode_param_string(security, "EncryptionMethod", param);
+        if (strcmp(param->valuestring, "AES") == 0) {
+            security_info->encr = wifi_encryption_aes;
+        } else {
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed\n", __func__, __LINE__);
+            return webconfig_error_decode;
+        }
+
+    }
+    else {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Decode error %s\n", __func__, __LINE__,param->valuestring);
         return webconfig_error_decode;
     }
 
-    security_info->mode = wifi_security_mode_none;
     object = cJSON_GetObjectItem(security, "RadiusSettings");
     if (object != NULL) {
         decode_param_object(security, "RadiusSettings",param);
@@ -1170,8 +1190,8 @@ webconfig_error_t decode_enterprise_security_object(const cJSON *security, wifi_
 
 
     decode_param_string(security, "Mode", param);
-    if ((strcmp(param->valuestring, "WPA2-Enterprise") != 0) && (strcmp(param->valuestring, "WPA-WPA2-Enterprise") != 0)) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Xfinity WiFi VAP security is not WPA2 Eneterprise, value:%s\n",
+    if ((strcmp(param->valuestring, "WPA2-Enterprise") != 0) && (strcmp(param->valuestring, "WPA-WPA2-Enterprise") != 0) && (strcmp(param->valuestring, "WPA3-Enterprise") != 0)) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Xfinity WiFi VAP security is not WPA2/WP3 Eneterprise, value:%s\n",
             __func__, __LINE__, param->valuestring);
                 //strncpy(execRetVal->ErrorMsg, "Invalid sec mode for hotspot secure vap",sizeof(execRetVal->ErrorMsg)-1);
         return webconfig_error_decode;
@@ -1179,6 +1199,8 @@ webconfig_error_t decode_enterprise_security_object(const cJSON *security, wifi_
 
     if (strcmp(param->valuestring, "WPA2-Enterprise") == 0) {
         security_info->mode = wifi_security_mode_wpa2_enterprise;
+    }else if (strcmp(param->valuestring, "WPA3-Enterprise") == 0) {
+        security_info->mode = wifi_security_mode_wpa3_enterprise;
     } else {
         security_info->mode = wifi_security_mode_wpa_wpa2_enterprise;
     }
@@ -1214,7 +1236,13 @@ webconfig_error_t decode_enterprise_security_object(const cJSON *security, wifi_
     } else if (strstr(param->valuestring, "Optional")) {
         security_info->mfp = wifi_mfp_cfg_optional;
     }
-
+    if (security_info->mode == wifi_security_mode_wpa3_enterprise) {
+        if (security_info->mfp != wifi_mfp_cfg_required || security_info->encr != wifi_encryption_aes) {
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: MFPConfig not valid, combination for wpa3_enterprise \n",
+                        __func__, __LINE__);
+            return webconfig_error_decode;
+        }
+    }
     //Wpa3_transition_disable
     decode_param_bool(security, "Wpa3_transition_disable", param);
     security_info->wpa3_transition_disable =  (param->type & cJSON_True) ? true:false;

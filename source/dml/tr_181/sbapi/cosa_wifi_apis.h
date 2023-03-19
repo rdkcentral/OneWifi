@@ -106,7 +106,8 @@ _COSA_DML_WIFI_SECURITY
     COSA_DML_WIFI_SECURITY_WPA_WPA2_Enterprise             = 0x00000100,
     COSA_DML_WIFI_SECURITY_WPA3_Personal                   = 0x00000200,
     COSA_DML_WIFI_SECURITY_WPA3_Personal_Transition        = 0x00000400,
-    COSA_DML_WIFI_SECURITY_WPA3_Enterprise                 = 0x00000800
+    COSA_DML_WIFI_SECURITY_WPA3_Enterprise                 = 0x00000800,
+    COSA_DML_WIFI_SECURITY_Enhanced_Open                   = 0x00001000
 }
 COSA_DML_WIFI_SECURITY, *PCOSA_DML_WIFI_SECURITY;
 

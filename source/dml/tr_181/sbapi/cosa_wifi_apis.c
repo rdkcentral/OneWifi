@@ -172,7 +172,8 @@ struct wifiSecCosaHalMap wifiSecMap[] =
       {wifi_security_mode_wpa_enterprise,      COSA_DML_WIFI_SECURITY_WPA_Enterprise,           "WPA-Enterprise"},
       {wifi_security_mode_wpa2_enterprise,     COSA_DML_WIFI_SECURITY_WPA2_Enterprise,          "WPA2-Enterprise"},
       {wifi_security_mode_wpa3_enterprise,     COSA_DML_WIFI_SECURITY_WPA3_Enterprise,          "WPA3-Enterprise"},
-      {wifi_security_mode_wpa_wpa2_enterprise, COSA_DML_WIFI_SECURITY_WPA_WPA2_Enterprise,      "WPA-WPA2-Enterprise"}
+      {wifi_security_mode_wpa_wpa2_enterprise, COSA_DML_WIFI_SECURITY_WPA_WPA2_Enterprise,      "WPA-WPA2-Enterprise"},
+      {wifi_security_mode_enhanced_open,       COSA_DML_WIFI_SECURITY_Enhanced_Open,            "Enhanced-Open"}
 };
 
 struct wifiFreqBandHalMap wifiFreqBandMap[] =
