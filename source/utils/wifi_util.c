@@ -2034,27 +2034,48 @@ int  vif_radio_idx_conversion(unsigned int vapIndex, int *input, int *output, ch
     return RETURN_ERR;
 }
 
-int get_allowed_channels(wifi_freq_bands_t band, wifi_radio_capabilities_t *radio_cap, int *channels, int *channels_len)
+int get_allowed_channels(wifi_freq_bands_t band, wifi_radio_capabilities_t *radio_cap, int *channels, int *channels_len, bool dfs_enabled)
 {
     unsigned int band_arr_index = 0;
-    int chan_arr_index = 0;
+    int chan_arr_index = 0, index = 0;
+    bool remove_dfs_channels = FALSE;
+
     if ((radio_cap == NULL) || (channels == NULL) || (channels_len == NULL)) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Input arguements are NULL radio_cap : %p channels : %p channels_len : %p\n", __func__, __LINE__, radio_cap, channels, channels_len);
         return RETURN_ERR;
     }
-    for (chan_arr_index = 0; chan_arr_index < radio_cap->channel_list[band_arr_index].num_channels; chan_arr_index++) {
-        channels[chan_arr_index] =  radio_cap->channel_list[band_arr_index].channels_list[chan_arr_index];
+
+    if ( ((band == WIFI_FREQUENCY_5_BAND)  ||
+          (band == WIFI_FREQUENCY_5L_BAND) || (band == WIFI_FREQUENCY_5H_BAND)) &&
+         (dfs_enabled == FALSE) ) {
+         remove_dfs_channels = TRUE;
     }
-    *channels_len = radio_cap->channel_list[band_arr_index].num_channels;
+
+    for (index = 0; index < radio_cap->channel_list[band_arr_index].num_channels; index++) {
+
+        /* For 5G Radio, filter the channels 52 to 144 based on DFS flag */
+        if ( (remove_dfs_channels == TRUE) &&
+             ((radio_cap->channel_list[band_arr_index].channels_list[index] > 48) &&
+              (radio_cap->channel_list[band_arr_index].channels_list[index] < 149)) ) {
+            continue;
+        }
+
+        channels[chan_arr_index] =  radio_cap->channel_list[band_arr_index].channels_list[index];
+        chan_arr_index++;
+    }
+
+    *channels_len = chan_arr_index;
+
     return RETURN_OK;
 }
 
 int get_allowed_channels_str(wifi_freq_bands_t band, wifi_radio_capabilities_t *radio_cap,
-    char *buf, size_t buf_size)
+    char *buf, size_t buf_size, bool dfs_enabled)
 {
     int i;
     char channel_str[8];
     wifi_channels_list_t *channels;
+    bool remove_dfs_channels = FALSE;
 
     if ((radio_cap == NULL) || (buf == NULL)) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Input arguments are NULL: radio_cap : %p "
@@ -2071,8 +2092,21 @@ int get_allowed_channels_str(wifi_freq_bands_t band, wifi_radio_capabilities_t *
         return RETURN_ERR;
     }
 
+    if ( ((band == WIFI_FREQUENCY_5_BAND)  ||
+          (band == WIFI_FREQUENCY_5L_BAND) || (band == WIFI_FREQUENCY_5H_BAND)) &&
+         (dfs_enabled == FALSE) ) {
+         remove_dfs_channels = TRUE;
+    }
+
     *buf = '\0';
     for (i = 0; i < channels->num_channels; i++) {
+
+        /* For 5G Radio, filter the channels 52 to 144 based on DFS flag */
+        if ( (remove_dfs_channels == TRUE) &&
+            ((channels->channels_list[i] > 48) && (channels->channels_list[i] < 149)) ) {
+            continue;
+        }
+
         snprintf(channel_str, sizeof(channel_str), i == 0 ? "%u" : ",%u",
             channels->channels_list[i]);
         strcat(buf, channel_str);

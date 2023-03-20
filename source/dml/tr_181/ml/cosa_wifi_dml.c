@@ -2488,9 +2488,17 @@ Radio_GetParamStringValue
 
     if( AnscEqualString(ParamName, "PossibleChannels", TRUE))
     {
+        wifi_rfc_dml_parameters_t *rfc_params = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
+
+        if( rfc_params == NULL )
+        {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer RFC Params\n", __FUNCTION__,__LINE__);
+            return FALSE;
+        }
+
         return get_allowed_channels_str(pcfg->band,
             &((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop.radiocap[instance_number],
-            pValue, *pUlSize) == RETURN_OK ? 0 : -1;
+            pValue, *pUlSize, rfc_params->dfs_rfc) == RETURN_OK ? 0 : -1;
     }
 
     if( AnscEqualString(ParamName, "ChannelsInUse", TRUE))

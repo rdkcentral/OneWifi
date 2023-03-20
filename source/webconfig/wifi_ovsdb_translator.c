@@ -1046,18 +1046,36 @@ webconfig_error_t translate_macfilter_from_ovsdb_to_rdk_vap(const struct schema_
     return webconfig_error_none;
 }
 
-static int get_channels(const wifi_channelMap_t *channel_map, wifi_radio_capabilities_t *radio_cap, struct schema_Wifi_Radio_State *row)
+static int get_channels(const wifi_channelMap_t *channel_map, wifi_radio_capabilities_t *radio_cap, struct schema_Wifi_Radio_State *row,
+                        wifi_freq_bands_t band, bool dfs_enabled)
 {
+    bool remove_dfs_channels = FALSE;
+    int chan_arr_index = 0;
+
     if (!channel_map || !radio_cap || !row) {
         return RETURN_ERR;
     }
 
+    if ( ((band == WIFI_FREQUENCY_5_BAND)  ||
+          (band == WIFI_FREQUENCY_5L_BAND) || (band == WIFI_FREQUENCY_5H_BAND)) &&
+         (dfs_enabled == FALSE) ) {
+         remove_dfs_channels = TRUE;
+    }
+
     for (int i = 0; i < radio_cap->channel_list[0].num_channels; i++)
     {
-        channel_state_enum_to_str(channel_map[i].ch_state, row->channels[i], ARRAY_SIZE(row->channels[i]) - 1);
-        sprintf(row->channels_keys[i], "%d", channel_map[i].ch_number);
+        /* For 5G Radio, filter the channels 52 to 144 based on DFS flag */
+        if ( (remove_dfs_channels == TRUE) &&
+             ((channel_map[i].ch_number > 48) &&
+              (channel_map[i].ch_number < 149)) ) {
+            continue;
+        }
+
+        channel_state_enum_to_str(channel_map[i].ch_state, row->channels[chan_arr_index], ARRAY_SIZE(row->channels[chan_arr_index]) - 1);
+        sprintf(row->channels_keys[chan_arr_index], "%d", channel_map[i].ch_number);
+        chan_arr_index++;
     }
-    row->channels_len = radio_cap->channel_list[0].num_channels;
+    row->channels_len = chan_arr_index;
     return RETURN_OK;
 }
 
@@ -1112,12 +1130,12 @@ webconfig_error_t translate_radio_obj_to_ovsdb_radio_state(const wifi_radio_oper
         return webconfig_error_translate_to_ovsdb;
     }
 
-    if (get_allowed_channels(oper_param->band, &wifi_prop->radiocap[radio_index], row->allowed_channels, &row->allowed_channels_len) != RETURN_OK) {
+    if (get_allowed_channels(oper_param->band, &wifi_prop->radiocap[radio_index], row->allowed_channels, &row->allowed_channels_len, oper_param->DfsEnabled) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: get allowed channels failed\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
 
-    if (get_channels(oper_param->channel_map, &wifi_prop->radiocap[radio_index], row) != RETURN_OK) {
+    if (get_channels(oper_param->channel_map, &wifi_prop->radiocap[radio_index], row, oper_param->band, oper_param->DfsEnabled) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: get channels failed\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
