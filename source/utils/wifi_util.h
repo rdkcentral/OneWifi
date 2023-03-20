@@ -266,4 +266,6 @@ BOOL is_bssid_valid(const bssid_t bssid);
 bool is_bandwidth_and_hw_variant_compatible(uint32_t variant, wifi_channelBandwidth_t current_bw);
 int validate_radio_parameters(const wifi_radio_operationParam_t *radio_info);
 int wifi_radio_operationParam_validation(wifi_hal_capability_t  *hal_cap, wifi_radio_operationParam_t *oper);
+int convert_ascii_string_to_bool(char *l_string, bool *l_bool_param);
+int convert_bool_to_ascii_string(bool l_bool_param, char *l_string, size_t str_len);
 #endif//_WIFI_UTIL_H_

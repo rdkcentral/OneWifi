@@ -367,8 +367,8 @@ int wifi_db_update_global_config(wifi_global_param_t *global_cfg)
     memset(strValue, 0, sizeof(strValue));
     str = Get_PSM_Record_Status(WiFivAPStatsFeatureEnable, strValue);
     if (str != NULL) {
-        global_cfg->vap_stats_feature = _ansc_atoi(str);
-        wifi_util_dbg_print(WIFI_MGR,"global_cfg->vap_stats_feature; is %d and str is %s and _ansc_atoi(str) is %d\n", global_cfg->vap_stats_feature, str, _ansc_atoi(str));
+        convert_ascii_string_to_bool(str, &global_cfg->vap_stats_feature);
+        wifi_util_dbg_print(WIFI_MGR,"global_cfg->vap_stats_feature; is %d and str is %s\n", global_cfg->vap_stats_feature, str);
     } else {
         wifi_util_dbg_print(WIFI_MGR,"%s:%d str value for vap_stats_feature:%s \r\n", __func__, __LINE__, str);
     }
@@ -394,8 +394,8 @@ int wifi_db_update_global_config(wifi_global_param_t *global_cfg)
     memset(strValue, 0, sizeof(strValue));
     str = Get_PSM_Record_Status(NotifyWiFiChanges, strValue);
     if (str != NULL) {
-        global_cfg->notify_wifi_changes = _ansc_atoi(str);
-        wifi_util_dbg_print(WIFI_MGR,"global_cfg->notify_wifi_changes is %d and str is %s and _ansc_atoi(str) is %d\n", global_cfg->notify_wifi_changes, str, _ansc_atoi(str));
+        convert_ascii_string_to_bool(str, &global_cfg->notify_wifi_changes);
+        wifi_util_dbg_print(WIFI_MGR,"global_cfg->notify_wifi_changes is %d and str is %s\n", global_cfg->notify_wifi_changes, str);
     } else {
         wifi_util_dbg_print(WIFI_MGR,":%s:%d str value for notify_wifi_changes:%s \r\n", __func__, __LINE__, str);
     }
@@ -448,8 +448,8 @@ int wifi_db_update_global_config(wifi_global_param_t *global_cfg)
     memset(strValue, 0, sizeof(strValue));
     str = Get_PSM_Record_Status(RapidReconnectIndicationEnable, strValue);
     if (str != NULL) {
-        global_cfg->rapid_reconnect_enable = _ansc_atoi(str);
-        wifi_util_dbg_print(WIFI_MGR,"global_cfg->rapid_reconnect_enable is %d and str is %s and _ansc_atoi(str) is %d\n", global_cfg->rapid_reconnect_enable, str, _ansc_atoi(str));
+        convert_ascii_string_to_bool(str, &global_cfg->rapid_reconnect_enable);
+        wifi_util_dbg_print(WIFI_MGR,"global_cfg->rapid_reconnect_enable is %d and str is %s\n", global_cfg->rapid_reconnect_enable, str);
     } else {
         wifi_util_dbg_print(WIFI_MGR,":%s:%d str value for rapid_reconnect_enable:%s \r\n", __func__, __LINE__, str);
     }
@@ -466,8 +466,8 @@ int wifi_db_update_global_config(wifi_global_param_t *global_cfg)
     memset(strValue, 0, sizeof(strValue));
     str = Get_PSM_Record_Status(WiFiTxOverflowSelfheal, strValue);
     if (str != NULL) {
-        global_cfg->tx_overflow_selfheal = _ansc_atoi(str);
-        wifi_util_dbg_print(WIFI_MGR,"global_cfg->tx_overflow_selfheal is %d and str is %s and _ansc_atoi(str) is %d\n", global_cfg->tx_overflow_selfheal, str, _ansc_atoi(str));
+        convert_ascii_string_to_bool(str, &global_cfg->tx_overflow_selfheal);
+        wifi_util_dbg_print(WIFI_MGR,"global_cfg->tx_overflow_selfheal is %d and str is %s\n", global_cfg->tx_overflow_selfheal, str);
     } else {
         wifi_util_dbg_print(WIFI_MGR,":%s:%d str value for tx_overflow_selfheal:%s \r\n", __func__, __LINE__, str);    
     }
@@ -475,8 +475,8 @@ int wifi_db_update_global_config(wifi_global_param_t *global_cfg)
     memset(strValue, 0, sizeof(strValue));
     str = Get_PSM_Record_Status(WiFiForceDisableWiFiRadio, strValue);
     if (str != NULL) {
-        global_cfg->force_disable_radio_feature = _ansc_atoi(str);
-        wifi_util_dbg_print(WIFI_MGR,"global_cfg->force_disable_radio_feature is %d and str is %s and _ansc_atoi(str) is %d\n", global_cfg->force_disable_radio_feature, str, _ansc_atoi(str));
+        convert_ascii_string_to_bool(str, &global_cfg->force_disable_radio_feature);
+        wifi_util_dbg_print(WIFI_MGR,"global_cfg->force_disable_radio_feature is %d and str is %s\n", global_cfg->force_disable_radio_feature, str);
     } else {
         wifi_util_dbg_print(WIFI_MGR,":%s:%d str value for force_disable_radio_feature:%s \r\n", __func__, __LINE__, str);
     }
@@ -594,8 +594,8 @@ int wifi_db_update_global_config(wifi_global_param_t *global_cfg)
     memset(strValue, 0, sizeof(strValue));
     str = Get_PSM_Record_Status(WiFiActiveMsmtEnabled, strValue);
     if (str != NULL) {
-        global_cfg->wifi_active_msmt_enabled = _ansc_atoi(str);
-        wifi_util_dbg_print(WIFI_MGR,"global_cfg->wifi_active_msmt_enabled is %d and str is %s and _ansc_atoi(str) is %d\n", global_cfg->wifi_active_msmt_enabled, str, _ansc_atoi(str));
+        convert_ascii_string_to_bool(str, &global_cfg->wifi_active_msmt_enabled);
+        wifi_util_dbg_print(WIFI_MGR,"global_cfg->wifi_active_msmt_enabled is %d and str is %s\r\n", global_cfg->wifi_active_msmt_enabled, str);
     } else {
         wifi_util_dbg_print(WIFI_MGR,":%s:%d str value for wifi_active_msmt_enabled:%s \r\n", __func__, __LINE__, str);
     }
@@ -993,8 +993,8 @@ int get_vap_params_from_psm(unsigned int vap_index, wifi_vap_info_t *vap_config)
     snprintf(recName, sizeof(recName), vAPStatsEnable, instance_number);
     str = Get_PSM_Record_Status(recName, strValue);
     if (str != NULL) {
-        bss_cfg->vapStatsEnable = _ansc_atoi(str);
-        wifi_util_dbg_print(WIFI_MGR,"bss_cfg->vapStatsEnable is %d and str is %s and _ansc_atoi(str) is %d\n", bss_cfg->vapStatsEnable, str, _ansc_atoi(str));
+        convert_ascii_string_to_bool(str, (bool *)&bss_cfg->vapStatsEnable);
+        wifi_util_dbg_print(WIFI_MGR,"bss_cfg->vapStatsEnable is %d and str is %s\n", bss_cfg->vapStatsEnable, str);
     } else {
         wifi_util_dbg_print(WIFI_MGR,"%s:%d str value for vapStatsEnable:%s \r\n", __func__, __LINE__, str);
     }
@@ -1058,8 +1058,8 @@ int get_vap_params_from_psm(unsigned int vap_index, wifi_vap_info_t *vap_config)
     snprintf(recName, sizeof(recName), BSSTransitionActivated, instance_number);
     str = Get_PSM_Record_Status(recName, strValue);
     if (str != NULL) {
-        bss_cfg->bssTransitionActivated = _ansc_atoi(str);
-        wifi_util_dbg_print(WIFI_MGR,"bss_cfg->bssTransitionActivated is %d and str is %s and _ansc_atoi(str) is %d\n", bss_cfg->bssTransitionActivated, str, _ansc_atoi(str));
+        convert_ascii_string_to_bool(str, (bool *)&bss_cfg->bssTransitionActivated);
+        wifi_util_dbg_print(WIFI_MGR,"bss_cfg->bssTransitionActivated is %d and str is %s\n", bss_cfg->bssTransitionActivated, str);
     } else {
         wifi_util_dbg_print(WIFI_MGR,"%s:%d str value for bssTransitionActivated:%s \r\n", __func__, __LINE__, str);
     }
@@ -1113,8 +1113,8 @@ int get_vap_params_from_psm(unsigned int vap_index, wifi_vap_info_t *vap_config)
     snprintf(recName, sizeof(recName), NeighborReportActivated, instance_number);
     str = Get_PSM_Record_Status(recName, strValue);
     if (str != NULL) {
-        bss_cfg->nbrReportActivated = _ansc_atoi(str);
-        wifi_util_dbg_print(WIFI_MGR,"bss_cfg->nbrReportActivated is %d and str is %s and _ansc_atoi(str) is %d\n", bss_cfg->nbrReportActivated, str, _ansc_atoi(str));
+        convert_ascii_string_to_bool(str, (bool *)&bss_cfg->nbrReportActivated);
+        wifi_util_dbg_print(WIFI_MGR,"bss_cfg->nbrReportActivated is %d and str is %s\n", bss_cfg->nbrReportActivated, str);
     } else {
         wifi_util_dbg_print(WIFI_MGR,"%s:%d str value for nbrReportActivated:%s \r\n", __func__, __LINE__, str);
     }

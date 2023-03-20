@@ -2871,3 +2871,45 @@ int wifi_radio_operationParam_validation(wifi_hal_capability_t  *hal_cap, wifi_r
     }
     return RETURN_OK;
 }
+
+int convert_ascii_string_to_bool(char *l_string, bool *l_bool_param)
+{
+    if (l_string == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"[%s:%d] input string is NULL\r\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    if(((strncmp(l_string, "true", strlen("true")) == 0)) || (strncmp(l_string, "TRUE", strlen("TRUE")) == 0) ||
+        ((strncmp(l_string, "1", strlen("1")) == 0))) {
+        *l_bool_param = 1;
+        return 1;
+    }
+
+    if(((strncmp(l_string, "false", strlen("false")) == 0)) || (strncmp(l_string, "FALSE", strlen("FALSE")) == 0) ||
+        ((strncmp(l_string, "0", strlen("0")) == 0))) {
+        *l_bool_param = 0;
+        return 0;
+    }
+
+    wifi_util_error_print(WIFI_CTRL,"[%s:%d] ascii to bool conversion failure:%s\r\n", __func__, __LINE__, l_string);
+    return RETURN_ERR;
+}
+
+int convert_bool_to_ascii_string(bool l_bool_param, char *l_string, size_t str_len)
+{
+    if (l_string == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"[%s:%d] input string param is NULL\r\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    if (l_bool_param == 0) {
+        snprintf(l_string, str_len, "false");
+    } else if (l_bool_param == 1) {
+        snprintf(l_string, str_len, "true");
+    } else {
+        wifi_util_error_print(WIFI_CTRL,"[%s:%d] bool to ascii conversion failure:%d\r\n", __func__, __LINE__, l_bool_param);
+        return RETURN_ERR;
+    }
+
+    return RETURN_OK;
+}

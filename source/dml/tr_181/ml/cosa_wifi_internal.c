@@ -544,8 +544,8 @@ void CosaDmlWiFiGetFromPSM(void)
             snprintf(recName, sizeof(recName), vAPStatsEnable, instance_number);
             str = PSM_Get_Record_Status(recName, strValue);
             if (str != NULL) {
-                psm_vap_param->vap_stats_enable = _ansc_atoi(str);
-                wifi_util_dbg_print(WIFI_PSM,"cfg->vap_stats_enable is %d and str is %s and _ansc_atoi(str) is %d\n", psm_vap_param->vap_stats_enable, str, _ansc_atoi(str));
+                convert_ascii_string_to_bool(str, &psm_vap_param->vap_stats_enable);
+                wifi_util_dbg_print(WIFI_PSM,"cfg->vap_stats_enable is %d and str is %s\n", psm_vap_param->vap_stats_enable, str);
             } else {
                 psm_vap_param->vap_stats_enable = bss_cfg->vapStatsEnable;
                 wifi_util_dbg_print(WIFI_PSM,":%s:%d set default value:%d : %d\r\n", __func__, __LINE__, bss_cfg->vapStatsEnable, psm_vap_param->vap_stats_enable);
@@ -614,8 +614,8 @@ void CosaDmlWiFiGetFromPSM(void)
             snprintf(recName, sizeof(recName), BSSTransitionActivated, instance_number);
             str = PSM_Get_Record_Status(recName, strValue);
             if (str != NULL) {
-                psm_vap_param->bss_transition_activated = _ansc_atoi(str);
-                wifi_util_dbg_print(WIFI_PSM,"cfg->bss_transition_activated is %d and str is %s and _ansc_atoi(str) is %d\n", psm_vap_param->bss_transition_activated, str, _ansc_atoi(str));
+                convert_ascii_string_to_bool(str, &psm_vap_param->bss_transition_activated);
+                wifi_util_dbg_print(WIFI_PSM,"cfg->bss_transition_activated is %d and str is %s\n", psm_vap_param->bss_transition_activated, str);
             } else {
                 psm_vap_param->bss_transition_activated = bss_cfg->bssTransitionActivated;
                 wifi_util_dbg_print(WIFI_PSM,":%s:%d set default value:%d : %d\r\n", __func__, __LINE__, bss_cfg->bssTransitionActivated, psm_vap_param->bss_transition_activated);
@@ -674,8 +674,8 @@ void CosaDmlWiFiGetFromPSM(void)
             snprintf(recName, sizeof(recName), NeighborReportActivated, instance_number);
             str = PSM_Get_Record_Status(recName, strValue);
             if (str != NULL) {
-                psm_vap_param->nbr_report_activated = _ansc_atoi(str);
-                wifi_util_dbg_print(WIFI_PSM,"cfg->nbr_report_activated is %d and str is %s and _ansc_atoi(str) is %d\n", psm_vap_param->nbr_report_activated, str, _ansc_atoi(str));
+                convert_ascii_string_to_bool(str, &psm_vap_param->nbr_report_activated);
+                wifi_util_dbg_print(WIFI_PSM,"cfg->nbr_report_activated is %d and str is %s\n", psm_vap_param->nbr_report_activated, str);
             } else {
                 psm_vap_param->nbr_report_activated = bss_cfg->nbrReportActivated;
                 wifi_util_dbg_print(WIFI_PSM,":%s:%d set default value:%d : %d\r\n", __func__, __LINE__, bss_cfg->nbrReportActivated, psm_vap_param->nbr_report_activated);
@@ -723,8 +723,8 @@ void CosaDmlWiFiGetFromPSM(void)
      memset(strValue, 0, sizeof(strValue));
      str = PSM_Get_Record_Status(WiFivAPStatsFeatureEnable, strValue);
      if (str != NULL) {
-         psm_global_param->vap_stats_feature = _ansc_atoi(str);
-         wifi_util_dbg_print(WIFI_PSM,"cfg->vap_stats_feature is %d and str is %s and _ansc_atoi(str) is %d\n", psm_global_param->vap_stats_feature, str, _ansc_atoi(str));
+         convert_ascii_string_to_bool(str, &psm_global_param->vap_stats_feature);
+         wifi_util_dbg_print(WIFI_PSM,"cfg->vap_stats_feature is %d and str is %s\n", psm_global_param->vap_stats_feature, str);
      } else {
          psm_global_param->vap_stats_feature = global_cfg.vap_stats_feature;
          wifi_util_dbg_print(WIFI_PSM,":%s:%d set default value:%d : %d\r\n", __func__, __LINE__, global_cfg.vap_stats_feature, psm_global_param->vap_stats_feature);
@@ -739,8 +739,8 @@ void CosaDmlWiFiGetFromPSM(void)
     memset(strValue, 0, sizeof(strValue));
     str = PSM_Get_Record_Status(NotifyWiFiChanges, strValue);
     if (str != NULL) {
-        psm_global_param->notify_wifi_changes = _ansc_atoi(str);
-        wifi_util_dbg_print(WIFI_PSM,"cfg->notify_wifi_changes is %d and str is %s and _ansc_atoi(str) is %d\n", psm_global_param->notify_wifi_changes, str, _ansc_atoi(str));
+        convert_ascii_string_to_bool(str, &psm_global_param->notify_wifi_changes);
+        wifi_util_dbg_print(WIFI_PSM,"cfg->notify_wifi_changes is %d and str is %s\n", psm_global_param->notify_wifi_changes, str);
     } else {
         psm_global_param->notify_wifi_changes = global_cfg.notify_wifi_changes;
         wifi_util_dbg_print(WIFI_PSM,":%s:%d set default value:%d : %d\r\n", __func__, __LINE__, global_cfg.notify_wifi_changes, psm_global_param->notify_wifi_changes);
@@ -799,8 +799,8 @@ void CosaDmlWiFiGetFromPSM(void)
     memset(strValue, 0, sizeof(strValue));
     str = PSM_Get_Record_Status(RapidReconnectIndicationEnable, strValue);
     if (str != NULL) {
-        psm_global_param->rapid_reconnect_enable = _ansc_atoi(str);
-        wifi_util_dbg_print(WIFI_PSM,"cfg->rapid_reconnect_enable is %d and str is %s and _ansc_atoi(str) is %d\n", psm_global_param->rapid_reconnect_enable, str, _ansc_atoi(str));
+        convert_ascii_string_to_bool(str, &psm_global_param->rapid_reconnect_enable);
+        wifi_util_dbg_print(WIFI_PSM,"cfg->rapid_reconnect_enable is %d and str is %s\n", psm_global_param->rapid_reconnect_enable, str);
     } else {
         psm_global_param->rapid_reconnect_enable = global_cfg.rapid_reconnect_enable;
         wifi_util_dbg_print(WIFI_PSM,":%s:%d set default value:%d : %d\r\n", __func__, __LINE__, global_cfg.rapid_reconnect_enable, psm_global_param->rapid_reconnect_enable);
@@ -819,8 +819,8 @@ void CosaDmlWiFiGetFromPSM(void)
     memset(strValue, 0, sizeof(strValue));
     str = PSM_Get_Record_Status(WiFiTxOverflowSelfheal, strValue);
     if (str != NULL) {
-        psm_global_param->tx_overflow_selfheal = _ansc_atoi(str);
-        wifi_util_dbg_print(WIFI_PSM,"cfg->tx_overflow_selfheal is %d and str is %s and _ansc_atoi(str) is %d\n", psm_global_param->tx_overflow_selfheal, str, _ansc_atoi(str));
+        convert_ascii_string_to_bool(str, &psm_global_param->tx_overflow_selfheal);
+        wifi_util_dbg_print(WIFI_PSM,"cfg->tx_overflow_selfheal is %d and str is %s\n", psm_global_param->tx_overflow_selfheal, str);
     } else {
         psm_global_param->tx_overflow_selfheal = global_cfg.tx_overflow_selfheal;
         wifi_util_dbg_print(WIFI_PSM,":%s:%d set default value:%d : %d\r\n", __func__, __LINE__, global_cfg.tx_overflow_selfheal, psm_global_param->tx_overflow_selfheal);
@@ -829,8 +829,8 @@ void CosaDmlWiFiGetFromPSM(void)
     memset(strValue, 0, sizeof(strValue));
     str = PSM_Get_Record_Status(WiFiForceDisableWiFiRadio, strValue);
     if (str != NULL) {
-        psm_global_param->force_disable_radio_feature = _ansc_atoi(str);
-        wifi_util_dbg_print(WIFI_PSM,"cfg->force_disable_radio_feature is %d and str is %s and _ansc_atoi(str) is %d\n", psm_global_param->force_disable_radio_feature, str, _ansc_atoi(str));
+        convert_ascii_string_to_bool(str, &psm_global_param->force_disable_radio_feature);
+        wifi_util_dbg_print(WIFI_PSM,"cfg->force_disable_radio_feature is %d and str is %s\n", psm_global_param->force_disable_radio_feature, str);
     } else {
         psm_global_param->force_disable_radio_feature = global_cfg.force_disable_radio_feature;
         wifi_util_dbg_print(WIFI_PSM,":%s:%d set default value:%d : %d\r\n", __func__, __LINE__, global_cfg.force_disable_radio_feature, psm_global_param->force_disable_radio_feature);

@@ -524,7 +524,7 @@ void Psm_Db_Write_Vapinfo(wifi_vap_info_t *acfg)
             memset(recName, '\0', sizeof(recName));
             memset(instanceNumStr, '\0', sizeof(instanceNumStr));
             snprintf(recName, sizeof(recName),BSSTransitionActivated, instance_number);
-            _ansc_itoa(acfg->u.bss_info.bssTransitionActivated, instanceNumStr, 10);
+            convert_bool_to_ascii_string(acfg->u.bss_info.bssTransitionActivated, instanceNumStr, sizeof(instanceNumStr));
             retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
             if(retPsmSet == CCSP_SUCCESS) {
                 cfg->bss_transition_activated = acfg->u.bss_info.bssTransitionActivated;
@@ -594,7 +594,7 @@ void Psm_Db_Write_Vapinfo(wifi_vap_info_t *acfg)
             memset(recName, '\0', sizeof(recName));
             memset(instanceNumStr, '\0', sizeof(instanceNumStr));
             snprintf(recName, sizeof(recName),vAPStatsEnable, instance_number);
-            _ansc_itoa(acfg->u.bss_info.vapStatsEnable, instanceNumStr, 10);
+            convert_bool_to_ascii_string(acfg->u.bss_info.vapStatsEnable, instanceNumStr, sizeof(instanceNumStr));
             retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
             if(retPsmSet == CCSP_SUCCESS) {
                 cfg->vap_stats_enable = acfg->u.bss_info.vapStatsEnable;
@@ -608,7 +608,7 @@ void Psm_Db_Write_Vapinfo(wifi_vap_info_t *acfg)
             memset(recName, '\0', sizeof(recName));
             memset(instanceNumStr, '\0', sizeof(instanceNumStr));
             snprintf(recName, sizeof(recName),NeighborReportActivated, instance_number);
-            _ansc_itoa(acfg->u.bss_info.nbrReportActivated, instanceNumStr, 10);
+            convert_bool_to_ascii_string(acfg->u.bss_info.nbrReportActivated, instanceNumStr, sizeof(instanceNumStr));
             retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_string, instanceNumStr);
             if(retPsmSet == CCSP_SUCCESS) {
                 cfg->nbr_report_activated = acfg->u.bss_info.nbrReportActivated;
@@ -772,7 +772,7 @@ void Psm_Db_Write_Global(wifi_global_param_t *gcfg)
 
     if(gcfg->tx_overflow_selfheal != cfg->tx_overflow_selfheal){
         memset(instanceNumStr, '\0', sizeof(instanceNumStr));
-        _ansc_itoa(gcfg->tx_overflow_selfheal, instanceNumStr, 10);
+        convert_bool_to_ascii_string(gcfg->tx_overflow_selfheal, instanceNumStr, sizeof(instanceNumStr));
         retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, WiFiTxOverflowSelfheal, ccsp_string, instanceNumStr);
         if(retPsmSet == CCSP_SUCCESS) {
             cfg->tx_overflow_selfheal = gcfg->tx_overflow_selfheal;
@@ -784,7 +784,7 @@ void Psm_Db_Write_Global(wifi_global_param_t *gcfg)
 
     if(gcfg->force_disable_radio_feature != cfg->force_disable_radio_feature){
         memset(instanceNumStr, '\0', sizeof(instanceNumStr));
-        _ansc_itoa(gcfg->force_disable_radio_feature, instanceNumStr, 10);
+        convert_bool_to_ascii_string(gcfg->force_disable_radio_feature, instanceNumStr, sizeof(instanceNumStr));
         retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, WiFiForceDisableWiFiRadio, ccsp_string, instanceNumStr);
         if(retPsmSet == CCSP_SUCCESS) {
             cfg->force_disable_radio_feature = gcfg->force_disable_radio_feature;
@@ -842,7 +842,7 @@ void Psm_Db_Write_Global(wifi_global_param_t *gcfg)
 
     if(gcfg->vap_stats_feature != cfg->vap_stats_feature){
     memset(instanceNumStr, '\0', sizeof(instanceNumStr));
-    _ansc_itoa(gcfg->vap_stats_feature, instanceNumStr, 10);
+    convert_bool_to_ascii_string(gcfg->vap_stats_feature, instanceNumStr, sizeof(instanceNumStr));
     retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, WiFivAPStatsFeatureEnable, ccsp_string, instanceNumStr);
         if(retPsmSet == CCSP_SUCCESS) {
             cfg->vap_stats_feature = gcfg->vap_stats_feature;
