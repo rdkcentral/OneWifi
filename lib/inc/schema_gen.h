@@ -104,6 +104,7 @@
         PJS_OVS_STRING(radio_name, 128 +1 ) \
         PJS_OVS_STRING(ssid, 128 + 1) \
         PJS_OVS_BOOL(enabled) \
+        PJS_OVS_BOOL(exists) \
         PJS_OVS_BOOL(ssid_advertisement_enabled) \
         PJS_OVS_BOOL(isolation_enabled) \
         PJS_OVS_INT(mgmt_power_control) \
@@ -1955,6 +1956,7 @@
     COLUMN(radio_name) \
     COLUMN(ssid)        \
     COLUMN(enabled) \
+    COLUMN(exists) \
     COLUMN(ssid_advertisement_enabled) \
     COLUMN(isolation_enabled) \
     COLUMN(mgmt_power_control) \
@@ -3251,6 +3253,7 @@
 #define SCHEMA__Wifi_VAP_Config__radio_name "radio_name"
 #define SCHEMA__Wifi_VAP_Config__ssid "ssid"
 #define SCHEMA__Wifi_VAP_Config__enabled "enabled"
+#define SCHEMA__Wifi_VAP_Config__exists "exists"
 #define SCHEMA__Wifi_VAP_Config__ssid_advertisement_enabled "ssid_advertisement_enabled"
 #define SCHEMA__Wifi_VAP_Config__isolation_enabled "isolation_enabled"
 #define SCHEMA__Wifi_VAP_Config__mgmt_power_control "mgmt_power_control"

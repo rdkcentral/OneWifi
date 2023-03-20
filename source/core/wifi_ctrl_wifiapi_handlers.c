@@ -326,7 +326,11 @@ void process_wifiapi_command(char *command, unsigned int len)
     long fsize;
     char *raw = NULL;
     wifi_vap_info_map_t *vap_map;
+    rdk_wifi_radio_t *radio;
     wifi_vap_info_t *vap_info;
+#ifndef LINUX_VM_PORT
+    rdk_wifi_vap_info_t *rdk_vap_info;
+#endif
     
     memset(input, 0, 1024);
     memcpy(input, command, len);
@@ -473,7 +477,8 @@ void process_wifiapi_command(char *command, unsigned int len)
             sprintf(buff, "%s: invalid configuration format", args[0]);
             goto publish;
         }
-        vap_map = &(data.u.decoded.radios[radio_index].vaps.vap_map);
+        radio = &data.u.decoded.radios[radio_index];
+        vap_map = &radio->vaps.vap_map;
         vap_info = &vap_map->vap_array[0];
         if (vap_info->vap_name[0] == '\0') {
             sprintf(buff, "%s: vap names in the configuration does not match radio index", args[0]);
@@ -489,7 +494,8 @@ void process_wifiapi_command(char *command, unsigned int len)
 #ifndef LINUX_VM_PORT
         for (i=0; i < vap_map->num_vaps; i++) {
             vap_info = &vap_map->vap_array[i];
-            wifidb_update_wifi_vap_info(vap_info->vap_name, vap_info);
+            rdk_vap_info = &radio->vaps.rdk_vap_array[i];
+            wifidb_update_wifi_vap_info(vap_info->vap_name, vap_info, rdk_vap_info);
             if (isVapSTAMesh(vap_info->vap_index)) {
                 wifidb_update_wifi_security_config(vap_info->vap_name,&vap_info->u.sta_info.security);
             } else {

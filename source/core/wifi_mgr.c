@@ -291,7 +291,6 @@ int init_global_radio_config(rdk_wifi_radio_t *radios_cfg, UINT radio_index)
             if (radios_cfg->vaps.rdk_vap_array[vap_array_index].acl_map == NULL) {
                 wifi_util_dbg_print(WIFI_CTRL,"%s:%d hash_map_create(acl_map) failed\n",__FUNCTION__, __LINE__);
             }
-            radios_cfg->vaps.rdk_vap_array[vap_array_index].exists = true;
             vap_array_index++;
             if (vap_array_index >= MAX_NUM_VAP_PER_RADIO) {
                 break;
@@ -956,7 +955,8 @@ void get_psm_mac_list_entry(unsigned int instance_number, char *l_vap_name, unsi
     }
 }
 
-int get_vap_params_from_psm(unsigned int vap_index, wifi_vap_info_t *vap_config)
+int get_vap_params_from_psm(unsigned int vap_index, wifi_vap_info_t *vap_config,
+    rdk_wifi_vap_info_t *rdk_vap_config)
 {
     wifi_front_haul_bss_t *bss_cfg;
 
@@ -966,7 +966,7 @@ int get_vap_params_from_psm(unsigned int vap_index, wifi_vap_info_t *vap_config)
     unsigned int instance_number = vap_index + 1;
 
     memset(vap_config, 0, sizeof(wifi_vap_info_t));
-    wifidb_init_vap_config_default((instance_number - 1), vap_config);
+    wifidb_init_vap_config_default((instance_number - 1), vap_config, rdk_vap_config);
     if (isVapSTAMesh(vap_config->vap_index)) {
         return RETURN_ERR;
     }
@@ -1212,6 +1212,7 @@ int wifi_db_update_radio_config()
 int wifi_db_update_vap_config()
 {
     wifi_vap_info_t vap_cfg;
+    rdk_wifi_vap_info_t rdk_vap_cfg;
     int retval;
     unsigned int mac_index_list[128];
     unsigned int total_mac_list;
@@ -1225,7 +1226,7 @@ int wifi_db_update_vap_config()
         unsigned int vap_index;
 
         vap_index = VAP_INDEX(mgr->hal_cap, index);
-        get_vap_params_from_psm(vap_index, &vap_cfg);
+        get_vap_params_from_psm(vap_index, &vap_cfg, &rdk_vap_cfg);
 
         if (!isVapHotspot(vap_index)) {
             if (get_total_mac_list_from_psm((vap_index + 1), &total_mac_list, strValue) == RETURN_OK) {
@@ -1234,7 +1235,7 @@ int wifi_db_update_vap_config()
             }
         }
 
-        retval = wifidb_update_wifi_vap_info(vap_cfg.vap_name, &vap_cfg);
+        retval = wifidb_update_wifi_vap_info(vap_cfg.vap_name, &vap_cfg, &rdk_vap_cfg);
         if (retval != 0) {
             wifi_util_dbg_print(WIFI_MGR,"%s:%d: Failed to update vap config in wifi db\n",__func__, __LINE__);
         } else {

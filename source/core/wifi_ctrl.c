@@ -1949,6 +1949,7 @@ int get_wifi_vap_network_status(uint8_t vapIndex, bool *status)
 {
     int ret;
     wifi_vap_info_t vap_cfg;
+    rdk_wifi_vap_info_t rdk_vap_cfg;
     char vap_name[32];
     memset(vap_name, 0, sizeof(vap_name));
     memset(&vap_cfg, 0, sizeof(vap_cfg));
@@ -1958,7 +1959,7 @@ int get_wifi_vap_network_status(uint8_t vapIndex, bool *status)
         wifi_util_error_print(WIFI_CTRL, "%s:%d failure convert vap-index to name vapIndex:%d \n", __func__, __LINE__, vapIndex);
         return RETURN_ERR;
     }
-    ret = wifidb_get_wifi_vap_info(vap_name, &vap_cfg);
+    ret = wifidb_get_wifi_vap_info(vap_name, &vap_cfg, &rdk_vap_cfg);
     if (ret != RETURN_OK) {
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d wifiDb get vapInfo failure :vap_name:%s \n", __func__, __LINE__, vap_name);
         wifi_front_haul_bss_t *bss_param = Get_wifi_object_bss_parameter(vapIndex);

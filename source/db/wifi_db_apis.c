@@ -247,12 +247,14 @@ void rdk_wifi_radio_get_operating_standards(uint8_t r_index, char *buf)
         }
 }
 
-int rdk_wifi_vap_get_from_index(int wlanIndex, wifi_vap_info_t *vap_map)
+int rdk_wifi_vap_get_from_index(int wlanIndex, wifi_vap_info_t *vap_map,
+    rdk_wifi_vap_info_t *rdk_vap_info)
 {
     int retDbGet;
     char l_vap_name[32];
     memset(l_vap_name, 0, sizeof(l_vap_name));
     memset(vap_map, 0 ,sizeof(wifi_vap_info_t));
+    memset(rdk_vap_info, 0, sizeof(rdk_wifi_vap_info_t));
 
     retDbGet = convert_vap_index_to_name(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, wlanIndex, l_vap_name);
     if(retDbGet == RETURN_ERR)
@@ -260,7 +262,7 @@ int rdk_wifi_vap_get_from_index(int wlanIndex, wifi_vap_info_t *vap_map)
         rdk_wifi_dbg_print(1, "wifidb vap name info get failure\n");
         return retDbGet;
     }
-    retDbGet = wifidb_get_wifi_vap_info(l_vap_name, vap_map);
+    retDbGet = wifidb_get_wifi_vap_info(l_vap_name, vap_map, rdk_vap_info);
     if(retDbGet != RETURN_OK)
     {
         rdk_wifi_dbg_print(1, "wifidb vap info get failure\n");
@@ -272,7 +274,8 @@ int rdk_wifi_vap_get_from_index(int wlanIndex, wifi_vap_info_t *vap_map)
     return retDbGet;
 }
 
-int rdk_wifi_vap_update_from_index(int wlanIndex, wifi_vap_info_t *vap_map)
+int rdk_wifi_vap_update_from_index(int wlanIndex, wifi_vap_info_t *vap_map,
+    rdk_wifi_vap_info_t *rdk_vap_info)
 {
     int retDbSet = RETURN_OK;
     char l_vap_name[32];
@@ -285,7 +288,7 @@ int rdk_wifi_vap_update_from_index(int wlanIndex, wifi_vap_info_t *vap_map)
         return retDbSet;
     }
 
-    retDbSet = wifidb_update_wifi_vap_info(l_vap_name, vap_map);
+    retDbSet = wifidb_update_wifi_vap_info(l_vap_name, vap_map, rdk_vap_info);
     if(retDbSet != RETURN_OK)
     {
         rdk_wifi_dbg_print(1, "wifidb vap info set failure\n");
@@ -354,10 +357,11 @@ int rdk_wifi_SetRapidReconnectThresholdValue(int wlanIndex, int rapidReconnThres
 {
     int ret = RETURN_OK;
     wifi_vap_info_t vap_map;
-    ret = rdk_wifi_vap_get_from_index(wlanIndex, &vap_map);
+    rdk_wifi_vap_info_t rdk_vap_info;
+    ret = rdk_wifi_vap_get_from_index(wlanIndex, &vap_map, &rdk_vap_info);
     vap_map.u.bss_info.rapidReconnThreshold = rapidReconnThresholdValue;
     rdk_wifi_dbg_print(1, "wifidb vap info set rapidReconnThresholdValue %d\n", rapidReconnThresholdValue);
-    ret = rdk_wifi_vap_update_from_index(wlanIndex, &vap_map);
+    ret = rdk_wifi_vap_update_from_index(wlanIndex, &vap_map, &rdk_vap_info);
     return ret;
 }
 
@@ -365,7 +369,8 @@ int rdk_wifi_GetRapidReconnectThresholdValue(int wlanIndex, int *rapidReconnThre
 {
     int ret = RETURN_OK;
     wifi_vap_info_t vap_map;
-    ret = rdk_wifi_vap_get_from_index(wlanIndex, &vap_map);
+    rdk_wifi_vap_info_t rdk_vap_info;
+    ret = rdk_wifi_vap_get_from_index(wlanIndex, &vap_map, &rdk_vap_info);
     if(ret != RETURN_OK)
     {
         rdk_wifi_dbg_print(1, "rdk wifi vap get index failure :%s\n",__FUNCTION__);
@@ -380,10 +385,11 @@ int rdk_wifi_SetRapidReconnectEnable(int wlanIndex, bool reconnectCountEnable)
 {
     int ret = RETURN_OK;
     wifi_vap_info_t vap_map;
-    ret = rdk_wifi_vap_get_from_index(wlanIndex, &vap_map);
+    rdk_wifi_vap_info_t rdk_vap_info;
+    ret = rdk_wifi_vap_get_from_index(wlanIndex, &vap_map, &rdk_vap_info);
     vap_map.u.bss_info.rapidReconnectEnable = reconnectCountEnable;
     rdk_wifi_dbg_print(1, "wifidb vap info set reconnectEnable %d\n", reconnectCountEnable);
-    ret = rdk_wifi_vap_update_from_index(wlanIndex, &vap_map);
+    ret = rdk_wifi_vap_update_from_index(wlanIndex, &vap_map, &rdk_vap_info);
     return ret;
 }
 
@@ -391,7 +397,8 @@ int rdk_wifi_GetRapidReconnectEnable(int wlanIndex, bool *reconnectCountEnable)
 {
     int ret = RETURN_OK;
     wifi_vap_info_t vap_map;
-    ret = rdk_wifi_vap_get_from_index(wlanIndex, &vap_map);
+    rdk_wifi_vap_info_t rdk_vap_info;
+    ret = rdk_wifi_vap_get_from_index(wlanIndex, &vap_map, &rdk_vap_info);
     if(ret != RETURN_OK)
     {
         rdk_wifi_dbg_print(1, "rdk wifi vap get index failure :%s\n",__FUNCTION__);
@@ -406,10 +413,11 @@ int rdk_wifi_SetNeighborReportActivated(int wlanIndex, bool bNeighborReportActiv
 {
     int ret = RETURN_OK;
     wifi_vap_info_t vap_map;
-    ret = rdk_wifi_vap_get_from_index(wlanIndex, &vap_map);
+    rdk_wifi_vap_info_t rdk_vap_info;
+    ret = rdk_wifi_vap_get_from_index(wlanIndex, &vap_map, &rdk_vap_info);
     vap_map.u.bss_info.nbrReportActivated = bNeighborReportActivated;
     rdk_wifi_dbg_print(1, "wifidb vap info set nbrReportActivated %d\n", bNeighborReportActivated);
-    ret = rdk_wifi_vap_update_from_index(wlanIndex, &vap_map);
+    ret = rdk_wifi_vap_update_from_index(wlanIndex, &vap_map, &rdk_vap_info);
     return ret;
 }
 
@@ -417,7 +425,8 @@ int rdk_wifi_GetNeighborReportActivated(int wlanIndex, bool *bNeighborReportActi
 {
     int ret = RETURN_OK;
     wifi_vap_info_t vap_map;
-    ret = rdk_wifi_vap_get_from_index(wlanIndex, &vap_map);
+    rdk_wifi_vap_info_t rdk_vap_info;
+    ret = rdk_wifi_vap_get_from_index(wlanIndex, &vap_map, &rdk_vap_info);
     if(ret != RETURN_OK)
     {
         rdk_wifi_dbg_print(1, "rdk wifi vap get index failure :%s\n",__FUNCTION__);
@@ -432,10 +441,11 @@ int rdk_wifi_ApSetStatsEnable(int wlanIndex, bool bValue)
 {
     int ret = RETURN_OK;
     wifi_vap_info_t vap_map;
-    ret = rdk_wifi_vap_get_from_index(wlanIndex, &vap_map);
+    rdk_wifi_vap_info_t rdk_vap_info;
+    ret = rdk_wifi_vap_get_from_index(wlanIndex, &vap_map, &rdk_vap_info);
     vap_map.u.bss_info.vapStatsEnable = bValue;
     rdk_wifi_dbg_print(1, "wifidb vap info set vapStatsEnable %d\n", bValue);
-    ret = rdk_wifi_vap_update_from_index(wlanIndex, &vap_map);
+    ret = rdk_wifi_vap_update_from_index(wlanIndex, &vap_map, &rdk_vap_info);
     return ret;
 }
 
@@ -443,7 +453,8 @@ int rdk_wifi_ApGetStatsEnable(int wlanIndex, bool *bValue)
 {
     int ret = RETURN_OK;
     wifi_vap_info_t vap_map;
-    ret = rdk_wifi_vap_get_from_index(wlanIndex, &vap_map);
+    rdk_wifi_vap_info_t rdk_vap_info;
+    ret = rdk_wifi_vap_get_from_index(wlanIndex, &vap_map, &rdk_vap_info);
     if(ret != RETURN_OK)
     {
         rdk_wifi_dbg_print(1, "rdk wifi vap get index failure :%s\n",__FUNCTION__);
@@ -458,10 +469,11 @@ int rdk_wifi_setBSSTransitionActivated(int wlanIndex, bool BSSTransitionActivate
 {
     int ret = RETURN_OK;
     wifi_vap_info_t vap_map;
-    ret = rdk_wifi_vap_get_from_index(wlanIndex, &vap_map);
+    rdk_wifi_vap_info_t rdk_vap_info;
+    ret = rdk_wifi_vap_get_from_index(wlanIndex, &vap_map, &rdk_vap_info);
     vap_map.u.bss_info.bssTransitionActivated = BSSTransitionActivated;
     rdk_wifi_dbg_print(1, "wifidb vap info set BSSTransitionActivated %d\n", BSSTransitionActivated);
-    ret = rdk_wifi_vap_update_from_index(wlanIndex, &vap_map);
+    ret = rdk_wifi_vap_update_from_index(wlanIndex, &vap_map, &rdk_vap_info);
     return ret;
 }
 
@@ -469,7 +481,8 @@ int rdk_wifi_getBSSTransitionActivated(int wlanIndex, bool *BSSTransitionActivat
 {
     int ret = RETURN_OK;
     wifi_vap_info_t vap_map;
-    ret = rdk_wifi_vap_get_from_index(wlanIndex, &vap_map);
+    rdk_wifi_vap_info_t rdk_vap_info;
+    ret = rdk_wifi_vap_get_from_index(wlanIndex, &vap_map, &rdk_vap_info);
     if(ret != RETURN_OK)
     {
         rdk_wifi_dbg_print(1, "rdk wifi vap get index failure :%s\n",__FUNCTION__);
@@ -484,7 +497,8 @@ int rdk_wifi_GetApMacFilterMode(int wlanIndex, int *mode)
 {
     int ret = RETURN_OK;
     wifi_vap_info_t vap_map;
-    ret = rdk_wifi_vap_get_from_index(wlanIndex, &vap_map);
+    rdk_wifi_vap_info_t rdk_vap_info;
+    ret = rdk_wifi_vap_get_from_index(wlanIndex, &vap_map, &rdk_vap_info);
     if(ret != RETURN_OK)
     {
         rdk_wifi_dbg_print(1, "rdk wifi vap get index failure :%s\n",__FUNCTION__);
@@ -499,10 +513,11 @@ int rdk_wifi_SetApMacFilterMode(int wlanIndex, int mode)
 {
     int ret = RETURN_OK;
     wifi_vap_info_t vap_map;
-    ret = rdk_wifi_vap_get_from_index(wlanIndex, &vap_map);
+    rdk_wifi_vap_info_t rdk_vap_info;
+    ret = rdk_wifi_vap_get_from_index(wlanIndex, &vap_map, &rdk_vap_info);
     vap_map.u.bss_info.mac_filter_mode = mode;
     rdk_wifi_dbg_print(1, "wifidb vap info set mac_filter_mode %d\n", mode);
-    ret = rdk_wifi_vap_update_from_index(wlanIndex, &vap_map);
+    ret = rdk_wifi_vap_update_from_index(wlanIndex, &vap_map, &rdk_vap_info);
     return ret;
 }
 
@@ -558,6 +573,7 @@ int update_wifidb_vap_bss_param(uint8_t vap_index, wifi_front_haul_bss_t *pcfg)
     uint8_t l_radio_index = 0, l_vap_index = 0;
     char l_vap_name[32];
     int ret;
+    rdk_wifi_vap_info_t *l_rdk_vaps;
     get_vap_and_radio_index_from_vap_instance(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, vap_index, &l_radio_index, &l_vap_index);
     wifi_vap_info_t *l_vap_maps = get_wifidb_vap_parameters(l_radio_index);
     if(l_vap_maps == NULL || l_vap_index >= getNumberVAPsPerRadio(l_radio_index))
@@ -568,8 +584,16 @@ int update_wifidb_vap_bss_param(uint8_t vap_index, wifi_front_haul_bss_t *pcfg)
     }
     memcpy(&l_vap_maps->u.bss_info, pcfg, sizeof(wifi_front_haul_bss_t));
 
+    l_rdk_vaps = get_wifidb_rdk_vaps(l_radio_index);
+    if (l_rdk_vaps == NULL)
+    {
+        rdk_wifi_dbg_print(1, "%s: failed to get rdk vaps for radio index %d\n", __FUNCTION__,
+            l_radio_index);
+        return RETURN_ERR;
+    }
+
     convert_vap_index_to_name(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, vap_index, l_vap_name);
-    ret = update_wifi_vap_info(l_vap_name, l_vap_maps);
+    ret = update_wifi_vap_info(l_vap_name, l_vap_maps, l_rdk_vaps);
     if(ret != RETURN_OK)
     {
         rdk_wifi_dbg_print(1, "wifidb vap info update failure %s vap_index:%d\n", __FUNCTION__, vap_index);

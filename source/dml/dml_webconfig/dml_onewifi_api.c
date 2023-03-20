@@ -703,6 +703,32 @@ wifi_vap_info_t *get_dml_cache_vap_info(uint8_t vap_index)
     return NULL;
 }
 
+rdk_wifi_vap_info_t *get_dml_cache_rdk_vap_info(uint8_t vap_index)
+{
+    rdk_wifi_radio_t *radio;
+    unsigned int radio_index = 0;
+    unsigned int vap_array_index = 0;
+    unsigned int num_radios = get_num_radio_dml();
+
+    if (vap_index > (num_radios * MAX_NUM_VAP_PER_RADIO)) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d: Invalid vap_index %d\n", __func__, __LINE__,
+            vap_index);
+        return NULL;
+    }
+
+    get_radioIndex_from_vapIndex(vap_index, &radio_index);
+
+    for (vap_array_index = 0; vap_array_index < MAX_NUM_VAP_PER_RADIO; vap_array_index++) {
+        radio = &webconfig_dml.radios[radio_index];
+        if (vap_index == radio->vaps.rdk_vap_array[vap_array_index].vap_index) {
+            return &radio->vaps.rdk_vap_array[vap_array_index];
+        }
+    }
+    wifi_util_error_print(WIFI_DMCLI, "%s:%d: vap_index not found %d\n", __func__, __LINE__,
+        vap_index);
+    return NULL;
+}
+
 wifi_vap_security_t * get_dml_cache_sta_security_parameter(uint8_t vapIndex)
 {
     uint8_t radio_index = 0, vap_index = 0;

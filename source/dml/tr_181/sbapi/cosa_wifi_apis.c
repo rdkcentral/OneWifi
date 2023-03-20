@@ -1992,6 +1992,8 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
 {
     wifi_vap_info_t default_vap;
     wifi_vap_info_t *p_vapInfo = NULL;
+    rdk_wifi_vap_info_t rdk_default_vap;
+    rdk_wifi_vap_info_t *rdk_vap_info;
     acl_entry_t *temp_acl_entry, *acl_entry;
     mac_addr_str_t mac_str;
     wifi_global_config_t *global_wifi_config;
@@ -2026,6 +2028,7 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
             continue;
 
         p_vapInfo = (wifi_vap_info_t *) get_dml_cache_vap_info(vap_index);
+        rdk_vap_info = (rdk_wifi_vap_info_t *)get_dml_cache_rdk_vap_info(index);
 
         if (p_vapInfo != NULL) {
             hash_map_t** acl_dev_map = (hash_map_t **)get_acl_hash_map(p_vapInfo);
@@ -2048,9 +2051,10 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
                 *acl_dev_map = NULL;
             }
 
-            wifidb_init_vap_config_default(vap_index,&default_vap);
+            wifidb_init_vap_config_default(vap_index,&default_vap,&rdk_default_vap);
             wifidb_init_interworking_config_default(vap_index,&default_vap.u.bss_info.interworking);
             memcpy((unsigned char *)p_vapInfo,(unsigned char *)&default_vap,sizeof(wifi_vap_info_t));
+            rdk_vap_info->exists = rdk_default_vap.exists;
             set_dml_cache_vap_config_changed(vap_index);
         }
     }

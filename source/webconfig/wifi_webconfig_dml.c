@@ -289,6 +289,8 @@ webconfig_error_t encode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
     str = cJSON_Print(json);
     memcpy(data->u.encoded.raw, str, strlen(str));
 
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Encoded JSON:\n%s\n", __func__, __LINE__, str);
+
     cJSON_free(str);
     cJSON_Delete(json);
     wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: encode success\n", __func__, __LINE__);
@@ -315,6 +317,9 @@ webconfig_error_t decode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
     webconfig_subdoc_decoded_data_t *params;
     wifi_platform_property_t *wifi_prop;
     int num_vaps;
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: decoded JSON:\n%s\n", __func__, __LINE__,
+        cJSON_Print(json));
 
     params = &data->u.decoded;
     doc = &config->subdocs[data->type];

@@ -2135,6 +2135,40 @@ void marker_list_config_event(char *data, marker_list_t list_type)
 
 }
 
+static void update_wifi_vap_config(int device_mode)
+{
+    unsigned int vap_index;
+    wifi_vap_info_t *vap_info;
+    rdk_wifi_vap_info_t *rdk_vap_info;
+    wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
+
+    if (device_mode != rdk_dev_mode_type_ext) {
+        return;
+    }
+
+    for (unsigned int i = 0; i < getTotalNumberVAPs(); i++) {
+        vap_index = VAP_INDEX(wifi_mgr->hal_cap, i);
+        vap_info = get_wifidb_vap_parameters(vap_index);
+        if (rdk_vap_info == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d failed to get vap info for index %d\n",
+                __func__, __LINE__, vap_index);
+            return;
+        }
+        rdk_vap_info = get_wifidb_rdk_vap_info(vap_index);
+        if (rdk_vap_info == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d failed to get rdk vap info for index %d\n",
+                __func__, __LINE__, vap_index);
+            return;
+        }
+
+        // Enable STA interfaces in extender mode
+        if (isVapSTAMesh(vap_index)) {
+            rdk_vap_info->exists = true;
+            wifidb_update_wifi_vap_info(vap_info->vap_name, vap_info, rdk_vap_info);
+        }
+    }
+}
+
 void process_device_mode_command_event(int device_mode)
 {
     vap_svc_t *ext_svc;
@@ -2146,6 +2180,7 @@ void process_device_mode_command_event(int device_mode)
     if (global_param->device_network_mode != device_mode) {
         global_param->device_network_mode = device_mode;
         update_wifi_global_config(global_param);
+        update_wifi_vap_config(device_mode);
         if (device_mode == rdk_dev_mode_type_ext) {
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d: disable all vaps and start station mode\r\n", __func__, __LINE__);
             stop_gateway_vaps();
@@ -2356,16 +2391,18 @@ int wifidb_vap_status_update(bool status)
     wifi_vap_name_t backhauls[MAX_NUM_RADIOS];
     int count;
     wifi_vap_info_t vap_config;
+    rdk_wifi_vap_info_t rdk_vap_config;
     memset(&vap_config, 0, sizeof(vap_config));
+    memset(&rdk_vap_config, 0, sizeof(rdk_vap_config));
 
     /* get a list of mesh backhaul names of all radios */
     count = get_list_of_mesh_backhaul(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, sizeof(backhauls)/sizeof(wifi_vap_name_t), backhauls);
 
     for (int i = 0; i < count; i++) {
-        if (wifidb_get_wifi_vap_info(&backhauls[i][0], &vap_config) == RETURN_OK) {
+        if (wifidb_get_wifi_vap_info(&backhauls[i][0], &vap_config, &rdk_vap_config) == RETURN_OK) {
             vap_config.u.bss_info.enabled = status;
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d: wifi mesh backhaul status save:%d\n", __func__, __LINE__, status);
-            update_wifi_vap_info(&backhauls[i][0], &vap_config);
+            update_wifi_vap_info(&backhauls[i][0], &vap_config, &rdk_vap_config);
         }
     }
 

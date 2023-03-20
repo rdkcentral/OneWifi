@@ -59,6 +59,7 @@ typedef struct {
     wifi_rfc_dml_parameters_t       rfc_dml_parameters;
     pthread_cond_t                  dml_init_status;
 #endif // DML_SUPPORT
+    int                             db_version;
 } wifi_mgr_t;
 
 wifi_mgr_t *get_wifimgr_obj();
