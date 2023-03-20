@@ -1544,6 +1544,7 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
     char *tmp, *ptr;
     wifi_db_t *g_wifidb;
     g_wifidb = (wifi_db_t*) get_wifidb_obj();
+    wifi_radio_operationParam_t oper_radio;
 #if DML_SUPPORT
     wifi_rfc_dml_parameters_t *rfc_param = get_wifi_db_rfc_parameters();
 #endif // DML_SUPPORT
@@ -1576,14 +1577,20 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
     config->enable = cfg->enabled;
     config->autoChannelEnabled = cfg->auto_channel_enabled;
 
-    if (is_wifi_channel_valid(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, band, cfg->channel) == RETURN_OK) {
+    memset(&oper_radio,0,sizeof(wifi_radio_operationParam_t));
+    oper_radio.band = band;
+    oper_radio.channel = cfg->channel;
+    oper_radio.channelWidth = cfg->channel_width;
+    oper_radio.DfsEnabled = cfg->dfs_enabled;
+
+    if (wifi_radio_operationParam_validation(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap, &oper_radio) == RETURN_OK) {
         config->channel = cfg->channel;
+        config->channelWidth = cfg->channel_width;
     }
     else {
-        wifi_util_info_print(WIFI_DB,"%s:%d Radio Channel failed. band %d channel %d\n", __func__, __LINE__, band, cfg->channel);
+        wifi_util_info_print(WIFI_DB,"%s:%d Validation of channel/channel_width of existing DB failed, setting default values chan=%d chanwidth=%d \n", __func__, __LINE__, config->channel, config->channelWidth);
     }
 
-    config->channelWidth = cfg->channel_width;
     if ((cfg->hw_mode != 0) && (validate_wifi_hw_variant(cfg->freq_band, cfg->hw_mode) == RETURN_OK)) {
         config->variant = cfg->hw_mode;
     }

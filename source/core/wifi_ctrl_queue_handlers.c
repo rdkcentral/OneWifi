@@ -1804,6 +1804,9 @@ void process_dfs_rfc(bool type)
                         radio_params->channel = 149;
                     }
                 }
+                if (radio_params->channelWidth == WIFI_CHANNELBANDWIDTH_160MHZ) {
+                    radio_params->channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
+                }
             }
             pthread_mutex_unlock(&g_wifidb->data_cache_lock);
             ret = wifi_hal_setRadioOperatingParameters(rIdx, radio_params);
