@@ -8066,7 +8066,7 @@ Security_SetParamStringValue
             CcspWifiTrace(("RDK_LOG_INFO, WPA3 security mode is not enabled in VAP %d\n", instance_number));
             return FALSE;
         }
-        if(!security_mode_support_radius(l_security_cfg->mode))
+        if(security_mode_support_radius(l_security_cfg->mode))
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Security mode %d does not support passphrase configuration \n",__func__, __LINE__,l_security_cfg->mode);
             return FALSE;
