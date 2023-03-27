@@ -4043,6 +4043,43 @@ void wifidb_init_gas_config_default(wifi_GASConfiguration_t *config)
 
 /************************************************************************************
  ************************************************************************************
+  Function    : wifidb_init_rfc_config_default
+  Parameter   : void
+  Description : Update global cache with default value for wifi_rfc_dml_parameters_t
+ *************************************************************************************
+********************************************** ****************************************/
+void wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config)
+{
+    wifi_rfc_dml_parameters_t rfc_config = {0};
+    wifi_mgr_t *g_wifidb;
+    g_wifidb = get_wifimgr_obj();
+
+    rfc_config.wifipasspoint_rfc = false;
+    rfc_config.wifiinterworking_rfc = false;
+    rfc_config.radiusgreylist_rfc = false;
+    rfc_config.dfsatbootup_rfc = false;
+    rfc_config.dfs_rfc = false;
+#if defined(_XB8_PRODUCT_REQ_) || defined(_SR213_PRODUCT_REQ_)
+    rfc_config.wpa3_rfc = true;
+#else
+    rfc_config.wpa3_rfc = false;
+#endif
+    rfc_config.ow_core_thread_rfc = false;
+    rfc_config.twoG80211axEnable_rfc = false;
+    rfc_config.hotspot_open_2g_last_enabled = false;
+    rfc_config.hotspot_open_5g_last_enabled = false;
+    rfc_config.hotspot_secure_2g_last_enabled = false;
+    rfc_config.hotspot_secure_5g_last_enabled = false;
+    rfc_config.mgmt_frame_rbus_enabled_rfc = false;
+
+    pthread_mutex_lock(&g_wifidb->data_cache_lock);
+    memcpy(config,&rfc_config,sizeof(wifi_rfc_dml_parameters_t));
+    pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+
+}
+
+/************************************************************************************
+ ************************************************************************************
   Function    : wifidb_init_default_value
   Parameter   : void
   Description : Update global cache with default values
@@ -4145,6 +4182,7 @@ void wifidb_init_default_value()
     wifidb_init_global_config_default(&g_wifidb->global_config.global_parameters);
     wifidb_reset_macfilter_hashmap();
     wifidb_init_gas_config_default(&g_wifidb->global_config.gas_config);
+    wifidb_init_rfc_config_default(&g_wifidb->rfc_dml_parameters);
     wifi_util_dbg_print(WIFI_DB,"%s:%d Wifi db update completed\n",__func__, __LINE__);
 
 }

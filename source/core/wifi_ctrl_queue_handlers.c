@@ -1840,8 +1840,64 @@ void process_wpa3_rfc(bool type)
 {
     wifi_util_dbg_print(WIFI_DB,"WIFI Enter RFC Func %s: %d : bool %d\n",__FUNCTION__,__LINE__,type);
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
+    wifi_vap_info_map_t tgt_vap_map;
+    wifi_vap_info_t *vapInfo = NULL;
+    vap_svc_t *svc;
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    UINT apIndex = 0, ret;
+    rdk_wifi_vap_info_t *rdk_vap_info;
+    wifi_apps_t         *analytics = NULL;
+    char update_status[128];
+
     rfc_param->wpa3_rfc = type;
     wifidb_update_rfc_config(0, rfc_param);
+    ctrl->webconfig_state |= ctrl_webconfig_state_vap_private_cfg_rsp_pending;
+
+    for(UINT rIdx = 0; rIdx < getNumberRadios(); rIdx++) {
+        apIndex = getPrivateApFromRadioIndex(rIdx);
+        vapInfo =  get_wifidb_vap_parameters(apIndex);
+
+        if ((svc = get_svc_by_name(ctrl, vapInfo->vap_name)) == NULL) {
+            continue;
+        }
+
+        if (type) {
+             if (vapInfo->u.bss_info.security.mode == wifi_security_mode_wpa3_transition) {
+                 continue;
+             }
+             vapInfo->u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
+             vapInfo->u.bss_info.security.wpa3_transition_disable = false;
+             vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
+             vapInfo->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
+        } else {
+             if (vapInfo->u.bss_info.security.mode == wifi_security_mode_wpa2_personal) {
+                 continue;
+             }
+             vapInfo->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
+        }
+
+        memset(&tgt_vap_map, 0, sizeof(wifi_vap_info_map_t));
+        tgt_vap_map.num_vaps = 1;
+        memcpy(&tgt_vap_map.vap_array[0], vapInfo, sizeof(wifi_vap_info_t));
+        rdk_vap_info = get_wifidb_rdk_vap_info(apIndex);
+        if (rdk_vap_info == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to get rdk vap info for index %d\n",
+                __func__, __LINE__, apIndex);
+            continue;
+        }
+        ret = svc->update_fn(svc, rIdx, &tgt_vap_map, rdk_vap_info);
+        analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
+        if (analytics->event_fn != NULL) {
+            memset(update_status, 0, sizeof(update_status));
+            snprintf(update_status, sizeof(update_status), "%s %s", vapInfo->vap_name, (ret == RETURN_OK)?"success":"fail");
+            analytics->event_fn(analytics, ctrl_event_type_webconfig, ctrl_event_webconfig_hal_result, update_status);
+        }
+        if (ret != RETURN_OK) {
+            wifi_util_error_print(WIFI_DB,"%s:%d: Private vaps service update_fn failed \n",__func__, __LINE__);
+        } else {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: Updating security mode for apIndex %d secmode %d \n",__func__, __LINE__,apIndex,vapInfo->u.bss_info.security.mode);
+        }
+    }
 }
 
 void process_ow_core_thread_rfc(bool type)

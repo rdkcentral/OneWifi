@@ -511,6 +511,17 @@ int analytics_event_command_factory_reset(wifi_apps_t *apps, void *arg)
     return 0;
 }
 
+int analytics_event_wpa3_rfc(wifi_apps_t *apps, void *arg)
+{
+    bool *rfc = (bool *)arg;
+    char str[32];
+    memset(&str, 0, sizeof(str));
+
+    sprintf(str, "%s", (*rfc == 1)?"True":"False");
+    wifi_util_info_print(WIFI_ANALYTICS, analytics_format_dml_core, "wpa3_rfc", str);
+    return 0;
+}
+
 int analytics_event_command_kickmac(wifi_apps_t *apps, void *arg)
 {
     return 0;
@@ -747,6 +758,7 @@ int command_event_analytics(wifi_apps_t *apps, ctrl_event_subtype_t sub_type, vo
             break;
 
         case ctrl_event_type_wpa3_rfc:
+            analytics_event_wpa3_rfc(apps, arg);
             break;
 
         case ctrl_event_type_ow_core_thread_rfc:
