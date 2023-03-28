@@ -3552,11 +3552,9 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
         case WIFI_FREQUENCY_5L_BAND:
             cfg.op_class = 1;
 #if defined (_PP203X_PRODUCT_REQ_)
-            cfg.channel = 44;
             cfg.beaconInterval = 200;
-#else 
-            cfg.channel = 36;
-#endif
+#endif 
+            cfg.channel = 44;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
 #if defined (_PP203X_PRODUCT_REQ_)
             cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC;
@@ -3566,7 +3564,7 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
             break;
         case WIFI_FREQUENCY_5H_BAND:
             cfg.op_class = 3;
-            cfg.channel = 149;
+            cfg.channel = 157;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
 #if defined (_PP203X_PRODUCT_REQ_)
             cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC;
@@ -3718,14 +3716,14 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config)
 
         switch(band) {
             case WIFI_FREQUENCY_2_4_BAND:
-                cfg.u.sta_info.scan_params.channel.channel = 3;
+                cfg.u.sta_info.scan_params.channel.channel = 1;
                 break;
             case WIFI_FREQUENCY_5_BAND:
             case WIFI_FREQUENCY_5L_BAND:
-                cfg.u.sta_info.scan_params.channel.channel = 36;
+                cfg.u.sta_info.scan_params.channel.channel = 44;
                 break;
             case WIFI_FREQUENCY_5H_BAND:
-                cfg.u.sta_info.scan_params.channel.channel = 149;
+                cfg.u.sta_info.scan_params.channel.channel = 157;
                 break;
             case WIFI_FREQUENCY_6_BAND:
                 cfg.u.sta_info.scan_params.channel.channel = 197;
