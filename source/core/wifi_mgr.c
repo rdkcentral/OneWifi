@@ -856,6 +856,24 @@ void get_radio_params_from_psm(unsigned int radio_index, wifi_radio_operationPar
     }
 }
 
+void get_radio_params_from_db(unsigned int radio_index,wifi_radio_operationParam_t *radio_cfg)
+{
+    wifi_channelBandwidth_t channelWidth = 0;
+    if(platform_get_channel_bandwidth(radio_index,&channelWidth)!=0)
+    {
+        wifi_util_dbg_print(WIFI_MGR,"%s:%d: failed to get channel bandwidth from vendor db \r\n", __func__, __LINE__);
+    }
+    if(channelWidth)
+    {
+        radio_cfg->channelWidth = channelWidth;
+        wifi_util_dbg_print(WIFI_MGR,"%s:%d:%u  successful value to get channel bandwidth from vendor db \r\n", __func__, __LINE__,radio_cfg->channelWidth);
+    }
+    else
+    {
+        wifi_util_dbg_print(WIFI_MGR,"%s:%d:channelWidth is getting wrong value \n", __func__, __LINE__);
+    }
+}
+
 int mac_list_entry_update_data(char *str, unsigned int *data_index)
 {
     wifi_util_dbg_print(WIFI_MGR, "%s:%d  mac_filter_list:%s\n",__func__, __LINE__, str);
