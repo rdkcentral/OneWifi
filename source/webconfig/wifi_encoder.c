@@ -758,9 +758,31 @@ webconfig_error_t encode_no_security_object(const wifi_vap_security_t *security_
     return webconfig_error_none;
 }
 
+int validate_sec_config(const wifi_vap_security_t *security_info)
+{
+    if (security_info->mode == wifi_security_mode_wpa3_transition) {
+        if (security_info->mfp != wifi_mfp_cfg_optional) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid MFP Config %d, Security mode %d\n", __func__, __LINE__, security_info->mfp, security_info->mode);
+            return RETURN_ERR;
+        }
+    } else if ((security_info->mode == wifi_security_mode_wpa3_enterprise) || (security_info->mode == wifi_security_mode_wpa3_personal)) {
+        if (security_info->mfp != wifi_mfp_cfg_required) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid MFP Config %d, Security Mode %d\n", __func__, __LINE__, security_info->mfp, security_info->mode);
+            return RETURN_ERR;
+        }
+    }
+
+    return RETURN_OK;
+}
+
 webconfig_error_t encode_enterprise_security_object(const wifi_vap_security_t *security_info, cJSON *security)
 {
     cJSON *obj;
+    
+    if (validate_sec_config(security_info) != RETURN_OK) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid Security Config\n", __func__, __LINE__);
+        return webconfig_error_encode;
+    }
 
     if (security_info->mfp == wifi_mfp_cfg_disabled) {
         cJSON_AddStringToObject(security, "MFPConfig", "Disabled");
@@ -840,6 +862,12 @@ webconfig_error_t encode_enterprise_security_object(const wifi_vap_security_t *s
 
 webconfig_error_t encode_personal_security_object(const wifi_vap_security_t *security_info, cJSON *security, bool is_6g)
 {
+
+    if (validate_sec_config(security_info) != RETURN_OK) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid Security Config\n", __func__, __LINE__);
+        return webconfig_error_encode;
+    }
+
     if (security_info->mfp == wifi_mfp_cfg_disabled) {
         cJSON_AddStringToObject(security, "MFPConfig", "Disabled");
     } else if (security_info->mfp == wifi_mfp_cfg_required) {

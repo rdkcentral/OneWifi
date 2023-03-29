@@ -1835,7 +1835,16 @@ int wifidb_get_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
         sec->mode = pcfg->security_mode;
         sec->encr = pcfg->encryption_method;
     }
+
     convert_security_mode_string_to_integer((int *)&sec->mfp,(char *)&pcfg->mfp_config);
+    if ((sec->mode == wifi_security_mode_wpa3_transition) && (sec->mfp != wifi_mfp_cfg_optional)) {
+        wifi_util_error_print(WIFI_DB, "%s:%d Invalid MFP Config\n", __func__, __LINE__);
+        sec->mfp = wifi_mfp_cfg_optional;
+    } else if (((sec->mode == wifi_security_mode_wpa3_enterprise) || (sec->mode == wifi_security_mode_wpa3_personal)) && (sec->mfp != wifi_mfp_cfg_required)) {
+        wifi_util_error_print(WIFI_DB, "%s:%d Invalid MFP Config\n", __func__, __LINE__);
+        sec->mfp = wifi_mfp_cfg_required;
+    }
+
     sec->rekey_interval = pcfg->rekey_interval;
     sec->strict_rekey = pcfg->strict_rekey;
     sec->eapol_key_timeout = pcfg->eapol_key_timeout;
