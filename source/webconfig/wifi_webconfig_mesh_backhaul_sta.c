@@ -140,7 +140,7 @@ webconfig_error_t decode_mesh_backhaul_sta_subdoc(webconfig_t *config, webconfig
     unsigned int presence_count = 0;
     unsigned int num_mesh_ssid = 0;
     wifi_vap_name_t vap_names[MAX_NUM_RADIOS * 2];
-    char *name;
+    char *name, *str;
     wifi_vap_info_t *vap_info;
     rdk_wifi_vap_info_t *rdk_vap_info;
     cJSON *json = data->u.encoded.json;
@@ -152,7 +152,9 @@ webconfig_error_t decode_mesh_backhaul_sta_subdoc(webconfig_t *config, webconfig
     /* get list of mesh_sta SSID */
     num_mesh_ssid = get_list_of_mesh_sta(&params->hal_cap.wifi_prop, MAX_NUM_RADIOS, vap_names);
 
-    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: decoded JSON:\n%s\n", __func__, __LINE__, cJSON_Print(json));
+    str = cJSON_Print(json);
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: decoded JSON:\n%s\n", __func__, __LINE__, str);
+    cJSON_free(str);
 
     for (i = 0; i < doc->num_objects; i++) {
         if ((cJSON_GetObjectItem(json, doc->objects[i].name)) == NULL) {

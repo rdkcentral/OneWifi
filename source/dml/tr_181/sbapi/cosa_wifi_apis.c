@@ -1646,6 +1646,7 @@ ANSC_STATUS UpdateJsonParamLegacy
                     cJsonOut = cJSON_Print(json);
                     CcspTraceWarning(( "Updated json content is %s\n", cJsonOut));
                     configUpdateStatus = writeToJson(cJsonOut, PARTNERS_INFO_FILE);
+                    cJSON_free(cJsonOut);
                     if ( !configUpdateStatus)
                     {
                         CcspTraceWarning(( "Updated Value for %s partner\n",PartnerId));
@@ -1897,6 +1898,7 @@ ANSC_STATUS UpdateJsonParam
                     cJsonOut = cJSON_Print(json);
                     CcspTraceWarning(( "Updated json content is %s\n", cJsonOut));
                     configUpdateStatus = writeToJson(cJsonOut, BOOTSTRAP_INFO_FILE);
+                    cJSON_free(cJsonOut);
                     if ( !configUpdateStatus)
                     {
                         CcspTraceWarning(( "Bootstrap config update: %s, %s, %s, %s \n", pKey, pValue, PartnerId, pSource));
