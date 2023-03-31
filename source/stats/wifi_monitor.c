@@ -848,7 +848,7 @@ int upload_client_telemetry_data(void *arg)
                     t_string[itr] = toupper(t_string[itr]);
 
                 }
-                snprintf(eventName, sizeof(eventName), "%sRSSI_split", t_str);
+                snprintf(eventName, sizeof(eventName), "%sRSSI_split", t_string);
                 t2_event_s(eventName, telemetryBuff);
             } else {
                 wifi_util_dbg_print(WIFI_MON, "%s-%d Failed to get band for radio Index %d\n", __func__, __LINE__, getRadioIndexFromAp(vap_index));
