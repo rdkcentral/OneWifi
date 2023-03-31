@@ -130,6 +130,7 @@
         PJS_OVS_BOOL(bss_hotspot) \
         PJS_OVS_INT(wps_push_button) \
         PJS_OVS_INT(wps_config_methods) \
+        PJS_OVS_BOOL(wps_enabled) \
         PJS_OVS_STRING(beacon_rate_ctl, 32 + 1) \
         PJS_OVS_BOOL(network_initiated_greylist) \
         PJS_OVS_STRING(mfp_config, 10 + 1) \
@@ -1978,6 +1979,7 @@
     COLUMN(bss_hotspot) \
     COLUMN(wps_push_button) \
     COLUMN(wps_config_methods) \
+    COLUMN(wps_enabled) \
     COLUMN(beacon_rate_ctl) \
     COLUMN(network_initiated_greylist) \
     COLUMN(mfp_config)\
@@ -3271,6 +3273,7 @@
 #define SCHEMA__Wifi_VAP_Config__bss_hotspot "bss_hotspot"
 #define SCHEMA__Wifi_VAP_Config__wps_push_button "wps_push_button"
 #define SCHEMA__Wifi_VAP_Config__wps_config_methods "wps_config_methods"
+#define SCHEMA__Wifi_VAP_Config__wps_enabled "wps_enabled"
 #define SCHEMA__Wifi_VAP_Config__beacon_rate_ctl "beacon_rate_ctl"
 #define SCHEMA__Wifi_VAP_Config__network_initiated_greylist "network_initiated_greylist"
 #define SCHEMA__Wifi_VAP_Config__mfp_config "mfp_config"

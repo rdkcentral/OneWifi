@@ -2237,6 +2237,7 @@ webconfig_error_t translate_vap_info_to_vif_state_common(const wifi_vap_info_t *
 
     if (vap->u.bss_info.wps.enable) {
         vap_row->wps = vap->u.bss_info.wps.enable;
+        vap_row->wps_exists = true;
     } else {
         vap_row->wps_exists=false;
     }

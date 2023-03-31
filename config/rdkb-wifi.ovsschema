@@ -1,6 +1,6 @@
 {
   "name": "Wifi_Rdk_Database",
-  "version": "1.00.012",
+  "version": "1.00.013",
   "cksum": "2353365742 523",
   "tables": {
     "Wifi_Device_Config": {
@@ -989,6 +989,15 @@
           "type": {
             "key": {
               "type": "integer"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "wps_enabled": {
+          "type": {
+            "key": {
+              "type": "boolean"
             },
             "min": 0,
             "max": 1
