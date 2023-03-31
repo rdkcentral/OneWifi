@@ -814,11 +814,15 @@ int captive_portal_check(void)
     wifi_vap_info_map_t *wifi_vap_map = NULL;
     UINT i =0;
     int rc = 0;
-    bool default_private_credentials = false,get_config_wifi = false,psm_notify_flag=false;
+    bool default_private_credentials = false,get_config_wifi = false;
     char default_ssid[128] = {0}, default_password[128] = {0};
     rbusValue_t value = NULL, config_wifi_value = NULL;
+
+#if DML_SUPPORT
+    bool psm_notify_flag=false;
     char pInValue[32] = "";
     char *PsmParamName = "eRT.com.cisco.spvtg.ccsp.Device.WiFi.NotifyWiFiChanges";
+#endif //// DML_SUPPORT
 
     rbusValue_Init(&value);
     rbusValue_Init(&config_wifi_value);
@@ -1427,6 +1431,9 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
 
     /* start wifi apps */
     wifi_hal_platform_post_init();
+#else
+  ctrl->webconfig_state = ctrl_webconfig_state_none;
+#endif
 
     if (monitor_ret == 0) {
         //Start Wifi Monitor Thread
@@ -1435,9 +1442,6 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
         wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to start Wifi Monitor\n", __func__, __LINE__);
     }
   
-#else 
-  ctrl->webconfig_state = ctrl_webconfig_state_none;
-#endif
     
 #if CCSP_WIFI_HAL
     if (analytics->event_fn != NULL) {
