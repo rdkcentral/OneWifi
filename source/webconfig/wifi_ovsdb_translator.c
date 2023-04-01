@@ -2957,6 +2957,11 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state_for_dml(webconfig_su
                 return webconfig_error_translate_to_ovsdb;
             }
 
+            if (radio->oper.channel) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Updating Channel %d to %s\n", __func__, __LINE__,radio->oper.channel, vap->vap_name);
+                vap_row->channel = radio->oper.channel;
+            }
+
             if (is_vap_private(wifi_prop, vap->vap_index) == TRUE) {
                 if (translate_private_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
                     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Translation of private vap to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
@@ -3647,9 +3652,14 @@ static webconfig_error_t set_deleted_entries_to_default(webconfig_subdoc_data_t 
             rdk_vap = &radio->vaps.rdk_vap_array[vap_arr_index];
 
             memcpy(vap, default_vap, sizeof(wifi_vap_info_t));
+#ifndef CCSP_COMMON
+            if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == TRUE) {
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Setting STA VAP state to false [%s]\n", __func__, __LINE__,vap->vap_name);
+                vap->u.sta_info.enabled = false;
+            }
+#endif
             radio->vaps.vap_map.num_vaps = default_radio->vaps.vap_map.num_vaps;
             rdk_vap->exists = false;
-
             *presence_mask  |= (1 << missing_vap_index);
         }
 
@@ -5211,6 +5221,11 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state(webconfig_subdoc_dat
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the vap schema row for %d\n", __func__, __LINE__, vap->vap_index);
                 return webconfig_error_translate_to_ovsdb;
             }
+
+            if (radio->oper.channel) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Updating Channel %d to %s\n", __func__, __LINE__,radio->oper.channel, vap->vap_name);
+                vap_row->channel = radio->oper.channel;
+            } 
 
             if (is_vap_private(wifi_prop, vap->vap_index) == TRUE) {
                 if (translate_private_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {

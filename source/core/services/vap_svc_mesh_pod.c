@@ -254,6 +254,7 @@ int vap_svc_mesh_ext_start(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
     int ret;
     wifi_vap_info_map_t *vap_map = NULL, tgt_vap_map;
     ow_vif_config_param_t vif_config;
+    rdk_wifi_vap_info_t *rdk_vap_info;
 
 
     if ((num_of_radios = getNumberRadios()) > MAX_NUM_RADIOS) {
@@ -276,7 +277,20 @@ int vap_svc_mesh_ext_start(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
             if (svc->is_my_fn(vap_map->vap_array[j].vap_index) == false) {
                 continue;
             }
-           
+
+            rdk_vap_info = get_wifidb_rdk_vap_info(vap_map->vap_array[j].vap_index);
+            if (rdk_vap_info == NULL) {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to get rdk vap info for index %d\n",__func__, __LINE__, vap_map->vap_array[j].vap_index);
+                continue;
+            }
+
+            if (rdk_vap_info->exists == false) {
+                wifi_util_dbg_print(WIFI_CTRL,"%s:VAP [%s] doesnt exist, Skip enabling\n",__FUNCTION__,vap_map->vap_array[j].vap_name );
+                continue;
+            } else {
+                wifi_util_dbg_print(WIFI_CTRL,"%s:VAP [%s] exist, enabling..\n",__FUNCTION__,vap_map->vap_array[j].vap_name );
+            }
+
             memcpy((unsigned char *)&tgt_vap_map.vap_array[tgt_vap_map.num_vaps], (unsigned char *)&vap_map->vap_array[j], sizeof(wifi_vap_info_t));
             if (tgt_vap_map.vap_array[tgt_vap_map.num_vaps].vap_mode == wifi_vap_mode_sta) {
                 tgt_vap_map.vap_array[tgt_vap_map.num_vaps].u.sta_info.enabled = true;
@@ -485,7 +499,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
             }
 
             // Stop other STA vaps
-            for (i = 0; i < getNumberRadios(); i++) {
+           for (i = 0; i < getNumberRadios(); i++) {
                 if (i != temp_vap_info->radio_index) {
                      wifi_util_dbg_print(WIFI_CTRL,"%s:%d - Stopping STA vap on Radio [%d]\r\n", __func__, __LINE__,i);
                      vap_svc_mesh_ext_stop(svc, i, NULL);
@@ -501,11 +515,11 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
             memset(&temp_vap_info->u.sta_info.bssid, 0, sizeof(temp_vap_info->u.sta_info.bssid));
             ext->connected_vap_index = 0;
 
-            // Enable all other STA VAPs 
-            wifi_util_dbg_print(WIFI_CTRL,"%s:%d - TEST: Enabling STA vaps for backhaul connection.\n", __func__, __LINE__);
+            // Enable all other STA VAPs
+            ext->conn_state = connection_state_connection_in_progress; 
+            wifi_util_dbg_print(WIFI_CTRL,"%s:%d - Restart enabled VAPs for STA connection..\n", __func__, __LINE__);
             vap_svc_mesh_ext_start(svc, WIFI_ALL_RADIO_INDICES, NULL);
             //send_event = true;
-            ext->conn_state = connection_state_connection_in_progress;
         }
         
     }

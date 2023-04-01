@@ -773,6 +773,17 @@ static bool is_vap_param_config_changed(wifi_vap_info_t *old, wifi_vap_info_t *n
                 sizeof(wifi_vap_security_t))) {
             return true;
         }
+#ifndef CCSP_COMMON
+        char old_bssid_str[32], new_bssid_str[32];
+
+        if (memcmp(old->u.sta_info.bssid, new->u.sta_info.bssid, sizeof(bssid_t)) != 0) {
+            uint8_mac_to_string_mac(old->u.sta_info.bssid, old_bssid_str);
+            uint8_mac_to_string_mac(new->u.sta_info.bssid, new_bssid_str);
+            wifi_util_info_print(WIFI_CTRL, "%s:%d: mesh sta bssid changed [%s] -> [%s]\n", __func__,
+        __LINE__, old_bssid_str, new_bssid_str);
+            return true;
+        }
+#endif
     } else {
         // Ignore bssid change to avoid reconfiguration and disconnection
         if (IS_STR_CHANGED(old->u.bss_info.ssid, new->u.bss_info.ssid,
@@ -817,6 +828,7 @@ static bool is_vap_param_config_changed(wifi_vap_info_t *old, wifi_vap_info_t *n
     return false;
 }
 
+#ifdef CCSP_COMMON
 static void webconfig_send_sta_bssid_change_event(wifi_ctrl_t *ctrl, wifi_vap_info_t *old,
     wifi_vap_info_t *new)
 {
@@ -846,6 +858,7 @@ static void webconfig_send_sta_bssid_change_event(wifi_ctrl_t *ctrl, wifi_vap_in
         memcpy(old->u.sta_info.bssid, new->u.sta_info.bssid, sizeof(bssid_t));
     }
 }
+#endif
 
 int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data, char **vap_names, unsigned int size)
 {
@@ -939,15 +952,16 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
 
         found_target = false;
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Found vap map source and target for vap name: %s\n", __func__, __LINE__, vap_info->vap_name);
-
+#if CCSP_COMMON
         // STA BSSID change is handled by event to avoid disconnection.
         webconfig_send_sta_bssid_change_event(ctrl, mgr_vap_info, vap_info);
 
+        // For pods, STA is just like any other AP interface, deletion is allowed.
         // Ignore exists flag change because STA interfaces always enabled
         if (isVapSTAMesh(tgt_vap_index)) {
             mgr_rdk_vap_info->exists = rdk_vap_info->exists;
         }
-
+#endif 
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Comparing VAP [%s] with [%s]. \n",__func__, __LINE__,mgr_vap_info->vap_name,vap_info->vap_name);
         if (is_vap_param_config_changed(mgr_vap_info, vap_info, mgr_rdk_vap_info, rdk_vap_info,
                 isVapSTAMesh(tgt_vap_index))) {
@@ -2023,6 +2037,8 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
             print_wifi_hal_radio_data(WIFI_WEBCONFIG, "old", i, &mgr_radio_data->oper);
             print_wifi_hal_radio_data(WIFI_WEBCONFIG, "New", i, &radio_data->oper);
 
+// Optimizer will try to change, channel on current STA along with parent change, So it shouldn't skip for pods. 
+#ifdef CCSP_COMMON
             if (ctrl->network_mode == rdk_dev_mode_type_ext) {
                 vap_svc_t *ext_svc;
                 ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
@@ -2040,7 +2056,7 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
                     }
                 }
             }
-
+#endif // CCSP_COMMON
             get_wifi_rfc_parameters(RFC_WIFI_OW_CORE_THREAD, (bool *)&rfc_status);
             if (true == rfc_status) {
                 wifi_util_dbg_print(WIFI_WEBCONFIG,"[%s]:WIFI RFC OW CORE THREAD ENABLED \r\n",__FUNCTION__);
