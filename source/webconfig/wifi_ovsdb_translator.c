@@ -3112,7 +3112,6 @@ webconfig_error_t translate_ovsdb_to_vap_info_personal_sec(const struct schema_W
 
     if (!strcmp(str_encryp, "OPEN")) {
         vap->u.bss_info.security.mode = wifi_security_mode_none;
-        vap->u.bss_info.security.encr = wifi_encryption_none;
     } else {
         str_mode = security_config_find_by_key(vap_row, "mode");
         if (str_mode == NULL) {
@@ -3575,7 +3574,6 @@ webconfig_error_t translate_ovsdb_config_to_vap_info_personal_sec(const struct s
 
     if (!strcmp(str_encryp, "OPEN")) {
         vap->u.sta_info.security.mode = wifi_security_mode_none;
-        vap->u.sta_info.security.encr = wifi_encryption_none;
     } else {
         str_mode = security_config_find_by_key(vap_row, "mode");
         if (str_mode == NULL) {

@@ -1671,7 +1671,6 @@ int key_mgmt_conversion_legacy(wifi_security_modes_t *mode_enum, wifi_encryption
     if (conv_type == STRING_TO_ENUM) {
         if (strcmp(str_encryp, "OPEN") == 0) {
             *mode_enum = wifi_security_mode_none;
-            *encryp_enum = wifi_encryption_none;
         } else if (strcmp(str_encryp, "WEP") == 0) {
             if (strcmp(str_mode, "64") == 0) {
                 *mode_enum = wifi_security_mode_wep_64;

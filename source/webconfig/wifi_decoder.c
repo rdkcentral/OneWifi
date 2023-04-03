@@ -1339,12 +1339,6 @@ webconfig_error_t decode_personal_security_object(const cJSON *security, wifi_va
         security_info->encr = wifi_encryption_aes;
     } else if(strcmp(param->valuestring, "AES+TKIP") == 0) {
         security_info->encr = wifi_encryption_aes_tkip;
-    } else if(strcmp(param->valuestring, "None") == 0) {
-        security_info->encr = wifi_encryption_none;
-        if (security_info->mode != wifi_security_mode_none) {
-            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Incorrect encryption method '%s'\n", __func__, __LINE__, param->valuestring);
-            return webconfig_error_decode;
-        }
     } else {
         //strncpy(execRetVal->ErrorMsg, "Invalid Encryption method",sizeof(execRetVal->ErrorMsg)-1);
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Incorrect encryption method '%s'\n", __func__, __LINE__, param->valuestring);
@@ -1499,13 +1493,7 @@ webconfig_error_t decode_security_object(const cJSON *security, wifi_vap_securit
             security_info->encr = wifi_encryption_aes;
         } else if(strcmp(param->valuestring, "AES+TKIP") == 0) {
             security_info->encr = wifi_encryption_aes_tkip;
-        } else if(strcmp(param->valuestring, "None") == 0) {
-            security_info->encr = wifi_encryption_none;
-            if (security_info->mode != wifi_security_mode_none) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Incorrect encryption method '%s'\n", __func__, __LINE__, param->valuestring);
-                return webconfig_error_decode;
-            }
-        }  else {
+        } else {
             //strncpy(execRetVal->ErrorMsg, "Invalid Encryption method",sizeof(execRetVal->ErrorMsg)-1);
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Incorrect encryption method '%s'\n", __func__, __LINE__, param->valuestring);
             return webconfig_error_decode;

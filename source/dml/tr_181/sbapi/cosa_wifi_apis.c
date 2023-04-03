@@ -153,7 +153,6 @@ static char *FactoryReset       = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.
 extern bool is_radio_config_changed;
 struct wifiSecEncrCosaHalMap wifiSecEncrMap[] =
 {
-      {wifi_encryption_none,     COSA_DML_WIFI_AP_SEC_NONE,     "None"},
       {wifi_encryption_tkip,     COSA_DML_WIFI_AP_SEC_TKIP,     "TKIP"},
       {wifi_encryption_aes,      COSA_DML_WIFI_AP_SEC_AES,      "AES"},
       {wifi_encryption_aes_tkip, COSA_DML_WIFI_AP_SEC_AES_TKIP, "AES_TKIP"}

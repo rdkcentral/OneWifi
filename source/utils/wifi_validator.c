@@ -1202,14 +1202,15 @@ int validate_xfinity_open_vap(const cJSON *vap, wifi_vap_info_t *vap_info, pErr 
             strncpy(execRetVal->ErrorMsg, "Invalid security for hotspot open vap",sizeof(execRetVal->ErrorMsg)-1);
             return RETURN_ERR;
         }
+
         if (strcmp(param->valuestring, "None") == 0) {
             vap_info->u.bss_info.security.mode = wifi_security_mode_none;
-            vap_info->u.bss_info.security.encr = wifi_encryption_none;
         }
         if (strcmp(param->valuestring, "Enhanced-Open") == 0) {
             vap_info->u.bss_info.security.mode = wifi_security_mode_enhanced_open;
             vap_info->u.bss_info.security.encr = wifi_encryption_aes;
         }
+        
         // MFPConfig
         validate_param_string(security, "MFPConfig", param);
         if ((strcmp(param->valuestring, "Disabled") != 0) 

@@ -1064,14 +1064,7 @@ webconfig_error_t encode_personal_security_object(const wifi_vap_security_t *sec
         case wifi_encryption_aes_tkip:
             cJSON_AddStringToObject(security, "EncryptionMethod", "AES+TKIP");
             break;
-        case wifi_encryption_none:
-            if (security_info->mode != wifi_security_mode_none) {
-                wifi_util_error_print(WIFI_PASSPOINT,"%s:%d: Encryption Method not valid, value:%d\n",
-                            __func__, __LINE__, security_info->encr);
-            } else {
-                cJSON_AddStringToObject(security, "EncryptionMethod", "None");
-            }
-            break;
+
         default:
             wifi_util_error_print(WIFI_PASSPOINT,"%s:%d: Encryption Method not valid, value:%d\n",
                             __func__, __LINE__, security_info->encr);

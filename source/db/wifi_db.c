@@ -4675,7 +4675,6 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             }
             else {
                 cfg.u.bss_info.security.mode = wifi_security_mode_none;
-                cfg.u.bss_info.security.encr = wifi_encryption_none;
             }
         } else if (isVapHotspotSecure(vap_index)) {
             cfg.u.bss_info.bssHotspot = true;
