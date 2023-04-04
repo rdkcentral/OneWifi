@@ -4041,6 +4041,7 @@ void wifidb_init_gas_config_default(wifi_GASConfiguration_t *config)
 
 }
 
+#if DML_SUPPORT
 /************************************************************************************
  ************************************************************************************
   Function    : wifidb_init_rfc_config_default
@@ -4077,6 +4078,7 @@ void wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config)
     pthread_mutex_unlock(&g_wifidb->data_cache_lock);
 
 }
+#endif
 
 /************************************************************************************
  ************************************************************************************
@@ -4182,7 +4184,9 @@ void wifidb_init_default_value()
     wifidb_init_global_config_default(&g_wifidb->global_config.global_parameters);
     wifidb_reset_macfilter_hashmap();
     wifidb_init_gas_config_default(&g_wifidb->global_config.gas_config);
+#if DML_SUPPORT
     wifidb_init_rfc_config_default(&g_wifidb->rfc_dml_parameters);
+#endif
     wifi_util_dbg_print(WIFI_DB,"%s:%d Wifi db update completed\n",__func__, __LINE__);
 
 }
