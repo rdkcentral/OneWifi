@@ -1678,6 +1678,11 @@ void process_assoc_device_event(void *data)
             if (notify_hotspot(&p_wifi_mgr->ctrl, tmp_assoc_dev_data) != RETURN_OK) {
                 wifi_util_error_print(WIFI_CTRL,"%s:%d Unable to send notification to Hotspot\n", __func__, __LINE__);
             }
+
+            wifi_util_info_print(WIFI_CTRL, "Client %s is connected to hotspot index %d with rssi=%d  and SNR=%d\n",
+              mac_str,rdk_vap_info->vap_index,tmp_assoc_dev_data->dev_stats.cli_RSSI,
+              tmp_assoc_dev_data->dev_stats.cli_SNR);
+
         }
     }
     if ((isVapPrivate(rdk_vap_info->vap_index))) {
