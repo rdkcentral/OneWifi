@@ -218,7 +218,7 @@ webconfig_error_t decode_mesh_sta_subdoc(webconfig_t *config, webconfig_subdoc_d
     wifi_vap_name_t vap_names[MAX_NUM_RADIOS];
     unsigned int presence_mask = 0;
     char radio_names[MAX_NUM_RADIOS][8];
-    char *name;
+    char *name, *str;
     wifi_vap_info_t *vap_info;
     rdk_wifi_vap_info_t *rdk_vap_info;
     cJSON *json = data->u.encoded.json;
@@ -235,7 +235,10 @@ webconfig_error_t decode_mesh_sta_subdoc(webconfig_t *config, webconfig_subdoc_d
         snprintf(radio_names[i], sizeof(radio_names[i]), "radio%d", i+1);
     }
 
-    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: decoded JSON:\n%s\n", __func__, __LINE__, cJSON_Print(json));
+    str = cJSON_Print(json);
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: decoded JSON:\n%s\n", __func__, __LINE__, str);
+    cJSON_free(str);
+
     for (i = 0; i < doc->num_objects; i++) {
         if ((cJSON_GetObjectItem(json, doc->objects[i].name)) == NULL) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: object:%s not present, validation failed\n",
