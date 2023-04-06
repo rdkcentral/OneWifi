@@ -1181,8 +1181,6 @@ int wifi_db_update_radio_config()
 
         /* read values from psm and update db */
         get_radio_params_from_psm(radio_index, &radio_cfg);
-        get_radio_params_from_db(radio_index, &radio_cfg);
-        wifi_util_dbg_print(WIFI_MGR,"%s:%d: %u ****success to get bandwidth value in wifi db\n",__func__, __LINE__,radio_cfg.channelWidth);
 
         retval = wifidb_update_wifi_radio_config(radio_index, &radio_cfg);
         if (retval != 0) {
