@@ -1586,6 +1586,7 @@ void process_disassoc_device_event(void *data)
                         free(temp_assoc_dev_data);
                         return;
                     }
+                    temp_assoc_dev_data->dev_stats.cli_Active = false;
                     lm_notify_disassoc(temp_assoc_dev_data, rdk_vap_info->vap_index);
                     free(temp_assoc_dev_data);
                 }
@@ -1613,6 +1614,7 @@ void process_disassoc_device_event(void *data)
                 free(temp_assoc_dev_data);
                 return;
             }
+            temp_assoc_dev_data->dev_stats.cli_Active = false;
             lm_notify_disassoc(temp_assoc_dev_data, rdk_vap_info->vap_index);
             free(temp_assoc_dev_data);
         }
