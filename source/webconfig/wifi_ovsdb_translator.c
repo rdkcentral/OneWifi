@@ -61,6 +61,25 @@ struct ovs_vapname_cloudvifname_map {
     char vapname[64];
 };
 
+#if defined (_PP203X_PRODUCT_REQ_)
+struct ovs_vapname_cloudvifname_map  cloud_vif_map[] = {
+    {"bhaul-ap-24",  "mesh_backhaul_2g"},
+    {"bhaul-ap-l50", "mesh_backhaul_5gl"},
+    {"bhaul-ap-u50", "mesh_backhaul_5gh"},
+    {"home-ap-24",   "private_ssid_2g"},
+    {"home-ap-l50",  "private_ssid_5gl"},
+    {"home-ap-u50",  "private_ssid_5gh"},
+    {"bhaul-sta-24", "mesh_sta_2g"},
+    {"bhaul-sta-l50","mesh_sta_5gl"},
+    {"bhaul-sta-u50","mesh_sta_5gh"},
+    {"svc-d-ap-24",  "lnf_psk_2g"},
+    {"svc-d-ap-l50", "lnf_psk_5gl"},
+    {"svc-d-ap-u50", "lnf_psk_5gh"},
+    {"svc-e-ap-24",  "iot_ssid_2g"},
+    {"svc-e-ap-l50", "iot_ssid_5gl"},
+    {"svc-e-ap-u50", "iot_ssid_5gh"},
+};
+#else
 struct ovs_vapname_cloudvifname_map  cloud_vif_map[] = {
     {"wl0",   "mesh_sta_2g"},
     {"wl0.1", "private_ssid_2g"},
@@ -99,17 +118,26 @@ struct ovs_vapname_cloudvifname_map  cloud_vif_map[] = {
     {"wl2.6", "lnf_radius_5gh"},
     {"wl2.7", "mesh_backhaul_5gh"}
 };
+#endif
 
 struct ovs_radioname_cloudradioname_map {
     unsigned int radio_index;
     char cloudradioname[64];
 };
 
+#if defined (_PP203X_PRODUCT_REQ_)
+struct ovs_radioname_cloudradioname_map cloud_radio_map[] = {
+    {0, "wifi0"},
+    {1, "wifi1"},
+    {2, "wifi2"},
+};
+#else
 struct ovs_radioname_cloudradioname_map cloud_radio_map[] = {
     {0, "wl0"},
     {1, "wl1"},
     {2, "wl2"},
 };
+#endif
 
 int convert_cloudifname_to_vapname(wifi_platform_property_t *wifi_prop, char *if_name, char *vap_name, int vapname_len)
 {
@@ -3650,9 +3678,9 @@ static webconfig_error_t set_deleted_entries_to_default(webconfig_subdoc_data_t 
             vap = &radio->vaps.vap_map.vap_array[vap_arr_index];
             default_vap = &default_radio->vaps.vap_map.vap_array[vap_arr_index];
             rdk_vap = &radio->vaps.rdk_vap_array[vap_arr_index];
-
             memcpy(vap, default_vap, sizeof(wifi_vap_info_t));
-#ifndef CCSP_COMMON
+
+#ifndef CCSP_COMMON // If a VAP row is deleted POD interface MUST be disabled. 
             if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == TRUE) {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Setting STA VAP state to false [%s]\n", __func__, __LINE__,vap->vap_name);
                 vap->u.sta_info.enabled = false;
@@ -5611,7 +5639,6 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_mesh_sta(webc
             presence_mask  |= (1 << vap_index);
         } 
     }
-
     if (set_deleted_entries_to_default(data, &presence_mask, mesh_vap_mask) !=
             webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to set deleted entries to default\n",
