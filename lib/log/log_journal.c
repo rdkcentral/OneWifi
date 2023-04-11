@@ -1,5 +1,3 @@
-#include <systemd/sd-journal.h>
-
 #include "log.h"
 
 static logger_fn_t logger_journal_log;

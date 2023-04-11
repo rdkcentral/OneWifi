@@ -27,6 +27,7 @@ extern "C" {
 #include <math.h>
 #include "wifi_hal.h"
 #include "wifi_base.h"
+#include "wifi_events.h"
 
 typedef struct wifi_ctrl wifi_ctrl_t;
 
@@ -52,7 +53,7 @@ typedef int (* vap_svc_start_fn_t)(vap_svc_t *svc, unsigned int radio_index, wif
 typedef int (* vap_svc_stop_fn_t)(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map);
 typedef int (* vap_svc_update_fn_t)(vap_svc_t *svc, unsigned int radio_index,
     wifi_vap_info_map_t *map, rdk_wifi_vap_info_t *rdk_vap_info);
-typedef int (* vap_svc_event_fn_t)(vap_svc_t *svc, ctrl_event_type_t type, ctrl_event_subtype_t sub_type, vap_svc_event_t event, void *arg);
+typedef int (* vap_svc_event_fn_t)(vap_svc_t *svc, wifi_event_type_t type, wifi_event_subtype_t sub_type, vap_svc_event_t event, void *arg);
 typedef bool (* vap_svc_is_my_fn_t)(unsigned int vap_index);
 
 //sta connection 10 seconds retry
@@ -152,7 +153,7 @@ extern int vap_svc_private_start(vap_svc_t *svc, unsigned int radio_index, wifi_
 extern int vap_svc_private_stop(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map);
 extern int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index,
     wifi_vap_info_map_t *map, rdk_wifi_vap_info_t *rdk_vap_info);
-extern int vap_svc_private_event(vap_svc_t *svc, ctrl_event_type_t type, ctrl_event_subtype_t sub_type, vap_svc_event_t event, void *arg);
+extern int vap_svc_private_event(vap_svc_t *svc, wifi_event_type_t type, wifi_event_subtype_t sub_type, vap_svc_event_t event, void *arg);
 extern bool vap_svc_is_private(unsigned int vap_index);
 
 // public
@@ -160,7 +161,7 @@ extern int vap_svc_public_start(vap_svc_t *svc, unsigned int radio_index, wifi_v
 extern int vap_svc_public_stop(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map);
 extern int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index,
     wifi_vap_info_map_t *map, rdk_wifi_vap_info_t *rdk_vap_info);
-extern int vap_svc_public_event(vap_svc_t *svc, ctrl_event_type_t type, ctrl_event_subtype_t sub_type, vap_svc_event_t event, void *arg);
+extern int vap_svc_public_event(vap_svc_t *svc, wifi_event_type_t type, wifi_event_subtype_t sub_type, vap_svc_event_t event, void *arg);
 extern bool vap_svc_is_public(unsigned int vap_index);
 
 // mesh_gateway
@@ -168,7 +169,7 @@ extern int vap_svc_mesh_gw_start(vap_svc_t *svc, unsigned int radio_index, wifi_
 extern int vap_svc_mesh_gw_stop(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map);
 extern int vap_svc_mesh_gw_update(vap_svc_t *svc, unsigned int radio_index,
     wifi_vap_info_map_t *map, rdk_wifi_vap_info_t *rdk_vap_info);
-extern int vap_svc_mesh_gw_event(vap_svc_t *svc, ctrl_event_type_t type, ctrl_event_subtype_t sub_type, vap_svc_event_t event, void *arg);
+extern int vap_svc_mesh_gw_event(vap_svc_t *svc, wifi_event_type_t type, wifi_event_subtype_t sub_type, vap_svc_event_t event, void *arg);
 extern bool vap_svc_is_mesh_gw(unsigned int vap_index);
 
 // mesh_extender
@@ -176,7 +177,7 @@ extern int vap_svc_mesh_ext_start(vap_svc_t *svc, unsigned int radio_index, wifi
 extern int vap_svc_mesh_ext_stop(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map);
 extern int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index,
     wifi_vap_info_map_t *map, rdk_wifi_vap_info_t *rdk_vap_info);
-extern int vap_svc_mesh_ext_event(vap_svc_t *svc, ctrl_event_type_t type, ctrl_event_subtype_t sub_type, vap_svc_event_t event, void *arg);
+extern int vap_svc_mesh_ext_event(vap_svc_t *svc, wifi_event_type_t type, wifi_event_subtype_t sub_type, vap_svc_event_t event, void *arg);
 extern bool vap_svc_is_mesh_ext(unsigned int vap_index);
 
 vap_svc_t *get_svc_by_type(wifi_ctrl_t *ctrl, vap_svc_type_t type);

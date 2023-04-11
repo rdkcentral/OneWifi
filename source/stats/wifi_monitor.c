@@ -2107,27 +2107,19 @@ int upload_ap_telemetry_pmf(void *arg)
  */
 int wifi_stats_flag_change(int ap_index, bool enable, int type)
 {
-    wifi_monitor_data_t *data;
+    wifi_monitor_data_t data;
 
-    data = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
-    data->id = msg_id++;
+    memset(&data, 0, sizeof(wifi_monitor_data_t));
+    data.id = msg_id++;
+    data.ap_index = ap_index;
 
-    data->event_type = monitor_event_type_StatsFlagChange;
-
-    data->ap_index = ap_index;
-
-    data->u.flag.type = type;
-    data->u.flag.enable = enable;
-
+    data.u.flag.type = type;
+    data.u.flag.enable = enable;
 
     wifi_util_dbg_print(WIFI_MON, "%s:%d: flag changed apIndex=%d enable=%d type=%d\n",
             __func__, __LINE__, ap_index, enable, type);
 
-    pthread_mutex_lock(&g_monitor_module.queue_lock);
-    queue_push(g_monitor_module.queue, data);
-
-    pthread_cond_signal(&g_monitor_module.cond);
-    pthread_mutex_unlock(&g_monitor_module.queue_lock);
+    push_event_to_monitor_queue(&data, wifi_event_monitor_stats_flag_change);
 
     return 0;
 }
@@ -2140,25 +2132,17 @@ int wifi_stats_flag_change(int ap_index, bool enable, int type)
  */
 int radio_stats_flag_change(int radio_index, bool enable)
 {
-    wifi_monitor_data_t *data;
+    wifi_monitor_data_t data;
 
-    data = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
-    data->id = msg_id++;
-
-    data->event_type = monitor_event_type_RadioStatsFlagChange;
-
-    data->ap_index = radio_index;	//Radio_Index = 0, 1
-
-    data->u.flag.enable = enable;
+    memset(&data, 0, sizeof(wifi_monitor_data_t));
+    data.id = msg_id++;
+    data.ap_index = radio_index;	//Radio_Index = 0, 1
+    data.u.flag.enable = enable;
 
     wifi_util_dbg_print(WIFI_MON, "%s:%d: flag changed radioIndex=%d enable=%d\n",
             __func__, __LINE__, radio_index, enable);
 
-    pthread_mutex_lock(&g_monitor_module.queue_lock);
-    queue_push(g_monitor_module.queue, data);
-
-    pthread_cond_signal(&g_monitor_module.cond);
-    pthread_mutex_unlock(&g_monitor_module.queue_lock);
+    push_event_to_monitor_queue(&data, wifi_event_monitor_radio_stats_flag_change);
 
     return 0;
 }
@@ -2171,28 +2155,25 @@ int radio_stats_flag_change(int radio_index, bool enable)
  */
 int vap_stats_flag_change(int ap_index, bool enable)
 {
-    wifi_monitor_data_t *data;
+    wifi_monitor_data_t data;
 
-    data = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
-    data->id = msg_id++;
+    memset(&data, 0, sizeof(wifi_monitor_data_t));
 
-    data->event_type = monitor_event_type_VapStatsFlagChange;
+    data.id = msg_id++;
 
-    data->ap_index = ap_index;	//vap_Index
+    data.ap_index = ap_index;	//vap_Index
 
-    data->u.flag.enable = enable;
+    data.u.flag.enable = enable;
 
     wifi_util_dbg_print(WIFI_MON, "%s:%d: flag changed vapIndex=%d enable=%d \n",
             __func__, __LINE__, ap_index, enable);
 
-    pthread_mutex_lock(&g_monitor_module.queue_lock);
     if(enable == FALSE) {
         csi_vap_down_update(ap_index);
     }
-    queue_push(g_monitor_module.queue, data);
 
-    pthread_cond_signal(&g_monitor_module.cond);
-    pthread_mutex_unlock(&g_monitor_module.queue_lock);
+    push_event_to_monitor_queue(&data, wifi_event_monitor_vap_stats_flag_change);
+
 
     return 0;
 }
@@ -2383,10 +2364,9 @@ void process_deauthenticate	(unsigned int ap_index, auth_deauth_dev_t *dev)
     /*Calling process_disconnect as station is disconncetd from vAP*/
     process_disconnect(ap_index, dev);
 }
-
 #endif // CCSP_COMMON
 
-void process_connect	(unsigned int ap_index, auth_deauth_dev_t *dev)
+void process_connect(unsigned int ap_index, auth_deauth_dev_t *dev)
 {
     sta_key_t sta_key;
     sta_data_t *sta;
@@ -2687,7 +2667,8 @@ void *monitor_function  (void *data)
     wifi_monitor_t *proc_data;
     struct timespec time_to_wait;
     struct timeval tv_now;
-    wifi_monitor_data_t	*queue_data = NULL;
+    wifi_event_t *event;
+    wifi_monitor_data_t        *event_data = NULL;
     int rc;
     struct timeval t_start;
     struct timeval interval;
@@ -2711,52 +2692,55 @@ void *monitor_function  (void *data)
         if ((rc == 0) || (queue_count(proc_data->queue) != 0)) {
             // dequeue data
             while (queue_count(proc_data->queue)) {
-                queue_data = queue_pop(proc_data->queue);
-                if (queue_data == NULL) {
+                event = queue_pop(proc_data->queue);
+                if (event == NULL) {
                     continue;
                 }
 
+                event_data = &event->u.mon_data;
 #ifdef CCSP_COMMON
                 //Send data to wifi_events library
-                events_publish(*queue_data);
+                events_rbus_publish(event);
 #endif // CCSP_COMMON
-                switch (queue_data->event_type) {
+                switch (event->sub_type) {
 #ifdef CCSP_COMMON
-                    case monitor_event_type_diagnostics:
-                        //process_diagnostics(queue_data->ap_index, &queue_data->.devs);
+                    case wifi_event_monitor_diagnostics:
+                        //process_diagnostics(event_data->ap_index, &event_data->.devs);
                     break;
 #endif // CCSP_COMMON
-                    case monitor_event_type_connect:
-                        process_connect(queue_data->ap_index, &queue_data->u.dev);
+
+                    case wifi_event_monitor_connect:
+                        process_connect(event_data->ap_index, &event_data->u.dev);
                     break;
 
-                    case monitor_event_type_disconnect:
-                        process_disconnect(queue_data->ap_index, &queue_data->u.dev);
+                    case wifi_event_monitor_disconnect:
+                        process_disconnect(event_data->ap_index, &event_data->u.dev);
                     break;
 #ifdef CCSP_COMMON
-                    case monitor_event_type_deauthenticate:
-                        process_deauthenticate(queue_data->ap_index, &queue_data->u.dev);
+
+                    case wifi_event_monitor_deauthenticate:
+                        process_deauthenticate(event_data->ap_index, &event_data->u.dev);
                     break;
 
-                    case monitor_event_type_stop_inst_msmt:
-                        process_instant_msmt_stop(queue_data->ap_index, &queue_data->u.imsmt);
+                    case wifi_event_monitor_stop_inst_msmt:
+                        process_instant_msmt_stop(event_data->ap_index, &event_data->u.imsmt);
                     break;
 
-                    case monitor_event_type_start_inst_msmt:
-                        process_instant_msmt_start(queue_data->ap_index, &queue_data->u.imsmt);
+                    case wifi_event_monitor_start_inst_msmt:
+                        process_instant_msmt_start(event_data->ap_index, &event_data->u.imsmt);
                     break;
 
-                    case monitor_event_type_StatsFlagChange:
-                        process_stats_flag_changed(queue_data->ap_index, &queue_data->u.flag);
+                    case wifi_event_monitor_stats_flag_change:
+                        process_stats_flag_changed(event_data->ap_index, &event_data->u.flag);
                     break;
-                    case monitor_event_type_RadioStatsFlagChange:
-                        radio_stats_flag_changed(queue_data->ap_index, &queue_data->u.flag);
+                    case wifi_event_monitor_radio_stats_flag_change:
+                        radio_stats_flag_changed(event_data->ap_index, &event_data->u.flag);
                     break;
-                    case monitor_event_type_VapStatsFlagChange:
-                        vap_stats_flag_changed(queue_data->ap_index, &queue_data->u.flag);
+                    case wifi_event_monitor_vap_stats_flag_change:
+                        vap_stats_flag_changed(event_data->ap_index, &event_data->u.flag);
                     break;
 #endif // CCSP_COMMON
-                    case monitor_event_type_process_active_msmt:
+                    case wifi_event_monitor_process_active_msmt:
                         if (proc_data->blastReqInQueueCount == 1)
                         {
                             wifi_util_dbg_print(WIFI_MON, "%s:%d: calling process_active_msmt_step \n",__func__, __LINE__);
@@ -2775,11 +2759,11 @@ void *monitor_function  (void *data)
                         }
                     break;
 #ifdef CCSP_COMMON
-                    case monitor_event_type_csi_update_config:
+                    case wifi_event_monitor_csi_update_config:
                         csi_sheduler_enable();
                     break;
-                    case monitor_event_type_clientdiag_update_config:
-                        clientdiag_sheduler_enable(queue_data->ap_index);
+                    case wifi_event_monitor_clientdiag_update_config:
+                        clientdiag_sheduler_enable(event_data->ap_index);
                     break;
 #endif // CCSP_COMMON
                     default:
@@ -2787,10 +2771,10 @@ void *monitor_function  (void *data)
 
                 }
 
-                free(queue_data);
+                free(event);
 
                 gettimeofday(&proc_data->last_signalled_time, NULL);
-            }	
+            }
         } else if (rc == ETIMEDOUT) {
             gettimeofday(&t_start, NULL);
             scheduler_execute(g_monitor_module.sched, t_start, interval.tv_usec/1000);
@@ -2872,7 +2856,7 @@ bool is_device_associated(int ap_index, char *mac)
     sta_data_t *sta;
     hash_map_t     *sta_map;
     unsigned int vap_array_index;
- 
+
     getVAPArrayIndexFromVAPIndex((unsigned int)ap_index, &vap_array_index);
 
     str_to_mac_bytes(mac, bmac);
@@ -2888,8 +2872,7 @@ bool is_device_associated(int ap_index, char *mac)
 }
 
 #ifdef CCSP_COMMON
-int
-timeval_subtract (struct timeval *result, struct timeval *end, struct timeval *start)
+int timeval_subtract (struct timeval *result, struct timeval *end, struct timeval *start)
 {
     if(result == NULL || end == NULL || start == NULL) {
         return 1;
@@ -2907,7 +2890,7 @@ timeval_subtract (struct timeval *result, struct timeval *end, struct timeval *s
         start->tv_sec -= adjust_sec;
     }
 
-    
+
     result->tv_sec = end->tv_sec - start->tv_sec;
     result->tv_usec = end->tv_usec - start->tv_usec;
 
@@ -3345,21 +3328,21 @@ static void send_ping_data(int ap_idx, unsigned char *mac, char *client_ip, char
         //send buffer
         if(frame_len) {
 #if (defined (_XB7_PRODUCT_REQ_) && !defined (_COSA_BCM_ARM_))
-              wifi_sendDataFrame(ap_idx,
-               (unsigned char*)mac,
-               (unsigned char*)buffer,
-               frame_len,
-               TRUE,
-               WIFI_ETH_TYPE_IP,
-               wifi_data_priority_be);
+            wifi_sendDataFrame(ap_idx,
+                    (unsigned char*)mac,
+                    (unsigned char*)buffer,
+                    frame_len,
+                    TRUE,
+                    WIFI_ETH_TYPE_IP,
+                    wifi_data_priority_be);
 #else
-              wifi_hal_sendDataFrame(ap_idx,
-               (unsigned char*)mac,
-               (unsigned char*)buffer,
-               frame_len,
-               TRUE,
-               WIFI_ETH_TYPE_IP,
-               wifi_data_priority_be);
+            wifi_hal_sendDataFrame(ap_idx,
+                    (unsigned char*)mac,
+                    (unsigned char*)buffer,
+                    frame_len,
+                    TRUE,
+                    WIFI_ETH_TYPE_IP,
+                    wifi_data_priority_be);
 #endif
         }
     } else {
@@ -3367,21 +3350,21 @@ static void send_ping_data(int ap_idx, unsigned char *mac, char *client_ip, char
         //send buffer
         if(frame_len) {
 #if (defined (_XB7_PRODUCT_REQ_) && !defined (_COSA_BCM_ARM_))
-             wifi_sendDataFrame(ap_idx,
-              (unsigned char*)mac,
-              (unsigned char*)buffer,
-              frame_len,
-              TRUE,
-              WIFI_ETH_TYPE_IP6,
-              wifi_data_priority_be);
+            wifi_sendDataFrame(ap_idx,
+                    (unsigned char*)mac,
+                    (unsigned char*)buffer,
+                    frame_len,
+                    TRUE,
+                    WIFI_ETH_TYPE_IP6,
+                    wifi_data_priority_be);
 #else
-             wifi_hal_sendDataFrame(ap_idx,
-              (unsigned char*)mac,
-              (unsigned char*)buffer,
-              frame_len,
-              TRUE,
-              WIFI_ETH_TYPE_IP,
-              wifi_data_priority_be);
+            wifi_hal_sendDataFrame(ap_idx,
+                    (unsigned char*)mac,
+                    (unsigned char*)buffer,
+                    frame_len,
+                    TRUE,
+                    WIFI_ETH_TYPE_IP,
+                    wifi_data_priority_be);
 #endif
         }
     }
@@ -3406,6 +3389,7 @@ static csi_session_t* csi_get_session(bool create, int csi_session_number) {
     if(create == FALSE) {
         return NULL;
     }
+
 
     csi = (csi_session_t *) malloc(sizeof(csi_session_t));
     if(csi == NULL) {
@@ -3468,14 +3452,13 @@ void csi_update_client_mac_status(mac_addr_t mac, bool connected, int ap_idx) {
 
 void csi_set_client_mac(char *r_mac_list, int csi_session_number)
 {
-
     csi_session_t *csi = NULL;
     int ap_index = -1, mac_ctr = 0;
     int i = 0;
     char *mac_tok=NULL;
     char* rest = NULL;
     char mac_list[MAX_CSI_CLIENTMACLIST_STR] = {0};
-    wifi_monitor_data_t *data;
+    wifi_monitor_data_t data;
     struct timeval t_now;
 
     if(r_mac_list == NULL) {
@@ -3531,18 +3514,9 @@ void csi_set_client_mac(char *r_mac_list, int csi_session_number)
         }
     }
     pthread_mutex_unlock(&g_events_monitor.lock);
-    data = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
-    if (data != NULL) {
-        memset(data, 0, sizeof(wifi_monitor_data_t));
-        data->id = msg_id++;
-        data->event_type = monitor_event_type_csi_update_config;
-
-        pthread_mutex_lock(&g_monitor_module.queue_lock);
-        queue_push(g_monitor_module.queue, data);
-
-        pthread_cond_signal(&g_monitor_module.cond);
-        pthread_mutex_unlock(&g_monitor_module.queue_lock);
-    }
+    memset(&data, 0, sizeof(wifi_monitor_data_t));
+    data.id = msg_id++;
+    push_event_to_monitor_queue(&data, wifi_event_monitor_csi_update_config);
 }
 
 
@@ -3575,7 +3549,7 @@ static void csi_enable_client(csi_session_t *csi)
 void csi_enable_session(bool enable, int csi_session_number)
 {
     csi_session_t *csi = NULL;
-    wifi_monitor_data_t *data;
+    wifi_monitor_data_t data;
 
     pthread_mutex_lock(&g_events_monitor.lock);
     csi = csi_get_session(FALSE, csi_session_number);
@@ -3590,18 +3564,9 @@ void csi_enable_session(bool enable, int csi_session_number)
         }
     }
     pthread_mutex_unlock(&g_events_monitor.lock);
-    data = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
-    if (data != NULL) {
-        memset(data, 0, sizeof(wifi_monitor_data_t));
-        data->id = msg_id++;
-        data->event_type = monitor_event_type_csi_update_config;
-
-        pthread_mutex_lock(&g_monitor_module.queue_lock);
-        queue_push(g_monitor_module.queue, data);
-
-        pthread_cond_signal(&g_monitor_module.cond);
-        pthread_mutex_unlock(&g_monitor_module.queue_lock);
-    }
+    memset(&data, 0, sizeof(wifi_monitor_data_t));
+    data.id = msg_id++;
+    push_event_to_monitor_queue(&data, wifi_event_monitor_csi_update_config);
 
 }
 
@@ -3633,7 +3598,7 @@ static void csi_vap_down_update(int ap_idx)
 void csi_enable_subscription(bool subscribe, int csi_session_number)
 {
     csi_session_t *csi = NULL;
-    wifi_monitor_data_t *data;
+    wifi_monitor_data_t data;
 
     pthread_mutex_lock(&g_events_monitor.lock);
     csi = csi_get_session(TRUE, csi_session_number);
@@ -3648,18 +3613,11 @@ void csi_enable_subscription(bool subscribe, int csi_session_number)
         }
     }
     pthread_mutex_unlock(&g_events_monitor.lock);
-    data = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
-    if (data != NULL) {
-        memset(data, 0, sizeof(wifi_monitor_data_t));
-        data->id = msg_id++;
-        data->event_type = monitor_event_type_csi_update_config;
+    memset(&data, 0, sizeof(wifi_monitor_data_t));
 
-        pthread_mutex_lock(&g_monitor_module.queue_lock);
-        queue_push(g_monitor_module.queue, data);
+    data.id = msg_id++;
 
-        pthread_cond_signal(&g_monitor_module.cond);
-        pthread_mutex_unlock(&g_monitor_module.queue_lock);
-    }
+    push_event_to_monitor_queue(&data, wifi_event_monitor_csi_update_config);
 }
 
 void csi_set_interval(int interval, int csi_session_number)
@@ -3895,17 +3853,21 @@ static int csi_sheduler_enable(void)
 }
 
 
-static void csi_publish(wifi_monitor_data_t *evtData)
+static void csi_publish(wifi_event_t *event)
 {
     int i = 0;
     int j = 0;
     int count = 0;
     struct timeval time_diff;
     csi_session_t *csi = NULL;
+    wifi_monitor_data_t *evtData;
 
-    if(evtData == NULL) {
+    if(event == NULL) {
         return;
     }
+
+    evtData = &event->u.mon_data;
+
     pthread_mutex_lock(&g_events_monitor.lock);
     count = queue_count(g_events_monitor.csi_queue);
 
@@ -3925,7 +3887,7 @@ static void csi_publish(wifi_monitor_data_t *evtData)
                         wifi_util_dbg_print(WIFI_MON, "%s: Publish CSI Event - MAC  %02x:%02x:%02x:%02x:%02x:%02x\n",__func__, evtData->u.csi.sta_mac[0], evtData->u.csi.sta_mac[1], evtData->u.csi.sta_mac[2], evtData->u.csi.sta_mac[3],
                                         evtData->u.csi.sta_mac[4], evtData->u.csi.sta_mac[5]);
                         evtData->csi_session = csi->csi_sess_number;
-                        events_publish(*evtData);
+                        events_rbus_publish(event);
                     }
                 }
             }
@@ -3965,22 +3927,22 @@ INT process_csi(mac_address_t mac_addr, wifi_csi_data_t  *csi_data)
     int csi_subscribers_count = 0;
     bool mac_found = FALSE;
     csi_session_t *csi = NULL;
-    wifi_monitor_data_t *evtData;
+    wifi_event_t *event = NULL;
 
     wifi_util_dbg_print(WIFI_MON, "%s: CSI data received - MAC  %02x:%02x:%02x:%02x:%02x:%02x\n",__func__, mac_addr[0], mac_addr[1],
                                                         mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
     gettimeofday(&t_now, NULL);
-
-    if ((evtData = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t))) == NULL) {
-        wifi_util_dbg_print(WIFI_MON, "%s:%d Unable to allocate memory\n", __func__, __LINE__);
+    event = (wifi_event_t *)malloc(sizeof(wifi_event_t));
+    if (event == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: memory allocation for event failed.\n", __func__, __LINE__);
         return 0;
     }
-    memset(evtData, 0, sizeof(wifi_monitor_data_t));
+    memset((char *)event, 0, sizeof(wifi_event_t));
 
-    evtData->event_type = monitor_event_type_csi;
-    memcpy(evtData->u.csi.sta_mac, mac_addr, sizeof(mac_addr_t));
-    memcpy(&(evtData->u.csi.csi), csi_data, sizeof(wifi_csi_data_t));
-
+    event->event_type = wifi_event_type_monitor;
+    event->sub_type = wifi_event_monitor_csi;
+    memcpy(event->u.mon_data.u.csi.sta_mac, mac_addr, sizeof(mac_addr_t));
+    memcpy(&event->u.mon_data.u.csi.csi, csi_data, sizeof(wifi_csi_data_t));
     pthread_mutex_lock(&g_events_monitor.lock);
     csi_subscribers_count = queue_count(g_events_monitor.csi_queue);
 
@@ -4000,18 +3962,18 @@ INT process_csi(mac_address_t mac_addr, wifi_csi_data_t  *csi_data)
             }
         }
         if (mac_found == TRUE) {
-            evtData->csi_session = csi->csi_sess_number;
+            event->u.mon_data.csi_session = csi->csi_sess_number;
             //check interval
             if (csi->csi_time_interval == MIN_CSI_INTERVAL || csi_check_timeout(csi, j, &t_now)) {
-                evtData->csi_session = csi->csi_sess_number;
+                event->u.mon_data.csi_session = csi->csi_sess_number;
                 wifi_util_dbg_print(WIFI_MON, "%s: Publish CSI Event - MAC  %02x:%02x:%02x:%02x:%02x:%02x Session %d\n",__func__, mac_addr[0], mac_addr[1],
                                                         mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5], csi->csi_sess_number);
-                events_publish(*evtData);
+                events_rbus_publish(event);
                 csi->last_publish_time[j] = t_now;
             }
         }
     }
-    free(evtData);
+    free(event);
     pthread_mutex_unlock(&g_events_monitor.lock);
     return 0;
 }
@@ -4031,7 +3993,7 @@ int csi_sendPingData(void *arg)
         memset(tmp_csiClientMac, 0, sizeof(tmp_csiClientMac));
         pthread_mutex_lock(&g_events_monitor.lock);
         csi_subscribers_count = queue_count(g_events_monitor.csi_queue);
- 
+
         for(k =0; k < csi_subscribers_count; k++) {
             mac_found = FALSE;
             csi = queue_peek(g_events_monitor.csi_queue, k);
@@ -4080,7 +4042,7 @@ int csi_getCSIData(void *arg)
 {
     mac_addr_t  tmp_csiClientMac[MAX_CSI_CLIENTS_PER_SESSION];
     int count=0, i=0, itrcsi=0, itrc=0, ret=RETURN_ERR, j =0, k=0, m=0;
-    wifi_monitor_data_t evtData;
+    wifi_event_t *event;
     struct timeval time_diff;
     int csi_subscribers_count = 0;
     csi_session_t *csi = NULL;
@@ -4089,7 +4051,6 @@ int csi_getCSIData(void *arg)
     int total_events = 0;
     int re_itr = 0;
     gettimeofday(&csi_prune_timer, NULL);
-    memset((char *)&evtData,0,sizeof(wifi_monitor_data_t));
     wifi_associated_dev3_t *dev_array = NULL;
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
@@ -4111,7 +4072,7 @@ int csi_getCSIData(void *arg)
             if(csi == NULL || !(csi->enable && csi->subscribed)) {
                 continue;
             }
-            /*this code is hit every MONITOR_RUNNING_INTERVAL_IN_MILLISEC, 
+            /*this code is hit every MONITOR_RUNNING_INTERVAL_IN_MILLISEC,
               Rounding off by -5 to make sure  we do not miss an interval, as hit this path
               1 or 2 msec earlier at times*/
             if(!timeval_subtract(&time_diff, &csi_prune_timer, &csi->last_snapshot_time)) {
@@ -4126,7 +4087,7 @@ int csi_getCSIData(void *arg)
                                 break;
                             }
                         }
-                        if(mac_found == TRUE) {		
+                        if(mac_found == TRUE) {
                             wifi_util_dbg_print(WIFI_MON, "%s: Mac already present in CSI list %02x..%02x\n",__func__, csi->mac_list[j][0], csi->mac_list[j][5]);
                             continue;
                         }
@@ -4145,7 +4106,7 @@ int csi_getCSIData(void *arg)
                     }
                 }
             }
-        }	
+        }
         pthread_mutex_unlock(&g_events_monitor.lock);
         if (count>0) {
             dev_array = (wifi_associated_dev3_t *)malloc(sizeof(wifi_associated_dev3_t)*count);
@@ -4159,10 +4120,17 @@ int csi_getCSIData(void *arg)
                     if (ret == RETURN_OK) {
                         for (itrcsi=0; itrcsi < count; itrcsi++) {
                             if (dev_array[itrcsi].cli_CsiData != NULL) {
-                                evtData.event_type = monitor_event_type_csi;
-                                memcpy(evtData.u.csi.sta_mac, dev_array[itrcsi].cli_MACAddress, sizeof(mac_addr_t));
-                                memcpy(&evtData.u.csi.csi, dev_array[itrcsi].cli_CsiData, sizeof(wifi_csi_data_t));
-                                csi_publish(&evtData);
+                                event = (wifi_event_t *)malloc(sizeof(wifi_event_t));
+                                if (event == NULL) {
+                                    wifi_util_error_print(WIFI_MON, "%s:%d: memory allocation for event failed.\n", __func__, __LINE__);
+                                    return 0;
+                                }
+                                memset(event, 0, sizeof(wifi_event_t));
+                                event->event_type = wifi_event_type_monitor;
+                                event->sub_type = wifi_event_monitor_csi;
+                                memcpy(event->u.mon_data.u.csi.sta_mac, dev_array[itrcsi].cli_MACAddress, sizeof(mac_addr_t));
+                                memcpy(&event->u.mon_data.u.csi.csi, dev_array[itrcsi].cli_CsiData, sizeof(wifi_csi_data_t));
+                                csi_publish(event);
                                 wifi_util_dbg_print(WIFI_MON, "%s Free CSI data for %02x..%02x\n",__func__,dev_array[itrcsi].cli_MACAddress[0],
                                         dev_array[itrcsi].cli_MACAddress[5]);
                                 if (dev_array[itrcsi].cli_CsiData != NULL) {
@@ -4227,7 +4195,7 @@ static int clientdiag_sheduler_enable(int ap_index)
 
 void diagdata_set_interval(int interval, unsigned int ap_idx)
 {
-    wifi_monitor_data_t *data;
+    wifi_monitor_data_t data;
     unsigned int vap_array_index;
 
     if(ap_idx >= MAX_VAP) {
@@ -4240,34 +4208,36 @@ void diagdata_set_interval(int interval, unsigned int ap_idx)
     g_events_monitor.diag_session[vap_array_index].interval = interval;
     wifi_util_dbg_print(WIFI_MON, "%s: ap_idx %d configuring inteval %d\n", __func__, ap_idx, interval);
     pthread_mutex_unlock(&g_events_monitor.lock);
-    data = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
-    if (data != NULL) {
-        memset(data, 0, sizeof(wifi_monitor_data_t));
-        data->id = msg_id++;
-        data->event_type = monitor_event_type_clientdiag_update_config;
-        data->ap_index = ap_idx;
 
-        pthread_mutex_lock(&g_monitor_module.queue_lock);
-        queue_push(g_monitor_module.queue, data);
-
-        pthread_cond_signal(&g_monitor_module.cond);
-        pthread_mutex_unlock(&g_monitor_module.queue_lock);
-    }
+    memset(&data, 0, sizeof(wifi_monitor_data_t));
+    data.id = msg_id++;
+    data.ap_index = ap_idx;
+    push_event_to_monitor_queue(&data, wifi_event_monitor_clientdiag_update_config);
 }
 
 int associated_device_diagnostics_send_event(void* arg)
 {
     int *ap_index;
-    wifi_monitor_data_t data = {0};
-
+    wifi_event_t *event = NULL;
     if (arg == NULL) {
         wifi_util_error_print(WIFI_MON, "%s(): Error arg NULL\n",__func__);
         return TIMER_TASK_ERROR;
     }
+
+    event = (wifi_event_t *)malloc(sizeof(wifi_event_t));
+    if (event == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: memory allocation for event failed.\n", __func__, __LINE__);
+        return TIMER_TASK_ERROR;
+    }
+    memset((char *)event, 0, sizeof(wifi_event_t));
+
     ap_index = (int *) arg;
-    data.ap_index = *ap_index;
-    data.event_type = monitor_event_type_diagnostics;
-    events_publish(data);
+    event->u.mon_data.ap_index = *ap_index;
+    event->event_type = wifi_event_type_monitor;
+    event->sub_type = wifi_event_monitor_diagnostics;
+
+    events_rbus_publish(event);
+
     return TIMER_TASK_COMPLETE;
 }
 
@@ -4633,7 +4603,7 @@ bool active_sta_connection_status(int ap_index, char *mac)
 
 int device_disassociated(int ap_index, char *mac, int reason)
 {
-    wifi_monitor_data_t *data;
+    wifi_monitor_data_t data;
     assoc_dev_data_t assoc_data;
     greylist_data_t greylist_data;
     unsigned int mac_addr[MAC_ADDR_LEN];
@@ -4651,7 +4621,7 @@ int device_disassociated(int ap_index, char *mac, int reason)
         str_to_mac_bytes(mac, grey_list_mac);
         memcpy(greylist_data.sta_mac, &grey_list_mac, sizeof(mac_address_t));
         wifi_util_dbg_print(WIFI_MON," sending Greylist mac to  ctrl queue %s\n",mac);
-        push_data_to_ctrl_queue(&greylist_data, sizeof(greylist_data), ctrl_event_type_hal_ind, ctrl_event_radius_greylist);
+        push_event_to_ctrl_queue(&greylist_data, sizeof(greylist_data), wifi_event_type_hal_ind, wifi_event_radius_greylist);
 
     }
     if (active_sta_connection_status(ap_index, mac) == false) {
@@ -4659,38 +4629,29 @@ int device_disassociated(int ap_index, char *mac, int reason)
         return 0;
     }
 
-    data = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
-    if(data == NULL) {
-        return 0;
-    }
-    data->id = msg_id++;
+    memset(&data, 0, sizeof(wifi_monitor_data_t));
+    data.id = msg_id++;
 
-    data->event_type = monitor_event_type_disconnect;
-
-    data->ap_index = ap_index;
+    data.ap_index = ap_index;
     sscanf(mac, "%02x:%02x:%02x:%02x:%02x:%02x",
             &mac_addr[0], &mac_addr[1], &mac_addr[2],
             &mac_addr[3], &mac_addr[4], &mac_addr[5]);
-    data->u.dev.sta_mac[0] = mac_addr[0]; data->u.dev.sta_mac[1] = mac_addr[1]; data->u.dev.sta_mac[2] = mac_addr[2];
-    data->u.dev.sta_mac[3] = mac_addr[3]; data->u.dev.sta_mac[4] = mac_addr[4]; data->u.dev.sta_mac[5] = mac_addr[5];
-    data->u.dev.reason = reason;
+    data.u.dev.sta_mac[0] = mac_addr[0]; data.u.dev.sta_mac[1] = mac_addr[1]; data.u.dev.sta_mac[2] = mac_addr[2];
+    data.u.dev.sta_mac[3] = mac_addr[3]; data.u.dev.sta_mac[4] = mac_addr[4]; data.u.dev.sta_mac[5] = mac_addr[5];
+    data.u.dev.reason = reason;
 
     wifi_util_info_print(WIFI_MON, "%s:%d:Device diaassociated on interface:%d mac:%02x:%02x:%02x:%02x:%02x:%02x\n",
             __func__, __LINE__, ap_index,
-            data->u.dev.sta_mac[0], data->u.dev.sta_mac[1], data->u.dev.sta_mac[2],
-            data->u.dev.sta_mac[3], data->u.dev.sta_mac[4], data->u.dev.sta_mac[5]);
-    csi_update_client_mac_status(data->u.dev.sta_mac, FALSE, ap_index);
+            data.u.dev.sta_mac[0], data.u.dev.sta_mac[1], data.u.dev.sta_mac[2],
+            data.u.dev.sta_mac[3], data.u.dev.sta_mac[4], data.u.dev.sta_mac[5]);
+    csi_update_client_mac_status(data.u.dev.sta_mac, FALSE, ap_index);
 
-    memcpy(assoc_data.dev_stats.cli_MACAddress, data->u.dev.sta_mac, sizeof(mac_address_t));
-    assoc_data.ap_index = data->ap_index;
+    memcpy(assoc_data.dev_stats.cli_MACAddress, data.u.dev.sta_mac, sizeof(mac_address_t));
+    assoc_data.ap_index = data.ap_index;
     assoc_data.reason = reason;
-    push_data_to_ctrl_queue(&assoc_data, sizeof(assoc_data), ctrl_event_type_hal_ind, ctrl_event_hal_disassoc_device);
+    push_event_to_ctrl_queue(&assoc_data, sizeof(assoc_data), wifi_event_type_hal_ind, wifi_event_hal_disassoc_device);
 
-    pthread_mutex_lock(&g_monitor_module.queue_lock);
-    queue_push(g_monitor_module.queue, data);
-
-    pthread_cond_signal(&g_monitor_module.cond);
-    pthread_mutex_unlock(&g_monitor_module.queue_lock);
+    push_event_to_monitor_queue(&data, wifi_event_monitor_disconnect);
 
     return 0;
 }
@@ -4704,7 +4665,7 @@ int vapstatus_callback(int apIndex, wifi_vapstatus_t status)
 
 int device_deauthenticated(int ap_index, char *mac, int reason)
 {
-    wifi_monitor_data_t *data;
+    wifi_monitor_data_t data;
     unsigned int mac_addr[MAC_ADDR_LEN];
     greylist_data_t greylist_data;
     assoc_dev_data_t assoc_data;
@@ -4721,7 +4682,7 @@ int device_deauthenticated(int ap_index, char *mac, int reason)
         greylist_data.reason = reason;
         memcpy(greylist_data.sta_mac, &grey_list_mac, sizeof(mac_address_t));
         wifi_util_dbg_print(WIFI_MON,"Sending Greylist mac to ctrl queue %s\n",mac);
-        push_data_to_ctrl_queue(&greylist_data, sizeof(greylist_data), ctrl_event_type_hal_ind, ctrl_event_radius_greylist);
+        push_event_to_ctrl_queue(&greylist_data, sizeof(greylist_data), wifi_event_type_hal_ind, wifi_event_radius_greylist);
 
     }
     if (active_sta_connection_status(ap_index, mac) == false) {
@@ -4729,71 +4690,59 @@ int device_deauthenticated(int ap_index, char *mac, int reason)
         return 0;
     }
 
-    data = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
-    if (data == NULL) {
-        return -1;
-    }
+    memset(&data, 0, sizeof(wifi_monitor_data_t));
+    data.id = msg_id++;
 
-    data->id = msg_id++;
-
-    data->event_type = monitor_event_type_deauthenticate;
-
-    data->ap_index = ap_index;
+    data.ap_index = ap_index;
     sscanf(mac, "%02x:%02x:%02x:%02x:%02x:%02x",
             &mac_addr[0], &mac_addr[1], &mac_addr[2],
             &mac_addr[3], &mac_addr[4], &mac_addr[5]);
-    data->u.dev.sta_mac[0] = mac_addr[0]; data->u.dev.sta_mac[1] = mac_addr[1]; data->u.dev.sta_mac[2] = mac_addr[2];
-    data->u.dev.sta_mac[3] = mac_addr[3]; data->u.dev.sta_mac[4] = mac_addr[4]; data->u.dev.sta_mac[5] = mac_addr[5];
-    data->u.dev.reason = reason;
+    data.u.dev.sta_mac[0] = mac_addr[0]; data.u.dev.sta_mac[1] = mac_addr[1]; data.u.dev.sta_mac[2] = mac_addr[2];
+    data.u.dev.sta_mac[3] = mac_addr[3]; data.u.dev.sta_mac[4] = mac_addr[4]; data.u.dev.sta_mac[5] = mac_addr[5];
+    data.u.dev.reason = reason;
 
     wifi_util_info_print(WIFI_MON, "%s:%d   Device deauthenticated on interface:%d mac:%02x:%02x:%02x:%02x:%02x:%02x with reason %d\n",
             __func__, __LINE__, ap_index,
-            data->u.dev.sta_mac[0], data->u.dev.sta_mac[1], data->u.dev.sta_mac[2],
-            data->u.dev.sta_mac[3], data->u.dev.sta_mac[4], data->u.dev.sta_mac[5], reason);
-    csi_update_client_mac_status(data->u.dev.sta_mac, FALSE, ap_index);
+            data.u.dev.sta_mac[0], data.u.dev.sta_mac[1], data.u.dev.sta_mac[2],
+            data.u.dev.sta_mac[3], data.u.dev.sta_mac[4], data.u.dev.sta_mac[5], reason);
+    csi_update_client_mac_status(data.u.dev.sta_mac, FALSE, ap_index);
 
 
-    memcpy(assoc_data.dev_stats.cli_MACAddress, data->u.dev.sta_mac, sizeof(mac_address_t));
-    assoc_data.ap_index = data->ap_index;
+    memcpy(assoc_data.dev_stats.cli_MACAddress, data.u.dev.sta_mac, sizeof(mac_address_t));
+    assoc_data.ap_index = data.ap_index;
     assoc_data.reason = reason;
-    push_data_to_ctrl_queue(&assoc_data, sizeof(assoc_data), ctrl_event_type_hal_ind, ctrl_event_hal_disassoc_device);
+    push_event_to_ctrl_queue(&assoc_data, sizeof(assoc_data), wifi_event_type_hal_ind, wifi_event_hal_disassoc_device);
 
-    pthread_mutex_lock(&g_monitor_module.queue_lock);
-    queue_push(g_monitor_module.queue, data);
-
-    pthread_cond_signal(&g_monitor_module.cond);
-    pthread_mutex_unlock(&g_monitor_module.queue_lock);
+    push_event_to_monitor_queue(&data, wifi_event_monitor_deauthenticate);
 
     return 0;
 }
 
 int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
 {
-    wifi_monitor_data_t *data;
+    wifi_monitor_data_t data;
     assoc_dev_data_t assoc_data;
 
     memset(&assoc_data, 0, sizeof(assoc_data));
+    memset(&data, 0, sizeof(wifi_monitor_data_t));
 
-    data = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
-    data->id = msg_id++;
+    data.id = msg_id++;
 
-    data->event_type = monitor_event_type_connect;
-
-    data->ap_index = ap_index;
+    data.ap_index = ap_index;
     //data->u.dev.reason = reason;
 
-    data->u.dev.sta_mac[0] = associated_dev->cli_MACAddress[0]; data->u.dev.sta_mac[1] = associated_dev->cli_MACAddress[1];
-    data->u.dev.sta_mac[2] = associated_dev->cli_MACAddress[2]; data->u.dev.sta_mac[3] = associated_dev->cli_MACAddress[3];
-    data->u.dev.sta_mac[4] = associated_dev->cli_MACAddress[4]; data->u.dev.sta_mac[5] = associated_dev->cli_MACAddress[5];
+    data.u.dev.sta_mac[0] = associated_dev->cli_MACAddress[0]; data.u.dev.sta_mac[1] = associated_dev->cli_MACAddress[1];
+    data.u.dev.sta_mac[2] = associated_dev->cli_MACAddress[2]; data.u.dev.sta_mac[3] = associated_dev->cli_MACAddress[3];
+    data.u.dev.sta_mac[4] = associated_dev->cli_MACAddress[4]; data.u.dev.sta_mac[5] = associated_dev->cli_MACAddress[5];
 
     wifi_util_info_print(WIFI_MON, "%s:%d:Device associated on interface:%d mac:%02x:%02x:%02x:%02x:%02x:%02x\n",
             __func__, __LINE__, ap_index,
-            data->u.dev.sta_mac[0], data->u.dev.sta_mac[1], data->u.dev.sta_mac[2],
-            data->u.dev.sta_mac[3], data->u.dev.sta_mac[4], data->u.dev.sta_mac[5]);
+            data.u.dev.sta_mac[0], data.u.dev.sta_mac[1], data.u.dev.sta_mac[2],
+            data.u.dev.sta_mac[3], data.u.dev.sta_mac[4], data.u.dev.sta_mac[5]);
 
-    csi_update_client_mac_status(data->u.dev.sta_mac, TRUE, ap_index);
+    csi_update_client_mac_status(data.u.dev.sta_mac, TRUE, ap_index);
 
-    memcpy(assoc_data.dev_stats.cli_MACAddress, data->u.dev.sta_mac, sizeof(mac_address_t));
+    memcpy(assoc_data.dev_stats.cli_MACAddress, data.u.dev.sta_mac, sizeof(mac_address_t));
     assoc_data.dev_stats.cli_SignalStrength = associated_dev->cli_SignalStrength;
     assoc_data.dev_stats.cli_RSSI = associated_dev->cli_RSSI;
     assoc_data.dev_stats.cli_AuthenticationState = associated_dev->cli_AuthenticationState;
@@ -4817,13 +4766,10 @@ int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
     snprintf(assoc_data.dev_stats.cli_InterferenceSources, sizeof(assoc_data.dev_stats.cli_InterferenceSources),"%s", associated_dev->cli_InterferenceSources);
 
 
-    assoc_data.ap_index = data->ap_index;
-    push_data_to_ctrl_queue(&assoc_data, sizeof(assoc_data), ctrl_event_type_hal_ind, ctrl_event_hal_assoc_device);
+    assoc_data.ap_index = data.ap_index;
+    push_event_to_ctrl_queue(&assoc_data, sizeof(assoc_data), wifi_event_type_hal_ind, wifi_event_hal_assoc_device);
 
-    pthread_mutex_lock(&g_monitor_module.queue_lock);
-    queue_push(g_monitor_module.queue, data);
-    pthread_cond_signal(&g_monitor_module.cond);
-    pthread_mutex_unlock(&g_monitor_module.queue_lock);
+    push_event_to_monitor_queue(&data, wifi_event_monitor_connect);
 
     return 0;
 }
@@ -5488,8 +5434,8 @@ void monitor_enable_instant_msmt(mac_address_t sta_mac, bool enable)
 {
     mac_addr_str_t sta;
     unsigned int i;
-    wifi_monitor_data_t *event;
     wifi_mgr_t *mgr = get_wifimgr_obj();
+    wifi_monitor_data_t data;
 
     to_sta_key(sta_mac, sta);
     wifi_util_dbg_print(WIFI_MON, "%s:%d: instant measurements %s for sta:%s\n", __func__, __LINE__, (enable == true)?"start":"stop", sta);
@@ -5503,24 +5449,23 @@ void monitor_enable_instant_msmt(mac_address_t sta_mac, bool enable)
                 wifi_util_dbg_print(WIFI_MON, "%s:%d: instant measurements active for sta:%s, should stop\n", __func__, __LINE__, sta);
                 g_monitor_module.instantDefOverrideTTL = DEFAULT_INSTANT_REPORT_TIME;
 
-                event = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
-                event->event_type = monitor_event_type_stop_inst_msmt;
-                memcpy(event->u.imsmt.sta_mac, sta_mac, sizeof(mac_address_t));
+                memset(&data, 0, sizeof(wifi_monitor_data_t));
+                memcpy(data.u.imsmt.sta_mac, sta_mac, sizeof(mac_address_t));
 
-                event->u.imsmt.ap_index = g_monitor_module.inst_msmt.ap_index;
-                event->ap_index = g_monitor_module.inst_msmt.ap_index;
+                data.u.imsmt.ap_index = g_monitor_module.inst_msmt.ap_index;
+                data.ap_index = g_monitor_module.inst_msmt.ap_index;
+                pthread_mutex_unlock(&g_monitor_module.queue_lock);
 
-                queue_push(g_monitor_module.queue, event);
+                push_event_to_monitor_queue(&data, wifi_event_monitor_stop_inst_msmt);
 
-                pthread_cond_signal(&g_monitor_module.cond);
             }
 
         } else {
             // must return
+            pthread_mutex_unlock(&g_monitor_module.queue_lock);
             wifi_util_dbg_print(WIFI_MON, "%s:%d: instant measurements active for sta:%s, should just return\n", __func__, __LINE__, sta);
         }
 
-        pthread_mutex_unlock(&g_monitor_module.queue_lock);
 
         return;
 
@@ -5536,19 +5481,17 @@ void monitor_enable_instant_msmt(mac_address_t sta_mac, bool enable)
         }
         if ( is_device_associated(vap_index, sta) == true ) {
             wifi_util_dbg_print(WIFI_MON, "%s:%d: found sta:%s on ap index:%d starting instant measurements\n", __func__, __LINE__, sta, vap_index);
-            event = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
+            memset(&data, 0, sizeof(wifi_monitor_data_t));
 
-            event->event_type = monitor_event_type_start_inst_msmt;
+            memcpy(data.u.imsmt.sta_mac, sta_mac, sizeof(mac_address_t));
 
-            memcpy(event->u.imsmt.sta_mac, sta_mac, sizeof(mac_address_t));
+            data.u.imsmt.ap_index = vap_index;
+            data.ap_index = vap_index;
 
-            event->u.imsmt.ap_index = vap_index;
-            event->ap_index = vap_index;
+            pthread_mutex_unlock(&g_monitor_module.queue_lock);
+            push_event_to_monitor_queue(&data, wifi_event_monitor_stats_flag_change);
 
-            queue_push(g_monitor_module.queue, event);
-            pthread_cond_signal(&g_monitor_module.cond);
-
-            break;
+            return;
         }
     }
 
@@ -5748,7 +5691,7 @@ void GetActiveMsmtStepDestMac(mac_address_t pStepDstMac)
 
 void SetActiveMsmtEnable(bool enable)
 {
-    wifi_monitor_data_t *event;
+    wifi_monitor_data_t data;
     wifi_util_dbg_print(WIFI_MON, "%s:%d: changing the Active Measurement Flag to %s\n", __func__, __LINE__,(enable ? "true" : "false"));
 #ifdef CCSP_COMMON
     CcspTraceInfo(("%s-%d changing the Active Measurement Flag to %s\n", __FUNCTION__, __LINE__, (enable ? "true" : "false")));
@@ -5768,28 +5711,15 @@ void SetActiveMsmtEnable(bool enable)
         return;
     }
     wifi_util_dbg_print(WIFI_MON, "%s:%d: allocating memory for event data\n", __func__, __LINE__);
-    event = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
 
-    if ( event == NULL) {
-        wifi_util_error_print(WIFI_MON, "%s:%d: memory allocation for event failed.\n", __func__, __LINE__);
-        return;
-    }
-
-    memset(event, 0, sizeof(wifi_monitor_data_t));
-    /* update the event data */
-    event->event_type = monitor_event_type_process_active_msmt;
+    memset(&data, 0, sizeof(wifi_monitor_data_t));
 
     /* push the event to the monitor queue */
-    wifi_util_dbg_print(WIFI_MON, "%s:%d: Acquiring lock\n", __func__, __LINE__);
     pthread_mutex_lock(&g_monitor_module.queue_lock);
-    queue_push(g_monitor_module.queue, event);
     g_monitor_module.blastReqInQueueCount++;
-    wifi_util_dbg_print(WIFI_MON, "%s:%d: pushed the step info into monitor queue with queucount : %d \n", __func__, __LINE__,g_monitor_module.blastReqInQueueCount);
-    wifi_util_dbg_print(WIFI_MON, "%s:%d: released the mutex lock for monitor queue\n", __func__, __LINE__);
-
-    pthread_cond_signal(&g_monitor_module.cond);
     pthread_mutex_unlock(&g_monitor_module.queue_lock);
-    wifi_util_dbg_print(WIFI_MON, "%s:%d: signalled the monitor thread for active measurement\n", __func__, __LINE__);
+    push_event_to_monitor_queue(&data, wifi_event_monitor_process_active_msmt);
+    wifi_util_dbg_print(WIFI_MON, "%s:%d: pushed the step info into monitor queue with queucount : %d \n", __func__, __LINE__,g_monitor_module.blastReqInQueueCount);
 
     g_active_msmt.active_msmt.ActiveMsmtEnable = enable;
     wifi_util_dbg_print(WIFI_MON, "%s:%d: Active Measurement Flag changed to %s\n", __func__, __LINE__,(enable ? "true" : "false"));
@@ -7198,6 +7128,9 @@ void process_active_msmt_diagnostics (int ap_index)
         /* added the data in sta map for offline clients */
         wifi_util_dbg_print(WIFI_MON, "%s : %d station info is null \n",__func__,__LINE__);
         sta = (sta_data_t *) malloc (sizeof(sta_data_t));
+        if (sta == NULL) {
+            return;
+        }
         memset(sta, 0, sizeof(sta_data_t));
         pthread_mutex_lock(&g_monitor_module.data_lock);
         memcpy(sta->sta_mac, g_active_msmt.curStepData.DestMac, sizeof(mac_addr_t));

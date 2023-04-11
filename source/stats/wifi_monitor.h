@@ -24,105 +24,10 @@
 #include "collection.h"
 #include <math.h>
 
-#ifdef CCSP_COMMON
-#define MAX_ASSOCIATED_WIFI_DEVS    64
-#endif // CCSP_COMMON
 
 #ifndef WIFI_HAL_VERSION_3
 #define MAX_RADIOS  2
 #endif
-
-#define MAC_ADDR_LEN	6
-#define STA_KEY_LEN		2*MAC_ADDR_LEN + 6
-#define MONITOR_RUNNING_INTERVAL_IN_MILLISEC    100
-
-#ifdef CCSP_COMMON
-#define MAX_IPC_DATA_LEN    1024
-#define KMSG_WRAPPER_FILE_NAME  "/tmp/goodbad-rssi"
-
-#define CLIENT_STATS_MAX_LEN_BUF    (128)
-#define MIN_MAC_ADDR_LEN	2*MAC_ADDR_LEN + 1
-
-#define IP_STR_LEN 64
-#define MILLISEC_TO_MICROSEC 1000
-#define IPREFRESH_PERIOD_IN_MILLISECONDS 24 * 60 * 60 * 1000
-#define MAX_CSI_CLIENTS_PER_SESSION 50
-
-
-#define MAX_CSI_CLIENTMACLIST_STR  650
-
-#define MAX_BUF_SIZE 128
-#endif // CCSP_COMMON
-
-#ifdef CCSP_COMMON
-typedef signed short    rssi_t;
-#endif // CCSP_COMMON
-typedef char			sta_key_t[STA_KEY_LEN];
-
-typedef enum {
-    monitor_event_type_diagnostics,
-    monitor_event_type_connect,
-    monitor_event_type_disconnect,
-    monitor_event_type_deauthenticate,
-    monitor_event_type_start_inst_msmt,
-    monitor_event_type_stop_inst_msmt,
-    monitor_event_type_StatsFlagChange,
-    monitor_event_type_RadioStatsFlagChange,
-    monitor_event_type_VapStatsFlagChange,
-    monitor_event_type_process_active_msmt,
-    monitor_event_type_csi,
-    monitor_event_type_csi_update_config,
-    monitor_event_type_clientdiag_update_config,
-    monitor_event_type_max
-} wifi_monitor_event_type_t;
-
-#ifdef CCSP_COMMON
-typedef struct {
-    unsigned int num;
-    wifi_associated_dev3_t  devs[MAX_ASSOCIATED_WIFI_DEVS];
-} associated_devs_t;
-#endif // CCSP_COMMON
-
-typedef struct {
-    mac_address_t  sta_mac;
-    int 	   reason;
-} auth_deauth_dev_t;
-
-#ifdef CCSP_COMMON
-typedef struct {
-    int type;  //Device.WiFi.X_RDKCENTRAL-COM_vAPStatsEnable= 0, Device.WiFi.AccessPoint.<vAP>.X_RDKCENTRAL-COM_StatsEnable = 1
-    bool enable; // ture, false
-} client_stats_enable_t;
-
-typedef struct {
-    mac_address_t  sta_mac;
-    unsigned int   ap_index;
-    bool           active;
-} instant_msmt_t;
-
-typedef struct {
-    mac_address_t   sta_mac;
-    wifi_csi_data_t csi;
-} __attribute__((packed)) wifi_csi_dev_t;
-#endif // CCSP_COMMON
-
-typedef struct {
-    unsigned int id;
-#ifdef CCSP_COMMON
-    int  csi_session;
-#endif // CCSP_COMMON
-    wifi_monitor_event_type_t   event_type;
-    unsigned int    ap_index;
-    union {
-        auth_deauth_dev_t	dev;
-#ifdef CCSP_COMMON
-        client_stats_enable_t   flag;
-        instant_msmt_t		imsmt;
-        associated_devs_t   devs;
-        wifi_csi_dev_t csi;
-#endif // CCSP_COMMON
-    } u;
-} __attribute__((__packed__)) wifi_monitor_data_t;
 
 #ifdef CCSP_COMMON
 typedef struct {

@@ -60,106 +60,80 @@ extern "C" {
 #define QUEUE_WIFI_CTRL_TASK_TIMEOUT  1
 #define MAX_FRAME_SZ                  2048
 
-typedef enum {
-    ctrl_event_type_exec,
-    ctrl_event_type_webconfig,
-    ctrl_event_type_hal_ind,
-    ctrl_event_type_command,
-    ctrl_event_type_wifiapi,
-    ctrl_event_type_max
-} ctrl_event_type_t;
+#define MAX_CSI_INTERVAL    30000
+#define MIN_CSI_INTERVAL    100
+#define MIN_DIAG_INTERVAL   5000
 
-typedef enum {
-    // Controller loop execution
-    ctrl_event_exec_start = 0x100,
-    ctrl_event_exec_stop,
-    ctrl_event_exec_timeout,
-    ctrl_event_exec_max,
+#define wifi_sub_component_base     0x01
+#define wifi_app_inst_base          0x01
 
-    // WebConfig event sub types
-    ctrl_event_webconfig_set_data = 0x200,
-    ctrl_event_webconfig_set_status,
-    ctrl_event_webconfig_hal_result,
-    ctrl_event_webconfig_get_data,
-    ctrl_event_webconfig_set_data_tunnel,
-    ctrl_event_webconfig_set_data_dml,
-    ctrl_event_webconfig_set_data_webconfig,
-    ctrl_event_webconfig_set_data_ovsm,
-    ctrl_event_webconfig_data_resched_to_ctrl_queue,
-    ctrl_event_webconfig_data_to_apply_pending_queue,
-    ctrl_event_webconfig_data_to_hal_apply,
-    ctrl_event_webconfig_set_data_sta_bssid,
-    ctrl_event_webconfig_data_req_from_dml,
-    ctrl_event_webconfig_max,
+typedef struct {
+    void *msg;
+    unsigned int len;
+} wifi_core_data_t;
 
-    // HAL events
-    ctrl_event_hal_unknown_frame = 0x300,
-    ctrl_event_hal_mgmt_farmes,
-    ctrl_event_hal_probe_req_frame,
-    ctrl_event_hal_probe_rsp_frame,
-    ctrl_event_hal_auth_frame,
-    ctrl_event_hal_deauth_frame,
-    ctrl_event_hal_assoc_req_frame,
-    ctrl_event_hal_assoc_rsp_frame,
-    ctrl_event_hal_reassoc_req_frame,
-    ctrl_event_hal_reassoc_rsp_frame,
-    ctrl_event_hal_dpp_public_action_frame,
-    ctrl_event_hal_dpp_config_req_frame,
-    ctrl_event_hal_anqp_gas_init_frame,
-    ctrl_event_hal_sta_conn_status,
-    ctrl_event_hal_assoc_device,
-    ctrl_event_hal_disassoc_device,
-    ctrl_event_scan_results,
-    ctrl_event_hal_channel_change,
-    ctrl_event_radius_greylist,
-    ctrl_event_hal_potential_misconfiguration,
-    ctrl_event_hal_analytics,
-    ctrl_event_hal_max,
+typedef void *wifi_analytics_data_t;
 
-    // Commands
-    ctrl_event_type_command_sta_connect = 0x400,
-    ctrl_event_type_command_factory_reset,
-    ctrl_event_type_radius_grey_list_rfc,
-    ctrl_event_type_wifi_passpoint_rfc,
-    ctrl_event_type_wifi_interworking_rfc,
-    ctrl_event_type_wpa3_rfc,
-    ctrl_event_type_ow_core_thread_rfc,
-    ctrl_event_type_dfs_rfc,
-    ctrl_event_type_dfs_atbootup_rfc,
-    ctrl_event_type_command_kickmac,
-    ctrl_event_type_command_kick_assoc_devices,
-    ctrl_event_type_command_wps,
-    ctrl_event_type_command_wps_pin,
-    ctrl_event_type_command_wifi_host_sync,
-    ctrl_event_type_device_network_mode,
-    ctrl_event_type_twoG80211axEnable_rfc,
-    ctrl_event_type_command_wifi_neighborscan,
-    ctrl_event_type_command_mesh_status,
-    ctrl_event_type_normalized_rssi,
-    ctrl_event_type_snr,
-    ctrl_event_type_cli_stat,
-    ctrl_event_type_txrx_rate,
-    ctrl_event_type_prefer_private_rfc,
-    ctrl_event_type_mgmt_frame_rbus_rfc,
-    ctrl_event_type_sta_connect_in_progress,
-    ctrl_event_type_udhcp_ip_fail,
-    ctrl_event_type_trigger_disconnection,
-    ctrl_event_type_trigger_disconnection_analytics,
-    ctrl_event_type_new_bssid,
-    ctrl_event_type_xfinity_enable,
-    ctrl_event_command_max,
-    ctrl_event_type_wifi_offchannelscan_rfc,
+#define MAX_ASSOCIATED_WIFI_DEVS    64
+#define MAC_ADDR_LEN    6
+#define STA_KEY_LEN     2*MAC_ADDR_LEN + 6
+#define MAX_IPC_DATA_LEN    1024
+#define KMSG_WRAPPER_FILE_NAME  "/tmp/goodbad-rssi"
 
-    // wif_api
-    ctrl_event_type_wifiapi_execution = 0x500,
-    ctrl_event_type_wifiapi_max,
+#define CLIENT_STATS_MAX_LEN_BUF    (128)
+#define MIN_MAC_ADDR_LEN    2*MAC_ADDR_LEN + 1
 
-    // Tunnel
-    ctrl_event_type_xfinity_tunnel_up = 0x600,
-    ctrl_event_type_xfinity_tunnel_down,
-    ctrl_event_type_xfinity_tunnel_maxi,
+#define IP_STR_LEN 64
+#define MILLISEC_TO_MICROSEC 1000
+#define IPREFRESH_PERIOD_IN_MILLISECONDS 24 * 60 * 60 * 1000
+#define MAX_CSI_CLIENTS_PER_SESSION 50
 
-} ctrl_event_subtype_t;
+#define MONITOR_RUNNING_INTERVAL_IN_MILLISEC    100
+
+#define MAX_CSI_CLIENTMACLIST_STR  650
+
+#define MAX_BUF_SIZE 128
+
+typedef unsigned char   mac_addr_t[MAC_ADDR_LEN];
+typedef signed short    rssi_t;
+typedef char            sta_key_t[STA_KEY_LEN];
+typedef struct {
+    unsigned int num;
+    wifi_associated_dev3_t  devs[MAX_ASSOCIATED_WIFI_DEVS];
+} associated_devs_t;
+typedef struct {
+    mac_address_t  sta_mac;
+    int        reason;
+} auth_deauth_dev_t;
+
+typedef struct {
+    int type;  //Device.WiFi.X_RDKCENTRAL-COM_vAPStatsEnable= 0, Device.WiFi.AccessPoint.<vAP>.X_RDKCENTRAL-COM_StatsEnable = 1
+    bool enable; // true, false
+} client_stats_enable_t;
+
+typedef struct {
+    mac_address_t  sta_mac;
+    unsigned int   ap_index;
+    bool           active;
+} instant_msmt_t;
+
+typedef struct {
+    mac_address_t   sta_mac;
+    wifi_csi_data_t csi;
+} __attribute__((packed)) wifi_csi_dev_t;
+
+typedef struct {
+    unsigned int id;
+    int  csi_session;
+    unsigned int    ap_index;
+    union {
+        auth_deauth_dev_t   dev;
+        client_stats_enable_t   flag;
+        instant_msmt_t      imsmt;
+        associated_devs_t   devs;
+        wifi_csi_dev_t csi;
+    } u;
+} __attribute__((__packed__)) wifi_monitor_data_t;
 
 typedef struct {
     wifi_frame_t    frame;
@@ -255,6 +229,16 @@ typedef struct {
     bool hotspot_secure_6g_last_enabled;
     bool mgmt_frame_rbus_enabled_rfc;
     char rfc_id[5];
+    // app specific rfc
+    bool levl_enabled_rfc;
+    bool multiap_enabled_rfc;
+    bool opensync_enabled_rfc;
+    bool motion_enabled_rfc;
+    bool scm_enabled_rfc;
+    bool harverster_enabled_rfc;
+    bool blaster_enabled_rfc;
+    bool greylist_enabled_rfc;
+    bool cac_enabled_rfc;
 } wifi_rfc_dml_parameters_t;
 #endif
 

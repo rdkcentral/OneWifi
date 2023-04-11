@@ -41,11 +41,15 @@
 #define FILE_SYSTEM_UPTIME         "/tmp/systemUptime.txt"
 #endif
 #define ONEWIFI_FR_FLAG  "/nvram/wifi/onewifi_factory_reset_flag"
+
+#if DML_SUPPORT
+extern wifi_app_descriptor_t app_desc[3];
+#endif
 unsigned int get_Uptime(void);
 unsigned int startTime[MAX_NUM_RADIOS];
 #define BUF_SIZE              256
 extern webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc_data_t *data);
-void get_action_frame_evt_params(uint8_t *frame, uint32_t len, frame_data_t *mgmt_frame, ctrl_event_subtype_t *evt_subtype);
+void get_action_frame_evt_params(uint8_t *frame, uint32_t len, frame_data_t *mgmt_frame, wifi_event_subtype_t *evt_subtype);
 
 #ifndef CCSP_WIFI_HAL
 extern void ow_mesh_ext_sta_conn_connection_callback(const char *vif_name, wifi_bss_info_t *bss_info, wifi_station_stats_t *sta);
@@ -78,43 +82,6 @@ void deinit_wifi_ctrl(wifi_ctrl_t *ctrl)
     pthread_mutexattr_destroy(&ctrl->attr);
     pthread_mutex_destroy(&ctrl->lock);
     pthread_cond_destroy(&ctrl->cond);
-}
-
-int push_data_to_ctrl_queue(const void *msg, unsigned int len, ctrl_event_type_t type, ctrl_event_subtype_t sub_type)
-{
-    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    ctrl_event_t *data;
-
-    data = (ctrl_event_t *)malloc(sizeof(ctrl_event_t));
-    if(data == NULL) {
-        wifi_util_error_print(WIFI_CTRL,"RDK_LOG_WARN, WIFI %s: data malloc null\n",__FUNCTION__);
-        return RETURN_ERR;
-    }
-
-    memset(data, 0, sizeof(ctrl_event_t));
-    data->event_type = type;
-    data->sub_type = sub_type;
-    
-    if (msg != NULL) {
-        data->msg = malloc(len + 1);
-        if(data->msg == NULL) {
-            wifi_util_error_print(WIFI_CTRL,"RDK_LOG_WARN, WIFI %s: data message malloc null\n",__FUNCTION__);
-            return RETURN_ERR;
-        }
-        /* copy msg to data */
-        memcpy(data->msg, msg, len);
-        data->len = len;
-    } else {
-        data->msg = NULL;
-        data->len = 0;
-    }
-
-    pthread_mutex_lock(&ctrl->lock);
-    queue_push(ctrl->queue, data);
-    pthread_cond_signal(&ctrl->cond);
-    pthread_mutex_unlock(&ctrl->lock);
-
-    return RETURN_OK;
 }
 
 static int wifi_radio_set_enable(bool status)
@@ -279,7 +246,7 @@ void sta_selfheal_handing(wifi_ctrl_t *ctrl, vap_svc_t *l_svc)
             reset_wifi_radios();
             radio_reset_triggered = true;
         } else if ((connection_timeout * STA_CONN_RETRY_TIMEOUT) >= MAX_CONNECTION_ALGO_TIMEOUT) {
-            l_svc->event_fn(l_svc, ctrl_event_type_exec, ctrl_event_exec_timeout, vap_svc_event_none, NULL);
+            l_svc->event_fn(l_svc, wifi_event_type_exec, wifi_event_exec_timeout, vap_svc_event_none, NULL);
             connection_timeout = 0;
         }
     } else {
@@ -302,7 +269,7 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
     struct timeval tv_now;
     time_t  time_diff;
     int rc = 0;
-    ctrl_event_t *queue_data = NULL;
+    wifi_event_t *event = NULL;
 
     pthread_mutex_lock(&ctrl->lock);
     while (ctrl->exit_ctrl == false) {
@@ -322,38 +289,42 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
 
         if ((rc == 0) || (queue_count(ctrl->queue) != 0)) {
             while (queue_count(ctrl->queue)) {
-                queue_data = queue_pop(ctrl->queue);
-                if (queue_data == NULL) {
+                event = queue_pop(ctrl->queue);
+                if (event == NULL) {
                     continue;
                 }
                 pthread_mutex_unlock(&ctrl->lock);
-                switch (queue_data->event_type) {
-                    case ctrl_event_type_webconfig:
-                        handle_webconfig_event(ctrl, queue_data->msg, queue_data->len, queue_data->sub_type);
+                switch (event->event_type) {
+                    case wifi_event_type_webconfig:
+                        handle_webconfig_event(ctrl, event->u.core_data.msg, event->u.core_data.len, event->sub_type);
                         break;
 
-                    case ctrl_event_type_hal_ind:
-                        handle_hal_indication(ctrl, queue_data->msg, queue_data->len, queue_data->sub_type);
+                    case wifi_event_type_hal_ind:
+                        handle_hal_indication(ctrl, event->u.core_data.msg, event->u.core_data.len, event->sub_type);
                         break;
 
-                    case ctrl_event_type_command:
-                        handle_command_event(ctrl, queue_data->msg, queue_data->len, queue_data->sub_type);
+                    case wifi_event_type_command:
+                        handle_command_event(ctrl, event->u.core_data.msg, event->u.core_data.len, event->sub_type);
                         break;
 
-                    case ctrl_event_type_wifiapi:
-                        handle_wifiapi_event(queue_data->msg, queue_data->len, queue_data->sub_type);
+                    case wifi_event_type_wifiapi:
+                        handle_wifiapi_event(event->u.core_data.msg, event->u.core_data.len, event->sub_type);
                         break;
 
                     default:
-                        wifi_util_dbg_print(WIFI_CTRL,"[%s]:WIFI ctrl thread not supported this event %d\r\n",__FUNCTION__, queue_data->event_type);
+                        wifi_util_dbg_print(WIFI_CTRL,"[%s]:WIFI ctrl thread not supported this event %d\r\n",__FUNCTION__, event->event_type);
                         break;
                 }
 
-                if(queue_data->msg) {
-                    free(queue_data->msg);
+#if DML_SUPPORT
+                // now forward the event to apps manager
+                apps_mgr_event(&ctrl->apps_mgr, event);
+#endif
+                if(event->u.core_data.msg) {
+                    free(event->u.core_data.msg);
                 }
 
-                free(queue_data);
+                free(event);
                 gettimeofday(&ctrl->last_signalled_time, NULL);
                 pthread_mutex_lock(&ctrl->lock);
             }
@@ -965,7 +936,7 @@ int scan_results_callback(int radio_index, wifi_bss_info_t **bss, unsigned int *
         memcpy((unsigned char *)res.bss, (unsigned char *)(*bss), (*num)*sizeof(wifi_bss_info_t));
     }
 
-    push_data_to_ctrl_queue(&res, sizeof(scan_results_t), ctrl_event_type_hal_ind, ctrl_event_scan_results);
+    push_event_to_ctrl_queue(&res, sizeof(scan_results_t), wifi_event_type_hal_ind, wifi_event_scan_results);
     free(*bss);
 
     return 0;
@@ -983,7 +954,7 @@ void sta_connection_handler(const char *vif_name, wifi_bss_info_t *bss_info, wif
     memcpy(&sta_data.bss_info, bss_info, sizeof(wifi_bss_info_t));
     strncpy(sta_data.interface_name, vif_name, sizeof(wifi_interface_name_t));
 
-    push_data_to_ctrl_queue((rdk_sta_data_t *)&sta_data, sizeof(rdk_sta_data_t), ctrl_event_type_hal_ind, ctrl_event_hal_sta_conn_status);
+    push_event_to_ctrl_queue((rdk_sta_data_t *)&sta_data, sizeof(rdk_sta_data_t), wifi_event_type_hal_ind, wifi_event_hal_sta_conn_status);
     wifi_util_dbg_print(WIFI_CTRL,"%s: STA data is pushed to the ctrl queue: sta_data.interface_name=%s\n",__FUNCTION__, sta_data.interface_name);
 }
 
@@ -1008,7 +979,7 @@ int mgmt_wifi_frame_recv(int ap_index, wifi_frame_t *frame)
     memcpy(&mgmt_frame.frame, frame, sizeof(wifi_frame_t));
 
     //In side this API we have allocate memory and send it to control queue
-    push_data_to_ctrl_queue((frame_data_t *)&wifi_mgmt_frame, (sizeof(wifi_mgmt_frame) + len), ctrl_event_type_hal_ind, ctrl_event_hal_mgmt_farmes);
+    push_event_to_ctrl_queue((frame_data_t *)&wifi_mgmt_frame, (sizeof(wifi_mgmt_frame) + len), wifi_event_type_hal_ind, wifi_event_hal_mgmt_farmes);
 
     return RETURN_OK;
 }
@@ -1021,7 +992,7 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
 {
     wifi_actionFrameHdr_t *paction = NULL;
     frame_data_t mgmt_frame;
-    ctrl_event_subtype_t evt_subtype = ctrl_event_hal_unknown_frame;
+    wifi_event_subtype_t evt_subtype = wifi_event_hal_unknown_frame;
 
     if (len == 0) {
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d Recived zero length frame\n", __func__, __LINE__);
@@ -1045,27 +1016,27 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
     if (type == WIFI_MGMT_FRAME_TYPE_PROBE_REQ) {
         memcpy(mgmt_frame.data, frame, len);
         mgmt_frame.frame.len = len;
-        evt_subtype = ctrl_event_hal_probe_req_frame;
+        evt_subtype = wifi_event_hal_probe_req_frame;
     } else if (type == WIFI_MGMT_FRAME_TYPE_AUTH) {
         memcpy(mgmt_frame.data, frame, len);
         mgmt_frame.frame.len = len;
-        evt_subtype = ctrl_event_hal_auth_frame;
+        evt_subtype = wifi_event_hal_auth_frame;
     } else if (type == WIFI_MGMT_FRAME_TYPE_ASSOC_REQ) {
         memcpy(mgmt_frame.data, frame, len);
         mgmt_frame.frame.len = len;
-        evt_subtype = ctrl_event_hal_assoc_req_frame;
+        evt_subtype = wifi_event_hal_assoc_req_frame;
     } else if (type == WIFI_MGMT_FRAME_TYPE_ASSOC_RSP) {
         memcpy(mgmt_frame.data, frame, len);
         mgmt_frame.frame.len = len;
-        evt_subtype = ctrl_event_hal_assoc_rsp_frame;
+        evt_subtype = wifi_event_hal_assoc_rsp_frame;
     } else if (type == WIFI_MGMT_FRAME_TYPE_REASSOC_REQ) {
         memcpy(mgmt_frame.data, frame, len);
         mgmt_frame.frame.len = len;
-        evt_subtype = ctrl_event_hal_reassoc_req_frame;
+        evt_subtype = wifi_event_hal_reassoc_req_frame;
     } else if (type == WIFI_MGMT_FRAME_TYPE_REASSOC_RSP) {
         memcpy(mgmt_frame.data, frame, len);
         mgmt_frame.frame.len = len;
-        evt_subtype = ctrl_event_hal_reassoc_rsp_frame;
+        evt_subtype = wifi_event_hal_reassoc_rsp_frame;
     } else if (type == WIFI_MGMT_FRAME_TYPE_ACTION) {
         paction = (wifi_actionFrameHdr_t *)(frame + sizeof(struct ieee80211_frame));
         switch (paction->cat) {
@@ -1077,13 +1048,13 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
         }
     }
 
-    push_data_to_ctrl_queue((frame_data_t *)&mgmt_frame, sizeof(mgmt_frame), ctrl_event_type_hal_ind, evt_subtype);
-	    return RETURN_OK;
+    push_event_to_ctrl_queue((frame_data_t *)&mgmt_frame, sizeof(mgmt_frame), wifi_event_type_hal_ind, evt_subtype);
+    return RETURN_OK;
 }
 #endif
 
 
-void get_gas_init_frame_evt_params(uint8_t *frame, uint32_t len, frame_data_t *mgmt_frame, ctrl_event_subtype_t *evt_subtype)
+void get_gas_init_frame_evt_params(uint8_t *frame, uint32_t len, frame_data_t *mgmt_frame, wifi_event_subtype_t *evt_subtype)
 {
     unsigned short query_len, *pquery_len;
     unsigned char *query_req;
@@ -1107,7 +1078,7 @@ void get_gas_init_frame_evt_params(uint8_t *frame, uint32_t len, frame_data_t *m
             if ((adv_tuple->len == sizeof(dpp_oui) + 2) && (memcmp(adv_tuple->oui, dpp_oui, sizeof(dpp_oui)) == 0) &&
                     (*(adv_tuple->oui + sizeof(dpp_oui)) == DPP_OUI_TYPE) && (*(adv_tuple->oui + sizeof(dpp_oui) + 1) == DPP_CONFPROTO)) {
                 wifi_util_dbg_print(WIFI_CTRL,"%s:%d dpp gas initial req frame received callback, length:%d\n", __func__, __LINE__, query_len);
-                *evt_subtype = ctrl_event_hal_dpp_config_req_frame;
+                *evt_subtype = wifi_event_hal_dpp_config_req_frame;
                 memcpy(mgmt_frame->data, query_req, query_len);
                 mgmt_frame->frame.len = query_len;
                 mgmt_frame->frame.token = pgas_req->token;
@@ -1117,7 +1088,7 @@ void get_gas_init_frame_evt_params(uint8_t *frame, uint32_t len, frame_data_t *m
 
         case wifi_adv_proto_id_anqp:
             wifi_util_dbg_print(WIFI_CTRL,"%s:%d anqp gas initial req frame received call back, length:%d\n", __func__, __LINE__, query_len);
-            *evt_subtype = ctrl_event_hal_anqp_gas_init_frame;
+            *evt_subtype = wifi_event_hal_anqp_gas_init_frame;
             memcpy(mgmt_frame->data, query_req, query_len);
             mgmt_frame->frame.len = query_len;
             mgmt_frame->frame.token = pgas_req->token;
@@ -1128,7 +1099,7 @@ void get_gas_init_frame_evt_params(uint8_t *frame, uint32_t len, frame_data_t *m
     }
 }
 
-void get_action_frame_evt_params(uint8_t *frame, uint32_t len, frame_data_t *mgmt_frame, ctrl_event_subtype_t *evt_subtype)
+void get_action_frame_evt_params(uint8_t *frame, uint32_t len, frame_data_t *mgmt_frame, wifi_event_subtype_t *evt_subtype)
 {
     unsigned char *public_action_data;
     wifi_publicActionFrameHdr_t *ppublic_hdr = (wifi_publicActionFrameHdr_t *)(frame + sizeof(struct ieee80211_frame)); // frame_control + duration + da + sa + bssid + seq
@@ -1163,25 +1134,9 @@ void channel_change_callback(wifi_channel_change_event_t radio_channel_param)
 
     memcpy(&channel_change, &radio_channel_param, sizeof(wifi_channel_change_event_t));
 
-    push_data_to_ctrl_queue((wifi_channel_change_event_t *)&channel_change, sizeof(wifi_channel_change_event_t), ctrl_event_type_hal_ind, ctrl_event_hal_channel_change);
+    push_event_to_ctrl_queue((wifi_channel_change_event_t *)&channel_change, sizeof(wifi_channel_change_event_t), wifi_event_type_hal_ind, wifi_event_hal_channel_change);
     return;
 }
-
-#if CCSP_COMMON
-int analytics_callback(char *fmt, ...)
-{
-    va_list args;
-    char buff[1024] = {0};
-
-    va_start(args, fmt);
-    vsnprintf(&buff[strlen(buff)], 1024, fmt, args);
-    va_end(args);
-
-    push_data_to_ctrl_queue(buff, sizeof(buff), ctrl_event_type_hal_ind, ctrl_event_hal_analytics);
-
-    return 0;
-}
-#endif // CCSP_COMMON
 
 int init_wifi_ctrl(wifi_ctrl_t *ctrl)
 {
@@ -1236,10 +1191,8 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
     }
 
 #if DML_SUPPORT
-    // initialize mgmt frame handling params
-    for (i = 0; i < wifi_apps_type_max; i++) {
-        wifi_apps_init(&ctrl->fi_apps[i], (wifi_apps_type_t)i);
-    }
+    // initialize wifi apps mgr
+    apps_mgr_init(ctrl, app_desc, 3);
 #endif // DML_SUPPORT
 
     //Register to RBUS for webconfig interactions
@@ -1418,16 +1371,11 @@ int init_wireless_interface_mac()
 int start_wifi_ctrl(wifi_ctrl_t *ctrl)
 {
     int monitor_ret = 0;
-#if CCSP_COMMON
-    wifi_apps_t     *analytics = NULL;
-
-    analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
-#endif // CCSP_COMMON
 
     monitor_ret = init_wifi_monitor();
 
     start_wifi_services();
-    
+
     init_wireless_interface_mac();
 
 
@@ -1451,14 +1399,9 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
     } else {
         wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to start Wifi Monitor\n", __func__, __LINE__);
     }
-  
-    
-#if CCSP_WIFI_HAL
-    if (analytics->event_fn != NULL) {
-        analytics->event_fn(analytics, ctrl_event_type_exec, ctrl_event_exec_start, NULL);
-    }
 
-    wifi_hal_analytics_callback_register(analytics_callback);
+#if CCSP_WIFI_HAL
+    apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL);
 #endif // CCSP_COMMON
 
     ctrl_queue_timeout_scheduler_tasks(ctrl);
@@ -1468,9 +1411,7 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
     ctrl_queue_loop(ctrl);
 
 #if CCSP_COMMON
-    if (analytics->event_fn != NULL) {
-        analytics->event_fn(analytics, ctrl_event_type_exec, ctrl_event_exec_stop, NULL);
-    }
+    apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL);
 #endif // CCSP_COMMON
     wifi_util_info_print(WIFI_CTRL,"%s:%d Exited queue_wifi_ctrl_task.\n",__FUNCTION__,__LINE__);
     return RETURN_OK;
@@ -1525,11 +1466,6 @@ void resched_data_to_ctrl_queue()
     webconfig_subdoc_data_t *queue_data;
     char *str;
 
-#if CCSP_COMMON
-    wifi_apps_t *analytics = NULL;
-    analytics = get_app_by_type(l_ctrl, wifi_apps_type_analytics);
-#endif // CCSP_COMMON
-
     if((l_ctrl->vif_apply_pending_queue != NULL) && (queue_count(l_ctrl->vif_apply_pending_queue) != 0)) {
         // dequeue data
         while (queue_count(l_ctrl->vif_apply_pending_queue)) {
@@ -1539,11 +1475,9 @@ void resched_data_to_ctrl_queue()
             }
             str = queue_data->u.encoded.raw;
 #if CCSP_COMMON
-            if (analytics->event_fn != NULL) {
-                analytics->event_fn(analytics, ctrl_event_type_webconfig, ctrl_event_webconfig_data_resched_to_ctrl_queue, queue_data);
-            }
+            apps_mgr_analytics_event(&l_ctrl->apps_mgr, wifi_event_type_webconfig, wifi_event_webconfig_data_resched_to_ctrl_queue, queue_data);
 #endif
-            push_data_to_ctrl_queue(str, strlen(str), ctrl_event_type_webconfig, ctrl_event_webconfig_data_resched_to_ctrl_queue);
+            push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_data_resched_to_ctrl_queue);
 
             //Free the allocated memory
             if (queue_data) {
@@ -1725,14 +1659,11 @@ static int run_greylist_event(void *arg)
 static int run_analytics_event(void* arg)
 {
     wifi_ctrl_t *ctrl = NULL;
-    wifi_apps_t *analytics = NULL;
 
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
-    analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
-    if (analytics->event_fn != NULL) {
-        analytics->event_fn(analytics, ctrl_event_type_exec, ctrl_event_exec_timeout, NULL);
-    }
+    apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_timeout, NULL);
+
     return TIMER_TASK_COMPLETE;
 }
 #endif //CCSP_COMMON

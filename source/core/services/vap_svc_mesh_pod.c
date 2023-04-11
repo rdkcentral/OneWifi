@@ -117,9 +117,10 @@ int vap_svc_mesh_ext_disconnect(vap_svc_t *svc)
 
 void vap_svc_mesh_pod_ap_connection_handler(struct ow_barrier_sta_conn_info *sta_conn_info, wifi_bss_info_t *bss_info, wifi_station_stats_t *sta, int index)
 {
-    ctrl_event_subtype_t type;
     wifi_monitor_data_t *data;
     wifi_monitor_t *monitor;
+    wifi_event_subtype_t type;
+    wifi_event_t *event;
     assoc_dev_data_t assoc_data = { 0 };
     char mac_str[32] = { 0 };
 
@@ -130,12 +131,12 @@ void vap_svc_mesh_pod_ap_connection_handler(struct ow_barrier_sta_conn_info *sta
     switch (sta->connect_status) {
         case wifi_connection_status_connected:
             assoc_data.dev_stats.cli_Active = TRUE;
-            type = ctrl_event_hal_assoc_device;
+            type = wifi_event_hal_assoc_device;
             break;
 
         case wifi_connection_status_disconnected:
             assoc_data.dev_stats.cli_Active = FALSE;
-            type = ctrl_event_hal_disassoc_device;
+            type = wifi_event_hal_disassoc_device;
             break;
 
         default:
@@ -144,19 +145,21 @@ void vap_svc_mesh_pod_ap_connection_handler(struct ow_barrier_sta_conn_info *sta
 
     memcpy(assoc_data.dev_stats.cli_MACAddress, sta_conn_info->mac, sizeof(mac_address_t));
     assoc_data.ap_index = index;
-    push_data_to_ctrl_queue(&assoc_data, sizeof(assoc_data), ctrl_event_type_hal_ind, type);
+    push_event_to_ctrl_queue(&assoc_data, sizeof(assoc_data), wifi_event_type_hal_ind, type);
 
     if (!(monitor = get_wifi_monitor())) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: Monitor is not available!\n", __func__, __LINE__);
         return;
     }
 
-    if (!(data = (wifi_monitor_data_t *)calloc(1, sizeof(wifi_monitor_data_t)))) {
+    if (!(event = (wifi_event_t *)calloc(1, sizeof(wifi_event_t)))) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: Unable to allocate memory!\n", __func__, __LINE__);
         return;
     }
 
-    data->event_type = (sta->connect_status == wifi_connection_status_connected) ? monitor_event_type_connect : monitor_event_type_disconnect;
+    event->event_type = wifi_event_type_monitor;
+    event->sub_type = (sta->connect_status == wifi_connection_status_connected) ? wifi_event_monitor_connect : wifi_event_monitor_disconnect;
+    data = &event->u.mon_data;
     data->ap_index = index;
     memcpy(data->u.dev.sta_mac, sta_conn_info->mac, sizeof(mac_address_t));
 
@@ -580,23 +583,23 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
     return RETURN_OK;
 }
 
-int process_ext_hal_ind(vap_svc_t *svc, ctrl_event_subtype_t sub_type, void *arg)
+int process_ext_hal_ind(vap_svc_t *svc, wifi_event_subtype_t sub_type, void *arg)
 {
     switch (sub_type) {
-        case ctrl_event_scan_results:
+        case wifi_event_scan_results:
             process_ext_scan_results(svc, arg);
             break;
             
-        case ctrl_event_hal_sta_conn_status:
+        case wifi_event_hal_sta_conn_status:
             process_ext_sta_conn_status(svc, arg);
             break;
 
-        case ctrl_event_hal_channel_change:
+        case wifi_event_hal_channel_change:
             break;
 
         default:
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d: assert - sub_type:%d\r\n", __func__, __LINE__, sub_type);
-            assert(sub_type >= ctrl_event_hal_max);
+            assert(sub_type >= wifi_event_hal_max);
         break;
     }
 
@@ -608,16 +611,16 @@ int process_ext_connect_algorithm(vap_svc_t *svc)
     return 0;
 }
 
-int vap_svc_mesh_ext_event(vap_svc_t *svc, ctrl_event_type_t type, ctrl_event_subtype_t sub_type, vap_svc_event_t event, void *arg)
+int vap_svc_mesh_ext_event(vap_svc_t *svc, wifi_event_type_t type, wifi_event_subtype_t sub_type, vap_svc_event_t event, void *arg)
 {
     switch (type) {
-        case ctrl_event_type_exec:
+        case wifi_event_type_exec:
             break;
 
-        case ctrl_event_type_command:
+        case wifi_event_type_command:
             break;
 
-        case ctrl_event_type_hal_ind:
+        case wifi_event_type_hal_ind:
             process_ext_hal_ind(svc, sub_type, arg);
             break;
 

@@ -102,7 +102,6 @@ rbusError_t webconfig_consumer_set_subdoc(rbusHandle_t handle, rbusProperty_t pr
     if (pTmp != NULL) {
         rc = RBUS_ERROR_SUCCESS;
         printf("%s:%d Rbus set string len=%d\n",__FUNCTION__, __LINE__, len);
-        //push_data_to_ctrl_queue((const cJSON *)pTmp, (strlen(pTmp) + 1), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data);
     }
     return rc;
 }

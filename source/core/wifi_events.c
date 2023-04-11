@@ -26,40 +26,41 @@
 #include <unistd.h>
 #include <inttypes.h>
 
+#ifdef CCSP_COMMON
 #include "ansc_platform.h"
 #include "ccsp_WifiLog_wrapper.h"
+#endif
 #include "wifi_events.h"
 #include "wifi_mgr.h"
 #include "wifi_util.h"
 
 #define MAX_EVENT_NAME_SIZE     200
 
+#ifdef CCSP_COMMON
 typedef struct {
     char name[MAX_EVENT_NAME_SIZE];
     int idx;
-    wifi_monitor_event_type_t type;
+    wifi_event_subtype_t type;
     BOOL subscribed;
     unsigned int num_subscribers;
 } event_element_t;
 
+static webconfig_t          g_wifievents_webconfig;
+static queue_t              *g_csi_data_queue;
 
 rbusError_t events_subHandler(rbusHandle_t handle, rbusEventSubAction_t action, const char* eventName, 
-                                    rbusFilter_t filter, int32_t interval, bool* autoPublish);
+        rbusFilter_t filter, int32_t interval, bool* autoPublish);
 rbusError_t events_APtable_addrowhandler(rbusHandle_t handle, char const* tableName, char const* aliasName, uint32_t* instNum);
 rbusError_t events_CSItable_addrowhandler(rbusHandle_t handle, char const* tableName, char const* aliasName, uint32_t* instNum);
 rbusError_t events_APtable_removerowhandler(rbusHandle_t handle, char const* rowName);
 rbusError_t events_CSItable_removerowhandler(rbusHandle_t handle, char const* rowName);
 rbusError_t events_GetHandler(rbusHandle_t handle, rbusProperty_t property, rbusGetHandlerOptions_t* opts);
-rbusError_t events_CSIGetHandler(rbusHandle_t handle, rbusProperty_t property, rbusGetHandlerOptions_t* opts);
-rbusError_t events_CSISetHandler(rbusHandle_t handle, rbusProperty_t property, rbusSetHandlerOptions_t* opts);
 
 static rbusHandle_t         g_rbus_handle;
 static queue_t              *g_rbus_events_queue;
 static pthread_mutex_t      g_events_lock;
 static BOOL                 g_isRbusAvailable = false;
 static char                 *gdiag_events_json_buffer[MAX_VAP];
-static queue_t              *g_csi_data_queue;
-static webconfig_t          g_wifievents_webconfig;
 static const char *wifi_log = "/rdklogs/logs/WiFilog.txt.0";
 
 static queue_t** get_csi_entry_queue()
@@ -67,10 +68,33 @@ static queue_t** get_csi_entry_queue()
     return &g_csi_data_queue;
 }
 
-webconfig_error_t webconfig_wifi_events_apply(webconfig_subdoc_t *doc, webconfig_subdoc_data_t *data)
-{
-    wifi_util_dbg_print(WIFI_MON,"%s:%d webconfig wifievents apply\n", __func__, __LINE__);
-    return webconfig_error_none;
+static int push_csi_data_dml_cache_to_one_wifidb() {
+    webconfig_subdoc_data_t data;
+    queue_t** csi_queue = (queue_t **)get_csi_entry_queue();
+    char *str = NULL;
+
+    if ((csi_queue == NULL) && (*csi_queue == NULL)) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: Error, queue is NULL\n", __func__, __LINE__);
+        return RBUS_ERROR_BUS_ERROR;
+    }
+    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+    wifi_util_dbg_print(WIFI_MON, "%s: queue count is %lu\n", __func__, queue_count(*csi_queue));
+    data.u.decoded.csi_data_queue = *csi_queue;
+
+    if (webconfig_encode(&g_wifievents_webconfig, &data, webconfig_subdoc_type_csi) == webconfig_error_none) {
+        str = data.u.encoded.raw;
+        wifi_util_info_print(WIFI_MON, "%s: CSI cache encoded successfully  \n", __FUNCTION__);
+        //unlock event mutex before pushing data ctrl queue to avoid deadlock
+        pthread_mutex_unlock(&g_events_lock);
+        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_dml);
+        pthread_mutex_lock(&g_events_lock);
+    } else {
+        wifi_util_error_print(WIFI_MON, "%s:%d: Webconfig set failed\n", __func__, __LINE__);
+        return RBUS_ERROR_BUS_ERROR;
+    }
+
+    wifi_util_info_print(WIFI_MON, "%s:  CSI cache pushed to queue encoded data is %s\n", __FUNCTION__, str);
+    return RBUS_ERROR_SUCCESS;
 }
 
 void update_csi_data_queue(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription)
@@ -110,7 +134,7 @@ void update_csi_data_queue(rbusHandle_t handle, rbusEvent_t const* event, rbusEv
         wifi_util_error_print(WIFI_MON,"%s %d webconfig_set fail \n",__FUNCTION__,__LINE__ );
         return;
     }
-    
+
     queue_t** csi_queue = (queue_t **)get_csi_entry_queue();
     if ((csi_queue != NULL) && (*csi_queue != NULL)) {
         queue_destroy(*csi_queue);
@@ -120,127 +144,113 @@ void update_csi_data_queue(rbusHandle_t handle, rbusEvent_t const* event, rbusEv
         *csi_queue = queue_create();
     }
 }
-
-static int push_csi_data_dml_cache_to_one_wifidb() {
-    webconfig_subdoc_data_t data;
-    queue_t** csi_queue = (queue_t **)get_csi_entry_queue();
-    char *str = NULL;
-
-    if ((csi_queue == NULL) && (*csi_queue == NULL)) {
-        wifi_util_error_print(WIFI_MON, "%s:%d: Error, queue is NULL\n", __func__, __LINE__);
-        return RBUS_ERROR_BUS_ERROR;
-    }
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-    wifi_util_dbg_print(WIFI_MON, "%s: queue count is %lu\n", __func__, queue_count(*csi_queue));
-    data.u.decoded.csi_data_queue = *csi_queue;
-
-    if (webconfig_encode(&g_wifievents_webconfig, &data, webconfig_subdoc_type_csi) == webconfig_error_none) {
-        str = data.u.encoded.raw;
-        wifi_util_info_print(WIFI_MON, "%s: CSI cache encoded successfully  \n", __FUNCTION__);
-        //unlock event mutex before pushing data ctrl queue to avoid deadlock
-        pthread_mutex_unlock(&g_events_lock);
-        push_data_to_ctrl_queue(str, strlen(str), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data_dml);
-        pthread_mutex_lock(&g_events_lock);
-    } else {
-        wifi_util_error_print(WIFI_MON, "%s:%d: Webconfig set failed\n", __func__, __LINE__);
-        return RBUS_ERROR_BUS_ERROR;
-    }
-
-    wifi_util_info_print(WIFI_MON, "%s:  CSI cache pushed to queue encoded data is %s\n", __FUNCTION__, str);
-    return RBUS_ERROR_SUCCESS;
-}
-
-int events_init(void)
+#endif
+void free_cloned_event(wifi_event_t *clone)
 {
-    char componentName[] = "WifiEventProvider";
-    int rc, i, ap_cnt;
-    rbusDataElement_t dataElement[10] = {
-        {"Device.WiFi.AccessPoint.{i}.",                           RBUS_ELEMENT_TYPE_TABLE, {NULL, NULL, events_APtable_addrowhandler, events_APtable_removerowhandler, NULL, NULL}},
-        {"Device.WiFi.AccessPoint.{i}.X_RDK_deviceConnected",      RBUS_ELEMENT_TYPE_EVENT, {NULL, NULL, NULL, NULL, events_subHandler, NULL}},
-        {"Device.WiFi.AccessPoint.{i}.X_RDK_deviceDisconnected",   RBUS_ELEMENT_TYPE_EVENT, {NULL, NULL, NULL, NULL, events_subHandler, NULL}},
-        {"Device.WiFi.AccessPoint.{i}.X_RDK_deviceDeauthenticated",RBUS_ELEMENT_TYPE_EVENT, {NULL, NULL, NULL, NULL, events_subHandler, NULL}},
-        {"Device.WiFi.AccessPoint.{i}.X_RDK_DiagData",             RBUS_ELEMENT_TYPE_EVENT, {events_GetHandler, NULL, NULL, NULL, events_subHandler, NULL}},
-        {"Device.WiFi.X_RDK_CSI.{i}.",                             RBUS_ELEMENT_TYPE_TABLE, {NULL, NULL, events_CSItable_addrowhandler, events_CSItable_removerowhandler, NULL, NULL}},
-        {"Device.WiFi.X_RDK_CSI.{i}.data",                         RBUS_ELEMENT_TYPE_EVENT, {NULL, NULL, NULL, NULL, events_subHandler, NULL}},
-        {"Device.WiFi.X_RDK_CSI.{i}.ClientMaclist",                RBUS_ELEMENT_TYPE_PROPERTY, {events_CSIGetHandler, events_CSISetHandler, NULL, NULL, NULL, NULL}},
-        {"Device.WiFi.X_RDK_CSI.{i}.Enable",                       RBUS_ELEMENT_TYPE_PROPERTY, {events_CSIGetHandler, events_CSISetHandler, NULL, NULL, NULL, NULL}},
-        {"Device.WiFi.X_RDK_CSINumberOfEntries",                   RBUS_ELEMENT_TYPE_PROPERTY, {events_CSIGetHandler, NULL, NULL, NULL, NULL, NULL}}
-    };
-    rbusEventSubscription_t rbusEvents[] = {
-        { WIFI_WEBCONFIG_GET_CSI, NULL, 0, 0, update_csi_data_queue, NULL, NULL, NULL, false}, // CSI subdoc
-    };
-
-    wifi_util_dbg_print(WIFI_MON, "%s():\n", __FUNCTION__);
-
-    if(RBUS_ENABLED == rbus_checkStatus())
-    {
-        g_isRbusAvailable = TRUE;
-    }
-    else
-    {
-        wifi_util_error_print(WIFI_MON, "%s(): RBUS not available. WifiEvents is not supported\n", __FUNCTION__);
-        return 0;
+    if (clone->event_type != wifi_event_type_monitor) {
+        free(clone->u.core_data.msg);
     }
 
-    pthread_mutex_init(&g_events_lock, NULL);
-
-    rc = rbus_open(&g_rbus_handle, componentName);
-    if(rc != RBUS_ERROR_SUCCESS)
-    {
-        wifi_util_error_print(WIFI_MON, "%s():fail to open rbus_open\n", __FUNCTION__);
-        return -1;
-    }
-
-    g_rbus_events_queue = queue_create();
-    if(g_rbus_events_queue == NULL)
-    {
-        rbus_close(g_rbus_handle);
-        wifi_util_error_print(WIFI_MON, "%s(): fail to create rbus events queue\n", __FUNCTION__);
-        return -1;
-    }
-   
-    memset(gdiag_events_json_buffer, 0, MAX_VAP*sizeof(char *));
-
-    rc = rbus_regDataElements(g_rbus_handle, 10, dataElement);
-    if(rc != RBUS_ERROR_SUCCESS)
-    {
-        wifi_util_error_print(WIFI_MON, "%s() rbus_regDataElements failed %d\n", __FUNCTION__, rc);
-    }
-    else
-    {
-        wifi_util_dbg_print(WIFI_MON, "%s() rbus_regDataElements success\n", __FUNCTION__);
-    }
-
-    ap_cnt = getTotalNumberVAPs(NULL); 
-    for(i=1;i<=ap_cnt;i++)
-    {
-        rc = rbusTable_addRow(g_rbus_handle, "Device.WiFi.AccessPoint.", NULL, NULL);
-        if(rc != RBUS_ERROR_SUCCESS)
-        {
-            wifi_util_dbg_print(WIFI_MON, "%s() rbusTable_addRow failed %d\n", __FUNCTION__, rc);
-        }
-    }
-
-    queue_t **csi_queue = (queue_t**)get_csi_entry_queue();
-    *csi_queue = queue_create();
-
-    rc = rbusEvent_SubscribeEx(g_rbus_handle, rbusEvents, ((unsigned int)(sizeof(rbusEvents) / sizeof(rbusEvents[0]))), 0);
-    if(rc != RBUS_ERROR_SUCCESS) {
-        wifi_util_error_print(WIFI_MON,"Unable to subscribe to event  with rbus error code : %d\n", rc);
-    }
-
-    //Initialize Webconfig Framework
-    g_wifievents_webconfig.initializer = webconfig_initializer_wifievents;
-    g_wifievents_webconfig.apply_data = (webconfig_apply_data_t)webconfig_wifi_events_apply;
-
-    if (webconfig_init(&g_wifievents_webconfig) != webconfig_error_none) {
-        wifi_util_error_print(WIFI_MON,"[%s]:%d Init WiFi Web Config  fail\n",__FUNCTION__,__LINE__);
-        // unregister and deinit everything
-        return -1;
-    }
-    return 0;
+    free(clone);
 }
 
+int clone_wifi_event(wifi_event_t *event, wifi_event_t **clone)
+{
+    wifi_event_t *cloned;
+
+    cloned = (wifi_event_t *)malloc(sizeof(wifi_event_t));
+    if (cloned == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s %d data malloc null\n",__FUNCTION__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    memcpy(cloned, event, sizeof(wifi_event_t));
+    if (event->event_type == wifi_event_type_monitor) {
+        memcpy(&cloned->u.mon_data, &event->u.mon_data, sizeof(wifi_monitor_data_t));
+    } else {
+        cloned->u.core_data.len = event->u.core_data.len;
+        cloned->u.core_data.msg = malloc(event->u.core_data.len);
+        memcpy(cloned->u.core_data.msg, event->u.core_data.msg, event->u.core_data.len);
+    }
+
+    *clone = cloned;
+
+    return RETURN_OK;
+}
+
+int push_event_to_ctrl_queue(const void *msg, unsigned int len, wifi_event_type_t type, wifi_event_subtype_t sub_type)
+{
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_event_t *event;
+
+    if(msg == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s %d  msg is null\n",__FUNCTION__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    event = (wifi_event_t *)malloc(sizeof(wifi_event_t));
+    if(event == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s %d data malloc null\n",__FUNCTION__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    memset(event, 0, sizeof(wifi_event_t));
+    event->event_type = type;
+    event->sub_type = sub_type;
+
+    if (msg != NULL) {
+        event->u.core_data.msg = malloc(len + 1);
+        if(event->u.core_data.msg == NULL) {
+            wifi_util_error_print(WIFI_CTRL,"%s %d data message malloc null\n",__FUNCTION__, __LINE__);
+            free(event);
+            return RETURN_ERR;
+        }
+        /* copy msg to data */
+        memcpy(event->u.core_data.msg, msg, len);
+        event->u.core_data.len = len;
+    } else {
+        event->u.core_data.msg = NULL;
+        event->u.core_data.len = 0;
+    }
+
+    pthread_mutex_lock(&ctrl->lock);
+    queue_push(ctrl->queue, event);
+    pthread_cond_signal(&ctrl->cond);
+    pthread_mutex_unlock(&ctrl->lock);
+
+    return RETURN_OK;
+}
+
+int push_event_to_monitor_queue(wifi_monitor_data_t *mon_data, wifi_event_subtype_t sub_type)
+{
+    wifi_monitor_t *monitor_param = (wifi_monitor_t *)get_wifi_monitor();
+    wifi_event_t *event;
+
+    if(mon_data == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s %d: input monitor data is null\n",__FUNCTION__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    event = (wifi_event_t *)malloc(sizeof(wifi_event_t));
+    if(event == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s %d data malloc null\n",__FUNCTION__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    event->event_type = wifi_event_type_monitor;
+    event->sub_type = sub_type;
+
+    memcpy(&event->u.mon_data, mon_data, sizeof(wifi_monitor_data_t));
+
+    pthread_mutex_lock(&monitor_param->queue_lock);
+    queue_push(monitor_param->queue, event);
+    pthread_cond_signal(&monitor_param->cond);
+    pthread_mutex_unlock(&monitor_param->queue_lock);
+
+    return RETURN_OK;
+}
+
+#ifdef CCSP_COMMON
 static BOOL events_getSubscribed(char *eventName)
 {
     int i;
@@ -250,7 +260,7 @@ static BOOL events_getSubscribed(char *eventName)
     if (count == 0) {
         return FALSE;
     }
-    
+
     for (i = 0; i < count; i++) {
         event = queue_peek(g_rbus_events_queue, i);
         if ((event != NULL) && (strncmp(event->name, eventName, MAX_EVENT_NAME_SIZE) == 0)) {
@@ -269,7 +279,7 @@ static event_element_t *events_getEventElement(char *eventName)
     if (count == 0) {
         return NULL;
     }
-    
+
     for (i = 0; i < count; i++) {
         event = queue_peek(g_rbus_events_queue, i);
         if ((event != NULL) && (strncmp(event->name, eventName, MAX_EVENT_NAME_SIZE) == 0)) {
@@ -304,7 +314,7 @@ void events_update_clientdiagdata(unsigned int num_devs, int vap_idx, wifi_assoc
                 "\"AssociatedClientsDiagnostics\":["
                 "{"
                 "\"VapIndex\":\"%d\","
-                "\"AssociatedClientDiagnostics\":[", 
+                "\"AssociatedClientDiagnostics\":[",
                 vap_idx + 1);
         t_pos = pos + 1;
         if(dev_array != NULL) {
@@ -336,41 +346,41 @@ void events_update_clientdiagdata(unsigned int num_devs, int vap_idx, wifi_assoc
                         "\"Disassociations\":\"%u\","
                         "\"Retransmissions\":\"%u\""
                         "},",
-                        dev_array->cli_MACAddress[0],
-                        dev_array->cli_MACAddress[1],
-                        dev_array->cli_MACAddress[2],
-                        dev_array->cli_MACAddress[3],
-                        dev_array->cli_MACAddress[4],
-                        dev_array->cli_MACAddress[5],
-                        dev_array->cli_MaxDownlinkRate,
-                        dev_array->cli_MaxUplinkRate,
-                        dev_array->cli_BytesSent,
-                        dev_array->cli_BytesReceived,
-                        dev_array->cli_PacketsSent,
-                        dev_array->cli_PacketsReceived,
-                        dev_array->cli_ErrorsSent,
-                        dev_array->cli_RetransCount,
-                        dev_array->cli_DataFramesSentAck,
-                        dev_array->cli_SignalStrength,
-                        dev_array->cli_SNR,
-                        dev_array->cli_OperatingStandard,
-                        dev_array->cli_OperatingChannelBandwidth,
-                        dev_array->cli_AuthenticationFailures,
-                        dev_array->cli_AuthenticationState,
-                        dev_array->cli_Active,
-                        dev_array->cli_InterferenceSources,
-                        dev_array->cli_DataFramesSentNoAck,
-                        dev_array->cli_RSSI,
-                        dev_array->cli_MinRSSI,
-                        dev_array->cli_MaxRSSI,
-                        dev_array->cli_Disassociations,
-                        dev_array->cli_Retransmissions);
-                dev_array++;
+                  dev_array->cli_MACAddress[0],
+                  dev_array->cli_MACAddress[1],
+                  dev_array->cli_MACAddress[2],
+                  dev_array->cli_MACAddress[3],
+                  dev_array->cli_MACAddress[4],
+                  dev_array->cli_MACAddress[5],
+                  dev_array->cli_MaxDownlinkRate,
+                  dev_array->cli_MaxUplinkRate,
+                  dev_array->cli_BytesSent,
+                  dev_array->cli_BytesReceived,
+                  dev_array->cli_PacketsSent,
+                  dev_array->cli_PacketsReceived,
+                  dev_array->cli_ErrorsSent,
+                  dev_array->cli_RetransCount,
+                  dev_array->cli_DataFramesSentAck,
+                  dev_array->cli_SignalStrength,
+                  dev_array->cli_SNR,
+                  dev_array->cli_OperatingStandard,
+                  dev_array->cli_OperatingChannelBandwidth,
+                  dev_array->cli_AuthenticationFailures,
+                  dev_array->cli_AuthenticationState,
+                  dev_array->cli_Active,
+                  dev_array->cli_InterferenceSources,
+                  dev_array->cli_DataFramesSentNoAck,
+                  dev_array->cli_RSSI,
+                  dev_array->cli_MinRSSI,
+                  dev_array->cli_MaxRSSI,
+                  dev_array->cli_Disassociations,
+                  dev_array->cli_Retransmissions);
+                  dev_array++;
             }
             t_pos = pos;
         }
         snprintf(&gdiag_events_json_buffer[vap_array_index][t_pos-1], (
-                CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*MAX_ASSOCIATED_WIFI_DEVS)-t_pos-1,"]"
+                    CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*MAX_ASSOCIATED_WIFI_DEVS)-t_pos-1,"]"
                 "}"
                 "]"
                 "}");
@@ -378,7 +388,7 @@ void events_update_clientdiagdata(unsigned int num_devs, int vap_idx, wifi_assoc
     pthread_mutex_unlock(&g_events_lock);
 }
 
-int events_publish(wifi_monitor_data_t data)
+int events_rbus_publish(wifi_event_t *evt)
 {
     rbusEvent_t event;
     rbusObject_t rdata;
@@ -387,6 +397,11 @@ int events_publish(wifi_monitor_data_t data)
     char eventName[MAX_EVENT_NAME_SIZE];
     int rc;
     unsigned int vap_array_index;
+
+    if (evt == NULL) {
+        wifi_util_info_print(WIFI_MON, "%s(): Input arguements is NULL\n", __FUNCTION__);
+        return 0;
+    }
 
     if(g_isRbusAvailable == FALSE)
     {
@@ -397,45 +412,47 @@ int events_publish(wifi_monitor_data_t data)
     rbusValue_Init(&value);
     rbusObject_Init(&rdata, NULL);
 
-    switch(data.event_type)
+    wifi_util_info_print(WIFI_MON, "%s(): rbusEvent_Publish Event %d\n", __FUNCTION__, evt->sub_type);
+
+    switch(evt->sub_type)
     {
-        case monitor_event_type_diagnostics:
-            sprintf(eventName, "Device.WiFi.AccessPoint.%d.X_RDK_DiagData", data.ap_index + 1);
-            getVAPArrayIndexFromVAPIndex((unsigned int) data.ap_index, &vap_array_index);
+        case wifi_event_monitor_diagnostics:
+            sprintf(eventName, "Device.WiFi.AccessPoint.%d.X_RDK_DiagData", evt->u.mon_data.ap_index + 1);
+            getVAPArrayIndexFromVAPIndex((unsigned int) evt->u.mon_data.ap_index, &vap_array_index);
             if(gdiag_events_json_buffer[vap_array_index] != NULL)
             {
                 rbusValue_SetString(value, gdiag_events_json_buffer[vap_array_index]);
-                wifi_util_dbg_print(WIFI_MON, "%s(): device_diagnostics Event %d %s \n", __FUNCTION__, data.event_type, eventName);
+                wifi_util_dbg_print(WIFI_MON, "%s(): device_diagnostics Event %d %s \n", __FUNCTION__, evt->sub_type, eventName);
                 should_publish = TRUE;
             }
-            break;
-        case monitor_event_type_connect:
-        case monitor_event_type_disconnect:
-        case monitor_event_type_deauthenticate:
-            if(data.event_type == monitor_event_type_connect) {
-                sprintf(eventName, "Device.WiFi.AccessPoint.%d.X_RDK_deviceConnected", data.ap_index + 1);
+        break;
+        case wifi_event_monitor_connect:
+        case wifi_event_monitor_disconnect:
+        case wifi_event_monitor_deauthenticate:
+            if(evt->sub_type == wifi_event_monitor_connect) {
+                sprintf(eventName, "Device.WiFi.AccessPoint.%d.X_RDK_deviceConnected", evt->u.mon_data.ap_index + 1);
             }
-            else if(data.event_type == monitor_event_type_disconnect) {
-                sprintf(eventName, "Device.WiFi.AccessPoint.%d.X_RDK_deviceDisconnected", data.ap_index + 1);
+            else if(evt->sub_type == wifi_event_monitor_disconnect) {
+                sprintf(eventName, "Device.WiFi.AccessPoint.%d.X_RDK_deviceDisconnected", evt->u.mon_data.ap_index + 1);
             }
             else {
-                sprintf(eventName, "Device.WiFi.AccessPoint.%d.X_RDK_deviceDeauthenticated", data.ap_index + 1);
+                sprintf(eventName, "Device.WiFi.AccessPoint.%d.X_RDK_deviceDeauthenticated", evt->u.mon_data.ap_index + 1);
             }
             if(events_getSubscribed(eventName) == TRUE)
             {
-                rbusValue_SetBytes(value, (uint8_t *)&data.u.dev.sta_mac[0], sizeof(data.u.dev.sta_mac));
-                wifi_util_dbg_print(WIFI_MON, "%s(): Event - %d %s \n", __FUNCTION__, data.event_type, eventName);
+                rbusValue_SetBytes(value, (uint8_t *)&evt->u.mon_data.u.dev.sta_mac[0], sizeof(evt->u.mon_data.u.dev.sta_mac));
+                wifi_util_dbg_print(WIFI_MON, "%s(): Event - %d %s \n", __FUNCTION__, evt->sub_type, eventName);
                 should_publish = TRUE;
             }
-            break;
-        case monitor_event_type_csi:
+        break;
+        case wifi_event_monitor_csi:
             {
                 char buffer[(strlen("CSI") + 1) + sizeof(unsigned int) + sizeof(time_t) + (sizeof(unsigned int)) + (1 *(sizeof(mac_addr_t) + sizeof(unsigned int) + sizeof(wifi_csi_dev_t)))];
                 unsigned int total_length, num_csi_clients, csi_data_lenght;
                 time_t datetime;
                 char *pbuffer = (char *)buffer;
 
-                sprintf(eventName, "Device.WiFi.X_RDK_CSI.%d.data", data.csi_session);
+                sprintf(eventName, "Device.WiFi.X_RDK_CSI.%d.data", evt->u.mon_data.csi_session);
 
                 //ASCII characters "CSI"
                 memcpy(pbuffer,"CSI", (strlen("CSI") + 1));
@@ -457,7 +474,7 @@ int events_publish(wifi_monitor_data_t data)
                 pbuffer = pbuffer + sizeof(unsigned int);
 
                 //clientMacAddress:  <client mac address>
-                memcpy(pbuffer, &data.u.csi.sta_mac, sizeof(mac_addr_t));
+                memcpy(pbuffer, &evt->u.mon_data.u.csi.sta_mac, sizeof(mac_addr_t));
                 pbuffer = pbuffer + sizeof(mac_addr_t);
 
                 //length of client CSI data:  <size of the next field in bytes>
@@ -466,23 +483,23 @@ int events_publish(wifi_monitor_data_t data)
                 pbuffer = pbuffer + sizeof(unsigned int);
 
                 //<client device CSI data>
-                memcpy(pbuffer, &data.u.csi.csi, sizeof(wifi_csi_data_t));
+                memcpy(pbuffer, &evt->u.mon_data.u.csi.csi, sizeof(wifi_csi_data_t));
 
                 rbusValue_SetBytes(value, (uint8_t*)buffer, sizeof(buffer));
                 should_publish = TRUE;
 
             }
-            break;
+        break;
         default:
             wifi_util_dbg_print(WIFI_MON, "%s(): Invalid event type\n", __FUNCTION__);
-            break;
+        break;
     }
     if(should_publish == TRUE) {
         rbusObject_SetValue(rdata, eventName, value);
         event.name = eventName;
         event.data = rdata;
         event.type = RBUS_EVENT_GENERAL;
-        
+
         rc = rbusEvent_Publish(g_rbus_handle, &event);
 
         if(rc != RBUS_ERROR_SUCCESS)
@@ -518,7 +535,7 @@ rbusError_t events_subHandler(rbusHandle_t handle, rbusEventSubAction_t action, 
     {
         switch(event->type)
         {
-            case monitor_event_type_diagnostics:
+            case wifi_event_monitor_diagnostics:
                 idx = event->idx;
                 getVAPArrayIndexFromVAPIndex((unsigned int) idx-1, &vap_array_index);
                 if(action == RBUS_EVENT_ACTION_SUBSCRIBE)
@@ -571,7 +588,6 @@ rbusError_t events_subHandler(rbusHandle_t handle, rbusEventSubAction_t action, 
                     //unlock event mutex before updating monitor data to avoid deadlock
                     pthread_mutex_unlock(&g_events_lock);
                     diagdata_set_interval(interval, idx - 1);
-                    
                     wifi_util_dbg_print(WIFI_MON, "Exit %s: Event %s\n", __FUNCTION__, eventName);
                     return RBUS_ERROR_SUCCESS;
                 }
@@ -599,15 +615,15 @@ rbusError_t events_subHandler(rbusHandle_t handle, rbusEventSubAction_t action, 
                 }
                 break;
 
-            case monitor_event_type_connect:
-            case monitor_event_type_disconnect:
-            case monitor_event_type_deauthenticate:
+            case wifi_event_monitor_connect:
+            case wifi_event_monitor_disconnect:
+            case wifi_event_monitor_deauthenticate:
                 idx = event->idx;
-                if(event->type == monitor_event_type_connect) {
+                if(event->type == wifi_event_monitor_connect) {
                     telemetry_start = "WiFi_deviceConnected_SubscriptionStarted";
                     telemetry_cancel = "WiFi_deviceConnected_SubscriptionCancelled"; 
                 }
-                else if( event->type == monitor_event_type_disconnect) {
+                else if( event->type == wifi_event_monitor_disconnect) {
                     telemetry_start = "WiFi_deviceDisconnected_SubscriptionStarted";
                     telemetry_cancel = "WiFi_deviceDisconnected_SubscriptionCancelled";
                 }
@@ -635,8 +651,8 @@ rbusError_t events_subHandler(rbusHandle_t handle, rbusEventSubAction_t action, 
                     }
                 }
                 break;
-            
-            case monitor_event_type_csi:
+
+            case wifi_event_monitor_csi:
                 csi_session = event->idx;
                 if(action == RBUS_EVENT_ACTION_SUBSCRIBE)
                 {
@@ -714,7 +730,7 @@ rbusError_t events_APtable_addrowhandler(rbusHandle_t handle, char const* tableN
     {
         sprintf(event->name, "Device.WiFi.AccessPoint.%d.X_RDK_deviceConnected", *instNum);
         event->idx = vap_index;
-        event->type = monitor_event_type_connect;
+        event->type = wifi_event_monitor_connect;
         event->subscribed = FALSE;
         event->num_subscribers = 0;
         queue_push(g_rbus_events_queue, event);
@@ -726,19 +742,18 @@ rbusError_t events_APtable_addrowhandler(rbusHandle_t handle, char const* tableN
     {
         sprintf(event->name, "Device.WiFi.AccessPoint.%d.X_RDK_deviceDisconnected", *instNum);
         event->idx = vap_index;
-        event->type = monitor_event_type_disconnect;
+        event->type = wifi_event_monitor_disconnect;
         event->subscribed = FALSE;
         event->num_subscribers = 0;
         queue_push(g_rbus_events_queue, event);
     }
-
     //Device.WiFi.AccessPoint.{i}.X_RDK_deviceDeauthenticated
     event = (event_element_t *) malloc(sizeof(event_element_t));
     if(event != NULL)
     {
         sprintf(event->name, "Device.WiFi.AccessPoint.%d.X_RDK_deviceDeauthenticated", *instNum);
         event->idx = vap_index;
-        event->type = monitor_event_type_deauthenticate;
+        event->type = wifi_event_monitor_deauthenticate;
         event->subscribed = FALSE;
         event->num_subscribers = 0;
         queue_push(g_rbus_events_queue, event);
@@ -750,7 +765,7 @@ rbusError_t events_APtable_addrowhandler(rbusHandle_t handle, char const* tableN
     {
         sprintf(event->name, "Device.WiFi.AccessPoint.%d.X_RDK_DiagData", *instNum);
         event->idx = vap_index;
-        event->type = monitor_event_type_diagnostics;
+        event->type = wifi_event_monitor_diagnostics;
         event->subscribed = FALSE;
         event->num_subscribers = 0;
         queue_push(g_rbus_events_queue, event);
@@ -763,7 +778,6 @@ rbusError_t events_APtable_addrowhandler(rbusHandle_t handle, char const* tableN
     UNREFERENCED_PARAMETER(aliasName);
     return RBUS_ERROR_SUCCESS;
 }
-
 
 rbusError_t events_CSItable_addrowhandler(rbusHandle_t handle, char const* tableName, char const* aliasName, uint32_t* instNum)
 {
@@ -782,7 +796,7 @@ rbusError_t events_CSItable_addrowhandler(rbusHandle_t handle, char const* table
     {
         sprintf(event->name, "Device.WiFi.X_RDK_CSI.%d.data", *instNum);
         event->idx = *instNum;
-        event->type = monitor_event_type_csi;
+        event->type = wifi_event_monitor_csi;
         event->subscribed = FALSE;
     }
 
@@ -805,7 +819,7 @@ rbusError_t events_CSItable_addrowhandler(rbusHandle_t handle, char const* table
     }
     memset(csi_data, 0, sizeof(csi_data_t));
     csi_data->csi_session_num = *instNum;
-    
+
     queue_push(*csi_queue, csi_data);
     queue_push(g_rbus_events_queue, event);
 
@@ -816,9 +830,9 @@ rbusError_t events_CSItable_addrowhandler(rbusHandle_t handle, char const* table
 
     UNREFERENCED_PARAMETER(handle);
     UNREFERENCED_PARAMETER(aliasName);
-
     return RBUS_ERROR_SUCCESS;
 }
+
 
 rbusError_t events_APtable_removerowhandler(rbusHandle_t handle, char const* rowName)
 {
@@ -861,7 +875,7 @@ rbusError_t events_CSItable_removerowhandler(rbusHandle_t handle, char const *ro
     csi_data_t *tmp_csi_data =  NULL;
     unsigned int itr, qcount;
     queue_t** csi_queue = (queue_t**)get_csi_entry_queue();
-    
+
     wifi_util_dbg_print(WIFI_MON, "%s(): %s\n", __FUNCTION__, rowName);
 
     pthread_mutex_lock(&g_events_lock);
@@ -954,7 +968,6 @@ rbusError_t events_GetHandler(rbusHandle_t handle, rbusProperty_t property, rbus
                 wifi_util_error_print(WIFI_MON, "%s %d Memory allocation failed\n", __func__, __LINE__);
                 return  RBUS_ERROR_BUS_ERROR;
             }
-
             wifi_util_error_print(WIFI_MON, "%s %d vap index : %u\n", __func__, __LINE__, vap_array_index);
             int res = harvester_get_associated_device_info(vap_array_index, harvester_buf);
             if (res < 0) {
@@ -965,13 +978,13 @@ rbusError_t events_GetHandler(rbusHandle_t handle, rbusProperty_t property, rbus
                     harvester_buf[vap_array_index] = NULL;
                 }
                 return RBUS_ERROR_BUS_ERROR;
-           }
-           pthread_mutex_lock(&g_events_lock);
-           rbusValue_SetString(value, harvester_buf[vap_array_index]);
-           if (harvester_buf[vap_array_index] != NULL) {
-               free(harvester_buf[vap_array_index]);
-               harvester_buf[vap_array_index] = NULL;
-           }
+            }
+            pthread_mutex_lock(&g_events_lock);
+            rbusValue_SetString(value, harvester_buf[vap_array_index]);
+            if (harvester_buf[vap_array_index] != NULL) {
+                free(harvester_buf[vap_array_index]);
+                harvester_buf[vap_array_index] = NULL;
+            }
         }
         rbusProperty_SetValue(property, value);
         rbusValue_Release(value);
@@ -1049,7 +1062,7 @@ rbusError_t events_CSIGetHandler(rbusHandle_t handle, rbusProperty_t property, r
             if (csi_data->csi_client_count > 0) {
                 for (itr=0; itr<csi_data->csi_client_count; itr++) {
                     snprintf(mac_str, sizeof(mac_str), "%02x%02x%02x%02x%02x%02x",
-                            csi_data->csi_client_list[itr][0], csi_data->csi_client_list[itr][1], 
+                            csi_data->csi_client_list[itr][0], csi_data->csi_client_list[itr][1],
                             csi_data->csi_client_list[itr][2], csi_data->csi_client_list[itr][3],
                             csi_data->csi_client_list[itr][4], csi_data->csi_client_list[itr][5]);
                     strcat(tmp_cli_list, mac_str);
@@ -1090,7 +1103,7 @@ rbusError_t events_CSISetHandler(rbusHandle_t handle, rbusProperty_t property, r
     unsigned int csi_client_count;
     mac_address_t csi_client_list[MAX_NUM_CSI_CLIENTS];
     queue_t** csi_queue = (queue_t**)get_csi_entry_queue();
-    
+
     name = rbusProperty_GetName(property);
     value = rbusProperty_GetValue(property);
     type = rbusValue_GetType(value);
@@ -1118,8 +1131,7 @@ rbusError_t events_CSISetHandler(rbusHandle_t handle, rbusProperty_t property, r
             wifi_util_error_print(WIFI_MON,"%s:%d Could not find entry\n", __func__, __LINE__);
             pthread_mutex_unlock(&g_events_lock);
             return RBUS_ERROR_BUS_ERROR;
-        }
-        if (strcmp(parameter, "ClientMaclist") == 0) {
+        }if (strcmp(parameter, "ClientMaclist") == 0) {
 
             if (type != RBUS_STRING)
             {
@@ -1127,12 +1139,12 @@ rbusError_t events_CSISetHandler(rbusHandle_t handle, rbusProperty_t property, r
                 pthread_mutex_unlock(&g_events_lock);
                 return RBUS_ERROR_INVALID_INPUT;
             } else {
-                char *str, *cptr, *str_dup; 
+                char *str, *cptr, *str_dup;
                 mac_address_t l_client_list[MAX_NUM_CSI_CLIENTS];
                 char const* pTmp = NULL;
                 int len = 0;
                 memset(l_client_list, 0, MAX_NUM_CSI_CLIENTS*sizeof(mac_address_t));
- 
+
                 pTmp = rbusValue_GetString(value, &len);
                 str_dup = strdup(pTmp);
                 if (str_dup == NULL) {
@@ -1156,7 +1168,7 @@ rbusError_t events_CSISetHandler(rbusHandle_t handle, rbusProperty_t property, r
                     }
                 }
                 if (memcmp(csi_data->csi_client_list, l_client_list,  MAX_NUM_CSI_CLIENTS*sizeof(mac_address_t)) != 0) {
-                    //check new configuration did not exceed the max number of csi clients 
+                    //check new configuration did not exceed the max number of csi clients
                     num_unique_mac = 0;
                     for (i=0; i<qcount; i++) {
                         tmp_csi_data = (csi_data_t *)queue_peek(*csi_queue, i);
@@ -1203,7 +1215,6 @@ rbusError_t events_CSISetHandler(rbusHandle_t handle, rbusProperty_t property, r
                     free(str_dup);
                 }
             }
-
         } else if(strcmp(parameter, "Enable") == 0) {
             if (type != RBUS_BOOLEAN)
             {
@@ -1251,7 +1262,6 @@ rbusError_t events_CSISetHandler(rbusHandle_t handle, rbusProperty_t property, r
                 }
             }
         }
-
         if (apply) {
             push_csi_data_dml_cache_to_one_wifidb();
         }
@@ -1262,7 +1272,6 @@ rbusError_t events_CSISetHandler(rbusHandle_t handle, rbusProperty_t property, r
     pthread_mutex_unlock(&g_events_lock);
     return RBUS_ERROR_INVALID_INPUT;
 }
-
 
 int events_deinit(void)
 {
@@ -1294,3 +1303,101 @@ int events_deinit(void)
 
     return 0;
 }
+
+webconfig_error_t webconfig_wifi_events_apply(webconfig_subdoc_t *doc, webconfig_subdoc_data_t *data)
+{
+    wifi_util_dbg_print(WIFI_MON,"%s:%d webconfig wifievents apply\n", __func__, __LINE__);
+    return webconfig_error_none;
+}
+
+
+int events_init(void)
+{
+    char componentName[] = "WifiEventProvider";
+    int rc, i, ap_cnt;
+    rbusDataElement_t dataElement[10] = {
+        {"Device.WiFi.AccessPoint.{i}.",                           RBUS_ELEMENT_TYPE_TABLE, {NULL, NULL, events_APtable_addrowhandler, events_APtable_removerowhandler, NULL, NULL}},
+        {"Device.WiFi.AccessPoint.{i}.X_RDK_deviceConnected",      RBUS_ELEMENT_TYPE_EVENT, {NULL, NULL, NULL, NULL, events_subHandler, NULL}},
+        {"Device.WiFi.AccessPoint.{i}.X_RDK_deviceDisconnected",   RBUS_ELEMENT_TYPE_EVENT, {NULL, NULL, NULL, NULL, events_subHandler, NULL}},
+        {"Device.WiFi.AccessPoint.{i}.X_RDK_deviceDeauthenticated",RBUS_ELEMENT_TYPE_EVENT, {NULL, NULL, NULL, NULL, events_subHandler, NULL}},
+        {"Device.WiFi.AccessPoint.{i}.X_RDK_DiagData",             RBUS_ELEMENT_TYPE_EVENT, {events_GetHandler, NULL, NULL, NULL, events_subHandler, NULL}},
+        {"Device.WiFi.X_RDK_CSI.{i}.",                             RBUS_ELEMENT_TYPE_TABLE, {NULL, NULL, events_CSItable_addrowhandler, events_CSItable_removerowhandler, NULL, NULL}},
+        {"Device.WiFi.X_RDK_CSI.{i}.data",                         RBUS_ELEMENT_TYPE_EVENT, {NULL, NULL, NULL, NULL, events_subHandler, NULL}},
+        {"Device.WiFi.X_RDK_CSI.{i}.ClientMaclist",                RBUS_ELEMENT_TYPE_PROPERTY, {events_CSIGetHandler, events_CSISetHandler, NULL, NULL, NULL, NULL}},
+        {"Device.WiFi.X_RDK_CSI.{i}.Enable",                       RBUS_ELEMENT_TYPE_PROPERTY, {events_CSIGetHandler, events_CSISetHandler, NULL, NULL, NULL, NULL}},
+        {"Device.WiFi.X_RDK_CSINumberOfEntries",                   RBUS_ELEMENT_TYPE_PROPERTY, {events_CSIGetHandler, NULL, NULL, NULL, NULL, NULL}}
+    };
+    rbusEventSubscription_t rbusEvents[] = {
+        { WIFI_WEBCONFIG_GET_CSI, NULL, 0, 0, update_csi_data_queue, NULL, NULL, NULL, false}, // CSI subdoc
+    };
+
+    wifi_util_dbg_print(WIFI_MON, "%s():\n", __FUNCTION__);
+
+    if(RBUS_ENABLED == rbus_checkStatus())
+    {
+        g_isRbusAvailable = TRUE;
+    }
+    else
+    {
+        wifi_util_error_print(WIFI_MON, "%s(): RBUS not available. WifiEvents is not supported\n", __FUNCTION__);
+        return 0;
+    }
+
+    pthread_mutex_init(&g_events_lock, NULL);
+
+    rc = rbus_open(&g_rbus_handle, componentName);
+    if(rc != RBUS_ERROR_SUCCESS)
+    {
+        wifi_util_error_print(WIFI_MON, "%s():fail to open rbus_open\n", __FUNCTION__);
+        return -1;
+    }
+
+    g_rbus_events_queue = queue_create();
+    if(g_rbus_events_queue == NULL)
+    {
+        rbus_close(g_rbus_handle);
+        wifi_util_error_print(WIFI_MON, "%s(): fail to create rbus events queue\n", __FUNCTION__);
+        return -1;
+    }
+    memset(gdiag_events_json_buffer, 0, MAX_VAP*sizeof(char *));
+
+    rc = rbus_regDataElements(g_rbus_handle, 10, dataElement);
+    if(rc != RBUS_ERROR_SUCCESS)
+    {
+        wifi_util_error_print(WIFI_MON, "%s() rbus_regDataElements failed %d\n", __FUNCTION__, rc);
+    }
+    else
+    {
+        wifi_util_dbg_print(WIFI_MON, "%s() rbus_regDataElements success\n", __FUNCTION__);
+    }
+
+    ap_cnt = getTotalNumberVAPs(NULL);
+    for(i=1;i<=ap_cnt;i++)
+    {
+        rc = rbusTable_addRow(g_rbus_handle, "Device.WiFi.AccessPoint.", NULL, NULL);
+        if(rc != RBUS_ERROR_SUCCESS)
+        {
+            wifi_util_dbg_print(WIFI_MON, "%s() rbusTable_addRow failed %d\n", __FUNCTION__, rc);
+        }
+    }
+
+    queue_t **csi_queue = (queue_t**)get_csi_entry_queue();
+    *csi_queue = queue_create();
+
+    rc = rbusEvent_SubscribeEx(g_rbus_handle, rbusEvents, ((unsigned int)(sizeof(rbusEvents) / sizeof(rbusEvents[0]))), 0);
+    if(rc != RBUS_ERROR_SUCCESS) {
+        wifi_util_error_print(WIFI_MON,"Unable to subscribe to event  with rbus error code : %d\n", rc);
+    }
+
+    //Initialize Webconfig Framework
+    g_wifievents_webconfig.initializer = webconfig_initializer_wifievents;
+    g_wifievents_webconfig.apply_data = (webconfig_apply_data_t)webconfig_wifi_events_apply;
+
+    if (webconfig_init(&g_wifievents_webconfig) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_MON,"[%s]:%d Init WiFi Web Config  fail\n",__FUNCTION__,__LINE__);
+        // unregister and deinit everything
+        return -1;
+    }
+    return 0;
+}
+#endif

@@ -1133,7 +1133,7 @@ void CosaDmlWiFiGetExternalDataFromPSM(void)
     }
     list[sizeof(list)-1] = '\0';
 
-    push_data_to_ctrl_queue(list, (strlen(list) + 1), ctrl_event_type_command, ctrl_event_type_normalized_rssi);
+    push_event_to_ctrl_queue(list, (strlen(list) + 1), wifi_event_type_command, wifi_event_type_normalized_rssi);
 
     retPsmGet = PSM_Get_Record_Value2(bus_handle, g_Subsystem,"dmsb.device.deviceinfo.X_RDKCENTRAL-COM_WIFI_TELEMETRY.SNRList",NULL,&strValue);
 
@@ -1150,7 +1150,7 @@ void CosaDmlWiFiGetExternalDataFromPSM(void)
     }
     list[sizeof(list)-1] = '\0';
 
-    push_data_to_ctrl_queue(list, (strlen(list) + 1), ctrl_event_type_command, ctrl_event_type_snr);
+    push_event_to_ctrl_queue(list, (strlen(list) + 1), wifi_event_type_command, wifi_event_type_snr);
 
     retPsmGet = PSM_Get_Record_Value2(bus_handle, g_Subsystem,"dmsb.device.deviceinfo.X_RDKCENTRAL-COM_WHIX.CliStatList",NULL,&strValue);
 
@@ -1167,7 +1167,7 @@ void CosaDmlWiFiGetExternalDataFromPSM(void)
     }
     list[sizeof(list)-1] = '\0';
 
-    push_data_to_ctrl_queue(list, (strlen(list) + 1), ctrl_event_type_command, ctrl_event_type_cli_stat);
+    push_event_to_ctrl_queue(list, (strlen(list) + 1), wifi_event_type_command, wifi_event_type_cli_stat);
 
     retPsmGet = PSM_Get_Record_Value2(bus_handle, g_Subsystem,"dmsb.device.deviceinfo.X_RDKCENTRAL-COM_WHIX.TxRxRateList",NULL,&strValue);
 
@@ -1184,7 +1184,7 @@ void CosaDmlWiFiGetExternalDataFromPSM(void)
     }
     list[sizeof(list)-1] = '\0';
 
-    push_data_to_ctrl_queue(list, (strlen(list) + 1), ctrl_event_type_command, ctrl_event_type_txrx_rate);
+    push_event_to_ctrl_queue(list, (strlen(list) + 1), wifi_event_type_command, wifi_event_type_txrx_rate);
 }
 
 void CosaDmlWiFiGetRFCDataFromPSM(void)
@@ -1221,7 +1221,7 @@ void CosaDmlWiFiGetRFCDataFromPSM(void)
         /* Set default value */
         l_interworking_RFC = 0;
     }
-    push_rfc_dml_cache_to_one_wifidb(l_interworking_RFC,ctrl_event_type_wifi_interworking_rfc);
+    push_rfc_dml_cache_to_one_wifidb(l_interworking_RFC,wifi_event_type_wifi_interworking_rfc);
     retPsmGet = PSM_Get_Record_Value2(bus_handle,g_Subsystem, "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.WiFi-Passpoint.Enable", NULL, &strValue);
     if ((retPsmGet == CCSP_SUCCESS) && (strValue)){
         l_passpoint_RFC = _ansc_atoi(strValue);
@@ -1233,7 +1233,7 @@ void CosaDmlWiFiGetRFCDataFromPSM(void)
         l_passpoint_RFC = 0;
     }
 
-    push_rfc_dml_cache_to_one_wifidb(l_passpoint_RFC,ctrl_event_type_wifi_passpoint_rfc);
+    push_rfc_dml_cache_to_one_wifidb(l_passpoint_RFC,wifi_event_type_wifi_passpoint_rfc);
 
 #if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
     bool l_offchannelscan_RFC;
@@ -1248,12 +1248,12 @@ void CosaDmlWiFiGetRFCDataFromPSM(void)
         l_offchannelscan_RFC = 0;
     }
 
-    push_rfc_dml_cache_to_one_wifidb(l_offchannelscan_RFC,ctrl_event_type_wifi_offchannelscan_rfc);
+    push_rfc_dml_cache_to_one_wifidb(l_offchannelscan_RFC, wifi_event_type_wifi_offchannelscan_rfc);
 #endif //FEATURE_OFF_CHANNEL_SCAN_5G
 
 #if defined (FEATURE_SUPPORT_RADIUSGREYLIST)
     CosaDmlWiFiGetEnableRadiusGreylist((BOOLEAN *)&wifi_radius_greylist_status);
-    push_rfc_dml_cache_to_one_wifidb(wifi_radius_greylist_status,ctrl_event_type_radius_grey_list_rfc);
+    push_rfc_dml_cache_to_one_wifidb(wifi_radius_greylist_status,wifi_event_type_radius_grey_list_rfc);
     wifi_util_info_print(WIFI_DMCLI,"radiusGrey list value=%d preferpriv=%d\n",wifi_radius_greylist_status,global_wifi_config->global_parameters.prefer_private);
     if (wifi_radius_greylist_status && global_wifi_config->global_parameters.prefer_private) {
         global_wifi_config->global_parameters.prefer_private = false;

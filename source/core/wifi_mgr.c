@@ -38,11 +38,9 @@
 #include "ssp_main.h"
 #else
 #include <stdlib.h>
-#include <cap.h>
 #endif // DML_SUPPORT
 
 #include "wifi_util.h"
-#include <opensync/ow_core_thread.h>
 
 #if DML_SUPPORT
 #include <execinfo.h>

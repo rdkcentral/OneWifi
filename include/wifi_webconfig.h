@@ -149,6 +149,8 @@ typedef enum {
     webconfig_initializer_ovsdb,
 #if DML_SUPPORT
     webconfig_initializer_dml,
+#endif
+#if CCSP_COMMON
     webconfig_initializer_wifievents,
 #endif
     webconfig_initializer_max

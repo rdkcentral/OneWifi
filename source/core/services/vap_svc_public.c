@@ -356,15 +356,15 @@ void process_xfinity_enable(vap_svc_event_t event, void *data)
 #endif
 }
 
-void process_public_service_command(vap_svc_event_t event,ctrl_event_subtype_t sub_type,void *data)
+void process_public_service_command(vap_svc_event_t event,wifi_event_subtype_t sub_type,void *data)
 {
 
      switch(sub_type) {
 
-        case ctrl_event_type_prefer_private_rfc:
+        case wifi_event_type_prefer_private_rfc:
             process_prefer_private_rfc_event(event, data);
         break;
-        case ctrl_event_type_xfinity_enable:
+        case wifi_event_type_xfinity_enable:
             process_xfinity_enable(event, data);
         break;
 
@@ -373,11 +373,11 @@ void process_public_service_command(vap_svc_event_t event,ctrl_event_subtype_t s
     }
 }
 
-int vap_svc_public_event(vap_svc_t *svc, ctrl_event_type_t type, ctrl_event_subtype_t sub_type, vap_svc_event_t event, void *arg)
+int vap_svc_public_event(vap_svc_t *svc, wifi_event_type_t type, wifi_event_subtype_t sub_type, vap_svc_event_t event, void *arg)
 {
 
     switch(type) {
-        case ctrl_event_type_command:
+        case wifi_event_type_command:
             process_public_service_command(event, sub_type, arg);
             break;
 

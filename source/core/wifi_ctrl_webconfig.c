@@ -601,11 +601,6 @@ int webconfig_analyze_pending_states(wifi_ctrl_t *ctrl)
 {
     static int pending_state = ctrl_webconfig_state_max;
     webconfig_subdoc_type_t type = webconfig_subdoc_type_unknown;
-#if CCSP_COMMON
-    wifi_apps_t *analytics = NULL;
-
-    analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
-#endif // CCSP_COMMON
 
     wifi_mgr_t *mgr = get_wifimgr_obj();
     if ((ctrl->webconfig_state & CTRL_WEBCONFIG_STATE_MASK) == 0) {
@@ -743,9 +738,7 @@ int webconfig_analyze_pending_states(wifi_ctrl_t *ctrl)
     }
 
 #if CCSP_COMMON
-    if (analytics->event_fn != NULL) {
-        analytics->event_fn(analytics, ctrl_event_type_webconfig, ctrl_event_webconfig_set_status, &type);
-    }
+    apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, wifi_event_webconfig_set_status, &type);
 #endif // CCSP_COMMON
 
     return RETURN_OK;
@@ -853,7 +846,7 @@ static void webconfig_send_sta_bssid_change_event(wifi_ctrl_t *ctrl, wifi_vap_in
         return;
     }
 
-    ext_svc->event_fn(ext_svc, ctrl_event_type_webconfig, ctrl_event_webconfig_set_data_sta_bssid,
+    ext_svc->event_fn(ext_svc, wifi_event_type_webconfig, wifi_event_webconfig_set_data_sta_bssid,
         vap_svc_event_none, new);
 
     if (is_bssid_valid(new->u.sta_info.bssid)) {
@@ -873,7 +866,6 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
     bool found_target = false;
     wifi_mgr_t *mgr = get_wifimgr_obj();
 #if CCSP_COMMON
-    wifi_apps_t         *analytics = NULL;
     char update_status[128];
     public_vaps_data_t pub;
 #endif // CCSP_COMMON
@@ -1037,18 +1029,16 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
             start_wifi_sched_timer(&vap_info->vap_index, ctrl, wifi_vap_sched);
 
 #if CCSP_COMMON
-            analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
-            if (analytics->event_fn != NULL) {
-                memset(update_status, 0, sizeof(update_status));
-                snprintf(update_status, sizeof(update_status), "%s %s", vap_names[i], (ret == RETURN_OK)?"success":"fail");
-                analytics->event_fn(analytics, ctrl_event_type_webconfig, ctrl_event_webconfig_hal_result, update_status);
-            }
+            memset(update_status, 0, sizeof(update_status));
+            snprintf(update_status, sizeof(update_status), "%s %s", vap_names[i], (ret == RETURN_OK)?"success":"fail");
+            apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, wifi_event_webconfig_hal_result, update_status);
+
             if (vap_svc_is_public(tgt_vap_index)) {
                 wifi_util_dbg_print(WIFI_CTRL,"vapname is %s and %d \n",vap_info->vap_name,vap_info->u.bss_info.enabled);
                 if (svc->event_fn != NULL) {
                     snprintf(pub.vap_name,sizeof(pub.vap_name),"%s",vap_info->vap_name);
                     pub.enabled = vap_info->u.bss_info.enabled;
-                    svc->event_fn(svc, ctrl_event_type_command, ctrl_event_type_xfinity_enable,
+                    svc->event_fn(svc, wifi_event_type_command, wifi_event_type_xfinity_enable,
                        vap_svc_event_none, &pub);
                 }
             }
@@ -2058,7 +2048,7 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
                     connected_radio_index = get_radio_index_for_vap_index(ext_svc->prop, ext->connected_vap_index);
                     if ((ext->conn_state == connection_state_connected) && (connected_radio_index == mgr_radio_data->vaps.radio_index) && (mgr_radio_data->oper.channel != radio_data->oper.channel)) {
                         start_wifi_sched_timer(&mgr_radio_data->vaps.radio_index, ctrl, wifi_csa_sched);
-                        ext_svc->event_fn(ext_svc, ctrl_event_type_webconfig, ctrl_event_webconfig_set_data, vap_svc_event_none, &radio_data->oper);
+                        ext_svc->event_fn(ext_svc, wifi_event_type_webconfig, wifi_event_webconfig_set_data, vap_svc_event_none, &radio_data->oper);
                         // driver does not change channel in STA connected state therefore skip
                         // wifi_hal_setRadioOperatingParameters and update channel on disconnection/CSA
                         continue;
@@ -2130,7 +2120,7 @@ int webconfig_harvester_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
     instant_msmt_ttl(ptr->u_inst_client_def_override_ttl);
     instant_msmt_macAddr(ptr->mac_address);
     str_to_mac_bytes(ptr->mac_address,sta_mac);
-    monitor_enable_instant_msmt(&sta_mac, ptr->b_inst_client_enabled);
+    monitor_enable_instant_msmt(sta_mac, ptr->b_inst_client_enabled);
 #endif // DML_SUPPORT
     return RETURN_OK;
 }
@@ -2139,10 +2129,6 @@ int push_data_to_apply_pending_queue(webconfig_subdoc_data_t *data)
 {
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     webconfig_subdoc_data_t *temp_data;
-#if CCSP_COMMON
-    wifi_apps_t *analytics = NULL;
-    analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
-#endif // CCSP_COMMON
     temp_data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
     if (temp_data == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: Unable to allocate memory for subdoc_data type:%d\n", __func__, __LINE__, data->type);
@@ -2151,9 +2137,7 @@ int push_data_to_apply_pending_queue(webconfig_subdoc_data_t *data)
     memcpy(temp_data, data, sizeof(webconfig_subdoc_data_t));
     queue_push(ctrl->vif_apply_pending_queue, temp_data);
 #if CCSP_COMMON
-    if (analytics->event_fn != NULL) {
-        analytics->event_fn(analytics, ctrl_event_type_webconfig, ctrl_event_webconfig_data_to_apply_pending_queue, data);
-    }
+    apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, wifi_event_webconfig_data_to_apply_pending_queue, data);
 #endif // CCSP_COMMON
 
     return RETURN_OK;
@@ -2163,11 +2147,7 @@ void webconfig_analytic_event_data_to_hal_apply(webconfig_subdoc_data_t *data)
 {
 #if CCSP_COMMON
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    wifi_apps_t *analytics = NULL;
-    analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
-    if (analytics->event_fn != NULL) {
-        analytics->event_fn(analytics, ctrl_event_type_webconfig, ctrl_event_webconfig_data_to_hal_apply, data);
-    }
+    apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, wifi_event_webconfig_data_to_hal_apply, data);
 #endif // CCSP_COMMON
     return;
 }
@@ -2627,7 +2607,7 @@ pErr webconf_config_handler(void *blob)
     exec_ret_val->ErrorCode = BLOB_EXEC_SUCCESS;
 
     // push blob to ctrl queue
-    push_data_to_ctrl_queue(blob, strlen(blob), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data_webconfig);
+    push_event_to_ctrl_queue(blob, strlen(blob), wifi_event_type_webconfig, wifi_event_webconfig_set_data_webconfig);
 
     wifi_util_dbg_print(WIFI_CTRL, "%s: return success\n", __func__);
     return exec_ret_val;
@@ -2989,7 +2969,7 @@ static int push_blob_data(webconfig_subdoc_data_t *data, webconfig_subdoc_type_t
 
     str = data->u.encoded.raw;
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Encoded blob:\n%s\n", __func__, __LINE__, str);
-    push_data_to_ctrl_queue(str, strlen(str), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data_webconfig);
+    push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_webconfig);
 
     return RETURN_OK;
 }
@@ -3445,7 +3425,7 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
     wifi_util_dbg_print(WIFI_CTRL, "%s, vap_blob:\n%s\n", __func__, vap_blob_str);
 
     // push blob to ctrl queue
-    push_data_to_ctrl_queue(vap_blob_str, strlen(vap_blob_str), ctrl_event_type_webconfig, ctrl_event_webconfig_set_data_tunnel);
+    push_event_to_ctrl_queue(vap_blob_str, strlen(vap_blob_str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_tunnel);
 
     cJSON_free(vap_blob_str);
     cJSON_Delete(n_blob);

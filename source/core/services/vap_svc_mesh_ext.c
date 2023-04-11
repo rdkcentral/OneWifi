@@ -439,11 +439,6 @@ int process_udhcp_ip_check(vap_svc_t *svc)
     ctrl = svc->ctrl;
     ext = &svc->u.ext;
 
-#if CCSP_COMMON 
-    wifi_apps_t    *analytics = NULL;
-    analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
-#endif
-
     memset(value, '\0', sizeof(value));
     memset(value, '\0', sizeof(file_name));
     memset(command, '\0', sizeof(command));
@@ -483,7 +478,7 @@ int process_udhcp_ip_check(vap_svc_t *svc)
         ip_check_count = 0;
         wifi_util_error_print(WIFI_CTRL,"%s:%d No IP on connected interface triggering a disconnect\n", __func__, __LINE__);
 #if CCSP_COMMON
-        analytics->event_fn(analytics, ctrl_event_type_command, ctrl_event_type_udhcp_ip_fail, ext);
+        apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_command, wifi_event_type_udhcp_ip_fail, ext);
 #endif
         ext->disconn_retry++;
         wifi_util_info_print(WIFI_CTRL, "%s:%d execute sta disconnect for vap index: %d\n",
@@ -749,10 +744,6 @@ void ext_try_connecting(vap_svc_t *svc)
 
     ctrl = svc->ctrl;
     ext = &svc->u.ext;
-#if CCSP_COMMON
-    wifi_apps_t    *analytics = NULL;
-    analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
-#endif // CCSP_COMMON
 
     if (ext->conn_state == connection_state_connection_to_nb_in_progress) {
         candidate = &ext->new_bss;
@@ -811,7 +802,7 @@ void ext_try_connecting(vap_svc_t *svc)
             process_ext_connect_event_timeout, svc, EXT_CONN_STATUS_IND_TIMEOUT, 1);
 
 #if CCSP_COMMON
-        analytics->event_fn(analytics, ctrl_event_type_command, ctrl_event_type_sta_connect_in_progress, candidate);
+        apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_command, wifi_event_type_sta_connect_in_progress, candidate);
 #endif // CCSP_COMMON
     } else {
         ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
@@ -1028,10 +1019,7 @@ static int process_ext_webconfig_set_data_sta_bssid(vap_svc_t *svc, void *arg)
         candidate->radio_freq_band, ext_conn_state_to_str(ext->conn_state));
 
 #if DML_SUPPORT
-    wifi_apps_t *analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
-    if (analytics) {
-        analytics->event_fn(analytics, ctrl_event_type_command, ctrl_event_type_new_bssid, ext);
-    }
+        apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_command, wifi_event_type_new_bssid, ext);
 #endif
 
     // Channel change for connected STA may fail therefore need to re-apply it on disconnection.
@@ -1145,11 +1133,7 @@ static void process_ext_trigger_disconnection(vap_svc_t *svc, void *arg)
     }
 
 #if DML_SUPPORT
-    wifi_apps_t *analytics = get_app_by_type(ctrl, wifi_apps_type_analytics);
-    if (analytics) {
-        analytics->event_fn(analytics, ctrl_event_type_command,
-            ctrl_event_type_trigger_disconnection_analytics, ext);
-    }
+    apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_command, wifi_event_type_trigger_disconnection_analytics, ext);
 #endif
 
     wifi_util_info_print(WIFI_CTRL, "%s:%d execute sta disconnect for vap index: %d\n", __func__,
@@ -1487,7 +1471,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
             temp_vap_info = &vap_map->vap_array[i];
             if (temp_vap_info->u.sta_info.conn_status == sta_data->stats.connect_status &&
                 memcmp(temp_vap_info->u.sta_info.bssid, sta_data->bss_info.bssid, sizeof(bssid_t)) == 0) {
-                wifi_util_info_print(WIFI_CTRL, "%s:%d: received duplicated ctrl_event_hal_sta_conn_status event\n", __func__, __LINE__);
+                wifi_util_info_print(WIFI_CTRL, "%s:%d: received duplicated wifi_event_hal_sta_conn_status event\n", __func__, __LINE__);
                 return 0;
             }
             temp_vap_info->u.sta_info.conn_status = sta_data->stats.connect_status;
@@ -1761,73 +1745,73 @@ int process_ext_channel_change(vap_svc_t *svc, void *arg)
     return 0;
 }
 
-int process_ext_hal_ind(vap_svc_t *svc, ctrl_event_subtype_t sub_type, void *arg)
+int process_ext_hal_ind(vap_svc_t *svc, wifi_event_subtype_t sub_type, void *arg)
 {
     switch (sub_type) {
-        case ctrl_event_scan_results:
+        case wifi_event_scan_results:
             process_ext_scan_results(svc, arg);
             break;
 
-        case ctrl_event_hal_sta_conn_status:
+        case wifi_event_hal_sta_conn_status:
             process_ext_sta_conn_status(svc, arg);
             break;
 
-        case ctrl_event_hal_channel_change:
+        case wifi_event_hal_channel_change:
             process_ext_channel_change(svc, arg);
             break;
 
         default:
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d: assert - sub_type:%d\r\n", __func__, __LINE__, sub_type);
-            assert(sub_type >= ctrl_event_hal_max);
+            assert(sub_type >= wifi_event_hal_max);
         break;
     }
 
     return 0;
 }
 
-int process_ext_command(vap_svc_t *svc, ctrl_event_subtype_t sub_type, void *arg)
+int process_ext_command(vap_svc_t *svc, wifi_event_subtype_t sub_type, void *arg)
 {
     switch (sub_type) {
-        case ctrl_event_type_device_network_mode:
+        case wifi_event_type_device_network_mode:
             break;
 
-        case ctrl_event_type_trigger_disconnection:
+        case wifi_event_type_trigger_disconnection:
             process_ext_trigger_disconnection(svc, arg);
             break;
 
         default:
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d: assert - sub_type:%d\r\n", __func__, __LINE__, sub_type);
-            assert(sub_type >= ctrl_event_command_max);
+            assert(sub_type >= wifi_event_command_max);
             break;
     }
 
     return 0;
 }
 
-int process_ext_exec(vap_svc_t *svc, ctrl_event_subtype_t sub_type, void *arg)
+int process_ext_exec(vap_svc_t *svc, wifi_event_subtype_t sub_type, void *arg)
 {
     switch (sub_type) {
-        case ctrl_event_exec_timeout:
+        case wifi_event_exec_timeout:
             process_ext_exec_timeout(svc, arg);
             break;
 
         default:
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d: assert - sub_type:%d\r\n", __func__, __LINE__, sub_type);
-            assert(sub_type >= ctrl_event_exec_max);
+            assert(sub_type >= wifi_event_exec_max);
             break;
     }
 
     return 0;
 }
 
-int process_ext_webconfig(vap_svc_t *svc, ctrl_event_subtype_t sub_type, void *arg)
+int process_ext_webconfig(vap_svc_t *svc, wifi_event_subtype_t sub_type, void *arg)
 {
     switch (sub_type) {
-        case ctrl_event_webconfig_set_data:
+        case wifi_event_webconfig_set_data:
             process_ext_webconfig_set_data(svc, arg);
             break;
 
-        case ctrl_event_webconfig_set_data_sta_bssid:
+        case wifi_event_webconfig_set_data_sta_bssid:
             process_ext_webconfig_set_data_sta_bssid(svc, arg);
             break;
 
@@ -1838,22 +1822,22 @@ int process_ext_webconfig(vap_svc_t *svc, ctrl_event_subtype_t sub_type, void *a
     return 0;
 }
 
-int vap_svc_mesh_ext_event(vap_svc_t *svc, ctrl_event_type_t type, ctrl_event_subtype_t sub_type, vap_svc_event_t event, void *arg)
+int vap_svc_mesh_ext_event(vap_svc_t *svc, wifi_event_type_t type, wifi_event_subtype_t sub_type, vap_svc_event_t event, void *arg)
 {
     switch (type) {
-        case ctrl_event_type_exec:
+        case wifi_event_type_exec:
             process_ext_exec(svc, sub_type, arg);
             break;
 
-        case ctrl_event_type_command:
+        case wifi_event_type_command:
             process_ext_command(svc, sub_type, arg);
             break;
 
-        case ctrl_event_type_hal_ind:
+        case wifi_event_type_hal_ind:
             process_ext_hal_ind(svc, sub_type, arg);
             break;
 
-        case ctrl_event_type_webconfig:
+        case wifi_event_type_webconfig:
             process_ext_webconfig(svc, sub_type, arg);
             break;
 

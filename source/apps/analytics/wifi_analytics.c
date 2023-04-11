@@ -25,8 +25,9 @@
 #include "wifi_ctrl.h"
 #include "wifi_mgr.h"
 #include "wifi_util.h"
+#include "wifi_levl.h"
 #if DML_SUPPORT
-#include "wifi_apps.h"
+#include "wifi_apps_mgr.h"
 #endif
 #include "wifi_analytics.h"
 #include "wifi_hal_rdk_framework.h"
@@ -65,16 +66,16 @@ const char *subdoc_type_to_string(webconfig_subdoc_type_t type)
     return "unknown subdoc";
 }
 
-int analytics_event_exec_start(wifi_apps_t *apps, void *arg)
+int analytics_event_exec_start(wifi_app_t *apps, void *arg)
 {
     wifi_util_info_print(WIFI_ANALYTICS, analytics_format_mgr_core, "start", "");
-    return 0;
+    return RETURN_OK;
 }
 
-int analytics_event_exec_stop(wifi_apps_t *apps, void *arg)
+int analytics_event_exec_stop(wifi_app_t *apps, void *arg)
 {
     wifi_util_info_print(WIFI_ANALYTICS, analytics_format_mgr_core, "end", "");
-    return 0;
+    return RETURN_OK;
 }
 
 void device_statistics_info(analytics_data_t *data)
@@ -141,11 +142,11 @@ void device_statistics_info(analytics_data_t *data)
     }
 }
 
-int analytics_event_exec_timeout(wifi_apps_t *apps, void *arg)
+int analytics_event_exec_timeout(wifi_app_t *apps, void *arg)
 {
     analytics_data_t        *data;
 
-    data = &apps->u.analytics;
+    data = &apps->data.u.analytics;
 
     data->minutes_alive++;
 
@@ -154,11 +155,11 @@ int analytics_event_exec_timeout(wifi_apps_t *apps, void *arg)
         device_statistics_info(data);
     }
 
-    return 0;
+    return RETURN_OK;
 }
 
 
-int analytics_event_webconfig_get_data_for_dmlthread(wifi_apps_t *apps, void *arg, ctrl_event_subtype_t sub_type)
+int analytics_event_webconfig_get_data_for_dmlthread(wifi_app_t *apps, void *arg, wifi_event_subtype_t sub_type)
 {
     webconfig_subdoc_data_t *doc = (webconfig_subdoc_data_t *)arg;
 
@@ -168,14 +169,14 @@ int analytics_event_webconfig_get_data_for_dmlthread(wifi_apps_t *apps, void *ar
         * to determine the subdoc type.
         */
         wifi_util_info_print(WIFI_ANALYTICS, analytics_format_dml_core, "get", "webconfig");
-        return 0;
+        return RETURN_OK;
     }
 
-    return 0;
+    return RETURN_OK;
 }
 
 
-int analytics_event_webconfig_set_data(wifi_apps_t *apps, void *arg, ctrl_event_subtype_t sub_type)
+int analytics_event_webconfig_set_data(wifi_app_t *apps, void *arg, wifi_event_subtype_t sub_type)
 {
     webconfig_subdoc_data_t *doc = (webconfig_subdoc_data_t *)arg;
     char temp_str[512];
@@ -188,13 +189,13 @@ int analytics_event_webconfig_set_data(wifi_apps_t *apps, void *arg, ctrl_event_
     int  radio_index = 0;
     char *analytics_format = NULL;
 
-    if (sub_type == ctrl_event_webconfig_set_data_dml) {
+    if (sub_type == wifi_event_webconfig_set_data_dml) {
         analytics_format = analytics_format_dml_core;
-    } else if (sub_type == ctrl_event_webconfig_set_data_ovsm) {
+    } else if (sub_type == wifi_event_webconfig_set_data_ovsm) {
         analytics_format = analytics_format_ovsm_core;
-    } else if (sub_type == ctrl_event_webconfig_set_data_webconfig) {
+    } else if (sub_type == wifi_event_webconfig_set_data_webconfig) {
         analytics_format = analytics_format_webconfig_core;
-    } else if (sub_type == ctrl_event_webconfig_set_data) {
+    } else if (sub_type == wifi_event_webconfig_set_data) {
         analytics_format = analytics_format_core_core;
     }
 
@@ -205,14 +206,14 @@ int analytics_event_webconfig_set_data(wifi_apps_t *apps, void *arg, ctrl_event_
         * to determine the subdoc type.
         */
         wifi_util_info_print(WIFI_ANALYTICS, analytics_format, "set", "webconfig");
-        return 0;
+        return RETURN_OK;
     }
 
 
     decoded_params = &doc->u.decoded;
     if (decoded_params == NULL) {
         wifi_util_error_print(WIFI_APPS,"%s:%d: decoded data is NULL : %p\n", __func__, __LINE__, decoded_params);
-        return -1;
+        return RETURN_ERR;
     }
     memset(temp_str, 0, sizeof(temp_str));
     switch (doc->type) {
@@ -266,93 +267,93 @@ int analytics_event_webconfig_set_data(wifi_apps_t *apps, void *arg, ctrl_event_
         break;
     }
 
-    if (sub_type == ctrl_event_webconfig_data_resched_to_ctrl_queue) {
+    if (sub_type == wifi_event_webconfig_data_resched_to_ctrl_queue) {
         wifi_util_info_print(WIFI_ANALYTICS, analytics_format_core_core_reverse, "resched", temp_str);
-    } else if (sub_type == ctrl_event_webconfig_data_to_apply_pending_queue) {
+    } else if (sub_type == wifi_event_webconfig_data_to_apply_pending_queue) {
         wifi_util_info_print(WIFI_ANALYTICS, analytics_format_core_core, "pending", temp_str);
-    } else if (sub_type == ctrl_event_webconfig_data_to_hal_apply) {
+    } else if (sub_type == wifi_event_webconfig_data_to_hal_apply) {
         wifi_util_info_print(WIFI_ANALYTICS, analytics_format_core_hal, "apply", temp_str);
     }
 
-    return 0;
+    return RETURN_OK;
 }
 
-int analytics_event_webconfig_hal_result(wifi_apps_t *apps, void *arg)
+int analytics_event_webconfig_hal_result(wifi_app_t *apps, void *arg)
 {
     char *hal_result = (char *)arg;
 
     wifi_util_info_print(WIFI_ANALYTICS, analytics_format_hal_core, "result", hal_result);
 
-    return 0;
+    return RETURN_OK;
 }
 
-int analytics_event_webconfig_set_status(wifi_apps_t *apps, void *arg)
+int analytics_event_webconfig_set_status(wifi_app_t *apps, void *arg)
 {
     webconfig_subdoc_type_t *type = (webconfig_subdoc_type_t *)arg;
 
     wifi_util_info_print(WIFI_ANALYTICS, analytics_format_core_ovsm, "status", subdoc_type_to_string(*type));
 
-    return 0;
+    return RETURN_OK;
 }
 
-int analytics_event_webconfig_get_data(wifi_apps_t *apps, void *arg)
+int analytics_event_webconfig_get_data(wifi_app_t *apps, void *arg)
 {
-    return 0;
+    return RETURN_OK;
 }
 
-int analytics_event_webconfig_set_data_tunnel(wifi_apps_t *apps, void *arg)
+int analytics_event_webconfig_set_data_tunnel(wifi_app_t *apps, void *arg)
 {
-    return 0;
+    return RETURN_OK;
 }
 
-int analytics_event_hal_unknown_frame(wifi_apps_t *apps, void *arg)
+int analytics_event_hal_unknown_frame(wifi_app_t *apps, void *arg)
 {
-    return 0;
+    return RETURN_OK;
 }
 
-int analytics_event_hal_mgmt_frame(wifi_apps_t *apps, void *arg)
+int analytics_event_hal_mgmt_frame(wifi_app_t *apps, void *arg)
 {
-    return 0;
+    return RETURN_OK;
 }
 
-int analytics_event_hal_probe_req_frame(wifi_apps_t *apps, void *arg)
+int analytics_event_hal_probe_req_frame(wifi_app_t *apps, void *arg)
 {
-    return 0;
+    return RETURN_OK;
 }
 
-int analytics_event_hal_auth_frame(wifi_apps_t *apps, void *arg)
+int analytics_event_hal_auth_frame(wifi_app_t *apps, void *arg)
 {
-    return 0;
+    return RETURN_OK;
 }
 
-int analytics_event_hal_assoc_req_frame(wifi_apps_t *apps, void *arg)
+int analytics_event_hal_assoc_req_frame(wifi_app_t *apps, void *arg)
 {
-    return 0;
+    return RETURN_OK;
 }
 
-int analytics_event_hal_assoc_rsp_frame(wifi_apps_t *apps, void *arg)
+int analytics_event_hal_assoc_rsp_frame(wifi_app_t *apps, void *arg)
 {
-    return 0;
+    return RETURN_OK;
 }
 
-int analytics_event_hal_reassoc_req_frame(wifi_apps_t *apps, void *arg)
+int analytics_event_hal_reassoc_req_frame(wifi_app_t *apps, void *arg)
 {
-    return 0;
+    return RETURN_OK;
 }
 
-int analytics_event_hal_reassoc_rsp_frame(wifi_apps_t *apps, void *arg)
+int analytics_event_hal_reassoc_rsp_frame(wifi_app_t *apps, void *arg)
 {
-    return 0;
+    return RETURN_OK;
 }
 
-int analytics_event_hal_sta_conn_status(wifi_apps_t *apps, void *arg)
+int analytics_event_hal_sta_conn_status(wifi_app_t *apps, void *arg)
 {
     rdk_sta_data_t *sta_data = (rdk_sta_data_t *)arg;
     char temp_str[128];
 
     if (sta_data == NULL) {
         wifi_util_error_print(WIFI_APPS,"%s:%d: input arg is NULL\n",__func__, __LINE__);
-        return -1;
+        return RETURN_ERR;
     }
 
     memset(temp_str, 0, sizeof(temp_str));
@@ -380,10 +381,10 @@ int analytics_event_hal_sta_conn_status(wifi_apps_t *apps, void *arg)
         break;
     }
 
-    return 0;
+    return RETURN_OK;
 }
 
-int analytics_event_hal_assoc_device(wifi_apps_t *apps, void *arg)
+int analytics_event_hal_assoc_device(wifi_app_t *apps, void *arg)
 {
     char client_mac[32];
     char temp_str[64];
@@ -402,7 +403,7 @@ int analytics_event_hal_assoc_device(wifi_apps_t *apps, void *arg)
 
     wifi_util_info_print(WIFI_ANALYTICS, analytics_format_hal_core, "connect", temp_str);
 
-    sta_map = apps->u.analytics.sta_map;
+    sta_map = apps->data.u.analytics.sta_map;
 
     if ((sta_info = (analytics_sta_info_t *)hash_map_get(sta_map, tmp)) == NULL) {
         sta_info = malloc(sizeof(analytics_sta_info_t));
@@ -414,10 +415,10 @@ int analytics_event_hal_assoc_device(wifi_apps_t *apps, void *arg)
         memcpy(sta_info->sta_mac, assoc_data->dev_stats.cli_MACAddress, sizeof(mac_address_t));
     }
 
-    return 0;
+    return RETURN_OK;
 }
 
-int analytics_event_hal_disassoc_device(wifi_apps_t *apps, void *arg)
+int analytics_event_hal_disassoc_device(wifi_app_t *apps, void *arg)
 {
     char client_mac[32];
     char temp_str[64];
@@ -429,7 +430,7 @@ int analytics_event_hal_disassoc_device(wifi_apps_t *apps, void *arg)
 
     assoc_dev_data_t *assoc_data = (assoc_dev_data_t *)arg;
 
-    sta_map = apps->u.analytics.sta_map;
+    sta_map = apps->data.u.analytics.sta_map;
 
     tmp = (char *)to_mac_str(assoc_data->dev_stats.cli_MACAddress, client_mac);
     sprintf(temp_str, "\"%s\" vap index:%d reason:%d", client_mac, assoc_data->ap_index, assoc_data->reason);
@@ -443,27 +444,27 @@ int analytics_event_hal_disassoc_device(wifi_apps_t *apps, void *arg)
         }
     }
 
-    return 0;
+    return RETURN_OK;
 }
 
-int analytics_event_hal_scan_results(wifi_apps_t *apps, void *arg)
+int analytics_event_hal_scan_results(wifi_app_t *apps, void *arg)
 {
     scan_results_t *results = (scan_results_t *)arg;
     char    str[128] = { 0 };
 
     if (results == NULL) {
         wifi_util_error_print(WIFI_APPS,"%s:%d: input arg is NULL\n",__func__, __LINE__);
-        return -1;
+        return RETURN_ERR;
     }
 
     snprintf(str, sizeof(str), "radio:%u scancount:%d", results->radio_index, results->num);
 
     wifi_util_info_print(WIFI_ANALYTICS, analytics_format_hal_core, "scan results", str);
 
-    return 0;
+    return RETURN_OK;
 }
 
-int analytics_event_hal_channel_change(wifi_apps_t *apps, void *arg)
+int analytics_event_hal_channel_change(wifi_app_t *apps, void *arg)
 {
     char    desc[128] = { 0 };
     wifi_channel_change_event_t *ch = (wifi_channel_change_event_t *)arg;
@@ -472,10 +473,10 @@ int analytics_event_hal_channel_change(wifi_apps_t *apps, void *arg)
 
     wifi_util_info_print(WIFI_ANALYTICS, analytics_format_hal_core, "channel change", desc);
 
-    return 0;
+    return RETURN_OK;
 }
 
-int analytics_event_hal_potential_misconfiguration(wifi_apps_t *apps, void *arg)
+int analytics_event_hal_potential_misconfiguration(wifi_app_t *apps, void *arg)
 {
     probe_ttl_data_t *ttl_data = (probe_ttl_data_t *)arg;
     char temp_str[128];
@@ -483,35 +484,35 @@ int analytics_event_hal_potential_misconfiguration(wifi_apps_t *apps, void *arg)
 
     sprintf(temp_str, "authentication frame not received from mac:\"%s\" after %d frame", ttl_data->mac_str, ttl_data->max_probe_ttl_cnt);
     wifi_util_info_print(WIFI_ANALYTICS, analytics_format_hal_core, "no_auth", temp_str);
-    return 0;
+    return RETURN_OK;
 }
 
-int analytics_event_hal_radius_greylist(wifi_apps_t *apps, void *arg)
+int analytics_event_hal_radius_greylist(wifi_app_t *apps, void *arg)
 {
-    return 0;
+    return RETURN_OK;
 }
 
-int analytics_event_hal_analytics(wifi_apps_t *apps, void *arg)
+int analytics_event_hal_analytics(wifi_app_t *apps, void *arg)
 {
     char *str = (char *)arg;
 
     wifi_util_info_print(WIFI_ANALYTICS, analytics_format_hal_core, "hal incident", str);
-    return 0;
+    return RETURN_OK;
 }
 
-int analytics_event_command_sta_connect(wifi_apps_t *apps, void *arg)
+int analytics_event_command_sta_connect(wifi_app_t *apps, void *arg)
 {
     wifi_util_info_print(WIFI_ANALYTICS, analytics_format_other_core, "sta connect", (*(bool *)arg == true) ? "true":"false");
-    return 0;
+    return RETURN_OK;
 }
 
-int analytics_event_command_factory_reset(wifi_apps_t *apps, void *arg)
+int analytics_event_command_factory_reset(wifi_app_t *apps, void *arg)
 {
     wifi_util_info_print(WIFI_ANALYTICS, analytics_format_core_core, "factory reset", "");
-    return 0;
+    return RETURN_OK;
 }
 
-int analytics_event_wpa3_rfc(wifi_apps_t *apps, void *arg)
+int analytics_event_wpa3_rfc(wifi_app_t *apps, void *arg)
 {
     bool *rfc = (bool *)arg;
     char str[32];
@@ -519,39 +520,39 @@ int analytics_event_wpa3_rfc(wifi_apps_t *apps, void *arg)
 
     sprintf(str, "%s", (*rfc == 1)?"True":"False");
     wifi_util_info_print(WIFI_ANALYTICS, analytics_format_dml_core, "wpa3_rfc", str);
-    return 0;
+    return RETURN_OK;
 }
 
-int analytics_event_command_kickmac(wifi_apps_t *apps, void *arg)
+int analytics_event_command_kickmac(wifi_app_t *apps, void *arg)
 {
-    return 0;
+    return RETURN_OK;
 }
 
-int analytics_event_command_kick_assoc_devices(wifi_apps_t *apps, void *arg)
+int analytics_event_command_kick_assoc_devices(wifi_app_t *apps, void *arg)
 {
     char *str = (char *)arg;
 
     wifi_util_info_print(WIFI_ANALYTICS, analytics_format_dml_core, "kick_mac", str);
-    return 0;
+    return RETURN_OK;
 }
 
-int analytics_event_sta_connect_in_progress(wifi_apps_t *apps, void *arg)
+int analytics_event_sta_connect_in_progress(wifi_app_t *apps, void *arg)
 {
     bss_candidate_t  *candidate = (bss_candidate_t *)arg;
     char temp_str[512];
     mac_addr_str_t bssid_str;
     if (candidate == NULL) {
         wifi_util_error_print(WIFI_APPS,"%s:%d: input arg is NULL\n",__func__, __LINE__);
-        return -1;
+        return RETURN_ERR;
     }
 
     to_mac_str(candidate->external_ap.bssid, bssid_str);
     snprintf(temp_str, sizeof(temp_str), "start connection : bssid:%s", bssid_str);
     wifi_util_info_print(WIFI_ANALYTICS, analytics_format_core_hal, "sta status", temp_str);
-    return 0;
+    return RETURN_OK;
 }
 
-int analytics_event_trigger_disconnection_analytics(wifi_apps_t *apps, void *arg)
+int analytics_event_trigger_disconnection_analytics(wifi_app_t *apps, void *arg)
 {
     vap_svc_ext_t   *ext = (vap_svc_ext_t *)arg;
     char temp_str[512];
@@ -559,32 +560,32 @@ int analytics_event_trigger_disconnection_analytics(wifi_apps_t *apps, void *arg
 
     if (ext == NULL) {
         wifi_util_error_print(WIFI_APPS,"%s:%d: input arg is NULL\n",__func__, __LINE__);
-        return -1;
+        return RETURN_ERR;
     }
 
     to_mac_str(ext->last_connected_bss.external_ap.bssid, bssid_str);
     snprintf(temp_str, sizeof(temp_str), "Triggered Disconnection from vap_index %d bssid:%s", ext->connected_vap_index, bssid_str);
     wifi_util_info_print(WIFI_ANALYTICS, analytics_format_core_hal, "sta status", temp_str);
-    return 0;
+    return RETURN_OK;
 }
 
-int analytics_event_udhcp_ip_fail(wifi_apps_t *apps, void *arg)
+int analytics_event_udhcp_ip_fail(wifi_app_t *apps, void *arg)
 {
     vap_svc_ext_t   *ext = (vap_svc_ext_t *)arg;
     char temp_str[512];
     mac_addr_str_t bssid_str;
     if (ext == NULL) {
         wifi_util_error_print(WIFI_APPS,"%s:%d: input arg is NULL\n",__func__, __LINE__);
-        return -1;
+        return RETURN_ERR;
     }
 
     to_mac_str(ext->last_connected_bss.external_ap.bssid, bssid_str);
     snprintf(temp_str, sizeof(temp_str), "IP FAIL start disconnection on vap_index %d bssid:%s", ext->connected_vap_index, bssid_str);
     wifi_util_info_print(WIFI_ANALYTICS, analytics_format_core_hal, "sta status", temp_str);
-    return 0;
+    return RETURN_OK;
 }
 
-static int analytics_event_new_bssid(wifi_apps_t *apps, void *arg)
+static int analytics_event_new_bssid(wifi_app_t *apps, void *arg)
 {
     char temp_str[512];
     mac_addr_str_t bssid_str;
@@ -592,66 +593,66 @@ static int analytics_event_new_bssid(wifi_apps_t *apps, void *arg)
 
     if (ext == NULL) {
         wifi_util_error_print(WIFI_APPS, "%s:%d: input arg is NULL\n", __func__, __LINE__);
-        return -1;
+        return RETURN_ERR;
     }
 
     to_mac_str(ext->new_bss.external_ap.bssid, bssid_str);
     snprintf(temp_str, sizeof(temp_str), "new bssid : vap_index:%d bssid:%s freq:%d",
         ext->new_bss.vap_index, bssid_str, ext->new_bss.external_ap.freq);
     wifi_util_info_print(WIFI_ANALYTICS, analytics_format_core_hal, "sta status", temp_str);
-    return 0;
+    return RETURN_OK;
 }
 
-int exec_event_analytics(wifi_apps_t *apps, ctrl_event_subtype_t sub_type, void *arg)
+int exec_event_analytics(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *arg)
 {
     switch (sub_type) {
-        case ctrl_event_exec_start:
+        case wifi_event_exec_start:
             analytics_event_exec_start(apps, arg);
             break;
 
-        case ctrl_event_exec_stop:
+        case wifi_event_exec_stop:
             analytics_event_exec_stop(apps, arg);
             break;
 
-        case ctrl_event_exec_timeout:
+        case wifi_event_exec_timeout:
             analytics_event_exec_timeout(apps, arg);
             break;
         default:
             wifi_util_error_print(WIFI_APPS,"%s:%d: event not handle[%d]\r\n",__func__, __LINE__, sub_type);
             break;
     }
-    return 0;
+    return RETURN_OK;
 }
 
-int webconfig_event_analytics(wifi_apps_t *apps, ctrl_event_subtype_t sub_type, void *arg)
+int webconfig_event_analytics(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *arg)
 {
     switch (sub_type) {
-        case ctrl_event_webconfig_set_data:
-        case ctrl_event_webconfig_set_data_dml:
-        case ctrl_event_webconfig_set_data_webconfig:
-        case ctrl_event_webconfig_set_data_ovsm:
-        case ctrl_event_webconfig_data_resched_to_ctrl_queue:
-        case ctrl_event_webconfig_data_to_hal_apply:
-        case ctrl_event_webconfig_data_to_apply_pending_queue:
+        case wifi_event_webconfig_set_data:
+        case wifi_event_webconfig_set_data_dml:
+        case wifi_event_webconfig_set_data_webconfig:
+        case wifi_event_webconfig_set_data_ovsm:
+        case wifi_event_webconfig_data_resched_to_ctrl_queue:
+        case wifi_event_webconfig_data_to_hal_apply:
+        case wifi_event_webconfig_data_to_apply_pending_queue:
             analytics_event_webconfig_set_data(apps, arg, sub_type);
             break;
 
-        case ctrl_event_webconfig_set_status:
+        case wifi_event_webconfig_set_status:
             analytics_event_webconfig_set_status(apps, arg);
             break;
 
-        case ctrl_event_webconfig_hal_result:
+        case wifi_event_webconfig_hal_result:
             analytics_event_webconfig_hal_result(apps, arg);
             break;
 
-        case ctrl_event_webconfig_get_data:
+        case wifi_event_webconfig_get_data:
             analytics_event_webconfig_get_data(apps, arg);
             break;
 
-        case ctrl_event_webconfig_set_data_tunnel:
+        case wifi_event_webconfig_set_data_tunnel:
             analytics_event_webconfig_set_data_tunnel(apps, arg);
             break;
-        case ctrl_event_webconfig_data_req_from_dml:
+        case wifi_event_webconfig_data_req_from_dml:
             analytics_event_webconfig_get_data_for_dmlthread(apps, arg, sub_type);
         break;
         default:
@@ -659,73 +660,73 @@ int webconfig_event_analytics(wifi_apps_t *apps, ctrl_event_subtype_t sub_type, 
             break;
     }
 
-    return 0;
+    return RETURN_OK;
 }
 
-int hal_event_analytics(wifi_apps_t *apps, ctrl_event_subtype_t sub_type, void *arg)
+int hal_event_analytics(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *arg)
 {
     switch (sub_type) {
-        case ctrl_event_hal_unknown_frame:
+        case wifi_event_hal_unknown_frame:
             analytics_event_hal_unknown_frame(apps, arg);
             break;
 
-        case ctrl_event_hal_mgmt_farmes:
+        case wifi_event_hal_mgmt_farmes:
             analytics_event_hal_mgmt_frame(apps, arg);
             break;
 
-        case ctrl_event_hal_probe_req_frame:
+        case wifi_event_hal_probe_req_frame:
             analytics_event_hal_probe_req_frame(apps, arg);
             break;
 
-        case ctrl_event_hal_auth_frame:
+        case wifi_event_hal_auth_frame:
             analytics_event_hal_auth_frame(apps, arg);
             break;
 
-        case ctrl_event_hal_assoc_req_frame:
+        case wifi_event_hal_assoc_req_frame:
             analytics_event_hal_assoc_req_frame(apps, arg);
             break;
 
-        case ctrl_event_hal_assoc_rsp_frame:
+        case wifi_event_hal_assoc_rsp_frame:
             analytics_event_hal_assoc_rsp_frame(apps, arg);
             break;
 
-        case ctrl_event_hal_reassoc_req_frame:
+        case wifi_event_hal_reassoc_req_frame:
             analytics_event_hal_reassoc_req_frame(apps, arg);
             break;
 
-        case ctrl_event_hal_reassoc_rsp_frame:
+        case wifi_event_hal_reassoc_rsp_frame:
             analytics_event_hal_reassoc_rsp_frame(apps, arg);
             break;
 
-        case ctrl_event_hal_sta_conn_status:
+        case wifi_event_hal_sta_conn_status:
             analytics_event_hal_sta_conn_status(apps, arg);
             break;
 
-        case ctrl_event_hal_assoc_device:
+        case wifi_event_hal_assoc_device:
             analytics_event_hal_assoc_device(apps, arg);
             break;
 
-        case ctrl_event_hal_disassoc_device:
+        case wifi_event_hal_disassoc_device:
             analytics_event_hal_disassoc_device(apps, arg);
             break;
 
-        case ctrl_event_scan_results:
+        case wifi_event_scan_results:
             analytics_event_hal_scan_results(apps, arg);
             break;
 
-        case ctrl_event_hal_channel_change:
+        case wifi_event_hal_channel_change:
             analytics_event_hal_channel_change(apps, arg);
             break;
 
-        case ctrl_event_radius_greylist:
+        case wifi_event_radius_greylist:
             analytics_event_hal_radius_greylist(apps, arg);
             break;
 
-        case ctrl_event_hal_potential_misconfiguration:
+        case wifi_event_hal_potential_misconfiguration:
             analytics_event_hal_potential_misconfiguration(apps, arg);
             break;
 
-        case ctrl_event_hal_analytics:
+        case wifi_event_hal_analytics:
             analytics_event_hal_analytics(apps, arg);
             break;
 
@@ -734,96 +735,96 @@ int hal_event_analytics(wifi_apps_t *apps, ctrl_event_subtype_t sub_type, void *
             break;
     }
 
-    return 0;
+    return RETURN_OK;
 }
 
-int command_event_analytics(wifi_apps_t *apps, ctrl_event_subtype_t sub_type, void *arg)
+int command_event_analytics(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *arg)
 {
     switch (sub_type) {
-        case ctrl_event_type_command_sta_connect:
+        case wifi_event_type_command_sta_connect:
             analytics_event_command_sta_connect(apps, arg);
             break;
 
-        case ctrl_event_type_command_factory_reset:
+        case wifi_event_type_command_factory_reset:
             analytics_event_command_factory_reset(apps, arg);
             break;
 
-        case ctrl_event_type_radius_grey_list_rfc:
+        case wifi_event_type_radius_grey_list_rfc:
             break;
 
-        case ctrl_event_type_wifi_passpoint_rfc:
+        case wifi_event_type_wifi_passpoint_rfc:
             break;
 
-        case ctrl_event_type_wifi_interworking_rfc:
+        case wifi_event_type_wifi_interworking_rfc:
             break;
 
-        case ctrl_event_type_wpa3_rfc:
+        case wifi_event_type_wpa3_rfc:
             analytics_event_wpa3_rfc(apps, arg);
             break;
 
-        case ctrl_event_type_ow_core_thread_rfc:
+        case wifi_event_type_ow_core_thread_rfc:
             break;
 
-        case ctrl_event_type_dfs_rfc:
+        case wifi_event_type_dfs_rfc:
             break;
 
-        case ctrl_event_type_dfs_atbootup_rfc:
+        case wifi_event_type_dfs_atbootup_rfc:
             break;
 
-        case ctrl_event_type_command_kickmac:
+        case wifi_event_type_command_kickmac:
             analytics_event_command_kickmac(apps, arg);
             break;
 
-        case ctrl_event_type_command_kick_assoc_devices:
+        case wifi_event_type_command_kick_assoc_devices:
             analytics_event_command_kick_assoc_devices(apps, arg);
             break;
 
-        case ctrl_event_type_command_wps:
+        case wifi_event_type_command_wps:
             break;
 
-        case ctrl_event_type_command_wifi_host_sync:
+        case wifi_event_type_command_wifi_host_sync:
             break;
 
-        case ctrl_event_type_device_network_mode:
+        case wifi_event_type_device_network_mode:
             break;
 
-        case ctrl_event_type_twoG80211axEnable_rfc:
+        case wifi_event_type_twoG80211axEnable_rfc:
             break;
 
-        case ctrl_event_type_command_wifi_neighborscan:
+        case wifi_event_type_command_wifi_neighborscan:
             break;
 
-        case ctrl_event_type_command_mesh_status:
+        case wifi_event_type_command_mesh_status:
             break;
 
-        case ctrl_event_type_normalized_rssi:
+        case wifi_event_type_normalized_rssi:
             break;
 
-        case ctrl_event_type_snr:
+        case wifi_event_type_snr:
             break;
 
-        case ctrl_event_type_cli_stat:
+        case wifi_event_type_cli_stat:
             break;
 
-        case ctrl_event_type_txrx_rate:
+        case wifi_event_type_txrx_rate:
             break;
 
-        case ctrl_event_type_mgmt_frame_rbus_rfc:
+        case wifi_event_type_mgmt_frame_rbus_rfc:
             break;
 
-        case ctrl_event_type_sta_connect_in_progress:
+        case wifi_event_type_sta_connect_in_progress:
             analytics_event_sta_connect_in_progress(apps, arg);
             break;
 
-        case ctrl_event_type_udhcp_ip_fail:
+        case wifi_event_type_udhcp_ip_fail:
             analytics_event_udhcp_ip_fail(apps, arg);
             break;
 
-        case ctrl_event_type_trigger_disconnection_analytics:
+        case wifi_event_type_trigger_disconnection_analytics:
             analytics_event_trigger_disconnection_analytics(apps, arg);
             break;
 
-        case ctrl_event_type_new_bssid:
+        case wifi_event_type_new_bssid:
             analytics_event_new_bssid(apps, arg);
             break;
 
@@ -831,42 +832,50 @@ int command_event_analytics(wifi_apps_t *apps, ctrl_event_subtype_t sub_type, vo
             wifi_util_error_print(WIFI_APPS,"%s:%d: event not handle[%d]\r\n",__func__, __LINE__, sub_type);
             break;
     }
-    return 0;
+    return RETURN_OK;
 }
 
-int wifi_apps_analytics_event(wifi_apps_t *apps, ctrl_event_type_t type, ctrl_event_subtype_t sub_type, void *arg)
+int analytics_event(wifi_app_t *app, wifi_event_t *event)
 {
-    switch (type) {
-        case ctrl_event_type_exec:
-            exec_event_analytics(apps, sub_type, arg);
+    switch (event->event_type) {
+        case wifi_event_type_exec:
+            exec_event_analytics(app, event->sub_type, event->u.analytics_data);
             break;
 
-        case ctrl_event_type_webconfig:
-            webconfig_event_analytics(apps, sub_type, arg);
+        case wifi_event_type_webconfig:
+            webconfig_event_analytics(app, event->sub_type, event->u.analytics_data);
             break;
 
-        case ctrl_event_type_hal_ind:
-            hal_event_analytics(apps, sub_type, arg);
+        case wifi_event_type_hal_ind:
+            hal_event_analytics(app, event->sub_type, event->u.analytics_data);
             break;
 
-        case ctrl_event_type_command:
-            command_event_analytics(apps, sub_type, arg);
+        case wifi_event_type_command:
+            command_event_analytics(app, event->sub_type, event->u.analytics_data);
             break;
 
         default:
             break;
     }
 
-    return 0;
+    return RETURN_OK;
 }
 
-int wifi_apps_analytics_init(wifi_apps_t *apps)
+int analytics_deinit(wifi_app_t *app)
 {
-    apps->u.analytics.tick_demultiplexer = 0;
-    apps->u.analytics.minutes_alive = 0;
-    memset(&apps->u.analytics.last_usage, 0, sizeof(struct rusage));
-    apps->u.analytics.sta_map = hash_map_create();
-    apps->event_fn = wifi_apps_analytics_event;
+    return RETURN_OK;
+}
+
+int analytics_init(wifi_app_t *apps, unsigned int create_flag)
+{
+    if (app_init(apps, create_flag) != 0) {
+        return RETURN_ERR;
+    }
+
+    apps->data.u.analytics.tick_demultiplexer = 0;
+    apps->data.u.analytics.minutes_alive = 0;
+    memset(&apps->data.u.analytics.last_usage, 0, sizeof(struct rusage));
+    apps->data.u.analytics.sta_map = hash_map_create();
 
     wifi_util_info_print(WIFI_ANALYTICS, "@startuml\n");
     wifi_util_info_print(WIFI_ANALYTICS, "hide footbox\n");
@@ -880,5 +889,5 @@ int wifi_apps_analytics_init(wifi_apps_t *apps)
     wifi_util_info_print(WIFI_ANALYTICS, "participant HAL as \"HAL\"\n");
     wifi_util_info_print(WIFI_ANALYTICS, "participant HOSTAP as \"LibHostap\"\n");
 
-    return 0;
+    return RETURN_OK;
 }

@@ -38,7 +38,7 @@ extern "C" {
 #include "wifi_util.h"
 #include "wifi_webconfig.h"
 #if DML_SUPPORT
-#include "wifi_apps.h"
+#include "wifi_apps_mgr.h"
 #endif
 
 #define WIFI_WEBCONFIG_PRIVATESSID         1
@@ -208,9 +208,9 @@ typedef struct wifi_ctrl {
 #endif // DML_SUPPORT
     unsigned int        sta_tree_instance_num;
     vap_svc_t           ctrl_svc[vap_svc_type_max];
-#if DML_SUPPORT
-    wifi_apps_t         fi_apps[wifi_apps_type_max];
-#endif // DML_SUPPORT
+#if CCSP_COMMON
+    wifi_apps_mgr_t      apps_mgr;
+#endif
     rdk_dev_mode_type_t  network_mode; /* 0 - gateway, 1 - extender */
     dev_subtype_t        dev_type;
     bool                active_gw_sta_status;
@@ -222,12 +222,6 @@ typedef struct wifi_ctrl {
     bool                db_consolidated;
 } wifi_ctrl_t;
 
-typedef struct {
-    ctrl_event_type_t     event_type;
-    ctrl_event_subtype_t  sub_type;
-    void *msg;
-    unsigned int len;
-} __attribute__((__packed__)) ctrl_event_t;
 
 typedef struct {
     mac_address_t sta_mac;

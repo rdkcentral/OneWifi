@@ -96,7 +96,7 @@ int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
     return 0;
 }
 
-int vap_svc_private_event(vap_svc_t *svc, ctrl_event_type_t type, ctrl_event_subtype_t sub_type, vap_svc_event_t event, void *arg)
+int vap_svc_private_event(vap_svc_t *svc, wifi_event_type_t type, wifi_event_subtype_t sub_type, vap_svc_event_t event, void *arg)
 {
    return 0;
 }

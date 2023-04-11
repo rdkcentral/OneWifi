@@ -24,6 +24,8 @@
 extern "C" {
 #endif
 
+#include <sys/resource.h>
+
 #define analytics_format_mgr_core    "MGR -> CORE : %s : %s\r\n"
 #define analytics_format_ovsm_core   "OVSM -> CORE : %s : %s\r\n"
 #define analytics_format_core_ovsm   "CORE -> OVSM : %s : %s\r\n"
@@ -36,6 +38,24 @@ extern "C" {
 #define analytics_format_note_over_core "note over CORE : %s\r\n"
 #define analytics_format_core_hal    "CORE -> HAL : %s : %s\r\n"
 #define analytics_format_core_core_reverse   "CORE <- CORE : %s : %s\r\n"
+
+typedef struct wifi_app wifi_app_t;
+
+typedef struct {
+    unsigned int    ap_index;
+    mac_address_t   sta_mac;
+} analytics_sta_info_t;
+
+typedef struct {
+    unsigned int    minutes_alive;
+    unsigned int    tick_demultiplexer;
+    hash_map_t      *sta_map;
+    struct rusage   last_usage;
+} analytics_data_t;
+
+int analytics_init(wifi_app_t *app, unsigned int create_flag);
+int analytics_deinit(wifi_app_t *app);
+int analytics_event(wifi_app_t *app, wifi_event_t *event);
 
 #ifdef __cplusplus
 }

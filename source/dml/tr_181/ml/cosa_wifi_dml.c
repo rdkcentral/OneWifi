@@ -952,7 +952,7 @@ WiFi_SetParamBoolValue
     {
 #if defined (FEATURE_SUPPORT_RADIUSGREYLIST)
         if(bValue != rfc_pcfg->radiusgreylist_rfc) {
-            push_rfc_dml_cache_to_one_wifidb(bValue,ctrl_event_type_radius_grey_list_rfc);
+            push_rfc_dml_cache_to_one_wifidb(bValue,wifi_event_type_radius_grey_list_rfc);
         }
         if(bValue && global_wifi_config->global_parameters.prefer_private) {
             wifi_util_dbg_print(WIFI_DMCLI,"prefer_private is set to false when radiusgreylist is enabled\n");
@@ -976,7 +976,7 @@ WiFi_SetParamBoolValue
     if (AnscEqualString(ParamName, "DFSatBootUp", TRUE))
     {
         if(bValue != rfc_pcfg->dfsatbootup_rfc) {
-            push_rfc_dml_cache_to_one_wifidb(bValue,ctrl_event_type_dfs_atbootup_rfc);
+            push_rfc_dml_cache_to_one_wifidb(bValue,wifi_event_type_dfs_atbootup_rfc);
         }
 		return TRUE;
     }
@@ -984,21 +984,21 @@ WiFi_SetParamBoolValue
     if (AnscEqualString(ParamName, "DFS", TRUE))
     {
         if(bValue != rfc_pcfg->dfs_rfc) {
-            push_rfc_dml_cache_to_one_wifidb(bValue,ctrl_event_type_dfs_rfc);
+            push_rfc_dml_cache_to_one_wifidb(bValue,wifi_event_type_dfs_rfc);
         }
         return TRUE;
     }
     if (AnscEqualString(ParamName, "WPA3_Personal_Transition", TRUE))
     {
         if(bValue != rfc_pcfg->wpa3_rfc){
-            push_rfc_dml_cache_to_one_wifidb(bValue,ctrl_event_type_wpa3_rfc);
+            push_rfc_dml_cache_to_one_wifidb(bValue,wifi_event_type_wpa3_rfc);
         }
         return TRUE;
     }
     if (AnscEqualString(ParamName, "WiFi-Passpoint", TRUE))
     {
         if(bValue != rfc_pcfg->wifipasspoint_rfc) {
-            push_rfc_dml_cache_to_one_wifidb(bValue,ctrl_event_type_wifi_passpoint_rfc);
+            push_rfc_dml_cache_to_one_wifidb(bValue,wifi_event_type_wifi_passpoint_rfc);
         }
         return TRUE;
     }
@@ -1006,7 +1006,7 @@ WiFi_SetParamBoolValue
     {
 #if defined(FEATURE_OFF_CHANNEL_SCAN_5G)
         if(bValue != rfc_pcfg->wifioffchannelscan_rfc) {
-            push_rfc_dml_cache_to_one_wifidb(bValue,ctrl_event_type_wifi_offchannelscan_rfc);
+            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_wifi_offchannelscan_rfc);
         }
         return TRUE;
 #else //FEATURE_OFF_CHANNEL_SCAN_5G
@@ -1016,28 +1016,28 @@ WiFi_SetParamBoolValue
     if (AnscEqualString(ParamName, "WiFi-Interworking", TRUE))
     {
         if(bValue != rfc_pcfg->wifiinterworking_rfc) {
-            push_rfc_dml_cache_to_one_wifidb(bValue,ctrl_event_type_wifi_interworking_rfc);
+            push_rfc_dml_cache_to_one_wifidb(bValue,wifi_event_type_wifi_interworking_rfc);
         }
         return TRUE;
     }
     if (AnscEqualString(ParamName, "OW_Core_Thread", TRUE))
     {
         if(bValue != rfc_pcfg->ow_core_thread_rfc){
-            push_rfc_dml_cache_to_one_wifidb(bValue,ctrl_event_type_ow_core_thread_rfc);
+            push_rfc_dml_cache_to_one_wifidb(bValue,wifi_event_type_ow_core_thread_rfc);
         }
         return TRUE;
     }
     if (AnscEqualString(ParamName, "WiFi_Mgmt_Frame_Rbus_Enable", TRUE))
     {
         if(bValue != rfc_pcfg->mgmt_frame_rbus_enabled_rfc) {
-            push_rfc_dml_cache_to_one_wifidb(bValue, ctrl_event_type_mgmt_frame_rbus_rfc);
+            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_mgmt_frame_rbus_rfc);
         }
         return TRUE;
     }
     if (AnscEqualString(ParamName, "2G80211axEnable", TRUE))
     {
         if(bValue != rfc_pcfg->twoG80211axEnable_rfc) {
-            push_rfc_dml_cache_to_one_wifidb(bValue,ctrl_event_type_twoG80211axEnable_rfc);
+            push_rfc_dml_cache_to_one_wifidb(bValue,wifi_event_type_twoG80211axEnable_rfc);
         }
         return TRUE;
     }
@@ -9483,7 +9483,7 @@ WPS_Commit
     if (vapInfo->u.bss_info.wpsPushButton == true)
     {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:Activate push button for vap %d\n",__func__, __LINE__, wlanIndex);
-        push_data_to_ctrl_queue(&wlanIndex, sizeof(wlanIndex), ctrl_event_type_command, ctrl_event_type_command_wps);
+        push_event_to_ctrl_queue(&wlanIndex, sizeof(wlanIndex), wifi_event_type_command, wifi_event_type_command_wps);
         vapInfo->u.bss_info.wpsPushButton = false;
     }
 
