@@ -136,6 +136,8 @@ typedef void *wifi_analytics_data_t;
 #define MONITOR_RUNNING_INTERVAL_IN_MILLISEC    100
 
 #define MAX_CSI_CLIENTMACLIST_STR  650
+#define CSI_HEADER_SIZE (4 + sizeof(unsigned int) + sizeof(time_t) + (sizeof(unsigned int)) + (1 *((sizeof(unsigned char)*6) + sizeof(unsigned int))))
+
 
 #define MAX_BUF_SIZE 128
 #define DCA_KEY_LEN     32
@@ -208,6 +210,7 @@ typedef struct {
 
 typedef struct {
     mac_address_t   sta_mac;
+    char header[CSI_HEADER_SIZE];
     wifi_csi_data_t csi;
 } __attribute__((packed)) wifi_csi_dev_t;
 

@@ -4243,15 +4243,14 @@ void csi_set_client_mac(char *r_mac_list, int csi_session_number)
     }
 
     strncpy(mac_list, r_mac_list, MAX_CSI_CLIENTMACLIST_STR);
-    csi->no_of_mac = (strlen(mac_list)+1) / (MIN_MAC_LEN + 1);
-    wifi_util_info_print(WIFI_MON, "%s: Total mac's present -  %d %s\n",__func__, csi->no_of_mac, mac_list);
     rest = mac_list;
-    if(csi->no_of_mac > 0)  {
+    if(strlen(mac_list) > 0)  {
         gettimeofday(&t_now, NULL);
         while((mac_tok = strtok_r(rest, ",", &rest))) {
 
             wifi_util_dbg_print(WIFI_MON, "%s: Mac %s\n",__func__, mac_tok);
             str_to_mac_bytes(mac_tok,(unsigned char*)&csi->mac_list[mac_ctr]);
+            csi->no_of_mac++;
             ap_index= getApIndexfromClientMac((char *)&csi->mac_list[mac_ctr]);
             if(ap_index >= 0) {
                 csi->ap_index[mac_ctr] = ap_index;
@@ -4271,6 +4270,7 @@ void csi_set_client_mac(char *r_mac_list, int csi_session_number)
             memcpy(&csi->last_publish_time[i], &t_now, sizeof(struct timeval));
         }
     }
+    wifi_util_info_print(WIFI_MON, "%s: Total mac's present -  %d %s\n",__func__, csi->no_of_mac, r_mac_list);
     pthread_mutex_unlock(&g_events_monitor.lock);
     memset(&data, 0, sizeof(wifi_monitor_data_t));
     data.id = msg_id++;

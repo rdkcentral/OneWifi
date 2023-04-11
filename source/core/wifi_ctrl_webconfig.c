@@ -1706,7 +1706,8 @@ int webconfig_hal_csi_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *
     wifi_mgr_t *mgr = get_wifimgr_obj();
     queue_t *new_config, *current_config;
     new_config = data->csi_data_queue;
-    char tmp_cli_list[128];
+    char *tmp_cli_list;
+    unsigned int tmp_cli_list_size = (19*MAX_NUM_CSI_CLIENTS)+1;
     unsigned int itr, i, current_config_count, new_config_count, itrj, num_unique_mac=0;
     csi_data_t *current_csi_data = NULL, *new_csi_data;
     bool found = false, data_change = false;
@@ -1716,6 +1717,11 @@ int webconfig_hal_csi_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *
 
     if (current_config == NULL) {
         wifi_util_error_print(WIFI_MGR,"%s %d NULL pointer \n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    tmp_cli_list = (char *) malloc(tmp_cli_list_size);
+    if (tmp_cli_list == NULL) {
+        wifi_util_error_print(WIFI_MGR,"%s %d malloc failed\n", __func__, __LINE__);
         return RETURN_ERR;
     }
 
@@ -1777,7 +1783,7 @@ int webconfig_hal_csi_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *
         new_config_count = queue_count(new_config);
         for (itr=0; itr<new_config_count; itr++) {
             new_csi_data = (csi_data_t *)queue_peek(new_config, itr);
-            memset(tmp_cli_list, 0, sizeof(tmp_cli_list));
+            memset(tmp_cli_list, 0, tmp_cli_list_size);
             found = false;
             data_change = false;
             if (current_config != NULL) {
@@ -1827,6 +1833,9 @@ int webconfig_hal_csi_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *
 free_csi_data:
     if (new_config != NULL) {
         queue_destroy(new_config);
+    }
+    if (tmp_cli_list != NULL) {
+        free(tmp_cli_list);
     }
 #endif // DML_SUPPORT
 

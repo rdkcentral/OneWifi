@@ -52,7 +52,9 @@ int g_pid;
 
 rbusHandle_t g_handle;
 rbusEventSubscription_t *g_all_subs = NULL;
+rbusEventSubscription_t *g_csi_sub = NULL;
 int g_sub_total = 0;
+int g_csi_sub_total = 0;
 
 int g_events_list[MAX_EVENTS];
 int g_events_cnt = 0;
@@ -63,6 +65,8 @@ bool g_csi_session_set = false;
 uint32_t g_csi_index = 0;
 int g_clientdiag_interval = 0;
 int g_max_vaps = 0;
+int g_disable_csi_log = 0;
+int g_rbus_direct_enabled = 0;
 
 static void wifievents_get_max_vaps() {
     char const*     paramNames[] = {"Device.WiFi.SSIDNumberOfEntries"};
@@ -80,38 +84,37 @@ static void wifievents_get_max_vaps() {
 
 static void wifievents_consumer_dbg_print(char *format, ...)
 {
-    char buff[2048] = {0};
+    char buff[256] = {0};
     va_list list;
 
     if ((access("/nvram/wifiEventConsumerDbg", R_OK)) != 0)
     {
         return;
     }
-
     snprintf(buff, 12, " pid:%d ", g_pid);
 
+#ifdef LINUX_VM_PORT
+    printf("%s ", buff);
     va_start(list, format);
-    vsprintf(&buff[strlen(buff)], format, list);
+    vprintf (format, list);
     va_end(list);
-
+#else
     if (g_fpg == NULL)
     {
         g_fpg = fopen(g_debug_file_name, "a+");
-        if (g_fpg == NULL)
-        {
+        if (g_fpg == NULL) {
             printf("Failed to open file\n");
             return;
         }
-        else
-        {
-            fputs(buff, g_fpg);
-        }
     }
-    else
-    {
-        fputs(buff, g_fpg);
-    }
+
+    fprintf(g_fpg, "%s ", buff);
+    va_start(list, format);
+    vfprintf(g_fpg, format, list);
+    va_end(list);
     fflush(g_fpg);
+#endif
+    return;
 }
 
 static void diagHandler(rbusHandle_t handle, rbusEvent_t const* event,
@@ -340,13 +343,11 @@ void rotate_and_write_CSIData(mac_address_t sta_mac, wifi_csi_data_t *csi) {
     WIFI_EVENT_CONSUMER_DGB("Exit %s: %d\n", __FUNCTION__, __LINE__);
 }
 
-static void csiDataHandler(rbusHandle_t handle, rbusEvent_t const* event,
-    rbusEventSubscription_t* subscription)
+static void csiDataHandler(rbusHandle_t handle, rbusEventRawData_t const* event, 
+rbusEventSubscription_t* subscription)
 {
-    int len;
     int itr;
-    rbusValue_t csi_data;
-    uint8_t const *data_ptr;
+    char *data_ptr = NULL;
     char csilabel[4];
     unsigned int total_length, num_csi_clients, csi_data_length;
     time_t datetime;
@@ -354,23 +355,18 @@ static void csiDataHandler(rbusHandle_t handle, rbusEvent_t const* event,
     mac_address_t  sta_mac;
     char buf[128] = {0};
 
+    if (g_disable_csi_log) {
+        UNREFERENCED_PARAMETER(handle);
+        return;
+    }
+
     if(!event)
     {
         WIFI_EVENT_CONSUMER_DGB("Invalid Event Received %s", subscription->eventName);
         return;
     }
     
-    csi_data = rbusObject_GetValue(event->data, subscription->eventName);
-    if(!csi_data) {
-        WIFI_EVENT_CONSUMER_DGB("Invalid csi data Received");
-        return;
-    }
-
-    data_ptr = rbusValue_GetBytes(csi_data, &len);
-    if(!data_ptr) {
-        WIFI_EVENT_CONSUMER_DGB("Invalid csi data Received");
-        return;
-    }
+    data_ptr = (char *)event->rawData;
 
     //ASCII characters "CSI"
     memcpy(csilabel, data_ptr, 4);
@@ -526,13 +522,27 @@ static int fillSubscribtion(int index, char *name, int event_index)
     }
     g_all_subs[index].eventName = malloc(strlen(name) + 1);
     memcpy((char *)g_all_subs[index].eventName, name, strlen(name) + 1);
-
     g_all_subs[index].handler = g_subscriptions[event_index].handler;
-
     g_all_subs[index].userData = NULL;
     g_all_subs[index].filter = NULL;
     g_all_subs[index].handle = NULL;
     g_all_subs[index].asyncHandler = NULL;
+    return 0;
+}
+
+static int fillCsiSubscribtion(int index, char *name, int event_index)
+{
+    if(name==NULL)
+    {
+        return -1;
+    }
+    g_csi_sub[index].eventName = malloc(strlen(name) + 1);
+    memcpy((char *)g_csi_sub[index].eventName, name, strlen(name) + 1);
+    g_csi_sub[index].handler = g_subscriptions[event_index].handler;
+    g_csi_sub[index].userData = NULL;
+    g_csi_sub[index].filter = NULL;
+    g_csi_sub[index].handle = NULL;
+    g_csi_sub[index].asyncHandler = NULL;
     return 0;
 }
 
@@ -570,7 +580,9 @@ static bool parseArguments(int argc, char **argv)
                 "-i [csi data interval] - default %dms min %d max %d\n"
                 "-c [client diag interval] - default %dms\n"
                 "-f [debug file name] - default /tmp/wifiEventConsumer\n"
-                "Example: wifi_events_consumer -e 1,2,3,7 -s 1 -v 1,2,13,14\n", DEFAULT_CSI_INTERVAL, MIN_CSI_INTERVAL, MAX_CSI_INTERVAL, DEFAULT_CLIENTDIAG_INTERVAL);
+                "Example: wifi_events_consumer -e 1,2,3,7 -s 1 -v 1,2,13,14\n"
+                "touch /nvram/wifiEventsAppCSILogDisable to disable CSI detail log\n"
+                "touch /nvram/wifiEventsAppCSIRBUSDirect to enable RBUS Direct for CSI data\n", DEFAULT_CSI_INTERVAL, MIN_CSI_INTERVAL, MAX_CSI_INTERVAL, DEFAULT_CLIENTDIAG_INTERVAL);
                 exit(0);
                 break;
             case 'e':
@@ -647,6 +659,14 @@ static void termSignalHandler(int sig)
 
         free(g_all_subs);
     }
+    if (g_csi_sub_total)
+    {
+        rbusEvent_UnsubscribeExRawData(g_handle, g_csi_sub, g_csi_sub_total);
+        for (i = 0; i < g_csi_sub_total; i++)
+            freeSubscription(&g_csi_sub[i]);
+
+        free(g_csi_sub);
+    }
 
     if (!g_events_cnt || (!g_csi_session_set && isCsiEventSet()))
     {
@@ -671,7 +691,8 @@ int main(int argc, char *argv[])
     char name[RBUS_MAX_NAME_LENGTH];
     int i, j, vaps_subsribe;
     int rc = RBUS_ERROR_SUCCESS;
-    int sub_index = 0;
+    int sub_index = 0, csi_sub_index = 0;
+    rbusHandle_t directHandle = NULL;
 
     /* Add pid to rbus component name */
     g_pid = getpid();
@@ -706,6 +727,17 @@ int main(int argc, char *argv[])
     sigaction(SIGTERM, &new_action, NULL);
     sigaction(SIGINT, &new_action, NULL);
 
+    if(access("/nvram/wifiEventsAppCSILogDisable" ,R_OK) == 0)
+    {
+        printf("consumer: CSI log disabled\n");
+        g_disable_csi_log = 1;
+    }
+    if(access("/nvram/wifiEventsAppCSIRBUSDirect" ,R_OK) == 0)
+    {
+        printf("consumer: RBUS Direct enabled for CSI data\n");
+        g_rbus_direct_enabled = 1;
+    }
+
     for (i = 0; i < MAX_EVENTS; i++)
     {
         if (g_events_cnt && !g_events_list[i])
@@ -722,10 +754,12 @@ int main(int argc, char *argv[])
                 g_sub_total += g_vaps_cnt ? g_vaps_cnt : g_max_vaps;
                 break;
             case 5: /* Device.WiFi.X_RDK_CSI.{i}.ClientMaclist */
-            case 6: /* Device.WiFi.X_RDK_CSI.{i}.data */
             case 7: /* Device.WiFi.X_RDK_CSI.{i}.Enable */
             case 8: /* Device.WiFi.X_RDK_CSI_LEVL.data */
                 g_sub_total++;
+                break;
+            case 6: /* Device.WiFi.X_RDK_CSI.{i}.data */
+                g_csi_sub_total++;
                 break;
         }
     }
@@ -741,21 +775,29 @@ int main(int argc, char *argv[])
         }
     }
 
-    g_all_subs = malloc(sizeof(rbusEventSubscription_t) * g_sub_total);
-    if (!g_all_subs)
-    {
-        printf("Failed to alloc memory\n");
-        goto exit1;
+    if (g_sub_total > 0) {
+        g_all_subs = malloc(sizeof(rbusEventSubscription_t) * g_sub_total);
+        if (!g_all_subs)
+        {
+            printf("Failed to alloc memory\n");
+            goto exit1;
+        }
+
+        memset(g_all_subs, 0, (sizeof(rbusEventSubscription_t) * g_sub_total));
     }
 
-    memset(g_all_subs, 0, (sizeof(rbusEventSubscription_t) * g_sub_total));
+    if (g_csi_sub_total > 0) {        
+        g_csi_sub = (rbusEventSubscription_t *)malloc(sizeof(rbusEventSubscription_t)*g_csi_sub_total);
+        if (!g_csi_sub)
+        {
+            printf("Failed to alloc memory\n");
+            goto exit1;
+        }
+        memset(g_csi_sub, 0, sizeof(rbusEventSubscription_t)*g_csi_sub_total);
+    }
 
     for (i = 0; i < MAX_EVENTS; i++)
     {
-        /* Should not happen */
-        if (g_sub_total == sub_index)
-            break;
-
         if (g_events_cnt && !g_events_list[i])
             continue;
 
@@ -776,6 +818,7 @@ int main(int argc, char *argv[])
                     WIFI_EVENT_CONSUMER_DGB("Add subscription %s", name);
                     fillSubscribtion(sub_index, name, i);
                     sub_index++;
+                    
                 }
                 break;
             case 1: /* Device.WiFi.AccessPoint.{i}.X_RDK_deviceConnected*/
@@ -794,16 +837,16 @@ int main(int argc, char *argv[])
                 break;
             case 6: /* Device.WiFi.X_RDK_CSI.{i}.data */
                 if (g_csi_interval) {
-                    g_all_subs[sub_index].interval = g_csi_interval;
+                    g_csi_sub[csi_sub_index].interval = g_csi_interval;
                 }
                 else {
-                    g_all_subs[sub_index].interval = DEFAULT_CSI_INTERVAL;
+                    g_csi_sub[csi_sub_index].interval = DEFAULT_CSI_INTERVAL;
                 }
 
                 snprintf(name, RBUS_MAX_NAME_LENGTH, g_subscriptions[i].eventName, g_csi_index);
                 WIFI_EVENT_CONSUMER_DGB("Add subscription %s", name);
-                fillSubscribtion(sub_index, name, i);
-                sub_index++;
+                fillCsiSubscribtion(csi_sub_index, name, i);
+                csi_sub_index++;
                 break;
             case 5: /* Device.WiFi.X_RDK_CSI.{i}.ClientMaclist */
             case 7: /* Device.WiFi.X_RDK_CSI.{i}.Enable */
@@ -823,17 +866,52 @@ int main(int argc, char *argv[])
         }
     }
 
-    rc = rbusEvent_SubscribeEx(g_handle, g_all_subs, g_sub_total, 0);
-    if(rc != RBUS_ERROR_SUCCESS)
-    {
-        printf("consumer: rbusEvent_Subscribe failed: %d\n", rc);
-        goto exit2;
+    if (g_sub_total) {
+        rc = rbusEvent_SubscribeEx(g_handle, g_all_subs, g_sub_total, 0);
+        if(rc != RBUS_ERROR_SUCCESS)
+        {
+            printf("consumer: rbusEvent_Subscribe failed: %d\n", rc);
+            goto exit2;
+        }
     }
 
+    if (g_csi_sub_total) {
+        rc = rbusEvent_SubscribeExRawData(g_handle, g_csi_sub, g_csi_sub_total, 0);
+        if(rc != RBUS_ERROR_SUCCESS)
+        {
+            printf("consumer: rbusEvent_SubscribeExNoCopy failed: %d\n", rc);
+            goto exit3;
+        }
+    }
+
+    if (g_rbus_direct_enabled) {
+        for (i=0; i<g_csi_sub_total; i++) {
+            if (strstr(g_csi_sub[i].eventName, "X_RDK_CSI") != NULL &&
+                    strstr(g_csi_sub[i].eventName, "data") != NULL) {
+                rc = rbus_openDirect(g_handle, &directHandle, g_csi_sub[i].eventName);
+                if(rc != RBUS_ERROR_SUCCESS) {
+                    printf("consumer: rbus_openDirect failed: %d, eventName '%s'\n", rc, g_csi_sub[i].eventName);
+                    goto exit3;
+                }
+            }
+        }
+    }
     while(1)
     {
-        sleep(5);
+        sleep(1024);
     }
+
+exit3:
+    if (g_csi_sub_total)
+    {
+        rbusEvent_UnsubscribeExRawData(g_handle, g_csi_sub, g_csi_sub_total);
+        for (i = 0; i < g_csi_sub_total; i++)
+        {
+            freeSubscription(&g_csi_sub[i]);
+        }
+        free(g_csi_sub);
+    }
+
 
 exit2:
     if (g_all_subs)
@@ -858,7 +936,6 @@ exit:
     printf("consumer: exit\n");
 
     rbus_close(g_handle);
-
     if (g_fpg)
     {
         fclose(g_fpg);

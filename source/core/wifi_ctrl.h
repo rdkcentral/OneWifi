@@ -58,9 +58,9 @@ extern "C" {
 #define RFC_WIFI_WPA3               "Wifi_WPA3"
 #define RFC_WIFI_OW_CORE_THREAD     "Wifi_OW_Core_Thread"
 
-#define CSI_CLIENT_PER_SESSION 5
-#define MAX_NUM_CSI_CLIENTS         3
-#define MAX_LEVL_CSI_CLIENTS 3
+#define CSI_CLIENT_PER_SESSION      5
+#define MAX_NUM_CSI_CLIENTS         5
+#define MAX_LEVL_CSI_CLIENTS        5
 
 #define RSSI_THRESHOLD                     "RssiThresholdValue"
 #define RECONNECT_COUNT_STATUS             "ReconnectCountStatus"

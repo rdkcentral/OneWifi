@@ -2378,10 +2378,11 @@ int events_rbus_publish(wifi_event_t *evt)
     }
 
     pthread_mutex_lock(&ctrl->events_rbus_data.events_rbus_lock);
-    rbusValue_Init(&value);
-    rbusObject_Init(&rdata, NULL);
-
-    wifi_util_info_print(WIFI_CTRL, "%s(): rbusEvent_Publish Event %d\n", __FUNCTION__, evt->sub_type);
+    if (evt->sub_type != wifi_event_monitor_csi) {
+        rbusValue_Init(&value);
+        rbusObject_Init(&rdata, NULL);
+        wifi_util_info_print(WIFI_CTRL, "%s(): rbusEvent_Publish Event %d\n", __FUNCTION__, evt->sub_type);
+    }
 
     switch(evt->sub_type)
     {
@@ -2416,46 +2417,45 @@ int events_rbus_publish(wifi_event_t *evt)
         break;
         case wifi_event_monitor_csi:
             {
-                char buffer[(strlen("CSI") + 1) + sizeof(unsigned int) + sizeof(time_t) + (sizeof(unsigned int)) + (1 *(sizeof(mac_addr_t) + sizeof(unsigned int) + sizeof(wifi_csi_dev_t)))];
-                unsigned int total_length, num_csi_clients, csi_data_lenght;
+                //Construct Header.
+                unsigned int total_length, num_csi_clients, csi_data_length, curr_length = 0;
                 time_t datetime;
-                char *pbuffer = (char *)buffer;
+                char *header = evt->u.mon_data->u.csi.header;
 
                 sprintf(eventName, "Device.WiFi.X_RDK_CSI.%d.data", evt->u.mon_data->csi_session);
 
-                //ASCII characters "CSI"
-                memcpy(pbuffer,"CSI", (strlen("CSI") + 1));
-                pbuffer = pbuffer + (strlen("CSI") + 1);
+                memcpy(header,"CSI", (strlen("CSI") + 1));
+                curr_length = curr_length + strlen("CSI") + 1;
 
-                //Total length:  <length of this entire data field as an unsigned int>
                 total_length = sizeof(time_t) + (sizeof(unsigned int)) + (1 *(sizeof(mac_addr_t) + sizeof(unsigned int) + sizeof(wifi_csi_data_t)));
-                memcpy(pbuffer, &total_length, sizeof(unsigned int));
-                pbuffer = pbuffer + sizeof(unsigned int);
+                memcpy((header + curr_length), &total_length, sizeof(unsigned int));
+                curr_length = curr_length + sizeof(unsigned int);
 
-                //DataTimeStamp:  <date-time, number of seconds since the Epoch>
                 datetime = time(NULL);
-                memcpy(pbuffer, &datetime, sizeof(time_t));
-                pbuffer = pbuffer + sizeof(time_t);
+                memcpy((header + curr_length), &datetime, sizeof(time_t));
+                curr_length = curr_length + sizeof(time_t);
 
-                //NumberOfClients:  <unsigned int number of client devices>
                 num_csi_clients = 1;
-                memcpy(pbuffer, &num_csi_clients, sizeof(unsigned int));
-                pbuffer = pbuffer + sizeof(unsigned int);
+                memcpy((header + curr_length), &num_csi_clients, sizeof(unsigned int));
+                curr_length = curr_length + sizeof(unsigned int);
 
-                //clientMacAddress:  <client mac address>
-                memcpy(pbuffer, &evt->u.mon_data->u.csi.sta_mac, sizeof(mac_addr_t));
-                pbuffer = pbuffer + sizeof(mac_addr_t);
+                memcpy((header + curr_length), evt->u.mon_data->u.csi.sta_mac, sizeof(mac_addr_t));
+                curr_length = curr_length + sizeof(mac_addr_t);
 
-                //length of client CSI data:  <size of the next field in bytes>
-                csi_data_lenght = sizeof(wifi_csi_data_t);
-                memcpy(pbuffer, &csi_data_lenght, sizeof(unsigned int));
-                pbuffer = pbuffer + sizeof(unsigned int);
+                csi_data_length = sizeof(wifi_csi_data_t);
+                memcpy((header + curr_length), &csi_data_length, sizeof(unsigned int));
 
-                //<client device CSI data>
-                memcpy(pbuffer, &evt->u.mon_data->u.csi.csi, sizeof(wifi_csi_data_t));
+                int buffer_size = CSI_HEADER_SIZE + sizeof(wifi_csi_data_t);
 
-                rbusValue_SetBytes(value, (uint8_t*)buffer, sizeof(buffer));
-                should_publish = TRUE;
+                //Publish using new API
+                rbusEventRawData_t event_data;
+                event_data.name  = eventName;
+                event_data.rawData = &evt->u.mon_data->u.csi.header;
+                event_data.rawDataLen = buffer_size;
+                rbusEvent_PublishRawData(ctrl->rbus_handle, &event_data);
+
+                pthread_mutex_unlock(&ctrl->events_rbus_data.events_rbus_lock);
+                return 0;
 
             }
         break;
