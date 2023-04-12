@@ -1281,12 +1281,12 @@ int wifi_mgr_rbus_subsription(rbusHandle_t *rbus_handle)
 
     wifi_util_dbg_print(WIFI_MGR,"%s:%d rbus open success\n", __func__, __LINE__);
 
-    if (rbusEvent_Subscribe(*rbus_handle, WIFI_PSM_DB_NAMESPACE, rbus_subscription_handler, NULL, 0) != RBUS_ERROR_SUCCESS) {
+    /*if (rbusEvent_Subscribe(*rbus_handle, WIFI_PSM_DB_NAMESPACE, rbus_subscription_handler, NULL, 0) != RBUS_ERROR_SUCCESS) {
         wifi_util_dbg_print(WIFI_MGR,"%s:%d Rbus event:%s subscribe failed\n",__FUNCTION__, __LINE__, WIFI_PSM_DB_NAMESPACE);
         return RETURN_ERR;
     } else {
         wifi_util_dbg_print(WIFI_MGR,"%s:%d Rbus event:%s subscribe success\n",__FUNCTION__, __LINE__, WIFI_PSM_DB_NAMESPACE);
-    }
+    }*/
 
     if (rbusEvent_Subscribe(*rbus_handle, LAST_REBOOT_REASON_NAMESPACE, rbus_subscription_handler, NULL, 0) != RBUS_ERROR_SUCCESS) {
         wifi_util_dbg_print(WIFI_MGR,"%s:%d Rbus event:%s subscribe failed\n",__FUNCTION__, __LINE__, LAST_REBOOT_REASON_NAMESPACE);
