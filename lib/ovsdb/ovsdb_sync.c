@@ -52,11 +52,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /* OVSDB response buffers can be HUGE */
 static char ovsdb_write_buf[256*1024];
 
-#define PERSISTENT_DB_BACKUP      "/nvram/wifi/rdkb-wifi.db"
+#define PERSISTENT_DB_BACKUP      "/opt/secure/wifi/rdkb-wifi.db"
 #define PERSISTENT_DB_BACKUP_TMP  PERSISTENT_DB_BACKUP".tmp"
+#define UNSECURE_DB               "/nvram/wifi/rdkb-wifi.db"
 
 #define BACKUP_SNAPSHOT_CMD    "ovsdb-client backup " OVSDB_DEF_DB " > " PERSISTENT_DB_BACKUP_TMP
 #define BACKUP_SAVE_CMD        "mv " PERSISTENT_DB_BACKUP_TMP " " PERSISTENT_DB_BACKUP
+#define UNSECURE_DB_SAVE_CMD      "cp " PERSISTENT_DB_BACKUP " " UNSECURE_DB
 
 /**
  * Callback for json_dump_callback() -- called from ovsb_write_s()
@@ -117,7 +119,7 @@ static bool ovsdb_backup()
         need to write to the temporary file on the same filesystem first,
         then use mv to a persistent DB file, which is less probably be interrupted
      */
-    status = exec_cmd(BACKUP_SNAPSHOT_CMD) && exec_cmd(BACKUP_SAVE_CMD);
+    status = exec_cmd(BACKUP_SNAPSHOT_CMD) && exec_cmd(BACKUP_SAVE_CMD) && exec_cmd(UNSECURE_DB_SAVE_CMD);
     pthread_mutex_unlock(&backup_lock);
 
     return status;

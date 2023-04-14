@@ -1753,6 +1753,7 @@ void process_factory_reset_command(bool type)
         system("killall -9 wifidb-server");
     }
     system("rm -f /nvram/wifi/rdkb-wifi.db");
+    system("rm -f /opt/secure/wifi/rdkb-wifi.db");
     wifidb_cleanup();
     if (!db_consolidated) {
         start_wifidb();
