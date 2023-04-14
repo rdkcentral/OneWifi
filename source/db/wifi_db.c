@@ -4482,57 +4482,90 @@ void init_wifidb_data()
     wifi_util_dbg_print(WIFI_DB,"%s:%d No of radios %d\n",__func__, __LINE__,getNumberRadios());
 
     //Check for the number of radios
-    if (num_radio > MAX_NUM_RADIOS)
-    {
+    if (num_radio > MAX_NUM_RADIOS) {
         wifi_util_dbg_print(WIFI_DB,"WIFI %s : Number of Radios %d exceeds supported %d Radios \n",__FUNCTION__, getNumberRadios(), MAX_NUM_RADIOS);
         return;
     }
     wifidb_init_default_value();
+
 #if DML_SUPPORT
-    if (wifidb_get_rfc_config(0,rfc_param) != 0) {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d: Error getting RFC config\n",__func__, __LINE__);
-    }
-#endif // DML_SUPPORT
-    pthread_mutex_lock(&g_wifidb->data_cache_lock);
-    for (r_index = 0; r_index < num_radio; r_index++)
-    {
-        l_vap_param_cfg = get_wifidb_vap_map(r_index);
-        if(l_vap_param_cfg == NULL)
-        {
-            wifi_util_dbg_print(WIFI_DB,"%s:%d: invalid get_wifidb_vap_map \n",__func__, __LINE__);
-            return;
-        }
-        l_rdk_vap_param_cfg = get_wifidb_rdk_vaps(r_index);
-        if (l_rdk_vap_param_cfg == NULL)
-        {
-            wifi_util_dbg_print(WIFI_DB,"%s:%d: invalid get_wifidb_rdk_vaps \n",__func__, __LINE__);
-            return;
-        }
-        l_radio_cfg = get_wifidb_radio_map(r_index);
-        if(l_radio_cfg == NULL)
-        {
-            wifi_util_dbg_print(WIFI_DB,"%s:%d: invalid get_wifidb_radio_map \n",__func__, __LINE__);
-            return;
-        }
-        f_radio_cfg = get_wifidb_radio_feat_map(r_index);
-        if(f_radio_cfg == NULL)
-        {
-            wifi_util_dbg_print(WIFI_DB,"%s:%d: %d invalid get_wifidb_radio_feat_map \n",__func__, __LINE__, r_index);
-            return;
-        }
-        wifidb_get_wifi_radio_config(r_index, l_radio_cfg, f_radio_cfg);
-        if (wifidb_get_wifi_vap_config(r_index, l_vap_param_cfg, l_rdk_vap_param_cfg) == -1) {
-            wifidb_print("%s:%d wifidb_get_wifi_vap_config failed\n",__func__, __LINE__);
+    if ((access(ONEWIFI_FR_REBOOT_FLAG, F_OK) == 0) && (access(ONEWIFI_FR_WIFIDB_RESET_DONE_FLAG, F_OK) != 0)) {
+        wifidb_update_rfc_config(0, rfc_param);
+        pthread_mutex_lock(&g_wifidb->data_cache_lock);
+        for (r_index = 0; r_index < num_radio; r_index++) {
+            l_radio_cfg = get_wifidb_radio_map(r_index);
+            if(l_radio_cfg == NULL) {
+                wifi_util_dbg_print(WIFI_DB,"%s:%d: invalid get_wifidb_radio_map \n",__func__, __LINE__);
+                return;
+            }
+            l_rdk_vap_param_cfg = get_wifidb_rdk_vaps(r_index);
+            if (l_rdk_vap_param_cfg == NULL) {
+                wifi_util_dbg_print(WIFI_DB,"%s:%d: invalid get_wifidb_rdk_vaps \n",__func__, __LINE__);
+                return;
+            }
+            l_vap_param_cfg = get_wifidb_vap_map(r_index);
+            if(l_vap_param_cfg == NULL) {
+                wifi_util_dbg_print(WIFI_DB,"%s:%d: invalid get_wifidb_vap_map \n",__func__, __LINE__);
+                return;
+            }
+            f_radio_cfg = get_wifidb_radio_feat_map(r_index);
+            if(f_radio_cfg == NULL) {
+                wifi_util_dbg_print(WIFI_DB,"%s:%d: %d invalid get_wifidb_radio_feat_map \n",__func__, __LINE__, r_index);
+                return;
+            }
+            wifidb_update_wifi_radio_config(r_index, l_radio_cfg, f_radio_cfg);
             wifidb_update_wifi_vap_config(r_index, l_vap_param_cfg, l_rdk_vap_param_cfg);
         }
-        wifidb_radio_config_upgrade(r_index, l_radio_cfg, f_radio_cfg);
-        wifidb_vap_config_upgrade(l_vap_param_cfg, l_rdk_vap_param_cfg);
-        wifidb_vap_config_ext(l_vap_param_cfg, l_rdk_vap_param_cfg);
+        wifidb_update_wifi_global_config(&g_wifidb->global_config.global_parameters);
+        wifidb_update_gas_config(g_wifidb->global_config.gas_config.AdvertisementID, &g_wifidb->global_config.gas_config);
+        pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+        remove_onewifi_factory_reset_reboot_flag();
+        create_onewifi_fr_wifidb_reset_done_flag();
+        wifi_util_info_print(WIFI_DB,"%s:%d FactoryReset done. wifidb updated with default values.\n",__func__, __LINE__);
     }
-    wifidb_get_wifi_macfilter_config();
-    wifidb_get_wifi_global_config(&g_wifidb->global_config.global_parameters);
-    wifidb_get_gas_config(g_wifidb->global_config.gas_config.AdvertisementID,&g_wifidb->global_config.gas_config);
-    pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+    else {
+        if (wifidb_get_rfc_config(0,rfc_param) != 0) {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: Error getting RFC config\n",__func__, __LINE__);
+        }
+#endif // DML_SUPPORT
+        pthread_mutex_lock(&g_wifidb->data_cache_lock);
+        for (r_index = 0; r_index < num_radio; r_index++) {
+            l_vap_param_cfg = get_wifidb_vap_map(r_index);
+            if(l_vap_param_cfg == NULL) {
+                wifi_util_dbg_print(WIFI_DB,"%s:%d: invalid get_wifidb_vap_map \n",__func__, __LINE__);
+                return;
+            }
+            l_rdk_vap_param_cfg = get_wifidb_rdk_vaps(r_index);
+            if (l_rdk_vap_param_cfg == NULL) {
+                wifi_util_dbg_print(WIFI_DB,"%s:%d: invalid get_wifidb_rdk_vaps \n",__func__, __LINE__);
+                return;
+            }
+            l_radio_cfg = get_wifidb_radio_map(r_index);
+            if(l_radio_cfg == NULL) {
+                wifi_util_dbg_print(WIFI_DB,"%s:%d: invalid get_wifidb_radio_map \n",__func__, __LINE__);
+                return;
+            }
+            f_radio_cfg = get_wifidb_radio_feat_map(r_index);
+            if(f_radio_cfg == NULL) {
+                wifi_util_dbg_print(WIFI_DB,"%s:%d: %d invalid get_wifidb_radio_feat_map \n",__func__, __LINE__, r_index);
+                return;
+            }
+            wifidb_get_wifi_radio_config(r_index, l_radio_cfg, f_radio_cfg);
+            if (wifidb_get_wifi_vap_config(r_index, l_vap_param_cfg, l_rdk_vap_param_cfg) == -1) {
+                wifidb_print("%s:%d wifidb_get_wifi_vap_config failed\n",__func__, __LINE__);
+                wifidb_update_wifi_vap_config(r_index, l_vap_param_cfg, l_rdk_vap_param_cfg);
+            }
+            wifidb_radio_config_upgrade(r_index, l_radio_cfg, f_radio_cfg);
+            wifidb_vap_config_upgrade(l_vap_param_cfg, l_rdk_vap_param_cfg);
+            wifidb_vap_config_ext(l_vap_param_cfg, l_rdk_vap_param_cfg);
+        }
+        wifidb_get_wifi_macfilter_config();
+        wifidb_get_wifi_global_config(&g_wifidb->global_config.global_parameters);
+        wifidb_get_gas_config(g_wifidb->global_config.gas_config.AdvertisementID,&g_wifidb->global_config.gas_config);
+        pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+#if DML_SUPPORT
+    }
+#endif // DML_SUPPORT
 
     wifi_util_dbg_print(WIFI_DB,"%s:%d Wifi data init complete\n",__func__, __LINE__);
     db_param_init = true;

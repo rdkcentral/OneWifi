@@ -632,6 +632,28 @@ void remove_onewifi_migration_flag()
     remove(ONEWIFI_MIGRATION_FLAG);
 }
 
+/*
+ * This function creates a file flag to reset wifidb data
+ * when Factory Reset with reboot was executed
+ */
+void create_onewifi_factory_reset_reboot_flag() {
+    FILE *fp=fopen(ONEWIFI_FR_REBOOT_FLAG, "a");
+    if (fp != NULL) {
+        fclose(fp);
+    }
+}
+
+void remove_onewifi_factory_reset_reboot_flag() {
+    remove(ONEWIFI_FR_REBOOT_FLAG);
+}
+
+void create_onewifi_fr_wifidb_reset_done_flag() {
+    FILE *fp=fopen(ONEWIFI_FR_WIFIDB_RESET_DONE_FLAG, "a");
+    if (fp != NULL) {
+        fclose(fp);
+    }
+}
+
 bool str_is_mac_address(const char *mac)
 {
     int i;

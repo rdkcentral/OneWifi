@@ -52,6 +52,8 @@ extern "C"
 #endif
 #define ONEWIFI_FR_FLAG  "/nvram/wifi/onewifi_factory_reset_flag"
 #define ONEWIFI_MIGRATION_FLAG "/nvram/wifi_db_update_required"
+#define ONEWIFI_FR_REBOOT_FLAG "/tmp/onewifi_factory_reset_reboot_flag"
+#define ONEWIFI_FR_WIFIDB_RESET_DONE_FLAG "/tmp/onewifi_fr_wifidb_reset_done_flag"
 int csnprintf(char **str, size_t *size, const char *fmt, ...);
 #define append_snprintf csnprintf
 int tsnprintf(char *str, size_t size, const char *fmt, ...) __attribute__((format(printf, 3, 4)));

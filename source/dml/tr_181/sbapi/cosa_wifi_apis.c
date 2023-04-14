@@ -2075,7 +2075,6 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
         return FALSE;
     }
 
-    //create_onewifi_factory_reset_flag();
     create_onewifi_factory_reset_flag();
     wifi_util_info_print(WIFI_MGR,"%s FactoryReset is done and preferPprivate=%d \n",__func__, global_wifi_config->global_parameters.prefer_private);
     if (global_wifi_config->global_parameters.prefer_private) {
