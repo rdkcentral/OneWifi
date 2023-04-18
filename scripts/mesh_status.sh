@@ -104,7 +104,11 @@ else
  fi
 fi
 
-VIF_CONFIG_CHECK=`/usr/plume/tools/ovsh s Wifi_VIF_Config -w ssid==we.connect.yellowstone`
+if [ "$OPENSYNC_ENABLE" == "true" ] && [ -d "/sys/module/openvswitch" ];then
+ VIF_CONFIG_CHECK=`/usr/opensync/tools/ovsh s Wifi_VIF_Config -w ssid==we.connect.yellowstone`
+else
+ VIF_CONFIG_CHECK=`/usr/plume/tools/ovsh s Wifi_VIF_Config -w ssid==we.connect.yellowstone`
+fi
 if [ "$VIF_CONFIG_CHECK" != "" ] && [ "$pod_mac" != "" ]; then
     SSID_NAME_12=`dmcli eRT getv Device.WiFi.SSID.13.SSID | grep value | awk '{print $5}'`
     SSID_NAME_13=`dmcli eRT getv Device.WiFi.SSID.14.SSID | grep value | awk '{print $5}'`
