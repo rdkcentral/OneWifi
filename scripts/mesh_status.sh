@@ -69,9 +69,9 @@ done
 #Ethernet Pod
 OPENSYNC_ENABLE=`syscfg get opensync`
 if [ "$OPENSYNC_ENABLE" == "true" ];then
- pod_mac=`/usr/opensync/tools/ovsh s Node_Config | grep -i value | cut -d'|' -f2`
+ pod_mac=`/usr/opensync/tools/ovsh s Node_Config -w module==eth | grep -i value | cut -d'|' -f2`
 else
- pod_mac=`/usr/plume/tools/ovsh s Node_Config | grep -i value | cut -d'|' -f2`
+ pod_mac=`/usr/plume/tools/ovsh s Node_Config -w module==eth | grep -i value | cut -d'|' -f2`
 fi
 for i in $(echo $pod_mac | sed "s/,/ /g"); do
  podmac2=$(echo $i | sed 's/\(..\)/\1:/g;s/:$//' )
