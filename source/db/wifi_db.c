@@ -3840,6 +3840,9 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config)
              cfg.u.bss_info.enabled = true;
         }
 #if defined(_SKY_HUB_COMMON_PRODUCT_REQ_)
+        if (isVapXhs(vap_index)) {
+            cfg.u.bss_info.enabled = false;
+        }
         cfg.u.bss_info.bssMaxSta = 64;
 #else
         cfg.u.bss_info.bssMaxSta = 75;
