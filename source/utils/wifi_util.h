@@ -180,6 +180,7 @@ void string_mac_to_uint8_mac(uint8_t *mac, char *s_mac);
 int security_mode_support_radius(int mode);
 int convert_vap_name_to_index(wifi_platform_property_t *wifi_prop, char *vap_name);
 int convert_vap_name_to_array_index(wifi_platform_property_t * wifi_prop, char *vap_name);
+int convert_vap_index_to_vap_array_index(unsigned int vap_index, unsigned int *vap_array_index);
 int convert_vap_name_to_radio_array_index(wifi_platform_property_t *wifi_prop, char *vap_name);
 int convert_radio_name_to_radio_index(char *name);
 int convert_radio_index_to_radio_name(int index, char *name);
@@ -191,6 +192,7 @@ int convert_ifname_to_radio_index(wifi_platform_property_t *wifi_prop, char *if_
 int convert_radio_index_to_ifname(wifi_platform_property_t *wifi_prop, unsigned int radio_index, char *if_name, int ifname_len);
 int convert_apindex_to_ifname(wifi_platform_property_t *wifi_prop, int idx, char *if_name, unsigned int len);
 int convert_ifname_to_vapname(wifi_platform_property_t *wifi_prop, char *if_name, char *vap_name, int vapname_len);
+int convert_ifname_to_vap_index(wifi_platform_property_t *wifi_prop, char *if_name);
 int vap_mode_conversion(wifi_vap_mode_t *vapmode_enum, char *vapmode_str, size_t vapmode_str_len, unsigned int conv_type);
 int macfilter_conversion(char *mac_list_type, size_t string_len,  wifi_vap_info_t *vap_info, unsigned int conv_type);
 int ssid_broadcast_conversion(char *broadcast_string, size_t string_len, BOOL *broadcast_bool, unsigned int conv_type);

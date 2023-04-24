@@ -150,6 +150,7 @@ typedef enum {
     wifi_event_monitor_csi,
     wifi_event_monitor_csi_update_config,
     wifi_event_monitor_clientdiag_update_config,
+    wifi_event_monitor_assoc_req,
     wifi_event_monitor_data_collection_config,
     wifi_event_monitor_data_collection_response,
     wifi_event_monitor_max,

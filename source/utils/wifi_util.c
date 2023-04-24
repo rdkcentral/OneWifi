@@ -543,6 +543,23 @@ int convert_vap_name_to_radio_array_index(wifi_platform_property_t *wifi_prop, c
     return (prop) ? (int)prop->rdk_radio_index : RETURN_ERR;
 }
 
+int convert_ifname_to_vap_index(wifi_platform_property_t *wifi_prop, char *if_name)
+{
+    wifi_interface_name_idex_map_t *prop;
+
+    if (if_name == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: input_string parameter error!!!\n", __FUNCTION__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    prop = GET_IFNAME_PROPERTY(wifi_prop, if_name);
+    if (prop == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s - Failed to get VAP index for %s\n", __FUNCTION__, if_name);
+    }
+
+    return (prop) ? (int)prop->index : RETURN_ERR;
+}
+
 int get_vap_and_radio_index_from_vap_instance(wifi_platform_property_t *wifi_prop, uint8_t vap_instance, uint8_t *radio_index, uint8_t *vap_index)
 {
     int status = RETURN_OK;

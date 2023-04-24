@@ -63,6 +63,8 @@ extern "C" {
 #define WIFI_CSI_CLIENTMACLIST              "Device.WiFi.X_RDK_CSI.{i}.ClientMaclist"
 #define WIFI_CSI_ENABLE                     "Device.WiFi.X_RDK_CSI.{i}.Enable"
 #define WIFI_CSI_NUMBEROFENTRIES            "Device.WiFi.X_RDK_CSINumberOfEntries"
+#define ACCESSPOINT_ASSOC_REQ_EVENT         "Device.WiFi.AccessPoint.STA.AssocRequest"
+#define WIFI_CLIENT_GET_ASSOC_REQ           "Device.WiFi.AccessPoint.STA.GetAssocRequest"
 
 #define PLAN_ID_LENGTH     38
 #define MAX_STEP_COUNT  32 /*Active Measurement Step Count */
@@ -71,6 +73,7 @@ extern "C" {
 #define MAX_BUF_LENGTH 128
 
 #define ANAYLYTICS_PERIOD             60
+#define MAX_ASSOC_FRAME_REFRESH_PERIOD 30
 
 //Broadcom driver max acl count for each vap
 #define MAX_ACL_COUNT 20
@@ -239,6 +242,11 @@ typedef struct {
 } __attribute__((packed)) wifi_config_data_collection_t;
 
 typedef struct {
+    wifi_frame_t    frame;
+    unsigned char data[MAX_FRAME_SZ];
+} __attribute__((__packed__)) frame_data_t;
+
+typedef struct {
     unsigned int id;
     int  csi_session;
     unsigned int    ap_index;
@@ -249,13 +257,9 @@ typedef struct {
         associated_devs_t   devs;
         wifi_csi_dev_t csi;
         wifi_config_data_collection_t dca;
+        frame_data_t msg;
     } u;
 } __attribute__((__packed__)) wifi_monitor_data_t;
-
-typedef struct {
-    wifi_frame_t    frame;
-    unsigned char data[MAX_FRAME_SZ];
-} __attribute__((__packed__)) frame_data_t;
 
 typedef struct {
     unsigned int  vap_index;
@@ -713,6 +717,11 @@ typedef struct {
 struct active_msmt_data;
 
 typedef struct {
+    time_t        frame_timestamp;
+    frame_data_t  msg_data;
+} __attribute__((__packed__)) assoc_req_elem_t;
+
+typedef struct {
     mac_address_t  sta_mac;
     unsigned int    good_rssi_time;
     unsigned int    bad_rssi_time;
@@ -734,6 +743,7 @@ typedef struct {
     long            deauth_gate_time;
     struct active_msmt_data *sta_active_msmt_data;
     bool            connection_authorized;
+    assoc_req_elem_t assoc_frame_data;
 } __attribute__((__packed__)) sta_data_t;
 
 typedef enum {

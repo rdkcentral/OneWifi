@@ -27,6 +27,7 @@
 #include "wifi_mgr.h"
 #include "wifi_util.h"
 #include "msgpack.h"
+#include "wifi_monitor.h"
 #include <unistd.h>
 #include <rbus.h>
 
@@ -2633,6 +2634,77 @@ rbusError_t levl_set_handler(rbusHandle_t handle, rbusProperty_t property, rbusS
     return RBUS_ERROR_SUCCESS;
 }
 
+rbusError_t get_client_assoc_request_multi(rbusHandle_t handle, char const* methodName, rbusObject_t inParams, rbusObject_t outParams,rbusMethodAsyncHandle_t asyncHandle)
+{
+
+    wifi_util_info_print(WIFI_CTRL,"%s:%d ******** HANDLING ASSOCIE REQ ******** \n", __func__, __LINE__);
+#ifdef CCSP_COMMON
+    rbusValue_t if_name;
+    rbusValue_t sta_mac;
+    unsigned int vap_index = 0;
+    frame_data_t   tmp_data;
+    char vapname[16];
+    const char *pmac = NULL;
+    const char *pifname = NULL;
+    frame_data_t   *l_data;
+    rbusValue_t value;
+    wifi_platform_property_t *prop = NULL;
+    sta_key_t sta_key;
+    sta_data_t *sta;
+
+
+    if_name = rbusObject_GetValue(inParams, "if_name");
+    if(!if_name || (rbusValue_GetType(if_name) != RBUS_STRING) || !(rbusValue_GetString(if_name, NULL)))
+    {
+         wifi_util_error_print(WIFI_CTRL,"%s:%d Invalid input if_name. \r\n", __func__, __LINE__);
+         return  RBUS_ERROR_INVALID_INPUT;
+    }
+
+    sta_mac = rbusObject_GetValue(inParams, "sta_mac");
+    if(!sta_mac || (rbusValue_GetType(sta_mac) != RBUS_STRING) || !rbusValue_GetString(sta_mac, NULL))
+    {
+         wifi_util_error_print(WIFI_CTRL,"%s:%d Invalid input sta_mac. \r\n", __func__, __LINE__);
+         return  RBUS_ERROR_INVALID_INPUT;
+    }
+
+    memset(&tmp_data,0,sizeof(tmp_data));
+    memset(&vapname,0,sizeof(vapname));
+    pmac = rbusValue_GetString(sta_mac, NULL);
+    pifname = rbusValue_GetString(if_name, NULL);
+
+    convert_ifname_to_vapname(prop, (char*)pifname, vapname, sizeof(vapname));
+    vap_index = convert_vap_name_to_index(prop, vapname);
+    hash_map_t *sta_map = get_sta_data_map(vap_index);
+    wifi_util_dbg_print(WIFI_CTRL,"%s(): if_name:%s, sta_mac:%s, vap_index:%d\r\n", __func__,pifname,pmac,vap_index);
+
+    if( sta_map != NULL) {
+            sta = (sta_data_t *)hash_map_get(sta_map, pmac);
+    } else {
+            wifi_util_info_print(WIFI_CTRL,"%s:%d , sta_map is null  \n", __func__, __LINE__);
+            return  RBUS_ERROR_INVALID_INPUT;
+    }
+    if (sta != NULL) {
+        if (sta->assoc_frame_data.msg_data.frame.len != 0) {
+            wifi_util_dbg_print(WIFI_CTRL,"%s:%d rbus_namespace_publish event:%s for vap_index:%d\r\n", __func__, __LINE__, ACCESSPOINT_ASSOC_REQ_EVENT, vap_index);
+            memcpy(&tmp_data,&sta->assoc_frame_data.msg_data, sizeof(frame_data_t));
+            l_data = &tmp_data;
+        } else {
+            wifi_util_info_print(WIFI_CTRL,"%s:%d assoc req frame not found for vap_index:%d: sta_mac:%s time:%ld\r\n",
+                    __func__, __LINE__, vap_index, sta_key, sta->assoc_frame_data.frame_timestamp);
+            return  RBUS_ERROR_INVALID_INPUT;
+        }
+    } else {
+            wifi_util_info_print(WIFI_CTRL,"%s:%d , sta is null  \n", __func__, __LINE__);
+            return  RBUS_ERROR_INVALID_INPUT;
+    }
+    rbusValue_Init(&value);
+    rbusValue_SetBytes(value, (uint8_t *)l_data,(sizeof(l_data->frame) + l_data->frame.len));
+    rbusObject_SetValue(outParams,"assoc_ies",value);
+    rbusValue_Release(value);
+#endif
+    return RBUS_ERROR_SUCCESS;
+}
+
 void rbus_register_handlers(wifi_ctrl_t *ctrl)
 {
     int rc = RBUS_ERROR_SUCCESS;
@@ -2707,6 +2779,10 @@ void rbus_register_handlers(wifi_ctrl_t *ctrl)
                                 { WIFI_LEVL_NUMBEROFENTRIES, RBUS_ELEMENT_TYPE_PROPERTY,
                                 { levl_get_handler, levl_set_handler, NULL, NULL, NULL, NULL}},
 #endif
+                                { ACCESSPOINT_ASSOC_REQ_EVENT, RBUS_ELEMENT_TYPE_METHOD,
+                                    { NULL, NULL, NULL, NULL, NULL, NULL}},
+                                { WIFI_CLIENT_GET_ASSOC_REQ,RBUS_ELEMENT_TYPE_METHOD,
+                                    { NULL, NULL, NULL, NULL, NULL, get_client_assoc_request_multi}}
     };
 
     rc = rbus_open(&ctrl->rbus_handle, component_name);

@@ -2322,6 +2322,131 @@ void send_wifi_disconnect_event_to_ctrl(mac_address_t mac_addr, unsigned int ap_
     assoc_data.reason = 0;
     push_event_to_ctrl_queue(&assoc_data, sizeof(assoc_data), wifi_event_type_hal_ind, wifi_event_hal_disassoc_device, NULL);
 }
+sta_data_t *create_sta_data_hash_map(hash_map_t *sta_map, mac_addr_t l_sta_mac)
+{
+    pthread_mutex_lock(&g_monitor_module.data_lock);
+    mac_addr_str_t mac_str = { 0 };
+    sta_data_t *sta = NULL;
+
+    sta = (sta_data_t *)malloc(sizeof(sta_data_t));
+    if (sta == NULL) {
+        wifi_util_error_print(WIFI_MON,"%s:%d malloc allocation failure\r\n", __func__, __LINE__);
+        pthread_mutex_unlock(&g_monitor_module.data_lock);
+        return NULL;
+    }
+    memset(sta, 0, sizeof(sta_data_t));
+    memcpy(sta->sta_mac, l_sta_mac, sizeof(mac_addr_t));
+    hash_map_put(sta_map, strdup(to_mac_str(l_sta_mac, mac_str)), sta);
+    pthread_mutex_unlock(&g_monitor_module.data_lock);
+    return sta;
+}
+
+hash_map_t *get_sta_data_map(unsigned int vap_index)
+{
+    pthread_mutex_lock(&g_monitor_module.data_lock);
+    unsigned int vap_array_index;
+    char vap_name[16] ={ };
+    convert_vap_index_to_name(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop,vap_index,vap_name);
+    if (strlen(vap_name) <= 0) {
+        wifi_util_error_print(WIFI_MON,"%s:%d wrong vap_index:%d\r\n", __func__, __LINE__, vap_index);
+        pthread_mutex_unlock(&g_monitor_module.data_lock);
+        return NULL;
+    }
+    getVAPArrayIndexFromVAPIndex(vap_index, &vap_array_index);
+    pthread_mutex_unlock(&g_monitor_module.data_lock);
+    return g_monitor_module.bssid_data[vap_array_index].sta_map;
+}
+
+int set_assoc_req_frame_data(frame_data_t *msg)
+{
+    hash_map_t   *sta_map;
+    sta_data_t   *sta;
+    struct ieee80211_mgmt *frame;
+    mac_addr_str_t mac_str = { 0 };
+    char *str;
+
+    frame = (struct ieee80211_mgmt *)msg->data;
+    str = to_mac_str(frame->sa, mac_str);
+    if (str == NULL) {
+        wifi_util_error_print(WIFI_MON,"%s:%d mac str convert failure\r\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    wifi_util_dbg_print(WIFI_MON,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d src mac:%s rssi:%d\r\n", __func__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir, str, msg->frame.sig_dbm);
+
+    sta_map = get_sta_data_map(msg->frame.ap_index);
+    if (sta_map == NULL) {
+        wifi_util_error_print(WIFI_MON,"%s:%d sta_data map not found for vap_index:%d\r\n", __func__, __LINE__, msg->frame.ap_index);
+        return RETURN_ERR;
+    }
+
+    sta = (sta_data_t *)hash_map_get(sta_map, mac_str);
+    if (sta != NULL) {
+        memset(&sta->assoc_frame_data, 0, sizeof(assoc_req_elem_t));
+        memcpy(&sta->assoc_frame_data.msg_data, msg, sizeof(frame_data_t));
+        time(&sta->assoc_frame_data.frame_timestamp);
+    } else {
+        sta = create_sta_data_hash_map(sta_map, frame->sa);
+        if (sta != NULL) {
+            memset(&sta->assoc_frame_data, 0, sizeof(assoc_req_elem_t));
+            memcpy(&sta->assoc_frame_data.msg_data, msg, sizeof(frame_data_t));
+            time(&sta->assoc_frame_data.frame_timestamp);
+        } else {
+            return RETURN_ERR;
+        }
+    }
+
+    return RETURN_OK;
+}
+
+int update_assoc_frame_data_entry(unsigned int vap_index)
+{
+    hash_map_t   *sta_map;
+    sta_data_t   *sta;
+    time_t       current_timestamp;
+    mac_addr_str_t mac_str = { 0 };
+
+    sta_map = get_sta_data_map(vap_index);
+    if (sta_map == NULL) {
+        wifi_util_error_print(WIFI_MON,"%s:%d sta_data map not found for vap_index:%d\r\n", __func__, __LINE__, vap_index);
+        return RETURN_ERR;
+    }
+
+    sta = hash_map_get_first(sta_map);
+    while (sta != NULL) {
+        if ((sta->connection_authorized == false) && (sta->assoc_frame_data.frame_timestamp != 0)) {
+            time(&current_timestamp);
+
+            wifi_util_dbg_print(WIFI_MON,"%s:%d assoc time:%ld, current time:%ld\r\n", __func__, __LINE__, sta->assoc_frame_data.frame_timestamp, current_timestamp);
+            wifi_util_dbg_print(WIFI_MON,"%s:%d vap_index:%d sta_mac:%s\r\n", __func__, __LINE__, vap_index, to_mac_str(sta->sta_mac, mac_str));
+            //If sta client disconnected and time diff more than 30 seconds then we need to reset client assoc frame data
+            if ((current_timestamp - sta->assoc_frame_data.frame_timestamp) > MAX_ASSOC_FRAME_REFRESH_PERIOD) {
+                wifi_util_dbg_print(WIFI_MON,"%s:%d assoc time diff:%d\r\n", __func__, __LINE__, (current_timestamp - sta->assoc_frame_data.frame_timestamp));
+                memset(&sta->assoc_frame_data, 0, sizeof(assoc_req_elem_t));
+            }
+        }
+        sta = hash_map_get_next(sta_map, sta);
+    }
+
+    return RETURN_OK;
+}
+
+void update_assoc_frame_all_vap_data_entry(void)
+{
+    unsigned int index,vap_index;
+
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    for (index = 0; index < getTotalNumberVAPs(); index++) {
+        vap_index = VAP_INDEX(mgr->hal_cap, index);
+        update_assoc_frame_data_entry(vap_index);
+    }
+}
+
+static int refresh_assoc_frame_entry(void *arg)
+{
+    update_assoc_frame_all_vap_data_entry();
+    return TIMER_TASK_COMPLETE;
+}
 
 void process_diagnostics	(unsigned int ap_index, wifi_associated_dev3_t *dev, unsigned int num_devs)
 {
@@ -2886,6 +3011,8 @@ void *monitor_function  (void *data)
                     case wifi_event_monitor_data_collection_config:
                         process_stats_data_collection_request(&event_data->u.dca);
                     break;
+                    case wifi_event_monitor_assoc_req:
+                        set_assoc_req_frame_data(&event_data->u.msg);
 #endif // CCSP_COMMON
                     default:
                     break;
@@ -5318,6 +5445,7 @@ int init_wifi_monitor()
     wifi_csi_callback_register(process_csi);
 #endif
 
+    scheduler_add_timer_task(g_monitor_module.sched, FALSE, NULL, refresh_assoc_frame_entry, NULL, (MAX_ASSOC_FRAME_REFRESH_PERIOD * 1000), 0);
 #endif // CCSP_COMMON
 
     /*TODO: Make libpktgen usage as common */

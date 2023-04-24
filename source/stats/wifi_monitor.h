@@ -259,4 +259,5 @@ wifi_actvie_msmt_t *get_active_msmt_data();
 int init_wifi_monitor();
 int  getApIndexfromClientMac(char *check_mac);
 void update_ecomode_radios(void);
+hash_map_t *get_sta_data_map(unsigned int vap_index);
 #endif	//_WIFI_MON_H_
