@@ -226,8 +226,8 @@ int vap_svc_start_stop(vap_svc_t *svc, bool enable)
 
         wifi_util_info_print(WIFI_CTRL, "%s:%d wifi vaps create success for radio index: %d\n",
             __func__, __LINE__, i);
-        update_acl_entries(tgt_vap_map);
         update_global_cache(tgt_vap_map, tgt_rdk_vaps);
+        update_acl_entries(tgt_vap_map);
     }
 
     free(tgt_vap_map);
