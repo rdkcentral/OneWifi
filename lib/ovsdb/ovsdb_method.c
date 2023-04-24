@@ -43,6 +43,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "ovsdb_priv.h"
 
+// jansson version < 2.8
+#ifndef json_object_foreach_safe
+#define json_object_foreach_safe(object, n, key, value)                                  \
+    for (key = json_object_iter_key(json_object_iter(object)),                           \
+        n = json_object_iter_next(object, json_object_key_to_iter(key));                 \
+         key && (value = json_object_iter_value(json_object_key_to_iter(key)));          \
+         key = json_object_iter_key(n),                                                  \
+        n = json_object_iter_next(object, json_object_key_to_iter(key)))
+#endif
+
 //extern char *ovsdb_comment;
 char *ovsdb_comment = "em";
 
@@ -584,6 +594,7 @@ json_t *onewifi_ovsdb_row_filtout_argv(json_t * row, int argc, char ** argv)
 {
     const char *key;
     json_t *value;
+    void *next;
 
     if (NULL == row)
     {
@@ -591,13 +602,13 @@ json_t *onewifi_ovsdb_row_filtout_argv(json_t * row, int argc, char ** argv)
     }
 
     /* iterate through all keys in given json and remove unwanted */
-    json_object_foreach(row, key, value)
+    json_object_foreach_safe(row, next, key, value)
     {
         if (is_inarray(key, argc, argv))
         {
             /* remove the key thats is in the list of keys */
-            json_object_del(row, key);
             LOG(TRACE, "filter out key: %s", key);
+            json_object_del(row, key);
         }
     }
 

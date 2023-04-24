@@ -1637,6 +1637,9 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
                 }
                 candidate++;
             }
+            if (found_candidate == false) {
+                candidate = NULL;
+            }
         } else if (ext->conn_state == connection_state_disconnection_in_progress) {
             ext_set_conn_state(ext, connection_state_connection_in_progress, __func__, __LINE__);
             candidate = ext->candidates_list.scan_list;

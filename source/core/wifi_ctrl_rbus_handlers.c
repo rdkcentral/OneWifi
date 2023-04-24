@@ -41,7 +41,7 @@ int webconfig_csi_notify_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_encoded_data_
     rbusObject_Init(&rdata, NULL);
 
     rbusObject_SetValue(rdata, WIFI_WEBCONFIG_GET_CSI, value);
-    rbusValue_SetBytes(value, (uint8_t *)data->raw, strlen(data->raw));
+    rbusValue_SetString(value, data->raw);
     event.name = WIFI_WEBCONFIG_GET_CSI;
     event.data = rdata;
     event.type = RBUS_EVENT_GENERAL;
@@ -73,7 +73,7 @@ int webconfig_client_notify_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_encoded_da
     rbusObject_Init(&rdata, NULL);
 
     rbusObject_SetValue(rdata, WIFI_WEBCONFIG_GET_ASSOC, value);
-    rbusValue_SetBytes(value, (uint8_t *)data->raw, strlen(data->raw));
+    rbusValue_SetString(value, data->raw);
     event.name = WIFI_WEBCONFIG_GET_ASSOC;
     event.data = rdata;
     event.type = RBUS_EVENT_GENERAL;
@@ -105,7 +105,7 @@ int webconfig_null_subdoc_notify_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_encod
     rbusObject_Init(&rdata, NULL);
 
     rbusObject_SetValue(rdata, WIFI_WEBCONFIG_GET_NULL_SUBDOC, value);
-    rbusValue_SetBytes(value, (uint8_t *)data->raw, strlen(data->raw));
+    rbusValue_SetString(value, data->raw);
     event.name = WIFI_WEBCONFIG_GET_NULL_SUBDOC;
     event.data = rdata;
     event.type = RBUS_EVENT_GENERAL;
@@ -224,7 +224,7 @@ int notify_LM_Lite(wifi_ctrl_t *ctrl, LM_wifi_hosts_t* phosts, bool sync)
      rbusObject_Init(&rdata, NULL);
 
      rbusObject_SetValue(rdata, WIFI_WEBCONFIG_INIT_DML_DATA, value);
-     rbusValue_SetBytes(value, (uint8_t *)data->raw, strlen(data->raw));
+     rbusValue_SetString(value, data->raw);
      event.name = WIFI_WEBCONFIG_INIT_DML_DATA;
      event.data = rdata;
      event.type = RBUS_EVENT_GENERAL;
@@ -257,7 +257,7 @@ int webconfig_rbus_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_encoded_data_t *dat
     rbusObject_Init(&rdata, NULL);
 
     rbusObject_SetValue(rdata, WIFI_WEBCONFIG_DOC_DATA_NORTH, value);
-    rbusValue_SetBytes(value, (uint8_t *)data->raw, strlen(data->raw));
+    rbusValue_SetString(value, data->raw);
     event.name = WIFI_WEBCONFIG_DOC_DATA_NORTH;
     event.data = rdata;
     event.type = RBUS_EVENT_GENERAL;

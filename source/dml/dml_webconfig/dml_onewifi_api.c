@@ -338,7 +338,7 @@ void set_webconfig_dml_data(rbusHandle_t handle, rbusEvent_t const* event, rbusE
     data.type = webconfig_subdoc_type_unknown;
     data.descriptor = 0;
     data.descriptor = webconfig_data_descriptor_encoded | webconfig_data_descriptor_translate_to_tr181;
-    strcpy(data.u.encoded.raw, pTmp);
+    strncpy(data.u.encoded.raw, pTmp, sizeof(data.u.encoded.raw) - 1);
 
     //wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: dml Json:\n%s\r\n", __func__, __LINE__, data.u.encoded.raw);
     wifi_util_info_print(WIFI_DMCLI,"%s:%d: hal capability update\r\n", __func__, __LINE__);
@@ -601,7 +601,7 @@ int init(webconfig_dml_t *consumer)
     data.type = webconfig_subdoc_type_dml;
     data.descriptor = 0;
     data.descriptor |= webconfig_data_descriptor_encoded;
-    strcpy(data.u.encoded.raw, str);
+    strncpy(data.u.encoded.raw, str, sizeof(data.u.encoded.raw) - 1);
 
     // tell webconfig to decode
     if (webconfig_set(&consumer->webconfig, &data)== webconfig_error_none){
