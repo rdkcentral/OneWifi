@@ -178,6 +178,21 @@ typedef struct {
     unsigned int index;
 }__attribute__((packed)) wifi_scheduler_id_arg_t;
 
+#define MAX_EVENT_NAME_SIZE     200
+typedef struct {
+    char name[MAX_EVENT_NAME_SIZE];
+    int idx;
+    wifi_event_subtype_t type;
+    BOOL subscribed;
+    unsigned int num_subscribers;
+}__attribute__((packed)) event_rbus_element_t;
+
+typedef struct {
+    char                 *diag_events_json_buffer[MAX_VAP];
+    queue_t              *events_rbus_queue; //event_rbus_element_t
+    pthread_mutex_t      events_rbus_lock;
+} events_rbus_data_t;
+
 typedef struct wifi_ctrl {
     bool                exit_ctrl;
     queue_t             *queue;
@@ -220,6 +235,7 @@ typedef struct wifi_ctrl {
     bool                acs_pending[MAX_NUM_RADIOS];
 
     bool                db_consolidated;
+    events_rbus_data_t  events_rbus_data;
 } wifi_ctrl_t;
 
 

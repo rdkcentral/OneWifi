@@ -5169,7 +5169,7 @@ int start_wifi_monitor ()
         wifi_enableCSIEngine(vap_index, def_mac, FALSE);
 #endif // CCSP_COMMON
     }
-    
+
     pthread_attr_t attr;
     pthread_attr_t *attrp = NULL;
 
@@ -5190,11 +5190,6 @@ int start_wifi_monitor ()
         pthread_attr_destroy( attrp );
 
 #ifdef CCSP_COMMON
-    if(events_init() < 0) {
-        wifi_util_error_print(WIFI_MON,"%s:%d: Failed to open socket for wifi event send\n", __func__, __LINE__);
-    } else {
-        wifi_util_info_print(WIFI_MON, "%s:%d: Opened socket for wifi event\n", __func__, __LINE__);
-    }
     g_monitor_module.sysevent_fd = sysevent_open("127.0.0.1", SE_SERVER_WELL_KNOWN_PORT, SE_VERSION, "wifiMonitor", &g_monitor_module.sysevent_token);
     if (g_monitor_module.sysevent_fd < 0) {
         wifi_util_error_print(WIFI_MON, "%s:%d: Failed to open sysevent\n", __func__, __LINE__);
@@ -5217,8 +5212,6 @@ void deinit_wifi_monitor()
     char key[64] = {0};
 
 #ifdef CCSP_COMMON
-    events_deinit();
-
     sysevent_close(g_monitor_module.sysevent_fd, g_monitor_module.sysevent_token);
 #endif // CCSP_COMMON
     if(g_monitor_module.queue != NULL)
@@ -5491,7 +5484,7 @@ void monitor_enable_instant_msmt(mac_address_t sta_mac, bool enable)
             data.ap_index = vap_index;
 
             pthread_mutex_unlock(&g_monitor_module.queue_lock);
-            push_event_to_monitor_queue(&data, wifi_event_monitor_stats_flag_change);
+            push_event_to_monitor_queue(&data, wifi_event_monitor_start_inst_msmt);
 
             return;
         }

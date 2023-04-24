@@ -74,6 +74,10 @@ void deinit_wifi_ctrl(wifi_ctrl_t *ctrl)
         queue_destroy(ctrl->queue);
     }
 
+    if(ctrl->events_rbus_data.events_rbus_queue != NULL) {
+        queue_destroy(ctrl->events_rbus_data.events_rbus_queue);
+    }
+
     /*Deinitialize the scheduler*/
     if (ctrl->sched != NULL) {
         scheduler_deinit(&ctrl->sched);
@@ -82,6 +86,7 @@ void deinit_wifi_ctrl(wifi_ctrl_t *ctrl)
     pthread_mutexattr_destroy(&ctrl->attr);
     pthread_mutex_destroy(&ctrl->lock);
     pthread_cond_destroy(&ctrl->cond);
+    pthread_mutex_destroy(&ctrl->events_rbus_data.events_rbus_lock);
 }
 
 static int wifi_radio_set_enable(bool status)
@@ -1161,6 +1166,8 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
     pthread_mutexattr_init(&ctrl->attr);
     pthread_mutexattr_settype(&ctrl->attr, PTHREAD_MUTEX_RECURSIVE);
     pthread_mutex_init(&ctrl->lock, &ctrl->attr);
+    pthread_mutex_init(&ctrl->events_rbus_data.events_rbus_lock, NULL);
+
     ctrl->poll_period = QUEUE_WIFI_CTRL_TASK_TIMEOUT;
 
     /*Intialize the scheduler*/
@@ -1182,6 +1189,13 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
     if (ctrl->vif_apply_pending_queue == NULL) {
         deinit_wifi_ctrl(ctrl);
         wifi_util_error_print(WIFI_CTRL,"RDK_LOG_WARN, WIFI %s: vif apply pending queue create failed\n",__FUNCTION__);
+        return RETURN_ERR;
+    }
+
+    ctrl->events_rbus_data.events_rbus_queue = queue_create();
+    if (ctrl->events_rbus_data.events_rbus_queue == NULL) {
+        deinit_wifi_ctrl(ctrl);
+        wifi_util_error_print(WIFI_CTRL,"RDK_LOG_WARN, WIFI %s: rbus data events queue create failed\n",__FUNCTION__);
         return RETURN_ERR;
     }
 
