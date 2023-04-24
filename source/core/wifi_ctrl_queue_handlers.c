@@ -1991,7 +1991,9 @@ int enable_wifi_radio_ax_mode(unsigned int radio_index, wifi_radio_operationPara
     if (value == true) {
         radio_params->variant |= WIFI_80211_VARIANT_AX;
     } else {
-        radio_params->variant ^= WIFI_80211_VARIANT_AX;
+        if (radio_params->variant & WIFI_80211_VARIANT_AX) {
+            radio_params->variant ^= WIFI_80211_VARIANT_AX;
+        }
     }
     pthread_mutex_unlock(&g_wifidb->data_cache_lock);
 
