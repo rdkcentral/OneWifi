@@ -7176,7 +7176,7 @@ void process_active_msmt_diagnostics (int ap_index)
         sta->sta_active_msmt_data[count].throughput = g_active_msmt.active_msmt_data[count].throughput;
 
         wifi_util_dbg_print(WIFI_MON,"count[%d] : standard[%s] chan_width[%s] Retransmission [%d]"
-                "RSSI[%d] TxRate[%lu Mbps] RxRate[%lu Mbps] SNR[%d] throughput[%.5lf Mbms]"
+                "RSSI[%d] TxRate[%lu Mbps] RxRate[%lu Mbps] SNR[%d] throughput[%.5lf Mbps]"
                 "MaxTxRate[%d] MaxRxRate[%d]\n",
                 count, sta->sta_active_msmt_data[count].Operating_standard,
                 sta->sta_active_msmt_data[count].Operating_channelwidth,
@@ -7190,7 +7190,7 @@ void process_active_msmt_diagnostics (int ap_index)
 #ifdef CCSP_COMMON
         CcspTraceDebug(("Sampled data - [%d] : {standard[%s],\t chan_width[%s]\t"
            "Retransmission [%d]\t RSSI[%d]\t TxRate[%lu Mbps]\t RxRate[%lu Mbps]\t SNR[%d]\t"
-           "throughput[%.5lf Mbms]\t MaxTxRate[%d]\t MaxRxRate[%d]\n}\n",
+           "throughput[%.5lf Mbps]\t MaxTxRate[%d]\t MaxRxRate[%d]\n}\n",
            count, sta->sta_active_msmt_data[count].Operating_standard,
              sta->sta_active_msmt_data[count].Operating_channelwidth,
              sta->sta_active_msmt_data[count].ReTransmission,
