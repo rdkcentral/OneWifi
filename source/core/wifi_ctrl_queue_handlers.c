@@ -42,6 +42,7 @@
 
 #define NEIGHBOR_SCAN_RESULT_INTERVAL 5000 //5sec
 static int neighbor_scan_task_id = -1;
+#define MAX_VAP_INDEX 24
 #endif // DML_SUPPORT
 
 extern int webconfig_set_ow_core_state(webconfig_subdoc_data_t *data);
@@ -180,7 +181,7 @@ static wifi_anqp_node_t* convert_frame_data_to_anqp(int ap_index, mac_address_t 
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Invalid mac. Return\n", __func__, __LINE__);
     }
 
-    if((ap_index < 0) || (ap_index > MAX_AP_INDEX)){
+    if ((ap_index < 0) || (ap_index > MAX_VAP_INDEX)) {
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Invalid AP Index: %d \n", __func__,__LINE__,ap_index);
         return NULL;
     }
