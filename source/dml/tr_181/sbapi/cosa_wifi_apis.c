@@ -909,6 +909,45 @@ ANSC_STATUS txRateStrToUint(char *inputStr, UINT *pTxRate)
     return ANSC_STATUS_SUCCESS;
 }
 
+ANSC_STATUS isSupportedRate(char *inputStr)
+{
+    char *token;
+    bool isRateInvalid = TRUE;
+    UINT seqCounter = 0;
+    char tmpInputString[128] = {0};
+
+    if ((inputStr == NULL))
+    {
+        CcspWifiTrace(("RDK_LOG_ERROR, %s Invalid Argument\n", __FUNCTION__));
+        return ANSC_STATUS_FAILURE;
+    }
+
+    snprintf(tmpInputString, sizeof(tmpInputString), "%s", inputStr);
+
+    token = strtok(tmpInputString, ",");
+    while (token != NULL)
+    {
+        isRateInvalid = TRUE;
+        for (seqCounter = 0; seqCounter < ARRAY_SZ(wifiDataTxRateMap); seqCounter++)
+        {
+            if (AnscEqualString(token, wifiDataTxRateMap[seqCounter].DataTxRateStr, TRUE))
+            {
+                isRateInvalid = FALSE;
+            }
+        }
+
+        if (isRateInvalid == TRUE)
+        {
+            CcspWifiTrace(("RDK_LOG_ERROR, %s Invalid txrate Token : %s\n", __FUNCTION__, token));
+            return ANSC_STATUS_FAILURE;
+        }
+
+        token = strtok(NULL, ",");
+    }
+    return ANSC_STATUS_SUCCESS;
+}
+
+
 ANSC_STATUS wifiSecSupportedDmlToStr(UINT dmlSecModeSupported, char *str, UINT strSize)
 {
     UINT seqCounter = 0;

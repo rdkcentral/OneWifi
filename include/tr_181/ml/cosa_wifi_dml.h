@@ -1040,6 +1040,318 @@ Security_Rollback
 
  APIs for Object:
 
+    WiFi.AccessPoint.{i}.ConnectionControl.
+
+    *  ConnectionControl_GetParamBoolValue
+    *  ConnectionControl_GetParamIntValue
+    *  ConnectionControl_GetParamUlongValue
+    *  ConnectionControl_GetParamStringValue
+    *  ConnectionControl_SetParamBoolValue
+    *  ConnectionControl_SetParamIntValue
+    *  ConnectionControl_SetParamUlongValue
+    *  ConnectionControl_SetParamStringValue
+    *  ConnectionControl_Validate
+    *  ConnectionControl_Commit
+    *  ConnectionControl_Rollback
+
+***********************************************************************/
+BOOL
+ConnectionControl_GetParamBoolValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        BOOL*                       pBool
+    );
+
+BOOL
+ConnectionControl_GetParamIntValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        int*                        pInt
+    );
+
+BOOL
+ConnectionControl_GetParamUlongValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        ULONG*                      pUlong
+    );
+
+ULONG
+ConnectionControl_GetParamStringValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        char*                       pValue,
+        ULONG*                      pUlSize
+    );
+
+BOOL
+ConnectionControl_SetParamBoolValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        BOOL                        bValue
+    );
+
+BOOL
+ConnectionControl_SetParamIntValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        int                         value
+    );
+
+BOOL
+ConnectionControl_SetParamUlongValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        ULONG                       uValuepUlong
+    );
+
+BOOL
+ConnectionControl_SetParamStringValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        char*                       strValue
+    );
+
+BOOL
+ConnectionControl_Validate
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       pReturnParamName,
+        ULONG*                      puLength
+    );
+
+ULONG
+ConnectionControl_Commit
+    (
+        ANSC_HANDLE                 hInsContext
+    );
+
+ULONG
+ConnectionControl_Rollback
+    (
+        ANSC_HANDLE                 hInsContext
+    );
+
+/***********************************************************************
+
+ APIs for Object:
+
+    WiFi.AccessPoint.{i}.ConnectionControl.PreAssocDeny
+
+    *  PreAssocDeny_GetParamBoolValue
+    *  PreAssocDeny_GetParamIntValue
+    *  PreAssocDeny_GetParamUlongValue
+    *  PreAssocDeny_GetParamStringValue
+    *  PreAssocDeny_SetParamBoolValue
+    *  PreAssocDeny_SetParamIntValue
+    *  PreAssocDeny_SetParamUlongValue
+    *  PreAssocDeny_SetParamStringValue
+    *  PreAssocDeny_Validate
+    *  PreAssocDeny_Commit
+    *  PreAssocDeny_Rollback
+
+***********************************************************************/
+BOOL
+PreAssocDeny_GetParamBoolValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        BOOL*                       pBool
+    );
+
+BOOL
+PreAssocDeny_GetParamIntValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        int*                        pInt
+    );
+
+BOOL
+PreAssocDeny_GetParamUlongValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        ULONG*                      pUlong
+    );
+
+ULONG
+PreAssocDeny_GetParamStringValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        char*                       pValue,
+        ULONG*                      pUlSize
+    );
+
+BOOL
+PreAssocDeny_SetParamBoolValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        BOOL                        bValue
+    );
+
+BOOL
+PreAssocDeny_SetParamIntValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        int                         value
+    );
+
+BOOL
+PreAssocDeny_SetParamUlongValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        ULONG                       uValuepUlong
+    );
+
+BOOL
+PreAssocDeny_SetParamStringValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        char*                       strValue
+    );
+
+BOOL
+PreAssocDeny_Validate
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       pReturnParamName,
+        ULONG*                      puLength
+    );
+
+ULONG
+PreAssocDeny_Commit
+    (
+        ANSC_HANDLE                 hInsContext
+    );
+
+ULONG
+PreAssocDeny_Rollback
+    (
+        ANSC_HANDLE                 hInsContext
+    );
+
+/***********************************************************************
+
+ APIs for Object:
+
+    WiFi.AccessPoint.{i}.ConnectionControl.PostAssocDisc
+
+    *  PostAssocDisc_GetParamBoolValue
+    *  PostAssocDisc_GetParamIntValue
+    *  PostAssocDisc_GetParamUlongValue
+    *  PostAssocDisc_GetParamStringValue
+    *  PostAssocDisc_SetParamBoolValue
+    *  PostAssocDisc_SetParamIntValue
+    *  PostAssocDisc_SetParamUlongValue
+    *  PostAssocDisc_SetParamStringValue
+    *  PostAssocDisc_Validate
+    *  PostAssocDisc_Commit
+    *  PostAssocDisc_Rollback
+
+***********************************************************************/
+BOOL
+PostAssocDisc_GetParamBoolValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        BOOL*                       pBool
+    );
+
+BOOL
+PostAssocDisc_GetParamIntValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        int*                        pInt
+    );
+
+BOOL
+PostAssocDisc_GetParamUlongValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        ULONG*                      pUlong
+    );
+
+ULONG
+PostAssocDisc_GetParamStringValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        char*                       pValue,
+        ULONG*                      pUlSize
+    );
+
+BOOL
+PostAssocDisc_SetParamBoolValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        BOOL                        bValue
+    );
+
+BOOL
+PostAssocDisc_SetParamIntValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        int                         value
+    );
+
+BOOL
+PostAssocDisc_SetParamUlongValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        ULONG                       uValuepUlong
+    );
+
+BOOL
+PostAssocDisc_SetParamStringValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        char*                       strValue
+    );
+
+BOOL
+PostAssocDisc_Validate
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       pReturnParamName,
+        ULONG*                      puLength
+    );
+
+ULONG
+PostAssocDisc_Commit
+    (
+        ANSC_HANDLE                 hInsContext
+    );
+
+ULONG
+PostAssocDisc_Rollback
+    (
+        ANSC_HANDLE                 hInsContext
+    );
+
+/***********************************************************************
+
+ APIs for Object:
+
     WiFi.AccessPoint.{i}.WPS.
 
     *  WPS_GetParamBoolValue

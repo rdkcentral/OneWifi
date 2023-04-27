@@ -396,7 +396,6 @@ void get_self_bss_chan_statistics (int radiocnt , UINT *Tx_perc, UINT  *Rx_perc)
     return;
 }
 
-#if HAL_IPC
 int get_radio_channel_stats(int radio_index, 
                             wifi_channelStats_t *channel_stats_array, 
                             int *array_size)
@@ -423,7 +422,6 @@ int get_radio_channel_stats(int radio_index,
 
     return 0;
 }
-#endif // HAL_IPC
 
 // upload_radio_chan_util_telemetry()  will update the channel stats in telemetry marker
 int upload_radio_chan_util_telemetry(void *arg)
@@ -2282,7 +2280,6 @@ int get_sta_stats_info (assoc_dev_data_t *assoc_dev_data) {
     return 0;
 }
 
-#if HAL_IPC
 int get_sta_stats_for_vap(int ap_index, wifi_associated_dev3_t *assoc_dev_array,
                           unsigned int *output_array_size)
 {
@@ -2314,7 +2311,6 @@ int get_sta_stats_for_vap(int ap_index, wifi_associated_dev3_t *assoc_dev_array,
 
     return 0;
 }
-#endif // HAL_IPC
 
 void send_wifi_disconnect_event_to_ctrl(mac_address_t mac_addr, unsigned int ap_index)
 {
@@ -4909,6 +4905,9 @@ int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
 {
     wifi_monitor_data_t data;
     assoc_dev_data_t assoc_data;
+    wifi_radioTrafficStats2_t chan_stats;
+    int radio_index;
+    char vap_name[32];
 
     memset(&assoc_data, 0, sizeof(assoc_data));
     memset(&data, 0, sizeof(wifi_monitor_data_t));
@@ -4929,6 +4928,10 @@ int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
 
     csi_update_client_mac_status(data.u.dev.sta_mac, TRUE, ap_index);
 
+    convert_vap_index_to_name(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, ap_index, vap_name);
+    radio_index = convert_vap_name_to_radio_array_index(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, vap_name);
+    get_radio_data(radio_index, &chan_stats);
+
     memcpy(assoc_data.dev_stats.cli_MACAddress, data.u.dev.sta_mac, sizeof(mac_address_t));
     assoc_data.dev_stats.cli_SignalStrength = associated_dev->cli_SignalStrength;
     assoc_data.dev_stats.cli_RSSI = associated_dev->cli_RSSI;
@@ -4939,7 +4942,13 @@ int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
     assoc_data.dev_stats.cli_SignalStrength = associated_dev->cli_SignalStrength;
     assoc_data.dev_stats.cli_Retransmissions = associated_dev->cli_Retransmissions;
     assoc_data.dev_stats.cli_Active = associated_dev->cli_Active;
-    assoc_data.dev_stats.cli_SNR = associated_dev->cli_SNR;
+
+    if (associated_dev->cli_SNR != 0) {
+        assoc_data.dev_stats.cli_SNR = associated_dev->cli_SNR;
+    } else {
+        assoc_data.dev_stats.cli_SNR = associated_dev->cli_RSSI - chan_stats.radio_NoiseFloor;
+    }
+
     assoc_data.dev_stats.cli_DataFramesSentAck = associated_dev->cli_DataFramesSentAck;
     assoc_data.dev_stats.cli_DataFramesSentNoAck = associated_dev->cli_DataFramesSentNoAck;
     assoc_data.dev_stats.cli_BytesSent = associated_dev->cli_BytesSent;

@@ -1561,6 +1561,7 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
 
 #if CCSP_WIFI_HAL
     apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL);
+    apps_mgr_cac_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
 #endif // CCSP_COMMON
 
     ctrl_queue_timeout_scheduler_tasks(ctrl);
@@ -1571,6 +1572,7 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
 
 #if CCSP_COMMON
     apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL);
+    apps_mgr_cac_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
 #endif // CCSP_COMMON
     wifi_util_info_print(WIFI_CTRL,"%s:%d Exited queue_wifi_ctrl_task.\n",__FUNCTION__,__LINE__);
     return RETURN_OK;
@@ -1880,6 +1882,17 @@ static int run_analytics_event(void* arg)
 
     return TIMER_TASK_COMPLETE;
 }
+
+static int run_cac_event(void* arg)
+{
+    wifi_ctrl_t *ctrl = NULL;
+
+    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+
+    apps_mgr_cac_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_timeout, NULL, 0);
+
+    return TIMER_TASK_COMPLETE;
+}
 #endif //CCSP_COMMON
 
 static int pending_states_webconfig_analyzer(void *arg)
@@ -1896,6 +1909,8 @@ static void ctrl_queue_timeout_scheduler_tasks(wifi_ctrl_t *ctrl)
 {
 #if CCSP_COMMON
     scheduler_add_timer_task(ctrl->sched, FALSE, NULL, run_analytics_event, NULL, (ANAYLYTICS_PERIOD * 1000), 0);
+
+    scheduler_add_timer_task(ctrl->sched, FALSE, NULL, run_cac_event, NULL, (CAC_PERIOD * 1000), 0);
 
     scheduler_add_timer_task(ctrl->sched, FALSE, NULL, run_greylist_event, NULL, (GREYLIST_CHECK_IN_SECONDS * 1000), 0);
 
@@ -2025,6 +2040,38 @@ wifi_interworking_t * Get_wifi_object_interworking_parameter(uint8_t vapIndex)
         return NULL;
     }
     return &l_vap_maps->vap_array[vap_index].u.bss_info.interworking;
+}
+
+wifi_preassoc_control_t * Get_wifi_object_preassoc_ctrl_parameter(uint8_t vapIndex)
+{
+    uint8_t radio_index = 0, vap_index = 0;
+    if (get_vap_and_radio_index_from_vap_instance(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, vapIndex, &radio_index, &vap_index)) {
+        wifi_util_error_print(WIFI_CTRL, "%s: Invalid VAP index %u\n", __func__, vapIndex);
+        return NULL;
+    }
+
+    wifi_vap_info_map_t *l_vap_maps = get_wifidb_vap_map(radio_index);
+    if (l_vap_maps == NULL || vap_index >= getNumberVAPsPerRadio(radio_index)) {
+        wifi_util_error_print(WIFI_CTRL, "%s: wrong radio_index %d vapIndex:%d \n", __FUNCTION__, radio_index, vapIndex);
+        return NULL;
+    }
+    return &l_vap_maps->vap_array[vap_index].u.bss_info.preassoc;
+}
+
+wifi_postassoc_control_t * Get_wifi_object_postassoc_ctrl_parameter(uint8_t vapIndex)
+{
+    uint8_t radio_index = 0, vap_index = 0;
+    if (get_vap_and_radio_index_from_vap_instance(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, vapIndex, &radio_index, &vap_index)) {
+        wifi_util_error_print(WIFI_CTRL, "%s: Invalid VAP index %u\n", __func__, vapIndex);
+        return NULL;
+    }
+
+    wifi_vap_info_map_t *l_vap_maps = get_wifidb_vap_map(radio_index);
+    if (l_vap_maps == NULL || vap_index >= getNumberVAPsPerRadio(radio_index)) {
+        wifi_util_error_print(WIFI_CTRL, "%s: wrong radio_index %d vapIndex:%d \n", __FUNCTION__, radio_index, vapIndex);
+        return NULL;
+    }
+    return &l_vap_maps->vap_array[vap_index].u.bss_info.postassoc;
 }
 
 wifi_vap_security_t * Get_wifi_object_bss_security_parameter(uint8_t vapIndex)

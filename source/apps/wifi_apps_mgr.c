@@ -179,6 +179,34 @@ int apps_mgr_sm_event(wifi_apps_mgr_t *apps_mgr, wifi_event_type_t type, wifi_ev
     if (event != NULL) {
         free(event);
     }
+    return RETURN_OK;
+}
+
+int apps_mgr_cac_event(wifi_apps_mgr_t *apps_mgr, wifi_event_type_t type, wifi_event_subtype_t sub_type, void *arg, int len)
+{
+   wifi_app_t  *app = NULL;
+    wifi_event_t *event;
+
+    event = (wifi_event_t *)create_wifi_event((len), type, sub_type);
+    if (event == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s %d failed to allocate memory to event\n",__FUNCTION__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    if (arg == NULL) {
+        event->u.core_data.msg = NULL;
+        event->u.core_data.len = 0;
+    } else {
+        /* copy msg to data */
+        memcpy(event->u.core_data.msg, arg, len);
+        event->u.core_data.len = len;
+    }
+
+    app = get_app_by_inst(apps_mgr, wifi_app_inst_cac);
+
+    app->desc.event_fn(app, event);
+
+    destroy_wifi_event(event);
 
     return RETURN_OK;
 }
@@ -193,6 +221,7 @@ int app_deinit(wifi_app_t *app, unsigned int create_flag)
 
     return RETURN_OK;
 }
+
 
 int app_init(wifi_app_t *app, unsigned int create_flag)
 {
@@ -209,6 +238,10 @@ int app_init(wifi_app_t *app, unsigned int create_flag)
         if (pthread_create(&app->tid, NULL, app_detached_event_func, app) != 0) {
             return RETURN_ERR;
         }
+    }
+
+    if (app->desc.mgmt_frame_hook_fn != NULL) {
+        wifi_hal_register_frame_hook(app->desc.mgmt_frame_hook_fn);
     }
 
     return RETURN_OK;

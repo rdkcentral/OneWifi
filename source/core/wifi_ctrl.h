@@ -321,6 +321,8 @@ wifi_radio_feature_param_t* get_wifidb_radio_feat_map(uint8_t radio_index);
 wifi_vap_info_map_t* get_wifidb_vap_map(uint8_t radio_index);
 wifi_GASConfiguration_t* get_wifidb_gas_config(void);
 wifi_interworking_t * Get_wifi_object_interworking_parameter(uint8_t vapIndex);
+wifi_preassoc_control_t * Get_wifi_object_preassoc_ctrl_parameter(uint8_t vapIndex);
+wifi_postassoc_control_t * Get_wifi_object_postassoc_ctrl_parameter(uint8_t vapIndex);
 wifi_front_haul_bss_t * Get_wifi_object_bss_parameter(uint8_t vapIndex);
 wifi_vap_security_t * Get_wifi_object_security_parameter(uint8_t vapIndex);
 wifi_vap_info_t* get_wifidb_vap_parameters(uint8_t vapIndex);

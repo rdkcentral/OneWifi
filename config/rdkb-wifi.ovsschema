@@ -1,6 +1,6 @@
 {
   "name": "Wifi_Rdk_Database",
-  "version": "1.00.019",
+  "version": "1.00.020",
   "cksum": "2353365742 523",
   "tables": {
     "Wifi_Device_Config": {
@@ -1992,6 +1992,187 @@
             },
             "min": 0,
             "max": 1
+          }
+        }
+     },
+     "isRoot": true
+    },
+    "Wifi_Preassoc_Control_Config": {
+      "columns": {
+        "rssi_up_threshold": {
+          "type": {
+            "key": {
+              "type": "string"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "snr_threshold": {
+          "type": {
+            "key": {
+              "type": "string"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "cu_threshold": {
+          "type": {
+            "key": {
+              "type": "string"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "basic_data_transmit_rates": {
+          "type": {
+            "key": {
+              "type": "string"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "operational_data_transmit_rates": {
+          "type": {
+            "key": {
+              "type": "string"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "supported_data_transmit_rates": {
+          "type": {
+            "key": {
+              "type": "string"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "minimum_advertised_mcs": {
+          "type": {
+            "key": {
+              "type": "string"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "sixGOpInfoMinRate": {
+          "type": {
+            "key": {
+              "type": "string"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "vap_name": {
+          "type": {
+            "key": {
+              "type": "string"
+            },
+            "min": 0,
+            "max": 1
+          }
+        }
+     },
+     "isRoot": true
+    },
+    "Wifi_Postassoc_Control_Config": {
+      "columns": {
+        "rssi_up_threshold": {
+          "type": {
+            "key": {
+              "type": "string"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "sampling_interval": {
+          "type": {
+            "key": {
+              "type": "string"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "snr_threshold": {
+          "type": {
+            "key": {
+              "type": "string"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "sampling_count": {
+          "type": {
+            "key": {
+              "type": "string"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "cu_threshold": {
+          "type": {
+            "key": {
+              "type": "string"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "vap_name": {
+          "type": {
+            "key": {
+              "type": "string"
+            },
+            "min": 0,
+            "max": 1
+          }
+        }
+     },
+     "isRoot": true
+    },
+    "Wifi_Connection_Control_Config": {
+      "columns": {
+        "vap_name": {
+          "type": {
+            "key": {
+              "type": "string"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "pre_assoc" : {
+          "type": {
+              "key": {
+                  "type": "uuid",
+                  "refTable": "Wifi_Preassoc_Control_Config",
+                  "refType": "strong"
+              },
+              "min": 0,
+              "max": 1
+          }
+        },
+        "post_assoc" : {
+          "type": {
+              "key": {
+                  "type": "uuid",
+                  "refTable": "Wifi_Postassoc_Control_Config",
+                  "refType": "strong"
+              },
+              "min": 0,
+              "max": 1
           }
         }
      },

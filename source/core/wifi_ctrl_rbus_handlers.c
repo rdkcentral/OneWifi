@@ -149,6 +149,46 @@ int notify_associated_entries(wifi_ctrl_t *ctrl, int ap_index, ULONG new_count, 
     return RETURN_OK;
 }
 
+int notify_force_disassociation(wifi_ctrl_t *ctrl, int band, char *threshold, mac_addr_str_t mac)
+{
+    int rc;
+    char str[2048];
+    memset(str, 0, 2048);
+
+    if (ctrl == NULL ) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: NULL Pointer \n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    snprintf(str, sizeof(str), "%d, %s, %s", band, threshold, mac);
+    rc = rbus_setStr(ctrl->rbus_handle, WIFI_NOTIFY_FORCE_DISASSOCIATION, str);
+    if (rc != RBUS_ERROR_SUCCESS) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: rbusWrite Failed %d\n", __func__, __LINE__, rc);
+        return RETURN_ERR;
+    }
+    return RETURN_OK;
+}
+
+int notify_deny_association(wifi_ctrl_t *ctrl, int band, char *threshold, mac_addr_str_t mac)
+{
+    int rc;
+    char str[2048];
+    memset(str, 0, 2048);
+
+    if (ctrl == NULL ) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: NULL Pointer \n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    snprintf(str, sizeof(str), "%d, %s, %s", band, threshold, mac);
+    rc = rbus_setStr(ctrl->rbus_handle, WIFI_NOTIFY_DENY_ASSOCIATION, str);
+    if (rc != RBUS_ERROR_SUCCESS) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: rbusWrite Failed %d\n", __func__, __LINE__, rc);
+        return RETURN_ERR;
+    }
+    return RETURN_OK;
+}
+
 int notify_hotspot(wifi_ctrl_t *ctrl, assoc_dev_data_t *assoc_device)
 {
     int rc;

@@ -361,6 +361,125 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
     return webconfig_error_none;
 }
 
+webconfig_error_t encode_postassoc_object(const wifi_postassoc_control_t *postassoc_info, cJSON *postassoc)
+{
+    // RssiUpThreshold
+    if(strlen((char *)postassoc_info->rssi_up_threshold) == 0) {
+        cJSON_AddStringToObject(postassoc, "RssiUpThreshold", "disabled");
+    } else {
+        cJSON_AddStringToObject(postassoc, "RssiUpThreshold", postassoc_info->rssi_up_threshold);
+    }
+    // SamplingInterval
+    if(strlen((char *)postassoc_info->sampling_interval) == 0) {
+        cJSON_AddStringToObject(postassoc, "SamplingInterval", "7");
+    } else {
+        cJSON_AddStringToObject(postassoc, "SamplingInterval", postassoc_info->sampling_interval);
+    }
+    // SnrThreshold
+    if(strlen((char *)postassoc_info->snr_threshold) == 0) {
+        cJSON_AddStringToObject(postassoc, "SnrThreshold", "disabled");
+    } else {
+        cJSON_AddStringToObject(postassoc, "SnrThreshold", postassoc_info->snr_threshold);
+    }
+    // SamplingCount
+    if(strlen((char *)postassoc_info->sampling_count) == 0) {
+        cJSON_AddStringToObject(postassoc, "SamplingCount", "3");
+    } else {
+        cJSON_AddStringToObject(postassoc, "SamplingCount", postassoc_info->sampling_count);
+    }
+    //CuThreshold
+    if(strlen((char *)postassoc_info->cu_threshold) == 0) {
+        cJSON_AddStringToObject(postassoc, "CuThreshold", "disabled");
+    } else {
+        cJSON_AddStringToObject(postassoc, "CuThreshold", postassoc_info->cu_threshold);
+    }
+
+    wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Encoding postassoc settings passed\n", __func__, __LINE__);
+
+    return webconfig_error_none;
+}
+
+webconfig_error_t encode_preassoc_object(const wifi_preassoc_control_t *preassoc_info, cJSON *preassoc)
+{
+    // RssiUpThreshold
+    if(strlen((char *)preassoc_info->rssi_up_threshold) == 0) {
+        cJSON_AddStringToObject(preassoc, "RssiUpThreshold", "disabled");
+    } else {
+        cJSON_AddStringToObject(preassoc, "RssiUpThreshold", preassoc_info->rssi_up_threshold);
+    }
+    // SnrThreshold
+    if(strlen((char *)preassoc_info->snr_threshold) == 0) {
+        cJSON_AddStringToObject(preassoc, "SnrThreshold", "disabled");
+    } else {
+        cJSON_AddStringToObject(preassoc, "SnrThreshold", preassoc_info->snr_threshold);
+    }
+    // CuThreshold
+    if(strlen((char *)preassoc_info->cu_threshold) == 0) {
+        cJSON_AddStringToObject(preassoc, "CuThreshold", "disabled");
+    } else {
+        cJSON_AddStringToObject(preassoc, "CuThreshold", preassoc_info->cu_threshold);
+    }
+    // basic_data_transmit_rate
+    if(strlen((char *)preassoc_info->basic_data_transmit_rates) == 0) {
+        cJSON_AddStringToObject(preassoc, "BasicDataTransmitRates", "disabled");
+    } else {
+        cJSON_AddStringToObject(preassoc, "BasicDataTransmitRates", preassoc_info->basic_data_transmit_rates);
+    }
+    // operational_data_transmit_rate
+    if(strlen((char *)preassoc_info->operational_data_transmit_rates) == 0) {
+        cJSON_AddStringToObject(preassoc, "OperationalDataTransmitRates", "disabled");
+    } else {
+        cJSON_AddStringToObject(preassoc, "OperationalDataTransmitRates", preassoc_info->operational_data_transmit_rates);
+    }
+    // supported_data_transmit_rate
+    if(strlen((char *)preassoc_info->supported_data_transmit_rates) == 0) {
+        cJSON_AddStringToObject(preassoc, "SupportedDataTransmitRates", "disabled");
+    } else {
+        cJSON_AddStringToObject(preassoc, "SupportedDataTransmitRates", preassoc_info->supported_data_transmit_rates);
+    }
+    // minimum_advertised_mcs
+    if(strlen((char *)preassoc_info->minimum_advertised_mcs) == 0) {
+        cJSON_AddStringToObject(preassoc, "MinimumAdvertisedMCS", "disabled");
+    } else {
+        cJSON_AddStringToObject(preassoc, "MinimumAdvertisedMCS", preassoc_info->minimum_advertised_mcs);
+    }
+    // 6GOpInfoMinRates
+    if(strlen((char *)preassoc_info->sixGOpInfoMinRate) == 0) {
+        cJSON_AddStringToObject(preassoc, "6GOpInfoMinRate", "disabled");
+    } else {
+        cJSON_AddStringToObject(preassoc, "6GOpInfoMinRate", preassoc_info->sixGOpInfoMinRate);
+    }
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Encoding preassoc settings passed\n", __func__, __LINE__);
+
+    return webconfig_error_none;
+}
+
+webconfig_error_t encode_connection_ctrl_object(const wifi_vap_info_t *vap_info, cJSON *vap_obj)
+{
+    cJSON *obj;
+
+    // VapName
+    cJSON_AddStringToObject(vap_obj, "VapName", vap_info->vap_name);
+
+    obj = cJSON_CreateObject();
+    cJSON_AddItemToObject(vap_obj, "PreAssociationDeny", obj);
+    if (encode_preassoc_object(&vap_info->u.bss_info.preassoc, obj) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Preassoc object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        return webconfig_error_encode;
+    }
+
+    obj = cJSON_CreateObject();
+    cJSON_AddItemToObject(vap_obj, "PostAssociationDeny", obj);
+    if (encode_postassoc_object(&vap_info->u.bss_info.postassoc, obj) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Postassoc object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        return webconfig_error_encode;
+
+    }
+
+    return webconfig_error_none;
+}
+
 webconfig_error_t encode_gas_config(const wifi_GASConfiguration_t *gas_info, cJSON *gas_obj)
 {
     //AdvertisementId
@@ -795,7 +914,7 @@ int validate_sec_config(const wifi_vap_security_t *security_info)
 webconfig_error_t encode_enterprise_security_object(const wifi_vap_security_t *security_info, cJSON *security)
 {
     cJSON *obj;
-    
+
     if (validate_sec_config(security_info) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid Security Config\n", __func__, __LINE__);
         return webconfig_error_encode;
@@ -986,6 +1105,13 @@ webconfig_error_t encode_hotspot_open_vap_object(const wifi_vap_info_t *vap_info
         return webconfig_error_encode;
     }
 
+
+    obj = cJSON_CreateObject();
+    cJSON_AddItemToObject(vap_obj, "VapConnectionControl", obj);
+    if (encode_connection_ctrl_object(vap_info, obj) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d CAC object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        return webconfig_error_encode;
+    }
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(vap_obj, "Security", obj);
     if (encode_no_security_object(&vap_info->u.bss_info.security, obj) != webconfig_error_none) {
@@ -1026,6 +1152,12 @@ webconfig_error_t encode_hotspot_secure_vap_object(const wifi_vap_info_t *vap_in
         return webconfig_error_encode;
     }
 
+    obj = cJSON_CreateObject();
+    cJSON_AddItemToObject(vap_obj, "VapConnectionControl", obj);
+    if (encode_connection_ctrl_object(vap_info, obj) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d CAC object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        return webconfig_error_encode;
+    }
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(vap_obj, "Security", obj);
     if (encode_enterprise_security_object(&vap_info->u.bss_info.security, obj) != webconfig_error_none) {

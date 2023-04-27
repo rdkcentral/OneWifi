@@ -952,6 +952,7 @@ wifi_GASConfiguration_t* get_dml_wifi_gas_config(void)
 #define LNF 0b1000000
 
 int is_vap_config_changed;
+int is_vap_cac_config_changed;
 void get_subdoc_type_bit_mask_from_vap_index(uint8_t vap_index, int* subdoc)
 {
     if (isVapPrivate(vap_index)) {
@@ -989,6 +990,19 @@ void set_dml_cache_vap_config_changed(uint8_t vap_index)
     if (vap_index <  (num_radios * MAX_NUM_VAP_PER_RADIO)) {
         get_subdoc_type_bit_mask_from_vap_index(vap_index,&subdoc);
         is_vap_config_changed = is_vap_config_changed|subdoc;
+        return;
+    } else {
+        wifi_util_error_print(WIFI_DMCLI, "%s: wrong vap_index %d\n", __FUNCTION__, vap_index);
+        return;
+    }
+}
+
+void set_cac_cache_changed(uint8_t vap_index)
+{
+    unsigned int num_radios = get_num_radio_dml();
+
+    if (vap_index <  (num_radios * MAX_NUM_VAP_PER_RADIO)) {
+        is_vap_cac_config_changed = 1;
         return;
     } else {
         wifi_util_error_print(WIFI_DMCLI, "%s: wrong vap_index %d\n", __FUNCTION__, vap_index);
@@ -1059,7 +1073,7 @@ int push_rfc_dml_cache_to_one_wifidb(bool rfc_value,wifi_event_subtype_t rfc)
 int push_vap_dml_cache_to_one_wifidb()
 {
 
-    if(is_vap_config_changed == FALSE)
+    if(is_vap_config_changed == FALSE && is_vap_cac_config_changed == FALSE)
     {
         wifi_util_info_print(WIFI_DMCLI, "%s: No vap DML Modified Return success  \n", __FUNCTION__);
         return RETURN_OK;
@@ -1093,9 +1107,14 @@ int push_vap_dml_cache_to_one_wifidb()
         wifi_util_info_print(WIFI_DMCLI, "%s: Subdoc webconfig_subdoc_type_lnf DML Modified  \n", __FUNCTION__);
         push_subdoc_to_one_wifidb(webconfig_subdoc_type_lnf);
     }
+    if(is_vap_cac_config_changed) {
+        wifi_util_info_print(WIFI_DMCLI, "%s: Subdoc webconfig_subdoc_type_cac DML Modified  \n", __FUNCTION__);
+        push_subdoc_to_one_wifidb(webconfig_subdoc_type_cac);
+    }
 
     wifi_util_info_print(WIFI_DMCLI, "%s:  VAP DML cache pushed to queue \n", __FUNCTION__);
     is_vap_config_changed = FALSE;
+    is_vap_cac_config_changed = FALSE;
     return RETURN_OK;
 }
 

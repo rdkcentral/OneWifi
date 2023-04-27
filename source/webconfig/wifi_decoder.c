@@ -127,6 +127,7 @@
     }   \
 }   \
 
+webconfig_error_t decode_cac_object(wifi_vap_info_t *vap_info, cJSON *obj_array );
 bool is_valid_channel(unsigned int channel, bool dfs)
 {
     if (channel >= 50 && channel <= 144) {
@@ -1752,11 +1753,17 @@ webconfig_error_t decode_hotspot_open_vap_object(const cJSON *vap, wifi_vap_info
     rdk_wifi_vap_info_t *rdk_vap_info, wifi_platform_property_t *wifi_prop)
 {
     const cJSON *security, *interworking;
+    cJSON *cac_obj;
     webconfig_error_t ret = webconfig_error_none;
 
     // first decode the common objects
     if ((ret = decode_vap_common_object(vap, vap_info, rdk_vap_info, wifi_prop)) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Common vap objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        return webconfig_error_decode;
+    }
+    cac_obj = cJSON_GetObjectItem(vap, "VapConnectionControl");
+    if (decode_cac_object(vap_info,cac_obj) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: CACobjects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
 
@@ -1765,7 +1772,6 @@ webconfig_error_t decode_hotspot_open_vap_object(const cJSON *vap, wifi_vap_info
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Security objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
-
     decode_param_object(vap, "Interworking", interworking);
 
     if (decode_interworking_object(interworking, &vap_info->u.bss_info.interworking) != webconfig_error_none) {
@@ -1780,11 +1786,17 @@ webconfig_error_t decode_hotspot_secure_vap_object(const cJSON *vap, wifi_vap_in
     rdk_wifi_vap_info_t *rdk_vap_info, wifi_platform_property_t *wifi_prop)
 {
     const cJSON *security, *interworking;
+    cJSON *cac_obj;
     webconfig_error_t ret = webconfig_error_none;
 
     // first decode the common objects
     if ((ret = decode_vap_common_object(vap, vap_info, rdk_vap_info, wifi_prop)) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Common vap objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        return webconfig_error_decode;
+    }
+    cac_obj = cJSON_GetObjectItem(vap, "VapConnectionControl");
+    if (decode_cac_object(vap_info,cac_obj) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: CACobjects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
 
@@ -3211,6 +3223,284 @@ webconfig_error_t decode_levl_object(const cJSON *levl_cfg, levl_config_t *levl_
     //maxNumberCSIClients
     decode_param_integer(levl_cfg, "maxNumberCSIClients", param);
     levl_config->max_num_csi_clients = param->valuedouble;
+    return webconfig_error_none;
+}
+
+webconfig_error_t decode_preassoc_cac_object(const cJSON *preassoc, wifi_preassoc_control_t *preassoc_info)
+{
+    const cJSON *param;
+    int val, ret;
+
+    // RssiUpThreshold
+    decode_param_allow_empty_string(preassoc, "RssiUpThreshold", param);
+
+    if ((strcmp(param->valuestring, "disabled") == 0) || (strlen(param->valuestring) == 0)) {
+        strcpy((char *)preassoc_info->rssi_up_threshold, "disabled");
+    } else {
+        ret = sscanf(param->valuestring, "%d", &val);
+
+        /*String should be in format of range between two integers*/
+        if (ret != 1) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Incorrect format. Example: -90 to -50\n", __FUNCTION__,__LINE__);
+            return webconfig_error_decode;
+        }
+
+        if (val > -50 || val < -95) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Value is out of supported range\n", __FUNCTION__,__LINE__);
+            return webconfig_error_decode;
+        }
+
+        strcpy((char *)preassoc_info->rssi_up_threshold, param->valuestring);
+    }
+
+    // SnrThreshold
+    decode_param_allow_empty_string(preassoc, "SnrThreshold", param);
+
+    if ((strcmp(param->valuestring, "disabled") == 0) || (strlen(param->valuestring) == 0)) {
+        strcpy((char *)preassoc_info->snr_threshold, "disabled");
+    } else {
+        ret = sscanf(param->valuestring, "%d", &val);
+
+        /*String should be in format of range between two integers*/
+        if (ret != 1) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Incorrect format. Example: 10 to 100\n", __FUNCTION__,__LINE__);
+            return webconfig_error_decode;
+        }
+
+        if (val < 10 || val > 100) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Value is out of supported range\n", __FUNCTION__,__LINE__);
+            return webconfig_error_decode;
+        }
+
+        strcpy((char *)preassoc_info->snr_threshold, param->valuestring);
+    }
+
+     // CuThreshold
+    decode_param_allow_empty_string(preassoc, "CuThreshold", param);
+
+    if ((strcmp(param->valuestring, "disabled") == 0) || (strlen(param->valuestring) == 0)) {
+        strcpy((char *)preassoc_info->cu_threshold, "disabled");
+    } else {
+        ret = sscanf(param->valuestring, "%d", &val);
+
+        /*String should be in format of range between two integers*/
+        if (ret != 1) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Incorrect format. Example: 10 to 100\n", __FUNCTION__,__LINE__);
+            return webconfig_error_decode;
+        }
+
+        if (val < 0 || val > 100) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Value is out of supported range\n", __FUNCTION__,__LINE__);
+            return webconfig_error_decode;
+        }
+
+        strcpy((char *)preassoc_info->cu_threshold, param->valuestring);
+    }
+
+    // basic_data_transmit_rate
+    decode_param_allow_empty_string(preassoc, "BasicDataTransmitRates", param);
+
+    if ((strcmp(param->valuestring, "disabled") == 0) || (strlen(param->valuestring) == 0)) {
+        strcpy((char *)preassoc_info->basic_data_transmit_rates, "disabled");
+    } else {
+        ret = sscanf(param->valuestring, "%d", &val);
+
+        /*String should be in format of range between two integers*/
+        if (ret != 1) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Incorrect format. Example: 10 to 100\n", __FUNCTION__,__LINE__);
+            return webconfig_error_decode;
+        }
+
+        strcpy((char *)preassoc_info->basic_data_transmit_rates, param->valuestring);
+    }
+
+     // operational_data_transmit_rate
+    decode_param_allow_empty_string(preassoc, "OperationalDataTransmitRates", param);
+
+    if ((strcmp(param->valuestring, "disabled") == 0) || (strlen(param->valuestring) == 0)) {
+        strcpy((char *)preassoc_info->operational_data_transmit_rates, "disabled");
+    } else {
+        strcpy((char *)preassoc_info->operational_data_transmit_rates, param->valuestring);
+    }
+
+     // supported_data_transmit_rate
+    decode_param_allow_empty_string(preassoc, "SupportedDataTransmitRates", param);
+
+    if ((strcmp(param->valuestring, "disabled") == 0) || (strlen(param->valuestring) == 0)) {
+        strcpy((char *)preassoc_info->supported_data_transmit_rates, "disabled");
+    } else {
+        strcpy((char *)preassoc_info->supported_data_transmit_rates, param->valuestring);
+    }
+
+     // minimum_advertised_mcs
+    decode_param_allow_empty_string(preassoc, "MinimumAdvertisedMCS", param);
+
+    if ((strcmp(param->valuestring, "disabled") == 0) || (strlen(param->valuestring) == 0)) {
+        strcpy((char *)preassoc_info->minimum_advertised_mcs, "disabled");
+    } else {
+        ret = sscanf(param->valuestring, "%d", &val);
+
+        /*String should be in format of range between two integers*/
+        if (ret != 1) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Incorrect format\n", __FUNCTION__,__LINE__);
+            return webconfig_error_decode;
+        }
+        if ( val < 0 || val > 7) {
+          wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Incorrect value, value should be withing 0 to 7\n", __FUNCTION__,__LINE__);
+          return webconfig_error_decode;
+        }
+        strcpy((char *)preassoc_info->minimum_advertised_mcs, param->valuestring);
+    }
+
+     //6GOpInfoMinRate
+    if (cJSON_GetObjectItem(preassoc,"6GOpInfoMinRate")) {
+        decode_param_allow_empty_string(preassoc, "6GOpInfoMinRate", param);
+
+        if ((strcmp(param->valuestring, "disabled") == 0) || (strlen(param->valuestring) == 0)) {
+            strcpy((char *)preassoc_info->sixGOpInfoMinRate, "disabled");
+        } else {
+            strcpy((char *)preassoc_info->sixGOpInfoMinRate, param->valuestring);
+        }
+   }
+   else {
+            strcpy((char *)preassoc_info->sixGOpInfoMinRate, "disabled");
+   }
+    return webconfig_error_none;
+}
+
+webconfig_error_t decode_postassoc_cac_object(const cJSON *postassoc, wifi_postassoc_control_t *postassoc_info)
+{
+    const cJSON *param;
+    int val, ret;
+
+     // RssiUpThreshold
+    decode_param_allow_empty_string(postassoc, "RssiUpThreshold", param);
+
+    if ((strcmp(param->valuestring, "disabled") == 0) || (strlen(param->valuestring) == 0)) {
+        strcpy((char *)postassoc_info->rssi_up_threshold, "disabled");
+    } else {
+        ret = sscanf(param->valuestring, "%d", &val);
+
+        /*String should be in format of range between two integers*/
+        if (ret != 1) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Incorrect format. Example: 10 to 100\n", __FUNCTION__,__LINE__);
+            return webconfig_error_decode;
+        }
+
+        if (val > -50 || val < -95) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Value is out of supported range\n", __FUNCTION__,__LINE__);
+            return webconfig_error_decode;
+        }
+
+        strcpy((char *)postassoc_info->rssi_up_threshold, param->valuestring);
+    }
+
+    // SamplingInterval
+    decode_param_allow_empty_string(postassoc, "SamplingInterval", param);
+
+    if ((strcmp(param->valuestring, "disabled") == 0) || (strlen(param->valuestring) == 0)) {
+        strcpy((char *)postassoc_info->sampling_interval, "disabled");
+    } else {
+        ret = sscanf(param->valuestring, "%d", &val);
+
+        /*String should be in format of range between two integers*/
+        if (ret != 1) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Incorrect format. Example: 10 to 100\n", __FUNCTION__,__LINE__);
+            return webconfig_error_decode;
+        }
+
+        if (val < 1 || val > 10) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Value is out of supported range\n", __FUNCTION__,__LINE__);
+            return webconfig_error_decode;
+        }
+
+        strcpy((char *)postassoc_info->sampling_interval, param->valuestring);
+    }
+
+    // SnrThreshold
+    decode_param_allow_empty_string(postassoc, "SnrThreshold", param);
+
+    if ((strcmp(param->valuestring, "disabled") == 0) || (strlen(param->valuestring) == 0)) {
+        strcpy((char *)postassoc_info->snr_threshold, "disabled");
+    } else {
+        ret = sscanf(param->valuestring, "%d", &val);
+
+        /*String should be in format of range between two integers*/
+        if (ret != 1) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Incorrect format. Example: 10 to 100\n", __FUNCTION__,__LINE__);
+            return webconfig_error_decode;
+        }
+
+        if (val < 10 || val > 100) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Value is out of supported range\n", __FUNCTION__,__LINE__);
+            return webconfig_error_decode;
+        }
+
+        strcpy((char *)postassoc_info->snr_threshold, param->valuestring);
+    }
+
+    // SamplingCount
+    decode_param_allow_empty_string(postassoc, "SamplingCount", param);
+
+    if ((strcmp(param->valuestring, "disabled") == 0) || (strlen(param->valuestring) == 0)) {
+        strcpy((char *)postassoc_info->sampling_count, "disabled");
+    } else {
+        ret = sscanf(param->valuestring, "%d", &val);
+
+        /*String should be in format of range between two integers*/
+        if (ret != 1) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Incorrect format. Example: 10 to 100\n", __FUNCTION__,__LINE__);
+            return webconfig_error_decode;
+        }
+
+        if (val < 1 || val > 10) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Value is out of supported range\n", __FUNCTION__,__LINE__);
+            return webconfig_error_decode;
+        }
+
+        strcpy((char *)postassoc_info->sampling_count, param->valuestring);
+    }
+
+     // CuThreshold
+    decode_param_allow_empty_string(postassoc, "CuThreshold", param);
+
+    if ((strcmp(param->valuestring, "disabled") == 0) || (strlen(param->valuestring) == 0)) {
+        strcpy((char *)postassoc_info->cu_threshold, "disabled");
+    } else {
+        ret = sscanf(param->valuestring, "%d", &val);
+
+        /*String should be in format of range between two integers*/
+        if (ret != 1) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Incorrect format. Example: 10 to 100\n", __FUNCTION__,__LINE__);
+            return webconfig_error_decode;
+        }
+
+        if (val < 10 || val > 100) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Value is out of supported range\n", __FUNCTION__,__LINE__);
+            return webconfig_error_decode;
+        }
+
+        strcpy((char *)postassoc_info->cu_threshold, param->valuestring);
+    }
+
+    return webconfig_error_none;
+}
+
+webconfig_error_t decode_cac_object(wifi_vap_info_t *vap_info, cJSON *obj_array )
+{
+    const cJSON *preassoc, *postassoc;
+
+    decode_param_object(obj_array, "PreAssociationDeny", preassoc);
+    if (decode_preassoc_cac_object(preassoc, &vap_info->u.bss_info.preassoc) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: preassoc cac objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        return webconfig_error_decode;
+    }
+
+    decode_param_object(obj_array, "PostAssociationDeny", postassoc);
+    if (decode_postassoc_cac_object(postassoc, &vap_info->u.bss_info.postassoc) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: postassoc cac objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        return webconfig_error_decode;
+    }
 
     return webconfig_error_none;
 }

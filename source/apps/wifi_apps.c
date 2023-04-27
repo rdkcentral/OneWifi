@@ -35,7 +35,7 @@ wifi_app_descriptor_t app_desc[WIFI_APPS_NUM] = {
         true, true,
         "Analytics of Real Time Events",
         analytics_init, analytics_event, analytics_deinit,
-        NULL
+        NULL,NULL
     },
     {
         wifi_app_inst_levl, 0,
@@ -43,15 +43,15 @@ wifi_app_descriptor_t app_desc[WIFI_APPS_NUM] = {
         true, true,
         "Levl Finger Printing",
         levl_init, levl_event, levl_deinit,
-        levl_update
+        NULL, levl_update
     },
     {
         wifi_app_inst_cac, 0,
         wifi_event_type_hal_ind | wifi_event_type_exec | wifi_event_type_webconfig,
-        true, true,
+        true,true,
         "Connection Admission Control for VAPs",
         cac_init, cac_event, cac_deinit,
-        NULL
+        cac_mgmt_frame_hook,NULL
     },
     {
         wifi_app_inst_sm, 0,
@@ -59,6 +59,6 @@ wifi_app_descriptor_t app_desc[WIFI_APPS_NUM] = {
         true, true,
         "Stats Manager",
         sm_init, sm_event, sm_deinit,
-        NULL
+        NULL,NULL
     }
 };

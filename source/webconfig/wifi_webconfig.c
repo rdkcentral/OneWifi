@@ -499,5 +499,18 @@ webconfig_error_t webconfig_init(webconfig_t *config)
     config->subdocs[webconfig_subdoc_type_levl].decode_subdoc = decode_levl_subdoc;
     config->subdocs[webconfig_subdoc_type_levl].translate_to_subdoc = translate_to_levl_subdoc;
     config->subdocs[webconfig_subdoc_type_levl].translate_from_subdoc = translate_from_levl_subdoc;
+
+    config->subdocs[webconfig_subdoc_type_cac].type = webconfig_subdoc_type_cac;
+    strcpy(config->subdocs[webconfig_subdoc_type_cac].name, "connection_control");
+    config->subdocs[webconfig_subdoc_type_cac].major = 1;
+    config->subdocs[webconfig_subdoc_type_cac].minor = 1;
+    config->subdocs[webconfig_subdoc_type_cac].init_subdoc = init_cac_config_subdoc;
+    config->subdocs[webconfig_subdoc_type_cac].init_subdoc(&config->subdocs[webconfig_subdoc_type_cac]);
+    config->subdocs[webconfig_subdoc_type_cac].access_check_subdoc = access_check_cac_config_subdoc;
+    config->subdocs[webconfig_subdoc_type_cac].encode_subdoc = encode_cac_config_subdoc;
+    config->subdocs[webconfig_subdoc_type_cac].decode_subdoc = decode_cac_config_subdoc;
+    config->subdocs[webconfig_subdoc_type_cac].translate_to_subdoc = translate_to_cac_config_subdoc;
+    config->subdocs[webconfig_subdoc_type_cac].translate_from_subdoc = translate_from_cac_config_subdoc;
+
     return webconfig_error_none;
 }

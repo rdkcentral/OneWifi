@@ -8607,6 +8607,1952 @@ Security_Rollback
     return ANSC_STATUS_SUCCESS;
 }
 
+
+/***********************************************************************
+
+ APIs for Object:
+
+    WiFi.AccessPoint.{i}.ConnectionControl.
+
+    *  ConnectionControl_GetParamBoolValue
+    *  ConnectionControl_GetParamIntValue
+    *  ConnectionControl_GetParamUlongValue
+    *  ConnectionControl_GetParamStringValue
+    *  ConnectionControl_SetParamBoolValue
+    *  ConnectionControl_SetParamIntValue
+    *  ConnectionControl_SetParamUlongValue
+    *  ConnectionControl_SetParamStringValue
+    *  ConnectionControl_Validate
+    *  ConnectionControl_Commit
+    *  ConnectionControl_Rollback
+
+***********************************************************************/
+/**********************************************************************  
+
+    caller:     owner of this object 
+
+    prototype: 
+
+        BOOL
+        ConnectionControl_GetParamBoolValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                BOOL*                       pBool
+            );
+
+    description:
+
+        This function is called to retrieve Boolean parameter value; 
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                BOOL*                       pBool
+                The buffer of returned boolean value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+BOOL
+ConnectionControl_GetParamBoolValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        BOOL*                       pBool
+    )
+{
+    return TRUE;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        ConnectionControl_GetParamIntValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                int*                        pInt
+            );
+
+    description:
+
+        This function is called to retrieve integer parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                int*                        pInt
+                The buffer of returned integer value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+BOOL
+ConnectionControl_GetParamIntValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        int*                        pInt
+    )
+{
+    return TRUE;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        ConnectionControl_GetParamUlongValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                ULONG*                      puLong
+            );
+
+    description:
+
+        This function is called to retrieve ULONG parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                ULONG*                      puLong
+                The buffer of returned ULONG value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+BOOL
+ConnectionControl_GetParamUlongValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        ULONG*                      puLong
+    )
+{
+    return TRUE;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        ULONG
+        ConnectionControl_GetParamStringValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                char*                       pValue,
+                ULONG*                      pUlSize
+            );
+
+    description:
+
+        This function is called to retrieve string parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                char*                       pValue,
+                The string value buffer;
+
+                ULONG*                      pUlSize
+                The buffer of length of string value;
+                Usually size of 1023 will be used.
+                If it's not big enough, put required size here and return 1;
+
+    return:     0 if succeeded;
+                1 if short of buffer size; (*pUlSize = required size)
+                -1 if not supported.
+
+**********************************************************************/
+ULONG
+ConnectionControl_GetParamStringValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        char*                       pValue,
+        ULONG*                      pUlSize
+    )
+{
+    return ANSC_STATUS_SUCCESS;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        ConnectionControl_SetParamBoolValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                BOOL                        bValue
+            );
+
+    description:
+
+        This function is called to set BOOL parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                BOOL                        bValue
+                The updated BOOL value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+BOOL
+ConnectionControl_SetParamBoolValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        BOOL                        bValue
+    )
+{
+    return TRUE;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        ConnectionControl_SetParamIntValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                int                         iValue
+            );
+
+    description:
+
+        This function is called to set integer parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                int                         iValue
+                The updated integer value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+BOOL
+ConnectionControl_SetParamIntValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        int                         iValue
+    )
+{
+    return TRUE;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        ConnectionControl_SetParamUlongValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                ULONG                       uValue
+            );
+
+    description:
+
+        This function is called to set ULONG parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                ULONG                       uValue
+                The updated ULONG value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+BOOL
+ConnectionControl_SetParamUlongValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        ULONG                       uValue
+    )
+{
+    return TRUE;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        ConnectionControl_SetParamStringValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                char*                       pString
+            );
+
+    description:
+
+        This function is called to set string parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                char*                       pString
+                The updated string value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+BOOL
+ConnectionControl_SetParamStringValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        char*                       pString
+    )
+{
+    return TRUE;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        ConnectionControl_Validate
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       pReturnParamName,
+                ULONG*                      puLength
+            );
+
+    description:
+
+        This function is called to finally commit all the update.
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       pReturnParamName,
+                The buffer (128 bytes) of parameter name if there's a validation.
+
+                ULONG*                      puLength
+                The output length of the param name.
+
+    return:     TRUE if there's no validation.
+
+**********************************************************************/
+BOOL
+ConnectionControl_Validate
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       pReturnParamName,
+        ULONG*                      puLength
+    )
+{
+    return TRUE;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        ULONG
+        ConnectionControl_Commit
+            (
+                ANSC_HANDLE                 hInsContext
+            );
+
+    description:
+
+        This function is called to finally commit all the update.
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+    return:     The status of the operation.
+
+**********************************************************************/
+ULONG
+ConnectionControl_Commit
+    (
+        ANSC_HANDLE                 hInsContext
+    )
+{
+    return ANSC_STATUS_SUCCESS;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        ULONG
+        ConnectionControl_Rollback
+            (
+                ANSC_HANDLE                 hInsContext
+            );
+
+    description:
+
+        This function is called to roll back the update whenever there's a
+        validation found.
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+    return:     The status of the operation.
+
+**********************************************************************/
+ULONG
+ConnectionControl_Rollback
+    (
+        ANSC_HANDLE                 hInsContext
+    )
+{
+    UNREFERENCED_PARAMETER(hInsContext);
+    return ANSC_STATUS_SUCCESS;
+}
+
+/***********************************************************************
+
+ APIs for Object:
+
+    WiFi.AccessPoint.{i}.ConnectionControl.PreAssocDeny.
+
+    *  PreAssocDeny_GetParamBoolValue
+    *  PreAssocDeny_GetParamIntValue
+    *  PreAssocDeny_GetParamUlongValue
+    *  PreAssocDeny_GetParamStringValue
+    *  PreAssocDeny_SetParamBoolValue
+    *  PreAssocDeny_SetParamIntValue
+    *  PreAssocDeny_SetParamUlongValue
+    *  PreAssocDeny_SetParamStringValue
+    *  PreAssocDeny_Validate
+    *  PreAssocDeny_Commit
+    *  PreAssocDeny_Rollback
+
+***********************************************************************/
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        PreAssocDeny_GetParamBoolValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                BOOL*                       pBool
+            );
+
+    description:
+
+        This function is called to retrieve Boolean parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                BOOL*                       pBool
+                The buffer of returned boolean value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+BOOL
+PreAssocDeny_GetParamBoolValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        BOOL*                       pBool
+    )
+{
+    return TRUE;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        PreAssocDeny_GetParamIntValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                int*                        pInt
+            );
+
+    description:
+
+        This function is called to retrieve integer parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                int*                        pInt
+                The buffer of returned integer value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+BOOL
+PreAssocDeny_GetParamIntValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        int*                        pInt
+    )
+{
+    return TRUE;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        PreAssocDeny_GetParamUlongValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                ULONG*                      puLong
+            );
+
+    description:
+
+        This function is called to retrieve ULONG parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                ULONG*                      puLong
+                The buffer of returned ULONG value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+BOOL
+PreAssocDeny_GetParamUlongValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        ULONG*                      puLong
+    )
+{
+    return TRUE;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        ULONG
+        PreAssocDeny_GetParamStringValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                char*                       pValue,
+                ULONG*                      pUlSize
+            );
+
+    description:
+
+        This function is called to retrieve string parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                char*                       pValue,
+                The string value buffer;
+
+                ULONG*                      pUlSize
+                The buffer of length of string value;
+                Usually size of 1023 will be used.
+                If it's not big enough, put required size here and return 1;
+
+    return:     0 if succeeded;
+                1 if short of buffer size; (*pUlSize = required size)
+                -1 if not supported.
+
+**********************************************************************/
+ULONG
+PreAssocDeny_GetParamStringValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        char*                       pValue,
+        ULONG*                      pUlSize
+    )
+{
+    wifi_vap_info_t *pcfg = (wifi_vap_info_t *)hInsContext;
+
+    if (pcfg == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
+        return FALSE;
+    }
+
+    if (isVapSTAMesh(pcfg->vap_index)) {
+        return FALSE;
+    }
+
+    /* check the parameter name and return the corresponding value */
+    if( AnscEqualString(ParamName, "RssiUpThresholdSupported", TRUE))
+    {
+        snprintf(pValue,*pUlSize,"disabled, 10 to 100");
+        return 0;
+    }
+
+    if( AnscEqualString(ParamName, "SnrThresholdSupported", TRUE))
+    {
+        snprintf(pValue,*pUlSize,"disabled, -50 to -95");
+        return 0;
+    }
+
+    if( AnscEqualString(ParamName, "RssiUpThreshold", TRUE))
+    {
+        snprintf(pValue,*pUlSize,pcfg->u.bss_info.preassoc.rssi_up_threshold);
+        return 0;
+    }
+
+    if( AnscEqualString(ParamName, "SnrThreshold", TRUE))
+    {
+        snprintf(pValue,*pUlSize,pcfg->u.bss_info.preassoc.snr_threshold);
+        return 0;
+    }
+
+    if( AnscEqualString(ParamName, "CuThresholdSupported", TRUE))
+    {
+        snprintf(pValue,*pUlSize,"disabled, 0 to 100 (%% in integer)");
+        return 0;
+    }
+
+    if( AnscEqualString(ParamName, "CuThreshold", TRUE))
+    {
+        snprintf(pValue,*pUlSize,pcfg->u.bss_info.preassoc.cu_threshold);
+        return 0;
+    }
+    if( AnscEqualString(ParamName, "BasicDataTransmitRates", TRUE))
+    {
+        snprintf(pValue,*pUlSize,pcfg->u.bss_info.preassoc.basic_data_transmit_rates);
+        return 0;
+    }
+    if( AnscEqualString(ParamName, "OperationalDataTransmitRates", TRUE))
+    {
+        snprintf(pValue,*pUlSize,pcfg->u.bss_info.preassoc.operational_data_transmit_rates);
+        return 0;
+    }
+    if( AnscEqualString(ParamName, "SupportedDataTransmitRates", TRUE))
+    {
+        snprintf(pValue,*pUlSize,pcfg->u.bss_info.preassoc.supported_data_transmit_rates);
+        return 0;
+    }
+    if( AnscEqualString(ParamName, "MinimumAdvertisedMCS", TRUE))
+    {
+        snprintf(pValue,*pUlSize,pcfg->u.bss_info.preassoc.minimum_advertised_mcs);
+        return 0;
+    }
+    if( AnscEqualString(ParamName, "6GOpInfoMinRate", TRUE))
+    {
+        snprintf(pValue,*pUlSize,pcfg->u.bss_info.preassoc.sixGOpInfoMinRate);
+        return 0;
+    }
+
+    return -1;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        PreAssocDeny_SetParamBoolValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                BOOL                        bValue
+            );
+
+    description:
+
+        This function is called to set BOOL parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                BOOL                        bValue
+                The updated BOOL value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+BOOL
+PreAssocDeny_SetParamBoolValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        BOOL                        bValue
+    )
+{
+    return TRUE;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        PreAssocDeny_SetParamIntValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                int                         iValue
+            );
+
+    description:
+
+        This function is called to set integer parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                int                         iValue
+                The updated integer value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+BOOL
+PreAssocDeny_SetParamIntValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        int                         iValue
+    )
+{
+    return TRUE;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        PreAssocDeny_SetParamUlongValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                ULONG                       uValue
+            );
+
+    description:
+
+        This function is called to set ULONG parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                ULONG                       uValue
+                The updated ULONG value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+BOOL
+PreAssocDeny_SetParamUlongValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        ULONG                       uValue
+    )
+{
+    return TRUE;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        PreAssocDeny_SetParamStringValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                char*                       pString
+            );
+
+    description:
+
+        This function is called to set string parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                char*                       pString
+                The updated string value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+BOOL
+PreAssocDeny_SetParamStringValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        char*                       pString
+    )
+{
+    wifi_vap_info_t *pcfg = (wifi_vap_info_t *)hInsContext;
+    int val;
+    int ret;
+    if (pcfg == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
+        return FALSE;
+    }
+    uint8_t instance_number = convert_vap_name_to_index(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop, pcfg->vap_name)+1;
+    wifi_vap_info_t *vapInfo = (wifi_vap_info_t *) get_dml_cache_vap_info(instance_number-1);
+
+    if (vapInfo == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get VAP info for instance_number:%d\n", __FUNCTION__,__LINE__,instance_number);
+        return FALSE;
+    }
+    if (!isVapHotspot(pcfg->vap_index)) {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s does not support configuration\n", __FUNCTION__,__LINE__,pcfg->vap_name);
+        return TRUE;
+    }
+
+    /* check the parameter name and return the corresponding value */
+    if( AnscEqualString(ParamName, "RssiUpThreshold", TRUE))
+    {
+        if(strcmp(pString, vapInfo->u.bss_info.preassoc.rssi_up_threshold) == 0) {
+            return TRUE;
+        }
+
+        if (strcmp(pString, "disabled") == 0) {
+            strcpy(vapInfo->u.bss_info.preassoc.rssi_up_threshold, "disabled");
+            set_cac_cache_changed(instance_number - 1);
+            return TRUE;
+        }
+
+        ret = sscanf(pString, "%d", &val);
+
+        /*String should be in format of range between two integers*/
+        if (ret != 1) {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s Incorrect format. Example: -90 to -50\n", __FUNCTION__,__LINE__);
+            return FALSE;
+        }
+
+        if (val > -50 || val < -95) {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Value is out of supported range\n", __FUNCTION__,__LINE__);
+            return FALSE;
+        }
+
+        strcpy(vapInfo->u.bss_info.preassoc.rssi_up_threshold, pString);
+        set_cac_cache_changed(instance_number - 1);
+        return TRUE;
+    }
+
+    if( AnscEqualString(ParamName, "SnrThreshold", TRUE))
+    {
+        if(strcmp(pString, vapInfo->u.bss_info.preassoc.snr_threshold) == 0) {
+            return TRUE;
+        }
+
+        if (strcmp(pString, "disabled") == 0) {
+            strcpy(vapInfo->u.bss_info.preassoc.snr_threshold, "disabled");
+            set_cac_cache_changed(instance_number - 1);
+            return TRUE;
+        }
+
+        ret = sscanf(pString, "%d", &val);
+
+        /*String should be in format of range between two integers*/
+        if (ret != 1) {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s Incorrect format. Example: 10 to 100\n", __FUNCTION__,__LINE__);
+            return FALSE;
+        }
+
+        if (val < 10 || val > 100) {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s Value is out of supported range\n", __FUNCTION__,__LINE__);
+            return FALSE;
+        }
+
+        strcpy(vapInfo->u.bss_info.preassoc.snr_threshold, pString);
+        set_cac_cache_changed(instance_number - 1);
+        return TRUE;
+    }
+
+    /* check the parameter name and set the corresponding value */
+    if( AnscEqualString(ParamName, "CuThreshold", TRUE))
+    {
+        if(strcmp(pString, vapInfo->u.bss_info.preassoc.cu_threshold) == 0) {
+            return TRUE;
+        }
+
+        if (strcmp(pString, "disabled") == 0) {
+            strcpy(vapInfo->u.bss_info.preassoc.cu_threshold, "disabled");
+            set_cac_cache_changed(instance_number - 1);
+            return TRUE;
+        }
+
+        ret = sscanf(pString, "%d", &val);
+
+        /*String should be in format of range between two integers*/
+        if (ret != 1) {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s Incorrect format. Example: 10 to 100\n", __FUNCTION__,__LINE__);
+            return FALSE;
+        }
+
+        if (val < 0 || val > 100) {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s Value is out of supported range\n", __FUNCTION__,__LINE__);
+            return FALSE;
+        }
+
+        strcpy(vapInfo->u.bss_info.preassoc.cu_threshold, pString);
+        set_cac_cache_changed(instance_number - 1);
+        return TRUE;
+    }
+    /* check the parameter name and return the corresponding value */
+    if( AnscEqualString(ParamName, "BasicDataTransmitRates", TRUE))
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s Rate to set for preassoc\n", __FUNCTION__,__LINE__,pString);
+          
+        if(strcmp(pString, vapInfo->u.bss_info.preassoc.basic_data_transmit_rates) == 0) {
+          return TRUE;
+        }
+          
+        if (strcmp(pString, "disabled") == 0) {
+          strcpy(vapInfo->u.bss_info.preassoc.basic_data_transmit_rates, "disabled");
+          set_cac_cache_changed(instance_number - 1);
+          set_dml_cache_vap_config_changed(instance_number - 1);
+          return TRUE;
+        }
+          
+        if(isValidTransmitRate(pString)) { 
+          if(isSupportedRate(pString) != ANSC_STATUS_SUCCESS) {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s Invalid value\n", __FUNCTION__,__LINE__,pString);
+            return FALSE;
+          }
+          strcpy(vapInfo->u.bss_info.preassoc.basic_data_transmit_rates, pString);
+          set_cac_cache_changed(instance_number - 1);
+          set_dml_cache_vap_config_changed(instance_number - 1);
+          return TRUE;
+      }
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s Not a valid format\n", __FUNCTION__,__LINE__,pString);
+    }
+
+    /* check the parameter name and return the corresponding value */
+    if( AnscEqualString(ParamName, "OperationalDataTransmitRates", TRUE))
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s operational Rate to set for preassoc\n", __FUNCTION__,__LINE__,pString);
+          
+        if(strcmp(pString, vapInfo->u.bss_info.preassoc.operational_data_transmit_rates) == 0) {
+          return TRUE;
+        }
+
+        if (strcmp(pString, "disabled") == 0) {
+            strcpy(vapInfo->u.bss_info.preassoc.operational_data_transmit_rates, "disabled");
+            set_cac_cache_changed(instance_number - 1);
+            set_dml_cache_vap_config_changed(instance_number - 1);
+            return TRUE;
+        }
+
+        if(isValidTransmitRate(pString)) {
+          if(isSupportedRate(pString) != ANSC_STATUS_SUCCESS) {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s Invalid value\n", __FUNCTION__,__LINE__,pString);
+            return FALSE;
+          }
+
+          strcpy(vapInfo->u.bss_info.preassoc.operational_data_transmit_rates, pString);
+          set_cac_cache_changed(instance_number - 1);
+          set_dml_cache_vap_config_changed(instance_number - 1);
+          return TRUE;
+        }
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s Not a valid format\n", __FUNCTION__,__LINE__,pString);
+    }
+    /* check the parameter name and return the corresponding value */
+    if( AnscEqualString(ParamName, "SupportedDataTransmitRates", TRUE))
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s Supported Rate to set for preassoc\n", __FUNCTION__,__LINE__,pString);
+        if(strcmp(pString, vapInfo->u.bss_info.preassoc.supported_data_transmit_rates) == 0) {
+            return TRUE;
+        }
+
+        if (strcmp(pString, "disabled") == 0) {
+            strcpy(vapInfo->u.bss_info.preassoc.supported_data_transmit_rates, "disabled");
+            set_cac_cache_changed(instance_number - 1);
+            set_dml_cache_vap_config_changed(instance_number - 1);
+            return TRUE;
+        }
+
+        if(isValidTransmitRate(pString)) {
+          if(isSupportedRate(pString) != ANSC_STATUS_SUCCESS) {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s Invalid value\n", __FUNCTION__,__LINE__,pString);
+            return FALSE;
+          }
+
+          strcpy(vapInfo->u.bss_info.preassoc.supported_data_transmit_rates, pString);
+          set_cac_cache_changed(instance_number - 1);
+          set_dml_cache_vap_config_changed(instance_number - 1);
+          return TRUE;
+      }
+      wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s Not a valid format\n", __FUNCTION__,__LINE__,pString);
+    }
+
+    /* check the parameter name and return the corresponding value */
+    if( AnscEqualString(ParamName, "MinimumAdvertisedMCS", TRUE))
+    {
+        if(strcmp(pString, vapInfo->u.bss_info.preassoc.minimum_advertised_mcs) == 0) {
+            return TRUE;
+        }
+
+        if (strcmp(pString, "disabled") == 0) {
+            strcpy(vapInfo->u.bss_info.preassoc.minimum_advertised_mcs, "disabled");
+            set_cac_cache_changed(instance_number - 1);
+            set_dml_cache_vap_config_changed(instance_number - 1);
+            return TRUE;
+        }
+
+        ret = sscanf(pString, "%d", &val);
+
+        /*String should be in format of range between two integers*/
+        if (ret != 1) {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Incorrect format: value should be single integer number between 0 to 7\n", __FUNCTION__,__LINE__);
+            return FALSE;
+        }
+        if (val < 0 && val > 7) {
+          wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Incorrect value, value should be within 0 to 7\n", __FUNCTION__,__LINE__);
+          return FALSE;
+        }
+
+        strcpy(vapInfo->u.bss_info.preassoc.minimum_advertised_mcs, pString);
+        set_cac_cache_changed(instance_number - 1);
+        set_dml_cache_vap_config_changed(instance_number - 1);
+        return TRUE;
+    }
+
+    /* check the parameter name and return the corresponding value */
+    if( AnscEqualString(ParamName, "6GOpInfoMinRate", TRUE))
+    {
+        if(strcmp(pString, vapInfo->u.bss_info.preassoc.sixGOpInfoMinRate) == 0) {
+            return TRUE;
+        }
+
+        if (strcmp(pString, "disabled") == 0) {
+            strcpy(vapInfo->u.bss_info.preassoc.sixGOpInfoMinRate, "disabled");
+            set_cac_cache_changed(instance_number - 1);
+            set_dml_cache_vap_config_changed(instance_number - 1);
+            return TRUE;
+        }
+        strcpy(vapInfo->u.bss_info.preassoc.sixGOpInfoMinRate, pString);
+        set_cac_cache_changed(instance_number - 1);
+        set_dml_cache_vap_config_changed(instance_number - 1);
+        return TRUE;
+    }
+    return FALSE;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        PreAssocDeny_Validate
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       pReturnParamName,
+                ULONG*                      puLength
+            );
+
+    description:
+
+        This function is called to finally commit all the update.
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       pReturnParamName,
+                The buffer (128 bytes) of parameter name if there's a validation.
+
+                ULONG*                      puLength
+                The output length of the param name.
+
+    return:     TRUE if there's no validation.
+
+**********************************************************************/
+BOOL
+PreAssocDeny_Validate
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       pReturnParamName,
+        ULONG*                      puLength
+    )
+{
+    UNREFERENCED_PARAMETER(hInsContext);
+    UNREFERENCED_PARAMETER(pReturnParamName);
+    UNREFERENCED_PARAMETER(puLength);
+    return TRUE;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        ULONG
+        PreAssocDeny_Commit
+            (
+                ANSC_HANDLE                 hInsContext
+            );
+
+    description:
+
+        This function is called to finally commit all the update.
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+    return:     The status of the operation.
+
+**********************************************************************/
+ULONG
+PreAssocDeny_Commit
+    (
+        ANSC_HANDLE                 hInsContext
+    )
+{
+    UNREFERENCED_PARAMETER(hInsContext);
+    return ANSC_STATUS_SUCCESS;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        ULONG
+        PreAssocDeny_Rollback
+            (
+                ANSC_HANDLE                 hInsContext
+            );
+
+    description:
+
+        This function is called to roll back the update whenever there's a
+        validation found.
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+    return:     The status of the operation.
+
+**********************************************************************/
+ULONG
+PreAssocDeny_Rollback
+    (
+        ANSC_HANDLE                 hInsContext
+    )
+{
+    UNREFERENCED_PARAMETER(hInsContext);
+    return ANSC_STATUS_SUCCESS;
+}
+
+/***********************************************************************
+
+ APIs for Object:
+
+    WiFi.AccessPoint.{i}.ConnectionControl.PostAssocDisc.
+
+    *  PostAssocDisc_GetParamBoolValue
+    *  PostAssocDisc_GetParamIntValue
+    *  PostAssocDisc_GetParamUlongValue
+    *  PostAssocDisc_GetParamStringValue
+    *  PostAssocDisc_SetParamBoolValue
+    *  PostAssocDisc_SetParamIntValue
+    *  PostAssocDisc_SetParamUlongValue
+    *  PostAssocDisc_SetParamStringValue
+    *  PostAssocDisc_Validate
+    *  PostAssocDisc_Commit
+    *  PostAssocDisc_Rollback
+
+***********************************************************************/
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        PostAssocDisc_GetParamBoolValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                BOOL*                       pBool
+            );
+
+    description:
+
+        This function is called to retrieve Boolean parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                BOOL*                       pBool
+                The buffer of returned boolean value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+BOOL
+PostAssocDisc_GetParamBoolValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        BOOL*                       pBool
+    )
+{
+    return TRUE;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        PostAssocDisc_GetParamIntValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                int*                        pInt
+            );
+
+    description:
+
+        This function is called to retrieve integer parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                int*                        pInt
+                The buffer of returned integer value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+BOOL
+PostAssocDisc_GetParamIntValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        int*                        pInt
+    )
+{
+    return TRUE;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        PostAssocDisc_GetParamUlongValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                ULONG*                      puLong
+            );
+
+    description:
+
+        This function is called to retrieve ULONG parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                ULONG*                      puLong
+                The buffer of returned ULONG value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+BOOL
+PostAssocDisc_GetParamUlongValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        ULONG*                      puLong
+    )
+{
+    return TRUE;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        ULONG
+        PostAssocDisc_GetParamStringValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                char*                       pValue,
+                ULONG*                      pUlSize
+            );
+
+    description:
+
+        This function is called to retrieve string parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                char*                       pValue,
+                The string value buffer;
+
+                ULONG*                      pUlSize
+                The buffer of length of string value;
+                Usually size of 1023 will be used.
+                If it's not big enough, put required size here and return 1;
+
+    return:     0 if succeeded;
+                1 if short of buffer size; (*pUlSize = required size)
+                -1 if not supported.
+
+**********************************************************************/
+ULONG
+PostAssocDisc_GetParamStringValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        char*                       pValue,
+        ULONG*                      pUlSize
+    )
+{
+    wifi_vap_info_t *pcfg = (wifi_vap_info_t *)hInsContext;
+
+    if (pcfg == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
+        return FALSE;
+    }
+
+    if (isVapSTAMesh(pcfg->vap_index)) {
+        return FALSE;
+    }
+
+    /* check the parameter name and return the corresponding value */
+    if( AnscEqualString(ParamName, "RssiUpThresholdSupported", TRUE))
+    {
+        snprintf(pValue,*pUlSize,"disabled, -50 to -95");
+        return 0;
+    }
+
+    if( AnscEqualString(ParamName, "RssiUpThreshold", TRUE))
+    {
+        snprintf(pValue,*pUlSize,pcfg->u.bss_info.postassoc.rssi_up_threshold);
+        return 0;
+    }
+
+    if( AnscEqualString(ParamName, "SamplingIntervalSupported", TRUE))
+    {
+        snprintf(pValue,*pUlSize,"1 to 10");
+        return 0;
+    }
+
+    if( AnscEqualString(ParamName, "SamplingInterval", TRUE))
+    {
+        snprintf(pValue,*pUlSize,pcfg->u.bss_info.postassoc.sampling_interval);
+        return 0;
+    }
+
+    if( AnscEqualString(ParamName, "SnrThresholdSupported", TRUE))
+    {
+        snprintf(pValue,*pUlSize,"disabled, 10 to 100");
+        return 0;
+    }
+
+    if( AnscEqualString(ParamName, "SnrThreshold", TRUE))
+    {
+        snprintf(pValue,*pUlSize,pcfg->u.bss_info.postassoc.snr_threshold);
+        return 0;
+    }
+
+    if( AnscEqualString(ParamName, "SamplingCountSupported", TRUE))
+    {
+        snprintf(pValue,*pUlSize,"1 to 10");
+        return 0;
+    }
+
+    if( AnscEqualString(ParamName, "SamplingCount", TRUE))
+    {
+        snprintf(pValue,*pUlSize,pcfg->u.bss_info.postassoc.sampling_count);
+        return 0;
+    }
+
+    if( AnscEqualString(ParamName, "CuThresholdSupported", TRUE))
+    {
+        snprintf(pValue,*pUlSize,"disabled, 0 to 100");
+        return 0;
+    }
+
+    if( AnscEqualString(ParamName, "CuThreshold", TRUE))
+    {
+        snprintf(pValue,*pUlSize,pcfg->u.bss_info.postassoc.cu_threshold);
+        return 0;
+    }
+
+    return -1;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        PostAssocDisc_SetParamBoolValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                BOOL                        bValue
+            );
+
+    description:
+
+        This function is called to set BOOL parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                BOOL                        bValue
+                The updated BOOL value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+BOOL
+PostAssocDisc_SetParamBoolValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        BOOL                        bValue
+    )
+{
+    return TRUE;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        PostAssocDisc_SetParamIntValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                int                         iValue
+            );
+
+    description:
+
+        This function is called to set integer parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                int                         iValue
+                The updated integer value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+BOOL
+PostAssocDisc_SetParamIntValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        int                         iValue
+    )
+{
+    return TRUE;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        PostAssocDisc_SetParamUlongValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                ULONG                       uValue
+            );
+
+    description:
+
+        This function is called to set ULONG parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                ULONG                       uValue
+                The updated ULONG value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+BOOL
+PostAssocDisc_SetParamUlongValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        ULONG                       uValue
+    )
+{
+    return TRUE;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        PostAssocDisc_SetParamStringValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                char*                       pString
+            );
+
+    description:
+
+        This function is called to set string parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                char*                       pString
+                The updated string value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+BOOL
+PostAssocDisc_SetParamStringValue
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       ParamName,
+        char*                       pString
+    )
+{
+    wifi_vap_info_t *pcfg = (wifi_vap_info_t *)hInsContext;
+    int val, ret;
+    if (pcfg == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
+        return FALSE;
+    }
+    uint8_t instance_number = convert_vap_name_to_index(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop, pcfg->vap_name)+1;
+    wifi_vap_info_t *vapInfo = (wifi_vap_info_t *) get_dml_cache_vap_info(instance_number-1);
+
+    if (vapInfo == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get VAP info for instance_number:%d\n", __FUNCTION__,__LINE__,instance_number);
+        return FALSE;
+    }
+    if (!isVapHotspot(pcfg->vap_index)) {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s does not support configuration\n", __FUNCTION__,__LINE__,pcfg->vap_name);
+        return TRUE;
+    }
+
+    if( AnscEqualString(ParamName, "RssiUpThreshold", TRUE))
+    {
+        if(strcmp(pString, vapInfo->u.bss_info.postassoc.rssi_up_threshold) == 0) {
+            return TRUE;
+        }
+
+        if (strcmp(pString, "disabled") == 0) {
+            strcpy(vapInfo->u.bss_info.postassoc.rssi_up_threshold, "disabled");
+            set_cac_cache_changed(instance_number - 1);
+            return TRUE;
+        }
+
+        ret = sscanf(pString, "%d", &val);
+
+        /*String should be in format of range between two integers*/
+        if (ret != 1) {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s Incorrect format. Example: 10 to 100\n", __FUNCTION__,__LINE__);
+            return FALSE;
+        }
+
+        if (val > -50 || val < -95) {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s Value is out of supported range\n", __FUNCTION__,__LINE__);
+            return FALSE;
+        }
+
+        strcpy(vapInfo->u.bss_info.postassoc.rssi_up_threshold, pString);
+        set_cac_cache_changed(instance_number - 1);
+        return TRUE;
+    }
+
+    if( AnscEqualString(ParamName, "SamplingInterval", TRUE))
+    {
+        if(strcmp(pString, vapInfo->u.bss_info.postassoc.sampling_interval) == 0) {
+            return TRUE;
+        }
+
+        ret = sscanf(pString, "%d", &val);
+
+        /*String should be in format of range between two integers*/
+        if (ret != 1) {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s Incorrect format. Example: 10 to 100\n", __FUNCTION__,__LINE__);
+            return FALSE;
+        }
+
+        if (val < 1 || val > 10) {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s Value is out of supported range\n", __FUNCTION__,__LINE__);
+            return FALSE;
+        }
+
+        strcpy(vapInfo->u.bss_info.postassoc.sampling_interval, pString);
+        set_cac_cache_changed(instance_number - 1);
+        return TRUE;
+    }
+
+    if( AnscEqualString(ParamName, "SnrThreshold", TRUE))
+    {
+        if(strcmp(pString, vapInfo->u.bss_info.postassoc.snr_threshold) == 0) {
+            return TRUE;
+        }
+
+        if (strcmp(pString, "disabled") == 0) {
+            strcpy(vapInfo->u.bss_info.postassoc.snr_threshold, "disabled");
+            set_cac_cache_changed(instance_number - 1);
+            return TRUE;
+        }
+
+        ret = sscanf(pString, "%d", &val);
+
+        /*String should be in format of range between two integers*/
+        if (ret != 1) {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s Incorrect format. Example: 10 to 100\n", __FUNCTION__,__LINE__);
+            return FALSE;
+        }
+
+        if (val < 10 || val > 100) {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s Value is out of supported range\n", __FUNCTION__,__LINE__);
+            return FALSE;
+        }
+
+        strcpy(vapInfo->u.bss_info.postassoc.snr_threshold, pString);
+        set_cac_cache_changed(instance_number - 1);
+        return TRUE;
+    }
+
+    if( AnscEqualString(ParamName, "SamplingCount", TRUE))
+    {
+        if(strcmp(pString, vapInfo->u.bss_info.postassoc.sampling_count) == 0) {
+            return TRUE;
+        }
+
+        ret = sscanf(pString, "%d", &val);
+
+        /*String should be in format of range between two integers*/
+        if (ret != 1) {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Incorrect format. Example: 10 to 100\n", __FUNCTION__,__LINE__);
+            return FALSE;
+        }
+
+        if (val < 1 || val > 10) {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d  Value is out of supported range\n", __FUNCTION__,__LINE__);
+            return FALSE;
+        }
+
+        strcpy(vapInfo->u.bss_info.postassoc.sampling_count, pString);
+        set_cac_cache_changed(instance_number - 1);
+        return TRUE;
+    }
+
+    if( AnscEqualString(ParamName, "CuThreshold", TRUE))
+    {
+        if(strcmp(pString, vapInfo->u.bss_info.postassoc.cu_threshold) == 0) {
+            return TRUE;
+        }
+
+        if (strcmp(pString, "disabled") == 0) {
+            strcpy(vapInfo->u.bss_info.postassoc.cu_threshold, "disabled");
+            set_cac_cache_changed(instance_number - 1);
+            return TRUE;
+        }
+
+        ret = sscanf(pString, "%d", &val);
+
+        /*String should be in format of range between two integers*/
+        if (ret != 1) {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s Incorrect format. Example: 10 to 100\n", __FUNCTION__,__LINE__);
+            return FALSE;
+        }
+
+        if (val < 10 || val > 100) {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s Value is out of supported range\n", __FUNCTION__,__LINE__);
+            return FALSE;
+        }
+
+        strcpy(vapInfo->u.bss_info.postassoc.cu_threshold, pString);
+        set_cac_cache_changed(instance_number - 1);
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        PostAssocDisc_Validate
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       pReturnParamName,
+                ULONG*                      puLength
+            );
+
+    description:
+
+        This function is called to finally commit all the update.
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       pReturnParamName,
+                The buffer (128 bytes) of parameter name if there's a validation.
+
+                ULONG*                      puLength
+                The output length of the param name.
+
+    return:     TRUE if there's no validation.
+
+**********************************************************************/
+BOOL
+PostAssocDisc_Validate
+    (
+        ANSC_HANDLE                 hInsContext,
+        char*                       pReturnParamName,
+        ULONG*                      puLength
+    )
+{
+    UNREFERENCED_PARAMETER(hInsContext);
+    UNREFERENCED_PARAMETER(pReturnParamName);
+    UNREFERENCED_PARAMETER(puLength);
+    return TRUE;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        ULONG
+        PostAssocDisc_Commit
+            (
+                ANSC_HANDLE                 hInsContext
+            );
+
+    description:
+
+        This function is called to finally commit all the update.
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+    return:     The status of the operation.
+
+**********************************************************************/
+ULONG
+PostAssocDisc_Commit
+    (
+        ANSC_HANDLE                 hInsContext
+    )
+{
+    UNREFERENCED_PARAMETER(hInsContext);
+    return ANSC_STATUS_SUCCESS;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        ULONG
+        PostAssocDisc_Rollback
+            (
+                ANSC_HANDLE                 hInsContext
+            );
+
+    description:
+
+        This function is called to roll back the update whenever there's a
+        validation found.
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+    return:     The status of the operation.
+
+**********************************************************************/
+ULONG
+PostAssocDisc_Rollback
+    (
+        ANSC_HANDLE                 hInsContext
+    )
+{
+    UNREFERENCED_PARAMETER(hInsContext);
+    return ANSC_STATUS_SUCCESS;
+}
+
 /***********************************************************************
 
  APIs for Object:
@@ -8626,11 +10572,11 @@ Security_Rollback
     *  WPS_Rollback
 
 ***********************************************************************/
-/**********************************************************************  
+/**********************************************************************
 
-    caller:     owner of this object 
+    caller:     owner of this object
 
-    prototype: 
+    prototype:
 
         BOOL
         WPS_GetParamBoolValue

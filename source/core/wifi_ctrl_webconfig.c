@@ -744,6 +744,35 @@ int webconfig_analyze_pending_states(wifi_ctrl_t *ctrl)
     return RETURN_OK;
 }
 
+static bool is_preassoc_cac_config_changed(wifi_vap_info_t *old, wifi_vap_info_t *new)
+{
+    if ((IS_STR_CHANGED(old->u.bss_info.preassoc.rssi_up_threshold, new->u.bss_info.preassoc.rssi_up_threshold, sizeof(old->u.bss_info.preassoc.rssi_up_threshold)))
+        || (IS_STR_CHANGED(old->u.bss_info.preassoc.snr_threshold, new->u.bss_info.preassoc.snr_threshold, sizeof(old->u.bss_info.preassoc.snr_threshold)))
+        || (IS_STR_CHANGED(old->u.bss_info.preassoc.cu_threshold, new->u.bss_info.preassoc.cu_threshold, sizeof(old->u.bss_info.preassoc.cu_threshold)))
+        || (IS_STR_CHANGED(old->u.bss_info.preassoc.basic_data_transmit_rates, new->u.bss_info.preassoc.basic_data_transmit_rates, sizeof(old->u.bss_info.preassoc.basic_data_transmit_rates)))
+        || (IS_STR_CHANGED(old->u.bss_info.preassoc.operational_data_transmit_rates, new->u.bss_info.preassoc.operational_data_transmit_rates, sizeof(old->u.bss_info.preassoc.operational_data_transmit_rates)))
+        || (IS_STR_CHANGED(old->u.bss_info.preassoc.supported_data_transmit_rates, new->u.bss_info.preassoc.supported_data_transmit_rates, sizeof(old->u.bss_info.preassoc.supported_data_transmit_rates)))
+        || (IS_STR_CHANGED(old->u.bss_info.preassoc.minimum_advertised_mcs, new->u.bss_info.preassoc.minimum_advertised_mcs, sizeof(old->u.bss_info.preassoc.minimum_advertised_mcs)))
+        || (IS_STR_CHANGED(old->u.bss_info.preassoc.sixGOpInfoMinRate, new->u.bss_info.preassoc.sixGOpInfoMinRate, sizeof(old->u.bss_info.preassoc.sixGOpInfoMinRate)))) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+static bool is_postassoc_cac_config_changed(wifi_vap_info_t *old, wifi_vap_info_t *new)
+{
+    if ((IS_STR_CHANGED(old->u.bss_info.postassoc.rssi_up_threshold, new->u.bss_info.postassoc.rssi_up_threshold, sizeof(old->u.bss_info.postassoc.rssi_up_threshold)))
+        || (IS_STR_CHANGED(old->u.bss_info.postassoc.sampling_interval, new->u.bss_info.postassoc.sampling_interval, sizeof(old->u.bss_info.postassoc.sampling_interval)))
+        || (IS_STR_CHANGED(old->u.bss_info.postassoc.snr_threshold, new->u.bss_info.postassoc.snr_threshold, sizeof(old->u.bss_info.postassoc.snr_threshold)))
+        || (IS_STR_CHANGED(old->u.bss_info.postassoc.sampling_count, new->u.bss_info.postassoc.sampling_count, sizeof(old->u.bss_info.postassoc.sampling_count)))
+        || (IS_STR_CHANGED(old->u.bss_info.postassoc.cu_threshold, new->u.bss_info.postassoc.cu_threshold, sizeof(old->u.bss_info.postassoc.cu_threshold)))) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 static bool is_vap_param_config_changed(wifi_vap_info_t *old, wifi_vap_info_t *new,
     rdk_wifi_vap_info_t *rdk_old, rdk_wifi_vap_info_t *rdk_new, bool isSta)
 {
@@ -816,7 +845,12 @@ static bool is_vap_param_config_changed(wifi_vap_info_t *old, wifi_vap_info_t *n
                 sizeof(old->u.bss_info.beaconRateCtl)) ||
                 IS_CHANGED(old->u.bss_info.network_initiated_greylist,
                 new->u.bss_info.network_initiated_greylist) ||
-                IS_CHANGED(old->u.bss_info.mcast2ucast, new->u.bss_info.mcast2ucast)) {
+                IS_CHANGED(old->u.bss_info.mcast2ucast, new->u.bss_info.mcast2ucast) ||
+                IS_STR_CHANGED(old->u.bss_info.preassoc.basic_data_transmit_rates, new->u.bss_info.preassoc.basic_data_transmit_rates, sizeof(old->u.bss_info.preassoc.basic_data_transmit_rates)) ||
+                IS_STR_CHANGED(old->u.bss_info.preassoc.operational_data_transmit_rates, new->u.bss_info.preassoc.operational_data_transmit_rates, sizeof(old->u.bss_info.preassoc.operational_data_transmit_rates)) ||
+                IS_STR_CHANGED(old->u.bss_info.preassoc.supported_data_transmit_rates ,new->u.bss_info.preassoc.supported_data_transmit_rates, sizeof(old->u.bss_info.preassoc.supported_data_transmit_rates)) ||
+                IS_STR_CHANGED(old->u.bss_info.preassoc.minimum_advertised_mcs, new->u.bss_info.preassoc.minimum_advertised_mcs, sizeof(old->u.bss_info.preassoc.minimum_advertised_mcs)) ||
+                IS_STR_CHANGED(old->u.bss_info.preassoc.sixGOpInfoMinRate, new->u.bss_info.preassoc.sixGOpInfoMinRate, sizeof(old->u.bss_info.preassoc.sixGOpInfoMinRate))) {
             return true;
         }
     }
@@ -1520,7 +1554,34 @@ int webconfig_levl_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *dat
     }
 
     mgr->levl.max_num_csi_clients = data->levl.max_num_csi_clients;
+    return RETURN_OK;
+}
 
+int webconfig_cac_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
+{
+    wifi_util_dbg_print(WIFI_CTRL,"Inside webconfig_cac_apply\n");
+    unsigned int vap_index;
+    unsigned int radio_index;
+    wifi_vap_info_map_t *l_vap_maps;
+
+    //Apply the CAC Data
+    for(radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
+        l_vap_maps = get_wifidb_vap_map(radio_index);
+        for (vap_index = 0; vap_index < getNumberVAPsPerRadio(radio_index); vap_index++) {
+            wifi_util_dbg_print(WIFI_CTRL,"Comparing cac config\n");
+
+            if (is_preassoc_cac_config_changed(&l_vap_maps->vap_array[vap_index], &data->radios[radio_index].vaps.vap_map.vap_array[vap_index]) 
+                || is_postassoc_cac_config_changed(&l_vap_maps->vap_array[vap_index], &data->radios[radio_index].vaps.vap_map.vap_array[vap_index])) {
+                // cac data changed apply
+                wifi_util_info_print(WIFI_CTRL, "%s:%d: Change detected in received cac config, applying new configuration for vap: %d\n",
+                                    __func__, __LINE__, vap_index);
+                wifidb_update_wifi_cac_config(&data->radios[radio_index].vaps.vap_map);
+            } else {
+                wifi_util_info_print(WIFI_CTRL, "%s:%d: Received vap config is same for %d, not applying\n",
+                            __func__, __LINE__, vap_index);
+            }
+        }
+    }
     return RETURN_OK;
 }
 
@@ -2258,6 +2319,7 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                     ctrl->webconfig_state |= ctrl_webconfig_state_vap_xfinity_cfg_rsp_pending;
                     webconfig_analytic_event_data_to_hal_apply(data);
                     ret = webconfig_hal_xfinity_vap_apply(ctrl, &data->u.decoded);
+                    webconfig_cac_apply(ctrl, &data->u.decoded);
                 }
             }
         break;
@@ -2444,6 +2506,7 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                 ret = webconfig_harvester_apply(ctrl, &data->u.decoded);
             }
             break;
+
         case webconfig_subdoc_type_levl:
             wifi_util_dbg_print(WIFI_MGR, "%s:%d: levl webconfig subdoc\n", __func__, __LINE__);
             if (data->descriptor & webconfig_data_descriptor_encoded) {
@@ -2452,6 +2515,16 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                 ret = webconfig_levl_apply(ctrl, &data->u.decoded);
             }
             break;
+
+        case webconfig_subdoc_type_cac:
+            wifi_util_dbg_print(WIFI_MGR, "%s:%d: cac webconfig subdoc\n", __func__, __LINE__);
+            if (data->descriptor & webconfig_data_descriptor_encoded) {
+                wifi_util_error_print(WIFI_MGR, "%s:%d: Not expected publish of cac webconfig subdoc\n", __func__, __LINE__);
+            } else {
+                ret = webconfig_cac_apply(ctrl, &data->u.decoded);
+            }
+            break;
+
         case webconfig_subdoc_type_wifi_config:
             wifi_util_dbg_print(WIFI_MGR, "%s:%d: global webconfig subdoc\n", __func__, __LINE__);
             if (data->descriptor & webconfig_data_descriptor_encoded) {
@@ -3376,6 +3449,33 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
             cJSON_AddStringToObject(vb_entry, "BeaconRateCtl", "6Mbps");
         }
 
+        cJSON *vapConnectionControl_o = cJSON_GetObjectItem(vb_entry, "VapConnectionControl");
+        if (vapConnectionControl_o == NULL) {
+            wifi_util_info_print(WIFI_CTRL, "vapConnectionContro param is not present\n");
+            vapConnectionControl_o = cJSON_AddObjectToObject(vb_entry,"VapConnectionControl");
+
+            cJSON *PreAssocDeny =  cJSON_AddObjectToObject(vapConnectionControl_o,"PreAssociationDeny");
+            cJSON_AddStringToObject(PreAssocDeny, "RssiUpThreshold", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.preassoc.rssi_up_threshold);
+            cJSON_AddStringToObject(PreAssocDeny, "SnrThreshold", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.preassoc.snr_threshold);
+            cJSON_AddStringToObject(PreAssocDeny, "CuThreshold", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.preassoc.cu_threshold);
+            cJSON_AddStringToObject(PreAssocDeny, "BasicDataTransmitRates", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.preassoc.basic_data_transmit_rates);
+            cJSON_AddStringToObject(PreAssocDeny, "OperationalDataTransmitRates", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.preassoc.operational_data_transmit_rates);
+            cJSON_AddStringToObject(PreAssocDeny, "SupportedDataTransmitRates", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.preassoc.supported_data_transmit_rates);
+            cJSON_AddStringToObject(PreAssocDeny, "MinimumAdvertisedMCS", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.preassoc.minimum_advertised_mcs);
+            cJSON_AddStringToObject(PreAssocDeny, "6GOpInfoMinRate", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.preassoc.sixGOpInfoMinRate);
+ 
+            cJSON *PostAssocDeny =  cJSON_AddObjectToObject(vapConnectionControl_o,"PostAssociationDeny");
+            cJSON_AddStringToObject(PostAssocDeny, "RssiUpThreshold", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.postassoc.rssi_up_threshold);
+            cJSON_AddStringToObject(PostAssocDeny, "SnrThreshold", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.postassoc.snr_threshold);
+            cJSON_AddStringToObject(PostAssocDeny, "CuThreshold", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.postassoc.cu_threshold);
+            cJSON_AddStringToObject(PostAssocDeny, "SamplingInterval", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.postassoc.sampling_interval);
+            cJSON_AddStringToObject(PostAssocDeny, "SamplingCount", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.postassoc.sampling_count);
+
+
+        }
+        else {
+            wifi_util_info_print(WIFI_CTRL, "vapConnectionContro param is present in blob\n");
+        }
         if(strstr(nm_s, "hotspot_secure") == NULL) { continue; }
 
         cJSON *sec_o = cJSON_GetObjectItem(vb_entry, "Security");
@@ -3428,7 +3528,6 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
     cJSON_AddItemToObject(n_blob, "WifiVapConfig", vap_blob);
 
     char *vap_blob_str = cJSON_Print(n_blob);
-
     // push blob to ctrl queue
     push_event_to_ctrl_queue(vap_blob_str, strlen(vap_blob_str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_tunnel, NULL);
 

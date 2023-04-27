@@ -59,6 +59,7 @@ const char *subdoc_type_to_string(webconfig_subdoc_type_t type)
         DOC2S(webconfig_subdoc_type_wifi_config)
         DOC2S(webconfig_subdoc_type_csi)
         DOC2S(webconfig_subdoc_type_levl)
+        DOC2S(webconfig_subdoc_type_cac)
         default:
             wifi_util_error_print(WIFI_APPS,"%s:%d: event not handle[%d]\r\n",__func__, __LINE__, type);
             break;

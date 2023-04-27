@@ -78,6 +78,9 @@ ovsdb_table_t table_Wifi_Global_Config;
 ovsdb_table_t table_Wifi_MacFilter_Config;
 ovsdb_table_t table_Wifi_Passpoint_Config;
 ovsdb_table_t table_Wifi_Anqp_Config;
+ovsdb_table_t table_Wifi_Preassoc_Control_Config;
+ovsdb_table_t table_Wifi_Postassoc_Control_Config;
+ovsdb_table_t table_Wifi_Connection_Control_Config;
 #if DML_SUPPORT
 ovsdb_table_t table_Wifi_Rfc_Config;
 #endif // DML_SUPPORT
@@ -1088,6 +1091,169 @@ void callback_Wifi_Anqp_Config(ovsdb_update_monitor_t *mon,
 
 /************************************************************************************
  ************************************************************************************
+  Function    : callback_Wifi_Preassoc_Control_Config
+  Parameter   : mon     - Type of modification
+                old_rec - schema_Wifi_Preassoc_Control_Config  holds value before modification
+                new_rec - schema_Wifi_Preassoc_Control_Config  holds value after modification
+  Description : Callback function called when schema_Wifi_Preassoc_Control_Config modified in wifidb
+ *************************************************************************************
+**************************************************************************************/
+void callback_Wifi_Preassoc_Control_Config(ovsdb_update_monitor_t *mon,
+        struct schema_Wifi_Preassoc_Control_Config *old_rec,
+        struct schema_Wifi_Preassoc_Control_Config *new_rec)
+{
+    int i = 0;
+    int vap_index = 0;
+    wifi_mgr_t *g_wifidb;
+    g_wifidb = get_wifimgr_obj();
+    wifi_preassoc_control_t *l_preassoc_ctrl_cfg = NULL;
+
+    wifi_util_dbg_print(WIFI_DB,"%s:%d\n", __func__, __LINE__);
+
+    if (mon->mon_type == OVSDB_UPDATE_DEL) {
+        wifi_util_dbg_print(WIFI_DB,"%s:%d:Delete\n", __func__, __LINE__);
+        if(old_rec == NULL) {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: Null pointer connection control config update failed \n",__func__, __LINE__);
+            return;
+        }
+        i = convert_vap_name_to_array_index(&g_wifidb->hal_cap.wifi_prop, old_rec->vap_name);
+        if(i == -1) {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid vap name \n",__func__, __LINE__,old_rec->vap_name);
+            return;
+        }
+        vap_index = convert_vap_name_to_index(&g_wifidb->hal_cap.wifi_prop, old_rec->vap_name);
+        if(vap_index == -1) {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid vap name \n",__func__, __LINE__,old_rec->vap_name);
+            return;
+        }
+
+        l_preassoc_ctrl_cfg = Get_wifi_object_preassoc_ctrl_parameter(vap_index);
+        if(l_preassoc_ctrl_cfg == NULL) {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid Get_wifi_object_preassoc_ctrl_parameter \n",__func__, __LINE__,new_rec->vap_name);
+            return;
+        }
+        wifidb_init_preassoc_conn_ctrl_config_default(vap_index, l_preassoc_ctrl_cfg);
+    } else if ((mon->mon_type == OVSDB_UPDATE_NEW) || (mon->mon_type == OVSDB_UPDATE_MODIFY)) {
+        wifi_util_dbg_print(WIFI_DB,"%s:%d:New/Modify %d\n", __func__, __LINE__,mon->mon_type);
+        if(new_rec == NULL) {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: Null pointer preassoc control config update failed \n",__func__, __LINE__);
+            return;
+        }
+
+        i = convert_vap_name_to_index(&g_wifidb->hal_cap.wifi_prop, new_rec->vap_name);
+        if(i == -1) {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid vap name \n",__func__, __LINE__,new_rec->vap_name);
+            return;
+        }
+
+        l_preassoc_ctrl_cfg = Get_wifi_object_preassoc_ctrl_parameter(i);
+        if(l_preassoc_ctrl_cfg == NULL) {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid Get_wifi_object_preassoc_ctrl_parameter \n",__func__, __LINE__,new_rec->vap_name);
+            return;
+        }
+        pthread_mutex_lock(&g_wifidb->data_cache_lock);
+        strcpy(l_preassoc_ctrl_cfg->rssi_up_threshold, new_rec->rssi_up_threshold);
+        strcpy(l_preassoc_ctrl_cfg->snr_threshold, new_rec->snr_threshold);
+        strcpy(l_preassoc_ctrl_cfg->cu_threshold, new_rec->cu_threshold);
+        strcpy(l_preassoc_ctrl_cfg->basic_data_transmit_rates, new_rec->basic_data_transmit_rates);
+        strcpy(l_preassoc_ctrl_cfg->operational_data_transmit_rates, new_rec->operational_data_transmit_rates);
+        strcpy(l_preassoc_ctrl_cfg->supported_data_transmit_rates, new_rec->supported_data_transmit_rates);
+        strcpy(l_preassoc_ctrl_cfg->minimum_advertised_mcs, new_rec->minimum_advertised_mcs);
+        strcpy(l_preassoc_ctrl_cfg->sixGOpInfoMinRate, new_rec->sixGOpInfoMinRate);
+        wifi_util_dbg_print(WIFI_DB,"%s:%d: Update Wifi_Preassoc_Control_Config table vap_name=%s rssi_up_threshold=%s snr_threshold=%s cu_threshold=%s basic_data_transmit_rates=%s operational_data_transmit_rates=%s supported_data_transmit_rates=%s minimum_advertised_mcs=%s\n",__func__, __LINE__,new_rec->vap_name,new_rec->rssi_up_threshold,new_rec->snr_threshold,new_rec->cu_threshold,new_rec->basic_data_transmit_rates,new_rec->operational_data_transmit_rates,new_rec->supported_data_transmit_rates,new_rec->minimum_advertised_mcs);
+        pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+        vap_index = convert_vap_name_to_index(&g_wifidb->hal_cap.wifi_prop, new_rec->vap_name);
+        if(vap_index == -1) {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid vap name \n",__func__, __LINE__,new_rec->vap_name);
+            return;
+        }
+    } else {
+        wifi_util_dbg_print(WIFI_DB,"%s:%d:Unknown\n", __func__, __LINE__);
+    }
+}
+
+/************************************************************************************
+ ************************************************************************************
+  Function    : callback_Wifi_Postassoc_Control_Config
+  Parameter   : mon     - Type of modification
+                old_rec - schema_Wifi_Postassoc_Control_Config  holds value before modification
+                new_rec - schema_Wifi_Postassoc_Control_Config  holds value after modification
+  Description : Callback function called when schema_Wifi_Postassoc_Control_Config modified in wifidb
+ *************************************************************************************
+**************************************************************************************/
+void callback_Wifi_Postassoc_Control_Config(ovsdb_update_monitor_t *mon,
+        struct schema_Wifi_Postassoc_Control_Config *old_rec,
+        struct schema_Wifi_Postassoc_Control_Config *new_rec)
+{
+    int i = 0;
+    int vap_index = 0;
+    wifi_mgr_t *g_wifidb;
+    g_wifidb = get_wifimgr_obj();
+    wifi_postassoc_control_t *l_postassoc_ctrl_cfg = NULL;
+
+    wifi_util_dbg_print(WIFI_DB,"%s:%d\n", __func__, __LINE__);
+
+    if (mon->mon_type == OVSDB_UPDATE_DEL) {
+        wifi_util_dbg_print(WIFI_DB,"%s:%d:Delete\n", __func__, __LINE__);
+        if(old_rec == NULL) {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: Null pointer connection control config update failed \n",__func__, __LINE__);
+            return;
+        }
+        i = convert_vap_name_to_array_index(&g_wifidb->hal_cap.wifi_prop, old_rec->vap_name);
+        if(i == -1) {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid vap name \n",__func__, __LINE__,old_rec->vap_name);
+            return;
+        }
+        vap_index = convert_vap_name_to_index(&g_wifidb->hal_cap.wifi_prop, old_rec->vap_name);
+        if(vap_index == -1) {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid vap name \n",__func__, __LINE__,old_rec->vap_name);
+            return;
+        }
+
+        l_postassoc_ctrl_cfg = Get_wifi_object_postassoc_ctrl_parameter(vap_index);
+        if(l_postassoc_ctrl_cfg == NULL) {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid Get_wifi_object_postassoc_ctrl_parameter \n",__func__, __LINE__,new_rec->vap_name);
+            return;
+        }
+        wifidb_init_postassoc_conn_ctrl_config_default(vap_index, l_postassoc_ctrl_cfg);
+    } else if ((mon->mon_type == OVSDB_UPDATE_NEW) || (mon->mon_type == OVSDB_UPDATE_MODIFY)) {
+        wifi_util_dbg_print(WIFI_DB,"%s:%d:New/Modify %d\n", __func__, __LINE__,mon->mon_type);
+        if(new_rec == NULL) {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: Null pointer postassoc control config update failed \n",__func__, __LINE__);
+            return;
+        }
+
+        i = convert_vap_name_to_index(&g_wifidb->hal_cap.wifi_prop, new_rec->vap_name);
+        if(i == -1) {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid vap name \n",__func__, __LINE__,new_rec->vap_name);
+            return;
+        }
+
+        l_postassoc_ctrl_cfg = Get_wifi_object_postassoc_ctrl_parameter(i);
+        if(l_postassoc_ctrl_cfg == NULL) {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid Get_wifi_object_postassoc_ctrl_parameter \n",__func__, __LINE__,new_rec->vap_name);
+            return;
+        }
+        pthread_mutex_lock(&g_wifidb->data_cache_lock);
+        strcpy(l_postassoc_ctrl_cfg->rssi_up_threshold, new_rec->rssi_up_threshold);
+        strcpy(l_postassoc_ctrl_cfg->sampling_interval, new_rec->sampling_interval);
+        strcpy(l_postassoc_ctrl_cfg->snr_threshold, new_rec->snr_threshold);
+        strcpy(l_postassoc_ctrl_cfg->sampling_count, new_rec->sampling_count);
+        strcpy(l_postassoc_ctrl_cfg->cu_threshold, new_rec->cu_threshold);
+        wifi_util_dbg_print(WIFI_DB,"%s:%d: Update Wifi_Postassoc_Control_Config table vap_name=%s rssi_up_threshold=%s,sampling_interval=%s,snr_threshold=%s,sampling_count=%s,cu_threshold=%s\n",__func__, __LINE__,new_rec->vap_name,new_rec->rssi_up_threshold,new_rec->sampling_interval,new_rec->snr_threshold,new_rec->sampling_count,new_rec->cu_threshold);
+        pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+        vap_index = convert_vap_name_to_index(&g_wifidb->hal_cap.wifi_prop, new_rec->vap_name);
+        if(vap_index == -1) {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid vap name \n",__func__, __LINE__,new_rec->vap_name);
+            return;
+        }
+    } else {
+        wifi_util_dbg_print(WIFI_DB,"%s:%d:Unknown\n", __func__, __LINE__);
+    }
+}
+
+/************************************************************************************
+ ************************************************************************************
   Function    : wifidb_update_interworking
   Parameter   : vap_name     - Name of vap
                 interworking - wifi_InterworkingElement_t to be updated to wifidb
@@ -1097,7 +1263,7 @@ void callback_Wifi_Anqp_Config(ovsdb_update_monitor_t *mon,
 int wifidb_update_interworking_config(char *vap_name, wifi_InterworkingElement_t *interworking)
 {
     struct schema_Wifi_Interworking_Config cfg, *pcfg;
-    
+
     json_t *where;
     bool update = false;
     int count;
@@ -2774,6 +2940,208 @@ int wifidb_update_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
 
 /************************************************************************************
  ************************************************************************************
+  Function    : wifidb_update_preassoc_ctrl
+  Parameter   : vap_name     - Name of vap
+                preassoc - wifi_preassoc_control_t to be updated to wifidb
+  Description : Update wifi_preassoc_control_t structure to wifidb
+ *************************************************************************************
+**************************************************************************************/
+int wifidb_update_preassoc_ctrl_config(char *vap_name, wifi_preassoc_control_t *preassoc)
+{
+    struct schema_Wifi_Preassoc_Control_Config cfg;
+    char *filter_preassoc[] = {"-", NULL};
+    wifi_db_t *g_wifidb;
+    g_wifidb = (wifi_db_t*) get_wifidb_obj();
+
+    if(preassoc == NULL)
+    {
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Preassoc CAC - Null pointer \n",__func__, __LINE__);
+        return -1;
+    }
+
+    strcpy(cfg.vap_name, vap_name);
+    strcpy(cfg.rssi_up_threshold, preassoc->rssi_up_threshold);
+    strcpy(cfg.snr_threshold, preassoc->snr_threshold);
+    strcpy(cfg.cu_threshold, preassoc->cu_threshold);
+    strcpy(cfg.basic_data_transmit_rates, preassoc->basic_data_transmit_rates);
+    strcpy(cfg.operational_data_transmit_rates, preassoc->operational_data_transmit_rates);
+    strcpy(cfg.supported_data_transmit_rates, preassoc->supported_data_transmit_rates);
+    strcpy(cfg.minimum_advertised_mcs, preassoc->minimum_advertised_mcs);
+    strcpy(cfg.sixGOpInfoMinRate, preassoc->sixGOpInfoMinRate);
+
+    if (onewifi_ovsdb_table_upsert_with_parent(g_wifidb->wifidb_sock_path, &table_Wifi_Preassoc_Control_Config, &cfg, false, filter_preassoc, SCHEMA_TABLE(Wifi_Connection_Control_Config), onewifi_ovsdb_where_simple(SCHEMA_COLUMN(Wifi_Connection_Control_Config,vap_name), vap_name), SCHEMA_COLUMN(Wifi_Connection_Control_Config, pre_assoc)) ==  false) {
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Wifi_Preassoc_Control Config table \n",__func__, __LINE__);
+        return -1;
+    }
+    else {
+        wifidb_print("%s:%d Updated WIFI DB. Wifi_Preassoc_Control Config table updated successful\n",__func__, __LINE__);
+    }
+
+    return 0;
+}
+
+/************************************************************************************
+ ************************************************************************************
+  Function    : wifidb_get_preassoc_ctrl
+  Parameter   : vap_name     - Name of vap
+                preassoc - Updated with wifi_preassoc_control_t from wifidb
+  Description : Get wifi_preassoc_control_t structure from wifidb
+ *************************************************************************************
+**************************************************************************************/
+int wifidb_get_preassoc_ctrl_config(char *vap_name, wifi_preassoc_control_t *preassoc)
+{
+    struct schema_Wifi_Preassoc_Control_Config  *pcfg;
+    json_t *where;
+    int count;
+    wifi_db_t *g_wifidb;
+    g_wifidb = (wifi_db_t*) get_wifidb_obj();
+
+    wifi_util_dbg_print(WIFI_DB,"%s:%d:Get table Wifi_Preassoc_Control_Config \n",__func__, __LINE__);
+    where = onewifi_ovsdb_tran_cond(OCLM_STR, "vap_name", OFUNC_EQ, vap_name);
+    pcfg = onewifi_ovsdb_table_select_where(g_wifidb->wifidb_sock_path, &table_Wifi_Preassoc_Control_Config, where, &count);
+    if (pcfg == NULL) {
+        wifidb_print("%s:%d Table table_Wifi_Preassoc_Control_Config not found, entry count=%d \n",__func__, __LINE__, count);
+        return -1;
+    }
+    strcpy(preassoc->vap_name, vap_name);
+    strcpy(preassoc->rssi_up_threshold, pcfg->rssi_up_threshold);
+    strcpy(preassoc->snr_threshold, pcfg->snr_threshold);
+    strcpy(preassoc->cu_threshold, pcfg->cu_threshold);
+    strcpy(preassoc->basic_data_transmit_rates, pcfg->basic_data_transmit_rates);
+    strcpy(preassoc->operational_data_transmit_rates, pcfg->operational_data_transmit_rates);
+    strcpy(preassoc->supported_data_transmit_rates, pcfg->supported_data_transmit_rates);
+    strcpy(preassoc->minimum_advertised_mcs, pcfg->minimum_advertised_mcs);
+    strcpy(preassoc->sixGOpInfoMinRate, pcfg->sixGOpInfoMinRate);
+    free(pcfg);
+    return 0;
+}
+
+/************************************************************************************
+ ************************************************************************************
+  Function    : wifidb_update_postassoc_ctrl
+  Parameter   : vap_name     - Name of vap
+                postassoc - wifi_postassoc_control_t to be updated to wifidb
+  Description : Update wifi_postassoc_control_t structure to wifidb
+ *************************************************************************************
+**************************************************************************************/
+int wifidb_update_postassoc_ctrl_config(char *vap_name, wifi_postassoc_control_t *postassoc)
+{
+    struct schema_Wifi_Postassoc_Control_Config cfg;
+    char *filter_postassoc[] = {"-", NULL};
+    wifi_db_t *g_wifidb;
+    g_wifidb = (wifi_db_t*) get_wifidb_obj();
+
+    if(postassoc == NULL)
+    {
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Postassoc CAC - Null pointer \n",__func__, __LINE__);
+        return -1;
+    }
+
+    strcpy(cfg.vap_name, vap_name);
+    strcpy(cfg.rssi_up_threshold, postassoc->rssi_up_threshold);
+    strcpy(cfg.sampling_interval, postassoc->sampling_interval);
+    strcpy(cfg.snr_threshold, postassoc->snr_threshold);
+    strcpy(cfg.sampling_count, postassoc->sampling_count);
+    strcpy(cfg.cu_threshold, postassoc->cu_threshold);
+
+    if (onewifi_ovsdb_table_upsert_with_parent(g_wifidb->wifidb_sock_path, &table_Wifi_Postassoc_Control_Config, &cfg, false, filter_postassoc, SCHEMA_TABLE(Wifi_Connection_Control_Config), onewifi_ovsdb_where_simple(SCHEMA_COLUMN(Wifi_Connection_Control_Config,vap_name), vap_name), SCHEMA_COLUMN(Wifi_Connection_Control_Config, post_assoc)) ==  false) {
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Wifi_Postassoc_Control Config table \n",__func__, __LINE__);
+        return -1;
+    }
+    else {
+        wifidb_print("%s:%d Updated WIFI DB. Wifi_Postassoc_Control Config table updated successful\n",__func__, __LINE__);
+    }
+
+    return 0;
+}
+
+/************************************************************************************
+ ************************************************************************************
+  Function    : wifidb_get_postassoc_ctrl
+  Parameter   : vap_name     - Name of vap
+                postassoc - Updated with wifi_postassoc_control_t from wifidb
+  Description : Get wifi_postassoc_control_t structure from wifidb
+ *************************************************************************************
+**************************************************************************************/
+int wifidb_get_postassoc_ctrl_config(char *vap_name, wifi_postassoc_control_t *postassoc)
+{
+    struct schema_Wifi_Postassoc_Control_Config  *pcfg;
+    json_t *where;
+    int count;
+    wifi_db_t *g_wifidb;
+    g_wifidb = (wifi_db_t*) get_wifidb_obj();
+
+    wifi_util_dbg_print(WIFI_DB,"%s:%d:Get table Wifi_Postassoc_Control_Config \n",__func__, __LINE__);
+    where = onewifi_ovsdb_tran_cond(OCLM_STR, "vap_name", OFUNC_EQ, vap_name);
+    pcfg = onewifi_ovsdb_table_select_where(g_wifidb->wifidb_sock_path, &table_Wifi_Postassoc_Control_Config, where, &count);
+    if (pcfg == NULL) {
+        wifidb_print("%s:%d Table table_Wifi_Postassoc_Control_Config not found, entry count=%d \n",__func__, __LINE__, count);
+        return -1;
+    }
+    strcpy(postassoc->vap_name, vap_name);
+    strcpy(postassoc->rssi_up_threshold, pcfg->rssi_up_threshold);
+    strcpy(postassoc->sampling_interval, pcfg->sampling_interval);
+    strcpy(postassoc->snr_threshold, pcfg->snr_threshold);
+    strcpy(postassoc->sampling_count, pcfg->sampling_count);
+    strcpy(postassoc->cu_threshold, pcfg->cu_threshold);
+    free(pcfg);
+    return 0;
+}
+
+/************************************************************************************
+ ************************************************************************************
+  Function    : wifidb_update_wifi_cac_config
+  Parameter   : config      - wifi_vap_info_map_t updated to wifidb
+  Description : Update wifi_vap_info_map_t structure to wifidb
+ *************************************************************************************
+**************************************************************************************/
+int wifidb_update_wifi_cac_config(wifi_vap_info_map_t *config)
+{
+    unsigned int i = 0;
+    uint8_t vap_index = 0;
+    wifi_db_t *g_wifidb;
+    g_wifidb = (wifi_db_t*) get_wifidb_obj();
+
+    if(config == NULL)
+    {
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to update CAC Config \n",__func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    for(i=0;i<config->num_vaps;i++)
+    {
+        struct schema_Wifi_Connection_Control_Config cfg;
+        char *filter_vap[] = {"-",SCHEMA_COLUMN(Wifi_Connection_Control_Config,pre_assoc),SCHEMA_COLUMN(Wifi_Connection_Control_Config,post_assoc),NULL};
+
+        vap_index = convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, config->vap_array[i].vap_name);
+
+        if ((int)vap_index < 0 || !isVapHotspot(vap_index)) {
+            wifi_util_error_print(WIFI_DB,"%s:%d: %s invalid vap name \n",__func__, __LINE__,config->vap_array[i].vap_name);
+            continue;
+        }
+
+        memset(&cfg,0,sizeof(cfg));
+        strncpy(cfg.vap_name, config->vap_array[i].vap_name,(sizeof(cfg.vap_name)-1));
+
+        if(onewifi_ovsdb_table_upsert_f(g_wifidb->wifidb_sock_path,&table_Wifi_Connection_Control_Config,&cfg,false,filter_vap) == false)
+        {
+            wifidb_print("%s:%d WIFI DB update error !!!. Failed to insert table_Wifi_Connection_Control_Config table \n",__func__, __LINE__);
+            return -1;
+        }
+        else
+        {
+            wifidb_print("%s:%d Updated WIFI DB. Insert Wifi_Radio_Config table completed successful. \n",__func__, __LINE__);
+        }
+
+        wifidb_update_preassoc_ctrl_config(config->vap_array[i].vap_name,&config->vap_array[i].u.bss_info.preassoc);
+        wifidb_update_postassoc_ctrl_config(config->vap_array[i].vap_name,&config->vap_array[i].u.bss_info.postassoc);
+    }
+    return 0;
+}
+
+
+/************************************************************************************
+ ************************************************************************************
   Function    : wifidb_get_table_entry
   Parameter   : key      - value of column
                 key_name - name of column of schema
@@ -3184,6 +3552,225 @@ int wifidb_delete_all_wifi_vap_config()
 
 /************************************************************************************
  ************************************************************************************
+  Function    : wifidb_delete_preassoc_ctrl
+  Parameter   : vap_name - Name of vap
+  Description : Delete table_Wifi_Preassoc_Control_Config entry from wifidb
+ *************************************************************************************
+**************************************************************************************/
+int wifidb_delete_preassoc_ctrl(char *vap_name)
+{
+    json_t *where;
+    int ret = 0;
+    wifi_db_t *g_wifidb;
+    g_wifidb = (wifi_db_t*) get_wifidb_obj();
+
+    where = onewifi_ovsdb_tran_cond(OCLM_STR, "vap_name", OFUNC_EQ, vap_name);
+    ret = onewifi_ovsdb_table_delete_where(g_wifidb->wifidb_sock_path, &table_Wifi_Preassoc_Control_Config, where);
+    wifi_util_dbg_print(WIFI_DB,"%s:%d:VAP Config delete vap_name=%s ret=%d\n",__func__, __LINE__,vap_name,ret);
+    if(ret != 1)
+    {
+        wifidb_print("%s:%d WIFI DB Delete error !!!. Failed to delete table_Wifi_Preassoc_Control_Config \n",__func__, __LINE__);
+        return -1;
+    } else{
+        wifidb_print("%s:%d Deleted WIFI DB. table_Wifi_Preassoc_Control_Config deleted successful. \n",__func__, __LINE__);
+    }
+
+    return 0;
+}
+
+/************************************************************************************
+ ************************************************************************************
+  Function    : wifidb_delete_all_wifi_preassoc_ctrl
+  Parameter   : void
+  Description : Delete all VapConfig entry from wifidb
+ *************************************************************************************
+**************************************************************************************/
+int wifidb_delete_all_preassoc_ctrl()
+{
+    int ret = 0;
+    unsigned int i = 0;
+    int radio_index, num_radio = getNumberRadios();
+    wifi_vap_info_map_t *l_vap_param_cfg = NULL;
+
+    //Check for the number of radios
+    if (num_radio > MAX_NUM_RADIOS)
+    {
+        wifidb_print("%s:%d WIFI DB Delete error !!!. Failed due to Number of Radios %d exceeds supported %d Radios \n",__func__,
+                     __LINE__, getNumberRadios(), MAX_NUM_RADIOS);
+        return -1;
+    }
+
+    for(radio_index=0; radio_index < num_radio; radio_index++)
+    {
+        l_vap_param_cfg = get_wifidb_vap_map(radio_index);
+        if(l_vap_param_cfg == NULL)
+        {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d invalid get_wifidb_vap_map \n",__func__, __LINE__);
+            return -1;
+        }
+        for(i=0; i < l_vap_param_cfg->num_vaps; i++)
+        {
+            ret = wifidb_delete_preassoc_ctrl(l_vap_param_cfg->vap_array[i].vap_name);
+        }
+    }
+
+    if(ret == 0)
+    {
+        wifidb_print("%s:%d Deleted WIFI DB. all_preassoc_ctrl Deleted successful. \n",__func__, __LINE__);
+        return 0;
+    }
+    wifidb_print("%s:%d WIFI DB Delete error !!!. Failed to Delete \n",__func__, __LINE__);
+    return -1;
+}
+
+/************************************************************************************
+ ************************************************************************************
+  Function    : wifidb_delete_postassoc_ctrl
+  Parameter   : vap_name - Name of vap
+  Description : Delete table_Wifi_Postassoc_Control_Config entry from wifidb
+ *************************************************************************************
+**************************************************************************************/
+int wifidb_delete_postassoc_ctrl(char *vap_name)
+{
+    json_t *where;
+    int ret = 0;
+    wifi_db_t *g_wifidb;
+    g_wifidb = (wifi_db_t*) get_wifidb_obj();
+
+    where = onewifi_ovsdb_tran_cond(OCLM_STR, "vap_name", OFUNC_EQ, vap_name);
+    ret = onewifi_ovsdb_table_delete_where(g_wifidb->wifidb_sock_path, &table_Wifi_Postassoc_Control_Config, where);
+    wifi_util_dbg_print(WIFI_DB,"%s:%d:VAP Config delete vap_name=%s ret=%d\n",__func__, __LINE__,vap_name,ret);
+    if(ret != 1)
+    {
+        wifidb_print("%s:%d WIFI DB Delete error !!!. Failed to delete table_Wifi_Postassoc_Control_Config \n",__func__, __LINE__);
+        return -1;
+    } else{
+        wifidb_print("%s:%d Deleted WIFI DB. table_Wifi_Postassoc_Control_Config deleted successful. \n",__func__, __LINE__);
+    }
+
+    return 0;
+}
+
+/************************************************************************************
+ ************************************************************************************
+  Function    : wifidb_delete_all_wifi_postassoc_ctrl
+  Parameter   : void
+  Description : Delete all VapConfig entry from wifidb
+ *************************************************************************************
+**************************************************************************************/
+int wifidb_delete_all_postassoc_ctrl()
+{
+    int ret = 0;
+    unsigned int i = 0;
+    int radio_index, num_radio = getNumberRadios();
+    wifi_vap_info_map_t *l_vap_param_cfg = NULL;
+
+    //Check for the number of radios
+    if (num_radio > MAX_NUM_RADIOS)
+    {
+        wifidb_print("%s:%d WIFI DB Delete error !!!. Failed due to Number of Radios %d exceeds supported %d Radios \n",__func__,
+                     __LINE__, getNumberRadios(), MAX_NUM_RADIOS);
+        return -1;
+    }
+
+    for(radio_index=0; radio_index < num_radio; radio_index++)
+    {
+        l_vap_param_cfg = get_wifidb_vap_map(radio_index);
+        if(l_vap_param_cfg == NULL)
+        {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d invalid get_wifidb_vap_map \n",__func__, __LINE__);
+            return -1;
+        }
+        for(i=0; i < l_vap_param_cfg->num_vaps; i++)
+        {
+            ret = wifidb_delete_postassoc_ctrl(l_vap_param_cfg->vap_array[i].vap_name);
+        }
+    }
+
+    if(ret == 0)
+    {
+        wifidb_print("%s:%d Deleted WIFI DB. all_postassoc_ctrl Deleted successful. \n",__func__, __LINE__);
+        return 0;
+    }
+    wifidb_print("%s:%d WIFI DB Delete error !!!. Failed to Delete \n",__func__, __LINE__);
+    return -1;
+}
+
+/************************************************************************************
+ ************************************************************************************
+  Function    : wifidb_delete_connection_ctrl
+  Parameter   : vap_name - Name of vap
+  Description : Delete table_Wifi_Connection_Control_Config entry from wifidb
+ *************************************************************************************
+**************************************************************************************/
+int wifidb_delete_connection_ctrl(char *vap_name)
+{
+    json_t *where;
+    int ret = 0;
+    wifi_db_t *g_wifidb;
+    g_wifidb = (wifi_db_t*) get_wifidb_obj();
+
+    where = onewifi_ovsdb_tran_cond(OCLM_STR, "vap_name", OFUNC_EQ, vap_name);
+    ret = onewifi_ovsdb_table_delete_where(g_wifidb->wifidb_sock_path, &table_Wifi_Connection_Control_Config, where);
+    wifi_util_dbg_print(WIFI_DB,"%s:%d:VAP Config delete vap_name=%s ret=%d\n",__func__, __LINE__,vap_name,ret);
+    if(ret != 1)
+    {
+        wifidb_print("%s:%d WIFI DB Delete error !!!. Failed to delete table_Wifi_Connection_Control_Config \n",__func__, __LINE__);
+        return -1;
+    } else{
+        wifidb_print("%s:%d Deleted WIFI DB. table_Wifi_Connection_Control_Config deleted successful. \n",__func__, __LINE__);
+    }
+
+    return 0;
+}
+
+/************************************************************************************
+ ************************************************************************************
+  Function    : wifidb_delete_all_wifi_connection_ctrl
+  Parameter   : void
+  Description : Delete all ConnectionConfig entry from wifidb
+ *************************************************************************************
+**************************************************************************************/
+int wifidb_delete_all_connection_ctrl()
+{
+    int ret = 0;
+    unsigned int i = 0;
+    int radio_index, num_radio = getNumberRadios();
+    wifi_vap_info_map_t *l_vap_param_cfg = NULL;
+
+    //Check for the number of radios
+    if (num_radio > MAX_NUM_RADIOS)
+    {
+        wifidb_print("%s:%d WIFI DB Delete error !!!. Failed due to Number of Radios %d exceeds supported %d Radios \n",__func__,
+                     __LINE__, getNumberRadios(), MAX_NUM_RADIOS);
+        return -1;
+    }
+
+    for(radio_index=0; radio_index < num_radio; radio_index++)
+    {
+        l_vap_param_cfg = get_wifidb_vap_map(radio_index);
+        if(l_vap_param_cfg == NULL)
+        {
+            wifi_util_dbg_print(WIFI_DB,"%s:%d invalid get_wifidb_vap_map \n",__func__, __LINE__);
+            return -1;
+        }
+        for(i=0; i < l_vap_param_cfg->num_vaps; i++)
+        {
+            ret = wifidb_delete_connection_ctrl(l_vap_param_cfg->vap_array[i].vap_name);
+        }
+    }
+
+    if(ret == 0)
+    {
+        wifidb_print("%s:%d Deleted WIFI DB. all_postassoc_ctrl Deleted successful. \n",__func__, __LINE__);
+        return 0;
+    }
+    wifidb_print("%s:%d WIFI DB Delete error !!!. Failed to Delete \n",__func__, __LINE__);
+    return -1;
+}
+
+/************************************************************************************
+ ************************************************************************************
   Function    : update_wifi_global_config
   Parameter   : config - Update wifi_global_param_t to wifidb
   Description : Wrapper API for wifidb_update_wifi_global_config
@@ -3416,6 +4003,144 @@ int get_wifi_interworking_config(char *vap_name, wifi_InterworkingElement_t *con
     pthread_mutex_unlock(&g_wifidb->data_cache_lock);
     return 0;
 
+}
+
+/************************************************************************************
+ ************************************************************************************
+  Function    : get_wifi_preassoc_ctrl_config
+  Parameter   : vap_name - Name of vap
+                config - wifi_preassoc_control_t will be updated from Global cache
+  Description : Get wifi_preassoc_control_t from Global cache
+ *************************************************************************************
+**************************************************************************************/
+int get_wifi_preassoc_ctrl_config(char *vap_name, wifi_preassoc_control_t *config)
+{
+    int i = 0;
+    wifi_mgr_t *g_wifidb;
+    wifi_preassoc_control_t *l_preassoc_ctrl_cfg = NULL;
+
+    if(config == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DB,"%s:%d:Null pointer Get VAP info failed \n",__func__, __LINE__);
+        return -1;
+    }
+
+    g_wifidb = get_wifimgr_obj();
+    i = convert_vap_name_to_index(&g_wifidb->hal_cap.wifi_prop, vap_name);
+    if(i == -1)
+    {
+        wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid vap name \n",__func__, __LINE__,vap_name);
+        return -1;
+    }
+
+    l_preassoc_ctrl_cfg = Get_wifi_object_preassoc_ctrl_parameter(i);
+    if(l_preassoc_ctrl_cfg == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid Get_wifi_object_preassoc_ctrl_parameter \n",__func__, __LINE__,vap_name);
+        return -1;
+    }
+    pthread_mutex_lock(&g_wifidb->data_cache_lock);
+    memcpy(config, l_preassoc_ctrl_cfg, sizeof(wifi_preassoc_control_t));
+    pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+    return 0;
+
+}
+
+/************************************************************************************
+ ************************************************************************************
+  Function    : get_wifi_postassoc_ctrl_config
+  Parameter   : vap_name - Name of vap
+                config - wifi_postassoc_control_t will be updated from Global cache
+  Description : Get wifi_postassoc_control_t from Global cache
+ *************************************************************************************
+**************************************************************************************/
+int get_wifi_postassoc_ctrl_config(char *vap_name, wifi_postassoc_control_t *config)
+{
+    int i = 0;
+    wifi_mgr_t *g_wifidb;
+    wifi_postassoc_control_t *l_postassoc_ctrl_cfg = NULL;
+
+    if(config == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DB,"%s:%d:Null pointer Get VAP info failed \n",__func__, __LINE__);
+        return -1;
+    }
+
+    g_wifidb = get_wifimgr_obj();
+    i = convert_vap_name_to_index(&g_wifidb->hal_cap.wifi_prop, vap_name);
+    if(i == -1)
+    {
+        wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid vap name \n",__func__, __LINE__,vap_name);
+        return -1;
+    }
+
+    l_postassoc_ctrl_cfg = Get_wifi_object_postassoc_ctrl_parameter(i);
+    if(l_postassoc_ctrl_cfg == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid Get_wifi_object_postassoc_ctrl_parameter \n",__func__, __LINE__,vap_name);
+        return -1;
+    }
+    pthread_mutex_lock(&g_wifidb->data_cache_lock);
+    memcpy(config, l_postassoc_ctrl_cfg, sizeof(wifi_postassoc_control_t));
+    pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+    return 0;
+
+}
+
+/************************************************************************************
+ ************************************************************************************
+  Function    : update_wifi_preassoc_ctrl_config
+  Parameter   : vap_name - Name of vap
+                config   - Update wifi_preassoc_control_t to wifidb
+  Description : Wrapper API for wifidb_update_preassoc_ctrl_config
+ *************************************************************************************
+**************************************************************************************/
+int update_wifi_preassoc_ctrl_config(char *vap_name, wifi_preassoc_control_t *config)
+{
+    int ret = 0;
+
+    if(config == NULL)
+    {
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to update preassoc ctrl Config - Null pointer \n",__func__, __LINE__);
+        return -1;
+    }
+
+    ret = wifidb_update_preassoc_ctrl_config(vap_name,config);
+    if(ret == 0)
+    {
+        wifidb_print("%s:%d Updated WIFI DB. Preassoc ctrl Config updated successful. \n",__func__, __LINE__);
+        return 0;
+    }
+    wifidb_print("%s:%d WIFI DB update error !!!. Failed to update preassoc ctrl Config \n",__func__, __LINE__);
+    return -1;
+}
+
+/************************************************************************************
+ ************************************************************************************
+  Function    : update_wifi_postassoc_ctrl_config
+  Parameter   : vap_name - Name of vap
+                config   - Update wifi_postassoc_control_t to wifidb
+  Description : Wrapper API for wifidb_update_postassoc_ctrl_config
+ *************************************************************************************
+**************************************************************************************/
+int update_wifi_postassoc_ctrl_config(char *vap_name, wifi_postassoc_control_t *config)
+{
+    int ret = 0;
+
+    if(config == NULL)
+    {
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to update postassoc ctrl Config - Null pointer \n",__func__, __LINE__);
+        return -1;
+    }
+
+    ret = wifidb_update_postassoc_ctrl_config(vap_name,config);
+    if(ret == 0)
+    {
+        wifidb_print("%s:%d Updated WIFI DB. Postassoc ctrl Config updated successful. \n",__func__, __LINE__);
+        return 0;
+    }
+    wifidb_print("%s:%d WIFI DB update error !!!. Failed to update postassoc ctrl Config \n",__func__, __LINE__);
+    return -1;
 }
 
 /************************************************************************************
@@ -4191,6 +4916,63 @@ int wifidb_init_interworking_config_default(int vapIndex,wifi_InterworkingElemen
 
 /************************************************************************************
  ************************************************************************************
+  Function    : wifidb_init_preassoc_conn_ctrl_config_default
+  Parameter   : vap_index - Index of vap
+  Description : Update global cache with default value for wifi_preassoc_control_t
+ *************************************************************************************
+********************************************** ****************************************/
+int wifidb_init_preassoc_conn_ctrl_config_default(int vapIndex, wifi_preassoc_control_t *config)
+{
+    wifi_preassoc_control_t preassoc_connection_ctrl;
+    char vap_name[BUFFER_LENGTH_WIFIDB] = {0};
+    wifi_mgr_t *g_wifidb = get_wifimgr_obj();
+    memset((char *)&preassoc_connection_ctrl, 0, sizeof(wifi_preassoc_control_t));
+    convert_vap_index_to_name(&g_wifidb->hal_cap.wifi_prop, vapIndex,vap_name);
+    strcpy(preassoc_connection_ctrl.rssi_up_threshold, "disabled");
+    strcpy(preassoc_connection_ctrl.snr_threshold, "disabled");
+    strcpy(preassoc_connection_ctrl.cu_threshold, "disabled");
+    strcpy(preassoc_connection_ctrl.basic_data_transmit_rates, "disabled");
+    strcpy(preassoc_connection_ctrl.operational_data_transmit_rates, "disabled");
+    strcpy(preassoc_connection_ctrl.supported_data_transmit_rates, "disabled");
+    strcpy(preassoc_connection_ctrl.minimum_advertised_mcs, "disabled");
+    strcpy(preassoc_connection_ctrl.sixGOpInfoMinRate, "disabled");
+
+    pthread_mutex_lock(&g_wifidb->data_cache_lock);
+    memcpy(config, &preassoc_connection_ctrl, sizeof(wifi_preassoc_control_t));
+    pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+
+    return 0;
+}
+
+/************************************************************************************
+ ************************************************************************************
+  Function    : wifidb_init_postassoc_conn_ctrl_config_default
+  Parameter   : vap_index - Index of vap
+  Description : Update global cache with default value for wifi_postassoc_control_t
+ *************************************************************************************
+********************************************** ****************************************/
+int wifidb_init_postassoc_conn_ctrl_config_default(int vapIndex, wifi_postassoc_control_t *config)
+{
+    wifi_postassoc_control_t postassoc_connection_ctrl;
+    char vap_name[BUFFER_LENGTH_WIFIDB] = {0};
+    wifi_mgr_t *g_wifidb = get_wifimgr_obj();
+    memset((char *)&postassoc_connection_ctrl, 0, sizeof(wifi_postassoc_control_t));
+    convert_vap_index_to_name(&g_wifidb->hal_cap.wifi_prop, vapIndex,vap_name);
+    strcpy(postassoc_connection_ctrl.rssi_up_threshold, "disabled");
+    strcpy(postassoc_connection_ctrl.sampling_interval, "7");
+    strcpy(postassoc_connection_ctrl.snr_threshold, "disabled");
+    strcpy(postassoc_connection_ctrl.sampling_count, "3");
+    strcpy(postassoc_connection_ctrl.cu_threshold, "disabled");
+
+    pthread_mutex_lock(&g_wifidb->data_cache_lock);
+    memcpy(config, &postassoc_connection_ctrl, sizeof(wifi_postassoc_control_t));
+    pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+
+    return 0;
+}
+
+/************************************************************************************
+ ************************************************************************************
   Function    : wifidb_init_gas_config_default
   Parameter   : void
   Description : Update global cache with default value for wifi_GASConfiguration_t
@@ -4367,6 +5149,8 @@ void wifidb_init_default_value()
         }
         wifidb_init_vap_config_default(vap_index, vapInfo, rdkVapInfo);
         wifidb_init_interworking_config_default(vap_index, &vapInfo->u.bss_info.interworking.interworking);
+        wifidb_init_preassoc_conn_ctrl_config_default(vap_index, &vapInfo->u.bss_info.preassoc);
+        wifidb_init_postassoc_conn_ctrl_config_default(vap_index, &vapInfo->u.bss_info.postassoc);
 
       //As wifidb_init_vap_config_default() does memcpy of wifi_vap_info_t structure
       //so here we are restoring the interface mac into wifi_vap_info_t from temporary array
@@ -4554,6 +5338,8 @@ void init_wifidb_data()
             }
             wifidb_update_wifi_radio_config(r_index, l_radio_cfg, f_radio_cfg);
             wifidb_update_wifi_vap_config(r_index, l_vap_param_cfg, l_rdk_vap_param_cfg);
+
+            wifidb_update_wifi_cac_config(l_vap_param_cfg);
         }
         wifidb_update_wifi_global_config(&g_wifidb->global_config.global_parameters);
         wifidb_update_gas_config(g_wifidb->global_config.gas_config.AdvertisementID, &g_wifidb->global_config.gas_config);
@@ -4597,6 +5383,17 @@ void init_wifidb_data()
             wifidb_radio_config_upgrade(r_index, l_radio_cfg, f_radio_cfg);
             wifidb_vap_config_upgrade(l_vap_param_cfg, l_rdk_vap_param_cfg);
             wifidb_vap_config_ext(l_vap_param_cfg, l_rdk_vap_param_cfg);
+            for (unsigned int i = 0; i < l_vap_param_cfg->num_vaps; i++) {
+                uint8_t vap_index= convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, l_vap_param_cfg->vap_array[i].vap_name);
+                if ((int)vap_index < 0) {
+                    wifi_util_error_print(WIFI_DB,"%s:%d: %s invalid vap name \n",__func__, __LINE__,l_vap_param_cfg->vap_array[i].vap_name);
+                    continue;
+                }
+                if (isVapHotspot(vap_index)) {
+                    wifidb_get_preassoc_ctrl_config(l_vap_param_cfg->vap_array[i].vap_name, &l_vap_param_cfg->vap_array[i].u.bss_info.preassoc);
+                    wifidb_get_postassoc_ctrl_config(l_vap_param_cfg->vap_array[i].vap_name, &l_vap_param_cfg->vap_array[i].u.bss_info.postassoc);
+                }
+            }
         }
         wifidb_get_wifi_macfilter_config();
         wifidb_get_wifi_global_config(&g_wifidb->global_config.global_parameters);
@@ -4644,6 +5441,8 @@ int start_wifidb_monitor()
     ONEWIFI_OVSDB_TABLE_MONITOR(g_wifidb->wifidb_fd, Wifi_Security_Config, true);
     ONEWIFI_OVSDB_TABLE_MONITOR(g_wifidb->wifidb_fd, Wifi_Interworking_Config, true);
     ONEWIFI_OVSDB_TABLE_MONITOR(g_wifidb->wifidb_fd, Wifi_GAS_Config, true);
+    ONEWIFI_OVSDB_TABLE_MONITOR(g_wifidb->wifidb_fd, Wifi_Preassoc_Control_Config, true);
+    ONEWIFI_OVSDB_TABLE_MONITOR(g_wifidb->wifidb_fd, Wifi_Postassoc_Control_Config, true);
 #if DML_SUPPORT
     ONEWIFI_OVSDB_TABLE_MONITOR(g_wifidb->wifidb_fd, Wifi_Rfc_Config, true);
 #endif // DML_SUPPORT
@@ -4717,6 +5516,9 @@ int init_wifidb_tables()
     ONEWIFI_OVSDB_TABLE_INIT(Wifi_Device_Config, device_mac);
     ONEWIFI_OVSDB_TABLE_INIT(Wifi_Security_Config,vap_name);
     ONEWIFI_OVSDB_TABLE_INIT(Wifi_Interworking_Config, vap_name);
+    ONEWIFI_OVSDB_TABLE_INIT(Wifi_Preassoc_Control_Config, vap_name);
+    ONEWIFI_OVSDB_TABLE_INIT(Wifi_Postassoc_Control_Config, vap_name);
+    ONEWIFI_OVSDB_TABLE_INIT(Wifi_Connection_Control_Config, vap_name);
     ONEWIFI_OVSDB_TABLE_INIT(Wifi_GAS_Config, advertisement_id);
     ONEWIFI_OVSDB_TABLE_INIT(Wifi_VAP_Config, vap_name);
     ONEWIFI_OVSDB_TABLE_INIT(Wifi_Radio_Config, radio_name);

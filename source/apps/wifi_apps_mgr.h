@@ -54,6 +54,7 @@ typedef int (* wifi_app_update_fn_t)(wifi_app_t *app);
 typedef struct {
     union {
         levl_data_t          levl;
+        cac_data_t           cac;
         analytics_data_t     analytics;
         sm_data_t            sm_data;
     } u;
@@ -69,6 +70,7 @@ typedef struct {
     wifi_app_init_fn_t init_fn;
     wifi_app_event_fn_t     event_fn;
     wifi_app_deinit_fn_t deinit_fn;
+    wifi_hal_frame_hook_fn_t mgmt_frame_hook_fn;
     wifi_app_update_fn_t update_fn;
 } wifi_app_descriptor_t;
 

@@ -1610,6 +1610,42 @@
         PJS_OVS_STRING(txrx_rate_list, 128 + 1) \
     )
 
+#define PJS_SCHEMA_Wifi_Preassoc_Control_Config \
+    PJS(schema_Wifi_Preassoc_Control_Config, \
+        PJS_OVS_UUID_Q(_uuid) \
+        PJS_OVS_UUID_Q(_version) \
+        PJS_OVS_STRING(rssi_up_threshold, 128 + 1) \
+        PJS_OVS_STRING(snr_threshold, 128 + 1) \
+        PJS_OVS_STRING(cu_threshold, 128 + 1) \
+        PJS_OVS_STRING(basic_data_transmit_rates, 128 + 1) \
+        PJS_OVS_STRING(operational_data_transmit_rates, 128 + 1) \
+        PJS_OVS_STRING(supported_data_transmit_rates, 128 + 1) \
+        PJS_OVS_STRING(minimum_advertised_mcs, 128 + 1) \
+        PJS_OVS_STRING(sixGOpInfoMinRate, 128 + 1) \
+        PJS_OVS_STRING(vap_name, 128 + 1) \
+    )
+
+#define PJS_SCHEMA_Wifi_Postassoc_Control_Config \
+    PJS(schema_Wifi_Postassoc_Control_Config, \
+        PJS_OVS_UUID_Q(_uuid) \
+        PJS_OVS_UUID_Q(_version) \
+        PJS_OVS_STRING(rssi_up_threshold, 128 + 1) \
+        PJS_OVS_STRING(sampling_interval, 128 + 1) \
+        PJS_OVS_STRING(snr_threshold, 128 + 1) \
+        PJS_OVS_STRING(sampling_count, 128 + 1) \
+        PJS_OVS_STRING(cu_threshold, 128 + 1) \
+        PJS_OVS_STRING(vap_name, 128 + 1) \
+    )
+
+#define PJS_SCHEMA_Wifi_Connection_Control_Config \
+    PJS(schema_Wifi_Connection_Control_Config, \
+        PJS_OVS_UUID_Q(_uuid) \
+        PJS_OVS_UUID_Q(_version) \
+        PJS_OVS_STRING(vap_name, 128 + 1) \
+        PJS_OVS_UUID(pre_assoc) \
+        PJS_OVS_UUID(post_assoc) \
+    )
+
 #define PJS_GEN_TABLE \
      PJS_SCHEMA_AWLAN_Node \
      PJS_SCHEMA_Wifi_Device_Config \
@@ -1629,6 +1665,9 @@
      PJS_SCHEMA_Wifi_Radio_Config \
      PJS_SCHEMA_Wifi_Radio_Config_ovs \
      PJS_SCHEMA_Wifi_Global_Config \
+     PJS_SCHEMA_Wifi_Preassoc_Control_Config \
+     PJS_SCHEMA_Wifi_Postassoc_Control_Config \
+     PJS_SCHEMA_Wifi_Connection_Control_Config \
      PJS_SCHEMA_Wifi_Anqp_Config \
      PJS_SCHEMA_Wifi_Passpoint_Config \
      PJS_SCHEMA_Wifi_Radio_State \
@@ -1723,6 +1762,9 @@
     SCHEMA(Wifi_Radio_Config_ovs) \
     SCHEMA(Wifi_MacFilter_Config) \
     SCHEMA(Wifi_Global_Config) \
+    SCHEMA(Wifi_Preassoc_Control_Config) \
+    SCHEMA(Wifi_Postassoc_Control_Config) \
+    SCHEMA(Wifi_Connection_Control_Config) \
     SCHEMA(Wifi_Anqp_Config) \
     SCHEMA(Wifi_Passpoint_Config) \
     SCHEMA(Wifi_Radio_State) \
@@ -1819,6 +1861,9 @@
     SCHEMA(Wifi_Anqp_Config) \
     SCHEMA(Wifi_Passpoint_Config) \
     SCHEMA(Wifi_Global_Config) \
+    SCHEMA(Wifi_Preassoc_Control_Config) \
+    SCHEMA(Wifi_Postassoc_Control_Config) \
+    SCHEMA(Wifi_Connection_Control_Config) \
     SCHEMA(Wifi_Radio_State) \
     SCHEMA(Wifi_Credential_Config) \
     SCHEMA(Wifi_VIF_Config) \
@@ -3202,6 +3247,33 @@
     COLUMN(cli_stat_list) \
     COLUMN(txrx_rate_list) \
 
+#define SCHEMA__Wifi_Preassoc_Control_Config "Wifi_Preassoc_Control_Config"
+#define SCHEMA_COLUMN__Wifi_Preassoc_Control_Config(COLUMN) \
+    COLUMN(rssi_up_threshold) \
+    COLUMN(snr_threshold) \
+    COLUMN(cu_threshold) \
+    COLUMN(basic_data_transmit_rates) \
+    COLUMN(operational_data_transmit_rates) \
+    COLUMN(supported_data_transmit_rates) \
+    COLUMN(minimum_advertised_mcs) \
+    COLUMN(sixGOpInfoMinRate) \
+    COLUMN(vap_name) \
+
+#define SCHEMA__Wifi_Postassoc_Control_Config "Wifi_Postassoc_Control_Config"
+#define SCHEMA_COLUMN__Wifi_Postassoc_Control_Config(COLUMN) \
+    COLUMN(rssi_up_threshold) \
+    COLUMN(sampling_interval) \
+    COLUMN(snr_threshold) \
+    COLUMN(sampling_count) \
+    COLUMN(cu_threshold) \
+    COLUMN(vap_name) \
+
+#define SCHEMA__Wifi_Connection_Control_Config "Wifi_Connection_Control_Config"
+#define SCHEMA_COLUMN__Wifi_Connection_Control_Config(COLUMN) \
+    COLUMN(vap_name) \
+    COLUMN(pre_assoc) \
+    COLUMN(post_assoc) \
+
 #define SCHEMA__AWLAN_Node__id "id"
 #define SCHEMA__AWLAN_Node__model "model"
 #define SCHEMA__AWLAN_Node__revision "revision"
@@ -4407,3 +4479,24 @@
 #define SCHEMA__Wifi_Global_Config__snr_list "snr_list"
 #define SCHEMA__Wifi_Global_Config__cli_stat_list "cli_stat_list"
 #define SCHEMA__Wifi_Global_Config__txrx_rate_list "txrx_rate_list"
+
+#define SCHEMA__Wifi_Preassoc_Control_Config__rssi_up_threshold "rssi_up_threshold"
+#define SCHEMA__Wifi_Preassoc_Control_Config__snr_threshold "snr_threshold"
+#define SCHEMA__Wifi_Preassoc_Control_Config__cu_threshold "cu_threshold"
+#define SCHEMA__Wifi_Preassoc_Control_Config__basic_data_transmit_rates "basic_data_transmit_rates"
+#define SCHEMA__Wifi_Preassoc_Control_Config__operational_data_transmit_rates "operational_data_transmit_rates"
+#define SCHEMA__Wifi_Preassoc_Control_Config__supported_data_transmit_rates "supported_data_transmit_rates"
+#define SCHEMA__Wifi_Preassoc_Control_Config__minimum_advertised_mcs "minimum_advertised_mcs"
+#define SCHEMA__Wifi_Preassoc_Control_Config__sixGOpInfoMinRate "sixGOpInfoMinRate"
+#define SCHEMA__Wifi_Preassoc_Control_Config__vap_name "vap_name"
+
+#define SCHEMA__Wifi_Postassoc_Control_Config__rssi_up_threshold "rssi_up_threshold"
+#define SCHEMA__Wifi_Postassoc_Control_Config__sampling_interval "sampling_interval"
+#define SCHEMA__Wifi_Postassoc_Control_Config__snr_threshold "snr_threshold"
+#define SCHEMA__Wifi_Postassoc_Control_Config__sampling_count "sampling_count"
+#define SCHEMA__Wifi_Postassoc_Control_Config__cu_threshold "cu_threshold"
+#define SCHEMA__Wifi_Postassoc_Control_Config__vap_name "vap_name"
+
+#define SCHEMA__Wifi_Connection_Control_Config__vap_name "vap_name"
+#define SCHEMA__Wifi_Connection_Control_Config__pre_assoc "pre_assoc"
+#define SCHEMA__Wifi_Connection_Control_Config__post_assoc "post_assoc"

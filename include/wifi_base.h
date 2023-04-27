@@ -46,6 +46,8 @@ extern "C" {
 #define WIFI_LMLITE_NOTIFY                  "Device.Hosts.X_RDKCENTRAL-COM_LMHost_Sync_From_WiFi"
 #define WIFI_HOTSPOT_NOTIFY                 "Device.X_COMCAST-COM_GRE.Hotspot.ClientChange"
 #define WIFI_NOTIFY_ASSOCIATED_ENTRIES      "Device.NotifyComponent.SetNotifi_ParamName"
+#define WIFI_NOTIFY_FORCE_DISASSOCIATION    "Device.WiFi.ConnectionControl.ClientForceDisassociation"
+#define WIFI_NOTIFY_DENY_ASSOCIATION        "Device.WiFi.ConnectionControl.ClientDenyAssociation"
 #define MESH_STATUS                         "Device.DeviceInfo.X_RDKCENTRAL-COM_xOpsDeviceMgmt.Mesh.Enable"
 #define WIFI_ANALYTICS_FRAME_EVENTS         "Device.WiFi.Events.Frames.Mgmt"
 #define WIFI_ANALYTICS_DATA_EVENTS          "Device.WiFi.Events.Frames.Data"
@@ -72,6 +74,8 @@ extern "C" {
 
 //Broadcom driver max acl count for each vap
 #define MAX_ACL_COUNT 20
+#define CAC_PERIOD                     1
+
 
 #define QUEUE_WIFI_CTRL_TASK_TIMEOUT  1
 #define MAX_FRAME_SZ                  2048
