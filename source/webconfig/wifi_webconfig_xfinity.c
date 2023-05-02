@@ -240,9 +240,6 @@ webconfig_error_t decode_xfinity_subdoc(webconfig_t *config, webconfig_subdoc_da
     if (num_xfinity_ssid > size) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Not correct number of vap objects: %d, expected: %d\n",
                 __func__, __LINE__, size, params->hal_cap.wifi_prop.numRadios);
-        cJSON_Delete(json);
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
-        return webconfig_error_invalid_subdoc;
     }
 
     for (i = 0; i < size; i++) {
@@ -263,9 +260,6 @@ webconfig_error_t decode_xfinity_subdoc(webconfig_t *config, webconfig_subdoc_da
 
     if (presence_count != num_xfinity_ssid) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: vap object not present\n", __func__, __LINE__);
-        cJSON_Delete(json);
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
-        return webconfig_error_invalid_subdoc;
     }
 
     // first set the structure to all 0
