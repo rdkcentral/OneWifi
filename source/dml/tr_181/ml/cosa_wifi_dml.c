@@ -5075,6 +5075,11 @@ SSID_SetParamBoolValue
     /* check the parameter name and set the corresponding value */
     if( AnscEqualString(ParamName, "Enable", TRUE))
     {
+        rdk_wifi_vap_info_t *rdk_vap_info;
+        rdk_vap_info = (rdk_wifi_vap_info_t *)get_dml_cache_rdk_vap_info(vapInfo->vap_index);
+        rdk_vap_info->exists = bValue;
+        set_dml_cache_vap_config_changed(instance_number - 1);
+
         if (isVapSTAMesh(pcfg->vap_index)) {
             if (vapInfo->u.sta_info.enabled == bValue)
             {
