@@ -4520,6 +4520,7 @@ int associated_devices_diagnostics(void *arg)
     static unsigned int vap_index = 0;
     static wifi_associated_dev3_t *dev_array = NULL;
     static unsigned int num_devs = 0;
+    bool vap_status = 0;
 
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
@@ -4527,12 +4528,14 @@ int associated_devices_diagnostics(void *arg)
     if (g_monitor_module.radio_presence[radio] == false) {
         goto exit_task;
     }
-
+    vap_index = VAP_INDEX(mgr->hal_cap, idx);
+    get_wifi_vap_network_status(vap_index, &vap_status);
+    if (vap_status == false) {
+        goto exit_task;
+    }
     if (phase == 0) { /* phase 0: collect diag data */
         if (dev_array == NULL) {
             num_devs = 0;
-            vap_index = VAP_INDEX(mgr->hal_cap, idx);
-
             if (wifi_getApAssociatedDeviceDiagnosticResult3(vap_index, &dev_array, &num_devs) != RETURN_OK) {
                 wifi_util_error_print(WIFI_MON, "[%s:%d]Wi-Fi hal get Associated Device failure dev_array:[%p] for vap_index:%d number of device:%d\r\n",
                             __func__, __LINE__, dev_array, vap_index, num_devs);
@@ -4548,7 +4551,6 @@ int associated_devices_diagnostics(void *arg)
     }
 
     if (phase == 1) { /* phase 1: process diag data */
-        vap_index = VAP_INDEX(mgr->hal_cap, idx);
         events_update_clientdiagdata(num_devs, vap_index, dev_array);
         process_diagnostics(vap_index, dev_array, num_devs);
 
