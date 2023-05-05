@@ -8,6 +8,7 @@
 #include "wifi_ctrl.h"
 #include "wifi_mgr.h"
 #include "wifi_util.h"
+#include "wifi_monitor.h"
 #include "wifi_hal_generic.h"
 #include <rbus.h>
 
@@ -30,6 +31,11 @@ typedef struct {
     int phy_index;
     char *vap_name;
 } ow_state_barrier_vif_info_t;
+
+typedef struct {
+    char *phy_name;
+    int phy_index;
+} ow_state_barrier_phy_info_t;
 
 typedef struct {
     wifi_radio_operationParam_t *phy;
@@ -61,6 +67,11 @@ ow_state_barrier_vif_info_t vif_list[] = {
     {"svc-e-ap-u50",  14, 2, "iot_ssid_5gh"},
 };
 
+ow_state_barrier_phy_info_t phy_list[] = {
+    {"wifi0", 0},
+    {"wifi1", 1},
+    {"wifi2", 2},
+};
 
 static int if_name_to_phy_index(const char *if_name)
 {
@@ -71,6 +82,19 @@ static int if_name_to_phy_index(const char *if_name)
     }
 
     return -1;
+}
+
+static char *phy_index_to_phy_name(const int phy_index)
+{
+    for (unsigned int i = 0; i < ARRAY_SIZE(phy_list); i++) {
+        ow_state_barrier_phy_info_t *phy = &phy_list[i];
+
+        if (phy->phy_index == phy_index) {
+            return phy->phy_name;
+        }
+    }
+
+    return NULL;
 }
 
 bool vap_svc_is_mesh_ext(unsigned int vap_index)
@@ -94,6 +118,8 @@ int vap_svc_mesh_ext_disconnect(vap_svc_t *svc)
 void vap_svc_mesh_pod_ap_connection_handler(struct ow_barrier_sta_conn_info *sta_conn_info, wifi_bss_info_t *bss_info, wifi_station_stats_t *sta, int index)
 {
     ctrl_event_subtype_t type;
+    wifi_monitor_data_t *data;
+    wifi_monitor_t *monitor;
     assoc_dev_data_t assoc_data = { 0 };
     char mac_str[32] = { 0 };
 
@@ -119,6 +145,25 @@ void vap_svc_mesh_pod_ap_connection_handler(struct ow_barrier_sta_conn_info *sta
     memcpy(assoc_data.dev_stats.cli_MACAddress, sta_conn_info->mac, sizeof(mac_address_t));
     assoc_data.ap_index = index;
     push_data_to_ctrl_queue(&assoc_data, sizeof(assoc_data), ctrl_event_type_hal_ind, type);
+
+    if (!(monitor = get_wifi_monitor())) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Monitor is not available!\n", __func__, __LINE__);
+        return;
+    }
+
+    if (!(data = (wifi_monitor_data_t *)calloc(1, sizeof(wifi_monitor_data_t)))) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Unable to allocate memory!\n", __func__, __LINE__);
+        return;
+    }
+
+    data->event_type = (sta->connect_status == wifi_connection_status_connected) ? monitor_event_type_connect : monitor_event_type_disconnect;
+    data->ap_index = index;
+    memcpy(data->u.dev.sta_mac, sta_conn_info->mac, sizeof(mac_address_t));
+
+    pthread_mutex_lock(&monitor->queue_lock);
+    queue_push(monitor->queue, data);
+    pthread_cond_signal(&monitor->cond);
+    pthread_mutex_unlock(&monitor->queue_lock);
 
     uint8_mac_to_string_mac(sta_conn_info->mac, mac_str);
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d: STA [%s] %s\n", __func__, __LINE__, mac_str, (sta->connect_status == wifi_connection_status_connected) ? "connected" : "disconnected");
@@ -706,3 +751,39 @@ int ow_mesh_ext_get_hal_capab(wifi_hal_capability_t *halCapab)
     return RETURN_OK;
 }
 
+int ow_mesh_ext_get_radio_stats(int phy_index, wifi_radioTrafficStats2_t *stats)
+{
+    char *phy_name;
+
+    if ((phy_name = phy_index_to_phy_name(phy_index)) == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d Can't get phy_name for %d\n", __func__, __LINE__, phy_index);
+        return RETURN_ERR;
+    }
+
+    return osw_drv_target_request_survey_stats(phy_name, stats);
+}
+
+int ow_mesh_ext_get_device_stats(int ap_index, char *radio_type, int nf,
+    unsigned char *mac, wifi_associated_dev3_t *stats)
+{
+    int phy_index = -1;
+    char *phy_name = NULL;
+    char *if_name = NULL;
+
+    for(unsigned int i = 0 ; i < ARRAY_SIZE(vif_list) ; i++) {
+        ow_state_barrier_vif_info_t *vif = &vif_list[i];
+
+        if (vif->vif_index == ap_index) {
+            phy_index = vif->phy_index;
+            if_name = vif->if_name;
+            break;
+        }
+    }
+
+    if (phy_index == -1 || if_name == NULL || (phy_name = phy_index_to_phy_name(phy_index)) == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d Invalid parameter! phy_index=%d, if_name=%s\n", __func__, __LINE__, phy_index, if_name);
+        return RETURN_ERR;
+    }
+
+    return osw_drv_target_get_device_stats(radio_type, phy_name, if_name, mac, nf, stats);
+}

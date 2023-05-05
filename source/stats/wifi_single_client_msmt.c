@@ -56,6 +56,7 @@
 #include "qm_conn.h"
 #include "wifi_util.h"
 #include "wifi_mgr.h"
+#include "const.h"
 #define PROTOBUF_MAC_SIZE 13
 
 // UUID - 8b27dafc-0c4d-40a1-b62c-f24a34074914
@@ -1779,6 +1780,10 @@ static ExtBlaster__RadioBandType ExtBlaster_report_wifi_band_get(char * band_des
         band = EXT_BLASTER__RADIO_BAND_TYPE__BAND2G;
     else if (strstr("5GHz", band_desc))
         band = EXT_BLASTER__RADIO_BAND_TYPE__BAND5G;
+    else if (strstr("5GL", band_desc))
+        band = EXT_BLASTER__RADIO_BAND_TYPE__BAND5GL;
+    else if (strstr("5GU", band_desc))
+        band = EXT_BLASTER__RADIO_BAND_TYPE__BAND5GU;
     else
         band = EXT_BLASTER__RADIO_BAND_TYPE__BAND_UNKNOWN;
 
@@ -2081,6 +2086,118 @@ static ExtBlaster__WifiBlastResult* ExtBlaster_report_pb_struct_create(bssid_dat
     return Result_protbuf;
 }
 
+static void ExtBlaster_report_pb_print_dbg(blaster_report_pb_t  *serialized_buff)
+{
+    ExtBlaster__WifiBlastResult *blast_res;
+    ExtBlaster__WifiBlastResult__HealthMetrics *h_metrics;
+    ExtBlaster__WifiBlastResult__HealthMetrics__LoadAvg *h_metrics_load_avg;
+    ExtBlaster__WifiBlastResult__RadioMetrics *r_metrics;
+    ExtBlaster__WifiBlastResult__DeviceMetrics *d_metrics;
+    void *blast_res_buf = serialized_buff->buf;
+    uint32_t count;
+    uint64_t retrans_sum = 0;
+    double throughput_sum = 0.0;
+    c_item_t *item;
+    char *chan_width;
+    char *wifi_standard;
+    char *radio_band;
+
+    c_item_t map_wbm_chanwidth[] = {
+        C_ITEM_STR( EXT_BLASTER__CHAN_WIDTH__CHAN_WIDTH_20MHZ,          "HT20" ),
+        C_ITEM_STR( EXT_BLASTER__CHAN_WIDTH__CHAN_WIDTH_40MHZ,          "HT40" ),
+        C_ITEM_STR( EXT_BLASTER__CHAN_WIDTH__CHAN_WIDTH_40MHZ_ABOVE,    "HT40+" ),
+        C_ITEM_STR( EXT_BLASTER__CHAN_WIDTH__CHAN_WIDTH_40MHZ_BELOW,    "HT40-" ),
+        C_ITEM_STR( EXT_BLASTER__CHAN_WIDTH__CHAN_WIDTH_80MHZ,          "HT80" ),
+        C_ITEM_STR( EXT_BLASTER__CHAN_WIDTH__CHAN_WIDTH_160MHZ,         "HT160" ),
+        C_ITEM_STR( EXT_BLASTER__CHAN_WIDTH__CHAN_WIDTH_80_PLUS_80MHZ,  "HT80+80" ),
+        C_ITEM_STR( EXT_BLASTER__CHAN_WIDTH__CHAN_WIDTH_UNKNOWN,        "Unknown" )
+    };
+
+    c_item_t map_wbm_hwmode[] = {
+        C_ITEM_STR( EXT_BLASTER__WI_FI_STANDARD__WIFI_STD_80211_A,      "11a" ),
+        C_ITEM_STR( EXT_BLASTER__WI_FI_STANDARD__WIFI_STD_80211_B,      "11b" ),
+        C_ITEM_STR( EXT_BLASTER__WI_FI_STANDARD__WIFI_STD_80211_G,      "11g" ),
+        C_ITEM_STR( EXT_BLASTER__WI_FI_STANDARD__WIFI_STD_80211_N,      "11n" ),
+        C_ITEM_STR( EXT_BLASTER__WI_FI_STANDARD__WIFI_STD_80211_AC,     "11ac"),
+        C_ITEM_STR( EXT_BLASTER__WI_FI_STANDARD__WIFI_STD_UNKNOWN,      "unknown" ),
+    };
+
+    c_item_t map_wbm_radiotype[] = {
+        C_ITEM_STR( EXT_BLASTER__RADIO_BAND_TYPE__BAND2G,               "2.4G" ),
+        C_ITEM_STR( EXT_BLASTER__RADIO_BAND_TYPE__BAND5G,               "5G" ),
+        C_ITEM_STR( EXT_BLASTER__RADIO_BAND_TYPE__BAND5GL,              "5GL" ),
+        C_ITEM_STR( EXT_BLASTER__RADIO_BAND_TYPE__BAND5GU,              "5GU" ),
+        C_ITEM_STR( EXT_BLASTER__RADIO_BAND_TYPE__BAND_UNKNOWN,         "Unknown" ),
+    };
+
+    blast_res = ext_blaster__wifi_blast_result__unpack(NULL, serialized_buff->len,
+        (const uint8_t *)blast_res_buf);
+    if (blast_res == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d Failed to unpack blast result\n", __func__, __LINE__);
+        return;
+    }
+
+    h_metrics = blast_res->health_metrics;
+    r_metrics = blast_res->radio_metrics;
+    d_metrics = blast_res->device_metrics;
+
+    wifi_util_dbg_print(WIFI_MON, "********** WiFi Blaster Test Protobuf Results **********\n");
+    wifi_util_dbg_print(WIFI_MON, "Plan[%s] Step[%d] Finished_Time_Stamp[%llu] Status[%d]\n",
+         blast_res->plan_id, blast_res->step_id, blast_res->time_stamp, blast_res->status->code);
+    wifi_util_dbg_print(WIFI_MON, "Desc: %s\n", blast_res->status->description);
+
+    if (blast_res->status->code != EXT_BLASTER__RESULT_CODE__RESULT_CODE_SUCCEED) {
+        goto Error;
+    }
+
+    if ((h_metrics != NULL) && (h_metrics->load_avg != NULL))
+    {
+        h_metrics_load_avg = h_metrics->load_avg;
+        wifi_util_dbg_print(WIFI_MON, "Health: CPU_util[%u]%% Mem_free[%u]KB CPU_load_avg(1/5/15)[%0.2f/%0.2f/%0.2f]\n",
+             h_metrics->cpu_util, h_metrics->mem_util,
+             h_metrics_load_avg->one, h_metrics_load_avg->five, h_metrics_load_avg->fifteen);
+    }
+
+    if (r_metrics != NULL)
+    {
+        item = c_get_item_by_key(map_wbm_chanwidth, r_metrics->chan_width);
+        chan_width = (char *)item->data;
+        item = c_get_item_by_key(map_wbm_hwmode, r_metrics->wifi_standard);
+        wifi_standard = (char *)item->data;
+        item = c_get_item_by_key(map_wbm_radiotype, r_metrics->radio_band);
+        radio_band = (char *)item->data;
+
+        wifi_util_dbg_print(WIFI_MON, "Radio: Noise_floor[%d]db Channel_Util[%u]%% Activity_factor[%u]%% "
+             "Carriersense_Threshold_Exceeded[%u]%%\n",
+             r_metrics->noise_floor, r_metrics->channel_utilization, r_metrics->activity_factor,
+             r_metrics->carriersense_threshold_exceeded);
+        wifi_util_dbg_print(WIFI_MON, "   Channel[%u] Channel_Width[%s] Radio_band[%s] Wifi_Standard[%s]\n",
+             r_metrics->channel, chan_width, radio_band, wifi_standard);
+    }
+
+    if (d_metrics != NULL)
+    {
+        wifi_util_dbg_print(WIFI_MON, "Device: Client_Mac[%s] RSSI[%d]db Tx_Phyrate[%u] Rx_Phyrate[%u] SNR[%d]\n",
+             d_metrics->client_mac, d_metrics->rssi, d_metrics->tx_phyrate, d_metrics->rx_phyrate,
+             d_metrics->snr);
+
+        for (count = 0; count < d_metrics->n_throughput_samples; count++)
+        {
+            wifi_util_dbg_print(WIFI_MON, "Sample[%d] Throughput[%f]Mbps, TxRetrans[%llu]\n",
+                 count + 1, d_metrics->throughput_samples[count],
+                 d_metrics->tx_packet_retransmissions[count]);
+            retrans_sum += d_metrics->tx_packet_retransmissions[count];
+            throughput_sum += d_metrics->throughput_samples[count];
+        }
+        wifi_util_dbg_print(WIFI_MON, "Average throughput[%f]Mbps. Summ of retransmissions[%llu]\n",
+            throughput_sum / d_metrics->n_throughput_samples, retrans_sum);
+    }
+
+Error:
+    wifi_util_dbg_print(WIFI_MON, "***********************************************\n");
+    ext_blaster__wifi_blast_result__free_unpacked(blast_res, NULL);
+}
+
 void pod_upload_single_client_active_msmt_data(bssid_data_t *bssid_info, sta_data_t *sta_info)
 {
     ExtBlaster__WifiBlastResult *Result_pbuf;
@@ -2135,6 +2252,8 @@ void pod_upload_single_client_active_msmt_data(bssid_data_t *bssid_info, sta_dat
     wifi_util_dbg_print(WIFI_MON,"%s: Publishing message with msg len: %zu, to topic: %s\n", __func__, report_pb->len, mqtt_topic);
     if (!qm_conn_send_direct(QM_REQ_COMPRESS_IF_CFG, mqtt_topic, report_pb->buf, report_pb->len, &res)) {
         wifi_util_dbg_print(WIFI_MON,"%s: Error sending message\n", __func__);
+    } else {
+        ExtBlaster_report_pb_print_dbg(report_pb);
     }
 
     if (report_pb != NULL) {

@@ -60,7 +60,6 @@ typedef signed short    rssi_t;
 typedef char			sta_key_t[STA_KEY_LEN];
 
 typedef enum {
-#ifdef CCSP_COMMON
     monitor_event_type_diagnostics,
     monitor_event_type_connect,
     monitor_event_type_disconnect,
@@ -70,13 +69,10 @@ typedef enum {
     monitor_event_type_StatsFlagChange,
     monitor_event_type_RadioStatsFlagChange,
     monitor_event_type_VapStatsFlagChange,
-#endif // CCSP_COMMON
     monitor_event_type_process_active_msmt,
-#ifdef CCSP_COMMON
     monitor_event_type_csi,
     monitor_event_type_csi_update_config,
     monitor_event_type_clientdiag_update_config,
-#endif // CCSP_COMMON
     monitor_event_type_max
 } wifi_monitor_event_type_t;
 
@@ -85,11 +81,14 @@ typedef struct {
     unsigned int num;
     wifi_associated_dev3_t  devs[MAX_ASSOCIATED_WIFI_DEVS];
 } associated_devs_t;
+#endif // CCSP_COMMON
+
 typedef struct {
     mac_address_t  sta_mac;
     int 	   reason;
 } auth_deauth_dev_t;
 
+#ifdef CCSP_COMMON
 typedef struct {
     int type;  //Device.WiFi.X_RDKCENTRAL-COM_vAPStatsEnable= 0, Device.WiFi.AccessPoint.<vAP>.X_RDKCENTRAL-COM_StatsEnable = 1
     bool enable; // ture, false
@@ -114,15 +113,15 @@ typedef struct {
 #endif // CCSP_COMMON
     wifi_monitor_event_type_t   event_type;
     unsigned int    ap_index;
-#ifdef CCSP_COMMON
     union {
         auth_deauth_dev_t	dev;
+#ifdef CCSP_COMMON
         client_stats_enable_t   flag;
         instant_msmt_t		imsmt;
         associated_devs_t   devs;
         wifi_csi_dev_t csi;
-    } u;
 #endif // CCSP_COMMON
+    } u;
 } __attribute__((__packed__)) wifi_monitor_data_t;
 
 #ifdef CCSP_COMMON

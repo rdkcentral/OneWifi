@@ -76,6 +76,7 @@
 #include <netinet/ip6.h>
 #include "wifi_events.h"
 #endif // CCSP_COMMON
+#include "const.h"
 
 #ifndef  UNREFERENCED_PARAMETER
 #define UNREFERENCED_PARAMETER(_p_)         (void)(_p_)
@@ -188,6 +189,7 @@ static void upload_client_debug_stats_sta_fa_lmac_mgmt_stats(int apIndex, sta_da
 static void upload_client_debug_stats_sta_vap_activity_stats(int apIndex);
 static void upload_client_debug_stats_transmit_power_stats(int apIndex);
 static void upload_client_debug_stats_chan_stats(int apIndex);
+static int configurePktgen(pktGenConfig* config);
 #endif // CCSP_COMMON
 
 #if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
@@ -201,13 +203,13 @@ void off_chan_print_scan_data (unsigned int radio_index, wifi_neighbor_ap2_t *ne
 void deinit_wifi_monitor(void);
 int executeCommand(char* command, char* result);
 void process_active_msmt_step();
-static int configurePktgen(pktGenConfig* config);
 int radio_diagnostics(void *arg);
 
 pktGenConfig config;
 pktGenFrameCountSamples  *frameCountSample = NULL;
+#ifdef CCSP_COMMON
 pthread_t startpkt_thread_id = 0;
-
+#endif // CCSP_COMMON
 
 static inline char *to_sta_key    (mac_addr_t mac, sta_key_t key) 
 {
@@ -2382,29 +2384,39 @@ void process_deauthenticate	(unsigned int ap_index, auth_deauth_dev_t *dev)
     process_disconnect(ap_index, dev);
 }
 
+#endif // CCSP_COMMON
+
 void process_connect	(unsigned int ap_index, auth_deauth_dev_t *dev)
 {
     sta_key_t sta_key;
     sta_data_t *sta;
     hash_map_t     *sta_map;
+#ifdef CCSP_COMMON
     struct timeval tv_now;
     unsigned int i = 0;
     int vap_status = 0;
     wifi_mgr_t *mgr = get_wifimgr_obj();
+#endif // CCSP_COMMON
     unsigned int vap_array_index;
     getVAPArrayIndexFromVAPIndex(ap_index, &vap_array_index);
 
     sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
 
     wifi_util_info_print(WIFI_MON, "sta map: %p Device:%s connected on ap:%d\n", sta_map, to_sta_key(dev->sta_mac, sta_key), ap_index);
+#ifdef CCSP_COMMON
     sta = (sta_data_t *)hash_map_get(sta_map, to_sta_key(dev->sta_mac, sta_key));
-    if (sta == NULL) { /* new client */
+
+    if (sta == NULL)
+#endif // CCSP_COMMON
+    {
+        /* new client */
         sta = (sta_data_t *)malloc(sizeof(sta_data_t));
         memset(sta, 0, sizeof(sta_data_t));
         memcpy(sta->sta_mac, dev->sta_mac, sizeof(mac_addr_t));
         hash_map_put(sta_map, strdup(to_sta_key(sta->sta_mac, sta_key)), sta);
     }
 
+#ifdef CCSP_COMMON
     sta->total_disconnected_time += sta->disconnected_time;
     sta->disconnected_time = 0;
 
@@ -2425,9 +2437,11 @@ void process_connect	(unsigned int ap_index, auth_deauth_dev_t *dev)
     sta->last_connected_time.tv_usec = tv_now.tv_usec;
 
     /* reset stats of client */
-    memset((unsigned char *)&sta->dev_stats, 0, sizeof(wifi_associated_dev3_t));
     memset((unsigned char *)&sta->dev_stats_last, 0, sizeof(wifi_associated_dev3_t));
+#endif // CCSP_COMMON
+    memset((unsigned char *)&sta->dev_stats, 0, sizeof(wifi_associated_dev3_t));
     sta->dev_stats.cli_Active = true;
+#ifdef CCSP_COMMON
     sta->connection_authorized = true;
     /*To avoid duplicate entries in hash map of different vAPs eg:RDKB-21582
       Also when clients moved away from a vAP and connect back to other vAP this will be usefull*/
@@ -2450,6 +2464,7 @@ void process_connect	(unsigned int ap_index, auth_deauth_dev_t *dev)
             }
         }
     }
+#endif // CCSP_COMMON
 }
 
 void process_disconnect	(unsigned int ap_index, auth_deauth_dev_t *dev)
@@ -2457,19 +2472,22 @@ void process_disconnect	(unsigned int ap_index, auth_deauth_dev_t *dev)
     sta_key_t sta_key;
     sta_data_t *sta;
     hash_map_t     *sta_map;
+#ifdef CCSP_COMMON
     struct timeval tv_now;
     instant_msmt_t msmt;
+#endif // CCSP_COMMON
     unsigned int vap_array_index;
 
     getVAPArrayIndexFromVAPIndex(ap_index, &vap_array_index);
     sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
     wifi_util_info_print(WIFI_MON, "Device:%s disconnected on ap:%d\n", to_sta_key(dev->sta_mac, sta_key), ap_index);
-    sta = (sta_data_t *)hash_map_get(sta_map, to_sta_key(dev->sta_mac, sta_key));
+    sta = (sta_data_t *)hash_map_get(sta_map, sta_key);
     if (sta == NULL) {
-        wifi_util_error_print(WIFI_MON, "Device:%s could not be found on sta map of ap:%d\n", to_sta_key(dev->sta_mac, sta_key), ap_index);
+        wifi_util_error_print(WIFI_MON, "Device:%s could not be found on sta map of ap:%d\n", sta_key, ap_index);
         return;
     }
 
+#ifdef CCSP_COMMON
     sta->total_connected_time += sta->connected_time;
     sta->connected_time = 0;
     sta->dev_stats.cli_Active = false;
@@ -2491,8 +2509,15 @@ void process_disconnect	(unsigned int ap_index, auth_deauth_dev_t *dev)
     {
         process_instant_msmt_stop(ap_index, &msmt);
     }
+#else
+    sta = hash_map_remove(sta_map, sta_key);
+    if (sta != NULL) {
+        free(sta);
+    }
+#endif // CCSP_COMMON
 }
 
+#ifdef CCSP_COMMON
 void process_instant_msmt_start	(unsigned int ap_index, instant_msmt_t *msmt)
 {
     memcpy(g_monitor_module.inst_msmt.sta_mac, msmt->sta_mac, sizeof(mac_address_t));
@@ -2700,7 +2725,7 @@ void *monitor_function  (void *data)
                     case monitor_event_type_diagnostics:
                         //process_diagnostics(queue_data->ap_index, &queue_data->.devs);
                     break;
-
+#endif // CCSP_COMMON
                     case monitor_event_type_connect:
                         process_connect(queue_data->ap_index, &queue_data->u.dev);
                     break;
@@ -2708,7 +2733,7 @@ void *monitor_function  (void *data)
                     case monitor_event_type_disconnect:
                         process_disconnect(queue_data->ap_index, &queue_data->u.dev);
                     break;
-
+#ifdef CCSP_COMMON
                     case monitor_event_type_deauthenticate:
                         process_deauthenticate(queue_data->ap_index, &queue_data->u.dev);
                     break;
@@ -2892,12 +2917,8 @@ timeval_subtract (struct timeval *result, struct timeval *end, struct timeval *s
 
 int  getApIndexfromClientMac(char *check_mac)
 {
-    char *cmp_tok=NULL;
-    char tmpassoc[512];
     unsigned int i=0;
-    int ret;
     unsigned char tmpmac[18];
-    char* rest = NULL;
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
     if(check_mac == NULL) {
@@ -2912,15 +2933,9 @@ int  getApIndexfromClientMac(char *check_mac)
         if (g_monitor_module.radio_presence[radio] == false) {
             continue;
         }
-        memset(tmpassoc, 0, sizeof(tmpassoc));
-        ret = wifi_getApAssociatedDevice(vap_index, tmpassoc, sizeof(tmpassoc));
-        rest = tmpassoc;
-        if(ret == RETURN_OK) {
-            while((cmp_tok = strtok_r(rest, ",", &rest))) {
-                if(!strcasecmp((const char *)tmpmac,cmp_tok)) {
-                    return vap_index;
-                }
-            }
+
+        if (is_device_associated(vap_index, (char *)tmpmac) == true) {
+            return vap_index;
         }
     }
     return -1;
@@ -4445,15 +4460,29 @@ int radio_diagnostics(void *arg)
     wifi_radioTrafficStats2_t radioTrafficStats;
     //char            ChannelsInUse[256] = {0};
     char            RadioFreqBand[64] = {0};
+#ifdef CCSP_COMMON
     char            RadioChanBand[64] = {0};
+#endif // CCSP_COMMON
     static unsigned int radiocnt = 0;
+    wifi_radio_operationParam_t* radioOperation = getRadioOperationParam(radiocnt);
+
+    if (g_active_msmt.is_running == true) {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d Active Measurement is running, skipping radio diagnostics...\n",__func__,__LINE__);
+        return TIMER_TASK_COMPLETE;
+    }
+
     wifi_util_dbg_print(WIFI_MON, "%s : %d getting radio Traffic stats for Radio %d\n",__func__,__LINE__, radiocnt);
     memset(&radioTrafficStats, 0, sizeof(wifi_radioTrafficStats2_t));
     memset(&g_monitor_module.radio_data[radiocnt], 0, sizeof(radio_data_t));
-    wifi_radio_operationParam_t* radioOperation = getRadioOperationParam(radiocnt);
+
     if (radioOperation != NULL) {
         if(radioOperation->enable) {
+
+#ifdef CCSP_COMMON
             if (wifi_getRadioTrafficStats2(radiocnt, &radioTrafficStats) == RETURN_OK) {
+#else
+            if (ow_mesh_ext_get_radio_stats(radiocnt, &radioTrafficStats) == RETURN_OK) {
+#endif // CCSP_COMMON
                 /* update the g_active_msmt with the radio data */
                 g_monitor_module.radio_data[radiocnt].NoiseFloor = radioTrafficStats.radio_NoiseFloor;
                 g_monitor_module.radio_data[radiocnt].RadioActivityFactor = radioTrafficStats.radio_ActivityFactor;
@@ -4489,11 +4518,17 @@ int radio_diagnostics(void *arg)
                     wifi_util_dbg_print(WIFI_MON, "%s:%d: Frequency band is  %s\n", __func__, __LINE__, RadioFreqBand);
                 }
 
+#ifdef CCSP_COMMON
                 wifi_getRadioOperatingChannelBandwidth(radiocnt,RadioChanBand);
                 strncpy((char *)&g_monitor_module.radio_data[radiocnt].channel_bandwidth, RadioChanBand,sizeof(RadioChanBand));
                 wifi_util_dbg_print(WIFI_MON, "%s:%d: channelbandwidth is  %s\n", __func__, __LINE__, RadioChanBand);
+#endif // CCSP_COMMON
             } else {
+#ifdef CCSP_COMMON
                 wifi_util_error_print(WIFI_MON, "%s : %d wifi_getRadioTrafficStats2 failed for rdx : %d\n",__func__,__LINE__,radiocnt);
+#else
+                wifi_util_error_print(WIFI_MON, "%s : %d ow_mesh_ext_get_radio_stats failed for rdx : %d\n",__func__,__LINE__,radiocnt);
+#endif // CCSP_COMMON
             }
         } else {
             wifi_util_dbg_print(WIFI_MON, "%s : %d Radio : %d is not enabled\n",__func__,__LINE__,radiocnt);
@@ -5137,6 +5172,15 @@ int init_wifi_monitor()
 
 #endif // CCSP_COMMON
 
+    /*TODO: Make libpktgen usage as common */
+#ifndef CCSP_COMMON
+    if (pktgen_init() != RETURN_OK) {
+        deinit_wifi_monitor();
+        wifi_util_error_print(WIFI_MON, "%s:%d Pktgen support is missed!\n", __func__, __LINE__);
+        return -1;
+    }
+#endif // CCSP_COMMON
+
     wifi_util_dbg_print(WIFI_MON, "%s:%d Wi-Fi monitor is initialized successfully\n", __func__, __LINE__);
 
     return 0;
@@ -5152,6 +5196,10 @@ int start_wifi_monitor ()
     unsigned char def_mac[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 #endif // CCSP_COMMON
     wifi_mgr_t *mgr = get_wifimgr_obj();
+
+#ifndef CCSP_COMMON
+    pktgen_uninit();
+#endif // CCSP_COMMON
 
     for (i = 0; i < getTotalNumberVAPs(); i++) {
         /*TODO CID: 110946 Out-of-bounds access - Fix in QTN code*/
@@ -6469,6 +6517,7 @@ int executeCommand(char* command,char* result)
 /*                                                                               */
 /*********************************************************************************/
 
+#ifdef CCSP_COMMON
 static int configurePktgen(pktGenConfig* config)
 {
     char command[BUFF_LEN_MAX];
@@ -6507,17 +6556,15 @@ static int configurePktgen(pktGenConfig* config)
     snprintf(command,BUFF_LEN_MAX,"echo \"pkt_size %d \" >> %s%s",config->packetSize, PKTGEN_DEVICE_FILE, config->wlanInterface);
     executeCommand(command,result);
 
-#ifdef CCSP_COMMON
     CcspTraceDebug(("Pkt gen control file %s Pkt gen device file %s\n", PKTGEN_CNTRL_FILE, PKTGEN_DEVICE_FILE));
     CcspTraceDebug(("%s:%d Configured pktgen with configs {Interface:%s,\t queue_map_min:2,\t queue_map_max:2,\t count:0,\t pkt_size:%d}\n",
            __FUNCTION__, __LINE__, config->wlanInterface, config->packetSize));
-#else
     wifi_util_dbg_print(WIFI_MON, "Pkt gen control file %s Pkt gen device file %s\n", PKTGEN_CNTRL_FILE, PKTGEN_DEVICE_FILE);
     wifi_util_dbg_print(WIFI_MON, "%s:%d Configured pktgen with configs {Interface:%s,\t queue_map_min:2,\t queue_map_max:2,\t count:0,\t pkt_size:%d}\n",
            __FUNCTION__, __LINE__, config->wlanInterface, config->packetSize);
-#endif // CCSP_COMMON
     return 1;
 }
+#endif // CCSP_COMMON
 /*********************************************************************************/
 /*                                                                               */
 /* FUNCTION NAME : getCurrentTimeInMicroSeconds                                  */
@@ -6618,6 +6665,50 @@ int WaitForDuration (int timeInMs)
 
     return ret;
 }
+
+#if !defined(_XF3_PRODUCT_REQ_) && !defined(_CBR_PRODUCT_REQ_) && !defined(_HUB4_PRODUCT_REQ_)
+static void convert_channel_width_to_str(wifi_channelBandwidth_t cw, char *str, size_t len)
+{
+    char arr_str[][8] = {"20", "40", "80", "160"};
+    wifi_channelBandwidth_t arr_enum[] = {
+        WIFI_CHANNELBANDWIDTH_20MHZ, 
+        WIFI_CHANNELBANDWIDTH_40MHZ,
+        WIFI_CHANNELBANDWIDTH_80MHZ,
+        WIFI_CHANNELBANDWIDTH_160MHZ
+    };
+
+    for (size_t i = 0; i < ARRAY_SIZE(arr_enum); i++) {
+        if (arr_enum[i] == cw) {
+            snprintf(str, len, "%s", arr_str[i]);
+            break;
+        }
+    }
+
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d %d converted to %s\n",__func__,__LINE__, cw, str);
+}
+
+static void convert_variant_to_str(wifi_ieee80211Variant_t variant, char *str, size_t len)
+{
+    char arr_str[][8] = {"a", "b", "g", "n", "ac", "ax"};
+    wifi_ieee80211Variant_t arr_enum[] = {
+        WIFI_80211_VARIANT_A,
+        WIFI_80211_VARIANT_B,
+        WIFI_80211_VARIANT_G,
+        WIFI_80211_VARIANT_N,
+        WIFI_80211_VARIANT_AC,
+        WIFI_80211_VARIANT_AX
+    };
+
+    for (size_t i = 0; i < ARRAY_SIZE(arr_enum); i++) {
+        if ((arr_enum[i] & variant) == arr_enum[i]) {
+            snprintf(str, len, "%s,", arr_str[i]);
+        }
+    }
+
+    str[strlen(str) - 1] = '\0';
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d 0x%X converted to %s\n",__func__,__LINE__, variant, str);
+}
+#endif
 /*********************************************************************************/
 /*                                                                               */
 /* FUNCTION NAME : pktGen_BlastClient                                            */
@@ -6633,15 +6724,36 @@ int WaitForDuration (int timeInMs)
 /*                                                                               */
 /*********************************************************************************/
 
-void pktGen_BlastClient ()
+void pktGen_BlastClient (char *dst_mac)
 {
     unsigned int SampleCount = 0;
-    unsigned long DiffsamplesAck = 0, Diffsamples = 0, TotalAckSamples = 0, TotalSamples = 0, totalduration = 0;
     wifi_associated_dev3_t dev_conn;
-    double  tp, AckRate, AckSum = 0, Rate, Sum = 0, AvgAckThroughput, AvgThroughput;
+    unsigned long totalduration = 0;
+    double  Sum = 0, AvgThroughput;
+#ifdef CCSP_COMMON
+    unsigned long DiffsamplesAck = 0, Diffsamples = 0, TotalAckSamples = 0, TotalSamples = 0;
+    double  tp, AckRate, AckSum = 0, Rate, AvgAckThroughput;
+#endif // CCSP_COMMON
     char    s_mac[MIN_MAC_LEN+1];
     int index = g_active_msmt.curStepData.ApIndex;
-    pthread_attr_t  Attr;
+#if !defined(_XF3_PRODUCT_REQ_) && !defined(_CBR_PRODUCT_REQ_) && !defined(_HUB4_PRODUCT_REQ_)
+    int radio_index = get_radio_index_for_vap_index(&(get_wifimgr_obj())->hal_cap.wifi_prop, index);
+    wifi_radio_operationParam_t* radioOperation = NULL;
+#endif
+#ifndef CCSP_COMMON
+    char *radio_type = NULL;
+    int nf = 0;
+#endif // CCSP_COMMON
+
+#if !defined(_XF3_PRODUCT_REQ_) && !defined(_CBR_PRODUCT_REQ_) && !defined(_HUB4_PRODUCT_REQ_)
+    if (radio_index != RETURN_ERR) {
+        radioOperation = getRadioOperationParam(radio_index);
+#ifndef CCSP_COMMON
+        radio_type = g_monitor_module.radio_data[radio_index].frequency_band;  
+        nf = g_monitor_module.radio_data[radio_index].NoiseFloor;   
+#endif // CCSP_COMMON
+    }
+#endif
 
 #ifdef CCSP_COMMON
     CcspTraceDebug(("%s:%d Start pktGen utility and analyse received samples for active clients [%02x%02x%02x%02x%02x%02x]\n",
@@ -6664,29 +6776,32 @@ void pktGen_BlastClient ()
 #if defined (DUAL_CORE_XB3)
         wifi_setClientDetailedStatisticsEnable(getRadioIndexFromAp(index), TRUE);
 #endif
+#ifdef CCSP_COMMON
+        pthread_attr_t  Attr;
+
         pthread_attr_init(&Attr);
         pthread_attr_setdetachstate(&Attr, PTHREAD_CREATE_DETACHED);
         /* spawn a thread to start the packetgen as this will trigger multiple threads which will hang the calling thread*/
         wifi_util_dbg_print(WIFI_MON, "%s : %d spawn a thread to start the packetgen\n",__func__,__LINE__);
+
         if (pthread_create(&startpkt_thread_id, &Attr, startWifiBlast, NULL) != 0) {
-#ifdef CCSP_COMMON
             CcspTraceError(("%s:%d: Failed to spawn thread to start the packet gen\n", __FUNCTION__, __LINE__));
-#else
             wifi_util_dbg_print(WIFI_MON, "%s:%d: Failed to spawn thread to start the packet gen\n", __FUNCTION__, __LINE__);
-#endif // CCSP_COMMON
         } else {
-#ifdef CCSP_COMMON
             CcspTraceInfo(("%s:%d Created thread to start packet gen\n", __FUNCTION__, __LINE__));
-#else
             wifi_util_dbg_print(WIFI_MON, "%s:%d Created thread to start packet gen\n", __FUNCTION__, __LINE__);
-#endif // CCSP_COMMON
         }
+
         pthread_attr_destroy(&Attr);
+#else
+        /*TODO: Handle return value. Need to expose enum */
+        pktgen_start_wifi_blast(config.wlanInterface, dst_mac, config.packetSize);
+#endif // CCSP_COMMON
     } else {
 #ifdef CCSP_COMMON
         CcspTraceDebug(("%s : %d no need to start pktgen for offline client %s\n" ,__FUNCTION__, __LINE__, s_mac));
 #endif // CCSP_COMMON
-        wifi_util_dbg_print(WIFI_MON, "%s : %d no need to start pktgen for offline client %s\n",__func__,__LINE__,s_mac);
+        wifi_util_dbg_print(WIFI_MON, "%s:%d no need to start pktgen for offline client %s\n",__func__,__LINE__,s_mac);
     }
 
 #if !defined(_XF3_PRODUCT_REQ_) && !defined(_CBR_PRODUCT_REQ_) && !defined(_HUB4_PRODUCT_REQ_)
@@ -6705,9 +6820,8 @@ void pktGen_BlastClient ()
         }
 #ifdef CCSP_COMMON
         CcspTraceError(("%s:%d ERROR: Failed to allocate memory for active_msmt_data\n", __FUNCTION__, __LINE__));
-#else
-        wifi_util_dbg_print(WIFI_MON, "%s:%d ERROR: Failed to allocate memory for active_msmt_data\n", __FUNCTION__, __LINE__);
 #endif // CCSP_COMMON
+        wifi_util_dbg_print(WIFI_MON, "%s:%d ERROR: Failed to allocate memory for active_msmt_data\n", __FUNCTION__, __LINE__);
         return;
     }
 
@@ -6716,17 +6830,20 @@ void pktGen_BlastClient ()
         memset(&dev_conn, 0, sizeof(wifi_associated_dev3_t));
 
 #if !defined(_XF3_PRODUCT_REQ_) && !defined(_CBR_PRODUCT_REQ_) && !defined(_HUB4_PRODUCT_REQ_)
-        wifi_util_dbg_print(WIFI_MON,"%s : %d WIFI_HAL enabled, calling wifi_getApAssociatedClientDiagnosticResult with mac : %s\n",__func__,__LINE__,s_mac);
 #ifdef CCSP_COMMON
-        CcspTraceDebug(("%s-%d WIFI_HAL enabled, calling wifi_getApAssociatedClientDiagnosticResult with mac : %s for sampling process",
-                   __FUNCTION__, __LINE__, s_mac));
+        wifi_util_dbg_print(WIFI_MON,"%s : %d WIFI_HAL enabled, calling wifi_getApAssociatedClientDiagnosticResult with mac : %s\n",__func__,__LINE__,s_mac);
+        CcspTraceDebug(("%s-%d WIFI_HAL enabled, calling wifi_getApAssociatedClientDiagnosticResult with mac : %s for sampling process",  __FUNCTION__, __LINE__, s_mac));
 #endif // CCSP_COMMON
 
         unsigned long start = getCurrentTimeInMicroSeconds ();
         WaitForDuration ( waittime );
 
-        if (index >= 0) {
+        if (index >= 0 && (radio_index != RETURN_ERR)) {
+#ifdef CCSP_COMMON
             if (wifi_getApAssociatedClientDiagnosticResult(index, s_mac, &dev_conn) == RETURN_OK) {
+#else
+            if (ow_mesh_ext_get_device_stats(index, radio_type, nf, g_active_msmt.curStepData.DestMac, &dev_conn) == RETURN_OK) {
+#endif // CCSP_COMMON
 
                 frameCountSample[SampleCount].WaitAndLatencyInMs = ((getCurrentTimeInMicroSeconds () - start) / 1000);
                 wifi_util_dbg_print(WIFI_MON, "PKTGEN_WAIT_IN_MS duration : %lu\n", ((getCurrentTimeInMicroSeconds () - start)/1000));
@@ -6738,39 +6855,49 @@ void pktGen_BlastClient ()
                 g_active_msmt.active_msmt_data[SampleCount].TxPhyRate = dev_conn.cli_LastDataDownlinkRate;
                 g_active_msmt.active_msmt_data[SampleCount].RxPhyRate = dev_conn.cli_LastDataUplinkRate;
                 g_active_msmt.active_msmt_data[SampleCount].SNR = dev_conn.cli_SNR;
+#ifdef CCSP_COMMON
                 g_active_msmt.active_msmt_data[SampleCount].ReTransmission = dev_conn.cli_Retransmissions;
                 g_active_msmt.active_msmt_data[SampleCount].MaxTxRate = dev_conn.cli_MaxDownlinkRate;
                 g_active_msmt.active_msmt_data[SampleCount].MaxRxRate = dev_conn.cli_MaxUplinkRate;
-                strncpy(g_active_msmt.active_msmt_data[SampleCount].Operating_channelwidth, dev_conn.cli_OperatingChannelBandwidth,OPER_BUFFER_LEN);
+#else
+                g_active_msmt.active_msmt_data[SampleCount].RetransCount = dev_conn.cli_RetransCount;
+#endif // CCSP_COMMON
+                if (radioOperation != NULL) {
+                    convert_channel_width_to_str(radioOperation->channelWidth, g_active_msmt.active_msmt_data[SampleCount].Operating_channelwidth, OPER_BUFFER_LEN);
+                    convert_variant_to_str(radioOperation->variant, g_active_msmt.active_msmt_data[SampleCount].Operating_standard, OPER_BUFFER_LEN);
+                }
 
                 frameCountSample[SampleCount].PacketsSentAck = dev_conn.cli_DataFramesSentAck;
+#ifdef CCSP_COMMON
                 frameCountSample[SampleCount].PacketsSentTotal = dev_conn.cli_PacketsSent + dev_conn.cli_DataFramesSentNoAck;
-                if (strstr(dev_conn.cli_OperatingStandard, "802.11") != NULL) {
-                    sscanf(dev_conn.cli_OperatingStandard, "802.11%s", g_active_msmt.active_msmt_data[SampleCount].Operating_standard);
-                } else {
-                    strncpy(g_active_msmt.active_msmt_data[SampleCount].Operating_standard, dev_conn.cli_OperatingStandard,OPER_BUFFER_LEN);
-                }
+#endif // CCSP_COMMON
+
                 wifi_util_dbg_print(WIFI_MON,"samplecount[%d] : PacketsSentAck[%lu] PacketsSentTotal[%lu]"
                         " WaitAndLatencyInMs[%d ms] RSSI[%d] TxRate[%lu Mbps] RxRate[%lu Mbps] SNR[%d]"
                         "chanbw [%s] standard [%s] MaxTxRate[%d] MaxRxRate[%d]\n",
                         SampleCount, dev_conn.cli_DataFramesSentAck, (dev_conn.cli_PacketsSent + dev_conn.cli_DataFramesSentNoAck),
                         frameCountSample[SampleCount].WaitAndLatencyInMs, dev_conn.cli_RSSI, dev_conn.cli_LastDataDownlinkRate, dev_conn.cli_LastDataUplinkRate, dev_conn.cli_SNR,g_active_msmt.active_msmt_data[SampleCount].Operating_channelwidth ,g_active_msmt.active_msmt_data[SampleCount].Operating_standard,g_active_msmt.active_msmt_data[SampleCount].MaxTxRate, g_active_msmt.active_msmt_data[SampleCount].MaxRxRate);
             } else {
-                wifi_util_dbg_print(WIFI_MON,"%s : %d wifi_getApAssociatedClientDiagnosticResult failed for mac : %s\n",__func__,__LINE__,s_mac);
+                /* TODO: STA disconnect or HAL failure is not handled properly..
+                 * So, the invalid throughput will be returned (i.e nan, inf,
+                 * etc)*/
 #ifdef CCSP_COMMON
+                wifi_util_dbg_print(WIFI_MON,"%s : %d wifi_getApAssociatedClientDiagnosticResult failed for mac : %s\n",__func__,__LINE__,s_mac);
                 CcspTraceError(("%s:%d wifi_getApAssociatedClientDiagnosticResult failed for mac : %s\n", __FUNCTION__, __LINE__, s_mac));
+                frameCountSample[SampleCount].PacketsSentTotal = 0;
+#else
+                wifi_util_dbg_print(WIFI_MON,"%s:%d ow_mesh_ext_get_device_stats failed for mac:%s\n",__func__,__LINE__,s_mac);
 #endif // CCSP_COMMON
                 frameCountSample[SampleCount].PacketsSentAck = 0;
-                frameCountSample[SampleCount].PacketsSentTotal = 0;
                 frameCountSample[SampleCount].WaitAndLatencyInMs = 0;
             }
         } else {
             wifi_util_dbg_print(WIFI_MON,"%s : %d client is offline so setting the default values.\n",__func__,__LINE__);
 #ifdef CCSP_COMMON
             CcspTraceDebug(("client is offline so setting the default values.\n"));
+            frameCountSample[SampleCount].PacketsSentTotal = 0;
 #endif // CCSP_COMMON
             frameCountSample[SampleCount].PacketsSentAck = 0;
-            frameCountSample[SampleCount].PacketsSentTotal = 0;
             frameCountSample[SampleCount].WaitAndLatencyInMs = 0;
             strncpy(g_active_msmt.active_msmt_data[SampleCount].Operating_standard, "NULL",OPER_BUFFER_LEN);
             strncpy(g_active_msmt.active_msmt_data[SampleCount].Operating_channelwidth, "NULL",OPER_BUFFER_LEN);
@@ -6784,6 +6911,8 @@ void pktGen_BlastClient ()
         wifi_setClientDetailedStatisticsEnable(getRadioIndexFromAp(index), FALSE);
     }
 #endif
+
+#ifdef CCSP_COMMON
     // Analyze samples and get Throughput
     for (SampleCount=0; SampleCount < config.packetCount; SampleCount++) {
         DiffsamplesAck = frameCountSample[SampleCount+1].PacketsSentAck - frameCountSample[SampleCount].PacketsSentAck;
@@ -6816,9 +6945,29 @@ void pktGen_BlastClient ()
     AvgThroughput = Sum/(config.packetCount);
     wifi_util_dbg_print(WIFI_MON,"\nTotal number of ACK Packets = %lu   Total number of Packets = %lu   Total Duration = %lu ms\n", TotalAckSamples, TotalSamples, totalduration );
     wifi_util_dbg_print(WIFI_MON,"Calculated Average : ACK Packets Throughput[%.2lf Mbps]  Total Packets Throughput[%.2lf Mbps]\n\n", AvgAckThroughput, AvgThroughput );
-#ifdef CCSP_COMMON
     CcspTraceDebug(("Total number of ACK Packets = %lu   Total number of Packets = %lu   Total Duration = %lu ms\n", TotalAckSamples, TotalSamples, totalduration));
     CcspTraceDebug(("Calculated Average : ACK Packets Throughput[%.2lf Mbps]  Total Packets Throughput[%.2lf Mbps]\n", AvgAckThroughput, AvgThroughput));
+#else
+
+    /* Actual count of samples is N+1. MQTT report operates with [1, N+1] samples.
+     * The 0 sample is involved to provide ability to get delta for PacketsSentAck & ReTransmission
+     */
+
+    for (SampleCount = 1; SampleCount < config.packetCount + 1; SampleCount++) {
+        uint64_t bits_diff = (frameCountSample[SampleCount].PacketsSentAck - frameCountSample[SampleCount - 1].PacketsSentAck) * 8; 
+
+        /* Analytics for MQTT report */
+        g_active_msmt.active_msmt_data[SampleCount - 1].throughput = (bits_diff / 1000.0) / frameCountSample[SampleCount].WaitAndLatencyInMs;
+        g_active_msmt.active_msmt_data[SampleCount - 1].ReTransmission = g_active_msmt.active_msmt_data[SampleCount].RetransCount -
+            g_active_msmt.active_msmt_data[SampleCount - 1].RetransCount;
+
+        /* Analytics for logs */
+        totalduration += frameCountSample[SampleCount].WaitAndLatencyInMs;
+        Sum += g_active_msmt.active_msmt_data[SampleCount - 1].throughput;
+    }
+
+    AvgThroughput = Sum / config.packetCount;
+    wifi_util_dbg_print(WIFI_MON, "%s:%d Total duration: %lu ms, Avg Throughput: %.2lf Mbps\n", __func__, __LINE__, totalduration, AvgThroughput);
 #endif // CCSP_COMMON
 
     return;
@@ -6844,17 +6993,19 @@ void pktGen_BlastClient ()
 void *WiFiBlastClient(void* data)
 {
     char macStr[18] = {'\0'};
-    int ret = 0;
     unsigned int StepCount = 0;
     int apIndex = 0;
     unsigned int NoOfSamples = 0;
+#ifdef CCSP_COMMON
     char command[BUFF_LEN_MAX];
     char result[BUFF_LEN_MAX];
+#endif // CCSP_COMMON
     int     oldcanceltype;
     wifi_interface_name_t *interface_name = NULL;
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
     wifi_ctrl_t *g_wifi_ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
+    g_active_msmt.is_running = true;
     pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, &oldcanceltype);
 
     UNREFERENCED_PARAMETER(data);
@@ -6910,6 +7061,7 @@ void *WiFiBlastClient(void* data)
             wifi_util_dbg_print(WIFI_MON,"Interface [%s], Send Duration: [%d msecs], Packet Size: [%d bytes], Sample count: [%d]\n",
                     config.wlanInterface,config.sendDuration,config.packetSize,config.packetCount);
 
+#ifdef CCSP_COMMON
             /* no need to configure pktgen for offline clients */
             if (apIndex >= 0) {
                 /* configure pktgen based on given Arguments */
@@ -6920,30 +7072,35 @@ void *WiFiBlastClient(void* data)
                 snprintf(command,BUFF_LEN_MAX,"echo \"dst_mac %s\" >> %s%s",macStr,PKTGEN_DEVICE_FILE,config.wlanInterface );
                 executeCommand(command,result);
             }
+#endif // CCSP_COMMON
 
             /* start blasting the packets to calculate the throughput */
-            pktGen_BlastClient();
+            pktGen_BlastClient(macStr);
 
             /* no need to kill pktgen for offline clients */
             if (apIndex >= 0) {
+#ifdef CCSP_COMMON
+                int ret = 0;
+
                 if (startpkt_thread_id != 0) {
                     ret = pthread_cancel(startpkt_thread_id);
                 }
 
                 if ( ret == 0) {
                     wifi_util_dbg_print(WIFI_MON,"startpkt_thread_id is killed\n");
-#ifdef CCSP_COMMON
                     CcspTraceDebug(("startpkt_thread_id is killed\n"));
-#endif // CCSP_COMMON
                 } else {
                     wifi_util_error_print(WIFI_MON,"pthread_kill returns error : %d\n", ret);
-#ifdef CCSP_COMMON
                     CcspTraceDebug(("pthread_cance returns error : %d errno :%d - %s\n", ret, errno, strerror(errno)));
-#endif // CCSP_COMMON
                 }
 
                 /* stop blasting */
                 StopWifiBlast ();
+#else
+                if (pktgen_stop_wifi_blast() != RETURN_OK) {
+                    wifi_util_error_print(WIFI_MON, "%s:%d: Failed to stop pktgen\n", __FUNCTION__, __LINE__);
+                }
+#endif // CCSP_COMMON
             }
 
             /* calling process_active_msmt_diagnostics to update the station info */
@@ -6995,6 +7152,7 @@ void *WiFiBlastClient(void* data)
     }
 
     g_monitor_module.blastReqInQueueCount--;
+    g_active_msmt.is_running = false;
     wifi_util_dbg_print(WIFI_MON, "%s : %d decrementing blastReqInQueueCount to %d\n",__func__,__LINE__,g_monitor_module.blastReqInQueueCount);
 
     wifi_util_dbg_print(WIFI_MON, "%s : %d exiting the function\n",__func__,__LINE__);

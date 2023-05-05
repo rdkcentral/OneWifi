@@ -82,6 +82,9 @@ typedef struct active_msmt_data {
     double         throughput;
     char           Operating_standard[OPER_BUFFER_LEN + 1];
     char           Operating_channelwidth[OPER_BUFFER_LEN + 1];
+#ifndef CCSP_COMMON
+    unsigned long  RetransCount;
+#endif // CCSP_COMMON
 } active_msmt_data_t;
 
 
@@ -90,6 +93,7 @@ typedef struct {
     active_msmt_t       active_msmt;
     active_msmt_step_t    curStepData;
     active_msmt_data_t  *active_msmt_data;
+    bool                is_running;
 } wifi_actvie_msmt_t;
 /* prototype for Active Measurement */
 
@@ -124,7 +128,7 @@ int StopWifiBlast(void);
 unsigned long getCurrentTimeInMicroSeconds();
 int isVapEnabled (int wlanIndex);
 int WaitForDuration (int timeInMs);
-void pktGen_BlastClient ();
+void pktGen_BlastClient (char *dest_mac);
 void *WiFiBlastClient(void* data);
 void process_active_msmt_diagnostics (int ap_index);
 

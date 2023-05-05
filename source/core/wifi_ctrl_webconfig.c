@@ -372,7 +372,6 @@ void print_wifi_hal_vap_wps_data(wifi_dbg_type_t log_file_type, char *prefix, un
                                      ctrl_webconfig_state_macfilter_cfg_rsp_pending| \
                                      ctrl_webconfig_state_factoryreset_cfg_rsp_pending)
 
-#if DML_SUPPORT
 int webconfig_blaster_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
     unsigned int i = 0;
@@ -402,7 +401,11 @@ int webconfig_blaster_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *
     active_msmt_t *cfg = &data->blaster;
 
     SetActiveMsmtPktSize(cfg->ActiveMsmtPktSize);
+#ifdef CCSP_COMMON
     SetActiveMsmtSampleDuration(cfg->ActiveMsmtSampleDuration);
+#else
+    SetActiveMsmtSampleDuration(cfg->ActiveMsmtSampleDuration / cfg->ActiveMsmtNumberOfSamples);
+#endif // CCSP_COMMON
     SetActiveMsmtNumberOfSamples(cfg->ActiveMsmtNumberOfSamples);
     SetActiveMsmtPlanID((char *)cfg->PlanId);
     SetBlasterMqttTopic((char *)cfg->blaster_mqtt_topic);
@@ -419,7 +422,6 @@ int webconfig_blaster_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *
 
     return RETURN_OK;
 }
-#endif // DML_SUPPORT
 
 static void webconfig_init_subdoc_data(webconfig_subdoc_data_t *data)
 {
@@ -2399,7 +2401,6 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                 }
             }
             break;
-#if DML_SUPPORT
         case webconfig_subdoc_type_blaster:
             if (data->descriptor & webconfig_data_descriptor_encoded) {
                 /* If Device is operating in POD Mode, send the status to cloud */
@@ -2421,7 +2422,6 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                 ret = webconfig_blaster_apply(ctrl, &data->u.decoded);
             }
             break;
-#endif // DML_SUPPORT
 
         case webconfig_subdoc_type_csi:
             wifi_util_dbg_print(WIFI_MGR, "%s:%d: csi webconfig subdoc\n", __func__, __LINE__);
