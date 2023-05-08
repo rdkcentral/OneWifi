@@ -83,6 +83,9 @@ int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
         wifidb_print("%s: wifi vap create success: radio_index:%d vap_index:%d\n",__FUNCTION__,
                                                 radio_index, map->vap_array[i].vap_index);
         wifidb_print("%s:%d [Stop] Current time:[%llu]\r\n", __func__, __LINE__, get_current_ms_time());
+        if (isVapLnfPsk(tgt_vap_map.vap_array[0].vap_index)) {
+            update_lnf_psk_vap_hal_prop_bridge_name(svc, &tgt_vap_map);
+        }
         memcpy((unsigned char *)&map->vap_array[i], (unsigned char *)&tgt_vap_map.vap_array[0],
                     sizeof(wifi_vap_info_t));
         wifidb_update_wifi_vap_info(getVAPName(map->vap_array[i].vap_index), &map->vap_array[i],

@@ -43,7 +43,8 @@ typedef enum {
     WIFI_LIB,
     WIFI_PSM,
     WIFI_ANALYTICS,
-    WIFI_APPS
+    WIFI_APPS,
+    WIFI_SERVICES
 }wifi_dbg_type_t;
 
 typedef enum {

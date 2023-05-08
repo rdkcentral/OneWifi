@@ -733,6 +733,11 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
             snprintf(module_filename, sizeof(module_filename), "wifiApps");
             break;
         }
+        case WIFI_SERVICES:{
+            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiServices");
+            snprintf(module_filename, sizeof(module_filename), "wifiServices");
+            break;
+        }
         default:
             return;
     }

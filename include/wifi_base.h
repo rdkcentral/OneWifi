@@ -24,8 +24,8 @@
 extern "C" {
 #endif
 
-#include <wifi_hal.h>
-#include <collection.h>
+#include "wifi_hal.h"
+#include "collection.h"
 #include <pthread.h>
 #include <sys/time.h>
 
@@ -324,6 +324,7 @@ typedef struct {
 
 #define CFG_ID_LEN             64
 #define MAX_SCANNED_VAPS       32
+#define MAX_MQTT_TOPIC_LEN     256 //TBD
 
 typedef struct {
     unsigned int radio_index;
