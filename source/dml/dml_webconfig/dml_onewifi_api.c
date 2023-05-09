@@ -229,6 +229,11 @@ void update_dml_subdoc_vap_data(webconfig_subdoc_data_t *data)
                         memcpy(dml_vap, vap, sizeof(wifi_vap_info_t));
                     }
                     break;
+                case webconfig_subdoc_type_lnf:
+                    if (is_vap_lnf(&params->hal_cap.wifi_prop, vap->vap_index)) {
+                        memcpy(dml_vap, vap, sizeof(wifi_vap_info_t));
+                    }
+                    break;
                 case webconfig_subdoc_type_mesh:
                     if (is_vap_mesh(&params->hal_cap.wifi_prop, vap->vap_index)) {
                         mac_filter_dml_vap_cache_update(i, j);

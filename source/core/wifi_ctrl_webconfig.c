@@ -50,10 +50,12 @@
 #define IS_BIN_CHANGED(old, new, size) ((memcmp(old, new, size) != 0)? wifi_util_dbg_print(WIFI_CTRL,"%s:Changed param %s.\n",__func__,#old), 1 : 0)
 
 /* local functions */
-static int decode_ssid_blob(wifi_vap_info_t *vap_info, cJSON *ssid, pErr execRetVal);
+static int decode_ssid_blob(wifi_vap_info_t *vap_info, cJSON *ssid,char *bridge_name,bool managed_wifi, pErr execRetVal);
 static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr execRetVal);
 static int update_vap_info(void *data, wifi_vap_info_t *vap_info, pErr execRetVal);
-static int update_vap_info_with_blob_info(void *blob, webconfig_subdoc_data_t *data, const char *vap_prefix, pErr execRetVal);
+static int update_vap_info_managed_guest(void *data, wifi_vap_info_t *vap_info, char *bridge_name,bool connected_building_enabled, pErr execRetVal);
+static int update_vap_info_managed_xfinity(void *data, wifi_vap_info_t *vap_info,pErr execRetVal);
+static int update_vap_info_with_blob_info(void *blob, webconfig_subdoc_data_t *data, const char *vap_prefix, bool managed_wifi, pErr execRetVal);
 static int push_blob_data(webconfig_subdoc_data_t *data, webconfig_subdoc_type_t subdoc_type);
 static pErr create_execRetVal(void);
 static pErr private_home_exec_common_handler(void *blob, const char *vap_prefix, webconfig_subdoc_type_t subdoc_type);
@@ -896,6 +898,7 @@ static bool is_vap_param_config_changed(wifi_vap_info_t *old, wifi_vap_info_t *n
                 IS_CHANGED(old->u.bss_info.wepKeyLength, new->u.bss_info.wepKeyLength) ||
                 IS_CHANGED(old->u.bss_info.bssHotspot, new->u.bss_info.bssHotspot) ||
                 IS_CHANGED(old->u.bss_info.wpsPushButton, new->u.bss_info.wpsPushButton) ||
+                IS_CHANGED(old->u.bss_info.connected_building_enabled, new->u.bss_info.connected_building_enabled) ||
                 IS_BIN_CHANGED(&old->u.bss_info.beaconRateCtl, &new->u.bss_info.beaconRateCtl,
                 sizeof(old->u.bss_info.beaconRateCtl)) ||
                 IS_CHANGED(old->u.bss_info.network_initiated_greylist,
@@ -2677,7 +2680,7 @@ static int validate_private_home_ssid_param(char *ssid_name, pErr execRetVal)
    wifi_util_info_print(WIFI_CTRL,"%s: ssidparam validation passed \n",__FUNCTION__);
   return RETURN_OK;
 }
-static int decode_ssid_blob(wifi_vap_info_t *vap_info, cJSON *ssid, pErr execRetVal)
+static int decode_ssid_blob(wifi_vap_info_t *vap_info, cJSON *ssid, char *bridge_name, bool managed_wifi, pErr execRetVal)
 {
     char *value;
     cJSON *param;
@@ -2698,6 +2701,9 @@ static int decode_ssid_blob(wifi_vap_info_t *vap_info, cJSON *ssid, pErr execRet
     }
 
     param = cJSON_GetObjectItem(ssid, "Enable");
+    if (!param) {
+       param = cJSON_GetObjectItem(ssid, "Enabled");
+    }
     if (param) {
         if (cJSON_IsBool(param)) {
             vap_info->u.bss_info.enabled = cJSON_IsTrue(param) ? true : false;
@@ -2723,6 +2729,23 @@ static int decode_ssid_blob(wifi_vap_info_t *vap_info, cJSON *ssid, pErr execRet
     } else {
         wifi_util_error_print(WIFI_CTRL, "%s: missing \"SSIDAdvertisementEnabled\"\n", __func__);
         return -1;
+    }
+    if (managed_wifi) {
+        if (strlen(bridge_name) == 0) {
+            wifi_util_dbg_print(WIFI_CTRL,"BridgeName is empty\n");
+            snprintf(vap_info->bridge_name, sizeof(vap_info->bridge_name), "brlan15");
+        } else {
+            wifi_util_dbg_print(WIFI_CTRL,"BridgeName is %s\n",bridge_name);
+            snprintf(vap_info->bridge_name, sizeof(vap_info->bridge_name), "%s", bridge_name);
+        }
+        param = cJSON_GetObjectItem(ssid, "BssMaxNumSta");
+        if (param) {
+            vap_info->u.bss_info.bssMaxSta = param->valuedouble;
+            wifi_util_info_print(WIFI_CTRL, "   \"BssMax\": %d\n", vap_info->u.bss_info.bssMaxSta);
+        } else {
+            wifi_util_error_print(WIFI_CTRL, "%s: missing \"BssMax\"\n", __func__);
+            return -1;
+        }
     }
 
     return 0;
@@ -2786,6 +2809,9 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security,pErr 
     strcpy(encryption_method,value);
 
     param = cJSON_GetObjectItem(security, "ModeEnabled");
+    if (!param) {
+       param = cJSON_GetObjectItem(security, "Mode");
+    }
     if (param) {
         value = cJSON_GetStringValue(param);
         wifi_util_info_print(WIFI_CTRL, "   \"ModeEnabled\": %s\n", value);
@@ -2894,7 +2920,7 @@ static int update_vap_info(void *data, wifi_vap_info_t *vap_info,pErr execRetVal
     }
 
     /* get SSID */
-    if (decode_ssid_blob(vap_info, ssid_obj, execRetVal) != 0) {
+    if (decode_ssid_blob(vap_info, ssid_obj, NULL, false, execRetVal) != 0) {
         wifi_util_error_print(WIFI_CTRL, "%s: Failed to decode SSID blob\n", __func__);
         status = RETURN_ERR;
         goto done;
@@ -2914,29 +2940,192 @@ done:
     return status;
 }
 
-static int update_vap_info_with_blob_info(void *blob, webconfig_subdoc_data_t *data, const char *vap_prefix, pErr execRetVal)
+static int update_vap_info_managed_guest(void *data, wifi_vap_info_t *vap_info, char * bridge_name,bool connected_building_enabled,pErr execRetVal)
 {
     int status = RETURN_OK;
-    int num_vaps;
+    cJSON *root = NULL;
+    cJSON *security_obj = NULL;
+    cJSON *vb_entry = NULL;
+    char repurposed_vap_name[64];
+    char ssid[128] = {0};
+    char password[128] = {0};
+    memset(repurposed_vap_name,0,sizeof(repurposed_vap_name));
+    char *saveptr = NULL;
+    char *blob = NULL;
+
+    if (connected_building_enabled) {
+        wifi_util_info_print(WIFI_CTRL, "%s: %d connected_building_enabled %d \n", __func__,__LINE__,connected_building_enabled);
+        blob = cJSON_Print((cJSON *)data);
+        wifi_util_dbg_print(WIFI_CTRL,"Managed guest  blob is %s\n",blob);
+        root = cJSON_Parse(blob);
+        if(root == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:Managed guest json  parse failure\n", __func__);
+            return RETURN_ERR;
+        }
+
+        cJSON_ArrayForEach(vb_entry, root) {
+
+            cJSON *blob_vap_name = cJSON_GetObjectItem(vb_entry, "VapName");
+            if((blob_vap_name == NULL) || (cJSON_IsString(blob_vap_name) == false)) {
+                wifi_util_info_print(WIFI_CTRL, "%s: Missing VapName\n", __func__);
+                continue;
+            }
+
+            char *blob_vap_name_str = cJSON_GetStringValue(blob_vap_name);
+            strncpy(repurposed_vap_name,blob_vap_name_str,sizeof(repurposed_vap_name)-1);
+            wifi_util_info_print(WIFI_CTRL, "repurposed_vap_name:%s %s: %d \n",repurposed_vap_name, __func__,__LINE__ );
+
+            if (strstr(blob_vap_name_str,"managed_guest_")) {
+                saveptr = strrchr(blob_vap_name_str, (int)'_');
+                if (saveptr == NULL) {
+                    wifi_util_error_print(WIFI_CTRL, "%s: %d vapname is not proper \n", __func__,__LINE__);
+                    goto done;
+                }
+                snprintf(blob_vap_name_str,strlen(blob_vap_name_str)-1,"lnf_psk%s",saveptr);
+            } else {
+                wifi_util_error_print(WIFI_CTRL, "%s: %d vapname is not proper \n", __func__,__LINE__);
+                goto done;
+            }
+            if (!strcmp(vap_info->vap_name,blob_vap_name_str)) {
+                wifi_util_error_print(WIFI_CTRL, "%s: %d connected_building_enabled %d \n", __func__,__LINE__,connected_building_enabled);
+                if (decode_ssid_blob(vap_info, vb_entry, bridge_name, true, execRetVal) != 0) {
+                    wifi_util_error_print(WIFI_CTRL, "%s: Failed to decode SSID blob\n", __func__);
+                    status = RETURN_ERR;
+                    goto done;
+                 }
+
+                security_obj = cJSON_GetObjectItem(vb_entry, "Security");
+                if (security_obj == NULL) {
+                    wifi_util_error_print(WIFI_CTRL, "%s: Failed to get %s security\n", __func__, vap_info->vap_name);
+                    status = RETURN_ERR;
+                    goto done;
+                }
+
+
+                /* decode security blob */
+                if (decode_security_blob(vap_info, security_obj, execRetVal) != 0) {
+                    wifi_util_error_print(WIFI_CTRL, "%s: Failed to decode security blob\n", __func__);
+                    status = RETURN_ERR;
+                    goto done;
+                }
+                if (strlen(repurposed_vap_name) != 0) {
+                    strncpy(vap_info->repurposed_vap_name, repurposed_vap_name, (strlen(repurposed_vap_name) + 1));
+                }
+            }
+        }
+    } else {
+        wifi_util_info_print(WIFI_CTRL, "%s: %d connected_building_enabled %d \n", __func__,__LINE__,connected_building_enabled);
+        snprintf(vap_info->bridge_name, sizeof(vap_info->bridge_name), "br106");
+        vap_info->u.bss_info.showSsid = false;
+        vap_info->u.bss_info.enabled = true;
+        vap_info->u.bss_info.bssMaxSta = 75;
+        wifi_hal_get_default_ssid(ssid, vap_info->vap_index);
+        wifi_hal_get_default_keypassphrase(password, vap_info->vap_index);
+        snprintf(vap_info->u.bss_info.ssid, sizeof(vap_info->u.bss_info.ssid), "%s", ssid);
+        snprintf(vap_info->u.bss_info.security.u.key.key, sizeof(vap_info->u.bss_info.security.u.key.key), "%s", password);
+        strncpy(vap_info->repurposed_vap_name,"",(strlen(repurposed_vap_name) + 1));
+    }
+done:
+    if (root) {
+        cJSON_free(blob);
+        cJSON_Delete(root);
+    }
+    return status;
+}
+
+static int update_vap_info_managed_xfinity(void *data, wifi_vap_info_t *vap_info, pErr execRetVal)
+{
+    int status = RETURN_OK;
+    cJSON *root = NULL;
+    cJSON *param = NULL;
+    bool connected_building_enabled = false;
+    char *blob = cJSON_Print((cJSON *)data);
+
+    root = cJSON_Parse(blob);
+
+    if (root == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:Managed xfinity json parse failure\n", __func__);
+        return RETURN_ERR;
+    }
+    param = cJSON_GetObjectItem(root, "connected_building_enabled");
+
+    if (param) {
+        if (cJSON_IsBool(param)) {
+            connected_building_enabled = cJSON_IsTrue(param) ? true : false;
+            wifi_util_dbg_print(WIFI_CTRL, "   \"connected_building_enabled\": %s\n", (connected_building_enabled) ? "true" : "false");
+        } else {
+            wifi_util_dbg_print(WIFI_CTRL, "%s: \"connected_building_enabled\" is not boolean\n", __func__);
+            cJSON_Delete(root);
+            return RETURN_ERR;
+        }
+    } else {
+        wifi_util_dbg_print(WIFI_CTRL, "%s: \"connected_building_enabled\" is not present\n", __func__);
+    }
+    vap_info->u.bss_info.connected_building_enabled = connected_building_enabled;
+    wifi_util_info_print(WIFI_CTRL, "  LINE %d \"connected_building_enabled\": %s and vap_name=%s\n", __LINE__,(vap_info->u.bss_info.connected_building_enabled) ? "true" : "false",vap_info->vap_name);
+    cJSON_Delete(root);
+    return status;
+}
+
+static int update_vap_info_with_blob_info(void *blob, webconfig_subdoc_data_t *data, const char *vap_prefix, bool managed_wifi_enabled,pErr execRetVal)
+{
+    int status = RETURN_OK;
+    int num_vaps = 0;
     int vap_index;
-    int radio_index = 0;
+    int radio_index = 0, rc = -1;
     int vap_array_index = 0;
     wifi_vap_name_t vap_names[MAX_NUM_RADIOS];
+    wifi_vap_name_t vap_names_xfinity[MAX_NUM_RADIOS * 2];
+    char brval[32];
 
-    /* get a list of VAP names */
-    num_vaps = get_list_of_vap_names(&data->u.decoded.hal_cap.wifi_prop, vap_names, MAX_NUM_RADIOS, 1, vap_prefix);
+
+    memset(brval,0,sizeof(brval));
+    if (!strcmp(vap_prefix,"lnf_psk")) {
+        rc = get_managed_guest_bridge(&brval, sizeof(brval));
+        if ( rc != 0) {
+            wifi_util_dbg_print(WIFI_CTRL,"Managed wifi bridge not found\n");
+            strncpy(brval,"brlan15",sizeof(brval)-1);
+        }
+    }
+
+    if (!strcmp(vap_prefix,"hotspot")){
+        /* get a list of VAP names */
+        num_vaps= get_list_of_hotspot_open(&data->u.decoded.hal_cap.wifi_prop, MAX_NUM_RADIOS, vap_names_xfinity);
+        /* get list of hotspot_secure SSID */
+        num_vaps += get_list_of_hotspot_secure(&data->u.decoded.hal_cap.wifi_prop, MAX_NUM_RADIOS, &vap_names_xfinity[num_vaps]);
+    }
+    else {
+        num_vaps = get_list_of_vap_names(&data->u.decoded.hal_cap.wifi_prop, vap_names, MAX_NUM_RADIOS, 1, vap_prefix);
+    }
 
     for (int index = 0; index < num_vaps; index++) {
-        /* from VAP name, obtain radio index and array index within the radio */
-        vap_index = convert_vap_name_to_index(&data->u.decoded.hal_cap.wifi_prop, vap_names[index]);
+        if (!strcmp(vap_prefix,"hotspot")) {
+            /* from VAP name, obtain radio index and array index within the radio */
+            vap_index = convert_vap_name_to_index(&data->u.decoded.hal_cap.wifi_prop, vap_names_xfinity[index]);
+        } else {
+            /* from VAP name, obtain radio index and array index within the radio */
+            vap_index = convert_vap_name_to_index(&data->u.decoded.hal_cap.wifi_prop, vap_names[index]);
+        }
         status = get_vap_and_radio_index_from_vap_instance(&data->u.decoded.hal_cap.wifi_prop, vap_index, (uint8_t *)&radio_index, (uint8_t *)&vap_array_index);
         if (status == RETURN_ERR) {
             break;
         }
         /* fill the VAP info with current settings */
-        if (update_vap_info(blob, &data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index], execRetVal) == RETURN_ERR) {
-            status = RETURN_ERR;
-            break;
+        if (!strcmp(vap_prefix,"hotspot")) {
+            if (update_vap_info_managed_xfinity(blob, &data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index], execRetVal) == RETURN_ERR) {
+                status = RETURN_ERR;
+                break;
+            }
+        } else if (!strcmp(vap_prefix,"lnf_psk")) {
+            if(update_vap_info_managed_guest(blob, &data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index], brval,managed_wifi_enabled, execRetVal) == RETURN_ERR) {
+                status = RETURN_ERR;
+                break;
+            }
+         } else {
+            if (update_vap_info(blob, &data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index], execRetVal) == RETURN_ERR) {
+                status = RETURN_ERR;
+                break;
+            }
         }
     }
 
@@ -2999,7 +3188,7 @@ static pErr private_home_exec_common_handler(void *blob, const char *vap_prefix,
     }
     webconfig_init_subdoc_data(data);
 
-    if (update_vap_info_with_blob_info(blob, data, vap_prefix, execRetVal) != 0) {
+    if (update_vap_info_with_blob_info(blob, data, vap_prefix, false, execRetVal) != 0) {
         wifi_util_error_print(WIFI_CTRL, "%s: json parse failure\n", __func__);
         execRetVal->ErrorCode = VALIDATION_FALIED;
         goto done;
@@ -3018,6 +3207,71 @@ done:
         free(data);
     }
     return execRetVal;
+}
+static int connected_subdoc_handler(void *blob, char *vap_prefix, webconfig_subdoc_type_t subdoc_type,bool  managed_wifi_enabled, pErr execRetVal)
+{
+    int ret = RETURN_ERR;
+    wifi_vap_name_t vap_names[MAX_NUM_RADIOS];
+    int num_vaps = 0,i = 0, vap_index = 0;
+    webconfig_subdoc_data_t *data = NULL;
+    wifi_interface_name_t *lnf_psk_ifname = NULL;
+    char managed_interfaces[128];
+
+    memset(managed_interfaces,0,sizeof(managed_interfaces));
+
+    if (blob == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s: Null blob\n", __func__);
+        return ret;
+    }
+
+    data = (webconfig_subdoc_data_t *) malloc(sizeof(webconfig_subdoc_data_t));
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s: malloc failed to allocate webconfig_subdoc_data_t, size %d\n", \
+                              __func__, sizeof(webconfig_subdoc_data_t));
+        goto done;
+    }
+
+    webconfig_init_subdoc_data(data);
+
+    if (update_vap_info_with_blob_info(blob, data, vap_prefix, managed_wifi_enabled, execRetVal) != 0) {
+        wifi_util_error_print(WIFI_CTRL, "%s: json parse failure\n", __func__);
+        execRetVal->ErrorCode = VALIDATION_FALIED;
+        goto done;
+    }
+    if (push_blob_data(data, subdoc_type) != RETURN_OK) {
+        execRetVal->ErrorCode = WIFI_HAL_FAILURE;
+        strncpy(execRetVal->ErrorMsg, "push_blob_to_ctrl_queue failed", sizeof(execRetVal->ErrorMsg)-1);
+        wifi_util_error_print(WIFI_CTRL, "%s: failed to encode %s subdoc\n", \
+                              __func__, (subdoc_type == webconfig_subdoc_type_lnf) ? "lnf_psk" : "xfinity");
+        goto done;
+    }
+
+    if (strcmp(vap_prefix,"lnf_psk")== 0) {
+        num_vaps = get_list_of_vap_names(&data->u.decoded.hal_cap.wifi_prop, vap_names, MAX_NUM_RADIOS, 1, VAP_PREFIX_LNF_PSK);
+        wifi_util_error_print(WIFI_CTRL, "%s: num_vaps =%d \n", __func__,num_vaps);
+        for (i =0; i < num_vaps; i++) {
+            vap_index = convert_vap_name_to_index(&data->u.decoded.hal_cap.wifi_prop, vap_names[i]);
+            lnf_psk_ifname = get_interface_name_for_vap_index(vap_index,(&data->u.decoded.hal_cap.wifi_prop));
+
+            if ((lnf_psk_ifname != NULL) &&(strlen(managed_interfaces) == 0) && managed_wifi_enabled) {
+                snprintf(managed_interfaces,sizeof(managed_interfaces),"ManagedWifi:%s",*lnf_psk_ifname);
+            } else if ((lnf_psk_ifname != NULL) && managed_wifi_enabled) {
+               strncat(managed_interfaces,",",2);
+               strncat(managed_interfaces,*lnf_psk_ifname,strlen(*lnf_psk_ifname));
+            } else {
+                wifi_util_error_print(WIFI_CTRL, "%s: managed_wifi_enabled is false \n", __func__);
+                strncpy(managed_interfaces,"ManagedWifi:",sizeof(managed_interfaces)-1);
+            }
+        }
+        wifi_util_info_print(WIFI_CTRL, "managed_interfaces = %s and lnf_psk_ifname=%s\n",managed_interfaces,(char *)lnf_psk_ifname);
+        set_managed_guest_interfaces(managed_interfaces);
+    }
+    ret = RETURN_OK;
+done:
+    if (data) {
+        free(data);
+    }
+   return ret;
 }
 
 pErr wifi_private_vap_exec_handler(void *blob)
@@ -3149,6 +3403,170 @@ void webconf_process_private_vap(const char* enb)
         wifi_util_info_print(WIFI_CTRL, "%s:%d: PushBlobRequest Complete\n", __func__, __LINE__ );
     }
 }
+pErr webconf_process_managed_subdoc(void* data)
+{
+    pErr execRetVal = NULL;
+    unsigned long msg_size = 0L;
+    unsigned char *msg = NULL;
+    int ret = RETURN_ERR;
+    bool connected_wifi_enabled = false;
+
+    execRetVal = create_execRetVal();
+    if (execRetVal == NULL ) {
+        wifi_util_error_print(WIFI_CTRL, "%s: malloc failure\n", __func__);
+        return NULL;
+    }
+    memset(execRetVal,0,(sizeof(Err)));
+    if(data == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s: Null blob\n", __func__);
+        if (execRetVal) {
+            execRetVal->ErrorCode = VALIDATION_FALIED;
+            strncpy(execRetVal->ErrorMsg, "Empty subdoc", sizeof(execRetVal->ErrorMsg)-1);
+        }
+        return execRetVal;
+    }
+
+
+    msg_size = b64_get_decoded_buffer_size(strlen((char *)data));
+    msg = (unsigned char *) calloc(1,sizeof(unsigned char *) * msg_size);
+    if (!msg) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s: Failed to allocate memory.\n",__FUNCTION__);
+        strncpy(execRetVal->ErrorMsg, "Failed to allocate memory", sizeof(execRetVal->ErrorMsg)-1);
+        execRetVal->ErrorCode = VALIDATION_FALIED;
+        return execRetVal;
+    }
+
+    msg_size = 0;
+    msg_size = b64_decode((unsigned char *)data, strlen((char *)data), msg );
+    if (msg_size == 0) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s: Failed in Decoding multicomp blob\n",__FUNCTION__);
+        free(msg);
+        strncpy(execRetVal->ErrorMsg, "Failed in Decoding multicomp blob", sizeof(execRetVal->ErrorMsg)-1);
+        execRetVal->ErrorCode = VALIDATION_FALIED;
+        return execRetVal;
+    }
+
+    wifidb_print("%s:%d [Start] Current time:[%llu]\r\n", __func__, __LINE__, get_current_ms_time());
+
+    msgpack_zone msg_z;
+    msgpack_object msg_obj;
+
+    msgpack_zone_init(&msg_z, MAX_JSON_BUFSIZE);
+    if(msgpack_unpack((const char*)msg, (size_t)msg_size, NULL, &msg_z, &msg_obj) != MSGPACK_UNPACK_SUCCESS) {
+        msgpack_zone_destroy(&msg_z);
+        execRetVal->ErrorCode = VALIDATION_FALIED;
+        strncpy(execRetVal->ErrorMsg, "Msg unpack failed", sizeof(execRetVal->ErrorMsg)-1);
+        free(msg);
+        wifi_util_error_print(WIFI_CTRL, "%s: Failed to unpack blob\n", __func__);
+        return execRetVal;
+    }
+
+    char *blob_buf = (char*)malloc(MAX_JSON_BUFSIZE);
+    if(blob_buf == NULL) {
+        msgpack_zone_destroy(&msg_z);
+        execRetVal->ErrorCode = VALIDATION_FALIED;
+        strncpy(execRetVal->ErrorMsg, "blob mem alloc failure", sizeof(execRetVal->ErrorMsg)-1);
+        free(msg);
+        wifi_util_error_print(WIFI_CTRL, "%s: malloc failure\n", __func__);
+        return execRetVal;
+    }
+    memset(blob_buf, 0, MAX_JSON_BUFSIZE);
+    int json_len = msgpack_object_print_jsonstr(blob_buf, MAX_JSON_BUFSIZE, msg_obj);
+    if(json_len <= 0) {
+        msgpack_zone_destroy(&msg_z);
+        execRetVal->ErrorCode = VALIDATION_FALIED;
+        strncpy(execRetVal->ErrorMsg, "json conversion failure", sizeof(execRetVal->ErrorMsg)-1);
+        free(blob_buf);
+        free(msg);
+        wifi_util_error_print(WIFI_CTRL, "%s: json conversion failure\n", __func__);
+        return execRetVal;
+    }
+
+    wifi_util_info_print(WIFI_CTRL, "%s, Managed wifi blob\n%s\n", __func__, blob_buf);
+
+    cJSON *root = cJSON_Parse(blob_buf);
+    if(root == NULL) {
+        msgpack_zone_destroy(&msg_z);
+        execRetVal->ErrorCode = VALIDATION_FALIED;
+        strncpy(execRetVal->ErrorMsg, "json parse failure", sizeof(execRetVal->ErrorMsg)-1);
+        free(blob_buf);
+        free(msg);
+        wifi_util_error_print(WIFI_CTRL, "%s: json parse failure\n", __func__);
+        return execRetVal;
+    }
+    cJSON *managed_wifi_enabled = cJSON_GetObjectItem(root, "ManagedWifiEnabled");
+    if (managed_wifi_enabled == NULL) {
+        msgpack_zone_destroy(&msg_z);
+        execRetVal->ErrorCode = VALIDATION_FALIED;
+        strncpy(execRetVal->ErrorMsg, "Failed to Get ManagedWifiEnabled", sizeof(execRetVal->ErrorMsg)-1);
+        free(blob_buf);
+        free(msg);
+        cJSON_Delete(root);
+        wifi_util_error_print(WIFI_CTRL, "%s: Failed to Get ManagedWifiEnabled\n", __func__);
+        return execRetVal;
+    }
+    connected_wifi_enabled = cJSON_IsTrue(managed_wifi_enabled)? true : false;
+    wifi_util_dbg_print(WIFI_CTRL,"managed_wifi_enabled is %d\n",connected_wifi_enabled);
+
+    cJSON *vap_blob = cJSON_DetachItemFromObject(root, "WifiVapConfig");
+    if(vap_blob == NULL) {
+        msgpack_zone_destroy(&msg_z);
+        execRetVal->ErrorCode = VALIDATION_FALIED;
+        strncpy(execRetVal->ErrorMsg, "Failed to detach WifiVapConfig", sizeof(execRetVal->ErrorMsg)-1);
+        free(blob_buf);
+        free(msg);
+        cJSON_Delete(root);
+        wifi_util_error_print(WIFI_CTRL, "%s: Failed to detach WifiVapConfig\n", __func__);
+        return execRetVal;
+    }
+ 
+    ret = connected_subdoc_handler(vap_blob, VAP_PREFIX_LNF_PSK, webconfig_subdoc_type_lnf, connected_wifi_enabled,  execRetVal);
+    if (ret != RETURN_OK) {
+        msgpack_zone_destroy(&msg_z);
+        execRetVal->ErrorCode = VALIDATION_FALIED;
+        free(blob_buf);
+        free(msg);
+        cJSON_Delete(root);
+        wifi_util_error_print(WIFI_CTRL, "%s: Failed to apply managed_guest vaps\n", __func__);
+        return execRetVal;
+    }
+
+    cJSON *xfinity_blob = cJSON_DetachItemFromObject(root, "xfinityWifiVapConfig");
+    if(xfinity_blob == NULL) {
+        msgpack_zone_destroy(&msg_z);
+        execRetVal->ErrorCode = VALIDATION_FALIED;
+        strncpy(execRetVal->ErrorMsg, "Failed to detach xfinity_blob", sizeof(execRetVal->ErrorMsg)-1);
+        free(blob_buf);
+        free(msg);
+        cJSON_Delete(root);
+        wifi_util_error_print(WIFI_CTRL, "%s: Failed to detach xfinity_blob\n", __func__);
+        return execRetVal;
+    }
+
+    ret = connected_subdoc_handler(xfinity_blob, VAP_PREFIX_HOTSPOT, webconfig_subdoc_type_xfinity, connected_wifi_enabled, execRetVal);
+    if (ret != RETURN_OK) {
+        msgpack_zone_destroy(&msg_z);
+        execRetVal->ErrorCode = VALIDATION_FALIED;
+        free(blob_buf);
+        free(msg);
+        cJSON_Delete(root);
+        wifi_util_error_print(WIFI_CTRL, "%s: Failed to update connectedbuilding AVPs in  Xfinity vaps \n", __func__);
+        return execRetVal;
+    }
+    if (connected_wifi_enabled) {
+        wifi_util_info_print(WIFI_CTRL,"lnf_psk vaps are repurposed to managed_guest\n");
+    } else {
+        wifi_util_info_print(WIFI_CTRL,"managed_guest vaps are reverted back to lnf_psk\n");
+    }
+
+
+    wifi_util_info_print(WIFI_CTRL,"Managed guest blob is applied successfuly \n");
+    cJSON_Delete(root); // don't need this anymore
+
+    execRetVal->ErrorCode = BLOB_EXEC_SUCCESS;
+    return execRetVal;
+}
+
 
 void webconf_process_home_vap(const char* enb)
 {
@@ -3204,7 +3622,6 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
         return execRetVal;
     }
 
-
     msg_size = b64_get_decoded_buffer_size(strlen((char *)data));
     msg = (unsigned char *) calloc(1,sizeof(unsigned char *) * msg_size);
     if (!msg) {
@@ -3219,8 +3636,10 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
     if (msg_size == 0) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s: Failed in Decoding multicomp blob\n",__FUNCTION__);
         free(msg);
-        return NULL;
-    } 
+        strncpy(execRetVal->ErrorMsg, "Failed  in Decoding multicomp blob", sizeof(execRetVal->ErrorMsg)-1);
+        execRetVal->ErrorCode = VALIDATION_FALIED;
+        return execRetVal;
+    }
 
     wifidb_print("%s:%d [Start] Current time:[%llu]\r\n", __func__, __LINE__, get_current_ms_time());
 
@@ -3355,6 +3774,13 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
         else {
             cJSON_AddStringToObject(vb_entry, "BeaconRateCtl", "6Mbps");
         }
+        cJSON *connected_building_enabled_o = cJSON_GetObjectItem(vb_entry, "Connected_building_enabled");
+        if (connected_building_enabled_o == NULL) {
+            wifi_util_dbg_print(WIFI_CTRL, "connected_building_enabled param is not present\n");
+            cJSON_AddBoolToObject(vb_entry,"Connected_building_enabled",wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.connected_building_enabled);
+        }
+
+        cJSON_AddStringToObject(vb_entry, "RepurposedVapName", wifi_vap_map->vap_array[vapArrayIndex].repurposed_vap_name);
 
         cJSON *vapConnectionControl_o = cJSON_GetObjectItem(vb_entry, "VapConnectionControl");
         if (vapConnectionControl_o == NULL) {
@@ -3383,6 +3809,7 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
         else {
             wifi_util_info_print(WIFI_CTRL, "vapConnectionContro param is present in blob\n");
         }
+
         if(strstr(nm_s, "hotspot_secure") == NULL) { continue; }
 
         cJSON *sec_o = cJSON_GetObjectItem(vb_entry, "Security");
@@ -3407,6 +3834,7 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
             wifi_util_error_print(WIFI_CTRL, "%s: Failed to get RadiusSettings obj for %s\n", __func__, nm_s);
             continue;
         }
+
         char dasIpAddr[32];
         memset(dasIpAddr, 0, sizeof(dasIpAddr));
         int das_ip_r = getIpStringFromAdrress(dasIpAddr, &wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.security.u.radius.dasip);
@@ -3435,6 +3863,7 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
     cJSON_AddItemToObject(n_blob, "WifiVapConfig", vap_blob);
 
     char *vap_blob_str = cJSON_Print(n_blob);
+    wifi_util_dbg_print(WIFI_CTRL,"WebConfig blob is %s\n",vap_blob_str);
     // push blob to ctrl queue
     push_event_to_ctrl_queue(vap_blob_str, strlen(vap_blob_str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_tunnel, NULL);
 
@@ -3468,27 +3897,34 @@ int wifi_vap_cfg_rollback_handler()
 
 int register_multicomp_subdocs()
 {
-    int multi_subdoc_count = 1;
-    int m_sz = multi_subdoc_count * sizeof(multiCompSubDocReg);
+    // PAM delivers xfinity blob  and connectedbuilding blobs as hotspot,connectedbuilding - so OneWifi will register for both blobs
+    char *multi_sub_docs[MULTI_COMP_SUPPORTED_SUBDOC_COUNT+1]= {"hotspot","connectedbuilding",(char *) 0 };
+    multiCompSubDocReg *multiCompData = NULL ;
+    multiCompData = (multiCompSubDocReg*) malloc(MULTI_COMP_SUPPORTED_SUBDOC_COUNT * sizeof(multiCompSubDocReg));
+    memset(multiCompData, 0, MULTI_COMP_SUPPORTED_SUBDOC_COUNT * sizeof(multiCompSubDocReg));
+    multiCompSubDocReg *multiCompDataPointer = multiCompData ;
+    int j ;
 
-    multiCompSubDocReg *subdoc_data = (multiCompSubDocReg *)malloc(m_sz);
-    if(subdoc_data == NULL) {
-        wifi_util_error_print(WIFI_CTRL, "%s: Failed to allocate memory\n", __func__);
-        return RETURN_ERR;
+    for (j=0; j < MULTI_COMP_SUPPORTED_SUBDOC_COUNT ; j++ )
+    {
+        strncpy(multiCompDataPointer->multi_comp_subdoc , multi_sub_docs[j], sizeof(multiCompDataPointer->multi_comp_subdoc)-1) ;
+        if ( strcmp(multiCompDataPointer->multi_comp_subdoc,"hotspot") == 0 )
+        {
+            multiCompDataPointer->executeBlobRequest = wifi_vap_cfg_subdoc_handler;
+        }
+        else if ( strcmp(multiCompDataPointer->multi_comp_subdoc,"connectedbuilding") == 0 )
+        {
+            multiCompDataPointer->executeBlobRequest = webconf_process_managed_subdoc;
+        }
+ 
+        multiCompDataPointer->calcTimeout = wifi_vap_cfg_timeout_handler;
+        multiCompDataPointer->rollbackFunc = wifi_vap_cfg_rollback_handler;
+        multiCompDataPointer->freeResources = NULL;
+        multiCompDataPointer++ ;
     }
-    memset(subdoc_data, 0 , m_sz);
-
-    // PAM delivers xfinity blob as hotspot - so OneWifi will register for hotspot blob
-    char *sd[] = {"hotspot", (char *) 0 };
-    for(int j = 0; j < multi_subdoc_count; ++j) {
-        strncpy(subdoc_data->multi_comp_subdoc, sd[j], sizeof(subdoc_data->multi_comp_subdoc)-1);
-        subdoc_data->executeBlobRequest = wifi_vap_cfg_subdoc_handler;
-        subdoc_data->calcTimeout = wifi_vap_cfg_timeout_handler;
-        subdoc_data->rollbackFunc = wifi_vap_cfg_rollback_handler;
-    }
-
-    register_MultiComp_subdoc_handler(subdoc_data, multi_subdoc_count);
-
+    multiCompDataPointer = multiCompData ;
+    register_MultiComp_subdoc_handler(multiCompData,MULTI_COMP_SUPPORTED_SUBDOC_COUNT);
+ 
     return RETURN_OK;
 }
 

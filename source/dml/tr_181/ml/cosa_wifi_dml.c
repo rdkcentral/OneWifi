@@ -5008,6 +5008,16 @@ SSID_GetParamStringValue
         }
 
     }
+
+    if( AnscEqualString(ParamName, "Repurposed_VapName", TRUE))
+    {
+        /* collect value */
+        if (strlen(pcfg->repurposed_vap_name) != 0) {
+            AnscCopyString(pValue, pcfg->repurposed_vap_name);
+        }
+        return 0;
+    }
+
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     return -1;
 }
@@ -6145,6 +6155,13 @@ AccessPoint_GetParamBoolValue
         *pBool = TRUE;
         return TRUE;
     }
+    if( AnscEqualString(ParamName, "Connected_Building_Enabled", TRUE)) {
+        if(isVapHotspot(vap_index)) {
+            *pBool = pcfg->u.bss_info.connected_building_enabled;
+        } else {
+            *pBool = FALSE;
+        }
+    }
 
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     return FALSE;
@@ -6755,6 +6772,20 @@ AccessPoint_SetParamBoolValue
         return TRUE;
     }
 
+    if (AnscEqualString(ParamName, "connected_building_enabled", TRUE))
+    {
+        if (!isVapHotspot(instance_number-1))
+        {
+            CcspWifiTrace(("RDK_LOG_ERROR, %s connected_building_enabled  not supported for vaps other than public vaps\n", __FUNCTION__));
+            return FALSE;
+        }
+        vapInfo->u.bss_info.connected_building_enabled = bValue;
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: connected_building_enabled Value = %d  \n",__func__, __LINE__, vapInfo->u.bss_info.connected_building_enabled);
+        set_dml_cache_vap_config_changed(instance_number - 1);
+        return TRUE;
+    }
+
+
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     return FALSE;
 }
@@ -7283,6 +7314,7 @@ Security_GetParamBoolValue
     if( AnscEqualString(ParamName, "Reset", TRUE)) {
         *pBool = FALSE;
     }
+
     return TRUE;
 }
 
@@ -7336,7 +7368,6 @@ Security_GetParamIntValue
         *pInt = 0;
         return TRUE;
     }
-
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
 
     return TRUE;
@@ -7687,7 +7718,8 @@ Security_GetParamStringValue
         AnscCopyString(pValue, "");
         return 0;
     }
-	if( AnscEqualString(ParamName, "SecondaryRadiusSecret", TRUE))
+
+    if( AnscEqualString(ParamName, "SecondaryRadiusSecret", TRUE))
     {
         /* Radius Secret should always return empty string when read */
         AnscCopyString(pValue, "");
@@ -7847,7 +7879,7 @@ Security_SetParamBoolValue
 
     if( AnscEqualString(ParamName, "Reset", TRUE))
     {
-	return TRUE;		
+        return TRUE;
     }
 
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */

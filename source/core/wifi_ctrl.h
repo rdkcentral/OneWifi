@@ -118,6 +118,11 @@ extern "C" {
 
 #define SUBDOC_FORCE_RESET               "Device.X_RDK_WebConfig.webcfgSubdocForceReset"
 #define PRIVATE_SUB_DOC                  "privatessid"
+// Connected building wifi subdoc and rbus related constants
+#define MULTI_COMP_SUPPORTED_SUBDOC_COUNT 2
+#define MANAGED_WIFI_BRIDGE "Device.LAN.Bridge.1.Name"
+#define MANAGED_WIFI_INTERFACE "Device.LAN.Bridge.1.WiFiInterfaces"
+
 
 typedef enum {
     rbus_bool_data,

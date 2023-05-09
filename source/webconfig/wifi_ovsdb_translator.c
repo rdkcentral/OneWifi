@@ -1839,8 +1839,12 @@ webconfig_error_t translate_vap_info_to_ovsdb_common(const wifi_vap_info_t *vap,
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vap mode conversion failed. vap mode %d\n", __func__, __LINE__, vap->vap_mode);
         return webconfig_error_translate_to_ovsdb;
     }
-
-    vap_row->enabled = vap->u.bss_info.enabled;
+    if (strlen(vap->repurposed_vap_name) == 0) {
+        vap_row->enabled = vap->u.bss_info.enabled;
+    } else {
+        wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d vapname %s is repurposed as %s so disabled\n", __func__, __LINE__,vap->vap_name,vap->repurposed_vap_name);
+        vap_row->enabled = false;
+    }
     strncpy(vap_row->ssid, vap->u.bss_info.ssid, sizeof(vap_row->ssid));
     strncpy(vap_row->bridge, vap->bridge_name, sizeof(vap_row->bridge));
     vap_row->uapsd_enable = vap->u.bss_info.UAPSDEnabled;
@@ -2336,7 +2340,12 @@ webconfig_error_t translate_vap_info_to_vif_state_common(const wifi_vap_info_t *
     sprintf(vap_row->mac, "%02x:%02x:%02x:%02x:%02x:%02x", vap->u.bss_info.bssid[0], vap->u.bss_info.bssid[1],
                                                     vap->u.bss_info.bssid[2], vap->u.bss_info.bssid[3],
                                                     vap->u.bss_info.bssid[4], vap->u.bss_info.bssid[5]);
-    vap_row->enabled = vap->u.bss_info.enabled;
+    if (strlen(vap->repurposed_vap_name) == 0) {
+        vap_row->enabled = vap->u.bss_info.enabled;
+    } else {
+        wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d vapname %s is repurposed as %s so disabled\n", __func__, __LINE__,vap->vap_name,vap->repurposed_vap_name);
+        vap_row->enabled = false;
+    }
     strncpy(vap_row->ssid, vap->u.bss_info.ssid, sizeof(vap_row->ssid));
     if (strlen(vap->bridge_name) != 0) {
         strncpy(vap_row->bridge, vap->bridge_name, sizeof(vap_row->bridge));
@@ -3425,6 +3434,10 @@ webconfig_error_t translate_ovsdb_to_vap_info_common(const struct schema_Wifi_VI
     if ((vap_row == NULL) || (vap == NULL)) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: input argument is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
+    }
+    if (strlen(vap->repurposed_vap_name) != 0) {
+       wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d vapname %s is repurposed as %s so disabled\n", __func__, __LINE__,vap->vap_name,vap->repurposed_vap_name);
+       return webconfig_error_none;
     }
 
 

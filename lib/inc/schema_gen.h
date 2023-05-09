@@ -138,6 +138,8 @@
         PJS_OVS_INT_Q(period) \
         PJS_OVS_INT_Q(channel) \
         PJS_OVS_INT_Q(freq_band) \
+        PJS_OVS_STRING(repurposed_vap_name, 64 + 1) \
+        PJS_OVS_BOOL(connected_building_enabled)\
     )
 
 #define PJS_SCHEMA_Wifi_Interworking_Config \
@@ -2040,6 +2042,8 @@
     COLUMN(period)\
     COLUMN(channel)\
     COLUMN(freq_band)\
+    COLUMN(repurposed_vap_name)\
+    COLUMN(connected_building_enabled)
 
 #define SCHEMA__Wifi_Interworking_Config "Wifi_Interworking_Config"
 #define SCHEMA_COLUMN__Wifi_Interworking_Config(COLUMN) \
@@ -3369,6 +3373,8 @@
 #define SCHEMA__Wifi_VAP_Config__period "period"
 #define SCHEMA__Wifi_VAP_Config__channel "channel"
 #define SCHEMA__Wifi_VAP_Config__freq_band "freq_band"
+#define SCHEMA__Wifi_VAP_Config__repurposed_vap_name "repurposed_vap_name"
+#define SCHEMA__Wifi_VAP_Config__connected_building_enabled "connected_building_enabled"
 
 #define SCHEMA__Wifi_Interworking_Config__enable "enable"
 #define SCHEMA__Wifi_Interworking_Config__vap_name "vap_name"

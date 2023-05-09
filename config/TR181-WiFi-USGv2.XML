@@ -1866,6 +1866,11 @@ INSTMSMT_PH2 -->
                             <syntax>bool</syntax>
                             <writable>true</writable>
                         </parameter>
+                        <parameter>
+                            <name>Repurposed_VapName</name>
+                            <type>string(64)</type>
+                            <syntax>string</syntax>
+                        </parameter>
                     </parameters>
                     <objects>
                         <object>
@@ -2250,6 +2255,12 @@ INSTMSMT_PH2 -->
                             <syntax>bool</syntax>
                             <writable>true</writable>
                           </parameter>
+                          <parameter>
+                            <name>Connected_Building_Enabled</name>
+                            <type>boolean</type>
+                            <syntax>bool</syntax>
+                            <writable>true</writable>
+                          </parameter>
                     </parameters>
                     <objects>
                        <object>
@@ -2487,7 +2498,7 @@ INSTMSMT_PH2 -->
                                     <syntax>string</syntax>
                                     <writable>true</writable>
                                 </parameter>
-								<parameter>
+                                <parameter>
                                     <name>SecondaryRadiusServerIPAddr</name>
                                     <type>string</type>
                                     <syntax>string</syntax>

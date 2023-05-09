@@ -85,6 +85,18 @@
     }   \
 }   \
 
+#define decode_param_allow_empty_bool(json, key, value, connected_building) \
+{   \
+    value = cJSON_GetObjectItem(json, key);     \
+    if ((value == NULL) || (cJSON_IsBool(value) == false)) {    \
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation has emptyfor key:%s\n", __func__, __LINE__, key);   \
+        connected_building = false; \
+    }   \
+    else { \
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation for key:%s\n", __func__, __LINE__, key);   \
+        connected_building = true; \
+    }  \
+}   \
 
 #define decode_param_array(json, key, value) \
 {   \
@@ -1119,7 +1131,6 @@ webconfig_error_t decode_open_radius_object(const cJSON *radius, wifi_radius_set
     }
 
     object = cJSON_GetObjectItem(radius, "MaxAuthAttempts");
-
     if (object != NULL) {
         //max_auth_attempts
         decode_param_integer(radius, "MaxAuthAttempts", param);
@@ -1606,6 +1617,7 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
 {
     const cJSON  *param;
     cJSON *object = NULL;
+    bool connected_value = false;
 
     //VAP Name
     decode_param_string(vap, "VapName", param);
@@ -1631,6 +1643,10 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
     //Bridge Name
     decode_param_allow_empty_string(vap, "BridgeName", param);
     strncpy(vap_info->bridge_name, param->valuestring,WIFI_BRIDGE_NAME_LEN-1);
+
+    //repurposed vap_name
+    decode_param_allow_empty_string(vap, "RepurposedVapName", param);
+    strncpy(vap_info->repurposed_vap_name, param->valuestring,sizeof(vap_info->repurposed_vap_name)-1);
 
     // SSID
     decode_param_string(vap, "SSID", param);
@@ -1743,6 +1759,15 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
     // BeaconRateCtl
     decode_param_string(vap, "BeaconRateCtl", param);
     strcpy(vap_info->u.bss_info.beaconRateCtl, param->valuestring);
+
+    //connected_building_enabled params
+    decode_param_allow_empty_bool(vap, "Connected_building_enabled", param, connected_value);
+    if (!connected_value) {
+        vap_info->u.bss_info.connected_building_enabled = false;
+    } else {
+        decode_param_bool(vap, "Connected_building_enabled", param);
+        vap_info->u.bss_info.connected_building_enabled = (param->type & cJSON_True) ? true:false;
+    }
 
     return webconfig_error_none;
 }

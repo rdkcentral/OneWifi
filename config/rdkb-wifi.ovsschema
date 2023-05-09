@@ -1075,6 +1075,24 @@
             "min": 0,
             "max": 1
           }
+        },
+        "repurposed_vap_name": {
+          "type": {
+            "key": {
+              "type": "string"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "connected_building_enabled": {
+          "type": {
+            "key": {
+              "type": "boolean"
+            },
+            "min": 0,
+            "max": 1
+          }
         }
       },
     "isRoot": true

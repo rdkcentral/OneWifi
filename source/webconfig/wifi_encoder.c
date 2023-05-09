@@ -273,6 +273,9 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
     //Bridge Name
     cJSON_AddStringToObject(vap_object, "BridgeName", vap_info->bridge_name);
 
+    //VAP Name
+    cJSON_AddStringToObject(vap_object, "RepurposedVapName", vap_info->repurposed_vap_name);
+
     // Radio Index
     cJSON_AddNumberToObject(vap_object, "RadioIndex", vap_info->radio_index);
 
@@ -358,6 +361,8 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
     cJSON_AddStringToObject(vap_object, "BeaconRateCtl", vap_info->u.bss_info.beaconRateCtl);
 
 
+    //conncted_building_enabled
+    cJSON_AddBoolToObject(vap_object, "Connected_building_enabled", vap_info->u.bss_info.connected_building_enabled);
     return webconfig_error_none;
 }
 

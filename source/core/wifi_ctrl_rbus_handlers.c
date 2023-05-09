@@ -306,6 +306,48 @@ int webconfig_rbus_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_encoded_data_t *dat
     return RETURN_OK;
 }
 
+int get_managed_guest_bridge(char *brval, unsigned long length)
+{
+    int rc = -1,len = 0;
+    rbusValue_t value;
+    rbusValue_Init(&value);
+    char *token = NULL;
+    wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
+    rc = rbus_get(g_wifi_mgr->ctrl.rbus_handle, MANAGED_WIFI_BRIDGE, &value);
+
+    if (rc != RBUS_ERROR_SUCCESS) {
+        if (value != NULL) {
+            rbusValue_Release(value);
+        }
+
+     } else {
+        const char* brname = rbusValue_GetString(value, &len);
+        wifi_util_dbg_print(WIFI_CTRL,"Managed_wifi bridge name is %s\n",brname);
+        token = strrchr(brname, ':');
+        snprintf(brval,length,token+1);
+        wifi_util_info_print(WIFI_CTRL,"Managed_wifi bridge val is %s\n",brval);
+        rbusValue_Release(value);
+
+    }
+
+    return rc;
+}
+
+int set_managed_guest_interfaces(char *interface_name)
+{
+    int rc = -1;
+    wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
+    rc = rbus_setStr(g_wifi_mgr->ctrl.rbus_handle, MANAGED_WIFI_INTERFACE, interface_name);
+
+    if (rc != RBUS_ERROR_SUCCESS) {
+        wifi_util_error_print(WIFI_CTRL,"Failed to set %s with %s \n",MANAGED_WIFI_INTERFACE,interface_name);
+        return rc;
+     } else {
+        wifi_util_dbg_print(WIFI_CTRL,"Successfuly set %s with %s \n",MANAGED_WIFI_INTERFACE,interface_name);
+    }
+
+    return rc;
+}
 rbusError_t webconfig_get_subdoc(rbusHandle_t handle, rbusProperty_t property, rbusGetHandlerOptions_t* opts)
 {
     char const* name = rbusProperty_GetName(property);
@@ -965,7 +1007,6 @@ rbusError_t get_private_vap(rbusHandle_t handle, rbusProperty_t property, rbusSe
 
     return rc;
 }
-
 extern void webconf_process_home_vap(const char* enb);
 rbusError_t get_home_vap(rbusHandle_t handle, rbusProperty_t property, rbusSetHandlerOptions_t* opts)
 {
