@@ -2641,9 +2641,7 @@ static int validate_private_home_security_param(char *mode_enabled, char *encryp
 static int validate_private_home_ssid_param(char *ssid_name, pErr execRetVal)
 {
     int ssid_len = 0;
-    int i = 0, j = 0;
-    char ssid_char[MAX_SSID_NAME_LEN] = {0};
-    char ssid_lower[MAX_SSID_NAME_LEN] = {0};
+    int i = 0;
 
      wifi_util_info_print(WIFI_CTRL,"Enter %s and ssid_name=%s\n",__func__,ssid_name);
     ssid_len = strlen(ssid_name);
@@ -2655,17 +2653,6 @@ static int validate_private_home_ssid_param(char *ssid_name, pErr execRetVal)
         return RETURN_ERR;
     }
 
-
-    while (i < ssid_len) {
-        ssid_lower[i] = tolower(ssid_name[i]);
-        if (isalnum(ssid_name[i]) != 0) {
-            ssid_char[j++] = ssid_lower[i];
-        }
-        i++;
-    }
-    ssid_lower[i] = '\0';
-    ssid_char[j] = '\0';
-
     for (i = 0; i < ssid_len; i++) {
         if (!((ssid_name[i] >= ' ') && (ssid_name[i] <= '~'))) {
             wifi_util_error_print(WIFI_CTRL,"%s: Invalid character present in SSID \n",__FUNCTION__);
@@ -2674,18 +2661,6 @@ static int validate_private_home_ssid_param(char *ssid_name, pErr execRetVal)
             }
             return RETURN_ERR;
         }
-    }
-    /* SSID containing "optimumwifi", "TWCWiFi", "cablewifi" and "xfinitywifi" are reserved */
-    if ((strstr(ssid_char, "cablewifi") != NULL) || (strstr(ssid_char, "twcwifi") != NULL) || (strstr(ssid_char, "optimumwifi") != NULL) ||
-        (strstr(ssid_char, "xfinitywifi") != NULL) || (strstr(ssid_char, "xfinity") != NULL) || (strstr(ssid_char, "coxwifi") != NULL) ||
-        (strstr(ssid_char, "spectrumwifi") != NULL) || (strstr(ssid_char, "shawopen") != NULL) || (strstr(ssid_char, "shawpasspoint") != NULL) ||
-        (strstr(ssid_char, "shawguest") != NULL) || (strstr(ssid_char, "shawmobilehotspot") != NULL)) {
-
-        wifi_util_error_print(WIFI_CTRL,"%s: Reserved SSID format used for ssid \n",__FUNCTION__);
-        if (execRetVal) {
-            strncpy(execRetVal->ErrorMsg,"Reserved SSID format used",sizeof(execRetVal->ErrorMsg)-1);
-        }
-        return RETURN_ERR;
     }
 
    wifi_util_info_print(WIFI_CTRL,"%s: ssidparam validation passed \n",__FUNCTION__);
