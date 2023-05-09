@@ -1026,7 +1026,7 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
                 return RETURN_ERR;
             }
 
-            start_wifi_sched_timer(&vap_info->vap_index, ctrl, wifi_vap_sched);
+            start_wifi_sched_timer(vap_info->vap_index, ctrl, wifi_vap_sched);
 
 #if CCSP_COMMON
             memset(update_status, 0, sizeof(update_status));
@@ -2047,7 +2047,7 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
                     unsigned int connected_radio_index = 0;
                     connected_radio_index = get_radio_index_for_vap_index(ext_svc->prop, ext->connected_vap_index);
                     if ((ext->conn_state == connection_state_connected) && (connected_radio_index == mgr_radio_data->vaps.radio_index) && (mgr_radio_data->oper.channel != radio_data->oper.channel)) {
-                        start_wifi_sched_timer(&mgr_radio_data->vaps.radio_index, ctrl, wifi_csa_sched);
+                        start_wifi_sched_timer(mgr_radio_data->vaps.radio_index, ctrl, wifi_csa_sched);
                         ext_svc->event_fn(ext_svc, wifi_event_type_webconfig, wifi_event_webconfig_set_data, vap_svc_event_none, &radio_data->oper);
                         // driver does not change channel in STA connected state therefore skip
                         // wifi_hal_setRadioOperatingParameters and update channel on disconnection/CSA
@@ -2071,10 +2071,10 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
                 return RETURN_ERR;
             }
 
-            start_wifi_sched_timer(&mgr_radio_data->vaps.radio_index, ctrl, wifi_radio_sched);
+            start_wifi_sched_timer(mgr_radio_data->vaps.radio_index, ctrl, wifi_radio_sched);
 
             if (is_csa_sched_timer_trigger(mgr_radio_data->oper, radio_data->oper) == true) {
-                start_wifi_sched_timer(&mgr_radio_data->vaps.radio_index, ctrl, wifi_csa_sched);
+                start_wifi_sched_timer(mgr_radio_data->vaps.radio_index, ctrl, wifi_csa_sched);
             }
         }
 

@@ -1527,7 +1527,7 @@ int wifi_sched_timeout(void *arg)
     return TIMER_TASK_COMPLETE;
 }
 
-void start_wifi_sched_timer(unsigned int *index, wifi_ctrl_t *l_ctrl, wifi_scheduler_type_t type)
+void start_wifi_sched_timer(unsigned int index, wifi_ctrl_t *l_ctrl, wifi_scheduler_type_t type)
 {
     int *handler_id;
     unsigned int handler_index, vap_array_index;
@@ -1538,19 +1538,19 @@ void start_wifi_sched_timer(unsigned int *index, wifi_ctrl_t *l_ctrl, wifi_sched
     switch(type) {
         case wifi_csa_sched:
             handler_id = sched_id->wifi_csa_sched_handler_id;
-            handler_index = *index;
+            handler_index = index;
             break;
         case wifi_radio_sched:
             handler_id = sched_id->wifi_radio_sched_handler_id;
-            handler_index = *index;
+            handler_index = index;
             break;
         case wifi_vap_sched:
             handler_id = sched_id->wifi_vap_sched_handler_id;
-            VAP_ARRAY_INDEX(vap_array_index, mgr->hal_cap, (unsigned int)index);
+            VAP_ARRAY_INDEX(vap_array_index, mgr->hal_cap, index);
             handler_index = vap_array_index;
             break;
         default:
-            wifi_util_error_print(WIFI_CTRL, "%s:%d: wifi index:%d invalid type:%d\n", __func__, __LINE__, *index, type);
+            wifi_util_error_print(WIFI_CTRL, "%s:%d: wifi index:%d invalid type:%d\n", __func__, __LINE__, index, type);
             return;
     }
 

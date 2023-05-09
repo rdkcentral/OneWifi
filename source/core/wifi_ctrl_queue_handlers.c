@@ -2357,7 +2357,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg)
         return;
     }
     g_wifidb->ctrl.webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
-    start_wifi_sched_timer(&ch_chg->radioIndex, ctrl, wifi_radio_sched);
+    start_wifi_sched_timer(ch_chg->radioIndex, ctrl, wifi_radio_sched);
     update_wifi_radio_config(ch_chg->radioIndex, radio_params, radio_feat);
     ctrl->acs_pending[ch_chg->radioIndex] = false;
 }
