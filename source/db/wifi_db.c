@@ -3722,6 +3722,7 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #if defined (_PP203X_PRODUCT_REQ_)
             cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC;
             cfg.beaconInterval = 200;
+            cfg.DfsEnabled = true;
 #else
             cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC | WIFI_80211_VARIANT_AX;
 #endif
