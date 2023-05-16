@@ -365,6 +365,80 @@ void callback_Wifi_Radio_Config(ovsdb_update_monitor_t *mon,
 
 /************************************************************************************
  ************************************************************************************
+  Function    : logSecurityKeyConfiguration
+  Parameter   : radioIndex     - Index number of radio
+
+  Description : It will check if the private vap's passwords are same or different
+                when we changed the keypassPhrase.
+ *************************************************************************************
+**************************************************************************************/
+static UINT logSecurityKeyConfiguration (UINT radioIndex)
+{
+    wifi_vap_info_t *wifiVapInfo = NULL;
+    unsigned int index = 0;
+    char Passphrase1[64] = {0};
+    char Passphrase2[64] = {0};
+    char *RadioFreqBand1 = NULL;
+    char *RadioFreqBand2 = NULL;
+    char *RadioBandstr1 = NULL;
+    char *RadioBandstr2 = NULL;
+    char TempRadioFreqBand1[32] = {0};
+    char TempRadioFreqBand2[32] = {0};
+    UINT apIndex = 0;
+    char *saveptr = NULL;
+
+    apIndex = getPrivateApFromRadioIndex(radioIndex);
+    wifi_util_info_print(WIFI_DB, "Value of apIndex = %u and value of radioIndex = %u \n", apIndex, radioIndex);
+    wifiVapInfo = getVapInfo(apIndex);
+    if (NULL == wifiVapInfo) {
+        wifi_util_error_print(WIFI_DB, "%s:%d: Value of wifiVapInfo is NULL\n", __func__, __LINE__);
+        return -1;
+    }
+    memset(Passphrase1, 0, sizeof(Passphrase1));
+    strncpy((char*)Passphrase1, wifiVapInfo->u.bss_info.security.u.key.key, sizeof(Passphrase1) - 1);
+    RadioBandstr1 = convert_radio_index_to_band_str_g(radioIndex);
+    if (NULL == RadioBandstr1) {
+        wifi_util_error_print(WIFI_DB, "%s:%d: Value of RadioBandstr1 is NULL and radioIndex = %u\n", __func__, __LINE__, radioIndex);
+        return -1;
+    }
+    strncpy((char*)TempRadioFreqBand1, RadioBandstr1, sizeof(TempRadioFreqBand1) - 1);
+    RadioFreqBand1 = strtok_r(TempRadioFreqBand1, "GHz", &saveptr);
+    for(index = 0; index < getNumberRadios(); index++) {
+        if (index == radioIndex) {
+            continue;
+        }
+        RadioBandstr2 = convert_radio_index_to_band_str_g(index);
+        if (NULL == RadioBandstr2) {
+            wifi_util_error_print(WIFI_DB, "%s:%d: Value of RadioBandstr2 is NULL and radioIndex = %u\n", __func__, __LINE__, index);
+            return -1;
+        }
+        strncpy((char*)TempRadioFreqBand2, RadioBandstr2, sizeof(TempRadioFreqBand2) - 1);
+        RadioFreqBand2 = strtok_r(TempRadioFreqBand2, "GHz", &saveptr);
+        apIndex = getPrivateApFromRadioIndex(index);
+        wifiVapInfo = getVapInfo(apIndex);
+        if (NULL == wifiVapInfo) {
+            wifi_util_error_print(WIFI_DB, "Value of wifiVapInfo is NULL and index = %u\n", apIndex);
+            return -1;
+        }
+        memset(Passphrase2, 0, sizeof(Passphrase2));
+        strncpy((char*)Passphrase2, wifiVapInfo->u.bss_info.security.u.key.key, sizeof(Passphrase2) - 1);
+        /* If the string length varies, the password should also vary; otherwise, it may or may not be the same. */
+        if (strlen(Passphrase1) != strlen(Passphrase2)) {
+            wifi_util_info_print(WIFI_DB,"Different passwords were configured on User Private SSID for %s and %s GHz radios. \n",
+                                (radioIndex < index) ?  RadioFreqBand1 : RadioFreqBand2, (radioIndex > index) ?  RadioFreqBand1 : RadioFreqBand2);
+        } else if (strncmp(Passphrase1, Passphrase2, sizeof(Passphrase1)) == 0) {
+            wifi_util_info_print(WIFI_DB,"Same password was configured on User Private SSID for %s and %s GHz radios. \n",
+                                 (radioIndex < index) ?  RadioFreqBand1 : RadioFreqBand2, (radioIndex > index) ?  RadioFreqBand1 : RadioFreqBand2);
+        } else {
+            wifi_util_info_print(WIFI_DB,"Different passwords were configured on User Private SSID for %s and %s GHz radios. \n",
+                                (radioIndex < index) ?  RadioFreqBand1 : RadioFreqBand2, (radioIndex > index) ?  RadioFreqBand1 : RadioFreqBand2);
+        }
+    }
+    return 0;
+}
+
+/************************************************************************************
+ ************************************************************************************
   Function    : callback_Wifi_Security_Config
   Parameter   : mon     - Type of modification
                 old_rec - schema_Wifi_Security_Config  holds value before modification
@@ -381,6 +455,8 @@ void callback_Wifi_Security_Config(ovsdb_update_monitor_t *mon,
     g_wifidb = get_wifimgr_obj();
     wifi_vap_security_t *l_security_cfg = NULL;
     int vap_index = 0;
+    UINT radio_index = 0;
+    bool is_keypassphrase_changed = false;
 
     wifi_util_dbg_print(WIFI_DB,"%s:%d\n", __func__, __LINE__);
 
@@ -418,8 +494,7 @@ void callback_Wifi_Security_Config(ovsdb_update_monitor_t *mon,
         memset(l_security_cfg, 0, sizeof(wifi_vap_security_t));
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
         vap_index = convert_vap_name_to_index(&g_wifidb->hal_cap.wifi_prop, old_rec->vap_name);
-        if(vap_index == -1)
-        {
+        if(vap_index == -1) {
             wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid vap name \n",__func__, __LINE__,old_rec->vap_name);
             return;
         }
@@ -455,6 +530,11 @@ void callback_Wifi_Security_Config(ovsdb_update_monitor_t *mon,
                 wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid Get_wifi_object_bss_security_parameter \n",__func__, __LINE__,new_rec->vap_name);
                 return;
             }
+            if (isVapPrivate(i)) {
+                if ((strncmp(l_security_cfg->u.key.key, new_rec->keyphrase, sizeof(new_rec->keyphrase))) != 0) {
+                    is_keypassphrase_changed = true;
+                }
+            }
         }
 
         pthread_mutex_lock(&g_wifidb->data_cache_lock);
@@ -471,7 +551,7 @@ void callback_Wifi_Security_Config(ovsdb_update_monitor_t *mon,
         l_security_cfg->eap_req_timeout = new_rec->eap_req_timeout;
         l_security_cfg->eap_req_retries = new_rec->eap_req_retries;
         l_security_cfg->disable_pmksa_caching = new_rec->disable_pmksa_caching;
-        if ((!security_mode_support_radius(l_security_cfg->mode)) && (!isVapHotspotOpen(i))) 
+        if ((!security_mode_support_radius(l_security_cfg->mode)) && (!isVapHotspotOpen(i)))
         {
             l_security_cfg->u.key.type = new_rec->key_type;
             strncpy(l_security_cfg->u.key.key,new_rec->keyphrase,sizeof(l_security_cfg->u.key.key)-1);
@@ -506,10 +586,16 @@ void callback_Wifi_Security_Config(ovsdb_update_monitor_t *mon,
         wifi_util_dbg_print(WIFI_DB,"%s:%d: Get Wifi_Security_Config table Sec_mode=%d enc_mode=%d r_ser_ip=%s r_ser_port=%d rs_ser_ip=%s rs_ser_ip sec_rad_ser_port=%d mfg=%s cfg_key_type=%d vap_name=%s rekey_interval = %d strict_rekey  = %d eapol_key_timeout  = %d eapol_key_retries  = %d eap_identity_req_timeout  = %d eap_identity_req_retries  = %d eap_req_timeout = %d eap_req_retries = %d disable_pmksa_caching = %d max_auth_attempts=%d blacklist_table_timeout=%d identity_req_retry_interval=%d server_retries=%d das_ip = %s das_port=%d\n",__func__, __LINE__,new_rec->security_mode,new_rec->encryption_method,new_rec->radius_server_ip,new_rec->radius_server_port,new_rec->secondary_radius_server_ip,new_rec->secondary_radius_server_port,new_rec->mfp_config,new_rec->key_type,new_rec->vap_name,new_rec->rekey_interval,new_rec->strict_rekey,new_rec->eapol_key_timeout,new_rec->eapol_key_retries,new_rec->eap_identity_req_timeout,new_rec->eap_identity_req_retries,new_rec->eap_req_timeout,new_rec->eap_req_retries,new_rec->disable_pmksa_caching,new_rec->max_auth_attempts,new_rec->blacklist_table_timeout,new_rec->identity_req_retry_interval,new_rec->server_retries,new_rec->das_ip,new_rec->das_port);
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
         vap_index = convert_vap_name_to_index(&g_wifidb->hal_cap.wifi_prop, new_rec->vap_name);
-        if(vap_index == -1)
-        {
+        if (vap_index == -1) {
             wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid vap name \n",__func__, __LINE__,new_rec->vap_name);
             return;
+        }
+        if (is_keypassphrase_changed == true) {
+            radio_index = getRadioIndexFromAp(vap_index);
+            if ((logSecurityKeyConfiguration(radio_index)) != 0) {
+                wifi_util_error_print(WIFI_DB,"%s:%d: Failed to execute logSecurityKeyConfiguration \n", __func__, __LINE__);
+            }
+            is_keypassphrase_changed = false;
         }
     }
     else
