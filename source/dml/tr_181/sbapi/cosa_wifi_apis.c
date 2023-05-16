@@ -852,7 +852,7 @@ CosaDmlWiFi_Logfiles_validation(char *param)
 ANSC_STATUS
 CosaDmlWiFi_setWebConfig(char *webconfstr, int size,uint8_t ssid)
 {
-    push_event_to_ctrl_queue(webconfstr, size, wifi_event_type_webconfig, wifi_event_webconfig_set_data_webconfig);
+    push_event_to_ctrl_queue(webconfstr, size, wifi_event_type_webconfig, wifi_event_webconfig_set_data_webconfig, NULL);
 
     return ANSC_STATUS_SUCCESS;
 }

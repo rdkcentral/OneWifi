@@ -180,6 +180,7 @@
         PJS_OVS_BOOL(dfsatbootup_rfc) \
         PJS_OVS_BOOL(dfs_rfc) \
         PJS_OVS_BOOL(wpa3_rfc) \
+        PJS_OVS_BOOL(levl_enabled_rfc) \
         PJS_OVS_BOOL(ow_core_thread_rfc) \
         PJS_OVS_BOOL(twoG80211axEnable_rfc) \
         PJS_OVS_BOOL(hotspot_open_2g_last_enabled) \
@@ -2027,6 +2028,7 @@
     COLUMN(dfsatbootup_rfc) \
     COLUMN(dfs_rfc) \
     COLUMN(wpa3_rfc) \
+    COLUMN(levl_enabled_rfc) \
     COLUMN(ow_core_thread_rfc) \
     COLUMN(twoG80211axEnable_rfc) \
     COLUMN(hotspot_open_2g_last_enabled) \
@@ -3332,6 +3334,7 @@
 #define SCHEMA__Wifi_Rfc_Config__hotspot_secure_6g_last_enabled "hotspot_secure_6g_last_enabled"
 #define SCHEMA__Wifi_Rfc_Config__mgmt_frame_rbus_enabled_rfc  "mgmt_frame_rbus_enabled_rfc"
 #define SCHEMA__Wifi_Rfc_Config__wifioffchannelscan_rfc "wifioffchannelscan_rfc"
+#define SCHEMA__Wifi_Rfc_Config__Levl_rfc "levl_enabled_rfc"
 
 #define SCHEMA__Alarms__code "code"
 #define SCHEMA__Alarms__timestamp "timestamp"

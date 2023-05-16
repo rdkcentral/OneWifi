@@ -67,7 +67,7 @@ int clone_wifi_event(wifi_event_t *event, wifi_event_t **clone)
     return RETURN_OK;
 }
 
-int push_event_to_ctrl_queue(const void *msg, unsigned int len, wifi_event_type_t type, wifi_event_subtype_t sub_type)
+int push_event_to_ctrl_queue(const void *msg, unsigned int len, wifi_event_type_t type, wifi_event_subtype_t sub_type, wifi_event_route_t *rt)
 {
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     wifi_event_t *event;
@@ -86,6 +86,9 @@ int push_event_to_ctrl_queue(const void *msg, unsigned int len, wifi_event_type_
     memset(event, 0, sizeof(wifi_event_t));
     event->event_type = type;
     event->sub_type = sub_type;
+    if (rt != NULL) {
+        event->route = *rt;
+    }
 
     if (msg != NULL) {
         event->u.core_data.msg = malloc(len + 1);
@@ -110,7 +113,7 @@ int push_event_to_ctrl_queue(const void *msg, unsigned int len, wifi_event_type_
     return RETURN_OK;
 }
 
-int push_event_to_monitor_queue(wifi_monitor_data_t *mon_data, wifi_event_subtype_t sub_type)
+int push_event_to_monitor_queue(wifi_monitor_data_t *mon_data, wifi_event_subtype_t sub_type, wifi_event_route_t *rt)
 {
     wifi_monitor_t *monitor_param = (wifi_monitor_t *)get_wifi_monitor();
     wifi_event_t *event;
@@ -128,6 +131,9 @@ int push_event_to_monitor_queue(wifi_monitor_data_t *mon_data, wifi_event_subtyp
 
     event->event_type = wifi_event_type_monitor;
     event->sub_type = sub_type;
+    if (rt != NULL) {
+        event->route = *rt;
+    }
 
     memcpy(&event->u.mon_data, mon_data, sizeof(wifi_monitor_data_t));
 
@@ -135,6 +141,53 @@ int push_event_to_monitor_queue(wifi_monitor_data_t *mon_data, wifi_event_subtyp
     queue_push(monitor_param->queue, event);
     pthread_cond_signal(&monitor_param->cond);
     pthread_mutex_unlock(&monitor_param->queue_lock);
+
+    return RETURN_OK;
+}
+
+int push_unicast_event_to_ctrl_queue(const void *msg, unsigned int len, wifi_event_type_t type, wifi_event_subtype_t sub_type, wifi_event_route_t *rt)
+{
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_event_t *event;
+
+    if(msg == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s %d  msg is null\n",__FUNCTION__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    event = (wifi_event_t *)malloc(sizeof(wifi_event_t));
+    if(event == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s %d data malloc null\n",__FUNCTION__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    memset(event, 0, sizeof(wifi_event_t));
+    event->event_type = type;
+    event->sub_type = sub_type;
+
+    if (rt != NULL) {
+        event->route = *rt;
+    }
+
+    if (msg != NULL) {
+        event->u.core_data.msg = malloc(len + 1);
+        if(event->u.core_data.msg == NULL) {
+            wifi_util_error_print(WIFI_CTRL,"%s %d data message malloc null\n",__FUNCTION__, __LINE__);
+            free(event);
+            return RETURN_ERR;
+        }
+        /* copy msg to data */
+        memcpy(event->u.core_data.msg, msg, len);
+        event->u.core_data.len = len;
+    } else {
+        event->u.core_data.msg = NULL;
+        event->u.core_data.len = 0;
+    }
+
+    pthread_mutex_lock(&ctrl->lock);
+    queue_push(ctrl->queue, event);
+    pthread_cond_signal(&ctrl->cond);
+    pthread_mutex_unlock(&ctrl->lock);
 
     return RETURN_OK;
 }

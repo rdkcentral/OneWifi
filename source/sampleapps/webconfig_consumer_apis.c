@@ -974,7 +974,7 @@ void test_radio_subdoc_change(webconfig_consumer_t *consumer)
         printf("%s:%d: webconfig consumer radio start test\n", __func__, __LINE__);
         dump_subdoc(str, webconfig_subdoc_type_radio);
 #ifdef WEBCONFIG_TESTS_OVER_QUEUE
-        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data);
+        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data, NULL);
 #else
         cmd_start_time = get_current_time_ms();
         printf("%s:%d: command start current time:%llu\n", __func__, __LINE__, cmd_start_time);
@@ -1098,7 +1098,7 @@ void test_mesh_sta_subdoc_change(webconfig_consumer_t *consumer)
         printf("%s:%d: webconfig consumer mesh sta vap start test\n", __func__, __LINE__);
         dump_subdoc(str, webconfig_subdoc_type_mesh_sta);
 #ifdef WEBCONFIG_TESTS_OVER_QUEUE
-        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data);
+        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data, NULL);
 #else
         cmd_start_time = get_current_time_ms();
         printf("%s:%d: command start current time:%llu\n", __func__, __LINE__, cmd_start_time);
@@ -1190,6 +1190,7 @@ void test_mesh_subdoc_change(webconfig_consumer_t *consumer)
             }
 
             rdk_vap->acl_map = hash_map_create();
+            str_tolower(test_mac);
             str_to_mac_bytes(test_mac, mac);
             acl_entry = (acl_entry_t *)malloc(sizeof(acl_entry_t));
             if (acl_entry == NULL) {
@@ -1219,7 +1220,7 @@ void test_mesh_subdoc_change(webconfig_consumer_t *consumer)
         printf("%s:%d: webconfig consumer mesh vap start test\n", __func__, __LINE__);
         dump_subdoc(str, webconfig_subdoc_type_mesh);
 #ifdef WEBCONFIG_TESTS_OVER_QUEUE
-        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data);
+        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data, NULL);
 #else
         cmd_start_time = get_current_time_ms();
         printf("%s:%d: command start current time:%llu\n", __func__, __LINE__, cmd_start_time);
@@ -1310,6 +1311,7 @@ void test_macfilter_subdoc_change(webconfig_consumer_t *consumer)
             }
 
             rdk_vap->acl_map = hash_map_create();
+            str_tolower(test_mac);
             str_to_mac_bytes(test_mac, mac);
             acl_entry = (acl_entry_t *)malloc(sizeof(acl_entry_t));
             if (acl_entry == NULL) {
@@ -1338,7 +1340,7 @@ void test_macfilter_subdoc_change(webconfig_consumer_t *consumer)
         printf("%s:%d: webconfig consumer macfilter start test\n", __func__, __LINE__);
         dump_subdoc(str, webconfig_subdoc_type_mac_filter);
 #ifdef WEBCONFIG_TESTS_OVER_QUEUE
-        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data);
+        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data, NULL);
 #else
         cmd_start_time = get_current_time_ms();
         printf("%s:%d: command start current time:%llu\n", __func__, __LINE__, cmd_start_time);
@@ -1402,7 +1404,7 @@ void test_vif_neighbors_subdoc_change(webconfig_consumer_t *consumer)
     if (ret == webconfig_error_none) {
         printf("%s:%d: webconfig consumer vif neighbour start test\n", __func__, __LINE__);
 #ifdef WEBCONFIG_TESTS_OVER_QUEUE
-        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data);
+        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data, NULL);
 #else
         cmd_start_time = get_current_time_ms();
         printf("%s:%d: command start current time:%llu\n", __func__, __LINE__, cmd_start_time);
@@ -1468,7 +1470,7 @@ void test_steeringclient_subdoc_change(webconfig_consumer_t *consumer)
         printf("%s:%d: webconfig consumer steer client start test\n", __func__, __LINE__);
 //        dump_subdoc(str, webconfig_subdoc_type_steering_config);
 #ifdef WEBCONFIG_TESTS_OVER_QUEUE
-        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data);
+        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data, NULL);
 #else
         cmd_start_time = get_current_time_ms();
         printf("%s:%d: command start current time:%llu\n", __func__, __LINE__, cmd_start_time);
@@ -1521,7 +1523,7 @@ void test_steerconfig_subdoc_change(webconfig_consumer_t *consumer)
         printf("%s:%d: webconfig consumer steer config start test\n", __func__, __LINE__);
         dump_subdoc(str, webconfig_subdoc_type_steering_config);
 #ifdef WEBCONFIG_TESTS_OVER_QUEUE
-        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data);
+        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data, NULL);
 #else
         cmd_start_time = get_current_time_ms();
         printf("%s:%d: command start current time:%llu\n", __func__, __LINE__, cmd_start_time);
@@ -1600,7 +1602,7 @@ void test_statsconfig_subdoc_change(webconfig_consumer_t *consumer)
     if (ret == webconfig_error_none) {
         printf("%s:%d: webconfig consumer steer config start test\n", __func__, __LINE__);
 #ifdef WEBCONFIG_TESTS_OVER_QUEUE
-        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data);
+        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data, NULL);
 #else
         cmd_start_time = get_current_time_ms();
         printf("%s:%d: command start current time:%llu\n", __func__, __LINE__, cmd_start_time);
@@ -1683,7 +1685,7 @@ void test_private_subdoc_change(webconfig_consumer_t *consumer)
         printf("%s:%d: webconfig consumer private vap start test\n", __func__, __LINE__);
         dump_subdoc(str, webconfig_subdoc_type_private);
 #ifdef WEBCONFIG_TESTS_OVER_QUEUE
-        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data);
+        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data, NULL);
 #else
         cmd_start_time = get_current_time_ms();
         printf("%s:%d: command start current time:%llu\n", __func__, __LINE__, cmd_start_time);
@@ -1778,7 +1780,7 @@ void test_home_subdoc_change(webconfig_consumer_t *consumer)
         printf("%s:%d: webconfig consumer home vap start test\n", __func__, __LINE__);
         dump_subdoc(str, webconfig_subdoc_type_home);
 #ifdef WEBCONFIG_TESTS_OVER_QUEUE
-        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data);
+        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data, NULL);
 #else
         cmd_start_time = get_current_time_ms();
         printf("%s:%d: command start current time:%llu\n", __func__, __LINE__, cmd_start_time);
@@ -1899,7 +1901,7 @@ void test_lnf_subdoc_change(webconfig_consumer_t *consumer)
         printf("%s:%d: webconfig consumer lnf vap start test\n", __func__, __LINE__);
         dump_subdoc(str, webconfig_subdoc_type_lnf);
 #ifdef WEBCONFIG_TESTS_OVER_QUEUE
-        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data);
+        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data, NULL);
 #else
         cmd_start_time = get_current_time_ms();
         printf("%s:%d: command start current time:%llu\n", __func__, __LINE__, cmd_start_time);
@@ -2001,7 +2003,7 @@ void test_xfinity_subdoc_change(webconfig_consumer_t *consumer)
         printf("%s:%d: webconfig consumer xfinity vap start test\n", __func__, __LINE__);
         dump_subdoc(str, webconfig_subdoc_type_xfinity);
 #ifdef WEBCONFIG_TESTS_OVER_QUEUE
-        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data);
+        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data, NULL);
 #else
         cmd_start_time = get_current_time_ms();
         printf("%s:%d: command start current time:%llu\n", __func__, __LINE__, cmd_start_time);
@@ -2015,7 +2017,7 @@ void test_xfinity_subdoc_change(webconfig_consumer_t *consumer)
 void test_initial_sync()
 {
 #ifdef WEBCONFIG_TESTS_OVER_QUEUE
-    push_event_to_ctrl_queue(NULL, 0, wifi_event_type_webconfig, wifi_event_webconfig_get_data);
+    push_event_to_ctrl_queue(NULL, 0, wifi_event_type_webconfig, wifi_event_webconfig_get_data, NULL);
 #else
     initial_sync(&webconfig_consumer);
 #endif

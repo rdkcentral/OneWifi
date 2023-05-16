@@ -58,6 +58,7 @@ const char *subdoc_type_to_string(webconfig_subdoc_type_t type)
         DOC2S(webconfig_subdoc_type_harvester)
         DOC2S(webconfig_subdoc_type_wifi_config)
         DOC2S(webconfig_subdoc_type_csi)
+        DOC2S(webconfig_subdoc_type_levl)
         default:
             wifi_util_error_print(WIFI_APPS,"%s:%d: event not handle[%d]\r\n",__func__, __LINE__, type);
             break;
@@ -390,14 +391,15 @@ int analytics_event_hal_assoc_device(wifi_app_t *apps, void *arg)
     char temp_str[64];
     hash_map_t           *sta_map;
     analytics_sta_info_t *sta_info;
-    char *tmp;
 
     memset(client_mac, 0, sizeof(client_mac));
     memset(temp_str, 0, sizeof(temp_str));
 
     assoc_dev_data_t *assoc_data = (assoc_dev_data_t *)arg;
 
-    tmp = (char *)to_mac_str(assoc_data->dev_stats.cli_MACAddress, client_mac);
+    (char *)to_mac_str(assoc_data->dev_stats.cli_MACAddress, client_mac);
+
+    str_tolower(client_mac);
 
     sprintf(temp_str, "\"%s\" vap index:%d", client_mac, assoc_data->ap_index);
 
@@ -405,7 +407,7 @@ int analytics_event_hal_assoc_device(wifi_app_t *apps, void *arg)
 
     sta_map = apps->data.u.analytics.sta_map;
 
-    if ((sta_info = (analytics_sta_info_t *)hash_map_get(sta_map, tmp)) == NULL) {
+    if ((sta_info = (analytics_sta_info_t *)hash_map_get(sta_map, client_mac)) == NULL) {
         sta_info = malloc(sizeof(analytics_sta_info_t));
         sta_info->ap_index = assoc_data->ap_index;
         memcpy(sta_info->sta_mac, assoc_data->dev_stats.cli_MACAddress, sizeof(mac_address_t));
@@ -424,7 +426,6 @@ int analytics_event_hal_disassoc_device(wifi_app_t *apps, void *arg)
     char temp_str[64];
     hash_map_t            *sta_map;
     analytics_sta_info_t  *sta_info;
-    char *tmp;
     memset(client_mac, 0, sizeof(client_mac));
     memset(temp_str, 0, sizeof(temp_str));
 
@@ -432,13 +433,14 @@ int analytics_event_hal_disassoc_device(wifi_app_t *apps, void *arg)
 
     sta_map = apps->data.u.analytics.sta_map;
 
-    tmp = (char *)to_mac_str(assoc_data->dev_stats.cli_MACAddress, client_mac);
+    (char *)to_mac_str(assoc_data->dev_stats.cli_MACAddress, client_mac);
+    str_tolower(client_mac);
     sprintf(temp_str, "\"%s\" vap index:%d reason:%d", client_mac, assoc_data->ap_index, assoc_data->reason);
     wifi_util_info_print(WIFI_ANALYTICS, analytics_format_hal_core, "disconnect", temp_str);
 
-    sta_info = (analytics_sta_info_t *)hash_map_get(sta_map, tmp);
+    sta_info = (analytics_sta_info_t *)hash_map_get(sta_map, client_mac);
     if (sta_info != NULL) {
-        sta_info = hash_map_remove(sta_map, tmp);
+        sta_info = hash_map_remove(sta_map, client_mac);
         if (sta_info != NULL) {
             free(sta_info);
         }
@@ -684,7 +686,7 @@ int hal_event_analytics(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *a
             analytics_event_hal_unknown_frame(apps, arg);
             break;
 
-        case wifi_event_hal_mgmt_farmes:
+        case wifi_event_hal_mgmt_frames:
             analytics_event_hal_mgmt_frame(apps, arg);
             break;
 

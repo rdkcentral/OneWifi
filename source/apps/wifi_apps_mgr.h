@@ -29,13 +29,14 @@ extern "C" {
 #include "wifi_analytics.h"
 #include "wifi_levl.h"
 #include "wifi_cac.h"
+#include "wifi_sm.h"
 
 #define MAX_APP_INIT_DATA 1024
 #define APP_DETACHED 0x01
 
-#define uicast_event_to_apps(x)	\
-    ((x->route.dst == wifi_sub_component_apps) && (x->route.inst_bit_map >= wifi_app_inst_base) \
-     && (x->route.inst_bit_map < wifi_app_inst_max))
+#define unicast_event_to_apps(x)	\
+    ((x->route.dst == wifi_sub_component_apps) && (x->route.u.inst_bit_map >= wifi_app_inst_base) \
+     && (x->route.u.inst_bit_map < wifi_app_inst_max))
 
 typedef queue_t *wifi_app_event_queue_t;
 typedef hash_map_t *wifi_registered_apps_t;
@@ -49,10 +50,10 @@ typedef struct wifi_app wifi_app_t;
 typedef int (* wifi_app_event_fn_t)(wifi_app_t *app, wifi_event_t *event);
 typedef int (* wifi_app_init_fn_t)(wifi_app_t *app, unsigned int create_flag);
 typedef int (* wifi_app_deinit_fn_t)(wifi_app_t *app);
-
+typedef int (* wifi_app_update_fn_t)(wifi_app_t *app);
 typedef struct {
     union {
-        hash_map_t           *probe_req_map;
+        levl_data_t          levl;
         analytics_data_t     analytics;
     } u;
 } wifi_app_data_t;
@@ -62,10 +63,12 @@ typedef struct {
     unsigned int create_flag;
     unsigned int reg_events_types; // but mask of registered event types
     bool rfc;
+    bool enable;
     wifi_app_name_t         desc;
     wifi_app_init_fn_t init_fn;
     wifi_app_event_fn_t     event_fn;
     wifi_app_deinit_fn_t deinit_fn;
+    wifi_app_update_fn_t update_fn;
 } wifi_app_descriptor_t;
 
 typedef struct wifi_app {

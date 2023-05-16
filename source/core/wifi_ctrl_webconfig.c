@@ -1513,6 +1513,20 @@ int webconfig_global_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_da
     return RETURN_OK;
 }
 
+int webconfig_levl_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
+{
+    wifi_util_dbg_print(WIFI_CTRL,"Inside webconfig_levl_apply\n");
+
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    if (mgr == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d NULL Pointer\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    mgr->levl.max_num_csi_clients = data->levl.max_num_csi_clients;
+
+    return RETURN_OK;
+}
 
 int webconfig_hal_private_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
@@ -2434,6 +2448,14 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                 ret = webconfig_harvester_apply(ctrl, &data->u.decoded);
             }
             break;
+        case webconfig_subdoc_type_levl:
+            wifi_util_dbg_print(WIFI_MGR, "%s:%d: levl webconfig subdoc\n", __func__, __LINE__);
+            if (data->descriptor & webconfig_data_descriptor_encoded) {
+                wifi_util_error_print(WIFI_MGR, "%s:%d: Not expected publish for levl webconfig subdoc\n", __func__, __LINE__);
+            } else {
+                ret = webconfig_levl_apply(ctrl, &data->u.decoded);
+            }
+            break;
         case webconfig_subdoc_type_wifi_config:
             wifi_util_dbg_print(WIFI_MGR, "%s:%d: global webconfig subdoc\n", __func__, __LINE__);
             if (data->descriptor & webconfig_data_descriptor_encoded) {
@@ -2615,7 +2637,7 @@ pErr webconf_config_handler(void *blob)
     exec_ret_val->ErrorCode = BLOB_EXEC_SUCCESS;
 
     // push blob to ctrl queue
-    push_event_to_ctrl_queue(blob, strlen(blob), wifi_event_type_webconfig, wifi_event_webconfig_set_data_webconfig);
+    push_event_to_ctrl_queue(blob, strlen(blob), wifi_event_type_webconfig, wifi_event_webconfig_set_data_webconfig, NULL);
 
     wifi_util_dbg_print(WIFI_CTRL, "%s: return success\n", __func__);
     return exec_ret_val;
@@ -2952,7 +2974,7 @@ static int push_blob_data(webconfig_subdoc_data_t *data, webconfig_subdoc_type_t
 
     str = data->u.encoded.raw;
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Encoded blob:\n%s\n", __func__, __LINE__, str);
-    push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_webconfig);
+    push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_webconfig, NULL);
 
     return RETURN_OK;
 }
@@ -3407,7 +3429,7 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
     char *vap_blob_str = cJSON_Print(n_blob);
 
     // push blob to ctrl queue
-    push_event_to_ctrl_queue(vap_blob_str, strlen(vap_blob_str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_tunnel);
+    push_event_to_ctrl_queue(vap_blob_str, strlen(vap_blob_str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_tunnel, NULL);
 
     cJSON_free(vap_blob_str);
     cJSON_Delete(n_blob);

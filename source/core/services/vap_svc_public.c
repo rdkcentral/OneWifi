@@ -110,6 +110,7 @@ void process_prefer_private_mac_filter(mac_address_t prefer_private_mac)
             acl_entry = (acl_entry_t *)malloc(sizeof(acl_entry_t));
             memcpy(acl_entry->mac, new_mac, sizeof(mac_address_t));
             to_mac_str(acl_entry->mac, new_mac_str);
+            str_tolower(new_mac_str);
             strcpy(acl_entry->device_name,"");
             acl_entry->reason = PREFER_PRIVATE_RFC_REJECT;
             acl_entry->expiry_time = 0;

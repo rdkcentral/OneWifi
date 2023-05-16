@@ -52,7 +52,7 @@ webconfig_dml_t* get_webconfig_dml()
 void request_for_dml_data_resync()
 {
     wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Send a command to push_event_to_ctrl_queue to get data sync for DML\n", __func__, __LINE__);
-    push_event_to_ctrl_queue(NULL, 0, wifi_event_type_webconfig, wifi_event_webconfig_data_req_from_dml);
+    push_event_to_ctrl_queue(NULL, 0, wifi_event_type_webconfig, wifi_event_webconfig_data_req_from_dml, NULL);
 }
 
 active_msmt_t* get_dml_blaster(void)
@@ -816,7 +816,7 @@ int push_global_config_dml_cache_to_one_wifidb()
     if (webconfig_encode(&webconfig_dml.webconfig, &data, webconfig_subdoc_type_wifi_config) == webconfig_error_none) {
         str = data.u.encoded.raw;
         wifi_util_dbg_print(WIFI_DMCLI, "%s:  GlobalConfig DML cache encoded successfully  \n", __FUNCTION__);
-        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_dml);
+        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_dml, NULL);
     } else {
         wifi_util_error_print(WIFI_DMCLI, "%s:%d: Webconfig set failed, update data from ctrl queue\n", __func__, __LINE__);
         request_for_dml_data_resync();
@@ -830,7 +830,7 @@ int push_global_config_dml_cache_to_one_wifidb()
 int push_wifi_host_sync_to_ctrl_queue()
 {
     wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Pushing wifi host sync to ctrl queue\n", __func__, __LINE__);
-    push_event_to_ctrl_queue(NULL, 0, wifi_event_type_command, wifi_event_type_command_wifi_host_sync);
+    push_event_to_ctrl_queue(NULL, 0, wifi_event_type_command, wifi_event_type_command_wifi_host_sync, NULL);
 
     return RETURN_OK;
 }
@@ -841,7 +841,7 @@ int push_kick_assoc_to_ctrl_queue(int vap_index)
     memset(tmp_str, 0, sizeof(tmp_str));
     wifi_util_info_print(WIFI_DMCLI, "%s:%d Pushing kick assoc to ctrl queue for vap_index %d\n", __func__, __LINE__, vap_index);
     snprintf(tmp_str, sizeof(tmp_str), "%d-ff:ff:ff:ff:ff:ff-0", vap_index);
-    push_event_to_ctrl_queue(tmp_str, (strlen(tmp_str) + 1), wifi_event_type_command, wifi_event_type_command_kick_assoc_devices);
+    push_event_to_ctrl_queue(tmp_str, (strlen(tmp_str) + 1), wifi_event_type_command, wifi_event_type_command_kick_assoc_devices, NULL);
 
     return RETURN_OK;
 }
@@ -865,7 +865,7 @@ int push_radio_dml_cache_to_one_wifidb()
     if (webconfig_encode(&webconfig_dml.webconfig, &data, webconfig_subdoc_type_radio) == webconfig_error_none) {
         str = data.u.encoded.raw;
         wifi_util_info_print(WIFI_DMCLI, "%s:  Radio DML cache encoded successfully  \n", __FUNCTION__);
-        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_dml);
+        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_dml, NULL);
     } else {
         wifi_util_error_print(WIFI_DMCLI, "%s:%d: Webconfig set failed, update data from ctrl queue\n", __func__, __LINE__);
         request_for_dml_data_resync();
@@ -891,7 +891,7 @@ int push_acl_list_dml_cache_to_one_wifidb(wifi_vap_info_t *vap_info)
     if (webconfig_encode(&webconfig_dml.webconfig, &data, webconfig_subdoc_type_mac_filter) == webconfig_error_none) {
         str = data.u.encoded.raw;
         wifi_util_info_print(WIFI_DMCLI, "%s: ACL DML cache encoded successfully  \n", __FUNCTION__);
-        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_dml);
+        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_dml, NULL);
     } else {
         wifi_util_error_print(WIFI_DMCLI, "%s:%d: Webconfig set failed, update data from ctrl queue\n", __func__, __LINE__);
         request_for_dml_data_resync();
@@ -1009,7 +1009,7 @@ int push_subdoc_to_one_wifidb(uint8_t subdoc)
     if (webconfig_encode(&webconfig_dml.webconfig, &data, subdoc) == webconfig_error_none) {
         str = data.u.encoded.raw;
         wifi_util_info_print(WIFI_DMCLI, "%s:  VAP DML cache encoded successfully  \n", __FUNCTION__);
-        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_dml);
+        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_dml, NULL);
     } else {
         wifi_util_error_print(WIFI_DMCLI, "%s:%d: Webconfig set failed, update data from ctrl queue\n", __func__, __LINE__);
         request_for_dml_data_resync();
@@ -1022,13 +1022,13 @@ int push_factory_reset_to_ctrl_queue()
 {
     wifi_util_info_print(WIFI_DMCLI, "Inside :%s  \n", __FUNCTION__);
     bool factory_reset_flag =  true;
-    push_event_to_ctrl_queue(&factory_reset_flag, sizeof(factory_reset_flag), wifi_event_type_command, wifi_event_type_command_factory_reset);
+    push_event_to_ctrl_queue(&factory_reset_flag, sizeof(factory_reset_flag), wifi_event_type_command, wifi_event_type_command_factory_reset, NULL);
     return RETURN_OK;
 }
 int push_prefer_private_ctrl_queue(bool flag)
 {
     wifi_util_dbg_print(WIFI_DMCLI, "Inside :%s flag=%d \n", __FUNCTION__,flag);
-    push_event_to_ctrl_queue(&flag, sizeof(flag), wifi_event_type_command, wifi_event_type_prefer_private_rfc);
+    push_event_to_ctrl_queue(&flag, sizeof(flag), wifi_event_type_command, wifi_event_type_prefer_private_rfc, NULL);
     return RETURN_OK;
 }
 
@@ -1045,14 +1045,14 @@ int push_wps_pin_dml_to_ctrl_queue(unsigned int vap_index, char *wps_pin)
     wifi_util_dbg_print(WIFI_DMCLI, "Inside :%s:%d vap_index:%d wps_pin:%s\r\n", __func__, __LINE__, vap_index, wps_pin);
     wps_config.vap_index = vap_index;
     strncpy(wps_config.wps_pin, wps_pin, strlen(wps_pin));
-    push_event_to_ctrl_queue(&wps_config, sizeof(wps_config), wifi_event_type_command, wifi_event_type_command_wps_pin);
+    push_event_to_ctrl_queue(&wps_config, sizeof(wps_config), wifi_event_type_command, wifi_event_type_command_wps_pin, NULL);
     return RETURN_OK;
 }
 
 int push_rfc_dml_cache_to_one_wifidb(bool rfc_value,wifi_event_subtype_t rfc)
 {
     wifi_util_info_print(WIFI_DMCLI, "Enter:%s  \n", __FUNCTION__);
-    push_event_to_ctrl_queue(&rfc_value, sizeof(rfc_value), wifi_event_type_command, rfc);
+    push_event_to_ctrl_queue(&rfc_value, sizeof(rfc_value), wifi_event_type_command, rfc, NULL);
     return RETURN_OK;
 }
 
@@ -1112,7 +1112,7 @@ int push_blaster_config_dml_to_ctrl_queue()
     if (webconfig_encode(&webconfig_dml.webconfig, &data, webconfig_subdoc_type_blaster) == webconfig_error_none) {
         str = data.u.encoded.raw;
         wifi_util_info_print(WIFI_DMCLI, "%s:  Blaster subdoc encoded successfully  \n", __FUNCTION__);
-        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_dml);
+        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_dml, NULL);
     } else {
         wifi_util_error_print(WIFI_DMCLI, "%s:%d: Webconfig set failed\n", __func__, __LINE__);
     }
@@ -1121,7 +1121,7 @@ int push_blaster_config_dml_to_ctrl_queue()
 
 int process_neighbor_scan_dml()
 {
-    push_event_to_ctrl_queue(NULL, 0, wifi_event_type_command, wifi_event_type_command_wifi_neighborscan);
+    push_event_to_ctrl_queue(NULL, 0, wifi_event_type_command, wifi_event_type_command_wifi_neighborscan, NULL);
     wifi_util_info_print(WIFI_DMCLI, "%s: Neighbor scan command pushed to ctrl. queue \n", __FUNCTION__);
     return RETURN_OK;
 }
@@ -1148,7 +1148,7 @@ int push_harvester_dml_cache_to_one_wifidb()
     if (webconfig_encode(&webconfig_dml.webconfig, &data, webconfig_subdoc_type_harvester) == webconfig_error_none) {
         str = data.u.encoded.raw;
         wifi_util_info_print(WIFI_DMCLI, "%s:  Harvester DML cache encoded successfully  \n", __FUNCTION__);
-        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_dml);
+        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_dml, NULL);
     } else {
         wifi_util_error_print(WIFI_DMCLI, "%s:%d: Webconfig set failed, update data from ctrl queue\n", __func__, __LINE__);
         request_for_dml_data_resync();

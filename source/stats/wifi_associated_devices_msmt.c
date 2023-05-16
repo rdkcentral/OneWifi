@@ -608,6 +608,7 @@ void stream_device_msmt_data()
     sta_map = monitor->bssid_data[vap_array_index].sta_map;
     to_sta_key(monitor->inst_msmt.sta_mac, key);
     wifi_util_dbg_print(WIFI_MON, "%s:%d\n", __func__, __LINE__);
+    str_tolower(key);
     data = (sta_data_t *)hash_map_get(sta_map, key);    
     if (data != NULL) {
         wifi_util_dbg_print(WIFI_MON, "%s:%d\n", __func__, __LINE__);

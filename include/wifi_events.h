@@ -28,6 +28,7 @@ extern "C" {
 #include "collection.h"
 #include "wifi_monitor.h"
 #include "wifi_base.h"
+#include "wifi_webconfig.h"
 
 #define wifi_event_type_base    0x1
 #define CLIENTDIAG_JSON_BUFFER_SIZE 665
@@ -51,7 +52,8 @@ typedef enum {
     wifi_app_inst_easymesh = wifi_app_inst_base << 7,
     wifi_app_inst_matter = wifi_app_inst_base << 8,
     wifi_app_inst_cac = wifi_app_inst_base << 9,
-    wifi_app_inst_max = wifi_app_inst_base << 10
+    wifi_app_inst_sm = wifi_app_inst_base << 10,
+    wifi_app_inst_max = wifi_app_inst_base << 11
 } wifi_app_inst_t;
 
 typedef enum {
@@ -91,7 +93,7 @@ typedef enum {
 
     // HAL events
     wifi_event_hal_unknown_frame = wifi_event_type_base << (wifi_event_type_hal_ind + 6), // wifi_event_type_base << 8
-    wifi_event_hal_mgmt_farmes,
+    wifi_event_hal_mgmt_frames,
     wifi_event_hal_probe_req_frame,
     wifi_event_hal_probe_rsp_frame,
     wifi_event_hal_auth_frame,
@@ -145,6 +147,7 @@ typedef enum {
     wifi_event_type_new_bssid,
     wifi_event_type_xfinity_enable,
     wifi_event_type_wifi_offchannelscan_rfc,
+    wifi_event_type_levl_rfc,
     wifi_event_command_max,
 
 
@@ -161,6 +164,8 @@ typedef enum {
     wifi_event_monitor_csi,
     wifi_event_monitor_csi_update_config,
     wifi_event_monitor_clientdiag_update_config,
+    wifi_event_monitor_data_collection_config,
+    wifi_event_monitor_data_collection_response,
     wifi_event_monitor_max,
 
     // Tunnel
@@ -174,18 +179,28 @@ typedef enum {
 } wifi_event_subtype_t;
 
 typedef struct {
+    wifi_sub_component_t    dst;
+    union {
+        unsigned int        inst_bit_map; // bit map of app instances
+    } u;
+} wifi_event_route_t;
+
+typedef struct {
     wifi_event_type_t     event_type;
     wifi_event_subtype_t  sub_type;
+    wifi_event_route_t    route;
     union {
         wifi_monitor_data_t mon_data;
         wifi_core_data_t    core_data;
         wifi_analytics_data_t   analytics_data;
+        wifi_dca_response_t     dca_response;
+        webconfig_subdoc_data_t *webconfig_data;
     } u;
 } __attribute__((__packed__)) wifi_event_t;
 
 // wifi events functions
-int push_event_to_ctrl_queue(const void *msg, unsigned int len, wifi_event_type_t type, wifi_event_subtype_t sub_type);
-int push_event_to_mon_queue(const void *msg, unsigned int len, wifi_event_type_t type, wifi_event_subtype_t sub_type);
+int push_event_to_ctrl_queue(const void *msg, unsigned int len, wifi_event_type_t type, wifi_event_subtype_t sub_type, wifi_event_route_t *rt);
+int push_event_to_monitor_queue(wifi_monitor_data_t *mon_data, wifi_event_subtype_t sub_type, wifi_event_route_t *rt);
 
 // rbus events functions
 int events_rbus_init(void);

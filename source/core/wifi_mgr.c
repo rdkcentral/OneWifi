@@ -52,6 +52,7 @@
 #include "util.h"
 
 #if DML_SUPPORT
+extern wifi_app_descriptor_t app_desc[4];
 extern void* bus_handle;
 extern char g_Subsystem[32];
 
@@ -1554,7 +1555,6 @@ int init_wifimgr()
 
     //Start Wifi DB server, and Initialize data Cache
     init_wifidb();
-
     return 0;
 }
 
@@ -1569,6 +1569,7 @@ void init_wifi_db_param(void)
 int start_wifimgr()
 {
 #if DML_SUPPORT
+    wifi_ctrl_t *ctrl =  NULL;
     start_dml_main(&g_wifi_mgr.ssp);
     wifi_util_info_print(WIFI_MGR,"%s: waiting for dml init\n", __func__);
     pthread_cond_wait(&g_wifi_mgr.dml_init_status,&g_wifi_mgr.lock);
@@ -1576,6 +1577,14 @@ int start_wifimgr()
 
     pthread_cond_destroy(&g_wifi_mgr.dml_init_status);
     pthread_mutex_unlock(&g_wifi_mgr.lock);
+
+    // initialize wifi apps mgr after wifidb init
+    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    if (ctrl != NULL) {
+        apps_mgr_init(ctrl, app_desc, 4);
+    } else {
+        wifi_util_error_print(WIFI_MGR,"%s:%d NULL Ctrl Pointer Unable to init app\n", __func__, __LINE__);
+    }
 #else
     init_wifi_db_param();
 #endif // DML_SUPPORT

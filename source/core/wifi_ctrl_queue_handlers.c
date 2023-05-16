@@ -881,6 +881,7 @@ bool  IsClientConnected(rdk_wifi_vap_info_t* rdk_vap_info, char *check_mac)
     }
 
     if (rdk_vap_info->associated_devices_map) {
+        str_tolower(check_mac);
         assoc_dev_data = hash_map_get(rdk_vap_info->associated_devices_map, check_mac);
         if (assoc_dev_data != NULL) {
             return true;
@@ -1351,6 +1352,7 @@ void process_greylist_mac_filter(void *data)
             acl_entry = (acl_entry_t *)malloc(sizeof(acl_entry_t));
             memcpy(acl_entry->mac, new_mac, sizeof(mac_address_t));
             to_mac_str(acl_entry->mac, new_mac_str);
+            str_tolower(new_mac_str);
             acl_entry->reason = WLAN_RADIUS_GREYLIST_REJECT;
             acl_entry->expiry_time = expiry_time;
 
@@ -1645,6 +1647,7 @@ void process_assoc_device_event(void *data)
 
     memset(mac_str, 0, sizeof(mac_str));
     to_mac_str(assoc_data->dev_stats.cli_MACAddress, mac_str);
+    str_tolower(mac_str);
     tmp_assoc_dev_data = hash_map_get(rdk_vap_info->associated_devices_map, mac_str);
     if (tmp_assoc_dev_data == NULL) {
         old_count = hash_map_count(rdk_vap_info->associated_devices_map);
@@ -2059,6 +2062,31 @@ void process_wifi_offchannelscan_rfc(bool type)
     rfc_param->wifioffchannelscan_rfc = type;
     wifidb_update_rfc_config(0, rfc_param);
 }
+
+void process_levl_rfc(bool type)
+{
+    wifi_util_dbg_print(WIFI_CTRL,"WIFI Enter RFC Func %s: %d : bool %d\n",__FUNCTION__,__LINE__,type);
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
+    if (rfc_param == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"Unable to fetch CTRL RFC %s:%d\n", __func__, __LINE__);
+        return;
+    }
+
+    rfc_param->levl_enabled_rfc = type;
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_apps_mgr_t *apps_mgr = NULL;
+    wifi_app_t *levl_app = NULL;
+    if (ctrl != NULL) {
+        apps_mgr = &ctrl->apps_mgr;
+        levl_app = (wifi_app_t *)get_app_by_inst(apps_mgr, wifi_app_inst_levl);
+        if (levl_app != NULL) {
+            levl_app->desc.rfc  = rfc_param->levl_enabled_rfc;
+            levl_app->desc.update_fn(levl_app);
+        }
+    }
+    wifidb_update_rfc_config(0, rfc_param);
+    return;
+}
 #endif // DML_SUPPORT
 
 #if CCSP_WIFI_HAL
@@ -2458,6 +2486,9 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len, wifi_
         case wifi_event_type_wifi_interworking_rfc:
             process_wifi_interworking_rfc(*(bool *)data);
             break;
+        case wifi_event_type_levl_rfc:
+            process_levl_rfc(*(bool *)data);
+            break;
         case wifi_event_type_wpa3_rfc:
             process_wpa3_rfc(*(bool *)data);
             break;
@@ -2640,7 +2671,9 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
     webconfig_subdoc_data_t data = {0};
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
     bool rfc_status;
-
+#if DML_SUPPORT
+    wifi_event_t *wifi_event = NULL;
+#endif
     config = &ctrl->webconfig;
 
     switch (subtype) {
@@ -2657,6 +2690,21 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
 #if CCSP_COMMON
             apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, subtype, NULL);
 #endif // CCSP_COMMON
+#if DML_SUPPORT
+            wifi_event = (wifi_event_t *)malloc(sizeof(wifi_event_t));
+            if (wifi_event != NULL) {
+                memset(wifi_event, 0, sizeof(wifi_event_t));
+                wifi_event->event_type = wifi_event_type_webconfig;
+                wifi_event->sub_type = subtype;
+                wifi_event->u.webconfig_data = &data;
+                apps_mgr_event(&ctrl->apps_mgr, wifi_event);
+                if (wifi_event != NULL) {
+                    free(wifi_event);
+                }
+            } else {
+                wifi_util_error_print(WIFI_CTRL,"%s:%d NULL event pointer\n", __func__, __LINE__);
+            }
+#endif //DML_SUPPORT
             break;
 
         case wifi_event_webconfig_set_data_tunnel:

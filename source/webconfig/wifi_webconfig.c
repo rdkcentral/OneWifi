@@ -488,5 +488,16 @@ webconfig_error_t webconfig_init(webconfig_t *config)
     config->subdocs[webconfig_subdoc_type_vif_neighbors].translate_to_subdoc = translate_to_vif_neighbors_subdoc;
     config->subdocs[webconfig_subdoc_type_vif_neighbors].translate_from_subdoc = translate_from_vif_neighbors_subdoc;
 
+    config->subdocs[webconfig_subdoc_type_levl].type = webconfig_subdoc_type_levl;
+    strcpy(config->subdocs[webconfig_subdoc_type_levl].name, "levl data");
+    config->subdocs[webconfig_subdoc_type_levl].major = 1;
+    config->subdocs[webconfig_subdoc_type_levl].minor = 1;
+    config->subdocs[webconfig_subdoc_type_levl].init_subdoc = init_levl_subdoc;
+    config->subdocs[webconfig_subdoc_type_levl].init_subdoc(&config->subdocs[webconfig_subdoc_type_levl]);
+    config->subdocs[webconfig_subdoc_type_levl].access_check_subdoc = access_check_levl_subdoc;
+    config->subdocs[webconfig_subdoc_type_levl].encode_subdoc = encode_levl_subdoc;
+    config->subdocs[webconfig_subdoc_type_levl].decode_subdoc = decode_levl_subdoc;
+    config->subdocs[webconfig_subdoc_type_levl].translate_to_subdoc = translate_to_levl_subdoc;
+    config->subdocs[webconfig_subdoc_type_levl].translate_from_subdoc = translate_from_levl_subdoc;
     return webconfig_error_none;
 }

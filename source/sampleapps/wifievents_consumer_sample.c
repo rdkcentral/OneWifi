@@ -31,7 +31,7 @@
 #include <sys/time.h>
 #include <sys/stat.h>
 
-#define MAX_EVENTS 8
+#define MAX_EVENTS 9
 #define DEFAULT_CSI_INTERVAL 500
 #define DEFAULT_CLIENTDIAG_INTERVAL 5000
 #define MAX_CSI_INTERVAL    30000
@@ -344,7 +344,6 @@ static void csiDataHandler(rbusHandle_t handle, rbusEvent_t const* event,
     rbusEventSubscription_t* subscription)
 {
     int len;
-    int csi_session;
     int itr;
     rbusValue_t csi_data;
     uint8_t const *data_ptr;
@@ -355,8 +354,7 @@ static void csiDataHandler(rbusHandle_t handle, rbusEvent_t const* event,
     mac_address_t  sta_mac;
     char buf[128] = {0};
 
-    if(!event || (sscanf(subscription->eventName,
-        "Device.WiFi.X_RDK_CSI.%d.data", &csi_session) != 1))
+    if(!event)
     {
         WIFI_EVENT_CONSUMER_DGB("Invalid Event Received %s", subscription->eventName);
         return;
@@ -447,7 +445,7 @@ static void csiEnableHandler(rbusHandle_t handle, rbusEvent_t const* event,
     UNREFERENCED_PARAMETER(handle);
 }
 
-rbusEventSubscription_t g_subscriptions[8] = {
+rbusEventSubscription_t g_subscriptions[9] = {
     /* Event Name,                                             filter, interval,   duration,   handler,                user data, handle */
     {"Device.WiFi.AccessPoint.%d.X_RDK_DiagData",              NULL,   0,          0,          diagHandler,            NULL, NULL, NULL, false},
     {"Device.WiFi.AccessPoint.%d.X_RDK_deviceConnected",       NULL,   0,          0,          deviceConnectHandler,   NULL, NULL, NULL, false},
@@ -457,6 +455,7 @@ rbusEventSubscription_t g_subscriptions[8] = {
     {"Device.WiFi.X_RDK_CSI.%d.ClientMaclist",                  NULL,   0,          0,          csiMacListHandler,      NULL, NULL, NULL, false},
     {"Device.WiFi.X_RDK_CSI.%d.data",                          NULL,   100,        0,          csiDataHandler,         NULL, NULL, NULL, false},
     {"Device.WiFi.X_RDK_CSI.%d.Enable",                         NULL,   0,          0,          csiEnableHandler,       NULL, NULL, NULL, false},
+    {"Device.WiFi.X_RDK_CSI_LEVL.data",                         NULL,   0,          0,          csiDataHandler,         NULL, NULL, NULL, false},
 };
 
 static int isCsiEventSet(void)
@@ -565,6 +564,7 @@ static bool parseArguments(int argc, char **argv)
                 "\t6 - subscribe to csi ClientMacList\n"
                 "\t7 - subscribe to csi data\n"
                 "\t8 - subscribe to csi Enable\n"
+                "\t9 - subscribe to levl data \n"
                 "-s [csi session] - default create session\n"
                 "-v [vap index list] - default all VAPs\n"
                 "-i [csi data interval] - default %dms min %d max %d\n"
@@ -724,6 +724,7 @@ int main(int argc, char *argv[])
             case 5: /* Device.WiFi.X_RDK_CSI.{i}.ClientMaclist */
             case 6: /* Device.WiFi.X_RDK_CSI.{i}.data */
             case 7: /* Device.WiFi.X_RDK_CSI.{i}.Enable */
+            case 8: /* Device.WiFi.X_RDK_CSI_LEVL.data */
                 g_sub_total++;
                 break;
         }
@@ -808,6 +809,12 @@ int main(int argc, char *argv[])
             case 7: /* Device.WiFi.X_RDK_CSI.{i}.Enable */
                 snprintf(name, RBUS_MAX_NAME_LENGTH, g_subscriptions[i].eventName, g_csi_index);
                 WIFI_EVENT_CONSUMER_DGB("Add subscription %s", name);
+                fillSubscribtion(sub_index, name, i);
+                sub_index++;
+                break;
+            case 8: /* Device.WiFi.X_RDK_CSI_LEVL.data */
+                snprintf(name, RBUS_MAX_NAME_LENGTH, g_subscriptions[i].eventName);
+                WIFI_EVENT_CONSUMER_DGB("Add subscription for Levl CSI Data%s", name);
                 fillSubscribtion(sub_index, name, i);
                 sub_index++;
                 break;

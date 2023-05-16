@@ -1135,6 +1135,7 @@ void Psm_Db_Write_MacFilter(wifi_mac_entry_param_t *mcfg)
 
     psm_mac_map = get_mac_psm_obj(mcfg->vap_index);
     mcfg_mac = strdup(mcfg->mac); // Coverity fix [280369]
+    str_tolower(mcfg_mac);
     wifi_util_dbg_print(WIFI_PSM, "%s:%d mac filter vap_index:%d hash_map_address:%p\r\n",__func__, __LINE__, mcfg->vap_index, psm_mac_map);
     wifi_util_dbg_print(WIFI_PSM, "%s:%d mac strdup(mcfg->mac):%s\r\n",__func__, __LINE__, mcfg_mac);
     wifi_util_dbg_print(WIFI_PSM, "%s:%d strlen:%s:%s:\r\n",__func__, __LINE__, mcfg->mac, mcfg->device_name);
@@ -1186,6 +1187,7 @@ void Psm_Db_Write_MacFilter(wifi_mac_entry_param_t *mcfg)
             }
         }
         if (strlen(mcfg->mac) != 0) {
+            str_tolower(mcfg->mac);
             temp_mac_entry = hash_map_get(psm_mac_map, strdup(mcfg->mac));
             if (temp_mac_entry != NULL) {
                 if (strlen(mcfg->device_name) != 0) {

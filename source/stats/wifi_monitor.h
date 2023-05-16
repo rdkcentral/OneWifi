@@ -185,6 +185,7 @@ typedef struct {
     unsigned int csi_sched_interval;
 #endif // CCSP_COMMON
     bool radio_presence[MAX_NUM_RADIOS];
+    hash_map_t  *dca_list;
 } wifi_monitor_t;
 
 #ifdef CCSP_COMMON

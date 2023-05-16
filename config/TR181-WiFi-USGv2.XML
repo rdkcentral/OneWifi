@@ -254,6 +254,12 @@
             <writable>true</writable>
         </parameter>
         <parameter>
+            <name>Levl</name>
+            <type>boolean</type>
+            <syntax>bool</syntax>
+            <writable>true</writable>
+        </parameter>
+        <parameter>
             <name>DFSatBootUp</name>
             <type>boolean</type>
             <syntax>bool</syntax>

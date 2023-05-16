@@ -3200,6 +3200,21 @@ webconfig_error_t decode_mac_object(rdk_wifi_vap_info_t *rdk_vap_info, cJSON *ob
     return webconfig_error_none;
 }
 
+webconfig_error_t decode_levl_object(const cJSON *levl_cfg, levl_config_t *levl_config)
+{
+    const cJSON  *param;
+
+    //clientMac
+    decode_param_string(levl_cfg, "clientMac", param);
+    str_to_mac_bytes(param->valuestring, levl_config->clientMac);
+
+    //maxNumberCSIClients
+    decode_param_integer(levl_cfg, "maxNumberCSIClients", param);
+    levl_config->max_num_csi_clients = param->valuedouble;
+
+    return webconfig_error_none;
+}
+
 webconfig_error_t decode_blaster_object(const cJSON *blaster_cfg, active_msmt_t *blaster_info)
 {
     const cJSON  *param;

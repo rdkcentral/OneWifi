@@ -28,26 +28,37 @@
 #include "wifi_apps_mgr.h"
 #include <rbus.h>
 
-wifi_app_descriptor_t app_desc[3] = {
+wifi_app_descriptor_t app_desc[4] = {
     {
         wifi_app_inst_analytics, 0,
         wifi_event_type_exec | wifi_event_type_webconfig | wifi_event_type_hal_ind | wifi_event_type_command | wifi_event_type_monitor | wifi_event_type_net | wifi_event_type_wifiapi,
-        true,
+        true, true,
         "Analytics of Real Time Events",
-        analytics_init, analytics_event, analytics_deinit
+        analytics_init, analytics_event, analytics_deinit,
+        NULL
     },
     {
         wifi_app_inst_levl, 0,
-        wifi_event_type_hal_ind,
-        true,
+        wifi_event_type_hal_ind | wifi_event_type_webconfig | wifi_event_type_monitor,
+        true, true,
         "Levl Finger Printing",
-        levl_init, levl_event, levl_deinit
+        levl_init, levl_event, levl_deinit,
+        levl_update
     },
     {
         wifi_app_inst_cac, 0,
-        wifi_event_type_hal_ind | wifi_event_type_webconfig,
-        true,
+        wifi_event_type_hal_ind | wifi_event_type_exec | wifi_event_type_webconfig,
+        true, true,
         "Connection Admission Control for VAPs",
-        cac_init, cac_event, cac_deinit
+        cac_init, cac_event, cac_deinit,
+        NULL
+    },
+    {
+        wifi_app_inst_sm, 0,
+        wifi_event_type_monitor | wifi_event_type_webconfig,
+        true, true,
+        "Stats Manager",
+        sm_init, sm_event, sm_deinit,
+        NULL
     }
 };

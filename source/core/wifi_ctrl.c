@@ -42,15 +42,11 @@
 #endif
 #define ONEWIFI_FR_FLAG  "/nvram/wifi/onewifi_factory_reset_flag"
 
-#if DML_SUPPORT
-extern wifi_app_descriptor_t app_desc[3];
-#endif
 unsigned int get_Uptime(void);
 unsigned int startTime[MAX_NUM_RADIOS];
 #define BUF_SIZE              256
 extern webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc_data_t *data);
 void get_action_frame_evt_params(uint8_t *frame, uint32_t len, frame_data_t *mgmt_frame, wifi_event_subtype_t *evt_subtype);
-
 #ifndef CCSP_WIFI_HAL
 extern void ow_mesh_ext_sta_conn_connection_callback(const char *vif_name, wifi_bss_info_t *bss_info, wifi_station_stats_t *sta);
 #endif //CCSP_WIFI_HAL
@@ -138,6 +134,46 @@ static int wifi_radio_set_enable(bool status)
     }
 
     return ret;
+}
+
+int get_ap_index_from_clientmac(mac_address_t mac_addr)
+{
+    unsigned int r_itr = 0, v_itr = 0, vap_index = 0;
+    rdk_wifi_vap_info_t *rdk_vap_info = NULL;
+    assoc_dev_data_t *assoc_dev_data = NULL;
+    wifi_vap_info_map_t *wifi_vap_map = NULL;
+    wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    mac_addr_str_t mac_str;
+
+    if ((mgr == NULL) || (ctrl == NULL)) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d NULL pointers\n", __func__,__LINE__);
+        return -1;
+    }
+
+    to_mac_str((unsigned char *)mac_addr, mac_str);
+    for (r_itr = 0; r_itr < getNumberRadios(); r_itr++) {
+        wifi_vap_map = get_wifidb_vap_map(r_itr);
+        if (wifi_vap_map == NULL) {
+            wifi_util_error_print(WIFI_CTRL,"%s:%d NULL pointers\n", __func__,__LINE__);
+            return -1;
+        }
+        for (v_itr = 0; v_itr < getMaxNumberVAPsPerRadio(r_itr); v_itr++) {
+            vap_index = wifi_vap_map->vap_array[v_itr].vap_index;
+            rdk_vap_info = get_wifidb_rdk_vap_info(vap_index);
+            if (rdk_vap_info == NULL) {
+                wifi_util_error_print(WIFI_CTRL,"%s:%d NULL pointers\n", __func__,__LINE__);
+                return -1;
+            }
+            if (rdk_vap_info->associated_devices_map) {
+                assoc_dev_data = hash_map_get(rdk_vap_info->associated_devices_map, mac_str);
+                if (assoc_dev_data != NULL) {
+                    return vap_index;
+                }
+            }
+        }
+    }
+    return -1;
 }
 
 void reset_wifi_radios(void)
@@ -321,10 +357,13 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
                         break;
                 }
 
+                if (event->event_type != wifi_event_type_webconfig) {
 #if DML_SUPPORT
-                // now forward the event to apps manager
-                apps_mgr_event(&ctrl->apps_mgr, event);
+                    // now forward the event to apps manager
+                    apps_mgr_event(&ctrl->apps_mgr, event);
 #endif
+                }
+
                 if(event->u.core_data.msg) {
                     free(event->u.core_data.msg);
                 }
@@ -941,7 +980,7 @@ int scan_results_callback(int radio_index, wifi_bss_info_t **bss, unsigned int *
         memcpy((unsigned char *)res.bss, (unsigned char *)(*bss), (*num)*sizeof(wifi_bss_info_t));
     }
 
-    push_event_to_ctrl_queue(&res, sizeof(scan_results_t), wifi_event_type_hal_ind, wifi_event_scan_results);
+    push_event_to_ctrl_queue(&res, sizeof(scan_results_t), wifi_event_type_hal_ind, wifi_event_scan_results, NULL);
     free(*bss);
 
     return 0;
@@ -959,7 +998,7 @@ void sta_connection_handler(const char *vif_name, wifi_bss_info_t *bss_info, wif
     memcpy(&sta_data.bss_info, bss_info, sizeof(wifi_bss_info_t));
     strncpy(sta_data.interface_name, vif_name, sizeof(wifi_interface_name_t));
 
-    push_event_to_ctrl_queue((rdk_sta_data_t *)&sta_data, sizeof(rdk_sta_data_t), wifi_event_type_hal_ind, wifi_event_hal_sta_conn_status);
+    push_event_to_ctrl_queue((rdk_sta_data_t *)&sta_data, sizeof(rdk_sta_data_t), wifi_event_type_hal_ind, wifi_event_hal_sta_conn_status, NULL);
     wifi_util_dbg_print(WIFI_CTRL,"%s: STA data is pushed to the ctrl queue: sta_data.interface_name=%s\n",__FUNCTION__, sta_data.interface_name);
 }
 
@@ -984,7 +1023,7 @@ int mgmt_wifi_frame_recv(int ap_index, wifi_frame_t *frame)
     memcpy(&mgmt_frame.frame, frame, sizeof(wifi_frame_t));
 
     //In side this API we have allocate memory and send it to control queue
-    push_event_to_ctrl_queue((frame_data_t *)&wifi_mgmt_frame, (sizeof(wifi_mgmt_frame) + len), wifi_event_type_hal_ind, wifi_event_hal_mgmt_farmes);
+    push_event_to_ctrl_queue((frame_data_t *)&wifi_mgmt_frame, (sizeof(wifi_mgmt_frame) + len), wifi_event_type_hal_ind, wifi_event_hal_mgmt_frames, NULL);
 
     return RETURN_OK;
 }
@@ -1053,7 +1092,7 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
         }
     }
 
-    push_event_to_ctrl_queue((frame_data_t *)&mgmt_frame, sizeof(mgmt_frame), wifi_event_type_hal_ind, evt_subtype);
+    push_event_to_ctrl_queue((frame_data_t *)&mgmt_frame, sizeof(mgmt_frame), wifi_event_type_hal_ind, evt_subtype, NULL);
     return RETURN_OK;
 }
 #endif
@@ -1139,7 +1178,7 @@ void channel_change_callback(wifi_channel_change_event_t radio_channel_param)
 
     memcpy(&channel_change, &radio_channel_param, sizeof(wifi_channel_change_event_t));
 
-    push_event_to_ctrl_queue((wifi_channel_change_event_t *)&channel_change, sizeof(wifi_channel_change_event_t), wifi_event_type_hal_ind, wifi_event_hal_channel_change);
+    push_event_to_ctrl_queue((wifi_channel_change_event_t *)&channel_change, sizeof(wifi_channel_change_event_t), wifi_event_type_hal_ind, wifi_event_hal_channel_change, NULL);
     return;
 }
 
@@ -1203,11 +1242,6 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
     for (i = 0; i < vap_svc_type_max; i++) {
         svc_init(&ctrl->ctrl_svc[i], (vap_svc_type_t)i);
     }
-
-#if DML_SUPPORT
-    // initialize wifi apps mgr
-    apps_mgr_init(ctrl, app_desc, 3);
-#endif // DML_SUPPORT
 
     //Register to RBUS for webconfig interactions
     rbus_register_handlers(ctrl);
@@ -1601,7 +1635,7 @@ void resched_data_to_ctrl_queue()
 #if CCSP_COMMON
             apps_mgr_analytics_event(&l_ctrl->apps_mgr, wifi_event_type_webconfig, wifi_event_webconfig_data_resched_to_ctrl_queue, queue_data);
 #endif
-            push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_data_resched_to_ctrl_queue);
+            push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_data_resched_to_ctrl_queue, NULL);
 
             //Free the allocated memory
             if (queue_data) {
@@ -2267,6 +2301,7 @@ wifi_rfc_dml_parameters_t* get_ctrl_rfc_parameters(void)
     g_wifi_mgr->ctrl.rfc_params.dfsatbootup_rfc  = g_wifi_mgr->rfc_dml_parameters.dfsatbootup_rfc ;
     g_wifi_mgr->ctrl.rfc_params.dfs_rfc = g_wifi_mgr->rfc_dml_parameters.dfs_rfc;
     g_wifi_mgr->ctrl.rfc_params.wpa3_rfc = g_wifi_mgr->rfc_dml_parameters.wpa3_rfc;
+    g_wifi_mgr->ctrl.rfc_params.levl_enabled_rfc = g_wifi_mgr->rfc_dml_parameters.levl_enabled_rfc;
     g_wifi_mgr->ctrl.rfc_params.ow_core_thread_rfc = g_wifi_mgr->rfc_dml_parameters.ow_core_thread_rfc;
     g_wifi_mgr->ctrl.rfc_params.twoG80211axEnable_rfc = g_wifi_mgr->rfc_dml_parameters.twoG80211axEnable_rfc;
     g_wifi_mgr->ctrl.rfc_params.hotspot_open_2g_last_enabled = g_wifi_mgr->rfc_dml_parameters.hotspot_open_2g_last_enabled;

@@ -56,6 +56,7 @@ void process_eap_data(wifi_8021x_data_t *data, wifi_8021x_t *module, bool new_ev
     eap = (wifi_eap_frame_t *)data->data;
 
     to_mac_str(data->mac, mac_str);
+    str_tolower(mac_str);
 
     if (new_event == false) {
         // this is an existing data, call originated from timeout

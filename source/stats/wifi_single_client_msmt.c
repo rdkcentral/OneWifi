@@ -2296,6 +2296,7 @@ void stream_client_msmt_data(bool ActiveMsmtFlag)
         sta_map = monitor->bssid_data[vap_array_index].sta_map;
         to_sta_key(monitor->inst_msmt.sta_mac, key);
 
+        str_tolower(key);
         data = (sta_data_t *)hash_map_get(sta_map, key);
         if (data != NULL) {
             upload_single_client_msmt_data(&monitor->bssid_data[vap_array_index], data);
@@ -2310,6 +2311,7 @@ void stream_client_msmt_data(bool ActiveMsmtFlag)
         sta_map = monitor->bssid_data[vap_array_index].sta_map;
         to_sta_key(act_monitor->curStepData.DestMac, key);
 
+        str_tolower(key);
         data = (sta_data_t *)hash_map_get(sta_map, key);
         if (data != NULL) {
             if (ctrl->network_mode == rdk_dev_mode_type_gw) {

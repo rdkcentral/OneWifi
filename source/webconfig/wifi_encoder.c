@@ -1413,6 +1413,22 @@ webconfig_error_t encode_mac_object(rdk_wifi_vap_info_t *rdk_vap_info, cJSON *ob
     }
     return webconfig_error_none;
 }
+
+webconfig_error_t encode_levl_object(const levl_config_t *levl, cJSON *levl_obj)
+{
+    if ((levl == NULL) || (levl_obj == NULL)) {
+        return webconfig_error_encode;
+    }
+
+    char mac_string[18] = {0};
+    to_mac_str((unsigned char *)levl->clientMac, mac_string);
+
+    cJSON_AddStringToObject(levl_obj, "clientMac", mac_string);
+    cJSON_AddNumberToObject(levl_obj, "maxNumberCSIClients", levl->max_num_csi_clients);
+
+    return webconfig_error_none;
+}
+
 webconfig_error_t encode_blaster_object(const active_msmt_t *blaster_info, cJSON *blaster_obj)
 {
    cJSON *stepobj;

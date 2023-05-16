@@ -325,6 +325,12 @@ WiFi_GetParamBoolValue
         return TRUE;
     }
 
+    if (AnscEqualString(ParamName, "Levl", TRUE))
+    {
+        *pBool = rfc_pcfg->levl_enabled_rfc;
+        return TRUE;
+    }
+
     if (AnscEqualString(ParamName, "DFS", TRUE))
     {
         *pBool = rfc_pcfg->dfs_rfc;
@@ -1039,6 +1045,15 @@ WiFi_SetParamBoolValue
         if(bValue != rfc_pcfg->twoG80211axEnable_rfc) {
             push_rfc_dml_cache_to_one_wifidb(bValue,wifi_event_type_twoG80211axEnable_rfc);
         }
+        return TRUE;
+    }
+
+    if (AnscEqualString(ParamName, "Levl", TRUE))
+    {
+        if(bValue != rfc_pcfg->levl_enabled_rfc) {
+            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_levl_rfc);
+        }
+
         return TRUE;
     }
 
@@ -9487,7 +9502,7 @@ WPS_Commit
     if (vapInfo->u.bss_info.wpsPushButton == true)
     {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:Activate push button for vap %d\n",__func__, __LINE__, wlanIndex);
-        push_event_to_ctrl_queue(&wlanIndex, sizeof(wlanIndex), wifi_event_type_command, wifi_event_type_command_wps);
+        push_event_to_ctrl_queue(&wlanIndex, sizeof(wlanIndex), wifi_event_type_command, wifi_event_type_command_wps, NULL);
         vapInfo->u.bss_info.wpsPushButton = false;
     }
 

@@ -145,7 +145,7 @@ void vap_svc_mesh_pod_ap_connection_handler(struct ow_barrier_sta_conn_info *sta
 
     memcpy(assoc_data.dev_stats.cli_MACAddress, sta_conn_info->mac, sizeof(mac_address_t));
     assoc_data.ap_index = index;
-    push_event_to_ctrl_queue(&assoc_data, sizeof(assoc_data), wifi_event_type_hal_ind, type);
+    push_event_to_ctrl_queue(&assoc_data, sizeof(assoc_data), wifi_event_type_hal_ind, type, NULL);
 
     if (!(monitor = get_wifi_monitor())) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: Monitor is not available!\n", __func__, __LINE__);

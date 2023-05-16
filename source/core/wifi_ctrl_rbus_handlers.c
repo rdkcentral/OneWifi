@@ -30,6 +30,8 @@
 #include <unistd.h>
 #include <rbus.h>
 
+#define MAX_EVENT_NAME_SIZE     200
+
 int webconfig_csi_notify_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_encoded_data_t *data)
 {
     rbusEvent_t event;
@@ -416,7 +418,7 @@ rbusError_t webconfig_set_subdoc(rbusHandle_t handle, rbusProperty_t property, r
     if (pTmp != NULL) {
         rc = RBUS_ERROR_SUCCESS;
         wifi_util_dbg_print(WIFI_CTRL,"%s Rbus set string len=%d\n",__FUNCTION__,len);
-        push_event_to_ctrl_queue((const cJSON *)pTmp, (strlen(pTmp) + 1), wifi_event_type_webconfig, wifi_event_webconfig_set_data_ovsm);
+        push_event_to_ctrl_queue((const cJSON *)pTmp, (strlen(pTmp) + 1), wifi_event_type_webconfig, wifi_event_webconfig_set_data_ovsm, NULL);
     }
     return rc;
 }
@@ -465,7 +467,7 @@ static void MarkerListConfigHandler (rbusHandle_t handle, rbusEvent_t const* eve
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Unable to get  value in event:%s\n", __func__, __LINE__);
         return;
     }
-    push_event_to_ctrl_queue(pTmp, (strlen(pTmp) + 1), wifi_event_type_command, list_type);
+    push_event_to_ctrl_queue(pTmp, (strlen(pTmp) + 1), wifi_event_type_command, list_type, NULL);
 
     UNREFERENCED_PARAMETER(handle);
 }
@@ -493,7 +495,7 @@ static void activeGatewayCheckHandler(rbusHandle_t handle, rbusEvent_t const* ev
     }
 
     other_gateway_present = rbusValue_GetBoolean(value);
-    push_event_to_ctrl_queue(&other_gateway_present, sizeof(other_gateway_present), wifi_event_type_command, wifi_event_type_command_sta_connect);
+    push_event_to_ctrl_queue(&other_gateway_present, sizeof(other_gateway_present), wifi_event_type_command, wifi_event_type_command_sta_connect, NULL);
 
     UNREFERENCED_PARAMETER(handle);
 }
@@ -559,7 +561,7 @@ static void hotspotTunnelHandler(rbusHandle_t handle, rbusEvent_t const* event,
     }
 
     wifi_event_subtype_t ces_t = tunnel_status ? wifi_event_type_xfinity_tunnel_up : wifi_event_type_xfinity_tunnel_down;
-    push_event_to_ctrl_queue(&tunnel_status, sizeof(tunnel_status), wifi_event_type_command, ces_t);
+    push_event_to_ctrl_queue(&tunnel_status, sizeof(tunnel_status), wifi_event_type_command, ces_t, NULL);
 }
 
 rbusError_t get_assoc_clients_data(rbusHandle_t handle, rbusProperty_t property, rbusGetHandlerOptions_t* opts)
@@ -692,7 +694,7 @@ rbusError_t set_sta_disconnection(rbusHandle_t handle, rbusProperty_t property, 
     disconnection_type = rbusValue_GetUInt32(value);
     wifi_util_dbg_print(WIFI_CTRL, "%s Rbus set %d\n", __FUNCTION__, disconnection_type);
     push_event_to_ctrl_queue(&disconnection_type, sizeof(disconnection_type),
-        wifi_event_type_command, wifi_event_type_trigger_disconnection);
+        wifi_event_type_command, wifi_event_type_trigger_disconnection, NULL);
 
     return RBUS_ERROR_SUCCESS;
 }
@@ -716,7 +718,7 @@ rbusError_t set_kickassoc_command(rbusHandle_t handle, rbusProperty_t property, 
     if (pTmp != NULL) {
         rc = RBUS_ERROR_SUCCESS;
         wifi_util_dbg_print(WIFI_CTRL,"%s Rbus set string %s\n",__FUNCTION__, pTmp);
-        push_event_to_ctrl_queue(pTmp, (strlen(pTmp) + 1), wifi_event_type_command, wifi_event_type_command_kick_assoc_devices);
+        push_event_to_ctrl_queue(pTmp, (strlen(pTmp) + 1), wifi_event_type_command, wifi_event_type_command_kick_assoc_devices, NULL);
     }
 
     return rc;
@@ -741,7 +743,7 @@ rbusError_t set_wifiapi_command(rbusHandle_t handle, rbusProperty_t property, rb
     if (pTmp != NULL) {
         rc = RBUS_ERROR_SUCCESS;
         wifi_util_dbg_print(WIFI_CTRL,"%s Rbus set string len=%d\n",__FUNCTION__,len);
-        push_event_to_ctrl_queue((char *)pTmp, (strlen(pTmp) + 1), wifi_event_type_wifiapi, wifi_event_type_wifiapi_execution);
+        push_event_to_ctrl_queue((char *)pTmp, (strlen(pTmp) + 1), wifi_event_type_wifiapi, wifi_event_type_wifiapi_execution, NULL);
     }
     return rc;
 }
@@ -988,7 +990,7 @@ static void deviceModeHandler(rbusHandle_t handle, rbusEvent_t const* event, rbu
     if (strcmp(event->name, WIFI_DEVICE_MODE) == 0) {
         device_mode = rbusValue_GetUInt32(value);
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d: event:%s: value:%d\n", __func__, __LINE__, event->name, device_mode);
-        push_event_to_ctrl_queue(&device_mode, sizeof(device_mode), wifi_event_type_command, wifi_event_type_device_network_mode);
+        push_event_to_ctrl_queue(&device_mode, sizeof(device_mode), wifi_event_type_command, wifi_event_type_device_network_mode, NULL);
 
     } else {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: Unsupported event:%s\n", __func__, __LINE__, event->name);
@@ -1017,7 +1019,7 @@ static void testDeviceModeHandler(rbusHandle_t handle, rbusEvent_t const* event,
     if (strcmp(event->name, TEST_WIFI_DEVICE_MODE) == 0) {
         device_mode = rbusValue_GetUInt32(value);
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d: event:%s: value:%d\n", __func__, __LINE__, event->name, device_mode);
-        push_event_to_ctrl_queue(&device_mode, sizeof(device_mode), wifi_event_type_command, wifi_event_type_device_network_mode);
+        push_event_to_ctrl_queue(&device_mode, sizeof(device_mode), wifi_event_type_command, wifi_event_type_device_network_mode, NULL);
     } else {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: Unsupported event:%s\n", __func__, __LINE__, event->name);
     }
@@ -1048,7 +1050,7 @@ static void meshStatusHandler(rbusHandle_t handle, rbusEvent_t const* event,
     }
 
     mesh_status = rbusValue_GetBoolean(value);
-    push_event_to_ctrl_queue(&mesh_status, sizeof(mesh_status), wifi_event_type_command, wifi_event_type_command_mesh_status);
+    push_event_to_ctrl_queue(&mesh_status, sizeof(mesh_status), wifi_event_type_command, wifi_event_type_command_mesh_status, NULL);
 }
 
 static void eventReceiveHandler(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription)
@@ -1091,7 +1093,7 @@ static void eventReceiveHandler(rbusHandle_t handle, rbusEvent_t const* event, r
         return;
     }
     wifi_event_subtype_t ces_t = tunnel_status ? wifi_event_type_xfinity_tunnel_up : wifi_event_type_xfinity_tunnel_down;
-    push_event_to_ctrl_queue(&tunnel_status, sizeof(tunnel_status), wifi_event_type_command, ces_t);
+    push_event_to_ctrl_queue(&tunnel_status, sizeof(tunnel_status), wifi_event_type_command, ces_t, NULL);
 }
 
 static void frame_802_11_injector_Handler(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription)
@@ -1167,7 +1169,7 @@ static void wps_test_event_receive_handler(rbusHandle_t handle, rbusEvent_t cons
     vap_index = rbusValue_GetUInt32(value);
     if (wifi_util_is_vap_index_valid(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, (int)vap_index)) {
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi wps test vap_index:%d\n",__func__, __LINE__, vap_index);
-        push_event_to_ctrl_queue(&vap_index, sizeof(vap_index), wifi_event_type_command, wifi_event_type_command_wps);
+        push_event_to_ctrl_queue(&vap_index, sizeof(vap_index), wifi_event_type_command, wifi_event_type_command_wps, NULL);
     } else {
         uint32_t max_vaps = MAX_NUM_VAP_PER_RADIO * getNumberRadios();
         wifi_util_error_print(WIFI_CTRL,"%s:%d wifi wps test invalid vap_index:%d max_vap:%d\n",__func__, __LINE__,
@@ -1725,7 +1727,7 @@ static int push_csi_data_dml_to_ctrl_queue(queue_t *csi_queue)
     if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_csi) == webconfig_error_none) {
         str = data->u.encoded.raw;
         wifi_util_info_print(WIFI_CTRL, "%s: CSI cache encoded successfully  \n", __FUNCTION__);
-        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_dml);
+        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_dml, NULL);
     } else {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: Webconfig set failed\n", __func__, __LINE__);
         free(data);
@@ -2424,6 +2426,173 @@ int events_rbus_publish(wifi_event_t *evt)
 }
 #endif
 
+static int push_levl_data_dml_to_ctrl_queue(levl_config_t **levl) 
+{
+    webconfig_subdoc_data_t *data;
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    char *str = NULL;
+
+    if (*levl == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s %d: NULL Pointer\n", __func__, __LINE__);
+        return RBUS_ERROR_BUS_ERROR;
+    }
+
+    data = (webconfig_subdoc_data_t *) malloc(sizeof(webconfig_subdoc_data_t));
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s: malloc failed to allocate webconfig_subdoc_data_t, size %d\n", \
+                __func__, sizeof(webconfig_subdoc_data_t));
+        return RBUS_ERROR_BUS_ERROR;
+    }
+
+    memset(data, 0, sizeof(webconfig_subdoc_data_t));
+    memcpy(&(data->u.decoded.levl), *levl, sizeof(levl_config_t));
+
+    if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_levl) == webconfig_error_none) {
+        str = data->u.encoded.raw;
+        wifi_util_info_print(WIFI_CTRL, "%s: Levl encoded successfully  \n", __FUNCTION__);
+        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_dml, NULL);
+    } else {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Webconfig set failed\n", __func__, __LINE__);
+        if (data != NULL) {
+            free(data);
+        }
+        return RBUS_ERROR_BUS_ERROR;
+    }
+
+    wifi_util_info_print(WIFI_CTRL, "%s: Levl pushed to queue encoded data is %s\n", __FUNCTION__, str);
+    if (data != NULL) {
+        free(data);
+    }
+    return RBUS_ERROR_SUCCESS;
+}
+
+rbusError_t levl_get_handler(rbusHandle_t handle, rbusProperty_t property, rbusGetHandlerOptions_t* opts)
+{
+    UNREFERENCED_PARAMETER(handle);
+    UNREFERENCED_PARAMETER(opts);
+    char const* name;
+    rbusValue_t value;
+    int max_value = 0;
+    char parameter[MAX_EVENT_NAME_SIZE];
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+
+    name = rbusProperty_GetName(property);
+    if (!name) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s(): invalid property name : %s \n", __FUNCTION__, name);
+        return RBUS_ERROR_INVALID_INPUT;
+    }
+
+    wifi_util_dbg_print(WIFI_CTRL, "%s(): %s\n", __FUNCTION__, name);
+    sscanf(name, "Device.WiFi.X_RDK_CSI_LEVL.%200s", parameter);
+    rbusValue_Init(&value);
+
+    if (strcmp(parameter, "clientMac") == 0) {
+
+        char mac_string[18];
+        memset(mac_string, 0, 18);
+        to_mac_str(mgr->levl.clientMac, mac_string);
+        rbusValue_SetString(value, mac_string);
+    } else if(strcmp(parameter, "maxNumberCSIClients") == 0) {
+        if (mgr->levl.max_num_csi_clients == 0) {
+            max_value = MAX_LEVL_CSI_CLIENTS;
+        } else {
+            max_value = mgr->levl.max_num_csi_clients;
+        }
+
+        rbusValue_SetUInt32(value, max_value);
+    }
+    rbusProperty_SetValue(property, value);
+    rbusValue_Release(value);
+    return RBUS_ERROR_SUCCESS;
+}
+
+void update_levl_config_from_mgr(levl_config_t *levl) {
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+
+    levl->max_num_csi_clients = mgr->levl.max_num_csi_clients; 
+
+    return;
+}
+
+rbusError_t levl_set_handler(rbusHandle_t handle, rbusProperty_t property, rbusSetHandlerOptions_t* opts)
+{
+    (void)opts;
+    char const* name;
+    rbusValue_t value;
+    rbusValueType_t type;
+    int len = 0;
+    char const* pTmp = NULL;
+    char parameter[MAX_EVENT_NAME_SIZE];
+    unsigned int csinum = 0;
+    levl_config_t *levl = NULL;
+
+    name = rbusProperty_GetName(property);
+    value = rbusProperty_GetValue(property);
+    type = rbusValue_GetType(value);
+
+    if (!name) {
+        wifi_util_error_print(WIFI_CTRL, "%s %d: invalid rbus property name %s\n", __FUNCTION__, __LINE__, name);
+        return RBUS_ERROR_INVALID_INPUT;
+    }
+    levl = (levl_config_t *)malloc(sizeof(levl_config_t));
+    if (levl == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s %d: NULL Pointer\n", __func__, __LINE__);
+        return RBUS_ERROR_BUS_ERROR;
+    }
+    memset(levl, 0, sizeof(levl_config_t));
+    update_levl_config_from_mgr(levl);
+
+    wifi_util_dbg_print(WIFI_CTRL, "%s(): %s\n", __FUNCTION__, name);
+
+    //get levl Instance
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    if (mgr == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s %d: NULL Pointer\n", __func__, __LINE__);
+        if (levl != NULL) {
+            free(levl);
+        }
+        return RBUS_ERROR_BUS_ERROR;
+    }
+
+    sscanf(name, "Device.WiFi.X_RDK_CSI_LEVL.%200s", parameter);
+    if (strcmp(parameter, "clientMac") == 0) {
+        if (type != RBUS_STRING) {
+            wifi_util_error_print(WIFI_CTRL,"%s:%d '%s' Called Set handler with wrong data type\n", __func__, __LINE__, name);
+            if (levl != NULL) {
+                free(levl);
+            }
+            return RBUS_ERROR_INVALID_INPUT;
+        }
+
+        pTmp = rbusValue_GetString(value, &len);
+        str_to_mac_bytes((char *)pTmp, levl->clientMac);
+    } else if(strcmp(parameter, "maxNumberCSIClients") == 0) {
+        if (type != RBUS_UINT32) {
+            wifi_util_error_print(WIFI_CTRL,"%s:%d '%s' Called Set handler with wrong data type\n", __func__, __LINE__, name);
+            if (levl != NULL) {
+                free(levl);
+            }
+            return RBUS_ERROR_INVALID_INPUT;
+        }
+
+        csinum = rbusValue_GetUInt32(value);
+        if (csinum > MAX_LEVL_CSI_CLIENTS) {
+            wifi_util_error_print(WIFI_CTRL,"%s:%d Exceeds MAX_LEVL_CSI_CLIENTS\n", __func__, __LINE__);
+            if (levl != NULL) {
+                free(levl);
+            }
+            return RBUS_ERROR_INVALID_INPUT;
+        }
+        levl->max_num_csi_clients = csinum;
+    }
+
+    push_levl_data_dml_to_ctrl_queue(&levl);
+    if (levl != NULL) {
+        free(levl);
+    }
+    return RBUS_ERROR_SUCCESS;
+}
+
 void rbus_register_handlers(wifi_ctrl_t *ctrl)
 {
     int rc = RBUS_ERROR_SUCCESS;
@@ -2492,7 +2661,11 @@ void rbus_register_handlers(wifi_ctrl_t *ctrl)
                                 { WIFI_CSI_ENABLE, RBUS_ELEMENT_TYPE_PROPERTY,
                                 { csi_get_handler, csi_set_handler, NULL, NULL, NULL, NULL}},
                                 { WIFI_CSI_NUMBEROFENTRIES, RBUS_ELEMENT_TYPE_PROPERTY,
-                                { csi_get_handler, NULL, NULL, NULL, NULL, NULL}}
+                                { csi_get_handler, NULL, NULL, NULL, NULL, NULL}},
+                                { WIFI_LEVL_CLIENTMAC, RBUS_ELEMENT_TYPE_PROPERTY,
+                                { levl_get_handler, levl_set_handler, NULL, NULL, NULL, NULL}},
+                                { WIFI_LEVL_NUMBEROFENTRIES, RBUS_ELEMENT_TYPE_PROPERTY,
+                                { levl_get_handler, levl_set_handler, NULL, NULL, NULL, NULL}},
 #endif
     };
 

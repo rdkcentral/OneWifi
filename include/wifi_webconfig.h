@@ -120,6 +120,7 @@ typedef enum {
     webconfig_subdoc_type_steering_clients,
     webconfig_subdoc_type_vif_neighbors,
     webconfig_subdoc_type_mesh_backhaul_sta,
+    webconfig_subdoc_type_levl,
     webconfig_subdoc_type_max
 } webconfig_subdoc_type_t;
 
@@ -140,6 +141,7 @@ typedef enum {
     webconfig_subdoc_object_type_steering_config,
     webconfig_subdoc_object_type_steering_clients,
     webconfig_subdoc_object_type_vif_neighbors,
+    webconfig_subdoc_object_type_levl,
     webconfig_subdoc_object_max
 } webconfig_subdoc_object_type_t;
 
@@ -174,6 +176,7 @@ typedef struct {
     queue_t *csi_data_queue;
     active_msmt_t blaster;
     instant_measurement_config_t  harvester;
+    levl_config_t levl;
     hash_map_t  *stats_config_map;
     hash_map_t  *steering_config_map;
     hash_map_t  *steering_client_map;
@@ -467,6 +470,13 @@ webconfig_error_t       encode_vif_neighbors_subdoc(webconfig_t *config, webconf
 webconfig_error_t       translate_to_vif_neighbors_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_from_vif_neighbors_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 
+//Levl
+webconfig_error_t       init_levl_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_levl_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_levl_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_levl_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_levl_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_levl_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 #ifdef __cplusplus
 }
 #endif

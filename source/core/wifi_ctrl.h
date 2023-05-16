@@ -61,6 +61,7 @@ extern "C" {
 
 #define CSI_CLIENT_PER_SESSION 5
 #define MAX_NUM_CSI_CLIENTS         3
+#define MAX_LEVL_CSI_CLIENTS 3
 
 #define RSSI_THRESHOLD                     "RssiThresholdValue"
 #define RECONNECT_COUNT_STATUS             "ReconnectCountStatus"

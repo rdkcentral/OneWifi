@@ -102,10 +102,22 @@ int push_event_to_app_queue(wifi_app_t *app, wifi_event_t *event)
 int apps_mgr_event(wifi_apps_mgr_t *apps_mgr, wifi_event_t *event)
 {
     wifi_app_t	*app = NULL;
+    unsigned int i,  mask = wifi_app_inst_base;
+
+    // check if the event is unicast to any app
+    if (unicast_event_to_apps(event)) {
+        for (i = 0; i < sizeof(mask); i++) {
+            app = get_app_by_inst(apps_mgr, (event->route.u.inst_bit_map & (mask << i)));
+            if (app != NULL) {
+                (app->desc.create_flag & APP_DETACHED) ? push_event_to_app_queue(app, event):app->desc.event_fn(app, event);
+            }
+        }
+        return RETURN_OK;
+    }
 
     // forward event to all registered apps
     app = hash_map_get_first(apps_mgr->apps_map);
-    while (app != NULL) {
+    while ((app != NULL) && (app->desc.rfc == true)) {
         if (app->desc.reg_events_types & event->event_type) {
             if ( app->desc.inst != wifi_app_inst_analytics ) {
                 (app->desc.create_flag & APP_DETACHED) ? push_event_to_app_queue(app, event):app->desc.event_fn(app, event);
@@ -133,6 +145,17 @@ int apps_mgr_analytics_event(wifi_apps_mgr_t *apps_mgr, wifi_event_type_t type, 
     return RETURN_OK;
 }
 
+int app_deinit(wifi_app_t *app, unsigned int create_flag)
+{
+    if (create_flag & APP_DETACHED) {
+        if ((app->tid != 0)) {
+            pthread_cancel(app->tid);
+        }
+    }
+
+    return RETURN_OK;
+}
+
 int app_init(wifi_app_t *app, unsigned int create_flag)
 {
     if (create_flag & APP_DETACHED) {
@@ -153,6 +176,26 @@ int app_init(wifi_app_t *app, unsigned int create_flag)
     return RETURN_OK;
 }
 
+int update_rfc_params(wifi_app_descriptor_t *descriptor)
+{
+    if (descriptor == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d NULL Pointer\n", __func__, __LINE__);
+        return -1;
+    }
+
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_wifi_db_rfc_parameters();
+    if (rfc_param == NULL) {
+         wifi_util_error_print(WIFI_CTRL,"%s:%d NULL rfc pointer\n", __func__, __LINE__);
+         return -1;
+    }
+
+    if (descriptor->inst == wifi_app_inst_levl) {
+        descriptor->rfc = rfc_param->levl_enabled_rfc;
+        descriptor->enable = descriptor->rfc;
+    }
+    return 0;
+}
+
 int app_register(wifi_apps_mgr_t *apps_mgr, wifi_app_descriptor_t *descriptor)
 {
     wifi_app_t *app;
@@ -161,16 +204,25 @@ int app_register(wifi_apps_mgr_t *apps_mgr, wifi_app_descriptor_t *descriptor)
     if ((app = get_app_by_inst(apps_mgr, descriptor->inst)) != NULL) {
         return RETURN_OK;
     }
+    update_rfc_params(descriptor);
 
     app = (wifi_app_t *)malloc(sizeof(wifi_app_t));
     memset(app, 0, sizeof(wifi_app_t));
     memcpy(&app->desc, descriptor, sizeof(wifi_app_descriptor_t));
     snprintf(key_str, sizeof(key_str), "onewifi_app_%d", descriptor->inst);
     hash_map_put(apps_mgr->apps_map, strdup(key_str), app);
-    app->desc.init_fn(app, app->desc.create_flag);
+    if (descriptor->rfc == true) {
+        app->desc.init_fn(app, app->desc.create_flag);
+    }
 
     return RETURN_OK;
 
+}
+
+int apps_mgr_update(wifi_app_t *app)
+{
+    app->desc.update_fn(app);
+    return RETURN_OK;
 }
 
 int apps_mgr_init(wifi_ctrl_t *ctrl, wifi_app_descriptor_t *descriptor, unsigned int num_apps)

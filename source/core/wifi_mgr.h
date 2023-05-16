@@ -47,6 +47,7 @@ typedef struct {
     wifi_hal_capability_t           hal_cap;
     queue_t                         *csi_data_queue;
     active_msmt_t                   blaster_config_global;
+    levl_config_t                   levl;
     rdk_wifi_radio_t                radio_config[MAX_NUM_RADIOS];
     bool                            is_db_update_required;
     hash_map_t                      *stats_config_map;
