@@ -2383,11 +2383,9 @@ void process_connect(unsigned int ap_index, auth_deauth_dev_t *dev)
     sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
 
     wifi_util_info_print(WIFI_MON, "sta map: %p Device:%s connected on ap:%d\n", sta_map, to_sta_key(dev->sta_mac, sta_key), ap_index);
-#ifdef CCSP_COMMON
     sta = (sta_data_t *)hash_map_get(sta_map, to_sta_key(dev->sta_mac, sta_key));
 
     if (sta == NULL)
-#endif // CCSP_COMMON
     {
         /* new client */
         sta = (sta_data_t *)malloc(sizeof(sta_data_t));

@@ -164,7 +164,7 @@ void vap_svc_mesh_pod_ap_connection_handler(struct ow_barrier_sta_conn_info *sta
     memcpy(data->u.dev.sta_mac, sta_conn_info->mac, sizeof(mac_address_t));
 
     pthread_mutex_lock(&monitor->queue_lock);
-    queue_push(monitor->queue, data);
+    queue_push(monitor->queue, event);
     pthread_cond_signal(&monitor->cond);
     pthread_mutex_unlock(&monitor->queue_lock);
 
