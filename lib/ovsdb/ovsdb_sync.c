@@ -207,8 +207,16 @@ json_t *ovsdb_write_s(char *ovsdb_sock_path, json_t *jsdata)
         wifidb_print("Sync: Error parsing OVSDB response (%s):\n%s\r\n", err.text, ovsdb_write_buf);
     }
     wifidb_print("Write done --- syncing database\n");
-    bool backup_success = ovsdb_backup();
-    wifidb_print("Backup database %s\n", backup_success ? "succeeded" : "failed");
+
+    if (is_db_backup_required())
+    {
+        bool backup_success = ovsdb_backup();
+        wifidb_print("Backup database %s\n", backup_success ? "succeeded" : "failed");
+    }
+    else
+    {
+        wifidb_print("Backup database is not required\n");
+    }
 
 error:
     pthread_mutex_unlock(&ovsdb_lock);

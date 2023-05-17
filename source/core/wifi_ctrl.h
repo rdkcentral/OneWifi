@@ -283,6 +283,7 @@ wifi_db_t *get_wifidb_obj();
 wifi_ctrl_t *get_wifictrl_obj();
 void deinit_ctrl_monitor(wifi_ctrl_t *ctrl);
 bool is_db_consolidated();
+bool is_db_backup_required();
 
 UINT getRadioIndexFromAp(UINT apIndex);
 UINT getPrivateApFromRadioIndex(UINT radioIndex);
