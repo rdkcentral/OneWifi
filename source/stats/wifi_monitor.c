@@ -4236,6 +4236,8 @@ int associated_device_diagnostics_send_event(void* arg)
 
     events_rbus_publish(event);
 
+    free(event);
+
     return TIMER_TASK_COMPLETE;
 }
 
