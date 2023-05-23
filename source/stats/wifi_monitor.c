@@ -4522,7 +4522,7 @@ int associated_devices_diagnostics(void *arg)
     static unsigned int vap_index = 0;
     static wifi_associated_dev3_t *dev_array = NULL;
     static unsigned int num_devs = 0;
-    bool vap_status = 0;
+    wifi_front_haul_bss_t *bss_param;
 
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
@@ -4531,10 +4531,22 @@ int associated_devices_diagnostics(void *arg)
         goto exit_task;
     }
     vap_index = VAP_INDEX(mgr->hal_cap, idx);
-    get_wifi_vap_network_status(vap_index, &vap_status);
-    if (vap_status == false) {
+
+    if (isVapSTAMesh(vap_index)) {
         goto exit_task;
     }
+
+    bss_param = Get_wifi_object_bss_parameter(vap_index);
+    if (bss_param == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d Failed to get bss info for vap index %d\n",
+            __func__, __LINE__, vap_index);
+        goto exit_task;
+    }
+
+    if (bss_param->enabled == false) {
+        goto exit_task;
+    }
+
     if (phase == 0) { /* phase 0: collect diag data */
         if (dev_array == NULL) {
             num_devs = 0;
