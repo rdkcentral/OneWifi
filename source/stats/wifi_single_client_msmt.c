@@ -2073,6 +2073,7 @@ static void ExtBlaster_report_pb_print_dbg(blaster_report_pb_t  *serialized_buff
         C_ITEM_STR( EXT_BLASTER__WI_FI_STANDARD__WIFI_STD_80211_G,      "11g" ),
         C_ITEM_STR( EXT_BLASTER__WI_FI_STANDARD__WIFI_STD_80211_N,      "11n" ),
         C_ITEM_STR( EXT_BLASTER__WI_FI_STANDARD__WIFI_STD_80211_AC,     "11ac"),
+        C_ITEM_STR( EXT_BLASTER__WI_FI_STANDARD__WIFI_STD_80211_AX,     "11ax"),
         C_ITEM_STR( EXT_BLASTER__WI_FI_STANDARD__WIFI_STD_UNKNOWN,      "unknown" ),
     };
 
