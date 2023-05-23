@@ -25,7 +25,5 @@ WorkingDirectory=/usr/ccsp/wifi
 ExecStart=/bin/sh -c '/usr/ccsp/wifi/wifiTelemetrySetup.sh'
 RemainAfterExit=yes
 
-StandardOutput=syslog+console
-
 [Install]
 WantedBy=wifi-telemetry.target
