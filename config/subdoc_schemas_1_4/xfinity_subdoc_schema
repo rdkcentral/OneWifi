@@ -39,6 +39,24 @@
                     "SecondaryRadiusSecret": "",
                 }
             },
+            "VapConnectionControl": {
+                "PreAssociationDeny": {
+                    "RssiUpThreshold": "-70",
+                    "SnrThreshold": "55",
+                    "CuThreshold": "55",
+                    "BasicDataTransmitRates": "12",
+                    "OperationalDataTransmitRates": "12,24,36,48,54",
+                    "SupportedDataTransmitRates": "12,24,36,48,54",
+                    "MinimumAdvertisedMCS": "3",
+                },
+                "PostAssociationDeny": {
+                    "RssiUpThreshold": "-70",
+                    "SnrThreshold": "55",
+                    "CuThreshold": "55",
+                    "SamplingInterval": "10",
+                    "SamplingCount": "3"
+               }
+            },
             "Interworking": {
               "ANQP": {
                     "3GPPCellularANQPElement": {
@@ -118,6 +136,24 @@
                 "SecondaryRadiusSecret": "",
             }
         },
+        "VapConnectionControl": {
+            "PreAssociationDeny": {
+                "RssiUpThreshold": "-70",
+                "SnrThreshold": "55",
+                "CuThreshold": "55",
+                "BasicDataTransmitRates": "12",
+                "OperationalDataTransmitRates": "12,24,36,48,54",
+                "SupportedDataTransmitRates": "12,24,36,48,54",
+                "MinimumAdvertisedMCS": "3",
+            },
+            "PostAssociationDeny": {
+                "RssiUpThreshold": "-70",
+                "SnrThreshold": "55",
+                "CuThreshold": "55",
+                "SamplingInterval": "10",
+                "SamplingCount": "3"
+            }
+        },
         "Interworking": {
             "ANQP": {
                 "3GPPCellularANQPElement": {
@@ -193,6 +229,24 @@
                 "SecondaryRadiusServerIPAddr": "0.0.0.0",
                     "SecondaryRadiusServerPort": 0,
                     "SecondaryRadiusSecret": "",
+                }
+            },
+            "VapConnectionControl": {
+                "PreAssociationDeny": {
+                    "RssiUpThreshold": "-70",
+                    "SnrThreshold": "55",
+                    "CuThreshold": "55",
+                    "BasicDataTransmitRates": "12",
+                    "OperationalDataTransmitRates": "12,24,36,48,54",
+                    "SupportedDataTransmitRates": "12,24,36,48,54",
+                    "MinimumAdvertisedMCS": "3",
+                },
+                "PostAssociationDeny": {
+                    "RssiUpThreshold": "-70",
+                    "SnrThreshold": "55",
+                    "CuThreshold": "55",
+                    "SamplingInterval": "10",
+                    "SamplingCount": "3"
                 }
             },
             "Interworking": {
@@ -274,6 +328,24 @@
                 "SecondaryRadiusSecret": "",
             },
         },
+        "VapConnectionControl": {
+            "PreAssociationDeny": {
+                "RssiUpThreshold": "-70",
+                "SnrThreshold": "55",
+                "CuThreshold": "55",
+                "BasicDataTransmitRates": "12",
+                "OperationalDataTransmitRates": "12,24,36,48,54",
+                "SupportedDataTransmitRates": "12,24,36,48,54",
+                "MinimumAdvertisedMCS": "3",
+            },
+            "PostAssociationDeny": {
+                "RssiUpThreshold": "-70",
+                "SnrThreshold": "55",
+                "CuThreshold": "55",
+                "SamplingInterval": "10",
+                "SamplingCount": "3"
+            }
+        },
         "Interworking": {
             "ANQP": {
                 "3GPPCellularANQPElement": {
@@ -353,6 +425,25 @@
                 "SecondaryRadiusSecret": "",
             }
         },
+        "VapConnectionControl": {
+            "PreAssociationDeny": {
+                "RssiUpThreshold": "-70",
+                "SnrThreshold": "55",
+                "CuThreshold": "55",
+                "BasicDataTransmitRates": "12",
+                "OperationalDataTransmitRates": "12,24,36,48,54",
+                "SupportedDataTransmitRates": "12,24,36,48,54",
+                "MinimumAdvertisedMCS": "3",
+                "6GOpInfoMinRate": ""
+            },
+            "PostAssociationDeny": {
+                "RssiUpThreshold": "-70",
+                "SnrThreshold": "55",
+                "CuThreshold": "55",
+                "SamplingInterval": "10",
+                "SamplingCount": "3"
+            }
+        },
         "Interworking": {
             "ANQP": {
                 "3GPPCellularANQPElement": {
@@ -430,6 +521,25 @@
                 "SecondaryRadiusServerIPAddr": "0.0.0.0",
                 "SecondaryRadiusServerPort": 0,
                 "SecondaryRadiusSecret": "",
+            }
+        },
+        "VapConnectionControl": {
+            "PreAssociationDeny": {
+                "RssiUpThreshold": "-70",
+                "SnrThreshold": "55",
+                "CuThreshold": "55",
+                "BasicDataTransmitRates": "12",
+                "OperationalDataTransmitRates": "12,24,36,48,54",
+                "SupportedDataTransmitRates": "12,24,36,48,54",
+                "MinimumAdvertisedMCS": "3",
+                "6GOpInfoMinRate": ""
+            },
+            "PostAssociationDeny": {
+                "RssiUpThreshold": "-70",
+                "SnrThreshold": "55",
+                "CuThreshold": "55",
+                "SamplingInterval": "10",
+                "SamplingCount": "3"
             }
         },
         "Interworking": {
