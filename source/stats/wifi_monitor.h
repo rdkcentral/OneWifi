@@ -37,12 +37,12 @@ typedef struct {
 #endif // CCSP_COMMON
 
 typedef struct {
-	unsigned char		bssid[32];
-	hash_map_t		*sta_map;
+    unsigned char bssid[32];
+    hash_map_t *sta_map;
 #ifdef CCSP_COMMON
-	ap_params_t		ap_params;
+    ap_params_t ap_params;
 #endif // CCSP_COMMON
-	ssid_t                  ssid;
+    ssid_t                  ssid;
 } bssid_data_t;
 
 typedef struct {
@@ -185,7 +185,7 @@ typedef struct {
     unsigned int csi_sched_interval;
 #endif // CCSP_COMMON
     bool radio_presence[MAX_NUM_RADIOS];
-    hash_map_t  *dca_list;
+    hash_map_t  *dca_list; //hash_map of wifi_dca_element_t
 } wifi_monitor_t;
 
 #ifdef CCSP_COMMON

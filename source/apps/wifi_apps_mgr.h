@@ -55,6 +55,7 @@ typedef struct {
     union {
         levl_data_t          levl;
         analytics_data_t     analytics;
+        sm_data_t            sm_data;
     } u;
 } wifi_app_data_t;
 

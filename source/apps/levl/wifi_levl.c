@@ -692,7 +692,7 @@ int levl_event(wifi_app_t *app, wifi_event_t *event)
             webconfig_event_levl(app, event->sub_type, event->u.webconfig_data);
             break;
         case wifi_event_type_monitor:
-            monitor_event_levl(app, event->sub_type, &event->u.mon_data.u.csi);
+            monitor_event_levl(app, event->sub_type, &event->u.mon_data->u.csi);
             break;
         default:
             wifi_util_dbg_print(WIFI_APPS,"%s:%d wrong apps event:%d\n", __func__, __LINE__, event->event_type);

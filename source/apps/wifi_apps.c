@@ -28,7 +28,7 @@
 #include "wifi_apps_mgr.h"
 #include <rbus.h>
 
-wifi_app_descriptor_t app_desc[4] = {
+wifi_app_descriptor_t app_desc[WIFI_APPS_NUM] = {
     {
         wifi_app_inst_analytics, 0,
         wifi_event_type_exec | wifi_event_type_webconfig | wifi_event_type_hal_ind | wifi_event_type_command | wifi_event_type_monitor | wifi_event_type_net | wifi_event_type_wifiapi,

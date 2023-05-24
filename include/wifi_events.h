@@ -42,21 +42,6 @@ typedef enum {
 } wifi_sub_component_t;
 
 typedef enum {
-    wifi_app_inst_blaster = wifi_app_inst_base,
-    wifi_app_inst_harvester = wifi_app_inst_base << 1,
-    wifi_app_inst_single_msmt = wifi_app_inst_base << 2,
-    wifi_app_inst_analytics = wifi_app_inst_base << 3,
-    wifi_app_inst_cognitive = wifi_app_inst_base << 4,
-    wifi_app_inst_levl = wifi_app_inst_base << 5,
-    wifi_app_inst_opensync = wifi_app_inst_base << 6,
-    wifi_app_inst_easymesh = wifi_app_inst_base << 7,
-    wifi_app_inst_matter = wifi_app_inst_base << 8,
-    wifi_app_inst_cac = wifi_app_inst_base << 9,
-    wifi_app_inst_sm = wifi_app_inst_base << 10,
-    wifi_app_inst_max = wifi_app_inst_base << 11
-} wifi_app_inst_t;
-
-typedef enum {
     wifi_event_type_exec,
     wifi_event_type_webconfig,
     wifi_event_type_hal_ind,
@@ -64,6 +49,7 @@ typedef enum {
     wifi_event_type_monitor,
     wifi_event_type_net,
     wifi_event_type_wifiapi,
+    wifi_event_type_analytic,
     wifi_event_type_max
 } wifi_event_type_t;
 
@@ -190,10 +176,10 @@ typedef struct {
     wifi_event_subtype_t  sub_type;
     wifi_event_route_t    route;
     union {
-        wifi_monitor_data_t mon_data;
+        wifi_monitor_data_t *mon_data;
         wifi_core_data_t    core_data;
         wifi_analytics_data_t   analytics_data;
-        wifi_dca_response_t     dca_response;
+        wifi_dca_response_t     *dca_response;
         webconfig_subdoc_data_t *webconfig_data;
     } u;
 } __attribute__((__packed__)) wifi_event_t;
@@ -207,6 +193,8 @@ int events_rbus_init(void);
 int events_rbus_publish(wifi_event_t *event);
 int events_rbus_deinit(void);
 void events_update_clientdiagdata(unsigned int num_devs, int vap_idx, wifi_associated_dev3_t *dev_array);
+wifi_event_t *create_wifi_event(unsigned int msg_len, wifi_event_type_t type, wifi_event_subtype_t sub_type);
+void destroy_wifi_event(wifi_event_t *event);
 
 #ifdef __cplusplus
 }

@@ -83,6 +83,26 @@ extern "C" {
 #define wifi_sub_component_base     0x01
 #define wifi_app_inst_base          0x01
 
+#define WIFI_APPS_NUM   4
+
+//TODO : Need to be removed when a arrays in wifi_dca_response_t are changed to pointer
+#define MAX_AP_PER_RADIO    16
+
+typedef enum {
+    wifi_app_inst_blaster = wifi_app_inst_base,
+    wifi_app_inst_harvester = wifi_app_inst_base << 1,
+    wifi_app_inst_single_msmt = wifi_app_inst_base << 2,
+    wifi_app_inst_analytics = wifi_app_inst_base << 3,
+    wifi_app_inst_cognitive = wifi_app_inst_base << 4,
+    wifi_app_inst_levl = wifi_app_inst_base << 5,
+    wifi_app_inst_opensync = wifi_app_inst_base << 6,
+    wifi_app_inst_easymesh = wifi_app_inst_base << 7,
+    wifi_app_inst_matter = wifi_app_inst_base << 8,
+    wifi_app_inst_cac = wifi_app_inst_base << 9,
+    wifi_app_inst_sm = wifi_app_inst_base << 10,
+    wifi_app_inst_max = wifi_app_inst_base << 11
+} wifi_app_inst_t;
+
 typedef struct {
     void *msg;
     unsigned int len;
@@ -109,6 +129,8 @@ typedef void *wifi_analytics_data_t;
 #define MAX_CSI_CLIENTMACLIST_STR  650
 
 #define MAX_BUF_SIZE 128
+#define DCA_KEY_LEN     32
+#define DCA_APP_KEY_LEN 16
 
 typedef unsigned char   mac_addr_t[MAC_ADDR_LEN];
 typedef signed short    rssi_t;
@@ -140,10 +162,11 @@ typedef struct {
 
 // data collection api type
 typedef enum {
-   dca_radio_channel_stats,
-   dca_neighbor_stats,
-   dca_associated_device_stats,
-   dca_radio_traffic_stats
+    dca_radio_channel_stats=0,
+    dca_neighbor_stats,
+    dca_associated_device_diag,
+    dca_associated_device_stats,
+    dca_radio_traffic_stats
 } wifi_monitor_dca_t;
 
 typedef enum {
@@ -152,40 +175,61 @@ typedef enum {
 } wifi_monitor_dca_request_state_t;
 
 typedef struct {
-    unsigned int            vap_index;
     unsigned int            radio_index;
-    mac_address_t           sta_mac;
+    unsigned int            vap_index;
     wifi_channels_list_t    channel_list;
+    wifi_neighborScanMode_t scan_mode;
+    int dwell_time; //survey_interval_ms
+    int is_type_capacity;
 } __attribute__((packed)) wifi_dca_args_t;
 
 typedef struct {
-    hash_map_t      app_list; //wifi_dca_app_element_t
-    int             task_sched_id;
-    unsigned long   curr_interval_ms;
-    unsigned int    curr_repetitions;           /* 0 means no stop */
-} __attribute__((packed)) wifi_dca_element_t;
+    wifi_app_inst_t inst;
+    unsigned long   req_interval_ms;
+    unsigned int    req_repetitions;           /* 0 means no stop */
+    //control variables - used by monitor
+    unsigned int    counter_limit;
+    unsigned int    execution_counter;
+    unsigned int    app_execution_counter;
+    char            key[DCA_APP_KEY_LEN]; // based on wifi_app_inst_t converted to string
+    bool            app_priority; //true for high priority
+} __attribute__((packed)) wifi_dca_app_element_t;
 
 //argument for the scheduler callback
 typedef struct {
-    wifi_dca_args_t     args;
-    wifi_dca_element_t  *task_info;
-} __attribute__((packed)) wifi_dca_callback_arg_t; 
+    wifi_dca_args_t args;
+    void            *task_info; // wifi_dca_element_t
+} __attribute__((packed)) wifi_dca_callback_arg_t;
+
+typedef struct {
+    hash_map_t      *app_list; // wifi_dca_app_element_t
+    int             task_sched_id;
+    unsigned long   curr_interval_ms;
+    unsigned int    curr_repetitions;           /* 0 means no stop */
+    char            key[DCA_KEY_LEN]; // based on wifi_monitor_dca_t wifi_dca_args_t params
+    wifi_dca_callback_arg_t *task_args;
+} __attribute__((packed)) wifi_dca_element_t;
 
 typedef struct {
     wifi_monitor_dca_t  data_type;
     wifi_dca_args_t     args;
     union {
-    //hal strucutures which need to be send to ctrl queue for app processing
-    wifi_channelStats_t     chan_stats;
-    wifi_neighbor_ap2_t     neigh_ap;
-    wifi_associated_dev3_t  assoc_dev;
+        //hal strucutures which need to be send to ctrl queue for app processing
+        //TODO : change this arrays to pointers
+        wifi_channelStats_t         chan_stats[MAX_CHANNELS];
+        wifi_neighbor_ap2_t         neigh_ap[MAX_AP_PER_RADIO];
+        wifi_associated_dev3_t      assoc_dev_diag[MAX_ASSOCIATED_WIFI_DEVS];
+        wifi_associated_dev_stats_t assoc_dev_stats[MAX_ASSOCIATED_WIFI_DEVS];
     } u;
+    unsigned int stat_array_size;
 } wifi_dca_response_t;
 
 typedef struct {
+    wifi_app_inst_t     inst;
     wifi_monitor_dca_t  data_type;
     unsigned long       interval_ms;
     unsigned int        repetitions;           /* 0 means no stop */
+    bool                task_priority; //if TRUE its high priority
     wifi_monitor_dca_request_state_t    req_state;
     wifi_dca_args_t     args;
 } __attribute__((packed)) wifi_config_data_collection_t;

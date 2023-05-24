@@ -2328,8 +2328,8 @@ int events_rbus_publish(wifi_event_t *evt)
     switch(evt->sub_type)
     {
         case wifi_event_monitor_diagnostics:
-            sprintf(eventName, "Device.WiFi.AccessPoint.%d.X_RDK_DiagData", evt->u.mon_data.ap_index + 1);
-            getVAPArrayIndexFromVAPIndex((unsigned int) evt->u.mon_data.ap_index, &vap_array_index);
+            sprintf(eventName, "Device.WiFi.AccessPoint.%d.X_RDK_DiagData", evt->u.mon_data->ap_index + 1);
+            getVAPArrayIndexFromVAPIndex((unsigned int) evt->u.mon_data->ap_index, &vap_array_index);
             if(ctrl->events_rbus_data.diag_events_json_buffer[vap_array_index] != NULL)
             {
                 rbusValue_SetString(value, ctrl->events_rbus_data.diag_events_json_buffer[vap_array_index]);
@@ -2341,17 +2341,17 @@ int events_rbus_publish(wifi_event_t *evt)
         case wifi_event_monitor_disconnect:
         case wifi_event_monitor_deauthenticate:
             if(evt->sub_type == wifi_event_monitor_connect) {
-                sprintf(eventName, "Device.WiFi.AccessPoint.%d.X_RDK_deviceConnected", evt->u.mon_data.ap_index + 1);
+                sprintf(eventName, "Device.WiFi.AccessPoint.%d.X_RDK_deviceConnected", evt->u.mon_data->ap_index + 1);
             }
             else if(evt->sub_type == wifi_event_monitor_disconnect) {
-                sprintf(eventName, "Device.WiFi.AccessPoint.%d.X_RDK_deviceDisconnected", evt->u.mon_data.ap_index + 1);
+                sprintf(eventName, "Device.WiFi.AccessPoint.%d.X_RDK_deviceDisconnected", evt->u.mon_data->ap_index + 1);
             }
             else {
-                sprintf(eventName, "Device.WiFi.AccessPoint.%d.X_RDK_deviceDeauthenticated", evt->u.mon_data.ap_index + 1);
+                sprintf(eventName, "Device.WiFi.AccessPoint.%d.X_RDK_deviceDeauthenticated", evt->u.mon_data->ap_index + 1);
             }
             if(events_getSubscribed(eventName) == TRUE)
             {
-                rbusValue_SetBytes(value, (uint8_t *)&evt->u.mon_data.u.dev.sta_mac[0], sizeof(evt->u.mon_data.u.dev.sta_mac));
+                rbusValue_SetBytes(value, (uint8_t *)&evt->u.mon_data->u.dev.sta_mac[0], sizeof(evt->u.mon_data->u.dev.sta_mac));
                 wifi_util_dbg_print(WIFI_CTRL, "%s(): Event - %d %s \n", __FUNCTION__, evt->sub_type, eventName);
                 should_publish = TRUE;
             }
@@ -2363,7 +2363,7 @@ int events_rbus_publish(wifi_event_t *evt)
                 time_t datetime;
                 char *pbuffer = (char *)buffer;
 
-                sprintf(eventName, "Device.WiFi.X_RDK_CSI.%d.data", evt->u.mon_data.csi_session);
+                sprintf(eventName, "Device.WiFi.X_RDK_CSI.%d.data", evt->u.mon_data->csi_session);
 
                 //ASCII characters "CSI"
                 memcpy(pbuffer,"CSI", (strlen("CSI") + 1));
@@ -2385,7 +2385,7 @@ int events_rbus_publish(wifi_event_t *evt)
                 pbuffer = pbuffer + sizeof(unsigned int);
 
                 //clientMacAddress:  <client mac address>
-                memcpy(pbuffer, &evt->u.mon_data.u.csi.sta_mac, sizeof(mac_addr_t));
+                memcpy(pbuffer, &evt->u.mon_data->u.csi.sta_mac, sizeof(mac_addr_t));
                 pbuffer = pbuffer + sizeof(mac_addr_t);
 
                 //length of client CSI data:  <size of the next field in bytes>
@@ -2394,7 +2394,7 @@ int events_rbus_publish(wifi_event_t *evt)
                 pbuffer = pbuffer + sizeof(unsigned int);
 
                 //<client device CSI data>
-                memcpy(pbuffer, &evt->u.mon_data.u.csi.csi, sizeof(wifi_csi_data_t));
+                memcpy(pbuffer, &evt->u.mon_data->u.csi.csi, sizeof(wifi_csi_data_t));
 
                 rbusValue_SetBytes(value, (uint8_t*)buffer, sizeof(buffer));
                 should_publish = TRUE;

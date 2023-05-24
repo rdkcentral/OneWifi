@@ -352,6 +352,10 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
                         handle_wifiapi_event(event->u.core_data.msg, event->u.core_data.len, event->sub_type);
                         break;
 
+                    case wifi_event_type_monitor:
+                        wifi_util_dbg_print(WIFI_CTRL,"[%s]: Received monitor Event %d\r\n",__FUNCTION__, event->event_type);
+                        break;
+
                     default:
                         wifi_util_dbg_print(WIFI_CTRL,"[%s]:WIFI ctrl thread not supported this event %d\r\n",__FUNCTION__, event->event_type);
                         break;
@@ -364,11 +368,8 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
 #endif
                 }
 
-                if(event->u.core_data.msg) {
-                    free(event->u.core_data.msg);
-                }
+                destroy_wifi_event(event);
 
-                free(event);
                 gettimeofday(&ctrl->last_signalled_time, NULL);
                 pthread_mutex_lock(&ctrl->lock);
             }

@@ -33,7 +33,7 @@ wifi_app_t *get_app_by_inst(wifi_apps_mgr_t *apps_mgr, wifi_app_inst_t inst)
     char key_str[32];
     wifi_app_t *node = NULL;
 
-    snprintf(key_str, sizeof(key_str), "onewifi_app_%d", inst);
+    snprintf(key_str, sizeof(key_str), "app_%010d", inst);
     node = (wifi_app_t *)hash_map_get(apps_mgr->apps_map, key_str);
 
     return node;
@@ -87,7 +87,7 @@ int push_event_to_app_queue(wifi_app_t *app, wifi_event_t *event)
 
     clone_wifi_event(event, &clone);
     if(clone == NULL) {
-        wifi_util_error_print(WIFI_CTRL,"RDK_LOG_WARN, WIFI %s: failed to clone event\n",__FUNCTION__);
+        wifi_util_error_print(WIFI_APPS, "%s %d failed to clone event\n",__FUNCTION__, __LINE__);
         return RETURN_ERR;
     }
 
@@ -102,15 +102,17 @@ int push_event_to_app_queue(wifi_app_t *app, wifi_event_t *event)
 int apps_mgr_event(wifi_apps_mgr_t *apps_mgr, wifi_event_t *event)
 {
     wifi_app_t	*app = NULL;
-    unsigned int i,  mask = wifi_app_inst_base;
+    unsigned int i = 0;
 
     // check if the event is unicast to any app
     if (unicast_event_to_apps(event)) {
-        for (i = 0; i < sizeof(mask); i++) {
-            app = get_app_by_inst(apps_mgr, (event->route.u.inst_bit_map & (mask << i)));
-            if (app != NULL) {
+        i = wifi_app_inst_max;
+        while (i) {
+            app = get_app_by_inst(apps_mgr, (event->route.u.inst_bit_map & i));
+            if ((app != NULL) && (app->desc.rfc == true)) {
                 (app->desc.create_flag & APP_DETACHED) ? push_event_to_app_queue(app, event):app->desc.event_fn(app, event);
             }
+            i = i>>1;
         }
         return RETURN_OK;
     }
@@ -132,16 +134,52 @@ int apps_mgr_event(wifi_apps_mgr_t *apps_mgr, wifi_event_t *event)
 
 int apps_mgr_analytics_event(wifi_apps_mgr_t *apps_mgr, wifi_event_type_t type, wifi_event_subtype_t sub_type, void *arg)
 {
-    wifi_event_t event;
     wifi_app_t  *app = NULL;
+    wifi_event_t *event;
 
-    event.u.analytics_data = arg;
-    event.event_type = type;
-    event.sub_type = sub_type;
+    event = (wifi_event_t *)create_wifi_event(sizeof(wifi_analytics_data_t), wifi_event_type_analytic, sub_type);
+    if (event == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s %d failed to allocate memory to event\n",__FUNCTION__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    event->u.analytics_data = arg;
+    event->event_type = type;
+    event->sub_type = sub_type;
 
     app = get_app_by_inst(apps_mgr, wifi_app_inst_analytics);
 
-    app->desc.event_fn(app, &event);
+    app->desc.event_fn(app, event);
+
+    event->event_type = wifi_event_type_analytic;
+
+    destroy_wifi_event(event);
+
+    return RETURN_OK;
+}
+
+int apps_mgr_sm_event(wifi_apps_mgr_t *apps_mgr, wifi_event_type_t type, wifi_event_subtype_t sub_type, void *arg)
+{
+    wifi_event_t *event = (wifi_event_t *)malloc(sizeof(wifi_event_t));
+    wifi_app_t  *app = NULL;
+
+    if (event == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s %d failed to allocate memory to event\n",__FUNCTION__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    event->u.webconfig_data = arg;
+    event->event_type = type;
+    event->sub_type = sub_type;
+
+    app = get_app_by_inst(apps_mgr, wifi_app_inst_sm);
+
+    app->desc.event_fn(app, event);
+
+    if (event != NULL) {
+        free(event);
+    }
+
     return RETURN_OK;
 }
 
@@ -209,7 +247,7 @@ int app_register(wifi_apps_mgr_t *apps_mgr, wifi_app_descriptor_t *descriptor)
     app = (wifi_app_t *)malloc(sizeof(wifi_app_t));
     memset(app, 0, sizeof(wifi_app_t));
     memcpy(&app->desc, descriptor, sizeof(wifi_app_descriptor_t));
-    snprintf(key_str, sizeof(key_str), "onewifi_app_%d", descriptor->inst);
+    snprintf(key_str, sizeof(key_str), "app_%010d", descriptor->inst);
     hash_map_put(apps_mgr->apps_map, strdup(key_str), app);
     if (descriptor->rfc == true) {
         app->desc.init_fn(app, app->desc.create_flag);

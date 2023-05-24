@@ -52,7 +52,7 @@
 #include "util.h"
 
 #if DML_SUPPORT
-extern wifi_app_descriptor_t app_desc[4];
+extern wifi_app_descriptor_t app_desc[WIFI_APPS_NUM];
 extern void* bus_handle;
 extern char g_Subsystem[32];
 
@@ -1581,7 +1581,7 @@ int start_wifimgr()
     // initialize wifi apps mgr after wifidb init
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     if (ctrl != NULL) {
-        apps_mgr_init(ctrl, app_desc, 4);
+        apps_mgr_init(ctrl, app_desc, WIFI_APPS_NUM);
     } else {
         wifi_util_error_print(WIFI_MGR,"%s:%d NULL Ctrl Pointer Unable to init app\n", __func__, __LINE__);
     }

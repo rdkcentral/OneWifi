@@ -123,6 +123,7 @@ void vap_svc_mesh_pod_ap_connection_handler(struct ow_barrier_sta_conn_info *sta
     wifi_event_t *event;
     assoc_dev_data_t assoc_data = { 0 };
     char mac_str[32] = { 0 };
+    wifi_event_subtype_t sub_type;
 
     if (!bss_info || !sta) {
         return;
@@ -152,14 +153,15 @@ void vap_svc_mesh_pod_ap_connection_handler(struct ow_barrier_sta_conn_info *sta
         return;
     }
 
-    if (!(event = (wifi_event_t *)calloc(1, sizeof(wifi_event_t)))) {
+
+    sub_type = (sta->connect_status == wifi_connection_status_connected) ? wifi_event_monitor_connect : wifi_event_monitor_disconnect;
+    event = (wifi_event_t *)create_wifi_event(sizeof(wifi_monitor_data_t), wifi_event_type_monitor, sub_type);
+    if (event == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: Unable to allocate memory!\n", __func__, __LINE__);
         return;
     }
 
-    event->event_type = wifi_event_type_monitor;
-    event->sub_type = (sta->connect_status == wifi_connection_status_connected) ? wifi_event_monitor_connect : wifi_event_monitor_disconnect;
-    data = &event->u.mon_data;
+    data = event->u.mon_data;
     data->ap_index = index;
     memcpy(data->u.dev.sta_mac, sta_conn_info->mac, sizeof(mac_address_t));
 

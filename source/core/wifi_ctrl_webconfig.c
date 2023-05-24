@@ -2502,7 +2502,12 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                 //Not Applicable
             } else {
                 wifi_util_dbg_print(WIFI_MGR, "%s:%d: stats config subdoc\n", __func__, __LINE__);
+#if CCSP_COMMON
+                wifi_util_dbg_print(WIFI_MGR, "%s:%d: sending config for handling by sm app\n", __func__, __LINE__);
+                ret = apps_mgr_sm_event(&ctrl->apps_mgr, wifi_event_type_webconfig, wifi_event_webconfig_set_data_ovsm, (void *)data);
+#else
                 ret = webconfig_stats_config_apply(ctrl, &data->u.decoded);
+#endif
                 if (ret != RETURN_OK) {
                     wifi_util_dbg_print(WIFI_MGR, "%s:%d: stats config failed\n", __func__, __LINE__);
                     return webconfig_error_apply;

@@ -26,6 +26,10 @@ extern "C" {
 
 typedef struct wifi_app wifi_app_t;
 
+typedef struct {
+    hash_map_t           *sm_stats_config_map;
+} sm_data_t;
+
 int sm_init(wifi_app_t *app, unsigned int create_flag);
 int sm_deinit(wifi_app_t *app);
 int sm_event(wifi_app_t *app, wifi_event_t *event);
