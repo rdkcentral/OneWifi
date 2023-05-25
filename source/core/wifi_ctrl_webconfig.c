@@ -1996,6 +1996,10 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
     bool rfc_status;
     int ret;
     int is_changed = 0;
+#if defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+    bool old_ecomode = false;
+    bool new_ecomode = false;
+#endif
     // apply the radio and vap data
     for (i = 0; i < getNumberRadios(); i++) {
         radio_data = &data->radios[i];
@@ -2056,6 +2060,15 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
                 }
             }
 #endif // CCSP_COMMON
+#if defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+            // Save the ECO mode state before update to the DB
+            old_ecomode = mgr_radio_data->oper.EcoPowerDown;
+            new_ecomode = radio_data->oper.EcoPowerDown;
+            if (old_ecomode != new_ecomode ) {
+                radio_data->oper.enable = ((new_ecomode) ? false : true);
+                wifi_util_info_print(WIFI_MGR, "%s:%d:Changing radio enable status:radio_data->oper.enable= %d\n",__func__,__LINE__, radio_data->oper.enable);
+            }
+#endif // defined (FEATURE_SUPPORT_ECOPOWERDOWN)
             get_wifi_rfc_parameters(RFC_WIFI_OW_CORE_THREAD, (bool *)&rfc_status);
             if (true == rfc_status) {
                 wifi_util_dbg_print(WIFI_WEBCONFIG,"[%s]:WIFI RFC OW CORE THREAD ENABLED \r\n",__FUNCTION__);
@@ -2079,11 +2092,6 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
         }
 
         if (is_changed) {
-#if defined (FEATURE_SUPPORT_ECOPOWERDOWN)
-            // Save the ECO mode state before update to the DB
-            bool old_ecomode = mgr_radio_data->oper.EcoPowerDown;
-            bool new_ecomode = radio_data->oper.EcoPowerDown;
-#endif // defined (FEATURE_SUPPORT_ECOPOWERDOWN)
 
 // write the value to database
 #ifndef LINUX_VM_PORT

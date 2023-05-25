@@ -2745,6 +2745,12 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
     // EcoPowerDown
     decode_param_bool(obj_radio, "EcoPowerDown", param);
     radio_info->EcoPowerDown = (param->type & cJSON_True) ? true:false;
+#ifdef FEATURE_SUPPORT_ECOPOWERDOWN
+    if (radio_info->EcoPowerDown && radio_info->enable ) {
+        wifi_util_error_print(WIFI_WEBCONFIG," Radio is in eco mode, so not allowed to radio in enable state\n");
+        return webconfig_error_decode;
+    }
+#endif // FEATURE_SUPPORT_ECOPOWERDOWN
 
     // Tscan
     decode_param_integer(obj_radio, "Tscan", param);

@@ -1713,7 +1713,6 @@ Radio_GetParamBoolValue
     {
         /* collect value */
         *pBool = pcfg->enable;
-        
         return TRUE;
     }
 
@@ -2884,6 +2883,11 @@ Radio_SetParamBoolValue
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:WIFI_ATTEMPT_TO_CHANGE_CONFIG_WHEN_FORCE_DISABLED\n",__func__, __LINE__);
             return FALSE;
         }
+        if (get_radio_presence(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop, instance_number) == false) {
+            CcspWifiTrace(("RDK_LOG_ERROR, %s:%d: Not allowed to change config when radio is not present in CPE \n", __func__, __LINE__));
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: Not allowed to change config when radio is not present in CPE \n", __func__, __LINE__);
+            return FALSE;
+        }
         if (wifiRadioOperParam->enable == bValue)
         {
              return  TRUE;
@@ -3051,6 +3055,10 @@ Radio_SetParamBoolValue
         }
         /* save update to backup */
         wifiRadioOperParam->EcoPowerDown = bValue;
+#ifdef FEATURE_SUPPORT_ECOPOWERDOWN
+        wifiRadioOperParam->enable = ( (wifiRadioOperParam->EcoPowerDown) ? false : true);
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: Updated radio enable status based on EcoPowerDown, EcoPowerDown = %d, Enable = %d  \n", __func__, __LINE__,wifiRadioOperParam->EcoPowerDown, wifiRadioOperParam->enable);
+#endif // FEATURE_SUPPORT_ECOPOWERDOWN
         is_radio_config_changed = TRUE;
         ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s EcoPowerDown : %d\n", __FUNCTION__, wifiRadioOperParam->EcoPowerDown);
 #endif // defined (FEATURE_SUPPORT_ECOPOWERDOWN)

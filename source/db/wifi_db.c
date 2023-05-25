@@ -1700,6 +1700,13 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
     config->chanUtilThreshold = cfg->chan_util_threshold;
     config->chanUtilSelfHealEnable = cfg->chan_util_selfheal_enable;
     config->EcoPowerDown = cfg->eco_power_down;
+#ifdef FEATURE_SUPPORT_ECOPOWERDOWN
+    //Update enable status based on EcoPowerDown.
+    if(config->EcoPowerDown)
+    {
+        config->enable = false;
+    }
+#endif //FEATURE_SUPPORT_ECOPOWERDOWN
     feat_config->OffChanTscanInMsec = cfg->Tscan;
     feat_config->OffChanNscanInSec = (cfg->Nscan == 0) ? 0 : (24*3600)/(cfg->Nscan);
     feat_config->OffChanTidleInSec = cfg->Tidle;
