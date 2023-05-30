@@ -3529,7 +3529,7 @@ webconfig_error_t decode_blaster_object(const cJSON *blaster_cfg, active_msmt_t 
     blaster_info->ActiveMsmtSampleDuration = param->valuedouble;
 
     decode_param_string(blaster_cfg, "PlanId", param);
-    strcpy((char *)blaster_info->PlanId, param->valuestring);
+    strncpy((char *)blaster_info->PlanId, param->valuestring, sizeof(blaster_info->PlanId) - 1);
 
     decode_param_array(blaster_cfg, "Step", obj_array);
     length = cJSON_GetArraySize(obj_array);

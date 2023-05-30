@@ -374,8 +374,9 @@ void print_wifi_hal_vap_wps_data(wifi_dbg_type_t log_file_type, char *prefix, un
 
 int webconfig_blaster_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
-    unsigned int i = 0;
+    wifi_monitor_data_t mon_data = {};
     wifi_mgr_t *mgr = get_wifimgr_obj();
+
     if ((mgr == NULL) || (data == NULL)) {
         wifi_util_error_print(WIFI_CTRL,"%s %d Mgr or Data is NULL\n", __func__, __LINE__);
         return RETURN_ERR;
@@ -398,27 +399,8 @@ int webconfig_blaster_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *
             wifi_util_info_print(WIFI_CTRL, "GW doesnot dependant on MQTT topic\n");
     }
 
-    active_msmt_t *cfg = &data->blaster;
-
-    SetActiveMsmtPktSize(cfg->ActiveMsmtPktSize);
-#ifdef CCSP_COMMON
-    SetActiveMsmtSampleDuration(cfg->ActiveMsmtSampleDuration);
-#else
-    SetActiveMsmtSampleDuration(cfg->ActiveMsmtSampleDuration / cfg->ActiveMsmtNumberOfSamples);
-#endif // CCSP_COMMON
-    SetActiveMsmtNumberOfSamples(cfg->ActiveMsmtNumberOfSamples);
-    SetActiveMsmtPlanID((char *)cfg->PlanId);
-    SetBlasterMqttTopic((char *)cfg->blaster_mqtt_topic);
-
-    for (i = 0; i < MAX_STEP_COUNT; i++) {
-        if(strlen((char *) cfg->Step[i].DestMac) != 0) {
-            SetActiveMsmtStepID(cfg->Step[i].StepId, i);
-            SetActiveMsmtStepDstMac((char *)cfg->Step[i].DestMac, i);
-            SetActiveMsmtStepSrcMac((char *)cfg->Step[i].SrcMac, i);
-        }
-    }
-
-    SetActiveMsmtEnable(cfg->ActiveMsmtEnable);
+    memcpy(&mon_data.u.amsmt, &data->blaster, sizeof(active_msmt_t));
+    push_event_to_monitor_queue(&mon_data, wifi_event_monitor_process_active_msmt, NULL);
 
     return RETURN_OK;
 }

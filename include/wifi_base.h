@@ -151,6 +151,48 @@ typedef struct {
     int        reason;
 } auth_deauth_dev_t;
 
+#define MAX_MQTT_TOPIC_LEN 256
+char awlan_mqtt_topic[MAX_MQTT_TOPIC_LEN];
+
+typedef enum {
+    blaster_state_new,
+    blaster_state_completed
+} blaster_state_t;
+
+typedef struct {
+    unsigned char SrcMac[MAC_ADDRESS_LENGTH];
+    unsigned char DestMac[MAC_ADDRESS_LENGTH];
+    unsigned int StepId;
+    int ApIndex;
+} active_msmt_step_t;
+
+typedef enum {
+    ACTIVE_MSMT_STEP_DONE,
+    ACTIVE_MSMT_STEP_PENDING,
+    ACTIVE_MSMT_STEP_INVALID,
+} active_msmt_step_status_t;
+
+typedef struct {
+    double cpu_one;
+    double cpu_five;
+    double cpu_fifteen;
+    unsigned int util_cpu;
+    unsigned int util_mem;
+} active_msmt_resources_t;
+
+typedef struct {
+    bool                              ActiveMsmtEnable;
+    unsigned int                      ActiveMsmtSampleDuration;
+    unsigned int                      ActiveMsmtPktSize;
+    unsigned int                      ActiveMsmtNumberOfSamples;
+    unsigned char                     PlanId[PLAN_ID_LENGTH];
+    active_msmt_step_status_t         StepInstance[MAX_STEP_COUNT];
+    active_msmt_step_t                Step[MAX_STEP_COUNT];
+    active_msmt_resources_t           ActiveMsmtResources;
+    blaster_state_t                   Status;
+    unsigned char                     blaster_mqtt_topic[MAX_MQTT_TOPIC_LEN];
+} active_msmt_t;
+
 typedef struct {
     int type;  //Device.WiFi.X_RDKCENTRAL-COM_vAPStatsEnable= 0, Device.WiFi.AccessPoint.<vAP>.X_RDKCENTRAL-COM_StatsEnable = 1
     bool enable; // true, false
@@ -254,6 +296,7 @@ typedef struct {
         auth_deauth_dev_t   dev;
         client_stats_enable_t   flag;
         instant_msmt_t      imsmt;
+        active_msmt_t       amsmt;
         associated_devs_t   devs;
         wifi_csi_dev_t csi;
         wifi_config_data_collection_t dca;
@@ -284,33 +327,6 @@ typedef enum {
     rdk_dev_mode_type_gw,
     rdk_dev_mode_type_ext
 } rdk_dev_mode_type_t;
-
-#define MAX_MQTT_TOPIC_LEN 256
-char awlan_mqtt_topic[MAX_MQTT_TOPIC_LEN];
-
-typedef enum {
-    blaster_state_new,
-    blaster_state_completed
-} blaster_state_t;
-
-typedef struct {
-    unsigned char SrcMac[MAC_ADDRESS_LENGTH];
-    unsigned char DestMac[MAC_ADDRESS_LENGTH];
-    unsigned int StepId;
-    int ApIndex;
-} active_msmt_step_t;
-
-typedef struct {
-    bool                ActiveMsmtEnable;
-    unsigned int        ActiveMsmtSampleDuration;
-    unsigned int        ActiveMsmtPktSize;
-    unsigned int        ActiveMsmtNumberOfSamples;
-    unsigned char       PlanId[PLAN_ID_LENGTH];
-    unsigned char       StepInstance[MAX_STEP_COUNT];
-    active_msmt_step_t    Step[MAX_STEP_COUNT];
-    blaster_state_t     Status;
-    unsigned char       blaster_mqtt_topic[MAX_MQTT_TOPIC_LEN];
-} active_msmt_t;
 
 typedef struct {
     mac_address_t clientMac;

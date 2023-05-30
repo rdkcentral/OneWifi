@@ -1576,9 +1576,6 @@ void upload_single_client_active_msmt_data(bssid_data_t *bssid_info, sta_data_t 
 #endif // CCSP_COMMON
 }
 
-#define LINUX_PROC_MEMINFO_FILE  "/proc/meminfo"
-#define LINUX_PROC_LOADAVG_FILE  "/proc/loadavg"
-
 typedef struct blaster_report_pb {
     size_t  len;   /* Length of the serialized protobuf */
     void    *buf;  /* Allocated pointer for serialized data */
@@ -1621,74 +1618,15 @@ static void ext_blaster_report_status_struct_free(ExtBlaster__WifiBlastResult__S
     free(status);
 }
 
-static bool DeviceMemory_DataGet(uint32_t *util_mem)
-{
-    const char *filename = LINUX_PROC_MEMINFO_FILE;
-    FILE *proc_file = NULL;
-    char buf[256] = {'\0'};
-    uint32_t mem_total = 0;
-    uint32_t mem_free = 0;
-
-    proc_file = fopen(filename, "r");
-    if (proc_file == NULL)
-    {
-        wifi_util_dbg_print(WIFI_MON,"Failed opening file: %s\n", filename);
-        return -1;
-    }
-
-    while (fgets(buf, sizeof(buf), proc_file) != NULL)
-    {
-        if (strncmp(buf, "MemTotal:", strlen("MemTotal:")) == 0)
-        {
-            if (sscanf(buf, "MemTotal: %u", &mem_total) != 1)
-                goto parse_error;
-        } else if (strncmp(buf, "MemFree:", strlen("MemFree:")) == 0) {
-            if (sscanf(buf, "MemFree: %u", &mem_free) != 1)
-                goto parse_error;
-        }
-    }
-    wifi_util_dbg_print(WIFI_MON," Returned MemTotal is %d and MemFree is %d\n", mem_total, mem_free);
-    *util_mem = mem_total - mem_free;
-    fclose(proc_file);
-    return 1;
-parse_error:
-    fclose(proc_file);
-    wifi_util_dbg_print(WIFI_MON,"Error parsing %s.\n", filename);
-    return 0;
-}
-
-static bool DeviceLoad_DataGet(ExtBlaster__WifiBlastResult__HealthMetrics__LoadAvg *LAvg_Protbuf)
-{
-    int32_t     rc;
-    const char  *filename = LINUX_PROC_LOADAVG_FILE;
-    FILE        *proc_file = NULL;
-
-    proc_file = fopen(filename, "r");
-    if (proc_file == NULL)
-    {
-        wifi_util_dbg_print(WIFI_MON,"Parsing device stats (Failed to open %s)\n", filename);
-        return false;
-    }
-
-    rc = fscanf(proc_file,
-            "%lf %lf %lf",
-            &LAvg_Protbuf->one,
-            &LAvg_Protbuf->five,
-            &LAvg_Protbuf->fifteen);
-
-    fclose(proc_file);
-
-    wifi_util_dbg_print(WIFI_MON," Returned %d and Parsed device load %0.2f %0.2f %0.2f\n", rc,
-            LAvg_Protbuf->one,
-            LAvg_Protbuf->five,
-            LAvg_Protbuf->fifteen);
-
-    return true;
-}
-
 static ExtBlaster__WifiBlastResult__Status* ExtBlaster_report_status_struct_create()
 {
     ExtBlaster__WifiBlastResult__Status *res_status;
+    wifi_actvie_msmt_t *monitor;
+
+    if ((monitor = (wifi_actvie_msmt_t *)get_active_msmt_data()) == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: wifi monitor active msmt data is null\n", __func__, __LINE__);
+        return NULL;
+    }
 
     res_status = calloc(1, sizeof(*res_status));
     if (res_status == NULL) {
@@ -1698,9 +1636,19 @@ static ExtBlaster__WifiBlastResult__Status* ExtBlaster_report_status_struct_crea
 
     ext_blaster__wifi_blast_result__status__init(res_status);
 
-    res_status->code = EXT_BLASTER__RESULT_CODE__RESULT_CODE_SUCCEED;
+    switch (monitor->status) {
+        case ACTIVE_MSMT_STATUS_UNDEFINED:
+            res_status->code = EXT_BLASTER__RESULT_CODE__RESULT_CODE_UNDEFINED;
+            break;
+        case ACTIVE_MSMT_STATUS_SUCCEED:
+            res_status->code = EXT_BLASTER__RESULT_CODE__RESULT_CODE_SUCCEED;
+            break;
+        default:
+            res_status->code = EXT_BLASTER__RESULT_CODE__RESULT_CODE_ERROR;
+            break;
+    }
 
-    res_status->description = strdup("SUCCEED");
+    res_status->description = strdup(monitor->status_desc);
     if (res_status->description == NULL)
     {
       wifi_util_dbg_print(WIFI_MON,"%s: Failed to allocate Description memory\n", __func__);
@@ -1729,25 +1677,30 @@ static ExtBlaster__WifiBlastResult__HealthMetrics__LoadAvg* ExtBlaster_report_lo
 {
     ExtBlaster__WifiBlastResult__HealthMetrics__LoadAvg *LoadAvg_Protbuf;
     LoadAvg_Protbuf = calloc(1, sizeof(*LoadAvg_Protbuf));
+    wifi_actvie_msmt_t *act_msmt = get_active_msmt_data();
+    active_msmt_resources_t *res = &act_msmt->active_msmt.ActiveMsmtResources;
+
     if (LoadAvg_Protbuf == NULL) {
         wifi_util_dbg_print(WIFI_MON,"%s: Failed to allocate HealthMetrics__LoadAvg memory\n", __func__);
         return NULL;
     }
     ext_blaster__wifi_blast_result__health_metrics__load_avg__init(LoadAvg_Protbuf);
 
-    if (DeviceLoad_DataGet(LoadAvg_Protbuf))
-    {
-        LoadAvg_Protbuf->has_one = true;
-        LoadAvg_Protbuf->has_five = true;
-        LoadAvg_Protbuf->has_fifteen = true;
-    }
+    LoadAvg_Protbuf->one = res->cpu_one;
+    LoadAvg_Protbuf->has_one = true;
+    LoadAvg_Protbuf->five = res->cpu_five;
+    LoadAvg_Protbuf->has_five = true;
+    LoadAvg_Protbuf->fifteen = res->cpu_fifteen;
+    LoadAvg_Protbuf->has_fifteen = true;
+
     return LoadAvg_Protbuf;
 }
 
 static ExtBlaster__WifiBlastResult__HealthMetrics* ExtBlaster_report_health_struct_create()
 {
     ExtBlaster__WifiBlastResult__HealthMetrics *HealthMtrx_Protbuf;
-    uint32_t UtilMem = 0;
+    wifi_actvie_msmt_t *act_msmt = get_active_msmt_data();
+    active_msmt_resources_t *res = &act_msmt->active_msmt.ActiveMsmtResources;
 
     HealthMtrx_Protbuf = calloc(1, sizeof(*HealthMtrx_Protbuf));
     if (HealthMtrx_Protbuf == NULL) {
@@ -1757,11 +1710,9 @@ static ExtBlaster__WifiBlastResult__HealthMetrics* ExtBlaster_report_health_stru
 
     ext_blaster__wifi_blast_result__health_metrics__init(HealthMtrx_Protbuf);
 
-    DeviceMemory_DataGet(&UtilMem);
-
-    HealthMtrx_Protbuf->cpu_util = 0;
+    HealthMtrx_Protbuf->cpu_util = res->util_cpu;
     HealthMtrx_Protbuf->has_cpu_util = true;
-    HealthMtrx_Protbuf->mem_util = UtilMem;
+    HealthMtrx_Protbuf->mem_util = res->util_mem;
     HealthMtrx_Protbuf->has_mem_util = true;
     HealthMtrx_Protbuf->load_avg = ExtBlaster_report_load_avg_struct_create();
     if (HealthMtrx_Protbuf->load_avg == NULL) {
@@ -2072,7 +2023,10 @@ static ExtBlaster__WifiBlastResult* ExtBlaster_report_pb_struct_create(bssid_dat
     }
 
     wifi_util_dbg_print(WIFI_MON,"%s: PlanID %s, StepID %d\n", __func__, Result_protbuf->plan_id, Result_protbuf->step_id);
-    if (ExtBlaster_report_metrics_struct_create(Result_protbuf, bss_info, sta_data) != 0) {
+
+    if (monitor->status == ACTIVE_MSMT_STATUS_SUCCEED &&
+        ExtBlaster_report_metrics_struct_create(Result_protbuf, bss_info, sta_data) != 0)
+    {
         ext_blaster_report_pb_struct_free(Result_protbuf);
         return NULL;
     }
@@ -2313,12 +2267,11 @@ void stream_client_msmt_data(bool ActiveMsmtFlag)
 
         str_tolower(key);
         data = (sta_data_t *)hash_map_get(sta_map, key);
-        if (data != NULL) {
-            if (ctrl->network_mode == rdk_dev_mode_type_gw) {
-                upload_single_client_active_msmt_data(&monitor->bssid_data[vap_array_index], data);
-            } else if (ctrl->network_mode == rdk_dev_mode_type_ext) {
-                pod_upload_single_client_active_msmt_data(&monitor->bssid_data[vap_array_index], data);
-            }
+
+        if (data != NULL && ctrl->network_mode == rdk_dev_mode_type_gw) {
+            upload_single_client_active_msmt_data(&monitor->bssid_data[vap_array_index], data);
+        } else if ((data != NULL || act_monitor->status != ACTIVE_MSMT_STATUS_SUCCEED) && ctrl->network_mode == rdk_dev_mode_type_ext) {
+            pod_upload_single_client_active_msmt_data(&monitor->bssid_data[vap_array_index], data);
         }
     }
 }

@@ -134,7 +134,6 @@ typedef struct {
     pthread_mutex_t     data_lock;
     pthread_t           id;
     bool                exit_monitor;
-    unsigned int        blastReqInQueueCount;
 #ifdef CCSP_COMMON
     unsigned int        poll_period;
     unsigned int        upload_period;

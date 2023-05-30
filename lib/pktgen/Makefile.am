@@ -16,4 +16,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ##########################################################################
-SUBDIRS = log osa ovsdb pjs schema pktgen
+AM_CFLAGS += -DJUDYL -DJUDYNEXT -DREAL_TIME_DEBUG -DRDK_EM_CTRL -DCONFIG_INSTALL_PREFIX
+
+CcspWifiSsp_SOURCES = pktgen.c

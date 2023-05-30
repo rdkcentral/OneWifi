@@ -777,7 +777,7 @@ int ow_mesh_ext_get_radio_stats(int phy_index, wifi_radioTrafficStats2_t *stats)
 }
 
 int ow_mesh_ext_get_device_stats(int ap_index, char *radio_type, int nf,
-    unsigned char *mac, wifi_associated_dev3_t *stats)
+    unsigned char *mac, wifi_associated_dev3_t *stats, int *sleep_mode)
 {
     int phy_index = -1;
     char *phy_name = NULL;
@@ -798,5 +798,5 @@ int ow_mesh_ext_get_device_stats(int ap_index, char *radio_type, int nf,
         return RETURN_ERR;
     }
 
-    return osw_drv_target_get_device_stats(radio_type, phy_name, if_name, mac, nf, stats);
+    return osw_drv_target_get_device_stats(radio_type, phy_name, if_name, mac, nf, stats, sleep_mode);
 }

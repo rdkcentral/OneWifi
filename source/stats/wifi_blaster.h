@@ -29,18 +29,8 @@ extern "C" {
 #define OPER_BUFFER_LEN 64
 #define BUFF_LEN_MIN OPER_BUFFER_LEN
 #define BUFF_LEN_MAX 1024
-#define PKTGEN_CNTRL_FILE                               "/proc/net/pktgen/pgctrl"
-#define PKTGEN_THREAD_FILE_0                    "/proc/net/pktgen/kpktgend_0"
-#define PKTGEN_DEVICE_FILE_ATH0                 "/proc/net/pktgen/ath0"
-#define PKTGEN_DEVICE_FILE_ATH1                 "/proc/net/pktgen/ath1"
-#define PKTGEN_DEVICE_FILE                              "/proc/net/pktgen/"
-#define PKTGEN_SAMPLE_SIZE                              30
 #define MAX_NUMBER_OF_CLIENTS                   10      /* Define it to 10 for now. Shall be updated based on the capacity of pktgen & device */
 #define MAC_ADDRESS_STR_LEN                             17
-#define PKTGEN_START_RUN_TIME_IN_MS             1000            /* 1 secs */
-#define PKTGEN_WAIT_IN_MS                               30                      /* 30 ms */
-#define PKTGEN_HEADER_SIZE_TO_DISCOUNT  24
-
 #define MAX_RADIO_INDEX                                 2
 #define RADIO0_INTERFACE_NAME                   "ath0"          /* 2.4 Ghz */
 #define RADIO1_INTERFACE_NAME                   "ath1"          /* 5 Ghz */
@@ -56,14 +46,6 @@ extern "C" {
 #define DEBUG_PRINT(x)
 #endif
 #define CRITICAL_PRINT
-
-typedef struct _pktGenConfig {
-        unsigned int    packetSize;
-        unsigned int    packetCount;
-        unsigned int    sendDuration;
-        int             clientIndex;
-        char            wlanInterface[BUFF_LEN_MIN];
-} pktGenConfig;
 
 typedef struct _pktGenFrameCountSamples {
         ULONG   PacketsSentAck;
@@ -87,13 +69,34 @@ typedef struct active_msmt_data {
 #endif // CCSP_COMMON
 } active_msmt_data_t;
 
+typedef enum
+{
+    ACTIVE_MSMT_STATUS_SUCCEED      = 0,                /* The test is finished successfully */
+    ACTIVE_MSMT_STATUS_CANCELED     = 1,                /* The request was canceled */
+    ACTIVE_MSMT_STATUS_FAILED       = 2,                /* Internal error happened */
+    ACTIVE_MSMT_STATUS_BUSY         = 3,                /* The device is overloaded (CPU; RAM mem) */
+    ACTIVE_MSMT_STATUS_NO_CLIENT    = 4,                /* The client is not found */
+    ACTIVE_MSMT_STATUS_WRONG_ARG    = 5,                /* Incorrect argument value */
+    ACTIVE_MSMT_STATUS_SLEEP_CLIENT = 6,                /* The client is in sleeping mode */
+    ACTIVE_MSMT_STATUS_UNDEFINED
+} active_msmt_status_t;
+
+typedef struct active_msmt_queue_t active_msmt_queue_t;
+
+struct active_msmt_queue_t {
+    active_msmt_t data;
+    active_msmt_queue_t *next;
+};
 
 typedef struct {
-    pthread_mutex_t     lock;
-    active_msmt_t       active_msmt;
-    active_msmt_step_t    curStepData;
-    active_msmt_data_t  *active_msmt_data;
-    bool                is_running;
+    pthread_mutex_t                lock;
+    active_msmt_t                  active_msmt;
+    active_msmt_step_t             curStepData;
+    active_msmt_data_t             *active_msmt_data;
+    active_msmt_status_t           status;
+    char                           status_desc[512];
+    bool                           is_running;
+    active_msmt_queue_t            *queue;
 } wifi_actvie_msmt_t;
 /* prototype for Active Measurement */
 
@@ -108,6 +111,7 @@ void SetActiveMsmtEnable(bool enable);
 void SetActiveMsmtPktSize(unsigned int PktSize);
 void SetActiveMsmtSampleDuration(unsigned int Duration);
 void SetActiveMsmtNumberOfSamples(unsigned int NoOfSamples);
+void SetActiveMsmtStatus(const char *func, active_msmt_status_t status);
 
 /* Active Measurement Step & Plan SET calls */
 void SetActiveMsmtStepDstMac(char *DstMac, ULONG StepIns);
@@ -121,15 +125,14 @@ void GetActiveMsmtPlanID(unsigned int *pPlanID);
 void GetActiveMsmtStepSrcMac(mac_address_t pStepSrcMac);
 void GetActiveMsmtStepDestMac(mac_address_t pStepDstMac);
 
-/* Function prototype for wifiblaster */
-void *startWifiBlast(void *vargp);
-int StopWifiBlast(void);
-//int executeCommand(char* command,char* result);
+int ActiveMsmtConfValidation(active_msmt_t *cfg);
+void ResetActiveMsmtStepInstances(void);
+
 unsigned long getCurrentTimeInMicroSeconds();
 int isVapEnabled (int wlanIndex);
 int WaitForDuration (int timeInMs);
-void pktGen_BlastClient (char *dest_mac);
-void *WiFiBlastClient(void* data);
+void pktGen_BlastClient (char *dest_mac, wifi_interface_name_t *ifname);
+void WiFiBlastClient(void);
 void process_active_msmt_diagnostics (int ap_index);
 
 void stream_client_msmt_data(bool ActiveMsmtFlag);
