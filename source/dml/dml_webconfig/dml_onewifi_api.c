@@ -555,6 +555,7 @@ int init(webconfig_dml_t *consumer)
     int rc = RBUS_ERROR_SUCCESS;
     unsigned int len, itr=0, itrj=0;
     webconfig_subdoc_data_t data;
+    char *dbg_str;
 
     rbus_dmlwebconfig_register(consumer);
     rc = rbus_get(consumer->rbus_handle, paramNames[0], &value);
@@ -594,7 +595,17 @@ int init(webconfig_dml_t *consumer)
         return RETURN_ERR;
     }
 
-    wifi_util_dbg_print(WIFI_DMCLI,"%s %d rbus_get value=%s \n",__FUNCTION__,__LINE__,str );
+    if ((dbg_str = malloc(len + 1))) {
+        strncpy(dbg_str, str, len);
+        dbg_str[len] = '\0';
+        json_param_obscure(dbg_str, "Passphrase");
+        json_param_obscure(dbg_str, "RadiusSecret");
+        json_param_obscure(dbg_str, "SecondaryRadiusSecret");
+        json_param_obscure(dbg_str, "DasSecret");
+        wifi_util_dbg_print(WIFI_DMCLI,"%s %d rbus_get value=%s\n",__FUNCTION__,__LINE__,dbg_str);
+        free(dbg_str);
+    }
+
     // setup the raw data
     memset(&data, 0, sizeof(webconfig_subdoc_data_t));
     data.signature = WEBCONFIG_MAGIC_SIGNATUTRE;

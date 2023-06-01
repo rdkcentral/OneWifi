@@ -2921,3 +2921,48 @@ int convert_bool_to_ascii_string(bool l_bool_param, char *l_string, size_t str_l
 
     return RETURN_OK;
 }
+
+// obscure json parameter value:
+// { "password": "123" } -> { "password" : "***" }
+void json_param_obscure(char *json, char *param)
+{
+    char *str, *end;
+    size_t param_len;
+
+    if (json == NULL || param == NULL) {
+        return;
+    }
+
+    str = json;
+    param_len = strlen(param);
+
+    while (1) {
+        if ((str = strstr(str, param)) == NULL) {
+            return;
+        }
+
+        // check for quotes around parameter
+        if (*(str - 1) != '\"' || *(str + param_len) != '\"') {
+            str++;
+            continue;
+        }
+
+        // find beginning of value
+        str += param_len;
+        if ((str = strchr(str, ':')) == NULL ||
+            (str = strchr(str, '\"')) == NULL) {
+            return;
+        }
+
+        str++;
+        end = str;
+        // find end of value, handle "123", "12\"3", "123\\" cases
+        while (*end != '\0' && (*end != '\"' || (*(end - 1) == '\\' && *(end - 2) != '\\'))) {
+            end++;
+        }
+
+        // obscure value
+        memset(str, '*', end - str);
+        str = end;
+    }
+}

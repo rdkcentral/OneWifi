@@ -147,6 +147,7 @@ webconfig_error_t encode_mesh_backhaul_subdoc(webconfig_t *config, webconfig_sub
     str = cJSON_Print(json);
     memcpy(data->u.encoded.raw, str, strlen(str));
 
+    json_param_obscure(str, "Passphrase");
     wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Encoded JSON:\n%s\n", __func__, __LINE__, str);
     cJSON_free(str);
     cJSON_Delete(json);
@@ -172,6 +173,7 @@ webconfig_error_t decode_mesh_backhaul_subdoc(webconfig_t *config, webconfig_sub
     params = &data->u.decoded;
     doc = &config->subdocs[data->type];
     str = cJSON_Print(json);
+    json_param_obscure(str, "Passphrase");
     wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Decode JSON:\n%s\n", __func__, __LINE__, str);
     cJSON_free(str);
 

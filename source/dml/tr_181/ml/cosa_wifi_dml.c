@@ -8070,11 +8070,13 @@ Security_SetParamStringValue
     /* check the parameter name and set the corresponding value */
     rc = strcmp_s("ModeEnabled", strlen("ModeEnabled"), ParamName, &ind);
     ERR_CHK(rc);
-    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Mode=%d set Value=%s  \n",__func__, __LINE__,l_security_cfg->mode,pString);
     if((rc == EOK) && (!ind))
     {
         wifi_security_modes_t TmpMode;
         COSA_DML_WIFI_SECURITY cosaTmpMode;
+
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Mode=%d set Value=%s\n",__func__, __LINE__,l_security_cfg->mode,pString);
+
         if (!getSecurityTypeFromString(pString, &TmpMode, &cosaTmpMode))
          {
               printf("unrecognized type name");
@@ -8190,7 +8192,7 @@ Security_SetParamStringValue
             ERR_CHK(rc);
             if((rc == EOK) && (!ind))
             {
-                wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Value remains unchanged key=%s pString=%s\n",__func__, __LINE__,l_security_cfg->u.key.key,pString);
+                wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Value remains unchanged\n",__func__, __LINE__);
                 return TRUE;
             }
              /* save update to backup */
@@ -8207,7 +8209,6 @@ Security_SetParamStringValue
                  return FALSE;
              }
              set_dml_cache_vap_config_changed(instance_number - 1);
-             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:Key=%s  \n",__func__, __LINE__,l_security_cfg->u.key.key);
              return TRUE;
          }
     }
@@ -8232,7 +8233,6 @@ Security_SetParamStringValue
              return FALSE;
         }
         set_dml_cache_vap_config_changed(instance_number - 1);
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:Key=%s  \n",__func__, __LINE__,l_security_cfg->u.key.key);
 
         return TRUE;
     }
@@ -8262,7 +8262,6 @@ Security_SetParamStringValue
         {
             return FALSE;
         }
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:key=%s pString=%s  \n",__func__, __LINE__,l_security_cfg->u.key.key,pString);
         rc = strcpy_s((char*)l_security_cfg->u.key.key, sizeof(l_security_cfg->u.key.key), pString);
         if(rc != EOK)
         {
@@ -8282,7 +8281,6 @@ Security_SetParamStringValue
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Security mode %d does not support radius configuration \n",__func__, __LINE__,l_security_cfg->mode);
             return FALSE;
         }
-	wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Radius secret=%s new secret=%s\n",__func__, __LINE__,l_security_cfg->u.radius.key,pString);
         rc = strcmp_s(l_security_cfg->u.radius.key, sizeof(l_security_cfg->u.radius.key), pString, &ind);
         ERR_CHK(rc);
         if((rc == EOK) && (!ind))
@@ -8320,7 +8318,6 @@ Security_SetParamStringValue
 	/* save update to backup */
         if((pString == NULL) || (strlen(pString) >= sizeof(l_security_cfg->u.radius.s_key)))
              return FALSE;
-	wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:key=%s pString=%s  \n",__func__, __LINE__,l_security_cfg->u.radius.s_key,pString);
         rc = strcpy_s(l_security_cfg->u.radius.s_key, sizeof(l_security_cfg->u.radius.s_key), pString);
         if(rc != EOK)
         {
@@ -8469,7 +8466,6 @@ Security_SetParamStringValue
         /* save update to backup */
         if((pString == NULL) || (strlen(pString) >= sizeof(l_security_cfg->u.radius.daskey)))
               return FALSE;
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:key=%s pString=%s  \n",__func__, __LINE__,l_security_cfg->u.radius.daskey,pString);
         rc = strcpy_s(l_security_cfg->u.radius.daskey, sizeof(l_security_cfg->u.radius.daskey), pString);
         if(rc != EOK)
         {

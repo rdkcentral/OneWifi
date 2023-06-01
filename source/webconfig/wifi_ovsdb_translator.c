@@ -1955,7 +1955,7 @@ webconfig_error_t translate_sta_vap_info_to_ovsdb_config_personal_sec(const wifi
         set_translator_config_security_key_value(vap_row, &sec_index, "encryption", str_encryp);
         set_translator_config_security_key_value(vap_row, &sec_index, "mode", str_mode);
         set_translator_config_security_key_value(vap_row, &sec_index, "key", vap->u.sta_info.security.u.key.key);
-        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: encr : %s mode : %s key : %s\n", __func__, __LINE__, str_encryp, str_mode, vap->u.sta_info.security.u.key.key);
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: encr : %s mode : %s\n", __func__, __LINE__, str_encryp, str_mode);
 
 
     } else {

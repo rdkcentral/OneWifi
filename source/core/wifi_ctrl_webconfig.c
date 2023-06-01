@@ -357,9 +357,9 @@ void print_wifi_hal_vap_security_param(wifi_dbg_type_t log_file_type, char *pref
     if ((l_security->mode == wifi_security_mode_wpa_enterprise) || (l_security->mode == wifi_security_mode_wpa2_enterprise ) ||
           (l_security->mode == wifi_security_mode_wpa3_enterprise) || (l_security->mode == wifi_security_mode_wpa_wpa2_enterprise)) {
         getIpStringFromAdrress(address, &l_security->u.radius.dasip);
-        wifi_util_info_print(log_file_type,"%s:%d: [%s] Wifi_Security_Config table radius server ip=%s\n port=%d\n sec key=%s\n Secondary radius server ip=%s\n port=%d\n key=%s\n max_auth_attempts=%d\n blacklist_table_timeout=%d\n identity_req_retry_interval=%d\n server_retries=%d\n das_ip=%s\n das_port=%d\n das_key=%s\r\n",__func__, __LINE__, prefix, l_security->u.radius.ip,l_security->u.radius.port,l_security->u.radius.key,l_security->u.radius.s_ip,l_security->u.radius.s_port,l_security->u.radius.s_key,l_security->u.radius.max_auth_attempts,l_security->u.radius.blacklist_table_timeout,l_security->u.radius.identity_req_retry_interval,l_security->u.radius.server_retries,address,l_security->u.radius.dasport,l_security->u.radius.daskey);
+        wifi_util_info_print(log_file_type,"%s:%d: [%s] Wifi_Security_Config table radius server ip=%s\n port=%d\n Secondary radius server ip=%s\n port=%d\n max_auth_attempts=%d\n blacklist_table_timeout=%d\n identity_req_retry_interval=%d\n server_retries=%d\n das_ip=%s\n das_port=%d\r\n",__func__, __LINE__, prefix, l_security->u.radius.ip,l_security->u.radius.port,l_security->u.radius.s_ip,l_security->u.radius.s_port,l_security->u.radius.max_auth_attempts,l_security->u.radius.blacklist_table_timeout,l_security->u.radius.identity_req_retry_interval,l_security->u.radius.server_retries,address,l_security->u.radius.dasport);
     } else {
-        wifi_util_info_print(log_file_type,"%s:%d: [%s] Wifi_Security_Config table sec type=%d\n sec key=%s\r\n",__func__, __LINE__, prefix, l_security->u.key.type, l_security->u.key.key);
+        wifi_util_info_print(log_file_type,"%s:%d: [%s] Wifi_Security_Config table sec type=%d\r\n",__func__, __LINE__, prefix, l_security->u.key.type);
     }
 }
 
@@ -3405,7 +3405,6 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
     cJSON_AddItemToObject(n_blob, "WifiVapConfig", vap_blob);
 
     char *vap_blob_str = cJSON_Print(n_blob);
-    wifi_util_dbg_print(WIFI_CTRL, "%s, vap_blob:\n%s\n", __func__, vap_blob_str);
 
     // push blob to ctrl queue
     push_event_to_ctrl_queue(vap_blob_str, strlen(vap_blob_str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_tunnel);
