@@ -326,6 +326,13 @@ void callback_Wifi_Radio_Config(ovsdb_update_monitor_t *mon,
         l_radio_cfg->chanUtilThreshold = new_rec->chan_util_threshold;
         l_radio_cfg->chanUtilSelfHealEnable = new_rec->chan_util_selfheal_enable;
         l_radio_cfg->EcoPowerDown = new_rec->eco_power_down;
+#ifdef FEATURE_SUPPORT_ECOPOWERDOWN
+        if (l_radio_cfg->EcoPowerDown)
+        {
+            //Update enable status based on EcoPowerDown.
+            l_radio_cfg->enable = false;
+        }
+#endif // FEATURE_SUPPORT_ECOPOWERDOWN
 
         tmp = new_rec->secondary_channels_list;
         while ((ptr = strchr(tmp, ',')) != NULL)
@@ -1552,6 +1559,13 @@ int wifidb_update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t
     cfg.chan_util_threshold = config->chanUtilThreshold;
     cfg.chan_util_selfheal_enable = config->chanUtilSelfHealEnable;
     cfg.eco_power_down = config->EcoPowerDown;
+#ifdef FEATURE_SUPPORT_ECOPOWERDOWN
+    //Update enable status based on EcoPowerDown.
+    if(cfg.eco_power_down)
+    {
+        cfg.enabled = false;
+    }
+#endif //FEATURE_SUPPORT_ECOPOWERDOWN
     cfg.Tscan = feat_config->OffChanTscanInMsec;
     cfg.Nscan = (feat_config->OffChanNscanInSec == 0) ? 0 : (24*3600)/(feat_config->OffChanNscanInSec);
     cfg.Tidle = feat_config->OffChanTidleInSec;
