@@ -371,9 +371,19 @@ void get_self_bss_chan_statistics (int radiocnt , UINT *Tx_perc, UINT  *Rx_perc)
             wifi_util_dbg_print(WIFI_MON,"%s: %d Radio %d channel stats Tx_count : %llu Rx_count: %llu Tx_perc: %d Rx_perc: %d\n"
                     ,__FUNCTION__,__LINE__,radiocnt,Tx_count, Rx_count, *Tx_perc, *Rx_perc);
             /* Update prev var for next call */
+            g_monitor_module.radio_channel_data[radiocnt].ch_in_pool = chan_stats.ch_in_pool;
+            g_monitor_module.radio_channel_data[radiocnt].ch_radar_noise = chan_stats.ch_radar_noise;
             g_monitor_module.radio_channel_data[radiocnt].ch_number = chan_stats.ch_number;
+            g_monitor_module.radio_channel_data[radiocnt].ch_noise = chan_stats.ch_noise;
+            g_monitor_module.radio_channel_data[radiocnt].ch_max_80211_rssi = chan_stats.ch_max_80211_rssi;
+            g_monitor_module.radio_channel_data[radiocnt].ch_non_80211_noise = chan_stats.ch_non_80211_noise;
+            g_monitor_module.radio_channel_data[radiocnt].ch_utilization = chan_stats.ch_utilization;
             g_monitor_module.radio_channel_data[radiocnt].ch_utilization_busy_tx = chan_stats.ch_utilization_busy_tx;
             g_monitor_module.radio_channel_data[radiocnt].ch_utilization_busy_self = chan_stats.ch_utilization_busy_self;
+            g_monitor_module.radio_channel_data[radiocnt].ch_utilization_total = chan_stats.ch_utilization_total;
+            g_monitor_module.radio_channel_data[radiocnt].ch_utilization_busy = chan_stats.ch_utilization_busy;
+            g_monitor_module.radio_channel_data[radiocnt].ch_utilization_busy_rx = chan_stats.ch_utilization_busy_rx;
+            g_monitor_module.radio_channel_data[radiocnt].ch_utilization_busy_ext = chan_stats.ch_utilization_busy_ext;
         }
         else {
             wifi_util_error_print(WIFI_MON, "%s : %d wifi_getRadioChannelStats failed for rdx : %d\n",__func__,__LINE__,radiocnt);
@@ -381,6 +391,35 @@ void get_self_bss_chan_statistics (int radiocnt , UINT *Tx_perc, UINT  *Rx_perc)
     }
     return;
 }
+
+#if HAL_IPC
+int get_radio_channel_stats(int radio_index, 
+                            wifi_channelStats_t *channel_stats_array, 
+                            int *array_size)
+{
+    wifi_channelStats_t chan_stats = {0};
+
+    pthread_mutex_lock(&g_monitor_module.data_lock);
+    *array_size = 1;
+    chan_stats.ch_in_pool = g_monitor_module.radio_channel_data[radio_index].ch_in_pool;
+    chan_stats.ch_radar_noise = g_monitor_module.radio_channel_data[radio_index].ch_radar_noise;
+    chan_stats.ch_number = g_monitor_module.radio_channel_data[radio_index].ch_number;
+    chan_stats.ch_noise = g_monitor_module.radio_channel_data[radio_index].ch_noise;
+    chan_stats.ch_max_80211_rssi = g_monitor_module.radio_channel_data[radio_index].ch_max_80211_rssi;
+    chan_stats.ch_non_80211_noise = g_monitor_module.radio_channel_data[radio_index].ch_non_80211_noise;
+    chan_stats.ch_utilization = g_monitor_module.radio_channel_data[radio_index].ch_utilization;
+    chan_stats.ch_utilization_busy_tx = g_monitor_module.radio_channel_data[radio_index].ch_utilization_busy_tx;
+    chan_stats.ch_utilization_busy_self = g_monitor_module.radio_channel_data[radio_index].ch_utilization_busy_self;
+    chan_stats.ch_utilization_total = g_monitor_module.radio_channel_data[radio_index].ch_utilization_total;
+    chan_stats.ch_utilization_busy = g_monitor_module.radio_channel_data[radio_index].ch_utilization_busy;
+    chan_stats.ch_utilization_busy_rx = g_monitor_module.radio_channel_data[radio_index].ch_utilization_busy_rx;
+    chan_stats.ch_utilization_busy_ext = g_monitor_module.radio_channel_data[radio_index].ch_utilization_busy_ext;
+    memcpy(channel_stats_array, &chan_stats, sizeof(wifi_channelStats_t));
+    pthread_mutex_unlock(&g_monitor_module.data_lock);
+
+    return 0;
+}
+#endif // HAL_IPC
 
 // upload_radio_chan_util_telemetry()  will update the channel stats in telemetry marker
 int upload_radio_chan_util_telemetry(void *arg)
@@ -2234,6 +2273,40 @@ int get_sta_stats_info (assoc_dev_data_t *assoc_dev_data) {
     return 0;
 }
 
+#if HAL_IPC
+int get_sta_stats_for_vap(int ap_index, wifi_associated_dev3_t *assoc_dev_array,
+                          unsigned int *output_array_size)
+{
+    unsigned int vap_array_index;
+    unsigned int i = 0;
+    hash_map_t *sta_map = NULL;
+    sta_data_t *sta_data = NULL;
+
+    pthread_mutex_lock(&g_monitor_module.data_lock);
+    getVAPArrayIndexFromVAPIndex(ap_index, &vap_array_index);
+    sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
+    sta_data = hash_map_get_first(sta_map);
+
+    if (sta_data == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: NULL pointer\n", __func__, __LINE__);
+        pthread_mutex_unlock(&g_monitor_module.data_lock);
+        return -1;
+    }
+
+    while (sta_data != NULL && i < 2) { // i < 2 is temporary as HAL_IPC_MAX_STA_SUPPORT_NUM is hardcoded now to 2
+        memcpy(&assoc_dev_array[i], &sta_data->dev_stats, sizeof(wifi_associated_dev3_t));
+        i++;
+        sta_data = hash_map_get_next(sta_map, sta_data);   
+    }
+
+    *output_array_size = i;
+
+    pthread_mutex_unlock(&g_monitor_module.data_lock);
+
+    return 0;
+}
+#endif // HAL_IPC
+
 void process_diagnostics	(unsigned int ap_index, wifi_associated_dev3_t *dev, unsigned int num_devs)
 {
     hash_map_t     *sta_map = NULL;
@@ -2391,7 +2464,8 @@ void process_connect(unsigned int ap_index, auth_deauth_dev_t *dev)
         sta = (sta_data_t *)malloc(sizeof(sta_data_t));
         memset(sta, 0, sizeof(sta_data_t));
         memcpy(sta->sta_mac, dev->sta_mac, sizeof(mac_addr_t));
-        hash_map_put(sta_map, strdup(to_sta_key(sta->sta_mac, sta_key)), sta);
+        memcpy(sta->dev_stats.cli_MACAddress, dev->sta_mac, sizeof(mac_addr_t));
+        hash_map_put(sta_map, strdup(sta_key), sta);
     }
 
 #ifdef CCSP_COMMON
@@ -2631,6 +2705,20 @@ int get_neighbor_scan_results()
     monitor_param->neighbor_scan_cfg.ResultCount = (monitor_param->neighbor_scan_cfg.ResultCount > MAX_NEIGHBOURS) ? MAX_NEIGHBOURS : monitor_param->neighbor_scan_cfg.ResultCount;
     strcpy_s(monitor_param->neighbor_scan_cfg.DiagnosticsState, sizeof(monitor_param->neighbor_scan_cfg.DiagnosticsState) , "Completed");
     return TIMER_TASK_COMPLETE;
+}
+
+int get_neighbor_scan_cfg(int radio_index, 
+                          wifi_neighbor_ap2_t *neighbor_results,
+                          unsigned int *output_array_size)
+{
+    wifi_monitor_t *monitor_param = (wifi_monitor_t *)get_wifi_monitor();
+
+    pthread_mutex_lock(&g_monitor_module.data_lock);
+    *output_array_size = monitor_param->neighbor_scan_cfg.resultCountPerRadio[radio_index];
+    memcpy(neighbor_results, monitor_param->neighbor_scan_cfg.pResult[radio_index], (*output_array_size)*sizeof(wifi_neighbor_ap2_t));
+    pthread_mutex_unlock(&g_monitor_module.data_lock);
+
+    return 0;
 }
 
 int process_periodical_neighbor_scan(void *arg)
@@ -4427,6 +4515,34 @@ void associated_client_diagnostics ()
 }
 #endif // CCSP_COMMON
 
+
+int get_radio_data(int radio_index, wifi_radioTrafficStats2_t *radio_traffic_stats)
+{
+    pthread_mutex_lock(&g_monitor_module.data_lock);
+    radio_traffic_stats->radio_NoiseFloor = g_monitor_module.radio_data[radio_index].NoiseFloor;
+    radio_traffic_stats->radio_ActivityFactor = g_monitor_module.radio_data[radio_index].RadioActivityFactor;
+    radio_traffic_stats->radio_CarrierSenseThreshold_Exceeded = g_monitor_module.radio_data[radio_index].CarrierSenseThreshold_Exceeded;
+    radio_traffic_stats->radio_ChannelUtilization = g_monitor_module.radio_data[radio_index].channelUtil;
+    radio_traffic_stats->radio_BytesSent = g_monitor_module.radio_data[radio_index].radio_BytesSent;
+    radio_traffic_stats->radio_BytesReceived = g_monitor_module.radio_data[radio_index].radio_BytesReceived;
+    radio_traffic_stats->radio_PacketsSent = g_monitor_module.radio_data[radio_index].radio_PacketsSent;
+    radio_traffic_stats->radio_PacketsReceived = g_monitor_module.radio_data[radio_index].radio_PacketsReceived;
+    radio_traffic_stats->radio_ErrorsSent = g_monitor_module.radio_data[radio_index].radio_ErrorsSent;
+    radio_traffic_stats->radio_ErrorsReceived = g_monitor_module.radio_data[radio_index].radio_ErrorsReceived;
+    radio_traffic_stats->radio_DiscardPacketsSent = g_monitor_module.radio_data[radio_index].radio_DiscardPacketsSent;
+    radio_traffic_stats->radio_DiscardPacketsReceived = g_monitor_module.radio_data[radio_index].radio_DiscardPacketsReceived;
+    radio_traffic_stats->radio_RetransmissionMetirc = g_monitor_module.radio_data[radio_index].radio_RetransmissionMetirc;
+    radio_traffic_stats->radio_PLCPErrorCount = g_monitor_module.radio_data[radio_index].radio_PLCPErrorCount;
+    radio_traffic_stats->radio_FCSErrorCount = g_monitor_module.radio_data[radio_index].radio_FCSErrorCount;
+    radio_traffic_stats->radio_MaximumNoiseFloorOnChannel = g_monitor_module.radio_data[radio_index].radio_MaximumNoiseFloorOnChannel;
+    radio_traffic_stats->radio_MinimumNoiseFloorOnChannel = g_monitor_module.radio_data[radio_index].radio_MinimumNoiseFloorOnChannel;
+    radio_traffic_stats->radio_MedianNoiseFloorOnChannel = g_monitor_module.radio_data[radio_index].radio_MedianNoiseFloorOnChannel;
+    radio_traffic_stats->radio_StatisticsStartTime = g_monitor_module.radio_data[radio_index].radio_StatisticsStartTime;
+    pthread_mutex_unlock(&g_monitor_module.data_lock);
+
+    return 0;
+}
+
 int radio_diagnostics(void *arg)
 {
     wifi_radioTrafficStats2_t radioTrafficStats;
@@ -4471,6 +4587,12 @@ int radio_diagnostics(void *arg)
                 g_monitor_module.radio_data[radiocnt].radio_InvalidMACCount = radioTrafficStats.radio_InvalidMACCount;
                 g_monitor_module.radio_data[radiocnt].radio_PacketsOtherReceived = radioTrafficStats.radio_PacketsOtherReceived;
                 g_monitor_module.radio_data[radiocnt].radio_RetransmissionMetirc = radioTrafficStats.radio_RetransmissionMetirc;
+                g_monitor_module.radio_data[radiocnt].radio_PLCPErrorCount = radioTrafficStats.radio_PLCPErrorCount;
+                g_monitor_module.radio_data[radiocnt].radio_FCSErrorCount = radioTrafficStats.radio_FCSErrorCount;
+                g_monitor_module.radio_data[radiocnt].radio_MaximumNoiseFloorOnChannel = radioTrafficStats.radio_MaximumNoiseFloorOnChannel;
+                g_monitor_module.radio_data[radiocnt].radio_MinimumNoiseFloorOnChannel = radioTrafficStats.radio_MinimumNoiseFloorOnChannel;
+                g_monitor_module.radio_data[radiocnt].radio_MedianNoiseFloorOnChannel = radioTrafficStats.radio_MedianNoiseFloorOnChannel;
+                g_monitor_module.radio_data[radiocnt].radio_StatisticsStartTime = radioTrafficStats.radio_StatisticsStartTime;
 #if 0
                 /* When we trigger below API then Broadcom driver internally trigger offchannel scan.
                 *  We don't want this offchannel scan at every 30 seconds. So, for resolution of

@@ -25,9 +25,6 @@
 #include "wifi_ctrl.h"
 #include "wifi_util.h"
 
-//Broadcom driver max acl count for each vap
-#define MAX_ACL_COUNT 20
-
 bool vap_svc_is_public(unsigned int vap_index)
 {
     return isVapHotspot(vap_index) ? true : false;

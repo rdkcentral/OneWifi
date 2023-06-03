@@ -1246,6 +1246,115 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
     return RETURN_OK;
 }
 
+#if HAL_IPC
+int onewifi_get_ap_assoc_dev_diag_res3(int ap_index, 
+                                       wifi_associated_dev3_t *assoc_dev_array, 
+						               unsigned int *output_array_size)
+{
+    get_sta_stats_for_vap(ap_index, assoc_dev_array, output_array_size);
+
+    return 0;
+}
+
+int onewifi_get_neighbor_ap2(int radio_index, 
+                             wifi_neighbor_ap2_t *neighbor_results,
+                             unsigned int *output_array_size)
+{
+    get_neighbor_scan_cfg(radio_index, neighbor_results, output_array_size);
+
+    return 0;
+}
+
+int onewifi_get_radio_channel_stats(int radio_index, 
+                                    wifi_channelStats_t *channel_stats_array, 
+                                    int *array_size)
+{
+    get_radio_channel_stats(radio_index, channel_stats_array, array_size);
+
+    return 0;
+}
+
+int onewifi_get_radio_traffic_stats(int radio_index, 
+                                    wifi_radioTrafficStats2_t *radio_traffic_stats)
+{
+    get_radio_data(radio_index, radio_traffic_stats);
+
+    return 0;
+}
+
+typedef int (* app_get_ap_assoc_dev_diag_res3_t)(int ap_index, 
+                                                 wifi_associated_dev3_t *assoc_dev_array, 
+                                                 unsigned int *output_array_size);
+
+typedef int (* app_get_neighbor_ap2_t) (int radio_index, 
+                                        wifi_neighbor_ap2_t *neighbor_results,
+                                        unsigned int *output_array_size);
+
+typedef int (* app_get_radio_channel_stats_t) (int radio_index, 
+                                               wifi_channelStats_t *channel_stats_array, 
+                                               int *array_size);
+
+typedef int (* app_get_radio_traffic_stats_t) (int radio_index, 
+                                               wifi_radioTrafficStats2_t *radio_traffic_stats);
+
+typedef struct {
+    unsigned int version;
+    app_get_ap_assoc_dev_diag_res3_t app_get_ap_assoc_dev_diag_res3_fn;		
+    app_get_neighbor_ap2_t           app_get_neighbor_ap2_fn;
+    app_get_radio_channel_stats_t    app_get_radio_channel_stats_fn;
+    app_get_radio_traffic_stats_t    app_get_radio_traffic_stats_fn;
+} wifi_app_info_t;
+
+typedef struct{
+    wifi_vap_info_map_t *vap_map;
+    wifi_app_info_t *app_info;
+} wifi_hal_post_init_t;
+
+int wifi_hal_platform_post_init()
+{
+    int ret = RETURN_OK;
+    unsigned int num_of_radios = getNumberRadios();
+    unsigned int index = 0;
+    wifi_vap_info_map_t vap_map[MAX_NUM_RADIOS];
+    wifi_vap_info_map_t *p_vap_map = NULL;
+    wifi_hal_post_init_t post_init_struct;
+
+    memset(vap_map, 0, sizeof(vap_map));
+
+    for (index = 0; index < num_of_radios; index++) {
+        p_vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(index);
+        if (p_vap_map != NULL) {
+            memcpy(&vap_map[index], p_vap_map, sizeof(wifi_vap_info_map_t));
+        } else {
+            wifi_util_error_print(WIFI_CTRL,"%s:%d vap_map NULL for radio_index:%d\r\n",__func__, __LINE__, index);
+        }
+    }
+
+    wifi_util_info_print(WIFI_CTRL,"%s: start wifi apps\n",__FUNCTION__);
+
+    post_init_struct.vap_map = vap_map;
+    post_init_struct.app_info = (wifi_app_info_t*) malloc(sizeof(wifi_app_info_t));
+
+    if (!post_init_struct.app_info){
+        wifi_util_error_print(WIFI_CTRL,"%s failed to allocate memory for wifi_app_info_t\n",__FUNCTION__);
+    }
+    post_init_struct.app_info->app_get_ap_assoc_dev_diag_res3_fn = onewifi_get_ap_assoc_dev_diag_res3;
+    post_init_struct.app_info->app_get_neighbor_ap2_fn = onewifi_get_neighbor_ap2;
+    post_init_struct.app_info->app_get_radio_channel_stats_fn = onewifi_get_radio_channel_stats;
+    post_init_struct.app_info->app_get_radio_traffic_stats_fn = onewifi_get_radio_traffic_stats;
+
+    ret = wifi_hal_post_init(&post_init_struct);
+  
+    free(post_init_struct.app_info);
+    
+    if (ret != RETURN_OK) {
+        wifi_util_error_print(WIFI_CTRL,"%s start wifi apps failed, ret:%d\n",__FUNCTION__, ret);
+        return RETURN_ERR;
+    }
+
+    return RETURN_OK;
+}
+#else
 int wifi_hal_platform_post_init()
 {
     int ret = RETURN_OK;
@@ -1275,6 +1384,7 @@ int wifi_hal_platform_post_init()
 
     return RETURN_OK;
 }
+#endif // HAL_IPC
 
 void telemetry_bootup_time_wifibroadcast()
 {
@@ -1626,6 +1736,61 @@ void stop_wifi_sched_timer(unsigned int index, wifi_ctrl_t *l_ctrl, wifi_schedul
     }
 }
 
+#if defined (FEATURE_SUPPORT_ACL_SELFHEAL)
+int sync_wifi_hal_hotspot_vap_mac_entry_with_db(void)
+{
+    mac_addr_str_t mac_str;
+    mac_address_t acl_device_mac;
+    acl_entry_t *acl_entry;
+    // hotspot open 5g VAP index
+    uint8_t vap_index = 5;
+    uint32_t acl_hal_count = 0, acl_db_count = 0;
+    uint8_t acl_count= 0;
+    rdk_wifi_vap_info_t *rdk_vap_info = NULL;
+    int ret;
+
+    rdk_vap_info = get_wifidb_rdk_vap_info(vap_index);
+    if ((rdk_vap_info == NULL) || (rdk_vap_info->acl_map == NULL)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: idk vap_info get failure for Vap:%d\n", __func__, __LINE__, vap_index);
+        return RETURN_ERR;
+    }
+
+    acl_db_count  = hash_map_count(rdk_vap_info->acl_map);
+    ret = wifi_getApAclDeviceNum(vap_index, &acl_hal_count);
+    if (ret != RETURN_OK) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d: wifi get ap acl device count failure:%d hal acl count:%d\r\n", __func__, __LINE__, ret, acl_hal_count);
+    }
+
+    if ((acl_db_count == 0) || (acl_db_count == acl_hal_count)) {
+        return RETURN_OK;
+    }
+
+    wifi_util_info_print(WIFI_CTRL, "%s:%d: mismatch in mac filter entries, hal_count:%d db_count:%d\r\n", __func__, __LINE__, acl_hal_count, acl_db_count);
+
+    acl_entry = hash_map_get_first(rdk_vap_info->acl_map);
+    while(acl_entry != NULL && acl_count < MAX_ACL_COUNT ) {
+        if (acl_entry->mac != NULL) {
+            memcpy(&acl_device_mac,&acl_entry->mac,sizeof(mac_address_t));
+            to_mac_str(acl_device_mac, mac_str);
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: calling wifi_addApAclDevice for mac %s vap_index %d\n", __func__, __LINE__, mac_str, vap_index);
+            if (wifi_addApAclDevice(vap_index, (CHAR *) mac_str) != RETURN_OK) {
+                wifi_util_error_print(WIFI_CTRL,"%s:%d wifi_addApAclDevice failed. vap_index:%d MAC:'%s'\n", __func__, __LINE__, vap_index, mac_str);
+            }
+        }
+        acl_entry = hash_map_get_next(rdk_vap_info->acl_map,acl_entry);
+        acl_count++;
+    }
+
+    return RETURN_OK;
+}
+
+static int sync_wifi_hal_hotspot_vap_mac_entry(void *arg)
+{
+    sync_wifi_hal_hotspot_vap_mac_entry_with_db();
+    return TIMER_TASK_COMPLETE;
+}
+#endif
+
 #if CCSP_COMMON
 static int rbus_check_and_subscribe_events(void* arg)
 {
@@ -1705,7 +1870,9 @@ static void ctrl_queue_timeout_scheduler_tasks(wifi_ctrl_t *ctrl)
 #endif //CCSP_COMMON
     scheduler_add_timer_task(ctrl->sched, FALSE, NULL, pending_states_webconfig_analyzer, NULL, (ctrl->poll_period * 1000), 0);
 
-
+#if defined (FEATURE_SUPPORT_ACL_SELFHEAL)
+    scheduler_add_timer_task(ctrl->sched, FALSE, NULL, sync_wifi_hal_hotspot_vap_mac_entry, NULL, (HOTSPOT_VAP_MAC_FILTER_ENTRY_SYNC * 1000), 0);
+#endif
     wifi_util_dbg_print(WIFI_CTRL, "%s():%d Ctrl queue timeout tasks scheduled\n", __FUNCTION__, __LINE__);
 }
 

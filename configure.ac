@@ -114,6 +114,8 @@ AC_ARG_ENABLE([journalctl],
 AM_CONDITIONAL([JOURNALCTL_SUPPORT], [test x$JOURNALCTL_SUPPORT_ENABLE = xtrue])
 AC_SUBST(JOURNALCTL_ENABLE_FLAG)
 
+AM_CONDITIONAL([HAL_IPC], [test x$HAL_IPC = xtrue])
+
 # Specify ccsp cpu arch
 
 AC_ARG_WITH([ccsp-arch],

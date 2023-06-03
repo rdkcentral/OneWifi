@@ -67,6 +67,9 @@ extern "C" {
 
 #define ANAYLYTICS_PERIOD             60
 
+//Broadcom driver max acl count for each vap
+#define MAX_ACL_COUNT 20
+
 #define QUEUE_WIFI_CTRL_TASK_TIMEOUT  1
 #define MAX_FRAME_SZ                  2048
 

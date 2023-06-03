@@ -32,7 +32,9 @@ endif
 
 AM_LDFLAGS =  -L$(top_builddir)/../hal/lib
 if CCSP_COMMON_SUPPORT
+if !HAL_IPC
 AM_LDFLAGS += -lhal_wifi
+endif
 endif
 AM_LDFLAGS += -lwebconfig_framework
 AM_LDFLAGS += -lsecure_wrapper
@@ -106,7 +108,7 @@ OneWifi_SOURCES += $(top_srcdir)/lib/common/os_time.c $(top_srcdir)/lib/common/u
 OneWifi_LDFLAGS = -rdynamic -lwebconfig_framework -lsecure_wrapper $(SYSTEMD_LDFLAGS) -luuid -lsecure_wrapper -lmsgpackc -lcjson  -lm -ljansson -lev -lprotobuf-c -ltrower-base64 
 
 if CCSP_COMMON_SUPPORT
-OneWifi_LDFLAGS += -lhal_wifi  -lccsp_common -lutapi -lsyscfg -lprint_uptime -lsysevent -lrdk_wifihal -lavro
+OneWifi_LDFLAGS += -lccsp_common -lutapi -lsyscfg -lprint_uptime -lsysevent -lrdk_wifihal -lavro
 endif
 
 OneWifi_CPPFLAGS += -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/ -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/ -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/ap -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/utils -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/drivers/ -I$(PKG_CONFIG_SYSROOT_DIR)$(includedir)/qca/qca-wifi/os/linux/include/ -I${PKG_CONFIG_SYSROOT_DIR}${libdir}/ -DEXTERNAL_USE_ONLY

@@ -33,7 +33,10 @@ AM_CFLAGS += -DWBCFG_MULTI_COMP_SUPPORT
 AM_LDFLAGS = -L$(top_builddir)/../CcspCommonLibrary/lib
 AM_LDFLAGS += -lccsp_common
 AM_LDFLAGS += -L$(top_builddir)/../hal/lib
-AM_LDFLAGS += -lhal_wifi -lsecure_wrapper
+AM_LDFLAGS += -lsecure_wrapper
+if !HAL_IPC
+AM_LDFLAGS += -lhal_wifi
+endif
 AM_LDFLAGS += -L$(top_builddir)/source/sysevent/lib
 AM_LDFLAGS += -lsysevent
 AM_LDFLAGS += -lwebconfig_framework

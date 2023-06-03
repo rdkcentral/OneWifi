@@ -32,7 +32,11 @@ endif
 AM_LDFLAGS = -L$(top_builddir)/../CcspCommonLibrary/lib
 AM_LDFLAGS += -lccsp_common
 AM_LDFLAGS += -L$(top_builddir)/../hal/lib
-AM_LDFLAGS += -lhal_wifi -lsecure_wrapper
+AM_LDFLAGS += -lsecure_wrapper
+
+if !HAL_IPC
+AM_LDFLAGS += -lhal_wifi
+endif
 
 AM_CPPFLAGS = -Wall -Werror
 ACLOCAL_AMFLAGS = -I m4
@@ -43,4 +47,7 @@ libCcspWifiAgent_dml_webconfig_la_CPPFLAGS = -I$(top_srcdir)/../CcspCommonLibrar
 libCcspWifiAgent_dml_webconfig_la_CFLAGS = $(DML_ENABLE_FLAG)
 libCcspWifiAgent_dml_webconfig_la_CFLAGS += $(CCSP_COMMON_FLAG)
 libCcspWifiAgent_dml_webconfig_la_SOURCES = dml_onewifi_api.c
-libCcspWifiAgent_dml_webconfig_la_LDFLAGS = -lccsp_common -lhal_wifi -lsecure_wrapper
+libCcspWifiAgent_dml_webconfig_la_LDFLAGS = -lccsp_common -lsecure_wrapper
+if !HAL_IPC
+libCcspWifiAgent_dml_webconfig_la_LDFLAGS += -lhal_wifi
+endif

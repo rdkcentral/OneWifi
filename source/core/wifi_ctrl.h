@@ -103,6 +103,9 @@ extern "C" {
 #define GREYLIST_TIMEOUT_IN_SECONDS        (24 * 60 * 60)
 #define GREYLIST_CHECK_IN_SECONDS          (1 * 60 * 60)
 
+// 15 Minutes
+#define HOTSPOT_VAP_MAC_FILTER_ENTRY_SYNC  (15 * 60)
+
 #define MAX_WIFI_SCHED_TIMEOUT         (4 * 1000)
 
 //This is a dummy string if the value is not passed.

@@ -32,7 +32,10 @@ endif
 AM_LDFLAGS = -L$(top_builddir)/../CcspCommonLibrary/lib
 AM_LDFLAGS += -lccsp_common
 AM_LDFLAGS += -L$(top_builddir)/../hal/lib
-AM_LDFLAGS += -lhal_wifi -lsecure_wrapper
+AM_LDFLAGS += -lsecure_wrapper
+if !HAL_IPC
+AM_LDFLAGS += -lhal_wifi
+endif
 
 AM_CPPFLAGS = -Wall -Werror
 ACLOCAL_AMFLAGS = -I m4
@@ -44,4 +47,7 @@ libCcspWifiAgent_ml_la_CFLAGS = $(DML_ENABLE_FLAG)
 libCcspWifiAgent_ml_la_CFLAGS += $(CCSP_COMMON_FLAG)
 
 libCcspWifiAgent_ml_la_SOURCES = plugin_main.c cosa_apis_util.c plugin_main_apis.c cosa_wifi_dml.c cosa_apis_busutil.c cosa_wifi_internal.c cosa_logging_internal.c cosa_logging_dml.c cosa_harvester_dml.c 
-libCcspWifiAgent_ml_la_LDFLAGS = -lccsp_common -lhal_wifi -lsecure_wrapper
+libCcspWifiAgent_ml_la_LDFLAGS = -lccsp_common -lsecure_wrapper 
+if !HAL_IPC
+libCcspWifiAgent_ml_la_LDFLAGS += -lhal_wifi
+endif

@@ -40,11 +40,15 @@ AM_LDFLAGS += -ldl
 AM_LDFLAGS += -ljansson
 AM_LDFLAGS += -lrt
 if CCSP_COMMON_SUPPORT
+
+if !HAL_IPC
 AM_LDFLAGS += -lhal_wifi
+endif
+
 AM_LDFLAGS += -L$(top_builddir)/../CcspCommonLibrary/lib
 AM_LDFLAGS += -lccsp_common
 AM_LDFLAGS += -lrdk_wifihal
-endif
+endif #CCSP_COMMON_SUPPORT
 
 AM_CPPFLAGS = -Wall -Werror
 ACLOCAL_AMFLAGS = -I m4

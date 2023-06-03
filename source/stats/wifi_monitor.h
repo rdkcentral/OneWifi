@@ -66,13 +66,29 @@ typedef struct {
     ULONG                   radio_InvalidMACCount;
     ULONG                   radio_PacketsOtherReceived;
     INT                     radio_RetransmissionMetirc;
+    ULONG                   radio_PLCPErrorCount;
+    ULONG                   radio_FCSErrorCount;
+    INT                     radio_MaximumNoiseFloorOnChannel;
+    INT                     radio_MinimumNoiseFloorOnChannel;
+    INT                     radio_MedianNoiseFloorOnChannel;
+    ULONG                   radio_StatisticsStartTime;
 } radio_data_t;
 
 #ifdef CCSP_COMMON
 typedef struct {
-       int       ch_number;
+       bool ch_in_pool;
+       bool ch_radar_noise;
+       int  ch_number;
+       int  ch_noise;
+       int  ch_max_80211_rssi;
+       int  ch_non_80211_noise;
+       int  ch_utilization;
        unsigned long long ch_utilization_busy_tx;
        unsigned long long ch_utilization_busy_self;
+       unsigned long long ch_utilization_total;
+       unsigned long long ch_utilization_busy;
+       unsigned long long ch_utilization_busy_rx;
+       unsigned long long ch_utilization_busy_ext;
        unsigned long long LastUpdatedTime;
 } radio_chan_data_t;
 
