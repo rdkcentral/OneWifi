@@ -218,7 +218,7 @@ int channel_mode_conversion(BOOL *auto_channel_bool, char *auto_channel_string, 
 int channel_state_enum_to_str(wifi_channelState_t channel_state_enum, char *channel_state_string, unsigned int channel_state_strlen);
 int is_wifi_channel_valid(wifi_platform_property_t *wifi_prop, wifi_freq_bands_t wifi_band, UINT wifi_channel);
 int key_mgmt_conversion_legacy(wifi_security_modes_t *mode_enum, wifi_encryption_method_t *encryp_enum, char *str_mode, int mode_len, char *str_encryp, int encryp_len, unsigned int conv_type);
-int key_mgmt_conversion(wifi_security_modes_t *enum_sec, char *str_sec, int sec_len, unsigned int conv_type);
+int key_mgmt_conversion(wifi_security_modes_t *enum_sec, char *str_sec, char *str_sec2, int sec_len, int sec_len2, unsigned int conv_type, int *len);
 int get_radio_if_hw_type(char *str, int str_len);
 char *to_mac_str(mac_address_t mac, mac_addr_str_t key);
 int is_ssid_name_valid(char *ssid_name);

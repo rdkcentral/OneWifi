@@ -194,7 +194,7 @@ void print_vif_state_ovs_schema(FILE  *fp, const struct schema_Wifi_VIF_State *v
     fprintf(fp, " wps_pbc_key_id            : %s\n",   vif->wps_pbc_key_id);
     fprintf(fp, " wpa                       : %d\n",   vif->wpa);
     fprintf(fp, " parent                    : %s\n",   vif->parent);
-    //#ifdef CONFIG_RDK_LEGACY_SECURITY_SCHEMA
+#ifndef WPA3_SECURITY_SCHEMA
     const char *str;
 
     str = testapp_security_state_find_by_key(vif, "encryption");
@@ -211,7 +211,6 @@ void print_vif_state_ovs_schema(FILE  *fp, const struct schema_Wifi_VIF_State *v
     if (str != NULL) {
         fprintf(fp, " key                       : %s\n",   str);
     }
-    /*
 #else
     for (i=0; i<vif->wpa_key_mgmt_len; i++) {
         if (vif->wpa_key_mgmt[i] != NULL) {
@@ -224,7 +223,6 @@ void print_vif_state_ovs_schema(FILE  *fp, const struct schema_Wifi_VIF_State *v
         }
     }
 #endif
-*/
     for (i=0; i<vif->mac_list_len; i++) {
         if (vif->mac_list[i] != NULL) {
             fprintf(fp, " mac_list                : %s\n",   vif->mac_list[i]);
@@ -269,10 +267,10 @@ void print_vif_config_ovs_schema(FILE  *fp, const struct schema_Wifi_VIF_Config 
     fprintf(fp, " wps_pbc_key_id            : %s\n",   vif->wps_pbc_key_id);
     fprintf(fp, " wpa                       : %d\n",   vif->wpa);
     fprintf(fp, " parent                    : %s\n",   vif->parent);
+#ifndef WPA3_SECURITY_SCHEMA
     //fprintf(fp, " wpa_key_mgmt                : %s\n",   vif->wpa_key_mgmt);
     //  fprintf(fp, " wpa_psks                  : %s\n",   vif->wpa_psks);
     //  fprintf(fp, " wpa_oftags                : %s\n",   vif->wpa_oftags);
-    //#ifdef CONFIG_RDK_LEGACY_SECURITY_SCHEMA
     const char *str;
 
     str = testapp_security_config_find_by_key(vif, "encryption");
@@ -282,14 +280,13 @@ void print_vif_config_ovs_schema(FILE  *fp, const struct schema_Wifi_VIF_Config 
 
     str = testapp_security_config_find_by_key(vif, "mode");
     if (str != NULL) {
-        fprintf(fp, " wpa_key_mgmt              : %s\n",   str);
+        fprintf(fp, " mode              : %s\n",   str);
     }
 
     str = testapp_security_config_find_by_key(vif, "key");
     if (str != NULL) {
-        fprintf(fp, " wpa_psk                   : %s\n",   str);
+        fprintf(fp, " key                   : %s\n",   str);
     }
-    /*
 #else
     for (i=0; i<vif->wpa_key_mgmt_len; i++) {
         if (vif->wpa_key_mgmt[i] != NULL) {
@@ -302,7 +299,6 @@ void print_vif_config_ovs_schema(FILE  *fp, const struct schema_Wifi_VIF_Config 
         }
     }
 #endif
-*/
     for (i=0; i<vif->mac_list_len; i++) {
         if (vif->mac_list[i] != NULL) {
             fprintf(fp, " mac_list                : %s\n",   vif->mac_list[i]);
