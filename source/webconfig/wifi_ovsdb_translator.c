@@ -2388,13 +2388,14 @@ webconfig_error_t translate_vap_info_to_vif_state_radius_settings(const wifi_vap
         return webconfig_error_translate_to_ovsdb;
     }
 
-    vap_row->radius_srv_port = radius->port;
-    snprintf(vap_row->radius_srv_secret, sizeof(vap_row->radius_srv_secret), "%s", radius->key);
+    SCHEMA_SET_INT(vap_row->radius_srv_port, radius->port);
+    SCHEMA_SET_STR(vap_row->radius_srv_secret, radius->key);
 
 #ifndef WIFI_HAL_VERSION_3_PHASE2
-    snprintf(vap_row->radius_srv_addr, sizeof(vap_row->radius_srv_addr), "%s", radius->ip);
+    SCHEMA_SET_STR(vap_row->radius_srv_addr, (char *)radius->ip);
 #else
     getIpStringFromAdrress(vap_row->radius_srv_addr, &(radius->ip));
+    vap_row->radius_srv_addr_exists = 1;
 #endif
     return webconfig_error_none;
 }
