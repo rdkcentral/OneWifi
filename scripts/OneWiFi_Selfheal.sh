@@ -14,6 +14,8 @@ hal_indication="/tmp/hal_initialize_failed"
 prev_reboot_timestamp=0
 cur_reboot_timestamp=0
 hal_error_reboot="/nvram/hal_error_reboot"
+dml_status=0
+dml_restart=0
 
 MODEL_NUM=`grep MODEL_NUM /etc/device.properties | cut -d "=" -f2`
 LOG_FILE="/rdklogs/logs/wifi_selfheal.txt"
@@ -131,6 +133,20 @@ while true
             dmcli eRT setv Device.X_CISCO_COM_DeviceControl.RebootDevice string "Device"
         fi
  fi
- sleep 5m
- ((check_count++))
+
+ dml_status=`dmcli eRT getv Device.WiFi.SSID.1.Enable | grep -c "error code:"`
+ if [ $dml_status != 0 ]; then
+     ((dml_restart++))
+     echo_t "DMCLI unresponsive" >>  /rdklogs/logs/wifi_selfheal.txt
+ else
+     dml_restart=0
+ fi
+ if [ $dml_restart -ge 3 ]; then
+     dml_restart=0
+     echo_t "DMCLI crashed self heal executed restarting OneWifi" >>  /rdklogs/logs/wifi_selfheal.txt
+     onewifi_restart_wifi
+ fi
+
+sleep 5m
+((check_count++))
 done
