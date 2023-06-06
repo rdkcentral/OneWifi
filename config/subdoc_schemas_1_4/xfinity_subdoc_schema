@@ -36,7 +36,7 @@
                     "RadiusSecret": "",
                     "SecondaryRadiusServerIPAddr": "0.0.0.0",
                     "SecondaryRadiusServerPort": 0,
-                    "SecondaryRadiusSecret": "",
+                    "SecondaryRadiusSecret": ""
                 }
             },
             "VapConnectionControl": {
@@ -47,7 +47,7 @@
                     "BasicDataTransmitRates": "12",
                     "OperationalDataTransmitRates": "12,24,36,48,54",
                     "SupportedDataTransmitRates": "12,24,36,48,54",
-                    "MinimumAdvertisedMCS": "3",
+                    "MinimumAdvertisedMCS": "3"
                 },
                 "PostAssociationDeny": {
                     "RssiUpThreshold": "-70",
@@ -133,7 +133,7 @@
                 "RadiusSecret": "",
                 "SecondaryRadiusServerIPAddr": "0.0.0.0",
                 "SecondaryRadiusServerPort": 0,
-                "SecondaryRadiusSecret": "",
+                "SecondaryRadiusSecret": ""
             }
         },
         "VapConnectionControl": {
@@ -144,7 +144,7 @@
                 "BasicDataTransmitRates": "12",
                 "OperationalDataTransmitRates": "12,24,36,48,54",
                 "SupportedDataTransmitRates": "12,24,36,48,54",
-                "MinimumAdvertisedMCS": "3",
+                "MinimumAdvertisedMCS": "3"
             },
             "PostAssociationDeny": {
                 "RssiUpThreshold": "-70",
@@ -228,7 +228,7 @@
                 "RadiusSecret": "",
                 "SecondaryRadiusServerIPAddr": "0.0.0.0",
                     "SecondaryRadiusServerPort": 0,
-                    "SecondaryRadiusSecret": "",
+                    "SecondaryRadiusSecret": ""
                 }
             },
             "VapConnectionControl": {
@@ -239,7 +239,7 @@
                     "BasicDataTransmitRates": "12",
                     "OperationalDataTransmitRates": "12,24,36,48,54",
                     "SupportedDataTransmitRates": "12,24,36,48,54",
-                    "MinimumAdvertisedMCS": "3",
+                    "MinimumAdvertisedMCS": "3"
                 },
                 "PostAssociationDeny": {
                     "RssiUpThreshold": "-70",
@@ -325,7 +325,7 @@
                 "RadiusSecret": "",
                 "SecondaryRadiusServerIPAddr": "0.0.0.0",
                 "SecondaryRadiusServerPort": 0,
-                "SecondaryRadiusSecret": "",
+                "SecondaryRadiusSecret": ""
             },
         },
         "VapConnectionControl": {
@@ -336,7 +336,7 @@
                 "BasicDataTransmitRates": "12",
                 "OperationalDataTransmitRates": "12,24,36,48,54",
                 "SupportedDataTransmitRates": "12,24,36,48,54",
-                "MinimumAdvertisedMCS": "3",
+                "MinimumAdvertisedMCS": "3"
             },
             "PostAssociationDeny": {
                 "RssiUpThreshold": "-70",
@@ -422,7 +422,7 @@
                 "RadiusSecret": "",
                 "SecondaryRadiusServerIPAddr": "0.0.0.0",
                 "SecondaryRadiusServerPort": 0,
-                "SecondaryRadiusSecret": "",
+                "SecondaryRadiusSecret": ""
             }
         },
         "VapConnectionControl": {
@@ -520,7 +520,7 @@
                 "RadiusSecret": "",
                 "SecondaryRadiusServerIPAddr": "0.0.0.0",
                 "SecondaryRadiusServerPort": 0,
-                "SecondaryRadiusSecret": "",
+                "SecondaryRadiusSecret": ""
             }
         },
         "VapConnectionControl": {
