@@ -5966,10 +5966,8 @@ int init_wifi_monitor()
 #if CCSP_COMMON
     wifi_hal_newApAssociatedDevice_callback_register(device_associated);
     wifi_vapstatus_callback_register(vapstatus_callback);
-#if !defined(_PLATFORM_RASPBERRYPI_) && !defined(_PLATFORM_TURRIS_)
     wifi_hal_apDeAuthEvent_callback_register(device_deauthenticated);
     wifi_hal_apDisassociatedDevice_callback_register(device_disassociated);
-#endif
 #if defined(FEATURE_CSI_CALLBACK)
     wifi_csi_callback_register(process_csi);
 #endif
