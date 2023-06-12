@@ -109,6 +109,8 @@ typedef struct {
     bss_candidate_t        last_connected_bss;
     bss_candidate_t        new_bss;
     connection_state_t     conn_state;
+    bool                   is_radio_ignored;
+    wifi_radio_index_t     ignored_radio_index;
     unsigned int           selfheal_status;
     unsigned int           connected_vap_index;
     unsigned long long int last_connected_time;

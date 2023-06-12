@@ -37,6 +37,10 @@
 #define PATH_TO_RSSI_NORMALIZER_FILE "/tmp/rssi_normalizer_2_4.cfg"
 #define DEFAULT_RSSI_NORMALIZER_2_4_VALUE 20
 
+#define EXT_DISCONNECTION_NO_ACTION 0
+#define EXT_DISCONNECTION_DISCONNECT 1
+#define EXT_DISCONNECTION_DISCONNECT_AND_IGNORE_RADIO 2
+
 static void swap_bss(bss_candidate_t *a, bss_candidate_t *b)
 {
     bss_candidate_t t = *a;
@@ -541,6 +545,15 @@ void ext_start_scan(vap_svc_t *svc)
     
     int dwell_time = get_dwell_time();
     for (radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
+        if (ext->is_radio_ignored == true && radio_index == ext->ignored_radio_index) {
+            wifi_util_info_print(WIFI_CTRL, "%s:%d ignore radio index %u\n", __func__, __LINE__,
+                radio_index);
+            ext->scanned_radios++;
+            ext->is_radio_ignored = false;
+            ext->ignored_radio_index = 0;
+            continue;
+        }
+
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d start Scan on radio index %u\n", __func__, __LINE__,
             radio_index);
 
@@ -1123,8 +1136,19 @@ int process_ext_webconfig_set_data(vap_svc_t *svc, void *arg)
 
 static void process_ext_trigger_disconnection(vap_svc_t *svc, void *arg)
 {
+    int radio_index;
+    unsigned int disconnection_type;
     wifi_ctrl_t *ctrl = svc->ctrl;
     vap_svc_ext_t *ext = &svc->u.ext;
+
+    if (arg == NULL) {
+        return;
+    }
+
+    disconnection_type = *(unsigned int *)arg;
+    if (disconnection_type == EXT_DISCONNECTION_NO_ACTION) {
+        return;
+    }
 
     if (ext->conn_state != connection_state_connected) {
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d ignore disconnection event due to "
@@ -1136,8 +1160,21 @@ static void process_ext_trigger_disconnection(vap_svc_t *svc, void *arg)
     apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_command, wifi_event_type_trigger_disconnection_analytics, ext);
 #endif
 
-    wifi_util_info_print(WIFI_CTRL, "%s:%d execute sta disconnect for vap index: %d\n", __func__,
-        __LINE__, ext->connected_vap_index);
+    radio_index = get_radio_index_for_vap_index(svc->prop, ext->connected_vap_index);
+    if (radio_index == RETURN_ERR) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: failed to get radio index for vap_index: %d\n",
+            __func__, __LINE__, ext->connected_vap_index);
+        return;
+    }
+
+    if (disconnection_type == EXT_DISCONNECTION_DISCONNECT_AND_IGNORE_RADIO) {
+        ext->is_radio_ignored = true;
+        ext->ignored_radio_index = radio_index;
+    }
+
+    wifi_util_info_print(WIFI_CTRL, "%s:%d execute sta disconnect for vap index: %d, "
+        "ignore radio on scan: %s\n", __func__, __LINE__, ext->connected_vap_index,
+        ext->is_radio_ignored ? "true" : "false");
 
     ext->disconn_retry++;
     if (wifi_hal_disconnect(ext->connected_vap_index) == RETURN_ERR) {
@@ -1593,10 +1630,18 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
                 wifi_util_info_print(WIFI_CTRL, "%s:%d: vap index %d is connected and received disconnection event on vap index %d\n", __func__, __LINE__, ext->connected_vap_index, sta_data->stats.vap_index);
                 return 0;
             }
-            candidate = &ext->last_connected_bss;
-            found_candidate = true;
-            ext_set_conn_state(ext, connection_state_connection_to_lcb_in_progress, __func__,
-                __LINE__);
+
+            if (ext->is_radio_ignored == true) {
+                candidate = NULL;
+                found_candidate = false;
+                ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__,
+                    __LINE__);
+            } else {
+                candidate = &ext->last_connected_bss;
+                found_candidate = true;
+                ext_set_conn_state(ext, connection_state_connection_to_lcb_in_progress, __func__,
+                    __LINE__);
+            }
 
             if (ext->ext_udhcp_ip_check_id != 0) {
                 scheduler_cancel_timer_task(ctrl->sched, ext->ext_udhcp_ip_check_id);

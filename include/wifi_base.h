@@ -47,7 +47,7 @@ extern "C" {
 #define WIFI_ANALYTICS_FRAME_EVENTS         "Device.WiFi.Events.Frames.Mgmt"
 #define WIFI_ANALYTICS_DATA_EVENTS          "Device.WiFi.Events.Frames.Data"
 #define WIFI_FRAME_INJECTOR_TO_ONEWIFI      "Device.WiFi.TestFrameInput"
-#define WIFI_STA_TRIGGER_DISCONNECTION      "Device.WiFi.STATriggerDisconnection"
+#define WIFI_STA_TRIGGER_DISCONNECTION      "Device.WiFi.X_RDK_STATriggerDisconnection"
 #define WIFI_ACCESSPOINT_TABLE              "Device.WiFi.AccessPoint.{i}."
 #define WIFI_ACCESSPOINT_DEV_CONNECTED      "Device.WiFi.AccessPoint.{i}.X_RDK_deviceConnected"
 #define WIFI_ACCESSPOINT_DEV_DISCONNECTED   "Device.WiFi.AccessPoint.{i}.X_RDK_deviceDisconnected"

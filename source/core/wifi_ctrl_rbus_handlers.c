@@ -665,7 +665,7 @@ rbusError_t get_sta_disconnection(rbusHandle_t handle, rbusProperty_t property, 
 
     rbusValue_Init(&value);
     if (strcmp(name, WIFI_STA_TRIGGER_DISCONNECTION) == 0) {
-        rbusValue_SetBoolean(value, false);
+        rbusValue_SetUInt32(value, 0);
         rbusProperty_SetValue(property, value);
     }
 
@@ -679,22 +679,22 @@ rbusError_t set_sta_disconnection(rbusHandle_t handle, rbusProperty_t property, 
     char const* name = rbusProperty_GetName(property);
     rbusValue_t value = rbusProperty_GetValue(property);
     rbusValueType_t type = rbusValue_GetType(value);
-    int rc = RBUS_ERROR_INVALID_INPUT;
-    bool sta_disconnect = false;
+    unsigned int disconnection_type = 0;
 
-    if (type != RBUS_BOOLEAN) {
+    if (type != RBUS_UINT32) {
         wifi_util_dbg_print(WIFI_CTRL,"%sWrong data type %s\n",__FUNCTION__,name);
-        return rc;
+        return RBUS_ERROR_INVALID_INPUT;
     }
 
-    sta_disconnect = rbusValue_GetBoolean(value);
-    if (sta_disconnect) {
-        rc = RBUS_ERROR_SUCCESS;
-        wifi_util_dbg_print(WIFI_CTRL,"%s Rbus set bool %d\n",__FUNCTION__, sta_disconnect);
-        push_event_to_ctrl_queue(&sta_disconnect, sizeof(sta_disconnect), wifi_event_type_command, wifi_event_type_trigger_disconnection);
-    }
+    // 0 - no action
+    // 1 - disconnection
+    // 2 - disconnection + ignore current radio on next scan
+    disconnection_type = rbusValue_GetUInt32(value);
+    wifi_util_dbg_print(WIFI_CTRL, "%s Rbus set %d\n", __FUNCTION__, disconnection_type);
+    push_event_to_ctrl_queue(&disconnection_type, sizeof(disconnection_type),
+        wifi_event_type_command, wifi_event_type_trigger_disconnection);
 
-    return rc;
+    return RBUS_ERROR_SUCCESS;
 }
 
 rbusError_t set_kickassoc_command(rbusHandle_t handle, rbusProperty_t property, rbusSetHandlerOptions_t* opts)

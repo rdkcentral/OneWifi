@@ -2201,7 +2201,7 @@ void process_device_mode_command_event(int device_mode)
     }
 }
 
-void process_sta_trigger_disconnection(bool sta_disconnection)
+void process_sta_trigger_disconnection(unsigned int disconnection_type)
 {
     wifi_mgr_t *g_wifidb;
     wifi_ctrl_t *ctrl;
@@ -2213,9 +2213,8 @@ void process_sta_trigger_disconnection(bool sta_disconnection)
         if (ctrl->network_mode == rdk_dev_mode_type_ext) {
             ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
             if (ext_svc != NULL) {
-                if (sta_disconnection) {
-                    ext_svc->event_fn(ext_svc, wifi_event_type_command, wifi_event_type_trigger_disconnection, vap_svc_event_none, NULL);
-                }
+                ext_svc->event_fn(ext_svc, wifi_event_type_command,
+                    wifi_event_type_trigger_disconnection, vap_svc_event_none, &disconnection_type);
             } else {
                 wifi_util_error_print(WIFI_CTRL, "%s:%d NULL svc Pointer not triggering disconnection\r\n", __func__, __LINE__);
             }
@@ -2542,7 +2541,7 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len, wifi_
             break;
 #endif // CCSP_COMMON
         case wifi_event_type_trigger_disconnection:
-            process_sta_trigger_disconnection(*(bool *)data);
+            process_sta_trigger_disconnection(*(unsigned int *)data);
             break;
 
         default:
