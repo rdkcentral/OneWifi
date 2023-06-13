@@ -4418,6 +4418,10 @@ static void logVAPUpStatus()
     char vap_buf[16]={0};
     char tmp[128]={0};
     errno_t rc = -1;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+
+    UINT vap_index = 0;
+
     wifi_util_dbg_print(WIFI_MON, "Entering %s:%d \n",__FUNCTION__,__LINE__);
     get_formatted_time(tmp);
     rc = sprintf_s(log_buf, sizeof(log_buf), "%s WIFI_VAP_PERCENT_UP:",tmp);
@@ -4427,9 +4431,10 @@ static void logVAPUpStatus()
 
     for(i = 0; i < (int)getTotalNumberVAPs(); i++)
     {
-        vapup_percentage=((int)(vap_up_arr[i])*100)/(vap_iteration);
+        vap_index = VAP_INDEX(mgr->hal_cap, i);
+        vapup_percentage=((int)(vap_up_arr[vap_index])*100)/(vap_iteration);
         char delimiter = (i+1) < ((int)getTotalNumberVAPs()+1) ?';':' ';
-        rc = sprintf_s(vap_buf, sizeof(vap_buf), "%d,%d%c",(i+1),vapup_percentage, delimiter);
+        rc = sprintf_s(vap_buf, sizeof(vap_buf), "%d,%d%c",(vap_index + 1),vapup_percentage, delimiter);
         if(rc < EOK)
         {
             ERR_CHK(rc);
@@ -4458,15 +4463,20 @@ int captureVAPUpStatus(void *arg)
 
     UINT vap_index = VAP_INDEX(mgr->hal_cap, i);
     wifi_util_dbg_print(WIFI_MON, "Entering %s:%d for VAP %d\n",__FUNCTION__,__LINE__, vap_index);
+    if (vap_index > MAX_VAP) {
+        wifi_util_error_print(WIFI_MON, "wrong vap_index:%d for i:%d\n", __func__, __LINE__, vap_index, i);
+        i = 0;
+        return TIMER_TASK_COMPLETE;
+    }
 
     vap_status = g_monitor_module.bssid_data[vap_index].ap_params.ap_status;
     if (vap_status) {
-        vap_up_arr[i]=vap_up_arr[i]+1;
-        if (!vap_nas_status[i]) {
-            vap_nas_status[i] = updateNasIpStatus(i);
+        vap_up_arr[vap_index]=vap_up_arr[vap_index]+1;
+        if (!vap_nas_status[vap_index]) {
+            vap_nas_status[vap_index] = updateNasIpStatus(vap_index);
         }
     } else {
-        vap_nas_status[i] = 0;
+        vap_nas_status[vap_index] = 0;
     }
     i++;
     if(i >= getTotalNumberVAPs()) {
