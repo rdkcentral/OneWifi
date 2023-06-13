@@ -2776,7 +2776,11 @@ void *monitor_function  (void *data)
         time_to_wait.tv_sec = timeout.tv_sec;
         time_to_wait.tv_nsec = timeout.tv_usec*1000;
 
-        rc = pthread_cond_timedwait(&proc_data->cond, &proc_data->queue_lock, &time_to_wait);
+        rc = 0;
+        if (queue_count(proc_data->queue) == 0) {
+            rc = pthread_cond_timedwait(&proc_data->cond, &proc_data->queue_lock, &time_to_wait);
+        }
+
         if ((rc == 0) || (queue_count(proc_data->queue) != 0)) {
             // dequeue data
             while (queue_count(proc_data->queue)) {
@@ -2784,6 +2788,8 @@ void *monitor_function  (void *data)
                 if (event == NULL) {
                     continue;
                 }
+
+                pthread_mutex_unlock(&proc_data->queue_lock);
 
                 event_data = &event->u.mon_data;
 #ifdef CCSP_COMMON
@@ -2862,10 +2868,13 @@ void *monitor_function  (void *data)
                 free(event);
 
                 gettimeofday(&proc_data->last_signalled_time, NULL);
+                pthread_mutex_lock(&proc_data->queue_lock);
             }
         } else if (rc == ETIMEDOUT) {
+            pthread_mutex_unlock(&proc_data->queue_lock);
             gettimeofday(&t_start, NULL);
             scheduler_execute(g_monitor_module.sched, t_start, interval.tv_usec/1000);
+            pthread_mutex_lock(&proc_data->queue_lock);
         } else {
             wifi_util_error_print(WIFI_MON,"%s:%d Monitor Thread exited with rc - %d",__func__,__LINE__,rc);
             pthread_mutex_unlock(&proc_data->queue_lock);
