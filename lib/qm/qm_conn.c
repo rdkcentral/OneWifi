@@ -39,7 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "util.h"
 #include "qm_conn.h"
 
-#define QM_SOCK_DIR "/tmp/plume/"
+#define QM_SOCK_DIR "/tmp/opensync/"
 #define QM_SOCK_FILENAME QM_SOCK_DIR"qm.sock"
 #define QM_SOCK_MAX_PENDING 10
 #define QM_COMPACT_SEND_SIZE (64*1024)
