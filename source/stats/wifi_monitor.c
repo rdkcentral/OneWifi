@@ -4413,7 +4413,7 @@ void associated_client_diagnostics ()
     }
 
     wifi_util_dbg_print(WIFI_MON, "%s:%d: get single connected client %s stats\n", __func__, __LINE__, s_mac);
-#if !defined(_CBR_PRODUCT_REQ_) && !defined(_HUB4_PRODUCT_REQ_)
+#if !defined(_CBR_PRODUCT_REQ_)
     wifi_util_dbg_print(WIFI_MON, "WIFI_HAL enabled, calling wifi_getApAssociatedClientDiagnosticResult\n");
     if (wifi_getApAssociatedClientDiagnosticResult(index, s_mac, &dev_conn) == RETURN_OK) {
         process_diagnostics(index, &dev_conn, 1);
@@ -6741,7 +6741,7 @@ void pktGen_BlastClient (char *dst_mac)
         wifi_util_dbg_print(WIFI_MON, "%s:%d no need to start pktgen for offline client %s\n",__func__,__LINE__,s_mac);
     }
 
-#if !defined(_XF3_PRODUCT_REQ_) && !defined(_CBR_PRODUCT_REQ_) && !defined(_HUB4_PRODUCT_REQ_)
+#if !defined(_XF3_PRODUCT_REQ_) && !defined(_CBR_PRODUCT_REQ_)
     int waittime = config.sendDuration;
 #endif
 
@@ -6766,7 +6766,7 @@ void pktGen_BlastClient (char *dst_mac)
     while ( SampleCount < (config.packetCount + 1)) {
         memset(&dev_conn, 0, sizeof(wifi_associated_dev3_t));
 
-#if !defined(_XF3_PRODUCT_REQ_) && !defined(_CBR_PRODUCT_REQ_) && !defined(_HUB4_PRODUCT_REQ_)
+#if !defined(_XF3_PRODUCT_REQ_) && !defined(_CBR_PRODUCT_REQ_)
 #ifdef CCSP_COMMON
         wifi_util_dbg_print(WIFI_MON,"%s : %d WIFI_HAL enabled, calling wifi_getApAssociatedClientDiagnosticResult with mac : %s\n",__func__,__LINE__,s_mac);
         CcspTraceDebug(("%s-%d WIFI_HAL enabled, calling wifi_getApAssociatedClientDiagnosticResult with mac : %s for sampling process",  __FUNCTION__, __LINE__, s_mac));
