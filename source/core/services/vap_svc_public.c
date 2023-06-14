@@ -332,7 +332,7 @@ void process_xfinity_enable(vap_svc_event_t event, void *data)
 #if DML_SUPPORT
     public_vaps_data_t *public = ((public_vaps_data_t *)data);
     wifi_util_dbg_print(WIFI_CTRL,"WIFI Enter RFC Func %s: %d : vap_name:%s:bool %d\n",__FUNCTION__,__LINE__,public->vap_name,public->enabled);
-    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_wifi_db_rfc_parameters();
     if (strcmp(public->vap_name,"hotspot_open_2g") == 0)
         rfc_param->hotspot_open_2g_last_enabled = public->enabled;
     else if (strcmp(public->vap_name,"hotspot_open_5g") == 0)
