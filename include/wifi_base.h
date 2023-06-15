@@ -145,6 +145,12 @@ typedef void *wifi_analytics_data_t;
 #define DCA_KEY_LEN     32
 #define DCA_APP_KEY_LEN 16
 
+#ifdef _SKY_HUB_COMMON_PRODUCT_REQ_
+#define BSS_MAX_NUM_STA 64
+#else
+#define BSS_MAX_NUM_STA 75
+#endif
+
 typedef unsigned char   mac_addr_t[MAC_ADDR_LEN];
 typedef signed short    rssi_t;
 typedef char            sta_key_t[STA_KEY_LEN];

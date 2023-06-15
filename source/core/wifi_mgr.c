@@ -1069,7 +1069,12 @@ int get_vap_params_from_psm(unsigned int vap_index, wifi_vap_info_t *vap_config,
     snprintf(recName, sizeof(recName), BssMaxNumSta, instance_number);
     str = Get_PSM_Record_Status(recName, strValue);
     if (str != NULL) {
-        bss_cfg->bssMaxSta = _ansc_atoi(str);
+        if ((isVapPrivate(vap_config->vap_index)) && (_ansc_atoi(str) == 0)) {
+            bss_cfg->bssMaxSta = BSS_MAX_NUM_STA;
+            wifi_util_info_print(WIFI_MGR, "wrong max clients configured in psm, changing max associated clients to %d on vap:%d\n", BSS_MAX_NUM_STA, vap_index);
+        } else {
+            bss_cfg->bssMaxSta = _ansc_atoi(str);
+        }
         wifi_util_dbg_print(WIFI_MGR,"bss_cfg->bssMaxSta is %d and str is %s and _ansc_atoi(str) is %d\n", bss_cfg->bssMaxSta, str, _ansc_atoi(str));
     } else {
         wifi_util_dbg_print(WIFI_MGR,"%s:%d str value for bssMaxSta:%s \r\n", __func__, __LINE__, str);
