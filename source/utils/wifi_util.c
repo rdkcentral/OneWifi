@@ -2781,32 +2781,25 @@ int validate_radio_parameters(const wifi_radio_operationParam_t *radio_info)
 
 int wifi_radio_operationParam_validation(wifi_hal_capability_t  *hal_cap, wifi_radio_operationParam_t *oper)
 {
-    int i;
-    int radio_index = 0;
     bool is_valid = false;
+    int i = 0,j = 0;
+    int radio_index = 0;
     wifi_radio_capabilities_t *radiocap;
     unsigned int band_arr_index = 0;
-
+    int max_num_ch = 0;
+    int nchannels = 0;
+    int start_index = 0;
+    int ch_count = 0;
+    int *hal_cap_channels = NULL;
+    int ref_ch_list_5g[] = {36,40,44,48,52,56,60,64,100,104,108,112,116,120,124,128,132,136,140,144,149,153,157,161};
+    int non_dfs_ch_hal_cap[MAX_CHANNELS] = {'\0'};
 
     if (convert_freq_band_to_radio_index(oper->band, &radio_index) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to convert freq_band 0x%x to radio_index\n", __func__, __LINE__, oper->band);
         return RETURN_ERR;
     }
-    //from the operation band, get the list of allowed channels and compare the whether the channel is valid
+    /*Get the hal radio capability */
     radiocap = &hal_cap->wifi_prop.radiocap[radio_index];
-
-    is_valid = false;
-    //Channel check from the capability
-    for (i = 0; i < radiocap->channel_list[band_arr_index].num_channels; i++) {
-        if (radiocap->channel_list[band_arr_index].channels_list[i] == (int)oper->channel) {
-            is_valid = true;
-            break;
-        }
-    }
-    if (is_valid == false) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid channel %d for the radio_index : %d\n", __func__, __LINE__, oper->channel, radio_index);
-        return RETURN_ERR;
-    }
 
 // TODO: remove #if after reading channel width from driver to hal-wrapper is fixed
 #if CCSP_COMMON
@@ -2818,64 +2811,88 @@ int wifi_radio_operationParam_validation(wifi_hal_capability_t  *hal_cap, wifi_r
     }
 #endif
 
+    /* Channel validation
+     * Objective: Check wther the target channel is supported by the  driver (using hal capability).
+     * For 5GHz channel :
+     *     Find the starting index of the channel combo (for example, 36/80 will have 36,40,44,48 in it,
+     *     start index will be 36). Then verify whther all the channels in the combo are supported by HAL cap.
+     * For 2.4GHz and 6GHz,
+     *     Just verify whether the target channel is supported by hal cap.
+     *
+     */
+    max_num_ch = radiocap->channel_list[band_arr_index].num_channels;
+    hal_cap_channels = radiocap->channel_list[band_arr_index].channels_list;
+    if((oper->band == WIFI_FREQUENCY_5_BAND) || (oper->band == WIFI_FREQUENCY_5H_BAND) || (oper->band == WIFI_FREQUENCY_5L_BAND)) {
+        /*copy 5ghz non dfs channels from hal caps.*/
+        for (i = 0,j = 0; i < max_num_ch; i++) {
+            if(radiocap->channel_list[band_arr_index].channels_list[i] < 52 || radiocap->channel_list[band_arr_index].channels_list[i] > 144) {
+                non_dfs_ch_hal_cap[j++] = radiocap->channel_list[band_arr_index].channels_list[i];
+            }
+        }
+        if(oper->DfsEnabled == false) {
+            if(oper->channel >= 52  &&  oper->channel <=144 ) {
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d DFS is disabled ! Failed setting DFS channel %d radio_index = %d\n",__func__, __LINE__, oper->channel,radio_index);
+                return RETURN_ERR;
+            }
+            hal_cap_channels = non_dfs_ch_hal_cap; /*Update hal_cap_channels with hal cap non dfs channels*/
+        }
+
+        switch(oper->channelWidth) {
+            case WIFI_CHANNELBANDWIDTH_20MHZ:
+                nchannels = 1;
+                break;
+            case WIFI_CHANNELBANDWIDTH_40MHZ:
+                nchannels = 2;
+                break;
+            case WIFI_CHANNELBANDWIDTH_80MHZ:
+                nchannels = 4;
+                break;
+            case WIFI_CHANNELBANDWIDTH_160MHZ:
+                nchannels = 8;
+                break;
+            default: nchannels =0;
+                break;
+        }
+
+        for(i = 0; i < (int)(sizeof(ref_ch_list_5g)/sizeof(int)); i++) {
+            /*Find the target channel from the reference channels list*/
+            if((ref_ch_list_5g[i] == (int)oper->channel) && (oper->channel != 0)) {
+                if(nchannels > 0) {
+                    start_index = i-(i%nchannels);
+                }
+            }
+        }
+
+        for(j = start_index; j < (start_index+nchannels); j++){
+            for(i = 0;i < max_num_ch; i++) {
+                if(ref_ch_list_5g[j] == hal_cap_channels[i]) {
+                    ch_count++;
+                    break;
+                }
+            }
+        }
+        if(ch_count == nchannels) {
+            is_valid = true;
+        }
+    } else { /*for 2.4GHz and 6GHz */
+        for(i = 0;i < max_num_ch; i++) {
+            if((hal_cap_channels[i] == (int)oper->channel) && (oper->channel != 0)) {
+                is_valid = true;
+                 break;
+            }
+        }
+    }
+    if (is_valid == false) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid channel %d for the radio_index : %d bw = 0x%x \n", __func__, __LINE__, oper->channel, radio_index,oper->channelWidth);
+        return RETURN_ERR;
+    }
+
     if ((oper->band == WIFI_FREQUENCY_5_BAND) || (oper->band == WIFI_FREQUENCY_5H_BAND) || (oper->band == WIFI_FREQUENCY_5L_BAND)) {
         if ((oper->channel == 165) && (oper->channelWidth != WIFI_CHANNELBANDWIDTH_20MHZ)) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid Channel %d for Channelwidth 0x%x for the radio_index : %d\n",
                     __func__, __LINE__, oper->channel, oper->channelWidth, radio_index);
             return RETURN_ERR;
         }
-
-        if (oper->channelWidth == WIFI_CHANNELBANDWIDTH_160MHZ) {
-            switch (oper->channel) {
-                case 132:
-                case 136:
-                case 140:
-                case 144:
-                case 149:
-                case 153:
-                case 157:
-                case 161:
-                case 165:
-                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid Channel %d for the radio_index : %d\n",
-                            __func__, __LINE__, oper->channel, radio_index);
-                    return RETURN_ERR;
-                default:
-                break;
-            }
-        }
-
-        if (oper->DfsEnabled == false) {
-            if (oper->channelWidth == WIFI_CHANNELBANDWIDTH_160MHZ)  {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid Chanwidth %d as DFS is %s for the radio_index : %d\n",
-                        __func__, __LINE__, oper->channelWidth, (oper->DfsEnabled == false) ? "false" : "true", radio_index);
-                return RETURN_ERR;
-            }
-
-            switch (oper->channel) {
-                case 52:
-                case 56:
-                case 60:
-                case 64:
-                case 100:
-                case 104:
-                case 108:
-                case 112:
-                case 116:
-                case 120:
-                case 124:
-                case 128:
-                case 132:
-                case 136:
-                case 140:
-                case 144:
-                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid Channel %d as DFS is %s for the radio_index : %d\n",
-                            __func__, __LINE__, oper->channel, (oper->DfsEnabled == false) ? "false" : "true", radio_index);
-                    return RETURN_ERR;
-                default:
-                break;
-            }
-        }
-
     }
     return RETURN_OK;
 }
