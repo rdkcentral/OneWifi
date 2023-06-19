@@ -617,11 +617,11 @@ CosaUtilChannelValidate
 #if defined CONFIG_DFS
     BOOLEAN dfsEnable;
     wifi_getRadioDfsEnable(uiRadio-1, &dfsEnable);
-    unsigned long channelList_5G_dfs [] = {52, 56, 60, 64, 100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140};
+    unsigned long channelList_5G_dfs [] = {52, 56, 60, 64, 100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140, 144};
 #endif
 #ifndef WIFI_HAL_VERSION_3
     // This should be updated to use the possible channels list  Device.WiFi.Radio.1.PossibleChannels instead of a static list.
-    unsigned long channelList_5G [] = {36, 40, 44, 48, 52, 56, 60, 64, 100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140, 149, 153, 157, 161, 165};
+    unsigned long channelList_5G [] = {36, 40, 44, 48, 52, 56, 60, 64, 100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140, 144, 149, 153, 157, 161, 165};
     int i;
 #endif
 
