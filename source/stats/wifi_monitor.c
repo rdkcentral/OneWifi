@@ -811,6 +811,12 @@ int upload_client_telemetry_data(void *arg)
             return TIMER_TASK_CONTINUE;
         }
         sta_map = g_monitor_module.bssid_data[i].sta_map;
+        if (sta_map == NULL) {
+            wifi_util_dbg_print(WIFI_MON, "%s : sta_map is NULL for index %u\n", __FUNCTION__, i);
+            i = 0;
+            phase++;
+            return TIMER_TASK_CONTINUE;
+        }
         memset(telemetryBuff, 0, TELEMETRY_MAX_BUFFER);
         get_formatted_time(tmp);
         snprintf(buff, 2048, "%s WIFI_MAC_%d:", tmp, vap_index + 1);
