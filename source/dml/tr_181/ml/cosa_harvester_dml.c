@@ -76,6 +76,7 @@
 #include "collection.h"
 #include "wifi_hal.h"
 #include "wifi_monitor.h"
+#include "dml_onewifi_api.h"
 //#include "wifi_db.h"
 
 extern ANSC_HANDLE bus_handle;

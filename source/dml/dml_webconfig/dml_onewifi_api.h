@@ -106,6 +106,56 @@ typedef struct {
     INT RadioStatisticsMeasuringInterval;
     INT ReceivedSignalLevelNumberOfEntries;
 }__attribute__((packed)) dml_stats_default;
+
+webconfig_dml_t* get_webconfig_dml();
+active_msmt_t* get_dml_blaster(void);
+active_msmt_t *get_dml_cache_blaster(void);
+hash_map_t** get_dml_assoc_dev_hash_map(unsigned int radio_index, unsigned int vap_array_index);
+hash_map_t** get_dml_acl_hash_map(unsigned int radio_index, unsigned int vap_index);
+queue_t** get_dml_acl_new_entry_queue(unsigned int radio_index, unsigned int vap_index);
+void** get_acl_vap_context();
+UINT get_num_radio_dml();
+UINT get_total_num_vap_dml();
+void get_associated_devices_data(unsigned int radio_index);
+unsigned long get_associated_devices_count(wifi_vap_info_t *vap_info);
+hash_map_t* get_associated_devices_hash_map(wifi_vap_info_t *vap_info);
+queue_t** get_acl_new_entry_queue(wifi_vap_info_t *vap_info);
+hash_map_t** get_acl_hash_map(wifi_vap_info_t *vap_info);
+wifi_global_config_t *get_dml_cache_global_wifi_config();
+wifi_vap_info_map_t* get_dml_cache_vap_map(uint8_t radio_index);
+wifi_radio_operationParam_t* get_dml_cache_radio_map(uint8_t radio_index);
+wifi_radio_feature_param_t* get_dml_cache_radio_feat_map(uint8_t radio_index);
+bool is_dfs_channel_allowed(unsigned int channel);
+wifi_vap_info_t *get_dml_cache_vap_info(uint8_t vap_index);
+rdk_wifi_vap_info_t *get_dml_cache_rdk_vap_info(uint8_t vap_index);
+wifi_vap_security_t * get_dml_cache_sta_security_parameter(uint8_t vapIndex);
+wifi_vap_security_t * get_dml_cache_bss_security_parameter(uint8_t vapIndex);
+int get_radioIndex_from_vapIndex(unsigned int vap_index, unsigned int *radio_index);
+int push_global_config_dml_cache_to_one_wifidb();
+int push_wifi_host_sync_to_ctrl_queue();
+int push_kick_assoc_to_ctrl_queue(int vap_index) ;
+int push_radio_dml_cache_to_one_wifidb();
+int push_acl_list_dml_cache_to_one_wifidb(wifi_vap_info_t *vap_info);
+wifi_radio_operationParam_t* get_dml_radio_operation_param(uint8_t radio_index);
+wifi_vap_info_t* get_dml_vap_parameters(uint8_t vapIndex);
+wifi_vap_info_map_t* get_dml_vap_map(uint8_t radio_index);
+wifi_global_param_t* get_dml_wifi_global_param(void);
+wifi_GASConfiguration_t* get_dml_wifi_gas_config(void);
+void set_dml_cache_vap_config_changed(uint8_t vap_index);
+int push_prefer_private_ctrl_queue(bool flag);
+int push_wps_pin_dml_to_ctrl_queue(unsigned int vap_index, char *wps_pin);
+int push_vap_dml_cache_to_one_wifidb();
+int push_blaster_config_dml_to_ctrl_queue();
+int process_neighbor_scan_dml();
+instant_measurement_config_t *get_dml_cache_harvester();
+instant_measurement_config_t* get_dml_harvester(void);
+int push_harvester_dml_cache_to_one_wifidb();
+dml_vap_default *get_vap_default(int vap_index);
+dml_radio_default *get_radio_default_obj(int r_index) ;
+dml_global_default *get_global_default_obj();
+dml_stats_default *get_stats_default_obj(int r_index);
+wifi_channelBandwidth_t sync_bandwidth_and_hw_variant(uint32_t variant, wifi_channelBandwidth_t current_bw);
+
 #ifdef __cplusplus
 }
 #endif

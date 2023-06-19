@@ -1570,7 +1570,7 @@ WiFiRegion_SetParamStringValue
 
 {
     UNREFERENCED_PARAMETER(hInsContext);
-    int r_itr = 0;
+    UINT r_itr = 0;
     char PartnerID[PARTNER_ID_LEN] = {0};
     char * currentTime = getTime();
     char * requestorStr = getRequestorString();

@@ -2110,7 +2110,7 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
 
     wifi_util_info_print(WIFI_DMCLI,"%s:%d RadioSettings are set to default \n",__func__, __LINE__);
 
-    if (push_acl_list_dml_cache_to_one_wifidb(&p_vapInfo) != RETURN_OK) {
+    if (push_acl_list_dml_cache_to_one_wifidb(p_vapInfo) != RETURN_OK) {
         wifi_util_info_print(WIFI_DMCLI,"%s:%d MacFilter deletion  falied \n",__func__, __LINE__);
         return FALSE;
     }
