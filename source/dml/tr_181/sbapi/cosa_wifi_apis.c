@@ -2032,7 +2032,7 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
             continue;
 
         p_vapInfo = (wifi_vap_info_t *) get_dml_cache_vap_info(vap_index);
-        rdk_vap_info = (rdk_wifi_vap_info_t *)get_dml_cache_rdk_vap_info(index);
+        rdk_vap_info = (rdk_wifi_vap_info_t *)get_dml_cache_rdk_vap_info(vap_index);
 
         if (p_vapInfo != NULL) {
             hash_map_t** acl_dev_map = (hash_map_t **)get_acl_hash_map(p_vapInfo);
