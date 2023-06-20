@@ -4292,35 +4292,35 @@ Stats3_GetParamUlongValue
 
     /* check the parameter name and return the corresponding value */
     if( AnscEqualString(ParamName, "BytesSent", TRUE))   {
-        *puLong = monitor_param->radio_data[instance_number-1].radio_BytesSent;
+        *puLong = monitor_param->radio_data[instance_number].radio_BytesSent;
         return TRUE;
     }
     if( AnscEqualString(ParamName, "BytesReceived", TRUE))    {
-        *puLong = monitor_param->radio_data[instance_number-1].radio_BytesReceived;
+        *puLong = monitor_param->radio_data[instance_number].radio_BytesReceived;
         return TRUE;
     }
     if( AnscEqualString(ParamName, "PacketsSent", TRUE))    {
-        *puLong = monitor_param->radio_data[instance_number-1].radio_PacketsSent;
+        *puLong = monitor_param->radio_data[instance_number].radio_PacketsSent;
         return TRUE;
     }
     if( AnscEqualString(ParamName, "PacketsReceived", TRUE))    {
-        *puLong = monitor_param->radio_data[instance_number-1].radio_PacketsReceived;
+        *puLong = monitor_param->radio_data[instance_number].radio_PacketsReceived;
         return TRUE;
     }
     if( AnscEqualString(ParamName, "ErrorsSent", TRUE))    {
-        *puLong = monitor_param->radio_data[instance_number-1].radio_ErrorsSent;
+        *puLong = monitor_param->radio_data[instance_number].radio_ErrorsSent;
         return TRUE;
     }
     if( AnscEqualString(ParamName, "ErrorsReceived", TRUE))    {
-        *puLong = monitor_param->radio_data[instance_number-1].radio_ErrorsReceived;
+        *puLong = monitor_param->radio_data[instance_number].radio_ErrorsReceived;
         return TRUE;
     }
     if( AnscEqualString(ParamName, "DiscardPacketsSent", TRUE))    {
-        *puLong = monitor_param->radio_data[instance_number-1].radio_DiscardPacketsSent;
+        *puLong = monitor_param->radio_data[instance_number].radio_DiscardPacketsSent;
         return TRUE;
     }
     if( AnscEqualString(ParamName, "DiscardPacketsReceived", TRUE))    {
-        *puLong = monitor_param->radio_data[instance_number-1].radio_DiscardPacketsReceived;
+        *puLong = monitor_param->radio_data[instance_number].radio_DiscardPacketsReceived;
         return TRUE;
     }
     if( AnscEqualString(ParamName, "PLCPErrorCount", TRUE))    {
