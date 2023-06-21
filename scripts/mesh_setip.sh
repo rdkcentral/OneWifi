@@ -319,18 +319,11 @@ if [ "$MODEL_NUM" == "WNXL11BWL" ]; then
     if [ "`psmcli get dmsb.l3net.11.V4Addr`" != "$MESHBR50_DEFAULT_IP" ]; then
         psmcli set dmsb.l3net.11.V4Addr "$MESHBR50_DEFAULT_IP"
     fi
-    if [ "$BRLAN112IP" == "" ]; then
-        mesh_bridge_ip $IF_MESHBR24 "`psmcli get dmsb.l3net.10.V4Addr`"
-    fi
-    if [ "$BRLAN113IP" == "" ]; then
-        mesh_bridge_ip $IF_MESHBR50 "`psmcli get dmsb.l3net.11.V4Addr`"
-    fi
-    if [ "$BRLAN112MTU" != "$BRIDGE_MTU" ]; then
-        ifconfig $IF_MESHBR24 mtu $BRIDGE_MTU
-    fi
-    if [ "$BRLAN113MTU" != "$BRIDGE_MTU" ]; then
-        ifconfig $IF_MESHBR50 mtu $BRIDGE_MTU
-    fi
+        
+    mesh_bridge_ip $IF_MESHBR24 "`psmcli get dmsb.l3net.10.V4Addr`"
+    mesh_bridge_ip $IF_MESHBR50 "`psmcli get dmsb.l3net.11.V4Addr`"
+    ifconfig $IF_MESHBR24 mtu $BRIDGE_MTU
+    ifconfig $IF_MESHBR50 mtu $BRIDGE_MTU
 
 fi
 
