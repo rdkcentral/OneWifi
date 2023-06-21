@@ -31,6 +31,7 @@
 #include "cosa_wifi_internal.h"
 #include <cJSON.h>
 #include "wifi_hal_rdk.h"
+#include <sys/prctl.h>
 
 #define MAC_LEN 19
 
@@ -382,6 +383,7 @@ int hapd_process_eapol_frame(unsigned int ap_index, mac_address_t sta, unsigned 
  */
 static void* eloop_run_thread(void *data)
 {
+    prctl(PR_SET_NAME,  __func__, 0, 0, 0);
     eloop_run();
     wpa_printf(MSG_INFO,"%s:%d: Started eloop mechanism\n", __func__, __LINE__);
     pthread_detach(pthread_self());

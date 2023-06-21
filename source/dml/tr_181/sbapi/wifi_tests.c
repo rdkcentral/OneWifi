@@ -34,6 +34,7 @@
 #include <sys/un.h>
 #include <assert.h>
 #include "ansc_status.h"
+#include <sys/prctl.h>
 
 unsigned char           sim_mac_base = 0x55;
 wifi_tests_simulator_t   g_simulator = {0};
@@ -226,6 +227,8 @@ void *simulate_connect_disconnect(void *data)
     simulator_state_t   *state;
     wifi_tests_simulator_t *sim = (wifi_tests_simulator_t *)data;
     char buffer[256];
+
+    prctl(PR_SET_NAME,  __func__, 0, 0, 0);
     
     fd = socket(PF_LOCAL, SOCK_DGRAM, 0);
     if (fd < 0) {
@@ -306,6 +309,8 @@ void *wifi_connections_listener    (void *arg)
     char data[MAX_IPC_DATA_LEN];
     socklen_t size;
     ssize_t ret;
+
+    prctl(PR_SET_NAME,  __func__, 0, 0, 0);
     
     unlink(KMSG_WRAPPER_FILE_NAME);
     

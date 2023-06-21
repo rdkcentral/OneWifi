@@ -110,6 +110,9 @@ void _get_shell_output(char * cmd, char * out, int len)
 
 void* getSyscfgLogLevel( void *arg )
 {
+
+    prctl(PR_SET_NAME,  __func__, 0, 0, 0);
+
     pthread_detach(pthread_self());
 	UNREFERENCED_PARAMETER(arg);
 #if defined(_COSA_INTEL_USG_ATOM_) && !defined (_XB6_PRODUCT_REQ_)
@@ -696,6 +699,8 @@ void *ssp_func(void *arg)
         char *args[] = {"-subsys", "eRT."};
 //	wifi_ssp_t *ssp = (wifi_ssp_t *)arg;
         wifi_util_dbg_print(WIFI_MGR,"%s:%d: Calling ssp_main\n", __func__, __LINE__);
+
+	prctl(PR_SET_NAME,  __func__, 0, 0, 0);
 
 	ret = ssp_main(2, args);
         wifi_util_dbg_print(WIFI_MGR,"%s:%d:ssp_main returned %d\n", __func__, __LINE__,ret);

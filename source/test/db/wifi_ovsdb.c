@@ -27,6 +27,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <pthread.h>
+#include <sys/prctl.h>
 #include "cJSON.h"
 #include "wifi_hal.h"
 #include "os.h"
@@ -337,6 +338,8 @@ void *evloop_func(void *arg)
 {
 	wifi_ovsdb_t *ovsdb = (wifi_ovsdb_t *)arg;
 
+	prctl(PR_SET_NAME,  __func__, 0, 0, 0);
+
 	ev_run(ovsdb->ovs_ev_loop, 0);
 	return NULL;
 }
@@ -398,6 +401,8 @@ void *start_ovsdb_func(void *arg)
 	char db_file[128];
 	struct stat sb;
 	wifi_ovsdb_t *ovsdb = (wifi_ovsdb_t *)arg;
+
+	prctl(PR_SET_NAME,  __func__, 0, 0, 0);
 
 	sprintf(db_file, "%s/rdkb.db", ovsdb->ovsdb_run_dir);	
 	if (stat(db_file, &sb) != 0) {

@@ -129,6 +129,8 @@ void *process_data_plane_function  (void *data)
     int rc, i, count, queue_offset = 0;
     time_t  time_diff;
 
+    prctl(PR_SET_NAME,  __func__, 0, 0, 0);
+
     proc_data = (wifi_data_plane_t *)data;
 
     while (proc_data->exit_data_plane == false) {

@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <sys/prctl.h>
 #include "wifi_hal.h"
 #include "webconfig_consumer_cli.h"
 
@@ -147,6 +148,8 @@ void *cli_input_func(void *arg)
     unsigned char char_index = 0;
     bool space_detection = 0, allow_special_char = 0;
     char input_buff[128] = { 0 };
+
+    prctl(PR_SET_NAME,  __func__, 0, 0, 0);
 
     print_help_msg();
     printf("%s:%d: start cli task, Enter Input:\r\n$", __func__, __LINE__);

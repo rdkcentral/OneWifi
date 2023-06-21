@@ -2673,6 +2673,8 @@ void *monitor_function  (void *data)
     struct timeval timeout;
     timerclear(&t_start);
 
+    prctl(PR_SET_NAME,  __func__, 0, 0, 0);
+
     proc_data = (wifi_monitor_t *)data;
 
     pthread_mutex_lock(&proc_data->queue_lock);
@@ -6379,6 +6381,8 @@ void *startWifiBlast(void *vargp)
     int     oldcanceltype;
     UNREFERENCED_PARAMETER(vargp);
 
+    prctl(PR_SET_NAME,  __func__, 0, 0, 0);
+
     pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, &oldcanceltype);
 
     snprintf(command,BUFF_LEN_MAX,"echo \"start\" >> %s",PKTGEN_CNTRL_FILE);
@@ -6941,6 +6945,8 @@ void *WiFiBlastClient(void* data)
     wifi_interface_name_t *interface_name = NULL;
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
     wifi_ctrl_t *g_wifi_ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+
+    prctl(PR_SET_NAME,  __func__, 0, 0, 0);
 
     g_active_msmt.is_running = true;
     pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, &oldcanceltype);

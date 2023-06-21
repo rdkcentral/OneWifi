@@ -93,6 +93,8 @@ static void *handle_parodus(void *arg)
     webpa_interface_t *interface = (webpa_interface_t *)arg;
     int count = 0;
 
+    prctl(PR_SET_NAME,  __func__, 0, 0, 0);
+
     pthread_detach(pthread_self());
 
     while (interface->thread_exit == false) {

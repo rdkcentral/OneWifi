@@ -4602,6 +4602,7 @@ void init_wifidb_data()
 void *evloop_func(void *arg)
 {
         wifi_db_t *g_wifidb;
+	prctl(PR_SET_NAME,  __func__, 0, 0, 0);
         g_wifidb = (wifi_db_t*) get_wifidb_obj();
 	ev_run(g_wifidb->wifidb_ev_loop, 0);
 	return NULL;
@@ -4761,6 +4762,8 @@ void *start_wifidb_func(void *arg)
     //bool isOvsSchemaCreate = false;
     wifi_mgr_t *g_wifidb;
     g_wifidb = get_wifimgr_obj();
+
+    prctl(PR_SET_NAME,  __func__, 0, 0, 0);
 
     g_wifidb->is_db_update_required = false;
 
