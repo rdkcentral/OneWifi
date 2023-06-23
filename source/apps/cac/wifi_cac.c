@@ -830,7 +830,7 @@ int cac_event_hal_assoc_device(wifi_app_t *apps, void *arg)
 
     str_tolower(client_mac);
 
-    sprintf(temp_str, "\"%s\" vap index:%d", client_mac, assoc_data->ap_index);
+    snprintf(temp_str, sizeof(temp_str), "\"%s\" vap index:%d", client_mac, assoc_data->ap_index);
 
     cac_print("%s:%d connected %s\n", __func__, __LINE__, temp_str);
 
@@ -869,7 +869,7 @@ int cac_event_hal_disassoc_device(wifi_app_t *apps, void *arg)
 
     (char *)to_mac_str(assoc_data->dev_stats.cli_MACAddress, client_mac);
     str_tolower(client_mac);
-    sprintf(temp_str, "\"%s\" vap index:%d reason:%d", client_mac, assoc_data->ap_index, assoc_data->reason);
+    snprintf(temp_str, sizeof(temp_str), "\"%s\" vap index:%d reason:%d", client_mac, assoc_data->ap_index, assoc_data->reason);
     cac_print("%s:%d disconnected %s\n", __func__, __LINE__, temp_str);
 
     sta_info = (cac_associated_devices_t *)hash_map_get(sta_map, client_mac);
