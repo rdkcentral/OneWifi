@@ -2791,7 +2791,7 @@ int wifi_radio_operationParam_validation(wifi_hal_capability_t  *hal_cap, wifi_r
     int start_index = 0;
     int ch_count = 0;
     int *hal_cap_channels = NULL;
-    int ref_ch_list_5g[] = {36,40,44,48,52,56,60,64,100,104,108,112,116,120,124,128,132,136,140,144,149,153,157,161};
+    int ref_ch_list_5g[] = {36,40,44,48,52,56,60,64,100,104,108,112,116,120,124,128,132,136,140,144,149,153,157,161,165};
     int non_dfs_ch_hal_cap[MAX_CHANNELS] = {'\0'};
 
     if (convert_freq_band_to_radio_index(oper->band, &radio_index) != RETURN_OK) {
@@ -2812,10 +2812,11 @@ int wifi_radio_operationParam_validation(wifi_hal_capability_t  *hal_cap, wifi_r
 #endif
 
     /* Channel validation
-     * Objective: Check wther the target channel is supported by the  driver (using hal capability).
+     * Objective: Check whether the target channel is supported by the  driver (using hal capability).
      * For 5GHz channel :
      *     Find the starting index of the channel combo (for example, 36/80 will have 36,40,44,48 in it,
-     *     start index will be 36). Then verify whther all the channels in the combo are supported by HAL cap.
+     *     start index will be 36). Then verify whether all the channels in the combo are supported by HAL cap.
+     *     channel 165 has special case - only supports 20MHz bandwidth
      * For 2.4GHz and 6GHz,
      *     Just verify whether the target channel is supported by hal cap.
      *
@@ -2859,11 +2860,12 @@ int wifi_radio_operationParam_validation(wifi_hal_capability_t  *hal_cap, wifi_r
             if((ref_ch_list_5g[i] == (int)oper->channel) && (oper->channel != 0)) {
                 if(nchannels > 0) {
                     start_index = i-(i%nchannels);
+                    break;
                 }
             }
         }
 
-        for(j = start_index; j < (start_index+nchannels); j++){
+        for(j = start_index; (j < (start_index+nchannels) && j < (int)(sizeof(ref_ch_list_5g)/sizeof(int))) ; j++){
             for(i = 0;i < max_num_ch; i++) {
                 if(ref_ch_list_5g[j] == hal_cap_channels[i]) {
                     ch_count++;
@@ -2887,13 +2889,6 @@ int wifi_radio_operationParam_validation(wifi_hal_capability_t  *hal_cap, wifi_r
         return RETURN_ERR;
     }
 
-    if ((oper->band == WIFI_FREQUENCY_5_BAND) || (oper->band == WIFI_FREQUENCY_5H_BAND) || (oper->band == WIFI_FREQUENCY_5L_BAND)) {
-        if ((oper->channel == 165) && (oper->channelWidth != WIFI_CHANNELBANDWIDTH_20MHZ)) {
-            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid Channel %d for Channelwidth 0x%x for the radio_index : %d\n",
-                    __func__, __LINE__, oper->channel, oper->channelWidth, radio_index);
-            return RETURN_ERR;
-        }
-    }
     return RETURN_OK;
 }
 
