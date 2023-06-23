@@ -300,8 +300,10 @@ void sta_selfheal_handing(wifi_ctrl_t *ctrl, vap_svc_t *l_svc)
 bool is_sta_enabled(void)
 {
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    //wifi_util_dbg_print(WIFI_CTRL,"[%s:%d] device mode:%d active_gw_sta_status:%d\r\n", __func__, __LINE__, ctrl->network_mode, ctrl->active_gw_sta_status);
-    return ((ctrl->network_mode == rdk_dev_mode_type_ext) || (ctrl->active_gw_sta_status == true));
+    //wifi_util_dbg_print(WIFI_CTRL,"[%s:%d] device mode:%d active_gw_check:%d\r\n",
+    //    __func__, __LINE__, ctrl->network_mode, ctrl->active_gw_check);
+    return ((ctrl->network_mode == rdk_dev_mode_type_ext || ctrl->active_gw_check == true) &&
+        ctrl->eth_bh_status == false);
 }
 
 void ctrl_queue_loop(wifi_ctrl_t *ctrl)
@@ -698,10 +700,10 @@ void start_gateway_vaps()
 
     value = false;
     if (rbus_get_active_gw_parameter(WIFI_ACTIVE_GATEWAY_CHECK, &value) == RETURN_OK) {
-        if(value == true) {
-            wifi_util_info_print(WIFI_CTRL, "%s:%d start extender vaps and initiate sta conn\n",__func__, __LINE__);
+        ctrl->active_gw_check = value;
+        if (is_sta_enabled() == true) {
+            wifi_util_info_print(WIFI_CTRL, "%s:%d start mesh sta\n",__func__, __LINE__);
             start_extender_vaps();
-            ctrl->active_gw_sta_status = true;
         }
     }
 }
@@ -739,6 +741,7 @@ int start_wifi_services(void)
 
 
     if (ctrl->network_mode == rdk_dev_mode_type_gw) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d start gw vaps\n",__func__, __LINE__);
         start_radios(rdk_dev_mode_type_gw);
         start_gateway_vaps();
         captive_portal_check();
@@ -749,7 +752,12 @@ int start_wifi_services(void)
 
     } else if (ctrl->network_mode == rdk_dev_mode_type_ext) {
         start_radios(rdk_dev_mode_type_ext);
-        start_extender_vaps();
+        if (is_sta_enabled()) {
+            wifi_util_info_print(WIFI_CTRL, "%s:%d start mesh sta\n",__func__, __LINE__);
+            start_extender_vaps();
+        } else {
+            wifi_util_info_print(WIFI_CTRL, "%s:%d mesh sta disabled\n",__func__, __LINE__);
+        }
     }
 
     return RETURN_OK;
@@ -1910,7 +1918,11 @@ static int rbus_check_and_subscribe_events(void* arg)
         (ctrl->device_mode_subscribed == false) || (ctrl->active_gateway_check_subscribed == false) ||
         (ctrl->device_tunnel_status_subscribed == false) || (ctrl->device_wps_test_subscribed == false) ||
         (ctrl->test_device_mode_subscribed == false) || (ctrl->mesh_status_subscribed == false) ||
-        (ctrl->marker_list_config_subscribed == false)) {
+        (ctrl->marker_list_config_subscribed == false)
+#if defined (RDKB_EXTENDER_ENABLED)
+        || (ctrl->eth_bh_status_subscribed == false)
+#endif
+        ) {
         rbus_subscribe_events(ctrl);
     }
     return TIMER_TASK_COMPLETE;

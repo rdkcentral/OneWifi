@@ -96,6 +96,8 @@ extern "C" {
 #define WIFI_WEBCONFIG_KICK_MAC            "Device.WiFi.KickAssocDevices"
 #define RBUS_WIFI_WPS_PIN_START            "Device.WiFi.WPS.Start"
 
+#define ETH_BH_STATUS                      "Device.X_RDK_MeshAgent.EthernetBhaulUplink.Status"
+
 #define WIFI_ALL_RADIO_INDICES             0xffff
 #define DEVICE_TUNNEL_UP                   1
 #define DEVICE_TUNNEL_DOWN                 0
@@ -229,6 +231,7 @@ typedef struct wifi_ctrl {
     bool                frame_802_11_injector_subscribed;
     bool                factory_reset;
     bool                marker_list_config_subscribed;
+    bool                eth_bh_status_subscribed;
     wifiapi_t           wifiapi;
 #if DML_SUPPORT
     wifi_rfc_dml_parameters_t    rfc_params;
@@ -240,12 +243,12 @@ typedef struct wifi_ctrl {
 #endif
     rdk_dev_mode_type_t  network_mode; /* 0 - gateway, 1 - extender */
     dev_subtype_t        dev_type;
-    bool                active_gw_sta_status;
+    bool                active_gw_check;
     wifi_scheduler_id_t wifi_sched_id;
     queue_t             *vif_apply_pending_queue;
     bool                ctrl_initialized; 
     bool                acs_pending[MAX_NUM_RADIOS];
-
+    bool                eth_bh_status;
     bool                db_consolidated;
     events_rbus_data_t  events_rbus_data;
 } wifi_ctrl_t;

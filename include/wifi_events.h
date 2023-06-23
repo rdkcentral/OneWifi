@@ -102,7 +102,7 @@ typedef enum {
     wifi_event_hal_max,
 
     // Commands
-    wifi_event_type_command_sta_connect = wifi_event_type_base << (wifi_event_type_command + 10), // wifi_event_type_base << 13
+    wifi_event_type_active_gw_check = wifi_event_type_base << (wifi_event_type_command + 10), // wifi_event_type_base << 13
     wifi_event_type_command_factory_reset,
     wifi_event_type_radius_grey_list_rfc,
     wifi_event_type_wifi_passpoint_rfc,
@@ -134,6 +134,7 @@ typedef enum {
     wifi_event_type_xfinity_enable,
     wifi_event_type_wifi_offchannelscan_rfc,
     wifi_event_type_levl_rfc,
+    wifi_event_type_eth_bh_status,
     wifi_event_command_max,
 
 

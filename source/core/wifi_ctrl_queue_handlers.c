@@ -863,22 +863,42 @@ void process_sta_conn_status_event(rdk_sta_data_t *sta_data, unsigned int len)
     }
 }
 
-void process_sta_connect_command(bool connect)
+void process_active_gw_check_command(bool active_gw_check)
 {
-    wifi_ctrl_t *ctrl;
-    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    bool is_enabled, was_enabled;
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
-    wifi_util_dbg_print(WIFI_CTRL, "%s:%d: sta connect command:%d\n", __func__, __LINE__, connect);
-    if (connect == false) {
-        ctrl->active_gw_sta_status = false;
-
-        process_xfinity_vaps(1, false); //reenable public vaps
-        stop_extender_vaps();
-    } else if (ctrl->active_gw_sta_status != true) {
-        process_xfinity_vaps(0, false); // disable public vaps
-        start_extender_vaps();
-        ctrl->active_gw_sta_status = true;
+    if (ctrl->active_gw_check == active_gw_check) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d: no change in active gw check, ignore\n", __func__,
+            __LINE__);
+        return;
     }
+
+    wifi_util_info_print(WIFI_CTRL, "%s:%d: active gw check: %d\n", __func__, __LINE__,
+        active_gw_check);
+
+    was_enabled = is_sta_enabled();
+    ctrl->active_gw_check = active_gw_check;
+    is_enabled = is_sta_enabled();
+
+    if (was_enabled == is_enabled) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d: no sta state change, ignore\n", __func__, __LINE__);
+        return;
+    }
+
+    if (is_enabled == true) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d: stop xfinity vaps\n", __func__, __LINE__);
+        process_xfinity_vaps(0, false);
+        wifi_util_info_print(WIFI_CTRL, "%s:%d: start mesh sta\n", __func__, __LINE__);
+        start_extender_vaps();
+    } else {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d: start xfinity vaps\n", __func__, __LINE__);
+        process_xfinity_vaps(1, false);
+        wifi_util_info_print(WIFI_CTRL, "%s:%d: stop mesh sta\n", __func__, __LINE__);
+        stop_extender_vaps();
+    }
+
+    ctrl->webconfig_state |= ctrl_webconfig_state_vap_mesh_sta_cfg_rsp_pending;
 }
 
 bool  IsClientConnected(rdk_wifi_vap_info_t* rdk_vap_info, char *check_mac)
@@ -2201,9 +2221,11 @@ static void update_wifi_vap_config(int device_mode)
 
 void process_device_mode_command_event(int device_mode)
 {
-    vap_svc_t *ext_svc;
     wifi_global_param_t *global_param = get_wifidb_wifi_global_param();
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+
+    wifi_util_info_print(WIFI_CTRL, "%s:%d: device mode changed: %d\n", __func__, __LINE__,
+        device_mode);
 
     ctrl->network_mode = device_mode;
 
@@ -2212,20 +2234,21 @@ void process_device_mode_command_event(int device_mode)
         update_wifi_global_config(global_param);
         update_wifi_vap_config(device_mode);
         if (device_mode == rdk_dev_mode_type_ext) {
-            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: disable all vaps and start station mode\r\n", __func__, __LINE__);
+            wifi_util_info_print(WIFI_CTRL, "%s:%d: stop gw vaps\r\n", __func__, __LINE__);
             stop_gateway_vaps();
-            start_extender_vaps();
-        } else if (device_mode == rdk_dev_mode_type_gw) {
-            wifi_util_info_print(WIFI_CTRL, "%s:%d: disable station, delete all scan results and start accesspoint mode\r\n", __func__, __LINE__);
-            stop_extender_vaps();
-            start_gateway_vaps();
-            ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
-
-            if(ext_svc->u.ext.conn_state == connection_state_connected) {
-                wifi_util_dbg_print(WIFI_CTRL,"%s:%d disconnect sta on vap:%d\n",__FUNCTION__, __LINE__, ext_svc->u.ext.connected_vap_index);
-                wifi_hal_disconnect(ext_svc->u.ext.connected_vap_index);
-                ext_svc->u.ext.conn_state = connection_state_disconnected_scan_list_none;
+            if (is_sta_enabled() == true) {
+                wifi_util_info_print(WIFI_CTRL, "%s:%d: start mesh sta\n", __func__, __LINE__);
+                start_extender_vaps();
+            } else {
+                wifi_util_info_print(WIFI_CTRL, "%s:%d: mesh sta disabled\n", __func__, __LINE__);
             }
+        } else if (device_mode == rdk_dev_mode_type_gw) {
+            if (is_sta_enabled() == false) {
+                wifi_util_info_print(WIFI_CTRL, "%s:%d: stop mesh sta\n", __func__, __LINE__);
+                stop_extender_vaps();
+            }
+            wifi_util_info_print(WIFI_CTRL, "%s:%d: start gw vaps\n", __func__, __LINE__);
+            start_gateway_vaps();
         }
     }
     if(device_mode == rdk_dev_mode_type_gw) {
@@ -2468,13 +2491,46 @@ void process_mesh_status_command(bool mesh_enable_status)
     }
 }
 
+static void process_eth_bh_status_command(bool eth_bh_status)
+{
+    bool was_enabled, is_enabled;
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+
+    if (ctrl->eth_bh_status == eth_bh_status) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d: eth bh status not changed, ignore\n", __func__,
+            __LINE__);
+        return;
+    }
+
+    wifi_util_info_print(WIFI_CTRL, "%s:%d: eth bh status changed: %d\n", __func__, __LINE__,
+        eth_bh_status);
+
+    was_enabled = is_sta_enabled();
+    ctrl->eth_bh_status = eth_bh_status;
+    is_enabled = is_sta_enabled();
+
+    if (was_enabled == is_enabled) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d: no sta state change, ignore\n", __func__, __LINE__);
+        return;
+    }
+
+    if (is_enabled == true) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d: start mesh sta\n", __func__, __LINE__);
+        start_extender_vaps();
+    } else {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d: stop mesh sta\n", __func__, __LINE__);
+        stop_extender_vaps();
+    }
+
+    ctrl->webconfig_state |= ctrl_webconfig_state_vap_mesh_sta_cfg_rsp_pending;
+}
 
 void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len, wifi_event_subtype_t subtype)
 {
 
     switch (subtype) {
-        case wifi_event_type_command_sta_connect:
-            process_sta_connect_command(*(bool *)data);
+        case wifi_event_type_active_gw_check:
+            process_active_gw_check_command(*(bool *)data);
             break;
 
 #if CCSP_COMMON
@@ -2576,6 +2632,10 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len, wifi_
 #endif // CCSP_COMMON
         case wifi_event_type_trigger_disconnection:
             process_sta_trigger_disconnection(*(unsigned int *)data);
+            break;
+
+        case wifi_event_type_eth_bh_status:
+            process_eth_bh_status_command(*(bool *)data);
             break;
 
         default:

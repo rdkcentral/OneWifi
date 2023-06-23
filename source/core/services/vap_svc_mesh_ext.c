@@ -931,6 +931,13 @@ int vap_svc_mesh_ext_start(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
     ctrl = svc->ctrl;
     ext = &svc->u.ext;
 
+    wifi_util_info_print(WIFI_CTRL, "%s:%d mesh service start\n", __func__, __LINE__);
+
+    if (ext->is_started == true) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d mesh service already started\n", __func__, __LINE__);
+        return 0;
+    }
+
     /* create STA vap's and install acl filters */
     vap_svc_start(svc);
 
@@ -941,6 +948,8 @@ int vap_svc_mesh_ext_start(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
     scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
                 process_ext_connect_algorithm, svc,
                 EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1);
+
+    ext->is_started = true;
 
     return 0;
 }
@@ -970,10 +979,19 @@ int vap_svc_mesh_ext_clear_variable(vap_svc_t *svc)
 
 int vap_svc_mesh_ext_stop(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map)
 {
+    vap_svc_ext_t *ext = &svc->u.ext;
+
+    wifi_util_info_print(WIFI_CTRL, "%s:%d mesh service stop\n", __func__, __LINE__);
+
+    if (ext->is_started == false) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d mesh service already stopped\n", __func__, __LINE__);
+        return 0;
+    }
     vap_svc_mesh_ext_disconnect(svc);
     cancel_all_running_timer(svc);
     vap_svc_stop(svc);
     vap_svc_mesh_ext_clear_variable(svc);
+    ext->is_started = false;
     return 0;
 }
 
@@ -1860,6 +1878,9 @@ int process_ext_command(vap_svc_t *svc, wifi_event_subtype_t sub_type, void *arg
 
         case wifi_event_type_trigger_disconnection:
             process_ext_trigger_disconnection(svc, arg);
+            break;
+
+        case wifi_event_type_eth_bh_status:
             break;
 
         default:

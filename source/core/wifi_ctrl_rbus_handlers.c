@@ -553,7 +553,8 @@ static void activeGatewayCheckHandler(rbusHandle_t handle, rbusEvent_t const* ev
     }
 
     other_gateway_present = rbusValue_GetBoolean(value);
-    push_event_to_ctrl_queue(&other_gateway_present, sizeof(other_gateway_present), wifi_event_type_command, wifi_event_type_command_sta_connect, NULL);
+    push_event_to_ctrl_queue(&other_gateway_present, sizeof(other_gateway_present),
+        wifi_event_type_command, wifi_event_type_active_gw_check, NULL);
 
     UNREFERENCED_PARAMETER(handle);
 }
@@ -1235,6 +1236,66 @@ static void wps_test_event_receive_handler(rbusHandle_t handle, rbusEvent_t cons
     }
 }
 
+#if defined (RDKB_EXTENDER_ENABLED)
+static void eth_bh_status_handler(rbusHandle_t handle, rbusEvent_t const *event,
+    rbusEventSubscription_t *subscription)
+{
+    bool eth_bh_status;
+    UNREFERENCED_PARAMETER(handle);
+
+    if (!event) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d null event\n", __func__, __LINE__);
+        return;
+    }
+
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d recvd event:%s\n",  __func__, __LINE__, event->name);
+
+    rbusValue_t value = rbusObject_GetValue(event->data, NULL);
+    if (!value) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: value is null for event: %s\n", __func__, __LINE__,
+            event->name);
+        return;
+    }
+
+    if (strcmp(event->name, ETH_BH_STATUS) == 0) {
+        eth_bh_status = rbusValue_GetBoolean(value);
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: event: %s value: %d\n", __func__, __LINE__,
+            event->name, eth_bh_status);
+        push_event_to_ctrl_queue(&eth_bh_status, sizeof(eth_bh_status), wifi_event_type_command,
+            wifi_event_type_eth_bh_status, NULL);
+    } else {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: unsupported event: %s\n", __func__, __LINE__,
+            event->name);
+    }
+}
+
+static int eth_bh_status_notify()
+{
+    bool eth_bh_status;
+    rbusValue_t value;
+    wifi_ctrl_t *ctrl;
+    int rc = RBUS_ERROR_SUCCESS;
+
+    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+
+    rc = rbus_get(ctrl->rbus_handle, ETH_BH_STATUS, &value);
+
+    if (rc != RBUS_ERROR_SUCCESS) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d rbus_get failed for [%s] with error [%d]\n",
+            __func__, __LINE__, ETH_BH_STATUS, rc);
+        return RETURN_ERR;
+    }
+
+    eth_bh_status = rbusValue_GetBoolean(value);
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d: event: %s value: %d\n", __func__, __LINE__,
+        ETH_BH_STATUS, eth_bh_status);
+    push_event_to_ctrl_queue(&eth_bh_status, sizeof(eth_bh_status), wifi_event_type_command,
+        wifi_event_type_eth_bh_status, NULL);
+
+    return RETURN_OK;
+}
+#endif
+
 void rbus_subscribe_events(wifi_ctrl_t *ctrl)
 {
     rbusEventSubscription_t rbusMarkerEvents[] = {
@@ -1345,6 +1406,20 @@ void rbus_subscribe_events(wifi_ctrl_t *ctrl)
         }
     }
 
+#if defined (RDKB_EXTENDER_ENABLED)
+    if (ctrl->eth_bh_status_subscribed == false) {
+        if (rbusEvent_Subscribe(ctrl->rbus_handle, ETH_BH_STATUS, eth_bh_status_handler,
+            NULL, 0) != RBUS_ERROR_SUCCESS) {
+            //wifi_util_dbg_print(WIFI_CTRL, "%s:%d Rbus event:%s subscribe failed\n", __FUNCTION__,
+            //    __LINE__, ETH_BH_STATUS);
+        } else {
+            ctrl->eth_bh_status_subscribed = true;
+            wifi_util_info_print(WIFI_CTRL, "%s:%d Rbus event:%s subscribe success\n", __FUNCTION__,
+                __LINE__, ETH_BH_STATUS);
+            eth_bh_status_notify();
+        }
+    }
+#endif
 }
 
 rbusError_t get_sta_connection_timeout(rbusHandle_t handle, rbusProperty_t property, rbusGetHandlerOptions_t* opts)

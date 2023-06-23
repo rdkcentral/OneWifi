@@ -517,9 +517,10 @@ int analytics_event_hal_analytics(wifi_app_t *apps, void *arg)
     return RETURN_OK;
 }
 
-int analytics_event_command_sta_connect(wifi_app_t *apps, void *arg)
+int analytics_event_active_gw_check(wifi_app_t *apps, void *arg)
 {
-    wifi_util_info_print(WIFI_ANALYTICS, analytics_format_other_core, "sta connect", (*(bool *)arg == true) ? "true":"false");
+    wifi_util_info_print(WIFI_ANALYTICS, analytics_format_other_core, "active gw check",
+        (*(bool *)arg == true) ? "true":"false");
     return RETURN_OK;
 }
 
@@ -758,8 +759,8 @@ int hal_event_analytics(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *a
 int command_event_analytics(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *arg)
 {
     switch (sub_type) {
-        case wifi_event_type_command_sta_connect:
-            analytics_event_command_sta_connect(apps, arg);
+        case wifi_event_type_active_gw_check:
+            analytics_event_active_gw_check(apps, arg);
             break;
 
         case wifi_event_type_command_factory_reset:
@@ -843,6 +844,9 @@ int command_event_analytics(wifi_app_t *apps, wifi_event_subtype_t sub_type, voi
 
         case wifi_event_type_new_bssid:
             analytics_event_new_bssid(apps, arg);
+            break;
+
+        case wifi_event_type_eth_bh_status:
             break;
 
         default:
