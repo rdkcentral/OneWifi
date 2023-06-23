@@ -2312,6 +2312,17 @@ int get_sta_stats_for_vap(int ap_index, wifi_associated_dev3_t *assoc_dev_array,
 }
 #endif // HAL_IPC
 
+void send_wifi_disconnect_event_to_ctrl(mac_address_t mac_addr, unsigned int ap_index)
+{
+    assoc_dev_data_t assoc_data;
+    memset(&assoc_data, 0, sizeof(assoc_data));
+
+    memcpy(assoc_data.dev_stats.cli_MACAddress, mac_addr, sizeof(mac_address_t));
+    assoc_data.ap_index = ap_index;
+    assoc_data.reason = 0;
+    push_event_to_ctrl_queue(&assoc_data, sizeof(assoc_data), wifi_event_type_hal_ind, wifi_event_hal_disassoc_device, NULL);
+}
+
 void process_diagnostics	(unsigned int ap_index, wifi_associated_dev3_t *dev, unsigned int num_devs)
 {
     hash_map_t     *sta_map = NULL;
@@ -2408,7 +2419,10 @@ void process_diagnostics	(unsigned int ap_index, wifi_associated_dev3_t *dev, un
         sta = hash_map_get_next(sta_map, sta);
 
         if (tmp_sta != NULL) {
-            wifi_util_dbg_print(WIFI_MON, "Device:%s being removed from map of ap:%d, and being deleted\n", to_sta_key(tmp_sta->sta_mac, sta_key), ap_index);
+            wifi_util_info_print(WIFI_MON, "Device:%s being removed from map of ap:%d, and being deleted\n", to_sta_key(tmp_sta->sta_mac, sta_key), ap_index);
+            wifi_util_info_print(WIFI_MON, "[%s:%d] Station info for, vap:%d bssid:%s ClientMac:%s\n", __func__, __LINE__,
+                                                     (ap_index + 1), bssid, to_sta_key(tmp_sta->dev_stats.cli_MACAddress, sta_key));
+            send_wifi_disconnect_event_to_ctrl(tmp_sta->sta_mac, ap_index);
             hash_map_remove(sta_map, to_sta_key(tmp_sta->sta_mac, sta_key));
             free(tmp_sta);
             tmp_sta = NULL;
