@@ -286,6 +286,10 @@ int cac_event_exec_timeout(wifi_app_t *apps, void *arg)
             wifidb_get_postassoc_ctrl_config(vap_name, &wifidb_postassoc_conf);
             wifidb_get_preassoc_ctrl_config(vap_name, &wifidb_preassoc_conf);
             radio_index = convert_vap_name_to_radio_array_index(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, vap_name);
+            if (radio_index < 0) {
+                client = hash_map_get_next(sta_map, client);
+                continue;
+            }
             get_radio_channel_utilization(radio_index, &chan_util);
 
             if (strcmp(wifidb_postassoc_conf.rssi_up_threshold, "disabled") == 0) {
