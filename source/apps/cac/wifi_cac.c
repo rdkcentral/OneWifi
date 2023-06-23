@@ -33,12 +33,12 @@
 
 void cac_print(char *format, ...)
 {
-    char buff[256 * 1024] = {0};
+    char buff[256] = {0};
     va_list list;
     FILE *fpg = NULL;
 
     get_formatted_time(buff);
-    strcat(buff, " ");
+    strncat(buff, " ", strlen(buff));
 
     va_start(list, format);
     vsprintf(&buff[strlen(buff)], format, list);
