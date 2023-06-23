@@ -2063,6 +2063,10 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
         is_radio_config_changed = TRUE;
     }
 
+    if ((access(WIFI_STUCK_DETECT_FILE_NAME, R_OK)) == 0) {
+        wifi_util_info_print(WIFI_MGR,"%s:%d remove selfHeal wifi stuck file:%s\n", __FUNCTION__,__LINE__, WIFI_STUCK_DETECT_FILE_NAME);
+        remove(WIFI_STUCK_DETECT_FILE_NAME);
+    }
 
     for (UINT index = 0; index < getTotalNumberVAPs(); index++) {
         vap_index = VAP_INDEX(((webconfig_dml_t *)get_webconfig_dml())->hal_cap, index);

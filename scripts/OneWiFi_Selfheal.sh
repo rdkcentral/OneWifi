@@ -16,6 +16,15 @@ cur_reboot_timestamp=0
 hal_error_reboot="/nvram/hal_error_reboot"
 dml_status=0
 dml_restart=0
+wifi_stuck_detect="/nvram/wifi_stuck_detect"
+pre_txprobe_req_2g_cnt=0
+cur_txprobe_req_2g_cnt=0
+pre_txprobe_resp_2g_cnt=0
+cur_txprobe_resp_2g_cnt=0
+pre_txprobe_req_5g_cnt=0
+cur_txprobe_req_5g_cnt=0
+pre_txprobe_resp_5g_cnt=0
+cur_txprobe_resp_5g_cnt=0
 
 MODEL_NUM=`grep MODEL_NUM /etc/device.properties | cut -d "=" -f2`
 LOG_FILE="/rdklogs/logs/wifi_selfheal.txt"
@@ -38,6 +47,78 @@ vap_restart()
     fi
     dmcli eRT setv Device.WiFi.ApplyAccessPointSettings bool true > /dev/null
     echo_t "$1  self heal executed" >> $LOG_FILE
+}
+
+print_wifi_2g_txprobe_cnt()
+{
+        echo_t "pre_txprobe_req_2g_cnt = $pre_txprobe_req_2g_cnt" >> $LOG_FILE
+        echo_t "cur_txprobe_req_2g_cnt = $cur_txprobe_req_2g_cnt" >> $LOG_FILE
+        echo_t "pre_txprobe_resp_2g_cnt = $pre_txprobe_resp_2g_cnt" >> $LOG_FILE
+        echo_t "cur_txprobe_resp_2g_cnt = $cur_txprobe_resp_2g_cnt" >> $LOG_FILE
+}
+
+sync_all_wifi_2g_txprobe_cnt()
+{
+        pre_txprobe_req_2g_cnt=`wl -i wl0.1 counters | grep  -m 1 "txprobereq " | cut -d ":" -f2-7 | awk '{print $6}'`
+        cur_txprobe_req_2g_cnt=$pre_txprobe_req_2g_cnt
+
+        pre_txprobe_resp_2g_cnt=`wl -i wl0.1 counters | grep  -m 1 "txprobersp " | cut -d ":" -f2-7 | awk '{print $8}'`
+        cur_txprobe_resp_2g_cnt=$pre_txprobe_resp_2g_cnt
+}
+
+check_wifi_2g_stuck_status()
+{
+        if [ $pre_txprobe_req_2g_cnt == 0 ]; then
+                sync_all_wifi_2g_txprobe_cnt
+                print_wifi_2g_txprobe_cnt
+        else
+                cur_txprobe_req_2g_cnt=`wl -i wl0.1 counters | grep  -m 1 "txprobereq " | cut -d ":" -f2-7 | awk '{print $6}'`
+                if [ $cur_txprobe_req_2g_cnt -gt $pre_txprobe_req_2g_cnt ]; then
+                        cur_txprobe_resp_2g_cnt=`wl -i wl0.1 counters | grep  -m 1 "txprobersp " | cut -d ":" -f2-7 | awk '{print $8}'`
+                        if [ $cur_txprobe_resp_2g_cnt -eq $pre_txprobe_resp_2g_cnt ]; then
+                                print_wifi_2g_txprobe_cnt
+                                echo_t "wifi 2g radio re-init" >>  $LOG_FILE
+                                `wl -i wl0 reinit`
+                        fi
+                fi
+                sync_all_wifi_2g_txprobe_cnt
+        fi
+}
+
+print_wifi_5g_txprobe_cnt()
+{
+        echo_t "pre_txprobe_req_5g_cnt = $pre_txprobe_req_5g_cnt" >> $LOG_FILE
+        echo_t "cur_txprobe_req_5g_cnt = $cur_txprobe_req_5g_cnt" >> $LOG_FILE
+        echo_t "pre_txprobe_resp_5g_cnt = $pre_txprobe_resp_5g_cnt" >> $LOG_FILE
+        echo_t "cur_txprobe_resp_5g_cnt = $cur_txprobe_resp_5g_cnt" >> $LOG_FILE
+}
+
+sync_all_wifi_5g_txprobe_cnt()
+{
+        pre_txprobe_req_5g_cnt=`wl -i wl1.1 counters | grep  -m 1 "txprobereq " | cut -d ":" -f2-7 | awk '{print $6}'`
+        cur_txprobe_req_5g_cnt=$pre_txprobe_req_5g_cnt
+
+        pre_txprobe_resp_5g_cnt=`wl -i wl1.1 counters | grep  -m 1 "txprobersp " | cut -d ":" -f2-7 | awk '{print $8}'`
+        cur_txprobe_resp_5g_cnt=$pre_txprobe_resp_5g_cnt
+}
+
+check_wifi_5g_stuck_status()
+{
+        if [ $pre_txprobe_req_5g_cnt == 0 ]; then
+                sync_all_wifi_5g_txprobe_cnt
+                print_wifi_5g_txprobe_cnt
+        else
+                cur_txprobe_req_5g_cnt=`wl -i wl1.1 counters | grep  -m 1 "txprobereq " | cut -d ":" -f2-7 | awk '{print $6}'`
+                if [ $cur_txprobe_req_5g_cnt -gt $pre_txprobe_req_5g_cnt ]; then
+                        cur_txprobe_resp_5g_cnt=`wl -i wl1.1 counters | grep  -m 1 "txprobersp " | cut -d ":" -f2-7 | awk '{print $8}'`
+                        if [ $cur_txprobe_resp_5g_cnt -eq $pre_txprobe_resp_5g_cnt ]; then
+                                print_wifi_5g_txprobe_cnt
+                                echo_t "wifi 5g radio re-init" >>  $LOG_FILE
+                                `wl -i wl1 reinit`
+                        fi
+                fi
+                sync_all_wifi_5g_txprobe_cnt
+        fi
 }
 
 while true
@@ -118,6 +199,16 @@ while true
                 fi
             fi
         fi
+
+        if [ -f $wifi_stuck_detect ]; then
+                MODEL_NUM=`grep MODEL_NUM /etc/device.properties | cut -d "=" -f2`
+
+                #we need to use this changes for only TechXB7 device.
+                if [ "$MODEL_NUM" == "CGM4331COM" ]; then
+                        check_wifi_2g_stuck_status
+                        check_wifi_5g_stuck_status
+                fi
+        fi
  fi
  if [ -f  $hal_indication ]; then
         cur_reboot_timestamp="`date +"%s"` $1"
@@ -127,8 +218,8 @@ while true
         time_diff=`expr $cur_reboot_timestamp - $prev_reboot_timestamp`
         if [ $time_diff -ge 86400 ]; then
             echo $cur_reboot_timestamp > $hal_error_reboot
-            echo_t "wifi-interface-problem self heal executed" >>  /rdklogs/logs/wifi_selfheal.txt
-            echo_t "Rebooting the device" >>  /rdklogs/logs/wifi_selfheal.txt
+            echo_t "wifi-interface-problem self heal executed" >>  $LOG_FILE
+            echo_t "Rebooting the device" >>  $LOG_FILE
             dmcli eRT setv Device.DeviceInfo.X_RDKCENTRAL-COM_LastRebootReason string "wifi-interface-problem"
             dmcli eRT setv Device.X_CISCO_COM_DeviceControl.RebootDevice string "Device"
         fi
@@ -137,13 +228,13 @@ while true
  dml_status=`dmcli eRT getv Device.WiFi.SSID.1.Enable | grep -c "error code:"`
  if [ $dml_status != 0 ]; then
      ((dml_restart++))
-     echo_t "DMCLI unresponsive" >>  /rdklogs/logs/wifi_selfheal.txt
+     echo_t "DMCLI unresponsive" >>  $LOG_FILE
  else
      dml_restart=0
  fi
  if [ $dml_restart -ge 3 ]; then
      dml_restart=0
-     echo_t "DMCLI crashed self heal executed restarting OneWifi" >>  /rdklogs/logs/wifi_selfheal.txt
+     echo_t "DMCLI crashed self heal executed restarting OneWifi" >>  $LOG_FILE
      onewifi_restart_wifi
  fi
 

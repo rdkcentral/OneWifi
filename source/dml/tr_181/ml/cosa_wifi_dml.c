@@ -389,6 +389,17 @@ WiFi_GetParamBoolValue
         fclose(fp);
         return TRUE;
     }
+
+    if (AnscEqualString(ParamName, "WiFiStuckDetect", TRUE))
+    {
+        if ((access(WIFI_STUCK_DETECT_FILE_NAME, R_OK)) != 0) {
+            *pBool = FALSE;
+        } else {
+            *pBool = TRUE;
+        }
+        return TRUE;
+    }
+
     return FALSE;
 }
 
@@ -1066,6 +1077,28 @@ WiFi_SetParamBoolValue
         } else {
             v_secure_system("/usr/ccsp/wifi/wifi_logupload.sh stop");
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Log_upload stopped\n", __FUNCTION__,__LINE__);
+        }
+        return TRUE;
+    }
+
+    if (AnscEqualString(ParamName, "WiFiStuckDetect", TRUE))
+    {
+        if (bValue) {
+            if ((access(WIFI_STUCK_DETECT_FILE_NAME, R_OK)) != 0) {
+                //create file
+                FILE *fp = NULL;
+
+                fp = fopen(WIFI_STUCK_DETECT_FILE_NAME, "a+");
+                if (fp != NULL) {
+                    fclose(fp);
+                }
+            } else {
+                wifi_util_info_print(WIFI_DMCLI,"%s:%d nvram file %s already present\r\n", __func__, __LINE__, WIFI_STUCK_DETECT_FILE_NAME);
+            }
+        } else {
+            if ((access(WIFI_STUCK_DETECT_FILE_NAME, R_OK)) == 0) {
+                remove(WIFI_STUCK_DETECT_FILE_NAME);
+            }
         }
         return TRUE;
     }
