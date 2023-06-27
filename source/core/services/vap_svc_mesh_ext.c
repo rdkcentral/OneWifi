@@ -448,7 +448,7 @@ int process_udhcp_ip_check(vap_svc_t *svc)
     memset(command, '\0', sizeof(command));
 
     interface_name = get_interface_name_for_vap_index(ext->connected_vap_index, svc->prop);
-    if ((interface_name == NULL) && (ip_check_count <= 2)) {
+    if ((interface_name == NULL) && (ip_check_count < EXT_UDHCP_IP_CHECK_NUM)) {
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d Unable to fetch proper Interface name for connected index%d\n", __func__, __LINE__, ext->connected_vap_index);
         ip_check_count++;
         return 0;
@@ -457,7 +457,8 @@ int process_udhcp_ip_check(vap_svc_t *svc)
     snprintf(file_name, sizeof(file_name), "/var/run/udhcpc-%s.opts", *interface_name);
     snprintf(command, sizeof(command), "grep \"ip=\" %s | cut -d '=' -f 2", file_name);
 
-    if ((ip_check_count <= 2) && (ext->conn_state == connection_state_connected)) {
+    if ((ip_check_count < EXT_UDHCP_IP_CHECK_NUM) &&
+        (ext->conn_state == connection_state_connected)) {
         if (access(file_name , F_OK) == 0) {
             fp = popen(command, "r");
             if (fp != NULL) {
@@ -467,6 +468,7 @@ int process_udhcp_ip_check(vap_svc_t *svc)
                     value[len-1] = '\0';
                     if ((inet_pton(AF_INET, value, &(sa.sin_addr)) == 1) || (inet_pton(AF_INET6, value, &(sa.sin_addr)) == 1)) {
                         scheduler_cancel_timer_task(ctrl->sched, ext->ext_udhcp_ip_check_id);
+                        ext->ext_udhcp_ip_check_id = 0;
                         ip_check_count = 0;
                         pclose(fp);
                         return 0;
@@ -477,8 +479,9 @@ int process_udhcp_ip_check(vap_svc_t *svc)
         }
     }
 
-    if (ip_check_count > 2) {
+    if (ip_check_count >= EXT_UDHCP_IP_CHECK_NUM) {
         scheduler_cancel_timer_task(ctrl->sched, ext->ext_udhcp_ip_check_id);
+        ext->ext_udhcp_ip_check_id = 0;
         ip_check_count = 0;
         wifi_util_error_print(WIFI_CTRL,"%s:%d No IP on connected interface triggering a disconnect\n", __func__, __LINE__);
 #if CCSP_COMMON
@@ -1570,8 +1573,8 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
             }
 
             scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_udhcp_ip_check_id,
-                process_udhcp_ip_check, svc,
-                EXT_UDHCP_IP_CHECK_INTERVAL, 0);
+                process_udhcp_ip_check, svc, EXT_UDHCP_IP_CHECK_INTERVAL,
+                EXT_UDHCP_IP_CHECK_NUM + 1);
 
             /* Make Self Heal Timeout to flase once connected */
             ext->selfheal_status = false;
@@ -1620,16 +1623,43 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
 
         apply_pending_channel_change(svc, sta_data->stats.vap_index);
 
+        if (ext->conn_state == connection_state_connected &&
+            ext->connected_vap_index != sta_data->stats.vap_index) {
+            wifi_util_info_print(WIFI_CTRL, "%s:%d: vap index %d is connected and received "
+                "disconnection event on vap index %d\n", __func__, __LINE__,
+                ext->connected_vap_index, sta_data->stats.vap_index);
+            return 0;
+        }
+
+        if (ext->ext_udhcp_ip_check_id != 0) {
+            scheduler_cancel_timer_task(ctrl->sched, ext->ext_udhcp_ip_check_id);
+            ext->ext_udhcp_ip_check_id = 0;
+        }
+
+        ext->disconn_retry = 0;
+        if (ext->ext_udhcp_disconnect_event_timeout_handler_id != 0) {
+            scheduler_cancel_timer_task(ctrl->sched,
+                ext->ext_udhcp_disconnect_event_timeout_handler_id);
+            ext->ext_udhcp_disconnect_event_timeout_handler_id = 0;
+        }
+
+        if (ext->ext_trigger_disconnection_timeout_handler_id != 0) {
+            scheduler_cancel_timer_task(ctrl->sched,
+                ext->ext_trigger_disconnection_timeout_handler_id);
+            ext->ext_trigger_disconnection_timeout_handler_id = 0;
+        }
+
+        if (ext->ext_disconnection_event_timeout_handler_id != 0) {
+            scheduler_cancel_timer_task(ctrl->sched,
+                ext->ext_disconnection_event_timeout_handler_id);
+            ext->ext_disconnection_event_timeout_handler_id = 0;
+        }
+
         if (ext->conn_state == connection_state_connection_to_nb_in_progress) {
             candidate = &ext->new_bss;
             found_candidate = true;
         } else if ((ext->conn_state == connection_state_connection_to_lcb_in_progress) ||
                 (ext->conn_state == connection_state_connected)) {
-
-            if (ext->conn_state == connection_state_connected && ext->connected_vap_index != sta_data->stats.vap_index) {
-                wifi_util_info_print(WIFI_CTRL, "%s:%d: vap index %d is connected and received disconnection event on vap index %d\n", __func__, __LINE__, ext->connected_vap_index, sta_data->stats.vap_index);
-                return 0;
-            }
 
             if (ext->is_radio_ignored == true) {
                 candidate = NULL;
@@ -1642,23 +1672,6 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
                 ext_set_conn_state(ext, connection_state_connection_to_lcb_in_progress, __func__,
                     __LINE__);
             }
-
-            if (ext->ext_udhcp_ip_check_id != 0) {
-                scheduler_cancel_timer_task(ctrl->sched, ext->ext_udhcp_ip_check_id);
-                ext->ext_udhcp_ip_check_id = 0;
-            }
-
-            ext->disconn_retry = 0;
-            if (ext->ext_udhcp_disconnect_event_timeout_handler_id != 0) {
-                scheduler_cancel_timer_task(ctrl->sched, ext->ext_udhcp_disconnect_event_timeout_handler_id);
-                ext->ext_udhcp_disconnect_event_timeout_handler_id = 0;
-            }
-
-            if (ext->ext_trigger_disconnection_timeout_handler_id != 0) {
-                scheduler_cancel_timer_task(ctrl->sched, ext->ext_trigger_disconnection_timeout_handler_id);
-                ext->ext_trigger_disconnection_timeout_handler_id = 0;
-            }
-
         } else if (ext->conn_state == connection_state_connection_in_progress) {
             candidate = ext->candidates_list.scan_list;
             for (i = 0; i < ext->candidates_list.scan_count; i++) {
@@ -1675,8 +1688,6 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
             ext_set_conn_state(ext, connection_state_connection_in_progress, __func__, __LINE__);
             candidate = ext->candidates_list.scan_list;
             found_candidate = true;
-            scheduler_cancel_timer_task(ctrl->sched, ext->ext_disconnection_event_timeout_handler_id);
-            ext->ext_disconnection_event_timeout_handler_id = 0;
         }
     }
 

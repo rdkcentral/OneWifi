@@ -71,6 +71,7 @@ typedef bool (* vap_svc_is_my_fn_t)(unsigned int vap_index);
 #define EXT_CSA_WAIT_TIMEOUT                   3000
 #define EXT_DISCONNECTION_IND_TIMEOUT          5000
 #define EXT_UDHCP_IP_CHECK_INTERVAL            60000
+#define EXT_UDHCP_IP_CHECK_NUM                 3
 
 typedef enum {
     connection_attempt_wait,
