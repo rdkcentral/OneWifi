@@ -25,6 +25,15 @@ then
     source /etc/device.properties
 fi
 
+if [ "$(pidof OneWifi)" != "" ]; then
+if [ "$MODEL_NUM" == "TG4482A" ]; then
+    ssid1="wlan0.0"
+    ssid2="wlan2.0"
+else
+    ssid1="wl0.1"
+    ssid2="wl1.1"
+fi
+else # not OneWifi
 if [ "$BOX_TYPE" == "TCCBR" ] || [ "$BOX_TYPE" == "XF3" ] || [ "$BOX_TYPE" == "HUB4" ] || [ "$MODEL_NUM" == "CGM4331COM" ]; then
     ssid1="wl0"
     ssid2="wl1"
@@ -35,6 +44,7 @@ else
     ssid1="ath0"
     ssid2="ath1"
 fi
+fi # OneWifi
 
 logfolder="/tmp/wifihealth"
 oneMB=1048576;
@@ -105,7 +115,7 @@ if [ -e "/sbin/iwconfig" ] ; then
 	fi
 fi
 
-if [ -e "/usr/bin/wl" ] ; then
+if [ -e "/usr/bin/wl" ] || [ -e "/bin/wl" ] ; then
         l1=`wl -i $ssid1 status | grep "SNR:"`
         l2=`wl -i $ssid2 status | grep "SNR:"`
         if [ "$l1" != "" ] ; then

@@ -48,7 +48,8 @@ if [ "$BOX_TYPE" = "XB3" ]; then
                 echo_t "skipping apheath.sh run" >> $WIFI_CONSOLE_LOG_NAME
         fi
 else
-	if [ $uptime -gt 1800 ] && [ "$(pidof CcspWifiSsp)" != "" ] && [ "$(pidof aphealth.sh)" == "" ] && [ "$(pidof radiohealth.sh)" == "" ] && [ "$(pidof bandsteering.sh)" == "" ] && [ "$(pidof log_mem_cpu_info_atom.sh)" == "" ] && [ "$(pidof dailystats.sh)" == "" ] && [ "$(pidof dailystats_log.sh)" == "" ] ; then
+	# RDKB-49581: For OneWifi, aphealth.sh does not update stats to /rdklogs/logs/wifihealth.txt
+	if [ $uptime -gt 1800 ] && ( [ "$(pidof CcspWifiSsp)" != "" ] || [ "$(pidof OneWifi)" != "" ] ) && [ "$(pidof aphealth.sh)" == "" ] && [ "$(pidof radiohealth.sh)" == "" ] && [ "$(pidof bandsteering.sh)" == "" ] && [ "$(pidof log_mem_cpu_info_atom.sh)" == "" ] && [ "$(pidof dailystats.sh)" == "" ] && [ "$(pidof dailystats_log.sh)" == "" ] ; then
                 /usr/ccsp/wifi/aphealth.sh >> /rdklogs/logs/wifihealth.txt
                 buf=`wifi_api wifi_getBandSteeringEnable`
                 if [[ "$buf" == "TRUE" || "$buf" == "1" ]]; then
