@@ -17,12 +17,12 @@ hal_error_reboot="/nvram/hal_error_reboot"
 dml_status=0
 dml_restart=0
 wifi_stuck_detect="/nvram/wifi_stuck_detect"
-pre_txprobe_req_2g_cnt=0
-cur_txprobe_req_2g_cnt=0
+pre_rxprobe_req_2g_cnt=0
+cur_rxprobe_req_2g_cnt=0
 pre_txprobe_resp_2g_cnt=0
 cur_txprobe_resp_2g_cnt=0
-pre_txprobe_req_5g_cnt=0
-cur_txprobe_req_5g_cnt=0
+pre_rxprobe_req_5g_cnt=0
+cur_rxprobe_req_5g_cnt=0
 pre_txprobe_resp_5g_cnt=0
 cur_txprobe_resp_5g_cnt=0
 force_reset_subdoc=0
@@ -55,16 +55,16 @@ vap_restart()
 
 print_wifi_2g_txprobe_cnt()
 {
-        echo_t "pre_txprobe_req_2g_cnt = $pre_txprobe_req_2g_cnt" >> $LOG_FILE
-        echo_t "cur_txprobe_req_2g_cnt = $cur_txprobe_req_2g_cnt" >> $LOG_FILE
+        echo_t "pre_rxprobe_req_2g_cnt = $pre_rxprobe_req_2g_cnt" >> $LOG_FILE
+        echo_t "cur_rxprobe_req_2g_cnt = $cur_rxprobe_req_2g_cnt" >> $LOG_FILE
         echo_t "pre_txprobe_resp_2g_cnt = $pre_txprobe_resp_2g_cnt" >> $LOG_FILE
         echo_t "cur_txprobe_resp_2g_cnt = $cur_txprobe_resp_2g_cnt" >> $LOG_FILE
 }
 
 sync_all_wifi_2g_txprobe_cnt()
 {
-        pre_txprobe_req_2g_cnt=`wl -i wl0.1 counters | grep  -m 1 "txprobereq " | cut -d ":" -f2-7 | awk '{print $6}'`
-        cur_txprobe_req_2g_cnt=$pre_txprobe_req_2g_cnt
+        pre_rxprobe_req_2g_cnt=`wl -i wl0.1 counters | grep  -m 1 "rxprobereq " | cut -d ":" -f2-7 | awk '{print $6}'`
+        cur_rxprobe_req_2g_cnt=$pre_rxprobe_req_2g_cnt
 
         pre_txprobe_resp_2g_cnt=`wl -i wl0.1 counters | grep  -m 1 "txprobersp " | cut -d ":" -f2-7 | awk '{print $8}'`
         cur_txprobe_resp_2g_cnt=$pre_txprobe_resp_2g_cnt
@@ -72,17 +72,21 @@ sync_all_wifi_2g_txprobe_cnt()
 
 check_wifi_2g_stuck_status()
 {
-        if [ $pre_txprobe_req_2g_cnt == 0 ]; then
+        if [ $pre_rxprobe_req_2g_cnt == 0 ]; then
                 sync_all_wifi_2g_txprobe_cnt
                 print_wifi_2g_txprobe_cnt
         else
-                cur_txprobe_req_2g_cnt=`wl -i wl0.1 counters | grep  -m 1 "txprobereq " | cut -d ":" -f2-7 | awk '{print $6}'`
-                if [ $cur_txprobe_req_2g_cnt -gt $pre_txprobe_req_2g_cnt ]; then
+                cur_rxprobe_req_2g_cnt=`wl -i wl0.1 counters | grep  -m 1 "rxprobereq " | cut -d ":" -f2-7 | awk '{print $6}'`
+                if [ $cur_rxprobe_req_2g_cnt -gt $pre_rxprobe_req_2g_cnt ]; then
                         cur_txprobe_resp_2g_cnt=`wl -i wl0.1 counters | grep  -m 1 "txprobersp " | cut -d ":" -f2-7 | awk '{print $8}'`
                         if [ $cur_txprobe_resp_2g_cnt -eq $pre_txprobe_resp_2g_cnt ]; then
                                 print_wifi_2g_txprobe_cnt
-                                echo_t "wifi 2g radio re-init" >>  $LOG_FILE
-                                `wl -i wl0 reinit`
+                                if [ -f $wifi_stuck_detect ]; then
+                                        echo_t "wifi 2g radio re-init" >>  $LOG_FILE
+                                        `wl -i wl0 reinit`
+                                else
+                                        echo_t "2G wifi radio in bad state, Enable WiFiStuckDetect RFC to resolve the issue" >>  $LOG_FILE
+                                fi
                         fi
                 fi
                 sync_all_wifi_2g_txprobe_cnt
@@ -91,16 +95,16 @@ check_wifi_2g_stuck_status()
 
 print_wifi_5g_txprobe_cnt()
 {
-        echo_t "pre_txprobe_req_5g_cnt = $pre_txprobe_req_5g_cnt" >> $LOG_FILE
-        echo_t "cur_txprobe_req_5g_cnt = $cur_txprobe_req_5g_cnt" >> $LOG_FILE
+        echo_t "pre_rxprobe_req_5g_cnt = $pre_rxprobe_req_5g_cnt" >> $LOG_FILE
+        echo_t "cur_rxprobe_req_5g_cnt = $cur_rxprobe_req_5g_cnt" >> $LOG_FILE
         echo_t "pre_txprobe_resp_5g_cnt = $pre_txprobe_resp_5g_cnt" >> $LOG_FILE
         echo_t "cur_txprobe_resp_5g_cnt = $cur_txprobe_resp_5g_cnt" >> $LOG_FILE
 }
 
 sync_all_wifi_5g_txprobe_cnt()
 {
-        pre_txprobe_req_5g_cnt=`wl -i wl1.1 counters | grep  -m 1 "txprobereq " | cut -d ":" -f2-7 | awk '{print $6}'`
-        cur_txprobe_req_5g_cnt=$pre_txprobe_req_5g_cnt
+        pre_rxprobe_req_5g_cnt=`wl -i wl1.1 counters | grep  -m 1 "rxprobereq " | cut -d ":" -f2-7 | awk '{print $6}'`
+        cur_rxprobe_req_5g_cnt=$pre_rxprobe_req_5g_cnt
 
         pre_txprobe_resp_5g_cnt=`wl -i wl1.1 counters | grep  -m 1 "txprobersp " | cut -d ":" -f2-7 | awk '{print $8}'`
         cur_txprobe_resp_5g_cnt=$pre_txprobe_resp_5g_cnt
@@ -108,17 +112,21 @@ sync_all_wifi_5g_txprobe_cnt()
 
 check_wifi_5g_stuck_status()
 {
-        if [ $pre_txprobe_req_5g_cnt == 0 ]; then
+        if [ $pre_rxprobe_req_5g_cnt == 0 ]; then
                 sync_all_wifi_5g_txprobe_cnt
                 print_wifi_5g_txprobe_cnt
         else
-                cur_txprobe_req_5g_cnt=`wl -i wl1.1 counters | grep  -m 1 "txprobereq " | cut -d ":" -f2-7 | awk '{print $6}'`
-                if [ $cur_txprobe_req_5g_cnt -gt $pre_txprobe_req_5g_cnt ]; then
+                cur_rxprobe_req_5g_cnt=`wl -i wl1.1 counters | grep  -m 1 "rxprobereq " | cut -d ":" -f2-7 | awk '{print $6}'`
+                if [ $cur_rxprobe_req_5g_cnt -gt $pre_rxprobe_req_5g_cnt ]; then
                         cur_txprobe_resp_5g_cnt=`wl -i wl1.1 counters | grep  -m 1 "txprobersp " | cut -d ":" -f2-7 | awk '{print $8}'`
                         if [ $cur_txprobe_resp_5g_cnt -eq $pre_txprobe_resp_5g_cnt ]; then
                                 print_wifi_5g_txprobe_cnt
-                                echo_t "wifi 5g radio re-init" >>  $LOG_FILE
-                                `wl -i wl1 reinit`
+                                if [ -f $wifi_stuck_detect ]; then
+                                        echo_t "wifi 5g radio re-init" >>  $LOG_FILE
+                                        `wl -i wl1 reinit`
+                                else
+                                        echo_t "5G wifi radio in bad state, Enable WiFiStuckDetect RFC to resolve the issue" >>  $LOG_FILE
+                                fi
                         fi
                 fi
                 sync_all_wifi_5g_txprobe_cnt
@@ -204,14 +212,10 @@ while true
             fi
         fi
 
-        if [ -f $wifi_stuck_detect ]; then
-                MODEL_NUM=`grep MODEL_NUM /etc/device.properties | cut -d "=" -f2`
-
-                #we need to use this changes for only TechXB7 device.
-                if [ "$MODEL_NUM" == "CGM4331COM" ]; then
-                        check_wifi_2g_stuck_status
-                        check_wifi_5g_stuck_status
-                fi
+        #we need to use this changes for only TechXB7 device.
+        if [ "$MODEL_NUM" == "CGM4331COM" ]; then
+                check_wifi_2g_stuck_status
+                check_wifi_5g_stuck_status
         fi
  fi
  if [ -f  $hal_indication ]; then
