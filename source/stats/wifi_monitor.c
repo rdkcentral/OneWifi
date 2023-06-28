@@ -2552,10 +2552,10 @@ void process_diagnostics	(unsigned int ap_index, wifi_associated_dev3_t *dev, un
         } else {
             // this was not present in hal record
             sta->disconnected_time += g_monitor_module.poll_period;
-            sta->dev_stats.cli_Active = false;          
+            sta->dev_stats.cli_Active = false;
             wifi_util_dbg_print(WIFI_MON, "Device:%s is disassociated from ap:%d, for %d amount of time, assoc status:%d\n",
                     to_sta_key(sta->sta_mac, sta_key), ap_index, sta->disconnected_time, sta->dev_stats.cli_Active);
-            if ((sta->disconnected_time > 4*g_monitor_module.poll_period) && (sta->dev_stats.cli_Active == false)) {
+            if ((sta->disconnected_time > g_monitor_module.bssid_data[vap_array_index].ap_params.rapid_reconnect_threshold) && (sta->dev_stats.cli_Active == false)) {
                 tmp_sta = sta;
             }
         }
@@ -2670,10 +2670,11 @@ void process_connect(unsigned int ap_index, auth_deauth_dev_t *dev)
         if (sta->dev_stats.cli_Active == false) {
             wifi_util_dbg_print(WIFI_MON, "Device:%s connected on ap:%d connected within rapid reconnect time\n", to_sta_key(dev->sta_mac, sta_key), ap_index);
             sta->rapid_reconnects++;
-        } else {
+        }
+    }	
+    else {
             wifi_util_dbg_print(WIFI_MON, "Device:%s connected on ap:%d received another connection event\n", to_sta_key(dev->sta_mac, sta_key), ap_index);
         }
-    }
 
     sta->last_connected_time.tv_sec = tv_now.tv_sec;
     sta->last_connected_time.tv_usec = tv_now.tv_usec;
