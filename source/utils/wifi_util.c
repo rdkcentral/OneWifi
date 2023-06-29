@@ -2978,3 +2978,10 @@ void json_param_obscure(char *json, char *param)
         str = end;
     }
 }
+
+bool is_5g_20M_channel_in_dfs(int channel) {
+    if(channel >= 52 && channel <= 144) {
+        return TRUE;
+    }
+    return FALSE;
+}

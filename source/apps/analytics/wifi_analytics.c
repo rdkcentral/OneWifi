@@ -468,10 +468,24 @@ int analytics_event_hal_channel_change(wifi_app_t *apps, void *arg)
 {
     char    desc[128] = { 0 };
     wifi_channel_change_event_t *ch = (wifi_channel_change_event_t *)arg;
+    static const char *dfs_states[] = { "Radar detected",
+                                        "CAC finished",
+                                        "CAC aborted",
+                                        "NOP finished",
+                                        "PRE-CAC expired",
+                                        "CAC started"};
 
-    sprintf(desc, "ch:%d bw:%d radio:%d", ch->channel, ch->channelWidth, ch->radioIndex);
-
-    wifi_util_info_print(WIFI_ANALYTICS, analytics_format_hal_core, "channel change", desc);
+    if(ch->event == WIFI_EVENT_DFS_RADAR_DETECTED) {
+        if(ch->sub_event < WIFI_EVENT_RADAR_DETECTED || ch->sub_event > WIFI_EVENT_RADAR_CAC_STARTED) {
+            snprintf(desc, sizeof(desc), "Unknown ch:%d bw:%d radio:%d", ch->channel, ch->channelWidth, ch->radioIndex);
+        } else {
+            snprintf(desc, sizeof(desc), "%s ch:%d bw:%d radio:%d", dfs_states[ch->sub_event], ch->channel, ch->channelWidth, ch->radioIndex);
+        }
+        wifi_util_info_print(WIFI_ANALYTICS, analytics_format_hal_core, "DFS event", desc);
+    } else {
+        snprintf(desc, sizeof(desc), "ch:%d bw:%d radio:%d", ch->channel, ch->channelWidth, ch->radioIndex);
+        wifi_util_info_print(WIFI_ANALYTICS, analytics_format_hal_core, "channel change", desc);
+    }
 
     return RETURN_OK;
 }

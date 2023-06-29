@@ -1625,6 +1625,7 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
     wifi_db_t *g_wifidb;
     g_wifidb = (wifi_db_t*) get_wifidb_obj();
     wifi_radio_operationParam_t oper_radio;
+    static bool is_bootup = TRUE;
 #if DML_SUPPORT
     wifi_rfc_dml_parameters_t *rfc_param = get_wifi_db_rfc_parameters();
 #endif // DML_SUPPORT
@@ -1669,8 +1670,21 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
     oper_radio.DfsEnabled = cfg->dfs_enabled;
 
     if (wifi_radio_operationParam_validation(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap, &oper_radio) == RETURN_OK) {
-        config->channel = cfg->channel;
-        config->channelWidth = cfg->channel_width;
+        if((is_bootup) && (config->band == WIFI_FREQUENCY_5L_BAND
+          || config->band == WIFI_FREQUENCY_5H_BAND || config->band == WIFI_FREQUENCY_5_BAND)) {
+            is_bootup = FALSE;
+            if((config->autoChannelEnabled == TRUE) && (is_5g_20M_channel_in_dfs(cfg->channel) || (cfg->channel_width == WIFI_CHANNELBANDWIDTH_160MHZ))) {
+                wifi_util_info_print(WIFI_DB,"%s:%d RadioIndex=%d Configure default channel=%d and default BandWidth=%d since autochannel is enabled \n",
+                                    __func__, __LINE__,radio_index,config->channel,config->channelWidth);
+            } else {
+                config->channelWidth = cfg->channel_width;
+                config->channel = cfg->channel;
+            }
+
+        } else {
+            config->channelWidth = cfg->channel_width;
+            config->channel = cfg->channel;
+        }
     }
     else {
         wifi_util_info_print(WIFI_DB,"%s:%d Validation of channel/channel_width of existing DB failed, setting default values chan=%d chanwidth=%d \n", __func__, __LINE__, config->channel, config->channelWidth);
