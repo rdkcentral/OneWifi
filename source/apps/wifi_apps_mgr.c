@@ -280,6 +280,7 @@ int app_register(wifi_apps_mgr_t *apps_mgr, wifi_app_descriptor_t *descriptor)
 
     app = (wifi_app_t *)malloc(sizeof(wifi_app_t));
     memset(app, 0, sizeof(wifi_app_t));
+    app->ctrl = apps_mgr->ctrl;
     memcpy(&app->desc, descriptor, sizeof(wifi_app_descriptor_t));
     snprintf(key_str, sizeof(key_str), "app_%010d", descriptor->inst);
     hash_map_put(apps_mgr->apps_map, strdup(key_str), app);

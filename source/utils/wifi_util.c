@@ -531,6 +531,39 @@ int convert_vap_name_to_array_index(wifi_platform_property_t *wifi_prop, char *v
     return vap_array_index;
 }
 
+int convert_vap_index_to_vap_array_index(wifi_platform_property_t *wifi_prop, unsigned int vap_index)
+{
+    UINT radio_index = 0;
+    int vap_array_index = -1;
+    wifi_interface_name_idex_map_t *if_prop;
+
+    if (!wifi_prop) {
+        return vap_array_index;
+    }
+
+    if_prop = GET_VAP_INDEX_PROPERTY(wifi_prop, vap_index);
+    if (if_prop) {
+        radio_index = if_prop->rdk_radio_index;
+        UINT total_vaps = wifi_prop->numRadios * MAX_NUM_VAP_PER_RADIO;
+
+        for (UINT i = 0; i < total_vaps; i++) {
+            if (wifi_prop->interface_map[i].rdk_radio_index == radio_index) {
+                vap_array_index++;
+            }
+            if (wifi_prop->interface_map[i].index == vap_index) {
+                break;
+            }
+        }
+   }
+
+    if (vap_array_index == -1) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Error, could not find vap array index for vap_index '%d'\n",
+                            __func__, __LINE__, vap_index);
+    }
+
+    return vap_array_index;
+}
+
 int convert_vap_name_to_radio_array_index(wifi_platform_property_t *wifi_prop, char *vap_name)
 {
     wifi_interface_name_idex_map_t *prop;
@@ -1567,7 +1600,6 @@ int is_wifi_channel_valid(wifi_platform_property_t *wifi_prop, wifi_freq_bands_t
     return RETURN_ERR;
 }
 
-
 int is_ssid_name_valid(char *ssid_name)
 {
     int i = 0, ssid_len;
@@ -2270,11 +2302,11 @@ bool wifiStandardStrToEnum(char *pWifiStdStr, wifi_ieee80211Variant_t *p80211Var
     return TRUE;
 }
 
-int report_type_conversion(report_type_t *report_type_enum, char *report_type, int report_type_len, unsigned int conv_type)
+int report_type_conversion(reporting_type_t *report_type_enum, char *report_type, int report_type_len, unsigned int conv_type)
 {
     char arr_str[][16] = {"raw", "average", "histogram", "percentile",  "diff"};
 
-    report_type_t arr_enum[] = {report_type_raw, report_type_average, report_type_histogram, report_type_percentile, report_type_diff};
+    reporting_type_t arr_enum[] = {report_type_raw, report_type_average, report_type_histogram, report_type_percentile, report_type_diff};
 
     unsigned int i = 0;
     if ((report_type_enum == NULL) || (report_type == NULL)) {

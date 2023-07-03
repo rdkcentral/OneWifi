@@ -106,6 +106,15 @@ int scheduler_cancel_timer_task(struct scheduler *sched, int id);
   */
 int scheduler_update_timer_task_interval(struct scheduler *sched, int id, unsigned int interval_ms);
 
+/* Description:
+  *      This API is used to check if the task is completed
+  * Arguments:
+  *      sched - Pointer to the scheduler struct
+  *      id - unique identifier to denote the timer task
+  * Returns:
+  *       Returns true if it is the last repetition, or task is cancelled, false otherwise
+  */
+bool scheduler_timer_task_is_completed(struct scheduler *sched, int id);
 
 /* Description:
   *      This API is used to update the repetitions for the task

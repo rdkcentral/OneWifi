@@ -290,6 +290,11 @@ int scheduler_update_timer_task_repetitions(struct scheduler *sched, int id, uns
     return -1;
 }
 
+bool scheduler_timer_task_is_completed(struct scheduler *sched, int id)
+{
+    return (scheduler_find_timer_task(sched, id) ? false : true);
+}
+
 int scheduler_execute(struct scheduler *sched, struct timeval t_start, unsigned int timeout_ms)
 {
     struct timeval t_now;

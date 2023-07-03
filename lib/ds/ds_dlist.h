@@ -56,6 +56,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define ds_dlist_iforeach(list, p, iter) \
     for (p = ds_dlist_ifirst(&iter, list); p != NULL; p = ds_dlist_inext(&iter))
 
+#define ds_dlist_foreach_safe(list, elem, tmp) \
+    for ((elem) = ds_dlist_head(list),  (tmp) = ((elem) != NULL) ? ds_dlist_next((list), (elem)) : NULL; \
+                (elem) != NULL; \
+                (elem) = (tmp), (tmp) = ((elem) != NULL) ? ds_dlist_next((list), (elem)) : NULL)
+
 /*
  * ============================================================
  *  Typedefs

@@ -91,6 +91,7 @@ typedef struct wifi_app {
     unsigned int        poll_period;
     struct timeval      last_signalled_time;
     struct timeval      last_polled_time;
+    wifi_ctrl_t         *ctrl;
 } wifi_app_t;
 
 typedef struct wifi_apps_mgr {

@@ -3980,7 +3980,7 @@ webconfig_error_t translate_statsconfig_from_rdk_to_ovsdb(struct schema_Wifi_Sta
         return webconfig_error_translate_to_ovsdb;
     }
 
-    if (report_type_conversion((report_type_t *)&stat_config->report_type,config_row->report_type, sizeof(config_row->report_type), ENUM_TO_STRING) != RETURN_OK) {
+    if (report_type_conversion((reporting_type_t *)&stat_config->report_type,config_row->report_type, sizeof(config_row->report_type), ENUM_TO_STRING) != RETURN_OK) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: report_type_conversion failed for %s\n", __func__, __LINE__, config_row->report_type);
         return webconfig_error_translate_to_ovsdb;
     }

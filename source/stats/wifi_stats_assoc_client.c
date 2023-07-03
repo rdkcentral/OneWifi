@@ -142,7 +142,6 @@ int execute_assoc_client_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *
         return RETURN_ERR;
     }
 
-
     if (mon_data->bssid_data[vap_array_index].sta_map == NULL) {
         mon_data->bssid_data[vap_array_index].sta_map = hash_map_create();
         if (mon_data->bssid_data[vap_array_index].sta_map == NULL) {

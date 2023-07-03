@@ -85,6 +85,7 @@ typedef struct {
        unsigned long long ch_utilization_busy_rx;
        unsigned long long ch_utilization_busy_ext;
        unsigned long long LastUpdatedTime;
+       unsigned long long LastUpdatedTimeUsec;
 } radio_chan_data_t;
 
 

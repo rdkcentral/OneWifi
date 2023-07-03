@@ -119,7 +119,7 @@ void copy_chanstats_to_chandata(radio_chan_data_t *chan_data, wifi_channelStats_
     chan_data->ch_utilization_busy_rx = chan_stats->ch_utilization_busy_rx;
     chan_data->ch_utilization_busy_ext = chan_stats->ch_utilization_busy_ext;
     chan_data->LastUpdatedTime = currentTime;
-
+    chan_data->LastUpdatedTimeUsec = tv_now.tv_usec;
     return;
 }
 

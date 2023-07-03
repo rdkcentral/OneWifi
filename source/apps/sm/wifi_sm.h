@@ -28,6 +28,7 @@ typedef struct wifi_app wifi_app_t;
 
 typedef struct {
     hash_map_t           *sm_stats_config_map;
+    hash_map_t           *report_tasks_map;
 } sm_data_t;
 
 typedef enum {
