@@ -606,6 +606,8 @@ int process_connected_scan_result_timeout(vap_svc_t *svc)
     ctrl = svc->ctrl;
     ext = &svc->u.ext;
 
+    ext->ext_connected_scan_result_timeout_handler_id = 0;
+
     if (ext->conn_state == connection_state_connected_scan_list) {
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d Time out on connected scan \n", __func__, __LINE__);
         ext_set_conn_state(ext, connection_state_connected, __func__, __LINE__);
@@ -666,6 +668,8 @@ int csa_wait_timeout(vap_svc_t *svc)
 
     ctrl = svc->ctrl;
     ext = &svc->u.ext;
+
+    ext->ext_csa_wait_timeout_handler_id = 0;
 
     if (ext->conn_state == connection_state_connected_wait_for_csa) {
         ext_set_conn_state(ext, connection_state_connected_scan_list, __func__, __LINE__);
@@ -836,6 +840,8 @@ int process_ext_connect_algorithm(vap_svc_t *svc)
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d process connection state: %s\r\n", __func__, __LINE__,
         ext_conn_state_to_str(ext->conn_state));
 
+    ext->ext_connect_algo_processor_id = 0;
+
     switch (ext->conn_state) {
         case connection_state_disconnected_scan_list_none:
             ext_start_scan(svc);
@@ -987,9 +993,10 @@ static int process_ext_webconfig_set_data_sta_bssid(vap_svc_t *svc, void *arg)
 
     uint8_mac_to_string_mac(vap_info->u.sta_info.bssid, bssid_str);
 
-    // Support only connected/wait_for_csa -> connection_to_nb_in_progress state change
+    // Support only connected/wait_for_csa/connected_scan_list -> nb_in_progress state change
     if (ext->conn_state != connection_state_connected &&
-        ext->conn_state != connection_state_connected_wait_for_csa) {
+        ext->conn_state != connection_state_connected_wait_for_csa &&
+        ext->conn_state != connection_state_connected_scan_list) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d skip sta bssid change event: connection state: %s,"
             "vap: %s, bssid: %s\n", __func__, __LINE__, ext_conn_state_to_str(ext->conn_state),
             vap_info->vap_name, bssid_str);
@@ -1038,14 +1045,21 @@ static int process_ext_webconfig_set_data_sta_bssid(vap_svc_t *svc, void *arg)
         apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_command, wifi_event_type_new_bssid, ext);
 #endif
 
-    // Channel change for connected STA may fail therefore need to re-apply it on disconnection.
-    // For example, STA is connected to 2.4 GHz. Optimization for extender is 1->11, 2.4 Ghz->5 Ghz.
-    // Gateway is left on channel 1 so extender will not receive CSA. One the other hand,
-    // driver cannot apply new channel while STA is connected.
-    if (ext->conn_state == connection_state_connected_wait_for_csa) {
+    if (ext->conn_state == connection_state_connected_wait_for_csa &&
+        ext->ext_csa_wait_timeout_handler_id != 0) {
         scheduler_cancel_timer_task(ctrl->sched, ext->ext_csa_wait_timeout_handler_id);
         ext->ext_csa_wait_timeout_handler_id = 0;
-        ext->channel_change_pending_map |= 1 << ext->connected_vap_index;
+    }
+
+    if (ext->conn_state == connection_state_connected_scan_list &&
+        ext->ext_connected_scan_result_timeout_handler_id != 0) {
+        scheduler_cancel_timer_task(ctrl->sched, ext->ext_connected_scan_result_timeout_handler_id);
+        ext->ext_connected_scan_result_timeout_handler_id = 0;
+    }
+
+    if (ext->ext_connect_algo_processor_id != 0) {
+        scheduler_cancel_timer_task(ctrl->sched, ext->ext_connect_algo_processor_id);
+        ext->ext_connect_algo_processor_id = 0;
     }
 
     ext_set_conn_state(ext, connection_state_connection_to_nb_in_progress, __func__,
@@ -1131,6 +1145,11 @@ int process_ext_webconfig_set_data(vap_svc_t *svc, void *arg)
     ext->go_to_channel = radio_oper_param->channel;
     ext->go_to_channel_width = radio_oper_param->channelWidth;
     ext_set_conn_state(ext, connection_state_connected_wait_for_csa, __func__, __LINE__);
+
+    wifi_util_info_print(WIFI_CTRL, "%s:%d wait csa for channel: %u width: %u radio: %u\n",
+        __func__, __LINE__, ext->go_to_channel, ext->go_to_channel_width, connected_radio_index);
+    ext->channel_change_pending_map |= 1 << ext->connected_vap_index;
+
     scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
             process_ext_connect_algorithm, svc,
             EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1);
@@ -1420,6 +1439,10 @@ static bool is_connected_to_bssid(vap_svc_ext_t *ext)
     return false;
 }
 
+// Channel change for connected STA may fail therefore need to re-apply it on disconnection.
+// For example, STA is connected to 2.4 GHz. Optimization for extender is 1->11, 2.4 Ghz->5 Ghz.
+// Gateway is left on channel 1 so extender will not receive CSA. One the other hand,
+// driver cannot apply new channel while STA is connected.
 static int apply_pending_channel_change(vap_svc_t *svc, int vap_index)
 {
     int ret, radio_index;
@@ -1790,7 +1813,11 @@ int process_ext_channel_change(vap_svc_t *svc, void *arg)
 
     if (ext->conn_state == connection_state_connected_wait_for_csa) {
         if (ch_chg->channel == ext->go_to_channel) {
+            wifi_util_info_print(WIFI_CTRL, "%s:%d: csa channel: %u, width: %u, radio: %u\n",
+                __func__, __LINE__, ch_chg->channel, ch_chg->channelWidth, ch_chg->radioIndex);
+            ext->channel_change_pending_map &= ~(1 << ext->connected_vap_index);
             scheduler_cancel_timer_task(ctrl->sched, ext->ext_csa_wait_timeout_handler_id);
+            ext->ext_csa_wait_timeout_handler_id = 0;
             ext_set_conn_state(ext, connection_state_connected, __func__, __LINE__);
             scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
                         process_ext_connect_algorithm, svc,

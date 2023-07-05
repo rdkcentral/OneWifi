@@ -848,10 +848,6 @@ static void webconfig_send_sta_bssid_change_event(wifi_ctrl_t *ctrl, wifi_vap_in
 
     ext_svc->event_fn(ext_svc, wifi_event_type_webconfig, wifi_event_webconfig_set_data_sta_bssid,
         vap_svc_event_none, new);
-
-    if (is_bssid_valid(new->u.sta_info.bssid)) {
-        memcpy(old->u.sta_info.bssid, new->u.sta_info.bssid, sizeof(bssid_t));
-    }
 }
 #endif
 
