@@ -43,25 +43,25 @@ AM_CPPFLAGS = -Wall -Werror
 ACLOCAL_AMFLAGS = -I m4
 hardware_platform = i686-linux-gnu
 
-bin_PROGRAMS = wifi_webconfig_consumer
-wifi_webconfig_consumer_CPPFLAGS = $(CPPFLAGS)  -I$(top_srcdir)/./include -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/rbus -I$(top_srcdir)/../hal/include -I$(top_srcdir)/source/dml/tr_181/sbapi -I$(top_srcdir)/source/core -I$(top_srcdir)/source/stats -I$(top_srcdir)/source/utils -I$(top_srcdir)/source/core -I$(top_srcdir)/source/db -I$(top_srcdir)/source/dml/wifi_ssp -I$(top_srcdir)/./include -I$(top_srcdir)/./lib/ovsdb -I$(top_srcdir)/./lib/ds -I$(top_srcdir)/lib/common -I$(top_srcdir)/lib/pjs -I$(top_srcdir)/lib/log -I$(top_srcdir)/lib/const -I$(top_srcdir)/lib/schema -I$(top_srcdir)/lib/osp -I$(top_srcdir)/lib/osa -I$(top_srcdir)/lib/psfs -I$(top_srcdir)/lib/qm -I$(top_srcdir)/./lib/json_util/ -I$(top_srcdir)/source/dml/dml_webconfig -I$(top_srcdir)/source/core/services -I$(top_srcdir)/source/apps  -I$(top_srcdir)/source/apps/analytics -I$(top_srcdir)/source/apps/levl -I$(top_srcdir)/source/apps/cac -I$(top_srcdir)/source/apps/sm -I$(top_srcdir)/source/apps/motion -I$(top_srcdir)/source/apps/csi -I$(top_srcdir)/source/apps/whix
+bin_PROGRAMS = onewifi_component_test_app
+onewifi_component_test_app_CPPFLAGS = $(CPPFLAGS)  -I$(top_srcdir)/./include -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/rbus -I$(top_srcdir)/../hal/include -I$(top_srcdir)/source/dml/tr_181/sbapi -I$(top_srcdir)/source/core -I$(top_srcdir)/source/stats -I$(top_srcdir)/source/utils -I$(top_srcdir)/source/core -I$(top_srcdir)/source/db -I$(top_srcdir)/source/dml/wifi_ssp -I$(top_srcdir)/./include -I$(top_srcdir)/./lib/ovsdb -I$(top_srcdir)/./lib/ds -I$(top_srcdir)/lib/common -I$(top_srcdir)/lib/pjs -I$(top_srcdir)/lib/log -I$(top_srcdir)/lib/const -I$(top_srcdir)/lib/schema -I$(top_srcdir)/lib/osp -I$(top_srcdir)/lib/osa -I$(top_srcdir)/lib/psfs -I$(top_srcdir)/lib/qm -I$(top_srcdir)/./lib/json_util/ -I$(top_srcdir)/source/dml/dml_webconfig -I$(top_srcdir)/source/core/services -I$(top_srcdir)/source/apps  -I$(top_srcdir)/source/apps/analytics -I$(top_srcdir)/source/apps/levl -I$(top_srcdir)/source/apps/cac -I$(top_srcdir)/source/apps/sm -I$(top_srcdir)/source/apps/motion -I$(top_srcdir)/source/apps/csi -I$(top_srcdir)/source/apps/whix
 
-wifi_webconfig_consumer_SOURCES = wifi_webconfig_consumer.c webconfig_consumer_apis.c webconfig_consumer_cli.c
+onewifi_component_test_app_SOURCES = wifi_webconfig_consumer.c webconfig_consumer_apis.c webconfig_consumer_cli.c
 
-wifi_webconfig_consumer_SOURCES += $(top_srcdir)/source/utils/collection.c $(top_srcdir)/source/utils/scheduler.c
+onewifi_component_test_app_SOURCES += $(top_srcdir)/source/utils/collection.c $(top_srcdir)/source/utils/scheduler.c
 
-wifi_webconfig_consumer_LDFLAGS = -lsysevent -lrbus
-wifi_webconfig_consumer_LDFLAGS += -L$(top_builddir)/source/utils/
-wifi_webconfig_consumer_LDFLAGS += -lwifi_utils
+onewifi_component_test_app_LDFLAGS = -lsysevent -lrbus
+onewifi_component_test_app_LDFLAGS += -L$(top_builddir)/source/utils/
+onewifi_component_test_app_LDFLAGS += -lwifi_utils
 if WITH_LIBWEBCONFIG
-wifi_webconfig_consumer_LDFLAGS += -L$(top_builddir)/source/webconfig/
+onewifi_component_test_app_LDFLAGS += -L$(top_builddir)/source/webconfig/
 endif
-wifi_webconfig_consumer_LDFLAGS += -lwifi_webconfig
-wifi_webconfig_consumer_CPPFLAGS += -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/opensync_headers
+onewifi_component_test_app_LDFLAGS += -lwifi_webconfig
+onewifi_component_test_app_CPPFLAGS += -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/opensync_headers
 
-wifi_webconfig_consumer_CFLAGS = $(DML_ENABLE_FLAG)
-wifi_webconfig_consumer_CFLAGS += $(CCSP_COMMON_FLAG)
-wifi_webconfig_consumer_CFLAGS += $(JOURNALCTL_ENABLE_FLAG)
+onewifi_component_test_app_CFLAGS = $(DML_ENABLE_FLAG)
+onewifi_component_test_app_CFLAGS += $(CCSP_COMMON_FLAG)
+onewifi_component_test_app_CFLAGS += $(JOURNALCTL_ENABLE_FLAG)
 
 bin_PROGRAMS += wifi_events_consumer
 wifi_events_consumer_CPPFLAGS = $(CPPFLAGS)  -I$(top_srcdir)/./include -I${PKG_CONFIG_SYSROOT_DIR}$(includedir)/rbus -I$(top_srcdir)/../hal/include -I$(top_srcdir)/source/TR-181/sbapi  -I$(top_srcdir)/source/TR-181/lib/common -I$(top_srcdir)/source/stats

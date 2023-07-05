@@ -655,6 +655,329 @@ int init_tests(webconfig_consumer_t *consumer)
     return 0;
 }
 
+hash_map_t** get_sample_app_acl_hash_map(unsigned int radio_index, unsigned int vap_index)
+{
+    webconfig_consumer_t *consumer = get_consumer_object();
+    if (consumer == NULL) {
+        printf("%s %d NULL Pointer\n", __func__, __LINE__);
+        return NULL;
+    }
+
+    return &(consumer->radios[radio_index].vaps.rdk_vap_array[vap_index].acl_map);
+}
+
+void mac_filter_sample_app_vap_cache_update(int radio_index, int vap_array_index)
+{
+    //webconfig decode allocate mem for the hash map which is getting cleared and destroyed here
+    hash_map_t** acl_dev_map = get_sample_app_acl_hash_map(radio_index, vap_array_index);
+    if(*acl_dev_map) {
+        acl_entry_t *temp_acl_entry, *acl_entry;
+        mac_addr_str_t mac_str;
+        acl_entry = hash_map_get_first(*acl_dev_map);
+        while (acl_entry != NULL) {
+            to_mac_str(acl_entry->mac,mac_str);
+            acl_entry = hash_map_get_next(*acl_dev_map,acl_entry);
+            temp_acl_entry = hash_map_remove(*acl_dev_map, mac_str);
+            if (temp_acl_entry != NULL) {
+                free(temp_acl_entry);
+            }
+        }
+        hash_map_destroy(*acl_dev_map);
+    }
+}
+
+void update_sample_app_subdoc_vap_data(webconfig_consumer_t *consumer, webconfig_subdoc_data_t *data)
+{
+    webconfig_subdoc_decoded_data_t *params;
+    unsigned int i, j;
+    wifi_vap_info_map_t *recv_maps;
+    wifi_vap_info_t *recv_vaps;
+    wifi_vap_info_map_t *local_vap_maps;
+    wifi_vap_info_t *local_vaps;
+
+    params = &data->u.decoded;
+    printf("%s:%d subdoc parse and update sample app global cache:%d\n",__func__, __LINE__, data->type);
+    for (i = 0; i < params->num_radios; i++) {
+        recv_maps = &params->radios[i].vaps.vap_map;
+        local_vap_maps = &consumer->radios[i].vaps.vap_map;
+        for (j = 0; j < recv_maps->num_vaps; j++) {
+            recv_vaps = &recv_maps->vap_array[j];
+            local_vaps = &local_vap_maps->vap_array[j];
+
+            switch (data->type) {
+                case webconfig_subdoc_type_private:
+                    if (is_vap_private(&params->hal_cap.wifi_prop, recv_vaps->vap_index) && (strlen(recv_vaps->vap_name))) {
+                        memcpy(local_vaps, recv_vaps, sizeof(wifi_vap_info_t));
+                    }
+                    break;
+                case webconfig_subdoc_type_home:
+                    if (is_vap_xhs(&params->hal_cap.wifi_prop, recv_vaps->vap_index)) {
+                        memcpy(local_vaps, recv_vaps, sizeof(wifi_vap_info_t));
+                    }
+                    break;
+                case webconfig_subdoc_type_xfinity:
+                    if (is_vap_hotspot(&params->hal_cap.wifi_prop, recv_vaps->vap_index)) {
+                        memcpy(local_vaps, recv_vaps, sizeof(wifi_vap_info_t));
+                    }
+                    break;
+                case webconfig_subdoc_type_mesh:
+                    if (is_vap_mesh(&params->hal_cap.wifi_prop, recv_vaps->vap_index)) {
+                        mac_filter_sample_app_vap_cache_update(i, j);
+                        memcpy(local_vaps, recv_vaps, sizeof(wifi_vap_info_t));
+                        consumer->radios[i].vaps.rdk_vap_array[j].acl_map = params->radios[i].vaps.rdk_vap_array[j].acl_map;
+                        consumer->radios[i].vaps.rdk_vap_array[j].vap_index = params->radios[i].vaps.rdk_vap_array[j].vap_index;
+                    }
+                    break;
+                case webconfig_subdoc_type_mesh_backhaul:
+                    if (is_vap_mesh_backhaul(&params->hal_cap.wifi_prop, recv_vaps->vap_index)) {
+                        mac_filter_sample_app_vap_cache_update(i, j);
+                        memcpy(local_vaps, recv_vaps, sizeof(wifi_vap_info_t));
+                        consumer->radios[i].vaps.rdk_vap_array[j].acl_map = params->radios[i].vaps.rdk_vap_array[j].acl_map;
+                        consumer->radios[i].vaps.rdk_vap_array[j].vap_index = params->radios[i].vaps.rdk_vap_array[j].vap_index;
+                    }
+                    break;
+                case webconfig_subdoc_type_mesh_sta:
+                    if (is_vap_mesh_sta(&params->hal_cap.wifi_prop, recv_vaps->vap_index)) {
+                        memcpy(local_vaps, recv_vaps, sizeof(wifi_vap_info_t));
+                    }
+                    break;
+                default:
+                    printf("%s %d Invalid subdoc parse:%d\n",__func__, __LINE__, data->type);
+                    break;
+            }
+        }
+    }
+}
+
+void mac_filter_sample_app_cache_update(webconfig_subdoc_data_t *data)
+{
+    int itr, itrj;
+
+    //webconfig decode allocate mem for the hash map which is getting cleared and destroyed here
+    for (itr=0; itr<(int)data->u.decoded.num_radios; itr++) {
+        for(itrj = 0; itrj < MAX_NUM_VAP_PER_RADIO; itrj++) {
+            hash_map_t** acl_dev_map = get_sample_app_acl_hash_map(itr,itrj);
+            if(*acl_dev_map) {
+                acl_entry_t *temp_acl_entry, *acl_entry;
+                mac_addr_str_t mac_str;
+                acl_entry = hash_map_get_first(*acl_dev_map);
+                while (acl_entry != NULL) {
+                    to_mac_str(acl_entry->mac,mac_str);
+                    acl_entry = hash_map_get_next(*acl_dev_map,acl_entry);
+                    temp_acl_entry = hash_map_remove(*acl_dev_map, mac_str);
+                    if (temp_acl_entry != NULL) {
+                        free(temp_acl_entry);
+                    }
+                }
+                hash_map_destroy(*acl_dev_map);
+            }
+        }
+    }
+}
+
+void sample_app_cache_update(webconfig_consumer_t *consumer, webconfig_subdoc_data_t *data)
+{
+    webconfig_subdoc_decoded_data_t *params;
+    unsigned int i;
+
+    switch(data->type) {
+        case webconfig_subdoc_type_radio:
+            params = &data->u.decoded;
+            for (i = 0; i < params->num_radios; i++) {
+                printf("%s %d sample app radio[%d] cache update\r\n", __func__, __LINE__, i);
+                memcpy(&consumer->radios[i].oper, &params->radios[i].oper, sizeof(params->radios[i].oper));
+            }
+            break;
+        case webconfig_subdoc_type_dml:
+            printf("%s:%d subdoc parse and update sample app global cache:%d\n",__func__, __LINE__, data->type);
+            mac_filter_sample_app_cache_update(data);
+            memcpy((unsigned char *)&consumer->radios, (unsigned char *)&data->u.decoded.radios, data->u.decoded.num_radios*sizeof(rdk_wifi_radio_t));
+            memcpy((unsigned char *)&consumer->config, (unsigned char *)&data->u.decoded.config, sizeof(wifi_global_config_t));
+            memcpy((unsigned char *)&consumer->hal_cap,(unsigned char *)&data->u.decoded.hal_cap, sizeof(wifi_hal_capability_t));
+            consumer->hal_cap.wifi_prop.numRadios = data->u.decoded.num_radios;
+            break;
+        default:
+            update_sample_app_subdoc_vap_data(consumer, data);
+            break;
+    }
+}
+
+void handle_webconfig_subdoc_test_result(webconfig_subdoc_type_t subdoc_type, webconfig_consumer_t *consumer)
+{
+    switch (subdoc_type) {
+        case webconfig_subdoc_type_dml:
+            if (consumer->test_state == consumer_test_state_radio_subdoc_test_pending) {
+                consumer->radio_test_pending_count = 0;
+                consumer->test_state = consumer_test_state_radio_subdoc_test_complete;
+                cmd_delta_time = get_current_time_ms() - cmd_start_time;
+                printf("%s:%d: current time:%llu subdoc execution delta time:%u milliSeconds\n", __func__, __LINE__, get_current_time_ms(), cmd_delta_time);
+                printf("%s:%d: Radio set successful, Radios: %s, %s, Test State:%d\n", __func__, __LINE__,
+                                    consumer->radios[0].name, consumer->radios[1].name,
+                                    consumer->test_state);
+            } else if (consumer->test_state == consumer_test_state_private_subdoc_test_pending) {
+                consumer->private_test_pending_count = 0;
+                consumer->test_state = consumer_test_state_private_subdoc_test_complete;
+                cmd_delta_time = get_current_time_ms() - cmd_start_time;
+                printf("%s:%d: current time:%llu subdoc execution delta time:%u milliSeconds\n", __func__, __LINE__, get_current_time_ms(), cmd_delta_time);
+                printf("%s:%d: consumer vap private set successful, Radios: %s, %s, Test State:%d\n", __func__, __LINE__,
+                                    consumer->radios[0].name, consumer->radios[1].name,
+                                    consumer->test_state);
+            } else if (consumer->test_state == consumer_test_state_mesh_subdoc_test_pending) {
+                consumer->mesh_test_pending_count = 0;
+                consumer->test_state = consumer_test_state_mesh_subdoc_test_complete;
+                cmd_delta_time = get_current_time_ms() - cmd_start_time;
+                printf("%s:%d: current time:%llu subdoc execution delta time:%u milliSeconds\n", __func__, __LINE__, get_current_time_ms(), cmd_delta_time);
+                printf("%s:%d: consumer vap mesh set successful, Radios: %s, %s, Test State:%d\n", __func__, __LINE__,
+                                    consumer->radios[0].name, consumer->radios[1].name,
+                                    consumer->test_state);
+            } else if (consumer->test_state == consumer_test_state_xfinity_subdoc_test_pending) {
+                consumer->xfinity_test_pending_count = 0;
+                consumer->test_state = consumer_test_state_xfinity_subdoc_test_complete;
+                cmd_delta_time = get_current_time_ms() - cmd_start_time;
+                printf("%s:%d: current time:%llu subdoc execution delta time:%u milliSeconds\n", __func__, __LINE__, get_current_time_ms(), cmd_delta_time);
+                printf("%s:%d: consumer vap xfinity set successful, Radios: %s, %s, Test State:%d\n", __func__, __LINE__,
+                                    consumer->radios[0].name, consumer->radios[1].name,
+                                    consumer->test_state);
+            } else if (consumer->test_state == consumer_test_state_home_subdoc_test_pending) {
+                consumer->home_test_pending_count = 0;
+                consumer->test_state = consumer_test_state_home_subdoc_test_complete;
+                cmd_delta_time = get_current_time_ms() - cmd_start_time;
+                printf("%s:%d: current time:%llu subdoc execution delta time:%u milliSeconds\n", __func__, __LINE__, get_current_time_ms(), cmd_delta_time);
+                printf("%s:%d: consumer Vap home set successful, Radios: %s, %s, Test State:%d\n", __func__, __LINE__,
+                                    consumer->radios[0].name, consumer->radios[1].name,
+                                    consumer->test_state);
+            } else if (consumer->test_state == consumer_test_state_macfilter_subdoc_test_pending) {
+                consumer->macfilter_test_pending_count = 0;
+                consumer->test_state = consumer_test_state_macfilter_subdoc_test_complete;
+                cmd_delta_time = get_current_time_ms() - cmd_start_time;
+                printf("%s:%d: current time:%llu subdoc execution delta time:%u milliSeconds\n", __func__, __LINE__, get_current_time_ms(), cmd_delta_time);
+                printf("%s:%d: macfilter set successful, Radios: %s, %s, Test State:%d\n", __func__, __LINE__,
+                                    consumer->radios[0].name, consumer->radios[1].name,
+                                    consumer->test_state);
+            } else if (consumer->test_state == consumer_test_state_band_steer_config_test_pending) {
+                consumer->steer_config_test_pending_count = 0;
+                consumer->test_state = consumer_test_state_band_steer_config_test_complete;
+                cmd_delta_time = get_current_time_ms() - cmd_start_time;
+                printf("%s:%d: current time:%llu subdoc execution delta time:%u milliSeconds\n", __func__, __LINE__, get_current_time_ms(), cmd_delta_time);
+                printf("%s:%d: steer config set successful, Radios: %s, %s, Test State:%d\n", __func__, __LINE__,
+                                    consumer->radios[0].name, consumer->radios[1].name,
+                                    consumer->test_state);
+            } else {
+                consumer->test_state = consumer_test_state_cache_init_complete;
+                printf("%s:%d: Cache init successful, Radios: %s, %s, Test State:%d\n", __func__, __LINE__,
+                                    consumer->radios[0].name, consumer->radios[1].name,
+                                    consumer->test_state);
+            }
+        break;
+
+        case webconfig_subdoc_type_radio:
+            if (consumer->test_state == consumer_test_state_radio_subdoc_test_pending) {
+                consumer->radio_test_pending_count = 0;
+                consumer->test_state = consumer_test_state_radio_subdoc_test_complete;
+                cmd_delta_time = get_current_time_ms() - cmd_start_time;
+                printf("%s:%d: current time:%llu subdoc execution delta time:%u milliSeconds\n", __func__, __LINE__, get_current_time_ms(), cmd_delta_time);
+                printf("%s:%d: Radio set successful, Radios: %s, %s, Test State:%d\n", __func__, __LINE__,
+                                    consumer->radios[0].name, consumer->radios[1].name,
+                                    consumer->test_state);
+            }
+        break;
+
+        case webconfig_subdoc_type_private:
+            if (consumer->test_state == consumer_test_state_private_subdoc_test_pending) {
+                consumer->private_test_pending_count = 0;
+                consumer->test_state = consumer_test_state_private_subdoc_test_complete;
+                cmd_delta_time = get_current_time_ms() - cmd_start_time;
+                printf("%s:%d: current time:%llu subdoc execution delta time:%u milliSeconds\n", __func__, __LINE__, get_current_time_ms(), cmd_delta_time);
+                printf("%s:%d: consumer vap private set successful, Radios: %s, %s, Test State:%d\n", __func__, __LINE__,
+                                    consumer->radios[0].name, consumer->radios[1].name,
+                                    consumer->test_state);
+            }
+        break;
+
+        case webconfig_subdoc_type_home:
+            if (consumer->test_state == consumer_test_state_home_subdoc_test_pending) {
+                consumer->home_test_pending_count = 0;
+                consumer->test_state = consumer_test_state_home_subdoc_test_complete;
+                cmd_delta_time = get_current_time_ms() - cmd_start_time;
+                printf("%s:%d: current time:%llu subdoc execution delta time:%u milliSeconds\n", __func__, __LINE__, get_current_time_ms(), cmd_delta_time);
+                printf("%s:%d: consumer Vap home set successful, Radios: %s, %s, Test State:%d\n", __func__, __LINE__,
+                                    consumer->radios[0].name, consumer->radios[1].name,
+                                    consumer->test_state);
+            }
+        break;
+
+        case webconfig_subdoc_type_xfinity:
+            if (consumer->test_state == consumer_test_state_xfinity_subdoc_test_pending) {
+                consumer->xfinity_test_pending_count = 0;
+                consumer->test_state = consumer_test_state_xfinity_subdoc_test_complete;
+                cmd_delta_time = get_current_time_ms() - cmd_start_time;
+                printf("%s:%d: current time:%llu subdoc execution delta time:%u milliSeconds\n", __func__, __LINE__, get_current_time_ms(), cmd_delta_time);
+                printf("%s:%d: consumer vap xfinity set successful, Radios: %s, %s, Test State:%d\n", __func__, __LINE__,
+                                    consumer->radios[0].name, consumer->radios[1].name,
+                                    consumer->test_state);
+            }
+        break;
+
+        case webconfig_subdoc_type_mesh_backhaul:
+        case webconfig_subdoc_type_mesh:
+            if (consumer->test_state == consumer_test_state_mesh_subdoc_test_pending) {
+                consumer->mesh_test_pending_count = 0;
+                consumer->test_state = consumer_test_state_mesh_subdoc_test_complete;
+                cmd_delta_time = get_current_time_ms() - cmd_start_time;
+                printf("%s:%d: current time:%llu subdoc execution delta time:%u milliSeconds\n", __func__, __LINE__, get_current_time_ms(), cmd_delta_time);
+                printf("%s:%d: consumer vap mesh set successful, Radios: %s, %s, Test State:%d\n", __func__, __LINE__,
+                                    consumer->radios[0].name, consumer->radios[1].name,
+                                    consumer->test_state);
+            }
+        break;
+
+        case webconfig_subdoc_type_mac_filter:
+            if (consumer->test_state == consumer_test_state_macfilter_subdoc_test_pending) {
+                consumer->macfilter_test_pending_count = 0;
+                consumer->test_state = consumer_test_state_macfilter_subdoc_test_complete;
+                cmd_delta_time = get_current_time_ms() - cmd_start_time;
+                printf("%s:%d: current time:%llu subdoc execution delta time:%u milliSeconds\n", __func__, __LINE__, get_current_time_ms(), cmd_delta_time);
+                printf("%s:%d: macfilter set successful, Radios: %s, %s, Test State:%d\n", __func__, __LINE__,
+                                    consumer->radios[0].name, consumer->radios[1].name,
+                                    consumer->test_state);
+            }
+        break;
+
+        case webconfig_subdoc_type_steering_config:
+            if (consumer->test_state == consumer_test_state_band_steer_config_test_pending) {
+                consumer->steer_config_test_pending_count = 0;
+                consumer->test_state = consumer_test_state_band_steer_config_test_complete;
+                cmd_delta_time = get_current_time_ms() - cmd_start_time;
+                printf("%s:%d: current time:%llu subdoc execution delta time:%u milliSeconds\n", __func__, __LINE__, get_current_time_ms(), cmd_delta_time);
+                printf("%s:%d: steer config set successful, Radios: %s, %s, Test State:%d\n", __func__, __LINE__,
+                                    consumer->radios[0].name, consumer->radios[1].name,
+                                    consumer->test_state);
+            }
+        break;
+
+        case webconfig_subdoc_type_lnf:
+            if (consumer->test_state == consumer_test_state_lnf_subdoc_test_pending) {
+                consumer->lnf_test_pending_count = 0;
+                consumer->test_state = consumer_test_state_lnf_subdoc_test_complete;
+                cmd_delta_time = get_current_time_ms() - cmd_start_time;
+                printf("%s:%d: current time:%llu subdoc execution delta time:%u milliSeconds\n", __func__, __LINE__, get_current_time_ms(), cmd_delta_time);
+                printf("%s:%d: consumer Vap lnf set successful, Radios: %s, %s, Test State:%d\n", __func__, __LINE__,
+                                    consumer->radios[0].name, consumer->radios[1].name,
+                                    consumer->test_state);
+            }
+        break;
+
+        case webconfig_subdoc_type_mesh_sta:
+            printf("%s:%d: Cache init successful, mesh_sta subdoc Test State:%d\n", __func__, __LINE__,
+                                consumer->test_state);
+        break;
+
+        default:
+            printf("%s:%d: Unknown webconfig subdoc type:%d\n", __func__, __LINE__, subdoc_type);
+        break;
+    }
+}
+
 void handle_webconfig_consumer_event(webconfig_consumer_t *consumer, const char *str, unsigned int len, consumer_event_subtype_t subtype)
 {
     webconfig_t *config = NULL;
@@ -700,106 +1023,13 @@ void handle_webconfig_consumer_event(webconfig_consumer_t *consumer, const char 
             if (ret == webconfig_error_none ) {
                 printf( "%s:%d:webconfig initializ:%d subdoc_type : %d\n", __func__, __LINE__, config->initializer, subdoc_type);
 
-                switch (subdoc_type) {
-                    case webconfig_subdoc_type_dml:
-                        dump_subdoc(str, webconfig_subdoc_type_dml);
-                        //free the data in hash_map
-                        if (enable_ovsdb == false) {
-                            app_free_macfilter_entries(&data);
-                        }
-                        consumer->hal_cap.wifi_prop.numRadios = data.u.decoded.num_radios;
-                        memcpy((unsigned char *)&consumer->config, (unsigned char *)&data.u.decoded.config, sizeof(wifi_global_config_t));
-                        memcpy((unsigned char *)consumer->radios, (unsigned char *)data.u.decoded.radios, consumer->hal_cap.wifi_prop.numRadios * sizeof(rdk_wifi_radio_t));
-                        memcpy((unsigned char *)&consumer->hal_cap, (unsigned char *)&data.u.decoded.hal_cap, sizeof(wifi_hal_capability_t));
+                dump_subdoc(str, subdoc_type);
+                sample_app_cache_update(consumer, &data);
+                handle_webconfig_subdoc_test_result(subdoc_type, consumer);
 
-                        if (consumer->test_state == consumer_test_state_radio_subdoc_test_pending) {
-                            consumer->radio_test_pending_count = 0;
-                            consumer->test_state = consumer_test_state_radio_subdoc_test_complete;
-                            cmd_delta_time = get_current_time_ms() - cmd_start_time;
-                            printf("%s:%d: current time:%llu subdoc execution delta time:%u milliSeconds\n", __func__, __LINE__, get_current_time_ms(), cmd_delta_time);
-                            printf("%s:%d: Radio set successful, Radios: %s, %s, Test State:%d\n", __func__, __LINE__,
-                                    consumer->radios[0].name, consumer->radios[1].name,
-                                    consumer->test_state);
-                            dump_ovs_schema(webconfig_subdoc_type_radio); //This is to print only radio subdoc
-                            dump_ovs_schema(subdoc_type);
-                        } else if (consumer->test_state == consumer_test_state_private_subdoc_test_pending) {
-                            consumer->private_test_pending_count = 0;
-                            consumer->test_state = consumer_test_state_private_subdoc_test_complete;
-                            cmd_delta_time = get_current_time_ms() - cmd_start_time;
-                            printf("%s:%d: current time:%llu subdoc execution delta time:%u milliSeconds\n", __func__, __LINE__, get_current_time_ms(), cmd_delta_time);
-                            printf("%s:%d: consumer vap private set successful, Radios: %s, %s, Test State:%d\n", __func__, __LINE__,
-                                    consumer->radios[0].name, consumer->radios[1].name,
-                                    consumer->test_state);
-                        } else if (consumer->test_state == consumer_test_state_mesh_subdoc_test_pending) {
-                            consumer->mesh_test_pending_count = 0;
-                            consumer->test_state = consumer_test_state_mesh_subdoc_test_complete;
-                            cmd_delta_time = get_current_time_ms() - cmd_start_time;
-                            printf("%s:%d: current time:%llu subdoc execution delta time:%u milliSeconds\n", __func__, __LINE__, get_current_time_ms(), cmd_delta_time);
-                            printf("%s:%d: consumer vap mesh set successful, Radios: %s, %s, Test State:%d\n", __func__, __LINE__,
-                                    consumer->radios[0].name, consumer->radios[1].name,
-                                    consumer->test_state);
-                            dump_ovs_schema(webconfig_subdoc_type_mesh); //This is to print only mesh subdoc
-                            dump_ovs_schema(subdoc_type);
-                        } else if (consumer->test_state == consumer_test_state_xfinity_subdoc_test_pending) {
-                            consumer->xfinity_test_pending_count = 0;
-                            consumer->test_state = consumer_test_state_xfinity_subdoc_test_complete;
-                            cmd_delta_time = get_current_time_ms() - cmd_start_time;
-                            printf("%s:%d: current time:%llu subdoc execution delta time:%u milliSeconds\n", __func__, __LINE__, get_current_time_ms(), cmd_delta_time);
-                            printf("%s:%d: consumer vap xfinity set successful, Radios: %s, %s, Test State:%d\n", __func__, __LINE__,
-                                    consumer->radios[0].name, consumer->radios[1].name,
-                                    consumer->test_state);
-                        } else if (consumer->test_state == consumer_test_state_home_subdoc_test_pending) {
-                            consumer->home_test_pending_count = 0;
-                            consumer->test_state = consumer_test_state_home_subdoc_test_complete;
-                            cmd_delta_time = get_current_time_ms() - cmd_start_time;
-                            printf("%s:%d: current time:%llu subdoc execution delta time:%u milliSeconds\n", __func__, __LINE__, get_current_time_ms(), cmd_delta_time);
-                            printf("%s:%d: consumer Vap home set successful, Radios: %s, %s, Test State:%d\n", __func__, __LINE__,
-                                    consumer->radios[0].name, consumer->radios[1].name,
-                                    consumer->test_state);
-                        } else if (consumer->test_state == consumer_test_state_macfilter_subdoc_test_pending) {
-                            consumer->macfilter_test_pending_count = 0;
-                            consumer->test_state = consumer_test_state_macfilter_subdoc_test_complete;
-                            cmd_delta_time = get_current_time_ms() - cmd_start_time;
-                            printf("%s:%d: current time:%llu subdoc execution delta time:%u milliSeconds\n", __func__, __LINE__, get_current_time_ms(), cmd_delta_time);
-                            printf("%s:%d: macfilter set successful, Radios: %s, %s, Test State:%d\n", __func__, __LINE__,
-                                    consumer->radios[0].name, consumer->radios[1].name,
-                                    consumer->test_state);
-                        /*} else if (consumer->test_state == consumer_test_state_band_steer_config_test_pending) {
-                            consumer->steer_config_test_pending_count = 0;
-                            consumer->test_state = consumer_test_state_band_steer_config_test_complete;
-                            cmd_delta_time = get_current_time_ms() - cmd_start_time;
-                            printf("%s:%d: current time:%llu subdoc execution delta time:%u milliSeconds\n", __func__, __LINE__, get_current_time_ms(), cmd_delta_time);
-                            printf("%s:%d: steer config set successful, Radios: %s, %s, Test State:%d\n", __func__, __LINE__,
-                                    consumer->radios[0].name, consumer->radios[1].name,
-                                    consumer->test_state);
-                            dump_ovs_schema(subdoc_type);
-                            dump_ovs_schema(webconfig_subdoc_type_steering_config);*/
-                        } else {
-                            consumer->test_state = consumer_test_state_cache_init_complete;
-
-                            if (enable_ovsdb == true) {
-                                dump_ovs_schema(webconfig_subdoc_type_dml);
-                            }
-                            printf("%s:%d: Cache init successful, Radios: %s, %s, Test State:%d\n", __func__, __LINE__,
-                                    consumer->radios[0].name, consumer->radios[1].name,
-                                    consumer->test_state);
-                        }
-                    break;
-
-                    case webconfig_subdoc_type_mesh_sta:
-                        printf("%s:%d: Cache init successful, mesh_sta subdoc Test State:%d\n", __func__, __LINE__,
-                                consumer->test_state);
-                        if (enable_ovsdb == true) {
-                            dump_ovs_schema(webconfig_subdoc_type_mesh_sta);
-                        }
-                        dump_subdoc(str, webconfig_subdoc_type_mesh_sta);
-                    break;
-
-                    default:
-                        printf("%s:%d: Unknown webconfig subdoc type:%d\n", __func__, __LINE__, data.type);
-                    break;
+                if (enable_ovsdb == true) {
+                    dump_ovs_schema(subdoc_type);
                 }
-
             } else {
                 printf("%s:%d: webconfig error\n", __func__, __LINE__);
             }
@@ -2028,23 +2258,6 @@ void exit_consumer_queue_loop(void)
     free_ovs_schema_structs();
 }
 
-void de_init_rbus_object(void)
-{
-    rbusDataElement_t rbusEvents[] = {
-        { WIFI_ACTIVE_GATEWAY_CHECK, RBUS_ELEMENT_TYPE_METHOD,
-            { NULL, webconfig_consumer_set_subdoc, NULL, NULL, NULL, NULL }},
-        { WIFI_WAN_FAILOVER_TEST, RBUS_ELEMENT_TYPE_METHOD,
-            { NULL, webconfig_consumer_set_subdoc, NULL, NULL, NULL, NULL }},
-    };
-    webconfig_consumer_t *consumer = get_consumer_object();
-
-    if (consumer->rbus_handle != NULL) {
-        printf("%s:%d: un-register rbus data element\n", __func__, __LINE__);
-        rbus_unregDataElements(consumer->rbus_handle, ARRAY_SIZE(rbusEvents), rbusEvents);
-        rbus_close(consumer->rbus_handle);
-    }
-}
-
 void consumer_app_all_test_sequence(webconfig_consumer_t *consumer)
 {
     switch (consumer->test_state) {
@@ -2213,7 +2426,7 @@ void consumer_app_trigger_subdoc_test( webconfig_consumer_t *consumer, consumer_
             break;
 
         case consumer_test_start_lnf_subdoc:
-            consumer->xfinity_test_pending_count = 0;
+            consumer->lnf_test_pending_count = 0;
             consumer->test_state = consumer_test_state_lnf_subdoc_test_pending;
             test_lnf_subdoc_change(consumer);
             break;
@@ -2463,6 +2676,7 @@ void initialize_ovs_schema_structs()
 
 void free_ovs_schema_structs()
 {
+    printf("[%s:%d] start free memory: enable_ovsdb:%d\r\n", __func__, __LINE__, enable_ovsdb);
     if (enable_ovsdb == true) {
         unsigned int i = 0;
         if (is_ovs_init == true) {
@@ -2571,6 +2785,7 @@ void free_ovs_schema_structs()
         }
         enable_ovsdb = false;
     }
+    printf("[%s:%d] end free memory: is_ovs_init:%d\r\n", __func__, __LINE__, is_ovs_init);
 }
 
 int webconfig_rbus_event_publish(webconfig_consumer_t *consumer, char *event_name, unsigned char event_type, unsigned char *data)
@@ -3321,6 +3536,14 @@ void consumer_queue_loop(webconfig_consumer_t *consumer)
                     printf("%s:%d: home vap test failed, timed out\n", __func__, __LINE__);
                     consumer->home_test_pending_count = 0;
                     consumer->test_state = consumer_test_state_home_subdoc_test_complete;
+                }
+            } else if ((consumer->test_state == consumer_test_state_lnf_subdoc_test_pending) &&
+                    (consumer->test_input == consumer_test_start_lnf_subdoc)) {
+                consumer->lnf_test_pending_count++;
+                if (consumer->lnf_test_pending_count > MAX_WAIT) {
+                    printf("%s:%d: lnf vap test failed, timed out\n", __func__, __LINE__);
+                    consumer->lnf_test_pending_count = 0;
+                    consumer->test_state = consumer_test_state_lnf_subdoc_test_complete;
                 }
             } else if ((consumer->test_state == consumer_test_state_macfilter_subdoc_test_pending) &&
                     (consumer->test_input == consumer_test_start_macfilter_subdoc)) {

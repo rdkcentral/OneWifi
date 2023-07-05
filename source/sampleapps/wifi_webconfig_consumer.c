@@ -155,20 +155,24 @@ rbusError_t get_device_param(rbusHandle_t handle, rbusProperty_t property, rbusG
     return RBUS_ERROR_SUCCESS;
 }
 
+static void eventReceiveHandler(
+    rbusHandle_t handle,
+    rbusEvent_t const* event,
+    rbusEventSubscription_t* subscription)
+{
+    printf("%s:%d:user data: %s:%d event name:%s\n", __func__, __LINE__, (char*)subscription->userData, event->type, event->name);
+}
+
 int webconfig_consumer_rbus_register_events(webconfig_consumer_t *consumer)
 {
     int rc;
     rbusDataElement_t rbusEvents[] = {
-                                { WIFI_ACTIVE_GATEWAY_CHECK, RBUS_ELEMENT_TYPE_METHOD,
-                                { NULL, webconfig_consumer_set_subdoc, NULL, NULL, NULL, NULL }},
                                 { WIFI_WAN_FAILOVER_TEST, RBUS_ELEMENT_TYPE_METHOD,
                                 { NULL, webconfig_consumer_set_subdoc, NULL, NULL, NULL, NULL }},
                                 { "TunnelStatus", RBUS_ELEMENT_TYPE_EVENT,
                                 { NULL, NULL, NULL, NULL, generic_event_handler, NULL}},
                                 // This below parametrs are registered for testing perpose only
                                 { TEST_WIFI_DEVICE_MODE, RBUS_ELEMENT_TYPE_METHOD,
-                                { get_device_param, NULL, NULL, NULL, NULL, NULL }},
-                                { WIFI_DEVICE_TUNNEL_STATUS, RBUS_ELEMENT_TYPE_METHOD,
                                 { get_device_param, NULL, NULL, NULL, NULL, NULL }},
                                 { RBUS_WIFI_WPS_PIN_START, RBUS_ELEMENT_TYPE_METHOD,
                                 { NULL, NULL, NULL, NULL, NULL, NULL }},
@@ -186,7 +190,56 @@ int webconfig_consumer_rbus_register_events(webconfig_consumer_t *consumer)
         printf("%s:%d rbus_regDataElements :%s\n",__FUNCTION__, __LINE__, WIFI_ACTIVE_GATEWAY_CHECK);
     }
 
+    unsigned int i = 0;
+    rbusDataElement_t extra_rbusEvents[] = {
+                                { WIFI_ACTIVE_GATEWAY_CHECK, RBUS_ELEMENT_TYPE_METHOD,
+                                { NULL, webconfig_consumer_set_subdoc, NULL, NULL, NULL, NULL }},
+                                { WIFI_DEVICE_TUNNEL_STATUS, RBUS_ELEMENT_TYPE_METHOD,
+                                { get_device_param, NULL, NULL, NULL, NULL, NULL }},
+    };
+
+    for (i = 0; i < ARRAY_SIZE(extra_rbusEvents); i++) {
+        rc = rbusEvent_Subscribe(consumer->rbus_handle, extra_rbusEvents[i].name, eventReceiveHandler, NULL, 0);
+        if(rc != RBUS_ERROR_SUCCESS)
+        {
+            printf("consumer: rbusEvent_Subscribe failed: %d event name:%s\n", rc, extra_rbusEvents[i].name);
+            rc = rbus_regDataElements(consumer->rbus_handle, 1, (extra_rbusEvents + i));
+            if (rc != RBUS_ERROR_SUCCESS) {
+                printf("%s:%d rbus_regDataElements failed index:%d event name:%s\n",__FUNCTION__, __LINE__, i, extra_rbusEvents[i].name);
+                rbus_unregDataElements(consumer->rbus_handle, 1, (extra_rbusEvents + i));
+                rbus_close(consumer->rbus_handle);
+                return RETURN_ERR;
+            } else {
+                printf("%s:%d rbus_regDataElements event[%d] name:%s\n",__FUNCTION__, __LINE__, i, extra_rbusEvents[i].name);
+            }
+        }
+    }
+
     return RETURN_OK;
+}
+
+void de_init_rbus_object(void)
+{
+    webconfig_consumer_t *consumer = get_consumer_object();
+    rbusDataElement_t rbusEvents[] = {
+                                { WIFI_WAN_FAILOVER_TEST, RBUS_ELEMENT_TYPE_METHOD,
+                                { NULL, webconfig_consumer_set_subdoc, NULL, NULL, NULL, NULL }},
+                                { "TunnelStatus", RBUS_ELEMENT_TYPE_EVENT,
+                                { NULL, NULL, NULL, NULL, generic_event_handler, NULL}},
+                                // This below parametrs are registered for testing perpose only
+                                { TEST_WIFI_DEVICE_MODE, RBUS_ELEMENT_TYPE_METHOD,
+                                { get_device_param, NULL, NULL, NULL, NULL, NULL }},
+                                { RBUS_WIFI_WPS_PIN_START, RBUS_ELEMENT_TYPE_METHOD,
+                                { NULL, NULL, NULL, NULL, NULL, NULL }},
+                                { WIFI_FRAME_INJECTOR_TO_ONEWIFI, RBUS_ELEMENT_TYPE_METHOD,
+                                { NULL, NULL, NULL, NULL, NULL, NULL }},
+    };
+
+    if (consumer->rbus_handle != NULL) {
+        printf("%s:%d: un-register rbus data element\n", __func__, __LINE__);
+        rbus_unregDataElements(consumer->rbus_handle, ARRAY_SIZE(rbusEvents), rbusEvents);
+        rbus_close(consumer->rbus_handle);
+    }
 }
 
 int webconfig_rbus_other_gateway_state_publish(webconfig_consumer_t *consumer, bool status)
@@ -213,14 +266,6 @@ int webconfig_rbus_other_gateway_state_publish(webconfig_consumer_t *consumer, b
     rbusObject_Release(rdata);
 
     return RETURN_OK;
-}
-
-static void eventReceiveHandler(
-    rbusHandle_t handle,
-    rbusEvent_t const* event,
-    rbusEventSubscription_t* subscription)
-{
-    printf("%s:%d:user data: %s:%d event name:%s\n", __func__, __LINE__, (char*)subscription->userData, event->type, event->name);
 }
 
 int consumer_events_subscribe(webconfig_consumer_t *consumer)
@@ -322,7 +367,7 @@ int initial_sync(webconfig_consumer_t *consumer)
     }
 
     printf("%s:%d data send to consumer event len : %d\n",__FUNCTION__, __LINE__, len);
-    handle_webconfig_consumer_event(consumer, str, len, consumer_event_webconfig_get_data);
+    handle_webconfig_consumer_event(consumer, str, len, consumer_event_webconfig_set_data);
 
     return 0;
 }

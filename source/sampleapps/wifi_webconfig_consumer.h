@@ -27,7 +27,7 @@
 extern "C" {
 #endif
 
-#define MAX_WAIT            5
+#define MAX_WAIT            20
 #define RBUS_CLI_MAX_PARAM  25
 
 typedef enum {
