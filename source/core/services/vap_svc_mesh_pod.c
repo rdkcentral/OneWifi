@@ -249,7 +249,10 @@ void ow_core_update_vap_mac(char *if_name, wifi_vap_info_t *vap_info)
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d Not able to get MAC address for %s\n", __FUNCTION__, __LINE__, if_name);
             return;
         }
-
+        if(!is_bssid_valid(mac_addr)) {
+            wifi_util_dbg_print(WIFI_CTRL,"Vap mac is empty or invalid \n");
+            return;
+        }
         memcpy(vap_info->u.bss_info.bssid, mac_addr, sizeof(mac_address_t));
         uint8_mac_to_string_mac(vap_info->u.bss_info.bssid, mac_str);
     }
@@ -258,6 +261,11 @@ void ow_core_update_vap_mac(char *if_name, wifi_vap_info_t *vap_info)
             ow_state_barrier_get_phy_mac(phy_index, mac_addr) != 0) {
 
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d Not able to get MAC address for %s\n", __FUNCTION__, __LINE__, if_name);
+            return;
+        }
+
+        if(!is_bssid_valid(mac_addr)) {
+            wifi_util_dbg_print(WIFI_CTRL,"Vap mac is empty or invalid \n");
             return;
         }
 
