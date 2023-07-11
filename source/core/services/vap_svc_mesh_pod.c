@@ -439,10 +439,8 @@ int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_i
     for (i = 0; i < map->num_vaps; i++) {
         wifidb_update_wifi_vap_info(getVAPName(map->vap_array[i].vap_index), &map->vap_array[i],
             &rdk_vap_info[i]);
-        wifidb_update_wifi_interworking_config(getVAPName(map->vap_array[i].vap_index),
-            &map->vap_array[i].u.bss_info.interworking);
         wifidb_update_wifi_security_config(getVAPName(map->vap_array[i].vap_index),
-            &map->vap_array[i].u.bss_info.security);
+            &map->vap_array[i].u.sta_info.security);
     }
 
     return 0;
