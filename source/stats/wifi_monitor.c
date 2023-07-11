@@ -2575,6 +2575,32 @@ void process_diagnostics	(unsigned int ap_index, wifi_associated_dev3_t *dev, un
 
 }
 
+void process_deauthenticate_password_fail (unsigned int ap_index, auth_deauth_dev_t *dev)
+{
+    char buff[2048];
+    char tmp[128];
+    sta_key_t sta_key;
+
+    wifi_util_info_print(WIFI_MON, "%s:%d Device:%s deauthenticated on ap:%d with reason : %d\n", __func__, __LINE__, to_sta_key(dev->sta_mac, sta_key), ap_index, dev->reason);
+
+    /*Wrong password on private, Xfinity Home and LNF SSIDs*/
+    if ((dev->reason == 2) && ( isVapPrivate(ap_index) || isVapXhs(ap_index) || isVapLnfPsk(ap_index) ) ) {
+        get_formatted_time(tmp);
+
+        snprintf(buff, 2048, "%s WIFI_PASSWORD_FAIL:%d,%s\n", tmp, ap_index + 1, to_sta_key(dev->sta_mac, sta_key));
+        /* send telemetry of password failure */
+        write_to_file(wifi_health_log, buff);
+    }
+    /*ARRISXB6-11979 Possible Wrong WPS key on private SSIDs*/
+    if ((dev->reason == 2 || dev->reason == 14 || dev->reason == 19) && ( isVapPrivate(ap_index) ))  {
+        get_formatted_time(tmp);
+
+        snprintf(buff, 2048, "%s WIFI_POSSIBLE_WPS_PSK_FAIL:%d,%s,%d\n", tmp, ap_index + 1, to_sta_key(dev->sta_mac, sta_key), dev->reason);
+        /* send telemetry of WPS failure */
+        write_to_file(wifi_health_log, buff);
+    }
+}
+
 void process_deauthenticate	(unsigned int ap_index, auth_deauth_dev_t *dev)
 {
     char buff[2048];
@@ -3450,6 +3476,10 @@ void *monitor_function  (void *data)
                         process_disconnect(event_data->ap_index, &event_data->u.dev);
                     break;
 #ifdef CCSP_COMMON
+
+                    case wifi_event_monitor_deauthenticate_password_fail:
+                        process_deauthenticate_password_fail(event_data->ap_index, &event_data->u.dev);
+                    break;
 
                     case wifi_event_monitor_deauthenticate:
                         process_deauthenticate(event_data->ap_index, &event_data->u.dev);
@@ -5476,7 +5506,24 @@ int device_deauthenticated(int ap_index, char *mac, int reason)
     }
     if (active_sta_connection_status(ap_index, mac) == false) {
         wifi_util_dbg_print(WIFI_MON,"%s:%d: sta[%s] not connected with ap:[%d]\r\n", __func__, __LINE__, mac, ap_index);
-        return 0;
+        if ((reason == 2 || reason == 14 || reason == 19))
+        {
+            memset(&data, 0, sizeof(wifi_monitor_data_t));
+            data.id = msg_id++;
+            data.ap_index = ap_index;
+            data.u.dev.reason = reason;
+            sscanf(mac, "%02x:%02x:%02x:%02x:%02x:%02x",
+                    &mac_addr[0], &mac_addr[1], &mac_addr[2],
+                    &mac_addr[3], &mac_addr[4], &mac_addr[5]);
+            data.u.dev.sta_mac[0] = mac_addr[0]; data.u.dev.sta_mac[1] = mac_addr[1]; data.u.dev.sta_mac[2] = mac_addr[2];
+            data.u.dev.sta_mac[3] = mac_addr[3]; data.u.dev.sta_mac[4] = mac_addr[4]; data.u.dev.sta_mac[5] = mac_addr[5];
+            wifi_util_info_print(WIFI_MON, "%s:%d   Device deauthenticated on interface:%d mac:%02x:%02x:%02x:%02x:%02x:%02x with reason %d\n",
+                                 __func__, __LINE__, ap_index,
+                                 data.u.dev.sta_mac[0], data.u.dev.sta_mac[1], data.u.dev.sta_mac[2],
+                                 data.u.dev.sta_mac[3], data.u.dev.sta_mac[4], data.u.dev.sta_mac[5], reason);
+            push_event_to_monitor_queue(&data, wifi_event_monitor_deauthenticate_password_fail, NULL);
+        }
+         return 0;
     }
 
     memset(&data, 0, sizeof(wifi_monitor_data_t));

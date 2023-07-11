@@ -140,6 +140,7 @@ typedef enum {
     wifi_event_monitor_diagnostics = wifi_event_type_base << (wifi_event_type_monitor + 14), // wifi_event_type_base << 18,
     wifi_event_monitor_connect,
     wifi_event_monitor_disconnect,
+    wifi_event_monitor_deauthenticate_password_fail,
     wifi_event_monitor_deauthenticate,
     wifi_event_monitor_start_inst_msmt,
     wifi_event_monitor_stop_inst_msmt,
