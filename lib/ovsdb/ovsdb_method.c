@@ -43,16 +43,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "ovsdb_priv.h"
 
-// jansson version < 2.8
-#ifndef json_object_foreach_safe
-#define json_object_foreach_safe(object, n, key, value)                                  \
-    for (key = json_object_iter_key(json_object_iter(object)),                           \
-        n = json_object_iter_next(object, json_object_key_to_iter(key));                 \
-         key && (value = json_object_iter_value(json_object_key_to_iter(key)));          \
-         key = json_object_iter_key(n),                                                  \
-        n = json_object_iter_next(object, json_object_key_to_iter(key)))
-#endif
-
 //extern char *ovsdb_comment;
 char *ovsdb_comment = "em";
 
@@ -551,7 +541,7 @@ json_t *onewifi_ovsdb_row_filter_argv(json_t * row, int argc, char ** argv)
 
     if (NULL == row)
     {
-        goto end;
+        return row;
     }
 
     /* iterate through all keys in given json and remove unwanted */
@@ -573,7 +563,6 @@ json_t *onewifi_ovsdb_row_filter_argv(json_t * row, int argc, char ** argv)
         }
     }
 
-end:
     return row;
 }
 
@@ -598,7 +587,7 @@ json_t *onewifi_ovsdb_row_filtout_argv(json_t * row, int argc, char ** argv)
 
     if (NULL == row)
     {
-        goto end;
+        return row;
     }
 
     /* iterate through all keys in given json and remove unwanted */
@@ -612,7 +601,6 @@ json_t *onewifi_ovsdb_row_filtout_argv(json_t * row, int argc, char ** argv)
         }
     }
 
-end:
     return row;
 }
 
