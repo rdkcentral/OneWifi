@@ -38,14 +38,6 @@ wifi_app_descriptor_t app_desc[WIFI_APPS_NUM] = {
         NULL,NULL
     },
     {
-        wifi_app_inst_levl, 0,
-        wifi_event_type_hal_ind | wifi_event_type_webconfig | wifi_event_type_monitor,
-        true, true,
-        "Levl Finger Printing",
-        levl_init, levl_event, levl_deinit,
-        NULL, levl_update
-    },
-    {
         wifi_app_inst_cac, 0,
         wifi_event_type_hal_ind | wifi_event_type_exec | wifi_event_type_webconfig,
         true,true,
@@ -60,5 +52,28 @@ wifi_app_descriptor_t app_desc[WIFI_APPS_NUM] = {
         "Stats Manager",
         sm_init, sm_event, sm_deinit,
         NULL,NULL
+    },
+    {
+        wifi_app_inst_csi, 0, 0,
+        true, true,
+        "CSI Application",
+        csi_init, NULL, NULL,
+        NULL, NULL
+    },
+    {
+        wifi_app_inst_levl, 0,
+        wifi_event_type_hal_ind | wifi_event_type_webconfig | wifi_event_type_monitor | wifi_event_type_csi ,
+        true, true,
+        "Levl Finger Printing",
+        levl_init, levl_event, levl_deinit,
+        NULL, levl_update
+    },
+    {
+        wifi_app_inst_motion, 0,
+        wifi_event_type_hal_ind | wifi_event_type_webconfig | wifi_event_type_monitor | wifi_event_type_csi | wifi_event_type_speed_test,
+        true, true,
+        "Motion Application",
+        motion_init, motion_event, NULL,
+        NULL, NULL
     }
 };

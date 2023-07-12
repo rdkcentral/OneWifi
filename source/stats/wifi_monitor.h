@@ -187,6 +187,14 @@ typedef struct {
     hash_map_t  *dca_list; //hash_map of wifi_dca_element_t
 } wifi_monitor_t;
 
+typedef struct {
+    int              ap_index;
+    mac_addr_t       mac_addr;
+    char             client_ip[IP_STR_LEN];
+    char             vap_ip[IP_STR_LEN];
+    long             client_ip_age;
+} csi_pinger_data_t;
+
 #ifdef CCSP_COMMON
 typedef struct {
     unsigned int        interval;
@@ -194,35 +202,10 @@ typedef struct {
 }diag_data_session_t;
 
 typedef struct {
-    queue_t             *csi_queue;
+    hash_map_t          *csi_pinger_map; //hash_map_for_csi_pinger
     diag_data_session_t diag_session[MAX_VAP];
-    char vap_ip[MAX_VAP][IP_STR_LEN];
     pthread_mutex_t     lock;
 } events_monitor_t;
-
-typedef struct {
-    bool enable;
-    bool subscribed;
-    bool mac_is_connected[MAX_CSI_CLIENTS_PER_SESSION];
-    int  csi_time_interval;
-    int  no_of_mac;
-    int  csi_sess_number;
-    int  ap_index[MAX_CSI_CLIENTS_PER_SESSION];
-    mac_address_t mac_list[MAX_CSI_CLIENTS_PER_SESSION];
-    char client_ip[MAX_CSI_CLIENTS_PER_SESSION][IP_STR_LEN];
-    long  client_ip_age[MAX_CSI_CLIENTS_PER_SESSION];
-    struct timeval last_publish_time[MAX_CSI_CLIENTS_PER_SESSION];
-    struct timeval last_snapshot_time;
-} __attribute__((__packed__)) csi_session_t;
-
-void csi_update_client_mac_status(mac_address_t mac, bool connected, int ap_idx);
-void csi_set_client_mac(char *mac_list, int csi_session_number);
-void csi_enable_session(bool enable, int csi_session_number);
-void csi_enable_subscription(bool subscribe, int csi_session_number);
-void csi_set_interval(int interval, int csi_session_number);
-void csi_create_session(int csi_session_number);
-void csi_del_session(int csi_sess_number);
-void diagdata_set_interval(int interval, unsigned int ap_idx);
 
 int
 wifi_stats_flag_change

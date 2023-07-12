@@ -30,6 +30,8 @@ extern "C" {
 #include "wifi_levl.h"
 #include "wifi_cac.h"
 #include "wifi_sm.h"
+#include "wifi_motion.h"
+#include "wifi_csi.h"
 
 #define MAX_APP_INIT_DATA 1024
 #define APP_DETACHED 0x01
@@ -57,6 +59,8 @@ typedef struct {
         cac_data_t           cac;
         analytics_data_t     analytics;
         sm_data_t            sm_data;
+        motion_data_t        motion;
+        csi_app_t            csi;
     } u;
 } wifi_app_data_t;
 
@@ -98,6 +102,7 @@ typedef struct wifi_apps_mgr {
 int apps_mgr_init(wifi_ctrl_t *ctrl, wifi_app_descriptor_t *desc, unsigned int num);
 int apps_mgr_event(wifi_apps_mgr_t *apps_mgr, wifi_event_t *event);
 wifi_app_t *get_app_by_inst(wifi_apps_mgr_t *apps, wifi_app_inst_t inst);
+
 #ifdef __cplusplus
 }
 #endif

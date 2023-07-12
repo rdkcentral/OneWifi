@@ -470,24 +470,6 @@ int webconfig_send_dml_subdoc_status(wifi_ctrl_t *ctrl)
     return RETURN_OK;
 }
 
-int webconfig_send_csi_status(wifi_ctrl_t *ctrl)
-{
-#if DML_SUPPORT
-    webconfig_subdoc_data_t data;
-    wifi_mgr_t *mgr = get_wifimgr_obj();
-
-    memset(&data,0,sizeof(webconfig_subdoc_data_t));
-    data.u.decoded.csi_data_queue = mgr->csi_data_queue;
-    memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap, sizeof(wifi_hal_capability_t));
-
-    if (webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_csi) != webconfig_error_none) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d - Failed webconfig_encode\n", __FUNCTION__, __LINE__);
-    }
-#endif // DML_SUPPORT
-
-    return RETURN_OK;
-}
-
 int  webconfig_free_vap_object_diff_assoc_client_entries(webconfig_subdoc_data_t *data)
 {
     unsigned int i=0, j=0;
@@ -701,10 +683,6 @@ int webconfig_analyze_pending_states(wifi_ctrl_t *ctrl)
         case ctrl_webconfig_state_associated_clients_cfg_rsp_pending:
             type = webconfig_subdoc_type_associated_clients;
             webconfig_send_associate_status(ctrl);
-            break;
-        case ctrl_webconfig_state_csi_cfg_rsp_pending:
-            type = webconfig_subdoc_type_csi;
-            webconfig_send_csi_status(ctrl);
             break;
         case ctrl_webconfig_state_blaster_cfg_complete_rsp_pending:
                 /* Once the blaster triggered successfully, update the status as completed and pass it to OVSM */
@@ -1538,21 +1516,6 @@ int webconfig_global_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_da
     return RETURN_OK;
 }
 
-int webconfig_levl_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
-{
-    wifi_util_dbg_print(WIFI_CTRL,"Inside webconfig_levl_apply\n");
-
-    wifi_mgr_t *mgr = get_wifimgr_obj();
-    if (mgr == NULL) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d NULL Pointer\n", __func__, __LINE__);
-        return RETURN_ERR;
-    }
-
-    mgr->levl.max_num_csi_clients = data->levl.max_num_csi_clients;
-    mgr->levl.levl_sounding_duration = data->levl.levl_sounding_duration;
-    return RETURN_OK;
-}
-
 int webconfig_cac_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
     wifi_util_dbg_print(WIFI_CTRL,"Inside webconfig_cac_apply\n");
@@ -1712,148 +1675,6 @@ int webconfig_hal_mesh_backhaul_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_de
         }
     }
     return webconfig_hal_vap_apply_by_name(ctrl, data, vap_names, num_vaps);
-}
-
-int webconfig_hal_csi_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
-{
-#if DML_SUPPORT
-    wifi_mgr_t *mgr = get_wifimgr_obj();
-    queue_t *new_config, *current_config;
-    new_config = data->csi_data_queue;
-    char *tmp_cli_list;
-    unsigned int tmp_cli_list_size = (19*MAX_NUM_CSI_CLIENTS)+1;
-    unsigned int itr, i, current_config_count, new_config_count, itrj, num_unique_mac=0;
-    csi_data_t *current_csi_data = NULL, *new_csi_data;
-    bool found = false, data_change = false;
-    mac_addr_str_t mac_str;
-    mac_address_t unique_mac_list[MAX_NUM_CSI_CLIENTS];
-    current_config = mgr->csi_data_queue;
-
-    if (current_config == NULL) {
-        wifi_util_error_print(WIFI_MGR,"%s %d NULL pointer \n", __func__, __LINE__);
-        return RETURN_ERR;
-    }
-    tmp_cli_list = (char *) malloc(tmp_cli_list_size);
-    if (tmp_cli_list == NULL) {
-        wifi_util_error_print(WIFI_MGR,"%s %d malloc failed\n", __func__, __LINE__);
-        return RETURN_ERR;
-    }
-
-    //check new configuration did not exceed the max number of csi clients 
-    if(new_config != NULL) {
-        new_config_count = queue_count(new_config);
-        for (itr=0; itr<new_config_count; itr++) {
-            new_csi_data = (csi_data_t *)queue_peek(new_config, itr);
-            if ((new_csi_data != NULL) && (new_csi_data->enabled)) {
-                for (itrj=0; itrj<new_csi_data->csi_client_count; itrj ++) {
-                    found  = false;
-                    for (i=0; i<num_unique_mac; i++) {
-                        if (memcmp(new_csi_data->csi_client_list[itrj], unique_mac_list[i], sizeof(mac_address_t)) == 0) {
-                            found  = true;
-                            break;
-                        }
-                    }
-                    if (!found) {
-                        num_unique_mac++;
-                        if (num_unique_mac > MAX_NUM_CSI_CLIENTS) {
-                            wifi_util_error_print(WIFI_MGR,"%s %d MAX_NUM_CSI_CLIENTS reached\n", __func__, __LINE__);
-                            goto free_csi_data;
-                        } else {
-                            memcpy(unique_mac_list[num_unique_mac-1], new_csi_data->csi_client_list[itrj], sizeof(mac_address_t));
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    current_config_count = queue_count(current_config);
-    for (itr=0; itr<current_config_count; itr++) {
-        current_csi_data = (csi_data_t *)queue_peek(current_config, itr);
-        found = false;
-        if(new_config != NULL) {
-            new_config_count = queue_count(new_config);
-            for (itrj=0; itrj<new_config_count; itrj++) {
-                new_csi_data = (csi_data_t *)queue_peek(new_config, itrj);
-                if (new_csi_data != NULL) {
-                    if (new_csi_data->csi_session_num == current_csi_data->csi_session_num) {
-                        found = true;
-                    }
-               } 
-            }
-        }
-        if (!found) {
-            csi_del_session(current_csi_data->csi_session_num);
-            current_csi_data = (csi_data_t *)queue_remove(current_config, itr);
-            if (current_csi_data != NULL) {
-                free(current_csi_data);
-            }
-            current_config_count = queue_count(current_config);
-        }
-    }
-
-
-    if (new_config != NULL) {
-        new_config_count = queue_count(new_config);
-        for (itr=0; itr<new_config_count; itr++) {
-            new_csi_data = (csi_data_t *)queue_peek(new_config, itr);
-            memset(tmp_cli_list, 0, tmp_cli_list_size);
-            found = false;
-            data_change = false;
-            if (current_config != NULL) {
-                current_config_count = queue_count(current_config);
-                for (itrj=0; itrj<current_config_count; itrj++) {
-                    current_csi_data = (csi_data_t *)queue_peek(current_config, itrj);
-                    if (current_csi_data != NULL) {
-                        if (new_csi_data->csi_session_num == current_csi_data->csi_session_num) {
-                            found = true;
-                            if (memcmp(new_csi_data, current_csi_data, sizeof(csi_data_t)) != 0) {
-                                data_change = true;
-                            }
-                            break;
-                        }
-                    }
-                }
-            }
-
-            //Change client macarray to comma seperarted string.
-            for (i=0; i<new_csi_data->csi_client_count; i++) {
-                to_mac_str(new_csi_data->csi_client_list[i], mac_str);
-                strcat(tmp_cli_list, mac_str);
-                strcat(tmp_cli_list, ",");
-            }
-            int len  = strlen(tmp_cli_list);
-            if (len > 0) {
-                tmp_cli_list[len-1] = '\0';
-            }
-
-            if (!found) {
-                csi_create_session(new_csi_data->csi_session_num);
-                csi_data_t *to_queue = (csi_data_t *)malloc(sizeof(csi_data_t));
-                memcpy(to_queue, new_csi_data, sizeof(csi_data_t));
-                queue_push(current_config, to_queue);
-                csi_enable_session(new_csi_data->enabled, new_csi_data->csi_session_num);
-                csi_set_client_mac(tmp_cli_list, new_csi_data->csi_session_num);
-            }
-
-            if(found && data_change) {
-                csi_enable_session(new_csi_data->enabled, new_csi_data->csi_session_num);
-                csi_set_client_mac(tmp_cli_list, new_csi_data->csi_session_num);
-                memcpy(current_csi_data, new_csi_data, sizeof(csi_data_t));
-            }
-        }
-    }
-
-free_csi_data:
-    if (new_config != NULL) {
-        queue_destroy(new_config);
-    }
-    if (tmp_cli_list != NULL) {
-        free(tmp_cli_list);
-    }
-#endif // DML_SUPPORT
-
-    return RETURN_OK;
 }
 
 int webconfig_hal_mac_filter_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data, webconfig_subdoc_type_t subdoc_type)
@@ -2488,36 +2309,12 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
             }
             break;
 
-        case webconfig_subdoc_type_csi:
-            wifi_util_dbg_print(WIFI_MGR, "%s:%d: csi webconfig subdoc\n", __func__, __LINE__);
-            if (data->descriptor & webconfig_data_descriptor_encoded) {
-                if (ctrl->webconfig_state & ctrl_webconfig_state_csi_cfg_rsp_pending) {
-                    ctrl->webconfig_state &= ~ctrl_webconfig_state_csi_cfg_rsp_pending;
-                    wifi_util_dbg_print(WIFI_MGR, "%s:%d: going for notify\n", __func__, __LINE__);
-                    ret = webconfig_csi_notify_apply(ctrl, &data->u.encoded);
-                }
-            } else {
-                wifi_util_dbg_print(WIFI_MGR, "%s:%d: going for apply\n", __func__, __LINE__);
-                ctrl->webconfig_state |= ctrl_webconfig_state_csi_cfg_rsp_pending;
-                ret = webconfig_hal_csi_apply(ctrl, &data->u.decoded);
-            }
-            break;
-
         case webconfig_subdoc_type_harvester:
             wifi_util_dbg_print(WIFI_MGR, "%s:%d: havester webconfig subdoc\n", __func__, __LINE__);
             if (data->descriptor & webconfig_data_descriptor_encoded) {
                 wifi_util_error_print(WIFI_MGR, "%s:%d: Not expected publish of havester webconfig subdoc\n", __func__, __LINE__);
             } else {
                 ret = webconfig_harvester_apply(ctrl, &data->u.decoded);
-            }
-            break;
-
-        case webconfig_subdoc_type_levl:
-            wifi_util_dbg_print(WIFI_MGR, "%s:%d: levl webconfig subdoc\n", __func__, __LINE__);
-            if (data->descriptor & webconfig_data_descriptor_encoded) {
-                wifi_util_error_print(WIFI_MGR, "%s:%d: Not expected publish for levl webconfig subdoc\n", __func__, __LINE__);
-            } else {
-                ret = webconfig_levl_apply(ctrl, &data->u.decoded);
             }
             break;
 

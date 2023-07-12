@@ -1582,8 +1582,6 @@ int init_wifimgr()
     if (g_wifi_mgr.vif_neighbors_map == NULL) {
         g_wifi_mgr.vif_neighbors_map = hash_map_create();
     }
-    g_wifi_mgr.levl.max_num_csi_clients = MAX_LEVL_CSI_CLIENTS;
-    g_wifi_mgr.levl.levl_sounding_duration = DEFAULT_SOUNDING_DURATION_MS;
 
 #if DML_SUPPORT
     //init ssp_loop.

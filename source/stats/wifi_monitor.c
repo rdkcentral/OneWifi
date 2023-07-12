@@ -105,7 +105,6 @@
   ((struct rtattr *)(((char *)(r)) + NLMSG_ALIGN(sizeof(struct ndmsg))))
 
 static events_monitor_t g_events_monitor;
-static struct timeval csi_prune_timer;
 
 int harvester_get_associated_device_info(int vap_index, char **harvester_buf);
 
@@ -177,9 +176,6 @@ static int neighscan_task_id = -1;
 #define FEATURE_CSI_CALLBACK 1
 #endif
 
-#if defined (FEATURE_CSI_CALLBACK)
-INT process_csi(mac_address_t mac_addr, wifi_csi_data_t  *csi_data);
-#endif
 
 void associated_client_diagnostics();
 void process_instant_msmt_stop (unsigned int ap_index, instant_msmt_t *msmt);
@@ -191,13 +187,9 @@ static int refresh_task_period(void *arg);
 int upload_radio_chan_util_telemetry(void *arg); 
 int associated_device_diagnostics_send_event(void *arg);
 static void scheduler_telemetry_tasks(void);
-int csi_getCSIData(void * arg);
 int csi_sendPingData(void * arg);
-static void csi_refresh_session(void);
-static int csi_sheduler_enable(void);
+static int csi_update_pinger(int ap_index, mac_addr_t mac_addr, bool pause_pinger);
 static int clientdiag_sheduler_enable(int ap_index);
-static void csi_vap_down_update(int ap_idx);
-static void csi_disable_client(csi_session_t *r_csi);
 int associated_devices_diagnostics(void *arg);
 static void upload_client_debug_stats_acs_stats(int apIndex);
 static void upload_client_debug_stats_sta_fa_info(int apIndex, sta_data_t *sta);
@@ -2221,20 +2213,12 @@ int vap_stats_flag_change(int ap_index, bool enable)
     wifi_monitor_data_t data;
 
     memset(&data, 0, sizeof(wifi_monitor_data_t));
-
     data.id = msg_id++;
-
     data.ap_index = ap_index;	//vap_Index
-
     data.u.flag.enable = enable;
 
     wifi_util_dbg_print(WIFI_MON, "%s:%d: flag changed vapIndex=%d enable=%d \n",
             __func__, __LINE__, ap_index, enable);
-
-    if(enable == FALSE) {
-        csi_vap_down_update(ap_index);
-    }
-
     push_event_to_monitor_queue(&data, wifi_event_monitor_vap_stats_flag_change, NULL);
 
 
@@ -3513,8 +3497,8 @@ void *monitor_function  (void *data)
                         process_active_msmt_step(&event_data->u.amsmt);
                     break;
 #ifdef CCSP_COMMON
-                    case wifi_event_monitor_csi_update_config:
-                        csi_sheduler_enable();
+                    case wifi_event_monitor_csi_pinger:
+                        csi_update_pinger(event_data->u.csi_mon.ap_index, event_data->u.csi_mon.mac_addr, event_data->u.csi_mon.pause_pinger);
                     break;
                     case wifi_event_monitor_clientdiag_update_config:
                         clientdiag_sheduler_enable(event_data->ap_index);
@@ -4133,796 +4117,86 @@ static void send_ping_data(int ap_idx, unsigned char *mac, char *client_ip, char
     }
 }
 
+static int update_pinger_map(int ap_index, mac_addr_t mac_addr, bool remove)
+{
+    csi_pinger_data_t *pinger_data = NULL;
+    mac_addr_str_t mac_str = { 0 };
 
-static csi_session_t* csi_get_session(bool create, int csi_session_number) {
-    csi_session_t *csi = NULL;
-    int count = 0, i = 0;
-
-    count = queue_count(g_events_monitor.csi_queue);
-    for(i = 0; i<count; i++) {
-        csi = queue_peek(g_events_monitor.csi_queue, i);
-        if(csi == NULL){
-            continue;
-        }
-        if(csi->csi_sess_number == csi_session_number) {
-            return csi;
-        }
+    if (g_events_monitor.csi_pinger_map == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s %d: NULL pinger map\n", __func__, __LINE__);
+        return -1;
     }
 
-    if(create == FALSE) {
-        return NULL;
-    }
-
-
-    csi = (csi_session_t *) malloc(sizeof(csi_session_t));
-    if(csi == NULL) {
-        return NULL;
-    }
-
-    memset(csi, 0, sizeof(csi_session_t));
-    csi->csi_time_interval = MIN_CSI_INTERVAL;
-    csi->csi_sess_number = csi_session_number;
-    csi->enable = FALSE;
-    csi->subscribed = FALSE;
-    memset(csi->client_ip, '\0', sizeof(csi->client_ip));
-    gettimeofday(&csi->last_snapshot_time, NULL);
-
-    queue_push(g_events_monitor.csi_queue, csi);
-    return csi;
-}
-
-
-void csi_update_client_mac_status(mac_addr_t mac, bool connected, int ap_idx) {
-    csi_session_t *csi = NULL;
-    int count = 0;
-    int i = 0, j = 0;
-    bool client_csi_monitored = FALSE;
-    pthread_mutex_lock(&g_events_monitor.lock);
-    count = queue_count(g_events_monitor.csi_queue);
-    wifi_util_info_print(WIFI_MON, "%s: Received Mac %d %d %02x %02x\n",__func__, connected, count, mac[0], mac[5]);
-    for(i = 0; i<count; i++) {
-        csi = queue_peek(g_events_monitor.csi_queue, i);
-        if(csi == NULL){
-            continue;
-        }
-
-        wifi_util_dbg_print(WIFI_MON, "%s: Received Mac  %d %d %d %02x %02x\n",__func__, connected, csi->subscribed, csi->enable, mac[0], mac[5]);
-        for(j =0 ;j < csi->no_of_mac; j++) {
-            wifi_util_dbg_print(WIFI_MON, "%s: checking with Mac  %d %d %d %02x %02x\n",__func__, connected, csi->subscribed, csi->enable, csi->mac_list[j][0], csi->mac_list[j][5]);
-            if(memcmp(mac, csi->mac_list[j], sizeof(mac_addr_t)) == 0) {
-                csi->mac_is_connected[j] = connected;
-                if(csi->enable && csi->subscribed) {
-                    client_csi_monitored = TRUE;
-                }
-                if(connected == FALSE) {
-                    csi->ap_index[j] = -1;
-                    memset(&csi->client_ip[j][0], '\0', IP_STR_LEN);
-                    csi->client_ip_age[j] = 0;
-                }
-                else {
-                    csi->ap_index[j] = ap_idx;
-                }
-                break;
+    to_mac_str((unsigned char *)mac_addr, mac_str);
+    if (remove) {
+        pinger_data = (csi_pinger_data_t *)hash_map_get(g_events_monitor.csi_pinger_map, mac_str);
+        if (pinger_data != NULL) {
+            wifi_util_info_print(WIFI_MON, "%s %d: Disabling Pinger for mac %s\n", __func__, __LINE__, mac_str);
+            pinger_data = hash_map_remove(g_events_monitor.csi_pinger_map, mac_str);
+            if (pinger_data != NULL) {
+                free(pinger_data);
+                return 0;
             }
         }
+    } else {
+        pinger_data = (csi_pinger_data_t *)malloc(sizeof(csi_pinger_data_t));
+        memset(pinger_data, 0, sizeof(csi_pinger_data_t));
+        pinger_data->ap_index = ap_index;
+        memcpy(pinger_data->mac_addr, mac_addr, sizeof(mac_addr_t));
+        wifi_util_info_print(WIFI_MON, "%s %d: Enabling Pinger for mac %s\n", __func__, __LINE__, mac_str);
+        hash_map_put(g_events_monitor.csi_pinger_map, strdup(mac_str), pinger_data);
     }
-    if(client_csi_monitored) {
-        wifi_util_dbg_print(WIFI_MON, "%s: Updating csi collection for Mac %02x %02x %d\n",__func__, mac[0], mac[5], connected);
-        wifi_enableCSIEngine(ap_idx, (unsigned char*)mac, connected);
-    }
-    pthread_mutex_unlock(&g_events_monitor.lock);
+
+    return 0;
 }
 
-void csi_set_client_mac(char *r_mac_list, int csi_session_number)
+static int csi_update_pinger(int ap_index, mac_addr_t mac_addr, bool pause_pinger)
 {
-    csi_session_t *csi = NULL;
-    int ap_index = -1, mac_ctr = 0;
-    int i = 0;
-    char *mac_tok=NULL;
-    char* rest = NULL;
-    char mac_list[MAX_CSI_CLIENTMACLIST_STR] = {0};
-    wifi_monitor_data_t data;
-    struct timeval t_now;
+    unsigned int csi_time_interval = CSI_PING_INTERVAL;
 
-    if(r_mac_list == NULL) {
-        wifi_util_error_print(WIFI_MON, "%s: mac_list is NULL \n",__func__);
-        return;
+    if (update_pinger_map(ap_index, mac_addr, pause_pinger) < 0) {
+        wifi_util_error_print(WIFI_MON, "%s %d: Unable to start Pinger\n", __func__, __LINE__);
+        return -1;
     }
-
-    pthread_mutex_lock(&g_events_monitor.lock);
-    csi = csi_get_session(FALSE, csi_session_number);
-    if(!csi) {
-        wifi_util_error_print(WIFI_MON, "%s: csi session not present \n",__func__);
-        pthread_mutex_unlock(&g_events_monitor.lock);
-        return;
-    }
-    if(csi->no_of_mac > 0) {
-        wifi_util_info_print(WIFI_MON, "%s: Mac already configured %d\n",__func__, csi->no_of_mac);
-        csi_disable_client(csi);
-        for(i = 0; i<csi->no_of_mac; i++) {
-            csi->mac_is_connected[i] = FALSE;
-            csi->ap_index[mac_ctr] = -1;
-            memset(&csi->mac_list[i], 0, sizeof(mac_addr_t));
-        }
-        csi->no_of_mac = 0;
-    }
-
-    strncpy(mac_list, r_mac_list, MAX_CSI_CLIENTMACLIST_STR);
-    rest = mac_list;
-    if(strlen(mac_list) > 0)  {
-        gettimeofday(&t_now, NULL);
-        while((mac_tok = strtok_r(rest, ",", &rest))) {
-
-            wifi_util_dbg_print(WIFI_MON, "%s: Mac %s\n",__func__, mac_tok);
-            str_to_mac_bytes(mac_tok,(unsigned char*)&csi->mac_list[mac_ctr]);
-            csi->no_of_mac++;
-            ap_index= getApIndexfromClientMac((char *)&csi->mac_list[mac_ctr]);
-            if(ap_index >= 0) {
-                csi->ap_index[mac_ctr] = ap_index;
-                csi->mac_is_connected[mac_ctr] = TRUE;
-                if(csi->enable && csi->subscribed) {
-                    wifi_util_info_print(WIFI_MON, "%s: Enabling csi collection for Mac %s\n",__func__, mac_tok);
-                    wifi_enableCSIEngine(ap_index, csi->mac_list[mac_ctr], TRUE);
-                }
-            } else {
-                wifi_util_info_print(WIFI_MON, "%s: Not Enabling csi collection for Mac %s\n",__func__, mac_tok);
-                csi->ap_index[mac_ctr] = -1;
-                csi->mac_is_connected[mac_ctr] = FALSE;
-            }
-            mac_ctr++;
-        }
-        for(i = 0; i<csi->no_of_mac; i++) {
-            memcpy(&csi->last_publish_time[i], &t_now, sizeof(struct timeval));
-        }
-    }
-    wifi_util_info_print(WIFI_MON, "%s: Total mac's present -  %d %s\n",__func__, csi->no_of_mac, r_mac_list);
-    pthread_mutex_unlock(&g_events_monitor.lock);
-    memset(&data, 0, sizeof(wifi_monitor_data_t));
-    data.id = msg_id++;
-    push_event_to_monitor_queue(&data, wifi_event_monitor_csi_update_config, NULL);
-}
-
-
-static void csi_enable_client(csi_session_t *csi)
-{
-    int i =0;
-    int ap_index = -1;
-    if((csi == NULL) || !(csi->enable && csi->subscribed)) {
-        return;
-    }
-
-    for(i =0; i<csi->no_of_mac; i++) {
-        if((csi->ap_index[i] != -1) && (csi->mac_is_connected[i] == TRUE)) {
-            wifi_util_info_print(WIFI_MON, "%s: Enabling csi collection for Mac %02x..%02x\n",__func__, csi->mac_list[i][0] , csi->mac_list[i][5]  );
-            wifi_enableCSIEngine(csi->ap_index[i], csi->mac_list[i], TRUE);
-        }
-        //check if client is connected now
-        else {
-            ap_index= getApIndexfromClientMac((char *)&csi->mac_list[i]);
-            if(ap_index >= 0) {
-                csi->ap_index[i] = ap_index;
-                csi->mac_is_connected[i] = TRUE;
-                wifi_util_info_print(WIFI_MON, "%s: Enabling csi collection for Mac %02x..%02x\n",__func__, csi->mac_list[i][0] , csi->mac_list[i][5]  );
-                wifi_enableCSIEngine(csi->ap_index[i], csi->mac_list[i], TRUE);
-            }
-        }
-    }
-}
-
-void csi_enable_session(bool enable, int csi_session_number)
-{
-    csi_session_t *csi = NULL;
-    wifi_monitor_data_t data;
-
-    pthread_mutex_lock(&g_events_monitor.lock);
-    csi = csi_get_session(FALSE, csi_session_number);
-    if(csi) {
-        wifi_util_dbg_print(WIFI_MON, "%s: Enable session %d enable - %d\n",__func__, csi_session_number, enable);
-        if(enable) {
-            csi->enable = enable;
-            csi_enable_client(csi);
-        }  else {
-            csi_disable_client(csi);
-            csi->enable = enable;
-        }
-    }
-    pthread_mutex_unlock(&g_events_monitor.lock);
-    memset(&data, 0, sizeof(wifi_monitor_data_t));
-    data.id = msg_id++;
-    push_event_to_monitor_queue(&data, wifi_event_monitor_csi_update_config, NULL);
-
-}
-
-static void csi_vap_down_update(int ap_idx)
-{
-    csi_session_t *csi = NULL;
-    int count = 0, i = 0, j=0;
-
-    pthread_mutex_lock(&g_events_monitor.lock);
-    count = queue_count(g_events_monitor.csi_queue);
-    for(i = 0; i<count; i++) {
-        csi = queue_peek(g_events_monitor.csi_queue, i);
-        if(csi == NULL){
-            continue;
-        }
-        for(j =0; j<csi->no_of_mac; j++) {
-            if(csi->ap_index[j] == ap_idx) {
-                wifi_enableCSIEngine(csi->ap_index[j], csi->mac_list[j], FALSE);
-                csi->ap_index[j] = -1;
-                csi->mac_is_connected[j] = FALSE;
-                memset(&csi->client_ip[j][0], '\0', IP_STR_LEN);
-                csi->client_ip_age[j] = 0;
-            }
-        }
-    }
-    pthread_mutex_unlock(&g_events_monitor.lock);
-}
-
-void csi_enable_subscription(bool subscribe, int csi_session_number)
-{
-    csi_session_t *csi = NULL;
-    wifi_monitor_data_t data;
-
-    pthread_mutex_lock(&g_events_monitor.lock);
-    csi = csi_get_session(TRUE, csi_session_number);
-    if(csi) {
-        wifi_util_info_print(WIFI_MON, "%s: subscription for session %d\n",__func__, csi_session_number);
-        if(subscribe) {
-            csi->subscribed = subscribe;
-            csi_enable_client(csi);
-        } else {
-            csi_disable_client(csi);
-            csi->subscribed = subscribe;
-        }
-    }
-    pthread_mutex_unlock(&g_events_monitor.lock);
-    memset(&data, 0, sizeof(wifi_monitor_data_t));
-
-    data.id = msg_id++;
-
-    push_event_to_monitor_queue(&data, wifi_event_monitor_csi_update_config, NULL);
-}
-
-void csi_set_interval(int interval, int csi_session_number)
-{
-    csi_session_t *csi = NULL;
-
-    pthread_mutex_lock(&g_events_monitor.lock);
-    csi = csi_get_session(FALSE, csi_session_number);
-    if(csi) {
-        csi->csi_time_interval = interval;
-    }
-    pthread_mutex_unlock(&g_events_monitor.lock);
-}
-
-void csi_create_session(int csi_session_number)
-{
-
-    pthread_mutex_lock(&g_events_monitor.lock);
-    csi_get_session(TRUE, csi_session_number);
-    pthread_mutex_unlock(&g_events_monitor.lock);
-}
-
-static void csi_disable_client(csi_session_t *r_csi) 
-{
-    int count = 0;
-    int i = 0, j = 0, k = 0;
-    csi_session_t *csi = NULL;
-    bool client_in_diff_subscriber = FALSE;
-
-    if(r_csi == NULL) {
-        wifi_util_error_print(WIFI_MON, "%s: r_csi is NULL\n",__func__);
-        return;
-    }
-
-    count = queue_count(g_events_monitor.csi_queue);
-
-    for(j =0 ; j< r_csi->no_of_mac; j++) {
-        client_in_diff_subscriber = FALSE;
-        for(i = 0; i<count; i++) {
-            csi = queue_peek(g_events_monitor.csi_queue, i);
-
-            if(csi == NULL || csi == r_csi){
-                continue;
-            }
-            if(!(csi->enable && csi->subscribed)) {
-                continue;
-            }
-
-            for(k = 0; k < csi->no_of_mac; k++) {
-                if(memcmp(r_csi->mac_list[j], csi->mac_list[k], sizeof(mac_addr_t))== 0) {
-                    //Client is also monitored by a different subscriber
-                    wifi_util_info_print(WIFI_MON, "%s: Not Disabling csi for client mac %02x..%02x\n",__func__,r_csi->mac_list[j][0],r_csi->mac_list[j][5]);
-                    client_in_diff_subscriber = TRUE;
-                    break;
-                }
-            }
-            if(client_in_diff_subscriber)
-                break;
-        }
-        if((client_in_diff_subscriber == FALSE) && (r_csi->mac_is_connected[j] == TRUE)) {
-            wifi_util_info_print(WIFI_MON, "%s: Disabling for client mac %02x..%02x\n",__func__,r_csi->mac_list[j][0],r_csi->mac_list[j][5]);
-            wifi_enableCSIEngine(r_csi->ap_index[j], r_csi->mac_list[j], FALSE);
-        }
-    }
-}
-
-static int csi_timedout(struct timeval *time_diff, int *csi_time_interval)
-{
-
-    if(time_diff == NULL || csi_time_interval == NULL) {
+    if (hash_map_count(g_events_monitor.csi_pinger_map) == 0) {
+        scheduler_cancel_timer_task(g_monitor_module.sched, g_monitor_module.csi_sched_id);
+        g_monitor_module.csi_sched_id = 0;
         return 0;
+    } else if (g_monitor_module.csi_sched_id == 0) {
+        wifi_util_info_print(WIFI_MON, "%s %d: Scheduling Pinger\n", __func__, __LINE__);
+        scheduler_add_timer_task(g_monitor_module.sched, TRUE,
+                &(g_monitor_module.csi_sched_id), csi_sendPingData,
+                NULL, csi_time_interval, 0);
     }
-
-    int time_compare = *csi_time_interval;
-    if(time_compare >= 1000) {
-        if(time_diff->tv_sec >= (time_compare / 1000)) {
-            return 1;
-        } else {
-            return 0;
-        }
-    } else {
-        if(((time_diff->tv_usec) >=  (time_compare - 5 ) * MILLISEC_TO_MICROSEC) || time_diff->tv_sec > 0) {
-            return 1;
-        } else {
-            return 0;
-        }
-    }
-    return 0;
-}
-
-void csi_del_session(int csi_sess_number) 
-{
-    int count = 0;
-    int i = 0;
-    csi_session_t *csi = NULL;
-
-    pthread_mutex_lock(&g_events_monitor.lock);
-    count = queue_count(g_events_monitor.csi_queue);
-    wifi_util_info_print(WIFI_MON, "%s: Deleting Element %d\n",__func__, csi_sess_number);
-    for(i = 0; i<count; i++) {
-        csi = queue_peek(g_events_monitor.csi_queue, i);
-
-        if(csi == NULL){
-            continue;
-        }
-
-        if(csi->csi_sess_number == csi_sess_number) {
-            wifi_util_dbg_print(WIFI_MON, "%s: Found Element\n",__func__);
-            queue_remove(g_events_monitor.csi_queue, i);
-
-            csi_disable_client(csi);
-            free(csi);
-            break;
-        }
-    }
-    pthread_mutex_unlock(&g_events_monitor.lock);
-}
-
-static void csi_refresh_session ()
-{
-    int i = 0;
-    int count = 0;
-    struct timeval time_diff;
-    csi_session_t *csi = NULL;
-
-    pthread_mutex_lock(&g_events_monitor.lock);
-
-    count = queue_count(g_events_monitor.csi_queue);
-
-    while(i < count) {
-        csi = queue_peek(g_events_monitor.csi_queue, i);
-        i++;
-        if(csi == NULL || !(csi->enable && csi->subscribed)) {
-            continue;
-        }
-        if(!timeval_subtract(&time_diff, &csi_prune_timer, &csi->last_snapshot_time)) {
-            if(csi_timedout(&time_diff, &csi->csi_time_interval)) {
-                csi->last_snapshot_time = csi_prune_timer;
-            }
-        }
-    }
-    pthread_mutex_unlock(&g_events_monitor.lock);
-}
-
-static int csi_sheduler_enable(void)
-{
-    unsigned int *interval_list;
-    int i, found = 0, count;
-    unsigned int csi_time_interval = MAX_CSI_INTERVAL;
-    bool enable = FALSE;
-    csi_session_t *csi = NULL;
-
-    count = queue_count(g_events_monitor.csi_queue);
-    if (count > 0) {
-        interval_list = (unsigned int *) malloc(sizeof(unsigned int)*count);
-        if (interval_list == NULL) {
-            return -1;
-        }
-        pthread_mutex_lock(&g_events_monitor.lock);
-        for (i=0; i < count; i++) {
-            interval_list[i] = MAX_CSI_INTERVAL;
-            csi = queue_peek(g_events_monitor.csi_queue, i);
-            if (csi != NULL && csi->enable && csi->subscribed) {
-                enable = TRUE;
-                //make sure it is multiple of 100ms
-                interval_list[i] = (csi->csi_time_interval/100)*100;
-                //find shorter time interval
-                if(csi_time_interval > interval_list[i]) {
-                    csi_time_interval = interval_list[i];
-                }
-            }
-        }
-        pthread_mutex_unlock(&g_events_monitor.lock);
-        if (enable == TRUE) {
-            while (found == 0) {
-                found = 1;
-                for (int i=0; i < count; i++) {
-                    if ((interval_list[i] % csi_time_interval) != 0 ) {
-                        csi_time_interval = csi_time_interval - 100;
-                        found = 0;
-                        break;
-                    }
-                }
-            }
-        }
-        free(interval_list);
-    }
-#if !defined(FEATURE_CSI_CALLBACK)
-    if (enable == TRUE) {
-        if (g_monitor_module.csi_sched_id == 0) {
-            scheduler_add_timer_task(g_monitor_module.sched, TRUE,
-                    &(g_monitor_module.csi_sched_id), csi_getCSIData,
-                    NULL, csi_time_interval, 0);
-        } else {
-            if (g_monitor_module.csi_sched_interval != csi_time_interval) {
-                g_monitor_module.csi_sched_interval = csi_time_interval;
-                scheduler_update_timer_task_interval(g_monitor_module.sched,
-                        g_monitor_module.csi_sched_id, csi_time_interval);
-            }
-        }
-    } else {
-        if (g_monitor_module.csi_sched_id != 0) {
-            scheduler_cancel_timer_task(g_monitor_module.sched,
-                    g_monitor_module.csi_sched_id);
-            g_monitor_module.csi_sched_id = 0;
-        }
-    }
-#else
-//Enabling Pinger only on CMXB7
-#if (defined (_XB7_PRODUCT_REQ_) && !defined (_COSA_BCM_ARM_))
-    if (enable == TRUE) {
-        if (g_monitor_module.csi_sched_id == 0) {
-            scheduler_add_timer_task(g_monitor_module.sched, TRUE,
-                        &(g_monitor_module.csi_sched_id), csi_sendPingData,
-                        NULL, csi_time_interval, 0);
-        } else {
-            if (g_monitor_module.csi_sched_interval != csi_time_interval) {
-                g_monitor_module.csi_sched_interval = csi_time_interval;
-                scheduler_update_timer_task_interval(g_monitor_module.sched,
-                                        g_monitor_module.csi_sched_id, csi_time_interval);
-            }
-        }
-    } else {
-        if (g_monitor_module.csi_sched_id != 0) {
-            scheduler_cancel_timer_task(g_monitor_module.sched,
-                                        g_monitor_module.csi_sched_id);
-            g_monitor_module.csi_sched_id = 0;
-        }
-    }
-#endif
-#endif
-    return 0;
-}
-
-
-static void csi_publish(wifi_event_t *event)
-{
-    int i = 0;
-    int j = 0;
-    int count = 0;
-    struct timeval time_diff;
-    csi_session_t *csi = NULL;
-    wifi_monitor_data_t *evtData;
-
-    if(event == NULL) {
-        return;
-    }
-
-    evtData = event->u.mon_data;
-
-    pthread_mutex_lock(&g_events_monitor.lock);
-    count = queue_count(g_events_monitor.csi_queue);
-
-    for(i=0; i<count; i++) {
-        csi = queue_peek(g_events_monitor.csi_queue, i);
-
-        if(csi == NULL || !(csi->enable && csi->subscribed)){
-            continue;
-        }
-        /*this code is hit every MONITOR_RUNNING_INTERVAL_IN_MILLISEC,
-          Rounding off by -5 to make sure  we do not miss an interval, as hit this path
-          1 or 2 msec earlier at times*/
-        if(!timeval_subtract(&time_diff, &csi_prune_timer, &csi->last_snapshot_time)) {
-            if(csi_timedout(&time_diff, &csi->csi_time_interval)) {
-                for(j = 0; j < csi->no_of_mac; j++) {
-                    if(memcmp(evtData->u.csi.sta_mac, csi->mac_list[j],  sizeof(mac_address_t)) == 0) {
-                        wifi_util_dbg_print(WIFI_MON, "%s: Publish CSI Event - MAC  %02x:%02x:%02x:%02x:%02x:%02x\n",__func__, evtData->u.csi.sta_mac[0], evtData->u.csi.sta_mac[1], evtData->u.csi.sta_mac[2], evtData->u.csi.sta_mac[3],
-                                        evtData->u.csi.sta_mac[4], evtData->u.csi.sta_mac[5]);
-                        evtData->csi_session = csi->csi_sess_number;
-                        events_rbus_publish(event);
-                    }
-                }
-            }
-        }
-    }
-    pthread_mutex_unlock(&g_events_monitor.lock);
-}
-
-#if defined (FEATURE_CSI_CALLBACK)
-bool csi_check_timeout(csi_session_t *csi, int client_idx, struct timeval* t_now)
-{
-    struct timeval interval;
-    int  interval_ms_margin;
-    struct timeval timeout;
-
-    if (csi == NULL || t_now == NULL) {
-        wifi_util_dbg_print(WIFI_MON, "%s: Invalid arguments. csi %p, t_now %p\n",__func__, csi, t_now);
-        return FALSE;
-    }
-    //Need to support the fluctuation of csi interval coming from the driver
-    interval_ms_margin = csi->csi_time_interval - (MIN_CSI_INTERVAL/2);
-
-    interval.tv_sec = (interval_ms_margin / 1000);
-    interval.tv_usec = (interval_ms_margin % 1000) * 1000;
-    timeradd(&(csi->last_publish_time[client_idx]), &interval, &timeout);
-    if (timercmp(t_now, &timeout, >)) {
-        return TRUE;
-    } else {
-        return FALSE;
-    }
-}
-
-INT process_csi(mac_address_t mac_addr, wifi_csi_data_t  *csi_data)
-{
-    struct timeval t_now;
-    int i, j;
-    int csi_subscribers_count = 0;
-    bool mac_found = FALSE;
-    csi_session_t *csi = NULL;
-    wifi_event_t *event = NULL;
-    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-
-    wifi_util_dbg_print(WIFI_MON, "%s: CSI data received - MAC  %02x:%02x:%02x:%02x:%02x:%02x\n",__func__, mac_addr[0], mac_addr[1],
-                                                        mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
-    gettimeofday(&t_now, NULL);
-
-    event = create_wifi_event(sizeof(wifi_monitor_data_t), wifi_event_type_monitor, wifi_event_monitor_csi);
-    if (event == NULL) {
-        wifi_util_error_print(WIFI_MON, "%s:%d: memory allocation for event failed.\n", __func__, __LINE__);
-        return RETURN_ERR;
-    }
-    memcpy(event->u.mon_data->u.csi.sta_mac, mac_addr, sizeof(mac_addr_t));
-    memcpy(&event->u.mon_data->u.csi.csi, csi_data, sizeof(wifi_csi_data_t));
-    pthread_mutex_lock(&g_events_monitor.lock);
-    csi_subscribers_count = queue_count(g_events_monitor.csi_queue);
-
-    for (i =0; i < csi_subscribers_count; i++) {
-        mac_found = FALSE;
-        csi = queue_peek(g_events_monitor.csi_queue, i);
-        if (csi == NULL || !(csi->enable && csi->subscribed)) {
-            continue;
-        }
-        for (j = 0; j < csi->no_of_mac; j++) {
-            if (csi->mac_is_connected[j] == FALSE) {
-                continue;
-            }
-            if (memcmp(mac_addr, csi->mac_list[j], sizeof(mac_addr_t)) == 0) {
-                mac_found = TRUE;
-                break;
-            }
-        }
-        if (mac_found == TRUE) {
-            event->u.mon_data->csi_session = csi->csi_sess_number;
-            //check interval
-            if (csi->csi_time_interval == MIN_CSI_INTERVAL || csi_check_timeout(csi, j, &t_now)) {
-                event->u.mon_data->csi_session = csi->csi_sess_number;
-                wifi_util_dbg_print(WIFI_MON, "%s: Publish CSI Event - MAC  %02x:%02x:%02x:%02x:%02x:%02x Session %d\n",__func__, mac_addr[0], mac_addr[1],
-                                                        mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5], csi->csi_sess_number);
-                events_rbus_publish(event);
-                csi->last_publish_time[j] = t_now;
-            }
-        }
-    }
-#if DML_SUPPORT
-    // now forward the event to apps manager
-    apps_mgr_event(&ctrl->apps_mgr, event);
-#endif
-    destroy_wifi_event(event);
-    pthread_mutex_unlock(&g_events_monitor.lock);
     return 0;
 }
 
 int csi_sendPingData(void *arg)
 {
-    mac_addr_t  tmp_csiClientMac[MAX_CSI_CLIENTS_PER_SESSION];
-    int count=0, i=0, j =0, k=0, m=0;
-    int csi_subscribers_count = 0;
-    csi_session_t *csi = NULL;
-    bool mac_found = FALSE;
     bool refresh = FALSE;
     void* pCsiClientIpAge   = NULL;
-    //Iterating through each VAP and collecting data
-    for (i = 0; i < MAX_VAP; i++) {
-        count=0;
-        memset(tmp_csiClientMac, 0, sizeof(tmp_csiClientMac));
-        pthread_mutex_lock(&g_events_monitor.lock);
-        csi_subscribers_count = queue_count(g_events_monitor.csi_queue);
 
-        for(k =0; k < csi_subscribers_count; k++) {
-            mac_found = FALSE;
-            csi = queue_peek(g_events_monitor.csi_queue, k);
-            if(csi == NULL || !(csi->enable && csi->subscribed)) {
-                continue;
-            }
-
-            for(j = 0; j < csi->no_of_mac; j++) {
-                if((csi->mac_is_connected[j] == FALSE) || (csi->ap_index[j] != i)) {
-                  continue;
-                }
-                for(m=0; m<count; m++) {
-                  if(memcmp(tmp_csiClientMac[m], csi->mac_list[j], sizeof(mac_addr_t)) == 0) {
-                    mac_found = TRUE;
-                    break;
-                  }
-                }
-                if(mac_found == TRUE) {		
-                  wifi_util_dbg_print(WIFI_MON, "%s: Mac already present in CSI list %02x..%02x\n",__func__, csi->mac_list[j][0], csi->mac_list[j][5]);
-                  continue;
-                }
-                wifi_util_dbg_print(WIFI_MON, "%s: Adding Mac for csi collection %02x..%02x ap_idx %d\n",__func__, csi->mac_list[j][0], csi->mac_list[j][5], i);
-                memcpy(&tmp_csiClientMac[count], &csi->mac_list[j], sizeof(mac_addr_t));
-                if((csi->client_ip[j][0] != '\0') && ((csi->client_ip_age[j]*csi->csi_time_interval)  <= IPREFRESH_PERIOD_IN_MILLISECONDS) && (g_events_monitor.vap_ip[j][0] != '\0')) {
-                  refresh = FALSE;
-                }
-                else {
-                  refresh = TRUE;
-                }
-                pCsiClientIpAge = &csi->client_ip_age[j];
-                send_ping_data(csi->ap_index[j], (unsigned char *)&csi->mac_list[j][0],
-                               &csi->client_ip[j][0], &g_events_monitor.vap_ip[j][0], pCsiClientIpAge,refresh);
-                csi->client_ip_age[j]++;
-                count++;
-            }
-        }
-        pthread_mutex_unlock(&g_events_monitor.lock);
+    csi_pinger_data_t *pinger_data = NULL;
+    if (g_events_monitor.csi_pinger_map == NULL) {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d Null pinger map\n", __func__, __LINE__);
+        return TIMER_TASK_COMPLETE;
     }
-    //csi_refresh_session();
+    pinger_data  = (csi_pinger_data_t *)hash_map_get_first(g_events_monitor.csi_pinger_map);
+    while(pinger_data != NULL) {
+        wifi_util_dbg_print(WIFI_MON, "%s: Adding Mac for csi collection %02x..%02x ap_idx %d\n",__func__, pinger_data->mac_addr[0], pinger_data->mac_addr[5], pinger_data->ap_index);
+        if((pinger_data->client_ip[0] != '\0') && ((pinger_data->client_ip_age*CSI_PING_INTERVAL)  <= IPREFRESH_PERIOD_IN_MILLISECONDS) && (pinger_data->vap_ip[0] != '\0')) {
+            refresh  = FALSE;
+        } else {
+            refresh = TRUE;
+        }
+        pCsiClientIpAge = &pinger_data->client_ip_age;
+        send_ping_data(pinger_data->ap_index, (unsigned char *)pinger_data->mac_addr,
+                pinger_data->client_ip, pinger_data->vap_ip, pCsiClientIpAge, refresh);
+        pinger_data->client_ip_age++;
+        pinger_data  = (csi_pinger_data_t *)hash_map_get_next(g_events_monitor.csi_pinger_map, pinger_data);
+    }
     return TIMER_TASK_COMPLETE;
 }
-
-#endif
-
-int csi_getCSIData(void *arg)
-{
-    mac_addr_t  tmp_csiClientMac[MAX_CSI_CLIENTS_PER_SESSION];
-    int count=0, i=0, itrcsi=0, itrc=0, ret=RETURN_ERR, j =0, k=0, m=0;
-    wifi_event_t *event;
-    struct timeval time_diff;
-    int csi_subscribers_count = 0;
-    csi_session_t *csi = NULL;
-    bool mac_found = FALSE;
-    bool refresh = FALSE;
-    int total_events = 0;
-    int re_itr = 0;
-    gettimeofday(&csi_prune_timer, NULL);
-    wifi_associated_dev3_t *dev_array = NULL;
-    wifi_mgr_t *mgr = get_wifimgr_obj();
-
-    //Iterating through each VAP and collecting data
-    for (i = 0; i < (int) getTotalNumberVAPs(); i++) {
-        UINT vap_index = VAP_INDEX(mgr->hal_cap, i);
-        UINT radio = RADIO_INDEX(mgr->hal_cap, i);
-        if (g_monitor_module.radio_presence[radio] == false) {
-            continue;
-        }
-        count=0;
-        memset(tmp_csiClientMac, 0, sizeof(tmp_csiClientMac));
-        pthread_mutex_lock(&g_events_monitor.lock);
-        csi_subscribers_count = queue_count(g_events_monitor.csi_queue);
-
-        for(k =0; k < csi_subscribers_count; k++) {
-            mac_found = FALSE;
-            csi = queue_peek(g_events_monitor.csi_queue, k);
-            if(csi == NULL || !(csi->enable && csi->subscribed)) {
-                continue;
-            }
-            /*this code is hit every MONITOR_RUNNING_INTERVAL_IN_MILLISEC,
-              Rounding off by -5 to make sure  we do not miss an interval, as hit this path
-              1 or 2 msec earlier at times*/
-            if(!timeval_subtract(&time_diff, &csi_prune_timer, &csi->last_snapshot_time)) {
-                if(csi_timedout(&time_diff, &csi->csi_time_interval)) {
-                    for(j = 0; j < csi->no_of_mac; j++) {
-                        if((csi->mac_is_connected[j] == FALSE) || (csi->ap_index[j] != (int)vap_index)) {
-                            continue;
-                        }
-                        for(m=0; m<count; m++) {
-                            if(memcmp(tmp_csiClientMac[m], csi->mac_list[j], sizeof(mac_addr_t)) == 0) {
-                                mac_found = TRUE;
-                                break;
-                            }
-                        }
-                        if(mac_found == TRUE) {
-                            wifi_util_dbg_print(WIFI_MON, "%s: Mac already present in CSI list %02x..%02x\n",__func__, csi->mac_list[j][0], csi->mac_list[j][5]);
-                            continue;
-                        }
-                        wifi_util_dbg_print(WIFI_MON, "%s: Adding Mac for csi collection %02x..%02x ap_idx %d\n",__func__, csi->mac_list[j][0], csi->mac_list[j][5], vap_index);
-                        memcpy(&tmp_csiClientMac[count], &csi->mac_list[j], sizeof(mac_addr_t));
-                        if((csi->client_ip[j][0] != '\0') && ((csi->client_ip_age[j]*csi->csi_time_interval)  <= IPREFRESH_PERIOD_IN_MILLISECONDS) && (g_events_monitor.vap_ip[j][0] != '\0')) {
-                            refresh = FALSE;
-                        }
-                        else {
-                            refresh = TRUE;
-                        }
-                        send_ping_data(csi->ap_index[j], (unsigned char *)&csi->mac_list[j][0],
-                                &csi->client_ip[j][0], &g_events_monitor.vap_ip[j][0],&csi->client_ip_age[j],refresh);
-                        csi->client_ip_age[j]++;
-                        count++;
-                    }
-                }
-            }
-        }
-        pthread_mutex_unlock(&g_events_monitor.lock);
-        if (count>0) {
-            dev_array = (wifi_associated_dev3_t *)malloc(sizeof(wifi_associated_dev3_t)*count);
-            if (dev_array != NULL) {
-                memset(dev_array, 0, (sizeof(wifi_associated_dev3_t)*count));
-                for (itrc=0; itrc<count; itrc++) {
-                    memcpy(dev_array[itrc].cli_MACAddress, tmp_csiClientMac[itrc], sizeof(mac_addr_t));
-                }
-                for (re_itr = 0; re_itr < 4; re_itr++) {
-                    ret = wifi_getApAssociatedDeviceDiagnosticResult3(vap_index, &dev_array, (unsigned int *)&count);
-                    if (ret == RETURN_OK) {
-                        for (itrcsi=0; itrcsi < count; itrcsi++) {
-                            if (dev_array[itrcsi].cli_CsiData != NULL) {
-                                event = (wifi_event_t *)create_wifi_event(sizeof(wifi_monitor_data_t), wifi_event_type_monitor, wifi_event_monitor_csi);
-                                if (event == NULL) {
-                                    wifi_util_error_print(WIFI_MON, "%s:%d: memory allocation for event failed.\n", __func__, __LINE__);
-                                    return 0;
-                                }
-                                memcpy(event->u.mon_data->u.csi.sta_mac, dev_array[itrcsi].cli_MACAddress, sizeof(mac_addr_t));
-                                memcpy(&event->u.mon_data->u.csi.csi, dev_array[itrcsi].cli_CsiData, sizeof(wifi_csi_data_t));
-                                csi_publish(event);
-                                wifi_util_dbg_print(WIFI_MON, "%s Free CSI data for %02x..%02x\n",__func__,dev_array[itrcsi].cli_MACAddress[0],
-                                        dev_array[itrcsi].cli_MACAddress[5]);
-                                if (dev_array[itrcsi].cli_CsiData != NULL) {
-                                    free(dev_array[itrcsi].cli_CsiData);
-                                    dev_array[itrcsi].cli_CsiData = NULL;
-                                }
-                                total_events++;
-                                destroy_wifi_event(event);
-                            } else {
-                                wifi_util_dbg_print(WIFI_MON, "%s: CSI data is NULL for %02x..%02x\n", __func__, dev_array[itrcsi].cli_MACAddress[0],
-                                        dev_array[itrcsi].cli_MACAddress[5]);
-                            }
-                        }
-                    } else {
-                        wifi_util_error_print(WIFI_MON, "%s: wifi_getApAssociatedDeviceDiagnosticResult3 api returned error\n", __func__);
-                    }
-                    if (total_events == count) {
-                        break;
-                    }
-                }
-                free(dev_array);
-            } else {
-                wifi_util_error_print(WIFI_MON, "%s: Failed to allocate mem to dev_array\n",__func__);
-            }
-        }
-    }
-    csi_refresh_session();
-    return TIMER_TASK_COMPLETE;
-}
-
 
 static int clientdiag_sheduler_enable(int ap_index)
 {
@@ -5482,7 +4756,6 @@ int device_disassociated(int ap_index, char *mac, int reason)
             __func__, __LINE__, ap_index,
             data.u.dev.sta_mac[0], data.u.dev.sta_mac[1], data.u.dev.sta_mac[2],
             data.u.dev.sta_mac[3], data.u.dev.sta_mac[4], data.u.dev.sta_mac[5]);
-    csi_update_client_mac_status(data.u.dev.sta_mac, FALSE, ap_index);
 
     memcpy(assoc_data.dev_stats.cli_MACAddress, data.u.dev.sta_mac, sizeof(mac_address_t));
     assoc_data.ap_index = data.ap_index;
@@ -5560,7 +4833,6 @@ int device_deauthenticated(int ap_index, char *mac, int reason)
             __func__, __LINE__, ap_index,
             data.u.dev.sta_mac[0], data.u.dev.sta_mac[1], data.u.dev.sta_mac[2],
             data.u.dev.sta_mac[3], data.u.dev.sta_mac[4], data.u.dev.sta_mac[5], reason);
-    csi_update_client_mac_status(data.u.dev.sta_mac, FALSE, ap_index);
 
 
     memcpy(assoc_data.dev_stats.cli_MACAddress, data.u.dev.sta_mac, sizeof(mac_address_t));
@@ -5598,7 +4870,6 @@ int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
             data.u.dev.sta_mac[0], data.u.dev.sta_mac[1], data.u.dev.sta_mac[2],
             data.u.dev.sta_mac[3], data.u.dev.sta_mac[4], data.u.dev.sta_mac[5]);
 
-    csi_update_client_mac_status(data.u.dev.sta_mac, TRUE, ap_index);
 
     convert_vap_index_to_name(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, ap_index, vap_name);
     radio_index = convert_vap_name_to_radio_array_index(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, vap_name);
@@ -5917,6 +5188,7 @@ int init_wifi_monitor()
         wifi_util_error_print(WIFI_MON, "dca map create error\n");
         return -1;
     }
+
     g_monitor_module.chutil_id = 0;
     g_monitor_module.client_telemetry_id = 0;
     g_monitor_module.client_debug_id = 0;
@@ -5963,13 +5235,10 @@ int init_wifi_monitor()
 #endif // CCSP_COMMON
 
 #ifdef CCSP_COMMON
-    memset(g_events_monitor.vap_ip, '\0', sizeof(g_events_monitor.vap_ip));
     pthread_mutex_init(&g_events_monitor.lock, NULL);
-
-    g_events_monitor.csi_queue = queue_create();
-    if (g_events_monitor.csi_queue == NULL) {
-        deinit_wifi_monitor();
-        wifi_util_error_print(WIFI_MON, "monitor csi queue create error\n");
+    g_events_monitor.csi_pinger_map = hash_map_create();
+    if (g_events_monitor.csi_pinger_map == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d NULL pinger map\n", __func__, __LINE__);
         return -1;
     }
 #endif // CCSP_COMMON
@@ -5983,9 +5252,6 @@ int init_wifi_monitor()
     wifi_vapstatus_callback_register(vapstatus_callback);
     wifi_hal_apDeAuthEvent_callback_register(device_deauthenticated);
     wifi_hal_apDisassociatedDevice_callback_register(device_disassociated);
-#if defined(FEATURE_CSI_CALLBACK)
-    wifi_csi_callback_register(process_csi);
-#endif
     scheduler_add_timer_task(g_monitor_module.sched, FALSE, NULL, refresh_assoc_frame_entry, NULL, (MAX_ASSOC_FRAME_REFRESH_PERIOD * 1000), 0);
 #endif // CCSP_COMMON
 
@@ -6076,6 +5342,8 @@ void deinit_wifi_monitor()
     char key[64] = {0};
 
 #ifdef CCSP_COMMON
+    csi_pinger_data_t *pinger_data = NULL, *tmp_pinger_data = NULL;
+    mac_addr_str_t mac_str = { 0 };
     sysevent_close(g_monitor_module.sysevent_fd, g_monitor_module.sysevent_token);
 #endif // CCSP_COMMON
     if(g_monitor_module.queue != NULL)
@@ -6083,10 +5351,20 @@ void deinit_wifi_monitor()
 
     scheduler_deinit(&(g_monitor_module.sched));
 #ifdef CCSP_COMMON
-    pthread_mutex_destroy(&g_events_monitor.lock);
-    if(g_events_monitor.csi_queue != NULL) {
-        queue_destroy(g_events_monitor.csi_queue);
+    if(g_events_monitor.csi_pinger_map != NULL) {
+        pinger_data = hash_map_get_first(g_events_monitor.csi_pinger_map);
+        while (pinger_data != NULL) {
+            to_mac_str((unsigned char *)pinger_data->mac_addr, mac_str);
+            pinger_data = hash_map_get_next(g_events_monitor.csi_pinger_map, pinger_data);
+            tmp_pinger_data = hash_map_remove(g_events_monitor.csi_pinger_map, mac_str);
+            if (tmp_pinger_data !=  NULL)
+            {
+                free(tmp_pinger_data);
+            }
+        }
+        hash_map_destroy(g_events_monitor.csi_pinger_map);
     }
+    pthread_mutex_destroy(&g_events_monitor.lock);
     if (g_monitor_module.dca_list != NULL) {
         hash_map_destroy(g_monitor_module.dca_list);
     }

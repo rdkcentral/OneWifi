@@ -20,11 +20,16 @@
 #ifndef WIFI_LEVL_H
 #define WIFI_LEVL_H
 
+#include "wifi_csi.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #define MAX_PROBE_MAP_TTL    500
+#define WIFI_LEVL_CLIENTMAC                 "Device.WiFi.X_RDK_CSI_LEVL.clientMac"
+#define WIFI_LEVL_NUMBEROFENTRIES           "Device.WiFi.X_RDK_CSI_LEVL.maxNumberCSIClients"
+#define WIFI_LEVL_CSI_DATA                  "Device.WiFi.X_RDK_CSI_LEVL.data"
+#define WIFI_LEVL_SOUNDING_DURATION         "Device.WiFi.X_RDK_CSI_LEVL.Duration"
 
 typedef struct {
     unsigned int    max_probe_ttl_cnt;
@@ -41,6 +46,7 @@ typedef struct {
     int           sched_handler_id;
     mac_address_t mac_addr;
     unsigned int  ap_index;
+    int           request_count;
 }levl_sched_data_t;
 
 typedef struct {
@@ -57,6 +63,13 @@ typedef struct {
     hash_map_t           *probe_req_map;
     hash_map_t           *curr_sounding_mac_map;
     hash_map_t           *pending_mac_map;
+    int                  sched_handler_id;
+    int                  postpone_sched_handler_id;
+    int                  paused;
+    int                  speed_test_timeout;
+    levl_config_t        levl;
+    wifi_app_t           *csi_app;
+    csi_base_app_t       csi_fns;
 } levl_data_t;
 
 typedef struct wifi_app wifi_app_t;

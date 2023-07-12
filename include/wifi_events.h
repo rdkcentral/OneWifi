@@ -50,6 +50,8 @@ typedef enum {
     wifi_event_type_net,
     wifi_event_type_wifiapi,
     wifi_event_type_analytic,
+    wifi_event_type_csi,
+    wifi_event_type_speed_test,
     wifi_event_type_max
 } wifi_event_type_t;
 
@@ -99,6 +101,7 @@ typedef enum {
     wifi_event_radius_greylist,
     wifi_event_hal_potential_misconfiguration,
     wifi_event_hal_analytics,
+    wifi_event_type_csi_data,
     wifi_event_hal_max,
 
     // Commands
@@ -150,7 +153,7 @@ typedef enum {
     wifi_event_monitor_vap_stats_flag_change,
     wifi_event_monitor_process_active_msmt,
     wifi_event_monitor_csi,
-    wifi_event_monitor_csi_update_config,
+    wifi_event_monitor_csi_pinger,
     wifi_event_monitor_clientdiag_update_config,
     wifi_event_monitor_data_collection_config,
     wifi_event_monitor_data_collection_response,
@@ -184,6 +187,7 @@ typedef struct {
         wifi_analytics_data_t   analytics_data;
         wifi_dca_response_t     *dca_response;
         webconfig_subdoc_data_t *webconfig_data;
+        wifi_csi_dev_t          *csi;
     } u;
 } __attribute__((__packed__)) wifi_event_t;
 

@@ -28,6 +28,7 @@ extern "C" {
 #include "collection.h"
 #include <pthread.h>
 #include <sys/time.h>
+#include <rbus.h>
 
 #define WIFI_STA_2G_VAP_CONNECT_STATUS      "Device.WiFi.STA.1.Connection.Status"
 #define WIFI_STA_5G_VAP_CONNECT_STATUS      "Device.WiFi.STA.2.Connection.Status"
@@ -38,10 +39,6 @@ extern "C" {
 #define WIFI_STA_INTERFACE_NAME             "Device.WiFi.STA.{i}.InterfaceName"
 #define WIFI_STA_CONNECTED_GW_BSSID         "Device.WiFi.STA.{i}.Bssid"
 #define WIFI_STA_SELFHEAL_CONNECTION_TIMEOUT "Device.WiFi.STAConnectionTimeout"
-#define WIFI_LEVL_CLIENTMAC                 "Device.WiFi.X_RDK_CSI_LEVL.clientMac"
-#define WIFI_LEVL_NUMBEROFENTRIES           "Device.WiFi.X_RDK_CSI_LEVL.maxNumberCSIClients"
-#define WIFI_LEVL_CSI_DATA                  "Device.WiFi.X_RDK_CSI_LEVL.data"
-#define WIFI_LEVL_SOUNDING_DURATION         "Device.WiFi.X_RDK_CSI_LEVL.Duration"
 #define WIFI_ACTIVE_GATEWAY_CHECK           "Device.X_RDK_GatewayManagement.ExternalGatewayPresent"
 #define WIFI_WAN_FAILOVER_TEST              "Device.WiFi.WanFailoverTest"
 #define WIFI_LMLITE_NOTIFY                  "Device.Hosts.X_RDKCENTRAL-COM_LMHost_Sync_From_WiFi"
@@ -89,12 +86,13 @@ extern "C" {
 #define MAX_CSI_INTERVAL    30000
 #define MIN_CSI_INTERVAL    100
 #define MIN_DIAG_INTERVAL   5000
+#define CSI_PING_INTERVAL   100
 
 #define wifi_sub_component_base     0x01
 #define wifi_app_inst_base          0x01
 
-#define WIFI_APPS_NUM   4
 #define DEFAULT_SOUNDING_DURATION_MS 2000
+#define WIFI_APPS_NUM   6
 
 //TODO : Need to be removed when a arrays in wifi_dca_response_t are changed to pointer
 #define MAX_AP_PER_RADIO    16
@@ -111,7 +109,9 @@ typedef enum {
     wifi_app_inst_matter = wifi_app_inst_base << 8,
     wifi_app_inst_cac = wifi_app_inst_base << 9,
     wifi_app_inst_sm = wifi_app_inst_base << 10,
-    wifi_app_inst_max = wifi_app_inst_base << 11
+    wifi_app_inst_motion = wifi_app_inst_base << 11,
+    wifi_app_inst_csi = wifi_app_inst_base << 12,
+    wifi_app_inst_max = wifi_app_inst_base << 13
 } wifi_app_inst_t;
 
 typedef struct {
@@ -302,6 +302,13 @@ typedef struct {
 } __attribute__((__packed__)) frame_data_t;
 
 typedef struct {
+    queue_t    *csi_queue;
+    bool       pause_pinger;
+    int        ap_index;
+    mac_addr_t mac_addr;
+} csi_mon_t;
+
+typedef struct {
     unsigned int id;
     int  csi_session;
     unsigned int    ap_index;
@@ -311,7 +318,8 @@ typedef struct {
         instant_msmt_t      imsmt;
         active_msmt_t       amsmt;
         associated_devs_t   devs;
-        wifi_csi_dev_t csi;
+        wifi_csi_dev_t      csi;
+        csi_mon_t           csi_mon;
         wifi_config_data_collection_t dca;
         frame_data_t msg;
     } u;
@@ -934,6 +942,11 @@ typedef struct {
     ht_mode_t ht_mode;
     int priority;
 } vif_neighbors_t;
+
+typedef struct {
+    int     speed_test_running;
+    int     speed_test_timeout;
+} speed_test_data_t;
 
 #ifdef __cplusplus
 }

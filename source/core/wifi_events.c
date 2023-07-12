@@ -88,6 +88,7 @@ wifi_event_t *create_wifi_event(unsigned int msg_len, wifi_event_type_t type, wi
         case wifi_event_type_command:
         case wifi_event_type_net:
         case wifi_event_type_wifiapi:
+        case wifi_event_type_speed_test:
             if (msg_len != 0) {
                 event->u.core_data.msg = calloc(1, (msg_len + 1));
                 if (event->u.core_data.msg == NULL) {
@@ -119,6 +120,17 @@ wifi_event_t *create_wifi_event(unsigned int msg_len, wifi_event_type_t type, wi
                     return NULL;
                 }
 
+            }
+        break;
+        case wifi_event_type_csi:
+            if (sub_type == wifi_event_type_csi_data) {
+                event->u.csi = calloc(1, (msg_len));
+                if (event->u.csi == NULL) {
+                    wifi_util_error_print(WIFI_CTRL,"%s %d data message malloc null\n",__FUNCTION__, __LINE__);
+                    free(event);
+                    event = NULL;
+                    return NULL;
+                }
             }
         break;
         case wifi_event_type_analytic:
@@ -166,6 +178,11 @@ void destroy_wifi_event(wifi_event_t *event)
                     free(event->u.mon_data);
                 }
 
+            }
+        break;
+        case wifi_event_type_csi:
+            if (event->sub_type == wifi_event_type_csi_data) {
+                free(event->u.csi);
             }
         break;
         default:
