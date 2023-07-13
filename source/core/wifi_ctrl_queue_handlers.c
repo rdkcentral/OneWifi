@@ -1983,6 +1983,7 @@ void process_dfs_rfc(bool type)
     for(UINT rIdx = 0; rIdx < getNumberRadios(); rIdx++) {
         wifi_radio_operationParam_t *radio_params = NULL;
         wifi_radio_feature_param_t *radio_feat = NULL;
+        rdk_wifi_radio_t *l_radio = NULL;
         int ret;
         radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(rIdx);
         radio_feat = (wifi_radio_feature_param_t *)get_wifidb_radio_feat_map(rIdx);
@@ -2001,6 +2002,17 @@ void process_dfs_rfc(bool type)
                 if (radio_params->channelWidth == WIFI_CHANNELBANDWIDTH_160MHZ) {
                     radio_params->channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
                 }
+                /* Clean up the previous radar data*/
+                l_radio = find_radio_config_by_index(rIdx);
+                if (l_radio == NULL) {
+                    wifi_util_error_print(WIFI_CTRL,"%s:%d radio strucutre is not present for radio %d\n",
+                                          __FUNCTION__, __LINE__, rIdx);
+                    pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+                    return;
+                }
+                l_radio->radarInfo.last_channel = 0;
+                l_radio->radarInfo.num_detected = 0;
+                l_radio->radarInfo.timestamp = 0;
             }
             pthread_mutex_unlock(&g_wifidb->data_cache_lock);
             ret = wifi_hal_setRadioOperatingParameters(rIdx, radio_params);
@@ -2442,11 +2454,27 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg)
         //UINT blockEndChannel = 0;
         UINT channelGap = 4;
         wifi_channelState_t chan_state = CHAN_STATE_DFS_NOP_FINISHED;
+        rdk_wifi_radio_t *l_radio = NULL;
+        time_t time_now = 0;
 
         switch (ch_chg->sub_event)
         {
             case WIFI_EVENT_RADAR_DETECTED :
                 chan_state = CHAN_STATE_DFS_NOP_START;
+                l_radio = find_radio_config_by_index(ch_chg->radioIndex);
+                time_now = time(NULL);
+                if (l_radio == NULL) {
+                    wifi_util_error_print(WIFI_CTRL,"%s:%d radio strucutre is not present for radio %d\n",
+                                          __FUNCTION__, __LINE__,  ch_chg->radioIndex);
+                    return;
+                }
+                if((l_radio->radarInfo.timestamp != 0) && ((time_now - l_radio->radarInfo.timestamp) <= 2)) {
+                    /* Ignore the duplicate radar events for the same channel triggered within 2 seconds */
+                    break;
+                }
+                l_radio->radarInfo.last_channel = radio_params->channel;
+                l_radio->radarInfo.num_detected++;
+                l_radio->radarInfo.timestamp = time_now;
                 break;
             case WIFI_EVENT_RADAR_CAC_FINISHED :
                 chan_state = CHAN_STATE_DFS_CAC_COMPLETED;

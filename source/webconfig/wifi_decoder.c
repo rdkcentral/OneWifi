@@ -2469,6 +2469,11 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
         token = strtok_r(NULL, ",", &ctx);
     }
 
+    //radarInfo
+    decode_param_string(obj_radio, "radarInfo", param);
+    sscanf(param->valuestring, "last_channel:%d,num_detected:%d,time:%lld",
+           &radio->radarInfo.last_channel,&radio->radarInfo.num_detected,&radio->radarInfo.timestamp );
+
     // Channel
     decode_param_integer(obj_radio, "Channel", param);
     ret = decode_wifi_channel(radio_info->band, &radio_info->channel, radio_info->DfsEnabled, param->valuedouble);

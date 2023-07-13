@@ -704,10 +704,17 @@ typedef struct {
 } __attribute__((packed)) rdk_wifi_vap_map_t;
 
 typedef struct {
+    int last_channel;
+    int num_detected;
+    long long int timestamp;
+} __attribute__((packed)) radarInfo_t;
+
+typedef struct {
     char    name[16];
     wifi_radio_operationParam_t oper;
     rdk_wifi_vap_map_t          vaps;
     wifi_radio_feature_param_t  feature;
+    radarInfo_t                  radarInfo;
 //  schema_wifi_radio_state_t   radio_state;
 }  __attribute__((packed)) rdk_wifi_radio_t;
 

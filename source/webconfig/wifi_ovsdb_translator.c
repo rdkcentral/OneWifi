@@ -1231,7 +1231,27 @@ static int get_channels(const wifi_channelMap_t *channel_map, wifi_radio_capabil
     return RETURN_OK;
 }
 
-webconfig_error_t translate_radio_obj_to_ovsdb_radio_state(const wifi_radio_operationParam_t *oper_param, struct schema_Wifi_Radio_State *row, wifi_platform_property_t *wifi_prop)
+static int get_radar_detected(struct schema_Wifi_Radio_State *row,wifi_freq_bands_t band, int radio_index, bool dfs_enabled, radarInfo_t *radarInfo) {
+
+    if(!row || !radarInfo) {
+        return RETURN_ERR;
+    }
+    if((band == WIFI_FREQUENCY_5_BAND)  ||(band == WIFI_FREQUENCY_5L_BAND) || (band == WIFI_FREQUENCY_5H_BAND)) {
+         if (dfs_enabled == FALSE)  {
+             row->radar_len = 0;
+             return RETURN_OK;
+         }
+         row->radar_len = 3;
+         snprintf(row->radar_keys[0], sizeof(row->radar_keys[0]), "last_channel");
+         snprintf(row->radar_keys[1], sizeof(row->radar_keys[1]), "num_detected");
+         snprintf(row->radar_keys[2], sizeof(row->radar_keys[2]), "time");
+         snprintf(row->radar[0], sizeof(row->radar[0]), "%d", radarInfo->last_channel);
+         snprintf(row->radar[1], sizeof(row->radar[1]), "%d", radarInfo->num_detected);
+         snprintf(row->radar[2], sizeof(row->radar[2]), "%lld", radarInfo->timestamp);
+    }
+    return RETURN_OK;
+}
+webconfig_error_t translate_radio_obj_to_ovsdb_radio_state(const wifi_radio_operationParam_t *oper_param, radarInfo_t *radarInfo, struct schema_Wifi_Radio_State *row, wifi_platform_property_t *wifi_prop)
 {
     int radio_index = 0;
     if ((oper_param == NULL) || (row == NULL)) {
@@ -1306,6 +1326,11 @@ webconfig_error_t translate_radio_obj_to_ovsdb_radio_state(const wifi_radio_oper
 
     if (get_channels(oper_param->channel_map, &wifi_prop->radiocap[radio_index], row, oper_param->band, oper_param->DfsEnabled) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: get channels failed\n", __func__, __LINE__);
+        return webconfig_error_translate_to_ovsdb;
+    }
+
+    if(get_radar_detected(row, oper_param->band, radio_index, oper_param->DfsEnabled, radarInfo) != RETURN_OK) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: get radar detected failed\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
 
@@ -1607,6 +1632,7 @@ webconfig_error_t translate_radio_object_to_ovsdb_radio_state_for_dml(webconfig_
     int radio_index = 0;
     webconfig_external_ovsdb_t *proto;
     wifi_radio_operationParam_t  *oper_param;
+    radarInfo_t *radarInfo = NULL;
     webconfig_subdoc_decoded_data_t *decoded_params;
     unsigned int *row_count = 0;
     unsigned int presence_mask = 0;
@@ -1644,10 +1670,11 @@ webconfig_error_t translate_radio_object_to_ovsdb_radio_state_for_dml(webconfig_
         }
 
         oper_param = &decoded_params->radios[radio_index].oper;
+        radarInfo = &decoded_params->radios[radio_index].radarInfo;
 
         row = (struct schema_Wifi_Radio_State *)table[radio_index];
 
-        if (translate_radio_obj_to_ovsdb_radio_state(oper_param, row, &decoded_params->hal_cap.wifi_prop) != webconfig_error_none) {
+        if (translate_radio_obj_to_ovsdb_radio_state(oper_param, radarInfo, row, &decoded_params->hal_cap.wifi_prop) != webconfig_error_none) {
             wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to translate radio_obj to ovsdb state %d\n", __func__, __LINE__, radio_index);
             return webconfig_error_translate_to_ovsdb;
         }

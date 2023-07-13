@@ -187,6 +187,12 @@ webconfig_error_t encode_radio_object(const rdk_wifi_radio_t *radio, cJSON *radi
     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s Channel Availability State Buffer %s\n",__FUNCTION__,chan_buf);
     cJSON_AddStringToObject(radio_object, "ChannelAvailability", chan_buf);
 
+    //radarInfo
+    memset(buf,0,sizeof(buf));
+    snprintf(buf,sizeof(buf),"last_channel:%d,num_detected:%d,time:%lld",
+             radio->radarInfo.last_channel,radio->radarInfo.num_detected,radio->radarInfo.timestamp);
+    cJSON_AddStringToObject(radio_object, "radarInfo", buf);
+
     // DcsEnabled
     cJSON_AddBoolToObject(radio_object, "DcsEnabled", radio_info->DCSEnabled);
 
