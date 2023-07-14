@@ -516,11 +516,21 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
 
     for (i = 0; i < vap_map->num_vaps; i++) {
         if (vap_map->vap_array[i].vap_index == sta_data->stats.vap_index) {
-            vap_map->vap_array[i].u.sta_info.conn_status = sta_data->stats.connect_status;
-            memset(vap_map->vap_array[i].u.sta_info.bssid, 0, sizeof(vap_map->vap_array[i].u.sta_info.bssid));
             temp_vap_info = &vap_map->vap_array[i];
+            if (temp_vap_info->u.sta_info.conn_status == sta_data->stats.connect_status &&
+                is_bssid_valid(sta_data->bss_info.bssid) &&
+                memcmp(temp_vap_info->u.sta_info.bssid, sta_data->bss_info.bssid, sizeof(bssid_t)) == 0) {
+                wifi_util_info_print(WIFI_CTRL, "%s:%d: received duplicated wifi_event_hal_sta_conn_status event\n", __func__, __LINE__);
+                return 0;
+            }
+            temp_vap_info->u.sta_info.conn_status = sta_data->stats.connect_status;
             break;
         }
+    }
+
+    if (temp_vap_info == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: temp_vap_info is NULL \n", __func__, __LINE__);
+        return RETURN_ERR;
     }
 
     if (sta_data->stats.connect_status == wifi_connection_status_connected) {
@@ -533,13 +543,10 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
              convert_radio_index_to_freq_band(svc->prop, index, (int*)&ext->last_connected_bss.radio_freq_band);
              wifi_util_dbg_print(WIFI_CTRL,"%s:%d - Connected radio_band:%d\r\n", __func__, __LINE__, ext->last_connected_bss.radio_freq_band);
 
-              if (temp_vap_info != NULL) {
-                memcpy (temp_vap_info->u.sta_info.bssid, sta_data->bss_info.bssid, sizeof(temp_vap_info->u.sta_info.bssid));
-            }
-
-            ext->conn_state = connection_state_connected;
+            memcpy (temp_vap_info->u.sta_info.bssid, sta_data->bss_info.bssid, sizeof(temp_vap_info->u.sta_info.bssid));
             //send_event = true;
             radio_feat = (wifi_radio_feature_param_t *)get_wifidb_radio_feat_map(index);
+            
             radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(index);
             if (radio_params != NULL) {
                 if ((sta_data->stats.channel != 0 && radio_params->channel != sta_data->stats.channel) ||
@@ -563,6 +570,9 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
                      vap_svc_mesh_ext_stop(svc, i, NULL);
                 }
             }
+
+           // Set State to connected only after all operations.
+           ext->conn_state = connection_state_connected;
         }
     } else if (sta_data->stats.connect_status == wifi_connection_status_disconnected) { 
 
@@ -570,11 +580,13 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
         if (ext->conn_state == connection_state_connected && ext->connected_vap_index == sta_data->stats.vap_index) {
 
             wifi_util_dbg_print(WIFI_CTRL,"%s:%d - STA disconnected vap index: %d.\n", __func__, __LINE__,sta_data->stats.vap_index);
+
+            // Set conn_state to in progress immediately after disconnect
+            ext->conn_state = connection_state_connection_in_progress;
+
             memset(&temp_vap_info->u.sta_info.bssid, 0, sizeof(temp_vap_info->u.sta_info.bssid));
             ext->connected_vap_index = 0;
 
-            // Enable all other STA VAPs
-            ext->conn_state = connection_state_connection_in_progress; 
             wifi_util_dbg_print(WIFI_CTRL,"%s:%d - Restart enabled VAPs for STA connection..\n", __func__, __LINE__);
             vap_svc_mesh_ext_start(svc, WIFI_ALL_RADIO_INDICES, NULL);
             //send_event = true;

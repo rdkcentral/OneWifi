@@ -670,8 +670,12 @@ int webconfig_analyze_pending_states(wifi_ctrl_t *ctrl)
             }
         break;
         case ctrl_webconfig_state_vap_mesh_backhaul_sta_cfg_rsp_pending:
-            type = webconfig_subdoc_type_mesh_backhaul_sta;
-            webconfig_send_vap_subdoc_status(ctrl, type);
+            if (check_wifi_vap_sched_timeout_active_status(ctrl, isVapSTAMesh) == false) {
+                type = webconfig_subdoc_type_mesh_backhaul_sta;
+                webconfig_send_vap_subdoc_status(ctrl, type);
+            } else {
+                return RETURN_OK;
+            }
         break;
         case ctrl_webconfig_state_macfilter_cfg_rsp_pending:
             type = webconfig_subdoc_type_mac_filter;
@@ -1064,6 +1068,15 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
              * So, it won't be updated within update_fn -> wifidb_update_wifi_vap_info. Thats the reason why I leaved memcpy here. 
              */
             memcpy(mgr_vap_info, &tgt_vap_map.vap_array[0], sizeof(wifi_vap_info_t));
+
+            // This block of code is only used for updating VAP mac.
+            //if (vap_info->vap_mode == wifi_vap_mode_ap && is_bssid_valid(tgt_vap_map.vap_array[0].u.bss_info.bssid)) {
+            //    memcpy(vap_info->u.bss_info.bssid, tgt_vap_map.vap_array[0].u.bss_info.bssid, sizeof(mac_address_t));
+            //}
+            //else if (vap_info->vap_mode == wifi_vap_mode_sta && is_bssid_valid(tgt_vap_map.vap_array[0].u.sta_info.mac)){
+            //    memcpy(vap_info->u.sta_info.mac, tgt_vap_map.vap_array[0].u.sta_info.mac, sizeof(mac_address_t));
+           // }
+
         } else {
             wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: Received vap config is same for %s, not applying\n",
                         __func__, __LINE__, vap_names[i]);
