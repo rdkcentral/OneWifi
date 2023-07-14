@@ -1,0 +1,71 @@
+{
+  "Parameters": [
+    {
+      "Name": "ManagedWifiLanConfig",
+      "Value": {
+        "lanconfig": {
+          "Enable": true,
+          "LanBridge": "connected-buiding",
+          "DhcpServerEnable": true,
+          "LanIPAddress": "172.31.255.1",
+          "LanSubnetMask": "255.255.255.192",
+          "DhcpStartIPAddress": "172.31.255.3",
+          "DhcpEndIPAddress": "172.31.255.62",
+          "LeaseTime": "48h",
+          "IPv6": true,
+          "Firewall": "default"
+        }
+      }
+    },
+    {
+      "Name": "ManagedWifi",
+      "Value": {
+        "WifiVapConfig": [
+          {
+            "VapName": "managed_guest_2g",
+            "SSID": "connected-building-iot_2g",
+            "Enabled": true,
+            "SSIDAdvertisementEnabled": true,
+            "BssMaxNumSta": 20,
+            "Security": {
+              "Mode": "WPA2-Personal",
+              "EncryptionMethod": "AES",
+              "Passphrase": ""
+            }
+          },
+          {
+            "VapName": "managed_guest_5g",
+            "SSID": "connected-building-iot_5g",
+            "Enabled": true,
+            "SSIDAdvertisementEnabled": true,
+            "BssMaxNumSta": 20,
+            "Security": {
+              "Mode": "WPA2-Personal",
+              "EncryptionMethod": "AES",
+              "Passphrase": ""
+            }
+          },
+          {
+            "VapName": "managed_guest_6g",
+            "SSID": "connected-building-iot_6g",
+            "Enabled": true,
+            "SSIDAdvertisementEnabled": true,
+            "BssMaxNumSta": 20,
+            "Security": {
+              "Mode": "WPA3-Personal",
+              "EncryptionMethod": "AES",
+              "Passphrase": ""
+            }
+          }
+        ],
+        "xfinityWifiVapConfig":
+          {
+            "connected_building_enabled": false
+          }
+      }
+    }
+  ],
+  "subdoc_name": "connectedbuiding",
+  "version": 9535,
+  "transaction_id": 12329
+}
