@@ -308,7 +308,7 @@ webconfig_set_ow_stats_config_cb(void *arg)
     return;
 }
 
-static void
+static void  __attribute__ ((unused))
 webconfig_set_ow_stats_config(const stats_config_t *conf)
 {
     ow_core_thread_call(webconfig_set_ow_stats_config_cb, conf);
@@ -320,7 +320,7 @@ webconfig_clear_ow_stats_config_cb(void *arg)
     ow_stats_conf_entry_reset_all(ow_stats_conf_get());
 }
 
-static void
+static void  __attribute__ ((unused))
 webconfig_clear_ow_stats_config(void)
 {
     ow_core_thread_call(webconfig_clear_ow_stats_config_cb, NULL);

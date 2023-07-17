@@ -30,6 +30,15 @@ typedef struct {
     hash_map_t           *sm_stats_config_map;
 } sm_data_t;
 
+typedef enum {
+    sm_app_event_type_neighbor = 1,
+    sm_app_event_type_survey,
+    sm_app_event_type_capacity,
+    sm_app_event_type_assoc_dev_diag,
+    sm_app_event_type_assoc_dev_stats,
+    sm_app_event_type_max
+} sm_app_event_type_t;
+
 int sm_init(wifi_app_t *app, unsigned int create_flag);
 int sm_deinit(wifi_app_t *app);
 int sm_event(wifi_app_t *app, wifi_event_t *event);

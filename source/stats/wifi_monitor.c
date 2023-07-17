@@ -121,7 +121,7 @@ extern char g_Subsystem[32];
 #define ASSOCIATED_DEVICE_DIAG_INTERVAL_MS 5000 // 5 seconds
 #define CAPTURE_VAP_STATUS_INTERVAL_MS 5000 // 5 seconds
 #define UPLOAD_AP_TELEMETRY_INTERVAL_MS 24*60*60*1000 // 24 Hours
-#define NEIGHBOR_SCAN_INTERVAL 60*60*1000 //1 Hr
+#define NEIGHBOR_SCAN_INTERVAL 60*60*1000
 #define NEIGHBOR_SCAN_RESULT_INTERVAL 5000 //5 seconds
 #define Min_LogInterval 300 //5 minutes
 #define Max_LogInterval 3600 //60 minutes
@@ -134,6 +134,10 @@ char *instSchemaIdBuffer = "8b27dafc-0c4d-40a1-b62c-f24a34074914/4388e585dd7c0d3
 
 static wifi_monitor_t g_monitor_module;
 static wifi_actvie_msmt_t g_active_msmt;
+
+static wifi_apps_coordinator_t g_apps_coordinator;
+wifi_apps_coordinator_t *get_apps_coordinator(void);
+hash_map_t * coordinator_get_collector_list(void);
 
 #ifdef CCSP_COMMON
 static unsigned msg_id = 1000;
@@ -2315,6 +2319,7 @@ int get_sta_stats_for_vap(int ap_index, wifi_associated_dev3_t *assoc_dev_array,
 
     return 0;
 }
+#endif
 
 void send_wifi_disconnect_event_to_ctrl(mac_address_t mac_addr, unsigned int ap_index)
 {
@@ -2327,6 +2332,7 @@ void send_wifi_disconnect_event_to_ctrl(mac_address_t mac_addr, unsigned int ap_
     push_event_to_ctrl_queue(&assoc_data, sizeof(assoc_data), wifi_event_type_hal_ind, wifi_event_hal_disassoc_device, NULL);
 }
 
+#ifdef CCSP_COMMON
 sta_data_t *create_sta_data_hash_map(hash_map_t *sta_map, mac_addr_t l_sta_mac)
 {
     pthread_mutex_lock(&g_monitor_module.data_lock);
@@ -3326,34 +3332,21 @@ int process_instant_msmt_monitor(void *arg)
     return TIMER_TASK_COMPLETE;
 }
 
-int get_neighbor_scan_results() 
+int get_neighbor_scan_results()
 {
     wifi_monitor_t *monitor_param = (wifi_monitor_t *)get_wifi_monitor();
-    wifi_neighbor_ap2_t *NeighResult = NULL;
-    wifi_neighbor_ap2_t *pTmp;
-    UINT count = 0;
+    wifi_mon_stats_args_t args;
 
     monitor_param->neighbor_scan_cfg.ResultCount = 0;
-    
+
     for(UINT rIdx = 0; rIdx < getNumberRadios(); rIdx++)
     {
         if (g_monitor_module.radio_presence[rIdx] == false) {
            continue;
         }
-        if (wifi_getNeighboringWiFiStatus(rIdx, &NeighResult,&count) == RETURN_OK)
-        {
-            pTmp = monitor_param->neighbor_scan_cfg.pResult[rIdx];
-            monitor_param->neighbor_scan_cfg.pResult[rIdx] = NeighResult;
-            monitor_param->neighbor_scan_cfg.resultCountPerRadio[rIdx] = count;
-            if(pTmp) {
-                free(pTmp);
-                pTmp = NULL;
-            }
-        }
-        else if (NeighResult != NULL) {
-            free(NeighResult);
-            NeighResult = NULL;
-        }
+        memset(&args, 0, sizeof(wifi_mon_stats_args_t));
+        args.radio_index = rIdx;
+        copy_neighborstats_to_cache(&args);
         monitor_param->neighbor_scan_cfg.ResultCount += monitor_param->neighbor_scan_cfg.resultCountPerRadio[rIdx];
     }
     monitor_param->neighbor_scan_cfg.ResultCount = (monitor_param->neighbor_scan_cfg.ResultCount > MAX_NEIGHBOURS) ? MAX_NEIGHBOURS : monitor_param->neighbor_scan_cfg.ResultCount;
@@ -3361,7 +3354,7 @@ int get_neighbor_scan_results()
     return TIMER_TASK_COMPLETE;
 }
 
-int get_neighbor_scan_cfg(int radio_index, 
+int get_neighbor_scan_cfg(int radio_index,
                           wifi_neighbor_ap2_t *neighbor_results,
                           unsigned int *output_array_size)
 {
@@ -3504,7 +3497,7 @@ void *monitor_function  (void *data)
                         clientdiag_sheduler_enable(event_data->ap_index);
                     break;
                     case wifi_event_monitor_data_collection_config:
-                        process_stats_data_collection_request(&event_data->u.dca);
+                        coordinator_check_stats_config(&event_data->u.mon_stats_config);
                     break;
                     case wifi_event_monitor_assoc_req:
                         set_assoc_req_frame_data(&event_data->u.msg);
@@ -5181,13 +5174,13 @@ int init_wifi_monitor()
         return -1;
     }
 
-#ifdef CCSP_COMMON
-    g_monitor_module.dca_list = hash_map_create();
-    if (g_monitor_module.dca_list == NULL) {
+    g_apps_coordinator.collector_list = hash_map_create();
+    if (g_apps_coordinator.collector_list == NULL) {
         deinit_wifi_monitor();
-        wifi_util_error_print(WIFI_MON, "dca map create error\n");
+        wifi_util_error_print(WIFI_MON, "collector list hash map create failed\n");
         return -1;
     }
+#ifdef CCSP_COMMON
 
     g_monitor_module.chutil_id = 0;
     g_monitor_module.client_telemetry_id = 0;
@@ -5340,6 +5333,7 @@ void deinit_wifi_monitor()
     unsigned int i;
     sta_data_t *sta, *temp_sta;
     char key[64] = {0};
+    hash_map_t *collector_list = NULL;
 
 #ifdef CCSP_COMMON
     csi_pinger_data_t *pinger_data = NULL, *tmp_pinger_data = NULL;
@@ -5365,10 +5359,14 @@ void deinit_wifi_monitor()
         hash_map_destroy(g_events_monitor.csi_pinger_map);
     }
     pthread_mutex_destroy(&g_events_monitor.lock);
-    if (g_monitor_module.dca_list != NULL) {
-        hash_map_destroy(g_monitor_module.dca_list);
-    }
 #endif // CCSP_COMMON
+
+    collector_list = coordinator_get_collector_list();
+
+    if (collector_list != NULL) {
+       free_coordinator(collector_list);
+    }
+
     for (i = 0; i < getTotalNumberVAPs(); i++) {
         if(g_monitor_module.bssid_data[i].sta_map != NULL) {
             sta = hash_map_get_first(g_monitor_module.bssid_data[i].sta_map);
@@ -7310,26 +7308,7 @@ int get_radio_channel_utilization(unsigned int radio_index, int *chan_util)
 
     return ret;
 }
-
-void adjust_app_control_counters(wifi_dca_element_t *dca_task_element, unsigned long new_task_interval, unsigned int new_task_rep)
-{
-    wifi_dca_app_element_t *app_element = NULL;
-
-    if (dca_task_element->app_list == NULL) {
-        wifi_util_error_print(WIFI_MON, "%s:%d: APP list is NULL\n", __func__,__LINE__);
-        return;
-    }
-
-    app_element = hash_map_get_first(dca_task_element->app_list);
-    while(app_element != NULL) {
-        app_element->counter_limit = app_element->req_interval_ms/new_task_interval;
-        app_element->execution_counter = (app_element->execution_counter * dca_task_element->curr_interval_ms)/new_task_interval;
-
-        app_element = hash_map_get_next(dca_task_element->app_list, app_element);
-    }
-
-    return;
-}
+#endif // CCSP_COMMON
 
 unsigned long find_interval_common_divisor(unsigned long *interval_array, int array_len)
 {
@@ -7364,38 +7343,21 @@ unsigned long find_interval_common_divisor(unsigned long *interval_array, int ar
     return result;
 }
 
-void find_max_execution_time(unsigned long *max_execution_time, unsigned int repetitions, unsigned int interval_ms)
+int coordinator_calculate_clctr_interval(wifi_mon_collector_element_t *collector_elem, wifi_mon_provider_element_t *new_provider_elem , unsigned long *new_interval)
 {
-    unsigned long app_execution_time = 0;
-
-    if (repetitions != 0) {
-        app_execution_time = interval_ms * repetitions;
-
-        //Find max execution time
-        if (app_execution_time > *max_execution_time) {
-            *max_execution_time = app_execution_time;
-        }
-    }
-
-    return;
-}
-
-int dca_find_task_new_interval_rep_for_new_req(wifi_dca_element_t *dca_task_element, wifi_config_data_collection_t *dca, unsigned long *new_interval, unsigned int *new_rep)
-{
-    wifi_dca_app_element_t *dca_app_element = NULL;
+    wifi_mon_provider_element_t *provider_elem = NULL;
     unsigned long temp_new_interval = 0;
     unsigned long *interval_array = NULL;
     unsigned int itr = 0;
-    unsigned long max_app_execution_time = 0;
-    unsigned int count =0;
     bool new_element = true;
+    unsigned int count = 0;
 
-    if (dca_task_element->app_list == NULL) {
+    if (collector_elem->provider_list == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d: APP list is NULL\n", __func__,__LINE__);
         return RETURN_ERR;
     }
 
-    count =  hash_map_count(dca_task_element->app_list);
+    count =  hash_map_count(collector_elem->provider_list);
 
     interval_array = (unsigned long *)malloc((count+1) * sizeof(unsigned long));
     if (interval_array == NULL) {
@@ -7403,28 +7365,21 @@ int dca_find_task_new_interval_rep_for_new_req(wifi_dca_element_t *dca_task_elem
         return RETURN_ERR;
     }
 
-    //Traverse through the dca_elements
-    dca_app_element = hash_map_get_first(dca_task_element->app_list);
-    while(dca_app_element != NULL) {
-        if (dca_app_element->inst == dca->inst) {
+    //Traverse through the providers
+    provider_elem = hash_map_get_first(collector_elem->provider_list);
+    while (provider_elem != NULL) {
+        if (strncmp(new_provider_elem->key, provider_elem->key, strlen(new_provider_elem->key)) == 0) {
             new_element = false;
-            find_max_execution_time(&max_app_execution_time, dca->repetitions, dca->interval_ms);
-            interval_array[itr] = dca->interval_ms;
+            interval_array[itr] = new_provider_elem->provider_task_interval_ms;
         } else {
-            find_max_execution_time(&max_app_execution_time, dca_app_element->req_repetitions, dca_app_element->req_interval_ms);
-
-            interval_array[itr] = dca_app_element->req_interval_ms;
+            interval_array[itr] = provider_elem->provider_task_interval_ms;
         }
         itr++;
-
-        dca_app_element = hash_map_get_next(dca_task_element->app_list, dca_app_element);
+        provider_elem = hash_map_get_next(collector_elem->provider_list, provider_elem);
     }
 
-
-    if(new_element == true) {
-        new_element = false;
-        find_max_execution_time(&max_app_execution_time, dca->repetitions, dca->interval_ms);
-        interval_array[itr] = dca->interval_ms;
+    if (new_element == true) {
+        interval_array[itr] = new_provider_elem->provider_task_interval_ms;
         itr++;
     }
 
@@ -7436,717 +7391,436 @@ int dca_find_task_new_interval_rep_for_new_req(wifi_dca_element_t *dca_task_elem
     }
 
     *new_interval = temp_new_interval;
-    if (max_app_execution_time != 0) {
-        *new_rep = max_app_execution_time/temp_new_interval;
-    }
 
     free(interval_array);
     return RETURN_OK;
 }
 
-void dca_task_scheduler_update(wifi_dca_element_t * dca_task_element, unsigned long new_task_interval, unsigned int new_task_rep)
+int collector_execute_task(void *arg)
 {
-    wifi_monitor_t *monitor_param = (wifi_monitor_t *)get_wifi_monitor();
-    BOOL is_interval_changed = FALSE;
+    wifi_mon_collector_element_t *elem = (wifi_mon_collector_element_t *)arg;
+    wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
 
-    //compare the Intervals, update current task intervals
-    if (new_task_interval != dca_task_element->curr_interval_ms) {
-        is_interval_changed = TRUE;
-    }
-
-    if (is_interval_changed == TRUE) {
-        adjust_app_control_counters(dca_task_element, new_task_interval, new_task_rep);
-
-        dca_task_element->curr_interval_ms = new_task_interval;
-
-        wifi_util_error_print(WIFI_MON, "%s %d dca_task_element->key : %s dca_task_element->curr_interval_ms : %d\n",__func__,__LINE__,  dca_task_element->key, dca_task_element->curr_interval_ms);
-        scheduler_update_timer_task_interval(monitor_param->sched, dca_task_element->task_sched_id, new_task_interval);
-    }
-
-    //compare the Repetitions, update the current task repetitions
-    if (new_task_rep != dca_task_element->curr_repetitions) {
-        dca_task_element->curr_repetitions = new_task_rep;
-        wifi_util_error_print(WIFI_MON, "%s %d dca_task_element->key : %s dca_task_element->curr_repetitions : %d\n",__func__,__LINE__,  dca_task_element->key, dca_task_element->curr_repetitions);
-        scheduler_update_timer_task_repetitions(monitor_param->sched, dca_task_element->task_sched_id, new_task_rep);
-    }
-}
-
-
-int dca_response_send_to_ctrl_queue(wifi_dca_response_t *response, wifi_dca_callback_arg_t *cb_args,  wifi_event_route_t *route)
-{
-    wifi_dca_element_t *dca_element = NULL;
-    hash_map_t *app_list = NULL;
-
-    dca_element = (wifi_dca_element_t *)cb_args->task_info;
-    app_list = dca_element->app_list;
-    if (app_list == NULL) {
-        wifi_util_error_print(WIFI_MON, "%s:%d: APP list is NULL\n", __func__,__LINE__);
+    wifi_util_dbg_print(WIFI_MON, "%s : %d Executing collector task key : %s\n",__func__,__LINE__, elem->key);
+    if (elem->stat_desc->execute_stats_api(elem->args, mon_data, elem->collector_task_interval_ms) != RETURN_OK) {
+        wifi_util_error_print(WIFI_MON, "%s : %d collector execution failed for %s\n",__func__,__LINE__, elem->key);
         return RETURN_ERR;
     }
-
-    wifi_util_dbg_print(WIFI_MON,"%s:%d: Sending dca response for : %s with route : 0x%x to  ctrl queue\n", __func__,__LINE__, dca_element->key, route->u.inst_bit_map);
-    push_monitor_event_to_ctrl_queue(response, sizeof(wifi_dca_response_t), wifi_event_type_monitor, wifi_event_monitor_data_collection_response, route);
-
-    return RETURN_ERR;
-}
-
-int app_execution_event_check(wifi_dca_callback_arg_t *cb_arg, bool *send_event, wifi_event_route_t *route)
-{
-    wifi_dca_element_t *dca_element = NULL;
-    dca_element = (wifi_dca_element_t *)cb_arg->task_info;
-    wifi_dca_app_element_t *app_element = NULL;
-    hash_map_t *app_list = NULL;
-    app_list = dca_element->app_list;
-    bool is_app_deleted = false;
-    if (app_list == NULL) {
-        wifi_util_error_print(WIFI_MON, "%s:%d: APP list is NULL\n", __func__,__LINE__);
-        return RETURN_ERR;
-    }
-    memset(route, 0, sizeof(wifi_event_route_t));
-
-    app_element = hash_map_get_first(app_list);
-    while (app_element != NULL) {
-        app_element->execution_counter++;
-        if (app_element->execution_counter >= app_element->counter_limit) {
-            *send_event = true;
-            route->u.inst_bit_map |= app_element->inst;
-            route->dst = wifi_sub_component_apps;
-            app_element->execution_counter = 0;
-        }
-        if ( app_element->req_repetitions != 0) {
-            if (app_element->app_execution_counter >= app_element->req_repetitions) {
-                hash_map_remove(app_list, app_element->key);
-                wifi_util_dbg_print(WIFI_MON, "%s:%d: Removing the app with key : %s\n", __func__,__LINE__, app_element->key);
-                is_app_deleted = true;
-            }
-            app_element->app_execution_counter++;
-        }
-        app_element = hash_map_get_next(app_list, app_element);
-    }
-
-    if (is_app_deleted == true) {
-        dca_task_scheduler_update_after_app_remove(&dca_element);
-    }
+    wifi_util_dbg_print(WIFI_MON, "%s : %d Execution completed for collector task key : %s\n",__func__,__LINE__, elem->key);
 
     return RETURN_OK;
 }
 
 
-// scheduler callback function
-int send_dca_radio_channel_statistics(void *arg)
+int provider_execute_task(void *arg)
 {
-    wifi_channelStats_t chan_stats[MAX_CHANNELS];
-    wifi_dca_response_t *response;
-    int ret = RETURN_OK;
-    int chan_count = 0;
-    bool rfc_status;
-    memset(chan_stats, 0, sizeof(wifi_channelStats_t) * MAX_CHANNELS);
-    wifi_dca_callback_arg_t *cb_arg = NULL;
+    wifi_mon_provider_element_t *elem = (wifi_mon_provider_element_t *)arg;
+    wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
+    void *stat_pointer = NULL;
+    unsigned int stat_array_size = 0;
     wifi_event_route_t route;
-    bool send_event= false;
+    wifi_provider_response_t *response = NULL;
 
-    cb_arg = (wifi_dca_callback_arg_t *)arg;
-    if (cb_arg == NULL) {
-        wifi_util_error_print(WIFI_MON,"%s:%d NULL wifi_dca_callback_arg_t pointer\n", __func__, __LINE__);
+    wifi_util_dbg_print(WIFI_MON, "%s : %d Executing provider task key : %s\n",__func__,__LINE__, elem->key);
+    if (elem->stat_desc->copy_stats_from_cache(&elem->mon_stats_config->args, &stat_pointer, &stat_array_size, mon_data) != RETURN_OK) {
+        wifi_util_error_print(WIFI_MON, "%s : %d provider execution failed for %s\n",__func__,__LINE__, elem->key);
         return RETURN_ERR;
     }
 
-    app_execution_event_check(cb_arg, &send_event, &route);
-
-    if (send_event == false) {
-        return RETURN_OK;
-    }
-
-    for (chan_count = 0; chan_count < cb_arg->args.channel_list.num_channels; chan_count++) {
-        chan_stats[chan_count].ch_number = cb_arg->args.channel_list.channels_list[chan_count];
-        chan_stats[chan_count].ch_in_pool= TRUE;
-    }
-
-    if (chan_count == 0) {
-        wifi_radio_operationParam_t* radioOperation = getRadioOperationParam(cb_arg->args.radio_index);
-        if (radioOperation == NULL) {
-            wifi_util_error_print(WIFI_MON,"%s:%d NULL radioOperation pointer\n", __func__, __LINE__);
-            return RETURN_ERR;
-        }
-        chan_stats[chan_count].ch_number = radioOperation->channel;
-        chan_stats[chan_count].ch_in_pool= TRUE;
-        chan_count++;
-    }
-
-    get_wifi_rfc_parameters(RFC_WIFI_OW_CORE_THREAD, (bool *)&rfc_status);
-    if (true == rfc_status) {
-#ifdef HALW_IMPLEMENTATION
-        struct wifi_halw_if_info if_info;
-        memset(&if_info, 0, sizeof(struct wifi_halw_if_info));
-        if_info.rix = cb_arg->args.radio_index;
-
-        // call hal api to get data
-        ret = wifi_halw_getRadioChannelStats(&if_info, cb_arg->args.scan_mode, chan_stats, chan_count);
-#endif
-    } else {
-        wifi_util_dbg_print(WIFI_MON,"%s:%d WIFI OW CORE THREAD DISABLED\n", __func__, __LINE__);
-        ret = wifi_getRadioChannelStats(cb_arg->args.radio_index, chan_stats, chan_count);
-    }
-
-    if (ret != 0) {
-        wifi_util_error_print(WIFI_MON, "%s : %d  Failed to get radio channel statistics\n",__func__,__LINE__);
-        return RETURN_ERR;
-    }
-
-    response = (wifi_dca_response_t *)calloc(1, sizeof(wifi_dca_response_t));
+    response = (wifi_provider_response_t *)calloc(1, sizeof(wifi_provider_response_t));
     if (response == NULL) {
-        wifi_util_error_print(WIFI_MON, "%s:%d: Memory allocation failed for wifi_dca_response_t\n", __FUNCTION__, __LINE__);
+        wifi_util_error_print(WIFI_MON, "%s:%d: Memory allocation failed for response for %s\n", __FUNCTION__, __LINE__, elem->key);
+        free(stat_pointer);
         return RETURN_ERR;
     }
 
     // put all collected data to response structure
-    memcpy(&response->args, &cb_arg->args, sizeof(wifi_dca_args_t));
-    memcpy(&response->u.chan_stats, chan_stats, sizeof(wifi_channelStats_t) * chan_count);
-    response->data_type = dca_radio_channel_stats;
-    response->stat_array_size = chan_count;
+    memcpy(&response->args, &elem->mon_stats_config->args, sizeof(wifi_mon_stats_args_t));
+    response->stat_pointer = stat_pointer;
+    response->data_type = elem->mon_stats_config->data_type;
+    response->stat_array_size = stat_array_size;
 
-    ret = dca_response_send_to_ctrl_queue(response, cb_arg, &route);
-    free(response);
+    memset(&route, 0, sizeof(wifi_event_route_t));
+    route.u.inst_bit_map = elem->mon_stats_config->inst;
+    route.dst = wifi_sub_component_apps;
 
-    return ret;
-}
+    push_monitor_response_event_to_ctrl_queue(response, sizeof(wifi_provider_response_t), wifi_event_type_monitor, wifi_event_monitor_provider_response, &route);
 
-// scheduler callback function
-int send_dca_neighbor_stats(void *arg)
-{
-    wifi_neighbor_ap2_t *neigh_stats = NULL;
-    wifi_dca_response_t *response = NULL;
-    int ret = RETURN_OK;
-    bool rfc_status;
-    unsigned int output_array_size = 0;
-    wifi_dca_callback_arg_t *cb_arg = NULL;
-    wifi_event_route_t route;
-    bool send_event= false;
+    elem->response = response;
+    free(elem->response);
+    elem->response = NULL;
+    free(stat_pointer);
+    stat_pointer = NULL;
+    wifi_util_dbg_print(WIFI_MON, "%s : %d Execution completed for provider task key : %s\n",__func__,__LINE__, elem->key);
 
-    cb_arg = (wifi_dca_callback_arg_t *)arg;
-    if (cb_arg == NULL) {
-        wifi_util_error_print(WIFI_MON,"%s : %d NULL wifi_dca_callback_arg_t pointer\n", __func__, __LINE__);
-        return RETURN_ERR;
-    }
-
-    app_execution_event_check(cb_arg, &send_event, &route);
-
-    if (send_event == false) {
-        return RETURN_OK;
-    }
-
-    get_wifi_rfc_parameters(RFC_WIFI_OW_CORE_THREAD, (bool *)&rfc_status);
-    if (true == rfc_status) {
-#ifdef HALW_IMPLEMENTATION
-        struct wifi_halw_if_info if_info;
-        memset(&if_info, 0, sizeof(struct wifi_halw_if_info));
-        if_info.rix = cb_arg->args.radio_index;
-#endif
-    }
-    if (true == rfc_status) {
-#ifdef HALW_IMPLEMENTATION
-        wifi_halw_startScan(if_info, cb_arg->args.scan_mode, cb_arg->args.dwell_time, 1, &cb_arg->args.channel_list.channels_list[i]);
-        // call hal api to get data
-        ret = wifi_halw_getNeighborStats(if_info, cb_arg->args.scan_mode, &neigh_stats, &output_array_size);
-#endif
-    } else {
-        wifi_util_dbg_print(WIFI_MON,"%s:%d WIFI OW CORE THREAD DISABLED\n", __func__, __LINE__);
-        wifi_startNeighborScan(cb_arg->args.radio_index, cb_arg->args.scan_mode, cb_arg->args.dwell_time, cb_arg->args.channel_list.num_channels, (unsigned int *)cb_arg->args.channel_list.channels_list);
-        ret = wifi_getNeighboringWiFiStatus(cb_arg->args.radio_index, &neigh_stats, &output_array_size);
-    }
-
-    if (ret != 0) {
-        wifi_util_error_print(WIFI_MON, "%s : %d  Failed to get neighbor statistics\n",__func__,__LINE__);
-        return RETURN_ERR;
-    }
-    response = (wifi_dca_response_t *)calloc(1, sizeof(wifi_dca_response_t));
-    if (response == NULL) {
-        wifi_util_error_print(WIFI_MON, "%s:%d: Memory allocation failed for wifi_dca_response_t\n", __FUNCTION__, __LINE__);
-        return RETURN_ERR;
-    }
-    // put all collected data to response structure
-    memcpy(&response->args, &cb_arg->args, sizeof(wifi_dca_args_t));
-    memcpy(&response->u.neigh_ap, neigh_stats, sizeof(wifi_neighbor_ap2_t) * output_array_size);
-    response->data_type = dca_neighbor_stats;
-    response->stat_array_size = output_array_size;
-
-    ret = dca_response_send_to_ctrl_queue(response, cb_arg, &route);
-    free(neigh_stats);
-    free(response);
-    neigh_stats = NULL;
-    response = NULL;
-
-    return ret;
-}
-
-// scheduler callback function
-int send_dca_associated_device_stats(void *arg)
-{
-    wifi_associated_dev3_t *dev_diagnostic = NULL;
-    wifi_associated_dev_stats_t *dev_stats = NULL;
-    wifi_dca_response_t *response = NULL;
-    int ret = RETURN_OK;
-    bool rfc_status;
-    unsigned int num_devs = 0;
-    uint64_t handle = 0;
-    wifi_dca_callback_arg_t *cb_arg = NULL;
-    wifi_event_route_t route;
-    bool send_event= false;
-
-    cb_arg = (wifi_dca_callback_arg_t *)arg;
-    if (cb_arg == NULL) {
-        wifi_util_error_print(WIFI_MON,"%s : %d NULL wifi_dca_callback_arg_t pointer\n", __func__, __LINE__);
-        return RETURN_ERR;
-    }
-
-    app_execution_event_check(cb_arg, &send_event, &route);
-
-    if (send_event == false) {
-        return RETURN_OK;
-    }
-
-    get_wifi_rfc_parameters(RFC_WIFI_OW_CORE_THREAD, (bool *)&rfc_status);
-    if (true == rfc_status) {
-#ifdef HALW_IMPLEMENTATION
-        struct wifi_halw_if_info if_info;
-        memset(&if_info, 0, sizeof(struct wifi_halw_if_info));
-        if_info.rix = cb_arg->args.radio_index;
-
-        // call hal api to get data
-        // TODO: to be implemented
-#endif
-    } else {
-        wifi_util_dbg_print(WIFI_MON,"%s:%d WIFI OW CORE THREAD DISABLED\n", __func__, __LINE__);
-        ret = wifi_getApAssociatedDeviceDiagnosticResult3(cb_arg->args.vap_index, &dev_diagnostic, &num_devs);
-        if (ret != RETURN_OK) {
-            wifi_util_error_print(WIFI_MON, "%s : %d  Failed to get associated device diagnostic\n",__func__,__LINE__);
-            return RETURN_ERR;
-        }
-
-        dev_stats = (wifi_associated_dev_stats_t *)calloc(num_devs, sizeof(wifi_associated_dev_stats_t));
-        if (dev_stats == NULL) {
-            wifi_util_error_print(WIFI_MON, "%s:%d: Memory allocation failed for wifi_associated_dev_stats_t\n", __FUNCTION__, __LINE__);
-            return RETURN_ERR;
-        }
-
-        for (unsigned int i = 0; i < num_devs; i++) {
-            ret = wifi_getApAssociatedDeviceStats(cb_arg->args.vap_index, &dev_diagnostic[i].cli_MACAddress, &dev_stats[i], &handle);
-            if (ret != RETURN_OK) {
-                wifi_util_error_print(WIFI_MON, "%s : %d  Failed to get associated device statistics\n",__func__,__LINE__);
-                free(dev_stats);
-                free(dev_diagnostic);
-                return RETURN_ERR;
-            }
-        }
-    }
-
-    response = (wifi_dca_response_t *)calloc(1, sizeof(wifi_dca_response_t));
-    if (response == NULL) {
-        wifi_util_error_print(WIFI_MON, "%s:%d: Memory allocation failed for wifi_dca_response_t\n", __FUNCTION__, __LINE__);
-        return RETURN_ERR;
-    }
-
-    // put all collected data to response structure
-    memcpy(&response->args, &cb_arg->args, sizeof(wifi_dca_args_t));
-    memcpy(&response->u.assoc_dev_stats, dev_stats, sizeof(wifi_associated_dev3_t) * num_devs);
-    response->data_type = dca_associated_device_stats;
-    response->stat_array_size = num_devs;
-
-    ret = dca_response_send_to_ctrl_queue(response, cb_arg, &route);
-    free(response);
-    free(dev_stats);
-    free(dev_diagnostic);
-
-    return ret;
-}
-
-// scheduler callback function
-int send_dca_associated_device_diagnostic(void *arg)
-{
-    wifi_associated_dev3_t *dev_diagnostic = NULL;
-    wifi_dca_response_t *response = NULL;
-    int ret = RETURN_OK;
-    bool rfc_status;
-    unsigned int num_devs = 0;
-    wifi_dca_callback_arg_t *cb_arg = NULL;
-    wifi_event_route_t route;
-    bool send_event= false;
-
-    cb_arg = (wifi_dca_callback_arg_t *)arg;
-    if (cb_arg == NULL) {
-        wifi_util_error_print(WIFI_MON,"%s : %d NULL wifi_dca_callback_arg_t pointer\n", __func__, __LINE__);
-        return RETURN_ERR;
-    }
-
-    app_execution_event_check(cb_arg, &send_event, &route);
-
-    if (send_event == false) {
-        return RETURN_OK;
-    }
-
-    get_wifi_rfc_parameters(RFC_WIFI_OW_CORE_THREAD, (bool *)&rfc_status);
-    if (true == rfc_status) {
-#ifdef HALW_IMPLEMENTATION
-        struct wifi_halw_if_info if_info;
-        memset(&if_info, 0, sizeof(struct wifi_halw_if_info));
-        if_info.rix = cb_arg->args.radio_index;
-
-        // call hal api to get data
-        ret = wifi_halw_getAssociatedDeviceStats(&if_info, &dev_diagnostic, &num_devs);
-#endif
-    } else {
-        wifi_util_dbg_print(WIFI_MON,"%s:%d WIFI OW CORE THREAD DISABLED\n", __func__, __LINE__);
-        ret = wifi_getApAssociatedDeviceDiagnosticResult3(cb_arg->args.vap_index, &dev_diagnostic, &num_devs);
-    }
-
-    if (ret != 0) {
-        wifi_util_error_print(WIFI_MON, "%s : %d  Failed to get associated device statistics\n",__func__,__LINE__);
-        return RETURN_ERR;
-    }
-
-    response = (wifi_dca_response_t *)calloc(1, sizeof(wifi_dca_response_t));
-    if (response == NULL) {
-        wifi_util_error_print(WIFI_MON, "%s:%d: Memory allocation failed for wifi_dca_response_t\n", __FUNCTION__, __LINE__);
-        return RETURN_ERR;
-    }
-
-    // put all collected data to response structure
-    memcpy(&response->args, &cb_arg->args, sizeof(wifi_dca_args_t));
-    memcpy(&response->u.assoc_dev_diag, dev_diagnostic, sizeof(wifi_associated_dev3_t) * num_devs);
-    response->data_type = dca_associated_device_diag;
-    response->stat_array_size = num_devs;
-
-    ret = dca_response_send_to_ctrl_queue(response, cb_arg, &route);
-    free(response);
-    free(dev_diagnostic);
-
-    return ret;
-}
-
-static void convert_dca_request_type_to_string(wifi_monitor_dca_t type, char *type_str, size_t len)
-{
-    memset(type_str, 0, len);
-    snprintf(type_str, len - 1, "%d", type);
-}
-
-static void convert_channels_to_string(const wifi_channels_list_t *chan_list, char *buff, size_t len)
-{
-    char chan_buf[32];
-    int i;
-
-    if (chan_list->num_channels > 0) {
-        strcat_s(buff, len - 1, "_");
-        memset(chan_buf, 0, len);
-        for (i = 0; i < chan_list->num_channels - 1; i++) {
-            snprintf(chan_buf, sizeof(chan_buf) - 1, "%d,", chan_list->channels_list[i]);
-            strcat_s(buff, len - 1, chan_buf);
-        }
-        snprintf(chan_buf, sizeof(chan_buf) - 1, "%d", chan_list->channels_list[i]);
-        strcat_s(buff, len - 1, chan_buf);
-    }
-}
-
-int generate_dca_element_key(wifi_monitor_dca_t data_type, wifi_dca_args_t *args, char *key_str, size_t len)
-{
-    char type_str[32];
-
-    convert_dca_request_type_to_string(data_type, type_str, sizeof(type_str));
-    memset(key_str, 0, len);
-
-    switch (data_type) {
-        case dca_radio_channel_stats:
-            snprintf(key_str, len - 1, "%s_%02d_%d", type_str, args->radio_index, args->scan_mode);
-            convert_channels_to_string(&args->channel_list, key_str, len);
-        break;
-        case dca_neighbor_stats:
-            snprintf(key_str, len - 1, "%s_%02d_%d", type_str, args->radio_index, args->scan_mode);
-            convert_channels_to_string(&args->channel_list, key_str, len);
-        break;
-        case dca_associated_device_diag:
-            snprintf(key_str, len - 1, "%s_%02d", type_str, args->vap_index);
-        break;
-        case dca_associated_device_stats:
-            snprintf(key_str, len - 1, "%s_%02d", type_str, args->vap_index);
-        break;
-        case dca_radio_traffic_stats:
-            snprintf(key_str, len - 1, "%s_%02d", type_str, args->radio_index);
-        break;
-        default:
-            wifi_util_error_print(WIFI_MON, "%s : %d Data type %d is not supported.\n",__func__,__LINE__, data_type);
-            return RETURN_ERR;
-    }
     return RETURN_OK;
 }
 
-static void generate_dca_app_element_key(wifi_app_inst_t inst, char *inst_str, size_t len)
-{
-    memset(inst_str, 0, len);
-    snprintf(inst_str, len - 1, "ow_app_%d", inst);
-}
 
-int start_new_dca_task(wifi_config_data_collection_t *dca, int *task_sched_id, wifi_dca_callback_arg_t *task_args)
+int coordinator_create_collector_task(wifi_mon_collector_element_t *collector_elem)
 {
-    switch (dca->data_type) {
-        case dca_radio_channel_stats:
-            scheduler_add_timer_task(g_monitor_module.sched, dca->task_priority, task_sched_id, send_dca_radio_channel_statistics,
-                (void *)task_args, dca->interval_ms, dca->repetitions);
-        break;
-        case dca_neighbor_stats:
-            scheduler_add_timer_task(g_monitor_module.sched, dca->task_priority, task_sched_id, send_dca_neighbor_stats,
-                    (void *)task_args, dca->interval_ms, dca->repetitions);
-        break;
-        case dca_associated_device_diag:
-            scheduler_add_timer_task(g_monitor_module.sched, dca->task_priority, task_sched_id, send_dca_associated_device_diagnostic,
-                    (void *)task_args, dca->interval_ms, dca->repetitions);
-        break;
-        case dca_associated_device_stats:
-            scheduler_add_timer_task(g_monitor_module.sched, dca->task_priority, task_sched_id, send_dca_associated_device_stats,
-                (void *)task_args, dca->interval_ms, dca->repetitions);
-        break;
-        default:
-            wifi_util_error_print(WIFI_MON, "%s : %d Data type %d is not supported.\n",__func__,__LINE__, dca->data_type);
-            return RETURN_ERR;
-    }
+    wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
+
+    scheduler_add_timer_task(mon_data->sched, collector_elem->task_priority, &collector_elem->collector_task_sched_id, collector_execute_task,
+            (void *)collector_elem, collector_elem->collector_task_interval_ms, 0);
+
     return RETURN_OK;
 }
 
-wifi_dca_app_element_t *create_and_update_dca_app_element(wifi_config_data_collection_t *dca)
+int coordinator_create_provider_task(wifi_mon_provider_element_t *provider_elem)
 {
-    wifi_dca_app_element_t *dca_app_element = NULL;
+    wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
 
-    dca_app_element = (wifi_dca_app_element_t *)calloc(1, sizeof(wifi_dca_app_element_t));
-    if (dca_app_element == NULL) {
-        wifi_util_error_print(WIFI_MON, "%s:%d: Memory allocation failed for wifi_dca_app_element_t\n", __FUNCTION__, __LINE__);
+    scheduler_add_timer_task(mon_data->sched, &provider_elem->mon_stats_config->task_priority, &provider_elem->provider_task_sched_id, provider_execute_task,
+            (void *)provider_elem, provider_elem->provider_task_interval_ms, 0);
+
+    return RETURN_OK;
+}
+
+
+wifi_mon_collector_element_t * coordinator_create_collector_elem(wifi_mon_stats_config_t *stats_config, wifi_mon_stats_descriptor_t *stat_desc)
+{
+    wifi_mon_collector_element_t *collector_elem = NULL;
+
+    collector_elem = (wifi_mon_collector_element_t *)calloc(1, sizeof(wifi_mon_collector_element_t));
+    if (collector_elem == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: calloc failed for collector elem\n", __func__,__LINE__);
         return NULL;
     }
 
-    generate_dca_app_element_key(dca->inst, dca_app_element->key, DCA_APP_KEY_LEN);
-    dca_app_element->inst = dca->inst;
-    dca_app_element->req_interval_ms = dca->interval_ms;
-    dca_app_element->req_repetitions = dca->repetitions;
-    dca_app_element->execution_counter = 0;
-    dca_app_element->app_execution_counter = 0;
-    dca_app_element->counter_limit = (dca_app_element->req_interval_ms / dca->interval_ms);
+    collector_elem->stat_desc = stat_desc;
+    collector_elem->stat_desc->generate_stats_clctr_key(&stats_config->args, collector_elem->key, sizeof(collector_elem->key));
+    collector_elem->collector_task_interval_ms = stats_config->interval_ms;
+    collector_elem->task_priority = stats_config->task_priority;
 
-    return dca_app_element;
+    collector_elem->args = (wifi_mon_stats_args_t *)calloc(1, sizeof(wifi_mon_stats_args_t));
+    if (collector_elem->args == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: calloc failed for args\n", __func__,__LINE__);
+        free(collector_elem);
+        return NULL;
+    }
+
+    memcpy(collector_elem->args, &stats_config->args, sizeof(wifi_mon_stats_args_t));
+
+    return collector_elem;
 }
 
-int create_and_update_new_dca_task_element(wifi_dca_element_t **dca_task, wifi_config_data_collection_t *dca, char *dca_key, int key_len)
+wifi_mon_provider_element_t  *coordinator_create_provider_elem(wifi_mon_stats_config_t * stats_config, wifi_mon_stats_descriptor_t *stat_desc)
 {
-    wifi_dca_callback_arg_t *task_args = NULL;
-    hash_map_t *dca_list = NULL;
-    wifi_dca_app_element_t *dca_app_element = NULL;
+    wifi_mon_provider_element_t *provider_elem = NULL;
 
-    dca_list = g_monitor_module.dca_list;
-
-    // create and update task element
-    *dca_task = (wifi_dca_element_t *)calloc(1, sizeof(wifi_dca_element_t));
-    if (*dca_task == NULL) {
-        wifi_util_error_print(WIFI_MON, "%s:%d: Memory allocation failed for wifi_dca_element_t\n", __FUNCTION__, __LINE__);
-        return RETURN_ERR;
-    }
-    memcpy(&(*dca_task)->key, dca_key, key_len);
-    (*dca_task)->curr_interval_ms = dca->interval_ms;
-    (*dca_task)->curr_repetitions = dca->repetitions;
-
-    // create and update app element
-    dca_app_element = create_and_update_dca_app_element(dca);
-    if (dca_app_element == NULL) {
-        free(*dca_task);
-        return RETURN_ERR;
+    provider_elem = (wifi_mon_provider_element_t *)calloc(1, sizeof(wifi_mon_provider_element_t));
+    if (provider_elem == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: calloc failed for provider elem\n", __func__,__LINE__);
+        return NULL;
     }
 
-    (*dca_task)->app_list = hash_map_create();
-    hash_map_put((*dca_task)->app_list, strdup(dca_app_element->key), dca_app_element);
+    provider_elem->stat_desc = stat_desc;
+    provider_elem->mon_stats_config = (wifi_mon_stats_config_t *)calloc(1, sizeof(wifi_mon_stats_config_t));
+    if (provider_elem->mon_stats_config == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: calloc failed for provider elem\n", __func__,__LINE__);
+        free(provider_elem);
+        return NULL;
+    }
 
-    // allocate and update task args
-    task_args = (wifi_dca_callback_arg_t *)calloc(1, sizeof(wifi_dca_callback_arg_t));
-    memcpy(&task_args->args, &dca->args, sizeof(wifi_dca_args_t));
-    task_args->task_info = (void *)(*dca_task);
-    (*dca_task)->task_args = task_args;
+    memcpy(provider_elem->mon_stats_config, stats_config, sizeof(wifi_mon_stats_config_t));
+    provider_elem->stat_desc->generate_stats_provider_key(stats_config, provider_elem->key, sizeof(provider_elem->key));
+    provider_elem->provider_task_interval_ms = stats_config->interval_ms;
 
-    // start new task scheduler
-    start_new_dca_task(dca, &(*dca_task)->task_sched_id, task_args);
-    // add new task element to dca_list
-    hash_map_put(dca_list, strdup((*dca_task)->key), (*dca_task));
+    provider_elem->mon_stats_config = (wifi_mon_stats_config_t *)calloc(1, sizeof(wifi_mon_stats_config_t));
+    if (provider_elem->mon_stats_config == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: calloc failed for mon_stats_config\n", __func__,__LINE__);
+        free(provider_elem);
+        return NULL;
+    }
 
-    return RETURN_OK;
+    memcpy(provider_elem->mon_stats_config, stats_config, sizeof(wifi_mon_stats_config_t));
+
+    return provider_elem;
 }
 
-
-int dca_task_scheduler_update_after_app_remove(wifi_dca_element_t **dca_task_element)
+void coordinator_free_provider_elem(wifi_mon_provider_element_t **provider_elem)
 {
-    hash_map_t *dca_app_list = NULL;
-    hash_map_t *dca_list = NULL;
-    unsigned int new_task_rep = 0;
-    unsigned long new_task_interval = 0;
-    wifi_monitor_t *monitor_param = (wifi_monitor_t *)get_wifi_monitor();
-    wifi_dca_app_element_t *dca_app_element= NULL;
-    unsigned int count = 0;
-    unsigned int itr = 0;
-    unsigned long max_app_execution_time = 0;
-    unsigned long *interval_array = NULL;
-
-    dca_list = monitor_param->dca_list;
-    dca_app_list = (*dca_task_element)->app_list;
-
-    //Now check the count
-    if (hash_map_count(dca_app_list) == 0) {
-        wifi_util_dbg_print(WIFI_MON, "%s:%d: App list is empty. Removing the task\n", __func__,__LINE__);
-        scheduler_cancel_timer_task(monitor_param->sched, (*dca_task_element)->task_sched_id);
-        free((*dca_task_element)->task_args);
-        free(dca_app_list);
-        hash_map_remove(dca_list, (*dca_task_element)->key);
-        free(*dca_task_element);
-    } else {
-        //Calculate the interval for all the apps
-        count =  hash_map_count((*dca_task_element)->app_list);
-        interval_array = (unsigned long *)malloc((count) * sizeof(unsigned long));
-        if (interval_array == NULL) {
-            wifi_util_error_print(WIFI_MON, "%s %d malloc failed\n",__func__,__LINE__);
-            return RETURN_ERR;
+    wifi_util_dbg_print(WIFI_MON, "%s:%d\n", __func__,__LINE__);
+    if ((*provider_elem) != NULL) {
+        if ((*provider_elem)->mon_stats_config != NULL) {
+            free((*provider_elem)->mon_stats_config);
+            (*provider_elem)->mon_stats_config = NULL;
         }
 
-        dca_app_element = hash_map_get_first((*dca_task_element)->app_list);
-        while(dca_app_element != NULL) {
-            find_max_execution_time(&max_app_execution_time, dca_app_element->req_repetitions, dca_app_element->req_interval_ms);
-            interval_array[itr] = dca_app_element->req_interval_ms;
-            itr++;
-            dca_app_element = hash_map_get_next((*dca_task_element)->app_list, dca_app_element);
+        if ((*provider_elem)->response != NULL) {
+            free((*provider_elem)->response);
+            (*provider_elem)->response = NULL;
         }
 
-        new_task_interval = find_interval_common_divisor(interval_array, itr);
-        if (new_task_interval == 0) {
-            wifi_util_error_print(WIFI_MON, "%s %d invalid interval : %d\n",__func__,__LINE__, new_task_interval);
-            free(interval_array);
-            return RETURN_ERR;
-        }
-
-        if (max_app_execution_time != 0) {
-            new_task_rep = max_app_execution_time/new_task_interval;
-        }
-        dca_task_scheduler_update(*dca_task_element, new_task_interval, new_task_rep);
-        free(interval_array);
+        free(*provider_elem);
+        *provider_elem = NULL;
     }
-
-    return RETURN_OK;
-}
-
-int remove_dca_app_element_from_list(wifi_dca_element_t **dca_task_element, wifi_config_data_collection_t *dca)
-{
-    hash_map_t *dca_app_list = NULL;
-    char dca_element_key[DCA_APP_KEY_LEN];
-    wifi_dca_app_element_t *dca_app_element= NULL;
-
-    dca_app_list = (*dca_task_element)->app_list;
-
-    memset(dca_element_key, 0, sizeof(dca_element_key));
-    generate_dca_app_element_key(dca->inst, dca_element_key, DCA_APP_KEY_LEN);
-
-    //check if the app  is present
-    dca_app_element = (wifi_dca_app_element_t *)hash_map_get(dca_app_list, dca_element_key);
-    if (dca_app_element == NULL) {
-        wifi_util_error_print(WIFI_MON, "%s:%d: App key : %s not present in app_list to remove\n", __func__,__LINE__, dca_element_key);
-        return RETURN_ERR;
-    }
-
-    //Remove the app
-    hash_map_remove(dca_app_list, dca_element_key);
-    wifi_util_dbg_print(WIFI_MON, "%s:%d: Removing the app with key : %s\n", __func__,__LINE__, dca_element_key);
-
-    dca_task_scheduler_update_after_app_remove(dca_task_element);
-
-    return RETURN_OK;
-}
-
-
-void dca_update_to_app(wifi_dca_element_t *dca_task_element, wifi_config_data_collection_t *dca)
-{
-    char app_key[DCA_APP_KEY_LEN];
-    wifi_dca_app_element_t *app_element = NULL;
-
-    memset(app_key, 0, sizeof(app_key));
-    generate_dca_app_element_key(dca->inst, app_key, DCA_APP_KEY_LEN);
-
-    app_element = (wifi_dca_app_element_t *)hash_map_get(dca_task_element->app_list, app_key);
-    if (app_element == NULL) {
-        //Create and update the task element
-        app_element = create_and_update_dca_app_element(dca);
-        if (app_element == NULL) {
-            wifi_util_error_print(WIFI_MON, "%s:%d: unable to update the app element\n", __func__,__LINE__);
-            return;
-        }
-        //update app_element to the task_list
-        hash_map_put(dca_task_element->app_list, strdup(app_element->key), app_element);
-
-    } else { //app element is present
-        app_element->req_repetitions = dca->repetitions;
-        app_element->req_interval_ms = dca->interval_ms;
-    }
-
     return;
 }
 
-
-int process_stats_data_collection_request(wifi_config_data_collection_t *dca)
+void coordinator_free_collector_elem(wifi_mon_collector_element_t **collector_elem)
 {
-    wifi_monitor_t *monitor_param = (wifi_monitor_t *)get_wifi_monitor();
-    hash_map_t *dca_list = NULL;
-    wifi_dca_element_t *dca_task_element = NULL;
-    char dca_key[DCA_KEY_LEN];
-    int ret = RETURN_ERR;
-    unsigned int new_task_rep = 0;
-    unsigned long new_task_interval = 0;
-
-    if (dca == NULL) {
-        wifi_util_error_print(WIFI_MON, "%s:%d: input dca is NULL\n", __func__,__LINE__);
-        return RETURN_ERR;
-    }
-
-    if (dca->interval_ms == 0) {
-        wifi_util_error_print(WIFI_MON, "%s:%d: interval_ms is %d\n", __func__,__LINE__, dca->interval_ms);
-        return RETURN_ERR;
-    }
-
-    //Check for the incoming interval is valid
-    if ((dca->interval_ms % MONITOR_RUNNING_INTERVAL_IN_MILLISEC) != 0) {
-        wifi_util_error_print(WIFI_MON, "%s:%d: interval %d is not multiple of monitor interval : %d\n", __func__,__LINE__, dca->interval_ms, MONITOR_RUNNING_INTERVAL_IN_MILLISEC);
-        return RETURN_ERR;
-    }
-
-    if (generate_dca_element_key(dca->data_type, &dca->args, dca_key, DCA_KEY_LEN) != 0) {
-        return RETURN_ERR;
-    }
-
-    dca_list = monitor_param->dca_list;
-    dca_task_element = (wifi_dca_element_t *)hash_map_get(dca_list, dca_key);
-    if (dca_task_element == NULL) {
-        if (dca->req_state == dca_request_state_start) {
-            ret = create_and_update_new_dca_task_element(&dca_task_element, dca, dca_key, sizeof(dca_key));
-            return ret;
-        } else {
-            wifi_util_error_print(WIFI_MON, "%s:%d: Task is not running. Request state %d is not expected\n", __func__,__LINE__, dca->req_state);
-            return RETURN_ERR;
+    wifi_util_dbg_print(WIFI_MON, "%s:%d\n", __func__,__LINE__);
+    if ((*collector_elem) != NULL) {
+        if ((*collector_elem)->args != NULL) {
+            free((*collector_elem)->args);
+            (*collector_elem)->args = NULL;
         }
-    } else {
-        if (dca->req_state == dca_request_state_start) {
-
-            if (dca_find_task_new_interval_rep_for_new_req(dca_task_element, dca, &new_task_interval, &new_task_rep) == RETURN_ERR) {
-                wifi_util_error_print(WIFI_MON, "%s:%d: dca_find_task_new_interval_rep_for_new_req failed\n", __func__,__LINE__);
-                return RETURN_ERR;
-            }
-
-            //update the received dca request to app
-            dca_update_to_app(dca_task_element, dca);
-
-            //updates the new interval,rep to task and update counters for all the apps
-            dca_task_scheduler_update(dca_task_element, new_task_interval, new_task_rep);
-
-        } else {
-            remove_dca_app_element_from_list(&dca_task_element, dca);
-        }
+        free(*collector_elem);
+        *collector_elem = NULL;
     }
+    return;
+}
+
+int coordinator_create_task(wifi_mon_collector_element_t **collector_elem, wifi_mon_stats_config_t *stats_config, wifi_mon_stats_descriptor_t *stat_desc)
+{
+    wifi_mon_provider_element_t *provider_elem = NULL;
+
+    *collector_elem = coordinator_create_collector_elem(stats_config, stat_desc);
+    if (*collector_elem == NULL) {
+        return RETURN_ERR;
+    }
+
+    coordinator_create_collector_task(*collector_elem);
+
+    (*collector_elem)->provider_list = hash_map_create();
+    if ((*collector_elem)->provider_list == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: hash map failed for provider list\n", __func__,__LINE__);
+        coordinator_free_collector_elem(collector_elem);
+        return RETURN_ERR;
+    }
+
+    provider_elem = coordinator_create_provider_elem(stats_config, stat_desc);
+    if (provider_elem == NULL) {
+        coordinator_free_provider_elem(&provider_elem);
+        return RETURN_ERR;
+    }
+
+    hash_map_put((*collector_elem)->provider_list, strdup(provider_elem->key), provider_elem);
+    coordinator_create_provider_task(provider_elem);
+
     return RETURN_OK;
 }
 
-#endif // CCSP_COMMON
+int collector_task_update(wifi_mon_collector_element_t *collector_elem, unsigned long *new_collector_interval)
+{
+    wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
+
+    collector_elem->collector_task_interval_ms = *new_collector_interval;
+    wifi_util_info_print(WIFI_MON, "%s:%d: New collector interval : %d for key : %s\n", __func__,__LINE__, collector_elem->collector_task_interval_ms, collector_elem->key);
+    scheduler_update_timer_task_interval(mon_data->sched, collector_elem->collector_task_sched_id,  collector_elem->collector_task_interval_ms);
+    return RETURN_OK;
+}
+
+int provider_task_update(wifi_mon_provider_element_t *provider_elem, unsigned long *new_provider_interval)
+{
+    wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
+    provider_elem->provider_task_interval_ms = *new_provider_interval;
+
+    wifi_util_info_print(WIFI_MON, "%s:%d: New Provider interval : %d for key : %s\n", __func__,__LINE__, provider_elem->provider_task_interval_ms, provider_elem->key);
+    scheduler_update_timer_task_interval(mon_data->sched, provider_elem->provider_task_sched_id, provider_elem->provider_task_interval_ms);
+
+    return RETURN_OK;
+}
+
+int coordinator_update_task(wifi_mon_collector_element_t *collector_elem, wifi_mon_stats_config_t *stats_config)
+{
+    unsigned long new_collector_interval = 0;
+
+    wifi_mon_provider_element_t *dup_provider_elem = NULL;
+
+    dup_provider_elem = coordinator_create_provider_elem(stats_config, collector_elem->stat_desc);
+    if (dup_provider_elem == NULL) {
+        return RETURN_ERR;
+    }
+
+    if (coordinator_calculate_clctr_interval(collector_elem, dup_provider_elem, &new_collector_interval) != RETURN_OK) {
+        return RETURN_ERR;
+    }
+
+    collector_task_update(collector_elem, &new_collector_interval);
+
+    wifi_mon_provider_element_t *provider_elem = (wifi_mon_provider_element_t *)hash_map_get(collector_elem->provider_list, dup_provider_elem->key);
+    if (provider_elem == NULL) {
+        provider_elem = dup_provider_elem;
+        hash_map_put(collector_elem->provider_list, strdup(provider_elem->key), provider_elem);
+        coordinator_create_provider_task(provider_elem);
+    } else {
+        memcpy(provider_elem->mon_stats_config, dup_provider_elem->mon_stats_config, sizeof(wifi_mon_stats_config_t));
+        provider_task_update(provider_elem, &dup_provider_elem->provider_task_interval_ms);
+        coordinator_free_provider_elem(&dup_provider_elem);
+    }
+
+    return RETURN_OK;
+}
+
+
+int coordinator_stop_task(wifi_mon_collector_element_t **collector_elem, wifi_mon_stats_config_t *stats_config)
+{
+    char  key[MON_STATS_KEY_LEN_32];
+    wifi_mon_provider_element_t *provider_elem = NULL, *dup_provider_elem = NULL;
+    hash_map_t  *collector_list = coordinator_get_collector_list();
+    wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
+    unsigned long new_collector_interval = 0;
+    unsigned long *interval_array = NULL;
+    unsigned int count = 0, itr = 0;
+
+    (*collector_elem)->stat_desc->generate_stats_provider_key(stats_config, key, sizeof(key));
+
+    provider_elem = (wifi_mon_provider_element_t *)hash_map_get((*collector_elem)->provider_list, key);
+    if (provider_elem == NULL) {
+        return RETURN_OK;
+    } else {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d: remove provider task key : %s\n", __func__,__LINE__, provider_elem->key);
+        scheduler_cancel_timer_task(mon_data->sched, provider_elem->provider_task_sched_id);
+        hash_map_remove((*collector_elem)->provider_list, key);
+        coordinator_free_provider_elem(&provider_elem);
+        count = hash_map_count((*collector_elem)->provider_list);
+        if (count == 0) {
+            wifi_util_dbg_print(WIFI_MON, "%s:%d: Provider list is empty, remove collector task key : %s\n", __func__,__LINE__, (*collector_elem)->key);
+            scheduler_cancel_timer_task(mon_data->sched, (*collector_elem)->collector_task_sched_id);
+            hash_map_remove(collector_list, (*collector_elem)->key);
+            coordinator_free_collector_elem(collector_elem);
+        } else {
+            interval_array = (unsigned long *)malloc((count) * sizeof(unsigned long));
+            if (interval_array == NULL) {
+                wifi_util_error_print(WIFI_MON, "%s %d malloc failed\n",__func__,__LINE__);
+                return RETURN_ERR;
+            }
+            dup_provider_elem = hash_map_get_first((*collector_elem)->provider_list);
+            while (dup_provider_elem != NULL) {
+                interval_array[itr] = provider_elem->provider_task_interval_ms;
+                itr++;
+                dup_provider_elem = hash_map_get_next((*collector_elem)->provider_list, dup_provider_elem);
+            }
+
+            new_collector_interval = find_interval_common_divisor(interval_array, itr);
+            if (new_collector_interval == 0) {
+                wifi_util_error_print(WIFI_MON, "%s %d invalid interval : %d\n",__func__,__LINE__, new_collector_interval);
+                free(interval_array);
+                return RETURN_ERR;
+            }
+
+            free(interval_array);
+            collector_task_update(*collector_elem, &new_collector_interval);
+        }
+    }
+
+    return RETURN_OK;
+}
+
+int coordinator_check_stats_config(wifi_mon_stats_config_t *mon_stats_config)
+{
+    hash_map_t *collector_list = NULL;
+    wifi_mon_collector_element_t *collector_elem = NULL;
+    char stats_key[MON_STATS_KEY_LEN_32] = {0};
+    wifi_mon_stats_descriptor_t *stat_desc = NULL;
+
+    if (stats_common_args_validation(mon_stats_config) != RETURN_OK) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: common args validation failed\n", __func__,__LINE__);
+        return RETURN_ERR;
+    }
+
+    stat_desc = (wifi_mon_stats_descriptor_t *)wifi_mon_get_stats_descriptor(mon_stats_config->data_type);
+    if (stat_desc == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: Invalid stats_type %d from app %d\n", __func__,__LINE__, mon_stats_config->data_type, mon_stats_config->inst);
+        return RETURN_ERR;
+    }
+
+    if (stat_desc->validate_args(&mon_stats_config->args) != RETURN_OK) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: args validation failed for stats_type %d from app %d\n", __func__,__LINE__, mon_stats_config->data_type, mon_stats_config->inst);
+        return RETURN_ERR;
+    }
+
+    if (stat_desc->generate_stats_clctr_key(&mon_stats_config->args, stats_key, sizeof(stats_key)) != RETURN_OK) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: stats key generation failed for stats_type %d from app %d\n", __func__,__LINE__, mon_stats_config->data_type, mon_stats_config->inst);
+        return RETURN_ERR;
+    }
+
+    collector_list = coordinator_get_collector_list();
+
+    collector_elem = (wifi_mon_collector_element_t *)hash_map_get(collector_list, stats_key);
+    if (collector_elem == NULL) {
+        if (mon_stats_config->req_state == mon_stats_request_state_start) {
+            if (coordinator_create_task(&collector_elem, mon_stats_config, stat_desc) != RETURN_OK) {
+                wifi_util_error_print(WIFI_MON, "%s:%d: create task failed for key : %s for app  %d\n", __func__,__LINE__, stats_key, mon_stats_config->inst);
+                return RETURN_ERR;
+            }
+            hash_map_put(collector_list, strdup(stats_key), collector_elem);
+            wifi_util_info_print(WIFI_MON, "%s:%d: created task for key : %s for app  %d\n", __func__,__LINE__, stats_key, mon_stats_config->inst);
+        } else {
+            wifi_util_error_print(WIFI_MON, "%s:%d: Task is not running. Request state %d is not expected\n", __func__,__LINE__, mon_stats_config->req_state);
+            return RETURN_ERR;
+        }
+    } else {
+        if (mon_stats_config->req_state == mon_stats_request_state_start) {
+            if (coordinator_update_task(collector_elem, mon_stats_config) != RETURN_OK) {
+                wifi_util_error_print(WIFI_MON, "%s:%d: update task failed for key : %s for app  %d\n", __func__,__LINE__, stats_key, mon_stats_config->inst);
+                return RETURN_ERR;
+            }
+            wifi_util_dbg_print(WIFI_MON, "%s:%d: updated task for key : %s for app  %d\n", __func__,__LINE__, stats_key, mon_stats_config->inst);
+        } else {
+            if (coordinator_stop_task(&collector_elem, mon_stats_config) != RETURN_OK) {
+                wifi_util_error_print(WIFI_MON, "%s:%d: stop task failed for key : %s for app  %d\n", __func__,__LINE__, stats_key, mon_stats_config->inst);
+                return RETURN_ERR;
+            }
+            wifi_util_dbg_print(WIFI_MON, "%s:%d: stopped the task for key : %s for app  %d\n", __func__,__LINE__, stats_key, mon_stats_config->inst);
+        }
+    }
+
+    return RETURN_OK;
+}
+
+wifi_apps_coordinator_t *get_apps_coordinator()
+{
+    return &g_apps_coordinator;
+}
+
+hash_map_t *coordinator_get_collector_list()
+{
+    wifi_apps_coordinator_t *apps_coordinator = get_apps_coordinator();
+
+    return apps_coordinator->collector_list;
+}
+
+void free_provider_list(wifi_mon_collector_element_t *coll_elem)
+{
+    wifi_mon_provider_element_t *provider_elem, *temp_provider;
+    char key[MON_STATS_KEY_LEN_32] = {0};
+    if (coll_elem->provider_list != NULL) {
+        provider_elem = hash_map_get_first(coll_elem->provider_list);
+        while (provider_elem != NULL) {
+            memset(key, 0, sizeof(key));
+            provider_elem->stat_desc->generate_stats_provider_key(provider_elem->mon_stats_config, key, sizeof(key));
+            provider_elem = hash_map_get_next(coll_elem->provider_list, provider_elem);
+            temp_provider = hash_map_remove(coll_elem->provider_list, key);
+            if (temp_provider != NULL) {
+                coordinator_free_provider_elem(&temp_provider);
+            }
+        }
+        hash_map_destroy(coll_elem->provider_list);
+    }
+}
+
+
+void free_coordinator(hash_map_t *collector_list)
+{
+    wifi_mon_collector_element_t *coll_elem = NULL, *temp_collector = NULL;
+    char key[MON_STATS_KEY_LEN_32] = {0};
+    if(collector_list != NULL) {
+        coll_elem = hash_map_get_first(collector_list);
+        while (coll_elem != NULL) {
+            free_provider_list(coll_elem);
+            memset(key, 0, sizeof(key));
+            coll_elem->stat_desc->generate_stats_clctr_key(coll_elem->args, key, sizeof(key));
+            coll_elem = hash_map_get_next(collector_list, coll_elem);
+            temp_collector = hash_map_remove(collector_list, key);
+            if (temp_collector != NULL) {
+                coordinator_free_collector_elem(&temp_collector);
+            }
+        }
+        hash_map_destroy(collector_list);
+    }
+}
+

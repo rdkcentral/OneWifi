@@ -156,7 +156,7 @@ typedef enum {
     wifi_event_monitor_csi_pinger,
     wifi_event_monitor_clientdiag_update_config,
     wifi_event_monitor_data_collection_config,
-    wifi_event_monitor_data_collection_response,
+    wifi_event_monitor_provider_response,
     wifi_event_monitor_assoc_req,
     wifi_event_monitor_max,
 
@@ -185,7 +185,7 @@ typedef struct {
         wifi_monitor_data_t *mon_data;
         wifi_core_data_t    core_data;
         wifi_analytics_data_t   analytics_data;
-        wifi_dca_response_t     *dca_response;
+        wifi_provider_response_t     *provider_response;
         webconfig_subdoc_data_t *webconfig_data;
         wifi_csi_dev_t          *csi;
     } u;
@@ -194,6 +194,7 @@ typedef struct {
 // wifi events functions
 int push_event_to_ctrl_queue(const void *msg, unsigned int len, wifi_event_type_t type, wifi_event_subtype_t sub_type, wifi_event_route_t *rt);
 int push_event_to_monitor_queue(wifi_monitor_data_t *mon_data, wifi_event_subtype_t sub_type, wifi_event_route_t *rt);
+int push_monitor_response_event_to_ctrl_queue(const void *msg, unsigned int len, wifi_event_type_t type, wifi_event_subtype_t sub_type, wifi_event_route_t *rt);
 
 // rbus events functions
 int events_rbus_init(void);
@@ -202,6 +203,8 @@ int events_rbus_deinit(void);
 void events_update_clientdiagdata(unsigned int num_devs, int vap_idx, wifi_associated_dev3_t *dev_array);
 wifi_event_t *create_wifi_event(unsigned int msg_len, wifi_event_type_t type, wifi_event_subtype_t sub_type);
 void destroy_wifi_event(wifi_event_t *event);
+int copy_msg_to_event(const void *msg, unsigned int msg_len, wifi_event_type_t type, wifi_event_subtype_t sub_type, wifi_event_route_t *rt, wifi_event_t *event);
+wifi_event_t *create_wifi_monitor_response_event(const void *msg, unsigned int msg_len, wifi_event_type_t type, wifi_event_subtype_t sub_type);
 
 #ifdef __cplusplus
 }

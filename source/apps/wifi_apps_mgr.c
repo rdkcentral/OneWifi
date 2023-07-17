@@ -119,14 +119,15 @@ int apps_mgr_event(wifi_apps_mgr_t *apps_mgr, wifi_event_t *event)
 
     // forward event to all registered apps
     app = hash_map_get_first(apps_mgr->apps_map);
-    while ((app != NULL) && (app->desc.rfc == true)) {
-        if (app->desc.reg_events_types & event->event_type) {
-            if ( app->desc.inst != wifi_app_inst_analytics ) {
-                (app->desc.create_flag & APP_DETACHED) ? push_event_to_app_queue(app, event):app->desc.event_fn(app, event);
+    while (app != NULL) {
+        if ((app->desc.rfc == true)) {
+            if (app->desc.reg_events_types & event->event_type) {
+                if ( app->desc.inst != wifi_app_inst_analytics ) {
+                    (app->desc.create_flag & APP_DETACHED) ? push_event_to_app_queue(app, event):app->desc.event_fn(app, event);
+                }
             }
         }
         app = hash_map_get_next(apps_mgr->apps_map, app);
-
     }
     return RETURN_OK;
 }

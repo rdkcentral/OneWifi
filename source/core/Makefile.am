@@ -83,16 +83,16 @@ OneWifi_SOURCES += $(top_srcdir)/source/core/services/vap_svc.c  $(top_srcdir)/s
 
 if CCSP_COMMON_SUPPORT
 OneWifi_SOURCES += $(top_srcdir)/source/core/services/vap_svc_mesh_ext.c
-else 
+else
 OneWifi_SOURCES += $(top_srcdir)/source/core/services/vap_svc_mesh_pod.c
-endif 
+endif
 
 OneWifi_SOURCES += $(top_srcdir)/source/utils/jsonconv.c $(top_srcdir)/source/utils/collection.c $(top_srcdir)/source/utils/scheduler.c $(top_srcdir)/source/utils/caps.c
-OneWifi_SOURCES += $(top_srcdir)/source/stats/wifi_monitor.c $(top_srcdir)/source/stats/wifi_single_client_msmt.c $(top_srcdir)/source/utils/ext_blaster.pb-c.c
+OneWifi_SOURCES += $(top_srcdir)/source/stats/wifi_monitor.c $(top_srcdir)/source/stats/wifi_single_client_msmt.c $(top_srcdir)/source/utils/ext_blaster.pb-c.c $(top_srcdir)/source/stats/wifi_stats.c $(top_srcdir)/source/stats/wifi_stats_radio_channel.c $(top_srcdir)/source/stats/wifi_stats_neighbor_report.c $(top_srcdir)/source/stats/wifi_stats_radio_diagnostics.c $(top_srcdir)/source/stats/wifi_stats_assoc_client.c
 
 if CCSP_COMMON_SUPPORT
 OneWifi_SOURCES += wifi_easy_connect.c
-OneWifi_SOURCES += $(top_srcdir)/source/stats/wifi_associated_devices_msmt.c 
+OneWifi_SOURCES += $(top_srcdir)/source/stats/wifi_associated_devices_msmt.c
 OneWifi_SOURCES += $(top_srcdir)/lib/log/log_journal.c
 OneWifi_SOURCES += $(top_srcdir)/source/apps/wifi_apps_mgr.c $(top_srcdir)/source/apps/analytics/wifi_analytics.c $(top_srcdir)/source/apps/levl/wifi_levl.c $(top_srcdir)/source/apps/wifi_apps.c $(top_srcdir)/source/apps/cac/wifi_cac.c $(top_srcdir)/source/apps/sm/wifi_sm.c $(top_srcdir)/source/apps/csi/wifi_csi.c $(top_srcdir)/source/apps/motion/wifi_motion.c
 else

@@ -29,19 +29,15 @@
 #define MAX_RADIOS  2
 #endif
 
-#ifdef CCSP_COMMON
 typedef struct {
     unsigned int        rapid_reconnect_threshold;
     wifi_vapstatus_t    ap_status;
 } ap_params_t;
-#endif // CCSP_COMMON
 
 typedef struct {
     unsigned char bssid[32];
-    hash_map_t *sta_map;
-#ifdef CCSP_COMMON
+    hash_map_t *sta_map; //of type sta_data_t
     ap_params_t ap_params;
-#endif // CCSP_COMMON
     ssid_t                  ssid;
 } bssid_data_t;
 
@@ -74,7 +70,6 @@ typedef struct {
     ULONG                   radio_StatisticsStartTime;
 } radio_data_t;
 
-#ifdef CCSP_COMMON
 typedef struct {
        bool ch_in_pool;
        bool ch_radar_noise;
@@ -92,13 +87,23 @@ typedef struct {
        unsigned long long LastUpdatedTime;
 } radio_chan_data_t;
 
+
+typedef struct {
+    radio_chan_data_t   *chan_data;
+    int num_channels;
+} radio_chan_stats_data_t;
+
 typedef struct {
     CHAR DiagnosticsState[64];
     ULONG ResultCount;
     ULONG resultCountPerRadio[MAX_NUM_RADIOS];
     wifi_neighbor_ap2_t * pResult[MAX_NUM_RADIOS];
 } neighscan_diag_cfg_t;
-#endif // CCSP_COMMON
+
+typedef struct {
+    ULONG resultCountPerRadio[MAX_NUM_RADIOS];
+    wifi_neighbor_ap2_t * pResult[MAX_NUM_RADIOS];
+} neighscan_stats_data_t;
 
 typedef struct {
     //Off channel params
@@ -110,49 +115,47 @@ typedef struct {
     unsigned int radio_index;
 } off_channel_param_t;
 
+
+/*
+ * radio_data_t has information about radio stats
+ * radio_chan_data_t has information about channel stats, should be replaced by radio_chan_stats_data_t
+ * bssid_data_t has information about station data
+ * neighscan_diag_cfg_t has information about Neighbour ap results
+ * */
 typedef struct {
     queue_t             *queue;
-    bssid_data_t        bssid_data[MAX_VAP];
-#ifdef WIFI_HAL_VERSION_3
-    radio_data_t        radio_data[MAX_NUM_RADIOS];
-#ifdef CCSP_COMMON
-    radio_chan_data_t   radio_channel_data[MAX_NUM_RADIOS];
-#endif // CCSP_COMMON
-#else
-    radio_data_t        radio_data[MAX_RADIOS];
-#ifdef CCSP_COMMON
-    radio_chan_data_t   radio_channel_data[MAX_RADIOS];
-#endif // CCSP_COMMON
-#endif // WIFI_HAL_VERSION_3
-
-#ifdef CCSP_COMMON
-    neighscan_diag_cfg_t neighbor_scan_cfg;
-#endif // CCSP_COMMON
-    off_channel_param_t off_channel_cfg[MAX_NUM_RADIOS];
     pthread_cond_t      cond;
     pthread_mutex_t     queue_lock;
     pthread_mutex_t     data_lock;
     pthread_t           id;
+    bssid_data_t        bssid_data[MAX_VAP];
+    radio_data_t        radio_data[MAX_NUM_RADIOS];
+    radio_chan_stats_data_t  radio_chan_stats_data[MAX_NUM_RADIOS]; ////New Radio Channel stats
+#ifdef CCSP_COMMON
+    radio_chan_data_t   radio_channel_data[MAX_NUM_RADIOS];
+#endif // CCSP_COMMON
+    neighscan_diag_cfg_t neighbor_scan_cfg;
+    off_channel_param_t off_channel_cfg[MAX_NUM_RADIOS];
     bool                exit_monitor;
 #ifdef CCSP_COMMON
     unsigned int        poll_period;
     unsigned int        upload_period;
     unsigned int        current_poll_iter;
-	instant_msmt_t		inst_msmt;
+    instant_msmt_t      inst_msmt;
 #endif // CCSP_COMMON
     struct timeval      last_signalled_time;
+    rssi_t              sta_health_rssi_threshold;
 #ifdef CCSP_COMMON
     struct timeval      last_polled_time;
-    rssi_t		sta_health_rssi_threshold;
     int                 sysevent_fd;
     unsigned int        sysevent_token;
-    ap_params_t      	ap_params[MAX_VAP];
-    char 		cliStatsList[MAX_VAP];
-    int			count;
-    int			maxCount;
-    int			instantDefReportPeriod;
-    int			instantDefOverrideTTL;
-    int			instantPollPeriod;
+    ap_params_t         ap_params[MAX_VAP];
+    char                cliStatsList[MAX_VAP];
+    int                 count;
+    int                 maxCount;
+    int                 instantDefReportPeriod;
+    int                 instantDefOverrideTTL;
+    int                 instantPollPeriod;
     bool        instntMsmtenable;
     char        instantMac[MIN_MAC_ADDR_LEN];
 #endif // CCSP_COMMON
@@ -184,7 +187,6 @@ typedef struct {
     unsigned int csi_sched_interval;
 #endif // CCSP_COMMON
     bool radio_presence[MAX_NUM_RADIOS];
-    hash_map_t  *dca_list; //hash_map of wifi_dca_element_t
 } wifi_monitor_t;
 
 typedef struct {
@@ -242,4 +244,96 @@ int init_wifi_monitor();
 int  getApIndexfromClientMac(char *check_mac);
 void update_ecomode_radios(void);
 hash_map_t *get_sta_data_map(unsigned int vap_index);
+
+typedef int  (* validate_args_t)(wifi_mon_stats_args_t *args);
+typedef int  (* generate_stats_clctr_key_t)(wifi_mon_stats_args_t *args, char *key, size_t key_len);
+typedef int  (* generate_stats_provider_key_t)(wifi_mon_stats_config_t *config, char *key, size_t key_len);
+typedef int  (* execute_stats_api_t)(wifi_mon_stats_args_t *args, wifi_monitor_t *mon_data, unsigned long task_interval_ms);
+typedef int  (* copy_stats_to_mon_cache_t)(wifi_mon_stats_args_t *args, wifi_monitor_t *mon_cache, void *stats, unsigned int stat_array_size);
+typedef int  (* get_stats_from_mon_cache_t)(wifi_mon_stats_args_t *args, void **stats, unsigned int *stat_array_size, wifi_monitor_t *mon_cache);
+
+//New Monitor Implementation
+typedef struct {
+    hash_map_t *collector_list; //wifi_mon_collector_element_t
+} __attribute__((packed)) wifi_apps_coordinator_t;
+
+typedef struct {
+    wifi_mon_stats_type_t stats_type;
+    validate_args_t       validate_args;
+    generate_stats_clctr_key_t  generate_stats_clctr_key;
+    generate_stats_provider_key_t generate_stats_provider_key;
+    execute_stats_api_t   execute_stats_api;
+    get_stats_from_mon_cache_t copy_stats_from_cache;
+} wifi_mon_stats_descriptor_t;
+
+typedef struct {
+    int             collector_task_sched_id;
+    unsigned long   collector_task_interval_ms;
+    char            key[MON_STATS_KEY_LEN_32];
+    bool            task_priority; //if TRUE its high priority
+    hash_map_t *provider_list; //wifi_mon_provider_element_t
+    wifi_mon_stats_args_t     *args;
+    wifi_mon_stats_descriptor_t  *stat_desc;
+} __attribute__((packed)) wifi_mon_collector_element_t;
+
+
+typedef struct {
+    int             provider_task_sched_id;
+    wifi_mon_stats_config_t *mon_stats_config;
+    char            key[MON_STATS_KEY_LEN_32];
+    wifi_mon_stats_descriptor_t  *stat_desc;
+    wifi_provider_response_t *response;
+    unsigned long   provider_task_interval_ms;
+} __attribute__((packed)) wifi_mon_provider_element_t;
+
+
+hash_map_t *coordinator_get_collector_list();
+wifi_apps_coordinator_t *get_apps_coordinator();
+int coordinator_check_stats_config(wifi_mon_stats_config_t *mon_stats_config);
+
+wifi_mon_collector_element_t *coordinator_create_collector_elem(wifi_mon_stats_config_t *stats_config, wifi_mon_stats_descriptor_t *stat_desc);
+wifi_mon_provider_element_t  *coordinator_create_provider_elem(wifi_mon_stats_config_t * stats_config, wifi_mon_stats_descriptor_t *stat_desc);
+
+int coordinator_create_task(wifi_mon_collector_element_t **collector_elem, wifi_mon_stats_config_t *stats_config, wifi_mon_stats_descriptor_t *stat_desc);
+int coordinator_create_collector_task(wifi_mon_collector_element_t *collector_elem);
+int coordinator_create_provider_task(wifi_mon_provider_element_t *provider_elem);
+int collector_execute_task(void *arg);
+int provider_execute_task(void *arg);
+
+int coordinator_update_task(wifi_mon_collector_element_t *collector_elem, wifi_mon_stats_config_t *stats_config);
+int coordinator_calculate_clctr_interval(wifi_mon_collector_element_t *collector_elem, wifi_mon_provider_element_t *new_provider_elem , unsigned long *new_interval);
+int collector_task_update(wifi_mon_collector_element_t *collector_elem, unsigned long *new_collector_interval);
+int provider_task_update(wifi_mon_provider_element_t *provider_elem, unsigned long *new_provider_interval);
+void coordinator_free_provider_elem(wifi_mon_provider_element_t **provider_elem);
+wifi_mon_stats_descriptor_t *wifi_mon_get_stats_descriptor(wifi_mon_stats_type_t stats_type);
+void free_coordinator(hash_map_t *collector_list);
+
+/*Radio Channel*/
+int validate_radio_channel_args(wifi_mon_stats_args_t *args);
+int generate_radio_channel_clctr_stats_key(wifi_mon_stats_args_t *args, char *key, size_t key_len);
+int generate_radio_channel_provider_stats_key(wifi_mon_stats_config_t *config, char *key, size_t key_len);
+int execute_radio_channel_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *mon_data, unsigned long task_interval_ms);
+int copy_radio_channel_stats_from_cache(wifi_mon_stats_args_t *args, void **stats, unsigned int *stat_array_size, wifi_monitor_t *mon_cache);
+
+/*Neighbor Ap*/
+int validate_neighbor_ap_args(wifi_mon_stats_args_t *args);
+int generate_neighbor_ap_clctr_stats_key(wifi_mon_stats_args_t *args, char *key, size_t key_len);
+int generate_neighbor_ap_provider_stats_key(wifi_mon_stats_config_t *config, char *key, size_t key_len);
+int execute_neighbor_ap_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *mon_data, unsigned long task_interval_ms);
+int copy_neighbor_ap_stats_from_cache(wifi_mon_stats_args_t *args, void **stats, unsigned int *stat_array_size, wifi_monitor_t *mon_cache);
+
+/*Radio Diagnostics*/
+int validate_radio_diagnostic_args(wifi_mon_stats_args_t *args);
+int generate_radio_diagnostic_clctr_stats_key(wifi_mon_stats_args_t *args, char *key_str, size_t key_len);
+int generate_radio_diagnostic_provider_stats_key(wifi_mon_stats_config_t *config, char *key_str, size_t key_len);
+int execute_radio_diagnostic_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *mon_data, unsigned long task_interval_ms);
+int copy_radio_diagnostic_stats_from_cache(wifi_mon_stats_args_t *args, void **stats, unsigned int *stat_array_size, wifi_monitor_t *mon_cache);
+
+/*Associated Client Diagnostics*/
+int validate_assoc_client_args(wifi_mon_stats_args_t *args);
+int generate_assoc_client_clctr_stats_key(wifi_mon_stats_args_t *args, char *key_str, size_t key_len);
+int generate_assoc_client_provider_stats_key(wifi_mon_stats_config_t *config, char *key_str, size_t key_len);
+int execute_assoc_client_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *mon_data, unsigned long task_interval_ms);
+int copy_assoc_client_stats_from_cache(wifi_mon_stats_args_t *args, void **stats, unsigned int *stat_array_size, wifi_monitor_t *mon_cache);
+
 #endif	//_WIFI_MON_H_

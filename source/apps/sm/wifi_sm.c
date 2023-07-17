@@ -27,14 +27,13 @@
 #define APP_TO_DCA 2
 
 typedef struct {
-    wifi_associated_dev3_t      assoc_dev_diag[MAX_ASSOCIATED_WIFI_DEVS];
-    wifi_associated_dev_stats_t assoc_dev_stats[MAX_ASSOCIATED_WIFI_DEVS];
+    sta_data_t *assoc_stats[MAX_ASSOCIATED_WIFI_DEVS];
+     size_t   stat_array_size;
 } client_assoc_data_t;
 
 typedef struct {
     client_assoc_data_t client_assoc_data[MAX_NUM_VAP_PER_RADIO];
-    unsigned int    diag_vap_presence_mask;
-    unsigned int    stats_vap_presence_mask;
+    unsigned int    assoc_stats_vap_presence_mask;
     unsigned int    req_stats_vap_mask;
 } client_assoc_stats_t;
 
@@ -78,48 +77,48 @@ int sm_route(wifi_event_route_t *route)
     return RETURN_OK;
 }
 
-int neighbor_response(wifi_dca_response_t *dca_response)
+int neighbor_response(wifi_provider_response_t *provider_response)
 {
     unsigned int radio_index = 0;
-    radio_index = dca_response->args.radio_index;
+    radio_index = provider_response->args.radio_index;
     unsigned int count = 0;
     wifi_neighbor_ap2_t *neighbor_ap = NULL;
 
-    neighbor_ap =  (wifi_neighbor_ap2_t *)dca_response->u.neigh_ap;
+    neighbor_ap =  (wifi_neighbor_ap2_t *)provider_response->stat_pointer;
 
-    wifi_util_dbg_print(WIFI_APPS,"%s:%d: radio_index : %d stats_array_size : %d\r\n",__func__, __LINE__, radio_index, dca_response->stat_array_size);
+    wifi_util_dbg_print(WIFI_APPS,"%s:%d: radio_index : %d stats_array_size : %d\r\n",__func__, __LINE__, radio_index, provider_response->stat_array_size);
 
-    for (count = 0; count < dca_response->stat_array_size; count++) {
+    for (count = 0; count < provider_response->stat_array_size; count++) {
         wifi_util_dbg_print(WIFI_APPS,"%s:%d: count : %d ap_SSID : %s\r\n",__func__, __LINE__, count, neighbor_ap[count].ap_SSID);
     }
     return RETURN_OK;
 }
 
-int survey_response(wifi_dca_response_t *dca_response)
+int survey_response(wifi_provider_response_t *provider_response)
 {
     unsigned int radio_index = 0;
     unsigned int count = 0;
-    radio_index = dca_response->args.radio_index;
-    wifi_channelStats_t *channelStats = NULL;
+    radio_index = provider_response->args.radio_index;
+    radio_chan_data_t *channelStats = NULL;
 
-    wifi_util_dbg_print(WIFI_APPS,"%s:%d: radio_index : %d stats_array_size : %d\r\n",__func__, __LINE__, radio_index, dca_response->stat_array_size);
+    wifi_util_dbg_print(WIFI_APPS,"%s:%d: radio_index : %d stats_array_size : %d\r\n",__func__, __LINE__, radio_index, provider_response->stat_array_size);
 
-    channelStats = dca_response->u.chan_stats;
-    for (count = 0; count < dca_response->stat_array_size; count++) {
-        wifi_util_dbg_print(WIFI_APPS,"%s:%d: radio_index : %d channel_num : %d\r\n",__func__, __LINE__, radio_index, channelStats[count].ch_number);
+    channelStats = provider_response->stat_pointer;
+    for (count = 0; count < provider_response->stat_array_size; count++) {
+        wifi_util_dbg_print(WIFI_APPS,"%s:%d: radio_index : %d channel_num : %d ch_utilization : %d\r\n",__func__, __LINE__, radio_index, channelStats[count].ch_number, channelStats[count].ch_utilization);
     }
 
     return RETURN_OK;
 }
 
 
-int assoc_client_response(wifi_dca_response_t *dca_response)
+int assoc_client_response(wifi_provider_response_t *provider_response)
 {
     unsigned int radio_index = 0;
     unsigned int vap_index = 0;
     int vap_array_index = 0;
-    radio_index = dca_response->args.radio_index;
-    vap_index = dca_response->args.vap_index;
+    radio_index = provider_response->args.radio_index;
+    vap_index = provider_response->args.vap_index;
     wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
     char vap_name[32];
 
@@ -134,20 +133,15 @@ int assoc_client_response(wifi_dca_response_t *dca_response)
         return RETURN_ERR;
     }
 
+    memset(client_assoc_stats[radio_index].client_assoc_data[vap_array_index].assoc_stats, 0, sizeof(client_assoc_stats[radio_index].client_assoc_data[vap_array_index].assoc_stats));
+    memcpy(client_assoc_stats[radio_index].client_assoc_data[vap_array_index].assoc_stats, provider_response->stat_pointer, (sizeof(sta_data_t)*provider_response->stat_array_size));
+    client_assoc_stats[radio_index].client_assoc_data[vap_array_index].stat_array_size = provider_response->stat_array_size;
+    client_assoc_stats[radio_index].assoc_stats_vap_presence_mask |= (1 << vap_index);
+    wifi_util_dbg_print(WIFI_APPS,"%s:%d: vap_index : %d client array size : %d \r\n",__func__, __LINE__, vap_index, provider_response->stat_array_size);
 
-    if (dca_response->data_type == dca_associated_device_diag) {
-        memset(client_assoc_stats[radio_index].client_assoc_data[vap_array_index].assoc_dev_diag, 0, sizeof(client_assoc_stats[radio_index].client_assoc_data[vap_array_index].assoc_dev_diag));
-        memcpy(client_assoc_stats[radio_index].client_assoc_data[vap_array_index].assoc_dev_diag, dca_response->u.assoc_dev_diag, sizeof(client_assoc_stats[radio_index].client_assoc_data[vap_array_index].assoc_dev_diag));
-        client_assoc_stats[radio_index].diag_vap_presence_mask |= (1 << vap_index);
-    } else if (dca_response->data_type == dca_associated_device_stats) {
-        memset(client_assoc_stats[radio_index].client_assoc_data[vap_array_index].assoc_dev_stats, 0, sizeof(client_assoc_stats[radio_index].client_assoc_data[vap_array_index].assoc_dev_stats ));
-        memcpy(client_assoc_stats[radio_index].client_assoc_data[vap_array_index].assoc_dev_stats, dca_response->u.assoc_dev_stats, sizeof(client_assoc_stats[radio_index].client_assoc_data[vap_array_index].assoc_dev_stats));
-        client_assoc_stats[radio_index].stats_vap_presence_mask |= (1 << vap_index);
-    }
 
-    if ((client_assoc_stats[radio_index].diag_vap_presence_mask == client_assoc_stats[radio_index].req_stats_vap_mask) && (client_assoc_stats[radio_index].stats_vap_presence_mask == client_assoc_stats[radio_index].req_stats_vap_mask)) {
-        client_assoc_stats[radio_index].diag_vap_presence_mask = 0;
-        client_assoc_stats[radio_index].stats_vap_presence_mask = 0;
+    if ((client_assoc_stats[radio_index].assoc_stats_vap_presence_mask == client_assoc_stats[radio_index].req_stats_vap_mask)) {
+        client_assoc_stats[radio_index].assoc_stats_vap_presence_mask = 0;
         wifi_util_dbg_print(WIFI_APPS,"%s:%d: push to dpp for radio_index : %d \r\n",__func__, __LINE__, radio_index);
     }
 
@@ -155,51 +149,50 @@ int assoc_client_response(wifi_dca_response_t *dca_response)
 }
 
 
-int capacity_response(wifi_dca_response_t *dca_response)
+int capacity_response(wifi_provider_response_t *provider_response)
 {
     unsigned int radio_index = 0;
-    radio_index = dca_response->args.radio_index;
-    wifi_channelStats_t *channelStats = NULL;
+    radio_index = provider_response->args.radio_index;
+    radio_chan_data_t *channelStats = NULL;
     unsigned int count = 0;
 
-    wifi_util_dbg_print(WIFI_APPS,"%s:%d: radio_index : %d stats_array_size : %d\r\n",__func__, __LINE__, radio_index, dca_response->stat_array_size);
-    channelStats = dca_response->u.chan_stats;
-    for (count = 0; count < dca_response->stat_array_size; count++) {
-        wifi_util_dbg_print(WIFI_APPS,"%s:%d: radio_index : %d channel_num : %d\r\n",__func__, __LINE__, radio_index, channelStats[count].ch_number);
+    wifi_util_dbg_print(WIFI_APPS,"%s:%d: radio_index : %d stats_array_size : %d\r\n",__func__, __LINE__, radio_index, provider_response->stat_array_size);
+    channelStats = (radio_chan_data_t *)provider_response->stat_pointer;
+    for (count = 0; count < provider_response->stat_array_size; count++) {
+        wifi_util_dbg_print(WIFI_APPS,"%s:%d: radio_index : %d channel_num : %d ch_utilization : %d\r\n",__func__, __LINE__, radio_index, channelStats[count].ch_number, channelStats[count].ch_utilization);
     }
 
     return RETURN_OK;
 }
 
 
-int handle_monitor_data_collection_response(wifi_app_t *app, wifi_event_t *event)
+int handle_monitor_provider_response(wifi_app_t *app, wifi_event_t *event)
 {
-    wifi_dca_response_t    *dca_response;
-    dca_response = (wifi_dca_response_t *)event->u.dca_response;
+    wifi_provider_response_t    *provider_response;
+    provider_response = (wifi_provider_response_t *)event->u.provider_response;
     int ret = RETURN_ERR;
 
-    if (dca_response == NULL) {
+    if (provider_response == NULL) {
         wifi_util_error_print(WIFI_APPS,"%s:%d: input event is NULL\r\n",__func__, __LINE__);
         return ret;
     }
 
-    switch (dca_response->data_type) {
-        case dca_neighbor_stats:
-            ret = neighbor_response(dca_response);
+    switch (provider_response->args.app_info) {
+        case sm_app_event_type_neighbor:
+            ret = neighbor_response(provider_response);
         break;
-        case dca_radio_channel_stats:
-            if (dca_response->args.is_type_capacity == true) {
-                ret = capacity_response(dca_response);
-            } else {
-                ret = survey_response(dca_response);
-            }
+        case sm_app_event_type_capacity:
+            ret = capacity_response(provider_response);
         break;
-        case dca_associated_device_diag:
-        case dca_associated_device_stats:
-            ret = assoc_client_response(dca_response);
+        case sm_app_event_type_survey:
+            ret = survey_response(provider_response);
+        break;
+        case sm_app_event_type_assoc_dev_diag:
+        case sm_app_event_type_assoc_dev_stats:
+            ret = assoc_client_response(provider_response);
         break;
         default:
-            wifi_util_error_print(WIFI_APPS,"%s:%d: event not handle[%d]\r\n",__func__, __LINE__, dca_response->data_type);
+            wifi_util_error_print(WIFI_APPS,"%s:%d: event not handle[%d]\r\n",__func__, __LINE__, provider_response->args.app_info);
     }
 
     return ret;
@@ -216,8 +209,8 @@ int monitor_event_sm(wifi_app_t *app, wifi_event_t *event)
     }
 
     switch (event->sub_type) {
-        case wifi_event_monitor_data_collection_response:
-            ret = handle_monitor_data_collection_response(app, event);
+        case wifi_event_monitor_provider_response:
+            ret = handle_monitor_provider_response(app, event);
         break;
         default:
             wifi_util_error_print(WIFI_APPS,"%s:%d: event not handle[%d]\r\n",__func__, __LINE__, event->sub_type);
@@ -255,15 +248,14 @@ int generate_vap_mask_for_radio_index(unsigned int radio_index)
  */
 int sm_common_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_t *stat_config_entry)
 {
-    data->u.dca.inst = wifi_app_inst_sm;
+    data->u.mon_stats_config.inst = wifi_app_inst_sm;
 
-    if (convert_freq_band_to_radio_index(stat_config_entry->radio_type, (int *)&data->u.dca.args.radio_index) != RETURN_OK) {
+    if (convert_freq_band_to_radio_index(stat_config_entry->radio_type, (int *)&data->u.mon_stats_config.args.radio_index) != RETURN_OK) {
         wifi_util_error_print(WIFI_APPS,"%s:%d: convert freq_band %d  to radio_index failed \r\n",__func__, __LINE__, stat_config_entry->radio_type);
         return RETURN_ERR;
     }
 
-    data->u.dca.interval_ms =  stat_config_entry->sampling_interval*1000; //converting seconds to ms
-    data->u.dca.repetitions = 0; //0 means no stop
+    data->u.mon_stats_config.interval_ms =  stat_config_entry->sampling_interval*1000; //converting seconds to ms
 
     return RETURN_OK;
 }
@@ -279,26 +271,28 @@ int neighbor_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_t *
         return RETURN_ERR;
     }
 
-    if (sm_survey_type_conversion(&data->u.dca.args.scan_mode, &stat_config_entry->survey_type, APP_TO_DCA) != RETURN_OK) {
+    if (sm_survey_type_conversion(&data->u.mon_stats_config.args.scan_mode, &stat_config_entry->survey_type, APP_TO_DCA) != RETURN_OK) {
         wifi_util_error_print(WIFI_APPS,"%s:%d Invalid survey type %d\r\n", __func__, __LINE__, stat_config_entry->survey_type);
         return RETURN_ERR;
     }
 
-    data->u.dca.data_type = dca_neighbor_stats;
-    data->u.dca.args.dwell_time = stat_config_entry->survey_interval; //its in ms
+    data->u.mon_stats_config.data_type = mon_stats_type_neighbor_stats;
+    data->u.mon_stats_config.args.dwell_time = stat_config_entry->survey_interval; //its in ms
 
     if (stat_config_entry->survey_type == survey_type_on_channel) {
-        data->u.dca.args.channel_list.num_channels = 0;
+        data->u.mon_stats_config.args.channel_list.num_channels = 0;
     } else {
-        data->u.dca.args.channel_list.num_channels = stat_config_entry->channels_list.num_channels;
+        data->u.mon_stats_config.args.channel_list.num_channels = stat_config_entry->channels_list.num_channels;
         for (i = 0;i < stat_config_entry->channels_list.num_channels; i++) {
-            data->u.dca.args.channel_list.channels_list[i] = stat_config_entry->channels_list.channels_list[i];
+            data->u.mon_stats_config.args.channel_list.channels_list[i] = stat_config_entry->channels_list.channels_list[i];
         }
     }
 
-    if (data->u.dca.interval_ms == 0) {
-        data->u.dca.interval_ms = stat_config_entry->reporting_interval * 1000; //converting seconds to ms
+    if (data->u.mon_stats_config.interval_ms == 0) {
+        data->u.mon_stats_config.interval_ms = stat_config_entry->reporting_interval * 1000; //converting seconds to ms
     }
+
+    data->u.mon_stats_config.args.app_info = sm_app_event_type_neighbor;
 
     push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
 
@@ -315,23 +309,23 @@ int survey_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_t *st
         return RETURN_ERR;
     }
 
-    if (sm_survey_type_conversion(&data->u.dca.args.scan_mode, &stat_config_entry->survey_type, APP_TO_DCA) != RETURN_OK) {
+    if (sm_survey_type_conversion(&data->u.mon_stats_config.args.scan_mode, &stat_config_entry->survey_type, APP_TO_DCA) != RETURN_OK) {
         wifi_util_error_print(WIFI_APPS,"%s:%d Invalid survey type %d\r\n", __func__, __LINE__, stat_config_entry->survey_type);
         return RETURN_ERR;
     }
 
-    data->u.dca.data_type = dca_radio_channel_stats;
-//    data->u.dca.args.dwell_time = stat_config_entry->survey_interval; //its in ms
+    data->u.mon_stats_config.data_type = mon_stats_type_radio_channel_stats;
+//    data->u.mon_stats_config.args.dwell_time = stat_config_entry->survey_interval; //its in ms
 
     if (stat_config_entry->survey_type == survey_type_on_channel) {
-        data->u.dca.args.channel_list.num_channels = 0;
+        data->u.mon_stats_config.args.channel_list.num_channels = 0;
     } else {
-        data->u.dca.args.channel_list.num_channels = stat_config_entry->channels_list.num_channels;
+        data->u.mon_stats_config.args.channel_list.num_channels = stat_config_entry->channels_list.num_channels;
         for (i = 0;i < stat_config_entry->channels_list.num_channels; i++) {
-            data->u.dca.args.channel_list.channels_list[i] = stat_config_entry->channels_list.channels_list[i];
+            data->u.mon_stats_config.args.channel_list.channels_list[i] = stat_config_entry->channels_list.channels_list[i];
         }
     }
-    data->u.dca.args.is_type_capacity=false;
+    data->u.mon_stats_config.args.app_info = sm_app_event_type_survey;
 
     push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
     return RETURN_OK;
@@ -349,18 +343,20 @@ int client_diag_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_
         return RETURN_ERR;
     }
 
-    data->u.dca.data_type = dca_associated_device_diag;
+    data->u.mon_stats_config.data_type = mon_stats_type_associated_device_diag;
 
-    if (client_assoc_stats[data->u.dca.args.radio_index].req_stats_vap_mask == 0) {
-        if(generate_vap_mask_for_radio_index(data->u.dca.args.radio_index) == RETURN_ERR) {
+    if (client_assoc_stats[data->u.mon_stats_config.args.radio_index].req_stats_vap_mask == 0) {
+        if(generate_vap_mask_for_radio_index(data->u.mon_stats_config.args.radio_index) == RETURN_ERR) {
             wifi_util_error_print(WIFI_APPS,"%s:%d generate_vap_mask_for_radio_index failed \r\n", __func__, __LINE__);
             return RETURN_ERR;
         }
     }
 
+    data->u.mon_stats_config.args.app_info = sm_app_event_type_assoc_dev_diag;
+
     //for each vap push the event to monitor queue
-    for (vapArrayIndex = 0; vapArrayIndex < getNumberVAPsPerRadio(data->u.dca.args.radio_index); vapArrayIndex++) {
-        data->u.dca.args.vap_index = wifi_mgr->radio_config[data->u.dca.args.radio_index].vaps.rdk_vap_array[vapArrayIndex].vap_index;
+    for (vapArrayIndex = 0; vapArrayIndex < getNumberVAPsPerRadio(data->u.mon_stats_config.args.radio_index); vapArrayIndex++) {
+        data->u.mon_stats_config.args.vap_index = wifi_mgr->radio_config[data->u.mon_stats_config.args.radio_index].vaps.rdk_vap_array[vapArrayIndex].vap_index;
         push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
     }
 
@@ -379,18 +375,19 @@ int client_stats_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config
         return RETURN_ERR;
     }
 
-    data->u.dca.data_type = dca_associated_device_stats;
+    data->u.mon_stats_config.data_type = mon_stats_type_associated_device_stats;
 
-    if (client_assoc_stats[data->u.dca.args.radio_index].req_stats_vap_mask == 0) {
-        if(generate_vap_mask_for_radio_index(data->u.dca.args.radio_index) == RETURN_ERR) {
+    if (client_assoc_stats[data->u.mon_stats_config.args.radio_index].req_stats_vap_mask == 0) {
+        if(generate_vap_mask_for_radio_index(data->u.mon_stats_config.args.radio_index) == RETURN_ERR) {
             wifi_util_error_print(WIFI_APPS,"%s:%d generate_vap_mask_for_radio_index failed \r\n", __func__, __LINE__);
             return RETURN_ERR;
         }
     }
 
+    data->u.mon_stats_config.args.app_info = sm_app_event_type_assoc_dev_stats;
     //for each vap push the event to monitor queue
-    for (vapArrayIndex = 0; vapArrayIndex < getNumberVAPsPerRadio(data->u.dca.args.radio_index); vapArrayIndex++) {
-        data->u.dca.args.vap_index = wifi_mgr->radio_config[data->u.dca.args.radio_index].vaps.rdk_vap_array[vapArrayIndex].vap_index;
+    for (vapArrayIndex = 0; vapArrayIndex < getNumberVAPsPerRadio(data->u.mon_stats_config.args.radio_index); vapArrayIndex++) {
+        data->u.mon_stats_config.args.vap_index = wifi_mgr->radio_config[data->u.mon_stats_config.args.radio_index].vaps.rdk_vap_array[vapArrayIndex].vap_index;
         push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
     }
 
@@ -406,17 +403,18 @@ int capacity_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_t *
         return RETURN_ERR;
     }
 
-    data->u.dca.data_type = dca_radio_channel_stats;
+    data->u.mon_stats_config.data_type = mon_stats_type_radio_channel_stats;
     //for capacity its on channel
-    data->u.dca.args.channel_list.num_channels = 0;
-    data->u.dca.args.is_type_capacity=true;
+    data->u.mon_stats_config.args.channel_list.num_channels = 0;
+
+    data->u.mon_stats_config.args.app_info = sm_app_event_type_capacity;
 
     push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
     return RETURN_OK;
 }
 
 
-int push_sm_config_event_to_monitor_queue(wifi_app_t *app, wifi_monitor_dca_request_state_t state, stats_config_t *stat_config_entry)
+int push_sm_config_event_to_monitor_queue(wifi_app_t *app, wifi_mon_stats_request_state_t state, stats_config_t *stat_config_entry)
 {
     wifi_monitor_data_t *data;
     int ret = RETURN_ERR;
@@ -433,7 +431,7 @@ int push_sm_config_event_to_monitor_queue(wifi_app_t *app, wifi_monitor_dca_requ
     }
     memset(data, 0, sizeof(wifi_monitor_data_t));
 
-    data->u.dca.req_state = state;
+    data->u.mon_stats_config.req_state = state;
 
     switch (stat_config_entry->stats_type) {
         case stats_type_neighbor:
@@ -467,7 +465,6 @@ int push_sm_config_event_to_monitor_queue(wifi_app_t *app, wifi_monitor_dca_requ
         return RETURN_ERR;
     }
 
-    //push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, NULL);
     free(data);
 
     return RETURN_OK;
@@ -515,7 +512,7 @@ int handle_sm_webconfig_event(wifi_app_t *app, wifi_event_t *event)
                 snprintf(key, sizeof(key), "%s", cur_stats_cfg->stats_cfg_id);
                 cur_stats_cfg = hash_map_get_next(cur_app_stats_cfg_map, cur_stats_cfg);
 
-                push_sm_config_event_to_monitor_queue(app, dca_request_state_stop, cur_stats_cfg);
+                push_sm_config_event_to_monitor_queue(app, mon_stats_request_state_stop, cur_stats_cfg);
 
                 //Temporary removal, need to uncomment it
                 temp_stats_config = hash_map_remove(cur_app_stats_cfg_map, key);
@@ -544,14 +541,12 @@ int handle_sm_webconfig_event(wifi_app_t *app, wifi_event_t *event)
                 memcpy(cur_stats_cfg, new_stats_cfg, sizeof(stats_config_t));
                 hash_map_put(cur_app_stats_cfg_map, strdup(cur_stats_cfg->stats_cfg_id), cur_stats_cfg);
                 //Notification for new entry.
-
-                push_sm_config_event_to_monitor_queue(app, dca_request_state_start, cur_stats_cfg);
-
+                push_sm_config_event_to_monitor_queue(app, mon_stats_request_state_start, cur_stats_cfg);
             } else {
                 if (memcmp(cur_stats_cfg, new_stats_cfg, sizeof(stats_config_t)) != 0) {
                     memcpy(cur_stats_cfg, new_stats_cfg, sizeof(stats_config_t));
                     //Notification for update entry.
-                    push_sm_config_event_to_monitor_queue(app, dca_request_state_start, cur_stats_cfg);
+                    push_sm_config_event_to_monitor_queue(app, mon_stats_request_state_start, cur_stats_cfg);
                 }
             }
 
