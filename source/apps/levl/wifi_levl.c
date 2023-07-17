@@ -703,14 +703,6 @@ int levl_event(wifi_app_t *app, wifi_event_t *event)
     return RETURN_OK;
 }
 
-bool is_mgmt_frame_app_rbus_enabled(void)
-{
-    bool status;
-    get_wifi_rfc_parameters(RFC_WIFI_MGMT_FRAME_RBUS, &status);
-
-    return status;
-}
-
 int mgmt_frame_rbus_apply(rbusHandle_t rbus_handle, char *rbus_namespace, frame_data_t *l_data)
 {
     rbusEvent_t event;
@@ -743,11 +735,7 @@ int mgmt_frame_rbus_apply(rbusHandle_t rbus_handle, char *rbus_namespace, frame_
 
 int mgmt_frame_rbus_send(rbusHandle_t rbus_handle, char *rbus_namespace, frame_data_t *data)
 {
-    if (is_mgmt_frame_app_rbus_enabled()) {
-        return (mgmt_frame_rbus_apply(rbus_handle, rbus_namespace, data));
-    }
-
-    return RETURN_OK;
+    return (mgmt_frame_rbus_apply(rbus_handle, rbus_namespace, data));
 }
 
 int levl_update(wifi_app_t *app)

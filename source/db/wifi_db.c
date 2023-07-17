@@ -171,14 +171,13 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon,
         rfc_param->hotspot_open_5g_last_enabled  = new_rec->hotspot_open_5g_last_enabled;
         rfc_param->hotspot_secure_2g_last_enabled  = new_rec->hotspot_secure_2g_last_enabled;
         rfc_param->hotspot_secure_5g_last_enabled  = new_rec->hotspot_secure_5g_last_enabled;
-        rfc_param->mgmt_frame_rbus_enabled_rfc =  new_rec->mgmt_frame_rbus_enabled_rfc;
         rfc_param->wifioffchannelscan_rfc = new_rec->wifioffchannelscan_rfc;
 
-        wifi_util_dbg_print(WIFI_DB,"%s:%d wifipasspoint_rfc=%d wifiinterworking_rfc=%d radiusgreylist_rfc=%d dfsatbootup_rfc=%d dfs_rfc=%d wpa3_rfc=%d ow_core_thread_rfc=%d twoG80211axEnable_rfc=%d hotspot_open_2g_last_enabled=%dhotspot_open_5g_last_enabled=%d hotspot_secure_2g_last_enabled=%d hotspot_secure_2g_last_enabled=%d mgmt_frame_rbus_enabled_rfc=%d offchannelscan=%d rfc_id=%s levl_enabled_rfc=%d\n", 
+        wifi_util_dbg_print(WIFI_DB,"%s:%d wifipasspoint_rfc=%d wifiinterworking_rfc=%d radiusgreylist_rfc=%d dfsatbootup_rfc=%d dfs_rfc=%d wpa3_rfc=%d ow_core_thread_rfc=%d twoG80211axEnable_rfc=%d hotspot_open_2g_last_enabled=%dhotspot_open_5g_last_enabled=%d hotspot_secure_2g_last_enabled=%d hotspot_secure_2g_last_enabled=%d offchannelscan=%d rfc_id=%s levl_enabled_rfc=%d\n", 
             __func__, __LINE__, rfc_param->wifipasspoint_rfc,rfc_param->wifiinterworking_rfc,rfc_param->radiusgreylist_rfc,
             rfc_param->dfsatbootup_rfc, rfc_param->dfs_rfc ,rfc_param->wpa3_rfc,rfc_param->ow_core_thread_rfc,
             rfc_param->twoG80211axEnable_rfc,rfc_param->hotspot_open_2g_last_enabled,rfc_param->hotspot_open_5g_last_enabled,
-            rfc_param->hotspot_secure_2g_last_enabled,rfc_param->hotspot_secure_5g_last_enabled,rfc_param->mgmt_frame_rbus_enabled_rfc,
+            rfc_param->hotspot_secure_2g_last_enabled,rfc_param->hotspot_secure_5g_last_enabled,
             rfc_param->wifioffchannelscan_rfc,rfc_param->rfc_id, rfc_param->levl_enabled_rfc);
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
 
@@ -1461,7 +1460,6 @@ int wifidb_update_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_param)
     cfg.hotspot_secure_2g_last_enabled = rfc_param->hotspot_secure_2g_last_enabled;
     cfg.hotspot_secure_5g_last_enabled = rfc_param->hotspot_secure_5g_last_enabled;
     cfg.hotspot_secure_6g_last_enabled = rfc_param->hotspot_secure_6g_last_enabled;
-    cfg.mgmt_frame_rbus_enabled_rfc = rfc_param->mgmt_frame_rbus_enabled_rfc;
     cfg.wifioffchannelscan_rfc = rfc_param->wifioffchannelscan_rfc;
 
     if (update == true) {
@@ -1531,7 +1529,6 @@ int wifidb_get_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_info)
     rfc_info->hotspot_secure_2g_last_enabled= pcfg->hotspot_secure_2g_last_enabled;
     rfc_info->hotspot_secure_2g_last_enabled= pcfg->hotspot_secure_5g_last_enabled;
     rfc_info->hotspot_secure_6g_last_enabled= pcfg->hotspot_secure_6g_last_enabled;
-    rfc_info->mgmt_frame_rbus_enabled_rfc = pcfg->mgmt_frame_rbus_enabled_rfc;
     rfc_info->wifioffchannelscan_rfc = pcfg->wifioffchannelscan_rfc;
     free(pcfg);
     return 0;
@@ -5042,7 +5039,6 @@ void wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config)
     rfc_config.hotspot_open_5g_last_enabled = false;
     rfc_config.hotspot_secure_2g_last_enabled = false;
     rfc_config.hotspot_secure_5g_last_enabled = false;
-    rfc_config.mgmt_frame_rbus_enabled_rfc = false;
     rfc_config.wifioffchannelscan_rfc = false;
 
     pthread_mutex_lock(&g_wifidb->data_cache_lock);

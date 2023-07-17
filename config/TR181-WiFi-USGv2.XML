@@ -290,12 +290,6 @@
             <writable>true</writable>
         </parameter>
         <parameter>
-            <name>WiFi_Mgmt_Frame_Rbus_Enable</name>
-            <type>boolean</type>
-            <syntax>bool</syntax>
-            <writable>true</writable>
-        </parameter>
-        <parameter>
             <name>WPA3_Personal_Transition</name>
             <type>boolean</type>
             <syntax>bool</syntax>

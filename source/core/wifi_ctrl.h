@@ -56,7 +56,6 @@ extern "C" {
 #define RFC_WIFI_DFSatBootup        "Wifi_DFSatBootup"
 #define RFC_WIFI_DFS                "Wifi_DFS"
 #define RFC_WIFI_WPA3               "Wifi_WPA3"
-#define RFC_WIFI_MGMT_FRAME_RBUS    "RfcWifiMgmtRbusEnable"
 #define RFC_WIFI_OW_CORE_THREAD     "Wifi_OW_Core_Thread"
 
 #define CSI_CLIENT_PER_SESSION 5

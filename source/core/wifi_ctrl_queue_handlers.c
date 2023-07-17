@@ -1809,14 +1809,6 @@ void process_wifi_interworking_rfc(bool type)
     wifidb_update_rfc_config(0, rfc_param);
 }
 
-void process_mgmt_frame_rbus_enable_event(bool status)
-{
-    wifi_util_dbg_print(WIFI_DB,"WIFI Enter RFC Func %s: %d : bool %d\n",__FUNCTION__,__LINE__,status);
-    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
-    rfc_param->mgmt_frame_rbus_enabled_rfc = status;
-    wifidb_update_rfc_config(0, rfc_param);
-}
-
 void process_wpa3_rfc(bool type)
 {
     wifi_util_dbg_print(WIFI_DB,"WIFI Enter RFC Func %s: %d : bool %d\n",__FUNCTION__,__LINE__,type);
@@ -2580,10 +2572,6 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len, wifi_
 #if CCSP_COMMON
         case wifi_event_type_prefer_private_rfc:
             process_prefer_private_rfc(*(bool *)data);
-            break;
-
-        case wifi_event_type_mgmt_frame_rbus_rfc:
-            process_mgmt_frame_rbus_enable_event(*(bool *)data);
             break;
 #endif // CCSP_COMMON
         case wifi_event_type_trigger_disconnection:

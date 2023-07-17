@@ -367,12 +367,6 @@ WiFi_GetParamBoolValue
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "WiFi_Mgmt_Frame_Rbus_Enable", TRUE))
-    {
-        *pBool = rfc_pcfg->mgmt_frame_rbus_enabled_rfc;
-        return TRUE;
-    }
-
     if (AnscEqualString(ParamName, "Log_Upload", TRUE))
     {
         fp = popen("crontab -l | grep -c copy_wifi_logs.sh","r");
@@ -1041,13 +1035,6 @@ WiFi_SetParamBoolValue
     {
         if(bValue != rfc_pcfg->ow_core_thread_rfc){
             push_rfc_dml_cache_to_one_wifidb(bValue,wifi_event_type_ow_core_thread_rfc);
-        }
-        return TRUE;
-    }
-    if (AnscEqualString(ParamName, "WiFi_Mgmt_Frame_Rbus_Enable", TRUE))
-    {
-        if(bValue != rfc_pcfg->mgmt_frame_rbus_enabled_rfc) {
-            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_mgmt_frame_rbus_rfc);
         }
         return TRUE;
     }
