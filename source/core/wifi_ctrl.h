@@ -147,6 +147,11 @@ typedef enum {
 #define CTRL_WEBCONFIG_STATE_MASK   0xfffff
 
 typedef struct {
+        char mac_addr[MAC_STR_LEN];
+        char if_name[8];
+} bm_client_assoc_req;
+
+typedef struct {
     wifi_ctrl_webconfig_state_t type;
     wifi_vap_name_t  vap_name;
 }__attribute__((packed)) wifi_webconfig_vapname_state_map_t;

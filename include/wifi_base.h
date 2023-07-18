@@ -53,6 +53,8 @@ extern "C" {
 #define WIFI_ANALYTICS_DATA_EVENTS          "Device.WiFi.Events.Frames.Data"
 #define WIFI_FRAME_INJECTOR_TO_ONEWIFI      "Device.WiFi.TestFrameInput"
 #define WIFI_STA_TRIGGER_DISCONNECTION      "Device.WiFi.X_RDK_STATriggerDisconnection"
+#define ACCESSPOINT_ASSOC_REQ_EVENT         "Device.WiFi.AP.STA.AssocRequest"
+#define WIFI_CLIENT_GET_ASSOC_REQ           "Device.WiFi.AP.STA.GetAssocRequest"
 #define WIFI_ACCESSPOINT_TABLE              "Device.WiFi.AccessPoint.{i}."
 #define WIFI_ACCESSPOINT_DEV_CONNECTED      "Device.WiFi.AccessPoint.{i}.X_RDK_deviceConnected"
 #define WIFI_ACCESSPOINT_DEV_DISCONNECTED   "Device.WiFi.AccessPoint.{i}.X_RDK_deviceDisconnected"
@@ -63,8 +65,6 @@ extern "C" {
 #define WIFI_CSI_CLIENTMACLIST              "Device.WiFi.X_RDK_CSI.{i}.ClientMaclist"
 #define WIFI_CSI_ENABLE                     "Device.WiFi.X_RDK_CSI.{i}.Enable"
 #define WIFI_CSI_NUMBEROFENTRIES            "Device.WiFi.X_RDK_CSINumberOfEntries"
-#define ACCESSPOINT_ASSOC_REQ_EVENT         "Device.WiFi.AccessPoint.STA.AssocRequest"
-#define WIFI_CLIENT_GET_ASSOC_REQ           "Device.WiFi.AccessPoint.STA.GetAssocRequest"
 
 #define PLAN_ID_LENGTH     38
 #define MAX_STEP_COUNT  32 /*Active Measurement Step Count */

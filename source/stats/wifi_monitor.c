@@ -2340,6 +2340,7 @@ void send_wifi_disconnect_event_to_ctrl(mac_address_t mac_addr, unsigned int ap_
     assoc_data.reason = 0;
     push_event_to_ctrl_queue(&assoc_data, sizeof(assoc_data), wifi_event_type_hal_ind, wifi_event_hal_disassoc_device, NULL);
 }
+
 sta_data_t *create_sta_data_hash_map(hash_map_t *sta_map, mac_addr_t l_sta_mac)
 {
     pthread_mutex_lock(&g_monitor_module.data_lock);
@@ -3487,6 +3488,7 @@ void *monitor_function  (void *data)
                     break;
                     case wifi_event_monitor_assoc_req:
                         set_assoc_req_frame_data(&event_data->u.msg);
+                    break;
 #endif // CCSP_COMMON
                     default:
                     break;
@@ -5920,7 +5922,6 @@ int init_wifi_monitor()
 #if defined(FEATURE_CSI_CALLBACK)
     wifi_csi_callback_register(process_csi);
 #endif
-
     scheduler_add_timer_task(g_monitor_module.sched, FALSE, NULL, refresh_assoc_frame_entry, NULL, (MAX_ASSOC_FRAME_REFRESH_PERIOD * 1000), 0);
 #endif // CCSP_COMMON
 
