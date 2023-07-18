@@ -2539,8 +2539,11 @@ void process_diagnostics	(unsigned int ap_index, wifi_associated_dev3_t *dev, un
 
         }
     } else {
-        wifi_util_dbg_print(WIFI_MON, "[%s:%d]Wi-Fi associated device map is NULL for vap_index:%d number of device:%d\r\n",
-                    __func__, __LINE__, ap_index, num_devs);
+          // RDKB-48001 RDKB-50293
+          if (num_devs > 0)
+          {
+              wifi_util_dbg_print(WIFI_MON, "[%s:%d]Wi-Fi associated device map is NULL for vap_index:%d number of device:%d\r\n", __func__, __LINE__, ap_index, num_devs);
+          }
     }
 
     // now update all sta(s) in cache that were not updated
