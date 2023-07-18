@@ -365,7 +365,7 @@ int cac_event_exec_timeout(wifi_app_t *apps, void *arg)
                     if (rssi_enabled && (client->rssi_avg < rssi_conf)) {
                         cac_print("%s:%d, POSTASSOC DENY: %d, RSSI, %s\n", __func__, __LINE__, band, str);
                         status = status_deny;
-                        notify_force_disassociation(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, band, "RSSI", str);
+                        notify_force_disassociation(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, band, "RSSI", str, client->ap_index);
                     }
                     
                     wifi_util_dbg_print(WIFI_APPS,"%s:%d client snr = %d, snr threshold = %d\r\n", __func__, __LINE__,
@@ -373,7 +373,7 @@ int cac_event_exec_timeout(wifi_app_t *apps, void *arg)
                     if (snr_enabled && (client->snr_avg < snr_conf)) {
                         cac_print("%s:%d, POSTASSOC DENY: %d, SNR, %s\n", __func__, __LINE__, band, str);
                         status = status_deny;
-                        notify_force_disassociation(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, band, "SNR", str);
+                        notify_force_disassociation(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, band, "SNR", str, client->ap_index);
                     }
 
                     wifi_util_dbg_print(WIFI_APPS,"%s:%d client cu = %d, cu threshold = %d\r\n", __func__, __LINE__,
@@ -381,7 +381,7 @@ int cac_event_exec_timeout(wifi_app_t *apps, void *arg)
                     if (chan_util_enabled && (chan_util > cu_conf)) {
                         cac_print("%s:%d, POSTASSOC DENY: %d, CU, %s\n", __func__, __LINE__, band, str);
                         status = status_deny;
-                        notify_force_disassociation(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, band, "CU", str);
+                        notify_force_disassociation(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, band, "CU", str, client->ap_index);
                     }
 
                     wifi_util_dbg_print(WIFI_APPS,"%s:%d  client avg rate= %d, mcs_conf = %d min_rate:%d\r\n", __func__, __LINE__,client->uplink_rate_avg, mcs_conf,min_rate);
@@ -389,7 +389,7 @@ int cac_event_exec_timeout(wifi_app_t *apps, void *arg)
                     if(mcs_enabled && min_rate > 0 && (client->uplink_rate_avg < min_rate)) {
                         cac_print("%s:%d POSTASSOC DENY:%d MCS, %s \n", __func__, __LINE__,band, str);
                         status = status_deny;
-                        notify_force_disassociation(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, band, "MCS", str);
+                        notify_force_disassociation(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, band, "MCS", str, client->ap_index);
                     }
                     
                     if (status == status_deny) { 
@@ -477,6 +477,12 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
     }
 
     radio_index = convert_vap_name_to_radio_array_index(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, vap_name);
+
+    if (radio_index < 0) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d radio index %d is invalid \n", __func__, __LINE__, radio_index);
+        return;
+    }
+
     band = radio_index == 0 ? 2 : 5;
 
     ret = wifidb_get_preassoc_ctrl_config(vap_name, &wifidb_preassoc_conf);
@@ -525,7 +531,7 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
             } else if (msg->frame.sig_dbm < (rssi_conf - DBM_DEVIATION)) {
                 rssi_status = status_deny;
                 cac_print("%s:%d, ASSOC DENY %s due to poor rssi\n", __func__, __LINE__, str);
-                notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, band, "RSSI", str);
+                notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, band, "RSSI", str, msg->frame.ap_index);
             } else {
                 rssi_status = status_wait;
             }
@@ -537,7 +543,7 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
             } else if (snr < (snr_conf - DBM_DEVIATION)) {
                 snr_status = status_deny;
                 cac_print("%s:%d, ASSOC DENY %s due to poor snr\n", __func__, __LINE__, str);
-                notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, band, "SNR", str);
+                notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, band, "SNR", str, msg->frame.ap_index);
             } else {
                 snr_status = status_wait;
             }
@@ -549,7 +555,7 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
             } else {
                 chan_util_status = status_deny;
                 cac_print("%s:%d, ASSOC DENY %s due to poor channel utilization\n", __func__, __LINE__, str);
-                notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, band, "CU", str);
+                notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, band, "CU", str, msg->frame.ap_index);
             }
         }
 
@@ -608,7 +614,7 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
                 } else {
                     rssi_status = status_deny;
                     cac_print("%s:%d, ASSOC DENY %s due to poor rssi\n", __func__, __LINE__, str);
-                    notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, band, "RSSI", str);
+                    notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, band, "RSSI", str, msg->frame.ap_index);
                 }
             }
             
@@ -618,7 +624,7 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
                 } else {
                     snr_status = status_deny;
                     cac_print("%s:%d, ASSOC DENY %s due to poor snr\n", __func__, __LINE__, str);
-                    notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, band, "SNR", str);
+                    notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, band, "SNR", str, msg->frame.ap_index);
                 }
             }
             
@@ -628,7 +634,7 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
                 } else {
                     chan_util_status = status_deny;
                     cac_print("%s:%d, ASSOC DENY %s due to poor channel utilization\n", __func__, __LINE__, str);
-                    notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, band, "CU", str);
+                    notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, band, "CU", str, msg->frame.ap_index);
                 }
             }
         } else {
@@ -638,7 +644,7 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
                 } else if (elem->rssi_avg < (rssi_conf - DBM_DEVIATION)) {
                     rssi_status = status_deny;
                     cac_print("%s:%d, ASSOC DENY %s due to poor rssi\n", __func__, __LINE__, str);
-                    notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, band, "RSSI", str);
+                    notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, band, "RSSI", str, msg->frame.ap_index);
                 } else {
                     elem->seconds_alive = 5;
                     rssi_status = status_wait;
@@ -651,7 +657,7 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
                 } else if (elem->snr_avg < (snr_conf - DBM_DEVIATION)) {
                     snr_status = status_deny;
                     cac_print("%s:%d, ASSOC DENY %s due to poor snr\n", __func__, __LINE__, str);
-                    notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, band, "SNR", str);
+                    notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, band, "SNR", str, msg->frame.ap_index);
                 } else {
                     elem->seconds_alive = 5;
                     snr_status = status_wait;
@@ -664,7 +670,7 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
                 } else {
                     chan_util_status = status_deny;
                     cac_print("%s:%d, ASSOC DENY %s due to poor channel utilization\n", __func__, __LINE__, str);
-                    notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, band, "CU", str);
+                    notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, band, "CU", str, msg->frame.ap_index);
                 }
             }
         }

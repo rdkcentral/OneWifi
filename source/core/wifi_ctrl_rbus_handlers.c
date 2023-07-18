@@ -150,11 +150,14 @@ int notify_associated_entries(wifi_ctrl_t *ctrl, int ap_index, ULONG new_count, 
     return RETURN_OK;
 }
 
-int notify_force_disassociation(wifi_ctrl_t *ctrl, int band, char *threshold, mac_addr_str_t mac)
+int notify_force_disassociation(wifi_ctrl_t *ctrl, int band, char *threshold, mac_addr_str_t mac, int ap_index)
 {
     int rc;
     char str[2048];
+    wifi_vap_info_t *vap_info = NULL;
     memset(str, 0, 2048);
+
+    vap_info = getVapInfo(ap_index);
 
     if (ctrl == NULL ) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: NULL Pointer \n", __func__, __LINE__);
@@ -162,6 +165,11 @@ int notify_force_disassociation(wifi_ctrl_t *ctrl, int band, char *threshold, ma
     }
 
     snprintf(str, sizeof(str), "%d, %s, %s", band, threshold, mac);
+
+    if (vap_info != NULL) {
+        strncpy(vap_info->u.bss_info.postassoc.client_force_disassoc_info, str, sizeof(vap_info->u.bss_info.postassoc.client_force_disassoc_info));
+    }
+
     rc = rbus_setStr(ctrl->rbus_handle, WIFI_NOTIFY_FORCE_DISASSOCIATION, str);
     if (rc != RBUS_ERROR_SUCCESS) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: rbusWrite Failed %d\n", __func__, __LINE__, rc);
@@ -170,10 +178,12 @@ int notify_force_disassociation(wifi_ctrl_t *ctrl, int band, char *threshold, ma
     return RETURN_OK;
 }
 
-int notify_deny_association(wifi_ctrl_t *ctrl, int band, char *threshold, mac_addr_str_t mac)
+int notify_deny_association(wifi_ctrl_t *ctrl, int band, char *threshold, mac_addr_str_t mac, int ap_index)
 {
     int rc;
     char str[2048];
+    wifi_vap_info_t *vap_info = NULL;
+
     memset(str, 0, 2048);
 
     if (ctrl == NULL ) {
@@ -181,7 +191,14 @@ int notify_deny_association(wifi_ctrl_t *ctrl, int band, char *threshold, mac_ad
         return RETURN_ERR;
     }
 
+    vap_info = getVapInfo(ap_index);
+
     snprintf(str, sizeof(str), "%d, %s, %s", band, threshold, mac);
+
+    if (vap_info != NULL) {
+        strncpy(vap_info->u.bss_info.preassoc.client_deny_assoc_info, str, sizeof(vap_info->u.bss_info.preassoc.client_deny_assoc_info));
+    }
+
     rc = rbus_setStr(ctrl->rbus_handle, WIFI_NOTIFY_DENY_ASSOCIATION, str);
     if (rc != RBUS_ERROR_SUCCESS) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: rbusWrite Failed %d\n", __func__, __LINE__, rc);
