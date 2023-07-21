@@ -2141,6 +2141,13 @@ int wifidb_get_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
     if ((!security_mode_support_radius(sec->mode)) && (!isVapHotspotOpen(vap_index))) {
         sec->u.key.type = pcfg->key_type;
         strncpy(sec->u.key.key,pcfg->keyphrase,sizeof(sec->u.key.key)-1);
+        
+        if (sec->mode != wifi_security_mode_none && sec->mode != wifi_security_mode_enhanced_open) {
+            if ((strlen(sec->u.key.key) < MIN_PWD_LEN) || (strlen(sec->u.key.key) > MAX_PWD_LEN)) {
+                wifi_util_error_print(WIFI_DB, "%s:%d: Incorrect password length %d for vap '%s'\n", __func__, __LINE__, strlen(sec->u.key.key), vap_name);
+                strncpy(sec->u.key.key, INVALID_KEY, sizeof(sec->u.key.key));
+            }
+        }
     }
     else {
         if (strlen(pcfg->radius_server_ip) != 0) {
@@ -4783,6 +4790,14 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         snprintf(str,sizeof(str),"%s","{ \"Passpoint\":{ \"PasspointEnable\":false, \"NAIHomeRealmANQPElement\":{\"Realms\":[]}, \"OperatorFriendlyNameANQPElement\":{\"Name\":[]}, \"ConnectionCapabilityListANQPElement\":{\"ProtoPort\":[]}, \"GroupAddressedForwardingDisable\":true, \"P2pCrossConnectionDisable\":false}}");
         snprintf((char *)cfg.u.bss_info.interworking.passpoint.hs2Parameters,sizeof(cfg.u.bss_info.interworking.passpoint.hs2Parameters),"%s",str);
 
+        if ((!security_mode_support_radius(cfg.u.bss_info.security.mode)) &&
+                cfg.u.bss_info.security.mode != wifi_security_mode_none && 
+                cfg.u.bss_info.security.mode != wifi_security_mode_enhanced_open) {
+            if ((strlen(cfg.u.bss_info.security.u.key.key) < MIN_PWD_LEN) || (strlen(cfg.u.bss_info.security.u.key.key) > MAX_PWD_LEN)) {
+                wifi_util_error_print(WIFI_DB, "%s:%d: Incorrect password length %d for vap '%s'\n", __func__, __LINE__, strlen(cfg.u.bss_info.security.u.key.key), vap_name);
+                strncpy(cfg.u.bss_info.security.u.key.key, INVALID_KEY, sizeof(cfg.u.bss_info.security.u.key.key));
+            }
+        }
 #if defined(_WNXL11BWL_PRODUCT_REQ_) || defined(_PP203X_PRODUCT_REQ_)
         //Disabling all vaps except STA Vaps by default in XLE
         cfg.u.bss_info.enabled = false;
