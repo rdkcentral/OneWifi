@@ -44,6 +44,9 @@
 #include <sys/un.h>
 #include <assert.h>
 #include <limits.h>
+#ifdef MQTTCM
+#include <mqttcm_lib/mqttcm_conn.h>
+#endif
 #ifdef CCSP_COMMON
 #include "ansc_status.h"
 #include <sysevent/sysevent.h>
@@ -99,6 +102,9 @@
     arg[4], \
     arg[5]
 #define RADIO_STATS_INTERVAL_MS 30000 //30 seconds
+#ifdef MQTTCM
+#define MQTTCM_DISABLE_FLAG "/mnt/data/pstore/disable_mqttcm"
+#endif
 
 #ifdef CCSP_COMMON
 #define NDA_RTA(r) \
@@ -135,6 +141,7 @@ char *instSchemaIdBuffer = "8b27dafc-0c4d-40a1-b62c-f24a34074914/4388e585dd7c0d3
 
 static wifi_monitor_t g_monitor_module;
 static wifi_actvie_msmt_t g_active_msmt;
+bool             mqttcm_enabled = false;
 
 static wifi_apps_coordinator_t g_apps_coordinator;
 wifi_apps_coordinator_t *get_apps_coordinator(void);
@@ -176,7 +183,6 @@ INT deauthMonitorDuration = 0;
 INT deauthGateTime = 0;//ONE_WIFI
 
 static int neighscan_task_id = -1;
-
 #if defined (_XB7_PRODUCT_REQ_)
 #define FEATURE_CSI_CALLBACK 1
 #endif
@@ -5099,6 +5105,31 @@ void update_ecomode_radios()
         g_monitor_module.radio_presence[radio] = mgr->hal_cap.wifi_prop.radio_presence[radio];
     }
 }
+#ifdef MQTTCM
+static bool
+wbm_mqttcm_init(void)
+{
+    bool ret = true;
+
+    if(!mqttcm_conn_init())
+    {
+       wifi_util_error_print(WIFI_MON,"%s: Failed to initialize wbm mqttcm  module for pushing stats to broker",__func__);
+       ret = false;
+    }
+    return ret;
+}
+
+static void
+wbm_mqttcm_stop(void)
+{
+    wifi_util_info_print(WIFI_MON, "Closing MQTT connection.");
+
+    if(!mqttcm_conn_finish())
+    {
+        wifi_util_error_print(WIFI_MON,"%s: Failed to uninitialize Mqttcm configuration from wbm",__func__);
+    }
+}
+#endif
 
 int init_wifi_monitor()
 {
@@ -5111,7 +5142,19 @@ int init_wifi_monitor()
     int rssi;
     UINT vap_index, radio;
 #endif // CCSP_COMMON
-
+    //Initialize MQTTCM
+#ifdef MQTTCM
+    if (access(MQTTCM_DISABLE_FLAG, F_OK) != 0)
+    {
+       mqttcm_enabled = true;
+    }
+    wifi_util_info_print(WIFI_MON,"wbm is running by mqttcm enabled %s",mqttcm_enabled?"true":"false");
+    if (mqttcm_enabled && !wbm_mqttcm_init())
+    {
+       wifi_util_error_print(WIFI_MON,"Initializing wbm (Failed to start MQTT)");
+       return -1;
+    }
+#endif
     update_ecomode_radios();
     for (rad_ind = 0; rad_ind < total_radios; rad_ind++)
     {
@@ -5360,7 +5403,11 @@ void deinit_wifi_monitor()
     sta_data_t *sta, *temp_sta;
     char key[64] = {0};
     hash_map_t *collector_list = NULL;
-
+#ifdef MQTTCM
+    if (mqttcm_enabled) {
+       wbm_mqttcm_stop();
+    }
+#endif
 #ifdef CCSP_COMMON
     csi_pinger_data_t *pinger_data = NULL, *tmp_pinger_data = NULL;
     mac_addr_str_t mac_str = { 0 };

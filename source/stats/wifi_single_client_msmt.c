@@ -43,6 +43,9 @@
 #include <sys/un.h>
 #include <assert.h>
 #include <uuid/uuid.h>
+#ifdef MQTTCM
+#include <mqttcm_lib/mqttcm_conn.h>
+#endif
 #ifdef CCSP_COMMON
 #include "ansc_status.h"
 #include <sysevent/sysevent.h>
@@ -116,7 +119,6 @@ uint8_t ACTUUIDVAL[16] = {0x96, 0x67, 0x31, 0x04, 0x5a, 0x8b, 0x49, 0x76,
 // local data, load it with real data if necessary
 char Report_Source[] = "wifi";
 char CPE_TYPE_STR[] = "Gateway";
-
 #define MAX_BUFF_SIZE  20480
 #define MAX_STR_LEN    32
 
@@ -142,7 +144,7 @@ static char *to_sta_key    (mac_addr_t mac, sta_key_t key) {
              mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
     return (char *)key;
 }
-
+extern bool             mqttcm_enabled;
 #ifdef CCSP_COMMON
 static void printBlastMetricData(single_client_msmt_type_t msmtType, wifi_monitor_t *monRadio,
                                 sta_data_t *staData, wifi_actvie_msmt_t *monitor,
@@ -2197,7 +2199,7 @@ void pod_upload_single_client_active_msmt_data(bssid_data_t *bssid_info, sta_dat
     wifi_util_dbg_print(WIFI_MON, "%s: Packed buf is %s\n", __func__, (char *)report_pb->buf);
 
     //Send the Data
-    if (!qm_conn_get_status(NULL)) {
+    if (!mqttcm_enabled && !qm_conn_get_status(NULL)) {
         wifi_util_dbg_print(WIFI_MON,"%s: Cannot connect to QM (QM not running?)\n", __func__);
         goto Error;
     }
@@ -2205,9 +2207,16 @@ void pod_upload_single_client_active_msmt_data(bssid_data_t *bssid_info, sta_dat
     ext_blaster_report_pb_struct_free(Result_pbuf);
 
     wifi_util_dbg_print(WIFI_MON,"%s: Publishing message with msg len: %zu, to topic: %s\n", __func__, report_pb->len, mqtt_topic);
-    if (!qm_conn_send_direct(QM_REQ_COMPRESS_IF_CFG, mqtt_topic, report_pb->buf, report_pb->len, &res)) {
+    if (!mqttcm_enabled && !qm_conn_send_direct(QM_REQ_COMPRESS_IF_CFG, mqtt_topic, report_pb->buf, report_pb->len, &res)) {
         wifi_util_dbg_print(WIFI_MON,"%s: Error sending message\n", __func__);
-    } else {
+    }
+#ifdef MQTTCM
+    else if(mqttcm_enabled && !mqttcm_conn_msg_process(report_pb->buf, report_pb->len, true, mqtt_topic, "0"))
+    {
+        wifi_util_error_print(WIFI_MON,"%s:Messages published to broker from WBM failed",__func__);
+    }
+#endif
+    else {
         ExtBlaster_report_pb_print_dbg(report_pb);
     }
 
