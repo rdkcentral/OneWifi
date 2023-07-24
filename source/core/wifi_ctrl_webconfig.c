@@ -1536,6 +1536,7 @@ int webconfig_levl_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *dat
     }
 
     mgr->levl.max_num_csi_clients = data->levl.max_num_csi_clients;
+    mgr->levl.levl_sounding_duration = data->levl.levl_sounding_duration;
     return RETURN_OK;
 }
 

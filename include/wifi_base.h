@@ -41,6 +41,7 @@ extern "C" {
 #define WIFI_LEVL_CLIENTMAC                 "Device.WiFi.X_RDK_CSI_LEVL.clientMac"
 #define WIFI_LEVL_NUMBEROFENTRIES           "Device.WiFi.X_RDK_CSI_LEVL.maxNumberCSIClients"
 #define WIFI_LEVL_CSI_DATA                  "Device.WiFi.X_RDK_CSI_LEVL.data"
+#define WIFI_LEVL_SOUNDING_DURATION         "Device.WiFi.X_RDK_CSI_LEVL.Duration"
 #define WIFI_ACTIVE_GATEWAY_CHECK           "Device.X_RDK_GatewayManagement.ExternalGatewayPresent"
 #define WIFI_WAN_FAILOVER_TEST              "Device.WiFi.WanFailoverTest"
 #define WIFI_LMLITE_NOTIFY                  "Device.Hosts.X_RDKCENTRAL-COM_LMHost_Sync_From_WiFi"
@@ -93,6 +94,7 @@ extern "C" {
 #define wifi_app_inst_base          0x01
 
 #define WIFI_APPS_NUM   4
+#define DEFAULT_SOUNDING_DURATION_MS 2000
 
 //TODO : Need to be removed when a arrays in wifi_dca_response_t are changed to pointer
 #define MAX_AP_PER_RADIO    16
@@ -336,6 +338,7 @@ typedef enum {
 typedef struct {
     mac_address_t clientMac;
     int max_num_csi_clients;
+    int levl_sounding_duration;
 }levl_config_t;
 
 #if DML_SUPPORT

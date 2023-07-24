@@ -755,10 +755,10 @@ int main(int argc, char *argv[])
                 break;
             case 5: /* Device.WiFi.X_RDK_CSI.{i}.ClientMaclist */
             case 7: /* Device.WiFi.X_RDK_CSI.{i}.Enable */
-            case 8: /* Device.WiFi.X_RDK_CSI_LEVL.data */
                 g_sub_total++;
                 break;
             case 6: /* Device.WiFi.X_RDK_CSI.{i}.data */
+            case 8: /* Device.WiFi.X_RDK_CSI_LEVL.data */
                 g_csi_sub_total++;
                 break;
         }
@@ -858,8 +858,8 @@ int main(int argc, char *argv[])
             case 8: /* Device.WiFi.X_RDK_CSI_LEVL.data */
                 snprintf(name, RBUS_MAX_NAME_LENGTH, g_subscriptions[i].eventName);
                 WIFI_EVENT_CONSUMER_DGB("Add subscription for Levl CSI Data%s", name);
-                fillSubscribtion(sub_index, name, i);
-                sub_index++;
+                fillCsiSubscribtion(csi_sub_index, name, i);
+                csi_sub_index++;
                 break;
             default:
                 break;

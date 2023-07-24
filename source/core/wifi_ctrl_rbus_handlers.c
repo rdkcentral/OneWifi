@@ -2530,7 +2530,7 @@ rbusError_t levl_get_handler(rbusHandle_t handle, rbusProperty_t property, rbusG
     UNREFERENCED_PARAMETER(opts);
     char const* name;
     rbusValue_t value;
-    int max_value = 0;
+    int max_value = 0, duration = 0;
     char parameter[MAX_EVENT_NAME_SIZE];
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
@@ -2558,6 +2558,13 @@ rbusError_t levl_get_handler(rbusHandle_t handle, rbusProperty_t property, rbusG
         }
 
         rbusValue_SetUInt32(value, max_value);
+    } else if(strcmp(parameter, "Duration") == 0) {
+        if (mgr->levl.levl_sounding_duration == 0) {
+            duration = DEFAULT_SOUNDING_DURATION_MS;
+        } else {
+            duration = mgr->levl.levl_sounding_duration;
+        }
+        rbusValue_SetUInt32(value, duration);
     }
     rbusProperty_SetValue(property, value);
     rbusValue_Release(value);
@@ -2567,7 +2574,8 @@ rbusError_t levl_get_handler(rbusHandle_t handle, rbusProperty_t property, rbusG
 void update_levl_config_from_mgr(levl_config_t *levl) {
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
-    levl->max_num_csi_clients = mgr->levl.max_num_csi_clients; 
+    levl->max_num_csi_clients = mgr->levl.max_num_csi_clients;
+    levl->levl_sounding_duration = mgr->levl.levl_sounding_duration; 
 
     return;
 }
@@ -2578,7 +2586,7 @@ rbusError_t levl_set_handler(rbusHandle_t handle, rbusProperty_t property, rbusS
     char const* name;
     rbusValue_t value;
     rbusValueType_t type;
-    int len = 0;
+    int len = 0, levl_sounding_duration = 0;
     char const* pTmp = NULL;
     char parameter[MAX_EVENT_NAME_SIZE];
     unsigned int csinum = 0;
@@ -2642,6 +2650,20 @@ rbusError_t levl_set_handler(rbusHandle_t handle, rbusProperty_t property, rbusS
             return RBUS_ERROR_INVALID_INPUT;
         }
         levl->max_num_csi_clients = csinum;
+    } else if (strcmp(parameter, "Duration") == 0) {
+        if (type != RBUS_UINT32) {
+            wifi_util_error_print(WIFI_CTRL,"%s:%d '%s' Called Set handler with wrong data type\n", __func__, __LINE__, name);
+            if (levl != NULL) {
+                free(levl);
+            }
+            return RBUS_ERROR_INVALID_INPUT;
+        }
+        levl_sounding_duration = rbusValue_GetUInt32(value);
+        if (levl_sounding_duration == 0) {
+            levl->levl_sounding_duration = DEFAULT_SOUNDING_DURATION_MS;
+        } else {
+            levl->levl_sounding_duration = levl_sounding_duration;
+        }
     }
 
     push_levl_data_dml_to_ctrl_queue(&levl);
@@ -2784,6 +2806,8 @@ void rbus_register_handlers(wifi_ctrl_t *ctrl)
                                 { WIFI_LEVL_CLIENTMAC, RBUS_ELEMENT_TYPE_PROPERTY,
                                 { levl_get_handler, levl_set_handler, NULL, NULL, NULL, NULL}},
                                 { WIFI_LEVL_NUMBEROFENTRIES, RBUS_ELEMENT_TYPE_PROPERTY,
+                                { levl_get_handler, levl_set_handler, NULL, NULL, NULL, NULL}},
+                                { WIFI_LEVL_SOUNDING_DURATION, RBUS_ELEMENT_TYPE_PROPERTY,
                                 { levl_get_handler, levl_set_handler, NULL, NULL, NULL, NULL}},
 #endif
                                 { ACCESSPOINT_ASSOC_REQ_EVENT, RBUS_ELEMENT_TYPE_METHOD,

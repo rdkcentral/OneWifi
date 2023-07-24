@@ -25,7 +25,6 @@ extern "C" {
 #endif
 
 #define MAX_PROBE_MAP_TTL    500
-#define LEVL_SOUNDING_TIMEOUT_MS 2000
 
 typedef struct {
     unsigned int    max_probe_ttl_cnt;
@@ -42,8 +41,6 @@ typedef struct {
     int           sched_handler_id;
     mac_address_t mac_addr;
     unsigned int  ap_index;
-    bool          sounding_complete;
-    bool          enforced_sounding;
 }levl_sched_data_t;
 
 typedef struct {
@@ -54,10 +51,11 @@ typedef struct {
 typedef struct {
     int                  max_num_csi_clients;
     int                  num_current_sounding;
+    int                  sounding_duration;
     bool                 event_subscribed;
     pthread_mutex_t      lock;
     hash_map_t           *probe_req_map;
-    hash_map_t           *radomized_client_map;
+    hash_map_t           *curr_sounding_mac_map;
     hash_map_t           *pending_mac_map;
 } levl_data_t;
 

@@ -3211,6 +3211,11 @@ webconfig_error_t decode_levl_object(const cJSON *levl_cfg, levl_config_t *levl_
     //maxNumberCSIClients
     decode_param_integer(levl_cfg, "maxNumberCSIClients", param);
     levl_config->max_num_csi_clients = param->valuedouble;
+
+    //Duration
+    decode_param_integer(levl_cfg, "Duration", param);
+    levl_config->levl_sounding_duration = param->valuedouble;
+
     return webconfig_error_none;
 }
 
