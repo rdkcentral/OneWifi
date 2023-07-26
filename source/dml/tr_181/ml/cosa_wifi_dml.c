@@ -7431,9 +7431,9 @@ void get_security_modes_supported(int vap_index, int *mode)
     convert_radio_index_to_freq_band(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop,
         radio_index, &band);
 
-    if(isVapMeshBackhaul(vap_index))
+    if (isVapMeshBackhaul(vap_index))
     {
-        *mode = COSA_DML_WIFI_SECURITY_None | COSA_DML_WIFI_SECURITY_WPA2_Personal | COSA_DML_WIFI_SECURITY_WPA2_Enterprise | COSA_DML_WIFI_SECURITY_WPA_WPA2_Enterprise;
+        *mode = COSA_DML_WIFI_SECURITY_None | COSA_DML_WIFI_SECURITY_WPA2_Personal;
     }
     else if (band == WIFI_FREQUENCY_6_BAND)
     {
@@ -7441,8 +7441,21 @@ void get_security_modes_supported(int vap_index, int *mode)
     }
     else
     {
-        *mode = COSA_DML_WIFI_SECURITY_None | COSA_DML_WIFI_SECURITY_WPA2_Personal | COSA_DML_WIFI_SECURITY_WPA3_Personal | COSA_DML_WIFI_SECURITY_WPA3_Personal_Transition |
-                COSA_DML_WIFI_SECURITY_WPA2_Enterprise | COSA_DML_WIFI_SECURITY_WPA_WPA2_Enterprise;
+        if (isVapHotspotSecure(vap_index) || isVapLnfSecure(vap_index))
+        {
+            *mode = COSA_DML_WIFI_SECURITY_WPA_Enterprise | COSA_DML_WIFI_SECURITY_WPA3_Enterprise |
+                    COSA_DML_WIFI_SECURITY_WPA2_Enterprise | COSA_DML_WIFI_SECURITY_WPA_WPA2_Enterprise;
+        }
+        else if (isVapHotspotOpen(vap_index))
+        {
+            *mode = COSA_DML_WIFI_SECURITY_None | COSA_DML_WIFI_SECURITY_Enhanced_Open;
+        }
+        else
+        {
+            *mode = COSA_DML_WIFI_SECURITY_None |
+                    COSA_DML_WIFI_SECURITY_WPA_Personal | COSA_DML_WIFI_SECURITY_WPA2_Personal | COSA_DML_WIFI_SECURITY_WPA_WPA2_Personal |
+                    COSA_DML_WIFI_SECURITY_WPA3_Personal | COSA_DML_WIFI_SECURITY_WPA3_Personal_Transition;
+        }
     }
     return;
 }
@@ -7526,8 +7539,9 @@ Security_GetParamStringValue
     {
         /* collect value */
         char buf[512] = {0};
-	int mode = 0;
-	get_security_modes_supported(vap_index,&mode);
+        int mode = 0;
+        get_security_modes_supported(vap_index, &mode);
+
         if (wifiSecSupportedDmlToStr(mode, buf, sizeof(buf)) == ANSC_STATUS_SUCCESS)
         {
             if ( AnscSizeOfString(buf) < *pUlSize)
