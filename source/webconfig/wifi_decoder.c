@@ -2257,6 +2257,10 @@ webconfig_error_t decode_wifi_global_config(const cJSON *global_cfg, wifi_global
     decode_param_integer(global_cfg, "AssocGateTime", param);
     global_info->assoc_gate_time = param->valuedouble;
 
+    //WhixLoginterval
+    decode_param_integer(global_cfg, "WhixLoginterval", param);
+    global_info->whix_log_interval = param->valuedouble;
+
     //AssocMonitorDuration
     decode_param_integer(global_cfg, "AssocMonitorDuration", param);
     global_info->assoc_monitor_duration = param->valuedouble;

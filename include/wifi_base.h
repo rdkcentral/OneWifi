@@ -418,6 +418,7 @@ typedef struct {
     int  good_rssi_threshold;
     int  assoc_count_threshold;
     int  assoc_gate_time;
+    int  whix_log_interval; //seconds
     int  assoc_monitor_duration;
     bool rapid_reconnect_enable;
     bool vap_stats_feature;

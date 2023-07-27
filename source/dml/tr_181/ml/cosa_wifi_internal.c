@@ -1099,26 +1099,6 @@ void CosaDmlWiFiGetExternalDataFromPSM(void)
 
     set_vap_dml_parameters(CH_UTILITY_LOG_INTERVAL, &logInterval);
 
-    retPsmGet = PSM_Get_Record_Value2(bus_handle, g_Subsystem,"dmsb.device.deviceinfo.X_RDKCENTRAL-COM_WHIX.LogInterval",NULL,&strValue);
-
-    if (retPsmGet == CCSP_SUCCESS)
-    {
-        if (strValue && strlen(strValue))
-        {
-            logInterval=atoi(strValue);
-            wifi_util_dbg_print(WIFI_MON, "The LogInterval is %dsec or %dmin \n",logInterval,(int)logInterval/60);
-            logInterval=(int)(logInterval/60);
-            ((CCSP_MESSAGE_BUS_INFO *)bus_handle)->freefunc(strValue);
-        }
-    }
-    else
-    {
-        wifi_util_dbg_print(WIFI_MON, "%s:%d The PSM_Get_Record_Value2  is failed with %d retval  \n",__FUNCTION__,__LINE__,retPsmGet);
-        logInterval=60;//Default Value 60mins.
-    }
-
-    set_vap_dml_parameters(DEVICE_LOG_INTERVAL, &logInterval);
-
     retPsmGet = PSM_Get_Record_Value2(bus_handle, g_Subsystem,"dmsb.device.deviceinfo.X_RDKCENTRAL-COM_WHIX.NormalizedRssiList",NULL,&strValue);
 
     if (retPsmGet == CCSP_SUCCESS)

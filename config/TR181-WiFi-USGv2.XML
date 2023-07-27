@@ -206,6 +206,12 @@
             <writable>true</writable>
         </parameter>
         <parameter>
+            <name>WHIX_LogInterval</name>
+            <type>int[300:3600]</type>
+            <syntax>int</syntax>
+            <writable>true</writable>
+        </parameter>
+        <parameter>
             <name>X_RDKCENTRAL-COM_vAPStatsEnable</name>
             <type>boolean</type>
             <syntax>bool</syntax>

@@ -64,7 +64,9 @@ typedef struct {
 } wifi_mgr_t;
 
 wifi_mgr_t *get_wifimgr_obj();
-
+#if DML_SUPPORT
+char* Get_PSM_Record_Status(char *recName, char *strValue);
+#endif // DML_SUPPORT
 #ifdef __cplusplus
 }
 #endif

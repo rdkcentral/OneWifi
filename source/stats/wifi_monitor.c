@@ -124,6 +124,8 @@ extern char g_Subsystem[32];
 #define UPLOAD_AP_TELEMETRY_INTERVAL_MS 24*60*60*1000 // 24 Hours
 #define NEIGHBOR_SCAN_INTERVAL 60*60*1000 //1 Hr
 #define NEIGHBOR_SCAN_RESULT_INTERVAL 5000 //5 seconds
+#define Min_LogInterval 300 //5 minutes
+#define Max_LogInterval 3600 //60 minutes
 
 #define MIN_TO_MILLISEC 60000
 #define SEC_TO_MILLISEC 1000
@@ -3562,10 +3564,10 @@ static int refresh_task_period(void *arg)
         if (new_upload_period != 0) {
             if (g_monitor_module.client_telemetry_id == 0) {
                 scheduler_add_timer_task(g_monitor_module.sched, FALSE, &g_monitor_module.client_telemetry_id,
-                        upload_client_telemetry_data, NULL, (g_monitor_module.upload_period * MIN_TO_MILLISEC), 0);
+                        upload_client_telemetry_data, NULL, (g_monitor_module.upload_period * SEC_TO_MILLISEC), 0);
             } else {
                 scheduler_update_timer_task_interval(g_monitor_module.sched, g_monitor_module.client_telemetry_id,
-                        (g_monitor_module.upload_period * MIN_TO_MILLISEC));
+                        (g_monitor_module.upload_period * SEC_TO_MILLISEC));
             }
             if (g_monitor_module.client_debug_id == 0 ) {
                 scheduler_add_timer_task(g_monitor_module.sched, FALSE, &g_monitor_module.client_debug_id,
@@ -5151,13 +5153,24 @@ int get_chan_util_upload_period()
 
 static int readLogInterval()
 {
-    int logInterval=60;//Default Value 60mins.
+    int logInterval = Max_LogInterval;//Default Value 60mins.
+    wifi_global_param_t *global_param = get_wifidb_wifi_global_param();
 
-    wifi_util_dbg_print(WIFI_MON, "Entering %s:%d \n",__FUNCTION__,__LINE__);
-    get_vap_dml_parameters(DEVICE_LOG_INTERVAL, &logInterval);
-    wifi_util_dbg_print(WIFI_MON, "Exiting %s:%d \n",__FUNCTION__,__LINE__);
+    if (global_param == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d Global Param is Null \n",__FUNCTION__,__LINE__);
+        return logInterval;
+    }
+
+    if ((global_param->whix_log_interval < Min_LogInterval) || (global_param->whix_log_interval > Max_LogInterval)) {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d Global loginterval is not in limit, updating the default value\n",__FUNCTION__,__LINE__);
+        return logInterval;
+    }
+
+    logInterval = global_param->whix_log_interval;
+    wifi_util_dbg_print(WIFI_MON, "Exiting %s:%d loginterval = %d \n",__FUNCTION__,__LINE__,logInterval);
     return logInterval;
 }
+
 
 void associated_client_diagnostics ()
 {

@@ -438,13 +438,13 @@ WiFi_GetParamIntValue
     UNREFERENCED_PARAMETER(hInsContext);
     wifi_global_param_t *pcfg = (wifi_global_param_t *) get_dml_wifi_global_param();
 
-    if(pcfg== NULL)
+    if (pcfg== NULL)
     {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d  NULL pointer Get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_GoodRssiThreshold", TRUE))
+    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_GoodRssiThreshold", TRUE))
     {
         /* collect value */
         *pInt = pcfg->good_rssi_threshold;
@@ -452,7 +452,7 @@ WiFi_GetParamIntValue
     }
 
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_AssocCountThreshold", TRUE))
+    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_AssocCountThreshold", TRUE))
     {
         /* collect value */
         *pInt = pcfg->assoc_count_threshold;
@@ -460,7 +460,7 @@ WiFi_GetParamIntValue
     }
 
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_AssocMonitorDuration", TRUE))
+    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_AssocMonitorDuration", TRUE))
     {
         /* collect value */
         *pInt = pcfg->assoc_monitor_duration;
@@ -468,10 +468,17 @@ WiFi_GetParamIntValue
     }
 
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_AssocGateTime", TRUE))
+    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_AssocGateTime", TRUE))
     {
         /* collect value */
         *pInt = pcfg->assoc_gate_time;
+        return TRUE;
+    }
+     /* check the parameter name and return the corresponding value */
+    if (AnscEqualString(ParamName, "WHIX_LogInterval", TRUE))
+    {
+        /* collect value */
+        *pInt = pcfg->whix_log_interval; //seconds
         return TRUE;
     }
 
@@ -1368,13 +1375,27 @@ WiFi_SetParamIntValue
     /* check the parameter name and set the corresponding value */
     if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_AssocGateTime", TRUE))
     {
-        if ( global_wifi_config->global_parameters.assoc_gate_time == iValue )
+        if (global_wifi_config->global_parameters.assoc_gate_time == iValue)
         {
             return TRUE;
         }
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:assoc_gate_time=%d Value = %d  \n",__func__, __LINE__,global_wifi_config->global_parameters.assoc_gate_time,iValue);
         global_wifi_config->global_parameters.assoc_gate_time = iValue;
         push_global_config_dml_cache_to_one_wifidb();
+        return TRUE;
+    }
+
+    if( AnscEqualString(ParamName, "WHIX_LogInterval", TRUE))
+    {
+        if (global_wifi_config->global_parameters.whix_log_interval == iValue)
+        {
+            return TRUE;
+        }
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: WHIX_LogInterval = %d Value = %d  \n",__func__, __LINE__, global_wifi_config->global_parameters.whix_log_interval, iValue);
+        global_wifi_config->global_parameters.whix_log_interval = iValue; //update global structure
+        if (push_global_config_dml_cache_to_one_wifidb() != RETURN_OK) {
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d: Failed to push WHIX_LogInterval to onewifi db\n",__func__, __LINE__);
+        }
         return TRUE;
     }
 
