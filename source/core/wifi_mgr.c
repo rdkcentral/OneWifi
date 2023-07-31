@@ -1091,9 +1091,9 @@ int get_vap_params_from_psm(unsigned int vap_index, wifi_vap_info_t *vap_config,
             bss_cfg->mac_filter_enable = true;
             bss_cfg->mac_filter_mode  = wifi_mac_filter_mode_black_list;
         }
-        wifi_util_dbg_print(WIFI_MGR,"bss_cfg->mac_filter_mode is %d and str is %s and _ansc_atoi(str) is %d\n", bss_cfg->mac_filter_mode, str, _ansc_atoi(str));
+        wifi_util_info_print(WIFI_MGR,"bss_cfg->mac_filter_mode is %d and str is %s and _ansc_atoi(str) is %d\n", bss_cfg->mac_filter_mode, str, _ansc_atoi(str));
     } else {
-        wifi_util_dbg_print(WIFI_MGR,"%s:%d str value for mac_filter_mode:%s \r\n", __func__, __LINE__, str);
+        wifi_util_error_print(WIFI_MGR,"%s:%d mac_filter_mode not found for:%s\r\n", __func__, __LINE__, recName);
     }
 
     memset(recName, 0, sizeof(recName));
@@ -1197,6 +1197,7 @@ int get_vap_params_from_psm(unsigned int vap_index, wifi_vap_info_t *vap_config,
     }
 
     nvram_get_current_ssid(bss_cfg->ssid, (instance_number - 1));
+    wifi_util_info_print(WIFI_MGR,"%s:%d vap_%d ssid info:%s\r\n", __func__, __LINE__, (instance_number - 1), bss_cfg->ssid);
     nvram_get_vap_enable_status(&bss_cfg->enabled, (instance_number - 1));
 
     int security_mode = bss_cfg->security.mode;
@@ -1287,9 +1288,9 @@ int wifi_db_update_vap_config()
 
         retval = wifidb_update_wifi_vap_info(vap_cfg.vap_name, &vap_cfg, &rdk_vap_cfg);
         if (retval != 0) {
-            wifi_util_dbg_print(WIFI_MGR,"%s:%d: Failed to update vap config in wifi db\n",__func__, __LINE__);
+            wifi_util_info_print(WIFI_MGR,"%s:%d: Failed to update vap config in wifi db\n",__func__, __LINE__);
         } else {
-            wifi_util_dbg_print(WIFI_MGR,"%s:%d: Successfully updated vap config in wifidb \r\n",__func__, __LINE__);
+            wifi_util_info_print(WIFI_MGR,"%s:%d: Successfully updated vap config in wifidb \r\n",__func__, __LINE__);
         }
 
         if (isVapSTAMesh(vap_cfg.vap_index)) {
@@ -1298,9 +1299,9 @@ int wifi_db_update_vap_config()
             retval = wifidb_update_wifi_security_config(vap_cfg.vap_name, &vap_cfg.u.bss_info.security);
         }
         if (retval != 0) {
-            wifi_util_dbg_print(WIFI_MGR,"%s:%d: Failed to update vap config in wifi db\n",__func__, __LINE__);
+            wifi_util_error_print(WIFI_MGR,"%s:%d: Failed to update vap_%s security config in wifi db\n",__func__, __LINE__, vap_cfg.vap_name);
         } else {
-            wifi_util_dbg_print(WIFI_MGR,"%s:%d: Successfully updated vap config in wifidb \r\n",__func__, __LINE__);
+            wifi_util_info_print(WIFI_MGR,"%s:%d: Successfully updated security vap_%s config in wifidb \r\n",__func__, __LINE__, vap_cfg.vap_name);
         }
     }
 
@@ -1314,15 +1315,15 @@ int wifi_db_update_psm_values()
     memset(&global_config, 0, sizeof(global_config));
 
     retval = wifi_db_update_global_config(&global_config);
-    wifi_util_dbg_print(WIFI_MGR,"%s:%d: Global config update %d\n",__func__, __LINE__,retval);
+    wifi_util_info_print(WIFI_MGR,"%s:%d: Global config update %d\n",__func__, __LINE__,retval);
 
     retval = wifi_db_update_radio_config();
 
-    wifi_util_dbg_print(WIFI_MGR,"%s:%d: Radio config update %d\n",__func__, __LINE__,retval);
+    wifi_util_info_print(WIFI_MGR,"%s:%d: Radio config update %d\n",__func__, __LINE__,retval);
 
     retval = wifi_db_update_vap_config();
 
-    wifi_util_dbg_print(WIFI_MGR,"%s:%d: Vap config update %d\n",__func__, __LINE__,retval);
+    wifi_util_info_print(WIFI_MGR,"%s:%d: Vap config update %d\n",__func__, __LINE__,retval);
     return retval;
 }
 
@@ -1340,7 +1341,7 @@ int wifi_mgr_rbus_subsription(rbusHandle_t *rbus_handle)
     rc = rbus_open(rbus_handle, component_name);
 
     if (rc != RBUS_ERROR_SUCCESS) {
-        wifi_util_dbg_print(WIFI_MGR,"%s:%d Rbus open failed\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_MGR,"%s:%d Rbus open failed\n", __func__, __LINE__);
         return RETURN_ERR;
     }
 
@@ -1354,7 +1355,7 @@ int wifi_mgr_rbus_subsription(rbusHandle_t *rbus_handle)
     }*/
 
     if (rbusEvent_Subscribe(*rbus_handle, LAST_REBOOT_REASON_NAMESPACE, rbus_subscription_handler, NULL, 0) != RBUS_ERROR_SUCCESS) {
-        wifi_util_dbg_print(WIFI_MGR,"%s:%d Rbus event:%s subscribe failed\n",__FUNCTION__, __LINE__, LAST_REBOOT_REASON_NAMESPACE);
+        wifi_util_error_print(WIFI_MGR,"%s:%d Rbus event:%s subscribe failed\n",__FUNCTION__, __LINE__, LAST_REBOOT_REASON_NAMESPACE);
         return RETURN_ERR;
     } else {
         wifi_util_dbg_print(WIFI_MGR,"%s:%d Rbus event:%s subscribe success\n",__FUNCTION__, __LINE__, LAST_REBOOT_REASON_NAMESPACE);
@@ -1392,7 +1393,7 @@ int get_wifi_last_reboot_reason_psm_value(char *last_reboot_reason)
         strcpy(last_reboot_reason, str);
         wifi_util_dbg_print(WIFI_MGR,"str is %s and last_reboot_reason is %s\n", str, last_reboot_reason);
     } else {
-        wifi_util_dbg_print(WIFI_MGR,"%s:%d last_reboot_reason:%s \r\n", __func__, __LINE__, last_reboot_reason);
+        wifi_util_error_print(WIFI_MGR,"%s:%d last_reboot_reason:%s \r\n", __func__, __LINE__, last_reboot_reason);
         return RETURN_ERR;
     }
 
@@ -1424,6 +1425,7 @@ int get_all_param_from_psm_and_set_into_db(void)
 **      last reboot reason(Device.DeviceInfo.X_RDKCENTRAL-COM_LastRebootReason)
 **      if psm-db is false and last reboot reason if not factory-reset,
 **      then update wifi-db with values from psm */
+    wifi_util_info_print(WIFI_MGR,"%s \n",__func__);
     if (is_device_type_xb7() == true || is_device_type_xb8() == true || is_device_type_sr213() == true || is_device_type_cmxb7() == true) {
         bool wifi_psm_db_enabled = false;
         char last_reboot_reason[32];
@@ -1441,6 +1443,8 @@ int get_all_param_from_psm_and_set_into_db(void)
             get_wifi_db_psm_enable_status(&wifi_psm_db_enabled);
             get_wifi_last_reboot_reason_psm_value(last_reboot_reason);
         }
+
+        wifi_util_info_print(WIFI_MGR,"%s psm:%d last_reboot_reason:%s \n",__func__, wifi_psm_db_enabled, last_reboot_reason);
 
         if ((access(ONEWIFI_MIGRATION_FLAG, F_OK) == 0)) {
             int retval;
@@ -1473,6 +1477,7 @@ int get_all_param_from_psm_and_set_into_db(void)
     //Set Wifi Global Parameters
     init_wifi_global_config();
 
+    wifi_util_info_print(WIFI_MGR,"%s Done\n",__func__);
     return RETURN_OK;
 }
 #endif // DML_SUPPORT

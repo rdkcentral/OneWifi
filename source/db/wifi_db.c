@@ -2056,13 +2056,13 @@ int wifidb_get_wifi_vap_config(int radio_index, wifi_vap_info_map_t *config,
             vap_index = convert_vap_name_to_array_index(&((wifi_mgr_t*)get_wifimgr_obj())->hal_cap.wifi_prop, vap_name);
             if(vap_index == -1)
             {
-                wifi_util_dbg_print(WIFI_DB,"%s:%d: %s vap_name is invalid\n",__func__, __LINE__,vap_name);
+                wifi_util_error_print(WIFI_DB,"%s:%d: %s vap_name is invalid\n",__func__, __LINE__,vap_name);
                 continue;
             }
             config->vap_array[vap_index].radio_index = radio_index;
             l_vap_index = convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, vap_name);
             if (l_vap_index < 0) {
-                wifi_util_dbg_print(WIFI_DB,"%s:%d: %s vap_name is invalid\n",__func__, __LINE__,vap_name);
+                wifi_util_error_print(WIFI_DB,"%s:%d: %s vap_name is invalid\n",__func__, __LINE__,vap_name);
                 continue;
             }
             config->vap_array[vap_index].vap_index = l_vap_index;
@@ -4647,7 +4647,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         }
     }
     if (!found) {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d: vap_index %d, not found\n",__func__, __LINE__, vap_index);
+        wifi_util_error_print(WIFI_DB,"%s:%d: vap_index %d, not found\n",__func__, __LINE__, vap_index);
         return RETURN_OK;
     }
     wifi_util_dbg_print(WIFI_DB,"%s:%d: vap_array_index %d vap_index %d vap_name %s\n",__func__, __LINE__, vap_array_index, vap_index,
@@ -5263,7 +5263,7 @@ void wifidb_init_default_value()
 #if DML_SUPPORT
     wifidb_init_rfc_config_default(&g_wifidb->rfc_dml_parameters);
 #endif
-    wifi_util_dbg_print(WIFI_DB,"%s:%d Wifi db update completed\n",__func__, __LINE__);
+    wifi_util_info_print(WIFI_DB,"%s:%d Wifi db update completed\n",__func__, __LINE__);
 
 }
 /************************************************************************************
@@ -5382,7 +5382,7 @@ void init_wifidb_data()
 {
     static bool db_param_init = false;
     if (db_param_init == true) {
-        wifi_util_dbg_print(WIFI_DB, "%s:%d db params already initialized\r\n",__func__, __LINE__);
+        wifi_util_info_print(WIFI_DB, "%s:%d db params already initialized\r\n",__func__, __LINE__);
         return;
     }
 
@@ -5398,11 +5398,11 @@ void init_wifidb_data()
     wifi_rfc_dml_parameters_t *rfc_param = get_wifi_db_rfc_parameters();
 #endif // DML_SUPPORT
 
-    wifi_util_dbg_print(WIFI_DB,"%s:%d No of radios %d\n",__func__, __LINE__,getNumberRadios());
+    wifi_util_info_print(WIFI_DB,"%s:%d No of radios %d\n",__func__, __LINE__,getNumberRadios());
 
     //Check for the number of radios
     if (num_radio > MAX_NUM_RADIOS) {
-        wifi_util_dbg_print(WIFI_DB,"WIFI %s : Number of Radios %d exceeds supported %d Radios \n",__FUNCTION__, getNumberRadios(), MAX_NUM_RADIOS);
+        wifi_util_error_print(WIFI_DB,"WIFI %s : Number of Radios %d exceeds supported %d Radios \n",__FUNCTION__, getNumberRadios(), MAX_NUM_RADIOS);
         return;
     }
     wifidb_init_default_value();
@@ -5453,22 +5453,22 @@ void init_wifidb_data()
         for (r_index = 0; r_index < num_radio; r_index++) {
             l_vap_param_cfg = get_wifidb_vap_map(r_index);
             if(l_vap_param_cfg == NULL) {
-                wifi_util_dbg_print(WIFI_DB,"%s:%d: invalid get_wifidb_vap_map \n",__func__, __LINE__);
+                wifi_util_error_print(WIFI_DB,"%s:%d: invalid get_wifidb_vap_map \n",__func__, __LINE__);
                 return;
             }
             l_rdk_vap_param_cfg = get_wifidb_rdk_vaps(r_index);
             if (l_rdk_vap_param_cfg == NULL) {
-                wifi_util_dbg_print(WIFI_DB,"%s:%d: invalid get_wifidb_rdk_vaps \n",__func__, __LINE__);
+                wifi_util_error_print(WIFI_DB,"%s:%d: invalid get_wifidb_rdk_vaps \n",__func__, __LINE__);
                 return;
             }
             l_radio_cfg = get_wifidb_radio_map(r_index);
             if(l_radio_cfg == NULL) {
-                wifi_util_dbg_print(WIFI_DB,"%s:%d: invalid get_wifidb_radio_map \n",__func__, __LINE__);
+                wifi_util_error_print(WIFI_DB,"%s:%d: invalid get_wifidb_radio_map \n",__func__, __LINE__);
                 return;
             }
             f_radio_cfg = get_wifidb_radio_feat_map(r_index);
             if(f_radio_cfg == NULL) {
-                wifi_util_dbg_print(WIFI_DB,"%s:%d: %d invalid get_wifidb_radio_feat_map \n",__func__, __LINE__, r_index);
+                wifi_util_error_print(WIFI_DB,"%s:%d: %d invalid get_wifidb_radio_feat_map \n",__func__, __LINE__, r_index);
                 return;
             }
             wifidb_get_wifi_radio_config(r_index, l_radio_cfg, f_radio_cfg);
@@ -5499,7 +5499,7 @@ void init_wifidb_data()
     }
 #endif // DML_SUPPORT
 
-    wifi_util_dbg_print(WIFI_DB,"%s:%d Wifi data init complete\n",__func__, __LINE__);
+    wifi_util_info_print(WIFI_DB,"%s:%d Wifi data init complete\n",__func__, __LINE__);
     db_param_init = true;
 }
 
@@ -5677,6 +5677,7 @@ void *start_wifidb_func(void *arg)
     FILE *fp = NULL;
     int i = 0;
     //bool isOvsSchemaCreate = false;
+    wifi_util_info_print(WIFI_DB, "start_wifidb_func \n");
     wifi_mgr_t *g_wifidb;
     g_wifidb = get_wifimgr_obj();
 
@@ -5689,11 +5690,11 @@ void *start_wifidb_func(void *arg)
         closedir(wifiDbDir);
     }else if(ENOENT == errno){
         if(0 != mkdir(WIFIDB_DIR, 0777)){
-            wifi_util_dbg_print(WIFI_DB,"Failed to Create WIFIDB directory.\n");
+            wifi_util_info_print(WIFI_DB,"Failed to Create WIFIDB directory.\n");
             return NULL;
         }
     }else{
-        wifi_util_dbg_print(WIFI_DB,"Error opening Db Configuration directory. Setting Default\n");
+        wifi_util_info_print(WIFI_DB,"Error opening Db Configuration directory. Setting Default\n");
         return NULL;
     }
     //create a copy of ovs-db server
@@ -5701,7 +5702,7 @@ void *start_wifidb_func(void *arg)
     system(cmd);
     sprintf(db_file, "%s/rdkb-wifi.db", WIFIDB_DIR);
     if (stat(db_file, &sb) != 0) {
-        wifi_util_dbg_print(WIFI_DB,"%s:%d: Could not find rdkb database, ..creating\n", __func__, __LINE__);
+        wifi_util_info_print(WIFI_DB,"%s:%d: Could not find rdkb database, ..creating\n", __func__, __LINE__);
         sprintf(cmd, "ovsdb-tool create %s %s/rdkb-wifi.ovsschema", db_file, WIFIDB_SCHEMA_DIR);
         system(cmd);
     } else {
@@ -5710,14 +5711,14 @@ void *start_wifidb_func(void *arg)
          * PSM and NVRAM values
          * */
 
-        wifi_util_dbg_print(WIFI_DB,"%s:%d: rdkb database already present\n", __func__, __LINE__);
+        wifi_util_info_print(WIFI_DB,"%s:%d: rdkb database already present\n", __func__, __LINE__);
         memset(cmd, 0, sizeof(cmd));
         sprintf(cmd, "ovsdb-tool db-version %s", db_file);
         /*Get the Existing db-version*/
         fp = popen(cmd,"r");
         if(fp != NULL) {
             while (fgets(version_str, sizeof(version_str), fp) != NULL){
-                wifi_util_dbg_print(WIFI_DB,"%s:%d: DB Version before upgrade found\n", __func__, __LINE__);
+                wifi_util_info_print(WIFI_DB,"%s:%d: DB Version before upgrade found\n", __func__, __LINE__);
             }
             pclose(fp);
             for(i=0;version_str[i];i++) {
@@ -5725,7 +5726,7 @@ void *start_wifidb_func(void *arg)
                     version_int=version_int*10+(version_str[i]-'0');
                 }
             }
-            wifi_util_dbg_print(WIFI_DB,"%s:%d:DB Version before upgrade %d\n", __func__, __LINE__, version_int);
+            wifi_util_info_print(WIFI_DB,"%s:%d:DB Version before upgrade %d\n", __func__, __LINE__, version_int);
             g_wifidb->db_version = version_int;
 
             if (version_int < ONEWIFI_SCHEMA_DEF_VERSION) {
@@ -5733,9 +5734,9 @@ void *start_wifidb_func(void *arg)
                  * so, Delete the db file and re-create the schema file
                  */
                 if (remove(db_file) == 0) {
-                    wifi_util_dbg_print(WIFI_DB,"%s:%d: %s file deleted succesfully\n", __func__, __LINE__, db_file);
+                    wifi_util_info_print(WIFI_DB,"%s:%d: %s file deleted succesfully\n", __func__, __LINE__, db_file);
                 }
-                wifi_util_dbg_print(WIFI_DB,"%s:%d: creating the new DB file\n", __func__, __LINE__);
+                wifi_util_info_print(WIFI_DB,"%s:%d: creating the new DB file\n", __func__, __LINE__);
                 sprintf(cmd, "ovsdb-tool create %s %s/rdkb-wifi.ovsschema", db_file, WIFIDB_SCHEMA_DIR);
                 system(cmd);
                 g_wifidb->is_db_update_required = true;
@@ -5744,7 +5745,7 @@ void *start_wifidb_func(void *arg)
 
         if (g_wifidb->is_db_update_required == false) {
             sprintf(cmd,"ovsdb-tool convert %s %s/rdkb-wifi.ovsschema",db_file,WIFIDB_SCHEMA_DIR);
-            wifi_util_dbg_print(WIFI_DB,"%s:%d: rdkb database check for version upgrade/downgrade %s \n", __func__, __LINE__,cmd);
+            wifi_util_info_print(WIFI_DB,"%s:%d: rdkb database check for version upgrade/downgrade %s \n", __func__, __LINE__,cmd);
             system(cmd);
         }
     }
@@ -5752,6 +5753,7 @@ void *start_wifidb_func(void *arg)
     sprintf(cmd, "%s/wifidb-server %s --remote=punix:%s/wifidb.sock %s --unixctl=%s/wifi.ctl --log-file=/dev/null --detach", WIFIDB_RUN_DIR, db_file, WIFIDB_RUN_DIR, (debug_option == true)?"--verbose=dbg":"", WIFIDB_RUN_DIR);
 
     system(cmd);
+    wifi_util_info_print(WIFI_DB, "start_wifidb_func done\n");
     return NULL;
 }
 
