@@ -4769,11 +4769,13 @@ SSID_GetParamUlongValue
     /* check the parameter name and return the corresponding value */
     if( AnscEqualString(ParamName, "Status", TRUE))
     {
-        if (global_wifi_config->global_parameters.force_disable_radio_feature == TRUE )
+        if (global_wifi_config->global_parameters.force_disable_radio_feature == TRUE ||
+            ((webconfig_dml_t *)get_webconfig_dml())->radios[pcfg->radio_index].oper.enable == false)
         {
             *puLong = 2;
             return TRUE;
-        }  
+        }
+
         if (isVapSTAMesh(pcfg->vap_index)) {
             if( pcfg->u.sta_info.enabled == TRUE )
             {
