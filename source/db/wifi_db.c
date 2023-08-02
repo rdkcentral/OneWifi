@@ -4747,7 +4747,7 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
     cfg.guardInterval = wifi_guard_interval_auto;
     cfg.ctsProtection = false;
     cfg.obssCoex = true;
-    cfg.stbcEnable = false;
+    cfg.stbcEnable = true;
     cfg.greenFieldEnable = false;
     cfg.userControl = 0;
     cfg.adminControl = 0;
