@@ -491,6 +491,7 @@ void callback_Wifi_Security_Config(ovsdb_update_monitor_t *mon,
             if(l_security_cfg == NULL)
             {
                 wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid Get_wifi_object_sta_security_parameter \n",__func__, __LINE__,old_rec->vap_name);
+                pthread_mutex_unlock(&g_wifidb->data_cache_lock);
                 return;
             }
         } else {
@@ -498,6 +499,7 @@ void callback_Wifi_Security_Config(ovsdb_update_monitor_t *mon,
             if(l_security_cfg == NULL)
             {
                 wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid Get_wifi_object_bss_security_parameter \n",__func__, __LINE__,old_rec->vap_name);
+                pthread_mutex_unlock(&g_wifidb->data_cache_lock);
                 return;
             }
         }
@@ -828,6 +830,7 @@ void callback_Wifi_VAP_Config(ovsdb_update_monitor_t *mon,
             l_vap_param_cfg->vap_index = convert_vap_name_to_index(&g_wifidb->hal_cap.wifi_prop, new_rec->vap_name);
             if ((int)l_vap_param_cfg->vap_index < 0) {
                 wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid vap name \n",__func__, __LINE__,new_rec->vap_name);
+                pthread_mutex_unlock(&g_wifidb->data_cache_lock);
                 return;
             }
             strncpy(l_vap_param_cfg->vap_name, new_rec->vap_name,(sizeof(l_vap_param_cfg->vap_name)-1));
@@ -861,6 +864,7 @@ void callback_Wifi_VAP_Config(ovsdb_update_monitor_t *mon,
             l_vap_param_cfg->vap_index = convert_vap_name_to_index(&g_wifidb->hal_cap.wifi_prop, new_rec->vap_name);
             if ((int)l_vap_param_cfg->vap_index < 0) {
                 wifi_util_dbg_print(WIFI_DB,"%s:%d: %s invalid vap name \n",__func__, __LINE__, new_rec->vap_name);
+                pthread_mutex_unlock(&g_wifidb->data_cache_lock);
                 return;
             }
             strncpy(l_vap_param_cfg->vap_name, new_rec->vap_name,(sizeof(l_vap_param_cfg->vap_name)-1));
@@ -3063,7 +3067,7 @@ int wifidb_update_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
         strncpy(cfg.beacon_rate_ctl,config->u.bss_info.beaconRateCtl,sizeof(cfg.beacon_rate_ctl)-1);
         strncpy(cfg.mfp_config,"Disabled",sizeof(cfg.mfp_config)-1);
 
-        wifi_util_dbg_print(WIFI_DB,"%s:%d:VAP Config update data cfg.radio_name=%s cfg.radio_name=%s cfg.ssid=%s cfg.enabled=%d cfg.advertisement=%d cfg.isolation_enabled=%d cfg.mgmt_power_control=%d cfg.bss_max_sta =%d cfg.bss_transition_activated=%d cfg.nbr_report_activated=%d cfg.rapid_connect_enabled=%d cfg.rapid_connect_threshold=%d cfg.vap_stats_enable=%d cfg.mac_filter_enabled =%d cfg.mac_filter_mode=%d cfg.wmm_enabled=%d anqp_parameters=%s hs2_parameters=%s uapsd_enabled =%d beacon_rate=%d bridge_name=%s cfg.wmm_noack = %d cfg.wep_key_length = %d   cfg.bss_hotspot =  %d cfg.wps_push_button =  %d cfg.wps_config_methods=%d cfg.wps_enabled=%d cfg.beacon_rate_ctl = %s cfg.mfp_config =%s network_initiated_greylist=%d repurposed_vap_name=%s exists=%d connected_building_enabled=%d\n",__func__, __LINE__,cfg.radio_name,cfg.vap_name,cfg.ssid,cfg.enabled,cfg.ssid_advertisement_enabled,cfg.isolation_enabled,cfg.mgmt_power_control,cfg.bss_max_sta,cfg.bss_transition_activated,cfg.nbr_report_activated,cfg.rapid_connect_enabled,cfg.rapid_connect_threshold,cfg.vap_stats_enable,cfg.mac_filter_enabled,cfg.mac_filter_mode,cfg.wmm_enabled,cfg.anqp_parameters,cfg.hs2_parameters,cfg.uapsd_enabled,cfg.beacon_rate,cfg.bridge_name,cfg.wmm_noack, cfg.wep_key_length, cfg.bss_hotspot, cfg.wps_push_button, cfg.wps_config_methods, cfg.wps_enabled, cfg.beacon_rate_ctl, cfg.mfp_config, cfg.network_initiated_greylist, cfg.repurposed_vap_name, cfg.exists,cfg.connected_building_enabled);
+        wifi_util_dbg_print(WIFI_DB,"%s:%d:VAP Config update data cfg.radio_name=%s cfg.vap_name=%s cfg.ssid=%s cfg.enabled=%d cfg.advertisement=%d cfg.isolation_enabled=%d cfg.mgmt_power_control=%d cfg.bss_max_sta =%d cfg.bss_transition_activated=%d cfg.nbr_report_activated=%d cfg.rapid_connect_enabled=%d cfg.rapid_connect_threshold=%d cfg.vap_stats_enable=%d cfg.mac_filter_enabled =%d cfg.mac_filter_mode=%d cfg.wmm_enabled=%d anqp_parameters=%s hs2_parameters=%s uapsd_enabled =%d beacon_rate=%d bridge_name=%s cfg.wmm_noack = %d cfg.wep_key_length = %d   cfg.bss_hotspot =  %d cfg.wps_push_button =  %d cfg.wps_config_methods=%d cfg.wps_enabled=%d cfg.beacon_rate_ctl = %s cfg.mfp_config =%s network_initiated_greylist=%d exists=%d\n",__func__, __LINE__,cfg.radio_name,cfg.vap_name,cfg.ssid,cfg.enabled,cfg.ssid_advertisement_enabled,cfg.isolation_enabled,cfg.mgmt_power_control,cfg.bss_max_sta,cfg.bss_transition_activated,cfg.nbr_report_activated,cfg.rapid_connect_enabled,cfg.rapid_connect_threshold,cfg.vap_stats_enable,cfg.mac_filter_enabled,cfg.mac_filter_mode,cfg.wmm_enabled,cfg.anqp_parameters,cfg.hs2_parameters,cfg.uapsd_enabled,cfg.beacon_rate,cfg.bridge_name,cfg.wmm_noack, cfg.wep_key_length, cfg.bss_hotspot, cfg.wps_push_button, cfg.wps_config_methods, cfg.wps_enabled, cfg.beacon_rate_ctl, cfg.mfp_config, cfg.network_initiated_greylist, cfg.exists);
     }
     if(onewifi_ovsdb_table_upsert_with_parent(g_wifidb->wifidb_sock_path,&table_Wifi_VAP_Config,&cfg,false,filter_vap,SCHEMA_TABLE(Wifi_Radio_Config),(onewifi_ovsdb_where_simple(SCHEMA_COLUMN(Wifi_Radio_Config,radio_name),radio_name)),SCHEMA_COLUMN(Wifi_Radio_Config,vap_configs)) == false)
     {
@@ -5348,12 +5352,14 @@ void wifidb_init_default_value()
         if(l_radio_cfg == NULL)
         {
             wifi_util_dbg_print(WIFI_DB,"%s:%d: %d invalid get_wifidb_radio_map \n",__func__, __LINE__,index);
+            pthread_mutex_unlock(&g_wifidb->data_cache_lock);
             return;
         }
         f_radio_cfg = get_wifidb_radio_feat_map(r_index);
         if(f_radio_cfg == NULL)
         {
             wifi_util_dbg_print(WIFI_DB,"%s:%d: %d invalid get_wifidb_radio_feat_map \n",__func__, __LINE__, r_index);
+            pthread_mutex_unlock(&g_wifidb->data_cache_lock);
             return;
         }
         l_vap_param_cfg = get_wifidb_vap_map(r_index);
@@ -5361,6 +5367,7 @@ void wifidb_init_default_value()
         if(l_vap_param_cfg == NULL)
         {
             wifi_util_dbg_print(WIFI_DB,"%s:%d invalid get_wifidb_vap_parameters \n",__func__, __LINE__);
+            pthread_mutex_unlock(&g_wifidb->data_cache_lock);
             return;
         }
         memset(l_radio_cfg, 0, sizeof(wifi_radio_operationParam_t));
@@ -5651,21 +5658,25 @@ void init_wifidb_data()
             l_radio_cfg = get_wifidb_radio_map(r_index);
             if(l_radio_cfg == NULL) {
                 wifi_util_error_print(WIFI_DB,"%s:%d: invalid get_wifidb_radio_map \n",__func__, __LINE__);
+                pthread_mutex_unlock(&g_wifidb->data_cache_lock);
                 return;
             }
             l_rdk_vap_param_cfg = get_wifidb_rdk_vaps(r_index);
             if (l_rdk_vap_param_cfg == NULL) {
                 wifi_util_error_print(WIFI_DB,"%s:%d: invalid get_wifidb_rdk_vaps \n",__func__, __LINE__);
+                pthread_mutex_unlock(&g_wifidb->data_cache_lock);
                 return;
             }
             l_vap_param_cfg = get_wifidb_vap_map(r_index);
             if(l_vap_param_cfg == NULL) {
                 wifi_util_error_print(WIFI_DB,"%s:%d: invalid get_wifidb_vap_map \n",__func__, __LINE__);
+                pthread_mutex_unlock(&g_wifidb->data_cache_lock);
                 return;
             }
             f_radio_cfg = get_wifidb_radio_feat_map(r_index);
             if(f_radio_cfg == NULL) {
                 wifi_util_error_print(WIFI_DB,"%s:%d: %d invalid get_wifidb_radio_feat_map \n",__func__, __LINE__, r_index);
+                pthread_mutex_unlock(&g_wifidb->data_cache_lock);
                 return;
             }
             wifidb_update_wifi_radio_config(r_index, l_radio_cfg, f_radio_cfg);
@@ -5691,21 +5702,25 @@ void init_wifidb_data()
             l_vap_param_cfg = get_wifidb_vap_map(r_index);
             if(l_vap_param_cfg == NULL) {
                 wifi_util_error_print(WIFI_DB,"%s:%d: invalid get_wifidb_vap_map \n",__func__, __LINE__);
+                pthread_mutex_unlock(&g_wifidb->data_cache_lock);
                 return;
             }
             l_rdk_vap_param_cfg = get_wifidb_rdk_vaps(r_index);
             if (l_rdk_vap_param_cfg == NULL) {
                 wifi_util_error_print(WIFI_DB,"%s:%d: invalid get_wifidb_rdk_vaps \n",__func__, __LINE__);
+                pthread_mutex_unlock(&g_wifidb->data_cache_lock);
                 return;
             }
             l_radio_cfg = get_wifidb_radio_map(r_index);
             if(l_radio_cfg == NULL) {
                 wifi_util_error_print(WIFI_DB,"%s:%d: invalid get_wifidb_radio_map \n",__func__, __LINE__);
+                pthread_mutex_unlock(&g_wifidb->data_cache_lock);
                 return;
             }
             f_radio_cfg = get_wifidb_radio_feat_map(r_index);
             if(f_radio_cfg == NULL) {
                 wifi_util_error_print(WIFI_DB,"%s:%d: %d invalid get_wifidb_radio_feat_map \n",__func__, __LINE__, r_index);
+                pthread_mutex_unlock(&g_wifidb->data_cache_lock);
                 return;
             }
             wifidb_get_wifi_radio_config(r_index, l_radio_cfg, f_radio_cfg);
@@ -5761,6 +5776,7 @@ void init_wifidb_data()
         wifidb_global_config_upgrade();
         if (wifidb_update_wifi_global_config(&g_wifidb->global_config.global_parameters) != RETURN_OK) {
             wifi_util_error_print(WIFI_DB,"%s:%d error in updating global config\n", __func__,__LINE__);
+            pthread_mutex_unlock(&g_wifidb->data_cache_lock);
             return;
         }
 #endif // DML_SUPPORT
