@@ -708,6 +708,7 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
 #if defined(__ENABLE_PID__) && (__ENABLE_PID__)
     pid_t pid;
 #endif
+    extern char *__progname;
     char filename_dbg_enable[64];
     char module_filename[32];
     char filename[100];
@@ -817,7 +818,8 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
             sprintf(&buff[0], "%d - ", pid);
             get_formatted_time(&buff[strlen(buff)]);
 #else
-            get_formatted_time(buff);
+            snprintf(&buff[0], sizeof(buff), "[%s] ", __progname ? __progname : "");
+            get_formatted_time(&buff[strlen(buff)]);
 #endif
             break;
     }
