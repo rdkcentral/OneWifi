@@ -629,7 +629,10 @@ int init(webconfig_dml_t *consumer)
     consumer->harvester.b_inst_client_enabled=consumer->config.global_parameters.inst_wifi_client_enabled;
     consumer->harvester.u_inst_client_reporting_period=consumer->config.global_parameters.inst_wifi_client_reporting_period;
     consumer->harvester.u_inst_client_def_reporting_period=consumer->config.global_parameters.inst_wifi_client_def_reporting_period;
-    strncpy(consumer->harvester.mac_address,(char *)consumer->config.global_parameters.inst_wifi_client_mac,sizeof(consumer->harvester.mac_address));
+    snprintf(consumer->harvester.mac_address, sizeof(consumer->harvester.mac_address), "%02x%02x%02x%02x%02x%02x",
+            consumer->config.global_parameters.inst_wifi_client_mac[0], consumer->config.global_parameters.inst_wifi_client_mac[1], 
+            consumer->config.global_parameters.inst_wifi_client_mac[2], consumer->config.global_parameters.inst_wifi_client_mac[3], 
+            consumer->config.global_parameters.inst_wifi_client_mac[4], consumer->config.global_parameters.inst_wifi_client_mac[5]);
     for (itr=0; itr<consumer->hal_cap.wifi_prop.numRadios; itr++) {
         radio_cfg[itr].SupportedFrequencyBands = consumer->radios[itr].oper.band;
         snprintf(radio_cfg[itr].Alias, sizeof(radio_cfg[itr].Alias), "Radio%d", itr);
@@ -1180,7 +1183,10 @@ int push_harvester_dml_cache_to_one_wifidb()
         webconfig_dml.harvester.u_inst_client_reporting_period = webconfig_dml.config.global_parameters.inst_wifi_client_reporting_period;
         webconfig_dml.harvester.u_inst_client_def_reporting_period = webconfig_dml.config.global_parameters.inst_wifi_client_def_reporting_period;
         webconfig_dml.harvester.u_inst_client_def_override_ttl = 0;
-        strncpy(webconfig_dml.harvester.mac_address,(char *)webconfig_dml.config.global_parameters.inst_wifi_client_mac,sizeof(webconfig_dml.harvester.mac_address));
+        snprintf(webconfig_dml.harvester.mac_address, sizeof(webconfig_dml.harvester.mac_address), "%02x%02x%02x%02x%02x%02x",
+                webconfig_dml.config.global_parameters.inst_wifi_client_mac[0], webconfig_dml.config.global_parameters.inst_wifi_client_mac[1], 
+                webconfig_dml.config.global_parameters.inst_wifi_client_mac[2], webconfig_dml.config.global_parameters.inst_wifi_client_mac[3], 
+                webconfig_dml.config.global_parameters.inst_wifi_client_mac[4], webconfig_dml.config.global_parameters.inst_wifi_client_mac[5]);
     }
     return RETURN_OK;
 }
