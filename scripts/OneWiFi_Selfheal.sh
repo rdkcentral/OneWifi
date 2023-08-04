@@ -25,6 +25,10 @@ pre_txprobe_req_5g_cnt=0
 cur_txprobe_req_5g_cnt=0
 pre_txprobe_resp_5g_cnt=0
 cur_txprobe_resp_5g_cnt=0
+force_reset_subdoc=0
+webcfg_rfc_enabled=""
+
+SW_UPGRADE_DEFAULT_FILE="/tmp/sw_upgrade_private_defaults"
 
 MODEL_NUM=`grep MODEL_NUM /etc/device.properties | cut -d "=" -f2`
 LOG_FILE="/rdklogs/logs/wifi_selfheal.txt"
@@ -236,6 +240,24 @@ while true
      dml_restart=0
      echo_t "DMCLI crashed self heal executed restarting OneWifi" >>  $LOG_FILE
      onewifi_restart_wifi
+ fi
+
+if [ $force_reset_subdoc -le  2 ]; then
+    if [ -f  $SW_UPGRADE_DEFAULT_FILE ]; then
+        webcfg_rfc_enabled=`dmcli eRT getv Device.X_RDK_WebConfig.RfcEnable | grep "value" | cut -d ':' -f3-5`
+        echo_t "webcfg_rfc status is $webcfg_rfc_enabled" >>  /rdklogs/logs/wifi_selfheal.txt
+        force_rest_val=`dmcli eRT setv Device.X_RDK_WebConfig.webcfgSubdocForceReset string privatessid`
+        if [ $force_rest_val != 0 ]; then
+            if [ $force_reset_subdoc ==  2 ]; then
+                echo_t "Selfheal execution to force_reset on private vaps failed from WebConfig" >> /rdklogs/logs/wifi_selfheal.txt
+                rm -f $SW_UPGRADE_DEFAULT_FILE
+            fi
+        else
+            echo_t "Selfheal execution to force_reset on private vaps passed from WebConfig" >> /rdklogs/logs/wifi_selfheal.txt
+            rm -f $SW_UPGRADE_DEFAULT_FILE
+        fi
+    fi
+    ((force_reset_subdoc++))
  fi
 
 sleep 5m

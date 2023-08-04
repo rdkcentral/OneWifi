@@ -111,6 +111,9 @@ extern "C" {
 //This is a dummy string if the value is not passed.
 #define INVALID_KEY                      "12345678"
 
+#define SUBDOC_FORCE_RESET               "Device.X_RDK_WebConfig.webcfgSubdocForceReset"
+#define PRIVATE_SUB_DOC                  "privatessid"
+
 typedef enum {
     rbus_bool_data,
     rbus_int_data,

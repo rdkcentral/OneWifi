@@ -5418,22 +5418,22 @@ void init_wifidb_data()
         for (r_index = 0; r_index < num_radio; r_index++) {
             l_radio_cfg = get_wifidb_radio_map(r_index);
             if(l_radio_cfg == NULL) {
-                wifi_util_dbg_print(WIFI_DB,"%s:%d: invalid get_wifidb_radio_map \n",__func__, __LINE__);
+                wifi_util_error_print(WIFI_DB,"%s:%d: invalid get_wifidb_radio_map \n",__func__, __LINE__);
                 return;
             }
             l_rdk_vap_param_cfg = get_wifidb_rdk_vaps(r_index);
             if (l_rdk_vap_param_cfg == NULL) {
-                wifi_util_dbg_print(WIFI_DB,"%s:%d: invalid get_wifidb_rdk_vaps \n",__func__, __LINE__);
+                wifi_util_error_print(WIFI_DB,"%s:%d: invalid get_wifidb_rdk_vaps \n",__func__, __LINE__);
                 return;
             }
             l_vap_param_cfg = get_wifidb_vap_map(r_index);
             if(l_vap_param_cfg == NULL) {
-                wifi_util_dbg_print(WIFI_DB,"%s:%d: invalid get_wifidb_vap_map \n",__func__, __LINE__);
+                wifi_util_error_print(WIFI_DB,"%s:%d: invalid get_wifidb_vap_map \n",__func__, __LINE__);
                 return;
             }
             f_radio_cfg = get_wifidb_radio_feat_map(r_index);
             if(f_radio_cfg == NULL) {
-                wifi_util_dbg_print(WIFI_DB,"%s:%d: %d invalid get_wifidb_radio_feat_map \n",__func__, __LINE__, r_index);
+                wifi_util_error_print(WIFI_DB,"%s:%d: %d invalid get_wifidb_radio_feat_map \n",__func__, __LINE__, r_index);
                 return;
             }
             wifidb_update_wifi_radio_config(r_index, l_radio_cfg, f_radio_cfg);
@@ -5450,7 +5450,7 @@ void init_wifidb_data()
     }
     else {
         if (wifidb_get_rfc_config(0,rfc_param) != 0) {
-            wifi_util_dbg_print(WIFI_DB,"%s:%d: Error getting RFC config\n",__func__, __LINE__);
+            wifi_util_error_print(WIFI_DB,"%s:%d: Error getting RFC config\n",__func__, __LINE__);
         }
 #endif // DML_SUPPORT
         pthread_mutex_lock(&g_wifidb->data_cache_lock);

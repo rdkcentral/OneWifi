@@ -1012,6 +1012,7 @@ int get_vap_params_from_psm(unsigned int vap_index, wifi_vap_info_t *vap_config,
     char recName[256] = {0};
     char strValue[256] = {0};
     unsigned int instance_number = vap_index + 1;
+    int ret = -1;
 
     memset(vap_config, 0, sizeof(wifi_vap_info_t));
     wifidb_init_vap_config_default((instance_number - 1), vap_config, rdk_vap_config);
@@ -1201,8 +1202,13 @@ int get_vap_params_from_psm(unsigned int vap_index, wifi_vap_info_t *vap_config,
         wifi_util_dbg_print(WIFI_MGR,"%s:%d str value for beaconRateCtl:%s \r\n", __func__, __LINE__, str);
     }
 
-    nvram_get_current_ssid(bss_cfg->ssid, (instance_number - 1));
-    wifi_util_info_print(WIFI_MGR,"%s:%d vap_%d ssid info:%s\r\n", __func__, __LINE__, (instance_number - 1), bss_cfg->ssid);
+    ret = nvram_get_current_ssid(bss_cfg->ssid, (instance_number - 1));
+    if ((ret != 0 ) && isVapPrivate(vap_config->vap_index)) {
+        wifi_util_info_print(WIFI_MGR,"%s:%d nvram_get_current_ssid failed for private vapindex :%d \n", __func__, __LINE__, vap_config->vap_index);
+        sleep(5);
+        ret = nvram_get_current_ssid(bss_cfg->ssid, (instance_number - 1));
+        wifi_util_info_print(WIFI_MGR,"%s:%d nvram_get_current_ssid ret value after sleep  :%d \n", __func__, __LINE__, ret);
+    }
     nvram_get_vap_enable_status(&bss_cfg->enabled, (instance_number - 1));
 
     int security_mode = bss_cfg->security.mode;
@@ -1226,7 +1232,13 @@ int get_vap_params_from_psm(unsigned int vap_index, wifi_vap_info_t *vap_config,
     if ((mode == wifi_security_mode_wpa_enterprise) || (mode == wifi_security_mode_wpa2_enterprise ) || (mode == wifi_security_mode_wpa3_enterprise) || (mode == wifi_security_mode_wpa_wpa2_enterprise)) {
         //TBD
     } else {
-        nvram_get_current_password(bss_cfg->security.u.key.key, (instance_number - 1));
+        ret = nvram_get_current_password(bss_cfg->security.u.key.key, (instance_number - 1));
+        if ((ret != 0 ) && isVapPrivate(vap_config->vap_index)) {
+            wifi_util_info_print(WIFI_MGR,"%s:%d nvram_get_current_password failed for private vapindex :%d \n", __func__, __LINE__, vap_config->vap_index);
+            sleep(5);
+            ret = nvram_get_current_password(bss_cfg->security.u.key.key, (instance_number - 1));
+            wifi_util_info_print(WIFI_MGR,"%s:%d nvram_get_current_password ret value after sleep  :%d \n", __func__, __LINE__, ret);
+       }
     }
 
     if (nvram_get_mgmt_frame_power_control(vap_index, &bss_cfg->mgmtPowerControl) == RETURN_OK) {
@@ -1293,7 +1305,7 @@ int wifi_db_update_vap_config()
 
         retval = wifidb_update_wifi_vap_info(vap_cfg.vap_name, &vap_cfg, &rdk_vap_cfg);
         if (retval != 0) {
-            wifi_util_info_print(WIFI_MGR,"%s:%d: Failed to update vap config in wifi db\n",__func__, __LINE__);
+            wifi_util_error_print(WIFI_MGR,"%s:%d: Failed to update vap config in wifi db\n",__func__, __LINE__);
         } else {
             wifi_util_info_print(WIFI_MGR,"%s:%d: Successfully updated vap config in wifidb \r\n",__func__, __LINE__);
         }
@@ -1426,6 +1438,7 @@ int set_bool_psm_value(bool data_value, char *recName)
 
 int get_all_param_from_psm_and_set_into_db(void)
 {
+    wifi_util_info_print(WIFI_MGR,"%s \n",__func__);
 /*      check for psm-db(Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.WiFi-PSM-DB.Enable) and
 **      last reboot reason(Device.DeviceInfo.X_RDKCENTRAL-COM_LastRebootReason)
 **      if psm-db is false and last reboot reason if not factory-reset,
@@ -1450,7 +1463,6 @@ int get_all_param_from_psm_and_set_into_db(void)
         }
 
         wifi_util_info_print(WIFI_MGR,"%s psm:%d last_reboot_reason:%s \n",__func__, wifi_psm_db_enabled, last_reboot_reason);
-
         if ((access(ONEWIFI_MIGRATION_FLAG, F_OK) == 0)) {
             int retval;
             retval = wifi_db_update_psm_values();

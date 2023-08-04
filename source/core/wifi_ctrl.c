@@ -742,6 +742,11 @@ int start_wifi_services(void)
         start_radios(rdk_dev_mode_type_gw);
         start_gateway_vaps();
         captive_portal_check();
+
+        /* Function to check for default SSID and Passphrase for Private VAPS
+        if they are default and last-reboot reason is SW get the previous config from Webconfig */
+        validate_and_sync_private_vap_credentials();
+
     } else if (ctrl->network_mode == rdk_dev_mode_type_ext) {
         start_radios(rdk_dev_mode_type_ext);
         start_extender_vaps();
@@ -1523,7 +1528,73 @@ int init_wireless_interface_mac()
             }
         }
     }
+    return RETURN_OK;
+}
+int validate_and_sync_private_vap_credentials()
+{
+    char last_reboot_reason[32];
+    uint8_t num_of_radios = getNumberRadios();
+    wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
+    UINT radio_index =0;
+    wifi_vap_info_map_t *wifi_vap_map = NULL;
+    UINT i =0;
+    int rc = 0, len =0;
+    const char * pTmp = NULL;
+    bool default_private_credentials = false;
+    char default_ssid[128] = {0}, default_password[128] = {0};
+    rbusValue_t value;
 
+    memset(last_reboot_reason, 0, sizeof(last_reboot_reason));
+
+    rbusValue_Init(&value);
+    rc = rbus_get(g_wifi_mgr->ctrl.rbus_handle, LAST_REBOOT_REASON_NAMESPACE, &value);
+
+    if(rc != RBUS_ERROR_SUCCESS) {
+        wifi_util_error_print(WIFI_MGR,"[%s:%d] Rbus error param: %s\r\n", __func__, __LINE__, LAST_REBOOT_REASON_NAMESPACE);
+        rbusValue_Release(value);
+        return RETURN_ERR;
+    }
+
+    pTmp = rbusValue_GetString(value, &len);
+    wifi_util_info_print(WIFI_CTRL,"Last reboot reason is %s\n",pTmp);
+    if (strcmp(pTmp,"Software_upgrade") == 0) {
+
+        get_ssid_from_device_mac(default_ssid);
+
+        for (radio_index = 0; radio_index < num_of_radios && !default_private_credentials; radio_index++) {
+
+            wifi_vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(radio_index);
+            for ( i = 0; i < wifi_vap_map->num_vaps; i++) {
+
+                if (strncmp(wifi_vap_map->vap_array[i].vap_name,"private_ssid",strlen("private_ssid"))== 0) {
+
+                    wifi_hal_get_default_keypassphrase(default_password, wifi_vap_map->vap_array[i].vap_index);
+
+                    if ((strcmp(wifi_vap_map->vap_array[i].u.bss_info.ssid,default_ssid) == 0) || \
+                        ((strcmp(wifi_vap_map->vap_array[i].u.bss_info.security.u.key.key,default_password) == 0))) {
+
+                       wifi_util_error_print(WIFI_CTRL,"private vaps have default credentials\n");
+                       default_private_credentials = true;
+                       break;
+                    }
+                }
+            }
+        }
+        wifi_util_info_print(WIFI_CTRL,"Private vaps credentials= %d and reboot reason =%s\n",default_private_credentials,pTmp);
+        if (default_private_credentials) {
+            rc = rbus_setStr(g_wifi_mgr->ctrl.rbus_handle,SUBDOC_FORCE_RESET,PRIVATE_SUB_DOC);
+            if(rc != RBUS_ERROR_SUCCESS) {
+                wifi_util_error_print(WIFI_MGR,"[%s:%d] Rbus error in setting: %s\n", __func__, __LINE__, SUBDOC_FORCE_RESET);
+                v_secure_system("touch /tmp/sw_upgrade_private_defaults");
+                rbusValue_Release(value);
+                return RETURN_ERR;
+            }
+            wifi_util_info_print(WIFI_CTRL,"Force Reset called on %s because privatevap vap credentials are default \n",PRIVATE_SUB_DOC);
+
+        }
+
+    }
+    rbusValue_Release(value);
     return RETURN_OK;
 }
 
