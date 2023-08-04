@@ -51,8 +51,9 @@ webconfig_dml_t* get_webconfig_dml()
 
 void request_for_dml_data_resync()
 {
+    bool dummy_msg = FALSE;
     wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Send a command to push_event_to_ctrl_queue to get data sync for DML\n", __func__, __LINE__);
-    push_event_to_ctrl_queue(NULL, 0, wifi_event_type_webconfig, wifi_event_webconfig_data_req_from_dml, NULL);
+    push_event_to_ctrl_queue((void *)&dummy_msg, 0, wifi_event_type_webconfig, wifi_event_webconfig_data_req_from_dml, NULL);
 }
 
 active_msmt_t* get_dml_blaster(void)
@@ -832,8 +833,9 @@ int push_global_config_dml_cache_to_one_wifidb()
 
 int push_wifi_host_sync_to_ctrl_queue()
 {
+    bool dummy_msg = FALSE;
     wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Pushing wifi host sync to ctrl queue\n", __func__, __LINE__);
-    push_event_to_ctrl_queue(NULL, 0, wifi_event_type_command, wifi_event_type_command_wifi_host_sync, NULL);
+    push_event_to_ctrl_queue((void *)&dummy_msg, 0, wifi_event_type_command, wifi_event_type_command_wifi_host_sync, NULL);
 
     return RETURN_OK;
 }
@@ -1143,7 +1145,8 @@ int push_blaster_config_dml_to_ctrl_queue()
 
 int process_neighbor_scan_dml()
 {
-    push_event_to_ctrl_queue(NULL, 0, wifi_event_type_command, wifi_event_type_command_wifi_neighborscan, NULL);
+    bool dummy_msg = FALSE;
+    push_event_to_ctrl_queue((void *)&dummy_msg, 0, wifi_event_type_command, wifi_event_type_command_wifi_neighborscan, NULL);
     wifi_util_info_print(WIFI_DMCLI, "%s: Neighbor scan command pushed to ctrl. queue \n", __FUNCTION__);
     return RETURN_OK;
 }

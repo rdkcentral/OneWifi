@@ -2013,7 +2013,8 @@ void test_xfinity_subdoc_change(webconfig_consumer_t *consumer)
 void test_initial_sync()
 {
 #ifdef WEBCONFIG_TESTS_OVER_QUEUE
-    push_event_to_ctrl_queue(NULL, 0, wifi_event_type_webconfig, wifi_event_webconfig_get_data, NULL);
+    bool dummy_msg = FALSE;
+    push_event_to_ctrl_queue((void *)&dummy_msg, 0, wifi_event_type_webconfig, wifi_event_webconfig_get_data, NULL);
 #else
     initial_sync(&webconfig_consumer);
 #endif
