@@ -40,6 +40,9 @@
 #endif
 #include <opensync/osw_types.h>
 #include <opensync/ow_webconfig.h>
+#ifdef CCSP_COMMON
+#include "ccsp_WifiLog_wrapper.h"
+#endif
 
 #define OW_CONF_BARRIER_TIMEOUT_MSEC (60 * 1000)
 #define IS_CHANGED(old, new) ((old != new)? wifi_util_dbg_print(WIFI_CTRL,"%s:Changed param %s: [%d] -> [%d].\n",__func__,#old,old,new),1: 0)
@@ -737,6 +740,94 @@ static bool is_postassoc_cac_config_changed(wifi_vap_info_t *old, wifi_vap_info_
     }
 }
 
+
+void vap_param_config_changed_event_logging(wifi_vap_info_t *old, wifi_vap_info_t *new,char name[16],wifi_radio_operationParam_t *radio)
+{
+#ifdef CCSP_COMMON
+    if(radio->enable == 1)
+    {
+        if (IS_STR_CHANGED(old->u.bss_info.ssid, new->u.bss_info.ssid,sizeof(old->u.bss_info.ssid)))
+        {
+            CcspWifiEventTrace(("RDK_LOG_NOTICE,  WiFi radio %s is set to UP\n",name));
+            if(new->u.bss_info.enabled)
+            {
+                CcspWifiEventTrace(("RDK_LOG_NOTICE, SSID Changed \n"));
+            }
+        }
+        else if(IS_STR_CHANGED(old->u.bss_info.security.u.key.key, new->u.bss_info.security.u.key.key,sizeof(old->u.bss_info.security.u.key.key)))
+        {
+            CcspWifiEventTrace(("RDK_LOG_NOTICE,  WiFi radio %s is set to UP\n",name));
+            if(new->u.bss_info.enabled)
+            {
+                CcspWifiEventTrace(("RDK_LOG_NOTICE, KeyPassphrase Changed \n "));
+            }
+        }
+        else
+        {
+            if(IS_CHANGED(old->u.bss_info.security.mode, new->u.bss_info.security.mode))
+            {
+                CcspWifiEventTrace(("RDK_LOG_NOTICE,  WiFi radio %s is set to UP\n",name));
+                if(new->u.bss_info.enabled)
+                {
+                    switch(new->u.bss_info.security.mode)
+                    {
+                        case wifi_security_mode_none:
+                            CcspWifiEventTrace(("RDK_LOG_NOTICE, Wifi security mode None is enabled\n"));
+                            break;
+                        case wifi_security_mode_wep_64:
+                            CcspWifiEventTrace(("RDK_LOG_NOTICE, Wifi security mode WEP-64 is enabled\n"));
+                            break;
+                        case wifi_security_mode_wep_128:
+                            CcspWifiEventTrace(("RDK_LOG_NOTICE, Wifi security mode WEP-128 is enabled\n"));
+                            break;
+                        case wifi_security_mode_wpa_personal:
+                            CcspWifiEventTrace(("RDK_LOG_NOTICE, Wifi security mode WPA-Personal is enabled\n"));
+                            break;
+                        case wifi_security_mode_wpa2_personal:
+                            CcspWifiEventTrace(("RDK_LOG_NOTICE, Wifi security mode WPA2-Personal is enabled\n"));
+                            break;
+                        case wifi_security_mode_wpa_wpa2_personal:
+                            CcspWifiEventTrace(("RDK_LOG_NOTICE, Wifi security mode WPA-WPA2-Personal is enabled\n"));
+                            break;
+                        case wifi_security_mode_wpa_enterprise:
+                            CcspWifiEventTrace(("RDK_LOG_NOTICE, Wifi security mode WPA-Enterprise is enabled\n"));
+                            break;
+                        case wifi_security_mode_wpa2_enterprise:
+                            CcspWifiEventTrace(("RDK_LOG_NOTICE, Wifi security mode WPA2-Enterprise is enabled\n"));
+                            break;
+                        case wifi_security_mode_wpa_wpa2_enterprise:
+                            CcspWifiEventTrace(("RDK_LOG_NOTICE, Wifi security mode WPA-WPA2-Enterprise is enabled\n"));
+                            break;
+                        case wifi_security_mode_wpa3_personal:
+                            CcspWifiEventTrace(("RDK_LOG_NOTICE, Wifi security mode WPA3-Personal is enabled\n"));
+                            break;
+                        case wifi_security_mode_wpa3_transition:
+                            CcspWifiEventTrace(("RDK_LOG_NOTICE, Wifi security mode WPA3-Transition is enabled\n"));
+                            break;
+                        case wifi_security_mode_wpa3_enterprise:
+                            CcspWifiEventTrace(("RDK_LOG_NOTICE, Wifi security mode WPA3-Enterprise is enabled\n"));
+                            break;
+                        case wifi_security_mode_enhanced_open:
+                            CcspWifiEventTrace(("RDK_LOG_NOTICE, Wifi security mode Open is enabled\n"));
+                            break;
+                        default:
+                            CcspWifiEventTrace(("RDK_LOG_NOTICE, Incorrect Wifi Security mode %d is enabled.\n",new->u.bss_info.security.mode));
+                            break;
+                    }
+                }
+            }
+        }
+    }
+    else
+    {
+        CcspWifiEventTrace(("RDK_LOG_NOTICE, Wifi radio %s is set to DOWN\n",name));
+    }
+#else
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d Not Inside CCSP_COMMON macro. \n",__func__,__LINE__);
+    return;
+#endif
+}
+
 static bool is_vap_param_config_changed(wifi_vap_info_t *old, wifi_vap_info_t *new,
     rdk_wifi_vap_info_t *rdk_old, rdk_wifi_vap_info_t *rdk_new, bool isSta)
 {
@@ -958,7 +1049,7 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
             // radio data changed apply
             wifi_util_info_print(WIFI_CTRL, "%s:%d: Change detected in received vap config, applying new configuration for vap: %s\n",
                                 __func__, __LINE__, vap_names[i]);
-
+            vap_param_config_changed_event_logging(mgr_vap_info,vap_info,radio->name,&radio->oper);
             print_wifi_hal_bss_vap_data(WIFI_WEBCONFIG, "Old", tgt_vap_index, mgr_vap_info,
                 mgr_rdk_vap_info);
             print_wifi_hal_bss_vap_data(WIFI_WEBCONFIG, "New", tgt_vap_index, vap_info,
@@ -1884,6 +1975,20 @@ void ecomode_telemetry_update_and_reboot(unsigned int index, bool active)
 }
 #endif // defined (FEATURE_SUPPORT_ECOPOWERDOWN)
 
+
+void radio_param_config_changed_event_logging(wifi_radio_operationParam_t *old , wifi_radio_operationParam_t *new,char name[16])
+{
+#ifdef CCSP_COMMON
+    if(IS_CHANGED(old->enable,new->enable))
+    {
+        CcspWifiEventTrace(("RDK_LOG_NOTICE, Wifi radio %s is set to %s\n",name,((new->enable==1)?"UP":"DOWN")));
+    }
+#else
+    wifi_util_dbg_print(WIFI_CTRL,"%s:%d Not Inside CCSP_COMMON Macro. \n",__func__,__LINE__);
+    return;
+#endif
+}
+
 int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
     unsigned int i, j;
@@ -1933,7 +2038,7 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
             is_changed = 1;
             wifi_util_info_print(WIFI_MGR, "%s:%d: Change detected in received radio config, applying new configuration for radio: %s\n",
                             __func__, __LINE__, radio_data->name);
-
+            radio_param_config_changed_event_logging(&mgr_radio_data->oper,&radio_data->oper,radio_data->name);
             print_wifi_hal_radio_data(WIFI_WEBCONFIG, "old", i, &mgr_radio_data->oper);
             print_wifi_hal_radio_data(WIFI_WEBCONFIG, "New", i, &radio_data->oper);
 
