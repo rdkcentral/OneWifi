@@ -3128,7 +3128,7 @@ pErr wifi_home_vap_exec_handler(void *blob)
     return private_home_exec_common_handler(blob, VAP_PREFIX_IOT, webconfig_subdoc_type_home);
 }
 
-#define MAX_JSON_BUFSIZE 10240
+#define MAX_JSON_BUFSIZE 21240
 
 char *unpackDecode(const char* enb)
 {
