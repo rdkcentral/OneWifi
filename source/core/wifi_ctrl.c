@@ -2547,8 +2547,6 @@ int get_vap_dml_parameters(char *str, void *value)
         *(int*)value = l_wifi_mgr->dml_parameters.rssi_threshold;
     } else if ((strcmp(str, MFP_FEATURE_STATUS) == 0)) {
         *(bool*)value = l_wifi_mgr->dml_parameters.FeatureMFPConfig;
-    } else if ((strcmp(str, CH_UTILITY_LOG_INTERVAL) == 0)) {
-        *(int*)value = l_wifi_mgr->dml_parameters.ChUtilityLogInterval;
     } else if ((strcmp(str, WIFI_FACTORY_RESET) == 0)) {
         *(bool*)value = l_wifi_mgr->dml_parameters.WifiFactoryReset;
     } else if ((strcmp(str, VALIDATE_SSID_NAME) == 0)) {
@@ -2587,8 +2585,6 @@ int set_vap_dml_parameters(char *str, void *value)
         l_wifi_mgr->dml_parameters.rssi_threshold = *(int*)value;
     } else if ((strcmp(str, MFP_FEATURE_STATUS) == 0)) {
         l_wifi_mgr->dml_parameters.FeatureMFPConfig = *(bool*)value;
-    } else if ((strcmp(str, CH_UTILITY_LOG_INTERVAL) == 0)) {
-        l_wifi_mgr->dml_parameters.ChUtilityLogInterval = *(int*)value;
     } else if ((strcmp(str, WIFI_FACTORY_RESET) == 0)) {
         l_wifi_mgr->dml_parameters.WifiFactoryReset = *(bool*)value;
     } else if ((strcmp(str, VALIDATE_SSID_NAME) == 0)) {

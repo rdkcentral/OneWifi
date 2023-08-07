@@ -1,6 +1,6 @@
 {
   "name": "Wifi_Rdk_Database",
-  "version": "1.00.022",
+  "version": "1.00.023",
   "cksum": "2353365742 523",
   "tables": {
     "Wifi_Device_Config": {
@@ -1869,6 +1869,15 @@
           }
         },
         "whix_log_interval": {
+          "type": {
+            "key": {
+              "type": "integer"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "whix_chutility_loginterval": {
           "type": {
             "key": {
               "type": "integer"

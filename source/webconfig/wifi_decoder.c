@@ -2296,6 +2296,11 @@ webconfig_error_t decode_wifi_global_config(const cJSON *global_cfg, wifi_global
     decode_param_integer(global_cfg, "WhixLoginterval", param);
     global_info->whix_log_interval = param->valuedouble;
 
+    //Whix_ChUtility_Loginterval
+    decode_param_integer(global_cfg, "whix_chutility_loginterval", param);
+    global_info->whix_chutility_loginterval = param->valuedouble;
+
+
     //AssocMonitorDuration
     decode_param_integer(global_cfg, "AssocMonitorDuration", param);
     global_info->assoc_monitor_duration = param->valuedouble;

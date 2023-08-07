@@ -1661,6 +1661,10 @@ int validate_wifi_global_config(const cJSON *global_cfg, wifi_global_param_t *gl
     validate_param_integer(global_cfg, "WhixLoginterval", param);
     global_info->whix_log_interval = param->valuedouble;
 
+    //Whix_ChUtility_Loginterval
+    validate_param_integer(global_cfg, "whix_chutility_loginterval", param);
+    global_info->whix_chutility_loginterval = param->valuedouble;
+
     //AssocMonitorDuration
     validate_param_integer(global_cfg, "AssocMonitorDuration", param);
     global_info->assoc_monitor_duration = param->valuedouble;

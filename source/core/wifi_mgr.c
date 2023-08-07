@@ -99,6 +99,7 @@ static char *AssocCountThreshold = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi
 static char *AssocMonitorDuration = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.X_RDKCENTRAL-COM_AssocMonitorDuration";
 static char *AssocGateTime = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.X_RDKCENTRAL-COM_AssocGateTime";
 static char *WhixLoginterval = "dmsb.device.deviceinfo.X_RDKCENTRAL-COM_WHIX.LogInterval";
+static char *WhixChUtilityLoginterval = "dmsb.device.deviceinfo.X_RDKCENTRAL-COM_WHIX.ChUtilityLogInterval";
 static char *RapidReconnectIndicationEnable     = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.X_RDKCENTRAL-COM_RapidReconnectIndicationEnable";
 static char *FeatureMFPConfig    = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.FeatureMFPConfig";
 static char *WiFiTxOverflowSelfheal = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.TxOverflowSelfheal";
@@ -467,6 +468,15 @@ int wifi_db_update_global_config(wifi_global_param_t *global_cfg)
         wifi_util_dbg_print(WIFI_MGR,"global_cfg->whix_log_interval is %d and str is %s and _ansc_atoi(str) is %d\n", global_cfg->whix_log_interval, str, _ansc_atoi(str));
     } else {
         wifi_util_error_print(WIFI_MGR,":%s:%d str value for whix_log_interval is null \n", __func__, __LINE__);
+    }
+
+    memset(strValue, 0, sizeof(strValue));
+    str = Get_PSM_Record_Status(WhixChUtilityLoginterval, strValue);
+    if (str != NULL) {
+        global_cfg->whix_chutility_loginterval = _ansc_atoi(str);
+        wifi_util_dbg_print(WIFI_MGR,"%s:%d global_cfg->whix_chutility_log_interval is %d and str is %s and _ansc_atoi(str) is %d\n", __func__, __LINE__, global_cfg->whix_chutility_loginterval, str, _ansc_atoi(str));
+    } else {
+        wifi_util_error_print(WIFI_MGR,":%s:%d str value for whix_chutility_loginterval is null \n", __func__, __LINE__);
     }
 
     memset(strValue, 0, sizeof(strValue));

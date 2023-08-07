@@ -65,6 +65,7 @@
 #define ONEWIFI_DB_OLD_VERSION_FILE "/tmp/wifi_db_old_version"
 #define ONEWIFI_DB_VERSION_OFFCHANNELSCAN_FLAG 100018
 #define ONEWIFI_DB_VERSION_LOGINTERVAL_FLAG 100022
+#define ONEWIFI_DB_VERSION_CHUTILITY_LOGINTERVAL_FLAG 100023
 #define OFFCHAN_DEFAULT_TSCAN_IN_MSEC 63
 #define OFFCHAN_DEFAULT_NSCAN_IN_SEC 10800
 #define OFFCHAN_DEFAULT_TIDLE_IN_SEC 5
@@ -87,6 +88,7 @@ ovsdb_table_t table_Wifi_Connection_Control_Config;
 #if DML_SUPPORT
 ovsdb_table_t table_Wifi_Rfc_Config;
 static char *WhixLoginterval = "dmsb.device.deviceinfo.X_RDKCENTRAL-COM_WHIX.LogInterval";
+static char *WhixChUtilityLoginterval = "dmsb.device.deviceinfo.X_RDKCENTRAL-COM_WHIX.ChUtilityLogInterval";
 #endif // DML_SUPPORT
 
 void wifidb_print(char *format, ...)
@@ -1027,6 +1029,7 @@ void callback_Wifi_Global_Config(ovsdb_update_monitor_t *mon,
         g_wifidb->global_config.global_parameters.assoc_count_threshold = new_rec->assoc_count_threshold;
         g_wifidb->global_config.global_parameters.assoc_gate_time = new_rec->assoc_gate_time;
         g_wifidb->global_config.global_parameters.whix_log_interval = new_rec->whix_log_interval;
+        g_wifidb->global_config.global_parameters.whix_chutility_loginterval = new_rec->whix_chutility_loginterval;
         g_wifidb->global_config.global_parameters.assoc_monitor_duration = new_rec->assoc_monitor_duration;
         g_wifidb->global_config.global_parameters.rapid_reconnect_enable = new_rec->rapid_reconnect_enable;
         g_wifidb->global_config.global_parameters.vap_stats_feature = new_rec->vap_stats_feature;
@@ -1056,7 +1059,7 @@ void callback_Wifi_Global_Config(ovsdb_update_monitor_t *mon,
             strncpy(g_wifidb->global_config.global_parameters.txrx_rate_list,new_rec->txrx_rate_list,sizeof(g_wifidb->global_config.global_parameters.txrx_rate_list)-1);
             g_wifidb->global_config.global_parameters.txrx_rate_list[sizeof(g_wifidb->global_config.global_parameters.txrx_rate_list)-1] = '\0';
         }
-        wifi_util_dbg_print(WIFI_DB,"%s:%d  notify_wifi_changes %d  prefer_private %d  prefer_private_configure %d  factory_reset %d  tx_overflow_selfheal %d  inst_wifi_client_enabled %d  inst_wifi_client_reporting_period %d  inst_wifi_client_mac = %s inst_wifi_client_def_reporting_period %d  wifi_active_msmt_enabled %d  wifi_active_msmt_pktsize %d  wifi_active_msmt_num_samples %d  wifi_active_msmt_sample_duration %d  vlan_cfg_version %d  wps_pin = %s bandsteering_enable %d  good_rssi_threshold %d  assoc_count_threshold %d  assoc_gate_time %d whix_loginterval %d assoc_monitor_duration %d  rapid_reconnect_enable %d  vap_stats_feature %d  mfp_config_feature %d  force_disable_radio_feature %d  force_disable_radio_status %d  fixed_wmm_params %d  wifi_region_code %s diagnostic_enable %d  validate_ssid %d device_network_mode:%d normalized_rssi_list %s snr_list %s cli_stat_list %s txrx_rate_list %s\r\n", __func__, __LINE__, new_rec->notify_wifi_changes,new_rec->prefer_private,new_rec->prefer_private_configure,new_rec->factory_reset,new_rec->tx_overflow_selfheal,new_rec->inst_wifi_client_enabled,new_rec->inst_wifi_client_reporting_period,new_rec->inst_wifi_client_mac, new_rec->inst_wifi_client_def_reporting_period,new_rec->wifi_active_msmt_enabled,new_rec->wifi_active_msmt_pktsize,new_rec->wifi_active_msmt_num_samples,new_rec->wifi_active_msmt_sample_duration,new_rec->vlan_cfg_version,new_rec->wps_pin, new_rec->bandsteering_enable,new_rec->good_rssi_threshold,new_rec->assoc_count_threshold,new_rec->assoc_gate_time, new_rec->whix_log_interval,new_rec->assoc_monitor_duration,new_rec->rapid_reconnect_enable,new_rec->vap_stats_feature,new_rec->mfp_config_feature,new_rec->force_disable_radio_feature,new_rec->force_disable_radio_status,new_rec->fixed_wmm_params,new_rec->wifi_region_code,new_rec->diagnostic_enable,new_rec->validate_ssid, new_rec->device_network_mode, new_rec->normalized_rssi_list, new_rec->snr_list, new_rec->cli_stat_list, new_rec->txrx_rate_list);
+        wifi_util_dbg_print(WIFI_DB,"%s:%d  notify_wifi_changes %d  prefer_private %d  prefer_private_configure %d  factory_reset %d  tx_overflow_selfheal %d  inst_wifi_client_enabled %d  inst_wifi_client_reporting_period %d  inst_wifi_client_mac = %s inst_wifi_client_def_reporting_period %d  wifi_active_msmt_enabled %d  wifi_active_msmt_pktsize %d  wifi_active_msmt_num_samples %d  wifi_active_msmt_sample_duration %d  vlan_cfg_version %d  wps_pin = %s bandsteering_enable %d  good_rssi_threshold %d  assoc_count_threshold %d  assoc_gate_time %d whix_loginterval %d assoc_monitor_duration %d  rapid_reconnect_enable %d  vap_stats_feature %d  mfp_config_feature %d  force_disable_radio_feature %d  force_disable_radio_status %d  fixed_wmm_params %d  wifi_region_code %s diagnostic_enable %d  validate_ssid %d device_network_mode:%d normalized_rssi_list %s snr_list %s cli_stat_list %s txrx_rate_list %s\r\n", __func__, __LINE__, new_rec->notify_wifi_changes,new_rec->prefer_private,new_rec->prefer_private_configure,new_rec->factory_reset,new_rec->tx_overflow_selfheal,new_rec->inst_wifi_client_enabled,new_rec->inst_wifi_client_reporting_period,new_rec->inst_wifi_client_mac, new_rec->inst_wifi_client_def_reporting_period,new_rec->wifi_active_msmt_enabled,new_rec->wifi_active_msmt_pktsize,new_rec->wifi_active_msmt_num_samples,new_rec->wifi_active_msmt_sample_duration,new_rec->vlan_cfg_version,new_rec->wps_pin, new_rec->bandsteering_enable,new_rec->good_rssi_threshold,new_rec->assoc_count_threshold,new_rec->assoc_gate_time, new_rec->whix_log_interval, new_rec->assoc_monitor_duration,new_rec->rapid_reconnect_enable,new_rec->vap_stats_feature,new_rec->mfp_config_feature,new_rec->force_disable_radio_feature,new_rec->force_disable_radio_status,new_rec->fixed_wmm_params,new_rec->wifi_region_code,new_rec->diagnostic_enable,new_rec->validate_ssid, new_rec->device_network_mode, new_rec->normalized_rssi_list, new_rec->snr_list, new_rec->cli_stat_list, new_rec->txrx_rate_list);
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
     }
     else
@@ -3410,6 +3413,7 @@ int wifidb_update_wifi_global_config(wifi_global_param_t *config)
     cfg.assoc_count_threshold = config->assoc_count_threshold;
     cfg.assoc_gate_time = config->assoc_gate_time;
     cfg.whix_log_interval = config->whix_log_interval;
+    cfg.whix_chutility_loginterval = config->whix_chutility_loginterval;
     cfg.assoc_monitor_duration = config->assoc_monitor_duration;
     cfg.rapid_reconnect_enable = config->rapid_reconnect_enable;
     cfg.vap_stats_feature = config->vap_stats_feature;
@@ -3494,6 +3498,7 @@ int wifidb_get_wifi_global_config(wifi_global_param_t *config)
         config->assoc_count_threshold = pcfg->assoc_count_threshold;
         config->assoc_gate_time = pcfg->assoc_gate_time;
         config->whix_log_interval = pcfg->whix_log_interval;
+        config->whix_chutility_loginterval = pcfg->whix_chutility_loginterval;
         config->assoc_monitor_duration = pcfg->assoc_monitor_duration;
         config->rapid_reconnect_enable = pcfg->rapid_reconnect_enable;
         config->vap_stats_feature = pcfg->vap_stats_feature;
@@ -5091,6 +5096,7 @@ int wifidb_init_global_config_default(wifi_global_param_t *config)
     cfg.assoc_count_threshold = 0;
     cfg.assoc_gate_time  = 0;
     cfg.whix_log_interval = 3600;
+    cfg.whix_chutility_loginterval = 900;
     cfg.assoc_monitor_duration = 0;
     cfg.rapid_reconnect_enable = true;
     cfg.vap_stats_feature =  true;
@@ -5450,7 +5456,7 @@ static void wifidb_global_config_upgrade()
         return;
     }
     if (g_wifidb->db_version < ONEWIFI_DB_VERSION_LOGINTERVAL_FLAG) {
-        wifi_util_dbg_print(WIFI_DB, "%s:%d upgrade global config, old db version %d total radios %u\n", __func__, __LINE__, g_wifidb->db_version);
+        wifi_util_dbg_print(WIFI_DB, "%s:%d upgrade global config, old db version %d \n", __func__, __LINE__, g_wifidb->db_version);
 
         memset(strValue, 0, sizeof(strValue));
         str = Get_PSM_Record_Status(WhixLoginterval, strValue);
@@ -5460,11 +5466,23 @@ static void wifidb_global_config_upgrade()
         } else {
             wifi_util_error_print(WIFI_DB,":%s:%d str value for whix_log_interval is null \r\n", __func__, __LINE__);
         }
+    }
 
-        if (wifidb_update_wifi_global_config(&g_wifidb->global_config.global_parameters) != RETURN_OK) {
-            wifi_util_error_print(WIFI_DB,"%s:%d error in updating radio config\n", __func__,__LINE__);
-            return;
+    if (g_wifidb->db_version < ONEWIFI_DB_VERSION_CHUTILITY_LOGINTERVAL_FLAG) {
+        wifi_util_dbg_print(WIFI_DB, "%s:%d upgrade global config, old db version %d \n", __func__, __LINE__, g_wifidb->db_version);
+
+        memset(strValue, 0, sizeof(strValue));
+        str = Get_PSM_Record_Status(WhixChUtilityLoginterval, strValue);
+        if (str != NULL) {
+            g_wifidb->global_config.global_parameters.whix_chutility_loginterval = _ansc_atoi(str);
+            wifi_util_dbg_print(WIFI_DB,"%s:%d whix_chutility_loginterval is %d and str is %s \n", __func__, __LINE__, g_wifidb->global_config.global_parameters.whix_chutility_loginterval, str);
+        } else {
+            wifi_util_error_print(WIFI_DB,":%s:%d str value for whix_chutility_loginterval is null \r\n", __func__, __LINE__);
         }
+    }
+    if (wifidb_update_wifi_global_config(&g_wifidb->global_config.global_parameters) != RETURN_OK) {
+        wifi_util_error_print(WIFI_DB,"%s:%d error in updating global config\n", __func__,__LINE__);
+        return;
     }
 #else  // DML_SUPPORT
     return;

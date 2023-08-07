@@ -573,6 +573,9 @@ webconfig_error_t encode_wifi_global_config(const wifi_global_param_t *global_in
     //WhixLogInterval
     cJSON_AddNumberToObject(global_obj, "WhixLoginterval", global_info->whix_log_interval);
 
+    //Whix_ChUtility_Loginterval
+    cJSON_AddNumberToObject(global_obj, "whix_chutility_loginterval", global_info->whix_chutility_loginterval);
+
     //AssocMonitorDuration
     cJSON_AddNumberToObject(global_obj, "AssocMonitorDuration", global_info->assoc_monitor_duration);
 

@@ -125,6 +125,7 @@ extern char g_Subsystem[32];
 #define NEIGHBOR_SCAN_RESULT_INTERVAL 5000 //5 seconds
 #define Min_LogInterval 300 //5 minutes
 #define Max_LogInterval 3600 //60 minutes
+#define Min_Chan_Util_LogInterval 5 //5 seconds
 
 #define MIN_TO_MILLISEC 60000
 #define SEC_TO_MILLISEC 1000
@@ -4413,8 +4414,20 @@ int get_chan_util_upload_period()
 {
     int logInterval = DEFAULT_CHANUTIL_LOG_INTERVAL;//Default Value 15mins.
 
-    get_vap_dml_parameters(CH_UTILITY_LOG_INTERVAL, &logInterval);
-    wifi_util_dbg_print(WIFI_MON, " %s:%d logInterval %d \n",__FUNCTION__,__LINE__,logInterval);  
+    wifi_global_param_t *global_param = get_wifidb_wifi_global_param();
+
+    if (global_param == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d Global Param is Null, updating the default value \n",__FUNCTION__,__LINE__);
+        return logInterval;
+    }
+
+    if ((global_param->whix_chutility_loginterval < Min_Chan_Util_LogInterval) || (global_param->whix_chutility_loginterval > Max_LogInterval)) {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d Global channel utility loginterval is not in limit, updating the default value\n",__FUNCTION__,__LINE__);
+        return logInterval;
+    }
+
+    logInterval = global_param->whix_chutility_loginterval;
+    wifi_util_dbg_print(WIFI_MON, "Exiting %s:%d loginterval = %d \n",__FUNCTION__,__LINE__,logInterval);
     return logInterval;
 }
 

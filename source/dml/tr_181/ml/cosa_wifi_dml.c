@@ -482,6 +482,13 @@ WiFi_GetParamIntValue
         return TRUE;
     }
 
+    if (AnscEqualString(ParamName, "WHIX_ChUtility_LogInterval", TRUE))
+    {
+        /* collect value */
+        *pInt = pcfg->whix_chutility_loginterval; //seconds
+        return TRUE;
+    }
+
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     return FALSE;
 }
@@ -1411,6 +1418,20 @@ WiFi_SetParamIntValue
         global_wifi_config->global_parameters.whix_log_interval = iValue; //update global structure
         if (push_global_config_dml_cache_to_one_wifidb() != RETURN_OK) {
         wifi_util_error_print(WIFI_DMCLI,"%s:%d: Failed to push WHIX_LogInterval to onewifi db\n",__func__, __LINE__);
+        }
+        return TRUE;
+    }
+
+    if( AnscEqualString(ParamName, "WHIX_ChUtility_LogInterval", TRUE))
+    {
+        if (global_wifi_config->global_parameters.whix_chutility_loginterval == iValue)
+        {
+            return TRUE;
+        }
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: WHIX_chutility_LogInterval = %d Value = %d  \n",__func__, __LINE__, global_wifi_config->global_parameters.whix_chutility_loginterval, iValue);
+        global_wifi_config->global_parameters.whix_chutility_loginterval = iValue; //update global structure
+        if (push_global_config_dml_cache_to_one_wifidb() != RETURN_OK) {
+            wifi_util_error_print(WIFI_DMCLI,"%s:%d: Failed to push WHIX_LogInterval to onewifi db\n",__func__, __LINE__);
         }
         return TRUE;
     }
