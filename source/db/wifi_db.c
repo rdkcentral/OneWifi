@@ -4661,7 +4661,12 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
         cfg.band = band;
     }
 
+#if defined (_PP203X_PRODUCT_REQ_)
+    cfg.enable = ow_mesh_ext_is_radio_enabled(radio_index);
+#else
     cfg.enable = true;
+#endif
+
     switch (cfg.band) {
         case WIFI_FREQUENCY_2_4_BAND:
             cfg.op_class = 12;
@@ -4743,7 +4748,11 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
     cfg.adminControl = 0;
     cfg.chanUtilThreshold = 90;
     cfg.chanUtilSelfHealEnable = 0;
+#if defined (_PP203X_PRODUCT_REQ_)
+    cfg.EcoPowerDown = !ow_mesh_ext_is_radio_enabled(radio_index);
+#else
     cfg.EcoPowerDown = false;
+#endif
     cfg.factoryResetSsid = 0;
     cfg.basicDataTransmitRates = WIFI_BITRATE_6MBPS | WIFI_BITRATE_12MBPS | WIFI_BITRATE_24MBPS;
     cfg.operationalDataTransmitRates = WIFI_BITRATE_6MBPS | WIFI_BITRATE_9MBPS | WIFI_BITRATE_12MBPS | WIFI_BITRATE_18MBPS | WIFI_BITRATE_24MBPS | WIFI_BITRATE_36MBPS | WIFI_BITRATE_48MBPS | WIFI_BITRATE_54MBPS;
@@ -4876,6 +4885,9 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
 
         cfg.u.sta_info.conn_status = wifi_connection_status_disabled;
         memset(&cfg.u.sta_info.bssid, 0, sizeof(cfg.u.sta_info.bssid));
+#if defined (_PP203X_PRODUCT_REQ_)
+        exists = ow_mesh_ext_is_radio_enabled(cfg.radio_index);
+#endif
     } else {
         cfg.u.bss_info.wmm_enabled = true;
         if (isVapHotspot(vap_index)) {
@@ -5687,7 +5699,9 @@ void init_wifidb_data()
 #endif // DML_SUPPORT
             wifidb_radio_config_upgrade(r_index, l_radio_cfg, f_radio_cfg);
             wifidb_vap_config_upgrade(l_vap_param_cfg, l_rdk_vap_param_cfg);
-            wifidb_vap_config_ext(l_vap_param_cfg, l_rdk_vap_param_cfg);
+            if (l_radio_cfg->EcoPowerDown == false) {
+                wifidb_vap_config_ext(l_vap_param_cfg, l_rdk_vap_param_cfg);
+            }
             wifidb_global_config_upgrade();
 
             for (unsigned int i = 0; i < l_vap_param_cfg->num_vaps; i++) {

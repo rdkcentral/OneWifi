@@ -25,11 +25,17 @@
 #define WIFI_LNF_AP_IF_PREFIX      "svc-d-ap-"
 #define WIFI_IOT_AP_IF_PREFIX      "svc-e-ap-"
 
+typedef enum {
+    ow_state_barrier_vif_conf_type_device,
+    ow_state_barrier_vif_conf_type_cloud,
+} ow_state_barrier_vif_conf_type_t;
+
 typedef struct {
     char *if_name;
     int vif_index;
     int phy_index;
     char *vap_name;
+    ow_state_barrier_vif_conf_type_t conf_type;
 } ow_state_barrier_vif_info_t;
 
 typedef struct {
@@ -50,21 +56,21 @@ typedef struct
 } ow_vif_config_param_t;
 
 ow_state_barrier_vif_info_t vif_list[] = {
-    {"bhaul-ap-24",   0,  0, "mesh_backhaul_2g"},
-    {"bhaul-ap-l50",  1,  1, "mesh_backhaul_5gl"},
-    {"bhaul-ap-u50",  2,  2, "mesh_backhaul_5gh"},
-    {"home-ap-24",    3,  0, "private_ssid_2g"},
-    {"home-ap-l50",   4,  1, "private_ssid_5gl"},
-    {"home-ap-u50",   5,  2, "private_ssid_5gh"},
-    {"bhaul-sta-24",  6,  0, "mesh_sta_2g"},
-    {"bhaul-sta-l50", 7,  1, "mesh_sta_5gl"},
-    {"bhaul-sta-u50", 8,  2, "mesh_sta_5gh"},
-    {"svc-d-ap-24",   9,  0, "lnf_psk_2g"},
-    {"svc-d-ap-l50",  10, 1, "lnf_psk_5gl"},
-    {"svc-d-ap-u50",  11, 2, "lnf_psk_5gh"},
-    {"svc-e-ap-24",   12, 0, "iot_ssid_2g"},
-    {"svc-e-ap-l50",  13, 1, "iot_ssid_5gl"},
-    {"svc-e-ap-u50",  14, 2, "iot_ssid_5gh"},
+    {"bhaul-ap-24",   0,  0, "mesh_backhaul_2g",  ow_state_barrier_vif_conf_type_device},
+    {"bhaul-ap-l50",  1,  1, "mesh_backhaul_5gl", ow_state_barrier_vif_conf_type_device},
+    {"bhaul-ap-u50",  2,  2, "mesh_backhaul_5gh", ow_state_barrier_vif_conf_type_device},
+    {"home-ap-24",    3,  0, "private_ssid_2g",   ow_state_barrier_vif_conf_type_device},
+    {"home-ap-l50",   4,  1, "private_ssid_5gl",  ow_state_barrier_vif_conf_type_device},
+    {"home-ap-u50",   5,  2, "private_ssid_5gh",  ow_state_barrier_vif_conf_type_device},
+    {"bhaul-sta-24",  6,  0, "mesh_sta_2g",       ow_state_barrier_vif_conf_type_device},
+    {"bhaul-sta-l50", 7,  1, "mesh_sta_5gl",      ow_state_barrier_vif_conf_type_device},
+    {"bhaul-sta-u50", 8,  2, "mesh_sta_5gh",      ow_state_barrier_vif_conf_type_device},
+    {"svc-d-ap-24",   9,  0, "lnf_psk_2g",        ow_state_barrier_vif_conf_type_device},
+    {"svc-d-ap-l50",  10, 1, "lnf_psk_5gl",       ow_state_barrier_vif_conf_type_device},
+    {"svc-d-ap-u50",  11, 2, "lnf_psk_5gh",       ow_state_barrier_vif_conf_type_device},
+    {"svc-e-ap-24",   12, 0, "iot_ssid_2g",       ow_state_barrier_vif_conf_type_device},
+    {"svc-e-ap-l50",  13, 1, "iot_ssid_5gl",      ow_state_barrier_vif_conf_type_device},
+    {"svc-e-ap-u50",  14, 2, "iot_ssid_5gh",      ow_state_barrier_vif_conf_type_device},
 };
 
 ow_state_barrier_phy_info_t phy_list[] = {
@@ -397,6 +403,10 @@ int vap_svc_mesh_ext_stop(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
     for (j = 0; j < vap_map->num_vaps; j++) {
 
         if (svc->is_my_fn(vap_map->vap_array[j].vap_index) == false) {
+            continue;
+        }
+
+        if (vap_map->vap_array[j].u.sta_info.enabled != true) {
             continue;
         }
        
@@ -809,4 +819,51 @@ int ow_mesh_ext_get_device_stats(int ap_index, char *radio_type, int nf,
     }
 
     return osw_drv_target_get_device_stats(radio_type, phy_name, if_name, mac, nf, stats, sleep_mode);
+}
+
+bool ow_mesh_ext_is_radio_enabled(int phy_index)
+{
+    char *phy_name;
+
+    if (!(phy_name = phy_index_to_phy_name(phy_index))) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to get phy_name for %d\n", __func__, __LINE__, phy_index);
+        return false;
+    }
+
+    return ow_state_barrier_get_radio_presence(phy_name);
+}
+
+void ow_core_set_vif_cloud_conf_type(char *if_name)
+{
+    ow_state_barrier_vif_info_t *vif = NULL;
+
+    for (unsigned int i = 0; i < ARRAY_SIZE(vif_list); i++) {
+        vif = &vif_list[i];
+
+        if (strcmp(vif->if_name, if_name) == 0) {
+            break;
+        }
+    }
+
+    if (vif == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to find VIF for [%s]\n", __func__, __LINE__, if_name);
+        return;
+    }
+
+    if (vif->conf_type != ow_state_barrier_vif_conf_type_cloud) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d VIF [%s] conf type set to cloud\n", __func__, __LINE__, if_name);
+        vif->conf_type = ow_state_barrier_vif_conf_type_cloud;
+    }
+}
+
+bool ow_core_vif_conf_type_is_cloud(char *vap_name)
+{
+    for (unsigned int i = 0; i < ARRAY_SIZE(vif_list); i++) {
+        if (strcmp(vif_list[i].vap_name, vap_name) == 0 &&
+            vif_list[i].conf_type == ow_state_barrier_vif_conf_type_cloud) {
+            return true;
+        }
+    }
+
+    return false;
 }
