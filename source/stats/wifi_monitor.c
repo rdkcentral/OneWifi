@@ -5080,7 +5080,9 @@ static void logVAPUpStatus()
     for(i = 0; i < (int)getTotalNumberVAPs(); i++)
     {
         vap_index = VAP_INDEX(mgr->hal_cap, i);
-        vapup_percentage=((int)(vap_up_arr[vap_index])*100)/(vap_iteration);
+        if (vap_iteration > 0) {
+            vapup_percentage=((int)(vap_up_arr[vap_index])*100)/(vap_iteration);
+        }
         char delimiter = (i+1) < ((int)getTotalNumberVAPs()+1) ?';':' ';
         rc = sprintf_s(vap_buf, sizeof(vap_buf), "%d,%d%c",(vap_index + 1),vapup_percentage, delimiter);
         if(rc < EOK)
