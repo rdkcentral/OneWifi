@@ -78,6 +78,7 @@ ow_state_barrier_phy_info_t phy_list[] = {
     {"wifi1", 1},
     {"wifi2", 2},
 };
+static unsigned int prev_sta_connected_idx = 0;
 
 static int if_name_to_phy_index(const char *if_name)
 {
@@ -240,6 +241,7 @@ int ow_mesh_ext_set_phy_config(int phy_index,wifi_radio_operationParam_t *phy)
     wifi_util_dbg_print(WIFI_CTRL,"WIFI %s : Setting Phy %s with channel:[%d], enable:[%d], band[%d],width[%d] \n",__FUNCTION__,phy_param.if_name,phy->channel,phy->enable,phy->band,phy->channelWidth);
     
     ow_core_thread_call(vap_mesh_svc_pod_phy_config_cb, &phy_param);
+    ow_state_barrier_wait(OW_SETTLED_TIMEOUT);
     return RETURN_OK;
 }
 
@@ -293,6 +295,7 @@ void vap_mesh_svc_pod_vif_config(ow_vif_config_param_t *vif_param)
     uint8_t num_radios = getNumberRadios();
 
     ow_core_thread_call(vap_mesh_svc_pod_vif_config_cb, vif_param);
+    ow_state_barrier_wait(OW_SETTLED_TIMEOUT);
 
     for (uint8_t i = 0; i < num_radios; i++) {
         vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(i);
@@ -311,7 +314,6 @@ void vap_mesh_svc_pod_vif_config(ow_vif_config_param_t *vif_param)
 
 int vap_svc_mesh_ext_start(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map)
 {
-
     uint8_t num_of_radios;
     uint8_t j;
     int i;
@@ -319,7 +321,6 @@ int vap_svc_mesh_ext_start(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
     wifi_vap_info_map_t *vap_map = NULL, tgt_vap_map;
     ow_vif_config_param_t vif_config;
     rdk_wifi_vap_info_t *rdk_vap_info;
-
 
     if ((num_of_radios = getNumberRadios()) > MAX_NUM_RADIOS) {
         wifi_util_dbg_print(WIFI_CTRL,"WIFI %s : Number of Radios %d exceeds supported %d Radios \n",__FUNCTION__, getNumberRadios(), MAX_NUM_RADIOS);
@@ -356,9 +357,6 @@ int vap_svc_mesh_ext_start(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
             }
 
             memcpy((unsigned char *)&tgt_vap_map.vap_array[tgt_vap_map.num_vaps], (unsigned char *)&vap_map->vap_array[j], sizeof(wifi_vap_info_t));
-            if (tgt_vap_map.vap_array[tgt_vap_map.num_vaps].vap_mode == wifi_vap_mode_sta) {
-                tgt_vap_map.vap_array[tgt_vap_map.num_vaps].u.sta_info.enabled = true;
-            }
 
             wifi_util_dbg_print(WIFI_CTRL,"%s:Configuting backhaul vap with ssid : %s\n",__FUNCTION__,tgt_vap_map.vap_array[tgt_vap_map.num_vaps].u.sta_info.ssid );
             memset(&vif_config,0,sizeof(vif_config));
@@ -373,6 +371,13 @@ int vap_svc_mesh_ext_start(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
                 wifi_util_dbg_print(WIFI_CTRL,"%s:Failed to get interface name.",__FUNCTION__);
                 return RETURN_ERR;
             }
+            // If interface is already enbaled restart network
+            if (vap_map->vap_array[j].u.sta_info.enabled == true && prev_sta_connected_idx == vap_map->vap_array[j].vap_index) {
+                wifi_util_dbg_print(WIFI_CTRL,"%s:Interface already enabled & connected- Restarting network..",__FUNCTION__);
+                tgt_vap_map.vap_array[tgt_vap_map.num_vaps].u.sta_info.enabled = false;
+                vap_mesh_svc_pod_vif_config(&vif_config);
+            }
+            tgt_vap_map.vap_array[tgt_vap_map.num_vaps].u.sta_info.enabled = true; 
             vap_mesh_svc_pod_vif_config(&vif_config);
             vap_map->vap_array[j].u.sta_info.enabled = true;
             tgt_vap_map.num_vaps++;
@@ -584,6 +589,12 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
            // Set State to connected only after all operations.
            ext->conn_state = connection_state_connected;
         }
+        else {
+            wifi_util_dbg_print(WIFI_CTRL,"%s:%d - Connect event from [%d]\r\n", __func__, __LINE__,sta_data->stats.vap_index);
+            if (sta_data->stats.vap_index != prev_sta_connected_idx) {
+                prev_sta_connected_idx = sta_data->stats.vap_index;
+            }
+        }
     } else if (sta_data->stats.connect_status == wifi_connection_status_disconnected) { 
 
          wifi_util_dbg_print(WIFI_CTRL,"%s:%d STA DISCONNECT. last_index = %d, new index = %d\n", __func__, __LINE__,ext->connected_vap_index,sta_data->stats.vap_index);
@@ -600,6 +611,13 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
             wifi_util_dbg_print(WIFI_CTRL,"%s:%d - Restart enabled VAPs for STA connection..\n", __func__, __LINE__);
             vap_svc_mesh_ext_start(svc, WIFI_ALL_RADIO_INDICES, NULL);
             //send_event = true;
+        }
+        else if (ext->conn_state == connection_state_connected) {
+            wifi_util_dbg_print(WIFI_CTRL,"%s:%d - Received disconnect from a secondary interface. %d.\n", __func__, __LINE__,sta_data->stats.vap_index);
+            memset(&temp_vap_info->u.sta_info.bssid, 0, sizeof(temp_vap_info->u.sta_info.bssid));
+            if (sta_data->stats.vap_index == prev_sta_connected_idx) {
+                prev_sta_connected_idx = 0;
+            }
         }
         
     }

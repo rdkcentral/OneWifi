@@ -1311,7 +1311,6 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
              * So, it won't be updated within update_fn -> wifidb_update_wifi_vap_info. Thats the reason why I leaved memcpy here. 
              */
             memcpy(mgr_vap_info, &tgt_vap_map.vap_array[0], sizeof(wifi_vap_info_t));
-
             // This block of code is only used for updating VAP mac.
             //if (vap_info->vap_mode == wifi_vap_mode_ap && is_bssid_valid(tgt_vap_map.vap_array[0].u.bss_info.bssid)) {
             //    memcpy(vap_info->u.bss_info.bssid, tgt_vap_map.vap_array[0].u.bss_info.bssid, sizeof(mac_address_t));
