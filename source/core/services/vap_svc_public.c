@@ -120,12 +120,8 @@ void process_prefer_private_mac_filter(mac_address_t prefer_private_mac)
 #else
             if (wifi_addApAclDevice(rdk_vap_info->vap_index, new_mac_str) != RETURN_OK) {
 #endif
-                wifi_util_dbg_print(WIFI_MGR, "%s:%d: wifi_addApAclDevice failed. vap_index %d, MAC %s \n",
+                wifi_util_info_print(WIFI_MGR, "%s:%d: wifi_addApAclDevice failed. vap_index %d, MAC %s \n",
                    __func__, __LINE__, rdk_vap_info->vap_index, new_mac_str);
-                if(acl_entry) {
-                    free(acl_entry);
-                }
-                return;
             }
 
             hash_map_put(rdk_vap_info->acl_map, strdup(new_mac_str), acl_entry);
