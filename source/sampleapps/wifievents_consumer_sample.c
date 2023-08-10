@@ -428,7 +428,9 @@ rbusEventSubscription_t* subscription)
     rotate_and_write_CSIData(sta_mac, &csi);
 
     //Printing _wifi_frame_info
-    WIFI_EVENT_CONSUMER_DGB("bw_mode %d, mcs %d, Nr %d, Nc %d, valid_mask %hu, phy_bw %hu, cap_bw %hu, num_sc %hu, decimation %d, channel %d, time_stamp %llu",csi.frame_info.bw_mode, csi.frame_info.mcs, csi.frame_info.Nr, csi.frame_info.Nc,csi.frame_info.valid_mask,csi.frame_info.phy_bw, csi.frame_info.cap_bw, csi.frame_info.num_sc, csi.frame_info.decimation, csi.frame_info.channel, csi.frame_info.time_stamp);
+    WIFI_EVENT_CONSUMER_DGB("bw_mode %d, mcs %d, Nr %d, Nc %d, valid_mask %hu, phy_bw %hu, cap_bw %hu, num_sc %hu, decimation %d, channel %d, cfo %d, time_stamp %llu",
+                    csi.frame_info.bw_mode, csi.frame_info.mcs, csi.frame_info.Nr, csi.frame_info.Nc,csi.frame_info.valid_mask,csi.frame_info.phy_bw,
+                    csi.frame_info.cap_bw, csi.frame_info.num_sc, csi.frame_info.decimation, csi.frame_info.channel, csi.frame_info.cfo, csi.frame_info.time_stamp);
 
     //Printing rssii
     WIFI_EVENT_CONSUMER_DGB("rssi values on each Nr are");
