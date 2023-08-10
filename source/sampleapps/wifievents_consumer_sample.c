@@ -59,27 +59,47 @@ int g_csi_sub_total = 0;
 int g_events_list[MAX_EVENTS];
 int g_events_cnt = 0;
 int g_vaps_list[MAX_VAP];
+int g_device_vaps_list[MAX_VAP];
 int g_vaps_cnt = 0;
 int g_csi_interval = 0;
 bool g_csi_session_set = false;
 uint32_t g_csi_index = 0;
 int g_clientdiag_interval = 0;
-int g_max_vaps = 0;
 int g_disable_csi_log = 0;
 int g_rbus_direct_enabled = 0;
 
-static void wifievents_get_max_vaps() {
-    char const*     paramNames[] = {"Device.WiFi.SSIDNumberOfEntries"};
+static void wifievents_get_device_vaps() {
+    char cmd[200];
+    int i;
     rbusValue_t value;
     int rc = RBUS_ERROR_SUCCESS;
 
-    rc = rbus_get(g_handle, paramNames[0], &value);
-    if(rc != RBUS_ERROR_SUCCESS)
-    {
-        printf ("rbus_get failed for [%s] with error [%d]\n", paramNames[0], rc);
-        return;
+    for (i=0;i<MAX_VAP;i++) {
+        snprintf(cmd, sizeof(cmd), "Device.WiFi.SSID.%d.Enable", i+1);
+        rc = rbus_get(g_handle, cmd, &value);
+        if(rc != RBUS_ERROR_SUCCESS)
+        {
+            g_device_vaps_list[i] = -1;
+        } else {
+            g_device_vaps_list[i] = i+1;
+        }
     }
-    g_max_vaps = rbusValue_GetUInt32(value);
+}
+
+static void wifievents_update_vap_list(void) {
+    int i, j;
+    if (g_vaps_cnt == 0)
+    {
+        for (i=0, j=0;i<MAX_VAP;i++)
+        {
+            if(g_device_vaps_list[i] != -1)
+            {
+                g_vaps_list[j] = g_device_vaps_list[i];
+                j++;
+                g_vaps_cnt++;
+            }
+        }
+    }
 }
 
 static void wifievents_consumer_dbg_print(char *format, ...)
@@ -493,6 +513,7 @@ static bool parseEvents(char *ev_list)
 static bool parseVaps(char *vap_list)
 {
     char *token;
+    int i, found;
 
     if (!vap_list)
     {
@@ -503,7 +524,20 @@ static bool parseVaps(char *vap_list)
     while( token != NULL )
     {
         g_vaps_list[g_vaps_cnt] = atoi(token);
-        if (g_vaps_list[g_vaps_cnt] < 1 || g_vaps_list[g_vaps_cnt] > g_max_vaps)
+        if (g_vaps_list[g_vaps_cnt] < 1 || g_vaps_list[g_vaps_cnt] > MAX_VAP)
+        {
+            return false;
+        }
+        found = 0;
+        for (i=0;i<MAX_VAP;i++)
+        {
+            if (g_vaps_list[g_vaps_cnt] == g_device_vaps_list[i])
+            {
+                found = 1;
+                break;
+            }
+        }
+        if (found == 0)
         {
             return false;
         }
@@ -689,7 +723,7 @@ int main(int argc, char *argv[])
 {
     struct sigaction new_action;
     char name[RBUS_MAX_NAME_LENGTH];
-    int i, j, vaps_subsribe;
+    int i, j;
     int rc = RBUS_ERROR_SUCCESS;
     int sub_index = 0, csi_sub_index = 0;
     rbusHandle_t directHandle = NULL;
@@ -709,12 +743,13 @@ int main(int argc, char *argv[])
         return rc;
     }
 
-    wifievents_get_max_vaps();
+    wifievents_get_device_vaps();
 
     if(!parseArguments(argc, argv))
     {
         return -1;
     }
+    wifievents_update_vap_list();
 
     /* Set default debug file */
     if (g_debug_file_name[0] == '\0')
@@ -751,7 +786,7 @@ int main(int argc, char *argv[])
             case 2: /* Device.WiFi.AccessPoint.{i}.X_RDK_deviceDisconnected */
             case 3: /* Device.WiFi.AccessPoint.{i}.X_RDK_deviceDeauthenticated*/
             case 4: /* Device.WiFi.AccessPoint.{i}.Status */
-                g_sub_total += g_vaps_cnt ? g_vaps_cnt : g_max_vaps;
+                g_sub_total += g_vaps_cnt;
                 break;
             case 5: /* Device.WiFi.X_RDK_CSI.{i}.ClientMaclist */
             case 7: /* Device.WiFi.X_RDK_CSI.{i}.Enable */
@@ -804,9 +839,7 @@ int main(int argc, char *argv[])
         switch (i)
         {
             case 0: /* Device.WiFi.AccessPoint.{i}.X_RDK_DiagData */
-                vaps_subsribe = g_vaps_cnt ? g_vaps_cnt : g_max_vaps; 
-
-                for (j = 0; j < vaps_subsribe; j++)
+                for (j = 0; j < g_vaps_cnt; j++)
                 {
                     if (g_clientdiag_interval) {
                         g_all_subs[sub_index].interval = g_clientdiag_interval;
@@ -814,7 +847,7 @@ int main(int argc, char *argv[])
                     else {
                         g_all_subs[sub_index].interval = DEFAULT_CLIENTDIAG_INTERVAL;
                     }
-                    snprintf(name, RBUS_MAX_NAME_LENGTH, g_subscriptions[i].eventName, g_vaps_cnt ? g_vaps_list[j] : (j + 1));
+                    snprintf(name, RBUS_MAX_NAME_LENGTH, g_subscriptions[i].eventName, g_vaps_list[j]);
                     WIFI_EVENT_CONSUMER_DGB("Add subscription %s", name);
                     fillSubscribtion(sub_index, name, i);
                     sub_index++;
@@ -825,11 +858,9 @@ int main(int argc, char *argv[])
             case 2: /* Device.WiFi.AccessPoint.{i}.X_RDK_deviceDisconnected */
             case 3: /* Device.WiFi.AccessPoint.{i}.X_RDK_deviceDeauthenticated*/
             case 4: /* Device.WiFi.AccessPoint.{i}.Status */
-                vaps_subsribe = g_vaps_cnt ? g_vaps_cnt : g_max_vaps; 
-
-                for (j = 0; j < vaps_subsribe; j++)
+                for (j = 0; j < g_vaps_cnt; j++)
                 {
-                    snprintf(name, RBUS_MAX_NAME_LENGTH, g_subscriptions[i].eventName, g_vaps_cnt ? g_vaps_list[j] : (j + 1));
+                    snprintf(name, RBUS_MAX_NAME_LENGTH, g_subscriptions[i].eventName, g_vaps_list[j]);
                     WIFI_EVENT_CONSUMER_DGB("Add subscription %s", name);
                     fillSubscribtion(sub_index, name, i);
                     sub_index++;
