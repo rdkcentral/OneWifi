@@ -9345,7 +9345,7 @@ PreAssocDeny_GetParamStringValue
 
     if( AnscEqualString(ParamName, "SnrThresholdSupported", TRUE))
     {
-        snprintf(pValue,*pUlSize,"disabled, -50 to -95");
+        snprintf(pValue,*pUlSize,"disabled, 1 to 100");
         return 0;
     }
 
@@ -9634,7 +9634,7 @@ PreAssocDeny_SetParamStringValue
             return FALSE;
         }
 
-        if (val < 10 || val > 100) {
+        if (val < 1 || val > 100) {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Value is out of supported range\n", __FUNCTION__,__LINE__);
             return FALSE;
         }
@@ -10151,7 +10151,7 @@ PostAssocDisc_GetParamStringValue
 
     if( AnscEqualString(ParamName, "SnrThresholdSupported", TRUE))
     {
-        snprintf(pValue,*pUlSize,"disabled, 10 to 100");
+        snprintf(pValue,*pUlSize,"disabled, 1 to 100");
         return 0;
     }
 
@@ -10443,7 +10443,7 @@ PostAssocDisc_SetParamStringValue
             return FALSE;
         }
 
-        if (val < 10 || val > 100) {
+        if (val < 1 || val > 100) {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Value is out of supported range\n", __FUNCTION__,__LINE__);
             return FALSE;
         }

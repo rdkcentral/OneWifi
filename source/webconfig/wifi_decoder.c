@@ -3260,7 +3260,7 @@ webconfig_error_t decode_preassoc_cac_object(const cJSON *preassoc, wifi_preasso
             return webconfig_error_decode;
         }
 
-        if (val < 10 || val > 100) {
+        if (val < 1 || val > 100) {
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Value is out of supported range\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
@@ -3424,7 +3424,7 @@ webconfig_error_t decode_postassoc_cac_object(const cJSON *postassoc, wifi_posta
             return webconfig_error_decode;
         }
 
-        if (val < 10 || val > 100) {
+        if (val < 1 || val > 100) {
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d %s Value is out of supported range\n", __FUNCTION__,__LINE__);
             return webconfig_error_decode;
         }
