@@ -9782,7 +9782,7 @@ PreAssocDeny_SetParamStringValue
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Incorrect format: value should be single integer number between 0 to 7\n", __FUNCTION__,__LINE__);
             return FALSE;
         }
-        if (val < 0 && val > 7) {
+        if (val < 0 || val > 7) {
           wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Incorrect value, value should be within 0 to 7\n", __FUNCTION__,__LINE__);
           return FALSE;
         }
