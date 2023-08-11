@@ -243,6 +243,8 @@ int cac_event_exec_timeout(wifi_app_t *apps, void *arg)
     cac_associated_devices_t *client;
     wifi_postassoc_control_t wifidb_postassoc_conf = { 0 };
     wifi_preassoc_control_t wifidb_preassoc_conf = { 0 };
+    int *preassoc_basic_rates={0};
+    char basic_buf[32] = {0};
     wifi_radioTrafficStats2_t chan_stats;
     char vap_name[32];
     int radio_index = 0;
@@ -254,7 +256,8 @@ int cac_event_exec_timeout(wifi_app_t *apps, void *arg)
     bool found = false;
     char *str;
     int rssi_conf = 0, snr_conf = 0, cu_conf = 0, mcs_conf = 0, min_rate = 0;
-    bool rssi_enabled, snr_enabled, chan_util_enabled, mcs_enabled;
+    float min_mbr_rate = 0;
+    bool rssi_enabled, snr_enabled, chan_util_enabled, mcs_enabled, mbr_enabled;
 
     mac_addr_str_t mac_str = { 0 };
 
@@ -319,8 +322,21 @@ int cac_event_exec_timeout(wifi_app_t *apps, void *arg)
                 mcs_enabled = true;
                 mcs_conf = atoi(wifidb_preassoc_conf.minimum_advertised_mcs);
             }
+            if ((strlen (wifidb_preassoc_conf.basic_data_transmit_rates) > 0) && strcmp(wifidb_preassoc_conf.basic_data_transmit_rates, "disabled")) {
+                mbr_enabled = true;
+                snprintf(basic_buf, sizeof(basic_buf), "%s", wifidb_preassoc_conf.basic_data_transmit_rates);
+                convert_string_to_int(&preassoc_basic_rates, basic_buf);
+            } else {
+                mbr_enabled = false;
+            }
 
-            if (!rssi_enabled && !snr_enabled && !chan_util_enabled && !mcs_enabled) {
+            get_min_rate(preassoc_basic_rates, &min_mbr_rate);
+            if(preassoc_basic_rates) {
+                free(preassoc_basic_rates);
+                preassoc_basic_rates = NULL;
+            }
+
+            if (!rssi_enabled && !snr_enabled && !chan_util_enabled && !mcs_enabled && !mbr_enabled) {
                 client = hash_map_get_next(sta_map, client);
                 continue;
             }
@@ -384,14 +400,19 @@ int cac_event_exec_timeout(wifi_app_t *apps, void *arg)
                         notify_force_disassociation(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, band, "CU", str, client->ap_index);
                     }
 
-                    wifi_util_dbg_print(WIFI_APPS,"%s:%d  client avg rate= %d, mcs_conf = %d min_rate:%d\r\n", __func__, __LINE__,client->uplink_rate_avg, mcs_conf,min_rate);
+                    wifi_util_dbg_print(WIFI_APPS,"%s:%d  client avg rate= %d, mcs_conf = %d min_mbr_rate:%.1f min_rate:%d\r\n", __func__, __LINE__,client->uplink_rate_avg, mcs_conf,min_mbr_rate,min_rate);
 
                     if(mcs_enabled && min_rate > 0 && (client->uplink_rate_avg < min_rate)) {
                         cac_print("%s:%d POSTASSOC DENY:%d MCS, %s \n", __func__, __LINE__,band, str);
                         status = status_deny;
                         notify_force_disassociation(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, band, "MCS", str, client->ap_index);
                     }
-                    
+                    if(mbr_enabled && min_mbr_rate > 0 && (client->uplink_rate_avg < min_mbr_rate)) {
+                        cac_print("%s:%d POSTASSOC DENY:%d MBR, %s \n", __func__, __LINE__,band, str);
+                        status = status_deny;
+                        notify_force_disassociation(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, band, "MBR", str, client->ap_index);
+                    }
+
                     if (status == status_deny) { 
                         wifi_hal_disassoc(client->ap_index, WLAN_STATUS_DENIED_POOR_CHANNEL_CONDITIONS, client->sta_mac);
                     } else {
