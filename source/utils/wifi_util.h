@@ -137,7 +137,7 @@ typedef struct{
 #define MIN_FREQ_MHZ_2G             2412
 #define MAX_FREQ_MHZ_2G             2484
 #define MIN_CHANNEL_2G              1
-#define MAX_CHANNEL_2G              11
+#define MAX_CHANNEL_2G              13
 
 /* 5GHz radio */
 #define MIN_FREQ_MHZ_5G             5180
