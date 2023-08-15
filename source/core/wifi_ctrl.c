@@ -1043,7 +1043,7 @@ int mgmt_wifi_frame_recv(int ap_index, wifi_frame_t *frame)
 }
 #else
 #if defined (_XB7_PRODUCT_REQ_)
-int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, uint32_t len, wifi_mgmtFrameType_t type, wifi_direction_t dir, int sig_dbm)
+int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, uint32_t len, wifi_mgmtFrameType_t type, wifi_direction_t dir, int sig_dbm , int phy_rate)
 #else
 int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, uint32_t len, wifi_mgmtFrameType_t type, wifi_direction_t dir)
 #endif
@@ -1069,6 +1069,7 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
     mgmt_frame.frame.dir = dir;
 #if defined (_XB7_PRODUCT_REQ_)
     mgmt_frame.frame.sig_dbm = sig_dbm;
+    mgmt_frame.frame.phy_rate = phy_rate;
 #endif
 
     if (type == WIFI_MGMT_FRAME_TYPE_PROBE_REQ) {
