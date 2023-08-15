@@ -1492,7 +1492,6 @@ WiFiRegion_GetParamStringValue
 
 #define BS_SOURCE_WEBPA_STR "webpa"
 #define BS_SOURCE_RFC_STR "rfc"
-#define PARTNER_ID_LEN 64
 
 char * getRequestorString()
 {

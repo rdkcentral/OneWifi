@@ -68,6 +68,8 @@
 #define OFFCHAN_DEFAULT_TSCAN_IN_MSEC 63
 #define OFFCHAN_DEFAULT_NSCAN_IN_SEC 10800
 #define OFFCHAN_DEFAULT_TIDLE_IN_SEC 5
+#define BOOTSTRAP_INFO_FILE             "/nvram/bootstrap.json"
+#define COUNTRY_CODE_LEN 4
 
 ovsdb_table_t table_Wifi_Radio_Config;
 ovsdb_table_t table_Wifi_VAP_Config;
@@ -4520,6 +4522,109 @@ int get_wifi_gas_config(wifi_GASConfiguration_t *config)
     return ret;
 }
 
+char *get_data_from_json_file(char *filename)
+{
+    char *data = NULL;
+    FILE *fileRead = NULL;
+    int len;
+
+    fileRead = fopen(filename, "r");
+
+    if (fileRead == NULL) {
+        wifi_util_error_print(WIFI_DB,"%s:%d: Error in opening JSON file \n",__func__, __LINE__);
+        return NULL;
+    }
+
+    fseek(fileRead, 0, SEEK_END);
+    len = ftell(fileRead);
+
+    if (len <0) {
+        wifi_util_error_print(WIFI_DB,"%s:%d: File size reads negative \n",__func__, __LINE__);
+        fclose(fileRead);
+        return NULL;
+    }
+
+    fseek(fileRead, 0, SEEK_SET);
+    data = (char*)malloc(sizeof(char) * (len + 1));
+
+    if (data != NULL) {
+        memset(data, 0, (sizeof(char) * (len + 1)));
+        if (1 != fread(data, len, 1, fileRead)) {
+            free(data);
+            fclose(fileRead);
+            return NULL;
+        }
+        data[len] = '\0';
+    }
+    else {
+        wifi_util_error_print(WIFI_DB,"%s:%d: Memory allocation failed \n",__func__, __LINE__);
+        fclose(fileRead);
+        return NULL;
+    }
+
+    fclose(fileRead);
+    return data;
+}
+
+#if DML_SUPPORT
+void get_wifi_country_code_from_bootstrap_json(char *country_code, int len)
+{
+    char *data = NULL;
+    cJSON *json = NULL;
+    char PartnerID[PARTNER_ID_LEN] = {0};
+
+    data = get_data_from_json_file(BOOTSTRAP_INFO_FILE);
+
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_DB,"%s:%d: Failed to read file \n",__func__, __LINE__);
+        return;
+    } else if (strlen(data) != 0) {
+        json = cJSON_Parse(data);
+        if (!json) {
+            wifi_util_error_print(WIFI_DB,"%s:%d: json file parser error\n",__func__, __LINE__);
+            free(data);
+            return;
+        } else {
+            if (CCSP_SUCCESS == getPartnerId(PartnerID)) {
+                if (PartnerID[0] != '\0') {
+                    wifi_util_dbg_print(WIFI_DB,"%s:%d: Partner = %s \n",__func__, __LINE__, PartnerID);
+                    cJSON *partnerObj = cJSON_GetObjectItem(json, PartnerID);
+                    if (partnerObj != NULL) {
+                        cJSON *paramObj = cJSON_GetObjectItem(partnerObj, "Device.WiFi.X_RDKCENTRAL-COM_Syndication.WiFiRegion.Code");
+                        if (paramObj != NULL) {
+                            char *valuestr = NULL;
+                            cJSON *paramObjVal = cJSON_GetObjectItem(paramObj, "ActiveValue");
+                            if (paramObjVal)
+                                valuestr = paramObjVal->valuestring;
+                            if (valuestr != NULL) {
+                                snprintf(country_code, len, "%s", valuestr);
+                            } else {
+                                wifi_util_error_print(WIFI_DB,"%s:%d: ActiveValue is NULL\n", __func__, __LINE__);
+                            }
+                        } else {
+                            wifi_util_error_print(WIFI_DB,"%s:%d: Object is NULL\n", __func__, __LINE__);
+                        }
+                    } else {
+                        wifi_util_error_print(WIFI_DB,"%s:%d: - PARTNER ID OBJECT Value is NULL\n", __func__, __LINE__);
+                    }
+                }
+            } else {
+                wifi_util_error_print(WIFI_DB,"%s:%d: Failed to get Partner ID \n",__func__, __LINE__);
+            }
+            cJSON_Delete(json);
+        }
+        free(data);
+        data = NULL;
+    } else {
+        wifi_util_error_print(WIFI_DB,"%s:%d: BOOTSTRAP_INFO_FILE %s is empty \n",__func__, __LINE__, BOOTSTRAP_INFO_FILE);
+        free(data);
+        data=NULL;
+        return;
+    }
+    return;
+}
+#endif // DML_SUPPORT
+
 /************************************************************************************
  ************************************************************************************
   Function    : wifidb_init_radio_config_default
@@ -4530,7 +4635,7 @@ int get_wifi_gas_config(wifi_GASConfiguration_t *config)
 int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t *config, wifi_radio_feature_param_t *feat_config)
 {
     int band;
-    char country_code[4] = {0};
+    char country_code[COUNTRY_CODE_LEN] = {0};
     wifi_mgr_t *g_wifidb;
     g_wifidb = get_wifimgr_obj();
     wifi_radio_operationParam_t cfg;
@@ -5477,6 +5582,7 @@ void init_wifidb_data()
     wifi_radio_feature_param_t *f_radio_cfg = NULL;
 #if DML_SUPPORT
     wifi_rfc_dml_parameters_t *rfc_param = get_wifi_db_rfc_parameters();
+    char country_code[COUNTRY_CODE_LEN] = {0};
 #endif // DML_SUPPORT
 
     wifi_util_info_print(WIFI_DB,"%s:%d No of radios %d\n",__func__, __LINE__,getNumberRadios());
@@ -5529,6 +5635,7 @@ void init_wifidb_data()
         if (wifidb_get_rfc_config(0,rfc_param) != 0) {
             wifi_util_error_print(WIFI_DB,"%s:%d: Error getting RFC config\n",__func__, __LINE__);
         }
+        get_wifi_country_code_from_bootstrap_json(country_code, COUNTRY_CODE_LEN);
 #endif // DML_SUPPORT
         pthread_mutex_lock(&g_wifidb->data_cache_lock);
         for (r_index = 0; r_index < num_radio; r_index++) {
@@ -5557,6 +5664,21 @@ void init_wifidb_data()
                 wifidb_print("%s:%d wifidb_get_wifi_vap_config failed\n",__func__, __LINE__);
                 wifidb_update_wifi_vap_config(r_index, l_vap_param_cfg, l_rdk_vap_param_cfg);
             }
+#if DML_SUPPORT
+            if (country_code[0] != '\0') {
+                char radio_country_code[COUNTRY_CODE_LEN] = {0};
+                wifi_countrycode_type_t r_country_code;
+                strncpy(radio_country_code, country_code, strlen(country_code) - 1);
+                if (country_code_conversion(&r_country_code, radio_country_code, COUNTRY_CODE_LEN, STRING_TO_ENUM) < 0) {
+                        wifi_util_dbg_print(WIFI_DB,"%s:%d: unable to convert country string\n", __func__, __LINE__);
+                } else {
+                    if (l_radio_cfg->countryCode != r_country_code) {
+                        l_radio_cfg->countryCode = r_country_code;
+                        wifidb_update_wifi_radio_config(r_index, l_radio_cfg, f_radio_cfg);
+                    }
+                }
+            }
+#endif // DML_SUPPORT
             wifidb_radio_config_upgrade(r_index, l_radio_cfg, f_radio_cfg);
             wifidb_vap_config_upgrade(l_vap_param_cfg, l_rdk_vap_param_cfg);
             wifidb_vap_config_ext(l_vap_param_cfg, l_rdk_vap_param_cfg);
@@ -5577,6 +5699,14 @@ void init_wifidb_data()
         wifidb_get_wifi_macfilter_config();
         wifidb_get_wifi_global_config(&g_wifidb->global_config.global_parameters);
         wifidb_get_gas_config(g_wifidb->global_config.gas_config.AdvertisementID,&g_wifidb->global_config.gas_config);
+#if DML_SUPPORT
+        if (country_code[0] != '\0') {
+            if (strcmp(country_code, g_wifidb->global_config.global_parameters.wifi_region_code) != 0) {
+                strncpy(g_wifidb->global_config.global_parameters.wifi_region_code, country_code, sizeof(g_wifidb->global_config.global_parameters.wifi_region_code));
+                wifidb_update_wifi_global_config(&g_wifidb->global_config.global_parameters);
+            }
+        }
+#endif // DML_SUPPORT
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
 #if DML_SUPPORT
     }

@@ -1760,8 +1760,6 @@ void FillPartnerIDJournal(cJSON *json, char *partnerID, char *pwifiregion)
     }
 }
 
-#define PARTNER_ID_LEN 64
-
 void getParamWifiRegionUpdateSource(void)
 {
     char *data = NULL;

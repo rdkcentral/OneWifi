@@ -62,6 +62,8 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
 #define ENUM_TO_STRING 1
 #define STRING_TO_ENUM 2
 
+#define PARTNER_ID_LEN 64
+
 #define MIN_MAC_LEN 12
 #define MAC_ADDR_LEN 6
 typedef unsigned char   mac_addr_t[MAC_ADDR_LEN];
