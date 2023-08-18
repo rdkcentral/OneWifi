@@ -26,15 +26,9 @@ enable=`syscfg get mesh_enable`
 if [ "$enable" == "true" ]; then
  echo_t "Meshwifi has been enabled"  >> /rdklogs/logs/MeshAgentLog.txt.0
  t2CountNotify "WIFI_INFO_mesh_enabled"
- Pods_12=`wifi_api wifi_getApAssociatedDeviceDiagnosticResult 12 | grep Total_STA  | cut -d":" -f2`
- #if Pods_12 is empty, assign 0 to it.
- if [ ! -n "$Pods_12" ]; then 
-  Pods_12=0
- fi
- Pods_13=`wifi_api wifi_getApAssociatedDeviceDiagnosticResult 13 | grep Total_STA  | cut -d":" -f2`
- if [ ! -n "$Pods_13" ]; then
-  Pods_13=0
- fi
+ Pods_12=`dmcli eRT retv Device.WiFi.AccessPoint.13.AssociatedDeviceNumberOfEntries`
+ Pods_13=`dmcli eRT retv Device.WiFi.AccessPoint.14.AssociatedDeviceNumberOfEntries`
+
  #echo_t "Pods connected count: 2.4GHz= $Pods_12, 5GHz= $Pods_13" >> /rdklogs/logs/MeshAgentLog.txt.0
  echo_t "CONNECTED_Pods:Total_WiFi-2.4G_Pods=$Pods_12" >> /rdklogs/logs/MeshAgentLog.txt.0
  t2ValNotify "Total_2G_PodClients_split" "$Pods_12"
@@ -54,7 +48,7 @@ pod_found=false
 
 for vap in 12 13; do
  if [ $Pods_$vap -gt 0 ]; then
-  cliMac=`wifi_api wifi_getApAssociatedDeviceDiagnosticResult $vap | grep -i cli_MACAddress | cut -d'=' -f2`
+  cliMac=`dmcli eRT getv Device.WiFi.AccessPoint.$((vap+1)).AssociatedDevice. | grep -w MACAddress -A1 | grep -w "value:" | sed "s/.*value: //g"`
   for mac in $cliMac; do 
    maclist="$maclist $mac,"
    linktype="$linktype WiFi,"
