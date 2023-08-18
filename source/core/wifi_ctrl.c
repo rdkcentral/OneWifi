@@ -1565,7 +1565,7 @@ int validate_and_sync_private_vap_credentials()
 
     pTmp = rbusValue_GetString(value, &len);
     wifi_util_info_print(WIFI_CTRL,"Last reboot reason is %s\n",pTmp);
-    if (strcmp(pTmp,"Software_upgrade") == 0) {
+    if (strcmp(pTmp,"factory-reset") && strcmp(pTmp,"WPS-Factory-Reset")) {
 
         get_ssid_from_device_mac(default_ssid);
 
