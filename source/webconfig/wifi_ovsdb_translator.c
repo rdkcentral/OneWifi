@@ -525,7 +525,6 @@ void debug_external_protos(const webconfig_subdoc_data_t *data, const char *func
     }
 }
 
-#ifdef WPA3_SECURITY_SCHEMA
 int set_translator_config_wpa_psks(
         struct schema_Wifi_VIF_Config *vconfig,
         int *index,
@@ -590,7 +589,6 @@ void get_translator_config_wpa_oftags(
         }
     }
 }
-#endif
 
 webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
 {
@@ -1660,7 +1658,7 @@ BOOL update_secmode_for_wpa3(wifi_vap_info_t *vap_info, char *mode_str, int mode
 }
 
 //Note: Modify this function for the security
-webconfig_error_t translate_vap_info_to_ovsdb_personal_sec(const wifi_vap_info_t *vap, struct schema_Wifi_VIF_Config *vap_row)
+webconfig_error_t translate_vap_info_to_ovsdb_personal_sec(const wifi_vap_info_t *vap, struct schema_Wifi_VIF_Config *vap_row, bool sec_schema_is_legacy)
 {
     if ((vap_row == NULL) || (vap == NULL)) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: input argument is NULL\n", __func__, __LINE__);
@@ -1671,53 +1669,53 @@ webconfig_error_t translate_vap_info_to_ovsdb_personal_sec(const wifi_vap_info_t
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Mac filter conversion failed. mac_filter_enable %d mac_filter_mode %d\n", __func__, __LINE__, vap->u.bss_info.mac_filter_enable, vap->u.bss_info.mac_filter_mode);
         return webconfig_error_translate_to_ovsdb;
     }
-#ifndef WPA3_SECURITY_SCHEMA
-    int  index = 0;
-    if (vap->u.bss_info.security.mode != wifi_security_mode_none) {
-        char str_mode[128] = {0};
-        char str_encryp[128] = {0};
 
-        memset(str_mode, 0, sizeof(str_mode));
-        memset(str_encryp, 0, sizeof(str_encryp));
-        if (!update_secmode_for_wpa3((wifi_vap_info_t *)vap, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), true)) {
-            if ((key_mgmt_conversion_legacy((wifi_security_modes_t *)&vap->u.bss_info.security.mode, (wifi_encryption_method_t *)&vap->u.bss_info.security.encr, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), ENUM_TO_STRING)) != RETURN_OK) {
-                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. security mode 0x%x encr 0x%x\n", __func__, __LINE__, vap->u.bss_info.security.mode, vap->u.bss_info.security.encr);
+    if (sec_schema_is_legacy == true) {
+        int  index = 0;
+        if (vap->u.bss_info.security.mode != wifi_security_mode_none) {
+            char str_mode[128] = {0};
+            char str_encryp[128] = {0};
+
+            memset(str_mode, 0, sizeof(str_mode));
+            memset(str_encryp, 0, sizeof(str_encryp));
+            if (!update_secmode_for_wpa3((wifi_vap_info_t *)vap, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), true)) {
+                if ((key_mgmt_conversion_legacy((wifi_security_modes_t *)&vap->u.bss_info.security.mode, (wifi_encryption_method_t *)&vap->u.bss_info.security.encr, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), ENUM_TO_STRING)) != RETURN_OK) {
+                    wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. security mode 0x%x encr 0x%x\n", __func__, __LINE__, vap->u.bss_info.security.mode, vap->u.bss_info.security.encr);
+                    return webconfig_error_translate_to_ovsdb;
+                }
+            }
+            set_translator_config_security_key_value(vap_row, &index, "encryption", str_encryp);
+            set_translator_config_security_key_value(vap_row, &index, "mode", str_mode);
+            set_translator_config_security_key_value(vap_row, &index, "key", vap->u.bss_info.security.u.key.key);
+        } else {
+            set_translator_config_security_key_value(vap_row, &index, "encryption", "OPEN");
+        }
+    } else {
+        if (vap->u.bss_info.security.mode == wifi_security_mode_none) {
+            vap_row->wpa = false;
+        } else {
+            int len = 0, wpa_psk_index = 0;
+            if ((key_mgmt_conversion((wifi_security_modes_t *)&vap->u.bss_info.security.mode, vap_row->wpa_key_mgmt[0], vap_row->wpa_key_mgmt[1], sizeof(vap_row->wpa_key_mgmt[0]), sizeof(vap_row->wpa_key_mgmt[1]), ENUM_TO_STRING, &len)) != RETURN_OK) {
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. security mode 0x%x\n", __func__, __LINE__, vap->u.bss_info.security.mode);
                 return webconfig_error_translate_to_ovsdb;
             }
-        }
-        set_translator_config_security_key_value(vap_row, &index, "encryption", str_encryp);
-        set_translator_config_security_key_value(vap_row, &index, "mode", str_mode);
-        set_translator_config_security_key_value(vap_row, &index, "key", vap->u.bss_info.security.u.key.key);
-    } else {
-        set_translator_config_security_key_value(vap_row, &index, "encryption", "OPEN");
-    }
 
+            vap_row->wpa = true;
+            vap_row->wpa_key_mgmt_len = len;
 
-#else
-    if (vap->u.bss_info.security.mode == wifi_security_mode_none) {
-        vap_row->wpa = false;
-    } else {
-        int len = 0, wpa_psk_index = 0;
-        if ((key_mgmt_conversion((wifi_security_modes_t *)&vap->u.bss_info.security.mode, vap_row->wpa_key_mgmt[0], vap_row->wpa_key_mgmt[1], sizeof(vap_row->wpa_key_mgmt[0]), sizeof(vap_row->wpa_key_mgmt[1]), ENUM_TO_STRING, &len)) != RETURN_OK) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. security mode 0x%x\n", __func__, __LINE__, vap->u.bss_info.security.mode);
-            return webconfig_error_translate_to_ovsdb;
-        }
+            if ((strlen(vap->u.bss_info.security.u.key.key) < MIN_PWD_LEN) || (strlen(vap->u.bss_info.security.u.key.key) > MAX_PWD_LEN)) {
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Invalid password length %d\n", __func__, __LINE__, strlen(vap->u.bss_info.security.u.key.key));
+                return webconfig_error_translate_to_ovsdb;
+            }
 
-        vap_row->wpa = true;
-        vap_row->wpa_key_mgmt_len = len;
-
-        if ((strlen(vap->u.bss_info.security.u.key.key) < MIN_PWD_LEN) || (strlen(vap->u.bss_info.security.u.key.key) > MAX_PWD_LEN)) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Invalid password length %d\n", __func__, __LINE__, strlen(vap->u.bss_info.security.u.key.key));
-            return webconfig_error_translate_to_ovsdb;
-        }
-
-        set_translator_config_wpa_psks(vap_row, &wpa_psk_index, "key--1", vap->u.bss_info.security.u.key.key);
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: strlen of key_id is %d\n", __func__, __LINE__, strlen(vap->u.bss_info.security.key_id));
-        if (strnlen(vap->u.bss_info.security.key_id,sizeof(vap->u.bss_info.security.key_id)-1) > 0) {
-            set_translator_config_wpa_oftags(vap_row, vap->u.bss_info.security.key_id);
+            set_translator_config_wpa_psks(vap_row, &wpa_psk_index, "key--1", vap->u.bss_info.security.u.key.key);
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: strlen of key_id is %d\n", __func__, __LINE__, strlen(vap->u.bss_info.security.key_id));
+            if (strnlen(vap->u.bss_info.security.key_id,sizeof(vap->u.bss_info.security.key_id)-1) > 0) {
+                set_translator_config_wpa_oftags(vap_row, vap->u.bss_info.security.key_id);
+            }
         }
     }
-#endif
+
     if (vap->u.bss_info.security.rekey_interval) {
         vap_row->group_rekey = vap->u.bss_info.security.rekey_interval;
     } else {
@@ -1767,7 +1765,7 @@ webconfig_error_t translate_vap_info_to_ovsdb_radius_settings(const wifi_vap_inf
     return webconfig_error_none;
 }
 
-webconfig_error_t translate_vap_info_to_ovsdb_enterprise_sec(const wifi_vap_info_t *vap, struct schema_Wifi_VIF_Config *vap_row)
+webconfig_error_t translate_vap_info_to_ovsdb_enterprise_sec(const wifi_vap_info_t *vap, struct schema_Wifi_VIF_Config *vap_row, bool sec_schema_is_legacy)
 {
     if ((vap_row == NULL) || (vap == NULL)) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: input argument is NULL\n", __func__, __LINE__);
@@ -1787,33 +1785,32 @@ webconfig_error_t translate_vap_info_to_ovsdb_enterprise_sec(const wifi_vap_info
         return webconfig_error_translate_to_ovsdb;
     }
 
-#ifndef WPA3_SECURITY_SCHEMA
-    int  index = 0;
-    char str_mode[128] = {0};
-    char str_encryp[128] = {0};
+    if (sec_schema_is_legacy == true) {
+        int  index = 0;
+        char str_mode[128] = {0};
+        char str_encryp[128] = {0};
 
-    memset(str_mode, 0, sizeof(str_mode));
-    memset(str_encryp, 0, sizeof(str_encryp));
-    if (!update_secmode_for_wpa3((wifi_vap_info_t *)vap, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), true)) {
-        if ((key_mgmt_conversion_legacy((wifi_security_modes_t *)&vap->u.bss_info.security.mode, (wifi_encryption_method_t *)&vap->u.bss_info.security.encr, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), ENUM_TO_STRING)) != RETURN_OK)    {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. security mode 0x%x encr 0x%x\n", __func__, __LINE__, vap->u.bss_info.security.mode, vap->u.bss_info.security.encr);
+        memset(str_mode, 0, sizeof(str_mode));
+        memset(str_encryp, 0, sizeof(str_encryp));
+        if (!update_secmode_for_wpa3((wifi_vap_info_t *)vap, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), true)) {
+            if ((key_mgmt_conversion_legacy((wifi_security_modes_t *)&vap->u.bss_info.security.mode, (wifi_encryption_method_t *)&vap->u.bss_info.security.encr, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), ENUM_TO_STRING)) != RETURN_OK)    {
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. security mode 0x%x encr 0x%x\n", __func__, __LINE__, vap->u.bss_info.security.mode, vap->u.bss_info.security.encr);
+                return webconfig_error_translate_to_ovsdb;
+            }
+        }
+        set_translator_config_security_key_value(vap_row, &index, "encryption", str_encryp);
+        set_translator_config_security_key_value(vap_row, &index, "mode", str_mode);
+    } else {
+        int len = 0;
+
+        if ((key_mgmt_conversion((wifi_security_modes_t *)&vap->u.bss_info.security.mode, vap_row->wpa_key_mgmt[0], vap_row->wpa_key_mgmt[1], sizeof(vap_row->wpa_key_mgmt[0]), sizeof(vap_row->wpa_key_mgmt[1]), ENUM_TO_STRING, &len)) != RETURN_OK) {
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. security mode 0x%x\n", __func__, __LINE__, vap->u.bss_info.security.mode);
             return webconfig_error_translate_to_ovsdb;
         }
+
+        vap_row->wpa = true;
+        vap_row->wpa_key_mgmt_len = len;
     }
-    set_translator_config_security_key_value(vap_row, &index, "encryption", str_encryp);
-    set_translator_config_security_key_value(vap_row, &index, "mode", str_mode);
-
-#else
-    int len = 0;
-
-    if ((key_mgmt_conversion((wifi_security_modes_t *)&vap->u.bss_info.security.mode, vap_row->wpa_key_mgmt[0], vap_row->wpa_key_mgmt[1], sizeof(vap_row->wpa_key_mgmt[0]), sizeof(vap_row->wpa_key_mgmt[1]), ENUM_TO_STRING, &len)) != RETURN_OK) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. security mode 0x%x\n", __func__, __LINE__, vap->u.bss_info.security.mode);
-        return webconfig_error_translate_to_ovsdb;
-    }
-
-    vap_row->wpa = true;
-    vap_row->wpa_key_mgmt_len = len;
-#endif
 
     return webconfig_error_none;
 }
@@ -1906,14 +1903,15 @@ webconfig_error_t  translate_sta_vap_info_to_ovsdb_common(const wifi_vap_info_t 
     return webconfig_error_none;
 }
 
-webconfig_error_t translate_private_vap_info_to_vif_config(const wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, struct schema_Wifi_VIF_Config *vap_row, wifi_platform_property_t *wifi_prop)
+webconfig_error_t translate_private_vap_info_to_vif_config(const wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, struct schema_Wifi_VIF_Config *vap_row, wifi_platform_property_t *wifi_prop,
+    bool sec_schema_is_legacy)
 {
     if (translate_vap_info_to_ovsdb_common(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for common\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
 
-    if (translate_vap_info_to_ovsdb_personal_sec(vap, vap_row) != webconfig_error_none) {
+    if (translate_vap_info_to_ovsdb_personal_sec(vap, vap_row, sec_schema_is_legacy) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for personal security\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
@@ -1921,14 +1919,15 @@ webconfig_error_t translate_private_vap_info_to_vif_config(const wifi_vap_info_t
     return webconfig_error_none;
 }
 
-webconfig_error_t translate_iot_vap_info_to_vif_config(const wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, struct schema_Wifi_VIF_Config *vap_row, wifi_platform_property_t *wifi_prop)
+webconfig_error_t translate_iot_vap_info_to_vif_config(const wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, struct schema_Wifi_VIF_Config *vap_row, wifi_platform_property_t *wifi_prop,
+    bool sec_schema_is_legacy)
 {
     if (translate_vap_info_to_ovsdb_common(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for common\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
 
-    if (translate_vap_info_to_ovsdb_personal_sec(vap, vap_row) != webconfig_error_none) {
+    if (translate_vap_info_to_ovsdb_personal_sec(vap, vap_row, sec_schema_is_legacy) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for personal security\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
@@ -1952,14 +1951,15 @@ webconfig_error_t translate_hotspot_open_vap_info_to_vif_config(const wifi_vap_i
     return webconfig_error_none;
 }
 
-webconfig_error_t translate_lnf_psk_vap_info_to_vif_config(const wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, struct schema_Wifi_VIF_Config *vap_row, wifi_platform_property_t *wifi_prop)
+webconfig_error_t translate_lnf_psk_vap_info_to_vif_config(const wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, struct schema_Wifi_VIF_Config *vap_row, wifi_platform_property_t *wifi_prop,
+    bool sec_schema_is_legacy)
 {
     if (translate_vap_info_to_ovsdb_common(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for common\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
 
-    if (translate_vap_info_to_ovsdb_personal_sec(vap, vap_row) != webconfig_error_none) {
+    if (translate_vap_info_to_ovsdb_personal_sec(vap, vap_row, sec_schema_is_legacy) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for personal security\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
@@ -1967,14 +1967,15 @@ webconfig_error_t translate_lnf_psk_vap_info_to_vif_config(const wifi_vap_info_t
     return webconfig_error_none;
 }
 
-webconfig_error_t translate_hotspot_secure_vap_info_to_vif_config(const wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, struct schema_Wifi_VIF_Config *vap_row, wifi_platform_property_t *wifi_prop)
+webconfig_error_t translate_hotspot_secure_vap_info_to_vif_config(const wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, struct schema_Wifi_VIF_Config *vap_row, wifi_platform_property_t *wifi_prop,
+    bool sec_schema_is_legacy)
 {
     if (translate_vap_info_to_ovsdb_common(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for common\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
 
-    if (translate_vap_info_to_ovsdb_enterprise_sec(vap, vap_row) != webconfig_error_none) {
+    if (translate_vap_info_to_ovsdb_enterprise_sec(vap, vap_row, sec_schema_is_legacy) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for enterprise security\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
@@ -1983,14 +1984,15 @@ webconfig_error_t translate_hotspot_secure_vap_info_to_vif_config(const wifi_vap
 }
 
 
-webconfig_error_t translate_lnf_radius_secure_vap_info_to_vif_config(const wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, struct schema_Wifi_VIF_Config *vap_row, wifi_platform_property_t *wifi_prop)
+webconfig_error_t translate_lnf_radius_secure_vap_info_to_vif_config(const wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, struct schema_Wifi_VIF_Config *vap_row, wifi_platform_property_t *wifi_prop,
+    bool sec_schema_is_legacy)
 {
     if (translate_vap_info_to_ovsdb_common(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for common\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
 
-    if (translate_vap_info_to_ovsdb_enterprise_sec(vap, vap_row) != webconfig_error_none) {
+    if (translate_vap_info_to_ovsdb_enterprise_sec(vap, vap_row, sec_schema_is_legacy) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for enterprise security\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
@@ -1998,14 +2000,15 @@ webconfig_error_t translate_lnf_radius_secure_vap_info_to_vif_config(const wifi_
     return webconfig_error_none;
 }
 
-webconfig_error_t translate_mesh_backhaul_vap_info_to_vif_config(const wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, struct schema_Wifi_VIF_Config *vap_row, wifi_platform_property_t *wifi_prop)
+webconfig_error_t translate_mesh_backhaul_vap_info_to_vif_config(const wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, struct schema_Wifi_VIF_Config *vap_row, wifi_platform_property_t *wifi_prop,
+    bool sec_schema_is_legacy)
 {
     if (translate_vap_info_to_ovsdb_common(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for common\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
 
-    if (translate_vap_info_to_ovsdb_personal_sec(vap, vap_row) != webconfig_error_none) {
+    if (translate_vap_info_to_ovsdb_personal_sec(vap, vap_row, sec_schema_is_legacy) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for personal security\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
@@ -2014,68 +2017,69 @@ webconfig_error_t translate_mesh_backhaul_vap_info_to_vif_config(const wifi_vap_
 }
 
 
-webconfig_error_t translate_sta_vap_info_to_ovsdb_config_personal_sec(const wifi_vap_info_t *vap, struct schema_Wifi_VIF_Config *vap_row)
+webconfig_error_t translate_sta_vap_info_to_ovsdb_config_personal_sec(const wifi_vap_info_t *vap, struct schema_Wifi_VIF_Config *vap_row, bool sec_schema_is_legacy)
 {
     if ((vap_row == NULL) || (vap == NULL)) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: input argument is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
-#ifndef WPA3_SECURITY_SCHEMA
-    int sec_index = 0;
-    if (vap->u.sta_info.security.mode != wifi_security_mode_none) {
-        char str_mode[128] = {0};
-        char str_encryp[128] = {0};
+    if (sec_schema_is_legacy == true) {
+        int sec_index = 0;
+        if (vap->u.sta_info.security.mode != wifi_security_mode_none) {
+            char str_mode[128] = {0};
+            char str_encryp[128] = {0};
 
-        memset(str_mode, 0, sizeof(str_mode));
-        memset(str_encryp, 0, sizeof(str_encryp));
-        if (!update_secmode_for_wpa3((wifi_vap_info_t *)vap, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), true)) {
-            if ((key_mgmt_conversion_legacy((wifi_security_modes_t *)&vap->u.sta_info.security.mode, (wifi_encryption_method_t *)&vap->u.sta_info.security.encr, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), ENUM_TO_STRING)) != RETURN_OK) {
-                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. security mode 0x%x encr 0x%x\n", __func__, __LINE__, vap->u.sta_info.security.mode, vap->u.sta_info.security.encr);
+            memset(str_mode, 0, sizeof(str_mode));
+            memset(str_encryp, 0, sizeof(str_encryp));
+            if (!update_secmode_for_wpa3((wifi_vap_info_t *)vap, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), true)) {
+                if ((key_mgmt_conversion_legacy((wifi_security_modes_t *)&vap->u.sta_info.security.mode, (wifi_encryption_method_t *)&vap->u.sta_info.security.encr, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), ENUM_TO_STRING)) != RETURN_OK) {
+                    wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. security mode 0x%x encr 0x%x\n", __func__, __LINE__, vap->u.sta_info.security.mode, vap->u.sta_info.security.encr);
+                    return webconfig_error_translate_to_ovsdb;
+                }
+            }
+
+            set_translator_config_security_key_value(vap_row, &sec_index, "encryption", str_encryp);
+            set_translator_config_security_key_value(vap_row, &sec_index, "mode", str_mode);
+            set_translator_config_security_key_value(vap_row, &sec_index, "key", vap->u.sta_info.security.u.key.key);
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: encr : %s mode : %s\n", __func__, __LINE__, str_encryp, str_mode);
+
+
+        } else {
+            set_translator_config_security_key_value(vap_row, &sec_index, "encryption", "OPEN");
+        }
+    } else {
+        if (vap->u.sta_info.security.mode == wifi_security_mode_none) {
+            vap_row->wpa = false;
+        } else {
+            int len = 0, wpa_psk_index = 0;
+            if ((key_mgmt_conversion((wifi_security_modes_t *)&vap->u.sta_info.security.mode, vap_row->wpa_key_mgmt[0], vap_row->wpa_key_mgmt[1], sizeof(vap_row->wpa_key_mgmt[0]), sizeof(vap_row->wpa_key_mgmt[1]), ENUM_TO_STRING, &len)) != RETURN_OK) {
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. security mode 0x%x\n", __func__, __LINE__, vap->u.sta_info.security.mode);
                 return webconfig_error_translate_to_ovsdb;
             }
+
+            vap_row->wpa = true;
+            vap_row->wpa_key_mgmt_len = len;
+
+            if ((strlen(vap->u.sta_info.security.u.key.key) < MIN_PWD_LEN) || (strlen(vap->u.sta_info.security.u.key.key) > MAX_PWD_LEN)) {
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Invalid password length %d\n", __func__, __LINE__, strlen(vap->u.sta_info.security.u.key.key));
+                return webconfig_error_translate_to_ovsdb;
+            }
+            set_translator_config_wpa_psks(vap_row, &wpa_psk_index, "key--1", vap->u.sta_info.security.u.key.key);
         }
-
-        set_translator_config_security_key_value(vap_row, &sec_index, "encryption", str_encryp);
-        set_translator_config_security_key_value(vap_row, &sec_index, "mode", str_mode);
-        set_translator_config_security_key_value(vap_row, &sec_index, "key", vap->u.sta_info.security.u.key.key);
-        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: encr : %s mode : %s\n", __func__, __LINE__, str_encryp, str_mode);
-
-
-    } else {
-        set_translator_config_security_key_value(vap_row, &sec_index, "encryption", "OPEN");
     }
-#else
-    if (vap->u.sta_info.security.mode == wifi_security_mode_none) {
-        vap_row->wpa = false;
-    } else {
-        int len = 0, wpa_psk_index = 0;
-        if ((key_mgmt_conversion((wifi_security_modes_t *)&vap->u.sta_info.security.mode, vap_row->wpa_key_mgmt[0], vap_row->wpa_key_mgmt[1], sizeof(vap_row->wpa_key_mgmt[0]), sizeof(vap_row->wpa_key_mgmt[1]), ENUM_TO_STRING, &len)) != RETURN_OK) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. security mode 0x%x\n", __func__, __LINE__, vap->u.sta_info.security.mode);
-            return webconfig_error_translate_to_ovsdb;
-        }
-
-        vap_row->wpa = true;
-        vap_row->wpa_key_mgmt_len = len;
-
-        if ((strlen(vap->u.sta_info.security.u.key.key) < MIN_PWD_LEN) || (strlen(vap->u.sta_info.security.u.key.key) > MAX_PWD_LEN)) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Invalid password length %d\n", __func__, __LINE__, strlen(vap->u.sta_info.security.u.key.key));
-            return webconfig_error_translate_to_ovsdb;
-        }
-        set_translator_config_wpa_psks(vap_row, &wpa_psk_index, "key--1", vap->u.sta_info.security.u.key.key);
-    }
-#endif
 
     return webconfig_error_none;
 }
 
-webconfig_error_t translate_mesh_sta_vap_info_to_vif_config(const wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, struct schema_Wifi_VIF_Config *vap_row, wifi_platform_property_t *wifi_prop)
+webconfig_error_t translate_mesh_sta_vap_info_to_vif_config(const wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, struct schema_Wifi_VIF_Config *vap_row, wifi_platform_property_t *wifi_prop,
+    bool sec_schema_is_legacy)
 {
     if (translate_sta_vap_info_to_ovsdb_common(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for common\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
 
-    if (translate_sta_vap_info_to_ovsdb_config_personal_sec(vap, vap_row) != webconfig_error_none) {
+    if (translate_sta_vap_info_to_ovsdb_config_personal_sec(vap, vap_row, sec_schema_is_legacy) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for security\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
@@ -2098,6 +2102,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_dml(webconfig_s
     wifi_hal_capability_t *hal_cap;
     wifi_interface_name_idex_map_t *iface_map;
     webconfig_external_ovsdb_t *proto;
+    bool sec_schema_is_legacy;
 
     unsigned int presence_mask = 0;
     unsigned int count = 0, *row_count = NULL;
@@ -2121,6 +2126,8 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_dml(webconfig_s
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: table is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
+
+    sec_schema_is_legacy = proto->sec_schema_is_legacy;
 
     presence_mask = 0;
     dml_vap_mask = create_vap_mask(wifi_prop, 8, VAP_PREFIX_PRIVATE, VAP_PREFIX_IOT, VAP_PREFIX_HOTSPOT_OPEN, VAP_PREFIX_HOTSPOT_SECURE, \
@@ -2167,14 +2174,14 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_dml(webconfig_s
             }
 
             if (is_vap_private(wifi_prop, vap->vap_index) == TRUE) {
-                if (translate_private_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
+                if (translate_private_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
                     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of private vap to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
                 presence_mask |= (1 << vap->vap_index);
                 count++;
             } else  if (is_vap_xhs(wifi_prop, vap->vap_index) == TRUE) {
-                if (translate_iot_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
+                if (translate_iot_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
                     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of iot vap to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
@@ -2190,28 +2197,28 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_dml(webconfig_s
                 count++;
             } else  if (is_vap_lnf_psk(wifi_prop, vap->vap_index) == TRUE) {
 
-                if (translate_lnf_psk_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
+                if (translate_lnf_psk_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
                     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of lnf psk vap to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
                 presence_mask |= (1 << vap->vap_index);
                 count++;
             } else  if (is_vap_hotspot_secure(wifi_prop, vap->vap_index) == TRUE) {
-                if (translate_hotspot_secure_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
+                if (translate_hotspot_secure_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
                     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of hotspot secure vap to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
                 presence_mask |= (1 << vap->vap_index);
                 count++;
             } else  if (is_vap_lnf_radius(wifi_prop, vap->vap_index) == TRUE) {
-                if (translate_lnf_radius_secure_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
+                if (translate_lnf_radius_secure_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
                     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of radius secure vap to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
                 presence_mask |= (1 << vap->vap_index);
                 count++;
             } else  if (is_vap_mesh_backhaul(wifi_prop, vap->vap_index) == TRUE) {
-                if (translate_mesh_backhaul_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
+                if (translate_mesh_backhaul_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
                     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of mesh backhaul to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
@@ -2220,7 +2227,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_dml(webconfig_s
             } else  if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == TRUE) {
                 wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: for %d\n", __func__, __LINE__, vap->vap_index);
                 if (vap->u.sta_info.conn_status == wifi_connection_status_connected) {
-                    if (translate_mesh_sta_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
+                    if (translate_mesh_sta_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
                         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of mesh sta to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                         return webconfig_error_translate_to_ovsdb;
                     }
@@ -2258,7 +2265,6 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_dml(webconfig_s
     return webconfig_error_none;
 }
 
-#ifndef WPA3_SECURITY_SCHEMA
 const char* security_config_find_by_key(
         const struct schema_Wifi_VIF_Config *vconf,
         char *key)
@@ -2314,7 +2320,6 @@ int set_translator_config_security_key_value(
 
     return *index;
 }
-#endif
 
 webconfig_error_t translate_vap_info_to_vif_state_common(const wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, struct schema_Wifi_VIF_State *vap_row, wifi_platform_property_t *wifi_prop)
 {
@@ -2410,7 +2415,7 @@ webconfig_error_t translate_vap_info_to_vif_state_radius_settings(const wifi_vap
     return webconfig_error_none;
 }
 
-webconfig_error_t translate_vap_info_to_vif_state_personal_sec(const wifi_vap_info_t *vap, struct schema_Wifi_VIF_State *vap_row)
+webconfig_error_t translate_vap_info_to_vif_state_personal_sec(const wifi_vap_info_t *vap, struct schema_Wifi_VIF_State *vap_row, bool sec_schema_is_legacy)
 {
     if ((vap_row == NULL) || (vap == NULL)) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: input argument is NULL\n", __func__, __LINE__);
@@ -2429,53 +2434,53 @@ webconfig_error_t translate_vap_info_to_vif_state_personal_sec(const wifi_vap_in
         vap_row->group_rekey_exists = false;
     }
 
-#ifndef WPA3_SECURITY_SCHEMA
-    int sec_index = 0;
-    if (vap->u.bss_info.security.mode != wifi_security_mode_none) {
-        char str_mode[128] = {0};
-        char str_encryp[128] = {0};
+    if (sec_schema_is_legacy == true) {
+        int sec_index = 0;
+        if (vap->u.bss_info.security.mode != wifi_security_mode_none) {
+            char str_mode[128] = {0};
+            char str_encryp[128] = {0};
 
-        memset(str_mode, 0, sizeof(str_mode));
-        memset(str_encryp, 0, sizeof(str_encryp));
-        if (!update_secmode_for_wpa3((wifi_vap_info_t *)vap, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), true)) {
-            if ((key_mgmt_conversion_legacy((wifi_security_modes_t *)&vap->u.bss_info.security.mode, (wifi_encryption_method_t *)&vap->u.bss_info.security.encr, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), ENUM_TO_STRING)) != RETURN_OK) {
+            memset(str_mode, 0, sizeof(str_mode));
+            memset(str_encryp, 0, sizeof(str_encryp));
+            if (!update_secmode_for_wpa3((wifi_vap_info_t *)vap, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), true)) {
+                if ((key_mgmt_conversion_legacy((wifi_security_modes_t *)&vap->u.bss_info.security.mode, (wifi_encryption_method_t *)&vap->u.bss_info.security.encr, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), ENUM_TO_STRING)) != RETURN_OK) {
+                    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed\n", __func__, __LINE__);
+                    return webconfig_error_translate_to_ovsdb;
+                }
+            }
+
+            set_translator_state_security_key_value(vap_row, &sec_index, "encryption", str_encryp);
+            set_translator_state_security_key_value(vap_row, &sec_index, "mode", str_mode);
+            set_translator_state_security_key_value(vap_row, &sec_index, "key", vap->u.bss_info.security.u.key.key);
+
+            if (strnlen(vap->u.bss_info.security.key_id,sizeof(vap->u.bss_info.security.key_id)-1) > 0) {
+                set_translator_state_security_key_value(vap_row, &sec_index, "oftag", vap->u.bss_info.security.key_id);
+            } 
+
+        } else {
+            set_translator_state_security_key_value(vap_row, &sec_index, "encryption", "OPEN");
+        }
+    } else {
+        if (vap->u.bss_info.security.mode == wifi_security_mode_none) {
+            vap_row->wpa = false;
+        } else {
+            int len = 0, wpa_psk_index = 0;
+            if ((key_mgmt_conversion((wifi_security_modes_t *)&vap->u.bss_info.security.mode, vap_row->wpa_key_mgmt[0], vap_row->wpa_key_mgmt[1], sizeof(vap_row->wpa_key_mgmt[0]), sizeof(vap_row->wpa_key_mgmt[1]), ENUM_TO_STRING, &len)) != RETURN_OK) {
                 wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed\n", __func__, __LINE__);
                 return webconfig_error_translate_to_ovsdb;
             }
+            vap_row->wpa_key_mgmt_len = len;
+            vap_row->wpa = true;
+
+            if ((strlen(vap->u.bss_info.security.u.key.key) < MIN_PWD_LEN) || (strlen(vap->u.bss_info.security.u.key.key) > MAX_PWD_LEN)) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Invalid password length\n", __func__, __LINE__);
+                return webconfig_error_translate_to_ovsdb;
+            }
+
+            set_translator_state_wpa_psks(vap_row, &wpa_psk_index, "key--1", vap->u.bss_info.security.u.key.key);
+
         }
-
-        set_translator_state_security_key_value(vap_row, &sec_index, "encryption", str_encryp);
-        set_translator_state_security_key_value(vap_row, &sec_index, "mode", str_mode);
-        set_translator_state_security_key_value(vap_row, &sec_index, "key", vap->u.bss_info.security.u.key.key);
-
-        if (strnlen(vap->u.bss_info.security.key_id,sizeof(vap->u.bss_info.security.key_id)-1) > 0) {
-            set_translator_state_security_key_value(vap_row, &sec_index, "oftag", vap->u.bss_info.security.key_id);
-        } 
-
-    } else {
-        set_translator_state_security_key_value(vap_row, &sec_index, "encryption", "OPEN");
     }
-#else
-    if (vap->u.bss_info.security.mode == wifi_security_mode_none) {
-        vap_row->wpa = false;
-    } else {
-        int len = 0, wpa_psk_index = 0;
-        if ((key_mgmt_conversion((wifi_security_modes_t *)&vap->u.bss_info.security.mode, vap_row->wpa_key_mgmt[0], vap_row->wpa_key_mgmt[1], sizeof(vap_row->wpa_key_mgmt[0]), sizeof(vap_row->wpa_key_mgmt[1]), ENUM_TO_STRING, &len)) != RETURN_OK) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed\n", __func__, __LINE__);
-            return webconfig_error_translate_to_ovsdb;
-        }
-        vap_row->wpa_key_mgmt_len = len;
-        vap_row->wpa = true;
-
-        if ((strlen(vap->u.bss_info.security.u.key.key) < MIN_PWD_LEN) || (strlen(vap->u.bss_info.security.u.key.key) > MAX_PWD_LEN)) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Invalid password length\n", __func__, __LINE__);
-            return webconfig_error_translate_to_ovsdb;
-        }
-
-        set_translator_state_wpa_psks(vap_row, &wpa_psk_index, "key--1", vap->u.bss_info.security.u.key.key);
-
-    }
-#endif
 
     return webconfig_error_none;
 }
@@ -2492,7 +2497,7 @@ webconfig_error_t translate_vap_info_to_vif_state_no_sec(const wifi_vap_info_t *
     return webconfig_error_none;
 }
 
-webconfig_error_t translate_vap_info_to_vif_state_enterprise_sec(const wifi_vap_info_t *vap, struct schema_Wifi_VIF_State *vap_row)
+webconfig_error_t translate_vap_info_to_vif_state_enterprise_sec(const wifi_vap_info_t *vap, struct schema_Wifi_VIF_State *vap_row, bool sec_schema_is_legacy)
 {
     if ((vap_row == NULL) || (vap == NULL)) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: input argument is NULL\n", __func__, __LINE__);
@@ -2510,30 +2515,30 @@ webconfig_error_t translate_vap_info_to_vif_state_enterprise_sec(const wifi_vap_
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Translation of radius settings from vap to ovsdb failed\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
-#ifndef WPA3_SECURITY_SCHEMA
-    int  index = 0;
-    char str_mode[128] = {0};
-    char str_encryp[128] = {0};
 
-    memset(str_mode, 0, sizeof(str_mode));
-    memset(str_encryp, 0, sizeof(str_encryp));
-    if (!update_secmode_for_wpa3((wifi_vap_info_t *)vap, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), true)) {
-        if ((key_mgmt_conversion_legacy((wifi_security_modes_t *)&vap->u.bss_info.security.mode, (wifi_encryption_method_t *)&vap->u.bss_info.security.encr, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), ENUM_TO_STRING)) != RETURN_OK)   {
+    if (sec_schema_is_legacy == true) {
+        int  index = 0;
+        char str_mode[128] = {0};
+        char str_encryp[128] = {0};
+
+        memset(str_mode, 0, sizeof(str_mode));
+        memset(str_encryp, 0, sizeof(str_encryp));
+        if (!update_secmode_for_wpa3((wifi_vap_info_t *)vap, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), true)) {
+            if ((key_mgmt_conversion_legacy((wifi_security_modes_t *)&vap->u.bss_info.security.mode, (wifi_encryption_method_t *)&vap->u.bss_info.security.encr, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), ENUM_TO_STRING)) != RETURN_OK)   {
+                wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed\n", __func__, __LINE__);
+                return webconfig_error_translate_to_ovsdb;
+            }
+        }
+        set_translator_state_security_key_value(vap_row, &index, "encryption", str_encryp);
+        set_translator_state_security_key_value(vap_row, &index, "mode", str_mode);
+    } else {
+        int len = 0;
+        if ((key_mgmt_conversion((wifi_security_modes_t *)&vap->u.bss_info.security.mode, vap_row->wpa_key_mgmt[0], vap_row->wpa_key_mgmt[1], sizeof(vap_row->wpa_key_mgmt[0]), sizeof(vap_row->wpa_key_mgmt[1]), ENUM_TO_STRING, &len)) != RETURN_OK) {
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed\n", __func__, __LINE__);
             return webconfig_error_translate_to_ovsdb;
-       }
+        }
+        vap_row->wpa_key_mgmt_len = len;
     }
-    set_translator_state_security_key_value(vap_row, &index, "encryption", str_encryp);
-    set_translator_state_security_key_value(vap_row, &index, "mode", str_mode);
-
-#else
-    int len = 0;
-    if ((key_mgmt_conversion((wifi_security_modes_t *)&vap->u.bss_info.security.mode, vap_row->wpa_key_mgmt[0], vap_row->wpa_key_mgmt[1], sizeof(vap_row->wpa_key_mgmt[0]), sizeof(vap_row->wpa_key_mgmt[1]), ENUM_TO_STRING, &len)) != RETURN_OK) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed\n", __func__, __LINE__);
-        return webconfig_error_translate_to_ovsdb;
-    }
-    vap_row->wpa_key_mgmt_len = len;
-#endif
 
     return webconfig_error_none;
 }
@@ -2582,14 +2587,15 @@ webconfig_error_t  translate_sta_vap_info_to_vif_state_common(const wifi_vap_inf
     return webconfig_error_none;
 }
 
-webconfig_error_t translate_private_vap_info_to_vif_state(const wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, struct schema_Wifi_VIF_State *vap_row, wifi_platform_property_t *wifi_prop)
+webconfig_error_t translate_private_vap_info_to_vif_state(const wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, struct schema_Wifi_VIF_State *vap_row, wifi_platform_property_t *wifi_prop,
+    bool sec_schema_is_legacy)
 {
     if (translate_vap_info_to_vif_state_common(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for common\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
 
-    if (translate_vap_info_to_vif_state_personal_sec(vap, vap_row) != webconfig_error_none) {
+    if (translate_vap_info_to_vif_state_personal_sec(vap, vap_row, sec_schema_is_legacy) != webconfig_error_none) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for personal security\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
@@ -2612,14 +2618,15 @@ webconfig_error_t translate_hotspot_open_vap_info_to_vif_state(const wifi_vap_in
     return webconfig_error_none;
 }
 
-webconfig_error_t translate_iot_vap_info_to_vif_state(const wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, struct schema_Wifi_VIF_State *vap_row, wifi_platform_property_t *wifi_prop)
+webconfig_error_t translate_iot_vap_info_to_vif_state(const wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, struct schema_Wifi_VIF_State *vap_row, wifi_platform_property_t *wifi_prop,
+    bool sec_schema_is_legacy)
 {
     if (translate_vap_info_to_vif_state_common(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for common\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
 
-    if (translate_vap_info_to_vif_state_personal_sec(vap, vap_row) != webconfig_error_none) {
+    if (translate_vap_info_to_vif_state_personal_sec(vap, vap_row, sec_schema_is_legacy) != webconfig_error_none) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for personal security\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
@@ -2627,14 +2634,15 @@ webconfig_error_t translate_iot_vap_info_to_vif_state(const wifi_vap_info_t *vap
     return webconfig_error_none;
 }
 
-webconfig_error_t translate_lnf_psk_vap_info_to_vif_state(const wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, struct schema_Wifi_VIF_State *vap_row, wifi_platform_property_t *wifi_prop)
+webconfig_error_t translate_lnf_psk_vap_info_to_vif_state(const wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, struct schema_Wifi_VIF_State *vap_row, wifi_platform_property_t *wifi_prop,
+    bool sec_schema_is_legacy)
 {
     if (translate_vap_info_to_vif_state_common(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for common\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
 
-    if (translate_vap_info_to_vif_state_personal_sec(vap, vap_row) != webconfig_error_none) {
+    if (translate_vap_info_to_vif_state_personal_sec(vap, vap_row, sec_schema_is_legacy) != webconfig_error_none) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for personal security\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
@@ -2642,14 +2650,15 @@ webconfig_error_t translate_lnf_psk_vap_info_to_vif_state(const wifi_vap_info_t 
     return webconfig_error_none;
 }
 
-webconfig_error_t translate_hotspot_secure_vap_info_to_vif_state(const wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, struct schema_Wifi_VIF_State *vap_row, wifi_platform_property_t *wifi_prop)
+webconfig_error_t translate_hotspot_secure_vap_info_to_vif_state(const wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, struct schema_Wifi_VIF_State *vap_row, wifi_platform_property_t *wifi_prop,
+    bool sec_schema_is_legacy)
 {
     if (translate_vap_info_to_vif_state_common(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for common\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
 
-    if (translate_vap_info_to_vif_state_enterprise_sec(vap, vap_row) != webconfig_error_none) {
+    if (translate_vap_info_to_vif_state_enterprise_sec(vap, vap_row, sec_schema_is_legacy) != webconfig_error_none) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for enterprise security\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
@@ -2657,14 +2666,15 @@ webconfig_error_t translate_hotspot_secure_vap_info_to_vif_state(const wifi_vap_
     return webconfig_error_none;
 }
 
-webconfig_error_t translate_lnf_radius_secure_vap_info_to_vif_state(const wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, struct schema_Wifi_VIF_State *vap_row, wifi_platform_property_t *wifi_prop)
+webconfig_error_t translate_lnf_radius_secure_vap_info_to_vif_state(const wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, struct schema_Wifi_VIF_State *vap_row, wifi_platform_property_t *wifi_prop,
+    bool sec_schema_is_legacy)
 {
     if (translate_vap_info_to_vif_state_common(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for common\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
 
-    if (translate_vap_info_to_vif_state_enterprise_sec(vap, vap_row) != webconfig_error_none) {
+    if (translate_vap_info_to_vif_state_enterprise_sec(vap, vap_row, sec_schema_is_legacy) != webconfig_error_none) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for enterprise security\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
@@ -2673,14 +2683,15 @@ webconfig_error_t translate_lnf_radius_secure_vap_info_to_vif_state(const wifi_v
 }
 
 
-webconfig_error_t translate_mesh_backhaul_vap_info_to_vif_state(const wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, struct schema_Wifi_VIF_State *vap_row, wifi_platform_property_t *wifi_prop)
+webconfig_error_t translate_mesh_backhaul_vap_info_to_vif_state(const wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, struct schema_Wifi_VIF_State *vap_row, wifi_platform_property_t *wifi_prop,
+    bool sec_schema_is_legacy)
 {
     if (translate_vap_info_to_vif_state_common(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for common\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
 
-    if (translate_vap_info_to_vif_state_personal_sec(vap, vap_row) != webconfig_error_none) {
+    if (translate_vap_info_to_vif_state_personal_sec(vap, vap_row, sec_schema_is_legacy) != webconfig_error_none) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for personal security\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
@@ -2689,67 +2700,69 @@ webconfig_error_t translate_mesh_backhaul_vap_info_to_vif_state(const wifi_vap_i
 }
 
 
-webconfig_error_t translate_sta_vap_info_to_ovsdb_state_personal_sec(const wifi_vap_info_t *vap, struct schema_Wifi_VIF_State *vap_row)
+webconfig_error_t translate_sta_vap_info_to_ovsdb_state_personal_sec(const wifi_vap_info_t *vap, struct schema_Wifi_VIF_State *vap_row, bool sec_schema_is_legacy)
 {
     if ((vap_row == NULL) || (vap == NULL)) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: input argument is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
-#ifndef WPA3_SECURITY_SCHEMA
-    int sec_index = 0;
-    if (vap->u.sta_info.security.mode != wifi_security_mode_none) {
-        char str_mode[128] = {0};
-        char str_encryp[128] = {0};
 
-        memset(str_mode, 0, sizeof(str_mode));
-        memset(str_encryp, 0, sizeof(str_encryp));
-        if (!update_secmode_for_wpa3((wifi_vap_info_t *)vap, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), true)) {
-            if ((key_mgmt_conversion_legacy((wifi_security_modes_t *)&vap->u.sta_info.security.mode, (wifi_encryption_method_t *)&vap->u.sta_info.security.encr, 
-                            str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), ENUM_TO_STRING)) != RETURN_OK) {
+    if (sec_schema_is_legacy == true) {
+        int sec_index = 0;
+        if (vap->u.sta_info.security.mode != wifi_security_mode_none) {
+            char str_mode[128] = {0};
+            char str_encryp[128] = {0};
+
+            memset(str_mode, 0, sizeof(str_mode));
+            memset(str_encryp, 0, sizeof(str_encryp));
+            if (!update_secmode_for_wpa3((wifi_vap_info_t *)vap, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), true)) {
+                if ((key_mgmt_conversion_legacy((wifi_security_modes_t *)&vap->u.sta_info.security.mode, (wifi_encryption_method_t *)&vap->u.sta_info.security.encr, 
+                    str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), ENUM_TO_STRING)) != RETURN_OK) {
+                    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed\n", __func__, __LINE__);
+                    return webconfig_error_translate_to_ovsdb;
+                }
+            }
+
+            set_translator_state_security_key_value(vap_row, &sec_index, "encryption", str_encryp);
+            set_translator_state_security_key_value(vap_row, &sec_index, "mode", str_mode);
+            set_translator_state_security_key_value(vap_row, &sec_index, "key", vap->u.sta_info.security.u.key.key);
+
+        } else {
+            set_translator_state_security_key_value(vap_row, &sec_index, "encryption", "OPEN");
+        }
+    } else {
+        if (vap->u.sta_info.security.mode == wifi_security_mode_none) {
+            vap_row->wpa = false;
+        } else {
+            int len = 0, wpa_psk_index = 0;
+            if ((key_mgmt_conversion((wifi_security_modes_t *)&vap->u.sta_info.security.mode, vap_row->wpa_key_mgmt[0], vap_row->wpa_key_mgmt[1], sizeof(vap_row->wpa_key_mgmt[0]), sizeof(vap_row->wpa_key_mgmt[1]), ENUM_TO_STRING, &len)) != RETURN_OK) {
                 wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed\n", __func__, __LINE__);
                 return webconfig_error_translate_to_ovsdb;
             }
+
+            vap_row->wpa = true;
+            vap_row->wpa_key_mgmt_len = len;
+
+            if ((strlen(vap->u.sta_info.security.u.key.key) < MIN_PWD_LEN) || (strlen(vap->u.sta_info.security.u.key.key) > MAX_PWD_LEN)) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Invalid password length\n", __func__, __LINE__);
+                return webconfig_error_translate_to_ovsdb;
+            }
+            set_translator_state_wpa_psks(vap_row, &wpa_psk_index, "key--1", vap->u.sta_info.security.u.key.key);
         }
-
-        set_translator_state_security_key_value(vap_row, &sec_index, "encryption", str_encryp);
-        set_translator_state_security_key_value(vap_row, &sec_index, "mode", str_mode);
-        set_translator_state_security_key_value(vap_row, &sec_index, "key", vap->u.sta_info.security.u.key.key);
-
-    } else {
-        set_translator_state_security_key_value(vap_row, &sec_index, "encryption", "OPEN");
     }
-#else
-    if (vap->u.sta_info.security.mode == wifi_security_mode_none) {
-        vap_row->wpa = false;
-    } else {
-        int len = 0, wpa_psk_index = 0;
-        if ((key_mgmt_conversion((wifi_security_modes_t *)&vap->u.sta_info.security.mode, vap_row->wpa_key_mgmt[0], vap_row->wpa_key_mgmt[1], sizeof(vap_row->wpa_key_mgmt[0]), sizeof(vap_row->wpa_key_mgmt[1]), ENUM_TO_STRING, &len)) != RETURN_OK) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed\n", __func__, __LINE__);
-            return webconfig_error_translate_to_ovsdb;
-        }
-
-        vap_row->wpa = true;
-        vap_row->wpa_key_mgmt_len = len;
-
-        if ((strlen(vap->u.sta_info.security.u.key.key) < MIN_PWD_LEN) || (strlen(vap->u.sta_info.security.u.key.key) > MAX_PWD_LEN)) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Invalid password length\n", __func__, __LINE__);
-            return webconfig_error_translate_to_ovsdb;
-        }
-        set_translator_state_wpa_psks(vap_row, &wpa_psk_index, "key--1", vap->u.sta_info.security.u.key.key);
-    }
-#endif
 
     return webconfig_error_none;
 }
 
-webconfig_error_t translate_mesh_sta_vap_info_to_vif_state(const wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, struct schema_Wifi_VIF_State *vap_row, wifi_platform_property_t *wifi_prop)
+webconfig_error_t translate_mesh_sta_vap_info_to_vif_state(const wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, struct schema_Wifi_VIF_State *vap_row, wifi_platform_property_t *wifi_prop,
+    bool sec_schema_is_legacy)
 {
     if (translate_sta_vap_info_to_vif_state_common(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for common\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
 
-    if (translate_sta_vap_info_to_ovsdb_state_personal_sec(vap, vap_row) != webconfig_error_none) {
+    if (translate_sta_vap_info_to_ovsdb_state_personal_sec(vap, vap_row, sec_schema_is_legacy) != webconfig_error_none) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for security\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
@@ -2989,6 +3002,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state_for_dml(webconfig_su
     unsigned int presence_mask = 0;
     unsigned int count = 0, *row_count = NULL;
     unsigned int dml_vap_mask = 0;
+    bool sec_schema_is_legacy;
     wifi_platform_property_t *wifi_prop = &data->u.decoded.hal_cap.wifi_prop;
     dml_vap_mask = create_vap_mask(wifi_prop, 8, VAP_PREFIX_PRIVATE, VAP_PREFIX_IOT, VAP_PREFIX_HOTSPOT_OPEN, VAP_PREFIX_HOTSPOT_SECURE, \
                                                  VAP_PREFIX_MESH_BACKHAUL, VAP_PREFIX_MESH_STA, VAP_PREFIX_LNF_PSK, VAP_PREFIX_LNF_RADIUS);
@@ -3011,6 +3025,8 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state_for_dml(webconfig_su
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: table is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
+
+    sec_schema_is_legacy = proto->sec_schema_is_legacy;
 
     presence_mask = 0;
 
@@ -3072,14 +3088,14 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state_for_dml(webconfig_su
             }
 
             if (is_vap_private(wifi_prop, vap->vap_index) == TRUE) {
-                if (translate_private_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
+                if (translate_private_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
                     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Translation of private vap to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
                 presence_mask |= (1 << vap->vap_index);
                 count++;
             } else  if (is_vap_xhs(wifi_prop, vap->vap_index) == TRUE) {
-                if (translate_iot_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
+                if (translate_iot_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
                     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Translation of iot vap to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
@@ -3095,35 +3111,35 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state_for_dml(webconfig_su
                 count++;
             } else  if (is_vap_lnf_psk(wifi_prop, vap->vap_index) == TRUE) {
 
-                if (translate_lnf_psk_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
+                if (translate_lnf_psk_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
                     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Translation of lnf psk vap to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
                 presence_mask |= (1 << vap->vap_index);
                 count++;
             } else  if (is_vap_hotspot_secure(wifi_prop, vap->vap_index) == TRUE) {
-                if (translate_hotspot_secure_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
+                if (translate_hotspot_secure_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
                     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Translation of hotspot secure vap to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
                 presence_mask |= (1 << vap->vap_index);
                 count++;
             } else  if (is_vap_lnf_radius(wifi_prop, vap->vap_index) == TRUE) {
-                if (translate_lnf_radius_secure_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
+                if (translate_lnf_radius_secure_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
                     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Translation of radius secure vap to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
                 presence_mask |= (1 << vap->vap_index);
                 count++;
             } else  if (is_vap_mesh_backhaul(wifi_prop, vap->vap_index) == TRUE) {
-                if (translate_mesh_backhaul_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
+                if (translate_mesh_backhaul_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
                     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Translation of mesh backhaul to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
                 presence_mask |= (1 << vap->vap_index);
                 count++;
             } else  if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == TRUE) {
-                if (translate_mesh_sta_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
+                if (translate_mesh_sta_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
                     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Translation of mesh sta to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
@@ -3154,7 +3170,8 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state_for_dml(webconfig_su
 }
 
 
-webconfig_error_t translate_ovsdb_to_vap_info_personal_sec(const struct schema_Wifi_VIF_Config *vap_row, wifi_vap_info_t *vap)
+webconfig_error_t translate_ovsdb_to_vap_info_personal_sec(const struct schema_Wifi_VIF_Config *vap_row, wifi_vap_info_t *vap,
+    bool sec_schema_is_legacy)
 {
     if ((vap_row == NULL) || (vap == NULL)) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: input argument is NULL\n", __func__, __LINE__);
@@ -3166,83 +3183,81 @@ webconfig_error_t translate_ovsdb_to_vap_info_personal_sec(const struct schema_W
         return webconfig_error_translate_from_ovsdb;
     }
 
-#ifndef WPA3_SECURITY_SCHEMA
-    const char *str_encryp;
-    const char *str_mode;
-    const char *val;
+    if (sec_schema_is_legacy == true) {
+        const char *str_encryp;
+        const char *str_mode;
+        const char *val;
 
-    str_encryp = security_config_find_by_key(vap_row, "encryption");
-    if (str_encryp == NULL) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: encryption is NULL\n", __func__, __LINE__);
-        return webconfig_error_translate_from_ovsdb;
-    }
-
-    if (!strcmp(str_encryp, "OPEN")) {
-        vap->u.bss_info.security.mode = wifi_security_mode_none;
-    } else {
-        str_mode = security_config_find_by_key(vap_row, "mode");
-        if (str_mode == NULL) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: mode is NULL\n", __func__, __LINE__);
+        str_encryp = security_config_find_by_key(vap_row, "encryption");
+        if (str_encryp == NULL) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: encryption is NULL\n", __func__, __LINE__);
             return webconfig_error_translate_from_ovsdb;
         }
-        if (!update_secmode_for_wpa3((wifi_vap_info_t *)vap, (char *)str_mode, strlen(str_mode)+1, (char *)str_encryp, strlen(str_encryp)+1, false)) {
-            if ((key_mgmt_conversion_legacy(&vap->u.bss_info.security.mode, &vap->u.bss_info.security.encr, (char *)str_mode, strlen(str_mode)+1, (char *)str_encryp, strlen(str_encryp)+1, STRING_TO_ENUM)) != RETURN_OK) {
+
+        if (!strcmp(str_encryp, "OPEN")) {
+            vap->u.bss_info.security.mode = wifi_security_mode_none;
+        } else {
+            str_mode = security_config_find_by_key(vap_row, "mode");
+            if (str_mode == NULL) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: mode is NULL\n", __func__, __LINE__);
+                return webconfig_error_translate_from_ovsdb;
+            }
+            if (!update_secmode_for_wpa3((wifi_vap_info_t *)vap, (char *)str_mode, strlen(str_mode)+1, (char *)str_encryp, strlen(str_encryp)+1, false)) {
+                if ((key_mgmt_conversion_legacy(&vap->u.bss_info.security.mode, &vap->u.bss_info.security.encr, (char *)str_mode, strlen(str_mode)+1, (char *)str_encryp, strlen(str_encryp)+1, STRING_TO_ENUM)) != RETURN_OK) {
+                    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed\n", __func__, __LINE__);
+                    return webconfig_error_translate_from_ovsdb;
+                }
+            }
+
+            val = security_config_find_by_key(vap_row, "key");
+            if (val == NULL) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: mode is NULL\n", __func__, __LINE__);
+                return webconfig_error_translate_from_ovsdb;
+            }
+
+            if ((strlen(val) < MIN_PWD_LEN) || (strlen(val) > MAX_PWD_LEN)) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Invalid password length\n", __func__, __LINE__);
+                return webconfig_error_translate_from_ovsdb;
+            }
+
+            snprintf(vap->u.bss_info.security.u.key.key, sizeof(vap->u.bss_info.security.u.key.key), "%s", val);
+
+            val = security_config_find_by_key(vap_row, "oftag");
+            if (val == NULL) {
+                wifi_util_dbg_print(WIFI_CTRL,"%s:%d: oftag is empty, Skiping..\n", __func__, __LINE__);
+            } else {
+                snprintf(vap->u.bss_info.security.key_id, sizeof(vap->u.bss_info.security.key_id), "%s", val);
+            }
+        }
+    } else {
+        if (vap_row->wpa == false) {
+            vap->u.bss_info.security.mode = wifi_security_mode_none;
+        } else {
+            int len = 0;
+            if (vap_row->wpa_key_mgmt_len == 0)  {
+                wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: wpa_key_mgmt_len is 0\n", __func__, __LINE__);
+                return webconfig_error_translate_from_ovsdb;
+            }
+
+            if ((key_mgmt_conversion(&vap->u.bss_info.security.mode, (char *)vap_row->wpa_key_mgmt[0],  (char *)vap_row->wpa_key_mgmt[1], sizeof(vap_row->wpa_key_mgmt[0]), sizeof(vap_row->wpa_key_mgmt[1]), STRING_TO_ENUM, &len)) != RETURN_OK) {
                 wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed\n", __func__, __LINE__);
                 return webconfig_error_translate_from_ovsdb;
             }
-        }
 
-        val = security_config_find_by_key(vap_row, "key");
-        if (val == NULL) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: mode is NULL\n", __func__, __LINE__);
-            return webconfig_error_translate_from_ovsdb;
-        }
+            if (vap_row->wpa_psks_len == 0)  {
+                wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: wpa_psks_len is 0\n", __func__, __LINE__);
+                return webconfig_error_translate_from_ovsdb;
+            }
 
-        if ((strlen(val) < MIN_PWD_LEN) || (strlen(val) > MAX_PWD_LEN)) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Invalid password length\n", __func__, __LINE__);
-            return webconfig_error_translate_from_ovsdb;
-        }
+            if ((strlen(vap_row->wpa_psks[0]) < MIN_PWD_LEN) || (strlen(vap_row->wpa_psks[0]) > MAX_PWD_LEN)) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Invalid password length\n", __func__, __LINE__);
+                return webconfig_error_translate_from_ovsdb;
+            }
 
-        snprintf(vap->u.bss_info.security.u.key.key, sizeof(vap->u.bss_info.security.u.key.key), "%s", val);
-
-        val = security_config_find_by_key(vap_row, "oftag");
-        if (val == NULL) {
-            wifi_util_dbg_print(WIFI_CTRL,"%s:%d: oftag is empty, Skiping..\n", __func__, __LINE__);
-        } else {
-            snprintf(vap->u.bss_info.security.key_id, sizeof(vap->u.bss_info.security.key_id), "%s", val);
+            get_translator_config_wpa_psks(vap_row, vap, 0);
+            get_translator_config_wpa_oftags(vap_row, vap, 0);
         }
     }
-
-#else
-    if (vap_row->wpa == false) {
-        vap->u.bss_info.security.mode = wifi_security_mode_none;
-    } else {
-        int len = 0;
-        if (vap_row->wpa_key_mgmt_len == 0)  {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: wpa_key_mgmt_len is 0\n", __func__, __LINE__);
-            return webconfig_error_translate_from_ovsdb;
-        }
-
-        if ((key_mgmt_conversion(&vap->u.bss_info.security.mode, (char *)vap_row->wpa_key_mgmt[0],  (char *)vap_row->wpa_key_mgmt[1], sizeof(vap_row->wpa_key_mgmt[0]), sizeof(vap_row->wpa_key_mgmt[1]), STRING_TO_ENUM, &len)) != RETURN_OK) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed\n", __func__, __LINE__);
-            return webconfig_error_translate_from_ovsdb;
-        }
-
-        if (vap_row->wpa_psks_len == 0)  {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: wpa_psks_len is 0\n", __func__, __LINE__);
-            return webconfig_error_translate_from_ovsdb;
-        }
-
-        if ((strlen(vap_row->wpa_psks[0]) < MIN_PWD_LEN) || (strlen(vap_row->wpa_psks[0]) > MAX_PWD_LEN)) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Invalid password length\n", __func__, __LINE__);
-            return webconfig_error_translate_from_ovsdb;
-        }
-
-        get_translator_config_wpa_psks(vap_row, vap, 0);
-        get_translator_config_wpa_oftags(vap_row, vap, 0);
-    }
-
-#endif
 
     vap->u.bss_info.security.rekey_interval = vap_row->group_rekey;
     return webconfig_error_none;
@@ -3280,7 +3295,8 @@ webconfig_error_t translate_ovsdb_to_vap_info_radius_settings(const struct schem
 
 
 
-webconfig_error_t translate_ovsdb_to_vap_info_enterprise_sec(const struct schema_Wifi_VIF_Config *vap_row, wifi_vap_info_t *vap)
+webconfig_error_t translate_ovsdb_to_vap_info_enterprise_sec(const struct schema_Wifi_VIF_Config *vap_row, wifi_vap_info_t *vap,
+    bool sec_schema_is_legacy)
 {
     if ((vap_row == NULL) || (vap == NULL)) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: input argument is NULL\n", __func__, __LINE__);
@@ -3296,46 +3312,48 @@ webconfig_error_t translate_ovsdb_to_vap_info_enterprise_sec(const struct schema
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of radius settings from ovsdb to vap_info failed\n", __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
     }
-#ifndef WPA3_SECURITY_SCHEMA
-    const char *str_encryp;
-    const char *str_mode;
 
-    str_encryp = security_config_find_by_key(vap_row, "encryption");
-    if (str_encryp == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: encryption is NULL\n", __func__, __LINE__);
-        return webconfig_error_translate_from_ovsdb;
-    }
+    if (sec_schema_is_legacy == true) {
+        const char *str_encryp;
+        const char *str_mode;
 
-    str_mode = security_config_find_by_key(vap_row, "mode");
-    if (str_mode == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: mode is NULL\n", __func__, __LINE__);
-        return webconfig_error_translate_from_ovsdb;
-    }
-
-    if (!update_secmode_for_wpa3((wifi_vap_info_t *)vap, (char *)str_mode, strlen(str_mode)+1, (char *)str_encryp, strlen(str_encryp)+1, false)) {
-        if ((key_mgmt_conversion_legacy(&vap->u.bss_info.security.mode, &vap->u.bss_info.security.encr, (char *)str_mode, strlen(str_mode)+1, (char *)str_encryp, strlen(str_encryp)+1, STRING_TO_ENUM)) != RETURN_OK) {
-           wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. str_mode '%s'\n", __func__, __LINE__, str_mode);
-           return webconfig_error_translate_from_ovsdb;
+        str_encryp = security_config_find_by_key(vap_row, "encryption");
+        if (str_encryp == NULL) {
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: encryption is NULL\n", __func__, __LINE__);
+            return webconfig_error_translate_from_ovsdb;
         }
-    }
-#else
-    if (vap_row->wpa == false) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Open security is not supported\n", __func__, __LINE__);
-        return webconfig_error_translate_from_ovsdb;
+
+        str_mode = security_config_find_by_key(vap_row, "mode");
+        if (str_mode == NULL) {
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: mode is NULL\n", __func__, __LINE__);
+            return webconfig_error_translate_from_ovsdb;
+        }
+
+        if (!update_secmode_for_wpa3((wifi_vap_info_t *)vap, (char *)str_mode, strlen(str_mode)+1, (char *)str_encryp, strlen(str_encryp)+1, false)) {
+            if ((key_mgmt_conversion_legacy(&vap->u.bss_info.security.mode, &vap->u.bss_info.security.encr, (char *)str_mode, strlen(str_mode)+1, (char *)str_encryp, strlen(str_encryp)+1, STRING_TO_ENUM)) != RETURN_OK) {
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. str_mode '%s'\n", __func__, __LINE__, str_mode);
+                return webconfig_error_translate_from_ovsdb;
+            }
+        }
     } else {
-        int len = 0;
-        if (vap_row->wpa_key_mgmt_len == 0)  {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: wpa_key_mgmt_len is 0\n", __func__, __LINE__);
+        if (vap_row->wpa == false) {
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Open security is not supported\n", __func__, __LINE__);
             return webconfig_error_translate_from_ovsdb;
-        }
+        } else {
+            int len = 0;
+            if (vap_row->wpa_key_mgmt_len == 0)  {
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: wpa_key_mgmt_len is 0\n", __func__, __LINE__);
+                return webconfig_error_translate_from_ovsdb;
+            }
 
-        if ((key_mgmt_conversion(&vap->u.bss_info.security.mode, (char *)vap_row->wpa_key_mgmt[0], (char *)vap_row->wpa_key_mgmt[1], sizeof(vap_row->wpa_key_mgmt[0]), sizeof(vap_row->wpa_key_mgmt[1]), STRING_TO_ENUM, &len)) != RETURN_OK) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. wpa_key_mgmt '%s'\n", __func__, __LINE__, (vap_row->wpa_key_mgmt[0]) ? vap_row->wpa_key_mgmt[0]: "NULL");
-            return webconfig_error_translate_from_ovsdb;
-        }
+            if ((key_mgmt_conversion(&vap->u.bss_info.security.mode, (char *)vap_row->wpa_key_mgmt[0], (char *)vap_row->wpa_key_mgmt[1], sizeof(vap_row->wpa_key_mgmt[0]), sizeof(vap_row->wpa_key_mgmt[1]), STRING_TO_ENUM, &len)) != RETURN_OK) {
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. wpa_key_mgmt '%s'\n", __func__, __LINE__, (vap_row->wpa_key_mgmt[0]) ? vap_row->wpa_key_mgmt[0]: "NULL");
+                return webconfig_error_translate_from_ovsdb;
+            }
 
+        }
     }
-#endif
+
     if ((vap->u.bss_info.security.mode != wifi_security_mode_wpa2_enterprise) && (vap->u.bss_info.security.mode != wifi_security_mode_wpa_wpa2_enterprise)
             && (vap->u.bss_info.security.mode != wifi_security_mode_wpa3_enterprise) && (vap->u.bss_info.security.mode != wifi_security_mode_wpa_enterprise)) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Security mode is not enterprise. security mode 0x%x\n", __func__, __LINE__, vap->u.bss_info.security.mode);
@@ -3473,14 +3491,15 @@ webconfig_error_t translate_ovsdb_to_vap_info_common(const struct schema_Wifi_VI
     return webconfig_error_none;
 }
 
-webconfig_error_t translate_private_vif_config_to_vap_info(const struct schema_Wifi_VIF_Config *vap_row, wifi_vap_info_t *vap)
+webconfig_error_t translate_private_vif_config_to_vap_info(const struct schema_Wifi_VIF_Config *vap_row, wifi_vap_info_t *vap,
+    bool sec_schema_is_legacy)
 {
     if (translate_ovsdb_to_vap_info_common(vap_row, vap) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for common\n", __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
     }
 
-    if (translate_ovsdb_to_vap_info_personal_sec(vap_row, vap) != webconfig_error_none) {
+    if (translate_ovsdb_to_vap_info_personal_sec(vap_row, vap, sec_schema_is_legacy) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for personal security\n", __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
     }
@@ -3498,14 +3517,14 @@ webconfig_error_t translate_blaster_config_to_blast_info(const struct schema_Wif
     return webconfig_error_none;
 }
 
-webconfig_error_t translate_iot_vif_config_to_vap_info(const struct schema_Wifi_VIF_Config *vap_row, wifi_vap_info_t *vap)
+webconfig_error_t translate_iot_vif_config_to_vap_info(const struct schema_Wifi_VIF_Config *vap_row, wifi_vap_info_t *vap, bool sec_schema_is_legacy)
 {
     if (translate_ovsdb_to_vap_info_common(vap_row, vap) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for common\n", __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
     }
 
-    if (translate_ovsdb_to_vap_info_personal_sec(vap_row, vap) != webconfig_error_none) {
+    if (translate_ovsdb_to_vap_info_personal_sec(vap_row, vap, sec_schema_is_legacy) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for personal security\n", __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
     }
@@ -3528,14 +3547,15 @@ webconfig_error_t translate_hotspot_open_vif_config_to_vap_info(const struct sch
     return webconfig_error_none;
 }
 
-webconfig_error_t translate_hotspot_secure_vif_config_to_vap_info(const struct schema_Wifi_VIF_Config *vap_row, wifi_vap_info_t *vap)
+webconfig_error_t translate_hotspot_secure_vif_config_to_vap_info(const struct schema_Wifi_VIF_Config *vap_row, wifi_vap_info_t *vap,
+    bool sec_schema_is_legacy)
 {
     if (translate_ovsdb_to_vap_info_common(vap_row, vap) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for common\n", __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
     }
 
-    if (translate_ovsdb_to_vap_info_enterprise_sec(vap_row, vap) != webconfig_error_none) {
+    if (translate_ovsdb_to_vap_info_enterprise_sec(vap_row, vap, sec_schema_is_legacy) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for enterprise security\n", __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
     }
@@ -3544,14 +3564,15 @@ webconfig_error_t translate_hotspot_secure_vif_config_to_vap_info(const struct s
 }
 
 
-webconfig_error_t translate_lnf_radius_vif_config_to_vap_info(const struct schema_Wifi_VIF_Config *vap_row, wifi_vap_info_t *vap)
+webconfig_error_t translate_lnf_radius_vif_config_to_vap_info(const struct schema_Wifi_VIF_Config *vap_row, wifi_vap_info_t *vap,
+    bool sec_schema_is_legacy)
 {
     if (translate_ovsdb_to_vap_info_common(vap_row, vap) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for common\n", __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
     }
 
-    if (translate_ovsdb_to_vap_info_enterprise_sec(vap_row, vap) != webconfig_error_none) {
+    if (translate_ovsdb_to_vap_info_enterprise_sec(vap_row, vap, sec_schema_is_legacy) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for enterprise security\n", __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
     }
@@ -3560,14 +3581,14 @@ webconfig_error_t translate_lnf_radius_vif_config_to_vap_info(const struct schem
 }
 
 
-webconfig_error_t translate_lnf_psk_vif_config_to_vap_info(const struct schema_Wifi_VIF_Config *vap_row, wifi_vap_info_t *vap)
+webconfig_error_t translate_lnf_psk_vif_config_to_vap_info(const struct schema_Wifi_VIF_Config *vap_row, wifi_vap_info_t *vap, bool sec_schema_is_legacy)
 {
     if (translate_ovsdb_to_vap_info_common(vap_row, vap) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for common\n", __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
     }
 
-    if (translate_ovsdb_to_vap_info_personal_sec(vap_row, vap) != webconfig_error_none) {
+    if (translate_ovsdb_to_vap_info_personal_sec(vap_row, vap, sec_schema_is_legacy) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for personal security\n", __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
     }
@@ -3576,14 +3597,14 @@ webconfig_error_t translate_lnf_psk_vif_config_to_vap_info(const struct schema_W
 }
 
 
-webconfig_error_t translate_mesh_backhaul_vif_config_to_vap_info(const struct schema_Wifi_VIF_Config *vap_row, wifi_vap_info_t *vap)
+webconfig_error_t translate_mesh_backhaul_vif_config_to_vap_info(const struct schema_Wifi_VIF_Config *vap_row, wifi_vap_info_t *vap, bool sec_schema_is_legacy)
 {
     if (translate_ovsdb_to_vap_info_common(vap_row, vap) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for common\n", __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
     }
 
-    if (translate_ovsdb_to_vap_info_personal_sec(vap_row, vap) != webconfig_error_none) {
+    if (translate_ovsdb_to_vap_info_personal_sec(vap_row, vap, sec_schema_is_legacy) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for personal security\n", __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
     }
@@ -3622,106 +3643,105 @@ webconfig_error_t translate_ovsdb_to_sta_vap_info_common(const struct schema_Wif
 }
 
 
-webconfig_error_t translate_ovsdb_config_to_vap_info_personal_sec(const struct schema_Wifi_VIF_Config *vap_row, wifi_vap_info_t *vap)
+webconfig_error_t translate_ovsdb_config_to_vap_info_personal_sec(const struct schema_Wifi_VIF_Config *vap_row, wifi_vap_info_t *vap, bool sec_schema_is_legacy)
 {
     if ((vap_row == NULL) || (vap == NULL)) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: input argument is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
     }
 
-#ifndef WPA3_SECURITY_SCHEMA
-    const char *str_encryp;
-    const char *str_mode;
-    const char *val;
+    if (sec_schema_is_legacy == true) {
+        const char *str_encryp;
+        const char *str_mode;
+        const char *val;
 
-    str_encryp = security_config_find_by_key(vap_row, "encryption");
-    if (str_encryp == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: encryption is NULL\n", __func__, __LINE__);
-        return webconfig_error_translate_from_ovsdb;
-    }
+        str_encryp = security_config_find_by_key(vap_row, "encryption");
+        if (str_encryp == NULL) {
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: encryption is NULL\n", __func__, __LINE__);
+            return webconfig_error_translate_from_ovsdb;
+        }
 
-    if (!strcmp(str_encryp, "OPEN")) {
-        vap->u.sta_info.security.mode = wifi_security_mode_none;
-    } else {
-        str_mode = security_config_find_by_key(vap_row, "mode");
-        if (str_mode == NULL) {
-            // mode is optional for sta
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: mode is NULL, skipping\n", __func__, __LINE__);
+        if (!strcmp(str_encryp, "OPEN")) {
+            vap->u.sta_info.security.mode = wifi_security_mode_none;
         } else {
-            if (!update_secmode_for_wpa3((wifi_vap_info_t *)vap, (char *)str_mode, strlen(str_mode)+1, (char *)str_encryp, strlen(str_encryp)+1, false)) {
-                if ((key_mgmt_conversion_legacy(&vap->u.sta_info.security.mode, &vap->u.sta_info.security.encr, (char *)str_mode, strlen(str_mode)+1, (char *)str_encryp, strlen(str_encryp)+1, STRING_TO_ENUM)) != RETURN_OK) {
-                    wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. str_mode '%s'\n", __func__, __LINE__, str_mode);
-                    return webconfig_error_translate_from_ovsdb;
+            str_mode = security_config_find_by_key(vap_row, "mode");
+            if (str_mode == NULL) {
+                // mode is optional for sta
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: mode is NULL, skipping\n", __func__, __LINE__);
+            } else {
+                if (!update_secmode_for_wpa3((wifi_vap_info_t *)vap, (char *)str_mode, strlen(str_mode)+1, (char *)str_encryp, strlen(str_encryp)+1, false)) {
+                    if ((key_mgmt_conversion_legacy(&vap->u.sta_info.security.mode, &vap->u.sta_info.security.encr, (char *)str_mode, strlen(str_mode)+1, (char *)str_encryp, strlen(str_encryp)+1, STRING_TO_ENUM)) != RETURN_OK) {
+                        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. str_mode '%s'\n", __func__, __LINE__, str_mode);
+                        return webconfig_error_translate_from_ovsdb;
+                    }
                 }
             }
+
+            val = security_config_find_by_key(vap_row, "key");
+            if (val == NULL) {
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key is NULL\n", __func__, __LINE__);
+                return webconfig_error_translate_from_ovsdb;
+            }
+
+            if ((strlen(val) < MIN_PWD_LEN) || (strlen(val) > MAX_PWD_LEN)) {
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Invalid password length %d\n", __func__, __LINE__, strlen(val));
+                return webconfig_error_translate_from_ovsdb;
+            }
+
+            snprintf(vap->u.sta_info.security.u.key.key, sizeof(vap->u.sta_info.security.u.key.key), "%s", val);
+
+            val = security_config_find_by_key(vap_row, "oftag");
+            if (val == NULL) {
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d:  oftag is empty, Skiping..\n", __func__, __LINE__);
+            } else {
+                snprintf(vap->u.sta_info.security.key_id, sizeof(vap->u.sta_info.security.key_id), "%s", val);
+            }
         }
-
-        val = security_config_find_by_key(vap_row, "key");
-        if (val == NULL) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key is NULL\n", __func__, __LINE__);
-            return webconfig_error_translate_from_ovsdb;
-        }
-
-        if ((strlen(val) < MIN_PWD_LEN) || (strlen(val) > MAX_PWD_LEN)) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Invalid password length %d\n", __func__, __LINE__, strlen(val));
-            return webconfig_error_translate_from_ovsdb;
-        }
-
-        snprintf(vap->u.sta_info.security.u.key.key, sizeof(vap->u.sta_info.security.u.key.key), "%s", val);
-
-        val = security_config_find_by_key(vap_row, "oftag");
-        if (val == NULL) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d:  oftag is empty, Skiping..\n", __func__, __LINE__);
-        } else {
-            snprintf(vap->u.sta_info.security.key_id, sizeof(vap->u.sta_info.security.key_id), "%s", val);
-        }
-    }
-
-#else
-    if (vap_row->wpa == false) {
-        vap->u.sta_info.security.mode = wifi_security_mode_none;
     } else {
-        int len = 0;
-        if (vap_row->wpa_key_mgmt_len == 0)  {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: wpa_key_mgmt_len is 0\n", __func__, __LINE__);
-            return webconfig_error_translate_from_ovsdb;
+        if (vap_row->wpa == false) {
+            vap->u.sta_info.security.mode = wifi_security_mode_none;
+        } else {
+            int len = 0;
+            if (vap_row->wpa_key_mgmt_len == 0)  {
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: wpa_key_mgmt_len is 0\n", __func__, __LINE__);
+                return webconfig_error_translate_from_ovsdb;
+            }
+
+            if ((key_mgmt_conversion(&vap->u.sta_info.security.mode, (char *)vap_row->wpa_key_mgmt[0], (char *)vap_row->wpa_key_mgmt[1], sizeof(vap_row->wpa_key_mgmt[0]), sizeof(vap_row->wpa_key_mgmt[1]), STRING_TO_ENUM, &len)) != RETURN_OK) {
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. wpa_key_mgmt '%s'\n", __func__, __LINE__, 
+                    (vap_row->wpa_key_mgmt[0]) ? vap_row->wpa_key_mgmt[0]: "NULL");
+                return webconfig_error_translate_from_ovsdb;
+            }
+
+            if (vap_row->wpa_psks_len == 0)  {
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: wpa_psks_len is 0\n", __func__, __LINE__);
+                return webconfig_error_translate_from_ovsdb;
+            }
+
+            if ((strlen(vap_row->wpa_psks[0]) < MIN_PWD_LEN) || (strlen(vap_row->wpa_psks[0]) > MAX_PWD_LEN)) {
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Invalid password length %d\n", __func__, __LINE__, strlen(vap_row->wpa_psks[0]));
+                return webconfig_error_translate_from_ovsdb;
+            }
+
+            get_translator_config_wpa_psks(vap_row, vap, 1);
+            get_translator_config_wpa_oftags(vap_row, vap, 1);
+
         }
-
-        if ((key_mgmt_conversion(&vap->u.sta_info.security.mode, (char *)vap_row->wpa_key_mgmt[0], (char *)vap_row->wpa_key_mgmt[1], sizeof(vap_row->wpa_key_mgmt[0]), sizeof(vap_row->wpa_key_mgmt[1]), STRING_TO_ENUM, &len)) != RETURN_OK) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. wpa_key_mgmt '%s'\n", __func__, __LINE__, 
-                (vap_row->wpa_key_mgmt[0]) ? vap_row->wpa_key_mgmt[0]: "NULL");
-            return webconfig_error_translate_from_ovsdb;
-        }
-
-        if (vap_row->wpa_psks_len == 0)  {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: wpa_psks_len is 0\n", __func__, __LINE__);
-            return webconfig_error_translate_from_ovsdb;
-        }
-
-        if ((strlen(vap_row->wpa_psks[0]) < MIN_PWD_LEN) || (strlen(vap_row->wpa_psks[0]) > MAX_PWD_LEN)) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Invalid password length %d\n", __func__, __LINE__, strlen(vap_row->wpa_psks[0]));
-            return webconfig_error_translate_from_ovsdb;
-        }
-
-        get_translator_config_wpa_psks(vap_row, vap, 1);
-        get_translator_config_wpa_oftags(vap_row, vap, 1);
-
     }
-
-#endif
 
     vap->u.sta_info.security.rekey_interval = vap_row->group_rekey;
     return webconfig_error_none;
 }
 
-webconfig_error_t translate_mesh_sta_vap_config_to_vap_info(const struct schema_Wifi_VIF_Config *vap_row, wifi_vap_info_t *vap)
+webconfig_error_t translate_mesh_sta_vap_config_to_vap_info(const struct schema_Wifi_VIF_Config *vap_row, wifi_vap_info_t *vap,
+    bool sec_schema_is_legacy)
 {
     if (translate_ovsdb_to_sta_vap_info_common(vap_row, vap) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for common\n", __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
     }
 
-    if (translate_ovsdb_config_to_vap_info_personal_sec(vap_row, vap) != webconfig_error_none) {
+    if (translate_ovsdb_config_to_vap_info_personal_sec(vap_row, vap, sec_schema_is_legacy) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for security\n", __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
     }
@@ -3790,6 +3810,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_dml(webconfig
     int vap_index = 0;
     unsigned int vap_mask, presence_mask;
     wifi_platform_property_t *wifi_prop;
+    bool sec_schema_is_legacy;
 
     decoded_params = &data->u.decoded;
     proto = (webconfig_external_ovsdb_t *) data->u.decoded.external_protos;
@@ -3803,6 +3824,8 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_dml(webconfig
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vif table is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
     }
+
+    sec_schema_is_legacy = proto->sec_schema_is_legacy;
 
     presence_mask = 0;
     wifi_prop = &decoded_params->hal_cap.wifi_prop;
@@ -3847,13 +3870,13 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_dml(webconfig
         rdk_vap->exists = true;
 
         if (is_vap_private(wifi_prop, vap_index) == TRUE) {
-            if (translate_private_vif_config_to_vap_info(vap_row, vap) != webconfig_error_none) {
+            if (translate_private_vif_config_to_vap_info(vap_row, vap, sec_schema_is_legacy) != webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of private vap to ovsdb failed for %d\n", __func__, __LINE__, vap_index);
                 return webconfig_error_translate_from_ovsdb;
             }
             presence_mask  |= (1 << vap_index);
         } else if (is_vap_xhs(wifi_prop, vap_index) == TRUE) {
-            if (translate_iot_vif_config_to_vap_info(vap_row, vap) != webconfig_error_none) {
+            if (translate_iot_vif_config_to_vap_info(vap_row, vap, sec_schema_is_legacy) != webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of iot vap to ovsdb failed for %d\n", __func__, __LINE__, vap_index);
                 return webconfig_error_translate_from_ovsdb;
             }
@@ -3865,31 +3888,31 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_dml(webconfig
             }
             presence_mask  |= (1 << vap_index);
         } else if (is_vap_lnf_psk(wifi_prop, vap_index) == TRUE) {
-            if (translate_lnf_psk_vif_config_to_vap_info(vap_row, vap) != webconfig_error_none) {
+            if (translate_lnf_psk_vif_config_to_vap_info(vap_row, vap, sec_schema_is_legacy) != webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of lnf psk to ovsdb failed for %d\n", __func__, __LINE__, vap_index);
                 return webconfig_error_translate_from_ovsdb;
             }
             presence_mask  |= (1 << vap_index);
         } else if (is_vap_hotspot_secure(wifi_prop, vap_index) == TRUE) {
-            if (translate_hotspot_secure_vif_config_to_vap_info(vap_row, vap) != webconfig_error_none) {
+            if (translate_hotspot_secure_vif_config_to_vap_info(vap_row, vap, sec_schema_is_legacy) != webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of hotspot secure to ovsdb failed for %d\n", __func__, __LINE__, vap_index);
                 return webconfig_error_translate_from_ovsdb;
             }
             presence_mask  |= (1 << vap_index);
         } else if (is_vap_lnf_radius(wifi_prop, vap_index) == TRUE) {
-            if (translate_lnf_radius_vif_config_to_vap_info(vap_row, vap) != webconfig_error_none) {
+            if (translate_lnf_radius_vif_config_to_vap_info(vap_row, vap, sec_schema_is_legacy) != webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of lnf radius to ovsdb failed for %d\n", __func__, __LINE__, vap_index);
                 return webconfig_error_translate_from_ovsdb;
             }
             presence_mask  |= (1 << vap_index);
         } else if (is_vap_mesh_backhaul(wifi_prop, vap_index) == TRUE) {
-            if (translate_mesh_backhaul_vif_config_to_vap_info(vap_row, vap) != webconfig_error_none) {
+            if (translate_mesh_backhaul_vif_config_to_vap_info(vap_row, vap, sec_schema_is_legacy) != webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: update of mesh backhaul failed for %d\n", __func__, __LINE__, vap_index);
                 return webconfig_error_translate_from_ovsdb;
             }
             presence_mask  |= (1 << vap_index);
         } else if (is_vap_mesh_sta(wifi_prop, vap_index) == TRUE) {
-            if (translate_mesh_sta_vap_config_to_vap_info(vap_row, vap) != webconfig_error_none) {
+            if (translate_mesh_sta_vap_config_to_vap_info(vap_row, vap, sec_schema_is_legacy) != webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: update of mesh sta failed for %d\n", __func__, __LINE__, vap_index);
                 return webconfig_error_translate_from_ovsdb;
             }
@@ -5245,6 +5268,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state(webconfig_subdoc_dat
 
     unsigned int presence_mask = 0, private_vap_mask = 0;
     unsigned int *row_count = NULL;
+    bool sec_schema_is_legacy;
 
     decoded_params = &data->u.decoded;
     if (decoded_params == NULL) {
@@ -5263,6 +5287,8 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state(webconfig_subdoc_dat
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: table is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
+
+    sec_schema_is_legacy = proto->sec_schema_is_legacy;
 
     presence_mask = 0;
 
@@ -5333,7 +5359,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state(webconfig_subdoc_dat
             } 
 
             if (is_vap_private(wifi_prop, vap->vap_index) == TRUE) {
-                if (translate_private_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
+                if (translate_private_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
                     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of private vap to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
@@ -5341,7 +5367,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state(webconfig_subdoc_dat
                 wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: row count:%d ssid:%s\n", __func__, __LINE__, count, vap_row->ssid);
                 count++;
             } else  if (is_vap_xhs(wifi_prop, vap->vap_index) == TRUE) {
-                if (translate_iot_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
+                if (translate_iot_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
                     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of iot vap to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
@@ -5359,7 +5385,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state(webconfig_subdoc_dat
 
             } else  if (is_vap_lnf_psk(wifi_prop, vap->vap_index) == TRUE) {
 
-                if (translate_lnf_psk_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
+                if (translate_lnf_psk_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
                     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of lnf psk vap to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
@@ -5367,7 +5393,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state(webconfig_subdoc_dat
                 count++;
 
             } else  if (is_vap_hotspot_secure(wifi_prop, vap->vap_index) == TRUE) {
-                if (translate_hotspot_secure_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
+                if (translate_hotspot_secure_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
                     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of hotspot secure vap to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
@@ -5375,7 +5401,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state(webconfig_subdoc_dat
                 count++;
 
             } else  if (is_vap_lnf_radius(wifi_prop, vap->vap_index) == TRUE) {
-                if (translate_lnf_radius_secure_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
+                if (translate_lnf_radius_secure_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
                     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of radius secure vap to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
@@ -5383,14 +5409,14 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state(webconfig_subdoc_dat
                 count++;
 
             } else  if (is_vap_mesh_backhaul(wifi_prop, vap->vap_index) == TRUE) {
-                if (translate_mesh_backhaul_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
+                if (translate_mesh_backhaul_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
                     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of mesh backhaul to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
                 presence_mask |= (1 << vap->vap_index);
                 count++;
             } else  if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == TRUE) {
-                if (translate_mesh_sta_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
+                if (translate_mesh_sta_vap_info_to_vif_state(vap, iface_map, vap_row, wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
                     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of mesh sta to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
@@ -5439,6 +5465,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_private(webconf
     wifi_platform_property_t *wifi_prop = &data->u.decoded.hal_cap.wifi_prop;
     unsigned int *row_count = 0;
     unsigned char count = 0;
+    bool sec_schema_is_legacy;
 
     decoded_params = &data->u.decoded;
     if (decoded_params == NULL) {
@@ -5457,6 +5484,8 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_private(webconf
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: table is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
+
+    sec_schema_is_legacy = proto->sec_schema_is_legacy;
 
     presence_mask = 0;
     private_vap_mask = create_vap_mask(wifi_prop, 1, VAP_PREFIX_PRIVATE);
@@ -5503,7 +5532,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_private(webconf
                 return webconfig_error_translate_to_ovsdb;
             }
             if (is_vap_private(wifi_prop, vap->vap_index) == TRUE) {
-                if (translate_private_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
+                if (translate_private_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
                     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of private vap to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
@@ -5550,6 +5579,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_mesh_sta(webcon
     wifi_platform_property_t *wifi_prop = &data->u.decoded.hal_cap.wifi_prop;
     unsigned int *row_count = 0;
     unsigned char count = 0;
+    bool sec_schema_is_legacy;
 
     decoded_params = &data->u.decoded;
     if (decoded_params == NULL) {
@@ -5568,6 +5598,8 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_mesh_sta(webcon
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: table is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
+
+    sec_schema_is_legacy = proto->sec_schema_is_legacy;
 
     presence_mask = 0;
     /* create vap mask for mesh sta for all radios */
@@ -5614,7 +5646,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_mesh_sta(webcon
                 return webconfig_error_translate_to_ovsdb;
             }
             if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == TRUE) {
-                if (translate_mesh_sta_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
+                if (translate_mesh_sta_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
                     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of mesh sta vap to ovsdb failed for %d\n",
                                                         __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
@@ -5657,6 +5689,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_mesh_sta(webc
     int vap_index = 0;
     unsigned int presence_mask = 0, mesh_vap_mask = 0;
     wifi_platform_property_t *wifi_prop = &data->u.decoded.hal_cap.wifi_prop;
+    bool sec_schema_is_legacy;
 
     decoded_params = &data->u.decoded;
     proto = (webconfig_external_ovsdb_t *) data->u.decoded.external_protos;
@@ -5670,6 +5703,8 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_mesh_sta(webc
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vif table is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
     }
+
+    sec_schema_is_legacy = proto->sec_schema_is_legacy;
 
     presence_mask = 0;
     /* create vap mask for mesh and sta */
@@ -5709,7 +5744,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_mesh_sta(webc
 
         if (is_vap_mesh_sta(wifi_prop, vap_index) == TRUE) {
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: conn_status:%d\n", __func__, __LINE__, vap->u.sta_info.conn_status);
-            if (translate_mesh_sta_vap_config_to_vap_info(vap_row, vap) != webconfig_error_none) {
+            if (translate_mesh_sta_vap_config_to_vap_info(vap_row, vap, sec_schema_is_legacy) != webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: update of mesh sta failed\n", __func__, __LINE__);
                 return webconfig_error_translate_from_ovsdb;
             }
@@ -5749,6 +5784,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_mesh_backhaul(w
     wifi_platform_property_t *wifi_prop = &data->u.decoded.hal_cap.wifi_prop;
     unsigned int *row_count = 0;
     unsigned char count = 0;
+    bool sec_schema_is_legacy;
 
     decoded_params = &data->u.decoded;
     if (decoded_params == NULL) {
@@ -5767,6 +5803,8 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_mesh_backhaul(w
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: table is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
+
+    sec_schema_is_legacy = proto->sec_schema_is_legacy;
 
     presence_mask = 0;
     /* create vap mask for mesh backhaul and mesh sta for all radios */
@@ -5812,7 +5850,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_mesh_backhaul(w
                 return webconfig_error_translate_to_ovsdb;
             }
             if (is_vap_mesh_backhaul(wifi_prop, vap->vap_index) == TRUE) {
-                if (translate_mesh_backhaul_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
+                if (translate_mesh_backhaul_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
                     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of mesh backhaul vap to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
@@ -5859,6 +5897,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_mesh(webconfig_
     wifi_platform_property_t *wifi_prop = &data->u.decoded.hal_cap.wifi_prop;
     unsigned int *row_count = 0;
     unsigned char count = 0;
+    bool sec_schema_is_legacy;
 
     decoded_params = &data->u.decoded;
     if (decoded_params == NULL) {
@@ -5877,6 +5916,8 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_mesh(webconfig_
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: table is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
+
+    sec_schema_is_legacy = proto->sec_schema_is_legacy;
 
     presence_mask = 0;
     mesh_vap_mask = create_vap_mask(wifi_prop, 2, VAP_PREFIX_MESH_STA, VAP_PREFIX_MESH_BACKHAUL);
@@ -5924,7 +5965,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_mesh(webconfig_
                 return webconfig_error_translate_to_ovsdb;
             }
             if (is_vap_mesh_backhaul(wifi_prop, vap->vap_index) == TRUE) {
-                if (translate_mesh_backhaul_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
+                if (translate_mesh_backhaul_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
                     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of mesh backhaul vap to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
@@ -5936,7 +5977,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_mesh(webconfig_
                 count++;
             } else if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == TRUE) {
                 if (vap->u.sta_info.conn_status == wifi_connection_status_connected) {
-                    if (translate_mesh_sta_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
+                    if (translate_mesh_sta_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
                         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of mesh sta vap to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                         return webconfig_error_translate_to_ovsdb;
                     }
@@ -5982,6 +6023,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_home(webconfig_
     wifi_platform_property_t *wifi_prop = &data->u.decoded.hal_cap.wifi_prop;
     unsigned int *row_count = 0;
     unsigned char count = 0;
+    bool sec_schema_is_legacy;
 
     decoded_params = &data->u.decoded;
     if (decoded_params == NULL) {
@@ -6000,6 +6042,8 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_home(webconfig_
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: table is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
+
+    sec_schema_is_legacy = proto->sec_schema_is_legacy;
 
     presence_mask = 0;
     home_vap_mask = create_vap_mask(wifi_prop, 1, VAP_PREFIX_IOT);
@@ -6045,7 +6089,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_home(webconfig_
                 return webconfig_error_translate_to_ovsdb;
             }
             if (is_vap_xhs(wifi_prop, vap->vap_index) == TRUE) {
-                if (translate_iot_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
+                if (translate_iot_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
                     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of iot vap to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
@@ -6092,6 +6136,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_lnf(webconfig_s
     wifi_platform_property_t *wifi_prop = &data->u.decoded.hal_cap.wifi_prop;
     unsigned int *row_count = 0;
     unsigned char count = 0;
+    bool sec_schema_is_legacy;
 
     decoded_params = &data->u.decoded;
     if (decoded_params == NULL) {
@@ -6110,6 +6155,8 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_lnf(webconfig_s
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: table is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
+
+    sec_schema_is_legacy = proto->sec_schema_is_legacy;
 
     presence_mask = 0;
     lnf_vap_mask = create_vap_mask(wifi_prop, 2, VAP_PREFIX_LNF_PSK, VAP_PREFIX_LNF_RADIUS);
@@ -6154,7 +6201,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_lnf(webconfig_s
             }
 
             if (is_vap_lnf_psk(wifi_prop, vap->vap_index) == TRUE) {
-                if (translate_lnf_psk_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
+                if (translate_lnf_psk_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
                     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of lnf psk vap to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
@@ -6162,7 +6209,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_lnf(webconfig_s
                 count++;
 
             } else  if (is_vap_lnf_radius(wifi_prop, vap->vap_index) == TRUE) {
-                if (translate_lnf_radius_secure_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
+                if (translate_lnf_radius_secure_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
                     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of hotspot secure vap to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
@@ -6206,6 +6253,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_xfinity(webconf
     wifi_platform_property_t *wifi_prop = &data->u.decoded.hal_cap.wifi_prop;
     unsigned int *row_count = 0;
     unsigned char count = 0;
+    bool sec_schema_is_legacy;
 
     decoded_params = &data->u.decoded;
     if (decoded_params == NULL) {
@@ -6224,6 +6272,8 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_xfinity(webconf
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: table is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
+
+    sec_schema_is_legacy = proto->sec_schema_is_legacy;
 
     presence_mask = 0;
     home_vap_mask = create_vap_mask(wifi_prop, 2, VAP_PREFIX_HOTSPOT_OPEN, VAP_PREFIX_HOTSPOT_SECURE);
@@ -6280,7 +6330,7 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_xfinity(webconf
                 count++;
 
             } else  if (is_vap_hotspot_secure(wifi_prop, vap->vap_index) == TRUE) {
-                if (translate_hotspot_secure_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop) != webconfig_error_none) {
+                if (translate_hotspot_secure_vap_info_to_vif_config(vap, iface_map, vap_row, wifi_prop, sec_schema_is_legacy) != webconfig_error_none) {
                     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of hotspot secure vap to ovsdb failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_ovsdb;
                 }
@@ -6323,6 +6373,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_private(webco
     unsigned int presence_mask = 0, private_vap_mask = 0;
     wifi_platform_property_t *wifi_prop = &data->u.decoded.hal_cap.wifi_prop;
     wifi_vap_info_t *tempVap;
+    bool sec_schema_is_legacy;
 
     decoded_params = &data->u.decoded;
     proto = (webconfig_external_ovsdb_t *) data->u.decoded.external_protos;
@@ -6336,6 +6387,9 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_private(webco
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vif table is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
     }
+
+    sec_schema_is_legacy = proto->sec_schema_is_legacy;
+
     presence_mask = 0;
     private_vap_mask = create_vap_mask(wifi_prop, 1, VAP_PREFIX_PRIVATE);
 
@@ -6378,7 +6432,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_private(webco
                 memcpy(vap, tempVap, sizeof(wifi_vap_info_t));
                 wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: Copied from defaults for vap_index : %d vap_name : %s\n", __func__, __LINE__, vap_index, vap->vap_name);
             }
-            if (translate_private_vif_config_to_vap_info(vap_row, vap) != webconfig_error_none) {
+            if (translate_private_vif_config_to_vap_info(vap_row, vap, sec_schema_is_legacy) != webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of private vap to ovsdb failed for %d\n", __func__, __LINE__, vap_index);
                 return webconfig_error_translate_from_ovsdb;
             }
@@ -6417,6 +6471,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_mesh_backhaul
     unsigned int presence_mask = 0, mesh_vap_mask = 0;
     wifi_platform_property_t *wifi_prop = &data->u.decoded.hal_cap.wifi_prop;
     wifi_vap_info_t *tempVap;
+    bool sec_schema_is_legacy;
 
     decoded_params = &data->u.decoded;
     proto = (webconfig_external_ovsdb_t *) data->u.decoded.external_protos;
@@ -6430,6 +6485,9 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_mesh_backhaul
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vif table is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
     }
+
+    sec_schema_is_legacy = proto->sec_schema_is_legacy;
+
     presence_mask = 0;
     /* create vap mask for mesh backhaul*/
     mesh_vap_mask = create_vap_mask(wifi_prop, 1, VAP_PREFIX_MESH_BACKHAUL);
@@ -6472,7 +6530,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_mesh_backhaul
                 memcpy(vap, tempVap, sizeof(wifi_vap_info_t));
                 wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: Copied from defaults for vap_index : %d vap_name : %s\n", __func__, __LINE__, vap_index, vap->vap_name);
             }
-            if (translate_mesh_backhaul_vif_config_to_vap_info(vap_row, vap) != webconfig_error_none) {
+            if (translate_mesh_backhaul_vif_config_to_vap_info(vap_row, vap, sec_schema_is_legacy) != webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: update of mesh backhaul failed\n", __func__, __LINE__);
                 return webconfig_error_translate_from_ovsdb;
             }
@@ -6518,6 +6576,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_mesh(webconfi
     int vap_index = 0;
     unsigned int presence_mask = 0, mesh_vap_mask = 0;
     wifi_platform_property_t *wifi_prop = &data->u.decoded.hal_cap.wifi_prop;
+    bool sec_schema_is_legacy;
 
     decoded_params = &data->u.decoded;
     proto = (webconfig_external_ovsdb_t *) data->u.decoded.external_protos;
@@ -6531,6 +6590,9 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_mesh(webconfi
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vif table is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
     }
+
+    sec_schema_is_legacy = proto->sec_schema_is_legacy;
+
     presence_mask = 0;
     mesh_vap_mask = create_vap_mask(wifi_prop, 2, VAP_PREFIX_MESH_STA, VAP_PREFIX_MESH_BACKHAUL);
     for (i = 0; i < proto->vif_config_row_count; i++) {
@@ -6566,13 +6628,13 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_mesh(webconfi
         rdk_vap->exists = true;
 
         if (is_vap_mesh_backhaul(wifi_prop, vap_index) == TRUE) {
-            if (translate_mesh_backhaul_vif_config_to_vap_info(vap_row, vap) != webconfig_error_none) {
+            if (translate_mesh_backhaul_vif_config_to_vap_info(vap_row, vap, sec_schema_is_legacy) != webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: update of mesh backhaul failed\n", __func__, __LINE__);
                 return webconfig_error_translate_from_ovsdb;
             }
             presence_mask  |= (1 << vap_index);
         } else if (is_vap_mesh_sta(wifi_prop, vap_index) == TRUE) {
-            if (translate_mesh_sta_vap_config_to_vap_info(vap_row, vap) != webconfig_error_none) {
+            if (translate_mesh_sta_vap_config_to_vap_info(vap_row, vap, sec_schema_is_legacy) != webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: update of mesh sta failed\n", __func__, __LINE__);
                 return webconfig_error_translate_from_ovsdb;
             }
@@ -6620,6 +6682,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_home(webconfi
     unsigned int presence_mask = 0, home_vap_mask = 0;
     wifi_platform_property_t *wifi_prop = &data->u.decoded.hal_cap.wifi_prop;
     wifi_vap_info_t *tempVap;
+    bool sec_schema_is_legacy;
 
     decoded_params = &data->u.decoded;
     proto = (webconfig_external_ovsdb_t *) data->u.decoded.external_protos;
@@ -6633,6 +6696,9 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_home(webconfi
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vif table is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
     }
+
+    sec_schema_is_legacy = proto->sec_schema_is_legacy;
+
     presence_mask = 0;
     home_vap_mask = create_vap_mask(wifi_prop, 1, VAP_PREFIX_IOT);
 
@@ -6676,7 +6742,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_home(webconfi
                 wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: Copied from defaults for vap_index : %d vap_name : %s\n", __func__, __LINE__, vap_index, vap->vap_name);
             }
 
-            if (translate_iot_vif_config_to_vap_info(vap_row, vap) != webconfig_error_none) {
+            if (translate_iot_vif_config_to_vap_info(vap_row, vap, sec_schema_is_legacy) != webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of iot vap to ovsdb failed for %d\n", __func__, __LINE__, vap_index);
                 return webconfig_error_translate_from_ovsdb;
             }
@@ -6716,6 +6782,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_lnf(webconfig
     unsigned int presence_mask = 0, lnf_vap_mask = 0;
     wifi_platform_property_t *wifi_prop = &data->u.decoded.hal_cap.wifi_prop;
     wifi_vap_info_t *tempVap;
+    bool sec_schema_is_legacy;
 
     decoded_params = &data->u.decoded;
     proto = (webconfig_external_ovsdb_t *) data->u.decoded.external_protos;
@@ -6729,6 +6796,9 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_lnf(webconfig
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vif table is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
     }
+
+    sec_schema_is_legacy = proto->sec_schema_is_legacy;
+
     presence_mask = 0;
     lnf_vap_mask = create_vap_mask(wifi_prop, 2, VAP_PREFIX_LNF_PSK, VAP_PREFIX_LNF_RADIUS);
 
@@ -6774,7 +6844,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_lnf(webconfig
                 memcpy(vap, tempVap, sizeof(wifi_vap_info_t));
                 wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: Copied from defaults for vap_index : %d vap_name : %s\n", __func__, __LINE__, vap_index, vap->vap_name);
             }
-            if (translate_lnf_psk_vif_config_to_vap_info(vap_row, vap) != webconfig_error_none) {
+            if (translate_lnf_psk_vif_config_to_vap_info(vap_row, vap, sec_schema_is_legacy) != webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of lnf psk vap to ovsdb failed for %d\n", __func__, __LINE__, vap_index);
                 return webconfig_error_translate_from_ovsdb;
             }
@@ -6785,7 +6855,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_lnf(webconfig
                 memcpy(vap, tempVap, sizeof(wifi_vap_info_t));
                 wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: Copied from defaults for vap_index : %d vap_name : %s\n", __func__, __LINE__, vap_index, vap->vap_name);
             }
-            if (translate_lnf_radius_vif_config_to_vap_info(vap_row, vap) != webconfig_error_none) {
+            if (translate_lnf_radius_vif_config_to_vap_info(vap_row, vap, sec_schema_is_legacy) != webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of lnf radius to ovsdb failed for %d\n", __func__, __LINE__, vap_index);
                 return webconfig_error_translate_from_ovsdb;
             }
@@ -6822,6 +6892,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_xfinity(webco
     int vap_index = 0;
     unsigned int presence_mask = 0, xfinity_vap_mask = 0;
     wifi_platform_property_t *wifi_prop = &data->u.decoded.hal_cap.wifi_prop;
+    bool sec_schema_is_legacy;
 
     decoded_params = &data->u.decoded;
     proto = (webconfig_external_ovsdb_t *) data->u.decoded.external_protos;
@@ -6835,6 +6906,9 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_xfinity(webco
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vif table is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
     }
+
+    sec_schema_is_legacy = proto->sec_schema_is_legacy;
+
     presence_mask = 0;
     xfinity_vap_mask = create_vap_mask(wifi_prop, 2, VAP_PREFIX_HOTSPOT_OPEN, VAP_PREFIX_HOTSPOT_SECURE);
 
@@ -6876,7 +6950,7 @@ webconfig_error_t   translate_vap_object_from_ovsdb_vif_config_for_xfinity(webco
             }
             presence_mask  |= (1 << vap_index);
         } else if (is_vap_hotspot_secure(wifi_prop, vap_index) == TRUE) {
-            if (translate_hotspot_secure_vif_config_to_vap_info(vap_row, vap) != webconfig_error_none) {
+            if (translate_hotspot_secure_vif_config_to_vap_info(vap_row, vap, sec_schema_is_legacy) != webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of hotspot secure to ovsdb failed for %d\n", __func__, __LINE__, vap_index);
                 return webconfig_error_translate_from_ovsdb;
             }

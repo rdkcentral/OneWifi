@@ -59,6 +59,8 @@ typedef struct {
     webconfig_external_vap_info_t vap_info[EXTERNAL_PROTO_MAX_VAPS];
     unsigned int num_vaps;
 
+    bool sec_schema_is_legacy;
+
 /* TBD: place for next arrays and other data, in particular
  *
  * * the supplementary STATE data read from OneWifi Manager

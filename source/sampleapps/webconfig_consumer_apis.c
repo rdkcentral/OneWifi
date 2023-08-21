@@ -42,6 +42,8 @@
 #include "wifi_webconfig_consumer.h"
 #include "ieee80211.h"
 
+#define WPA3_SECURITY_SCHEMA
+
 #define MAX_NUM_CLIENTS 64
 #define MAX_NUM_CONFIG  16//Used for steering_Config
 
