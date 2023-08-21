@@ -227,17 +227,6 @@ wifi_event_t *create_wifi_monitor_response_event(const void *msg, unsigned int m
             }
 
         break;
-        case mon_stats_type_associated_device_diag:
-            event->u.provider_response->stat_pointer = calloc(response->stat_array_size, sizeof(wifi_associated_dev3_t));
-            if (event->u.provider_response->stat_pointer == NULL) {
-                wifi_util_error_print(WIFI_CTRL,"%s %d response allocation failed for %d\n",__FUNCTION__, __LINE__, response->data_type);
-                free(event->u.provider_response);
-                free(event);
-                event = NULL;
-                return NULL;
-            }
-
-        break;
         case mon_stats_type_associated_device_stats:
             event->u.provider_response->stat_pointer = calloc(response->stat_array_size, sizeof(wifi_associated_dev_stats_t));
             if (event->u.provider_response->stat_pointer == NULL) {
@@ -354,9 +343,6 @@ int copy_msg_to_event(const void *data, unsigned int msg_len, wifi_event_type_t 
                     break;
                     case mon_stats_type_neighbor_stats:
                         memcpy(event->u.provider_response->stat_pointer, response->stat_pointer, (response->stat_array_size*sizeof(wifi_neighbor_ap2_t)));
-                    break;
-                    case mon_stats_type_associated_device_diag:
-                        memcpy(event->u.provider_response->stat_pointer, response->stat_pointer, (response->stat_array_size*sizeof(wifi_associated_dev3_t)));
                     break;
                     case mon_stats_type_associated_device_stats:
                         memcpy(event->u.provider_response->stat_pointer, response->stat_pointer, (response->stat_array_size*sizeof(wifi_associated_dev_stats_t)));

@@ -55,7 +55,7 @@ wifi_mon_stats_descriptor_t g_stats_descriptor[WIFI_STATS_NUM] = {
         copy_radio_diagnostic_stats_from_cache,
     },
     {
-        mon_stats_type_associated_device_diag,
+        mon_stats_type_associated_device_stats,
         validate_assoc_client_args,
         generate_assoc_client_clctr_stats_key,
         generate_assoc_client_provider_stats_key,

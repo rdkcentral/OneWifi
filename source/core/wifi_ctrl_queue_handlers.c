@@ -2283,6 +2283,93 @@ void process_sta_trigger_disconnection(unsigned int disconnection_type)
     return;
 }
 
+void whix_route(wifi_event_route_t *route)
+{
+    memset(route, 0, sizeof(wifi_event_route_t));
+    route->dst = wifi_sub_component_mon;
+    route->u.inst_bit_map = wifi_app_inst_whix;
+}
+
+#define CHAN_UTIL_INTERVAL_MS 300000
+
+void whix_common_config_to_monitor_queue(wifi_monitor_data_t *data)
+{
+    data->u.mon_stats_config.inst = wifi_app_inst_whix;
+    data->u.mon_stats_config.interval_ms = CHAN_UTIL_INTERVAL_MS;
+}
+
+void config_radio_channel_stats(wifi_monitor_data_t *data)
+{
+    unsigned int vapArrayIndex = 0;
+    wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
+    wifi_event_route_t route;
+    wifi_util_error_print(WIFI_APPS, "Entering %s\n", __func__);
+    whix_route(&route);
+    whix_common_config_to_monitor_queue(data);
+
+    data->u.mon_stats_config.data_type = mon_stats_type_radio_channel_stats;
+
+         //for each vap push the event to monitor queue
+    for (vapArrayIndex = 0; vapArrayIndex < getNumberRadios(); vapArrayIndex++) {
+        data->u.mon_stats_config.args.radio_index = wifi_mgr->radio_config[vapArrayIndex].vaps.radio_index;
+        wifi_util_error_print(WIFI_APPS, "pushing the event %s\n", __func__);
+        push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
+    }
+}
+
+void config_neighbor_stats(wifi_monitor_data_t *data)
+{
+    /* TODO: To be done via whix phase-2 */
+}
+
+void config_associated_device_stats(wifi_monitor_data_t *data)
+{
+    unsigned int radio_index;
+    unsigned int vapArrayIndex = 0;
+    wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
+    wifi_event_route_t route;
+    wifi_util_dbg_print(WIFI_APPS, "Entering %s\n", __func__);
+    whix_route(&route);
+    whix_common_config_to_monitor_queue(data);
+
+    data->u.mon_stats_config.data_type = mon_stats_type_associated_device_stats;
+
+    for (radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
+        //for each vap push the event to monitor queue
+        for (vapArrayIndex = 0; vapArrayIndex < getNumberVAPsPerRadio(radio_index); vapArrayIndex++) {
+            data->u.mon_stats_config.args.vap_index = wifi_mgr->radio_config[radio_index].vaps.rdk_vap_array[vapArrayIndex].vap_index;
+            push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
+        }
+    }
+}
+
+int push_whix_config_event_to_monitor_queue(wifi_mon_stats_request_state_t state)
+{
+    // Send appropriate configs to monitor queue(stats, radio)
+    wifi_monitor_data_t *data;
+    wifi_util_error_print(WIFI_APPS, "Entering %s\n", __func__);
+    data = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_APPS,"%s:%d data allocation failed\r\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    memset(data, 0, sizeof(wifi_monitor_data_t));
+    data->u.mon_stats_config.req_state = state;
+
+    config_radio_channel_stats(data);
+    config_neighbor_stats(data);
+
+    memset(data, 0, sizeof(wifi_monitor_data_t));
+    data->u.mon_stats_config.req_state = state;
+    config_associated_device_stats(data);
+
+    if (NULL != data) {
+        free(data);
+        data = NULL;
+    }
+    return RETURN_OK;
+}
+
 void process_channel_change_event(wifi_channel_change_event_t *ch_chg)
 {
     wifi_radio_operationParam_t *radio_params = NULL;
@@ -2397,7 +2484,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg)
         if (blockStartChannel < 52) {
             blockStartChannel = 52;
             channelsInBlock -= 4;
-        } 
+        }
 
         for (int i=0; i<radio_capab.channel_list[0].num_channels; i++)
         {
@@ -2632,6 +2719,11 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len, wifi_
 #endif // CCSP_COMMON
         case wifi_event_type_trigger_disconnection:
             process_sta_trigger_disconnection(*(unsigned int *)data);
+            break;
+        
+        case wifi_event_type_notify_monitor_done:
+            /* Send the event to monitor queue */
+            push_whix_config_event_to_monitor_queue(mon_stats_request_state_start);
             break;
 
         case wifi_event_type_eth_bh_status:

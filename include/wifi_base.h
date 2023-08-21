@@ -92,7 +92,7 @@ extern "C" {
 #define wifi_app_inst_base          0x01
 
 #define DEFAULT_SOUNDING_DURATION_MS 2000
-#define WIFI_APPS_NUM   6
+#define WIFI_APPS_NUM   7
 
 typedef enum {
     wifi_app_inst_blaster = wifi_app_inst_base,
@@ -108,7 +108,8 @@ typedef enum {
     wifi_app_inst_sm = wifi_app_inst_base << 10,
     wifi_app_inst_motion = wifi_app_inst_base << 11,
     wifi_app_inst_csi = wifi_app_inst_base << 12,
-    wifi_app_inst_max = wifi_app_inst_base << 13
+    wifi_app_inst_whix = wifi_app_inst_base << 13,
+    wifi_app_inst_max = wifi_app_inst_base << 14
 } wifi_app_inst_t;
 
 typedef struct {
@@ -224,7 +225,6 @@ typedef struct {
 typedef enum {
     mon_stats_type_radio_channel_stats=1,
     mon_stats_type_neighbor_stats,
-    mon_stats_type_associated_device_diag,
     mon_stats_type_associated_device_stats,
     mon_stats_type_radio_diagnostic_stats,
     mon_stats_type_max

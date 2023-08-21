@@ -343,7 +343,7 @@ int client_diag_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_
         return RETURN_ERR;
     }
 
-    data->u.mon_stats_config.data_type = mon_stats_type_associated_device_diag;
+    data->u.mon_stats_config.data_type = mon_stats_type_associated_device_stats;
 
     if (client_assoc_stats[data->u.mon_stats_config.args.radio_index].req_stats_vap_mask == 0) {
         if(generate_vap_mask_for_radio_index(data->u.mon_stats_config.args.radio_index) == RETURN_ERR) {

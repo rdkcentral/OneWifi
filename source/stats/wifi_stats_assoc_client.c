@@ -65,7 +65,7 @@ int generate_assoc_client_clctr_stats_key(wifi_mon_stats_args_t *args, char *key
 
     memset(key_str, 0, key_len);
 
-    snprintf(key_str, key_len, "%02d-%02d", mon_stats_type_associated_device_diag, args->vap_index);
+    snprintf(key_str, key_len, "%02d-%02d", mon_stats_type_associated_device_stats, args->vap_index);
 
     wifi_util_dbg_print(WIFI_MON, "%s:%d collector stats key: %s\n", __func__,__LINE__, key_str);
 
@@ -81,7 +81,7 @@ int generate_assoc_client_provider_stats_key(wifi_mon_stats_config_t *config, ch
 
     memset(key_str, 0, key_len);
 
-    snprintf(key_str, key_len, "%04d-%02d-%02d", config->inst, mon_stats_type_associated_device_diag, config->args.vap_index);
+    snprintf(key_str, key_len, "%04d-%02d-%02d", config->inst, mon_stats_type_associated_device_stats, config->args.vap_index);
 
     wifi_util_dbg_print(WIFI_MON, "%s:%d: provider stats key: %s\n", __func__,__LINE__, key_str);
 
@@ -129,8 +129,6 @@ int execute_assoc_client_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *
                     free(tmp_sta);
                 }
             }
-            hash_map_destroy(mon_data->bssid_data[vap_array_index].sta_map);
-            mon_data->bssid_data[vap_array_index].sta_map =  NULL;
         }
         return RETURN_OK;
     }
@@ -256,7 +254,7 @@ int copy_assoc_client_stats_from_cache(wifi_mon_stats_args_t *args, void **stats
     }
 
     sta_map = mon_cache->bssid_data[vap_array_index].sta_map ;
-    if(sta_map != NULL) {
+    if(sta_map == NULL) {
         *stats = NULL;
         *stat_array_size = 0;
         return RETURN_OK;

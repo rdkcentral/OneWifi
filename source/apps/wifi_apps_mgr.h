@@ -32,6 +32,7 @@ extern "C" {
 #include "wifi_sm.h"
 #include "wifi_motion.h"
 #include "wifi_csi.h"
+#include "wifi_whix.h"
 
 #define MAX_APP_INIT_DATA 1024
 #define APP_DETACHED 0x01
