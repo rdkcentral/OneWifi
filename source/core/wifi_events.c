@@ -206,7 +206,7 @@ wifi_event_t *create_wifi_monitor_response_event(const void *msg, unsigned int m
     const wifi_provider_response_t *response = msg;
     switch (response->data_type) {
         case mon_stats_type_radio_channel_stats:
-            event->u.provider_response->stat_pointer = calloc(response->stat_array_size, sizeof(wifi_channelStats_t));
+            event->u.provider_response->stat_pointer = calloc(response->stat_array_size, sizeof(radio_chan_data_t));
             if (event->u.provider_response->stat_pointer == NULL) {
                 wifi_util_error_print(WIFI_CTRL,"%s %d response allocation failed for %d\n",__FUNCTION__, __LINE__, response->data_type);
                 free(event->u.provider_response);
@@ -236,7 +236,16 @@ wifi_event_t *create_wifi_monitor_response_event(const void *msg, unsigned int m
                 event = NULL;
                 return NULL;
             }
-
+        break;
+        case mon_stats_type_radio_diagnostic_stats:
+            event->u.provider_response->stat_pointer = calloc(response->stat_array_size, sizeof(radio_data_t));
+            if (event->u.provider_response->stat_pointer == NULL) {
+                wifi_util_error_print(WIFI_CTRL,"%s %d response allocation failed for %d\n",__FUNCTION__, __LINE__, response->data_type);
+                free(event->u.provider_response);
+                free(event);
+                event = NULL;
+                return NULL;
+            }
         break;
         default:
             wifi_util_error_print(WIFI_CTRL,"%s %d default response type : %d\n",__FUNCTION__, __LINE__, response->data_type);
@@ -339,13 +348,16 @@ int copy_msg_to_event(const void *data, unsigned int msg_len, wifi_event_type_t 
                 }
                 switch (response->data_type) {
                     case mon_stats_type_radio_channel_stats:
-                        memcpy(event->u.provider_response->stat_pointer, response->stat_pointer, (response->stat_array_size*sizeof(wifi_channelStats_t)));
+                        memcpy(event->u.provider_response->stat_pointer, response->stat_pointer, (response->stat_array_size*sizeof(radio_chan_data_t)));
                     break;
                     case mon_stats_type_neighbor_stats:
                         memcpy(event->u.provider_response->stat_pointer, response->stat_pointer, (response->stat_array_size*sizeof(wifi_neighbor_ap2_t)));
                     break;
                     case mon_stats_type_associated_device_stats:
                         memcpy(event->u.provider_response->stat_pointer, response->stat_pointer, (response->stat_array_size*sizeof(sta_data_t)));
+                    break;
+                    case mon_stats_type_radio_diagnostic_stats:
+                        memcpy(event->u.provider_response->stat_pointer, response->stat_pointer, (response->stat_array_size*sizeof(radio_data_t)));
                     break;
                     default:
                         wifi_util_error_print(WIFI_CTRL,"%s %d default response type : %d\n",__FUNCTION__, __LINE__, response->data_type);

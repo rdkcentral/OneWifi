@@ -45,6 +45,10 @@ static int neighbor_scan_task_id = -1;
 #define MAX_VAP_INDEX 24
 #endif // DML_SUPPORT
 
+#define CHAN_UTIL_INTERVAL_MS 900000 // 15 mins
+#define TELEMETRY_UPDATE_INTERVAL_MS 3600000 // 1 hour
+#define ASSOCIATED_DEVICE_DIAG_INTERVAL_MS 5000 //5 seconds
+
 #ifdef CCSP_COMMON
 static unsigned msg_id = 1000;
 #endif
@@ -2304,36 +2308,62 @@ void whix_route(wifi_event_route_t *route)
     route->u.inst_bit_map = wifi_app_inst_whix;
 }
 
-#define CHAN_UTIL_INTERVAL_MS 300000
-
-void whix_common_config_to_monitor_queue(wifi_monitor_data_t *data)
+void whix_common_config_to_monitor_queue(wifi_monitor_data_t *data, bool is_channel_util)
 {
     data->u.mon_stats_config.inst = wifi_app_inst_whix;
-    data->u.mon_stats_config.interval_ms = CHAN_UTIL_INTERVAL_MS;
+
+    wifi_global_param_t *global_param = get_wifidb_wifi_global_param();
+    if (global_param != NULL) {
+        if (is_channel_util) {
+            data->u.mon_stats_config.interval_ms = (global_param->whix_chutility_loginterval) * 1000;
+        } else {
+            data->u.mon_stats_config.interval_ms = (global_param->whix_log_interval) * 1000;
+        }
+    } else {
+        if (is_channel_util) {
+            data->u.mon_stats_config.interval_ms = CHAN_UTIL_INTERVAL_MS;
+        } else {
+            data->u.mon_stats_config.interval_ms = TELEMETRY_UPDATE_INTERVAL_MS;
+        }
+    }
+    wifi_util_dbg_print(WIFI_APPS, "%s:%d Interval is %lu\n", __func__, __LINE__, data->u.mon_stats_config.interval_ms); 
 }
 
-void config_radio_channel_stats(wifi_monitor_data_t *data)
+void config_radio_channel_util(wifi_monitor_data_t *data)
 {
-    unsigned int vapArrayIndex = 0;
+    unsigned int radioIndex = 0;
     wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
     wifi_event_route_t route;
-    wifi_util_error_print(WIFI_APPS, "Entering %s\n", __func__);
     whix_route(&route);
-    whix_common_config_to_monitor_queue(data);
+    whix_common_config_to_monitor_queue(data, true);
 
     data->u.mon_stats_config.data_type = mon_stats_type_radio_channel_stats;
-
-         //for each vap push the event to monitor queue
-    for (vapArrayIndex = 0; vapArrayIndex < getNumberRadios(); vapArrayIndex++) {
-        data->u.mon_stats_config.args.radio_index = wifi_mgr->radio_config[vapArrayIndex].vaps.radio_index;
-        wifi_util_error_print(WIFI_APPS, "pushing the event %s\n", __func__);
+    /* Request to get channel utilization */
+    data->u.mon_stats_config.args.app_info = whix_app_event_type_chan_util;
+    for (radioIndex = 0; radioIndex < getNumberRadios(); radioIndex++) {
+        data->u.mon_stats_config.args.radio_index = wifi_mgr->radio_config[radioIndex].vaps.radio_index;
+        wifi_util_error_print(WIFI_APPS, "%s:%d pushing the event to collect chan_util\n", __func__, __LINE__);
         push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
     }
 }
 
-void config_neighbor_stats(wifi_monitor_data_t *data)
+void config_radio_channel_stats(wifi_monitor_data_t *data)
 {
-    /* TODO: To be done via whix phase-2 */
+    unsigned int radioIndex = 0;
+    wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
+    wifi_event_route_t route;
+    whix_route(&route);
+    whix_common_config_to_monitor_queue(data, false);
+
+    /* Request to collect other channel stats */
+    data->u.mon_stats_config.args.app_info = whix_app_event_type_chan_stats;
+
+    //for each vap push the event to monitor queue
+    for (radioIndex = 0; radioIndex < getNumberRadios(); radioIndex++) {
+        data->u.mon_stats_config.args.radio_index = wifi_mgr->radio_config[radioIndex].vaps.radio_index;
+        wifi_util_error_print(WIFI_APPS, "%s:%d pushing the event\n", __func__, __LINE__);
+        push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
+    }
 }
 
 void config_associated_device_stats(wifi_monitor_data_t *data)
@@ -2342,17 +2372,44 @@ void config_associated_device_stats(wifi_monitor_data_t *data)
     unsigned int vapArrayIndex = 0;
     wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
     wifi_event_route_t route;
-    wifi_util_dbg_print(WIFI_APPS, "Entering %s\n", __func__);
     whix_route(&route);
-    whix_common_config_to_monitor_queue(data);
+    whix_common_config_to_monitor_queue(data, false);
 
     data->u.mon_stats_config.data_type = mon_stats_type_associated_device_stats;
+    data->u.mon_stats_config.args.app_info = whix_app_event_type_assoc_dev_stats;
 
     for (radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
         //for each vap push the event to monitor queue
         for (vapArrayIndex = 0; vapArrayIndex < getNumberVAPsPerRadio(radio_index); vapArrayIndex++) {
             data->u.mon_stats_config.args.vap_index = wifi_mgr->radio_config[radio_index].vaps.rdk_vap_array[vapArrayIndex].vap_index;
-            push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
+            if (!isVapSTAMesh(data->u.mon_stats_config.args.vap_index)) {
+                push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
+            }
+        }
+    }
+}
+
+void config_associated_device_diagnostics(wifi_monitor_data_t *data)
+{
+    unsigned int radio_index;
+    unsigned int vapArrayIndex = 0;
+    wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
+    wifi_event_route_t route;
+    whix_route(&route);
+    whix_common_config_to_monitor_queue(data, false);
+
+    data->u.mon_stats_config.data_type = mon_stats_type_associated_device_stats;
+    data->u.mon_stats_config.args.app_info = whix_app_event_type_assoc_dev_diagnostics;
+    data->u.mon_stats_config.interval_ms = ASSOCIATED_DEVICE_DIAG_INTERVAL_MS;
+
+    for (radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
+        data->u.mon_stats_config.args.radio_index = radio_index;
+        //for each vap push the event to monitor queue
+        for (vapArrayIndex = 0; vapArrayIndex < getNumberVAPsPerRadio(radio_index); vapArrayIndex++) {
+            data->u.mon_stats_config.args.vap_index = wifi_mgr->radio_config[radio_index].vaps.rdk_vap_array[vapArrayIndex].vap_index;
+            if (!isVapSTAMesh(data->u.mon_stats_config.args.vap_index)) {
+                push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
+            }
         }
     }
 }
@@ -2361,7 +2418,7 @@ int push_whix_config_event_to_monitor_queue(wifi_mon_stats_request_state_t state
 {
     // Send appropriate configs to monitor queue(stats, radio)
     wifi_monitor_data_t *data;
-    wifi_util_error_print(WIFI_APPS, "Entering %s\n", __func__);
+    wifi_util_error_print(WIFI_APPS, "Entering %s:%d\n", __func__, __LINE__);
     data = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
     if (data == NULL) {
         wifi_util_error_print(WIFI_APPS,"%s:%d data allocation failed\r\n", __func__, __LINE__);
@@ -2371,11 +2428,12 @@ int push_whix_config_event_to_monitor_queue(wifi_mon_stats_request_state_t state
     data->u.mon_stats_config.req_state = state;
 
     config_radio_channel_stats(data);
-    config_neighbor_stats(data);
+    config_radio_channel_util(data);
 
     memset(data, 0, sizeof(wifi_monitor_data_t));
     data->u.mon_stats_config.req_state = state;
     config_associated_device_stats(data);
+    config_associated_device_diagnostics(data);
 
     if (NULL != data) {
         free(data);
@@ -2736,7 +2794,7 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len, wifi_
         case wifi_event_type_trigger_disconnection:
             process_sta_trigger_disconnection(*(unsigned int *)data);
             break;
-        
+
         case wifi_event_type_notify_monitor_done:
             /* Send the event to monitor queue */
             push_whix_config_event_to_monitor_queue(mon_stats_request_state_start);
@@ -2745,7 +2803,7 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len, wifi_
         case wifi_event_type_managed_wifi_disable:
             process_managed_wifi_disable();
             break;
- 
+
         case wifi_event_type_eth_bh_status:
             process_eth_bh_status_command(*(bool *)data);
             break;

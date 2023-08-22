@@ -132,9 +132,6 @@ typedef struct {
     bssid_data_t        bssid_data[MAX_VAP];
     radio_data_t        radio_data[MAX_NUM_RADIOS];
     radio_chan_stats_data_t  radio_chan_stats_data[MAX_NUM_RADIOS]; ////New Radio Channel stats
-#ifdef CCSP_COMMON
-    radio_chan_data_t   radio_channel_data[MAX_NUM_RADIOS];
-#endif // CCSP_COMMON
     neighscan_diag_cfg_t neighbor_scan_cfg;
     off_channel_param_t off_channel_cfg[MAX_NUM_RADIOS];
     bool                exit_monitor;
@@ -162,15 +159,11 @@ typedef struct {
 #endif // CCSP_COMMON
     struct scheduler *sched;
 #ifdef CCSP_COMMON
-    int chutil_id;
     int client_telemetry_id;
     int client_debug_id;
-    int channel_width_telemetry_id;
-    int ap_telemetry_id;
     int inst_msmt_id;
     int curr_chan_util_period;
     int refresh_task_id;
-    int associated_devices_id;
     int vap_status_id;
 #endif // CCSP_COMMON
     int radio_diagnostics_id;
@@ -179,8 +172,6 @@ typedef struct {
 #endif //FEATURE_OFF_CHANNEL_SCAN_5G
 #ifdef CCSP_COMMON
     int neighbor_scan_id;
-    int radio_health_telemetry_logger_id;
-    int upload_ap_telemetry_pmf_id;
     int clientdiag_id[MAX_VAP];
     int clientdiag_sched_arg[MAX_VAP];
     unsigned int clientdiag_sched_interval[MAX_VAP];

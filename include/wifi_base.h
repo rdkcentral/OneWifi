@@ -238,6 +238,14 @@ typedef enum {
     mon_stats_request_state_start
 } wifi_mon_stats_request_state_t;
 
+typedef enum {
+    whix_app_event_type_chan_stats = 1,
+    whix_app_event_type_chan_util,
+    whix_app_event_type_assoc_dev_stats,
+    whix_app_event_type_assoc_dev_diagnostics,
+    whix_app_event_type_max
+} whix_app_event_type_t;
+
 typedef struct {
     unsigned int            radio_index;
     unsigned int            vap_index;

@@ -78,7 +78,7 @@ wifi_app_descriptor_t app_desc[WIFI_APPS_NUM] = {
     },
     {
         wifi_app_inst_whix, 0,
-        wifi_event_type_monitor,
+        wifi_event_type_webconfig | wifi_event_type_monitor,
         true, true,
         "WHIX telemetry",
         whix_init, whix_event, whix_deinit,

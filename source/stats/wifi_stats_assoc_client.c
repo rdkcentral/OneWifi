@@ -81,7 +81,7 @@ int generate_assoc_client_provider_stats_key(wifi_mon_stats_config_t *config, ch
 
     memset(key_str, 0, key_len);
 
-    snprintf(key_str, key_len, "%04d-%02d-%02d", config->inst, mon_stats_type_associated_device_stats, config->args.vap_index);
+    snprintf(key_str, key_len, "%04d-%02d-%02d-%08lu", config->inst, mon_stats_type_associated_device_stats, config->args.vap_index, config->interval_ms);
 
     wifi_util_dbg_print(WIFI_MON, "%s:%d: provider stats key: %s\n", __func__,__LINE__, key_str);
 
@@ -101,10 +101,23 @@ int execute_assoc_client_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *
     sta_data_t *sta = NULL,  *tmp_sta = NULL;
     unsigned long temp_time = 0;
     int ret = RETURN_OK;
+    wifi_platform_property_t *wifi_prop = get_wifi_hal_cap_prop();
 
     if (args == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d input arguments are NULL args : %p\n",__func__,__LINE__, args);
         return RETURN_ERR;
+    }
+    
+    UINT radio = get_radio_index_for_vap_index(wifi_prop, args->vap_index);
+
+    if ((unsigned)RETURN_ERR == radio) {
+        wifi_util_error_print(WIFI_MON, "%s:%d Error in getting wifi_prop\n", __func__,__LINE__);
+        return RETURN_ERR;
+    }
+
+    if (mon_data->radio_presence[radio] == false) {
+        wifi_util_info_print(WIFI_MON, "%s:%d radio_presence is false for radio : %d\n",__func__,__LINE__, radio);
+        return RETURN_OK;
     }
 
     bss_param = Get_wifi_object_bss_parameter(args->vap_index);
@@ -183,6 +196,11 @@ int execute_assoc_client_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *
             }
             temp_time = ((sta->connected_time * 1000) + task_interval_ms)/1000;
             sta->connected_time = temp_time;
+            wifi_util_dbg_print(WIFI_MON, "Polled station info for, vap:%d ClientMac:%s Uplink rate:%d Downlink rate:%d Packets Sent:%d Packets Received:%d Errors Sent:%d Retrans:%d\n",
+                    (args->vap_index)+1, to_sta_key(sta->dev_stats.cli_MACAddress, sta_key), sta->dev_stats.cli_LastDataUplinkRate, sta->dev_stats.cli_LastDataDownlinkRate,
+                    sta->dev_stats.cli_PacketsSent, sta->dev_stats.cli_PacketsReceived, sta->dev_stats.cli_ErrorsSent, sta->dev_stats.cli_RetransCount);
+            wifi_util_dbg_print(WIFI_MON, "%s:%d cli_TxFrames : %llu cli_RxRetries : %llu cli_RxErrors : %llu  \n",
+                            __func__, __LINE__, hal_sta->cli_TxFrames, hal_sta->cli_RxRetries, hal_sta->cli_RxErrors);
             hal_sta++;
         }
     }

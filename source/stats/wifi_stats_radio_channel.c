@@ -89,7 +89,7 @@ int generate_radio_channel_provider_stats_key(wifi_mon_stats_config_t *config, c
 
     memset(key_str, 0, key_len);
 
-    snprintf(key_str, key_len, "%04d-%02d-%02d", config->inst, mon_stats_type_radio_channel_stats, config->args.radio_index);
+    snprintf(key_str, key_len, "%04d-%02d-%02d-%08lu", config->inst, mon_stats_type_radio_channel_stats, config->args.radio_index, config->interval_ms);
 
     convert_stat_channels_to_string(&config->args.channel_list, key_str, key_len);
 
@@ -138,6 +138,11 @@ int execute_radio_channel_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t 
     if (args == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d input arguments are NULL args : %p\n",__func__,__LINE__, args);
         return RETURN_ERR;
+    }
+
+    if (mon_data->radio_presence[args->radio_index] == false) {
+        wifi_util_info_print(WIFI_MON, "%s:%d radio_presence is false for radio : %d\n",__func__,__LINE__, args->radio_index);
+        return RETURN_OK;
     }
 
     radioOperation = getRadioOperationParam(args->radio_index);
