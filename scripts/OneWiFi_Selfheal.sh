@@ -1,6 +1,7 @@
 #!/bin/sh
 source /etc/log_timestamp.sh
 source /lib/rdk/t2Shared_api.sh
+source /usr/ccsp/tad/corrective_action.sh
 check_count=0
 vap_2g_down=0
 vap_5g_down=0
@@ -29,6 +30,9 @@ force_reset_subdoc=0
 webcfg_rfc_enabled=""
 
 SW_UPGRADE_DEFAULT_FILE="/tmp/sw_upgrade_private_defaults"
+wave_driver_restart_cnt=0
+bss_queue_full=0
+bss_queue_full_cnt=0
 
 MODEL_NUM=`grep MODEL_NUM /etc/device.properties | cut -d "=" -f2`
 LOG_FILE="/rdklogs/logs/wifi_selfheal.txt"
@@ -133,8 +137,81 @@ check_wifi_5g_stuck_status()
         fi
 }
 
+#Check for bss queue full
+check_bss_queue_full()
+{
+    if [ -f /proc/net/mtlk/wlan2.0/General ]; then
+    	bss_mgmt_free_entries_1="$(cat  /proc/net/mtlk/wlan2.0/General | grep  -w  "mgmt bds queue free entries"  | grep -o -E [0-9]+ | head -1)"
+    	bss_mgmt_free_entries_2="$(cat  /proc/net/mtlk/wlan2.0/General | grep -w  "mgmt bds queue free entries (reserved queue)" | grep -o -E [0-9]+)"
+    	if [ "$bss_mgmt_free_entries_1" == "0"  -a  "$bss_mgmt_free_entries_2" == "0" ]; then
+    		echo_t "bss Queue full" >> $LOG_FILE
+        	bss_queue_full=1
+    	else
+        	bss_queue_full=0
+        fi
+    fi
+}
+
+#wave driver restart for CMXB7
+wave_driver_restart()
+{
+        echo_t "5G private SSID is down self heal is executing" >> $LOG_FILE
+        systemctl stop onewifi.service
+        systemctl stop systemd-wave_init.service
+        sleep 3
+        systemctl start systemd-wave_init.service
+        systemctl start onewifi.service
+        echo_t "5G private SSID  self heal executed onewifi and wave driver restarted" >> $LOG_FILE
+
+}
+
+#Check bss queue for one min in 10 sec interval
+check_bss_queue_one_min()
+{
+	while true
+          do
+            check_bss_queue_full
+            if [ "$bss_queue_full" == "1"  -a  "$bss_queue_full_cnt" -le "6" ]; then
+            	sleep 10
+                ((bss_queue_full_cnt++))
+            else
+            	break
+            fi
+          done
+}
+
 while true
  do
+if [ "$MODEL_NUM" == "TG4482A" ]; then
+        #CMXB7 onewifi selfheal for Both BSS TX queues full, dropping the frame
+        echo_t "Executing Onewifi selfheal for CMXB7" >> $LOG_FILE
+        mw=0
+        checkMaintenanceWindow
+          if [ "$reb_window" == "1" ]; then
+          	  mw=1
+                  wave_driver_restart_cnt=0
+          fi
+          check_bss_queue_full
+            if [ "$bss_queue_full" == "1" ]; then
+          	if [ "$mw" == "1" ]; then
+                    echo_t "In maintenance window " >>  $LOG_FILE
+                    check_bss_queue_one_min
+                    if [ "$bss_queue_full" == "1" ]; then
+                    	wave_driver_restart
+                    	wave_driver_restart_cnt=0
+                    fi
+                else
+                        echo_t "Not in maintenance window " >>  $LOG_FILE
+                        if [ $wave_driver_restart_cnt -eq 0 ]; then
+                           check_bss_queue_one_min
+                           if [ "$bss_queue_full" == "1" ]; then
+                               wave_driver_restart
+                               wave_driver_restart_cnt=1
+                           fi
+                        fi
+                fi
+             fi
+else
  if [ $check_count == 3 ]; then
         check_count=0
         cur_timestamp="`date +"%s"` $1"
@@ -232,6 +309,20 @@ while true
             dmcli eRT setv Device.X_CISCO_COM_DeviceControl.RebootDevice string "Device"
         fi
  fi
+ 
+ if [ $cmts_try_count ==  0 ]; then
+    cmts_type=`dmcli eRT getv Device.DeviceInfo.X_RDKCENTRAL-COM_CMTS_MAC | grep "value" | cut -d ':' -f3-5`
+    if [ $cmts_type != "" ]; then
+        if [ $cmts_type !=  "00:01:5C" ];then
+            echo_t "CMTS is $cmts_type hence  executing selfheal to disable gre acceleration for public hotspots" >> /rdklogs/logs/wifi_selfheal.txt
+            echo 4 > /proc/sys/net/flowmgr/disable_gre_accel
+        else
+            echo_t "CMTS is $cmts_type hence gre acceleration enabled for public hotspots" >> /rdklogs/logs/wifi_selfheal.txt
+        fi
+        ((cmts_try_count++))
+    fi
+ fi
+fi
 
  dml_status=`dmcli eRT getv Device.WiFi.SSID.1.Enable | grep -c "error code:"`
  if [ $dml_status != 0 ]; then
