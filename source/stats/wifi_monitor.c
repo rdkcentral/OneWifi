@@ -2528,6 +2528,8 @@ void process_diagnostics	(unsigned int ap_index, wifi_associated_dev3_t *dev, un
             wifi_util_dbg_print(WIFI_MON, "Polled channel info for radio 5 : channel util:%d, channel interference:%d \n",
                     g_monitor_module.radio_data[1].channelUtil, g_monitor_module.radio_data[1].channelInterference);
 
+            wifi_util_dbg_print(WIFI_MON, "%s:%d cli_TxFrames : %llu cli_RxRetries : %llu cli_RxErrors : %llu  \n",
+                    __func__, __LINE__, hal_sta->cli_TxFrames, hal_sta->cli_RxRetries, hal_sta->cli_RxErrors);
             hal_sta++;
 
         }
