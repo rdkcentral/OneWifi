@@ -6027,6 +6027,22 @@ int init_wifidb_tables()
     return 0;
 }
 
+#if DML_SUPPORT
+void create_onewifi_migration_flag(void)
+{
+    //create file
+    FILE *fp = NULL;
+
+    fp = fopen(ONEWIFI_MIGRATION_FLAG, "a+");
+    if (fp != NULL) {
+        fclose(fp);
+        wifi_util_info_print(WIFI_DB, "%s:%d onewifi wifidb migration flag created\n", __func__, __LINE__);
+    } else {
+        wifi_util_info_print(WIFI_DB, "%s:%d onewifi wifidb migration flag create failure\n", __func__, __LINE__);
+    }
+}
+#endif
+
 /************************************************************************************
  ************************************************************************************
   Function    : start_wifidb_func
@@ -6048,8 +6064,12 @@ void *start_wifidb_func(void *arg)
     //bool isOvsSchemaCreate = false;
     wifi_util_info_print(WIFI_DB, "start_wifidb_func \n");
     wifi_mgr_t *g_wifidb;
-    g_wifidb = get_wifimgr_obj();
+#if DML_SUPPORT
+    char last_reboot_reason[32];
 
+    memset(last_reboot_reason, 0, sizeof(last_reboot_reason));
+#endif
+    g_wifidb = get_wifimgr_obj();
     prctl(PR_SET_NAME,  __func__, 0, 0, 0);
 
     g_wifidb->is_db_update_required = false;
@@ -6074,6 +6094,22 @@ void *start_wifidb_func(void *arg)
         wifi_util_info_print(WIFI_DB,"%s:%d: Could not find rdkb database, ..creating\n", __func__, __LINE__);
         sprintf(cmd, "ovsdb-tool create %s %s/rdkb-wifi.ovsschema", db_file, WIFIDB_SCHEMA_DIR);
         system(cmd);
+
+#if DML_SUPPORT
+        if (g_wifidb->ctrl.rbus_handle != NULL) {
+            if (get_rbus_param(g_wifidb->ctrl.rbus_handle, rbus_string_data, LAST_REBOOT_REASON_NAMESPACE, last_reboot_reason) != RETURN_OK) {
+                get_wifi_last_reboot_reason_psm_value(last_reboot_reason);
+            }
+        } else {
+            get_wifi_last_reboot_reason_psm_value(last_reboot_reason);
+        }
+        wifi_util_info_print(WIFI_DB,"%s:%d last_reboot_reason:%s \n",__func__, __LINE__, last_reboot_reason);
+        if ((strlen(last_reboot_reason) != 0) && (strncmp(last_reboot_reason, "factory-reset", strlen("factory-reset")) != 0) &&
+            (strncmp(last_reboot_reason, "kernel-panic", strlen("kernel-panic")) != 0) &&
+            (strncmp(last_reboot_reason, "WPS-Factory-Reset", strlen("WPS-Factory-Reset")) != 0)) {
+            create_onewifi_migration_flag();
+        }
+#endif
     } else {
         /*check for db-version of the db file. If db-version is less than than the OneWiFi Schema db version, then
          * Delete the exisiting schema file and create it. So that OneWiFi will update the configuration based on
@@ -6109,6 +6145,9 @@ void *start_wifidb_func(void *arg)
                 sprintf(cmd, "ovsdb-tool create %s %s/rdkb-wifi.ovsschema", db_file, WIFIDB_SCHEMA_DIR);
                 system(cmd);
                 g_wifidb->is_db_update_required = true;
+#if DML_SUPPORT
+                create_onewifi_migration_flag();
+#endif
             }
         }
 
