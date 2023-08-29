@@ -5665,7 +5665,7 @@ void init_wifidb_data()
                 wifidb_update_wifi_vap_config(r_index, l_vap_param_cfg, l_rdk_vap_param_cfg);
             }
 #if DML_SUPPORT
-            if (country_code[0] != '\0') {
+            if (country_code[0] != 0) {
                 char radio_country_code[COUNTRY_CODE_LEN] = {0};
                 wifi_countrycode_type_t r_country_code;
                 strncpy(radio_country_code, country_code, strlen(country_code) - 1);
@@ -5700,7 +5700,7 @@ void init_wifidb_data()
         wifidb_get_wifi_global_config(&g_wifidb->global_config.global_parameters);
         wifidb_get_gas_config(g_wifidb->global_config.gas_config.AdvertisementID,&g_wifidb->global_config.gas_config);
 #if DML_SUPPORT
-        if (country_code[0] != '\0') {
+        if (country_code[0] != 0) {
             if (strcmp(country_code, g_wifidb->global_config.global_parameters.wifi_region_code) != 0) {
                 strncpy(g_wifidb->global_config.global_parameters.wifi_region_code, country_code, sizeof(g_wifidb->global_config.global_parameters.wifi_region_code));
                 wifidb_update_wifi_global_config(&g_wifidb->global_config.global_parameters);
