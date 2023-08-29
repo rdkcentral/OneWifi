@@ -3895,6 +3895,36 @@ int wifi_vap_cfg_rollback_handler()
     return RETURN_OK;
 }
 
+void process_managed_wifi_disable ()
+{
+    int ret = RETURN_ERR;
+    pErr execRetVal = NULL;
+
+    wifi_util_info_print(WIFI_CTRL,"Enter %s:%d\n", __func__, __LINE__);
+    execRetVal = create_execRetVal();
+    if (execRetVal == NULL ) {
+        wifi_util_error_print(WIFI_CTRL, "%s: malloc failure\n", __func__);
+        return ;
+    }
+
+    cJSON *managed_blob = cJSON_CreateObject();
+    cJSON_AddBoolToObject(managed_blob, "connected_building_enabled", false);
+
+
+    ret = connected_subdoc_handler(managed_blob, VAP_PREFIX_LNF_PSK, webconfig_subdoc_type_lnf, false,  execRetVal);
+    if (ret != RETURN_OK) {
+        wifi_util_error_print(WIFI_CTRL, "%s:Managed LNF vaps were not disabled \n", __func__);
+    }
+    ret = connected_subdoc_handler(managed_blob, VAP_PREFIX_HOTSPOT, webconfig_subdoc_type_xfinity, false, execRetVal);
+    if (ret != RETURN_OK) {
+        wifi_util_error_print(WIFI_CTRL, "%s:Managed xfinity vaps were not disabled \n", __func__);
+    }
+
+    wifi_util_info_print(WIFI_CTRL,"managed_guest vaps are reverted back to lnf_psk\n");
+    free(execRetVal);
+    cJSON_Delete(managed_blob);
+}
+
 int register_multicomp_subdocs()
 {
     // PAM delivers xfinity blob  and connectedbuilding blobs as hotspot,connectedbuilding - so OneWifi will register for both blobs

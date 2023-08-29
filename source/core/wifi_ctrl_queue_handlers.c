@@ -2726,6 +2726,10 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len, wifi_
             push_whix_config_event_to_monitor_queue(mon_stats_request_state_start);
             break;
 
+        case wifi_event_type_managed_wifi_disable:
+            process_managed_wifi_disable();
+            break;
+ 
         case wifi_event_type_eth_bh_status:
             process_eth_bh_status_command(*(bool *)data);
             break;

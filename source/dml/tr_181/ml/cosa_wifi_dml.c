@@ -849,6 +849,22 @@ WiFi_SetParamBoolValue
         }
         return TRUE;
     }
+
+    if (AnscEqualString(ParamName, "Managed_WiFi_Enabled", TRUE))
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d push_managed_wifi_disable_to_ctrl_queue to ctrl queue\n", __func__, __LINE__);
+        if (!bValue) {
+            if (push_managed_wifi_disable_to_ctrl_queue() == RETURN_ERR) {
+                wifi_util_error_print(WIFI_DMCLI,"%s:%d Failed to push_managed_wifi_disable_to_ctrl_queue to ctrl queue\n", __func__, __LINE__);
+                return FALSE;
+            }
+        } else {
+            wifi_util_error_print(WIFI_DMCLI,"Managed-WIFI cannot be enabled through TR-181\n");
+            return FALSE;
+        }
+        return TRUE;
+    }
+
     if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_PreferPrivate", TRUE))
     {
         if(global_wifi_config->global_parameters.prefer_private == bValue)

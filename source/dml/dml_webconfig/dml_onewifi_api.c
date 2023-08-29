@@ -845,6 +845,15 @@ int push_wifi_host_sync_to_ctrl_queue()
     return RETURN_OK;
 }
 
+int push_managed_wifi_disable_to_ctrl_queue()
+{
+    bool msg = FALSE;
+    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Pushing managed wifi disable to ctrl queue\n", __func__, __LINE__);
+    push_event_to_ctrl_queue((void *)&msg, 0, wifi_event_type_command, wifi_event_type_managed_wifi_disable, NULL);
+
+    return RETURN_OK;
+}
+
 int push_kick_assoc_to_ctrl_queue(int vap_index) 
 {
     char tmp_str[120];
