@@ -1008,6 +1008,7 @@ rbusError_t levl_get_handler(rbusHandle_t handle, rbusProperty_t property, rbusG
     char parameter[MAX_EVENT_NAME_SIZE];
     wifi_app_t *wifi_app =  NULL;
     wifi_apps_mgr_t *apps_mgr = NULL;
+    mac_address_t null_mac = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     if (ctrl == NULL) {
@@ -1040,6 +1041,7 @@ rbusError_t levl_get_handler(rbusHandle_t handle, rbusProperty_t property, rbusG
     if (strcmp(parameter, "clientMac") == 0) {
         char mac_string[18];
         memset(mac_string, 0, 18);
+        to_mac_str(null_mac, mac_string);
         rbusValue_SetString(value, mac_string);
     } else if(strcmp(parameter, "maxNumberCSIClients") == 0) {
         if (wifi_app->data.u.levl.max_num_csi_clients == 0) {
