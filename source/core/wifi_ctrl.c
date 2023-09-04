@@ -1873,12 +1873,18 @@ int sync_wifi_hal_hotspot_vap_mac_entry_with_db(void)
     }
 
     acl_db_count  = hash_map_count(rdk_vap_info->acl_map);
+#ifdef NL80211_ACL
+    ret = wifi_hal_getApAclDeviceNum(vap_index, &acl_hal_count);
+#else
     ret = wifi_getApAclDeviceNum(vap_index, &acl_hal_count);
+#endif
+
     if (ret != RETURN_OK) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d: wifi get ap acl device count failure:%d hal acl count:%d\r\n", __func__, __LINE__, ret, acl_hal_count);
     }
 
     if ((acl_db_count == 0) || (acl_db_count == acl_hal_count)) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d: acl_db_count = %d acl_hal_count = %d\r\n", __func__, __LINE__, acl_db_count, acl_hal_count);
         return RETURN_OK;
     }
 
@@ -1890,7 +1896,11 @@ int sync_wifi_hal_hotspot_vap_mac_entry_with_db(void)
             memcpy(&acl_device_mac,&acl_entry->mac,sizeof(mac_address_t));
             to_mac_str(acl_device_mac, mac_str);
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d: calling wifi_addApAclDevice for mac %s vap_index %d\n", __func__, __LINE__, mac_str, vap_index);
+#ifdef NL80211_ACL
+            if (wifi_hal_addApAclDevice(vap_index, (CHAR *) mac_str) != RETURN_OK) {
+#else
             if (wifi_addApAclDevice(vap_index, (CHAR *) mac_str) != RETURN_OK) {
+#endif
                 wifi_util_error_print(WIFI_CTRL,"%s:%d wifi_addApAclDevice failed. vap_index:%d MAC:'%s'\n", __func__, __LINE__, vap_index, mac_str);
             }
         }
