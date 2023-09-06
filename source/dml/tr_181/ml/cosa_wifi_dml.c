@@ -844,6 +844,7 @@ WiFi_SetParamBoolValue
 
     if(AnscEqualString(ParamName, "X_CISCO_COM_ResetRadios", TRUE))
     {
+	radio_reset_count++;
         return TRUE;
     }
 
