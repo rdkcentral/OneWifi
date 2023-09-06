@@ -30,6 +30,7 @@ extern "C" {
 #define WIFI_LEVL_NUMBEROFENTRIES           "Device.WiFi.X_RDK_CSI_LEVL.maxNumberCSIClients"
 #define WIFI_LEVL_CSI_DATA                  "Device.WiFi.X_RDK_CSI_LEVL.data"
 #define WIFI_LEVL_SOUNDING_DURATION         "Device.WiFi.X_RDK_CSI_LEVL.Duration"
+#define WIFI_LEVL_CSI_STATUS                "Device.WiFi.X_RDK_CSI_LEVL.soundingStatus"
 
 typedef struct {
     unsigned int    max_probe_ttl_cnt;

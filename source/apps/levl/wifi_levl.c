@@ -39,6 +39,43 @@ static int schedule_mac_for_sounding(int ap_index, mac_address_t mac_address);
 static int process_levl_sounding_timeout(timeout_data_t *t_data);
 static int process_levl_postpone_sounding(wifi_app_t *app);
 
+static int levl_csi_status_publish(rbusHandle_t rbus_handle, mac_addr_t mac_addr, unsigned int status)
+{
+    rbusEvent_t event;
+    rbusObject_t rdata;
+    rbusValue_t value;
+    char eventName[MAX_EVENT_NAME_SIZE];
+    char eventValue[50];
+    mac_addr_str_t mac_str = { 0 };
+    int rc;
+
+    snprintf(eventName, MAX_EVENT_NAME_SIZE, "%s", WIFI_LEVL_CSI_STATUS);
+    snprintf(eventValue, sizeof(eventValue), "%s;%d", to_mac_str(mac_addr, mac_str), status);
+
+    rbusValue_Init(&value);
+    rbusObject_Init(&rdata, NULL);
+
+    rbusObject_SetValue(rdata, eventName, value);
+    rbusValue_SetString(value, eventValue);
+    event.name = eventName;
+    event.data = rdata;
+    event.type = RBUS_EVENT_GENERAL;
+
+    rc = rbusEvent_Publish(rbus_handle, &event);
+    if ((rc != RBUS_ERROR_SUCCESS) && (rc != RBUS_ERROR_NOSUBSCRIBERS)) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d: rbusEvent_Publish Event failed %d\n", __func__, __LINE__, rc);
+        return RETURN_ERR;
+    } else {
+        wifi_util_dbg_print(WIFI_APPS, "%s:%d: rbusEvent_Publish Event for %s %s\n", __func__, __LINE__, eventName, eventValue);
+    }
+
+    rbusValue_Release(value);
+    rbusObject_Release(rdata);
+
+    return RETURN_OK;
+}
+
+
 static int schedule_from_pending_map(wifi_app_t *wifi_app)
 {
     int p_map_count = 0, ap_index = 0;
@@ -369,6 +406,7 @@ static int process_levl_sounding_timeout(timeout_data_t *t_data)
         //No current sounding for this MAC
         wifi_util_error_print(WIFI_APPS,"%s:%d Disable CSI Sounding for %02x:...%02x\n", __func__, __LINE__, t_data->mac_addr[0], t_data->mac_addr[5]);
         csi_app->data.u.csi.csi_fns.csi_stop_fn(csi_app, t_data->ap_index, t_data->mac_addr, wifi_app_inst_levl);
+        levl_csi_status_publish(wifi_app->rbus_handle, t_data->mac_addr, 0);
         levl_sc_data = hash_map_remove(curr_map, mac_str);
         if (levl_sc_data != NULL) {
             free(levl_sc_data);
@@ -461,6 +499,7 @@ static int schedule_mac_for_sounding(int ap_index, mac_address_t mac_address)
             free(t_data);
             return RETURN_OK;
         }
+        levl_csi_status_publish(wifi_app->rbus_handle, mac_address, 1);
 
         scheduler_add_timer_task(ctrl->sched, FALSE, &(levl_sc_data->sched_handler_id),
                 process_levl_sounding_timeout, t_data, wifi_app->data.u.levl.sounding_duration, 1);
@@ -592,6 +631,7 @@ void levl_disassoc_device_event(wifi_app_t *apps, void *data)
         wifi_util_error_print(WIFI_APPS,"%s:%d Disabling Sounding for MAC %02x:...:%02x\n", __func__, __LINE__,
                 assoc_data->dev_stats.cli_MACAddress[0],assoc_data->dev_stats.cli_MACAddress[5]);
         csi_app->data.u.csi.csi_fns.csi_stop_fn(csi_app, assoc_data->ap_index, assoc_data->dev_stats.cli_MACAddress, wifi_app_inst_levl);
+        levl_csi_status_publish(wifi_app->rbus_handle, assoc_data->dev_stats.cli_MACAddress, 0);
         pthread_mutex_lock(&apps->data.u.levl.lock);
     }
 
@@ -756,6 +796,7 @@ int process_csi_stop_levl(wifi_app_t *app)
             levl_sched_data->sched_handler_id = 0;
         }
         csi_app->data.u.csi.csi_fns.csi_stop_fn(csi_app, levl_sched_data->ap_index, levl_sched_data->mac_addr, wifi_app_inst_levl);
+        levl_csi_status_publish(app->rbus_handle, levl_sched_data->mac_addr, 0);
         levl_sched_data = hash_map_get_next(app->data.u.levl.curr_sounding_mac_map, levl_sched_data);
         tmp_data = (levl_sched_data_t *)hash_map_remove(app->data.u.levl.curr_sounding_mac_map, mac_str);
         hash_map_put(app->data.u.levl.pending_mac_map, strdup(mac_str), tmp_data);
@@ -953,6 +994,7 @@ int levl_deinit(wifi_app_t *app)
             scheduler_cancel_timer_task(ctrl->sched, levl_sched_data->sched_handler_id);
         }
         csi_app->data.u.csi.csi_fns.csi_stop_fn(csi_app, levl_sched_data->ap_index, levl_sched_data->mac_addr, wifi_app_inst_levl);
+        levl_csi_status_publish(app->rbus_handle, levl_sched_data->mac_addr, 0);
         levl_sched_data = hash_map_get_next(app->data.u.levl.curr_sounding_mac_map, levl_sched_data);
         tmp_data = (levl_sched_data_t *)hash_map_remove(app->data.u.levl.curr_sounding_mac_map, mac_str);
         if (tmp_data != NULL) {
@@ -1251,6 +1293,8 @@ int levl_init(wifi_app_t *app, unsigned int create_flag)
             { levl_get_handler, levl_set_handler, NULL, NULL, NULL, NULL}},
         { WIFI_LEVL_SOUNDING_DURATION, RBUS_ELEMENT_TYPE_PROPERTY,
             { levl_get_handler, levl_set_handler, NULL, NULL, NULL, NULL}},
+        { WIFI_LEVL_CSI_STATUS, RBUS_ELEMENT_TYPE_EVENT,
+            { NULL, NULL, NULL, NULL, NULL, NULL }}
 
     };
 
