@@ -2303,7 +2303,7 @@ int get_sta_stats_for_vap(int ap_index, wifi_associated_dev3_t *assoc_dev_array,
     sta_data = hash_map_get_first(sta_map);
 
     if (sta_data == NULL) {
-        wifi_util_error_print(WIFI_MON, "%s:%d: NULL pointer\n", __func__, __LINE__);
+        wifi_util_dbg_print(WIFI_MON, "%s:%d: NULL pointer\n", __func__, __LINE__);
         pthread_mutex_unlock(&g_monitor_module.data_lock);
         return -1;
     }
