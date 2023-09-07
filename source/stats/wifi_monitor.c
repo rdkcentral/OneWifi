@@ -5625,7 +5625,7 @@ void monitor_enable_instant_msmt(mac_address_t sta_mac, bool enable)
             data.ap_index = vap_index;
 
             pthread_mutex_unlock(&g_monitor_module.queue_lock);
-            push_event_to_monitor_queue(&data, wifi_event_monitor_stats_flag_change, NULL);
+            push_event_to_monitor_queue(&data, wifi_event_monitor_start_inst_msmt, NULL);
 
             return;
         }
