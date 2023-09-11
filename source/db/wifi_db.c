@@ -5575,6 +5575,23 @@ static void wifidb_vap_config_ext(wifi_vap_info_map_t *config, rdk_wifi_vap_info
     }
 }
 
+void wifidb_vap_config_correction(wifi_vap_info_map_t *l_vap_map_param)
+{
+    unsigned int index = 0;
+    wifi_vap_info_t *vap_config = NULL;
+
+    for (index = 0; index < l_vap_map_param->num_vaps; index++) {
+        vap_config = &l_vap_map_param->vap_array[index];
+        if (isVapPrivate(vap_config->vap_index)) {
+            if (vap_config->u.bss_info.wps.enable == false) {
+                vap_config->u.bss_info.wps.enable = true;
+                wifi_util_info_print(WIFI_DB, "%s:%d force wps enabled for private_vap:%d\r\n",__func__, __LINE__, vap_config->vap_index);
+            }
+            break;
+        }
+    }
+}
+
 /************************************************************************************
  ************************************************************************************
   Function    : init_wifidb_data
@@ -5682,6 +5699,9 @@ void init_wifidb_data()
                 wifidb_print("%s:%d wifidb_get_wifi_vap_config failed\n",__func__, __LINE__);
                 wifidb_update_wifi_vap_config(r_index, l_vap_param_cfg, l_rdk_vap_param_cfg);
             }
+
+            wifidb_vap_config_correction(l_vap_param_cfg);
+
 #if DML_SUPPORT
             if (country_code[0] != 0) {
                 char radio_country_code[COUNTRY_CODE_LEN] = {0};
