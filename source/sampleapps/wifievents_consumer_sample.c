@@ -30,6 +30,9 @@
 #include <wifi_monitor.h>
 #include <sys/time.h>
 #include <sys/stat.h>
+#include <fcntl.h>
+#include <wifi_base.h>
+#include <errno.h>
 
 #define MAX_EVENTS 10
 #define DEFAULT_CSI_INTERVAL 500
@@ -49,6 +52,9 @@ FILE *g_fpg = NULL;
 char g_component_name[RBUS_MAX_NAME_LENGTH];
 char g_debug_file_name[RBUS_MAX_NAME_LENGTH];
 int g_pid;
+bool g_motion_sub  = false;
+
+int pipe_read_fd = -1;
 
 rbusHandle_t g_handle;
 rbusEventSubscription_t *g_all_subs = NULL;
@@ -384,6 +390,79 @@ void rotate_and_write_CSIData(mac_address_t sta_mac, wifi_csi_data_t *csi) {
     }
 
     WIFI_EVENT_CONSUMER_DGB("Exit %s: %d\n", __FUNCTION__, __LINE__);
+}
+
+static void print_csi_data(char *buffer)
+{
+    char csilabel[4];
+    unsigned int total_length, num_csi_clients, csi_data_length;
+    time_t datetime;
+    wifi_csi_data_t csi;
+    mac_address_t  sta_mac;
+    char buf[128] = {0};
+    char *data_ptr = NULL;
+    int itr;
+
+    if (g_disable_csi_log) {
+        return;
+    }
+
+    if (buffer != NULL) {
+        data_ptr = buffer;
+    } else {
+        WIFI_EVENT_CONSUMER_DGB("NULL Pointer\n");
+        return;
+    }
+
+    //ASCII characters "CSI"
+    memcpy(csilabel, data_ptr, 4);
+    data_ptr = data_ptr + 4;
+    WIFI_EVENT_CONSUMER_DGB("%s\n", csilabel);
+
+    //Total length:  <length of this entire data field as an unsigned int>
+    memcpy(&total_length, data_ptr, sizeof(unsigned int));
+    data_ptr = data_ptr + sizeof(unsigned int);
+    WIFI_EVENT_CONSUMER_DGB("total_length %u\n", total_length);
+
+    //DataTimeStamp:  <date-time, number of seconds since the Epoch>
+    memcpy(&datetime, data_ptr, sizeof(time_t));
+    data_ptr = data_ptr + sizeof(time_t);
+    memset(buf, 0, sizeof(buf));
+    ctime_r(&datetime, buf);
+    WIFI_EVENT_CONSUMER_DGB("datetime %s\n", buf);
+
+    //NumberOfClients:  <unsigned int number of client devices>
+    memcpy(&num_csi_clients, data_ptr, sizeof(unsigned int));
+    data_ptr = data_ptr + sizeof(unsigned int);
+    WIFI_EVENT_CONSUMER_DGB("num_csi_clients %u\n", num_csi_clients);
+
+    //clientMacAddress:  <client mac address>
+    memcpy(&sta_mac, data_ptr, sizeof(mac_address_t));
+    data_ptr = data_ptr + sizeof(mac_address_t);
+    WIFI_EVENT_CONSUMER_DGB("==========================================================");
+    WIFI_EVENT_CONSUMER_DGB("MAC %02x%02x%02x%02x%02x%02x\n", sta_mac[0], sta_mac[1], sta_mac[2], sta_mac[3], sta_mac[4], sta_mac[5]);
+
+    //length of client CSI data:  <size of the next field in bytes>
+    memcpy(&csi_data_length,data_ptr, sizeof(unsigned int));
+    data_ptr = data_ptr + sizeof(unsigned int);
+    WIFI_EVENT_CONSUMER_DGB("csi_data_length %u\n", csi_data_length);
+
+    //<client device CSI data>
+    memcpy(&csi, data_ptr, sizeof(wifi_csi_data_t));
+
+    //Writing the CSI data to /tmp/CSI.bin
+    rotate_and_write_CSIData(sta_mac, &csi);
+
+    //Printing _wifi_frame_info
+    WIFI_EVENT_CONSUMER_DGB("bw_mode %d, mcs %d, Nr %d, Nc %d, valid_mask %hu, phy_bw %hu, cap_bw %hu, num_sc %hu, decimation %d, channel %d, time_stamp %llu",csi.frame_info.bw_mode, csi.frame_info.mcs, csi.frame_info.Nr, csi.frame_info.Nc,csi.frame_info.valid_mask,csi.frame_info.phy_bw, csi.frame_info.cap_bw, csi.frame_info.num_sc, csi.frame_info.decimation, csi.frame_info.channel, csi.frame_info.time_stamp);
+
+    //Printing rssii
+    WIFI_EVENT_CONSUMER_DGB("rssi values on each Nr are");
+    for(itr=0; itr<=csi.frame_info.Nr; itr++) {
+        WIFI_EVENT_CONSUMER_DGB("%d...", csi.frame_info.nr_rssi[itr]);
+    }
+    WIFI_EVENT_CONSUMER_DGB("==========================================================");
+    return;
 }
 
 static void csiDataHandler(rbusHandle_t handle, rbusEventRawData_t const* event, 
@@ -734,6 +813,9 @@ static void termSignalHandler(int sig)
         snprintf(name, RBUS_MAX_NAME_LENGTH, "Device.WiFi.X_RDK_CSI.%d.", g_csi_index);
         WIFI_EVENT_CONSUMER_DGB("Remove %s", name);
         rbusTable_removeRow(g_handle, name);
+        if (pipe_read_fd > 0) {
+            close(pipe_read_fd);
+        }
     }
 
     rbus_close(g_handle);
@@ -754,6 +836,7 @@ int main(int argc, char *argv[])
     int rc = RBUS_ERROR_SUCCESS;
     int sub_index = 0, csi_sub_index = 0;
     rbusHandle_t directHandle = NULL;
+    char fifo_path[64] = {0};
 
     /* Add pid to rbus component name */
     g_pid = getpid();
@@ -906,6 +989,7 @@ int main(int argc, char *argv[])
                 WIFI_EVENT_CONSUMER_DGB("Add subscription %s", name);
                 fillCsiSubscribtion(csi_sub_index, name, i);
                 csi_sub_index++;
+                g_motion_sub = true;
                 break;
             case 5: /* Device.WiFi.X_RDK_CSI.{i}.ClientMaclist */
             case 7: /* Device.WiFi.X_RDK_CSI.{i}.Enable */
@@ -946,6 +1030,44 @@ int main(int argc, char *argv[])
         {
             printf("consumer: rbusEvent_SubscribeExNoCopy failed: %d\n", rc);
             goto exit3;
+        }
+    }
+
+    if (g_motion_sub) {
+        snprintf(fifo_path, sizeof(fifo_path), "/tmp/csi_motion_pipe%d", g_csi_index);
+        pipe_read_fd = open(fifo_path, O_RDONLY | O_NONBLOCK);
+        if (pipe_read_fd < 0) {
+            WIFI_EVENT_CONSUMER_DGB("Error openning fifo for session number %d %s\n", g_csi_index, strerror(errno));
+            return -1;
+        }
+
+        fd_set readfds;
+        FD_ZERO(&readfds);
+        FD_SET(pipe_read_fd, &readfds);
+
+        size_t numRead;
+        while(1)
+        {
+            int buffer_size = CSI_HEADER_SIZE + sizeof(wifi_csi_data_t);
+            char buffer[buffer_size];
+            memset(buffer, 0, sizeof(buffer));
+
+            int ready = select(pipe_read_fd + 1, &readfds, NULL, NULL, NULL);
+            if (ready == -1) {
+                WIFI_EVENT_CONSUMER_DGB("Something went Wrong");
+                goto exit;
+            } else if (ready == 0) {
+                WIFI_EVENT_CONSUMER_DGB("TIMEOUT");
+            } else {
+                if (FD_ISSET(pipe_read_fd, &readfds)) {
+                    numRead = read(pipe_read_fd, buffer, sizeof(buffer));
+                    if (numRead > 0) {
+                        print_csi_data(buffer);
+                    }
+                }
+            }
+            FD_ZERO(&readfds);
+            FD_SET(pipe_read_fd, &readfds);
         }
     }
 

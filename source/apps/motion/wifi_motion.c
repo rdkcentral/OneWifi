@@ -31,8 +31,11 @@
 #endif
 #include <rbus.h>
 #include <telemetry_busmessage_sender.h>
+#include <fcntl.h>
+#include <errno.h>
 
 #define UNREFERENCED_PARAMETER(_p_)         (void)(_p_)
+
 const char *wifi_log = "/rdklogs/logs/WiFilog.txt.0";
 bool csi_check_timeout(csi_session_t *csi, int client_idx, struct timeval* t_now)
 {
@@ -41,7 +44,7 @@ bool csi_check_timeout(csi_session_t *csi, int client_idx, struct timeval* t_now
     struct timeval timeout;
 
     if (csi == NULL || t_now == NULL) {
-        wifi_util_dbg_print(WIFI_MON, "%s: Invalid arguments. csi %p, t_now %p\n",__func__, csi, t_now);
+        wifi_util_dbg_print(WIFI_APPS, "%s: Invalid arguments. csi %p, t_now %p\n",__func__, csi, t_now);
         return FALSE;
     }
     //Need to support the fluctuation of csi interval coming from the driver
@@ -181,6 +184,7 @@ static csi_session_t* csi_get_session(bool create, int csi_session_number) {
     csi_session_t *csi = NULL;
     int count = 0, i = 0;
     queue_t *csi_queue = get_csi_session_queue();
+    char fifo_path[64] = {0};
 
     count = queue_count(csi_queue);
     for (i = 0; i<count; i++) {
@@ -208,6 +212,11 @@ static csi_session_t* csi_get_session(bool create, int csi_session_number) {
     csi->csi_sess_number = csi_session_number;
     csi->enable = FALSE;
     csi->subscribed = FALSE;
+    csi->csi_fd = -1;
+
+    //Create FIFO fr the session.
+    snprintf(fifo_path, sizeof(fifo_path), "/tmp/csi_motion_pipe%d", csi_session_number);
+    mkfifo(fifo_path, 0777);
 
     queue_push(csi_queue, csi);
     return csi;
@@ -364,7 +373,7 @@ void csi_set_client_mac(char *r_mac_list, int csi_session_number)
             memcpy(&csi->last_publish_time[i], &t_now, sizeof(struct timeval));
         }
     }
-    wifi_util_info_print(WIFI_MON, "%s: Total mac's present -  %d %s\n",__func__, csi->no_of_mac, r_mac_list);
+    wifi_util_info_print(WIFI_APPS, "%s: Total mac's present -  %d %s\n",__func__, csi->no_of_mac, r_mac_list);
 }
 
 static void csi_enable_client(csi_session_t *csi)
@@ -551,6 +560,7 @@ void csi_del_session(int csi_sess_number)
 {
     int count = 0;
     int i = 0;
+    char fifo_path[64] = {0};
     csi_session_t *csi = NULL;
 
     queue_t *csi_queue = get_csi_session_queue();
@@ -570,6 +580,12 @@ void csi_del_session(int csi_sess_number)
         if (csi->csi_sess_number == csi_sess_number) {
             wifi_util_dbg_print(WIFI_APPS, "%s: Found Element\n",__func__);
             queue_remove(csi_queue, i);
+
+            //Close FIFO
+            snprintf(fifo_path, sizeof(fifo_path), "/tmp/csi_motion_pipe%d", csi_sess_number);
+            close(csi->csi_fd);
+            csi->csi_fd = -1;
+            unlink(fifo_path);
 
             csi_disable_client(csi);
             free(csi);
@@ -1325,17 +1341,38 @@ int hal_event_motion(wifi_app_t *app, wifi_event_subtype_t sub_type, void *data)
     return RETURN_OK;
 }
 
-void motion_csi_publish(mac_address_t mac_address, wifi_csi_dev_t *csi_dev_data, int csi_session_num)
+int do_pipe_publish(char *buffer, size_t len, csi_session_t *csi)
 {
-    char eventName[MAX_EVENT_NAME_SIZE];
-    wifi_app_t *wifi_app = NULL;
-    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    wifi_apps_mgr_t *apps_mgr;
+    char fifo_path[64] = {0};
 
-    apps_mgr = &ctrl->apps_mgr;
-    wifi_app = get_app_by_inst(apps_mgr, wifi_app_inst_motion);
-    if (wifi_app == NULL) {
-        wifi_util_error_print(WIFI_APPS,"%s:%d NULL wifi_app pointer\n", __func__, __LINE__);
+    if (csi == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d NULL Pointer\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    if (csi->csi_fd < 0) {
+        sprintf(fifo_path, "/tmp/csi_motion_pipe%d", csi->csi_sess_number);
+        csi->csi_fd = open(fifo_path, O_WRONLY);
+        if (csi->csi_fd < 0) {
+            wifi_util_error_print(WIFI_APPS, "%s(): Failed to open pipe reason %s\n", __func__, strerror(errno));
+            return RETURN_ERR;
+        }
+    }
+    if (csi->csi_fd > 0)
+    {
+        if ((write(csi->csi_fd, buffer, len) < 0)) {
+            wifi_util_dbg_print(WIFI_APPS, "%s:%d Messed up write error is %s\n", __func__, __LINE__, strerror(errno));
+            return RETURN_ERR;
+        }
+    }
+    return RETURN_OK;
+
+}
+
+void motion_csi_publish(mac_address_t mac_address, wifi_csi_dev_t *csi_dev_data, csi_session_t *csi)
+{
+    if (csi == NULL) {
+        wifi_util_error_print(WIFI_APPS,"%s:%d NULL Pointer\n", __func__, __LINE__);
         return;
     }
 
@@ -1343,8 +1380,6 @@ void motion_csi_publish(mac_address_t mac_address, wifi_csi_dev_t *csi_dev_data,
     unsigned int total_length, num_csi_clients, csi_data_length, curr_length = 0;
     time_t datetime;
     char *header = csi_dev_data->header;
-
-    sprintf(eventName, "Device.WiFi.X_RDK_CSI.%d.data", csi_session_num);
 
     memcpy(header,"CSI", (strlen("CSI") + 1));
     curr_length = curr_length + strlen("CSI") + 1;
@@ -1367,15 +1402,9 @@ void motion_csi_publish(mac_address_t mac_address, wifi_csi_dev_t *csi_dev_data,
     csi_data_length = sizeof(wifi_csi_data_t);
     memcpy((header + curr_length), &csi_data_length, sizeof(unsigned int));
 
-    int buffer_size = CSI_HEADER_SIZE + sizeof(wifi_csi_data_t);
+    size_t buffer_len = CSI_HEADER_SIZE + sizeof(wifi_csi_data_t);
 
-    //Publish using new API
-    rbusEventRawData_t event_data;
-    event_data.name  = eventName;
-    event_data.rawData = csi_dev_data->header;
-    event_data.rawDataLen = buffer_size;
-    rbusEvent_PublishRawData(wifi_app->data.u.motion.rbus_handle, &event_data);
-
+    do_pipe_publish(csi_dev_data->header, buffer_len, csi);
     return;
 }
 
@@ -1423,7 +1452,7 @@ void process_csi_data(wifi_app_t *app, wifi_csi_dev_t *csi_dev_data)
             if (csi->csi_time_interval == MIN_CSI_INTERVAL || csi_check_timeout(csi, j, &t_now)) {
                 wifi_util_dbg_print(WIFI_APPS, "%s: Publish CSI Event - MAC  %02x:%02x:%02x:%02x:%02x:%02x Session %d\n",__func__, mac_addr[0], mac_addr[1],
                                                         mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5], csi->csi_sess_number);
-                motion_csi_publish(csi_dev_data->sta_mac, csi_dev_data, csi->csi_sess_number);
+                motion_csi_publish(csi_dev_data->sta_mac, csi_dev_data, csi);
                 csi->last_publish_time[j] = t_now;
             }
         }
@@ -1614,6 +1643,35 @@ int motion_stop_fn(void* wifi_app, unsigned int ap_index, mac_addr_t mac_addr, i
     return 0;
 }
 
+static void pipeSignalHandler(int sig)
+{
+    wifi_util_info_print(WIFI_APPS, "%s:%d Caught SIGPIPE\n", __func__, __LINE__);
+    int count = 0;
+    int itr = 0;
+    char fifo_path[64] = {0};
+    csi_session_t *csi = NULL;
+
+    queue_t *csi_queue = get_csi_session_queue();
+    if (csi_queue == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d: NULL Pointer Unable to delete session\n", __func__, __LINE__);
+        return;
+    }
+    count = queue_count(csi_queue);
+    for(itr=0; itr<count; itr++) {
+        csi = queue_peek(csi_queue, itr);
+        if (csi ==  NULL) {
+            continue;
+        }
+        snprintf(fifo_path, sizeof(fifo_path), "/tmp/csi_motion_pipe%d", csi->csi_sess_number);
+        if (csi->csi_fd > 0) {
+            close(csi->csi_fd);
+            csi->csi_fd = -1;
+            unlink(fifo_path);
+        }
+    }
+
+}
+
 int motion_init(wifi_app_t *app, unsigned int create_flag)
 {
     int rc = RBUS_ERROR_SUCCESS;
@@ -1631,6 +1689,12 @@ int motion_init(wifi_app_t *app, unsigned int create_flag)
             { csi_get_handler, NULL, NULL, NULL, NULL, NULL}},
 
     };
+
+    //Creating named Pipe.
+    struct sigaction new_action;
+    memset(&new_action, 0, sizeof(struct sigaction));
+    new_action.sa_handler = pipeSignalHandler;
+    sigaction(SIGPIPE, &new_action, NULL);
 
     wifi_app_t *csi_app = NULL;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();

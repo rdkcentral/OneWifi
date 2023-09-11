@@ -50,6 +50,7 @@ typedef struct {
     int  csi_time_interval;
     int  no_of_mac;
     int  csi_sess_number;
+    int  csi_fd;
     int  ap_index[MAX_CSI_CLIENTS_PER_SESSION];
     mac_address_t mac_list[MAX_CSI_CLIENTS_PER_SESSION];
     struct timeval last_publish_time[MAX_CSI_CLIENTS_PER_SESSION];
