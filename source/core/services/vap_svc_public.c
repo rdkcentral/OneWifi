@@ -97,7 +97,7 @@ void process_prefer_private_mac_filter(mac_address_t prefer_private_mac)
             wifi_util_dbg_print(WIFI_CTRL,"acl_count =%d \n",acl_count);
 
             if (acl_count >= MAX_ACL_COUNT) {
-                wifi_util_dbg_print(WIFI_CTRL,"acl_count =%d greater than max acl entry\n",acl_count);
+                wifi_util_info_print(WIFI_CTRL,"acl_count =%d greater than max acl entry\n",acl_count);
                 continue;
             }
             temp_acl_entry = hash_map_get(rdk_vap_info->acl_map,strdup(new_mac_str));
