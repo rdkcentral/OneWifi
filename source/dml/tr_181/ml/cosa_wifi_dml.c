@@ -4998,12 +4998,12 @@ SSID_GetParamStringValue
             (
                 buff,
                 "%02X:%02X:%02X:%02X:%02X:%02X",
-                pcfg->u.sta_info.bssid[0],
-                pcfg->u.sta_info.bssid[1],
-                pcfg->u.sta_info.bssid[2],
-                pcfg->u.sta_info.bssid[3],
-                pcfg->u.sta_info.bssid[4],
-                pcfg->u.sta_info.bssid[5]
+                pcfg->u.sta_info.mac[0],
+                pcfg->u.sta_info.mac[1],
+                pcfg->u.sta_info.mac[2],
+                pcfg->u.sta_info.mac[3],
+                pcfg->u.sta_info.mac[4],
+                pcfg->u.sta_info.mac[5]
             );
         } else {
             _ansc_sprintf
