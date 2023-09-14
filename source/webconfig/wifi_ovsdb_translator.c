@@ -2857,6 +2857,9 @@ webconfig_error_t translate_vap_object_to_ovsdb_associated_clients(const rdk_wif
     assoc_dev_data_t *assoc_dev_data = NULL;
     struct schema_Wifi_Associated_Clients *client_row;
     unsigned int associated_client_count = 0;
+    assoc_dev_data_t *diff_assoc_dev_data;
+    hash_map_t *diff_assoc_map = NULL;
+    mac_addr_str_t diff_mac_str;
 
     if ((rdk_vap_info == NULL) || (clients_table == NULL)) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Input arguments are NULL\n", __func__, __LINE__);
@@ -2867,6 +2870,7 @@ webconfig_error_t translate_vap_object_to_ovsdb_associated_clients(const rdk_wif
         if (assoclist_update_assoc_map((rdk_wifi_vap_info_t *)rdk_vap_info) != webconfig_error_none) {
             return webconfig_error_translate_to_ovsdb;
         }
+        diff_assoc_map = rdk_vap_info->associated_devices_diff_map;
     }
 
     associated_client_count = *client_count;
@@ -2902,6 +2906,19 @@ webconfig_error_t translate_vap_object_to_ovsdb_associated_clients(const rdk_wif
             if (convert_vapname_to_cloudifname((char *)rdk_vap_info->vap_name, client_row->_uuid.uuid, sizeof(client_row->_uuid.uuid)) != RETURN_OK) {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vapname to interface name conversion failed, vap_name '%s'\n", __func__, __LINE__, rdk_vap_info->vap_name);
                 return webconfig_error_translate_to_ovsdb;
+            }
+            if (assoclist_notifier_type == assoclist_notifier_diff) {
+                memset(diff_mac_str, 0, sizeof(diff_mac_str));
+                to_mac_str(assoc_dev_data->dev_stats.cli_MACAddress, diff_mac_str);
+                str_tolower(diff_mac_str);
+                //As associated_devices_map connected has only connected client, check for the clients in diff_map and in diffmap its present then its reconnect
+                diff_assoc_dev_data = hash_map_get(diff_assoc_map, diff_mac_str);
+                if (diff_assoc_dev_data != NULL) {
+                    strncpy(client_row->kick_keys[0], "state",sizeof(client_row->kick_keys[0]));
+                    strncpy(client_row->kick[0], "reconnected",sizeof(client_row->kick[0]));
+                    client_row->kick_len = 1;
+                    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: client %s reconnected.\n", __func__, __LINE__, diff_mac_str);
+                }
             }
             associated_client_count++;
             assoc_dev_data = hash_map_get_next(rdk_vap_info->associated_devices_map, assoc_dev_data);
