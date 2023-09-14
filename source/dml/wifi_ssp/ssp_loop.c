@@ -194,6 +194,10 @@ void Psm_Db_Write_Radio_Feat(wifi_radio_feature_param_t *fcfg)
     int retPsmSet;
     int instance_number = fcfg->radio_index + 1;
     wifi_mgr_t *mgr = get_wifimgr_obj();
+
+    wifi_util_info_print(WIFI_PSM, "%s:%d update radio features for radio index:%d\n", __func__,
+        __LINE__, fcfg->radio_index);
+
     cfg = get_radio_feat_psm_obj(fcfg->radio_index);
     if (cfg == NULL) {
         wifi_util_error_print(WIFI_PSM, "%s:%d psm radio param NULL\r\n", __func__, __LINE__);
@@ -243,6 +247,8 @@ void Psm_Db_Write_Radio_Feat(wifi_radio_feature_param_t *fcfg)
             }
         }
     }
+
+    wifi_util_info_print(WIFI_PSM, "%s:%d update radio features done\n", __func__, __LINE__);
 #else //FEATURE_OFF_CHANNEL_SCAN_5G
     return;
 #endif //FEATURE_OFF_CHANNEL_SCAN_5G
@@ -256,6 +262,9 @@ void Psm_Db_Write_Radio(wifi_radio_operationParam_t *rcfg)
     int radio_index = 0;
     int instance_number = 0;
     int retPsmSet;
+
+    wifi_util_info_print(WIFI_PSM, "%s:%d update radio config for band:%d\n", __func__, __LINE__,
+        rcfg->band);
 
     if (convert_freq_band_to_radio_index(rcfg->band, &radio_index) == RETURN_ERR) {
         wifi_util_error_print(WIFI_PSM, "%s:%d failed to convert band %d to radio index\r\n",
@@ -495,6 +504,8 @@ void Psm_Db_Write_Radio(wifi_radio_operationParam_t *rcfg)
             wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting SetChanUtilSelfHealEnable, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
         }
     }
+
+    wifi_util_info_print(WIFI_PSM, "%s:%d update radio config done\n", __func__, __LINE__);
 }
 
 void Psm_Db_Write_Vapinfo(wifi_vap_info_t *acfg)
@@ -505,8 +516,14 @@ void Psm_Db_Write_Vapinfo(wifi_vap_info_t *acfg)
     wifi_vap_psm_param_t *cfg;
     cfg = get_vap_psm_obj(acfg->vap_index);
     if (cfg == NULL) {
-        wifi_util_dbg_print(WIFI_PSM,"%s:%d psm vap param NULL vap_index:%d\r\n", __func__, __LINE__, acfg->vap_index);
+        wifi_util_error_print(WIFI_PSM, "%s:%d psm vap param NULL vap_index:%d\n", __func__,
+            __LINE__, acfg->vap_index);
+        return;
     }
+
+    wifi_util_info_print(WIFI_PSM, "%s:%d update vap info for vap index:%d\n", __func__, __LINE__,
+        acfg->vap_index);
+
     int instance_number = (acfg->vap_index + 1);
 
         if(acfg->u.bss_info.wmm_enabled != cfg->wmm_enabled ){
@@ -714,6 +731,8 @@ void Psm_Db_Write_Vapinfo(wifi_vap_info_t *acfg)
                 wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting BeaconRateCtl, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
             }
         }
+
+    wifi_util_info_print(WIFI_PSM, "%s:%d update vap info done\n", __func__, __LINE__);
 }
 
 
@@ -725,8 +744,11 @@ void Psm_Db_Write_Global(wifi_global_param_t *gcfg)
 
     cfg = get_global_psm_obj();
     if (cfg == NULL) {
-        wifi_util_dbg_print(WIFI_PSM,"%s:%d psm global param NULL\r\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_PSM, "%s:%d psm global param NULL\n", __func__, __LINE__);
+        return;
     }
+
+    wifi_util_info_print(WIFI_PSM, "%s:%d update global config\n", __func__, __LINE__);
 
     if(gcfg->vlan_cfg_version != cfg->vlan_cfg_version){
         memset(instanceNumStr, '\0', sizeof(instanceNumStr));
@@ -945,6 +967,8 @@ void Psm_Db_Write_Global(wifi_global_param_t *gcfg)
            wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting WpsPin\n",__func__, __LINE__, retPsmSet);
         }
    }
+
+   wifi_util_info_print(WIFI_PSM, "%s:%d update global config done\n", __func__, __LINE__);
 }
 
 void Psm_Db_Write_Security(wifi_security_psm_param_t *scfg)
@@ -957,8 +981,14 @@ void Psm_Db_Write_Security(wifi_security_psm_param_t *scfg)
 
     cfg = get_vap_psm_obj(scfg->vap_index);
     if (cfg == NULL) {
-        wifi_util_dbg_print(WIFI_PSM,"%s:%d psm vap param NULL vap_index:%d\r\n", __func__, __LINE__, scfg->vap_index);
+        wifi_util_error_print(WIFI_PSM, "%s:%d psm vap param NULL vap index:%d\n", __func__,
+            __LINE__, scfg->vap_index);
+        return;
     }
+
+    wifi_util_info_print(WIFI_PSM, "%s:%d update security for vap index:%d mfp:%s\n", __func__,
+        __LINE__, scfg->vap_index, scfg->mfp);
+
     instance_number = (scfg->vap_index + 1);
 
     memset(instanceNumStr, '\0', sizeof(instanceNumStr));
@@ -974,6 +1004,9 @@ void Psm_Db_Write_Security(wifi_security_psm_param_t *scfg)
             wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM_Set_Record_Value2 returned error %d while setting ApMFPConfig, instance_number is %d\n",__func__, __LINE__, retPsmSet, instance_number);
         }
     }
+
+    wifi_util_info_print(WIFI_PSM, "%s:%d update security done for vap index:%d\n", __func__,
+        __LINE__, scfg->vap_index);
 }
 
 int update_data_mac_list_entry(char *str, unsigned int *data_index)
@@ -1128,6 +1161,9 @@ void Psm_Db_Write_MacFilter(wifi_mac_entry_param_t *mcfg)
     wifi_mac_psm_param_t *temp_mac_entry;
     char *mcfg_mac;
 
+    wifi_util_info_print(WIFI_PSM, "%s:%d update mac filter for vap index:%d\n", __func__, __LINE__,
+        mcfg->vap_index);
+
     if (isVapHotspot(mcfg->vap_index)) {
         wifi_util_dbg_print(WIFI_PSM, "%s:%d mac filter not supported for hotspot vap:%d\r\n",__func__, __LINE__, mcfg->vap_index);
         return;
@@ -1214,6 +1250,8 @@ void Psm_Db_Write_MacFilter(wifi_mac_entry_param_t *mcfg)
             }
         }
     }
+
+    wifi_util_info_print(WIFI_PSM, "%s:%d update mac filter done\n", __func__, __LINE__);
 }
 
 void delete_psm_entry(char *record_name, int vap_index, int index)
@@ -1237,6 +1275,9 @@ void Psm_Db_Delete_MacFilter(wifi_mac_entry_param_t *mcfg)
     hash_map_t *psm_mac_map;
     int count = 0;
     wifi_mac_psm_param_t *temp_mac_entry;
+
+    wifi_util_info_print(WIFI_PSM, "%s:%d delete mac filter for vap index:%d\n", __func__, __LINE__,
+        mcfg->vap_index);
 
     if (isVapHotspot(mcfg->vap_index)) {
         wifi_util_dbg_print(WIFI_PSM, "%s:%d mac filter not supported for hotspot vap:%d\r\n",__func__, __LINE__, mcfg->vap_index);
@@ -1264,6 +1305,8 @@ void Psm_Db_Delete_MacFilter(wifi_mac_entry_param_t *mcfg)
     if (temp_mac_entry != NULL) {
         free(temp_mac_entry);
     }
+
+    wifi_util_info_print(WIFI_PSM, "%s:%d delete mac filter done\n", __func__, __LINE__);
 }
 
 void Psm_Db_Write(void *msg, ssp_event_subtype_t sub_type)
