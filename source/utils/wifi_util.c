@@ -332,20 +332,18 @@ void write_to_file(const char *file_name, char *fmt, ...)
 {
     FILE *fp = NULL;
     va_list args;
-    char buff[1024] = {0};
-    
-
-    va_start(args, fmt);
-    vsnprintf(&buff[strlen(buff)], 1024, fmt, args);
-    va_end(args);
 
     fp = fopen(file_name, "a+");
+
     if (fp == NULL) {
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Error, open file_name: %s\n",__func__, __LINE__, file_name);
         return;
     }
 
-    fputs(buff, fp);
+    va_start(args, fmt);
+    vfprintf(fp, fmt, args);
+    va_end(args);
+
     fflush(fp);
     fclose(fp);
 }
