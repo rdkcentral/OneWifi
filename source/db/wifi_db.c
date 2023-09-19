@@ -2490,7 +2490,7 @@ int wifidb_update_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
     memset(&cfg_sec,0,sizeof(cfg_sec));
     if(sec == NULL)
     {
-        wifi_util_dbg_print(WIFI_DB," Pramod%s:%d WIFI DB update error !!!. Failed to update Security Config table - Null pointer \n",__func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Security Config table - Null pointer \n",__func__, __LINE__);
         return RETURN_ERR;
     }
     vap_index = convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop,vap_name);

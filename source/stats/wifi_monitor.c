@@ -738,8 +738,21 @@ int upload_client_telemetry_data(void *arg)
     unsigned int itr = 0;
     char *t_str =  NULL;
     char t_string[5] = {0};
+    wifi_vap_info_t *vap_info = NULL;
+    bool is_managed_wifi = false;
     wifi_mgr_t *mgr = get_wifimgr_obj();
     UINT vap_index = VAP_INDEX(mgr->hal_cap, i);
+
+    vap_info = getVapInfo(vap_index);
+    if (vap_info == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d NULL rdk_vap_info pointer\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    if (strlen(vap_info->repurposed_vap_name) != 0) {
+        wifi_util_info_print(WIFI_APPS,"Managed wifi is enabled on the device\n");
+        is_managed_wifi =  true;
+    }
+    wifi_util_dbg_print(WIFI_APPS," %s:%d vap_index=%d and repurposed_vap_name=%s\n",__func__,__LINE__,vap_index,vap_info->repurposed_vap_name);
 
     if (phase == 0) {
         // IsCosaDmlWiFivAPStatsFeatureEnabled needs to be set to get telemetry of some stats, the TR object is 
@@ -847,6 +860,8 @@ int upload_client_telemetry_data(void *arg)
           "header": "5GclientMac_split", "content": "WIFI_MAC_2:", "type": "wifihealth.txt",
           "header": "xh_mac_3_split",    "content": "WIFI_MAC_3:", "type": "wifihealth.txt",
           "header": "xh_mac_4_split",    "content": "WIFI_MAC_4:", "type": "wifihealth.txt",
+          "header": "MG_mac_7_split",    "content": "WIFI_MAC_7:", "type": "wifihealth.txt",
+          "header": "MG_mac_8_split",    "content": "WIFI_MAC_8:", "type": "wifihealth.txt",
           */
         t_str = convert_radio_index_to_band_str_g(getRadioIndexFromAp(vap_index));
         if (t_str != NULL) {
@@ -859,6 +874,9 @@ int upload_client_telemetry_data(void *arg)
                 t2_event_s(eventName, telemetryBuff);
             } else if (isVapXhs(vap_index)) {
                 snprintf(eventName, sizeof(eventName), "xh_mac_%d_split", vap_index + 1);
+                t2_event_s(eventName, telemetryBuff);
+           }else if (isVapLnfPsk(vap_index) && is_managed_wifi) {
+                snprintf(eventName, sizeof(eventName), "MG_mac_%d_split", vap_index + 1);
                 t2_event_s(eventName, telemetryBuff);
             }
             wifi_util_dbg_print(WIFI_MON, "%s", buff);
@@ -883,6 +901,9 @@ int upload_client_telemetry_data(void *arg)
                 t2_event_d(eventName, num_devs);
             } else if (isVapMesh(vap_index)) {
                 snprintf(eventName, sizeof(eventName), "Total_%s_PodClients_split", t_string);
+                t2_event_d(eventName, num_devs);
+            } else if (isVapLnfPsk(vap_index) && is_managed_wifi) {
+                snprintf(eventName, sizeof(eventName), "MG_cnt_%s_split", t_string);
                 t2_event_d(eventName, num_devs);
             }
         } else {
@@ -942,7 +963,11 @@ int upload_client_telemetry_data(void *arg)
         } else if (isVapXhs(vap_index)) {
             snprintf(eventName, sizeof(eventName), "xh_rssi_%u_split", vap_index + 1);
             t2_event_s(eventName, telemetryBuff);
+        } else if (isVapLnfPsk(vap_index) && is_managed_wifi) {
+            snprintf(eventName, sizeof(eventName), "MG_rssi_%u_split", vap_index + 1);
+            t2_event_s(eventName, telemetryBuff);
         }
+
         wifi_util_dbg_print(WIFI_MON, "%s", buff);
         get_formatted_time(tmp);
         memset(telemetryBuff, 0, TELEMETRY_MAX_BUFFER);
@@ -960,6 +985,9 @@ int upload_client_telemetry_data(void *arg)
         write_to_file(wifi_health_log, buff);
         if (isVapPrivate(vap_index)) {
             snprintf(eventName, sizeof(eventName), "WIFI_CW_%d_split", vap_index + 1);
+            t2_event_s(eventName, telemetryBuff);
+        } else if (isVapLnfPsk(vap_index) && is_managed_wifi) {
+            snprintf(eventName, sizeof(eventName), "MG_CW_%d_split", vap_index + 1);
             t2_event_s(eventName, telemetryBuff);
         }
         wifi_util_dbg_print(WIFI_MON, "%s", buff);
@@ -998,6 +1026,9 @@ int upload_client_telemetry_data(void *arg)
             if (isVapPrivate(vap_index)) {
                 snprintf(eventName, sizeof(eventName), "WIFI_SNR_%d_split", vap_index + 1);
                 t2_event_s(eventName, telemetryBuff);
+            } else if (isVapLnfPsk(vap_index) && is_managed_wifi) {
+                snprintf(eventName, sizeof(eventName), "MG_SNR_%d_split", vap_index + 1);
+                t2_event_s(eventName, telemetryBuff);
             }
             wifi_util_dbg_print(WIFI_MON, "%s", buff);
         }
@@ -1019,7 +1050,10 @@ int upload_client_telemetry_data(void *arg)
         if (isVapPrivate(vap_index)) {
             snprintf(eventName, sizeof(eventName), "WIFI_TX_%d_split", vap_index + 1);
             t2_event_s(eventName, telemetryBuff);
-        }
+        } else if (isVapLnfPsk(vap_index) && is_managed_wifi) {
+            snprintf(eventName, sizeof(eventName), "MG_TX_%d_split", vap_index + 1);
+            t2_event_s(eventName, telemetryBuff);
+       }
         wifi_util_dbg_print(WIFI_MON, "%s", buff);
         get_formatted_time(tmp);
         memset(telemetryBuff, 0, TELEMETRY_MAX_BUFFER);
@@ -1040,7 +1074,11 @@ int upload_client_telemetry_data(void *arg)
         if (isVapPrivate(vap_index)) {
             snprintf(eventName, sizeof(eventName), "WIFI_RX_%d_split", vap_index + 1);
             t2_event_s(eventName, telemetryBuff);
+        } else if (isVapLnfPsk(vap_index) && is_managed_wifi) {
+            snprintf(eventName, sizeof(eventName), "MG_RX_%d_split", vap_index + 1);
+            t2_event_s(eventName, telemetryBuff);
         }
+
         wifi_util_dbg_print(WIFI_MON, "%s", buff);
 
         if ((sWiFiDmlvApStatsFeatureEnableCfg == true) && trflag[i]) {
@@ -1061,6 +1099,9 @@ int upload_client_telemetry_data(void *arg)
             write_to_file(wifi_health_log, buff);
             if (isVapPrivate(vap_index)) {
                 snprintf(eventName, sizeof(eventName), "MAXTX_%d_split", vap_index + 1);
+                t2_event_s(eventName, telemetryBuff);
+            } else if (isVapLnfPsk(vap_index) && is_managed_wifi) {
+                snprintf(eventName, sizeof(eventName), "MG_MAXTX_%d_split", vap_index + 1);
                 t2_event_s(eventName, telemetryBuff);
             }
             wifi_util_dbg_print(WIFI_MON, "%s", buff);
@@ -1083,6 +1124,9 @@ int upload_client_telemetry_data(void *arg)
             write_to_file(wifi_health_log, buff);
             if (isVapPrivate(vap_index)) {
                 snprintf(eventName, sizeof(eventName), "MAXRX_%d_split", vap_index + 1);
+                t2_event_s(eventName, telemetryBuff);
+            } else if (isVapLnfPsk(vap_index) && is_managed_wifi) {
+                snprintf(eventName, sizeof(eventName), "MG_MAXRX_%d_split", vap_index + 1);
                 t2_event_s(eventName, telemetryBuff);
             }
             wifi_util_dbg_print(WIFI_MON, "%s", buff);
@@ -1156,6 +1200,9 @@ int upload_client_telemetry_data(void *arg)
             if (isVapPrivate(vap_index)) {
                 snprintf(eventName, sizeof(eventName), "WIFI_PACKETSSENTCLIENTS_%d_split", vap_index + 1);
                 t2_event_s(eventName, telemetryBuff);
+            } else if (isVapLnfPsk(vap_index) && is_managed_wifi) {
+                snprintf(eventName, sizeof(eventName), "MG_PACKETSSENTCLIENTS_%d_split", vap_index + 1);
+                t2_event_s(eventName, telemetryBuff);
             }
             wifi_util_dbg_print(WIFI_MON, "%s", buff);
         }
@@ -1197,6 +1244,9 @@ int upload_client_telemetry_data(void *arg)
             {
                 snprintf(eventName, sizeof(eventName), "WIFI_ERRORSSENT_%d_split", vap_index + 1);
                 t2_event_s(eventName, telemetryBuff);
+            } else if (isVapLnfPsk(vap_index) && is_managed_wifi) {
+                snprintf(eventName, sizeof(eventName), "MG_ERRORSSENT_%d_split", vap_index + 1);
+                t2_event_s(eventName, telemetryBuff);
             }
             wifi_util_dbg_print(WIFI_MON, "%s", buff);
         }
@@ -1220,6 +1270,9 @@ int upload_client_telemetry_data(void *arg)
             if (isVapPrivate(vap_index))
             {
                 snprintf(eventName, sizeof(eventName), "WIFIRetransCount%d_split", vap_index + 1);
+                t2_event_s(eventName, telemetryBuff);
+            } else if (isVapLnfPsk(vap_index) && is_managed_wifi) {
+                snprintf(eventName, sizeof(eventName), "MG_RetransCount%d_split", vap_index + 1);
                 t2_event_s(eventName, telemetryBuff);
             }
             wifi_util_dbg_print(WIFI_MON, "%s", buff);
@@ -1304,6 +1357,9 @@ int upload_client_telemetry_data(void *arg)
             if (isVapPrivate(vap_index)) {
                 snprintf(eventName, sizeof(eventName), "GB_RSSI_%d_split", vap_index + 1);
                 t2_event_s(eventName, telemetryBuff);
+            } else if (isVapLnfPsk(vap_index) && is_managed_wifi) {
+                snprintf(eventName, sizeof(eventName), "MG_GB_RSSI_%d_split", vap_index + 1);
+                t2_event_s(eventName, telemetryBuff);
             }
             wifi_util_dbg_print(WIFI_MON, "%s", buff);		
         }
@@ -1341,6 +1397,9 @@ int upload_client_telemetry_data(void *arg)
                 if (isVapPrivate(vap_index))
                 {
                     snprintf(eventName, sizeof(eventName), "WIFI_REC_%d_split", vap_index + 1);
+                    t2_event_s(eventName, telemetryBuff);
+                } else if(isVapLnfPsk(vap_index) && is_managed_wifi) {
+                    snprintf(eventName, sizeof(eventName), "MG_REC_%d_split", vap_index + 1);
                     t2_event_s(eventName, telemetryBuff);
                 }
                 wifi_util_dbg_print(WIFI_MON, "%s", buff);
