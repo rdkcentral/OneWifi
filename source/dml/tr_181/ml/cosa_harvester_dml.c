@@ -282,8 +282,13 @@ WifiClient_SetParamUlongValue
 
     if ( AnscEqualString(ParamName, "ReportingPeriod", TRUE))
     {
-        pcfg->u_inst_client_reporting_period = uValue;
-        return TRUE;
+        if (validate_def_reporting_period(uValue)) {
+            pcfg->u_inst_client_reporting_period = uValue;
+            return TRUE;
+        } else {
+            wifi_util_error_print(WIFI_DMCLI,"%s:%d: Unsupported parameter value:'%d' for ReportingPeriod\n",__FUNCTION__, __LINE__,uValue);
+            return FALSE;
+        }
     }
 
     return FALSE;
