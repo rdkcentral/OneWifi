@@ -476,7 +476,7 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
     memset(vap_name, 0, sizeof(vap_name));
 
     if (!is_vap_hotspot(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, msg->frame.ap_index)) {
-        wifi_util_info_print(WIFI_APPS, "%s:%d cac frame hook is used for hotspot vap, ap_index = :%d \n", __func__, __LINE__, msg->frame.ap_index);
+        wifi_util_dbg_print(WIFI_APPS, "%s:%d cac frame hook is used for hotspot vap, ap_index = :%d \n", __func__, __LINE__, msg->frame.ap_index);
         return;
     }
 
@@ -1067,10 +1067,10 @@ int cac_mgmt_frame_hook(int ap_index, wifi_mgmtFrameType_t type)
     char vap_name[32];
     wifi_preassoc_control_t wifidb_preassoc_conf = { 0 };
 
-    wifi_util_info_print(WIFI_APPS, "%s:%d received mgmt frame hook for ap index:%d type:%d \n", __func__, __LINE__, ap_index, type);
+    wifi_util_dbg_print(WIFI_APPS, "%s:%d received mgmt frame hook for ap index:%d type:%d \n", __func__, __LINE__, ap_index, type);
 
     if (!is_vap_hotspot(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, ap_index)) {
-        wifi_util_info_print(WIFI_APPS, "%s:%d cac frame hook is used for hotspot vap, ap_index = :%d \n", __func__, __LINE__, ap_index);
+        wifi_util_dbg_print(WIFI_APPS, "%s:%d cac frame hook is used for hotspot vap, ap_index = :%d \n", __func__, __LINE__, ap_index);
         return NL_OK;
     }
 
