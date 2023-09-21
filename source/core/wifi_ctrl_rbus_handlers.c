@@ -2108,7 +2108,6 @@ int events_rbus_publish(wifi_event_t *evt)
 rbusError_t get_client_assoc_request_multi(rbusHandle_t handle, char const* methodName, rbusObject_t inParams, rbusObject_t outParams,rbusMethodAsyncHandle_t asyncHandle)
 {
 #ifdef CCSP_COMMON
-    sta_key_t sta_key;
     sta_data_t *sta;
     unsigned int vap_index =0;
     frame_data_t   tmp_data;
@@ -2116,7 +2115,7 @@ rbusError_t get_client_assoc_request_multi(rbusHandle_t handle, char const* meth
     rbusValue_t value;
     rbusObject_t rdata;
     int len;
-    char vapname[16];
+    char vapname[32] = {0};
     bm_client_assoc_req mac_addr;
     value = rbusObject_GetValue(inParams,NULL);
     const unsigned char *pTmp = rbusValue_GetBytes(value, &len);
@@ -2149,7 +2148,7 @@ rbusError_t get_client_assoc_request_multi(rbusHandle_t handle, char const* meth
 
         } else {
             wifi_util_info_print(WIFI_CTRL,"%s:%d assoc req frame not found for vap_index:%d: sta_mac:%s time:%ld\r\n",
-                    __func__, __LINE__, vap_index, sta_key, sta->assoc_frame_data.frame_timestamp);
+                    __func__, __LINE__, vap_index, mac_addr.mac_addr, sta->assoc_frame_data.frame_timestamp);
             return  RBUS_ERROR_INVALID_INPUT;
         }
     } else {

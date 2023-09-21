@@ -37,13 +37,13 @@ static void convert_stat_channels_to_string(const wifi_channels_list_t *chan_lis
     char tmp[MON_STATS_KEY_LEN_32] = {0};
 
     if (chan_list->num_channels > 0) {
-        memset(chan_buf, 0, max_len);
+        memset(chan_buf, 0, sizeof(chan_buf));
         for (i = 0; i < chan_list->num_channels - 1; i++) {
             res = snprintf(&chan_buf[len], (MON_STATS_KEY_LEN_16-len), "%d,", chan_list->channels_list[i]);
             len += res;
         }
         chan_buf[len-1] = '\0';
-        snprintf(tmp, max_len, "%s-%s", buff, chan_buf);
+        snprintf(tmp, sizeof(tmp), "%s-%s", buff, chan_buf);
         memcpy(buff, tmp, max_len);
     }
 }

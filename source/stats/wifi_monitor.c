@@ -779,7 +779,7 @@ hash_map_t *get_sta_data_map(unsigned int vap_index)
 {
     pthread_mutex_lock(&g_monitor_module.data_lock);
     unsigned int vap_array_index;
-    char vap_name[16] ={ };
+    char vap_name[32] ={0};
     convert_vap_index_to_name(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop,vap_index,vap_name);
     if (strlen(vap_name) <= 0) {
         wifi_util_error_print(WIFI_MON,"%s:%d wrong vap_index:%d\r\n", __func__, __LINE__, vap_index);
