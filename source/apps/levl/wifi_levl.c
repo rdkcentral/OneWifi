@@ -257,6 +257,8 @@ void apps_probe_req_frame_event(wifi_app_t *app, frame_data_t *msg)
         memcpy(&elem->msg_data, msg, sizeof(frame_data_t));
         memcpy(elem->mac_str, mac_str, sizeof(mac_addr_str_t));
         hash_map_put(app->data.u.levl.probe_req_map, strdup(mac_str), elem);
+        elem->curr_alive_time_sec = get_current_time_in_sec();
+        wifi_util_info_print(WIFI_APPS,"%s:%d wifi mgmt probe frame message for %s time:%ld\r\n", __func__, __LINE__, mac_str, elem->curr_alive_time_sec);
     } else {
         memset(&elem->msg_data, 0, sizeof(elem->msg_data));
         memcpy(&elem->msg_data, msg, sizeof(frame_data_t));
@@ -874,6 +876,42 @@ int levl_event_speed_test(wifi_app_t *app, wifi_event_subtype_t sub_type, void *
     return 0;
 }
 
+int apps_frame_event_exec_timeout(wifi_app_t *apps)
+{
+    time_t l_curr_alive_time_sec, delta_time_sec;
+    hash_map_t *probe_map = apps->data.u.levl.probe_req_map;
+    probe_req_elem_t *l_elem = NULL, *l_temp_elem = NULL;
+    mac_addr_str_t tmp_mac_str = { 0 };
+
+    if (probe_map == NULL) {
+        wifi_util_error_print(WIFI_APPS,"%s:%d probe map is NULL\r\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    l_curr_alive_time_sec = get_current_time_in_sec();
+    wifi_util_info_print(WIFI_APPS,"%s:%d current time in sec:%ld total probe entry:%d\r\n", __func__, __LINE__,
+                                    l_curr_alive_time_sec, hash_map_count(probe_map));
+
+    l_elem = hash_map_get_first(probe_map);
+    while (l_elem != NULL) {
+        delta_time_sec = l_curr_alive_time_sec - l_elem->curr_alive_time_sec;
+        memset(tmp_mac_str, 0, sizeof(mac_addr_str_t));
+        memcpy(tmp_mac_str, l_elem->mac_str, (sizeof(mac_addr_str_t) - 1));
+        l_elem = hash_map_get_next(probe_map, l_elem);
+        if (delta_time_sec >= MAX_PROBE_TTL_TIME) {
+            l_temp_elem = hash_map_remove(probe_map, tmp_mac_str);
+            if (l_temp_elem != NULL) {
+                free(l_temp_elem);
+                wifi_util_info_print(WIFI_APPS,"%s:%d probe map entry removed for mac_str:%s\r\n", __func__, __LINE__, tmp_mac_str);
+                l_temp_elem = NULL;
+            }
+        }
+    }
+
+    wifi_util_info_print(WIFI_APPS,"%s:%d total probe entry:%d\r\n", __func__, __LINE__, hash_map_count(probe_map));
+    return 0;
+}
+
 int levl_event(wifi_app_t *app, wifi_event_t *event)
 {
 
@@ -976,6 +1014,13 @@ int levl_deinit(wifi_app_t *app)
 
     app_deinit(app, app->desc.create_flag);
     pthread_mutex_lock(&app->data.u.levl.lock);
+
+    //Cancel scheduler Task
+    if (app->data.u.levl.probe_collector_sched_handler_id != 0) {
+        scheduler_cancel_timer_task(ctrl->sched, app->data.u.levl.probe_collector_sched_handler_id);
+        app->data.u.levl.probe_collector_sched_handler_id = 0;
+    }
+
     //Cancel all Sounding.
     app->data.u.levl.event_subscribed = FALSE;
     wifi_app_t *csi_app = app->data.u.levl.csi_app;
@@ -1276,6 +1321,18 @@ int levl_stop_fn(void* csi_app, unsigned int ap_index, mac_addr_t mac_addr, int 
     return 0;
 }
 
+static int levl_event_exec_timeout(void* arg)
+{
+    if (arg == NULL) {
+        wifi_util_error_print(WIFI_APPS,"%s:%d wifi_apps object is NULL\n", __func__, __LINE__);
+        return RETURN_OK;
+    }
+    wifi_app_t *app = (wifi_app_t *)arg;
+
+    apps_frame_event_exec_timeout(app);
+    return RETURN_OK;
+}
+
 int levl_init(wifi_app_t *app, unsigned int create_flag)
 {
     int rc = RBUS_ERROR_SUCCESS;
@@ -1339,6 +1396,9 @@ int levl_init(wifi_app_t *app, unsigned int create_flag)
     app->data.u.levl.num_current_sounding = 0;
     app->data.u.levl.event_subscribed = FALSE;
     pthread_mutex_init(&app->data.u.levl.lock, NULL);
+
+    scheduler_add_timer_task(ctrl->sched, FALSE, &(app->data.u.levl.probe_collector_sched_handler_id),
+                               levl_event_exec_timeout, app, (APPS_FRAME_EXEC_TIMEOUT_PERIOD * 1000), 0);
 
     rc = rbus_open(&app->rbus_handle, component_name);
     if (rc != RBUS_ERROR_SUCCESS) {

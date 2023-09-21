@@ -677,6 +677,14 @@ unsigned long long int get_current_ms_time(void)
     return milliseconds;
 }
 
+time_t get_current_time_in_sec(void)
+{
+    struct timeval tv_now = { 0 };
+    gettimeofday(&tv_now, NULL);
+
+    return tv_now.tv_sec;
+}
+
 char *get_formatted_time(char *time)
 {
     struct tm *tm_info;

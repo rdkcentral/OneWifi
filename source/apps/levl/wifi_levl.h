@@ -25,6 +25,12 @@
 extern "C" {
 #endif
 
+//Apps frame execution timeout period is 2 hours
+#define APPS_FRAME_EXEC_TIMEOUT_PERIOD    (2 * 3600)
+
+//Max probe ttl time is 12 hours
+#define MAX_PROBE_TTL_TIME   (12 * 3600)
+
 #define MAX_PROBE_MAP_TTL    500
 #define WIFI_LEVL_CLIENTMAC                 "Device.WiFi.X_RDK_CSI_LEVL.clientMac"
 #define WIFI_LEVL_NUMBEROFENTRIES           "Device.WiFi.X_RDK_CSI_LEVL.maxNumberCSIClients"
@@ -39,6 +45,7 @@ typedef struct {
 
 typedef struct {
     unsigned int       curr_time_alive;
+    time_t             curr_alive_time_sec;
     frame_data_t       msg_data;
     mac_addr_str_t     mac_str;
 } __attribute__((__packed__)) probe_req_elem_t;
@@ -68,6 +75,7 @@ typedef struct {
     int                  postpone_sched_handler_id;
     int                  paused;
     int                  speed_test_timeout;
+    int                  probe_collector_sched_handler_id;
     levl_config_t        levl;
     wifi_app_t           *csi_app;
     csi_base_app_t       csi_fns;
