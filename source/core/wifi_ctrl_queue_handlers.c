@@ -1461,6 +1461,7 @@ void process_wifi_host_sync()
                     snprintf(ssid, sizeof(ssid), "Device.WiFi.SSID.%d", rdk_vap_info->vap_index+1);
                     snprintf((char *)hosts.host[hosts.count].ssid, sizeof(hosts.host[hosts.count].ssid), "%s", ssid);
                     to_mac_str(assoc_dev_data->dev_stats.cli_MACAddress, mac_str);
+                    str_tolower(mac_str);
                     snprintf((char *)hosts.host[hosts.count].phyAddr, sizeof(hosts.host[hosts.count].phyAddr), "%s", mac_str);
                     snprintf(assoc_device, sizeof(assoc_device), "Device.WiFi.AccessPoint.%d.AssociatedDevice.%d", rdk_vap_info->vap_index+1, itrj+1);
                     snprintf((char *)hosts.host[hosts.count].AssociatedDevice, sizeof(hosts.host[hosts.count].AssociatedDevice), "%s", assoc_device);
@@ -1507,6 +1508,7 @@ void lm_notify_disassoc(assoc_dev_data_t *assoc_dev_data, unsigned int vap_index
     strncpy((char *)hosts.host[0].ssid, ssid, sizeof(hosts.host[0].ssid));
 
     to_mac_str(assoc_dev_data->dev_stats.cli_MACAddress, mac_str);
+    str_tolower(mac_str);
     strncpy((char *)hosts.host[0].phyAddr, mac_str, sizeof(hosts.host[0].phyAddr));
     hosts.host[0].Status = FALSE;
     hosts.host[0].RSSI = 0;
@@ -1652,7 +1654,7 @@ void process_assoc_device_event(void *data)
 {
     rdk_wifi_vap_info_t *rdk_vap_info = NULL;
     wifi_mgr_t *p_wifi_mgr = get_wifimgr_obj();
-    mac_addr_str_t mac_str;
+    mac_addr_str_t mac_str, temp_mac_str;
     char ssid[256]= {0};
     char assoc_device[256] = {0};
     ULONG old_count = 0, new_count = 0;
@@ -1679,6 +1681,7 @@ void process_assoc_device_event(void *data)
         return;
     }
 
+    memset(temp_mac_str, 0, sizeof(temp_mac_str));
     memset(mac_str, 0, sizeof(mac_str));
     to_mac_str(assoc_data->dev_stats.cli_MACAddress, mac_str);
     str_tolower(mac_str);
@@ -1729,6 +1732,7 @@ void process_assoc_device_event(void *data)
             }
         }
     }
+
     //Code to publish event to LMLite.
     if ((isVapPrivate(rdk_vap_info->vap_index)) || (isVapXhs(rdk_vap_info->vap_index))) {
         snprintf(ssid, sizeof(ssid), "Device.WiFi.SSID.%d", rdk_vap_info->vap_index+1);
@@ -1737,24 +1741,38 @@ void process_assoc_device_event(void *data)
         strncpy((char *)hosts.host[0].ssid, ssid, sizeof(hosts.host[0].ssid));
 
         if (rdk_vap_info->associated_devices_map != NULL) {
+            str_tolower(mac_str);
+            itrj = hash_map_count(rdk_vap_info->associated_devices_map);
             p_assoc_data = hash_map_get_first(rdk_vap_info->associated_devices_map);
             while (p_assoc_data != NULL) {
-                to_mac_str(p_assoc_data->dev_stats.cli_MACAddress, mac_str);
-                strncpy((char *)hosts.host[0].phyAddr, mac_str, sizeof(hosts.host[0].phyAddr));
-                snprintf(assoc_device, sizeof(assoc_device), "Device.WiFi.AccessPoint.%d.AssociatedDevice.%d", rdk_vap_info->vap_index+1, itrj+1);
-                strncpy((char *)hosts.host[0].AssociatedDevice, assoc_device, sizeof(hosts.host[0].AssociatedDevice));
-                if (p_assoc_data->dev_stats.cli_Active) {
-                    hosts.host[0].Status = TRUE;
-                } else {
-                    hosts.host[0].Status = FALSE;
+                to_mac_str(p_assoc_data->dev_stats.cli_MACAddress, temp_mac_str);
+                str_tolower(temp_mac_str);
+                if (strcmp(mac_str, temp_mac_str) == 0) {
+                    break;
                 }
-                hosts.host[0].RSSI = p_assoc_data->dev_stats.cli_RSSI;
-
-                if (notify_LM_Lite(&p_wifi_mgr->ctrl, &hosts, true) != RETURN_OK) {
-                    wifi_util_error_print(WIFI_CTRL,"%s:%d Unable to send notification to LMLite\n", __func__, __LINE__);
-                }
-                itrj++;
+                itrj--;
                 p_assoc_data = hash_map_get_next(rdk_vap_info->associated_devices_map, p_assoc_data);
+            }
+
+            strncpy((char *)hosts.host[0].phyAddr, mac_str, sizeof(hosts.host[0].phyAddr));
+            if (itrj > 0) {
+                snprintf(assoc_device, sizeof(assoc_device), "Device.WiFi.AccessPoint.%d.AssociatedDevice.%d", rdk_vap_info->vap_index+1, itrj);
+                wifi_util_info_print(WIFI_CTRL,"%s:%d LMLite notify:%s mac:%s\n", __func__, __LINE__, assoc_device, mac_str);
+            } else {
+                itrj = hash_map_count(rdk_vap_info->associated_devices_map);
+                snprintf(assoc_device, sizeof(assoc_device), "Device.WiFi.AccessPoint.%d.AssociatedDevice.%d", rdk_vap_info->vap_index+1, (itrj + 1));
+                wifi_util_info_print(WIFI_CTRL,"%s:%d LMLite_notify:%s mac:%s\n", __func__, __LINE__, assoc_device, mac_str);
+            }
+            strncpy((char *)hosts.host[0].AssociatedDevice, assoc_device, sizeof(hosts.host[0].AssociatedDevice));
+            if (assoc_data->dev_stats.cli_Active) {
+                hosts.host[0].Status = TRUE;
+            } else {
+                hosts.host[0].Status = FALSE;
+            }
+            hosts.host[0].RSSI = assoc_data->dev_stats.cli_RSSI;
+
+            if (notify_LM_Lite(&p_wifi_mgr->ctrl, &hosts, true) != RETURN_OK) {
+                wifi_util_error_print(WIFI_CTRL,"%s:%d Unable to send notification to LMLite\n", __func__, __LINE__);
             }
         }
     }
