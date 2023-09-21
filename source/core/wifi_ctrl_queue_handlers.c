@@ -1835,6 +1835,7 @@ void process_wpa3_rfc(bool type)
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
     wifi_vap_info_map_t tgt_vap_map;
     wifi_vap_info_t *vapInfo = NULL;
+    wifi_radio_operationParam_t *radio_params = NULL;
     vap_svc_t *svc;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     UINT apIndex = 0, ret;
@@ -1848,24 +1849,37 @@ void process_wpa3_rfc(bool type)
     for(UINT rIdx = 0; rIdx < getNumberRadios(); rIdx++) {
         apIndex = getPrivateApFromRadioIndex(rIdx);
         vapInfo =  get_wifidb_vap_parameters(apIndex);
+        radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(rIdx);
 
         if ((svc = get_svc_by_name(ctrl, vapInfo->vap_name)) == NULL) {
             continue;
         }
 
+        /* The RFC for WPA3 is primarily for 2.4GHz and 5GHz radios.  6GHz radio always supports WPA3 personal
+           security mode irrespective of WPA3 RFC.
+        */
+
+        if (radio_params->band == WIFI_FREQUENCY_6_BAND) {
+            wifi_util_dbg_print(WIFI_DB,"%s: %d 6GHz radio supports only WPA3 personal mode. WPA3-RFC: %d\n",__FUNCTION__,__LINE__,type);
+            continue;
+        }
+
         if (type) {
-             if (vapInfo->u.bss_info.security.mode == wifi_security_mode_wpa3_transition) {
-                 continue;
-             }
-             vapInfo->u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
-             vapInfo->u.bss_info.security.wpa3_transition_disable = false;
-             vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
-             vapInfo->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
+            if (vapInfo->u.bss_info.security.mode == wifi_security_mode_wpa3_transition) {
+                continue;
+            }
+            vapInfo->u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
+            vapInfo->u.bss_info.security.wpa3_transition_disable = false;
+            vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
+            vapInfo->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
         } else {
-             if (vapInfo->u.bss_info.security.mode == wifi_security_mode_wpa2_personal) {
-                 continue;
-             }
-             vapInfo->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
+            if (vapInfo->u.bss_info.security.mode == wifi_security_mode_wpa2_personal) {
+                continue;
+            }
+
+            if ((radio_params->band == WIFI_FREQUENCY_2_4_BAND) ||  (radio_params->band == WIFI_FREQUENCY_5_BAND)) {
+                vapInfo->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
+            }
         }
 
         memset(&tgt_vap_map, 0, sizeof(wifi_vap_info_map_t));
