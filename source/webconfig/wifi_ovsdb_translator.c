@@ -560,6 +560,18 @@ void set_translator_config_wpa_oftags(
     }
 }
 
+void get_translator_config_wpa_mfp(
+        wifi_vap_info_t *vap)
+{
+    if (vap->u.bss_info.security.mode == wifi_security_mode_wpa3_personal || vap->u.bss_info.security.mode == wifi_security_mode_wpa3_enterprise) {
+        vap->u.bss_info.security.mfp = wifi_mfp_cfg_required;
+    } else if (vap->u.bss_info.security.mode == wifi_security_mode_wpa3_transition) {
+        vap->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
+    } else {
+        vap->u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
+    }
+}
+
 void get_translator_config_wpa_psks(
         const struct schema_Wifi_VIF_Config *vconfig,
         wifi_vap_info_t *vap,
@@ -3256,6 +3268,7 @@ webconfig_error_t translate_ovsdb_to_vap_info_personal_sec(const struct schema_W
 
             get_translator_config_wpa_psks(vap_row, vap, 0);
             get_translator_config_wpa_oftags(vap_row, vap, 0);
+            get_translator_config_wpa_mfp(vap);
         }
     }
 
@@ -3351,6 +3364,7 @@ webconfig_error_t translate_ovsdb_to_vap_info_enterprise_sec(const struct schema
                 return webconfig_error_translate_from_ovsdb;
             }
 
+            get_translator_config_wpa_mfp(vap);
         }
     }
 
