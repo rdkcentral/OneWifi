@@ -153,7 +153,7 @@ webconfig_set_ow_core_vif_config(const struct ow_conf_vif_config_cb_arg *vap)
 
     if (mgr->hal_cap.wifi_prop.radio_presence[vap_info->radio_index] == true) {
         ow_core_thread_call(webconfig_set_ow_core_vif_config_cb, vap);
-        ow_state_barrier_wait(OW_CONF_BARRIER_TIMEOUT_MSEC);
+        ow_state_barrier_wait(OW_CONF_BARRIER_TIMEOUT_MSEC, vap_info->vap_name);
         ow_core_update_vap_mac(vap_info->vap_name, vap_info);
     } else {
         if (isVapSTAMesh(vap_info->vap_index) == true) {
@@ -350,6 +350,13 @@ webconfig_set_ow_core_phy_config(const rdk_wifi_radio_t *r, wifi_ctrl_t *ctrl, r
 #else
     int ret;
     bool radio_exists_changed = false;
+    char radio_name[MAXIFACENAMESIZE] = {0};
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+
+    if (convert_radio_index_to_ifname(&mgr->hal_cap.wifi_prop, r->vaps.radio_index, radio_name, sizeof(radio_name)) != RETURN_OK) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Failed to get radio name for index [%d]\n", __func__, __LINE__, r->vaps.radio_index);
+        return RETURN_ERR;
+    }
 
     if (mgr_radio_data->oper.enable != r->oper.enable)
         radio_exists_changed = true;
@@ -360,7 +367,7 @@ webconfig_set_ow_core_phy_config(const rdk_wifi_radio_t *r, wifi_ctrl_t *ctrl, r
     }
 
     ow_core_thread_call(webconfig_set_ow_core_phy_config_cb, r);
-    ret = ow_state_barrier_wait(OW_CONF_BARRIER_TIMEOUT_MSEC);
+    ret = ow_state_barrier_wait(OW_CONF_BARRIER_TIMEOUT_MSEC, radio_name);
 
     /* Enable all VAPs after radio enable */
     if (radio_exists_changed && r->oper.enable == true) {

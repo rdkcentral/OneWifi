@@ -250,7 +250,7 @@ int ow_mesh_ext_set_phy_config(int phy_index,wifi_radio_operationParam_t *phy)
     wifi_util_dbg_print(WIFI_CTRL,"WIFI %s : Setting Phy %s with channel:[%d], enable:[%d], band[%d],width[%d] \n",__FUNCTION__,phy_param.if_name,phy->channel,phy->enable,phy->band,phy->channelWidth);
     
     ow_core_thread_call(vap_mesh_svc_pod_phy_config_cb, &phy_param);
-    ow_state_barrier_wait(OW_SETTLED_TIMEOUT);
+    ow_state_barrier_wait(OW_SETTLED_TIMEOUT, phy_param.if_name);
     return RETURN_OK;
 }
 
@@ -304,7 +304,7 @@ void vap_mesh_svc_pod_vif_config(ow_vif_config_param_t *vif_param)
     uint8_t num_radios = getNumberRadios();
 
     ow_core_thread_call(vap_mesh_svc_pod_vif_config_cb, vif_param);
-    ow_state_barrier_wait(OW_SETTLED_TIMEOUT);
+    ow_state_barrier_wait(OW_SETTLED_TIMEOUT, vif_param->vif_name);
 
     for (uint8_t i = 0; i < num_radios; i++) {
         vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(i);
@@ -910,7 +910,7 @@ void vap_svc_mesh_pod_set_capab_priv()
 
 void ow_mesh_ext_set_capab()
 {
-    ow_state_barrier_wait(OW_SETTLED_TIMEOUT);
+    ow_state_barrier_wait(OW_SETTLED_TIMEOUT, NULL);
     ow_core_thread_call(vap_svc_mesh_pod_set_capab_priv, NULL);
 }
 
@@ -925,7 +925,7 @@ int ow_mesh_ext_get_hal_capab(wifi_hal_capability_t *halCapab)
     ow_state_barrier_vif_info_t *vif = NULL;
 
     // Get HAL capability from HW
-    if (ow_state_barrier_wait(OW_SETTLED_TIMEOUT) != RETURN_OK) {
+    if (ow_state_barrier_wait(OW_SETTLED_TIMEOUT, NULL) != RETURN_OK) {
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d : Failed in ow_state_barrier_wait.\n",__func__, __LINE__);
         return RETURN_ERR;
     }
