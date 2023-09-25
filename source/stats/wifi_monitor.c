@@ -3380,6 +3380,7 @@ int process_periodical_neighbor_scan(void *arg)
     wifi_radio_operationParam_t *wifi_radio_oper_param = NULL;
     wifi_neighborScanMode_t scan_mode = WIFI_RADIO_SCAN_MODE_FULL;
     int dwell_time = 20;
+    unsigned int private_vap_index;
 
     if(strcmp(monitor_param->neighbor_scan_cfg.DiagnosticsState, "Requested") == 0) {
         wifi_util_dbg_print(WIFI_MON, "%s:%d: Scan already in Progress!!!\n", __func__, __LINE__);
@@ -3392,7 +3393,8 @@ int process_periodical_neighbor_scan(void *arg)
                 continue;
             }
             wifi_radio_oper_param = (wifi_radio_operationParam_t *)get_wifidb_radio_map(rIdx);
-            wifi_startNeighborScan(rIdx, scan_mode, ((wifi_radio_oper_param->band == WIFI_FREQUENCY_6_BAND) ? (dwell_time=110) : dwell_time), 0, NULL);
+            private_vap_index = getPrivateApFromRadioIndex(rIdx);
+            wifi_startNeighborScan(private_vap_index, scan_mode, ((wifi_radio_oper_param->band == WIFI_FREQUENCY_6_BAND) ? (dwell_time=110) : dwell_time), 0, NULL);
         }
         scheduler_add_timer_task(g_monitor_module.sched, FALSE, &neighscan_task_id, get_neighbor_scan_results, NULL,
                     NEIGHBOR_SCAN_RESULT_INTERVAL, 1);
@@ -6414,6 +6416,7 @@ static int off_chan_scan_init (void *args)
     wifi_neighbor_ap2_t *neighbor_results = NULL;
     UINT array_size = 0;
     int ret = 0;
+    unsigned int private_vap_index;
     for (int num = 0; num < num_chan; num++)
     {
         if (prim_chan == chan_list[num]) { //Skipping primary channel
@@ -6423,7 +6426,8 @@ static int off_chan_scan_init (void *args)
             CcspTraceDebug(("Off_channel_scan Skipping DFS Channel\n"));
             continue;
         } else {
-            wifi_startNeighborScan(radio_index, scanMode, Tscan, 1, &chan_list[num]);
+            private_vap_index = getPrivateApFromRadioIndex(radio_index);
+            wifi_startNeighborScan(private_vap_index, scanMode, Tscan, 1, &chan_list[num]);
             ret = wifi_getNeighboringWiFiStatus(radio_index, &neighbor_results, &array_size);
             if (ret == RETURN_OK) {
                 CcspTraceInfo(("Off_channel_scan Total Scan Results:%d for channel %d \n", array_size, chan_list[num]));

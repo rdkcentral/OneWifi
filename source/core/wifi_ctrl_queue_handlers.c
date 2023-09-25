@@ -2528,6 +2528,7 @@ void process_neighbor_scan_command_event()
     wifi_radio_operationParam_t *wifi_radio_oper_param = NULL;
     wifi_neighborScanMode_t scan_mode = WIFI_RADIO_SCAN_MODE_FULL;
     int dwell_time = 20;
+    unsigned int private_vap_index;
 
     if(strcmp(monitor_param->neighbor_scan_cfg.DiagnosticsState, "Requested") == 0) {
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Scan already in Progress!!!\n", __func__, __LINE__);
@@ -2537,7 +2538,8 @@ void process_neighbor_scan_command_event()
         for(UINT rIdx = 0; rIdx < getNumberRadios(); rIdx++)
         {
             wifi_radio_oper_param = (wifi_radio_operationParam_t *)get_wifidb_radio_map(rIdx);
-            wifi_startNeighborScan(rIdx, scan_mode, ((wifi_radio_oper_param->band == WIFI_FREQUENCY_6_BAND) ? (dwell_time=110) : dwell_time), 0, NULL);
+            private_vap_index = getPrivateApFromRadioIndex(rIdx);
+            wifi_startNeighborScan(private_vap_index, scan_mode, ((wifi_radio_oper_param->band == WIFI_FREQUENCY_6_BAND) ? (dwell_time=110) : dwell_time), 0, NULL);
         }
         scheduler_add_timer_task(monitor_param->sched, FALSE, &neighbor_scan_task_id, get_neighbor_scan_results, NULL,
                     NEIGHBOR_SCAN_RESULT_INTERVAL, 1);

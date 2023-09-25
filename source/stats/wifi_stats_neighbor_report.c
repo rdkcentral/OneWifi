@@ -144,6 +144,8 @@ int execute_neighbor_ap_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *m
 #if CCSP_WIFI_HAL
     wifi_neighborScanMode_t scan_mode = WIFI_RADIO_SCAN_MODE_FULL;
     unsigned int stat_array_size = 0;
+    wifi_radio_operationParam_t *wifi_radio_oper_param = NULL;
+    unsigned int private_vap_index;
 #endif
 
     if (args == NULL) {
@@ -153,8 +155,12 @@ int execute_neighbor_ap_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *m
 
 #if CCSP_WIFI_HAL
     stat_array_size = args->channel_list.num_channels;
+    wifi_radio_oper_param = (wifi_radio_operationParam_t *)get_wifidb_radio_map(args->radio_index);
+    (wifi_radio_oper_param->band == WIFI_FREQUENCY_6_BAND) ? (args->dwell_time=110) : args->dwell_time;
 
-    ret = wifi_startNeighborScan(args->radio_index, scan_mode, args->dwell_time, stat_array_size, (unsigned int *)args->channel_list.channels_list);
+    private_vap_index = getPrivateApFromRadioIndex(args->radio_index);
+
+    ret = wifi_startNeighborScan(private_vap_index, scan_mode, args->dwell_time, stat_array_size, (unsigned int *)args->channel_list.channels_list);
 #endif
     if (ret != RETURN_OK) {
         wifi_util_error_print(WIFI_MON, "%s : %d  Failed to get Neighbor scan for index %d\n",__func__,__LINE__, args->radio_index);
