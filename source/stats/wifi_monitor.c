@@ -3549,24 +3549,24 @@ static int refresh_task_period(void *arg)
             }
             if (g_monitor_module.client_debug_id == 0 ) {
                 scheduler_add_timer_task(g_monitor_module.sched, FALSE, &g_monitor_module.client_debug_id,
-                        upload_client_debug_stats, NULL, (g_monitor_module.upload_period * MIN_TO_MILLISEC), 0);
+                        upload_client_debug_stats, NULL, (g_monitor_module.upload_period * SEC_TO_MILLISEC), 0);
             } else {
                 scheduler_update_timer_task_interval(g_monitor_module.sched, g_monitor_module.client_debug_id,
-                        (g_monitor_module.upload_period * MIN_TO_MILLISEC));
+                        (g_monitor_module.upload_period * SEC_TO_MILLISEC));
             }
             if (g_monitor_module.channel_width_telemetry_id == 0) {
                 scheduler_add_timer_task(g_monitor_module.sched, FALSE, &g_monitor_module.channel_width_telemetry_id,
-                        upload_channel_width_telemetry, NULL, (g_monitor_module.upload_period * MIN_TO_MILLISEC), 0);
+                        upload_channel_width_telemetry, NULL, (g_monitor_module.upload_period * SEC_TO_MILLISEC), 0);
             } else {
                 scheduler_update_timer_task_interval(g_monitor_module.sched, g_monitor_module.channel_width_telemetry_id,
-                        (g_monitor_module.upload_period * MIN_TO_MILLISEC));
+                        (g_monitor_module.upload_period * SEC_TO_MILLISEC));
             }
             if (g_monitor_module.ap_telemetry_id == 0) {
                 scheduler_add_timer_task(g_monitor_module.sched, FALSE, &g_monitor_module.ap_telemetry_id,
-                        upload_ap_telemetry_data, NULL, (g_monitor_module.upload_period * MIN_TO_MILLISEC), 0);
+                        upload_ap_telemetry_data, NULL, (g_monitor_module.upload_period * SEC_TO_MILLISEC), 0);
             } else {
                 scheduler_update_timer_task_interval(g_monitor_module.sched, g_monitor_module.ap_telemetry_id,
-                        (g_monitor_module.upload_period * MIN_TO_MILLISEC));
+                        (g_monitor_module.upload_period * SEC_TO_MILLISEC));
             }
         } else {
             if (g_monitor_module.client_telemetry_id != 0) {
