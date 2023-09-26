@@ -290,7 +290,7 @@ else
         fi
 
         #we need to use this changes for only TechXB7 device.
-        if [ "$MODEL_NUM" == "CGM4331COM" ]; then
+        if [ "$MODEL_NUM" == "CGM4331COM" -o "$MODEL_NUM" == "CGA4332COM" ]; then
                 check_wifi_2g_stuck_status
                 check_wifi_5g_stuck_status
         fi
