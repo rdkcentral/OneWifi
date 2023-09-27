@@ -3693,11 +3693,13 @@ webconfig_error_t translate_ovsdb_to_sta_vap_info_common(const struct schema_Wif
     vap->u.sta_info.enabled = vap_row->enabled;
     snprintf(vap->bridge_name,sizeof(vap->bridge_name),"%s",vap_row->bridge);
     str_to_mac_bytes((char *)vap_row->parent, vap->u.sta_info.bssid);
-    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Parent : %s bssid : %02x%02x%02x%02x%02x%02x\n", __func__, __LINE__, vap_row->parent,
+    snprintf(vap->u.sta_info.ssid, sizeof(vap->u.sta_info.ssid), "%s", vap_row->ssid);
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Parent : %s bssid : %02x%02x%02x%02x%02x%02x SSID: %s\n", __func__, __LINE__, vap_row->parent,
             vap->u.sta_info.bssid[0], vap->u.sta_info.bssid[1],
             vap->u.sta_info.bssid[2], vap->u.sta_info.bssid[3],
-            vap->u.sta_info.bssid[4], vap->u.sta_info.bssid[5]);
-
+            vap->u.sta_info.bssid[4], vap->u.sta_info.bssid[5],
+            vap->u.sta_info.ssid);
 
     return webconfig_error_none;
 }

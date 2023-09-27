@@ -11,6 +11,7 @@
 #include "wifi_monitor.h"
 #include "wifi_hal_generic.h"
 #include <rbus.h>
+#include <errno.h>
 
 #include <opensync/ow_state_barrier.h>
 #include <opensync/ow_cbs_register.h>
@@ -24,6 +25,13 @@
 #define WIFI_BHAUL_STA_IF_PREFIX   "bhaul-sta-"
 #define WIFI_LNF_AP_IF_PREFIX      "svc-d-ap-"
 #define WIFI_IOT_AP_IF_PREFIX      "svc-e-ap-"
+
+// Bhaul credentials caching on POD
+#define BHAUL_CREDS_DIR      "/mnt/data/pstore/mesh_bhaul_creds/"
+#define BHAUL_CREDS_PATH_LEN (sizeof(BHAUL_CREDS_DIR) + 10)
+/* max 32 bytes*/
+#define SSID_MAX_LEN         (64)
+#define KEY_MAX_LEN          (256)
 
 typedef enum {
     ow_state_barrier_vif_conf_type_device,
@@ -468,6 +476,127 @@ int vap_svc_mesh_ext_stop(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
     return RETURN_OK;
 }
 
+static char* get_bhaul_creds_path_by_vap_idx(unsigned int vap_index, char* buf, size_t buf_len)
+{
+    if (!buf) {
+        return NULL;
+    }
+
+    snprintf(buf, buf_len, "%s%u", BHAUL_CREDS_DIR, vap_index);
+
+    return buf;
+}
+
+static bool save_bhaul_creds(unsigned int vap_index, ssid_t ssid, wifi_security_key_t *security_key)
+{
+    /* consider directory exists */
+    char fpath[BHAUL_CREDS_PATH_LEN + 1] = {0};
+    if (!get_bhaul_creds_path_by_vap_idx(vap_index, fpath, BHAUL_CREDS_PATH_LEN)) {
+        wifi_util_dbg_print(WIFI_CTRL, "Error getting bhaul creds by vap index !!!\n");
+        return false;
+    }
+
+    int rc = mkdir(BHAUL_CREDS_DIR, 0700);
+    if (rc != 0 && errno != EEXIST) {
+        wifi_util_dbg_print(WIFI_CTRL, "Creating directory [%s] failed !!!\n", BHAUL_CREDS_DIR);
+        return false;
+    }
+
+    FILE *fp = fopen(fpath, "w");
+    if (!fp) {
+        wifi_util_dbg_print(WIFI_CTRL, "Error opening file [%s] !!!\n", fpath);
+        return false;
+    }
+
+    fprintf(fp, "%.*s\n", sizeof(ssid_t) - 1,            ssid);
+    fprintf(fp, "%.*s\n", sizeof(security_key->key) - 1, security_key->key);
+
+    fclose(fp);
+    return true;
+}
+
+static bool is_bhaul_creds_changed(unsigned int vap_index, ssid_t new_ssid, wifi_security_key_t *new_security_key)
+{
+    bool is_changed = false;
+    FILE* fp = NULL;
+    char fpath[BHAUL_CREDS_PATH_LEN + 1] = {0};
+    char old_ssid[SSID_MAX_LEN + 1] = {0};
+    char old_key[KEY_MAX_LEN + 1] = {0};
+
+    if (!get_bhaul_creds_path_by_vap_idx(vap_index, fpath, BHAUL_CREDS_PATH_LEN)) {
+        return false;
+    }
+
+    fp = fopen(fpath, "r");
+    if (!fp)
+    {
+        return true;
+    }
+
+    if (fgets(old_ssid, SSID_MAX_LEN, fp) == 0) {
+        is_changed = true;
+        goto exit;
+    }
+    old_ssid[strcspn(old_ssid, "\n")] = 0;
+
+    if (fgets(old_key, KEY_MAX_LEN, fp) == 0) {
+        is_changed = true;
+        goto exit;
+    }
+    old_key[strcspn(old_key, "\n")] = 0;
+
+    is_changed |= !!strncmp(old_ssid, new_ssid,              SSID_MAX_LEN);
+    is_changed |= !!strncmp(old_key,  new_security_key->key, KEY_MAX_LEN);
+    if (is_changed) {
+        wifi_util_dbg_print(WIFI_CTRL,"%s: Changed vap[%d]\n", __func__, vap_index);
+        wifi_util_dbg_print(WIFI_CTRL,"%s: old_ssid[%s] new_ssid[%s]\n", __func__, old_ssid, new_ssid);
+    }
+
+exit:
+    fclose(fp);
+    return is_changed;
+}
+
+static bool backup_bhaul_creds()
+{
+    bool success = true;
+    /* TODO: enhance the partial backup approach */
+    wifi_back_haul_sta_t *sta_cfg_active = NULL;
+    int vap_index = 0;
+    wifi_vap_name_t vap_names[MAX_NUM_RADIOS] = {0};
+    wifi_hal_capability_t *wifi_hal_cap_obj = rdk_wifi_get_hal_capability_map();
+    unsigned int num_vaps = get_list_of_mesh_sta(&wifi_hal_cap_obj->wifi_prop, MAX_NUM_RADIOS, &vap_names[0]);
+
+    for (size_t i = 0; i < num_vaps; i++) {
+        vap_index = convert_vap_name_to_index(&wifi_hal_cap_obj->wifi_prop, vap_names[i]);
+        if (vap_index == RETURN_ERR) {
+            continue;
+        }
+
+        sta_cfg_active = (wifi_back_haul_sta_t *) get_wifi_object_sta_parameter(vap_index);
+        if (sta_cfg_active->enabled) {
+            wifi_util_dbg_print(WIFI_CTRL,"%s: active if[%s]\n", __func__, vap_names[i]);
+            break;
+        }
+    }
+
+    if (!sta_cfg_active) {
+        return false;
+    }
+
+    for (size_t i = 0; i < num_vaps; i++) {
+        vap_index = convert_vap_name_to_index(&wifi_hal_cap_obj->wifi_prop, vap_names[i]);
+        if (vap_index != RETURN_ERR
+            && is_bhaul_creds_changed(vap_index, sta_cfg_active->ssid, &sta_cfg_active->security.u.key))
+        {
+            success &= save_bhaul_creds(vap_index, sta_cfg_active->ssid, &sta_cfg_active->security.u.key);
+            wifi_util_dbg_print(WIFI_CTRL,"%s: save_bhaul_creds vap[%d]\n", __func__, vap_index);
+        }
+    }
+
+    return success;
+}
+
 int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map,
     rdk_wifi_vap_info_t *rdk_vap_info)
 {
@@ -479,6 +608,9 @@ int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_i
         wifidb_update_wifi_security_config(getVAPName(map->vap_array[i].vap_index),
             &map->vap_array[i].u.sta_info.security);
     }
+
+    bool backup_success = backup_bhaul_creds();
+    wifi_util_dbg_print(WIFI_CTRL,"Partial backup is %s\n", backup_success ? "succeeded" : "failed");
 
     return 0;
 }
