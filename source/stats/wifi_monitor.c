@@ -4899,7 +4899,7 @@ int WaitForDuration (int timeInMs)
     return ret;
 }
 
-#if !defined(_XF3_PRODUCT_REQ_) && !defined(_CBR_PRODUCT_REQ_)
+#if defined (_PP203X_PRODUCT_REQ_)
 static void convert_channel_width_to_str(wifi_channelBandwidth_t cw, char *str, size_t len)
 {
     char arr_str[][8] = {"20", "40", "80", "160"};
@@ -4941,7 +4941,8 @@ static void convert_variant_to_str(wifi_ieee80211Variant_t variant, char *str, s
     str[strlen(str) - 1] = '\0';
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d 0x%X converted to %s\n",__func__,__LINE__, variant, str);
 }
-#endif
+#endif // _PP203X_PRODUCT_REQ_
+
 /*********************************************************************************/
 /*                                                                               */
 /* FUNCTION NAME : pktGen_BlastClient                                            */
@@ -4974,7 +4975,9 @@ void pktGen_BlastClient (char *dst_mac, wifi_interface_name_t *ifname)
 #if !defined(_XF3_PRODUCT_REQ_) && !defined(_CBR_PRODUCT_REQ_)
     int index = g_active_msmt.curStepData.ApIndex;
     int radio_index = get_radio_index_for_vap_index(&(get_wifimgr_obj())->hal_cap.wifi_prop, index);
+#if defined (_PP203X_PRODUCT_REQ_)
     wifi_radio_operationParam_t* radioOperation = NULL;
+#endif //_PP203X_PRODUCT_REQ_
 #endif
 #ifndef CCSP_COMMON
     char *radio_type = NULL;
@@ -4986,7 +4989,9 @@ void pktGen_BlastClient (char *dst_mac, wifi_interface_name_t *ifname)
 
 #if !defined(_XF3_PRODUCT_REQ_) && !defined(_CBR_PRODUCT_REQ_)
     if (radio_index != RETURN_ERR) {
+#if defined (_PP203X_PRODUCT_REQ_)
         radioOperation = getRadioOperationParam(radio_index);
+#endif
 #ifndef CCSP_COMMON
         radio_type = g_monitor_module.radio_data[radio_index].frequency_band;  
         nf = g_monitor_module.radio_data[radio_index].NoiseFloor;   
@@ -5084,10 +5089,19 @@ void pktGen_BlastClient (char *dst_mac, wifi_interface_name_t *ifname)
 #else
                 g_active_msmt.active_msmt_data[SampleCount].RetransCount = dev_conn.cli_RetransCount;
 #endif // CCSP_COMMON
+#if defined (_PP203X_PRODUCT_REQ_)
                 if (radioOperation != NULL) {
                     convert_channel_width_to_str(radioOperation->channelWidth, g_active_msmt.active_msmt_data[SampleCount].Operating_channelwidth, OPER_BUFFER_LEN);
                     convert_variant_to_str(radioOperation->variant, g_active_msmt.active_msmt_data[SampleCount].Operating_standard, OPER_BUFFER_LEN);
                 }
+#else
+                if (strstr(dev_conn.cli_OperatingStandard, "802.11") != NULL) {
+                    sscanf(dev_conn.cli_OperatingStandard, "802.11%2s", g_active_msmt.active_msmt_data[SampleCount].Operating_standard);
+                } else {
+                    snprintf(g_active_msmt.active_msmt_data[SampleCount].Operating_standard, OPER_BUFFER_LEN, dev_conn.cli_OperatingStandard);
+                }
+                snprintf(g_active_msmt.active_msmt_data[SampleCount].Operating_channelwidth, OPER_BUFFER_LEN, dev_conn.cli_OperatingChannelBandwidth);
+#endif //_PP203X_PRODUCT_REQ_
 
                 frameCountSample[SampleCount].PacketsSentAck = dev_conn.cli_DataFramesSentAck;
 #ifdef CCSP_COMMON
