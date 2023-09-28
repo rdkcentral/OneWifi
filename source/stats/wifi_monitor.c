@@ -117,7 +117,6 @@ int harvester_get_associated_device_info(int vap_index, char **harvester_buf);
 extern void* bus_handle;
 extern char g_Subsystem[32];
 #define SINGLE_CLIENT_WIFI_AVRO_FILENAME "WifiSingleClient.avsc"
-#define DEFAULT_INSTANT_POLL_TIME 5
 #define DEFAULT_INSTANT_REPORT_TIME 0
 #define MAX_NEIGHBOURS 250
 
@@ -184,12 +183,8 @@ static int neighscan_task_id = -1;
 #endif
 
 
-void associated_client_diagnostics();
-void process_instant_msmt_stop (unsigned int ap_index, instant_msmt_t *msmt);
-void process_instant_msmt_start        (unsigned int ap_index, instant_msmt_t *msmt);
 void get_self_bss_chan_statistics (int radiocnt , UINT *Tx_perc, UINT  *Rx_perc);
 int get_chan_util_upload_period(void);
-int process_instant_msmt_monitor(void *arg);
 static int refresh_task_period(void *arg);
 int associated_device_diagnostics_send_event(void *arg);
 static void scheduler_telemetry_tasks(void);
@@ -882,116 +877,6 @@ static int refresh_assoc_frame_entry(void *arg)
     return TIMER_TASK_COMPLETE;
 }
 
-void process_diagnostics	(unsigned int ap_index, wifi_associated_dev3_t *dev, unsigned int num_devs)
-{
-    hash_map_t     *sta_map = NULL;
-    sta_data_t *sta = NULL, *tmp_sta = NULL;
-    unsigned int i;
-    wifi_associated_dev3_t	*hal_sta;
-    sta_key_t	sta_key;
-    char bssid[MIN_MAC_LEN+1];
-    unsigned int vap_array_index;
-
-    getVAPArrayIndexFromVAPIndex(ap_index, &vap_array_index);
-    sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
-
-    snprintf(bssid, MIN_MAC_LEN+1, "%02x%02x%02x%02x%02x%02x",
-            g_monitor_module.bssid_data[vap_array_index].bssid[0], g_monitor_module.bssid_data[vap_array_index].bssid[1],
-            g_monitor_module.bssid_data[vap_array_index].bssid[2], g_monitor_module.bssid_data[vap_array_index].bssid[3],
-            g_monitor_module.bssid_data[vap_array_index].bssid[4], g_monitor_module.bssid_data[vap_array_index].bssid[5]);
-
-    hal_sta = dev;
-   memset(sta_key, 0, STA_KEY_LEN); 
-    // update all sta(s) that are in the record retrieved from hal
-    if (hal_sta != NULL) {
-        for (i = 0; i < num_devs; i++) {
-            to_sta_key(hal_sta->cli_MACAddress, sta_key);
-            str_tolower(sta_key);
-            sta = (sta_data_t *)hash_map_get(sta_map, sta_key);
-            if (sta == NULL) {
-                sta = (sta_data_t *)malloc(sizeof(sta_data_t));
-                memset(sta, 0, sizeof(sta_data_t));
-                memcpy(sta->sta_mac, hal_sta->cli_MACAddress, sizeof(mac_addr_t));
-                hash_map_put(sta_map, strdup(sta_key), sta);
-            }
-
-            //wifi_util_dbg_print(WIFI_MON, "Current Stored for:%s Packets Sent:%d Packets Recieved:%d Errors Sent:%d Retrans:%d Retry:%d Multiple:%d at index:%d on vap:%d\n",
-            //    to_sta_key(sta->dev_stats.cli_MACAddress, sta_key),
-            //    sta->dev_stats.cli_PacketsSent, sta->dev_stats.cli_PacketsReceived, sta->dev_stats.cli_ErrorsSent,
-            //    sta->dev_stats.cli_RetransCount, sta->dev_stats.cli_RetryCount, sta->dev_stats.cli_MultipleRetryCount, i, ap_index);
-
-            memcpy((unsigned char *)&sta->dev_stats, (unsigned char *)hal_sta, sizeof(wifi_associated_dev3_t)); 
-
-            //wifi_util_dbg_print(WIFI_MON, "Current Polled for:%s Packets Sent:%d Packets Recieved:%d Errors Sent:%d Retrans:%d Retry:%d Multiple:%d\n",
-            //    to_sta_key(sta->dev_stats.cli_MACAddress, sta_key),
-            //    hal_sta->cli_PacketsSent, hal_sta->cli_PacketsReceived, hal_sta->cli_ErrorsSent,
-            //    hal_sta->cli_RetransCount, hal_sta->cli_RetryCount, hal_sta->cli_MultipleRetryCount);
-            //wifi_util_dbg_print(WIFI_MON, "Current Last for: %s Packets Sent:%d Packets Recieved:%d Errors Sent:%d Retrans:%d Retry:%d Multiple:%d\n",
-            //    to_sta_key(sta->dev_stats.cli_MACAddress, sta_key),
-            //    sta->dev_stats_last.cli_PacketsSent, sta->dev_stats_last.cli_PacketsReceived, sta->dev_stats_last.cli_ErrorsSent,
-            //    sta->dev_stats_last.cli_RetransCount, sta->dev_stats_last.cli_RetryCount, sta->dev_stats_last.cli_MultipleRetryCount);
-
-            sta->updated = true;
-            sta->dev_stats.cli_Active = true;
-            sta->dev_stats.cli_SignalStrength = hal_sta->cli_SignalStrength;  //zqiu: use cli_SignalStrength as normalized rssi
-            if (sta->dev_stats.cli_SignalStrength >= g_monitor_module.sta_health_rssi_threshold) {
-                sta->good_rssi_time += g_monitor_module.poll_period;
-            } else {
-                sta->bad_rssi_time += g_monitor_module.poll_period;
-            }
-
-            sta->connected_time += g_monitor_module.poll_period;
-            wifi_util_dbg_print(WIFI_MON, "Polled station info for, vap:%d bssid:%s ClientMac:%s Uplink rate:%d Downlink rate:%d Packets Sent:%d Packets Recieved:%d Errors Sent:%d Retrans:%d\n",
-                  ap_index+1, bssid, to_sta_key(sta->dev_stats.cli_MACAddress, sta_key), sta->dev_stats.cli_LastDataUplinkRate, sta->dev_stats.cli_LastDataDownlinkRate,
-                    sta->dev_stats.cli_PacketsSent, sta->dev_stats.cli_PacketsReceived, sta->dev_stats.cli_ErrorsSent, sta->dev_stats.cli_RetransCount);
-            wifi_util_dbg_print(WIFI_MON, "Polled radio NF %d \n",g_monitor_module.radio_data[getRadioIndexFromAp(ap_index)].NoiseFloor);
-            wifi_util_dbg_print(WIFI_MON, "Polled channel info for radio 2.4 : channel util:%d, channel interference:%d \n",
-                    g_monitor_module.radio_data[0].channelUtil, g_monitor_module.radio_data[0].channelInterference);
-            wifi_util_dbg_print(WIFI_MON, "Polled channel info for radio 5 : channel util:%d, channel interference:%d \n",
-                    g_monitor_module.radio_data[1].channelUtil, g_monitor_module.radio_data[1].channelInterference);
-            hal_sta++;
-
-        }
-    } else {
-          // RDKB-48001 RDKB-50293
-          if (num_devs > 0)
-          {
-              wifi_util_dbg_print(WIFI_MON, "[%s:%d]Wi-Fi associated device map is NULL for vap_index:%d number of device:%d\r\n", __func__, __LINE__, ap_index, num_devs);
-          }
-    }
-
-    // now update all sta(s) in cache that were not updated
-    sta = hash_map_get_first(sta_map);
-    while (sta != NULL) {
-
-        if (sta->updated == true) {
-            sta->updated = false;
-        } else {
-            // this was not present in hal record
-            sta->disconnected_time += g_monitor_module.poll_period;
-            sta->dev_stats.cli_Active = false;
-            wifi_util_dbg_print(WIFI_MON, "Device:%s is disassociated from ap:%d, for %d amount of time, assoc status:%d\n",
-                    to_sta_key(sta->sta_mac, sta_key), ap_index, sta->disconnected_time, sta->dev_stats.cli_Active);
-            if ((sta->disconnected_time > g_monitor_module.bssid_data[vap_array_index].ap_params.rapid_reconnect_threshold) && (sta->dev_stats.cli_Active == false)) {
-                tmp_sta = sta;
-            }
-        }
-
-        sta = hash_map_get_next(sta_map, sta);
-
-        if (tmp_sta != NULL) {
-            wifi_util_info_print(WIFI_MON, "Device:%s being removed from map of ap:%d, and being deleted\n", to_sta_key(tmp_sta->sta_mac, sta_key), ap_index);
-            wifi_util_info_print(WIFI_MON, "[%s:%d] Station info for, vap:%d bssid:%s ClientMac:%s\n", __func__, __LINE__,
-                                                     (ap_index + 1), bssid, to_sta_key(tmp_sta->dev_stats.cli_MACAddress, sta_key));
-            send_wifi_disconnect_event_to_ctrl(tmp_sta->sta_mac, ap_index);
-            hash_map_remove(sta_map, to_sta_key(tmp_sta->sta_mac, sta_key));
-            free(tmp_sta);
-            tmp_sta = NULL;
-        }        
-    }
-
-}
-
 void process_deauthenticate_password_fail (unsigned int ap_index, auth_deauth_dev_t *dev)
 {
     char buff[2048];
@@ -1169,10 +1054,6 @@ void process_disconnect	(unsigned int ap_index, auth_deauth_dev_t *dev)
     /* stop the instant measurement only if the client for which instant measuremnt
       is running got disconnected from AP
       */
-    if (memcmp(g_monitor_module.inst_msmt.sta_mac, msmt.sta_mac, sizeof(mac_address_t)) == 0)
-    {
-        process_instant_msmt_stop(ap_index, &msmt);
-    }
 #else
     sta = hash_map_remove(sta_map, sta_key);
     if (sta != NULL) {
@@ -1180,32 +1061,6 @@ void process_disconnect	(unsigned int ap_index, auth_deauth_dev_t *dev)
     }
 #endif // CCSP_COMMON
 }
-
-#ifdef CCSP_COMMON
-void process_instant_msmt_start	(unsigned int ap_index, instant_msmt_t *msmt)
-{
-    memcpy(g_monitor_module.inst_msmt.sta_mac, msmt->sta_mac, sizeof(mac_address_t));
-    g_monitor_module.inst_msmt.ap_index = ap_index;
-    g_monitor_module.poll_period = g_monitor_module.instantPollPeriod;
-    g_monitor_module.inst_msmt.active = g_monitor_module.instntMsmtenable;
-
-    if((g_monitor_module.instantDefOverrideTTL == 0) || (g_monitor_module.instantPollPeriod == 0))
-        g_monitor_module.maxCount = 0;
-    else
-        g_monitor_module.maxCount = g_monitor_module.instantDefOverrideTTL/g_monitor_module.instantPollPeriod;
-
-    g_monitor_module.count = 0;
-    wifi_util_dbg_print(WIFI_MON, "%s:%d: count:%d, maxCount:%d, TTL:%d, poll:%d\n",__func__, __LINE__, 
-            g_monitor_module.count, g_monitor_module.maxCount, g_monitor_module.instantDefOverrideTTL, g_monitor_module.instantPollPeriod);
-
-    //Stopping telemetry while running instant measurement.
-    scheduler_telemetry_tasks();
-    if (g_monitor_module.instantPollPeriod != 0) {
-        scheduler_add_timer_task(g_monitor_module.sched, TRUE, &g_monitor_module.inst_msmt_id,
-                process_instant_msmt_monitor, NULL, (g_monitor_module.instantPollPeriod*1000), 0);
-    }
-}
-#endif // CCSP_COMMON
 
 static void active_msmt_log_message(char *fmt, ...)
 {
@@ -1716,44 +1571,6 @@ void process_active_msmt_step(active_msmt_t *cfg)
 }
 
 #ifdef CCSP_COMMON
-void process_instant_msmt_stop  (unsigned int ap_index, instant_msmt_t *msmt)
-{
-    /*if ((g_monitor_module.inst_msmt.active == true) && (memcmp(g_monitor_module.inst_msmt.sta_mac, msmt->sta_mac, sizeof(mac_address_t)) == 0)) {
-      g_monitor_module.inst_msmt.active = false;
-      g_monitor_module.poll_period = DEFAULT_INSTANT_POLL_TIME;
-      g_monitor_module.maxCount = g_monitor_module.instantDefReportPeriod/DEFAULT_INSTANT_POLL_TIME;
-      g_monitor_module.count = 0;
-      }*/
-    UNREFERENCED_PARAMETER(msmt);
-    g_monitor_module.inst_msmt.active = false;
-    g_monitor_module.poll_period = DEFAULT_INSTANT_POLL_TIME;
-    g_monitor_module.maxCount = 0;
-    g_monitor_module.count = 0;
-
-    //Restarting telemetry after stopping instant measurement.  
-    scheduler_telemetry_tasks();
-    if (g_monitor_module.inst_msmt_id != 0) {
-        scheduler_cancel_timer_task(g_monitor_module.sched, g_monitor_module.inst_msmt_id);
-        g_monitor_module.inst_msmt_id = 0;
-    }
-}
-
-int process_instant_msmt_monitor(void *arg)
-{
-    if (g_monitor_module.count >= g_monitor_module.maxCount) {
-        wifi_util_dbg_print(WIFI_MON, "%s:%d: instant polling freq reached threshold\n", __func__, __LINE__);
-        g_monitor_module.instantDefOverrideTTL = DEFAULT_INSTANT_REPORT_TIME;
-        g_monitor_module.instntMsmtenable = false;
-        process_instant_msmt_stop(g_monitor_module.inst_msmt.ap_index, &g_monitor_module.inst_msmt);
-    } else {
-        g_monitor_module.count += 1;
-        wifi_util_dbg_print(WIFI_MON, "%s:%d: client %s on ap %d\n", __func__, __LINE__, g_monitor_module.instantMac, g_monitor_module.inst_msmt.ap_index);
-        associated_client_diagnostics(); //for single client
-        stream_client_msmt_data(false);
-    }
-
-    return TIMER_TASK_COMPLETE;
-}
 
 int get_neighbor_scan_results()
 {
@@ -1898,14 +1715,6 @@ void *monitor_function  (void *data)
                         process_deauthenticate(event_data->ap_index, &event_data->u.dev);
                     break;
 
-                    case wifi_event_monitor_stop_inst_msmt:
-                        process_instant_msmt_stop(event_data->ap_index, &event_data->u.imsmt);
-                    break;
-
-                    case wifi_event_monitor_start_inst_msmt:
-                        process_instant_msmt_start(event_data->ap_index, &event_data->u.imsmt);
-                    break;
-
                     case wifi_event_monitor_stats_flag_change:
                         process_stats_flag_changed(event_data->ap_index, &event_data->u.flag);
                     break;
@@ -1932,6 +1741,13 @@ void *monitor_function  (void *data)
                     case wifi_event_monitor_assoc_req:
                         set_assoc_req_frame_data(&event_data->u.msg);
                     break;
+                    case wifi_event_monitor_start_inst_msmt:
+                        g_monitor_module.inst_msmt_id = 1;
+                        scheduler_telemetry_tasks();
+                    break;
+                    case wifi_event_monitor_stop_inst_msmt:
+                        g_monitor_module.inst_msmt_id = 0;
+                        scheduler_telemetry_tasks();
 #endif // CCSP_COMMON
                     default:
                     break;
@@ -2793,44 +2609,6 @@ static int readLogInterval()
     return logInterval;
 }
 
-
-void associated_client_diagnostics ()
-{
-    wifi_associated_dev3_t dev_conn ;
-    int radioIndex;
-    int chan_util = 0;
-
-    char s_mac[MIN_MAC_LEN+1];
-    int index = g_monitor_module.inst_msmt.ap_index;
-
-    memset(&dev_conn, 0, sizeof(wifi_associated_dev3_t));
-    snprintf(s_mac, MIN_MAC_LEN+1, "%02x%02x%02x%02x%02x%02x", g_monitor_module.inst_msmt.sta_mac[0],
-            g_monitor_module.inst_msmt.sta_mac[1],g_monitor_module.inst_msmt.sta_mac[2], g_monitor_module.inst_msmt.sta_mac[3],
-            g_monitor_module.inst_msmt.sta_mac[4], g_monitor_module.inst_msmt.sta_mac[5]);
-    radioIndex = getRadioIndexFromAp(index);
-
-    wifi_util_dbg_print(WIFI_MON, "%s:%d: get radio NF %d\n", __func__, __LINE__, g_monitor_module.radio_data[radioIndex].NoiseFloor);
-
-    /* ToDo: We can get channel_util percentage now, channel_ineterference percentage is 0 */
-    if (get_radio_channel_utilization(radioIndex, &chan_util) == RETURN_OK) {
-        wifi_util_dbg_print(WIFI_MON, "%s:%d: get channel stats for radio %d\n", __func__, __LINE__, radioIndex);
-        g_monitor_module.radio_data[radioIndex].channelUtil = chan_util;
-        g_monitor_module.radio_data[radioIndex].channelInterference = 0;
-        g_monitor_module.radio_data[getRadioIndexFromAp(radioIndex + 1)].channelUtil = 0;
-        g_monitor_module.radio_data[getRadioIndexFromAp(radioIndex + 1)].channelInterference = 0;
-    }
-
-    wifi_util_dbg_print(WIFI_MON, "%s:%d: get single connected client %s stats\n", __func__, __LINE__, s_mac);
-#if !defined(_CBR_PRODUCT_REQ_)
-    wifi_util_dbg_print(WIFI_MON, "WIFI_HAL enabled, calling wifi_getApAssociatedClientDiagnosticResult\n");
-    if (wifi_getApAssociatedClientDiagnosticResult(index, s_mac, &dev_conn) == RETURN_OK) {
-        process_diagnostics(index, &dev_conn, 1);
-    }
-#else
-    wifi_util_dbg_print(WIFI_MON, "WIFI_HAL Not enabled. Using wifi default values\n");
-    process_diagnostics(index, &dev_conn, 1);
-#endif
-}
 #endif // CCSP_COMMON
 
 
@@ -3198,7 +2976,7 @@ static void scheduler_telemetry_tasks(void)
     unsigned int total_radios = getNumberRadios();
     unsigned int rad_index = 0;
 #endif //FEATURE_OFF_CHANNEL_SCAN_5G
-    if (!g_monitor_module.instntMsmtenable) {
+    if (!g_monitor_module.inst_msmt_id) {
         g_monitor_module.curr_chan_util_period = get_chan_util_upload_period();
 #if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
         for (rad_index = 0; rad_index < total_radios; rad_index++)
@@ -3220,7 +2998,6 @@ static void scheduler_telemetry_tasks(void)
             scheduler_add_timer_task(g_monitor_module.sched, FALSE, &g_monitor_module.refresh_task_id, refresh_task_period,
                     NULL, REFRESH_TASK_INTERVAL_MS, 0);
         }
-
         if (g_monitor_module.vap_status_id == 0) {
             scheduler_add_timer_task(g_monitor_module.sched, FALSE, &g_monitor_module.vap_status_id, captureVAPUpStatus,
                     NULL, CAPTURE_VAP_STATUS_INTERVAL_MS, 0);
@@ -3230,7 +3007,6 @@ static void scheduler_telemetry_tasks(void)
             scheduler_add_timer_task(g_monitor_module.sched, FALSE, &g_monitor_module.radio_diagnostics_id, radio_diagnostics, NULL,
                     RADIO_STATS_INTERVAL_MS, 0);
         }
-
 #if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
         for (rad_index = 0; rad_index < total_radios; rad_index++)
         {
@@ -3362,7 +3138,6 @@ int init_wifi_monitor()
     }
 #if CCSP_COMMON
     memset(g_monitor_module.cliStatsList, 0, MAX_VAP);
-    g_monitor_module.poll_period = 5;
     g_monitor_module.upload_period = get_upload_period(60);//Default value 60
     uptimeval=get_sys_uptime();
     chan_util_upload_period = get_chan_util_upload_period();
@@ -3648,46 +3423,6 @@ void deinit_wifi_monitor()
 }
 
 #ifdef CCSP_COMMON
-unsigned int get_poll_period 	()
-{
-    return g_monitor_module.poll_period;
-}
-
-unsigned int GetINSTOverrideTTL()
-{
-    return g_monitor_module.instantDefOverrideTTL;
-}
-
-void SetINSTOverrideTTL(int defTTL)
-{
-    g_monitor_module.instantDefOverrideTTL = defTTL;
-}
-
-unsigned int GetINSTDefReportingPeriod()
-{
-    return g_monitor_module.instantDefReportPeriod;
-}
-
-void SetINSTDefReportingPeriod(int defPeriod)
-{
-    g_monitor_module.instantDefReportPeriod = defPeriod;
-}
-
-void SetINSTReportingPeriod(unsigned long pollPeriod)
-{
-    g_monitor_module.instantPollPeriod = pollPeriod;
-}
-
-unsigned int GetINSTPollingPeriod()
-{
-    return g_monitor_module.instantPollPeriod;
-}
-
-void SetINSTMacAddress(char *mac_addr)
-{
-    strncpy(g_monitor_module.instantMac, mac_addr, MIN_MAC_LEN);
-}
-
 char* GetInstAssocDevSchemaIdBuffer()
 {
     return instSchemaIdBuffer;
@@ -3701,199 +3436,6 @@ int GetInstAssocDevSchemaIdBufferSize()
     }
 
     return len;
-}
-
-void instant_msmt_reporting_period(int pollPeriod)
-{
-    int timeSpent = 0;
-    int timeLeft = 0;
-
-    wifi_util_dbg_print(WIFI_MON, "%s:%d: reporting period changed\n", __func__, __LINE__);
-    pthread_mutex_lock(&g_monitor_module.queue_lock);
-
-    if(pollPeriod == 0){
-        g_monitor_module.maxCount = 0;
-        g_monitor_module.count = 0;
-    }else{
-        timeSpent = g_monitor_module.count * g_monitor_module.instantPollPeriod ;
-        timeLeft = g_monitor_module.instantDefOverrideTTL - timeSpent;
-        g_monitor_module.maxCount = timeLeft/pollPeriod;
-        g_monitor_module.poll_period = pollPeriod;
-
-        if(g_monitor_module.count > g_monitor_module.maxCount)
-            g_monitor_module.count = 0;
-    }
-    g_monitor_module.instantPollPeriod = pollPeriod;
-    if(g_monitor_module.instntMsmtenable == true) {
-        pthread_cond_signal(&g_monitor_module.cond);
-    }
-    if (g_monitor_module.inst_msmt_id != 0) {
-        scheduler_update_timer_task_interval(g_monitor_module.sched, g_monitor_module.inst_msmt_id,
-                (g_monitor_module.instantPollPeriod*1000));
-    }
-    pthread_mutex_unlock(&g_monitor_module.queue_lock);
-}
-
-void instant_msmt_def_period(int defPeriod)
-{
-    int curCount = 0;
-    int newCount = 0;
-
-    wifi_util_dbg_print(WIFI_MON, "%s:%d: def period changed\n", __func__, __LINE__);
-    g_monitor_module.instantDefReportPeriod = defPeriod;
-
-    if(g_monitor_module.instntMsmtenable == false) {
-        pthread_mutex_lock(&g_monitor_module.queue_lock);
-
-        curCount = g_monitor_module.count;
-        newCount = g_monitor_module.instantDefReportPeriod / DEFAULT_INSTANT_POLL_TIME;
-
-        if(newCount > curCount){
-            g_monitor_module.maxCount = newCount - curCount;
-            g_monitor_module.count = 0;
-        }else{
-            wifi_util_dbg_print(WIFI_MON, "%s:%d:created max non instant report, stop polling now\n", __func__, __LINE__);
-            g_monitor_module.maxCount = 0;
-        }
-        pthread_cond_signal(&g_monitor_module.cond);
-        pthread_mutex_unlock(&g_monitor_module.queue_lock);
-    }
-}
-
-void instant_msmt_ttl(int overrideTTL)
-{
-    int curCount = 0;
-    int newCount = 0;
-
-    wifi_util_dbg_print(WIFI_MON, "%s:%d: TTL changed\n", __func__, __LINE__);
-    g_monitor_module.instantDefOverrideTTL = overrideTTL;
-
-    if(g_monitor_module.instantPollPeriod == 0)
-        return;
-
-    pthread_mutex_lock(&g_monitor_module.queue_lock);
-
-    if(overrideTTL == 0){
-        g_monitor_module.maxCount = 0;
-        g_monitor_module.count = 0;
-    } else {
-        curCount = g_monitor_module.count;
-        newCount = g_monitor_module.instantDefOverrideTTL/g_monitor_module.instantPollPeriod;
-        if(newCount > curCount){
-            g_monitor_module.maxCount = newCount - curCount;
-            g_monitor_module.count = 0;
-        }else{
-            wifi_util_dbg_print(WIFI_MON, "%s:%d:already created maxCount report, stop polling now\n", __func__, __LINE__);
-            g_monitor_module.maxCount = 0;
-        }
-    }
-    if(g_monitor_module.instntMsmtenable == true) {
-        pthread_cond_signal(&g_monitor_module.cond);
-    }
-    pthread_mutex_unlock(&g_monitor_module.queue_lock);
-}
-
-void instant_msmt_macAddr(char *mac_addr)
-{
-    mac_address_t bmac;
-    int i;
-    wifi_mgr_t *mgr = get_wifimgr_obj();
-
-    wifi_util_dbg_print(WIFI_MON, "%s:%d: get new client %s stats\n", __func__, __LINE__, mac_addr);
-    strncpy(g_monitor_module.instantMac, mac_addr, MIN_MAC_LEN);
-
-    str_to_mac_bytes(mac_addr, bmac);
-    for (i = 0; i < (int)getTotalNumberVAPs(); i++) {
-        UINT vap_index = VAP_INDEX(mgr->hal_cap, i);
-        UINT radio = RADIO_INDEX(mgr->hal_cap, i);
-        if (g_monitor_module.radio_presence[radio] == false) {
-            continue;
-        }
-        if( is_device_associated(vap_index, mac_addr)  == true) {
-            wifi_util_dbg_print(WIFI_MON, "%s:%d: found client %s on ap %d\n", __func__, __LINE__, mac_addr, vap_index);
-            pthread_mutex_lock(&g_monitor_module.queue_lock);
-            g_monitor_module.inst_msmt.ap_index = vap_index;
-            memcpy(g_monitor_module.inst_msmt.sta_mac, bmac, sizeof(mac_address_t));
-
-            pthread_cond_signal(&g_monitor_module.cond);
-            pthread_mutex_unlock(&g_monitor_module.queue_lock);
-
-            break;
-        }
-    }
-}
-
-void monitor_enable_instant_msmt(mac_address_t sta_mac, bool enable)
-{
-    mac_addr_str_t sta;
-    unsigned int i;
-    wifi_mgr_t *mgr = get_wifimgr_obj();
-    wifi_monitor_data_t data;
-
-    to_sta_key(sta_mac, sta);
-    wifi_util_dbg_print(WIFI_MON, "%s:%d: instant measurements %s for sta:%s\n", __func__, __LINE__, (enable == true)?"start":"stop", sta);
-
-    g_monitor_module.instntMsmtenable = enable;
-    pthread_mutex_lock(&g_monitor_module.queue_lock);
-
-    if (g_monitor_module.inst_msmt.active == true) {
-        if (enable == false) {
-            if (memcmp(g_monitor_module.inst_msmt.sta_mac, sta_mac, sizeof(mac_address_t)) == 0) {
-                wifi_util_dbg_print(WIFI_MON, "%s:%d: instant measurements active for sta:%s, should stop\n", __func__, __LINE__, sta);
-                g_monitor_module.instantDefOverrideTTL = DEFAULT_INSTANT_REPORT_TIME;
-
-                memset(&data, 0, sizeof(wifi_monitor_data_t));
-                memcpy(data.u.imsmt.sta_mac, sta_mac, sizeof(mac_address_t));
-
-                data.u.imsmt.ap_index = g_monitor_module.inst_msmt.ap_index;
-                data.ap_index = g_monitor_module.inst_msmt.ap_index;
-                pthread_mutex_unlock(&g_monitor_module.queue_lock);
-
-                push_event_to_monitor_queue(&data, wifi_event_monitor_stop_inst_msmt, NULL);
-
-            }
-
-        } else {
-            // must return
-            pthread_mutex_unlock(&g_monitor_module.queue_lock);
-            wifi_util_dbg_print(WIFI_MON, "%s:%d: instant measurements active for sta:%s, should just return\n", __func__, __LINE__, sta);
-        }
-
-
-        return;
-
-    }
-
-    wifi_util_dbg_print(WIFI_MON, "%s:%d: instant measurements not active should look for sta:%s\n", __func__, __LINE__, sta);
-
-    for (i = 0; i < getTotalNumberVAPs(); i++) {
-        UINT vap_index = VAP_INDEX(mgr->hal_cap, i);
-        UINT radio = RADIO_INDEX(mgr->hal_cap, i);
-        if (g_monitor_module.radio_presence[radio] == false) {
-            continue;
-        }
-        if ( is_device_associated(vap_index, sta) == true ) {
-            wifi_util_dbg_print(WIFI_MON, "%s:%d: found sta:%s on ap index:%d starting instant measurements\n", __func__, __LINE__, sta, vap_index);
-            memset(&data, 0, sizeof(wifi_monitor_data_t));
-
-            memcpy(data.u.imsmt.sta_mac, sta_mac, sizeof(mac_address_t));
-
-            data.u.imsmt.ap_index = vap_index;
-            data.ap_index = vap_index;
-
-            pthread_mutex_unlock(&g_monitor_module.queue_lock);
-            push_event_to_monitor_queue(&data, wifi_event_monitor_start_inst_msmt, NULL);
-
-            return;
-        }
-    }
-
-    pthread_mutex_unlock(&g_monitor_module.queue_lock);
-}
-
-bool monitor_is_instant_msmt_enabled()
-{
-    return g_monitor_module.instntMsmtenable;
 }
 #endif // CCSP_COMMON 
 

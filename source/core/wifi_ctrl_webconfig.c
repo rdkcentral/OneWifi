@@ -2291,23 +2291,6 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
     return RETURN_OK;
 }
 
-int webconfig_harvester_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
-{
-#if DML_SUPPORT
-    instant_measurement_config_t *ptr;
-    mac_address_t sta_mac;
-
-    ptr = &data->harvester;
-    wifi_util_info_print(WIFI_CTRL,"[%s]:WIFI webconfig harver apply Reporting period=%d default reporting period=%d default override=%d macaddress=%s enabled=%d\n",__FUNCTION__,ptr->u_inst_client_reporting_period,ptr->u_inst_client_def_reporting_period,ptr->u_inst_client_def_override_ttl,ptr->mac_address,ptr->b_inst_client_enabled);
-    instant_msmt_reporting_period(ptr->u_inst_client_reporting_period);
-    instant_msmt_def_period(ptr->u_inst_client_def_reporting_period);
-    instant_msmt_ttl(ptr->u_inst_client_def_override_ttl);
-    instant_msmt_macAddr(ptr->mac_address);
-    str_to_mac_bytes(ptr->mac_address,sta_mac);
-    monitor_enable_instant_msmt(sta_mac, ptr->b_inst_client_enabled);
-#endif // DML_SUPPORT
-    return RETURN_OK;
-}
 
 int push_data_to_apply_pending_queue(webconfig_subdoc_data_t *data)
 {
@@ -2592,8 +2575,6 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
             wifi_util_dbg_print(WIFI_MGR, "%s:%d: havester webconfig subdoc\n", __func__, __LINE__);
             if (data->descriptor & webconfig_data_descriptor_encoded) {
                 wifi_util_error_print(WIFI_MGR, "%s:%d: Not expected publish of havester webconfig subdoc\n", __func__, __LINE__);
-            } else {
-                ret = webconfig_harvester_apply(ctrl, &data->u.decoded);
             }
             break;
 

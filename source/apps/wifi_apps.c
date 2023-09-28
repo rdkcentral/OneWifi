@@ -78,10 +78,18 @@ wifi_app_descriptor_t app_desc[WIFI_APPS_NUM] = {
     },
     {
         wifi_app_inst_whix, 0,
-        wifi_event_type_webconfig | wifi_event_type_monitor,
+        wifi_event_type_webconfig | wifi_event_type_monitor | wifi_event_type_command,
         true, true,
         "WHIX telemetry",
         whix_init, whix_event, whix_deinit,
+        NULL, NULL
+    },
+    {
+        wifi_app_inst_harvester, 0,
+        wifi_event_type_monitor | wifi_event_type_webconfig | wifi_event_type_hal_ind,
+        true, true,
+        "Harvester",
+        harvester_init, harvester_event, harvester_deinit,
         NULL, NULL
     }
 };

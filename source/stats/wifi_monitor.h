@@ -136,7 +136,6 @@ typedef struct {
     off_channel_param_t off_channel_cfg[MAX_NUM_RADIOS];
     bool                exit_monitor;
 #ifdef CCSP_COMMON
-    unsigned int        poll_period;
     unsigned int        upload_period;
     unsigned int        current_poll_iter;
     instant_msmt_t      inst_msmt;
@@ -149,13 +148,6 @@ typedef struct {
     unsigned int        sysevent_token;
     ap_params_t         ap_params[MAX_VAP];
     char                cliStatsList[MAX_VAP];
-    int                 count;
-    int                 maxCount;
-    int                 instantDefReportPeriod;
-    int                 instantDefOverrideTTL;
-    int                 instantPollPeriod;
-    bool        instntMsmtenable;
-    char        instantMac[MIN_MAC_ADDR_LEN];
 #endif // CCSP_COMMON
     struct scheduler *sched;
 #ifdef CCSP_COMMON

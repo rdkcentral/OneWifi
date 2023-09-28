@@ -1911,6 +1911,21 @@ void reconfigure_whix_interval(wifi_app_t *app, wifi_event_t *event)
     }
 }
 
+void handle_whix_command_event(wifi_app_t *app, wifi_event_t *event)
+{
+    switch(event->sub_type) {
+        case wifi_event_type_start_inst_msmt:
+            push_whix_config_event_to_monitor_queue(mon_stats_request_state_stop);
+            break;
+        case wifi_event_type_stop_inst_msmt:
+            push_whix_config_event_to_monitor_queue(mon_stats_request_state_start);
+            break;
+        default:
+            wifi_util_dbg_print(WIFI_APPS,"%s:%d Not Processing\n", __func__, __LINE__);
+            break;
+    }
+}
+
 void handle_whix_webconfig_event(wifi_app_t *app, wifi_event_t *event)
 {
     switch(event->sub_type) {
@@ -1931,6 +1946,9 @@ int whix_event(wifi_app_t *app, wifi_event_t *event)
         break;
         case wifi_event_type_monitor:
             monitor_whix_event(app, event);
+        break;
+        case wifi_event_type_command:
+            handle_whix_command_event(app,event);
         break;
         default:
         break;

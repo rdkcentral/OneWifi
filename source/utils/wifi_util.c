@@ -780,6 +780,11 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
             snprintf(module_filename, sizeof(module_filename), "wifiServices");
             break;
         }
+        case WIFI_HARVESTER:{
+            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiHarvester");
+            snprintf(module_filename, sizeof(module_filename), "wifiHarvester");
+            break;
+        }
         default:
             return;
     }

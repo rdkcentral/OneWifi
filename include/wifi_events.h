@@ -140,6 +140,8 @@ typedef enum {
     wifi_event_type_eth_bh_status,
     wifi_event_type_managed_wifi_disable,
     wifi_event_type_notify_monitor_done,
+    wifi_event_type_start_inst_msmt,
+    wifi_event_type_stop_inst_msmt,
     wifi_event_command_max,
 
 
