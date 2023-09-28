@@ -57,6 +57,7 @@ int clone_wifi_event(wifi_event_t *event, wifi_event_t **clone)
         case wifi_event_type_command:
         case wifi_event_type_net:
         case wifi_event_type_wifiapi:
+        case wifi_event_type_speed_test:
             msg_len = event->u.core_data.len;
             msg = event->u.core_data.msg;
         break;
@@ -289,6 +290,7 @@ void destroy_wifi_event(wifi_event_t *event)
         case wifi_event_type_command:
         case wifi_event_type_net:
         case wifi_event_type_wifiapi:
+        case wifi_event_type_speed_test:
             if(event->u.core_data.msg != NULL) {
                 free(event->u.core_data.msg);
                 event->u.core_data.msg = NULL;
@@ -343,6 +345,7 @@ int copy_msg_to_event(const void *data, unsigned int msg_len, wifi_event_type_t 
         case wifi_event_type_command:
         case wifi_event_type_net:
         case wifi_event_type_wifiapi:
+        case wifi_event_type_speed_test:
             if (msg_len != 0) {
                 memcpy(event->u.core_data.msg, data, msg_len);
                 event->u.core_data.len = msg_len;
