@@ -485,7 +485,6 @@ void events_update_clientdiagdata(unsigned int num_devs, int vap_idx, wifi_assoc
 
     unsigned int i =0;
     unsigned int pos = 0;
-    unsigned int t_pos = 0;
     unsigned int vap_array_index;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
@@ -504,7 +503,6 @@ void events_update_clientdiagdata(unsigned int num_devs, int vap_idx, wifi_assoc
                 "\"VapIndex\":\"%d\","
                 "\"AssociatedClientDiagnostics\":[",
                 vap_idx + 1);
-        t_pos = pos + 1;
         if(dev_array != NULL) {
             for(i=0; i<num_devs; i++) {
                 pos += snprintf(&ctrl->events_rbus_data.diag_events_json_buffer[vap_array_index][pos],
@@ -565,10 +563,14 @@ void events_update_clientdiagdata(unsigned int num_devs, int vap_idx, wifi_assoc
                   dev_array->cli_Retransmissions);
                   dev_array++;
             }
-            t_pos = pos;
         }
-        snprintf(&ctrl->events_rbus_data.diag_events_json_buffer[vap_array_index][t_pos-1], (
-                    CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*MAX_ASSOCIATED_WIFI_DEVS)-t_pos-1,"]"
+
+        if (i != 0) {
+            pos--;
+        }
+
+        snprintf(&ctrl->events_rbus_data.diag_events_json_buffer[vap_array_index][pos], (
+                    CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*MAX_ASSOCIATED_WIFI_DEVS)-pos,"]"
                 "}"
                 "]"
                 "}");

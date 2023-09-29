@@ -247,7 +247,7 @@ BOOL IsWiFiApStatsEnable(UINT uvAPIndex)
 
 int harvester_get_associated_device_info(int vap_index, char **harvester_buf)
 {
-    unsigned int pos = 0, tr_pos = 0;
+    unsigned int pos = 0;
     sta_data_t *sta_data = NULL;
     if (harvester_buf[vap_index] == NULL) {
         wifi_util_dbg_print(WIFI_MON, "%s %d Harvester Buffer is NULL\n", __func__, __LINE__);
@@ -327,15 +327,18 @@ int harvester_get_associated_device_info(int vap_index, char **harvester_buf)
 
     }
     pthread_mutex_unlock(&g_monitor_module.data_lock);
-    tr_pos = pos-1;
 
-    snprintf(&harvester_buf[vap_index][tr_pos], (
-             CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*MAX_ASSOCIATED_WIFI_DEVS)-tr_pos,"]"
+    if (harvester_buf[vap_index][pos-1] == ',') {
+        pos--;
+    }
+
+    snprintf(&harvester_buf[vap_index][pos], (
+             CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*MAX_ASSOCIATED_WIFI_DEVS)-pos,"]"
              "}"
              "]"
              "}");
 
-    wifi_util_dbg_print(WIFI_MON, "%s %d pos : %u tr_pos : %u Buffer for vap %d updated as %s\n", __func__, __LINE__, pos, tr_pos, vap_index, harvester_buf[vap_index]);
+    wifi_util_dbg_print(WIFI_MON, "%s %d pos : %u Buffer for vap %d updated as %s\n", __func__, __LINE__, pos, vap_index, harvester_buf[vap_index]);
     return RETURN_OK;
 }
 
