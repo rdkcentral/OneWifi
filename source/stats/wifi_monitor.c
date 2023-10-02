@@ -5949,7 +5949,7 @@ int coordinator_stop_task(wifi_mon_collector_element_t **collector_elem, wifi_mo
             }
             dup_provider_elem = hash_map_get_first((*collector_elem)->provider_list);
             while (dup_provider_elem != NULL) {
-                interval_array[itr] = provider_elem->provider_task_interval_ms;
+                interval_array[itr] = dup_provider_elem->provider_task_interval_ms;
                 itr++;
                 dup_provider_elem = hash_map_get_next((*collector_elem)->provider_list, dup_provider_elem);
             }
