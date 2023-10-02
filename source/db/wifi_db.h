@@ -60,6 +60,9 @@ typedef struct {
 #define WIFIDB_CONSOLIDATED_PATH "/var/run/openvswitch/db.sock"
 #define BUFFER_LENGTH_WIFIDB 32
 
+#define LNF_PRIMARY_RADIUS_IP      "127.0.0.1"
+#define LNF_SECONDARY_RADIUS_IP    "192.168.106.254"
+
 int start_wifidb();
 int init_wifidb_tables();
 

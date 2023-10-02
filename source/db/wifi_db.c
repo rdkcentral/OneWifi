@@ -4794,6 +4794,37 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
     return RETURN_OK;
 }
 
+int get_lnf_radius_server_ip(char *server_ip)
+{
+    char value[BUFFER_LENGTH_WIFIDB] = {0};
+    FILE *fp = NULL;
+
+    fp = popen("grep own_ip_addr= /etc/lnf/authserver.conf | cut -d '=' -f2 | cut -d ' ' -f2","r");
+    if(fp != NULL) {
+        while (fgets(value, sizeof(value), fp) != NULL) {
+            strncpy(server_ip, value, strlen(value)-1);
+        }
+        pclose(fp);
+        return RETURN_OK;
+    }
+    return RETURN_ERR;
+}
+
+void set_lnf_radius_server_ip(wifi_vap_security_t *l_security_cfg)
+{
+    char radius_server_ip[64];
+    memset(radius_server_ip, 0, sizeof(radius_server_ip));
+
+    if ((get_lnf_radius_server_ip(radius_server_ip) == RETURN_OK) &&
+                (strlen(radius_server_ip) != 0)) {
+        strncpy((char *)l_security_cfg->u.radius.ip, radius_server_ip, (sizeof(l_security_cfg->u.radius.ip) - 1));
+        strncpy((char *)l_security_cfg->u.radius.s_ip, radius_server_ip, (sizeof(l_security_cfg->u.radius.s_ip) - 1));
+    } else {
+        strncpy((char *)l_security_cfg->u.radius.ip, LNF_PRIMARY_RADIUS_IP,sizeof(l_security_cfg->u.radius.ip));
+        strncpy((char *)l_security_cfg->u.radius.s_ip, LNF_SECONDARY_RADIUS_IP,sizeof(l_security_cfg->u.radius.s_ip));
+    }
+}
+
 /************************************************************************************
  ************************************************************************************
   Function    : wifidb_init_vap_config_default
@@ -5047,11 +5078,10 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
                 strcpy(cfg.u.bss_info.security.u.radius.s_key, INVALID_KEY);
             }
             memset(cfg.u.bss_info.security.u.radius.ip,0,sizeof(cfg.u.bss_info.security.u.radius.ip));
-            strncpy((char *)cfg.u.bss_info.security.u.radius.ip, "192.168.106.254",sizeof(cfg.u.bss_info.security.u.radius.ip));
             cfg.u.bss_info.security.u.radius.s_port = 1812;
             memset(cfg.u.bss_info.security.u.radius.s_ip,0,sizeof(cfg.u.bss_info.security.u.radius.s_ip));
-            strncpy((char *)cfg.u.bss_info.security.u.radius.s_ip, "192.168.106.254",sizeof(cfg.u.bss_info.security.u.radius.s_ip));
-            wifi_util_dbg_print(WIFI_DB,"Primary Ip and Secondry Ip: %s , %s\n", (char *)cfg.u.bss_info.security.u.radius.ip, (char *)cfg.u.bss_info.security.u.radius.s_ip);
+            set_lnf_radius_server_ip(&cfg.u.bss_info.security);
+            wifi_util_info_print(WIFI_DB,"Primary Ip and Secondry Ip: %s , %s\n", (char *)cfg.u.bss_info.security.u.radius.ip, (char *)cfg.u.bss_info.security.u.radius.s_ip);
         }
 
         char str[600] = {0};
@@ -5618,7 +5648,13 @@ void wifidb_vap_config_correction(wifi_vap_info_map_t *l_vap_map_param)
                 vap_config->u.bss_info.wps.enable = true;
                 wifi_util_info_print(WIFI_DB, "%s:%d force wps enabled for private_vap:%d\r\n",__func__, __LINE__, vap_config->vap_index);
             }
-            break;
+            continue;
+        }
+        if (isVapLnfSecure(vap_config->vap_index)) {
+            set_lnf_radius_server_ip(&vap_config->u.bss_info.security);
+            wifi_util_info_print(WIFI_DB,"%s:%d Primary Ip and Secondry Ip: %s , %s\n", __func__, __LINE__, (char *)vap_config->u.bss_info.security.u.radius.ip,
+                                            (char *)vap_config->u.bss_info.security.u.radius.s_ip);
+            continue;
         }
     }
 }
