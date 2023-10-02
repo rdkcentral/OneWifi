@@ -278,6 +278,12 @@ int copy_assoc_client_stats_from_cache(wifi_mon_stats_args_t *args, void **stats
     }
 
     sta_count = hash_map_count(sta_map);
+    if (sta_count == 0) {
+        *stats = NULL;
+        *stat_array_size = 0;
+        return RETURN_OK;
+    }
+
     sta = (sta_data_t *)calloc(sta_count, sizeof(sta_data_t));
     if (sta == NULL) {
         wifi_util_error_print(WIFI_MON, "%s : %d Failed to allocate memory for sta structure for %d\n",

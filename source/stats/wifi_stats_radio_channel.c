@@ -204,6 +204,18 @@ int execute_radio_channel_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t 
             return RETURN_ERR;
         }
     }
+    else if (radio_chan_stats_data->num_channels < num_channels) {
+        free(radio_chan_stats_data->chan_data);
+        radio_chan_stats_data->chan_data = (radio_chan_data_t *) calloc(num_channels, sizeof(radio_chan_data_t));
+        if (radio_chan_stats_data->chan_data == NULL) {
+            wifi_util_error_print(WIFI_MON, "%s:%d Failed to alloc memory for radio : %d\n",__func__,__LINE__, args->radio_index);
+            if (chan_stats != NULL) {
+                free(chan_stats);
+                chan_stats = NULL;
+            }
+            return RETURN_ERR;
+        }
+    }
 
     for (chan_count = 0; chan_count < (unsigned int)num_channels; chan_count++) {
         copy_chanstats_to_chandata(&radio_chan_stats_data->chan_data[chan_count], &chan_stats[chan_count]);
