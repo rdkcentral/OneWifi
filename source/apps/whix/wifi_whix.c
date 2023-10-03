@@ -942,6 +942,42 @@ static void logVAPUpStatus()
     wifi_util_dbg_print(WIFI_MON, "Exiting %s:%d \n",__FUNCTION__,__LINE__);
 }
 
+void print_sta_client_telemetry_data(int vap_index, hash_map_t *sta_map)
+{
+    char l_temp[128];
+    char l_buff[512];
+    int  num_devs = 0;
+    sta_data_t *sta_data;
+
+    memset(l_temp, 0, sizeof(l_temp));
+    memset(l_buff, 0, sizeof(l_buff));
+
+    if (sta_map == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d sta_map not found\r\n", __func__, __LINE__);
+        return;
+    }
+    if (hash_map_count(sta_map) == 0) {
+        return;
+    }
+
+    get_formatted_time(l_temp);
+    snprintf(l_buff, sizeof(l_buff), "%s WIFI_OPERATING_STANDARD_%d:", l_temp, vap_index + 1);
+    sta_data = hash_map_get_first(sta_map);
+    while (sta_data != NULL) {
+        if (sta_data->dev_stats.cli_Active == true) {
+            snprintf(l_temp, sizeof(l_temp), "%s,", sta_data->dev_stats.cli_OperatingStandard);
+            strncat(l_buff, l_temp, sizeof(l_buff) - strlen(l_buff) - 1);
+            num_devs++;
+        }
+        sta_data = hash_map_get_next(sta_map, sta_data);
+    }
+    strncat(l_buff, "\n", sizeof(l_buff) - strlen(l_buff) - 1);
+    if(0 != num_devs) {
+        write_to_file(wifi_health_log, l_buff);
+    }
+    wifi_util_dbg_print(WIFI_MON, "sta_OperatingStandard %s\r\n", l_buff);
+}
+
 #define MAX_BUFFER 4096
 #define TELEMETRY_MAX_BUFFER 4096
 int upload_client_telemetry_data(unsigned int vap_index)
@@ -1051,6 +1087,7 @@ int upload_client_telemetry_data(unsigned int vap_index)
         if (0 != num_devs) {
             write_to_file(wifi_health_log, buff);
         }
+        print_sta_client_telemetry_data(vap_index, sta_map);
         /*
           "header": "2GclientMac_split", "content": "WIFI_MAC_1:", "type": "wifihealth.txt",
           "header": "5GclientMac_split", "content": "WIFI_MAC_2:", "type": "wifihealth.txt",
