@@ -58,9 +58,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /*global to avoid any potential issues with stack */
 //struct ev_io wovsdb;
-/* Don't use this buffer unless you are onewifi_cb_ovsdb_read */
-static char *ovs_buffer;
-static int ovs_buffer_size;
 //const char *ovsdb_comment = NULL;
 
 //int json_rpc_fd = -1;
@@ -98,89 +95,52 @@ static bool onewifi_cb_ovsdb_read_json(char *buffer);
 static void onewifi_cb_ovsdb_read(struct ev_loop *loop, struct ev_io *watcher, int revents)
 {
     ssize_t nr = 0;
-    ssize_t used_size = ovs_buffer ? strlen(ovs_buffer) : 0;
-    ssize_t free_size = ovs_buffer_size - used_size;
-    ssize_t new_size;
-    char *new_buf;
+    size_t ovs_buffer_size = 3*CHUNK_SIZE; /* 24kb */
+    char *ovs_buffer = NULL;
 
-    if (EV_ERROR & revents)
-    {
-        LOG(ERR,"onewifi_cb_ovsdb_read: got invalid event");
+    if (EV_ERROR & revents) {
+        LOG(ERR,"%s:got invalid event\n",__func__);
         return;
     }
 
-    // resize buffer if neccesary
-    if (!ovs_buffer || (free_size < CHUNK_SIZE && ovs_buffer_size < MAX_BUFFER_SIZE)) {
-        new_size = ovs_buffer_size + CHUNK_SIZE;
-        new_buf = realloc(ovs_buffer, new_size);
-        if (!new_buf) {
-            LOG(ERR,"onewifi_cb_ovsdb_read: realloc(%p, %d -> %d)", ovs_buffer, (int)ovs_buffer_size, (int)new_size);
-            goto error;
-        }
-        if (ovs_buffer_size > 0) {
-            // only log trace when increasing size, skip initial allocs
-            LOG(TRACE,"onewifi_cb_ovsdb_read: realloc(%p, %d -> %d) = %p",
-                    ovs_buffer, (int)ovs_buffer_size, (int)new_size, new_buf);
-        }
-        ovs_buffer = new_buf;
-        ovs_buffer_size = new_size;
-        free_size = ovs_buffer_size - used_size;
-    }
-    // check if buffer full (need at least 2 bytes free: 1 is for zero termination)
-    if (free_size < 2) {
-        LOG(ERR,"onewifi_cb_ovsdb_read: buffer full %d/%d", (int)free_size, (int)ovs_buffer_size);
-        goto error;
+    ovs_buffer = (char *)calloc(1,ovs_buffer_size);
+    if(!ovs_buffer) {
+        LOG(ERR,"%s:Error in calloc\n",__func__);
+        return;
     }
 
     // Receive message from client socket
-    nr = recv(watcher->fd, ovs_buffer + used_size, free_size - 1, 0);
-    if (nr < 0 && errno == EAGAIN)
-    {
-        /* Need more data */
+    nr = recv(watcher->fd, ovs_buffer, ovs_buffer_size, 0);
+
+    if((nr > 0) && ((size_t )nr == ovs_buffer_size)) {
+        LOG(ERR,"%s:Recv Buffer is not sufficient ,received bytes=%d\n",__func__,nr);
+        free(ovs_buffer);
         return;
     }
-    else if (nr <= 0)
-    {
-        if (nr == 0)
-        {
-            LOG(INFO, "OVSDB read: EOF -- closing connection");
-        }
-        else
-        {
-            LOG(ERR, "OVSDB read: error -- closing connection.");
-        }
-
+    else if (nr == 0) {
+        LOG(INFO, "%s:OVSDB read: EOF -- closing connection\n",__func__);
+        goto error;
+    }
+    else if (nr < 0) {
+        LOG(ERR, "%s:OVSDB read: error -- closing connection.\n",__func__);
         goto error;
     }
 
-    /* Pad the buffer with \0 */
-    used_size += nr;
-    ovs_buffer[used_size] = '\0';
-
+    ovs_buffer[nr] = '\0';
     if (!onewifi_cb_ovsdb_read_json(ovs_buffer))
     {
-        LOG(WARNING, "OVSDB read: Error parsing JSON.");
-        goto error;
+        LOG(WARNING, "%s:OVSDB read: Error parsing JSON.",__func__);
     }
 
-    // free buffer if the contents were fully consumed
-    used_size = strlen(ovs_buffer);
-    if (used_size == 0) {
-        free(ovs_buffer);
-        ovs_buffer_size = 0;
-        ovs_buffer = NULL;
-    }
+    free(ovs_buffer);
     return;
 
 error:
     /*
      * Restart the connection and clear the buffer on errors
      */
-    free(ovs_buffer);
-    ovs_buffer = NULL;
-    ovs_buffer_size = 0;
-
     // peer closed, stop watching, close socket
+    free(ovs_buffer);
     ev_io_stop(loop, watcher);
     close(watcher->fd);
 #if 0
@@ -202,7 +162,6 @@ error:
         retry++;
     }
 #endif
-
     return;
 }
 
