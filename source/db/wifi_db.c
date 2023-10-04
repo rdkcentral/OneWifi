@@ -5445,9 +5445,10 @@ void wifidb_init_default_value()
     wifi_util_info_print(WIFI_DB,"%s:%d Wifi db update completed\n",__func__, __LINE__);
 
 }
+
+#if DML_SUPPORT
 static void wifidb_global_config_upgrade()
 {
-#if DML_SUPPORT
     char *str = NULL;
     char strValue[256] = {0};
     wifi_mgr_t *g_wifidb = get_wifimgr_obj();
@@ -5480,14 +5481,9 @@ static void wifidb_global_config_upgrade()
             wifi_util_error_print(WIFI_DB,":%s:%d str value for whix_chutility_loginterval is null \r\n", __func__, __LINE__);
         }
     }
-    if (wifidb_update_wifi_global_config(&g_wifidb->global_config.global_parameters) != RETURN_OK) {
-        wifi_util_error_print(WIFI_DB,"%s:%d error in updating global config\n", __func__,__LINE__);
-        return;
-    }
-#else  // DML_SUPPORT
-    return;
-#endif
 }
+#endif  // DML_SUPPORT
+
 /************************************************************************************
 *************************************************************************************
   Function    : wifidb_radio_config_upgrade
@@ -5740,7 +5736,6 @@ void init_wifidb_data()
             if (l_radio_cfg->EcoPowerDown == false) {
                 wifidb_vap_config_ext(l_vap_param_cfg, l_rdk_vap_param_cfg);
             }
-            wifidb_global_config_upgrade();
 
             for (unsigned int i = 0; i < l_vap_param_cfg->num_vaps; i++) {
                 uint8_t vap_index= convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, l_vap_param_cfg->vap_array[i].vap_name);
@@ -5761,8 +5756,12 @@ void init_wifidb_data()
         if (country_code[0] != 0) {
             if (strcmp(country_code, g_wifidb->global_config.global_parameters.wifi_region_code) != 0) {
                 strncpy(g_wifidb->global_config.global_parameters.wifi_region_code, country_code, sizeof(g_wifidb->global_config.global_parameters.wifi_region_code));
-                wifidb_update_wifi_global_config(&g_wifidb->global_config.global_parameters);
             }
+        }
+        wifidb_global_config_upgrade();
+        if (wifidb_update_wifi_global_config(&g_wifidb->global_config.global_parameters) != RETURN_OK) {
+            wifi_util_error_print(WIFI_DB,"%s:%d error in updating global config\n", __func__,__LINE__);
+            return;
         }
 #endif // DML_SUPPORT
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
