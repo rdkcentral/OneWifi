@@ -26,6 +26,8 @@ pre_rxprobe_req_5g_cnt=0
 cur_rxprobe_req_5g_cnt=0
 pre_txprobe_resp_5g_cnt=0
 cur_txprobe_resp_5g_cnt=0
+cmts_type=""
+cmts_try_count=0
 force_reset_subdoc=0
 webcfg_rfc_enabled=""
 
@@ -312,7 +314,7 @@ else
 
  if [ $cmts_try_count ==  0 ]; then
     cmts_type=`dmcli eRT getv Device.DeviceInfo.X_RDKCENTRAL-COM_CMTS_MAC | grep "value" | cut -d ':' -f3-5`
-    if [ $cmts_type != "" ]; then
+    if [ ! -z $cmts_type ]; then
         if [ $cmts_type !=  "00:01:5C" ];then
             echo_t "CMTS is $cmts_type hence  executing selfheal to disable gre acceleration for public hotspots" >> /rdklogs/logs/wifi_selfheal.txt
             echo 4 > /proc/sys/net/flowmgr/disable_gre_accel
