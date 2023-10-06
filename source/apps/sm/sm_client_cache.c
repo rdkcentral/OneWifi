@@ -61,9 +61,13 @@ static int client_id_get(const mac_address_t mac, const unsigned int vap_index, 
 
 static inline sm_client_t* client_alloc(sm_client_cache_t *cache, sm_client_id_t client_id)
 {
-    sm_client_t *client = NULL;
-    client = calloc(1, sizeof(sm_client_t));
-    if (client && cache) {
+    if (!cache || !cache->clients) {
+        return NULL;
+    }
+
+    sm_client_t *client = calloc(1, sizeof(sm_client_t));
+    if (client) {
+        memcpy(client->id, client_id, sizeof(sm_client_id_t));
         ds_dlist_init(&client->samples, dpp_client_record_t, node);
         hash_map_put(cache->clients, strdup(client_id), client);
     }
@@ -73,8 +77,11 @@ static inline sm_client_t* client_alloc(sm_client_cache_t *cache, sm_client_id_t
 
 static inline sm_client_t* client_get_or_alloc(sm_client_cache_t *cache, sm_client_id_t client_id)
 {
-    sm_client_t *client = NULL;
-    client = hash_map_get(cache->clients, client_id);
+    if (!cache || !cache->clients) {
+        return NULL;
+    }
+
+    sm_client_t *client = hash_map_get(cache->clients, client_id);
     if (!client) {
         wifi_util_dbg_print(WIFI_APPS, "%s:%d: creating new client %.*s\n", __func__, __LINE__,
                             sizeof(sm_client_id_t), client_id);
@@ -189,7 +196,7 @@ static int client_sample_add(sm_client_cache_t *cache,
 
     return RETURN_OK;
 exit_err:
-    free(sample);
+    dpp_client_record_free(sample);
     return RETURN_ERR;
 }
 
@@ -338,23 +345,23 @@ void sm_client_cache_free(sm_client_cache_t *cache)
     sm_client_t *tmp_client = NULL;
     sm_client_t *client = NULL;
 
-    if (!cache) {
+    if (!cache || !cache->clients) {
         return;
     }
 
     client = hash_map_get_first(cache->clients);
     while (client) {
         client->is_updated = false;
-        if (is_client_alive(client)) {
-            client_samples_free(&client->samples, FREE_SAMPLE_ALL_EXCEPT_LAST);
+        tmp_client = client;
+        client = hash_map_get_next(cache->clients, client);
+        if (is_client_alive(tmp_client)) {
+            client_samples_free(&tmp_client->samples, FREE_SAMPLE_ALL_EXCEPT_LAST);
         } else {
             /* clean all samples */
-            client_samples_free(&client->samples, FREE_SAMPLE_ALL);
-            tmp_client = hash_map_remove(cache->clients, client->id);
+            client_samples_free(&tmp_client->samples, FREE_SAMPLE_ALL);
+            tmp_client = hash_map_remove(cache->clients, tmp_client->id);
             free(tmp_client);
         }
-
-        client = hash_map_get_next(cache->clients, client);
     }
 }
 

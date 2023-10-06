@@ -353,7 +353,7 @@ int copy_msg_to_event(const void *data, unsigned int msg_len, wifi_event_type_t 
         case wifi_event_type_monitor:
             if (sub_type == wifi_event_monitor_provider_response) {
                 const wifi_provider_response_t *response = data;
-                if (event->u.provider_response->stat_pointer == NULL) {
+                if ((event->u.provider_response->stat_pointer == NULL) && (response->data_type != mon_stats_type_associated_device_stats)) {
                     wifi_util_error_print(WIFI_CTRL,"%s %d stat_pointer is NULL : %p\n",__FUNCTION__, __LINE__, event->u.provider_response->stat_pointer);
                     return RETURN_ERR;
                 }
@@ -365,7 +365,11 @@ int copy_msg_to_event(const void *data, unsigned int msg_len, wifi_event_type_t 
                         memcpy(event->u.provider_response->stat_pointer, response->stat_pointer, (response->stat_array_size*sizeof(wifi_neighbor_ap2_t)));
                     break;
                     case mon_stats_type_associated_device_stats:
-                        memcpy(event->u.provider_response->stat_pointer, response->stat_pointer, (response->stat_array_size*sizeof(sta_data_t)));
+                        if (event->u.provider_response->stat_pointer != NULL) {
+                            memcpy(event->u.provider_response->stat_pointer, response->stat_pointer, (response->stat_array_size*sizeof(sta_data_t)));
+                        } else {
+                            event->u.provider_response->stat_pointer = NULL;
+                        }
                     break;
                     case mon_stats_type_radio_diagnostic_stats:
                         memcpy(event->u.provider_response->stat_pointer, response->stat_pointer, (response->stat_array_size*sizeof(radio_data_t)));

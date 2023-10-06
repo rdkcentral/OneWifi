@@ -5789,14 +5789,7 @@ wifi_mon_provider_element_t  *coordinator_create_provider_elem(wifi_mon_stats_co
     }
 
     provider_elem->stat_desc = stat_desc;
-    provider_elem->mon_stats_config = (wifi_mon_stats_config_t *)calloc(1, sizeof(wifi_mon_stats_config_t));
-    if (provider_elem->mon_stats_config == NULL) {
-        wifi_util_error_print(WIFI_MON, "%s:%d: calloc failed for provider elem\n", __func__,__LINE__);
-        free(provider_elem);
-        return NULL;
-    }
 
-    memcpy(provider_elem->mon_stats_config, stats_config, sizeof(wifi_mon_stats_config_t));
     provider_elem->stat_desc->generate_stats_provider_key(stats_config, provider_elem->key, sizeof(provider_elem->key));
     provider_elem->provider_task_interval_ms = stats_config->interval_ms;
 

@@ -54,24 +54,33 @@ static int survey_id_get(const unsigned int radio_index, const unsigned int chan
 }
 
 
-static void survey_free(sm_survey_t *survey)
+static void survey_free(sm_survey_cache_t *cache, sm_survey_t *survey)
 {
-    if (!survey) {
+    if (!cache || !cache->surveys || !survey) {
         return;
     }
+
+    sm_survey_id_t id = {0};
+    memcpy(&id[0], survey->id, sizeof(sm_survey_id_t));
+
     survey_samples_free(&survey->onchan.samples);
     survey_samples_free(&survey->offchan.samples);
     free(survey->onchan.old_stats);
     free(survey->offchan.old_stats);
+    survey = hash_map_remove(cache->surveys, id);
     free(survey);
 }
 
 
 static sm_survey_t* survey_alloc(sm_survey_cache_t *cache, sm_survey_id_t survey_id)
 {
-    sm_survey_t *survey = NULL;
-    survey = calloc(1, sizeof(sm_survey_t));
-    if (survey && cache) {
+    if (!cache || !cache->surveys) {
+        return NULL;
+    }
+
+    sm_survey_t *survey = calloc(1, sizeof(sm_survey_t));
+    if (survey) {
+        memcpy(survey->id, survey_id, sizeof(sm_survey_id_t));
         ds_dlist_init(&survey->onchan.samples,  dpp_survey_record_t, node);
         ds_dlist_init(&survey->offchan.samples, dpp_survey_record_t, node);
         survey->onchan.old_stats = NULL;
@@ -84,8 +93,11 @@ static sm_survey_t* survey_alloc(sm_survey_cache_t *cache, sm_survey_id_t survey
 
 static sm_survey_t* survey_get_or_alloc(sm_survey_cache_t *cache, sm_survey_id_t survey_id)
 {
-    sm_survey_t *survey = NULL;
-    survey = hash_map_get(cache->surveys, survey_id);
+    if (!cache || !cache->surveys) {
+        return NULL;
+    }
+
+    sm_survey_t *survey = hash_map_get(cache->surveys, survey_id);
     if (!survey) {
         wifi_util_dbg_print(WIFI_APPS, "%s:%d: creating new survey %.*s\n", __func__, __LINE__,
                             sizeof(sm_survey_id_t), survey_id);
@@ -212,7 +224,7 @@ static int survey_sample_add(sm_survey_cache_t *cache, survey_type_t survey_type
     memcpy(scan->old_stats, stats, sizeof(*stats));
     return RETURN_OK;
 exit_err:
-    free(sample);
+    dpp_survey_record_free(sample);
     return RETURN_ERR;
 }
 
@@ -280,15 +292,15 @@ void sm_survey_cache_free(sm_survey_cache_t *cache)
     sm_survey_t *tmp_survey = NULL;
     sm_survey_t *survey = NULL;
 
-    if (!cache) {
+    if (!cache || !cache->surveys) {
         return;
     }
 
     survey = hash_map_get_first(cache->surveys);
     while (survey) {
-        tmp_survey = hash_map_remove(cache->surveys, survey->id);
-        survey_free(tmp_survey);
+        tmp_survey = survey;
         survey = hash_map_get_next(cache->surveys, survey);
+        survey_free(cache, tmp_survey);
     }
 }
 

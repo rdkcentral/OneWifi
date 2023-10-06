@@ -109,7 +109,7 @@ typedef char sm_neighbor_id_t[SM_NEIGHBOR_ID_LEN + 1];
 typedef struct
 {
     ds_dlist_t            samples;    /* dpp_neighbor_record_list_t */
-    wifi_neighbor_ap2_t   old_stats;
+    wifi_neighbor_ap2_t   *old_stats;
 } sm_neighbor_scan_t;
 
 typedef struct

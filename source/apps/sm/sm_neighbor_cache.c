@@ -55,22 +55,33 @@ static int neighbor_id_get(const unsigned int radio_index, radio_bssid_t bssid, 
 }
 
 
-static void neighbor_free(sm_neighbor_t *neighbor)
+static void neighbor_free(sm_neighbor_cache_t *cache, sm_neighbor_t *neighbor)
 {
-    if (!neighbor) {
+    if (!cache || !cache->neighbors || !neighbor) {
         return;
     }
+
+    sm_neighbor_id_t id = {0};
+    memcpy(&id[0], neighbor->id, sizeof(sm_neighbor_id_t));
+
     neighbor_samples_free(&neighbor->onchan.samples);
     neighbor_samples_free(&neighbor->offchan.samples);
+    free(neighbor->onchan.old_stats);
+    free(neighbor->offchan.old_stats);
+    neighbor = hash_map_remove(cache->neighbors, id);
     free(neighbor);
 }
 
 
 static sm_neighbor_t* neighbor_alloc(sm_neighbor_cache_t *cache, sm_neighbor_id_t neighbor_id)
 {
-    sm_neighbor_t *neighbor = NULL;
-    neighbor = calloc(1, sizeof(sm_neighbor_t));
-    if (neighbor && cache) {
+    if (!cache || !cache->neighbors) {
+        return NULL;
+    }
+
+    sm_neighbor_t *neighbor = calloc(1, sizeof(sm_neighbor_t));
+    if (neighbor) {
+        memcpy(neighbor->id, neighbor_id, sizeof(sm_neighbor_id_t));
         ds_dlist_init(&neighbor->onchan.samples,  dpp_neighbor_record_list_t, node);
         ds_dlist_init(&neighbor->offchan.samples, dpp_neighbor_record_list_t, node);
         hash_map_put(cache->neighbors, strdup(neighbor_id), neighbor);
@@ -81,8 +92,11 @@ static sm_neighbor_t* neighbor_alloc(sm_neighbor_cache_t *cache, sm_neighbor_id_
 
 static sm_neighbor_t* neighbor_get_or_alloc(sm_neighbor_cache_t *cache, sm_neighbor_id_t neighbor_id)
 {
-    sm_neighbor_t *neighbor = NULL;
-    neighbor = hash_map_get(cache->neighbors, neighbor_id);
+    if (!cache || !cache->neighbors) {
+        return NULL;
+    }
+
+    sm_neighbor_t *neighbor = hash_map_get(cache->neighbors, neighbor_id);
     if (!neighbor) {
         wifi_util_dbg_print(WIFI_APPS, "%s:%d: creating new neighbor %.*s\n", __func__, __LINE__,
                             sizeof(sm_neighbor_id_t), neighbor_id);
@@ -156,7 +170,7 @@ static int neighbor_sample_add(sm_neighbor_cache_t *cache, survey_type_t survey_
 
     return RETURN_OK;
 exit_err:
-    free(sample);
+    dpp_neighbor_record_free(sample);
     return RETURN_ERR;
 }
 
@@ -197,15 +211,15 @@ void sm_neighbor_cache_free(sm_neighbor_cache_t *cache)
     sm_neighbor_t *tmp_neighbor = NULL;
     sm_neighbor_t *neighbor = NULL;
 
-    if (!cache) {
+    if (!cache || !cache->neighbors) {
         return;
     }
 
     neighbor = hash_map_get_first(cache->neighbors);
     while (neighbor) {
-        tmp_neighbor = hash_map_remove(cache->neighbors, neighbor->id);
-        neighbor_free(tmp_neighbor);
+        tmp_neighbor = neighbor;
         neighbor = hash_map_get_next(cache->neighbors, neighbor);
+        neighbor_free(cache, tmp_neighbor);
     }
 }
 
