@@ -145,6 +145,9 @@ webconfig_error_t encode_radio_object(const rdk_wifi_radio_t *radio, cJSON *radi
 
     // Country
     cJSON_AddStringToObject(radio_object, "Country", str);
+
+    // RegDomain
+    cJSON_AddNumberToObject(radio_object, "RegDomain", radio_info->regDomain);
     
     k = radio_info->operatingEnvironment;
     memset(str,0,sizeof(str));

@@ -2693,6 +2693,10 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
         //strncpy(execRetVal->ErrorMsg, "Invalid wifi radio code",sizeof(execRetVal->ErrorMsg)-1);
         return webconfig_error_decode;
     }
+
+    // RegDomain
+    decode_param_integer(obj_radio, "RegDomain", param);
+    radio_info->regDomain = param->valuedouble;
     
     //OperatingEnvironment
     decode_param_string(obj_radio, "OperatingEnvironment", param);

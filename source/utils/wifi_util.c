@@ -71,253 +71,253 @@ void test_names(wifi_platform_property_t *wifi_prop);
 
 struct wifiCountryEnumStrMap wifiCountryMap[] =
 {
-    {wifi_countrycode_AC,"AC"}, /**< ASCENSION ISLAND */
-    {wifi_countrycode_AD,"AD"}, /**< ANDORRA */
-    {wifi_countrycode_AE,"AE"}, /**< UNITED ARAB EMIRATES */
-    {wifi_countrycode_AF,"AF"}, /**< AFGHANISTAN */
-    {wifi_countrycode_AG,"AG"}, /**< ANTIGUA AND BARBUDA */
-    {wifi_countrycode_AI,"AI"}, /**< ANGUILLA */
-    {wifi_countrycode_AL,"AL"}, /**< ALBANIA */
-    {wifi_countrycode_AM,"AM"}, /**< ARMENIA */
-    {wifi_countrycode_AN,"AN"}, /**< NETHERLANDS ANTILLES */
-    {wifi_countrycode_AO,"AO"}, /**< ANGOLA */
-    {wifi_countrycode_AQ,"AQ"}, /**< ANTARCTICA */
-    {wifi_countrycode_AR,"AR"}, /**< ARGENTINA */
-    {wifi_countrycode_AS,"AS"}, /**< AMERICAN SAMOA */
-    {wifi_countrycode_AT,"AT"}, /**< AUSTRIA */
-    {wifi_countrycode_AU,"AU"}, /**< AUSTRALIA */
-    {wifi_countrycode_AW,"AW"}, /**< ARUBA */
-    {wifi_countrycode_AZ,"AZ"}, /**< AZERBAIJAN */
-    {wifi_countrycode_BA,"BA"}, /**< BOSNIA AND HERZEGOVINA */
-    {wifi_countrycode_BB,"BB"}, /**< BARBADOS */
-    {wifi_countrycode_BD,"BD"}, /**< BANGLADESH */
-    {wifi_countrycode_BE,"BE"}, /**< BELGIUM */
-    {wifi_countrycode_BF,"BF"}, /**< BURKINA FASO */
-    {wifi_countrycode_BG,"BG"}, /**< BULGARIA */
-    {wifi_countrycode_BH,"BH"}, /**< BAHRAIN */
-    {wifi_countrycode_BI,"BI"}, /**< BURUNDI */
-    {wifi_countrycode_BJ,"BJ"}, /**< BENIN */
-    {wifi_countrycode_BM,"BM"}, /**< BERMUDA */
-    {wifi_countrycode_BN,"BN"}, /**< BRUNEI DARUSSALAM */
-    {wifi_countrycode_BO,"BO"}, /**< BOLIVIA */
-    {wifi_countrycode_BR,"BR"}, /**< BRAZIL */
-    {wifi_countrycode_BS,"BS"}, /**< BAHAMAS */
-    {wifi_countrycode_BT,"BT"}, /**< BHUTAN */
-    {wifi_countrycode_BV,"BV"}, /**< BOUVET ISLAND */
-    {wifi_countrycode_BW,"BW"}, /**< BOTSWANA */
-    {wifi_countrycode_BY,"BY"}, /**< BELARUS */
-    {wifi_countrycode_BZ,"BZ"}, /**< BELIZE */
-    {wifi_countrycode_CA,"CA"}, /**< CANADA */
-    {wifi_countrycode_CC,"CC"}, /**< COCOS (KEELING) ISLANDS */
-    {wifi_countrycode_CD,"CD"}, /**< CONGO,THE DEMOCRATIC REPUBLIC OF THE */
-    {wifi_countrycode_CF,"CF"}, /**< CENTRAL AFRICAN REPUBLIC */
-    {wifi_countrycode_CG,"CG"}, /**< CONGO */
-    {wifi_countrycode_CH,"CH"}, /**< SWITZERLAND */
-    {wifi_countrycode_CI,"CI"}, /**< COTE D'IVOIRE */
-    {wifi_countrycode_CK,"CK"}, /**< COOK ISLANDS */
-    {wifi_countrycode_CL,"CL"}, /**< CHILE */
-    {wifi_countrycode_CM,"CM"}, /**< CAMEROON */
-    {wifi_countrycode_CN,"CN"}, /**< CHINA */
-    {wifi_countrycode_CO,"CO"}, /**< COLOMBIA */
-    {wifi_countrycode_CP,"CP"}, /**< CLIPPERTON ISLAND */
-    {wifi_countrycode_CR,"CR"}, /**< COSTA RICA */
-    {wifi_countrycode_CU,"CU"}, /**< CUBA */
-    {wifi_countrycode_CV,"CV"}, /**< CAPE VERDE */
-    {wifi_countrycode_CY,"CY"}, /**< CYPRUS */
-    {wifi_countrycode_CX,"CX"}, /**< CHRISTMAS ISLAND */
-    {wifi_countrycode_CZ,"CZ"}, /**< CZECH REPUBLIC */
-    {wifi_countrycode_DE,"DE"}, /**< GERMANY */
-    {wifi_countrycode_DJ,"DJ"}, /**< DJIBOUTI */
-    {wifi_countrycode_DK,"DK"}, /**< DENMARK */
-    {wifi_countrycode_DM,"DM"}, /**< DOMINICA */
-    {wifi_countrycode_DO,"DO"}, /**< DOMINICAN REPUBLIC */
-    {wifi_countrycode_DZ,"DZ"}, /**< ALGERIA */
-    {wifi_countrycode_EC,"EC"}, /**< ECUADOR */
-    {wifi_countrycode_EE,"EE"}, /**< ESTONIA */
-    {wifi_countrycode_EG,"EG"}, /**< EGYPT */
-    {wifi_countrycode_EH,"EH"}, /**< WESTERN SAHARA */
-    {wifi_countrycode_ER,"ER"}, /**< ERITREA */
-    {wifi_countrycode_ES,"ES"}, /**< SPAIN */
-    {wifi_countrycode_ET,"ET"}, /**< ETHIOPIA */
-    {wifi_countrycode_FI,"FI"}, /**< FINLAND */
-    {wifi_countrycode_FJ,"FJ"}, /**< FIJI */
-    {wifi_countrycode_FK,"FK"}, /**< FALKLAND ISLANDS (MALVINAS) */
-    {wifi_countrycode_FM,"FM"}, /**< MICRONESIA FEDERATED STATES OF */
-    {wifi_countrycode_FO,"FO"}, /**< FAROE ISLANDS */
-    {wifi_countrycode_FR,"FR"}, /**< FRANCE */
-    {wifi_countrycode_GA,"GA"}, /**< GABON */
-    {wifi_countrycode_GB,"GB"}, /**< UNITED KINGDOM */
-    {wifi_countrycode_GD,"GD"}, /**< GRENADA */
-    {wifi_countrycode_GE,"GE"}, /**< GEORGIA */
-    {wifi_countrycode_GF,"GF"}, /**< FRENCH GUIANA */
-    {wifi_countrycode_GG,"GG"}, /**< GUERNSEY */
-    {wifi_countrycode_GH,"GH"}, /**< GHANA */
-    {wifi_countrycode_GI,"GI"}, /**< GIBRALTAR */
-    {wifi_countrycode_GL,"GL"}, /**< GREENLAND */
-    {wifi_countrycode_GM,"GM"}, /**< GAMBIA */
-    {wifi_countrycode_GN,"GN"}, /**< GUINEA */
-    {wifi_countrycode_GP,"GP"}, /**< GUADELOUPE */
-    {wifi_countrycode_GQ,"GQ"}, /**< EQUATORIAL GUINEA */
-    {wifi_countrycode_GR,"GR"}, /**< GREECE */
-    {wifi_countrycode_GS,"GS"}, /**< SOUTH GEORGIA AND THE SOUTH SANDWICH ISLANDS */
-    {wifi_countrycode_GT,"GT"}, /**< GUATEMALA */
-    {wifi_countrycode_GU,"GU"}, /**< GUAM */
-    {wifi_countrycode_GW,"GW"}, /**< GUINEA-BISSAU */
-    {wifi_countrycode_GY,"GY"}, /**< GUYANA */
-    {wifi_countrycode_HR,"HR"}, /**< CROATIA */
-    {wifi_countrycode_HT,"HT"}, /**< HAITI */
-    {wifi_countrycode_HM,"HM"}, /**< HEARD ISLAND AND MCDONALD ISLANDS */
-    {wifi_countrycode_HN,"HN"}, /**< HONDURAS */
-    {wifi_countrycode_HK,"HK"}, /**< HONG KONG */
-    {wifi_countrycode_HU,"HU"}, /**< HUNGARY */
-    {wifi_countrycode_IS,"IS"}, /**< ICELAND */
-    {wifi_countrycode_IN,"IN"}, /**< INDIA */
-    {wifi_countrycode_ID,"ID"}, /**< INDONESIA */
-    {wifi_countrycode_IR,"IR"}, /**< IRAN, ISLAMIC REPUBLIC OF */
-    {wifi_countrycode_IQ,"IQ"}, /**< IRAQ */
-    {wifi_countrycode_IE,"IE"}, /**< IRELAND */
-    {wifi_countrycode_IL,"IL"}, /**< ISRAEL */
-    {wifi_countrycode_IM,"IM"}, /**< MAN, ISLE OF */
-    {wifi_countrycode_IT,"IT"}, /**< ITALY */
-    {wifi_countrycode_IO,"IO"}, /**< BRITISH INDIAN OCEAN TERRITORY */
-    {wifi_countrycode_JM,"JM"}, /**< JAMAICA */
-    {wifi_countrycode_JP,"JP"}, /**< JAPAN */
-    {wifi_countrycode_JE,"JE"}, /**< JERSEY */
-    {wifi_countrycode_JO,"jo"}, /**< JORDAN */
-    {wifi_countrycode_KE,"KE"}, /**< KENYA */
-    {wifi_countrycode_KG,"KG"}, /**< KYRGYZSTAN */
-    {wifi_countrycode_KH,"KH"}, /**< CAMBODIA */
-    {wifi_countrycode_KI,"KI"}, /**< KIRIBATI */
-    {wifi_countrycode_KM,"KM"}, /**< COMOROS */
-    {wifi_countrycode_KN,"KN"}, /**< SAINT KITTS AND NEVIS */
-    {wifi_countrycode_KP,"KP"}, /**< KOREA, DEMOCRATIC PEOPLE'S REPUBLIC OF */
-    {wifi_countrycode_KR,"KR"}, /**< KOREA, REPUBLIC OF */
-    {wifi_countrycode_KW,"KW"}, /**< KUWAIT */
-    {wifi_countrycode_KY,"KY"}, /**< CAYMAN ISLANDS */
-    {wifi_countrycode_KZ,"KZ"}, /**< KAZAKHSTAN */
-    {wifi_countrycode_LA,"LA"}, /**< LAO PEOPLE'S DEMOCRATIC REPUBLIC */
-    {wifi_countrycode_LB,"LB"}, /**< LEBANON */
-    {wifi_countrycode_LC,"LC"}, /**< SAINT LUCIA */
-    {wifi_countrycode_LI,"LI"}, /**< LIECHTENSTEIN */
-    {wifi_countrycode_LK,"LK"}, /**< SRI LANKA */
-    {wifi_countrycode_LR,"LR"}, /**< LIBERIA */
-    {wifi_countrycode_LS,"LS"}, /**< LESOTHO */
-    {wifi_countrycode_LT,"LT"}, /**< LITHUANIA */
-    {wifi_countrycode_LU,"LU"}, /**< LUXEMBOURG */
-    {wifi_countrycode_LV,"LV"}, /**< LATVIA */
-    {wifi_countrycode_LY,"LY"}, /**< LIBYAN ARAB JAMAHIRIYA */
-    {wifi_countrycode_MA,"MA"}, /**< MOROCCO */
-    {wifi_countrycode_MC,"MC"}, /**< MONACO */
-    {wifi_countrycode_MD,"MD"}, /**< MOLDOVA, REPUBLIC OF */
-    {wifi_countrycode_ME,"ME"}, /**< MONTENEGRO */
-    {wifi_countrycode_MG,"MG"}, /**< MADAGASCAR */
-    {wifi_countrycode_MH,"MH"}, /**< MARSHALL ISLANDS */
-    {wifi_countrycode_MK,"MK"}, /**< MACEDONIA, THE FORMER YUGOSLAV REPUBLIC OF */
-    {wifi_countrycode_ML,"ML"}, /**< MALI */
-    {wifi_countrycode_MM,"MM"}, /**< MYANMAR */
-    {wifi_countrycode_MN,"MN"}, /**< MONGOLIA */
-    {wifi_countrycode_MO,"MO"}, /**< MACAO */
-    {wifi_countrycode_MQ,"MQ"}, /**< MARTINIQUE */
-    {wifi_countrycode_MR,"MR"}, /**< MAURITANIA */
-    {wifi_countrycode_MS,"MS"}, /**< MONTSERRAT */
-    {wifi_countrycode_MT,"MT"}, /**< MALTA */
-    {wifi_countrycode_MU,"MU"}, /**< MAURITIUS */
-    {wifi_countrycode_MV,"MV"}, /**< MALDIVES */
-    {wifi_countrycode_MW,"MW"}, /**< MALAWI */
-    {wifi_countrycode_MX,"MX"}, /**< MEXICO */
-    {wifi_countrycode_MY,"MY"}, /**< MALAYSIA */
-    {wifi_countrycode_MZ,"MZ"}, /**< MOZAMBIQUE */
-    {wifi_countrycode_NA,"NA"}, /**< NAMIBIA */
-    {wifi_countrycode_NC,"NC"}, /**< NEW CALEDONIA */
-    {wifi_countrycode_NE,"NE"}, /**< NIGER */
-    {wifi_countrycode_NF,"NF"}, /**< NORFOLK ISLAND */
-    {wifi_countrycode_NG,"NG"}, /**< NIGERIA */
-    {wifi_countrycode_NI,"NI"}, /**< NICARAGUA */
-    {wifi_countrycode_NL,"NL"}, /**< NETHERLANDS */
-    {wifi_countrycode_NO,"NO"}, /**< NORWAY */
-    {wifi_countrycode_NP,"NP"}, /**< NEPAL */
-    {wifi_countrycode_NR,"NR"}, /**< NAURU */
-    {wifi_countrycode_NU,"NU"}, /**< NIUE */
-    {wifi_countrycode_NZ,"NZ"}, /**< NEW ZEALAND */
-    {wifi_countrycode_MP,"MP"}, /**< NORTHERN MARIANA ISLANDS */
-    {wifi_countrycode_OM,"OM"}, /**< OMAN */
-    {wifi_countrycode_PA,"PA"}, /**< PANAMA */
-    {wifi_countrycode_PE,"PE"}, /**< PERU */
-    {wifi_countrycode_PF,"PF"}, /**< FRENCH POLYNESIA */
-    {wifi_countrycode_PG,"PG"}, /**< PAPUA NEW GUINEA */
-    {wifi_countrycode_PH,"PH"}, /**< PHILIPPINES */
-    {wifi_countrycode_PK,"PK"}, /**< PAKISTAN */
-    {wifi_countrycode_PL,"PL"}, /**< POLAND */
-    {wifi_countrycode_PM,"PM"}, /**< SAINT PIERRE AND MIQUELON */
-    {wifi_countrycode_PN,"PN"}, /**< PITCAIRN */
-    {wifi_countrycode_PR,"PR"}, /**< PUERTO RICO */
-    {wifi_countrycode_PS,"PS"}, /**< PALESTINIAN TERRITORY,OCCUPIED */
-    {wifi_countrycode_PT,"PT"}, /**< PORTUGAL */
-    {wifi_countrycode_PW,"PW"}, /**< PALAU */
-    {wifi_countrycode_PY,"PY"}, /**< PARAGUAY */
-    {wifi_countrycode_QA,"QA"}, /**< QATAR */
-    {wifi_countrycode_RE,"RE"}, /**< REUNION */
-    {wifi_countrycode_RO,"RO"}, /**< ROMANIA */
-    {wifi_countrycode_RS,"RS"}, /**< SERBIA */
-    {wifi_countrycode_RU,"RU"}, /**< RUSSIAN FEDERATION */
-    {wifi_countrycode_RW,"RW"}, /**< RWANDA */
-    {wifi_countrycode_SA,"SA"}, /**< SAUDI ARABIA */
-    {wifi_countrycode_SB,"SB"}, /**< SOLOMON ISLANDS */
-    {wifi_countrycode_SD,"SD"}, /**< SUDAN */
-    {wifi_countrycode_SE,"SE"}, /**< SWEDEN */
-    {wifi_countrycode_SC,"SC"}, /**< SEYCHELLES */
-    {wifi_countrycode_SG,"SG"}, /**< SINGAPORE */
-    {wifi_countrycode_SH,"SH"}, /**< SAINT HELENA */
-    {wifi_countrycode_SI,"SI"}, /**< SLOVENIA */
-    {wifi_countrycode_SJ,"SJ"}, /**< SVALBARD AND JAN MAYEN */
-    {wifi_countrycode_SK,"SK"}, /**< SLOVAKIA */
-    {wifi_countrycode_SL,"SL"}, /**< SIERRA LEONE */
-    {wifi_countrycode_SM,"SM"}, /**< SAN MARINO */
-    {wifi_countrycode_SN,"SN"}, /**< SENEGAL */
-    {wifi_countrycode_SO,"SO"}, /**< SOMALIA */
-    {wifi_countrycode_SR,"SR"}, /**< SURINAME */
-    {wifi_countrycode_ST,"ST"}, /**< SAO TOME AND PRINCIPE */
-    {wifi_countrycode_SV,"SV"}, /**< EL SALVADOR */
-    {wifi_countrycode_SY,"SY"}, /**< SYRIAN ARAB REPUBLIC */
-    {wifi_countrycode_SZ,"SZ"}, /**< SWAZILAND */
-    {wifi_countrycode_TA,"TA"}, /**< TRISTAN DA CUNHA */
-    {wifi_countrycode_TC,"TC"}, /**< TURKS AND CAICOS ISLANDS */
-    {wifi_countrycode_TD,"TD"}, /**< CHAD */
-    {wifi_countrycode_TF,"TF"}, /**< FRENCH SOUTHERN TERRITORIES */
-    {wifi_countrycode_TG,"TG"}, /**< TOGO */
-    {wifi_countrycode_TH,"TH"}, /**< THAILAND */
-    {wifi_countrycode_TJ,"TJ"}, /**< TAJIKISTAN */
-    {wifi_countrycode_TK,"TK"}, /**< TOKELAU */
-    {wifi_countrycode_TL,"TL"}, /**< TIMOR-LESTE (EAST TIMOR) */
-    {wifi_countrycode_TM,"TM"}, /**< TURKMENISTAN */
-    {wifi_countrycode_TN,"TN"}, /**< TUNISIA */
-    {wifi_countrycode_TO,"TO"}, /**< TONGA */
-    {wifi_countrycode_TR,"TR"}, /**< TURKEY */
-    {wifi_countrycode_TT,"TT"}, /**< TRINIDAD AND TOBAGO */
-    {wifi_countrycode_TV,"TV"}, /**< TUVALU */
-    {wifi_countrycode_TW,"TW"}, /**< TAIWAN, PROVINCE OF CHINA */
-    {wifi_countrycode_TZ,"TZ"}, /**< TANZANIA, UNITED REPUBLIC OF */
-    {wifi_countrycode_UA,"UA"}, /**< UKRAINE */
-    {wifi_countrycode_UG,"UG"}, /**< UGANDA */
-    {wifi_countrycode_UM,"UM"}, /**< UNITED STATES MINOR OUTLYING ISLANDS */
-    {wifi_countrycode_US,"US"}, /**< UNITED STATES */
-    {wifi_countrycode_UY,"UY"}, /**< URUGUAY */
-    {wifi_countrycode_UZ,"UZ"}, /**< UZBEKISTAN */
-    {wifi_countrycode_VA,"VA"}, /**< HOLY SEE (VATICAN CITY STATE) */
-    {wifi_countrycode_VC,"VC"}, /**< SAINT VINCENT AND THE GRENADINES */
-    {wifi_countrycode_VE,"VE"}, /**< VENEZUELA */
-    {wifi_countrycode_VG,"VG"}, /**< VIRGIN ISLANDS, BRITISH */
-    {wifi_countrycode_VI,"VI"}, /**< VIRGIN ISLANDS, U.S. */
-    {wifi_countrycode_VN,"VN"}, /**< VIET NAM */
-    {wifi_countrycode_VU,"VU"}, /**< VANUATU */
-    {wifi_countrycode_WF,"WF"}, /**< WALLIS AND FUTUNA */
-    {wifi_countrycode_WS,"WS"}, /**< SAMOA */
-    {wifi_countrycode_YE,"YE"}, /**< YEMEN */
-    {wifi_countrycode_YT,"YT"}, /**< MAYOTTE */
-    {wifi_countrycode_YU,"YU"}, /**< YUGOSLAVIA */
-    {wifi_countrycode_ZA,"ZA"}, /**< SOUTH AFRICA */
-    {wifi_countrycode_ZM,"ZM"}, /**< ZAMBIA */
-    {wifi_countrycode_ZW,"ZW"} /**< ZIMBABWE */
+    {wifi_countrycode_AC,"AC","004"}, /**< ASCENSION ISLAND */
+    {wifi_countrycode_AD,"AD","020"}, /**< ANDORRA */
+    {wifi_countrycode_AE,"AE","784"}, /**< UNITED ARAB EMIRATES */
+    {wifi_countrycode_AF,"AF","004"}, /**< AFGHANISTAN */
+    {wifi_countrycode_AG,"AG","028"}, /**< ANTIGUA AND BARBUDA */
+    {wifi_countrycode_AI,"AI","660"}, /**< ANGUILLA */
+    {wifi_countrycode_AL,"AL","008"}, /**< ALBANIA */
+    {wifi_countrycode_AM,"AM","051"}, /**< ARMENIA */
+    {wifi_countrycode_AN,"AN","530"}, /**< NETHERLANDS ANTILLES */
+    {wifi_countrycode_AO,"AO","024"}, /**< ANGOLA */
+    {wifi_countrycode_AQ,"AQ","010"}, /**< ANTARCTICA */
+    {wifi_countrycode_AR,"AR","032"}, /**< ARGENTINA */
+    {wifi_countrycode_AS,"AS","016"}, /**< AMERICAN SAMOA */
+    {wifi_countrycode_AT,"AT","040"}, /**< AUSTRIA */
+    {wifi_countrycode_AU,"AU","036"}, /**< AUSTRALIA */
+    {wifi_countrycode_AW,"AW","533"}, /**< ARUBA */
+    {wifi_countrycode_AZ,"AZ","031"}, /**< AZERBAIJAN */
+    {wifi_countrycode_BA,"BA","070"}, /**< BOSNIA AND HERZEGOVINA */
+    {wifi_countrycode_BB,"BB","052"}, /**< BARBADOS */
+    {wifi_countrycode_BD,"BD","050"}, /**< BANGLADESH */
+    {wifi_countrycode_BE,"BE","056"}, /**< BELGIUM */
+    {wifi_countrycode_BF,"BF","854"}, /**< BURKINA FASO */
+    {wifi_countrycode_BG,"BG","100"}, /**< BULGARIA */
+    {wifi_countrycode_BH,"BH","048"}, /**< BAHRAIN */
+    {wifi_countrycode_BI,"BI","108"}, /**< BURUNDI */
+    {wifi_countrycode_BJ,"BJ","204"}, /**< BENIN */
+    {wifi_countrycode_BM,"BM","060"}, /**< BERMUDA */
+    {wifi_countrycode_BN,"BN","096"}, /**< BRUNEI DARUSSALAM */
+    {wifi_countrycode_BO,"BO","068"}, /**< BOLIVIA */
+    {wifi_countrycode_BR,"BR","076"}, /**< BRAZIL */
+    {wifi_countrycode_BS,"BS","044"}, /**< BAHAMAS */
+    {wifi_countrycode_BT,"BT","064"}, /**< BHUTAN */
+    {wifi_countrycode_BV,"BV","074"}, /**< BOUVET ISLAND */
+    {wifi_countrycode_BW,"BW","072"}, /**< BOTSWANA */
+    {wifi_countrycode_BY,"BY","112"}, /**< BELARUS */
+    {wifi_countrycode_BZ,"BZ","084"}, /**< BELIZE */
+    {wifi_countrycode_CA,"CA","124"}, /**< CANADA */
+    {wifi_countrycode_CC,"CC","166"}, /**< COCOS (KEELING) ISLANDS */
+    {wifi_countrycode_CD,"CD","180"}, /**< CONGO,THE DEMOCRATIC REPUBLIC OF THE */
+    {wifi_countrycode_CF,"CF","140"}, /**< CENTRAL AFRICAN REPUBLIC */
+    {wifi_countrycode_CG,"CG","178"}, /**< CONGO */
+    {wifi_countrycode_CH,"CH","756"}, /**< SWITZERLAND */
+    {wifi_countrycode_CI,"CI","384"}, /**< COTE D'IVOIRE */
+    {wifi_countrycode_CK,"CK","184"}, /**< COOK ISLANDS */
+    {wifi_countrycode_CL,"CL","152"}, /**< CHILE */
+    {wifi_countrycode_CM,"CM","120"}, /**< CAMEROON */
+    {wifi_countrycode_CN,"CN","156"}, /**< CHINA */
+    {wifi_countrycode_CO,"CO","170"}, /**< COLOMBIA */
+    {wifi_countrycode_CP,"CP","249"}, /**< CLIPPERTON ISLAND */
+    {wifi_countrycode_CR,"CR","188"}, /**< COSTA RICA */
+    {wifi_countrycode_CU,"CU","192"}, /**< CUBA */
+    {wifi_countrycode_CV,"CV","132"}, /**< CAPE VERDE */
+    {wifi_countrycode_CY,"CY","196"}, /**< CYPRUS */
+    {wifi_countrycode_CX,"CX","162"}, /**< CHRISTMAS ISLAND */
+    {wifi_countrycode_CZ,"CZ","203"}, /**< CZECH REPUBLIC */
+    {wifi_countrycode_DE,"DE","276"}, /**< GERMANY */
+    {wifi_countrycode_DJ,"DJ","262"}, /**< DJIBOUTI */
+    {wifi_countrycode_DK,"DK","208"}, /**< DENMARK */
+    {wifi_countrycode_DM,"DM","212"}, /**< DOMINICA */
+    {wifi_countrycode_DO,"DO","214"}, /**< DOMINICAN REPUBLIC */
+    {wifi_countrycode_DZ,"DZ","012"}, /**< ALGERIA */
+    {wifi_countrycode_EC,"EC","218"}, /**< ECUADOR */
+    {wifi_countrycode_EE,"EE","233"}, /**< ESTONIA */
+    {wifi_countrycode_EG,"EG","818"}, /**< EGYPT */
+    {wifi_countrycode_EH,"EH","732"}, /**< WESTERN SAHARA */
+    {wifi_countrycode_ER,"ER","232"}, /**< ERITREA */
+    {wifi_countrycode_ES,"ES","724"}, /**< SPAIN */
+    {wifi_countrycode_ET,"ET","231"}, /**< ETHIOPIA */
+    {wifi_countrycode_FI,"FI","246"}, /**< FINLAND */
+    {wifi_countrycode_FJ,"FJ","242"}, /**< FIJI */
+    {wifi_countrycode_FK,"FK","238"}, /**< FALKLAND ISLANDS (MALVINAS) */
+    {wifi_countrycode_FM,"FM","583"}, /**< MICRONESIA FEDERATED STATES OF */
+    {wifi_countrycode_FO,"FO","234"}, /**< FAROE ISLANDS */
+    {wifi_countrycode_FR,"FR","250"}, /**< FRANCE */
+    {wifi_countrycode_GA,"GA","266"}, /**< GABON */
+    {wifi_countrycode_GB,"GB","826"}, /**< UNITED KINGDOM */
+    {wifi_countrycode_GD,"GD","308"}, /**< GRENADA */
+    {wifi_countrycode_GE,"GE","268"}, /**< GEORGIA */
+    {wifi_countrycode_GF,"GF","254"}, /**< FRENCH GUIANA */
+    {wifi_countrycode_GG,"GG","831"}, /**< GUERNSEY */
+    {wifi_countrycode_GH,"GH","288"}, /**< GHANA */
+    {wifi_countrycode_GI,"GI","292"}, /**< GIBRALTAR */
+    {wifi_countrycode_GL,"GL","304"}, /**< GREENLAND */
+    {wifi_countrycode_GM,"GM","270"}, /**< GAMBIA */
+    {wifi_countrycode_GN,"GN","324"}, /**< GUINEA */
+    {wifi_countrycode_GP,"GP","312"}, /**< GUADELOUPE */
+    {wifi_countrycode_GQ,"GQ","226"}, /**< EQUATORIAL GUINEA */
+    {wifi_countrycode_GR,"GR","300"}, /**< GREECE */
+    {wifi_countrycode_GS,"GS","239"}, /**< SOUTH GEORGIA AND THE SOUTH SANDWICH ISLANDS */
+    {wifi_countrycode_GT,"GT","320"}, /**< GUATEMALA */
+    {wifi_countrycode_GU,"GU","316"}, /**< GUAM */
+    {wifi_countrycode_GW,"GW","624"}, /**< GUINEA-BISSAU */
+    {wifi_countrycode_GY,"GY","328"}, /**< GUYANA */
+    {wifi_countrycode_HR,"HR","191"}, /**< CROATIA */
+    {wifi_countrycode_HT,"HT","332"}, /**< HAITI */
+    {wifi_countrycode_HM,"HM","334"}, /**< HEARD ISLAND AND MCDONALD ISLANDS */
+    {wifi_countrycode_HN,"HN","340"}, /**< HONDURAS */
+    {wifi_countrycode_HK,"HK","344"}, /**< HONG KONG */
+    {wifi_countrycode_HU,"HU","348"}, /**< HUNGARY */
+    {wifi_countrycode_IS,"IS","352"}, /**< ICELAND */
+    {wifi_countrycode_IN,"IN","356"}, /**< INDIA */
+    {wifi_countrycode_ID,"ID","360"}, /**< INDONESIA */
+    {wifi_countrycode_IR,"IR","364"}, /**< IRAN, ISLAMIC REPUBLIC OF */
+    {wifi_countrycode_IQ,"IQ","368"}, /**< IRAQ */
+    {wifi_countrycode_IE,"IE","372"}, /**< IRELAND */
+    {wifi_countrycode_IL,"IL","376"}, /**< ISRAEL */
+    {wifi_countrycode_IM,"IM","833"}, /**< MAN, ISLE OF */
+    {wifi_countrycode_IT,"IT","380"}, /**< ITALY */
+    {wifi_countrycode_IO,"IO","086"}, /**< BRITISH INDIAN OCEAN TERRITORY */
+    {wifi_countrycode_JM,"JM","388"}, /**< JAMAICA */
+    {wifi_countrycode_JP,"JP","392"}, /**< JAPAN */
+    {wifi_countrycode_JE,"JE","832"}, /**< JERSEY */
+    {wifi_countrycode_JO,"jo","400"}, /**< JORDAN */
+    {wifi_countrycode_KE,"KE","404"}, /**< KENYA */
+    {wifi_countrycode_KG,"KG","417"}, /**< KYRGYZSTAN */
+    {wifi_countrycode_KH,"KH","116"}, /**< CAMBODIA */
+    {wifi_countrycode_KI,"KI","296"}, /**< KIRIBATI */
+    {wifi_countrycode_KM,"KM","174"}, /**< COMOROS */
+    {wifi_countrycode_KN,"KN","659"}, /**< SAINT KITTS AND NEVIS */
+    {wifi_countrycode_KP,"KP","408"}, /**< KOREA, DEMOCRATIC PEOPLE'S REPUBLIC OF */
+    {wifi_countrycode_KR,"KR","410"}, /**< KOREA, REPUBLIC OF */
+    {wifi_countrycode_KW,"KW","414"}, /**< KUWAIT */
+    {wifi_countrycode_KY,"KY","136"}, /**< CAYMAN ISLANDS */
+    {wifi_countrycode_KZ,"KZ","398"}, /**< KAZAKHSTAN */
+    {wifi_countrycode_LA,"LA","418"}, /**< LAO PEOPLE'S DEMOCRATIC REPUBLIC */
+    {wifi_countrycode_LB,"LB","422"}, /**< LEBANON */
+    {wifi_countrycode_LC,"LC","662"}, /**< SAINT LUCIA */
+    {wifi_countrycode_LI,"LI","438"}, /**< LIECHTENSTEIN */
+    {wifi_countrycode_LK,"LK","144"}, /**< SRI LANKA */
+    {wifi_countrycode_LR,"LR","430"}, /**< LIBERIA */
+    {wifi_countrycode_LS,"LS","426"}, /**< LESOTHO */
+    {wifi_countrycode_LT,"LT","440"}, /**< LITHUANIA */
+    {wifi_countrycode_LU,"LU","442"}, /**< LUXEMBOURG */
+    {wifi_countrycode_LV,"LV","428"}, /**< LATVIA */
+    {wifi_countrycode_LY,"LY","434"}, /**< LIBYAN ARAB JAMAHIRIYA */
+    {wifi_countrycode_MA,"MA","504"}, /**< MOROCCO */
+    {wifi_countrycode_MC,"MC","492"}, /**< MONACO */
+    {wifi_countrycode_MD,"MD","498"}, /**< MOLDOVA, REPUBLIC OF */
+    {wifi_countrycode_ME,"ME","499"}, /**< MONTENEGRO */
+    {wifi_countrycode_MG,"MG","450"}, /**< MADAGASCAR */
+    {wifi_countrycode_MH,"MH","584"}, /**< MARSHALL ISLANDS */
+    {wifi_countrycode_MK,"MK","807"}, /**< MACEDONIA, THE FORMER YUGOSLAV REPUBLIC OF */
+    {wifi_countrycode_ML,"ML","466"}, /**< MALI */
+    {wifi_countrycode_MM,"MM","104"}, /**< MYANMAR */
+    {wifi_countrycode_MN,"MN","496"}, /**< MONGOLIA */
+    {wifi_countrycode_MO,"MO","446"}, /**< MACAO */
+    {wifi_countrycode_MQ,"MQ","474"}, /**< MARTINIQUE */
+    {wifi_countrycode_MR,"MR","478"}, /**< MAURITANIA */
+    {wifi_countrycode_MS,"MS","500"}, /**< MONTSERRAT */
+    {wifi_countrycode_MT,"MT","470"}, /**< MALTA */
+    {wifi_countrycode_MU,"MU","480"}, /**< MAURITIUS */
+    {wifi_countrycode_MV,"MV","462"}, /**< MALDIVES */
+    {wifi_countrycode_MW,"MW","454"}, /**< MALAWI */
+    {wifi_countrycode_MX,"MX","484"}, /**< MEXICO */
+    {wifi_countrycode_MY,"MY","458"}, /**< MALAYSIA */
+    {wifi_countrycode_MZ,"MZ","508"}, /**< MOZAMBIQUE */
+    {wifi_countrycode_NA,"NA","516"}, /**< NAMIBIA */
+    {wifi_countrycode_NC,"NC","540"}, /**< NEW CALEDONIA */
+    {wifi_countrycode_NE,"NE","562"}, /**< NIGER */
+    {wifi_countrycode_NF,"NF","574"}, /**< NORFOLK ISLAND */
+    {wifi_countrycode_NG,"NG","566"}, /**< NIGERIA */
+    {wifi_countrycode_NI,"NI","558"}, /**< NICARAGUA */
+    {wifi_countrycode_NL,"NL","528"}, /**< NETHERLANDS */
+    {wifi_countrycode_NO,"NO","578"}, /**< NORWAY */
+    {wifi_countrycode_NP,"NP","524"}, /**< NEPAL */
+    {wifi_countrycode_NR,"NR","520"}, /**< NAURU */
+    {wifi_countrycode_NU,"NU","570"}, /**< NIUE */
+    {wifi_countrycode_NZ,"NZ","554"}, /**< NEW ZEALAND */
+    {wifi_countrycode_MP,"MP","580"}, /**< NORTHERN MARIANA ISLANDS */
+    {wifi_countrycode_OM,"OM","512"}, /**< OMAN */
+    {wifi_countrycode_PA,"PA","591"}, /**< PANAMA */
+    {wifi_countrycode_PE,"PE","604"}, /**< PERU */
+    {wifi_countrycode_PF,"PF","258"}, /**< FRENCH POLYNESIA */
+    {wifi_countrycode_PG,"PG","598"}, /**< PAPUA NEW GUINEA */
+    {wifi_countrycode_PH,"PH","608"}, /**< PHILIPPINES */
+    {wifi_countrycode_PK,"PK","586"}, /**< PAKISTAN */
+    {wifi_countrycode_PL,"PL","616"}, /**< POLAND */
+    {wifi_countrycode_PM,"PM","666"}, /**< SAINT PIERRE AND MIQUELON */
+    {wifi_countrycode_PN,"PN","612"}, /**< PITCAIRN */
+    {wifi_countrycode_PR,"PR","630"}, /**< PUERTO RICO */
+    {wifi_countrycode_PS,"PS","275"}, /**< PALESTINIAN TERRITORY,OCCUPIED */
+    {wifi_countrycode_PT,"PT","620"}, /**< PORTUGAL */
+    {wifi_countrycode_PW,"PW","585"}, /**< PALAU */
+    {wifi_countrycode_PY,"PY","600"}, /**< PARAGUAY */
+    {wifi_countrycode_QA,"QA","634"}, /**< QATAR */
+    {wifi_countrycode_RE,"RE","638"}, /**< REUNION */
+    {wifi_countrycode_RO,"RO","642"}, /**< ROMANIA */
+    {wifi_countrycode_RS,"RS","688"}, /**< SERBIA */
+    {wifi_countrycode_RU,"RU","643"}, /**< RUSSIAN FEDERATION */
+    {wifi_countrycode_RW,"RW","646"}, /**< RWANDA */
+    {wifi_countrycode_SA,"SA","682"}, /**< SAUDI ARABIA */
+    {wifi_countrycode_SB,"SB","090"}, /**< SOLOMON ISLANDS */
+    {wifi_countrycode_SD,"SD","729"}, /**< SUDAN */
+    {wifi_countrycode_SE,"SE","752"}, /**< SWEDEN */
+    {wifi_countrycode_SC,"SC","690"}, /**< SEYCHELLES */
+    {wifi_countrycode_SG,"SG","702"}, /**< SINGAPORE */
+    {wifi_countrycode_SH,"SH","654"}, /**< SAINT HELENA */
+    {wifi_countrycode_SI,"SI","705"}, /**< SLOVENIA */
+    {wifi_countrycode_SJ,"SJ","744"}, /**< SVALBARD AND JAN MAYEN */
+    {wifi_countrycode_SK,"SK","703"}, /**< SLOVAKIA */
+    {wifi_countrycode_SL,"SL","694"}, /**< SIERRA LEONE */
+    {wifi_countrycode_SM,"SM","674"}, /**< SAN MARINO */
+    {wifi_countrycode_SN,"SN","686"}, /**< SENEGAL */
+    {wifi_countrycode_SO,"SO","706"}, /**< SOMALIA */
+    {wifi_countrycode_SR,"SR","740"}, /**< SURINAME */
+    {wifi_countrycode_ST,"ST","678"}, /**< SAO TOME AND PRINCIPE */
+    {wifi_countrycode_SV,"SV","222"}, /**< EL SALVADOR */
+    {wifi_countrycode_SY,"SY","760"}, /**< SYRIAN ARAB REPUBLIC */
+    {wifi_countrycode_SZ,"SZ","748"}, /**< SWAZILAND */
+    {wifi_countrycode_TA,"TA","654"}, /**< TRISTAN DA CUNHA */
+    {wifi_countrycode_TC,"TC","796"}, /**< TURKS AND CAICOS ISLANDS */
+    {wifi_countrycode_TD,"TD","148"}, /**< CHAD */
+    {wifi_countrycode_TF,"TF","260"}, /**< FRENCH SOUTHERN TERRITORIES */
+    {wifi_countrycode_TG,"TG","768"}, /**< TOGO */
+    {wifi_countrycode_TH,"TH","764"}, /**< THAILAND */
+    {wifi_countrycode_TJ,"TJ","762"}, /**< TAJIKISTAN */
+    {wifi_countrycode_TK,"TK","772"}, /**< TOKELAU */
+    {wifi_countrycode_TL,"TL","626"}, /**< TIMOR-LESTE (EAST TIMOR) */
+    {wifi_countrycode_TM,"TM","795"}, /**< TURKMENISTAN */
+    {wifi_countrycode_TN,"TN","788"}, /**< TUNISIA */
+    {wifi_countrycode_TO,"TO","776"}, /**< TONGA */
+    {wifi_countrycode_TR,"TR","792"}, /**< TURKEY */
+    {wifi_countrycode_TT,"TT","780"}, /**< TRINIDAD AND TOBAGO */
+    {wifi_countrycode_TV,"TV","798"}, /**< TUVALU */
+    {wifi_countrycode_TW,"TW","158"}, /**< TAIWAN, PROVINCE OF CHINA */
+    {wifi_countrycode_TZ,"TZ","834"}, /**< TANZANIA, UNITED REPUBLIC OF */
+    {wifi_countrycode_UA,"UA","804"}, /**< UKRAINE */
+    {wifi_countrycode_UG,"UG","800"}, /**< UGANDA */
+    {wifi_countrycode_UM,"UM","581"}, /**< UNITED STATES MINOR OUTLYING ISLANDS */
+    {wifi_countrycode_US,"US","840"}, /**< UNITED STATES */
+    {wifi_countrycode_UY,"UY","858"}, /**< URUGUAY */
+    {wifi_countrycode_UZ,"UZ","860"}, /**< UZBEKISTAN */
+    {wifi_countrycode_VA,"VA","336"}, /**< HOLY SEE (VATICAN CITY STATE) */
+    {wifi_countrycode_VC,"VC","670"}, /**< SAINT VINCENT AND THE GRENADINES */
+    {wifi_countrycode_VE,"VE","862"}, /**< VENEZUELA */
+    {wifi_countrycode_VG,"VG","092"}, /**< VIRGIN ISLANDS, BRITISH */
+    {wifi_countrycode_VI,"VI","850"}, /**< VIRGIN ISLANDS, U.S. */
+    {wifi_countrycode_VN,"VN","704"}, /**< VIET NAM */
+    {wifi_countrycode_VU,"VU","548"}, /**< VANUATU */
+    {wifi_countrycode_WF,"WF","876"}, /**< WALLIS AND FUTUNA */
+    {wifi_countrycode_WS,"WS","882"}, /**< SAMOA */
+    {wifi_countrycode_YE,"YE","887"}, /**< YEMEN */
+    {wifi_countrycode_YT,"YT","175"}, /**< MAYOTTE */
+    {wifi_countrycode_YU,"YU","890"}, /**< YUGOSLAVIA */
+    {wifi_countrycode_ZA,"ZA","710"}, /**< SOUTH AFRICA */
+    {wifi_countrycode_ZM,"ZM","894"}, /**< ZAMBIA */
+    {wifi_countrycode_ZW,"ZW","716"} /**< ZIMBABWE */
 };
 
 struct wifiEnvironmentEnumStrMap wifiEnviromentMap[] =
@@ -1438,6 +1438,36 @@ int country_code_conversion(wifi_countrycode_type_t *country_code, char *country
             return RETURN_ERR;
         }
         snprintf(country, country_len, "%s", wifiCountryMap[*country_code].countryStr);
+        return RETURN_OK;
+    }
+
+    return RETURN_ERR;
+}
+
+int country_id_conversion(wifi_countrycode_type_t *country_code, char *country_id, int country_id_len, unsigned int conv_type)
+{
+    int i = 0;
+    if ((country_code == NULL) || (country_id == NULL)) {
+        return RETURN_ERR;
+    }
+
+    if (conv_type == STRING_TO_ENUM) {
+        for (i = 0; i < MAX_WIFI_COUNTRYCODE; i++) {
+            if(strcasecmp(country_id, wifiCountryMap[i].countryId) == 0) {
+                *country_code = wifiCountryMap[i].countryCode;
+                return RETURN_OK;
+            }
+        }
+
+        if(i == MAX_WIFI_COUNTRYCODE) {
+            return RETURN_ERR;
+        }
+
+    } else if (conv_type == ENUM_TO_STRING) {
+        if ( i >= MAX_WIFI_COUNTRYCODE) {
+            return RETURN_ERR;
+        }
+        snprintf(country_id, country_id_len, "%s", wifiCountryMap[*country_code].countryId);
         return RETURN_OK;
     }
 

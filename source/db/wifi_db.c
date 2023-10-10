@@ -4733,7 +4733,11 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
     cfg.autoChannelEnabled = true;
     cfg.csa_beacon_count = 100;
     cfg.countryCode = wifi_countrycode_US;
+#ifndef CCSP_WIFI_HAL
+    if (ow_core_get_default_country_code(radio_index, country_code, sizeof(country_code)) < 0) {
+#else
     if (wifi_hal_get_default_country_code(country_code) < 0) {
+#endif // CCSP_WIFI_HAL
         wifi_util_dbg_print(WIFI_DB,"%s:%d: unable to get default country code setting a US\n", __func__, __LINE__);
     } else {
         if (country_code_conversion(&cfg.countryCode, country_code, sizeof(country_code), STRING_TO_ENUM) < 0) {
@@ -4775,6 +4779,12 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
         Fcfg.OffChanNscanInSec = 0;
         Fcfg.OffChanTidleInSec = 0;
     }
+
+#ifndef CCSP_WIFI_HAL
+    if (ow_core_get_reg_domain(radio_index, &cfg.regDomain) != RETURN_OK) {
+        wifi_util_dbg_print(WIFI_DB, "%s:%d: unable to get regulatory domain for radio%d\n", __func__, __LINE__, radio_index);
+    }
+#endif // CCSP_WIFI_HAL
 
     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Tscan:%lu Nscan:%lu Nidle:%lu\n", __func__, __LINE__, Fcfg.OffChanTscanInMsec, Fcfg.OffChanNscanInSec, Fcfg.OffChanTidleInSec);
     pthread_mutex_lock(&g_wifidb->data_cache_lock);

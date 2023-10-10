@@ -74,6 +74,7 @@ typedef unsigned char   mac_addr_t[MAC_ADDR_LEN];
 struct wifiCountryEnumStrMap {
     wifi_countrycode_type_t countryCode;
     char countryStr[4];
+    char countryId[4];
 };
 
 struct wifiEnvironmentEnumStrMap {
@@ -215,6 +216,7 @@ BOOL is_vap_hotspot_secure(wifi_platform_property_t *wifi_prop, unsigned int ap_
 BOOL is_vap_lnf_radius(wifi_platform_property_t *wifi_prop, unsigned int ap_index);
 BOOL is_vap_mesh_sta(wifi_platform_property_t *wifi_prop, unsigned int ap_index);
 int country_code_conversion(wifi_countrycode_type_t *country_code, char *country, int country_len, unsigned int conv_type);
+int country_id_conversion(wifi_countrycode_type_t *country_code, char *country_id, int country_id_len, unsigned int conv_type);
 int hw_mode_conversion(wifi_ieee80211Variant_t *hw_mode_enum, char *hw_mode, int hw_mode_len, unsigned int conv_type);
 int ht_mode_conversion(wifi_channelBandwidth_t *ht_mode_enum, char *ht_mode, int ht_mode_len, unsigned int conv_type);
 int get_sta_vap_index_for_radio(wifi_platform_property_t *wifi_prop, unsigned int radio_index);

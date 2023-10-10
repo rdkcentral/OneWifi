@@ -1248,6 +1248,23 @@ webconfig_error_t translate_radio_obj_to_ovsdb_radio_state(const wifi_radio_oper
         return webconfig_error_translate_to_ovsdb;
     }
 
+#if defined (_PP203X_PRODUCT_REQ_)
+    char country_id[4] = {};
+
+    if (country_id_conversion((wifi_countrycode_type_t *)&oper_param->countryCode, country_id, sizeof(country_id), ENUM_TO_STRING) != RETURN_OK) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: country_id conversion failed. countryCode %d\n", __func__, __LINE__, oper_param->countryCode);
+        return webconfig_error_translate_to_ovsdb;
+    }
+
+    row->hw_params_len = 0;
+    STRSCPY(row->hw_params_keys[row->hw_params_len], "country_id");
+    snprintf(row->hw_params[row->hw_params_len], sizeof(row->hw_params[row->hw_params_len]), "%s", country_id);
+    row->hw_params_len++;
+
+    STRSCPY(row->hw_params_keys[row->hw_params_len], "reg_domain");
+    snprintf(row->hw_params[row->hw_params_len], sizeof(row->hw_params[row->hw_params_len]), "%u", oper_param->regDomain);
+    row->hw_params_len++;
+#endif
 
     if (hw_mode_conversion((wifi_ieee80211Variant_t *)&oper_param->variant, row->hw_mode, sizeof(row->hw_mode), ENUM_TO_STRING) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Hw mode conversion failed. variant 0x%x\n", __func__, __LINE__, oper_param->variant);

@@ -867,3 +867,37 @@ bool ow_core_vif_conf_type_is_cloud(char *vap_name)
 
     return false;
 }
+
+INT ow_core_get_default_country_code(int radio_index, char *code, int len)
+{
+    char *phy_name;
+
+    if (!(phy_name = phy_index_to_phy_name(radio_index))) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to get phy_name for %d\n", __func__, __LINE__, radio_index);
+        return RETURN_ERR;
+    }
+
+    if (!osw_drv_target_get_country_code(phy_name, code, len)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d failed to get country code for %s\n", __func__, __LINE__, phy_name);
+        return RETURN_ERR;
+    }
+
+    return RETURN_OK;
+}
+
+INT ow_core_get_reg_domain(int radio_index, int *reg_domain)
+{
+    char *phy_name;
+
+    if (!(phy_name = phy_index_to_phy_name(radio_index))) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to get phy_name for %d\n", __func__, __LINE__, radio_index);
+        return RETURN_ERR;
+    }
+
+    if (!osw_drv_target_get_reg_domain(phy_name, reg_domain)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d failed to get reg domain for %s\n", __func__, __LINE__, phy_name);
+        return RETURN_ERR;
+    }
+
+    return RETURN_OK;
+}
