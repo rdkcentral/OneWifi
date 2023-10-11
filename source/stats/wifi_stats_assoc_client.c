@@ -107,7 +107,7 @@ int execute_assoc_client_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *
         wifi_util_error_print(WIFI_MON, "%s:%d input arguments are NULL args : %p\n",__func__,__LINE__, args);
         return RETURN_ERR;
     }
-    
+
     UINT radio = get_radio_index_for_vap_index(wifi_prop, args->vap_index);
 
     if ((unsigned)RETURN_ERR == radio) {
@@ -263,7 +263,7 @@ int copy_assoc_client_stats_from_cache(wifi_mon_stats_args_t *args, void **stats
     getVAPArrayIndexFromVAPIndex(args->vap_index, &vap_array_index);
 
     if (bss_param->enabled == false) {
-        wifi_util_error_print(WIFI_MON, "%s:%d vap_index %d enabled is false \n",
+        wifi_util_dbg_print(WIFI_MON, "%s:%d vap_index %d enabled is false \n",
                 __func__, __LINE__, args->vap_index);
         *stats = NULL;
         *stat_array_size = 0;
@@ -295,7 +295,7 @@ int copy_assoc_client_stats_from_cache(wifi_mon_stats_args_t *args, void **stats
     while(temp_sta != NULL) {
         memset(sta_key, 0, sizeof(sta_key_t));
         to_sta_key(temp_sta->sta_mac, sta_key);
-        wifi_util_error_print(WIFI_MON, "%s:%d vap_index %d count : %d sta_key : %s\n",
+        wifi_util_dbg_print(WIFI_MON, "%s:%d vap_index %d count : %d sta_key : %s\n",
                 __func__, __LINE__, args->vap_index, count, sta_key);
         memcpy(&sta[count], temp_sta, sizeof(sta_data_t));
         count++;
