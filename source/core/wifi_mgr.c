@@ -1462,12 +1462,14 @@ int set_bool_psm_value(bool data_value, char *recName)
 
 int get_all_param_from_psm_and_set_into_db(void)
 {
+    char inactive_firmware[64] = { 0 };
     wifi_util_info_print(WIFI_MGR,"%s \n",__func__);
 /*      check for psm-db(Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.WiFi-PSM-DB.Enable) and
 **      last reboot reason(Device.DeviceInfo.X_RDKCENTRAL-COM_LastRebootReason)
 **      if psm-db is false and last reboot reason if not factory-reset,
 **      then update wifi-db with values from psm */
     wifi_util_info_print(WIFI_MGR,"%s \n",__func__);
+
     if (is_device_type_xb7() == true || is_device_type_xb8() == true || is_device_type_sr213() == true || is_device_type_cmxb7() == true || is_device_type_cbr2() == true) {
         bool wifi_psm_db_enabled = false;
         char last_reboot_reason[32];
@@ -1487,6 +1489,18 @@ int get_all_param_from_psm_and_set_into_db(void)
         }
 
         wifi_util_info_print(WIFI_MGR,"%s psm:%d last_reboot_reason:%s \n",__func__, wifi_psm_db_enabled, last_reboot_reason);
+
+        if (get_rbus_param(rbus_handle, rbus_string_data, INACTIVE_FIRMWARE_NAMESPACE, inactive_firmware) == RETURN_OK) {
+            if (access(ONEWIFI_DB_CONSOLIDATED_FLAG, F_OK) != 0) {
+                if (((strncmp(last_reboot_reason, "Software_upgrade", strlen("Software_upgrade")) == 0) ||
+                    (strncmp(last_reboot_reason, "Forced_Software_upgrade", strlen("Forced_Software_upgrade")) == 0))
+                    && is_db_upgrade_required(inactive_firmware)) {
+
+                    wifi_util_info_print(WIFI_MGR,"ONEWIFI_MIGRATION_FLAG is created\n");
+                }
+            }
+        }
+
         if ((access(ONEWIFI_MIGRATION_FLAG, F_OK) == 0)) {
             int retval;
             retval = wifi_db_update_psm_values();

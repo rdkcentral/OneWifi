@@ -218,3 +218,7 @@ INT wifi_hal_getRadioTemperature(wifi_radio_index_t radioIndex, wifi_radioTemper
 {
   return 0;
 }
+BOOL is_db_upgrade_required( CHAR* inactive_firmware)
+{
+   return FALSE;
+}
