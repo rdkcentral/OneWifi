@@ -164,6 +164,29 @@ static BOOL IsSsidHotspot(ULONG ins)
     return (BOOL) vapInfo->u.bss_info.bssHotspot;
 }
 
+static inline bool is_open_sec(wifi_security_modes_t mode)
+{
+    return mode == wifi_security_mode_none ||
+        mode == wifi_security_mode_enhanced_open;
+}
+
+static inline bool is_personal_sec(wifi_security_modes_t mode)
+{
+    return mode == wifi_security_mode_wpa_personal ||
+        mode == wifi_security_mode_wpa2_personal ||
+        mode == wifi_security_mode_wpa_wpa2_personal ||
+        mode == wifi_security_mode_wpa3_personal ||
+        mode == wifi_security_mode_wpa3_transition;
+}
+
+static inline bool is_enterprise_sec(wifi_security_modes_t mode)
+{
+    return mode == wifi_security_mode_wpa_enterprise ||
+        mode == wifi_security_mode_wpa2_enterprise ||
+        mode == wifi_security_mode_wpa_wpa2_enterprise ||
+        mode == wifi_security_mode_wpa3_enterprise;
+}
+
 /***********************************************************************
 
  APIs for Object:
@@ -7360,6 +7383,51 @@ Security_GetParamBoolValue
         BOOL*                       pBool
     )
 {
+    wifi_vap_info_t *pcfg = (wifi_vap_info_t *)hInsContext;
+    wifi_vap_security_t *l_security_cfg= NULL;
+
+    if (pcfg == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
+        return FALSE;
+    }
+
+    uint8_t instance_number = convert_vap_name_to_index(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop, pcfg->vap_name)+1;
+    wifi_vap_info_t *vapInfo = (wifi_vap_info_t *) get_dml_cache_vap_info(instance_number-1);
+    wifi_radio_operationParam_t *radioOperation = (wifi_radio_operationParam_t *) get_dml_cache_radio_map(pcfg->radio_index);
+    BOOL WPA3_RFC = FALSE;
+
+    if ((vapInfo == NULL) || (radioOperation ==NULL))
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get VAP info for instance_number:%d\n", __FUNCTION__,__LINE__,instance_number);
+        return FALSE;
+    }
+    if (isVapSTAMesh(instance_number-1)) {
+        l_security_cfg= (wifi_vap_security_t *) get_dml_cache_sta_security_parameter(vapInfo->vap_index);
+        if(l_security_cfg== NULL)
+        {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: %s invalid get_dml_cache_sta_security_parameter \n",__func__, __LINE__,vapInfo->vap_name);
+            return FALSE;
+        }
+    } else {
+        l_security_cfg= (wifi_vap_security_t *) get_dml_cache_bss_security_parameter(vapInfo->vap_index);
+        if(l_security_cfg== NULL)
+        {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: %s invalid get_dml_cache_security_parameter \n",__func__, __LINE__,vapInfo->vap_name);
+            return FALSE;
+        }
+    }
+    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_TransitionDisable", TRUE))
+    {
+        CosaWiFiDmlGetWPA3TransitionRFC(&WPA3_RFC);
+
+        if ((radioOperation->band != WIFI_FREQUENCY_6_BAND) && (WPA3_RFC)) {
+            *pBool = l_security_cfg->wpa3_transition_disable;
+        } else {
+            *pBool = FALSE;
+        }
+    }
+
     if( AnscEqualString(ParamName, "Reset", TRUE)) {
         *pBool = FALSE;
     }
@@ -7528,39 +7596,45 @@ Security_GetParamUlongValue
 void get_security_modes_supported(int vap_index, int *mode)
 {
     int band;
-    int radio_index;
+    unsigned int radio_index;
+    wifi_vap_info_t *vap_info;
+    BOOL passpoint_enabled;
 
-    radio_index = (int) getRadioIndexFromAp((unsigned int)vap_index);
-    convert_radio_index_to_freq_band(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop,
-        radio_index, &band);
+    radio_index = getRadioIndexFromAp((unsigned int)vap_index);
+    if (convert_radio_index_to_freq_band(&get_webconfig_dml()->hal_cap.wifi_prop, radio_index,
+        &band) != RETURN_OK) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d failed to convert radio index %u to band\n",
+            __func__, __LINE__, radio_index);
+        return;
+    }
 
-    if (isVapMeshBackhaul(vap_index))
-    {
-        *mode = COSA_DML_WIFI_SECURITY_None | COSA_DML_WIFI_SECURITY_WPA2_Personal;
+    vap_info = get_dml_cache_vap_info(vap_index);
+    if (vap_info == NULL) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d failed to get vap info for index %d\n",
+            __func__, __LINE__, vap_index);
+        return;
     }
-    else if (band == WIFI_FREQUENCY_6_BAND)
-    {
-        *mode = COSA_DML_WIFI_SECURITY_WPA3_Personal;
+    passpoint_enabled = vap_info->u.bss_info.interworking.passpoint.enable;
+
+    if (band == WIFI_FREQUENCY_6_BAND) {
+        *mode = passpoint_enabled ? COSA_DML_WIFI_SECURITY_WPA3_Enterprise :
+            COSA_DML_WIFI_SECURITY_WPA3_Personal | COSA_DML_WIFI_SECURITY_WPA3_Enterprise |
+            COSA_DML_WIFI_SECURITY_Enhanced_Open;
+        return;
     }
-    else
-    {
-        if (isVapHotspotSecure(vap_index) || isVapLnfSecure(vap_index))
-        {
-            *mode = COSA_DML_WIFI_SECURITY_WPA_Enterprise | COSA_DML_WIFI_SECURITY_WPA3_Enterprise |
-                    COSA_DML_WIFI_SECURITY_WPA2_Enterprise | COSA_DML_WIFI_SECURITY_WPA_WPA2_Enterprise;
-        }
-        else if (isVapHotspotOpen(vap_index))
-        {
-            *mode = COSA_DML_WIFI_SECURITY_None | COSA_DML_WIFI_SECURITY_Enhanced_Open;
-        }
-        else
-        {
-            *mode = COSA_DML_WIFI_SECURITY_None |
-                    COSA_DML_WIFI_SECURITY_WPA_Personal | COSA_DML_WIFI_SECURITY_WPA2_Personal | COSA_DML_WIFI_SECURITY_WPA_WPA2_Personal |
-                    COSA_DML_WIFI_SECURITY_WPA3_Personal | COSA_DML_WIFI_SECURITY_WPA3_Personal_Transition;
-        }
+
+    if (passpoint_enabled) {
+        *mode = COSA_DML_WIFI_SECURITY_WPA_Enterprise | COSA_DML_WIFI_SECURITY_WPA2_Enterprise |
+            COSA_DML_WIFI_SECURITY_WPA_WPA2_Enterprise | COSA_DML_WIFI_SECURITY_WPA3_Enterprise;
+        return;
     }
-    return;
+
+    *mode = COSA_DML_WIFI_SECURITY_None | COSA_DML_WIFI_SECURITY_Enhanced_Open |
+        COSA_DML_WIFI_SECURITY_WPA_Personal | COSA_DML_WIFI_SECURITY_WPA_Enterprise |
+        COSA_DML_WIFI_SECURITY_WPA2_Personal | COSA_DML_WIFI_SECURITY_WPA2_Enterprise |
+        COSA_DML_WIFI_SECURITY_WPA_WPA2_Personal | COSA_DML_WIFI_SECURITY_WPA_WPA2_Enterprise |
+        COSA_DML_WIFI_SECURITY_WPA3_Personal | COSA_DML_WIFI_SECURITY_WPA3_Personal_Transition |
+        COSA_DML_WIFI_SECURITY_WPA3_Enterprise;
 }
 
 /**********************************************************************  
@@ -8087,7 +8161,7 @@ Security_SetParamUlongValue
 
     if( AnscEqualString(ParamName, "RadiusServerPort", TRUE))
     {
-        if ((!security_mode_support_radius(l_security_cfg->mode)) && (!isVapHotspotOpen(instance_number -1)))
+        if (!security_mode_support_radius(l_security_cfg->mode))
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Security mode %d does not support radius configuration \n",__func__, __LINE__,l_security_cfg->mode);
             return FALSE;
@@ -8104,7 +8178,7 @@ Security_SetParamUlongValue
 
     if( AnscEqualString(ParamName, "SecondaryRadiusServerPort", TRUE))
     {
-        if ((!security_mode_support_radius(l_security_cfg->mode)) && (!isVapHotspotOpen(instance_number -1)))
+        if (!security_mode_support_radius(l_security_cfg->mode))
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Security mode %d does not support radius configuration \n",__func__, __LINE__,l_security_cfg->mode);
             return FALSE;
@@ -8121,7 +8195,7 @@ Security_SetParamUlongValue
 
     if( AnscEqualString(ParamName, "RadiusDASPort", TRUE))
     {
-        if ((!security_mode_support_radius(l_security_cfg->mode)) && (!isVapHotspotOpen(instance_number -1)))
+        if (!security_mode_support_radius(l_security_cfg->mode))
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Security mode %d does not support radius configuration \n",__func__, __LINE__,l_security_cfg->mode);
             return FALSE;
@@ -8237,75 +8311,85 @@ Security_SetParamStringValue
         wifi_security_modes_t TmpMode;
         COSA_DML_WIFI_SECURITY cosaTmpMode;
 
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Mode=%d set Value=%s\n",__func__, __LINE__,l_security_cfg->mode,pString);
-
         if (!getSecurityTypeFromString(pString, &TmpMode, &cosaTmpMode))
-         {
-              printf("unrecognized type name");
-              return FALSE;
-         }
-         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Mode=%d  \n",__func__, __LINE__,TmpMode);
-
-        if ( (radioOperation->band == WIFI_FREQUENCY_6_BAND) &&
-             (TmpMode != wifi_security_mode_wpa3_personal) )
         {
-            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Mode=%d 6GHz radio supports only WPA3 personal mod\n",__func__, __LINE__,TmpMode);
+             wifi_util_error_print(WIFI_DMCLI, "%s:%d failed to parse mode: %s\n", __func__,
+                 __LINE__, pString);
+             return FALSE;
+        }
+
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d old mode: %d new mode: %d\n", __func__, __LINE__,
+            l_security_cfg->mode, TmpMode);
+
+        if (TmpMode == l_security_cfg->mode)
+        {
+            return TRUE;
+        }
+
+        if (radioOperation->band == WIFI_FREQUENCY_6_BAND &&
+            TmpMode != wifi_security_mode_wpa3_personal &&
+            TmpMode != wifi_security_mode_wpa3_enterprise &&
+            TmpMode != wifi_security_mode_enhanced_open)
+        {
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d invalid mode %d for 6GHz\n", __func__,
+                __LINE__, TmpMode);
             return FALSE;
         }
-        if ( TmpMode == l_security_cfg->mode)
-        {
-            return  TRUE;
-        }
+
         /* GET the WPA3 Transition RFC value */
         CosaWiFiDmlGetWPA3TransitionRFC(&WPA3_RFC);
+        if (radioOperation->band != WIFI_FREQUENCY_6_BAND && WPA3_RFC == FALSE &&
+            (TmpMode == wifi_security_mode_wpa3_transition ||
+            TmpMode == wifi_security_mode_wpa3_personal))
+        {
+             wifi_util_error_print(WIFI_DMCLI, "%s:%d WPA3 mode is not supported when "
+                 "TransitionDisable RFC is false\n", __func__, __LINE__);
+             return FALSE;
+        }
 
-        if ( (WPA3_RFC == FALSE) &&
-             (radioOperation->band != WIFI_FREQUENCY_6_BAND) &&
-             ((TmpMode == wifi_security_mode_wpa3_personal) ||
-              (TmpMode == wifi_security_mode_wpa3_transition)) )
+        // cleanup key/radius for personal-enterprise-open mode change
+        if ((is_personal_sec(TmpMode) && !is_personal_sec(l_security_cfg->mode)) ||
+            (is_enterprise_sec(TmpMode) && !is_enterprise_sec(l_security_cfg->mode)) ||
+            (is_open_sec(TmpMode) && !is_open_sec(l_security_cfg->mode)))
         {
-             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Mode=%d  WPA3 mode is not supported when TransitionDisable RFC is false\n",__func__, __LINE__,TmpMode);
-             return FALSE;
+            memset(&l_security_cfg->u, 0, sizeof(l_security_cfg->u));
         }
-	/*
-        if ( (isVapMesh(instance_number-1) == TRUE) &&
-             ((TmpMode == wifi_security_mode_wpa3_personal) ||
-              (TmpMode == wifi_security_mode_wpa3_transition)) )
-        {
-             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Mode=%d WPA3 mode is not supported for MESH VAPs\n",__func__, __LINE__,TmpMode);
-             return FALSE;
-        }
-	*/
-        if (((isVapHotspot(instance_number-1)) && (!isVapHotspotSecure(instance_number-1))) &&
-             (TmpMode != wifi_security_mode_none))
-        {
-             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Mode=%d is not supported for Open Hotspot VAPs\n",__func__, __LINE__,TmpMode);
-             return FALSE;
-        }
+
         l_security_cfg->mode = TmpMode;
         switch (l_security_cfg->mode)
         {
+            case wifi_security_mode_none:
+                l_security_cfg->mfp = wifi_mfp_cfg_disabled;
+                break;
             case wifi_security_mode_wep_64:
             case wifi_security_mode_wep_128:
                 l_security_cfg->u.key.type = wifi_security_key_type_pass;
+                l_security_cfg->mfp = wifi_mfp_cfg_disabled;
                 break;
             case wifi_security_mode_wpa_personal:
             case wifi_security_mode_wpa2_personal:
             case wifi_security_mode_wpa_wpa2_personal:
-            case wifi_security_mode_wpa_enterprise:
-            case wifi_security_mode_wpa2_enterprise:
-            case wifi_security_mode_wpa_wpa2_enterprise:
                 l_security_cfg->u.key.type = wifi_security_key_type_psk;
                 l_security_cfg->mfp = wifi_mfp_cfg_disabled;
                 break;
+            case wifi_security_mode_wpa_enterprise:
+            case wifi_security_mode_wpa2_enterprise:
+            case wifi_security_mode_wpa_wpa2_enterprise:
+                l_security_cfg->mfp = wifi_mfp_cfg_disabled;
+                break;
             case wifi_security_mode_wpa3_personal:
-            case wifi_security_mode_wpa3_enterprise:
                 l_security_cfg->u.key.type = wifi_security_key_type_sae;
+                l_security_cfg->mfp = wifi_mfp_cfg_required;
+                break;
+            case wifi_security_mode_wpa3_enterprise:
                 l_security_cfg->mfp = wifi_mfp_cfg_required;
                 break;
             case wifi_security_mode_wpa3_transition:
                 l_security_cfg->u.key.type = wifi_security_key_type_psk_sae;
                 l_security_cfg->mfp = wifi_mfp_cfg_optional;
+                break;
+            case wifi_security_mode_enhanced_open:
+                l_security_cfg->mfp = wifi_mfp_cfg_required;
                 break;
             default:
                 break;
@@ -8358,7 +8442,7 @@ Security_SetParamStringValue
                 return TRUE;
             }
              /* save update to backup */
-            if((security_mode_support_radius(l_security_cfg->mode)) || ((isVapHotspot(instance_number-1)) && (!isVapHotspotSecure(instance_number-1))))
+            if (security_mode_support_radius(l_security_cfg->mode))
             {
                 wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Security mode %d does not support passphrase configuration \n",__func__, __LINE__,l_security_cfg->mode);
                 return FALSE;
@@ -8382,7 +8466,7 @@ Security_SetParamStringValue
         if((pString == NULL) || (strlen(pString) >= sizeof(l_security_cfg->u.key.key)))
              return FALSE;
 
-        if((security_mode_support_radius(l_security_cfg->mode)) || ((isVapHotspot(instance_number-1)) && (!isVapHotspotSecure(instance_number-1))))
+        if (security_mode_support_radius(l_security_cfg->mode))
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Security mode %d does not support passphrase configuration \n",__func__, __LINE__,l_security_cfg->mode);
             return FALSE;
@@ -8438,7 +8522,7 @@ Security_SetParamStringValue
     ERR_CHK(rc);
     if((rc == EOK) && (!ind))
     {
-        if ((!security_mode_support_radius(l_security_cfg->mode)) && (!isVapHotspotOpen(instance_number -1)))
+        if (!security_mode_support_radius(l_security_cfg->mode))
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Security mode %d does not support radius configuration \n",__func__, __LINE__,l_security_cfg->mode);
             return FALSE;
@@ -8467,7 +8551,7 @@ Security_SetParamStringValue
     ERR_CHK(rc);
     if((rc == EOK) && (!ind))
     {
-        if ((!security_mode_support_radius(l_security_cfg->mode)) && (!isVapHotspotOpen(instance_number -1)))
+        if (!security_mode_support_radius(l_security_cfg->mode))
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Security mode %d does not support radius configuration \n",__func__, __LINE__,l_security_cfg->mode);
             return FALSE;
@@ -8494,7 +8578,7 @@ Security_SetParamStringValue
     ERR_CHK(rc);
     if((rc == EOK) && (!ind))
     {
-        if ((!security_mode_support_radius(l_security_cfg->mode)) && (!isVapHotspotOpen(instance_number -1)))
+        if (!security_mode_support_radius(l_security_cfg->mode))
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Security mode %d does not support radius configuration \n",__func__, __LINE__,l_security_cfg->mode);
             return FALSE;
@@ -8521,7 +8605,7 @@ Security_SetParamStringValue
     ERR_CHK(rc);
     if((rc == EOK) && (!ind))
     {
-        if ((!security_mode_support_radius(l_security_cfg->mode)) && (!isVapHotspotOpen(instance_number -1)))
+        if (!security_mode_support_radius(l_security_cfg->mode))
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Security mode %d does not support radius configuration \n",__func__, __LINE__,l_security_cfg->mode);
             return FALSE;
@@ -8586,7 +8670,7 @@ Security_SetParamStringValue
     ERR_CHK(rc);
     if((rc == EOK) && (!ind))
     {
-        if ((!security_mode_support_radius(l_security_cfg->mode)) && (!isVapHotspotOpen(instance_number -1)))
+        if (!security_mode_support_radius(l_security_cfg->mode))
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Security mode %d does not support radius configuration \n",__func__, __LINE__,l_security_cfg->mode);
             return FALSE;
@@ -8615,7 +8699,7 @@ Security_SetParamStringValue
     ERR_CHK(rc);
     if((rc == EOK) && (!ind))
     {
-        if ((!security_mode_support_radius(l_security_cfg->mode)) && (!isVapHotspotOpen(instance_number -1)))
+        if (!security_mode_support_radius(l_security_cfg->mode))
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Security mode %d does not support radius configuration \n",__func__, __LINE__,l_security_cfg->mode);
             return FALSE;
@@ -16211,7 +16295,7 @@ RadiusSettings_SetParamIntValue
     /* check the parameter name and set the corresponding value */
     if( AnscEqualString(ParamName, "RadiusServerRetries", TRUE))
     {
-        if ((!security_mode_support_radius(l_security_cfg->mode)) && (!isVapHotspotOpen(instance_number -1)))
+        if (!security_mode_support_radius(l_security_cfg->mode))
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Security mode %d does not support radius configuration \n",__func__, __LINE__,l_security_cfg->mode);
             return FALSE;
@@ -16245,7 +16329,7 @@ RadiusSettings_SetParamIntValue
     }
     if( AnscEqualString(ParamName, "MaxAuthenticationAttempts", TRUE))
     {
-        if ((!security_mode_support_radius(l_security_cfg->mode)) && (!isVapHotspotOpen(instance_number -1)))
+        if (!security_mode_support_radius(l_security_cfg->mode))
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Security mode %d does not support radius configuration \n",__func__, __LINE__,l_security_cfg->mode);
             return FALSE;
@@ -16275,7 +16359,7 @@ RadiusSettings_SetParamIntValue
 
     if( AnscEqualString(ParamName, "IdentityRequestRetryInterval", TRUE))
     {
-        if ((!security_mode_support_radius(l_security_cfg->mode)) && (!isVapHotspotOpen(instance_number -1)))
+        if (!security_mode_support_radius(l_security_cfg->mode))
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Security mode %d does not support radius configuration \n",__func__, __LINE__,l_security_cfg->mode);
             return FALSE;

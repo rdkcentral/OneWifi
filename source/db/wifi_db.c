@@ -563,7 +563,8 @@ void callback_Wifi_Security_Config(ovsdb_update_monitor_t *mon,
         l_security_cfg->eap_req_timeout = new_rec->eap_req_timeout;
         l_security_cfg->eap_req_retries = new_rec->eap_req_retries;
         l_security_cfg->disable_pmksa_caching = new_rec->disable_pmksa_caching;
-        if ((!security_mode_support_radius(l_security_cfg->mode)) && (!isVapHotspotOpen(i)))
+        l_security_cfg->wpa3_transition_disable = new_rec->wpa3_transition_disable;
+        if (!security_mode_support_radius(l_security_cfg->mode))
         {
             l_security_cfg->u.key.type = new_rec->key_type;
             strncpy(l_security_cfg->u.key.key,new_rec->keyphrase,sizeof(l_security_cfg->u.key.key)-1);
@@ -595,7 +596,7 @@ void callback_Wifi_Security_Config(ovsdb_update_monitor_t *mon,
                 strncpy(l_security_cfg->u.radius.daskey,new_rec->das_key,sizeof(l_security_cfg->u.radius.daskey)-1);
             }
         }
-        wifi_util_dbg_print(WIFI_DB,"%s:%d: Get Wifi_Security_Config table Sec_mode=%d enc_mode=%d r_ser_ip=%s r_ser_port=%d rs_ser_ip=%s rs_ser_ip sec_rad_ser_port=%d mfg=%s cfg_key_type=%d vap_name=%s rekey_interval = %d strict_rekey  = %d eapol_key_timeout  = %d eapol_key_retries  = %d eap_identity_req_timeout  = %d eap_identity_req_retries  = %d eap_req_timeout = %d eap_req_retries = %d disable_pmksa_caching = %d max_auth_attempts=%d blacklist_table_timeout=%d identity_req_retry_interval=%d server_retries=%d das_ip = %s das_port=%d \n",__func__, __LINE__,new_rec->security_mode,new_rec->encryption_method,new_rec->radius_server_ip,new_rec->radius_server_port,new_rec->secondary_radius_server_ip,new_rec->secondary_radius_server_port,new_rec->mfp_config,new_rec->key_type,new_rec->vap_name,new_rec->rekey_interval,new_rec->strict_rekey,new_rec->eapol_key_timeout,new_rec->eapol_key_retries,new_rec->eap_identity_req_timeout,new_rec->eap_identity_req_retries,new_rec->eap_req_timeout,new_rec->eap_req_retries,new_rec->disable_pmksa_caching,new_rec->max_auth_attempts,new_rec->blacklist_table_timeout,new_rec->identity_req_retry_interval,new_rec->server_retries,new_rec->das_ip,new_rec->das_port);
+        wifi_util_dbg_print(WIFI_DB,"%s:%d: Get Wifi_Security_Config table Sec_mode=%d enc_mode=%d r_ser_ip=%s r_ser_port=%d rs_ser_ip=%s rs_ser_ip sec_rad_ser_port=%d mfg=%s cfg_key_type=%d vap_name=%s rekey_interval = %d strict_rekey  = %d eapol_key_timeout  = %d eapol_key_retries  = %d eap_identity_req_timeout  = %d eap_identity_req_retries  = %d eap_req_timeout = %d eap_req_retries = %d disable_pmksa_caching = %d max_auth_attempts=%d blacklist_table_timeout=%d identity_req_retry_interval=%d server_retries=%d das_ip = %s das_port=%d wpa3_transition_disable=%d\n",__func__, __LINE__,new_rec->security_mode,new_rec->encryption_method,new_rec->radius_server_ip,new_rec->radius_server_port,new_rec->secondary_radius_server_ip,new_rec->secondary_radius_server_port,new_rec->mfp_config,new_rec->key_type,new_rec->vap_name,new_rec->rekey_interval,new_rec->strict_rekey,new_rec->eapol_key_timeout,new_rec->eapol_key_retries,new_rec->eap_identity_req_timeout,new_rec->eap_identity_req_retries,new_rec->eap_req_timeout,new_rec->eap_req_retries,new_rec->disable_pmksa_caching,new_rec->max_auth_attempts,new_rec->blacklist_table_timeout,new_rec->identity_req_retry_interval,new_rec->server_retries,new_rec->das_ip,new_rec->das_port,new_rec->wpa3_transition_disable);
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
         vap_index = convert_vap_name_to_index(&g_wifidb->hal_cap.wifi_prop, new_rec->vap_name);
         if (vap_index == -1) {
@@ -2115,13 +2116,13 @@ int wifidb_get_wifi_vap_config(int radio_index, wifi_vap_info_map_t *config,
             } else {
                 wifidb_get_wifi_security_config(vap_name,&config->vap_array[vap_index].u.bss_info.security);
 
-                if ((!security_mode_support_radius(config->vap_array[vap_index].u.bss_info.security.mode))&& (!isVapHotspotOpen(vap_index))) {
+                if (!security_mode_support_radius(config->vap_array[vap_index].u.bss_info.security.mode)) {
                     wifi_util_dbg_print(WIFI_DB,"%s:%d: Get Wifi_Security_Config table sec type=%d\n",__func__, __LINE__,config->vap_array[vap_index].u.bss_info.security.u.key.type);
                 } else {
                     getIpStringFromAdrress(address,&config->vap_array[vap_index].u.bss_info.security.u.radius.dasip);
                     wifi_util_dbg_print(WIFI_DB,"%s:%d: Get Wifi_Security_Config table radius server ip =%s  port =%d Secondary radius server ip=%s port=%d max_auth_attempts=%d blacklist_table_timeout=%d identity_req_retry_interval=%d server_retries=%d das_ip = %s das_port=%d \n",__func__, __LINE__,config->vap_array[vap_index].u.bss_info.security.u.radius.ip,config->vap_array[vap_index].u.bss_info.security.u.radius.port,config->vap_array[vap_index].u.bss_info.security.u.radius.s_ip,config->vap_array[vap_index].u.bss_info.security.u.radius.s_port,config->vap_array[vap_index].u.bss_info.security.u.radius.max_auth_attempts,config->vap_array[vap_index].u.bss_info.security.u.radius.blacklist_table_timeout,config->vap_array[vap_index].u.bss_info.security.u.radius.identity_req_retry_interval,config->vap_array[vap_index].u.bss_info.security.u.radius.server_retries,address,config->vap_array[vap_index].u.bss_info.security.u.radius.dasport);
                 }
-                wifi_util_dbg_print(WIFI_DB,"%s:%d: Get Wifi_Security_Config table vap_name=%s Sec_mode=%d enc_mode=%d mfg_config=%d rekey_interval = %d strict_rekey  = %d eapol_key_timeout  = %d eapol_key_retries  = %d eap_identity_req_timeout  = %d eap_identity_req_retries  = %d eap_req_timeout = %d eap_req_retries = %d disable_pmksa_caching = %d \n",__func__, __LINE__,vap_name,config->vap_array[vap_index].u.bss_info.security.mode,config->vap_array[vap_index].u.bss_info.security.encr,config->vap_array[vap_index].u.bss_info.security.mfp,config->vap_array[vap_index].u.bss_info.security.rekey_interval,config->vap_array[vap_index].u.bss_info.security.strict_rekey,config->vap_array[vap_index].u.bss_info.security.eapol_key_timeout,config->vap_array[vap_index].u.bss_info.security.eapol_key_retries,config->vap_array[vap_index].u.bss_info.security.eap_identity_req_timeout,config->vap_array[vap_index].u.bss_info.security.eap_identity_req_retries,config->vap_array[vap_index].u.bss_info.security.eap_req_timeout,config->vap_array[vap_index].u.bss_info.security.eap_req_retries,config->vap_array[vap_index].u.bss_info.security.disable_pmksa_caching);
+                wifi_util_dbg_print(WIFI_DB,"%s:%d: Get Wifi_Security_Config table vap_name=%s Sec_mode=%d enc_mode=%d mfg_config=%d rekey_interval = %d strict_rekey  = %d eapol_key_timeout  = %d eapol_key_retries  = %d eap_identity_req_timeout  = %d eap_identity_req_retries  = %d eap_req_timeout = %d eap_req_retries = %d disable_pmksa_caching = %d wpa3_transition_disable=%d\n",__func__, __LINE__,vap_name,config->vap_array[vap_index].u.bss_info.security.mode,config->vap_array[vap_index].u.bss_info.security.encr,config->vap_array[vap_index].u.bss_info.security.mfp,config->vap_array[vap_index].u.bss_info.security.rekey_interval,config->vap_array[vap_index].u.bss_info.security.strict_rekey,config->vap_array[vap_index].u.bss_info.security.eapol_key_timeout,config->vap_array[vap_index].u.bss_info.security.eapol_key_retries,config->vap_array[vap_index].u.bss_info.security.eap_identity_req_timeout,config->vap_array[vap_index].u.bss_info.security.eap_identity_req_retries,config->vap_array[vap_index].u.bss_info.security.eap_req_timeout,config->vap_array[vap_index].u.bss_info.security.eap_req_retries,config->vap_array[vap_index].u.bss_info.security.disable_pmksa_caching,config->vap_array[vap_index].u.bss_info.security.wpa3_transition_disable);
             }
         }
     }
@@ -2218,7 +2219,7 @@ int wifidb_get_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
         return -1;
     }
     
-    wifi_util_dbg_print(WIFI_DB,"%s:%d: Get Wifi_Security_Config table Sec_mode=%d enc_mode=%d r_ser_ip=%s r_ser_port=%d rs_ser_ip=%s rs_ser_ip sec_rad_ser_port=%d mfg=%s cfg_key_type=%d vap_name=%s rekey_interval = %d strict_rekey  = %d eapol_key_timeout  = %d eapol_key_retries  = %d eap_identity_req_timeout  = %d eap_identity_req_retries  = %d eap_req_timeout = %d eap_req_retries = %d disable_pmksa_caching = %d max_auth_attempts=%d blacklist_table_timeout=%d identity_req_retry_interval=%d server_retries=%d das_ip = %s das_port=%d \n",__func__, __LINE__,pcfg->security_mode,pcfg->encryption_method,pcfg->radius_server_ip,pcfg->radius_server_port,pcfg->secondary_radius_server_ip,pcfg->secondary_radius_server_port,pcfg->mfp_config,pcfg->key_type,pcfg->vap_name,pcfg->rekey_interval,pcfg->strict_rekey,pcfg->eapol_key_timeout,pcfg->eapol_key_retries,pcfg->eap_identity_req_timeout,pcfg->eap_identity_req_retries,pcfg->eap_req_timeout,pcfg->eap_req_retries,pcfg->disable_pmksa_caching,pcfg->max_auth_attempts,pcfg->blacklist_table_timeout,pcfg->identity_req_retry_interval,pcfg->server_retries,pcfg->das_ip,pcfg->das_port);
+    wifi_util_dbg_print(WIFI_DB,"%s:%d: Get Wifi_Security_Config table Sec_mode=%d enc_mode=%d r_ser_ip=%s r_ser_port=%d rs_ser_ip=%s rs_ser_ip sec_rad_ser_port=%d mfg=%s cfg_key_type=%d vap_name=%s rekey_interval = %d strict_rekey  = %d eapol_key_timeout  = %d eapol_key_retries  = %d eap_identity_req_timeout  = %d eap_identity_req_retries  = %d eap_req_timeout = %d eap_req_retries = %d disable_pmksa_caching = %d max_auth_attempts=%d blacklist_table_timeout=%d identity_req_retry_interval=%d server_retries=%d das_ip = %s das_port=%d wpa3_transition_disable=%d\n",__func__, __LINE__,pcfg->security_mode,pcfg->encryption_method,pcfg->radius_server_ip,pcfg->radius_server_port,pcfg->secondary_radius_server_ip,pcfg->secondary_radius_server_port,pcfg->mfp_config,pcfg->key_type,pcfg->vap_name,pcfg->rekey_interval,pcfg->strict_rekey,pcfg->eapol_key_timeout,pcfg->eapol_key_retries,pcfg->eap_identity_req_timeout,pcfg->eap_identity_req_retries,pcfg->eap_req_timeout,pcfg->eap_req_retries,pcfg->disable_pmksa_caching,pcfg->max_auth_attempts,pcfg->blacklist_table_timeout,pcfg->identity_req_retry_interval,pcfg->server_retries,pcfg->das_ip,pcfg->das_port,pcfg->wpa3_transition_disable);
     
     if ((band == WIFI_FREQUENCY_6_BAND)  && (pcfg->security_mode != wifi_security_mode_wpa3_personal && \
       pcfg->security_mode != wifi_security_mode_wpa3_enterprise &&  pcfg->security_mode != wifi_security_mode_enhanced_open)) {
@@ -2248,7 +2249,8 @@ int wifidb_get_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
     sec->eap_req_timeout = pcfg->eap_req_timeout;
     sec->eap_req_retries = pcfg->eap_req_retries;
     sec->disable_pmksa_caching = pcfg->disable_pmksa_caching;
-    if ((!security_mode_support_radius(sec->mode)) && (!isVapHotspotOpen(vap_index))) {
+    sec->wpa3_transition_disable = pcfg->wpa3_transition_disable;
+    if (!security_mode_support_radius(sec->mode)) {
         sec->u.key.type = pcfg->key_type;
         strncpy(sec->u.key.key,pcfg->keyphrase,sizeof(sec->u.key.key)-1);
         
@@ -2515,8 +2517,9 @@ int wifidb_update_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
     cfg_sec.eap_req_timeout = sec->eap_req_timeout;
     cfg_sec.eap_req_retries = sec->eap_req_retries;
     cfg_sec.disable_pmksa_caching = sec->disable_pmksa_caching;
+    cfg_sec.wpa3_transition_disable = sec->wpa3_transition_disable;
 
-    if ((!security_mode_support_radius(sec->mode)) && (!isVapHotspotOpen(vap_index)))
+    if (!security_mode_support_radius(sec->mode))
     {
         strncpy(cfg_sec.radius_server_ip,"",sizeof(cfg_sec.radius_server_ip)-1);
         cfg_sec.radius_server_port = 0;
@@ -2553,7 +2556,7 @@ int wifidb_update_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
         cfg_sec.das_port = sec->u.radius.dasport;
         strncpy(cfg_sec.das_key,sec->u.radius.daskey,sizeof(cfg_sec.das_key)-1);
     }
-    wifi_util_dbg_print(WIFI_DB,"%s:%d: Updatetable_Wifi_Security_Config table Sec_mode=%d enc_mode=%d r_ser_ip=%s r_ser_port=%d rs_ser_ip=%s rs_ser_ip sec_rad_ser_port=%d mfg=%s cfg_key_type=%d cfg_vap_name=%s rekey_interval = %d strict_rekey  = %d eapol_key_timeout  = %d eapol_key_retries  = %d eap_identity_req_timeout  = %d eap_identity_req_retries  = %d eap_req_timeout = %d eap_req_retries = %d disable_pmksa_caching = %d max_auth_attempts=%d blacklist_table_timeout=%d identity_req_retry_interval=%d server_retries=%d das_ip = %s das_port=%d",__func__, __LINE__,cfg_sec.security_mode,cfg_sec.encryption_method,cfg_sec.radius_server_ip,cfg_sec.radius_server_port,cfg_sec.secondary_radius_server_ip,cfg_sec.secondary_radius_server_port,cfg_sec.mfp_config,cfg_sec.key_type,cfg_sec.vap_name,cfg_sec.rekey_interval,cfg_sec.strict_rekey,cfg_sec.eapol_key_timeout,cfg_sec.eapol_key_retries,cfg_sec.eap_identity_req_timeout,cfg_sec.eap_identity_req_retries,cfg_sec.eap_req_timeout,cfg_sec.eap_req_retries,cfg_sec.disable_pmksa_caching,cfg_sec.max_auth_attempts,cfg_sec.blacklist_table_timeout,cfg_sec.identity_req_retry_interval,cfg_sec.server_retries,cfg_sec.das_ip,cfg_sec.das_port);
+    wifi_util_dbg_print(WIFI_DB,"%s:%d: Updatetable_Wifi_Security_Config table Sec_mode=%d enc_mode=%d r_ser_ip=%s r_ser_port=%d rs_ser_ip=%s rs_ser_ip sec_rad_ser_port=%d mfg=%s cfg_key_type=%d cfg_vap_name=%s rekey_interval = %d strict_rekey  = %d eapol_key_timeout  = %d eapol_key_retries  = %d eap_identity_req_timeout  = %d eap_identity_req_retries  = %d eap_req_timeout = %d eap_req_retries = %d disable_pmksa_caching = %d max_auth_attempts=%d blacklist_table_timeout=%d identity_req_retry_interval=%d server_retries=%d das_ip = %s das_port=%d wpa3_transition_disable=%d",__func__, __LINE__,cfg_sec.security_mode,cfg_sec.encryption_method,cfg_sec.radius_server_ip,cfg_sec.radius_server_port,cfg_sec.secondary_radius_server_ip,cfg_sec.secondary_radius_server_port,cfg_sec.mfp_config,cfg_sec.key_type,cfg_sec.vap_name,cfg_sec.rekey_interval,cfg_sec.strict_rekey,cfg_sec.eapol_key_timeout,cfg_sec.eapol_key_retries,cfg_sec.eap_identity_req_timeout,cfg_sec.eap_identity_req_retries,cfg_sec.eap_req_timeout,cfg_sec.eap_req_retries,cfg_sec.disable_pmksa_caching,cfg_sec.max_auth_attempts,cfg_sec.blacklist_table_timeout,cfg_sec.identity_req_retry_interval,cfg_sec.server_retries,cfg_sec.das_ip,cfg_sec.das_port,cfg_sec.wpa3_transition_disable);
 
     if(onewifi_ovsdb_table_upsert_with_parent(g_wifidb->wifidb_sock_path,&table_Wifi_Security_Config,&cfg_sec,false,filter_vapsec,SCHEMA_TABLE(Wifi_VAP_Config),onewifi_ovsdb_where_simple(SCHEMA_COLUMN(Wifi_VAP_Config,vap_name),vap_name),SCHEMA_COLUMN(Wifi_VAP_Config,security)) == false)
     {
@@ -5653,14 +5656,16 @@ void wifidb_vap_config_correction(wifi_vap_info_map_t *l_vap_map_param)
 
     for (index = 0; index < l_vap_map_param->num_vaps; index++) {
         vap_config = &l_vap_map_param->vap_array[index];
-        if (isVapPrivate(vap_config->vap_index)) {
+        if (isVapPrivate(vap_config->vap_index) &&
+            is_sec_mode_personal(vap_config->u.bss_info.security.mode)) {
             if (vap_config->u.bss_info.wps.enable == false) {
                 vap_config->u.bss_info.wps.enable = true;
                 wifi_util_info_print(WIFI_DB, "%s:%d force wps enabled for private_vap:%d\r\n",__func__, __LINE__, vap_config->vap_index);
             }
             continue;
         }
-        if (isVapLnfSecure(vap_config->vap_index)) {
+        if (isVapLnfSecure(vap_config->vap_index) &&
+            is_sec_mode_enterprise(vap_config->u.bss_info.security.mode)) {
             set_lnf_radius_server_ip(&vap_config->u.bss_info.security);
             wifi_util_info_print(WIFI_DB,"%s:%d Primary Ip and Secondry Ip: %s , %s\n", __func__, __LINE__, (char *)vap_config->u.bss_info.security.u.radius.ip,
                                             (char *)vap_config->u.bss_info.security.u.radius.s_ip);

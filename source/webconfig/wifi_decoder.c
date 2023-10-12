@@ -1163,174 +1163,17 @@ webconfig_error_t decode_open_radius_object(const cJSON *radius, wifi_radius_set
     return webconfig_error_none;
 }
 
-webconfig_error_t decode_no_security_object(const cJSON *security, wifi_vap_security_t *security_info)
+webconfig_error_t decode_security_object(const cJSON *security, wifi_vap_security_t *security_info,
+    int band)
 {
-    const cJSON *param;
-    cJSON *object = NULL;
+    const cJSON *param, *object;
 
     decode_param_string(security, "Mode", param);
+
     if (strcmp(param->valuestring, "None") == 0) {
         security_info->mode = wifi_security_mode_none;
     } else if (strcmp(param->valuestring, "Enhanced-Open") == 0) {
         security_info->mode = wifi_security_mode_enhanced_open;
-        decode_param_string(security, "MFPConfig", param);
-        if (strstr(param->valuestring, "Disabled") || strstr(param->valuestring, "Optional")) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed\n", __func__, __LINE__);
-            return webconfig_error_decode;
-        }
-        else {
-            security_info->mfp = wifi_mfp_cfg_required;
-        }
-        decode_param_string(security, "EncryptionMethod", param);
-        if (strcmp(param->valuestring, "AES") == 0) {
-            security_info->encr = wifi_encryption_aes;
-        } else {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed\n", __func__, __LINE__);
-            return webconfig_error_decode;
-        }
-
-    }
-    else {
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Decode error %s\n", __func__, __LINE__,param->valuestring);
-        return webconfig_error_decode;
-    }
-
-    object = cJSON_GetObjectItem(security, "RadiusSettings");
-    if (object != NULL) {
-        decode_param_object(security, "RadiusSettings",param);
-        if (decode_open_radius_object(param, &security_info->u.radius) != 0) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed\n", __func__, __LINE__);
-            return webconfig_error_decode;
-        }
-    }
-    return webconfig_error_none;
-}
-
-webconfig_error_t decode_enterprise_security_object(const cJSON *security, wifi_vap_security_t *security_info)
-{
-    const cJSON *param;
-
-
-    decode_param_string(security, "Mode", param);
-    if ((strcmp(param->valuestring, "WPA2-Enterprise") != 0) && (strcmp(param->valuestring, "WPA-WPA2-Enterprise") != 0) && (strcmp(param->valuestring, "WPA3-Enterprise") != 0)) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Xfinity WiFi VAP security is not WPA2/WP3 Eneterprise, value:%s\n",
-            __func__, __LINE__, param->valuestring);
-                //strncpy(execRetVal->ErrorMsg, "Invalid sec mode for hotspot secure vap",sizeof(execRetVal->ErrorMsg)-1);
-        return webconfig_error_decode;
-    }
-
-    if (strcmp(param->valuestring, "WPA2-Enterprise") == 0) {
-        security_info->mode = wifi_security_mode_wpa2_enterprise;
-    }else if (strcmp(param->valuestring, "WPA3-Enterprise") == 0) {
-        security_info->mode = wifi_security_mode_wpa3_enterprise;
-    } else {
-        security_info->mode = wifi_security_mode_wpa_wpa2_enterprise;
-    }
-
-    decode_param_string(security, "EncryptionMethod", param);
-    if ((strcmp(param->valuestring, "AES") != 0) && (strcmp(param->valuestring, "AES+TKIP") != 0)) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Xfinity WiFi VAP Encrytpion mode is Invalid:%s\n",
-                    __func__, __LINE__, param->valuestring);
-        //strncpy(execRetVal->ErrorMsg, "Invalid enc mode for hotspot secure vap",sizeof(execRetVal->ErrorMsg)-1);
-        return webconfig_error_decode;
-    }
-
-    if (strcmp(param->valuestring, "AES") == 0) {
-        security_info->encr = wifi_encryption_aes;
-    } else {
-        security_info->encr = wifi_encryption_aes_tkip;
-    }
-
-    // MFPConfig
-    decode_param_string(security, "MFPConfig", param);
-    if ((strcmp(param->valuestring, "Disabled") != 0)
-        && (strcmp(param->valuestring, "Required") != 0)
-        && (strcmp(param->valuestring, "Optional") != 0)) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: MFPConfig not valid, value:%s\n",
-                        __func__, __LINE__, param->valuestring);
-        return webconfig_error_decode;
-    }
-
-    if (strstr(param->valuestring, "Disabled")) {
-        security_info->mfp = wifi_mfp_cfg_disabled;
-    } else if (strstr(param->valuestring, "Required")) {
-        security_info->mfp = wifi_mfp_cfg_required;
-    } else if (strstr(param->valuestring, "Optional")) {
-        security_info->mfp = wifi_mfp_cfg_optional;
-    }
-    if (security_info->mode == wifi_security_mode_wpa3_enterprise) {
-        if (security_info->mfp != wifi_mfp_cfg_required || security_info->encr != wifi_encryption_aes) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: MFPConfig not valid, combination for wpa3_enterprise \n",
-                        __func__, __LINE__);
-            return webconfig_error_decode;
-        }
-    }
-    //Wpa3_transition_disable
-    decode_param_bool(security, "Wpa3_transition_disable", param);
-    security_info->wpa3_transition_disable =  (param->type & cJSON_True) ? true:false;
-
-    decode_param_integer(security, "RekeyInterval", param);
-    security_info->rekey_interval = param->valuedouble;
-
-    decode_param_bool(security, "StrictRekey", param);
-    security_info->strict_rekey =  (param->type & cJSON_True) ? true:false;
-
-    decode_param_integer(security, "EapolKeyTimeout", param);
-    security_info->eapol_key_timeout = param->valuedouble;
-
-    decode_param_integer(security, "EapolKeyRetries", param);
-    security_info->eapol_key_retries = param->valuedouble;
-
-    decode_param_integer(security, "EapIdentityReqTimeout", param);
-    security_info->eap_identity_req_timeout = param->valuedouble;
-
-    decode_param_integer(security, "EapIdentityReqRetries", param);
-    security_info->eap_identity_req_retries = param->valuedouble;
-
-    decode_param_integer(security, "EapReqTimeout", param);
-    security_info->eap_req_timeout = param->valuedouble;
-
-    decode_param_integer(security, "EapReqRetries", param);
-    security_info->eap_req_retries = param->valuedouble;
-
-    decode_param_bool(security, "DisablePmksaCaching", param);
-    security_info->disable_pmksa_caching = (param->type & cJSON_True) ? true:false;
-
-    decode_param_object(security, "RadiusSettings",param);
-    if (decode_radius_object(param, &security_info->u.radius) != 0) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed\n", __func__, __LINE__);
-        return webconfig_error_decode;
-    }
-
-    return webconfig_error_none;
-}
-
-webconfig_error_t decode_personal_security_object(const cJSON *security, wifi_vap_security_t *security_info, int band)
-{
-    const cJSON *param;
-
-    // MFPConfig
-    decode_param_string(security, "MFPConfig", param);
-    if ((strcmp(param->valuestring, "Disabled") != 0)
-            && (strcmp(param->valuestring, "Required") != 0)
-            && (strcmp(param->valuestring, "Optional") != 0)) {
-        wifi_util_error_print(WIFI_PASSPOINT,"%s:%d: MFPConfig not valid, value:%s\n",
-                            __func__, __LINE__, param->valuestring);
-        return webconfig_error_decode;
-    }
-
-    if (strstr(param->valuestring, "Disabled")) {
-        security_info->mfp = wifi_mfp_cfg_disabled;
-    } else if (strstr(param->valuestring, "Required")) {
-        security_info->mfp = wifi_mfp_cfg_required;
-    } else if (strstr(param->valuestring, "Optional")) {
-        security_info->mfp = wifi_mfp_cfg_optional;
-    }
-
-    decode_param_string(security, "Mode", param);
-
-    if (strcmp(param->valuestring, "None") == 0) {
-        security_info->mode = wifi_security_mode_none;
     } else if (strcmp(param->valuestring, "WPA-Personal") == 0) {
         security_info->mode = wifi_security_mode_wpa_personal;
     } else if (strcmp(param->valuestring, "WPA2-Personal") == 0) {
@@ -1343,12 +1186,73 @@ webconfig_error_t decode_personal_security_object(const cJSON *security, wifi_va
     } else if (strcmp(param->valuestring, "WPA3-Personal-Transition") == 0) {
         security_info->mode = wifi_security_mode_wpa3_transition;
         security_info->u.key.type = wifi_security_key_type_psk_sae;
+    } else if (strcmp(param->valuestring, "WPA-Enterprise") == 0) {
+        security_info->mode = wifi_security_mode_wpa_enterprise;
+    } else if (strcmp(param->valuestring, "WPA2-Enterprise") == 0) {
+        security_info->mode = wifi_security_mode_wpa2_enterprise;
+    } else if (strcmp(param->valuestring, "WPA-WPA2-Enterprise") == 0) {
+        security_info->mode = wifi_security_mode_wpa_wpa2_enterprise;
+    } else if (strcmp(param->valuestring, "WPA3-Enterprise") == 0) {
+        security_info->mode = wifi_security_mode_wpa3_enterprise;
     } else {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s: Invalid Authentication mode for private vap '%s'", __FUNCTION__, param->valuestring);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to decode security mode: %s\n",
+            __func__, __LINE__, param->valuestring);
         return webconfig_error_decode;
     }
-    if ((band == WIFI_FREQUENCY_6_BAND) && (security_info->mode != wifi_security_mode_wpa3_personal)) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s: Invalid security Mode %d for 6G interface\n", __func__, security_info->mode);
+
+    if (band == WIFI_FREQUENCY_6_BAND &&
+        security_info->mode != wifi_security_mode_wpa3_personal &&
+        security_info->mode != wifi_security_mode_wpa3_enterprise &&
+        security_info->mode != wifi_security_mode_enhanced_open) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid security mode for 6G interface: %d\n",
+            __func__, __LINE__, security_info->mode);
+        return webconfig_error_decode;
+    }
+
+    if (security_info->mode == wifi_security_mode_none ||
+        security_info->mode == wifi_security_mode_enhanced_open) {
+        object = cJSON_GetObjectItem(security, "RadiusSettings");
+        if (object != NULL) {
+            decode_param_object(security, "RadiusSettings", param);
+            if (decode_open_radius_object(param, &security_info->u.radius) != 0) {
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to decode radius settings\n",
+                    __func__, __LINE__);
+                return webconfig_error_decode;
+            }
+        }
+    }
+
+    if (security_info->mode == wifi_security_mode_none) {
+        return webconfig_error_none;
+    }
+
+    decode_param_string(security, "MFPConfig", param);
+
+    if (strstr(param->valuestring, "Disabled")) {
+        security_info->mfp = wifi_mfp_cfg_disabled;
+    } else if (strstr(param->valuestring, "Required")) {
+        security_info->mfp = wifi_mfp_cfg_required;
+    } else if (strstr(param->valuestring, "Optional")) {
+        security_info->mfp = wifi_mfp_cfg_optional;
+    } else {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to decode MFP value: %s",
+            __func__, __LINE__, param->valuestring);
+        return webconfig_error_decode;
+    }
+
+    if (security_info->mfp != wifi_mfp_cfg_optional &&
+        security_info->mode == wifi_security_mode_wpa3_transition) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid MFP value %d for %d mode\n", __func__,
+            __LINE__, security_info->mfp, security_info->mode);
+        return webconfig_error_encode;
+    }
+
+    if (security_info->mfp != wifi_mfp_cfg_required &&
+        (security_info->mode == wifi_security_mode_enhanced_open ||
+        security_info->mode == wifi_security_mode_wpa3_enterprise ||
+        security_info->mode == wifi_security_mode_wpa3_personal)) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid MFP value for %d mode: %d\n",
+            __func__, __LINE__, security_info->mfp, security_info->mode);
         return webconfig_error_decode;
     }
 
@@ -1361,121 +1265,41 @@ webconfig_error_t decode_personal_security_object(const cJSON *security, wifi_va
     } else if(strcmp(param->valuestring, "AES+TKIP") == 0) {
         security_info->encr = wifi_encryption_aes_tkip;
     } else {
-        //strncpy(execRetVal->ErrorMsg, "Invalid Encryption method",sizeof(execRetVal->ErrorMsg)-1);
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Incorrect encryption method '%s'\n", __func__, __LINE__, param->valuestring);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to decode encryption method: %s\n",
+            __func__, __LINE__, param->valuestring);
         return webconfig_error_decode;
     }
 
-    if ((security_info->mode == wifi_security_mode_wpa_wpa2_personal) &&
-                (security_info->encr == wifi_encryption_tkip)) {
-        //strncpy(execRetVal->ErrorMsg, "Invalid Encryption method combinaiton",sizeof(execRetVal->ErrorMsg)-1);
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Incorrect mode and encryption method. wifi_security_mode_wpa_wpa2_personal and wifi_encryption_tkip\n", __func__, __LINE__);
+    if (security_info->encr != wifi_encryption_aes &&
+        (security_info->mode == wifi_security_mode_enhanced_open ||
+        security_info->mode == wifi_security_mode_wpa3_enterprise ||
+        security_info->mode == wifi_security_mode_wpa3_personal)) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid encryption method for %d mode: %d\n",
+            __func__, __LINE__, security_info->encr, security_info->mode);
         return webconfig_error_decode;
     }
 
-    decode_param_string(security, "Passphrase", param);
-
-    if (security_info->mode != wifi_security_mode_none) {
-        if ((strlen(param->valuestring) < MIN_PWD_LEN) || (strlen(param->valuestring) > MAX_PWD_LEN)) {
-            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Incorrect password length %d\n", __func__, __LINE__, strlen(param->valuestring));
-            return webconfig_error_decode;
-        }
-    }
-
-    strncpy(security_info->u.key.key, param->valuestring,
-            sizeof(security_info->u.key.key) - 1);
-
-    decode_param_integer(security, "RekeyInterval", param);
-    security_info->rekey_interval = param->valuedouble;
-
-    decode_param_allow_optional_string(security,"KeyId",param);
-    if (param != NULL) {
-        strncpy(security_info->key_id, param->valuestring,sizeof(security_info->key_id) - 1);
-    }
-    
-    return webconfig_error_none;
-}
-
-webconfig_error_t decode_security_object(const cJSON *security, wifi_vap_security_t *security_info, int band)
-{
-    const cJSON *param;
-    int enterprise_mode = 0;
-
-    // MFPConfig
-    decode_param_string(security, "MFPConfig", param);
-    if ((strcmp(param->valuestring, "Disabled") != 0)
-            && (strcmp(param->valuestring, "Required") != 0)
-            && (strcmp(param->valuestring, "Optional") != 0)) {
-        wifi_util_error_print(WIFI_PASSPOINT,"%s:%d: MFPConfig not valid, value:%s\n",
-                            __func__, __LINE__, param->valuestring);
+    if (security_info->encr == wifi_encryption_tkip &&
+        security_info->mode == wifi_security_mode_wpa_wpa2_personal) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid encryption method TKIP with "
+            "WPA/WPA2 mode\n", __func__, __LINE__);
         return webconfig_error_decode;
     }
 
-    if (strstr(param->valuestring, "Disabled")) {
-        security_info->mfp = wifi_mfp_cfg_disabled;
-    } else if (strstr(param->valuestring, "Required")) {
-        security_info->mfp = wifi_mfp_cfg_required;
-    } else if (strstr(param->valuestring, "Optional")) {
-        security_info->mfp = wifi_mfp_cfg_optional;
+    if (security_info->mode == wifi_security_mode_enhanced_open) {
+        return webconfig_error_none;
     }
 
-    decode_param_string(security, "Mode", param);
-
-    if (strcmp(param->valuestring, "None") == 0) {
-        security_info->mode = wifi_security_mode_none;
-    } else if (strcmp(param->valuestring, "WPA-Personal") == 0) {
-        security_info->mode = wifi_security_mode_wpa_personal;
-    } else if (strcmp(param->valuestring, "WPA2-Personal") == 0) {
-        security_info->mode = wifi_security_mode_wpa2_personal;
-    } else if (strcmp(param->valuestring, "WPA-WPA2-Personal") == 0) {
-        security_info->mode = wifi_security_mode_wpa_wpa2_personal;
-    } else if (strcmp(param->valuestring, "WPA3-Personal") == 0) {
-        security_info->mode = wifi_security_mode_wpa3_personal;
-        security_info->u.key.type = wifi_security_key_type_sae;
-    } else if (strcmp(param->valuestring, "WPA3-Personal-Transition") == 0) {
-        security_info->mode = wifi_security_mode_wpa3_transition;
-        security_info->u.key.type = wifi_security_key_type_psk_sae;
-    } else if (strcmp(param->valuestring, "WPA2-Enterprise") == 0) {
-        security_info->mode = wifi_security_mode_wpa2_enterprise;
-        enterprise_mode = 1;
-    } else if (strcmp(param->valuestring, "WPA-WPA2-Enterprise") == 0) {
-        security_info->mode = wifi_security_mode_wpa_wpa2_enterprise;
-        enterprise_mode = 1;
-    } else {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s: Invalid Authentication mode for private vap %s", __FUNCTION__, param->valuestring);
-        return webconfig_error_decode;
-    }
-
-    if ((band == WIFI_FREQUENCY_6_BAND) && (security_info->mode != wifi_security_mode_wpa3_personal)) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s: Invalid security Mode %d for 6G interface\n", __func__, security_info->mode);
-        return webconfig_error_decode;
-    }
-    
-    if (enterprise_mode == 1) {
-        
-        decode_param_string(security, "EncryptionMethod", param);
-        if ((strcmp(param->valuestring, "AES") != 0) && (strcmp(param->valuestring, "AES+TKIP") != 0)) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Xfinity WiFi VAP Encrytpion mode is Invalid:%s\n",
-                        __func__, __LINE__, param->valuestring);
-            //strncpy(execRetVal->ErrorMsg, "Invalid enc mode for hotspot secure vap",sizeof(execRetVal->ErrorMsg)-1);
-            return webconfig_error_decode;
-        }
-
-        if (strcmp(param->valuestring, "AES") == 0) {
-            security_info->encr = wifi_encryption_aes;
-        } else {
-            security_info->encr = wifi_encryption_aes_tkip;
-        }
-
-        //Wpa3_transition_disable
-        decode_param_bool(security, "Wpa3_transition_disable", param);
-        security_info->wpa3_transition_disable =  (param->type & cJSON_True) ? true:false;
+    if (security_info->mode == wifi_security_mode_wpa_enterprise ||
+        security_info->mode == wifi_security_mode_wpa2_enterprise ||
+        security_info->mode == wifi_security_mode_wpa_wpa2_enterprise ||
+        security_info->mode == wifi_security_mode_wpa3_enterprise) {
 
         decode_param_integer(security, "RekeyInterval", param);
         security_info->rekey_interval = param->valuedouble;
 
         decode_param_bool(security, "StrictRekey", param);
-        security_info->strict_rekey =  (param->type & cJSON_True) ? true:false;
+        security_info->strict_rekey = (param->type & cJSON_True) ? true : false;
 
         decode_param_integer(security, "EapolKeyTimeout", param);
         security_info->eapol_key_timeout = param->valuedouble;
@@ -1496,53 +1320,40 @@ webconfig_error_t decode_security_object(const cJSON *security, wifi_vap_securit
         security_info->eap_req_retries = param->valuedouble;
 
         decode_param_bool(security, "DisablePmksaCaching", param);
-        security_info->disable_pmksa_caching = (param->type & cJSON_True) ? true:false;
+        security_info->disable_pmksa_caching = (param->type & cJSON_True) ? true : false;
 
-        decode_param_object(security, "RadiusSettings",param);
+        decode_param_object(security, "RadiusSettings", param);
         if (decode_radius_object(param, &security_info->u.radius) != 0) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to decode radius settings\n",
+                __func__, __LINE__);
             return webconfig_error_decode;
         }
 
-    } else {
-
-        decode_param_string(security, "EncryptionMethod", param);
-
-        if (strcmp(param->valuestring, "TKIP") == 0) {
-            security_info->encr = wifi_encryption_tkip;
-        } else if(strcmp(param->valuestring, "AES") == 0) {
-            security_info->encr = wifi_encryption_aes;
-        } else if(strcmp(param->valuestring, "AES+TKIP") == 0) {
-            security_info->encr = wifi_encryption_aes_tkip;
-        } else {
-            //strncpy(execRetVal->ErrorMsg, "Invalid Encryption method",sizeof(execRetVal->ErrorMsg)-1);
-            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Incorrect encryption method '%s'\n", __func__, __LINE__, param->valuestring);
-            return webconfig_error_decode;
-        }
-
-        if ((security_info->mode == wifi_security_mode_wpa_wpa2_personal) &&
-                    (security_info->encr == wifi_encryption_tkip)) {
-            //strncpy(execRetVal->ErrorMsg, "Invalid Encryption method combinaiton",sizeof(execRetVal->ErrorMsg)-1);
-            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Incorrect mode and encryption method. wifi_security_mode_wpa_wpa2_personal and wifi_encryption_tkip\n", __func__, __LINE__);
-            return webconfig_error_decode;
-        }
-
-        decode_param_string(security, "Passphrase", param);
-
-        if (security_info->mode != wifi_security_mode_none) {
-            if ((strlen(param->valuestring) < MIN_PWD_LEN) || (strlen(param->valuestring) > MAX_PWD_LEN)) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Incorrect password length %d\n", __func__, __LINE__, strlen(param->valuestring));
-                return webconfig_error_decode;
-            }
-        }
-
-        strncpy(security_info->u.key.key, param->valuestring,
-                sizeof(security_info->u.key.key) - 1);
-
-        decode_param_integer(security, "RekeyInterval", param);
-        security_info->rekey_interval = param->valuedouble;
-
+        return webconfig_error_none;
     }
+
+    decode_param_string(security, "Passphrase", param);
+
+    if (security_info->mode != wifi_security_mode_none &&
+        (strlen(param->valuestring) < MIN_PWD_LEN || strlen(param->valuestring) > MAX_PWD_LEN)) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid password length: %d\n", __func__,
+            __LINE__, strlen(param->valuestring));
+        return webconfig_error_decode;
+    }
+
+    strncpy(security_info->u.key.key, param->valuestring, sizeof(security_info->u.key.key) - 1);
+
+    decode_param_bool(security, "Wpa3_transition_disable", param);
+    security_info->wpa3_transition_disable = (param->type & cJSON_True) ? true : false;
+
+    decode_param_integer(security, "RekeyInterval", param);
+    security_info->rekey_interval = param->valuedouble;
+
+    decode_param_allow_optional_string(security, "KeyId", param);
+    if (param != NULL) {
+        strncpy(security_info->key_id, param->valuestring, sizeof(security_info->key_id) - 1);
+    }
+
     return webconfig_error_none;
 }
 
@@ -1775,6 +1586,7 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
 webconfig_error_t decode_hotspot_open_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info,
     rdk_wifi_vap_info_t *rdk_vap_info, wifi_platform_property_t *wifi_prop)
 {
+    int radio_index, band;
     const cJSON *security, *interworking;
     cJSON *cac_obj;
     webconfig_error_t ret = webconfig_error_none;
@@ -1790,8 +1602,19 @@ webconfig_error_t decode_hotspot_open_vap_object(const cJSON *vap, wifi_vap_info
         return webconfig_error_decode;
     }
 
+    radio_index = convert_vap_name_to_radio_array_index(wifi_prop, vap_info->vap_name);
+    if (radio_index < 0) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid radio Index\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    if (convert_radio_index_to_freq_band(wifi_prop, radio_index, &band) != RETURN_OK) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Unable to fetch proper band\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
     decode_param_object(vap, "Security", security);
-    if (decode_no_security_object(security, &vap_info->u.bss_info.security) != webconfig_error_none) {
+    if (decode_security_object(security, &vap_info->u.bss_info.security, band) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Security objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -1808,6 +1631,7 @@ webconfig_error_t decode_hotspot_open_vap_object(const cJSON *vap, wifi_vap_info
 webconfig_error_t decode_hotspot_secure_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info,
     rdk_wifi_vap_info_t *rdk_vap_info, wifi_platform_property_t *wifi_prop)
 {
+    int radio_index, band;
     const cJSON *security, *interworking;
     cJSON *cac_obj;
     webconfig_error_t ret = webconfig_error_none;
@@ -1823,8 +1647,19 @@ webconfig_error_t decode_hotspot_secure_vap_object(const cJSON *vap, wifi_vap_in
         return webconfig_error_decode;
     }
 
+    radio_index = convert_vap_name_to_radio_array_index(wifi_prop, vap_info->vap_name);
+    if (radio_index < 0) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid radio Index\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    if (convert_radio_index_to_freq_band(wifi_prop, radio_index, &band) != RETURN_OK) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Unable to fetch proper band\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
     decode_param_object(vap, "Security", security);
-    if (decode_enterprise_security_object(security, &vap_info->u.bss_info.security) != webconfig_error_none) {
+    if (decode_security_object(security, &vap_info->u.bss_info.security, band) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Security objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -1866,7 +1701,7 @@ webconfig_error_t decode_lnf_psk_vap_object(const cJSON *vap, wifi_vap_info_t *v
     }
 
     decode_param_object(vap, "Security", security);
-    if (decode_personal_security_object(security, &vap_info->u.bss_info.security, band) != webconfig_error_none) {
+    if (decode_security_object(security, &vap_info->u.bss_info.security, band) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Security objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -1889,6 +1724,7 @@ webconfig_error_t decode_lnf_psk_vap_object(const cJSON *vap, wifi_vap_info_t *v
 webconfig_error_t decode_lnf_radius_vap_object(const cJSON *vap, wifi_vap_info_t *vap_info,
     rdk_wifi_vap_info_t *rdk_vap_info, wifi_platform_property_t *wifi_prop)
 {
+    int radio_index, band;
     const cJSON *security, *interworking;
     webconfig_error_t ret = webconfig_error_none;
 
@@ -1898,8 +1734,19 @@ webconfig_error_t decode_lnf_radius_vap_object(const cJSON *vap, wifi_vap_info_t
         return webconfig_error_decode;
     }
 
+    radio_index = convert_vap_name_to_radio_array_index(wifi_prop, vap_info->vap_name);
+    if (radio_index < 0) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid radio Index\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    if (convert_radio_index_to_freq_band(wifi_prop, radio_index, &band) != RETURN_OK) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Unable to fetch proper band\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
     decode_param_object(vap, "Security", security);
-    if (decode_enterprise_security_object(security, &vap_info->u.bss_info.security) != webconfig_error_none) {
+    if (decode_security_object(security, &vap_info->u.bss_info.security, band) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Security objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -1945,7 +1792,7 @@ webconfig_error_t decode_iot_vap_object(const cJSON *vap, wifi_vap_info_t *vap_i
     }
 
     decode_param_object(vap, "Security", security);
-    if (decode_personal_security_object(security, &vap_info->u.bss_info.security, band) != webconfig_error_none) {
+    if (decode_security_object(security, &vap_info->u.bss_info.security, band) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Security objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -1991,7 +1838,7 @@ webconfig_error_t decode_mesh_backhaul_vap_object(const cJSON *vap, wifi_vap_inf
     }
 
     decode_param_object(vap, "Security", security);
-    if (decode_personal_security_object(security, &vap_info->u.bss_info.security, band) != webconfig_error_none) {
+    if (decode_security_object(security, &vap_info->u.bss_info.security, band) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Security objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -2037,7 +1884,7 @@ webconfig_error_t decode_private_vap_object(const cJSON *vap, wifi_vap_info_t *v
     }
 
     decode_param_object(vap, "Security", security);
-    if (decode_personal_security_object(security, &vap_info->u.bss_info.security, band) != webconfig_error_none) {
+    if (decode_security_object(security, &vap_info->u.bss_info.security, band) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Security objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
@@ -2197,7 +2044,7 @@ webconfig_error_t decode_mesh_sta_object(const cJSON *vap, wifi_vap_info_t *vap_
     }
 
     decode_param_object(vap, "Security", security);
-    if (decode_personal_security_object(security, &vap_info->u.sta_info.security, band) != webconfig_error_none) {
+    if (decode_security_object(security, &vap_info->u.sta_info.security, band) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Security objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }

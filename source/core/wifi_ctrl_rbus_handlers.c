@@ -443,6 +443,7 @@ rbusError_t webconfig_get_dml_subdoc(rbusHandle_t handle, rbusProperty_t propert
     char const* name = rbusProperty_GetName(property);
     rbusValue_t value;
     webconfig_subdoc_data_t data;
+    rbusError_t ret = RBUS_ERROR_SUCCESS;
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
@@ -460,17 +461,23 @@ rbusError_t webconfig_get_dml_subdoc(rbusHandle_t handle, rbusProperty_t propert
     memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap, sizeof(wifi_hal_capability_t));
     data.u.decoded.num_radios = getNumberRadios();
     // tell webconfig to encode
-    webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_dml);
+    if (webconfig_encode(&ctrl->webconfig, &data,
+        webconfig_subdoc_type_dml) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d webconfig encode failed\n", __func__, __LINE__);
+        ret = RBUS_ERROR_BUS_ERROR;
+        goto exit;
+    }
 
     // the encoded data is a string
     rbusValue_SetString(value, data.u.encoded.raw);
     rbusProperty_SetValue(property, value);
 
+exit:
     rbusValue_Release(value);
 
     webconfig_data_free(&data);
 
-    return RBUS_ERROR_SUCCESS;
+    return ret;
 }
 
 rbusError_t webconfig_set_subdoc(rbusHandle_t handle, rbusProperty_t property, rbusSetHandlerOptions_t* opts)

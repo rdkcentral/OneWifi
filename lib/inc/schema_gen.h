@@ -94,6 +94,7 @@
         PJS_OVS_INT(blacklist_table_timeout)\
         PJS_OVS_INT(identity_req_retry_interval)\
         PJS_OVS_INT(server_retries)\
+        PJS_OVS_BOOL(wpa3_transition_disable)\
     )
 
 #define PJS_SCHEMA_Wifi_VAP_Config \
@@ -2001,7 +2002,8 @@
     COLUMN(max_auth_attempts)\
     COLUMN(blacklist_table_timeout)\
     COLUMN(identity_req_retry_interval)\
-    COLUMN(server_retries)
+    COLUMN(server_retries)\
+    COLUMN(wpa3_transition_disable)
 
 #define SCHEMA__Wifi_VAP_Config "Wifi_VAP_Config"
 #define SCHEMA_COLUMN__Wifi_VAP_Config(COLUMN) \
@@ -3336,6 +3338,7 @@
 #define SCHEMA__Wifi_Security_Config__blacklist_table_timeout "blacklist_table_timeout"
 #define SCHEMA__Wifi_Security_Config__identity_req_retry_interval "identity_req_retry_interval"
 #define SCHEMA__Wifi_Security_Config__server_retries "server_retries"
+#define SCHEMA__Wifi_Security_Config__wpa3_transition_disable "wpa3_transition_disable"
 
 #define SCHEMA__Wifi_VAP_Config__vap_name "vap_name"
 #define SCHEMA__Wifi_VAP_Config__radio_name "radio_name"

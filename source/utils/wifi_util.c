@@ -986,16 +986,30 @@ int convert_security_mode_string_to_integer(int *m,char *mode)
 
 int security_mode_support_radius(int mode)
 {
-    int sec_mode = 0;
-    if((mode == wifi_security_mode_wpa_enterprise) || (mode ==wifi_security_mode_wpa2_enterprise ) || (mode == wifi_security_mode_wpa3_enterprise) || (mode == wifi_security_mode_wpa_wpa2_enterprise)){
-        sec_mode = 1;
-    } else {
-        sec_mode = 0;
-    }
-
-    return sec_mode;
+    return mode == wifi_security_mode_wpa_enterprise ||
+        mode == wifi_security_mode_wpa2_enterprise ||
+        mode == wifi_security_mode_wpa3_enterprise ||
+        mode == wifi_security_mode_wpa_wpa2_enterprise ||
+        mode == wifi_security_mode_none ||
+        mode == wifi_security_mode_enhanced_open;
 }
 
+bool is_sec_mode_enterprise(wifi_security_modes_t mode)
+{
+    return mode == wifi_security_mode_wpa_enterprise ||
+        mode == wifi_security_mode_wpa2_enterprise ||
+        mode == wifi_security_mode_wpa_wpa2_enterprise ||
+        mode == wifi_security_mode_wpa3_enterprise;
+}
+
+bool is_sec_mode_personal(wifi_security_modes_t mode)
+{
+    return mode == wifi_security_mode_wpa_personal ||
+        mode == wifi_security_mode_wpa2_personal ||
+        mode == wifi_security_mode_wpa_wpa2_personal ||
+        mode == wifi_security_mode_wpa3_personal ||
+        mode == wifi_security_mode_wpa3_transition;
+}
 
 /* Note: Need to find a better way to return the radio index.
          In the case of XLE, it has 3 radios but no 6GHz.

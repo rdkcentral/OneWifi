@@ -183,6 +183,8 @@ INT getIpStringFromAdrress (char * ipString, const ip_addr_t * ip);
 void uint8_mac_to_string_mac(uint8_t *mac, char *s_mac);
 void string_mac_to_uint8_mac(uint8_t *mac, char *s_mac);
 int security_mode_support_radius(int mode);
+bool is_sec_mode_enterprise(wifi_security_modes_t mode);
+bool is_sec_mode_personal(wifi_security_modes_t mode);
 int convert_vap_name_to_index(wifi_platform_property_t *wifi_prop, char *vap_name);
 int convert_vap_name_to_array_index(wifi_platform_property_t * wifi_prop, char *vap_name);
 int convert_vap_name_to_radio_array_index(wifi_platform_property_t *wifi_prop, char *vap_name);

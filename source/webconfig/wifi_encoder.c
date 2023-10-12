@@ -876,195 +876,129 @@ webconfig_error_t encode_radius_object(const wifi_radius_settings_t *radius_info
     return webconfig_error_none;
 }
 
-webconfig_error_t encode_no_security_object(const wifi_vap_security_t *security_info, cJSON *security)
+webconfig_error_t encode_security_object(const wifi_vap_security_t *security_info, cJSON *security,
+    bool is_6g)
 {
-
     cJSON *obj;
+
+    if (is_6g &&
+        security_info->mode != wifi_security_mode_wpa3_personal &&
+        security_info->mode != wifi_security_mode_wpa3_enterprise &&
+        security_info->mode != wifi_security_mode_enhanced_open) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid security mode %d for 6G interface\n",
+            __func__, __LINE__, security_info->mode);
+        return webconfig_error_encode;
+    }
 
     switch (security_info->mode) {
         case wifi_security_mode_none:
             cJSON_AddStringToObject(security, "Mode", "None");
             break;
+
         case wifi_security_mode_enhanced_open:
             cJSON_AddStringToObject(security, "Mode", "Enhanced-Open");
-            cJSON_AddStringToObject(security, "MFPConfig", "Required");
-            cJSON_AddStringToObject(security, "EncryptionMethod", "AES");
-            break;
-
-        default:
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Security Mode not valid, value:%d\n",
-                            __func__, __LINE__, security_info->mode);
-            return webconfig_error_encode;
-    }
-
-    obj = cJSON_CreateObject();
-    cJSON_AddItemToObject(security, "RadiusSettings", obj);
-
-    if (encode_radius_object(&security_info->u.radius, obj) != webconfig_error_none) {
-        wifi_util_error_print(WIFI_PASSPOINT,"%s:%d: Encoding radius settings failed\n", __func__, __LINE__);
-        return webconfig_error_encode;
-    }
-        wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Encoding radius settings passed\n", __func__, __LINE__);
-
-    return webconfig_error_none;
-}
-
-int validate_sec_config(const wifi_vap_security_t *security_info)
-{
-    if (security_info->mode == wifi_security_mode_wpa3_transition) {
-        if (security_info->mfp != wifi_mfp_cfg_optional) {
-            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid MFP Config %d, Security mode %d\n", __func__, __LINE__, security_info->mfp, security_info->mode);
-            return RETURN_ERR;
-        }
-    } else if ((security_info->mode == wifi_security_mode_wpa3_enterprise) || (security_info->mode == wifi_security_mode_wpa3_personal)) {
-        if (security_info->mfp != wifi_mfp_cfg_required) {
-            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid MFP Config %d, Security Mode %d\n", __func__, __LINE__, security_info->mfp, security_info->mode);
-            return RETURN_ERR;
-        }
-    }
-
-    return RETURN_OK;
-}
-
-webconfig_error_t encode_enterprise_security_object(const wifi_vap_security_t *security_info, cJSON *security)
-{
-    cJSON *obj;
-
-    if (validate_sec_config(security_info) != RETURN_OK) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid Security Config\n", __func__, __LINE__);
-        return webconfig_error_encode;
-    }
-
-    if (security_info->mfp == wifi_mfp_cfg_disabled) {
-        cJSON_AddStringToObject(security, "MFPConfig", "Disabled");
-    } else if (security_info->mfp == wifi_mfp_cfg_required) {
-        cJSON_AddStringToObject(security, "MFPConfig", "Required");
-    } else if (security_info->mfp == wifi_mfp_cfg_optional) {
-        cJSON_AddStringToObject(security, "MFPConfig", "Optional");
-    } else {
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: MFPConfig not valid, value:%d\n",
-                            __func__, __LINE__, security_info->mfp);
-        return webconfig_error_encode;
-    }
-
-    switch (security_info->mode) {
-        case wifi_security_mode_wpa_enterprise:
-            cJSON_AddStringToObject(security, "Mode", "WPA-Enterprise");
-            break;
-
-        case wifi_security_mode_wpa3_enterprise:
-            cJSON_AddStringToObject(security, "Mode", "WPA3-Enterprise");
-            break;
-
-        case wifi_security_mode_wpa2_enterprise:
-            cJSON_AddStringToObject(security, "Mode", "WPA2-Enterprise");
-            break;
-
-        case  wifi_security_mode_wpa_wpa2_enterprise:
-            cJSON_AddStringToObject(security, "Mode", "WPA-WPA2-Enterprise");
-            break;
-
-        default:
-            wifi_util_error_print(WIFI_PASSPOINT,"%s:%d: Security Mode not valid, value:%d\n",
-                            __func__, __LINE__, security_info->mode);
-            return webconfig_error_encode;
-    }
-
-    switch (security_info->encr) {
-        case wifi_encryption_tkip:
-            cJSON_AddStringToObject(security, "EncryptionMethod", "TKIP");
-            break;
-
-        case wifi_encryption_aes:
-            cJSON_AddStringToObject(security, "EncryptionMethod", "AES");
-            break;
-
-        case wifi_encryption_aes_tkip:
-            cJSON_AddStringToObject(security, "EncryptionMethod", "AES+TKIP");
-            break;
-
-        default:
-            wifi_util_error_print(WIFI_PASSPOINT,"%s:%d: Encryption Method not valid, value:%d\n",
-                            __func__, __LINE__, security_info->encr);
-            return webconfig_error_encode;
-    }
-
-    cJSON_AddBoolToObject(security, "Wpa3_transition_disable", security_info->wpa3_transition_disable);
-    cJSON_AddNumberToObject(security, "RekeyInterval", security_info->rekey_interval);
-    cJSON_AddBoolToObject(security, "StrictRekey", security_info->strict_rekey);
-    cJSON_AddNumberToObject(security, "EapolKeyTimeout", security_info->eapol_key_timeout);
-    cJSON_AddNumberToObject(security, "EapolKeyRetries", security_info->eapol_key_retries);
-    cJSON_AddNumberToObject(security, "EapIdentityReqTimeout", security_info->eap_identity_req_timeout);
-    cJSON_AddNumberToObject(security, "EapIdentityReqRetries", security_info->eap_identity_req_retries);
-    cJSON_AddNumberToObject(security, "EapReqTimeout", security_info->eap_req_timeout);
-    cJSON_AddNumberToObject(security, "EapReqRetries", security_info->eap_req_retries);
-    cJSON_AddBoolToObject(security, "DisablePmksaCaching", security_info->disable_pmksa_caching);
-
-    obj = cJSON_CreateObject();
-    cJSON_AddItemToObject(security, "RadiusSettings", obj);
-
-    if (encode_radius_object(&security_info->u.radius, obj) != webconfig_error_none) {
-        wifi_util_error_print(WIFI_PASSPOINT,"%s:%d: Encoding radius settings failed\n", __func__, __LINE__);
-        return webconfig_error_encode;
-    }
-
-    return webconfig_error_none;
-}
-
-webconfig_error_t encode_personal_security_object(const wifi_vap_security_t *security_info, cJSON *security, bool is_6g)
-{
-
-    if (validate_sec_config(security_info) != RETURN_OK) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid Security Config\n", __func__, __LINE__);
-        return webconfig_error_encode;
-    }
-
-    if (security_info->mfp == wifi_mfp_cfg_disabled) {
-        cJSON_AddStringToObject(security, "MFPConfig", "Disabled");
-    } else if (security_info->mfp == wifi_mfp_cfg_required) {
-        cJSON_AddStringToObject(security, "MFPConfig", "Required");
-    } else if (security_info->mfp == wifi_mfp_cfg_optional) {
-        cJSON_AddStringToObject(security, "MFPConfig", "Optional");
-    } else {
-        wifi_util_error_print(WIFI_PASSPOINT,"%s:%d: MFPConfig not valid, value:%d\n",
-                            __func__, __LINE__, security_info->mfp);
-        return webconfig_error_encode;
-    }
-
-    if ( is_6g && (security_info->mode != wifi_security_mode_wpa3_personal)) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s: Invalid security Mode %d for 6G interface\n", __func__, security_info->mode);
-        return webconfig_error_encode;
-    }
-
-    switch (security_info->mode) {
-        case wifi_security_mode_none:
-            cJSON_AddStringToObject(security, "Mode", "None");
             break;
 
         case wifi_security_mode_wpa_personal:
             cJSON_AddStringToObject(security, "Mode", "WPA-Personal");
             break;
 
-        case wifi_security_mode_wpa2_personal:
-            cJSON_AddStringToObject(security, "Mode", "WPA2-Personal");
-            break;
-
         case wifi_security_mode_wpa_wpa2_personal:
             cJSON_AddStringToObject(security, "Mode", "WPA-WPA2-Personal");
             break;
 
-        case wifi_security_mode_wpa3_personal:
-            cJSON_AddStringToObject(security, "Mode", "WPA3-Personal");
+        case wifi_security_mode_wpa2_personal:
+            cJSON_AddStringToObject(security, "Mode", "WPA2-Personal");
             break;
 
         case wifi_security_mode_wpa3_transition:
             cJSON_AddStringToObject(security, "Mode", "WPA3-Personal-Transition");
             break;
 
+        case wifi_security_mode_wpa3_personal:
+            cJSON_AddStringToObject(security, "Mode", "WPA3-Personal");
+            break;
+
+        case wifi_security_mode_wpa_enterprise:
+            cJSON_AddStringToObject(security, "Mode", "WPA-Enterprise");
+            break;
+
+        case wifi_security_mode_wpa_wpa2_enterprise:
+            cJSON_AddStringToObject(security, "Mode", "WPA-WPA2-Enterprise");
+            break;
+
+        case wifi_security_mode_wpa2_enterprise:
+            cJSON_AddStringToObject(security, "Mode", "WPA2-Enterprise");
+            break;
+
+        case wifi_security_mode_wpa3_enterprise:
+            cJSON_AddStringToObject(security, "Mode", "WPA3-Enterprise");
+            break;
+
         default:
-            wifi_util_error_print(WIFI_PASSPOINT,"%s:%d: Security Mode not valid, value:%d\n",
-                            __func__, __LINE__, security_info->mode);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to encode security mode: %d\n",
+                __func__, __LINE__, security_info->mode);
             return webconfig_error_encode;
+    }
+
+    if (security_info->mode == wifi_security_mode_none ||
+        security_info->mode == wifi_security_mode_enhanced_open) {
+        obj = cJSON_CreateObject();
+        cJSON_AddItemToObject(security, "RadiusSettings", obj);
+
+        if (encode_radius_object(&security_info->u.radius, obj) != webconfig_error_none) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to encode radius settings\n",
+                __func__, __LINE__);
+            return webconfig_error_encode;
+        }
+    }
+
+    if (security_info->mode == wifi_security_mode_none) {
+        return webconfig_error_none;
+    }
+
+    if (security_info->mfp != wifi_mfp_cfg_optional &&
+        security_info->mode == wifi_security_mode_wpa3_transition) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid MFP value %d for %d mode\n", __func__,
+            __LINE__, security_info->mfp, security_info->mode);
+        return webconfig_error_encode;
+    }
+
+    if (security_info->mfp != wifi_mfp_cfg_required &&
+        (security_info->mode == wifi_security_mode_enhanced_open ||
+        security_info->mode == wifi_security_mode_wpa3_personal ||
+        security_info->mode == wifi_security_mode_wpa3_enterprise)) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid MFP %d value for %d mode\n", __func__,
+            __LINE__, security_info->mfp, security_info->mode);
+        return webconfig_error_encode;
+    }
+
+    if (security_info->mfp == wifi_mfp_cfg_disabled) {
+        cJSON_AddStringToObject(security, "MFPConfig", "Disabled");
+    } else if (security_info->mfp == wifi_mfp_cfg_required) {
+        cJSON_AddStringToObject(security, "MFPConfig", "Required");
+    } else if (security_info->mfp == wifi_mfp_cfg_optional) {
+        cJSON_AddStringToObject(security, "MFPConfig", "Optional");
+    } else {
+         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to encode MFP config: %d\n",
+            __func__, __LINE__, security_info->mfp);
+        return webconfig_error_encode;
+    }
+
+    if (security_info->encr != wifi_encryption_aes &&
+        (security_info->mode == wifi_security_mode_enhanced_open ||
+        security_info->mode == wifi_security_mode_wpa3_enterprise ||
+        security_info->mode == wifi_security_mode_wpa3_personal)) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid encryption method for %d mode: %d\n",
+            __func__, __LINE__, security_info->encr, security_info->mode);
+        return webconfig_error_decode;
+    }
+
+    if (security_info->encr == wifi_encryption_tkip &&
+        security_info->mode == wifi_security_mode_wpa_wpa2_personal) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid encryption method TKIP with "
+            "WPA/WPA2 mode\n", __func__, __LINE__);
+        return webconfig_error_decode;
     }
 
     switch (security_info->encr) {
@@ -1081,18 +1015,55 @@ webconfig_error_t encode_personal_security_object(const wifi_vap_security_t *sec
             break;
 
         default:
-            wifi_util_error_print(WIFI_PASSPOINT,"%s:%d: Encryption Method not valid, value:%d\n",
-                            __func__, __LINE__, security_info->encr);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to encode encryption method: %d\n",
+                __func__, __LINE__, security_info->encr);
             return webconfig_error_encode;
     }
 
-    if (((strlen(security_info->u.key.key) < MIN_PWD_LEN) && security_info->mode != wifi_security_mode_none)
-                || (strlen(security_info->u.key.key) > MAX_PWD_LEN)) {
-        //strncpy(execRetVal->ErrorMsg, "Invalid Key passphrase length",sizeof(execRetVal->ErrorMsg)-1);
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Incorrect password length %d\n", __func__, __LINE__, strlen(security_info->u.key.key));
+    if (security_info->mode == wifi_security_mode_enhanced_open) {
+        return webconfig_error_none;
+    }
+
+    if (security_info->mode == wifi_security_mode_wpa_enterprise ||
+        security_info->mode == wifi_security_mode_wpa_wpa2_enterprise ||
+        security_info->mode == wifi_security_mode_wpa2_enterprise ||
+        security_info->mode == wifi_security_mode_wpa3_enterprise) {
+
+        cJSON_AddNumberToObject(security, "RekeyInterval", security_info->rekey_interval);
+        cJSON_AddBoolToObject(security, "StrictRekey", security_info->strict_rekey);
+        cJSON_AddNumberToObject(security, "EapolKeyTimeout", security_info->eapol_key_timeout);
+        cJSON_AddNumberToObject(security, "EapolKeyRetries", security_info->eapol_key_retries);
+        cJSON_AddNumberToObject(security, "EapIdentityReqTimeout",
+            security_info->eap_identity_req_timeout);
+        cJSON_AddNumberToObject(security, "EapIdentityReqRetries",
+            security_info->eap_identity_req_retries);
+        cJSON_AddNumberToObject(security, "EapReqTimeout", security_info->eap_req_timeout);
+        cJSON_AddNumberToObject(security, "EapReqRetries", security_info->eap_req_retries);
+        cJSON_AddBoolToObject(security, "DisablePmksaCaching",
+            security_info->disable_pmksa_caching);
+
+        obj = cJSON_CreateObject();
+        cJSON_AddItemToObject(security, "RadiusSettings", obj);
+
+        if (encode_radius_object(&security_info->u.radius, obj) != webconfig_error_none) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to encode radius config\n",
+                __func__, __LINE__);
+            return webconfig_error_encode;
+        }
+
+        return webconfig_error_none;
+    }
+
+    if (security_info->mode != wifi_security_mode_none &&
+        (strlen(security_info->u.key.key) < MIN_PWD_LEN ||
+        strlen(security_info->u.key.key) > MAX_PWD_LEN)) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid password length: %d\n", __func__,
+            __LINE__, strlen(security_info->u.key.key));
         return webconfig_error_encode;
     }
 
+    cJSON_AddBoolToObject(security, "Wpa3_transition_disable",
+        security_info->wpa3_transition_disable);
     cJSON_AddStringToObject(security, "Passphrase", security_info->u.key.key);
 
     cJSON_AddStringToObject(security, "KeyId", security_info->key_id);
@@ -1106,6 +1077,7 @@ webconfig_error_t encode_hotspot_open_vap_object(const wifi_vap_info_t *vap_info
     const rdk_wifi_vap_info_t *rdk_vap_info, cJSON *vap_obj)
 {
     cJSON *obj;
+    bool is_6g;
 
     // the input vap_object is an array
     if (encode_vap_common_object(vap_info, rdk_vap_info, vap_obj) != webconfig_error_none) {
@@ -1120,9 +1092,11 @@ webconfig_error_t encode_hotspot_open_vap_object(const wifi_vap_info_t *vap_info
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d CAC object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
+
+    is_6g = strstr(vap_info->vap_name, "6g") ? true : false;
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(vap_obj, "Security", obj);
-    if (encode_no_security_object(&vap_info->u.bss_info.security, obj) != webconfig_error_none) {
+    if (encode_security_object(&vap_info->u.bss_info.security, obj, is_6g) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Security object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
@@ -1153,6 +1127,7 @@ webconfig_error_t encode_hotspot_secure_vap_object(const wifi_vap_info_t *vap_in
     const rdk_wifi_vap_info_t *rdk_vap_info, cJSON *vap_obj)
 {
     cJSON *obj;
+    bool is_6g;
 
     // the input vap_object is an array
     if (encode_vap_common_object(vap_info, rdk_vap_info, vap_obj) != webconfig_error_none) {
@@ -1166,9 +1141,11 @@ webconfig_error_t encode_hotspot_secure_vap_object(const wifi_vap_info_t *vap_in
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d CAC object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
+
+    is_6g = strstr(vap_info->vap_name, "6g") ? true : false;
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(vap_obj, "Security", obj);
-    if (encode_enterprise_security_object(&vap_info->u.bss_info.security, obj) != webconfig_error_none) {
+    if (encode_security_object(&vap_info->u.bss_info.security, obj, is_6g) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Security object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
@@ -1211,7 +1188,7 @@ webconfig_error_t encode_lnf_psk_vap_object(const wifi_vap_info_t *vap_info,
 
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(vap_obj, "Security", obj);
-    if (encode_personal_security_object(&vap_info->u.bss_info.security, obj, is_6g) != webconfig_error_none) {
+    if (encode_security_object(&vap_info->u.bss_info.security, obj, is_6g) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Security object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
@@ -1231,6 +1208,7 @@ webconfig_error_t encode_lnf_radius_vap_object(const wifi_vap_info_t *vap_info,
     const rdk_wifi_vap_info_t *rdk_vap_info, cJSON *vap_obj)
 {
     cJSON *obj;
+    bool is_6g;
 
     // the input vap_object is an array
     if (encode_vap_common_object(vap_info, rdk_vap_info, vap_obj) != webconfig_error_none) {
@@ -1238,9 +1216,10 @@ webconfig_error_t encode_lnf_radius_vap_object(const wifi_vap_info_t *vap_info,
         return webconfig_error_encode;
     }
 
+    is_6g = strstr(vap_info->vap_name, "6g") ? true : false;
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(vap_obj, "Security", obj);
-    if (encode_enterprise_security_object(&vap_info->u.bss_info.security, obj) != webconfig_error_none) {
+    if (encode_security_object(&vap_info->u.bss_info.security, obj, is_6g) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Security object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
@@ -1270,7 +1249,7 @@ webconfig_error_t encode_mesh_backhaul_vap_object(const wifi_vap_info_t *vap_inf
     bool is_6g = strstr(vap_info->vap_name, "6g")?true:false;
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(vap_obj, "Security", obj);
-    if (encode_personal_security_object(&vap_info->u.bss_info.security, obj, is_6g) != webconfig_error_none) {
+    if (encode_security_object(&vap_info->u.bss_info.security, obj, is_6g) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Security object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
@@ -1300,7 +1279,7 @@ webconfig_error_t encode_iot_vap_object(const wifi_vap_info_t *vap_info,
     bool is_6g = strstr(vap_info->vap_name, "6g")?true:false;
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(vap_obj, "Security", obj);
-    if (encode_personal_security_object(&vap_info->u.bss_info.security, obj, is_6g) != webconfig_error_none) {
+    if (encode_security_object(&vap_info->u.bss_info.security, obj, is_6g) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Security object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
@@ -1330,7 +1309,7 @@ webconfig_error_t encode_private_vap_object(const wifi_vap_info_t *vap_info,
     bool is_6g = strstr(vap_info->vap_name, "6g")?true:false;
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(vap_obj, "Security", obj);
-    if (encode_personal_security_object(&vap_info->u.bss_info.security, obj, is_6g) != webconfig_error_none) {
+    if (encode_security_object(&vap_info->u.bss_info.security, obj, is_6g) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Security object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
@@ -1412,7 +1391,7 @@ webconfig_error_t encode_mesh_sta_object(const wifi_vap_info_t *vap_info,
     // Security
     obj = cJSON_CreateObject();
     cJSON_AddItemToObject(vap_obj, "Security", obj);
-    if (encode_personal_security_object(&vap_info->u.sta_info.security, obj, is_6g) != webconfig_error_none) {
+    if (encode_security_object(&vap_info->u.sta_info.security, obj, is_6g) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Security object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
