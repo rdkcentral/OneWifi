@@ -245,7 +245,7 @@ else
                 if [ $ssid_5g ==  "00:00:00:00:00:00" ];then
                         if [ $vap_5g_down == 1 ]; then
                                 time_diff=`expr $cur_timestamp - $pre_timestamp`
-                                echo_t "time_diff = $time_diff" >> $LOG_FILE 
+                                echo_t "time_diff = $time_diff" >> $LOG_FILE
                                 if [ $time_diff -ge 43200 ]; then
                                         onewifi_restart_wifi
                                         pre_timestamp="`date +"%s"` $1"
@@ -309,7 +309,7 @@ else
             dmcli eRT setv Device.X_CISCO_COM_DeviceControl.RebootDevice string "Device"
         fi
  fi
- 
+
  if [ $cmts_try_count ==  0 ]; then
     cmts_type=`dmcli eRT getv Device.DeviceInfo.X_RDKCENTRAL-COM_CMTS_MAC | grep "value" | cut -d ':' -f3-5`
     if [ $cmts_type != "" ]; then
@@ -341,16 +341,9 @@ if [ $force_reset_subdoc -le  2 ]; then
     if [ -f  $SW_UPGRADE_DEFAULT_FILE ]; then
         webcfg_rfc_enabled=`dmcli eRT getv Device.X_RDK_WebConfig.RfcEnable | grep "value" | cut -d ':' -f3-5`
         echo_t "webcfg_rfc status is $webcfg_rfc_enabled" >>  /rdklogs/logs/wifi_selfheal.txt
-        force_rest_val=`dmcli eRT setv Device.X_RDK_WebConfig.webcfgSubdocForceReset string privatessid`
-        if [ $force_rest_val != 0 ]; then
-            if [ $force_reset_subdoc ==  2 ]; then
-                echo_t "Selfheal execution to force_reset on private vaps failed from WebConfig" >> /rdklogs/logs/wifi_selfheal.txt
-                rm -f $SW_UPGRADE_DEFAULT_FILE
-            fi
-        else
-            echo_t "Selfheal execution to force_reset on private vaps passed from WebConfig" >> /rdklogs/logs/wifi_selfheal.txt
-            rm -f $SW_UPGRADE_DEFAULT_FILE
-        fi
+        dmcli eRT setv Device.X_RDK_WebConfig.webcfgSubdocForceReset string privatessid
+        echo_t "Selfheal execution to force_reset on private vaps passed from WebConfig" >> /rdklogs/logs/wifi_selfheal.txt
+        rm -f $SW_UPGRADE_DEFAULT_FILE
     fi
     ((force_reset_subdoc++))
  fi
