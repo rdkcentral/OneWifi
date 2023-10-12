@@ -143,7 +143,7 @@ int sm_neighbor_report_push_to_dpp(sm_neighbor_cache_t *cache, wifi_freq_bands_t
                             __func__, __LINE__, freq_band, report_type);
     }
 
-    sm_neighbor_cache_free(cache);
+    sm_neighbor_cache_clean(cache, survey_type);
     neighbor_dpp_report_free(&dpp_report);
 
     return RETURN_OK;

@@ -136,14 +136,11 @@ int sm_survey_report_push_to_dpp(sm_survey_cache_t *cache, wifi_freq_bands_t fre
 
     if (rc == RETURN_OK && !ds_dlist_is_empty(&dpp_report.list)) {
         dpp_put_survey(&dpp_report);
-        wifi_util_dbg_print(WIFI_APPS, "%s:%d: survey report is pushed to dpp for freq_band=%d, report_type=%d\n",
-                            __func__, __LINE__, freq_band, report_type);
-    } else {
-        wifi_util_error_print(WIFI_APPS, "%s:%d: survey report for freq_band=%d, report_type=%d cannot be calculated or empty\n",
-                              __func__, __LINE__, freq_band, report_type);
+        wifi_util_dbg_print(WIFI_APPS, "%s:%d: survey report is pushed to dpp for freq_band=%d, report_type=%d, survey_type=%d\n",
+                            __func__, __LINE__, freq_band, report_type, survey_type);
     }
 
-    sm_survey_cache_free(cache);
+    sm_survey_cache_clean(cache, survey_type);
     survey_dpp_report_free(&dpp_report);
 
     return RETURN_OK;

@@ -54,6 +54,24 @@ static int survey_id_get(const unsigned int radio_index, const unsigned int chan
 }
 
 
+static void survey_clean(sm_survey_cache_t *cache, sm_survey_t *survey, survey_type_t survey_type)
+{
+    if (!cache || !cache->surveys || !survey) {
+        return;
+    }
+
+    sm_survey_scan_t *scan = NULL;
+    scan = sm_survey_get_scan_data(survey, survey_type);
+    if (!scan) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d: failed to get scan\n", __func__, __LINE__);
+        return;
+    }
+    survey_samples_free(&scan->samples);
+    free(scan->old_stats);
+    scan->old_stats = NULL; /* to start calculations from the new sample */
+}
+
+
 static void survey_free(sm_survey_cache_t *cache, sm_survey_t *survey)
 {
     if (!cache || !cache->surveys || !survey) {
@@ -179,7 +197,7 @@ static int survey_sample_add(sm_survey_cache_t *cache, survey_type_t survey_type
     CHECK_NULL(cache);
     CHECK_NULL(stats);
 
-    int rc = RETURN_ERR;
+    int rc = RETURN_OK;
     dpp_survey_record_t *sample = NULL;
     sm_survey_t *survey = NULL;
     sm_survey_id_t survey_id = {0};
@@ -210,22 +228,22 @@ static int survey_sample_add(sm_survey_cache_t *cache, survey_type_t survey_type
         sample = dpp_survey_record_alloc();
         if (!sample) {
             wifi_util_error_print(WIFI_APPS, "%s:%d: failed to alloc new record for cache\n", __func__, __LINE__);
-            goto exit_err;
+            rc = RETURN_ERR;
+            goto exit;
         }
 
         rc = survey_convert_hal_to_sample(radio_index, survey_type, scan->old_stats, stats, sample);
-        if (rc != RETURN_OK) {
-            goto exit_err;
+        if (rc == RETURN_OK) {
+            ds_dlist_insert_tail(&scan->samples, sample);
+        } else {
+            dpp_survey_record_free(sample);
         }
-        ds_dlist_insert_tail(&scan->samples, sample);
     }
 
+exit:
     /* save the old value to cache */
     memcpy(scan->old_stats, stats, sizeof(*stats));
-    return RETURN_OK;
-exit_err:
-    dpp_survey_record_free(sample);
-    return RETURN_ERR;
+    return rc;
 }
 
 
@@ -285,6 +303,24 @@ int sm_survey_samples_calc_average(ds_dlist_t *samples, dpp_survey_record_avg_t 
 }
 
 #undef CALC_AVERAGE
+
+
+void sm_survey_cache_clean(sm_survey_cache_t *cache, survey_type_t survey_type)
+{
+    sm_survey_t *tmp_survey = NULL;
+    sm_survey_t *survey = NULL;
+
+    if (!cache || !cache->surveys) {
+        return;
+    }
+
+    survey = hash_map_get_first(cache->surveys);
+    while (survey) {
+        tmp_survey = survey;
+        survey = hash_map_get_next(cache->surveys, survey);
+        survey_clean(cache, tmp_survey, survey_type);
+    }
+}
 
 
 void sm_survey_cache_free(sm_survey_cache_t *cache)

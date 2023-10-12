@@ -55,6 +55,24 @@ static int neighbor_id_get(const unsigned int radio_index, radio_bssid_t bssid, 
 }
 
 
+static void neighbor_clean(sm_neighbor_cache_t *cache, sm_neighbor_t *neighbor, survey_type_t survey_type)
+{
+    if (!cache || !cache->neighbors || !neighbor) {
+        return;
+    }
+
+    sm_neighbor_scan_t *scan = NULL;
+    scan = sm_neighbor_get_scan_data(neighbor, survey_type);
+    if (!scan) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d: failed to get scan\n", __func__, __LINE__);
+        return;
+    }
+    neighbor_samples_free(&scan->samples);
+    free(scan->old_stats);
+    scan->old_stats = NULL; /* to start calculations from the new sample */
+}
+
+
 static void neighbor_free(sm_neighbor_cache_t *cache, sm_neighbor_t *neighbor)
 {
     if (!cache || !cache->neighbors || !neighbor) {
@@ -203,6 +221,24 @@ int sm_neighbor_sample_store(unsigned int radio_index, survey_type_t survey_type
                         __func__, __LINE__, survey_type_to_str(survey_type), stats->ap_SSID);
 
     return RETURN_OK;
+}
+
+
+void sm_neighbor_cache_clean(sm_neighbor_cache_t *cache, survey_type_t survey_type)
+{
+    sm_neighbor_t *tmp_neighbor = NULL;
+    sm_neighbor_t *neighbor = NULL;
+
+    if (!cache || !cache->neighbors) {
+        return;
+    }
+
+    neighbor = hash_map_get_first(cache->neighbors);
+    while (neighbor) {
+        tmp_neighbor = neighbor;
+        neighbor = hash_map_get_next(cache->neighbors, neighbor);
+        neighbor_clean(cache, tmp_neighbor, survey_type);
+    }
 }
 
 

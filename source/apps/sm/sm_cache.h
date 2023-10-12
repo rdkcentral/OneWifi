@@ -98,6 +98,7 @@ void sm_survey_cache_deinit(sm_survey_cache_t *cache);
 int  sm_survey_sample_store(unsigned int radio_index, survey_type_t survey_type, radio_chan_data_t *stats);
 int  sm_survey_samples_calc_average(ds_dlist_t *samples, dpp_survey_record_avg_t *result);
 sm_survey_scan_t* sm_survey_get_scan_data(sm_survey_t *survey, survey_type_t survey_type);
+void sm_survey_cache_clean(sm_survey_cache_t *cache, survey_type_t survey_type);
 
 
 /* NEIGHBOR */
@@ -128,7 +129,7 @@ void sm_neighbor_cache_init(sm_neighbor_cache_t *cache);
 void sm_neighbor_cache_deinit(sm_neighbor_cache_t *cache);
 int  sm_neighbor_sample_store(unsigned int radio_index, survey_type_t survey_type, wifi_neighbor_ap2_t *stats);
 sm_neighbor_scan_t* sm_neighbor_get_scan_data(sm_neighbor_t *neighbor, survey_type_t survey_type);
-
+void sm_neighbor_cache_clean(sm_neighbor_cache_t *cache, survey_type_t survey_type);
 
 #ifdef __cplusplus
 }
