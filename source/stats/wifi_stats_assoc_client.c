@@ -154,7 +154,9 @@ int execute_assoc_client_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *
                 __func__, __LINE__, args->vap_index);
         return RETURN_ERR;
     }
-
+#ifdef CCSP_COMMON
+    events_update_clientdiagdata(num_devs, args->vap_index, dev_array);
+#endif
     if (mon_data->bssid_data[vap_array_index].sta_map == NULL) {
         mon_data->bssid_data[vap_array_index].sta_map = hash_map_create();
         if (mon_data->bssid_data[vap_array_index].sta_map == NULL) {

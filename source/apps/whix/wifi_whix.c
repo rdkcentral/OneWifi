@@ -80,7 +80,9 @@ typedef struct {
     unsigned int    is_all_vaps_set;
 } whix_assoc_stats_t;
 
+#if 0
 whix_assoc_stats_t whix_assoc_stats[MAX_NUM_RADIOS];
+#endif
 
 static inline char *to_sta_key    (mac_addr_t mac, sta_key_t key)
 {
@@ -1644,6 +1646,7 @@ int associated_device_stats_response(wifi_provider_response_t *provider_response
 
 int associated_device_diagnostics_response(wifi_provider_response_t *provider_response)
 {
+#if 0
     unsigned int vap_index = 0;
     unsigned int radio_index = 0;
     radio_index = provider_response->args.radio_index;
@@ -1701,7 +1704,7 @@ int associated_device_diagnostics_response(wifi_provider_response_t *provider_re
             wifi_util_dbg_print(WIFI_APPS,"%s:%d: events update for radio_index : %d\r\n",__func__, __LINE__, r_index);
         }
     }
-
+#endif
     return RETURN_OK;
 }
 
@@ -1935,7 +1938,7 @@ int whix_event(wifi_app_t *app, wifi_event_t *event)
     return RETURN_OK;
 }
 
-
+#if 0
 int whix_generate_vap_mask_for_radio_index(unsigned int radio_index)
 {
    rdk_wifi_vap_map_t *rdk_vap_map = NULL;
@@ -1954,21 +1957,25 @@ int whix_generate_vap_mask_for_radio_index(unsigned int radio_index)
 
    return RETURN_OK;
 }
+#endif
 
 int whix_init(wifi_app_t *app, unsigned int create_flag)
 {
     wifi_util_dbg_print(WIFI_APPS, "Entering %s\n", __func__);
+#if 0
     unsigned int radio_index = 0;
+#endif
     if (app_init(app, create_flag) != 0) {
         return RETURN_ERR;
     }
 
+#if 0
     memset(whix_assoc_stats, 0, sizeof(whix_assoc_stats));
 
     for (radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
         whix_generate_vap_mask_for_radio_index(radio_index);
     }
-
+#endif
     return RETURN_OK;
 }
 
