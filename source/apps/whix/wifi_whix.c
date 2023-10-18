@@ -57,10 +57,6 @@
 #define UNREFERENCED_PARAMETER(_p_)         (void)(_p_)
 #endif
 
-#define TIMER_TASK_COMPLETE     0
-#define TIMER_TASK_CONTINUE     1
-#define TIMER_TASK_ERROR        -1
-
 #define CHAN_UTIL_INTERVAL_MS 900000 // 15 mins
 #define TELEMETRY_UPDATE_INTERVAL_MS 3600000 // 1 hour
 
@@ -117,7 +113,7 @@ int radio_health_telemetry_logger_whix(unsigned int radio_index, int ch_util)
                 snprintf(tmp, sizeof(tmp), "Wifi_%s_utilization_split", t_string);
             } else {
                 wifi_util_dbg_print(WIFI_MON, "%s:%d Failed to get band for radio Index %d\n", __func__, __LINE__, radio_index);
-                return TIMER_TASK_ERROR;
+                return RETURN_ERR;
             }
 
             //updating T2 Marker here
@@ -131,7 +127,7 @@ int radio_health_telemetry_logger_whix(unsigned int radio_index, int ch_util)
         wifi_util_error_print(WIFI_APPS, "buff is %s\n", buff);
         write_to_file(wifi_health_log, buff);
     }
-    return TIMER_TASK_COMPLETE;
+    return RETURN_OK;
 }
 
 int whix_upload_ap_telemetry_data(unsigned int radio_index, int noise_floor)
@@ -148,7 +144,7 @@ int whix_upload_ap_telemetry_data(unsigned int radio_index, int noise_floor)
             wifi_util_dbg_print(WIFI_MON, "%s", buff);
         }
     }
-    return TIMER_TASK_COMPLETE;
+    return RETURN_OK;
 }
 
 static void
@@ -220,7 +216,7 @@ int whix_upload_channel_width_telemetry(unsigned int radio_index)
         memset(bandwidth, 0, sizeof(bandwidth));
         memset(tmp, 0, sizeof(tmp));
     }
-    return TIMER_TASK_COMPLETE;
+    return RETURN_OK;
 }
 
 void calculate_self_bss_chan_statistics (UINT radio, ULLONG Tx_count, ULLONG Rx_count)
@@ -290,7 +286,7 @@ int upload_radio_chan_util_telemetry_whix(UINT radio, UINT Tx_perc, UINT Rx_perc
         wifi_util_error_print(WIFI_MON, "%s : %d Failed to get getRadioOperationParam for rdx : %d\n",__func__,__LINE__,radio);
     }
 
-    return TIMER_TASK_COMPLETE;
+    return RETURN_OK;
 }
 
 int whix_upload_ap_telemetry_pmf()
@@ -369,7 +365,7 @@ int whix_upload_ap_telemetry_pmf()
         }
     }
     wifi_util_dbg_print(WIFI_MON, "Exiting %s:%d \n", __FUNCTION__, __LINE__);
-    return TIMER_TASK_COMPLETE;
+    return RETURN_OK;
 }
 
 void upload_client_debug_stats_chan_stats(INT apIndex)
@@ -790,23 +786,19 @@ int upload_client_debug_stats_whix(int vap_index)
         }
         sta_map = monitor_param->bssid_data[vap_index].sta_map;
         sta = hash_map_get_first(sta_map);
-
-        if (sta != NULL) {
+        while (sta != NULL) {
             upload_client_debug_stats_sta_fa_info(vap_index, sta);
             upload_client_debug_stats_sta_fa_lmac_data_stats(vap_index, sta);
             upload_client_debug_stats_sta_fa_lmac_mgmt_stats(vap_index, sta);
             upload_client_debug_stats_sta_vap_activity_stats(vap_index);
             sta = hash_map_get_next(sta_map, sta);
-            if(sta != NULL){
-                return TIMER_TASK_CONTINUE;
-            }
         }
         if (isVapPrivate(vap_index)) {
             upload_client_debug_stats_transmit_power_stats(vap_index);
             upload_client_debug_stats_acs_stats(vap_index);
         }
     }
-    return TIMER_TASK_COMPLETE;
+    return RETURN_OK;
 }
 
 int radio_channel_stats_response(wifi_provider_response_t *provider_response)
@@ -857,7 +849,7 @@ int radio_channel_util_response(wifi_provider_response_t *provider_response)
     return RETURN_OK;
 }
 
-void get_device_flag(char flag[], char *list_name)
+static void get_device_flag(char flag[], int size, char *list_name)
 {
     int ret = RETURN_ERR;
     char buf[MAX_BUF_SIZE] = {0};
@@ -866,15 +858,14 @@ void get_device_flag(char flag[], char *list_name)
     wifi_util_dbg_print(WIFI_MON, "\n %s line %d get_device_config_list for %s is %s\n",__func__, __LINE__,list_name, buf);
 
     if ((ret == RETURN_OK) && (strlen(buf)) ) {
-        int buf_int[16] = {0}, i = 0, j = 0;
+        int buf_int[MAX_VAP] = {0}, i = 0, j = 0;
 
-        for (i = 0; buf[i] != '\0'; i++)
+        for (i = 0; buf[i] != '\0' && j < MAX_VAP; i++)
         {
             if (buf[i] == ',')
             {
                 j++;
             } else if (buf[i] == '"') {
-
                 continue;
             }
             else
@@ -882,19 +873,23 @@ void get_device_flag(char flag[], char *list_name)
                 buf_int[j] = buf_int[j] * 10 + (buf[i] - 48);
             }
         }
-        int len = sizeof(buf_int)/sizeof(buf_int[0]);
-        for(i = 0;  i < len; i ++)
+
+        for(i = 0; i < MAX_VAP && i < size; i ++)
         {
-            if((buf_int[i] <= MAX_VAP) && (buf_int[i] > 0))
+            if(buf_int[i] < size && buf_int[i] >= 0)
             {
-                flag[i] = 1;
+                flag[buf_int[i]] = 1;
+            }
+            else
+            {
+                wifi_util_error_print(WIFI_MON, "%s():%d for vap(%u) failed.\n",
+                        __func__, __LINE__, buf_int[i]);
             }
         }
     } else {
         flag[0] = 1;
         flag[1] = 1;
     }
-    return;
 }
 
 /* Log VAP status on percentage basis */
@@ -960,17 +955,17 @@ int upload_client_telemetry_data(unsigned int vap_index)
     int rssi;
     unsigned int num_devs = 0;
     BOOL sendIndication = false;
-    static char trflag[MAX_VAP] = {0};
-    static char nrflag[MAX_VAP] = {0};
-    static char stflag[MAX_VAP] = {0};
-    static char snflag[MAX_VAP] = {0};
-    static unsigned int i = 0;
+    char trflag[MAX_VAP] = {0};
+    char nrflag[MAX_VAP] = {0};
+    char stflag[MAX_VAP] = {0};
+    char snflag[MAX_VAP] = {0};
     CHAR eventName[32] = {0};
     unsigned int itr = 0;
     char *t_str =  NULL;
     char t_string[5] = {0};
     wifi_vap_info_t *vap_info = NULL;
     bool is_managed_wifi = false;
+    unsigned int vap_array_index;
     unsigned int radioIndex = getRadioIndexFromAp(vap_index);
     wifi_monitor_t *monitor_param = (wifi_monitor_t *)get_wifi_monitor();
 
@@ -987,54 +982,57 @@ int upload_client_telemetry_data(unsigned int vap_index)
 
         // IsCosaDmlWiFivAPStatsFeatureEnabled needs to be set to get telemetry of some stats, the TR object is
         // Device.WiFi.X_RDKCENTRAL-COM_vAPStatsEnable
-        get_device_flag(trflag, WIFI_TxRx_RATE_LIST);
-        get_device_flag(nrflag, WIFI_NORMALIZED_RSSI_LIST);
-        get_device_flag(stflag, WIFI_CLI_STAT_LIST);
+        get_device_flag(trflag, sizeof(trflag), WIFI_TxRx_RATE_LIST);
+        get_device_flag(nrflag, sizeof(nrflag), WIFI_NORMALIZED_RSSI_LIST);
+        get_device_flag(stflag, sizeof(stflag), WIFI_CLI_STAT_LIST);
         // see if list has changed
-        BOOL enableRadioDetailStats[MAX_NUM_RADIOS] = {FALSE};
-        if (strncmp(stflag, monitor_param->cliStatsList, MAX_VAP) != 0) {
-            strncpy(monitor_param->cliStatsList, stflag, MAX_VAP);
-            // check if we should enable of disable detailed client stats collection on XB3
+        // Use memcmp() and memcpy() here as it's an array of bits for each VAP, not string.
+        if (monitor_param->cliStatsList[vap_index] != stflag[vap_index]) {
+                monitor_param->cliStatsList[vap_index] = stflag[vap_index];
+                // check if we should enable of disable detailed client stats collection on XB3
                 if (monitor_param->radio_presence[radioIndex] == false) {
-                    return TIMER_TASK_COMPLETE;
+                    return RETURN_ERR;
                 }
                 wifi_radio_operationParam_t* radioOperation = getRadioOperationParam(radioIndex);
                 if (radioOperation == NULL) {
                     CcspTraceWarning(("%s : failed to getRadioOperationParam with radio index \n", __FUNCTION__));
-                    return TIMER_TASK_COMPLETE;
+                    return RETURN_ERR;
                 }
+
+                BOOL enableRadioDetailStats = stflag[vap_index];
                 switch (radioOperation->band)
                 {
                     case WIFI_FREQUENCY_2_4_BAND:
-                        wifi_util_dbg_print(WIFI_MON, "%s:%d: client detailed stats collection for 2.4GHz radio set to %s\n", __func__, __LINE__,
-                                (enableRadioDetailStats[radioIndex] == TRUE)?"enabled":"disabled");
+                        wifi_util_dbg_print(WIFI_MON, "%s:%d: vap:%u client detailed stats collection for 2.4GHz radio set to %s\n", __func__, __LINE__,
+                                vap_index, (enableRadioDetailStats == TRUE)?"enabled":"disabled");
                     break;
                     case WIFI_FREQUENCY_5_BAND:
-                        wifi_util_dbg_print(WIFI_MON, "%s:%d: client detailed stats collection for 5GHz radio set to %s\n", __func__, __LINE__,
-                                (enableRadioDetailStats[radioIndex] == TRUE)?"enabled":"disabled");
+                        wifi_util_dbg_print(WIFI_MON, "%s:%d: vap:%u client detailed stats collection for 5GHz radio set to %s\n", __func__, __LINE__,
+                                vap_index, (enableRadioDetailStats == TRUE)?"enabled":"disabled");
                     break;
                     case WIFI_FREQUENCY_5L_BAND:
-                        wifi_util_dbg_print(WIFI_MON, "%s:%d: client detailed stats collection for 5GHz Low radio set to %s\n", __func__, __LINE__,
-                                (enableRadioDetailStats[radioIndex] == TRUE)?"enabled":"disabled");
+                        wifi_util_dbg_print(WIFI_MON, "%s:%d: vap:%u client detailed stats collection for 5GHz Low radio set to %s\n", __func__, __LINE__,
+                                vap_index, (enableRadioDetailStats == TRUE)?"enabled":"disabled");
                     break;
                     case WIFI_FREQUENCY_5H_BAND:
-                        wifi_util_dbg_print(WIFI_MON, "%s:%d: client detailed stats collection for 5GHz High radio set to %s\n", __func__, __LINE__,
-                                (enableRadioDetailStats[radioIndex] == TRUE)?"enabled":"disabled");
+                        wifi_util_dbg_print(WIFI_MON, "%s:%d: vap:%u client detailed stats collection for 5GHz High radio set to %s\n", __func__, __LINE__,
+                                vap_index, (enableRadioDetailStats == TRUE)?"enabled":"disabled");
                     break;
                     case WIFI_FREQUENCY_6_BAND:
-                        wifi_util_dbg_print(WIFI_MON, "%s:%d: client detailed stats collection for 6GHz radio set to %s\n", __func__, __LINE__,
-                                (enableRadioDetailStats[radioIndex] == TRUE)?"enabled":"disabled");
+                        wifi_util_dbg_print(WIFI_MON, "%s:%d: vap:%u client detailed stats collection for 6GHz radio set to %s\n", __func__, __LINE__,
+                                vap_index, (enableRadioDetailStats == TRUE)?"enabled":"disabled");
                     break;
                     default:
                     break;
                 }
             }
-        get_device_flag(snflag, WIFI_SNR_LIST);
+        get_device_flag(snflag, sizeof(snflag), WIFI_SNR_LIST);
         memset(buff, 0, MAX_BUFFER);
-        sta_map = monitor_param->bssid_data[vap_index].sta_map;
+        getVAPArrayIndexFromVAPIndex(vap_index, &vap_array_index);
+        sta_map = monitor_param->bssid_data[vap_array_index].sta_map;
         if (NULL == sta_map) {
             wifi_util_dbg_print(WIFI_APPS, "%s:%d sta_map is NULL for index %u\n", __func__, __LINE__, vap_index);
-            return TIMER_TASK_COMPLETE;
+            return RETURN_OK;
         }
         memset(telemetryBuff, 0, TELEMETRY_MAX_BUFFER);
         get_formatted_time(tmp);
@@ -1109,7 +1107,7 @@ int upload_client_telemetry_data(unsigned int vap_index)
         }
         /* If number of device connected is 0, then dont print the markers */
         if (0 == num_devs) {
-            return TIMER_TASK_COMPLETE;
+            return RETURN_OK;
         }
         wifi_util_dbg_print(WIFI_MON, "%s", buff);
         get_formatted_time(tmp);
@@ -1599,17 +1597,17 @@ int upload_client_telemetry_data(unsigned int vap_index)
     }
 
     if (monitor_param->radio_presence[radioIndex] == false) {
-        return TIMER_TASK_COMPLETE;
+        return RETURN_OK;
     }
     // update rapid reconnect time limit if changed
     if(vap_bss_info != NULL) {
-        monitor_param->bssid_data[i].ap_params.rapid_reconnect_threshold = vap_bss_info->rapidReconnThreshold;
+        monitor_param->bssid_data[vap_array_index].ap_params.rapid_reconnect_threshold = vap_bss_info->rapidReconnThreshold;
         wifi_util_dbg_print(WIFI_MON, "%s:rapidReconnThreshold:%d vapIndex:%d \n", __FUNCTION__, vap_bss_info->rapidReconnThreshold, vap_index);
     } else {
         wifi_util_error_print(WIFI_MON, "%s: wrong vapIndex:%d \n", __FUNCTION__, vap_index);
     }
 
-    return TIMER_TASK_COMPLETE;
+    return RETURN_OK;
 }
 
 void update_clientdiagdata(unsigned int num_devs, int vap_idx, sta_data_t *assoc_stats)
