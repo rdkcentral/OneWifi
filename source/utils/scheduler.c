@@ -489,13 +489,17 @@ static int scheduler_remove_complete_tasks(struct scheduler *sched)
 
     if (sched->num_tasks > 0) {
         tt = queue_peek(sched->timer_list, sched->index);
-        lp_id = tt->id;
-        lp_update_index = 1;
+        if(tt != NULL) {
+            lp_id = tt->id;
+            lp_update_index = 1;
+        }
     }
     if (sched->num_hp_tasks > 0) {
         tt = queue_peek(sched->high_priority_timer_list, sched->hp_index);
-        hp_id = tt->id;
-        hp_update_index = 1;
+        if(tt != NULL) {
+            hp_id = tt->id;
+            hp_update_index = 1;
+        }
     }
     for (i = 0; i < sched->num_tasks; i++) {
         tt = queue_peek(sched->timer_list, i);

@@ -3138,6 +3138,29 @@ int wifi_radio_operationParam_validation(wifi_hal_capability_t  *hal_cap, wifi_r
         if(ch_count == nchannels) {
             is_valid = true;
         }
+
+        //If radar was detected on the selected DFS channel, return error
+        if( (oper->channel >= 52  &&  oper->channel <=144) ) {
+            UINT inputChannelBlock = 0;
+            UINT firstChannelInBand = 36;
+            int blockStartChannel = 0;
+            UINT channelGap = 4;
+
+            inputChannelBlock = (oper->channel - firstChannelInBand)/(channelGap*nchannels);
+            blockStartChannel = firstChannelInBand + (inputChannelBlock*channelGap*nchannels);
+
+            for(i = 0; i < max_num_ch ; i++) {
+                if( blockStartChannel == oper->channel_map[i].ch_number ) {
+                    for(j = i; j < i+nchannels ; j++) {
+                        if(oper->channel_map[j].ch_state == CHAN_STATE_DFS_NOP_START) {
+                            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d Radar detected on this channel %d radio_index = %d\n",__func__, __LINE__, oper->channel,radio_index);
+                            return RETURN_ERR;
+                        }
+                    }
+                    break;
+                }
+            }
+        }
     } else { /*for 2.4GHz and 6GHz */
         for(i = 0;i < max_num_ch; i++) {
             (void)memcpy(&hal_cap_channel_val,
