@@ -135,6 +135,7 @@ typedef struct {
     neighscan_diag_cfg_t neighbor_scan_cfg;
     off_channel_param_t off_channel_cfg[MAX_NUM_RADIOS];
     bool                exit_monitor;
+    int last_scanned_channel[MAX_NUM_RADIOS];
 #ifdef CCSP_COMMON
     unsigned int        upload_period;
     unsigned int        current_poll_iter;
@@ -234,8 +235,8 @@ typedef int  (* validate_args_t)(wifi_mon_stats_args_t *args);
 typedef int  (* generate_stats_clctr_key_t)(wifi_mon_stats_args_t *args, char *key, size_t key_len);
 typedef int  (* generate_stats_provider_key_t)(wifi_mon_stats_config_t *config, char *key, size_t key_len);
 typedef int  (* execute_stats_api_t)(wifi_mon_stats_args_t *args, wifi_monitor_t *mon_data, unsigned long task_interval_ms);
-typedef int  (* copy_stats_to_mon_cache_t)(wifi_mon_stats_args_t *args, wifi_monitor_t *mon_cache, void *stats, unsigned int stat_array_size);
 typedef int  (* get_stats_from_mon_cache_t)(wifi_mon_stats_args_t *args, void **stats, unsigned int *stat_array_size, wifi_monitor_t *mon_cache);
+typedef int  (* update_collector_args_t)(void *collector_elem);
 
 //New Monitor Implementation
 typedef struct {
@@ -249,6 +250,7 @@ typedef struct {
     generate_stats_provider_key_t generate_stats_provider_key;
     execute_stats_api_t   execute_stats_api;
     get_stats_from_mon_cache_t copy_stats_from_cache;
+    update_collector_args_t update_collector_args;
 } wifi_mon_stats_descriptor_t;
 
 typedef struct {
@@ -320,5 +322,12 @@ int generate_assoc_client_clctr_stats_key(wifi_mon_stats_args_t *args, char *key
 int generate_assoc_client_provider_stats_key(wifi_mon_stats_config_t *config, char *key_str, size_t key_len);
 int execute_assoc_client_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *mon_data, unsigned long task_interval_ms);
 int copy_assoc_client_stats_from_cache(wifi_mon_stats_args_t *args, void **stats, unsigned int *stat_array_size, wifi_monitor_t *mon_cache);
+
+/*Radio Scan*/
+int validate_radio_scan_args(wifi_mon_stats_args_t *args);
+int generate_radio_scan_clctr_stats_key(wifi_mon_stats_args_t *args, char *key_str, size_t key_len);
+int generate_radio_scan_provider_stats_key(wifi_mon_stats_config_t *config, char *key_str, size_t key_len);
+int execute_radio_scan_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *mon_data, unsigned long task_interval_ms);
+int update_radio_scan_collector_args(void *collector_elem);
 
 #endif	//_WIFI_MON_H_

@@ -230,6 +230,7 @@ typedef enum {
     mon_stats_type_neighbor_stats,
     mon_stats_type_associated_device_stats,
     mon_stats_type_radio_diagnostic_stats,
+    mon_stats_type_radio_scan,
     mon_stats_type_max
 } wifi_mon_stats_type_t;
 

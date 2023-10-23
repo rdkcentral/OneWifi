@@ -2356,6 +2356,7 @@ void config_radio_channel_util(wifi_monitor_data_t *data)
     whix_common_config_to_monitor_queue(data, true);
 
     data->u.mon_stats_config.data_type = mon_stats_type_radio_channel_stats;
+    data->u.mon_stats_config.args.scan_mode = WIFI_RADIO_SCAN_MODE_ONCHAN;
     /* Request to get channel utilization */
     data->u.mon_stats_config.args.app_info = whix_app_event_type_chan_util;
     for (radioIndex = 0; radioIndex < getNumberRadios(); radioIndex++) {
@@ -2375,6 +2376,7 @@ void config_radio_channel_stats(wifi_monitor_data_t *data)
 
     /* Request to collect other channel stats */
     data->u.mon_stats_config.data_type = mon_stats_type_radio_channel_stats;
+    data->u.mon_stats_config.args.scan_mode = WIFI_RADIO_SCAN_MODE_ONCHAN;
     data->u.mon_stats_config.args.app_info = whix_app_event_type_chan_stats;
 
     //for each vap push the event to monitor queue

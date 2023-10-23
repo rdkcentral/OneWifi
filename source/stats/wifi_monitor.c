@@ -1586,7 +1586,7 @@ int get_neighbor_scan_results()
         }
         memset(&args, 0, sizeof(wifi_mon_stats_args_t));
         args.radio_index = rIdx;
-        copy_neighborstats_to_cache(&args);
+        execute_neighbor_ap_stats_api(&args, monitor_param, 0);
         monitor_param->neighbor_scan_cfg.ResultCount += monitor_param->neighbor_scan_cfg.resultCountPerRadio[rIdx];
     }
     monitor_param->neighbor_scan_cfg.ResultCount = (monitor_param->neighbor_scan_cfg.ResultCount > MAX_NEIGHBOURS) ? MAX_NEIGHBOURS : monitor_param->neighbor_scan_cfg.ResultCount;
@@ -5217,7 +5217,7 @@ int collector_execute_task(void *arg)
     wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
 
     wifi_util_dbg_print(WIFI_MON, "%s : %d Executing collector task key : %s\n",__func__,__LINE__, elem->key);
-    if (elem->stat_desc->execute_stats_api(elem->args, mon_data, elem->collector_task_interval_ms) != RETURN_OK) {
+    if (elem->stat_desc->execute_stats_api == NULL || elem->stat_desc->execute_stats_api(elem->args, mon_data, elem->collector_task_interval_ms) != RETURN_OK) {
         wifi_util_error_print(WIFI_MON, "%s : %d collector execution failed for %s\n",__func__,__LINE__, elem->key);
         return RETURN_ERR;
     }
@@ -5237,7 +5237,7 @@ int provider_execute_task(void *arg)
     wifi_provider_response_t *response = NULL;
 
     wifi_util_dbg_print(WIFI_MON, "%s : %d Executing provider task key : %s\n",__func__,__LINE__, elem->key);
-    if (elem->stat_desc->copy_stats_from_cache(&elem->mon_stats_config->args, &stat_pointer, &stat_array_size, mon_data) != RETURN_OK) {
+    if (elem->stat_desc->copy_stats_from_cache == NULL || elem->stat_desc->copy_stats_from_cache(&elem->mon_stats_config->args, &stat_pointer, &stat_array_size, mon_data) != RETURN_OK) {
         wifi_util_error_print(WIFI_MON, "%s : %d provider execution failed for %s\n",__func__,__LINE__, elem->key);
         return RETURN_ERR;
     }
@@ -5297,6 +5297,11 @@ wifi_mon_collector_element_t * coordinator_create_collector_elem(wifi_mon_stats_
 {
     wifi_mon_collector_element_t *collector_elem = NULL;
 
+    if (stat_desc->generate_stats_clctr_key == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: stat_desc->generate_stats_clctr_key is NULL\n", __func__,__LINE__);
+        return NULL;
+    }
+
     collector_elem = (wifi_mon_collector_element_t *)calloc(1, sizeof(wifi_mon_collector_element_t));
     if (collector_elem == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d: calloc failed for collector elem\n", __func__,__LINE__);
@@ -5323,6 +5328,11 @@ wifi_mon_collector_element_t * coordinator_create_collector_elem(wifi_mon_stats_
 wifi_mon_provider_element_t  *coordinator_create_provider_elem(wifi_mon_stats_config_t * stats_config, wifi_mon_stats_descriptor_t *stat_desc)
 {
     wifi_mon_provider_element_t *provider_elem = NULL;
+
+    if (stat_desc->generate_stats_provider_key == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: stat_desc->generate_stats_provider_key is NULL\n", __func__,__LINE__);
+        return NULL;
+    }
 
     provider_elem = (wifi_mon_provider_element_t *)calloc(1, sizeof(wifi_mon_provider_element_t));
     if (provider_elem == NULL) {
@@ -5406,7 +5416,12 @@ int coordinator_create_task(wifi_mon_collector_element_t **collector_elem, wifi_
     }
 
     hash_map_put((*collector_elem)->provider_list, strdup(provider_elem->key), provider_elem);
-    coordinator_create_provider_task(provider_elem);
+
+    if (stat_desc->copy_stats_from_cache != NULL) {
+        coordinator_create_provider_task(provider_elem);
+    } else {
+        provider_elem->provider_task_sched_id = 0;
+    }
 
     return RETURN_OK;
 }
@@ -5417,6 +5432,11 @@ int collector_task_update(wifi_mon_collector_element_t *collector_elem, unsigned
 
     collector_elem->collector_task_interval_ms = *new_collector_interval;
     wifi_util_info_print(WIFI_MON, "%s:%d: New collector interval : %d for key : %s\n", __func__,__LINE__, collector_elem->collector_task_interval_ms, collector_elem->key);
+
+    if (collector_elem->stat_desc->update_collector_args != NULL) {
+        collector_elem->stat_desc->update_collector_args((void*)collector_elem);
+    }
+
     scheduler_update_timer_task_interval(mon_data->sched, collector_elem->collector_task_sched_id,  collector_elem->collector_task_interval_ms);
     return RETURN_OK;
 }
@@ -5427,7 +5447,9 @@ int provider_task_update(wifi_mon_provider_element_t *provider_elem, unsigned lo
     provider_elem->provider_task_interval_ms = *new_provider_interval;
 
     wifi_util_info_print(WIFI_MON, "%s:%d: New Provider interval : %d for key : %s\n", __func__,__LINE__, provider_elem->provider_task_interval_ms, provider_elem->key);
-    scheduler_update_timer_task_interval(mon_data->sched, provider_elem->provider_task_sched_id, provider_elem->provider_task_interval_ms);
+    if (provider_elem->provider_task_sched_id != 0) {
+        scheduler_update_timer_task_interval(mon_data->sched, provider_elem->provider_task_sched_id, provider_elem->provider_task_interval_ms);
+    }
 
     return RETURN_OK;
 }
@@ -5453,7 +5475,9 @@ int coordinator_update_task(wifi_mon_collector_element_t *collector_elem, wifi_m
     if (provider_elem == NULL) {
         provider_elem = dup_provider_elem;
         hash_map_put(collector_elem->provider_list, strdup(provider_elem->key), provider_elem);
-        coordinator_create_provider_task(provider_elem);
+        if (collector_elem->stat_desc->copy_stats_from_cache != NULL) {
+            coordinator_create_provider_task(provider_elem);
+        }
     } else {
         memcpy(provider_elem->mon_stats_config, dup_provider_elem->mon_stats_config, sizeof(wifi_mon_stats_config_t));
         provider_task_update(provider_elem, &dup_provider_elem->provider_task_interval_ms);
@@ -5481,7 +5505,9 @@ int coordinator_stop_task(wifi_mon_collector_element_t **collector_elem, wifi_mo
         return RETURN_OK;
     } else {
         wifi_util_dbg_print(WIFI_MON, "%s:%d: remove provider task key : %s\n", __func__,__LINE__, provider_elem->key);
-        scheduler_cancel_timer_task(mon_data->sched, provider_elem->provider_task_sched_id);
+        if (provider_elem->provider_task_sched_id != 0) {
+            scheduler_cancel_timer_task(mon_data->sched, provider_elem->provider_task_sched_id);
+        }
         hash_map_remove((*collector_elem)->provider_list, key);
         coordinator_free_provider_elem(&provider_elem);
         count = hash_map_count((*collector_elem)->provider_list);
@@ -5526,7 +5552,8 @@ int coordinator_check_stats_config(wifi_mon_stats_config_t *mon_stats_config)
     wifi_mon_stats_descriptor_t *stat_desc = NULL;
 
     if (stats_common_args_validation(mon_stats_config) != RETURN_OK) {
-        wifi_util_error_print(WIFI_MON, "%s:%d: common args validation failed\n", __func__,__LINE__);
+        wifi_util_error_print(WIFI_MON, "%s:%d: common args validation failed. stats_type %d  interval_ms %d from app %d\n", __func__,__LINE__,
+                                    mon_stats_config->data_type, mon_stats_config->interval_ms, mon_stats_config->inst);
         return RETURN_ERR;
     }
 
@@ -5537,7 +5564,8 @@ int coordinator_check_stats_config(wifi_mon_stats_config_t *mon_stats_config)
     }
 
     if (stat_desc->validate_args(&mon_stats_config->args) != RETURN_OK) {
-        wifi_util_error_print(WIFI_MON, "%s:%d: args validation failed for stats_type %d from app %d\n", __func__,__LINE__, mon_stats_config->data_type, mon_stats_config->inst);
+        wifi_util_error_print(WIFI_MON, "%s:%d: args validation failed for stats_type %d from app %d\n", __func__,__LINE__,
+                                    mon_stats_config->data_type,mon_stats_config->inst);
         return RETURN_ERR;
     }
 

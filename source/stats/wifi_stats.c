@@ -27,7 +27,7 @@
 #include "wifi_monitor.h"
 #include "wifi_util.h"
 
-#define WIFI_STATS_NUM 4
+#define WIFI_STATS_NUM 5
 
 wifi_mon_stats_descriptor_t g_stats_descriptor[WIFI_STATS_NUM] = {
     {
@@ -37,6 +37,7 @@ wifi_mon_stats_descriptor_t g_stats_descriptor[WIFI_STATS_NUM] = {
         generate_radio_channel_provider_stats_key,
         execute_radio_channel_stats_api,
         copy_radio_channel_stats_from_cache,
+        NULL
     },
     {
         mon_stats_type_neighbor_stats,
@@ -45,6 +46,7 @@ wifi_mon_stats_descriptor_t g_stats_descriptor[WIFI_STATS_NUM] = {
         generate_neighbor_ap_provider_stats_key,
         execute_neighbor_ap_stats_api,
         copy_neighbor_ap_stats_from_cache,
+        NULL
     },
     {
         mon_stats_type_radio_diagnostic_stats,
@@ -53,6 +55,7 @@ wifi_mon_stats_descriptor_t g_stats_descriptor[WIFI_STATS_NUM] = {
         generate_radio_diagnostic_provider_stats_key,
         execute_radio_diagnostic_stats_api,
         copy_radio_diagnostic_stats_from_cache,
+        NULL
     },
     {
         mon_stats_type_associated_device_stats,
@@ -61,6 +64,16 @@ wifi_mon_stats_descriptor_t g_stats_descriptor[WIFI_STATS_NUM] = {
         generate_assoc_client_provider_stats_key,
         execute_assoc_client_stats_api,
         copy_assoc_client_stats_from_cache,
+        NULL
+    },
+    {
+        mon_stats_type_radio_scan,
+        validate_radio_scan_args,
+        generate_radio_scan_clctr_stats_key,
+        generate_radio_scan_provider_stats_key,
+        execute_radio_scan_stats_api,
+        NULL,
+        update_radio_scan_collector_args
     }
 };
 

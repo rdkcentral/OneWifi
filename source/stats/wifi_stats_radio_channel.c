@@ -271,13 +271,14 @@ int copy_radio_channel_stats_from_cache(wifi_mon_stats_args_t *args, void **stat
         return RETURN_ERR;
     }
 
+    wifi_radio_operationParam_t* radioOperation = getRadioOperationParam(args->radio_index);
+    if (radioOperation == NULL) {
+        wifi_util_error_print(WIFI_MON,"%s:%d NULL radioOperation pointer for radio : %d\n", __func__, __LINE__, args->radio_index);
+        return RETURN_ERR;
+    }
+
     if (args->channel_list.num_channels == 0) {
         chan_count = 1;
-        wifi_radio_operationParam_t* radioOperation = getRadioOperationParam(args->radio_index);
-        if (radioOperation == NULL) {
-            wifi_util_error_print(WIFI_MON,"%s:%d NULL radioOperation pointer for radio : %d\n", __func__, __LINE__, args->radio_index);
-            return RETURN_ERR;
-        }
 
         chan_data = (radio_chan_data_t *) calloc(chan_count, sizeof(radio_chan_data_t));
         if (chan_data == NULL) {
@@ -300,6 +301,10 @@ int copy_radio_channel_stats_from_cache(wifi_mon_stats_args_t *args, void **stat
             return RETURN_ERR;
         }
         for (chan_count = 0; chan_count < args->channel_list.num_channels; chan_count++) {
+            if (args->scan_mode == WIFI_RADIO_SCAN_MODE_OFFCHAN && radioOperation->channel == (unsigned int) args->channel_list.channels_list[chan_count]) {
+                //skip current channel for offchan request
+                continue;
+            }
             radio_chan_data = (radio_chan_data_t *)get_wifi_channelStats_t(radio_chan_stats_data, args->channel_list.channels_list[chan_count]);
             if (radio_chan_data == NULL) {
                 free(chan_data);

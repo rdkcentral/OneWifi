@@ -28,8 +28,6 @@
 #include "wifi_monitor.h"
 #include "wifi_util.h"
 
-static int neigh_report_task_id[MAX_NUM_RADIOS] = {-1};
-#define NEIGHBOR_SCAN_RESULT_INTERVAL 5000 //5sec
 
 static void convert_stat_channels_to_string(const wifi_channels_list_t *chan_list, char *buff, size_t max_len)
 {
@@ -97,15 +95,24 @@ int generate_neighbor_ap_provider_stats_key(wifi_mon_stats_config_t *config, cha
     return RETURN_OK;
 }
 
-int copy_neighborstats_to_cache(void *arg)
+
+int execute_neighbor_ap_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *mon_data, unsigned long task_interval_ms)
 {
     wifi_neighbor_ap2_t *temp_neigh_stats = NULL;
     int ret = RETURN_OK;
     unsigned int ap_count = 0;
     wifi_neighbor_ap2_t *neigh_stats = NULL;
-    wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
     neighscan_diag_cfg_t *neighscan_stats_data = NULL;
-    wifi_mon_stats_args_t *args = arg;
+
+    if (args == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d input arguments are NULL args : %p\n",__func__,__LINE__, args);
+        return RETURN_ERR;
+    }
+
+    if (mon_data->radio_presence[args->radio_index] == false) {
+        wifi_util_info_print(WIFI_MON, "%s:%d radio_presence is false for radio : %d\n",__func__,__LINE__, args->radio_index);
+        return RETURN_OK;
+    }
 
 #if CCSP_WIFI_HAL
     ret = wifi_getNeighboringWiFiStatus(args->radio_index, &neigh_stats, &ap_count);
@@ -133,47 +140,6 @@ int copy_neighborstats_to_cache(void *arg)
         free(temp_neigh_stats);
         temp_neigh_stats = NULL;
     }
-
-    return RETURN_OK;
-}
-
-
-int execute_neighbor_ap_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *mon_data, unsigned long task_interval_ms)
-{
-    int ret = RETURN_OK;
-#if CCSP_WIFI_HAL
-    wifi_neighborScanMode_t scan_mode = WIFI_RADIO_SCAN_MODE_FULL;
-    unsigned int stat_array_size = 0;
-    wifi_radio_operationParam_t *wifi_radio_oper_param = NULL;
-    unsigned int private_vap_index;
-#endif
-
-    if (args == NULL) {
-        wifi_util_error_print(WIFI_MON, "%s:%d input arguments are NULL args : %p\n",__func__,__LINE__, args);
-        return RETURN_ERR;
-    }
-
-    if (mon_data->radio_presence[args->radio_index] == false) {
-        wifi_util_info_print(WIFI_MON, "%s:%d radio_presence is false for radio : %d\n",__func__,__LINE__, args->radio_index);
-        return RETURN_OK;
-    }
-
-#if CCSP_WIFI_HAL
-    stat_array_size = args->channel_list.num_channels;
-    wifi_radio_oper_param = (wifi_radio_operationParam_t *)get_wifidb_radio_map(args->radio_index);
-    (wifi_radio_oper_param->band == WIFI_FREQUENCY_6_BAND) ? (args->dwell_time=110) : args->dwell_time;
-
-    private_vap_index = getPrivateApFromRadioIndex(args->radio_index);
-
-    ret = wifi_startNeighborScan(private_vap_index, scan_mode, args->dwell_time, stat_array_size, (unsigned int *)args->channel_list.channels_list);
-#endif
-    if (ret != RETURN_OK) {
-        wifi_util_error_print(WIFI_MON, "%s : %d  Failed to get Neighbor scan for index %d\n",__func__,__LINE__, args->radio_index);
-        return RETURN_ERR;
-    }
-
-    scheduler_add_timer_task(mon_data->sched, FALSE, &neigh_report_task_id[args->radio_index], copy_neighborstats_to_cache, args,
-            NEIGHBOR_SCAN_RESULT_INTERVAL, 1);
 
     return RETURN_OK;
 }
