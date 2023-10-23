@@ -48,7 +48,6 @@ struct scheduler {
     unsigned int timer_list_age;                     /* low priority queue age */
 
     pthread_mutex_t lock;
-    struct timeval t_start;
 };
 
  /* Description:
@@ -137,7 +136,7 @@ int scheduler_update_timer_task_repetitions(struct scheduler *sched, int id, uns
   * Returns:
   *       Returns 0 on Success, -1 on Failure
   */
-int scheduler_execute(struct scheduler *sched, struct timeval t_start, unsigned int timeout_ms);
+int scheduler_execute(struct scheduler *sched, struct timespec t_start, unsigned int timeout_ms);
 
 /* Description:
   *      This API is used to free task's arg if such was allocated

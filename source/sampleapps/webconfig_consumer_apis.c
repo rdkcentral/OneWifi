@@ -608,9 +608,14 @@ webconfig_error_t webconfig_consumer_apply(webconfig_subdoc_t *doc, webconfig_su
 
 int init_queue(webconfig_consumer_t *consumer)
 {
-    gettimeofday(&consumer->last_signalled_time, NULL);
-    gettimeofday(&consumer->last_polled_time, NULL);
-    pthread_cond_init(&consumer->cond, NULL);
+    pthread_condattr_t cond_attr;
+
+    clock_gettime(CLOCK_MONOTONIC, &consumer->last_signalled_time);
+    clock_gettime(CLOCK_MONOTONIC, &consumer->last_polled_time);
+    pthread_condattr_init(&cond_attr);
+    pthread_condattr_setclock(&cond_attr, CLOCK_MONOTONIC);
+    pthread_cond_init(&consumer->cond, &cond_attr);
+    pthread_condattr_destroy(&cond_attr);
     pthread_mutex_init(&consumer->lock, NULL);
     consumer->poll_period = QUEUE_WIFI_CTRL_TASK_TIMEOUT;
 
@@ -3433,14 +3438,14 @@ void webconfig_consumer_sta_interface_name(rbusHandle_t handle, rbusEvent_t cons
 void consumer_queue_loop(webconfig_consumer_t *consumer)
 {
     struct timespec time_to_wait;
-    struct timeval tv_now;
+    struct timespec tv_now;
     time_t  time_diff;
     int rc;
     consumer_event_t *queue_data = NULL;
 
     pthread_mutex_lock(&consumer->lock);
     while (consumer->exit_consumer == false) {
-        gettimeofday(&tv_now, NULL);
+        clock_gettime(CLOCK_MONOTONIC, &tv_now);
         time_to_wait.tv_nsec = 0;
         time_to_wait.tv_sec = tv_now.tv_sec + consumer->poll_period;
 
@@ -3474,10 +3479,10 @@ void consumer_queue_loop(webconfig_consumer_t *consumer)
                 }
 
                 free(queue_data);
-                gettimeofday(&consumer->last_signalled_time, NULL);
+                clock_gettime(CLOCK_MONOTONIC, &consumer->last_signalled_time);
             }
         } else if (rc == ETIMEDOUT) {
-            gettimeofday(&consumer->last_polled_time, NULL);
+            clock_gettime(CLOCK_MONOTONIC, &consumer->last_polled_time);
             scheduler_execute(consumer->sched, consumer->last_polled_time, (consumer->poll_period*1000));
 
 #ifndef WEBCONFIG_TESTS_OVER_QUEUE

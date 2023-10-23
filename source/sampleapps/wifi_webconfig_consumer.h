@@ -111,8 +111,8 @@ typedef struct {
     pthread_mutex_t     lock;
     pthread_cond_t      cond;
     unsigned int        poll_period;
-    struct timeval      last_signalled_time;
-    struct timeval      last_polled_time;
+    struct timespec     last_signalled_time;
+    struct timespec     last_polled_time;
     struct scheduler    *sched;
     webconfig_t         webconfig;
     rbusHandle_t        rbus_handle;

@@ -1364,11 +1364,11 @@ void Psm_Db_Write(void *msg, ssp_event_subtype_t sub_type)
 void ssp_loop()
 {
     struct timespec time_to_wait;
-    struct timeval tv_now;
+    struct timespec tv_now;
     int rc;
     ssp_event_t *queue_data = NULL;
     while (g_ssp_loop.exit_loop == false) {
-        gettimeofday(&tv_now, NULL);
+        clock_gettime(CLOCK_MONOTONIC, &tv_now);
         time_to_wait.tv_nsec = 0;
         time_to_wait.tv_sec = tv_now.tv_sec + 30;
 
@@ -1439,7 +1439,12 @@ int push_data_to_ssp_queue(const void *msg, unsigned int len, ssp_event_type_t t
 }
 int ssp_loop_init()
 {
-    pthread_cond_init(&g_ssp_loop.cond, NULL);
+    pthread_condattr_t cond_attr;
+
+    pthread_condattr_init(&cond_attr);
+    pthread_condattr_setclock(&cond_attr, CLOCK_MONOTONIC);
+    pthread_cond_init(&g_ssp_loop.cond, &cond_attr);
+    pthread_condattr_destroy(&cond_attr);
     pthread_mutex_init(&g_ssp_loop.lock, NULL);
     g_ssp_loop.queue = queue_create();
     if (g_ssp_loop.queue == NULL) {

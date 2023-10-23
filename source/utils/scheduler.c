@@ -23,11 +23,12 @@
 #include <stdio.h>
 #include <unistd.h>
 #include "scheduler.h"
+#include "timespec_macro.h"
 
 struct timer_task {
     int id;                             /* identifier - used to delete */
-    struct timeval timeout;             /* Next timeout */
-    struct timeval interval;            /* Interval between execution */
+    struct timespec timeout;            /* Next timeout */
+    struct timespec interval;           /* Interval between execution */
     unsigned int repetitions;           /* number of configured repetitions */
     bool cancel;                        /* remove the task if true */
 
@@ -38,10 +39,9 @@ struct timer_task {
     void *arg;                          /* Argument to be passed to call back function */
 };
 
-static int scheduler_calculate_timeout(struct scheduler *sched, struct timeval *t_now);
+static int scheduler_calculate_timeout(struct scheduler *sched, struct timespec t_now);
 static int scheduler_get_number_tasks_pending(struct scheduler *sched, bool high_prio);
 static int scheduler_remove_complete_tasks(struct scheduler *sched);
-static int scheduler_update_timeout(struct scheduler *sched, struct timeval *t_diff);
 
 struct scheduler * scheduler_init(void)
 {
@@ -98,22 +98,23 @@ int scheduler_add_timer_task(struct scheduler *sched, bool high_prio, int *id,
 {
     struct timer_task *tt;
     static int new_id = 0;
+    struct
+    {
+        queue_t *timer_list;
+        unsigned int *num_tasks;
+    } sched_queue;
 
     if (sched == NULL || cb == NULL) {
         return -1;
     }
-    pthread_mutex_lock(&sched->lock);
     tt = (struct timer_task *) malloc(sizeof(struct timer_task));
     if (tt == NULL)
     {
-        pthread_mutex_unlock(&sched->lock);
         return -1;
     }
-    new_id++;
-    tt->id = new_id;
-    timerclear(&(tt->timeout));
+    timespecclear(&(tt->timeout));
     tt->interval.tv_sec = (interval_ms / 1000);
-    tt->interval.tv_usec = (interval_ms % 1000) * 1000;
+    tt->interval.tv_nsec = ((interval_ms % 1000) * 1000 * 1000);
     tt->repetitions = repetitions;
     tt->cancel = false;
     tt->execute = false;
@@ -121,17 +122,24 @@ int scheduler_add_timer_task(struct scheduler *sched, bool high_prio, int *id,
     tt->timer_call_back = cb;
     tt->arg = arg;
 
-    if (high_prio == true) {
-        queue_push(sched->high_priority_timer_list, tt);
-        sched->num_hp_tasks++;
+    if (high_prio) {
+        sched_queue.timer_list = sched->high_priority_timer_list;
+        sched_queue.num_tasks = &sched->num_hp_tasks;
     } else {
-        queue_push(sched->timer_list, tt);
-        sched->num_tasks++;
+        sched_queue.timer_list = sched->timer_list;
+        sched_queue.num_tasks = &sched->num_tasks;
     }
+
+    pthread_mutex_lock(&sched->lock);
+    new_id++;
+    tt->id = new_id;
+    queue_push(sched_queue.timer_list, tt);
+    (*sched_queue.num_tasks)++;
+    pthread_mutex_unlock(&sched->lock);
+
     if (id != NULL) {
         *id = tt->id;
     }
-    pthread_mutex_unlock(&sched->lock);
     return 0;
 }
 
@@ -209,7 +217,7 @@ int scheduler_update_timer_task_interval(struct scheduler *sched, int id, unsign
 {
     struct timer_task *tt;
     unsigned int i;
-    struct timeval new_timer, res;
+    struct timespec new_timer, res;
 
     if (sched == NULL) {
         return -1;
@@ -219,17 +227,17 @@ int scheduler_update_timer_task_interval(struct scheduler *sched, int id, unsign
         tt = queue_peek(sched->high_priority_timer_list, i);
         if (tt != NULL && tt->id == id) {
             new_timer.tv_sec = (interval_ms / 1000);
-            new_timer.tv_usec = (interval_ms % 1000) * 1000;
-            if(timercmp(&new_timer, &(tt->interval), >)) {
-                timersub(&new_timer, &(tt->interval), &res);
-                timeradd(&(tt->timeout), &res, &(tt->timeout));
+            new_timer.tv_nsec = ((interval_ms % 1000) * 1000 * 1000);
+            if(timespeccmp(&new_timer, &(tt->interval), >)) {
+                timespecsub(&new_timer, &(tt->interval), &res);
+                timespecadd(&(tt->timeout), &res, &(tt->timeout));
                 tt->interval.tv_sec = (interval_ms / 1000);
-                tt->interval.tv_usec = (interval_ms % 1000) * 1000;
-            } else if (timercmp(&new_timer, &(tt->interval), <)) {
-                timersub(&(tt->interval), &new_timer, &res);
-                timersub(&(tt->timeout), &res, &(tt->timeout));
+                tt->interval.tv_nsec = ((interval_ms % 1000) * 1000 * 100);
+            } else if (timespeccmp(&new_timer, &(tt->interval), <)) {
+                timespecsub(&(tt->interval), &new_timer, &res);
+                timespecsub(&(tt->timeout), &res, &(tt->timeout));
                 tt->interval.tv_sec = (interval_ms / 1000);
-                tt->interval.tv_usec = (interval_ms % 1000) * 1000;
+                tt->interval.tv_nsec = ((interval_ms % 1000) * 1000 * 1000);
             }
             pthread_mutex_unlock(&sched->lock);
             return 0;
@@ -239,17 +247,17 @@ int scheduler_update_timer_task_interval(struct scheduler *sched, int id, unsign
         tt = queue_peek(sched->timer_list, i);
         if (tt != NULL && tt->id == id) {
             new_timer.tv_sec = (interval_ms / 1000);
-            new_timer.tv_usec = (interval_ms % 1000) * 1000;
-            if(timercmp(&new_timer, &(tt->interval), >)) {
-                timersub(&new_timer, &(tt->interval), &res);
-                timeradd(&(tt->timeout), &res, &(tt->timeout));
+            new_timer.tv_nsec = ((interval_ms % 1000) * 1000 * 1000);
+            if(timespeccmp(&new_timer, &(tt->interval), >)) {
+                timespecsub(&new_timer, &(tt->interval), &res);
+                timespecadd(&(tt->timeout), &res, &(tt->timeout));
                 tt->interval.tv_sec = (interval_ms / 1000);
-                tt->interval.tv_usec = (interval_ms % 1000) * 1000;
-            } else if (timercmp(&new_timer, &(tt->interval), <)) {
-                timersub(&(tt->interval), &new_timer, &res);
-                timersub(&(tt->timeout), &res, &(tt->timeout));
+                tt->interval.tv_nsec = ((interval_ms % 1000) * 1000 * 1000);
+            } else if (timespeccmp(&new_timer, &(tt->interval), <)) {
+                timespecsub(&(tt->interval), &new_timer, &res);
+                timespecsub(&(tt->timeout), &res, &(tt->timeout));
                 tt->interval.tv_sec = (interval_ms / 1000);
-                tt->interval.tv_usec = (interval_ms % 1000) * 1000;
+                tt->interval.tv_nsec = ((interval_ms % 1000) * 1000 * 1000);
             }
             pthread_mutex_unlock(&sched->lock);
             return 0;
@@ -295,16 +303,14 @@ bool scheduler_timer_task_is_completed(struct scheduler *sched, int id)
     return (scheduler_find_timer_task(sched, id) ? false : true);
 }
 
-int scheduler_execute(struct scheduler *sched, struct timeval t_start, unsigned int timeout_ms)
+int scheduler_execute(struct scheduler *sched, struct timespec t_start, unsigned int timeout_ms)
 {
-    struct timeval t_now;
-    struct timeval timeout;
-    struct timeval interval;
+    struct timespec t_now;
+    struct timespec timeout;
+    struct timespec interval;
     int timeout_ms_margin;
     struct timer_task *tt;
     int ret;
-    static struct timeval last_t_start = {0,0};
-    struct timeval t_diff;
     int high_priority_pending_tasks;
     int low_priority_pending_tasks;
 
@@ -312,37 +318,21 @@ int scheduler_execute(struct scheduler *sched, struct timeval t_start, unsigned 
         return -1;
     }
 
-
-    //detect system time change and update the timers
-    if (last_t_start.tv_sec != 0) {
-        t_diff.tv_sec = t_start.tv_sec - last_t_start.tv_sec;
-        t_diff.tv_usec = t_start.tv_usec - last_t_start.tv_usec;
-        if(t_diff.tv_usec < 0) {
-            t_diff.tv_usec = t_diff.tv_usec + 1000000;
-            t_diff.tv_sec = t_diff.tv_sec - 1;
-        }
-        if ( (unsigned int)((t_diff.tv_sec*1000) + (t_diff.tv_usec/1000)) > (timeout_ms*1000)) {
-            //system time changed
-            scheduler_update_timeout(sched, &t_diff);
-        }
-    }
-    last_t_start = t_start;
-
-    sched->t_start = t_start;
     t_now = t_start;
     /* return if reach 70% of the timeout */
     timeout_ms_margin = (timeout_ms*0.7);
     interval.tv_sec = (timeout_ms_margin / 1000);
-    interval.tv_usec = (timeout_ms_margin % 1000) * 1000;
-    timeradd(&t_start, &interval, &timeout);
+    interval.tv_nsec = ((timeout_ms_margin % 1000) * 1000 * 1000);
+    timespecadd(&t_start, &interval, &timeout);
+
+    pthread_mutex_lock(&sched->lock);
     scheduler_remove_complete_tasks(sched);
-    scheduler_calculate_timeout(sched, &t_now);
+    scheduler_calculate_timeout(sched, t_now);
 
     high_priority_pending_tasks = scheduler_get_number_tasks_pending(sched, true);
     low_priority_pending_tasks = scheduler_get_number_tasks_pending(sched, false);
 
-    pthread_mutex_lock(&sched->lock);
-    while (timercmp(&timeout, &t_now, >)) {
+    while (timespeccmp(&timeout, &t_now, >)) {
 
         if (high_priority_pending_tasks == 0 && low_priority_pending_tasks == 0)
         {
@@ -350,7 +340,7 @@ int scheduler_execute(struct scheduler *sched, struct timeval t_start, unsigned 
         }
         //dont starve low priority
         if (sched->timer_list_age < 5) {
-            while (high_priority_pending_tasks > 0 && timercmp(&timeout, &t_now, >)) {
+            while (high_priority_pending_tasks > 0 && timespeccmp(&timeout, &t_now, >)) {
                 if (sched->num_hp_tasks > 0) {
                     tt = queue_peek(sched->high_priority_timer_list, sched->hp_index);
                     if (tt != NULL && tt->execute == true) {
@@ -370,10 +360,10 @@ int scheduler_execute(struct scheduler *sched, struct timeval t_start, unsigned 
                         }
                     }
                 }
-                gettimeofday(&t_now, NULL);
+                clock_gettime(CLOCK_MONOTONIC, &t_now);
             }
         }
-        if (timercmp(&timeout, &t_now, <)) {
+        if (timespeccmp(&timeout, &t_now, <)) {
             if (low_priority_pending_tasks > 0) {
                 //dont starve low priority
                 sched->timer_list_age++;
@@ -401,7 +391,7 @@ int scheduler_execute(struct scheduler *sched, struct timeval t_start, unsigned 
                         }
                     }
                 }
-                gettimeofday(&t_now, NULL);
+                clock_gettime(CLOCK_MONOTONIC, &t_now);
             }
         }
     }
@@ -409,66 +399,32 @@ int scheduler_execute(struct scheduler *sched, struct timeval t_start, unsigned 
     return 0;
 }
 
-static int scheduler_update_timeout(struct scheduler *sched, struct timeval *t_diff)
-{
-    unsigned int i;
-    struct timer_task *tt;
-    struct timeval new_timeout;
-
-    if (sched == NULL || t_diff == NULL) {
-        return -1;
-    }
-    for (i = 0; i < sched->num_tasks; i++) {
-        tt = queue_peek(sched->timer_list, i);
-        if (tt != NULL) {
-            timeradd(&(tt->timeout), t_diff, &new_timeout);
-            tt->timeout = new_timeout;
-        }
-    }
-    for (i = 0; i < sched->num_hp_tasks; i++) {
-        tt = queue_peek(sched->high_priority_timer_list, i);
-        if (tt != NULL) {
-            timeradd(&(tt->timeout), t_diff, &new_timeout);
-            tt->timeout = new_timeout;
-        }
-    }
-    return 0;
-}
-
-static int scheduler_calculate_timeout(struct scheduler *sched, struct timeval *t_now)
+static int scheduler_calculate_timeout(struct scheduler *sched, struct timespec t_now)
 {
     unsigned int i;
     struct timer_task *tt;
 
-    if (sched == NULL || t_now == NULL) {
+    if (sched == NULL) {
         return -1;
     }
     for (i = 0; i < sched->num_tasks; i++) {
         tt = queue_peek(sched->timer_list, i);
-        if (tt != NULL && timercmp(t_now, &(tt->timeout), >)) {
+        if (tt != NULL && timespeccmp(&t_now, &(tt->timeout), >)) {
             if(tt->execute == true) {
                 printf("Error: **** Timer task expired again before previous execution to complete  !!!\n");
             }
-            if (tt->timeout.tv_sec == 0 && tt->timeout.tv_usec == 0) {
-                tt->execute = false;
-            } else {
-                tt->execute = true;
-            }
-            timeradd(t_now, &(tt->interval), &(tt->timeout));
+            tt->execute = timespecisset(&tt->timeout);
+            timespecadd(&t_now, &(tt->interval), &(tt->timeout));
         }
     }
     for (i = 0; i < sched->num_hp_tasks; i++) {
         tt = queue_peek(sched->high_priority_timer_list, i);
-        if (tt != NULL && timercmp(t_now, &(tt->timeout), >)) {
+        if (tt != NULL && timespeccmp(&t_now, &(tt->timeout), >)) {
             if(tt->execute == true) {
                 printf("Error: **** Timer task expired again before previous execution to complete (high priority) !!!\n");
             }
-            if (tt->timeout.tv_sec == 0 && tt->timeout.tv_usec == 0) {
-                tt->execute = false;
-            } else {
-                tt->execute = true;
-            }
-            timeradd(t_now, &(tt->interval), &(tt->timeout));
+            tt->execute = timespecisset(&tt->timeout);
+            timespecadd(&t_now, &(tt->interval), &(tt->timeout));
         }
     }
     return 0;

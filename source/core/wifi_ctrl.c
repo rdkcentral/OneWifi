@@ -309,7 +309,7 @@ bool is_sta_enabled(void)
 void ctrl_queue_loop(wifi_ctrl_t *ctrl)
 {
     struct timespec time_to_wait;
-    struct timeval tv_now;
+    struct timespec tv_now;
     time_t  time_diff;
     int rc = 0;
     wifi_event_t *event = NULL;
@@ -317,7 +317,7 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
     pthread_mutex_lock(&ctrl->lock);
     while (ctrl->exit_ctrl == false) {
 
-        gettimeofday(&tv_now, NULL);
+        clock_gettime(CLOCK_MONOTONIC, &tv_now);
         time_to_wait.tv_nsec = 0;
         time_to_wait.tv_sec = tv_now.tv_sec + ctrl->poll_period;
 
@@ -372,11 +372,11 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
 
                 destroy_wifi_event(event);
 
-                gettimeofday(&ctrl->last_signalled_time, NULL);
+                clock_gettime(CLOCK_MONOTONIC, &ctrl->last_signalled_time);
                 pthread_mutex_lock(&ctrl->lock);
             }
         } else if (rc == ETIMEDOUT) {
-            gettimeofday(&ctrl->last_polled_time, NULL);
+            clock_gettime(CLOCK_MONOTONIC, &ctrl->last_polled_time);
 
             /*
              * Using the below api, New timer tasks can be added to the scheduler
@@ -1200,6 +1200,7 @@ void channel_change_callback(wifi_channel_change_event_t radio_channel_param)
 int init_wifi_ctrl(wifi_ctrl_t *ctrl)
 {
     unsigned int i;
+    pthread_condattr_t cond_attr;
 
     ctrl->db_consolidated = (0 == access("/tmp/db_consolidated", F_OK));
 
@@ -1213,10 +1214,12 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
         return RETURN_ERR;
     }
     
-
-    gettimeofday(&ctrl->last_signalled_time, NULL);
-    gettimeofday(&ctrl->last_polled_time, NULL);
-    pthread_cond_init(&ctrl->cond, NULL);
+    clock_gettime(CLOCK_MONOTONIC, &ctrl->last_signalled_time);
+    clock_gettime(CLOCK_MONOTONIC, &ctrl->last_polled_time);
+    pthread_condattr_init(&cond_attr);
+    pthread_condattr_setclock(&cond_attr, CLOCK_MONOTONIC);
+    pthread_cond_init(&ctrl->cond, &cond_attr);
+    pthread_condattr_destroy(&cond_attr);
     pthread_mutexattr_init(&ctrl->attr);
     pthread_mutexattr_settype(&ctrl->attr, PTHREAD_MUTEX_RECURSIVE);
     pthread_mutex_init(&ctrl->lock, &ctrl->attr);

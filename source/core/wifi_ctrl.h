@@ -221,8 +221,8 @@ typedef struct wifi_ctrl {
     pthread_cond_t      cond;
     pthread_mutexattr_t attr;
     unsigned int        poll_period;
-    struct timeval      last_signalled_time;
-    struct timeval      last_polled_time;
+    struct timespec     last_signalled_time;
+    struct timespec     last_polled_time;
     struct scheduler    *sched;
     webconfig_t         webconfig;
     wifi_ctrl_webconfig_state_t webconfig_state;

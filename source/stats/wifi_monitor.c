@@ -59,6 +59,7 @@
 #endif // CCSP_COMMON
 #include <sched.h>
 #include "scheduler.h"
+#include "timespec_macro.h"
 
 #ifdef CCSP_COMMON
 #include <netinet/tcp.h>    //Provides declarations for tcp header
@@ -1642,14 +1643,13 @@ void *monitor_function  (void *data)
     char event_buff[16] = {0};
     wifi_monitor_t *proc_data;
     struct timespec time_to_wait;
-    struct timeval tv_now;
+    struct timespec tv_now;
     wifi_event_t *event;
     wifi_monitor_data_t        *event_data = NULL;
     int rc;
-    struct timeval t_start;
-    struct timeval interval;
-    struct timeval timeout;
-    timerclear(&t_start);
+    struct timespec t_start;
+    struct timespec interval;
+    timespecclear(&t_start);
 
     /* Send the event to ctrl queue to notify that monitor initialization is done */
     strncpy(event_buff, "Init completed", sizeof(event_buff)-1);
@@ -1661,14 +1661,11 @@ void *monitor_function  (void *data)
 
     pthread_mutex_lock(&proc_data->queue_lock);
     while (proc_data->exit_monitor == false) {
-        gettimeofday(&tv_now, NULL);
+        clock_gettime(CLOCK_MONOTONIC, &tv_now);
 
         interval.tv_sec = 0;
-        interval.tv_usec = MONITOR_RUNNING_INTERVAL_IN_MILLISEC * 1000;
-        timeradd(&t_start, &interval, &timeout);
-
-        time_to_wait.tv_sec = timeout.tv_sec;
-        time_to_wait.tv_nsec = timeout.tv_usec*1000;
+        interval.tv_nsec = MONITOR_RUNNING_INTERVAL_IN_MILLISEC * 1000 * 1000;
+        timespecadd(&t_start, &interval, &time_to_wait);
 
         rc = 0;
         if (queue_count(proc_data->queue) == 0) {
@@ -1756,13 +1753,13 @@ void *monitor_function  (void *data)
 
                 destroy_wifi_event(event);
 
-                gettimeofday(&proc_data->last_signalled_time, NULL);
+                clock_gettime(CLOCK_MONOTONIC, &proc_data->last_signalled_time);
                 pthread_mutex_lock(&proc_data->queue_lock);
             }
         } else if (rc == ETIMEDOUT) {
             pthread_mutex_unlock(&proc_data->queue_lock);
-            gettimeofday(&t_start, NULL);
-            scheduler_execute(g_monitor_module.sched, t_start, interval.tv_usec/1000);
+            clock_gettime(CLOCK_MONOTONIC, &t_start);
+            scheduler_execute(g_monitor_module.sched, t_start, interval.tv_nsec/(1000 * 1000));
             pthread_mutex_lock(&proc_data->queue_lock);
         } else {
             wifi_util_error_print(WIFI_MON,"%s:%d Monitor Thread exited with rc - %d",__func__,__LINE__,rc);
@@ -3104,6 +3101,7 @@ int init_wifi_monitor()
     unsigned int rad_ind = 0;
     wifi_mgr_t *mgr = get_wifimgr_obj();
     unsigned int total_radios = getNumberRadios();
+    pthread_condattr_t cond_attr;
 #ifdef CCSP_COMMON
     unsigned int uptimeval = 0;
     int rssi;
@@ -3178,11 +3176,14 @@ int init_wifi_monitor()
     }
 #endif // CCSP_COMMON
 
-    gettimeofday(&g_monitor_module.last_signalled_time, NULL);
+    clock_gettime(CLOCK_MONOTONIC, &g_monitor_module.last_signalled_time);
 #ifdef CCSP_COMMON
-    gettimeofday(&g_monitor_module.last_polled_time, NULL);
+    clock_gettime(CLOCK_MONOTONIC, &g_monitor_module.last_polled_time);
 #endif // CCSP_COMMON
-    pthread_cond_init(&g_monitor_module.cond, NULL);
+    pthread_condattr_init(&cond_attr);
+    pthread_condattr_setclock(&cond_attr, CLOCK_MONOTONIC);
+    pthread_cond_init(&g_monitor_module.cond, &cond_attr);
+    pthread_condattr_destroy(&cond_attr);
     pthread_mutex_init(&g_monitor_module.queue_lock, NULL);
     pthread_mutex_init(&g_monitor_module.data_lock, NULL);
 
@@ -4356,12 +4357,12 @@ wifi_actvie_msmt_t *get_active_msmt_data()
 
 unsigned long getCurrentTimeInMicroSeconds()
 {
-    struct timeval timer_usec;
+    struct timespec timer_usec;
     long long int timestamp_usec; /* timestamp in microsecond */
 
-    if (!gettimeofday(&timer_usec, NULL)) {
+    if (!clock_gettime(CLOCK_MONOTONIC, &timer_usec)) {
         timestamp_usec = ((long long int) timer_usec.tv_sec) * 1000000ll +
-          (long long int) timer_usec.tv_usec;
+          (long long int) (timer_usec.tv_nsec / 1000);
     } else {
         timestamp_usec = -1;
     }
@@ -4415,16 +4416,16 @@ int isVapEnabled (int wlanIndex)
 int WaitForDuration (int timeInMs)
 {
     struct timespec   ts;
-    struct timeval    tp;
-    pthread_cond_t      cond  = PTHREAD_COND_INITIALIZER;
+    pthread_condattr_t  cond_attr;
+    pthread_cond_t      cond;
     pthread_mutex_t     mutex = PTHREAD_MUTEX_INITIALIZER;
     int     ret;
 
-    gettimeofday(&tp, NULL);
-
-    /* Convert from timeval to timespec */
-    ts.tv_sec  = tp.tv_sec;
-    ts.tv_nsec = tp.tv_usec * 1000;
+    pthread_condattr_init(&cond_attr);
+    pthread_condattr_setclock(&cond_attr, CLOCK_MONOTONIC);
+    pthread_cond_init(&cond, &cond_attr);
+    pthread_condattr_destroy(&cond_attr);
+    clock_gettime(CLOCK_MONOTONIC, &ts);
 
     /* Add wait duration*/
     if ( timeInMs > 1000 ) {
@@ -5286,7 +5287,7 @@ int coordinator_create_provider_task(wifi_mon_provider_element_t *provider_elem)
 {
     wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
 
-    scheduler_add_timer_task(mon_data->sched, &provider_elem->mon_stats_config->task_priority, &provider_elem->provider_task_sched_id, provider_execute_task,
+    scheduler_add_timer_task(mon_data->sched, provider_elem->mon_stats_config->task_priority, &provider_elem->provider_task_sched_id, provider_execute_task,
             (void *)provider_elem, provider_elem->provider_task_interval_ms, 0);
 
     return RETURN_OK;

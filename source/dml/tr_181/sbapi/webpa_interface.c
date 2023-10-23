@@ -87,7 +87,7 @@ void print_b64_endcoded_buffer	(unsigned char *data, unsigned int size)
 static void *handle_parodus(void *arg)
 {
     struct timespec time_to_wait;
-    struct timeval tv_now;
+    struct timespec tv_now;
     int rc = -1, ret = 0;
     wrp_msg_t *wrp_msg ;
     webpa_interface_t *interface = (webpa_interface_t *)arg;
@@ -98,7 +98,7 @@ static void *handle_parodus(void *arg)
     pthread_detach(pthread_self());
 
     while (interface->thread_exit == false) {
-	gettimeofday(&tv_now, NULL);
+	clock_gettime(CLOCK_MONOTONIC, &tv_now);
 			
 	time_to_wait.tv_nsec = 0;
 	time_to_wait.tv_sec = tv_now.tv_sec + 120;
@@ -184,10 +184,14 @@ int initparodusTask()
     //Retry Backoff count shall start at c=2 & calculate 2^c - 1.
     int c = 2;
 	char *parodus_url = NULL;
+    pthread_condattr_t cond_attr;
 	
 	pthread_mutex_init(&webpa_interface.lock, NULL);
 	pthread_mutex_init(&webpa_interface.device_mac_mutex, NULL);
-	pthread_cond_init(&webpa_interface.cond, NULL);
+    pthread_condattr_init(&cond_attr);
+    pthread_condattr_setclock(&cond_attr, CLOCK_MONOTONIC);
+    pthread_cond_init(&webpa_interface.cond, &cond_attr);
+    pthread_condattr_destroy(&cond_attr);
 
 	memset(webpa_interface.deviceMAC, 0, 32);
 

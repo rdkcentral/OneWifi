@@ -80,8 +80,8 @@ typedef struct {
     pthread_t           id;
     bool                exit_data_plane;
     unsigned int        poll_period;
-    struct timeval      last_signalled_time;
-    struct timeval      last_polled_time;
+    struct timespec     last_signalled_time;
+    struct timespec     last_polled_time;
     wifi_8021x_t        module_8021x;
 #if DML_SUPPORT
     wifi_easy_connect_t module_easy_connect;

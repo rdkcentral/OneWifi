@@ -141,10 +141,10 @@ typedef struct {
     unsigned int        current_poll_iter;
     instant_msmt_t      inst_msmt;
 #endif // CCSP_COMMON
-    struct timeval      last_signalled_time;
+    struct timespec     last_signalled_time;
     rssi_t              sta_health_rssi_threshold;
 #ifdef CCSP_COMMON
-    struct timeval      last_polled_time;
+    struct timespec     last_polled_time;
     int                 sysevent_fd;
     unsigned int        sysevent_token;
     ap_params_t         ap_params[MAX_VAP];

@@ -124,7 +124,7 @@ void *process_data_plane_function  (void *data)
 {
     wifi_data_plane_t *proc_data;
     struct timespec time_to_wait;
-    struct timeval tv_now;
+    struct timespec tv_now;
     wifi_data_plane_queue_data_t *queue_data;
     int rc, i, count, queue_offset = 0;
     time_t  time_diff;
@@ -135,7 +135,7 @@ void *process_data_plane_function  (void *data)
 
     while (proc_data->exit_data_plane == false) {
 	
-        gettimeofday(&tv_now, NULL);
+        clock_gettime(CLOCK_MONOTONIC, &tv_now);
 
         time_to_wait.tv_nsec = 0;
         time_to_wait.tv_sec = tv_now.tv_sec + proc_data->poll_period;
@@ -162,7 +162,7 @@ void *process_data_plane_function  (void *data)
             timeout_count = 0;*/
             //wifi_util_dbg_print(WIFI_MON, "%s:%d: Data plane timed out\n", __func__, __LINE__);
             process_timeout();
-            gettimeofday(&proc_data->last_polled_time, NULL);
+            clock_gettime(CLOCK_MONOTONIC, &proc_data->last_polled_time);
         }
 
         // dequeue data
@@ -200,7 +200,7 @@ void *process_data_plane_function  (void *data)
 
             queue_remove(proc_data->queue, (queue_count(proc_data->queue) - queue_offset - 1));
             free(queue_data);
-            gettimeofday(&proc_data->last_signalled_time, NULL);
+            clock_gettime(CLOCK_MONOTONIC, &proc_data->last_signalled_time);
 
         }
 
@@ -347,16 +347,20 @@ int init_wifi_data_plane()
     (defined(_XB6_PRODUCT_REQ_) && !defined(_XB8_PRODUCT_REQ_)) || \
     (defined(_CBR_PRODUCT_REQ_) && !(defined(_CBR2_PRODUCT_REQ_)) )
 
+    pthread_condattr_t cond_attr;
     pthread_attr_t attr;
     pthread_attr_t *attrp = NULL;
 
     init_8021x(&g_data_plane_module.module_8021x);
 
     g_data_plane_module.poll_period = 3;
-    gettimeofday(&g_data_plane_module.last_signalled_time, NULL);
-    gettimeofday(&g_data_plane_module.last_polled_time, NULL);
+    clock_gettime(CLOCK_MONOTONIC, &g_data_plane_module.last_signalled_time);
+    clock_gettime(CLOCK_MONOTONIC, &g_data_plane_module.last_polled_time);
 
-    pthread_cond_init(&g_data_plane_module.cond, NULL);
+    pthread_condattr_init(&cond_attr);
+    pthread_condattr_setclock(&cond_attr, CLOCK_MONOTONIC);
+    pthread_cond_init(&g_data_plane_module.cond, &cond_attr);
+    pthread_condattr_destroy(&cond_attr);
     pthread_mutex_init(&g_data_plane_module.lock, NULL);
 
     g_data_plane_module.queue = queue_create();

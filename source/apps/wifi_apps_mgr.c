@@ -45,12 +45,12 @@ void *app_detached_event_func(void *data)
     wifi_event_t *clone;
     wifi_app_t *app = (wifi_app_t *)data;
     struct timespec time_to_wait;
-    struct timeval tv_now;
+    struct timespec tv_now;
     time_t  time_diff;
 
     pthread_mutex_lock(&app->lock);
     while (app->exit_app == false) {
-        gettimeofday(&tv_now, NULL);
+        clock_gettime(CLOCK_MONOTONIC, &tv_now);
         time_to_wait.tv_nsec = 0;
         time_to_wait.tv_sec = tv_now.tv_sec + app->poll_period;
 
@@ -227,12 +227,16 @@ int app_deinit(wifi_app_t *app, unsigned int create_flag)
 int app_init(wifi_app_t *app, unsigned int create_flag)
 {
     if (create_flag & APP_DETACHED) {
+        pthread_condattr_t cond_attr;
 
-        pthread_cond_init(&app->cond, NULL);
+        pthread_condattr_init(&cond_attr);
+        pthread_condattr_setclock(&cond_attr, CLOCK_MONOTONIC);
+        pthread_cond_init(&app->cond, &cond_attr);
+        pthread_condattr_destroy(&cond_attr);
         pthread_mutex_init(&app->lock, NULL);
         app->poll_period = 1;
-        gettimeofday(&app->last_signalled_time, NULL);
-        gettimeofday(&app->last_polled_time, NULL);
+        clock_gettime(CLOCK_MONOTONIC, &app->last_signalled_time);
+        clock_gettime(CLOCK_MONOTONIC, &app->last_polled_time);
 
         app->queue = queue_create();
 

@@ -113,8 +113,12 @@ int start_simulator    ()
 {
     unsigned int i;
     simulator_state_t   *sim;
+    pthread_condattr_t cond_attr;
     
-    pthread_cond_init(&g_simulator.cond, NULL);
+    pthread_condattr_init(&cond_attr);
+    pthread_condattr_setclock(&cond_attr, CLOCK_MONOTONIC);
+    pthread_cond_init(&g_simulator.cond, &cond_attr);
+    pthread_condattr_destroy(&cond_attr);
     pthread_mutex_init(&g_simulator.lock, NULL);
     
     for (i = 0; i < SIM_NUMBER; i++) {
@@ -223,7 +227,7 @@ void *simulate_connect_disconnect(void *data)
     bool ret;
     struct sockaddr_un name;
     struct timespec time_to_wait;
-    struct timeval tv;
+    struct timespec tv;
     simulator_state_t   *state;
     wifi_tests_simulator_t *sim = (wifi_tests_simulator_t *)data;
     char buffer[256];
@@ -241,7 +245,7 @@ void *simulate_connect_disconnect(void *data)
     name.sun_path[sizeof (name.sun_path) - 1] = '\0';
     
     while (1) {
-        gettimeofday(&tv, NULL);
+        clock_gettime(CLOCK_MONOTONIC, &tv);
         time_to_wait.tv_nsec = 0;
         time_to_wait.tv_sec = tv.tv_sec + SIM_LOOP_TIMEOUT;
         pthread_mutex_lock(&sim->lock);
