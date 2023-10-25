@@ -5052,11 +5052,18 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         cfg.u.bss_info.bssMaxSta = 75;
 #endif
         memset(ssid, 0, sizeof(ssid));
+
+#ifdef CCSP_WIFI_HAL
         if (wifi_hal_get_default_ssid(ssid, vap_index) == 0) {
             strcpy(cfg.u.bss_info.ssid, ssid);
-        } else {
+
+        } else
+#else
+        {
            strcpy(cfg.u.bss_info.ssid, vap_name);
         }
+#endif // CCSP_WIFI_HAL
+
         memset(password, 0, sizeof(password));
         if (wifi_hal_get_default_keypassphrase(password,vap_index) == 0) {
             strcpy(cfg.u.bss_info.security.u.key.key, password);

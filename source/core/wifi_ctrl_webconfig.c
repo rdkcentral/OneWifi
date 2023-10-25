@@ -1002,6 +1002,12 @@ static bool is_vap_param_config_changed(wifi_vap_info_t *old, wifi_vap_info_t *n
         return true;
     }
 
+#ifndef CCSP_COMMON
+    if ((rdk_old->exists | rdk_new->exists) == false) {
+        return false;
+    }
+#endif // CCSP_COMMON
+
     if (IS_CHANGED(old->vap_index, new->vap_index) ||
             IS_STR_CHANGED(old->vap_name, new->vap_name, sizeof(wifi_vap_name_t)) ||
             IS_CHANGED(old->radio_index, new->radio_index) ||
