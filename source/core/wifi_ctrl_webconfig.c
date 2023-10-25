@@ -328,13 +328,13 @@ static void webconfig_ow_core_configure_radio_vaps(wifi_ctrl_t *ctrl, int radio_
         }
 
         strncpy(tgt_vap_map.vap_array[0].vap_name, vap_name, sizeof(wifi_vap_name_t));
+        start_wifi_sched_timer(vap->vap_index, ctrl, wifi_vap_sched);
 
         if (svc->update_fn(svc, radio_index, &tgt_vap_map, &tgt_rdk_vap_info) != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL, "%s:%d: failed to update DB for [%s]\n", __func__, __LINE__, vap->vap_name);
             continue;
         }
 
-        start_wifi_sched_timer(vap->vap_index, ctrl, wifi_vap_sched);
         memcpy(vap, &tgt_vap_map.vap_array[0], sizeof(wifi_vap_info_t));
     }
 }
@@ -1265,7 +1265,12 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
                     strncpy(vap_name,arg_vif_cb.vap_info->vap_name,sizeof(vap_name));
                     strncpy(arg_vif_cb.vap_info->vap_name,if_name,sizeof(wifi_vap_name_t));
                 }
-                ret = webconfig_set_ow_core_vif_config(&arg_vif_cb);
+
+                if ((ret = webconfig_set_ow_core_vif_config(&arg_vif_cb)) != RETURN_OK) {
+                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: failed to apply\n", __func__, __LINE__);
+                    return RETURN_ERR;
+                }
+
                 if (ctrl->dev_type == dev_subtype_pod) {
                     strncpy(arg_vif_cb.vap_info->vap_name,vap_name,sizeof(wifi_vap_name_t));
                 }
@@ -1273,13 +1278,14 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
             } else {
                 wifi_util_dbg_print(WIFI_WEBCONFIG,"[%s]:WIFI RFC OW CORE THREAD DISABLED \r\n",__FUNCTION__);
             }
-            if (ret != RETURN_OK || svc->update_fn(svc, tgt_radio_idx, &tgt_vap_map,
-                    &tgt_rdk_vap_info) != RETURN_OK) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: failed to apply\n", __func__, __LINE__);
-                return RETURN_ERR;
-            }
 
             start_wifi_sched_timer(vap_info->vap_index, ctrl, wifi_vap_sched);
+
+            if (svc->update_fn(svc, tgt_radio_idx, &tgt_vap_map, &tgt_rdk_vap_info) != RETURN_OK) {
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: failed to apply\n", __func__, __LINE__);
+                stop_wifi_sched_timer(vap_info->vap_index, ctrl, wifi_vap_sched);
+                return RETURN_ERR;
+            }
 
 #if CCSP_COMMON
             memset(update_status, 0, sizeof(update_status));
