@@ -2350,150 +2350,6 @@ void process_sta_trigger_disconnection(unsigned int disconnection_type)
     return;
 }
 
-void whix_route(wifi_event_route_t *route)
-{
-    memset(route, 0, sizeof(wifi_event_route_t));
-    route->dst = wifi_sub_component_mon;
-    route->u.inst_bit_map = wifi_app_inst_whix;
-}
-
-void whix_common_config_to_monitor_queue(wifi_monitor_data_t *data, bool is_channel_util)
-{
-    data->u.mon_stats_config.inst = wifi_app_inst_whix;
-
-    wifi_global_param_t *global_param = get_wifidb_wifi_global_param();
-    if ((global_param != NULL) && (global_param->whix_chutility_loginterval != 0) && (global_param->whix_log_interval != 0)) {
-        if (is_channel_util) {
-            data->u.mon_stats_config.interval_ms = (global_param->whix_chutility_loginterval) * 1000;
-        } else {
-            data->u.mon_stats_config.interval_ms = (global_param->whix_log_interval) * 1000;
-        }
-    } else {
-        if (is_channel_util) {
-            data->u.mon_stats_config.interval_ms = CHAN_UTIL_INTERVAL_MS;
-        } else {
-            data->u.mon_stats_config.interval_ms = TELEMETRY_UPDATE_INTERVAL_MS;
-        }
-    }
-    wifi_util_dbg_print(WIFI_APPS, "%s:%d Interval is %lu\n", __func__, __LINE__, data->u.mon_stats_config.interval_ms); 
-}
-
-void config_radio_channel_util(wifi_monitor_data_t *data)
-{
-    unsigned int radioIndex = 0;
-    wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
-    wifi_event_route_t route;
-    whix_route(&route);
-    whix_common_config_to_monitor_queue(data, true);
-
-    data->u.mon_stats_config.data_type = mon_stats_type_radio_channel_stats;
-    data->u.mon_stats_config.args.scan_mode = WIFI_RADIO_SCAN_MODE_ONCHAN;
-    /* Request to get channel utilization */
-    data->u.mon_stats_config.args.app_info = whix_app_event_type_chan_util;
-    for (radioIndex = 0; radioIndex < getNumberRadios(); radioIndex++) {
-        data->u.mon_stats_config.args.radio_index = wifi_mgr->radio_config[radioIndex].vaps.radio_index;
-        wifi_util_error_print(WIFI_APPS, "%s:%d pushing the event to collect chan_util\n", __func__, __LINE__);
-        push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
-    }
-}
-
-void config_radio_channel_stats(wifi_monitor_data_t *data)
-{
-    unsigned int radioIndex = 0;
-    wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
-    wifi_event_route_t route;
-    whix_route(&route);
-    whix_common_config_to_monitor_queue(data, false);
-
-    /* Request to collect other channel stats */
-    data->u.mon_stats_config.data_type = mon_stats_type_radio_channel_stats;
-    data->u.mon_stats_config.args.scan_mode = WIFI_RADIO_SCAN_MODE_ONCHAN;
-    data->u.mon_stats_config.args.app_info = whix_app_event_type_chan_stats;
-
-    //for each vap push the event to monitor queue
-    for (radioIndex = 0; radioIndex < getNumberRadios(); radioIndex++) {
-        data->u.mon_stats_config.args.radio_index = wifi_mgr->radio_config[radioIndex].vaps.radio_index;
-        wifi_util_error_print(WIFI_APPS, "%s:%d pushing the event\n", __func__, __LINE__);
-        push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
-    }
-}
-
-void config_associated_device_stats(wifi_monitor_data_t *data)
-{
-    unsigned int radio_index;
-    unsigned int vapArrayIndex = 0;
-    wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
-    wifi_event_route_t route;
-    whix_route(&route);
-    whix_common_config_to_monitor_queue(data, false);
-
-    data->u.mon_stats_config.data_type = mon_stats_type_associated_device_stats;
-    data->u.mon_stats_config.args.app_info = whix_app_event_type_assoc_dev_stats;
-
-    for (radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
-        //for each vap push the event to monitor queue
-        for (vapArrayIndex = 0; vapArrayIndex < getNumberVAPsPerRadio(radio_index); vapArrayIndex++) {
-            data->u.mon_stats_config.args.vap_index = wifi_mgr->radio_config[radio_index].vaps.rdk_vap_array[vapArrayIndex].vap_index;
-            if (!isVapSTAMesh(data->u.mon_stats_config.args.vap_index)) {
-                push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
-            }
-        }
-    }
-}
-
-void config_associated_device_diagnostics(wifi_monitor_data_t *data)
-{
-    unsigned int radio_index;
-    unsigned int vapArrayIndex = 0;
-    wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
-    wifi_event_route_t route;
-    whix_route(&route);
-    whix_common_config_to_monitor_queue(data, false);
-
-    data->u.mon_stats_config.data_type = mon_stats_type_associated_device_stats;
-    data->u.mon_stats_config.args.app_info = whix_app_event_type_assoc_dev_diagnostics;
-    data->u.mon_stats_config.interval_ms = ASSOCIATED_DEVICE_DIAG_INTERVAL_MS;
-
-    for (radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
-        data->u.mon_stats_config.args.radio_index = radio_index;
-        //for each vap push the event to monitor queue
-        for (vapArrayIndex = 0; vapArrayIndex < getNumberVAPsPerRadio(radio_index); vapArrayIndex++) {
-            data->u.mon_stats_config.args.vap_index = wifi_mgr->radio_config[radio_index].vaps.rdk_vap_array[vapArrayIndex].vap_index;
-            if (!isVapSTAMesh(data->u.mon_stats_config.args.vap_index)) {
-                push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
-            }
-        }
-    }
-}
-
-int push_whix_config_event_to_monitor_queue(wifi_mon_stats_request_state_t state)
-{
-    // Send appropriate configs to monitor queue(stats, radio)
-    wifi_monitor_data_t *data;
-    wifi_util_error_print(WIFI_APPS, "Entering %s:%d\n", __func__, __LINE__);
-    data = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
-    if (data == NULL) {
-        wifi_util_error_print(WIFI_APPS,"%s:%d data allocation failed\r\n", __func__, __LINE__);
-        return RETURN_ERR;
-    }
-    memset(data, 0, sizeof(wifi_monitor_data_t));
-    data->u.mon_stats_config.req_state = state;
-
-    config_radio_channel_stats(data);
-    config_radio_channel_util(data);
-
-    memset(data, 0, sizeof(wifi_monitor_data_t));
-    data->u.mon_stats_config.req_state = state;
-    config_associated_device_stats(data);
-    config_associated_device_diagnostics(data);
-
-    if (NULL != data) {
-        free(data);
-        data = NULL;
-    }
-    return RETURN_OK;
-}
-
 void process_channel_change_event(wifi_channel_change_event_t *ch_chg)
 {
     wifi_radio_operationParam_t *radio_params = NULL;
@@ -2869,11 +2725,6 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len, wifi_
             process_sta_trigger_disconnection(*(unsigned int *)data);
             break;
 
-        case wifi_event_type_notify_monitor_done:
-            /* Send the event to monitor queue */
-            push_whix_config_event_to_monitor_queue(mon_stats_request_state_start);
-            break;
-
         case wifi_event_type_managed_wifi_disable:
             process_managed_wifi_disable();
             break;
@@ -2978,9 +2829,7 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
     webconfig_subdoc_data_t data = {0};
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
     bool rfc_status;
-#if DML_SUPPORT
     wifi_event_t *wifi_event = NULL;
-#endif
     config = &ctrl->webconfig;
 
     switch (subtype) {
@@ -2997,7 +2846,6 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
 #if CCSP_COMMON
             apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, subtype, NULL);
 #endif // CCSP_COMMON
-#if DML_SUPPORT
             wifi_event = (wifi_event_t *)malloc(sizeof(wifi_event_t));
             if (wifi_event != NULL) {
                 memset(wifi_event, 0, sizeof(wifi_event_t));
@@ -3011,7 +2859,6 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
             } else {
                 wifi_util_error_print(WIFI_CTRL,"%s:%d NULL event pointer\n", __func__, __LINE__);
             }
-#endif //DML_SUPPORT
             webconfig_data_free(&data);
             break;
 

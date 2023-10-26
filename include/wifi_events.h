@@ -153,6 +153,8 @@ typedef enum {
     wifi_event_monitor_deauthenticate,
     wifi_event_monitor_start_inst_msmt,
     wifi_event_monitor_stop_inst_msmt,
+    wifi_event_monitor_started_active_msmt,
+    wifi_event_monitor_stop_active_msmt,
     wifi_event_monitor_stats_flag_change,
     wifi_event_monitor_radio_stats_flag_change,
     wifi_event_monitor_vap_stats_flag_change,

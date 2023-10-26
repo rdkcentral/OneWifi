@@ -364,10 +364,8 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
                 }
 
                 if (event->event_type != wifi_event_type_webconfig) {
-#if DML_SUPPORT
                     // now forward the event to apps manager
                     apps_mgr_event(&ctrl->apps_mgr, event);
-#endif
                 }
 
                 destroy_wifi_event(event);

@@ -91,12 +91,6 @@ extern "C" {
 
 #define DEFAULT_SOUNDING_DURATION_MS 2000
 
-#if SM_APP
-#define WIFI_APPS_NUM   8
-#else
-#define WIFI_APPS_NUM   7
-#endif
-
 #define CFG_ID_LEN             64
 typedef char stats_cfg_id_t[CFG_ID_LEN];
 
@@ -255,6 +249,7 @@ typedef struct {
     unsigned int            radio_index;
     unsigned int            vap_index;
     wifi_channels_list_t    channel_list;
+    unsigned char target_mac[MAC_ADDRESS_LENGTH];
     wifi_neighborScanMode_t scan_mode;
     int dwell_time; //survey_interval_ms
     unsigned int app_info; //This is respective specific variable. Can be used by app for internal event identification
@@ -769,6 +764,9 @@ typedef struct {
     struct active_msmt_data *sta_active_msmt_data;
     bool            connection_authorized;
     assoc_req_elem_t assoc_frame_data;
+#ifndef CCSP_WIFI_HAL
+    int             sleep_mode;
+#endif //CCSP_WIFI_HAL
 } sta_data_t;
 
 typedef enum {

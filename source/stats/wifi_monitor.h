@@ -20,10 +20,9 @@
 #ifndef	_WIFI_MON_H_
 #define	_WIFI_MON_H_
 
-#include "wifi_blaster.h"
 #include "collection.h"
 #include <math.h>
-
+#include "wifi_base.h"
 
 #ifndef WIFI_HAL_VERSION_3
 #define MAX_RADIOS  2
@@ -173,6 +172,7 @@ typedef struct {
     unsigned int csi_sched_interval;
 #endif // CCSP_COMMON
     bool radio_presence[MAX_NUM_RADIOS];
+    bool is_blaster_running;
 } wifi_monitor_t;
 
 typedef struct {
@@ -226,7 +226,6 @@ sta_data_t *get_stats_for_sta(unsigned int apIndex, mac_addr_t mac);
 
 wifi_monitor_t *get_wifi_monitor ();
 char *get_formatted_time(char *time);
-wifi_actvie_msmt_t *get_active_msmt_data();
 int init_wifi_monitor();
 int  getApIndexfromClientMac(char *check_mac);
 void update_ecomode_radios(void);

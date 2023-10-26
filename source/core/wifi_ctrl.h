@@ -30,16 +30,14 @@ extern "C" {
 #include "wifi_base.h"
 #include "wifi_db.h"
 #if DML_SUPPORT
-#include "wifi_blaster.h"
 #endif // DML_SUPPORT
 #include "vap_svc.h"
 #include "cJSON.h"
 #include "collection.h"
 #include "wifi_util.h"
 #include "wifi_webconfig.h"
-#if DML_SUPPORT
 #include "wifi_apps_mgr.h"
-#endif
+
 
 #define WIFI_WEBCONFIG_PRIVATESSID         1
 #define WIFI_WEBCONFIG_HOMESSID            2
@@ -245,9 +243,7 @@ typedef struct wifi_ctrl {
 #endif // DML_SUPPORT
     unsigned int        sta_tree_instance_num;
     vap_svc_t           ctrl_svc[vap_svc_type_max];
-#if CCSP_COMMON
     wifi_apps_mgr_t      apps_mgr;
-#endif
     rdk_dev_mode_type_t  network_mode; /* 0 - gateway, 1 - extender */
     dev_subtype_t        dev_type;
     bool                active_gw_check;

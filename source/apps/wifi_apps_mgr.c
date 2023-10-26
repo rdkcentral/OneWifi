@@ -245,13 +245,16 @@ int app_init(wifi_app_t *app, unsigned int create_flag)
         }
     }
 
+#ifdef CCSP_WIFI_HAL
     if (app->desc.mgmt_frame_hook_fn != NULL) {
         wifi_hal_register_frame_hook(app->desc.mgmt_frame_hook_fn);
     }
+#endif //CCSP_WIFI_HAL
 
     return RETURN_OK;
 }
 
+#ifdef CCSP_DML_SUPPORT
 int update_rfc_params(wifi_app_descriptor_t *descriptor)
 {
     if (descriptor == NULL) {
@@ -271,6 +274,7 @@ int update_rfc_params(wifi_app_descriptor_t *descriptor)
     }
     return 0;
 }
+#endif //CCSP_DML_SUPPORT
 
 int app_register(wifi_apps_mgr_t *apps_mgr, wifi_app_descriptor_t *descriptor)
 {
@@ -280,8 +284,9 @@ int app_register(wifi_apps_mgr_t *apps_mgr, wifi_app_descriptor_t *descriptor)
     if ((app = get_app_by_inst(apps_mgr, descriptor->inst)) != NULL) {
         return RETURN_OK;
     }
+#ifdef CCSP_DML_SUPPORT
     update_rfc_params(descriptor);
-
+#endif //CCSP_DML_SUPPORT
     app = (wifi_app_t *)malloc(sizeof(wifi_app_t));
     memset(app, 0, sizeof(wifi_app_t));
     app->ctrl = apps_mgr->ctrl;

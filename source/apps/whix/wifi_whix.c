@@ -1974,6 +1974,10 @@ void handle_whix_command_event(wifi_app_t *app, wifi_event_t *event)
         case wifi_event_type_stop_inst_msmt:
             push_whix_config_event_to_monitor_queue(mon_stats_request_state_start);
             break;
+        case wifi_event_type_notify_monitor_done:
+            /* Send the event to monitor queue */
+            push_whix_config_event_to_monitor_queue(mon_stats_request_state_start);
+            break;
         default:
             wifi_util_dbg_print(WIFI_APPS,"%s:%d Not Processing\n", __func__, __LINE__);
             break;

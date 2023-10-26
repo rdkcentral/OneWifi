@@ -31,7 +31,6 @@ extern "C" {
 #include "wifi_base.h"
 #include "wifi_db.h"
 #if DML_SUPPORT
-#include "wifi_blaster.h"
 #endif // DML_SUPPORT
 #include "wifi_ctrl.h"
 

@@ -26,6 +26,8 @@ extern "C" {
 
 #include "wifi_hal.h"
 #include "wifi_base.h"
+
+#ifdef CCSP_COMMON
 #include "wifi_analytics.h"
 #include "wifi_levl.h"
 #include "wifi_cac.h"
@@ -34,6 +36,9 @@ extern "C" {
 #include "wifi_csi.h"
 #include "wifi_whix.h"
 #include "wifi_harvester.h"
+#endif  //CCSP_COMMON
+
+#include "wifi_blaster.h"
 
 #define MAX_APP_INIT_DATA 1024
 #define APP_DETACHED 0x01
@@ -57,12 +62,15 @@ typedef int (* wifi_app_deinit_fn_t)(wifi_app_t *app);
 typedef int (* wifi_app_update_fn_t)(wifi_app_t *app);
 typedef struct {
     union {
+#ifdef CCSP_COMMON
         levl_data_t          levl;
         cac_data_t           cac;
         analytics_data_t     analytics;
         sm_data_t            sm_data;
         motion_data_t        motion;
         csi_app_t            csi;
+#endif  //CCSP_COMMON
+        blaster_data_t       blaster;
     } u;
 } wifi_app_data_t;
 
@@ -106,6 +114,7 @@ int apps_mgr_init(wifi_ctrl_t *ctrl, wifi_app_descriptor_t *desc, unsigned int n
 int apps_mgr_event(wifi_apps_mgr_t *apps_mgr, wifi_event_t *event);
 wifi_app_t *get_app_by_inst(wifi_apps_mgr_t *apps, wifi_app_inst_t inst);
 
+wifi_app_descriptor_t* get_app_desc(int *);
 #ifdef __cplusplus
 }
 #endif

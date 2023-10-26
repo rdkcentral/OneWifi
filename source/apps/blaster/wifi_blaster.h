@@ -16,8 +16,9 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 **************************************************************************/
-#ifndef       _WIFI_BLAST_H_
-#define       _WIFI_BLAST_H_
+
+#ifndef _WIFI_BLASTER_H_
+#define _WIFI_BLASTER_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -47,6 +48,7 @@ extern "C" {
 #endif
 #define CRITICAL_PRINT
 
+typedef struct wifi_app wifi_app_t;
 typedef struct _pktGenFrameCountSamples {
         ULONG   PacketsSentAck;
         ULONG   PacketsSentTotal;
@@ -64,10 +66,16 @@ typedef struct active_msmt_data {
     double         throughput;
     char           Operating_standard[OPER_BUFFER_LEN + 1];
     char           Operating_channelwidth[OPER_BUFFER_LEN + 1];
+    mac_address_t  cli_MACAddress;
 #ifndef CCSP_COMMON
     unsigned long  RetransCount;
 #endif // CCSP_COMMON
 } active_msmt_data_t;
+
+typedef struct {
+    mac_address_t       sta_mac;
+    active_msmt_data_t  *sta_active_msmt_data;
+} blaster_hashmap_t;
 
 typedef enum
 {
@@ -97,14 +105,22 @@ typedef struct {
     char                           status_desc[512];
     bool                           is_running;
     active_msmt_queue_t            *queue;
+    hash_map_t                     *active_msmt_map;
 } wifi_actvie_msmt_t;
+
+typedef struct {
+    unsigned int                   SampleCount;
+    unsigned long                  blaster_start;
+    wifi_actvie_msmt_t             g_active_msmt;
+    pktGenFrameCountSamples        *frameCountSample;
+} blaster_data_t;
 /* prototype for Active Measurement */
 
 /* Active Measurement GET calls */
-bool monitor_is_active_msmt_enabled();
-unsigned int GetActiveMsmtPktSize();
+/*unsigned int GetActiveMsmtPktSize();
 unsigned int GetActiveMsmtSampleDuration();
 unsigned int GetActiveMsmtNumberOfSamples();
+*/
 
 /* Active Measurement SET calls */
 void SetActiveMsmtEnable(bool enable);
@@ -136,9 +152,14 @@ void WiFiBlastClient(void);
 void process_active_msmt_diagnostics (int ap_index);
 
 void stream_client_msmt_data(bool ActiveMsmtFlag);
+wifi_actvie_msmt_t *get_wifi_blaster();
+
+int blaster_init(wifi_app_t *app, unsigned int create_flag);
+int blaster_deinit(wifi_app_t *app);
+int blaster_event(wifi_app_t *app, wifi_event_t *event);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _WIFI_BLAST_H_ */
+#endif //_WIFI_BLASTER_H_

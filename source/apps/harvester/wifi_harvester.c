@@ -35,7 +35,6 @@
 #include "wifi_hal.h"
 #include "wifi_mgr.h"
 #include "wifi_util.h"
-#include "wifi_blaster.h"
 #include "wifi_harvester.h"
 #include "wifi_monitor.h"
 #include <sys/sysinfo.h>

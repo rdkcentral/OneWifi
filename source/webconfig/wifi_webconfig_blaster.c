@@ -25,9 +25,6 @@
 #include "secure_wrapper.h"
 #include "collection.h"
 #include "msgpack.h"
-#if DML_SUPPORT
-#include "wifi_blaster.h"
-#endif // DML_SUPPORT
 #include "wifi_webconfig.h"
 #include "wifi_util.h"
 #include "wifi_ctrl.h"

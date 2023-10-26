@@ -28,6 +28,14 @@
 #include "wifi_monitor.h"
 #include "wifi_util.h"
 
+#define MAC_ARG(arg) \
+    arg[0], \
+    arg[1], \
+    arg[2], \
+    arg[3], \
+    arg[4], \
+    arg[5]
+
 static inline char *to_sta_key(mac_addr_t mac, sta_key_t key)
 {
     snprintf(key, STA_KEY_LEN, "%02x:%02x:%02x:%02x:%02x:%02x",
@@ -65,7 +73,11 @@ int generate_assoc_client_clctr_stats_key(wifi_mon_stats_args_t *args, char *key
 
     memset(key_str, 0, key_len);
 
+#ifdef CCSP_COMMON
     snprintf(key_str, key_len, "%02d-%02d", mon_stats_type_associated_device_stats, args->vap_index);
+#else
+    snprintf(key_str, key_len, "%02d-%02d-%02x:%02x:%02x:%02x:%02x:%02x", mon_stats_type_associated_device_stats, args->vap_index, MAC_ARG(args->target_mac));
+#endif
 
     wifi_util_dbg_print(WIFI_MON, "%s:%d collector stats key: %s\n", __func__,__LINE__, key_str);
 
@@ -102,6 +114,11 @@ int execute_assoc_client_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *
     unsigned long temp_time = 0;
     int ret = RETURN_OK;
     wifi_platform_property_t *wifi_prop = get_wifi_hal_cap_prop();
+#ifndef CCSP_WIFI_HAL
+    char *radio_type = NULL;
+    int nf = 0;
+    int sleep_mode = 0;
+#endif
 
     if (args == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d input arguments are NULL args : %p\n",__func__,__LINE__, args);
@@ -148,7 +165,27 @@ int execute_assoc_client_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *
 
 #if CCSP_WIFI_HAL
     ret = wifi_getApAssociatedDeviceDiagnosticResult3(args->vap_index, &dev_array, &num_devs);
+#else //CCSP_WIFI_HAL
+    radio_type = mon_data->radio_data[radio].frequency_band;
+    nf = mon_data->radio_data[radio].NoiseFloor;
+    dev_array = (wifi_associated_dev3_t *) malloc (sizeof(wifi_associated_dev3_t));
+    if (dev_array == NULL) {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d dev_array is NULL\n", __func__,__LINE__);
+        return RETURN_ERR;
+    }
+    memset(dev_array, 0,sizeof(wifi_associated_dev3_t));
+    ret = ow_mesh_ext_get_device_stats(args->vap_index, radio_type, nf, args->target_mac, dev_array, &sleep_mode);
+
+    dev_array->cli_MACAddress[0] = args->target_mac[0];
+    dev_array->cli_MACAddress[1] = args->target_mac[1];
+    dev_array->cli_MACAddress[2] = args->target_mac[2];
+    dev_array->cli_MACAddress[3] = args->target_mac[3];
+    dev_array->cli_MACAddress[4] = args->target_mac[4];
+    dev_array->cli_MACAddress[5] = args->target_mac[5];
+
+    num_devs = 1;
 #endif
+
     if (ret != RETURN_OK) {
         wifi_util_error_print(WIFI_MON, "%s : %d  Failed to get AP Associated Devices statistics for vap index %d \r\n",
                 __func__, __LINE__, args->vap_index);
@@ -172,6 +209,7 @@ int execute_assoc_client_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *
     sta_map = mon_data->bssid_data[vap_array_index].sta_map;
 
     hal_sta = dev_array;
+
     if (hal_sta != NULL) {
         for (i = 0; i < num_devs; i++) {
             to_sta_key(hal_sta->cli_MACAddress, sta_key);
@@ -203,6 +241,10 @@ int execute_assoc_client_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *
                     sta->dev_stats.cli_PacketsSent, sta->dev_stats.cli_PacketsReceived, sta->dev_stats.cli_ErrorsSent, sta->dev_stats.cli_RetransCount);
             wifi_util_dbg_print(WIFI_MON, "%s:%d cli_TxFrames : %llu cli_RxRetries : %llu cli_RxErrors : %llu  \n",
                             __func__, __LINE__, hal_sta->cli_TxFrames, hal_sta->cli_RxRetries, hal_sta->cli_RxErrors);
+#ifndef CCSP_WIFI_HAL
+            sta->sleep_mode = sleep_mode;
+            wifi_util_dbg_print(WIFI_MON, "%s:%d Value of Sleep mode is %d \n", __func__,__LINE__, sta->sleep_mode);
+#endif
             hal_sta++;
         }
     }
@@ -240,7 +282,6 @@ int execute_assoc_client_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *
         free(dev_array);
         dev_array = NULL;
     }
-
     return RETURN_OK;
 }
 
