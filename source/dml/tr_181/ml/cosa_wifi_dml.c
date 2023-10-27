@@ -4224,6 +4224,7 @@ Stats3_GetParamIntValue
     wifi_radio_operationParam_t *pcfg = (wifi_radio_operationParam_t *)hInsContext;
     wifi_monitor_t *monitor_param = (wifi_monitor_t *)get_wifi_monitor();
     INT instance_number = 0;
+    bool is_aftx;
     if (convert_freq_band_to_radio_index(pcfg->band, &instance_number) == RETURN_ERR) {
         wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Invalid frequency band %X\n", __FUNCTION__, __LINE__, pcfg->band);
         return FALSE;
@@ -4249,8 +4250,34 @@ Stats3_GetParamIntValue
 	*pInt = monitor_param->radio_data[instance_number].NoiseFloor;
 	return TRUE;
     }
-    if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_AFTX", TRUE) || AnscEqualString(ParamName, "X_RDKCENTRAL-COM_AFRX", TRUE)) {
-        *pInt = stats->ActivityFactor_TX;
+    if ((is_aftx = AnscEqualString(ParamName, "X_RDKCENTRAL-COM_AFTX", TRUE)) ||
+        AnscEqualString(ParamName, "X_RDKCENTRAL-COM_AFRX", TRUE)) {
+        unsigned long long utilization_rx = 0;
+        unsigned long long utilization_tx = 0;
+        unsigned long long utilization_total;
+        int i = 0;
+        unsigned int radio_activity_factor;
+        pthread_mutex_lock(&monitor_param->data_lock);
+        radio_activity_factor =
+            monitor_param->radio_data[instance_number].RadioActivityFactor;
+        while ((i++) < monitor_param->radio_chan_stats_data[instance_number]
+                           .num_channels) {
+            utilization_rx +=
+                monitor_param->radio_chan_stats_data[instance_number]
+                    .chan_data[i]
+                    .ch_utilization_busy_self;
+            utilization_tx +=
+                monitor_param->radio_chan_stats_data[instance_number]
+                    .chan_data[i]
+                    .ch_utilization_busy_tx;
+        }
+        pthread_mutex_unlock(&monitor_param->data_lock);
+        utilization_total = utilization_rx + utilization_tx;
+        if (0 != utilization_total) {
+            *pInt = (int)round((1.0 * (is_aftx ? utilization_tx : utilization_rx)) / utilization_total * radio_activity_factor);
+        } else {
+            *pInt = (is_aftx ? stats->ActivityFactor_TX : stats->ActivityFactor_RX);
+        }
         return TRUE;
     }
     if( AnscEqualString(ParamName, "X_COMCAST-COM_ActivityFactor", TRUE) || AnscEqualString(ParamName, "X_RDKCENTRAL-COM_AF", TRUE))    {
