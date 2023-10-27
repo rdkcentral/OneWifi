@@ -32,6 +32,9 @@ extern "C" {
 #define MAX_PROBE_TTL_TIME   (12 * 3600)
 
 #define MAX_PROBE_MAP_TTL    500
+#define WIFI_EVENTS_VAP_TABLE               "Device.WiFi.Events.VAP.{i}."
+#define WIFI_ANALYTICS_FRAME_EVENTS         "Device.WiFi.Events.VAP.{i}.Frames.Mgmt"
+#define WIFI_ANALYTICS_DATA_EVENTS          "Device.WiFi.Events.VAP.{i}.Frames.Data"
 #define WIFI_LEVL_CLIENTMAC                 "Device.WiFi.X_RDK_CSI_LEVL.clientMac"
 #define WIFI_LEVL_NUMBEROFENTRIES           "Device.WiFi.X_RDK_CSI_LEVL.maxNumberCSIClients"
 #define WIFI_LEVL_CSI_DATA                  "Device.WiFi.X_RDK_CSI_LEVL.data"

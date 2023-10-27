@@ -47,8 +47,6 @@ extern "C" {
 #define WIFI_NOTIFY_FORCE_DISASSOCIATION    "Device.WiFi.ConnectionControl.ClientForceDisassociation"
 #define WIFI_NOTIFY_DENY_ASSOCIATION        "Device.WiFi.ConnectionControl.ClientDenyAssociation"
 #define MESH_STATUS                         "Device.DeviceInfo.X_RDKCENTRAL-COM_xOpsDeviceMgmt.Mesh.Enable"
-#define WIFI_ANALYTICS_FRAME_EVENTS         "Device.WiFi.Events.Frames.Mgmt"
-#define WIFI_ANALYTICS_DATA_EVENTS          "Device.WiFi.Events.Frames.Data"
 #define WIFI_FRAME_INJECTOR_TO_ONEWIFI      "Device.WiFi.TestFrameInput"
 #define WIFI_STA_TRIGGER_DISCONNECTION      "Device.WiFi.X_RDK_STATriggerDisconnection"
 #define ACCESSPOINT_ASSOC_REQ_EVENT         "Device.WiFi.AP.STA.AssocRequest"

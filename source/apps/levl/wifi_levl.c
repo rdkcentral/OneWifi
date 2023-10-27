@@ -33,6 +33,8 @@
 //#include <ieee80211.h>
 #include "common/ieee802_11_defs.h"
 
+#define WIFI_ANALYTICS_FRAME_EVENTS_NAMESPACE    "Device.WiFi.Events.VAP.%d.Frames.Mgmt"
+
 #define MAX_EVENT_NAME_SIZE     200
 #define UNREFERENCED_PARAMETER(_p_)         (void)(_p_)
 static int schedule_mac_for_sounding(int ap_index, mac_address_t mac_address);
@@ -272,9 +274,11 @@ void apps_probe_rsp_frame_event(wifi_app_t *app, frame_data_t *msg)
 
 void apps_auth_frame_event(wifi_app_t *app, frame_data_t *msg)
 {
+    char namespace[50];
     //wifi_util_dbg_print(WIFI_APPS,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir);
     wifi_util_dbg_print(WIFI_APPS,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n",__FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir);
-    mgmt_frame_rbus_send(app->rbus_handle, WIFI_ANALYTICS_FRAME_EVENTS, msg);
+    snprintf(namespace, sizeof(namespace), WIFI_ANALYTICS_FRAME_EVENTS_NAMESPACE, msg->frame.ap_index+1);
+    mgmt_frame_rbus_send(app->rbus_handle, namespace, msg);
 }
 
 
@@ -284,6 +288,7 @@ void apps_assoc_req_frame_event(wifi_app_t *app, frame_data_t *msg)
     mac_addr_str_t mac_str = { 0 };
     char *str;
     probe_req_elem_t *elem, *tmp;
+    char namespace[50];
 
     frame = (struct ieee80211_mgmt *)msg->data;
     str = to_mac_str(frame->sa, mac_str);
@@ -302,13 +307,16 @@ void apps_assoc_req_frame_event(wifi_app_t *app, frame_data_t *msg)
         wifi_util_dbg_print(WIFI_APPS,"%s:%d:probe not found for mac address:%s\n", __func__, __LINE__, str);
         //assert(1);
         // assoc request rbus send
-        mgmt_frame_rbus_send(app->rbus_handle, WIFI_ANALYTICS_FRAME_EVENTS, msg);
+        snprintf(namespace, sizeof(namespace), WIFI_ANALYTICS_FRAME_EVENTS_NAMESPACE, msg->frame.ap_index+1);
+        mgmt_frame_rbus_send(app->rbus_handle, namespace, msg);
     } else {
         // prob request rbus send
-        mgmt_frame_rbus_send(app->rbus_handle, WIFI_ANALYTICS_FRAME_EVENTS, &elem->msg_data);
+        snprintf(namespace, sizeof(namespace), WIFI_ANALYTICS_FRAME_EVENTS_NAMESPACE, elem->msg_data.frame.ap_index+1);
+        mgmt_frame_rbus_send(app->rbus_handle, namespace, &elem->msg_data);
 
         // assoc request rbus send
-        mgmt_frame_rbus_send(app->rbus_handle, WIFI_ANALYTICS_FRAME_EVENTS, msg);
+        snprintf(namespace, sizeof(namespace), WIFI_ANALYTICS_FRAME_EVENTS_NAMESPACE, msg->frame.ap_index+1);
+        mgmt_frame_rbus_send(app->rbus_handle, namespace, msg);
 
         // remove prob request
         tmp = elem;
@@ -335,9 +343,11 @@ void apps_assoc_rsp_frame_event(wifi_app_t *apps, frame_data_t *msg)
 
 void apps_reassoc_req_frame_event(wifi_app_t *apps, frame_data_t *msg)
 {
+    char namespace[50];
     wifi_util_dbg_print(WIFI_APPS,"%s:%d wifi reassoc req mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n",
             __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir);
-    mgmt_frame_rbus_send(apps->rbus_handle, WIFI_ANALYTICS_FRAME_EVENTS, msg);
+    snprintf(namespace, sizeof(namespace), WIFI_ANALYTICS_FRAME_EVENTS_NAMESPACE, msg->frame.ap_index+1);
+    mgmt_frame_rbus_send(apps->rbus_handle, namespace, msg);
 }
 
 void apps_reassoc_rsp_frame_event(wifi_app_t *apps, frame_data_t *msg)
@@ -1311,6 +1321,36 @@ rbusError_t levl_event_handler(rbusHandle_t handle, rbusEventSubAction_t action,
     return RBUS_ERROR_SUCCESS;
 }
 
+rbusError_t levl_vap_addrowhandler(rbusHandle_t handle, char const* tableName, char const* aliasName, uint32_t* instNum)
+{
+    static unsigned int instanceCounter = 1;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    unsigned int vap_index;
+
+    if (instanceCounter > getTotalNumberVAPs(NULL)) {
+        instanceCounter = 1;
+    }
+    vap_index  = VAP_INDEX(mgr->hal_cap, (instanceCounter-1)) + 1;
+    *instNum = vap_index;
+    instanceCounter++;
+
+    wifi_util_dbg_print(WIFI_APPS, "%s(): %s %d\n", __FUNCTION__, tableName, *instNum);
+
+    UNREFERENCED_PARAMETER(handle);
+    UNREFERENCED_PARAMETER(aliasName);
+    return RBUS_ERROR_SUCCESS;
+}
+
+
+rbusError_t levl_vap_removerowhandler(rbusHandle_t handle, char const* rowName)
+{
+    wifi_util_dbg_print(WIFI_APPS, "%s(): %s\n", __FUNCTION__, rowName);
+
+    UNREFERENCED_PARAMETER(handle);
+
+    return RBUS_ERROR_SUCCESS;
+}
+
 int levl_start_fn(void* csi_app, unsigned int ap_index, mac_addr_t mac_addr, int sounding_app)
 {
     return 0;
@@ -1336,11 +1376,15 @@ static int levl_event_exec_timeout(void* arg)
 int levl_init(wifi_app_t *app, unsigned int create_flag)
 {
     int rc = RBUS_ERROR_SUCCESS;
+    unsigned int index = 0;
     char *component_name = "WifiAppsLevl";
+
     rbusDataElement_t dataElements[] = {
-        { WIFI_ANALYTICS_FRAME_EVENTS, RBUS_ELEMENT_TYPE_METHOD,
-            { NULL, NULL, NULL, NULL, NULL, NULL }},
+        { WIFI_EVENTS_VAP_TABLE, RBUS_ELEMENT_TYPE_TABLE,
+            { NULL, NULL, levl_vap_addrowhandler, levl_vap_removerowhandler, NULL, NULL }},
         { WIFI_ANALYTICS_DATA_EVENTS, RBUS_ELEMENT_TYPE_METHOD,
+            { NULL, NULL, NULL, NULL, NULL, NULL }},
+        { WIFI_ANALYTICS_FRAME_EVENTS, RBUS_ELEMENT_TYPE_METHOD,
             { NULL, NULL, NULL, NULL, NULL, NULL }},
         { WIFI_LEVL_CSI_DATA, RBUS_ELEMENT_TYPE_EVENT,
             { NULL, NULL, NULL, NULL, levl_event_handler, NULL }},
@@ -1413,6 +1457,16 @@ int levl_init(wifi_app_t *app, unsigned int create_flag)
         return RETURN_ERR;
     } else {
         wifi_util_info_print(WIFI_APPS,"%s:%d Apps rbus_regDataElement success\n", __func__, __LINE__);
+    }
+
+    for (index = 1; index <= getTotalNumberVAPs(NULL); index++) {
+        rc = rbusTable_addRow(app->rbus_handle, "Device.WiFi.Events.VAP.", NULL, NULL);
+        if(rc != RBUS_ERROR_SUCCESS) {
+            wifi_util_error_print(WIFI_APPS, "%s() rbusTable_addRow failed %d!\n", __FUNCTION__, rc);
+            rbus_unregDataElements(app->rbus_handle, sizeof(dataElements)/sizeof(rbusDataElement_t), dataElements);
+            rbus_close(app->rbus_handle);
+            return RETURN_ERR;
+        }
     }
 
     return RETURN_OK;
