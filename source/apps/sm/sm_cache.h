@@ -79,6 +79,7 @@ typedef struct
 {
     ds_dlist_t          samples;    /* dpp_survey_record_t */
     radio_chan_data_t   *old_stats;
+    bool                is_updated; /* there were new samples within the reporting interval */
 } sm_survey_scan_t;
 
 typedef struct
@@ -111,6 +112,7 @@ typedef struct
 {
     ds_dlist_t            samples;    /* dpp_neighbor_record_list_t */
     wifi_neighbor_ap2_t   *old_stats;
+    bool                  is_updated; /* there were new samples within the reporting interval */
 } sm_neighbor_scan_t;
 
 typedef struct

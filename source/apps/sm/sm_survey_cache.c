@@ -66,9 +66,14 @@ static void survey_clean(sm_survey_cache_t *cache, sm_survey_t *survey, survey_t
         wifi_util_error_print(WIFI_SM, "%s:%d: failed to get scan\n", __func__, __LINE__);
         return;
     }
+
     survey_samples_free(&scan->samples);
-    free(scan->old_stats);
-    scan->old_stats = NULL; /* to start calculations from the new sample */
+
+    if (!scan->is_updated) {
+        free(scan->old_stats);
+        scan->old_stats = NULL;
+    }
+    scan->is_updated = false;
 }
 
 
@@ -103,6 +108,8 @@ static sm_survey_t* survey_alloc(sm_survey_cache_t *cache, sm_survey_id_t survey
         ds_dlist_init(&survey->offchan.samples, dpp_survey_record_t, node);
         survey->onchan.old_stats = NULL;
         survey->offchan.old_stats = NULL;
+        survey->onchan.is_updated = false;
+        survey->offchan.is_updated = false;
         hash_map_put(cache->surveys, strdup(survey_id), survey);
     }
     return survey;
@@ -241,6 +248,7 @@ static int survey_sample_add(sm_survey_cache_t *cache, survey_type_t survey_type
 exit:
     /* save the old value to cache */
     memcpy(scan->old_stats, stats, sizeof(*stats));
+    scan->is_updated = true;
     return rc;
 }
 
