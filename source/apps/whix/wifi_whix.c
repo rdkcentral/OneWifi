@@ -1824,7 +1824,7 @@ static void whix_common_config_to_monitor_queue(wifi_monitor_data_t *data, bool 
     data->u.mon_stats_config.inst = wifi_app_inst_whix;
 
     wifi_global_param_t *global_param = get_wifidb_wifi_global_param();
-    if (global_param != NULL) {
+    if ((global_param != NULL) && (global_param->whix_chutility_loginterval != 0) && (global_param->whix_log_interval != 0)) {
         if (is_channel_util) {
             data->u.mon_stats_config.interval_ms = (global_param->whix_chutility_loginterval) * 1000;
         } else {
