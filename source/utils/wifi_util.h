@@ -79,7 +79,7 @@ typedef unsigned char   mac_addr_t[MAC_ADDR_LEN];
 
 #define MAX_WIFI_COUNTRYCODE 247
 #define MIN_NUM_RADIOS 2
-struct wifiCountryEnumStrMap {
+struct wifiCountryEnumStrMapMember {
     wifi_countrycode_type_t countryCode;
     char countryStr[4];
     char countryId[4];
@@ -91,7 +91,7 @@ struct wifiEnvironmentEnumStrMap {
 };
 
 extern struct wifiEnvironmentEnumStrMap wifiEnviromentMap[4];
-extern struct wifiCountryEnumStrMap wifiCountryMap[MAX_WIFI_COUNTRYCODE];
+extern struct wifiCountryEnumStrMapMember wifiCountryMapMembers[MAX_WIFI_COUNTRYCODE];
 
 #define LM_GEN_STR_SIZE     64
 #define LM_MAX_HOSTS_NUM    256
@@ -239,7 +239,7 @@ int channel_state_enum_to_str(wifi_channelState_t channel_state_enum, char *chan
 int is_wifi_channel_valid(wifi_platform_property_t *wifi_prop, wifi_freq_bands_t wifi_band, UINT wifi_channel);
 int key_mgmt_conversion_legacy(wifi_security_modes_t *mode_enum, wifi_encryption_method_t *encryp_enum, char *str_mode, int mode_len, char *str_encryp, int encryp_len, unsigned int conv_type);
 int key_mgmt_conversion(wifi_security_modes_t *enum_sec, char *str_sec, char *str_sec2, int sec_len, int sec_len2, unsigned int conv_type, int *len);
-int get_radio_if_hw_type(char *str, int str_len);
+int get_radio_if_hw_type(unsigned int radio_index, char *str, int str_len);
 char *to_mac_str(mac_address_t mac, mac_addr_str_t key);
 int is_ssid_name_valid(char *ssid_name);
 void str_to_mac_bytes (char *key, mac_addr_t bmac);
@@ -296,7 +296,6 @@ int convert_bool_to_ascii_string(bool l_bool_param, char *l_string, size_t str_l
 void json_param_obscure(char *json, char *param);
 bool is_5g_20M_channel_in_dfs(int channel);
 bool is_6g_supported_device(wifi_platform_property_t *wifi_prop);
-char *get_assoc_devices_blob();
 #ifdef __cplusplus
 }
 #endif

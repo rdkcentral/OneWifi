@@ -136,8 +136,8 @@ webconfig_error_t encode_radio_object(const rdk_wifi_radio_t *radio, cJSON *radi
 
     k = radio_info->countryCode;
     memset(str,0,sizeof(str));
-    if ((k >= 0) && (k <= MAX_WIFI_COUNTRYCODE)) {
-        snprintf(str,sizeof(str),"%s",wifiCountryMap[k].countryStr);
+    if (k < MAX_WIFI_COUNTRYCODE) {
+        snprintf(str,sizeof(str),"%s",wifiCountryMapMembers[k].countryStr);
     } else {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s Set failed invalid Country code %d.\n",__FUNCTION__,k);
         return webconfig_error_encode;

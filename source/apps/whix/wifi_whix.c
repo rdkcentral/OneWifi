@@ -51,8 +51,7 @@
 #include "safec_lib_common.h"
 #include "ccsp_WifiLog_wrapper.h"
 #endif // CCSP_COMMON
-
-FILE *v_secure_popen(const char *direction, const char *command, ...);
+#include "secure_wrapper.h"
 
 #ifndef  UNREFERENCED_PARAMETER
 #define UNREFERENCED_PARAMETER(_p_)         (void)(_p_)
@@ -412,7 +411,7 @@ static void  upload_client_debug_stats_transmit_power_stats(INT apIndex)
     if (radioOperation != NULL) {
         memset(tmp, 0, sizeof(tmp));
         get_formatted_time(tmp);
-        write_to_file(wifi_health_log, "%s WIFI_COUNTRY_CODE_%d:%s\n", tmp, apIndex + 1, wifiCountryMap[radioOperation->countryCode].countryStr);
+        write_to_file(wifi_health_log, "%s WIFI_COUNTRY_CODE_%d:%s\n", tmp, apIndex + 1, wifiCountryMapMembers[radioOperation->countryCode].countryStr);
         wifi_getRadioTransmitPower(radio, &txpower);
         memset(tmp, 0, sizeof(tmp));
         get_formatted_time(tmp);

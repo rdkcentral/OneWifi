@@ -138,14 +138,23 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
 {
     bool enabled;
     unsigned int i;
-    wifi_vap_info_map_t tgt_vap_map, tgt_created_vap_map;
+    wifi_vap_info_map_t *p_tgt_vap_map, *p_tgt_created_vap_map;
     bool greylist_rfc = false;
     bool rfc_passpoint_enable = false;
-    memset((unsigned char *)&tgt_created_vap_map, 0, sizeof(wifi_vap_info_map_t));
-    tgt_created_vap_map.num_vaps = 0;
+    p_tgt_vap_map = (wifi_vap_info_map_t *) malloc( sizeof(wifi_vap_info_map_t) );
+    if (p_tgt_vap_map == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to allocate memory.\n", __func__,__LINE__);
+        return -1;
+    }
+    p_tgt_created_vap_map = (wifi_vap_info_map_t *) malloc( sizeof(wifi_vap_info_map_t) );
+    if (p_tgt_created_vap_map == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to allocate memory.\n", __func__,__LINE__);
+        free(p_tgt_vap_map);
+        return -1;
+    }
+    memset((unsigned char *)p_tgt_created_vap_map, 0, sizeof(wifi_vap_info_map_t));
+    p_tgt_created_vap_map->num_vaps = 0;
     wifi_mgr_t *g_wifi_mgr = (wifi_mgr_t *)get_wifimgr_obj();
-
-
 #if DML_SUPPORT
     wifi_rfc_dml_parameters_t *rfc_info = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
     if (rfc_info) {
@@ -154,52 +163,43 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
     }
 #endif // DML_SUPPORT
     wifi_global_param_t *pcfg = (wifi_global_param_t *) get_wifidb_wifi_global_param();
-
     for (i = 0; i < map->num_vaps; i++) {
-
         // Create xfinity secure vaps only if passpoint is enabled and update db and caches - just the way
         // it happens for other vaps - private, xH, etc,
         // The only expectation is that the first time creation of xfinity vaps will happen
         // through webconfig framework - this is because of the dependency on tunnels
-
-        memset((unsigned char *)&tgt_vap_map, 0, sizeof(tgt_vap_map));
-        memcpy((unsigned char *)&tgt_vap_map.vap_array[0], (unsigned char *)&map->vap_array[i],
+        
+        memset((unsigned char *)p_tgt_vap_map, 0, sizeof(wifi_vap_info_map_t));
+        memcpy((unsigned char *)&p_tgt_vap_map->vap_array[0], (unsigned char *)&map->vap_array[i],
                     sizeof(wifi_vap_info_t));
-        tgt_vap_map.vap_array[0].u.bss_info.network_initiated_greylist = greylist_rfc;
-        tgt_vap_map.num_vaps = 1;
-
-
+        p_tgt_vap_map->vap_array[0].u.bss_info.network_initiated_greylist = greylist_rfc;
+        p_tgt_vap_map->num_vaps = 1;
         if (isVapHotspotSecure(map->vap_array[i].vap_index)) {
-               if ((rfc_passpoint_enable == false) && (tgt_vap_map.vap_array[0].u.bss_info.interworking.passpoint.enable == true)) {
+               if ((rfc_passpoint_enable == false) && (p_tgt_vap_map->vap_array[0].u.bss_info.interworking.passpoint.enable == true)) {
                     wifi_util_error_print(WIFI_CTRL,"%s:: radio_index:%d vap_index:%d Passpoint cannot be enabled when RFC is disabled RFC=%d\n",__FUNCTION__,
                                                 radio_index, map->vap_array[i].vap_index,rfc_passpoint_enable);
-                    tgt_vap_map.vap_array[0].u.bss_info.interworking.passpoint.enable = false;
+                    p_tgt_vap_map->vap_array[0].u.bss_info.interworking.passpoint.enable = false;
                 }
         }
-
         // VAP is enabled in HAL if it is present in VIF_Config and enabled. Absent VAP entries are
         // saved to VAP_Config with exist flag set to 0 and default values.
-        enabled = tgt_vap_map.vap_array[0].u.bss_info.enabled;
-        tgt_vap_map.vap_array[0].u.bss_info.enabled &= rdk_vap_info[i].exists;
-        if (is_6g_supported_device(&g_wifi_mgr->hal_cap.wifi_prop) && tgt_vap_map.vap_array[0].u.bss_info.enabled) {
-            wifi_util_info_print(WIFI_CTRL, "%s:%d 6g supported device  %s is enabled  nbrReport is activated\n", __func__,__LINE__,tgt_vap_map.vap_array[0].vap_name);
-            tgt_vap_map.vap_array[0].u.bss_info.nbrReportActivated = true;
+        enabled = p_tgt_vap_map->vap_array[0].u.bss_info.enabled;
+        p_tgt_vap_map->vap_array[0].u.bss_info.enabled &= rdk_vap_info[i].exists;
+        if (is_6g_supported_device(&g_wifi_mgr->hal_cap.wifi_prop) && p_tgt_vap_map->vap_array[0].u.bss_info.enabled) {
+            wifi_util_info_print(WIFI_CTRL, "%s:%d 6g supported device  %s is enabled  nbrReport is activated\n", __func__,__LINE__,p_tgt_vap_map->vap_array[0].vap_name);
+            p_tgt_vap_map->vap_array[0].u.bss_info.nbrReportActivated = true;
         }
-
-
-        if (wifi_hal_createVAP(radio_index, &tgt_vap_map) != RETURN_OK) {
+        if (wifi_hal_createVAP(radio_index, p_tgt_vap_map) != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL,"%s: wifi vap create failure: radio_index:%d vap_index:%d\n",__FUNCTION__,
                                                 radio_index, map->vap_array[i].vap_index);
             continue;
         }
-
-        tgt_vap_map.vap_array[0].u.bss_info.enabled = enabled;
-
+        p_tgt_vap_map->vap_array[0].u.bss_info.enabled = enabled;
         if (greylist_rfc || ((pcfg != NULL && pcfg->prefer_private))) {
-            wifi_setApMacAddressControlMode(tgt_vap_map.vap_array[0].vap_index, 2);
+            wifi_setApMacAddressControlMode(p_tgt_vap_map->vap_array[0].vap_index, 2);
         }
         else {
-            wifi_setApMacAddressControlMode(tgt_vap_map.vap_array[0].vap_index, 0);
+            wifi_setApMacAddressControlMode(p_tgt_vap_map->vap_array[0].vap_index, 0);
         }
         wifi_util_info_print(WIFI_CTRL,"%s: wifi vap create success: radio_index:%d vap_index:%d greylist_rfc:%d\n",__FUNCTION__,
                                                 radio_index, map->vap_array[i].vap_index,greylist_rfc);
@@ -210,13 +210,13 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
         //Storing the config of passpoint in DB as received from blob though RFC is disabled
         if (isVapHotspotSecure(map->vap_array[i].vap_index)) {
                if ((rfc_passpoint_enable == false) && (map->vap_array[i].u.bss_info.interworking.passpoint.enable == true)) {
-                   tgt_vap_map.vap_array[0].u.bss_info.interworking.passpoint.enable = true;
+                   p_tgt_vap_map->vap_array[0].u.bss_info.interworking.passpoint.enable = true;
                 }
         }
-        wifi_util_error_print(WIFI_CTRL,"%s: tgt_vap_map.passpoint.enable %d\n", __FUNCTION__,tgt_vap_map.vap_array[0].u.bss_info.interworking.passpoint.enable);
-        memcpy((unsigned char *)&map->vap_array[i], (unsigned char *)&tgt_vap_map.vap_array[0],
+        wifi_util_error_print(WIFI_CTRL,"%s: p_tgt_vap_map->passpoint.enable %d\n", __FUNCTION__,p_tgt_vap_map->vap_array[0].u.bss_info.interworking.passpoint.enable);
+        memcpy((unsigned char *)&map->vap_array[i], (unsigned char *)&p_tgt_vap_map->vap_array[0],
                     sizeof(wifi_vap_info_t));
-        memcpy((unsigned char *)&tgt_created_vap_map.vap_array[i], (unsigned char *)&tgt_vap_map.vap_array[0], sizeof(wifi_vap_info_t));
+        memcpy((unsigned char *)&p_tgt_created_vap_map->vap_array[i], (unsigned char *)&p_tgt_vap_map->vap_array[0], sizeof(wifi_vap_info_t));
         wifidb_update_wifi_vap_info(map->vap_array[i].vap_name, &map->vap_array[i],
             &rdk_vap_info[i]);
         wifidb_update_wifi_interworking_config(map->vap_array[i].vap_name,
@@ -228,12 +228,13 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
         wifidb_update_wifi_anqp_config(map->vap_array[i].vap_name,
              &map->vap_array[i].u.bss_info.interworking);
     }
-     update_global_cache(&tgt_created_vap_map, rdk_vap_info);
+     update_global_cache(p_tgt_created_vap_map, rdk_vap_info);
     //Load all the Acl entries related to the created public vaps
-    update_xfinity_acl_entries(tgt_vap_map.vap_array[0].vap_name);
+    update_xfinity_acl_entries(p_tgt_vap_map->vap_array[0].vap_name);
+    free(p_tgt_vap_map);
+    free(p_tgt_created_vap_map);
     return 0;
 }
-
 int update_xfinity_acl_entries(char* tgt_vap_name)
 {
     mac_addr_str_t mac_str;

@@ -376,6 +376,8 @@ void reset_wifi_radios();
 wifi_platform_property_t *get_wifi_hal_cap_prop(void);
 wifi_vap_security_t * Get_wifi_object_bss_security_parameter(uint8_t vapIndex);
 wifi_vap_security_t * Get_wifi_object_sta_security_parameter(uint8_t vapIndex);
+char *get_assoc_devices_blob();
+
 #ifdef __cplusplus
 }
 #endif

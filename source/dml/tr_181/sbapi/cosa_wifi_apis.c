@@ -332,11 +332,11 @@ UINT getRegulatoryDomainFromEnums(wifi_countrycode_type_t countryCode, wifi_oper
 
     memset(tmp_countryStr, 0, sizeof(tmp_countryStr));
     memset(tmp_environment, 0, sizeof(tmp_environment));
-    for (i = 0 ; i < ARRAY_SZ(wifiCountryMap); ++i)
+    for (i = 0 ; i < ARRAY_SZ(wifiCountryMapMembers); ++i)
     {
-        if(countryCode == wifiCountryMap[i].countryCode)
+        if(countryCode == wifiCountryMapMembers[i].countryCode)
         {
-            strncpy(tmp_countryStr, wifiCountryMap[i].countryStr, sizeof(tmp_countryStr)-1);
+            strncpy(tmp_countryStr, wifiCountryMapMembers[i].countryStr, sizeof(tmp_countryStr)-1);
             break;
         }
     }
@@ -1219,11 +1219,11 @@ ANSC_STATUS regDomainStrToEnums(char *pRegDomain, wifi_countrycode_type_t *count
     tmp_regDomain[REG_DOMAIN_SZ-1] = '\0';
 
 
-    for (seqCounter = 0; seqCounter < ARRAY_SZ(wifiCountryMap); seqCounter++)
+    for (seqCounter = 0; seqCounter < ARRAY_SZ(wifiCountryMapMembers); seqCounter++)
     {
-        if (AnscEqualString(tmp_regDomain, wifiCountryMap[seqCounter].countryStr, TRUE))
+        if (AnscEqualString(tmp_regDomain, wifiCountryMapMembers[seqCounter].countryStr, TRUE))
         {
-            *countryCode = wifiCountryMap[seqCounter].countryCode;
+            *countryCode = wifiCountryMapMembers[seqCounter].countryCode;
             ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s input : %s Countrycode : %d\n", __FUNCTION__, pRegDomain, *countryCode);
             isregDomainInvalid = FALSE;
             break;

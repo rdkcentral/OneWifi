@@ -69,7 +69,7 @@ void test_names(wifi_platform_property_t *wifi_prop);
 #define LOG_PATH_PREFIX "/nvram/"
 #endif // LOG_PATH_PREFIX
 
-struct wifiCountryEnumStrMap wifiCountryMap[] =
+struct wifiCountryEnumStrMapMember wifiCountryMapMembers[] =
 {
     {wifi_countrycode_AC,"AC","004"}, /**< ASCENSION ISLAND */
     {wifi_countrycode_AD,"AD","020"}, /**< ANDORRA */
@@ -1498,8 +1498,8 @@ int country_code_conversion(wifi_countrycode_type_t *country_code, char *country
 
     if (conv_type == STRING_TO_ENUM) {
         for (i = 0; i < MAX_WIFI_COUNTRYCODE; i++) {
-            if(strcasecmp(country, wifiCountryMap[i].countryStr) == 0) {
-                *country_code = wifiCountryMap[i].countryCode;
+            if(strcasecmp(country, wifiCountryMapMembers[i].countryStr) == 0) {
+                *country_code = wifiCountryMapMembers[i].countryCode;
                 return RETURN_OK;
             }
         }
@@ -1512,7 +1512,7 @@ int country_code_conversion(wifi_countrycode_type_t *country_code, char *country
         if ( i >= MAX_WIFI_COUNTRYCODE) {
             return RETURN_ERR;
         }
-        snprintf(country, country_len, "%s", wifiCountryMap[*country_code].countryStr);
+        snprintf(country, country_len, "%s", wifiCountryMapMembers[*country_code].countryStr);
         return RETURN_OK;
     }
 
@@ -1528,8 +1528,8 @@ int country_id_conversion(wifi_countrycode_type_t *country_code, char *country_i
 
     if (conv_type == STRING_TO_ENUM) {
         for (i = 0; i < MAX_WIFI_COUNTRYCODE; i++) {
-            if(strcasecmp(country_id, wifiCountryMap[i].countryId) == 0) {
-                *country_code = wifiCountryMap[i].countryCode;
+            if(strcasecmp(country_id, wifiCountryMapMembers[i].countryId) == 0) {
+                *country_code = wifiCountryMapMembers[i].countryCode;
                 return RETURN_OK;
             }
         }
@@ -1542,7 +1542,7 @@ int country_id_conversion(wifi_countrycode_type_t *country_code, char *country_i
         if (*country_code >= MAX_WIFI_COUNTRYCODE) {
             return RETURN_ERR;
         }
-        snprintf(country_id, country_id_len, "%s", wifiCountryMap[*country_code].countryId);
+        snprintf(country_id, country_id_len, "%s", wifiCountryMapMembers[*country_code].countryId);
         return RETURN_OK;
     }
 
@@ -2014,13 +2014,20 @@ int key_mgmt_conversion(wifi_security_modes_t *enum_sec, char *str_sec, char *st
     return RETURN_ERR;
 }
 
-int get_radio_if_hw_type(char *str, int str_len)
+int get_radio_if_hw_type(unsigned int radio_index, char *str, int str_len)
 {
     if (str == NULL) {
         return RETURN_ERR;
     }
 #if defined (_PP203X_PRODUCT_REQ_)
     snprintf(str, str_len, "qca4019");
+#elif defined (_XER5_PRODUCT_REQ_)
+    if (radio_index == 0) {
+        snprintf(str, str_len, "QCN6124");
+    }
+    else {
+        snprintf(str, str_len, "QCN6224");
+    }
 #else 
     snprintf(str, str_len, "BCM43684");
 #endif

@@ -36,6 +36,7 @@ typedef struct {
     bool         exit_cli;
 }__attribute__((__packed__)) sample_app_cli_task_t;
 
+char *read_subdoc_input_param_from_file(char *file_path);
 
 #ifdef __cplusplus
 }

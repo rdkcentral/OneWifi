@@ -3082,7 +3082,7 @@ static int off_chan_scan_init (void *args)
     wifi_radio_operationParam_t* radioOperation = getRadioOperationParam(radio_index);
     UINT prim_chan = radioOperation->channel;
     char countryStr[64] = {0};
-    snprintf(countryStr, sizeof(wifiCountryMap[radioOperation->countryCode].countryStr),"%s", wifiCountryMap[radioOperation->countryCode].countryStr);
+    snprintf(countryStr, sizeof(wifiCountryMapMembers[radioOperation->countryCode].countryStr),"%s", wifiCountryMapMembers[radioOperation->countryCode].countryStr);
     wifi_util_dbg_print(WIFI_MON,"%s:%d Off_channel_scan Country Code:%s prim_chan:%u\n", __func__, __LINE__, countryStr, prim_chan);
 
     //If DFS enabled and country code is not US, CA or GB; the scan should not run for 5GHz radio. Possible updates might be required for GW using two 5G radios

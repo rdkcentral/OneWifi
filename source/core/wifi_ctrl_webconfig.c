@@ -139,7 +139,12 @@ webconfig_set_ow_core_vif_config_priv(const struct ow_conf_vif_config_cb_arg *vi
 static void *
 webconfig_set_ow_core_vif_config_cb(void *arg)
 {
+#ifndef CCSP_COMMON
     return (void *)webconfig_set_ow_core_vif_config_priv(arg);
+#else
+    webconfig_set_ow_core_vif_config_priv(arg);
+    return NULL;
+#endif
 }
 
 static int
@@ -213,7 +218,12 @@ webconfig_set_ow_core_phy_config_priv(rdk_wifi_radio_t *r)
 static void *
 webconfig_set_ow_core_phy_config_cb(void *arg)
 {
+#ifndef CCSP_COMMON
     return (void *)webconfig_set_ow_core_phy_config_priv(arg);
+#else
+    webconfig_set_ow_core_phy_config_priv(arg);
+    return NULL;
+#endif
 }
 
 #ifndef CCSP_COMMON
@@ -1135,7 +1145,7 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
     rdk_wifi_radio_t *radio;
     wifi_vap_info_t *mgr_vap_info, *vap_info;
     vap_svc_t *svc;
-    wifi_vap_info_map_t *mgr_vap_map, tgt_vap_map;
+    wifi_vap_info_map_t *mgr_vap_map, *p_tgt_vap_map = NULL;
     bool found_target = false;
     wifi_mgr_t *mgr = get_wifimgr_obj();
 #if CCSP_COMMON
@@ -1259,10 +1269,15 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
                 }
             }
 
-            memset(&tgt_vap_map, 0, sizeof(wifi_vap_info_map_t));
-            tgt_vap_map.num_vaps = 1;
+            p_tgt_vap_map = (wifi_vap_info_map_t *) malloc(sizeof(wifi_vap_info_map_t));
+            if(p_tgt_vap_map == NULL ) {
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to allocate memory.\n", __func__, __LINE__);
+                return RETURN_ERR;
+            }
+            memset(p_tgt_vap_map, 0, sizeof(wifi_vap_info_map_t));
+            p_tgt_vap_map->num_vaps = 1;
 
-            memcpy(&tgt_vap_map.vap_array[0], vap_info, sizeof(wifi_vap_info_t));
+            memcpy(&p_tgt_vap_map->vap_array[0], vap_info, sizeof(wifi_vap_info_t));
             memset(&tgt_rdk_vap_info, 0, sizeof(rdk_wifi_vap_info_t));
             memcpy(&tgt_rdk_vap_info, rdk_vap_info, sizeof(rdk_wifi_vap_info_t));
 
@@ -1270,7 +1285,7 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
             if (true == rfc_status) {
                 wifi_util_dbg_print(WIFI_WEBCONFIG,"[%s]:WIFI RFC OW CORE THREAD ENABLED \r\n",__FUNCTION__);
                 arg_vif_cb.rdk_vap_info = &tgt_rdk_vap_info;
-                arg_vif_cb.vap_info = &tgt_vap_map.vap_array[0];
+                arg_vif_cb.vap_info = &p_tgt_vap_map->vap_array[0];
                 if(tgt_rdk_vap_info.acl_map == NULL)
                 {
                     wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: tgt_rdk_vap_info->acp_map == NULL\n", __func__, __LINE__);
@@ -1301,9 +1316,11 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
 
             start_wifi_sched_timer(vap_info->vap_index, ctrl, wifi_vap_sched);
 
-            if (svc->update_fn(svc, tgt_radio_idx, &tgt_vap_map, &tgt_rdk_vap_info) != RETURN_OK) {
+            if (svc->update_fn(svc, tgt_radio_idx, p_tgt_vap_map, &tgt_rdk_vap_info) != RETURN_OK) {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: failed to apply\n", __func__, __LINE__);
                 stop_wifi_sched_timer(vap_info->vap_index, ctrl, wifi_vap_sched);
+                free(p_tgt_vap_map);
+                p_tgt_vap_map = NULL;
                 return RETURN_ERR;
             }
 
@@ -1330,14 +1347,16 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
              * 2. MAC is updated by ow_core_update_vap_mac for XE2. Currently, schema_Wifi_VAP_Config doesn't have mac field
              * So, it won't be updated within update_fn -> wifidb_update_wifi_vap_info. Thats the reason why I leaved memcpy here. 
              */
-            memcpy(mgr_vap_info, &tgt_vap_map.vap_array[0], sizeof(wifi_vap_info_t));
+            memcpy(mgr_vap_info, &p_tgt_vap_map->vap_array[0], sizeof(wifi_vap_info_t));
+
             // This block of code is only used for updating VAP mac.
-            //if (vap_info->vap_mode == wifi_vap_mode_ap && is_bssid_valid(tgt_vap_map.vap_array[0].u.bss_info.bssid)) {
-            //    memcpy(vap_info->u.bss_info.bssid, tgt_vap_map.vap_array[0].u.bss_info.bssid, sizeof(mac_address_t));
+            //if (vap_info->vap_mode == wifi_vap_mode_ap && is_bssid_valid(p_tgt_vap_map->vap_array[0].u.bss_info.bssid)) {
+            //    memcpy(vap_info->u.bss_info.bssid, p_tgt_vap_map->vap_array[0].u.bss_info.bssid, sizeof(mac_address_t));
             //}
-            //else if (vap_info->vap_mode == wifi_vap_mode_sta && is_bssid_valid(tgt_vap_map.vap_array[0].u.sta_info.mac)){
-            //    memcpy(vap_info->u.sta_info.mac, tgt_vap_map.vap_array[0].u.sta_info.mac, sizeof(mac_address_t));
+            //else if (vap_info->vap_mode == wifi_vap_mode_sta && is_bssid_valid(p_tgt_vap_map->vap_array[0].u.sta_info.mac)){
+            //    memcpy(vap_info->u.sta_info.mac, p_tgt_vap_map->vap_array[0].u.sta_info.mac, sizeof(mac_address_t));
            // }
+            free(p_tgt_vap_map);
 
         } else {
             wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: Received vap config is same for %s, not applying\n",

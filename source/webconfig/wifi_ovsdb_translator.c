@@ -64,23 +64,34 @@ struct ovs_vapname_cloudvifname_map {
     char vapname[64];
 };
 
-#if defined (_PP203X_PRODUCT_REQ_)
+#if defined (_PP203X_PRODUCT_REQ_) || defined (_XER5_PRODUCT_REQ_)
 struct ovs_vapname_cloudvifname_map  cloud_vif_map[] = {
     {"bhaul-ap-24",  "mesh_backhaul_2g"},
     {"bhaul-ap-l50", "mesh_backhaul_5gl"},
     {"bhaul-ap-u50", "mesh_backhaul_5gh"},
+    {"bhaul-ap-50", "mesh_backhaul_5g"},
     {"home-ap-24",   "private_ssid_2g"},
     {"home-ap-l50",  "private_ssid_5gl"},
     {"home-ap-u50",  "private_ssid_5gh"},
+    {"home-ap-50",  "private_ssid_5g"},
     {"bhaul-sta-24", "mesh_sta_2g"},
     {"bhaul-sta-l50","mesh_sta_5gl"},
     {"bhaul-sta-u50","mesh_sta_5gh"},
+    {"bhaul-sta-50","mesh_sta_5g"},
     {"svc-d-ap-24",  "lnf_psk_2g"},
     {"svc-d-ap-l50", "lnf_psk_5gl"},
     {"svc-d-ap-u50", "lnf_psk_5gh"},
+    {"svc-d-ap-50", "lnf_psk_5g"},
     {"svc-e-ap-24",  "iot_ssid_2g"},
     {"svc-e-ap-l50", "iot_ssid_5gl"},
     {"svc-e-ap-u50", "iot_ssid_5gh"},
+    {"svc-e-ap-50", "iot_ssid_5g"},
+    {"svc-d-ap-s-24", "lnf_radius_2g"},
+    {"svc-d-ap-s-50", "lnf_radius_5g"},
+    {"svc-f-ap-24", "hotspot_open_2g"},
+    {"svc-f-ap-50", "hotspot_open_5g"},
+    {"svc-g-ap-24", "hotspot_secure_2g"},
+    {"svc-g-ap-50", "hotspot_secure_5g"},
 };
 #else
 struct ovs_vapname_cloudvifname_map  cloud_vif_map[] = {
@@ -131,7 +142,7 @@ struct ovs_radioname_cloudradioname_map {
     char cloudradioname[64];
 };
 
-#if defined (_PP203X_PRODUCT_REQ_)
+#if defined (_PP203X_PRODUCT_REQ_) || defined (_XER5_PRODUCT_REQ_)
 struct ovs_radioname_cloudradioname_map cloud_radio_map[] = {
     {0, "wifi0"},
     {1, "wifi1"},
@@ -1314,7 +1325,7 @@ webconfig_error_t translate_radio_obj_to_ovsdb_radio_state(const wifi_radio_oper
     }
 
 
-    if (get_radio_if_hw_type(row->hw_type, sizeof(row->hw_type)) != RETURN_OK) {
+    if (get_radio_if_hw_type(radio_index, row->hw_type, sizeof(row->hw_type)) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: get hw type failed\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
@@ -1401,7 +1412,7 @@ webconfig_error_t translate_radio_obj_to_ovsdb(const wifi_radio_operationParam_t
         return webconfig_error_translate_to_ovsdb;
     }
 
-    if (get_radio_if_hw_type(row->hw_type, sizeof(row->hw_type)) != RETURN_OK) {
+    if (get_radio_if_hw_type(radio_index, row->hw_type, sizeof(row->hw_type)) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: get hw type failed\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }

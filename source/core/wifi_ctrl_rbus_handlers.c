@@ -30,6 +30,7 @@
 #include "wifi_monitor.h"
 #include <unistd.h>
 #include <rbus.h>
+#include "wifi_webconfig.h"
 
 #define MAX_EVENT_NAME_SIZE     200
 
@@ -915,7 +916,7 @@ int wifiapi_result_publish(void)
 char *get_assoc_devices_blob()
 {
     char *str = NULL;
-    webconfig_subdoc_data_t data;
+    webconfig_subdoc_data_t* pdata = NULL;
 #if DML_SUPPORT
     assoc_dev_data_t *assoc_dev_data;
     int itr, itrj;
@@ -944,24 +945,31 @@ char *get_assoc_devices_blob()
     pthread_mutex_unlock(&ctrl->lock);
 
 #endif
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-    memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&mgr->radio_config, getNumberRadios()*sizeof(rdk_wifi_radio_t));
-    memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap, sizeof(wifi_hal_capability_t));
-
-    data.u.decoded.num_radios = getNumberRadios();
-    data.u.decoded.assoclist_notifier_type = assoclist_notifier_full;
-
-    webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_associated_clients);
-
-    str = (char *)calloc(strlen(data.u.encoded.raw) + 1, sizeof(char));
-    if (str == NULL) {
+    pdata = (webconfig_subdoc_data_t*) malloc(sizeof(webconfig_subdoc_data_t));
+    if (pdata == NULL) {
         wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to allocate memory.\n", __func__,__LINE__);
         return NULL;
     }
+    memset(pdata, 0, sizeof(webconfig_subdoc_data_t));
+    memcpy((unsigned char *)&pdata->u.decoded.radios, (unsigned char *)&mgr->radio_config, getNumberRadios()*sizeof(rdk_wifi_radio_t));
+    memcpy((unsigned char *)&pdata->u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap, sizeof(wifi_hal_capability_t));
 
-    memcpy(str, data.u.encoded.raw, strlen(data.u.encoded.raw));
+    pdata->u.decoded.num_radios = getNumberRadios();
+    pdata->u.decoded.assoclist_notifier_type = assoclist_notifier_full;
 
-    webconfig_data_free(&data);
+    webconfig_encode(&ctrl->webconfig, pdata, webconfig_subdoc_type_associated_clients);
+
+    str = (char *)calloc(strlen(pdata->u.encoded.raw) + 1, sizeof(char));
+    if (str == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to allocate memory.\n", __func__,__LINE__);
+        free(pdata);
+        return NULL;
+    }
+
+    memcpy(str, pdata->u.encoded.raw, strlen(pdata->u.encoded.raw));
+
+    webconfig_data_free(pdata);
+    free(pdata);
 
     return str;
 }

@@ -41,6 +41,7 @@
 #include "webconfig_external_proto_ovsdb.h"
 #include "wifi_webconfig_consumer.h"
 #include "ieee80211.h"
+#include "webconfig_consumer_cli.h"
 
 #define WPA3_SECURITY_SCHEMA
 

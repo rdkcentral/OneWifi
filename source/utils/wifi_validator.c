@@ -1456,9 +1456,9 @@ int validate_contry_code(wifi_countrycode_type_t *contry_code, char *contry)
     int i;
     for (i = 0 ; i < MAX_WIFI_COUNTRYCODE; ++i)
     {
-        if(strcasecmp(contry,wifiCountryMap[i].countryStr) == 0)
+        if(strcasecmp(contry,wifiCountryMapMembers[i].countryStr) == 0)
         {
-            *contry_code = wifiCountryMap[i].countryCode;
+            *contry_code = wifiCountryMapMembers[i].countryCode;
             return RETURN_OK;
         }
     }
