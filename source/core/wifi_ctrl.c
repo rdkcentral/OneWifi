@@ -1812,7 +1812,7 @@ void start_wifi_sched_timer(unsigned int index, wifi_ctrl_t *l_ctrl, wifi_schedu
         args->index = handler_index;
 
         scheduler_add_timer_task(l_ctrl->sched, FALSE, &handler_id[handler_index],
-            wifi_sched_timeout, args, MAX_WIFI_SCHED_TIMEOUT, 1);
+            wifi_sched_timeout, args, MAX_WIFI_SCHED_TIMEOUT, 1, FALSE);
     } else {
         wifi_util_info_print(WIFI_CTRL,"%s:%d - Already wifi index:%d type:%d scheduler timer started\r\n",
                                 __func__, __LINE__, handler_index, type);
@@ -2004,20 +2004,20 @@ static int pending_states_webconfig_analyzer(void *arg)
 static void ctrl_queue_timeout_scheduler_tasks(wifi_ctrl_t *ctrl)
 {
 #if CCSP_COMMON
-    scheduler_add_timer_task(ctrl->sched, FALSE, NULL, run_analytics_event, NULL, (ANAYLYTICS_PERIOD * 1000), 0);
+    scheduler_add_timer_task(ctrl->sched, FALSE, NULL, run_analytics_event, NULL, (ANAYLYTICS_PERIOD * 1000), 0, FALSE);
 
-    scheduler_add_timer_task(ctrl->sched, FALSE, NULL, run_cac_event, NULL, (CAC_PERIOD * 1000), 0);
+    scheduler_add_timer_task(ctrl->sched, FALSE, NULL, run_cac_event, NULL, (CAC_PERIOD * 1000), 0, FALSE);
 
-    scheduler_add_timer_task(ctrl->sched, FALSE, NULL, run_greylist_event, NULL, (GREYLIST_CHECK_IN_SECONDS * 1000), 0);
+    scheduler_add_timer_task(ctrl->sched, FALSE, NULL, run_greylist_event, NULL, (GREYLIST_CHECK_IN_SECONDS * 1000), 0, FALSE);
 
-    scheduler_add_timer_task(ctrl->sched, FALSE, NULL, sta_connectivity_selfheal, NULL, (STA_CONN_RETRY_TIMEOUT * 1000), 0);
+    scheduler_add_timer_task(ctrl->sched, FALSE, NULL, sta_connectivity_selfheal, NULL, (STA_CONN_RETRY_TIMEOUT * 1000), 0, FALSE);
 
-    scheduler_add_timer_task(ctrl->sched, FALSE, NULL, rbus_check_and_subscribe_events, NULL, (ctrl->poll_period * 1000), 0);
+    scheduler_add_timer_task(ctrl->sched, FALSE, NULL, rbus_check_and_subscribe_events, NULL, (ctrl->poll_period * 1000), 0, FALSE);
 #endif //CCSP_COMMON
-    scheduler_add_timer_task(ctrl->sched, FALSE, NULL, pending_states_webconfig_analyzer, NULL, (ctrl->poll_period * 1000), 0);
+    scheduler_add_timer_task(ctrl->sched, FALSE, NULL, pending_states_webconfig_analyzer, NULL, (ctrl->poll_period * 1000), 0, FALSE);
 
 #if defined (FEATURE_SUPPORT_ACL_SELFHEAL)
-    scheduler_add_timer_task(ctrl->sched, FALSE, NULL, sync_wifi_hal_hotspot_vap_mac_entry, NULL, (HOTSPOT_VAP_MAC_FILTER_ENTRY_SYNC * 1000), 0);
+    scheduler_add_timer_task(ctrl->sched, FALSE, NULL, sync_wifi_hal_hotspot_vap_mac_entry, NULL, (HOTSPOT_VAP_MAC_FILTER_ENTRY_SYNC * 1000), 0, FALSE);
 #endif
     wifi_util_dbg_print(WIFI_CTRL, "%s():%d Ctrl queue timeout tasks scheduled\n", __FUNCTION__, __LINE__);
 }

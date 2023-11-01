@@ -89,7 +89,7 @@ OneWifi_SOURCES += $(top_srcdir)/source/core/services/vap_svc_mesh_pod.c
 endif
 
 OneWifi_SOURCES += $(top_srcdir)/source/utils/jsonconv.c $(top_srcdir)/source/utils/collection.c $(top_srcdir)/source/utils/scheduler.c $(top_srcdir)/source/utils/caps.c
-OneWifi_SOURCES += $(top_srcdir)/source/stats/wifi_monitor.c $(top_srcdir)/source/stats/wifi_single_client_msmt.c $(top_srcdir)/source/utils/ext_blaster.pb-c.c $(top_srcdir)/source/stats/wifi_stats.c $(top_srcdir)/source/stats/wifi_stats_radio_channel.c $(top_srcdir)/source/stats/wifi_stats_radio_scan.c $(top_srcdir)/source/stats/wifi_stats_neighbor_report.c $(top_srcdir)/source/stats/wifi_stats_radio_diagnostics.c $(top_srcdir)/source/stats/wifi_stats_assoc_client.c
+OneWifi_SOURCES += $(top_srcdir)/source/stats/wifi_monitor.c $(top_srcdir)/source/stats/wifi_single_client_msmt.c $(top_srcdir)/source/utils/ext_blaster.pb-c.c $(top_srcdir)/source/stats/wifi_stats.c $(top_srcdir)/source/stats/wifi_stats_radio_channel.c $(top_srcdir)/source/stats/wifi_stats_radio_scan.c $(top_srcdir)/source/stats/wifi_stats_neighbor_report.c $(top_srcdir)/source/stats/wifi_stats_radio_diagnostics.c $(top_srcdir)/source/stats/wifi_stats_assoc_client.c $(top_srcdir)/source/stats/wifi_stats_radio_temperature.c
 
 if CCSP_COMMON_SUPPORT
 OneWifi_SOURCES += wifi_easy_connect.c

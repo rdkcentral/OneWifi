@@ -1599,7 +1599,7 @@ int motion_event_speed_test(wifi_app_t *app, wifi_event_subtype_t sub_type, void
         if (app->data.u.motion.sched_handler_id == 0) {
             app->data.u.motion.speed_test_timeout  = speed_test_data->speed_test_timeout;
             scheduler_add_timer_task(ctrl->sched, FALSE, &(app->data.u.motion.sched_handler_id),
-                    process_speed_test_timeout_motion, NULL, (app->data.u.motion.speed_test_timeout)*1000, 1);
+                    process_speed_test_timeout_motion, NULL, (app->data.u.motion.speed_test_timeout)*1000, 1, FALSE);
         } else if ((app->data.u.motion.speed_test_timeout != speed_test_data->speed_test_timeout) && (app->data.u.motion.sched_handler_id > 0)) {
             app->data.u.motion.speed_test_timeout = speed_test_data->speed_test_timeout;
             scheduler_update_timer_task_interval(ctrl->sched, app->data.u.motion.sched_handler_id, (app->data.u.motion.speed_test_timeout)*1000);

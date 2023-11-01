@@ -1633,7 +1633,7 @@ int process_periodical_neighbor_scan(void *arg)
             wifi_startNeighborScan(private_vap_index, scan_mode, ((wifi_radio_oper_param->band == WIFI_FREQUENCY_6_BAND) ? (dwell_time=110) : dwell_time), 0, NULL);
         }
         scheduler_add_timer_task(g_monitor_module.sched, FALSE, &neighscan_task_id, get_neighbor_scan_results, NULL,
-                    NEIGHBOR_SCAN_RESULT_INTERVAL, 1);
+                    NEIGHBOR_SCAN_RESULT_INTERVAL, 1, FALSE);
     }
     return TIMER_TASK_COMPLETE;
 }
@@ -2364,7 +2364,7 @@ static int csi_update_pinger(int ap_index, mac_addr_t mac_addr, bool pause_pinge
         wifi_util_info_print(WIFI_MON, "%s %d: Scheduling Pinger\n", __func__, __LINE__);
         scheduler_add_timer_task(g_monitor_module.sched, TRUE,
                 &(g_monitor_module.csi_sched_id), csi_sendPingData,
-                NULL, csi_time_interval, 0);
+                NULL, csi_time_interval, 0, FALSE);
     }
     return 0;
 }
@@ -2411,7 +2411,7 @@ static int clientdiag_sheduler_enable(int ap_index)
         if (g_monitor_module.clientdiag_id[vap_array_index] == 0) {
             scheduler_add_timer_task(g_monitor_module.sched, FALSE,
                     &(g_monitor_module.clientdiag_id[vap_array_index]), associated_device_diagnostics_send_event,
-                    (void *)&(g_monitor_module.clientdiag_sched_arg[vap_array_index]), clientdiag_interval, 0);
+                    (void *)&(g_monitor_module.clientdiag_sched_arg[vap_array_index]), clientdiag_interval, 0, FALSE);
         } else {
             if (g_monitor_module.clientdiag_sched_interval[vap_array_index] != clientdiag_interval) {
                 g_monitor_module.clientdiag_sched_interval[vap_array_index] = clientdiag_interval;
@@ -2995,16 +2995,16 @@ static void scheduler_telemetry_tasks(void)
         //5 minutes
         if (g_monitor_module.refresh_task_id == 0) {
             scheduler_add_timer_task(g_monitor_module.sched, FALSE, &g_monitor_module.refresh_task_id, refresh_task_period,
-                    NULL, REFRESH_TASK_INTERVAL_MS, 0);
+                    NULL, REFRESH_TASK_INTERVAL_MS, 0, FALSE);
         }
         if (g_monitor_module.vap_status_id == 0) {
             scheduler_add_timer_task(g_monitor_module.sched, FALSE, &g_monitor_module.vap_status_id, captureVAPUpStatus,
-                    NULL, CAPTURE_VAP_STATUS_INTERVAL_MS, 0);
+                    NULL, CAPTURE_VAP_STATUS_INTERVAL_MS, 0, FALSE);
         }
         if (g_monitor_module.radio_diagnostics_id == 0) {
             //RADIO_STATS_INTERVAL - 30 seconds
             scheduler_add_timer_task(g_monitor_module.sched, FALSE, &g_monitor_module.radio_diagnostics_id, radio_diagnostics, NULL,
-                    RADIO_STATS_INTERVAL_MS, 0);
+                    RADIO_STATS_INTERVAL_MS, 0, FALSE);
         }
 #if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
         for (rad_index = 0; rad_index < total_radios; rad_index++)
@@ -3012,7 +3012,7 @@ static void scheduler_telemetry_tasks(void)
             if (g_monitor_module.off_channel_scan_id[rad_index] == 0) {
                 if (is_radio_band_5G(mgr->radio_config[rad_index].oper.band)) {
                     scheduler_add_timer_task(g_monitor_module.sched, FALSE, &g_monitor_module.off_channel_scan_id[rad_index], off_chan_scan_init,
-                            &g_monitor_module.off_channel_cfg[rad_index].radio_index, (((int)g_monitor_module.off_channel_cfg[rad_index].NscanSec + g_monitor_module.off_channel_cfg[rad_index].TidleSec)*SEC_TO_MILLISEC), 0);
+                            &g_monitor_module.off_channel_cfg[rad_index].radio_index, (((int)g_monitor_module.off_channel_cfg[rad_index].NscanSec + g_monitor_module.off_channel_cfg[rad_index].TidleSec)*SEC_TO_MILLISEC), 0, FALSE);
                 }
             }
         }
@@ -3021,7 +3021,7 @@ static void scheduler_telemetry_tasks(void)
         //upload_period - configurable from file
         if (g_monitor_module.neighbor_scan_id == 0) {
             scheduler_add_timer_task(g_monitor_module.sched, FALSE, &g_monitor_module.neighbor_scan_id, process_periodical_neighbor_scan, NULL,
-                    NEIGHBOR_SCAN_INTERVAL, 0);
+                    NEIGHBOR_SCAN_INTERVAL, 0, FALSE);
         }
 
     } else {
@@ -3255,7 +3255,7 @@ int init_wifi_monitor()
 #else
     //RADIO_STATS_INTERVAL - 30 seconds
     scheduler_add_timer_task(g_monitor_module.sched, FALSE, &g_monitor_module.radio_diagnostics_id, radio_diagnostics, NULL,
-        RADIO_STATS_INTERVAL_MS, 0);
+        RADIO_STATS_INTERVAL_MS, 0, FALSE);
 #endif // CCSP_COMMON
 
 #ifdef CCSP_COMMON
@@ -3276,7 +3276,7 @@ int init_wifi_monitor()
     wifi_vapstatus_callback_register(vapstatus_callback);
     wifi_hal_apDeAuthEvent_callback_register(device_deauthenticated);
     wifi_hal_apDisassociatedDevice_callback_register(device_disassociated);
-    scheduler_add_timer_task(g_monitor_module.sched, FALSE, NULL, refresh_assoc_frame_entry, NULL, (MAX_ASSOC_FRAME_REFRESH_PERIOD * 1000), 0);
+    scheduler_add_timer_task(g_monitor_module.sched, FALSE, NULL, refresh_assoc_frame_entry, NULL, (MAX_ASSOC_FRAME_REFRESH_PERIOD * 1000), 0, FALSE);
 #endif // CCSP_COMMON
 
     if (onewifi_pktgen_init() != RETURN_OK) {
@@ -5280,7 +5280,7 @@ int coordinator_create_collector_task(wifi_mon_collector_element_t *collector_el
     wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
 
     scheduler_add_timer_task(mon_data->sched, collector_elem->task_priority, &collector_elem->collector_task_sched_id, collector_execute_task,
-            (void *)collector_elem, collector_elem->collector_task_interval_ms, 0);
+            (void *)collector_elem, collector_elem->collector_task_interval_ms, 0, collector_elem->start_immediately);
 
     return RETURN_OK;
 }
@@ -5290,7 +5290,7 @@ int coordinator_create_provider_task(wifi_mon_provider_element_t *provider_elem)
     wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
 
     scheduler_add_timer_task(mon_data->sched, provider_elem->mon_stats_config->task_priority, &provider_elem->provider_task_sched_id, provider_execute_task,
-            (void *)provider_elem, provider_elem->provider_task_interval_ms, 0);
+            (void *)provider_elem, provider_elem->provider_task_interval_ms, 0, provider_elem->start_immediately);
 
     return RETURN_OK;
 }
@@ -5315,6 +5315,7 @@ wifi_mon_collector_element_t * coordinator_create_collector_elem(wifi_mon_stats_
     collector_elem->stat_desc->generate_stats_clctr_key(&stats_config->args, collector_elem->key, sizeof(collector_elem->key));
     collector_elem->collector_task_interval_ms = stats_config->interval_ms;
     collector_elem->task_priority = stats_config->task_priority;
+    collector_elem->start_immediately = stats_config->start_immediately;
 
     collector_elem->args = (wifi_mon_stats_args_t *)calloc(1, sizeof(wifi_mon_stats_args_t));
     if (collector_elem->args == NULL) {
@@ -5347,6 +5348,7 @@ wifi_mon_provider_element_t  *coordinator_create_provider_elem(wifi_mon_stats_co
 
     provider_elem->stat_desc->generate_stats_provider_key(stats_config, provider_elem->key, sizeof(provider_elem->key));
     provider_elem->provider_task_interval_ms = stats_config->interval_ms;
+    provider_elem->start_immediately = stats_config->start_immediately;
 
     provider_elem->mon_stats_config = (wifi_mon_stats_config_t *)calloc(1, sizeof(wifi_mon_stats_config_t));
     if (provider_elem->mon_stats_config == NULL) {

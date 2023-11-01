@@ -1124,7 +1124,7 @@ void kick_all_macs(int vap_index, int timeout, rdk_wifi_vap_info_t* rdk_vap_info
     kick_details->kick_list = assoc_maclist;
     kick_details->vap_index = vap_index;
     scheduler_add_timer_task(ctrl->sched, FALSE, NULL, process_maclist_timeout, kick_details,
-            timeout*1000, 1);
+            timeout*1000, 1, FALSE);
     wifi_util_info_print(WIFI_CTRL, "%s:%d Scheduled task for vap_index %d\n", __func__, __LINE__, vap_index);
 
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d Exit\n", __func__, __LINE__);
@@ -1316,7 +1316,7 @@ void process_kick_assoc_devices_event(void *data)
     kick_details->vap_index = vap_index;
     timeout = atoi(s_timeout);
     scheduler_add_timer_task(ctrl->sched, FALSE, NULL, process_maclist_timeout, kick_details,
-            timeout*1000, 1); 
+            timeout*1000, 1, FALSE); 
 
     wifi_util_info_print(WIFI_CTRL, "%s:%d vap_index is %s mac_list is %s timeout is %s\n", __func__, __LINE__, s_vapindex, s_maclist, s_timeout);
     return;
@@ -2660,7 +2660,7 @@ void process_neighbor_scan_command_event()
             wifi_startNeighborScan(private_vap_index, scan_mode, ((wifi_radio_oper_param->band == WIFI_FREQUENCY_6_BAND) ? (dwell_time=110) : dwell_time), 0, NULL);
         }
         scheduler_add_timer_task(monitor_param->sched, FALSE, &neighbor_scan_task_id, get_neighbor_scan_results, NULL,
-                    NEIGHBOR_SCAN_RESULT_INTERVAL, 1);
+                    NEIGHBOR_SCAN_RESULT_INTERVAL, 1, FALSE);
     }
 #endif // DML_SUPPORT
 }

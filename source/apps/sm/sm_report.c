@@ -318,7 +318,7 @@ int sm_report_config_task(wifi_app_t *app, wifi_mon_stats_request_state_t state,
 
         rc = scheduler_add_timer_task(app->ctrl->sched, FALSE, &report_task->task_id,
             report_push_to_dpp_cb, (void *)task_args,
-            config->reporting_interval * MSEC_IN_SEC, config->reporting_count);
+            config->reporting_interval * MSEC_IN_SEC, config->reporting_count, FALSE);
 
         if (rc != RETURN_OK) {
             wifi_util_error_print(WIFI_APPS, "%s:%d: failed to add timer task\n", __func__, __LINE__);
@@ -361,7 +361,7 @@ int sm_report_init(wifi_app_t *app)
     survey_report_cache_init_all();
     neighbor_report_cache_init_all();
 
-    rc = scheduler_add_timer_task(app->ctrl->sched, FALSE, &send_qm_task_id, sm_report_send_to_qm_cb, NULL, SM_TO_QM_SEND_INTERVAL_SEC * MSEC_IN_SEC, 0);
+    rc = scheduler_add_timer_task(app->ctrl->sched, FALSE, &send_qm_task_id, sm_report_send_to_qm_cb, NULL, SM_TO_QM_SEND_INTERVAL_SEC * MSEC_IN_SEC, 0, FALSE);
     if (rc != RETURN_OK) {
         wifi_util_error_print(WIFI_APPS, "%s:%d: failed to add timer task for send to qm\n", __func__, __LINE__);
     }

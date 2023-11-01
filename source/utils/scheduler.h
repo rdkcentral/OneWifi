@@ -81,7 +81,7 @@ int scheduler_deinit(struct scheduler **sched);
   *     Returns 0 on Success, -1 on Failure
   */
 int scheduler_add_timer_task(struct scheduler *sched, bool high_prio, int *id,
-                                int (*cb)(void *arg), void *arg, unsigned int interval_ms, unsigned int repetitions);
+                                int (*cb)(void *arg), void *arg, unsigned int interval_ms, unsigned int repetitions, bool start_immediately);
 
 /* Description:
   *      This API is used to cancel the timer task from the scheduler

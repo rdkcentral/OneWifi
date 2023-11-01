@@ -41,6 +41,8 @@ extern "C" {
 #define WIFI_LEVL_CSI_DATA                  "Device.WiFi.X_RDK_CSI_LEVL.data"
 #define WIFI_LEVL_SOUNDING_DURATION         "Device.WiFi.X_RDK_CSI_LEVL.Duration"
 #define WIFI_LEVL_CSI_STATUS                "Device.WiFi.X_RDK_CSI_LEVL.soundingStatus"
+#define RADIO_LEVL_TEMPERATURE_TABLE        "Device.WiFi.Events.Radio.{i}."
+#define RADIO_LEVL_TEMPERATURE_EVENT        "Device.WiFi.Events.Radio.{i}.Temperature"
 
 typedef struct {
     unsigned int    max_probe_ttl_cnt;
@@ -70,7 +72,9 @@ typedef struct {
     int                  max_num_csi_clients;
     int                  num_current_sounding;
     int                  sounding_duration;
-    bool                 event_subscribed;
+    bool                 csi_event_subscribed;
+    bool                 temperature_event_subscribed[MAX_NUM_RADIOS];
+    int                  radio_temperature_interval[MAX_NUM_RADIOS];
     pthread_mutex_t      lock;
     hash_map_t           *probe_req_map;
     hash_map_t           *curr_sounding_mac_map;

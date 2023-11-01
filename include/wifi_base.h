@@ -234,6 +234,7 @@ typedef enum {
     mon_stats_type_associated_device_stats,
     mon_stats_type_radio_diagnostic_stats,
     mon_stats_type_radio_scan,
+    mon_stats_type_radio_temperature,
     mon_stats_type_max
 } wifi_mon_stats_type_t;
 
@@ -272,6 +273,7 @@ typedef struct {
     wifi_mon_stats_type_t  data_type;
     unsigned long       interval_ms;
     bool                task_priority; //if TRUE its high priority
+    bool                start_immediately;
     wifi_mon_stats_request_state_t    req_state;
     wifi_mon_stats_args_t     args;
 } __attribute__((packed)) wifi_mon_stats_config_t;

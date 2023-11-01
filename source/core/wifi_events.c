@@ -259,6 +259,19 @@ wifi_event_t *create_wifi_monitor_response_event(const void *msg, unsigned int m
                 }
             }
         break;
+        case mon_stats_type_radio_temperature:
+            if (response->stat_array_size > 0) {
+                event->u.provider_response->stat_pointer = calloc(response->stat_array_size, sizeof(radio_data_t));
+                if (event->u.provider_response->stat_pointer == NULL) {
+                    wifi_util_error_print(WIFI_CTRL,"%s %d response allocation failed for %d\n",__FUNCTION__, __LINE__, response->data_type);
+                    free(event->u.provider_response);
+                    event->u.provider_response = NULL;
+                    free(event);
+                    event = NULL;
+                    return NULL;
+                 }
+        }
+        break;
         default:
             wifi_util_error_print(WIFI_CTRL,"%s %d default response type : %d\n",__FUNCTION__, __LINE__, response->data_type);
             free(event->u.provider_response);
@@ -375,6 +388,9 @@ int copy_msg_to_event(const void *data, unsigned int msg_len, wifi_event_type_t 
                         }
                     break;
                     case mon_stats_type_radio_diagnostic_stats:
+                        memcpy(event->u.provider_response->stat_pointer, response->stat_pointer, (response->stat_array_size*sizeof(radio_data_t)));
+                    break;
+                    case mon_stats_type_radio_temperature:
                         memcpy(event->u.provider_response->stat_pointer, response->stat_pointer, (response->stat_array_size*sizeof(radio_data_t)));
                     break;
                     default:

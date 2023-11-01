@@ -27,7 +27,7 @@
 #include "wifi_monitor.h"
 #include "wifi_util.h"
 
-#define WIFI_STATS_NUM 5
+#define WIFI_STATS_NUM 6
 
 wifi_mon_stats_descriptor_t g_stats_descriptor[WIFI_STATS_NUM] = {
     {
@@ -74,6 +74,15 @@ wifi_mon_stats_descriptor_t g_stats_descriptor[WIFI_STATS_NUM] = {
         execute_radio_scan_stats_api,
         NULL,
         update_radio_scan_collector_args
+    },
+    {
+        mon_stats_type_radio_temperature,
+        validate_radio_temperature_args,
+        generate_radio_temperature_clctr_stats_key,
+        generate_radio_temperature_provider_stats_key,
+        execute_radio_temperature_stats_api,
+        copy_radio_temperature_stats_from_cache,
+        NULL
     }
 };
 

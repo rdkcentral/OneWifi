@@ -36,6 +36,7 @@
 #define WIFI_ANALYTICS_FRAME_EVENTS_NAMESPACE    "Device.WiFi.Events.VAP.%d.Frames.Mgmt"
 
 #define MAX_EVENT_NAME_SIZE     200
+#define MIN_TEMPERATURE_INTERVAL_MS 5000
 #define UNREFERENCED_PARAMETER(_p_)         (void)(_p_)
 static int schedule_mac_for_sounding(int ap_index, mac_address_t mac_address);
 static int process_levl_sounding_timeout(timeout_data_t *t_data);
@@ -460,7 +461,7 @@ static int schedule_mac_for_sounding(int ap_index, mac_address_t mac_address)
         wifi_util_error_print(WIFI_APPS,"%s:%d NULL wifi_app pointer\n", __func__, __LINE__);
         return -1;
     }
-    if (!wifi_app->data.u.levl.event_subscribed) {
+    if (!wifi_app->data.u.levl.csi_event_subscribed) {
         wifi_util_info_print(WIFI_APPS,"%s:%d No SUBSCRIBERS not processing MAC for Sounding \n", __func__, __LINE__);
         return 0;
     }
@@ -517,7 +518,7 @@ static int schedule_mac_for_sounding(int ap_index, mac_address_t mac_address)
             hash_map_put(p_map, strdup(mac_str), levl_sc_data);
             if ((hash_map_count(curr_map) == 0) && (wifi_app->data.u.levl.postpone_sched_handler_id == 0)) {
                 scheduler_add_timer_task(ctrl->sched, FALSE, &(wifi_app->data.u.levl.postpone_sched_handler_id),
-                   process_levl_postpone_sounding, wifi_app, 2000, 1);
+                   process_levl_postpone_sounding, wifi_app, 2000, 1, FALSE);
             }
             free(t_data);
             return RETURN_OK;
@@ -525,7 +526,7 @@ static int schedule_mac_for_sounding(int ap_index, mac_address_t mac_address)
         levl_csi_status_publish(wifi_app->rbus_handle, mac_address, 1);
 
         scheduler_add_timer_task(ctrl->sched, FALSE, &(levl_sc_data->sched_handler_id),
-                process_levl_sounding_timeout, t_data, wifi_app->data.u.levl.sounding_duration, 1);
+                process_levl_sounding_timeout, t_data, wifi_app->data.u.levl.sounding_duration, 1, FALSE);
         hash_map_put(curr_map, strdup(mac_str), levl_sc_data);
     } else {
         //Push MAC to pending queue
@@ -724,6 +725,32 @@ int levl_event_webconfig_set_data(wifi_app_t *apps, void *arg, wifi_event_subtyp
     return RETURN_OK;
 }
 
+void push_radio_temperature_request_to_monitor_queue(wifi_mon_stats_request_state_t state, int32_t interval, unsigned int radio_index)
+{
+    wifi_monitor_data_t *data;
+    data = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_APPS,"%s:%d data allocation failed\r\n", __func__, __LINE__);
+        return;
+    }
+
+    memset(data, 0, sizeof(wifi_monitor_data_t));
+    data->u.mon_stats_config.req_state = state;
+
+    wifi_event_route_t route;
+    memset(&route, 0, sizeof(wifi_event_route_t));
+    route.dst = wifi_sub_component_mon;
+    route.u.inst_bit_map = wifi_app_inst_levl;
+    
+    wifi_util_dbg_print(WIFI_APPS, "%s:%d Interval is %d\n", __func__, __LINE__, interval);
+    data->u.mon_stats_config.interval_ms = interval;
+    data->u.mon_stats_config.start_immediately = TRUE;
+
+    data->u.mon_stats_config.data_type = mon_stats_type_radio_temperature;
+    data->u.mon_stats_config.args.radio_index = radio_index;
+    push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
+}
+
 int webconfig_event_levl(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *data)
 {
     switch(sub_type) {
@@ -884,7 +911,7 @@ int levl_event_speed_test(wifi_app_t *app, wifi_event_subtype_t sub_type, void *
         if (app->data.u.levl.sched_handler_id == 0) {
             app->data.u.levl.speed_test_timeout  = speed_test_data->speed_test_timeout;
             scheduler_add_timer_task(ctrl->sched, FALSE, &(app->data.u.levl.sched_handler_id),
-                    process_speed_test_timeout_levl, NULL, (app->data.u.levl.speed_test_timeout)*1000, 1);
+                    process_speed_test_timeout_levl, NULL, (app->data.u.levl.speed_test_timeout)*1000, 1, FALSE);
         } else if ((app->data.u.levl.speed_test_timeout != speed_test_data->speed_test_timeout) && (app->data.u.levl.sched_handler_id > 0)) {
             app->data.u.levl.speed_test_timeout = speed_test_data->speed_test_timeout;
             scheduler_update_timer_task_interval(ctrl->sched, app->data.u.levl.sched_handler_id, (app->data.u.levl.speed_test_timeout)*1000);
@@ -930,6 +957,92 @@ int apps_frame_event_exec_timeout(wifi_app_t *apps)
     return 0;
 }
 
+int radio_temperature_response(wifi_provider_response_t *provider_response)
+{
+    wifi_app_t *wifi_app =  NULL;
+    wifi_apps_mgr_t *apps_mgr = NULL;
+    rbusObject_t inParams;
+    rbusValue_t value;
+    rbusEvent_t event;
+    char eventName[64] = {0};
+    unsigned int radio_index = provider_response->args.radio_index;
+    int rc = RBUS_ERROR_SUCCESS;
+
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    if (ctrl == NULL) {
+        wifi_util_dbg_print(WIFI_APPS, "%s:%d NULL Pointer \n", __func__, __LINE__);
+        return RBUS_ERROR_BUS_ERROR;
+    }
+
+    apps_mgr = &ctrl->apps_mgr;
+    if (apps_mgr == NULL) {
+        wifi_util_dbg_print(WIFI_APPS,"%s:%d NULL Pointer \n", __func__, __LINE__);
+        return RBUS_ERROR_BUS_ERROR;
+    }
+
+    wifi_app = get_app_by_inst(apps_mgr, wifi_app_inst_levl);
+    if (wifi_app == NULL) {
+        wifi_util_error_print(WIFI_APPS,"%s:%d NULL Pointer \n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    radio_data_t *temperature_stats = (radio_data_t*) provider_response->stat_pointer;
+    for(unsigned int count = 0; count < provider_response->stat_array_size; count++) {
+        wifi_util_dbg_print(WIFI_APPS,"%s:%d Radio temperature for radio%d is %u\n", __func__, __LINE__, radio_index, temperature_stats->radio_Temperature);
+        rbusObject_Init(&inParams, NULL);
+        rbusValue_Init(&value);
+        rbusValue_SetUInt32(value, temperature_stats->radio_Temperature);
+        snprintf(eventName, sizeof(eventName), "Device.WiFi.Events.Radio.%u.Temperature", radio_index+1);
+        rbusObject_SetValue(inParams, eventName, value);
+
+        event.name = eventName;
+        event.data = inParams;
+        event.type = RBUS_EVENT_GENERAL;
+
+        rc = rbusEvent_Publish(wifi_app->rbus_handle, &event);
+        if ((rc != RBUS_ERROR_SUCCESS) && (rc != RBUS_ERROR_NOSUBSCRIBERS)) {
+            wifi_util_error_print(WIFI_APPS, "%s:%d: rbusEvent_Publish Event failed %d\n", __func__, __LINE__, rc);
+            return RETURN_ERR;
+        } else {
+            wifi_util_dbg_print(WIFI_APPS, "%s:%d: rbusEvent_Publish Event for %s %s\n", __func__, __LINE__, eventName, value);
+        }
+        rbusValue_Release(value);
+        rbusObject_Release(inParams);
+    }
+    return RETURN_OK;
+}
+
+int set_radio_temperature_rbus(wifi_app_t *app, wifi_event_t *event)
+{
+    wifi_provider_response_t    *provider_response;
+    provider_response = (wifi_provider_response_t *)event->u.provider_response;
+    int ret = RETURN_ERR;
+    if (provider_response == NULL) {
+        wifi_util_error_print(WIFI_APPS,"%s:%d input event is NULL\r\n", __func__, __LINE__);
+        return ret;
+    }
+
+
+    switch(provider_response->data_type) {
+        case mon_stats_type_radio_temperature:
+            ret = radio_temperature_response(provider_response);
+        break;
+        default:
+            wifi_util_error_print(WIFI_APPS,"%s:%d Invalid data type %d\r\n", __func__, __LINE__, provider_response->data_type);
+    }
+    return ret;
+}
+
+void monitor_radio_temperature(wifi_app_t *app, wifi_event_t *event)
+{
+    switch(event->sub_type) {
+        case wifi_event_monitor_provider_response:
+            set_radio_temperature_rbus(app, event);
+        break;
+        default:
+        break;
+    }
+}
 int levl_event(wifi_app_t *app, wifi_event_t *event)
 {
 
@@ -940,6 +1053,9 @@ int levl_event(wifi_app_t *app, wifi_event_t *event)
             break;
         case wifi_event_type_webconfig:
             webconfig_event_levl(app, event->sub_type, event->u.webconfig_data);
+            break;
+        case wifi_event_type_monitor:
+            monitor_radio_temperature(app, event);
             break;
         case wifi_event_type_csi:
             levl_event_csi(app, event->sub_type, event->u.csi);
@@ -1039,8 +1155,15 @@ int levl_deinit(wifi_app_t *app)
         app->data.u.levl.probe_collector_sched_handler_id = 0;
     }
 
+    for (unsigned int radio_idx = 0; radio_idx < MAX_NUM_RADIOS; radio_idx++) {
+        if (app->data.u.levl.temperature_event_subscribed[radio_idx] == TRUE) {
+            app->data.u.levl.temperature_event_subscribed[radio_idx] = FALSE;
+            push_radio_temperature_request_to_monitor_queue(mon_stats_request_state_stop, MIN_TEMPERATURE_INTERVAL_MS, radio_idx);
+        }
+    }
+
     //Cancel all Sounding.
-    app->data.u.levl.event_subscribed = FALSE;
+    app->data.u.levl.csi_event_subscribed = FALSE;
     wifi_app_t *csi_app = app->data.u.levl.csi_app;
     if (csi_app == NULL) {
         wifi_util_dbg_print(WIFI_APPS, "%s:%d: NULL Pointer\n", __func__, __LINE__);
@@ -1284,6 +1407,7 @@ rbusError_t levl_set_handler(rbusHandle_t handle, rbusProperty_t property, rbusS
 
 rbusError_t levl_event_handler(rbusHandle_t handle, rbusEventSubAction_t action, const char* eventName, rbusFilter_t filter, int32_t interval, bool* autoPublish)
 {
+    unsigned int radio = 0;
     (void)handle;
     (void)filter;
     wifi_app_t *wifi_app = NULL;
@@ -1312,18 +1436,68 @@ rbusError_t levl_event_handler(rbusHandle_t handle, rbusEventSubAction_t action,
     pthread_mutex_lock(&wifi_app->data.u.levl.lock);
     if(action == RBUS_EVENT_ACTION_SUBSCRIBE)
     {
-        if (wifi_app->data.u.levl.event_subscribed == TRUE) {
-            wifi_util_error_print(WIFI_APPS,"%s:%d Already Subscribed\n", __func__, __LINE__);
-            pthread_mutex_unlock(&wifi_app->data.u.levl.lock);
-            return RBUS_ERROR_BUS_ERROR;
+        /* If radio temperature event, then start the request to collect data */
+        if (strstr(eventName, "Temperature")) {
+            if (interval < MIN_TEMPERATURE_INTERVAL_MS) {
+                 wifi_util_info_print(WIFI_APPS,"%s:%d Subscribed interval is not valid(%d)\n", __func__, __LINE__, interval);
+                pthread_mutex_unlock(&wifi_app->data.u.levl.lock);
+                return RBUS_ERROR_BUS_ERROR;
+            }
+
+            if (sscanf(eventName, "Device.WiFi.Events.Radio.%u.Temperature", &radio) != 1) {
+                wifi_util_info_print(WIFI_APPS,"%s:%d Sscanf failed\n", __func__, __LINE__);
+                pthread_mutex_unlock(&wifi_app->data.u.levl.lock);
+                return RBUS_ERROR_BUS_ERROR;
+            }
+
+            if ((radio < 0) || (radio > MAX_NUM_RADIOS)) {
+                wifi_util_dbg_print(WIFI_APPS, "%s:%d Invalid Radio: %u\n", __func__, __LINE__, radio-1);
+                pthread_mutex_unlock(&wifi_app->data.u.levl.lock);
+                return RBUS_ERROR_BUS_ERROR;
+            }
+
+            if (wifi_app->data.u.levl.temperature_event_subscribed[radio-1] == TRUE) {
+                wifi_util_info_print(WIFI_APPS,"%s:%d Temperature event already subscribed for radio %u\n", __func__, __LINE__, radio-1);
+                pthread_mutex_unlock(&wifi_app->data.u.levl.lock);
+                return RBUS_ERROR_BUS_ERROR;
+            } else {
+                wifi_app->data.u.levl.temperature_event_subscribed[radio-1] = TRUE;
+                wifi_util_info_print(WIFI_APPS,"%s:%d Adding Subscription for radio %u with interval %d\n", __func__, __LINE__, radio-1, interval);
+                wifi_app->data.u.levl.radio_temperature_interval[radio-1] = interval;
+                push_radio_temperature_request_to_monitor_queue(mon_stats_request_state_start, interval, radio-1);
+                pthread_mutex_unlock(&wifi_app->data.u.levl.lock);
+                return RBUS_ERROR_SUCCESS;
+            }
         }
-        wifi_app->data.u.levl.event_subscribed = TRUE;
-        wifi_util_info_print(WIFI_APPS,"%s:%d Adding Subscription\n", __func__, __LINE__);
-        pthread_mutex_unlock(&wifi_app->data.u.levl.lock);
-        return RBUS_ERROR_SUCCESS;
+        if (strstr(eventName, "X_RDK_CSI_LEVL")) {
+            if (wifi_app->data.u.levl.csi_event_subscribed == TRUE){
+                wifi_util_info_print(WIFI_APPS,"%s:%d Already Subscribed\n", __func__, __LINE__);
+                pthread_mutex_unlock(&wifi_app->data.u.levl.lock);
+                return RBUS_ERROR_BUS_ERROR;
+            }
+            wifi_app->data.u.levl.csi_event_subscribed = TRUE;
+            wifi_util_info_print(WIFI_APPS,"%s:%d Adding Subscription\n", __func__, __LINE__);
+            pthread_mutex_unlock(&wifi_app->data.u.levl.lock);
+            return RBUS_ERROR_SUCCESS;
+        }
     } else {
-        wifi_app->data.u.levl.event_subscribed = FALSE;
-        wifi_util_info_print(WIFI_APPS,"%s:%d Removing Subscription\n", __func__, __LINE__);
+        if (strstr(eventName, "Temperature")) {
+            if (sscanf(eventName, "Device.WiFi.Events.Radio.%u.Temperature", &radio) != 1) {
+                wifi_util_error_print(WIFI_APPS, "%s:%d Sscanf failed\n", __func__, __LINE__);
+                pthread_mutex_unlock(&wifi_app->data.u.levl.lock);
+                return RBUS_ERROR_BUS_ERROR;
+            }
+            wifi_util_info_print(WIFI_APPS,"%s:%d Removing subscription for radio %u\n", __func__, __LINE__, radio-1);
+            if (wifi_app->data.u.levl.temperature_event_subscribed[radio-1] == TRUE) {
+                wifi_app->data.u.levl.temperature_event_subscribed[radio-1] = FALSE;
+                /* If radio temperature event, then stop the request to collect data */
+                push_radio_temperature_request_to_monitor_queue(mon_stats_request_state_stop, wifi_app->data.u.levl.radio_temperature_interval[radio-1], radio-1);
+            }
+        }
+        if (strstr(eventName, "X_RDK_CSI_LEVL")) {
+            wifi_app->data.u.levl.csi_event_subscribed = FALSE;
+            wifi_util_info_print(WIFI_APPS,"%s:%d Removing Subscription\n", __func__, __LINE__);
+        }
     }
     pthread_mutex_unlock(&wifi_app->data.u.levl.lock);
     return RBUS_ERROR_SUCCESS;
@@ -1381,6 +1555,34 @@ static int levl_event_exec_timeout(void* arg)
     return RETURN_OK;
 }
 
+rbusError_t levl_radio_addrowhandler(rbusHandle_t handle, char const* tableName, char const* aliasName, uint32_t* instNum)
+{
+    static int unsigned instanceCounter = 1;
+
+    if (instanceCounter > getNumberRadios(NULL)) {
+        instanceCounter = 1;
+    }
+
+    *instNum = instanceCounter;
+    instanceCounter++;
+
+    wifi_util_dbg_print(WIFI_APPS, "%s(): %s %u\n", __FUNCTION__, tableName, *instNum);
+
+    UNREFERENCED_PARAMETER(handle);
+    UNREFERENCED_PARAMETER(aliasName);
+    return RBUS_ERROR_SUCCESS;
+}
+
+
+rbusError_t levl_radio_removerowhandler(rbusHandle_t handle, char const* rowName)
+{
+    wifi_util_dbg_print(WIFI_APPS, "%s(): %s\n", __FUNCTION__, rowName);
+
+    UNREFERENCED_PARAMETER(handle);
+
+    return RBUS_ERROR_SUCCESS;
+}
+
 int levl_init(wifi_app_t *app, unsigned int create_flag)
 {
     int rc = RBUS_ERROR_SUCCESS;
@@ -1403,8 +1605,11 @@ int levl_init(wifi_app_t *app, unsigned int create_flag)
         { WIFI_LEVL_SOUNDING_DURATION, RBUS_ELEMENT_TYPE_PROPERTY,
             { levl_get_handler, levl_set_handler, NULL, NULL, NULL, NULL}},
         { WIFI_LEVL_CSI_STATUS, RBUS_ELEMENT_TYPE_EVENT,
-            { NULL, NULL, NULL, NULL, NULL, NULL }}
-
+            { NULL, NULL, NULL, NULL, NULL, NULL }},
+        { RADIO_LEVL_TEMPERATURE_TABLE, RBUS_ELEMENT_TYPE_TABLE,
+            { NULL, NULL, levl_radio_addrowhandler, levl_radio_removerowhandler, NULL, NULL}},
+        { RADIO_LEVL_TEMPERATURE_EVENT, RBUS_ELEMENT_TYPE_EVENT,
+            { NULL, NULL, NULL, NULL, levl_event_handler, NULL }}
     };
 
     if (app_init(app, create_flag) != 0) {
@@ -1446,11 +1651,14 @@ int levl_init(wifi_app_t *app, unsigned int create_flag)
     app->data.u.levl.max_num_csi_clients = MAX_LEVL_CSI_CLIENTS;
     app->data.u.levl.sounding_duration = DEFAULT_SOUNDING_DURATION_MS;
     app->data.u.levl.num_current_sounding = 0;
-    app->data.u.levl.event_subscribed = FALSE;
+    app->data.u.levl.csi_event_subscribed = FALSE;
+    for (unsigned int radio = 0; radio < MAX_NUM_RADIOS; radio++) {
+        app->data.u.levl.temperature_event_subscribed[radio] = FALSE;
+    }
     pthread_mutex_init(&app->data.u.levl.lock, NULL);
 
     scheduler_add_timer_task(ctrl->sched, FALSE, &(app->data.u.levl.probe_collector_sched_handler_id),
-                               levl_event_exec_timeout, app, (APPS_FRAME_EXEC_TIMEOUT_PERIOD * 1000), 0);
+                               levl_event_exec_timeout, app, (APPS_FRAME_EXEC_TIMEOUT_PERIOD * 1000), 0, FALSE);
 
     rc = rbus_open(&app->rbus_handle, component_name);
     if (rc != RBUS_ERROR_SUCCESS) {
@@ -1465,6 +1673,13 @@ int levl_init(wifi_app_t *app, unsigned int create_flag)
         return RETURN_ERR;
     } else {
         wifi_util_info_print(WIFI_APPS,"%s:%d Apps rbus_regDataElement success\n", __func__, __LINE__);
+    }
+
+    for (unsigned int radio_index = 1; radio_index <= getNumberRadios(NULL); radio_index++) {
+        rc = rbusTable_addRow(app->rbus_handle, "Device.WiFi.Events.Radio.", NULL, NULL);
+        if(rc != RBUS_ERROR_SUCCESS) {
+            wifi_util_info_print(WIFI_APPS, "%s() rbusTable_addRow failed %d\n", __FUNCTION__, rc);
+        }
     }
 
     for (index = 1; index <= getTotalNumberVAPs(NULL); index++) {

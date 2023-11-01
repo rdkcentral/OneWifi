@@ -94,7 +94,7 @@ int scheduler_deinit(struct scheduler **sched)
 
 int scheduler_add_timer_task(struct scheduler *sched, bool high_prio, int *id,
                                 int (*cb)(void *arg), void *arg, unsigned int interval_ms,
-                                unsigned int repetitions)
+                                unsigned int repetitions, bool start_immediately)
 {
     struct timer_task *tt;
     static int new_id = 0;
@@ -102,6 +102,7 @@ int scheduler_add_timer_task(struct scheduler *sched, bool high_prio, int *id,
     {
         queue_t *timer_list;
         unsigned int *num_tasks;
+        unsigned int *index;
     } sched_queue;
 
     if (sched == NULL || cb == NULL) {
@@ -122,12 +123,17 @@ int scheduler_add_timer_task(struct scheduler *sched, bool high_prio, int *id,
     tt->timer_call_back = cb;
     tt->arg = arg;
 
+    if (start_immediately) {
+        clock_gettime(CLOCK_MONOTONIC, &(tt->timeout));
+    }
     if (high_prio) {
         sched_queue.timer_list = sched->high_priority_timer_list;
         sched_queue.num_tasks = &sched->num_hp_tasks;
+        sched_queue.index = &sched->hp_index;
     } else {
         sched_queue.timer_list = sched->timer_list;
         sched_queue.num_tasks = &sched->num_tasks;
+        sched_queue.index = &sched->index;
     }
 
     pthread_mutex_lock(&sched->lock);
@@ -135,6 +141,10 @@ int scheduler_add_timer_task(struct scheduler *sched, bool high_prio, int *id,
     tt->id = new_id;
     queue_push(sched_queue.timer_list, tt);
     (*sched_queue.num_tasks)++;
+    (*sched_queue.index)++;
+    if ((*sched_queue.index) >= (*sched_queue.num_tasks)) {
+        (*sched_queue.index) = (*sched_queue.num_tasks) - 1;
+    }
     pthread_mutex_unlock(&sched->lock);
 
     if (id != NULL) {
@@ -354,9 +364,9 @@ int scheduler_execute(struct scheduler *sched, struct timespec t_start, unsigned
                         }
                     }
                     if (tt != NULL && tt->execute == false) {
-                        sched->hp_index++;
+                        sched->hp_index--;
                         if (sched->hp_index >= sched->num_hp_tasks) {
-                            sched->hp_index = 0;
+                            sched->hp_index = sched->num_hp_tasks - 1;
                         }
                     }
                 }
@@ -385,9 +395,9 @@ int scheduler_execute(struct scheduler *sched, struct timespec t_start, unsigned
                         }
                     }
                     if (tt != NULL && tt->execute == false) {
-                        sched->index++;
+                        sched->index--;
                         if (sched->index >= sched->num_tasks) {
-                            sched->index = 0;
+                            sched->index = sched->num_tasks - 1;
                         }
                     }
                 }
@@ -461,22 +471,35 @@ static int scheduler_get_number_tasks_pending(struct scheduler *sched, bool high
 static int scheduler_remove_complete_tasks(struct scheduler *sched)
 {
     unsigned int i;
+    int hp_id = 0, lp_id = 0;
+    int hp_update_index = 0, lp_update_index = 0;
     struct timer_task *tt;
 
     if (sched == NULL) {
         return -1;
+    }
+
+    if (sched->num_tasks > 0) {
+        tt = queue_peek(sched->timer_list, sched->index);
+        lp_id = tt->id;
+        lp_update_index = 1;
+    }
+    if (sched->num_hp_tasks > 0) {
+        tt = queue_peek(sched->high_priority_timer_list, sched->hp_index);
+        hp_id = tt->id;
+        hp_update_index = 1;
     }
     for (i = 0; i < sched->num_tasks; i++) {
         tt = queue_peek(sched->timer_list, i);
         if (tt != NULL) {
             if((tt->repetitions != 0 && tt->execution_counter == tt->repetitions) || tt->cancel == true) {
                 queue_remove(sched->timer_list, i);
+                if (tt->id == lp_id) {
+                    lp_update_index = 0;
+                    sched->index = i-1;
+                }
                 free(tt);
                 sched->num_tasks--;
-                if(sched->index >= sched->num_tasks)
-                {
-                    sched->index = 0;
-                }
                 i--;
             }
         }
@@ -486,14 +509,40 @@ static int scheduler_remove_complete_tasks(struct scheduler *sched)
         if (tt != NULL) {
             if((tt->repetitions != 0 && tt->execution_counter == tt->repetitions) || tt->cancel == true) {
                 queue_remove(sched->high_priority_timer_list, i);
+                if (tt->id == hp_id) {
+                    hp_update_index = 0;
+                    sched->num_hp_tasks = i-1;
+                }
                 free(tt);
                 sched->num_hp_tasks--;
-                if (sched->hp_index >= sched->num_hp_tasks) {
-                    sched->hp_index = 0;
-                }
                 i--;
             }
         }
+    }
+    if (lp_update_index == 1) {
+        for (i = 0; i < sched->num_tasks; i++) {
+            tt = queue_peek(sched->timer_list, i);
+            if (tt != NULL && tt->id == lp_id) {
+                sched->index = i;
+                break;
+            }
+        }
+    }
+    if (hp_update_index == 1) {
+        for (i = 0; i < sched->num_hp_tasks; i++) {
+            tt = queue_peek(sched->high_priority_timer_list, i);
+            if (tt != NULL && tt->id == hp_id) {
+                sched->hp_index = i;
+                break;
+            }
+        }
+    }
+    //make sure index is valid
+    if (sched->num_tasks > 0 && sched->index >= sched->num_tasks) {
+        sched->index = sched->num_tasks -1;
+    }
+    if (sched->num_hp_tasks > 0 && sched->hp_index >= sched->num_hp_tasks) {
+        sched->hp_index = sched->num_hp_tasks -1;
     }
     return 0;
 }

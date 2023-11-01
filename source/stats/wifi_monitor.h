@@ -68,6 +68,7 @@ typedef struct {
     INT                     radio_MinimumNoiseFloorOnChannel;
     INT                     radio_MedianNoiseFloorOnChannel;
     ULONG                   radio_StatisticsStartTime;
+    unsigned int            radio_Temperature;
 } radio_data_t;
 
 typedef struct {
@@ -258,6 +259,7 @@ typedef struct {
     unsigned long   collector_task_interval_ms;
     char            key[MON_STATS_KEY_LEN_32];
     bool            task_priority; //if TRUE its high priority
+    bool            start_immediately; //if TRUE need to start collection immediately
     hash_map_t *provider_list; //wifi_mon_provider_element_t
     wifi_mon_stats_args_t     *args;
     wifi_mon_stats_descriptor_t  *stat_desc;
@@ -271,6 +273,7 @@ typedef struct {
     wifi_mon_stats_descriptor_t  *stat_desc;
     wifi_provider_response_t *response;
     unsigned long   provider_task_interval_ms;
+    bool            start_immediately;
 } __attribute__((packed)) wifi_mon_provider_element_t;
 
 
@@ -329,5 +332,12 @@ int generate_radio_scan_clctr_stats_key(wifi_mon_stats_args_t *args, char *key_s
 int generate_radio_scan_provider_stats_key(wifi_mon_stats_config_t *config, char *key_str, size_t key_len);
 int execute_radio_scan_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *mon_data, unsigned long task_interval_ms);
 int update_radio_scan_collector_args(void *collector_elem);
+
+/*Radio Temperature*/
+int validate_radio_temperature_args(wifi_mon_stats_args_t *args);
+int generate_radio_temperature_clctr_stats_key(wifi_mon_stats_args_t *args, char *key_str, size_t key_len);
+int generate_radio_temperature_provider_stats_key(wifi_mon_stats_config_t *config, char *key_str, size_t key_len);
+int execute_radio_temperature_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *mon_data, unsigned long task_interval_ms);
+int copy_radio_temperature_stats_from_cache(wifi_mon_stats_args_t *args, void **stats, unsigned int *stat_array_size, wifi_monitor_t *mon_cache);
 
 #endif	//_WIFI_MON_H_

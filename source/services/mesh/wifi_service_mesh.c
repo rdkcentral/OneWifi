@@ -440,7 +440,7 @@ static void ext_reset_radios(wifi_service_node_t *node)
     reset_wifi_radios();
     ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
     scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
-        process_ext_connect_algorithm, node, EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1);
+        process_ext_connect_algorithm, node, EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1, FALSE);
 }
 
 int scan_result_wait_timeout(wifi_service_node_t *node)
@@ -460,7 +460,7 @@ int scan_result_wait_timeout(wifi_service_node_t *node)
         ext->scanned_radios = 0;
         scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
                     process_ext_connect_algorithm, node,
-                    EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1);
+                    EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1, FALSE);
     }
     return 0;
 }
@@ -479,7 +479,7 @@ int process_connected_scan_result_timeout(wifi_service_node_t *node)
         ext_set_conn_state(ext, connection_state_connected, __func__, __LINE__);
         scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
                     process_ext_connect_algorithm, node,
-                    EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1);
+                    EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1, FALSE);
     }
 
     return 0;
@@ -517,7 +517,7 @@ void ext_connected_scan(wifi_service_node_t *node)
 
     scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connected_scan_result_timeout_handler_id,
                 process_connected_scan_result_timeout, node,
-                EXT_SCAN_RESULT_TIMEOUT, 0);
+                EXT_SCAN_RESULT_TIMEOUT, 0, FALSE);
     return;
 }
 
@@ -541,7 +541,7 @@ int csa_wait_timeout(wifi_service_node_t *node)
         ext_set_conn_state(ext, connection_state_connected_scan_list, __func__, __LINE__);
         scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
                    process_ext_connect_algorithm, node,
-                   EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1);
+                   EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1, FALSE);
     }
 
     return 0;
@@ -565,7 +565,7 @@ void ext_wait_for_csa(wifi_service_node_t *node)
     if (ext->conn_state == connection_state_connected_wait_for_csa) {
         scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_csa_wait_timeout_handler_id,
                     csa_wait_timeout, node,
-                    EXT_CSA_WAIT_TIMEOUT, 1);
+                    EXT_CSA_WAIT_TIMEOUT, 1, FALSE);
     }
 
     return;
@@ -596,7 +596,7 @@ static void ext_try_disconnecting(wifi_service_node_t *node)
     }
 
     scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_disconnection_event_timeout_handler_id,
-        process_disconnection_event_timeout, node, EXT_DISCONNECTION_IND_TIMEOUT, 1);
+        process_disconnection_event_timeout, node, EXT_DISCONNECTION_IND_TIMEOUT, 1, FALSE);
 }
 
 
@@ -651,7 +651,7 @@ static int process_ext_connect_event_timeout(wifi_service_node_t *node)
     wifi_util_error_print(WIFI_SERVICES, "%s:%d not received connection event, retry\n", __func__,
         __LINE__);
     scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
-        process_ext_connect_algorithm, node, EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1);
+        process_ext_connect_algorithm, node, EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1, FALSE);
 
     return 0;
 }
@@ -669,7 +669,7 @@ int process_disconnection_event_timeout(wifi_service_node_t *node)
         ext_set_conn_state(ext, connection_state_connected, __func__, __LINE__);
         scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
                 process_ext_connect_algorithm, node,
-                EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1);
+                EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1, FALSE);
     }
 
     return 0;
@@ -715,7 +715,7 @@ void ext_start_scan(wifi_service_node_t *node)
 
     scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_scan_result_timeout_handler_id,
                 process_scan_result_timeout, node,
-                EXT_SCAN_RESULT_TIMEOUT, 0);
+                EXT_SCAN_RESULT_TIMEOUT, 0, FALSE);
 }
 
 void ext_process_scan_list(wifi_service_node_t *node)
@@ -740,7 +740,7 @@ void ext_process_scan_list(wifi_service_node_t *node)
 
         scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
                     process_ext_connect_algorithm, node,
-                    EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1);
+                    EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1, FALSE);
     } else {
         wifi_util_dbg_print(WIFI_SERVICES,"%s:%d wifi connection already in process state\n",__func__, __LINE__);
     }
@@ -763,7 +763,7 @@ void ext_incomplete_scan_list(wifi_service_node_t *node)
         // schedule extender connetion algorithm
         scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
                         process_ext_connect_algorithm, node,
-                        EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1);
+                        EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1, FALSE);
     }
 }
 
@@ -779,7 +779,7 @@ int process_scan_result_timeout(wifi_service_node_t *node)
         wifi_util_dbg_print(WIFI_SERVICES,"%s:%d - start wifi scan timer\r\n", __func__, __LINE__);
         scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
                     process_ext_connect_algorithm, node,
-                    EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1);
+                    EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1, FALSE);
     }
     return 0;
 }
@@ -853,7 +853,7 @@ void ext_try_connecting(wifi_service_node_t *node)
             scheduler_cancel_timer_task(ctrl->sched, ext->ext_conn_status_ind_timeout_handler_id);
         }
         scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_conn_status_ind_timeout_handler_id,
-            process_ext_connect_event_timeout, node, EXT_CONN_STATUS_IND_TIMEOUT, 1);
+            process_ext_connect_event_timeout, node, EXT_CONN_STATUS_IND_TIMEOUT, 1, FALSE);
 
 #if CCSP_COMMON
         apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_command, wifi_event_type_sta_connect_in_progress, candidate);
@@ -862,7 +862,7 @@ void ext_try_connecting(wifi_service_node_t *node)
         ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
         scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
                 process_ext_connect_algorithm, node,
-                EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1);
+                EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1, FALSE);
     }
 }
 
@@ -1011,7 +1011,7 @@ static int process_sta_webconfig_set_data_sta_bssid(wifi_service_node_t *node, w
 
     scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
         process_ext_connect_algorithm, node,
-        EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1);
+        EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1, FALSE);
 
     return 0;
 }
@@ -1052,7 +1052,7 @@ void process_ext_connected_scan_results(wifi_service_node_t *node, wifi_core_dat
         ext_set_conn_state(ext, connection_state_connected, __func__, __LINE__);
         scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
                   process_ext_connect_algorithm, node,
-                  EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1);
+                  EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1, FALSE);
         return;
     }
 
@@ -1067,7 +1067,7 @@ void process_ext_connected_scan_results(wifi_service_node_t *node, wifi_core_dat
         ext_set_conn_state(ext, connection_state_connected, __func__, __LINE__);
         scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
                         process_ext_connect_algorithm, node,
-                        EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1);
+                        EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1, FALSE);
         return;
     }
 
@@ -1092,7 +1092,7 @@ void process_ext_connected_scan_results(wifi_service_node_t *node, wifi_core_dat
     }
     scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
                     process_ext_connect_algorithm, node,
-                    EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1);
+                    EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1, FALSE);
 
     return;
 }
@@ -1179,13 +1179,13 @@ int process_ext_scan_results(wifi_service_node_t *node, wifi_core_data_t *data)
         // schedule extender connetion algorithm
         scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
                         process_ext_connect_algorithm, node,
-                        EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1);
+                        EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1, FALSE);
     } else {
         ext_set_conn_state(ext, connection_state_disconnected_scan_list_in_progress, __func__,
             __LINE__);
         scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_scan_result_wait_timeout_handler_id,
                         scan_result_wait_timeout, node,
-                        EXT_SCAN_RESULT_WAIT_TIMEOUT, 1);
+                        EXT_SCAN_RESULT_WAIT_TIMEOUT, 1, FALSE);
     }
 
     return 0;
@@ -1219,7 +1219,7 @@ static void process_ext_trigger_disconnection(wifi_service_node_t *node, wifi_co
     }
 
     scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_trigger_disconnection_timeout_handler_id,
-        process_trigger_disconnection_event_timeout, node, EXT_DISCONNECTION_IND_TIMEOUT, 1);
+        process_trigger_disconnection_event_timeout, node, EXT_DISCONNECTION_IND_TIMEOUT, 1, FALSE);
 }
 
 int process_trigger_disconnection_event_timeout(wifi_service_node_t *node)
@@ -1260,7 +1260,7 @@ int process_trigger_disconnection_event_timeout(wifi_service_node_t *node)
     }
 
     scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_trigger_disconnection_timeout_handler_id,
-        process_trigger_disconnection_event_timeout, node, EXT_DISCONNECTION_IND_TIMEOUT, 1);
+        process_trigger_disconnection_event_timeout, node, EXT_DISCONNECTION_IND_TIMEOUT, 1, FALSE);
 
     return 0;
 }
@@ -1276,7 +1276,7 @@ int process_ext_exec_timeout(wifi_service_node_t *node, wifi_core_data_t *data)
     wifi_util_dbg_print(WIFI_SERVICES,"%s:%d - start timeout timer\r\n", __func__, __LINE__);
     scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
                 process_ext_connect_algorithm, node,
-                EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1);
+                EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1, FALSE);
 
     return 0;
 }
@@ -1389,7 +1389,7 @@ int process_ext_sta_conn_status(wifi_service_node_t *node, wifi_core_data_t *dat
 
             scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_udhcp_ip_check_id,
                 process_udhcp_ip_check, node,
-                EXT_UDHCP_IP_CHECK_INTERVAL, 0);
+                EXT_UDHCP_IP_CHECK_INTERVAL, 0, FALSE);
 
             /* Make Self Heal Timeout to flase once connected */
             ext->selfheal_status = false;
@@ -1545,14 +1545,14 @@ int process_ext_sta_conn_status(wifi_service_node_t *node, wifi_core_data_t *dat
 
             scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
                         process_ext_connect_algorithm, node,
-                        EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1);
+                        EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1, FALSE);
         } else {
             //ext_try_connecting(node);
             wifi_util_info_print(WIFI_SERVICES, "%s:%d connection state: %s\r\n", __func__,
                 __LINE__, ext_conn_state_to_str(ext->conn_state));
             scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
                         process_ext_connect_algorithm, node,
-                        EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1);
+                        EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1, FALSE);
         }
     } else if((found_candidate == false) && (ext->conn_state != connection_state_connected)) {
         wifi_util_info_print(WIFI_SERVICES, "%s:%d candidate null connection state: %s\r\n",
@@ -1561,7 +1561,7 @@ int process_ext_sta_conn_status(wifi_service_node_t *node, wifi_core_data_t *dat
 
         scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
                     process_ext_connect_algorithm, node,
-                    EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1);
+                    EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1, FALSE);
     } else {
         wifi_util_dbg_print(WIFI_SERVICES, "%s:%d: candidate null connection state: %s\r\n", __func__,
             __LINE__, ext_conn_state_to_str(ext->conn_state));
@@ -1589,7 +1589,7 @@ int process_ext_channel_change(wifi_service_node_t *node, wifi_core_data_t *data
             ext_set_conn_state(ext, connection_state_connected, __func__, __LINE__);
             scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
                         process_ext_connect_algorithm, node,
-                        EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1);
+                        EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1, FALSE);
         }
     }
 
@@ -1692,7 +1692,7 @@ int process_ext_webconfig_set_data_sta_bssid(wifi_service_node_t *node, wifi_cor
 
     scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
         process_ext_connect_algorithm, svc,
-        EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1);
+        EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1, FALSE);
 #endif
     return 0;
 }
@@ -1732,7 +1732,7 @@ int process_ext_webconfig_set_data(wifi_service_node_t *node, wifi_core_data_t *
     ext_set_conn_state(ext, connection_state_connected_wait_for_csa, __func__, __LINE__);
     scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
             process_ext_connect_algorithm, node,
-            EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1);
+            EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1, FALSE);
     return 0;
 }
 
