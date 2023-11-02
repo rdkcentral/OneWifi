@@ -191,6 +191,42 @@ int execute_assoc_client_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *
                 __func__, __LINE__, args->vap_index);
         return RETURN_ERR;
     }
+
+#if CCSP_WIFI_HAL
+    wifi_util_dbg_print(WIFI_MON, "%s:%d: diag result: number of devs: %d\n",
+        __func__, __LINE__, num_devs);
+    for (i = 0; i < num_devs; i++) {
+        wifi_util_dbg_print(WIFI_MON, "cli_MACAddress: %s\ncli_AuthenticationState: %d\n"
+            "cli_LastDataDownlinkRate: %d\ncli_LastDataUplinkRate: %d\ncli_SignalStrength: %d\n"
+            "cli_Retransmissions: %d\ncli_Active: %d\ncli_OperatingStandard: %s\n"
+            "cli_OperatingChannelBandwidth: %s\ncli_SNR: %d\ncli_InterferenceSources: %s\n"
+            "cli_DataFramesSentAck: %d\ncli_DataFramesSentNoAck: %d\ncli_BytesSent: %d\n"
+            "cli_BytesReceived: %d\ncli_RSSI: %d\ncli_MinRSSI: %d\ncli_MaxRSSI: %d\n"
+            "cli_Disassociations: %d\ncli_AuthenticationFailures: %d\ncli_Associations: %llu\n"
+            "cli_PacketsSent: %d\ncli_PacketsReceived: %d\ncli_ErrorsSent: %d\n"
+            "cli_RetransCount: %d\ncli_FailedRetransCount: %d\ncli_RetryCount: %d\n"
+            "cli_MultipleRetryCount: %d\ncli_MaxDownlinkRate: %d\ncli_MaxUplinkRate: %d\n"
+            "cli_activeNumSpatialStreams: %d\ncli_TxFrames: %llu\ncli_RxRetries: %llu\n"
+            "cli_RxErrors: %llu\n", to_sta_key(dev_array[i].cli_MACAddress, sta_key),
+            dev_array[i].cli_AuthenticationState, dev_array[i].cli_LastDataDownlinkRate,
+            dev_array[i].cli_LastDataUplinkRate, dev_array[i].cli_SignalStrength,
+            dev_array[i].cli_Retransmissions, dev_array[i].cli_Active,
+            dev_array[i].cli_OperatingStandard, dev_array[i].cli_OperatingChannelBandwidth,
+            dev_array[i].cli_SNR, dev_array[i].cli_InterferenceSources,
+            dev_array[i].cli_DataFramesSentAck, dev_array[i].cli_DataFramesSentNoAck,
+            dev_array[i].cli_BytesSent, dev_array[i].cli_BytesReceived, dev_array[i].cli_RSSI,
+            dev_array[i].cli_MinRSSI, dev_array[i].cli_MaxRSSI, dev_array[i].cli_Disassociations,
+            dev_array[i].cli_AuthenticationFailures, dev_array[i].cli_Associations,
+            dev_array[i].cli_PacketsSent, dev_array[i].cli_PacketsReceived,
+            dev_array[i].cli_ErrorsSent, dev_array[i].cli_RetransCount,
+            dev_array[i].cli_FailedRetransCount, dev_array[i].cli_RetryCount,
+            dev_array[i].cli_MultipleRetryCount, dev_array[i].cli_MaxDownlinkRate,
+            dev_array[i].cli_MaxUplinkRate, dev_array[i].cli_activeNumSpatialStreams,
+            dev_array[i].cli_TxFrames, dev_array[i].cli_RxRetries,
+            dev_array[i].cli_RxErrors);
+    }
+#endif
+
 #ifdef CCSP_COMMON
     events_update_clientdiagdata(num_devs, args->vap_index, dev_array);
 #endif
