@@ -5709,6 +5709,7 @@ void init_wifidb_data()
 #if DML_SUPPORT
     if ((access(ONEWIFI_FR_REBOOT_FLAG, F_OK) == 0) && (access(ONEWIFI_FR_WIFIDB_RESET_DONE_FLAG, F_OK) != 0)) {
         wifidb_update_rfc_config(0, rfc_param);
+        get_wifi_country_code_from_bootstrap_json(country_code, COUNTRY_CODE_LEN);
         pthread_mutex_lock(&g_wifidb->data_cache_lock);
         for (r_index = 0; r_index < num_radio; r_index++) {
             l_radio_cfg = get_wifidb_radio_map(r_index);
@@ -5735,12 +5736,34 @@ void init_wifidb_data()
                 pthread_mutex_unlock(&g_wifidb->data_cache_lock);
                 return;
             }
+            if (country_code[0] != 0) {
+                char radio_country_code[COUNTRY_CODE_LEN] = {0};
+                wifi_countrycode_type_t r_country_code;
+                strncpy(radio_country_code, country_code, strlen(country_code) - 1);
+                if (country_code_conversion(&r_country_code, radio_country_code, COUNTRY_CODE_LEN, STRING_TO_ENUM) < 0) {
+                        wifi_util_dbg_print(WIFI_DB,"%s:%d: unable to convert country string\n", __func__, __LINE__);
+                } else {
+                    if (l_radio_cfg->countryCode != r_country_code) {
+                        l_radio_cfg->countryCode = r_country_code;
+                    }
+                }
+            }
             wifidb_update_wifi_radio_config(r_index, l_radio_cfg, f_radio_cfg);
             wifidb_update_wifi_vap_config(r_index, l_vap_param_cfg, l_rdk_vap_param_cfg);
 
             wifidb_update_wifi_cac_config(l_vap_param_cfg);
         }
-        wifidb_update_wifi_global_config(&g_wifidb->global_config.global_parameters);
+        if (country_code[0] != 0) {
+            if (strcmp(country_code, g_wifidb->global_config.global_parameters.wifi_region_code) != 0) {
+                strncpy(g_wifidb->global_config.global_parameters.wifi_region_code, country_code, sizeof(g_wifidb->global_config.global_parameters.wifi_region_code));
+            }
+        }
+        wifidb_global_config_upgrade();
+        if (wifidb_update_wifi_global_config(&g_wifidb->global_config.global_parameters) != RETURN_OK) {
+            wifi_util_error_print(WIFI_DB,"%s:%d error in updating global config\n", __func__,__LINE__);
+            pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+            return;
+        }
         wifidb_update_gas_config(g_wifidb->global_config.gas_config.AdvertisementID, &g_wifidb->global_config.gas_config);
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
         remove_onewifi_factory_reset_reboot_flag();
