@@ -229,9 +229,11 @@ int execute_assoc_client_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *
             send_wifi_disconnect_event_to_ctrl(tmp_sta->sta_mac, args->vap_index);
             memset(sta_key, 0, sizeof(sta_key_t));
             to_sta_key(tmp_sta->sta_mac, sta_key);
-            hash_map_remove(sta_map, sta_key);
-            free(tmp_sta);
-            tmp_sta = NULL;
+            tmp_sta = hash_map_remove(sta_map, sta_key);
+            if (tmp_sta != NULL) {
+                free(tmp_sta);
+                tmp_sta = NULL;
+            }
         }
     }
     if (dev_array != NULL) {
