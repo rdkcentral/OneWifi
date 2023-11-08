@@ -1094,8 +1094,7 @@ int upload_client_telemetry_data(unsigned int vap_index)
                     t2_event_d(eventName, num_devs);
                 }
             } else if (isVapXhs(vap_index)) {
-                snprintf(eventName, sizeof(eventName), "xh_cnt_%s_split",
-                    convert_radio_index_to_band_str(radioIndex));
+                snprintf(eventName, sizeof(eventName), "xh_cnt_%d_split", radioIndex + 1);
                 t2_event_d(eventName, num_devs);
             } else if (isVapMesh(vap_index)) {
                 snprintf(eventName, sizeof(eventName), "Total_%s_PodClients_split", t_string);
