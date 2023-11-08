@@ -138,6 +138,14 @@ int execute_radio_scan_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *mo
                 } else {
                     channels[0] = args->channel_list.channels_list[i+1];
                 }
+                //skip current channel
+                if ((unsigned int)channels[0] == radioOperation->channel) {
+                    if ((i+2) >= args->channel_list.num_channels) {
+                        channels[0] = args->channel_list.channels_list[0];
+                    } else {
+                        channels[0] = args->channel_list.channels_list[i+2];
+                    }
+                }
             }
         }
         num_channels = 1;
