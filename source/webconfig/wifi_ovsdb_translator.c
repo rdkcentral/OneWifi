@@ -2921,12 +2921,15 @@ webconfig_error_t translate_vap_object_to_ovsdb_associated_clients(const rdk_wif
                 to_mac_str(assoc_dev_data->dev_stats.cli_MACAddress, diff_mac_str);
                 str_tolower(diff_mac_str);
                 //As associated_devices_map connected has only connected client, check for the clients in diff_map and in diffmap its present then its reconnect
-                diff_assoc_dev_data = hash_map_get(diff_assoc_map, diff_mac_str);
-                if (diff_assoc_dev_data != NULL) {
-                    strncpy(client_row->kick_keys[0], "state",sizeof(client_row->kick_keys[0]));
-                    strncpy(client_row->kick[0], "reconnected",sizeof(client_row->kick[0]));
-                    client_row->kick_len = 1;
-                    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: client %s reconnected.\n", __func__, __LINE__, diff_mac_str);
+                if (diff_assoc_map != NULL)
+                {
+                    diff_assoc_dev_data = hash_map_get(diff_assoc_map, diff_mac_str);
+                    if (diff_assoc_dev_data != NULL) {
+                        strncpy(client_row->kick_keys[0], "state",sizeof(client_row->kick_keys[0]));
+                        strncpy(client_row->kick[0], "reconnected",sizeof(client_row->kick[0]));
+                        client_row->kick_len = 1;
+                        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: client %s reconnected.\n", __func__, __LINE__, diff_mac_str);
+                    }
                 }
             }
             associated_client_count++;
