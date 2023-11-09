@@ -259,17 +259,15 @@ int update_xfinity_acl_entries(char* tgt_vap_name)
 
             acl_entry = hash_map_get_first(rdk_vap_info->acl_map);
             while(acl_entry != NULL && acl_count < MAX_ACL_COUNT ) {
-                if (acl_entry->mac != NULL) {
-                    memcpy(&acl_device_mac,&acl_entry->mac,sizeof(mac_address_t));
-                    to_mac_str(acl_device_mac, mac_str);
-                    wifi_util_dbg_print(WIFI_CTRL, "%s:%d: calling wifi_addApAclDevice for mac %s vap_index %d\n", __func__, __LINE__, mac_str, vap_index);
+                memcpy(&acl_device_mac,&acl_entry->mac,sizeof(mac_address_t));
+                to_mac_str(acl_device_mac, mac_str);
+                wifi_util_dbg_print(WIFI_CTRL, "%s:%d: calling wifi_addApAclDevice for mac %s vap_index %d\n", __func__, __LINE__, mac_str, vap_index);
 #ifdef NL80211_ACL
-                    if (wifi_hal_addApAclDevice(vap_index, (CHAR *) mac_str) != RETURN_OK) {
+                if (wifi_hal_addApAclDevice(vap_index, (CHAR *) mac_str) != RETURN_OK) {
 #else
-                    if (wifi_addApAclDevice(vap_index, (CHAR *) mac_str) != RETURN_OK) {
+                if (wifi_addApAclDevice(vap_index, (CHAR *) mac_str) != RETURN_OK) {
 #endif
-                        wifi_util_error_print(WIFI_CTRL,"%s: wifi_addApAclDevice failed. vap_index:%d MAC:'%s'\n",__FUNCTION__, vap_index, mac_str);
-                    }
+                    wifi_util_error_print(WIFI_CTRL,"%s: wifi_addApAclDevice failed. vap_index:%d MAC:'%s'\n",__FUNCTION__, vap_index, mac_str);
                 }
                 acl_entry = hash_map_get_next(rdk_vap_info->acl_map,acl_entry);
                 acl_count++;
