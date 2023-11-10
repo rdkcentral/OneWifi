@@ -2055,6 +2055,18 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
             return FALSE;
         }
         wifidb_init_radio_config_default(i,&rcfg,&fcfg);
+        //Update the 2.4Ghz radio AX mode based on the RFC twoG80211axEnable_rfc
+        if (WIFI_FREQUENCY_2_4_BAND == rcfg.band) {
+            wifi_rfc_dml_parameters_t *rfc_param = get_wifi_db_rfc_parameters();
+            if (wifidb_get_rfc_config(0,rfc_param) != 0) {
+                wifi_util_error_print(WIFI_DMCLI,"%s:%d: Error getting RFC config\n",__func__, __LINE__);
+            } else {
+               if(rfc_param->twoG80211axEnable_rfc) {
+                  rcfg.variant = rcfg.variant | WIFI_80211_VARIANT_AX;
+                  wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: Updated default config with twoG80211axEnable_rfc\n",__func__, __LINE__);
+               }
+            }
+        }
         memcpy((unsigned char *)wifiRadioOperParam,(unsigned char *)&rcfg,sizeof(wifi_radio_operationParam_t));
         memcpy((unsigned char *)wifiRadioFeatParam, (unsigned char *)&fcfg, sizeof(wifi_radio_feature_param_t));
         is_radio_config_changed = TRUE;
