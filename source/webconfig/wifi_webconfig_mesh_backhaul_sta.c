@@ -48,7 +48,7 @@ webconfig_error_t access_check_mesh_backhaul_sta_subdoc(webconfig_t *config, web
 {
     return webconfig_error_none;
 }
- 
+
 webconfig_error_t translate_from_mesh_backhaul_sta_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
 {
     if ((data->descriptor & webconfig_data_descriptor_translate_to_ovsdb) == webconfig_data_descriptor_translate_to_ovsdb) {
@@ -120,8 +120,16 @@ webconfig_error_t encode_mesh_backhaul_sta_subdoc(webconfig_t *config, webconfig
         }
     }
 
-    memset(data->u.encoded.raw, 0, MAX_SUBDOC_SIZE);
     str = cJSON_Print(json);
+
+    data->u.encoded.raw = (webconfig_subdoc_encoded_raw_t)calloc(strlen(str) + 1, sizeof(char));
+    if (data->u.encoded.raw == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d Failed to allocate memory.\n", __func__,__LINE__);
+        cJSON_free(str);
+        cJSON_Delete(json);
+        return webconfig_error_encode;
+    }
+
     memcpy(data->u.encoded.raw, str, strlen(str));
 
     // wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Encoded JSON:\n%s\n", __func__, __LINE__, str);

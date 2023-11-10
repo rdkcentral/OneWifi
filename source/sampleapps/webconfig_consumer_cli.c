@@ -66,35 +66,44 @@ void print_help_msg(void)
     printf("|**************************************************************|\r\n");
 }
 
-int read_subdoc_input_param_from_file(char *file_path, char *read_data)
+/* The function returns a pointer to allocated memory or NULL in case of error */
+char *read_subdoc_input_param_from_file(char *file_path)
 {
     FILE *file_ptr = NULL;
+    char *read_data = NULL;
     unsigned int data_len = 0;
     // Opening file in reading mode
     file_ptr = fopen(file_path, "r");
     if (file_ptr == NULL) {
         printf("%s:%d file can't be opened:%s \r\n", __func__, __LINE__, file_path);
-        return RETURN_ERR;
+        return NULL;
     } else {
         fseek(file_ptr, 0, SEEK_END);
         data_len = ftell(file_ptr);
         fseek(file_ptr, 0, SEEK_SET);
         if (data_len != 0) {
+            read_data = (char *)calloc(data_len, sizeof(char));
+            if (read_data == NULL) {
+                printf("%s:%d Failed to allocate memory.\r\n", __func__, __LINE__);
+                fclose(file_ptr);
+                return NULL;
+            }
             if (fread(read_data, data_len, 1, file_ptr) != 0) {
                 printf("%s:%d file read success:%s data len:%d\r\n", __func__, __LINE__, file_path, data_len);
             } else {
                 printf("%s:%d file read failure:%s data len:%d\r\n", __func__, __LINE__, file_path, data_len);
                 fclose(file_ptr);
-                return RETURN_ERR;
+                free(read_data);
+                return NULL;
             }
         } else {
             printf("%s:%d Empty file:%s\r\n", __func__, __LINE__, file_path);
             fclose(file_ptr);
-            return RETURN_ERR;
+            return NULL;
         }
     }
     fclose(file_ptr);
-    return RETURN_OK;
+    return read_data;
 }
 
 int get_next_word(char **word)

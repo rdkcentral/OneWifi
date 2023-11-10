@@ -1724,6 +1724,7 @@ void resched_data_to_ctrl_queue()
             push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_data_resched_to_ctrl_queue, NULL);
 
             //Free the allocated memory
+            webconfig_data_free(queue_data);
             if (queue_data) {
                 free(queue_data);
             }

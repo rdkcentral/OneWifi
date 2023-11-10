@@ -547,12 +547,17 @@ static int push_csi_data_dml_to_ctrl_queue(queue_t *csi_queue)
         push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_dml, NULL);
     } else {
         wifi_util_error_print(WIFI_APPS, "%s:%d: Webconfig set failed\n", __func__, __LINE__);
-        free(data);
+        if (data != NULL) {
+            free(data);
+        }
         return RBUS_ERROR_BUS_ERROR;
     }
 
     wifi_util_info_print(WIFI_APPS, "%s:  CSI cache pushed to queue encoded data is %s\n", __FUNCTION__, str);
-    free(data);
+    webconfig_data_free(data);
+    if (data != NULL) {
+        free(data);
+    }
     return RBUS_ERROR_SUCCESS;
 }
 

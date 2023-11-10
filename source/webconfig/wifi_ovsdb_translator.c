@@ -48,6 +48,8 @@
 #define BLASTER_STATE_LEN    10
 
 static webconfig_subdoc_data_t  webconfig_ovsdb_data;
+/* global pointer to webconfig subdoc encoded data to avoid memory loss when passing data to OVSM */
+static char *webconfig_ovsdb_raw_data_ptr = NULL;
 static webconfig_subdoc_data_t  webconfig_ovsdb_default_data;
 //static webconfig_external_ovsdb_t webconfig_ovsdb_external;
 const char* security_state_find_by_key(const struct  schema_Wifi_VIF_State *vstate,
@@ -872,18 +874,25 @@ webconfig_error_t webconfig_ovsdb_encode(webconfig_t *config,
         webconfig_subdoc_type_t type,
         char **str)
 {
+    wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: OVSM encode subdoc type %d\n", __func__, __LINE__, type);
 
-    wifi_util_info_print(WIFI_WEBCONFIG,"OVSM encode subdoc type %d\n", type);
-    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d\n", __func__, __LINE__);
     webconfig_ovsdb_data.u.decoded.external_protos = (webconfig_external_ovsdb_t *)data;
     webconfig_ovsdb_data.descriptor = webconfig_data_descriptor_translate_from_ovsdb;
     debug_external_protos(&webconfig_ovsdb_data, __func__, __LINE__);
+
     if (webconfig_encode(config, &webconfig_ovsdb_data, type) != webconfig_error_none) {
         *str = NULL;
-        wifi_util_error_print(WIFI_WEBCONFIG,"OVSM encode failed\n");
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: OVSM encode failed\n", __func__, __LINE__);
         return webconfig_error_encode;
     }
-    *str = webconfig_ovsdb_data.u.encoded.raw;
+
+    if (webconfig_ovsdb_raw_data_ptr != NULL) {
+        free(webconfig_ovsdb_raw_data_ptr);
+        webconfig_ovsdb_raw_data_ptr = NULL;
+    }
+    webconfig_ovsdb_raw_data_ptr = webconfig_ovsdb_data.u.encoded.raw;
+
+    *str = webconfig_ovsdb_raw_data_ptr;
     return webconfig_error_none;
 }
 
@@ -896,14 +905,14 @@ webconfig_error_t webconfig_ovsdb_decode(webconfig_t *config, const char *str,
 
     if (webconfig_decode(config, &webconfig_ovsdb_data, str) != webconfig_error_none) {
         //        *data = NULL;
-        wifi_util_error_print(WIFI_WEBCONFIG,"OVSM decode failed\n");
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: OVSM decode failed\n", __func__, __LINE__);
         return webconfig_error_decode;
-
     }
 
-    wifi_util_info_print(WIFI_WEBCONFIG,"OVSM decode subdoc type %d sucessfully\n", webconfig_ovsdb_data.type);
+    wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: OVSM decode subdoc type %d sucessfully\n", __func__, __LINE__, webconfig_ovsdb_data.type);
     *type = webconfig_ovsdb_data.type;
     debug_external_protos(&webconfig_ovsdb_data, __func__, __LINE__);
+    webconfig_data_free(&webconfig_ovsdb_data);
     return webconfig_error_none;
 }
 

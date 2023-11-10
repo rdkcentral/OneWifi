@@ -391,6 +391,7 @@ void process_wifiapi_command(char *command, unsigned int len)
 
         //webconfig decode
         config = &ctrl->webconfig;
+
         if (webconfig_decode(config, &data, raw) == webconfig_error_none) {
             if (data.type != webconfig_subdoc_type_wifiapiradio) {
                 sprintf(buff, "%s: invalid configuration format. type %d", args[0], data.type);
@@ -468,6 +469,7 @@ void process_wifiapi_command(char *command, unsigned int len)
 
         //webconfig decode
         config = &ctrl->webconfig;
+
         if (webconfig_decode(config, &data, raw) == webconfig_error_none) {
             if (data.type != webconfig_subdoc_type_wifiapivap) {
                 sprintf(buff, "%s: invalid configuration format. type %d", args[0], data.type);
@@ -615,5 +617,6 @@ publish:
     if (raw != NULL) {
         free(raw);
     }
+    webconfig_data_free(&data);
     return;
 }

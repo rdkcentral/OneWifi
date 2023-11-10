@@ -2959,11 +2959,13 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
                 wifi_util_error_print(WIFI_CTRL,"%s:%d NULL event pointer\n", __func__, __LINE__);
             }
 #endif //DML_SUPPORT
+            webconfig_data_free(&data);
             break;
 
         case wifi_event_webconfig_set_data_tunnel:
             memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap, sizeof(wifi_hal_capability_t));
             webconfig_decode(config, &data, raw);
+            webconfig_data_free(&data);
             break;
 
         case wifi_event_webconfig_get_data:
@@ -2985,6 +2987,7 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
 
             // tell webconfig to encode
             webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_dml);
+            webconfig_data_free(&data);
             break;
 
         case wifi_event_webconfig_data_req_from_dml:

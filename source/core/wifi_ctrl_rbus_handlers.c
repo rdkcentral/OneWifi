@@ -402,6 +402,8 @@ rbusError_t webconfig_get_subdoc(rbusHandle_t handle, rbusProperty_t property, r
         rbusProperty_SetValue(property, value);
 
         rbusValue_Release(value);
+
+        webconfig_data_free(&data);
     } else if (ctrl->network_mode == rdk_dev_mode_type_ext) {
         wifi_util_dbg_print(WIFI_CTRL,"%s Rbus property=%s, Extender mode\n",__FUNCTION__, name);
 
@@ -429,6 +431,8 @@ rbusError_t webconfig_get_subdoc(rbusHandle_t handle, rbusProperty_t property, r
         rbusProperty_SetValue(property, value);
 
         rbusValue_Release(value);
+
+        webconfig_data_free(&data);
     }
 
     return RBUS_ERROR_SUCCESS;
@@ -463,6 +467,8 @@ rbusError_t webconfig_get_dml_subdoc(rbusHandle_t handle, rbusProperty_t propert
     rbusProperty_SetValue(property, value);
 
     rbusValue_Release(value);
+
+    webconfig_data_free(&data);
 
     return RBUS_ERROR_SUCCESS;
 }
@@ -688,6 +694,8 @@ rbusError_t get_assoc_clients_data(rbusHandle_t handle, rbusProperty_t property,
 
     rbusValue_Release(value);
 
+    webconfig_data_free(&data);
+
     return RBUS_ERROR_SUCCESS;
 }
 
@@ -725,6 +733,8 @@ rbusError_t get_null_subdoc_data(rbusHandle_t handle, rbusProperty_t property, r
     rbusProperty_SetValue(property, value);
 
     rbusValue_Release(value);
+
+    webconfig_data_free(&data);
 
     return RBUS_ERROR_SUCCESS;
 }
@@ -893,8 +903,10 @@ int wifiapi_result_publish(void)
 }
 
 //Function used till the rbus_get invalid context issue is resolved
-void get_assoc_devices_blob(char *str)
+/* The function returns a pointer to allocated memory or NULL in case of error */
+char *get_assoc_devices_blob()
 {
+    char *str = NULL;
     webconfig_subdoc_data_t data;
 #if DML_SUPPORT
     assoc_dev_data_t *assoc_dev_data;
@@ -905,7 +917,7 @@ void get_assoc_devices_blob(char *str)
 
     if ((mgr == NULL) || (ctrl == NULL)) {
         wifi_util_error_print(WIFI_CTRL,"%s:%d NULL pointers\n", __func__,__LINE__);
-        return;
+        return NULL;
     }
 
 #if DML_SUPPORT
@@ -932,9 +944,18 @@ void get_assoc_devices_blob(char *str)
     data.u.decoded.assoclist_notifier_type = assoclist_notifier_full;
 
     webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_associated_clients);
+
+    str = (char *)calloc(strlen(data.u.encoded.raw) + 1, sizeof(char));
+    if (str == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to allocate memory.\n", __func__,__LINE__);
+        return NULL;
+    }
+
     memcpy(str, data.u.encoded.raw, strlen(data.u.encoded.raw));
 
-    return;
+    webconfig_data_free(&data);
+
+    return str;
 }
 
 rbusError_t get_acl_device_data(rbusHandle_t handle, rbusProperty_t property, rbusGetHandlerOptions_t* opts)
@@ -974,8 +995,9 @@ rbusError_t get_acl_device_data(rbusHandle_t handle, rbusProperty_t property, rb
 
     rbusValue_Release(value);
 
-    return RBUS_ERROR_SUCCESS;
+    webconfig_data_free(&data);
 
+    return RBUS_ERROR_SUCCESS;
 }
 
 extern void webconf_process_private_vap(const char* enb);

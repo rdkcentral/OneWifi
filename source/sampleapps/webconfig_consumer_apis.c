@@ -1021,10 +1021,10 @@ void handle_webconfig_consumer_event(webconfig_consumer_t *consumer, const char 
 
                 memset(&data, 0, sizeof(webconfig_subdoc_data_t));
                 memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&consumer->hal_cap, sizeof(wifi_hal_capability_t));
+
                 ret = webconfig_decode(&consumer->webconfig, &data, str);
                 if (ret == webconfig_error_none)
                     subdoc_type = data.type;
-
             }
 
             if (ret == webconfig_error_none ) {
@@ -1040,6 +1040,8 @@ void handle_webconfig_consumer_event(webconfig_consumer_t *consumer, const char 
             } else {
                 printf("%s:%d: webconfig error\n", __func__, __LINE__);
             }
+
+            webconfig_data_free(&data);
         break;
         case consumer_event_webconfig_get_data:
             //printf("%s:%d: Received webconfig subdoc:\n%s\n ... decoding and translating\n", __func__, __LINE__, str);
@@ -1064,10 +1066,10 @@ void handle_webconfig_consumer_event(webconfig_consumer_t *consumer, const char 
 
                 memset(&data, 0, sizeof(webconfig_subdoc_data_t));
                 memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&consumer->hal_cap, sizeof(wifi_hal_capability_t));
+
                 ret = webconfig_decode(&consumer->webconfig, &data, str);
                 if (ret == webconfig_error_none)
                     subdoc_type = data.type;
-
             }
 
             if (ret == webconfig_error_none ) {
@@ -1102,6 +1104,8 @@ void handle_webconfig_consumer_event(webconfig_consumer_t *consumer, const char 
             } else {
                 printf("%s:%d: webconfig error\n", __func__, __LINE__);
             }
+
+            webconfig_data_free(&data);
         break;
     }
 }
@@ -1136,8 +1140,8 @@ int parse_subdoc_input_param(webconfig_consumer_t *consumer, webconfig_subdoc_da
 {
     int ret = RETURN_OK;
 
-    ret = read_subdoc_input_param_from_file(consumer->user_input_file_name, data->u.encoded.raw);
-    if (ret == RETURN_OK) {
+    data->u.encoded.raw = (webconfig_subdoc_encoded_raw_t)read_subdoc_input_param_from_file(consumer->user_input_file_name);
+    if (data->u.encoded.raw != NULL) {
         // parse JSON blob
         data->signature = WEBCONFIG_MAGIC_SIGNATUTRE;
         data->type = webconfig_subdoc_type_unknown;
@@ -1214,10 +1218,12 @@ void test_radio_subdoc_change(webconfig_consumer_t *consumer)
         rbus_setStr(consumer->rbus_handle, WIFI_WEBCONFIG_DOC_DATA_SOUTH, str);
 #endif
     } else {
-        str = NULL;
         printf("%s:%d: Webconfig set failed\n", __func__, __LINE__);
     }
 
+    if (str != NULL) {
+        free(str);
+    }
 }
 
 void test_null_subdoc_change(webconfig_consumer_t *consumer)
@@ -1250,6 +1256,10 @@ void test_null_subdoc_change(webconfig_consumer_t *consumer)
         rbus_setStr(consumer->rbus_handle, WIFI_WEBCONFIG_DOC_DATA_SOUTH, str);
     } else {
         printf("%s:%d: Webconfig set failed\n", __func__, __LINE__);
+    }
+
+    if (str != NULL) {
+        free(str);
     }
 }
 
@@ -1315,8 +1325,12 @@ void test_mesh_sta_subdoc_change(webconfig_consumer_t *consumer)
             vap_info->u.sta_info.scan_params.period = rand() % 10;
         }
 
-        //clearing the descriptor
+        // clearing the descriptor and raw json data
         data.descriptor =  0;
+        if (data.u.encoded.raw != NULL) {
+            free(data.u.encoded.raw);
+            data.u.encoded.raw = NULL;
+        }
         printf("%s:%d: start webconfig_encode\n", __func__, __LINE__);
         data.u.decoded.num_radios = consumer->hal_cap.wifi_prop.numRadios;
 
@@ -1339,6 +1353,10 @@ void test_mesh_sta_subdoc_change(webconfig_consumer_t *consumer)
 #endif
     } else {
         printf("%s:%d: Webconfig set failed\n", __func__, __LINE__);
+    }
+
+    if (str != NULL) {
+        free(str);
     }
 }
 
@@ -1434,11 +1452,14 @@ void test_mesh_subdoc_change(webconfig_consumer_t *consumer)
 
             memcpy(&acl_entry->mac, mac, sizeof(mac_address_t));
             hash_map_put(rdk_vap->acl_map, strdup(test_mac), acl_entry);
-        
         }
 
-        //clearing the descriptor
+        // clearing the descriptor and raw json data
         data.descriptor =  0;
+        if (data.u.encoded.raw != NULL) {
+            free(data.u.encoded.raw);
+            data.u.encoded.raw = NULL;
+        }
         printf("%s:%d: start webconfig_encode\n", __func__, __LINE__);
         data.u.decoded.num_radios = consumer->hal_cap.wifi_prop.numRadios;
 
@@ -1461,6 +1482,10 @@ void test_mesh_subdoc_change(webconfig_consumer_t *consumer)
 #endif
     } else {
         printf("%s:%d: Webconfig set failed\n", __func__, __LINE__);
+    }
+
+    if (str != NULL) {
+        free(str);
     }
 }
 
@@ -1557,8 +1582,12 @@ void test_macfilter_subdoc_change(webconfig_consumer_t *consumer)
             hash_map_put(rdk_vap->acl_map, strdup(test_mac), acl_entry);
         }
 
-        //clearing the descriptor
+        // clearing the descriptor and raw json data
         data.descriptor =  0;
+        if (data.u.encoded.raw != NULL) {
+            free(data.u.encoded.raw);
+            data.u.encoded.raw = NULL;
+        }
         printf("%s:%d: start webconfig_encode\n", __func__, __LINE__);
         data.u.decoded.num_radios = consumer->hal_cap.wifi_prop.numRadios;
 
@@ -1581,6 +1610,10 @@ void test_macfilter_subdoc_change(webconfig_consumer_t *consumer)
 #endif
     } else {
         printf("%s:%d: Webconfig set failed\n", __func__, __LINE__);
+    }
+
+    if (str != NULL) {
+        free(str);
     }
 }
 
@@ -1647,6 +1680,9 @@ void test_vif_neighbors_subdoc_change(webconfig_consumer_t *consumer)
         printf("%s:%d: Webconfig set failed\n", __func__, __LINE__);
     }
 
+    if (str != NULL) {
+        free(str);
+    }
 }
 
 
@@ -1713,6 +1749,9 @@ void test_steeringclient_subdoc_change(webconfig_consumer_t *consumer)
         printf("%s:%d: Webconfig set failed\n", __func__, __LINE__);
     }
 
+    if (str != NULL) {
+        free(str);
+    }
 }
 
 void test_steerconfig_subdoc_change(webconfig_consumer_t *consumer)
@@ -1766,6 +1805,9 @@ void test_steerconfig_subdoc_change(webconfig_consumer_t *consumer)
         printf("%s:%d: Webconfig set failed\n", __func__, __LINE__);
     }
 
+    if (str != NULL) {
+        free(str);
+    }
 }
 
 
@@ -1845,6 +1887,9 @@ void test_statsconfig_subdoc_change(webconfig_consumer_t *consumer)
         printf("%s:%d: Webconfig set failed\n", __func__, __LINE__);
     }
 
+    if (str != NULL) {
+        free(str);
+    }
 }
 
 void test_private_subdoc_change(webconfig_consumer_t *consumer)
@@ -1905,8 +1950,12 @@ void test_private_subdoc_change(webconfig_consumer_t *consumer)
         }
         data.u.decoded.num_radios = consumer->hal_cap.wifi_prop.numRadios;
 
-        //clearing the descriptor
+        // clearing the descriptor and raw json data
         data.descriptor =  0;
+        if (data.u.encoded.raw != NULL) {
+            free(data.u.encoded.raw);
+            data.u.encoded.raw = NULL;
+        }
         printf("%s:%d: start webconfig_encode num_of_radio:%d\n", __func__, __LINE__, data.u.decoded.num_radios);
         ret = webconfig_encode(&consumer->webconfig, &data,
                 webconfig_subdoc_type_private);
@@ -1926,6 +1975,10 @@ void test_private_subdoc_change(webconfig_consumer_t *consumer)
 #endif
     } else {
         printf("%s:%d: Webconfig set failed\n", __func__, __LINE__);
+    }
+
+    if (str != NULL) {
+        free(str);
     }
 }
 
@@ -1999,8 +2052,12 @@ void test_home_subdoc_change(webconfig_consumer_t *consumer)
         }
         data.u.decoded.num_radios = consumer->hal_cap.wifi_prop.numRadios;
 
-        //clearing the descriptor
+        // clearing the descriptor and raw json data
         data.descriptor =  0;
+        if (data.u.encoded.raw != NULL) {
+            free(data.u.encoded.raw);
+            data.u.encoded.raw = NULL;
+        }
         printf("%s:%d: start webconfig_encode\n", __func__, __LINE__);
         ret = webconfig_encode(&consumer->webconfig, &data,
                 webconfig_subdoc_type_home);
@@ -2021,6 +2078,10 @@ void test_home_subdoc_change(webconfig_consumer_t *consumer)
 #endif
     } else {
         printf("%s:%d: Webconfig set failed\n", __func__, __LINE__);
+    }
+
+    if (str != NULL) {
+        free(str);
     }
 }
 
@@ -2118,8 +2179,12 @@ void test_lnf_subdoc_change(webconfig_consumer_t *consumer)
                 printf("%s:%d: radio_index : %d vap_names[i] : %s\n", __func__, __LINE__, radio_index, vap_names[i]);
             }
         }
-        //clearing the descriptor
+        // clearing the descriptor and raw json data
         data.descriptor =  0;
+        if (data.u.encoded.raw != NULL) {
+            free(data.u.encoded.raw);
+            data.u.encoded.raw = NULL;
+        }
         data.u.decoded.num_radios = consumer->hal_cap.wifi_prop.numRadios;
 
         printf("%s:%d: start webconfig_encode \n", __func__, __LINE__);
@@ -2142,6 +2207,10 @@ void test_lnf_subdoc_change(webconfig_consumer_t *consumer)
 #endif
     } else {
         printf("%s:%d: Webconfig set failed\n", __func__, __LINE__);
+    }
+
+    if (str != NULL) {
+        free(str);
     }
 }
 
@@ -2220,8 +2289,12 @@ void test_xfinity_subdoc_change(webconfig_consumer_t *consumer)
             vap_info = get_wifi_radio_vap_info(&data.u.decoded.radios[1], "hotspot_secure");
             vap_info->u.bss_info.bssMaxSta = radio_1_open_bssMaxSta;
         }
-        //clearing the descriptor
+        // clearing the descriptor and raw json data
         data.descriptor =  0;
+        if (data.u.encoded.raw != NULL) {
+            free(data.u.encoded.raw);
+            data.u.encoded.raw = NULL;
+        }
         data.u.decoded.num_radios = consumer->hal_cap.wifi_prop.numRadios;
 
         printf("%s:%d: start webconfig_encode \n", __func__, __LINE__);
@@ -2244,6 +2317,10 @@ void test_xfinity_subdoc_change(webconfig_consumer_t *consumer)
 #endif
     } else {
         printf("%s:%d: Webconfig set failed\n", __func__, __LINE__);
+    }
+
+    if (str != NULL) {
+        free(str);
     }
 }
 
@@ -2837,6 +2914,7 @@ int recv_data_decode(webconfig_consumer_t *consumer, webconfig_subdoc_data_t *da
 
     memset(data, 0, sizeof(webconfig_subdoc_data_t));
     memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&consumer->hal_cap, sizeof(wifi_hal_capability_t));
+
     ret = webconfig_decode(&consumer->webconfig, data, recv_data);
 
     if (ret == webconfig_error_none) {
@@ -2879,6 +2957,8 @@ int get_device_network_mode_from_ctrl_thread(webconfig_consumer_t *consumer, uns
         printf("%s:%d: use default value\r\n", __func__, __LINE__);
         *device_network_mode = consumer->config.global_parameters.device_network_mode;
     }
+
+    webconfig_data_free(&data);
 
     return 0;
 }

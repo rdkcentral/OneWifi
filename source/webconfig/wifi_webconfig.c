@@ -70,12 +70,38 @@ webconfig_error_t webconfig_encode(webconfig_t *config, webconfig_subdoc_data_t 
 
 webconfig_error_t webconfig_decode(webconfig_t *config, webconfig_subdoc_data_t *data, const char *str)
 {
+    webconfig_error_t ret = webconfig_error_none;
+
+    data->u.encoded.raw = (webconfig_subdoc_encoded_raw_t)calloc(strlen(str) + 1, sizeof(char));
+    if (data->u.encoded.raw == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d Failed to allocate memory.\n", __func__,__LINE__);
+        return webconfig_error_decode;
+    }
+
+    strcpy(data->u.encoded.raw, str);
+
     data->signature = WEBCONFIG_MAGIC_SIGNATUTRE;
     data->type = webconfig_subdoc_type_unknown;
     data->descriptor |= webconfig_data_descriptor_encoded;
-    strcpy(data->u.encoded.raw, str);
 
-    return webconfig_set(config, data);
+    ret = webconfig_set(config, data);
+    if (ret != webconfig_error_none) {
+        webconfig_data_free(data);
+    }
+
+    return ret;
+}
+
+webconfig_error_t webconfig_data_free(webconfig_subdoc_data_t *data)
+{
+    if (data != NULL) {
+        if (data->u.encoded.raw != NULL) {
+            free(data->u.encoded.raw);
+            data->u.encoded.raw = NULL;
+        }
+    }
+
+    return webconfig_error_none;
 }
 
 webconfig_subdoc_type_t find_subdoc_type(webconfig_t *config, cJSON *json)

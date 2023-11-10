@@ -51,7 +51,6 @@ extern "C" {
 #define MAX_PWD_LEN                63
 
 #define     WEBCONFIG_MAGIC_SIGNATUTRE  0xdecddecd
-#define     MAX_SUBDOC_SIZE 1024*100
 #define     WEBCONFIG_MAX_ASSOCIATED_CLIENTS 75 * MAX_NUM_RADIOS
 
 typedef enum {
@@ -189,7 +188,7 @@ typedef struct {
     void *external_protos;
 } webconfig_subdoc_decoded_data_t;
 
-typedef char    webconfig_subdoc_encoded_raw_t[MAX_SUBDOC_SIZE];
+typedef char  * webconfig_subdoc_encoded_raw_t;
 typedef cJSON * webconfig_subdoc_encoded_json_t;
 
 typedef struct {
@@ -262,6 +261,7 @@ webconfig_error_t webconfig_init(webconfig_t *config);
 // external api sets for onewifi
 webconfig_error_t webconfig_encode(webconfig_t *config, webconfig_subdoc_data_t *data, webconfig_subdoc_type_t type);
 webconfig_error_t webconfig_decode(webconfig_t *config, webconfig_subdoc_data_t *data, const char *str);
+webconfig_error_t webconfig_data_free(webconfig_subdoc_data_t *data);
 
 
 // internal to webconfig

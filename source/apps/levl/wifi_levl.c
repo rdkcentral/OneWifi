@@ -165,6 +165,7 @@ static int push_levl_data_dml_to_ctrl_queue(levl_config_t **levl)
     }
 
     wifi_util_info_print(WIFI_CTRL, "%s: Levl pushed to queue encoded data is %s\n", __FUNCTION__, str);
+    webconfig_data_free(data);
     if (data != NULL) {
         free(data);
     }

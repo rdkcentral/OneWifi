@@ -340,11 +340,8 @@ void set_webconfig_dml_data(rbusHandle_t handle, rbusEvent_t const* event, rbusE
 
     // setup the raw data
     memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-    data.signature = WEBCONFIG_MAGIC_SIGNATUTRE;
-    data.type = webconfig_subdoc_type_unknown;
     data.descriptor = 0;
     data.descriptor = webconfig_data_descriptor_encoded | webconfig_data_descriptor_translate_to_tr181;
-    strncpy(data.u.encoded.raw, pTmp, sizeof(data.u.encoded.raw) - 1);
 
     //wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: dml Json:\n%s\r\n", __func__, __LINE__, data.u.encoded.raw);
     wifi_util_info_print(WIFI_DMCLI,"%s:%d: hal capability update\r\n", __func__, __LINE__);
@@ -353,15 +350,18 @@ void set_webconfig_dml_data(rbusHandle_t handle, rbusEvent_t const* event, rbusE
     data.u.decoded.num_radios = webconfig_dml.hal_cap.wifi_prop.numRadios;
 
     // tell webconfig to decode
-    if (webconfig_set(&webconfig_dml.webconfig, &data)== webconfig_error_none){
-        wifi_util_info_print(WIFI_DMCLI,"%s %d webconfig_set success \n",__FUNCTION__,__LINE__ );
+    if (webconfig_decode(&webconfig_dml.webconfig, &data, pTmp) == webconfig_error_none){
+        wifi_util_info_print(WIFI_DMCLI,"%s %d webconfig_decode success \n",__FUNCTION__,__LINE__ );
     } else {
-        wifi_util_error_print(WIFI_DMCLI,"%s %d webconfig_set fail \n",__FUNCTION__,__LINE__ );
+        wifi_util_error_print(WIFI_DMCLI,"%s %d webconfig_decode fail \n",__FUNCTION__,__LINE__ );
         return;
     }
+
     dml_cache_update(&data);
 
-    return ;
+    webconfig_data_free(&data);
+
+    return;
 }
 
 
@@ -401,7 +401,7 @@ void get_associated_devices_data(unsigned int radio_index)
 {
     int itr=0, itrj=0;
     webconfig_subdoc_data_t data;
-    char str[MAX_SUBDOC_SIZE];
+    char *str = NULL;
     assoc_dev_data_t *assoc_dev_data, *temp_assoc_dev_data;
     char key[64] = {0};
 
@@ -418,7 +418,11 @@ void get_associated_devices_data(unsigned int radio_index)
         return;
     }
 #else
-    get_assoc_devices_blob(str);
+    str = (char *)get_assoc_devices_blob();
+    if (str == NULL) {
+        wifi_util_error_print(WIFI_DMCLI,"%s %d Null pointer get_assoc_devices_blob string\n", __func__, __LINE__);
+        return;
+    }
 #endif
     memset(&data, 0, sizeof(webconfig_subdoc_data_t));
     memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&webconfig_dml.radios, get_num_radio_dml()*sizeof(rdk_wifi_radio_t));
@@ -428,6 +432,7 @@ void get_associated_devices_data(unsigned int radio_index)
 
     if (webconfig_decode(&webconfig_dml.webconfig, &data, str) != webconfig_error_none) {
         wifi_util_error_print(WIFI_DMCLI,"%s %d webconfig_decode returned error\n", __func__, __LINE__);
+        free(str);
         return;
     }
     for (itr=0; itr < (int)get_num_radio_dml(); itr++) {
@@ -450,6 +455,9 @@ void get_associated_devices_data(unsigned int radio_index)
             *assoc_dev_map = data.u.decoded.radios[itr].vaps.rdk_vap_array[itrj].associated_devices_map;
         }
     }
+
+    free(str);
+    webconfig_data_free(&data);
 }
 
 unsigned long get_associated_devices_count(wifi_vap_info_t *vap_info)
@@ -614,18 +622,15 @@ int init(webconfig_dml_t *consumer)
 
     // setup the raw data
     memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-    data.signature = WEBCONFIG_MAGIC_SIGNATUTRE;
-    data.type = webconfig_subdoc_type_dml;
     data.descriptor = 0;
     data.descriptor |= webconfig_data_descriptor_encoded;
-    strncpy(data.u.encoded.raw, str, sizeof(data.u.encoded.raw) - 1);
 
     // tell webconfig to decode
-    if (webconfig_set(&consumer->webconfig, &data)== webconfig_error_none){
-        wifi_util_info_print(WIFI_DMCLI,"%s %d webconfig_set success \n",__FUNCTION__,__LINE__ );
+    if (webconfig_decode(&consumer->webconfig, &data, str) == webconfig_error_none){
+        wifi_util_info_print(WIFI_DMCLI,"%s %d webconfig_decode success \n",__FUNCTION__,__LINE__ );
     } else {
-        wifi_util_error_print(WIFI_DMCLI,"%s %d webconfig_set fail \n",__FUNCTION__,__LINE__ );
-    return 0;
+        wifi_util_error_print(WIFI_DMCLI,"%s %d webconfig_decode fail \n",__FUNCTION__,__LINE__ );
+        return 0;
     }
 
     memcpy((unsigned char *)&consumer->radios, (unsigned char *)&data.u.decoded.radios, data.u.decoded.num_radios*sizeof(rdk_wifi_radio_t));
@@ -647,6 +652,9 @@ int init(webconfig_dml_t *consumer)
     update_dml_vap_defaults();
     update_dml_global_default();
     update_dml_stats_default();
+
+    webconfig_data_free(&data);
+
     return 0;
 }
 
@@ -833,6 +841,9 @@ int push_global_config_dml_cache_to_one_wifidb()
 
     wifi_util_dbg_print(WIFI_DMCLI, "%s:  Global DML cache pushed to queue \n", __FUNCTION__);
     g_update_wifi_region = FALSE;
+
+    webconfig_data_free(&data);
+
     return RETURN_OK;
 }
 
@@ -892,6 +903,9 @@ int push_radio_dml_cache_to_one_wifidb()
 
     wifi_util_error_print(WIFI_DMCLI, "%s:  Radio DML cache pushed to queue \n", __FUNCTION__);
     is_radio_config_changed = FALSE;
+
+    webconfig_data_free(&data);
+
     return RETURN_OK;
 }
 
@@ -917,6 +931,9 @@ int push_acl_list_dml_cache_to_one_wifidb(wifi_vap_info_t *vap_info)
     }
 
     wifi_util_info_print(WIFI_DMCLI, "%s:  ACL DML cache pushed to queue \n", __FUNCTION__);
+
+    webconfig_data_free(&data);
+
     return RETURN_OK;
 }
 
@@ -1049,6 +1066,9 @@ int push_subdoc_to_one_wifidb(uint8_t subdoc)
     }
 
     wifi_util_info_print(WIFI_DMCLI, "%s:  VAP DML cache pushed to queue \n", __FUNCTION__);
+
+    webconfig_data_free(&data);
+
     return RETURN_OK;
 }
 int push_factory_reset_to_ctrl_queue()
@@ -1154,6 +1174,9 @@ int push_blaster_config_dml_to_ctrl_queue()
     } else {
         wifi_util_error_print(WIFI_DMCLI, "%s:%d: Webconfig set failed\n", __func__, __LINE__);
     }
+
+    webconfig_data_free(&data);
+
     return RETURN_OK;
 }
 
@@ -1205,6 +1228,9 @@ int push_harvester_dml_cache_to_one_wifidb()
                 webconfig_dml.config.global_parameters.inst_wifi_client_mac[2], webconfig_dml.config.global_parameters.inst_wifi_client_mac[3], 
                 webconfig_dml.config.global_parameters.inst_wifi_client_mac[4], webconfig_dml.config.global_parameters.inst_wifi_client_mac[5]);
     }
+
+    webconfig_data_free(&data);
+
     return RETURN_OK;
 }
 
