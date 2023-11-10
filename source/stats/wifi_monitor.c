@@ -4517,7 +4517,7 @@ void pktGen_BlastClient (char *dst_mac, wifi_interface_name_t *ifname)
     wifi_ctrl_t *ctrl = get_wifictrl_obj();
     char msg[256] = {};
     active_msmt_step_t *step = &g_active_msmt.curStepData;
-#if !defined(_XF3_PRODUCT_REQ_) && !defined(_CBR_PRODUCT_REQ_)
+#if !defined(_XF3_PRODUCT_REQ_) && !defined(_CBR_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_)
     int index = g_active_msmt.curStepData.ApIndex;
     int radio_index = get_radio_index_for_vap_index(&(get_wifimgr_obj())->hal_cap.wifi_prop, index);
 #if defined (_PP203X_PRODUCT_REQ_)
@@ -4532,7 +4532,7 @@ void pktGen_BlastClient (char *dst_mac, wifi_interface_name_t *ifname)
     unsigned long prevSentAck = 0;
 #endif // CCSP_COMMON
 
-#if !defined(_XF3_PRODUCT_REQ_) && !defined(_CBR_PRODUCT_REQ_)
+#if !defined(_XF3_PRODUCT_REQ_) && !defined(_CBR_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_)
     if (radio_index != RETURN_ERR) {
 #if defined (_PP203X_PRODUCT_REQ_)
         radioOperation = getRadioOperationParam(radio_index);
@@ -4568,7 +4568,7 @@ void pktGen_BlastClient (char *dst_mac, wifi_interface_name_t *ifname)
         return;
     }
 
-#if !defined(_XF3_PRODUCT_REQ_) && !defined(_CBR_PRODUCT_REQ_)
+#if !defined(_XF3_PRODUCT_REQ_) && !defined(_CBR_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_)
     int waittime = GetActiveMsmtSampleDuration();
 #endif
 
@@ -4587,7 +4587,7 @@ void pktGen_BlastClient (char *dst_mac, wifi_interface_name_t *ifname)
     while ( SampleCount < (GetActiveMsmtNumberOfSamples() + 1)) {
         memset(&dev_conn, 0, sizeof(wifi_associated_dev3_t));
 
-#if !defined(_XF3_PRODUCT_REQ_) && !defined(_CBR_PRODUCT_REQ_)
+#if !defined(_XF3_PRODUCT_REQ_) && !defined(_CBR_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_)
 #ifdef CCSP_COMMON
         active_msmt_log_message("%s : %d WIFI_HAL enabled, calling wifi_getApAssociatedClientDiagnosticResult with mac : %s\n",__func__,__LINE__,s_mac);
 #endif // CCSP_COMMON
