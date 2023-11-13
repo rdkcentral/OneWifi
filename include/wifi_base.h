@@ -165,7 +165,6 @@ typedef struct {
 } auth_deauth_dev_t;
 
 #define MAX_MQTT_TOPIC_LEN 256
-char awlan_mqtt_topic[MAX_MQTT_TOPIC_LEN];
 
 typedef enum {
     blaster_state_new,
@@ -307,7 +306,6 @@ typedef struct {
 } __attribute__((__packed__)) wps_pin_config_t;
 
 #define MAX_SCANNED_VAPS       32
-#define MAX_MQTT_TOPIC_LEN     256 //TBD
 
 typedef struct {
     unsigned int radio_index;
