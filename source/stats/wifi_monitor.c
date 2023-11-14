@@ -2538,8 +2538,8 @@ int captureVAPUpStatus(void *arg)
 
     UINT vap_index = VAP_INDEX(mgr->hal_cap, i);
     wifi_util_dbg_print(WIFI_MON, "Entering %s:%d for VAP %d\n",__FUNCTION__,__LINE__, vap_index);
-    if (vap_index > MAX_VAP) {
-        wifi_util_error_print(WIFI_MON, "wrong vap_index:%d for i:%d\n", __func__, __LINE__, vap_index, i);
+    if (vap_index >= MAX_VAP) {
+        wifi_util_error_print(WIFI_MON, "%s:%d wrong vap_index:%d for i:%d\n", __func__, __LINE__, vap_index, i);
         i = 0;
         return TIMER_TASK_COMPLETE;
     }
