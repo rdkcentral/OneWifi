@@ -350,7 +350,8 @@ int cac_event_exec_timeout(wifi_app_t *apps, void *arg)
                             assoc_dev_data = hash_map_get_first(mgr->radio_config[itr].vaps.rdk_vap_array[itrj].associated_devices_map);
                             while (assoc_dev_data != NULL) {
                                 get_sta_stats_info(assoc_dev_data);
-                                if ((unsigned int)assoc_dev_data->ap_index == client->ap_index) {
+                                if (((unsigned int)assoc_dev_data->ap_index == client->ap_index) &&
+                                    (memcmp(client->sta_mac,assoc_dev_data->dev_stats.cli_MACAddress,sizeof(mac_address_t))== 0 )) {
                                     found = true;
                                     break;
                                 }
@@ -373,11 +374,18 @@ int cac_event_exec_timeout(wifi_app_t *apps, void *arg)
                 client->sampling_count--;
 
                 if (client->sampling_count == 0) {
-                    int band = radio_index == 0 ? 2 : 5;
+                    int band = 0;
+                    if (radio_index == 0)
+                        band = 2;
+                    else if (radio_index == 1)
+                        band = 5;
+                    else
+                        band = 6;
+
                     memset(mac_str, 0, sizeof(mac_str));
                     str = to_mac_str(client->sta_mac, mac_str);
-                    wifi_util_dbg_print(WIFI_APPS,"%s:%d client rssi = %d, rssi threshold = %d\r\n", __func__, __LINE__,
-                                    client->rssi_avg, rssi_conf);
+                    wifi_util_dbg_print(WIFI_APPS,"%s:%d client rssi = %d, rssi threshold = %d mac_str=%s\r\n", __func__, __LINE__,
+                                    client->rssi_avg, rssi_conf,mac_str);
                     if (rssi_enabled && (client->rssi_avg < rssi_conf)) {
                         cac_print("%s:%d, POSTASSOC DENY: %d, RSSI, %s\n", __func__, __LINE__, band, str);
                         status = status_deny;
