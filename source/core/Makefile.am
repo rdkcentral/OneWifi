@@ -95,9 +95,13 @@ if CCSP_COMMON_SUPPORT
 OneWifi_SOURCES += wifi_easy_connect.c
 OneWifi_SOURCES += $(top_srcdir)/source/stats/wifi_associated_devices_msmt.c
 OneWifi_SOURCES += $(top_srcdir)/lib/log/log_journal.c
-OneWifi_SOURCES += $(top_srcdir)/source/apps/wifi_apps_mgr.c $(top_srcdir)/source/apps/analytics/wifi_analytics.c $(top_srcdir)/source/apps/levl/wifi_levl.c $(top_srcdir)/source/apps/wifi_apps.c $(top_srcdir)/source/apps/cac/wifi_cac.c $(top_srcdir)/source/apps/sm/wifi_sm.c $(top_srcdir)/source/apps/csi/wifi_csi.c $(top_srcdir)/source/apps/motion/wifi_motion.c $(top_srcdir)/source/apps/whix/wifi_whix.c $(top_srcdir)/source/apps/sm/sm_utils.c $(top_srcdir)/source/apps/sm/sm_report.c $(top_srcdir)/source/apps/sm/sm_client_cache.c $(top_srcdir)/source/apps/sm/sm_client_report.c $(top_srcdir)/source/apps/sm/sm_survey_cache.c $(top_srcdir)/source/apps/sm/sm_survey_report.c $(top_srcdir)/source/apps/sm/sm_neighbor_cache.c $(top_srcdir)/source/apps/sm/sm_neighbor_report.c $(top_srcdir)/source/apps/harvester/wifi_harvester.c
+OneWifi_SOURCES += $(top_srcdir)/source/apps/wifi_apps_mgr.c $(top_srcdir)/source/apps/analytics/wifi_analytics.c $(top_srcdir)/source/apps/levl/wifi_levl.c $(top_srcdir)/source/apps/wifi_apps.c $(top_srcdir)/source/apps/cac/wifi_cac.c $(top_srcdir)/source/apps/csi/wifi_csi.c $(top_srcdir)/source/apps/motion/wifi_motion.c $(top_srcdir)/source/apps/whix/wifi_whix.c $(top_srcdir)/source/apps/harvester/wifi_harvester.c
 else
 OneWifi_SOURCES += $(top_srcdir)/source/stubs/wifi_hal_stubs.c
+endif
+
+if SM_APP_SUPPORT
+OneWifi_SOURCES += $(top_srcdir)/source/apps/sm/wifi_sm.c $(top_srcdir)/source/apps/sm/sm_utils.c $(top_srcdir)/source/apps/sm/sm_report.c $(top_srcdir)/source/apps/sm/sm_client_cache.c $(top_srcdir)/source/apps/sm/sm_client_report.c $(top_srcdir)/source/apps/sm/sm_survey_cache.c $(top_srcdir)/source/apps/sm/sm_survey_report.c $(top_srcdir)/source/apps/sm/sm_neighbor_cache.c $(top_srcdir)/source/apps/sm/sm_neighbor_report.c
 endif
 
 if ONEWIFI_DML_SUPPORT

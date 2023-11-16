@@ -78,6 +78,22 @@ AM_CONDITIONAL([CCSP_COMMON_SUPPORT], [test x$CCSP_COMMON_SUPPORT_ENABLE = xtrue
 AC_SUBST(CCSP_COMMON_FLAG)
 AC_SUBST(CCSP_WIFI_HAL_FLAG)
 
+SM_APP_FLAG = " "
+AC_ARG_ENABLE([sm_app],
+             AS_HELP_STRING([--enable-sm-app],[enable sm app (default is no)]),
+             [
+              case "${enableval}" in
+               yes) SM_APP_ENABLE=true
+                    SM_APP_FLAG="-DSM_APP"
+                    ;;
+               no)  SM_APP_ENABLE=false AC_MSG_ERROR([sm app is disabled]);;
+               *)   AC_MSG_ERROR([bad value ${enableval} for --enable-sm-app ]);;
+              esac
+             ],
+             [echo "sm app is disabled"])
+AM_CONDITIONAL([SM_APP_SUPPORT], [test x$SM_APP_ENABLE = xtrue])
+AC_SUBST(SM_APP_FLAG)
+
 DML_ENABLE_FLAG = " "
 AC_ARG_ENABLE([dml],
              AS_HELP_STRING([--enable-dml],[enable DML support (default is no)]),

@@ -1382,11 +1382,6 @@ bool isglobalParamChanged(wifi_global_config_t *data_config)
 
 int webconfig_stats_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
-/* Do not break XE2 */
-#ifdef CCSP_WIFI_HAL
-    wifi_util_dbg_print(WIFI_CTRL,"%s %d \n", __func__, __LINE__);
-    return RETURN_OK;
-#else
     wifi_mgr_t *mgr = get_wifimgr_obj();
     stats_config_t  *mgr_stats_config, *dec_stats_config, *temp_stats_config;
     hash_map_t *mgr_cfg_map, *dec_cfg_map;
@@ -1489,7 +1484,6 @@ int webconfig_stats_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_dat
     }
 
     return ret;
-#endif
 }
 
 
@@ -2665,7 +2659,7 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                 //Not Applicable
             } else {
                 wifi_util_dbg_print(WIFI_MGR, "%s:%d: stats config subdoc\n", __func__, __LINE__);
-#if CCSP_COMMON
+#if SM_APP
                 wifi_util_dbg_print(WIFI_MGR, "%s:%d: sending config for handling by sm app\n", __func__, __LINE__);
                 ret = apps_mgr_sm_event(&ctrl->apps_mgr, wifi_event_type_webconfig, wifi_event_webconfig_set_data_ovsm, (void *)data);
 #else

@@ -90,7 +90,12 @@ extern "C" {
 #define wifi_app_inst_base          0x01
 
 #define DEFAULT_SOUNDING_DURATION_MS 2000
+
+#if SM_APP
 #define WIFI_APPS_NUM   8
+#else
+#define WIFI_APPS_NUM   7
+#endif
 
 #define CFG_ID_LEN             64
 typedef char stats_cfg_id_t[CFG_ID_LEN];

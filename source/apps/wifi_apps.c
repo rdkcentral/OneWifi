@@ -45,6 +45,7 @@ wifi_app_descriptor_t app_desc[WIFI_APPS_NUM] = {
         cac_init, cac_event, cac_deinit,
         cac_mgmt_frame_hook,NULL
     },
+#if SM_APP
     {
         wifi_app_inst_sm, 0,
         wifi_event_type_monitor | wifi_event_type_webconfig,
@@ -53,6 +54,7 @@ wifi_app_descriptor_t app_desc[WIFI_APPS_NUM] = {
         sm_init, sm_event, sm_deinit,
         NULL,NULL
     },
+#endif
     {
         wifi_app_inst_csi, 0, 0,
         true, true,
