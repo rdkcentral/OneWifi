@@ -54,6 +54,7 @@ struct hal_api_info {
     {"wifi_setNeighborReports",             2, "<vap index> <bssid>" },
     {"wifi_configNeighborReports",          3, "<vap index> <neighbor report enable> <neighbor report auto reply>" },
     {"wifi_hal_getRadioTemperature",        1, "<radio index>" },
+    {"wifi_getRadioChannelStats",           1, "<radio index>"},
 };
 
 
@@ -535,6 +536,77 @@ static void wifiapi_handle_hal_get_radio_temperature(char **args, unsigned int n
 
 }
 
+static void wifiapi_handle_get_radio_channel_stats(char **args, unsigned int num_args,
+    char *result_buf, int result_buf_size)
+{
+
+    wifi_channelStats_t *chan_stats = NULL;
+    wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
+    unsigned int chan_count = 0;
+    wifi_radio_capabilities_t *wifi_cap = NULL;
+    int   num_channels = 0;
+    int channels[64] = {0};
+    wifi_radio_operationParam_t* radioOperation = NULL;
+    INT radio_index, len = 0;
+
+    radio_index = atoi(args[1]);
+
+    if (mon_data->radio_presence[radio_index] == false) {
+        snprintf(result_buf, result_buf_size, "%s:%d radio_presence is false for radio : %d\n", __func__,__LINE__, radio_index);
+        return;
+    }
+
+    radioOperation = getRadioOperationParam(radio_index);
+    if (radioOperation == NULL) {
+        snprintf(result_buf, result_buf_size, "%s:%d NULL radioOperation pointer for radio : %d\n", __func__,__LINE__, radio_index);
+        return;
+    }
+
+    wifi_cap = getRadioCapability(radio_index);
+
+    if (get_allowed_channels(radioOperation->band, wifi_cap, channels, &num_channels, radioOperation->DfsEnabled) != RETURN_OK) {
+        snprintf(result_buf, result_buf_size, "%s:%d get allowed channels failed for the radio : %d\n", __func__,__LINE__, radio_index);
+        return;
+    }
+
+    chan_stats = (wifi_channelStats_t *) calloc(num_channels, sizeof(wifi_channelStats_t));
+    if (chan_stats == NULL) {
+        snprintf(result_buf, result_buf_size, "%s:%d Failed to alloc memory for the radio : %d\n", __func__,__LINE__, radio_index);
+        return;
+    }
+
+    for (chan_count = 0; chan_count < (unsigned int)num_channels; chan_count++) {
+        chan_stats[chan_count].ch_number = channels[chan_count];
+        chan_stats[chan_count].ch_in_pool= TRUE;
+    }
+
+    if (wifi_getRadioChannelStats(radio_index, chan_stats, chan_count) != RETURN_OK) {
+        snprintf(result_buf, result_buf_size, "Failed to get radio channel stats\n");
+        goto err;
+    }
+    for (unsigned int i = 0; i < chan_count; i++) {
+        if (len >= result_buf_size) {
+            goto err;
+        }
+        len += snprintf(result_buf + len, result_buf_size - len, "channel: %d noise: %d ch_radar_noise: %d "
+            "ch_max_80211_rssi: %d ch_non_80211_noise:%d ch_utilization: %d "
+            "ch_utilization_total: %llu ch_utilization_busy: %llu ch_utilization_busy_tx: %llu "
+            "ch_utilization_busy_rx: %llu ch_utilization_busy_self: %llu "
+            "ch_utilization_busy_ext: %llu\n",
+            chan_stats[i].ch_number, chan_stats[i].ch_noise,
+            chan_stats[i].ch_radar_noise, chan_stats[i].ch_max_80211_rssi,
+            chan_stats[i].ch_non_80211_noise, chan_stats[i].ch_utilization,
+            chan_stats[i].ch_utilization_total, chan_stats[i].ch_utilization_busy,
+            chan_stats[i].ch_utilization_busy_tx, chan_stats[i].ch_utilization_busy_rx,
+            chan_stats[i].ch_utilization_busy_self, chan_stats[i].ch_utilization_busy_ext);
+    }
+err:
+    if (NULL != chan_stats) {
+        free(chan_stats);
+        chan_stats = NULL;
+    }
+}
+
 void process_wifiapi_command(char *command, unsigned int len)
 {
     char input[1024];
@@ -842,6 +914,8 @@ void process_wifiapi_command(char *command, unsigned int len)
         wifiapi_handle_config_neighbor_reports(args, num_args, buff, sizeof(buff));
     } else if (strcmp(args[0], "wifi_hal_getRadioTemperature") == 0) {
         wifiapi_handle_hal_get_radio_temperature(args, num_args, buff, sizeof(buff));
+    } else if (strcmp(args[0], "wifi_getRadioChannelStats") == 0) {
+        wifiapi_handle_get_radio_channel_stats(args, num_args, buff, sizeof(buff));
     } else {
         unsigned int idx = 0;
         idx += snprintf(&buff[idx], sizeof(buff)-idx, "wifi_api2: Invalid API '%s'\nSupported APIs:\n", args[0]);
