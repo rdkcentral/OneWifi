@@ -739,7 +739,7 @@ rbusError_t csi_set_handler(rbusHandle_t handle, rbusProperty_t property, rbusSe
     }
 
     ret = sscanf(name, "Device.WiFi.X_RDK_CSI.%4d.%200s", &idx, parameter);
-    if (ret==2 && idx > 0 && idx <= MAX_VAP) {
+    if (ret==2) {
         qcount = queue_count(local_csi_queue);
         for (itr=0; itr<qcount; itr++) {
             csi_data = queue_peek(local_csi_queue, itr);
@@ -929,7 +929,7 @@ rbusError_t csi_get_handler(rbusHandle_t handle, rbusProperty_t property, rbusGe
     }
 
     ret = sscanf(name, "Device.WiFi.X_RDK_CSI.%4d.%200s", &idx, parameter);
-    if (ret==2 && idx > 0 && idx <= MAX_VAP) {
+    if (ret==2) {
         qcount = queue_count(csi_data_queue);
         for (itr=0; itr<qcount; itr++) {
             csi_data = queue_peek(csi_data_queue, itr);
