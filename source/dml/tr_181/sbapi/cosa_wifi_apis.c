@@ -149,6 +149,8 @@
 #define MAX_NEIGHBOURS 250
 #endif
 
+static const char WIFI_XHS_LNF_FLAG_FILE_NAME[] = "/nvram/.bcmwifi_xhs_lnf_enabled";
+
 static char *FactoryReset       = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.FactoryReset";
 extern bool is_radio_config_changed;
 struct wifiSecEncrCosaHalMap wifiSecEncrMap[] =
@@ -2074,6 +2076,11 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
 
     remove(WIFI_STUCK_DETECT_FILE_NAME);
     wifi_util_info_print(WIFI_MGR,"%s:%d removed selfHeal wifi stuck file:%s\n", __FUNCTION__,__LINE__, WIFI_STUCK_DETECT_FILE_NAME);
+
+    if (factory_reset_all_vaps) {
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d remove xhs/lnf flag file:%s\n", __FUNCTION__, __LINE__, WIFI_XHS_LNF_FLAG_FILE_NAME);
+        (void)remove(WIFI_XHS_LNF_FLAG_FILE_NAME);
+    }
 
     for (UINT index = 0; index < getTotalNumberVAPs(); index++) {
         vap_index = VAP_INDEX(((webconfig_dml_t *)get_webconfig_dml())->hal_cap, index);
