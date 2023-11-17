@@ -987,6 +987,7 @@ void process_connect(unsigned int ap_index, auth_deauth_dev_t *dev)
     memset((unsigned char *)&sta->dev_stats_last, 0, sizeof(wifi_associated_dev3_t));
 #endif // CCSP_COMMON
     memset((unsigned char *)&sta->dev_stats, 0, sizeof(wifi_associated_dev3_t));
+    memcpy(&sta->dev_stats, &dev->dev_stats, sizeof(wifi_associated_dev3_t));
     sta->dev_stats.cli_Active = true;
 #ifdef CCSP_COMMON
     sta->connection_authorized = true;
@@ -2961,6 +2962,7 @@ int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
     assoc_data.ap_index = data.ap_index;
     push_event_to_ctrl_queue(&assoc_data, sizeof(assoc_data), wifi_event_type_hal_ind, wifi_event_hal_assoc_device, NULL);
 
+    memcpy(&data.u.dev.dev_stats, &assoc_data.dev_stats, sizeof(wifi_associated_dev3_t));
     push_event_to_monitor_queue(&data, wifi_event_monitor_connect, NULL);
 
     return 0;
