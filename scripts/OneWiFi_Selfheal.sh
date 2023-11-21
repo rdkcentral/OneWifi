@@ -48,10 +48,19 @@ onewifi_restart_wifi()
 
 vap_restart()
 {
+    # This is to set supported stations in order to restore station cfg but re-visit the Self-Heal reason */
     echo_t "$1 is down. Self heal is executing" >> $LOG_FILE
     max_sta=`dmcli eRT getv Device.WiFi.AccessPoint.$2.X_CISCO_COM_BssMaxNumSta | grep "value:" | cut -f2- -d:| cut -f2- -d:`
     if [ $max_sta == 75 ]; then
         dmcli eRT setv Device.WiFi.AccessPoint.$2.X_CISCO_COM_BssMaxNumSta int 74 > /dev/null
+    elif [ $max_sta == 100 ]; then
+        dmcli eRT setv Device.WiFi.AccessPoint.$2.X_CISCO_COM_BssMaxNumSta int 99 > /dev/null
+    elif [ $max_sta == 99 ]; then
+        dmcli eRT setv Device.WiFi.AccessPoint.$2.X_CISCO_COM_BssMaxNumSta int 100 > /dev/null
+    elif [ $max_sta == 64 ]; then
+        dmcli eRT setv Device.WiFi.AccessPoint.$2.X_CISCO_COM_BssMaxNumSta int 63 > /dev/null
+    elif [ $max_sta == 63 ]; then
+        dmcli eRT setv Device.WiFi.AccessPoint.$2.X_CISCO_COM_BssMaxNumSta int 64 > /dev/null
     else
         dmcli eRT setv Device.WiFi.AccessPoint.$2.X_CISCO_COM_BssMaxNumSta int 75 > /dev/null
     fi

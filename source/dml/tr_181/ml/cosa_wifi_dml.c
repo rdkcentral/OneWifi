@@ -6957,27 +6957,18 @@ AccessPoint_SetParamIntValue
 
     if( AnscEqualString(ParamName, "X_CISCO_COM_BssMaxNumSta", TRUE))
     {
-        if ( vapInfo->u.bss_info.bssMaxSta == (UINT)iValue )
+        if (vapInfo->u.bss_info.bssMaxSta == (UINT) iValue)
         {
+            /* Same value in VAPs private data, no change needed. Just return */
             return  TRUE;
         }
-        /* save update to backup */
-	if (iValue == 100)
-	{
-		if(vapInfo->u.bss_info.bssMaxSta == 74)
-		{
-			vapInfo->u.bss_info.bssMaxSta = 75;
-                        wifi_util_info_print(WIFI_DMCLI,"selfheal, configuring max assoc clients to 75\n");
-		} else if(vapInfo->u.bss_info.bssMaxSta == 75) {
-			vapInfo->u.bss_info.bssMaxSta = 74;
-                        wifi_util_info_print(WIFI_DMCLI,"selfheal, configuring max assoc clients to 74\n");
-		}
-	} else {
-        	vapInfo->u.bss_info.bssMaxSta = iValue;
-	}
+
+        /* Allow users to set max station for given VAP */
+        vapInfo->u.bss_info.bssMaxSta = iValue;
         set_dml_cache_vap_config_changed(instance_number - 1);
-        return TRUE;
+        return (TRUE);
     }
+
     if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_ManagementFramePowerControl", TRUE))
     {
         if((iValue < -20) || (iValue > 0))

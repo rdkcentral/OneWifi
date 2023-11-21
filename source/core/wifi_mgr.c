@@ -251,7 +251,7 @@ int init_wifi_hal()
 #ifdef CCSP_WIFI_HAL
     ret = wifi_hal_getHalCapability(&g_wifi_mgr.hal_cap);
 #else
-    wifi_util_dbg_print(WIFI_MGR,"%s: Calling HW hal caps.\n", __func__);
+    wifi_util_dbg_print(WIFI_MGR,"%s():%d: Calling HW hal caps.\n", __func__, __LINE__);
     if (rfc_status) {
         ow_mesh_ext_set_capab();
         ret = ow_mesh_ext_get_hal_capab(&g_wifi_mgr.hal_cap);
@@ -1095,8 +1095,8 @@ int get_vap_params_from_psm(unsigned int vap_index, wifi_vap_info_t *vap_config,
     str = Get_PSM_Record_Status(recName, strValue);
     if (str != NULL) {
         if ((isVapPrivate(vap_config->vap_index)) && (_ansc_atoi(str) == 0)) {
-            bss_cfg->bssMaxSta = BSS_MAX_NUM_STA;
-            wifi_util_info_print(WIFI_MGR, "wrong max clients configured in psm, changing max associated clients to %d on vap:%d\n", BSS_MAX_NUM_STA, vap_index);
+            bss_cfg->bssMaxSta = g_wifi_mgr.hal_cap.wifi_prop.BssMaxStaAllow;
+            wifi_util_info_print(WIFI_MGR, "wrong max clients configured in psm, changing max associated clients to %d on vap:%d\n", g_wifi_mgr.hal_cap.wifi_prop.BssMaxStaAllow, vap_index);
         } else {
             bss_cfg->bssMaxSta = _ansc_atoi(str);
         }

@@ -145,11 +145,11 @@ typedef void *wifi_analytics_data_t;
 #define MON_STATS_KEY_LEN_16     16
 #define MON_STATS_KEY_LEN_8       8
 
-#ifdef _SKY_HUB_COMMON_PRODUCT_REQ_
-#define BSS_MAX_NUM_STA 64
-#else
-#define BSS_MAX_NUM_STA 75
-#endif
+/* Number of stations supported defines */
+#define BSS_MAX_NUM_STA_COMMON   75      /**< Max supported stations for all common platforms except following defines... */
+#define BSS_MAX_NUM_STA_SKY      64      /**< Max supported stations for SKY HUB specific platforms */
+#define BSS_MAX_NUM_STA_XB8      100     /**< Max supported stations for TCHX8 specific platform */
+#define BSS_MAX_NUM_STATIONS     100     /**< Max supported stations by RDK-B firmware which would varies based on platform */
 
 typedef unsigned char   mac_addr_t[MAC_ADDR_LEN];
 typedef signed short    rssi_t;

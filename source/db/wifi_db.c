@@ -4923,9 +4923,8 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             wifi_util_error_print(WIFI_DB, "%s:%d: Incorrect password length %d for vap '%s'\n", __func__, __LINE__, strlen(cfg.u.sta_info.security.u.key.key), vap_name);
             strncpy(cfg.u.sta_info.security.u.key.key, INVALID_KEY, sizeof(cfg.u.sta_info.security.u.key.key));
         }
-        
-        cfg.u.bss_info.bssMaxSta = 75;
-        cfg.u.sta_info.scan_params.channel.band =band;
+
+        cfg.u.sta_info.scan_params.channel.band = band;
 
         switch(band) {
             case WIFI_FREQUENCY_2_4_BAND:
@@ -5060,10 +5059,15 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         if (isVapXhs(vap_index)) {
             cfg.u.bss_info.enabled = false;
         }
-        cfg.u.bss_info.bssMaxSta = 64;
+        cfg.u.bss_info.bssMaxSta = BSS_MAX_NUM_STA_SKY;
 #else
-        cfg.u.bss_info.bssMaxSta = 75;
+        if (isVapPrivate(vap_index)) {
+            cfg.u.bss_info.bssMaxSta = wifi_hal_cap_obj->wifi_prop.BssMaxStaAllow;
+        } else {
+            cfg.u.bss_info.bssMaxSta = BSS_MAX_NUM_STA_COMMON;
+        }
 #endif
+
         memset(ssid, 0, sizeof(ssid));
 
 #ifdef CCSP_WIFI_HAL
@@ -5656,25 +5660,50 @@ static void wifidb_vap_config_ext(wifi_vap_info_map_t *config, rdk_wifi_vap_info
     }
 }
 
+/************************************************************************************
+ ************************************************************************************
+  Function    : wifidb_vap_config_correction
+  Parameter   : cl_vap_map_param      - wifi_vap_info_map_t updated to wifidb
+  Description : vap config parameters corrections
+ *************************************************************************************
+********************************************** ****************************************/
 void wifidb_vap_config_correction(wifi_vap_info_map_t *l_vap_map_param)
 {
     unsigned int index = 0;
     wifi_vap_info_t *vap_config = NULL;
+    rdk_wifi_vap_info_t *rdk_vap_config = NULL;
+
+    wifi_hal_capability_t *wifi_hal_cap_obj = rdk_wifi_get_hal_capability_map();
 
     for (index = 0; index < l_vap_map_param->num_vaps; index++) {
         vap_config = &l_vap_map_param->vap_array[index];
+
+        if ((isVapPrivate(vap_config->vap_index)) && (access(ONEWIFI_BSS_MAXASSOC_FLAG, F_OK) != 0) &&
+            (vap_config->u.bss_info.bssMaxSta != wifi_hal_cap_obj->wifi_prop.BssMaxStaAllow)) {
+                wifi_util_info_print(WIFI_DB, "%s:%d: Update bssMaxSta for private_vap:%d from %d to %d\r\n",
+                    __func__, __LINE__, vap_config->vap_index, vap_config->u.bss_info.bssMaxSta, wifi_hal_cap_obj->wifi_prop.BssMaxStaAllow);
+                vap_config->u.bss_info.bssMaxSta = wifi_hal_cap_obj->wifi_prop.BssMaxStaAllow;
+
+                rdk_vap_config = get_wifidb_rdk_vaps(vap_config->radio_index);
+                if (rdk_vap_config == NULL) {
+                    wifi_util_error_print(WIFI_DB, "%s:%d: failed to get rdk vaps for radio index %d\n", __func__, __LINE__, vap_config->radio_index);
+                } else {
+                    update_wifi_vap_info(vap_config->vap_name, vap_config, rdk_vap_config);
+                }
+        }
+
         if (isVapPrivate(vap_config->vap_index) &&
             is_sec_mode_personal(vap_config->u.bss_info.security.mode)) {
             if (vap_config->u.bss_info.wps.enable == false) {
                 vap_config->u.bss_info.wps.enable = true;
-                wifi_util_info_print(WIFI_DB, "%s:%d force wps enabled for private_vap:%d\r\n",__func__, __LINE__, vap_config->vap_index);
+                wifi_util_info_print(WIFI_DB, "%s:%d: force wps enabled for private_vap:%d\r\n",__func__, __LINE__, vap_config->vap_index);
             }
             continue;
         }
         if (isVapLnfSecure(vap_config->vap_index) &&
             is_sec_mode_enterprise(vap_config->u.bss_info.security.mode)) {
             set_lnf_radius_server_ip(&vap_config->u.bss_info.security);
-            wifi_util_info_print(WIFI_DB,"%s:%d Primary Ip and Secondry Ip: %s , %s\n", __func__, __LINE__, (char *)vap_config->u.bss_info.security.u.radius.ip,
+            wifi_util_info_print(WIFI_DB,"%s:%d: Primary Ip and Secondry Ip: %s , %s\n", __func__, __LINE__, (char *)vap_config->u.bss_info.security.u.radius.ip,
                                             (char *)vap_config->u.bss_info.security.u.radius.s_ip);
             continue;
         }
@@ -5696,6 +5725,7 @@ void init_wifidb_data()
         return;
     }
 
+    FILE *file = NULL;
     int r_index = 0;
     wifi_mgr_t *g_wifidb;
     g_wifidb = get_wifimgr_obj();
@@ -5854,6 +5884,18 @@ void init_wifidb_data()
                 }
             }
         }
+
+        /* This is system-wide (file) flag. Hence, open the file after number of radio loop only in reboot case */
+        file = fopen(ONEWIFI_BSS_MAXASSOC_FLAG, "a");
+        if (file != NULL) {
+            wifi_util_info_print(WIFI_DB, "%s:%d: File %s created\n", __func__, __LINE__, ONEWIFI_BSS_MAXASSOC_FLAG);
+            /* This is one time operation occurs during migration from non-fix to fix build to support max station */
+            fclose(file);
+        } else {
+            wifi_util_error_print(WIFI_DB, "%s:%d: Failed to open %s\n", __func__, __LINE__, ONEWIFI_BSS_MAXASSOC_FLAG);
+            /* Continue after logging the system error. */
+        }
+
         wifidb_get_wifi_macfilter_config();
         wifidb_get_wifi_global_config(&g_wifidb->global_config.global_parameters);
         wifidb_get_gas_config(g_wifidb->global_config.gas_config.AdvertisementID,&g_wifidb->global_config.gas_config);

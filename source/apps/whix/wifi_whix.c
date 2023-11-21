@@ -1022,7 +1022,8 @@ void print_sta_client_telemetry_data(int vap_index, hash_map_t *sta_map)
 }
 
 #define CLIENT_TELEMETRY_PARAM_MAX_LEN 64
-#define MAX_BUFF_SIZE   BSS_MAX_NUM_STA * CLIENT_TELEMETRY_PARAM_MAX_LEN
+#define MAX_BUFF_SIZE   BSS_MAX_NUM_STATIONS * CLIENT_TELEMETRY_PARAM_MAX_LEN
+
 int upload_client_telemetry_data(unsigned int vap_index)
 {
     hash_map_t     *sta_map;
