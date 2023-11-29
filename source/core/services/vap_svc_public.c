@@ -23,6 +23,7 @@
 #include <sys/time.h>
 #include "vap_svc.h"
 #include "wifi_ctrl.h"
+#include "wifi_mgr.h"
 #include "wifi_util.h"
 
 bool vap_svc_is_public(unsigned int vap_index)
@@ -142,6 +143,7 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
     bool rfc_passpoint_enable = false;
     memset((unsigned char *)&tgt_created_vap_map, 0, sizeof(wifi_vap_info_map_t));
     tgt_created_vap_map.num_vaps = 0;
+    wifi_mgr_t *g_wifi_mgr = (wifi_mgr_t *)get_wifimgr_obj();
 
 
 #if DML_SUPPORT
@@ -179,6 +181,11 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
         // saved to VAP_Config with exist flag set to 0 and default values.
         enabled = tgt_vap_map.vap_array[0].u.bss_info.enabled;
         tgt_vap_map.vap_array[0].u.bss_info.enabled &= rdk_vap_info[i].exists;
+        if (is_6g_supported_device(&g_wifi_mgr->hal_cap.wifi_prop) && tgt_vap_map.vap_array[0].u.bss_info.enabled) {
+            wifi_util_info_print(WIFI_CTRL, "%s:%d 6g supported device  %s is enabled  nbrReport is activated\n", __func__,__LINE__,tgt_vap_map.vap_array[0].vap_name);
+            tgt_vap_map.vap_array[0].u.bss_info.nbrReportActivated = true;
+        }
+
 
         if (wifi_hal_createVAP(radio_index, &tgt_vap_map) != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL,"%s: wifi vap create failure: radio_index:%d vap_index:%d\n",__FUNCTION__,
@@ -348,6 +355,80 @@ void process_xfinity_enable(vap_svc_event_t event, void *data)
 #endif
 }
 
+void process_xfinity_rrm(vap_svc_event_t event)
+{
+    unsigned int secure_6g = 0, open_6g = 0;
+    int hotspot_open_2g_index = 0,hotspot_open_5g_index = 0;
+    int hotspot_sec_2g_index = 0,hotspot_sec_5g_index = 0;
+    wifi_radio_operationParam_t *radio_params = NULL;
+    bool radio6g_enabled = false;
+    mac_address_t open_6g_mac,secure_6g_mac;
+    uint8_t num_radios = getNumberRadios();
+
+    wifi_util_info_print(WIFI_CTRL," %s LINE %d\n",__func__,__LINE__);
+
+    for(int radio_indx = 0; radio_indx < num_radios; ++radio_indx) {
+        radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(radio_indx);
+        if (radio_params == NULL) {
+            continue;
+        }
+        if (radio_params->band == WIFI_FREQUENCY_6_BAND && radio_params->enable == true)
+            radio6g_enabled =  true;
+
+        wifi_vap_info_map_t *wifi_vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(radio_indx);
+        if( wifi_vap_map == NULL) {
+            continue;
+        }
+        for(unsigned int j = 0; j < wifi_vap_map->num_vaps; ++j) {
+            if(strstr(wifi_vap_map->vap_array[j].vap_name, "hotspot") == NULL) {
+                continue;
+            }
+            if ((strcmp(wifi_vap_map->vap_array[j].vap_name,"hotspot_open_2g") == 0) &&
+               wifi_vap_map->vap_array[j].u.bss_info.enabled) {
+               hotspot_open_2g_index = wifi_vap_map->vap_array[j].vap_index;
+            }
+            if ((strcmp(wifi_vap_map->vap_array[j].vap_name,"hotspot_open_5g") == 0) &&
+               wifi_vap_map->vap_array[j].u.bss_info.enabled) {
+               hotspot_open_5g_index = wifi_vap_map->vap_array[j].vap_index;
+            }
+            if ((strcmp(wifi_vap_map->vap_array[j].vap_name,"hotspot_secure_2g") == 0) &&
+               wifi_vap_map->vap_array[j].u.bss_info.enabled) {
+               hotspot_sec_2g_index = wifi_vap_map->vap_array[j].vap_index;
+            }
+            if ((strcmp(wifi_vap_map->vap_array[j].vap_name,"hotspot_secure_5g") == 0) &&
+               wifi_vap_map->vap_array[j].u.bss_info.enabled) {
+               hotspot_sec_5g_index = wifi_vap_map->vap_array[j].vap_index;
+            }
+            if (strcmp(wifi_vap_map->vap_array[j].vap_name,"hotspot_open_6g") == 0) {
+                memcpy(open_6g_mac,wifi_vap_map->vap_array[j].u.bss_info.bssid,sizeof(mac_address_t));
+                if (wifi_vap_map->vap_array[j].u.bss_info.enabled && radio6g_enabled) {
+                    open_6g = 1;
+                }
+            }
+            if (strcmp(wifi_vap_map->vap_array[j].vap_name,"hotspot_secure_6g") == 0) {
+                memcpy(secure_6g_mac,wifi_vap_map->vap_array[j].u.bss_info.bssid,sizeof(mac_address_t));
+                if (wifi_vap_map->vap_array[j].u.bss_info.enabled && radio6g_enabled) {
+                    secure_6g = 1;
+                }
+            }
+        }
+    }
+    wifi_util_info_print(WIFI_CTRL,"%s open_6g=%d and secure_6g=%d\n",__func__,open_6g,secure_6g);
+    if (hotspot_open_2g_index !=0 ) {
+        wifi_hal_set_neighbor_report(hotspot_open_2g_index,open_6g,open_6g_mac);
+    }
+    if(hotspot_open_5g_index !=0 ) {
+        wifi_hal_set_neighbor_report(hotspot_open_5g_index,open_6g,open_6g_mac);
+    }
+
+    if (hotspot_sec_2g_index !=0 ) {
+        wifi_hal_set_neighbor_report(hotspot_sec_2g_index,secure_6g,secure_6g_mac);
+    }
+    if(hotspot_sec_5g_index !=0 ) {
+        wifi_hal_set_neighbor_report(hotspot_sec_5g_index,secure_6g,secure_6g_mac);
+    }
+}
+
 void process_public_service_command(vap_svc_event_t event,wifi_event_subtype_t sub_type,void *data)
 {
 
@@ -355,10 +436,14 @@ void process_public_service_command(vap_svc_event_t event,wifi_event_subtype_t s
 
         case wifi_event_type_prefer_private_rfc:
             process_prefer_private_rfc_event(event, data);
-        break;
+            break;
         case wifi_event_type_xfinity_enable:
             process_xfinity_enable(event, data);
-        break;
+            break;
+
+        case wifi_event_type_xfinity_rrm:
+            process_xfinity_rrm(event);
+            break;
 
         default:
             break;

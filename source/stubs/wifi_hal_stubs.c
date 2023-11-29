@@ -175,3 +175,7 @@ INT wifi_delApAclDevices(INT apINdex)
 {
     return RETURN_OK;
 }
+INT wifi_hal_set_neighbor_report(UINT apIndex,UINT numNeighborReports, mac_address_t mac)
+{
+    return 0;
+}

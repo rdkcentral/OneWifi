@@ -54,6 +54,12 @@ static unsigned msg_id = 1000;
 #endif
 extern int webconfig_set_ow_core_state(webconfig_subdoc_data_t *data);
 
+typedef enum {
+    hotspot_vap_disable,
+    hotspot_vap_enable,
+    hotspot_vap_param_update
+} wifi_hotspot_action_t;
+
 void process_scan_results_event(scan_results_t *results, unsigned int len)
 {
     wifi_ctrl_t *ctrl;
@@ -693,7 +699,7 @@ void send_hotspot_status(char* vap_name, bool up)
     rbusValue_Release(value);
     rbusObject_Release(data);
 }
-/* process_xfinity_vaps()  vap_enable param can take values 0,1 and 2
+/* process_xfinity_vaps()  param can take values 0,1 and 2
     0 ---To disable xfinityvaps,
     1 --To enable xfinty vaps
     0 and 1 are  used for TunnelUp/Down event
@@ -701,12 +707,13 @@ void send_hotspot_status(char* vap_name, bool up)
     This is used in case of Radius greylist, station disconnect
 */
 
-void process_xfinity_vaps(int vap_enable, bool hs_evt)
+void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
 {
     rdk_wifi_vap_info_t *rdk_vap_info;
     vap_svc_t  *pub_svc = NULL;
     wifi_ctrl_t *ctrl;
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_platform_property_t *wifi_prop = (&(get_wifimgr_obj())->hal_cap.wifi_prop);
     uint8_t num_radios = getNumberRadios();
 #if DML_SUPPORT
     bool open_2g_enabled = false, open_5g_enabled = false, open_6g_enabled = false,sec_2g_enabled = false,sec_5g_enabled = false, sec_6g_enabled = false;
@@ -733,58 +740,65 @@ void process_xfinity_vaps(int vap_enable, bool hs_evt)
                 continue;
             }
 
-            if(vap_enable == 0 ) {
+            if(param ==  hotspot_vap_disable) {
                 tmp_vap_map.vap_array[0].u.bss_info.enabled = false;
             }
-            if(vap_enable == 1 ) {
+            if (param == hotspot_vap_enable ) {
 #if DML_SUPPORT
-              if (rfc_param) {
-                  open_2g_enabled = rfc_param->hotspot_open_2g_last_enabled;
-                  open_5g_enabled = rfc_param->hotspot_open_5g_last_enabled;
-                  open_6g_enabled = rfc_param->hotspot_open_6g_last_enabled;
-                  sec_2g_enabled = rfc_param->hotspot_secure_2g_last_enabled;
-                  sec_5g_enabled = rfc_param->hotspot_secure_5g_last_enabled;
-                  sec_6g_enabled = rfc_param->hotspot_secure_6g_last_enabled;
-              }
-              wifi_util_dbg_print(WIFI_CTRL," vap_name is %s and bool is %d:%d:%d:%d:%d:%d\n",tmp_vap_map.vap_array[0].vap_name,open_2g_enabled,open_5g_enabled,open_6g_enabled,sec_2g_enabled,sec_5g_enabled,sec_6g_enabled);
+                if (rfc_param) {
+                    open_2g_enabled = rfc_param->hotspot_open_2g_last_enabled;
+                    open_5g_enabled = rfc_param->hotspot_open_5g_last_enabled;
+                    open_6g_enabled = rfc_param->hotspot_open_6g_last_enabled;
+                    sec_2g_enabled = rfc_param->hotspot_secure_2g_last_enabled;
+                    sec_5g_enabled = rfc_param->hotspot_secure_5g_last_enabled;
+                    sec_6g_enabled = rfc_param->hotspot_secure_6g_last_enabled;
+                }
+                wifi_util_dbg_print(WIFI_CTRL," vap_name is %s and bool is %d:%d:%d:%d:%d:%d\n",tmp_vap_map.vap_array[0].vap_name,open_2g_enabled,open_5g_enabled,open_6g_enabled,sec_2g_enabled,sec_5g_enabled,sec_6g_enabled);
 
-              if ((strcmp(tmp_vap_map.vap_array[0].vap_name,"hotspot_open_2g") == 0) && open_2g_enabled)
-                  tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
+                if ((strcmp(tmp_vap_map.vap_array[0].vap_name,"hotspot_open_2g") == 0) && open_2g_enabled)
+                    tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
 
-              else if ((strcmp(tmp_vap_map.vap_array[0].vap_name,"hotspot_open_5g") == 0) && open_5g_enabled)
-                  tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
+                else if ((strcmp(tmp_vap_map.vap_array[0].vap_name,"hotspot_open_5g") == 0) && open_5g_enabled)
+                    tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
 
-              else if ((strcmp(tmp_vap_map.vap_array[0].vap_name,"hotspot_open_6g") == 0) && open_6g_enabled)
-                  tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
+                else if ((strcmp(tmp_vap_map.vap_array[0].vap_name,"hotspot_open_6g") == 0) && open_6g_enabled)
+                    tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
 
-              else if ((strcmp(tmp_vap_map.vap_array[0].vap_name,"hotspot_secure_2g") == 0) && sec_2g_enabled)
-                  tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
+                else if ((strcmp(tmp_vap_map.vap_array[0].vap_name,"hotspot_secure_2g") == 0) && sec_2g_enabled)
+                    tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
 
-              else if ((strcmp(tmp_vap_map.vap_array[0].vap_name,"hotspot_secure_5g") == 0) && sec_5g_enabled)
-                  tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
+                else if ((strcmp(tmp_vap_map.vap_array[0].vap_name,"hotspot_secure_5g") == 0) && sec_5g_enabled)
+                    tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
 
-              else if ((strcmp(tmp_vap_map.vap_array[0].vap_name,"hotspot_secure_6g") == 0) && sec_6g_enabled)
-                  tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
+                else if ((strcmp(tmp_vap_map.vap_array[0].vap_name,"hotspot_secure_6g") == 0) && sec_6g_enabled)
+                    tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
 
-              wifi_util_dbg_print(WIFI_CTRL,"enabled is %d\n",tmp_vap_map.vap_array[0].u.bss_info.enabled);
+                wifi_util_dbg_print(WIFI_CTRL,"enabled is %d\n",tmp_vap_map.vap_array[0].u.bss_info.enabled);
 #else
-              tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
+                tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
 #endif // DML_SUPPORT
             }
-
             if(pub_svc->update_fn(pub_svc,radio_indx, &tmp_vap_map, rdk_vap_info) != RETURN_OK) {
                 wifi_util_error_print(WIFI_CTRL, "%s:%d Unable to create vaps\n", __func__,__LINE__);
                 if(hs_evt) {
                     send_hotspot_status(wifi_vap_map->vap_array[j].vap_name, false);
                }
             } else {
-                wifi_util_info_print(WIFI_CTRL, "%s:%d Able to create vaps. vap_enable %d\n", __func__,__LINE__, vap_enable);
+                wifi_util_info_print(WIFI_CTRL, "%s:%d Able to create vaps. vap_enable %d\n", __func__,__LINE__, param);
                 wifidb_print("%s:%d radio_index:%d create vap %s successful\n", __func__,__LINE__, radio_indx, wifi_vap_map->vap_array[j].vap_name);
                 if(hs_evt) {
                     send_hotspot_status(wifi_vap_map->vap_array[j].vap_name, true);
                 }
 
             }
+
+        }
+    }
+    if (is_6g_supported_device(wifi_prop) && param != hotspot_vap_param_update) {
+        wifi_util_info_print(WIFI_CTRL,"6g supported device enable rrm\n");
+        if (pub_svc->event_fn != NULL) {
+            pub_svc->event_fn(pub_svc, wifi_event_type_command, wifi_event_type_xfinity_rrm,
+                vap_svc_event_none,NULL);
         }
     }
 }
@@ -892,12 +906,12 @@ void process_active_gw_check_command(bool active_gw_check)
 
     if (is_enabled == true) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d: stop xfinity vaps\n", __func__, __LINE__);
-        process_xfinity_vaps(0, false);
+        process_xfinity_vaps(hotspot_vap_disable, false);
         wifi_util_info_print(WIFI_CTRL, "%s:%d: start mesh sta\n", __func__, __LINE__);
         start_extender_vaps();
     } else {
         wifi_util_info_print(WIFI_CTRL, "%s:%d: start xfinity vaps\n", __func__, __LINE__);
-        process_xfinity_vaps(1, false);
+        process_xfinity_vaps(hotspot_vap_enable, false);
         wifi_util_info_print(WIFI_CTRL, "%s:%d: stop mesh sta\n", __func__, __LINE__);
         stop_extender_vaps();
     }
@@ -1825,7 +1839,7 @@ void process_radius_grey_list_rfc(bool type)
 
     if (public_xfinity_vap_status) {
         wifi_util_info_print(WIFI_CTRL,"public xfinity vaps are up and running\n");
-        process_xfinity_vaps(2,false);
+        process_xfinity_vaps(hotspot_vap_param_update,false);
     }
 
     if (!rfc_param->radiusgreylist_rfc) {
@@ -1840,7 +1854,7 @@ void process_wifi_passpoint_rfc(bool type)
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
     rfc_param->wifipasspoint_rfc = type;
     wifidb_update_rfc_config(0, rfc_param);
-    process_xfinity_vaps(2,false);
+    process_xfinity_vaps(hotspot_vap_param_update,false);
 }
 
 void process_wifi_interworking_rfc(bool type)
@@ -2471,6 +2485,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg)
     g_wifidb = get_wifimgr_obj();
     wifi_ctrl_t *ctrl;
     vap_svc_t *ext_svc;
+    vap_svc_t  *pub_svc = NULL;
 
     ctrl = &g_wifidb->ctrl;
     if (ctrl->network_mode == rdk_dev_mode_type_ext) {
@@ -2488,6 +2503,14 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg)
     if (radio_feat == NULL) {
         wifi_util_error_print(WIFI_CTRL,"%s: wrong index for radio map: %d\n",__FUNCTION__, ch_chg->radioIndex);
         return;
+    }
+    if (radio_params->band == WIFI_FREQUENCY_6_BAND ) {
+        pub_svc = get_svc_by_type(ctrl, vap_svc_type_public);
+        wifi_util_info_print(WIFI_CTRL,"6G radio channel changed update rrm\n");
+        if (pub_svc->event_fn != NULL) {
+            pub_svc->event_fn(pub_svc, wifi_event_type_command, wifi_event_type_xfinity_rrm,
+                vap_svc_event_none,NULL);
+        }
     }
 
     wifi_radio_capabilities_t radio_capab = g_wifidb->hal_cap.wifi_prop.radiocap[ch_chg->radioIndex];
@@ -2755,11 +2778,11 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len, wifi_
             break;
 
         case wifi_event_type_xfinity_tunnel_up:
-            process_xfinity_vaps(1, true);
+            process_xfinity_vaps(hotspot_vap_enable, true);
             break;
 
         case wifi_event_type_xfinity_tunnel_down:
-            process_xfinity_vaps(0, true);
+            process_xfinity_vaps(hotspot_vap_disable, true);
             break;
         case wifi_event_type_command_kick_assoc_devices:
             process_kick_assoc_devices_event(data);

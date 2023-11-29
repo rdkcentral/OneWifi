@@ -142,6 +142,7 @@ typedef enum {
     wifi_event_type_notify_monitor_done,
     wifi_event_type_start_inst_msmt,
     wifi_event_type_stop_inst_msmt,
+    wifi_event_type_xfinity_rrm,
     wifi_event_command_max,
 
 

@@ -3110,3 +3110,15 @@ bool is_5g_20M_channel_in_dfs(int channel) {
     }
     return FALSE;
 }
+bool is_6g_supported_device(wifi_platform_property_t *wifi_prop)
+{
+    unsigned int num_radio = get_number_of_radios(wifi_prop);
+    int band = 0;
+    for( unsigned int radio_index = 0; radio_index < num_radio; radio_index++ ) {
+        convert_radio_index_to_freq_band(wifi_prop, radio_index, &band);
+        if (band  == WIFI_FREQUENCY_6_BAND) {
+            return true;
+        }
+    }
+    return false;
+}

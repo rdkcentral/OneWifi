@@ -2193,6 +2193,8 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
     bool rfc_status;
     int ret;
     int is_changed = 0;
+    bool is_radio_6g_modified = false;
+    vap_svc_t *pub_svc = NULL;
 #if defined (FEATURE_SUPPORT_ECOPOWERDOWN)
     bool old_ecomode = false;
     bool new_ecomode = false;
@@ -2231,6 +2233,11 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
         if ((is_radio_param_config_changed(&mgr_radio_data->oper, &radio_data->oper) == true)) {
             // radio data changed apply
             is_changed = 1;
+            if (IS_CHANGED(mgr_radio_data->oper.enable,radio_data->oper.enable) && (radio_data->oper.band == WIFI_FREQUENCY_6_BAND)) {
+                wifi_util_dbg_print(WIFI_MGR,"6g Radio enable field is modified from mgr_radio_data->oper->enable=%d and radio_data->oper->enable=%d\n",
+                    mgr_radio_data->oper.enable,radio_data->oper.enable);
+                is_radio_6g_modified =  true;
+            }
             wifi_util_info_print(WIFI_MGR, "%s:%d: Change detected in received radio config, applying new configuration for radio: %s\n",
                             __func__, __LINE__, radio_data->name);
             radio_param_config_changed_event_logging(&mgr_radio_data->oper,&radio_data->oper,radio_data->name);
@@ -2304,7 +2311,13 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
                 ecomode_telemetry_update_and_reboot(i, new_ecomode);
             }
 #endif // defined (FEATURE_SUPPORT_ECOPOWERDOWN)
-
+            if (is_radio_6g_modified) {
+                pub_svc = get_svc_by_type(ctrl, vap_svc_type_public);
+                if (pub_svc->event_fn != NULL) {
+                    pub_svc->event_fn(pub_svc, wifi_event_type_command, wifi_event_type_xfinity_rrm,
+                       vap_svc_event_none,NULL);
+                }
+            }
         } else {
             wifi_util_info_print(WIFI_MGR, "%s:%d: Received radio config for radio %u is same, not applying\n", __func__, __LINE__, mgr_radio_data->vaps.radio_index);
         }
@@ -2345,6 +2358,7 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
 {
     int ret = RETURN_OK;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    vap_svc_t  *pub_svc = NULL;
     wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: webconfig_state:%02x doc_type:%d doc_name:%s\n", 
             __func__, __LINE__, ctrl->webconfig_state, doc->type, doc->name);
 
@@ -2368,6 +2382,7 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                     ctrl->webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
                     webconfig_analytic_event_data_to_hal_apply(data);
                     ret = webconfig_hal_radio_apply(ctrl, &data->u.decoded);
+
                 }
             }
         break;
@@ -2430,6 +2445,14 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                     webconfig_analytic_event_data_to_hal_apply(data);
                     ret = webconfig_hal_xfinity_vap_apply(ctrl, &data->u.decoded);
                     webconfig_cac_apply(ctrl, &data->u.decoded);
+                    if (is_6g_supported_device((&(get_wifimgr_obj())->hal_cap.wifi_prop))) {
+                        wifi_util_info_print(WIFI_CTRL,"6g supported device add rnr of 6g\n");
+                        pub_svc = get_svc_by_type(ctrl, vap_svc_type_public);
+                        if (pub_svc->event_fn != NULL) {
+                             pub_svc->event_fn(pub_svc, wifi_event_type_command, wifi_event_type_xfinity_rrm,
+                             vap_svc_event_none,NULL);
+                        }
+                    }
                 }
             }
         break;
