@@ -336,9 +336,28 @@ int get_radio_channel_stats(int radio_index,
                             int *array_size)
 {
     wifi_channelStats_t chan_stats = {0};
-
+    if (channel_stats_array == NULL)
+    {
+        wifi_util_error_print(WIFI_MON, "%s %d channel_stats_array is NULL\n", __func__, __LINE__);
+        return -1;
+    }
+    if (array_size == NULL)
+    {
+        wifi_util_error_print(WIFI_MON, "%s %d array_size is NULL\n", __func__, __LINE__);
+        return -1;
+    }
+    if (radio_index >= MAX_NUM_RADIOS) {
+        wifi_util_error_print(WIFI_MON, "%s:%d invalid radio_index=%d\n", __func__, __LINE__, radio_index);
+        return -1;
+    }
     pthread_mutex_lock(&g_monitor_module.data_lock);
     *array_size = 1;
+    if (g_monitor_module.radio_chan_stats_data[radio_index].chan_data == NULL)
+    {
+        wifi_util_error_print(WIFI_MON, "%s %d chan_data is NULL\n", __func__, __LINE__);
+        pthread_mutex_unlock(&g_monitor_module.data_lock);
+        return -1;
+    }
     chan_stats.ch_in_pool = g_monitor_module.radio_chan_stats_data[radio_index].chan_data->ch_in_pool;
     chan_stats.ch_radar_noise = g_monitor_module.radio_chan_stats_data[radio_index].chan_data->ch_radar_noise;
     chan_stats.ch_number = g_monitor_module.radio_chan_stats_data[radio_index].chan_data->ch_number;
@@ -354,7 +373,6 @@ int get_radio_channel_stats(int radio_index,
     chan_stats.ch_utilization_busy_ext = g_monitor_module.radio_chan_stats_data[radio_index].chan_data->ch_utilization_busy_ext;
     memcpy(channel_stats_array, &chan_stats, sizeof(wifi_channelStats_t));
     pthread_mutex_unlock(&g_monitor_module.data_lock);
-
     return 0;
 }
 

@@ -1321,9 +1321,7 @@ int onewifi_get_radio_channel_stats(int radio_index,
                                     wifi_channelStats_t *channel_stats_array, 
                                     int *array_size)
 {
-    get_radio_channel_stats(radio_index, channel_stats_array, array_size);
-
-    return 0;
+    return get_radio_channel_stats(radio_index, channel_stats_array, array_size);
 }
 
 int onewifi_get_radio_traffic_stats(int radio_index, 
