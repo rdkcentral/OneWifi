@@ -2955,6 +2955,12 @@ int wifi_radio_operationParam_validation(wifi_hal_capability_t  *hal_cap, wifi_r
             }
             hal_cap_channels = non_dfs_ch_hal_cap; /*Update hal_cap_channels with hal cap non dfs channels*/
         }
+        else {
+            if ((oper->channelWidth == WIFI_CHANNELBANDWIDTH_160MHZ) && (oper->channel > 128)) {
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid channel %d for the radio_index : %d bw = 0x%x \n", __func__, __LINE__, oper->channel, radio_index,oper->channelWidth);
+                return RETURN_ERR;
+            }
+        }
 
         switch(oper->channelWidth) {
             case WIFI_CHANNELBANDWIDTH_20MHZ:
@@ -3002,6 +3008,7 @@ int wifi_radio_operationParam_validation(wifi_hal_capability_t  *hal_cap, wifi_r
             }
         }
     }
+
     if (is_valid == false) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid channel %d for the radio_index : %d bw = 0x%x \n", __func__, __LINE__, oper->channel, radio_index,oper->channelWidth);
         return RETURN_ERR;
