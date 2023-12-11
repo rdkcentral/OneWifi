@@ -203,8 +203,7 @@ int execute_radio_channel_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t 
             }
             return RETURN_ERR;
         }
-    }
-    else if (radio_chan_stats_data->num_channels < num_channels) {
+    } else if (radio_chan_stats_data->num_channels < num_channels) {
         free(radio_chan_stats_data->chan_data);
         radio_chan_stats_data->chan_data = (radio_chan_data_t *) calloc(num_channels, sizeof(radio_chan_data_t));
         if (radio_chan_stats_data->chan_data == NULL) {
@@ -256,7 +255,7 @@ int copy_radio_channel_stats_from_cache(wifi_mon_stats_args_t *args, void **stat
     radio_chan_data_t   *chan_data;
     radio_chan_data_t    *radio_chan_data = NULL;
     radio_chan_stats_data_t *radio_chan_stats_data;
-    int chan_count = 0;
+    int chan_count = 0, i;
 
     if ((args == NULL) || (mon_cache == NULL)) {
         wifi_util_error_print(WIFI_MON, "%s : %d Invalid args args : %p mon_cache = %p\n",
@@ -300,17 +299,19 @@ int copy_radio_channel_stats_from_cache(wifi_mon_stats_args_t *args, void **stat
             wifi_util_error_print(WIFI_MON,"%s:%d NULL chan_data pointer for radio : %d\n", __func__, __LINE__, args->radio_index);
             return RETURN_ERR;
         }
-        for (chan_count = 0; chan_count < args->channel_list.num_channels; chan_count++) {
-            if (args->scan_mode == WIFI_RADIO_SCAN_MODE_OFFCHAN && radioOperation->channel == (unsigned int) args->channel_list.channels_list[chan_count]) {
+        chan_count = 0;
+        for (i = 0; i < args->channel_list.num_channels; i++) {
+            if (args->scan_mode == WIFI_RADIO_SCAN_MODE_OFFCHAN && radioOperation->channel == (unsigned int) args->channel_list.channels_list[i]) {
                 //skip current channel for offchan request
                 continue;
             }
-            radio_chan_data = (radio_chan_data_t *)get_wifi_channelStats_t(radio_chan_stats_data, args->channel_list.channels_list[chan_count]);
+            radio_chan_data = (radio_chan_data_t *)get_wifi_channelStats_t(radio_chan_stats_data, args->channel_list.channels_list[i]);
             if (radio_chan_data == NULL) {
                 free(chan_data);
                 return RETURN_ERR;
             }
             memcpy(&chan_data[chan_count], radio_chan_data, sizeof(radio_chan_data_t));
+            chan_count++;
         }
         *stats = chan_data;
         *stat_array_size = chan_count;
