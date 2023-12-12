@@ -118,7 +118,7 @@ int notify_associated_entries(wifi_ctrl_t *ctrl, int ap_index, ULONG new_count, 
     return RETURN_OK;
 }
 
-int notify_force_disassociation(wifi_ctrl_t *ctrl, int band, char *threshold, mac_addr_str_t mac, int ap_index)
+int notify_force_disassociation(wifi_ctrl_t *ctrl, int ap_index, char *threshold, mac_addr_str_t mac, float threshold_val, int client_val)
 {
     int rc;
     char str[2048];
@@ -132,7 +132,7 @@ int notify_force_disassociation(wifi_ctrl_t *ctrl, int band, char *threshold, ma
         return RETURN_ERR;
     }
 
-    snprintf(str, sizeof(str), "%d, %s, %s", band, threshold, mac);
+    snprintf(str, sizeof(str), "%d,%s,%s,%f,%d", ap_index, threshold, mac, threshold_val, client_val);
 
     if (vap_info != NULL) {
         strncpy(vap_info->u.bss_info.postassoc.client_force_disassoc_info, str, sizeof(vap_info->u.bss_info.postassoc.client_force_disassoc_info));
@@ -146,7 +146,7 @@ int notify_force_disassociation(wifi_ctrl_t *ctrl, int band, char *threshold, ma
     return RETURN_OK;
 }
 
-int notify_deny_association(wifi_ctrl_t *ctrl, int band, char *threshold, mac_addr_str_t mac, int ap_index)
+int notify_deny_association(wifi_ctrl_t *ctrl, int ap_index, char *threshold, mac_addr_str_t mac, float threshold_val, float client_val)
 {
     int rc;
     char str[2048];
@@ -161,7 +161,7 @@ int notify_deny_association(wifi_ctrl_t *ctrl, int band, char *threshold, mac_ad
 
     vap_info = getVapInfo(ap_index);
 
-    snprintf(str, sizeof(str), "%d, %s, %s", band, threshold, mac);
+    snprintf(str, sizeof(str), "%d,%s,%s,%f,%f", ap_index, threshold, mac, threshold_val, client_val);
 
     if (vap_info != NULL) {
         strncpy(vap_info->u.bss_info.preassoc.client_deny_assoc_info, str, sizeof(vap_info->u.bss_info.preassoc.client_deny_assoc_info));
