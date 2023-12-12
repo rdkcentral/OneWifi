@@ -25,11 +25,12 @@
 extern "C" {
 #endif
 
-//Apps frame execution timeout period is 2 hours
-#define APPS_FRAME_EXEC_TIMEOUT_PERIOD    (2 * 3600)
-
-//Max probe ttl time is 12 hours
-#define MAX_PROBE_TTL_TIME   (12 * 3600)
+//Apps frame execution timeout period is 30 minutes
+#define APPS_FRAME_EXEC_TIMEOUT_PERIOD    (30 * 60)
+//Max probe ttl time is 5 minutes
+#define MAX_PROBE_TTL_TIME   (5 * 60)
+//Max probe entries
+#define MAX_PROBE_ENTRIES    2000
 
 #define MAX_PROBE_MAP_TTL    500
 #define WIFI_EVENTS_VAP_TABLE               "Device.WiFi.Events.VAP.{i}."

@@ -249,6 +249,16 @@ void apps_probe_req_frame_event(wifi_app_t *app, frame_data_t *msg)
         return;
     }
 
+    if (app->data.u.levl.probe_req_map == NULL) {
+        wifi_util_dbg_print(WIFI_APPS,"%s:%d probe hash map is null\r\n", __func__, __LINE__);
+        return;
+    }
+    if (hash_map_count(app->data.u.levl.probe_req_map) > MAX_PROBE_ENTRIES) {
+        wifi_util_dbg_print(WIFI_APPS,"%s:%d [SKIP] wifi mgmt frame message: ap_index:%d length:%d src mac:%s rssi:%d\r\n", __func__,
+                            __LINE__, msg->frame.ap_index, msg->frame.len, str, msg->frame.sig_dbm);
+        return;
+    }
+
     update_probe_map(app, str);
 
     wifi_util_dbg_print(WIFI_APPS,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d src mac:%s rssi:%d\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir, str, msg->frame.sig_dbm);
@@ -892,7 +902,6 @@ int apps_frame_event_exec_timeout(wifi_app_t *apps)
     time_t l_curr_alive_time_sec, delta_time_sec;
     hash_map_t *probe_map = apps->data.u.levl.probe_req_map;
     probe_req_elem_t *l_elem = NULL, *l_temp_elem = NULL;
-    mac_addr_str_t tmp_mac_str = { 0 };
 
     if (probe_map == NULL) {
         wifi_util_error_print(WIFI_APPS,"%s:%d probe map is NULL\r\n", __func__, __LINE__);
@@ -906,15 +915,13 @@ int apps_frame_event_exec_timeout(wifi_app_t *apps)
     l_elem = hash_map_get_first(probe_map);
     while (l_elem != NULL) {
         delta_time_sec = l_curr_alive_time_sec - l_elem->curr_alive_time_sec;
-        memset(tmp_mac_str, 0, sizeof(mac_addr_str_t));
-        memcpy(tmp_mac_str, l_elem->mac_str, (sizeof(mac_addr_str_t) - 1));
+        l_temp_elem = l_elem;
         l_elem = hash_map_get_next(probe_map, l_elem);
         if (delta_time_sec >= MAX_PROBE_TTL_TIME) {
-            l_temp_elem = hash_map_remove(probe_map, tmp_mac_str);
+            l_temp_elem = hash_map_remove(probe_map, l_temp_elem->mac_str);
             if (l_temp_elem != NULL) {
+                wifi_util_info_print(WIFI_APPS,"%s:%d probe map entry removed for mac_str:%s\r\n", __func__, __LINE__, l_temp_elem->mac_str);
                 free(l_temp_elem);
-                wifi_util_info_print(WIFI_APPS,"%s:%d probe map entry removed for mac_str:%s\r\n", __func__, __LINE__, tmp_mac_str);
-                l_temp_elem = NULL;
             }
         }
     }
