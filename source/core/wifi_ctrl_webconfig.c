@@ -3501,7 +3501,7 @@ char *unpackDecode(const char* enb)
     unsigned char *msg = NULL;
 
     msg_size = b64_get_decoded_buffer_size(strlen((char *)enb));
-    msg = (unsigned char *) calloc(1,sizeof(unsigned char *) * msg_size);
+    msg = (unsigned char *) calloc(sizeof(unsigned char), msg_size);
     if (!msg) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s: Failed to allocate memory.\n",__FUNCTION__);
         return NULL;
@@ -3637,7 +3637,7 @@ pErr webconf_process_managed_subdoc(void* data)
 
 
     msg_size = b64_get_decoded_buffer_size(strlen((char *)data));
-    msg = (unsigned char *) calloc(1,sizeof(unsigned char *) * msg_size);
+    msg = (unsigned char *) calloc(sizeof(unsigned char), msg_size);
     if (!msg) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s: Failed to allocate memory.\n",__FUNCTION__);
         strncpy(execRetVal->ErrorMsg, "Failed to allocate memory", sizeof(execRetVal->ErrorMsg)-1);
@@ -3832,7 +3832,7 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
     }
 
     msg_size = b64_get_decoded_buffer_size(strlen((char *)data));
-    msg = (unsigned char *) calloc(1,sizeof(unsigned char *) * msg_size);
+    msg = (unsigned char *) calloc(sizeof(unsigned char), msg_size);
     if (!msg) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s: Failed to allocate memory.\n",__FUNCTION__);
         strncpy(execRetVal->ErrorMsg, "Failed to allocate memory", sizeof(execRetVal->ErrorMsg)-1);

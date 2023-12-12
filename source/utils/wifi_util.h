@@ -240,10 +240,10 @@ unsigned int create_vap_mask(wifi_platform_property_t *wifi_prop, unsigned int n
 int get_interface_name_from_radio_index(wifi_platform_property_t *wifi_prop, uint8_t radio_index, char *interface_name);
 unsigned long long int get_current_ms_time(void);
 time_t get_current_time_in_sec(void);
-int get_list_of_vap_names(wifi_platform_property_t *wifi_prop, wifi_vap_name_t vap_names[], int list_size, int num_types, ...);
+int get_list_of_vap_names(wifi_platform_property_t *wifi_prop, wifi_vap_name_t *vap_names, int list_size, int num_types, ...);
 int get_list_of_private_ssid(wifi_platform_property_t *wifi_prop, int list_size, wifi_vap_name_t vap_names[]);
-int get_list_of_hotspot_open(wifi_platform_property_t *wifi_prop, int list_size, wifi_vap_name_t vap_names[]);
-int get_list_of_hotspot_secure(wifi_platform_property_t *wifi_prop, int list_size, wifi_vap_name_t vap_names[]);
+int get_list_of_hotspot_open(wifi_platform_property_t *wifi_prop, int list_size, wifi_vap_name_t *vap_names);
+int get_list_of_hotspot_secure(wifi_platform_property_t *wifi_prop, int list_size, wifi_vap_name_t *vap_names);
 int get_list_of_lnf_psk(wifi_platform_property_t *wifi_prop, int list_size, wifi_vap_name_t vap_names[]);
 int get_list_of_lnf_radius(wifi_platform_property_t *wifi_prop, int list_size, wifi_vap_name_t vap_names[]);
 int get_list_of_mesh_backhaul(wifi_platform_property_t *wifi_prop, int list_size, wifi_vap_name_t vap_names[]);

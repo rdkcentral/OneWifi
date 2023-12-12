@@ -2005,7 +2005,7 @@ unsigned int create_vap_mask(wifi_platform_property_t *wifi_prop, unsigned int n
     return mask;
 }
 
-int get_list_of_vap_names(wifi_platform_property_t *wifi_prop, wifi_vap_name_t vap_names[], int list_size, int num_types, ...)
+int get_list_of_vap_names(wifi_platform_property_t *wifi_prop, wifi_vap_name_t *vap_names, int list_size, int num_types, ...)
 {
     int total_vaps;
     int num_vaps = 0;
@@ -2034,12 +2034,12 @@ int get_list_of_private_ssid(wifi_platform_property_t *wifi_prop, int list_size,
     return get_list_of_vap_names(wifi_prop, vap_names, list_size, 1, VAP_PREFIX_PRIVATE);
 }
 
-int get_list_of_hotspot_open(wifi_platform_property_t *wifi_prop, int list_size, wifi_vap_name_t vap_names[])
+int get_list_of_hotspot_open(wifi_platform_property_t *wifi_prop, int list_size, wifi_vap_name_t *vap_names)
 {
     return get_list_of_vap_names(wifi_prop, vap_names, list_size, 1, VAP_PREFIX_HOTSPOT_OPEN);
 }
 
-int get_list_of_hotspot_secure(wifi_platform_property_t *wifi_prop, int list_size, wifi_vap_name_t vap_names[])
+int get_list_of_hotspot_secure(wifi_platform_property_t *wifi_prop, int list_size, wifi_vap_name_t *vap_names)
 {
     return get_list_of_vap_names(wifi_prop, vap_names, list_size, 1, VAP_PREFIX_HOTSPOT_SECURE);
 }
