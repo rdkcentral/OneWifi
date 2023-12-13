@@ -45,7 +45,8 @@ typedef enum {
     WIFI_ANALYTICS,
     WIFI_APPS,
     WIFI_SERVICES,
-    WIFI_HARVESTER
+    WIFI_HARVESTER,
+    WIFI_SM
 }wifi_dbg_type_t;
 
 typedef enum {

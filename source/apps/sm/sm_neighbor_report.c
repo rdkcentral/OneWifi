@@ -112,7 +112,7 @@ int sm_neighbor_report_push_to_dpp(sm_neighbor_cache_t *cache, wifi_freq_bands_t
     int rc = RETURN_OK;
 
     if (!cache) {
-        wifi_util_error_print(WIFI_APPS, "%s:%d: report is NULL\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_SM, "%s:%d: report is NULL\n", __func__, __LINE__);
         return RETURN_ERR;
     }
 
@@ -122,6 +122,7 @@ int sm_neighbor_report_push_to_dpp(sm_neighbor_cache_t *cache, wifi_freq_bands_t
         .report_type = reporting_type_to_dpp_report_type(report_type),
         .scan_type = survey_type_to_dpp_scan_type(survey_type),
     };
+
     ds_dlist_init(&dpp_report.list, dpp_neighbor_record_list_t, node);
 
     switch (report_type) {
@@ -133,13 +134,13 @@ int sm_neighbor_report_push_to_dpp(sm_neighbor_cache_t *cache, wifi_freq_bands_t
             break;
         default:
             rc = RETURN_ERR;
-            wifi_util_dbg_print(WIFI_APPS, "%s:%d: report type %d is not supported\n", __func__, __LINE__, report_type);
+            wifi_util_dbg_print(WIFI_SM, "%s:%d: report type %d is not supported\n", __func__, __LINE__, report_type);
             break;
     }
 
     if (rc == RETURN_OK && !ds_dlist_is_empty(&dpp_report.list)) {
         dpp_put_neighbor(&dpp_report);
-        wifi_util_dbg_print(WIFI_APPS, "%s:%d: neighbor report is pushed to dpp for freq_band=%d, report_type=%d\n",
+        wifi_util_info_print(WIFI_SM, "%s:%d: neighbor report is pushed to dpp for freq_band=%d, report_type=%d\n",
                             __func__, __LINE__, freq_band, report_type);
     }
 

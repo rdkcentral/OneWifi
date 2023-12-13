@@ -109,7 +109,7 @@ int sm_survey_report_push_to_dpp(sm_survey_cache_t *cache, wifi_freq_bands_t fre
     int rc = RETURN_OK;
 
     if (!cache) {
-        wifi_util_error_print(WIFI_APPS, "%s:%d: report is NULL\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_SM, "%s:%d: report is NULL\n", __func__, __LINE__);
         return RETURN_ERR;
     }
 
@@ -130,14 +130,18 @@ int sm_survey_report_push_to_dpp(sm_survey_cache_t *cache, wifi_freq_bands_t fre
             break;
         default:
             rc = RETURN_ERR;
-            wifi_util_dbg_print(WIFI_APPS, "%s:%d: report type %d is not supported\n", __func__, __LINE__, report_type);
+            wifi_util_dbg_print(WIFI_SM, "%s:%d: report type %d is not supported\n", __func__, __LINE__, report_type);
             break;
     }
 
     if (rc == RETURN_OK && !ds_dlist_is_empty(&dpp_report.list)) {
         dpp_put_survey(&dpp_report);
-        wifi_util_dbg_print(WIFI_APPS, "%s:%d: survey report is pushed to dpp for freq_band=%d, report_type=%d, survey_type=%d\n",
-                            __func__, __LINE__, freq_band, report_type, survey_type);
+        wifi_util_info_print(WIFI_SM, "%s:%d: survey report is pushed to dpp for %s %s freq_band=%d, report_type=%d\n",
+                            __func__, __LINE__, radio_get_name_from_type(dpp_report.radio_type), survey_type_to_str(survey_type), freq_band, report_type);
+    }
+    else {
+        wifi_util_info_print(WIFI_SM, "%s:%d: nothing to send to dpp for %s %s freq_band=%d, report_type=%d\n",
+                            __func__, __LINE__, radio_get_name_from_type(dpp_report.radio_type), survey_type_to_str(survey_type), freq_band, report_type);
     }
 
     sm_survey_cache_clean(cache, survey_type);

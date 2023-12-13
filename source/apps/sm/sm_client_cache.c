@@ -83,7 +83,7 @@ static inline sm_client_t* client_get_or_alloc(sm_client_cache_t *cache, sm_clie
 
     sm_client_t *client = hash_map_get(cache->clients, client_id);
     if (!client) {
-        wifi_util_dbg_print(WIFI_APPS, "%s:%d: creating new client %.*s\n", __func__, __LINE__,
+        wifi_util_dbg_print(WIFI_SM, "%s:%d: creating new client %.*s\n", __func__, __LINE__,
                             sizeof(sm_client_id_t), client_id);
         client = client_alloc(cache, client_id);
     }
@@ -151,6 +151,10 @@ static int client_hal_to_sample(unsigned int radio_index, ssid_t ssid, if_name_t
     result->disconnect_ts  = conn_info->disconnect_ts;
     result->duration_ms    = conn_info->duration_ms;
 
+    mac_addr_str_t mac_str = {0};
+    to_mac_str(dev3->cli_MACAddress, mac_str);
+    wifi_util_dbg_print(WIFI_SM, "%s:%d: Fetched client %s sample on %s ifname %s SSID %s\n", __func__, __LINE__, mac_str, radio_index_to_radio_type_str(radio_index), ifname, ssid);
+
     return RETURN_OK;
 }
 
@@ -169,25 +173,25 @@ static int client_sample_add(sm_client_cache_t *cache,
     sm_client_id_t client_id = {0};
 
     if (RETURN_OK != client_id_get(dev3->cli_MACAddress, vap_index, client_id)) {
-        wifi_util_error_print(WIFI_APPS, "%s:%d: cannot get client_id \n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_SM, "%s:%d: cannot get client_id \n", __func__, __LINE__);
         return RETURN_ERR;
     }
 
     sample = dpp_client_record_alloc();
     if (!sample) {
-        wifi_util_error_print(WIFI_APPS, "%s:%d: failed to alloc new record for cache\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_SM, "%s:%d: failed to alloc new record for cache\n", __func__, __LINE__);
         goto exit_err;
     }
 
     rc = client_hal_to_sample(radio_index, ssid, ifname, dev3, conn_info, sample);
     if (rc != RETURN_OK) {
-        wifi_util_error_print(WIFI_APPS, "%s:%d: failed to convert hal to sample\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_SM, "%s:%d: failed to convert hal to sample\n", __func__, __LINE__);
         goto exit_err;
     }
 
     client = client_get_or_alloc(cache, client_id);
     if (!client) {
-        wifi_util_error_print(WIFI_APPS, "%s:%d: failed to get client\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_SM, "%s:%d: failed to get client\n", __func__, __LINE__);
         goto exit_err;
     }
 
@@ -212,6 +216,8 @@ exit_err:
 #define DELTA_CONN_STATS(PREV_CONNECTED, X) ((PREV_CONNECTED) ? DELTA(X) : curr->X)
 #define DELTA_STATS(X) DELTA_CONN_STATS(prev->is_connected, stats.X)
 #define ROUNDF(X) (roundf((X) * 100) / 100.0)
+#define CLIENT_STATS_PRINT(S,M) \
+    wifi_util_dbg_print(WIFI_SM, "%s:%d: Client %s %s=%llu\n", __func__, __LINE__, M, #S, result->S);
 
 int sm_client_samples_calc_total(ds_dlist_t *samples, dpp_client_record_t *result)
 {
@@ -223,7 +229,7 @@ int sm_client_samples_calc_total(ds_dlist_t *samples, dpp_client_record_t *resul
 
     size_t len = get_ds_dlist_len(samples);
     if (len <= 0) {
-        wifi_util_error_print(WIFI_APPS, "%s:%d empty samples list\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_SM, "%s:%d empty samples list\n", __func__, __LINE__);
         return RETURN_ERR;
     }
 
@@ -288,6 +294,20 @@ int sm_client_samples_calc_total(ds_dlist_t *samples, dpp_client_record_t *resul
         result->duration_ms = DELTA(duration_ms);
     }
 
+    mac_addr_str_t mac_str = {0};
+    to_mac_str(result->info.mac, mac_str);
+    wifi_util_dbg_print(WIFI_SM, "%s:%d: Processed calculation %s client %s sample stats total: \n",
+                        __func__, __LINE__, radio_get_name_from_type(result->info.type), mac_str);
+    CLIENT_STATS_PRINT(stats.bytes_tx, mac_str);
+    CLIENT_STATS_PRINT(stats.bytes_rx, mac_str);
+    CLIENT_STATS_PRINT(stats.frames_tx, mac_str);
+    CLIENT_STATS_PRINT(stats.frames_rx, mac_str);
+    CLIENT_STATS_PRINT(stats.retries_tx, mac_str);
+    CLIENT_STATS_PRINT(stats.retries_rx, mac_str);
+    CLIENT_STATS_PRINT(stats.errors_tx, mac_str);
+    CLIENT_STATS_PRINT(stats.errors_rx, mac_str);
+    wifi_util_dbg_print(WIFI_SM, "%s:%d: Client %s stats.rssi=%d\n", __func__, __LINE__, mac_str, result->stats.rssi);
+
     return RETURN_OK;
 }
 
@@ -310,30 +330,31 @@ int sm_client_sample_store(unsigned int radio_index, unsigned int vap_index,
     if_name_t ifname = {0};
 
     if (radio_index >= MAX_NUM_RADIOS) {
-        wifi_util_error_print(WIFI_APPS, "%s:%d invalid radio_index=%d\n", __func__, __LINE__, radio_index);
+        wifi_util_error_print(WIFI_SM, "%s:%d invalid radio_index=%d\n", __func__, __LINE__, radio_index);
         return RETURN_ERR;
     }
 
     if (get_ssid_from_vap_index(vap_index, ssid) != RETURN_OK) {
-        wifi_util_error_print(WIFI_APPS, "%s:%d failed to get ssid for radio_index=%d\n", __func__, __LINE__, radio_index);
+        wifi_util_error_print(WIFI_SM, "%s:%d failed to get ssid for radio_index=%d\n", __func__, __LINE__, radio_index);
         return RETURN_ERR;
     }
 
     if (convert_apindex_to_ifname(wifi_prop, vap_index, ifname, sizeof(ifname)) != RETURN_OK) {
-        wifi_util_error_print(WIFI_APPS, "%s:%d failed to get ifname for vap_index=%d\n", __func__, __LINE__, vap_index);
+        wifi_util_error_print(WIFI_SM, "%s:%d failed to get ifname for vap_index=%d\n", __func__, __LINE__, vap_index);
         return RETURN_ERR;
     }
 
     mac_addr_str_t mac_str = {0};
     to_mac_str(dev3->cli_MACAddress, mac_str);
+
     if (client_sample_add(&sm_client_report_cache[radio_index], radio_index, vap_index,
                           ssid, ifname, dev3, conn_info) != RETURN_OK) {
-        wifi_util_error_print(WIFI_APPS, "%s:%d failed to add sample for radio_index=%d, client=%s\n",
+        wifi_util_error_print(WIFI_SM, "%s:%d failed to add sample for radio_index=%d, client=%s\n",
                               __func__, __LINE__, radio_index, mac_str);
         return RETURN_ERR;
     }
 
-    wifi_util_dbg_print(WIFI_APPS, "%s:%d added sample for radio_index=%d, vap_index=%d, client=%s\n",
+    wifi_util_dbg_print(WIFI_SM, "%s:%d added sample for radio_index=%d, vap_index=%d, client=%s\n",
                         __func__, __LINE__, radio_index, vap_index, mac_str);
 
     return RETURN_OK;

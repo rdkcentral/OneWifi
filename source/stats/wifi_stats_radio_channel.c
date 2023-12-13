@@ -174,7 +174,7 @@ int execute_radio_channel_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t 
     ret = wifi_getRadioChannelStats(args->radio_index, chan_stats, chan_count);
 #endif
     if (ret != RETURN_OK) {
-        wifi_util_error_print(WIFI_MON, "%s : %d  Failed to get radio channel statistics for index %d\n",__func__,__LINE__, args->radio_index);
+        wifi_util_error_print(WIFI_MON, "%s : %d  Failed to get radio channel statistics for scan mode %d radio index %d\n",__func__,__LINE__, args->scan_mode, args->radio_index);
         if (chan_stats != NULL) {
             free(chan_stats);
             chan_stats = NULL;
@@ -225,6 +225,7 @@ int execute_radio_channel_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t 
         free(chan_stats);
         chan_stats = NULL;
     }
+
     return RETURN_OK;
 }
 

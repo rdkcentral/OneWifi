@@ -67,6 +67,7 @@ radio_scan_type_t survey_type_to_dpp_scan_type(survey_type_t survey_type);
 char* survey_type_to_str(survey_type_t survey_type);
 char* neighbor_scan_mode_to_str(wifi_neighborScanMode_t scan_mode);
 radio_chanwidth_t str_to_dpp_chan_width(char *str);
+char* radio_index_to_radio_type_str(unsigned int radio_index);
 
 /* ds_list utils */
 size_t get_ds_dlist_len(ds_dlist_t *list);

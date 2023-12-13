@@ -1303,9 +1303,7 @@ int onewifi_get_ap_assoc_dev_diag_res3(int ap_index,
                                        wifi_associated_dev3_t *assoc_dev_array, 
 						               unsigned int *output_array_size)
 {
-    get_sta_stats_for_vap(ap_index, assoc_dev_array, output_array_size);
-
-    return 0;
+    return get_sta_stats_for_vap(ap_index, assoc_dev_array, output_array_size);
 }
 
 int onewifi_get_neighbor_ap2(int radio_index, 

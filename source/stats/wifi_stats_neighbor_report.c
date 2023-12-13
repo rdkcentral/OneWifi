@@ -118,7 +118,7 @@ int execute_neighbor_ap_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *m
     ret = wifi_getNeighboringWiFiStatus(args->radio_index, &neigh_stats, &ap_count);
 #endif
     if (ret != RETURN_OK) {
-        wifi_util_error_print(WIFI_MON, "%s : %d  Failed to get Neighbor wifi status for index %d\n",__func__,__LINE__, args->radio_index);
+        wifi_util_error_print(WIFI_MON, "%s : %d  Failed to get Neighbor wifi status for scan mode %d radio index %d\n",__func__,__LINE__, args->scan_mode, args->radio_index);
         return RETURN_ERR;
     }
 

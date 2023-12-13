@@ -60,7 +60,7 @@ static int report_tasks_clean_finished(struct scheduler *sched, hash_map_t *repo
         tmp_report_task = report_task;
         report_task = hash_map_get_next(report_tasks_map, report_task);
         if (scheduler_timer_task_is_completed(sched, tmp_report_task->task_id)) {
-            wifi_util_dbg_print(WIFI_APPS, "%s:%d: timer task=%d is completed, remove from map\n",
+            wifi_util_dbg_print(WIFI_SM, "%s:%d: timer task=%d is completed, remove from map\n",
                                 __func__, __LINE__, tmp_report_task->task_id);
             scheduler_free_timer_task_arg(sched, tmp_report_task->task_id);
             tmp_report_task = hash_map_remove(report_tasks_map, tmp_report_task->stats_cfg_id);
@@ -84,34 +84,34 @@ static int report_push_to_dpp_cb(void *args)
     hash_map_t *report_tasks_map = NULL;
 
     if (!task_args || !task_args->app) {
-        wifi_util_dbg_print(WIFI_APPS, "%s:%d: task_args is invalid\n", __func__, __LINE__);
+        wifi_util_dbg_print(WIFI_SM, "%s:%d: task_args is invalid\n", __func__, __LINE__);
         return TIMER_TASK_ERROR;
     }
 
     app_config_map = task_args->app->data.u.sm_data.sm_stats_config_map;
     if (!app_config_map) {
-        wifi_util_dbg_print(WIFI_APPS, "%s:%d: app_config_map is NULL\n", __func__, __LINE__);
+        wifi_util_dbg_print(WIFI_SM, "%s:%d: app_config_map is NULL\n", __func__, __LINE__);
         rc = RETURN_ERR;
         goto exit;
     }
 
     config = hash_map_get(app_config_map, task_args->stats_cfg_id);
     if (!config) {
-        wifi_util_dbg_print(WIFI_APPS, "%s:%d: cannot find config\n", __func__, __LINE__);
+        wifi_util_dbg_print(WIFI_SM, "%s:%d: cannot find config\n", __func__, __LINE__);
         rc = RETURN_ERR;
         goto exit;
     }
 
     rc = convert_freq_band_to_radio_index(config->radio_type, &radio_index);
     if (rc != RETURN_OK) {
-        wifi_util_dbg_print(WIFI_APPS, "%s:%d: failed to convert freq_band=%d to radio_index\n", __func__, __LINE__, config->radio_type);
+        wifi_util_dbg_print(WIFI_SM, "%s:%d: failed to convert freq_band=%d to radio_index\n", __func__, __LINE__, config->radio_type);
         rc = RETURN_ERR;
         goto exit;
     }
 
     radio_oper_param = (wifi_radio_operationParam_t *)get_wifidb_radio_map(radio_index);
     if (!radio_oper_param) {
-        wifi_util_dbg_print(WIFI_APPS, "%s:%d: failed to get radio_oper_param\n", __func__, __LINE__);
+        wifi_util_dbg_print(WIFI_SM, "%s:%d: failed to get radio_oper_param\n", __func__, __LINE__);
         rc = RETURN_ERR;
         goto exit;
     }
@@ -131,7 +131,7 @@ static int report_push_to_dpp_cb(void *args)
     }
 
     if (rc != RETURN_OK) {
-        wifi_util_dbg_print(WIFI_APPS, "%s:%d: failed to push report to dpp\n", __func__, __LINE__);
+        wifi_util_dbg_print(WIFI_SM, "%s:%d: failed to push report to dpp\n", __func__, __LINE__);
         rc = RETURN_ERR;
         goto exit;
     }
@@ -235,10 +235,10 @@ int sm_report_send_to_qm_cb(void *args)
         return rc;
     }
 
-    wifi_util_dbg_print(WIFI_APPS, "%s:%d Total %d elements queued for transmission.\n",__func__, __LINE__, dpp_get_queue_elements());
+    wifi_util_dbg_print(WIFI_SM, "%s:%d Total %d elements queued for transmission.\n",__func__, __LINE__, dpp_get_queue_elements());
 
     if (!qm_conn_get_status(NULL)) {
-        wifi_util_error_print(WIFI_APPS, "%s:%d Cannot connect to QM (QM not running?)\n",__func__, __LINE__);
+        wifi_util_error_print(WIFI_SM, "%s:%d Cannot connect to QM (QM not running?)\n",__func__, __LINE__);
         return rc;
     }
 
@@ -246,20 +246,19 @@ int sm_report_send_to_qm_cb(void *args)
     {
         if (!dpp_get_report(sm_mqtt_buf, sizeof(sm_mqtt_buf), &buf_len))
         {
-            wifi_util_error_print(WIFI_APPS, "%s:%d DPP: Get report failed.\n",__func__, __LINE__);
+            wifi_util_error_print(WIFI_SM, "%s:%d DPP: Get report failed.\n",__func__, __LINE__);
             break;
         }
 
         if (buf_len <= 0)
         {
-            wifi_util_error_print(WIFI_APPS, "%s:%d TMP empty report\n",__func__, __LINE__);
             continue;
         }
 
-        wifi_util_error_print(WIFI_APPS, "%s:%d buf_len = %d\n",__func__, __LINE__, buf_len);
+        wifi_util_info_print(WIFI_SM, "%s:%d buf_len = %d\n",__func__, __LINE__, buf_len);
         if (!sm_mqtt_publish(buf_len, sm_mqtt_buf))
         {
-            wifi_util_error_print(WIFI_APPS, "%s:%d Publish report failed.\n",__func__, __LINE__);
+            wifi_util_error_print(WIFI_SM, "%s:%d Publish report failed.\n",__func__, __LINE__);
             break;
         }
     }
@@ -297,19 +296,19 @@ int sm_report_config_task(wifi_app_t *app, wifi_mon_stats_request_state_t state,
     report_task = hash_map_get(app->data.u.sm_data.report_tasks_map, config->stats_cfg_id);
     if (report_task == NULL) {
         if (state == mon_stats_request_state_stop) {
-            wifi_util_error_print(WIFI_APPS, "%s:%d: task should be removed, but not found\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_SM, "%s:%d: task should be removed, but not found\n", __func__, __LINE__);
             return RETURN_ERR;
         }
 
         /* not found, create new task */
         report_task = calloc(1, sizeof(stats_report_task_t));
         if (report_task == NULL) {
-            wifi_util_error_print(WIFI_APPS, "%s:%d: failed to alloc report_task\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_SM, "%s:%d: failed to alloc report_task\n", __func__, __LINE__);
             goto exit_err;
         }
         task_args = calloc(1, sizeof(sm_report_callback_arg_t));
         if (task_args == NULL) {
-            wifi_util_error_print(WIFI_APPS, "%s:%d: failed to alloc task_args\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_SM, "%s:%d: failed to alloc task_args\n", __func__, __LINE__);
             goto exit_err;
         }
 
@@ -322,23 +321,23 @@ int sm_report_config_task(wifi_app_t *app, wifi_mon_stats_request_state_t state,
             config->reporting_interval * MSEC_IN_SEC, config->reporting_count, FALSE);
 
         if (rc != RETURN_OK) {
-            wifi_util_error_print(WIFI_APPS, "%s:%d: failed to add timer task\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_SM, "%s:%d: failed to add timer task\n", __func__, __LINE__);
             goto exit_err;
         }
 
-        wifi_util_dbg_print(WIFI_APPS, "%s:%d: added timer task %d with interval=%d, count=%d\n",
+        wifi_util_dbg_print(WIFI_SM, "%s:%d: added timer task %d with interval=%d, count=%d\n",
                             __func__, __LINE__, report_task->task_id, config->reporting_interval, config->reporting_count);
         hash_map_put(app->data.u.sm_data.report_tasks_map, strdup(config->stats_cfg_id), report_task);
     } else {
         if (state == mon_stats_request_state_stop) {
-            wifi_util_error_print(WIFI_APPS, "%s:%d: removing task %d\n", __func__, __LINE__, report_task->task_id);
+            wifi_util_error_print(WIFI_SM, "%s:%d: removing task %d\n", __func__, __LINE__, report_task->task_id);
             scheduler_cancel_timer_task(app->ctrl->sched, report_task->task_id);
             hash_map_remove(app->data.u.sm_data.report_tasks_map, report_task->stats_cfg_id);
             scheduler_free_timer_task_arg(app->ctrl->sched, report_task->task_id);
             free(report_task);
         } else if (state == mon_stats_request_state_start) {
             /* found, need to reconfigure timer */
-            wifi_util_error_print(WIFI_APPS, "%s:%d: reconfiguring timer for task %d, interval=%d, count=%d\n",
+            wifi_util_error_print(WIFI_SM, "%s:%d: reconfiguring timer for task %d, interval=%d, count=%d\n",
                                   __func__, __LINE__, report_task->task_id,
                                   config->reporting_interval, config->reporting_count);
             scheduler_update_timer_task_repetitions(app->ctrl->sched, report_task->task_id, config->reporting_count);
@@ -367,7 +366,7 @@ int sm_report_init(wifi_app_t *app)
 
     rc = scheduler_add_timer_task(app->ctrl->sched, FALSE, &send_qm_task_id, sm_report_send_to_qm_cb, NULL, SM_TO_QM_SEND_INTERVAL_SEC * MSEC_IN_SEC, 0, FALSE);
     if (rc != RETURN_OK) {
-        wifi_util_error_print(WIFI_APPS, "%s:%d: failed to add timer task for send to qm\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_SM, "%s:%d: failed to add timer task for send to qm\n", __func__, __LINE__);
     }
 
     return rc;

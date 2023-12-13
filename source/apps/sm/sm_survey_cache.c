@@ -63,7 +63,7 @@ static void survey_clean(sm_survey_cache_t *cache, sm_survey_t *survey, survey_t
     sm_survey_scan_t *scan = NULL;
     scan = sm_survey_get_scan_data(survey, survey_type);
     if (!scan) {
-        wifi_util_error_print(WIFI_APPS, "%s:%d: failed to get scan\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_SM, "%s:%d: failed to get scan\n", __func__, __LINE__);
         return;
     }
     survey_samples_free(&scan->samples);
@@ -117,7 +117,7 @@ static sm_survey_t* survey_get_or_alloc(sm_survey_cache_t *cache, sm_survey_id_t
 
     sm_survey_t *survey = hash_map_get(cache->surveys, survey_id);
     if (!survey) {
-        wifi_util_dbg_print(WIFI_APPS, "%s:%d: creating new survey %.*s\n", __func__, __LINE__,
+        wifi_util_dbg_print(WIFI_SM, "%s:%d: creating new survey %.*s\n", __func__, __LINE__,
                             sizeof(sm_survey_id_t), survey_id);
         survey = survey_alloc(cache, survey_id);
     }
@@ -165,6 +165,10 @@ static int survey_convert_hal_to_sample(unsigned int radio_index, survey_type_t 
     CHECK_NULL(new);
     CHECK_NULL(result);
 
+    wifi_util_dbg_print(WIFI_SM, "%s:%d: Fetched %s sample %s survey: busy=%llu tx=%llu self=%llu rx=%llu ext=%llu noise=%d\n",
+                    __func__, __LINE__, radio_index_to_radio_type_str(radio_index), survey_type_to_str(survey_type),
+                    new->ch_utilization_busy, new->ch_utilization_busy_tx, new->ch_utilization_busy_self, new->ch_utilization_busy_rx, new->ch_utilization_busy_ext, new->ch_noise);
+
     result->info.chan = new->ch_number;
     result->info.timestamp_ms = new->LastUpdatedTime * MSEC_IN_SEC + new->LastUpdatedTimeUsec / USEC_IN_MSEC;
 
@@ -183,6 +187,10 @@ static int survey_convert_hal_to_sample(unsigned int radio_index, survey_type_t 
     }
 
     survery_result_extra_calc(survey_type, result);
+
+    wifi_util_dbg_print(WIFI_SM, "%s:%d: Calculated %s sample %s survey percent: busy=%u tx=%u self=%u rx=%u ext=%u noise=%d duration=%u\n",
+                    __func__, __LINE__, radio_index_to_radio_type_str(radio_index), survey_type_to_str(survey_type),
+                    result->chan_busy, result->chan_tx, result->chan_self, result->chan_rx, result->chan_busy_ext, result->chan_noise, result->duration_ms);
 
     return RETURN_OK;
 }
@@ -206,19 +214,19 @@ static int survey_sample_add(sm_survey_cache_t *cache, survey_type_t survey_type
     unsigned int channel = stats->ch_number;
 
     if (RETURN_OK != survey_id_get(radio_index, channel, survey_id)) {
-        wifi_util_error_print(WIFI_APPS, "%s:%d: cannot get survey_id \n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_SM, "%s:%d: cannot get survey_id \n", __func__, __LINE__);
         return RETURN_ERR;
     }
 
     survey = survey_get_or_alloc(cache, survey_id);
     if (!survey) {
-        wifi_util_error_print(WIFI_APPS, "%s:%d: failed to get survey for %.*s\n", __func__, __LINE__, sizeof(sm_survey_id_t), survey_id);
+        wifi_util_error_print(WIFI_SM, "%s:%d: failed to get survey for %.*s\n", __func__, __LINE__, sizeof(sm_survey_id_t), survey_id);
         return RETURN_ERR;
     }
 
     scan = sm_survey_get_scan_data(survey, survey_type);
     if (!scan) {
-        wifi_util_error_print(WIFI_APPS, "%s:%d: failed to get scan\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_SM, "%s:%d: failed to get scan\n", __func__, __LINE__);
         return RETURN_ERR;
     }
 
@@ -227,7 +235,7 @@ static int survey_sample_add(sm_survey_cache_t *cache, survey_type_t survey_type
     } else {
         sample = dpp_survey_record_alloc();
         if (!sample) {
-            wifi_util_error_print(WIFI_APPS, "%s:%d: failed to alloc new record for cache\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_SM, "%s:%d: failed to alloc new record for cache\n", __func__, __LINE__);
             rc = RETURN_ERR;
             goto exit;
         }
@@ -236,6 +244,7 @@ static int survey_sample_add(sm_survey_cache_t *cache, survey_type_t survey_type
         if (rc == RETURN_OK) {
             ds_dlist_insert_tail(&scan->samples, sample);
         } else {
+            wifi_util_dbg_print(WIFI_SM, "%s:%d: warning, convert hal to sample returned error\n", __func__, __LINE__);
             dpp_survey_record_free(sample);
         }
     }
@@ -257,7 +266,7 @@ int sm_survey_sample_store(unsigned int radio_index, survey_type_t survey_type, 
 
     rc = survey_sample_add(&sm_survey_report_cache[radio_index], survey_type, radio_index, stats);
     if (rc == RETURN_OK) {
-        wifi_util_dbg_print(WIFI_APPS, "%s:%d added sample %s for channel=%u\n",
+        wifi_util_dbg_print(WIFI_SM, "%s:%d added sample %s for channel=%u\n",
                         __func__, __LINE__, survey_type_to_str(survey_type), stats->ch_number);
     }
 
@@ -285,7 +294,7 @@ int sm_survey_samples_calc_average(ds_dlist_t *samples, dpp_survey_record_avg_t 
     memcpy(&result->info, &last->info, sizeof(result->info));
 
     if (len <= 0) {
-        wifi_util_error_print(WIFI_APPS, "%s:%d empty samples list\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_SM, "%s:%d empty samples list\n", __func__, __LINE__);
         return RETURN_ERR;
     }
 

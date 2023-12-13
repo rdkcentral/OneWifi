@@ -85,7 +85,7 @@ radio_type_t freq_band_to_dpp_radio_type(wifi_freq_bands_t freq_band)
             return freq_band_to_radio_type_mapping[i].radio_type;
         }
     }
-    wifi_util_error_print(WIFI_APPS, "%s:%d failed to convert freq_band=%d\n",__func__, __LINE__, freq_band);
+    wifi_util_error_print(WIFI_SM, "%s:%d failed to convert freq_band=%d\n",__func__, __LINE__, freq_band);
     return RADIO_TYPE_NONE;
 }
 
@@ -97,12 +97,12 @@ radio_type_t radio_index_to_dpp_radio_type(unsigned int radio_index)
     wifi_platform_property_t *wifi_prop = &wifi_mgr->hal_cap.wifi_prop;
 
     if (radio_index >= MAX_NUM_RADIOS) {
-        wifi_util_error_print(WIFI_APPS, "%s:%d invalid radio_index=%d\n", __func__, __LINE__, radio_index);
+        wifi_util_error_print(WIFI_SM, "%s:%d invalid radio_index=%d\n", __func__, __LINE__, radio_index);
         return RADIO_TYPE_NONE;
     }
 
     if (convert_radio_index_to_freq_band(wifi_prop, radio_index, (int*)&freq_band)) {
-        wifi_util_error_print(WIFI_APPS, "%s:%d failed to convert radio_index=%d to freq_band\n", __func__, __LINE__, radio_index);
+        wifi_util_error_print(WIFI_SM, "%s:%d failed to convert radio_index=%d to freq_band\n", __func__, __LINE__, radio_index);
         return RADIO_TYPE_NONE;
     }
 
@@ -117,7 +117,7 @@ report_type_t reporting_type_to_dpp_report_type(reporting_type_t report_type)
             return report_type_mapping[i].dpp_report_type;
         }
     }
-    wifi_util_error_print(WIFI_APPS, "%s:%d failed to convert report_type=%d\n",__func__, __LINE__, report_type);
+    wifi_util_error_print(WIFI_SM, "%s:%d failed to convert report_type=%d\n",__func__, __LINE__, report_type);
     return REPORT_TYPE_NONE;
 }
 
@@ -129,7 +129,7 @@ radio_scan_type_t survey_type_to_dpp_scan_type(survey_type_t survey_type)
             return scan_type_mapping[i].dpp_scan_type;
         }
     }
-    wifi_util_error_print(WIFI_APPS, "%s:%d failed to convert survey_type=%d\n",__func__, __LINE__, survey_type);
+    wifi_util_error_print(WIFI_SM, "%s:%d failed to convert survey_type=%d\n",__func__, __LINE__, survey_type);
     return RADIO_SCAN_TYPE_NONE;
 }
 
@@ -141,7 +141,7 @@ radio_scan_type_t neighbor_scan_mode_to_dpp_scan_type(wifi_neighborScanMode_t sc
             return scan_type_mapping[i].dpp_scan_type;
         }
     }
-    wifi_util_error_print(WIFI_APPS, "%s:%d failed to convert scan_mode=%d\n",__func__, __LINE__, scan_mode);
+    wifi_util_error_print(WIFI_SM, "%s:%d failed to convert scan_mode=%d\n",__func__, __LINE__, scan_mode);
     return RADIO_SCAN_TYPE_NONE;
 }
 
@@ -153,8 +153,17 @@ char* survey_type_to_str(survey_type_t survey_type)
             return scan_type_mapping[i].description;
         }
     }
-    wifi_util_error_print(WIFI_APPS, "%s:%d failed to convert survey_type=%d\n",__func__, __LINE__, survey_type);
+    wifi_util_error_print(WIFI_SM, "%s:%d failed to convert survey_type=%d\n",__func__, __LINE__, survey_type);
     return "unknown";
+}
+
+char* radio_index_to_radio_type_str(unsigned int radio_index)
+{
+    radio_type_t radio_type;
+
+    radio_type = radio_index_to_dpp_radio_type(radio_index);
+
+    return radio_get_name_from_type(radio_type);
 }
 
 
@@ -165,7 +174,7 @@ char* neighbor_scan_mode_to_str(wifi_neighborScanMode_t scan_mode)
             return scan_type_mapping[i].description;
         }
     }
-    wifi_util_error_print(WIFI_APPS, "%s:%d failed to convert scan_mode=%d\n",__func__, __LINE__, scan_mode);
+    wifi_util_error_print(WIFI_SM, "%s:%d failed to convert scan_mode=%d\n",__func__, __LINE__, scan_mode);
     return "unknown";
 }
 
@@ -238,7 +247,7 @@ int get_ssid_from_vap_index(unsigned int vap_index, ssid_t ssid)
     unsigned num_of_radios;
 
     if ((num_of_radios = getNumberRadios()) > MAX_NUM_RADIOS) {
-        wifi_util_error_print(WIFI_APPS, "%s:%d invalid num of radios: %u\n", __func__, __LINE__, num_of_radios);
+        wifi_util_error_print(WIFI_SM, "%s:%d invalid num of radios: %u\n", __func__, __LINE__, num_of_radios);
         return RETURN_ERR;
     }
 
@@ -246,7 +255,7 @@ int get_ssid_from_vap_index(unsigned int vap_index, ssid_t ssid)
         wifi_vap_info_map_t *vap_map;
 
         if ((vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(i)) == NULL) {
-            wifi_util_error_print(WIFI_APPS, "%s:%d failed to get vap_map for radio_index:%d\n", __func__, __LINE__, i);
+            wifi_util_error_print(WIFI_SM, "%s:%d failed to get vap_map for radio_index:%d\n", __func__, __LINE__, i);
             return RETURN_ERR;
         }
 

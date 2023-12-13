@@ -76,13 +76,14 @@ int sm_client_report_push_to_dpp(sm_client_cache_t *cache, wifi_freq_bands_t fre
         .radio_type = freq_band_to_dpp_radio_type(freq_band),
         .channel = channel, /* operating channel, getting from hal */
     };
+
     ds_dlist_init(&dpp_report.list, dpp_client_record_t, node);
 
     rc = client_report_calculate(cache, &dpp_report.list);
     if (rc == RETURN_OK && !ds_dlist_is_empty(&dpp_report.list)) {
         dpp_put_client(&dpp_report);
-        wifi_util_dbg_print(WIFI_APPS, "%s:%d: client report is pushed to dpp for freq_band=%d, channel=%lu\n",
-                              __func__, __LINE__, freq_band, channel);
+        wifi_util_info_print(WIFI_SM, "%s:%d: client report is pushed to dpp for freq_band=%d, channel=%u timestamp_ms=%llu\n",
+                              __func__, __LINE__, freq_band, channel, dpp_report.timestamp_ms);
     }
 
     sm_client_cache_free(cache);
