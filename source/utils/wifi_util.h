@@ -286,4 +286,5 @@ int convert_bool_to_ascii_string(bool l_bool_param, char *l_string, size_t str_l
 void json_param_obscure(char *json, char *param);
 bool is_5g_20M_channel_in_dfs(int channel);
 bool is_6g_supported_device(wifi_platform_property_t *wifi_prop);
+char *get_assoc_devices_blob();
 #endif//_WIFI_UTIL_H_
