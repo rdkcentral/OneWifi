@@ -5136,7 +5136,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
 int wifidb_init_global_config_default(wifi_global_param_t *config)
 {
     wifi_global_param_t cfg;
-    char temp[8], tempBuf[MAX_BUF_SIZE];
+    char temp[32], tempBuf[MAX_BUF_SIZE];
     wifi_mgr_t *g_wifidb;
     g_wifidb = get_wifimgr_obj();
 
@@ -5152,7 +5152,7 @@ int wifidb_init_global_config_default(wifi_global_param_t *config)
     cfg.good_rssi_threshold = -65;
     cfg.assoc_count_threshold = 0;
     cfg.assoc_gate_time  = 0;
-    cfg.whix_log_interval = 3600;
+    cfg.whix_log_interval = 900;
     cfg.whix_chutility_loginterval = 900;
     cfg.assoc_monitor_duration = 0;
     cfg.rapid_reconnect_enable = true;
@@ -5161,7 +5161,7 @@ int wifidb_init_global_config_default(wifi_global_param_t *config)
     cfg.force_disable_radio_feature = false;
     cfg.force_disable_radio_status = false;
     cfg.fixed_wmm_params = 3;
-    memset(temp, 0, 8);
+    memset(temp, 0, sizeof(temp));
     if (wifi_hal_get_default_country_code(temp) < 0) {
         wifi_util_dbg_print(WIFI_DB,"%s:%d: unable to get default country code setting a USI\n", __func__, __LINE__);
         strncpy(cfg.wifi_region_code, "USI",sizeof(cfg.wifi_region_code)-1);
@@ -5179,7 +5179,7 @@ int wifidb_init_global_config_default(wifi_global_param_t *config)
     cfg.validate_ssid = true;
     cfg.factory_reset = 0;
     strncpy(cfg.wps_pin, DEFAULT_WPS_PIN, sizeof(cfg.wps_pin)-1);
-    memset(temp, '\0', 8);
+    memset(temp, '\0', sizeof(temp));
     memset(tempBuf, '\0', MAX_BUF_SIZE);
     for (UINT i = 0; i < getNumberRadios(); i++) {
         snprintf(temp, sizeof(temp), "%d,", getPrivateApFromRadioIndex(i)+1);

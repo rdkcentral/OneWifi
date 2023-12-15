@@ -545,9 +545,10 @@ static void MarkerListConfigHandler (rbusHandle_t handle, rbusEvent_t const* eve
 
     pTmp = rbusValue_GetString(value, &len);
     if(pTmp == NULL) {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Unable to get  value in event:%s\n", __func__, __LINE__);
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Unable to get  value in event:%d\n", __func__, __LINE__, list_type);
         return;
     }
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d: telemetry type:%d value:%s\n", __func__, __LINE__, list_type, pTmp);
     push_event_to_ctrl_queue(pTmp, (strlen(pTmp) + 1), wifi_event_type_command, list_type, NULL);
 
     UNREFERENCED_PARAMETER(handle);

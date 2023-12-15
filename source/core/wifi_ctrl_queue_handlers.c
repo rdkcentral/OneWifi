@@ -2190,7 +2190,14 @@ void process_wps_pin_command_event(void *data)
 void marker_list_config_event(char *data, marker_list_t list_type)
 {
     int ret = -1;
+    bool is_config_changed = false;
     wifi_global_param_t *global_param = get_wifidb_wifi_global_param();
+    wifi_mgr_t *g_wifidb = get_wifimgr_obj();
+
+    if (g_wifidb == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d wifi mgr object is NULL\n",__func__, __LINE__);
+        return;
+    }
 
     switch (list_type) {
 
@@ -2198,6 +2205,7 @@ void marker_list_config_event(char *data, marker_list_t list_type)
             if (strcmp(global_param->normalized_rssi_list, data) != 0) {
                 strncpy(global_param->normalized_rssi_list, data, sizeof(global_param->normalized_rssi_list)-1);
                 global_param->normalized_rssi_list[sizeof(global_param->normalized_rssi_list)-1]= '\0';
+                is_config_changed = true;
             }
             break;
 
@@ -2205,6 +2213,7 @@ void marker_list_config_event(char *data, marker_list_t list_type)
             if (strcmp(global_param->snr_list, data) != 0 ) {
                 strncpy(global_param->snr_list, data, sizeof(global_param->snr_list)-1);
                 global_param->snr_list[sizeof(global_param->snr_list)-1]= '\0';
+                is_config_changed = true;
             }
             break;
 
@@ -2212,6 +2221,7 @@ void marker_list_config_event(char *data, marker_list_t list_type)
             if (strcmp(global_param->cli_stat_list, data) != 0) {
                 strncpy(global_param->cli_stat_list, data, sizeof(global_param->cli_stat_list)-1);
                 global_param->cli_stat_list[sizeof(global_param->cli_stat_list)-1]= '\0';
+                is_config_changed = true;
             }
             break;
 
@@ -2219,17 +2229,23 @@ void marker_list_config_event(char *data, marker_list_t list_type)
             if (strcmp(global_param->txrx_rate_list, data) != 0) {
                 strncpy(global_param->txrx_rate_list, data, sizeof(global_param->txrx_rate_list)-1);
                 global_param->txrx_rate_list[sizeof(global_param->txrx_rate_list)-1]= '\0';
+                is_config_changed = true;
             }
             break;
 
         default:
-            wifi_util_dbg_print(WIFI_CTRL,"[%s]: List type not supported this event %x\r\n",__FUNCTION__, list_type);
+            wifi_util_info_print(WIFI_CTRL,"[%s]: List type not supported this event %x\r\n",__FUNCTION__, list_type);
             return;
     }
 
-    ret = update_wifi_global_config(global_param);
-    if ( ret < 0 ) {
-        wifi_util_dbg_print(WIFI_CTRL,"[%s]: Failed to update global config for type  %x\r\n",__FUNCTION__, list_type);
+    wifi_util_info_print(WIFI_CTRL,"[%s]:%d List type :%d value:%s is_config_changed:%d\r\n",__func__, __LINE__, list_type, data, is_config_changed);
+    if (is_config_changed == true) {
+        g_wifidb->ctrl.webconfig_state |= ctrl_webconfig_state_wifi_config_cfg_rsp_pending;
+
+        ret = update_wifi_global_config(global_param);
+        if ( ret < 0 ) {
+            wifi_util_dbg_print(WIFI_CTRL,"[%s]: Failed to update global config for type  %x\r\n",__FUNCTION__, list_type);
+        }
     }
     return;
 

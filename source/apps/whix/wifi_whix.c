@@ -878,7 +878,7 @@ static void get_device_flag(char flag[], int size, char *list_name)
         {
             if(buf_int[i] < size && buf_int[i] >= 0)
             {
-                flag[buf_int[i]] = 1;
+                flag[(buf_int[i] - 1)] = 1;
             }
             else
             {

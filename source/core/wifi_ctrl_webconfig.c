@@ -2635,8 +2635,11 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
         case webconfig_subdoc_type_wifi_config:
             wifi_util_dbg_print(WIFI_MGR, "%s:%d: global webconfig subdoc\n", __func__, __LINE__);
             if (data->descriptor & webconfig_data_descriptor_encoded) {
-                ctrl->webconfig_state &= ~ctrl_webconfig_state_wifi_config_cfg_rsp_pending;
-                wifi_util_error_print(WIFI_MGR, "%s:%d: Not expected publish of global wifi webconfig subdoc\n", __func__, __LINE__);
+                if (ctrl->webconfig_state & ctrl_webconfig_state_wifi_config_cfg_rsp_pending) {
+                    ctrl->webconfig_state &= ~ctrl_webconfig_state_wifi_config_cfg_rsp_pending;
+                    wifi_util_info_print(WIFI_MGR, "%s:%d: Publish of global wifi webconfig subdoc\n", __func__, __LINE__);
+                    ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
+                }
             } else {
                 ctrl->webconfig_state |= ctrl_webconfig_state_wifi_config_cfg_rsp_pending;
                 ret = webconfig_global_config_apply(ctrl, &data->u.decoded);

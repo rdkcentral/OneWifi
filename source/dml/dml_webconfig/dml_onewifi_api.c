@@ -310,6 +310,10 @@ void dml_cache_update(webconfig_subdoc_data_t *data)
             memcpy((unsigned char *)&webconfig_dml.hal_cap,(unsigned char *)&data->u.decoded.hal_cap, sizeof(wifi_hal_capability_t));
             webconfig_dml.hal_cap.wifi_prop.numRadios = data->u.decoded.num_radios;
             break;
+        case webconfig_subdoc_type_wifi_config:
+            wifi_util_info_print(WIFI_DMCLI,"%s:%d subdoc parse and update global config:%d\n",__func__, __LINE__, data->type);
+            memcpy((unsigned char *)&webconfig_dml.config, (unsigned char *)&data->u.decoded.config, sizeof(wifi_global_config_t));
+            break;
         default:
             update_dml_subdoc_vap_data(data);
             break;
