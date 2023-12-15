@@ -99,12 +99,11 @@ typedef struct {
     ULONG ResultCount;
     ULONG resultCountPerRadio[MAX_NUM_RADIOS];
     wifi_neighbor_ap2_t * pResult[MAX_NUM_RADIOS];
+    ULONG resultCountPerRadio_onchannel[MAX_NUM_RADIOS];
+    wifi_neighbor_ap2_t * pResult_onchannel[MAX_NUM_RADIOS];
+    ULONG resultCountPerRadio_offchannel[MAX_NUM_RADIOS];
+    wifi_neighbor_ap2_t * pResult_offchannel[MAX_NUM_RADIOS];
 } neighscan_diag_cfg_t;
-
-typedef struct {
-    ULONG resultCountPerRadio[MAX_NUM_RADIOS];
-    wifi_neighbor_ap2_t * pResult[MAX_NUM_RADIOS];
-} neighscan_stats_data_t;
 
 typedef struct {
     //Off channel params
@@ -136,6 +135,8 @@ typedef struct {
     off_channel_param_t off_channel_cfg[MAX_NUM_RADIOS];
     bool                exit_monitor;
     int last_scanned_channel[MAX_NUM_RADIOS];
+    int scan_status[MAX_NUM_RADIOS];
+    int scan_results_retries[MAX_NUM_RADIOS];
 #ifdef CCSP_COMMON
     unsigned int        upload_period;
     unsigned int        current_poll_iter;
@@ -164,7 +165,6 @@ typedef struct {
     int off_channel_scan_id[MAX_NUM_RADIOS];
 #endif //FEATURE_OFF_CHANNEL_SCAN_5G
 #ifdef CCSP_COMMON
-    int neighbor_scan_id;
     int clientdiag_id[MAX_VAP];
     int clientdiag_sched_arg[MAX_VAP];
     unsigned int clientdiag_sched_interval[MAX_VAP];
@@ -218,7 +218,6 @@ int GetInstAssocDevSchemaIdBufferSize();
 unsigned int GetINSTPollingPeriod();
 unsigned int GetINSTOverrideTTL();
 unsigned int GetINSTDefReportingPeriod();
-int get_neighbor_scan_results();
 int get_dev_stats_for_radio(unsigned int radio_index, radio_data_t *radio_stats);
 int get_radio_channel_utilization(unsigned int radio_index, int *chan_util);
 sta_data_t *get_stats_for_sta(unsigned int apIndex, mac_addr_t mac);
@@ -262,6 +261,7 @@ typedef struct {
     hash_map_t *provider_list; //wifi_mon_provider_element_t
     wifi_mon_stats_args_t     *args;
     wifi_mon_stats_descriptor_t  *stat_desc;
+    unsigned int    postpone_cnt;
 } __attribute__((packed)) wifi_mon_collector_element_t;
 
 

@@ -41,7 +41,6 @@
 #include "safec_lib_common.h"
 
 #define NEIGHBOR_SCAN_RESULT_INTERVAL 40000 // 40 sec
-static int neighbor_scan_task_id = -1;
 #define MAX_VAP_INDEX 24
 #endif // DML_SUPPORT
 
@@ -2509,29 +2508,96 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg)
     ctrl->acs_pending[ch_chg->radioIndex] = false;
 }
 
+#define MAX_NEIGHBOURS 250
+
+int get_neighbor_scan_results(void *arg)
+{
+    wifi_monitor_t *monitor_param = (wifi_monitor_t *)get_wifi_monitor();
+    wifi_monitor_data_t *data = (wifi_monitor_data_t *) malloc(sizeof(wifi_monitor_data_t));
+    wifi_event_route_t route;
+
+    //Stop neighbor scan 
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d data allocation failed\r\n", __func__, __LINE__);
+        snprintf(monitor_param->neighbor_scan_cfg.DiagnosticsState, sizeof(monitor_param->neighbor_scan_cfg.DiagnosticsState), "Completed" );
+        return TIMER_TASK_ERROR;
+    }
+    memset(data, 0, sizeof(wifi_monitor_data_t));
+
+    data->u.mon_stats_config.req_state = mon_stats_request_state_stop;
+    //request from core thread
+    data->u.mon_stats_config.inst = 0;
+    //dummy value since it will be cancelled after first result
+    data->u.mon_stats_config.interval_ms = 60*60*1000;
+    data->u.mon_stats_config.data_type = mon_stats_type_neighbor_stats;
+    data->u.mon_stats_config.args.scan_mode = WIFI_RADIO_SCAN_MODE_FULL;
+    data->u.mon_stats_config.args.app_info = 0;
+
+    memset(&route, 0, sizeof(wifi_event_route_t));
+    route.dst = wifi_sub_component_mon;
+    route.u.inst_bit_map = 0;
+    /* Request to get channel utilization */
+    for (UINT radioIndex = 0; radioIndex < getNumberRadios(); radioIndex++) {
+        data->u.mon_stats_config.args.radio_index = radioIndex;
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d pushing the event to collect neighborrs on radio %d\n", __func__, __LINE__, radioIndex);
+        push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
+    }
+    free(data);
+
+    monitor_param->neighbor_scan_cfg.ResultCount = 0;
+    for(UINT rIdx = 0; rIdx < getNumberRadios(); rIdx++)
+    {
+        monitor_param->neighbor_scan_cfg.ResultCount += monitor_param->neighbor_scan_cfg.resultCountPerRadio[rIdx];
+    }
+    monitor_param->neighbor_scan_cfg.ResultCount = (monitor_param->neighbor_scan_cfg.ResultCount > MAX_NEIGHBOURS) ? MAX_NEIGHBOURS : monitor_param->neighbor_scan_cfg.ResultCount;
+    snprintf(monitor_param->neighbor_scan_cfg.DiagnosticsState, sizeof(monitor_param->neighbor_scan_cfg.DiagnosticsState), "Completed" );
+    return TIMER_TASK_COMPLETE;
+}
+
+
 void process_neighbor_scan_command_event()
 {
 #if DML_SUPPORT
     wifi_monitor_t *monitor_param = (wifi_monitor_t *)get_wifi_monitor();
-    wifi_radio_operationParam_t *wifi_radio_oper_param = NULL;
-    wifi_neighborScanMode_t scan_mode = WIFI_RADIO_SCAN_MODE_FULL;
-    int dwell_time = 20;
-    unsigned int private_vap_index;
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_event_route_t route;
 
     if(strcmp(monitor_param->neighbor_scan_cfg.DiagnosticsState, "Requested") == 0) {
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Scan already in Progress!!!\n", __func__, __LINE__);
-    } else {
-        strcpy_s(monitor_param->neighbor_scan_cfg.DiagnosticsState, sizeof(monitor_param->neighbor_scan_cfg.DiagnosticsState) , "Requested");
-
-        for(UINT rIdx = 0; rIdx < getNumberRadios(); rIdx++)
-        {
-            wifi_radio_oper_param = (wifi_radio_operationParam_t *)get_wifidb_radio_map(rIdx);
-            private_vap_index = getPrivateApFromRadioIndex(rIdx);
-            wifi_startNeighborScan(private_vap_index, scan_mode, ((wifi_radio_oper_param->band == WIFI_FREQUENCY_6_BAND) ? (dwell_time=110) : dwell_time), 0, NULL);
-        }
-        scheduler_add_timer_task(monitor_param->sched, FALSE, &neighbor_scan_task_id, get_neighbor_scan_results, NULL,
-                    NEIGHBOR_SCAN_RESULT_INTERVAL, 1, FALSE);
+        return;
     }
+    
+    strcpy_s(monitor_param->neighbor_scan_cfg.DiagnosticsState, sizeof(monitor_param->neighbor_scan_cfg.DiagnosticsState) , "Requested");
+
+    wifi_monitor_data_t *data = (wifi_monitor_data_t *) malloc(sizeof(wifi_monitor_data_t));
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d data allocation failed\r\n", __func__, __LINE__);
+        return;
+    }
+    memset(data, 0, sizeof(wifi_monitor_data_t));
+    data->u.mon_stats_config.req_state = mon_stats_request_state_start;
+    //request from core thread
+    data->u.mon_stats_config.inst = 0;
+    //dummy value since it will be cancelled after first result
+    data->u.mon_stats_config.interval_ms = 60*60*1000;
+    data->u.mon_stats_config.data_type = mon_stats_type_neighbor_stats;
+    data->u.mon_stats_config.args.scan_mode = WIFI_RADIO_SCAN_MODE_FULL;
+    data->u.mon_stats_config.args.app_info = 0;
+    data->u.mon_stats_config.start_immediately = true;
+
+
+    memset(&route, 0, sizeof(wifi_event_route_t));
+    route.dst = wifi_sub_component_mon;
+    route.u.inst_bit_map = 0;
+    /* Request to get channel utilization */
+    for (UINT radioIndex = 0; radioIndex < getNumberRadios(); radioIndex++) {
+        data->u.mon_stats_config.args.radio_index = radioIndex;
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d pushing the event to collect neighbor on radio %d\n", __func__, __LINE__, radioIndex);
+        push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
+    }
+    free(data);
+    scheduler_add_timer_task(ctrl->sched, FALSE, NULL, get_neighbor_scan_results, NULL,
+                    NEIGHBOR_SCAN_RESULT_INTERVAL, 1, FALSE);
 #endif // DML_SUPPORT
 }
 
@@ -2918,3 +2984,4 @@ void handle_wifiapi_event(void *data, unsigned int len, wifi_event_subtype_t sub
     }
 
 }
+

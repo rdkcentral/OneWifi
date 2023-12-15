@@ -118,14 +118,13 @@ extern void* bus_handle;
 extern char g_Subsystem[32];
 #define SINGLE_CLIENT_WIFI_AVRO_FILENAME "WifiSingleClient.avsc"
 #define DEFAULT_INSTANT_REPORT_TIME 0
-#define MAX_NEIGHBOURS 250
 
 #define DEFAULT_CHANUTIL_LOG_INTERVAL 900
 #define REFRESH_TASK_INTERVAL_MS 5*60*1000 //5 minutes
 #define ASSOCIATED_DEVICE_DIAG_INTERVAL_MS 5000 // 5 seconds
 #define CAPTURE_VAP_STATUS_INTERVAL_MS 5000 // 5 seconds
 #define UPLOAD_AP_TELEMETRY_INTERVAL_MS 24*60*60*1000 // 24 Hours
-#define NEIGHBOR_SCAN_INTERVAL 60*60*1000
+
 #define NEIGHBOR_SCAN_RESULT_INTERVAL 5000 //5 seconds
 #define Min_LogInterval 300 //5 minutes
 #define Max_LogInterval 3600 //60 minutes
@@ -175,7 +174,6 @@ INT deauthCountThreshold = 0;
 INT deauthMonitorDuration = 0;
 INT deauthGateTime = 0;//ONE_WIFI
 
-static int neighscan_task_id = -1;
 #if defined (_XB7_PRODUCT_REQ_)
 #define FEATURE_CSI_CALLBACK 1
 #endif
@@ -1080,28 +1078,6 @@ void process_disconnect	(unsigned int ap_index, auth_deauth_dev_t *dev)
 
 #ifdef CCSP_COMMON
 
-int get_neighbor_scan_results()
-{
-    wifi_monitor_t *monitor_param = (wifi_monitor_t *)get_wifi_monitor();
-    wifi_mon_stats_args_t args;
-
-    monitor_param->neighbor_scan_cfg.ResultCount = 0;
-
-    for(UINT rIdx = 0; rIdx < getNumberRadios(); rIdx++)
-    {
-        if (g_monitor_module.radio_presence[rIdx] == false) {
-           continue;
-        }
-        memset(&args, 0, sizeof(wifi_mon_stats_args_t));
-        args.radio_index = rIdx;
-        execute_neighbor_ap_stats_api(&args, monitor_param, 0);
-        monitor_param->neighbor_scan_cfg.ResultCount += monitor_param->neighbor_scan_cfg.resultCountPerRadio[rIdx];
-    }
-    monitor_param->neighbor_scan_cfg.ResultCount = (monitor_param->neighbor_scan_cfg.ResultCount > MAX_NEIGHBOURS) ? MAX_NEIGHBOURS : monitor_param->neighbor_scan_cfg.ResultCount;
-    strcpy_s(monitor_param->neighbor_scan_cfg.DiagnosticsState, sizeof(monitor_param->neighbor_scan_cfg.DiagnosticsState) , "Completed");
-    return TIMER_TASK_COMPLETE;
-}
-
 int get_neighbor_scan_cfg(int radio_index,
                           wifi_neighbor_ap2_t *neighbor_results,
                           unsigned int *output_array_size)
@@ -1116,33 +1092,6 @@ int get_neighbor_scan_cfg(int radio_index,
     return 0;
 }
 
-int process_periodical_neighbor_scan(void *arg)
-{
-    wifi_monitor_t *monitor_param = (wifi_monitor_t *)get_wifi_monitor();
-    wifi_radio_operationParam_t *wifi_radio_oper_param = NULL;
-    wifi_neighborScanMode_t scan_mode = WIFI_RADIO_SCAN_MODE_FULL;
-    int dwell_time = 20;
-    unsigned int private_vap_index;
-
-    if(strcmp(monitor_param->neighbor_scan_cfg.DiagnosticsState, "Requested") == 0) {
-        wifi_util_dbg_print(WIFI_MON, "%s:%d: Scan already in Progress!!!\n", __func__, __LINE__);
-    } else {
-        strcpy_s(monitor_param->neighbor_scan_cfg.DiagnosticsState, sizeof(monitor_param->neighbor_scan_cfg.DiagnosticsState) , "Requested");
-
-        for(UINT rIdx = 0; rIdx < getNumberRadios(); rIdx++)
-        {
-            if (g_monitor_module.radio_presence[rIdx] == false) {
-                continue;
-            }
-            wifi_radio_oper_param = (wifi_radio_operationParam_t *)get_wifidb_radio_map(rIdx);
-            private_vap_index = getPrivateApFromRadioIndex(rIdx);
-            wifi_startNeighborScan(private_vap_index, scan_mode, ((wifi_radio_oper_param->band == WIFI_FREQUENCY_6_BAND) ? (dwell_time=110) : dwell_time), 0, NULL);
-        }
-        scheduler_add_timer_task(g_monitor_module.sched, FALSE, &neighscan_task_id, get_neighbor_scan_results, NULL,
-                    NEIGHBOR_SCAN_RESULT_INTERVAL, 1, FALSE);
-    }
-    return TIMER_TASK_COMPLETE;
-}
 #endif // CCSP_COMMON
 
 void *monitor_function  (void *data)
@@ -2526,13 +2475,6 @@ static void scheduler_telemetry_tasks(void)
             }
         }
 #endif //FEATURE_OFF_CHANNEL_SCAN_5G
-
-        //upload_period - configurable from file
-        if (g_monitor_module.neighbor_scan_id == 0) {
-            scheduler_add_timer_task(g_monitor_module.sched, FALSE, &g_monitor_module.neighbor_scan_id, process_periodical_neighbor_scan, NULL,
-                    NEIGHBOR_SCAN_INTERVAL, 0, FALSE);
-        }
-
     } else {
         if (g_monitor_module.refresh_task_id != 0) {
             scheduler_cancel_timer_task(g_monitor_module.sched, g_monitor_module.refresh_task_id);
@@ -2561,10 +2503,6 @@ static void scheduler_telemetry_tasks(void)
         if (g_monitor_module.client_telemetry_id != 0) {
             scheduler_cancel_timer_task(g_monitor_module.sched, g_monitor_module.client_telemetry_id);
             g_monitor_module.client_telemetry_id = 0;
-        }
-        if (g_monitor_module.neighbor_scan_id != 0) {
-            scheduler_cancel_timer_task(g_monitor_module.sched, g_monitor_module.neighbor_scan_id);
-            g_monitor_module.neighbor_scan_id= 0;
         }
     }
 }
@@ -2746,7 +2684,6 @@ int init_wifi_monitor()
 #ifdef CCSP_COMMON
     g_monitor_module.csi_sched_id = 0;
     g_monitor_module.csi_sched_interval = 0;
-    g_monitor_module.neighbor_scan_id = 0;
     for (i = 0; i < getTotalNumberVAPs(); i++) {
         vap_index = VAP_INDEX(mgr->hal_cap, i);
         radio = RADIO_INDEX(mgr->hal_cap, i);
@@ -3481,11 +3418,27 @@ int coordinator_calculate_clctr_interval(wifi_mon_collector_element_t *collector
     return RETURN_OK;
 }
 
+
+#define POSTPONE_TIME 200 //ms
+#define MAX_POSTPONE_EXECUTION  (30000/POSTPONE_TIME) //scan can time up to 30 seconds
+
 int collector_execute_task(void *arg)
 {
     wifi_mon_collector_element_t *elem = (wifi_mon_collector_element_t *)arg;
     wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
 
+    if (elem->stat_desc->stats_type == mon_stats_type_radio_channel_stats || 
+            elem->stat_desc->stats_type == mon_stats_type_neighbor_stats || 
+            elem->stat_desc->stats_type == mon_stats_type_radio_scan) {
+        if (mon_data->scan_status[elem->args->radio_index] == 1 && elem->postpone_cnt < MAX_POSTPONE_EXECUTION) {
+            
+            wifi_util_dbg_print(WIFI_MON, "%s : %d scan running postpone collector : %s\n",__func__,__LINE__, elem->key);
+            scheduler_add_timer_task(mon_data->sched, FALSE, NULL, collector_execute_task, arg, POSTPONE_TIME, 1, FALSE);
+            elem->postpone_cnt++;
+            return RETURN_OK;
+        }
+    }
+    elem->postpone_cnt = 0;
     wifi_util_dbg_print(WIFI_MON, "%s : %d Executing collector task key : %s\n",__func__,__LINE__, elem->key);
     if (elem->stat_desc->execute_stats_api == NULL || elem->stat_desc->execute_stats_api(elem->args, mon_data, elem->collector_task_interval_ms) != RETURN_OK) {
         wifi_util_error_print(WIFI_MON, "%s : %d collector execution failed for %s\n",__func__,__LINE__, elem->key);
@@ -3526,9 +3479,12 @@ int provider_execute_task(void *arg)
     response->stat_array_size = stat_array_size;
 
     memset(&route, 0, sizeof(wifi_event_route_t));
-    route.u.inst_bit_map = elem->mon_stats_config->inst;
-    route.dst = wifi_sub_component_apps;
-
+    if (elem->mon_stats_config->inst != 0) {
+        route.u.inst_bit_map = elem->mon_stats_config->inst;
+        route.dst = wifi_sub_component_apps;
+    } else {
+        route.dst = wifi_sub_component_core;
+    }
     push_monitor_response_event_to_ctrl_queue(response, sizeof(wifi_provider_response_t), wifi_event_type_monitor, wifi_event_monitor_provider_response, &route);
 
     elem->response = response;

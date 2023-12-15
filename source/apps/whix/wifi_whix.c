@@ -1791,10 +1791,9 @@ int handle_whix_provider_response(wifi_app_t *app, wifi_event_t *event)
             wifi_util_error_print(WIFI_APPS, "collect channel utils %s\n", __func__);
             ret = radio_channel_util_response(provider_response);
         break;
-        /*case whix_app_event_type_neighbor_stats:
-          ret = neighbor_stats_response(provider_response);
+        case whix_app_event_type_neighbor_stats:
+          //dont do anything
           break;
-          */
         case whix_app_event_type_assoc_dev_stats:
             ret = associated_device_stats_response(provider_response);
         break;
@@ -1924,6 +1923,29 @@ static void config_associated_device_stats(wifi_monitor_data_t *data)
     }
 }
 
+#define NEIGHBOR_SCAN_INTERVAL 60*60*1000
+
+static void config_neighbour_scan(wifi_monitor_data_t *data)
+{
+    unsigned int radioIndex = 0;
+    wifi_event_route_t route;
+
+    whix_route(&route);
+
+    data->u.mon_stats_config.inst = wifi_app_inst_whix;
+    data->u.mon_stats_config.interval_ms = NEIGHBOR_SCAN_INTERVAL;
+    data->u.mon_stats_config.data_type = mon_stats_type_neighbor_stats;
+    data->u.mon_stats_config.args.scan_mode = WIFI_RADIO_SCAN_MODE_FULL;
+    data->u.mon_stats_config.args.app_info = whix_app_event_type_neighbor_stats;
+
+    /* Request to get channel utilization */
+    for (radioIndex = 0; radioIndex < getNumberRadios(); radioIndex++) {
+        data->u.mon_stats_config.args.radio_index = radioIndex;
+        wifi_util_error_print(WIFI_APPS, "pushing the event to collect neighbor on radio %d\n", radioIndex);
+        push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
+    }
+}
+
 static int push_whix_config_event_to_monitor_queue(wifi_mon_stats_request_state_t state)
 {
     // Send appropriate configs to monitor queue(stats, radio)
@@ -1943,6 +1965,10 @@ static int push_whix_config_event_to_monitor_queue(wifi_mon_stats_request_state_
     memset(data, 0, sizeof(wifi_monitor_data_t));
     data->u.mon_stats_config.req_state = state;
     config_associated_device_stats(data);
+
+    memset(data, 0, sizeof(wifi_monitor_data_t));
+    data->u.mon_stats_config.req_state = state;
+    config_neighbour_scan(data);
 
     if (NULL != data) {
         free(data);
