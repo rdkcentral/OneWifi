@@ -315,6 +315,7 @@ int sm_report_config_task(wifi_app_t *app, wifi_mon_stats_request_state_t state,
 
         task_args->app = app;
         memcpy(task_args->stats_cfg_id, config->stats_cfg_id, sizeof(task_args->stats_cfg_id));
+        memcpy(report_task->stats_cfg_id, config->stats_cfg_id, sizeof(report_task->stats_cfg_id));
 
         rc = scheduler_add_timer_task(app->ctrl->sched, FALSE, &report_task->task_id,
             report_push_to_dpp_cb, (void *)task_args,
@@ -332,6 +333,9 @@ int sm_report_config_task(wifi_app_t *app, wifi_mon_stats_request_state_t state,
         if (state == mon_stats_request_state_stop) {
             wifi_util_error_print(WIFI_APPS, "%s:%d: removing task %d\n", __func__, __LINE__, report_task->task_id);
             scheduler_cancel_timer_task(app->ctrl->sched, report_task->task_id);
+            hash_map_remove(app->data.u.sm_data.report_tasks_map, report_task->stats_cfg_id);
+            scheduler_free_timer_task_arg(app->ctrl->sched, report_task->task_id);
+            free(report_task);
         } else if (state == mon_stats_request_state_start) {
             /* found, need to reconfigure timer */
             wifi_util_error_print(WIFI_APPS, "%s:%d: reconfiguring timer for task %d, interval=%d, count=%d\n",

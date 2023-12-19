@@ -505,9 +505,61 @@ int push_sm_config_event_to_monitor_queue(wifi_app_t *app, wifi_mon_stats_reques
     return RETURN_OK;
 }
 
+bool is_scan_scheduled(wifi_app_t *app, stats_config_t *config)
+{
+     if ( hash_map_get(app->data.u.sm_data.report_tasks_map, config->stats_cfg_id))
+     {
+        wifi_util_dbg_print(WIFI_APPS, " is_scan_scheduled returning TRUE\n");
+        return true;
+     }
+     else
+     {
+        wifi_util_dbg_print(WIFI_APPS," is_scan_scheduled returning FALSE\n");
+        return false;
+     }
+}
+
+int handle_sm_command_event(wifi_app_t *app, wifi_event_t *event)
+{
+    wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
+    stats_config_t *cur_stats_cfg = NULL;
+    hash_map_t *cur_app_stats_cfg_map = app->data.u.sm_data.sm_stats_config_map;
+    bool off_scan_rfc = g_wifi_mgr->rfc_dml_parameters.wifioffchannelscan_rfc;
+
+    wifi_util_dbg_print(WIFI_APPS, "inside %s:%d off_scan_rfc:%d\n",__func__, __LINE__,off_scan_rfc);
+    if (event->sub_type == wifi_event_type_wifi_offchannelscan_rfc )
+    {
+       //search for the off_chan_scan elements in wifi_stats_config
+       if (cur_app_stats_cfg_map != NULL)
+       {
+           cur_stats_cfg = hash_map_get_first(cur_app_stats_cfg_map);
+           while (cur_stats_cfg != NULL)
+           {
+                 if( cur_stats_cfg->survey_type == survey_type_off_channel && ( cur_stats_cfg->radio_type == WIFI_FREQUENCY_5_BAND || cur_stats_cfg->radio_type == WIFI_FREQUENCY_5L_BAND || cur_stats_cfg->radio_type == WIFI_FREQUENCY_5H_BAND ))
+                 {
+                   if ( !is_scan_scheduled(app,cur_stats_cfg) && off_scan_rfc)
+                   {
+                      wifi_util_dbg_print(WIFI_APPS,"Starting the scan\n");
+                      push_sm_config_event_to_monitor_queue(app, mon_stats_request_state_start, cur_stats_cfg);
+                   }
+                   else if( is_scan_scheduled(app,cur_stats_cfg) && !off_scan_rfc)
+                   {
+                      wifi_util_dbg_print(WIFI_APPS, " Stopping the scan\n");
+                      push_sm_config_event_to_monitor_queue(app, mon_stats_request_state_stop, cur_stats_cfg);
+                   }
+                 }
+                 cur_stats_cfg = hash_map_get_next(cur_app_stats_cfg_map, cur_stats_cfg);
+           }
+       }
+   }
+   return RETURN_OK;
+}
+
 int handle_sm_webconfig_event(wifi_app_t *app, wifi_event_t *event)
 {
 
+    wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
+    bool off_scan_rfc = g_wifi_mgr->rfc_dml_parameters.wifioffchannelscan_rfc;
     webconfig_subdoc_data_t *webconfig_data = NULL;
     if (event == NULL) {
         wifi_util_dbg_print(WIFI_APPS,"%s %d input arguements are NULL\n", __func__, __LINE__);
@@ -546,7 +598,6 @@ int handle_sm_webconfig_event(wifi_app_t *app, wifi_event_t *event)
                 memset(key, 0, sizeof(key));
                 snprintf(key, sizeof(key), "%s", cur_stats_cfg->stats_cfg_id);
                 cur_stats_cfg = hash_map_get_next(cur_app_stats_cfg_map, cur_stats_cfg);
-
                 push_sm_config_event_to_monitor_queue(app, mon_stats_request_state_stop, cur_stats_cfg);
 
                 //Temporary removal, need to uncomment it
@@ -576,12 +627,21 @@ int handle_sm_webconfig_event(wifi_app_t *app, wifi_event_t *event)
                 memcpy(cur_stats_cfg, new_stats_cfg, sizeof(stats_config_t));
                 hash_map_put(cur_app_stats_cfg_map, strdup(cur_stats_cfg->stats_cfg_id), cur_stats_cfg);
                 //Notification for new entry.
-                push_sm_config_event_to_monitor_queue(app, mon_stats_request_state_start, cur_stats_cfg);
+                if(!(!off_scan_rfc && cur_stats_cfg->survey_type == survey_type_off_channel && ( cur_stats_cfg->radio_type == WIFI_FREQUENCY_5_BAND || cur_stats_cfg->radio_type == WIFI_FREQUENCY_5L_BAND || cur_stats_cfg->radio_type == WIFI_FREQUENCY_5H_BAND ))) {
+                     push_sm_config_event_to_monitor_queue(app, mon_stats_request_state_start, cur_stats_cfg);
+                }
             } else {
                 if (memcmp(cur_stats_cfg, new_stats_cfg, sizeof(stats_config_t)) != 0) {
                     memcpy(cur_stats_cfg, new_stats_cfg, sizeof(stats_config_t));
-                    //Notification for update entry.
-                    push_sm_config_event_to_monitor_queue(app, mon_stats_request_state_start, cur_stats_cfg);
+                    if(!off_scan_rfc && cur_stats_cfg->survey_type == survey_type_off_channel && ( cur_stats_cfg->radio_type == WIFI_FREQUENCY_5_BAND || cur_stats_cfg->radio_type == WIFI_FREQUENCY_5L_BAND || cur_stats_cfg->radio_type == WIFI_FREQUENCY_5H_BAND )) {
+                        if (is_scan_scheduled(app,cur_stats_cfg))
+                        {
+                            push_sm_config_event_to_monitor_queue(app, mon_stats_request_state_stop, cur_stats_cfg);
+                        }
+                    } else {
+                        //Notification for update entry.
+                        push_sm_config_event_to_monitor_queue(app, mon_stats_request_state_start, cur_stats_cfg);
+                    }
                 }
             }
 
@@ -600,6 +660,9 @@ int sm_event(wifi_app_t *app, wifi_event_t *event)
         break;
         case wifi_event_type_monitor:
             monitor_event_sm(app, event);
+        break;
+        case wifi_event_type_command:
+            handle_sm_command_event(app,event);
         break;
         default:
         break;

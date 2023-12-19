@@ -48,7 +48,7 @@ wifi_app_descriptor_t app_desc[WIFI_APPS_NUM] = {
 #if SM_APP
     {
         wifi_app_inst_sm, 0,
-        wifi_event_type_monitor | wifi_event_type_webconfig,
+        wifi_event_type_monitor | wifi_event_type_webconfig | wifi_event_type_command,
         true, true,
         "Stats Manager",
         sm_init, sm_event, sm_deinit,
