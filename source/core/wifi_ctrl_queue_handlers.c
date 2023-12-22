@@ -40,7 +40,7 @@
 #if DML_SUPPORT
 #include "safec_lib_common.h"
 
-#define NEIGHBOR_SCAN_RESULT_INTERVAL 5000 //5sec
+#define NEIGHBOR_SCAN_RESULT_INTERVAL 40000 // 40 sec
 static int neighbor_scan_task_id = -1;
 #define MAX_VAP_INDEX 24
 #endif // DML_SUPPORT

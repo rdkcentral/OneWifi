@@ -179,3 +179,37 @@ INT wifi_hal_set_neighbor_report(UINT apIndex,UINT numNeighborReports, mac_addre
 {
     return 0;
 }
+
+INT wifi_hal_startNeighborScan(INT apIndex, wifi_neighborScanMode_t scan_mode, INT dwell_time,
+    UINT chan_num, UINT *chan_list)
+{
+    return 0;
+}
+
+INT wifi_hal_getNeighboringWiFiStatus(INT radioIndex, wifi_neighbor_ap2_t **neighbor_ap_array,
+    UINT *output_array_size)
+{
+    return 0;
+}
+
+INT wifi_hal_setBTMRequest(UINT apIndex, mac_address_t peerMac, wifi_BTMRequest_t *request)
+{
+    return 0;
+}
+
+INT wifi_hal_setRMBeaconRequest(UINT apIndex, mac_address_t peer_mac, wifi_BeaconRequest_t *in_req,
+    UCHAR *out_DialogToken)
+{
+    return 0;
+}
+
+INT wifi_hal_setNeighborReports(UINT apIndex, UINT numNeighborReports,
+    wifi_NeighborReport_t *neighborReports)
+{
+    return 0;
+}
+
+INT wifi_hal_configNeighborReports(UINT apIndex, bool enable, bool auto_resp)
+{
+    return 0;
+}

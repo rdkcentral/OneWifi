@@ -46,7 +46,13 @@ struct hal_api_info {
     {"wifi_getStationCapability",           1, "<ap index>"},
     {"wifi_getScanResults",                 1, "<ap index> [channel]"},
     {"wifi_getStationStats",                1, "<ap index>"},
-    {"wifi_startScan",                      1, "<radio index>"}
+    {"wifi_startScan",                      1, "<radio index>"},
+    {"wifi_startNeighborScan",              3, "<vap index> <scan mode> <dwell time> [channels]"},
+    {"wifi_getNeighboringWiFiStatus",       1, "<radio index"},
+    {"wifi_setBTMRequest",                  3, "<vap index> <client mac> <candidate mac>"},
+    {"wifi_setRMBeaconRequest",             3, "<vap index> <peer mac> <bssid>"},
+    {"wifi_setNeighborReports",             2, "<vap index> <bssid>" },
+    {"wifi_configNeighborReports",          3, "<vap index> <neighbor report enable> <neighbor report auto reply>" },
 };
 
 
@@ -306,6 +312,167 @@ void wifiapi_printbssinfo(char *buff, unsigned int buff_size, wifi_bss_info_t *b
                                         bss[i].rssi, bss[i].caps, bss[i].beacon_int, bss[i].freq);
         if (idx >= buff_size) return;
     }
+}
+
+static void wifiapi_handle_start_neighbor_scan(char **args, unsigned int num_args, char *result_buf,
+    unsigned int result_buf_size)
+{
+    INT vap_index, scan_mode, dwell_time;
+    UINT i, channels[32], chan_num = 0;
+
+    vap_index = atoi(args[1]);
+    scan_mode = atoi(args[2]);
+    dwell_time = atoi(args[3]);
+
+    for (i = 4; i < num_args; i++) {
+        channels[chan_num] = atoi(args[i]);
+        chan_num++;
+    }
+
+    if (wifi_hal_startNeighborScan(vap_index, scan_mode, dwell_time, chan_num,
+        channels) != RETURN_OK) {
+        snprintf(result_buf, result_buf_size, "Failed to start neighbor scan\n");
+        return;
+    }
+
+    snprintf(result_buf, result_buf_size, "%s: OK", args[0]);
+}
+
+static void wifiapi_handle_neighbor_scan_status(char **args, unsigned int num_args,
+    char *result_buf, int result_buf_size)
+{
+    wifi_neighbor_ap2_t *neighbor_ap_array;
+    UINT i, output_array_size = 0;
+    INT radio_index, len = 0;
+
+    radio_index = atoi(args[1]);
+
+    if (wifi_hal_getNeighboringWiFiStatus(radio_index, &neighbor_ap_array,
+        &output_array_size) != RETURN_OK) {
+        snprintf(result_buf, result_buf_size, "Failed to get neighbor scan results\n");
+        return;
+    }
+
+    len += snprintf(result_buf, result_buf_size, "\n%s: number of results: %d\n\n", args[0],
+        output_array_size);
+
+    for (i = 0; i < output_array_size; i++) {
+        if (len >= result_buf_size) {
+            return;
+        }
+
+        len += snprintf(result_buf + len, result_buf_size - len, "ssid: %s\nbssid: %s\n"
+            "mode: %s\nchannel: %u\nsignal strength: %d\nsecurity mode: %s\nencryption mode: %s\n"
+            "frequency band: %s\nsupported standards: %s\noperating standards: %s\n"
+            "operating bandwidth: %s\nbeacon period: %u\nnoise: %d\nbasic rates: %s\n"
+            "supported data rates: %s\ndtim period: %u\nchannel utilization: %u\n\n",
+            neighbor_ap_array[i].ap_SSID, neighbor_ap_array[i].ap_BSSID,
+            neighbor_ap_array[i].ap_Mode, neighbor_ap_array[i].ap_Channel,
+            neighbor_ap_array[i].ap_SignalStrength,
+            neighbor_ap_array[i].ap_SecurityModeEnabled, neighbor_ap_array[i].ap_EncryptionMode,
+            neighbor_ap_array[i].ap_OperatingFrequencyBand,
+            neighbor_ap_array[i].ap_SupportedStandards, neighbor_ap_array[i].ap_OperatingStandards,
+            neighbor_ap_array[i].ap_OperatingChannelBandwidth,
+            neighbor_ap_array[i].ap_BeaconPeriod, neighbor_ap_array[i].ap_Noise,
+            neighbor_ap_array[i].ap_BasicDataTransferRates,
+            neighbor_ap_array[i].ap_SupportedDataTransferRates, neighbor_ap_array[i].ap_DTIMPeriod,
+            neighbor_ap_array[i].ap_ChannelUtilization);
+    }
+}
+
+static void wifiapi_handle_set_btm_request(char **args, unsigned int num_args,
+    char *result_buf, int result_buf_size)
+{
+    INT vap_index;
+    mac_address_t client_mac, candidate_mac;
+    wifi_BTMRequest_t *btm_request = calloc(1, sizeof(wifi_BTMRequest_t));
+
+    if (!btm_request) {
+        snprintf(result_buf, result_buf_size, "Failed to allocate memory\n");
+        return;
+    }
+
+    vap_index = atoi(args[1]);
+    str_to_mac_bytes(args[2], client_mac);
+    str_to_mac_bytes(args[3], candidate_mac);
+
+    btm_request->requestMode = 0x1; // candidate list included
+    btm_request->numCandidates = 1;
+    memcpy(&btm_request->candidates[0].bssid, &candidate_mac, sizeof(mac_address_t));
+
+    if (wifi_hal_setBTMRequest(vap_index, client_mac, btm_request) != WIFI_HAL_SUCCESS) {
+        snprintf(result_buf, result_buf_size, "Failed to send BTM request\n");
+        free(btm_request);
+        return;
+    }
+
+    snprintf(result_buf, result_buf_size, "%s: OK", args[0]);
+    free(btm_request);
+}
+
+static void wifiapi_handle_set_rm_beacon_request(char **args, unsigned int num_args,
+    char *result_buf, int result_buf_size)
+{
+    INT vap_index;
+    mac_address_t peer_mac, bssid;
+    UCHAR diag_token = 0;
+    wifi_BeaconRequest_t beacon_req = {};
+
+    vap_index = atoi(args[1]);
+    str_to_mac_bytes(args[2], peer_mac);
+    str_to_mac_bytes(args[3], bssid);
+
+    memcpy(&beacon_req.bssid, &bssid, sizeof(mac_address_t));
+
+    if (wifi_hal_setRMBeaconRequest(vap_index, peer_mac, &beacon_req,
+        &diag_token) != WIFI_HAL_SUCCESS) {
+        snprintf(result_buf, result_buf_size, "Failed to send RM beacon request\n");
+        return;
+    }
+
+    snprintf(result_buf, result_buf_size, "%s: OK", args[0]);
+}
+
+static void wifiapi_handle_set_neighbor_reports(char **args, unsigned int num_args,
+    char *result_buf, int result_buf_size)
+{
+    INT vap_index;
+    UINT num_neigbor_reports;
+    mac_address_t bssid;
+    wifi_NeighborReport_t neighbor_report = {};
+
+    vap_index = atoi(args[1]);
+    str_to_mac_bytes(args[2], bssid);
+
+    num_neigbor_reports = 1;
+
+    memcpy(&neighbor_report.bssid, &bssid, sizeof(mac_address_t));
+
+    if (wifi_hal_setNeighborReports(vap_index, num_neigbor_reports,
+        &neighbor_report) != WIFI_HAL_SUCCESS) {
+        snprintf(result_buf, result_buf_size, "Failed to set neighbor report\n");
+        return;
+    }
+
+    snprintf(result_buf, result_buf_size, "%s: OK", args[0]);
+}
+
+static void wifiapi_handle_config_neighbor_reports(char **args, unsigned int num_args,
+    char *result_buf, int result_buf_size)
+{
+    INT vap_index, neighbor_rep_enable, auto_reply;
+
+    vap_index = atoi(args[1]);
+    neighbor_rep_enable = atoi(args[2]);
+    auto_reply = atoi(args[3]);
+
+    if (wifi_hal_configNeighborReports(vap_index, neighbor_rep_enable,
+        auto_reply) != WIFI_HAL_SUCCESS) {
+        snprintf(result_buf, result_buf_size, "Failed to config neighbor report\n");
+        return;
+    }
+
+    snprintf(result_buf, result_buf_size, "%s: OK", args[0]);
 }
 
 void process_wifiapi_command(char *command, unsigned int len)
@@ -601,6 +768,18 @@ void process_wifiapi_command(char *command, unsigned int len)
             goto publish;
         }
         sprintf(buff, "%s: OK", args[0]);
+    } else if (strcmp(args[0], "wifi_startNeighborScan") == 0) {
+        wifiapi_handle_start_neighbor_scan(args, num_args, buff, sizeof(buff));
+    } else if (strcmp(args[0], "wifi_getNeighboringWiFiStatus") == 0) {
+        wifiapi_handle_neighbor_scan_status(args, num_args, buff, sizeof(buff));
+    } else if (strcmp(args[0], "wifi_setBTMRequest") == 0) {
+        wifiapi_handle_set_btm_request(args, num_args, buff, sizeof(buff));
+    } else if (strcmp(args[0], "wifi_setRMBeaconRequest") == 0) {
+        wifiapi_handle_set_rm_beacon_request(args, num_args, buff, sizeof(buff));
+    } else if (strcmp(args[0], "wifi_setNeighborReports") == 0) {
+        wifiapi_handle_set_neighbor_reports(args, num_args, buff, sizeof(buff));
+    } else if (strcmp(args[0], "wifi_configNeighborReports") == 0) {
+        wifiapi_handle_config_neighbor_reports(args, num_args, buff, sizeof(buff));
     } else {
         unsigned int idx = 0;
         idx += snprintf(&buff[idx], sizeof(buff)-idx, "wifi_api2: Invalid API '%s'\nSupported APIs:\n", args[0]);

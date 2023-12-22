@@ -716,28 +716,38 @@ int get_sta_stats_for_vap(int ap_index, wifi_associated_dev3_t *assoc_dev_array,
     unsigned int i = 0;
     hash_map_t *sta_map = NULL;
     sta_data_t *sta_data = NULL;
-
+    mac_addr_str_t assoc_mac, dev_mac;
     pthread_mutex_lock(&g_monitor_module.data_lock);
-    getVAPArrayIndexFromVAPIndex(ap_index, &vap_array_index);
-    sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
-    sta_data = hash_map_get_first(sta_map);
-
-    if (sta_data == NULL) {
-        wifi_util_dbg_print(WIFI_MON, "%s:%d: NULL pointer\n", __func__, __LINE__);
+    getVAPArrayIndexFromVAPIndex((unsigned int)ap_index, &vap_array_index);
+    if(assoc_dev_array == NULL) {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d: assoc_dev_array is NULL\n", __func__, __LINE__);
         pthread_mutex_unlock(&g_monitor_module.data_lock);
         return -1;
     }
-
+    sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
+    if (sta_map == NULL) {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d: NULL pointer:ap_index:%d,vap_array_index:%u \n", __func__, __LINE__,ap_index,vap_array_index);
+        pthread_mutex_unlock(&g_monitor_module.data_lock);
+        return -1;
+    }
+    sta_data = hash_map_get_first(sta_map);
+    if (sta_data == NULL) {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d: NULL pointer:ap_index:%d,vap_array_index:%u \n", __func__, __LINE__,ap_index,vap_array_index);
+        *output_array_size=0;
+        pthread_mutex_unlock(&g_monitor_module.data_lock);
+        return 0;
+    }
     while (sta_data != NULL && i < 2) { // i < 2 is temporary as HAL_IPC_MAX_STA_SUPPORT_NUM is hardcoded now to 2
         memcpy(&assoc_dev_array[i], &sta_data->dev_stats, sizeof(wifi_associated_dev3_t));
+        to_mac_str(assoc_dev_array[i].cli_MACAddress, assoc_mac);
+        to_mac_str(sta_data->dev_stats.cli_MACAddress, dev_mac);
+        wifi_util_dbg_print(WIFI_MON,"%s:%d assoc_mac:%s,dev_mac:%s,value of i:%d:ap_index:%d,vap_array_index:%u \n", __func__, __LINE__,assoc_mac,dev_mac,i,ap_index,vap_array_index);
         i++;
-        sta_data = hash_map_get_next(sta_map, sta_data);   
+        sta_data = hash_map_get_next(sta_map, sta_data);
     }
-
     *output_array_size = i;
-
+    wifi_util_dbg_print(WIFI_MON, "%s:%d:output_array_size is:%u \n", __func__, __LINE__,*output_array_size);
     pthread_mutex_unlock(&g_monitor_module.data_lock);
-
     return 0;
 }
 #endif
@@ -957,11 +967,13 @@ void process_connect(unsigned int ap_index, auth_deauth_dev_t *dev)
     str_tolower(sta_key);
     sta = (sta_data_t *)hash_map_get(sta_map, sta_key);
     if (sta == NULL) { /* new client */
+        pthread_mutex_lock(&g_monitor_module.data_lock);
         sta = (sta_data_t *)malloc(sizeof(sta_data_t));
         memset(sta, 0, sizeof(sta_data_t));
         memcpy(sta->sta_mac, dev->sta_mac, sizeof(mac_addr_t));
         memcpy(sta->dev_stats.cli_MACAddress, dev->sta_mac, sizeof(mac_addr_t));
         hash_map_put(sta_map, strdup(sta_key), sta);
+        pthread_mutex_unlock(&g_monitor_module.data_lock);
     }
 
 #ifdef CCSP_COMMON
