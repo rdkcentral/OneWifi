@@ -524,7 +524,8 @@ void ext_start_scan(vap_svc_t *svc)
     vap_svc_ext_t   *ext;
     wifi_ctrl_t *ctrl;
     unsigned int radio_index;
-    wifi_channels_list_t *channels;
+    wifi_channels_list_t channels;
+    wifi_radio_operationParam_t *radio_oper_param;
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
 
     ctrl = svc->ctrl;
@@ -560,9 +561,15 @@ void ext_start_scan(vap_svc_t *svc)
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d start Scan on radio index %u\n", __func__, __LINE__,
             radio_index);
 
-        channels = &mgr->hal_cap.wifi_prop.radiocap[radio_index].channel_list[0];
-        wifi_hal_startScan(radio_index, WIFI_RADIO_SCAN_MODE_OFFCHAN, dwell_time, channels->num_channels,
-            channels->channels_list);
+        radio_oper_param = get_wifidb_radio_map(radio_index);
+        if (get_allowed_channels(radio_oper_param->band, &mgr->hal_cap.wifi_prop.radiocap[radio_index],
+                channels.channels_list, &channels.num_channels,
+                radio_oper_param->DfsEnabled) != RETURN_OK) {
+            continue;
+        }
+
+        wifi_hal_startScan(radio_index, WIFI_RADIO_SCAN_MODE_OFFCHAN, dwell_time,
+            channels.num_channels, channels.channels_list);
     }
 
     scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_scan_result_timeout_handler_id,

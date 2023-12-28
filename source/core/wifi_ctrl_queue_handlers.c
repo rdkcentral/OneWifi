@@ -2503,12 +2503,6 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg)
     vap_svc_t *ext_svc;
     vap_svc_t  *pub_svc = NULL;
 
-    ctrl = &g_wifidb->ctrl;
-    if (ctrl->network_mode == rdk_dev_mode_type_ext) {
-        ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
-        ext_svc->event_fn(ext_svc, wifi_event_type_hal_ind, wifi_event_hal_channel_change, vap_svc_event_none, ch_chg);
-    }
-
     radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(ch_chg->radioIndex);
     if (radio_params == NULL) {
         wifi_util_error_print(WIFI_CTRL,"%s: wrong index for radio map: %d\n",__FUNCTION__, ch_chg->radioIndex);
@@ -2520,6 +2514,25 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg)
         wifi_util_error_print(WIFI_CTRL,"%s: wrong index for radio map: %d\n",__FUNCTION__, ch_chg->radioIndex);
         return;
     }
+
+    ctrl = &g_wifidb->ctrl;
+    if ((ch_chg->event == WIFI_EVENT_CHANNELS_CHANGED) && (ctrl->network_mode == rdk_dev_mode_type_ext)) {
+        wifi_radio_operationParam_t temp_radio_params;
+        memset(&temp_radio_params, 0, sizeof(wifi_radio_operationParam_t));
+        temp_radio_params.band = radio_params->band;
+        temp_radio_params.channel = ch_chg->channel;
+        temp_radio_params.channelWidth = ch_chg->channelWidth;
+        temp_radio_params.DfsEnabled = radio_params->DfsEnabled;
+
+        ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
+        if (wifi_radio_operationParam_validation(&g_wifidb->hal_cap, &temp_radio_params) != RETURN_OK) {
+            wifi_util_info_print(WIFI_CTRL,"%s:%d: channel: %d bw: %d on radio: %d could not be set\n",
+                __FUNCTION__, __LINE__, ch_chg->channel, ch_chg->channelWidth, ch_chg->radioIndex);
+            return;
+        }
+        ext_svc->event_fn(ext_svc, wifi_event_type_hal_ind, wifi_event_hal_channel_change, vap_svc_event_none, ch_chg);
+    }
+
     if (radio_params->band == WIFI_FREQUENCY_6_BAND ) {
         pub_svc = get_svc_by_type(ctrl, vap_svc_type_public);
         wifi_util_info_print(WIFI_CTRL,"6G radio channel changed update rrm\n");
@@ -2552,7 +2565,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg)
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
     }
     else if ( (ch_chg->event == WIFI_EVENT_DFS_RADAR_DETECTED) && (radio_params->band == WIFI_FREQUENCY_5_BAND || radio_params->band == WIFI_FREQUENCY_5L_BAND || radio_params->band == WIFI_FREQUENCY_5H_BAND) ) {
-        UINT channelsInBlock = 0;
+        UINT channelsInBlock = 1;
         UINT inputChannelBlock = 0;
         UINT firstChannelInBand = 36;
         //UINT lastChannelInRadar = 144;
@@ -2613,7 +2626,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg)
         inputChannelBlock = (ch_chg->channel - firstChannelInBand)/(channelGap*channelsInBlock);
         blockStartChannel = firstChannelInBand + (inputChannelBlock*channelGap*channelsInBlock);
         //blockEndChannel = firstChannelInBand + (inputChannelBlock*channelGap*channelsInBlock) + (channelGap*(channelsInBlock-1));
-        if (blockStartChannel < 52) {
+        if ((blockStartChannel < 52) && (ch_chg->channelWidth == WIFI_CHANNELBANDWIDTH_160MHZ)) {
             blockStartChannel = 52;
             channelsInBlock -= 4;
         }
