@@ -1023,6 +1023,7 @@ void get_psm_mac_list_entry(unsigned int instance_number, char *l_vap_name, unsi
         } else {
             wifi_util_dbg_print(WIFI_MGR,"[Failure] psm record_name: %s\n", recName);
         }
+        free(temp_psm_mac_param);
         total_entry--;
     }
 }

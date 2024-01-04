@@ -45,6 +45,7 @@
 struct pack_hdr *pack_files(char *files[], uint32_t nfile)
 {
     struct pack_hdr *pkthdr;
+    void *old_pkthdr;
     struct file_hdr *filhdr;
     uint32_t i;
     off_t hdr_size;
@@ -86,8 +87,10 @@ struct pack_hdr *pack_files(char *files[], uint32_t nfile)
         filhdr->size = buf.st_size;
         pkthdr->totsize += filhdr->size;
 
+        old_pkthdr = pkthdr;
         if ((pkthdr = realloc(pkthdr, pkthdr->totsize)) == NULL) {
             fprintf(stderr, "%s: no memory\n", __FUNCTION__);
+            free(old_pkthdr);
             return NULL;
         }
 

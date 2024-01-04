@@ -1214,6 +1214,7 @@ void process_kick_assoc_devices_event(void *data)
     if (vap_info->u.bss_info.mac_filter_enable == FALSE) {
         if (wifi_setApMacAddressControlMode(vap_index, 2) != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL, "%s:%d: wifi_setApMacAddressControlMode failed vap_index %d", __func__, __LINE__, vap_index);
+            free(str_dup);
             return;
         }
         rdk_vap_info->kick_device_config_change = TRUE;
@@ -1247,7 +1248,7 @@ void process_kick_assoc_devices_event(void *data)
     kick_details = (kick_details_t *)malloc(sizeof(kick_details_t));
     if (kick_details == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d NULL Pointer\n", __func__, __LINE__);
-
+        free(assoc_maclist);
         if (str_dup) {
             free(str_dup);
         }
@@ -1390,7 +1391,7 @@ void process_greylist_mac_filter(void *data)
             to_mac_str(new_mac, new_mac_str);
             str_tolower(new_mac_str);
             wifi_util_dbg_print(WIFI_CTRL,"new_mac_str %s\n",new_mac_str);
-            temp_acl_entry = hash_map_get(rdk_vap_info->acl_map,strdup(new_mac_str));
+            temp_acl_entry = hash_map_get(rdk_vap_info->acl_map,new_mac_str);
 
             if (temp_acl_entry != NULL) {
                 wifi_util_dbg_print(WIFI_CTRL,"Mac is already present in macfilter \n");

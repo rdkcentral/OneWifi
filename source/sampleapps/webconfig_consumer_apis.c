@@ -587,6 +587,7 @@ int push_data_to_consumer_queue(const void *msg, unsigned int len, wifi_event_ty
     data->msg = malloc(len + 1);
     if(data->msg == NULL) {
         printf("RDK_LOG_WARN,,,WIFI %s: data message malloc null\n",__FUNCTION__);
+        free(data);
         return RETURN_ERR;
     }
     /* copy msg to data */

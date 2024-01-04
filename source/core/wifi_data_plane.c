@@ -290,21 +290,21 @@ void auth_frame_received(unsigned int ap_index, mac_address_t sta, void *data, u
 
 void eapol_frame_sent(unsigned int ap_index, mac_address_t sta, wifi_eapol_type_t type, void *data, unsigned int len)
 {
-    wifi_8021x_data_t *eapol;
+    // wifi_8021x_data_t *eapol;
 
     //printf("%s:%d Enter: frame length:%d\n", __func__, __LINE__, len);
 
-    eapol = malloc(sizeof(wifi_8021x_data_t));
-    memset(eapol, 0, sizeof(wifi_8021x_data_t));
+    // eapol = malloc(sizeof(wifi_8021x_data_t));
+    // memset(eapol, 0, sizeof(wifi_8021x_data_t));
 
-    eapol->data = malloc(len);
-    memcpy(eapol->data, data, len);
-    eapol->len = len;
+    // eapol->data = malloc(len);
+    // memcpy(eapol->data, data, len);
+    // eapol->len = len;
 
-    eapol->vap = ap_index;
-    memcpy(eapol->mac, sta, sizeof(mac_address_t));
-    eapol->type = type;
-    eapol->dir = wifi_direction_downlink;
+    // eapol->vap = ap_index;
+    // memcpy(eapol->mac, sta, sizeof(mac_address_t));
+    // eapol->type = type;
+    // eapol->dir = wifi_direction_downlink;
 
     //data_plane_queue_push(data_plane_queue_create_packet(eapol, wifi_data_plane_packet_type_8021x, TRUE));
 

@@ -1224,7 +1224,7 @@ void Psm_Db_Write_MacFilter(wifi_mac_entry_param_t *mcfg)
         }
         if (strlen(mcfg->mac) != 0) {
             str_tolower(mcfg->mac);
-            temp_mac_entry = hash_map_get(psm_mac_map, strdup(mcfg->mac));
+            temp_mac_entry = hash_map_get(psm_mac_map, mcfg->mac);
             if (temp_mac_entry != NULL) {
                 if (strlen(mcfg->device_name) != 0) {
                     strncpy(temp_mac_entry->device_name, mcfg->device_name, strlen(mcfg->device_name) + 1);
@@ -1410,6 +1410,7 @@ int push_data_to_ssp_queue(const void *msg, unsigned int len, ssp_event_type_t t
     data = (ssp_event_t *)malloc(sizeof(ssp_event_t));
     if((data == NULL) || (g_ssp_loop.queue == NULL)){
         wifi_util_dbg_print(WIFI_PSM, "%s:%d NULL Pointer\n", __func__, __LINE__);
+        free(data);
         return -1;
     }
     memset(data, 0, sizeof(ssp_event_t));

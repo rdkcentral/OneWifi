@@ -1896,7 +1896,9 @@ bool ovsdb_json_show_result_json(json_t *jrows)
  */
 bool ovsdb_json_show_result_output(json_t *jrows, json_t *columns)
 {
-    int     argc;
+    unsigned argc;
+    unsigned nc_argc;
+    int res;
     char   *argv[256];
     json_t *jrow;
     size_t  nr;
@@ -1920,31 +1922,45 @@ bool ovsdb_json_show_result_output(json_t *jrows, json_t *columns)
             return false;
         }
 
-        for (nc = 0; nc < json_array_size(columns); nc++)
+        res = 0;
+        nc_argc = argc;
+        for (nc = 0; 0 == res && nc < json_array_size(columns); nc++)
         {
             const char *col = json_string_value(json_array_get(columns, nc));
 
             if (!json_stringify(json_object_get(jrow, col), pcol, sizeof(col_all) - (pcol - col_all)))
             {
                 DEBUG("Error converting JSON to string.");
-                return false;
+                res = 1;
             }
-
-            argv[argc++] = strdup(pcol);
-
-            pcol += strlen(pcol) + 1;
-
-            if (pcol > col_all + sizeof(col_all))
+            else
             {
-                DEBUG("Buffer too small");
-                return false;
+                argv[argc++] = strdup(pcol);
+
+                pcol += strlen(pcol) + 1;
+
+                if (pcol > col_all + sizeof(col_all))
+                {
+                    DEBUG("Buffer too small");
+                    res = 1;
+                }
             }
         }
 
-        /* Pad end of array with NULL */
-        argv[argc] = NULL;
+        if(0 == res)
+        {
+            /* Pad end of array with NULL */
+            argv[argc] = NULL;
+            
+            res = systemvp("printf", argv);
+        }
 
-        if (systemvp("printf", argv) != 0)
+        for(nc = nc_argc; nc < argc; nc++)
+        {
+            free(argv[nc]);
+        }
+
+        if (0 != res)
         {
             fprintf(stderr, "Exernal command failed: printf");
             return false;
