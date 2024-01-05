@@ -2631,7 +2631,11 @@ static int readLogInterval()
 int get_radio_data(int radio_index, wifi_radioTrafficStats2_t *radio_traffic_stats)
 {
     pthread_mutex_lock(&g_monitor_module.data_lock);
-    radio_traffic_stats->radio_NoiseFloor = g_monitor_module.radio_data[radio_index].NoiseFloor;
+    if (g_monitor_module.radio_data[radio_index].NoiseFloor != 0) {
+        radio_traffic_stats->radio_NoiseFloor = g_monitor_module.radio_data[radio_index].NoiseFloor;
+    } else {
+        radio_traffic_stats->radio_NoiseFloor = -90;
+    }
     radio_traffic_stats->radio_ActivityFactor = g_monitor_module.radio_data[radio_index].RadioActivityFactor;
     radio_traffic_stats->radio_CarrierSenseThreshold_Exceeded = g_monitor_module.radio_data[radio_index].CarrierSenseThreshold_Exceeded;
     radio_traffic_stats->radio_ChannelUtilization = g_monitor_module.radio_data[radio_index].channelUtil;
