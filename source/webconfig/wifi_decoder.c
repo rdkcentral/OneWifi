@@ -2460,10 +2460,11 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
 
     // ChannelAvailability
     decode_param_string(obj_radio, "ChannelAvailability", param);
-    strncpy(tmp_buf,param->valuestring,strlen(param->valuestring));
+    memset(tmp_buf, 0, sizeof(tmp_buf));
+    snprintf(tmp_buf,sizeof(tmp_buf),"%s",param->valuestring);
     char* token = strtok_r(tmp_buf, ",", &ctx);
     while (token != NULL){
-        sscanf( token, "%d:%d", &radio_info->channel_map[idx].ch_number, (int*)&radio_info->channel_map[idx].ch_state );
+        sscanf( token, "%3d:%1d", &radio_info->channel_map[idx].ch_number, (int*)&radio_info->channel_map[idx].ch_state );
         idx++;
         token = strtok_r(NULL, ",", &ctx);
     }
