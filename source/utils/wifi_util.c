@@ -675,12 +675,12 @@ unsigned long long int get_current_ms_time(void)
     return milliseconds;
 }
 
-time_t get_current_time_in_sec(void)
+long long int get_current_time_in_sec(void)
 {
     struct timeval tv_now = { 0 };
     gettimeofday(&tv_now, NULL);
 
-    return tv_now.tv_sec;
+    return (long long int)tv_now.tv_sec;
 }
 
 char *get_formatted_time(char *time)
@@ -1486,7 +1486,7 @@ int country_id_conversion(wifi_countrycode_type_t *country_code, char *country_i
         }
 
     } else if (conv_type == ENUM_TO_STRING) {
-        if ( i >= MAX_WIFI_COUNTRYCODE) {
+        if (*country_code >= MAX_WIFI_COUNTRYCODE) {
             return RETURN_ERR;
         }
         snprintf(country_id, country_id_len, "%s", wifiCountryMap[*country_code].countryId);
