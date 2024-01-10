@@ -253,14 +253,14 @@ WiFi_GetParamBoolValue
     wifi_rfc_dml_parameters_t *rfc_pcfg = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
     if (AnscEqualString(ParamName, "ApplyRadioSettings", TRUE))
     {
-        /* always return true when get */
-        *pBool = TRUE;
+        /* always return false when get */
+        *pBool = FALSE;
         return TRUE;
     }
     if (AnscEqualString(ParamName, "ApplyAccessPointSettings", TRUE))
     {
-        /* always return true when get */
-        *pBool = TRUE;
+        /* always return false when get */
+        *pBool = FALSE;
         return TRUE;
     }
     if (AnscEqualString(ParamName, "X_CISCO_COM_FactoryReset", TRUE))
