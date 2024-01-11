@@ -4032,7 +4032,7 @@ int set_translator_stats_config_key_value(
 {
     strcpy(config->threshold_keys[*index], key);
     config->threshold[*index] = value;
-
+ 
     *index += 1;
     config->threshold_len = *index;
 
@@ -4077,10 +4077,13 @@ webconfig_error_t translate_statsconfig_from_rdk_to_ovsdb(struct schema_Wifi_Sta
     config_row->reporting_count = stat_config->reporting_count;
     config_row->sampling_interval = stat_config->sampling_interval;
     config_row->survey_interval_ms = stat_config->survey_interval;
-
+#ifdef _64BIT_ARCH_SUPPORT_
+    set_translator_stats_config_key_value(config_row, &index, "util", ((long int)stat_config->threshold_util));
+    set_translator_stats_config_key_value(config_row, &index, "max_delay", ((long int)stat_config->threshold_max_delay));
+#else
     set_translator_stats_config_key_value(config_row, &index, "util", stat_config->threshold_util);
     set_translator_stats_config_key_value(config_row, &index, "max_delay", stat_config->threshold_max_delay);
-
+#endif
     return webconfig_error_none;
 }
 

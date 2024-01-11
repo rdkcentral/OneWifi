@@ -344,7 +344,14 @@ bool is_device_type_xb8(void)
 {
     return is_supported_gateway_device("CGM4981COM");
 }
-
+bool is_device_type_vbvxb10(void)
+{
+    return is_supported_gateway_device("CGM601TCOM");
+}
+bool is_device_type_sercommxb10(void)
+{
+    return is_supported_gateway_device("SG417DB-CT");
+}
 bool is_device_type_sr213(void)
 {
     return is_supported_gateway_device("SR213");
