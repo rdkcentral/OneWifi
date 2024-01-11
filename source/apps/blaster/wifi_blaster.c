@@ -1650,7 +1650,6 @@ void pktGen_BlastClient (char *dst_mac, wifi_interface_name_t *ifname)
     char msg[256] = {};
     active_msmt_step_t *step = &g_active_msmt->curStepData;
     radio_data_t *radio_stats[MAX_NUM_RADIOS];
-#if !defined(_XF3_PRODUCT_REQ_) && !defined(_CBR_PRODUCT_REQ_)
     wifi_apps_mgr_t *apps_mgr;
     wifi_app_t *wifi_app =  NULL;
 
@@ -1666,7 +1665,6 @@ void pktGen_BlastClient (char *dst_mac, wifi_interface_name_t *ifname)
         return;
     }
 
-#endif
     for (unsigned int radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
         radio_stats[radio_index] = (radio_data_t *) malloc (sizeof(radio_data_t));
         memset(radio_stats[radio_index],0, sizeof(radio_data_t));
@@ -1762,10 +1760,8 @@ static void sample_blaster(wifi_provider_response_t *provider_response)
         return;
     }
 
-#if !defined(_XF3_PRODUCT_REQ_) && !defined(_CBR_PRODUCT_REQ_)
     int index = g_active_msmt->curStepData.ApIndex;
     int radio_index = get_radio_index_for_vap_index(&(get_wifimgr_obj())->hal_cap.wifi_prop, index);
-#endif
 #if defined (_PP203X_PRODUCT_REQ_)
     wifi_radio_operationParam_t* radioOperation = NULL;
     radioOperation = getRadioOperationParam(radio_index);
@@ -1782,7 +1778,6 @@ static void sample_blaster(wifi_provider_response_t *provider_response)
 
 if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
 
-#if !defined(_XF3_PRODUCT_REQ_) && !defined(_CBR_PRODUCT_REQ_)
 #ifdef CCSP_COMMON
     active_msmt_log_message("%s : %d WIFI_HAL enabled, calling wifi_getApAssociatedClientDiagnosticResult\n",__func__,__LINE__);
 #endif // CCSP_COMMON
@@ -1899,7 +1894,6 @@ if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
 
             return;
         }
-#endif
         wifi_app->data.u.blaster.blaster_start = getCurrentTimeInMicroSeconds ();
         *SampleCount += 1;
 }
@@ -1947,10 +1941,8 @@ void calculate_throughput()
     double  tp = 0, AckRate = 0, AckSum = 0, Rate = 0, AvgAckThroughput = 0;
 #endif // CCSP_COMMON
 
-#if !defined(_XF3_PRODUCT_REQ_) && !defined(_CBR_PRODUCT_REQ_)
     int index = g_active_msmt->curStepData.ApIndex;
     int radio_index = get_radio_index_for_vap_index(&(get_wifimgr_obj())->hal_cap.wifi_prop, index);
-#endif
     radio_stats = (radio_data_t *) malloc (sizeof(radio_data_t));
     if (get_dev_stats_for_radio(radio_index, radio_stats) != RETURN_OK) {
         wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: Error getting radio datas\n", __func__, __LINE__);
