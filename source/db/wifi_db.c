@@ -5153,7 +5153,7 @@ int wifidb_init_global_config_default(wifi_global_param_t *config)
     cfg.good_rssi_threshold = -65;
     cfg.assoc_count_threshold = 0;
     cfg.assoc_gate_time  = 0;
-    cfg.whix_log_interval = 900;
+    cfg.whix_log_interval = 3600;
     cfg.whix_chutility_loginterval = 900;
     cfg.assoc_monitor_duration = 0;
     cfg.rapid_reconnect_enable = true;
