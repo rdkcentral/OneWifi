@@ -3719,7 +3719,6 @@ pErr webconf_process_managed_subdoc(void* data)
         wifi_util_error_print(WIFI_CTRL, "%s: Failed to detach WifiVapConfig\n", __func__);
         return execRetVal;
     }
- 
     ret = connected_subdoc_handler(vap_blob, VAP_PREFIX_LNF_PSK, webconfig_subdoc_type_lnf, connected_wifi_enabled,  execRetVal);
     if (ret != RETURN_OK) {
         msgpack_zone_destroy(&msg_z);
@@ -3907,6 +3906,7 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
     // wifi_util_dbg_print(WIFI_CTRL, "%s, vap_blob arr sz: %d\n", __func__, cJSON_GetArraySize(vap_blob));
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
+    int status = RETURN_OK;
     cJSON *vb_entry = NULL;
     cJSON_ArrayForEach(vb_entry, vap_blob) {
         cJSON *nm_o = cJSON_GetObjectItem(vb_entry, "VapName");
@@ -4010,6 +4010,20 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
             wifi_util_info_print(WIFI_CTRL, "vapConnectionContro param is present in blob\n");
         }
 
+        /*
+        Correct integrity of interworking field in the VAP object is very important. Let's check it here to avoid
+        reporting code 300 (SUCCESS) for webconfig agent even if it's not correct.
+        */
+        cJSON *interworking_o = cJSON_GetObjectItem(vb_entry, "Interworking");
+        if(interworking_o == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s: Failed to get Interworking obj for %s\n", __func__, nm_s);
+            continue;
+        }
+
+        if ((status = early_validate_interworking(interworking_o,  execRetVal)) != RETURN_OK) {
+            break;
+        }
+
         if(strstr(nm_s, "hotspot_secure") == NULL) { continue; }
 
         cJSON *sec_o = cJSON_GetObjectItem(vb_entry, "Security");
@@ -4057,24 +4071,30 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
         cJSON_AddNumberToObject(rad_o, "ServerRetries", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.security.u.radius.server_retries);
     }
 
-    cJSON *n_blob = cJSON_CreateObject();
-    cJSON_AddItemToObject(n_blob, "Version", cJSON_CreateString("1.0"));
-    cJSON_AddItemToObject(n_blob, "SubDocName", cJSON_CreateString("xfinity"));
-    cJSON_AddItemToObject(n_blob, "WifiVapConfig", vap_blob);
+    if (status == RETURN_OK) {
+        cJSON *n_blob = cJSON_CreateObject();
+        cJSON_AddItemToObject(n_blob, "Version", cJSON_CreateString("1.0"));
+        cJSON_AddItemToObject(n_blob, "SubDocName", cJSON_CreateString("xfinity"));
+        cJSON_AddItemToObject(n_blob, "WifiVapConfig", vap_blob);
 
-    char *vap_blob_str = cJSON_Print(n_blob);
-    wifi_util_dbg_print(WIFI_CTRL,"WebConfig blob is %s\n",vap_blob_str);
-    // push blob to ctrl queue
-    push_event_to_ctrl_queue(vap_blob_str, strlen(vap_blob_str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_tunnel, NULL);
+        char *vap_blob_str = cJSON_Print(n_blob);
+        wifi_util_dbg_print(WIFI_CTRL,"WebConfig blob is %s\n",vap_blob_str);
+        // push blob to ctrl queue
+        push_event_to_ctrl_queue(vap_blob_str, strlen(vap_blob_str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_tunnel, NULL);
 
-    cJSON_free(vap_blob_str);
-    cJSON_Delete(n_blob);
+        cJSON_free(vap_blob_str);
+        cJSON_Delete(n_blob);
+        execRetVal->ErrorCode = BLOB_EXEC_SUCCESS;
+    }
+    else {
+        execRetVal->ErrorCode = VALIDATION_FALIED;
+        wifi_util_error_print(WIFI_CTRL, "%s(): Validation failed: %s\n", __FUNCTION__, execRetVal->ErrorMsg);
+    }
 
     free(blob_buf);
     msgpack_zone_destroy(&msg_z);
     free(msg);
 
-    execRetVal->ErrorCode = BLOB_EXEC_SUCCESS;
     return execRetVal;
 }
 

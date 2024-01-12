@@ -706,6 +706,101 @@ int validate_passpoint(const cJSON *passpoint, wifi_interworking_t *vap_info, pE
     return RETURN_OK;
 }
 
+static void validation_error_msg(const uint8_t group, const uint8_t type, pErr execRetVal)
+{
+    wifi_util_error_print(WIFI_PASSPOINT,"%s:%d: Validation failed for VenueGroup=%d and VenueType=%d\n",
+        __func__, __LINE__, group, type);
+    strncpy(execRetVal->ErrorMsg, "Invalid Venue Group and type combination", sizeof(execRetVal->ErrorMsg) - 1);
+}
+
+static int checkVenueParams(const uint8_t venueGroup, const uint8_t venueType, pErr execRetVal)
+{
+    if (venueType > 15) {
+        validation_error_msg(venueGroup, venueType, execRetVal);
+        return RETURN_ERR;
+    }
+
+    switch (venueGroup) {
+    case 0:
+       if (venueType > 0) {
+            validation_error_msg(venueGroup, venueType, execRetVal);
+            return RETURN_ERR;
+       }
+       break;
+    case 1:
+        if (venueType > 15) {
+            validation_error_msg(venueGroup, venueType, execRetVal);
+            return RETURN_ERR;
+        }
+        break;
+    case 2:
+        if (venueType > 9) {
+            validation_error_msg(venueGroup, venueType, execRetVal);
+            return RETURN_ERR;
+        }
+        break;
+    case 3:
+        if (venueType > 3) {
+            validation_error_msg(venueGroup, venueType, execRetVal);
+            return RETURN_ERR;
+        }
+        break;
+    case 4:
+        if (venueType > 1) {
+            validation_error_msg(venueGroup, venueType, execRetVal);
+            return RETURN_ERR;
+        }
+        break;
+    case 5:
+        if (venueType > 5) {
+            validation_error_msg(venueGroup, venueType, execRetVal);
+            return RETURN_ERR;
+        }
+        break;
+    case 6:
+        if (venueType > 5) {
+            validation_error_msg(venueGroup, venueType, execRetVal);
+            return RETURN_ERR;
+        }
+        break;
+    case 7:
+        if (venueType > 4) {
+            validation_error_msg(venueGroup, venueType, execRetVal);
+            return RETURN_ERR;
+        }
+        break;
+    case 8:
+        if (venueType > 0) {
+            validation_error_msg(venueGroup, venueType, execRetVal);
+            return RETURN_ERR;
+        }
+        break;
+    case 9:
+        if (venueType > 0) {
+            validation_error_msg(venueGroup, venueType, execRetVal);
+            return RETURN_ERR;
+        }
+        break;
+    case 10:
+        if (venueType > 7) {
+            validation_error_msg(venueGroup, venueType, execRetVal);
+            return RETURN_ERR;
+        }
+        break;
+    case 11:
+        if (venueType > 6) {
+            validation_error_msg(venueGroup, venueType, execRetVal);
+            return RETURN_ERR;
+        }
+        break;
+    default:
+        validation_error_msg(venueGroup, venueType, execRetVal);
+        return RETURN_ERR;
+    }
+
+    return RETURN_OK;
+}
+
 int validate_interworking(const cJSON *interworking, wifi_vap_info_t *vap_info, pErr execRetVal)
 {
     const cJSON *param, *venue;
@@ -756,120 +851,18 @@ int validate_interworking(const cJSON *interworking, wifi_vap_info_t *vap_info, 
     }
 
     validate_param_object(interworking, "Venue", venue);
-        
     validate_param_integer(venue, "VenueType", param);
-    vap_info->u.bss_info.interworking.interworking.venueType = param->valuedouble;
-    if (vap_info->u.bss_info.interworking.interworking.venueType > 15) {
-        wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Validation failed for VenueGroup\n", __func__, __LINE__);
-        strncpy(execRetVal->ErrorMsg, "Invalid Venue Group",sizeof(execRetVal->ErrorMsg)-1);
-	return RETURN_ERR;
-    } 
-	
+    uint8_t VenueType = param->valuedouble;
     validate_param_integer(venue, "VenueGroup", param);
-    vap_info->u.bss_info.interworking.interworking.venueGroup = param->valuedouble;
-    if (vap_info->u.bss_info.interworking.interworking.venueGroup > 11) {
-        wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Validation failed for VenueGroup\n", __func__, __LINE__);	
-        strncpy(execRetVal->ErrorMsg, "Invalid Venue Group",sizeof(execRetVal->ErrorMsg)-1);
-	return RETURN_ERR;
-    } 
+    uint8_t VenueGroup = param->valuedouble;
 
-    switch (vap_info->u.bss_info.interworking.interworking.venueGroup) {
-	case 0:
-	    if (vap_info->u.bss_info.interworking.interworking.venueType > 0) {
-        	wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Validation failed for VenueGroup and VenueType\n", __func__, __LINE__);	
-                strncpy(execRetVal->ErrorMsg, "Invalid Venue Group and type combination",sizeof(execRetVal->ErrorMsg)-1);
-		return RETURN_ERR;
-	    }
-	    break;
-		
-	case 1:
-	    if (vap_info->u.bss_info.interworking.interworking.venueType > 15) {
-        	wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Validation failed for VenueGroup and VenueType\n", __func__, __LINE__);	
-                strncpy(execRetVal->ErrorMsg, "Invalid Venue Group and type combination",sizeof(execRetVal->ErrorMsg)-1);
-		return RETURN_ERR;
-	    }
-	    break;
-		
-	case 2:
-	    if (vap_info->u.bss_info.interworking.interworking.venueType > 9) {
-        	wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Validation failed for VenueGroup and VenueType\n", __func__, __LINE__);
-                strncpy(execRetVal->ErrorMsg, "Invalid Venue Group and type combination",sizeof(execRetVal->ErrorMsg)-1);	
-		return RETURN_ERR;
-	    }
-	    break;
-		
-	case 3:
-	    if (vap_info->u.bss_info.interworking.interworking.venueType > 3) {
-        	wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Validation failed for VenueGroup and VenueType\n", __func__, __LINE__);
-                strncpy(execRetVal->ErrorMsg, "Invalid Venue Group and type combination",sizeof(execRetVal->ErrorMsg)-1);  	
-		return RETURN_ERR;
-	    }
-	    break;
-		
-	case 4:
-	    if (vap_info->u.bss_info.interworking.interworking.venueType > 1) {
-        	wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Validation failed for VenueGroup and VenueType\n", __func__, __LINE__);
-                strncpy(execRetVal->ErrorMsg, "Invalid Venue Group and type combination",sizeof(execRetVal->ErrorMsg)-1);	
-		return RETURN_ERR;
-	    }
-	    break;
-		
-	case 5:
-	    if (vap_info->u.bss_info.interworking.interworking.venueType > 5) {
-        	wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Validation failed for VenueGroup and VenueType\n", __func__, __LINE__);
-                strncpy(execRetVal->ErrorMsg, "Invalid Venue Group and type combination",sizeof(execRetVal->ErrorMsg)-1);	
-		return RETURN_ERR;
-	    }
-	    break;
-		
-	case 6:
-	    if (vap_info->u.bss_info.interworking.interworking.venueType > 5) {
-        	wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Validation failed for VenueGroup and VenueType\n", __func__, __LINE__);
-                strncpy(execRetVal->ErrorMsg, "Invalid Venue Group and type combination",sizeof(execRetVal->ErrorMsg)-1);	
-		return RETURN_ERR;
-	    }
-	    break;
-		
-	case 7:
-	    if (vap_info->u.bss_info.interworking.interworking.venueType > 4) {
-        	wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Validation failed for VenueGroup and VenueType\n", __func__, __LINE__);	
-                strncpy(execRetVal->ErrorMsg, "Invalid Venue Group and type combination",sizeof(execRetVal->ErrorMsg)-1);
-		return RETURN_ERR;
-	    }
-	    break;
-		
-	case 8:
-	    if (vap_info->u.bss_info.interworking.interworking.venueType > 0) {
-                wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Validation failed for VenueGroup and VenueType\n", __func__, __LINE__);
-                strncpy(execRetVal->ErrorMsg, "Invalid Venue Group and type combination",sizeof(execRetVal->ErrorMsg)-1);
-		return RETURN_ERR;
-	    }
-	    break;
-		
-	case 9:
-	    if (vap_info->u.bss_info.interworking.interworking.venueType > 0) {
-        	wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Validation failed for VenueGroup and VenueType\n", __func__, __LINE__);
-                strncpy(execRetVal->ErrorMsg, "Invalid Venue Group and type combination",sizeof(execRetVal->ErrorMsg)-1);	
-		return RETURN_ERR;
-            }
-	    break;
-		
-	case 10:
-	    if (vap_info->u.bss_info.interworking.interworking.venueType > 7) {
-        	wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Validation failed for VenueGroup and VenueType\n", __func__, __LINE__);
-                strncpy(execRetVal->ErrorMsg, "Invalid Venue Group and type combination",sizeof(execRetVal->ErrorMsg)-1);	
-		return RETURN_ERR;
-	    }
-	    break;
-		
-	case 11:
-	    if (vap_info->u.bss_info.interworking.interworking.venueType > 6) {
-        	wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Validation failed for VenueGroup and VenueType\n", __func__, __LINE__);
-                strncpy(execRetVal->ErrorMsg, "Invalid Venue Group and type combination",sizeof(execRetVal->ErrorMsg)-1);	
-		return RETURN_ERR;
-	    }
-	    break;
+    if (checkVenueParams(VenueGroup, VenueType, execRetVal) != RETURN_OK)
+    {
+        return RETURN_ERR;
     }
+
+    vap_info->u.bss_info.interworking.interworking.venueGroup = VenueGroup;
+    vap_info->u.bss_info.interworking.interworking.venueType = VenueType;
 
     validate_param_object(interworking, "ANQP",anqp);
 
@@ -894,6 +887,55 @@ int validate_interworking(const cJSON *interworking, wifi_vap_info_t *vap_info, 
         cJSON_PrintPreallocated(hs2String, (char *)&vap_info->u.bss_info.interworking.passpoint.hs2Parameters, sizeof(vap_info->u.bss_info.interworking.passpoint.hs2Parameters),false);
         cJSON_Delete(hs2String);
     }
+
+    return RETURN_OK;
+}
+
+int early_validate_interworking(const cJSON *interworking, pErr execRetVal)
+{
+    const cJSON *param, *venue;
+    const cJSON *passpoint, *anqp;
+
+    if(!interworking || !execRetVal){
+        wifi_util_dbg_print(WIFI_PASSPOINT,"Interworking entry is NULL\n");
+        return RETURN_ERR;
+    }
+
+    validate_param_bool(interworking, "InterworkingEnable", param);
+    validate_param_integer(interworking, "AccessNetworkType", param);
+    if (param->valuedouble > 5) {
+        wifi_util_error_print(WIFI_PASSPOINT,"%s:%d: Validation failed for AccessNetworkType=%d\n",
+            __func__, __LINE__, param->valuedouble);
+        strncpy(execRetVal->ErrorMsg, "Invalid Access Network type",sizeof(execRetVal->ErrorMsg)-1);
+        return RETURN_ERR;
+    }
+
+    validate_param_bool(interworking, "Internet", param);
+    validate_param_bool(interworking, "ASRA", param);
+    validate_param_bool(interworking, "ESR", param);
+    validate_param_bool(interworking, "UESA", param);
+    validate_param_bool(interworking, "HESSOptionPresent", param);
+    validate_param_string(interworking, "HESSID", param);
+    if (WiFi_IsValidMacAddr(param->valuestring) != TRUE) {
+        wifi_util_error_print(WIFI_PASSPOINT,"%s:%d: Validation failed for HESSID=%s\n",
+            __func__, __LINE__, param->valuestring);
+        strncpy(execRetVal->ErrorMsg, "Invalid HESSID",sizeof(execRetVal->ErrorMsg)-1);
+        return RETURN_ERR;
+    }
+
+    validate_param_object(interworking, "Venue", venue);
+    validate_param_integer(venue, "VenueType", param);
+    uint8_t venueType = param->valuedouble;
+    validate_param_integer(venue, "VenueGroup", param);
+    uint8_t venueGroup = param->valuedouble;
+
+    if (checkVenueParams(venueGroup, venueType, execRetVal) != RETURN_OK)
+    {
+        return RETURN_ERR;
+    }
+
+    validate_param_object(interworking, "ANQP",anqp);
+    validate_param_object(interworking, "Passpoint",passpoint);
 
     return RETURN_OK;
 }
