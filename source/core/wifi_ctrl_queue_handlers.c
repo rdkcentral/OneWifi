@@ -339,6 +339,11 @@ void process_anqp_gas_init_frame_event(frame_data_t *msg, uint32_t msg_length)
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d interworking data or passpoint is not enabled for vap_indx: %d\n", __func__,__LINE__, msg->frame.ap_index);
         return;
     }
+    rdk_wifi_vap_info_t *rdk_vap_info = getRdkVapInfo(msg->frame.ap_index);
+    if (rdk_vap_info == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d failed to get rdk vap info for index %d\n", __func__, __LINE__, msg->frame.ap_index);
+        return;
+    }
 
     // convert frame_data_t buf to wifi_anqp_head_t elements
 
@@ -363,6 +368,9 @@ void process_anqp_gas_init_frame_event(frame_data_t *msg, uint32_t msg_length)
             free(anqpList->value->data);
             anqpList->value->data = NULL;
         }
+        // Update ANQP Request count
+        rdk_vap_info->anqp_request_count++;
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: ANQP Request Count for VAP %d is = %d \n", __func__,__LINE__, msg->frame.ap_index+1, rdk_vap_info->anqp_request_count);
         if(anqpList->value->type == wifi_anqp_id_type_anqp){
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Received ANQP Request\n", __func__, __LINE__);
             switch (anqpList->value->u.anqp_elem_id){
@@ -660,8 +668,13 @@ void process_anqp_gas_init_frame_event(frame_data_t *msg, uint32_t msg_length)
     }
 
     //TODO: Update Gas Stats
-    if(wifi_anqpSendResponse(msg->frame.ap_index, msg->frame.sta_mac, msg->frame.token, anqpList_head) != RETURN_OK) {
-        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Failed to send ANQP Response\n", __func__, __LINE__);
+    //Update ANQP Response count
+    int rc = wifi_anqpSendResponse(msg->frame.ap_index, msg->frame.sta_mac, msg->frame.token, anqpList_head);
+    if (rc != RETURN_OK) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Failed to send ANQP Response\n", __func__, __LINE__);
+    } else if (rc == 0) {
+        rdk_vap_info->anqp_response_count++;
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: ANQP Response Count for VAP %d is = %d \n", __func__,__LINE__, msg->frame.ap_index+1, rdk_vap_info->anqp_response_count);
     }
 }
 #endif // DML_SUPPORT

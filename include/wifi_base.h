@@ -541,6 +541,8 @@ typedef struct {
     bool                    kick_device_config_change;
     bool                    is_mac_filter_initialized;
     bool                    exists;
+    int                     anqp_request_count;
+    int                     anqp_response_count;
 } rdk_wifi_vap_info_t;
 
 typedef struct {

@@ -432,6 +432,49 @@ static void  upload_client_debug_stats_transmit_power_stats(INT apIndex)
     }
 }
 
+static void upload_ap_telemetry_anqp_whix (unsigned int vap_index)
+{
+    char tmp[128] = {0};
+    char buff[128] = {0};
+    CHAR eventName[128] = {0};
+    wifi_vap_info_t *vap_info = getVapInfo(vap_index);
+    rdk_wifi_vap_info_t *rdk_vap_info = getRdkVapInfo(vap_index);
+    bool public_xfinity_vap_status = false;
+    int anqp_request = 0;
+    int anqp_response = 0;
+    unsigned int radioIndex = getRadioIndexFromAp(vap_index);
+    bool status = false;
+
+    if ((rdk_vap_info != NULL) && (vap_info != NULL)) {
+        wifi_radio_operationParam_t* radioOperation = getRadioOperationParam(radioIndex);
+        public_xfinity_vap_status = get_wifi_public_vap_enable_status();
+        status = vap_info->u.bss_info.enabled;
+        anqp_request = rdk_vap_info->anqp_request_count;
+        anqp_response = rdk_vap_info->anqp_response_count;
+        if ((public_xfinity_vap_status) && (isVapHotspotSecure(vap_index)) &&
+            (radioOperation->band != WIFI_FREQUENCY_2_4_BAND) && (status == TRUE)) {
+            get_formatted_time(tmp);
+            snprintf(buff, sizeof(buff), "%s XWIFI_ANQP_REQ_%d_split:%d\n", tmp, vap_index+1, anqp_request);
+            write_to_file(wifi_health_log, buff);
+            wifi_util_dbg_print(WIFI_MON, "%s", buff);
+            snprintf(eventName, sizeof(eventName), "XWIFI_ANQP_REQ_%d_split", vap_index+1);
+            t2_event_d(eventName, anqp_request);
+            memset(buff, 0, sizeof(buff));
+            memset(tmp, 0, sizeof(tmp));
+            memset(eventName, 0, sizeof(eventName));
+            get_formatted_time(tmp);
+            snprintf(buff, sizeof(buff), "%s XWIFI_ANQP_RSP_%d_split:%d\n", tmp, vap_index+1, anqp_response);
+            write_to_file(wifi_health_log, buff);
+            wifi_util_dbg_print(WIFI_MON, "%s", buff);
+            snprintf(eventName, sizeof(eventName), "XWIFI_ANQP_RSP_%d_split", vap_index+1);
+            t2_event_d(eventName, anqp_response);
+        }
+        //reset counter per telemetry report
+        rdk_vap_info->anqp_request_count = 0;
+        rdk_vap_info->anqp_response_count = 0;
+    }
+}
+
 static void upload_client_debug_stats_acs_stats(INT apIndex)
 {
     BOOL enable = false;
@@ -1672,7 +1715,9 @@ void update_clientdiagdata(unsigned int num_devs, int vap_idx, sta_data_t *assoc
 
     //check call
     upload_client_debug_stats_whix(vap_idx);
-
+    if (isVapHotspotSecure(vap_idx)) {
+        upload_ap_telemetry_anqp_whix (vap_idx);
+    }
     upload_client_telemetry_data(vap_idx);
     if (vap_idx == 0) {
        logVAPUpStatus();
