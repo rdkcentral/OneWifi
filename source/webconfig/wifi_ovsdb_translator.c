@@ -1865,7 +1865,7 @@ static webconfig_error_t translate_vap_info_to_ovsdb_sec(wifi_vap_info_t *vap,
         return webconfig_error_none;
     }
 
-    if (translate_ovsdb_to_vap_info_radius_settings(vap_row, vap) != webconfig_error_none) {
+    if (translate_vap_info_to_ovsdb_radius_settings(vap, vap_row) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to translate radius settings\n",
             __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
