@@ -1205,24 +1205,24 @@ instant_measurement_config_t* get_dml_harvester(void)
 
 int push_harvester_dml_cache_to_one_wifidb()
 {
-    webconfig_subdoc_data_t data;
-    char *str = NULL;
-    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-    memcpy((unsigned char *)&data.u.decoded.harvester, (unsigned char *)&webconfig_dml.harvester, sizeof(instant_measurement_config_t));
-    memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap, sizeof(wifi_hal_capability_t));
-
-    if (webconfig_encode(&webconfig_dml.webconfig, &data, webconfig_subdoc_type_harvester) == webconfig_error_none) {
-        str = data.u.encoded.raw;
-        wifi_util_info_print(WIFI_DMCLI, "%s:  Harvester DML cache encoded successfully  \n", __FUNCTION__);
-        push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_dml, NULL);
-    } else {
-        wifi_util_error_print(WIFI_DMCLI, "%s:%d: Webconfig set failed, update data from ctrl queue\n", __func__, __LINE__);
-        request_for_dml_data_resync();
-    }
-    wifi_util_info_print(WIFI_DMCLI, "%s:  Harvester DML cache pushed to queue \n", __FUNCTION__);
-
-    //Rest to default value since instant measurement enable is triggered successfully
     if(webconfig_dml.harvester.b_inst_client_enabled == true){
+        webconfig_subdoc_data_t data;
+        char *str = NULL;
+        memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+        memcpy((unsigned char *)&data.u.decoded.harvester, (unsigned char *)&webconfig_dml.harvester, sizeof(instant_measurement_config_t));
+        memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap, sizeof(wifi_hal_capability_t));
+
+        if (webconfig_encode(&webconfig_dml.webconfig, &data, webconfig_subdoc_type_harvester) == webconfig_error_none) {
+            str = data.u.encoded.raw;
+            wifi_util_info_print(WIFI_DMCLI, "%s:  Harvester DML cache encoded successfully  \n", __FUNCTION__);
+            push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_dml, NULL);
+        } else {
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d: Webconfig set failed, update data from ctrl queue\n", __func__, __LINE__);
+            request_for_dml_data_resync();
+        }
+        wifi_util_info_print(WIFI_DMCLI, "%s:  Harvester DML cache pushed to queue \n", __FUNCTION__);
+
+        //Rest to default value since instant measurement enable is triggered successfully
         webconfig_dml.harvester.b_inst_client_enabled = webconfig_dml.config.global_parameters.inst_wifi_client_enabled;
         webconfig_dml.harvester.u_inst_client_reporting_period = webconfig_dml.config.global_parameters.inst_wifi_client_reporting_period;
         webconfig_dml.harvester.u_inst_client_def_reporting_period = webconfig_dml.config.global_parameters.inst_wifi_client_def_reporting_period;
@@ -1231,10 +1231,9 @@ int push_harvester_dml_cache_to_one_wifidb()
                 webconfig_dml.config.global_parameters.inst_wifi_client_mac[0], webconfig_dml.config.global_parameters.inst_wifi_client_mac[1], 
                 webconfig_dml.config.global_parameters.inst_wifi_client_mac[2], webconfig_dml.config.global_parameters.inst_wifi_client_mac[3], 
                 webconfig_dml.config.global_parameters.inst_wifi_client_mac[4], webconfig_dml.config.global_parameters.inst_wifi_client_mac[5]);
+
+        webconfig_data_free(&data);
     }
-
-    webconfig_data_free(&data);
-
     return RETURN_OK;
 }
 

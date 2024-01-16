@@ -139,6 +139,7 @@ static void config_process_instant_msmt_monitor(wifi_monitor_data_t *data)
     wifi_event_route_t route;
     wifi_util_error_print(WIFI_HARVESTER, "Entering %s\n", __func__);
     harvester_route(&route);
+    data->u.mon_stats_config.args.vap_index = g_harvester_module.inst_msmt.ap_index;
     data->u.mon_stats_config.data_type = mon_stats_type_associated_device_stats;
     data->u.mon_stats_config.interval_ms = (g_harvester_module.instantPollPeriod * 1000);
     wifi_util_dbg_print(WIFI_HARVESTER, "%s:%d Interval is %lu\n", __func__, __LINE__, data->u.mon_stats_config.interval_ms);
