@@ -2526,7 +2526,7 @@ int get_neighbor_scan_results(void *arg)
 
     data->u.mon_stats_config.req_state = mon_stats_request_state_stop;
     //request from core thread
-    data->u.mon_stats_config.inst = 0;
+    data->u.mon_stats_config.inst = wifi_app_inst_core;
     //dummy value since it will be cancelled after first result
     data->u.mon_stats_config.interval_ms = 60*60*1000;
     data->u.mon_stats_config.data_type = mon_stats_type_neighbor_stats;
@@ -2577,7 +2577,7 @@ void process_neighbor_scan_command_event()
     memset(data, 0, sizeof(wifi_monitor_data_t));
     data->u.mon_stats_config.req_state = mon_stats_request_state_start;
     //request from core thread
-    data->u.mon_stats_config.inst = 0;
+    data->u.mon_stats_config.inst = wifi_app_inst_core;
     //dummy value since it will be cancelled after first result
     data->u.mon_stats_config.interval_ms = 60*60*1000;
     data->u.mon_stats_config.data_type = mon_stats_type_neighbor_stats;
@@ -2680,6 +2680,51 @@ static void process_eth_bh_status_command(bool eth_bh_status)
     }
 
     ctrl->webconfig_state |= ctrl_webconfig_state_vap_mesh_sta_cfg_rsp_pending;
+}
+
+
+#define ASSOCIATED_DEVICE_DIAG_INTERVAL_MS 5000 // 5 seconds
+
+static void process_monitor_init_command(void)
+{
+    //request client diagnostic collection every 5 seconds
+    //required by rapid reconnect detection
+#if CCSP_COMMON
+    wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
+    unsigned int radio_index;
+    unsigned int vapArrayIndex = 0;
+    wifi_event_route_t route;
+
+    wifi_monitor_data_t *data = (wifi_monitor_data_t *) malloc(sizeof(wifi_monitor_data_t));
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d data allocation failed. Error: Could not start client diag stats\r\n", __func__, __LINE__);
+        return;
+    }
+    memset(data, 0, sizeof(wifi_monitor_data_t));
+    data->u.mon_stats_config.req_state = mon_stats_request_state_start;
+    //request from core thread
+    data->u.mon_stats_config.inst = wifi_app_inst_core;
+    data->u.mon_stats_config.interval_ms = ASSOCIATED_DEVICE_DIAG_INTERVAL_MS;
+    data->u.mon_stats_config.data_type = mon_stats_type_associated_device_stats;
+    data->u.mon_stats_config.args.app_info = 0;
+    data->u.mon_stats_config.start_immediately = false;
+    
+    memset(&route, 0, sizeof(wifi_event_route_t));
+    route.dst = wifi_sub_component_mon;
+    route.u.inst_bit_map = 0;
+
+    for (radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
+        //for each vap push the event to monitor queue
+        for (vapArrayIndex = 0; vapArrayIndex < getNumberVAPsPerRadio(radio_index); vapArrayIndex++) {
+            data->u.mon_stats_config.args.vap_index = wifi_mgr->radio_config[radio_index].vaps.rdk_vap_array[vapArrayIndex].vap_index;
+            if (!isVapSTAMesh(data->u.mon_stats_config.args.vap_index)) {
+                wifi_util_dbg_print(WIFI_CTRL, "%s:%d pushing the event to collect client diag on vap %d\n", __func__, __LINE__, data->u.mon_stats_config.args.vap_index);    
+                push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
+            }
+        }
+    }
+    free(data);
+#endif
 }
 
 void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len, wifi_event_subtype_t subtype)
@@ -2798,7 +2843,20 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len, wifi_
         case wifi_event_type_eth_bh_status:
             process_eth_bh_status_command(*(bool *)data);
             break;
-
+        case wifi_event_type_notify_monitor_done:
+            process_monitor_init_command();
+            break;
+        case wifi_event_type_mgmt_frame_rbus_rfc:
+        case wifi_event_type_sta_connect_in_progress:
+        case wifi_event_type_udhcp_ip_fail:
+        case wifi_event_type_trigger_disconnection_analytics:
+        case wifi_event_type_new_bssid:
+        case wifi_event_type_xfinity_enable:
+        case wifi_event_type_start_inst_msmt:
+        case wifi_event_type_stop_inst_msmt:
+        case wifi_event_type_xfinity_rrm:
+            //not handle here
+            break;
         default:
             wifi_util_error_print(WIFI_CTRL,"[%s]:WIFI hal handler not supported this event %d\r\n",__FUNCTION__, subtype);
             break;

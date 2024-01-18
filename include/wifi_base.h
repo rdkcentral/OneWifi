@@ -109,7 +109,8 @@ typedef enum {
     wifi_app_inst_motion = wifi_app_inst_base << 11,
     wifi_app_inst_csi = wifi_app_inst_base << 12,
     wifi_app_inst_whix = wifi_app_inst_base << 13,
-    wifi_app_inst_max = wifi_app_inst_base << 14
+    wifi_app_inst_core = wifi_app_inst_base << 14,
+    wifi_app_inst_max = wifi_app_inst_base << 15
 } wifi_app_inst_t;
 
 typedef struct {

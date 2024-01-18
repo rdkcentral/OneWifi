@@ -115,17 +115,17 @@ static events_monitor_t g_events_monitor;
 int harvester_get_associated_device_info(int vap_index, char **harvester_buf);
 
 extern void* bus_handle;
-extern char g_Subsystem[32];
-#define SINGLE_CLIENT_WIFI_AVRO_FILENAME "WifiSingleClient.avsc"
-#define DEFAULT_INSTANT_REPORT_TIME 0
+//extern char g_Subsystem[32];
+//#define SINGLE_CLIENT_WIFI_AVRO_FILENAME "WifiSingleClient.avsc"
+//#define DEFAULT_INSTANT_REPORT_TIME 0
 
 #define DEFAULT_CHANUTIL_LOG_INTERVAL 900
 #define REFRESH_TASK_INTERVAL_MS 5*60*1000 //5 minutes
-#define ASSOCIATED_DEVICE_DIAG_INTERVAL_MS 5000 // 5 seconds
+//#define ASSOCIATED_DEVICE_DIAG_INTERVAL_MS 5000 // 5 seconds
 #define CAPTURE_VAP_STATUS_INTERVAL_MS 5000 // 5 seconds
-#define UPLOAD_AP_TELEMETRY_INTERVAL_MS 24*60*60*1000 // 24 Hours
+//#define UPLOAD_AP_TELEMETRY_INTERVAL_MS 24*60*60*1000 // 24 Hours
 
-#define NEIGHBOR_SCAN_RESULT_INTERVAL 5000 //5 seconds
+//#define NEIGHBOR_SCAN_RESULT_INTERVAL 5000 //5 seconds
 #define Min_LogInterval 300 //5 minutes
 #define Max_LogInterval 3600 //60 minutes
 #define Min_Chan_Util_LogInterval 5 //5 seconds
