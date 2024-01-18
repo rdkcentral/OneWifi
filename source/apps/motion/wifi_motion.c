@@ -1577,6 +1577,7 @@ int process_speed_test_timeout_motion()
     write_to_file(wifi_log,  "IMP_WiFi_SubscriberUnPauseTimeOut\n");
     t2_event_d("IMP_WiFi_SubscriberUnPauseTimeOut", 1);
     if (app->data.u.motion.paused) {
+        wifi_util_info_print(WIFI_APPS, "%s:%d Start motion on timeout\n", __func__, __LINE__);
         process_csi_start_motion(app);
     }
     app->data.u.motion.paused = false;
@@ -1591,6 +1592,9 @@ int motion_event_speed_test(wifi_app_t *app, wifi_event_subtype_t sub_type, void
         wifi_util_dbg_print(WIFI_APPS, "%s:%d NULL Pointer \n", __func__, __LINE__);
         return -1;
     }
+
+    wifi_util_info_print(WIFI_APPS, "%s:%d Speed test event: %d\n", __func__, __LINE__,
+        speed_test_data->speed_test_running);
 
     if (speed_test_data->speed_test_running == 1) {
         app->data.u.motion.paused = true;

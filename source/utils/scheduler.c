@@ -239,13 +239,17 @@ int scheduler_update_timer_task_interval(struct scheduler *sched, int id, unsign
             new_timer.tv_sec = (interval_ms / 1000);
             new_timer.tv_nsec = ((interval_ms % 1000) * 1000 * 1000);
             if(timespeccmp(&new_timer, &(tt->interval), >)) {
-                timespecsub(&new_timer, &(tt->interval), &res);
-                timespecadd(&(tt->timeout), &res, &(tt->timeout));
+                if (timespecisset(&tt->timeout)) {
+                    timespecsub(&new_timer, &(tt->interval), &res);
+                    timespecadd(&(tt->timeout), &res, &(tt->timeout));
+                }
                 tt->interval.tv_sec = (interval_ms / 1000);
                 tt->interval.tv_nsec = ((interval_ms % 1000) * 1000 * 100);
             } else if (timespeccmp(&new_timer, &(tt->interval), <)) {
-                timespecsub(&(tt->interval), &new_timer, &res);
-                timespecsub(&(tt->timeout), &res, &(tt->timeout));
+                if (timespecisset(&tt->timeout)) {
+                    timespecsub(&(tt->interval), &new_timer, &res);
+                    timespecsub(&(tt->timeout), &res, &(tt->timeout));
+                }
                 tt->interval.tv_sec = (interval_ms / 1000);
                 tt->interval.tv_nsec = ((interval_ms % 1000) * 1000 * 1000);
             }
@@ -259,13 +263,17 @@ int scheduler_update_timer_task_interval(struct scheduler *sched, int id, unsign
             new_timer.tv_sec = (interval_ms / 1000);
             new_timer.tv_nsec = ((interval_ms % 1000) * 1000 * 1000);
             if(timespeccmp(&new_timer, &(tt->interval), >)) {
-                timespecsub(&new_timer, &(tt->interval), &res);
-                timespecadd(&(tt->timeout), &res, &(tt->timeout));
+                if (timespecisset(&tt->timeout)) {
+                    timespecsub(&new_timer, &(tt->interval), &res);
+                    timespecadd(&(tt->timeout), &res, &(tt->timeout));
+                }
                 tt->interval.tv_sec = (interval_ms / 1000);
                 tt->interval.tv_nsec = ((interval_ms % 1000) * 1000 * 1000);
             } else if (timespeccmp(&new_timer, &(tt->interval), <)) {
-                timespecsub(&(tt->interval), &new_timer, &res);
-                timespecsub(&(tt->timeout), &res, &(tt->timeout));
+                if (timespecisset(&tt->timeout)) {
+                    timespecsub(&(tt->interval), &new_timer, &res);
+                    timespecsub(&(tt->timeout), &res, &(tt->timeout));
+                }
                 tt->interval.tv_sec = (interval_ms / 1000);
                 tt->interval.tv_nsec = ((interval_ms % 1000) * 1000 * 1000);
             }
