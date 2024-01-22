@@ -129,18 +129,6 @@ static void survery_result_extra_calc(survey_type_t survey_type, dpp_survey_reco
 {
     uint32_t chan_sum = result->chan_rx + result->chan_tx;
 
-#if defined(_HUB4_PRODUCT_REQ_) || defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_SR213_PRODUCT_REQ_)
-    if (result->chan_busy <= 100 && (100 - result->chan_busy) >= chan_sum) {
-        result->chan_busy = 100 - result->chan_busy;
-    }
-    else {
-        if (chan_sum <= 100)
-            result->chan_busy = chan_sum;
-        else
-            result->chan_busy = 100;
-    }
-#endif
-
     if (chan_sum > result->chan_busy) {
         if (result->chan_tx > result->chan_busy) {
             result->chan_tx = result->chan_busy;
