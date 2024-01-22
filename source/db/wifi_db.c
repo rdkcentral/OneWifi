@@ -2188,6 +2188,7 @@ int wifidb_get_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
     int vap_index = 0;
     int radio_index = 0;
     int band = 0;
+    int def_mode = 0;
     wifi_db_t *g_wifidb;
     g_wifidb = (wifi_db_t*) get_wifidb_obj();
 
@@ -2220,7 +2221,8 @@ int wifidb_get_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
     }
     
     wifi_util_dbg_print(WIFI_DB,"%s:%d: Get Wifi_Security_Config table Sec_mode=%d enc_mode=%d r_ser_ip=%s r_ser_port=%d rs_ser_ip=%s rs_ser_ip sec_rad_ser_port=%d mfg=%s cfg_key_type=%d vap_name=%s rekey_interval = %d strict_rekey  = %d eapol_key_timeout  = %d eapol_key_retries  = %d eap_identity_req_timeout  = %d eap_identity_req_retries  = %d eap_req_timeout = %d eap_req_retries = %d disable_pmksa_caching = %d max_auth_attempts=%d blacklist_table_timeout=%d identity_req_retry_interval=%d server_retries=%d das_ip = %s das_port=%d wpa3_transition_disable=%d\n",__func__, __LINE__,pcfg->security_mode,pcfg->encryption_method,pcfg->radius_server_ip,pcfg->radius_server_port,pcfg->secondary_radius_server_ip,pcfg->secondary_radius_server_port,pcfg->mfp_config,pcfg->key_type,pcfg->vap_name,pcfg->rekey_interval,pcfg->strict_rekey,pcfg->eapol_key_timeout,pcfg->eapol_key_retries,pcfg->eap_identity_req_timeout,pcfg->eap_identity_req_retries,pcfg->eap_req_timeout,pcfg->eap_req_retries,pcfg->disable_pmksa_caching,pcfg->max_auth_attempts,pcfg->blacklist_table_timeout,pcfg->identity_req_retry_interval,pcfg->server_retries,pcfg->das_ip,pcfg->das_port,pcfg->wpa3_transition_disable);
-    
+
+    def_mode = sec->mode;
     if ((band == WIFI_FREQUENCY_6_BAND)  && (pcfg->security_mode != wifi_security_mode_wpa3_personal && \
       pcfg->security_mode != wifi_security_mode_wpa3_enterprise &&  pcfg->security_mode != wifi_security_mode_enhanced_open)) {
         sec->mode = wifi_security_mode_wpa3_personal;
@@ -2262,35 +2264,39 @@ int wifidb_get_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
         }
     }
     else {
-        if ((strlen(pcfg->radius_server_ip) != 0) && (strncmp(pcfg->radius_server_ip, INVALID_IP_STRING, (strlen(INVALID_IP_STRING))) != 0)) {
+        if (((strlen(pcfg->radius_server_ip) != 0) && (strncmp(pcfg->radius_server_ip, INVALID_IP_STRING, (strlen(INVALID_IP_STRING))) != 0)) ||
+            !security_mode_support_radius(def_mode)) {
             strncpy((char *)sec->u.radius.ip,pcfg->radius_server_ip,sizeof(sec->u.radius.ip)-1);
         } else {
             wifi_util_error_print(WIFI_DB, "%s:%d [%s]Invalid radius_server_ip Db value:%s default value:%s\n", __func__, __LINE__, vap_name, pcfg->radius_server_ip, sec->u.radius.ip);
         }
-        if (pcfg->radius_server_port != 0) {
+        if (pcfg->radius_server_port != 0 || !security_mode_support_radius(def_mode)) {
             sec->u.radius.port = pcfg->radius_server_port;
         } else {
             wifi_util_error_print(WIFI_DB, "%s:%d [%s]Invalid radius_server_port Db value:%d default value:%d\n", __func__, __LINE__, vap_name, pcfg->radius_server_port, sec->u.radius.port);
         }
-        if ((strlen(pcfg->radius_server_key) != 0) && ((strncmp(pcfg->radius_server_key, INVALID_KEY, (strlen(INVALID_KEY))) != 0) ||
-                (strncmp(pcfg->radius_server_key, "1234", (strlen("1234"))) != 0))) {
+        if (((strlen(pcfg->radius_server_key) != 0) && ((strncmp(pcfg->radius_server_key, INVALID_KEY, (strlen(INVALID_KEY))) != 0) ||
+            (strncmp(pcfg->radius_server_key, "1234", (strlen("1234"))) != 0))) ||
+            !security_mode_support_radius(def_mode)) {
             strncpy(sec->u.radius.key,pcfg->radius_server_key,sizeof(sec->u.radius.key)-1);
         } else {
             wifi_util_error_print(WIFI_DB, "%s:%d [%s]Invalid radius_server_key, used default key\n", __func__, __LINE__, vap_name);
         }
 
-        if ((strlen(pcfg->secondary_radius_server_ip) != 0) && (strncmp(pcfg->secondary_radius_server_ip, INVALID_IP_STRING, (strlen(INVALID_IP_STRING))) != 0)) {
+        if (((strlen(pcfg->secondary_radius_server_ip) != 0) && (strncmp(pcfg->secondary_radius_server_ip, INVALID_IP_STRING, (strlen(INVALID_IP_STRING))) != 0)) ||
+            !security_mode_support_radius(def_mode)) {
             strncpy((char *)sec->u.radius.s_ip,pcfg->secondary_radius_server_ip,sizeof(sec->u.radius.s_ip)-1);
         } else {
             wifi_util_error_print(WIFI_DB, "%s:%d [%s]Invalid secondary_radius_server_ip Db value:%s default value:%s\n", __func__, __LINE__, vap_name, pcfg->secondary_radius_server_ip, sec->u.radius.s_ip);
         }
-        if (pcfg->secondary_radius_server_port != 0) {
+        if (pcfg->secondary_radius_server_port != 0 || !security_mode_support_radius(def_mode)) {
             sec->u.radius.s_port = pcfg->secondary_radius_server_port;
         } else {
             wifi_util_error_print(WIFI_DB, "%s:%d [%s]Invalid S_radius_server_port Db value:%d default value:%d\n", __func__, __LINE__, vap_name, pcfg->secondary_radius_server_port, sec->u.radius.s_port);
         }
-        if ((strlen(pcfg->secondary_radius_server_key) != 0) && ((strncmp(pcfg->secondary_radius_server_key, INVALID_KEY, (strlen(INVALID_KEY))) != 0) ||
-                (strncmp(pcfg->secondary_radius_server_key, "1234", (strlen("1234"))) != 0))) {
+        if (((strlen(pcfg->secondary_radius_server_key) != 0) && ((strncmp(pcfg->secondary_radius_server_key, INVALID_KEY, (strlen(INVALID_KEY))) != 0) ||
+            (strncmp(pcfg->secondary_radius_server_key, "1234", (strlen("1234"))) != 0))) ||
+            !security_mode_support_radius(def_mode)) {
             strncpy(sec->u.radius.s_key,pcfg->secondary_radius_server_key,sizeof(sec->u.radius.s_key)-1);
         } else {
             wifi_util_error_print(WIFI_DB, "%s:%d [%s]Invalid secondary_radius_server_key, used default key\n", __func__, __LINE__, vap_name);
