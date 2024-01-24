@@ -35,13 +35,15 @@ int  sm_report_config_task(wifi_app_t *app, wifi_mon_stats_request_state_t state
 int  sm_report_deinit(wifi_app_t *app);
 int  sm_report_init(wifi_app_t *app);
 int  sm_report_send_to_qm_cb(void *args);
+int survey_report_counter_publish_cb(void *args);
 
 /* CLIENT */
 int  sm_client_report_push_to_dpp(sm_client_cache_t *cache, wifi_freq_bands_t freq_band, unsigned int channel);
 
 /* SURVEY */
 int  sm_survey_report_push_to_dpp(sm_survey_cache_t *cache, wifi_freq_bands_t freq_band,
-                                  survey_type_t survey_type, reporting_type_t report_type);
+                                  survey_type_t survey_type, reporting_type_t report_type,
+                                  unsigned int *report_counter);
 
 /* NEIGHBOR */
 int  sm_neighbor_report_push_to_dpp(sm_neighbor_cache_t *cache, wifi_freq_bands_t freq_band,

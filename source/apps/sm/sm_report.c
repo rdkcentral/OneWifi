@@ -25,6 +25,7 @@
 #include <qm_conn.h>
 
 #define SM_TO_QM_SEND_INTERVAL_SEC (5)
+#define SM_SURVEY_REPORT_COUNTER_INTERVAL_SEC (24 * 60 * 60)
 
 typedef struct {
     stats_cfg_id_t  stats_cfg_id;
@@ -36,6 +37,7 @@ sm_survey_cache_t    sm_survey_report_cache[MAX_NUM_RADIOS];
 sm_neighbor_cache_t  sm_neighbor_report_cache[MAX_NUM_RADIOS];
 
 int send_qm_task_id = -1;
+int reports_counter_task_id = -1;
 
 
 static bool sm_mqtt_publish(long mlen, void *mbuf)
@@ -76,6 +78,7 @@ static int report_push_to_dpp_cb(void *args)
 {
     int rc = RETURN_OK;
     int radio_index = 0;
+    unsigned int *report_counter;
     sm_report_callback_arg_t *task_args = (sm_report_callback_arg_t *)args;
     wifi_radio_operationParam_t *radio_oper_param = NULL;
     stats_config_t *config = NULL;
@@ -121,7 +124,14 @@ static int report_push_to_dpp_cb(void *args)
             rc = sm_client_report_push_to_dpp(&sm_client_report_cache[radio_index], config->radio_type, radio_oper_param->channel);
             break;
         case stats_type_survey:
-            rc = sm_survey_report_push_to_dpp(&sm_survey_report_cache[radio_index], config->radio_type, config->survey_type, config->report_type);
+            if (config->survey_type == survey_type_off_channel) {
+                report_counter = &(task_args->app->data.u.sm_data.off_chan_report_counter[radio_index]);
+            }
+            else {
+                report_counter = &(task_args->app->data.u.sm_data.on_chan_report_counter[radio_index]);
+            }
+            rc = sm_survey_report_push_to_dpp(&sm_survey_report_cache[radio_index], config->radio_type, config->survey_type,
+                    config->report_type, report_counter);
             break;
         case stats_type_neighbor:
             rc = sm_neighbor_report_push_to_dpp(&sm_neighbor_report_cache[radio_index], config->radio_type, config->survey_type, config->report_type);
@@ -368,6 +378,9 @@ int sm_report_init(wifi_app_t *app)
     if (rc != RETURN_OK) {
         wifi_util_error_print(WIFI_SM, "%s:%d: failed to add timer task for send to qm\n", __func__, __LINE__);
     }
+    else {
+        scheduler_add_timer_task(app->ctrl->sched, FALSE, &reports_counter_task_id, survey_report_counter_publish_cb, (void *)app, SM_SURVEY_REPORT_COUNTER_INTERVAL_SEC * MSEC_IN_SEC, 0, FALSE);
+    }
 
     return rc;
 }
@@ -375,8 +388,13 @@ int sm_report_init(wifi_app_t *app)
 
 int sm_report_deinit(wifi_app_t *app)
 {
-    if (app && app->ctrl && (send_qm_task_id >= 0)) {
-        scheduler_cancel_timer_task(app->ctrl->sched, send_qm_task_id);
+    if (app && app->ctrl) {
+        if (send_qm_task_id >= 0) {
+            scheduler_cancel_timer_task(app->ctrl->sched, send_qm_task_id);
+        }
+        if (reports_counter_task_id >= 0) {
+            scheduler_cancel_timer_task(app->ctrl->sched, reports_counter_task_id);
+        }
     }
 
     report_tasks_map_free(app);

@@ -104,7 +104,8 @@ static int survey_dpp_report_free(dpp_survey_report_data_t *report)
 
 
 int sm_survey_report_push_to_dpp(sm_survey_cache_t *cache, wifi_freq_bands_t freq_band,
-                                 survey_type_t survey_type, reporting_type_t report_type)
+                                 survey_type_t survey_type, reporting_type_t report_type,
+                                 unsigned int *report_counter)
 {
     int rc = RETURN_OK;
 
@@ -136,16 +137,31 @@ int sm_survey_report_push_to_dpp(sm_survey_cache_t *cache, wifi_freq_bands_t fre
 
     if (rc == RETURN_OK && !ds_dlist_is_empty(&dpp_report.list)) {
         dpp_put_survey(&dpp_report);
-        wifi_util_info_print(WIFI_SM, "%s:%d: survey report is pushed to dpp for %s %s freq_band=%d, report_type=%d\n",
+        (*report_counter)++;
+        wifi_util_dbg_print(WIFI_SM, "%s:%d: survey report is pushed to dpp for %s %s freq_band=%d, report_type=%d\n",
                             __func__, __LINE__, radio_get_name_from_type(dpp_report.radio_type), survey_type_to_str(survey_type), freq_band, report_type);
     }
     else {
-        wifi_util_info_print(WIFI_SM, "%s:%d: nothing to send to dpp for %s %s freq_band=%d, report_type=%d\n",
+        wifi_util_dbg_print(WIFI_SM, "%s:%d: nothing to send to dpp for %s %s freq_band=%d, report_type=%d\n",
                             __func__, __LINE__, radio_get_name_from_type(dpp_report.radio_type), survey_type_to_str(survey_type), freq_band, report_type);
     }
 
     sm_survey_cache_clean(cache, survey_type);
     survey_dpp_report_free(&dpp_report);
+
+    return RETURN_OK;
+}
+
+int survey_report_counter_publish_cb(void *args)
+{
+    wifi_app_t *app = (wifi_app_t *)args;
+
+    for (unsigned int i = 0; i < getNumberRadios(); i++) {
+        wifi_util_info_print(WIFI_SM, "%s:%d: INFO_SURVEY_%s_OFF_CHAN_%u\n", __func__, __LINE__, radio_index_to_radio_type_str(i), app->data.u.sm_data.off_chan_report_counter[i]);
+        wifi_util_info_print(WIFI_SM, "%s:%d: INFO_SURVEY_%s_ON_CHAN_%u\n", __func__, __LINE__, radio_index_to_radio_type_str(i), app->data.u.sm_data.on_chan_report_counter[i]);
+        app->data.u.sm_data.off_chan_report_counter[i] = 0;
+        app->data.u.sm_data.on_chan_report_counter[i] = 0;
+    }
 
     return RETURN_OK;
 }
