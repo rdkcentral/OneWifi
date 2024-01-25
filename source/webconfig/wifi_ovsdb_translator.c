@@ -2980,6 +2980,10 @@ webconfig_error_t translate_vap_object_to_ovsdb_associated_clients(const rdk_wif
             } else {
                 snprintf(client_row->state, sizeof(client_row->state), "idle");
             }
+
+            strncpy(client_row->wpa_key_mgmt, assoc_dev_data->conn_security.wpa_key_mgmt, sizeof(client_row->wpa_key_mgmt));
+            strncpy(client_row->pairwise_cipher, assoc_dev_data->conn_security.pairwise_cipher, sizeof(client_row->pairwise_cipher));
+
             if ((strlen( assoc_dev_data->dev_stats.cli_OperatingStandard) != 0)) {
                 snprintf(client_row->capabilities[0], sizeof(client_row->capabilities[0]), "11%s", assoc_dev_data->dev_stats.cli_OperatingStandard);
             } else {

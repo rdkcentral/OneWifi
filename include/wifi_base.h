@@ -744,11 +744,20 @@ typedef enum {
     client_state_disconnected
 } client_state_t;
 
+#define WPA_KEY_MGMT_LEN      (128)
+#define PAIRWISE_CIPHER_LEN   (128)
+
+typedef struct {
+    char wpa_key_mgmt[WPA_KEY_MGMT_LEN];
+    char pairwise_cipher[WPA_KEY_MGMT_LEN];
+} __attribute__((__packed__)) conn_security_t;
+
 typedef struct {
     int ap_index;
     wifi_associated_dev3_t dev_stats;
     int reason;
     client_state_t client_state;
+    conn_security_t conn_security;
 } __attribute__((__packed__)) assoc_dev_data_t;
 
 struct active_msmt_data;

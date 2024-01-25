@@ -2834,6 +2834,34 @@ webconfig_error_t decode_associated_clients_object(webconfig_subdoc_data_t *data
                 assoc_dev_data.client_state = client_state_connected;
             }
 
+            value_object = cJSON_GetObjectItem(assoc_client, "WpaKeyMgmt");
+            if ((value_object == NULL) || (cJSON_IsString(value_object) == false)) {
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
+                return webconfig_error_decode;
+            }
+
+            tmp_string  = cJSON_GetStringValue(value_object);
+            if (tmp_string == NULL) {
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL pointer \n", __func__, __LINE__);
+                return webconfig_error_decode;
+            }
+            strncpy(assoc_dev_data.conn_security.wpa_key_mgmt, tmp_string, sizeof(assoc_dev_data.conn_security.wpa_key_mgmt));
+
+
+            value_object = cJSON_GetObjectItem(assoc_client, "PairwiseCipher");
+            if ((value_object == NULL) || (cJSON_IsString(value_object) == false)) {
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);
+                return webconfig_error_decode;
+            }
+
+            tmp_string  = cJSON_GetStringValue(value_object);
+            if (tmp_string == NULL) {
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL pointer \n", __func__, __LINE__);
+                return webconfig_error_decode;
+            }
+            strncpy(assoc_dev_data.conn_security.pairwise_cipher, tmp_string, sizeof(assoc_dev_data.conn_security.pairwise_cipher));
+
+
             value_object = cJSON_GetObjectItem(assoc_client, "AuthenticationState");
             if ((value_object == NULL) || (cJSON_IsBool(value_object) == false)) {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation Failed\n", __func__, __LINE__);

@@ -161,6 +161,8 @@ void vap_svc_mesh_pod_ap_connection_handler(struct ow_barrier_sta_conn_info *sta
     }
 
     memcpy(assoc_data.dev_stats.cli_MACAddress, sta_conn_info->mac, sizeof(mac_address_t));
+    strncpy(assoc_data.conn_security.wpa_key_mgmt, sta_conn_info->wpa_key_mgmt, sizeof(assoc_data.conn_security.wpa_key_mgmt));
+    strncpy(assoc_data.conn_security.pairwise_cipher, sta_conn_info->pairwise_cipher, sizeof(assoc_data.conn_security.pairwise_cipher));
     assoc_data.ap_index = index;
     push_event_to_ctrl_queue(&assoc_data, sizeof(assoc_data), wifi_event_type_hal_ind, type, NULL);
 
@@ -245,6 +247,7 @@ int ow_mesh_ext_set_phy_config(int phy_index,wifi_radio_operationParam_t *phy)
     phy_param.phy = phy;
 
     prop = (wifi_platform_property_t *) get_wifi_hal_cap_prop();
+
     strncpy(phy_param.if_name,prop->radio_interface_map[phy_index].interface_name,sizeof(phy_param.if_name));
 
     wifi_util_dbg_print(WIFI_CTRL,"WIFI %s : Setting Phy %s with channel:[%d], enable:[%d], band[%d],width[%d] \n",__FUNCTION__,phy_param.if_name,phy->channel,phy->enable,phy->band,phy->channelWidth);
