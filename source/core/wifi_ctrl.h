@@ -265,6 +265,11 @@ typedef struct {
 } greylist_data_t;
 
 typedef struct {
+    unsigned int apIndex;
+    int failure_reason;
+} radius_eap_data_t;
+
+typedef struct {
     unsigned long csi_session_num;
     bool enabled;
     unsigned int csi_client_count;
@@ -308,6 +313,10 @@ BOOL isVapLnfPsk(UINT apIndex);
 BOOL isVapMesh(UINT apIndex);
 BOOL isVapSTAMesh(UINT apIndex);
 BOOL isVapHotspotSecure(UINT apIndex);
+BOOL isVapHotspotOpen5g(UINT apIndex);
+BOOL isVapHotspotOpen6g(UINT apIndex);
+BOOL isVapHotspotSecure5g(UINT apIndex);
+BOOL isVapHotspotSecure6g(UINT apIndex);
 BOOL isVapMeshBackhaul(UINT apIndex);
 int getVAPIndexFromName(CHAR *vapName, UINT *apIndex);
 BOOL isVapLnfSecure(UINT apIndex);

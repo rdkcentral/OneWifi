@@ -24,4 +24,9 @@ int whix_init(wifi_app_t *app, unsigned int create_flag);
 int whix_deinit(wifi_app_t *app);
 int whix_event(wifi_app_t *app, wifi_event_t *event);
 
+typedef struct {
+    int radius_failure_count[MAX_VAP];
+    int eap_failure_count[MAX_VAP];
+} whix_data_t;
+
 #endif //_WIFI_WHIX_H_

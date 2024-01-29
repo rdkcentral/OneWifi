@@ -2069,6 +2069,47 @@ void handle_whix_webconfig_event(wifi_app_t *app, wifi_event_t *event)
     }
 }
 
+void radius_eap_failure_event_marker(wifi_app_t *app, void *data)
+{
+    char tmp[128]={0};
+    char eventName[1024]={0};
+    char telemetry_buf[1024]={0};
+    radius_eap_data_t *radius_eap_data = (radius_eap_data_t *) data;
+
+    get_formatted_time(tmp);
+
+    if (radius_eap_data->failure_reason == RADIUS_ACCESS_REJECT) {
+        if (isVapHotspotSecure5g(radius_eap_data->apIndex) || \
+            isVapHotspotSecure6g(radius_eap_data->apIndex) || \
+            isVapHotspotOpen5g(radius_eap_data->apIndex) || \
+            isVapHotspotOpen6g(radius_eap_data->apIndex)) {
+            app->data.u.whix.radius_failure_count[radius_eap_data->apIndex]++;
+            snprintf(telemetry_buf, sizeof(telemetry_buf), "XWIFI_Radius_Failures_%d_split", (radius_eap_data->apIndex)+1);
+            t2_event_d(telemetry_buf, app->data.u.whix.radius_failure_count[radius_eap_data->apIndex]);
+            snprintf(eventName, sizeof(eventName), "%s XWIFI_Radius_Failures_%d_split:%d\n", tmp, (radius_eap_data->apIndex)+1, app->data.u.whix.radius_failure_count[radius_eap_data->apIndex]);
+            write_to_file("/rdklogs/logs/wifihealth.txt", eventName);
+        }
+    } else if (radius_eap_data->failure_reason == EAP_FAILURE) {
+        if (isVapHotspotSecure5g(radius_eap_data->apIndex) || isVapHotspotSecure6g(radius_eap_data->apIndex)) {
+            app->data.u.whix.eap_failure_count[radius_eap_data->apIndex]++;
+            snprintf(telemetry_buf, sizeof(telemetry_buf), "XWIFI_EAP_Failures_%d_split", (radius_eap_data->apIndex)+1);
+            t2_event_d(telemetry_buf, app->data.u.whix.eap_failure_count[radius_eap_data->apIndex]);
+            snprintf(eventName, sizeof(eventName), "%s XWIFI_EAP_Failures_%d_split:%d\n", tmp, (radius_eap_data->apIndex)+1, app->data.u.whix.eap_failure_count[radius_eap_data->apIndex]);
+            write_to_file("/rdklogs/logs/wifihealth.txt", eventName);
+        }
+    }
+}
+
+void handle_whix_hal_ind_event(wifi_app_t *app, wifi_event_t *event)
+{
+    switch(event->sub_type) {
+        case wifi_event_radius_eap_failure:
+            radius_eap_failure_event_marker(app, event->u.core_data.msg);
+        break;
+        default:
+        break;
+     }
+}
 int whix_event(wifi_app_t *app, wifi_event_t *event)
 {
     switch(event->event_type) {
@@ -2080,6 +2121,9 @@ int whix_event(wifi_app_t *app, wifi_event_t *event)
         break;
         case wifi_event_type_command:
             handle_whix_command_event(app,event);
+        break;
+        case wifi_event_type_hal_ind:
+            handle_whix_hal_ind_event(app, event);
         break;
         default:
         break;

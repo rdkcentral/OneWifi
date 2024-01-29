@@ -1436,6 +1436,50 @@ BOOL is_vap_mesh_sta(wifi_platform_property_t *wifi_prop, UINT ap_index)
     return (strncmp((char *)&vap_prop->vap_name[0], "mesh_sta", strlen("mesh_sta"))) ? FALSE :TRUE;
 }
 
+BOOL is_vap_hotspot_secure_5g(wifi_platform_property_t *wifi_prop, UINT ap_index)
+{
+    wifi_interface_name_idex_map_t* vap_prop;
+
+    if ((vap_prop = GET_VAP_INDEX_PROPERTY(wifi_prop, ap_index)) == NULL) {
+        return FALSE;
+    }
+
+    return (strncmp((char *)&vap_prop->vap_name[0], "hotspot_secure_5g", strlen("hotspot_secure_5g"))) ? FALSE : TRUE;
+}
+
+BOOL is_vap_hotspot_secure_6g(wifi_platform_property_t *wifi_prop, UINT ap_index)
+{
+    wifi_interface_name_idex_map_t* vap_prop;
+
+    if ((vap_prop = GET_VAP_INDEX_PROPERTY(wifi_prop, ap_index)) == NULL) {
+        return FALSE;
+    }
+
+    return (strncmp((char *)&vap_prop->vap_name[0], "hotspot_secure_6g", strlen("hotspot_secure_6g"))) ? FALSE : TRUE;
+}
+
+BOOL is_vap_hotspot_open_5g(wifi_platform_property_t *wifi_prop, UINT ap_index)
+{
+    wifi_interface_name_idex_map_t* vap_prop;
+
+    if ((vap_prop = GET_VAP_INDEX_PROPERTY(wifi_prop, ap_index)) == NULL) {
+        return FALSE;
+    }
+
+    return (strncmp((char *)&vap_prop->vap_name[0], "hotspot_open_5g", strlen("hotspot_open_5g"))) ? FALSE : TRUE;
+}
+
+BOOL is_vap_hotspot_open_6g(wifi_platform_property_t *wifi_prop, UINT ap_index)
+{
+    wifi_interface_name_idex_map_t* vap_prop;
+
+    if ((vap_prop = GET_VAP_INDEX_PROPERTY(wifi_prop, ap_index)) == NULL) {
+        return FALSE;
+    }
+
+    return (strncmp((char *)&vap_prop->vap_name[0], "hotspot_open_6g", strlen("hotspot_open_6g"))) ? FALSE : TRUE;
+}
+
 int country_code_conversion(wifi_countrycode_type_t *country_code, char *country, int country_len, unsigned int conv_type)
 {
     int i = 0;

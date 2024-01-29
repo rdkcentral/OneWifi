@@ -2279,6 +2279,17 @@ int device_disassociated(int ap_index, char *mac, int reason)
     return 0;
 }
 
+int radius_eap_failure_callback(unsigned int apIndex, int reason)
+{
+    radius_eap_data_t radius_eap_data;
+    radius_eap_data.apIndex = apIndex;
+    radius_eap_data.failure_reason = reason;
+
+    //Push event to ctrl queue and handle it in whix app
+    push_event_to_ctrl_queue(&radius_eap_data, sizeof(radius_eap_data), wifi_event_type_hal_ind, wifi_event_radius_eap_failure, NULL);
+    return 0;
+}
+
 int vapstatus_callback(int apIndex, wifi_vapstatus_t status)
 {
     wifi_util_dbg_print(WIFI_MON,"%s called for %d and status %d \n",__func__, apIndex, status);
@@ -2721,6 +2732,7 @@ int init_wifi_monitor()
     wifi_vapstatus_callback_register(vapstatus_callback);
     wifi_hal_apDeAuthEvent_callback_register(device_deauthenticated);
     wifi_hal_apDisassociatedDevice_callback_register(device_disassociated);
+    wifi_hal_radius_eap_failure_callback_register(radius_eap_failure_callback);
     scheduler_add_timer_task(g_monitor_module.sched, FALSE, NULL, refresh_assoc_frame_entry, NULL, (MAX_ASSOC_FRAME_REFRESH_PERIOD * 1000), 0, FALSE);
 #endif // CCSP_COMMON
 

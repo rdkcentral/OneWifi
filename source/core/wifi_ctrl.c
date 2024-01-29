@@ -2860,6 +2860,26 @@ BOOL isVapHotspotOpen(UINT apIndex)
     return is_vap_hotspot_open(&(get_wifimgr_obj())->hal_cap.wifi_prop, apIndex);
 }
 
+BOOL isVapHotspotSecure5g(UINT apIndex)
+{
+    return is_vap_hotspot_secure_5g(&(get_wifimgr_obj())->hal_cap.wifi_prop, apIndex);
+}
+
+BOOL isVapHotspotSecure6g(UINT apIndex)
+{
+    return is_vap_hotspot_secure_6g(&(get_wifimgr_obj())->hal_cap.wifi_prop, apIndex);
+}
+
+BOOL isVapHotspotOpen5g(UINT apIndex)
+{
+    return is_vap_hotspot_open_5g(&(get_wifimgr_obj())->hal_cap.wifi_prop, apIndex);
+}
+
+BOOL isVapHotspotOpen6g(UINT apIndex)
+{
+    return is_vap_hotspot_open_6g(&(get_wifimgr_obj())->hal_cap.wifi_prop, apIndex);
+}
+
 
 BOOL isVapLnfSecure(UINT apIndex)
 {

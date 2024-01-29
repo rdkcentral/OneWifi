@@ -69,6 +69,7 @@ typedef struct {
         sm_data_t            sm_data;
         motion_data_t        motion;
         csi_app_t            csi;
+        whix_data_t          whix;
 #endif  //CCSP_COMMON
         blaster_data_t       blaster;
     } u;
