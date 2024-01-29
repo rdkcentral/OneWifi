@@ -81,7 +81,7 @@ int ovsdb_sync_write_fn(const char *buf, size_t sz, void *self)
     return 0;
 }
 
-static bool exec_cmd(char *cmd)
+static bool exec_cmd(const char *cmd)
 {
     if (!cmd || !cmd[0]) {
         LOGE("%s: No command provided", __func__);
@@ -100,6 +100,40 @@ static bool exec_cmd(char *cmd)
     }
 
     return false;
+}
+
+static bool is_ovsdb_changed(const json_t *jsdata)
+{
+    bool status = true;
+    size_t list_size;
+
+    json_t *trans_obj = json_object_get(jsdata, "params");
+    if (!json_is_array(trans_obj) || !(list_size = json_array_size(trans_obj)))
+    {
+        wifidb_print("%s: Wrong param object\n", __func__);
+        return status;
+    }
+
+    status = false;
+    for (int i = 0; i < (int)list_size; i++)
+    {
+        json_t *js = json_array_get(trans_obj, i);
+        if (!json_is_object(js))
+            continue;
+
+        json_t *trans_type = json_object_get(js, "op");
+        if (json_is_string(trans_type))
+        {
+            const char *oper_type = json_string_value(trans_type);
+            if (strcmp(oper_type, "select") != 0)
+            {
+                status = true;
+                break;
+            }
+        }
+    }
+
+    return status;
 }
 
 static pthread_mutex_t backup_lock;
@@ -163,6 +197,30 @@ json_t *ovsdb_write_s(char *ovsdb_sock_path, json_t *jsdata)
         goto error;
     }
 
+    /*
+        Each db transaction has 5 operation types:
+        OTR_INSERT, OTR_SELECT, OTR_UPDATE, OTR_MUTATE, OTR_DELETE.
+        The first is to get the table for the dedicated condition under the transaction.
+        Other types aim to modify remote db.
+        We must track it and perform the backup operations only for the db modifiers.
+        Currently, the system uses OPER_SELECT massively to get current states and configs
+        for each VAP's.
+        This provokes a continuous backup even if the db wasn't changed.
+    */
+    if (is_ovsdb_changed(jsdata))
+    {
+        wifidb_print("Write done --- syncing database\n");
+        if (is_db_backup_required())
+        {
+            bool backup_success = ovsdb_backup();
+            wifidb_print("Backup database %s\n", backup_success ? "succeeded" : "failed");
+        }
+        else
+        {
+            wifidb_print("Backup database is not required\n");
+        }
+    }
+
     /* Read a response and return */
     size_t buflen = 0;
     ssize_t nr;
@@ -205,17 +263,6 @@ json_t *ovsdb_write_s(char *ovsdb_sock_path, json_t *jsdata)
     {
         LOGE("Sync: Error parsing OVSDB response (%s):\n%s", err.text, ovsdb_write_buf);
         wifidb_print("Sync: Error parsing OVSDB response (%s):\n%s\r\n", err.text, ovsdb_write_buf);
-    }
-    wifidb_print("Write done --- syncing database\n");
-
-    if (is_db_backup_required())
-    {
-        bool backup_success = ovsdb_backup();
-        wifidb_print("Backup database %s\n", backup_success ? "succeeded" : "failed");
-    }
-    else
-    {
-        wifidb_print("Backup database is not required\n");
     }
 
 error:
