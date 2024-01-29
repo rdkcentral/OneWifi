@@ -60,7 +60,6 @@
 #define CHAN_UTIL_INTERVAL_MS 900000 // 15 mins
 #define TELEMETRY_UPDATE_INTERVAL_MS 3600000 // 1 hour
 
-static BOOL sWiFiDmlvApStatsFeatureEnableCfg = TRUE;//ONE_WIFI
 static const char *wifi_health_log = "/rdklogs/logs/wifihealth.txt";
 
 
@@ -1062,6 +1061,8 @@ int upload_client_telemetry_data(unsigned int vap_index)
 
         // IsCosaDmlWiFivAPStatsFeatureEnabled needs to be set to get telemetry of some stats, the TR object is
         // Device.WiFi.X_RDKCENTRAL-COM_vAPStatsEnable
+        wifi_global_param_t *global_param = get_wifidb_wifi_global_param();
+        BOOL sWiFiDmlvApStatsFeatureEnableCfg = global_param->vap_stats_feature;
         get_device_flag(trflag, sizeof(trflag), WIFI_TxRx_RATE_LIST);
         get_device_flag(nrflag, sizeof(nrflag), WIFI_NORMALIZED_RSSI_LIST);
         get_device_flag(stflag, sizeof(stflag), WIFI_CLI_STAT_LIST);
