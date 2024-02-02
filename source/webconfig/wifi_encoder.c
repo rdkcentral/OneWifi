@@ -1672,7 +1672,11 @@ webconfig_error_t encode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
     cJSON *object;
     wifi_radio_capabilities_t *radiocap;
     int count = 0, temp_count = 0;
-    wifi_channelBandwidth_t chan_width_arr_enum[] = {WIFI_CHANNELBANDWIDTH_20MHZ, WIFI_CHANNELBANDWIDTH_40MHZ, WIFI_CHANNELBANDWIDTH_80MHZ, WIFI_CHANNELBANDWIDTH_160MHZ};
+    static const wifi_channelBandwidth_t chan_width_arr_enum[] = {WIFI_CHANNELBANDWIDTH_20MHZ,
+                                                                  WIFI_CHANNELBANDWIDTH_40MHZ,
+                                                                  WIFI_CHANNELBANDWIDTH_80MHZ,
+                                                                  WIFI_CHANNELBANDWIDTH_160MHZ,
+                                                                  WIFI_CHANNELBANDWIDTH_320MHZ};
     int sup_chan_width[8];
 
     if ((wifi_prop == NULL) || (radio_obj == NULL)) {

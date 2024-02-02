@@ -58,7 +58,8 @@ typedef enum {
 typedef enum {
     WIFI_LOG_LVL_DEBUG,
     WIFI_LOG_LVL_INFO,
-    WIFI_LOG_LVL_ERROR
+    WIFI_LOG_LVL_ERROR,
+    WIFI_LOG_LVL_MAX
 }wifi_log_level_t;
 
 void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *format, ...);

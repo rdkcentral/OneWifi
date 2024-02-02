@@ -1116,12 +1116,13 @@ void ResetActiveMsmtStepInstances(void)
 #if defined (_PP203X_PRODUCT_REQ_)
 static void convert_channel_width_to_str(wifi_channelBandwidth_t cw, char *str, size_t len)
 {
-    char arr_str[][8] = {"20", "40", "80", "160"};
-    wifi_channelBandwidth_t arr_enum[] = {
+    static const char arr_str[][8] = {"20", "40", "80", "160", "320"};
+    static const wifi_channelBandwidth_t arr_enum[] = {
         WIFI_CHANNELBANDWIDTH_20MHZ, 
         WIFI_CHANNELBANDWIDTH_40MHZ,
         WIFI_CHANNELBANDWIDTH_80MHZ,
-        WIFI_CHANNELBANDWIDTH_160MHZ
+        WIFI_CHANNELBANDWIDTH_160MHZ,
+        WIFI_CHANNELBANDWIDTH_320MHZ
     };
 
     for (size_t i = 0; i < ARRAY_SIZE(arr_enum); i++) {
@@ -1136,14 +1137,15 @@ static void convert_channel_width_to_str(wifi_channelBandwidth_t cw, char *str, 
 
 static void convert_variant_to_str(wifi_ieee80211Variant_t variant, char *str, size_t len)
 {
-    char arr_str[][8] = {"a", "b", "g", "n", "ac", "ax"};
-    wifi_ieee80211Variant_t arr_enum[] = {
+    static const char arr_str[][8] = {"a", "b", "g", "n", "ac", "ax", "be"};
+    static const wifi_ieee80211Variant_t arr_enum[] = {
         WIFI_80211_VARIANT_A,
         WIFI_80211_VARIANT_B,
         WIFI_80211_VARIANT_G,
         WIFI_80211_VARIANT_N,
         WIFI_80211_VARIANT_AC,
-        WIFI_80211_VARIANT_AX
+        WIFI_80211_VARIANT_AX,
+        WIFI_80211_VARIANT_BE
     };
 
     for (size_t i = 0; i < ARRAY_SIZE(arr_enum); i++) {

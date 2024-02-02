@@ -1335,23 +1335,44 @@ void update_dml_radio_default() {
         if (radio_cfg[i].SupportedFrequencyBands == WIFI_FREQUENCY_2_4_BAND) {
             radio_cfg[i].MaxBitRate = 1147;
             strncpy(radio_cfg[i].ChannelsInUse,"1",sizeof(radio_cfg[i].ChannelsInUse)-1);
+#ifdef FEATURE_IEEE80211BE
+            strncpy(radio_cfg[i].SupportedStandards,"g,n,ax,be",sizeof(radio_cfg[i].SupportedStandards)-1);
+#else
             strncpy(radio_cfg[i].SupportedStandards,"g,n,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
+#endif
         } else if (radio_cfg[i].SupportedFrequencyBands == WIFI_FREQUENCY_5_BAND) {
             radio_cfg[i].MaxBitRate = 4804;
             strncpy(radio_cfg[i].ChannelsInUse,"44",sizeof(radio_cfg[i].ChannelsInUse)-1);
+#ifdef FEATURE_IEEE80211BE
+            strncpy(radio_cfg[i].SupportedStandards,"a,n,ac,ax,be",sizeof(radio_cfg[i].SupportedStandards)-1);
+#else
             strncpy(radio_cfg[i].SupportedStandards,"a,n,ac,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
+#endif
         } else if (radio_cfg[i].SupportedFrequencyBands == WIFI_FREQUENCY_5L_BAND) {
             radio_cfg[i].MaxBitRate = 4804;
             strncpy(radio_cfg[i].ChannelsInUse,"44",sizeof(radio_cfg[i].ChannelsInUse)-1);
+#ifdef FEATURE_IEEE80211BE
+            strncpy(radio_cfg[i].SupportedStandards,"a,n,ac,ax,be",sizeof(radio_cfg[i].SupportedStandards)-1);
+#else
             strncpy(radio_cfg[i].SupportedStandards,"a,n,ac,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
+#endif
         } else if (radio_cfg[i].SupportedFrequencyBands == WIFI_FREQUENCY_5H_BAND) {
             radio_cfg[i].MaxBitRate = 4804;
             strncpy(radio_cfg[i].ChannelsInUse,"149",sizeof(radio_cfg[i].ChannelsInUse)-1);
+#ifdef FEATURE_IEEE80211BE
+            strncpy(radio_cfg[i].SupportedStandards,"a,n,ac,ax,be",sizeof(radio_cfg[i].SupportedStandards)-1);
+#else
             strncpy(radio_cfg[i].SupportedStandards,"a,n,ac,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
+#endif
         } else if (radio_cfg[i].SupportedFrequencyBands == WIFI_FREQUENCY_6_BAND) {
             radio_cfg[i].MaxBitRate = 9608;
             strncpy(radio_cfg[i].ChannelsInUse,"181",sizeof(radio_cfg[i].ChannelsInUse)-1);
+#ifdef FEATURE_IEEE80211BE
+            strncpy(radio_cfg[i].SupportedStandards,"ax,be",sizeof(radio_cfg[i].SupportedStandards)-1);
+            radio_cfg[i].MaxBitRate = 9608; //TODO: what is the rate for 11be? where it's using?
+#else
             strncpy(radio_cfg[i].SupportedStandards,"ax",sizeof(radio_cfg[i].SupportedStandards)-1);
+#endif
         }
     }
 }
@@ -1439,7 +1460,13 @@ wifi_channelBandwidth_t sync_bandwidth_and_hw_variant(uint32_t variant, wifi_cha
             supported_bw = WIFI_CHANNELBANDWIDTH_160MHZ;
         }
     }
-
+#ifdef FEATURE_IEEE80211BE
+    if ( variant & WIFI_80211_VARIANT_BE ) {
+        if (supported_bw < WIFI_CHANNELBANDWIDTH_320MHZ) {
+            supported_bw = WIFI_CHANNELBANDWIDTH_320MHZ;
+        }
+    }
+#endif
     wifi_util_dbg_print(WIFI_DMCLI,"%s:%d variant:%d supported bandwidth:%d current_bw:%d \r\n", __func__, __LINE__, variant, supported_bw, current_bw);
     if (supported_bw < current_bw) {
         return supported_bw;

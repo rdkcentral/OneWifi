@@ -200,7 +200,10 @@ struct wifiChanWidthCosaHalMap wifiChanWidthMap[] =
     {WIFI_CHANNELBANDWIDTH_40MHZ,    COSA_DML_WIFI_CHAN_BW_40M,    "40MHz"},
     {WIFI_CHANNELBANDWIDTH_80MHZ,    COSA_DML_WIFI_CHAN_BW_80M,    "80MHz"},
     {WIFI_CHANNELBANDWIDTH_160MHZ,   COSA_DML_WIFI_CHAN_BW_160M,   "160MHz"},
-    {WIFI_CHANNELBANDWIDTH_80_80MHZ, COSA_DML_WIFI_CHAN_BW_80_80M, "80+80MHz"}
+    {WIFI_CHANNELBANDWIDTH_80_80MHZ, COSA_DML_WIFI_CHAN_BW_80_80M, "80+80MHz"},
+#ifdef FEATURE_IEEE80211BE
+    {WIFI_CHANNELBANDWIDTH_320MHZ,   COSA_DML_WIFI_CHAN_BW_320M,   "320MHz"}
+#endif
 };
 
 struct wifiGuardIntervalMap wifiGuardIntervalMap[] ={
@@ -220,7 +223,10 @@ struct  wifiStdCosaHalMap wifiStdDmlMap[] =
     {WIFI_80211_VARIANT_H,  COSA_DML_WIFI_STD_h,  "h"},
     {WIFI_80211_VARIANT_AC, COSA_DML_WIFI_STD_ac, "ac"},
     {WIFI_80211_VARIANT_AD, COSA_DML_WIFI_STD_ad, "ad"},
-    {WIFI_80211_VARIANT_AX, COSA_DML_WIFI_STD_ax, "ax"}
+    {WIFI_80211_VARIANT_AX, COSA_DML_WIFI_STD_ax, "ax"},
+#ifdef FEATURE_IEEE80211BE
+    {WIFI_80211_VARIANT_BE, COSA_DML_WIFI_STD_be, "be"}
+#endif
 };
 
 /**************************************************************************
@@ -1161,6 +1167,8 @@ ANSC_STATUS operChanBandwidthHalEnumtoDmlEnum(wifi_channelBandwidth_t halBw, UIN
         {
             *ccspBw =  wifiChanWidthMap[seqCounter].cosaWifiChanWidth;
             ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s inputBw : %d dmlbw : %d[%s] ", __FUNCTION__, halBw, *ccspBw, wifiChanWidthMap[seqCounter].wifiChanWidthName);
+            wifi_util_dbg_print(WIFI_DMCLI, "%s:%d inputBw: %d dmlbw: %d[%s]\n",
+                __func__, __LINE__, halBw, *ccspBw, wifiChanWidthMap[seqCounter].wifiChanWidthName);
             isOperBwInvalid = FALSE;
             break;
         }

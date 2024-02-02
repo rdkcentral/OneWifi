@@ -1057,7 +1057,7 @@ INSTMSMT_PH2 -->
                         </parameter>
                         <parameter>
                             <name>OperatingChannelBandwidth</name>
-                            <type>string: Auto(0),20MHz(1),40MHz(2),80MHz(3),160MHz(4)</type>
+                            <type>string: Auto(0),20MHz(1),40MHz(2),80MHz(3),160MHz(4),80_80MHz(5),320MHz(6)</type>
                             <syntax>uint32/mapped</syntax>
                             <writable>true</writable>
                         </parameter>
@@ -1069,7 +1069,7 @@ INSTMSMT_PH2 -->
                         </parameter>
                         <parameter>
                             <name>GuardInterval</name>
-                            <type>string: 400nsec(1),800nsec(2),Auto(3)</type>
+                            <type>string: 400nsec(1),800nsec(2),Auto(3),1600nsec(4),3200nsec(5)</type>
                             <syntax>uint32/mapped</syntax>
                             <writable>true</writable>
                         </parameter>

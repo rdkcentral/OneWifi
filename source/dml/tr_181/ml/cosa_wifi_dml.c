@@ -2659,6 +2659,19 @@ Radio_GetParamStringValue
             }
         }
 
+#ifdef FEATURE_IEEE80211BE
+        if ( pcfg->variant & WIFI_80211_VARIANT_BE )
+        {
+                if (AnscSizeOfString(buf) != 0)
+                {
+                    strcat(buf, ",be");
+                }
+                else
+                {
+                    strcat(buf, "be");
+                }
+        }
+#endif
         if ( AnscSizeOfString(buf) < *pUlSize)
         {
             AnscCopyString(pValue, buf);
@@ -3491,7 +3504,7 @@ Radio_SetParamUlongValue
 
         wifiRadioOperParam->channelWidth = tmpChanWidth;
         ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s OperatingChannelBandwidth : %d\n", __FUNCTION__, wifiRadioOperParam->channelWidth);
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:channelWidth=%d tmpChanWidth = %d  \n",__func__, __LINE__,wifiRadioOperParam->channelWidth,tmpChanWidth);
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: New channelWidth=%d\n", __func__, __LINE__, wifiRadioOperParam->channelWidth);
         is_radio_config_changed = TRUE; 
         return TRUE;
     }
@@ -3940,7 +3953,26 @@ Radio_SetParamStringValue
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: wrong wifi std String=%s\n",__func__, __LINE__,pString);
             return FALSE;
         }
+#ifdef FEATURE_IEEE80211BE
+        // TODO: for debug purpouses only
+        static const char *wifi_mode_strings[__builtin_ctz(WIFI_80211_VARIANT_BE) + 1] =
+        {
+            "WIFI_80211_VARIANT_A",
+            "WIFI_80211_VARIANT_B",
+            "WIFI_80211_VARIANT_G",
+            "WIFI_80211_VARIANT_N",
+            "WIFI_80211_VARIANT_H",
+            "WIFI_80211_VARIANT_AC",
+            "WIFI_80211_VARIANT_AD",
+            "WIFI_80211_VARIANT_AX",
+            "WIFI_80211_VARIANT_BE"
+        };
 
+        for (size_t i = 0; i < __builtin_ctz(WIFI_80211_VARIANT_BE) + 1; i++) {
+            if (wifi_variant & (1ul << i))
+                wifi_util_dbg_print(WIFI_DMCLI, "WIFI MODE SET[%d]: %s\n", i, wifi_mode_strings[i]);
+        }
+#endif
         if (validate_wifi_hw_variant(wifi_radio->band, wifi_variant) != RETURN_OK) {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: wifi hw mode std validation failure string=%s hw variant:%d\n",__func__, __LINE__,pString, wifi_variant);
             return FALSE;

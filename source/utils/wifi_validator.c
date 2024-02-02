@@ -1976,7 +1976,22 @@ int validate_radio_vap(const cJSON *wifi, wifi_radio_operationParam_t *wifi_radi
 	// ChannelWidth
 	validate_param_integer(wifi, "ChannelWidth", param);
 	wifi_radio_info->channelWidth = param->valuedouble;
-		if ((wifi_radio_info->channelWidth < 0) || (wifi_radio_info->channelWidth > 4)) {
+#ifdef FEATURE_IEEE80211BE
+    /*
+        // TODO: check here!!!
+        Why we check < 0 for the first expression and only for 4 for the last one?
+        // maybe it's for compatibility with radiocap->channelWidth mask, not sure. 
+        // expect to see:
+        if ((wifi_radio_info->channelWidth < WIFI_CHANNELBANDWIDTH_20MHZ) || (wifi_radio_info->channelWidth > WIFI_CHANNELBANDWIDTH_320MHZ)) {
+        WIFI_CHANNELBANDWIDTH_20MHZ = 0x1,
+        WIFI_CHANNELBANDWIDTH_40MHZ = 0x2,
+        WIFI_CHANNELBANDWIDTH_80MHZ = 0x4,
+        WIFI_CHANNELBANDWIDTH_160MHZ = 0x8,
+        WIFI_CHANNELBANDWIDTH_80_80MHZ = 0x10,
+        WIFI_CHANNELBANDWIDTH_320MHZ = 0x20
+    */
+#endif
+    if ((wifi_radio_info->channelWidth < 0) || (wifi_radio_info->channelWidth > 4)) {
 		wifi_util_dbg_print(WIFI_PASSPOINT,"Invalid wifi radio channelWidth configuration, should be between 0 and 4\n");
 		strncpy(execRetVal->ErrorMsg, "Invalid wifi radio channelWidth config 0..4",sizeof(execRetVal->ErrorMsg)-1);
 		return RETURN_ERR;

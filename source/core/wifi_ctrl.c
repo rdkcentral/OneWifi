@@ -355,7 +355,8 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
                         break;
 
                     case wifi_event_type_monitor:
-                        wifi_util_dbg_print(WIFI_CTRL,"[%s]: Received monitor Event %d\r\n",__FUNCTION__, event->event_type);
+                        // TODO: event 4 flood
+                        // wifi_util_dbg_print(WIFI_CTRL,"[%s]: Received monitor Event %d\r\n",__FUNCTION__, event->event_type);
                         break;
 
                     default:
@@ -2760,7 +2761,8 @@ wifi_radio_operationParam_t *getRadioOperationParam(UINT radioIndex)
         wifi_util_error_print(WIFI_CTRL,"RDK_LOG_ERROR, %s Input radioIndex = %d not found, out of range\n", __FUNCTION__, radioIndex);
         return NULL;
     }
-    wifi_util_dbg_print(WIFI_CTRL, "%s Input radioIndex = %d\n", __FUNCTION__, radioIndex);
+    //TODO: dbg log flood
+    //wifi_util_dbg_print(WIFI_CTRL, "%s Input radioIndex = %d\n", __FUNCTION__, radioIndex);
 
     return get_wifidb_radio_map(radioIndex);
 }

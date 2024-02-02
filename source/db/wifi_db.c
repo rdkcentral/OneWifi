@@ -67,6 +67,7 @@
 #define ONEWIFI_DB_VERSION_OFFCHANNELSCAN_FLAG 100018
 #define ONEWIFI_DB_VERSION_LOGINTERVAL_FLAG 100022
 #define ONEWIFI_DB_VERSION_CHUTILITY_LOGINTERVAL_FLAG 100023
+#define ONEWIFI_DB_VERSION_IEEE80211BE_FLAG 100025
 #define OFFCHAN_DEFAULT_TSCAN_IN_MSEC 63
 #define OFFCHAN_DEFAULT_NSCAN_IN_SEC 10800
 #define OFFCHAN_DEFAULT_TIDLE_IN_SEC 5
@@ -1870,7 +1871,8 @@ int wifidb_update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t
     wifi_util_dbg_print(WIFI_DB, " %s:%d Wifi_Radio_Config data Tscan=%lu Nscan=%lu Tidle=%lu \n", __FUNCTION__, __LINE__, feat_config->OffChanTscanInMsec, feat_config->OffChanNscanInSec, feat_config->OffChanTidleInSec);
     if(onewifi_ovsdb_table_upsert_f(g_wifidb->wifidb_sock_path,&table_Wifi_Radio_Config,&cfg,false,insert_filter) == false)
     {
-        wifidb_print("%s:%d WIFI DB update error !!!. Failed to insert Wifi_Radio_Config table \n",__func__, __LINE__);
+        wifidb_print("%s:%d WIFI DB update error !!!. Failed to insert Wifi_Radio_Config table, radio=%d\n",
+                __func__, __LINE__, radio_index);
         return -1;
     }
     else
@@ -4692,6 +4694,9 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
             cfg.channel = 1;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
             cfg.variant = WIFI_80211_VARIANT_G | WIFI_80211_VARIANT_N;
+#ifdef FEATURE_IEEE80211BE
+            cfg.variant |= WIFI_80211_VARIANT_BE;
+#endif
 #if defined (_PP203X_PRODUCT_REQ_)
             cfg.beaconInterval = 200;
 #endif
@@ -4710,6 +4715,10 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #else
             cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC | WIFI_80211_VARIANT_AX;
 #endif
+
+#ifdef FEATURE_IEEE80211BE
+            cfg.variant |= WIFI_80211_VARIANT_BE;
+#endif
             break;
         case WIFI_FREQUENCY_5H_BAND:
             cfg.op_class = 3;
@@ -4722,12 +4731,21 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #else
             cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC | WIFI_80211_VARIANT_AX;
 #endif
+
+#ifdef FEATURE_IEEE80211BE
+            cfg.variant |= WIFI_80211_VARIANT_BE;
+#endif
             break;
         case WIFI_FREQUENCY_6_BAND:
             cfg.op_class = 131;
             cfg.channel = 197;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_160MHZ;
             cfg.variant = WIFI_80211_VARIANT_AX;
+
+#ifdef FEATURE_IEEE80211BE
+            cfg.variant |= WIFI_80211_VARIANT_BE;
+            cfg.channelWidth = WIFI_CHANNELBANDWIDTH_320MHZ;
+#endif
             break;
         default:
             wifi_util_error_print(WIFI_DB,"%s:%d radio index %d, invalid band %d\n", __func__,
@@ -5603,6 +5621,17 @@ static void wifidb_radio_config_upgrade(unsigned int index, wifi_radio_operation
             }
         }
     }
+#ifdef FEATURE_IEEE80211BE
+    if (g_wifidb->db_version < ONEWIFI_DB_VERSION_IEEE80211BE_FLAG) {
+        wifi_util_info_print(WIFI_DB, "%s:%d upgrade radio=%d config, old db version: %d total radios: %u\n",
+            __func__, __LINE__, index, g_wifidb->db_version, total_radios);
+        config->variant |= WIFI_80211_VARIANT_BE;
+        if(wifidb_update_wifi_radio_config(index, config, rdk_config) != RETURN_OK) {
+            wifi_util_error_print(WIFI_DB,"%s:%d error in updating radio config\n", __func__,__LINE__);
+            return;
+        }
+    }
+#endif
 }
 /************************************************************************************
  ************************************************************************************

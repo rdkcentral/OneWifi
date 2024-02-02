@@ -2331,42 +2331,53 @@ int validate_wifi_hw_variant(wifi_freq_bands_t radio_band, wifi_ieee80211Variant
         return RETURN_ERR;
     }
 
+    // see wifi_hal_generic.h in halinterface pkg for bit sets
+    #define MASK_BITSET(x, bit) ((x) &= ~(bit))
+
     if (radio_band == WIFI_FREQUENCY_2_4_BAND) {
         // Mask hw variant b,g,n,ax bit
-        wifi_hw_mode &= ~(1UL << 1);
-        wifi_hw_mode &= ~(1UL << 2);
-        wifi_hw_mode &= ~(1UL << 3);
+        MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_B);
+        MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_G);
+        MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_N);
 #if !defined (_PP203X_PRODUCT_REQ_)
-        wifi_hw_mode &= ~(1UL << 7);
+        MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_AX);
+#endif
+#ifdef FEATURE_IEEE80211BE
+        MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_BE);
 #endif
         if(wifi_hw_mode != 0) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s() %d Error wifi_hw_mode %d\n", __FUNCTION__, __LINE__, wifi_hw_mode);
             return RETURN_ERR;
         }
     } else if ((radio_band == WIFI_FREQUENCY_5_BAND) || (radio_band == WIFI_FREQUENCY_5L_BAND) || (radio_band == WIFI_FREQUENCY_5H_BAND)) {
-        // Mask hw variant a,n,h,ac,ax bit
-        wifi_hw_mode &= ~(1UL << 0);
-        wifi_hw_mode &= ~(1UL << 3);
-        wifi_hw_mode &= ~(1UL << 4);
-        wifi_hw_mode &= ~(1UL << 5);
+        // Mask hw variant a,n,h,ac,ax,be bits
+        MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_A);
+        MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_N);
+        MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_H);
+        MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_AC);
 #if !defined (_PP203X_PRODUCT_REQ_)
-        wifi_hw_mode &= ~(1UL << 7);
+        MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_AX);
+#endif
+#ifdef FEATURE_IEEE80211BE
+        MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_BE);
 #endif
         if (wifi_hw_mode != 0) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s() %d Error wifi_hw_mode %d\n", __FUNCTION__, __LINE__, wifi_hw_mode);
             return RETURN_ERR;
         }
     } else if (radio_band == WIFI_FREQUENCY_6_BAND) {
-        // Mask hw variant ax bit
-        wifi_hw_mode &= ~(1UL << 7);
-
+        // Mask hw variant ax, be bits
+        MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_AX);
+#ifdef FEATURE_IEEE80211BE
+        MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_BE);
+#endif
         if (wifi_hw_mode != 0) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s() %d Error wifi_hw_mode %d\n", __FUNCTION__, __LINE__, wifi_hw_mode);
             return RETURN_ERR;
         }
     } else if (radio_band == WIFI_FREQUENCY_60_BAND) {
         // Mask hw variant ad bit
-        wifi_hw_mode &= ~(1UL << 6);
+        MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_AD);
 
         if (wifi_hw_mode != 0) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s() %d Error wifi_hw_mode %d\n", __FUNCTION__, __LINE__, wifi_hw_mode);
@@ -2526,7 +2537,7 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
     decode_param_integer(obj_radio, "ChannelWidth", param);
     radio_info->channelWidth = param->valuedouble;
     if ((radio_info->channelWidth < WIFI_CHANNELBANDWIDTH_20MHZ)
-            || (radio_info->channelWidth > WIFI_CHANNELBANDWIDTH_80_80MHZ)) {
+        || (radio_info->channelWidth > WIFI_CHANNELBANDWIDTH_320MHZ)) {
         if ( (radio_info->channelWidth == WIFI_CHANNELBANDWIDTH_160MHZ) && (radio_info->band == WIFI_FREQUENCY_5_BAND || radio_info->band == WIFI_FREQUENCY_5L_BAND || radio_info->band == WIFI_FREQUENCY_5H_BAND) && (radio_info->DfsEnabled != true) )
         {
             wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: DFS Disabled!! Cannot set to ChanWidth = %d  \n",__func__, __LINE__,radio_info->channelWidth);

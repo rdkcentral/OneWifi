@@ -837,6 +837,15 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
             break;
     }
 
+    static const char *level_marker[WIFI_LOG_LVL_MAX] =
+    {
+        [WIFI_LOG_LVL_DEBUG] = "<D>",
+        [WIFI_LOG_LVL_INFO] = "<I>",
+        [WIFI_LOG_LVL_ERROR] = "<E>",
+    };
+    if (level < WIFI_LOG_LVL_MAX)
+        snprintf(&buff[strlen(buff)], 256 - strlen(buff), "%s ", level_marker[level]);
+
     fprintf(fpg, "%s ", buff);
 
     va_start(list, format);
@@ -1543,8 +1552,19 @@ int country_id_conversion(wifi_countrycode_type_t *country_code, char *country_i
 
 int hw_mode_conversion(wifi_ieee80211Variant_t *hw_mode_enum, char *hw_mode, int hw_mode_len, unsigned int conv_type)
 {
-    char arr_str[][8] = {"11a", "11b", "11g", "11n", "11ac", "11ax"};
-    wifi_ieee80211Variant_t arr_enum[] = {WIFI_80211_VARIANT_A, WIFI_80211_VARIANT_B, WIFI_80211_VARIANT_G, WIFI_80211_VARIANT_N, WIFI_80211_VARIANT_AC, WIFI_80211_VARIANT_AX};
+    static const char *arr_str[] = {"11a","11b", "11g", "11n", "11ac", "11ax", "11be"};
+#ifdef FEATURE_IEEE80211BE
+    /*
+        TODO: need to add WIFI_80211_VARIANT_BE in the end
+        when https://gerrit.teamccp.com/#/c/819701/ will be merged.
+    */
+#endif
+    static const wifi_ieee80211Variant_t arr_enum[] = {WIFI_80211_VARIANT_A,
+                                                       WIFI_80211_VARIANT_B,
+                                                       WIFI_80211_VARIANT_G,
+                                                       WIFI_80211_VARIANT_N,
+                                                       WIFI_80211_VARIANT_AC,
+                                                       WIFI_80211_VARIANT_AX};
     bool is_mode_valid = false;
 
     unsigned int i = 0;
@@ -1569,6 +1589,19 @@ int hw_mode_conversion(wifi_ieee80211Variant_t *hw_mode_enum, char *hw_mode, int
         if (is_mode_valid == true) {
             return RETURN_OK;
         }
+#ifdef FEATURE_IEEE80211BE
+        /*
+            TODO: if we don't have any other variants just use 11ax instead of 11be to be
+            compatible with ovsdb.
+            Any other cases should follow to general processing above.
+            !!! Remove after https://gerrit.teamccp.com/#/c/819701/ will be merged.
+        */
+        else {
+            snprintf(hw_mode, hw_mode_len, "11ax");
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "Replace standalone option 11be to 11ax for ovsdb\n");
+            return RETURN_OK;
+        }
+#endif
     }
 
     return RETURN_ERR;
@@ -1576,8 +1609,12 @@ int hw_mode_conversion(wifi_ieee80211Variant_t *hw_mode_enum, char *hw_mode, int
 
 int ht_mode_conversion(wifi_channelBandwidth_t *ht_mode_enum, char *ht_mode, int ht_mode_len, unsigned int conv_type)
 {
-    char arr_str[][8] = {"HT20", "HT40", "HT80", "HT160"};
-    wifi_channelBandwidth_t arr_enum[] = {WIFI_CHANNELBANDWIDTH_20MHZ, WIFI_CHANNELBANDWIDTH_40MHZ, WIFI_CHANNELBANDWIDTH_80MHZ, WIFI_CHANNELBANDWIDTH_160MHZ};
+    static const char arr_str[][8] = {"HT20", "HT40", "HT80", "HT160", "HT320"};
+    static const wifi_channelBandwidth_t arr_enum[] = {WIFI_CHANNELBANDWIDTH_20MHZ,
+                                                       WIFI_CHANNELBANDWIDTH_40MHZ,
+                                                       WIFI_CHANNELBANDWIDTH_80MHZ,
+                                                       WIFI_CHANNELBANDWIDTH_160MHZ,
+                                                       WIFI_CHANNELBANDWIDTH_320MHZ};
 
     unsigned int i = 0;
     if ((ht_mode_enum == NULL) || (ht_mode == NULL)) {
@@ -2360,7 +2397,10 @@ struct  wifiStdHalMap wifiStdMap[] =
     {WIFI_80211_VARIANT_H, "h"},
     {WIFI_80211_VARIANT_AC, "ac"},
     {WIFI_80211_VARIANT_AD, "ad"},
-    {WIFI_80211_VARIANT_AX, "ax"}
+    {WIFI_80211_VARIANT_AX, "ax"},
+#ifdef FEATURE_IEEE80211BE
+    {WIFI_80211_VARIANT_AX, "be"}
+#endif
 };
 
 bool wifiStandardStrToEnum(char *pWifiStdStr, wifi_ieee80211Variant_t *p80211VarEnum, ULONG instance_number, bool twoG80211axEnable)
@@ -2937,7 +2977,13 @@ bool is_bandwidth_and_hw_variant_compatible(uint32_t variant, wifi_channelBandwi
             supported_bw = WIFI_CHANNELBANDWIDTH_160MHZ;
         }
     }
-
+#ifdef FEATURE_IEEE80211BE
+    if ( variant & WIFI_80211_VARIANT_BE ) {
+        if (supported_bw < WIFI_CHANNELBANDWIDTH_320MHZ) {
+            supported_bw = WIFI_CHANNELBANDWIDTH_320MHZ;
+        }
+    }
+#endif
     if (supported_bw < current_bw) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d variant:%d supported bandwidth:%d current_bw:%d \r\n", __func__, __LINE__, variant, supported_bw, current_bw);
         return false;
@@ -2987,8 +3033,14 @@ int wifi_radio_operationParam_validation(wifi_hal_capability_t  *hal_cap, wifi_r
 
 // TODO: remove #if after reading channel width from driver to hal-wrapper is fixed
 #if CCSP_COMMON
-    //Channelwidth check from the capability
-    if (!(oper->channelWidth & radiocap->channelWidth[band_arr_index])) {
+    // Channelwidth check from the capability
+    // TODO: now channelWidth[band_arr_index] = 0xf which is lower than 0x20 for 320MHz mask!!!
+    // temporary make exclusion for 6g band to allow us to set 320MHz for test purpouses
+    if (!(oper->channelWidth & radiocap->channelWidth[band_arr_index])
+#ifdef FEATURE_IEEE80211BE
+    && oper->band != WIFI_FREQUENCY_6_BAND
+#endif
+    ) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid Channelwidth 0x%x for the radio_index : %d supported width : 0x%x\n",
                 __func__, __LINE__, oper->channelWidth, radio_index, radiocap->channelWidth[band_arr_index]);
         return RETURN_ERR;
@@ -3022,7 +3074,7 @@ int wifi_radio_operationParam_validation(wifi_hal_capability_t  *hal_cap, wifi_r
             hal_cap_channels = non_dfs_ch_hal_cap; /*Update hal_cap_channels with hal cap non dfs channels*/
         }
         else {
-            if ((oper->channelWidth == WIFI_CHANNELBANDWIDTH_160MHZ) && (oper->channel > 128)) {
+            if ((oper->channelWidth == WIFI_CHANNELBANDWIDTH_160MHZ) && (oper->channel > 128)) {   // TODO: 320MHz
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid channel %d for the radio_index : %d bw = 0x%x \n", __func__, __LINE__, oper->channel, radio_index,oper->channelWidth);
                 return RETURN_ERR;
             }
@@ -3040,6 +3092,9 @@ int wifi_radio_operationParam_validation(wifi_hal_capability_t  *hal_cap, wifi_r
                 break;
             case WIFI_CHANNELBANDWIDTH_160MHZ:
                 nchannels = 8;
+                break;
+             case WIFI_CHANNELBANDWIDTH_320MHZ:
+                nchannels = 16;
                 break;
             default: nchannels =0;
                 break;
