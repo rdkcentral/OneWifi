@@ -28,27 +28,6 @@
 #include "wifi_monitor.h"
 #include "wifi_util.h"
 
-static void convert_stat_channels_to_string(const wifi_channels_list_t *chan_list, char *buff, size_t max_len)
-{
-    char chan_buf[MON_STATS_KEY_LEN_16];
-    int i;
-    int res = 0;
-    int len = 0;
-    char tmp[MON_STATS_KEY_LEN_32] = {0};
-
-    if (chan_list->num_channels > 0) {
-        memset(chan_buf, 0, sizeof(chan_buf));
-        for (i = 0; i < chan_list->num_channels - 1; i++) {
-            res = snprintf(&chan_buf[len], (MON_STATS_KEY_LEN_16-len), "%d,", chan_list->channels_list[i]);
-            len += res;
-        }
-        chan_buf[len-1] = '\0';
-        snprintf(tmp, sizeof(tmp), "%s-%s", buff, chan_buf);
-        memcpy(buff, tmp, max_len);
-    }
-}
-
-
 int validate_radio_channel_args(wifi_mon_stats_args_t *args)
 {
     if (args == NULL) {
@@ -86,13 +65,7 @@ int generate_radio_channel_provider_stats_key(wifi_mon_stats_config_t *config, c
         wifi_util_error_print(WIFI_MON, "%s:%d input arguments are NULL config : %p key = %p\n",__func__,__LINE__, config, key_str);
         return RETURN_ERR;
     }
-
-    memset(key_str, 0, key_len);
-
-    snprintf(key_str, key_len, "%04d-%02d-%02d-%08lu", config->inst, mon_stats_type_radio_channel_stats, config->args.radio_index, config->interval_ms);
-
-    convert_stat_channels_to_string(&config->args.channel_list, key_str, key_len);
-
+    snprintf(key_str, key_len, "%04d-%02d-%02d-%02d", config->inst, mon_stats_type_radio_channel_stats, config->args.radio_index, config->args.app_info);
     wifi_util_dbg_print(WIFI_MON, "%s:%d: provider stats key: %s\n", __func__,__LINE__, key_str);
 
     return RETURN_OK;
