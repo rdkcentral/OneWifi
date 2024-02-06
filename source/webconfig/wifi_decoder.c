@@ -3049,7 +3049,7 @@ webconfig_error_t decode_mac_object(rdk_wifi_vap_info_t *rdk_vap_info, cJSON *ob
 
     size = cJSON_GetArraySize(obj_acl);
 
-    memset(&rdk_vap_info->acl_map, 0, sizeof(hash_map_t));
+    rdk_vap_info->acl_map = NULL;
 
     for (i=0; i<size; i++) {
         mac_object  = cJSON_GetArrayItem(obj_acl, i);
