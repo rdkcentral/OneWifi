@@ -82,7 +82,7 @@
 #include "wifi_data_plane.h"
 #include "secure_wrapper.h"
 #include <sys/un.h>
-
+#include "wifi_ctrl.h"
 #include "wifi_util.h"
 #include "dml_onewifi_api.h"
 #include "ssp_loop.h"

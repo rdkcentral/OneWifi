@@ -26,6 +26,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include "wifi_monitor.h"
+#include "wifi_ctrl.h"
 #include "wifi_util.h"
 
 int validate_radio_channel_args(wifi_mon_stats_args_t *args)

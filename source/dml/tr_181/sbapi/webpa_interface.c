@@ -30,6 +30,7 @@
 #include "webpa_interface.h"
 #include "base64.h"
 #include "cosa_dbus_api.h"
+#include "wifi_ctrl.h"
 #include "wifi_util.h"
 
 #define MAX_PARAMETERNAME_LEN   512

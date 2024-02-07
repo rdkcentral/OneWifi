@@ -29,7 +29,12 @@
 #include "wifi_hal.h"
 #include <pthread.h>
 #include <sys/prctl.h>
-#include "wifi_ctrl.h"
+#include "wifi_base.h"
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 typedef enum {
     WIFI_DB,
@@ -287,4 +292,7 @@ void json_param_obscure(char *json, char *param);
 bool is_5g_20M_channel_in_dfs(int channel);
 bool is_6g_supported_device(wifi_platform_property_t *wifi_prop);
 char *get_assoc_devices_blob();
+#ifdef __cplusplus
+}
+#endif
 #endif//_WIFI_UTIL_H_

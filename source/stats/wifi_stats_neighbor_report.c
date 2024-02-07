@@ -26,6 +26,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include "wifi_monitor.h"
+#include "wifi_ctrl.h"
 #include "wifi_util.h"
 
 #define STATS_COLLECTOR_NEIGHBOR_SCAN_RESULT_INTERVAL 200 //200 ms

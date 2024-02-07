@@ -22,6 +22,7 @@
 
 #include "wifi_base.h"
 #include "wifi_util.h"
+#include "wifi_ctrl.h"
 
 #include <wifi_hal_generic.h>
 #include "ds_dlist.h"

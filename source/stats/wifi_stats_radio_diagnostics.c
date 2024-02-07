@@ -26,6 +26,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include "wifi_monitor.h"
+#include "wifi_ctrl.h"
 #include "wifi_util.h"
 
 

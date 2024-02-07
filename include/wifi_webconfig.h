@@ -156,6 +156,7 @@ typedef enum {
 #if CCSP_COMMON
     webconfig_initializer_wifievents,
 #endif
+    webconfig_initializer_cci,
     webconfig_initializer_max
 } webconfig_initializer_t;
 

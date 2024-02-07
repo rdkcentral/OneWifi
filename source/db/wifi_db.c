@@ -51,6 +51,7 @@
 #include <ev.h>
 #include "wifi_db.h"
 #include "dirent.h"
+#include "wifi_hal.h"
 #include "wifi_ctrl.h"
 #include "wifi_util.h"
 #include "wifi_mgr.h"

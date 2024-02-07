@@ -36,7 +36,7 @@
 #include <cJSON.h>
 #include <dirent.h>
 #include <errno.h>
-
+#include "wifi_ctrl.h"
 #include "wifi_util.h"//ONE_WIFI
 
 #if !(DML_SUPPORT)
