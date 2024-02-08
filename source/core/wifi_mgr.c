@@ -1245,7 +1245,9 @@ int get_vap_params_from_psm(unsigned int vap_index, wifi_vap_info_t *vap_config,
     int security_mode = bss_cfg->security.mode;
     if (nvram_get_current_security_mode(&security_mode, (instance_number - 1)) == 0) {
         /* use defaults if security and mfp do not match the specs */
-        if ((security_mode == wifi_security_mode_wpa3_personal) && (security_mfp != wifi_mfp_cfg_required)) {
+        if (((security_mode == wifi_security_mode_wpa3_personal) ||
+             (security_mode == wifi_security_mode_enhanced_open)) &&
+            (security_mfp != wifi_mfp_cfg_required)) {
             wifi_util_error_print(WIFI_MGR, "%s:%d Using default security mode 0x%x and MFP %d for %s\n", \
                                   __func__, __LINE__, bss_cfg->security.mode, bss_cfg->security.mfp, vap_config->vap_name);
         } else if ((security_mode == wifi_security_mode_wpa3_transition) && (security_mfp != wifi_mfp_cfg_optional)) {
