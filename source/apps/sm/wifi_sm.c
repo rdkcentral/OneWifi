@@ -160,7 +160,7 @@ static int handle_ready_client_stats(client_assoc_data_t *stats, size_t stats_nu
                     sm_client_conn_t conn_info = {
                         .connect_ts = timeval_to_ms(&sta_data->last_connected_time),
                         .disconnect_ts = timeval_to_ms(&sta_data->last_disconnected_time),
-                        .duration_ms = sta_data->total_connected_time,
+                        .duration_ms = ((sta_data->total_connected_time.tv_sec*1000) + (sta_data->total_connected_time.tv_nsec/1000000)),
                     };
                     sm_client_sample_store(radio_index, tmp_vap_index,
                         &sta_data->dev_stats, &conn_info);

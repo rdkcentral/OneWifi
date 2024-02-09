@@ -970,7 +970,7 @@ void process_connect(unsigned int ap_index, auth_deauth_dev_t *dev)
     sta_data_t *sta;
     hash_map_t     *sta_map;
 #ifdef CCSP_COMMON
-    struct timeval tv_now;
+    struct timespec tv_now, t_diff, t_tmp;
     unsigned int i = 0;
     int vap_status = 0;
     wifi_mgr_t *mgr = get_wifimgr_obj();
@@ -979,7 +979,6 @@ void process_connect(unsigned int ap_index, auth_deauth_dev_t *dev)
     getVAPArrayIndexFromVAPIndex(ap_index, &vap_array_index);
 
     sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
-
     wifi_util_info_print(WIFI_MON, "sta map: %p Device:%s connected on ap:%d\n", sta_map, to_sta_key(dev->sta_mac, sta_key), ap_index);
     to_sta_key(dev->sta_mac, sta_key);
     str_tolower(sta_key);
@@ -995,10 +994,18 @@ void process_connect(unsigned int ap_index, auth_deauth_dev_t *dev)
     }
 
 #ifdef CCSP_COMMON
-    sta->total_disconnected_time += sta->disconnected_time;
-    sta->disconnected_time = 0;
+    clock_gettime(CLOCK_MONOTONIC, &tv_now);
+    if (timespecisset(&(sta->last_connected_time))) {
+        if (timespeccmp(&(sta->last_disconnected_time), &(g_monitor_module.bssid_data[vap_array_index].last_sta_update_time), >)) {//sta disconnected before counter update
+            timespecsub(&tv_now, &(sta->last_disconnected_time), &t_diff);
+        } else {
+            timespecsub(&tv_now, &(g_monitor_module.bssid_data[vap_array_index].last_sta_update_time), &t_diff);
+        }
+        t_tmp.tv_sec = sta->total_disconnected_time.tv_sec;
+        t_tmp.tv_nsec = sta->total_disconnected_time.tv_nsec;
+        timespecadd(&t_tmp, &t_diff, &(sta->total_disconnected_time));
+    }
 
-    gettimeofday(&tv_now, NULL);
     if(!sta->assoc_monitor_start_time)
         sta->assoc_monitor_start_time = tv_now.tv_sec;
 
@@ -1007,13 +1014,16 @@ void process_connect(unsigned int ap_index, auth_deauth_dev_t *dev)
             wifi_util_dbg_print(WIFI_MON, "Device:%s connected on ap:%d connected within rapid reconnect time\n", to_sta_key(dev->sta_mac, sta_key), ap_index);
             sta->rapid_reconnects++;
         }
-    }	
-    else {
-            wifi_util_dbg_print(WIFI_MON, "Device:%s connected on ap:%d received another connection event\n", to_sta_key(dev->sta_mac, sta_key), ap_index);
-        }
+    } else {
+        wifi_util_dbg_print(WIFI_MON, "Device:%s connected on ap:%d received another connection event\n", to_sta_key(dev->sta_mac, sta_key), ap_index);
+    }
 
     sta->last_connected_time.tv_sec = tv_now.tv_sec;
-    sta->last_connected_time.tv_usec = tv_now.tv_usec;
+    sta->last_connected_time.tv_nsec = tv_now.tv_nsec;
+
+    wifi_util_dbg_print(WIFI_MON, "%s:%d total_connected_time %lld ms\n", __func__, __LINE__, (long long)((sta->total_connected_time.tv_sec*1000)+(sta->total_connected_time.tv_nsec/1000000)));
+    wifi_util_dbg_print(WIFI_MON, "%s:%d total_disconnected_time %lld ms\n", __func__, __LINE__, (long long)((sta->total_disconnected_time.tv_sec*1000)+(sta->total_disconnected_time.tv_nsec/1000000)));
+    
 
     /* reset stats of client */
     memset((unsigned char *)&sta->dev_stats_last, 0, sizeof(wifi_associated_dev3_t));
@@ -1055,7 +1065,7 @@ void process_disconnect	(unsigned int ap_index, auth_deauth_dev_t *dev)
     sta_data_t *sta;
     hash_map_t     *sta_map;
 #ifdef CCSP_COMMON
-    struct timeval tv_now;
+    struct timespec tv_now, t_diff, t_tmp;
     instant_msmt_t msmt;
 #endif // CCSP_COMMON
     unsigned int vap_array_index;
@@ -1071,16 +1081,25 @@ void process_disconnect	(unsigned int ap_index, auth_deauth_dev_t *dev)
     }
 
 #ifdef CCSP_COMMON
-    sta->total_connected_time += sta->connected_time;
-    sta->connected_time = 0;
+    clock_gettime(CLOCK_MONOTONIC, &tv_now);
+    if (timespeccmp(&(sta->last_connected_time), &(g_monitor_module.bssid_data[vap_array_index].last_sta_update_time), >)) {//sta disconnected before counter update
+        timespecsub(&tv_now, &(sta->last_connected_time), &t_diff);
+    } else {
+        timespecsub(&tv_now, &(g_monitor_module.bssid_data[vap_array_index].last_sta_update_time), &t_diff);
+    }
+    t_tmp.tv_sec = sta->total_connected_time.tv_sec;
+    t_tmp.tv_nsec = sta->total_connected_time.tv_nsec;
+    timespecadd(&t_tmp, &t_diff, &(sta->total_connected_time));
     sta->dev_stats.cli_Active = false;
     sta->connection_authorized = false;
-    gettimeofday(&tv_now, NULL);
     if(!sta->deauth_monitor_start_time)
         sta->deauth_monitor_start_time = tv_now.tv_sec;
 
     sta->last_disconnected_time.tv_sec = tv_now.tv_sec;
-    sta->last_disconnected_time.tv_usec = tv_now.tv_usec;
+    sta->last_disconnected_time.tv_nsec = tv_now.tv_nsec;
+    wifi_util_dbg_print(WIFI_MON, "%s:%d total_connected_time %lld ms\n", __func__, __LINE__, (long long)(sta->total_connected_time.tv_sec*1000)+(sta->total_connected_time.tv_nsec/1000000));
+    wifi_util_dbg_print(WIFI_MON, "%s:%d total_disconnected_time %lld ms\n", __func__, __LINE__, (long long)(sta->total_disconnected_time.tv_sec*1000)+(sta->total_disconnected_time.tv_nsec/1000000));
+
 
     // stop instant measurements if its going on with this client device
     msmt.ap_index = ap_index;

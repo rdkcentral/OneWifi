@@ -771,12 +771,11 @@ typedef struct {
     mac_address_t  sta_mac;
     unsigned int    good_rssi_time;
     unsigned int    bad_rssi_time;
-    unsigned int    connected_time;
-    unsigned int    disconnected_time;
-    unsigned int    total_connected_time;
-    unsigned int    total_disconnected_time;
-    struct timeval  last_connected_time;
-    struct timeval  last_disconnected_time;
+    struct timespec  disconnected_time;
+    struct timespec  total_connected_time;
+    struct timespec  total_disconnected_time;
+    struct timespec  last_connected_time;
+    struct timespec  last_disconnected_time;
     unsigned int    rapid_reconnects;
     bool            updated;
     wifi_associated_dev3_t dev_stats;

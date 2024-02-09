@@ -213,8 +213,8 @@ exit_err:
    If the client was disconnected in the previous sample, take the absolute current value;
    Calculate delta otherwise
 */
-#define DELTA_CONN_STATS(PREV_CONNECTED, X) ((PREV_CONNECTED) ? DELTA(X) : curr->X)
-#define DELTA_STATS(X) DELTA_CONN_STATS(prev->is_connected, stats.X)
+#define DELTA_CONN_STATS(PREV_CONNECTED, X) ((PREV_CONNECTED && (curr->X > prev->X)) ? DELTA(X) : curr->X)
+#define DELTA_STATS(X) DELTA_CONN_STATS(prev->is_connected , stats.X)
 #define ROUNDF(X) (roundf((X) * 100) / 100.0)
 #define CLIENT_STATS_PRINT(S,M) \
     wifi_util_dbg_print(WIFI_SM, "%s:%d: Client %s %s=%llu\n", __func__, __LINE__, M, #S, result->S);
@@ -290,9 +290,7 @@ int sm_client_samples_calc_total(ds_dlist_t *samples, dpp_client_record_t *resul
         result->disconnect_ts  = curr->disconnect_ts;
     }
 
-    if (result->connected != 0 || result->disconnected != 0) {
-        result->duration_ms = DELTA(duration_ms);
-    }
+    result->duration_ms = DELTA(duration_ms);
 
     mac_addr_str_t mac_str = {0};
     to_mac_str(result->info.mac, mac_str);

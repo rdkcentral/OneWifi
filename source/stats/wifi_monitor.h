@@ -36,6 +36,7 @@ typedef struct {
 typedef struct {
     unsigned char bssid[32];
     hash_map_t *sta_map; //of type sta_data_t
+    struct timespec last_sta_update_time;
     ap_params_t ap_params;
     ssid_t                  ssid;
 } bssid_data_t;
