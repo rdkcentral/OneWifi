@@ -591,7 +591,7 @@ void upload_associated_devices_msmt_data(bssid_data_t *bssid_info, sta_data_t *s
     avro_writer_free(writer);
 
     size += MAGIC_NUMBER_SIZE + SCHEMA_ID_LENGTH;
-    sendWebpaMsg((char *)serviceName,(char *) dest, trans_id, (char *)contentType, buff, size);//ONE_WIFI
+    sendWebpaMsg((char *)serviceName,(char *) dest, trans_id, NULL, NULL, (char *)contentType, buff, size);//ONE_WIFI
     wifi_util_dbg_print(WIFI_MON, "Creating telemetry record successful\n");
 }
 

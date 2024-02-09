@@ -139,6 +139,18 @@
     }   \
 }   \
 
+#define decode_param_blaster_trace_info(json, key, value) \
+{   \
+    value = cJSON_GetObjectItem(json, key);     \
+    wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d\n", __func__, __LINE__);    \
+    if ((value == NULL) || (cJSON_IsString(value) == false) ||  \
+            (value->valuestring == NULL) ) {    \
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed for key:%s\n", __func__, __LINE__, key);   \
+        return webconfig_error_decode;  \
+    }   \
+}   \
+
+
 webconfig_error_t decode_cac_object(wifi_vap_info_t *vap_info, cJSON *obj_array );
 bool is_valid_channel(unsigned int channel, bool dfs)
 {
@@ -3445,6 +3457,12 @@ webconfig_error_t decode_blaster_object(const cJSON *blaster_cfg, active_msmt_t 
 
     decode_param_blaster_mqtt_topic(blaster_cfg, "MQTT Topic", param);
     strcpy((char *)blaster_info->blaster_mqtt_topic, param->valuestring);
+
+    decode_param_blaster_trace_info(blaster_cfg, "traceParent", param);
+    strcpy((char *)blaster_info->t_header.traceParent, param->valuestring);
+
+    decode_param_blaster_trace_info(blaster_cfg, "traceState", param);
+    strcpy((char *)blaster_info->t_header.traceState, param->valuestring);
 
     return webconfig_error_none;
 }

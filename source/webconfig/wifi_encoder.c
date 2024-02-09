@@ -1584,6 +1584,8 @@ webconfig_error_t encode_blaster_object(const active_msmt_t *blaster_info, cJSON
     }
     cJSON_AddNumberToObject(blaster_obj, "Status", blaster_info->Status);
     cJSON_AddStringToObject(blaster_obj, "MQTT Topic", (char *)blaster_info->blaster_mqtt_topic);
+    cJSON_AddStringToObject(blaster_obj, "traceParent", (char *)blaster_info->t_header.traceParent);
+    cJSON_AddStringToObject(blaster_obj, "traceState", (char *)blaster_info->t_header.traceState);
     return webconfig_error_none;
 }
 

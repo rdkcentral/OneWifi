@@ -1166,9 +1166,35 @@ int push_blaster_config_dml_to_ctrl_queue()
 {
     webconfig_subdoc_data_t data;
     char *str = NULL;
+    int ret = 0;
+    static rbusHandle_t rbus_handle;
+    ret = rbus_open(&rbus_handle, "trace-blaster");
+    char traceParent[512] = {0};
+    char traceState[512] = {0};
+    ret =  rbusHandle_GetTraceContextAsString(rbus_handle, traceParent, sizeof(traceParent), traceState, sizeof(traceState));
+
+    if ( ret == RBUS_ERROR_SUCCESS) {
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: After getting the trace context traceparent:%s, tracestate:%s\n", __func__, __LINE__,traceParent,traceState);
+        char *telemetry_buf = NULL;
+        telemetry_buf = malloc(sizeof(char)*1024);
+        if (telemetry_buf == NULL) {
+            wifi_util_error_print(WIFI_DMCLI,"%s:%d telemetry_buf allocation failed\r\n", __func__, __LINE__);
+            return RETURN_ERR;
+        }
+        memset(telemetry_buf, 0, sizeof(char)*1024);
+        snprintf(telemetry_buf, sizeof(char)*1024, "%s %s",traceParent, traceState);
+        t2_event_s("TRACE_WIFIBLAST_TRACECONTEXT_RECEIVED" , telemetry_buf);
+        if (telemetry_buf != NULL) {
+            free(telemetry_buf);
+            telemetry_buf = NULL;
+        }
+    }
     memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+    snprintf((char *)&webconfig_dml.blaster.t_header.traceParent, sizeof(webconfig_dml.blaster.t_header.traceParent), "%s", traceParent);
+    snprintf((char *)&webconfig_dml.blaster.t_header.traceState, sizeof(webconfig_dml.blaster.t_header.traceState), "%s", traceState);
     memcpy((unsigned char *)&data.u.decoded.blaster, (unsigned char *)&webconfig_dml.blaster, sizeof(active_msmt_t));
     memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap, sizeof(wifi_hal_capability_t));
+    wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: After getting the trace context in data_u_decoded_blaster traceparent:%s, tracestate:%s\n", __func__, __LINE__,data.u.decoded.blaster.t_header.traceParent, data.u.decoded.blaster.t_header.traceState);
     data.u.decoded.num_radios = get_num_radio_dml();
 
     if (webconfig_encode(&webconfig_dml.webconfig, &data, webconfig_subdoc_type_blaster) == webconfig_error_none) {

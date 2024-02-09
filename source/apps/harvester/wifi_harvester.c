@@ -604,7 +604,7 @@ void upload_single_client_msmt_data(sta_data_t *sta_info)
      avro_writer_free(writer);
 
      size += MAGIC_NUMBER_SIZE + SCHEMA_ID_LENGTH;
-     sendWebpaMsg((char *)(serviceName), (char *)(dest), trans_id, (char *)(contentType), buff, size);//ONE_WIFI
+     sendWebpaMsg((char *)(serviceName), (char *)(dest), trans_id, NULL, NULL, (char *)(contentType), buff, size);//ONE_WIFI
      wifi_util_dbg_print(WIFI_HARVESTER, "Creating telemetry record successful\n");
      CcspTraceInfo(("%s-%d Creation of Telemetry record is successful\n", __FUNCTION__, __LINE__));
 }

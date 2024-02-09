@@ -121,20 +121,23 @@ static void *handle_parodus(void *arg)
 			if (wrp_msg == NULL) {
 				assert(0);
 			}
-			
+
 			wifi_util_dbg_print(WIFI_MON, "Source:%s Destination:%s Content Type:%s\n", wrp_msg->u.event.source, wrp_msg->u.event.dest, wrp_msg->u.event.content_type);
 			//print_b64_endcoded_buffer(wrp_msg->u.event.payload, wrp_msg->u.event.payload_size);
 
 			ret = libparodus_send(interface->client_instance, wrp_msg);
 			if (ret != 0) {
-				CcspTraceError(("Parodus send failed: '%s'\n",libparodus_strerror(ret)));	
+				CcspTraceError(("Parodus send failed: '%s'\n",libparodus_strerror(ret)));
 			}
-
-			queue_remove(interface->queue, (uint32_t)count - 1);									
+                        wifi_util_dbg_print(WIFI_MON, "%s:%d Parodus sent successfully \n",__func__, __LINE__);
+			queue_remove(interface->queue, (uint32_t)count - 1);
 			free(wrp_msg->u.event.source);
 			free(wrp_msg->u.event.dest);
-			free(wrp_msg->u.event.content_type);	
+			free(wrp_msg->u.event.content_type);
 			free(wrp_msg->u.event.payload);
+                        free(wrp_msg->u.event.headers->headers[0]);
+                        free(wrp_msg->u.event.headers->headers[1]);
+                        free(wrp_msg->u.event.headers);
 	       		free(wrp_msg);
 		}
 		pthread_mutex_unlock(&interface->lock);
@@ -143,31 +146,45 @@ static void *handle_parodus(void *arg)
     }
 
 	rc = libparodus_shutdown(interface->client_instance);
-    
+
 	return 0;
 }
-void sendWebpaMsg(char *serviceName, char *dest, char *trans_id, char *contentType, char *payload, unsigned int payload_len)
+void sendWebpaMsg(char *serviceName, char *dest, char *trans_id, char *traceParent, char *traceState, char *contentType, char *payload, unsigned int payload_len)
 {
     wrp_msg_t *wrp_msg ;
     char source[MAX_PARAMETERNAME_LEN/2] = {'\0'};
 
     if ((serviceName == NULL) || (dest == NULL) || (trans_id == NULL) || (contentType == NULL) || (payload == NULL)) {
-	return;
+       return;
     }
-    
+
     pthread_mutex_lock(&webpa_interface.lock);
 
     snprintf(source, sizeof(source), "mac:%s/%s", webpa_interface.deviceMAC, serviceName);
-    
+
     wrp_msg = (wrp_msg_t *)malloc(sizeof(wrp_msg_t));
 
     memset(wrp_msg, 0, sizeof(wrp_msg_t));
     wrp_msg->msg_type = WRP_MSG_TYPE__EVENT;
+    wrp_msg->u.event.headers=(headers_t *) malloc(sizeof(headers_t)+sizeof( char * ) * 2);
+    if (wrp_msg->u.event.headers == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d:wrp headers allocation failed \n", __func__, __LINE__);
+        pthread_mutex_unlock(&webpa_interface.lock);
+        return;
+    }
     wrp_msg->u.event.payload = (void *)payload;
     wrp_msg->u.event.payload_size = payload_len;
     wrp_msg->u.event.source = strdup(source);
     wrp_msg->u.event.dest = strdup(dest);
     wrp_msg->u.event.content_type = strdup(contentType);
+    wrp_msg->u.event.headers->count = 2;
+    if (traceParent != NULL) {
+        wrp_msg->u.event.headers->headers[0] = strdup(traceParent);
+    }
+    if (traceState != NULL) {
+        wrp_msg->u.event.headers->headers[1] = strdup(traceState);
+    }
+    wifi_util_dbg_print(WIFI_MON, "traceparent:%s tracestate:%s trace count :%d\n", wrp_msg->u.event.headers->headers[0], wrp_msg->u.event.headers->headers[1], wrp_msg->u.event.headers->count);
 
     queue_push(webpa_interface.queue, wrp_msg);
 

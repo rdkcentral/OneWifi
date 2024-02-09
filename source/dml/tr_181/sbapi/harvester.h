@@ -54,7 +54,7 @@ int msgBusInit(const char *name);
  * @param[in] contentType content type of message "application/json", "avro/binary"
  * @param[in] payload_len length of payload or message length
  */
-void sendWebpaMsg(char *serviceName, char *dest, char *trans_id, char *contentType, char *payload, unsigned int payload_len);
+void sendWebpaMsg(char *serviceName, char *dest, char *trans_id, char *traceParent, char *traceState, char *contentType, char *payload, unsigned int payload_len);
 
 /**
  * @brief To get device CM MAC by querying stack

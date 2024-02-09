@@ -193,6 +193,11 @@ typedef struct {
 } active_msmt_resources_t;
 
 typedef struct {
+  char traceParent[512];
+  char traceState[512];
+} trace_headers_t;
+
+typedef struct {
     bool                              ActiveMsmtEnable;
     unsigned int                      ActiveMsmtSampleDuration;
     unsigned int                      ActiveMsmtPktSize;
@@ -202,6 +207,7 @@ typedef struct {
     active_msmt_step_t                Step[MAX_STEP_COUNT];
     active_msmt_resources_t           ActiveMsmtResources;
     blaster_state_t                   Status;
+    trace_headers_t                   t_header;
     unsigned char                     blaster_mqtt_topic[MAX_MQTT_TOPIC_LEN];
 } active_msmt_t;
 

@@ -267,6 +267,7 @@ static void printBlastMetricData(single_client_msmt_type_t msmtType, wifi_actvie
 void upload_single_client_active_msmt_data(blaster_hashmap_t *sta_info)
 {
 #ifdef CCSP_COMMON
+    char *telemetry_buf = NULL;
     const char * serviceName = "wifi";
     const char * dest = "event:raw.kestrel.reports.WifiSingleClientActiveMeasurement";
     const char * contentType = "avro/binary"; // contentType "application/json", "avro/binary"
@@ -1089,9 +1090,22 @@ void upload_single_client_active_msmt_data(blaster_hashmap_t *sta_info)
     avro_writer_free(writer);
 
     size += MAGIC_NUMBER_SIZE + SCHEMA_ID_LENGTH;
-    sendWebpaMsg((char *)(serviceName),  (char *)(dest), trans_id, (char *)(contentType), buff, size);//ONE_WIFI TBD
+    wifi_util_dbg_print(WIFI_BLASTER, ":%s TraceParent:%s, TraceState:%s \n", __func__,blaster->active_msmt.t_header.traceParent, blaster->active_msmt.t_header.traceState);
+    sendWebpaMsg((char *)(serviceName),  (char *)(dest), trans_id, blaster->active_msmt.t_header.traceParent, blaster->active_msmt.t_header.traceState, (char *)(contentType), buff, size);//ONE_WIFI TBD
+    telemetry_buf = malloc(sizeof(char)*1024);
+    if (telemetry_buf == NULL) {
+        wifi_util_error_print(WIFI_BLASTER,"%s:%d telemetry_buf allocation failed\r\n", __func__, __LINE__);
+        return;
+    }
+    memset(telemetry_buf, 0, sizeof(char)*1024);
+    snprintf(telemetry_buf, sizeof(char)*1024, "%s %s",blaster->active_msmt.t_header.traceParent, blaster->active_msmt.t_header.traceState);
+    t2_event_s("TRACE_WIFIBLAST_REPORT_SENT" , telemetry_buf);
     wifi_util_dbg_print(WIFI_BLASTER, "Creation of Telemetry record is successful\n");
     CcspTraceInfo(("%s-%d Blaster report successfully sent to Parodus WebPA component\n", __FUNCTION__, __LINE__));
+    if (telemetry_buf != NULL) {
+        free(telemetry_buf);
+        telemetry_buf = NULL;
+    }
 #endif // CCSP_COMMON
 }
 

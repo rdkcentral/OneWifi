@@ -1239,6 +1239,19 @@ static bool active_msmt_calc_cpu_util(unsigned int period, unsigned int *util_cp
     return true;
 }
 
+void SetBlasterTraceContext(char *traceParent, char *traceState)
+{
+    wifi_actvie_msmt_t  *g_active_msmt = get_wifi_blaster();
+    if (traceParent == NULL || traceState == NULL) {
+        wifi_util_error_print(WIFI_BLASTER, "%s:%d Trace is NULL\n", __func__, __LINE__);
+        return;
+    }
+    snprintf((char *)g_active_msmt->active_msmt.t_header.traceParent, sizeof(g_active_msmt->active_msmt.t_header.traceParent), "%s", traceParent);
+    snprintf((char *)g_active_msmt->active_msmt.t_header.traceState, sizeof(g_active_msmt->active_msmt.t_header.traceState), "%s", traceState);
+    wifi_util_dbg_print(WIFI_BLASTER, "%s:%d Traceparent is:%s and TraceSate:%s \n", __func__, __LINE__,g_active_msmt->active_msmt.t_header.traceParent,g_active_msmt->active_msmt.t_header.traceState);
+}
+
+
 /*********************************************************************************/
 /*                                                                               */
 /* FUNCTION NAME : WiFiBlastClient                                               */
@@ -1259,6 +1272,7 @@ static bool active_msmt_calc_cpu_util(unsigned int period, unsigned int *util_cp
 void WiFiBlastClient(void)
 {
     char macStr[18] = {'\0'};
+    char *telemetry_buf = NULL;
     unsigned int StepCount = 0;
     int apIndex = 0;
     unsigned int NoOfSamples = 0, oldNoOfSamples = 0;
@@ -1418,6 +1432,19 @@ void WiFiBlastClient(void)
             /* start blasting the packets to calculate the throughput */
             wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: Calling pktGen_BlastClient\n", __func__, __LINE__);
             pktGen_BlastClient(macStr, interface_name);
+            telemetry_buf = malloc(sizeof(char)*1024);
+            if (telemetry_buf == NULL) {
+                wifi_util_error_print(WIFI_BLASTER,"%s:%d telemetry_buf allocation failed\r\n", __func__, __LINE__);
+                if (radio_stats != NULL) {
+                    free(radio_stats);
+                    radio_stats = NULL;
+                }
+                pthread_mutex_unlock(&g_active_msmt->lock);
+                return;
+            }
+            memset(telemetry_buf, 0, sizeof(char)*1024);
+            snprintf(telemetry_buf, sizeof(char)*1024, "%s %s",g_active_msmt->active_msmt.t_header.traceParent, g_active_msmt->active_msmt.t_header.traceState);
+            t2_event_s("TRACE_WIFIBLAST_STARTS" , telemetry_buf);
 
             if (g_active_msmt->status == ACTIVE_MSMT_STATUS_SUCCEED) {
                 active_msmt_set_status_desc(__func__, cfg->PlanId, cfg->Step[StepCount].StepId,
@@ -1429,14 +1456,20 @@ void WiFiBlastClient(void)
     }
     if (radio_stats != NULL) {
         free(radio_stats);
-	radio_stats = NULL;
+        radio_stats = NULL;
     }
+    if (telemetry_buf != NULL) {
+        free(telemetry_buf);
+        telemetry_buf = NULL;
+    }
+
     wifi_util_dbg_print(WIFI_BLASTER, "%s : %d exiting the function\n",__func__,__LINE__);
 }
 
 static void *active_msmt_worker(void *ctx)
 {
     int oldcanceltype;
+    char *telemetry_buf = NULL;
     active_msmt_t *cfg;
     wifi_actvie_msmt_t  *g_active_msmt = get_wifi_blaster();
     active_msmt_queue_t *it = g_active_msmt->queue;
@@ -1475,12 +1508,49 @@ static void *active_msmt_worker(void *ctx)
                       memset(data, 0, sizeof(wifi_monitor_data_t));
             strncpy((char *) data->u.msg.data, "active_msmt stoped", sizeof(MAX_FRAME_SZ)-1);
             push_event_to_monitor_queue(data, wifi_event_monitor_stop_active_msmt, NULL);
+            telemetry_buf = malloc(sizeof(char)*1024);
+            if (telemetry_buf == NULL) {
+                wifi_util_error_print(WIFI_BLASTER,"%s:%d telemetry_buf allocation failed\r\n", __func__, __LINE__);
+                if (data != NULL) {
+                    free(data);
+                    data = NULL;
+                }
+                pthread_mutex_unlock(&g_active_msmt->lock);
+                return NULL;
+            }
+            memset(telemetry_buf, 0, sizeof(char)*1024);
+            snprintf(telemetry_buf, sizeof(char)*1024, "%s %s",g_active_msmt->active_msmt.t_header.traceParent, g_active_msmt->active_msmt.t_header.traceState);
+            t2_event_s("TRACE_WIFIBLAST_NOT_ENABLED" , telemetry_buf);
+            wifi_util_dbg_print(WIFI_BLASTER,"%s:%d blast is disabled\n", __func__, __LINE__);
+            if (telemetry_buf != NULL) {
+                free(telemetry_buf);
+                telemetry_buf = NULL;
+            }
             pthread_mutex_unlock(&g_active_msmt->lock);
             break;
         }
 
         cfg = &it->data;
-
+        telemetry_buf = malloc(sizeof(char)*1024);
+        if (telemetry_buf == NULL) {
+            wifi_util_error_print(WIFI_BLASTER,"%s:%d telemetry_buf allocation failed\r\n", __func__, __LINE__);
+            if (data != NULL) {
+                free(data);
+                data = NULL;
+            }
+            pthread_mutex_unlock(&g_active_msmt->lock);
+            return NULL;
+        }
+        memset(telemetry_buf, 0, sizeof(char)*1024);
+        wifi_util_info_print(WIFI_BLASTER, "active_msmt_worker: trace headers are %s and %s \n",cfg->t_header.traceParent, cfg->t_header.traceState);
+        SetBlasterTraceContext(cfg->t_header.traceParent, cfg->t_header.traceState);
+        snprintf(telemetry_buf, sizeof(char)*1024, "%s %s",g_active_msmt->active_msmt.t_header.traceParent, g_active_msmt->active_msmt.t_header.traceState);
+        t2_event_s("TRACE_WIFIBLAST_ENABLED" , telemetry_buf);
+        wifi_util_dbg_print(WIFI_BLASTER,"%s:%d blast is enabled\n", __func__, __LINE__);
+        if (telemetry_buf != NULL) {
+            free(telemetry_buf);
+            telemetry_buf = NULL;
+        }
         SetActiveMsmtStatus(__func__, ACTIVE_MSMT_STATUS_SUCCEED);
         ResetActiveMsmtStepInstances();
 
@@ -1507,6 +1577,9 @@ static void *active_msmt_worker(void *ctx)
         SetActiveMsmtPktSize(cfg->ActiveMsmtPktSize);
         SetActiveMsmtNumberOfSamples(cfg->ActiveMsmtNumberOfSamples);
         SetActiveMsmtPlanID((char *)cfg->PlanId);
+        wifi_util_info_print(WIFI_BLASTER, "active_msmt_worker: trace headers are %s and %s \n",cfg->t_header.traceParent, cfg->t_header.traceState);
+        SetBlasterTraceContext(cfg->t_header.traceParent, cfg->t_header.traceState);
+        wifi_util_info_print(WIFI_BLASTER, "Done Setting SetBlasterTraceContext\n");
 
         for (unsigned int i = 0; i < MAX_STEP_COUNT; i++) {
             if(strlen((char *) cfg->Step[i].DestMac) != 0) {
@@ -1915,7 +1988,7 @@ void calculate_throughput()
     wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: Entered in \n", __func__, __LINE__);
     unsigned long totalduration = 0;
     double  Sum = 0, AvgThroughput = 0;
-
+    char *telemetry_buf = NULL;
     radio_data_t *radio_stats = NULL;
     wifi_ctrl_t *g_wifi_ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
@@ -2019,6 +2092,18 @@ void calculate_throughput()
     if (onewifi_pktgen_stop_wifi_blast() != RETURN_OK) {
         wifi_util_error_print(WIFI_BLASTER, "%s:%d: Failed to stop pktgen\n", __FUNCTION__, __LINE__);
     }
+    telemetry_buf = malloc(sizeof(char)*1024);
+    if (telemetry_buf == NULL) {
+        wifi_util_error_print(WIFI_BLASTER,"%s:%d telemetry_buf allocation failed\r\n", __func__, __LINE__);
+        if(radio_stats != NULL){
+            free(radio_stats);
+            radio_stats = NULL;
+        }
+        return;
+    }
+    memset(telemetry_buf, 0, sizeof(char)*1024);
+    snprintf(telemetry_buf, sizeof(char)*1024, "%s %s",g_active_msmt->active_msmt.t_header.traceParent, g_active_msmt->active_msmt.t_header.traceState);
+    t2_event_s("TRACE_WIFIBLAST_ENDS" , telemetry_buf);
 
     if (g_active_msmt->status == ACTIVE_MSMT_STATUS_SUCCEED) {
         /* calling process_active_msmt_diagnostics to update the station info */
@@ -2053,6 +2138,11 @@ void calculate_throughput()
     if(radio_stats != NULL){
         free(radio_stats);
         radio_stats = NULL;
+    }
+
+    if (telemetry_buf != NULL) {
+        free(telemetry_buf);
+        telemetry_buf = NULL;
     }
     return;
 }
