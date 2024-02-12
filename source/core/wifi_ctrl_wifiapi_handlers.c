@@ -53,6 +53,7 @@ struct hal_api_info {
     {"wifi_setRMBeaconRequest",             3, "<vap index> <peer mac> <bssid>"},
     {"wifi_setNeighborReports",             2, "<vap index> <bssid>" },
     {"wifi_configNeighborReports",          3, "<vap index> <neighbor report enable> <neighbor report auto reply>" },
+    {"wifi_hal_getRadioTemperature",        1, "<radio index>" },
 };
 
 
@@ -475,6 +476,53 @@ static void wifiapi_handle_config_neighbor_reports(char **args, unsigned int num
     snprintf(result_buf, result_buf_size, "%s: OK", args[0]);
 }
 
+static void wifiapi_handle_hal_get_radio_temperature(char **args, unsigned int num_args,
+    char *result_buf, int result_buf_size)
+{
+    INT radio_index = atoi(args[1]);
+    INT len = 0;
+    wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
+    wifi_radioTemperature_t *radioTemperatureStats = NULL;
+    wifi_radio_operationParam_t* radioOperation = NULL;
+
+    if (mon_data->radio_presence[radio_index] == false) {
+        snprintf(result_buf, result_buf_size, "%s:%d radio_presence is false for radio : %d\n", __func__,__LINE__, radio_index);
+        return;
+    }
+    radioOperation = getRadioOperationParam(radio_index);
+    if (radioOperation == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d radioOperationParam is NULL for radio_index : %d\n",__func__,__LINE__, radio_index);
+        snprintf(result_buf, result_buf_size, "%s:%d radioOperationParam is NULL for radio_index : %d\n", __func__,__LINE__, radio_index);
+        return;
+    }
+
+    radioTemperatureStats = (wifi_radioTemperature_t *)calloc(1, sizeof(wifi_radioTemperature_t));
+    if (radioTemperatureStats == NULL) {
+        snprintf(result_buf, result_buf_size, "%s:%d Failed to alloc memory for the radio : %d\n", __func__,__LINE__, radio_index);
+        return;
+    }
+
+    memset(radioTemperatureStats, 0, sizeof(wifi_radioTemperature_t));
+
+    if (radioOperation->enable == true) {
+        if(wifi_hal_getRadioTemperature(radio_index, radioTemperatureStats) != RETURN_OK){
+            snprintf(result_buf, result_buf_size, "Failed to get radio temperature\n");
+            if (radioTemperatureStats != NULL){
+                free(radioTemperatureStats);
+                radioTemperatureStats = NULL;
+            }
+            return;
+        }
+
+        len += snprintf(result_buf + len, result_buf_size - len, "radio_data temperature %u", radioTemperatureStats->radio_Temperature);
+    }
+    if (radioTemperatureStats != NULL){
+        free(radioTemperatureStats);
+        radioTemperatureStats = NULL;
+    }
+
+}
+
 void process_wifiapi_command(char *command, unsigned int len)
 {
     char input[1024];
@@ -780,6 +828,8 @@ void process_wifiapi_command(char *command, unsigned int len)
         wifiapi_handle_set_neighbor_reports(args, num_args, buff, sizeof(buff));
     } else if (strcmp(args[0], "wifi_configNeighborReports") == 0) {
         wifiapi_handle_config_neighbor_reports(args, num_args, buff, sizeof(buff));
+    } else if (strcmp(args[0], "wifi_hal_getRadioTemperature") == 0) {
+        wifiapi_handle_hal_get_radio_temperature(args, num_args, buff, sizeof(buff));
     } else {
         unsigned int idx = 0;
         idx += snprintf(&buff[idx], sizeof(buff)-idx, "wifi_api2: Invalid API '%s'\nSupported APIs:\n", args[0]);

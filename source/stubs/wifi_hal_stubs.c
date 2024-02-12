@@ -213,3 +213,8 @@ INT wifi_hal_configNeighborReports(UINT apIndex, bool enable, bool auto_resp)
 {
     return 0;
 }
+
+INT wifi_hal_getRadioTemperature(wifi_radio_index_t radioIndex, wifi_radioTemperature_t *radioPhyTemperature)
+{
+  return 0;
+}
