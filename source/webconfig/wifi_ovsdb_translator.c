@@ -2447,8 +2447,18 @@ webconfig_error_t translate_vap_info_to_vif_state_common(const wifi_vap_info_t *
     }
     vap_row->uapsd_enable = vap->u.bss_info.UAPSDEnabled;
     vap_row->ap_bridge = vap->u.bss_info.isolation;
-    vap_row->btm = vap->u.bss_info.bssTransitionActivated;
-    vap_row->rrm = vap->u.bss_info.nbrReportActivated;
+    if (vap->u.bss_info.bssTransitionActivated) {
+        vap_row->btm = vap->u.bss_info.bssTransitionActivated;
+        vap_row->btm_exists = true;
+    } else {
+        vap_row->btm_exists = false;
+    }
+    if (vap->u.bss_info.nbrReportActivated) {
+        vap_row->rrm = vap->u.bss_info.nbrReportActivated;
+        vap_row->rrm_exists = true;
+    } else {
+        vap_row->rrm_exists = false;
+    }
 
     if (vap->u.bss_info.wps.enable) {
         vap_row->wps = vap->u.bss_info.wps.enable;

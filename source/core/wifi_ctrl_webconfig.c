@@ -2230,8 +2230,9 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
         if ((is_radio_param_config_changed(&mgr_radio_data->oper, &radio_data->oper) == true)) {
             // radio data changed apply
             is_changed = 1;
-            if (IS_CHANGED(mgr_radio_data->oper.enable,radio_data->oper.enable) && (radio_data->oper.band == WIFI_FREQUENCY_6_BAND)) {
-                wifi_util_dbg_print(WIFI_MGR,"6g Radio enable field is modified from mgr_radio_data->oper->enable=%d and radio_data->oper->enable=%d\n",
+            if (IS_CHANGED(mgr_radio_data->oper.enable,radio_data->oper.enable) &&
+                is_6g_supported_device(&mgr->hal_cap.wifi_prop)) {
+                wifi_util_info_print(WIFI_MGR,"Radio enable field is modified from mgr_radio_data->oper->enable=%d and radio_data->oper->enable=%d\n",
                     mgr_radio_data->oper.enable,radio_data->oper.enable);
                 is_radio_6g_modified =  true;
             }
