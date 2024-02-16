@@ -280,6 +280,10 @@ int copy_radio_channel_stats_from_cache(wifi_mon_stats_args_t *args, void **stat
                 //skip current channel for offchan request
                 continue;
             }
+            if (!radioOperation->DfsEnabled && is_5g_20M_channel_in_dfs(args->channel_list.channels_list[i])) {
+                //skip dfs channel since dfs is disabled
+                continue;
+            }
             radio_chan_data = (radio_chan_data_t *)get_wifi_channelStats_t(radio_chan_stats_data, args->channel_list.channels_list[i]);
             if (radio_chan_data == NULL) {
                 free(chan_data);
