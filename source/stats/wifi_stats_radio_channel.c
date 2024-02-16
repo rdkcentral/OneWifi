@@ -66,7 +66,8 @@ int generate_radio_channel_provider_stats_key(wifi_mon_stats_config_t *config, c
         wifi_util_error_print(WIFI_MON, "%s:%d input arguments are NULL config : %p key = %p\n",__func__,__LINE__, config, key_str);
         return RETURN_ERR;
     }
-    snprintf(key_str, key_len, "%04d-%02d-%02d-%02d", config->inst, mon_stats_type_radio_channel_stats, config->args.radio_index, config->args.app_info);
+    snprintf(key_str, key_len, "%04d-%02d-%02d-%02d-%02d", config->inst, mon_stats_type_radio_channel_stats, 
+            config->args.radio_index, config->args.scan_mode, config->args.app_info);
     wifi_util_dbg_print(WIFI_MON, "%s:%d: provider stats key: %s\n", __func__,__LINE__, key_str);
 
     return RETURN_OK;
