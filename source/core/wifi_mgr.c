@@ -350,7 +350,7 @@ bool is_device_type_vbvxb10(void)
 }
 bool is_device_type_sercommxb10(void)
 {
-    return is_supported_gateway_device("SG417DB-CT");
+    return is_supported_gateway_device("SG417DB");
 }
 bool is_device_type_sr213(void)
 {
