@@ -1305,8 +1305,14 @@ void WiFiBlastClient(void)
         wifi_util_dbg_print(WIFI_APPS,"%s:%d NULL Pointer \n", __func__, __LINE__);
         return;
     }
-
+    g_active_msmt->num_req_count = 0;
+    g_active_msmt->num_res_count = 0;
     for (StepCount = 0; StepCount < MAX_STEP_COUNT; StepCount++) {
+
+        if (g_active_msmt->num_req_count != g_active_msmt->num_res_count){
+            StepCount --;
+            continue;
+        }
 
         pthread_mutex_lock(&g_active_msmt->lock);
 
@@ -1437,6 +1443,8 @@ void WiFiBlastClient(void)
 
             /* start blasting the packets to calculate the throughput */
             wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: Calling pktGen_BlastClient\n", __func__, __LINE__);
+            g_active_msmt->num_req_count ++;
+            g_active_msmt->reponse_received = false;
             pktGen_BlastClient(macStr, interface_name);
             telemetry_buf = malloc(sizeof(char)*1024);
             if (telemetry_buf == NULL) {
@@ -1460,6 +1468,18 @@ void WiFiBlastClient(void)
         }
         pthread_mutex_unlock(&g_active_msmt->lock);
     }
+
+    if ((wifi_app->data.u.blaster.frameCountSample) != NULL) {
+        wifi_util_dbg_print(WIFI_BLASTER, "%s : %d freeing memory for frameCountSample \n",__func__,__LINE__);
+        free(wifi_app->data.u.blaster.frameCountSample);
+        wifi_app->data.u.blaster.frameCountSample = NULL;
+    }
+
+    if (g_wifi_ctrl->network_mode == rdk_dev_mode_type_ext) {
+        g_wifi_mgr->ctrl.webconfig_state |= ctrl_webconfig_state_blaster_cfg_complete_rsp_pending;
+        wifi_util_dbg_print(WIFI_BLASTER, "%s : %d  Extender Mode Activated. Updated the blaster state as complete\n", __func__, __LINE__);
+    }
+
     if (radio_stats != NULL) {
         free(radio_stats);
         radio_stats = NULL;
@@ -1735,12 +1755,14 @@ void pktGen_BlastClient (char *dst_mac, wifi_interface_name_t *ifname)
     apps_mgr = &ctrl->apps_mgr;
     if (apps_mgr == NULL){
         wifi_util_dbg_print(WIFI_APPS,"%s:%d NULL Pointer \n", __func__, __LINE__);
+        g_active_msmt->num_res_count++;
         return;
     }
 
     wifi_app = get_app_by_inst(apps_mgr, wifi_app_inst_blaster);
     if (wifi_app == NULL) {
         wifi_util_dbg_print(WIFI_APPS,"%s:%d NULL Pointer \n", __func__, __LINE__);
+        g_active_msmt->num_res_count++;
         return;
     }
 
@@ -1778,6 +1800,7 @@ void pktGen_BlastClient (char *dst_mac, wifi_interface_name_t *ifname)
                 radio_stats[radio_index] = NULL;
             }
         }
+        g_active_msmt->num_res_count++;
         return;
     }
 
@@ -1795,10 +1818,17 @@ void pktGen_BlastClient (char *dst_mac, wifi_interface_name_t *ifname)
                 radio_stats[radio_index] = NULL;
             }
         }
+        g_active_msmt->num_res_count++;
         return;
     }
     push_blaster_config_event_to_monitor_queue(mon_stats_request_state_start);
     wifi_app->data.u.blaster.blaster_start = getCurrentTimeInMicroSeconds();
+    WaitForDuration(((g_active_msmt->active_msmt.ActiveMsmtSampleDuration) * (g_active_msmt->active_msmt.ActiveMsmtNumberOfSamples + 2)) + (5 * WIFI_BLASTER_POST_STEP_TIMEOUT));
+
+    if (g_active_msmt->num_res_count != g_active_msmt->num_req_count && (g_active_msmt->reponse_received == false)) {
+        g_active_msmt->num_res_count = g_active_msmt->num_req_count;
+    }
+
     for (unsigned int radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
         if (radio_stats[radio_index] != NULL){
             free(radio_stats[radio_index]);
@@ -1830,12 +1860,14 @@ static void sample_blaster(wifi_provider_response_t *provider_response)
     apps_mgr = &ctrl->apps_mgr;
     if (apps_mgr == NULL){
         wifi_util_dbg_print(WIFI_APPS,"%s:%d NULL Pointer \n", __func__, __LINE__);
+        g_active_msmt->num_res_count++;
         return;
     }
 
     wifi_app = get_app_by_inst(apps_mgr, wifi_app_inst_blaster);
     if (wifi_app == NULL) {
         wifi_util_dbg_print(WIFI_APPS,"%s:%d NULL Pointer \n", __func__, __LINE__);
+        g_active_msmt->num_res_count++;
         return;
     }
 
@@ -1870,6 +1902,7 @@ if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
             if (!memcmp(bmac, assoc_stats[count].sta_mac, sizeof(mac_address_t))) {
                 is_associated = true;
                 dev_conn = &assoc_stats[count].dev_stats;
+                g_active_msmt->reponse_received = TRUE;
 #ifndef CCSP_COMMON
                 sleep_mode = assoc_stats[count].sleep_mode;
 #endif //CCSP_COMMON
@@ -1887,7 +1920,7 @@ if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
                 SetActiveMsmtStatus(__func__, ACTIVE_MSMT_STATUS_SLEEP_CLIENT);
                 active_msmt_set_status_desc(__func__, g_active_msmt->active_msmt.PlanId, step->StepId, step->DestMac, msg);
                 active_msmt_log_message("%s:%d %s\n", __func__, __LINE__, msg);
-
+                g_active_msmt->num_res_count++;
                 return;
             }
 
@@ -1958,7 +1991,7 @@ if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
 #endif // CCSP_COMMON
                 (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentAck = 0;
                 (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].WaitAndLatencyInMs = 0;
-
+                g_active_msmt->num_res_count++;
                 return;
             }
         } else {
@@ -1970,7 +2003,7 @@ if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
             (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].WaitAndLatencyInMs = 0;
             strncpy(g_active_msmt->active_msmt_data[*SampleCount].Operating_standard, "NULL",OPER_BUFFER_LEN);
             strncpy(g_active_msmt->active_msmt_data[*SampleCount].Operating_channelwidth, "NULL",OPER_BUFFER_LEN);
-
+            g_active_msmt->num_res_count++;
             return;
         }
         wifi_app->data.u.blaster.blaster_start = getCurrentTimeInMicroSeconds ();
@@ -1997,7 +2030,6 @@ void calculate_throughput()
     char *telemetry_buf = NULL;
     radio_data_t *radio_stats = NULL;
     wifi_ctrl_t *g_wifi_ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
     wifi_actvie_msmt_t  *g_active_msmt = get_wifi_blaster();
     unsigned int SampleCount = 0;
     wifi_apps_mgr_t *apps_mgr;
@@ -2006,12 +2038,14 @@ void calculate_throughput()
     apps_mgr = &g_wifi_ctrl->apps_mgr;
     if (apps_mgr == NULL){
         wifi_util_dbg_print(WIFI_APPS,"%s:%d NULL Pointer \n", __func__, __LINE__);
+        g_active_msmt->num_res_count++;
         return;
     }
 
     wifi_app = get_app_by_inst(apps_mgr, wifi_app_inst_blaster);
     if (wifi_app == NULL) {
         wifi_util_dbg_print(WIFI_APPS,"%s:%d NULL Pointer \n", __func__, __LINE__);
+        g_active_msmt->num_res_count++;
         return;
     }
 
@@ -2127,20 +2161,6 @@ void calculate_throughput()
     /* Set CPU free for a while */
     WaitForDuration(WIFI_BLASTER_POST_STEP_TIMEOUT);
 
-    if ((wifi_app->data.u.blaster.frameCountSample) != NULL) {
-        wifi_util_dbg_print(WIFI_BLASTER, "%s : %d freeing memory for frameCountSample \n",__func__,__LINE__);
-        free(wifi_app->data.u.blaster.frameCountSample);
-        wifi_app->data.u.blaster.frameCountSample = NULL;
-    }
-
-    if (g_wifi_ctrl->network_mode == rdk_dev_mode_type_ext) {
-        g_wifi_mgr->ctrl.webconfig_state |= ctrl_webconfig_state_blaster_cfg_complete_rsp_pending;
-        wifi_util_dbg_print(WIFI_BLASTER, "%s : %d  Extender Mode Activated. Updated the blaster state as complete\n", __func__, __LINE__);
-    }
-    else if (g_wifi_ctrl->network_mode == rdk_dev_mode_type_gw) {
-        wifi_util_dbg_print(WIFI_BLASTER, "%s : %d Device operating in GW mode. No need to update status\n", __func__, __LINE__);
-    }
-
     if(radio_stats != NULL){
         free(radio_stats);
         radio_stats = NULL;
@@ -2150,6 +2170,7 @@ void calculate_throughput()
         free(telemetry_buf);
         telemetry_buf = NULL;
     }
+    g_active_msmt->num_res_count++;
     return;
 }
 /* This function process the active measurement step info

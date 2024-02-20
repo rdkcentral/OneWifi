@@ -106,6 +106,9 @@ typedef struct {
     bool                           is_running;
     active_msmt_queue_t            *queue;
     hash_map_t                     *active_msmt_map;
+    int                            num_req_count;
+    int                            num_res_count;
+    bool                           reponse_received;
 } wifi_actvie_msmt_t;
 
 typedef struct {

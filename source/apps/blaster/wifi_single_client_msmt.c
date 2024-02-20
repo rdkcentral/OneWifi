@@ -1816,7 +1816,7 @@ void stream_client_msmt_data(bool ActiveMsmtFlag)
 
         blaster_map = act_monitor->active_msmt_map;
         if (blaster_map == NULL) {
-            wifi_util_error_print(WIFI_APPS,"%s:%d NULL active_blaster-data map\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_BLASTER,"%s:%d NULL active_blaster-data map\n", __func__, __LINE__);
             return;
         }
 
@@ -1828,9 +1828,9 @@ void stream_client_msmt_data(bool ActiveMsmtFlag)
             return;
         }
 
-        if (sta != NULL && ctrl->network_mode == rdk_dev_mode_type_gw) {
+        if (ctrl->network_mode == rdk_dev_mode_type_gw) {
             upload_single_client_active_msmt_data(sta);
-        } else if ((sta != NULL && act_monitor->status != ACTIVE_MSMT_STATUS_SUCCEED) && ctrl->network_mode == rdk_dev_mode_type_ext) {
+        } else if (act_monitor->status != ACTIVE_MSMT_STATUS_SUCCEED && ctrl->network_mode == rdk_dev_mode_type_ext) {
             pod_upload_single_client_active_msmt_data(sta);
         }
     }
