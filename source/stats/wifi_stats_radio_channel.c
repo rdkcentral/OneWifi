@@ -156,7 +156,6 @@ int execute_radio_channel_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t 
         }
         return RETURN_ERR;
     }
-
     radio_chan_stats_data = (radio_chan_stats_data_t *)&mon_data->radio_chan_stats_data[args->radio_index];
     if (radio_chan_stats_data == NULL) {
         wifi_util_error_print(WIFI_MON, "%s : %d radio_chan_stats_data is NULL for %d\n",

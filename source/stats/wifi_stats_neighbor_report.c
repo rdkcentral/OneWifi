@@ -101,6 +101,8 @@ int copy_neighborstats_to_cache(void *arg)
         mon_data->scan_status[args->radio_index] = 0;
         return RETURN_ERR;
     }
+    
+    wifi_util_dbg_print(WIFI_MON, "%s : %d  Scan complete scan mode %d radio index %d\n",__func__,__LINE__, args->scan_mode, args->radio_index);
     mon_data->scan_status[args->radio_index] = 0;
     neighscan_stats_data = (neighscan_diag_cfg_t *)&mon_data->neighbor_scan_cfg;
 
@@ -145,6 +147,9 @@ int execute_neighbor_ap_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *m
 #if CCSP_WIFI_HAL
     unsigned int private_vap_index;
     int dwell_time;
+    char *channel_buff;
+    int bytes_written = 0;
+    int count = 0;
 #endif
 
     if (args == NULL) {
@@ -195,12 +200,25 @@ int execute_neighbor_ap_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *m
             }
         }
     }
-    wifi_util_dbg_print(WIFI_MON, "%s : %d  Start scan radio index %d scan_mode %d\n",__func__,__LINE__, args->radio_index, args->scan_mode);
 
-    mon_data->scan_status[args->radio_index] = 1;
-    mon_data->scan_results_retries[args->radio_index] = 0;
+#if CCSP_WIFI_HAL
+    channel_buff = (char *) malloc(sizeof(char)*channel_list.num_channels*5);
+    if (channel_buff != NULL) {
+        for (count = 0; count < channel_list.num_channels; count++) {
+            bytes_written +=  snprintf(&channel_buff[bytes_written], (sizeof(channel_buff)-bytes_written), "%d,", channel_list.channels_list[count]);
+        }
+        channel_buff[bytes_written-1] = '\0';
+    }
+    wifi_util_dbg_print(WIFI_MON, "%s:%d Start scan. Radio_index : %d scan_mode : %d dwell_time : %d num_channels : %d  channels : %s\n",__func__,__LINE__, args->radio_index,
+                                            args->scan_mode, dwell_time, channel_list.num_channels, (channel_buff!=NULL ? channel_buff:"NULL"));
+    if (channel_buff != NULL) {
+        free(channel_buff);
+    }
+#endif
     
 #if CCSP_WIFI_HAL
+    mon_data->scan_status[args->radio_index] = 1;
+    mon_data->scan_results_retries[args->radio_index] = 0;
     private_vap_index = getPrivateApFromRadioIndex(args->radio_index);
     ret = wifi_startNeighborScan(private_vap_index, args->scan_mode, dwell_time, channel_list.num_channels, (unsigned int *)channel_list.channels_list);
 #endif

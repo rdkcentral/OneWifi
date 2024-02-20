@@ -165,9 +165,10 @@ static int survey_convert_hal_to_sample(unsigned int radio_index, survey_type_t 
     CHECK_NULL(new);
     CHECK_NULL(result);
 
-    wifi_util_dbg_print(WIFI_SM, "%s:%d: Fetched %s sample %s survey: busy=%llu tx=%llu self=%llu rx=%llu ext=%llu noise=%d\n",
+    wifi_util_dbg_print(WIFI_SM, "%s:%d: Fetched %s sample %s ch:%d survey: busy=%llu tx=%llu self=%llu rx=%llu ext=%llu noise=%d total=%llu\n",
                     __func__, __LINE__, radio_index_to_radio_type_str(radio_index), survey_type_to_str(survey_type),
-                    new->ch_utilization_busy, new->ch_utilization_busy_tx, new->ch_utilization_busy_self, new->ch_utilization_busy_rx, new->ch_utilization_busy_ext, new->ch_noise);
+                    new->ch_number, new->ch_utilization_busy, new->ch_utilization_busy_tx, new->ch_utilization_busy_self, new->ch_utilization_busy_rx,
+                    new->ch_utilization_busy_ext, new->ch_noise, new->ch_utilization_total);
 
     result->info.chan = new->ch_number;
     result->info.timestamp_ms = new->LastUpdatedTime * MSEC_IN_SEC + new->LastUpdatedTimeUsec / USEC_IN_MSEC;
