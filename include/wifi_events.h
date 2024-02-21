@@ -119,6 +119,7 @@ typedef enum {
     wifi_event_type_command_kick_assoc_devices,
     wifi_event_type_command_wps,
     wifi_event_type_command_wps_pin,
+    wifi_event_type_command_wps_cancel,
     wifi_event_type_command_wifi_host_sync,
     wifi_event_type_device_network_mode,
     wifi_event_type_twoG80211axEnable_rfc,

@@ -125,6 +125,11 @@ INT wifi_hal_setApWpsButtonPush(INT ap_index)
     return RETURN_OK;
 }
 
+INT wifi_hal_setApWpsCancel(INT ap_index)
+{
+    return RETURN_OK;
+}
+
 INT wifi_hal_setRadioOperatingParameters(wifi_radio_index_t index, wifi_radio_operationParam_t *operationParam)
 {
     return RETURN_OK;

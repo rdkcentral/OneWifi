@@ -801,6 +801,9 @@ int command_event_analytics(wifi_app_t *apps, wifi_event_subtype_t sub_type, voi
         case wifi_event_type_command_wps:
             break;
 
+        case wifi_event_type_command_wps_cancel:
+            break;
+
         case wifi_event_type_command_wifi_host_sync:
             break;
 
