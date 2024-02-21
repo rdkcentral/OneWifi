@@ -569,7 +569,7 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
                 if (msg->frame.type == WIFI_MGMT_FRAME_TYPE_PROBE_REQ) {
                     wifi_util_info_print(WIFI_APPS,"%s:%d, PROBE DENY %s due to lower phy rate\n", __func__, __LINE__, str);
                 } else {
-                    cac_print("%s:%d, ASSOC DENY: %d,MBR,%s,%f,%f\n" , __func__, __LINE__, (msg->frame.ap_index + 1), str, min_mbr_rate, sta_phy_rate);
+                    cac_print("%s:%d, PRE DENY: %d,MBR,%s,%f,%f\n" , __func__, __LINE__, (msg->frame.ap_index + 1), str, min_mbr_rate, sta_phy_rate);
                 }
                 notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, (msg->frame.ap_index + 1), "MBR", str, min_mbr_rate, sta_phy_rate);
             }
@@ -587,7 +587,7 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
                 rssi_status = status_ok;
             } else if (msg->frame.sig_dbm < (rssi_conf - DBM_DEVIATION)) {
                 rssi_status = status_deny;
-                cac_print("%s:%d, ASSOC DENY: %d,RSSI,%s,%d,%d\n" , __func__, __LINE__, (msg->frame.ap_index + 1), str, rssi_conf, msg->frame.sig_dbm);
+                cac_print("%s:%d, PRE DENY: %d,RSSI,%s,%d,%d\n" , __func__, __LINE__, (msg->frame.ap_index + 1), str, rssi_conf, msg->frame.sig_dbm);
                 notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, (msg->frame.ap_index + 1), "RSSI", str, (float)rssi_conf, (float)msg->frame.sig_dbm);
             } else {
                 rssi_status = status_wait;
@@ -599,7 +599,7 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
                 snr_status = status_ok;
             } else if (snr < (snr_conf - DBM_DEVIATION)) {
                 snr_status = status_deny;
-                cac_print("%s:%d, ASSOC DENY: %d,SNR,%s,%d,%d\n" , __func__, __LINE__, (msg->frame.ap_index + 1), str, snr_conf, snr);
+                cac_print("%s:%d, PRE DENY: %d,SNR,%s,%d,%d\n" , __func__, __LINE__, (msg->frame.ap_index + 1), str, snr_conf, snr);
                 notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, (msg->frame.ap_index + 1), "SNR", str, (float)snr_conf, (float)snr);
             } else {
                 snr_status = status_wait;
@@ -611,7 +611,7 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
                 chan_util_status = status_ok;
             } else {
                 chan_util_status = status_deny;
-                cac_print("%s:%d, ASSOC DENY: %d,CU,%s,%d,%d\n" , __func__, __LINE__, (msg->frame.ap_index + 1), str, cu_conf, chan_util);
+                cac_print("%s:%d, PRE DENY: %d,CU,%s,%d,%d\n" , __func__, __LINE__, (msg->frame.ap_index + 1), str, cu_conf, chan_util);
                 notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, (msg->frame.ap_index + 1), "CU", str, (float)cu_conf, (float)chan_util);
             }
         }
@@ -672,7 +672,7 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
                     rssi_status = status_ok;
                 } else {
                     rssi_status = status_deny;
-                    cac_print("%s:%d, ASSOC DENY: %d,RSSI,%s,%d,%d\n" , __func__, __LINE__, (elem->ap_index + 1), str, rssi_conf, elem->rssi_avg);
+                    cac_print("%s:%d, PRE DENY: %d,RSSI,%s,%d,%d\n" , __func__, __LINE__, (elem->ap_index + 1), str, rssi_conf, elem->rssi_avg);
                     notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, (elem->ap_index + 1), "RSSI", str, (float)rssi_conf, (float)elem->rssi_avg);
                 }
             }
@@ -682,7 +682,7 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
                     snr_status = status_ok;
                 } else {
                     snr_status = status_deny;
-                    cac_print("%s:%d, ASSOC DENY: %d,SNR,%s,%d,%d\n" , __func__, __LINE__, (elem->ap_index + 1), str, snr_conf, elem->snr_avg);
+                    cac_print("%s:%d, PRE DENY: %d,SNR,%s,%d,%d\n" , __func__, __LINE__, (elem->ap_index + 1), str, snr_conf, elem->snr_avg);
                     notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, (elem->ap_index + 1), "SNR", str, (float)snr_conf, (float)elem->snr_avg);
                 }
             }
@@ -692,7 +692,7 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
                     chan_util_status = status_ok;
                 } else {
                     chan_util_status = status_deny;
-                    cac_print("%s:%d, ASSOC DENY: %d,CU,%s,%d,%d\n" , __func__, __LINE__, (elem->ap_index + 1), str, cu_conf, chan_util);
+                    cac_print("%s:%d, PRE DENY: %d,CU,%s,%d,%d\n" , __func__, __LINE__, (elem->ap_index + 1), str, cu_conf, chan_util);
                     notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, (elem->ap_index + 1), "CU", str, (float)cu_conf, (float)chan_util);
                 }
             }
@@ -704,7 +704,7 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
                     if (msg->frame.type == WIFI_MGMT_FRAME_TYPE_PROBE_REQ) {
                         wifi_util_info_print(WIFI_APPS,"%s:%d, PROBE DENY %s due to lower phy rate\n", __func__, __LINE__, str);
                     } else {
-                        cac_print("%s:%d, ASSOC DENY: %d,MBR,%s,%f,%f\n" , __func__, __LINE__, (elem->ap_index + 1), str, min_mbr_rate, sta_phy_rate);
+                        cac_print("%s:%d, PRE DENY: %d,MBR,%s,%f,%f\n" , __func__, __LINE__, (elem->ap_index + 1), str, min_mbr_rate, sta_phy_rate);
                     }
                     notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, (elem->ap_index + 1), "MBR", str, min_mbr_rate, sta_phy_rate);
                 }
@@ -715,7 +715,7 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
                     rssi_status = status_ok;
                 } else if (elem->rssi_avg < (rssi_conf - DBM_DEVIATION)) {
                     rssi_status = status_deny;
-                    cac_print("%s:%d, ASSOC DENY: %d,RSSI,%s,%d,%d\n" , __func__, __LINE__, (elem->ap_index + 1), str, rssi_conf, elem->rssi_avg);
+                    cac_print("%s:%d, PRE DENY: %d,RSSI,%s,%d,%d\n" , __func__, __LINE__, (elem->ap_index + 1), str, rssi_conf, elem->rssi_avg);
                     notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, (elem->ap_index + 1), "RSSI", str, (float)rssi_conf, (float)elem->rssi_avg);
                 } else {
                     elem->seconds_alive = 5;
@@ -728,7 +728,7 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
                     snr_status = status_ok;
                 } else if (elem->snr_avg < (snr_conf - DBM_DEVIATION)) {
                     snr_status = status_deny;
-                    cac_print("%s:%d, ASSOC DENY: %d,SNR,%s,%d,%d\n" , __func__, __LINE__, (elem->ap_index + 1), str, snr_conf, elem->snr_avg);
+                    cac_print("%s:%d, PRE DENY: %d,SNR,%s,%d,%d\n" , __func__, __LINE__, (elem->ap_index + 1), str, snr_conf, elem->snr_avg);
                     notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, (elem->ap_index + 1), "SNR", str, (float)snr_conf, (float)elem->snr_avg);
                 } else {
                     elem->seconds_alive = 5;
@@ -741,7 +741,7 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
                     chan_util_status = status_ok;
                 } else {
                     chan_util_status = status_deny;
-                    cac_print("%s:%d, ASSOC DENY: %d,CU,%s,%d,%d\n" , __func__, __LINE__, (elem->ap_index + 1), str, cu_conf, chan_util);
+                    cac_print("%s:%d, PRE DENY: %d,CU,%s,%d,%d\n" , __func__, __LINE__, (elem->ap_index + 1), str, cu_conf, chan_util);
                     notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, (elem->ap_index + 1), "CU", str, (float)cu_conf, (float)chan_util);
                 }
             }
@@ -753,7 +753,7 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
                     if (msg->frame.type == WIFI_MGMT_FRAME_TYPE_PROBE_REQ) {
                         wifi_util_info_print(WIFI_APPS,"%s:%d, PROBE DENY %s due to lower phy rate\n", __func__, __LINE__, str);
                     } else {
-                        cac_print("%s:%d, ASSOC DENY: %d,MBR,%s,%f,%f\n" , __func__, __LINE__, (elem->ap_index + 1), str, min_mbr_rate, sta_phy_rate);
+                        cac_print("%s:%d, PRE DENY: %d,MBR,%s,%f,%f\n" , __func__, __LINE__, (elem->ap_index + 1), str, min_mbr_rate, sta_phy_rate);
                         notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, (elem->ap_index + 1), "MBR", str, min_mbr_rate, sta_phy_rate);
                     }
                 }
