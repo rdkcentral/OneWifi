@@ -47,6 +47,7 @@
 #define CHAN_UTIL_INTERVAL_MS 900000 // 15 mins
 #define TELEMETRY_UPDATE_INTERVAL_MS 3600000 // 1 hour
 #define ASSOCIATED_DEVICE_DIAG_INTERVAL_MS 5000 //5 seconds
+#define MAX_RESET_RADIO_PARAMS_RETRY_COUNTER  (5000 / 100)
 
 #ifdef CCSP_COMMON
 static unsigned msg_id = 1000;
@@ -2388,15 +2389,58 @@ void process_sta_trigger_disconnection(unsigned int disconnection_type)
     return;
 }
 
+static int reset_radio_operating_parameters(void *args)
+{
+    wifi_radio_operationParam_t *radio_params = NULL;
+    wifi_ctrl_t *ctrl;
+    int ret;
+    unsigned int radio_index;
+
+    if (args == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d NULL Pointer\r\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    radio_index = *(unsigned int *) args;
+    ctrl =  &((wifi_mgr_t *)get_wifimgr_obj())->ctrl;
+
+    radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(radio_index);
+    if (radio_params == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d: wrong index for radio map: %d\n",__FUNCTION__, __LINE__, radio_index);
+        return RETURN_ERR;
+    }
+
+    ret = wifi_hal_setRadioOperatingParameters(radio_index, radio_params);
+    if (ret != RETURN_OK) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d: wifi radio parameter set failure: radio_index:%d\n",
+            __FUNCTION__, __LINE__, radio_index);
+        ctrl->reset_params_retry_counter[radio_index]++;
+        if (ctrl->reset_params_retry_counter[radio_index] >= MAX_RESET_RADIO_PARAMS_RETRY_COUNTER) {
+            ctrl->reset_params_retry_counter[radio_index] = 0;
+        } else {
+            scheduler_add_timer_task(ctrl->sched, FALSE, NULL, reset_radio_operating_parameters,
+                args, 100, 1, FALSE);
+        }
+    } else {
+        wifi_util_info_print(WIFI_CTRL,"%s:%d: wifi radio parameter set success: radio_index:%d\n",
+            __FUNCTION__, __LINE__, radio_index);
+        ctrl->reset_params_retry_counter[radio_index] = 0;
+    }
+
+    return RETURN_OK;
+}
+
 void process_channel_change_event(wifi_channel_change_event_t *ch_chg)
 {
     wifi_radio_operationParam_t *radio_params = NULL;
     wifi_radio_feature_param_t *radio_feat = NULL;
+    wifi_radio_operationParam_t temp_radio_params;
     wifi_mgr_t *g_wifidb;
     g_wifidb = get_wifimgr_obj();
     wifi_ctrl_t *ctrl;
     vap_svc_t *ext_svc;
     vap_svc_t  *pub_svc = NULL;
+    int ret = 0;
 
     radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(ch_chg->radioIndex);
     if (radio_params == NULL) {
@@ -2410,18 +2454,20 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg)
         return;
     }
 
-    ctrl = &g_wifidb->ctrl;
-    if ((ch_chg->event == WIFI_EVENT_CHANNELS_CHANGED) && (ctrl->network_mode == rdk_dev_mode_type_ext)) {
-        wifi_radio_operationParam_t temp_radio_params;
+    if (ch_chg->event == WIFI_EVENT_CHANNELS_CHANGED) {
         memset(&temp_radio_params, 0, sizeof(wifi_radio_operationParam_t));
         temp_radio_params.band = radio_params->band;
         temp_radio_params.channel = ch_chg->channel;
         temp_radio_params.channelWidth = ch_chg->channelWidth;
         temp_radio_params.DfsEnabled = radio_params->DfsEnabled;
+    }
+
+    ctrl = &g_wifidb->ctrl;
+    if ((ch_chg->event == WIFI_EVENT_CHANNELS_CHANGED) && (ctrl->network_mode == rdk_dev_mode_type_ext)) {
 
         ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
         if (wifi_radio_operationParam_validation(&g_wifidb->hal_cap, &temp_radio_params) != RETURN_OK) {
-            wifi_util_info_print(WIFI_CTRL,"%s:%d: channel: %d bw: %d on radio: %d could not be set\n",
+            wifi_util_error_print(WIFI_CTRL,"%s:%d: channel: %d bw: %d on radio: %d could not be set\n",
                 __FUNCTION__, __LINE__, ch_chg->channel, ch_chg->channelWidth, ch_chg->radioIndex);
             return;
         }
@@ -2453,6 +2499,21 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg)
                             __func__, __LINE__, radio_params->channelWidth, ch_chg->channelWidth);
 
     if (ch_chg->event == WIFI_EVENT_CHANNELS_CHANGED) {
+        if (wifi_radio_operationParam_validation(&g_wifidb->hal_cap, &temp_radio_params) != RETURN_OK) {
+            wifi_util_error_print(WIFI_CTRL,"%s:%d: received invalid channel: %d bw: %d from driver on radio %d\n",
+                __FUNCTION__, __LINE__, ch_chg->channel, ch_chg->channelWidth, ch_chg->radioIndex);
+            ret = wifi_hal_setRadioOperatingParameters(ch_chg->radioIndex, radio_params);
+            if (ret != RETURN_OK) {
+                wifi_util_error_print(WIFI_CTRL,"%s:%d: wifi radio parameter set failure: radio_index:%d\n",
+                    __FUNCTION__, __LINE__, ch_chg->radioIndex);
+                scheduler_add_timer_task(ctrl->sched, FALSE, NULL, reset_radio_operating_parameters,
+                        &g_wifidb->hal_cap.wifi_prop.radiocap[ch_chg->radioIndex].index, 100, 1, FALSE);
+            } else {
+                wifi_util_info_print(WIFI_CTRL,"%s:%d: wifi radio parameter set success: radio_index:%d\n",
+                    __FUNCTION__, __LINE__, ch_chg->radioIndex);
+            }
+            return;
+        }
         pthread_mutex_lock(&g_wifidb->data_cache_lock);
         radio_params->channel = ch_chg->channel;
         radio_params->channelWidth = ch_chg->channelWidth;

@@ -251,6 +251,7 @@ typedef struct wifi_ctrl {
     queue_t             *vif_apply_pending_queue;
     bool                ctrl_initialized; 
     bool                acs_pending[MAX_NUM_RADIOS];
+    int                 reset_params_retry_counter[MAX_NUM_RADIOS];
     bool                eth_bh_status;
     bool                db_consolidated;
     int                 speed_test_timeout;
