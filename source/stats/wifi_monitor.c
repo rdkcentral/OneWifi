@@ -888,32 +888,6 @@ static int refresh_assoc_frame_entry(void *arg)
     return TIMER_TASK_COMPLETE;
 }
 
-void process_deauthenticate_password_fail (unsigned int ap_index, auth_deauth_dev_t *dev)
-{
-    char buff[2048];
-    char tmp[128];
-    sta_key_t sta_key;
-
-    wifi_util_info_print(WIFI_MON, "%s:%d Device:%s deauthenticated on ap:%d with reason : %d\n", __func__, __LINE__, to_sta_key(dev->sta_mac, sta_key), ap_index, dev->reason);
-
-    /*Wrong password on private, Xfinity Home and LNF SSIDs*/
-    if ((dev->reason == 2) && ( isVapPrivate(ap_index) || isVapXhs(ap_index) || isVapLnfPsk(ap_index) ) ) {
-        get_formatted_time(tmp);
-
-        snprintf(buff, 2048, "%s WIFI_PASSWORD_FAIL:%d,%s\n", tmp, ap_index + 1, to_sta_key(dev->sta_mac, sta_key));
-        /* send telemetry of password failure */
-        write_to_file(wifi_health_log, buff);
-    }
-    /*ARRISXB6-11979 Possible Wrong WPS key on private SSIDs*/
-    if ((dev->reason == 2 || dev->reason == 14 || dev->reason == 19) && ( isVapPrivate(ap_index) ))  {
-        get_formatted_time(tmp);
-
-        snprintf(buff, 2048, "%s WIFI_POSSIBLE_WPS_PSK_FAIL:%d,%s,%d\n", tmp, ap_index + 1, to_sta_key(dev->sta_mac, sta_key), dev->reason);
-        /* send telemetry of WPS failure */
-        write_to_file(wifi_health_log, buff);
-    }
-}
-
 void process_deauthenticate	(unsigned int ap_index, auth_deauth_dev_t *dev)
 {
     char buff[2048];
@@ -1046,7 +1020,7 @@ void process_disconnect	(unsigned int ap_index, auth_deauth_dev_t *dev)
     str_tolower(sta_key);
     sta = (sta_data_t *)hash_map_get(sta_map, sta_key);
     if (sta == NULL) {
-        wifi_util_error_print(WIFI_MON, "Device:%s could not be found on sta map of ap:%d\n", sta_key, ap_index);
+        wifi_util_info_print(WIFI_MON, "Device:%s could not be found on sta map of ap:%d\n", sta_key, ap_index);
         return;
     }
 
@@ -1159,10 +1133,6 @@ void *monitor_function  (void *data)
                         process_disconnect(event_data->ap_index, &event_data->u.dev);
                     break;
 #ifdef CCSP_COMMON
-
-                    case wifi_event_monitor_deauthenticate_password_fail:
-                        process_deauthenticate_password_fail(event_data->ap_index, &event_data->u.dev);
-                    break;
 
                     case wifi_event_monitor_deauthenticate:
                         process_deauthenticate(event_data->ap_index, &event_data->u.dev);
@@ -2248,10 +2218,6 @@ int device_disassociated(int ap_index, char *mac, int reason)
         push_event_to_ctrl_queue(&greylist_data, sizeof(greylist_data), wifi_event_type_hal_ind, wifi_event_radius_greylist, NULL);
 
     }
-    if (active_sta_connection_status(ap_index, mac) == false) {
-        wifi_util_dbg_print(WIFI_MON,"%s:%d: sta[%s] not connected with ap:[%d]\r\n", __func__, __LINE__, mac, ap_index);
-        return 0;
-    }
 
     memset(&data, 0, sizeof(wifi_monitor_data_t));
     data.id = msg_id++;
@@ -2264,17 +2230,25 @@ int device_disassociated(int ap_index, char *mac, int reason)
     data.u.dev.sta_mac[3] = mac_addr[3]; data.u.dev.sta_mac[4] = mac_addr[4]; data.u.dev.sta_mac[5] = mac_addr[5];
     data.u.dev.reason = reason;
 
-    wifi_util_info_print(WIFI_MON, "%s:%d:Device diaassociated on interface:%d mac:%02x:%02x:%02x:%02x:%02x:%02x\n",
-            __func__, __LINE__, ap_index,
-            data.u.dev.sta_mac[0], data.u.dev.sta_mac[1], data.u.dev.sta_mac[2],
-            data.u.dev.sta_mac[3], data.u.dev.sta_mac[4], data.u.dev.sta_mac[5]);
-
-    memcpy(assoc_data.dev_stats.cli_MACAddress, data.u.dev.sta_mac, sizeof(mac_address_t));
-    assoc_data.ap_index = data.ap_index;
-    assoc_data.reason = reason;
-    push_event_to_ctrl_queue(&assoc_data, sizeof(assoc_data), wifi_event_type_hal_ind, wifi_event_hal_disassoc_device, NULL);
-
     push_event_to_monitor_queue(&data, wifi_event_monitor_disconnect, NULL);
+
+    if (active_sta_connection_status(ap_index, mac) == false) {
+        wifi_util_dbg_print(WIFI_MON,"%s:%d: sta[%s] not connected with ap:[%d]\r\n", __func__, __LINE__, mac, ap_index);
+        return 0;
+    }
+
+    memset(&assoc_data, 0, sizeof(assoc_dev_data_t));
+    assoc_data.dev_stats.cli_MACAddress[0] = mac_addr[0]; assoc_data.dev_stats.cli_MACAddress[1] = mac_addr[1];
+    assoc_data.dev_stats.cli_MACAddress[2] = mac_addr[2]; assoc_data.dev_stats.cli_MACAddress[3] = mac_addr[3];
+    assoc_data.dev_stats.cli_MACAddress[4] = mac_addr[4]; assoc_data.dev_stats.cli_MACAddress[5] = mac_addr[5];
+    assoc_data.ap_index = ap_index;
+    assoc_data.reason = reason;
+
+    wifi_util_info_print(WIFI_MON, "%s:%d:Device diaassociated on interface:%d mac:%02x:%02x:%02x:%02x:%02x:%02x\n",
+          __func__, __LINE__, ap_index,
+          assoc_data.dev_stats.cli_MACAddress[0], assoc_data.dev_stats.cli_MACAddress[1], assoc_data.dev_stats.cli_MACAddress[2],
+          assoc_data.dev_stats.cli_MACAddress[3], assoc_data.dev_stats.cli_MACAddress[4], assoc_data.dev_stats.cli_MACAddress[5]);
+    push_event_to_ctrl_queue(&assoc_data, sizeof(assoc_data), wifi_event_type_hal_ind, wifi_event_hal_disassoc_device, NULL);
 
     return 0;
 }
@@ -2319,27 +2293,6 @@ int device_deauthenticated(int ap_index, char *mac, int reason)
         push_event_to_ctrl_queue(&greylist_data, sizeof(greylist_data), wifi_event_type_hal_ind, wifi_event_radius_greylist, NULL);
 
     }
-    if (active_sta_connection_status(ap_index, mac) == false) {
-        wifi_util_dbg_print(WIFI_MON,"%s:%d: sta[%s] not connected with ap:[%d]\r\n", __func__, __LINE__, mac, ap_index);
-        if ((reason == 2 || reason == 14 || reason == 19))
-        {
-            memset(&data, 0, sizeof(wifi_monitor_data_t));
-            data.id = msg_id++;
-            data.ap_index = ap_index;
-            data.u.dev.reason = reason;
-            sscanf(mac, "%02x:%02x:%02x:%02x:%02x:%02x",
-                    &mac_addr[0], &mac_addr[1], &mac_addr[2],
-                    &mac_addr[3], &mac_addr[4], &mac_addr[5]);
-            data.u.dev.sta_mac[0] = mac_addr[0]; data.u.dev.sta_mac[1] = mac_addr[1]; data.u.dev.sta_mac[2] = mac_addr[2];
-            data.u.dev.sta_mac[3] = mac_addr[3]; data.u.dev.sta_mac[4] = mac_addr[4]; data.u.dev.sta_mac[5] = mac_addr[5];
-            wifi_util_info_print(WIFI_MON, "%s:%d   Device deauthenticated on interface:%d mac:%02x:%02x:%02x:%02x:%02x:%02x with reason %d\n",
-                                 __func__, __LINE__, ap_index,
-                                 data.u.dev.sta_mac[0], data.u.dev.sta_mac[1], data.u.dev.sta_mac[2],
-                                 data.u.dev.sta_mac[3], data.u.dev.sta_mac[4], data.u.dev.sta_mac[5], reason);
-            push_event_to_monitor_queue(&data, wifi_event_monitor_deauthenticate_password_fail, NULL);
-        }
-         return 0;
-    }
 
     memset(&data, 0, sizeof(wifi_monitor_data_t));
     data.id = msg_id++;
@@ -2352,18 +2305,26 @@ int device_deauthenticated(int ap_index, char *mac, int reason)
     data.u.dev.sta_mac[3] = mac_addr[3]; data.u.dev.sta_mac[4] = mac_addr[4]; data.u.dev.sta_mac[5] = mac_addr[5];
     data.u.dev.reason = reason;
 
-    wifi_util_info_print(WIFI_MON, "%s:%d   Device deauthenticated on interface:%d mac:%02x:%02x:%02x:%02x:%02x:%02x with reason %d\n",
-            __func__, __LINE__, ap_index,
-            data.u.dev.sta_mac[0], data.u.dev.sta_mac[1], data.u.dev.sta_mac[2],
-            data.u.dev.sta_mac[3], data.u.dev.sta_mac[4], data.u.dev.sta_mac[5], reason);
+    push_event_to_monitor_queue(&data, wifi_event_monitor_deauthenticate, NULL);
 
+    if (active_sta_connection_status(ap_index, mac) == false) {
+        wifi_util_dbg_print(WIFI_MON,"%s:%d: sta[%s] not connected with ap:[%d]\r\n", __func__, __LINE__, mac, ap_index);
+        return 0;
+    }
 
-    memcpy(assoc_data.dev_stats.cli_MACAddress, data.u.dev.sta_mac, sizeof(mac_address_t));
-    assoc_data.ap_index = data.ap_index;
+    memset(&assoc_data, 0, sizeof(assoc_dev_data_t));
+    assoc_data.ap_index = ap_index;
+    assoc_data.dev_stats.cli_MACAddress[0] = mac_addr[0]; assoc_data.dev_stats.cli_MACAddress[1] = mac_addr[1];
+    assoc_data.dev_stats.cli_MACAddress[2] = mac_addr[2]; assoc_data.dev_stats.cli_MACAddress[3] = mac_addr[3];
+    assoc_data.dev_stats.cli_MACAddress[4] = mac_addr[4]; assoc_data.dev_stats.cli_MACAddress[5] = mac_addr[5];
     assoc_data.reason = reason;
+    wifi_util_info_print(WIFI_MON, "%s:%d:  Device deauthenticated on interface:%d mac:%02x:%02x:%02x:%02x:%02x:%02x with reason %d\n",
+          __func__, __LINE__, ap_index,
+          assoc_data.dev_stats.cli_MACAddress[0], assoc_data.dev_stats.cli_MACAddress[1], assoc_data.dev_stats.cli_MACAddress[2],
+          assoc_data.dev_stats.cli_MACAddress[3], assoc_data.dev_stats.cli_MACAddress[4], assoc_data.dev_stats.cli_MACAddress[5], reason);
+
     push_event_to_ctrl_queue(&assoc_data, sizeof(assoc_data), wifi_event_type_hal_ind, wifi_event_hal_disassoc_device, NULL);
 
-    push_event_to_monitor_queue(&data, wifi_event_monitor_deauthenticate, NULL);
 
     return 0;
 }
