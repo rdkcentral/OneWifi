@@ -571,7 +571,7 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
                 } else {
                     cac_print("%s:%d, PRE DENY: %d,MBR,%s,%d,%d\n" , __func__, __LINE__, (msg->frame.ap_index + 1), str, (int)min_mbr_rate, (int)sta_phy_rate);
                 }
-                notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, msg->frame.ap_index , "MBR", str, min_mbr_rate, sta_phy_rate);
+                notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, msg->frame.ap_index , "MBR", str, (int)min_mbr_rate, (int)sta_phy_rate);
             }
         }
         if (mbr_status == status_ok && msg->frame.type == WIFI_MGMT_FRAME_TYPE_PROBE_REQ) {
@@ -706,7 +706,7 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
                     } else {
                         cac_print("%s:%d, PRE DENY: %d,MBR,%s,%d,%d\n" , __func__, __LINE__, (elem->ap_index + 1), str, (int)min_mbr_rate, (int)sta_phy_rate);
                     }
-                    notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, elem->ap_index, "MBR", str, min_mbr_rate, sta_phy_rate);
+                    notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, elem->ap_index, "MBR", str, (int)min_mbr_rate, (int)sta_phy_rate);
                 }
             }
         } else {
@@ -754,7 +754,7 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
                         wifi_util_info_print(WIFI_APPS,"%s:%d, PROBE DENY %s due to lower phy rate\n", __func__, __LINE__, str);
                     } else {
                         cac_print("%s:%d, PRE DENY: %d,MBR,%s,%d,%d\n" , __func__, __LINE__, (elem->ap_index + 1), str, (int)min_mbr_rate, (int)sta_phy_rate);
-                        notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, elem->ap_index , "MBR", str, min_mbr_rate, sta_phy_rate);
+                        notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, elem->ap_index , "MBR", str, (int)min_mbr_rate, (int)sta_phy_rate);
                     }
                 }
             }
