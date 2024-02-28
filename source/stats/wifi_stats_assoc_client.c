@@ -94,7 +94,7 @@ int generate_assoc_client_provider_stats_key(wifi_mon_stats_config_t *config, ch
 
     memset(key_str, 0, key_len);
 
-    snprintf(key_str, key_len, "%04d-%02d-%02d-%08lu", config->inst, mon_stats_type_associated_device_stats, config->args.vap_index, config->interval_ms);
+    snprintf(key_str, key_len, "%04d-%02d-%02d-%08d", config->inst, mon_stats_type_associated_device_stats, config->args.vap_index, config->args.app_info);
 
     wifi_util_dbg_print(WIFI_MON, "%s:%d: provider stats key: %s\n", __func__,__LINE__, key_str);
 

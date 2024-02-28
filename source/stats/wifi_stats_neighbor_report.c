@@ -70,7 +70,7 @@ int generate_neighbor_ap_provider_stats_key(wifi_mon_stats_config_t *config, cha
     }
 
     memset(key_str, 0, key_len);
-    snprintf(key_str, key_len, "%04d-%02d", config->inst, config->args.app_info);
+    snprintf(key_str, key_len, "%04d-%08d", config->inst, config->args.app_info);
 
     return RETURN_OK;
 }
