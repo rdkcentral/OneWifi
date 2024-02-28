@@ -57,6 +57,7 @@ void free_ovs_schema_structs();
 void dump_subdoc(const char *str, webconfig_subdoc_type_t type);
 wifi_vap_info_t *get_wifi_radio_vap_info(rdk_wifi_radio_t *wifi_radio, const char *vap_name_prefix);
 rdk_wifi_vap_info_t *get_wifi_radio_rdkvap_info(rdk_wifi_radio_t *wifi_radio, const char *vap_name_prefix);
+char *read_subdoc_input_param_from_file(char *file_path);
 
 static unsigned long long int cmd_start_time = 0;
 static unsigned int cmd_delta_time = 0;

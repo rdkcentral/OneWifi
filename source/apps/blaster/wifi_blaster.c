@@ -220,7 +220,11 @@ static bool DeviceCpuUtil_DataGet(unsigned int *util_cpu)
             continue;
         }
 
+#ifdef _64BIT_ARCH_SUPPORT_
+        sscanf(buff, "cpu %lu %lu %lu %lu", &hz_user, &hz_nice, &hz_system, &hz_idle);
+#else
         sscanf(buff, "cpu %llu %llu %llu %llu", &hz_user, &hz_nice, &hz_system, &hz_idle);
+#endif
 
         if (init == true) {
 

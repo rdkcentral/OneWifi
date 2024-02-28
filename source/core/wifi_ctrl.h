@@ -354,6 +354,7 @@ wifi_vap_security_t * Get_wifi_object_security_parameter(uint8_t vapIndex);
 wifi_vap_info_t* get_wifidb_vap_parameters(uint8_t vapIndex);
 #if DML_SUPPORT
 wifi_rfc_dml_parameters_t* get_wifi_db_rfc_parameters(void);
+wifi_rfc_dml_parameters_t* get_ctrl_rfc_parameters(void);
 #endif // DML_SUPPORT
 rdk_wifi_radio_t* find_radio_config_by_index(uint8_t r_index);
 int get_device_config_list(char *d_list, int size, char *str);
@@ -373,6 +374,8 @@ int set_rbus_bool_param(rbusHandle_t rbus_handle, const char *paramNames, bool d
 bool is_sta_enabled(void);
 void reset_wifi_radios();
 wifi_platform_property_t *get_wifi_hal_cap_prop(void);
+wifi_vap_security_t * Get_wifi_object_bss_security_parameter(uint8_t vapIndex);
+wifi_vap_security_t * Get_wifi_object_sta_security_parameter(uint8_t vapIndex);
 #ifdef __cplusplus
 }
 #endif

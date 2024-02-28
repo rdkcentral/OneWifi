@@ -88,8 +88,9 @@ webconfig_set_ow_core_state(webconfig_subdoc_data_t *data)
 
 /* FIXME: The wifi_vap_info_t is missing a bunch of things
  * including ACL. This is unable to control ACLs for now.
+ * Change to static long to be compatible with 64-bit.
  */
-static int
+static long
 webconfig_set_ow_core_vif_config_priv(const struct ow_conf_vif_config_cb_arg *vif_cb_arg)
 {
     const wifi_vap_info_t *vap = vif_cb_arg->vap_info;
@@ -171,7 +172,7 @@ webconfig_set_ow_core_vif_config(const struct ow_conf_vif_config_cb_arg *vap)
     return RETURN_OK;
 }
 
-static int
+static long
 webconfig_set_ow_core_phy_config_priv(rdk_wifi_radio_t *r)
 {
     wifi_vap_info_map_t *vmap = &r->vaps.vap_map;

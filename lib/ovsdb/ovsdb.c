@@ -113,7 +113,7 @@ static void onewifi_cb_ovsdb_read(struct ev_loop *loop, struct ev_io *watcher, i
     nr = recv(watcher->fd, ovs_buffer, ovs_buffer_size, 0);
 
     if((nr > 0) && ((size_t )nr == ovs_buffer_size)) {
-        LOG(ERR,"%s:Recv Buffer is not sufficient ,received bytes=%d\n",__func__,nr);
+        LOG(ERR,"%s:Recv Buffer is not sufficient ,received bytes=%zu\n",__func__,nr);
         free(ovs_buffer);
         return;
     }

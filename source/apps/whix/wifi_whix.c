@@ -52,6 +52,7 @@
 #include "ccsp_WifiLog_wrapper.h"
 #endif // CCSP_COMMON
 
+FILE *v_secure_popen(const char *direction, const char *command, ...);
 
 #ifndef  UNREFERENCED_PARAMETER
 #define UNREFERENCED_PARAMETER(_p_)         (void)(_p_)
