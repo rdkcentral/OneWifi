@@ -39,6 +39,7 @@ extern "C" {
 #define WIFI_LEVL_CLIENTMAC                 "Device.WiFi.X_RDK_CSI_LEVL.clientMac"
 #define WIFI_LEVL_NUMBEROFENTRIES           "Device.WiFi.X_RDK_CSI_LEVL.maxNumberCSIClients"
 #define WIFI_LEVL_CSI_DATA                  "Device.WiFi.X_RDK_CSI_LEVL.data"
+#define WIFI_LEVL_CSI_DATAFIFO              "Device.WiFi.X_RDK_CSI_LEVL.datafifo"
 #define WIFI_LEVL_SOUNDING_DURATION         "Device.WiFi.X_RDK_CSI_LEVL.Duration"
 #define WIFI_LEVL_CSI_STATUS                "Device.WiFi.X_RDK_CSI_LEVL.soundingStatus"
 #define WIFI_LEVL_CSI_MAC_DATA              "Device.WiFi.X_RDK_CSI_LEVL.clientMacData"
@@ -78,6 +79,7 @@ typedef struct {
     int                  sounding_duration;
     int                  publish_interval;
     bool                 csi_event_subscribed;
+    bool                 csi_over_fifo;
     bool                 temperature_event_subscribed[MAX_NUM_RADIOS];
     int                  radio_temperature_interval[MAX_NUM_RADIOS];
     pthread_mutex_t      lock;
@@ -92,6 +94,7 @@ typedef struct {
     levl_config_t        levl;
     wifi_app_t           *csi_app;
     csi_base_app_t       csi_fns;
+    int                  csi_fd;
 } levl_data_t;
 
 typedef struct wifi_app wifi_app_t;

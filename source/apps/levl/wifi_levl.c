@@ -32,8 +32,11 @@
 #include <rbus.h>
 //#include <ieee80211.h>
 #include "common/ieee802_11_defs.h"
+#include <fcntl.h>
+#include <errno.h>
 
-#define WIFI_ANALYTICS_FRAME_EVENTS_NAMESPACE    "Device.WiFi.Events.VAP.%d.Frames.Mgmt"
+#define WIFI_ANALYTICS_FRAME_EVENTS_NAMESPACE   "Device.WiFi.Events.VAP.%d.Frames.Mgmt"
+#define CSI_LEVL_PIPE                           "/tmp/csi_levl_pipe"
 
 #define MAX_EVENT_NAME_SIZE     200
 #define MIN_TEMPERATURE_INTERVAL_MS 5000
@@ -552,17 +555,17 @@ void levl_csi_publish(mac_address_t mac_address, wifi_csi_dev_t *csi_dev_data)
     apps_mgr = &ctrl->apps_mgr;
     wifi_app = get_app_by_inst(apps_mgr, wifi_app_inst_levl);
     if (wifi_app == NULL) {
-        wifi_util_error_print(WIFI_APPS,"%s:%d NULL wifi_app pointer\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_APPS, "%s:%d NULL wifi_app pointer\n", __func__, __LINE__);
         return;
     }
-    //Construct Header.
+    // Construct Header.
     unsigned int total_length, num_csi_clients, csi_data_length, curr_length = 0;
     time_t datetime;
     char *header = csi_dev_data->header;
-    strncpy(eventName, "Device.WiFi.X_RDK_CSI_LEVL.data", sizeof(eventName) - 1);
-    memcpy(header,"CSI", (strlen("CSI") + 1));
+    memcpy(header, "CSI", (strlen("CSI") + 1));
     curr_length = curr_length + strlen("CSI") + 1;
-    total_length = sizeof(time_t) + (sizeof(unsigned int)) + (1 *(sizeof(mac_addr_t) + sizeof(unsigned int) + sizeof(wifi_csi_data_t)));
+    total_length = sizeof(time_t) + (sizeof(unsigned int)) +
+        (1 * (sizeof(mac_addr_t) + sizeof(unsigned int) + sizeof(wifi_csi_data_t)));
     memcpy((header + curr_length), &total_length, sizeof(unsigned int));
     curr_length = curr_length + sizeof(unsigned int);
     datetime = time(NULL);
@@ -576,12 +579,30 @@ void levl_csi_publish(mac_address_t mac_address, wifi_csi_dev_t *csi_dev_data)
     csi_data_length = sizeof(wifi_csi_data_t);
     memcpy((header + curr_length), &csi_data_length, sizeof(unsigned int));
     int buffer_size = CSI_HEADER_SIZE + sizeof(wifi_csi_data_t);
-    //Publish using new API
-    rbusEventRawData_t event_data;
-    event_data.name  = eventName;
-    event_data.rawData = csi_dev_data->header;
-    event_data.rawDataLen = buffer_size;
-    rbusEvent_PublishRawData(wifi_app->rbus_handle, &event_data);
+    if (wifi_app->data.u.levl.csi_over_fifo == false) {
+        strncpy(eventName, "Device.WiFi.X_RDK_CSI_LEVL.data", sizeof(eventName) - 1);
+        // Publish using new API
+        rbusEventRawData_t event_data;
+        event_data.name = eventName;
+        event_data.rawData = csi_dev_data->header;
+        event_data.rawDataLen = buffer_size;
+        rbusEvent_PublishRawData(wifi_app->rbus_handle, &event_data);
+    } else {
+        if (wifi_app->data.u.levl.csi_fd < 0) {
+            wifi_app->data.u.levl.csi_fd = open(CSI_LEVL_PIPE, O_WRONLY);
+            if (wifi_app->data.u.levl.csi_fd < 0) {
+                wifi_util_error_print(WIFI_APPS, "%s(): Failed to open pipe reason %s\n", __func__,
+                    strerror(errno));
+                return;
+            }
+        }
+        if ((write(wifi_app->data.u.levl.csi_fd, header, buffer_size) < 0)) {
+            wifi_util_error_print(WIFI_APPS, "%s:%d Messed up write error is %s\n", __func__,
+                __LINE__, strerror(errno));
+            return;
+        }
+    }
+
     return;
 }
 
@@ -1271,6 +1292,13 @@ int levl_deinit(wifi_app_t *app)
     if (rc != RBUS_ERROR_SUCCESS) {
         wifi_util_dbg_print(WIFI_APPS, "%s:%d: Unable to close Levl rbus handle\n", __func__, __LINE__);
     }
+    
+    unlink(CSI_LEVL_PIPE);
+    if (app->data.u.levl.csi_fd >=0 ) {
+        close(app->data.u.levl.csi_fd);
+        app->data.u.levl.csi_fd = -1;
+    }
+
     pthread_mutex_unlock(&app->data.u.levl.lock);
     pthread_mutex_destroy(&app->data.u.levl.lock);
     if (app->queue != NULL) {
@@ -1572,13 +1600,19 @@ rbusError_t levl_event_handler(rbusHandle_t handle, rbusEventSubAction_t action,
             }
         }
         if (strstr(eventName, "X_RDK_CSI_LEVL")) {
-            if (wifi_app->data.u.levl.csi_event_subscribed == TRUE){
+            if (wifi_app->data.u.levl.csi_event_subscribed == true){
                 wifi_util_info_print(WIFI_APPS,"%s:%d Already Subscribed\n", __func__, __LINE__);
                 pthread_mutex_unlock(&wifi_app->data.u.levl.lock);
                 return RBUS_ERROR_BUS_ERROR;
             }
-            wifi_app->data.u.levl.csi_event_subscribed = TRUE;
-            wifi_util_info_print(WIFI_APPS,"%s:%d Adding Subscription\n", __func__, __LINE__);
+            if (strstr(eventName, WIFI_LEVL_CSI_DATAFIFO)) {
+                wifi_app->data.u.levl.csi_over_fifo = true;
+                wifi_util_info_print(WIFI_APPS,"%s:%d Adding CSI Subscription over fifo\n", __func__, __LINE__);
+            } else {
+                wifi_app->data.u.levl.csi_over_fifo = false;
+                wifi_util_info_print(WIFI_APPS,"%s:%d Adding CSI Subscription over rbus\n", __func__, __LINE__);
+            }
+            wifi_app->data.u.levl.csi_event_subscribed = true;
             pthread_mutex_unlock(&wifi_app->data.u.levl.lock);
             return RBUS_ERROR_SUCCESS;
         }
@@ -1703,6 +1737,8 @@ int levl_init(wifi_app_t *app, unsigned int create_flag)
             { NULL, NULL, NULL, NULL, NULL, NULL }},
         { WIFI_LEVL_CSI_DATA, RBUS_ELEMENT_TYPE_EVENT,
             { NULL, NULL, NULL, NULL, levl_event_handler, NULL }},
+        { WIFI_LEVL_CSI_DATAFIFO, RBUS_ELEMENT_TYPE_EVENT,
+            { NULL, NULL, NULL, NULL, levl_event_handler, NULL }},
         { WIFI_LEVL_CLIENTMAC, RBUS_ELEMENT_TYPE_PROPERTY,
             { levl_get_handler, levl_set_handler, NULL, NULL, NULL, NULL}},
         { WIFI_LEVL_NUMBEROFENTRIES, RBUS_ELEMENT_TYPE_PROPERTY,
@@ -1767,6 +1803,10 @@ int levl_init(wifi_app_t *app, unsigned int create_flag)
     scheduler_add_timer_task(ctrl->sched, FALSE, &(app->data.u.levl.probe_collector_sched_handler_id),
                                levl_event_exec_timeout, app, (APPS_FRAME_EXEC_TIMEOUT_PERIOD * 1000), 0, FALSE);
 
+    //Create FIFO for the csi.
+    mkfifo(CSI_LEVL_PIPE, 0777);
+    app->data.u.levl.csi_fd = -1;
+ 
     rc = rbus_open(&app->rbus_handle, component_name);
     if (rc != RBUS_ERROR_SUCCESS) {
         return RETURN_ERR;
