@@ -169,6 +169,8 @@ void sendWebpaMsg(char *serviceName, char *dest, char *trans_id, char *tracePare
     wrp_msg->u.event.headers=(headers_t *) malloc(sizeof(headers_t)+sizeof( char * ) * 2);
     if (wrp_msg->u.event.headers == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d:wrp headers allocation failed \n", __func__, __LINE__);
+        free(wrp_msg);
+        wrp_msg = NULL;
         pthread_mutex_unlock(&webpa_interface.lock);
         return;
     }
