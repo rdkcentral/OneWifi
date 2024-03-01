@@ -53,6 +53,38 @@ void cac_print(char *format, ...)
     fclose(fpg);
 }
 
+void telemetry_event_cac(char *deny_type,int index, char *deny_reason,char *mac,int threshold ,int value)
+{
+    char telemetry_buff[64] = {0};
+    char telemetry_val[128] = {0};
+
+    if (!deny_type || !deny_reason || !mac ) {
+        return;
+    }
+
+    memset(telemetry_buff, 0, sizeof(telemetry_buff));
+    memset(telemetry_val, 0, sizeof(telemetry_val));
+
+    if (isVapHotspotSecure5g(index)) {
+        snprintf(telemetry_buff,sizeof(telemetry_buff),"XWIFIS_%s_accum",deny_type);
+        snprintf(telemetry_val,sizeof(telemetry_val),"%s,%s,%d,%d",deny_reason,mac,threshold,value);
+    } else if (isVapHotspotOpen5g(index)) {
+        snprintf(telemetry_buff,sizeof(telemetry_buff),"XWIFI_%s_accum",deny_type);
+        snprintf(telemetry_val,sizeof(telemetry_val),"%s,%s,%d,%d",deny_reason,mac,threshold,value);
+    } else if (isVapHotspotSecure6g(index)) {
+        snprintf(telemetry_buff,sizeof(telemetry_buff),"XWIFIS_6G%s_accum",deny_type);
+        snprintf(telemetry_val,sizeof(telemetry_val),"%s,%s,%d,%d",deny_reason,mac,threshold,value);
+    } else if (isVapHotspotOpen6g(index)) {
+        snprintf(telemetry_buff,sizeof(telemetry_buff),"XWIFI_6G%s_accum",deny_type);
+        snprintf(telemetry_val,sizeof(telemetry_val),"%s,%s,%d,%d",deny_reason,mac,threshold,value);
+    } else {
+        return;
+    }
+
+    wifi_util_info_print(WIFI_APPS, "%s:%d telemetry_buff=%s and telemetry_val=%s\n", __func__, __LINE__,telemetry_buff,telemetry_val);
+    t2_event_s(telemetry_buff,telemetry_val);
+}
+
 int cac_event_exec_start(wifi_app_t *apps, void *arg)
 {
     wifi_util_info_print(WIFI_APPS, "%s:%d\n", __func__, __LINE__);
@@ -383,6 +415,7 @@ int cac_event_exec_timeout(wifi_app_t *apps, void *arg)
                         cac_print("%s:%d, POSTASSOC DENY: %d,RSSI,%s,%d,%d\n", __func__, __LINE__, (client->ap_index + 1), str, rssi_conf, client->rssi_avg);
                         status = status_deny;
                         notify_force_disassociation(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, client->ap_index, "RSSI", str, rssi_conf, client->rssi_avg);
+                        telemetry_event_cac("POSTDENY",client->ap_index, "RSSI", str, rssi_conf, client->rssi_avg);
                     }
 
                     wifi_util_dbg_print(WIFI_APPS,"%s:%d client snr = %d, snr threshold = %d\r\n", __func__, __LINE__,
@@ -391,6 +424,7 @@ int cac_event_exec_timeout(wifi_app_t *apps, void *arg)
                         cac_print("%s:%d, POSTASSOC DENY: %d,SNR,%s,%d,%d\n", __func__, __LINE__, (client->ap_index + 1), str, snr_conf, client->snr_avg);
                         status = status_deny;
                         notify_force_disassociation(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, client->ap_index , "SNR", str, snr_conf, client->snr_avg);
+                        telemetry_event_cac("POSTDENY",client->ap_index, "SNR", str, snr_conf, client->snr_avg);
                     }
 
                     wifi_util_dbg_print(WIFI_APPS,"%s:%d client cu = %d, cu threshold = %d\r\n", __func__, __LINE__,
@@ -399,6 +433,7 @@ int cac_event_exec_timeout(wifi_app_t *apps, void *arg)
                         cac_print("%s:%d, POSTASSOC DENY: %d,CU,%s,%d,%d\n", __func__, __LINE__, (client->ap_index + 1), str, cu_conf, chan_util);
                         status = status_deny;
                         notify_force_disassociation(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, client->ap_index, "CU", str, cu_conf, chan_util);
+                        telemetry_event_cac("POSTDENY", client->ap_index, "CU", str, cu_conf, chan_util);
                     }
 
                     wifi_util_info_print(WIFI_APPS,"%s:%d  client avg rate= %d, mcs_conf = %d min_mbr_rate:%.1f min_rate:%d\r\n", __func__, __LINE__,client->uplink_rate_avg,mcs_conf,min_mbr_rate,min_rate);
@@ -407,11 +442,13 @@ int cac_event_exec_timeout(wifi_app_t *apps, void *arg)
                         cac_print("%s:%d, POSTASSOC DENY: %d,MCS,%s,%d,%d\n", __func__, __LINE__, (client->ap_index + 1), str, mcs_conf, client->uplink_rate_avg);
                         status = status_deny;
                         notify_force_disassociation(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, client->ap_index, "MCS", str, mcs_conf, client->uplink_rate_avg);
+                        telemetry_event_cac("POSTDENY",client->ap_index, "MCS", str,mcs_conf, client->uplink_rate_avg);
                     }
                     if(mbr_enabled && min_mbr_rate > 0 && (client->uplink_rate_avg < min_mbr_rate)) {
                         cac_print("%s:%d, POSTASSOC DENY: %d,MBR,%s,%d,%d\n", __func__, __LINE__, (client->ap_index + 1), str, (int)min_mbr_rate, client->uplink_rate_avg);
                         status = status_deny;
                         notify_force_disassociation(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, client->ap_index, "MBR", str, (int)min_mbr_rate, client->uplink_rate_avg);
+                        telemetry_event_cac("POSTDENY",client->ap_index, "MBR", str, (int)min_mbr_rate, client->uplink_rate_avg);
                     }
 
                     if (status == status_deny) {
@@ -572,6 +609,7 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
                     cac_print("%s:%d, PRE DENY: %d,MBR,%s,%d,%d\n" , __func__, __LINE__, (msg->frame.ap_index + 1), str, (int)min_mbr_rate, (int)sta_phy_rate);
                 }
                 notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, msg->frame.ap_index , "MBR", str, (int)min_mbr_rate, (int)sta_phy_rate);
+                telemetry_event_cac("PREDENY", msg->frame.ap_index , "MBR", str, (int)min_mbr_rate, (int)sta_phy_rate);
             }
         }
         if (mbr_status == status_ok && msg->frame.type == WIFI_MGMT_FRAME_TYPE_PROBE_REQ) {
@@ -589,6 +627,7 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
                 rssi_status = status_deny;
                 cac_print("%s:%d, PRE DENY: %d,RSSI,%s,%d,%d\n" , __func__, __LINE__, (msg->frame.ap_index + 1), str, rssi_conf, msg->frame.sig_dbm);
                 notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, msg->frame.ap_index , "RSSI", str, rssi_conf, msg->frame.sig_dbm);
+                telemetry_event_cac("PREDENY",msg->frame.ap_index , "RSSI", str, rssi_conf, msg->frame.sig_dbm);
             } else {
                 rssi_status = status_wait;
             }
@@ -601,6 +640,7 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
                 snr_status = status_deny;
                 cac_print("%s:%d, PRE DENY: %d,SNR,%s,%d,%d\n" , __func__, __LINE__, (msg->frame.ap_index + 1), str, snr_conf, snr);
                 notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, msg->frame.ap_index , "SNR", str, snr_conf, snr);
+                telemetry_event_cac("PREDENY", msg->frame.ap_index , "SNR", str, snr_conf, snr);
             } else {
                 snr_status = status_wait;
             }
@@ -613,6 +653,7 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
                 chan_util_status = status_deny;
                 cac_print("%s:%d, PRE DENY: %d,CU,%s,%d,%d\n" , __func__, __LINE__, (msg->frame.ap_index + 1), str, cu_conf, chan_util);
                 notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, msg->frame.ap_index, "CU", str, cu_conf, chan_util);
+                telemetry_event_cac("PREDENY",msg->frame.ap_index, "CU", str, cu_conf, chan_util);
             }
         }
 
@@ -674,6 +715,7 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
                     rssi_status = status_deny;
                     cac_print("%s:%d, PRE DENY: %d,RSSI,%s,%d,%d\n" , __func__, __LINE__, (elem->ap_index + 1), str, rssi_conf, elem->rssi_avg);
                     notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, elem->ap_index , "RSSI", str, rssi_conf, elem->rssi_avg);
+                    telemetry_event_cac("PREDENY", elem->ap_index , "RSSI", str, rssi_conf, elem->rssi_avg);
                 }
             }
 
@@ -684,6 +726,7 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
                     snr_status = status_deny;
                     cac_print("%s:%d, PRE DENY: %d,SNR,%s,%d,%d\n" , __func__, __LINE__, (elem->ap_index + 1), str, snr_conf, elem->snr_avg);
                     notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, elem->ap_index , "SNR", str, snr_conf, elem->snr_avg);
+                    telemetry_event_cac("PREDENY",elem->ap_index , "SNR", str, snr_conf, elem->snr_avg);
                 }
             }
 
@@ -694,6 +737,7 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
                     chan_util_status = status_deny;
                     cac_print("%s:%d, PRE DENY: %d,CU,%s,%d,%d\n" , __func__, __LINE__, (elem->ap_index + 1), str, cu_conf, chan_util);
                     notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, elem->ap_index , "CU", str, cu_conf, chan_util);
+                    telemetry_event_cac("PREDENY",elem->ap_index , "CU", str, cu_conf, chan_util);
                 }
             }
             if(mbr_enabled) {
@@ -707,6 +751,7 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
                         cac_print("%s:%d, PRE DENY: %d,MBR,%s,%d,%d\n" , __func__, __LINE__, (elem->ap_index + 1), str, (int)min_mbr_rate, (int)sta_phy_rate);
                     }
                     notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, elem->ap_index, "MBR", str, (int)min_mbr_rate, (int)sta_phy_rate);
+                    telemetry_event_cac("PREDENY",elem->ap_index, "MBR", str, (int)min_mbr_rate, (int)sta_phy_rate);
                 }
             }
         } else {
@@ -717,6 +762,7 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
                     rssi_status = status_deny;
                     cac_print("%s:%d, PRE DENY: %d,RSSI,%s,%d,%d\n" , __func__, __LINE__, (elem->ap_index + 1), str, rssi_conf, elem->rssi_avg);
                     notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, elem->ap_index , "RSSI", str, rssi_conf, elem->rssi_avg);
+                    telemetry_event_cac("PREDENY",elem->ap_index , "RSSI", str, rssi_conf, elem->rssi_avg);
                 } else {
                     elem->seconds_alive = 5;
                     rssi_status = status_wait;
@@ -730,6 +776,7 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
                     snr_status = status_deny;
                     cac_print("%s:%d, PRE DENY: %d,SNR,%s,%d,%d\n" , __func__, __LINE__, (elem->ap_index + 1), str, snr_conf, elem->snr_avg);
                     notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, elem->ap_index, "SNR", str, snr_conf, elem->snr_avg);
+                    telemetry_event_cac("PREDENY",elem->ap_index, "SNR", str, snr_conf, elem->snr_avg);
                 } else {
                     elem->seconds_alive = 5;
                     snr_status = status_wait;
@@ -743,6 +790,7 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
                     chan_util_status = status_deny;
                     cac_print("%s:%d, PRE DENY: %d,CU,%s,%d,%d\n" , __func__, __LINE__, (elem->ap_index + 1), str, cu_conf, chan_util);
                     notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, elem->ap_index , "CU", str, cu_conf, chan_util);
+                    telemetry_event_cac("PREDENY",elem->ap_index, "CU", str, cu_conf, chan_util);
                 }
             }
             if(mbr_enabled) {
@@ -755,6 +803,7 @@ void cac_mgmt_frame_event(wifi_app_t *app, frame_data_t *msg, int type)
                     } else {
                         cac_print("%s:%d, PRE DENY: %d,MBR,%s,%d,%d\n" , __func__, __LINE__, (elem->ap_index + 1), str, (int)min_mbr_rate, (int)sta_phy_rate);
                         notify_deny_association(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, elem->ap_index , "MBR", str, (int)min_mbr_rate, (int)sta_phy_rate);
+                        telemetry_event_cac("PREDENY", elem->ap_index , "MBR", str, (int)min_mbr_rate, (int)sta_phy_rate);
                     }
                 }
             }
