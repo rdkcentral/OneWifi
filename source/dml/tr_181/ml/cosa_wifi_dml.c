@@ -15285,16 +15285,18 @@ AssociatedDevice1_GetEntry
     if (vap_info == NULL) {
         return (ANSC_HANDLE) NULL;
     }
-
+    pthread_mutex_lock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
     //Will be returning the entire stats structure later just returning mac address as of now
     hash_map_t *assoc_vap_info_map = (hash_map_t *)get_associated_devices_hash_map(vap_info);
     if (assoc_vap_info_map == NULL) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d NULL pointer\n", __func__, __LINE__);
+        pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
         return (ANSC_HANDLE) NULL;
     }
     unsigned int count = hash_map_count(assoc_vap_info_map);
     if (nIndex > count) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d NULL Pointer\n", __func__, __LINE__);
+        pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
         return (ANSC_HANDLE) NULL;
     }
 
@@ -15302,10 +15304,18 @@ AssociatedDevice1_GetEntry
     for (itr=0; (itr<nIndex) && (assoc_dev_data != NULL); itr++) {
         assoc_dev_data = hash_map_get_next(assoc_vap_info_map, assoc_dev_data);
     }
+    if (assoc_dev_data == NULL) {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d NULL Pointer\n", __func__, __LINE__);
+        pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
+        return (ANSC_HANDLE) NULL;
+    } else {
+        memcpy(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_data_cache, assoc_dev_data, sizeof(assoc_dev_data_t));
+    }
+    pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
 
     *pInsNumber = nIndex + 1;
 
-    return (ANSC_HANDLE) assoc_dev_data; /* return the handle */
+    return (ANSC_HANDLE) &((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_data_cache; /* return the handle */
 }
 
 /**********************************************************************  

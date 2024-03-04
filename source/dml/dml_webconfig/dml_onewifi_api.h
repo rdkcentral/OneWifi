@@ -39,6 +39,8 @@ typedef struct {
     rdk_wifi_radio_t    radios[MAX_NUM_RADIOS];
     active_msmt_t blaster;
     hash_map_t    *assoc_dev_hash_map[MAX_NUM_RADIOS][MAX_NUM_VAP_PER_RADIO];
+    pthread_mutex_t assoc_dev_lock;
+    assoc_dev_data_t assoc_dev_data_cache;
     acl_data_t acl_data;
     rbusHandle_t	rbus_handle;
     instant_measurement_config_t harvester;

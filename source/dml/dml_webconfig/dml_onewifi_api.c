@@ -439,6 +439,7 @@ void get_associated_devices_data(unsigned int radio_index)
         free(str);
         return;
     }
+    pthread_mutex_lock(&webconfig_dml.assoc_dev_lock);
     for (itr=0; itr < (int)get_num_radio_dml(); itr++) {
         for (itrj=0; itrj<MAX_NUM_VAP_PER_RADIO; itrj++) {
             hash_map_t** assoc_dev_map = get_dml_assoc_dev_hash_map(itr, itrj);
@@ -459,6 +460,7 @@ void get_associated_devices_data(unsigned int radio_index)
             *assoc_dev_map = data.u.decoded.radios[itr].vaps.rdk_vap_array[itrj].associated_devices_map;
         }
     }
+    pthread_mutex_unlock(&webconfig_dml.assoc_dev_lock);
 
     free(str);
     webconfig_data_free(&data);
@@ -479,15 +481,17 @@ unsigned long get_associated_devices_count(wifi_vap_info_t *vap_info)
         wifi_util_dbg_print(WIFI_DMCLI,"%s %d invalid vap index \n", __func__, __LINE__);
         return count;
     }
-
+    pthread_mutex_lock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
     hash_map_t **assoc_dev_hash_map = get_dml_assoc_dev_hash_map(radio_index, vap_array_index);
 
     if ((assoc_dev_hash_map == NULL) || (*assoc_dev_hash_map == NULL)) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s %d No hash_map returning zero\n", __func__, __LINE__);
+        pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
         return count;
     }
 
     count  = (unsigned long)hash_map_count(*assoc_dev_hash_map);
+    pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
     wifi_util_dbg_print(WIFI_DMCLI,"%s %d returning hash_map count as %d\n", __func__, __LINE__, count);
     return count;
 }
@@ -591,6 +595,7 @@ int init(webconfig_dml_t *consumer)
         // unregister and deinit everything
         return RETURN_ERR;
     }
+    pthread_mutex_init(&consumer->assoc_dev_lock, NULL);
     memset(consumer->assoc_dev_hash_map, 0, sizeof(consumer->assoc_dev_hash_map));
 
     for (itr = 0; itr<MAX_NUM_RADIOS; itr++) {
