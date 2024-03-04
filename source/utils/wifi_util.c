@@ -31,6 +31,7 @@
 #include <time.h>
 #include <openssl/sha.h>
 
+#define  ARRAY_SZ(x)    (sizeof(x) / sizeof((x)[0]))
 /* enable PID in debug logs */
 #define __ENABLE_PID__     0
 
@@ -2285,6 +2286,289 @@ int  vif_radio_idx_conversion(unsigned int vapIndex, int *input, int *output, ch
     }
 
     return RETURN_ERR;
+}
+
+int get_on_channel_scan_list(wifi_freq_bands_t band, wifi_channelBandwidth_t bandwidth, int primary_channel, int *channel_list, int *channels_num)
+{
+    int channels_2g_40_mhz[11][2] = {
+        {1, 3},
+        {2, 4},
+        {3, 5},
+        {4, 6},
+        {5, 7},
+        {6, 8},
+        {7, 9},
+        {8, 6},
+        {9, 7},
+        {10, 8},
+        {11, 9}
+    };
+    int channels_5g_40_mhz[12][2] = {
+        {36, 40},
+        {44, 48},
+        {52, 56},
+        {60, 64},
+        {100, 104},
+        {108, 112},
+        {116, 120},
+        {124, 128},
+        {132, 136},
+        {140, 144},
+        {149, 153},
+        {157, 161}
+    };
+    int channels_5g_80_mhz[6][4] = {
+        {36, 40, 44, 48},
+        {52, 56, 60, 64},
+        {100, 104, 108, 112},
+        {116, 120, 124, 128},
+        {132, 136, 140, 144},
+        {149, 153, 157, 161}
+    };
+    int channels_5g_160_mhz[2][8] = {
+        {36, 40, 44, 48, 52, 56, 60, 64},
+        {100, 104, 108, 112, 116, 120, 124, 128}
+    };
+    int channels_6g_40_mhz[29][2] = {
+        {1, 5},
+        {9, 13},
+        {17, 21},
+        {25, 29},
+        {33, 37},
+        {41, 45},
+        {49, 53},
+        {57, 61},
+        {65, 69},
+        {73, 77},
+        {81, 85},
+        {89, 93},
+        {97, 101},
+        {105, 109},
+        {113, 117},
+        {121, 125},
+        {129, 133},
+        {137, 141},
+        {145, 149},
+        {153, 157},
+        {161, 165},
+        {169, 173},
+        {177, 181},
+        {185, 189},
+        {193, 197},
+        {201, 205},
+        {209, 213},
+        {217, 221},
+        {225, 229}
+    };
+    int channels_6g_80_mhz[14][4] = {
+        {1, 5, 9, 13},
+        {17, 21, 25, 29},
+        {33, 37, 41, 45},
+        {49, 53, 57, 61},
+        {65, 69, 73, 77},
+        {81, 85, 89, 93},
+        {97, 101, 105, 109},
+        {113, 117, 121, 125},
+        {129, 133, 137, 141},
+        {145, 149, 153, 157},
+        {161, 165, 169, 173},
+        {177, 181, 185, 189},
+        {193, 197, 201, 205},
+        {209, 213, 217, 221}
+    };
+    int channels_6g_160_mhz[7][8] = {
+        {1, 5, 9, 13, 17, 21, 25, 29},
+        {33, 37, 41, 45, 49, 53, 57, 61},
+        {65, 69, 73, 77, 81, 85, 89, 93},
+        {97, 101, 105, 109, 113, 117, 121, 125},
+        {129, 133, 137, 141, 145, 149, 153, 157},
+        {161, 165, 169, 173, 177, 181, 185, 189},
+        {193, 197, 201, 205, 209, 213, 217, 221}
+    };
+
+    int found_idx = -1;
+    
+    switch(bandwidth) {
+        case WIFI_CHANNELBANDWIDTH_20MHZ:
+            *channels_num = 1;
+            break;
+        case WIFI_CHANNELBANDWIDTH_40MHZ:
+            *channels_num = 2;
+            break;
+        case WIFI_CHANNELBANDWIDTH_80MHZ:
+            *channels_num = 4;
+            break;
+        case WIFI_CHANNELBANDWIDTH_160MHZ:
+            *channels_num = 8;
+            break;
+         case WIFI_CHANNELBANDWIDTH_320MHZ:
+            *channels_num = 16;
+            break;
+        default: *channels_num = 0;
+            break;
+    }
+
+    if (band == WIFI_FREQUENCY_2_4_BAND) {
+        if (bandwidth == WIFI_CHANNELBANDWIDTH_40MHZ) {
+            for (unsigned int i = 0; i < ARRAY_SZ(channels_2g_40_mhz); i++) {
+                for (int j = 0; j < 1; j++) {
+                    if (primary_channel == channels_2g_40_mhz[i][j]) {
+                        found_idx = i;
+                        break;
+                    }
+                }
+                if (found_idx != -1) {
+                    break;
+                }
+            }
+
+            if (found_idx != -1) {
+                for (int i = 0; i < 2; i++) {
+                    channel_list[i] = channels_2g_40_mhz[found_idx][i];
+                }
+                return 0;
+            } else {
+                return -1;
+            }
+        }
+        channel_list[0] = primary_channel;
+        return 0;
+    }
+
+    if ((band == WIFI_FREQUENCY_5_BAND) || (band == WIFI_FREQUENCY_5L_BAND) || (band == WIFI_FREQUENCY_5H_BAND)){
+        if (bandwidth == WIFI_CHANNELBANDWIDTH_40MHZ) {
+            for (unsigned int i = 0; i < ARRAY_SZ(channels_5g_40_mhz); i++) {
+                for (int j = 0; j < 2; j++) {
+                    if (primary_channel == channels_5g_40_mhz[i][j]) {
+                        found_idx = i;
+                        break;
+                    }
+                }
+                if (found_idx != -1) {
+                    break;
+                }
+            }
+
+            if (found_idx != -1) {
+                for (int i = 0; i < 2; i++) {
+                    channel_list[i] = channels_5g_40_mhz[found_idx][i];
+                }
+                return 0;
+            } else {
+                return -1;
+            }
+        } else if (bandwidth == WIFI_CHANNELBANDWIDTH_80MHZ) {
+            for (unsigned int i = 0; i < ARRAY_SZ(channels_5g_80_mhz); i++) {
+                for (int j = 0; j < 4; j++) {
+                    if (primary_channel == channels_5g_80_mhz[i][j]) {
+                        found_idx = i;
+                        break;
+                    }
+                }
+                if (found_idx != -1) {
+                    break;
+                }
+            }
+
+            if (found_idx != -1) {
+                for (int i = 0; i < 4; i++) {
+                    channel_list[i] = channels_5g_80_mhz[found_idx][i];
+                }
+                return 0;
+            } else {
+                return -1;
+            }
+        } else if (bandwidth == WIFI_CHANNELBANDWIDTH_160MHZ) {
+            for (unsigned int i = 0; i < ARRAY_SZ(channels_5g_160_mhz); i++) {
+                for (int j = 0; j < 8; j++) {
+                    if (primary_channel == channels_5g_160_mhz[i][j]) {
+                        found_idx = i;
+                        break;
+                    }
+                }
+                if (found_idx != -1) {
+                    break;
+                }
+            }
+
+            if (found_idx != -1) {
+                for (int i = 0; i < 8; i++) {
+                    channel_list[i] = channels_5g_160_mhz[found_idx][i];
+                }
+                return 0;
+            } else {
+                return -1;
+            }
+        }
+    } else if (band == WIFI_FREQUENCY_6_BAND) {
+        if (bandwidth == WIFI_CHANNELBANDWIDTH_40MHZ) {
+            for (unsigned int i = 0; i < ARRAY_SZ(channels_6g_40_mhz); i++) {
+                for (int j = 0; j < 2; j++) {
+                    if (primary_channel == channels_6g_40_mhz[i][j]) {
+                        found_idx = i;
+                        break;
+                    }
+                }
+                if (found_idx != -1) {
+                    break;
+                }
+            }
+
+            if (found_idx != -1) {
+                for (int i = 0; i < 2; i++) {
+                    channel_list[i] = channels_6g_40_mhz[found_idx][i];
+                }
+                return 0;
+            } else {
+                return -1;
+            }
+        } else if (bandwidth == WIFI_CHANNELBANDWIDTH_80MHZ) {
+            for (unsigned int i = 0; i < ARRAY_SZ(channels_6g_80_mhz); i++) {
+                for (int j = 0; j < 4; j++) {
+                    if (primary_channel == channels_6g_80_mhz[i][j]) {
+                        found_idx = i;
+                        break;
+                    }
+                }
+                if (found_idx != -1) {
+                    break;
+                }
+            }
+
+            if (found_idx != -1) {
+                for (int i = 0; i < 4; i++) {
+                    channel_list[i] = channels_6g_80_mhz[found_idx][i];
+                }
+                return 0;
+            } else {
+                return -1;
+            }
+        } else if (bandwidth == WIFI_CHANNELBANDWIDTH_160MHZ) {
+            for (unsigned int i = 0; i < ARRAY_SZ(channels_6g_160_mhz); i++) {
+                for (int j = 0; j < 8; j++) {
+                    if (primary_channel == channels_6g_160_mhz[i][j]) {
+                        found_idx = i;
+                        break;
+                    }
+                }
+                if (found_idx != -1) {
+                    break;
+                }
+            }
+
+            if (found_idx != -1) {
+                for (int i = 0; i < 8; i++) {
+                    channel_list[i] = channels_6g_160_mhz[found_idx][i];
+                }
+                return 0;
+            } else {
+                return -1;
+            }
+        
+        }
+    }
+
+    return -1;
 }
 
 int get_allowed_channels(wifi_freq_bands_t band, wifi_radio_capabilities_t *radio_cap, int *channels, int *channels_len, bool dfs_enabled)

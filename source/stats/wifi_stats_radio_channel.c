@@ -385,8 +385,10 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
     }
 
     if (args->scan_mode == WIFI_RADIO_SCAN_MODE_ONCHAN) {
-        num_channels = 1;
-        channels[0] = radioOperation->channel;
+        if(get_on_channel_scan_list(radioOperation->band, radioOperation->channelWidth, radioOperation->channel, channels, &num_channels) != 0){
+            num_channels = 1;
+            channels[0] = radioOperation->channel;
+        }
     } else if (args->scan_mode == WIFI_RADIO_SCAN_MODE_FULL) {
 
         wifi_cap = getRadioCapability(args->radio_index);
@@ -471,10 +473,11 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
         }
     }
 
-    channel_buff = (char *) malloc(sizeof(char)*num_channels*5);
+    int buffer_size = sizeof(char)*num_channels*5;
+    channel_buff = (char *) malloc(buffer_size);
     if (channel_buff != NULL) {
         for (count = 0; count < num_channels; count++) {
-            bytes_written +=  snprintf(&channel_buff[bytes_written], (sizeof(channel_buff)-bytes_written), "%d,", channels[count]);
+            bytes_written +=  snprintf(&channel_buff[bytes_written], (buffer_size-bytes_written), "%d,", channels[count]);
         }
         channel_buff[bytes_written-1] = '\0';
     }

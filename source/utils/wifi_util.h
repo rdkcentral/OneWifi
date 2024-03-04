@@ -267,6 +267,7 @@ int get_list_of_iot_ssid(wifi_platform_property_t *wifi_prop, int list_size, wif
 int get_radio_index_for_vap_index(wifi_platform_property_t* wifi_prop, int vap_index);
 int min_hw_mode_conversion(unsigned int vapIndex, char *inputStr, char *outputStr, char *tableType);
 int vif_radio_idx_conversion(unsigned int vapIndex, int *input, int *output, char *tableType);
+int get_on_channel_scan_list(wifi_freq_bands_t band, wifi_channelBandwidth_t bandwidth, int primary_channel, int *channel_list, int *channels_num);
 int get_allowed_channels(wifi_freq_bands_t band, wifi_radio_capabilities_t *radio_cap, int *channels, int *channels_len, bool dfs_enabled);
 int get_allowed_channels_str(wifi_freq_bands_t band, wifi_radio_capabilities_t *radio_cap, char *buf, size_t buf_size, bool dfs_enabled);
 int convert_radio_index_to_freq_band(wifi_platform_property_t *wifi_prop, unsigned int radio_index, int *band);
