@@ -2027,6 +2027,10 @@ int get_radio_if_hw_type(unsigned int radio_index, char *str, int str_len)
     }
     else {
         snprintf(str, str_len, "QCN6224");
+#elif defined (_SCER11BEL_PRODUCT_REQ_) || defined (_SCER11BEL_PRODUCT_REQ_)
+    if (radio_index == 0) {
+    }
+    else {
     }
 #else 
     snprintf(str, str_len, "BCM43684");

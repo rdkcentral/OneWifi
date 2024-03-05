@@ -1179,7 +1179,7 @@ int upload_client_telemetry_data(unsigned int num_devs, unsigned int vap_index, 
         wifi_util_dbg_print(WIFI_MON, "%s", buff);
         get_formatted_time(tmp);
         memset(telemetryBuff, 0, MAX_BUFF_SIZE);
-#if !defined(_XB7_PRODUCT_REQ_) && !defined(_PLATFORM_TURRIS_) && !defined(_HUB4_PRODUCT_REQ_) && !defined(_WNXL11BWL_PRODUCT_REQ_)
+#if !defined(_XB7_PRODUCT_REQ_) && !defined(_PLATFORM_TURRIS_) && !defined(_HUB4_PRODUCT_REQ_) && !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_SCER11BEL_PRODUCT_REQ_)
         int vap_status = 0;
         wifi_VAPTelemetry_t telemetry;
         //TODO
