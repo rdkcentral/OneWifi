@@ -265,7 +265,7 @@ int sm_report_send_to_qm_cb(void *args)
             continue;
         }
 
-        wifi_util_info_print(WIFI_SM, "%s:%d buf_len = %d\n",__func__, __LINE__, buf_len);
+        wifi_util_dbg_print(WIFI_SM, "%s:%d buf_len = %d\n",__func__, __LINE__, buf_len);
         if (!sm_mqtt_publish(buf_len, sm_mqtt_buf))
         {
             wifi_util_error_print(WIFI_SM, "%s:%d Publish report failed.\n",__func__, __LINE__);
