@@ -166,6 +166,7 @@ typedef enum {
     wifi_event_monitor_data_collection_config,
     wifi_event_monitor_provider_response,
     wifi_event_monitor_assoc_req,
+    wifi_event_monitor_clear_goodbad_rssi_time,
     wifi_event_monitor_max,
 
     // Tunnel
