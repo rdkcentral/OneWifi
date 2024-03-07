@@ -302,14 +302,15 @@ int cac_event_exec_timeout(wifi_app_t *apps, void *arg)
             if(elem->seconds_alive == 0) {
                 memset(mac_str, 0, sizeof(mac_str));
                 strncpy(mac_str, elem->mac_addr, sizeof(mac_str));
+                elem = hash_map_get_next(assoc_map, elem);
                 tmp_elem = hash_map_remove(assoc_map, mac_str);
 
                 if (tmp_elem != NULL) {
                     free(tmp_elem);
                 }
+            } else {
+                elem = hash_map_get_next(assoc_map, elem);
             }
-
-            elem = hash_map_get_next(assoc_map, elem);
         }
     }
 
