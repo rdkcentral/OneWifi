@@ -1141,6 +1141,21 @@ static void webconfig_send_sta_bssid_change_event(wifi_ctrl_t *ctrl, wifi_vap_in
 }
 #endif
 
+//We need to know that config applied due to force apply
+bool is_force_apply_true(rdk_wifi_vap_info_t *rdk_vap_info) {
+    if (rdk_vap_info == NULL) {
+        return false;
+    }
+
+    if (rdk_vap_info->force_apply == true) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d: SubDoc Force Apply is True, clearing it\n", __func__, __LINE__);
+        //before returning make it to false
+        rdk_vap_info->force_apply = false;
+        return true;
+    }
+    return false;
+}
+
 int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data, char **vap_names, unsigned int size)
 {
     unsigned int i, j, k;
@@ -1243,10 +1258,11 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
         if (ctrl->network_mode == rdk_dev_mode_type_ext && isVapSTAMesh(tgt_vap_index)) {
             mgr_rdk_vap_info->exists = rdk_vap_info->exists;
         }
-#endif 
+#endif
+
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Comparing VAP [%s] with [%s]. \n",__func__, __LINE__,mgr_vap_info->vap_name,vap_info->vap_name);
         if (is_vap_param_config_changed(mgr_vap_info, vap_info, mgr_rdk_vap_info, rdk_vap_info,
-                isVapSTAMesh(tgt_vap_index))) {
+                isVapSTAMesh(tgt_vap_index)) || is_force_apply_true(rdk_vap_info)) {
             // radio data changed apply
             wifi_util_info_print(WIFI_CTRL, "%s:%d: Change detected in received vap config, applying new configuration for vap: %s\n",
                                 __func__, __LINE__, vap_names[i]);

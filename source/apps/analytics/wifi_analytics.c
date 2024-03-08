@@ -200,6 +200,8 @@ int analytics_event_webconfig_set_data(wifi_app_t *apps, void *arg, wifi_event_s
         analytics_format = analytics_format_webconfig_core;
     } else if (sub_type == wifi_event_webconfig_set_data) {
         analytics_format = analytics_format_core_core;
+    } else if (sub_type == wifi_event_webconfig_set_data_force_apply) {
+        analytics_format = analytics_format_core_core;
     }
 
 
@@ -653,6 +655,7 @@ int webconfig_event_analytics(wifi_app_t *apps, wifi_event_subtype_t sub_type, v
         case wifi_event_webconfig_data_resched_to_ctrl_queue:
         case wifi_event_webconfig_data_to_hal_apply:
         case wifi_event_webconfig_data_to_apply_pending_queue:
+        case wifi_event_webconfig_set_data_force_apply:
             analytics_event_webconfig_set_data(apps, arg, sub_type);
             break;
 

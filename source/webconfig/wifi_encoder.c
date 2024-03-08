@@ -322,6 +322,12 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
     // NeighborReportActivated
     cJSON_AddBoolToObject(vap_object, "NeighborReportActivated", vap_info->u.bss_info.nbrReportActivated);
 
+    // ForceApply
+    if (rdk_vap_info->force_apply == true) {
+        //Add only if ForceApply is true
+        cJSON_AddBoolToObject(vap_object, "ForceApply", rdk_vap_info->force_apply);
+    }
+
     //network_initiated_greylist
     cJSON_AddBoolToObject(vap_object, "NetworkGreyList", vap_info->u.bss_info.network_initiated_greylist);
 

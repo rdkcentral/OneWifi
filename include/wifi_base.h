@@ -56,6 +56,7 @@ extern "C" {
 #define WIFI_ACCESSPOINT_DEV_DISCONNECTED   "Device.WiFi.AccessPoint.{i}.X_RDK_deviceDisconnected"
 #define WIFI_ACCESSPOINT_DEV_DEAUTH         "Device.WiFi.AccessPoint.{i}.X_RDK_deviceDeauthenticated"
 #define WIFI_ACCESSPOINT_DIAGDATA           "Device.WiFi.AccessPoint.{i}.X_RDK_DiagData"
+#define WIFI_ACCESSPOINT_FORCE_APPLY        "Device.WiFi.AccessPoint.{i}.ForceApply"
 #define WIFI_CSI_TABLE                      "Device.WiFi.X_RDK_CSI.{i}."
 #define WIFI_CSI_DATA                       "Device.WiFi.X_RDK_CSI.{i}.data"
 #define WIFI_CSI_CLIENTMACLIST              "Device.WiFi.X_RDK_CSI.{i}.ClientMaclist"
@@ -556,6 +557,7 @@ typedef struct {
     bool                    exists;
     int                     anqp_request_count;
     int                     anqp_response_count;
+    bool                    force_apply;
 } rdk_wifi_vap_info_t;
 
 typedef struct {

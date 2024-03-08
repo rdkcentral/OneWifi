@@ -2213,6 +2213,82 @@ rbusError_t get_client_assoc_request_multi(rbusHandle_t handle, char const* meth
     return RBUS_ERROR_SUCCESS;
 }
 
+#ifdef CCSP_COMMON
+rbusError_t set_force_vap_apply(rbusHandle_t handle, rbusProperty_t property, rbusSetHandlerOptions_t* opts)
+{
+    UNREFERENCED_PARAMETER(handle);
+    UNREFERENCED_PARAMETER(opts);
+    unsigned int idx = 0;
+    int ret;
+    bool force_apply = false;
+    webconfig_subdoc_data_t *data;
+    char const* name = rbusProperty_GetName(property);
+    rbusValue_t value = rbusProperty_GetValue(property);
+    rbusValueType_t type = rbusValue_GetType(value);
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    unsigned int num_of_radios = getNumberRadios();
+    int vap_array_index;
+    unsigned int radio_index;
+    int subdoc_type;
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+
+    if (type != RBUS_BOOLEAN) {
+        wifi_util_error_print(WIFI_CTRL,"%sWrong data type %s\n",__FUNCTION__,name);
+        return RBUS_ERROR_INVALID_INPUT;
+    }
+
+    force_apply = rbusValue_GetBoolean(value);
+
+    if (force_apply == false) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d Invalid force apply option\r\n", __func__, __LINE__);
+        return  RBUS_ERROR_INVALID_INPUT;
+    }
+
+    ret = sscanf(name, "Device.WiFi.AccessPoint.%d.ForceApply", &idx);
+    if(ret==1 && idx > 0 && idx <= num_of_radios * MAX_NUM_VAP_PER_RADIO) {
+        data = (webconfig_subdoc_data_t *) malloc(sizeof(webconfig_subdoc_data_t));
+        if (data == NULL) {
+            wifi_util_error_print(WIFI_CTRL,"%s:%d Malloc failed for name %s\n", __func__, __LINE__, name);
+            return RBUS_ERROR_INVALID_INPUT;
+        }
+
+        memset(data, 0, sizeof(webconfig_subdoc_data_t));
+        memcpy((unsigned char *)&data->u.decoded.radios, (unsigned char *)&mgr->radio_config, getNumberRadios()*sizeof(rdk_wifi_radio_t));
+        memcpy((unsigned char *)&data->u.decoded.config, (unsigned char *)&mgr->global_config, sizeof(wifi_global_config_t));
+        memcpy((unsigned char *)&data->u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap, sizeof(wifi_hal_capability_t));
+        data->u.decoded.num_radios = num_of_radios;
+
+        vap_array_index = convert_vap_index_to_vap_array_index(&mgr->hal_cap.wifi_prop, (idx-1));
+        if (vap_array_index == -1) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid vap index : %d\n", __func__, __LINE__, (idx-1));
+            free(data);
+            return RETURN_ERR;
+        }
+
+        radio_index = getRadioIndexFromAp((unsigned int) idx-1);
+
+        data->u.decoded.radios[radio_index].vaps.rdk_vap_array[vap_array_index].force_apply = force_apply;
+
+        get_subdoc_name_from_vap_index(idx-1, &subdoc_type);
+        wifi_util_info_print(WIFI_CTRL,"%s:%d Forceapply set to true for %s\r\n", 
+                __func__, __LINE__, data->u.decoded.radios[radio_index].vaps.rdk_vap_array[vap_array_index].vap_name);
+
+        if (webconfig_encode(&ctrl->webconfig, data, subdoc_type) != webconfig_error_none) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Error in encoding radio stats\n", __func__, __LINE__);
+            free(data);
+            return RETURN_ERR;
+        }
+
+        push_event_to_ctrl_queue((const cJSON *)data->u.encoded.raw, (strlen(data->u.encoded.raw) + 1), wifi_event_type_webconfig, wifi_event_webconfig_set_data_force_apply, NULL);
+        free(data);
+        return RBUS_ERROR_SUCCESS;
+    }
+    wifi_util_error_print(WIFI_CTRL,"%s:%d Invalid name : %s\r\n", __func__, __LINE__, name);
+
+    return  RBUS_ERROR_INVALID_INPUT;
+}
+#endif
+
 void rbus_register_handlers(wifi_ctrl_t *ctrl)
 {
     int rc = RBUS_ERROR_SUCCESS;
@@ -2272,6 +2348,8 @@ void rbus_register_handlers(wifi_ctrl_t *ctrl)
                                 { NULL, NULL, NULL, NULL, eventSubHandler, NULL}},
                                 { WIFI_ACCESSPOINT_DIAGDATA, RBUS_ELEMENT_TYPE_EVENT,
                                 { ap_get_handler, NULL, NULL, NULL, eventSubHandler, NULL}},
+                                { WIFI_ACCESSPOINT_FORCE_APPLY, RBUS_ELEMENT_TYPE_METHOD,
+                                { NULL, set_force_vap_apply, NULL, NULL, NULL, NULL}},
 #endif
                                 { ACCESSPOINT_ASSOC_REQ_EVENT, RBUS_ELEMENT_TYPE_METHOD,
                                     { NULL, NULL, NULL, NULL, NULL, NULL}},

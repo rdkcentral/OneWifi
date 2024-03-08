@@ -197,6 +197,8 @@ bool is_sec_mode_personal(wifi_security_modes_t mode);
 int convert_vap_name_to_index(wifi_platform_property_t *wifi_prop, char *vap_name);
 int convert_vap_name_to_array_index(wifi_platform_property_t * wifi_prop, char *vap_name);
 int convert_vap_name_to_radio_array_index(wifi_platform_property_t *wifi_prop, char *vap_name);
+//getVAPArrayIndexFromVAPIndex() need to be used in case of VAPS considered as single array (from 0 to MAX_VAP)
+//In case of to get vap array index per radio, use convert_vap_index_to_vap_array_index()
 int convert_vap_index_to_vap_array_index(wifi_platform_property_t *wifi_prop, unsigned int vap_index);
 int convert_radio_name_to_radio_index(char *name);
 int convert_radio_index_to_radio_name(int index, char *name);

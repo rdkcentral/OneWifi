@@ -991,44 +991,8 @@ wifi_GASConfiguration_t* get_dml_wifi_gas_config(void)
      return get_wifidb_gas_config();
 }
 
-#define PRIVATE 0b0001
-#define HOTSPOT 0b0010
-#define HOME 0b0100
-#define MESH 0b1000
-#define MESH_STA 0b10000
-#define MESH_BACKHAUL 0b100000
-#define LNF 0b1000000
-
 int is_vap_config_changed;
 int is_vap_cac_config_changed;
-void get_subdoc_type_bit_mask_from_vap_index(uint8_t vap_index, int* subdoc)
-{
-    if (isVapPrivate(vap_index)) {
-        *subdoc = PRIVATE;
-        return;
-    } else if (isVapHotspot(vap_index) || isVapHotspotSecure(vap_index)) {
-        *subdoc = HOTSPOT;
-        return;
-    } else if (isVapXhs(vap_index)) {
-        *subdoc = HOME;
-        return;
-    } else if (isVapSTAMesh(vap_index)) {
-        *subdoc = MESH_STA;
-        return;
-    } else if (isVapMeshBackhaul(vap_index)) {
-        *subdoc = MESH_BACKHAUL;
-        return;
-    } else if (isVapMesh(vap_index)) {
-        *subdoc = MESH;
-        return;
-    } else if (isVapLnf(vap_index)) {
-        *subdoc = LNF;
-        return;
-    } else {
-        *subdoc = MESH_STA;
-        return;
-    }
-}
 
 void set_dml_cache_vap_config_changed(uint8_t vap_index)
 {
@@ -1036,7 +1000,7 @@ void set_dml_cache_vap_config_changed(uint8_t vap_index)
     unsigned int num_radios = get_num_radio_dml();
 
     if (vap_index <  (num_radios * MAX_NUM_VAP_PER_RADIO)) {
-        get_subdoc_type_bit_mask_from_vap_index(vap_index,&subdoc);
+        get_subdoc_name_from_vap_index(vap_index,&subdoc);
         is_vap_config_changed = is_vap_config_changed|subdoc;
         return;
     } else {

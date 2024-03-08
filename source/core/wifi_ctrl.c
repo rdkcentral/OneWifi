@@ -762,11 +762,11 @@ int start_wifi_services(void)
         start_radios(rdk_dev_mode_type_gw);
         start_gateway_vaps();
         captive_portal_check();
-
+#if !defined(NEWPLATFORM_PORT) && !defined(_SR213_PRODUCT_REQ_)
         /* Function to check for default SSID and Passphrase for Private VAPS
         if they are default and last-reboot reason is SW get the previous config from Webconfig */
         validate_and_sync_private_vap_credentials();
-
+#endif
     } else if (ctrl->network_mode == rdk_dev_mode_type_ext) {
         start_radios(rdk_dev_mode_type_ext);
         if (is_sta_enabled()) {
@@ -2937,6 +2937,36 @@ UINT getNumberVAPsPerRadio(UINT radioIndex)
 {
     wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
     return wifi_mgr->radio_config[radioIndex].vaps.num_vaps;
+}
+
+
+void get_subdoc_name_from_vap_index(uint8_t vap_index, int* subdoc)
+{
+    if (isVapPrivate(vap_index)) {
+        *subdoc = PRIVATE;
+        return;
+    } else if (isVapHotspot(vap_index) || isVapHotspotSecure(vap_index)) {
+        *subdoc = HOTSPOT;
+        return;
+    } else if (isVapXhs(vap_index)) {
+        *subdoc = HOME;
+        return;
+    } else if (isVapSTAMesh(vap_index)) {
+        *subdoc = MESH_STA;
+        return;
+    } else if (isVapMeshBackhaul(vap_index)) {
+        *subdoc = MESH_BACKHAUL;
+        return;
+    } else if (isVapMesh(vap_index)) {
+        *subdoc = MESH;
+        return;
+    } else if (isVapLnf(vap_index)) {
+        *subdoc = LNF;
+        return;
+    } else {
+        *subdoc = MESH_STA;
+        return;
+    }
 }
 
 //Returns total number of Configured vaps for all radios

@@ -3083,6 +3083,7 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
         case wifi_event_webconfig_set_data_webconfig:
         case wifi_event_webconfig_set_data_ovsm:
         case wifi_event_webconfig_data_resched_to_ctrl_queue:
+        case wifi_event_webconfig_set_data_force_apply:
             memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap, sizeof(wifi_hal_capability_t));
 #if CCSP_COMMON
             apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, subtype, NULL);

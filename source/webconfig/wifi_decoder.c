@@ -1530,6 +1530,17 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
         decode_param_bool(vap, "NetworkGreyList", param);
         vap_info->u.bss_info.network_initiated_greylist = (param->type & cJSON_True) ? true:false;
     }
+
+    // force_apply is not mandatory
+    object = cJSON_GetObjectItem(vap, "ForceApply");
+    if (object != NULL) {
+        decode_param_bool(vap, "ForceApply", param);
+        rdk_vap_info->force_apply = (param->type & cJSON_True) ? true:false;
+    } else {
+          //update the force_apply flag to false if force_apply not present
+          rdk_vap_info->force_apply = false;
+    }
+
     // RapidReconnCountEnable
     decode_param_bool(vap, "RapidReconnCountEnable", param);
     vap_info->u.bss_info.rapidReconnectEnable = (param->type & cJSON_True) ? true:false;

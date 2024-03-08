@@ -76,6 +76,7 @@ typedef enum {
     wifi_event_webconfig_data_to_hal_apply,
     wifi_event_webconfig_set_data_sta_bssid,
     wifi_event_webconfig_data_req_from_dml,
+    wifi_event_webconfig_set_data_force_apply,
     wifi_event_webconfig_max,
 
 

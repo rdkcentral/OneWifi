@@ -121,6 +121,13 @@ extern "C" {
 #define MANAGED_WIFI_BRIDGE "Device.LAN.Bridge.1.Name"
 #define MANAGED_WIFI_INTERFACE "Device.LAN.Bridge.1.WiFiInterfaces"
 
+#define PRIVATE 0b0001
+#define HOTSPOT 0b0010
+#define HOME 0b0100
+#define MESH 0b1000
+#define MESH_STA 0b10000
+#define MESH_BACKHAUL 0b100000
+#define LNF 0b1000000
 
 typedef enum {
     rbus_bool_data,
@@ -330,6 +337,8 @@ UINT getTotalNumberVAPs();
 UINT getNumberRadios();
 UINT getMaxNumberVAPsPerRadio(UINT radioIndex);
 UINT getNumberVAPsPerRadio(UINT radioIndex);
+//getVAPArrayIndexFromVAPIndex() need to be used in case of VAPS considered as single array (from 0 to MAX_VAP)
+//In case of to get vap array index per radio, use convert_vap_index_to_vap_array_index()
 int getVAPArrayIndexFromVAPIndex(unsigned int apIndex, unsigned int *vap_array_index);
 rdk_wifi_vap_map_t *getRdkWifiVap(UINT radioIndex);
 char* convert_radio_index_to_band_str_g(UINT radioIndex);
@@ -378,6 +387,7 @@ wifi_platform_property_t *get_wifi_hal_cap_prop(void);
 wifi_vap_security_t * Get_wifi_object_bss_security_parameter(uint8_t vapIndex);
 wifi_vap_security_t * Get_wifi_object_sta_security_parameter(uint8_t vapIndex);
 char *get_assoc_devices_blob();
+void get_subdoc_name_from_vap_index(uint8_t vap_index, int* subdoc);
 
 #ifdef __cplusplus
 }
