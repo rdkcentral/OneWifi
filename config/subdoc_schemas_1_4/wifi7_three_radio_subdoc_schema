@@ -1,0 +1,219 @@
+{
+	"Version": "1.0",
+	"SubDocName": "radio",
+	"WifiRadioConfig": [
+		{
+			"WifiRadioSetup": {
+				"RadioIndex": 0,
+				"VapMap": [
+					{
+						"VapName": "private_ssid_2g",
+						"VapIndex": 0
+					},
+					{
+						"VapName": "iot_ssid_2g",
+						"VapIndex": 2
+					},
+					{
+						"VapName": "hotspot_open_2g",
+						"VapIndex": 4
+					},
+					{
+						"VapName": "lnf_psk_2g",
+						"VapIndex": 6
+					},
+					{
+						"VapName": "hotspot_secure_2g",
+						"VapIndex": 8
+					},
+					{
+						"VapName": "lnf_radius_2g",
+						"VapIndex": 10
+					},
+					{
+						"VapName": "mesh_backhaul_2g",
+						"VapIndex": 12
+					},
+					{
+						"VapName": "mesh_sta_2g",
+						"VapIndex": 14
+					}
+				]
+			},
+			"RadioName": "radio1",
+			"Enabled": true,
+			"FreqBand": 1,
+			"AutoChannelEnabled": false,
+			"Channel": 1,
+			"NumSecondaryChannels": 0,
+			"SecondaryChannelsList": " ",
+			"ChannelWidth": 2,
+			"HwMode": 12,
+			"CsaBeaconCount": 100,
+			"Country": "US",
+			"DcsEnabled": false,
+			"DtimPeriod": 1,
+			"OperatingClass": 0,
+			"BasicDataTransmitRates": 656,
+			"OperationalDataTransmitRates": 8112,
+			"FragmentationThreshold": 2346,
+			"GuardInterval": 16,
+			"TransmitPower": 100,
+			"BeaconInterval": 100,
+			"RtsThreshold": 2347,
+			"FactoryResetSsid": false,
+			"RadioStatsMeasuringRate": 0,
+			"RadioStatsMeasuringInterval": 0,
+			"CtsProtection": false,
+			"ObssCoex": false,
+			"StbcEnable": false,
+			"GreenFieldEnable": false,
+			"UserControl": 0,
+			"AdminControl": 0,
+			"ChanUtilThreshold": 90,
+			"ChanUtilSelfHealEnable": false
+		},
+		{
+			"WifiRadioSetup": {
+				"RadioIndex": 1,
+				"VapMap": [
+					{
+						"VapName": "private_ssid_5g",
+						"VapIndex": 1
+					},
+					{
+						"VapName": "iot_ssid_5g",
+						"VapIndex": 3
+					},
+					{
+						"VapName": "hotspot_open_5g",
+						"VapIndex": 5
+					},
+					{
+						"VapName": "lnf_psk_5g",
+						"VapIndex": 7
+					},
+					{
+						"VapName": "hotspot_secure_5g",
+						"VapIndex": 9
+					},
+					{
+						"VapName": "lnf_radius_5g",
+						"VapIndex": 11
+					},
+					{
+						"VapName": "mesh_backhaul_5g",
+						"VapIndex": 13
+					},
+					{
+						"VapName": "mesh_sta_5g",
+						"VapIndex": 15
+					}
+				]
+			},
+			"RadioName": "radio2",
+			"Enabled": true,
+			"FreqBand": 2,
+			"AutoChannelEnabled": true,
+			"Channel": 40,
+			"NumSecondaryChannels": 0,
+			"SecondaryChannelsList": " ",
+			"ChannelWidth": 1,
+			"HwMode": 169,
+			"CsaBeaconCount": 100,
+			"Country": "US",
+			"DcsEnabled": false,
+			"DtimPeriod": 1,
+			"OperatingClass": 0,
+			"BasicDataTransmitRates": 656,
+			"OperationalDataTransmitRates": 8112,
+			"FragmentationThreshold": 2346,
+			"GuardInterval": 16,
+			"TransmitPower": 100,
+			"BeaconInterval": 100,
+			"RtsThreshold": 2347,
+			"FactoryResetSsid": false,
+			"RadioStatsMeasuringRate": 0,
+			"RadioStatsMeasuringInterval": 0,
+			"CtsProtection": false,
+			"ObssCoex": false,
+			"StbcEnable": false,
+			"GreenFieldEnable": false,
+			"UserControl": 0,
+			"AdminControl": 0,
+			"ChanUtilThreshold": 90,
+			"ChanUtilSelfHealEnable": false
+		},
+		{
+			"WifiRadioSetup": {
+				"RadioIndex": 2,
+				"VapMap": [
+					{
+						"VapName": "private_ssid_6g",
+						"VapIndex": 16
+					},
+					{
+						"VapName": "iot_ssid_6g",
+						"VapIndex": 17
+					},
+					{
+						"VapName": "hotspot_open_6g",
+						"VapIndex": 18
+					},
+					{
+						"VapName": "lnf_psk_6g",
+						"VapIndex": 19
+					},
+					{
+						"VapName": "hotspot_secure_6g",
+						"VapIndex": 20
+					},
+					{
+						"VapName": "lnf_radius_6g",
+						"VapIndex": 21
+					},
+					{
+						"VapName": "mesh_backhaul_6g",
+						"VapIndex": 22
+					},
+					{
+						"VapName": "mesh_sta_6g",
+						"VapIndex": 23
+					}
+				]
+			},
+			"RadioName": "radio3",
+			"Enabled": true,
+			"FreqBand": 10,
+			"AutoChannelEnabled": true,
+			"Channel": 13,
+			"NumSecondaryChannels": 0,
+			"SecondaryChannelsList": " ",
+			"ChannelWidth": 8,
+			"HwMode": 384,
+			"CsaBeaconCount": 100,
+			"Country": "US",
+			"DcsEnabled": false,
+			"DtimPeriod": 1,
+			"OperatingClass": 0,
+			"BasicDataTransmitRates": 656,
+			"OperationalDataTransmitRates": 8112,
+			"FragmentationThreshold": 2346,
+			"GuardInterval": 16,
+			"TransmitPower": 100,
+			"BeaconInterval": 100,
+			"RtsThreshold": 2347,
+			"FactoryResetSsid": false,
+			"RadioStatsMeasuringRate": 0,
+			"RadioStatsMeasuringInterval": 0,
+			"CtsProtection": false,
+			"ObssCoex": false,
+			"StbcEnable": false,
+			"GreenFieldEnable": false,
+			"UserControl": 0,
+			"AdminControl": 0,
+			"ChanUtilThreshold": 90,
+			"ChanUtilSelfHealEnable": false
+		}
+	]
+}
