@@ -2426,6 +2426,9 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
     char tmp_buf[512];
     wifi_radio_operationParam_t *radio_info = &radio->oper;
     wifi_radio_feature_param_t *radio_feat = &radio->feature;
+    wifi_countrycode_type_t country_code;
+    wifi_operating_env_t operating_environment;
+    UINT wifi_radio_channel;
 
     // WifiRadioSetup
     decode_param_object(obj_radio, "WifiRadioSetup", param);
@@ -2499,13 +2502,14 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
 
     // Channel
     decode_param_integer(obj_radio, "Channel", param);
-    ret = decode_wifi_channel(radio_info->band, &radio_info->channel, radio_info->DfsEnabled, param->valuedouble);
+    ret = decode_wifi_channel(radio_info->band, &wifi_radio_channel, radio_info->DfsEnabled, param->valuedouble);
     if (ret != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"Invalid wifi radio channel configuration. channel %d %d\n",
             radio_info->channel, param->valuedouble);
         //strncpy(execRetVal->ErrorMsg, "Invalid wifi radio channel config",sizeof(execRetVal->ErrorMsg)-1);
         return webconfig_error_decode;
     }
+    radio_info->channel = wifi_radio_channel;
 
     // NumSecondaryChannels
     decode_param_integer(obj_radio, "NumSecondaryChannels", param);
@@ -2563,12 +2567,13 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
 
     // Country
     decode_param_string(obj_radio, "Country", param);
-    ret = decode_contry_code(&radio_info->countryCode, param->valuestring);
+    ret = decode_contry_code(&country_code, param->valuestring);
     if (ret != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"Invalid wifi radio contry code '%s'\n", param->valuestring);
         //strncpy(execRetVal->ErrorMsg, "Invalid wifi radio code",sizeof(execRetVal->ErrorMsg)-1);
         return webconfig_error_decode;
     }
+    radio_info->countryCode = country_code;
 
     // RegDomain
     decode_param_integer(obj_radio, "RegDomain", param);
@@ -2576,11 +2581,12 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
     
     //OperatingEnvironment
     decode_param_string(obj_radio, "OperatingEnvironment", param);
-    ret = decode_operating_environment(&radio_info->operatingEnvironment, param->valuestring);
+    ret = decode_operating_environment(&operating_environment, param->valuestring);
     if (ret != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG,"Invalid wifi Operating Environment '%s'\n", param->valuestring);
         return webconfig_error_decode;
     }
+    radio_info->operatingEnvironment = operating_environment;
 
     // DcsEnabled
     decode_param_bool(obj_radio, "DcsEnabled", param);

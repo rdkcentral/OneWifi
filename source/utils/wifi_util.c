@@ -3032,9 +3032,10 @@ int wifi_radio_operationParam_validation(wifi_hal_capability_t  *hal_cap, wifi_r
     int nchannels = 0;
     int start_index = 0;
     int ch_count = 0;
-    int *hal_cap_channels = NULL;
+    const void *hal_cap_channels = NULL;
     int ref_ch_list_5g[] = {36,40,44,48,52,56,60,64,100,104,108,112,116,120,124,128,132,136,140,144,149,153,157,161,165};
-    int non_dfs_ch_hal_cap[MAX_CHANNELS] = {'\0'};
+    INT non_dfs_ch_hal_cap[MAX_CHANNELS] = {'\0'};
+    INT hal_cap_channel_val;
 
     if (convert_freq_band_to_radio_index(oper->band, &radio_index) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to convert freq_band 0x%x to radio_index\n", __func__, __LINE__, oper->band);
@@ -3124,9 +3125,13 @@ int wifi_radio_operationParam_validation(wifi_hal_capability_t  *hal_cap, wifi_r
 
         for(j = start_index; (j < (start_index+nchannels) && j < (int)(sizeof(ref_ch_list_5g)/sizeof(int))) ; j++){
             for(i = 0;i < max_num_ch; i++) {
-                if(ref_ch_list_5g[j] == hal_cap_channels[i]) {
-                    ch_count++;
-                    break;
+              (void)memcpy(&hal_cap_channel_val,
+                           (((const char *)hal_cap_channels) +
+                            i * sizeof(hal_cap_channel_val)),
+                           sizeof(hal_cap_channel_val));
+              if (ref_ch_list_5g[j] == hal_cap_channel_val) {
+                ch_count++;
+                break;
                 }
             }
         }
@@ -3135,7 +3140,11 @@ int wifi_radio_operationParam_validation(wifi_hal_capability_t  *hal_cap, wifi_r
         }
     } else { /*for 2.4GHz and 6GHz */
         for(i = 0;i < max_num_ch; i++) {
-            if((hal_cap_channels[i] == (int)oper->channel) && (oper->channel != 0)) {
+            (void)memcpy(&hal_cap_channel_val,
+                        (((const char *)hal_cap_channels) +
+                        i * sizeof(hal_cap_channel_val)),
+                        sizeof(hal_cap_channel_val));
+            if((hal_cap_channel_val == (int)oper->channel) && (oper->channel != 0)) {
                 is_valid = true;
                  break;
             }

@@ -858,6 +858,7 @@ INT WiFi_SetANQPConfig(uint8_t vapIndex, char *JSON_STR)
 	return RETURN_ERR;
     }
     wifi_interworking_t anqpData;
+    wifi_InterworkingElement_t interworking;
     cJSON *mainEntry = NULL;
 
     if(!JSON_STR){
@@ -880,7 +881,9 @@ INT WiFi_SetANQPConfig(uint8_t vapIndex, char *JSON_STR)
     }
    
     memset((char *)&anqpData,0,sizeof(wifi_interworking_t));
-    wifi_getApInterworkingElement(apIns,&anqpData.interworking);   
+    (void)memset(&interworking, 0, sizeof(interworking));
+    wifi_getApInterworkingElement(apIns,&interworking);
+    (void)memcpy(&anqpData.interworking, &interworking, sizeof(interworking));
 
 #ifndef LINUX_VM_PORT
     if (validate_anqp(mainEntry, &anqpData, &execRetVal) != 0) {
@@ -1063,6 +1066,7 @@ INT WiFi_SetHS2Config(uint8_t vapIndex, char *JSON_STR)
     }
     
     wifi_interworking_t passpointCfg;
+    wifi_InterworkingElement_t interworking;
     cJSON *mainEntry = NULL;
     
     if(!JSON_STR){
@@ -1091,7 +1095,9 @@ INT WiFi_SetHS2Config(uint8_t vapIndex, char *JSON_STR)
 #endif
 
     memset((char *)&passpointCfg,0,sizeof(wifi_interworking_t));
-    wifi_getApInterworkingElement(apIns,&passpointCfg.interworking);//TBD -A
+    (void)memset(&interworking, 0, sizeof(interworking));
+    wifi_getApInterworkingElement(apIns,&interworking);//TBD -A
+    (void)memcpy(&passpointCfg.interworking, &interworking, sizeof(interworking));
 #ifndef LINUX_VM_PORT
     if (validate_passpoint(mainEntry, &passpointCfg, &execRetVal) != 0) {   
        wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Validation failed. Error: %s\n", __func__, __LINE__,execRetVal.ErrorMsg);

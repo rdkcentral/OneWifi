@@ -1907,6 +1907,8 @@ int validate_radio_vap(const cJSON *wifi, wifi_radio_operationParam_t *wifi_radi
     unsigned int num_of_channel = 0;
     int ret;
     int radio_index = 0;
+    UINT wifi_radio_channel;
+    wifi_countrycode_type_t contry_code;
 
     if(!wifi || !wifi_radio_info || !execRetVal){
         wifi_util_dbg_print(WIFI_PASSPOINT,"WiFi Global entry is NULL\n");
@@ -1940,12 +1942,13 @@ int validate_radio_vap(const cJSON *wifi, wifi_radio_operationParam_t *wifi_radi
 
 	// Channel
 	validate_param_integer(wifi, "Channel", param);
-	ret = validate_wifi_channel(wifi_radio_info->band, &wifi_radio_info->channel, param->valuedouble);
+	ret = validate_wifi_channel(wifi_radio_info->band, &wifi_radio_channel, param->valuedouble);
 		if (ret != RETURN_OK) {
 		wifi_util_dbg_print(WIFI_PASSPOINT,"Invalid wifi radio channel configuration\n");
 		strncpy(execRetVal->ErrorMsg, "Invalid wifi radio channel config",sizeof(execRetVal->ErrorMsg)-1);
 		return RETURN_ERR;
 	}
+    wifi_radio_info->channel = wifi_radio_channel;
 	// NumSecondaryChannels
 	validate_param_integer(wifi, "NumSecondaryChannels", param);
 	wifi_radio_info->numSecondaryChannels = param->valuedouble;
@@ -2012,13 +2015,13 @@ int validate_radio_vap(const cJSON *wifi, wifi_radio_operationParam_t *wifi_radi
 
 	// Country
 	validate_param_string(wifi, "Country", param);
-        ret = validate_contry_code(&wifi_radio_info->countryCode, param->valuestring);
+        ret = validate_contry_code(&contry_code, param->valuestring);
 	if (ret != RETURN_OK) {
                 wifi_util_dbg_print(WIFI_PASSPOINT,"Invalid wifi radio contry code\n");
                 strncpy(execRetVal->ErrorMsg, "Invalid wifi radio code",sizeof(execRetVal->ErrorMsg)-1);
                 return RETURN_ERR;
         }
-
+    wifi_radio_info->countryCode = contry_code;
 	// DcsEnabled
 	validate_param_bool(wifi, "DcsEnabled", param);
 	wifi_radio_info->DCSEnabled = (param->type & cJSON_True) ? true:false;

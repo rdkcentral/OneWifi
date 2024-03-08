@@ -252,8 +252,10 @@ static void ext_reset_radios(vap_svc_t *svc)
 
     reset_wifi_radios();
     ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
-    scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
+    int id = ext->ext_connect_algo_processor_id;
+    scheduler_add_timer_task(ctrl->sched, FALSE, &id,
         process_ext_connect_algorithm, svc, EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1, FALSE);
+    ext->ext_connect_algo_processor_id = id;
 }
 
 void ext_incomplete_scan_list(vap_svc_t *svc)
@@ -269,11 +271,12 @@ void ext_incomplete_scan_list(vap_svc_t *svc)
         ext->wait_scan_result = 0;
         ext_set_conn_state(ext, connection_state_disconnected_scan_list_all, __func__, __LINE__);
         ext->scanned_radios = 0;
-
+        int id = ext->ext_connect_algo_processor_id;
         // schedule extender connetion algorithm
-        scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
+        scheduler_add_timer_task(ctrl->sched, FALSE, &id,
                         process_ext_connect_algorithm, svc,
                         EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1, FALSE);
+        ext->ext_connect_algo_processor_id = id;
     }
 }
 
@@ -287,9 +290,11 @@ int process_scan_result_timeout(vap_svc_t *svc)
 
     if (ext->conn_state == connection_state_disconnected_scan_list_none) {
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d - start wifi scan timer\r\n", __func__, __LINE__);
-        scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
+        int id = ext->ext_connect_algo_processor_id;
+        scheduler_add_timer_task(ctrl->sched, FALSE, &id,
                     process_ext_connect_algorithm, svc,
                     EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1, FALSE);
+        ext->ext_connect_algo_processor_id = id;
     }
     return 0;
 }
@@ -527,6 +532,8 @@ void ext_start_scan(vap_svc_t *svc)
     wifi_channels_list_t channels;
     wifi_radio_operationParam_t *radio_oper_param;
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
+    INT num_channels;
+    INT channels_list[MAX_CHANNELS];
 
     ctrl = svc->ctrl;
     ext = &svc->u.ext;
@@ -563,10 +570,13 @@ void ext_start_scan(vap_svc_t *svc)
 
         radio_oper_param = get_wifidb_radio_map(radio_index);
         if (get_allowed_channels(radio_oper_param->band, &mgr->hal_cap.wifi_prop.radiocap[radio_index],
-                channels.channels_list, &channels.num_channels,
+                channels_list, &num_channels,
                 radio_oper_param->DfsEnabled) != RETURN_OK) {
             continue;
         }
+        (void)memcpy(channels.channels_list, channels_list,
+               sizeof(*channels_list) * num_channels);
+        channels.num_channels = num_channels;
 
         wifi_hal_startScan(radio_index, WIFI_RADIO_SCAN_MODE_OFFCHAN, dwell_time,
             channels.num_channels, channels.channels_list);
@@ -1592,7 +1602,7 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
         if ((ext->conn_state == connection_state_connection_in_progress) ||
             (ext->conn_state == connection_state_connection_to_lcb_in_progress) ||
             (ext->conn_state == connection_state_connection_to_nb_in_progress)) {
-
+            int radio_freq_band = 0;
             // copy the bss info to lcb
             memset(&ext->last_connected_bss, 0, sizeof(bss_candidate_t));
             memcpy(&ext->last_connected_bss.external_ap, &sta_data->bss_info, sizeof(wifi_bss_info_t));
@@ -1601,7 +1611,8 @@ int process_ext_sta_conn_status(vap_svc_t *svc, void *arg)
             // clear new bssid since it is not used for reconnection
             memset(&ext->new_bss, 0, sizeof(bss_candidate_t));
 
-            convert_radio_index_to_freq_band(svc->prop, index, (int*)&ext->last_connected_bss.radio_freq_band);
+            convert_radio_index_to_freq_band(svc->prop, index, &radio_freq_band);
+            ext->last_connected_bss.radio_freq_band = (wifi_freq_bands_t)radio_freq_band;
             wifi_util_dbg_print(WIFI_CTRL,"%s:%d - connected radio_band:%d\r\n", __func__, __LINE__, ext->last_connected_bss.radio_freq_band);
 
             // copy the bss bssid info to global chache

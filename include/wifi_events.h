@@ -198,7 +198,7 @@ typedef struct {
         webconfig_subdoc_data_t *webconfig_data;
         wifi_csi_dev_t          *csi;
     } u;
-} __attribute__((__packed__)) wifi_event_t;
+} wifi_event_t;
 
 // wifi events functions
 int push_event_to_ctrl_queue(const void *msg, unsigned int len, wifi_event_type_t type, wifi_event_subtype_t sub_type, wifi_event_route_t *rt);

@@ -273,7 +273,7 @@ typedef struct {
     wifi_provider_response_t *response;
     unsigned long   provider_task_interval_ms;
     bool            start_immediately;
-} __attribute__((packed)) wifi_mon_provider_element_t;
+} wifi_mon_provider_element_t;
 
 
 hash_map_t *coordinator_get_collector_list();

@@ -851,6 +851,7 @@ int set_assoc_req_frame_data(frame_data_t *msg)
     struct ieee80211_mgmt *frame;
     mac_addr_str_t mac_str = { 0 };
     char *str;
+    time_t frame_timestamp;
 
     frame = (struct ieee80211_mgmt *)msg->data;
     str = to_mac_str(frame->sa, mac_str);
@@ -868,20 +869,18 @@ int set_assoc_req_frame_data(frame_data_t *msg)
     }
 
     sta = (sta_data_t *)hash_map_get(sta_map, mac_str);
-    if (sta != NULL) {
-        memset(&sta->assoc_frame_data, 0, sizeof(assoc_req_elem_t));
-        memcpy(&sta->assoc_frame_data.msg_data, msg, sizeof(frame_data_t));
-        time(&sta->assoc_frame_data.frame_timestamp);
-    } else {
+    if (NULL == sta)
+    {
         sta = create_sta_data_hash_map(sta_map, frame->sa);
-        if (sta != NULL) {
-            memset(&sta->assoc_frame_data, 0, sizeof(assoc_req_elem_t));
-            memcpy(&sta->assoc_frame_data.msg_data, msg, sizeof(frame_data_t));
-            time(&sta->assoc_frame_data.frame_timestamp);
-        } else {
+        if(NULL == sta)
+        {
             return RETURN_ERR;
         }
     }
+    (void)memset(&sta->assoc_frame_data, 0, sizeof(assoc_req_elem_t));
+    (void)memcpy(&sta->assoc_frame_data.msg_data, msg, sizeof(frame_data_t));
+    (void)time(&frame_timestamp);
+    (void)memcpy(&sta->assoc_frame_data.frame_timestamp, &frame_timestamp, sizeof(frame_timestamp));
 
     return RETURN_OK;
 }
@@ -2148,6 +2147,7 @@ int radio_diagnostics(void *arg)
 #endif // CCSP_COMMON
     static unsigned int radiocnt = 0;
     wifi_radio_operationParam_t* radioOperation = getRadioOperationParam(radiocnt);
+    wifi_freq_bands_t band_enum;
 
     if (g_monitor_module.is_blaster_running == true) {
         wifi_util_dbg_print(WIFI_MON, "%s:%d Active Measurement is running, skipping radio diagnostics...\n",__func__,__LINE__);
@@ -2198,7 +2198,8 @@ int radio_diagnostics(void *arg)
 #endif
                 g_monitor_module.radio_data[radiocnt].primary_radio_channel = radioOperation->channel;
 
-                if (freq_band_conversion((wifi_freq_bands_t *)&radioOperation->band, (char *)RadioFreqBand, sizeof(RadioFreqBand), ENUM_TO_STRING) != RETURN_OK)
+                band_enum = radioOperation->band;
+                if (freq_band_conversion(&band_enum, (char *)RadioFreqBand, sizeof(RadioFreqBand), ENUM_TO_STRING) != RETURN_OK)
                 {
                     wifi_util_error_print(WIFI_MON,"%s:%d: frequency band conversion failed\n", __func__, __LINE__);
                 } else {
@@ -3728,10 +3729,11 @@ int provider_execute_task(void *arg)
 int coordinator_create_collector_task(wifi_mon_collector_element_t *collector_elem)
 {
     wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
+    int id = collector_elem->collector_task_sched_id;
 
-    scheduler_add_timer_task(mon_data->sched, collector_elem->task_priority, &collector_elem->collector_task_sched_id, collector_execute_task,
+    scheduler_add_timer_task(mon_data->sched, collector_elem->task_priority, &id, collector_execute_task,
             (void *)collector_elem, collector_elem->collector_task_interval_ms, 0, collector_elem->start_immediately);
-
+    collector_elem->collector_task_sched_id = id;
     return RETURN_OK;
 }
 

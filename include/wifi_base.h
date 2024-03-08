@@ -308,7 +308,7 @@ typedef struct {
         wifi_mon_stats_config_t mon_stats_config;
         frame_data_t msg;
     } u;
-} __attribute__((__packed__)) wifi_monitor_data_t;
+} wifi_monitor_data_t;
 
 typedef struct {
     unsigned int  vap_index;
@@ -475,7 +475,7 @@ typedef struct {
 
 typedef struct {
     hash_map_t *mac_entry[MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO];
-} __attribute__((packed)) wifi_mac_psm_entry_t;
+} wifi_mac_psm_entry_t;
 
 typedef struct {
     int vlan_cfg_version;
@@ -523,7 +523,7 @@ typedef struct {
     wifi_mac_psm_entry_t    mac_psm_cfg;
     wifi_global_psm_param_t global_psm_cfg;
     wifi_radio_feat_psm_param_t radio_feat_psm_cfg[MAX_NUM_RADIOS];
-} __attribute__((packed)) wifi_psm_param_t;
+} wifi_psm_param_t;
 
 typedef struct {
     unsigned char vap_index;
@@ -707,7 +707,7 @@ typedef struct {
     unsigned int    num_vaps;
     rdk_wifi_vap_info_t          rdk_vap_array[MAX_NUM_VAP_PER_RADIO];
 //  schema_wifi_vap_state_t      vap_state[MAX_NUM_VAP_PER_RADIO];
-} __attribute__((packed)) rdk_wifi_vap_map_t;
+} rdk_wifi_vap_map_t;
 
 typedef struct {
     int last_channel;
@@ -722,7 +722,7 @@ typedef struct {
     wifi_radio_feature_param_t  feature;
     radarInfo_t                  radarInfo;
 //  schema_wifi_radio_state_t   radio_state;
-}  __attribute__((packed)) rdk_wifi_radio_t;
+} rdk_wifi_radio_t;
 
 #define  MAC_ADDRESS_LENGTH  13
 typedef struct {

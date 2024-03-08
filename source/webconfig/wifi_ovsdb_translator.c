@@ -1266,12 +1266,19 @@ static int get_radar_detected(struct schema_Wifi_Radio_State *row,wifi_freq_band
 webconfig_error_t translate_radio_obj_to_ovsdb_radio_state(const wifi_radio_operationParam_t *oper_param, radarInfo_t *radarInfo, struct schema_Wifi_Radio_State *row, wifi_platform_property_t *wifi_prop)
 {
     int radio_index = 0;
+    wifi_freq_bands_t band_enum;
+    wifi_countrycode_type_t country_code;
+    wifi_ieee80211Variant_t hw_mode_enum;
+    wifi_channelBandwidth_t ht_mode_enum;
+    wifi_channelMap_t channel_map[MAX_CHANNELS];
+
     if ((oper_param == NULL) || (row == NULL)) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: input arguments are NULL\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
 
-    if (freq_band_conversion((wifi_freq_bands_t *)&oper_param->band, (char *)row->freq_band, sizeof(row->freq_band), ENUM_TO_STRING) != RETURN_OK) {
+    band_enum = oper_param->band;
+    if (freq_band_conversion(&band_enum, (char *)row->freq_band, sizeof(row->freq_band), ENUM_TO_STRING) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: frequency band conversion failed. band 0x%x\n", __func__, __LINE__, oper_param->band);
         return webconfig_error_translate_to_ovsdb;
     }
@@ -1286,7 +1293,8 @@ webconfig_error_t translate_radio_obj_to_ovsdb_radio_state(const wifi_radio_oper
         return webconfig_error_translate_to_ovsdb;
     }
 
-    if (country_code_conversion((wifi_countrycode_type_t *)&oper_param->countryCode, row->country, sizeof(row->country), ENUM_TO_STRING) != RETURN_OK) {
+    country_code = oper_param->countryCode;
+    if (country_code_conversion(&country_code, row->country, sizeof(row->country), ENUM_TO_STRING) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: country conversion failed. countryCode %d\n", __func__, __LINE__, oper_param->countryCode);
         return webconfig_error_translate_to_ovsdb;
     }
@@ -1309,13 +1317,14 @@ webconfig_error_t translate_radio_obj_to_ovsdb_radio_state(const wifi_radio_oper
     row->hw_params_len++;
 #endif
 
-    if (hw_mode_conversion((wifi_ieee80211Variant_t *)&oper_param->variant, row->hw_mode, sizeof(row->hw_mode), ENUM_TO_STRING) != RETURN_OK) {
+    hw_mode_enum = oper_param->variant;
+    if (hw_mode_conversion(&hw_mode_enum, row->hw_mode, sizeof(row->hw_mode), ENUM_TO_STRING) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Hw mode conversion failed. variant 0x%x\n", __func__, __LINE__, oper_param->variant);
         return webconfig_error_translate_to_ovsdb;
     }
 
-
-    if (ht_mode_conversion((wifi_channelBandwidth_t *)&oper_param->channelWidth, row->ht_mode, sizeof(row->ht_mode), ENUM_TO_STRING) != RETURN_OK) {
+    ht_mode_enum = oper_param->channelWidth;
+    if (ht_mode_conversion(&ht_mode_enum, row->ht_mode, sizeof(row->ht_mode), ENUM_TO_STRING) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Ht mode conversion failed. channelWidth 0x%x\n", __func__, __LINE__, oper_param->channelWidth);
         return webconfig_error_translate_to_ovsdb;
     }
@@ -1336,7 +1345,8 @@ webconfig_error_t translate_radio_obj_to_ovsdb_radio_state(const wifi_radio_oper
         return webconfig_error_translate_to_ovsdb;
     }
 
-    if (get_channels(oper_param->channel_map, &wifi_prop->radiocap[radio_index], row, oper_param->band, oper_param->DfsEnabled) != RETURN_OK) {
+    (void)memcpy(channel_map, oper_param->channel_map, sizeof(channel_map));
+    if (get_channels(channel_map, &wifi_prop->radiocap[radio_index], row, oper_param->band, oper_param->DfsEnabled) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: get channels failed\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
@@ -1370,13 +1380,18 @@ webconfig_error_t translate_radio_obj_to_ovsdb_radio_state(const wifi_radio_oper
 webconfig_error_t translate_radio_obj_to_ovsdb(const wifi_radio_operationParam_t *oper_param, struct schema_Wifi_Radio_Config *row, wifi_platform_property_t *wifi_prop)
 {
     int radio_index = 0;
+    wifi_freq_bands_t band_enum;
+    wifi_countrycode_type_t country_code;
+    wifi_ieee80211Variant_t hw_mode_enum;
+    wifi_channelBandwidth_t ht_mode_enum;
 
     if ((oper_param == NULL) || (row == NULL)) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: input arguments are NULL\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
 
-    if (freq_band_conversion((wifi_freq_bands_t *)&oper_param->band, (char *)row->freq_band, sizeof(row->freq_band), ENUM_TO_STRING) != RETURN_OK) {
+    band_enum = oper_param->band;
+    if (freq_band_conversion(&band_enum, (char *)row->freq_band, sizeof(row->freq_band), ENUM_TO_STRING) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: frequency band conversion failed. band 0x%x\n", __func__, __LINE__, oper_param->band);
         return webconfig_error_translate_to_ovsdb;
     }
@@ -1391,19 +1406,20 @@ webconfig_error_t translate_radio_obj_to_ovsdb(const wifi_radio_operationParam_t
         return webconfig_error_translate_to_ovsdb;
     }
 
-    if (country_code_conversion((wifi_countrycode_type_t *)&oper_param->countryCode, row->country, sizeof(row->country), ENUM_TO_STRING) != RETURN_OK) {
+    country_code = oper_param->countryCode;
+    if (country_code_conversion(&country_code, row->country, sizeof(row->country), ENUM_TO_STRING) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: country conversion failed. countryCode %d\n", __func__, __LINE__, oper_param->countryCode);
         return webconfig_error_translate_to_ovsdb;
     }
 
-
-    if (hw_mode_conversion((wifi_ieee80211Variant_t *)&oper_param->variant, row->hw_mode, sizeof(row->hw_mode), ENUM_TO_STRING) != RETURN_OK) {
+    hw_mode_enum = oper_param->variant;
+    if (hw_mode_conversion(&hw_mode_enum, row->hw_mode, sizeof(row->hw_mode), ENUM_TO_STRING) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Hw mode conversion failed. variant 0x%x\n", __func__, __LINE__, oper_param->variant);
         return webconfig_error_translate_to_ovsdb;
     }
 
-
-    if (ht_mode_conversion((wifi_channelBandwidth_t *)&oper_param->channelWidth, row->ht_mode, sizeof(row->ht_mode), ENUM_TO_STRING) != RETURN_OK) {
+    ht_mode_enum = oper_param->channelWidth;
+    if (ht_mode_conversion(&ht_mode_enum, row->ht_mode, sizeof(row->ht_mode), ENUM_TO_STRING) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Ht mode conversion failed. channelWidth 0x%x\n", __func__, __LINE__, oper_param->channelWidth);
         return webconfig_error_translate_to_ovsdb;
     }
@@ -1793,8 +1809,10 @@ static webconfig_error_t translate_vap_info_to_ovsdb_sec_legacy(wifi_vap_info_t 
 
     if (!update_secmode_for_wpa3(vap, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp),
         true)) {
-        if (key_mgmt_conversion_legacy(&vap->u.bss_info.security.mode,
-            &vap->u.bss_info.security.encr, str_mode, sizeof(str_mode), str_encryp,
+        wifi_security_modes_t mode_enum = vap->u.bss_info.security.mode;
+        wifi_encryption_method_t encryp_enum = vap->u.bss_info.security.encr;
+        if (key_mgmt_conversion_legacy(&mode_enum,
+            &encryp_enum, str_mode, sizeof(str_mode), str_encryp,
             sizeof(str_encryp), ENUM_TO_STRING) != RETURN_OK) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to convert key mgmt: "
                 "security mode 0x%x encr 0x%x\n", __func__, __LINE__, vap->u.bss_info.security.mode,
@@ -1825,6 +1843,7 @@ static webconfig_error_t translate_vap_info_to_ovsdb_sec_new(wifi_vap_info_t *va
     struct schema_Wifi_VIF_Config *vap_row)
 {
     int wpa_psk_index = 0, len = 0;
+    wifi_security_modes_t enum_sec;
 
     if (vap->u.bss_info.security.mode == wifi_security_mode_none) {
         vap_row->wpa = false;
@@ -1832,7 +1851,8 @@ static webconfig_error_t translate_vap_info_to_ovsdb_sec_new(wifi_vap_info_t *va
         return webconfig_error_none;
     }
 
-    if (key_mgmt_conversion(&vap->u.bss_info.security.mode, vap_row->wpa_key_mgmt[0],
+    enum_sec = vap->u.bss_info.security.mode;
+    if (key_mgmt_conversion(&enum_sec, vap_row->wpa_key_mgmt[0],
         vap_row->wpa_key_mgmt[1], sizeof(vap_row->wpa_key_mgmt[0]),
         sizeof(vap_row->wpa_key_mgmt[1]), ENUM_TO_STRING, &len) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed top convert key mgmt: "
@@ -1916,6 +1936,8 @@ static webconfig_error_t translate_vap_info_to_ovsdb_sec(wifi_vap_info_t *vap,
 
 webconfig_error_t translate_vap_info_to_ovsdb_common(const wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, struct schema_Wifi_VIF_Config *vap_row, wifi_platform_property_t *wifi_prop)
 {
+    wifi_vap_mode_t vapmode_enum;
+
     if ((vap_row == NULL) || (vap == NULL)) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: input argument is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
@@ -1932,7 +1954,8 @@ webconfig_error_t translate_vap_info_to_ovsdb_common(const wifi_vap_info_t *vap,
         return webconfig_error_translate_to_ovsdb;
     }
 
-    if (vap_mode_conversion((wifi_vap_mode_t *)&vap->vap_mode, vap_row->mode, ARRAY_SIZE(vap_row->mode), ENUM_TO_STRING) != RETURN_OK) {
+    vapmode_enum = vap->vap_mode;
+    if (vap_mode_conversion(&vapmode_enum, vap_row->mode, ARRAY_SIZE(vap_row->mode), ENUM_TO_STRING) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vap mode conversion failed. vap mode %d\n", __func__, __LINE__, vap->vap_mode);
         return webconfig_error_translate_to_ovsdb;
     }
@@ -1956,6 +1979,8 @@ webconfig_error_t translate_vap_info_to_ovsdb_common(const wifi_vap_info_t *vap,
 
 webconfig_error_t  translate_sta_vap_info_to_ovsdb_common(const wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, struct schema_Wifi_VIF_Config *vap_row, wifi_platform_property_t *wifi_prop)
 {
+    wifi_vap_mode_t vapmode_enum;
+
     if ((vap == NULL) || (vap_row == NULL)) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Input arguments are NULL\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
@@ -1966,7 +1991,8 @@ webconfig_error_t  translate_sta_vap_info_to_ovsdb_common(const wifi_vap_info_t 
         return webconfig_error_translate_to_ovsdb;
     }
 
-    if (vap_mode_conversion((wifi_vap_mode_t *)&vap->vap_mode, vap_row->mode, ARRAY_SIZE(vap_row->mode), ENUM_TO_STRING) != RETURN_OK) {
+    vapmode_enum = vap->vap_mode;
+    if (vap_mode_conversion(&vapmode_enum, vap_row->mode, ARRAY_SIZE(vap_row->mode), ENUM_TO_STRING) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vap mode conversion failed. vap mode %d\n", __func__, __LINE__, vap->vap_mode);
         return webconfig_error_translate_to_ovsdb;
     }
@@ -2131,7 +2157,9 @@ webconfig_error_t translate_sta_vap_info_to_ovsdb_config_personal_sec(const wifi
             memset(str_mode, 0, sizeof(str_mode));
             memset(str_encryp, 0, sizeof(str_encryp));
             if (!update_secmode_for_wpa3((wifi_vap_info_t *)vap, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), true)) {
-                if ((key_mgmt_conversion_legacy((wifi_security_modes_t *)&vap->u.sta_info.security.mode, (wifi_encryption_method_t *)&vap->u.sta_info.security.encr, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), ENUM_TO_STRING)) != RETURN_OK) {
+                wifi_security_modes_t mode_enum = vap->u.sta_info.security.mode;
+                wifi_encryption_method_t encryp_enum = vap->u.sta_info.security.encr;
+                if ((key_mgmt_conversion_legacy(&mode_enum, &encryp_enum, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), ENUM_TO_STRING)) != RETURN_OK) {
                     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. security mode 0x%x encr 0x%x\n", __func__, __LINE__, vap->u.sta_info.security.mode, vap->u.sta_info.security.encr);
                     return webconfig_error_translate_to_ovsdb;
                 }
@@ -2151,7 +2179,8 @@ webconfig_error_t translate_sta_vap_info_to_ovsdb_config_personal_sec(const wifi
             vap_row->wpa = false;
         } else {
             int len = 0, wpa_psk_index = 0;
-            if ((key_mgmt_conversion((wifi_security_modes_t *)&vap->u.sta_info.security.mode, vap_row->wpa_key_mgmt[0], vap_row->wpa_key_mgmt[1], sizeof(vap_row->wpa_key_mgmt[0]), sizeof(vap_row->wpa_key_mgmt[1]), ENUM_TO_STRING, &len)) != RETURN_OK) {
+            wifi_security_modes_t enum_sec = vap->u.sta_info.security.mode;
+            if ((key_mgmt_conversion(&enum_sec, vap_row->wpa_key_mgmt[0], vap_row->wpa_key_mgmt[1], sizeof(vap_row->wpa_key_mgmt[0]), sizeof(vap_row->wpa_key_mgmt[1]), ENUM_TO_STRING, &len)) != RETURN_OK) {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. security mode 0x%x\n", __func__, __LINE__, vap->u.sta_info.security.mode);
                 return webconfig_error_translate_to_ovsdb;
             }
@@ -2422,6 +2451,8 @@ int set_translator_config_security_key_value(
 
 webconfig_error_t translate_vap_info_to_vif_state_common(const wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, struct schema_Wifi_VIF_State *vap_row, wifi_platform_property_t *wifi_prop)
 {
+    wifi_vap_mode_t vapmode_enum;
+
     if ((vap_row == NULL) || (vap == NULL)) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: input argument is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
@@ -2438,7 +2469,8 @@ webconfig_error_t translate_vap_info_to_vif_state_common(const wifi_vap_info_t *
         return webconfig_error_translate_to_ovsdb;
     }
 
-    if (vap_mode_conversion((wifi_vap_mode_t *)&vap->vap_mode, vap_row->mode, ARRAY_SIZE(vap_row->mode), ENUM_TO_STRING) != RETURN_OK) {
+    vapmode_enum = vap->vap_mode;
+    if (vap_mode_conversion(&vapmode_enum, vap_row->mode, ARRAY_SIZE(vap_row->mode), ENUM_TO_STRING) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vap mode conversion failed. vap mode %d\n", __func__, __LINE__, vap->vap_mode);
         return webconfig_error_translate_to_ovsdb;
     }
@@ -2538,8 +2570,10 @@ static webconfig_error_t translate_vap_info_to_vif_state_sec_legacy(wifi_vap_inf
 
     if (!update_secmode_for_wpa3(vap, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp),
         true)) {
-        if (key_mgmt_conversion_legacy(&vap->u.bss_info.security.mode,
-            &vap->u.bss_info.security.encr, str_mode, sizeof(str_mode), str_encryp,
+        wifi_security_modes_t mode_enum = vap->u.bss_info.security.mode;
+        wifi_encryption_method_t encryp_enum = vap->u.bss_info.security.encr;
+        if (key_mgmt_conversion_legacy(&mode_enum,
+            &encryp_enum, str_mode, sizeof(str_mode), str_encryp,
             sizeof(str_encryp), ENUM_TO_STRING) != RETURN_OK) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to convert key mgmt: "
                 "security mode 0x%x encr 0x%x\n", __func__, __LINE__, vap->u.bss_info.security.mode,
@@ -2570,6 +2604,7 @@ static webconfig_error_t translate_vap_info_to_vif_state_sec_new(wifi_vap_info_t
     struct schema_Wifi_VIF_State *vap_row)
 {
     int len = 0, wpa_psk_index = 0;
+    wifi_security_modes_t enum_sec;
 
     if (vap->u.bss_info.security.mode == wifi_security_mode_none) {
         vap_row->wpa = false;
@@ -2577,7 +2612,8 @@ static webconfig_error_t translate_vap_info_to_vif_state_sec_new(wifi_vap_info_t
         return webconfig_error_none;
     }
 
-    if (key_mgmt_conversion(&vap->u.bss_info.security.mode, vap_row->wpa_key_mgmt[0],
+    enum_sec = vap->u.bss_info.security.mode;
+    if (key_mgmt_conversion(&enum_sec, vap_row->wpa_key_mgmt[0],
         vap_row->wpa_key_mgmt[1], sizeof(vap_row->wpa_key_mgmt[0]),
         sizeof(vap_row->wpa_key_mgmt[1]), ENUM_TO_STRING, &len) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed top convert key mgmt: "
@@ -2658,6 +2694,8 @@ static webconfig_error_t translate_vap_info_to_vif_state_sec(wifi_vap_info_t *va
 
 webconfig_error_t  translate_sta_vap_info_to_vif_state_common(const wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, struct schema_Wifi_VIF_State *vap_row, wifi_platform_property_t *wifi_prop)
 {
+    wifi_vap_mode_t vapmode_enum;
+
     if ((vap == NULL) || (vap_row == NULL)) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Input arguments are NULL\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
@@ -2668,7 +2706,8 @@ webconfig_error_t  translate_sta_vap_info_to_vif_state_common(const wifi_vap_inf
         return webconfig_error_translate_to_ovsdb;
     }
 
-    if (vap_mode_conversion((wifi_vap_mode_t *)&vap->vap_mode, vap_row->mode, ARRAY_SIZE(vap_row->mode), ENUM_TO_STRING) != RETURN_OK) {
+    vapmode_enum = vap->vap_mode;
+    if (vap_mode_conversion(&vapmode_enum, vap_row->mode, ARRAY_SIZE(vap_row->mode), ENUM_TO_STRING) != RETURN_OK) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: vap mode conversion failed\n", __func__, __LINE__);
         return webconfig_error_translate_to_ovsdb;
     }
@@ -2829,7 +2868,9 @@ webconfig_error_t translate_sta_vap_info_to_ovsdb_state_personal_sec(const wifi_
             memset(str_mode, 0, sizeof(str_mode));
             memset(str_encryp, 0, sizeof(str_encryp));
             if (!update_secmode_for_wpa3((wifi_vap_info_t *)vap, str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), true)) {
-                if ((key_mgmt_conversion_legacy((wifi_security_modes_t *)&vap->u.sta_info.security.mode, (wifi_encryption_method_t *)&vap->u.sta_info.security.encr, 
+                wifi_security_modes_t mode_enum = vap->u.sta_info.security.mode;
+                wifi_encryption_method_t encryp_enum = vap->u.sta_info.security.encr;
+                if ((key_mgmt_conversion_legacy(&mode_enum, &encryp_enum, 
                     str_mode, sizeof(str_mode), str_encryp, sizeof(str_encryp), ENUM_TO_STRING)) != RETURN_OK) {
                     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed\n", __func__, __LINE__);
                     return webconfig_error_translate_to_ovsdb;
@@ -2848,7 +2889,8 @@ webconfig_error_t translate_sta_vap_info_to_ovsdb_state_personal_sec(const wifi_
             vap_row->wpa = false;
         } else {
             int len = 0, wpa_psk_index = 0;
-            if ((key_mgmt_conversion((wifi_security_modes_t *)&vap->u.sta_info.security.mode, vap_row->wpa_key_mgmt[0], vap_row->wpa_key_mgmt[1], sizeof(vap_row->wpa_key_mgmt[0]), sizeof(vap_row->wpa_key_mgmt[1]), ENUM_TO_STRING, &len)) != RETURN_OK) {
+            wifi_security_modes_t enum_sec = vap->u.sta_info.security.mode;
+            if ((key_mgmt_conversion(&enum_sec, vap_row->wpa_key_mgmt[0], vap_row->wpa_key_mgmt[1], sizeof(vap_row->wpa_key_mgmt[0]), sizeof(vap_row->wpa_key_mgmt[1]), ENUM_TO_STRING, &len)) != RETURN_OK) {
                 wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed\n", __func__, __LINE__);
                 return webconfig_error_translate_to_ovsdb;
             }
@@ -3360,13 +3402,17 @@ static webconfig_error_t translate_ovsdb_to_vap_info_sec_legacy(const struct
 
     if (!update_secmode_for_wpa3(vap, (char *)str_mode, strlen(str_mode) + 1, (char *)str_encryp,
         strlen(str_encryp) + 1, false)) {
-        if (key_mgmt_conversion_legacy(&vap->u.bss_info.security.mode,
-            &vap->u.bss_info.security.encr, (char *)str_mode, strlen(str_mode) + 1,
+        wifi_security_modes_t mode_enum;
+        wifi_encryption_method_t encryp_enum = vap->u.bss_info.security.encr;
+        if (key_mgmt_conversion_legacy(&mode_enum,
+            &encryp_enum, (char *)str_mode, strlen(str_mode) + 1,
             (char *)str_encryp, strlen(str_encryp) + 1, STRING_TO_ENUM) != RETURN_OK) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to convert key mgmt: %s\n",
                 __func__, __LINE__, str_mode);
             return webconfig_error_translate_from_ovsdb;
         }
+        vap->u.bss_info.security.mode = mode_enum;
+        vap->u.bss_info.security.encr = encryp_enum;
     }
 
     if (!is_personal_sec(vap->u.bss_info.security.mode)) {
@@ -3401,6 +3447,7 @@ static webconfig_error_t translate_ovsdb_to_vap_info_sec_new(const struct
     schema_Wifi_VIF_Config *vap_row, wifi_vap_info_t *vap)
 {
     int len = 0;
+    wifi_security_modes_t enum_sec;
 
     if (vap_row->wpa == false) {
         vap->u.bss_info.security.mode = wifi_security_mode_none;
@@ -3410,13 +3457,14 @@ static webconfig_error_t translate_ovsdb_to_vap_info_sec_new(const struct
             return webconfig_error_translate_from_ovsdb;
         }
 
-        if (key_mgmt_conversion(&vap->u.bss_info.security.mode, (char *)vap_row->wpa_key_mgmt[0],
+        if (key_mgmt_conversion(&enum_sec, (char *)vap_row->wpa_key_mgmt[0],
             (char *)vap_row->wpa_key_mgmt[1], sizeof(vap_row->wpa_key_mgmt[0]),
             sizeof(vap_row->wpa_key_mgmt[1]), STRING_TO_ENUM, &len) != RETURN_OK) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to convert key mgmt: %s\n",
                 __func__, __LINE__, vap_row->wpa_key_mgmt[0] ? vap_row->wpa_key_mgmt[0] : "NULL");
             return webconfig_error_translate_from_ovsdb;
         }
+        vap->u.bss_info.security.mode = enum_sec;
     }
 
     get_translator_config_wpa_mfp(vap);
@@ -3551,6 +3599,8 @@ webconfig_error_t translate_ovsdb_to_blaster_info_common(const struct schema_Wif
 
 webconfig_error_t translate_ovsdb_to_vap_info_common(const struct schema_Wifi_VIF_Config *vap_row, wifi_vap_info_t *vap)
 {
+    wifi_vap_mode_t vapmode_enum;
+
     if ((vap_row == NULL) || (vap == NULL)) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: input argument is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
@@ -3561,10 +3611,11 @@ webconfig_error_t translate_ovsdb_to_vap_info_common(const struct schema_Wifi_VI
     }
 
 
-    if (vap_mode_conversion(&vap->vap_mode, (char *)vap_row->mode, ARRAY_SIZE(vap_row->mode), STRING_TO_ENUM) != RETURN_OK) {
+    if (vap_mode_conversion(&vapmode_enum, (char *)vap_row->mode, ARRAY_SIZE(vap_row->mode), STRING_TO_ENUM) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vap mode conversion failed. mode '%s'\n", __func__, __LINE__, (vap_row->mode) ? vap_row->mode : "NULL");
         return webconfig_error_translate_from_ovsdb;
     }
+    vap->vap_mode = vapmode_enum;
 
     if (ssid_broadcast_conversion((char *)vap_row->ssid_broadcast, sizeof(vap_row->ssid_broadcast), &vap->u.bss_info.showSsid, STRING_TO_ENUM) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: ssid broadcast conversion failed. ssid_broadcast '%s'\n", __func__, __LINE__, (vap_row->ssid_broadcast) ? vap_row->ssid_broadcast : "NULL");
@@ -3716,15 +3767,18 @@ webconfig_error_t translate_mesh_backhaul_vif_config_to_vap_info(const struct sc
 
 webconfig_error_t translate_ovsdb_to_sta_vap_info_common(const struct schema_Wifi_VIF_Config *vap_row, wifi_vap_info_t *vap)
 {
+    wifi_vap_mode_t vapmode_enum;
+
     if ((vap_row == NULL) || (vap == NULL)) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: input argument is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
     }
 
-    if (vap_mode_conversion(&vap->vap_mode, (char *)vap_row->mode, ARRAY_SIZE(vap_row->mode), STRING_TO_ENUM) != RETURN_OK) {
+    if (vap_mode_conversion(&vapmode_enum, (char *)vap_row->mode, ARRAY_SIZE(vap_row->mode), STRING_TO_ENUM) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vap mode conversion failed. mode '%s'\n", __func__, __LINE__, (vap_row->mode) ? vap_row->mode : "NULL");
         return webconfig_error_translate_from_ovsdb;
     }
+    vap->vap_mode = vapmode_enum;
 
     if (vap->vap_mode != wifi_vap_mode_sta) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vap mode is not station mode\n", __func__, __LINE__);
@@ -3773,10 +3827,14 @@ webconfig_error_t translate_ovsdb_config_to_vap_info_personal_sec(const struct s
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: mode is NULL, skipping\n", __func__, __LINE__);
             } else {
                 if (!update_secmode_for_wpa3((wifi_vap_info_t *)vap, (char *)str_mode, strlen(str_mode)+1, (char *)str_encryp, strlen(str_encryp)+1, false)) {
-                    if ((key_mgmt_conversion_legacy(&vap->u.sta_info.security.mode, &vap->u.sta_info.security.encr, (char *)str_mode, strlen(str_mode)+1, (char *)str_encryp, strlen(str_encryp)+1, STRING_TO_ENUM)) != RETURN_OK) {
+                    wifi_security_modes_t mode_enum;
+                    wifi_encryption_method_t encryp_enum = vap->u.sta_info.security.encr;
+                    if ((key_mgmt_conversion_legacy(&mode_enum, &encryp_enum, (char *)str_mode, strlen(str_mode)+1, (char *)str_encryp, strlen(str_encryp)+1, STRING_TO_ENUM)) != RETURN_OK) {
                         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. str_mode '%s'\n", __func__, __LINE__, str_mode);
                         return webconfig_error_translate_from_ovsdb;
                     }
+                    vap->u.sta_info.security.mode = mode_enum;
+                    vap->u.sta_info.security.encr = encryp_enum;
                 }
             }
 
@@ -3805,16 +3863,19 @@ webconfig_error_t translate_ovsdb_config_to_vap_info_personal_sec(const struct s
             vap->u.sta_info.security.mode = wifi_security_mode_none;
         } else {
             int len = 0;
+            wifi_security_modes_t enum_sec;
+
             if (vap_row->wpa_key_mgmt_len == 0)  {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: wpa_key_mgmt_len is 0\n", __func__, __LINE__);
                 return webconfig_error_translate_from_ovsdb;
             }
 
-            if ((key_mgmt_conversion(&vap->u.sta_info.security.mode, (char *)vap_row->wpa_key_mgmt[0], (char *)vap_row->wpa_key_mgmt[1], sizeof(vap_row->wpa_key_mgmt[0]), sizeof(vap_row->wpa_key_mgmt[1]), STRING_TO_ENUM, &len)) != RETURN_OK) {
+            if ((key_mgmt_conversion(&enum_sec, (char *)vap_row->wpa_key_mgmt[0], (char *)vap_row->wpa_key_mgmt[1], sizeof(vap_row->wpa_key_mgmt[0]), sizeof(vap_row->wpa_key_mgmt[1]), STRING_TO_ENUM, &len)) != RETURN_OK) {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. wpa_key_mgmt '%s'\n", __func__, __LINE__, 
                     (vap_row->wpa_key_mgmt[0]) ? vap_row->wpa_key_mgmt[0]: "NULL");
                 return webconfig_error_translate_from_ovsdb;
             }
+            vap->u.sta_info.security.mode = enum_sec;
 
             if (vap_row->wpa_psks_len == 0)  {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: wpa_psks_len is 0\n", __func__, __LINE__);
@@ -5025,21 +5086,27 @@ webconfig_error_t  translate_vap_object_from_ovsdb_vif_config_for_macfilter(webc
 webconfig_error_t translate_radio_object_from_ovsdb(const struct schema_Wifi_Radio_Config *row,
     wifi_radio_operationParam_t *oper_param, wifi_platform_property_t *wifi_prop)
 {
+    wifi_freq_bands_t band_enum;
+    wifi_countrycode_type_t country_code;
+    wifi_channelBandwidth_t ht_mode_enum;
+
     if ((row == NULL) || (oper_param == NULL)) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: input params is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_from_ovsdb;
     }
 
     //Update the values of oper_param
-    if (freq_band_conversion(&oper_param->band, (char *)row->freq_band, sizeof(row->freq_band), STRING_TO_ENUM) != RETURN_OK) {
+    if (freq_band_conversion(&band_enum, (char *)row->freq_band, sizeof(row->freq_band), STRING_TO_ENUM) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: frequency band conversion failed. freq_band '%s'\n", __func__, __LINE__, row->freq_band);
         return webconfig_error_translate_from_ovsdb;
     }
+    oper_param->band = band_enum;
 
-    if (country_code_conversion(&oper_param->countryCode, (char *)row->country, sizeof(row->country), STRING_TO_ENUM) != RETURN_OK) {
+    if (country_code_conversion(&country_code, (char *)row->country, sizeof(row->country), STRING_TO_ENUM) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: country conversion failed. country '%s'\n", __func__, __LINE__, row->country);
         return webconfig_error_translate_from_ovsdb;
     }
+    oper_param->countryCode = country_code;
 
     //As part of southbound variant will not be updated
     /*
@@ -5048,10 +5115,11 @@ webconfig_error_t translate_radio_object_from_ovsdb(const struct schema_Wifi_Rad
       return webconfig_error_translate_from_ovsdb;
       }*/
 
-    if (ht_mode_conversion(&oper_param->channelWidth, (char *)row->ht_mode, sizeof(row->ht_mode), STRING_TO_ENUM) != RETURN_OK) {
+    if (ht_mode_conversion(&ht_mode_enum, (char *)row->ht_mode, sizeof(row->ht_mode), STRING_TO_ENUM) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Ht mode conversion failed. ht_mode '%s'\n", __func__, __LINE__, row->ht_mode);
         return webconfig_error_translate_from_ovsdb;
     }
+    oper_param->channelWidth = ht_mode_enum;
 
     if (channel_mode_conversion(&oper_param->autoChannelEnabled, (char *)row->channel_mode, sizeof(row->channel_mode), STRING_TO_ENUM) != RETURN_OK) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: channel mode conversion failed. channel_mode '%s'\n", __func__, __LINE__, row->channel_mode);

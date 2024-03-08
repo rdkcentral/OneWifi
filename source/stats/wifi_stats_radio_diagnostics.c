@@ -86,6 +86,7 @@ int execute_radio_diagnostic_stats_api(wifi_mon_stats_args_t *args, wifi_monitor
     wifi_radioTrafficStats2_t *radioTrafficStats = NULL;
     radio_data_t *radio_data = NULL;
     char str[64] = {0};
+    wifi_freq_bands_t band_enum;
 
     if (args == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d input arguments are NULL args : %p\n",__func__,__LINE__, args);
@@ -161,7 +162,8 @@ int execute_radio_diagnostic_stats_api(wifi_mon_stats_args_t *args, wifi_monitor
     radio_data->primary_radio_channel = radioOperation->channel;
 
     memset(str, 0, sizeof(str));
-    if (freq_band_conversion((wifi_freq_bands_t *)&radioOperation->band, (char *)str, sizeof(str), ENUM_TO_STRING) != RETURN_OK)
+    band_enum = radioOperation->band;
+    if (freq_band_conversion(&band_enum, (char *)str, sizeof(str), ENUM_TO_STRING) != RETURN_OK)
     {
         wifi_util_error_print(WIFI_MON,"%s:%d: frequency band conversion failed\n", __func__, __LINE__);
     } else {

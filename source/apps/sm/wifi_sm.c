@@ -89,8 +89,9 @@ int neighbor_response(wifi_provider_response_t *provider_response)
     unsigned int count = 0;
     wifi_neighbor_ap2_t *neighbor_ap = NULL;
     survey_type_t survey_type;
+    wifi_neighborScanMode_t halw_scan_type = provider_response->args.scan_mode;
 
-    if (sm_survey_type_conversion(&provider_response->args.scan_mode, &survey_type, DCA_TO_APP) != RETURN_OK) {
+    if (sm_survey_type_conversion(&halw_scan_type, &survey_type, DCA_TO_APP) != RETURN_OK) {
         wifi_util_error_print(WIFI_SM,"%s:%d: failed to convert scan_mode %d to survey_type for radio_index : %d\r\n",
             __func__, __LINE__, provider_response->args.scan_mode, radio_index);
         return RETURN_ERR;
@@ -114,8 +115,9 @@ int survey_response(wifi_provider_response_t *provider_response)
     radio_index = provider_response->args.radio_index;
     radio_chan_data_t *channelStats = NULL;
     survey_type_t survey_type;
+    wifi_neighborScanMode_t halw_scan_type = provider_response->args.scan_mode;
 
-    if (sm_survey_type_conversion(&provider_response->args.scan_mode, &survey_type, DCA_TO_APP) != RETURN_OK) {
+    if (sm_survey_type_conversion(&halw_scan_type, &survey_type, DCA_TO_APP) != RETURN_OK) {
         wifi_util_error_print(WIFI_SM,"%s:%d: failed to convert scan_mode %d to survey_type for radio_index : %d\r\n",
                               __func__, __LINE__, provider_response->args.scan_mode, radio_index);
         return RETURN_ERR;
@@ -315,12 +317,12 @@ int generate_vap_mask_for_radio_index(unsigned int radio_index)
 int sm_common_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_t *stat_config_entry)
 {
     data->u.mon_stats_config.inst = wifi_app_inst_sm;
-
-    if (convert_freq_band_to_radio_index(stat_config_entry->radio_type, (int *)&data->u.mon_stats_config.args.radio_index) != RETURN_OK) {
+    int index;
+    if (convert_freq_band_to_radio_index(stat_config_entry->radio_type, &index) != RETURN_OK) {
         wifi_util_error_print(WIFI_SM,"%s:%d: convert freq_band %d  to radio_index failed \r\n",__func__, __LINE__, stat_config_entry->radio_type);
         return RETURN_ERR;
     }
-
+    data->u.mon_stats_config.args.radio_index = index;
     data->u.mon_stats_config.interval_ms =  stat_config_entry->sampling_interval*1000; //converting seconds to ms
 
     return RETURN_OK;
@@ -330,6 +332,7 @@ int neighbor_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_t *
 {
     int i = 0;
     wifi_event_route_t route;
+    wifi_neighborScanMode_t halw_scan_type;
     sm_route(&route);
 
     if (sm_common_config_to_monitor_queue(data, stat_config_entry) != RETURN_OK) {
@@ -337,10 +340,11 @@ int neighbor_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_t *
         return RETURN_ERR;
     }
 
-    if (sm_survey_type_conversion(&data->u.mon_stats_config.args.scan_mode, &stat_config_entry->survey_type, APP_TO_DCA) != RETURN_OK) {
+    if (sm_survey_type_conversion(&halw_scan_type, &stat_config_entry->survey_type, APP_TO_DCA) != RETURN_OK) {
         wifi_util_error_print(WIFI_SM,"%s:%d Invalid survey type %d\r\n", __func__, __LINE__, stat_config_entry->survey_type);
         return RETURN_ERR;
     }
+    data->u.mon_stats_config.args.scan_mode = halw_scan_type;
 
     data->u.mon_stats_config.data_type = mon_stats_type_neighbor_stats;
 
@@ -369,6 +373,7 @@ int neighbor_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_t *
 int survey_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_t *stat_config_entry)
 {
     int i = 0;
+    wifi_neighborScanMode_t halw_scan_type;
     wifi_event_route_t route;
     sm_route(&route);
     if (sm_common_config_to_monitor_queue(data, stat_config_entry) != RETURN_OK) {
@@ -376,10 +381,11 @@ int survey_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_t *st
         return RETURN_ERR;
     }
 
-    if (sm_survey_type_conversion(&data->u.mon_stats_config.args.scan_mode, &stat_config_entry->survey_type, APP_TO_DCA) != RETURN_OK) {
+    if (sm_survey_type_conversion(&halw_scan_type, &stat_config_entry->survey_type, APP_TO_DCA) != RETURN_OK) {
         wifi_util_error_print(WIFI_SM,"%s:%d Invalid survey type %d\r\n", __func__, __LINE__, stat_config_entry->survey_type);
         return RETURN_ERR;
     }
+    data->u.mon_stats_config.args.scan_mode = halw_scan_type;
 
     data->u.mon_stats_config.data_type = mon_stats_type_radio_channel_stats;
 

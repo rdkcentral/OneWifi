@@ -456,6 +456,7 @@ webconfig_apply_ow_stats(stats_config_t *stats_conf)
     const char *id = stats_conf->stats_cfg_id;
     struct ow_stats_conf *conf = ow_stats_conf_get();
     struct ow_stats_conf_entry *conf_e = ow_stats_conf_get_entry(conf, id);
+    INT channels_list[MAX_CHANNELS];
 
     if (conf_e == NULL)
         return;
@@ -467,7 +468,9 @@ webconfig_apply_ow_stats(stats_config_t *stats_conf)
     ow_stats_conf_entry_set_stats_type(conf_e, stats);
     ow_stats_conf_entry_set_scan_type(conf_e, scan);
     ow_stats_conf_entry_set_radio_type(conf_e, radio);
-    ow_stats_conf_entry_set_channels(conf_e, stats_conf->channels_list.channels_list,
+    (void)memcpy(channels_list, stats_conf->channels_list.channels_list,
+           sizeof(*channels_list) * stats_conf->channels_list.num_channels);
+    ow_stats_conf_entry_set_channels(conf_e, channels_list,
                                         stats_conf->channels_list.num_channels);
 
     if (stats_conf->sampling_interval > 0) {

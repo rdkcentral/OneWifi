@@ -34,7 +34,7 @@ typedef struct {
     int          argc;
     char         **argv;
     bool         exit_cli;
-}__attribute__((__packed__)) sample_app_cli_task_t;
+} sample_app_cli_task_t;
 
 char *read_subdoc_input_param_from_file(char *file_path);
 

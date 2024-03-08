@@ -183,12 +183,16 @@ int execute_neighbor_ap_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *m
         channel_list.num_channels = 1;
         channel_list.channels_list[0] = radioOperation->channel;
     } else if (args->scan_mode == WIFI_RADIO_SCAN_MODE_FULL) {
+        INT num_channels;
+        INT channels_list[MAX_CHANNELS];
         wifi_cap = getRadioCapability(args->radio_index);
-
-        if (get_allowed_channels(radioOperation->band, wifi_cap, channel_list.channels_list, &(channel_list.num_channels), radioOperation->DfsEnabled) != RETURN_OK) {
+        if (get_allowed_channels(radioOperation->band, wifi_cap, channels_list, &(num_channels), radioOperation->DfsEnabled) != RETURN_OK) {
             wifi_util_error_print(WIFI_MON, "%s:%d get allowed channels failed for the radio : %d\n",__func__,__LINE__, args->radio_index);
             return RETURN_ERR;
         }
+        (void)memcpy(channel_list.channels_list, channels_list,
+               sizeof(*channels_list) * num_channels);
+        channel_list.num_channels = num_channels;
     } else {
         int i;
         channel_list.num_channels = 0;
@@ -220,7 +224,16 @@ int execute_neighbor_ap_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *m
     mon_data->scan_status[args->radio_index] = 1;
     mon_data->scan_results_retries[args->radio_index] = 0;
     private_vap_index = getPrivateApFromRadioIndex(args->radio_index);
-    ret = wifi_startNeighborScan(private_vap_index, args->scan_mode, dwell_time, channel_list.num_channels, (unsigned int *)channel_list.channels_list);
+    INT channels_list[MAX_CHANNELS];
+    (void)memcpy(channels_list, channel_list.channels_list,
+                 sizeof(*channels_list) * channel_list.num_channels);
+    // According to the `wifi_startNeighborScan(..., UINT *chan_list)`
+    // prototype, this function can modify the passed `chan_list`. Otherwise,
+    // the prototype looks something like this: `wifi_startNeighborScan(...,
+    // const UINT *chan_list)`.
+    ret = wifi_startNeighborScan(private_vap_index, args->scan_mode, dwell_time, channel_list.num_channels, (unsigned int *)channels_list);
+    (void)memcpy(channel_list.channels_list, channels_list,
+           sizeof(*channels_list) * channel_list.num_channels);
 #endif
     if (ret != RETURN_OK) {
         wifi_util_error_print(WIFI_MON, "%s : %d  Failed to get Neighbor scan for index %d\n",__func__,__LINE__, args->radio_index);

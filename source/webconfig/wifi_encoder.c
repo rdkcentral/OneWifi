@@ -1680,6 +1680,7 @@ webconfig_error_t encode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
                                                                   WIFI_CHANNELBANDWIDTH_160MHZ,
                                                                   WIFI_CHANNELBANDWIDTH_320MHZ};
     int sup_chan_width[8];
+    INT channels_list[MAX_CHANNELS];
 
     if ((wifi_prop == NULL) || (radio_obj == NULL)) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer radiocap : %p radio_obj : %p\n", __func__, __LINE__, wifi_prop, radio_obj);
@@ -1692,7 +1693,8 @@ webconfig_error_t encode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
          cJSON_AddNumberToObject(object, "RadioIndex", radiocap->index);
 
          for (freq_band_count = 0; freq_band_count < radiocap->numSupportedFreqBand; freq_band_count++) {
-             cJSON_AddItemToObject(object, "PossibleChannels",  cJSON_CreateIntArray(radiocap->channel_list[freq_band_count].channels_list, radiocap->channel_list[freq_band_count].num_channels));
+             (void)memcpy(channels_list, radiocap->channel_list[freq_band_count].channels_list, sizeof(*channels_list) * radiocap->channel_list[freq_band_count].num_channels);
+             cJSON_AddItemToObject(object, "PossibleChannels",  cJSON_CreateIntArray(channels_list, radiocap->channel_list[freq_band_count].num_channels));
          }
          freq_band_count = 0;
          temp_count = 0;
@@ -1716,6 +1718,7 @@ webconfig_error_t encode_stats_config_object(hash_map_t *stats_map, cJSON *st_ar
 {
     wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d\n", __func__, __LINE__);
     cJSON *st_obj;
+    INT channels_list[MAX_CHANNELS];
 
     stats_config_t *st_cfg;
     if ((st_arr_obj == NULL)) {
@@ -1742,7 +1745,8 @@ webconfig_error_t encode_stats_config_object(hash_map_t *stats_map, cJSON *st_ar
             cJSON_AddNumberToObject(st_obj, "SurveyInterval", st_cfg->survey_interval);
             cJSON_AddNumberToObject(st_obj, "ThresholdUtil", st_cfg->threshold_util);
             cJSON_AddNumberToObject(st_obj, "ThresholdMaxDelay", st_cfg->threshold_max_delay);
-            cJSON_AddItemToObject(st_obj, "ChannelList",  cJSON_CreateIntArray(st_cfg->channels_list.channels_list, st_cfg->channels_list.num_channels));
+            (void)memcpy(channels_list, st_cfg->channels_list.channels_list, sizeof(*channels_list) * st_cfg->channels_list.num_channels);
+            cJSON_AddItemToObject(st_obj, "ChannelList",  cJSON_CreateIntArray(channels_list, st_cfg->channels_list.num_channels));
             st_cfg = hash_map_get_next(stats_map, st_cfg);
         }
     }
