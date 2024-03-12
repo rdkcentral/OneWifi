@@ -107,6 +107,51 @@
 #endif
 
 #ifdef CCSP_COMMON
+#define RSN_SELECTOR_GET(a) WPA_GET_BE32((const uint8_t *) (a))
+#define RSN_SELECTOR(a, b, c, d) \
+    ((((uint32_t) (a)) << 24) | (((uint32_t) (b)) << 16) | (((uint32_t) (c)) << 8) | \
+     (uint32_t) (d))
+
+#define RSN_CIPHERSUITE_WEP RSN_SELECTOR(0x00, 0x0f, 0xac, 1)
+#define RSN_CIPHERSUITE_TKIP RSN_SELECTOR(0x00, 0x0f, 0xac, 2)
+#define RSN_CIPHERSUITE_CCMP_128 RSN_SELECTOR(0x00, 0x0f, 0xac, 4)
+#define RSN_CIPHERSUITE_BIP_CMAC_128 RSN_SELECTOR(0x00, 0x0f, 0xac, 6)
+
+#define RSN_SELECTOR_LEN 4
+
+struct element {
+    uint8_t id;
+    uint8_t datalen;
+    uint8_t data[];
+} __attribute__ ((packed));
+
+#define for_each_element(_elem, _data, _datalen)                    \
+    for (_elem = (const struct element *) (_data);                  \
+        (const u8 *) (_data) + (_datalen) - (const u8 *) _elem >=   \
+        (int) sizeof(*_elem) &&                                     \
+        (const u8 *) (_data) + (_datalen) - (const u8 *) _elem >=   \
+        (int) sizeof(*_elem) + _elem->datalen;                      \
+        _elem = (const struct element *) (_elem->data + _elem->datalen))
+
+
+#define RSN_AUTH_KEY_MGMT_UNSPEC_802_1X RSN_SELECTOR(0x00, 0x0f, 0xac, 1)
+#define RSN_AUTH_KEY_MGMT_PSK_OVER_802_1X RSN_SELECTOR(0x00, 0x0f, 0xac, 2)
+#define RSN_AUTH_KEY_MGMT_FT_802_1X RSN_SELECTOR(0x00, 0x0f, 0xac, 3)
+#define RSN_AUTH_KEY_MGMT_FT_PSK RSN_SELECTOR(0x00, 0x0f, 0xac, 4)
+#define RSN_AUTH_KEY_MGMT_802_1X_SHA256 RSN_SELECTOR(0x00, 0x0f, 0xac, 5)
+#define RSN_AUTH_KEY_MGMT_PSK_SHA256 RSN_SELECTOR(0x00, 0x0f, 0xac, 6)
+#define RSN_AUTH_KEY_MGMT_SAE RSN_SELECTOR(0x00, 0x0f, 0xac, 8)
+#define RSN_AUTH_KEY_MGMT_FT_SAE RSN_SELECTOR(0x00, 0x0f, 0xac, 9)
+#define RSN_AUTH_KEY_MGMT_802_1X_SUITE_B_192 RSN_SELECTOR(0x00, 0x0f, 0xac, 12)
+#define RSN_AUTH_KEY_MGMT_FT_802_1X_SHA384 RSN_SELECTOR(0x00, 0x0f, 0xac, 13)
+
+struct rsn_data {
+    uint8_t ver[2]; /* little endian */
+    uint8_t data[];
+} __attribute__ ((packed));
+#endif
+
+#ifdef CCSP_COMMON
 #define NDA_RTA(r) \
   ((struct rtattr *)(((char *)(r)) + NLMSG_ALIGN(sizeof(struct ndmsg))))
 
@@ -132,6 +177,8 @@ extern void* bus_handle;
 
 #define MIN_TO_MILLISEC 60000
 #define SEC_TO_MILLISEC 1000
+
+#define ASSOC_REQ_MAC_HEADER_LEN 24 + 2 + 2 // 4 bytes after mac header reserved for fixed len fields
 
 char *instSchemaIdBuffer = "8b27dafc-0c4d-40a1-b62c-f24a34074914/4388e585dd7c0d32ac47e71f634b579b";
 #endif // CCSP_COMMON
@@ -2358,16 +2405,192 @@ int device_deauthenticated(int ap_index, char *mac, int reason)
     return 0;
 }
 
+static void
+get_key_mgmt(const uint8_t *s, char *key_mgmt_buff, size_t buff_size)
+{
+    if (RSN_SELECTOR_GET(s) == RSN_AUTH_KEY_MGMT_UNSPEC_802_1X) {
+        strncpy(key_mgmt_buff, "wpa-eap", buff_size - 1);
+        return;
+    }
+    if (RSN_SELECTOR_GET(s) == RSN_AUTH_KEY_MGMT_PSK_OVER_802_1X) {
+        strncpy(key_mgmt_buff, "wpa-psk", buff_size - 1);
+        return;
+    }
+    if (RSN_SELECTOR_GET(s) == RSN_AUTH_KEY_MGMT_FT_802_1X) {
+        strncpy(key_mgmt_buff, "ft-eap", buff_size - 1);
+        return;
+    }
+    if (RSN_SELECTOR_GET(s) == RSN_AUTH_KEY_MGMT_FT_PSK) {
+        strncpy(key_mgmt_buff, "ft-psk", buff_size - 1);
+        return;
+    }
+    if (RSN_SELECTOR_GET(s) == RSN_AUTH_KEY_MGMT_FT_802_1X_SHA384) {
+        strncpy(key_mgmt_buff, "ft-eap-sha384", buff_size - 1);
+        return;
+    }
+    if (RSN_SELECTOR_GET(s) == RSN_AUTH_KEY_MGMT_802_1X_SHA256) {
+        strncpy(key_mgmt_buff, "wpa-eap-sha256", buff_size - 1);
+        return;
+    }
+    if (RSN_SELECTOR_GET(s) == RSN_AUTH_KEY_MGMT_PSK_SHA256) {
+        strncpy(key_mgmt_buff, "wpa-psk-sha256", buff_size - 1);
+        return;
+    }
+    if (RSN_SELECTOR_GET(s) == RSN_AUTH_KEY_MGMT_SAE) {
+        strncpy(key_mgmt_buff, "sae", buff_size - 1);
+        return;
+    }
+    if (RSN_SELECTOR_GET(s) == RSN_AUTH_KEY_MGMT_FT_SAE) {
+        strncpy(key_mgmt_buff, "ft-sae", buff_size - 1);
+        return;
+    }
+    if (RSN_SELECTOR_GET(s) == RSN_AUTH_KEY_MGMT_802_1X_SUITE_B_192) {
+        strncpy(key_mgmt_buff, "wpa-eap-suite-b-192", buff_size - 1);
+        return;
+    }
+
+    return;
+}
+
+static void get_cipher_suite(const uint8_t *s, char *buff, size_t buff_size)
+{
+    if (RSN_SELECTOR_GET(s) == RSN_CIPHERSUITE_WEP) {
+        strncpy(buff, "wep", buff_size - 1);
+        return;
+    }
+    if (RSN_SELECTOR_GET(s) == RSN_CIPHERSUITE_TKIP) {
+        strncpy(buff, "tkip", buff_size - 1);
+        return;
+    }
+    if (RSN_SELECTOR_GET(s) == RSN_CIPHERSUITE_CCMP_128) {
+        strncpy(buff, "ccmp-128", buff_size - 1);
+        return;
+    }
+    if (RSN_SELECTOR_GET(s) == RSN_CIPHERSUITE_BIP_CMAC_128) {
+        strncpy(buff, "bip-cmac-128", buff_size - 1);
+        return;
+    }
+
+    return;
+}
+
+static void
+ie_parse_rsn(const uint8_t *ie, size_t len, assoc_dev_data_t *data)
+{
+    const uint8_t *pos;
+    unsigned int i, left, cnt;
+    struct rsn_data *rd = (struct rsn_data *)ie;
+
+    if (WPA_GET_LE16(rd->ver) != 1) {
+        wifi_util_error_print(WIFI_MON, "%s:%d Unkown RSN IE version [%d]\n", __func__, __LINE__, WPA_GET_LE16(rd->ver));
+        return;
+    }
+    left = len - sizeof(rd->ver);
+    pos = rd->data;
+
+    if (left < 12) {
+        wifi_util_error_print(WIFI_MON, "%s:%d RSN IE is too short [%d] for key_mgmt and cipher suite\n", __func__, __LINE__, left);
+        return;
+    }
+
+    // Skip group_cipher
+    left -= RSN_SELECTOR_LEN;
+    pos += RSN_SELECTOR_LEN;
+
+    // Parse pairwise_cipher
+    cnt = WPA_GET_LE16(pos);
+    left -= 2;
+    pos += 2;
+    if (cnt == 0 || cnt > left / RSN_SELECTOR_LEN) {
+        wifi_util_error_print(WIFI_MON, "%s:%d Wrong cipher suite count[%d]. left/4[%d]\n", __func__, __LINE__, cnt, left/RSN_SELECTOR_LEN);
+        return;
+    }
+
+    memset(data->conn_security.pairwise_cipher, 0, sizeof(data->conn_security.pairwise_cipher));
+    get_cipher_suite(pos, data->conn_security.pairwise_cipher, sizeof(data->conn_security.pairwise_cipher));
+    wifi_util_dbg_print(WIFI_MON, "%s:%d cipher_suite[%s]\n", __func__, __LINE__, data->conn_security.pairwise_cipher);
+    for (i = 0; i < cnt; i++)
+    {
+        pos += RSN_SELECTOR_LEN;
+        left -= RSN_SELECTOR_LEN;
+    }
+
+    if (left < 2) {
+        wifi_util_error_print(WIFI_MON, "%s:%d No key_mgmt. Left [%d]\n", __func__, __LINE__, left);
+        return;
+    }
+    cnt = WPA_GET_LE16(pos);
+    left -= 2;
+    pos += 2;
+    if (cnt == 0 || cnt > left / RSN_SELECTOR_LEN) {
+        wifi_util_error_print(WIFI_MON, "%s:%d Wrong key_mgmt count[%d]. left/4[%d]\n", __func__, __LINE__, cnt, left/RSN_SELECTOR_LEN);
+        return;
+    }
+
+    memset(data->conn_security.wpa_key_mgmt, 0, sizeof(data->conn_security.wpa_key_mgmt));
+    get_key_mgmt(pos, data->conn_security.wpa_key_mgmt, sizeof(data->conn_security.wpa_key_mgmt));
+    wifi_util_dbg_print(WIFI_MON, "%s:%d key_mgmt[%s]\n", __func__, __LINE__, data->conn_security.wpa_key_mgmt);
+}
+
+static void parse_assoc_ies(const uint8_t *ies, size_t ies_len, assoc_dev_data_t *data)
+{
+    const struct element *elem;
+
+    if (!ies || ies_len == 0)
+        return;
+
+    for_each_element(elem, ies, ies_len) {
+        switch (elem->id) {
+            case WLAN_EID_RSN:
+                ie_parse_rsn(elem->data, elem->datalen, data);
+                break;
+            default:
+                break;
+        }
+    }
+}
+
+static void get_client_assoc_frame(int ap_index, wifi_associated_dev_t *associated_dev, frame_data_t *frame_buff)
+{
+    sta_data_t *sta;
+    char mac_addr[MAC_STR_LEN];
+
+    hash_map_t     *sta_map = get_sta_data_map(ap_index);
+    if(sta_map != NULL) {
+        snprintf(mac_addr, MAC_STR_LEN, MAC_FMT, MAC_ARG(associated_dev->cli_MACAddress));
+        sta = (sta_data_t *)hash_map_get(sta_map, mac_addr);
+    } else {
+        wifi_util_error_print(WIFI_MON,"%s:%d sta_map not found for ap_index:%d\n", __func__, __LINE__, ap_index);
+        return;
+    }
+
+    if (sta != NULL) {
+        if (sta->assoc_frame_data.msg_data.frame.len != 0) {
+            memcpy(frame_buff, &sta->assoc_frame_data.msg_data, sizeof(frame_data_t));
+            return;
+        } else {
+            wifi_util_error_print(WIFI_MON,"%s:%d assoc req frame not found for vap_index:%d: sta_mac:%s time:%ld\r\n",
+                    __func__, __LINE__, ap_index, mac_addr, sta->assoc_frame_data.frame_timestamp);
+            return;
+        }
+    } else {
+        wifi_util_error_print(WIFI_MON,"%s:%d sta not found for mac:%s\n", __func__, __LINE__, mac_addr);
+        return;
+    }
+}
+
 int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
 {
     wifi_monitor_data_t data;
     assoc_dev_data_t assoc_data;
     wifi_radioTrafficStats2_t chan_stats;
+    frame_data_t frame;
     int radio_index;
     char vap_name[32];
 
     memset(&assoc_data, 0, sizeof(assoc_data));
     memset(&data, 0, sizeof(wifi_monitor_data_t));
+    memset(&frame, 0, sizeof(wifi_frame_t));
 
     data.id = msg_id++;
 
@@ -2387,6 +2610,7 @@ int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
     convert_vap_index_to_name(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, ap_index, vap_name);
     radio_index = convert_vap_name_to_radio_array_index(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, vap_name);
     get_radio_data(radio_index, &chan_stats);
+    get_client_assoc_frame(ap_index, associated_dev, &frame);
 
     memcpy(assoc_data.dev_stats.cli_MACAddress, data.u.dev.sta_mac, sizeof(mac_address_t));
     assoc_data.dev_stats.cli_SignalStrength = associated_dev->cli_SignalStrength;
@@ -2417,6 +2641,13 @@ int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
     snprintf(assoc_data.dev_stats.cli_OperatingChannelBandwidth, sizeof(assoc_data.dev_stats.cli_OperatingChannelBandwidth),"%s", associated_dev->cli_OperatingChannelBandwidth);
     snprintf(assoc_data.dev_stats.cli_InterferenceSources, sizeof(assoc_data.dev_stats.cli_InterferenceSources),"%s", associated_dev->cli_InterferenceSources);
 
+    if (frame.frame.len != 0) {
+        parse_assoc_ies((uint8_t *)(frame.data + ASSOC_REQ_MAC_HEADER_LEN),
+            (size_t)(frame.frame.len - ASSOC_REQ_MAC_HEADER_LEN), &assoc_data);
+    }
+    else {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d Cannot parse assoc ies: frame len is 0\n", __func__, __LINE__);
+    }
 
     assoc_data.ap_index = data.ap_index;
     push_event_to_ctrl_queue(&assoc_data, sizeof(assoc_data), wifi_event_type_hal_ind, wifi_event_hal_assoc_device, NULL);
