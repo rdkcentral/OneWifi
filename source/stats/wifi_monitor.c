@@ -2957,12 +2957,6 @@ int init_wifi_monitor()
     scheduler_add_timer_task(g_monitor_module.sched, FALSE, NULL, refresh_assoc_frame_entry, NULL, (MAX_ASSOC_FRAME_REFRESH_PERIOD * 1000), 0, FALSE);
 #endif // CCSP_COMMON
 
-    if (onewifi_pktgen_init() != RETURN_OK) {
-        deinit_wifi_monitor();
-        wifi_util_error_print(WIFI_MON, "%s:%d Pktgen support is missed!\n", __func__, __LINE__);
-        return -1;
-    }
-
     wifi_util_dbg_print(WIFI_MON, "%s:%d Wi-Fi monitor is initialized successfully\n", __func__, __LINE__);
 
     return 0;

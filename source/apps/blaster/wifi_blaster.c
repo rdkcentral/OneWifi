@@ -487,9 +487,8 @@ void process_active_msmt_diagnostics (int ap_index)
         }
         memset(sta, 0, sizeof(blaster_hashmap_t));
         pthread_mutex_lock(&g_active_msmt->lock);
-        memcpy(sta->sta_mac, g_active_msmt->curStepData.DestMac, sizeof(mac_addr_t));
-        hash_map_put(blaster_map, strdup(sta_key), sta);
         memcpy(&sta->sta_mac, g_active_msmt->curStepData.DestMac, sizeof(mac_addr_t));
+        hash_map_put(blaster_map, strdup(sta_key), sta);
         pthread_mutex_unlock(&g_active_msmt->lock);
     } else {
         wifi_util_dbg_print(WIFI_BLASTER, "%s:%d copying mac : " MAC_FMT " to station info\n", __func__, __LINE__,
@@ -797,8 +796,16 @@ void SetActiveMsmtStepDstMac(char *DstMac, ULONG StepIns)
         g_active_msmt->curStepData.StepId = cfg->Step[StepIns].StepId;
         memcpy(g_active_msmt->curStepData.DestMac, cfg->Step[StepIns].DestMac, sizeof(mac_address_t));
 
+        /*
+        * process_active_msmt_diagnostics and stream_client_msmt_data, both has mutex lock *
+        * and unlock.  If anything entered this critical region with holding mutex lock,   *
+        * then its waiting to unlock causing infinite loop.  To avoid this loop, we are    *
+        * unlocking mutex for the critical region code.                                    *
+        */
+        pthread_mutex_unlock(&g_active_msmt->lock);
         process_active_msmt_diagnostics(cfg->Step[StepIns].ApIndex);
         stream_client_msmt_data(true);
+        pthread_mutex_lock(&g_active_msmt->lock);
     }
 
     active_msmt_log_message( "%s:%d no need to start pktgen for offline client: %s\n" ,__FUNCTION__, __LINE__, DstMac);
@@ -1384,8 +1391,16 @@ void WiFiBlastClient(void)
                     /* Set status as succeed back to be able to procceed other Steps */
                     SetActiveMsmtStatus(__func__, ACTIVE_MSMT_STATUS_SUCCEED);
                 } else {
+                    /*
+                    * process_active_msmt_diagnostics and stream_client_msmt_data, both has mutex lock *
+                    * and unlock.  If anything entered this critical region with holding mutex lock,   *
+                    * then its waiting to unlock causing infinite loop.  To avoid this loop, we are    *
+                    * unlocking mutex for the critical region code.                                    *
+                    */
+                    pthread_mutex_unlock(&g_active_msmt->lock);
                     process_active_msmt_diagnostics(apIndex);
                     stream_client_msmt_data(true);
+                    pthread_mutex_lock(&g_active_msmt->lock);
                 }
 
                 active_msmt_log_message( "%s:%d no need to start pktgen for offline client: %s\n" ,__FUNCTION__, __LINE__, (char *)g_active_msmt->curStepData.DestMac);
@@ -1417,8 +1432,16 @@ void WiFiBlastClient(void)
                     SetActiveMsmtStatus(__func__, ACTIVE_MSMT_STATUS_SUCCEED);
                 } else {
                     wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: Calling process_active_msmt_diagnostics\n", __func__, __LINE__);
+                    /*
+                    * process_active_msmt_diagnostics and stream_client_msmt_data, both has mutex lock *
+                    * and unlock.  If anything entered this critical region with holding mutex lock,   *
+                    * then its waiting to unlock causing infinite loop.  To avoid this loop, we are    *
+                    * unlocking mutex for the critical region code.                                    *
+                    */
+                    pthread_mutex_unlock(&g_active_msmt->lock);
                     process_active_msmt_diagnostics(apIndex);
                     stream_client_msmt_data(true);
+                    pthread_mutex_lock(&g_active_msmt->lock);
                 }
 
                 active_msmt_log_message( "%s:%d No radio data for %d channel\n" ,__FUNCTION__, __LINE__, radioOperation->channel);
@@ -1531,7 +1554,7 @@ static void *active_msmt_worker(void *ctx)
 
         if (it == NULL) {
             g_active_msmt->is_running = false;
-                      memset(data, 0, sizeof(wifi_monitor_data_t));
+            memset(data, 0, sizeof(wifi_monitor_data_t));
             strncpy((char *) data->u.msg.data, "active_msmt stoped", sizeof(MAX_FRAME_SZ)-1);
             push_event_to_monitor_queue(data, wifi_event_monitor_stop_active_msmt, NULL);
             telemetry_buf = malloc(sizeof(char)*1024);
@@ -2186,7 +2209,6 @@ void process_active_msmt_step(active_msmt_t *cfg)
     wifi_ctrl_t *ctrl = get_wifictrl_obj();
 
     active_msmt_log_message("%s:%d: calling process_active_msmt_step\n",__func__, __LINE__);
-
     pthread_mutex_lock(&g_active_msmt->lock);
 
     if (g_active_msmt->is_running == true && !strncasecmp((char *)cfg->PlanId, (char *)act_msmt->PlanId, strlen((char *)cfg->PlanId))) {
@@ -2393,8 +2415,13 @@ int blaster_init(wifi_app_t *app, unsigned int create_flag)
     if (app_init(app, create_flag) != 0) {
         return RETURN_ERR;
     }
+
     app->data.u.blaster.g_active_msmt.active_msmt_map = hash_map_create();
     pthread_mutex_init(&app->data.u.blaster.g_active_msmt.lock, NULL);
+    if (onewifi_pktgen_init() != RETURN_OK) {
+        wifi_util_error_print(WIFI_BLASTER, "%s:%d Pktgen support is missed!\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
     return RETURN_OK;
 }
 
