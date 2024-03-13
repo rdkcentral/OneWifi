@@ -198,13 +198,6 @@ hash_map_t * coordinator_get_collector_list(void);
 #ifdef CCSP_COMMON
 static unsigned msg_id = 1000;
 static const char *wifi_health_log = "/rdklogs/logs/wifihealth.txt";
-static unsigned int vap_up_arr[MAX_VAP]={0};
-static unsigned int vap_iteration=0;
-static unsigned char vap_nas_status[MAX_VAP]={0};
-#if defined (DUAL_CORE_XB3)
-static unsigned char erouterIpAddrStr[32];
-unsigned char wifi_pushSecureHotSpotNASIP(int apIndex, unsigned char erouterIpAddrStr[]);
-#endif
 int radio_stats_monitor = 0;
 ULONG chan_util_upload_period = 0;
 ULONG lastupdatedtime = 0;
@@ -2000,96 +1993,6 @@ int associated_device_diagnostics_send_event(void* arg)
     return TIMER_TASK_COMPLETE;
 }
 
-#if defined (DUAL_CORE_XB3)
-static BOOL erouterGetIpAddress()
-{
-    FILE *f;
-    char ptr[32];
-    char *cmd = "deviceinfo.sh -eip";
-
-    memset (ptr, 0, sizeof(ptr));
-
-    if ((f = popen(cmd, "r")) == NULL) {
-        return false;
-    } else {
-        *ptr = 0;
-        fgets(ptr,32,f);
-        pclose(f);
-    }
-
-    if ((ptr[0] >= '1') && (ptr[0] <= '9')) {
-        memset(erouterIpAddrStr, 0, sizeof(erouterIpAddrStr));
-        /*CID: 159695 BUFFER_SIZE_WARNING*/
-        strncpy((char*)erouterIpAddrStr, ptr, sizeof(erouterIpAddrStr)-1);
-        erouterIpAddrStr[sizeof(erouterIpAddrStr)-1] = '\0';
-        return true;
-    } else {
-        return false;
-    }
-}
-#endif
-
-static unsigned char updateNasIpStatus (int apIndex)
-{
-#if defined (DUAL_CORE_XB3)
-
-    static unsigned char erouterIpInitialized = 0;
-    if(isVapHotspotSecure(apIndex)) {
-        if (!erouterIpInitialized) {
-            if (FALSE == erouterGetIpAddress()) {
-                return 0;
-            } else {
-                erouterIpInitialized = 1;
-                return wifi_pushSecureHotSpotNASIP(apIndex, erouterIpAddrStr);
-            }
-        } else {
-            return wifi_pushSecureHotSpotNASIP(apIndex, erouterIpAddrStr);
-        }
-    } else {
-        return 1;
-    }
-#else
-    UNREFERENCED_PARAMETER(apIndex);
-    return 1;
-#endif
-}
-
-/* Capture the VAP status periodically */
-int captureVAPUpStatus(void *arg)
-{
-    static unsigned int i = 0;
-    int vap_status = 0;
-    wifi_mgr_t *mgr = get_wifimgr_obj();
-
-    UINT vap_index = VAP_INDEX(mgr->hal_cap, i);
-    wifi_util_dbg_print(WIFI_MON, "Entering %s:%d for VAP %d\n",__FUNCTION__,__LINE__, vap_index);
-    if (vap_index >= MAX_VAP) {
-        wifi_util_error_print(WIFI_MON, "%s:%d wrong vap_index:%d for i:%d\n", __func__, __LINE__, vap_index, i);
-        i = 0;
-        return TIMER_TASK_COMPLETE;
-    }
-
-    vap_status = g_monitor_module.bssid_data[vap_index].ap_params.ap_status;
-    if (vap_status) {
-        vap_up_arr[vap_index]=vap_up_arr[vap_index]+1;
-        if (!vap_nas_status[vap_index]) {
-            vap_nas_status[vap_index] = updateNasIpStatus(vap_index);
-        }
-    } else {
-        vap_nas_status[vap_index] = 0;
-    }
-    i++;
-    if(i >= getTotalNumberVAPs()) {
-        i = 0;
-        vap_iteration++;
-        wifi_util_dbg_print(WIFI_MON, "Exiting %s:%d \n",__FUNCTION__,__LINE__);
-        return TIMER_TASK_COMPLETE;
-    }
-    wifi_util_dbg_print(WIFI_MON, "Exiting %s:%d \n",__FUNCTION__,__LINE__);
-    return TIMER_TASK_CONTINUE;
-
-}
-
 int get_chan_util_upload_period()
 {
     int logInterval = DEFAULT_CHANUTIL_LOG_INTERVAL;//Default Value 15mins.
@@ -2697,10 +2600,6 @@ static void scheduler_telemetry_tasks(void)
             scheduler_add_timer_task(g_monitor_module.sched, FALSE, &g_monitor_module.refresh_task_id, refresh_task_period,
                     NULL, REFRESH_TASK_INTERVAL_MS, 0, FALSE);
         }
-        if (g_monitor_module.vap_status_id == 0) {
-            scheduler_add_timer_task(g_monitor_module.sched, FALSE, &g_monitor_module.vap_status_id, captureVAPUpStatus,
-                    NULL, CAPTURE_VAP_STATUS_INTERVAL_MS, 0, FALSE);
-        }
         if (g_monitor_module.radio_diagnostics_id == 0) {
             //RADIO_STATS_INTERVAL - 30 seconds
             scheduler_add_timer_task(g_monitor_module.sched, FALSE, &g_monitor_module.radio_diagnostics_id, radio_diagnostics, NULL,
@@ -2712,10 +2611,6 @@ static void scheduler_telemetry_tasks(void)
             g_monitor_module.refresh_task_id = 0;
         }
 
-        if (g_monitor_module.vap_status_id != 0) {
-            scheduler_cancel_timer_task(g_monitor_module.sched, g_monitor_module.vap_status_id);
-            g_monitor_module.vap_status_id = 0;
-        }
         if (g_monitor_module.radio_diagnostics_id != 0) {
             scheduler_cancel_timer_task(g_monitor_module.sched, g_monitor_module.radio_diagnostics_id);
             g_monitor_module.radio_diagnostics_id = 0;
@@ -2796,19 +2691,6 @@ int init_wifi_monitor()
     chan_util_upload_period = get_chan_util_upload_period();
     wifi_util_dbg_print(WIFI_MON, "%s:%d system uptime val is %ld and upload period is %d in secs\n",
              __FUNCTION__,__LINE__,uptimeval,(g_monitor_module.upload_period*60));
-    /* If uptime is less than the upload period then we should calculate the current
-      VAP iteration for measuring correct VAP UP percentatage. Becaues we should show
-      the uptime value as VAP down percentatage.
-      */
-    if(uptimeval<(g_monitor_module.upload_period*60)) {
-        vap_iteration=(int)uptimeval/60;
-        g_monitor_module.current_poll_iter = vap_iteration;
-        wifi_util_dbg_print(WIFI_MON, "%s:%d Current VAP UP check iteration  %d \n",__FUNCTION__,__LINE__,vap_iteration);
-    } else {
-        vap_iteration=0;
-        g_monitor_module.current_poll_iter = 0;
-        wifi_util_dbg_print(WIFI_MON, "%s:%d Upload period is already crossed \n",__FUNCTION__,__LINE__);
-    }
     if (get_vap_dml_parameters(RSSI_THRESHOLD, &rssi) != ANSC_STATUS_SUCCESS) {
         g_monitor_module.sta_health_rssi_threshold = -65;
     } else {
@@ -2875,7 +2757,6 @@ int init_wifi_monitor()
 
     g_monitor_module.client_telemetry_id = 0;
     g_monitor_module.refresh_task_id = 0;
-    g_monitor_module.vap_status_id = 0;
 #endif // CCSP_COMMON
     g_monitor_module.radio_diagnostics_id = 0;
 

@@ -27,6 +27,7 @@ int whix_event(wifi_app_t *app, wifi_event_t *event);
 typedef struct {
     int radius_failure_count[MAX_VAP];
     int eap_failure_count[MAX_VAP];
+    int sched_handler_id;
 } whix_data_t;
 
 #endif //_WIFI_WHIX_H_
