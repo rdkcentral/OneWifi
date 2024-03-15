@@ -125,7 +125,7 @@ webconfig_error_t decode_wifi_config_subdoc(webconfig_t *config, webconfig_subdo
         return webconfig_error_decode;
     }
 
-    memset(params, 0, sizeof(webconfig_subdoc_decoded_data_t));
+    memset(&params->config, 0, sizeof(wifi_global_config_t));
     obj_config = cJSON_GetObjectItem(json, "WifiConfig");
     if (decode_config_object(obj_config, &params->config) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Config Object validation failed\n",
