@@ -210,12 +210,12 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
             "cli_LastDataDownlinkRate: %d\ncli_LastDataUplinkRate: %d\ncli_SignalStrength: %d\n"
             "cli_Retransmissions: %d\ncli_Active: %d\ncli_OperatingStandard: %s\n"
             "cli_OperatingChannelBandwidth: %s\ncli_SNR: %d\ncli_InterferenceSources: %s\n"
-            "cli_DataFramesSentAck: %d\ncli_DataFramesSentNoAck: %d\ncli_BytesSent: %d\n"
-            "cli_BytesReceived: %d\ncli_RSSI: %d\ncli_MinRSSI: %d\ncli_MaxRSSI: %d\n"
+            "cli_DataFramesSentAck: %lu\ncli_DataFramesSentNoAck: %lu\ncli_BytesSent: %lu\n"
+            "cli_BytesReceived: %lu\ncli_RSSI: %d\ncli_MinRSSI: %d\ncli_MaxRSSI: %d\n"
             "cli_Disassociations: %d\ncli_AuthenticationFailures: %d\ncli_Associations: %llu\n"
-            "cli_PacketsSent: %d\ncli_PacketsReceived: %d\ncli_ErrorsSent: %d\n"
-            "cli_RetransCount: %d\ncli_FailedRetransCount: %d\ncli_RetryCount: %d\n"
-            "cli_MultipleRetryCount: %d\ncli_MaxDownlinkRate: %d\ncli_MaxUplinkRate: %d\n"
+            "cli_PacketsSent: %lu\ncli_PacketsReceived: %lu\ncli_ErrorsSent: %lu\n"
+            "cli_RetransCount: %lu\ncli_FailedRetransCount: %lu\ncli_RetryCount: %lu\n"
+            "cli_MultipleRetryCount: %lu\ncli_MaxDownlinkRate: %d\ncli_MaxUplinkRate: %d\n"
             "cli_activeNumSpatialStreams: %d\ncli_TxFrames: %llu\ncli_RxRetries: %llu\n"
             "cli_RxErrors: %llu\n", to_sta_key(dev_array[i].cli_MACAddress, sta_key),
             dev_array[i].cli_AuthenticationState, dev_array[i].cli_LastDataDownlinkRate,
