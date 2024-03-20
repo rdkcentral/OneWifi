@@ -3187,6 +3187,56 @@ Radio_SetParamBoolValue
 
     prototype: 
 
+        static BOOL
+        isValidTransmitPower
+            (
+                char*                       supportedPowerList,
+                int                         transmitPower
+            );
+
+    description:
+
+        This function can be used to validate against the supported transmit power;
+
+    argument:   char*  supportedPowerList
+                The supportedPowerList
+
+                int transmitPower
+                The transmitPower value that need validation before setting
+
+    return:     TRUE if transmitPower is supported ;
+                        FALSE if not supported
+**********************************************************************/
+
+static BOOL isValidTransmitPower(char* supportedPowerList, int transmitPower)
+{
+    char powerList[64] = {0} , *tok, *next_tok;
+    size_t powerListSize = strlen(supportedPowerList);
+
+    if ((powerListSize == 0) || (powerListSize >= sizeof(powerList)))
+    {
+        wifi_util_error_print(WIFI_DMCLI,"%s: failed to get supported Transmit power list\n", __func__);
+        return FALSE;
+    }
+    strncpy(powerList, supportedPowerList, sizeof(powerList) - 1);
+    powerList[sizeof(powerList) - 1] = '\0'; // Ensure null-termination
+    tok = strtok_s(powerList, &powerListSize, ",", &next_tok);
+    while (tok) {
+        if (atoi(tok) == transmitPower) {
+            return TRUE;
+        }
+        tok = strtok_s(NULL, &powerListSize, ",", &next_tok);
+    }
+    wifi_util_error_print(WIFI_DMCLI,"%s:%d Given Transmit power value %d is not supported and the supported values are %s\n",__func__, __LINE__, transmitPower, supportedPowerList);
+    return FALSE;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
         BOOL
         Radio_SetParamIntValue
             (
@@ -3275,10 +3325,14 @@ Radio_SetParamIntValue
             return  TRUE;
         }
 
+        if (isValidTransmitPower(rcfg[instance_number].TransmitPowerSupported,iValue) != TRUE)
+        {
+            return FALSE;
+        }
         wifiRadioOperParam->transmitPower = iValue;
         ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s transmitPower : %d\n", __FUNCTION__, wifiRadioOperParam->transmitPower);
         is_radio_config_changed = TRUE;
-	wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:transmitPower=%d bValue = %d  \n",__func__, __LINE__,wifiRadioOperParam->transmitPower,iValue);
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:transmitPower=%d bValue = %d RadioIndex=%d \n",__func__, __LINE__,wifiRadioOperParam->transmitPower,iValue, instance_number );
         return TRUE;
     }
 
@@ -19445,7 +19499,7 @@ Passpoint_SetParamBoolValue
     }
     return FALSE;
 }
-/**********************************************************************  
+/**********************************************************************
 
     caller:     owner of this object 
 
