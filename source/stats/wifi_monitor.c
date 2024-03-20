@@ -2202,6 +2202,7 @@ int device_disassociated(int ap_index, char *mac, int reason)
     greylist_data_t greylist_data;
     unsigned int mac_addr[MAC_ADDR_LEN];
     mac_address_t grey_list_mac;
+    bool is_sta_active;
 
     if (mac == NULL) {
         wifi_util_dbg_print(WIFI_MON,"%s:%d input mac adrress is NULL for ap_index:%d reason:%d\n", __func__, __LINE__, ap_index, reason);
@@ -2219,6 +2220,8 @@ int device_disassociated(int ap_index, char *mac, int reason)
 
     }
 
+    is_sta_active = active_sta_connection_status(ap_index, mac);
+
     memset(&data, 0, sizeof(wifi_monitor_data_t));
     data.id = msg_id++;
 
@@ -2232,7 +2235,7 @@ int device_disassociated(int ap_index, char *mac, int reason)
 
     push_event_to_monitor_queue(&data, wifi_event_monitor_disconnect, NULL);
 
-    if (active_sta_connection_status(ap_index, mac) == false) {
+    if (is_sta_active == false) {
         wifi_util_dbg_print(WIFI_MON,"%s:%d: sta[%s] not connected with ap:[%d]\r\n", __func__, __LINE__, mac, ap_index);
         return 0;
     }
@@ -2278,6 +2281,7 @@ int device_deauthenticated(int ap_index, char *mac, int reason)
     greylist_data_t greylist_data;
     assoc_dev_data_t assoc_data;
     mac_address_t grey_list_mac;
+    bool is_sta_active;
 
     if (mac == NULL) {
         wifi_util_dbg_print(WIFI_MON,"%s:%d input mac adrress is NULL for ap_index:%d reason:%d\n", __func__, __LINE__, ap_index, reason);
@@ -2294,6 +2298,8 @@ int device_deauthenticated(int ap_index, char *mac, int reason)
 
     }
 
+    is_sta_active = active_sta_connection_status(ap_index, mac);
+
     memset(&data, 0, sizeof(wifi_monitor_data_t));
     data.id = msg_id++;
 
@@ -2307,7 +2313,7 @@ int device_deauthenticated(int ap_index, char *mac, int reason)
 
     push_event_to_monitor_queue(&data, wifi_event_monitor_deauthenticate, NULL);
 
-    if (active_sta_connection_status(ap_index, mac) == false) {
+    if (is_sta_active == false) {
         wifi_util_dbg_print(WIFI_MON,"%s:%d: sta[%s] not connected with ap:[%d]\r\n", __func__, __LINE__, mac, ap_index);
         return 0;
     }
