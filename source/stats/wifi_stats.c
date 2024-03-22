@@ -27,7 +27,7 @@
 #include "wifi_monitor.h"
 #include "wifi_util.h"
 
-#define WIFI_STATS_NUM 6
+#define WIFI_STATS_NUM 5
 
 wifi_mon_stats_descriptor_t g_stats_descriptor[WIFI_STATS_NUM] = {
     {
@@ -35,18 +35,19 @@ wifi_mon_stats_descriptor_t g_stats_descriptor[WIFI_STATS_NUM] = {
         validate_radio_channel_args,
         generate_radio_channel_clctr_stats_key,
         generate_radio_channel_provider_stats_key,
-        execute_radio_channel_stats_api,
+        execute_radio_channel_api,
         copy_radio_channel_stats_from_cache,
-        NULL
+        update_radio_channels_collector_args
     },
     {
+        //neighbours stats and radio channel stats share the same collector
         mon_stats_type_neighbor_stats,
         validate_neighbor_ap_args,
-        generate_neighbor_ap_clctr_stats_key,
-        generate_neighbor_ap_provider_stats_key,
-        execute_neighbor_ap_stats_api,
+        generate_radio_channel_clctr_stats_key,
+        generate_radio_channel_provider_stats_key,
+        execute_radio_channel_api,
         copy_neighbor_ap_stats_from_cache,
-        NULL
+        update_radio_channels_collector_args
     },
     {
         mon_stats_type_radio_diagnostic_stats,
@@ -65,15 +66,6 @@ wifi_mon_stats_descriptor_t g_stats_descriptor[WIFI_STATS_NUM] = {
         execute_assoc_client_stats_api,
         copy_assoc_client_stats_from_cache,
         NULL
-    },
-    {
-        mon_stats_type_radio_scan,
-        validate_radio_scan_args,
-        generate_radio_scan_clctr_stats_key,
-        generate_radio_scan_provider_stats_key,
-        execute_radio_scan_stats_api,
-        NULL,
-        update_radio_scan_collector_args
     },
     {
         mon_stats_type_radio_temperature,

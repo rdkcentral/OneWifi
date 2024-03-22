@@ -403,10 +403,6 @@ int survey_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_t *st
 
     push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
 
-    data->u.mon_stats_config.data_type = mon_stats_type_radio_scan;
-    data->u.mon_stats_config.args.dwell_time = stat_config_entry->survey_interval;
-    push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
-
     return RETURN_OK;
 }
 

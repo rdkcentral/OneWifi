@@ -29,8 +29,6 @@
 #include "wifi_ctrl.h"
 #include "wifi_util.h"
 
-#define STATS_COLLECTOR_NEIGHBOR_SCAN_RESULT_INTERVAL 200 //200 ms
-#define MAX_SCAN_RESULTS_RETRIES 150 //30 seconds
 
 int validate_neighbor_ap_args(wifi_mon_stats_args_t *args)
 {
@@ -46,249 +44,108 @@ int validate_neighbor_ap_args(wifi_mon_stats_args_t *args)
     return RETURN_OK;
 }
 
-int generate_neighbor_ap_clctr_stats_key(wifi_mon_stats_args_t *args, char *key_str, size_t key_len)
+
+int copy_neighbor_ap_stats_from_cache(wifi_mon_provider_element_t *p_elem, void **stats, unsigned int *stat_array_size, wifi_monitor_t *mon_cache)
 {
-    if ((args == NULL) || (key_str == NULL)) {
-        wifi_util_error_print(WIFI_MON, "%s:%d input arguments are NULL args : %p key = %p\n",__func__,__LINE__, args, key_str);
-        return RETURN_ERR;
-    }
-
-    memset(key_str, 0, key_len);
-
-    snprintf(key_str, key_len, "%02d-%02d-%02d", mon_stats_type_neighbor_stats, args->radio_index, args->scan_mode);
-
-    wifi_util_dbg_print(WIFI_MON, "%s:%d collector stats key: %s\n", __func__,__LINE__, key_str);
-    return RETURN_OK;
-}
-
-
-int generate_neighbor_ap_provider_stats_key(wifi_mon_stats_config_t *config, char *key_str, size_t key_len)
-{
-    if ((config == NULL) || (key_str == NULL)) {
-        wifi_util_error_print(WIFI_MON, "%s:%d input arguments are NULL config : %p key = %p\n",__func__,__LINE__, config, key_str);
-        return RETURN_ERR;
-    }
-
-    memset(key_str, 0, key_len);
-    snprintf(key_str, key_len, "%04d-%08d", config->inst, config->args.app_info);
-
-    return RETURN_OK;
-}
-
-
-int copy_neighborstats_to_cache(void *arg)
-{
-    wifi_neighbor_ap2_t *temp_neigh_stats = NULL;
-    int ret = RETURN_OK;
-    unsigned int ap_count = 0;
-    wifi_neighbor_ap2_t *neigh_stats = NULL;
-    wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
-    neighscan_diag_cfg_t *neighscan_stats_data = NULL;
-    wifi_mon_stats_args_t *args = arg;
-#if CCSP_WIFI_HAL
-    ret = wifi_getNeighboringWiFiStatus(args->radio_index, &neigh_stats, &ap_count);
-#endif
-    if (ret != RETURN_OK) {
-        if (errno == EAGAIN && mon_data->scan_results_retries[args->radio_index] < MAX_SCAN_RESULTS_RETRIES) {
-            mon_data->scan_results_retries[args->radio_index]++;
-            scheduler_add_timer_task(mon_data->sched, FALSE, NULL, copy_neighborstats_to_cache, args,
-                STATS_COLLECTOR_NEIGHBOR_SCAN_RESULT_INTERVAL, 1, FALSE);
-            
-            wifi_util_dbg_print(WIFI_MON, "%s : %d  Neighbor wifi status for index %d not ready. Retry (%d)\n",__func__,__LINE__, args->radio_index, mon_data->scan_results_retries[args->radio_index]);
-            return RETURN_OK;
-        }
-        wifi_util_error_print(WIFI_MON, "%s : %d  Failed to get Neighbor wifi status for scan mode %d radio index %d\n",__func__,__LINE__, args->scan_mode, args->radio_index);
-        mon_data->scan_status[args->radio_index] = 0;
-        return RETURN_ERR;
-    }
-    
-    wifi_util_dbg_print(WIFI_MON, "%s : %d  Scan complete scan mode %d radio index %d\n",__func__,__LINE__, args->scan_mode, args->radio_index);
-    mon_data->scan_status[args->radio_index] = 0;
-    neighscan_stats_data = (neighscan_diag_cfg_t *)&mon_data->neighbor_scan_cfg;
-
-    pthread_mutex_lock(&mon_data->data_lock);
-    wifi_util_dbg_print(WIFI_MON, "%s : %d  radio index %d scan_mode %d, found %d neighbors\n",__func__,__LINE__, args->radio_index, args->scan_mode, ap_count);
-    if (args->scan_mode == WIFI_RADIO_SCAN_MODE_FULL) {
-        temp_neigh_stats = neighscan_stats_data->pResult[args->radio_index];
-        neighscan_stats_data->pResult[args->radio_index] = neigh_stats;
-        neighscan_stats_data->resultCountPerRadio[args->radio_index] = ap_count;
-        if (temp_neigh_stats != NULL) {
-            free(temp_neigh_stats);
-            temp_neigh_stats = NULL;
-        }
-    } else if (args->scan_mode == WIFI_RADIO_SCAN_MODE_ONCHAN) {
-        temp_neigh_stats = neighscan_stats_data->pResult_onchannel[args->radio_index];
-        neighscan_stats_data->pResult_onchannel[args->radio_index] = neigh_stats;
-        neighscan_stats_data->resultCountPerRadio_onchannel[args->radio_index] = ap_count;
-        if (temp_neigh_stats != NULL) {
-            free(temp_neigh_stats);
-            temp_neigh_stats = NULL;
-        }
-    } else { //if (args->scan_mode == WIFI_RADIO_SCAN_MODE_OFFCHAN) 
-        temp_neigh_stats = neighscan_stats_data->pResult_offchannel[args->radio_index];
-        neighscan_stats_data->pResult_offchannel[args->radio_index] = neigh_stats;
-        neighscan_stats_data->resultCountPerRadio_offchannel[args->radio_index] = ap_count;
-        if (temp_neigh_stats != NULL) {
-            free(temp_neigh_stats);
-            temp_neigh_stats = NULL;
-        }
-    }
-    pthread_mutex_unlock(&mon_data->data_lock);
-    return RETURN_OK;
-}
-
-int execute_neighbor_ap_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *mon_data, unsigned long task_interval_ms)
-{
-    int ret = RETURN_OK;
-    wifi_radio_operationParam_t* radioOperation = NULL;
-    wifi_radio_capabilities_t *wifi_cap = NULL;
-    wifi_channels_list_t    channel_list;
-
-#if CCSP_WIFI_HAL
-    unsigned int private_vap_index;
-    int dwell_time;
-    char *channel_buff;
-    int bytes_written = 0;
-    int count = 0;
-#endif
-
-    if (args == NULL) {
-        wifi_util_error_print(WIFI_MON, "%s:%d input arguments are NULL args : %p\n",__func__,__LINE__, args);
-        return RETURN_ERR;
-    }
-    if (mon_data->radio_presence[args->radio_index] == false) {
-        wifi_util_dbg_print(WIFI_MON, "%s:%d radio_presence is false for radio : %d\n",__func__,__LINE__, args->radio_index);
-        return RETURN_OK;
-    }
-
-    radioOperation = getRadioOperationParam(args->radio_index);
-    if (radioOperation == NULL) {
-        wifi_util_error_print(WIFI_MON,"%s:%d NULL radioOperation pointer for radio : %d\n", __func__, __LINE__, args->radio_index);
-        return RETURN_ERR;
-    }
-
-#if CCSP_WIFI_HAL
-    if (args->scan_mode == WIFI_RADIO_SCAN_MODE_FULL && radioOperation->band == WIFI_FREQUENCY_6_BAND) {
-        dwell_time = 110;
-    } else {
-        if (args->dwell_time == 0) {
-            dwell_time = 10;
-        } else {
-            dwell_time = args->dwell_time;
-        }
-    }
-#endif
-
-    if (args->scan_mode == WIFI_RADIO_SCAN_MODE_ONCHAN) {
-        channel_list.num_channels = 1;
-        channel_list.channels_list[0] = radioOperation->channel;
-    } else if (args->scan_mode == WIFI_RADIO_SCAN_MODE_FULL) {
-        INT num_channels;
-        INT channels_list[MAX_CHANNELS];
-        wifi_cap = getRadioCapability(args->radio_index);
-        if (get_allowed_channels(radioOperation->band, wifi_cap, channels_list, &(num_channels), radioOperation->DfsEnabled) != RETURN_OK) {
-            wifi_util_error_print(WIFI_MON, "%s:%d get allowed channels failed for the radio : %d\n",__func__,__LINE__, args->radio_index);
-            return RETURN_ERR;
-        }
-        (void)memcpy(channel_list.channels_list, channels_list,
-               sizeof(*channels_list) * num_channels);
-        channel_list.num_channels = num_channels;
-    } else {
-        int i;
-        channel_list.num_channels = 0;
-        for(i=0;i<args->channel_list.num_channels;i++)
-        {
-            if (radioOperation->channel != (unsigned int) args->channel_list.channels_list[i]) {
-                channel_list.channels_list[channel_list.num_channels] = args->channel_list.channels_list[i];
-                channel_list.num_channels++;
-            }
-        }
-    }
-
-#if CCSP_WIFI_HAL
-    channel_buff = (char *) malloc(sizeof(char)*channel_list.num_channels*5);
-    if (channel_buff != NULL) {
-        for (count = 0; count < channel_list.num_channels; count++) {
-            bytes_written +=  snprintf(&channel_buff[bytes_written], (sizeof(channel_buff)-bytes_written), "%d,", channel_list.channels_list[count]);
-        }
-        channel_buff[bytes_written-1] = '\0';
-    }
-    wifi_util_dbg_print(WIFI_MON, "%s:%d Start scan. Radio_index : %d scan_mode : %d dwell_time : %d num_channels : %d  channels : %s\n",__func__,__LINE__, args->radio_index,
-                                            args->scan_mode, dwell_time, channel_list.num_channels, (channel_buff!=NULL ? channel_buff:"NULL"));
-    if (channel_buff != NULL) {
-        free(channel_buff);
-    }
-#endif
-    
-#if CCSP_WIFI_HAL
-    mon_data->scan_status[args->radio_index] = 1;
-    mon_data->scan_results_retries[args->radio_index] = 0;
-    private_vap_index = getPrivateApFromRadioIndex(args->radio_index);
-    INT channels_list[MAX_CHANNELS];
-    (void)memcpy(channels_list, channel_list.channels_list,
-                 sizeof(*channels_list) * channel_list.num_channels);
-    // According to the `wifi_startNeighborScan(..., UINT *chan_list)`
-    // prototype, this function can modify the passed `chan_list`. Otherwise,
-    // the prototype looks something like this: `wifi_startNeighborScan(...,
-    // const UINT *chan_list)`.
-    ret = wifi_startNeighborScan(private_vap_index, args->scan_mode, dwell_time, channel_list.num_channels, (unsigned int *)channels_list);
-    (void)memcpy(channel_list.channels_list, channels_list,
-           sizeof(*channels_list) * channel_list.num_channels);
-#endif
-    if (ret != RETURN_OK) {
-        wifi_util_error_print(WIFI_MON, "%s : %d  Failed to get Neighbor scan for index %d\n",__func__,__LINE__, args->radio_index);
-        return RETURN_ERR;
-    }
-    scheduler_add_timer_task(mon_data->sched, FALSE, NULL, copy_neighborstats_to_cache, args,
-            STATS_COLLECTOR_NEIGHBOR_SCAN_RESULT_INTERVAL, 1, FALSE);
-    return RETURN_OK;
-}
-
-
-int copy_neighbor_ap_stats_from_cache(wifi_mon_stats_args_t *args, void **stats, unsigned int *stat_array_size, wifi_monitor_t *mon_cache)
-{
-    wifi_neighbor_ap2_t *neigh_stat = NULL;
-    unsigned int ap_count;
+    wifi_neighbor_ap2_t *neigh_stat = NULL, *neigh_stat_tmp = NULL;
+    unsigned int ap_count = 0, ap_count_total = 0;
     wifi_neighbor_ap2_t *results;
     neighscan_diag_cfg_t *neighscan_stats_data = NULL;
     wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
+    wifi_mon_stats_args_t *args;
 
-    if ((args == NULL) || (mon_cache == NULL)) {
-        wifi_util_error_print(WIFI_MON, "%s : %d Invalid args args : %p mon_cache = %p\n",
-                __func__,__LINE__, args, mon_cache);
+    if ((p_elem == NULL) || (mon_cache == NULL)) {
+        wifi_util_error_print(WIFI_MON, "%s : %d Invalid args p_elem : %p mon_cache = %p\n",
+                __func__,__LINE__, p_elem, mon_cache);
         return RETURN_ERR;
     }
-    
-    neighscan_stats_data = (neighscan_diag_cfg_t *)&mon_data->neighbor_scan_cfg;
-    if (args->scan_mode == WIFI_RADIO_SCAN_MODE_FULL) {
-        results = neighscan_stats_data->pResult[args->radio_index];
-        ap_count = neighscan_stats_data->resultCountPerRadio[args->radio_index];
-    } else if (args->scan_mode == WIFI_RADIO_SCAN_MODE_ONCHAN) {
-        results = neighscan_stats_data->pResult_onchannel[args->radio_index];
-        ap_count = neighscan_stats_data->resultCountPerRadio_onchannel[args->radio_index];
-    } else { //if (args->scan_mode == WIFI_RADIO_SCAN_MODE_OFFCHAN)
-        results = neighscan_stats_data->pResult_offchannel[args->radio_index];
-        ap_count = neighscan_stats_data->resultCountPerRadio_offchannel[args->radio_index];
+    if (p_elem->mon_stats_config == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d  p_elem->mon_stats_config NULL\n",
+                __func__,__LINE__, p_elem, mon_cache);
+        return RETURN_ERR;
     }
+    args = &(p_elem->mon_stats_config->args);
 
-    if (ap_count > 0) {
-        neigh_stat = (wifi_neighbor_ap2_t *) calloc(ap_count, sizeof(wifi_neighbor_ap2_t));
-        if (neigh_stat == NULL) {
-            wifi_util_error_print(WIFI_MON, "%s:%d Failed to alloc memory for radio %d\n",__func__,__LINE__, args->radio_index);
-            return RETURN_ERR;
+    pthread_mutex_lock(&mon_data->data_lock);
+    neighscan_stats_data = (neighscan_diag_cfg_t *)&mon_data->neighbor_scan_cfg;
+    if (args->scan_mode == WIFI_RADIO_SCAN_MODE_OFFCHAN) {
+        int i, j;
+        int updated[MAX_CHANNELS];
+        memset(updated, 0, sizeof(int)*MAX_CHANNELS);
+        for (i=0;i<args->channel_list.num_channels;i++) {
+            for (j=0;j<MAX_CHANNELS;j++) {
+                if (args->channel_list.channels_list[i] == neighscan_stats_data->channel[args->radio_index][j]) {
+                    if (neighscan_stats_data->last_update_time_offchannel[args->radio_index][j].tv_sec != p_elem->u.neighbour_data.last_update_time_offchannel[j].tv_sec) {
+                        p_elem->u.neighbour_data.last_update_time_offchannel[j].tv_sec = neighscan_stats_data->last_update_time_offchannel[args->radio_index][j].tv_sec;
+                        updated[j] = 1;
+                        ap_count_total = ap_count_total + neighscan_stats_data->resultCountPerRadio_offchannel[args->radio_index][j];
+                        wifi_util_dbg_print(WIFI_MON, "%s:%d  radio index %d, %d neighbours on channel %d updated\n",__func__,__LINE__, args->radio_index, 
+                            neighscan_stats_data->resultCountPerRadio_offchannel[args->radio_index][j], neighscan_stats_data->channel[args->radio_index][j]);
+                    }
+                    break;
+                }
+            }
+        }
+        if (ap_count_total > 0) {
+            wifi_util_dbg_print(WIFI_MON, "%s:%d  radio index %, ap count total %d\n",__func__,__LINE__, args->radio_index, ap_count_total);
+            neigh_stat = (wifi_neighbor_ap2_t *) calloc(ap_count_total, sizeof(wifi_neighbor_ap2_t));
+            if (neigh_stat == NULL) {
+                wifi_util_error_print(WIFI_MON, "%s:%d Failed to alloc memory for radio %d\n",__func__,__LINE__, args->radio_index);
+                pthread_mutex_unlock(&mon_data->data_lock);
+                return RETURN_ERR;
+            }
+            neigh_stat_tmp = neigh_stat;
+            for (j=0;j<MAX_CHANNELS;j++) {
+                if (updated[j] == 1) {
+                    results = neighscan_stats_data->pResult_offchannel[args->radio_index][j];
+                    ap_count = neighscan_stats_data->resultCountPerRadio_offchannel[args->radio_index][j];
+                    if (ap_count > 0) {
+                        memcpy(neigh_stat_tmp, results, ap_count*sizeof(wifi_neighbor_ap2_t));
+                        neigh_stat_tmp = neigh_stat_tmp + ap_count;
+                    }
+                }
+            }
+
+            *stats = (wifi_neighbor_ap2_t *)neigh_stat;
+            *stat_array_size = ap_count_total;
+            wifi_util_dbg_print(WIFI_MON, "%s : %d  radio index %d, send %d neighbors\n",__func__,__LINE__, args->radio_index, ap_count_total);
+
+        } else {
+            *stats = NULL;
+            *stat_array_size = 0;
+            wifi_util_dbg_print(WIFI_MON, "%s : %d  radio index %d, send 0 neighbors\n",__func__,__LINE__, args->radio_index);
         }
 
-        memcpy(neigh_stat, results, ap_count*sizeof(wifi_neighbor_ap2_t));
-
-        *stats = (wifi_neighbor_ap2_t *)neigh_stat;
-        *stat_array_size = ap_count;
-        wifi_util_dbg_print(WIFI_MON, "%s : %d  radio index %d, send %d neighbors\n",__func__,__LINE__, args->radio_index, ap_count);
-
     } else {
-        *stats = NULL;
-        *stat_array_size = 0;
-        wifi_util_dbg_print(WIFI_MON, "%s : %d  radio index %d, send 0 neighbors\n",__func__,__LINE__, args->radio_index);
+        if (args->scan_mode == WIFI_RADIO_SCAN_MODE_FULL) {
+            results = neighscan_stats_data->pResult[args->radio_index];
+            ap_count = neighscan_stats_data->resultCountPerRadio[args->radio_index];
+        } else if (args->scan_mode == WIFI_RADIO_SCAN_MODE_ONCHAN) {
+            results = neighscan_stats_data->pResult_onchannel[args->radio_index];
+            ap_count = neighscan_stats_data->resultCountPerRadio_onchannel[args->radio_index];
+        }
+
+        if (ap_count > 0) {
+            neigh_stat = (wifi_neighbor_ap2_t *) calloc(ap_count, sizeof(wifi_neighbor_ap2_t));
+            if (neigh_stat == NULL) {
+                wifi_util_error_print(WIFI_MON, "%s:%d Failed to alloc memory for radio %d\n",__func__,__LINE__, args->radio_index);
+                pthread_mutex_unlock(&mon_data->data_lock);
+                return RETURN_ERR;
+            }
+
+            memcpy(neigh_stat, results, ap_count*sizeof(wifi_neighbor_ap2_t));
+
+            *stats = (wifi_neighbor_ap2_t *)neigh_stat;
+            *stat_array_size = ap_count;
+            wifi_util_dbg_print(WIFI_MON, "%s : %d  radio index %d, send %d neighbors\n",__func__,__LINE__, args->radio_index, ap_count);
+
+        } else {
+            *stats = NULL;
+            *stat_array_size = 0;
+            wifi_util_dbg_print(WIFI_MON, "%s : %d  radio index %d, send 0 neighbors\n",__func__,__LINE__, args->radio_index);
+        }
     }
+    pthread_mutex_unlock(&mon_data->data_lock);
     return RETURN_OK;
 
 }

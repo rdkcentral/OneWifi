@@ -196,15 +196,22 @@ int execute_radio_diagnostic_stats_api(wifi_mon_stats_args_t *args, wifi_monitor
     return RETURN_OK;
 }
 
-int copy_radio_diagnostic_stats_from_cache(wifi_mon_stats_args_t *args, void **stats, unsigned int *stat_array_size, wifi_monitor_t *mon_cache)
+int copy_radio_diagnostic_stats_from_cache(wifi_mon_provider_element_t *p_elem, void **stats, unsigned int *stat_array_size, wifi_monitor_t *mon_cache)
 {
     radio_data_t *radio_data = NULL, *mon_radio_data = NULL;
+    wifi_mon_stats_args_t *args;
 
-    if ((args == NULL) || (mon_cache == NULL)) {
-        wifi_util_error_print(WIFI_MON, "%s : %d Invalid args args : %p mon_cache = %p\n",
-                __func__,__LINE__, args, mon_cache);
+    if ((p_elem == NULL) || (mon_cache == NULL)) {
+        wifi_util_error_print(WIFI_MON, "%s:%d Invalid args p_elem : %p mon_cache = %p\n",
+                __func__,__LINE__, p_elem, mon_cache);
         return RETURN_ERR;
     }
+    if (p_elem->mon_stats_config == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d  p_elem->mon_stats_config NULL\n",
+                __func__,__LINE__, p_elem, mon_cache);
+        return RETURN_ERR;
+    }
+    args = &(p_elem->mon_stats_config->args);
 
     mon_radio_data = (radio_data_t *)&mon_cache->radio_data[args->radio_index];
     if (mon_radio_data == NULL) {

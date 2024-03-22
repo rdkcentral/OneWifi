@@ -2809,6 +2809,7 @@ int init_wifi_monitor()
     UINT vap_index, radio;
 #endif // CCSP_COMMON
     //Initialize MQTTCM
+    wifi_util_info_print(WIFI_MON,"%s:%d Monitor init\n", __func__, __LINE__);
 #ifdef MQTTCM
     if (access(MQTTCM_DISABLE_FLAG, F_OK) != 0)
     {
@@ -2835,6 +2836,8 @@ int init_wifi_monitor()
             wifi_util_error_print(WIFI_MON,"%s:%d: Unable to set Offchannel Params\n", __func__, __LINE__);
         }
     }
+
+    memset(&g_monitor_module.neighbor_scan_cfg, 0, sizeof(neighscan_diag_cfg_t));    
 #if CCSP_COMMON
     memset(g_monitor_module.cliStatsList, 0, MAX_VAP);
     g_monitor_module.upload_period = get_upload_period(60);//Default value 60
@@ -3675,8 +3678,7 @@ int collector_execute_task(void *arg)
     wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
 
     if (elem->stat_desc->stats_type == mon_stats_type_radio_channel_stats || 
-            elem->stat_desc->stats_type == mon_stats_type_neighbor_stats || 
-            elem->stat_desc->stats_type == mon_stats_type_radio_scan) {
+            elem->stat_desc->stats_type == mon_stats_type_neighbor_stats) {
         if (mon_data->scan_status[elem->args->radio_index] == 1 && elem->postpone_cnt < MAX_POSTPONE_EXECUTION) {
             
             wifi_util_dbg_print(WIFI_MON, "%s : %d scan running postpone collector : %s\n",__func__,__LINE__, elem->key);
@@ -3707,7 +3709,7 @@ int provider_execute_task(void *arg)
     wifi_provider_response_t *response = NULL;
 
     wifi_util_dbg_print(WIFI_MON, "%s : %d Executing provider task key : %s\n",__func__,__LINE__, elem->key);
-    if (elem->stat_desc->copy_stats_from_cache == NULL || elem->stat_desc->copy_stats_from_cache(&elem->mon_stats_config->args, &stat_pointer, &stat_array_size, mon_data) != RETURN_OK) {
+    if (elem->stat_desc->copy_stats_from_cache == NULL || elem->stat_desc->copy_stats_from_cache(elem, &stat_pointer, &stat_array_size, mon_data) != RETURN_OK) {
         wifi_util_error_print(WIFI_MON, "%s : %d provider execution failed for %s\n",__func__,__LINE__, elem->key);
         return RETURN_ERR;
     }
@@ -3803,9 +3805,10 @@ wifi_mon_collector_element_t * coordinator_create_collector_elem(wifi_mon_stats_
 wifi_mon_provider_element_t  *coordinator_create_provider_elem(wifi_mon_stats_config_t * stats_config, wifi_mon_stats_descriptor_t *stat_desc)
 {
     wifi_mon_provider_element_t *provider_elem = NULL;
+    wifi_mon_stats_descriptor_t *provider_stat_desc = NULL;
 
-    if (stat_desc->generate_stats_provider_key == NULL) {
-        wifi_util_error_print(WIFI_MON, "%s:%d: stat_desc->generate_stats_provider_key is NULL\n", __func__,__LINE__);
+    if (stats_config == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: stats_config is NULL\n", __func__,__LINE__);
         return NULL;
     }
 
@@ -3815,7 +3818,13 @@ wifi_mon_provider_element_t  *coordinator_create_provider_elem(wifi_mon_stats_co
         return NULL;
     }
 
-    provider_elem->stat_desc = stat_desc;
+    provider_stat_desc = (wifi_mon_stats_descriptor_t *)wifi_mon_get_stats_descriptor(stats_config->data_type);
+    if (provider_stat_desc == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: Invalid stats_type %d from app %d\n", __func__,__LINE__, stats_config->data_type, stats_config->inst);
+        return NULL;
+    }
+
+    provider_elem->stat_desc = provider_stat_desc;
 
     provider_elem->stat_desc->generate_stats_provider_key(stats_config, provider_elem->key, sizeof(provider_elem->key));
     provider_elem->provider_task_interval_ms = stats_config->interval_ms;

@@ -378,19 +378,27 @@ int execute_assoc_client_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *
     return RETURN_OK;
 }
 
-int copy_assoc_client_stats_from_cache(wifi_mon_stats_args_t *args, void **stats, unsigned int *stat_array_size, wifi_monitor_t *mon_cache)
+int copy_assoc_client_stats_from_cache(wifi_mon_provider_element_t *p_elem, void **stats, unsigned int *stat_array_size, wifi_monitor_t *mon_cache)
 {
     hash_map_t *sta_map = NULL;
     sta_data_t *temp_sta = NULL, *sta = NULL;
     unsigned int sta_count = 0, count = 0, vap_array_index = 0;
     wifi_front_haul_bss_t *bss_param = NULL;
     sta_key_t   sta_key;
+    wifi_mon_stats_args_t *args;
 
-    if ((args == NULL) || (mon_cache == NULL)) {
-        wifi_util_error_print(WIFI_MON, "%s : %d Invalid args args : %p mon_cache = %p\n",
-                __func__,__LINE__, args, mon_cache);
+    if ((p_elem == NULL) || (mon_cache == NULL)) {
+        wifi_util_error_print(WIFI_MON, "%s:%d Invalid args p_elem : %p mon_cache = %p\n",
+                __func__,__LINE__, p_elem, mon_cache);
         return RETURN_ERR;
     }
+    if (p_elem->mon_stats_config == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d  p_elem->mon_stats_config NULL\n",
+                __func__,__LINE__, p_elem, mon_cache);
+        return RETURN_ERR;
+    }
+    args = &(p_elem->mon_stats_config->args);
+
     bss_param = Get_wifi_object_bss_parameter(args->vap_index);
     if (bss_param == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d Failed to get bss info for vap index %d\n",
