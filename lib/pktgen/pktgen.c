@@ -62,7 +62,7 @@ static int start_wifi_blast(void)
         if (res < 0) {
             LOGE("%s: Failed to start pktgen traffic.", __func__);
         }
-        exit(0);
+        return 0;
     }
     if (pid < 0)
     {
