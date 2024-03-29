@@ -120,10 +120,21 @@ int validate_ipv4_address(char *ip) {
     struct sockaddr_in sa;
 
     if (inet_pton(AF_INET,ip, &(sa.sin_addr)) != 1 ) {
-        platform_trace_error(WIFI_PASSPOINT, "%s: Invalid IP address: %s\n",__FUNCTION__,ip);
+        platform_trace_error(WIFI_PASSPOINT, "%s: Invalid IPv4 address: %s\n",__FUNCTION__,ip);
         return RETURN_ERR;
     }
     return RETURN_OK;
+}
+
+int validate_ipv6_address(char *ip) {
+    struct sockaddr_in6 sa;
+
+    if (inet_pton(AF_INET6,ip,(&sa.sin6_addr)) != 1 ) {
+        platform_trace_error(WIFI_PASSPOINT, "%s:Invalid IPv6 address: %s\n",__FUNCTION__,ip);
+        return RETURN_ERR;
+    }
+    return RETURN_OK;
+
 }
 
 int validate_anqp(const cJSON *anqp, wifi_interworking_t *vap_info, pErr execRetVal)
@@ -950,13 +961,15 @@ int validate_radius_settings(const cJSON *radius, wifi_vap_info_t *vap_info, pEr
         }
 
 	validate_param_string(radius, "RadiusServerIPAddr", param);
-	if (validate_ipv4_address(param->valuestring) != RETURN_OK) {
-            wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Validation failed for RadiusServerIPAddr\n", __func__, __LINE__);	
-            strncpy(execRetVal->ErrorMsg, "Invalid Radius server IP",sizeof(execRetVal->ErrorMsg)-1);
-		return RETURN_ERR;
-	}
+	if (validate_ipv4_address(param->valuestring) == RETURN_OK || validate_ipv6_address(param->valuestring) == RETURN_OK) {
 #ifndef WIFI_HAL_VERSION_3_PHASE2
-	copy_string((char *)vap_info->u.bss_info.security.u.radius.ip,param->valuestring);
+	    copy_string((char *)vap_info->u.bss_info.security.u.radius.ip,param->valuestring);
+	}
+    else {
+        wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Validation failed for RadiusServerIPAddr\n", __func__, __LINE__);	
+        strncpy(execRetVal->ErrorMsg, "Invalid Radius server IP",sizeof(execRetVal->ErrorMsg)-1);
+		return RETURN_ERR;
+    }
 #else
     /* check the INET family and update the radius ip address */
     if(inet_pton(AF_INET, param->valuestring, &(vap_info->u.bss_info.security.u.radius.ip.u.IPv4addr)) > 0) {
@@ -976,13 +989,15 @@ int validate_radius_settings(const cJSON *radius, wifi_vap_info_t *vap_info, pEr
 	copy_string(vap_info->u.bss_info.security.u.radius.key, param->valuestring);
 
 	validate_param_string(radius, "SecondaryRadiusServerIPAddr", param);
-	if (validate_ipv4_address(param->valuestring) != RETURN_OK) {
-            wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Validation failed for SecondaryRadiusServerIPAddr\n", __func__, __LINE__);
-            strncpy(execRetVal->ErrorMsg, "Invalid Secondary Radius server IP",sizeof(execRetVal->ErrorMsg)-1);
-		return RETURN_ERR;
-	}
+	if (validate_ipv4_address(param->valuestring) == RETURN_OK || validate_ipv6_address(param->valuestring) == RETURN_OK) {
 #ifndef WIFI_HAL_VERSION_3_PHASE2
         copy_string((char *)vap_info->u.bss_info.security.u.radius.s_ip,param->valuestring);
+	}
+    else {
+        wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Validation failed for SecondaryRadiusServerIPAddr\n", __func__, __LINE__);
+        strncpy(execRetVal->ErrorMsg, "Invalid Secondary Radius server IP",sizeof(execRetVal->ErrorMsg)-1);
+		return RETURN_ERR;
+    }
 #else
         /* check the INET family and update the radius ip address */
         if(inet_pton(AF_INET, param->valuestring, &(vap_info->u.bss_info.security.u.radius.s_ip.u.IPv4addr)) > 0) {
@@ -1001,13 +1016,15 @@ int validate_radius_settings(const cJSON *radius, wifi_vap_info_t *vap_info, pEr
 	copy_string(vap_info->u.bss_info.security.u.radius.s_key, param->valuestring);
 
         validate_param_string(radius, "DasServerIPAddr", param);
-        if (validate_ipv4_address(param->valuestring) != RETURN_OK) {
+        if (validate_ipv4_address(param->valuestring) == RETURN_OK || validate_ipv6_address(param->valuestring) == RETURN_OK) {
+            getIpAddressFromString(param->valuestring, &vap_info->u.bss_info.security.u.radius.dasip);
+        }
+        else {
             wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Validation failed for DasServerIPAddr\n", __func__, __LINE__);
             strncpy(execRetVal->ErrorMsg, "Invalid Das Server IP Addr",sizeof(execRetVal->ErrorMsg)-1);
                 return RETURN_ERR;
         }
-	getIpAddressFromString(param->valuestring, &vap_info->u.bss_info.security.u.radius.dasip);
-
+	
         validate_param_integer(radius, "DasServerPort", param);
         vap_info->u.bss_info.security.u.radius.dasport = param->valuedouble;
 

@@ -176,6 +176,15 @@ webconfig_error_t decode_ipv4_address(char *ip) {
     return webconfig_error_none;
 }
 
+webconfig_error_t decode_ipv6_address(char *ip) {
+    struct sockaddr_in6 sa;
+
+    if (inet_pton(AF_INET6,ip, &(sa.sin6_addr)) != 1 ) {
+        return webconfig_error_decode;
+    }
+    return webconfig_error_none;
+}
+
 webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *interworking_info)
 {
     cJSON *anqpElement = NULL;
@@ -914,13 +923,15 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: RadiusServerIPAddr is NULL\n", __func__, __LINE__);
             strcpy(param->valuestring,"0.0.0.0");
     }
-    if (decode_ipv4_address(param->valuestring) != webconfig_error_none) {
+    if (decode_ipv4_address(param->valuestring) == webconfig_error_none || decode_ipv6_address(param->valuestring) == webconfig_error_none) {
+#ifndef WIFI_HAL_VERSION_3_PHASE2
+        strncpy((char *)radius_info->ip,param->valuestring,sizeof(radius_info->ip)-1);
+    }
+    else {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed for RadiusServerIPAddr\n", __func__, __LINE__);
         //strncpy(execRetVal->ErrorMsg, "Invalid Radius server IP",sizeof(execRetVal->ErrorMsg)-1);
         return webconfig_error_decode;
     }
-#ifndef WIFI_HAL_VERSION_3_PHASE2
-    strcpy((char *)radius_info->ip,param->valuestring);
 #else
     /* check the INET family and update the radius ip address */
     if(inet_pton(AF_INET, param->valuestring, &(radius_info->ip.u.IPv4addr)) > 0) {
@@ -943,14 +954,15 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: SecondaryRadiusServerIPAddr is NULL\n", __func__, __LINE__);
             strcpy(param->valuestring,"0.0.0.0");
     }
-    if (decode_ipv4_address(param->valuestring) != webconfig_error_none) {
+    if (decode_ipv4_address(param->valuestring) == webconfig_error_none || decode_ipv6_address(param->valuestring) == webconfig_error_none) {
+#ifndef WIFI_HAL_VERSION_3_PHASE2
+        strncpy((char *)radius_info->s_ip,param->valuestring,sizeof(radius_info->s_ip)-1);
+    }
+    else {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed for SecondaryRadiusServerIPAddr\n", __func__, __LINE__);
         //strncpy(execRetVal->ErrorMsg, "Invalid Secondary Radius server IP",sizeof(execRetVal->ErrorMsg)-1);
         return webconfig_error_decode;
     }
-
-#ifndef WIFI_HAL_VERSION_3_PHASE2
-    strcpy((char *)radius_info->s_ip,param->valuestring);
 #else
     /* check the INET family and update the radius ip address */
     if (inet_pton(AF_INET, param->valuestring, &(radius_info->s_ip.u.IPv4addr)) > 0) {
@@ -972,16 +984,13 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: DasServerIPAddr is NULL\n", __func__, __LINE__);
             strcpy(param->valuestring,"0.0.0.0");
     }
-    if (decode_ipv4_address(param->valuestring) != webconfig_error_none) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed for DasServerIPAddr\n", __func__, __LINE__);
-        //strncpy(execRetVal->ErrorMsg, "Invalid Das Server IP Addr",sizeof(execRetVal->ErrorMsg)-1);
-        return webconfig_error_decode;
-    }
     if (inet_pton(AF_INET, param->valuestring, &(radius_info->dasip.u.IPv4addr)) > 0) {
         radius_info->dasip.family = wifi_ip_family_ipv4;
     } else if (inet_pton(AF_INET6, param->valuestring, &(radius_info->dasip.u.IPv6addr)) > 0) {
         radius_info->dasip.family = wifi_ip_family_ipv6;
     } else {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed for DasServerIPAddr\n", __func__, __LINE__);
+        //strncpy(execRetVal->ErrorMsg, "Invalid Das Server IP Addr",sizeof(execRetVal->ErrorMsg)-1);
         return webconfig_error_decode;
     }
 
@@ -1026,13 +1035,15 @@ webconfig_error_t decode_open_radius_object(const cJSON *radius, wifi_radius_set
         } else {
             strcpy(temp_ip,param->valuestring);
         }
-        if (decode_ipv4_address(temp_ip) != webconfig_error_none) {
+        if (decode_ipv4_address(temp_ip) == webconfig_error_none || decode_ipv6_address(temp_ip) == webconfig_error_none) {
+#ifndef WIFI_HAL_VERSION_3_PHASE2
+            strncpy((char *)radius_info->ip,temp_ip,sizeof(radius_info->ip)-1);    
+        }
+        else {
             wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed for RadiusServerIPAddr\n", __func__, __LINE__);
             //strncpy(execRetVal->ErrorMsg, "Invalid Radius server IP",sizeof(execRetVal->ErrorMsg)-1);
             return webconfig_error_decode;
         }
-#ifndef WIFI_HAL_VERSION_3_PHASE2
-        strcpy((char *)radius_info->ip,temp_ip);
 #else
         /* check the INET family and update the radius ip address */
         if(inet_pton(AF_INET, temp_ip, &(radius_info->ip.u.IPv4addr)) > 0) {
@@ -1069,14 +1080,15 @@ webconfig_error_t decode_open_radius_object(const cJSON *radius, wifi_radius_set
         } else {
             strcpy(temp_ip,param->valuestring);
         }
-        if (decode_ipv4_address(temp_ip) != webconfig_error_none) {
+        if (decode_ipv4_address(temp_ip) == webconfig_error_none || decode_ipv6_address(temp_ip) == webconfig_error_none) {
+#ifndef WIFI_HAL_VERSION_3_PHASE2
+            strncpy((char *)radius_info->s_ip,temp_ip,sizeof(radius_info->s_ip)-1);
+        }
+        else {
             wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed for SecondaryRadiusServerIPAddr\n", __func__, __LINE__);
             //strncpy(execRetVal->ErrorMsg, "Invalid Secondary Radius server IP",sizeof(execRetVal->ErrorMsg)-1);
             return webconfig_error_decode;
         }
-
-#ifndef WIFI_HAL_VERSION_3_PHASE2
-        strcpy((char *)radius_info->s_ip,temp_ip);
 #else
         /* check the INET family and update the radius ip address */
         if (inet_pton(AF_INET, temp_ip, &(radius_info->s_ip.u.IPv4addr)) > 0) {
@@ -1114,15 +1126,12 @@ webconfig_error_t decode_open_radius_object(const cJSON *radius, wifi_radius_set
         } else {
             strcpy(temp_ip,param->valuestring);
         }
-        if (decode_ipv4_address(temp_ip) != webconfig_error_none) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed for DasServerIPAddr\n", __func__, __LINE__);
-            return webconfig_error_decode;
-        }
         if (inet_pton(AF_INET, temp_ip, &(radius_info->dasip.u.IPv4addr)) > 0) {
             radius_info->dasip.family = wifi_ip_family_ipv4;
         } else if (inet_pton(AF_INET6, temp_ip, &(radius_info->dasip.u.IPv6addr)) > 0) {
             radius_info->dasip.family = wifi_ip_family_ipv6;
         } else {
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed for DasServerIPAddr\n", __func__, __LINE__);
             return webconfig_error_decode;
         }
         memset(temp_ip, 0, sizeof(temp_ip));
