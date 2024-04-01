@@ -360,7 +360,10 @@ bool is_device_type_cbr2(void)
 {
     return is_supported_gateway_device("CGA4332COM");
 }
-
+bool is_device_type_scxer10(void)
+{
+    return is_supported_gateway_device("SCER11BEL");
+}
 #if DML_SUPPORT
 char* Get_PSM_Record_Status(char *recName, char *strValue)
 {
@@ -1478,7 +1481,7 @@ int get_all_param_from_psm_and_set_into_db(void)
 **      if psm-db is false and last reboot reason if not factory-reset,
 **      then update wifi-db with values from psm */
     wifi_util_info_print(WIFI_MGR,"%s \n",__func__);
-    if (is_device_type_xb7() == true || is_device_type_xb8() == true || is_device_type_vbvxb10() == true || is_device_type_sercommxb10() == true || is_device_type_sr213() == true || is_device_type_cmxb7() == true || is_device_type_cbr2() == true) {
+    if (is_device_type_xb7() == true || is_device_type_xb8() == true || is_device_type_vbvxb10() == true || is_device_type_sercommxb10() == true || is_device_type_scxer10() == true || is_device_type_sr213() == true || is_device_type_cmxb7() == true || is_device_type_cbr2() == true) {
         bool wifi_psm_db_enabled = false;
         char last_reboot_reason[32];
         memset(last_reboot_reason, 0, sizeof(last_reboot_reason));
