@@ -274,7 +274,7 @@ else
                 fi
         fi
 
-        if [ "$MODEL_NUM" == "CGM4981COM" ]; then
+        if [ "$MODEL_NUM" == "CGM4981COM" ] || [ "${MODEL_NUM}" = "CGM601TCOM" ] || [ "${MODEL_NUM}" = "SG417DBCT" ]; then
             status_6g=`dmcli eRT getv Device.WiFi.AccessPoint.$private_6g_instance.Enable | grep "value:" | cut -f2- -d:| cut -f2- -d:`
             if [ $status_6g == "true" ]; then
                 bss_status="`wl -i wl2.1 bss`"

@@ -2,7 +2,7 @@
 LOG_FILE="/rdklogs/logs/wifi_selfheal.txt"
 MODEL_NUM=`grep MODEL_NUM /etc/device.properties | cut -d "=" -f2`
 
-if [ "$MODEL_NUM" == "CGM4981COM" ] || [ "$MODEL_NUM" == "CGM4331COM" ]; then
+if [ "$MODEL_NUM" == "CGM4981COM" ] || [ "$MODEL_NUM" == "CGM4331COM" ] || [ "${MODEL_NUM}" = "CGM601TCOM" ] || [ "${MODEL_NUM}" = "SG417DBCT" ]; then
     for i in 0 1
     do
         ifconfig wl"$i" down
@@ -14,7 +14,7 @@ if [ "$MODEL_NUM" == "CGM4981COM" ] || [ "$MODEL_NUM" == "CGM4331COM" ]; then
     echo "all vaps are going to down state..." >> $LOG_FILE
 fi
 
-if [ "$MODEL_NUM" == "CGM4981COM" ]; then
+if [ "$MODEL_NUM" == "CGM4981COM" ] || [ "${MODEL_NUM}" = "CGM601TCOM" ] || [ "${MODEL_NUM}" = "SG417DBCT" ]; then
     for i in 2
     do
         ifconfig wl"$i" down
