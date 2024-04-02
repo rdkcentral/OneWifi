@@ -1919,6 +1919,12 @@ int validate_wifi_channel(wifi_freq_bands_t wifi_band, UINT *wifi_radio_channel,
 
 int validate_radio_vap(const cJSON *wifi, wifi_radio_operationParam_t *wifi_radio_info, wifi_vap_info_map_t *vap_map,  wifi_radio_feature_param_t *wifi_radio_feat_info, pErr execRetVal)
 {
+    static const unsigned int channelWidthFirst = WIFI_CHANNELBANDWIDTH_20MHZ;
+#ifdef CONFIG_IEEE80211BE
+    static const unsigned int channelWidthLast = WIFI_CHANNELBANDWIDTH_320MHZ;
+#else
+    static const unsigned int channelWidthLast = WIFI_CHANNELBANDWIDTH_80_80MHZ;
+#endif /* CONFIG_IEEE80211BE */
     const cJSON  *param;
     char *ptr, *tmp;
     unsigned int num_of_channel = 0;
@@ -1996,24 +2002,10 @@ int validate_radio_vap(const cJSON *wifi, wifi_radio_operationParam_t *wifi_radi
 	// ChannelWidth
 	validate_param_integer(wifi, "ChannelWidth", param);
 	wifi_radio_info->channelWidth = param->valuedouble;
-#ifdef FEATURE_IEEE80211BE
-    /*
-        // TODO: check here!!!
-        Why we check < 0 for the first expression and only for 4 for the last one?
-        // maybe it's for compatibility with radiocap->channelWidth mask, not sure. 
-        // expect to see:
-        if ((wifi_radio_info->channelWidth < WIFI_CHANNELBANDWIDTH_20MHZ) || (wifi_radio_info->channelWidth > WIFI_CHANNELBANDWIDTH_320MHZ)) {
-        WIFI_CHANNELBANDWIDTH_20MHZ = 0x1,
-        WIFI_CHANNELBANDWIDTH_40MHZ = 0x2,
-        WIFI_CHANNELBANDWIDTH_80MHZ = 0x4,
-        WIFI_CHANNELBANDWIDTH_160MHZ = 0x8,
-        WIFI_CHANNELBANDWIDTH_80_80MHZ = 0x10,
-        WIFI_CHANNELBANDWIDTH_320MHZ = 0x20
-    */
-#endif
-    if ((wifi_radio_info->channelWidth < 0) || (wifi_radio_info->channelWidth > 4)) {
+
+    if ((wifi_radio_info->channelWidth < channelWidthFirst) || (wifi_radio_info->channelWidth > channelWidthLast)) {
 		wifi_util_dbg_print(WIFI_PASSPOINT,"Invalid wifi radio channelWidth configuration, should be between 0 and 4\n");
-		strncpy(execRetVal->ErrorMsg, "Invalid wifi radio channelWidth config 0..4",sizeof(execRetVal->ErrorMsg)-1);
+		snprintf(execRetVal->ErrorMsg, sizeof(execRetVal->ErrorMsg), "Invalid wifi radio channelWidth config %d..%d", channelWidthFirst, channelWidthLast);
 		return RETURN_ERR;
 	}
 	

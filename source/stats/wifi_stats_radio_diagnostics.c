@@ -188,11 +188,11 @@ int execute_radio_diagnostic_stats_api(wifi_mon_collector_element_t *c_elem, wif
     } else if (radioOperation->channelWidth == WIFI_CHANNELBANDWIDTH_160MHZ) {
         snprintf(str, sizeof(str), "%s", "160MHz");
     }
-#ifdef FEATURE_80211BE
+#ifdef CONFIG_IEEE80211BE
     else if (radioOperation->channelWidth == WIFI_CHANNELBANDWIDTH_320MHZ) {
         snprintf(str, sizeof(str), "%s", "320MHz");
     }
-#endif
+#endif /* CONFIG_IEEE80211BE */
 
     strncpy((char *)radio_data->channel_bandwidth, str, sizeof(radio_data->channel_bandwidth));
 

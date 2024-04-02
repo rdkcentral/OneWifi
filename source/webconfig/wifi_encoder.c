@@ -972,6 +972,7 @@ webconfig_error_t encode_security_object(const wifi_vap_security_t *security_inf
         return webconfig_error_encode;
     }
 
+#ifndef CONFIG_IEEE80211BE
     if (security_info->mfp != wifi_mfp_cfg_required &&
         (security_info->mode == wifi_security_mode_enhanced_open ||
         security_info->mode == wifi_security_mode_wpa3_personal ||
@@ -980,6 +981,7 @@ webconfig_error_t encode_security_object(const wifi_vap_security_t *security_inf
             __LINE__, security_info->mfp, security_info->mode);
         return webconfig_error_encode;
     }
+#endif // CONFIG_IEEE80211BE
 
     if (security_info->mfp == wifi_mfp_cfg_disabled) {
         cJSON_AddStringToObject(security, "MFPConfig", "Disabled");
@@ -1676,11 +1678,16 @@ webconfig_error_t encode_wifiradiocap(wifi_platform_property_t *wifi_prop, cJSON
     cJSON *object;
     wifi_radio_capabilities_t *radiocap;
     int count = 0, temp_count = 0;
-    static const wifi_channelBandwidth_t chan_width_arr_enum[] = {WIFI_CHANNELBANDWIDTH_20MHZ,
-                                                                  WIFI_CHANNELBANDWIDTH_40MHZ,
-                                                                  WIFI_CHANNELBANDWIDTH_80MHZ,
-                                                                  WIFI_CHANNELBANDWIDTH_160MHZ,
-                                                                  WIFI_CHANNELBANDWIDTH_320MHZ};
+    static const wifi_channelBandwidth_t chan_width_arr_enum[] =
+    {
+        WIFI_CHANNELBANDWIDTH_20MHZ,
+        WIFI_CHANNELBANDWIDTH_40MHZ,
+        WIFI_CHANNELBANDWIDTH_80MHZ,
+        WIFI_CHANNELBANDWIDTH_160MHZ,
+#ifdef CONFIG_IEEE80211BE
+        WIFI_CHANNELBANDWIDTH_320MHZ,
+#endif /* CONFIG_IEEE80211BE */
+    };
     int sup_chan_width[8];
     INT channels_list[MAX_CHANNELS];
 

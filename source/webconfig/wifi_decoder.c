@@ -1268,6 +1268,7 @@ webconfig_error_t decode_security_object(const cJSON *security, wifi_vap_securit
         return webconfig_error_encode;
     }
 
+#ifndef CONFIG_IEEE80211BE
     if (security_info->mfp != wifi_mfp_cfg_required &&
         (security_info->mode == wifi_security_mode_enhanced_open ||
         security_info->mode == wifi_security_mode_wpa3_enterprise ||
@@ -1276,6 +1277,7 @@ webconfig_error_t decode_security_object(const cJSON *security, wifi_vap_securit
             __func__, __LINE__, security_info->mfp, security_info->mode);
         return webconfig_error_decode;
     }
+#endif // CONFIG_IEEE80211BE
 
     decode_param_string(security, "EncryptionMethod", param);
 
@@ -2354,9 +2356,9 @@ int validate_wifi_hw_variant(wifi_freq_bands_t radio_band, wifi_ieee80211Variant
 #if !defined (_PP203X_PRODUCT_REQ_)
         MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_AX);
 #endif
-#ifdef FEATURE_IEEE80211BE
+#ifdef CONFIG_IEEE80211BE
         MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_BE);
-#endif
+#endif /* CONFIG_IEEE80211BE */
         if(wifi_hw_mode != 0) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s() %d Error wifi_hw_mode %d\n", __FUNCTION__, __LINE__, wifi_hw_mode);
             return RETURN_ERR;
@@ -2370,9 +2372,9 @@ int validate_wifi_hw_variant(wifi_freq_bands_t radio_band, wifi_ieee80211Variant
 #if !defined (_PP203X_PRODUCT_REQ_)
         MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_AX);
 #endif
-#ifdef FEATURE_IEEE80211BE
+#ifdef CONFIG_IEEE80211BE
         MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_BE);
-#endif
+#endif /* CONFIG_IEEE80211BE */
         if (wifi_hw_mode != 0) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s() %d Error wifi_hw_mode %d\n", __FUNCTION__, __LINE__, wifi_hw_mode);
             return RETURN_ERR;
@@ -2380,9 +2382,9 @@ int validate_wifi_hw_variant(wifi_freq_bands_t radio_band, wifi_ieee80211Variant
     } else if (radio_band == WIFI_FREQUENCY_6_BAND) {
         // Mask hw variant ax, be bits
         MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_AX);
-#ifdef FEATURE_IEEE80211BE
+#ifdef CONFIG_IEEE80211BE
         MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_BE);
-#endif
+#endif /* CONFIG_IEEE80211BE */
         if (wifi_hw_mode != 0) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s() %d Error wifi_hw_mode %d\n", __FUNCTION__, __LINE__, wifi_hw_mode);
             return RETURN_ERR;
@@ -2554,6 +2556,7 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
     radio_info->channelWidth = param->valuedouble;
     if ((radio_info->channelWidth < WIFI_CHANNELBANDWIDTH_20MHZ)
         || (radio_info->channelWidth > WIFI_CHANNELBANDWIDTH_320MHZ)) {
+        //TODO: Do we need to check fot the 320MHZ ?
         if ( (radio_info->channelWidth == WIFI_CHANNELBANDWIDTH_160MHZ) && (radio_info->band == WIFI_FREQUENCY_5_BAND || radio_info->band == WIFI_FREQUENCY_5L_BAND || radio_info->band == WIFI_FREQUENCY_5H_BAND) && (radio_info->DfsEnabled != true) )
         {
             wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: DFS Disabled!! Cannot set to ChanWidth = %d  \n",__func__, __LINE__,radio_info->channelWidth);

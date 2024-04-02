@@ -201,9 +201,9 @@ struct wifiChanWidthCosaHalMap wifiChanWidthMap[] =
     {WIFI_CHANNELBANDWIDTH_80MHZ,    COSA_DML_WIFI_CHAN_BW_80M,    "80MHz"},
     {WIFI_CHANNELBANDWIDTH_160MHZ,   COSA_DML_WIFI_CHAN_BW_160M,   "160MHz"},
     {WIFI_CHANNELBANDWIDTH_80_80MHZ, COSA_DML_WIFI_CHAN_BW_80_80M, "80+80MHz"},
-#ifdef FEATURE_IEEE80211BE
+#ifdef CONFIG_IEEE80211BE
     {WIFI_CHANNELBANDWIDTH_320MHZ,   COSA_DML_WIFI_CHAN_BW_320M,   "320MHz"}
-#endif
+#endif /* CONFIG_IEEE80211BE */
 };
 
 struct wifiGuardIntervalMap wifiGuardIntervalMap[] ={
@@ -224,9 +224,9 @@ struct  wifiStdCosaHalMap wifiStdDmlMap[] =
     {WIFI_80211_VARIANT_AC, COSA_DML_WIFI_STD_ac, "ac"},
     {WIFI_80211_VARIANT_AD, COSA_DML_WIFI_STD_ad, "ad"},
     {WIFI_80211_VARIANT_AX, COSA_DML_WIFI_STD_ax, "ax"},
-#ifdef FEATURE_IEEE80211BE
+#ifdef CONFIG_IEEE80211BE
     {WIFI_80211_VARIANT_BE, COSA_DML_WIFI_STD_be, "be"}
-#endif
+#endif /* CONFIG_IEEE80211BE */
 };
 
 /**************************************************************************

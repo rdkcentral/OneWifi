@@ -2661,7 +2661,7 @@ Radio_GetParamStringValue
             }
         }
 
-#ifdef FEATURE_IEEE80211BE
+#ifdef CONFIG_IEEE80211BE
         if ( pcfg->variant & WIFI_80211_VARIANT_BE )
         {
                 if (AnscSizeOfString(buf) != 0)
@@ -2673,7 +2673,7 @@ Radio_GetParamStringValue
                     strcat(buf, "be");
                 }
         }
-#endif
+#endif /* CONFIG_IEEE80211BE */
         if ( AnscSizeOfString(buf) < *pUlSize)
         {
             AnscCopyString(pValue, buf);
@@ -4067,9 +4067,9 @@ Radio_SetParamStringValue
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: wrong wifi std String=%s\n",__func__, __LINE__,pString);
             return FALSE;
         }
-#ifdef FEATURE_IEEE80211BE
+
         // TODO: for debug purpouses only
-        static const char *wifi_mode_strings[__builtin_ctz(WIFI_80211_VARIANT_BE) + 1] =
+        static const char * const wifi_mode_strings[] =
         {
             "WIFI_80211_VARIANT_A",
             "WIFI_80211_VARIANT_B",
@@ -4079,14 +4079,15 @@ Radio_SetParamStringValue
             "WIFI_80211_VARIANT_AC",
             "WIFI_80211_VARIANT_AD",
             "WIFI_80211_VARIANT_AX",
-            "WIFI_80211_VARIANT_BE"
+#ifdef CONFIG_IEEE80211BE
+            "WIFI_80211_VARIANT_BE",
+#endif /* CONFIG_IEEE80211BE */
         };
 
-        for (size_t i = 0; i < __builtin_ctz(WIFI_80211_VARIANT_BE) + 1; i++) {
+        for (size_t i = 0; i < (sizeof(wifi_mode_strings) / sizeof(wifi_mode_strings[0])); i++) {
             if (wifi_variant & (1ul << i))
                 wifi_util_dbg_print(WIFI_DMCLI, "WIFI MODE SET[%d]: %s\n", i, wifi_mode_strings[i]);
         }
-#endif
         if (validate_wifi_hw_variant(wifi_radio->band, wifi_variant) != RETURN_OK) {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: wifi hw mode std validation failure string=%s hw variant:%d\n",__func__, __LINE__,pString, wifi_variant);
             return FALSE;

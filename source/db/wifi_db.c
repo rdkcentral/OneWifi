@@ -4760,9 +4760,12 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #else
             cfg.variant = WIFI_80211_VARIANT_G | WIFI_80211_VARIANT_N;
 #endif
-#ifdef FEATURE_IEEE80211BE
+#ifdef NEWPLATFORM_PORT
+            cfg.variant |= WIFI_80211_VARIANT_AX;
+#endif /* NEWPLATFORM_PORT */
+#ifdef CONFIG_IEEE80211BE
             cfg.variant |= WIFI_80211_VARIANT_BE;
-#endif
+#endif /* CONFIG_IEEE80211BE */
 #if defined (_PP203X_PRODUCT_REQ_)
             cfg.beaconInterval = 200;
 #endif
@@ -4782,9 +4785,9 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
             cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC | WIFI_80211_VARIANT_AX;
 #endif
 
-#ifdef FEATURE_IEEE80211BE
+#ifdef CONFIG_IEEE80211BE
             cfg.variant |= WIFI_80211_VARIANT_BE;
-#endif
+#endif /* CONFIG_IEEE80211BE */
             break;
         case WIFI_FREQUENCY_5H_BAND:
             cfg.op_class = 3;
@@ -4798,9 +4801,9 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
             cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC | WIFI_80211_VARIANT_AX;
 #endif
 
-#ifdef FEATURE_IEEE80211BE
+#ifdef CONFIG_IEEE80211BE
             cfg.variant |= WIFI_80211_VARIANT_BE;
-#endif
+#endif /* CONFIG_IEEE80211BE */
             break;
         case WIFI_FREQUENCY_6_BAND:
             cfg.op_class = 131;
@@ -4808,10 +4811,10 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_160MHZ;
             cfg.variant = WIFI_80211_VARIANT_AX;
 
-#ifdef FEATURE_IEEE80211BE
+#ifdef CONFIG_IEEE80211BE
             cfg.variant |= WIFI_80211_VARIANT_BE;
-            cfg.channelWidth = WIFI_CHANNELBANDWIDTH_320MHZ;
-#endif
+//            cfg.channelWidth = WIFI_CHANNELBANDWIDTH_320MHZ;
+#endif /* CONFIG_IEEE80211BE */
             break;
         default:
             wifi_util_error_print(WIFI_DB,"%s:%d radio index %d, invalid band %d\n", __func__,
@@ -5492,7 +5495,7 @@ void wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config)
     rfc_config.wpa3_rfc = false;
 #endif
     rfc_config.ow_core_thread_rfc = false;
-#if defined(_XER5_PRODUCT_REQ_)
+#if defined(_XER5_PRODUCT_REQ_) || defined(NEWPLATFORM_PORT)
     rfc_config.twoG80211axEnable_rfc = true;
 #else
     rfc_config.twoG80211axEnable_rfc = false;
@@ -5733,7 +5736,7 @@ static void wifidb_radio_config_upgrade(unsigned int index, wifi_radio_operation
             }
         }
     }
-#ifdef FEATURE_IEEE80211BE
+#ifdef CONFIG_IEEE80211BE
     if (g_wifidb->db_version < ONEWIFI_DB_VERSION_IEEE80211BE_FLAG) {
         wifi_util_info_print(WIFI_DB, "%s:%d upgrade radio=%d config, old db version: %d total radios: %u\n",
             __func__, __LINE__, index, g_wifidb->db_version, total_radios);
@@ -5743,7 +5746,7 @@ static void wifidb_radio_config_upgrade(unsigned int index, wifi_radio_operation
             return;
         }
     }
-#endif
+#endif /* CONFIG_IEEE80211BE */
 }
 /************************************************************************************
  ************************************************************************************

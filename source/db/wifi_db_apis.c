@@ -259,7 +259,7 @@ void rdk_wifi_radio_get_operating_standards(uint8_t r_index, char *buf)
                 strcat(buf, "ax");
             }
         }
-#ifdef FEATURE_80211BE
+#ifdef CONFIG_IEEE80211BE
         if (radio_vap_map.variant & WIFI_80211_VARIANT_BE )
         {
             if (strlen(buf) != 0)
@@ -271,7 +271,7 @@ void rdk_wifi_radio_get_operating_standards(uint8_t r_index, char *buf)
                 strcat(buf, "be");
             }
         }
-#endif
+#endif /* CONFIG_IEEE80211BE */
 }
 
 int rdk_wifi_vap_get_from_index(int wlanIndex, wifi_vap_info_t *vap_map,

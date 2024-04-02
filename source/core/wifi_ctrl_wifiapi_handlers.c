@@ -105,11 +105,11 @@ void wifiapi_printradioconfig(char *buff, unsigned int buff_size, wifi_radio_ope
     } else if (radio_config->channelWidth == WIFI_CHANNELBANDWIDTH_80_80MHZ) {
         idx += snprintf(&buff[idx], buff_size-idx, " 80+80 MHz");
     }
-#ifdef FEATURE_IEEE80211BE
+#ifdef CONFIG_IEEE80211BE
     else if (radio_config->channelWidth == WIFI_CHANNELBANDWIDTH_320MHZ) {
         idx += snprintf(&buff[idx], buff_size-idx, " 320 MHz");
     }
-#endif
+#endif /* CONFIG_IEEE80211BE */
 
     if (idx >= buff_size) return;
     idx += snprintf(&buff[idx], buff_size-idx, "\nvariant:");
@@ -131,11 +131,11 @@ void wifiapi_printradioconfig(char *buff, unsigned int buff_size, wifi_radio_ope
     } else if (radio_config->variant & WIFI_80211_VARIANT_AX) {
         idx += snprintf(&buff[idx], buff_size-idx, " ax");
     }
-#ifdef FEATURE_80211BE
+#ifdef CONFIG_IEEE80211BE
     else if (radio_config->variant & WIFI_80211_VARIANT_BE) {
         idx += snprintf(&buff[idx], buff_size-idx, " be");
     }
-#endif
+#endif /* CONFIG_IEEE80211BE */
 
     if (idx >= buff_size) return;
     idx += snprintf(&buff[idx], buff_size-idx, "\ncsa_beacon_count: %d\n", radio_config->csa_beacon_count);
