@@ -2095,17 +2095,21 @@ void calculate_throughput()
         DiffsamplesAck = (wifi_app->data.u.blaster.frameCountSample)[SampleCount+1].PacketsSentAck - (wifi_app->data.u.blaster.frameCountSample)[SampleCount].PacketsSentAck;
         Diffsamples = (wifi_app->data.u.blaster.frameCountSample)[SampleCount+1].PacketsSentTotal - (wifi_app->data.u.blaster.frameCountSample)[SampleCount].PacketsSentTotal;
 
-        tp = (double)(DiffsamplesAck*8*GetActiveMsmtPktSize());              //number of bits
-        wifi_util_dbg_print(WIFI_BLASTER,"tp = [%f bits]\n", tp );
-        tp = tp/1000000;                //convert to Mbits
-        wifi_util_dbg_print(WIFI_BLASTER,"tp = [%f Mb]\n", tp );
-        AckRate = (tp/(wifi_app->data.u.blaster.frameCountSample)[SampleCount+1].WaitAndLatencyInMs) * 1000;                        //calculate bitrate in the unit of Mbpms
-
-        tp = (double)(Diffsamples*8*GetActiveMsmtPktSize());         //number of bits
-        wifi_util_dbg_print(WIFI_BLASTER,"tp = [%f bits]\n", tp );
-        tp = tp/1000000;                //convert to Mbits
-        wifi_util_dbg_print(WIFI_BLASTER,"tp = [%f Mb]\n", tp );
-        Rate = (tp/(wifi_app->data.u.blaster.frameCountSample)[SampleCount+1].WaitAndLatencyInMs) * 1000;                   //calculate bitrate in the unit of Mbpms
+        if ((wifi_app->data.u.blaster.frameCountSample)[SampleCount+1].WaitAndLatencyInMs != 0) {
+            tp = (double)(DiffsamplesAck*8*GetActiveMsmtPktSize());              //number of bits
+            wifi_util_dbg_print(WIFI_BLASTER,"tp = [%f bits]\n", tp );
+            tp = tp/1000000;                //convert to Mbits
+            wifi_util_dbg_print(WIFI_BLASTER,"tp = [%f Mb]\n", tp );
+            AckRate = (tp/(wifi_app->data.u.blaster.frameCountSample)[SampleCount+1].WaitAndLatencyInMs) * 1000;                        //calculate bitrate in the unit of Mbpms
+            tp = (double)(Diffsamples*8*GetActiveMsmtPktSize());         //number of bits
+            wifi_util_dbg_print(WIFI_BLASTER,"tp = [%f bits]\n", tp );
+            tp = tp/1000000;                //convert to Mbits
+            wifi_util_dbg_print(WIFI_BLASTER,"tp = [%f Mb]\n", tp );
+            Rate = (tp/(wifi_app->data.u.blaster.frameCountSample)[SampleCount+1].WaitAndLatencyInMs) * 1000;                   //calculate bitrate in the unit of Mbpms
+        } else {
+            AckRate = 0;
+            Rate = 0;
+        }
 
         /* updating the throughput in the global variable */
         g_active_msmt->active_msmt_data[SampleCount].throughput = AckRate;
