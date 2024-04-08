@@ -132,6 +132,7 @@ webconfig_error_t encode_private_subdoc(webconfig_t *config, webconfig_subdoc_da
     memcpy(data->u.encoded.raw, str, strlen(str));
 
     json_param_obscure(str, "Passphrase");
+    json_param_obscure(str, "WpsConfigPin");
     wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Encoded JSON:\n%s\n", __func__, __LINE__, str);
     cJSON_free(str);
     cJSON_Delete(json);
@@ -164,6 +165,7 @@ webconfig_error_t decode_private_subdoc(webconfig_t *config, webconfig_subdoc_da
 
     str =  cJSON_Print(json);
     json_param_obscure(str, "Passphrase");
+    json_param_obscure(str, "WpsConfigPin");
     wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: decoded JSON:\n%s\n", __func__, __LINE__, str);
     cJSON_free(str);
     for (i = 0; i < doc->num_objects; i++) {

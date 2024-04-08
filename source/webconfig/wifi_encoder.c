@@ -364,6 +364,8 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
     //wpsConfigMethodsEnabled
     if(strstr(vap_info->vap_name, "private") != NULL) {
         cJSON_AddNumberToObject(vap_object, "WpsConfigMethodsEnabled", vap_info->u.bss_info.wps.methods);
+        //WpsConfigPin
+        cJSON_AddStringToObject(vap_object, "WpsConfigPin", vap_info->u.bss_info.wps.pin);
     }
 
     // BeaconRateCtl

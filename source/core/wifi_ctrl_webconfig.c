@@ -4003,6 +4003,7 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
         cJSON_AddBoolToObject(vb_entry, "WpsEnable", false);
         if(strstr(nm_s, "private") != NULL) {
             cJSON_AddNumberToObject(vb_entry, "WpsConfigMethodsEnabled", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.wps.methods);
+            cJSON_AddItemToObject(vb_entry, "WpsConfigPin", cJSON_CreateString(wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.wps.pin));
         }
         if(wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.beaconRateCtl[0] != 0) {
             cJSON_AddStringToObject(vb_entry, "BeaconRateCtl", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.beaconRateCtl);

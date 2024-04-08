@@ -2534,8 +2534,13 @@ webconfig_error_t translate_vap_info_to_vif_state_common(const wifi_vap_info_t *
     } else {
         vap_row->wps_exists=false;
     }
-    
-    strncpy(vap_row->wps_pbc_key_id, vap->u.bss_info.wps.pin, sizeof(vap_row->wps_pbc_key_id));
+
+    if (strlen(vap->u.bss_info.wps.pin) != 0) {
+        strncpy(vap_row->wps_pbc_key_id, vap->u.bss_info.wps.pin, sizeof(vap_row->wps_pbc_key_id));
+        vap_row->wps_pbc_key_id_exists = true;
+    } else {
+        vap_row->wps_pbc_key_id_exists = false;
+    }
     vap_row->vlan_id = iface_map->vlan_id;
     memset(vap_row->parent, 0, sizeof(vap_row->parent));
 

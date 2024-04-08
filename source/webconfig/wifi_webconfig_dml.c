@@ -298,6 +298,7 @@ webconfig_error_t encode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
     memcpy(data->u.encoded.raw, str, strlen(str));
 
     json_param_obscure(str, "Passphrase");
+    json_param_obscure(str, "WpsConfigPin");
     json_param_obscure(str, "RadiusSecret");
     json_param_obscure(str, "SecondaryRadiusSecret");
     json_param_obscure(str, "DasSecret");
@@ -333,6 +334,7 @@ webconfig_error_t decode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
 
     str = cJSON_Print(json);
     json_param_obscure(str, "Passphrase");
+    json_param_obscure(str, "WpsConfigPin");
     json_param_obscure(str, "RadiusSecret");
     json_param_obscure(str, "SecondaryRadiusSecret");
     json_param_obscure(str, "DasSecret");

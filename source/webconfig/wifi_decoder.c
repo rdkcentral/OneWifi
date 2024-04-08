@@ -1577,6 +1577,9 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
     if(strstr(vap_info->vap_name, "private") != NULL) {
         decode_param_integer(vap, "WpsConfigMethodsEnabled", param);
         vap_info->u.bss_info.wps.methods = param->valuedouble;
+        //WpsConfigPin
+        decode_param_string(vap, "WpsConfigPin", param);
+        strcpy(vap_info->u.bss_info.wps.pin, param->valuestring);
     }
 
     // BeaconRateCtl
