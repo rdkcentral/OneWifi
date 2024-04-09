@@ -820,8 +820,11 @@ void ext_try_connecting(vap_svc_t *svc)
 
         wifi_util_info_print(WIFI_CTRL,"%s:%d connecting to ssid:%s bssid:%s rssi:%d frequency:%d on vap:%d radio:%d\n",
                     __func__, __LINE__, candidate->external_ap.ssid,
-                    to_mac_str(candidate->external_ap.bssid, bssid_str),
-                    candidate->external_ap.rssi, candidate->external_ap.freq, vap_index, radio_index);
+                    to_mac_str(candidate->external_ap.bssid, bssid_str), candidate->external_ap.rssi,
+                    candidate->external_ap.freq, vap_index, radio_index);
+        // wifi-telemetry print
+        wifi_util_info_print(WIFI_CTRL,"%s:%d connecting to rssi:%d\n",
+                    __func__, __LINE__, candidate->external_ap.rssi);
         // Set to disabled in order to detect state change on connection retry
         reset_sta_state(svc, vap_index);
         ext->conn_retry++;
