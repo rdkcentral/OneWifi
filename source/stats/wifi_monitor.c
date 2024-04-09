@@ -3869,13 +3869,23 @@ void coordinator_free_collector_elem(wifi_mon_collector_element_t **collector_el
 
 int coordinator_create_task(wifi_mon_collector_element_t **collector_elem, wifi_mon_stats_config_t *stats_config, wifi_mon_stats_descriptor_t *stat_desc)
 {
-    wifi_mon_provider_element_t *provider_elem = NULL;
-    *collector_elem = coordinator_create_collector_elem(stats_config, stat_desc);
-    if (*collector_elem == NULL) {
+    if (collector_elem == NULL || stats_config == NULL || stat_desc == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: Null pointer\n", __func__,__LINE__);
         return RETURN_ERR;
     }
 
-    coordinator_create_collector_task(*collector_elem);
+    wifi_mon_provider_element_t *provider_elem = NULL;
+    *collector_elem = coordinator_create_collector_elem(stats_config, stat_desc);
+    if (*collector_elem == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: coordinator_create_collector_elem failed\n", __func__,__LINE__);
+        return RETURN_ERR;
+    }
+
+    if (coordinator_create_collector_task(*collector_elem) != RETURN_OK) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: coordinator_create_collector_task failed\n", __func__,__LINE__);
+        coordinator_free_collector_elem(collector_elem);
+        return RETURN_ERR;
+    }
 
     (*collector_elem)->provider_list = hash_map_create();
     if ((*collector_elem)->provider_list == NULL) {
@@ -3886,14 +3896,29 @@ int coordinator_create_task(wifi_mon_collector_element_t **collector_elem, wifi_
 
     provider_elem = coordinator_create_provider_elem(stats_config, stat_desc);
     if (provider_elem == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: coordinator_create_provider_elem failed\n", __func__,__LINE__);
+        return RETURN_ERR;
+    }
+    char* key_copy = strdup(provider_elem->key);
+    if (key_copy == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: strdup failed\n", __func__,__LINE__);
         coordinator_free_provider_elem(&provider_elem);
         return RETURN_ERR;
     }
 
-    hash_map_put((*collector_elem)->provider_list, strdup(provider_elem->key), provider_elem);
+    if (hash_map_put((*collector_elem)->provider_list, key_copy, provider_elem) != 0) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: hash_map_put failed\n", __func__,__LINE__);
+        free(key_copy);
+        coordinator_free_provider_elem(&provider_elem);
+        return RETURN_ERR;
+    }
 
     if (stat_desc->copy_stats_from_cache != NULL) {
-        coordinator_create_provider_task(provider_elem);
+        if (coordinator_create_provider_task(provider_elem) != RETURN_OK) {
+            wifi_util_error_print(WIFI_MON, "%s:%d: coordinator_create_provider_task failed\n", __func__,__LINE__);
+            coordinator_free_provider_elem(&provider_elem);
+            return RETURN_ERR;
+        }
     } else {
         provider_elem->provider_task_sched_id = 0;
     }
@@ -3931,16 +3956,20 @@ int provider_task_update(wifi_mon_provider_element_t *provider_elem, unsigned lo
 
 int coordinator_update_task(wifi_mon_collector_element_t *collector_elem, wifi_mon_stats_config_t *stats_config)
 {
+    if (collector_elem == NULL || collector_elem->stat_desc == NULL || collector_elem->provider_list == NULL || stats_config == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: Null pointer\n", __func__,__LINE__);
+        return RETURN_ERR;
+        }
     unsigned long new_collector_interval = 0;
-
     wifi_mon_provider_element_t *dup_provider_elem = NULL;
-
     dup_provider_elem = coordinator_create_provider_elem(stats_config, collector_elem->stat_desc);
     if (dup_provider_elem == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: coordinator_create_provider_elem failed\n", __func__,__LINE__);
         return RETURN_ERR;
     }
 
     if (coordinator_calculate_clctr_interval(collector_elem, dup_provider_elem, &new_collector_interval) != RETURN_OK) {
+        coordinator_free_provider_elem(&dup_provider_elem);
         return RETURN_ERR;
     }
 
@@ -3949,9 +3978,26 @@ int coordinator_update_task(wifi_mon_collector_element_t *collector_elem, wifi_m
     wifi_mon_provider_element_t *provider_elem = (wifi_mon_provider_element_t *)hash_map_get(collector_elem->provider_list, dup_provider_elem->key);
     if (provider_elem == NULL) {
         provider_elem = dup_provider_elem;
-        hash_map_put(collector_elem->provider_list, strdup(provider_elem->key), provider_elem);
+        char* key_copy = strdup(provider_elem->key);
+        if (key_copy == NULL) {
+            wifi_util_error_print(WIFI_MON, "%s:%d: strdup failed\n", __func__,__LINE__);
+            coordinator_free_provider_elem(&dup_provider_elem);
+            return RETURN_ERR;
+        }
+
+        if (hash_map_put(collector_elem->provider_list, key_copy, provider_elem) != 0) {
+            wifi_util_error_print(WIFI_MON, "%s:%d: hash_map_put failed\n", __func__,__LINE__);
+            free(key_copy);
+            coordinator_free_provider_elem(&dup_provider_elem);
+            return RETURN_ERR;
+        }
+
         if (collector_elem->stat_desc->copy_stats_from_cache != NULL) {
-            coordinator_create_provider_task(provider_elem);
+            if (coordinator_create_provider_task(provider_elem) != RETURN_OK) {
+                wifi_util_error_print(WIFI_MON, "%s:%d: coordinator_create_provider_task failed\n", __func__,__LINE__);
+                coordinator_free_provider_elem(&provider_elem);
+                return RETURN_ERR;
+            }
         }
     } else {
         memcpy(provider_elem->mon_stats_config, dup_provider_elem->mon_stats_config, sizeof(wifi_mon_stats_config_t));
@@ -4050,7 +4096,10 @@ int coordinator_check_stats_config(wifi_mon_stats_config_t *mon_stats_config)
     }
 
     collector_list = coordinator_get_collector_list();
-
+    if (collector_list == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: Failed to get collector list\n", __func__,__LINE__);
+        return RETURN_ERR;
+    }
     collector_elem = (wifi_mon_collector_element_t *)hash_map_get(collector_list, stats_key);
     if (collector_elem == NULL) {
         if (mon_stats_config->req_state == mon_stats_request_state_start) {
@@ -4058,7 +4107,12 @@ int coordinator_check_stats_config(wifi_mon_stats_config_t *mon_stats_config)
                 wifi_util_error_print(WIFI_MON, "%s:%d: create task failed for key : %s for app  %d\n", __func__,__LINE__, stats_key, mon_stats_config->inst);
                 return RETURN_ERR;
             }
-            hash_map_put(collector_list, strdup(stats_key), collector_elem);
+            char *key_copy = strdup(stats_key);
+            if (key_copy == NULL) {
+                wifi_util_error_print(WIFI_MON, "%s:%d: Failed to duplicate key\n", __func__,__LINE__);
+                return RETURN_ERR;
+            }
+            hash_map_put(collector_list, key_copy, collector_elem);
             wifi_util_info_print(WIFI_MON, "%s:%d: created task for key : %s for app  %d\n", __func__,__LINE__, stats_key, mon_stats_config->inst);
         } else {
             wifi_util_error_print(WIFI_MON, "%s:%d: Task is not running. Request state %d is not expected\n", __func__,__LINE__, mon_stats_config->req_state);
