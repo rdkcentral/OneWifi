@@ -12602,88 +12602,82 @@ InterworkingElement_Validate
     else //VenueType must be as per specifications from WiFi Alliance for every valid value of vnue group
     {
         int updateInvalidType = 0;
-        if ((vap_pcfg->u.bss_info.interworking.interworking.venueType < 256) && (vap_pcfg->u.bss_info.interworking.interworking.venueType >= 0))
-        {
-            switch (vap_pcfg->u.bss_info.interworking.interworking.venueGroup)
-            {
-                case 0:
-                    if (vap_pcfg->u.bss_info.interworking.interworking.venueType != 0)
-                    {
-                        updateInvalidType = 1;
-                    }
-                    break;
-                case 1:
-                    if (!((vap_pcfg->u.bss_info.interworking.interworking.venueType < 16) && (vap_pcfg->u.bss_info.interworking.interworking.venueType >= 0)))
-                    {
-                        updateInvalidType = 1;
-                    }
-                    break;
-                case 2:
-                    if (!((vap_pcfg->u.bss_info.interworking.interworking.venueType < 10) && (vap_pcfg->u.bss_info.interworking.interworking.venueType >= 0)))
-                    {
-                        updateInvalidType = 1;
-                    }
-                    break;
-                case 3:
-                    if (!((vap_pcfg->u.bss_info.interworking.interworking.venueType < 4) && (vap_pcfg->u.bss_info.interworking.interworking.venueType >= 0)))
-                    {
-                        updateInvalidType = 1;
-                    }
-                    break;
-                case 4:
-                    if (!((vap_pcfg->u.bss_info.interworking.interworking.venueType < 2) && (vap_pcfg->u.bss_info.interworking.interworking.venueType >= 0)))
-                    {
-                        updateInvalidType = 1;
-                    }
-                    break;
-                case 5:
-                    if (!((vap_pcfg->u.bss_info.interworking.interworking.venueType < 6) && (vap_pcfg->u.bss_info.interworking.interworking.venueType >= 0)))
-                    {
-                        updateInvalidType = 1;
-                    }
-                    break;
-                case 6:
-                    if (!((vap_pcfg->u.bss_info.interworking.interworking.venueType < 6) && (vap_pcfg->u.bss_info.interworking.interworking.venueType >= 0)))
-                    {
-                        updateInvalidType = 1;
-                    }
-                    break;
-                case 7:
-                    if (!((vap_pcfg->u.bss_info.interworking.interworking.venueType < 5) && (vap_pcfg->u.bss_info.interworking.interworking.venueType >= 0)))
-                    {
-                        updateInvalidType = 1;
-                    }
-                    break;
 
-                case 8:
-                    if (vap_pcfg->u.bss_info.interworking.interworking.venueType != 0)
-                    {
-                        updateInvalidType = 1;
-                    }
-                    break;
-                case 9:
-                    if (vap_pcfg->u.bss_info.interworking.interworking.venueType != 0)
-                    {
-                        updateInvalidType = 1;
-                    }
-                    break;
-                case 10:
-                    if (!((vap_pcfg->u.bss_info.interworking.interworking.venueType < 8) && (vap_pcfg->u.bss_info.interworking.interworking.venueType >= 0)))
-                    {
-                        updateInvalidType = 1;
-                    }
-                    break;
-                case 11:
-                    if (!((vap_pcfg->u.bss_info.interworking.interworking.venueType < 7) && (vap_pcfg->u.bss_info.interworking.interworking.venueType >= 0)))
-                    {
-                        updateInvalidType = 1;
-                    }
-                    break;
-            }
-        }
-        else
+        switch (vap_pcfg->u.bss_info.interworking.interworking.venueGroup)
         {
-            updateInvalidType = 1;
+            case 0:
+                if (vap_pcfg->u.bss_info.interworking.interworking.venueType != 0)
+                {
+                    updateInvalidType = 1;
+                }
+                break;
+            case 1:
+                if (!((vap_pcfg->u.bss_info.interworking.interworking.venueType < 16) && (vap_pcfg->u.bss_info.interworking.interworking.venueType >= 0)))
+                {
+                    updateInvalidType = 1;
+                }
+                break;
+            case 2:
+                if (!((vap_pcfg->u.bss_info.interworking.interworking.venueType < 10) && (vap_pcfg->u.bss_info.interworking.interworking.venueType >= 0)))
+                {
+                    updateInvalidType = 1;
+                }
+                break;
+            case 3:
+                if (!((vap_pcfg->u.bss_info.interworking.interworking.venueType < 4) && (vap_pcfg->u.bss_info.interworking.interworking.venueType >= 0)))
+                {
+                    updateInvalidType = 1;
+                }
+                break;
+            case 4:
+                if (!((vap_pcfg->u.bss_info.interworking.interworking.venueType < 2) && (vap_pcfg->u.bss_info.interworking.interworking.venueType >= 0)))
+                {
+                    updateInvalidType = 1;
+                }
+                break;
+            case 5:
+                if (!((vap_pcfg->u.bss_info.interworking.interworking.venueType < 6) && (vap_pcfg->u.bss_info.interworking.interworking.venueType >= 0)))
+                {
+                    updateInvalidType = 1;
+                }
+                break;
+            case 6:
+                if (!((vap_pcfg->u.bss_info.interworking.interworking.venueType < 6) && (vap_pcfg->u.bss_info.interworking.interworking.venueType >= 0)))
+                {
+                    updateInvalidType = 1;
+                }
+                break;
+            case 7:
+                if (!((vap_pcfg->u.bss_info.interworking.interworking.venueType < 5) && (vap_pcfg->u.bss_info.interworking.interworking.venueType >= 0)))
+                {
+                    updateInvalidType = 1;
+                }
+                break;
+
+            case 8:
+                if (vap_pcfg->u.bss_info.interworking.interworking.venueType != 0)
+                {
+                    updateInvalidType = 1;
+                }
+                break;
+            case 9:
+                if (vap_pcfg->u.bss_info.interworking.interworking.venueType != 0)
+                {
+                    updateInvalidType = 1;
+                }
+                break;
+            case 10:
+                if (!((vap_pcfg->u.bss_info.interworking.interworking.venueType < 8) && (vap_pcfg->u.bss_info.interworking.interworking.venueType >= 0)))
+                {
+                    updateInvalidType = 1;
+                }
+                break;
+            case 11:
+                if (!((vap_pcfg->u.bss_info.interworking.interworking.venueType < 7) && (vap_pcfg->u.bss_info.interworking.interworking.venueType >= 0)))
+                {
+                    updateInvalidType = 1;
+                }
+                break;
         }
 
         if(updateInvalidType)
