@@ -240,15 +240,6 @@ static int csi_update_pinger(int ap_index, mac_addr_t mac_addr, bool pause_pinge
 static int clientdiag_sheduler_enable(int ap_index);
 #endif // CCSP_COMMON
 
-#if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
-static int off_chan_scan_init (void *args);
-void off_chan_print_scan_data (unsigned int radio_index, wifi_neighbor_ap2_t *neighbor_result, int array_size);
-#define MAX_5G_CHANNELS 25
-#define DFS_START 52
-#define DFS_END 144
-#define OFFCHAN_DEFAULT_NSCAN_IN_SEC 10800
-#endif //FEATURE_OFF_CHANNEL_SCAN_5G
-
 void deinit_wifi_monitor(void);
 void SetBlasterMqttTopic(char *mqtt_topic);
 int radio_diagnostics(void *arg);
@@ -2684,27 +2675,8 @@ int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
 
 static void scheduler_telemetry_tasks(void)
 {
-#if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
-    wifi_mgr_t *mgr = get_wifimgr_obj();
-    unsigned int total_radios = getNumberRadios();
-    unsigned int rad_index = 0;
-#endif //FEATURE_OFF_CHANNEL_SCAN_5G
     if (!g_monitor_module.inst_msmt_id) {
         g_monitor_module.curr_chan_util_period = get_chan_util_upload_period();
-#if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
-        for (rad_index = 0; rad_index < total_radios; rad_index++)
-        {
-            if (is_radio_band_5G(mgr->radio_config[rad_index].oper.band))
-            {
-                wifi_util_dbg_print(WIFI_MON,"Off_channel_scan Nscan: %lu\n", g_monitor_module.off_channel_cfg[rad_index].NscanSec);
-                if (g_monitor_module.off_channel_cfg[rad_index].NscanSec == 0) {
-                    /*If Nscan is 0 at boot up, running scheduler at default value*/
-                    g_monitor_module.off_channel_cfg[rad_index].NscanSec = OFFCHAN_DEFAULT_NSCAN_IN_SEC;
-                }
-                g_monitor_module.off_channel_cfg[rad_index].curr_off_channel_scan_period = g_monitor_module.off_channel_cfg[rad_index].NscanSec;
-            }
-        }
-#endif //FEATURE_OFF_CHANNEL_SCAN_5G
 
         //5 minutes
         if (g_monitor_module.refresh_task_id == 0) {
@@ -2720,17 +2692,6 @@ static void scheduler_telemetry_tasks(void)
             scheduler_add_timer_task(g_monitor_module.sched, FALSE, &g_monitor_module.radio_diagnostics_id, radio_diagnostics, NULL,
                     RADIO_STATS_INTERVAL_MS, 0, FALSE);
         }
-#if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
-        for (rad_index = 0; rad_index < total_radios; rad_index++)
-        {
-            if (g_monitor_module.off_channel_scan_id[rad_index] == 0) {
-                if (is_radio_band_5G(mgr->radio_config[rad_index].oper.band)) {
-                    scheduler_add_timer_task(g_monitor_module.sched, FALSE, &g_monitor_module.off_channel_scan_id[rad_index], off_chan_scan_init,
-                            &g_monitor_module.off_channel_cfg[rad_index].radio_index, (((int)g_monitor_module.off_channel_cfg[rad_index].NscanSec + g_monitor_module.off_channel_cfg[rad_index].TidleSec)*SEC_TO_MILLISEC), 0, FALSE);
-                }
-            }
-        }
-#endif //FEATURE_OFF_CHANNEL_SCAN_5G
     } else {
         if (g_monitor_module.refresh_task_id != 0) {
             scheduler_cancel_timer_task(g_monitor_module.sched, g_monitor_module.refresh_task_id);
@@ -2745,17 +2706,6 @@ static void scheduler_telemetry_tasks(void)
             scheduler_cancel_timer_task(g_monitor_module.sched, g_monitor_module.radio_diagnostics_id);
             g_monitor_module.radio_diagnostics_id = 0;
         }
-#if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
-        for (rad_index = 0; rad_index < total_radios; rad_index++)
-        {
-            if (g_monitor_module.off_channel_scan_id[rad_index] != 0) {
-                if (is_radio_band_5G(mgr->radio_config[rad_index].oper.band)) {
-                    scheduler_cancel_timer_task(g_monitor_module.sched, g_monitor_module.off_channel_scan_id[rad_index]);
-                    g_monitor_module.off_channel_scan_id[rad_index] = 0;
-                }
-            }
-        }
-#endif //FEATURE_OFF_CHANNEL_SCAN_5G
         if (g_monitor_module.client_telemetry_id != 0) {
             scheduler_cancel_timer_task(g_monitor_module.sched, g_monitor_module.client_telemetry_id);
             g_monitor_module.client_telemetry_id = 0;
@@ -2803,11 +2753,9 @@ wbm_mqttcm_stop(void)
 int init_wifi_monitor()
 {
     unsigned int i = 0;
-    unsigned int rad_ind = 0;
-    wifi_mgr_t *mgr = get_wifimgr_obj();
-    unsigned int total_radios = getNumberRadios();
     pthread_condattr_t cond_attr;
 #ifdef CCSP_COMMON
+    wifi_mgr_t *mgr = get_wifimgr_obj();
     unsigned int uptimeval = 0;
     int rssi;
     UINT vap_index, radio;
@@ -2827,21 +2775,6 @@ int init_wifi_monitor()
     }
 #endif
     update_ecomode_radios();
-    for (rad_ind = 0; rad_ind < total_radios; rad_ind++)
-    {
-        g_monitor_module.off_channel_cfg[rad_ind].radio_index = rad_ind;
-        if(!(is_radio_band_5G(mgr->radio_config[rad_ind].oper.band))) {
-            if(SetOffChanParams(rad_ind,0,0,0) != RETURN_OK) {
-                wifi_util_error_print(WIFI_MON,"%s:%d: Unable to set Offchannel Params\n", __func__, __LINE__);
-            }
-            continue;
-        }
-        if(SetOffChanParams(rad_ind,mgr->radio_config[rad_ind].feature.OffChanTscanInMsec,mgr->radio_config[rad_ind].feature.OffChanNscanInSec,mgr->radio_config[rad_ind].feature.OffChanTidleInSec) != RETURN_OK) {
-            wifi_util_error_print(WIFI_MON,"%s:%d: Unable to set Offchannel Params\n", __func__, __LINE__);
-        }
-    }
-
-    memset(&g_monitor_module.neighbor_scan_cfg, 0, sizeof(neighscan_diag_cfg_t));    
 #if CCSP_COMMON
     memset(g_monitor_module.cliStatsList, 0, MAX_VAP);
     g_monitor_module.upload_period = get_upload_period(60);//Default value 60
@@ -2931,15 +2864,7 @@ int init_wifi_monitor()
     g_monitor_module.vap_status_id = 0;
 #endif // CCSP_COMMON
     g_monitor_module.radio_diagnostics_id = 0;
-#if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
-    for (rad_ind = 0; rad_ind < total_radios; rad_ind++)
-    {
-        wifi_util_dbg_print(WIFI_MON,"%s:%d radio_index: %u, MAX_RADIOS: %d\n", __func__,__LINE__, rad_ind, total_radios);
-        if(is_radio_band_5G(mgr->radio_config[rad_ind].oper.band)) {
-            g_monitor_module.off_channel_scan_id[rad_ind] = 0;
-        }
-    }
-#endif //FEATURE_OFF_CHANNEL_SCAN_5G
+
 #ifdef CCSP_COMMON
     g_monitor_module.csi_sched_id = 0;
     g_monitor_module.csi_sched_interval = 0;
@@ -3140,316 +3065,6 @@ int GetInstAssocDevSchemaIdBufferSize()
 }
 #endif // CCSP_COMMON 
 
-/**************************************************************************************************************************/
-/*                                                                                                                        */
-/* FUNCTION NAME : SetOffChanTscan                                                                                       */
-/*                                                                                                                        */
-/* DESCRIPTION   : This function sets Tscan param of Off Channel Scan                                                     */
-/*                                                                                                                        */
-/* INPUT         : R_Index - Radio Index                                                                                  */
-/*                 Tscan - Time that a single channel is scanned (msec)                                                   */
-/*                                                                                                                        */
-/*                                                                                                                        */
-/* OUTPUT        : NONE                                                                                                   */
-/*                                                                                                                        */
-/* RETURN VALUE  : Whether set is success                                                                                 */
-/*                                                                                                                        */
-/**************************************************************************************************************************/
-int SetOffChanTscan(unsigned int R_Index, ULONG Tscan)
-{
-#if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
-    if (R_Index  < getNumberRadios()) {
-        if (g_monitor_module.off_channel_cfg[R_Index].TscanMsec == Tscan) {
-            return RETURN_OK;
-        }
-        wifi_util_dbg_print(WIFI_MON,"%s:%d RADIO_INDEX:%u New value: %lu\n",__func__,__LINE__,R_Index,Tscan);
-        memset(&g_monitor_module.off_channel_cfg[R_Index].TscanMsec, 0, sizeof(g_monitor_module.off_channel_cfg[R_Index].TscanMsec));
-        pthread_mutex_lock(&g_monitor_module.queue_lock);
-        g_monitor_module.off_channel_cfg[R_Index].TscanMsec = Tscan;
-        wifi_util_dbg_print(WIFI_MON,"%s:%d Off_channel_scan radio:%u Changed value of Tscan:%lu\n",__func__,__LINE__,R_Index, g_monitor_module.off_channel_cfg[R_Index].TscanMsec);
-        pthread_mutex_unlock(&g_monitor_module.queue_lock);
-        return RETURN_OK;
-    }
-    wifi_util_error_print(WIFI_MON,"%s:%d: Invalid radio index\n", __func__, __LINE__);
-    return RETURN_ERR;
-#else //FEATURE_OFF_CHANNEL_SCAN_5G
-    return RETURN_OK; //making stub call when distro not defined
-#endif //FEATURE_OFF_CHANNEL_SCAN_5G
-}
-
-/**************************************************************************************************************************/
-/*                                                                                                                        */
-/* FUNCTION NAME : SetOffChanNscan                                                                                       */
-/*                                                                                                                        */
-/* DESCRIPTION   : This function sets Nscan param of Off Channel Scan                                                     */
-/*                                                                                                                        */
-/* INPUT         : R_Index - Radio Index                                                                                  */
-/*                 Nscan - number of times a single channel must be scanned within a day, converted to seconds and stored */
-/*                                                                                                                        */
-/*                                                                                                                        */
-/* OUTPUT        : NONE                                                                                                   */
-/*                                                                                                                        */
-/* RETURN VALUE  : Whether set is success                                                                                 */
-/*                                                                                                                        */
-/**************************************************************************************************************************/
-int SetOffChanNscan(unsigned int R_Index, ULONG Nscan)
-{
-#if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
-    if (R_Index  < getNumberRadios()) {
-        if (g_monitor_module.off_channel_cfg[R_Index].NscanSec == Nscan) {
-            return RETURN_OK;
-        }
-        wifi_util_dbg_print(WIFI_MON,"%s:%d RADIO_INDEX:%u New value: %lu\n",__func__,__LINE__,R_Index,Nscan);
-        memset(&g_monitor_module.off_channel_cfg[R_Index].NscanSec, 0, sizeof(g_monitor_module.off_channel_cfg[R_Index].NscanSec));
-        pthread_mutex_lock(&g_monitor_module.queue_lock);
-        g_monitor_module.off_channel_cfg[R_Index].NscanSec = Nscan;
-        wifi_util_dbg_print(WIFI_MON,"%s:%d Off_channel_scan radio:%u Changed value of Nscan:%lu\n",__func__,__LINE__,R_Index, g_monitor_module.off_channel_cfg[R_Index].NscanSec);
-        pthread_mutex_unlock(&g_monitor_module.queue_lock);
-        return RETURN_OK;
-    }
-    wifi_util_error_print(WIFI_MON,"%s:%d: Invalid radio index\n", __func__, __LINE__);
-    return RETURN_ERR;
-#else //FEATURE_OFF_CHANNEL_SCAN_5G
-    return RETURN_OK; //making stub call when distro not defined
-#endif //FEATURE_OFF_CHANNEL_SCAN_5G
-}
-
-/**************************************************************************************************************************/
-/*                                                                                                                        */
-/* FUNCTION NAME : SetOffChanTidle                                                                                        */
-/*                                                                                                                        */
-/* DESCRIPTION   : This function sets Tidle param of Off Channel Scan                                                     */
-/*                                                                                                                        */
-/* INPUT         : R_Index - Radio Index                                                                                  */
-/*                 Tidle - time to account for network idleness (sec)                                                     */
-/*                                                                                                                        */
-/*                                                                                                                        */
-/* OUTPUT        : NONE                                                                                                   */
-/*                                                                                                                        */
-/* RETURN VALUE  : Whether set is success                                                                                 */
-/*                                                                                                                        */
-/**************************************************************************************************************************/
-int SetOffChanTidle(unsigned int R_Index, ULONG Tidle)
-{
-#if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
-    if (R_Index  < getNumberRadios()) {
-        if (g_monitor_module.off_channel_cfg[R_Index].TidleSec == Tidle) {
-            return RETURN_OK;
-        }
-        wifi_util_dbg_print(WIFI_MON,"%s:%d RADIO_INDEX:%u New value: %lu\n",__func__,__LINE__,R_Index,Tidle);
-        memset(&g_monitor_module.off_channel_cfg[R_Index].TidleSec, 0, sizeof(g_monitor_module.off_channel_cfg[R_Index].TidleSec));
-        pthread_mutex_lock(&g_monitor_module.queue_lock);
-        g_monitor_module.off_channel_cfg[R_Index].TidleSec = Tidle;
-        wifi_util_dbg_print(WIFI_MON,"%s:%d Off_channel_scan radio:%u Changed value of Tidle:%lu\n",__func__,__LINE__,R_Index, g_monitor_module.off_channel_cfg[R_Index].TidleSec);
-        pthread_mutex_unlock(&g_monitor_module.queue_lock);
-        return RETURN_OK;
-    }
-    wifi_util_error_print(WIFI_MON,"%s:%d: Invalid radio index\n", __func__, __LINE__);
-    return RETURN_ERR;
-#else //FEATURE_OFF_CHANNEL_SCAN_5G
-    return RETURN_OK; //making stub call when distro not defined
-#endif //FEATURE_OFF_CHANNEL_SCAN_5G
-}
-/**************************************************************************************************************************/
-/*                                                                                                                        */
-/* FUNCTION NAME : SetOffChanParams                                                                                       */
-/*                 Wrapper for setting params                                                                             */
-/* DESCRIPTION   : This function sets Off Channel Scan Params                                                             */
-/*                                                                                                                        */
-/* INPUT         : R_Index - Radio Index                                                                                  */
-/*                 Tscan - Time that a single channel is scanned (msec)                                                   */
-/*                 Nscan - number of times a single channel must be scanned within a day, converted to seconds and stored */
-/*                 Tidle - time to account for network idleness (sec)                                                     */
-/* OUTPUT        : NONE                                                                                                   */
-/*                                                                                                                        */
-/* RETURN VALUE  : Whether set is success                                                                                 */
-/*                                                                                                                        */
-/**************************************************************************************************************************/
-int SetOffChanParams(unsigned int R_Index, ULONG Tscan, ULONG Nscan, ULONG Tidle)
-{
-#if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
-    int ret = 0;
-    ret |= SetOffChanTscan(R_Index, Tscan);
-    ret |= SetOffChanNscan(R_Index, Nscan);
-    ret |= SetOffChanTidle(R_Index, Tidle);
-    if(ret != 0)
-    {
-        wifi_util_error_print(WIFI_MON,"%s:%d:Error in assignment for %u\n", __func__, __LINE__, R_Index);
-        return RETURN_ERR;
-    }
-#endif //FEATURE_OFF_CHANNEL_SCAN_5G
-    return RETURN_OK;
-}
-
-#if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
-/**************************************************************************************************************************/
-/*                                                                                                                        */
-/* FUNCTION NAME : off_chan_scan_init                                                                                     */
-/*                                                                                                                        */
-/* DESCRIPTION   : This function prints the required information for 5G off channel scan feature into WiFiLog.txt         */
-/*                                                                                                                        */
-/* INPUT         : radio index                                                                                                   */
-/*                                                                                                                        */
-/* OUTPUT        :  Status of 5G Off channel scan feature, DFS Feature, value of Parameters related to Off channel scan.  */
-/*                  If scanned, No of BSS heard on each channel into WiFiLog.txt                                          */
-/*                                                                                                                        */
-/* RETURN VALUE  : INT                                                                                                    */
-/*                                                                                                                        */
-/**************************************************************************************************************************/
-static int off_chan_scan_init (void *args)
-{
-    unsigned int radio_index;
-    radio_index = *(unsigned int *) args;
-    wifi_util_dbg_print(WIFI_MON,"%s:%d: Running Off_channel_scan for %u\n", __func__, __LINE__, radio_index);
-    wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
-    ULONG Tscan = 0, Nscan = 0, Tidle = 0, NChannel = 0;
-    wifi_neighborScanMode_t scanMode = WIFI_RADIO_SCAN_MODE_OFFCHAN;
-
-    bool dfs_enable = g_wifi_mgr->rfc_dml_parameters.dfs_rfc;
-    bool dfs_boot = g_wifi_mgr->rfc_dml_parameters.dfsatbootup_rfc;
-    bool dfs = (dfs_enable | dfs_boot); /* checking if dfs is enabled in run time or boot up */
-    bool off_scan_rfc = g_wifi_mgr->rfc_dml_parameters.wifioffchannelscan_rfc;
-    Tscan = g_monitor_module.off_channel_cfg[radio_index].TscanMsec;
-    Nscan = g_monitor_module.off_channel_cfg[radio_index].NscanSec;
-    Tidle = g_monitor_module.off_channel_cfg[radio_index].TidleSec;
-    CcspTraceDebug(("Off_channel_scan feature RFC = %d; TScan = %lu; NScan = %lu; Tidle = %lu; DFS:%d\n", off_scan_rfc, Tscan, Nscan, Tidle, dfs));
-
-    if (!(is_radio_band_5G(g_wifi_mgr->radio_config[radio_index].oper.band))) {
-        CcspTraceError(("Off_channel_scan Cannot run for radio index: %d as feature for the same is not developed yet\n",radio_index + 1));
-        return TIMER_TASK_ERROR;
-    }
-
-    /*Checking if rfc is disabled or if any one of the params are 0; if yes, scan is aborted*/
-    if (!off_scan_rfc || Tscan == 0 || Nscan == 0 || Tidle == 0) {
-        CcspTraceInfo(("Off_channel_scan feature is disabled returning RFC = %d; TScan = %lu; NScan = %lu; Tidle = %lu\n", off_scan_rfc, Tscan, Nscan, Tidle));
-        if ((g_monitor_module.off_channel_cfg[radio_index].curr_off_channel_scan_period != (int) Nscan) && (Nscan != 0)) {
-            scheduler_update_timer_task_interval(g_monitor_module.sched, g_monitor_module.off_channel_scan_id[radio_index], Nscan*1000);
-            g_monitor_module.off_channel_cfg[radio_index].curr_off_channel_scan_period = Nscan;
-        }
-        return TIMER_TASK_COMPLETE;
-    }
-
-
-    //Getting primary channel and country code
-    wifi_radio_operationParam_t* radioOperation = getRadioOperationParam(radio_index);
-    UINT prim_chan = radioOperation->channel;
-    char countryStr[64] = {0};
-    snprintf(countryStr, sizeof(wifiCountryMapMembers[radioOperation->countryCode].countryStr),"%s", wifiCountryMapMembers[radioOperation->countryCode].countryStr);
-    wifi_util_dbg_print(WIFI_MON,"%s:%d Off_channel_scan Country Code:%s prim_chan:%u\n", __func__, __LINE__, countryStr, prim_chan);
-
-    //If DFS enabled and country code is not US, CA or GB; the scan should not run for 5GHz radio. Possible updates might be required for GW using two 5G radios
-    if (dfs && !(strncmp(countryStr, "US", 2) || strncmp(countryStr, "CA", 2) || strncmp(countryStr, "GB", 2))) {
-        CcspTraceError(("Getting country code %s; skipping the scan!\n", countryStr));
-        if ((g_monitor_module.off_channel_cfg[radio_index].curr_off_channel_scan_period != (int) Nscan) && (Nscan != 0)) {
-            scheduler_update_timer_task_interval(g_monitor_module.sched, g_monitor_module.off_channel_scan_id[radio_index], Nscan*1000);
-            g_monitor_module.off_channel_cfg[radio_index].curr_off_channel_scan_period = Nscan;
-        }
-        return TIMER_TASK_COMPLETE;
-    }
-    CcspTraceInfo(("Off_channel_scan DFS:%d and country code is %s\n", dfs, countryStr));
-
-    //Getting number of channels and channel numbers in a list
-    wifi_radio_capabilities_t *wifiCapPtr = NULL;
-    wifiCapPtr = getRadioCapability(radio_index);
-    int num_chan = wifiCapPtr->channel_list[0].num_channels;
-    wifi_util_dbg_print(WIFI_MON,"%s:%d off_channed_scan num of channels:%d\n", __func__, __LINE__, num_chan);
-    UINT chan_list[MAX_5G_CHANNELS] = {'\0'};
-    for (int num = 0; num < num_chan; num++) {
-        chan_list[num] = wifiCapPtr->channel_list[0].channels_list[num];
-        wifi_util_dbg_print(WIFI_MON,"%s:%d off_channel_scan chan number:%u\n", __func__, __LINE__, chan_list[num]);
-    }
-
-    //The Scan Kicks Off
-    wifi_neighbor_ap2_t *neighbor_results = NULL;
-    UINT array_size = 0;
-    int ret = 0;
-    unsigned int private_vap_index;
-    for (int num = 0; num < num_chan; num++)
-    {
-        if (prim_chan == chan_list[num]) { //Skipping primary channel
-            CcspTraceInfo(("Off_channel_scan  off channel number is same as current channel, skipping the off chan scan for channel:%d\n", chan_list[num]));
-            continue;
-        } else if (!dfs && (chan_list[num] >= DFS_START && chan_list[num] <= DFS_END)) { //Skip DFS channels if DFS disabled
-            CcspTraceDebug(("Off_channel_scan Skipping DFS Channel\n"));
-            continue;
-        } else {
-            private_vap_index = getPrivateApFromRadioIndex(radio_index);
-            wifi_startNeighborScan(private_vap_index, scanMode, Tscan, 1, &chan_list[num]);
-            ret = wifi_getNeighboringWiFiStatus(radio_index, &neighbor_results, &array_size);
-            if (ret == RETURN_OK) {
-                CcspTraceInfo(("Off_channel_scan Total Scan Results:%d for channel %d \n", array_size, chan_list[num]));
-
-                if (array_size > 0) {
-                    off_chan_print_scan_data(radio_index, neighbor_results, array_size);
-                }
-                if (neighbor_results) {
-                    free(neighbor_results);
-                    neighbor_results = NULL;
-                }
-                NChannel++;
-            } else {
-                CcspTraceError(("Off_channel_scan Scan failed for channel %d\n", chan_list[num]));
-            }
-        }
-    }
-
-    //DCS metrics, getting channel utilization value
-    wifi_channelMetrics_t * ptr, channelMetrics_array_1[MAX_5G_CHANNELS];
-    int num_channels_dcs = 0;
-    ptr = channelMetrics_array_1;
-    memset(channelMetrics_array_1, 0, sizeof(channelMetrics_array_1));
-    for (int num = 0; num < num_chan; num++)
-    {
-        if((dfs == 0) && (chan_list[num] >= DFS_START) && (chan_list[num] <= DFS_END)) {
-            //Skipping DFS channels when DFS is disabled
-            continue;
-        }
-        ptr[num_channels_dcs].channel_in_pool = TRUE;
-        ptr[num_channels_dcs].channel_number = (chan_list[num]);
-        ++num_channels_dcs;
-    }
-
-    ret = wifi_getRadioDcsChannelMetrics(radio_index, ptr, MAX_5G_CHANNELS);
-    int num;
-    for (num = 0; num < num_channels_dcs; num++, ptr++)
-    {
-        CcspTraceInfo(("Off_channel_scan Channel number:%d Channel Utilization:%d \n",ptr->channel_number, ptr->channel_utilization));
-    }
-
-    g_monitor_module.off_channel_cfg[radio_index].Nchannel = NChannel; //Update the number of channels scanned
-    wifi_util_dbg_print(WIFI_MON,"Off_channel_scan Number of channels scanned: %lu\n", NChannel);
-
-    if ((g_monitor_module.off_channel_cfg[radio_index].curr_off_channel_scan_period != (int) Nscan) && (Nscan != 0)) {
-        scheduler_update_timer_task_interval(g_monitor_module.sched, g_monitor_module.off_channel_scan_id[radio_index], Nscan*1000);
-        g_monitor_module.off_channel_cfg[radio_index].curr_off_channel_scan_period = Nscan;
-    }
-    return TIMER_TASK_COMPLETE;
-}
-
-/**************************************************************************************************************************/
-/*                                                                                                                        */
-/* FUNCTION NAME : off_chan_print_scan_data                                                                               */
-/*                                                                                                                        */
-/* DESCRIPTION   : This function prints the required information for 5G off channel scan feature into WiFiLog.txt         */
-/*                                                                                                                        */
-/* INPUT         : Neighbor report array and its size                                                                     */
-/*                                                                                                                        */
-/* OUTPUT        : Logs into WiFiLog.txt                                                                                 */
-/*                                                                                                                        */
-/* RETURN VALUE  : NONE                                                                                                   */
-/*                                                                                                                        */
-/***************************************************************************************************************************/
-void off_chan_print_scan_data(unsigned int radio_index, wifi_neighbor_ap2_t *neighbor_result, int array_size)
-{
-    wifi_neighbor_ap2_t *ptr = NULL;
-    int i = 0;
-    for (i = 0, ptr = neighbor_result; i < array_size; i++, ptr++) {
-        CcspTraceInfo(("Off_channel_scan Neighbor:%d ap_BSSID:%s ap_SignalStrength: %d\n", i + 1, ptr->ap_BSSID, ptr->ap_SignalStrength)); //Printing N/A if hidden SSID
-        wifi_util_dbg_print(WIFI_MON,"Off channel scan ap_SSID:%s\n", (strlen(ptr->ap_SSID) != 0 ? ptr->ap_SSID : "N/A"));
-    }
-}
-#endif //FEATURE_OFF_CHANNEL_SCAN_5G
-
 #ifdef CCSP_COMMON
 /* This function returns the system uptime at the time of init */
 long get_sys_uptime()
@@ -3586,89 +3201,35 @@ int get_radio_channel_utilization(unsigned int radio_index, int *chan_util)
 }
 #endif // CCSP_COMMON
 
-unsigned long find_interval_common_divisor(unsigned long *interval_array, int array_len)
-{
-    unsigned long result = 0, temp_time_interval = 0;
-    int itr = 0;
-    int found = 0;
-    temp_time_interval = (interval_array[0]/MONITOR_RUNNING_INTERVAL_IN_MILLISEC)*MONITOR_RUNNING_INTERVAL_IN_MILLISEC;
-
-    for (itr = 1; itr < array_len; itr++) {
-        interval_array[itr] = (interval_array[itr]/MONITOR_RUNNING_INTERVAL_IN_MILLISEC)*MONITOR_RUNNING_INTERVAL_IN_MILLISEC;
-        if (temp_time_interval > interval_array[itr]) {
-            temp_time_interval = interval_array[itr];
-        }
-    }
-
-    while (found == 0) {
-        found = 1;
-        for (itr = 0; itr < array_len; itr++) {
-            if ((interval_array[itr] % temp_time_interval) != 0) {
-                temp_time_interval = temp_time_interval - MONITOR_RUNNING_INTERVAL_IN_MILLISEC;
-                if (temp_time_interval <= 0) {
-                    wifi_util_error_print(WIFI_MON, "%s %d invalid time interval : %d\n",__func__,__LINE__, temp_time_interval);
-                    return result;
-                }
-                found = 0;
-                break;
-            }
-        }
-    }
-    result = temp_time_interval;
-
-    return result;
-}
-
 int coordinator_calculate_clctr_interval(wifi_mon_collector_element_t *collector_elem, wifi_mon_provider_element_t *new_provider_elem , unsigned long *new_interval)
 {
     wifi_mon_provider_element_t *provider_elem = NULL;
     unsigned long temp_new_interval = 0;
-    unsigned long *interval_array = NULL;
-    unsigned int itr = 0;
-    bool new_element = true;
-    unsigned int count = 0;
 
     if (collector_elem->provider_list == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d: APP list is NULL\n", __func__,__LINE__);
         return RETURN_ERR;
     }
-
-    count =  hash_map_count(collector_elem->provider_list);
-
-    interval_array = (unsigned long *)malloc((count+1) * sizeof(unsigned long));
-    if (interval_array == NULL) {
-        wifi_util_error_print(WIFI_MON, "%s %d malloc failed\n",__func__,__LINE__);
+    if (new_provider_elem == NULL || new_interval == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: new_provider_elem or new_interval NULL\n", __func__,__LINE__);
         return RETURN_ERR;
     }
+
+    temp_new_interval = new_provider_elem->provider_task_interval_ms;
 
     //Traverse through the providers
     provider_elem = hash_map_get_first(collector_elem->provider_list);
     while (provider_elem != NULL) {
-        if (strncmp(new_provider_elem->key, provider_elem->key, strlen(new_provider_elem->key)) == 0) {
-            new_element = false;
-            interval_array[itr] = new_provider_elem->provider_task_interval_ms;
-        } else {
-            interval_array[itr] = provider_elem->provider_task_interval_ms;
+        if (strncmp(new_provider_elem->key, provider_elem->key, strlen(new_provider_elem->key)) != 0) {
+            if (temp_new_interval > provider_elem->provider_task_interval_ms) {
+                temp_new_interval = provider_elem->provider_task_interval_ms;
+            }
         }
-        itr++;
         provider_elem = hash_map_get_next(collector_elem->provider_list, provider_elem);
-    }
-
-    if (new_element == true) {
-        interval_array[itr] = new_provider_elem->provider_task_interval_ms;
-        itr++;
-    }
-
-    temp_new_interval = find_interval_common_divisor(interval_array, itr);
-    if (temp_new_interval == 0) {
-        wifi_util_error_print(WIFI_MON, "%s %d invalid interval : %d\n",__func__,__LINE__, temp_new_interval);
-        free(interval_array);
-        return RETURN_ERR;
     }
 
     *new_interval = temp_new_interval;
 
-    free(interval_array);
     return RETURN_OK;
 }
 
@@ -3762,13 +3323,28 @@ int coordinator_create_collector_task(wifi_mon_collector_element_t *collector_el
     return RETURN_OK;
 }
 
-int coordinator_create_provider_task(wifi_mon_provider_element_t *provider_elem)
+int coordinator_create_provider_task_delay(void *arg)
 {
+    wifi_mon_provider_element_t *provider_elem = (wifi_mon_provider_element_t *)arg;
     wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
 
     scheduler_add_timer_task(mon_data->sched, provider_elem->mon_stats_config->task_priority, &provider_elem->provider_task_sched_id, provider_execute_task,
             (void *)provider_elem, provider_elem->provider_task_interval_ms, 0, provider_elem->start_immediately);
 
+    return TIMER_TASK_COMPLETE;
+}
+
+int coordinator_create_provider_task(wifi_mon_provider_element_t *provider_elem)
+{
+    wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
+
+    if (provider_elem->delay_provider_sec == 0) {
+        scheduler_add_timer_task(mon_data->sched, provider_elem->mon_stats_config->task_priority, &provider_elem->provider_task_sched_id, provider_execute_task,
+                (void *)provider_elem, provider_elem->provider_task_interval_ms, 0, provider_elem->start_immediately);
+    } else {
+        scheduler_add_timer_task(mon_data->sched, 0, NULL, coordinator_create_provider_task_delay,
+            (void *)provider_elem, provider_elem->delay_provider_sec * 1000, 1, 0);
+    }
     return RETURN_OK;
 }
 
@@ -3825,11 +3401,13 @@ wifi_mon_provider_element_t  *coordinator_create_provider_elem(wifi_mon_stats_co
     provider_stat_desc = (wifi_mon_stats_descriptor_t *)wifi_mon_get_stats_descriptor(stats_config->data_type);
     if (provider_stat_desc == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d: Invalid stats_type %d from app %d\n", __func__,__LINE__, stats_config->data_type, stats_config->inst);
+        free(provider_elem);
         return NULL;
     }
 
     provider_elem->stat_desc = provider_stat_desc;
 
+    provider_elem->delay_provider_sec= stats_config->delay_provider_sec;
     provider_elem->stat_desc->generate_stats_provider_key(stats_config, provider_elem->key, sizeof(provider_elem->key));
     provider_elem->provider_task_interval_ms = stats_config->interval_ms;
     provider_elem->start_immediately = stats_config->start_immediately;
@@ -4027,8 +3605,7 @@ int coordinator_stop_task(wifi_mon_collector_element_t **collector_elem, wifi_mo
     hash_map_t  *collector_list = coordinator_get_collector_list();
     wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
     unsigned long new_collector_interval = 0;
-    unsigned long *interval_array = NULL;
-    unsigned int count = 0, itr = 0;
+    unsigned int count = 0;
 
     (*collector_elem)->stat_desc->generate_stats_provider_key(stats_config, key, sizeof(key));
 
@@ -4049,26 +3626,18 @@ int coordinator_stop_task(wifi_mon_collector_element_t **collector_elem, wifi_mo
             hash_map_remove(collector_list, (*collector_elem)->key);
             coordinator_free_collector_elem(collector_elem);
         } else {
-            interval_array = (unsigned long *)malloc((count) * sizeof(unsigned long));
-            if (interval_array == NULL) {
-                wifi_util_error_print(WIFI_MON, "%s %d malloc failed\n",__func__,__LINE__);
-                return RETURN_ERR;
-            }
+            new_collector_interval = 0;
             dup_provider_elem = hash_map_get_first((*collector_elem)->provider_list);
             while (dup_provider_elem != NULL) {
-                interval_array[itr] = dup_provider_elem->provider_task_interval_ms;
-                itr++;
+                if (new_collector_interval == 0 || new_collector_interval > dup_provider_elem->provider_task_interval_ms) {
+                    new_collector_interval = dup_provider_elem->provider_task_interval_ms;
+                }
                 dup_provider_elem = hash_map_get_next((*collector_elem)->provider_list, dup_provider_elem);
             }
-
-            new_collector_interval = find_interval_common_divisor(interval_array, itr);
             if (new_collector_interval == 0) {
                 wifi_util_error_print(WIFI_MON, "%s %d invalid interval : %d\n",__func__,__LINE__, new_collector_interval);
-                free(interval_array);
                 return RETURN_ERR;
             }
-
-            free(interval_array);
             collector_task_update(*collector_elem, &new_collector_interval);
         }
     }

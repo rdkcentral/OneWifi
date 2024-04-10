@@ -96,6 +96,16 @@ wifi_app_descriptor_t app_desc[] = {
         harvester_init, harvester_event, harvester_deinit,
         NULL, NULL
     },
+#if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
+    {
+        wifi_app_inst_ocs, 0,
+        wifi_event_type_monitor | wifi_event_type_webconfig | wifi_event_type_command,
+        true, true,
+        "ocs",
+        ocs_init, ocs_event, ocs_deinit,
+        NULL, NULL
+    },
+#endif // (FEATURE_OFF_CHANNEL_SCAN_5G)
 #endif
     {
         wifi_app_inst_blaster, 0,

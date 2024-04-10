@@ -110,7 +110,8 @@ typedef enum {
     wifi_app_inst_csi = wifi_app_inst_base << 12,
     wifi_app_inst_whix = wifi_app_inst_base << 13,
     wifi_app_inst_core = wifi_app_inst_base << 14,
-    wifi_app_inst_max = wifi_app_inst_base << 15
+    wifi_app_inst_ocs = wifi_app_inst_base << 15,
+    wifi_app_inst_max = wifi_app_inst_base << 16
 } wifi_app_inst_t;
 
 typedef struct {
@@ -275,6 +276,7 @@ typedef struct {
     unsigned long       interval_ms;
     bool                task_priority; //if TRUE its high priority
     bool                start_immediately;
+    unsigned int        delay_provider_sec;
     wifi_mon_stats_request_state_t    req_state;
     wifi_mon_stats_args_t     args;
 } __attribute__((packed)) wifi_mon_stats_config_t;
@@ -292,6 +294,12 @@ typedef struct {
 } csi_mon_t;
 
 typedef struct {
+    ULONG            TidleSec;
+    ULONG            NscanSec;
+    unsigned int     radio_index;
+} ocs_params_t;
+
+typedef struct {
     unsigned int id;
     int  csi_session;
     unsigned int    ap_index;
@@ -305,6 +313,7 @@ typedef struct {
         csi_mon_t           csi_mon;
         wifi_mon_stats_config_t mon_stats_config;
         frame_data_t msg;
+        ocs_params_t        ocs_params;
     } u;
 } wifi_monitor_data_t;
 
@@ -463,6 +472,7 @@ typedef struct {
     ULONG OffChanNscanInSec; // number of scans/channel (stored in sec)
     ULONG OffChanTidleInSec; // time to account for network idleness (sec)
     unsigned int radio_index;
+    ULONG Nchannel;
 } __attribute__((packed)) wifi_radio_feature_param_t;
 
 typedef struct {

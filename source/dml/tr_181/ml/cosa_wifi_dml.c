@@ -2442,7 +2442,8 @@ Radio_GetParamUlongValue
 #if defined(FEATURE_OFF_CHANNEL_SCAN_5G)
         if (is_radio_band_5G(pcfg->band))
         {
-            *puLong = monitor_param->off_channel_cfg[instance_number].Nchannel;
+            wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
+            *puLong = wifi_mgr->radio_config[instance_number].feature.Nchannel;
             return TRUE;
         }
         *puLong = 0;

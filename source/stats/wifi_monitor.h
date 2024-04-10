@@ -111,16 +111,6 @@ typedef struct {
     int channel[MAX_NUM_RADIOS][MAX_CHANNELS];
 } neighscan_diag_cfg_t;
 
-typedef struct {
-    //Off channel params
-    ULONG TscanMsec;
-    ULONG NscanSec;
-    ULONG TidleSec;
-    ULONG Nchannel;
-    int curr_off_channel_scan_period; //holds old value of Nscan
-    unsigned int radio_index;
-} off_channel_param_t;
-
 
 /*
  * radio_data_t has information about radio stats
@@ -138,7 +128,6 @@ typedef struct {
     radio_data_t        radio_data[MAX_NUM_RADIOS];
     radio_chan_stats_data_t  radio_chan_stats_data[MAX_NUM_RADIOS]; ////New Radio Channel stats
     neighscan_diag_cfg_t neighbor_scan_cfg;
-    off_channel_param_t off_channel_cfg[MAX_NUM_RADIOS];
     bool                exit_monitor;
     int last_scanned_channel[MAX_NUM_RADIOS];
     int scan_status[MAX_NUM_RADIOS];
@@ -167,9 +156,6 @@ typedef struct {
     int vap_status_id;
 #endif // CCSP_COMMON
     int radio_diagnostics_id;
-#if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
-    int off_channel_scan_id[MAX_NUM_RADIOS];
-#endif //FEATURE_OFF_CHANNEL_SCAN_5G
 #ifdef CCSP_COMMON
     int clientdiag_id[MAX_VAP];
     int clientdiag_sched_arg[MAX_VAP];
@@ -288,6 +274,7 @@ struct wifi_mon_provider_element{
     wifi_provider_response_t *response;
     unsigned long   provider_task_interval_ms;
     bool            start_immediately;
+    unsigned int    delay_provider_sec;
     union {
         neighbour_stats_data_t  neighbour_data;
         radio_channel_stats_data_t radio_channel_data;

@@ -2241,13 +2241,7 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
         {
             //Not required currently for 2.4GHz, can be added later for 5GH and 6G after support is added
             is_changed = 1;
-            mgr_radio_data->feature = radio_data->feature;
             wifi_util_dbg_print(WIFI_MGR,"%s:%d Tscan:%lu, Nscan:%lu, Tidle:%lu \n",__func__,__LINE__,radio_data->feature.OffChanTscanInMsec, radio_data->feature.OffChanNscanInSec, radio_data->feature.OffChanTidleInSec);
-            ret = SetOffChanParams(radio_data->vaps.radio_index,radio_data->feature.OffChanTscanInMsec,radio_data->vaps.radio_index,radio_data->feature.OffChanNscanInSec,radio_data->feature.OffChanTidleInSec);
-            if (ret != RETURN_OK) {
-                wifi_util_error_print(WIFI_MGR,"%s:%d: OffChanParams set failed\n",__func__,__LINE__);
-                return RETURN_ERR;
-            }
         }
 
         if ((is_radio_param_config_changed(&mgr_radio_data->oper, &radio_data->oper) == true)) {
