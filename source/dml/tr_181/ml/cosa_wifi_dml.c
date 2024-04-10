@@ -3396,6 +3396,41 @@ Radio_SetParamIntValue
     return FALSE;
 }
 
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        static BOOL
+        isValidFragmentThreshold
+            (
+                int                         fragmentationThreshold
+            );
+
+    description:
+
+        This function can be used to validate against the supported fragmentationThreshold;
+
+    argument:   int fragmentationThreshold
+                The fragmentationThreshold value that need validation before setting
+
+    return:     TRUE if fragmentationThreshold is supported ;
+                FALSE if not supported
+**********************************************************************/
+
+static BOOL isValidFragmentThreshold(int fragmentationThreshold)
+{
+
+    if ((fragmentationThreshold < 256) || (fragmentationThreshold > 2346))
+    {
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d Given fragmentationThreshold value %d is not supported\n", __func__, __LINE__,fragmentationThreshold);
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
 /**********************************************************************  
 
     caller:     owner of this object 
@@ -3614,6 +3649,12 @@ Radio_SetParamUlongValue
         {
             return  TRUE;
         }
+
+        if (isValidFragmentThreshold(uValue) != TRUE)
+        {
+            return FALSE;
+        }
+
         wifiRadioOperParam->fragmentationThreshold = uValue;
         ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s fragmentationThreshold : %d\n", __FUNCTION__, wifiRadioOperParam->fragmentationThreshold);
 	wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:fragmentationThreshold=%d  = %d  \n",__func__, __LINE__,wifiRadioOperParam->fragmentationThreshold,uValue);
