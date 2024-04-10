@@ -133,6 +133,10 @@ struct element {
         (int) sizeof(*_elem) + _elem->datalen;                      \
         _elem = (const struct element *) (_elem->data + _elem->datalen))
 
+/*
+Copyright (c) 2002-2018, Jouni Malinen <j@w1.fi>
+Licensed under the BSD-3 License
+*/
 
 #define RSN_AUTH_KEY_MGMT_UNSPEC_802_1X RSN_SELECTOR(0x00, 0x0f, 0xac, 1)
 #define RSN_AUTH_KEY_MGMT_PSK_OVER_802_1X RSN_SELECTOR(0x00, 0x0f, 0xac, 2)
