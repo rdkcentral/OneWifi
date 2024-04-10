@@ -825,33 +825,27 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
     }
 
     // formatting here. For analytics, do not need any time formatting, need timestamp for all others
-    switch (module) {
-        case WIFI_ANALYTICS:
-            buff[0] = 0;
-            break;
-
-        default:
+    if (module != WIFI_ANALYTICS) {
 #if defined(__ENABLE_PID__) && (__ENABLE_PID__)
-            pid = syscall(__NR_gettid);
-            sprintf(&buff[0], "%d - ", pid);
-            get_formatted_time(&buff[strlen(buff)]);
+        pid = syscall(__NR_gettid);
+        sprintf(&buff[0], "%d - ", pid);
+        get_formatted_time(&buff[strlen(buff)]);
 #else
-            snprintf(&buff[0], sizeof(buff), "[%s] ", __progname ? __progname : "");
-            get_formatted_time(&buff[strlen(buff)]);
+        snprintf(&buff[0], sizeof(buff), "[%s] ", __progname ? __progname : "");
+        get_formatted_time(&buff[strlen(buff)]);
 #endif
-            break;
+
+        static const char *level_marker[WIFI_LOG_LVL_MAX] =
+        {
+            [WIFI_LOG_LVL_DEBUG] = "<D>",
+            [WIFI_LOG_LVL_INFO] = "<I>",
+            [WIFI_LOG_LVL_ERROR] = "<E>",
+        };
+        if (level < WIFI_LOG_LVL_MAX)
+            snprintf(&buff[strlen(buff)], 256 - strlen(buff), "%s ", level_marker[level]);
+
+        fprintf(fpg, "%s ", buff);
     }
-
-    static const char *level_marker[WIFI_LOG_LVL_MAX] =
-    {
-        [WIFI_LOG_LVL_DEBUG] = "<D>",
-        [WIFI_LOG_LVL_INFO] = "<I>",
-        [WIFI_LOG_LVL_ERROR] = "<E>",
-    };
-    if (level < WIFI_LOG_LVL_MAX)
-        snprintf(&buff[strlen(buff)], 256 - strlen(buff), "%s ", level_marker[level]);
-
-    fprintf(fpg, "%s ", buff);
 
     va_start(list, format);
     vfprintf(fpg, format, list);
