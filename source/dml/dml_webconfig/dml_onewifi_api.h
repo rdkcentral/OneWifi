@@ -40,7 +40,6 @@ typedef struct {
     active_msmt_t blaster;
     hash_map_t    *assoc_dev_hash_map[MAX_NUM_RADIOS][MAX_NUM_VAP_PER_RADIO];
     pthread_mutex_t assoc_dev_lock;
-    assoc_dev_data_t assoc_dev_data_cache;
     acl_data_t acl_data;
     rbusHandle_t	rbus_handle;
     instant_measurement_config_t harvester;
@@ -120,7 +119,7 @@ UINT get_num_radio_dml();
 UINT get_total_num_vap_dml();
 void get_associated_devices_data(unsigned int radio_index);
 unsigned long get_associated_devices_count(wifi_vap_info_t *vap_info);
-hash_map_t* get_associated_devices_hash_map(wifi_vap_info_t *vap_info);
+hash_map_t* get_associated_devices_hash_map(unsigned int vap_index);
 queue_t** get_acl_new_entry_queue(wifi_vap_info_t *vap_info);
 hash_map_t** get_acl_hash_map(wifi_vap_info_t *vap_info);
 wifi_global_config_t *get_dml_cache_global_wifi_config();

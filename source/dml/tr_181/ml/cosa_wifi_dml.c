@@ -112,6 +112,7 @@ uint8_t g_radio_instance_num = 0;
 extern void* g_pDslhDmlAgent;
 extern int gChannelSwitchingCount;
 extern bool wifi_api_is_device_associated(int ap_index, char *mac);
+
 /***********************************************************************
  IMPORTANT NOTE:
 
@@ -15322,14 +15323,13 @@ AssociatedDevice1_GetEntry
     )
 {
     wifi_vap_info_t *vap_info = (wifi_vap_info_t *)hInsContext;
-    unsigned int itr = 0;
-    assoc_dev_data_t* assoc_dev_data;
+    unsigned long vap_index_mask = 0;
     if (vap_info == NULL) {
         return (ANSC_HANDLE) NULL;
     }
     pthread_mutex_lock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
     //Will be returning the entire stats structure later just returning mac address as of now
-    hash_map_t *assoc_vap_info_map = (hash_map_t *)get_associated_devices_hash_map(vap_info);
+    hash_map_t *assoc_vap_info_map = (hash_map_t *)get_associated_devices_hash_map(vap_info->vap_index);
     if (assoc_vap_info_map == NULL) {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d NULL pointer\n", __func__, __LINE__);
         pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
@@ -15342,22 +15342,12 @@ AssociatedDevice1_GetEntry
         return (ANSC_HANDLE) NULL;
     }
 
-    assoc_dev_data = hash_map_get_first(assoc_vap_info_map);
-    for (itr=0; (itr<nIndex) && (assoc_dev_data != NULL); itr++) {
-        assoc_dev_data = hash_map_get_next(assoc_vap_info_map, assoc_dev_data);
-    }
-    if (assoc_dev_data == NULL) {
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d NULL Pointer\n", __func__, __LINE__);
-        pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
-        return (ANSC_HANDLE) NULL;
-    } else {
-        memcpy(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_data_cache, assoc_dev_data, sizeof(assoc_dev_data_t));
-    }
-    pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
-
     *pInsNumber = nIndex + 1;
 
-    return (ANSC_HANDLE) &((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_data_cache; /* return the handle */
+    pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
+    vap_index_mask = (*pInsNumber << 8) + vap_info->vap_index;
+
+    return (ANSC_HANDLE) vap_index_mask; /* return the handle */
 }
 
 /**********************************************************************  
@@ -15471,17 +15461,50 @@ AssociatedDevice1_GetParamBoolValue
         BOOL*                       pBool
     )
 {
-    assoc_dev_data_t *assoc_dev_data = (assoc_dev_data_t *)hInsContext;
-    if (assoc_dev_data == NULL) {
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d NULL Pointer\n", __func__, __LINE__);
-        return FALSE;
+    assoc_dev_data_t *assoc_dev_data_temp = NULL, *assoc_dev_data = NULL;
+    unsigned long vap_index_mask = (unsigned long) hInsContext;
+    unsigned int dev_index = (vap_index_mask >> 8);
+    unsigned int vap_index = (0xf & vap_index_mask);
+
+    pthread_mutex_lock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
+
+    hash_map_t *assoc_vap_info_map = (hash_map_t *)get_associated_devices_hash_map(vap_index);
+
+    if (assoc_vap_info_map == NULL) {
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d NULL pointer\n", __func__, __LINE__);
+        pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
+        return -1;
+    } 
+
+    assoc_dev_data_temp = hash_map_get_first(assoc_vap_info_map);
+
+    for (unsigned int itr=1; (itr < dev_index) && (assoc_dev_data_temp != NULL); itr++) {
+        assoc_dev_data_temp = hash_map_get_next(assoc_vap_info_map, assoc_dev_data_temp);
     }
+    
+    if (assoc_dev_data_temp == NULL) {
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d NULL Pointer\n", __func__, __LINE__);
+        pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
+        return -1;
+    }
+    
+    assoc_dev_data = (assoc_dev_data_t*) malloc(sizeof(assoc_dev_data_t));
+
+    if (NULL == assoc_dev_data) {
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d NULL Pointer\n", __func__, __LINE__);
+        pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
+        return -1;
+    }
+
+    memcpy(assoc_dev_data, assoc_dev_data_temp, sizeof(assoc_dev_data_t));
+    pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
 
     /* check the parameter name and return the corresponding value */
     if( AnscEqualString(ParamName, "AuthenticationState", TRUE))
     {
         /* collect value */
         *pBool = assoc_dev_data->dev_stats.cli_AuthenticationState;
+        free(assoc_dev_data);
         return TRUE;
     }
 
@@ -15489,11 +15512,13 @@ AssociatedDevice1_GetParamBoolValue
     {
         /* collect value */
         *pBool = assoc_dev_data->dev_stats.cli_Active;
+        free(assoc_dev_data);
         return TRUE;
     }
 
 
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+    free(assoc_dev_data);
     return FALSE;
 }
 
@@ -15535,16 +15560,50 @@ AssociatedDevice1_GetParamIntValue
         int*                        pInt
     )
 {
-    assoc_dev_data_t *assoc_dev_data = (assoc_dev_data_t *)hInsContext;
-    if (assoc_dev_data == NULL) {
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d NULL Pointer\n", __func__, __LINE__);
-        return FALSE;
+    assoc_dev_data_t *assoc_dev_data_temp = NULL, *assoc_dev_data = NULL;
+    unsigned long vap_index_mask = (unsigned long) hInsContext;
+    unsigned int dev_index = (vap_index_mask >> 8);
+    unsigned int vap_index = (0xf & vap_index_mask);
+
+    pthread_mutex_lock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
+
+    hash_map_t *assoc_vap_info_map = (hash_map_t *)get_associated_devices_hash_map(vap_index);
+
+    if (assoc_vap_info_map == NULL) {
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d NULL pointer\n", __func__, __LINE__);
+        pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
+        return -1;
+    } 
+
+    assoc_dev_data_temp = hash_map_get_first(assoc_vap_info_map);
+
+    for (unsigned int itr=1; (itr < dev_index) && (assoc_dev_data_temp != NULL); itr++) {
+        assoc_dev_data_temp = hash_map_get_next(assoc_vap_info_map, assoc_dev_data_temp);
     }
+    
+    if (assoc_dev_data_temp == NULL) {
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d NULL Pointer\n", __func__, __LINE__);
+        pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
+        return -1;
+    }
+    
+    assoc_dev_data = (assoc_dev_data_t*) malloc(sizeof(assoc_dev_data_t));
+
+    if (NULL == assoc_dev_data) {
+       wifi_util_error_print(WIFI_DMCLI,"%s:%d NULL Pointer\n", __func__, __LINE__);
+       pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
+       return -1; 
+    }
+    
+    memcpy(assoc_dev_data, assoc_dev_data_temp, sizeof(assoc_dev_data_t));
+    pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
+
    /* check the parameter name and return the corresponding value */
    if( AnscEqualString(ParamName, "SignalStrength", TRUE))
    {
        /* collect value */
        *pInt = assoc_dev_data->dev_stats.cli_SignalStrength;
+       free(assoc_dev_data);
        return TRUE;
    }
 
@@ -15553,6 +15612,7 @@ AssociatedDevice1_GetParamIntValue
    {
        /* collect value */
        *pInt = assoc_dev_data->dev_stats.cli_SNR;
+       free(assoc_dev_data);
        return TRUE;
    }
 
@@ -15560,6 +15620,7 @@ AssociatedDevice1_GetParamIntValue
    {
        /* collect value */
        *pInt = assoc_dev_data->dev_stats.cli_SNR;
+       free(assoc_dev_data);
        return TRUE;
    }
 
@@ -15567,6 +15628,7 @@ AssociatedDevice1_GetParamIntValue
    {
        /* collect value */
        *pInt = assoc_dev_data->dev_stats.cli_RSSI;
+       free(assoc_dev_data);
        return TRUE;
    }
 
@@ -15574,6 +15636,7 @@ AssociatedDevice1_GetParamIntValue
    {
        /* collect value */
        *pInt = assoc_dev_data->dev_stats.cli_MinRSSI;
+       free(assoc_dev_data);
        return TRUE;
    }
 
@@ -15581,10 +15644,12 @@ AssociatedDevice1_GetParamIntValue
    {
        /* collect value */
        *pInt = assoc_dev_data->dev_stats.cli_MaxRSSI;
+       free(assoc_dev_data);
        return TRUE;
    }
 
    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+   free(assoc_dev_data);
    return FALSE;
 }
 
@@ -15626,16 +15691,48 @@ AssociatedDevice1_GetParamUlongValue
         ULONG*                      puLong
     )
 {
-    assoc_dev_data_t *assoc_dev_data = (assoc_dev_data_t *)hInsContext;
-    if (assoc_dev_data ==  NULL) {
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d NULL Pointer\n", __func__, __LINE__);
-        return FALSE;
+    assoc_dev_data_t *assoc_dev_data_temp = NULL, *assoc_dev_data = NULL;
+    unsigned long vap_index_mask = (unsigned long) hInsContext;
+    unsigned int dev_index = (vap_index_mask >> 8);
+    unsigned int vap_index = (0xf & vap_index_mask);
+
+    pthread_mutex_lock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
+
+    hash_map_t *assoc_vap_info_map = (hash_map_t *)get_associated_devices_hash_map(vap_index);
+
+    if (assoc_vap_info_map == NULL) {
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d NULL pointer\n", __func__, __LINE__);
+        pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
+        return -1;
+    } 
+
+    assoc_dev_data_temp = hash_map_get_first(assoc_vap_info_map);
+
+    for (unsigned int itr=1; (itr < dev_index) && (assoc_dev_data_temp != NULL); itr++) {
+        assoc_dev_data_temp = hash_map_get_next(assoc_vap_info_map, assoc_dev_data_temp);
+    }
+    
+    if (assoc_dev_data_temp == NULL) {
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d NULL Pointer\n", __func__, __LINE__);
+        pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
+        return -1;
+    }
+    
+    assoc_dev_data = (assoc_dev_data_t*) malloc(sizeof(assoc_dev_data_t));
+    if (assoc_dev_data == NULL) {
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d NULL Pointer\n", __func__, __LINE__);
+        pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
+        return -1;
     }
 
+    memcpy(assoc_dev_data, assoc_dev_data_temp, sizeof(assoc_dev_data_t));
+    pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
+    
     if( AnscEqualString(ParamName, "LastDataDownlinkRate", TRUE))
     {
         /* collect value */
         *puLong = assoc_dev_data->dev_stats.cli_LastDataDownlinkRate;
+        free(assoc_dev_data);
         return TRUE;
     }
 
@@ -15643,6 +15740,7 @@ AssociatedDevice1_GetParamUlongValue
     {
         /* collect value */
         *puLong = assoc_dev_data->dev_stats.cli_LastDataUplinkRate;
+        free(assoc_dev_data);
         return TRUE;
     }
 
@@ -15650,6 +15748,7 @@ AssociatedDevice1_GetParamUlongValue
     {
         /* collect value */
         *puLong = assoc_dev_data->dev_stats.cli_Retransmissions;
+        free(assoc_dev_data);
         return TRUE;
     }
 
@@ -15657,6 +15756,7 @@ AssociatedDevice1_GetParamUlongValue
     {
         /* collect value */
         *puLong = assoc_dev_data->dev_stats.cli_DataFramesSentAck;
+        free(assoc_dev_data);
         return TRUE;
     }
 
@@ -15664,6 +15764,7 @@ AssociatedDevice1_GetParamUlongValue
     {
         /* collect value */
         *puLong = assoc_dev_data->dev_stats.cli_DataFramesSentNoAck;
+        free(assoc_dev_data);
         return TRUE;
     }
 
@@ -15671,6 +15772,7 @@ AssociatedDevice1_GetParamUlongValue
     {
         /* collect value */
         *puLong = assoc_dev_data->dev_stats.cli_BytesSent;
+        free(assoc_dev_data);
         return TRUE;
     }
 
@@ -15678,6 +15780,7 @@ AssociatedDevice1_GetParamUlongValue
     {
         /* collect value */
         *puLong = assoc_dev_data->dev_stats.cli_BytesReceived;
+        free(assoc_dev_data);
         return TRUE;
     }
 
@@ -15685,6 +15788,7 @@ AssociatedDevice1_GetParamUlongValue
     {
         /* collect value */
         *puLong = assoc_dev_data->dev_stats.cli_Disassociations;
+        free(assoc_dev_data);
         return TRUE;
     }
 
@@ -15692,11 +15796,13 @@ AssociatedDevice1_GetParamUlongValue
     {
         /* collect value */
         *puLong = assoc_dev_data->dev_stats.cli_AuthenticationFailures;
+        free(assoc_dev_data);
         return TRUE;
     }
 
 
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+    free(assoc_dev_data);
     return FALSE;
 }
 
@@ -15748,13 +15854,43 @@ AssociatedDevice1_GetParamStringValue
     )
 {
     errno_t                         rc           = -1;
-    assoc_dev_data_t *assoc_dev_data = (assoc_dev_data_t *)hInsContext;
-    if (assoc_dev_data ==  NULL) {
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d NULL Pointer\n", __func__, __LINE__);
+    assoc_dev_data_t *assoc_dev_data_temp = NULL, *assoc_dev_data = NULL;
+    unsigned long vap_index_mask = (unsigned long) hInsContext;
+    unsigned int dev_index = (vap_index_mask >> 8);
+    unsigned int vap_index = (0xf & vap_index_mask);
+
+    pthread_mutex_lock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
+
+    hash_map_t *assoc_vap_info_map = (hash_map_t *)get_associated_devices_hash_map(vap_index);
+
+    if (assoc_vap_info_map == NULL) {
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d NULL pointer\n", __func__, __LINE__);
+        pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
+        return -1;
+    } 
+
+    assoc_dev_data_temp = hash_map_get_first(assoc_vap_info_map);
+
+    for (unsigned int itr=1; (itr < dev_index) && (assoc_dev_data_temp != NULL); itr++) {
+        assoc_dev_data_temp = hash_map_get_next(assoc_vap_info_map, assoc_dev_data_temp);
+    }
+    
+    if (assoc_dev_data_temp == NULL) {
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d NULL Pointer\n", __func__, __LINE__);
+        pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
         return -1;
     }
-
-
+    
+    assoc_dev_data = (assoc_dev_data_t*) malloc(sizeof(assoc_dev_data_t));
+    if (assoc_dev_data == NULL) {
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d NULL Pointer\n", __func__, __LINE__);
+        pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
+        return -1;
+    }
+    
+    memcpy(assoc_dev_data, assoc_dev_data_temp, sizeof(assoc_dev_data_t));
+    pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
+    
     if( AnscEqualString(ParamName, "MACAddress", TRUE))
     {
         char p_mac[18];
@@ -15763,11 +15899,13 @@ AssociatedDevice1_GetParamStringValue
         if ( AnscSizeOfString(p_mac) < *pUlSize)
         {
             AnscCopyString(pValue, p_mac);
+            free(assoc_dev_data);
             return 0;
         }
         else
         {
             *pUlSize = AnscSizeOfString(p_mac)+1;
+            free(assoc_dev_data);
             return 1;
         }
 
@@ -15778,6 +15916,7 @@ AssociatedDevice1_GetParamStringValue
         /* collect value */
         rc = strcpy_s(pValue, *pUlSize, assoc_dev_data->dev_stats.cli_OperatingStandard);
         ERR_CHK(rc);
+        free(assoc_dev_data);
         return 0;
     }
 
@@ -15786,6 +15925,7 @@ AssociatedDevice1_GetParamStringValue
         /* collect value */
         rc = strcpy_s(pValue, *pUlSize, assoc_dev_data->dev_stats.cli_OperatingChannelBandwidth);
         ERR_CHK(rc);
+        free(assoc_dev_data);
         return 0;
     }
 
@@ -15794,9 +15934,11 @@ AssociatedDevice1_GetParamStringValue
         /* collect value */
         rc = strcpy_s(pValue, *pUlSize, assoc_dev_data->dev_stats.cli_InterferenceSources);
         ERR_CHK(rc);
+        free(assoc_dev_data);
         return 0;
     }
 
+    free(assoc_dev_data);
     return -1;
 }
 
@@ -15850,16 +15992,49 @@ Stats_GetParamUlongValue
         ULONG*                      pULong
     ) 
 {
-    assoc_dev_data_t *assoc_dev_data = (assoc_dev_data_t *)hInsContext;
-    if (assoc_dev_data == NULL) {
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d NULL Pointer\n", __func__, __LINE__);
+    assoc_dev_data_t *assoc_dev_data_temp = NULL, *assoc_dev_data = NULL;
+    unsigned long vap_index_mask = (unsigned long) hInsContext;
+    unsigned int dev_index = (vap_index_mask >> 8);
+    unsigned int vap_index = (0xf & vap_index_mask);
+
+    pthread_mutex_lock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
+
+    hash_map_t *assoc_vap_info_map = (hash_map_t *)get_associated_devices_hash_map(vap_index);
+
+    if (assoc_vap_info_map == NULL) {
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d NULL pointer\n", __func__, __LINE__);
+        pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
+        return -1;
+    } 
+
+    assoc_dev_data_temp = hash_map_get_first(assoc_vap_info_map);
+
+    for (unsigned int itr=1; (itr < dev_index) && (assoc_dev_data_temp != NULL); itr++) {
+        assoc_dev_data_temp = hash_map_get_next(assoc_vap_info_map, assoc_dev_data_temp);
+    }
+    
+    if (assoc_dev_data_temp == NULL) {
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d NULL Pointer\n", __func__, __LINE__);
+        pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
         return -1;
     }
+    
+    assoc_dev_data = (assoc_dev_data_t*) malloc(sizeof(assoc_dev_data_t));
+    if (assoc_dev_data == NULL) {
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d NULL Pointer\n", __func__, __LINE__);
+        pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
+        return -1;
+    }
+
+    memcpy(assoc_dev_data, assoc_dev_data_temp, sizeof(assoc_dev_data_t));
+    pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
+    
     /* check the parameter name and return the corresponding value */
     if( AnscEqualString(ParamName, "BytesSent", TRUE))
     {
         /* collect value */
         *pULong = assoc_dev_data->dev_stats.cli_BytesSent;
+        free(assoc_dev_data);
         return TRUE;
     }
 
@@ -15867,6 +16042,7 @@ Stats_GetParamUlongValue
     {
         /* collect value */
         *pULong = assoc_dev_data->dev_stats.cli_BytesReceived;
+        free(assoc_dev_data);
         return TRUE;
     }
 
@@ -15874,13 +16050,15 @@ Stats_GetParamUlongValue
     {
         /* collect value */
         *pULong = assoc_dev_data->dev_stats.cli_PacketsSent;
+        free(assoc_dev_data);
         return TRUE;
     }
 
     if( AnscEqualString(ParamName, "PacketsReceived", TRUE))
     {
         /* collect value */
-        *pULong = assoc_dev_data->dev_stats.cli_PacketsReceived;;
+        *pULong = assoc_dev_data->dev_stats.cli_PacketsReceived;
+        free(assoc_dev_data);
         return TRUE;
     }
 
@@ -15888,6 +16066,7 @@ Stats_GetParamUlongValue
     {
         /* collect value */
         *pULong = assoc_dev_data->dev_stats.cli_ErrorsSent;
+        free(assoc_dev_data);
         return TRUE;
     }
 
@@ -15895,6 +16074,7 @@ Stats_GetParamUlongValue
     {
         /* collect value */
         *pULong = assoc_dev_data->dev_stats.cli_RetransCount;
+        free(assoc_dev_data);
         return TRUE;
     }
 
@@ -15902,6 +16082,7 @@ Stats_GetParamUlongValue
     {
        /* collect value */
         *pULong = assoc_dev_data->dev_stats.cli_FailedRetransCount;
+        free(assoc_dev_data);
         return TRUE;
     }
 
@@ -15909,6 +16090,7 @@ Stats_GetParamUlongValue
     {
         /* collect value */
         *pULong = assoc_dev_data->dev_stats.cli_RetryCount;
+        free(assoc_dev_data);
         return TRUE;
     }
 
@@ -15916,9 +16098,11 @@ Stats_GetParamUlongValue
     {
         /* collect value */
         *pULong = assoc_dev_data->dev_stats.cli_MultipleRetryCount;
+        free(assoc_dev_data);
         return TRUE;
     }
 
+    free(assoc_dev_data);
     return FALSE;
 }
 

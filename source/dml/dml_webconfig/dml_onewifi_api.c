@@ -496,15 +496,18 @@ unsigned long get_associated_devices_count(wifi_vap_info_t *vap_info)
     return count;
 }
 
-hash_map_t* get_associated_devices_hash_map(wifi_vap_info_t *vap_info)
+hash_map_t* get_associated_devices_hash_map(unsigned int vap_index)
 {
-    if (vap_info == NULL) {
-        wifi_util_error_print(WIFI_DMCLI,"%s %d NULL Pointer\n", __func__, __LINE__);
+    char vap_name[32] = {0};
+    int ret = convert_vap_index_to_name(&((webconfig_dml_t*) get_webconfig_dml())->hal_cap.wifi_prop, vap_index, vap_name);
+    
+    if (ret == RETURN_ERR) {
+        wifi_util_error_print(WIFI_DMCLI,"%s %d Error in converting vap_name\n", __func__, __LINE__);
         return NULL;
     }
 
-    int radio_index = convert_vap_name_to_radio_array_index(&((webconfig_dml_t*) get_webconfig_dml())->hal_cap.wifi_prop, vap_info->vap_name);
-    int vap_array_index = convert_vap_name_to_array_index(&((webconfig_dml_t*) get_webconfig_dml())->hal_cap.wifi_prop, vap_info->vap_name);
+    int radio_index = convert_vap_name_to_radio_array_index(&((webconfig_dml_t*) get_webconfig_dml())->hal_cap.wifi_prop, vap_name);
+    int vap_array_index = convert_vap_name_to_array_index(&((webconfig_dml_t*) get_webconfig_dml())->hal_cap.wifi_prop, vap_name);
 
     if ((vap_array_index < 0) || (radio_index < 0)) {
         wifi_util_error_print(WIFI_DMCLI,"%s %d Invalid array/radio Indices\n", __func__, __LINE__);
