@@ -74,6 +74,19 @@ int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
         // VAP is enabled in HAL if it is present in VIF_Config and enabled. Absent VAP entries are
         // saved to VAP_Config with exist flag set to 0 and default values.
         enabled = p_tgt_vap_map->vap_array[0].u.bss_info.enabled;
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)
+        if(rdk_vap_info[i].exists == false) {
+#if defined(_SR213_PRODUCT_REQ_)
+            if(map->vap_array[i].vap_index != 2 && map->vap_array[i].vap_index != 3) {
+                wifi_util_error_print(WIFI_CTRL,"%s:%d VAP_EXISTS_FALSE for vap_index=%d, setting to TRUE \n",__FUNCTION__,__LINE__,map->vap_array[i].vap_index);
+                rdk_vap_info[i].exists = true;
+            }
+#else
+            wifi_util_error_print(WIFI_CTRL,"%s:%d VAP_EXISTS_FALSE for vap_index=%d, setting to TRUE \n",__FUNCTION__,__LINE__,map->vap_array[i].vap_index);
+            rdk_vap_info[i].exists = true;
+#endif /* _SR213_PRODUCT_REQ_ */
+        }
+#endif /* !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) */
         p_tgt_vap_map->vap_array[0].u.bss_info.enabled &= rdk_vap_info[i].exists;
 
         if (wifi_hal_createVAP(radio_index, p_tgt_vap_map) != RETURN_OK) {

@@ -239,7 +239,7 @@ int vap_svc_start_stop(vap_svc_t *svc, bool enable)
             memcpy(&tgt_rdk_vaps[tgt_vap_map->num_vaps], &rdk_vaps[j], sizeof(rdk_wifi_vap_info_t));
             if (tgt_vap_map->vap_array[tgt_vap_map->num_vaps].vap_mode == wifi_vap_mode_sta) {
                 tgt_vap_map->vap_array[tgt_vap_map->num_vaps].u.sta_info.enabled = enable;
-             } else {
+            } else {
                 if(tgt_vap_map->vap_array[tgt_vap_map->num_vaps].u.bss_info.enabled) {
                     tgt_vap_map->vap_array[tgt_vap_map->num_vaps].u.bss_info.enabled = enable;
                 }
@@ -249,7 +249,20 @@ int vap_svc_start_stop(vap_svc_t *svc, bool enable)
                     tgt_vap_map->vap_array[tgt_vap_map->num_vaps].u.bss_info.enabled;
                 tgt_vap_map->vap_array[tgt_vap_map->num_vaps].u.bss_info.enabled &=
                     tgt_rdk_vaps[tgt_vap_map->num_vaps].exists;
-             }
+            }
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)
+            if(tgt_rdk_vaps[tgt_vap_map->num_vaps].exists == false) {
+#if defined(_SR213_PRODUCT_REQ_)
+                if(vap_map->vap_array[j].vap_index != 2 && vap_map->vap_array[j].vap_index != 3) {
+                    wifi_util_error_print(WIFI_CTRL,"%s:%d VAP_EXISTS_FALSE for vap_index=%d, setting to TRUE \n",__FUNCTION__,__LINE__,vap_map->vap_array[j].vap_index);
+                    tgt_rdk_vaps[tgt_vap_map->num_vaps].exists = true;
+                }
+#else
+                wifi_util_error_print(WIFI_CTRL,"%s:%d VAP_EXISTS_FALSE for vap_index=%d, setting to TRUE \n",__FUNCTION__,__LINE__,vap_map->vap_array[j].vap_index);
+                tgt_rdk_vaps[tgt_vap_map->num_vaps].exists = true;
+#endif /* _SR213_PRODUCT_REQ_ */
+            }
+#endif /* defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)*/
 
             tgt_vap_map->num_vaps++;
         }

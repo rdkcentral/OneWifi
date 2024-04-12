@@ -5305,7 +5305,16 @@ SSID_SetParamBoolValue
     {
         rdk_wifi_vap_info_t *rdk_vap_info;
         rdk_vap_info = (rdk_wifi_vap_info_t *)get_dml_cache_rdk_vap_info(vapInfo->vap_index);
-        rdk_vap_info->exists = bValue;
+
+        if (bValue == true) {
+            rdk_vap_info->exists = bValue;
+        }
+
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)
+        if (bValue == false) {
+            wifi_util_error_print(WIFI_DMCLI,"%s:%d User is Trying to disable SSID for vap_index=%d\n",__FUNCTION__,__LINE__,vapInfo->vap_index);
+        }
+#endif
         set_dml_cache_vap_config_changed(instance_number - 1);
 
         if (isVapSTAMesh(pcfg->vap_index)) {

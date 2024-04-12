@@ -2290,6 +2290,19 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_dml(webconfig_s
             vap = &vap_map->vap_array[j];
             rdk_vap = &radio->vaps.rdk_vap_array[j];
 
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)
+            if (rdk_vap->exists == false) {
+#if defined(_SR213_PRODUCT_REQ_)
+                if(vap->vap_index != 2 && vap->vap_index != 3) {
+                    wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d VAP_EXISTS_FALSE for vap_index=%d,Setting to true.\n",__FUNCTION__,__LINE__,vap->vap_index);
+                    rdk_vap->exists = true;
+                }
+#else
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d VAP_EXISTS_FALSE for vap_index=%d,Setting to true.\n",__FUNCTION__,__LINE__,vap->vap_index);
+                rdk_vap->exists = true;
+#endif /*_SR213_PRODUCT_REQ_*/
+            }
+#endif /* !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)*/
             if (rdk_vap->exists == false) {
                 presence_mask |= (1 << vap->vap_index);
                 continue;
@@ -3247,6 +3260,19 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state_for_dml(webconfig_su
                     "conversion failed for %s\n", __func__, __LINE__, rdk_vap->vap_name);
                 return webconfig_error_translate_to_ovsdb;
             }
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)
+            if(rdk_vap->exists == false) {
+#if defined(_SR213_PRODUCT_REQ_)
+                if(vap->vap_index != 2 && vap->vap_index != 3) {
+                    wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d VAP_EXISTS_FALSE for vap_index=%d, setting to TRUE. \n",__FUNCTION__,__LINE__,vap->vap_index);
+                    rdk_vap->exists = true;
+                }
+#else
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d VAP_EXISTS_FALSE for vap_index=%d, setting to TRUE. \n",__FUNCTION__,__LINE__,vap->vap_index);
+                rdk_vap->exists = true;
+#endif /*_SR213_PRODUCT_REQ_*/
+            }
+#endif /*!defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)*/
             proto->vap_info[proto->num_vaps].exists = rdk_vap->exists;
             proto->num_vaps++;
 
@@ -5512,6 +5538,19 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_state(webconfig_subdoc_dat
                     "conversion failed for %s\n", __func__, __LINE__, rdk_vap->vap_name);
                 return webconfig_error_translate_to_ovsdb;
             }
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)
+            if(rdk_vap->exists == false) {
+#if defined(_SR213_PRODUCT_REQ_)
+                if(vap->vap_index != 2 && vap->vap_index != 3) {
+                    wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d VAP_EXISTS_FALSE for vap_name=%d, setting to TRUE. \n",__FUNCTION__,__LINE__,vap->vap_index);
+                    rdk_vap->exists = true;
+                }
+#else
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d VAP_EXISTS_FALSE for vap_name=%d, setting to TRUE. \n",__FUNCTION__,__LINE__,vap->vap_index);
+                rdk_vap->exists = true;
+#endif /*_SR213_PRODUCT_REQ_*/
+            }
+#endif /* !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) */
             proto->vap_info[proto->num_vaps].exists = rdk_vap->exists;
             proto->num_vaps++;
 
@@ -5693,6 +5732,19 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_private(webconf
             }
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: vap->vap_name:%s vap_index:%d\r\n", __func__, __LINE__, vap->vap_name, vap->vap_index);
 
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)
+            if (rdk_vap->exists == false) {
+#if defined(_SR213_PRODUCT_REQ_)
+                if(vap->vap_index != 2 && vap->vap_index != 3) {
+                    wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d VAP_EXISTS_FALSE for vap_index=%d,Setting to true.\n",__FUNCTION__,__LINE__,vap->vap_index);
+                    rdk_vap->exists = true;
+                }
+#else
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d VAP_EXISTS_FALSE for vap_index=%d,Setting to true.\n",__FUNCTION__,__LINE__,vap->vap_index);
+                rdk_vap->exists = true;
+#endif /* _SR213_PRODUCT_REQ_*/
+            }
+#endif /*!defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) */
             if (rdk_vap->exists == false) {
                 presence_mask |= (1 << vap->vap_index);
                 continue;
@@ -6012,6 +6064,19 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_mesh_backhaul(w
             }
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: vap->vap_name:%s vap_index:%d\r\n", __func__, __LINE__, vap->vap_name, vap->vap_index);
 
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)
+            if (rdk_vap->exists == false) {
+#if defined(_SR213_PRODUCT_REQ_)
+                if(vap->vap_index != 2 && vap->vap_index != 3) {
+                    wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d VAP_EXISTS_FALSE for vap_index=%d,Setting to true.\n",__FUNCTION__,__LINE__,vap->vap_index);
+                    rdk_vap->exists = true;
+                }
+#else
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d VAP_EXISTS_FALSE for vap_index=%d,Setting to true.\n",__FUNCTION__,__LINE__,vap->vap_index);
+                rdk_vap->exists = true;
+#endif /* _SR213_PRODUCT_REQ_*/
+            }
+#endif /* !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) */
             if (rdk_vap->exists == false) {
                 presence_mask |= (1 << vap->vap_index);
                 continue;
@@ -6125,6 +6190,19 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_mesh(webconfig_
             }
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: vap->vap_name:%s vap_index:%d\r\n", __func__, __LINE__, vap->vap_name, vap->vap_index);
 
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)
+            if (rdk_vap->exists == false) {
+#if defined(_SR213_PRODUCT_REQ_)
+                if(vap->vap_index != 2 && vap->vap_index != 3) {
+                    wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d VAP_EXISTS_FALSE for vap_index=%d,Setting to true.\n",__FUNCTION__,__LINE__,vap->vap_index);
+                    rdk_vap->exists = true;
+                }
+#else
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d VAP_EXISTS_FALSE for vap_index=%d,Setting to true.\n",__FUNCTION__,__LINE__,vap->vap_index);
+                rdk_vap->exists = true;
+#endif /*_SR213_PRODUCT_REQ_*/
+            }
+#endif /*!defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) */
             if (rdk_vap->exists == false) {
                 presence_mask |= (1 << vap->vap_index);
                 continue;
@@ -6249,6 +6327,19 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_home(webconfig_
                 continue;
             }
 
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)
+            if (rdk_vap->exists == false) {
+#if defined(_SR213_PRODUCT_REQ_)
+                if(vap->vap_index != 2 && vap->vap_index != 3) {
+                    wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d VAP_EXISTS_FALSE for vap_index=%d,Setting to true.\n",__FUNCTION__,__LINE__,vap->vap_index);
+                    rdk_vap->exists = true;
+                }
+#else
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d VAP_EXISTS_FALSE for vap_index=%d,Setting to true.\n",__FUNCTION__,__LINE__,vap->vap_index);
+                rdk_vap->exists = true;
+#endif /* _SR213_PRODUCT_REQ_ */
+            }
+#endif /*!defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)*/
             if (rdk_vap->exists == false) {
                 presence_mask |= (1 << vap->vap_index);
                 continue;
@@ -6364,6 +6455,19 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_lnf(webconfig_s
             }
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: vap->vap_name:%s vap_index:%d\r\n", __func__, __LINE__, vap->vap_name, vap->vap_index);
 
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)
+            if (rdk_vap->exists == false) {
+#if defined(_SR213_PRODUCT_REQ_)
+                if(vap->vap_index != 2 && vap->vap_index != 3) {
+                    wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d VAP_EXISTS_FALSE for vap_index=%d,Setting to true.\n",__FUNCTION__,__LINE__,vap->vap_index);
+                    rdk_vap->exists = true;
+                }
+#else
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d VAP_EXISTS_FALSE for vap_index=%d,Setting to true.\n",__FUNCTION__,__LINE__,vap->vap_index);
+                rdk_vap->exists = true;
+#endif /*_SR213_PRODUCT_REQ_*/
+            }
+#endif /*!defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)*/
             if (rdk_vap->exists == false) {
                 presence_mask |= (1 << vap->vap_index);
                 continue;
@@ -6480,6 +6584,19 @@ webconfig_error_t   translate_vap_object_to_ovsdb_vif_config_for_xfinity(webconf
             }
             wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: vap->vap_name:%s vap_index:%d\r\n", __func__, __LINE__, vap->vap_name, vap->vap_index);
 
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)
+            if (rdk_vap->exists == false) {
+#if defined(_SR213_PRODUCT_REQ_)
+                if(vap->vap_index != 2 && vap->vap_index != 3) {
+                    wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d VAP_EXISTS_FALSE for vap_index=%d,Setting to true.\n",__FUNCTION__,__LINE__,vap->vap_index);
+                    rdk_vap->exists = true;
+                }
+#else
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d VAP_EXISTS_FALSE for vap_index=%d,Setting to true.\n",__FUNCTION__,__LINE__,vap->vap_index);
+                rdk_vap->exists = true;
+#endif /* _SR213_PRODUCT_REQ_ */
+            }
+#endif /*defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) */
             if (rdk_vap->exists == false) {
                 presence_mask |= (1 << vap->vap_index);
                 continue;

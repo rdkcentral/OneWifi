@@ -812,6 +812,20 @@ void callback_Wifi_VAP_Config(ovsdb_update_monitor_t *mon,
             return;
         }
         pthread_mutex_lock(&g_wifidb->data_cache_lock);
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)
+        if(new_rec->exists == false) {
+#if defined(_SR213_PRODUCT_REQ_)
+            if(vap_index != 2 && vap_index != 3) {
+                wifi_util_error_print(WIFI_DB,"%s:%d VAP_EXISTS_FALSE for vap_index=%d, setting to TRUE. \n",__FUNCTION__,__LINE__,vap_index);
+                new_rec->exists = true;
+            }
+#else
+
+            wifi_util_error_print(WIFI_DB,"%s:%d VAP_EXISTS_FALSE for vap_index=%d, setting to TRUE. \n",__FUNCTION__,__LINE__,vap_index);
+            new_rec->exists = true;
+#endif /* _SR213_PRODUCT_REQ_ */
+        }
+#endif /*!defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)*/
         l_rdk_vap_info->exists = new_rec->exists;
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
 
@@ -2394,7 +2408,19 @@ int wifidb_get_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
         if (strlen(pcfg->repurposed_vap_name) != 0) {
             strncpy(config->repurposed_vap_name, pcfg->repurposed_vap_name, (strlen(pcfg->repurposed_vap_name) + 1));
         }
-
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)
+        if(pcfg->exists == false) {
+#if defined(_SR213_PRODUCT_REQ_)
+            if(vap_index != 2 && vap_index != 3) {
+                wifi_util_error_print(WIFI_DB,"%s:%d VAP_EXISTS_FALSE for vap_index=%d, setting to TRUE. \n",__FUNCTION__,__LINE__,vap_index);
+                pcfg->exists = true;
+            }
+#else
+            wifi_util_error_print(WIFI_DB,"%s:%d VAP_EXISTS_FALSE for vap_index=%d, setting to TRUE. \n",__FUNCTION__,__LINE__,vap_index);
+            pcfg->exists = true;
+#endif /* _SR213_PRODUCT_REQ_ */
+        }
+#endif /* defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)*/
         rdk_config->exists = pcfg->exists;
 
         if (isVapSTAMesh(vap_index)) {
@@ -3057,7 +3083,19 @@ int wifidb_update_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
             wifi_util_dbg_print(WIFI_DB,"%s:%d: Unable to get vap index for vap_name %s\n", __func__, __LINE__, config->vap_name);
             return RETURN_ERR;
     }
-
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)
+    if(rdk_config->exists == false) {
+#if defined(_SR213_PRODUCT_REQ_)
+        if(l_vap_index != 2 && l_vap_index != 3) {
+            wifi_util_error_print(WIFI_DB,"%s:%d VAP_EXISTS_FALSE for vap_index=%d, setting to TRUE. \n",__FUNCTION__,__LINE__,l_vap_index);
+            rdk_config->exists = true;
+        }
+#else
+        wifi_util_error_print(WIFI_DB,"%s:%d VAP_EXISTS_FALSE for vap_index=%d, setting to TRUE. \n",__FUNCTION__,__LINE__,l_vap_index);
+        rdk_config->exists = true;
+#endif /* _SR213_PRODUCT_REQ_ */
+    }
+#endif /* !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) */
     cfg.exists = rdk_config->exists;
 
     if (isVapSTAMesh(l_vap_index)) {
@@ -5197,6 +5235,19 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
 
     pthread_mutex_lock(&g_wifidb->data_cache_lock);
     memcpy(config,&cfg,sizeof(cfg));
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)
+    if(exists == false) {
+#if defined(_SR213_PRODUCT_REQ_)
+        if(vap_index != 2 && vap_index != 3) {
+            wifi_util_error_print(WIFI_DB,"%s:%d VAP_EXISTS_FALSE for vap_index=%d, setting to TRUE. \n",__FUNCTION__,__LINE__,vap_index);
+            exists = true;
+        }
+#else
+        wifi_util_error_print(WIFI_DB,"%s:%d VAP_EXISTS_FALSE for vap_index=%d, setting to TRUE. \n",__FUNCTION__,__LINE__,vap_index);
+        exists = true;
+#endif /* _SR213_PRODUCT_REQ_ */
+    }
+#endif /* !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)*/
     rdk_config->exists = exists;
     pthread_mutex_unlock(&g_wifidb->data_cache_lock);
     return RETURN_OK;
@@ -5708,6 +5759,19 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
                     &rdk_config[i]);
             }
         }
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)
+        if (rdk_config[i].exists == false) {
+#if defined(_SR213_PRODUCT_REQ_)
+            if (config->vap_array[i].vap_index !=2  &&  config->vap_array[i].vap_index != 3 ) {
+                wifi_util_error_print(WIFI_DB,"%s:%d VAP_EXISTS_FALSE for vap_index=%d, setting to TRUE. \n",__FUNCTION__,__LINE__,config->vap_array[i].vap_index);
+                rdk_config[i].exists = true;
+            }
+#else
+            wifi_util_error_print(WIFI_DB,"%s:%d VAP_EXISTS_FALSE for vap_index=%d, setting to TRUE. \n",__FUNCTION__,__LINE__,config->vap_array[i].vap_index);
+            rdk_config[i].exists = true;
+#endif
+        }
+#endif
     }
 }
 
