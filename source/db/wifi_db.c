@@ -4755,7 +4755,11 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
             cfg.op_class = 12;
             cfg.channel = 1;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
+#if defined(_XER5_PRODUCT_REQ_)
+            cfg.variant = WIFI_80211_VARIANT_G | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AX | WIFI_80211_VARIANT_B;
+#else
             cfg.variant = WIFI_80211_VARIANT_G | WIFI_80211_VARIANT_N;
+#endif
 #ifdef FEATURE_IEEE80211BE
             cfg.variant |= WIFI_80211_VARIANT_BE;
 #endif
@@ -5483,7 +5487,11 @@ void wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config)
     rfc_config.wpa3_rfc = false;
 #endif
     rfc_config.ow_core_thread_rfc = false;
+#if defined(_XER5_PRODUCT_REQ_)
+    rfc_config.twoG80211axEnable_rfc = true;
+#else
     rfc_config.twoG80211axEnable_rfc = false;
+#endif
     rfc_config.hotspot_open_2g_last_enabled = false;
     rfc_config.hotspot_open_5g_last_enabled = false;
     rfc_config.hotspot_open_6g_last_enabled = false;
