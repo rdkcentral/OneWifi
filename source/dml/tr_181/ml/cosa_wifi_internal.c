@@ -1338,10 +1338,12 @@ CosaWifiInitialize
 
     set_dml_init_status(true);
     getParamWifiRegionUpdateSource();
+#ifndef NEWPLATFORM_PORT
     CosaDmlWiFiGetDataFromPSM();
     CosaDmlWiFiGetExternalDataFromPSM();
     CosaDmlWiFiGetRFCDataFromPSM();
     CosaDmlWiFiGetFromPSM();
+#endif // NEWPLATFORM_PORT
 
 EXIT:
         CcspTraceWarning(("CosaWifiInitialize - returnStatus %ld\n", returnStatus));

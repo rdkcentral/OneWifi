@@ -86,6 +86,7 @@ static char *RapidReconnThreshold        = "eRT.com.cisco.spvtg.ccsp.tr181pa.Dev
 static char *RapidReconnCountEnable      = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.RapidReconnCountEnable";
 static char *vAPStatsEnable = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.vAPStatsEnable";
 static char *NeighborReportActivated     = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.X_RDKCENTRAL-COM_NeighborReportActivated";
+#ifndef NEWPLATFORM_PORT
 static char *WpsPin = "eRT.com.cisco.spvtg.ccsp.Device.WiFi.WPSPin";
 static char *FixedWmmParams        = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.FixedWmmParamsValues";
 static char *WifiVlanCfgVersion ="eRT.com.cisco.spvtg.ccsp.Device.WiFi.VlanCfgVerion";
@@ -116,6 +117,7 @@ static char *WiFiActiveMsmtEnabled = "eRT.com.cisco.spvtg.ccsp.Device.WiFi.WiFiA
 static char *WiFiActiveMsmtPktSize = "eRT.com.cisco.spvtg.ccsp.Device.WiFi.WiFiActiveMsmtPktSize";
 static char *WiFiActiveMsmtNumberOfSample = "eRT.com.cisco.spvtg.ccsp.Device.WiFi.WiFiActiveMsmtNumberOfSample";
 static char *WiFiActiveMsmtSampleDuration = "eRT.com.cisco.spvtg.ccsp.Device.WiFi.WiFiActiveMsmtSampleDuration";
+#endif // NEWPLATFORM_PORT
 #define TR181_WIFIREGION_Code    "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.X_RDKCENTRAL-COM_Syndication.WiFiRegion.Code"
 static char *MacFilter = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.MacFilter.%d";
 static char *MacFilterDevice = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.MacFilterDevice.%d";
@@ -394,6 +396,7 @@ int wifi_db_update_global_config(wifi_global_param_t *global_cfg)
     wifidb_init_global_config_default(global_cfg);
 
     memset(strValue, 0, sizeof(strValue));
+#ifndef NEWPLATFORM_PORT
     str = Get_PSM_Record_Status(WiFivAPStatsFeatureEnable, strValue);
     if (str != NULL) {
         convert_ascii_string_to_bool(str, &global_cfg->vap_stats_feature);
@@ -556,6 +559,7 @@ int wifi_db_update_global_config(wifi_global_param_t *global_cfg)
     }
 
     memset(strValue, 0, sizeof(strValue));
+#endif // NEWPLATFORM_PORT
     str = Get_PSM_Record_Status(TR181_WIFIREGION_Code, strValue);
     if (str != NULL) {
         strcpy(global_cfg->wifi_region_code, str);
@@ -564,6 +568,7 @@ int wifi_db_update_global_config(wifi_global_param_t *global_cfg)
         wifi_util_dbg_print(WIFI_MGR,":%s:%d str value for wifi_region_code:%s \r\n", __func__, __LINE__, str);
     }
 
+#ifndef NEWPLATFORM_PORT
     memset(strValue, 0, sizeof(strValue));
     str = Get_PSM_Record_Status(WpsPin, strValue);
     if (str != NULL) {
@@ -673,6 +678,7 @@ int wifi_db_update_global_config(wifi_global_param_t *global_cfg)
     } else {
         wifi_util_dbg_print(WIFI_MGR,":%s:%d str value for wifi_active_msmt_sample_duration:%s \r\n", __func__, __LINE__, str);
     }
+#endif // NEWPLATFORM_PORT
 
     if (wifidb_update_wifi_global_config(global_cfg) != RETURN_OK) {
         wifi_util_dbg_print(WIFI_MGR,"%s:%d: Failed to update global config\n", __func__, __LINE__);
@@ -1298,7 +1304,9 @@ int wifi_db_update_radio_config()
         memset(&radio_feat_cfg, 0, sizeof(wifi_radio_feature_param_t));
 
         /* read values from psm and update db */
+#ifndef NEWPLATFORM_PORT
         get_radio_params_from_psm(radio_index, &radio_cfg, &radio_feat_cfg);
+#endif // NEWPLATFORM_PORT
         get_radio_params_from_db(radio_index, &radio_cfg);
         wifi_util_dbg_print(WIFI_MGR,"%s:%d: %u ****success to get bandwidth value in wifi db\n",__func__, __LINE__,radio_cfg.channelWidth);
 
@@ -1315,6 +1323,7 @@ int wifi_db_update_radio_config()
 
 int wifi_db_update_vap_config()
 {
+#ifndef NEWPLATFORM_PORT
     wifi_vap_info_t vap_cfg;
     rdk_wifi_vap_info_t rdk_vap_cfg;
     int retval;
@@ -1357,7 +1366,7 @@ int wifi_db_update_vap_config()
             wifi_util_info_print(WIFI_MGR,"%s:%d: Successfully updated security vap_%s config in wifidb \r\n",__func__, __LINE__, vap_cfg.vap_name);
         }
     }
-
+#endif // NEWPLATFORM_PORT
     return RETURN_OK;
 }
 
