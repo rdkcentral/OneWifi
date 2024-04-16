@@ -248,6 +248,10 @@ int execute_assoc_client_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *
     clock_gettime(CLOCK_MONOTONIC, &tv_now);
     sta_map = mon_data->bssid_data[vap_array_index].sta_map;
 
+    if (num_devs != 0) {
+        wifi_util_info_print(WIFI_MON,"%s:%d ap_index:%d num_devs:%d\r\n", __func__, __LINE__, args->vap_index, num_devs);
+    }
+
     hal_sta = dev_array;
 
     if (hal_sta != NULL) {
@@ -257,6 +261,10 @@ int execute_assoc_client_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *
             sta = (sta_data_t *)hash_map_get(sta_map, sta_key);
             if (sta == NULL) {
                 sta = (sta_data_t *)calloc(1, sizeof(sta_data_t));
+                if (sta == NULL) {
+                    wifi_util_error_print(WIFI_MON, "%s:%d Failed to allocate memory:sta:%s\n", __func__, __LINE__, sta_key);
+                    break;
+                }
                 memset(sta, 0, sizeof(sta_data_t));
                 memcpy(sta->sta_mac, hal_sta->cli_MACAddress, sizeof(mac_addr_t));
                 hash_map_put(sta_map, strdup(sta_key), sta);
@@ -299,6 +307,10 @@ int execute_assoc_client_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *
             wifi_util_dbg_print(WIFI_MON, "%s:%d Value of Sleep mode is %d \n", __func__,__LINE__, sta->sleep_mode);
 #endif
             hal_sta++;
+            if (hal_sta == NULL) {
+                wifi_util_error_print(WIFI_MON, "%s:%d hal_sta is NULL: ap_index:%d index:%d num_devs:%d\n", __func__, __LINE__, args->vap_index, i, num_devs);
+                break;
+            }
         }
     }
     sta = hash_map_get_first(sta_map);
