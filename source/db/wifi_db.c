@@ -5164,7 +5164,12 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             cfg.u.bss_info.enabled = false;
         }
 #endif
+#ifdef _SR213_PRODUCT_REQ_
+        cfg.u.bss_info.bssMaxSta = wifi_hal_cap_obj->wifi_prop.BssMaxStaAllow;
+#else
         cfg.u.bss_info.bssMaxSta = BSS_MAX_NUM_STA_SKY;
+#endif //_SR213_PRODUCT_REQ_
+
 #else
 #ifdef NEWPLATFORM_PORT
         cfg.u.bss_info.bssMaxSta = wifi_hal_cap_obj->wifi_prop.BssMaxStaAllow;
@@ -5175,7 +5180,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             cfg.u.bss_info.bssMaxSta = BSS_MAX_NUM_STA_COMMON;
         }
 #endif // NEWPLATFORM_PORT
-#endif
+#endif //_SKY_HUB_COMMON_PRODUCT_REQ_
 
         memset(ssid, 0, sizeof(ssid));
 
