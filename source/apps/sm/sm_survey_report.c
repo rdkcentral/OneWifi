@@ -67,6 +67,8 @@ static int survey_report_calculate_average(sm_survey_cache_t *cache, survey_type
         dpp_survey_record_avg_t *sample = calloc(1, sizeof(dpp_survey_record_avg_t));
         if (sample && sm_survey_samples_calc_average(samples, sample)) {
             ds_dlist_insert_tail(result, sample);
+        } else {
+            free(sample);
         }
 
         survey = hash_map_get_next(cache->surveys, survey);
@@ -151,6 +153,7 @@ int sm_survey_report_push_to_dpp(sm_survey_cache_t *cache, wifi_freq_bands_t fre
 
     return RETURN_OK;
 }
+
 
 int survey_report_counter_publish_cb(void *args)
 {

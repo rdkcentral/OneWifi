@@ -293,6 +293,34 @@ int sm_report_start_task(stats_type_t type, wifi_app_t *app, wifi_mon_stats_requ
 }
 
 
+static int report_task_cleanup(stats_report_task_t *report_task, const stats_config_t *config)
+{
+    int rc = RETURN_OK;
+    int radio_index = 0;
+
+    CHECK_NULL(report_task);
+    CHECK_NULL(config);
+
+    switch (config->stats_type) {
+        case stats_type_survey:
+            rc = convert_freq_band_to_radio_index(config->radio_type, &radio_index);
+            if (rc != RETURN_OK) {
+                wifi_util_dbg_print(WIFI_SM, "%s:%d: failed to convert freq_band=%d to radio_index\n", __func__, __LINE__, config->radio_type);
+                rc = RETURN_ERR;
+                goto exit;
+            }
+
+            sm_survey_cache_free_after_reconf(radio_index, config->survey_type);
+            break;
+        default:
+            break;
+    }
+
+exit:
+    return rc;
+}
+
+
 int sm_report_config_task(wifi_app_t *app, wifi_mon_stats_request_state_t state, const stats_config_t *config)
 {
     CHECK_NULL(app);
@@ -339,15 +367,17 @@ int sm_report_config_task(wifi_app_t *app, wifi_mon_stats_request_state_t state,
                             __func__, __LINE__, report_task->task_id, config->reporting_interval, config->reporting_count);
         hash_map_put(app->data.u.sm_data.report_tasks_map, strdup(config->stats_cfg_id), report_task);
     } else {
+        report_task_cleanup(report_task, config);
+
         if (state == mon_stats_request_state_stop) {
-            wifi_util_error_print(WIFI_SM, "%s:%d: removing task %d\n", __func__, __LINE__, report_task->task_id);
+            wifi_util_info_print(WIFI_SM, "%s:%d: removing task %d\n", __func__, __LINE__, report_task->task_id);
             scheduler_cancel_timer_task(app->ctrl->sched, report_task->task_id);
             hash_map_remove(app->data.u.sm_data.report_tasks_map, report_task->stats_cfg_id);
             scheduler_free_timer_task_arg(app->ctrl->sched, report_task->task_id);
             free(report_task);
         } else if (state == mon_stats_request_state_start) {
             /* found, need to reconfigure timer */
-            wifi_util_error_print(WIFI_SM, "%s:%d: reconfiguring timer for task %d, interval=%d, count=%d\n",
+            wifi_util_info_print(WIFI_SM, "%s:%d: reconfiguring timer for task %d, interval=%d, count=%d\n",
                                   __func__, __LINE__, report_task->task_id,
                                   config->reporting_interval, config->reporting_count);
             scheduler_update_timer_task_repetitions(app->ctrl->sched, report_task->task_id, config->reporting_count);

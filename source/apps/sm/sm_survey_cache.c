@@ -54,7 +54,7 @@ static int survey_id_get(const unsigned int radio_index, const unsigned int chan
 }
 
 
-static void survey_clean(sm_survey_cache_t *cache, sm_survey_t *survey, survey_type_t survey_type)
+static void survey_clean_by_survey_type(sm_survey_cache_t *cache, sm_survey_t *survey, survey_type_t survey_type)
 {
     if (!cache || !cache->surveys || !survey) {
         return;
@@ -67,13 +67,8 @@ static void survey_clean(sm_survey_cache_t *cache, sm_survey_t *survey, survey_t
         return;
     }
 
-    survey_samples_free(&scan->samples);
-
-    if (!scan->is_updated) {
-        free(scan->old_stats);
-        scan->old_stats = NULL;
-    }
     scan->is_updated = false;
+    survey_samples_free(&scan->samples);
 }
 
 
@@ -88,10 +83,52 @@ static void survey_free(sm_survey_cache_t *cache, sm_survey_t *survey)
 
     survey_samples_free(&survey->onchan.samples);
     survey_samples_free(&survey->offchan.samples);
+
     free(survey->onchan.old_stats);
+    survey->onchan.old_stats = NULL;
+
     free(survey->offchan.old_stats);
+    survey->offchan.old_stats = NULL;
+
     survey = hash_map_remove(cache->surveys, id);
     free(survey);
+}
+
+
+static bool survey_ready_to_free(sm_survey_t *survey)
+{
+    if (!survey) {
+        return false;
+    }
+
+    return (survey->onchan.old_stats == NULL && survey->offchan.old_stats == NULL);
+}
+
+
+static void survey_free_by_survey_type(sm_survey_cache_t *cache, sm_survey_t *survey, survey_type_t survey_type)
+{
+    if (!cache || !cache->surveys || !survey) {
+        return;
+    }
+
+    sm_survey_scan_t *scan = NULL;
+    scan = sm_survey_get_scan_data(survey, survey_type);
+    if (!scan) {
+        wifi_util_error_print(WIFI_SM, "%s:%d: failed to get scan\n", __func__, __LINE__);
+        return;
+    }
+
+
+    wifi_util_dbg_print(WIFI_SM, "%s:%d: free survey scan %s survey_type %s\n",
+                        __func__, __LINE__, survey->id, survey_type_to_str(survey_type));
+    survey_samples_free(&scan->samples);
+    free(scan->old_stats);
+    scan->old_stats = NULL;
+
+    if (survey_ready_to_free(survey)) {
+        wifi_util_dbg_print(WIFI_SM, "%s:%d: survey '%s' is ready to be removed \n", __func__, __LINE__, survey->id);
+        survey_free(cache, survey);
+    }
 }
 
 
@@ -227,6 +264,11 @@ static int survey_sample_add(sm_survey_cache_t *cache, survey_type_t survey_type
     }
 
     if (scan->old_stats == NULL) {
+    /*
+     * old_stats will be freed only after the configuration removal.
+     * This will prevent removing the stats for some channels
+     * when reporting interval is not long enough to scan all the required channels in one go
+    */
         scan->old_stats = malloc(sizeof(*stats)); /* allocate once for the report */
     } else {
         sample = dpp_survey_record_alloc();
@@ -324,7 +366,28 @@ void sm_survey_cache_clean(sm_survey_cache_t *cache, survey_type_t survey_type)
     while (survey) {
         tmp_survey = survey;
         survey = hash_map_get_next(cache->surveys, survey);
-        survey_clean(cache, tmp_survey, survey_type);
+        survey_clean_by_survey_type(cache, tmp_survey, survey_type);
+    }
+}
+
+
+void sm_survey_cache_free_after_reconf(unsigned int radio_index, survey_type_t survey_type)
+{
+    sm_survey_t *tmp_survey = NULL;
+    sm_survey_t *survey = NULL;
+    sm_survey_cache_t *cache = &sm_survey_report_cache[radio_index];
+
+    if (!cache->surveys) {
+        return;
+    }
+
+    wifi_util_dbg_print(WIFI_SM, "%s:%d: free survey cache after reconf for radio %u, survey_type %s\n",
+                        __func__, __LINE__, radio_index, survey_type_to_str(survey_type));
+    survey = hash_map_get_first(cache->surveys);
+    while (survey) {
+        tmp_survey = survey;
+        survey = hash_map_get_next(cache->surveys, survey);
+        survey_free_by_survey_type(cache, tmp_survey, survey_type);
     }
 }
 

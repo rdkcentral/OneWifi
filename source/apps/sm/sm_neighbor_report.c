@@ -143,8 +143,9 @@ int sm_neighbor_report_push_to_dpp(sm_neighbor_cache_t *cache, wifi_freq_bands_t
 
     if (rc == RETURN_OK && !ds_dlist_is_empty(&dpp_report.list)) {
         dpp_put_neighbor(&dpp_report);
-        wifi_util_dbg_print(WIFI_SM, "%s:%d: neighbor report is pushed to dpp for freq_band=%d, report_type=%d\n",
-                            __func__, __LINE__, freq_band, report_type);
+        wifi_util_dbg_print(WIFI_SM, "%s:%d: neighbor report %s %s is pushed to dpp for freq_band=%d, report_type=%d\n",
+                            __func__, __LINE__, radio_get_name_from_type(dpp_report.radio_type), survey_type_to_str(survey_type),
+                            freq_band, report_type);
     }
 
     sm_neighbor_cache_clean(cache, survey_type);

@@ -403,6 +403,7 @@ int survey_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_t *st
         data->u.mon_stats_config.args.scan_mode = WIFI_RADIO_SCAN_MODE_OFFCHAN;
     }
     data->u.mon_stats_config.args.app_info = sm_app_event_type_survey;
+    //data->u.mon_stats_config.start_immediately = true;
 
     push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
 

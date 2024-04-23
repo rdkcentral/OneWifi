@@ -91,7 +91,7 @@ typedef struct
 } sm_survey_t;
 
 typedef struct {
-    hash_map_t     *surveys;  /* sm_survey_channel_t */
+    hash_map_t     *surveys;  /* sm_survey_t */
 } sm_survey_cache_t; /* per radio */
 
 void sm_survey_cache_init(sm_survey_cache_t *cache);
@@ -100,7 +100,7 @@ int  sm_survey_sample_store(unsigned int radio_index, survey_type_t survey_type,
 int  sm_survey_samples_calc_average(ds_dlist_t *samples, dpp_survey_record_avg_t *result);
 sm_survey_scan_t* sm_survey_get_scan_data(sm_survey_t *survey, survey_type_t survey_type);
 void sm_survey_cache_clean(sm_survey_cache_t *cache, survey_type_t survey_type);
-
+void sm_survey_cache_free_after_reconf(unsigned int radio_index, survey_type_t survey_type);
 
 /* NEIGHBOR */
 
