@@ -3908,7 +3908,6 @@ int coordinator_create_task(wifi_mon_collector_element_t **collector_elem, wifi_
 
     if (hash_map_put((*collector_elem)->provider_list, key_copy, provider_elem) != 0) {
         wifi_util_error_print(WIFI_MON, "%s:%d: hash_map_put failed\n", __func__,__LINE__);
-        free(key_copy);
         coordinator_free_provider_elem(&provider_elem);
         return RETURN_ERR;
     }
@@ -3987,7 +3986,6 @@ int coordinator_update_task(wifi_mon_collector_element_t *collector_elem, wifi_m
 
         if (hash_map_put(collector_elem->provider_list, key_copy, provider_elem) != 0) {
             wifi_util_error_print(WIFI_MON, "%s:%d: hash_map_put failed\n", __func__,__LINE__);
-            free(key_copy);
             coordinator_free_provider_elem(&dup_provider_elem);
             return RETURN_ERR;
         }
