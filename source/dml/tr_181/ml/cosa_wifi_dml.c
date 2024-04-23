@@ -3632,7 +3632,7 @@ Radio_SetParamUlongValue
 
     if( AnscEqualString(ParamName, "X_CISCO_COM_RTSThreshold", TRUE))
     {
-        if (uValue > 2347 || uValue < 0)
+        if (uValue > 2347)
         {
             wifi_util_error_print(WIFI_DMCLI,"%s:%d: Invalid RTSThreshold value:%d\n",__func__, __LINE__,uValue);
             return FALSE;
