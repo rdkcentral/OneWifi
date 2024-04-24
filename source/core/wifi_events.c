@@ -34,6 +34,8 @@
 #include "wifi_mgr.h"
 #include "wifi_util.h"
 
+extern bool monitor_initialization_done;
+
 void free_cloned_event(wifi_event_t *clone)
 {
     destroy_wifi_event(clone);
@@ -519,6 +521,14 @@ int push_event_to_monitor_queue(wifi_monitor_data_t *mon_data, wifi_event_subtyp
 {
     wifi_monitor_t *monitor_param = (wifi_monitor_t *)get_wifi_monitor();
     wifi_event_t *event;
+
+#ifdef CCSP_COMMON
+    /* Check if monitor queue is initialized */
+    if (monitor_initialization_done == false) {
+        wifi_util_error_print(WIFI_CTRL,"%s %d: Monitor queue is not ready yet. subtype: %d\n", __FUNCTION__, __LINE__, sub_type);
+        return RETURN_ERR;
+    }
+#endif // CCSP_COMMON
 
     if(mon_data == NULL) {
         wifi_util_error_print(WIFI_CTRL,"%s %d: input monitor data is null\n",__FUNCTION__, __LINE__);

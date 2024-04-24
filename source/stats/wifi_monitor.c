@@ -159,6 +159,8 @@ struct rsn_data {
 #define NDA_RTA(r) \
   ((struct rtattr *)(((char *)(r)) + NLMSG_ALIGN(sizeof(struct ndmsg))))
 
+bool monitor_initialization_done;
+
 static events_monitor_t g_events_monitor;
 
 int harvester_get_associated_device_info(int vap_index, char **harvester_buf);
@@ -1165,6 +1167,11 @@ void *monitor_function  (void *data)
     strncpy(event_buff, "Init completed", sizeof(event_buff)-1);
     push_event_to_ctrl_queue(event_buff, (strlen(event_buff) +1), wifi_event_type_command, wifi_event_type_notify_monitor_done, NULL);
 
+#ifdef CCSP_COMMON
+    /* Set the monitor_initialization_done flag to notify */
+    monitor_initialization_done = true;
+#endif // CCSP_COMMON
+
     prctl(PR_SET_NAME,  __func__, 0, 0, 0);
 
     proc_data = (wifi_monitor_t *)data;
@@ -1939,10 +1946,11 @@ static int clientdiag_sheduler_enable(int ap_index)
     return 0;
 }
 
-void diagdata_set_interval(int interval, unsigned int ap_idx)
+int diagdata_set_interval(int interval, unsigned int ap_idx)
 {
     wifi_monitor_data_t data;
     unsigned int vap_array_index;
+    int ret = RETURN_ERR;
 
     if(ap_idx >= MAX_VAP) {
         wifi_util_error_print(WIFI_MON, "%s: ap_idx %d not valid\n",__func__, ap_idx);
@@ -1958,7 +1966,13 @@ void diagdata_set_interval(int interval, unsigned int ap_idx)
     memset(&data, 0, sizeof(wifi_monitor_data_t));
     data.id = msg_id++;
     data.ap_index = ap_idx;
-    push_event_to_monitor_queue(&data, wifi_event_monitor_clientdiag_update_config, NULL);
+
+    ret = push_event_to_monitor_queue(&data, wifi_event_monitor_clientdiag_update_config, NULL);
+    if (ret == RETURN_ERR) {
+        wifi_util_error_print(WIFI_MON, "%s:%d Error in sending request to monitor queue\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    return RETURN_OK;
 }
 
 int associated_device_diagnostics_send_event(void* arg)

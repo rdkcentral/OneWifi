@@ -1724,6 +1724,7 @@ rbusError_t eventSubHandler(rbusHandle_t handle, rbusEventSubAction_t action, co
 
 #ifdef CCSP_COMMON
     unsigned int idx = 0;
+    int ret = 0;
     event_rbus_element_t *event;
     char *telemetry_start = NULL;
     char *telemetry_cancel = NULL;
@@ -1793,7 +1794,12 @@ rbusError_t eventSubHandler(rbusHandle_t handle, rbusEventSubAction_t action, co
                     //unlock event mutex before updating monitor data to avoid deadlock
                     pthread_mutex_unlock(&events_rbus_data->events_rbus_lock);
 
-                    diagdata_set_interval(interval, idx - 1);
+                    ret = diagdata_set_interval(interval, idx - 1);
+
+                    if (ret == RETURN_ERR) {
+                        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to send event %s\n", __FUNCTION__, __LINE__, eventName);
+                        return RBUS_ERROR_BUS_ERROR;
+                    }
 
                     wifi_util_dbg_print(WIFI_CTRL, "Exit %s: Event %s\n", __FUNCTION__, eventName);
                     return RBUS_ERROR_SUCCESS;
@@ -1814,7 +1820,12 @@ rbusError_t eventSubHandler(rbusHandle_t handle, rbusEventSubAction_t action, co
                         //unlock event mutex before updating monitor data to avoid deadlock
                         pthread_mutex_unlock(&events_rbus_data->events_rbus_lock);
 
-                        diagdata_set_interval(0, idx - 1);
+                        ret = diagdata_set_interval(0, idx - 1);
+
+                        if (ret == RETURN_ERR) {
+                            wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to send event %s\n", __FUNCTION__, __LINE__, eventName);
+                            return RBUS_ERROR_BUS_ERROR;
+                        }
                         wifi_util_dbg_print(WIFI_CTRL, "Exit %s: Event %s\n", __FUNCTION__, eventName);
                         return RBUS_ERROR_SUCCESS;
                     }
