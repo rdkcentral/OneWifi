@@ -519,7 +519,7 @@ static int scheduler_remove_complete_tasks(struct scheduler *sched)
                 queue_remove(sched->high_priority_timer_list, i);
                 if (tt->id == hp_id) {
                     hp_update_index = 0;
-                    sched->num_hp_tasks = i-1;
+                    sched->hp_index = i-1;
                 }
                 free(tt);
                 sched->num_hp_tasks--;
