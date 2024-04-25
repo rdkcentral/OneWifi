@@ -521,7 +521,7 @@ int copy_radio_channel_stats_from_cache(wifi_mon_provider_element_t *p_elem, voi
     }
     if (p_elem->mon_stats_config == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d  p_elem->mon_stats_config NULL\n",
-                __func__,__LINE__, p_elem, mon_cache);
+                __func__,__LINE__);
         return RETURN_ERR;
     }
     pthread_mutex_lock(&mon_cache->data_lock);
@@ -531,6 +531,12 @@ int copy_radio_channel_stats_from_cache(wifi_mon_provider_element_t *p_elem, voi
     if (radio_chan_stats_data == NULL) {
         wifi_util_error_print(WIFI_MON, "%s : %d radio_chan_stats_data is NULL\n",
                 __func__, __LINE__);
+        pthread_mutex_unlock(&mon_cache->data_lock);
+        return RETURN_ERR;
+    }
+    if (radio_chan_stats_data->chan_data == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d chan_data in radio_chan_stats_data is NULL for %d\n",
+                __func__,__LINE__, args->radio_index);
         pthread_mutex_unlock(&mon_cache->data_lock);
         return RETURN_ERR;
     }
@@ -582,7 +588,7 @@ int copy_radio_channel_stats_from_cache(wifi_mon_provider_element_t *p_elem, voi
                         continue;
                     }
                 }
-                for (j=0;j<MAX_CHANNELS;j++) {
+                for (j=0;j<radio_chan_stats_data->num_channels;j++) {
                     if (args->channel_list.channels_list[i] == radio_chan_stats_data->chan_data[j].ch_number) {
                         if (radio_chan_stats_data->last_update_time_offchannel[j].tv_sec != p_elem->u.radio_channel_data.last_update_time_offchannel[j].tv_sec) {
                             p_elem->u.radio_channel_data.last_update_time_offchannel[j].tv_sec = radio_chan_stats_data->last_update_time_offchannel[j].tv_sec;
@@ -593,7 +599,7 @@ int copy_radio_channel_stats_from_cache(wifi_mon_provider_element_t *p_elem, voi
                 }
             }
 
-            for (j=0;j<MAX_CHANNELS;j++) {
+            for (j=0;j<radio_chan_stats_data->num_channels;j++) {
                 if (updated[j] == 1) {
                     wifi_util_dbg_print(WIFI_MON, "%s:%d  radio index %d,radio channel stats updated for %d for app : %d \n",__func__,__LINE__, args->radio_index,
                             radio_chan_stats_data->chan_data[j].ch_number, p_elem->mon_stats_config->inst);
