@@ -64,36 +64,48 @@ struct ovs_vapname_cloudvifname_map {
     char vapname[64];
 };
 
-#if defined (_PP203X_PRODUCT_REQ_) || defined (_XER5_PRODUCT_REQ_)
+#if defined (_PP203X_PRODUCT_REQ_) || defined (_XER5_PRODUCT_REQ_) || defined (_XB10_PRODUCT_REQ_)
 //TODO for _SCER11BEL_PRODUCT_REQ_ should follow XB8
 struct ovs_vapname_cloudvifname_map  cloud_vif_map[] = {
     {"bhaul-ap-24",  "mesh_backhaul_2g"},
     {"bhaul-ap-l50", "mesh_backhaul_5gl"},
     {"bhaul-ap-u50", "mesh_backhaul_5gh"},
-    {"bhaul-ap-50", "mesh_backhaul_5g"},
+    {"bhaul-ap-50",  "mesh_backhaul_5g"},
+    {"bhaul-ap-60",  "mesh_backhaul_6g"},
     {"home-ap-24",   "private_ssid_2g"},
     {"home-ap-l50",  "private_ssid_5gl"},
     {"home-ap-u50",  "private_ssid_5gh"},
-    {"home-ap-50",  "private_ssid_5g"},
-    {"bhaul-sta-24", "mesh_sta_2g"},
+    {"home-ap-50",   "private_ssid_5g"},
+    {"home-ap-60",   "private_ssid_6g"},
+    {"bhaul-sta-24", "mesh_sta_2g"},   
     {"bhaul-sta-l50","mesh_sta_5gl"},
     {"bhaul-sta-u50","mesh_sta_5gh"},
-    {"bhaul-sta-50","mesh_sta_5g"},
+    {"bhaul-sta-50", "mesh_sta_5g"},
+    {"bhaul-sta-60", "mesh_sta_6g"},
     {"svc-d-ap-24",  "lnf_psk_2g"},
     {"svc-d-ap-l50", "lnf_psk_5gl"},
     {"svc-d-ap-u50", "lnf_psk_5gh"},
-    {"svc-d-ap-50", "lnf_psk_5g"},
+    {"svc-d-ap-50",  "lnf_psk_5g"},
+    {"svc-d-ap-60",  "lnf_psk_6g"},    
     {"svc-e-ap-24",  "iot_ssid_2g"},
     {"svc-e-ap-l50", "iot_ssid_5gl"},
     {"svc-e-ap-u50", "iot_ssid_5gh"},
-    {"svc-e-ap-50", "iot_ssid_5g"},
-    {"svc-d-ap-s-24", "lnf_radius_2g"},
-    {"svc-d-ap-s-50", "lnf_radius_5g"},
-    {"svc-f-ap-24", "hotspot_open_2g"},
-    {"svc-f-ap-50", "hotspot_open_5g"},
-    {"svc-g-ap-24", "hotspot_secure_2g"},
-    {"svc-g-ap-50", "hotspot_secure_5g"},
-};
+    {"svc-e-ap-50",  "iot_ssid_5g"},
+    {"svc-e-ap-60",  "iot_ssid_6g"},
+    {"svc-d-ap-s-24","lnf_radius_2g"},
+    {"svc-d-ap-s-50","lnf_radius_5g"},
+    {"svc-d-ap-s-60","lnf_radius_6gh"},
+    {"svc-f-ap-24",  "hotspot_open_2g"},
+    {"svc-f-ap-l50", "hotspot_open_5gl"},
+    {"svc-f-ap-u50", "hotspot_open_5gh"},
+    {"svc-f-ap-50",  "hotspot_open_5g"},
+    {"svc-f-ap-60",  "hotspot_open_6g"},
+    {"svc-g-ap-24",  "hotspot_secure_2g"},
+    {"svc-g-ap-l50", "hotspot_secure_5gl"},
+    {"svc-g-ap-u50", "hotspot_secure_5gh"},
+    {"svc-g-ap-50",  "hotspot_secure_5g"},
+    {"svc-g-ap-60",  "hotspot_secure_6g"},
+}; 
 #else
 struct ovs_vapname_cloudvifname_map  cloud_vif_map[] = {
     {"wl0",   "mesh_sta_2g"},
