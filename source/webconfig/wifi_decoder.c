@@ -1587,7 +1587,7 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
         decode_param_integer(vap, "WpsConfigMethodsEnabled", param);
         vap_info->u.bss_info.wps.methods = param->valuedouble;
         //WpsConfigPin
-        decode_param_string(vap, "WpsConfigPin", param);
+        decode_param_allow_empty_string(vap, "WpsConfigPin", param);
         strcpy(vap_info->u.bss_info.wps.pin, param->valuestring);
     }
 
