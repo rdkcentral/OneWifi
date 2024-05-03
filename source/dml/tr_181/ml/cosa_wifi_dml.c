@@ -4045,8 +4045,10 @@ Radio_SetParamStringValue
                 return TRUE;
             }
 
-            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d OperationalDataTransmitRates Cannot be Set \n\r",__func__,__LINE__);
-            return FALSE;
+            wifiRadioOperParam->operationalDataTransmitRates = txRate;
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:OperationalDataTransmitRates=%d =%d\n",__func__,__LINE__,wifiRadioOperParam->operationalDataTransmitRates,txRate);
+            is_radio_config_changed = TRUE;
+            return TRUE;
 
         }
     }
