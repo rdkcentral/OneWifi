@@ -1858,6 +1858,10 @@ void pktGen_BlastClient (char *dst_mac, wifi_interface_name_t *ifname)
     WaitForDuration(((g_active_msmt->active_msmt.ActiveMsmtSampleDuration) * (g_active_msmt->active_msmt.ActiveMsmtNumberOfSamples + 2)) + (5 * WIFI_BLASTER_POST_STEP_TIMEOUT));
 
     if (g_active_msmt->num_res_count != g_active_msmt->num_req_count && (g_active_msmt->reponse_received == false)) {
+        push_blaster_config_event_to_monitor_queue(mon_stats_request_state_stop);
+        if (onewifi_pktgen_stop_wifi_blast() != RETURN_OK) {
+            wifi_util_error_print(WIFI_BLASTER, "%s:%d: Failed to stop pktgen\n", __FUNCTION__, __LINE__);
+        }
         g_active_msmt->num_res_count = g_active_msmt->num_req_count;
     }
 
@@ -1869,6 +1873,7 @@ void pktGen_BlastClient (char *dst_mac, wifi_interface_name_t *ifname)
     }
     return;
 }
+
 static void sample_blaster(wifi_provider_response_t *provider_response)
 {
     mac_address_t bmac;
@@ -1939,6 +1944,7 @@ if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
                 sleep_mode = assoc_stats[count].sleep_mode;
 #endif //CCSP_COMMON
                 wifi_util_error_print(WIFI_BLASTER, "%s: bmac is %02x:%02x:%02x:%02x:%02x:%02x found \n", __func__, bmac[0], bmac[1], bmac[2], bmac[3], bmac[4], bmac[5]);
+                break;
             }
         }
         if(is_associated){
@@ -1958,6 +1964,11 @@ if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
 
             prevSentAck = dev_conn->cli_DataFramesSentAck;
 #endif // CCSP_COMMON
+
+            if (wifi_app->data.u.blaster.frameCountSample == NULL) {
+                wifi_util_error_print(WIFI_BLASTER, "%s:%d Framecount sample is NULL \n", __func__, __LINE__);
+                return;
+            }
 
             (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].WaitAndLatencyInMs = ((getCurrentTimeInMicroSeconds () - wifi_app->data.u.blaster.blaster_start) / 1000);
             active_msmt_log_message(BLASTER_DEBUG_LOG, "PKTGEN_WAIT_IN_MS duration : %lu and value of getcurrent time is %lu and value of blaster_start is %lu \n", ((getCurrentTimeInMicroSeconds () - wifi_app->data.u.blaster.blaster_start)/1000), getCurrentTimeInMicroSeconds (), wifi_app->data.u.blaster.blaster_start);
@@ -2370,9 +2381,13 @@ void handle_blaster_provider_response(wifi_app_t *app, wifi_event_t *event)
     provider_response = (wifi_provider_response_t *)event->u.provider_response;
 
     switch (provider_response->args.app_info) {
-        case blaster_app_sample_blaster:
-            sample_blaster(provider_response);
-            break;
+        case blaster_app_sample_blaster: {
+                wifi_actvie_msmt_t  *g_active_msmt = get_wifi_blaster();
+                if (g_active_msmt->num_res_count != g_active_msmt->num_req_count) {
+                    sample_blaster(provider_response);
+                }
+                break;
+            }
         default:
             wifi_util_error_print(WIFI_BLASTER, "%s:%d Inside default\n", __func__, __LINE__);
             break;
