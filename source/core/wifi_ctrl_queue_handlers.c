@@ -1632,6 +1632,7 @@ void process_disassoc_device_event(void *data)
                         free(temp_assoc_dev_data);
                         return;
                     }
+                    p_wifi_mgr->ctrl.webconfig_state |= ctrl_webconfig_state_associated_clients_cfg_rsp_pending;
                     temp_assoc_dev_data->dev_stats.cli_Active = false;
                     lm_notify_disassoc(temp_assoc_dev_data, rdk_vap_info->vap_index);
                     free(temp_assoc_dev_data);
@@ -1660,6 +1661,7 @@ void process_disassoc_device_event(void *data)
                 free(temp_assoc_dev_data);
                 return;
             }
+            p_wifi_mgr->ctrl.webconfig_state |= ctrl_webconfig_state_associated_clients_cfg_rsp_pending;
             temp_assoc_dev_data->dev_stats.cli_Active = false;
             lm_notify_disassoc(temp_assoc_dev_data, rdk_vap_info->vap_index);
             free(temp_assoc_dev_data);
@@ -1673,7 +1675,6 @@ void process_disassoc_device_event(void *data)
         }
         wifi_util_info_print(WIFI_CTRL,"%s:%d Disassoc event for mac : %s, Removed the entry from hashmap\n", __func__, __LINE__, mac_str);
 
-        p_wifi_mgr->ctrl.webconfig_state |= ctrl_webconfig_state_associated_clients_cfg_rsp_pending;
     }
     return;
 }
