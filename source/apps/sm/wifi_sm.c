@@ -585,13 +585,33 @@ int handle_sm_webconfig_event(wifi_app_t *app, wifi_event_t *event)
 
     hash_map_t *new_ctrl_stats_cfg_map = webconfig_data->u.decoded.stats_config_map;
     hash_map_t *cur_app_stats_cfg_map = app->data.u.sm_data.sm_stats_config_map;
-    stats_config_t *cur_stats_cfg, *new_stats_cfg;
+    stats_config_t *cur_stats_cfg, *new_stats_cfg, *tmp_stats_cfg;
     stats_config_t *temp_stats_config;
     char key[64] = {0};
 
     if (new_ctrl_stats_cfg_map == NULL) {
         wifi_util_dbg_print(WIFI_SM,"%s %d input ctrl stats map is null, Nothing to update\n", __func__, __LINE__);
         return RETURN_ERR;
+    }
+
+    //update neigbour sampling_interval to survey interval if value is 0
+    new_stats_cfg = hash_map_get_first(new_ctrl_stats_cfg_map);
+    while (new_stats_cfg != NULL) {
+        if (new_stats_cfg->stats_type == stats_type_neighbor && new_stats_cfg->sampling_interval == 0 ) {
+            //search survey configuration.
+            tmp_stats_cfg = hash_map_get_first(new_ctrl_stats_cfg_map);
+            while (tmp_stats_cfg != NULL) {
+                if (tmp_stats_cfg->stats_type == stats_type_survey && tmp_stats_cfg->radio_type == new_stats_cfg->radio_type
+                    && tmp_stats_cfg->survey_type == new_stats_cfg->survey_type && tmp_stats_cfg->sampling_interval != 0) {
+                        new_stats_cfg->sampling_interval = tmp_stats_cfg->sampling_interval;
+                        wifi_util_dbg_print(WIFI_SM,"%s %d update sampling_interval for neighbor stats_type_neighbor(radio_type %d, survey_type %d) to %u\n", __func__, __LINE__,
+                                        new_stats_cfg->radio_type, new_stats_cfg->survey_type, new_stats_cfg->sampling_interval);
+                        break;
+                }
+                tmp_stats_cfg = hash_map_get_next(new_ctrl_stats_cfg_map, tmp_stats_cfg);
+            }
+        }
+        new_stats_cfg = hash_map_get_next(new_ctrl_stats_cfg_map, new_stats_cfg);
     }
 
     //search for the deleted elements if any in new_ctrl_stats_cfg
