@@ -376,10 +376,28 @@ int execute_radio_channel_api(wifi_mon_stats_args_t *args, wifi_monitor_t *mon_d
             wifi_util_error_print(WIFI_MON, "%s:%d get allowed channels failed for the radio : %d\n",__func__,__LINE__, args->radio_index);
             return RETURN_ERR;
         }
+        //dont run offchan scan if device current using dfs channel
+        if (radioOperation->band == WIFI_FREQUENCY_5L_BAND
+          || radioOperation->band == WIFI_FREQUENCY_5H_BAND || radioOperation->band == WIFI_FREQUENCY_5_BAND) {
+            if (is_5g_20M_channel_in_dfs(radioOperation->channel) || radioOperation->channelWidth == WIFI_CHANNELBANDWIDTH_160MHZ) {
+                wifi_util_dbg_print(WIFI_MON, "%s:%d  full channel scan only executed on current channel duo to DFS channel in use for radio index %d\n",__func__,__LINE__, args->radio_index);
+                num_channels = 1;
+                channels[0] = radioOperation->channel;
+            }
+        }
+
     } else {
         int i;
         if (args->channel_list.num_channels == 0) {
             return RETURN_ERR;
+        }
+        //dont run offchan scan if device current using dfs channel
+        if (radioOperation->band == WIFI_FREQUENCY_5L_BAND
+          || radioOperation->band == WIFI_FREQUENCY_5H_BAND || radioOperation->band == WIFI_FREQUENCY_5_BAND) {
+            if (is_5g_20M_channel_in_dfs(radioOperation->channel) || radioOperation->channelWidth == WIFI_CHANNELBANDWIDTH_160MHZ) {
+                wifi_util_dbg_print(WIFI_MON, "%s:%d  off channel scan not executed duo to DFS channel in use for radio index %d\n",__func__,__LINE__, args->radio_index);
+                return RETURN_OK;
+            }
         }
 
         if ((unsigned int)args->channel_list.channels_list[0] == radioOperation->channel && args->channel_list.num_channels > 1) {
@@ -557,9 +575,12 @@ int copy_radio_channel_stats_from_cache(wifi_mon_provider_element_t *p_elem, voi
             memset(updated, 0, sizeof(int)*MAX_CHANNELS);
 
             for (i=0;i<args->channel_list.num_channels;i++) {
-                if (!radioOperation->DfsEnabled && is_5g_20M_channel_in_dfs(args->channel_list.channels_list[i])) {
-                    //skip dfs channel since dfs is disabled
-                    continue;
+                if (radioOperation->band == WIFI_FREQUENCY_5L_BAND
+                    || radioOperation->band == WIFI_FREQUENCY_5H_BAND || radioOperation->band == WIFI_FREQUENCY_5_BAND) {
+                    if (!radioOperation->DfsEnabled && is_5g_20M_channel_in_dfs(args->channel_list.channels_list[i])) {
+                        //skip dfs channel since dfs is disabled
+                        continue;
+                    }
                 }
                 for (j=0;j<MAX_CHANNELS;j++) {
                     if (args->channel_list.channels_list[i] == radio_chan_stats_data->chan_data[j].ch_number) {
@@ -589,9 +610,12 @@ int copy_radio_channel_stats_from_cache(wifi_mon_provider_element_t *p_elem, voi
 
         } else {
             for (i = 0; i < args->channel_list.num_channels; i++) {
-                if (!radioOperation->DfsEnabled && is_5g_20M_channel_in_dfs(args->channel_list.channels_list[i])) {
-                    //skip dfs channel since dfs is disabled
-                    continue;
+                if (radioOperation->band == WIFI_FREQUENCY_5L_BAND
+                    || radioOperation->band == WIFI_FREQUENCY_5H_BAND || radioOperation->band == WIFI_FREQUENCY_5_BAND) {
+                    if (!radioOperation->DfsEnabled && is_5g_20M_channel_in_dfs(args->channel_list.channels_list[i])) {
+                        //skip dfs channel since dfs is disabled
+                        continue;
+                    }
                 }
                 radio_chan_data = (radio_chan_data_t *)get_wifi_channelStats_t(radio_chan_stats_data, args->channel_list.channels_list[i]);
                 if (radio_chan_data == NULL) {
@@ -608,10 +632,6 @@ int copy_radio_channel_stats_from_cache(wifi_mon_provider_element_t *p_elem, voi
         pthread_mutex_unlock(&mon_cache->data_lock);
         return RETURN_OK;
     }
-
-    pthread_mutex_unlock(&mon_cache->data_lock);
-    return RETURN_ERR;
-
 }
 
 int update_radio_channels_collector_args(void *ce)
