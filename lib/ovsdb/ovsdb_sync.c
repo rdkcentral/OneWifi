@@ -56,9 +56,12 @@ static char ovsdb_write_buf[256*1024];
 #define PERSISTENT_DB_BACKUP_TMP  PERSISTENT_DB_BACKUP".tmp"
 #define UNSECURE_DB               "/nvram/wifi/rdkb-wifi.db"
 
-#define BACKUP_SNAPSHOT_CMD    "ovsdb-client backup " OVSDB_DEF_DB " > " PERSISTENT_DB_BACKUP_TMP
-#define BACKUP_SAVE_CMD        "mv " PERSISTENT_DB_BACKUP_TMP " " PERSISTENT_DB_BACKUP
+#define BACKUP_SNAPSHOT_CMD       "ovsdb-client backup " OVSDB_DEF_DB " > " PERSISTENT_DB_BACKUP_TMP
+#define BACKUP_SNAPSHOT_CHECK_CMD "ovsdb-tool db-version " PERSISTENT_DB_BACKUP_TMP
+#define BACKUP_SAVE_CMD           "mv " PERSISTENT_DB_BACKUP_TMP " " PERSISTENT_DB_BACKUP
+#define BACKUP_CHECK_CMD          "ovsdb-tool db-version " PERSISTENT_DB_BACKUP
 #define UNSECURE_DB_SAVE_CMD      "cp " PERSISTENT_DB_BACKUP " " UNSECURE_DB
+#define UNSECURE_DB_CHECK_CMD     "ovsdb-tool db-version " UNSECURE_DB
 
 /**
  * Callback for json_dump_callback() -- called from ovsb_write_s()
@@ -94,9 +97,13 @@ static bool exec_cmd(const char *cmd)
     }
     else if (WIFEXITED(status)) {
         LOGE("%s: Command '%s' exited with status=%d", __func__, cmd, WEXITSTATUS(status));
+        wifidb_print("%s:%d Command '%s' exited with status=%d\n", __func__, __LINE__, cmd,
+            WEXITSTATUS(status));
     }
     else {
         LOGE("%s: Command '%s' failed or interrupted", __func__, cmd);
+        wifidb_print("%s:%d Command '%s' failed, errno=%d (%s)\n", __func__, __LINE__, cmd, errno,
+            strerror(errno));
     }
 
     return false;
@@ -153,7 +160,13 @@ static bool ovsdb_backup()
         need to write to the temporary file on the same filesystem first,
         then use mv to a persistent DB file, which is less probably be interrupted
      */
-    status = exec_cmd(BACKUP_SNAPSHOT_CMD) && exec_cmd(BACKUP_SAVE_CMD) && exec_cmd(UNSECURE_DB_SAVE_CMD);
+    status = exec_cmd(BACKUP_SNAPSHOT_CMD) &&
+        exec_cmd(BACKUP_SNAPSHOT_CHECK_CMD) &&
+        exec_cmd(BACKUP_SAVE_CMD) &&
+        exec_cmd(BACKUP_CHECK_CMD) &&
+        exec_cmd(UNSECURE_DB_SAVE_CMD) &&
+        exec_cmd(UNSECURE_DB_CHECK_CMD);
+
     pthread_mutex_unlock(&backup_lock);
 
     return status;
