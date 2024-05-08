@@ -248,7 +248,6 @@ typedef enum {
     whix_app_event_type_chan_util,
     whix_app_event_type_assoc_dev_stats,
     whix_app_event_type_assoc_dev_diagnostics,
-    whix_app_event_type_neighbor_stats,
     whix_app_event_type_max
 } whix_app_event_type_t;
 
