@@ -3674,6 +3674,11 @@ Radio_SetParamUlongValue
         {
             return  TRUE;
         }
+        if (uValue > 255)
+        {
+            wifi_util_error_print(WIFI_DMCLI,"%s:%d: Invalid DTIM Interval value:%u\n",__func__, __LINE__,uValue);
+            return FALSE;
+        }
 
         /* save update to backup */
         wifiRadioOperParam->dtimPeriod = uValue;
