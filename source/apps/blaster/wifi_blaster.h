@@ -55,6 +55,11 @@ typedef struct _pktGenFrameCountSamples {
         int             WaitAndLatencyInMs;             //Wait duration + API Latency in millsecs
 } pktGenFrameCountSamples;
 
+typedef enum {
+    BLASTER_INFO_LOG   = 0,
+    BLASTER_DEBUG_LOG
+} blaster_log_level_t;
+
 typedef struct active_msmt_data {
     unsigned int   MaxTxRate;
     unsigned int   MaxRxRate;

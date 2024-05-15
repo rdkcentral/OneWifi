@@ -279,7 +279,7 @@ void blaster_str_to_mac_bytes (char *key, mac_addr_t bmac) {
     wifi_util_error_print(WIFI_BLASTER, "%s: bmac is %02x:%02x:%02x:%02x:%02x:%02x\n", __func__, bmac[0], bmac[1], bmac[2], bmac[3], bmac[4], bmac[5]);
 }
 
-static void active_msmt_log_message(char *fmt, ...)
+static void active_msmt_log_message( blaster_log_level_t level,char *fmt, ...)
 {
     va_list args;
     char msg[1024] = {};
@@ -289,7 +289,16 @@ static void active_msmt_log_message(char *fmt, ...)
     va_end(args);
 
 #ifdef CCSP_COMMON
-    CcspTraceDebug((msg));
+switch(level){
+    case BLASTER_INFO_LOG:
+        CcspTraceInfo((msg));
+        break;
+    case BLASTER_DEBUG_LOG:
+        CcspTraceDebug((msg));
+        break;
+    default:
+        break;
+}
 #endif // CCSP_COMMON
 
     wifi_util_dbg_print(WIFI_BLASTER, msg);
@@ -504,7 +513,7 @@ void process_active_msmt_diagnostics (int ap_index)
         return;
     }
 
-    active_msmt_log_message("%s:%d Number of sample %d for client [" MAC_FMT "]\n", __FUNCTION__, __LINE__,
+    active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d Number of sample %d for client [" MAC_FMT "]\n", __FUNCTION__, __LINE__,
          g_active_msmt->active_msmt.ActiveMsmtNumberOfSamples, MAC_ARG(g_active_msmt->curStepData.DestMac));
 
     if (g_active_msmt->active_msmt_data != NULL) {
@@ -520,7 +529,7 @@ void process_active_msmt_diagnostics (int ap_index)
             strncpy(sta->sta_active_msmt_data[count].Operating_channelwidth, g_active_msmt->active_msmt_data[count].Operating_channelwidth,OPER_BUFFER_LEN);
             sta->sta_active_msmt_data[count].throughput = g_active_msmt->active_msmt_data[count].throughput;
 
-            active_msmt_log_message("count[%d] : standard[%s] chan_width[%s] Retransmission [%d]"
+            active_msmt_log_message(BLASTER_DEBUG_LOG, "count[%d] : standard[%s] chan_width[%s] Retransmission [%d]"
                 "RSSI[%d] TxRate[%lu Mbps] RxRate[%lu Mbps] SNR[%d] throughput[%.5lf Mbps]"
                 "MaxTxRate[%d] MaxRxRate[%d]\n",
                 count, sta->sta_active_msmt_data[count].Operating_standard,
@@ -679,7 +688,7 @@ static bool active_msmt_step_inst_is_configured(char *dst_mac)
             snprintf(mac, sizeof(mac), MAC_FMT_TRIMMED, MAC_ARG(cfg->Step[i].DestMac));
 
             if (strcasecmp(dst_mac, mac) == 0) {
-                active_msmt_log_message("%s:%d: MAC [%s] is configured at Step:%d\n", __func__, __LINE__, dst_mac, i);
+                active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d: MAC [%s] is configured at Step:%d\n", __func__, __LINE__, dst_mac, i);
                 return true;
             }
         }
@@ -808,7 +817,7 @@ void SetActiveMsmtStepDstMac(char *DstMac, ULONG StepIns)
         pthread_mutex_lock(&g_active_msmt->lock);
     }
 
-    active_msmt_log_message( "%s:%d no need to start pktgen for offline client: %s\n" ,__FUNCTION__, __LINE__, DstMac);
+    active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d no need to start pktgen for offline client: %s\n" ,__FUNCTION__, __LINE__, DstMac);
     active_msmt_set_step_status(__func__, StepIns, ACTIVE_MSMT_STEP_INVALID);
 }
 
@@ -1026,7 +1035,7 @@ void GetActiveMsmtStepDestMac(mac_address_t pStepDstMac)
 void SetActiveMsmtEnable(bool enable)
 {
     wifi_actvie_msmt_t  *g_active_msmt = get_wifi_blaster();
-    active_msmt_log_message("%s:%d: changing the Active Measurement Flag to %s\n", __func__, __LINE__,(enable ? "true" : "false"));
+    active_msmt_log_message(BLASTER_INFO_LOG, "%s:%d: changing the Active Measurement Flag to %s\n", __func__, __LINE__,(enable ? "true" : "false"));
     g_active_msmt->active_msmt.ActiveMsmtEnable = enable;
 }
 
@@ -1327,7 +1336,7 @@ void WiFiBlastClient(void)
             for (StepCount = StepCount; StepCount < MAX_STEP_COUNT; StepCount++) {
                 cfg->StepInstance[StepCount] = ACTIVE_MSMT_STEP_DONE;
             }
-            active_msmt_log_message("ActiveMsmtEnable changed from TRUE to FALSE"
+            active_msmt_log_message(BLASTER_INFO_LOG, "ActiveMsmtEnable changed from TRUE to FALSE"
                 "Setting remaining [%d] step count to 0 and STOPPING further processing\n",
                 (MAX_STEP_COUNT - StepCount));
             pthread_mutex_unlock(&g_active_msmt->lock);
@@ -1403,7 +1412,7 @@ void WiFiBlastClient(void)
                     pthread_mutex_lock(&g_active_msmt->lock);
                 }
 
-                active_msmt_log_message( "%s:%d no need to start pktgen for offline client: %s\n" ,__FUNCTION__, __LINE__, (char *)g_active_msmt->curStepData.DestMac);
+                active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d no need to start pktgen for offline client: %s\n" ,__FUNCTION__, __LINE__, (char *)g_active_msmt->curStepData.DestMac);
                 active_msmt_set_step_status(__func__, StepCount, ACTIVE_MSMT_STEP_INVALID);
                 pthread_mutex_unlock(&g_active_msmt->lock);
                 continue;
@@ -1412,7 +1421,7 @@ void WiFiBlastClient(void)
             if ((radio_index = get_radio_index_for_vap_index(&(get_wifimgr_obj())->hal_cap.wifi_prop, apIndex)) == RETURN_ERR ||
                 (radioOperation = getRadioOperationParam(radio_index)) == NULL) {
 
-                active_msmt_log_message("%s:%d Unable to get radio params for %d\n", __func__, __LINE__, radio_index);
+                active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d Unable to get radio params for %d\n", __func__, __LINE__, radio_index);
                 pthread_mutex_unlock(&g_active_msmt->lock);
                 continue;
             }
@@ -1444,7 +1453,7 @@ void WiFiBlastClient(void)
                     pthread_mutex_lock(&g_active_msmt->lock);
                 }
 
-                active_msmt_log_message( "%s:%d No radio data for %d channel\n" ,__FUNCTION__, __LINE__, radioOperation->channel);
+                active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d No radio data for %d channel\n" ,__FUNCTION__, __LINE__, radioOperation->channel);
                 active_msmt_set_step_status(__func__, StepCount, ACTIVE_MSMT_STEP_INVALID);
                 pthread_mutex_unlock(&g_active_msmt->lock);
                 continue;
@@ -1459,9 +1468,9 @@ void WiFiBlastClient(void)
             snprintf(macStr, sizeof(macStr), MAC_FMT, MAC_ARG(g_active_msmt->curStepData.DestMac));
 
             wifi_util_dbg_print(WIFI_BLASTER, "%s:%d:\n=========START THE TEST=========\n", __func__, __LINE__);
-            active_msmt_log_message("\n=========START THE TEST=========\n");
-            active_msmt_log_message("Blaster test is initiated for Dest mac [%s]\n", macStr);
-            active_msmt_log_message("Interface [%s], Send Duration: [%d msecs], Packet Size: [%d bytes], Sample count: [%d]\n",
+            active_msmt_log_message(BLASTER_DEBUG_LOG, "\n=========START THE TEST=========\n");
+            active_msmt_log_message(BLASTER_INFO_LOG, "Blaster test is initiated for Dest mac [%s]\n", macStr);;
+            active_msmt_log_message(BLASTER_INFO_LOG, "Interface [%s], Send Duration: [%d msecs], Packet Size: [%d bytes], Sample count: [%d]\n",
                     interface_name, GetActiveMsmtSampleDuration(), GetActiveMsmtPktSize(), GetActiveMsmtNumberOfSamples());
 
             /* start blasting the packets to calculate the throughput */
@@ -1669,7 +1678,7 @@ static void *active_msmt_worker(void *ctx)
                 active_msmt_report_all_steps(cfg, msg, status);
             }
 
-            active_msmt_log_message( "%s:%d %s\n" ,__FUNCTION__, __LINE__, msg);
+            active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d %s\n" ,__FUNCTION__, __LINE__, msg);
             mgr->ctrl.webconfig_state |= ctrl_webconfig_state_blaster_cfg_complete_rsp_pending;
 
             g_active_msmt->queue = it->next;
@@ -1683,7 +1692,7 @@ static void *active_msmt_worker(void *ctx)
 
         pthread_mutex_unlock(&g_active_msmt->lock);
 
-        active_msmt_log_message("%s:%d Starting to proceed PlanId [%s]\n", __func__, __LINE__, cfg->PlanId);
+        active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d Starting to proceed PlanId [%s]\n", __func__, __LINE__, cfg->PlanId);
         WiFiBlastClient();
 
         pthread_mutex_lock(&g_active_msmt->lock);
@@ -1693,7 +1702,7 @@ static void *active_msmt_worker(void *ctx)
         pthread_mutex_unlock(&g_active_msmt->lock);
     }
 
-    active_msmt_log_message("%s:%d Exit\n", __func__, __LINE__);
+    active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d Exit\n", __func__, __LINE__);
 
     free(data);
     data = NULL;
@@ -1798,7 +1807,7 @@ void pktGen_BlastClient (char *dst_mac, wifi_interface_name_t *ifname)
         }
     }
 
-    active_msmt_log_message("%s:%d Start pktGen utility and analyse received samples for active clients [" MAC_FMT_TRIMMED "]\n",
+    active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d Start pktGen utility and analyse received samples for active clients [" MAC_FMT_TRIMMED "]\n",
         __FUNCTION__, __LINE__,  MAC_ARG(g_active_msmt->curStepData.DestMac));
 
 
@@ -1816,7 +1825,7 @@ void pktGen_BlastClient (char *dst_mac, wifi_interface_name_t *ifname)
             active_msmt_set_status_desc(__func__, g_active_msmt->active_msmt.PlanId, step->StepId, step->DestMac, msg);
         }
 
-        active_msmt_log_message("%s:%d %s\n", __func__, __LINE__, msg);
+        active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d %s\n", __func__, __LINE__, msg);
         for (unsigned int radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
             if (radio_stats[radio_index] != NULL){
                 free(radio_stats[radio_index]);
@@ -1834,7 +1843,7 @@ void pktGen_BlastClient (char *dst_mac, wifi_interface_name_t *ifname)
 #if defined (DUAL_CORE_XB3)
         wifi_setClientDetailedStatisticsEnable(getRadioIndexFromAp(index), FALSE);
 #endif
-        active_msmt_log_message("%s:%d  ERROR> Memory allocation failed for active_msmt_data\n", __func__, __LINE__);
+        active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d  ERROR> Memory allocation failed for active_msmt_data\n", __func__, __LINE__);
         for (unsigned int radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
             if (radio_stats[radio_index] != NULL){
                 free(radio_stats[radio_index]);
@@ -1913,7 +1922,7 @@ static void sample_blaster(wifi_provider_response_t *provider_response)
 if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
 
 #ifdef CCSP_COMMON
-    active_msmt_log_message("%s : %d WIFI_HAL enabled, calling wifi_getApAssociatedClientDiagnosticResult\n",__func__,__LINE__);
+    active_msmt_log_message(BLASTER_DEBUG_LOG, "%s : %d WIFI_HAL enabled, calling wifi_getApAssociatedClientDiagnosticResult\n",__func__,__LINE__);
 #endif // CCSP_COMMON
 
     if (radio_index != RETURN_ERR) {
@@ -1942,7 +1951,7 @@ if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
 
                 SetActiveMsmtStatus(__func__, ACTIVE_MSMT_STATUS_SLEEP_CLIENT);
                 active_msmt_set_status_desc(__func__, g_active_msmt->active_msmt.PlanId, step->StepId, step->DestMac, msg);
-                active_msmt_log_message("%s:%d %s\n", __func__, __LINE__, msg);
+                active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d %s\n", __func__, __LINE__, msg);
                 g_active_msmt->num_res_count++;
                 return;
             }
@@ -1951,7 +1960,7 @@ if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
 #endif // CCSP_COMMON
 
             (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].WaitAndLatencyInMs = ((getCurrentTimeInMicroSeconds () - wifi_app->data.u.blaster.blaster_start) / 1000);
-            active_msmt_log_message("PKTGEN_WAIT_IN_MS duration : %lu and value of getcurrent time is %lu and value of blaster_start is %lu \n", ((getCurrentTimeInMicroSeconds () - wifi_app->data.u.blaster.blaster_start)/1000), getCurrentTimeInMicroSeconds (), wifi_app->data.u.blaster.blaster_start);
+            active_msmt_log_message(BLASTER_DEBUG_LOG, "PKTGEN_WAIT_IN_MS duration : %lu and value of getcurrent time is %lu and value of blaster_start is %lu \n", ((getCurrentTimeInMicroSeconds () - wifi_app->data.u.blaster.blaster_start)/1000), getCurrentTimeInMicroSeconds (), wifi_app->data.u.blaster.blaster_start);
 
             g_active_msmt->active_msmt_data[*SampleCount].rssi = dev_conn->cli_RSSI;
             g_active_msmt->active_msmt_data[*SampleCount].TxPhyRate = dev_conn->cli_LastDataDownlinkRate;
@@ -2007,7 +2016,7 @@ if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
                 }
 
 #ifdef CCSP_COMMON
-                active_msmt_log_message("%s : %d Unable to get provider response for : %s\n",__func__,__LINE__,g_active_msmt->curStepData.DestMac);
+                active_msmt_log_message(BLASTER_DEBUG_LOG, "%s : %d Unable to get provider response for : %s\n",__func__,__LINE__,g_active_msmt->curStepData.DestMac);
                 (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentTotal = 0;
 #else
                 wifi_util_dbg_print(WIFI_BLASTER,"%s:%d ow_mesh_ext_get_device_stats failed for mac:%s\n",__func__,__LINE__,g_active_msmt->curStepData.DestMac);
@@ -2018,7 +2027,7 @@ if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
                 return;
             }
         } else {
-            active_msmt_log_message("%s:%d radio_index is invalid. So, client is treated as offline\n",__func__, __LINE__);
+            active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d radio_index is invalid. So, client is treated as offline\n",__func__, __LINE__);
 #ifdef CCSP_COMMON
             (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentTotal = 0;
 #endif // CCSP_COMMON
@@ -2124,8 +2133,8 @@ void calculate_throughput()
     }
     AvgAckThroughput = AckSum/GetActiveMsmtNumberOfSamples();
     AvgThroughput = Sum/GetActiveMsmtNumberOfSamples();
-    active_msmt_log_message("\nTotal number of ACK Packets = %lu   Total number of Packets = %lu   Total Duration = %lu ms\n", TotalAckSamples, TotalSamples, totalduration );
-    active_msmt_log_message("Calculated Average : ACK Packets Throughput[%.2lf Mbps]  Total Packets Throughput[%.2lf Mbps]\n\n", AvgAckThroughput, AvgThroughput );
+    active_msmt_log_message(BLASTER_DEBUG_LOG, "\nTotal number of ACK Packets = %lu   Total number of Packets = %lu   Total Duration = %lu ms\n", TotalAckSamples, TotalSamples, totalduration );
+    active_msmt_log_message(BLASTER_DEBUG_LOG, "Calculated Average : ACK Packets Throughput[%.2lf Mbps]  Total Packets Throughput[%.2lf Mbps]\n\n", AvgAckThroughput, AvgThroughput );
 #else
 
     /* Actual count of samples is N+1. MQTT report operates with [1, N+1] samples.
@@ -2174,12 +2183,12 @@ void calculate_throughput()
 
     if (g_active_msmt->status == ACTIVE_MSMT_STATUS_SUCCEED) {
         /* calling process_active_msmt_diagnostics to update the station info */
-        active_msmt_log_message("%s:%d calling process_active_msmt_diagnostics\n", __func__, __LINE__);
+        active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d calling process_active_msmt_diagnostics\n", __func__, __LINE__);
         process_active_msmt_diagnostics(index);
     }
 
     /* calling stream_client_msmt_data to upload the data to AVRO schema */
-    active_msmt_log_message("%s:%d calling stream_client_msmt_data\n", __func__, __LINE__);
+    active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d calling stream_client_msmt_data\n", __func__, __LINE__);
     stream_client_msmt_data(true);
 
     if (g_active_msmt->status != ACTIVE_MSMT_STATUS_SUCCEED) {
@@ -2212,7 +2221,7 @@ void process_active_msmt_step(active_msmt_t *cfg)
     active_msmt_t *act_msmt = &g_active_msmt->active_msmt;
     wifi_ctrl_t *ctrl = get_wifictrl_obj();
 
-    active_msmt_log_message("%s:%d: calling process_active_msmt_step\n",__func__, __LINE__);
+    active_msmt_log_message(BLASTER_INFO_LOG, "%s:%d: calling process_active_msmt_step\n",__func__, __LINE__);
     pthread_mutex_lock(&g_active_msmt->lock);
 
     if (g_active_msmt->is_running == true && !strncasecmp((char *)cfg->PlanId, (char *)act_msmt->PlanId, strlen((char *)cfg->PlanId))) {
@@ -2220,7 +2229,7 @@ void process_active_msmt_step(active_msmt_t *cfg)
         if (cfg->ActiveMsmtEnable == false) {
             act_msmt->ActiveMsmtEnable = false;
 
-            active_msmt_log_message("%s:%d: Canceling %s\n",__func__, __LINE__, cfg->PlanId);
+            active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d: Canceling %s\n",__func__, __LINE__, cfg->PlanId);
             pthread_mutex_unlock(&g_active_msmt->lock);
 
             return;
@@ -2235,7 +2244,7 @@ void process_active_msmt_step(active_msmt_t *cfg)
             return;
         }
 
-        active_msmt_log_message("%s:%d: Changing configuration for PlanId [%s]\n",__func__, __LINE__, cfg->PlanId);
+        active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d: Changing configuration for PlanId [%s]\n",__func__, __LINE__, cfg->PlanId);
 
         /* Cloud could update SampleDuration, PktSize, NumberOfSamples during
          * sampling
@@ -2281,7 +2290,7 @@ void process_active_msmt_step(active_msmt_t *cfg)
         pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
         if (pthread_create(&id, attrp, active_msmt_worker, NULL) != 0) {
-            active_msmt_log_message("%s:%d: Fail to spawn 'active_msmt_worker' thread errno: %d - %s\n",
+            active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d: Fail to spawn 'active_msmt_worker' thread errno: %d - %s\n",
                 __FUNCTION__, __LINE__, errno, strerror(errno));
 
             if(attrp != NULL) {
@@ -2292,7 +2301,7 @@ void process_active_msmt_step(active_msmt_t *cfg)
             return;
         }
 
-        active_msmt_log_message("%s:%d: Sucessfully created thread for starting blast\n", __FUNCTION__, __LINE__);
+        active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d: Sucessfully created thread for starting blast\n", __FUNCTION__, __LINE__);
 
         if(attrp != NULL) {
             pthread_attr_destroy(attrp);
