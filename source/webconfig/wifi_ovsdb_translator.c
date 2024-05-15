@@ -64,8 +64,7 @@ struct ovs_vapname_cloudvifname_map {
     char vapname[64];
 };
 
-#if defined (_PP203X_PRODUCT_REQ_) || defined (_XER5_PRODUCT_REQ_) || defined (_XB10_PRODUCT_REQ_)
-//TODO for _SCER11BEL_PRODUCT_REQ_ should follow XB8
+#if defined (_PP203X_PRODUCT_REQ_) || defined (_XER5_PRODUCT_REQ_) || defined (_XB10_PRODUCT_REQ_) || defined (_SCER11BEL_PRODUCT_REQ_)
 struct ovs_vapname_cloudvifname_map  cloud_vif_map[] = {
     {"bhaul-ap-24",  "mesh_backhaul_2g"},
     {"bhaul-ap-l50", "mesh_backhaul_5gl"},
