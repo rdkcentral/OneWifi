@@ -229,7 +229,11 @@ else
         #echo_t "cur_timestamp = $cur_timestamp" >> $LOG_FILE
         status_2g=`dmcli eRT getv Device.WiFi.AccessPoint.1.Enable | grep "value:" | cut -f2- -d:| cut -f2- -d:`
          if [ $status_2g == "true" ]; then
-                ssid_2g=`wl -i wl0.1 status | grep  -m 1 "BSSID:" | cut -d ":" -f2-7 | awk '{print $1}'`
+                if [ "$MODEL_NUM" == "VTER11QEL" ]; then
+                        ssid_2g=`iw dev ath0 info |grep -w "addr" |awk '{print $2}'`
+                else
+                        ssid_2g=`wl -i wl0.1 status | grep  -m 1 "BSSID:" | cut -d ":" -f2-7 | awk '{print $1}'`
+                fi
                 if [ $ssid_2g ==  "00:00:00:00:00:00" ];then
                         if [ $vap_2g_down == 1 ]; then
                                 time_diff=`expr $cur_timestamp - $pre_timestamp`
@@ -252,7 +256,11 @@ else
         fi
         status_5g=`dmcli eRT getv Device.WiFi.AccessPoint.2.Enable | grep "value:" | cut -f2- -d:| cut -f2- -d:`
          if [ $status_5g == "true" ]; then
-                ssid_5g=`wl -i wl1.1 status | grep  -m 1 "BSSID:" | cut -d ":" -f2-7 | awk '{print $1}'`
+                if [ "$MODEL_NUM" == "VTER11QEL" ]; then
+                        ssid_5g=`iw dev ath1 info |grep -w "addr" |awk '{print $2}'`
+                else
+                        ssid_5g=`wl -i wl1.1 status | grep  -m 1 "BSSID:" | cut -d ":" -f2-7 | awk '{print $1}'`
+                fi
                 if [ $ssid_5g ==  "00:00:00:00:00:00" ];then
                         if [ $vap_5g_down == 1 ]; then
                                 time_diff=`expr $cur_timestamp - $pre_timestamp`
