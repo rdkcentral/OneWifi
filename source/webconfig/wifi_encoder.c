@@ -1997,3 +1997,212 @@ webconfig_error_t encode_vif_neighbors_object(hash_map_t *neighbors_map, cJSON *
     return webconfig_error_none;
 }
 
+webconfig_error_t encode_radio_channel_radio_params(wifi_provider_response_t *chan_stats, cJSON *radio_stats)
+{
+    cJSON *radio_stats_obj;
+
+    radio_chan_data_t *chan_data = chan_stats->stat_pointer;
+
+    radio_stats_obj = cJSON_CreateObject();
+    if (radio_stats_obj == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d json object creation failed\n", __func__, __LINE__);
+        return webconfig_error_encode;
+    }
+
+    for (unsigned int count = 0; count < chan_stats->stat_array_size; count++) {
+        radio_stats_obj = cJSON_CreateObject();
+        if (radio_stats_obj == NULL) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__, __LINE__);
+            cJSON_Delete(radio_stats_obj);
+            return webconfig_error_encode;
+        }
+        cJSON_AddItemToArray(radio_stats, radio_stats_obj);
+        cJSON_AddNumberToObject(radio_stats_obj, "ChannelNumber", chan_data[count].ch_number);
+        cJSON_AddNumberToObject(radio_stats_obj, "ChannelNoise", chan_data[count].ch_noise);
+        cJSON_AddBoolToObject(radio_stats_obj, "RadarNoise", chan_data[count].ch_radar_noise);
+        cJSON_AddNumberToObject(radio_stats_obj, "RSSI", chan_data[count].ch_max_80211_rssi);
+        cJSON_AddNumberToObject(radio_stats_obj, "Non80211Noise", chan_data[count].ch_non_80211_noise);
+        cJSON_AddNumberToObject(radio_stats_obj, "ChannelUtilization", chan_data[count].ch_utilization);
+        cJSON_AddNumberToObject(radio_stats_obj, "TotalUtilization", chan_data[count].ch_utilization_total);
+        cJSON_AddNumberToObject(radio_stats_obj, "UtilizationBusy", chan_data[count].ch_utilization_busy);
+        cJSON_AddNumberToObject(radio_stats_obj, "UtilizationBusyTx", chan_data[count].ch_utilization_busy_tx);
+        cJSON_AddNumberToObject(radio_stats_obj, "UtilizationBusyRx", chan_data[count].ch_utilization_busy_rx);
+        cJSON_AddNumberToObject(radio_stats_obj, "UtilizationBusySelf", chan_data[count].ch_utilization_busy_self);
+        cJSON_AddNumberToObject(radio_stats_obj, "UtilizationBusyExt", chan_data[count].ch_utilization_busy_ext);
+    }
+    return webconfig_error_none;
+}
+
+webconfig_error_t encode_neighbor_radio_params(wifi_provider_response_t *neigh_stats, cJSON *neigh_stats_obj)
+{
+    cJSON *neighbor_stats_obj;
+    wifi_neighbor_ap2_t *neighbor_data = neigh_stats->stat_pointer;
+
+    neighbor_stats_obj = cJSON_CreateObject();
+    if (neighbor_stats_obj == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d json object creation failed\n", __func__, __LINE__);
+        return webconfig_error_encode;
+    }
+
+    for (unsigned int count = 0; count < neigh_stats->stat_array_size; count++) {
+        neighbor_stats_obj = cJSON_CreateObject();
+        if (neighbor_stats_obj == NULL) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__, __LINE__);
+            cJSON_Delete(neighbor_stats_obj);
+            return webconfig_error_encode;
+        }
+        cJSON_AddItemToArray(neigh_stats_obj, neighbor_stats_obj);
+        cJSON_AddStringToObject(neighbor_stats_obj, "ap_SSID", neighbor_data[count].ap_SSID);
+        cJSON_AddStringToObject(neighbor_stats_obj, "ap_BSSID", neighbor_data[count].ap_BSSID);
+        cJSON_AddStringToObject(neighbor_stats_obj, "ap_Mode", neighbor_data[count].ap_Mode);
+        cJSON_AddNumberToObject(neighbor_stats_obj, "ap_Channel", neighbor_data[count].ap_Channel);
+        cJSON_AddNumberToObject(neighbor_stats_obj, "ap_SignalStrength", neighbor_data[count].ap_SignalStrength);
+        cJSON_AddStringToObject(neighbor_stats_obj, "ap_SecurityModeEnabled", neighbor_data[count].ap_SecurityModeEnabled);
+        cJSON_AddStringToObject(neighbor_stats_obj, "ap_EncryptionMode", neighbor_data[count].ap_EncryptionMode);
+        cJSON_AddStringToObject(neighbor_stats_obj, "ap_OperatingFrequencyBand", neighbor_data[count].ap_OperatingFrequencyBand);
+        cJSON_AddStringToObject(neighbor_stats_obj, "ap_SupportedStandards", neighbor_data[count].ap_SupportedStandards);
+        cJSON_AddStringToObject(neighbor_stats_obj, "ap_OperatingStandards", neighbor_data[count].ap_OperatingStandards);
+        cJSON_AddStringToObject(neighbor_stats_obj, "ap_OperatingChannelBandwidth", neighbor_data[count].ap_OperatingChannelBandwidth);
+        cJSON_AddNumberToObject(neighbor_stats_obj, "ap_BeaconPeriod", neighbor_data[count].ap_BeaconPeriod);
+        cJSON_AddNumberToObject(neighbor_stats_obj, "ap_Noise", neighbor_data[count].ap_Noise);
+        cJSON_AddStringToObject(neighbor_stats_obj, "ap_BasicDataTransferRates", neighbor_data[count].ap_BasicDataTransferRates);
+        cJSON_AddStringToObject(neighbor_stats_obj, "ap_SupportedDataTransferRates", neighbor_data[count].ap_SupportedDataTransferRates);
+        cJSON_AddNumberToObject(neighbor_stats_obj, "ap_DTIMPeriod", neighbor_data[count].ap_DTIMPeriod);
+        cJSON_AddNumberToObject(neighbor_stats_obj, "ap_ChannelUtilization", neighbor_data[count].ap_ChannelUtilization);
+    }
+    return webconfig_error_none;
+}
+
+webconfig_error_t encode_assocdevice_params(wifi_provider_response_t *assoc_dev_stats, cJSON *assoc_stats_obj)
+{
+    char str[32] = {0};
+    cJSON *client_stats_obj;
+    sta_data_t *client_stats = assoc_dev_stats->stat_pointer;
+
+    client_stats_obj = cJSON_CreateObject();
+    if (client_stats_obj == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d json object creation failed\n", __func__, __LINE__);
+        return webconfig_error_encode;
+    }
+
+    for (unsigned int count = 0; count < assoc_dev_stats->stat_array_size; count++) {
+        client_stats_obj = cJSON_CreateObject();
+        if (client_stats_obj == NULL) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d json object creation failed\n", __func__, __LINE__);
+            cJSON_Delete(client_stats_obj);
+            return webconfig_error_encode;
+        }
+
+        cJSON_AddItemToArray(assoc_stats_obj, client_stats_obj);
+        uint8_mac_to_string_mac((uint8_t *)client_stats[count].dev_stats.cli_MACAddress, str);
+        cJSON_AddStringToObject(client_stats_obj, "cli_MACAddress", str);
+        cJSON_AddBoolToObject(client_stats_obj, "cli_AuthenticationState", client_stats[count].dev_stats.cli_AuthenticationState);
+        cJSON_AddNumberToObject(client_stats_obj, "cli_LastDataDownlinkRate", client_stats[count].dev_stats.cli_LastDataDownlinkRate);
+        cJSON_AddNumberToObject(client_stats_obj, "cli_LastDataUplinkRate", client_stats[count].dev_stats.cli_LastDataUplinkRate);
+        cJSON_AddNumberToObject(client_stats_obj, "cli_SignalStrength", client_stats[count].dev_stats.cli_SignalStrength);
+        cJSON_AddNumberToObject(client_stats_obj, "cli_Retransmissions", client_stats[count].dev_stats.cli_Retransmissions);
+        cJSON_AddBoolToObject(client_stats_obj, "cli_Active", client_stats[count].dev_stats.cli_Active);
+        cJSON_AddStringToObject(client_stats_obj, "cli_OperatingStandard", client_stats[count].dev_stats.cli_OperatingStandard);
+        cJSON_AddStringToObject(client_stats_obj, "cli_OperatingChannelBandwidth", client_stats[count].dev_stats.cli_OperatingChannelBandwidth);
+        cJSON_AddNumberToObject(client_stats_obj, "cli_SNR", client_stats[count].dev_stats.cli_SNR);
+        cJSON_AddStringToObject(client_stats_obj, "cli_InterferenceSources", client_stats[count].dev_stats.cli_InterferenceSources);
+        cJSON_AddNumberToObject(client_stats_obj, "cli_DataFramesSentAck", client_stats[count].dev_stats.cli_DataFramesSentAck);
+        cJSON_AddNumberToObject(client_stats_obj, "cli_DataFramesSentNoAck", client_stats[count].dev_stats.cli_DataFramesSentNoAck);
+        cJSON_AddNumberToObject(client_stats_obj, "cli_BytesSent", client_stats[count].dev_stats.cli_BytesSent);
+        cJSON_AddNumberToObject(client_stats_obj, "cli_BytesReceived", client_stats[count].dev_stats.cli_BytesReceived);
+        cJSON_AddNumberToObject(client_stats_obj, "cli_RSSI", client_stats[count].dev_stats.cli_RSSI);
+        cJSON_AddNumberToObject(client_stats_obj, "cli_MinRSSI", client_stats[count].dev_stats.cli_MinRSSI);
+        cJSON_AddNumberToObject(client_stats_obj, "cli_MaxRSSI", client_stats[count].dev_stats.cli_MaxRSSI);
+        cJSON_AddNumberToObject(client_stats_obj, "cli_Disassociations", client_stats[count].dev_stats.cli_Disassociations);
+        cJSON_AddNumberToObject(client_stats_obj, "cli_AuthenticationFailures", client_stats[count].dev_stats.cli_AuthenticationFailures);
+        cJSON_AddNumberToObject(client_stats_obj, "cli_Associations", client_stats[count].dev_stats.cli_Associations);
+        cJSON_AddNumberToObject(client_stats_obj, "cli_PacketsSent", client_stats[count].dev_stats.cli_PacketsSent);
+        cJSON_AddNumberToObject(client_stats_obj, "cli_PacketsReceived", client_stats[count].dev_stats.cli_PacketsReceived);
+        cJSON_AddNumberToObject(client_stats_obj, "cli_ErrorsSent", client_stats[count].dev_stats.cli_ErrorsSent);
+        cJSON_AddNumberToObject(client_stats_obj, "cli_RetransCount", client_stats[count].dev_stats.cli_RetransCount);
+        cJSON_AddNumberToObject(client_stats_obj, "cli_FailedRetransCount", client_stats[count].dev_stats.cli_FailedRetransCount);
+        cJSON_AddNumberToObject(client_stats_obj, "cli_RetryCount", client_stats[count].dev_stats.cli_RetryCount);
+        cJSON_AddNumberToObject(client_stats_obj, "cli_MultipleRetryCount", client_stats[count].dev_stats.cli_MultipleRetryCount);
+        cJSON_AddNumberToObject(client_stats_obj, "cli_MaxDownlinkRate", client_stats[count].dev_stats.cli_MaxDownlinkRate);
+        cJSON_AddNumberToObject(client_stats_obj, "cli_MaxUplinkRate", client_stats[count].dev_stats.cli_MaxUplinkRate);
+        cJSON_AddNumberToObject(client_stats_obj, "cli_activeNumSpatialStreams", client_stats[count].dev_stats.cli_activeNumSpatialStreams);
+        cJSON_AddNumberToObject(client_stats_obj, "cli_TxFrames", client_stats[count].dev_stats.cli_TxFrames);
+        cJSON_AddNumberToObject(client_stats_obj, "cli_RxRetries", client_stats[count].dev_stats.cli_RxRetries);
+        cJSON_AddNumberToObject(client_stats_obj, "cli_RxErrors", client_stats[count].dev_stats.cli_RxErrors);
+    }
+    return webconfig_error_none;
+}
+
+webconfig_error_t encode_radiodiag_params(wifi_provider_response_t *radiodiag_stats, cJSON *radiodiag_obj)
+{
+    cJSON *diag_obj;
+    radio_data_t *diag_stats = radiodiag_stats->stat_pointer;
+
+    diag_obj = cJSON_CreateObject();
+    if (diag_obj == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d json object creation failed\n", __func__, __LINE__);
+        return webconfig_error_encode;
+    }
+
+    for (unsigned int count = 0; count < radiodiag_stats->stat_array_size; count++) {
+        diag_obj = cJSON_CreateObject();
+        if (diag_obj == NULL) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d json object creation failed\n", __func__, __LINE__);
+            return webconfig_error_encode;
+        }
+
+        cJSON_AddItemToArray(radiodiag_obj, diag_obj);
+        cJSON_AddStringToObject(diag_obj, "frequency_band", diag_stats[count].frequency_band);
+        cJSON_AddStringToObject(diag_obj, "ChannelsInUse", diag_stats[count].ChannelsInUse);
+        cJSON_AddNumberToObject(diag_obj, "primary_radio_channel", diag_stats[count].primary_radio_channel);
+        cJSON_AddStringToObject(diag_obj, "channel_bandwidth", diag_stats[count].channel_bandwidth);
+        cJSON_AddNumberToObject(diag_obj, "RadioActivityFactor", diag_stats[count].RadioActivityFactor);
+        cJSON_AddNumberToObject(diag_obj, "CarrierSenseThreshold_Exceeded", diag_stats[count].CarrierSenseThreshold_Exceeded);
+        cJSON_AddNumberToObject(diag_obj, "NoiseFloor", diag_stats[count].NoiseFloor);
+        cJSON_AddNumberToObject(diag_obj, "channelUtil", diag_stats[count].channelUtil);
+        cJSON_AddNumberToObject(diag_obj, "channelInterference", diag_stats[count].channelInterference);
+        cJSON_AddNumberToObject(diag_obj, "radio_BytesSent", diag_stats[count].radio_BytesSent);
+        cJSON_AddNumberToObject(diag_obj, "radio_BytesReceived", diag_stats[count].radio_BytesReceived);
+        cJSON_AddNumberToObject(diag_obj, "radio_PacketsSent", diag_stats[count].radio_PacketsSent);
+        cJSON_AddNumberToObject(diag_obj, "radio_PacketsReceived", diag_stats[count].radio_PacketsReceived);
+        cJSON_AddNumberToObject(diag_obj, "radio_ErrorsSent", diag_stats[count].radio_ErrorsSent);
+        cJSON_AddNumberToObject(diag_obj, "radio_ErrorsReceived", diag_stats[count].radio_ErrorsReceived);
+        cJSON_AddNumberToObject(diag_obj, "radio_DiscardPacketsSent", diag_stats[count].radio_DiscardPacketsSent);
+        cJSON_AddNumberToObject(diag_obj, "radio_DiscardPacketsReceived", diag_stats[count].radio_DiscardPacketsReceived);
+        cJSON_AddNumberToObject(diag_obj, "radio_InvalidMACCount", diag_stats[count].radio_InvalidMACCount);
+        cJSON_AddNumberToObject(diag_obj, "radio_PacketsOtherReceived", diag_stats[count].radio_PacketsOtherReceived);
+        cJSON_AddNumberToObject(diag_obj, "radio_RetransmissionMetirc", diag_stats[count].radio_RetransmissionMetirc);
+        cJSON_AddNumberToObject(diag_obj, "radio_PLCPErrorCount", diag_stats[count].radio_PLCPErrorCount);
+        cJSON_AddNumberToObject(diag_obj, "radio_FCSErrorCount", diag_stats[count].radio_FCSErrorCount);
+        cJSON_AddNumberToObject(diag_obj, "radio_MaximumNoiseFloorOnChannel", diag_stats[count].radio_MaximumNoiseFloorOnChannel);
+        cJSON_AddNumberToObject(diag_obj, "radio_MinimumNoiseFloorOnChannel", diag_stats[count].radio_MinimumNoiseFloorOnChannel);
+        cJSON_AddNumberToObject(diag_obj, "radio_MedianNoiseFloorOnChannel", diag_stats[count].radio_MedianNoiseFloorOnChannel);
+        cJSON_AddNumberToObject(diag_obj, "radio_StatisticsStartTime", diag_stats[count].radio_StatisticsStartTime);
+    }
+    return webconfig_error_none;
+}
+
+webconfig_error_t encode_radio_temperature_params(wifi_provider_response_t *radiotemperature_stats, cJSON *radiotemp_obj)
+{
+    cJSON *temp_obj;
+    radio_data_t *temp_stats = radiotemperature_stats->stat_pointer;
+
+    temp_obj = cJSON_CreateObject();
+    if (temp_obj == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d json object creation failed\n", __func__, __LINE__);
+        return webconfig_error_encode;
+    }
+
+    for (unsigned int count = 0; count < radiotemperature_stats->stat_array_size; count++) {
+        temp_obj = cJSON_CreateObject();
+        if (temp_obj == NULL) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d json object creation failed\n", __func__, __LINE__);
+            return webconfig_error_encode;
+        }
+
+        cJSON_AddItemToArray(radiotemp_obj, temp_obj);
+        cJSON_AddNumberToObject(temp_obj, "Radio_Temperature", temp_stats[count].radio_Temperature);
+    }
+
+    return webconfig_error_none;
+}

@@ -4301,3 +4301,546 @@ webconfig_error_t decode_vif_neighbors_object(hash_map_t **neighbors_map, cJSON 
     }
     return webconfig_error_none;
 }
+
+webconfig_error_t decode_radio_channel_radio_stats_object(wifi_provider_response_t **chan_stats, cJSON *json)
+{
+    cJSON *radio_stats_arr;
+    cJSON *radio_stats;
+    const cJSON  *param;
+    int size = 0;
+    radio_chan_data_t *chan_data = NULL;
+    wifi_neighborScanMode_t scan_mode;
+
+    if (json == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: cjson object is NULL\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    radio_stats_arr = cJSON_GetObjectItem(json, "RadioChannelStats");
+    if ((radio_stats_arr == NULL) && (cJSON_IsObject(radio_stats_arr) == false)) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Stats config object not present\n", __func__, __LINE__);
+        return webconfig_error_invalid_subdoc;
+    }
+    size = cJSON_GetArraySize(radio_stats_arr);
+
+    *chan_stats = (wifi_provider_response_t*) malloc(sizeof(wifi_provider_response_t));
+    if (*chan_stats == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Failed to allocate memory\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    decode_param_integer(json, "RadioIndex", param);
+    (*chan_stats)->args.radio_index = param->valuedouble;
+
+    decode_param_string(json, "ScanMode", param);
+    if (scan_mode_type_conversion(&scan_mode, param->valuestring, MAX_SCAN_MODE_LEN, STRING_TO_ENUM) != RETURN_OK)  {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: scan_mode_type_conversion failed for %s\n", __func__, __LINE__, param->valuestring);
+        return webconfig_error_decode;
+    }
+    (*chan_stats)->args.scan_mode = scan_mode;
+
+    chan_data = (radio_chan_data_t*) malloc(sizeof(radio_chan_data_t) * size);
+    if (chan_data == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Failed to allocate memory\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    for (int count = 0; count < size; count++) {
+        radio_stats = cJSON_GetArrayItem(radio_stats_arr, count);
+        if (radio_stats == NULL) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: null Json Pointer for : %d \n", __func__, __LINE__, count);
+            return webconfig_error_decode;
+        }
+
+        decode_param_integer(radio_stats, "ChannelNumber", param);
+        chan_data[count].ch_number = param->valuedouble;
+
+        decode_param_integer(radio_stats, "ChannelNoise", param);
+        chan_data[count].ch_noise = param->valuedouble;
+
+        decode_param_bool(radio_stats, "RadarNoise", param);
+        chan_data[count].ch_radar_noise = (param->type & cJSON_True) ? true:false;
+
+        decode_param_integer(radio_stats, "RSSI", param);
+        chan_data[count].ch_max_80211_rssi = param->valuedouble;
+
+        decode_param_integer(radio_stats, "Non80211Noise", param);
+        chan_data[count].ch_non_80211_noise = param->valuedouble;
+
+        decode_param_integer(radio_stats, "ChannelUtilization", param);
+        chan_data[count].ch_utilization = param->valuedouble;
+
+        decode_param_integer(radio_stats,"TotalUtilization", param);
+        chan_data[count].ch_utilization_total = param->valuedouble;
+
+        decode_param_integer(radio_stats, "UtilizationBusy", param);
+        chan_data[count].ch_utilization_busy = param->valuedouble;
+
+        decode_param_integer(radio_stats, "UtilizationBusyTx", param);
+        chan_data[count].ch_utilization_busy_tx = param->valuedouble;
+
+        decode_param_integer(radio_stats, "UtilizationBusyRx", param);
+        chan_data[count].ch_utilization_busy_rx = param->valuedouble;
+
+        decode_param_integer(radio_stats, "UtilizationBusySelf",  param);
+        chan_data[count].ch_utilization_busy_self = param->valuedouble;
+
+        decode_param_integer(radio_stats, "UtilizationBusyExt", param);
+        chan_data[count].ch_utilization_busy_ext = param->valuedouble;
+    }
+    (*chan_stats)->stat_pointer = chan_data;
+    (*chan_stats)->stat_array_size = size;
+
+    return webconfig_error_none;
+}
+
+webconfig_error_t decode_radio_neighbor_stats_object(wifi_provider_response_t **chan_stats, cJSON *json)
+{
+    cJSON *neighbor_stats_arr;
+    cJSON *neighbor_stats;
+    const cJSON  *param;
+    int size = 0;
+    wifi_neighbor_ap2_t *neighbor_stats_data = NULL;
+    wifi_neighborScanMode_t scan_mode;
+
+    if (json == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: cjson object is NULL\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    neighbor_stats_arr = cJSON_GetObjectItem(json, "NeighborStats");
+    if ((neighbor_stats_arr == NULL) && (cJSON_IsObject(neighbor_stats_arr) == false)) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Stats config object not present\n", __func__, __LINE__);
+        return webconfig_error_invalid_subdoc;
+    }
+    size = cJSON_GetArraySize(neighbor_stats_arr);
+
+    *chan_stats = (wifi_provider_response_t*) malloc(sizeof(wifi_provider_response_t));
+    if (*chan_stats == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Failed to allocate memory\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    decode_param_integer(json, "RadioIndex", param);
+    (*chan_stats)->args.radio_index = param->valuedouble;
+
+    decode_param_string(json, "ScanMode", param);
+    if (scan_mode_type_conversion(&scan_mode, param->valuestring, MAX_SCAN_MODE_LEN, STRING_TO_ENUM) != RETURN_OK)  {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: scan_mode_type_conversion failed for %s\n", __func__, __LINE__, param->valuestring);
+        return webconfig_error_decode;
+    }
+    (*chan_stats)->args.scan_mode = scan_mode;
+
+    if (size == 0) {
+        (*chan_stats)->stat_pointer = NULL;
+        (*chan_stats)->stat_array_size = 0;
+        wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: Neighbor stats array size is %d\n", __func__, __LINE__, (*chan_stats)->stat_array_size);
+        return webconfig_error_none;
+    } else {
+        neighbor_stats_data = (wifi_neighbor_ap2_t*) malloc(sizeof(wifi_neighbor_ap2_t) * size);
+        if (neighbor_stats_data == NULL) {
+            free(*chan_stats);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Failed to allocate memory\n", __func__, __LINE__);
+            return webconfig_error_decode;
+        }
+    }
+
+    for (int count = 0; count < size; count++) {
+        neighbor_stats = cJSON_GetArrayItem(neighbor_stats_arr, count);
+        if (neighbor_stats == NULL) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: null Json Pointer for : %d \n", __func__, __LINE__, count);
+            return webconfig_error_decode;
+        }
+
+        decode_param_string(neighbor_stats, "ap_SSID", param);
+        strncpy(neighbor_stats_data[count].ap_SSID, param->valuestring, sizeof(neighbor_stats_data[count].ap_SSID) - 1);
+
+        decode_param_string(neighbor_stats, "ap_BSSID", param);
+        strncpy(neighbor_stats_data[count].ap_BSSID, param->valuestring, sizeof(neighbor_stats_data[count].ap_BSSID) - 1);
+
+        decode_param_string(neighbor_stats, "ap_Mode", param);
+        strncpy(neighbor_stats_data[count].ap_Mode, param->valuestring, sizeof(neighbor_stats_data[count].ap_Mode) - 1);
+
+        decode_param_integer(neighbor_stats, "ap_Channel", param);
+        neighbor_stats_data[count].ap_Channel = param->valuedouble;
+
+        decode_param_integer(neighbor_stats, "ap_SignalStrength", param);
+        neighbor_stats_data[count].ap_SignalStrength = param->valuedouble;
+
+        decode_param_string(neighbor_stats, "ap_SecurityModeEnabled", param);
+        strncpy(neighbor_stats_data[count].ap_SecurityModeEnabled, param->valuestring, sizeof(neighbor_stats_data[count].ap_SecurityModeEnabled) - 1);
+
+        decode_param_string(neighbor_stats, "ap_EncryptionMode", param);
+        strncpy(neighbor_stats_data[count].ap_EncryptionMode, param->valuestring, sizeof(neighbor_stats_data[count].ap_EncryptionMode) - 1);
+
+        decode_param_string(neighbor_stats, "ap_OperatingFrequencyBand", param);
+        strncpy(neighbor_stats_data[count].ap_OperatingFrequencyBand, param->valuestring, sizeof(neighbor_stats_data[count].ap_OperatingFrequencyBand) - 1);
+
+        decode_param_string(neighbor_stats, "ap_SupportedStandards", param);
+        strncpy(neighbor_stats_data[count].ap_SupportedStandards, param->valuestring, sizeof(neighbor_stats_data[count].ap_SupportedStandards) - 1);
+
+        decode_param_string(neighbor_stats, "ap_OperatingStandards", param);
+        strncpy(neighbor_stats_data[count].ap_OperatingStandards, param->valuestring, sizeof(neighbor_stats_data[count].ap_OperatingStandards) - 1);
+
+        decode_param_string(neighbor_stats, "ap_OperatingChannelBandwidth", param);
+        strncpy(neighbor_stats_data[count].ap_OperatingChannelBandwidth, param->valuestring, sizeof(neighbor_stats_data[count].ap_OperatingChannelBandwidth) - 1);
+
+        decode_param_integer(neighbor_stats, "ap_BeaconPeriod", param);
+        neighbor_stats_data[count].ap_BeaconPeriod = param->valuedouble;
+
+        decode_param_integer(neighbor_stats, "ap_Noise", param);
+        neighbor_stats_data[count].ap_Noise = param->valuedouble;
+
+        decode_param_string(neighbor_stats, "ap_BasicDataTransferRates", param);
+        strncpy(neighbor_stats_data[count].ap_BasicDataTransferRates, param->valuestring, sizeof(neighbor_stats_data[count].ap_BasicDataTransferRates) - 1);
+
+        decode_param_string(neighbor_stats, "ap_SupportedDataTransferRates", param);
+        strncpy(neighbor_stats_data[count].ap_SupportedDataTransferRates, param->valuestring, sizeof(neighbor_stats_data[count].ap_SupportedDataTransferRates) - 1);
+
+        decode_param_integer(neighbor_stats, "ap_DTIMPeriod", param);
+        neighbor_stats_data[count].ap_DTIMPeriod = param->valuedouble;
+
+        decode_param_integer(neighbor_stats, "ap_ChannelUtilization", param);
+        neighbor_stats_data[count].ap_ChannelUtilization = param->valuedouble;
+
+    }
+    (*chan_stats)->stat_pointer = neighbor_stats_data;
+    (*chan_stats)->stat_array_size = size;
+
+    return webconfig_error_none;
+}
+
+webconfig_error_t decode_assocdev_stats_object(wifi_provider_response_t **assoc_stats, cJSON *json)
+{
+    cJSON *assoc_stats_arr;
+    cJSON *assoc_data;
+    const cJSON  *param;
+    int size = 0;
+    wifi_associated_dev3_t *client_stats_data = NULL;
+
+    if (json == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: cjson object is NULL\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    assoc_stats_arr = cJSON_GetObjectItem(json, "AssociatedDeviceStats");
+    if ((assoc_stats_arr == NULL) && (cJSON_IsObject(assoc_stats_arr) == false)) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Stats config object not present\n", __func__, __LINE__);
+        return webconfig_error_invalid_subdoc;
+    }
+    size = cJSON_GetArraySize(assoc_stats_arr);
+
+    *assoc_stats = (wifi_provider_response_t*) malloc(sizeof(wifi_provider_response_t));
+    if (*assoc_stats == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Failed to allocate memory\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    decode_param_integer(json, "VapIndex", param);
+    (*assoc_stats)->args.vap_index = param->valuedouble;
+
+    if (size == 0) {
+        (*assoc_stats)->stat_pointer = NULL;
+        (*assoc_stats)->stat_array_size = 0;
+        wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: Associated Device stats array size is %d\n", __func__, __LINE__, (*assoc_stats)->stat_array_size);
+        return webconfig_error_none;
+    } else {
+        client_stats_data = (wifi_associated_dev3_t*) malloc(sizeof(wifi_associated_dev3_t) * size);
+        if (client_stats_data == NULL) {
+            free(*assoc_stats);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Failed to allocate memory\n", __func__, __LINE__);
+            return webconfig_error_decode;
+        }
+    }
+
+    for (int count = 0; count < size; count++) {
+        assoc_data = cJSON_GetArrayItem(assoc_stats_arr, count);
+        if (assoc_data == NULL) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: null Json Pointer for : %d \n", __func__, __LINE__, count);
+            return webconfig_error_decode;
+        }
+
+        decode_param_string(assoc_data, "cli_MACAddress", param);
+        string_mac_to_uint8_mac(client_stats_data[count].cli_MACAddress, param->valuestring);
+
+        decode_param_bool(assoc_data, "cli_AuthenticationState", param);
+        client_stats_data[count].cli_AuthenticationState = (param->type & cJSON_True) ? true:false;
+
+        decode_param_integer(assoc_data, "cli_LastDataDownlinkRate", param);
+        client_stats_data[count].cli_LastDataDownlinkRate = param->valuedouble;
+
+        decode_param_integer(assoc_data, "cli_LastDataUplinkRate", param);
+        client_stats_data[count].cli_LastDataUplinkRate = param->valuedouble;
+
+        decode_param_integer(assoc_data, "cli_SignalStrength", param);
+        client_stats_data[count].cli_SignalStrength = param->valuedouble;
+
+        decode_param_integer(assoc_data, "cli_Retransmissions", param);
+        client_stats_data[count].cli_Retransmissions = param->valuedouble;
+
+        decode_param_bool(assoc_data, "cli_Active", param);
+        client_stats_data[count].cli_Active = (param->type & cJSON_True) ? true:false;
+
+        decode_param_string(assoc_data, "cli_OperatingStandard", param);
+        strncpy(client_stats_data[count].cli_OperatingStandard, param->valuestring, sizeof(client_stats_data[count].cli_OperatingStandard) - 1);
+
+        decode_param_string(assoc_data, "cli_OperatingChannelBandwidth", param);
+        strncpy(client_stats_data[count].cli_OperatingChannelBandwidth, param->valuestring, sizeof(client_stats_data[count].cli_OperatingChannelBandwidth) - 1);
+
+        decode_param_integer(assoc_data, "cli_SNR", param);
+        client_stats_data[count].cli_SNR = param->valuedouble;
+
+        decode_param_string(assoc_data, "cli_InterferenceSources", param);
+        strncpy(client_stats_data[count].cli_InterferenceSources, param->valuestring, sizeof(client_stats_data[count].cli_InterferenceSources) - 1);
+
+        decode_param_integer(assoc_data, "cli_DataFramesSentAck", param);
+        client_stats_data[count].cli_DataFramesSentAck = param->valuedouble;
+
+        decode_param_integer(assoc_data, "cli_DataFramesSentNoAck", param);
+        client_stats_data[count].cli_DataFramesSentNoAck = param->valuedouble;
+
+        decode_param_integer(assoc_data, "cli_BytesSent", param);
+        client_stats_data[count].cli_BytesSent = param->valuedouble;
+
+        decode_param_integer(assoc_data, "cli_BytesReceived", param);
+        client_stats_data[count].cli_BytesReceived = param->valuedouble;
+
+        decode_param_integer(assoc_data, "cli_Retransmissions", param);
+        client_stats_data[count].cli_Retransmissions = param->valuedouble;
+
+        decode_param_integer(assoc_data, "cli_MinRSSI", param);
+        client_stats_data[count].cli_MinRSSI = param->valuedouble;
+
+        decode_param_integer(assoc_data, "cli_MaxRSSI", param);
+        client_stats_data[count].cli_MaxRSSI = param->valuedouble;
+
+        decode_param_integer(assoc_data, "cli_Disassociations", param);
+        client_stats_data[count].cli_Disassociations = param->valuedouble;
+
+        decode_param_integer(assoc_data, "cli_AuthenticationFailures", param);
+        client_stats_data[count].cli_AuthenticationFailures = param->valuedouble;
+
+        decode_param_integer(assoc_data, "cli_Associations", param);
+        client_stats_data[count].cli_Associations = param->valuedouble;
+
+        decode_param_integer(assoc_data, "cli_PacketsSent", param);
+        client_stats_data[count].cli_PacketsSent = param->valuedouble;
+
+        decode_param_integer(assoc_data, "cli_PacketsReceived", param);
+        client_stats_data[count].cli_PacketsReceived = param->valuedouble;
+
+        decode_param_integer(assoc_data, "cli_ErrorsSent", param);
+        client_stats_data[count].cli_ErrorsSent = param->valuedouble;
+
+        decode_param_integer(assoc_data, "cli_RetransCount", param);
+        client_stats_data[count].cli_RetransCount = param->valuedouble;
+
+        decode_param_integer(assoc_data, "cli_FailedRetransCount", param);
+        client_stats_data[count].cli_FailedRetransCount = param->valuedouble;
+
+        decode_param_integer(assoc_data, "cli_RetryCount", param);
+        client_stats_data[count].cli_RetryCount = param->valuedouble;
+
+        decode_param_integer(assoc_data, "cli_MultipleRetryCount", param);
+        client_stats_data[count].cli_MultipleRetryCount = param->valuedouble;
+
+        decode_param_integer(assoc_data, "cli_MaxDownlinkRate", param);
+        client_stats_data[count].cli_MaxDownlinkRate = param->valuedouble;
+
+        decode_param_integer(assoc_data, "cli_MaxUplinkRate", param);
+        client_stats_data[count].cli_MaxUplinkRate = param->valuedouble;
+
+        decode_param_integer(assoc_data, "cli_activeNumSpatialStreams", param);
+        client_stats_data[count].cli_activeNumSpatialStreams = param->valuedouble;
+
+        decode_param_integer(assoc_data, "cli_TxFrames", param);
+        client_stats_data[count].cli_TxFrames = param->valuedouble;
+
+        decode_param_integer(assoc_data, "cli_RxRetries", param);
+        client_stats_data[count].cli_RxRetries = param->valuedouble;
+
+        decode_param_integer(assoc_data, "cli_RxErrors", param);
+        client_stats_data[count].cli_RxErrors = param->valuedouble;
+    }
+    (*assoc_stats)->stat_pointer = client_stats_data;
+    (*assoc_stats)->stat_array_size = size;
+
+    return webconfig_error_none;
+}
+
+webconfig_error_t decode_radiodiag_stats_object(wifi_provider_response_t **diag_stats, cJSON *json)
+{
+    cJSON *diag_stats_arr;
+    cJSON *diag_data;
+    const cJSON  *param;
+    int size = 0;
+    radio_data_t *diagnostic_data = NULL;
+
+    if (json == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: cjson object is NULL\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    diag_stats_arr = cJSON_GetObjectItem(json, "RadioDiagnosticStats");
+    if ((diag_stats_arr == NULL) && (cJSON_IsObject(diag_stats_arr) == false)) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Stats config object not present\n", __func__, __LINE__);
+        return webconfig_error_invalid_subdoc;
+    }
+    size = cJSON_GetArraySize(diag_stats_arr);
+
+    *diag_stats = (wifi_provider_response_t*) malloc(sizeof(wifi_provider_response_t));
+    if (*diag_stats == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Failed to allocate memory\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    decode_param_integer(json, "RadioIndex", param);
+    (*diag_stats)->args.radio_index = param->valuedouble;
+
+    diagnostic_data = (radio_data_t*) malloc(sizeof(radio_data_t) * size);
+    if (diagnostic_data == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Failed to allocate memory\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    for (int count = 0; count < size; count++) {
+        diag_data = cJSON_GetArrayItem(diag_stats_arr, count);
+        if (diag_data == NULL) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: null Json Pointer for : %d \n", __func__, __LINE__, count);
+            return webconfig_error_decode;
+        }
+
+        decode_param_string(diag_data, "frequency_band", param);
+        strncpy(diagnostic_data[count].frequency_band, param->valuestring, sizeof(diagnostic_data[count].frequency_band) - 1);
+
+        decode_param_string(diag_data, "ChannelsInUse", param);
+        strncpy(diagnostic_data[count].ChannelsInUse, param->valuestring, sizeof(diagnostic_data[count].ChannelsInUse) - 1);
+
+        decode_param_integer(diag_data, "primary_radio_channel", param);
+        diagnostic_data[count].primary_radio_channel = param->valuedouble;
+
+        decode_param_string(diag_data, "channel_bandwidth", param);
+        strncpy(diagnostic_data[count].channel_bandwidth, param->valuestring, sizeof(diagnostic_data[count].channel_bandwidth) - 1);
+
+        decode_param_integer(diag_data, "RadioActivityFactor", param);
+        diagnostic_data[count].RadioActivityFactor = param->valuedouble;
+
+        decode_param_integer(diag_data, "CarrierSenseThreshold_Exceeded", param);
+        diagnostic_data[count].CarrierSenseThreshold_Exceeded = param->valuedouble;
+
+        decode_param_integer(diag_data, "NoiseFloor", param);
+        diagnostic_data[count].NoiseFloor = param->valuedouble;
+
+        decode_param_integer(diag_data, "channelUtil", param);
+        diagnostic_data[count].channelUtil = param->valuedouble;
+
+        decode_param_integer(diag_data, "channelInterference", param);
+        diagnostic_data[count].channelInterference = param->valuedouble;
+
+        decode_param_integer(diag_data, "radio_BytesSent", param);
+        diagnostic_data[count].radio_BytesSent = param->valuedouble;
+
+        decode_param_integer(diag_data, "radio_BytesReceived", param);
+        diagnostic_data[count].radio_BytesReceived = param->valuedouble;
+
+        decode_param_integer(diag_data, "radio_PacketsSent", param);
+        diagnostic_data[count].radio_PacketsSent = param->valuedouble;
+
+        decode_param_integer(diag_data, "radio_PacketsReceived", param);
+        diagnostic_data[count].radio_PacketsReceived = param->valuedouble;
+
+        decode_param_integer(diag_data, "radio_ErrorsSent", param);
+        diagnostic_data[count].radio_ErrorsSent = param->valuedouble;
+
+        decode_param_integer(diag_data, "radio_ErrorsReceived", param);
+        diagnostic_data[count].radio_ErrorsReceived = param->valuedouble;
+
+        decode_param_integer(diag_data, "radio_DiscardPacketsSent", param);
+        diagnostic_data[count].radio_DiscardPacketsSent = param->valuedouble;
+
+        decode_param_integer(diag_data, "radio_DiscardPacketsReceived", param);
+        diagnostic_data[count].radio_DiscardPacketsReceived = param->valuedouble;
+
+        decode_param_integer(diag_data, "radio_InvalidMACCount", param);
+        diagnostic_data[count].radio_InvalidMACCount = param->valuedouble;
+
+        decode_param_integer(diag_data, "radio_PacketsOtherReceived", param);
+        diagnostic_data[count].radio_PacketsOtherReceived = param->valuedouble;
+
+        decode_param_integer(diag_data, "radio_RetransmissionMetirc", param);
+        diagnostic_data[count].radio_RetransmissionMetirc = param->valuedouble;
+
+        decode_param_integer(diag_data, "radio_PLCPErrorCount", param);
+        diagnostic_data[count].radio_PLCPErrorCount = param->valuedouble;
+
+        decode_param_integer(diag_data, "radio_FCSErrorCount", param);
+        diagnostic_data[count].radio_FCSErrorCount = param->valuedouble;
+
+        decode_param_integer(diag_data, "radio_MaximumNoiseFloorOnChannel", param);
+        diagnostic_data[count].radio_MaximumNoiseFloorOnChannel = param->valuedouble;
+
+        decode_param_integer(diag_data, "radio_MinimumNoiseFloorOnChannel", param);
+        diagnostic_data[count].radio_MinimumNoiseFloorOnChannel = param->valuedouble;
+
+        decode_param_integer(diag_data, "radio_MedianNoiseFloorOnChannel", param);
+        diagnostic_data[count].radio_MedianNoiseFloorOnChannel = param->valuedouble;
+
+        decode_param_integer(diag_data, "radio_StatisticsStartTime", param);
+        diagnostic_data[count].radio_StatisticsStartTime = param->valuedouble;
+    }
+    (*diag_stats)->stat_pointer = diagnostic_data;
+    (*diag_stats)->stat_array_size = size;
+
+    return webconfig_error_none;
+}
+
+webconfig_error_t decode_radio_temperature_stats_object(wifi_provider_response_t **temp_stats, cJSON *json)
+{
+    cJSON *temp_stats_arr;
+    cJSON *temp_data;
+    const cJSON  *param;
+    int size = 0;
+    radio_data_t *temperature_data = NULL;
+
+    if (json == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: cjson object is NULL\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    temp_stats_arr = cJSON_GetObjectItem(json, "RadioTemperatureStats");
+    if ((temp_stats_arr == NULL) && (cJSON_IsObject(temp_stats_arr) == false)) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Stats config object not present\n", __func__, __LINE__);
+        return webconfig_error_invalid_subdoc;
+    }
+    size = cJSON_GetArraySize(temp_stats_arr);
+
+    *temp_stats = (wifi_provider_response_t*) malloc(sizeof(wifi_provider_response_t));
+    if (*temp_stats == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Failed to allocate memory\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    decode_param_integer(json, "RadioIndex", param);
+    (*temp_stats)->args.radio_index = param->valuedouble;
+
+    temperature_data = (radio_data_t*) malloc(sizeof(radio_data_t) * size);
+    if (temperature_data == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Failed to allocate memory\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    for (int count = 0; count < size; count++) {
+        temp_data = cJSON_GetArrayItem(temp_stats_arr, count);
+        if (temp_data == NULL) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: null Json Pointer for : %d \n", __func__, __LINE__, count);
+            return webconfig_error_decode;
+        }
+
+        decode_param_integer(temp_data, "Radio_Temperature", param);
+        temperature_data[count].radio_Temperature = param->valuedouble;
+    }
+    (*temp_stats)->stat_pointer = temperature_data;
+    (*temp_stats)->stat_array_size = size;
+
+    return webconfig_error_none;
+}

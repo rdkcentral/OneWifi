@@ -967,8 +967,12 @@ static void logVAPUpStatus()
     curr_uptime_val = get_sys_uptime();
     vap_iter = (curr_uptime_val - prev_uptime_val)/(60*5); /*One iteration per 5 mins*/
     /* syncing the vap_iteration to the upload period */
-    if ((vap_iter > vap_iteration) || (vap_iteration == 0)) {
+    if ((vap_iter > vap_iteration) || (vap_iteration < 1)) {
         capture_vapup_status();
+        if (vap_iteration < 1) {
+            wifi_util_dbg_print(WIFI_APPS, "%s:%d vap_iteration is not updated\n", __func__, __LINE__);
+            return;
+        }
         skip = 1;
     }
     for(i = 0; i < (int)getTotalNumberVAPs(); i++)

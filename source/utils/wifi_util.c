@@ -3710,3 +3710,41 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
     }
     return false;
 }
+wifi_scan_mode_mapper wifiScanModeMap[] =
+{
+    {WIFI_RADIO_SCAN_MODE_NONE, "None"},
+    {WIFI_RADIO_SCAN_MODE_FULL, "Full"},
+    {WIFI_RADIO_SCAN_MODE_ONCHAN, "OnChannel"},
+    {WIFI_RADIO_SCAN_MODE_OFFCHAN, "OffChannel"},
+    {WIFI_RADIO_SCAN_MODE_SURVEY, "Survey"}
+};
+
+
+int scan_mode_type_conversion(wifi_neighborScanMode_t *scan_mode_enum, char *scan_mode_str, int scan_mode_len, unsigned int conv_type)
+{
+    char arr_str[][16] = {"none", "Full", "OnChannel", "OffChannel", "Survey"};
+    wifi_neighborScanMode_t arr_enum[] = { WIFI_RADIO_SCAN_MODE_NONE, WIFI_RADIO_SCAN_MODE_FULL, WIFI_RADIO_SCAN_MODE_ONCHAN, WIFI_RADIO_SCAN_MODE_OFFCHAN, WIFI_RADIO_SCAN_MODE_SURVEY};
+
+    unsigned int i = 0;
+    if ((scan_mode_enum == NULL) || (scan_mode_str == NULL)) {
+        return RETURN_ERR;
+    }
+    if (conv_type == STRING_TO_ENUM) {
+        for (i = 0; i < ARRAY_SIZE(arr_str); i++) {
+            if (strcmp(arr_str[i], scan_mode_str) == 0) {
+                *scan_mode_enum = arr_enum[i];
+                return RETURN_OK;
+            }
+        }
+    } else if (conv_type == ENUM_TO_STRING) {
+        for (i = 0; i < ARRAY_SIZE(arr_enum); i++) {
+            if (arr_enum[i] == *scan_mode_enum) {
+                snprintf(scan_mode_str, scan_mode_len, "%s", arr_str[i]);
+                return RETURN_OK;
+            }
+        }
+    }
+
+    return RETURN_ERR;
+}
+

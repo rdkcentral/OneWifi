@@ -62,6 +62,17 @@ extern "C" {
 #define WIFI_CSI_ENABLE                     "Device.WiFi.X_RDK_CSI.{i}.Enable"
 #define WIFI_CSI_NUMBEROFENTRIES            "Device.WiFi.X_RDK_CSINumberOfEntries"
 
+#define WIFI_COLLECT_STATS_TABLE            "Device.WiFi.CollectStats.Radio.{i}."
+#define WIFI_COLLECT_STATS_RADIO_ON_CHANNEL_STATS      "Device.WiFi.CollectStats.Radio.{i}.ScanMode.on_channel.ChannelStats"
+#define WIFI_COLLECT_STATS_RADIO_OFF_CHANNEL_STATS     "Device.WiFi.CollectStats.Radio.{i}.ScanMode.off_channel.ChannelStats"
+#define WIFI_COLLECT_STATS_RADIO_FULL_CHANNEL_STATS    "Device.WiFi.CollectStats.Radio.{i}.ScanMode.full_channel.ChannelStats"
+#define WIFI_COLLECT_STATS_NEIGHBOR_ON_CHANNEL_STATS   "Device.WiFi.CollectStats.Radio.{i}.ScanMode.on_channel.NeighborStats"
+#define WIFI_COLLECT_STATS_NEIGHBOR_OFF_CHANNEL_STATS  "Device.WiFi.CollectStats.Radio.{i}.ScanMode.off_channel.NeighborStats"
+#define WIFI_COLLECT_STATS_NEIGHBOR_FULL_CHANNEL_STATS "Device.WiFi.CollectStats.Radio.{i}.ScanMode.full_channel.NeighborStats"
+#define WIFI_COLLECT_STATS_RADIO_DIAGNOSTICS           "Device.WiFi.CollectStats.Radio.{i}.RadioDiagnosticStats"
+#define WIFI_COLLECT_STATS_RADIO_TEMPERATURE           "Device.WiFi.CollectStats.Radio.{i}.RadioTemperatureStats"
+#define WIFI_COLLECT_STATS_VAP_TABLE                   "Device.WiFi.CollectStats.AccessPoint.{i}."
+#define WIFI_COLLECT_STATS_ASSOC_DEVICE_STATS          "Device.WiFi.CollectStats.AccessPoint.{i}.AssociatedDeviceStats"
 #define WIFI_STUCK_DETECT_FILE_NAME         "/nvram/wifi_stuck_detect"
 
 #define PLAN_ID_LENGTH     38
@@ -267,6 +278,7 @@ typedef struct {
     wifi_mon_stats_args_t     args;
     void *stat_pointer;
     unsigned int stat_array_size;
+    time_t response_time;
 } __attribute__((packed)) wifi_provider_response_t;
 
 typedef struct {
@@ -299,6 +311,16 @@ typedef struct {
 } ocs_params_t;
 
 typedef struct {
+    bool is_event_subscribed;
+    unsigned int radio_index;
+    unsigned int vap_index;
+    wifi_neighborScanMode_t  scan_mode;
+    wifi_mon_stats_type_t stats_type;
+    unsigned char target_mac[MAC_ADDRESS_LENGTH];
+    unsigned int stats_type_subscribed;//bitmask  for wifi_mon_stats_type_t
+} collect_stats_t;
+
+typedef struct {
     unsigned int id;
     int  csi_session;
     unsigned int    ap_index;
@@ -313,6 +335,7 @@ typedef struct {
         wifi_mon_stats_config_t mon_stats_config;
         frame_data_t msg;
         ocs_params_t        ocs_params;
+        collect_stats_t     collect_stats;
     } u;
 } wifi_monitor_data_t;
 
@@ -965,6 +988,54 @@ typedef struct {
     int     speed_test_running;
     int     speed_test_timeout;
 } speed_test_data_t;
+
+typedef struct {
+    bool ch_in_pool;
+    bool ch_radar_noise;
+    int  ch_number;
+    int  ch_noise;
+    int  ch_max_80211_rssi;
+    int  ch_non_80211_noise;
+    int  ch_utilization;
+    unsigned long long ch_utilization_busy_tx;
+    unsigned long long ch_utilization_busy_self;
+    unsigned long long ch_utilization_total;
+    unsigned long long ch_utilization_busy;
+    unsigned long long ch_utilization_busy_rx;
+    unsigned long long ch_utilization_busy_ext;
+    unsigned long long LastUpdatedTime;
+    unsigned long long LastUpdatedTimeUsec;
+} radio_chan_data_t;
+
+typedef struct {
+    char                    frequency_band[64];
+    char                    ChannelsInUse[256];
+    unsigned int            primary_radio_channel;
+    char                    channel_bandwidth[64];
+    unsigned int            RadioActivityFactor;
+    unsigned int            CarrierSenseThreshold_Exceeded;
+    int                     NoiseFloor;
+    int                     channelUtil;
+    int                     channelInterference;
+    ULONG                   radio_BytesSent;
+    ULONG                   radio_BytesReceived;
+    ULONG                   radio_PacketsSent;
+    ULONG                   radio_PacketsReceived;
+    ULONG                   radio_ErrorsSent;
+    ULONG                   radio_ErrorsReceived;
+    ULONG                   radio_DiscardPacketsSent;
+    ULONG                   radio_DiscardPacketsReceived;
+    ULONG                   radio_InvalidMACCount;
+    ULONG                   radio_PacketsOtherReceived;
+    INT                     radio_RetransmissionMetirc;
+    ULONG                   radio_PLCPErrorCount;
+    ULONG                   radio_FCSErrorCount;
+    INT                     radio_MaximumNoiseFloorOnChannel;
+    INT                     radio_MinimumNoiseFloorOnChannel;
+    INT                     radio_MedianNoiseFloorOnChannel;
+    ULONG                   radio_StatisticsStartTime;
+    unsigned int            radio_Temperature;
+} radio_data_t;
 
 #ifdef __cplusplus
 }

@@ -41,6 +41,7 @@ typedef struct {
     ssid_t                  ssid;
 } bssid_data_t;
 
+/*
 typedef struct {
     char                    frequency_band[64];
     char                    ChannelsInUse[256];
@@ -70,25 +71,7 @@ typedef struct {
     ULONG                   radio_StatisticsStartTime;
     unsigned int            radio_Temperature;
 } radio_data_t;
-
-typedef struct {
-       bool ch_in_pool;
-       bool ch_radar_noise;
-       int  ch_number;
-       int  ch_noise;
-       int  ch_max_80211_rssi;
-       int  ch_non_80211_noise;
-       int  ch_utilization;
-       unsigned long long ch_utilization_busy_tx;
-       unsigned long long ch_utilization_busy_self;
-       unsigned long long ch_utilization_total;
-       unsigned long long ch_utilization_busy;
-       unsigned long long ch_utilization_busy_rx;
-       unsigned long long ch_utilization_busy_ext;
-       unsigned long long LastUpdatedTime;
-       unsigned long long LastUpdatedTimeUsec;
-} radio_chan_data_t;
-
+*/
 
 typedef struct {
     radio_chan_data_t   *chan_data;
@@ -111,6 +94,10 @@ typedef struct {
     int channel[MAX_NUM_RADIOS][MAX_CHANNELS];
 } neighscan_diag_cfg_t;
 
+typedef struct {
+    bool is_event_subscribed;
+    unsigned int stats_type_subscribed;
+} clctr_subscription_t;
 
 /*
  * radio_data_t has information about radio stats
@@ -157,6 +144,7 @@ typedef struct {
     unsigned int csi_sched_interval;
     bool radio_presence[MAX_NUM_RADIOS];
     bool is_blaster_running;
+    hash_map_t  *clctr_subscriber_map; //clctr_subscription_t
 } wifi_monitor_t;
 
 typedef struct {
@@ -254,6 +242,7 @@ struct wifi_mon_collector_element{
     wifi_mon_stats_args_t     *args;
     wifi_mon_stats_descriptor_t  *stat_desc;
     unsigned int    postpone_cnt;
+    collect_stats_t stats_clctr;
     int             collector_postpone_task_sched_id;
     union {
         collector_radio_channel_neighbor_data_t radio_channel_neighbor_data;

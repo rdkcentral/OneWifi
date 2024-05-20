@@ -3112,3 +3112,14 @@ void handle_wifiapi_event(void *data, unsigned int len, wifi_event_subtype_t sub
     }
 
 }
+
+void handle_monitor_event(wifi_ctrl_t *ctrl, void *data, unsigned int len, wifi_event_subtype_t subtype)
+{
+    switch (subtype) {
+        case wifi_event_type_collect_stats:
+            stats_bus_publish(ctrl, data);
+            break;
+        default:
+            break;
+    }
+}

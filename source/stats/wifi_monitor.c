@@ -225,7 +225,6 @@ void deinit_wifi_monitor(void);
 void SetBlasterMqttTopic(char *mqtt_topic);
 int radio_diagnostics(void *arg);
 
-
 static inline char *to_sta_key    (mac_addr_t mac, sta_key_t key) 
 {
     snprintf(key, STA_KEY_LEN, "%02x:%02x:%02x:%02x:%02x:%02x",
@@ -1117,6 +1116,92 @@ void clear_sta_counters(unsigned int vap_index)
     }
 }
 
+static void update_subscribe_data(wifi_monitor_data_t *event)
+{
+    hash_map_t *collector_list = NULL;
+    wifi_mon_stats_descriptor_t *stat_desc = NULL;
+    wifi_mon_collector_element_t *collector_elem = NULL;
+    wifi_mon_stats_args_t mon_args;
+    char stats_key[MON_STATS_KEY_LEN_32] = { 0 };
+    wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
+    clctr_subscription_t *clctr_subscription;
+    clctr_subscription_t *tmp_clctr_subscription;
+
+    stat_desc = (wifi_mon_stats_descriptor_t *)wifi_mon_get_stats_descriptor(
+        event->u.collect_stats.stats_type);
+    if (stat_desc == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: Invalid stats_type %d\n", __func__, __LINE__,
+            event->u.collect_stats.stats_type);
+        return;
+    }
+
+    mon_args.radio_index = event->u.collect_stats.radio_index;
+    mon_args.vap_index = event->u.collect_stats.vap_index;
+    mon_args.scan_mode = event->u.collect_stats.scan_mode;
+    memcpy(mon_args.target_mac, event->u.collect_stats.target_mac, MAC_ADDRESS_LENGTH);
+
+    if (stat_desc->generate_stats_clctr_key(&mon_args, stats_key, sizeof(stats_key)) != RETURN_OK) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: stats key generation failed for stats_type %d\n",
+            __func__, __LINE__, event->u.collect_stats.stats_type);
+        return;
+    }
+
+    collector_list = coordinator_get_collector_list();
+    if (collector_list == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: Collector is not running\n", __func__, __LINE__);
+        return;
+    }
+    collector_elem = (wifi_mon_collector_element_t *)hash_map_get(collector_list, stats_key);
+    if (collector_elem != NULL) {
+        collector_elem->stats_clctr.is_event_subscribed =
+            event->u.collect_stats.is_event_subscribed;
+        if (collector_elem->stats_clctr.is_event_subscribed == true) {
+            // set the stats type
+            collector_elem->stats_clctr.stats_type_subscribed |= 1
+                << event->u.collect_stats.stats_type;
+        } else {
+            // clear the stats type
+            collector_elem->stats_clctr.stats_type_subscribed &= ~(
+                1 << event->u.collect_stats.stats_type);
+        }
+    } else {
+        wifi_util_error_print(WIFI_MON, "%s:%d key %s not found\n", __func__, __LINE__, stats_key);
+    }
+
+    clctr_subscription = (clctr_subscription_t *)hash_map_get(mon_data->clctr_subscriber_map,
+        stats_key);
+    if (clctr_subscription == NULL) {
+        if (event->u.collect_stats.is_event_subscribed == true) {
+            clctr_subscription = calloc(1, sizeof(clctr_subscription_t));
+            if (clctr_subscription == NULL) {
+                wifi_util_error_print(WIFI_MON, "%s:%d malloc failed for clctr_subscription key %s\n",
+                        __func__, __LINE__, stats_key);
+                return;
+            }
+            clctr_subscription->is_event_subscribed = event->u.collect_stats.is_event_subscribed;
+            clctr_subscription->stats_type_subscribed |= 1 << event->u.collect_stats.stats_type;
+            hash_map_put(mon_data->clctr_subscriber_map, strdup(stats_key), clctr_subscription);
+        } else {
+            return;
+        }
+    } else {
+        if (event->u.collect_stats.is_event_subscribed == true) {
+            clctr_subscription->stats_type_subscribed |= 1 << event->u.collect_stats.stats_type;
+        } else {
+            clctr_subscription->stats_type_subscribed &= ~(1 << event->u.collect_stats.stats_type);
+        }
+    }
+    wifi_util_dbg_print(WIFI_MON,
+        "%s:%d key %s is_event_subscribed : %d stats_type : %d stats_type_subscribed : 0x%x\n",
+        __func__, __LINE__, stats_key, clctr_subscription->is_event_subscribed,
+        event->u.collect_stats.stats_type, clctr_subscription->stats_type_subscribed);
+
+    if (clctr_subscription->stats_type_subscribed == 0) {
+        tmp_clctr_subscription = hash_map_remove(mon_data->clctr_subscriber_map, stats_key);
+        free(tmp_clctr_subscription);
+    }
+}
+
 void *monitor_function  (void *data)
 {
     char event_buff[16] = {0};
@@ -1222,6 +1307,10 @@ void *monitor_function  (void *data)
                     break;
                     case wifi_event_monitor_clear_sta_counters:
                         clear_sta_counters(event_data->ap_index);
+                    break;
+                    case wifi_event_monitor_set_subscribe:
+                        update_subscribe_data(event_data);
+                       // subscribe_stats = event_data->u.collect_stats.event_subscribe;
                     break;
                     default:
                     break;
@@ -2758,6 +2847,15 @@ int init_wifi_monitor()
     g_events_monitor.csi_pinger_map = hash_map_create();
     if (g_events_monitor.csi_pinger_map == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d NULL pinger map\n", __func__, __LINE__);
+        deinit_wifi_monitor();
+        return -1;
+    }
+
+    g_monitor_module.clctr_subscriber_map = hash_map_create();
+    if (g_monitor_module.clctr_subscriber_map == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d NULL collector subscriber map\n", __func__,
+            __LINE__);
+        deinit_wifi_monitor();
         return -1;
     }
 
@@ -2893,6 +2991,9 @@ void deinit_wifi_monitor()
             hash_map_destroy(g_monitor_module.bssid_data[i].sta_map);
         }
     }
+
+    hash_map_destroy(g_monitor_module.clctr_subscriber_map);
+
     pthread_mutex_destroy(&g_monitor_module.queue_lock);
     pthread_mutex_destroy(&g_monitor_module.data_lock);
     pthread_cond_destroy(&g_monitor_module.cond);
@@ -3531,6 +3632,8 @@ int coordinator_check_stats_config(wifi_mon_stats_config_t *mon_stats_config)
     wifi_mon_collector_element_t *collector_elem = NULL;
     char stats_key[MON_STATS_KEY_LEN_32] = {0};
     wifi_mon_stats_descriptor_t *stat_desc = NULL;
+    wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
+    clctr_subscription_t *clctr_subscription;
 
     if (stats_common_args_validation(mon_stats_config) != RETURN_OK) {
         wifi_util_error_print(WIFI_MON, "%s:%d: common args validation failed. stats_type %d  interval_ms %d from app %d\n", __func__,__LINE__,
@@ -3563,17 +3666,34 @@ int coordinator_check_stats_config(wifi_mon_stats_config_t *mon_stats_config)
     collector_elem = (wifi_mon_collector_element_t *)hash_map_get(collector_list, stats_key);
     if (collector_elem == NULL) {
         if (mon_stats_config->req_state == mon_stats_request_state_start) {
-            if (coordinator_create_task(&collector_elem, mon_stats_config, stat_desc) != RETURN_OK) {
-                wifi_util_error_print(WIFI_MON, "%s:%d: create task failed for key : %s for app  %d\n", __func__,__LINE__, stats_key, mon_stats_config->inst);
+            if (coordinator_create_task(&collector_elem, mon_stats_config, stat_desc) !=
+                RETURN_OK) {
+                wifi_util_error_print(WIFI_MON,
+                    "%s:%d: create task failed for key : %s for app  %d\n", __func__, __LINE__,
+                    stats_key, mon_stats_config->inst);
                 return RETURN_ERR;
             }
             char *key_copy = strdup(stats_key);
             if (key_copy == NULL) {
-                wifi_util_error_print(WIFI_MON, "%s:%d: Failed to duplicate key\n", __func__,__LINE__);
+                wifi_util_error_print(WIFI_MON, "%s:%d: Failed to duplicate key\n", __func__,
+                    __LINE__);
                 return RETURN_ERR;
             }
+            clctr_subscription = hash_map_get(mon_data->clctr_subscriber_map, stats_key);
+            if (clctr_subscription != NULL) {
+                collector_elem->stats_clctr.is_event_subscribed =
+                    clctr_subscription->is_event_subscribed;
+                collector_elem->stats_clctr.stats_type_subscribed =
+                    clctr_subscription->stats_type_subscribed;
+                wifi_util_dbg_print(WIFI_MON,
+                    "%s:%d: updated key : %s is_event_subscribed : %d stats_type : %d "
+                    "stats_type_subscribed : 0x%x\n",
+                    __func__, __LINE__, stats_key, collector_elem->stats_clctr.is_event_subscribed,
+                    mon_stats_config->data_type, collector_elem->stats_clctr.stats_type_subscribed);
+            }
             hash_map_put(collector_list, key_copy, collector_elem);
-            wifi_util_info_print(WIFI_MON, "%s:%d: created task for key : %s for app  %d\n", __func__,__LINE__, stats_key, mon_stats_config->inst);
+            wifi_util_info_print(WIFI_MON, "%s:%d: created task for key : %s for app  %d\n",
+                __func__, __LINE__, stats_key, mon_stats_config->inst);
         } else {
             wifi_util_error_print(WIFI_MON, "%s:%d: Task is not running. Request state %d is not expected\n", __func__,__LINE__, mon_stats_config->req_state);
             return RETURN_ERR;

@@ -32,6 +32,7 @@
 #define RADIO_SCAN_RESULT_INTERVAL 200 //200 ms
 #define RADIO_SCAN_MAX_RESULTS_RETRIES 150 //30 seconds
 
+
 int validate_radio_channel_args(wifi_mon_stats_args_t *args)
 {
     if (args == NULL) {
@@ -62,7 +63,6 @@ int generate_radio_channel_clctr_stats_key(wifi_mon_stats_args_t *args, char *ke
     return RETURN_OK;
 }
 
-
 int generate_radio_channel_provider_stats_key(wifi_mon_stats_config_t *config, char *key_str, size_t key_len)
 {
     if ((config == NULL) || (key_str == NULL)) {
@@ -73,6 +73,227 @@ int generate_radio_channel_provider_stats_key(wifi_mon_stats_config_t *config, c
             config->args.radio_index, config->args.scan_mode, config->args.app_info);
     wifi_util_dbg_print(WIFI_MON, "%s:%d: provider stats key: %s\n", __func__,__LINE__, key_str);
 
+    return RETURN_OK;
+}
+
+static radio_chan_data_t *get_wifi_channelStats_t(radio_chan_stats_data_t *stats_data, int channel)
+{
+    int count = 0;
+
+    if (stats_data == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: stats_data is NULL\n", __func__,__LINE__);
+        return NULL;
+    }
+
+    if (stats_data->chan_data == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: chan_data is NULL for channel : %d\n", __func__,__LINE__, channel);
+        return NULL;
+    }
+
+    for (count = 0; count < stats_data->num_channels; count++) {
+        if (stats_data->chan_data[count].ch_number == channel) {
+            return &stats_data->chan_data[count];
+        }
+    }
+    return NULL;
+}
+
+int process_neighbor_stats(wifi_mon_stats_args_t *args, neighscan_diag_cfg_t *neighscan_stats_data, void **stats, unsigned int *stat_array_size)
+{
+    int i, j;
+    unsigned int ap_count_total = 0, ap_count = 0;
+    wifi_neighbor_ap2_t *neigh_stat = NULL, *neigh_stat_tmp = NULL, *results;
+
+    if (args->scan_mode == WIFI_RADIO_SCAN_MODE_OFFCHAN) {
+        int updated[MAX_CHANNELS];
+        memset(updated, 0, sizeof(int)*MAX_CHANNELS);
+        for (i=0;i<args->channel_list.num_channels;i++) {
+            for (j=0;j<MAX_CHANNELS;j++) {
+                if (args->channel_list.channels_list[i] == neighscan_stats_data->channel[args->radio_index][j]) {
+                    updated[j] = 1;
+                    ap_count_total = ap_count_total + neighscan_stats_data->resultCountPerRadio_offchannel[args->radio_index][j];
+                    wifi_util_dbg_print(WIFI_MON, "%s:%d  radio index %d, %d neighbours on channel %d updated\n",__func__,__LINE__, args->radio_index,
+                        neighscan_stats_data->resultCountPerRadio_offchannel[args->radio_index][j], neighscan_stats_data->channel[args->radio_index][j]);
+                    break;
+                }
+            }
+        }
+        if (ap_count_total > 0) {
+            wifi_util_dbg_print(WIFI_MON, "%s:%d  radio index %d, ap count total %d\n",__func__,__LINE__, args->radio_index, ap_count_total);
+            neigh_stat = (wifi_neighbor_ap2_t *) calloc(ap_count_total, sizeof(wifi_neighbor_ap2_t));
+            if (neigh_stat == NULL) {
+                wifi_util_error_print(WIFI_MON, "%s:%d Failed to alloc memory for radio %d\n",__func__,__LINE__, args->radio_index);
+                return RETURN_ERR;
+            }
+            neigh_stat_tmp = neigh_stat;
+            for (j=0;j<MAX_CHANNELS;j++) {
+                if (updated[j] == 1) {
+                    results = neighscan_stats_data->pResult_offchannel[args->radio_index][j];
+                    ap_count = neighscan_stats_data->resultCountPerRadio_offchannel[args->radio_index][j];
+                    if (ap_count > 0) {
+                        memcpy(neigh_stat_tmp, results, ap_count*sizeof(wifi_neighbor_ap2_t));
+                        neigh_stat_tmp = neigh_stat_tmp + ap_count;
+                    }
+                }
+            }
+            *stats = (wifi_neighbor_ap2_t *)neigh_stat;
+            *stat_array_size = ap_count_total;
+            wifi_util_dbg_print(WIFI_MON, "%s : %d  radio index %d, send %d neighbors\n",__func__,__LINE__, args->radio_index, ap_count_total);
+
+       } else {
+            *stats = NULL;
+            *stat_array_size = 0;
+            wifi_util_dbg_print(WIFI_MON, "%s : %d  radio index %d, send 0 neighbors\n",__func__,__LINE__, args->radio_index);
+       }
+    } else {
+        if (args->scan_mode == WIFI_RADIO_SCAN_MODE_FULL) {
+            results = neighscan_stats_data->pResult[args->radio_index];
+            ap_count = neighscan_stats_data->resultCountPerRadio[args->radio_index];
+        } else if (args->scan_mode == WIFI_RADIO_SCAN_MODE_ONCHAN) {
+            results = neighscan_stats_data->pResult_onchannel[args->radio_index];
+            ap_count = neighscan_stats_data->resultCountPerRadio_onchannel[args->radio_index];
+        }
+
+        if (ap_count > 0) {
+            neigh_stat = (wifi_neighbor_ap2_t *) calloc(ap_count, sizeof(wifi_neighbor_ap2_t));
+            if (neigh_stat == NULL) {
+                wifi_util_error_print(WIFI_MON, "%s:%d Failed to alloc memory for radio %d\n",__func__,__LINE__, args->radio_index);
+                return RETURN_ERR;
+            }
+
+           memcpy(neigh_stat, results, ap_count*sizeof(wifi_neighbor_ap2_t));
+
+            *stats = (wifi_neighbor_ap2_t *)neigh_stat;
+            *stat_array_size = ap_count;
+            wifi_util_dbg_print(WIFI_MON, "%s : %d  radio index %d, send %d neighbors\n",__func__,__LINE__, args->radio_index, ap_count);
+
+        } else {
+            *stats = NULL;
+            *stat_array_size = 0;
+            wifi_util_dbg_print(WIFI_MON, "%s : %d  radio index %d, send 0 neighbors\n",__func__,__LINE__, args->radio_index);
+        }
+    }
+    return RETURN_OK;
+}
+
+static int process_channel_stats(wifi_mon_stats_args_t *args, radio_chan_stats_data_t *radio_chan_stats_data, void **stats, unsigned int *chan_count)
+{
+    int i, j, stat_array_size;
+    radio_chan_data_t   *chan_data;
+    radio_chan_data_t    *radio_chan_data = NULL;
+    wifi_radio_capabilities_t *wifi_cap = NULL;
+    int num_channels = 0;
+    int channels_list[MAX_CHANNELS] = {0};
+
+    if (radio_chan_stats_data->chan_data == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d chan_data in radio_chan_stats_data is NULL for %d\n", __func__,__LINE__, args->radio_index);
+        return RETURN_ERR;
+    }
+
+    wifi_radio_operationParam_t* radioOperation = getRadioOperationParam(args->radio_index);
+    if (radioOperation == NULL) {
+        wifi_util_error_print(WIFI_MON,"%s:%d NULL radioOperation pointer for radio : %d\n", __func__, __LINE__, args->radio_index);
+        return RETURN_ERR;
+    }
+
+    wifi_cap = getRadioCapability(args->radio_index);
+
+    if ((args->scan_mode == WIFI_RADIO_SCAN_MODE_FULL) ||
+            (args->scan_mode == WIFI_RADIO_SCAN_MODE_OFFCHAN)) {
+        if (get_allowed_channels(radioOperation->band, wifi_cap, channels_list, &num_channels,
+                    radioOperation->DfsEnabled) != RETURN_OK) {
+            wifi_util_error_print(WIFI_MON,
+                    "%s:%d get allowed channels failed for the radio : %d\n", __func__, __LINE__,
+                    args->radio_index);
+            return RETURN_ERR;
+        }
+    }
+
+    if (args->scan_mode == WIFI_RADIO_SCAN_MODE_ONCHAN) {
+        stat_array_size= 1;
+
+        chan_data = (radio_chan_data_t *) calloc(stat_array_size, sizeof(radio_chan_data_t));
+        if (chan_data == NULL) {
+            wifi_util_error_print(WIFI_MON,"%s:%d NULL chan_data pointer for radio : %d\n", __func__, __LINE__, args->radio_index);
+            return RETURN_ERR;
+        }
+        radio_chan_data = (radio_chan_data_t *)get_wifi_channelStats_t(radio_chan_stats_data, radioOperation->channel);
+        if (radio_chan_data == NULL) {
+            free(chan_data);
+            return RETURN_ERR;
+        }
+        memcpy(chan_data, radio_chan_data, sizeof(radio_chan_data_t));
+        *stats = chan_data;
+        *chan_count = stat_array_size;
+        return RETURN_OK;
+    } else {
+        chan_data = (radio_chan_data_t *) calloc(num_channels, sizeof(radio_chan_data_t));
+        if (chan_data == NULL) {
+            wifi_util_error_print(WIFI_MON,"%s:%d NULL chan_data pointer for radio : %d\n", __func__, __LINE__, args->radio_index);
+            return RETURN_ERR;
+        }
+        stat_array_size = 0;
+        if (args->scan_mode == WIFI_RADIO_SCAN_MODE_OFFCHAN) {
+            int updated[MAX_CHANNELS];
+            memset(updated, 0, sizeof(int)*MAX_CHANNELS);
+
+            for (i=0;i<num_channels;i++) {
+                if (radioOperation->band == WIFI_FREQUENCY_5L_BAND
+                    || radioOperation->band == WIFI_FREQUENCY_5H_BAND || radioOperation->band == WIFI_FREQUENCY_5_BAND) {
+                    if (!radioOperation->DfsEnabled && is_5g_20M_channel_in_dfs(channels_list[i])) {
+                        //skip dfs channel since dfs is disabled
+                        continue;
+                    }
+                }
+                // Skip the operating channel for offchannel scanning
+                if (args->scan_mode == WIFI_RADIO_SCAN_MODE_OFFCHAN) {
+                    if (radioOperation->channel == (unsigned int)channels_list[i]) {
+                        continue;
+                    }
+                }
+                for (j=0;j<num_channels;j++) {
+                    if (channels_list[i] == radio_chan_stats_data->chan_data[j].ch_number) {
+                        updated[j] = 1;
+                        break;
+                    }
+                }
+            }
+
+            for (j=0;j<radio_chan_stats_data->num_channels;j++) {
+                if (updated[j] == 1) {
+                    wifi_util_dbg_print(WIFI_MON, "%s:%d  radio index %d,radio channel stats updated for %d \n",__func__,__LINE__, args->radio_index,
+                            radio_chan_stats_data->chan_data[j].ch_number);
+                    radio_chan_data = (radio_chan_data_t *)get_wifi_channelStats_t(radio_chan_stats_data, radio_chan_stats_data->chan_data[j].ch_number);
+                    if (radio_chan_data == NULL) {
+                        free(chan_data);
+                        return RETURN_ERR;
+                    }
+                    memcpy(&chan_data[stat_array_size], radio_chan_data, sizeof(radio_chan_data_t));
+                    stat_array_size++;
+                }
+            }
+
+        } else {
+            for (i = 0; i < num_channels; i++) {
+                if (radioOperation->band == WIFI_FREQUENCY_5L_BAND
+                    || radioOperation->band == WIFI_FREQUENCY_5H_BAND || radioOperation->band == WIFI_FREQUENCY_5_BAND) {
+                    if (!radioOperation->DfsEnabled && is_5g_20M_channel_in_dfs(channels_list[i])) {
+                        //skip dfs channel since dfs is disabled
+                        continue;
+                    }
+                }
+                radio_chan_data = (radio_chan_data_t *)get_wifi_channelStats_t(radio_chan_stats_data, channels_list[i]);
+                if (radio_chan_data == NULL) {
+                    free(chan_data);
+                    return RETURN_ERR;
+                }
+                memcpy(&chan_data[stat_array_size], radio_chan_data, sizeof(radio_chan_data_t));
+                stat_array_size++;
+            }
+        }
+        *stats = chan_data;
+        *chan_count = stat_array_size;
+    }
     return RETURN_OK;
 }
 
@@ -114,7 +335,7 @@ int stop_radio_channel_neighbor_scheduler_tasks(wifi_mon_collector_element_t *c_
     return RETURN_OK;
 }
 
-int execute_radio_channel_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *mon_data)
+int execute_radio_channel_stats_api(wifi_mon_collector_element_t *c_elem, wifi_monitor_t *mon_data)
 {
     int ret = RETURN_OK;
     wifi_channelStats_t *chan_stats = NULL;
@@ -124,8 +345,14 @@ int execute_radio_channel_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t 
     radio_chan_stats_data_t *radio_chan_stats_data;
     int channels[64] = {0};
     wifi_radio_operationParam_t* radioOperation = NULL;
+    wifi_mon_stats_args_t *args = NULL;
 
-
+    if (c_elem == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d input arguments are NULL args : %p\n",__func__,__LINE__, c_elem);
+        return RETURN_ERR;
+    }
+ 
+    args = c_elem->args;
     if (args == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d input arguments are NULL args : %p\n",__func__,__LINE__, args);
         return RETURN_ERR;
@@ -172,8 +399,8 @@ int execute_radio_channel_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t 
     }
 
     pthread_mutex_lock(&mon_data->data_lock);
-    wifi_util_dbg_print(WIFI_MON, "%s:%d NL: radio channel stats for radio index: %d chan_count : %d\n", __func__,
-            __LINE__, args->radio_index, chan_count);
+    wifi_util_dbg_print(WIFI_MON, "%s:%d NL: radio channel stats for radio index: %d chan_count : %d scan_mode %d\n", __func__,
+            __LINE__, args->radio_index, chan_count, args->scan_mode);
     for (i = 0; i < chan_count; i++) {
         wifi_util_dbg_print(WIFI_MON, "channel: %d noise: %d ch_radar_noise: %d "
                 "ch_max_80211_rssi: %d ch_non_80211_noise:%d ch_utilization: %d "
@@ -255,6 +482,56 @@ int execute_radio_channel_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t 
         }
     }
     radio_chan_stats_data->num_channels = num_channels;
+ 
+    // Fill the data to wifi_provider_response_t and send
+    if (c_elem->stats_clctr.is_event_subscribed == true &&
+        (c_elem->stats_clctr.stats_type_subscribed & 1 << mon_stats_type_radio_channel_stats)) {
+        //Add the changes to process the channel stats
+        void *chan_data = NULL;
+        chan_count = 0;
+        process_channel_stats(args, radio_chan_stats_data, &chan_data, &chan_count);
+        if (chan_count == 0) {
+            wifi_util_error_print(WIFI_MON, "%s:%d channel_count is zero\n", __func__, __LINE__);
+            if (chan_stats != NULL) {
+                free(chan_stats);
+                chan_stats = NULL;
+            }
+            if (chan_data != NULL) {
+                free(chan_data);
+                chan_data = NULL;
+            }
+            pthread_mutex_unlock(&mon_data->data_lock);
+            return RETURN_ERR;
+        }
+        // send event to ctrl queue with data
+        wifi_provider_response_t *collect_stats;
+        collect_stats = (wifi_provider_response_t *) malloc(sizeof(wifi_provider_response_t));
+        if (collect_stats == NULL) {
+            wifi_util_error_print(WIFI_MON, "%s:%d Failed to allocate memory\n", __func__, __LINE__);
+            if (chan_stats != NULL) {
+                free(chan_stats);
+                chan_stats = NULL;
+            }
+            if (chan_data != NULL) {
+                free(chan_data);
+                chan_data = NULL;
+            }
+            pthread_mutex_unlock(&mon_data->data_lock);
+            return RETURN_ERR;
+        }
+        collect_stats->data_type = mon_stats_type_radio_channel_stats;
+        collect_stats->args.radio_index = args->radio_index;
+        collect_stats->args.scan_mode = args->scan_mode;
+        collect_stats->stat_pointer = chan_data;
+        collect_stats->stat_array_size = chan_count;
+        pthread_mutex_unlock(&mon_data->data_lock);
+        wifi_util_dbg_print(WIFI_MON, "Sending radio stats event to core %d\n", chan_count);
+        push_monitor_response_event_to_ctrl_queue(collect_stats, sizeof(wifi_provider_response_t), wifi_event_type_monitor, wifi_event_type_collect_stats, NULL);
+        free(collect_stats);
+        free(chan_stats);
+        return RETURN_OK;
+    }
+
     pthread_mutex_unlock(&mon_data->data_lock);
 
     if (chan_stats != NULL) {
@@ -299,6 +576,10 @@ int check_scan_complete_read_results(void *arg)
 
     //Update Neighbour Cache
     pthread_mutex_lock(&mon_data->data_lock);
+
+    for (unsigned int i = 0; i < ap_count; i++) {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d Radio: %d Count %d Scan_mode %d ap_SSID %s ap_BSSID %s ap_Mode %s ap_Channel %u ap_SignalStrength %d ap_SecurityModeEnabled %s ap_EncryptionMode %s ap_OperatingFrequencyBand %s ap_SupportedStandards %s ap_OperatingStandards %s ap_OperatingChannelBandwidth %s ap_BeaconPeriod %u ap_Noise %d ap_BasicDataTransferRates %s ap_SupportedDataTransferRates %s ap_DTIMPeriod %u ap_ChannelUtilization %u", __func__, __LINE__, args->radio_index, i, args->scan_mode, neigh_stats[i].ap_SSID, neigh_stats[i].ap_BSSID, neigh_stats[i].ap_Mode, neigh_stats[i].ap_Channel, neigh_stats[i].ap_SignalStrength, neigh_stats[i].ap_SecurityModeEnabled, neigh_stats[i].ap_EncryptionMode, neigh_stats[i].ap_OperatingFrequencyBand, neigh_stats[i].ap_SupportedStandards, neigh_stats[i].ap_OperatingStandards, neigh_stats[i].ap_OperatingChannelBandwidth, neigh_stats[i].ap_BeaconPeriod, neigh_stats[i].ap_Noise, neigh_stats[i].ap_BasicDataTransferRates, neigh_stats[i].ap_SupportedDataTransferRates, neigh_stats[i].ap_DTIMPeriod, neigh_stats[i].ap_ChannelUtilization);
+    }
     wifi_util_dbg_print(WIFI_MON, "%s : %d  radio index %d scan_mode %d, found %d neighbors\n",__func__,__LINE__, args->radio_index, args->scan_mode, ap_count);
     neighscan_stats_data = (neighscan_diag_cfg_t *)&mon_data->neighbor_scan_cfg;
     if (args->scan_mode == WIFI_RADIO_SCAN_MODE_FULL) {
@@ -340,10 +621,49 @@ int check_scan_complete_read_results(void *arg)
             temp_neigh_stats = NULL;
         }
     }
+    // Fill the data to wifi_provider_response_t and send
+    if (c_elem->stats_clctr.is_event_subscribed == true &&
+        (c_elem->stats_clctr.stats_type_subscribed & 1 << mon_stats_type_neighbor_stats)) {
+        //Add the changes to process the channel stats
+        void *neighbor_data = NULL;
+        ap_count = 0;
+        process_neighbor_stats(args, neighscan_stats_data, &neighbor_data, &ap_count);
+        if (ap_count == 0) {
+            wifi_util_dbg_print(WIFI_MON, "%s:%d ap_count is %d\n", __func__, __LINE__, ap_count);
+            if (neighbor_data != NULL) {
+                free(neighbor_data);
+                neighbor_data= NULL;
+            }
+            wifi_util_dbg_print(WIFI_MON, "%s:%d neighbor_data is NULL\n", __func__, __LINE__);
+        }
+        // send event to ctrl queue with data
+        wifi_provider_response_t *collect_stats;
+        collect_stats = (wifi_provider_response_t *) malloc(sizeof(wifi_provider_response_t));
+        if (collect_stats == NULL) {
+            wifi_util_error_print(WIFI_MON, "%s:%d Failed to allocate memory\n", __func__, __LINE__);
+            if (neighbor_data != NULL) {
+                free(neighbor_data);
+                neighbor_data = NULL;
+            }
+            pthread_mutex_unlock(&mon_data->data_lock);
+            return RETURN_ERR;
+        }
+        collect_stats->data_type = mon_stats_type_neighbor_stats;
+        collect_stats->args.radio_index = args->radio_index;
+        collect_stats->args.scan_mode = args->scan_mode;
+        collect_stats->stat_pointer = neighbor_data;
+        collect_stats->stat_array_size = ap_count;
+        pthread_mutex_unlock(&mon_data->data_lock);
+        wifi_util_dbg_print(WIFI_MON, "Sending neighbor stats event to core %d\n", ap_count);
+        push_monitor_response_event_to_ctrl_queue(collect_stats, sizeof(wifi_provider_response_t), wifi_event_type_monitor, wifi_event_type_collect_stats, NULL);
+        free(neighbor_data);
+        free(collect_stats);
+    }
+
     pthread_mutex_unlock(&mon_data->data_lock);
 
     //Upadte Channel Stats cache
-    execute_radio_channel_stats_api(args, mon_data);
+    execute_radio_channel_stats_api(arg, mon_data);
 
     return RETURN_OK;
 }
@@ -498,31 +818,6 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
     return RETURN_OK;
 }
 
-
-
-
-radio_chan_data_t *get_wifi_channelStats_t(radio_chan_stats_data_t *stats_data, int channel)
-{
-    int count = 0;
-
-    if (stats_data == NULL) {
-        wifi_util_error_print(WIFI_MON, "%s:%d: stats_data is NULL\n", __func__,__LINE__);
-        return NULL;
-    }
-
-    if (stats_data->chan_data == NULL) {
-        wifi_util_error_print(WIFI_MON, "%s:%d: chan_data is NULL for channel : %d\n", __func__,__LINE__, channel);
-        return NULL;
-    }
-
-    for (count = 0; count < stats_data->num_channels; count++) {
-        if (stats_data->chan_data[count].ch_number == channel) {
-            return &stats_data->chan_data[count];
-        }
-    }
-    return NULL;
-}
-
 int copy_radio_channel_stats_from_cache(wifi_mon_provider_element_t *p_elem, void **stats, unsigned int *stat_array_size, wifi_monitor_t *mon_cache)
 {
     radio_chan_data_t   *chan_data;
@@ -653,6 +948,7 @@ int copy_radio_channel_stats_from_cache(wifi_mon_provider_element_t *p_elem, voi
         *stats = chan_data;
         *stat_array_size = chan_count;
         pthread_mutex_unlock(&mon_cache->data_lock);
+
         return RETURN_OK;
     }
 }

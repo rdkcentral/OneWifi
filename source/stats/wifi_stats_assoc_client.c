@@ -98,6 +98,51 @@ int generate_assoc_client_provider_stats_key(wifi_mon_stats_config_t *config, ch
     return RETURN_OK;
 }
 
+int process_assoc_dev_stats(wifi_mon_stats_args_t *args, hash_map_t *sta_map, void **stats, unsigned int *stat_array_size)
+{
+    unsigned int sta_count = 0, count = 0;
+    sta_data_t *temp_sta = NULL, *sta = 0;
+    sta_key_t   sta_key;
+
+    if(sta_map == NULL) {
+        *stats = NULL;
+        *stat_array_size = 0;
+        return RETURN_OK;
+    }
+
+    sta_count = hash_map_count(sta_map);
+    if (sta_count == 0) {
+        *stats = NULL;
+        *stat_array_size = 0;
+        return RETURN_OK;
+    }
+
+    sta = (sta_data_t *)calloc(sta_count, sizeof(sta_data_t));
+    if (sta == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s : %d Failed to allocate memory for sta structure for %d\n",
+                __func__,__LINE__, args->vap_index);
+        return RETURN_ERR;
+    }
+
+    temp_sta = hash_map_get_first(sta_map);
+    while(temp_sta != NULL) {
+        memset(sta_key, 0, sizeof(sta_key_t));
+        to_sta_key(temp_sta->sta_mac, sta_key);
+        wifi_util_dbg_print(WIFI_MON, "%s:%d vap_index %d count : %d sta_key : %s Active %d\n",
+                __func__, __LINE__, args->vap_index, count, sta_key, temp_sta->dev_stats.cli_Active);
+        if (temp_sta->dev_stats.cli_Active == true) {
+            memcpy(&sta[count], temp_sta, sizeof(sta_data_t));
+            count++;
+        }
+        temp_sta = hash_map_get_next(sta_map, temp_sta);
+    }
+
+    *stats = sta;
+    *stat_array_size = count;
+
+    return RETURN_OK;
+}
+
 int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_monitor_t *mon_data, unsigned long task_interval_ms)
 {
     wifi_front_haul_bss_t *bss_param = NULL;
@@ -373,7 +418,40 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
 
     mon_data->bssid_data[vap_array_index].last_sta_update_time.tv_sec = tv_now.tv_sec;
     mon_data->bssid_data[vap_array_index].last_sta_update_time.tv_nsec = tv_now.tv_nsec;
+    // Fill the data to wifi_provider_response_t and send
+    if (c_elem->stats_clctr.is_event_subscribed == true &&
+        (c_elem->stats_clctr.stats_type_subscribed & 1 << mon_stats_type_associated_device_stats)) {
+        void *assoc_data = NULL;
+        unsigned int dev_count = 0;
 
+        process_assoc_dev_stats(args, sta_map, &assoc_data, &dev_count);
+        if (dev_count == 0) {
+            wifi_util_dbg_print(WIFI_MON, "%s:%d device count is %d\n", __func__, __LINE__, dev_count);
+            if (assoc_data != NULL) {
+                free(assoc_data);
+                assoc_data = NULL;
+            }
+            wifi_util_dbg_print(WIFI_MON, "%s:%d assoc_data is NULL\n", __func__, __LINE__);
+        }
+        wifi_provider_response_t *collect_stats;
+        collect_stats = (wifi_provider_response_t *) malloc(sizeof(wifi_provider_response_t));
+        if (collect_stats == NULL) {
+            wifi_util_error_print(WIFI_MON, "%s:%d Failed to allocate memory\n", __func__, __LINE__);
+            if (assoc_data != NULL) {
+                free(assoc_data);
+                assoc_data = NULL;
+            }
+            return RETURN_ERR;
+        }
+        collect_stats->data_type = mon_stats_type_associated_device_stats;
+        collect_stats->args.vap_index = args->vap_index;
+        collect_stats->stat_pointer = assoc_data;
+        collect_stats->stat_array_size = dev_count;
+        wifi_util_dbg_print(WIFI_MON, "Sending assoc client stats event to core of size %d for %d\n", dev_count, collect_stats->args.vap_index);
+        push_monitor_response_event_to_ctrl_queue(collect_stats, sizeof(wifi_provider_response_t), wifi_event_type_monitor, wifi_event_type_collect_stats, NULL);
+        free(assoc_data);
+        free(collect_stats);
+    }
     return RETURN_OK;
 }
 
@@ -393,7 +471,7 @@ int copy_assoc_client_stats_from_cache(wifi_mon_provider_element_t *p_elem, void
     }
     if (p_elem->mon_stats_config == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d  p_elem->mon_stats_config NULL\n",
-                __func__,__LINE__, p_elem, mon_cache);
+                __func__,__LINE__);
         return RETURN_ERR;
     }
     args = &(p_elem->mon_stats_config->args);

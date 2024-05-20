@@ -121,6 +121,11 @@ typedef enum {
     webconfig_subdoc_type_mesh_backhaul_sta,
     webconfig_subdoc_type_levl,
     webconfig_subdoc_type_cac,
+    webconfig_subdoc_type_radio_stats,
+    webconfig_subdoc_type_neighbor_stats,
+    webconfig_subdoc_type_assocdev_stats,
+    webconfig_subdoc_type_radiodiag_stats,
+    webconfig_subdoc_type_radio_temperature,
     webconfig_subdoc_type_max
 } webconfig_subdoc_type_t;
 
@@ -169,6 +174,15 @@ typedef enum {
     assoclist_type_remove
 } assoclist_type_t;
 
+typedef enum {
+    stats_type_radio_channel
+} subscribe_stats_type_t;
+
+typedef struct {
+    subscribe_stats_type_t stats_type;
+    void *stats;
+} collect_subscribed_stats_t;
+
 typedef struct {
     wifi_global_config_t    config;
     wifi_hal_capability_t   hal_cap;
@@ -185,6 +199,7 @@ typedef struct {
     unsigned int num_radios;
     assoclist_notifier_type_t assoclist_notifier_type;
     void *external_protos;
+    collect_subscribed_stats_t collect_stats;
 } webconfig_subdoc_decoded_data_t;
 
 typedef char  * webconfig_subdoc_encoded_raw_t;
@@ -496,6 +511,45 @@ webconfig_error_t       encode_cac_config_subdoc(webconfig_t *config, webconfig_
 webconfig_error_t       translate_to_cac_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_from_cac_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 
+// radio channel stats
+webconfig_error_t       init_radio_channel_stats_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_radio_channel_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_radio_channel_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_radio_channel_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_radio_channel_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_radio_channel_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+// Neighbor stats
+webconfig_error_t       init_neighbor_stats_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_neighbor_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_radio_neighbor_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_radio_neighbor_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_neighbor_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_neighbor_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+// Assoc device Stats
+webconfig_error_t       init_assocdev_stats_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_assocdev_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_associated_device_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_associated_device_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_assocdev_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_assocdev_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+// Radio Diagnostics Stats
+webconfig_error_t       init_radiodiag_stats_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_radiodiag_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_radio_radiodiag_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_radio_radiodiag_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_radiodiag_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_radiodiag_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+// Radio Temperature
+webconfig_error_t       init_radio_temperature_stats_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_radio_temperature_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_radio_temperature_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_radio_temperature_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_radio_temperature_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_radio_temperature_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 #ifdef __cplusplus
 }
 #endif

@@ -556,6 +556,66 @@ webconfig_error_t webconfig_init(webconfig_t *config)
     config->subdocs[webconfig_subdoc_type_cac].translate_to_subdoc = translate_to_cac_config_subdoc;
     config->subdocs[webconfig_subdoc_type_cac].translate_from_subdoc = translate_from_cac_config_subdoc;
 
+    config->subdocs[webconfig_subdoc_type_radio_stats].type = webconfig_subdoc_type_radio_stats;
+    strcpy(config->subdocs[webconfig_subdoc_type_radio_stats].name, "Radio_Channel_Stats");
+    config->subdocs[webconfig_subdoc_type_radio_stats].major = 1;
+    config->subdocs[webconfig_subdoc_type_radio_stats].minor = 1;
+    config->subdocs[webconfig_subdoc_type_radio_stats].init_subdoc = init_radio_channel_stats_subdoc;
+    config->subdocs[webconfig_subdoc_type_radio_stats].init_subdoc(&config->subdocs[webconfig_subdoc_type_radio_stats]);
+    config->subdocs[webconfig_subdoc_type_radio_stats].access_check_subdoc = access_check_radio_channel_stats_subdoc;
+    config->subdocs[webconfig_subdoc_type_radio_stats].encode_subdoc = encode_radio_channel_stats_subdoc;
+    config->subdocs[webconfig_subdoc_type_radio_stats].decode_subdoc = decode_radio_channel_stats_subdoc;
+    config->subdocs[webconfig_subdoc_type_radio_stats].translate_to_subdoc = translate_to_radio_channel_stats_subdoc;
+    config->subdocs[webconfig_subdoc_type_radio_stats].translate_from_subdoc = translate_from_radio_channel_stats_subdoc;
+
+    config->subdocs[webconfig_subdoc_type_neighbor_stats].type = webconfig_subdoc_type_neighbor_stats;
+    strcpy(config->subdocs[webconfig_subdoc_type_neighbor_stats].name, "Neighbor_Channel_Stats");
+    config->subdocs[webconfig_subdoc_type_neighbor_stats].major = 1;
+    config->subdocs[webconfig_subdoc_type_neighbor_stats].minor = 1;
+    config->subdocs[webconfig_subdoc_type_neighbor_stats].init_subdoc = init_neighbor_stats_subdoc;
+    config->subdocs[webconfig_subdoc_type_neighbor_stats].init_subdoc(&config->subdocs[webconfig_subdoc_type_neighbor_stats]);
+    config->subdocs[webconfig_subdoc_type_neighbor_stats].access_check_subdoc = access_check_neighbor_stats_subdoc;
+    config->subdocs[webconfig_subdoc_type_neighbor_stats].encode_subdoc = encode_radio_neighbor_stats_subdoc;
+    config->subdocs[webconfig_subdoc_type_neighbor_stats].decode_subdoc = decode_radio_neighbor_stats_subdoc;
+    config->subdocs[webconfig_subdoc_type_neighbor_stats].translate_to_subdoc = translate_to_neighbor_stats_subdoc;
+    config->subdocs[webconfig_subdoc_type_neighbor_stats].translate_from_subdoc = translate_from_neighbor_stats_subdoc;
+
+    config->subdocs[webconfig_subdoc_type_assocdev_stats].type = webconfig_subdoc_type_assocdev_stats;
+    strcpy(config->subdocs[webconfig_subdoc_type_assocdev_stats].name, "Associated_Device_Stats");
+    config->subdocs[webconfig_subdoc_type_assocdev_stats].major = 1;
+    config->subdocs[webconfig_subdoc_type_assocdev_stats].minor = 1;
+    config->subdocs[webconfig_subdoc_type_assocdev_stats].init_subdoc = init_assocdev_stats_subdoc;
+    config->subdocs[webconfig_subdoc_type_assocdev_stats].init_subdoc(&config->subdocs[webconfig_subdoc_type_assocdev_stats]);
+    config->subdocs[webconfig_subdoc_type_assocdev_stats].access_check_subdoc = access_check_assocdev_stats_subdoc;
+    config->subdocs[webconfig_subdoc_type_assocdev_stats].encode_subdoc = encode_associated_device_stats_subdoc;
+    config->subdocs[webconfig_subdoc_type_assocdev_stats].decode_subdoc = decode_associated_device_stats_subdoc;
+    config->subdocs[webconfig_subdoc_type_assocdev_stats].translate_to_subdoc = translate_to_assocdev_stats_subdoc;
+    config->subdocs[webconfig_subdoc_type_assocdev_stats].translate_from_subdoc = translate_from_assocdev_stats_subdoc;
+
+    config->subdocs[webconfig_subdoc_type_radiodiag_stats].type = webconfig_subdoc_type_radiodiag_stats;
+    strcpy(config->subdocs[webconfig_subdoc_type_radiodiag_stats].name, "Radio_Diagnostics_Stats");
+    config->subdocs[webconfig_subdoc_type_radiodiag_stats].major = 1;
+    config->subdocs[webconfig_subdoc_type_radiodiag_stats].minor = 1;
+    config->subdocs[webconfig_subdoc_type_radiodiag_stats].init_subdoc = init_radiodiag_stats_subdoc;
+    config->subdocs[webconfig_subdoc_type_radiodiag_stats].init_subdoc(&config->subdocs[webconfig_subdoc_type_radiodiag_stats]);
+    config->subdocs[webconfig_subdoc_type_radiodiag_stats].access_check_subdoc = access_check_radiodiag_stats_subdoc;
+    config->subdocs[webconfig_subdoc_type_radiodiag_stats].encode_subdoc = encode_radio_radiodiag_stats_subdoc;
+    config->subdocs[webconfig_subdoc_type_radiodiag_stats].decode_subdoc = decode_radio_radiodiag_stats_subdoc;
+    config->subdocs[webconfig_subdoc_type_radiodiag_stats].translate_to_subdoc = translate_to_radiodiag_stats_subdoc;
+    config->subdocs[webconfig_subdoc_type_radiodiag_stats].translate_from_subdoc = translate_from_radiodiag_stats_subdoc;
+
+    config->subdocs[webconfig_subdoc_type_radio_temperature].type = webconfig_subdoc_type_radio_temperature;
+    strcpy(config->subdocs[webconfig_subdoc_type_radio_temperature].name, "Radio_Temperature_Stats");
+    config->subdocs[webconfig_subdoc_type_radio_temperature].major = 1;
+    config->subdocs[webconfig_subdoc_type_radio_temperature].minor = 1;
+    config->subdocs[webconfig_subdoc_type_radio_temperature].init_subdoc = init_radio_temperature_stats_subdoc;
+    config->subdocs[webconfig_subdoc_type_radio_temperature].init_subdoc(&config->subdocs[webconfig_subdoc_type_radio_temperature]);
+    config->subdocs[webconfig_subdoc_type_radio_temperature].access_check_subdoc = access_check_radio_temperature_stats_subdoc;
+    config->subdocs[webconfig_subdoc_type_radio_temperature].encode_subdoc = encode_radio_temperature_stats_subdoc;
+    config->subdocs[webconfig_subdoc_type_radio_temperature].decode_subdoc = decode_radio_temperature_stats_subdoc;
+    config->subdocs[webconfig_subdoc_type_radio_temperature].translate_to_subdoc = translate_to_radio_temperature_stats_subdoc;
+    config->subdocs[webconfig_subdoc_type_radio_temperature].translate_from_subdoc = translate_from_radio_temperature_stats_subdoc;
+
     config->proto_desc.translate_to = translate_to_proto;
     config->proto_desc.translate_from = translate_from_proto;
 

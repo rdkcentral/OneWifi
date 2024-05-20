@@ -77,7 +77,23 @@ int generate_radio_diagnostic_provider_stats_key(wifi_mon_stats_config_t *config
     return RETURN_OK;
 }
 
+static int process_radio_diag_stats(wifi_mon_stats_args_t *args, radio_data_t *radio_data, void **stats, unsigned int *stat_array_size)
+{
+    radio_data_t *radio_data_buff = NULL;
 
+    radio_data_buff = (radio_data_t *)calloc(1, sizeof(radio_data_t));
+    if (radio_data_buff == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d calloc failed for radio_index : %d\n", __func__, __LINE__, args->radio_index);
+        return RETURN_ERR;
+    }
+
+    memcpy(radio_data_buff, radio_data, sizeof(radio_data_t));
+
+    *stats = radio_data_buff;
+    *stat_array_size = 1;
+
+    return RETURN_OK;
+}
 //int execute_radio_diagnostic_stats_api(wifi_mon_stats_args_t *args, void **stats, unsigned int *stat_array_size)
 int execute_radio_diagnostic_stats_api(wifi_mon_collector_element_t *c_elem, wifi_monitor_t *mon_data, unsigned long task_interval_ms)
 {
@@ -198,6 +214,68 @@ int execute_radio_diagnostic_stats_api(wifi_mon_collector_element_t *c_elem, wif
         free(radioTrafficStats);
         radioTrafficStats = NULL;
     }
+
+    wifi_util_dbg_print(WIFI_MON, "%s:%d Radio_Diagnostics result for radio %d \
+            frequency_band %s ChannelsInUse %s primary_radio_channel %u \
+            channel_bandwidth %s RadioActivityFactor %u \
+            CarrierSenseThreshold_Exceeded %u NoiseFloor %d \
+            channelUtil %d channelInterference %d radio_BytesSent %lu \
+            radio_BytesReceived %lu radio_PacketsSent %lu \
+            radio_PacketsReceived %lu radio_ErrorsSent %lu \
+            radio_ErrorsReceived %lu radio_DiscardPacketsSent %lu \
+            radio_DiscardPacketsReceived %lu radio_InvalidMACCount %lu \
+            radio_PacketsOtherReceived %lu radio_RetransmissionMetirc %d \
+            radio_PLCPErrorCount %lu radio_FCSErrorCount %lu \
+            radio_MaximumNoiseFloorOnChannel %d \
+            radio_MinimumNoiseFloorOnChannel %d \
+            radio_MedianNoiseFloorOnChannel %d \
+            radio_StatisticsStartTime %lu \n", __func__, __LINE__,
+            args->radio_index, radio_data->frequency_band, radio_data->ChannelsInUse,
+            radio_data->primary_radio_channel, radio_data->channel_bandwidth,
+            radio_data->RadioActivityFactor, radio_data->CarrierSenseThreshold_Exceeded,
+            radio_data->NoiseFloor, radio_data->channelUtil, radio_data->channelInterference,
+            radio_data->radio_BytesSent, radio_data->radio_BytesReceived, radio_data->radio_PacketsSent,
+            radio_data->radio_PacketsReceived, radio_data->radio_ErrorsSent, radio_data->radio_ErrorsReceived,
+            radio_data->radio_DiscardPacketsSent, radio_data->radio_DiscardPacketsReceived,
+            radio_data->radio_InvalidMACCount, radio_data->radio_PacketsOtherReceived,
+            radio_data->radio_RetransmissionMetirc, radio_data->radio_PLCPErrorCount,
+            radio_data->radio_FCSErrorCount, radio_data->radio_MaximumNoiseFloorOnChannel,
+            radio_data->radio_MinimumNoiseFloorOnChannel, radio_data->radio_MedianNoiseFloorOnChannel,
+            radio_data->radio_StatisticsStartTime);
+    // Fill the data to wifi_provider_response_t and send
+    if (c_elem->stats_clctr.is_event_subscribed == true &&
+        (c_elem->stats_clctr.stats_type_subscribed & 1 << mon_stats_type_radio_diagnostic_stats)) {
+        void *diag_data = NULL;
+        unsigned int count = 0;
+
+        process_radio_diag_stats(args, radio_data, &diag_data, &count);
+        if (count == 0) {
+            wifi_util_error_print(WIFI_MON, "%s:%d device count is 0\n", __func__, __LINE__);
+            if (diag_data != NULL) {
+                free(diag_data);
+                diag_data = NULL;
+            }
+            return RETURN_ERR;
+        }
+        wifi_provider_response_t *collect_stats;
+        collect_stats = (wifi_provider_response_t *) malloc(sizeof(wifi_provider_response_t));
+        if (collect_stats == NULL) {
+            wifi_util_error_print(WIFI_MON, "%s:%d Failed to allocate memory\n", __func__, __LINE__);
+            if (diag_data != NULL) {
+                free(diag_data);
+                diag_data = NULL;
+            }
+            return RETURN_ERR;
+        }
+        collect_stats->data_type = mon_stats_type_radio_diagnostic_stats;
+        collect_stats->args.radio_index = args->radio_index;
+        collect_stats->stat_pointer = diag_data;
+        collect_stats->stat_array_size = count;
+        wifi_util_dbg_print(WIFI_MON, "Sending radio diagnostics stats event to core of count %d for radio %d\n", count, collect_stats->args.radio_index);
+        push_monitor_response_event_to_ctrl_queue(collect_stats, sizeof(wifi_provider_response_t), wifi_event_type_monitor, wifi_event_type_collect_stats, NULL);
+        free(diag_data);
+        free(collect_stats);
+    }
     return RETURN_OK;
 }
 
@@ -213,7 +291,7 @@ int copy_radio_diagnostic_stats_from_cache(wifi_mon_provider_element_t *p_elem, 
     }
     if (p_elem->mon_stats_config == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d  p_elem->mon_stats_config NULL\n",
-                __func__,__LINE__, p_elem, mon_cache);
+                __func__,__LINE__);
         return RETURN_ERR;
     }
     args = &(p_elem->mon_stats_config->args);

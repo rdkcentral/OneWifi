@@ -75,6 +75,32 @@ int generate_radio_temperature_provider_stats_key(wifi_mon_stats_config_t *confi
     return RETURN_OK;
 }
 
+static int process_radio_temperature_stats(wifi_mon_stats_args_t *args, radio_data_t *radio_data, void **stats, unsigned int *stat_array_size)
+{
+    radio_data_t *radio_data_buff = NULL;
+
+    radio_data_buff = (radio_data_t *)calloc(1, sizeof(radio_data_t));
+    if (radio_data_buff == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d calloc failed for radio_index : %d\n", __func__, __LINE__, args->radio_index);
+        return RETURN_ERR;
+    }
+
+    memcpy(radio_data_buff, radio_data, sizeof(radio_data_t));
+
+    if (0 == radio_data_buff->radio_Temperature) {
+        wifi_util_error_print(WIFI_MON, "%s:%d Temperature value is 0\n", __func__, __LINE__);
+        if (radio_data_buff != NULL) {
+            free(radio_data_buff);
+            radio_data_buff = NULL;
+        }
+        return RETURN_ERR;
+    }
+
+    *stats = radio_data_buff;
+    *stat_array_size = 1;
+
+    return RETURN_OK;
+}
 int execute_radio_temperature_stats_api(wifi_mon_collector_element_t *c_elem, wifi_monitor_t *mon_data, unsigned long task_interval_ms)
 {
     int ret = RETURN_OK;
@@ -146,7 +172,43 @@ int execute_radio_temperature_stats_api(wifi_mon_collector_element_t *c_elem, wi
         free(radioTemperatureStats);
         radioTemperatureStats = NULL;
     }
-    wifi_util_dbg_print(WIFI_MON, "%s:%d radio_data temperature is %u\n", __func__, __LINE__, radio_data->radio_Temperature);
+    wifi_util_dbg_print(WIFI_MON, "%s:%d radio_data temperature is %u for radio %d\n", __func__, __LINE__, radio_data->radio_Temperature, args->radio_index);
+
+    // Fill the data to wifi_provider_response_t and send
+    if (c_elem->stats_clctr.is_event_subscribed == true &&
+        (c_elem->stats_clctr.stats_type_subscribed & 1 << mon_stats_type_radio_temperature)) {
+        void *temperature_data = NULL;
+        unsigned int count = 0;
+
+        process_radio_temperature_stats(args, radio_data, &temperature_data, &count);
+        if (count == 0) {
+            wifi_util_error_print(WIFI_MON, "%s:%d device count is 0\n", __func__, __LINE__);
+            if (temperature_data != NULL) {
+                free(temperature_data);
+                temperature_data = NULL;
+            }
+            return RETURN_ERR;
+        }
+        wifi_provider_response_t *collect_stats;
+        collect_stats = (wifi_provider_response_t *) malloc(sizeof(wifi_provider_response_t));
+        if (collect_stats == NULL) {
+            wifi_util_error_print(WIFI_MON, "%s:%d Failed to allocate memory\n", __func__, __LINE__);
+            if (temperature_data != NULL) {
+                free(temperature_data);
+                temperature_data = NULL;
+            }
+            return RETURN_ERR;
+        }
+        collect_stats->data_type = mon_stats_type_radio_temperature;
+        collect_stats->args.radio_index = args->radio_index;
+        collect_stats->stat_pointer = temperature_data;
+        collect_stats->stat_array_size = count;
+        wifi_util_dbg_print(WIFI_MON, "Sending radio temperature stats event to core of count %d for radio %d\n", count, collect_stats->args.radio_index);
+        push_monitor_response_event_to_ctrl_queue(collect_stats, sizeof(wifi_provider_response_t), wifi_event_type_monitor, wifi_event_type_collect_stats, NULL);
+        free(temperature_data);
+        free(collect_stats);
+    }
+
     return RETURN_OK;
 }
 
@@ -162,7 +224,7 @@ int copy_radio_temperature_stats_from_cache(wifi_mon_provider_element_t *p_elem,
     }
     if (p_elem->mon_stats_config == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d  p_elem->mon_stats_config NULL\n",
-                __func__,__LINE__, p_elem, mon_cache);
+                __func__,__LINE__);
         return RETURN_ERR;
     }
     args = &(p_elem->mon_stats_config->args);

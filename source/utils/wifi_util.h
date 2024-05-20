@@ -37,6 +37,8 @@
 extern "C" {
 #endif
 
+#define MAX_SCAN_MODE_LEN 16
+
 typedef enum {
     WIFI_DB,
     WIFI_WEBCONFIG,
@@ -113,6 +115,11 @@ typedef struct {
     int count;
     LM_wifi_host_t host[LM_MAX_HOSTS_NUM];
 } __attribute__((packed, aligned(1))) LM_wifi_hosts_t;
+
+typedef struct {
+    int scan_mode;
+    char scan_mode_string[16];
+}__attribute__((packed, aligned(1))) wifi_scan_mode_mapper;
 
 #define VAP_PREFIX_PRIVATE          "private_ssid"
 #define VAP_PREFIX_IOT              "iot_ssid"
@@ -377,6 +384,7 @@ bool is_5g_20M_channel_in_dfs(int channel);
 bool is_6g_supported_device(wifi_platform_property_t *wifi_prop);
 bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t *vap_info_new,
     rdk_wifi_vap_info_t *rdk_old, rdk_wifi_vap_info_t *rdk_new, bool isSta);
+int scan_mode_type_conversion(wifi_neighborScanMode_t *scan_mode_enum, char *scan_mode_str, int scan_mode_len, unsigned int conv_type);
 #ifdef __cplusplus
 }
 #endif

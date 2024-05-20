@@ -337,6 +337,7 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
                         break;
 
                     case wifi_event_type_monitor:
+                        handle_monitor_event(ctrl, event->u.core_data.msg, event->u.core_data.len, event->sub_type);
                         // TODO: event 4 flood
                         // wifi_util_dbg_print(WIFI_CTRL,"[%s]: Received monitor Event %d\r\n",__FUNCTION__, event->event_type);
                         break;

@@ -146,6 +146,7 @@ typedef enum {
     wifi_event_type_start_inst_msmt,
     wifi_event_type_stop_inst_msmt,
     wifi_event_type_xfinity_rrm,
+    wifi_event_type_collect_stats,
     wifi_event_command_max,
 
 
@@ -168,6 +169,16 @@ typedef enum {
     wifi_event_monitor_provider_response,
     wifi_event_monitor_assoc_req,
     wifi_event_monitor_clear_sta_counters, //goodbad rssi time and rapid reconnects
+    wifi_event_monitor_get_radiostats_onchan,
+    wifi_event_monitor_get_radiostats_offchan,
+    wifi_event_monitor_get_radiostats_fullchan,
+    wifi_event_monitor_get_neighborstats_onchan,
+    wifi_event_monitor_get_neighborstats_offchan,
+    wifi_event_monitor_get_neighborstats_fullchan,
+    wifi_event_monitor_get_assocdevice_stats,
+    wifi_event_monitor_get_radiodiag_stats,
+    wifi_event_monitor_get_radio_temperature,
+    wifi_event_monitor_set_subscribe,
     wifi_event_monitor_max,
 
     // Tunnel
