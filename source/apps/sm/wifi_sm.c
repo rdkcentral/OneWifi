@@ -565,6 +565,39 @@ int handle_sm_command_event(wifi_app_t *app, wifi_event_t *event)
    return RETURN_OK;
 }
 
+static int sm_stats_to_monitor_set(wifi_app_t *app, bool enable)
+{
+    stats_config_t *cur_stats_cfg = NULL;
+    hash_map_t *stats_cfg_map = NULL;
+
+    if (!app) {
+        wifi_util_error_print(WIFI_SM,"%s:%d: app is NULL\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    stats_cfg_map = app->data.u.sm_data.sm_stats_config_map;
+    if (!stats_cfg_map) {
+        wifi_util_error_print(WIFI_SM,"%s:%d: stats_cfg_map is NULL\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    cur_stats_cfg = hash_map_get_first(stats_cfg_map);
+    while (cur_stats_cfg != NULL) {
+        if (enable && !is_scan_scheduled(app, cur_stats_cfg)) {
+           wifi_util_dbg_print(WIFI_SM,"%s:%d: Starting the scan id='%s'\n", __func__, __LINE__, cur_stats_cfg->stats_cfg_id);
+           push_sm_config_event_to_monitor_queue(app, mon_stats_request_state_start, cur_stats_cfg);
+        }
+        else if(!enable && is_scan_scheduled(app, cur_stats_cfg)) {
+           wifi_util_dbg_print(WIFI_SM,"%s:%d: Stopping the scan id='%s'\n", __func__, __LINE__, cur_stats_cfg->stats_cfg_id);
+           push_sm_config_event_to_monitor_queue(app, mon_stats_request_state_stop, cur_stats_cfg);
+        }
+        cur_stats_cfg = hash_map_get_next(stats_cfg_map, cur_stats_cfg);
+    }
+
+    return RETURN_OK;
+}
+
+
 int handle_sm_webconfig_event(wifi_app_t *app, wifi_event_t *event)
 {
 
@@ -744,6 +777,7 @@ int free_sm_stats_config_map(wifi_app_t *app)
 
 int sm_deinit(wifi_app_t *app)
 {
+    sm_stats_to_monitor_set(app, false);
     free_sm_stats_config_map(app);
     sm_report_deinit(app);
     return RETURN_OK;

@@ -215,6 +215,7 @@ static int report_tasks_map_free(wifi_app_t *app)
     while (report_task != NULL) {
         /* remove timer */
         if (app->ctrl) {
+            scheduler_cancel_timer_task(app->ctrl->sched, report_task->task_id);
             scheduler_free_timer_task_arg(app->ctrl->sched, report_task->task_id);
         }
 
