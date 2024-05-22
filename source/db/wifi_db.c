@@ -5155,9 +5155,11 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
              cfg.u.bss_info.enabled = true;
         }
 #if defined(_SKY_HUB_COMMON_PRODUCT_REQ_)
+#ifndef _SCER11BEL_PRODUCT_REQ_
         if (isVapXhs(vap_index)) {
             cfg.u.bss_info.enabled = false;
         }
+#endif
         cfg.u.bss_info.bssMaxSta = BSS_MAX_NUM_STA_SKY;
 #else
 #ifdef NEWPLATFORM_PORT
