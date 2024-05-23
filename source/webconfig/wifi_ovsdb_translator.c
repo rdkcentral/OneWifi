@@ -4327,7 +4327,7 @@ webconfig_error_t  translate_config_from_ovsdb_for_stats_config(webconfig_subdoc
     table = proto->stats_config;
     if (table == NULL) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: stats table is NULL\n", __func__, __LINE__);
-        return webconfig_error_translate_from_ovsdb;
+        return webconfig_error_none;
     }
 
     data->u.decoded.stats_config_map = hash_map_create();

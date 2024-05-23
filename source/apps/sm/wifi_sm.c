@@ -622,8 +622,8 @@ int handle_sm_webconfig_event(wifi_app_t *app, wifi_event_t *event)
                 //send the delete and remove elem from cur_stats_cfg
                 memset(key, 0, sizeof(key));
                 snprintf(key, sizeof(key), "%s", cur_stats_cfg->stats_cfg_id);
-                cur_stats_cfg = hash_map_get_next(cur_app_stats_cfg_map, cur_stats_cfg);
                 push_sm_config_event_to_monitor_queue(app, mon_stats_request_state_stop, cur_stats_cfg);
+                cur_stats_cfg = hash_map_get_next(cur_app_stats_cfg_map, cur_stats_cfg);
 
                 //Temporary removal, need to uncomment it
                 temp_stats_config = hash_map_remove(cur_app_stats_cfg_map, key);
