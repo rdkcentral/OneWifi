@@ -64,5 +64,6 @@ uint32_t     hash_map_count    (hash_map_t *map);
 
 void     *hash_map_get_first    (hash_map_t *map);
 void     *hash_map_get_next    (hash_map_t *map, void *data);
+hash_map_t *hash_map_clone (hash_map_t *src_map, size_t data_size);
 
 #endif // _COLLECTION_H_

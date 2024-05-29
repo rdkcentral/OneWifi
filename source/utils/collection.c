@@ -386,3 +386,53 @@ void  hash_map_destroy    (hash_map_t *map)
         free(map);
     }
 }
+
+hash_map_t *hash_map_clone(hash_map_t *src_map, size_t data_size)
+{
+    element_t *e;
+    hash_element_t *he;
+    hash_map_t *dst_map;
+    void *key, *data = NULL;
+
+    if (src_map == NULL ||
+        src_map->queue == NULL ||
+        src_map->queue->head == NULL) {
+        return NULL;
+    }
+
+    dst_map = hash_map_create();
+    if (dst_map == NULL) {
+        return NULL;
+    }
+
+    e = src_map->queue->head;
+    while (e != NULL) {
+        he = (hash_element_t *)e->data;
+        if (he == NULL || he->key == NULL) {
+            hash_map_destroy(dst_map);
+            return NULL;
+        }
+
+        key = strdup(he->key);
+        if (key == NULL) {
+            hash_map_destroy(dst_map);
+            return NULL;
+        }
+
+        if (data_size != 0 && (data = malloc(data_size)) == NULL) {
+            hash_map_destroy(dst_map);
+            return NULL;
+        }
+
+        if (he->data) {
+            memcpy(data, he->data, data_size);
+        }
+
+        if (hash_map_put(dst_map, key, data) == -1) {
+            hash_map_destroy(dst_map);
+            return NULL;
+        }
+        e = e->next;
+    }
+    return dst_map;
+}

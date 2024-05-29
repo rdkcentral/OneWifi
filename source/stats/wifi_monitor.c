@@ -551,7 +551,6 @@ reset_client_stats_info(unsigned int apIndex)
         memset((unsigned char *)&sta->dev_stats, 0,  sizeof(wifi_associated_dev3_t));
         sta = hash_map_get_next(sta_map, sta);
     }
-
 }
 
 static void
@@ -2271,8 +2270,49 @@ int radius_eap_failure_callback(unsigned int apIndex, int reason)
 
 int vapstatus_callback(int apIndex, wifi_vapstatus_t status)
 {
+    hash_map_t *sta_map      = NULL;
+    hash_map_t *temp_sta_map = NULL;
+    sta_data_t *sta          = NULL;
+    sta_key_t  sta_key;
+
     wifi_util_dbg_print(WIFI_MON,"%s called for %d and status %d \n",__func__, apIndex, status);
     g_monitor_module.bssid_data[apIndex].ap_params.ap_status = status;
+
+    if (status != wifi_vapstatus_down) {
+        return 0;
+    }
+
+    pthread_mutex_lock(&g_monitor_module.data_lock);
+
+    sta_map = g_monitor_module.bssid_data[apIndex].sta_map;
+    if (sta_map == NULL) {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d sta_map is NULL for apIndex %d\n", __func__, __LINE__, apIndex);
+        pthread_mutex_unlock(&g_monitor_module.data_lock);
+        return 0;
+    }
+
+    temp_sta_map = hash_map_clone(sta_map, sizeof(sta_data_t));
+    if (temp_sta_map == NULL) {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d Failed to clone hash map\n", __func__, __LINE__);
+        pthread_mutex_unlock(&g_monitor_module.data_lock);
+        return -1;
+    }
+
+    hash_map_cleanup(sta_map);
+
+    pthread_mutex_unlock(&g_monitor_module.data_lock);
+
+    if (temp_sta_map != NULL) {
+        sta = hash_map_get_first(temp_sta_map);
+        while (sta != NULL) {
+            to_sta_key(sta->sta_mac, sta_key);
+            send_wifi_disconnect_event_to_ctrl(sta->sta_mac, apIndex);
+            wifi_util_info_print(WIFI_MON, "%s:%d ClientMac:%s disconnected from ap:%d\n", __func__, __LINE__, sta_key, apIndex);
+            sta = hash_map_get_next(temp_sta_map, sta);
+        }
+        hash_map_destroy(temp_sta_map);
+    }
+
     return 0;
 }
 
