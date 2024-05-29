@@ -213,8 +213,8 @@ exit_err:
    If the client was disconnected in the previous sample, take the absolute current value;
    Calculate delta otherwise
 */
-#define DELTA_CONN_STATS(PREV_CONNECTED, X) ((PREV_CONNECTED && (curr->X > prev->X)) ? DELTA(X) : curr->X)
-#define DELTA_STATS(X) DELTA_CONN_STATS(prev->is_connected , stats.X)
+#define DELTA_CONN_STATS(NO_RECONNECT, X) ((curr->X >= prev->X) && NO_RECONNECT ? DELTA(X) : curr->X)
+#define DELTA_STATS(X) DELTA_CONN_STATS((prev->connected == curr->connected), stats.X)
 #define ROUNDF(X) (roundf((X) * 100) / 100.0)
 #define CLIENT_STATS_PRINT(S,M) \
     wifi_util_dbg_print(WIFI_SM, "%s:%d: Client %s %s=%llu\n", __func__, __LINE__, M, #S, result->S);
@@ -245,19 +245,19 @@ int sm_client_samples_calc_total(ds_dlist_t *samples, dpp_client_record_t *resul
             continue;
         }
 
-        if (curr->is_connected || prev->is_connected) {
-            /* ignore the deltas between subsequent samples where the client was disconnected */
-            /* counters */
-            result->stats.bytes_tx   += DELTA_STATS(bytes_tx);
-            result->stats.frames_tx  += DELTA_STATS(frames_tx);
-            result->stats.retries_tx += DELTA_STATS(retries_tx);
-            result->stats.errors_tx  += DELTA_STATS(errors_tx);
+        /* connected(cli_Associations) should be used to determine
+         * if it is necessary to calculate delta or use the absolute values */
+        /* If cli_Associations changes, that means the absolute value should be taken,
+         * delta otherwise */
+        result->stats.bytes_tx   += DELTA_STATS(bytes_tx);
+        result->stats.frames_tx  += DELTA_STATS(frames_tx);
+        result->stats.retries_tx += DELTA_STATS(retries_tx);
+        result->stats.errors_tx  += DELTA_STATS(errors_tx);
 
-            result->stats.bytes_rx   += DELTA_STATS(bytes_rx);
-            result->stats.frames_rx  += DELTA_STATS(frames_rx);
-            result->stats.retries_rx += DELTA_STATS(retries_rx);
-            result->stats.errors_rx  += DELTA_STATS(errors_rx);
-        }
+        result->stats.bytes_rx   += DELTA_STATS(bytes_rx);
+        result->stats.frames_rx  += DELTA_STATS(frames_rx);
+        result->stats.retries_rx += DELTA_STATS(retries_rx);
+        result->stats.errors_rx  += DELTA_STATS(errors_rx);
 
         prev = curr;
     }
