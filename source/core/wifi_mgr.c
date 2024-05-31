@@ -733,6 +733,7 @@ void get_radio_params_from_psm(unsigned int radio_index, wifi_radio_operationPar
     memset(radio_feat_cfg, 0, sizeof(wifi_radio_feature_param_t));
     wifidb_init_radio_config_default((instance_number - 1), radio_cfg, radio_feat_cfg);
 
+
 #if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
     //5GH and 6G can be added later after support is added
     if (is_radio_band_5G(radio_cfg->band)) {
@@ -946,6 +947,10 @@ void get_radio_params_from_psm(unsigned int radio_index, wifi_radio_operationPar
     } else {
         wifi_util_dbg_print(WIFI_MGR,"%s:%d: str value for chanUtilSelfHealEnable:%s \r\n", __func__, __LINE__, str);
     }
+
+    nvram_get_radio_enable_status(&radio_cfg->enable, radio_index);
+
+    wifi_util_info_print(WIFI_MGR,"radio_cfg->enable:%d for radio index:%d\n", radio_cfg->enable, radio_index);
 }
 
 void get_radio_params_from_db(unsigned int radio_index,wifi_radio_operationParam_t *radio_cfg)
