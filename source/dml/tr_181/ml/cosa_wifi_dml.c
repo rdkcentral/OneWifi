@@ -15928,7 +15928,7 @@ AssociatedDevice1_GetParamStringValue
     assoc_dev_data_t *assoc_dev_data_temp = NULL, *assoc_dev_data = NULL;
     unsigned long vap_index_mask = (unsigned long) hInsContext;
     unsigned int dev_index = (vap_index_mask >> 8);
-    unsigned int vap_index = (0xf & vap_index_mask);
+    unsigned int vap_index = (0xff & vap_index_mask);
 
     pthread_mutex_lock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
 
