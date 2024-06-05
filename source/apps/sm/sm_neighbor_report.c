@@ -32,23 +32,26 @@ static int neighbor_report_calculate_raw(sm_neighbor_cache_t *cache, survey_type
     sm_neighbor_t *neighbor = hash_map_get_first(cache->neighbors);
     while (neighbor != NULL) {
         sm_neighbor_scan_t *scan = sm_neighbor_get_scan_data(neighbor, survey_type);
-        ds_dlist_t *samples = &scan->samples;
-
-        dpp_neighbor_record_list_t *cached_sample = NULL;
-        ds_dlist_iter_t             cached_sample_iter;
-
-        for (cached_sample = ds_dlist_ifirst(&cached_sample_iter, samples);
-             cached_sample != NULL;
-             cached_sample = ds_dlist_inext(&cached_sample_iter))
-        {
-            dpp_neighbor_record_list_t *sample = dpp_neighbor_record_alloc();
-
-            CHECK_NULL(sample);
-
-            memcpy(sample, cached_sample, sizeof(*cached_sample));
-            ds_dlist_insert_tail(result, sample);
-        }
         neighbor = hash_map_get_next(cache->neighbors, neighbor);
+
+        if (!scan) {
+            continue;
+        }
+
+        ds_dlist_t *samples = &scan->samples;
+        if (!samples || ds_dlist_is_empty(samples)) {
+            continue;
+        }
+
+        /* Get only the first sample */
+        dpp_neighbor_record_list_t *cached_sample = ds_dlist_head(samples);
+        dpp_neighbor_record_list_t *sample = dpp_neighbor_record_alloc();
+        if (!sample) {
+            continue;
+        }
+
+        memcpy(sample, cached_sample, sizeof(*cached_sample));
+        ds_dlist_insert_tail(result, sample);
     }
 
     return RETURN_OK;
