@@ -157,6 +157,9 @@ static int handle_ready_client_stats(client_assoc_data_t *stats, size_t stats_nu
                     if (!sta_data) {
                         continue;
                     }
+                    if (sta_data->dev_stats.cli_Active == false) {
+                        continue;
+                    }
                     sm_client_conn_t conn_info = {
                         .connect_ts = timeval_to_ms(&sta_data->last_connected_time),
                         .disconnect_ts = timeval_to_ms(&sta_data->last_disconnected_time),
