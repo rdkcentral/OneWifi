@@ -361,7 +361,7 @@ int scheduler_execute(struct scheduler *sched, struct timespec t_start, unsigned
             while (high_priority_pending_tasks > 0 && timespeccmp(&timeout, &t_now, >)) {
                 if (sched->num_hp_tasks > 0) {
                     tt = queue_peek(sched->high_priority_timer_list, sched->hp_index);
-                    if (tt != NULL && tt->execute == true) {
+                    if (tt != NULL && tt->execute == true && tt->cancel == false) {
                         pthread_mutex_unlock(&sched->lock);
                         ret = tt->timer_call_back(tt->arg);
                         pthread_mutex_lock(&sched->lock);
@@ -371,7 +371,7 @@ int scheduler_execute(struct scheduler *sched, struct timespec t_start, unsigned
                             tt->execution_counter++;
                         }
                     }
-                    if (tt != NULL && tt->execute == false) {
+                    if (tt != NULL && (tt->execute == false || tt->cancel == true)) {
                         sched->hp_index--;
                         if (sched->hp_index >= sched->num_hp_tasks) {
                             sched->hp_index = sched->num_hp_tasks - 1;
@@ -392,7 +392,7 @@ int scheduler_execute(struct scheduler *sched, struct timespec t_start, unsigned
                 sched->timer_list_age = 0;
                 if (sched->num_tasks > 0) {
                     tt = queue_peek(sched->timer_list, sched->index);
-                    if (tt != NULL && tt->execute == true) {
+                    if (tt != NULL && tt->execute == true && tt->cancel == false) {
                         pthread_mutex_unlock(&sched->lock);
                         ret = tt->timer_call_back(tt->arg);
                         pthread_mutex_lock(&sched->lock);
@@ -402,7 +402,7 @@ int scheduler_execute(struct scheduler *sched, struct timespec t_start, unsigned
                             low_priority_pending_tasks = scheduler_get_number_tasks_pending(sched, false);
                         }
                     }
-                    if (tt != NULL && tt->execute == false) {
+                    if (tt != NULL && (tt->execute == false || tt->cancel == true)) {
                         sched->index--;
                         if (sched->index >= sched->num_tasks) {
                             sched->index = sched->num_tasks - 1;

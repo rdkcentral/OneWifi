@@ -102,10 +102,11 @@ int generate_assoc_client_provider_stats_key(wifi_mon_stats_config_t *config, ch
     return RETURN_OK;
 }
 
-int execute_assoc_client_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *mon_data, unsigned long task_interval_ms)
+int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_monitor_t *mon_data, unsigned long task_interval_ms)
 {
     wifi_front_haul_bss_t *bss_param = NULL;
     wifi_associated_dev3_t *dev_array = NULL;
+    wifi_mon_stats_args_t *args = NULL;
     unsigned int num_devs = 0;
     unsigned int vap_array_index;
     wifi_associated_dev3_t  *hal_sta;
@@ -123,6 +124,12 @@ int execute_assoc_client_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *
     struct timespec tv_now, t_diff, t_tmp;
     unsigned int disconnected_time;
 
+    if (c_elem == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d input arguments are NULL args : %p\n",__func__,__LINE__, c_elem);
+        return RETURN_ERR;
+    }
+
+    args = c_elem->args;
     if (args == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d input arguments are NULL args : %p\n",__func__,__LINE__, args);
         return RETURN_ERR;

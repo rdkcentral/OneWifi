@@ -37,7 +37,8 @@ wifi_mon_stats_descriptor_t g_stats_descriptor[WIFI_STATS_NUM] = {
         generate_radio_channel_provider_stats_key,
         execute_radio_channel_api,
         copy_radio_channel_stats_from_cache,
-        update_radio_channels_collector_args
+        update_radio_channels_collector_args,
+        stop_radio_channel_neighbor_scheduler_tasks
     },
     {
         //neighbours stats and radio channel stats share the same collector
@@ -47,7 +48,8 @@ wifi_mon_stats_descriptor_t g_stats_descriptor[WIFI_STATS_NUM] = {
         generate_radio_channel_provider_stats_key,
         execute_radio_channel_api,
         copy_neighbor_ap_stats_from_cache,
-        update_radio_channels_collector_args
+        update_radio_channels_collector_args,
+        stop_radio_channel_neighbor_scheduler_tasks
     },
     {
         mon_stats_type_radio_diagnostic_stats,
@@ -56,6 +58,7 @@ wifi_mon_stats_descriptor_t g_stats_descriptor[WIFI_STATS_NUM] = {
         generate_radio_diagnostic_provider_stats_key,
         execute_radio_diagnostic_stats_api,
         copy_radio_diagnostic_stats_from_cache,
+        NULL,
         NULL
     },
     {
@@ -65,6 +68,7 @@ wifi_mon_stats_descriptor_t g_stats_descriptor[WIFI_STATS_NUM] = {
         generate_assoc_client_provider_stats_key,
         execute_assoc_client_stats_api,
         copy_assoc_client_stats_from_cache,
+        NULL,
         NULL
     },
     {
@@ -74,6 +78,7 @@ wifi_mon_stats_descriptor_t g_stats_descriptor[WIFI_STATS_NUM] = {
         generate_radio_temperature_provider_stats_key,
         execute_radio_temperature_stats_api,
         copy_radio_temperature_stats_from_cache,
+        NULL,
         NULL
     }
 };

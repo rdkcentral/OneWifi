@@ -75,13 +75,20 @@ int generate_radio_temperature_provider_stats_key(wifi_mon_stats_config_t *confi
     return RETURN_OK;
 }
 
-int execute_radio_temperature_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *mon_data, unsigned long task_interval_ms)
+int execute_radio_temperature_stats_api(wifi_mon_collector_element_t *c_elem, wifi_monitor_t *mon_data, unsigned long task_interval_ms)
 {
     int ret = RETURN_OK;
     wifi_radio_operationParam_t* radioOperation = NULL;
     wifi_radioTemperature_t *radioTemperatureStats = NULL;
     radio_data_t *radio_data = NULL;
+    wifi_mon_stats_args_t *args = NULL;
 
+    if (c_elem == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d input arguments are NULL args : %p\n",__func__,__LINE__, c_elem);
+        return RETURN_ERR;
+    }
+
+    args = c_elem->args;
     if (args == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d input arguments are NULL args : %p\n",__func__,__LINE__, args);
         return RETURN_ERR;

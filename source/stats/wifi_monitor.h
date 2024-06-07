@@ -223,13 +223,15 @@ void update_ecomode_radios(void);
 hash_map_t *get_sta_data_map(unsigned int vap_index);
 
 typedef struct wifi_mon_provider_element wifi_mon_provider_element_t;
+typedef struct  wifi_mon_collector_element  wifi_mon_collector_element_t;
 
 typedef int  (* validate_args_t)(wifi_mon_stats_args_t *args);
 typedef int  (* generate_stats_clctr_key_t)(wifi_mon_stats_args_t *args, char *key, size_t key_len);
 typedef int  (* generate_stats_provider_key_t)(wifi_mon_stats_config_t *config, char *key, size_t key_len);
-typedef int  (* execute_stats_api_t)(wifi_mon_stats_args_t *args, wifi_monitor_t *mon_data, unsigned long task_interval_ms);
+typedef int  (* execute_stats_api_t)(wifi_mon_collector_element_t *c_elem, wifi_monitor_t *mon_data, unsigned long task_interval_ms);
 typedef int  (* get_stats_from_mon_cache_t)(wifi_mon_provider_element_t *p_elem, void **stats, unsigned int *stat_array_size, wifi_monitor_t *mon_cache);
 typedef int  (* update_collector_args_t)(void *collector_elem);
+typedef int  (* stop_scheduler_tasks_t)(wifi_mon_collector_element_t *c_elem);
 
 //New Monitor Implementation
 typedef struct {
@@ -244,9 +246,15 @@ typedef struct {
     execute_stats_api_t   execute_stats_api;
     get_stats_from_mon_cache_t copy_stats_from_cache;
     update_collector_args_t update_collector_args;
+    stop_scheduler_tasks_t stop_scheduler_tasks;
 } wifi_mon_stats_descriptor_t;
 
 typedef struct {
+    int scan_complete_task_id;
+} collector_radio_channel_neighbor_data_t;
+
+
+struct wifi_mon_collector_element{
     int             collector_task_sched_id;
     unsigned long   collector_task_interval_ms;
     char            key[MON_STATS_KEY_LEN_32];
@@ -256,7 +264,11 @@ typedef struct {
     wifi_mon_stats_args_t     *args;
     wifi_mon_stats_descriptor_t  *stat_desc;
     unsigned int    postpone_cnt;
-} __attribute__((packed)) wifi_mon_collector_element_t;
+    int             collector_postpone_task_sched_id;
+    union {
+        collector_radio_channel_neighbor_data_t radio_channel_neighbor_data;
+    } u;
+} __attribute__((packed));
 
 typedef struct {
     struct timespec last_update_time_offchannel[MAX_CHANNELS];
@@ -307,9 +319,10 @@ void free_coordinator(hash_map_t *collector_list);
 int validate_radio_channel_args(wifi_mon_stats_args_t *args);
 int generate_radio_channel_clctr_stats_key(wifi_mon_stats_args_t *args, char *key, size_t key_len);
 int generate_radio_channel_provider_stats_key(wifi_mon_stats_config_t *config, char *key, size_t key_len);
-int execute_radio_channel_api(wifi_mon_stats_args_t *args, wifi_monitor_t *mon_data, unsigned long task_interval_ms);
+int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor_t *mon_data, unsigned long task_interval_ms);
 int copy_radio_channel_stats_from_cache(wifi_mon_provider_element_t *p_elem, void **stats, unsigned int *stat_array_size, wifi_monitor_t *mon_cache);
 int update_radio_channels_collector_args(void *ce);
+int stop_radio_channel_neighbor_scheduler_tasks(wifi_mon_collector_element_t *c_elem);
 
 /*Neighbor Ap*/
 int validate_neighbor_ap_args(wifi_mon_stats_args_t *args);
@@ -319,21 +332,21 @@ int copy_neighbor_ap_stats_from_cache(wifi_mon_provider_element_t *p_elem, void 
 int validate_radio_diagnostic_args(wifi_mon_stats_args_t *args);
 int generate_radio_diagnostic_clctr_stats_key(wifi_mon_stats_args_t *args, char *key_str, size_t key_len);
 int generate_radio_diagnostic_provider_stats_key(wifi_mon_stats_config_t *config, char *key_str, size_t key_len);
-int execute_radio_diagnostic_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *mon_data, unsigned long task_interval_ms);
+int execute_radio_diagnostic_stats_api(wifi_mon_collector_element_t *c_elem, wifi_monitor_t *mon_data, unsigned long task_interval_ms);
 int copy_radio_diagnostic_stats_from_cache(wifi_mon_provider_element_t *p_elem, void **stats, unsigned int *stat_array_size, wifi_monitor_t *mon_cache);
 
 /*Associated Client Diagnostics*/
 int validate_assoc_client_args(wifi_mon_stats_args_t *args);
 int generate_assoc_client_clctr_stats_key(wifi_mon_stats_args_t *args, char *key_str, size_t key_len);
 int generate_assoc_client_provider_stats_key(wifi_mon_stats_config_t *config, char *key_str, size_t key_len);
-int execute_assoc_client_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *mon_data, unsigned long task_interval_ms);
+int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_monitor_t *mon_data, unsigned long task_interval_ms);
 int copy_assoc_client_stats_from_cache(wifi_mon_provider_element_t *p_elem, void **stats, unsigned int *stat_array_size, wifi_monitor_t *mon_cache);
 
 /*Radio Temperature*/
 int validate_radio_temperature_args(wifi_mon_stats_args_t *args);
 int generate_radio_temperature_clctr_stats_key(wifi_mon_stats_args_t *args, char *key_str, size_t key_len);
 int generate_radio_temperature_provider_stats_key(wifi_mon_stats_config_t *config, char *key_str, size_t key_len);
-int execute_radio_temperature_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *mon_data, unsigned long task_interval_ms);
+int execute_radio_temperature_stats_api(wifi_mon_collector_element_t *c_elem, wifi_monitor_t *mon_data, unsigned long task_interval_ms);
 int copy_radio_temperature_stats_from_cache(wifi_mon_provider_element_t *p_elem, void **stats, unsigned int *stat_array_size, wifi_monitor_t *mon_cache);
 
 #endif	//_WIFI_MON_H_

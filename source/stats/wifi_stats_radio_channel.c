@@ -101,6 +101,19 @@ void copy_chanstats_to_chandata(radio_chan_data_t *chan_data, wifi_channelStats_
     return;
 }
 
+int stop_radio_channel_neighbor_scheduler_tasks(wifi_mon_collector_element_t *c_elem)
+{
+    wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
+    if (c_elem == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d input arguments are NULL args : %p\n",__func__,__LINE__, c_elem);
+        return RETURN_ERR;
+    }
+
+    scheduler_cancel_timer_task(mon_data->sched, c_elem->u.radio_channel_neighbor_data.scan_complete_task_id);
+
+    return RETURN_OK;
+}
+
 int execute_radio_channel_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *mon_data)
 {
     int ret = RETURN_OK;
@@ -261,18 +274,22 @@ int check_scan_complete_read_results(void *arg)
     int ret = RETURN_OK;
     wifi_neighbor_ap2_t *neigh_stats = NULL;
     wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
-    wifi_mon_stats_args_t *args = arg;
+    wifi_mon_stats_args_t *args = NULL;
     neighscan_diag_cfg_t *neighscan_stats_data = NULL;
     int last_scanned_channel_index = 0;
     unsigned int ap_count = 0;
+    int id = 0;
+    wifi_mon_collector_element_t *c_elem = (wifi_mon_collector_element_t *)arg;
+    args = c_elem->args;
 #if CCSP_WIFI_HAL
     ret = wifi_getNeighboringWiFiStatus(args->radio_index, &neigh_stats, &ap_count);
 #endif
     if (ret != RETURN_OK) {
         if (errno == EAGAIN && mon_data->scan_results_retries[args->radio_index] < RADIO_SCAN_MAX_RESULTS_RETRIES) {
             mon_data->scan_results_retries[args->radio_index]++;
-            scheduler_add_timer_task(mon_data->sched, FALSE, NULL, check_scan_complete_read_results, args,
+            scheduler_add_timer_task(mon_data->sched, FALSE, &id, check_scan_complete_read_results, c_elem,
                     RADIO_SCAN_RESULT_INTERVAL, 1, FALSE);
+            c_elem->u.radio_channel_neighbor_data.scan_complete_task_id = id;
 
             wifi_util_dbg_print(WIFI_MON, "%s : %d  Neighbor wifi status for index %d not ready. Retry (%d)\n",__func__,__LINE__, args->radio_index, mon_data->scan_results_retries[args->radio_index]);
             return RETURN_OK;
@@ -336,7 +353,7 @@ int check_scan_complete_read_results(void *arg)
 }
 
 
-int execute_radio_channel_api(wifi_mon_stats_args_t *args, wifi_monitor_t *mon_data, unsigned long task_interval_ms)
+int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor_t *mon_data, unsigned long task_interval_ms)
 {
     int ret = RETURN_OK;
     wifi_radio_capabilities_t *wifi_cap = NULL;
@@ -347,13 +364,15 @@ int execute_radio_channel_api(wifi_mon_stats_args_t *args, wifi_monitor_t *mon_d
     char *channel_buff;
     int bytes_written = 0;
     int count = 0;
+    int id = 0;
+    wifi_mon_stats_args_t *args = NULL;
 
-
-    if (args == NULL) {
+    if (c_elem == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d input arguments are NULL args : %p\n",__func__,__LINE__, args);
         return RETURN_ERR;
     }
 
+    args = c_elem->args;
     if (mon_data->radio_presence[args->radio_index] == false) {
         wifi_util_info_print(WIFI_MON, "%s:%d radio_presence is false for radio : %d\n",__func__,__LINE__, args->radio_index);
         return RETURN_OK;
@@ -475,8 +494,9 @@ int execute_radio_channel_api(wifi_mon_stats_args_t *args, wifi_monitor_t *mon_d
         wifi_util_error_print(WIFI_MON, "%s : %d  Failed to trigger scan for radio index %d\n",__func__,__LINE__, args->radio_index);
         return RETURN_ERR;
     }
-    scheduler_add_timer_task(mon_data->sched, FALSE, NULL, check_scan_complete_read_results, args,
+    scheduler_add_timer_task(mon_data->sched, FALSE, &id, check_scan_complete_read_results, c_elem,
             RADIO_SCAN_RESULT_INTERVAL, 1, FALSE);
+    c_elem->u.radio_channel_neighbor_data.scan_complete_task_id = id;
 
     return RETURN_OK;
 }

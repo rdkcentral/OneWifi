@@ -79,7 +79,7 @@ int generate_radio_diagnostic_provider_stats_key(wifi_mon_stats_config_t *config
 
 
 //int execute_radio_diagnostic_stats_api(wifi_mon_stats_args_t *args, void **stats, unsigned int *stat_array_size)
-int execute_radio_diagnostic_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *mon_data, unsigned long task_interval_ms)
+int execute_radio_diagnostic_stats_api(wifi_mon_collector_element_t *c_elem, wifi_monitor_t *mon_data, unsigned long task_interval_ms)
 {
     int ret = RETURN_OK;
     wifi_radio_operationParam_t* radioOperation = NULL;
@@ -87,7 +87,14 @@ int execute_radio_diagnostic_stats_api(wifi_mon_stats_args_t *args, wifi_monitor
     radio_data_t *radio_data = NULL;
     char str[64] = {0};
     wifi_freq_bands_t band_enum;
+    wifi_mon_stats_args_t *args = NULL;
 
+    if (c_elem == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d input arguments are NULL args : %p\n",__func__,__LINE__, c_elem);
+        return RETURN_ERR;
+    }
+
+    args = c_elem->args;
     if (args == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d input arguments are NULL args : %p\n",__func__,__LINE__, args);
         return RETURN_ERR;

@@ -3173,24 +3173,52 @@ int coordinator_calculate_clctr_interval(wifi_mon_collector_element_t *collector
 #define POSTPONE_TIME 200 //ms
 #define MAX_POSTPONE_EXECUTION  (30000/POSTPONE_TIME) //scan can time up to 30 seconds
 
+int collector_postpone_execute_task(void *arg)
+{
+    wifi_mon_collector_element_t *elem = (wifi_mon_collector_element_t *)arg;
+    wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
+    int id = elem->collector_postpone_task_sched_id;
+
+    if ((mon_data->scan_status[elem->args->radio_index] == 1) && (elem->postpone_cnt < MAX_POSTPONE_EXECUTION)) {
+        wifi_util_dbg_print(WIFI_MON, "%s : %d scan running postpone collector : %s\n",__func__,__LINE__, elem->key);
+        scheduler_add_timer_task(mon_data->sched, FALSE, &id, collector_postpone_execute_task, arg, POSTPONE_TIME, 1, FALSE);
+        elem->collector_postpone_task_sched_id = id;
+        elem->postpone_cnt++;
+    } else {
+        elem->collector_postpone_task_sched_id = 0;
+        elem->postpone_cnt = 0;
+        wifi_util_dbg_print(WIFI_MON, "%s : %d Executing collector task key : %s\n",__func__,__LINE__, elem->key);
+        if (elem->stat_desc->execute_stats_api == NULL || elem->stat_desc->execute_stats_api(elem, mon_data, elem->collector_task_interval_ms) != RETURN_OK) {
+            wifi_util_error_print(WIFI_MON, "%s : %d collector execution failed for %s\n",__func__,__LINE__, elem->key);
+            return RETURN_ERR;
+        }
+        wifi_util_dbg_print(WIFI_MON, "%s : %d Execution completed for collector task key : %s\n",__func__,__LINE__, elem->key);
+    }
+
+    return RETURN_OK;
+}
+
 int collector_execute_task(void *arg)
 {
     wifi_mon_collector_element_t *elem = (wifi_mon_collector_element_t *)arg;
     wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
+    int id = elem->collector_postpone_task_sched_id;
 
     if (elem->stat_desc->stats_type == mon_stats_type_radio_channel_stats || 
             elem->stat_desc->stats_type == mon_stats_type_neighbor_stats) {
-        if (mon_data->scan_status[elem->args->radio_index] == 1 && elem->postpone_cnt < MAX_POSTPONE_EXECUTION) {
-            
-            wifi_util_dbg_print(WIFI_MON, "%s : %d scan running postpone collector : %s\n",__func__,__LINE__, elem->key);
-            scheduler_add_timer_task(mon_data->sched, FALSE, NULL, collector_execute_task, arg, POSTPONE_TIME, 1, FALSE);
-            elem->postpone_cnt++;
+        if (mon_data->scan_status[elem->args->radio_index] == 1) {
+            if (elem->collector_postpone_task_sched_id == 0) {
+                wifi_util_dbg_print(WIFI_MON, "%s : %d scan running postpone collector : %s\n",__func__,__LINE__, elem->key);
+                scheduler_add_timer_task(mon_data->sched, FALSE, &id, collector_postpone_execute_task, arg, POSTPONE_TIME, 1, FALSE);
+                elem->collector_postpone_task_sched_id = id;
+                elem->postpone_cnt++;
+            }
             return RETURN_OK;
         }
     }
     elem->postpone_cnt = 0;
     wifi_util_dbg_print(WIFI_MON, "%s : %d Executing collector task key : %s\n",__func__,__LINE__, elem->key);
-    if (elem->stat_desc->execute_stats_api == NULL || elem->stat_desc->execute_stats_api(elem->args, mon_data, elem->collector_task_interval_ms) != RETURN_OK) {
+    if (elem->stat_desc->execute_stats_api == NULL || elem->stat_desc->execute_stats_api(elem, mon_data, elem->collector_task_interval_ms) != RETURN_OK) {
         wifi_util_error_print(WIFI_MON, "%s : %d collector execution failed for %s\n",__func__,__LINE__, elem->key);
         return RETURN_ERR;
     }
@@ -3557,9 +3585,17 @@ int coordinator_stop_task(wifi_mon_collector_element_t **collector_elem, wifi_mo
         coordinator_free_provider_elem(&provider_elem);
         count = hash_map_count((*collector_elem)->provider_list);
         if (count == 0) {
-            wifi_util_dbg_print(WIFI_MON, "%s:%d: Provider list is empty, remove collector task key : %s\n", __func__,__LINE__, (*collector_elem)->key);
+            wifi_util_info_print(WIFI_MON, "%s:%d: Provider list is empty, remove collector task key : %s\n", __func__,__LINE__, (*collector_elem)->key);
             scheduler_cancel_timer_task(mon_data->sched, (*collector_elem)->collector_task_sched_id);
+            scheduler_cancel_timer_task(mon_data->sched, (*collector_elem)->collector_postpone_task_sched_id);
+            (*collector_elem)->collector_postpone_task_sched_id = 0;
+            if ((*collector_elem)->stat_desc->stop_scheduler_tasks == NULL || (*collector_elem)->stat_desc->stop_scheduler_tasks((*collector_elem)) != RETURN_OK) {
+                wifi_util_error_print(WIFI_MON, "%s : %d Failed to stop task\n", __func__, __LINE__);
+            }
             hash_map_remove(collector_list, (*collector_elem)->key);
+            if ((*collector_elem)->provider_list != NULL) {
+              hash_map_destroy((*collector_elem)->provider_list);
+            }
             coordinator_free_collector_elem(collector_elem);
         } else {
             new_collector_interval = 0;
