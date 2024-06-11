@@ -3696,6 +3696,12 @@ Radio_SetParamUlongValue
             return  TRUE;
         }
 
+        if (uValue < 100 || uValue > 3500)
+        {
+            wifi_util_error_print(WIFI_DMCLI,"%s:%d: Invalid Beacon Interval value:%lu\n",__func__, __LINE__, uValue);
+            return FALSE;
+        }
+
         wifiRadioOperParam->beaconInterval = uValue;
         ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s beaconInterval : %d\n", __FUNCTION__, wifiRadioOperParam->beaconInterval);
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:beaconInterval=%d  = %d  \n",__func__, __LINE__,wifiRadioOperParam->beaconInterval,uValue);
