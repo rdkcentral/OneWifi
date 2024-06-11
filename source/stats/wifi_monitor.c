@@ -81,9 +81,6 @@
 #include <netinet/ip6.h>
 #include "wifi_events.h"
 #include "common/ieee802_11_defs.h"
-#ifdef HALW_IMPLEMENTATION
-#include <opensync/wifi_halw_api.h>
-#endif
 #endif // CCSP_COMMON
 #include "const.h"
 #include "pktgen.h"
@@ -2107,9 +2104,6 @@ int radio_diagnostics(void *arg)
 
 #ifdef CCSP_COMMON
             if (wifi_getRadioTrafficStats2(radiocnt, &radioTrafficStats) == RETURN_OK) {
-#else
-            if (ow_mesh_ext_get_radio_stats(radiocnt, &radioTrafficStats) == RETURN_OK) {
-#endif // CCSP_COMMON
                 /* update the g_active_msmt with the radio data */
                 g_monitor_module.radio_data[radiocnt].NoiseFloor = radioTrafficStats.radio_NoiseFloor;
                 g_monitor_module.radio_data[radiocnt].RadioActivityFactor = radioTrafficStats.radio_ActivityFactor;
@@ -2152,18 +2146,13 @@ int radio_diagnostics(void *arg)
                     wifi_util_dbg_print(WIFI_MON, "%s:%d: Frequency band is  %s\n", __func__, __LINE__, RadioFreqBand);
                 }
 
-#ifdef CCSP_COMMON
                 wifi_getRadioOperatingChannelBandwidth(radiocnt,RadioChanBand);
                 strncpy((char *)&g_monitor_module.radio_data[radiocnt].channel_bandwidth, RadioChanBand,sizeof(RadioChanBand));
                 wifi_util_dbg_print(WIFI_MON, "%s:%d: channelbandwidth is  %s\n", __func__, __LINE__, RadioChanBand);
-#endif // CCSP_COMMON
             } else {
-#ifdef CCSP_COMMON
                 wifi_util_error_print(WIFI_MON, "%s : %d wifi_getRadioTrafficStats2 failed for rdx : %d\n",__func__,__LINE__,radiocnt);
-#else
-                wifi_util_error_print(WIFI_MON, "%s : %d ow_mesh_ext_get_radio_stats failed for rdx : %d\n",__func__,__LINE__,radiocnt);
-#endif // CCSP_COMMON
             }
+#endif // CCSP_COMMON
         } else {
             wifi_util_dbg_print(WIFI_MON, "%s : %d Radio : %d is not enabled\n",__func__,__LINE__,radiocnt);
         }

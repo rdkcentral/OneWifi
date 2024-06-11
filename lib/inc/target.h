@@ -45,6 +45,7 @@ extern "C" {
 #define TARGET_NAME	"abcd"
 #define TARGET_OVSDB_SOCK_PATH      "/var/run/db.sock"
 #define TARGET_BUFF_SZ              256
+#define TARGET_ID_SZ                OS_MACSTR_PLAIN_SZ
 
 /* Target init options */
 typedef enum {

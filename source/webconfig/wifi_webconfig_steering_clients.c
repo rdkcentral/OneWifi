@@ -77,6 +77,36 @@ webconfig_error_t translate_to_steering_clients_subdoc(webconfig_t *config, webc
     return webconfig_error_none;
 }
 
+webconfig_error_t free_steering_client_entries(webconfig_subdoc_data_t *data)
+{
+    webconfig_subdoc_decoded_data_t *decoded_params;
+    band_steering_clients_t *steering_client, *temp_steering_client;
+    char key[64] = {0};
+
+    decoded_params = &data->u.decoded;
+    if (decoded_params == NULL) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: decoded_params is NULL\n", __func__, __LINE__);
+        return webconfig_error_invalid_subdoc;
+    }
+
+    if (data->u.decoded.steering_client_map != NULL) {
+        steering_client = hash_map_get_first(data->u.decoded.steering_client_map);
+        while (steering_client != NULL) {
+            memset(key, 0, sizeof(key));
+            snprintf(key, sizeof(key), "%s", steering_client->steering_client_id);
+            steering_client = hash_map_get_next(data->u.decoded.steering_client_map, steering_client);
+            temp_steering_client = hash_map_remove(data->u.decoded.steering_client_map, key);
+            if (temp_steering_client != NULL) {
+                free(temp_steering_client);
+            }
+        }
+        hash_map_destroy(data->u.decoded.steering_client_map);
+        data->u.decoded.steering_client_map = NULL;
+    }
+    return webconfig_error_none;
+
+}
+
 webconfig_error_t encode_steering_clients_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
 {
     wifi_util_dbg_print(WIFI_WEBCONFIG, "%s: Enter\n", __FUNCTION__);

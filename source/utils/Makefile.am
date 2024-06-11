@@ -60,7 +60,6 @@ libwifi_utils_la_CPPFLAGS = -I/var/tmp/pc-rdkb/include/dbus-1.0 -I$(top_srcdir)/
 libwifi_utils_la_CFLAGS =  $(SYSTEMD_CFLAGS)
 libwifi_utils_la_CFLAGS += $(DML_ENABLE_FLAG)
 libwifi_utils_la_CFLAGS += $(CCSP_COMMON_FLAG)
-libwifi_utils_la_CFLAGS += $(CCSP_WIFI_HAL_FLAG)
 libwifi_utils_la_SOURCES = wifi_validator.c
 libwifi_utils_la_SOURCES += ext_blaster.pb-c.c
 

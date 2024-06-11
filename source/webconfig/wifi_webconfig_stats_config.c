@@ -77,6 +77,36 @@ webconfig_error_t translate_to_stats_config_subdoc(webconfig_t *config, webconfi
     return webconfig_error_none;
 }
 
+webconfig_error_t free_stats_config_entries(webconfig_subdoc_data_t *data)
+{
+    webconfig_subdoc_decoded_data_t *decoded_params;
+    stats_config_t *stats_config, *temp_stats_config;
+    char key[64] = {0};
+
+    decoded_params = &data->u.decoded;
+    if (decoded_params == NULL) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: decoded_params is NULL\n", __func__, __LINE__);
+        return webconfig_error_invalid_subdoc;
+    }
+
+    if (data->u.decoded.stats_config_map != NULL) {
+        stats_config = hash_map_get_first(data->u.decoded.stats_config_map);
+        while (stats_config != NULL) {
+            memset(key, 0, sizeof(key));
+            snprintf(key, sizeof(key), "%s", stats_config->stats_cfg_id);
+            stats_config = hash_map_get_next(data->u.decoded.stats_config_map, stats_config);
+            temp_stats_config = hash_map_remove(data->u.decoded.stats_config_map, key);
+            if (temp_stats_config != NULL) {
+                free(temp_stats_config);
+            }
+        }
+        hash_map_destroy(data->u.decoded.stats_config_map);
+        data->u.decoded.stats_config_map = NULL;
+    }
+    return webconfig_error_none;
+
+}
+
 webconfig_error_t encode_stats_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
 {
     cJSON *json, *st_obj_arr;

@@ -34,7 +34,6 @@ extern "C" {
 #include <stddef.h>
 #include <jansson.h>
 #include <stdbool.h>
-
 #include "schema_gen.h"
 #include "pjs_gen_h.h"
 #include "util.h"

@@ -48,9 +48,6 @@ unsigned int startTime[MAX_NUM_RADIOS];
 #define BUF_SIZE              256
 extern webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc_data_t *data);
 void get_action_frame_evt_params(uint8_t *frame, uint32_t len, frame_data_t *mgmt_frame, wifi_event_subtype_t *evt_subtype);
-#ifndef CCSP_WIFI_HAL
-extern void ow_mesh_ext_sta_conn_connection_callback(const char *vif_name, wifi_bss_info_t *bss_info, wifi_station_stats_t *sta);
-#endif //CCSP_WIFI_HAL
 
 static void ctrl_queue_timeout_scheduler_tasks(wifi_ctrl_t *ctrl);
 static int pending_states_webconfig_analyzer(void *arg);
@@ -116,19 +113,7 @@ static int wifi_radio_set_enable(bool status)
         memcpy(&temp_wifi_radio_oper_param, wifi_radio_oper_param, sizeof(wifi_radio_operationParam_t));
         temp_wifi_radio_oper_param.enable = status;
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d index: %d radio enable status:%d\n", __func__, __LINE__, index, status);
-#ifdef CCSP_WIFI_HAL
         ret = wifi_hal_setRadioOperatingParameters(index, &temp_wifi_radio_oper_param);
-#else 
-        bool rfc_status;
-        get_wifi_rfc_parameters(RFC_WIFI_OW_CORE_THREAD, (bool *)&rfc_status);
-        if (rfc_status) {
-            ret = ow_mesh_ext_set_phy_config(index, &temp_wifi_radio_oper_param);
-        }
-        else {
-            wifi_util_dbg_print(WIFI_MGR,"%s: OW rfc disabled, Failed to set Radio.\n", __func__);
-            return RETURN_ERR;
-        }
-#endif
         if (ret != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL,"%s:%d wifi radio parameter set failure: radio_index:%d\n", __func__, __LINE__, index);
         } else {
@@ -484,23 +469,11 @@ int start_radios(rdk_dev_mode_type_t mode)
                 }
         }
 
-#ifdef CCSP_WIFI_HAL
         wifi_platform_property_t *wifi_prop =  (wifi_platform_property_t *) get_wifi_hal_cap_prop();
         if ((wifi_radio_oper_param->EcoPowerDown == false) && (wifi_prop->radio_presence[index] == false)) {
             wifi_util_error_print(WIFI_CTRL,"%s: !!!!-ALERT-!!!-Radio not present-!!!-Kernel driver interface down-!!!.Index %d\n",__FUNCTION__, index);
         }
         ret = wifi_hal_setRadioOperatingParameters(index, wifi_radio_oper_param);
-#else
-        bool rfc_status;
-        get_wifi_rfc_parameters(RFC_WIFI_OW_CORE_THREAD, (bool *)&rfc_status);
-        if (rfc_status) {
-            ret = ow_mesh_ext_set_phy_config(index, wifi_radio_oper_param);
-        }
-        else {
-            wifi_util_dbg_print(WIFI_MGR,"%s: OW rfc disabled, Failed to set Radio.\n", __func__);
-            return RETURN_ERR;
-        }
-#endif
         if (ret != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL,"%s: wifi radio parameter set failure: radio_index:%d\n",__FUNCTION__, index);
             return ret;
@@ -1288,12 +1261,7 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
 #endif
 
     //Register wifi hal sta connect/disconnect callback
-#if CCSP_WIFI_HAL
     wifi_hal_staConnectionStatus_callback_register(sta_connection_status);
-#else
-    wifi_util_dbg_print(WIFI_CTRL,"WIFI %s: Registering STA connection Status\n",__FUNCTION__);
-    ow_mesh_ext_sta_conn_status_cb_register(ow_mesh_ext_sta_conn_connection_callback);
-#endif
 
     //Register wifi hal scan results callback
     wifi_hal_scanResults_callback_register(scan_results_callback);
@@ -1302,11 +1270,7 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
     wifi_hal_mgmt_frame_callbacks_register(mgmt_wifi_frame_recv);
 
     /* Register wifi hal channel change events callback */
-#if CCSP_WIFI_HAL
     wifi_chan_event_register(channel_change_callback);
-#else
-    ow_mesh_ext_chan_event_cb_register(channel_change_callback);
-#endif
 
     ctrl->rbus_events_subscribed = false;
     ctrl->tunnel_events_subscribed = false;
@@ -1656,13 +1620,11 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
         wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to start Wifi Monitor\n", __func__, __LINE__);
     }
 
-#if CCSP_WIFI_HAL
     apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL);
  
 #ifdef ONEWIFI_CAC_APP_SUPPORT
     apps_mgr_cac_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_start, NULL, 0);
 #endif
-#endif // CCSP_COMMON
 
     ctrl_queue_timeout_scheduler_tasks(ctrl);
 
@@ -2423,16 +2385,12 @@ int  get_wifi_rfc_parameters(char *str, void *value)
         *(bool*)value = l_wifi_mgr->rfc_dml_parameters.wifiinterworking_rfc;
     } else if ((strcmp(str, RFC_WIFI_RADIUS_GREYLIST) == 0)) {
         *(bool*)value = l_wifi_mgr->rfc_dml_parameters.radiusgreylist_rfc;
-    } else if ((strcmp(str, RFC_WIFI_OW_CORE_THREAD) == 0)) {
-        *(bool*)value = l_wifi_mgr->rfc_dml_parameters.ow_core_thread_rfc;
     } else {
         wifi_util_dbg_print(WIFI_CTRL, "%s get wifi rfc parameter not found %s\n", __FUNCTION__, str);
         ret = RETURN_ERR;
     }
 #else
-    if (strncmp(str, RFC_WIFI_OW_CORE_THREAD, strlen(RFC_WIFI_OW_CORE_THREAD)) == 0) {
-        *(bool*)value = true;
-    } else if (strncmp(str, RFC_WIFI_PASSPOINT, strlen(RFC_WIFI_PASSPOINT)) == 0) {
+    if (strncmp(str, RFC_WIFI_PASSPOINT, strlen(RFC_WIFI_PASSPOINT)) == 0) {
         *(bool*)value = false;
     } else if (strncmp(str, RFC_WIFI_INTERWORKING, strlen(RFC_WIFI_INTERWORKING)) == 0) {
         *(bool*)value = false;
@@ -2467,7 +2425,6 @@ wifi_rfc_dml_parameters_t* get_ctrl_rfc_parameters(void)
     g_wifi_mgr->ctrl.rfc_params.dfs_rfc = g_wifi_mgr->rfc_dml_parameters.dfs_rfc;
     g_wifi_mgr->ctrl.rfc_params.wpa3_rfc = g_wifi_mgr->rfc_dml_parameters.wpa3_rfc;
     g_wifi_mgr->ctrl.rfc_params.levl_enabled_rfc = g_wifi_mgr->rfc_dml_parameters.levl_enabled_rfc;
-    g_wifi_mgr->ctrl.rfc_params.ow_core_thread_rfc = g_wifi_mgr->rfc_dml_parameters.ow_core_thread_rfc;
     g_wifi_mgr->ctrl.rfc_params.twoG80211axEnable_rfc = g_wifi_mgr->rfc_dml_parameters.twoG80211axEnable_rfc;
     g_wifi_mgr->ctrl.rfc_params.hotspot_open_2g_last_enabled = g_wifi_mgr->rfc_dml_parameters.hotspot_open_2g_last_enabled;
     g_wifi_mgr->ctrl.rfc_params.hotspot_open_5g_last_enabled = g_wifi_mgr->rfc_dml_parameters.hotspot_open_5g_last_enabled;
@@ -3122,7 +3079,6 @@ int get_vap_interface_bridge_name(unsigned int vap_index, char *bridge_name)
     return RETURN_OK;
 }
 
-#ifdef CCSP_WIFI_HAL
 void Hotspot_APIsolation_Set(int apIns)
 {
     wifi_front_haul_bss_t *pcfg = Get_wifi_object_bss_parameter(apIns);
@@ -3156,7 +3112,6 @@ void Load_Hotspot_APIsolation_Settings(void)
         Hotspot_APIsolation_Set(vap_index + 1);
     }
 }
-#endif
 
 int get_rbus_param(rbusHandle_t rbus_handle, rbus_data_type_t data_type, const char *paramNames, void *data_value)
 {

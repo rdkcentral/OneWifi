@@ -784,9 +784,6 @@ int command_event_analytics(wifi_app_t *apps, wifi_event_subtype_t sub_type, voi
             analytics_event_wpa3_rfc(apps, arg);
             break;
 
-        case wifi_event_type_ow_core_thread_rfc:
-            break;
-
         case wifi_event_type_dfs_rfc:
             break;
 

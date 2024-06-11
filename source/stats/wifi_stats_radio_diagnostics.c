@@ -120,9 +120,7 @@ int execute_radio_diagnostic_stats_api(wifi_mon_collector_element_t *c_elem, wif
     memset(radioTrafficStats, 0, sizeof(wifi_radioTrafficStats2_t));
 
     if (radioOperation->enable == true) {
-#if CCSP_WIFI_HAL
         ret = wifi_getRadioTrafficStats2(args->radio_index, radioTrafficStats);
-#endif
         if (ret != RETURN_OK) {
             wifi_util_error_print(WIFI_MON, "%s : %d  Failed to get radio traffic statistics for index %d\n",__func__,__LINE__, args->radio_index);
             if (radioTrafficStats != NULL) {

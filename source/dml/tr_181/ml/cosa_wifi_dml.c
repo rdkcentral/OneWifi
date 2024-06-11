@@ -386,12 +386,6 @@ WiFi_GetParamBoolValue
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "OW_Core_Thread", TRUE))
-    {
-        *pBool = rfc_pcfg->ow_core_thread_rfc;
-        return TRUE;
-    }
-
     if (AnscEqualString(ParamName, "Log_Upload", TRUE))
     {
         fp = popen("crontab -l | grep -c copy_wifi_logs.sh","r");
@@ -1088,13 +1082,6 @@ WiFi_SetParamBoolValue
     {
         if(bValue != rfc_pcfg->wifiinterworking_rfc) {
             push_rfc_dml_cache_to_one_wifidb(bValue,wifi_event_type_wifi_interworking_rfc);
-        }
-        return TRUE;
-    }
-    if (AnscEqualString(ParamName, "OW_Core_Thread", TRUE))
-    {
-        if(bValue != rfc_pcfg->ow_core_thread_rfc){
-            push_rfc_dml_cache_to_one_wifidb(bValue,wifi_event_type_ow_core_thread_rfc);
         }
         return TRUE;
     }

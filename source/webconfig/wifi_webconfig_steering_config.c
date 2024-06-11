@@ -78,6 +78,36 @@ webconfig_error_t translate_to_steering_config_subdoc(webconfig_t *config, webco
     return webconfig_error_none;
 }
 
+webconfig_error_t free_steering_config_entries(webconfig_subdoc_data_t *data)
+{
+    webconfig_subdoc_decoded_data_t *decoded_params;
+    steering_config_t *steer_config, *temp_steer_config;
+    char key[64] = {0};
+
+    decoded_params = &data->u.decoded;
+    if (decoded_params == NULL) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: decoded_params is NULL\n", __func__, __LINE__);
+        return webconfig_error_invalid_subdoc;
+    }
+
+    if (data->u.decoded.steering_config_map != NULL) {
+        steer_config = hash_map_get_first(data->u.decoded.steering_config_map);
+        while (steer_config != NULL) {
+            memset(key, 0, sizeof(key));
+            snprintf(key, sizeof(key), "%s", steer_config->steering_cfg_id);
+            steer_config = hash_map_get_next(data->u.decoded.steering_config_map, steer_config);
+            temp_steer_config = hash_map_remove(data->u.decoded.steering_config_map, key);
+            if (temp_steer_config != NULL) {
+                free(temp_steer_config);
+            }
+        }
+        hash_map_destroy(data->u.decoded.steering_config_map);
+        data->u.decoded.steering_config_map = NULL;
+    }
+    return webconfig_error_none;
+
+}
+
 webconfig_error_t encode_steering_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
 {
     cJSON *json;

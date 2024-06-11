@@ -77,6 +77,36 @@ webconfig_error_t translate_to_vif_neighbors_subdoc(webconfig_t *config, webconf
     return webconfig_error_none;
 }
 
+webconfig_error_t free_vif_neighbors_entries(webconfig_subdoc_data_t *data)
+{
+    webconfig_subdoc_decoded_data_t *decoded_params;
+    vif_neighbors_t *vif_neighbors, *temp_vif_neighbors;
+    char key[64] = {0};
+
+    decoded_params = &data->u.decoded;
+    if (decoded_params == NULL) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: decoded_params is NULL\n", __func__, __LINE__);
+        return webconfig_error_invalid_subdoc;
+    }
+
+    if (data->u.decoded.vif_neighbors_map != NULL) {
+        vif_neighbors = hash_map_get_first(data->u.decoded.vif_neighbors_map);
+        while (vif_neighbors != NULL) {
+            memset(key, 0, sizeof(key));
+            snprintf(key, sizeof(key), "%s", vif_neighbors->bssid);
+            vif_neighbors = hash_map_get_next(data->u.decoded.vif_neighbors_map, vif_neighbors);
+            temp_vif_neighbors = hash_map_remove(data->u.decoded.vif_neighbors_map, key);
+            if (temp_vif_neighbors != NULL) {
+                free(temp_vif_neighbors);
+            }
+        }
+        hash_map_destroy(data->u.decoded.vif_neighbors_map);
+        data->u.decoded.vif_neighbors_map = NULL;
+    }
+    return webconfig_error_none;
+
+}
+
 webconfig_error_t encode_vif_neighbors_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
 {
     cJSON *json, *st_obj_arr;

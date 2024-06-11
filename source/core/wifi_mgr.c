@@ -212,58 +212,18 @@ bool is_db_backup_required()
 int init_wifi_hal()
 {
     int ret = RETURN_OK;
-    bool rfc_status;
 
     wifi_util_info_print(WIFI_CTRL,"%s: start wifi hal init\n",__FUNCTION__);
 
-#if CCSP_WIFI_HAL
     ret = wifi_hal_init();
     if (ret != RETURN_OK) {
         wifi_util_error_print(WIFI_CTRL,"%s wifi_init failed:ret :%d\n",__FUNCTION__, ret);
         return RETURN_ERR;
     }
-#endif
-
-    get_wifi_rfc_parameters(RFC_WIFI_OW_CORE_THREAD, (bool *)&rfc_status);
-    if (true == rfc_status) {
-        /* This will spawn the OneWifi Core Thread that is taken from
-         * OpenSync. The function returns only after the thread has been
-         * spawned and it has performed it's basic setup. Once the
-         * function returns other ow_ functions can be called.
-         */
-         ow_core_thread_start();
-         wifi_util_dbg_print(WIFI_MGR,"%s: ow core thread started\n", __func__);
-#if DML_SUPPORT
-         if(syscfg_set_commit(NULL, "ow_core_thread", "true") != 0) {
-             wifi_util_error_print(WIFI_MGR,"%s: syscfg_set failed for ow_core_thread enable\n", __func__);
-         }
-#endif // DML_SUPPORT
-    }
-    else
-    {
-         wifi_util_error_print(WIFI_MGR,"%s: ow core thread disabled\n", __func__);
-#if DML_SUPPORT
-         if(syscfg_set_commit(NULL, "ow_core_thread", "false") != 0)
-         {
-             wifi_util_error_print(WIFI_MGR,"%s: syscfg_set failed for ow_core_thread disable\n", __func__);
-         }
-#endif // DML_SUPPORT
-    }
 
     /* Get the wifi capabilities from from hal*/
-#ifdef CCSP_WIFI_HAL
     ret = wifi_hal_getHalCapability(&g_wifi_mgr.hal_cap);
-#else
-    wifi_util_dbg_print(WIFI_MGR,"%s():%d: Calling HW hal caps.\n", __func__, __LINE__);
-    if (rfc_status) {
-        ow_mesh_ext_set_capab();
-        ret = ow_mesh_ext_get_hal_capab(&g_wifi_mgr.hal_cap);
-    }
-    else {
-        wifi_util_dbg_print(WIFI_MGR,"%s: OW rfc disabled, could not fetch hal capability.\n", __func__);
-        return RETURN_ERR;
-    }
-#endif
+    wifi_util_dbg_print(WIFI_MGR,"%s():%d: return:%d from wifi_hal_getHalCapability.\n", __func__, __LINE__, ret);
 
     if (ret != RETURN_OK) {
         wifi_util_error_print(WIFI_CTRL,"RDK_LOG_ERROR, %s wifi_getHalCapability returned with error %d\n", __FUNCTION__, ret);

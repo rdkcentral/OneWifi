@@ -58,7 +58,6 @@
 #if DML_SUPPORT
 #include "ssp_loop.h"
 #else
-#include <opensync/ow_sta_security.h>
 #endif // DML_SUPPORT
 
 #define MAX_BUF_SIZE 128
@@ -173,7 +172,6 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon,
         rfc_param->dfs_rfc = new_rec->dfs_rfc;
         rfc_param->wpa3_rfc  = new_rec->wpa3_rfc;
         rfc_param->levl_enabled_rfc = new_rec->levl_enabled_rfc;
-        rfc_param->ow_core_thread_rfc  = new_rec->ow_core_thread_rfc;
         rfc_param->twoG80211axEnable_rfc  = new_rec->twoG80211axEnable_rfc;
         rfc_param->hotspot_open_2g_last_enabled  = new_rec->hotspot_open_2g_last_enabled;
         rfc_param->hotspot_open_5g_last_enabled  = new_rec->hotspot_open_5g_last_enabled;
@@ -183,9 +181,9 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon,
         rfc_param->wifioffchannelscan_rfc = new_rec->wifioffchannelscan_rfc;
         rfc_param->hotspot_secure_6g_last_enabled  = new_rec->hotspot_secure_6g_last_enabled;
 
-        wifi_util_dbg_print(WIFI_DB,"%s:%d wifipasspoint_rfc=%d wifiinterworking_rfc=%d radiusgreylist_rfc=%d dfsatbootup_rfc=%d dfs_rfc=%d wpa3_rfc=%d ow_core_thread_rfc=%d twoG80211axEnable_rfc=%d hotspot_open_2g_last_enabled=%dhotspot_open_5g_last_enabled=%d hotspot_open_6g_last_enabled=%d hotspot_secure_2g_last_enabled=%d hotspot_secure_5g_last_enabled=%d hotspot_secure_6g_last_enabled=%d offchannelscan=%d rfc_id=%s levl_enabled_rfc=%d\n", 
+        wifi_util_dbg_print(WIFI_DB,"%s:%d wifipasspoint_rfc=%d wifiinterworking_rfc=%d radiusgreylist_rfc=%d dfsatbootup_rfc=%d dfs_rfc=%d wpa3_rfc=%d twoG80211axEnable_rfc=%d hotspot_open_2g_last_enabled=%dhotspot_open_5g_last_enabled=%d hotspot_open_6g_last_enabled=%d hotspot_secure_2g_last_enabled=%d hotspot_secure_5g_last_enabled=%d hotspot_secure_6g_last_enabled=%d offchannelscan=%d rfc_id=%s levl_enabled_rfc=%d\n",
             __func__, __LINE__, rfc_param->wifipasspoint_rfc,rfc_param->wifiinterworking_rfc,rfc_param->radiusgreylist_rfc,
-            rfc_param->dfsatbootup_rfc, rfc_param->dfs_rfc ,rfc_param->wpa3_rfc,rfc_param->ow_core_thread_rfc,
+            rfc_param->dfsatbootup_rfc, rfc_param->dfs_rfc ,rfc_param->wpa3_rfc,
             rfc_param->twoG80211axEnable_rfc,rfc_param->hotspot_open_2g_last_enabled,rfc_param->hotspot_open_5g_last_enabled,
             rfc_param->hotspot_open_6g_last_enabled,
             rfc_param->hotspot_secure_2g_last_enabled,rfc_param->hotspot_secure_5g_last_enabled,
@@ -1584,7 +1582,6 @@ int wifidb_update_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_param)
     cfg.dfs_rfc = rfc_param->dfs_rfc;
     cfg.wpa3_rfc = rfc_param->wpa3_rfc;
     cfg.levl_enabled_rfc = rfc_param->levl_enabled_rfc;
-    cfg.ow_core_thread_rfc = rfc_param->ow_core_thread_rfc;
     cfg.twoG80211axEnable_rfc = rfc_param->twoG80211axEnable_rfc;
     cfg.hotspot_open_2g_last_enabled = rfc_param->hotspot_open_2g_last_enabled;
     cfg.hotspot_open_5g_last_enabled = rfc_param->hotspot_open_5g_last_enabled;
@@ -1653,7 +1650,6 @@ int wifidb_get_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_info)
     rfc_info->dfs_rfc = pcfg->dfs_rfc;
     rfc_info->wpa3_rfc = pcfg->wpa3_rfc;
     rfc_info->levl_enabled_rfc = pcfg->levl_enabled_rfc;
-    rfc_info->ow_core_thread_rfc = pcfg->ow_core_thread_rfc;
     rfc_info->twoG80211axEnable_rfc = pcfg->twoG80211axEnable_rfc;
     rfc_info->hotspot_open_2g_last_enabled= pcfg->hotspot_open_2g_last_enabled;
     rfc_info->hotspot_open_5g_last_enabled= pcfg->hotspot_open_5g_last_enabled;
@@ -4744,11 +4740,7 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
         cfg.band = band;
     }
 
-#if defined (_PP203X_PRODUCT_REQ_)
-    cfg.enable = ow_mesh_ext_is_radio_enabled(radio_index);
-#else
     cfg.enable = true;
-#endif
 
     switch (cfg.band) {
         case WIFI_FREQUENCY_2_4_BAND:
@@ -4834,11 +4826,7 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
     cfg.autoChannelEnabled = true;
     cfg.csa_beacon_count = 100;
     country_code_val = wifi_countrycode_US;
-#ifndef CCSP_WIFI_HAL
-    if (ow_core_get_default_country_code(radio_index, country_code, sizeof(country_code)) < 0) {
-#else
     if (wifi_hal_get_default_country_code(country_code) < 0) {
-#endif // CCSP_WIFI_HAL
         wifi_util_dbg_print(WIFI_DB,"%s:%d: unable to get default country code setting a US\n", __func__, __LINE__);
     } else {
         if (country_code_conversion(&country_code_val, country_code, sizeof(country_code), STRING_TO_ENUM) < 0) {
@@ -4863,11 +4851,7 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
     cfg.adminControl = 0;
     cfg.chanUtilThreshold = 90;
     cfg.chanUtilSelfHealEnable = 0;
-#if defined (_PP203X_PRODUCT_REQ_)
-    cfg.EcoPowerDown = !ow_mesh_ext_is_radio_enabled(radio_index);
-#else
     cfg.EcoPowerDown = false;
-#endif
     cfg.factoryResetSsid = 0;
     cfg.basicDataTransmitRates = WIFI_BITRATE_6MBPS | WIFI_BITRATE_12MBPS | WIFI_BITRATE_24MBPS;
     cfg.operationalDataTransmitRates = WIFI_BITRATE_6MBPS | WIFI_BITRATE_9MBPS | WIFI_BITRATE_12MBPS | WIFI_BITRATE_18MBPS | WIFI_BITRATE_24MBPS | WIFI_BITRATE_36MBPS | WIFI_BITRATE_48MBPS | WIFI_BITRATE_54MBPS;
@@ -4881,12 +4865,6 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
         Fcfg.OffChanNscanInSec = 0;
         Fcfg.OffChanTidleInSec = 0;
     }
-
-#ifndef CCSP_WIFI_HAL
-    if (ow_core_get_reg_domain(radio_index, &cfg.regDomain) != RETURN_OK) {
-        wifi_util_dbg_print(WIFI_DB, "%s:%d: unable to get regulatory domain for radio%d\n", __func__, __LINE__, radio_index);
-    }
-#endif // CCSP_WIFI_HAL
 
     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Tscan:%lu Nscan:%lu Nidle:%lu\n", __func__, __LINE__, Fcfg.OffChanTscanInMsec, Fcfg.OffChanNscanInSec, Fcfg.OffChanTidleInSec);
     pthread_mutex_lock(&g_wifidb->data_cache_lock);
@@ -4996,25 +4974,19 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         cfg.u.sta_info.enabled = false;
         cfg.u.sta_info.scan_params.period = 10;
         memset(ssid, 0, sizeof(ssid));
-#ifdef CCSP_WIFI_HAL
         if (wifi_hal_get_default_ssid(ssid, vap_index) == 0) {
-#else
-        if (ow_sta_security_default_ssid_get(ssid,vap_index,sizeof(ssid)) == 0) {
-#endif
             strcpy(cfg.u.sta_info.ssid, ssid);
         } else {
             strcpy(cfg.u.sta_info.ssid, vap_name);
         }
+
         memset(password, 0, sizeof(password));
-#ifdef CCSP_WIFI_HAL
         if (wifi_hal_get_default_keypassphrase(password,vap_index) == 0) {
-#else 
-        if (ow_sta_security_default_keypassphrase_get(password,vap_index,sizeof(password)) == 0) {
-#endif
             strcpy(cfg.u.sta_info.security.u.key.key, password);
         } else {
             strcpy(cfg.u.sta_info.security.u.key.key, INVALID_KEY);
         }
+
         if ((strlen(cfg.u.sta_info.security.u.key.key) < MIN_PWD_LEN) || (strlen(cfg.u.sta_info.security.u.key.key) > MAX_PWD_LEN)) {
             wifi_util_error_print(WIFI_DB, "%s:%d: Incorrect password length %d for vap '%s'\n", __func__, __LINE__, strlen(cfg.u.sta_info.security.u.key.key), vap_name);
             strncpy(cfg.u.sta_info.security.u.key.key, INVALID_KEY, sizeof(cfg.u.sta_info.security.u.key.key));
@@ -5043,9 +5015,6 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
 
         cfg.u.sta_info.conn_status = wifi_connection_status_disabled;
         memset(&cfg.u.sta_info.bssid, 0, sizeof(cfg.u.sta_info.bssid));
-#if defined (_PP203X_PRODUCT_REQ_)
-        exists = ow_mesh_ext_is_radio_enabled(cfg.radio_index);
-#endif
     } else {
         cfg.u.bss_info.wmm_enabled = true;
         if (isVapHotspot(vap_index)) {
@@ -5201,16 +5170,12 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
 
         memset(ssid, 0, sizeof(ssid));
 
-#ifdef CCSP_WIFI_HAL
         if (wifi_hal_get_default_ssid(ssid, vap_index) == 0) {
             strcpy(cfg.u.bss_info.ssid, ssid);
 
         } else {
            strcpy(cfg.u.bss_info.ssid, vap_name);
         }
-#else
-        strcpy(cfg.u.bss_info.ssid, vap_name);
-#endif // CCSP_WIFI_HAL
 
         memset(password, 0, sizeof(password));
         if (wifi_hal_get_default_keypassphrase(password,vap_index) == 0) {
@@ -5508,7 +5473,6 @@ void wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config)
 #else
     rfc_config.wpa3_rfc = false;
 #endif
-    rfc_config.ow_core_thread_rfc = false;
 #if defined(_XER5_PRODUCT_REQ_) || defined(NEWPLATFORM_PORT)
     rfc_config.twoG80211axEnable_rfc = true;
 #else

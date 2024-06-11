@@ -20,8 +20,7 @@
 #include "sm_utils.h"
 #include "wifi_mgr.h"
 #include "wifi_util.h"
-#include <opensync/dpp_neighbor.h>
-
+#include "dpp_neighbor.h"
 
 static int neighbor_report_calculate_raw(sm_neighbor_cache_t *cache, survey_type_t survey_type, ds_dlist_t *result)
 {
@@ -105,7 +104,6 @@ static int neighbor_dpp_report_free(dpp_neighbor_report_data_t *report)
     return RETURN_OK;
 }
 
-
 /* PUBLIC API */
 
 
@@ -150,6 +148,5 @@ int sm_neighbor_report_push_to_dpp(sm_neighbor_cache_t *cache, wifi_freq_bands_t
 
     sm_neighbor_cache_clean(cache, survey_type);
     neighbor_dpp_report_free(&dpp_report);
-
     return RETURN_OK;
 }

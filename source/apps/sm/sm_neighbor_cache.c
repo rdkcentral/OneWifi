@@ -19,9 +19,7 @@
 #include "sm_cache.h"
 #include "sm_utils.h"
 #include "wifi_util.h"
-
-#include <opensync/dpp_neighbor.h>
-
+#include "dpp_neighbor.h"
 
 extern sm_neighbor_cache_t sm_neighbor_report_cache[MAX_NUM_RADIOS];
 
@@ -194,7 +192,6 @@ exit_err:
     return RETURN_ERR;
 }
 
-
 /* PUBLIC API */
 
 
@@ -205,7 +202,6 @@ int sm_neighbor_samples_calc_diff(ds_dlist_t *samples, dpp_neighbor_record_t *re
     return RETURN_OK;
 }
 #endif
-
 
 int sm_neighbor_sample_store(unsigned int radio_index, survey_type_t survey_type, wifi_neighbor_ap2_t *stats)
 {

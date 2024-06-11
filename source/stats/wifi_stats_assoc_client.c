@@ -119,11 +119,6 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
     int mld_mac_present = 0;
     mac_address_t zero_mac = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
     wifi_platform_property_t *wifi_prop = get_wifi_hal_cap_prop();
-#ifndef CCSP_WIFI_HAL
-    char *radio_type = NULL;
-    int nf = 0;
-    int sleep_mode = 0;
-#endif
     struct timespec tv_now, t_diff, t_tmp;
     unsigned int disconnected_time;
 
@@ -176,29 +171,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
         return RETURN_OK;
     }
 
-#if CCSP_WIFI_HAL
     ret = wifi_getApAssociatedDeviceDiagnosticResult3(args->vap_index, &dev_array, &num_devs);
-#else //CCSP_WIFI_HAL
-    radio_type = mon_data->radio_data[radio].frequency_band;
-    nf = mon_data->radio_data[radio].NoiseFloor;
-    dev_array = (wifi_associated_dev3_t *) malloc (sizeof(wifi_associated_dev3_t));
-    if (dev_array == NULL) {
-        wifi_util_dbg_print(WIFI_MON, "%s:%d dev_array is NULL\n", __func__,__LINE__);
-        return RETURN_ERR;
-    }
-    memset(dev_array, 0,sizeof(wifi_associated_dev3_t));
-    ret = ow_mesh_ext_get_device_stats(args->vap_index, radio_type, nf, args->target_mac, dev_array, &sleep_mode);
-
-    dev_array->cli_MACAddress[0] = args->target_mac[0];
-    dev_array->cli_MACAddress[1] = args->target_mac[1];
-    dev_array->cli_MACAddress[2] = args->target_mac[2];
-    dev_array->cli_MACAddress[3] = args->target_mac[3];
-    dev_array->cli_MACAddress[4] = args->target_mac[4];
-    dev_array->cli_MACAddress[5] = args->target_mac[5];
-
-    num_devs = 1;
-#endif
-
     if (ret != RETURN_OK) {
         wifi_util_error_print(WIFI_MON, "%s : %d  Failed to get AP Associated Devices statistics for vap index %d \r\n",
                 __func__, __LINE__, args->vap_index);
@@ -209,7 +182,6 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
         return RETURN_ERR;
     }
 
-#if CCSP_WIFI_HAL
     wifi_util_dbg_print(WIFI_MON, "%s:%d: diag result: number of devs: %d\n",
         __func__, __LINE__, num_devs);
     for (i = 0; i < num_devs; i++) {
@@ -243,7 +215,6 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
             dev_array[i].cli_TxFrames, dev_array[i].cli_RxRetries,
             dev_array[i].cli_RxErrors);
     }
-#endif
 
 #ifdef CCSP_COMMON
     events_update_clientdiagdata(num_devs, args->vap_index, dev_array);
@@ -335,10 +306,6 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                     sta->dev_stats.cli_PacketsSent, sta->dev_stats.cli_PacketsReceived, sta->dev_stats.cli_ErrorsSent, sta->dev_stats.cli_RetransCount);
             wifi_util_dbg_print(WIFI_MON, "%s:%d cli_TxFrames : %llu cli_RxRetries : %llu cli_RxErrors : %llu  \n",
                             __func__, __LINE__, hal_sta->cli_TxFrames, hal_sta->cli_RxRetries, hal_sta->cli_RxErrors);
-#ifndef CCSP_WIFI_HAL
-            sta->sleep_mode = sleep_mode;
-            wifi_util_dbg_print(WIFI_MON, "%s:%d Value of Sleep mode is %d \n", __func__,__LINE__, sta->sleep_mode);
-#endif
             hal_sta++;
             if (hal_sta == NULL) {
                 wifi_util_error_print(WIFI_MON, "%s:%d hal_sta is NULL: ap_index:%d index:%d num_devs:%d\n", __func__, __LINE__, args->vap_index, i, num_devs);

@@ -246,11 +246,9 @@ int app_init(wifi_app_t *app, unsigned int create_flag)
         }
     }
 
-#ifdef CCSP_WIFI_HAL
     if (app->desc.mgmt_frame_hook_fn != NULL) {
         wifi_hal_register_frame_hook(app->desc.mgmt_frame_hook_fn);
     }
-#endif //CCSP_WIFI_HAL
 
     return RETURN_OK;
 }

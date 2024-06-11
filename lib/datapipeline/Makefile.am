@@ -16,20 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ##########################################################################
-AM_CFLAGS = -fasynchronous-unwind-tables
 
-AM_LDFLAGS = -rdynamic
-AM_LDFLAGS += -ldl
-AM_LDFLAGS += -ljansson
-AM_LDFLAGS += -lrt
-AM_LDFLAGS += -lev
+CcspWifiSsp_SOURCES = opensync_stats.pb-c.c dppline.c
 
-
-noinst_LTLIBRARIES=libCcspWifiAgent_common.la
-
-libCcspWifiAgent_common_la_SOURCES = os_time.c util.c monitor.c os.c os_util.c os_exec.c 
-
-libCcspWifiAgent_common_la_CPPFLAGS = -I$(top_srcdir)/source/WifiSsp/lib/const -I$(top_srcdir)/source/WifiSsp/lib/ds -I$(top_srcdir)/source/WifiSsp/lib/inc -I$(top_srcdir)/source/WifiSsp/lib/json_util -I$(top_srcdir)/source/WifiSsp/lib/log -I$(top_srcdir)/source/WifiSsp/lib/osa -I$(top_srcdir)/source/WifiSsp/lib/ovsdb -I$(top_srcdir)/source/WifiSsp/lib/pjs -I$(top_srcdir)/source/WifiSsp/lib/qm -I$(top_srcdir)/source/WifiSsp/lib/schema -I$(top_srcdir)/source/WifiSsp/lib/datapipeline
-
-libCcspWifiAgent_common_la_LDFLAGS = -rdynamic -ldl -ljansson -lrt -lev
-
+CcspWifiSsp_CPPFLAGS = -I$(top_srcdir)/source/WifiSsp/lib/common -I$(top_srcdir)/source/WifiSsp/lib/const -I$(top_srcdir)/source/WifiSsp/lib/inc -I$(top_srcdir)/source/WifiSsp/lib/json_util -I$(top_srcdir)/source/WifiSsp/lib/log -I$(top_srcdir)/source/WifiSsp/lib/osa -I$(top_srcdir)/source/WifiSsp/lib/ovsdb -I$(top_srcdir)/source/WifiSsp/lib/pjs -I$(top_srcdir)/source/WifiSsp/lib/qm -I$(top_srcdir)/source/WifiSsp/lib/schema

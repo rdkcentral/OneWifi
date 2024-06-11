@@ -19,9 +19,7 @@
 #include "sm_cache.h"
 #include "sm_utils.h"
 #include "wifi_util.h"
-
-#include <opensync/dpp_survey.h>
-
+#include "dpp_survey.h"
 
 extern sm_survey_cache_t sm_survey_report_cache[MAX_NUM_RADIOS];
 
@@ -231,7 +229,6 @@ static int survey_convert_hal_to_sample(unsigned int radio_index, survey_type_t 
 #undef PERCENT
 #undef DELTA
 
-
 static int survey_sample_add(sm_survey_cache_t *cache, survey_type_t survey_type,
                              unsigned int radio_index, radio_chan_data_t *stats)
 {
@@ -312,7 +309,6 @@ int sm_survey_sample_store(unsigned int radio_index, survey_type_t survey_type, 
     return rc;
 }
 
-
 #define CALC_AVERAGE(X) do {                        \
         result->X.avg += tmp->X / len;              \
         result->X.min = MIN(result->X.min, tmp->X); \
@@ -351,7 +347,6 @@ int sm_survey_samples_calc_average(ds_dlist_t *samples, dpp_survey_record_avg_t 
 }
 
 #undef CALC_AVERAGE
-
 
 void sm_survey_cache_clean(sm_survey_cache_t *cache, survey_type_t survey_type)
 {

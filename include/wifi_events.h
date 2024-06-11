@@ -113,7 +113,6 @@ typedef enum {
     wifi_event_type_wifi_passpoint_rfc,
     wifi_event_type_wifi_interworking_rfc,
     wifi_event_type_wpa3_rfc,
-    wifi_event_type_ow_core_thread_rfc,
     wifi_event_type_dfs_rfc,
     wifi_event_type_dfs_atbootup_rfc,
     wifi_event_type_command_kickmac,

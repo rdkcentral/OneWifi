@@ -27,8 +27,8 @@
 
 #include <collection.h>
 #include "ds_dlist.h"
-#include <opensync/dpp_client.h>
-#include <opensync/dpp_survey.h>
+#include "dpp_client.h"
+#include "dpp_survey.h"
 #include <wifi_hal.h>
 
 #ifdef __cplusplus

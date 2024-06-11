@@ -18,7 +18,7 @@
  **************************************************************************/
 #include <stdbool.h>
 #include <stdint.h>
-#include <opensync/dppline.h>
+#include "../../../lib/datapipeline/dppline.h"
 #include <qm_conn.h>
 #include "scheduler.h"
 #include "sm_cache.h"

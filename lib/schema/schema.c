@@ -28,7 +28,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "schema.h"
 #include "const.h"
 #include "log.h"
-
 #include "schema_gen.h"
 #include "pjs_gen_c.h"
 

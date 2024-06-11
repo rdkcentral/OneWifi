@@ -26,8 +26,7 @@
 
 #include <wifi_hal_generic.h>
 #include "ds_dlist.h"
-#include <opensync/dpp_types.h>
-
+#include "dpp_types.h"
 #ifdef __cplusplus
 extern "C" {
 #endif

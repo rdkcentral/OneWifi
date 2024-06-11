@@ -1024,46 +1024,6 @@ webconfig_error_t free_vap_object_diff_assoc_client_entries(webconfig_subdoc_dat
     return webconfig_error_none;
 }
 
-webconfig_error_t free_vap_object_macfilter_entries(webconfig_subdoc_data_t *data)
-{
-    unsigned int i, j;
-    webconfig_subdoc_decoded_data_t *decoded_params;
-    rdk_wifi_radio_t *radio;
-    rdk_wifi_vap_info_t *rdk_vap;
-    acl_entry_t *temp_acl_entry, *acl_entry;
-    mac_addr_str_t mac_str;
-
-    decoded_params = &data->u.decoded;
-    if (decoded_params == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: decoded_params is NULL\n", __func__, __LINE__);
-        return webconfig_error_invalid_subdoc;
-    }
-    for (i = 0; i < decoded_params->num_radios; i++) {
-        radio = &decoded_params->radios[i];
-        for (j = 0; j < radio->vaps.num_vaps; j++) {
-            rdk_vap = &decoded_params->radios[i].vaps.rdk_vap_array[j];
-            if (rdk_vap == NULL){
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: rdk_vap is null", __func__, __LINE__);
-                return webconfig_error_invalid_subdoc;
-            }
-            if(rdk_vap->acl_map != NULL) {
-                acl_entry = hash_map_get_first(rdk_vap->acl_map);
-                while(acl_entry != NULL) {
-                    to_mac_str(acl_entry->mac,mac_str);
-                    acl_entry = hash_map_get_next(rdk_vap->acl_map,acl_entry);
-                    temp_acl_entry = hash_map_remove(rdk_vap->acl_map, mac_str);
-                    if (temp_acl_entry != NULL) {
-                        free(temp_acl_entry);
-                    }
-                }
-                hash_map_destroy(rdk_vap->acl_map);
-                rdk_vap->acl_map = NULL;
-            }
-        }
-    }
-    return webconfig_error_none;
-}
-
 struct schema_Wifi_VIF_Config *get_vif_schema_from_vapindex(unsigned int vap_index, const struct schema_Wifi_VIF_Config *table[], unsigned int num_vaps, wifi_platform_property_t *wifi_prop)
 {
     unsigned int i = 0;
@@ -4363,36 +4323,6 @@ webconfig_error_t  translate_config_from_ovsdb_for_stats_config(webconfig_subdoc
     return webconfig_error_none;
 }
 
-webconfig_error_t free_stats_config_entries(webconfig_subdoc_data_t *data)
-{
-    webconfig_subdoc_decoded_data_t *decoded_params;
-    stats_config_t *stats_config, *temp_stats_config;
-    char key[64] = {0};
-
-    decoded_params = &data->u.decoded;
-    if (decoded_params == NULL) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: decoded_params is NULL\n", __func__, __LINE__);
-        return webconfig_error_invalid_subdoc;
-    }
-
-    if (data->u.decoded.stats_config_map != NULL) {
-        stats_config = hash_map_get_first(data->u.decoded.stats_config_map);
-        while (stats_config != NULL) {
-            memset(key, 0, sizeof(key));
-            snprintf(key, sizeof(key), "%s", stats_config->stats_cfg_id);
-            stats_config = hash_map_get_next(data->u.decoded.stats_config_map, stats_config);
-            temp_stats_config = hash_map_remove(data->u.decoded.stats_config_map, key);
-            if (temp_stats_config != NULL) {
-                free(temp_stats_config);
-            }
-        }
-        hash_map_destroy(data->u.decoded.stats_config_map);
-        data->u.decoded.stats_config_map = NULL;
-    }
-    return webconfig_error_none;
-
-}
-
 webconfig_error_t translate_steerconfig_from_ovsdb_to_rdk(const struct schema_Band_Steering_Config *config_row, steering_config_t *st_cfg, wifi_platform_property_t *wifi_prop)
 {
     char key[64] = {0};
@@ -4607,37 +4537,6 @@ webconfig_error_t  translate_config_to_ovsdb_for_steering_config(webconfig_subdo
 
     return webconfig_error_none;
 }
-
-webconfig_error_t free_steering_config_entries(webconfig_subdoc_data_t *data)
-{
-    webconfig_subdoc_decoded_data_t *decoded_params;
-    steering_config_t *steer_config, *temp_steer_config;
-    char key[64] = {0};
-
-    decoded_params = &data->u.decoded;
-    if (decoded_params == NULL) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: decoded_params is NULL\n", __func__, __LINE__);
-        return webconfig_error_invalid_subdoc;
-    }
-
-    if (data->u.decoded.steering_config_map != NULL) {
-        steer_config = hash_map_get_first(data->u.decoded.steering_config_map);
-        while (steer_config != NULL) {
-            memset(key, 0, sizeof(key));
-            snprintf(key, sizeof(key), "%s", steer_config->steering_cfg_id);
-            steer_config = hash_map_get_next(data->u.decoded.steering_config_map, steer_config);
-            temp_steer_config = hash_map_remove(data->u.decoded.steering_config_map, key);
-            if (temp_steer_config != NULL) {
-                free(temp_steer_config);
-            }
-        }
-        hash_map_destroy(data->u.decoded.steering_config_map);
-        data->u.decoded.steering_config_map = NULL;
-    }
-    return webconfig_error_none;
-
-}
-
 
 webconfig_error_t translate_steeringclients_from_rdk_to_ovsdb(struct schema_Band_Steering_Clients *client_row, const band_steering_clients_t *st_cfg)
 {
@@ -4876,36 +4775,6 @@ webconfig_error_t  translate_config_from_ovsdb_for_steering_clients(webconfig_su
     return webconfig_error_none;
 }
 
-webconfig_error_t free_steering_client_entries(webconfig_subdoc_data_t *data)
-{
-    webconfig_subdoc_decoded_data_t *decoded_params;
-    band_steering_clients_t *steering_client, *temp_steering_client;
-    char key[64] = {0};
-
-    decoded_params = &data->u.decoded;
-    if (decoded_params == NULL) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: decoded_params is NULL\n", __func__, __LINE__);
-        return webconfig_error_invalid_subdoc;
-    }
-
-    if (data->u.decoded.steering_client_map != NULL) {
-        steering_client = hash_map_get_first(data->u.decoded.steering_client_map);
-        while (steering_client != NULL) {
-            memset(key, 0, sizeof(key));
-            snprintf(key, sizeof(key), "%s", steering_client->steering_client_id);
-            steering_client = hash_map_get_next(data->u.decoded.steering_client_map, steering_client);
-            temp_steering_client = hash_map_remove(data->u.decoded.steering_client_map, key);
-            if (temp_steering_client != NULL) {
-                free(temp_steering_client);
-            }
-        }
-        hash_map_destroy(data->u.decoded.steering_client_map);
-        data->u.decoded.steering_client_map = NULL;
-    }
-    return webconfig_error_none;
-
-}
-
 webconfig_error_t translate_vif_neighbors_from_ovsdb_to_rdk(const struct schema_Wifi_VIF_Neighbors *neighbor_row, vif_neighbors_t *neighbor_cfg)
 {
     char key[64] = {0};
@@ -4987,37 +4856,6 @@ webconfig_error_t  translate_config_from_ovsdb_for_vif_neighbors(webconfig_subdo
     }
 
     return webconfig_error_none;
-}
-
-
-webconfig_error_t free_vif_neighbors_entries(webconfig_subdoc_data_t *data)
-{
-    webconfig_subdoc_decoded_data_t *decoded_params;
-    vif_neighbors_t *vif_neighbors, *temp_vif_neighbors;
-    char key[64] = {0};
-
-    decoded_params = &data->u.decoded;
-    if (decoded_params == NULL) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: decoded_params is NULL\n", __func__, __LINE__);
-        return webconfig_error_invalid_subdoc;
-    }
-
-    if (data->u.decoded.vif_neighbors_map != NULL) {
-        vif_neighbors = hash_map_get_first(data->u.decoded.vif_neighbors_map);
-        while (vif_neighbors != NULL) {
-            memset(key, 0, sizeof(key));
-            snprintf(key, sizeof(key), "%s", vif_neighbors->bssid);
-            vif_neighbors = hash_map_get_next(data->u.decoded.vif_neighbors_map, vif_neighbors);
-            temp_vif_neighbors = hash_map_remove(data->u.decoded.vif_neighbors_map, key);
-            if (temp_vif_neighbors != NULL) {
-                free(temp_vif_neighbors);
-            }
-        }
-        hash_map_destroy(data->u.decoded.vif_neighbors_map);
-        data->u.decoded.vif_neighbors_map = NULL;
-    }
-    return webconfig_error_none;
-
 }
 
 

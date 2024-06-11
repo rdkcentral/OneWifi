@@ -52,7 +52,6 @@
 #ifdef CCSP_COMMON
 static unsigned msg_id = 1000;
 #endif
-extern int webconfig_set_ow_core_state(webconfig_subdoc_data_t *data);
 
 typedef enum {
     hotspot_vap_disable,
@@ -1955,23 +1954,6 @@ void process_wpa3_rfc(bool type)
     }
 }
 
-void process_ow_core_thread_rfc(bool type)
-{
-    wifi_util_dbg_print(WIFI_DB,"WIFI Enter RFC Func %s: %d : bool %d\n",__FUNCTION__,__LINE__,type);
-    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
-    rfc_param->ow_core_thread_rfc = type;
-    if(type == true) {
-        if(syscfg_set_commit(NULL, "ow_core_thread", "true") != 0) {
-           wifi_util_error_print(WIFI_DB,"syscfg_set failed for WIFI ow_core_thread enable %s\n",__FUNCTION__);
-        }
-    } else {
-        if(syscfg_set_commit(NULL, "ow_core_thread", "false") != 0) {
-            wifi_util_dbg_print(WIFI_DB,"syscfg_set failed for WIFI ow_core_thread disable %s\n",__FUNCTION__);
-        }
-    }
-    wifidb_update_rfc_config(0, rfc_param);
-}
-
 void process_dfs_rfc(bool type)
 {
     wifi_util_dbg_print(WIFI_DB,"WIFI Enter RFC Func %s: %d : bool %d\n",__FUNCTION__,__LINE__,type);
@@ -2193,13 +2175,11 @@ void process_levl_rfc(bool type)
 }
 #endif // DML_SUPPORT
 
-#if CCSP_WIFI_HAL
 void process_wps_command_event(unsigned int vap_index)
 {
     wifi_util_info_print(WIFI_CTRL,"%s:%d wifi wps test vap index = %d\n",__func__, __LINE__, vap_index);
     wifi_hal_setApWpsButtonPush(vap_index);
 }
-#endif
 
 void process_wps_pin_command_event(void *data)
 {
@@ -2874,9 +2854,6 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len, wifi_
         case wifi_event_type_wpa3_rfc:
             process_wpa3_rfc(*(bool *)data);
             break;
-        case wifi_event_type_ow_core_thread_rfc:
-            process_ow_core_thread_rfc(*(bool *)data);
-            break;
         case wifi_event_type_dfs_rfc:
             process_dfs_rfc(*(bool *)data);
             break;
@@ -3073,7 +3050,6 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
     webconfig_t *config;
     webconfig_subdoc_data_t data = {0};
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
-    bool rfc_status;
     wifi_event_t *wifi_event = NULL;
     config = &ctrl->webconfig;
 
@@ -3124,12 +3100,6 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
             //copy HAL Cap data
             memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap, sizeof(wifi_hal_capability_t));
             data.u.decoded.num_radios = getNumberRadios();
-
-            get_wifi_rfc_parameters(RFC_WIFI_OW_CORE_THREAD, (bool *)&rfc_status);
-            if (true == rfc_status) {
-                wifi_util_dbg_print(WIFI_CTRL,"[%s]:WIFI RFC OW CORE THREAD ENABLED \r\n",__FUNCTION__);
-                webconfig_set_ow_core_state(&data);
-            }
 
             // tell webconfig to encode
             webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_dml);

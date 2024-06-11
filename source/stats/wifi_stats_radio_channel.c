@@ -161,9 +161,7 @@ int execute_radio_channel_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t 
         chan_stats[chan_count].ch_in_pool= TRUE;
     }
 
-#if CCSP_WIFI_HAL
     ret = wifi_getRadioChannelStats(args->radio_index, chan_stats, chan_count);
-#endif
     if (ret != RETURN_OK) {
         wifi_util_error_print(WIFI_MON, "%s : %d  Failed to get radio channel statistics for scan mode %d radio index %d\n",__func__,__LINE__, args->scan_mode, args->radio_index);
         if (chan_stats != NULL) {
@@ -281,9 +279,7 @@ int check_scan_complete_read_results(void *arg)
     int id = 0;
     wifi_mon_collector_element_t *c_elem = (wifi_mon_collector_element_t *)arg;
     args = c_elem->args;
-#if CCSP_WIFI_HAL
     ret = wifi_getNeighboringWiFiStatus(args->radio_index, &neigh_stats, &ap_count);
-#endif
     if (ret != RETURN_OK) {
         if (errno == EAGAIN && mon_data->scan_results_retries[args->radio_index] < RADIO_SCAN_MAX_RESULTS_RETRIES) {
             mon_data->scan_results_retries[args->radio_index]++;
@@ -489,10 +485,8 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
     }
     mon_data->scan_status[args->radio_index] = 1;
     mon_data->scan_results_retries[args->radio_index] = 0;
-#if CCSP_WIFI_HAL
     int private_vap_index = getPrivateApFromRadioIndex(args->radio_index);
     ret = wifi_startNeighborScan(private_vap_index, args->scan_mode, dwell_time, num_channels, (unsigned int *)channels);
-#endif
     if (ret != RETURN_OK) {
         wifi_util_error_print(WIFI_MON, "%s : %d  Failed to trigger scan for radio index %d\n",__func__,__LINE__, args->radio_index);
         return RETURN_ERR;

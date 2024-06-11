@@ -79,9 +79,6 @@
 #include <netinet/ip6.h>
 #include "wifi_events.h"
 #include "common/ieee802_11_defs.h"
-#ifdef HALW_IMPLEMENTATION
-#include <opensync/wifi_halw_api.h>
-#endif
 #endif // CCSP_COMMON
 #include "const.h"
 #include "pktgen.h"
@@ -1772,12 +1769,7 @@ static int push_blaster_config_event_to_monitor_queue(wifi_mon_stats_request_sta
     data->u.mon_stats_config.req_state = state;
     data->u.mon_stats_config.inst = wifi_app_inst_blaster;
     data->u.mon_stats_config.args.vap_index = g_active_msmt->curStepData.ApIndex;
-#ifndef CCSP_WIFI_HAL
-    memcpy(data->u.mon_stats_config.args.target_mac, g_active_msmt->curStepData.DestMac, sizeof(data->u.mon_stats_config.args.target_mac));
-    wifi_util_error_print(WIFI_BLASTER,"%s:%d Blaster config values vap_index = %d and target_mac = "MAC_FMT" \n", __func__, __LINE__, g_active_msmt->curStepData.ApIndex, MAC_ARG(data->u.mon_stats_config.args.target_mac));
-#else
     wifi_util_error_print(WIFI_BLASTER,"%s:%d Blaster config values vap_index = %d\n", __func__, __LINE__, g_active_msmt->curStepData.ApIndex);
-#endif //CCSP_WIFI_HAL
     config_sample_blaster(data);
 
     if (NULL != data) {

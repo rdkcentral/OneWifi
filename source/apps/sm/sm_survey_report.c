@@ -18,8 +18,7 @@
  **************************************************************************/
 #include "sm_report.h"
 #include "sm_utils.h"
-#include <opensync/dpp_survey.h>
-
+#include "dpp_survey.h"
 
 static int survey_report_calculate_raw(sm_survey_cache_t *cache, survey_type_t survey_type, ds_dlist_t *result)
 {
@@ -101,7 +100,6 @@ static int survey_dpp_report_free(dpp_survey_report_data_t *report)
     return RETURN_OK;
 }
 
-
 /* PUBLIC API */
 
 
@@ -168,3 +166,4 @@ int survey_report_counter_publish_cb(void *args)
 
     return RETURN_OK;
 }
+

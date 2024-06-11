@@ -429,12 +429,14 @@ bool onewifi_ovsdb_monit_call_argv(int ovsdb_fd,
 
 bool ONEWIFI_OVSDB_GEN_DECL(ovsdb_monit_call, int ovsdb_fd, json_rpc_response_t *callback, void *data, int monid, char *table, int mon_flags)
 {
-    ONEWIFI_OVSDB_GEN_CALL(ovsdb_monit_call, ovsdb_fd, callback, data, monid, table, mon_flags);
+    ONEWIFI_OVSDB_GEN_CALL(onewifi_ovsdb_monit_call, ovsdb_fd, callback, data, monid, table, mon_flags);
+    return 0;
 }
 
 bool ONEWIFI_OVSDB_VA_DECL(ovsdb_monit_call, int ovsdb_fd, json_rpc_response_t *callback, void *data, int monid, char *table, int mon_flags)
 {
-    ONEWIFI_OVSDB_VA_CALL(ovsdb_monit_call, ovsdb_fd, callback, data, monid, table, mon_flags);
+    ONEWIFI_OVSDB_VA_CALL(onewifi_ovsdb_monit_call, ovsdb_fd, callback, data, monid, table, mon_flags);
+    return 0;
 }
 
 
@@ -470,13 +472,15 @@ bool onewifi_ovsdb_echo_call_argv(int ovsdb_fd,
 /* printf style echo API  ovsdb_echo_call*/
 bool ONEWIFI_OVSDB_GEN_DECL(ovsdb_echo_call, int ovsdb_fd, json_rpc_response_t *callback, void *data)
 {
-    ONEWIFI_OVSDB_GEN_CALL(ovsdb_echo_call, ovsdb_fd, callback, data);
+    ONEWIFI_OVSDB_GEN_CALL(onewifi_ovsdb_echo_call, ovsdb_fd, callback, data);
+    return 0;
 }
 
 /* vsprintf style echo API - ovsdb echo call */
 bool ONEWIFI_OVSDB_VA_DECL(ovsdb_echo_call, int ovsdb_fd, json_rpc_response_t *callback, void *data)
 {
-    ONEWIFI_OVSDB_VA_CALL(ovsdb_echo_call, ovsdb_fd, callback, data);
+    ONEWIFI_OVSDB_VA_CALL(onewifi_ovsdb_echo_call, ovsdb_fd, callback, data);
+    return 0;
 }
 
 

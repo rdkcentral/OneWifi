@@ -114,9 +114,7 @@ int execute_radio_temperature_stats_api(wifi_mon_collector_element_t *c_elem, wi
     memset(radioTemperatureStats, 0, sizeof(wifi_radioTemperature_t));
 
     if (radioOperation->enable == true) {
-#if CCSP_WIFI_HAL
         ret = wifi_hal_getRadioTemperature(args->radio_index, radioTemperatureStats);
-#endif
         if (ret != RETURN_OK) {
             wifi_util_error_print(WIFI_MON, "%s : %d  Failed to get radio temperature for index %d\n",__func__,__LINE__, args->radio_index);
             if (radioTemperatureStats != NULL) {

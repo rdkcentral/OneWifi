@@ -20,8 +20,7 @@
 #include "sm_utils.h"
 #include "wifi_mgr.h"
 #include "wifi_util.h"
-#include <opensync/dpp_client.h>
-
+#include "dpp_client.h"
 
 static int client_report_calculate(sm_client_cache_t *cache, ds_dlist_t *result)
 {
@@ -61,7 +60,6 @@ static int client_dpp_report_free(dpp_client_report_data_t *report)
     }
     return RETURN_OK;
 }
-
 
 /* PUBLIC API */
 

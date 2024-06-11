@@ -21,7 +21,7 @@
 #include "sm_utils.h"
 #include "wifi_mgr.h"
 #include <const.h>
-#include <opensync/dppline.h>
+#include "dppline.h"
 #include <qm_conn.h>
 
 #define SM_TO_QM_SEND_INTERVAL_SEC (5)
@@ -47,7 +47,6 @@ static bool sm_mqtt_publish(long mlen, void *mbuf)
     ret = qm_conn_send_stats(mbuf, mlen, &res);
     return ret;
 }
-
 
 static int report_tasks_clean_finished(struct scheduler *sched, hash_map_t *report_tasks_map)
 {
@@ -232,7 +231,6 @@ static int report_tasks_map_free(wifi_app_t *app)
     return RETURN_OK;
 }
 
-
 /* Public API*/
 
 
@@ -273,7 +271,6 @@ int sm_report_send_to_qm_cb(void *args)
             break;
         }
     }
-
     return rc;
 }
 
@@ -433,6 +430,5 @@ int sm_report_deinit(wifi_app_t *app)
     client_report_cache_free_all();
     survey_report_cache_free_all();
     neighbor_report_cache_free_all();
-
     return RETURN_OK;
 }

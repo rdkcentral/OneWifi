@@ -375,7 +375,6 @@ typedef struct {
     bool dfsatbootup_rfc;
     bool dfs_rfc;
     bool wpa3_rfc;
-    bool ow_core_thread_rfc;
     bool twoG80211axEnable_rfc;
     bool hotspot_open_2g_last_enabled;
     bool hotspot_open_5g_last_enabled;
@@ -387,7 +386,6 @@ typedef struct {
     // app specific rfc
     bool levl_enabled_rfc;
     bool multiap_enabled_rfc;
-    bool opensync_enabled_rfc;
     bool motion_enabled_rfc;
     bool scm_enabled_rfc;
     bool harverster_enabled_rfc;
@@ -799,9 +797,6 @@ typedef struct {
     struct active_msmt_data *sta_active_msmt_data;
     bool            connection_authorized;
     assoc_req_elem_t assoc_frame_data;
-#ifndef CCSP_WIFI_HAL
-    int             sleep_mode;
-#endif //CCSP_WIFI_HAL
 
     /* wifi7 client specific data */
     bool            primary_link; /* TRUE for auth/primary link, FALSE for secondary links */

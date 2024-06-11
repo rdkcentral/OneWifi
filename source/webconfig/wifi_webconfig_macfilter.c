@@ -77,6 +77,46 @@ webconfig_error_t translate_to_mac_filter_subdoc(webconfig_t *config, webconfig_
     return webconfig_error_none;
 }
 
+webconfig_error_t free_vap_object_macfilter_entries(webconfig_subdoc_data_t *data)
+{
+    unsigned int i, j;
+    webconfig_subdoc_decoded_data_t *decoded_params;
+    rdk_wifi_radio_t *radio;
+    rdk_wifi_vap_info_t *rdk_vap;
+    acl_entry_t *temp_acl_entry, *acl_entry;
+    mac_addr_str_t mac_str;
+
+    decoded_params = &data->u.decoded;
+    if (decoded_params == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: decoded_params is NULL\n", __func__, __LINE__);
+        return webconfig_error_invalid_subdoc;
+    }
+    for (i = 0; i < decoded_params->num_radios; i++) {
+        radio = &decoded_params->radios[i];
+        for (j = 0; j < radio->vaps.num_vaps; j++) {
+            rdk_vap = &decoded_params->radios[i].vaps.rdk_vap_array[j];
+            if (rdk_vap == NULL){
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: rdk_vap is null", __func__, __LINE__);
+                return webconfig_error_invalid_subdoc;
+            }
+            if(rdk_vap->acl_map != NULL) {
+                acl_entry = hash_map_get_first(rdk_vap->acl_map);
+                while(acl_entry != NULL) {
+                    to_mac_str(acl_entry->mac,mac_str);
+                    acl_entry = hash_map_get_next(rdk_vap->acl_map,acl_entry);
+                    temp_acl_entry = hash_map_remove(rdk_vap->acl_map, mac_str);
+                    if (temp_acl_entry != NULL) {
+                        free(temp_acl_entry);
+                    }
+                }
+                hash_map_destroy(rdk_vap->acl_map);
+                rdk_vap->acl_map = NULL;
+            }
+        }
+    }
+    return webconfig_error_none;
+}
+
 webconfig_error_t encode_mac_filter_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
 {
     cJSON *json;
