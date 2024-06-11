@@ -453,7 +453,6 @@ int cac_event_exec_timeout(wifi_app_t *apps, void *arg)
                         telemetry_event_cac("POSTDENY",client->ap_index, "MCS", str,mcs_conf, client->uplink_rate_avg);
                     }
                     if(!(threshold_breached) && mbr_enabled && min_mbr_rate > 0 && (client->uplink_rate_avg < min_mbr_rate)) {
-                        threshold_breached = true;
                         cac_print("%s:%d, POSTASSOC DENY: %d,MBR,%s,%d,%d\n", __func__, __LINE__, (client->ap_index + 1), str, (int)min_mbr_rate, client->uplink_rate_avg);
                         status = status_deny;
                         notify_force_disassociation(&((wifi_mgr_t *)get_wifimgr_obj())->ctrl, client->ap_index, "MBR", str, (int)min_mbr_rate, client->uplink_rate_avg);
