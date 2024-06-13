@@ -1122,7 +1122,7 @@ int get_neighbor_scan_cfg(int radio_index,
 
 #endif // CCSP_COMMON
 
-void clear_goodbad_rssi_time(unsigned int vap_index)
+void clear_sta_counters(unsigned int vap_index)
 {
     wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
     hash_map_t *sta_map = NULL;
@@ -1137,6 +1137,7 @@ void clear_goodbad_rssi_time(unsigned int vap_index)
         while(temp_sta != NULL) {
             temp_sta->good_rssi_time = 0;
             temp_sta->bad_rssi_time = 0;
+            temp_sta->rapid_reconnects = 0;
             temp_sta = hash_map_get_next(sta_map, temp_sta);
         }
     }
@@ -1253,8 +1254,8 @@ void *monitor_function  (void *data)
                     case wifi_event_monitor_stop_active_msmt:
                         g_monitor_module.is_blaster_running = false;
                     break;
-                    case wifi_event_monitor_clear_goodbad_rssi_time:
-                        clear_goodbad_rssi_time(event_data->ap_index);
+                    case wifi_event_monitor_clear_sta_counters:
+                        clear_sta_counters(event_data->ap_index);
                     break;
                     default:
                     break;

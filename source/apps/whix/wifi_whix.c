@@ -1680,7 +1680,7 @@ int associated_device_stats_response(wifi_provider_response_t *provider_response
 
     if (data != NULL) {
         data->ap_index = vap_index;
-        push_event_to_monitor_queue(data, wifi_event_monitor_clear_goodbad_rssi_time, NULL);
+        push_event_to_monitor_queue(data, wifi_event_monitor_clear_sta_counters, NULL);
         free(data);
     }
 
