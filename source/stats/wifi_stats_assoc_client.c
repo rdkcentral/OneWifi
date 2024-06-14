@@ -249,7 +249,7 @@ int execute_assoc_client_stats_api(wifi_mon_stats_args_t *args, wifi_monitor_t *
     sta_map = mon_data->bssid_data[vap_array_index].sta_map;
 
     if (num_devs != 0) {
-        wifi_util_info_print(WIFI_MON,"%s:%d ap_index:%d num_devs:%d\r\n", __func__, __LINE__, args->vap_index, num_devs);
+        wifi_util_dbg_print(WIFI_MON,"%s:%d ap_index:%d num_devs:%d\r\n", __func__, __LINE__, args->vap_index, num_devs);
     }
 
     hal_sta = dev_array;
