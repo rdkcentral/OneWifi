@@ -204,7 +204,7 @@ int onewifi_pktgen_stop_wifi_blast(void)
 
     kill(g_pktgen_blast_pid, SIGKILL);
     LOGD("%s: pktgen process is interrupted.", __func__);
-    waitpid(g_pktgen_blast_pid, &status, WNOHANG);
+    waitpid(g_pktgen_blast_pid, &status, 0);
     g_pktgen_blast_pid = 0;
     LOGD("%s: pktgen process is exited with status: 0x%X", __func__, status);
 

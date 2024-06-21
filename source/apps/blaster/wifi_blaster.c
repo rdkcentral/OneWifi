@@ -2072,6 +2072,7 @@ if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
             (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].WaitAndLatencyInMs = 0;
             strncpy(g_active_msmt->active_msmt_data[*SampleCount].Operating_standard, "NULL",OPER_BUFFER_LEN);
             strncpy(g_active_msmt->active_msmt_data[*SampleCount].Operating_channelwidth, "NULL",OPER_BUFFER_LEN);
+            push_blaster_config_event_to_monitor_queue(mon_stats_request_state_stop);
             g_active_msmt->num_res_count++;
             return;
         }
