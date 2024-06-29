@@ -2049,6 +2049,59 @@ void reconfigure_whix_interval(wifi_app_t *app, wifi_event_t *event)
     }
 }
 
+static void wps_enable_telemetry(wifi_app_t *app, wifi_event_t *event)
+{
+    bool enable = 0;
+    unsigned int radio_index = 0;
+    unsigned int vap_index = 0;
+    int vap_array_index = 0;
+    int band = 0;
+    char tmp[128];
+    FILE *wifihealth_fp = NULL;
+    webconfig_subdoc_data_t *webconfig_data = NULL;
+    webconfig_data = event->u.webconfig_data;
+    wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
+
+    if (webconfig_data == NULL || app == NULL || event == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d: webconfig_data or app or event is NULL\n", __func__, __LINE__);
+        return;
+    }
+
+    wifihealth_fp = fopen("/rdklogs/logs/wifihealth.txt", "a+");
+    if (wifihealth_fp == NULL) {
+        wifi_util_error_print(WIFI_APPS,"%s:%d: Failed to open file /rdklogs/logs/wifihealth.txt\n", __func__, __LINE__);
+        return;
+    }
+
+    unsigned int numRadios = getNumberRadios();
+    for (radio_index = 0; radio_index < numRadios; radio_index++) {
+        if (convert_radio_index_to_freq_band(&wifi_mgr->hal_cap.wifi_prop, radio_index, &band) == RETURN_ERR) {
+            wifi_util_error_print(WIFI_APPS,"%s:%d failed to convert radio_index=%d to freq_band\n", __func__, __LINE__, radio_index);
+            continue;
+        }
+        else{
+             if (band == WIFI_FREQUENCY_6_BAND) {
+                 continue;
+             }
+             vap_index = getPrivateApFromRadioIndex(radio_index);
+             vap_array_index = convert_vap_index_to_vap_array_index(&wifi_mgr->hal_cap.wifi_prop, vap_index);
+
+             if (vap_array_index == RETURN_ERR) {
+                 wifi_util_error_print(WIFI_APPS,"%s:%d: Failed to get vap_array_index for vap index %u and radio index %u\n", __func__, __LINE__, vap_index, radio_index);
+                 continue;
+             }
+             enable = webconfig_data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.bss_info.wps.enable;
+             wifi_util_dbg_print(WIFI_APPS,"%s:%d WPS current enable value and previous enable value for radio %u is %d and %d\n", __func__, __LINE__, radio_index, enable, app->data.u.whix.wps_enabled[radio_index]);
+             if (app->data.u.whix.wps_enabled[radio_index] != enable) {
+                 get_formatted_time(tmp);
+                 fprintf(wifihealth_fp, "%s RDKB_WPS_ENABLED_%d %s\n", tmp, radio_index+1, enable ? "TRUE":"FALSE");
+                 app->data.u.whix.wps_enabled[radio_index] = enable;
+             }
+        }
+    }
+    fclose(wifihealth_fp);
+}
+
 void handle_whix_command_event(wifi_app_t *app, wifi_event_t *event)
 {
     switch(event->sub_type) {
@@ -2073,6 +2126,9 @@ void handle_whix_webconfig_event(wifi_app_t *app, wifi_event_t *event)
     switch(event->sub_type) {
         case wifi_event_webconfig_set_data_dml:
             reconfigure_whix_interval(app, event);
+            if (event->u.webconfig_data->type == webconfig_subdoc_type_private){
+                wps_enable_telemetry(app, event);
+            }
             break;
         default:
             wifi_util_dbg_print(WIFI_APPS,"%s:%d Not Processing\n", __func__, __LINE__);
@@ -2166,9 +2222,12 @@ int whix_generate_vap_mask_for_radio_index(unsigned int radio_index)
 int whix_init(wifi_app_t *app, unsigned int create_flag)
 {
     wifi_util_dbg_print(WIFI_APPS, "Entering %s\n", __func__);
-#if 0
     unsigned int radio_index = 0;
-#endif
+    unsigned int vap_index = 0;
+    int vap_array_index = 0;
+    int band = 0;
+    wifi_mgr_t *wifi_mgr = (wifi_mgr_t*)get_wifimgr_obj();
+
     if (app_init(app, create_flag) != 0) {
         return RETURN_ERR;
     }
@@ -2180,6 +2239,26 @@ int whix_init(wifi_app_t *app, unsigned int create_flag)
         whix_generate_vap_mask_for_radio_index(radio_index);
     }
 #endif
+    unsigned int numRadios = getNumberRadios();
+    for (radio_index = 0; radio_index < numRadios; radio_index++) {
+        if (convert_radio_index_to_freq_band(&wifi_mgr->hal_cap.wifi_prop, radio_index, &band) == RETURN_ERR) {
+            wifi_util_error_print(WIFI_APPS,"%s:%d Failed to convert radio_index=%d to freq_band\n", __func__, __LINE__, radio_index);
+            continue;
+        }
+        else{
+             if (band == WIFI_FREQUENCY_6_BAND) {
+                 continue;
+             }
+             vap_index = getPrivateApFromRadioIndex(radio_index);
+             vap_array_index = convert_vap_index_to_vap_array_index(&wifi_mgr->hal_cap.wifi_prop, vap_index);
+
+             if (vap_array_index == RETURN_ERR) {
+                 wifi_util_error_print(WIFI_APPS,"%s:%d: Failed to get vap_array_index for vap index %u\n", __func__, __LINE__, vap_index);
+                 continue;
+             }
+             app->data.u.whix.wps_enabled[radio_index] = wifi_mgr->radio_config[radio_index].vaps.vap_map.vap_array[vap_array_index].u.bss_info.wps.enable;
+        }
+    }
     app->data.u.whix.sched_handler_id = 0;
 
     return RETURN_OK;
