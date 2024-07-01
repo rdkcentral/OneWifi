@@ -29,6 +29,9 @@ if [ "$(pidof OneWifi)" != "" ]; then
 if [ "$MODEL_NUM" == "TG4482A" ]; then
     ssid1="wlan0.0"
     ssid2="wlan2.0"
+elif [ "$MODEL_NUM" == "VTER11QEL" ]; then
+    ssid1="ath0"
+    ssid2="ath1"
 else
     ssid1="wl0.1"
     ssid2="wl1.1"
