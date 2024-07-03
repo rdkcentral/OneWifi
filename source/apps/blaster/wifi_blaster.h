@@ -162,10 +162,6 @@ void process_active_msmt_diagnostics (int ap_index);
 void stream_client_msmt_data(bool ActiveMsmtFlag);
 wifi_actvie_msmt_t *get_wifi_blaster();
 
-int blaster_init(wifi_app_t *app, unsigned int create_flag);
-int blaster_deinit(wifi_app_t *app);
-int blaster_event(wifi_app_t *app, wifi_event_t *event);
-
 #ifdef __cplusplus
 }
 #endif

@@ -39,7 +39,9 @@ extern "C" {
 #include "wifi_ocs.h"
 #endif  //CCSP_COMMON
 
+#ifdef ONEWIFI_BLASTER_APP_SUPPORT
 #include "wifi_blaster.h"
+#endif
 
 #define MAX_APP_INIT_DATA 1024
 #define APP_DETACHED 0x01
@@ -72,7 +74,9 @@ typedef struct {
         csi_app_t            csi;
         whix_data_t          whix;
 #endif  //CCSP_COMMON
+#ifdef ONEWIFI_BLASTER_APP_SUPPORT
         blaster_data_t       blaster;
+#endif
 #if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
         off_channel_param_t  ocs[MAX_NUM_RADIOS];
 #endif //FEATURE_OFF_CHANNEL_SCAN_5G

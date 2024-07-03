@@ -43,8 +43,4 @@ typedef struct {
 } wifi_harvester_t;
 
 
-int harvester_init(wifi_app_t *app, unsigned int create_flag);
-int harvester_deinit(wifi_app_t *app);
-int harvester_event(wifi_app_t *app, wifi_event_t *event);
-
 #endif //_WIFI_HARVESTER_H_

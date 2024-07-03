@@ -15,16 +15,21 @@
   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   See the License for the specific language governing permissions and
   limitations under the License.
-**************************************************************************/
+ **************************************************************************/
 
-#ifndef _WIFI_WHIX_H_
-#define _WIFI_WHIX_H_
+#ifndef WIFI_STUBS_H
+#define WIFI_STUBS_H
+
+typedef int (* wifi_t2_event_d_t)(char *marker, int value);
+typedef int (* wifi_t2_event_s_t)(char *marker, char *buff);
+typedef int (* wifi_v_secure_system_t)(const char *command);
 
 typedef struct {
-    int radius_failure_count[MAX_VAP];
-    int eap_failure_count[MAX_VAP];
-    int sched_handler_id;
-    bool wps_enabled[MAX_NUM_RADIOS];
-} whix_data_t;
+    wifi_t2_event_d_t t2_event_d_fn;
+    wifi_t2_event_s_t t2_event_s_fn;
+    wifi_v_secure_system_t v_secure_system_fn;
+} wifi_stubs_descriptor_t;
 
-#endif //_WIFI_WHIX_H_
+wifi_stubs_descriptor_t *get_stubs_descriptor();
+
+#endif // STUBS_H

@@ -190,6 +190,7 @@ int csi_stop_fn(void* csi_app, unsigned int ap_index, mac_addr_t mac_addr, int s
     return 0;
 }
 
+#ifdef ONEWIFI_CSI_APP_SUPPORT
 int csi_init(wifi_app_t *app, unsigned int create_flag)
 {
     app->data.u.csi.csi_fns.csi_start_fn = csi_start_fn;
@@ -212,3 +213,4 @@ int csi_init(wifi_app_t *app, unsigned int create_flag)
     wifi_util_info_print(WIFI_APPS, "%s:%d: Init Csi\n", __func__, __LINE__);
     return RETURN_OK;
 }
+#endif

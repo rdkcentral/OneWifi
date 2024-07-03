@@ -34,6 +34,7 @@
 #include "collection.h"
 #include "wifi_hal.h"
 #include "wifi_mgr.h"
+#include "wifi_stubs.h"
 #include "wifi_util.h"
 #include "wifi_monitor.h"
 #include <sys/socket.h>
@@ -440,7 +441,7 @@ BOOL client_fast_reconnect(unsigned int apIndex, char *mac)
         wifi_util_dbg_print(WIFI_MON, "%s: reconnect_count:%d \n", __func__, sta->reconnect_count);
         if(sta->reconnect_count > (UINT)assocCountThreshold) {
             wifi_util_dbg_print(WIFI_MON, "%s: Blocking client connections for assocGateTime:%d \n", __func__, assocGateTime);
-            t2_event_d("SYS_INFO_ClientConnBlock", 1);
+            get_stubs_descriptor()->t2_event_d_fn("SYS_INFO_ClientConnBlock", 1);
             sta->reconnect_count = 0;
             sta->gate_time = tv_now.tv_sec + assocGateTime;
             pthread_mutex_unlock(&g_monitor_module.data_lock);

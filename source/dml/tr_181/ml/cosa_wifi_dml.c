@@ -77,6 +77,7 @@
 #include "cosa_dbus_api.h"
 #include "collection.h"
 #include "wifi_hal.h"
+#include "../../../stubs/wifi_stubs.h"
 #include "wifi_monitor.h"
 
 #if defined (FEATURE_SUPPORT_WEBCONFIG)
@@ -1118,10 +1119,10 @@ WiFi_SetParamBoolValue
     {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Log_upload set\n", __FUNCTION__,__LINE__);
         if (bValue) {
-            v_secure_system("/usr/ccsp/wifi/wifi_logupload.sh start");
+            get_stubs_descriptor()->v_secure_system_fn("/usr/ccsp/wifi/wifi_logupload.sh start");
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Log_upload started\n", __FUNCTION__,__LINE__);
         } else {
-            v_secure_system("/usr/ccsp/wifi/wifi_logupload.sh stop");
+            get_stubs_descriptor()->v_secure_system_fn("/usr/ccsp/wifi/wifi_logupload.sh stop");
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Log_upload stopped\n", __FUNCTION__,__LINE__);
         }
         return TRUE;

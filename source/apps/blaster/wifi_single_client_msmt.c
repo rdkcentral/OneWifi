@@ -58,6 +58,7 @@
 #include "qm_conn.h"
 #include "wifi_util.h"
 #include "wifi_mgr.h"
+#include "wifi_stubs.h"
 #include "wifi_blaster.h"
 #include "const.h"
 #define PROTOBUF_MAC_SIZE 13
@@ -1129,7 +1130,7 @@ void upload_single_client_active_msmt_data(blaster_hashmap_t *sta_info)
     }
     memset(telemetry_buf, 0, sizeof(char)*1024);
     snprintf(telemetry_buf, sizeof(char)*1024, "%s %s",blaster->active_msmt.t_header.traceParent, blaster->active_msmt.t_header.traceState);
-    t2_event_s("TRACE_WIFIBLAST_REPORT_SENT" , telemetry_buf);
+    get_stubs_descriptor()->t2_event_s_fn("TRACE_WIFIBLAST_REPORT_SENT", telemetry_buf);
     wifi_util_dbg_print(WIFI_BLASTER, "Creation of Telemetry record is successful\n");
     CcspTraceInfo(("%s-%d Blaster report successfully sent to Parodus WebPA component\n", __FUNCTION__, __LINE__));
     if (telemetry_buf != NULL) {

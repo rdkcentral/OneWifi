@@ -32,6 +32,7 @@
 #include <sys/time.h>
 #include "collection.h"
 #include "wifi_hal.h"
+#include "wifi_stubs.h"
 #include "wifi_mgr.h"
 #include "wifi_util.h"
 #include "wifi_ctrl.h"
@@ -95,7 +96,8 @@ static inline char *to_sta_key    (mac_addr_t mac, sta_key_t key)
 
 int radio_health_telemetry_logger_whix(unsigned int radio_index, int ch_util)
 {
-    char buff[256] = {0}, tmp[128] = {0}, telemetry_buf[64] = {0}, t_string[5] = {0};
+    char buff[256] = {0}, tmp[128] = {0}, t_string[5] = {0};
+    char telemetry_buf[64] = {0};
     unsigned long int itr = 0;
     char *t_str = NULL;
 
@@ -125,7 +127,7 @@ int radio_health_telemetry_logger_whix(unsigned int radio_index, int ch_util)
             //updating T2 Marker here
             memset(telemetry_buf, 0, sizeof(telemetry_buf));
             snprintf(telemetry_buf, sizeof(telemetry_buf), "%d", ch_util);
-            t2_event_s(tmp, telemetry_buf);
+            get_stubs_descriptor()->t2_event_s_fn(tmp, telemetry_buf);
         } else {
             snprintf(buff, 256, "%s Radio_%d is down, so not printing WIFI_BANDUTILIZATION marker", tmp, radio_index + 1);
         }
@@ -205,6 +207,7 @@ int whix_upload_channel_width_telemetry(unsigned int radio_index)
         get_formatted_time(tmp);
         t_str = convert_radio_index_to_band_str_g(radio_index);
         if (t_str != NULL) {
+
             strncpy(t_string, t_str, sizeof(t_string) - 1);
             for (itr=1; itr<strlen(t_string); itr++) {
                 t_string[itr] = toupper(t_string[itr]);
@@ -216,7 +219,7 @@ int whix_upload_channel_width_telemetry(unsigned int radio_index)
         }
 
         snprintf(eventName, sizeof(eventName), "WIFI_CWconfig_%d_split", radio_index + 1 );
-        t2_event_s(eventName, bandwidth);
+        get_stubs_descriptor()->t2_event_s_fn(eventName, bandwidth);
 
         memset(buffer, 0, sizeof(buffer));
         memset(bandwidth, 0, sizeof(bandwidth));
@@ -282,7 +285,7 @@ int upload_radio_chan_util_telemetry_whix(UINT radio, UINT Tx_perc, UINT Rx_perc
 
             memset(tmp, 0, sizeof(tmp));
             sprintf(tmp, "CHUTIL_%d_split", getPrivateApFromRadioIndex(radio) + 1);
-            t2_event_s(tmp, telemetry_buf);
+            get_stubs_descriptor()->t2_event_s_fn(tmp, telemetry_buf);
         }
         else {
             wifi_util_dbg_print(WIFI_MON, "%s : %d Radio : %d is not enabled\n",__func__,__LINE__,radio);
@@ -325,7 +328,7 @@ int whix_upload_ap_telemetry_pmf()
     }
     write_to_file(wifi_health_log, log_buf);
     wifi_util_dbg_print(WIFI_MON, "%s", log_buf);
-    t2_event_s("WIFI_INFO_PMF_ENABLE", telemetry_buf);
+    get_stubs_descriptor()->t2_event_s_fn("WIFI_INFO_PMF_ENABLE", telemetry_buf);
     // Telemetry:
     // "header":  "WIFI_INFO_PMF_CONFIG_1"
     // "content": "WiFi_INFO_PMF_config_ath0:"
@@ -366,7 +369,7 @@ int whix_upload_ap_telemetry_pmf()
                 {
                     ERR_CHK(rc);
                 }
-                t2_event_s(tmp, telemetry_buf);
+                get_stubs_descriptor()->t2_event_s_fn(tmp, telemetry_buf);
             }
         }
     }
@@ -388,16 +391,16 @@ void upload_client_debug_stats_chan_stats(INT apIndex)
         get_formatted_time(tmp);
         write_to_file(wifi_health_log, "\n%s WIFI_CHANNEL_%d:%lu\n", tmp, apIndex + 1, channel);
         snprintf(eventName, sizeof(eventName), "WIFI_CH_%d_split", apIndex +1);
-        t2_event_d(eventName, channel);
+        get_stubs_descriptor()->t2_event_d_fn(eventName, channel);
         if (radio == 1)
         {
             if( 1 == channel )
             {
                 //         "header": "WIFI_INFO_UNI3_channel", "content": "WIFI_CHANNEL_2:1", "type": "wifihealth.txt",
-                t2_event_d("WIFI_INFO_UNI3_channel", 1);
+                get_stubs_descriptor()->t2_event_d_fn("WIFI_INFO_UNI3_channel", 1);
             } else if (( 3 == channel || 4 == channel)) \
             {
-                t2_event_d("WIFI_INFO_UNII_channel", 1);
+                get_stubs_descriptor()->t2_event_d_fn("WIFI_INFO_UNII_channel", 1);
             }
         }
     } else {
@@ -426,13 +429,13 @@ static void  upload_client_debug_stats_transmit_power_stats(INT apIndex)
         //    "header": "WIFI_TXPWR_1_split",   "content": "WIFI_TX_PWR_dBm_1:", "type": "wifihealth.txt",
         //    "header": "WIFI_TXPWR_2_split",   "content": "WIFI_TX_PWR_dBm_2:", "type": "wifihealth.txt",
         snprintf(eventName, sizeof(eventName), "WIFI_TXPWR_%d_split", apIndex + 1);
-        t2_event_d(eventName, txpower);
+        get_stubs_descriptor()->t2_event_d_fn(eventName, txpower);
         txpwr_pcntg = radioOperation->transmitPower;
         memset(tmp, 0, sizeof(tmp));
         get_formatted_time(tmp);
         write_to_file(wifi_health_log, "%s WIFI_TX_PWR_PERCENTAGE_%d:%lu\n", tmp, apIndex + 1, txpwr_pcntg);
         snprintf(eventName, sizeof(eventName), "WIFI_TXPWR_PCNTG_%u_split", apIndex + 1);
-        t2_event_d("WIFI_TXPWR_PCNTG_1_split", txpwr_pcntg);
+        get_stubs_descriptor()->t2_event_d_fn("WIFI_TXPWR_PCNTG_1_split", txpwr_pcntg);
     } else {
         wifi_util_error_print(WIFI_MON, "%s: getRadioOperationParam failed for radio %d\n", __FUNCTION__, radio);
     }
@@ -464,7 +467,7 @@ static void upload_ap_telemetry_anqp_whix (unsigned int vap_index)
             write_to_file(wifi_health_log, buff);
             wifi_util_dbg_print(WIFI_MON, "%s", buff);
             snprintf(eventName, sizeof(eventName), "XWIFI_ANQP_REQ_%d_split", vap_index+1);
-            t2_event_d(eventName, anqp_request);
+            get_stubs_descriptor()->t2_event_d_fn(eventName, anqp_request);
             memset(buff, 0, sizeof(buff));
             memset(tmp, 0, sizeof(tmp));
             memset(eventName, 0, sizeof(eventName));
@@ -473,7 +476,7 @@ static void upload_ap_telemetry_anqp_whix (unsigned int vap_index)
             write_to_file(wifi_health_log, buff);
             wifi_util_dbg_print(WIFI_MON, "%s", buff);
             snprintf(eventName, sizeof(eventName), "XWIFI_ANQP_RSP_%d_split", vap_index+1);
-            t2_event_d(eventName, anqp_response);
+            get_stubs_descriptor()->t2_event_d_fn(eventName, anqp_response);
         }
         //reset counter per telemetry report
         rdk_vap_info->anqp_request_count = 0;
@@ -508,7 +511,7 @@ static void upload_client_debug_stats_acs_stats(INT apIndex)
         // "header": "WIFI_ACS_1_split",  "content": "WIFI_ACS_1:", "type": "wifihealth.txt",
         // "header": "WIFI_ACS_2_split", "content": "WIFI_ACS_2:", "type": "wifihealth.txt",
         snprintf(eventName, sizeof(eventName), "WIFI_ACS_%d_split", apIndex + 1);
-        t2_event_s(eventName, "true");
+        get_stubs_descriptor()->t2_event_s_fn(eventName, "true");
     }
     else
     {
@@ -518,7 +521,7 @@ static void upload_client_debug_stats_acs_stats(INT apIndex)
         // "header": "WIFI_ACS_1_split",  "content": "WIFI_ACS_1:", "type": "wifihealth.txt",
         // "header": "WIFI_ACS_2_split", "content": "WIFI_ACS_2:", "type": "wifihealth.txt",
         snprintf(eventName, sizeof(eventName), "WIFI_ACS_%d_split", apIndex + 1);
-        t2_event_s(eventName,  "false");
+        get_stubs_descriptor()->t2_event_s_fn(eventName,  "false");
     }
 }
 
@@ -993,7 +996,7 @@ static void logVAPUpStatus()
     ERR_CHK(rc);
     write_to_file(wifi_health_log,log_buf);
     wifi_util_dbg_print(WIFI_MON, "%s", log_buf);
-    t2_event_s("WIFI_VAPPERC_split", telemetry_buf);
+    get_stubs_descriptor()->t2_event_s_fn("WIFI_VAPPERC_split", telemetry_buf);
     prev_uptime_val = curr_uptime_val;
     vap_iteration = 0;
     memset(vap_up_arr, 0,sizeof(vap_up_arr));
@@ -1147,13 +1150,13 @@ int upload_client_telemetry_data(unsigned int num_devs, unsigned int vap_index, 
             }
             if (isVapPrivate(vap_index)) {
                 snprintf(eventName, sizeof(eventName), "%sclientMac_split", t_string);
-                t2_event_s(eventName, telemetryBuff);
+                get_stubs_descriptor()->t2_event_s_fn(eventName, telemetryBuff);
             } else if (isVapXhs(vap_index)) {
                 snprintf(eventName, sizeof(eventName), "xh_mac_%d_split", vap_index + 1);
-                t2_event_s(eventName, telemetryBuff);
+                get_stubs_descriptor()->t2_event_s_fn(eventName, telemetryBuff);
             } else if (isVapLnfPsk(vap_index) && is_managed_wifi) {
                 snprintf(eventName, sizeof(eventName), "MG_mac_%d_split", vap_index + 1);
-                t2_event_s(eventName, telemetryBuff);
+                get_stubs_descriptor()->t2_event_s_fn(eventName, telemetryBuff);
             }
             wifi_util_dbg_print(WIFI_MON, "%s", buff);
             get_formatted_time(tmp);
@@ -1167,20 +1170,20 @@ int upload_client_telemetry_data(unsigned int num_devs, unsigned int vap_index, 
             if (isVapPrivate(vap_index)) {
                 if (0 == num_devs) {
                     snprintf(eventName, sizeof(eventName), "WIFI_INFO_Zero_%s_Clients", t_string);
-                    t2_event_d(eventName, 1);
+                    get_stubs_descriptor()->t2_event_d_fn(eventName, 1);
                 } else {
                     snprintf(eventName, sizeof(eventName), "Total_%s_clients_split", t_string);
-                    t2_event_d(eventName, num_devs);
+                    get_stubs_descriptor()->t2_event_d_fn(eventName, num_devs);
                 }
             } else if (isVapXhs(vap_index)) {
                 snprintf(eventName, sizeof(eventName), "xh_cnt_%d_split", radioIndex + 1);
-                t2_event_d(eventName, num_devs);
+                get_stubs_descriptor()->t2_event_d_fn(eventName, num_devs);
             } else if (isVapMesh(vap_index)) {
                 snprintf(eventName, sizeof(eventName), "Total_%s_PodClients_split", t_string);
-                t2_event_d(eventName, num_devs);
+                get_stubs_descriptor()->t2_event_d_fn(eventName, num_devs);
             } else if (isVapLnfPsk(vap_index) && is_managed_wifi) {
                 snprintf(eventName, sizeof(eventName), "MG_cnt_%s_split", t_string);
-                t2_event_d(eventName, num_devs);
+                get_stubs_descriptor()->t2_event_d_fn(eventName, num_devs);
             }
         } else {
             wifi_util_dbg_print(WIFI_MON, "%s-%d Failed to get band for radio Index %d\n", __func__,
@@ -1227,16 +1230,16 @@ int upload_client_telemetry_data(unsigned int num_devs, unsigned int vap_index, 
 
                 }
                 snprintf(eventName, sizeof(eventName), "%sRSSI_split", t_string);
-                t2_event_s(eventName, telemetryBuff);
+                get_stubs_descriptor()->t2_event_s_fn(eventName, telemetryBuff);
             } else {
                 wifi_util_dbg_print(WIFI_MON, "%s-%d Failed to get band for radio Index %d\n", __func__, __LINE__, radioIndex);
             }
         } else if (isVapXhs(vap_index)) {
             snprintf(eventName, sizeof(eventName), "xh_rssi_%u_split", vap_index + 1);
-            t2_event_s(eventName, telemetryBuff);
+            get_stubs_descriptor()->t2_event_s_fn(eventName, telemetryBuff);
         } else if (isVapLnfPsk(vap_index) && is_managed_wifi) {
             snprintf(eventName, sizeof(eventName), "MG_rssi_%u_split", vap_index + 1);
-            t2_event_s(eventName, telemetryBuff);
+            get_stubs_descriptor()->t2_event_s_fn(eventName, telemetryBuff);
         }
         wifi_util_dbg_print(WIFI_MON, "%s", buff);
         get_formatted_time(tmp);
@@ -1254,10 +1257,10 @@ int upload_client_telemetry_data(unsigned int num_devs, unsigned int vap_index, 
         write_to_file(wifi_health_log, buff);
         if (isVapPrivate(vap_index)) {
             snprintf(eventName, sizeof(eventName), "WIFI_CW_%d_split", vap_index + 1);
-            t2_event_s(eventName, telemetryBuff);
+            get_stubs_descriptor()->t2_event_s_fn(eventName, telemetryBuff);
         } else if (isVapLnfPsk(vap_index) && is_managed_wifi) {
             snprintf(eventName, sizeof(eventName), "MG_CW_%d_split", vap_index + 1);
-            t2_event_s(eventName, telemetryBuff);
+            get_stubs_descriptor()->t2_event_s_fn(eventName, telemetryBuff);
         }
         wifi_util_dbg_print(WIFI_MON, "%s", buff);
         if ((sWiFiDmlvApStatsFeatureEnableCfg == true) && nrflag[vap_index]) {
@@ -1290,10 +1293,10 @@ int upload_client_telemetry_data(unsigned int num_devs, unsigned int vap_index, 
             write_to_file(wifi_health_log, buff);
             if (isVapPrivate(vap_index)) {
                 snprintf(eventName, sizeof(eventName), "WIFI_SNR_%d_split", vap_index + 1);
-                t2_event_s(eventName, telemetryBuff);
+                get_stubs_descriptor()->t2_event_s_fn(eventName, telemetryBuff);
             } else if (isVapLnfPsk(vap_index) && is_managed_wifi) {
                 snprintf(eventName, sizeof(eventName), "MG_SNR_%d_split", vap_index + 1);
-                t2_event_s(eventName, telemetryBuff);
+                get_stubs_descriptor()->t2_event_s_fn(eventName, telemetryBuff);
             }
             wifi_util_dbg_print(WIFI_MON, "%s", buff);
         }
@@ -1312,10 +1315,10 @@ int upload_client_telemetry_data(unsigned int num_devs, unsigned int vap_index, 
         write_to_file(wifi_health_log, buff);
         if (isVapPrivate(vap_index)) {
             snprintf(eventName, sizeof(eventName), "WIFI_TX_%d_split", vap_index + 1);
-            t2_event_s(eventName, telemetryBuff);
+            get_stubs_descriptor()->t2_event_s_fn(eventName, telemetryBuff);
         } else if (isVapLnfPsk(vap_index) && is_managed_wifi) {
             snprintf(eventName, sizeof(eventName), "MG_TX_%d_split", vap_index + 1);
-            t2_event_s(eventName, telemetryBuff);
+            get_stubs_descriptor()->t2_event_s_fn(eventName, telemetryBuff);
         }
         wifi_util_dbg_print(WIFI_MON, "%s", buff);
         get_formatted_time(tmp);
@@ -1334,10 +1337,10 @@ int upload_client_telemetry_data(unsigned int num_devs, unsigned int vap_index, 
         //  "header": "WIFI_RX_1_split", "content": "WIFI_RXCLIENTS_1:", "type": "wifihealth.txt",
         if (isVapPrivate(vap_index)) {
             snprintf(eventName, sizeof(eventName), "WIFI_RX_%d_split", vap_index + 1);
-            t2_event_s(eventName, telemetryBuff);
+            get_stubs_descriptor()->t2_event_s_fn(eventName, telemetryBuff);
         } else if (isVapLnfPsk(vap_index) && is_managed_wifi) {
             snprintf(eventName, sizeof(eventName), "MG_RX_%d_split", vap_index + 1);
-            t2_event_s(eventName, telemetryBuff);
+            get_stubs_descriptor()->t2_event_s_fn(eventName, telemetryBuff);
         }
         wifi_util_dbg_print(WIFI_MON, "%s", buff);
 
@@ -1357,10 +1360,10 @@ int upload_client_telemetry_data(unsigned int num_devs, unsigned int vap_index, 
             write_to_file(wifi_health_log, buff);
             if (isVapPrivate(vap_index)) {
                 snprintf(eventName, sizeof(eventName), "MAXTX_%d_split", vap_index + 1);
-                t2_event_s(eventName, telemetryBuff);
+                get_stubs_descriptor()->t2_event_s_fn(eventName, telemetryBuff);
             } else if (isVapLnfPsk(vap_index) && is_managed_wifi) {
                 snprintf(eventName, sizeof(eventName), "MG_MAXTX_%d_split", vap_index + 1);
-                t2_event_s(eventName, telemetryBuff);
+                get_stubs_descriptor()->t2_event_s_fn(eventName, telemetryBuff);
             }
             wifi_util_dbg_print(WIFI_MON, "%s", buff);
         }
@@ -1380,10 +1383,10 @@ int upload_client_telemetry_data(unsigned int num_devs, unsigned int vap_index, 
             write_to_file(wifi_health_log, buff);
             if (isVapPrivate(vap_index)) {
                 snprintf(eventName, sizeof(eventName), "MAXRX_%d_split", vap_index + 1);
-                t2_event_s(eventName, telemetryBuff);
+                get_stubs_descriptor()->t2_event_s_fn(eventName, telemetryBuff);
             } else if (isVapLnfPsk(vap_index) && is_managed_wifi) {
                 snprintf(eventName, sizeof(eventName), "MG_MAXRX_%d_split", vap_index + 1);
-                t2_event_s(eventName, telemetryBuff);
+                get_stubs_descriptor()->t2_event_s_fn(eventName, telemetryBuff);
             }
             wifi_util_dbg_print(WIFI_MON, "%s", buff);
         }
@@ -1448,10 +1451,10 @@ int upload_client_telemetry_data(unsigned int num_devs, unsigned int vap_index, 
             write_to_file(wifi_health_log, buff);
             if (isVapPrivate(vap_index)) {
                 snprintf(eventName, sizeof(eventName), "WIFI_PACKETSSENTCLIENTS_%d_split", vap_index + 1);
-                t2_event_s(eventName, telemetryBuff);
+                get_stubs_descriptor()->t2_event_s_fn(eventName, telemetryBuff);
             } else if (isVapLnfPsk(vap_index) && is_managed_wifi) {
                 snprintf(eventName, sizeof(eventName), "MG_PACKETSSENTCLIENTS_%d_split", vap_index + 1);
-                t2_event_s(eventName, telemetryBuff);
+                get_stubs_descriptor()->t2_event_s_fn(eventName, telemetryBuff);
             }
             wifi_util_dbg_print(WIFI_MON, "%s", buff);
         }
@@ -1488,10 +1491,10 @@ int upload_client_telemetry_data(unsigned int num_devs, unsigned int vap_index, 
             if (isVapPrivate(vap_index))
             {
                 snprintf(eventName, sizeof(eventName), "WIFI_ERRORSSENT_%d_split", vap_index + 1);
-                t2_event_s(eventName, telemetryBuff);
+                get_stubs_descriptor()->t2_event_s_fn(eventName, telemetryBuff);
             } else if (isVapLnfPsk(vap_index) && is_managed_wifi) {
                 snprintf(eventName, sizeof(eventName), "MG_ERRORSSENT_%d_split", vap_index + 1);
-                t2_event_s(eventName, telemetryBuff);
+                get_stubs_descriptor()->t2_event_s_fn(eventName, telemetryBuff);
             }
             wifi_util_dbg_print(WIFI_MON, "%s", buff);
         }
@@ -1513,10 +1516,10 @@ int upload_client_telemetry_data(unsigned int num_devs, unsigned int vap_index, 
             if (isVapPrivate(vap_index))
             {
                 snprintf(eventName, sizeof(eventName), "WIFIRetransCount%d_split", vap_index + 1);
-                t2_event_s(eventName, telemetryBuff);
+                get_stubs_descriptor()->t2_event_s_fn(eventName, telemetryBuff);
             } else if (isVapLnfPsk(vap_index) && is_managed_wifi) {
                 snprintf(eventName, sizeof(eventName), "MG_RetransCount%d_split", vap_index + 1);
-                t2_event_s(eventName, telemetryBuff);
+                get_stubs_descriptor()->t2_event_s_fn(eventName, telemetryBuff);
             }
             wifi_util_dbg_print(WIFI_MON, "%s", buff);
         }
@@ -1584,10 +1587,10 @@ int upload_client_telemetry_data(unsigned int num_devs, unsigned int vap_index, 
         write_to_file(wifi_health_log, buff);
         if (isVapPrivate(vap_index)) {
             snprintf(eventName, sizeof(eventName), "GB_RSSI_%d_split", vap_index + 1);
-            t2_event_s(eventName, telemetryBuff);
+            get_stubs_descriptor()->t2_event_s_fn(eventName, telemetryBuff);
         } else if (isVapLnfPsk(vap_index) && is_managed_wifi) {
             snprintf(eventName, sizeof(eventName), "MG_GB_RSSI_%d_split", vap_index + 1);
-            t2_event_s(eventName, telemetryBuff);
+            get_stubs_descriptor()->t2_event_s_fn(eventName, telemetryBuff);
         }
         wifi_util_dbg_print(WIFI_MON, "%s", buff);
         // check if failure indication is enabled in TR swicth
@@ -1619,10 +1622,10 @@ int upload_client_telemetry_data(unsigned int num_devs, unsigned int vap_index, 
                 if (isVapPrivate(vap_index))
                 {
                     snprintf(eventName, sizeof(eventName), "WIFI_REC_%d_split", vap_index + 1);
-                    t2_event_s(eventName, telemetryBuff);
+                    get_stubs_descriptor()->t2_event_s_fn(eventName, telemetryBuff);
                 } else if (isVapLnfPsk(vap_index) && is_managed_wifi) {
                     snprintf(eventName, sizeof(eventName), "MG_REC_%d_split", vap_index + 1);
-                    t2_event_s(eventName, telemetryBuff);
+                    get_stubs_descriptor()->t2_event_s_fn(eventName, telemetryBuff);
                 }
                 wifi_util_dbg_print(WIFI_MON, "%s", buff);
             }
@@ -2162,7 +2165,7 @@ void radius_eap_failure_event_marker(wifi_app_t *app, void *data)
             isVapHotspotOpen6g(radius_eap_data->apIndex)) {
             app->data.u.whix.radius_failure_count[radius_eap_data->apIndex]++;
             snprintf(telemetry_buf, sizeof(telemetry_buf), "XWIFI_Radius_Failures_%d_split", (radius_eap_data->apIndex)+1);
-            t2_event_d(telemetry_buf, app->data.u.whix.radius_failure_count[radius_eap_data->apIndex]);
+            get_stubs_descriptor()->t2_event_d_fn(telemetry_buf, app->data.u.whix.radius_failure_count[radius_eap_data->apIndex]);
             snprintf(eventName, sizeof(eventName), "%s XWIFI_Radius_Failures_%d_split:%d\n", tmp, (radius_eap_data->apIndex)+1, app->data.u.whix.radius_failure_count[radius_eap_data->apIndex]);
             write_to_file("/rdklogs/logs/wifihealth.txt", eventName);
         }
@@ -2170,7 +2173,7 @@ void radius_eap_failure_event_marker(wifi_app_t *app, void *data)
         if (isVapHotspotSecure5g(radius_eap_data->apIndex) || isVapHotspotSecure6g(radius_eap_data->apIndex)) {
             app->data.u.whix.eap_failure_count[radius_eap_data->apIndex]++;
             snprintf(telemetry_buf, sizeof(telemetry_buf), "XWIFI_EAP_Failures_%d_split", (radius_eap_data->apIndex)+1);
-            t2_event_d(telemetry_buf, app->data.u.whix.eap_failure_count[radius_eap_data->apIndex]);
+            get_stubs_descriptor()->t2_event_d_fn(telemetry_buf, app->data.u.whix.eap_failure_count[radius_eap_data->apIndex]);
             snprintf(eventName, sizeof(eventName), "%s XWIFI_EAP_Failures_%d_split:%d\n", tmp, (radius_eap_data->apIndex)+1, app->data.u.whix.eap_failure_count[radius_eap_data->apIndex]);
             write_to_file("/rdklogs/logs/wifihealth.txt", eventName);
         }
@@ -2187,6 +2190,8 @@ void handle_whix_hal_ind_event(wifi_app_t *app, wifi_event_t *event)
         break;
      }
 }
+
+#ifdef ONEWIFI_WHIX_APP_SUPPORT
 int whix_event(wifi_app_t *app, wifi_event_t *event)
 {
     switch(event->event_type) {
@@ -2207,6 +2212,7 @@ int whix_event(wifi_app_t *app, wifi_event_t *event)
     }
     return RETURN_OK;
 }
+#endif
 
 #if 0
 int whix_generate_vap_mask_for_radio_index(unsigned int radio_index)
@@ -2229,6 +2235,7 @@ int whix_generate_vap_mask_for_radio_index(unsigned int radio_index)
 }
 #endif
 
+#ifdef ONEWIFI_WHIX_APP_SUPPORT
 int whix_init(wifi_app_t *app, unsigned int create_flag)
 {
     wifi_util_dbg_print(WIFI_APPS, "Entering %s\n", __func__);
@@ -2287,4 +2294,5 @@ int whix_deinit(wifi_app_t *app)
 
     return RETURN_OK;
 }
+#endif
 

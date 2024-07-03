@@ -1007,6 +1007,8 @@ void handle_harvester_hal_event(wifi_app_t *app, wifi_event_t *event)
             break;
     }
 }
+
+#ifdef ONEWIFI_HARVESTER_APP_SUPPORT
 int harvester_event(wifi_app_t *app, wifi_event_t *event)
 {
     wifi_util_dbg_print(WIFI_HARVESTER, "Entering %s\n", __func__);
@@ -1041,4 +1043,4 @@ int harvester_deinit(wifi_app_t *app)
     push_harvester_config_event_to_monitor_queue(mon_stats_request_state_stop);
     return RETURN_OK;
 }
-
+#endif

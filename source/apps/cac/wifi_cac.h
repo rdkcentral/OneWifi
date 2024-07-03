@@ -81,11 +81,6 @@ typedef struct {
     hash_map_t      *sta_map;
 } cac_data_t;
 
-int cac_init(wifi_app_t *app, unsigned int create_flag);
-int cac_deinit(wifi_app_t *app);
-int cac_event(wifi_app_t *app, wifi_event_t *event);
-int cac_mgmt_frame_hook(int ap_index, wifi_mgmtFrameType_t type);
-
 #ifdef __cplusplus
 }
 #endif

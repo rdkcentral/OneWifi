@@ -26,6 +26,7 @@
 #include "wifi_hal.h"
 #include "wifi_ctrl.h"
 #include "wifi_mgr.h"
+#include "wifi_stubs.h"
 #include "wifi_util.h"
 #include "msgpack.h"
 #include "cJSON.h"
@@ -2186,7 +2187,7 @@ void ecomode_telemetry_update_and_reboot(unsigned int index, bool active)
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     snprintf(eventName, sizeof(eventName), "WIFI_RADIO_%d_ECOPOWERMODE", index + 1);
-    t2_event_s(eventName, active ? "Active" : "Inactive");
+    get_stubs_descriptor()->t2_event_s_fn(eventName, active ? "Active" : "Inactive");
     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s: EcoPowerDown telemetry: %s %s uploaded for Radio %d\n", __FUNCTION__, eventName, active ? "Active" : "Inactive", index + 1);
     reboot_device(ctrl);
 }

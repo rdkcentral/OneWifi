@@ -31,6 +31,7 @@
 #include "dml_onewifi_api.h"
 #include "wifi_util.h"
 #include "wifi_mgr.h"
+#include "../../../stubs/wifi_stubs.h"
 
 webconfig_dml_t webconfig_dml;
 
@@ -1155,7 +1156,7 @@ int push_blaster_config_dml_to_ctrl_queue()
         }
         memset(telemetry_buf, 0, sizeof(char)*1024);
         snprintf(telemetry_buf, sizeof(char)*1024, "%s %s",traceParent, traceState);
-        t2_event_s("TRACE_WIFIBLAST_TRACECONTEXT_RECEIVED" , telemetry_buf);
+        get_stubs_descriptor()->t2_event_s_fn("TRACE_WIFIBLAST_TRACECONTEXT_RECEIVED", telemetry_buf);
         if (telemetry_buf != NULL) {
             free(telemetry_buf);
             telemetry_buf = NULL;

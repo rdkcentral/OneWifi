@@ -45,8 +45,6 @@ typedef enum {
     add_macmode_to_public
 } vap_svc_event_t;
 
-struct vap_svc *svc;
-
 typedef struct vap_svc vap_svc_t;
 
 typedef int (* vap_svc_start_fn_t)(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map);

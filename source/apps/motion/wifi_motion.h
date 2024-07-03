@@ -56,9 +56,6 @@ typedef struct {
     struct timeval last_publish_time[MAX_CSI_CLIENTS_PER_SESSION];
 } __attribute__((__packed__)) csi_session_t;
 
-int motion_init(wifi_app_t *app, unsigned int create_flag);
-int motion_event(wifi_app_t *app, wifi_event_t *event);
-
 #ifdef __cplusplus
 }
 #endif

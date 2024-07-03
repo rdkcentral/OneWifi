@@ -33,6 +33,7 @@
 #include "collection.h"
 #include "wifi_hal.h"
 #include "wifi_mgr.h"
+#include "wifi_stubs.h"
 #include "wifi_util.h"
 #include "wifi_monitor.h"
 #include "wifi_blaster.h"
@@ -1537,7 +1538,7 @@ void WiFiBlastClient(void)
             }
             memset(telemetry_buf, 0, sizeof(char)*1024);
             snprintf(telemetry_buf, sizeof(char)*1024, "%s %s",g_active_msmt->active_msmt.t_header.traceParent, g_active_msmt->active_msmt.t_header.traceState);
-            t2_event_s("TRACE_WIFIBLAST_STARTS" , telemetry_buf);
+            get_stubs_descriptor()->t2_event_s_fn("TRACE_WIFIBLAST_STARTS", telemetry_buf);
 
             if (g_active_msmt->status == ACTIVE_MSMT_STATUS_SUCCEED) {
                 active_msmt_set_status_desc(__func__, cfg->PlanId, cfg->Step[StepCount].StepId,
@@ -1625,7 +1626,7 @@ static void *active_msmt_worker(void *ctx)
             }
             memset(telemetry_buf, 0, sizeof(char)*1024);
             snprintf(telemetry_buf, sizeof(char)*1024, "%s %s",g_active_msmt->active_msmt.t_header.traceParent, g_active_msmt->active_msmt.t_header.traceState);
-            t2_event_s("TRACE_WIFIBLAST_NOT_ENABLED" , telemetry_buf);
+            get_stubs_descriptor()->t2_event_s_fn("TRACE_WIFIBLAST_NOT_ENABLED", telemetry_buf);
             wifi_util_dbg_print(WIFI_BLASTER,"%s:%d blast is disabled\n", __func__, __LINE__);
             if (telemetry_buf != NULL) {
                 free(telemetry_buf);
@@ -1650,7 +1651,7 @@ static void *active_msmt_worker(void *ctx)
         wifi_util_info_print(WIFI_BLASTER, "active_msmt_worker: trace headers are %s and %s \n",cfg->t_header.traceParent, cfg->t_header.traceState);
         SetBlasterTraceContext(cfg->t_header.traceParent, cfg->t_header.traceState);
         snprintf(telemetry_buf, sizeof(char)*1024, "%s %s",g_active_msmt->active_msmt.t_header.traceParent, g_active_msmt->active_msmt.t_header.traceState);
-        t2_event_s("TRACE_WIFIBLAST_ENABLED" , telemetry_buf);
+        get_stubs_descriptor()->t2_event_s_fn("TRACE_WIFIBLAST_ENABLED", telemetry_buf);
         wifi_util_dbg_print(WIFI_BLASTER,"%s:%d blast is enabled\n", __func__, __LINE__);
         if (telemetry_buf != NULL) {
             free(telemetry_buf);
@@ -2238,7 +2239,7 @@ void calculate_throughput()
     }
     memset(telemetry_buf, 0, sizeof(char)*1024);
     snprintf(telemetry_buf, sizeof(char)*1024, "%s %s",g_active_msmt->active_msmt.t_header.traceParent, g_active_msmt->active_msmt.t_header.traceState);
-    t2_event_s("TRACE_WIFIBLAST_ENDS" , telemetry_buf);
+    get_stubs_descriptor()->t2_event_s_fn("TRACE_WIFIBLAST_ENDS", telemetry_buf);
 
     if (g_active_msmt->status == ACTIVE_MSMT_STATUS_SUCCEED) {
         /* calling process_active_msmt_diagnostics to update the station info */
@@ -2469,6 +2470,7 @@ void handle_blaster_monitor_event(wifi_app_t *app, wifi_event_t *event)
     }
 }
 
+#ifdef ONEWIFI_BLASTER_APP_SUPPORT
 int blaster_event(wifi_app_t *app, wifi_event_t *event)
 {
 
@@ -2507,3 +2509,4 @@ int blaster_deinit(wifi_app_t *app)
     pthread_mutex_destroy(&app->data.u.blaster.g_active_msmt.lock);
     return RETURN_OK;
 }
+#endif

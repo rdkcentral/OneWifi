@@ -96,11 +96,6 @@ typedef struct {
 
 typedef struct wifi_app wifi_app_t;
 
-int levl_init(wifi_app_t *app, unsigned int create_flag);
-int levl_deinit(wifi_app_t *app);
-int levl_event(wifi_app_t *app, wifi_event_t *event);
-int levl_update(wifi_app_t *app);
-
 #ifdef __cplusplus
 }
 #endif

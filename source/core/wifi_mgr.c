@@ -33,6 +33,7 @@
 #endif // DML_SUPPORT
 #include "wifi_db.h"
 #include "wifi_mgr.h"
+#include "wifi_stubs.h"
 #include "wifi_ctrl.h"
 #if DML_SUPPORT
 #include "ssp_main.h"
@@ -1581,7 +1582,7 @@ int init_wifimgr()
     //Initialize HAL and get Capabilities
     hal_initialized = init_wifi_hal();
     if (hal_initialized != RETURN_OK) {
-        v_secure_system("touch /tmp/hal_initialize_failed");
+        get_stubs_descriptor()->v_secure_system_fn("touch /tmp/hal_initialize_failed");
         wifi_util_info_print(WIFI_MGR,"Hal initialization failed rebooting the device\n");
     }
     assert(hal_initialized == RETURN_OK);

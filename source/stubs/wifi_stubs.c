@@ -17,37 +17,41 @@
   limitations under the License.
  **************************************************************************/
 
-#ifndef WIFI_CSI_H
-#define WIFI_CSI_H
+#include <stdio.h>
+#include <stdbool.h>
+#include "stdlib.h"
+#include <sys/time.h>
+#include "wifi_hal.h"
+#include "wifi_stubs.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#ifdef ONEWIFI_RDKB_SUPPORT
+extern int t2_event_d(char *marker, int value);
+extern int t2_event_s(char *marker, char *buff);
+extern int v_secure_system(const char *command);
+#else
+static int t2_event_d(char *marker, int value)
+{
+    return 0;
+}
 
-#define MAX_NUM_CSI_SOUNDING 6
+static int t2_event_s(char *marker, char *buff)
+{
+    return 0;
+}
 
-typedef int (*csi_start_fn_t) (void* csi_app, unsigned int ap_index, mac_addr_t mac_addr, int sounding_app);
-typedef int (*csi_stop_fn_t)  (void* csi_app, unsigned int ap_index, mac_addr_t mac_addr, int sounding_app);
-
-typedef struct {
-    csi_start_fn_t csi_start_fn;
-    csi_stop_fn_t  csi_stop_fn;
-} csi_base_app_t;
-
-typedef struct {
-    hash_map_t           *csi_sounding_mac_map;
-    int                  num_current_sounding;
-    csi_base_app_t       csi_fns;
-} __attribute__((__packed__))  csi_app_t;
-
-typedef struct {
-    mac_address_t mac_addr;
-    int  ap_index;
-    int  subscribed_apps;
-} csi_mac_data_t;
-
-#ifdef __cplusplus
+static int v_secure_system(const char *command)
+{
+    return system(command);
 }
 #endif
 
-#endif
+wifi_stubs_descriptor_t stubs_desc = {
+    t2_event_d,
+    t2_event_s,
+    v_secure_system
+};
+
+wifi_stubs_descriptor_t *get_stubs_descriptor()
+{
+    return &stubs_desc;
+}

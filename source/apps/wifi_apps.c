@@ -28,6 +28,150 @@
 #include "wifi_apps_mgr.h"
 #include <rbus.h>
 
+#ifdef ONEWIFI_CSI_APP_SUPPORT
+extern int csi_init(wifi_app_t *app, unsigned int create_flag);
+#else
+int csi_init(wifi_app_t *app, unsigned int create_flag)
+{
+    return 0;
+}
+#endif
+
+#ifdef ONEWIFI_CAC_APP_SUPPORT
+extern int cac_init(wifi_app_t *app, unsigned int create_flag);
+extern int cac_deinit(wifi_app_t *app);
+extern int cac_mgmt_frame_hook(int ap_index, wifi_mgmtFrameType_t type);
+extern int cac_event(wifi_app_t *app, wifi_event_t *event);
+#else
+int cac_init(wifi_app_t *app, unsigned int create_flag)
+{
+    return 0;
+}
+
+int cac_deinit(wifi_app_t *app)
+{
+    return 0;
+}
+
+int cac_mgmt_frame_hook(int ap_index, wifi_mgmtFrameType_t type)
+{
+    return 0;
+}
+
+int cac_event(wifi_app_t *app, wifi_event_t *event)
+{
+    return 0;
+}
+#endif
+
+#ifdef ONEWIFI_MOTION_APP_SUPPORT
+extern int motion_init(wifi_app_t *app, unsigned int create_flag);
+extern int motion_event(wifi_app_t *app, wifi_event_t *event);
+#else
+int motion_init(wifi_app_t *app, unsigned int create_flag)
+{
+    return 0;
+}
+
+int motion_event(wifi_app_t *app, wifi_event_t *event)
+{
+    return 0;
+}
+#endif
+
+#ifdef ONEWIFI_HARVESTER_APP_SUPPORT
+extern int harvester_init(wifi_app_t *app, unsigned int create_flag);
+extern int harvester_event(wifi_app_t *app, wifi_event_t *event);
+extern int harvester_deinit(wifi_app_t *app);
+#else
+int harvester_init(wifi_app_t *app, unsigned int create_flag)
+{
+    return 0;
+}
+
+int harvester_event(wifi_app_t *app, wifi_event_t *event)
+{
+    return 0;
+}
+
+int harvester_deinit(wifi_app_t *app)
+{
+    return 0;
+}
+#endif
+
+#ifdef ONEWIFI_LEVL_APP_SUPPORT
+extern int levl_init(wifi_app_t *app, unsigned int create_flag);
+extern int levl_deinit(wifi_app_t *app);
+extern int levl_update(wifi_app_t *app);
+extern int levl_event(wifi_app_t *app, wifi_event_t *event);
+#else
+int levl_init(wifi_app_t *app, unsigned int create_flag)
+{
+    return 0;
+}
+
+int levl_deinit(wifi_app_t *app)
+{
+    return 0;
+}
+
+int levl_update(wifi_app_t *app)
+{
+    return 0;
+}
+
+int levl_event(wifi_app_t *app, wifi_event_t *event)
+{
+    return 0;
+}
+
+#endif
+
+#ifdef ONEWIFI_WHIX_APP_SUPPORT
+extern int whix_init(wifi_app_t *app, unsigned int create_flag);
+extern int whix_deinit(wifi_app_t *app);
+extern int whix_event(wifi_app_t *app, wifi_event_t *event);
+#else
+int whix_init(wifi_app_t *app, unsigned int create_flag)
+{
+    return 0;
+}
+
+int whix_deinit(wifi_app_t *app)
+{
+    return 0;
+}
+
+int whix_event(wifi_app_t *app, wifi_event_t *event)
+{
+    return 0;
+}
+
+#endif
+
+#ifdef ONEWIFI_BLASTER_APP_SUPPORT
+extern int blaster_init(wifi_app_t *app, unsigned int create_flag);
+extern int blaster_deinit(wifi_app_t *app);
+extern int blaster_event(wifi_app_t *app, wifi_event_t *event);
+#else
+int blaster_init(wifi_app_t *app, unsigned int create_flag)
+{
+    return 0;
+}
+
+int blaster_deinit(wifi_app_t *app)
+{
+    return 0;
+}
+
+int blaster_event(wifi_app_t *app, wifi_event_t *event)
+{
+    return 0;
+}
+
+#endif
+
 
 wifi_app_descriptor_t app_desc[] = {
     #ifdef CCSP_COMMON

@@ -24,6 +24,7 @@
 #include "wifi_hal.h"
 #include "wifi_ctrl.h"
 #include "wifi_mgr.h"
+#include "wifi_stubs.h"
 #include "wifi_util.h"
 #include "wifi_motion.h"
 #if DML_SUPPORT
@@ -1575,7 +1576,7 @@ int process_speed_test_timeout_motion()
         return -1;
     }
     write_to_file(wifi_log,  "IMP_WiFi_SubscriberUnPauseTimeOut\n");
-    t2_event_d("IMP_WiFi_SubscriberUnPauseTimeOut", 1);
+    get_stubs_descriptor()->t2_event_d_fn("IMP_WiFi_SubscriberUnPauseTimeOut", 1);
     if (app->data.u.motion.paused) {
         wifi_util_info_print(WIFI_APPS, "%s:%d Start motion on timeout\n", __func__, __LINE__);
         process_csi_start_motion(app);
@@ -1617,6 +1618,7 @@ int motion_event_speed_test(wifi_app_t *app, wifi_event_subtype_t sub_type, void
     return 0;
 }
 
+#ifdef ONEWIFI_MOTION_APP_SUPPORT
 int motion_event(wifi_app_t *app, wifi_event_t *event)
 {
 
@@ -1641,6 +1643,7 @@ int motion_event(wifi_app_t *app, wifi_event_t *event)
 
     return RETURN_OK;
 }
+#endif
 
 int motion_start_fn(void* wifi_app, unsigned int ap_index, mac_addr_t mac_addr, int sounding_app)
 {
@@ -1652,6 +1655,7 @@ int motion_stop_fn(void* wifi_app, unsigned int ap_index, mac_addr_t mac_addr, i
     return 0;
 }
 
+#ifdef ONEWIFI_MOTION_APP_SUPPORT
 static void pipeSignalHandler(int sig)
 {
     wifi_util_info_print(WIFI_APPS, "%s:%d Caught SIGPIPE\n", __func__, __LINE__);
@@ -1765,4 +1769,5 @@ int motion_init(wifi_app_t *app, unsigned int create_flag)
 
     return RETURN_OK;
 }
+#endif
 

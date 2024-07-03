@@ -1093,6 +1093,8 @@ void monitor_radio_temperature(wifi_app_t *app, wifi_event_t *event)
         break;
     }
 }
+
+#ifdef ONEWIFI_LEVL_APP_SUPPORT
 int levl_event(wifi_app_t *app, wifi_event_t *event)
 {
 
@@ -1121,6 +1123,7 @@ int levl_event(wifi_app_t *app, wifi_event_t *event)
 
     return RETURN_OK;
 }
+#endif
 
 int mgmt_frame_rbus_apply(rbusHandle_t rbus_handle, char *rbus_namespace, frame_data_t *l_data)
 {
@@ -1157,6 +1160,7 @@ int mgmt_frame_rbus_send(rbusHandle_t rbus_handle, char *rbus_namespace, frame_d
     return (mgmt_frame_rbus_apply(rbus_handle, rbus_namespace, data));
 }
 
+#ifdef ONEWIFI_LEVL_APP_SUPPORT
 int levl_update(wifi_app_t *app)
 {
     if (app == NULL) {
@@ -1275,6 +1279,7 @@ int levl_deinit(wifi_app_t *app)
 
     return RETURN_OK;
 }
+#endif
 
 rbusError_t levl_get_handler(rbusHandle_t handle, rbusProperty_t property, rbusGetHandlerOptions_t* opts)
 {
@@ -1640,6 +1645,7 @@ int levl_stop_fn(void* csi_app, unsigned int ap_index, mac_addr_t mac_addr, int 
     return 0;
 }
 
+#ifdef ONEWIFI_LEVL_APP_SUPPORT
 static int levl_event_exec_timeout(void* arg)
 {
     if (arg == NULL) {
@@ -1651,6 +1657,7 @@ static int levl_event_exec_timeout(void* arg)
     apps_frame_event_exec_timeout(app);
     return RETURN_OK;
 }
+#endif
 
 rbusError_t levl_radio_addrowhandler(rbusHandle_t handle, char const* tableName, char const* aliasName, uint32_t* instNum)
 {
@@ -1680,6 +1687,7 @@ rbusError_t levl_radio_removerowhandler(rbusHandle_t handle, char const* rowName
     return RBUS_ERROR_SUCCESS;
 }
 
+#ifdef ONEWIFI_LEVL_APP_SUPPORT
 int levl_init(wifi_app_t *app, unsigned int create_flag)
 {
     int rc = RBUS_ERROR_SUCCESS;
@@ -1793,4 +1801,5 @@ int levl_init(wifi_app_t *app, unsigned int create_flag)
 
     return RETURN_OK;
 }
+#endif
 

@@ -84,6 +84,7 @@
 #include <sys/un.h>
 #include "wifi_ctrl.h"
 #include "wifi_util.h"
+#include "../../../stubs/wifi_stubs.h"
 #include "dml_onewifi_api.h"
 #include "ssp_loop.h"
 
@@ -1314,10 +1315,8 @@ CosaWifiInitialize
         pMyObject->hIrepFolderWifi = (ANSC_HANDLE)pPoamIrepFoWifi;
     }
 
-    #if defined(_COSA_BCM_ARM_) || defined(_PLATFORM_TURRIS_)
-    v_secure_system("touch /tmp/wifi_dml_complete");
-    v_secure_system("uptime > /tmp/wifi_dml_complete");
-    #endif
+    get_stubs_descriptor()->v_secure_system_fn("touch /tmp/wifi_dml_complete");
+    get_stubs_descriptor()->v_secure_system_fn("uptime > /tmp/wifi_dml_complete");
 
     get_all_param_from_psm_and_set_into_db();
 
@@ -1334,7 +1333,7 @@ CosaWifiInitialize
 
     wifi_util_dbg_print(WIFI_DMCLI, "%s: DML cahce %s\n", __FUNCTION__,webconfig_dml->radios[0].vaps.vap_map.vap_array[0].u.bss_info.ssid);
     CcspWifiTrace(("RDK_LOG_WARN, RDKB_SYSTEM_BOOT_UP_LOG : CosaWifiInitialize - WiFi initialization complete. \n"));
-    t2_event_d("WIFI_INFO_CosaWifiinit",1);
+    get_stubs_descriptor()->t2_event_d_fn("WIFI_INFO_CosaWifiinit",1);
 
     set_dml_init_status(true);
     getParamWifiRegionUpdateSource();

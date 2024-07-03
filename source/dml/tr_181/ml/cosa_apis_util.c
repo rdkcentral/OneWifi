@@ -874,7 +874,7 @@ CosaUtilGetStaticRouteTable
     
     *count = 0;
     
-    v_secure_system("route -n | grep -v '^127.0.0' > /tmp/.rout_table_tmp");
+    get_stubs_descriptor()->v_secure_system_fn("route -n | grep -v '^127.0.0' > /tmp/.rout_table_tmp");
 
     FILE *fp = fopen("/tmp/.route_table_tmp", "r");
     FILE *fp2 = NULL;

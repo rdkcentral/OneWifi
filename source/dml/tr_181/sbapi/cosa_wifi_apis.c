@@ -98,6 +98,7 @@
 #include "secure_wrapper.h"
 
 #include "wifi_ctrl.h"
+#include "../../../stubs/wifi_stubs.h"
 #include "wifi_util.h"
 #include "dml_onewifi_api.h"
 
@@ -818,7 +819,7 @@ CosaDmlWiFi_EnableTelnet(BOOL bEnabled)
         char NpRemoteIP[128]="";
         readRemoteIP(NpRemoteIP, 128,"ATOM_ARPING_IP");
         if (NpRemoteIP[0] != 0 && strlen(NpRemoteIP) > 0) {
-                if (v_secure_system("/usr/sbin/telnetd -b %s",NpRemoteIP) != 0)
+                if (get_stubs_descriptor()->v_secure_system_fn("/usr/sbin/telnetd -b %s") != 0)
                 {
                         return ANSC_STATUS_FAILURE;
                 }
@@ -827,7 +828,7 @@ CosaDmlWiFi_EnableTelnet(BOOL bEnabled)
 
     else {
         // Attempt to kill the telnet daemon on ATOM
-        if ( v_secure_system("pkill telnetd") != 0 ) {
+        if (get_stubs_descriptor()->v_secure_system_fn("pkill telnetd") != 0 ) {
 	    return ANSC_STATUS_FAILURE;
         }
     }

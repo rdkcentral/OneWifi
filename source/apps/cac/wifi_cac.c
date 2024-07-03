@@ -24,6 +24,7 @@
 #include "wifi_hal.h"
 #include "wifi_ctrl.h"
 #include "wifi_mgr.h"
+#include "wifi_stubs.h"
 #include "wifi_util.h"
 #include "wifi_apps_mgr.h"
 #include "wifi_cac.h"
@@ -82,7 +83,7 @@ void telemetry_event_cac(char *deny_type,int index, char *deny_reason,char *mac,
     }
 
     wifi_util_info_print(WIFI_APPS, "%s:%d telemetry_buff=%s and telemetry_val=%s\n", __func__, __LINE__,telemetry_buff,telemetry_val);
-    t2_event_s(telemetry_buff,telemetry_val);
+    get_stubs_descriptor()->t2_event_s_fn(telemetry_buff, telemetry_val);
 }
 
 int cac_event_exec_start(wifi_app_t *apps, void *arg)
@@ -1109,6 +1110,7 @@ int hal_event_cac(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *arg)
     return RETURN_OK;
 }
 
+#ifdef ONEWIFI_CAC_APP_SUPPORT
 int cac_event(wifi_app_t *app, wifi_event_t *event)
 {
     switch (event->event_type) {
@@ -1195,3 +1197,4 @@ int cac_deinit(wifi_app_t *app)
     hash_map_destroy(app->data.u.cac.sta_map);
     return RETURN_OK;
 }
+#endif

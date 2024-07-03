@@ -24,6 +24,7 @@
 #else
 #include <sys/types.h>
 #endif // DML_SUPPORT
+#include "wifi_stubs.h"
 #include "wifi_hal.h"
 #include "wifi_hal_rdk_framework.h"
 #include "wifi_ctrl.h"
@@ -1471,7 +1472,7 @@ void telemetry_bootup_time_wifibroadcast()
             unsigned int uptime;
             uptime = get_Uptime();
             wifi_util_info_print(WIFI_CTRL, "Wifi_Broadcast_complete:%d\n",uptime);
-            t2_event_d("bootuptime_WifiBroadcasted_split", uptime);
+            get_stubs_descriptor()->t2_event_d_fn("bootuptime_WifiBroadcasted_split", uptime);
             wifi_util_info_print(WIFI_CTRL,"Wifi_Name_Broadcasted:%s\n",vapInfo->u.bss_info.ssid);
         }
     }
@@ -1481,7 +1482,7 @@ void check_log_upload_cron_job()
 {
     if (access("/nvram/wifi_log_upload",F_OK) == 0) {
         wifi_util_dbg_print(WIFI_CTRL,"Device.WiFi.Log_Uploadd cronjob was added\n");
-        v_secure_system("/usr/ccsp/wifi/wifi_logupload.sh start");
+        get_stubs_descriptor()->v_secure_system_fn("/usr/ccsp/wifi/wifi_logupload.sh start");
     }
 }
 
@@ -1610,7 +1611,7 @@ int validate_and_sync_private_vap_credentials()
             rc = rbus_setStr(g_wifi_mgr->ctrl.rbus_handle,SUBDOC_FORCE_RESET,PRIVATE_SUB_DOC);
             if(rc != RBUS_ERROR_SUCCESS) {
                 wifi_util_error_print(WIFI_MGR,"[%s:%d] Rbus error in setting: %s\n", __func__, __LINE__, SUBDOC_FORCE_RESET);
-                v_secure_system("touch /tmp/sw_upgrade_private_defaults");
+                get_stubs_descriptor()->v_secure_system_fn("touch /tmp/sw_upgrade_private_defaults");
                 rbusValue_Release(value);
                 return RETURN_ERR;
             }

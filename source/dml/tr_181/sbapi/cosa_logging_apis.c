@@ -68,6 +68,7 @@
 #include "plugin_main_apis.h"
 #include "cosa_logging_apis.h"
 #include "secure_wrapper.h"
+#include "../../../stubs/wifi_stubs.h"
 #include <ctype.h>
 
 ANSC_STATUS    
@@ -92,6 +93,6 @@ CosaDmlLogging_FlushAllLogs()
 {
     /* Do the FlushLogs Operation */
 //	fprintf(stderr,"<%s> Entry\n",__FUNCTION__);
-    v_secure_system("/rdklogger/flush_logs.sh &");
+    get_stubs_descriptor()->v_secure_system_fn("/rdklogger/flush_logs.sh &");
     return ANSC_STATUS_SUCCESS;
 }

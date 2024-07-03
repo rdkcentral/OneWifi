@@ -27,6 +27,8 @@
 #include "wifi_util.h"
 #include "vap_svc.h"
 
+struct vap_svc *svc;
+
 int svc_init(vap_svc_t *svc, vap_svc_type_t type)
 {
     wifi_mgr_t *wifi_mgr_obj = get_wifimgr_obj();
