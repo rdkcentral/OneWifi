@@ -2059,11 +2059,21 @@ static void wps_enable_telemetry(wifi_app_t *app, wifi_event_t *event)
     char tmp[128];
     FILE *wifihealth_fp = NULL;
     webconfig_subdoc_data_t *webconfig_data = NULL;
-    webconfig_data = event->u.webconfig_data;
     wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
 
-    if (webconfig_data == NULL || app == NULL || event == NULL) {
-        wifi_util_error_print(WIFI_APPS, "%s:%d: webconfig_data or app or event is NULL\n", __func__, __LINE__);
+    if (app == NULL || event == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d: app or event is NULL\n", __func__, __LINE__);
+        return;
+    }
+
+    if (wifi_mgr == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d: Failed to get wifi manager object\n", __func__, __LINE__);
+        return;
+    }
+
+    webconfig_data = event->u.webconfig_data;
+    if (webconfig_data == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d: webconfig_data\n", __func__, __LINE__);
         return;
     }
 
