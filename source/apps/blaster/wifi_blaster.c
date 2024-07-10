@@ -498,8 +498,29 @@ void process_active_msmt_diagnostics (int ap_index)
         pthread_mutex_lock(&g_active_msmt->lock);
         memcpy(&sta->sta_mac, g_active_msmt->curStepData.DestMac, sizeof(mac_addr_t));
         hash_map_put(blaster_map, strdup(sta_key), sta);
+
+        if (ap_index == -1) {
+            sta->sta_active_msmt_data = (active_msmt_data_t *) calloc (g_active_msmt->active_msmt.ActiveMsmtNumberOfSamples,sizeof(active_msmt_data_t));
+            if (sta->sta_active_msmt_data == NULL) {
+                wifi_util_error_print(WIFI_BLASTER, "%s : %d allocating sta_active_msmt_data failed for offline clients\n",__func__,__LINE__);
+            }
+            pthread_mutex_unlock(&g_active_msmt->lock);
+            return;
+        }
         pthread_mutex_unlock(&g_active_msmt->lock);
+
     } else {
+          if (ap_index == -1) {
+              if (sta->sta_active_msmt_data == NULL) {
+                  sta->sta_active_msmt_data = (active_msmt_data_t*) calloc (g_active_msmt->active_msmt.ActiveMsmtNumberOfSamples,sizeof(active_msmt_data_t));
+                  if (sta->sta_active_msmt_data == NULL) {
+                      wifi_util_error_print(WIFI_BLASTER, "%s : %d memory allocation failed for offline clients\n",__func__,__LINE__);
+                      return;
+                  }
+              }
+            return;
+          }
+
         wifi_util_dbg_print(WIFI_BLASTER, "%s:%d copying mac : " MAC_FMT " to station info\n", __func__, __LINE__,
                 MAC_ARG(g_active_msmt->curStepData.DestMac));
         memcpy(&sta->sta_mac, g_active_msmt->curStepData.DestMac, sizeof(mac_addr_t));
