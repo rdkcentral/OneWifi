@@ -713,7 +713,7 @@ void process_wifiapi_command(char *command, unsigned int len)
         }
         //update db/global memory
 #ifndef LINUX_VM_PORT
-        wifidb_update_wifi_radio_config(radio_index, &(data.u.decoded.radios[radio_index].oper), &(data.u.decoded.radios[radio_index].feature));
+        get_wifidb_obj()->desc.update_radio_cfg_fn(radio_index, &(data.u.decoded.radios[radio_index].oper), &(data.u.decoded.radios[radio_index].feature));
 #endif
         //update result
         wifiapi_printradioconfig(buff, sizeof(buff), &(data.u.decoded.radios[radio_index].oper));
@@ -796,12 +796,12 @@ void process_wifiapi_command(char *command, unsigned int len)
         for (i=0; i < vap_map->num_vaps; i++) {
             vap_info = &vap_map->vap_array[i];
             rdk_vap_info = &radio->vaps.rdk_vap_array[i];
-            wifidb_update_wifi_vap_info(vap_info->vap_name, vap_info, rdk_vap_info);
+            get_wifidb_obj()->desc.update_wifi_vap_info_fn(vap_info->vap_name, vap_info, rdk_vap_info);
             if (isVapSTAMesh(vap_info->vap_index)) {
-                wifidb_update_wifi_security_config(vap_info->vap_name,&vap_info->u.sta_info.security);
+                get_wifidb_obj()->desc.update_wifi_security_config_fn(vap_info->vap_name,&vap_info->u.sta_info.security);
             } else {
-                wifidb_update_wifi_interworking_config(vap_info->vap_name, &vap_info->u.bss_info.interworking);
-                wifidb_update_wifi_security_config(vap_info->vap_name, &vap_info->u.bss_info.security);
+                get_wifidb_obj()->desc.update_wifi_interworking_cfg_fn(vap_info->vap_name, &vap_info->u.bss_info.interworking);
+                get_wifidb_obj()->desc.update_wifi_security_config_fn(vap_info->vap_name, &vap_info->u.bss_info.security);
             }
         }
 #endif

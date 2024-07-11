@@ -99,19 +99,19 @@ int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
 
         wifi_util_info_print(WIFI_CTRL,"%s: wifi vap create success: radio_index:%d vap_index:%d\n",__FUNCTION__,
                                                 radio_index, map->vap_array[i].vap_index);
-        wifidb_print("%s: wifi vap create success: radio_index:%d vap_index:%d\n",__FUNCTION__,
+        get_wifidb_obj()->desc.print_fn("%s: wifi vap create success: radio_index:%d vap_index:%d\n",__FUNCTION__,
                                                 radio_index, map->vap_array[i].vap_index);
-        wifidb_print("%s:%d [Stop] Current time:[%llu]\r\n", __func__, __LINE__, get_current_ms_time());
+        get_wifidb_obj()->desc.print_fn("%s:%d [Stop] Current time:[%llu]\r\n", __func__, __LINE__, get_current_ms_time());
         if (isVapLnfPsk(p_tgt_vap_map->vap_array[0].vap_index)) {
             update_lnf_psk_vap_hal_prop_bridge_name(svc, p_tgt_vap_map);
         }
         memcpy((unsigned char *)&map->vap_array[i], (unsigned char *)&p_tgt_vap_map->vap_array[0],
                     sizeof(wifi_vap_info_t));
-        wifidb_update_wifi_vap_info(getVAPName(map->vap_array[i].vap_index), &map->vap_array[i],
+        get_wifidb_obj()->desc.update_wifi_vap_info_fn(getVAPName(map->vap_array[i].vap_index), &map->vap_array[i],
             &rdk_vap_info[i]);
-        wifidb_update_wifi_interworking_config(getVAPName(map->vap_array[i].vap_index),
+        get_wifidb_obj()->desc.update_wifi_interworking_cfg_fn(getVAPName(map->vap_array[i].vap_index),
                 &map->vap_array[i].u.bss_info.interworking);
-        wifidb_update_wifi_security_config(getVAPName(map->vap_array[i].vap_index),
+        get_wifidb_obj()->desc.update_wifi_security_config_fn(getVAPName(map->vap_array[i].vap_index),
                 &map->vap_array[i].u.bss_info.security);
 
     }

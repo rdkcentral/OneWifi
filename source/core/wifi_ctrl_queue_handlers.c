@@ -120,7 +120,7 @@ int remove_xfinity_acl_entries(bool remove_all_greylist_entry,bool prefer_privat
 
                             tmp_acl_entry = hash_map_remove(l_rdk_vap_array->acl_map, mac_str);
                             snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", l_rdk_vap_array->vap_name, mac_str);
-                            wifidb_update_wifi_macfilter_config(macfilterkey, tmp_acl_entry, false);
+                            get_wifidb_obj()->desc.update_wifi_macfilter_config_fn(macfilterkey, tmp_acl_entry, false);
                             free(tmp_acl_entry);
                     }
                     else {
@@ -793,7 +793,7 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
                }
             } else {
                 wifi_util_info_print(WIFI_CTRL, "%s:%d Able to create vaps. vap_enable %d\n", __func__,__LINE__, param);
-                wifidb_print("%s:%d radio_index:%d create vap %s successful\n", __func__,__LINE__, radio_indx, wifi_vap_map->vap_array[j].vap_name);
+                get_wifidb_obj()->desc.print_fn("%s:%d radio_index:%d create vap %s successful\n", __func__,__LINE__, radio_indx, wifi_vap_map->vap_array[j].vap_name);
                 if(hs_evt) {
                     send_hotspot_status(wifi_vap_map->vap_array[j].vap_name, true);
                 }
@@ -1426,7 +1426,7 @@ void process_greylist_mac_filter(void *data)
             hash_map_put(rdk_vap_info->acl_map, strdup(new_mac_str), acl_entry);
 
             snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", rdk_vap_info->vap_name, new_mac_str);
-            wifidb_update_wifi_macfilter_config(macfilterkey, acl_entry, true);
+            get_wifidb_obj()->desc.update_wifi_macfilter_config_fn(macfilterkey, acl_entry, true);
 #if DML_SUPPORT
             greylist_client_added = true;
 #endif // DML_SUPPORT
@@ -1817,17 +1817,17 @@ void process_factory_reset_command(bool type)
     }
     system("rm -f /nvram/wifi/rdkb-wifi.db");
     system("rm -f /opt/secure/wifi/rdkb-wifi.db");
-    wifidb_cleanup();
+    get_wifidb_obj()->desc.cleanup_fn();
     if (!db_consolidated) {
-        start_wifidb();
+        get_wifidb_obj()->desc.start_wifidb_fn();
     }
     wifi_util_dbg_print(WIFI_DB,"WIFI Factory reset started wifi db %d\n",__LINE__);
-    init_wifidb_tables();
-    wifidb_init_default_value();
+    get_wifidb_obj()->desc.init_tables_fn();
+    get_wifidb_obj()->desc.init_default_value_fn();
     wifi_util_dbg_print(WIFI_DB,"WIFI Factory reset initiated default value %d\n",__LINE__);
     start_wifi_services();
     wifi_util_dbg_print(WIFI_DB,"WIFI Factory reset started wifidb monitor %d\n",__LINE__);
-    start_wifidb_monitor();
+    get_wifidb_obj()->desc.start_monitor_fn();
     p_wifi_mgr->ctrl.webconfig_state |= ctrl_webconfig_state_factoryreset_cfg_rsp_pending;
 }
 
@@ -1840,7 +1840,7 @@ void process_radius_grey_list_rfc(bool type)
     wifi_util_info_print(WIFI_DB,"WIFI Enter RFC Func %s: %d : bool %d\n",__FUNCTION__,__LINE__,type);
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
     rfc_param->radiusgreylist_rfc = type;
-    wifidb_update_rfc_config(0, rfc_param);
+    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
     g_wifi_mgr->rfc_dml_parameters.radiusgreylist_rfc = type;
 
     public_xfinity_vap_status = get_wifi_public_vap_enable_status();
@@ -1861,7 +1861,7 @@ void process_wifi_passpoint_rfc(bool type)
     wifi_util_dbg_print(WIFI_DB,"WIFI Enter RFC Func %s: %d : bool %d\n",__FUNCTION__,__LINE__,type);
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
     rfc_param->wifipasspoint_rfc = type;
-    wifidb_update_rfc_config(0, rfc_param);
+    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
     process_xfinity_vaps(hotspot_vap_param_update,false);
 }
 
@@ -1870,7 +1870,7 @@ void process_wifi_interworking_rfc(bool type)
     wifi_util_dbg_print(WIFI_DB,"WIFI Enter RFC Func %s: %d : bool %d\n",__FUNCTION__,__LINE__,type);
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
     rfc_param->wifiinterworking_rfc = type;
-    wifidb_update_rfc_config(0, rfc_param);
+    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
 }
 
 void process_wpa3_rfc(bool type)
@@ -1887,7 +1887,7 @@ void process_wpa3_rfc(bool type)
     char update_status[128];
 
     rfc_param->wpa3_rfc = type;
-    wifidb_update_rfc_config(0, rfc_param);
+    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
     ctrl->webconfig_state |= ctrl_webconfig_state_vap_private_cfg_rsp_pending;
 
     for(UINT rIdx = 0; rIdx < getNumberRadios(); rIdx++) {
@@ -1956,7 +1956,7 @@ void process_dfs_rfc(bool type)
     g_wifidb = get_wifimgr_obj();
 
     rfc_param->dfs_rfc = type;
-    wifidb_update_rfc_config(0, rfc_param);
+    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
 
     for(UINT rIdx = 0; rIdx < getNumberRadios(); rIdx++) {
         wifi_radio_operationParam_t *radio_params = NULL;
@@ -2014,7 +2014,7 @@ void process_dfs_atbootup_rfc(bool type)
     g_wifidb = get_wifimgr_obj();
 
     rfc_param->dfsatbootup_rfc = type;
-    wifidb_update_rfc_config(0, rfc_param);
+    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
 
     for(UINT rIdx = 0; rIdx < getNumberRadios(); rIdx++) {
         int ret;
@@ -2107,7 +2107,7 @@ void process_twoG80211axEnable_rfc(bool type)
     ret = enable_wifi_radio_ax_mode(radio_index, radio_params, radio_feat_params, type);
     if (ret == RETURN_OK) {
         rfc_param->twoG80211axEnable_rfc = type;
-        ret = wifidb_update_rfc_config(0, rfc_param);
+        ret = get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
         if (ret == 0) {
             g_wifi_mgr->rfc_dml_parameters.twoG80211axEnable_rfc = type;
         }
@@ -2141,7 +2141,7 @@ void process_wifi_offchannelscan_app_rfc(bool type) // ocs scan for 5g radio in 
         type);
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
     rfc_param->wifi_offchannelscan_app_rfc = type;
-    wifidb_update_rfc_config(0, rfc_param);
+    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
 }
 
 void process_wifi_offchannelscan_sm_rfc(bool type)
@@ -2151,6 +2151,7 @@ void process_wifi_offchannelscan_sm_rfc(bool type)
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
     rfc_param->wifi_offchannelscan_sm_rfc = type;
     wifidb_update_rfc_config(0, rfc_param);
+    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
 }
 
 void process_levl_rfc(bool type)
@@ -2174,7 +2175,7 @@ void process_levl_rfc(bool type)
             levl_app->desc.update_fn(levl_app);
         }
     }
-    wifidb_update_rfc_config(0, rfc_param);
+    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
     return;
 }
 #endif // DML_SUPPORT
@@ -2305,7 +2306,7 @@ static void update_wifi_vap_config(int device_mode)
         // Enable STA interfaces in extender mode
         if (isVapSTAMesh(vap_index)) {
             rdk_vap_info->exists = true;
-            wifidb_update_wifi_vap_info(vap_info->vap_name, vap_info, rdk_vap_info);
+            get_wifidb_obj()->desc.update_wifi_vap_info_fn(vap_info->vap_name, vap_info, rdk_vap_info);
         }
     }
 }
@@ -2715,7 +2716,7 @@ int wifidb_vap_status_update(bool status)
     count = get_list_of_mesh_backhaul(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, sizeof(backhauls)/sizeof(wifi_vap_name_t), backhauls);
 
     for (int i = 0; i < count; i++) {
-        if (wifidb_get_wifi_vap_info(&backhauls[i][0], &vap_config, &rdk_vap_config) == RETURN_OK) {
+        if (get_wifidb_obj()->desc.get_wifi_vpa_info_fn(&backhauls[i][0], &vap_config, &rdk_vap_config) == RETURN_OK) {
             vap_config.u.bss_info.enabled = status;
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d: wifi mesh backhaul status save:%d\n", __func__, __LINE__, status);
             update_wifi_vap_info(&backhauls[i][0], &vap_config, &rdk_vap_config);

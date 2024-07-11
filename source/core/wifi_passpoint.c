@@ -629,7 +629,7 @@ void WiFi_GetGasConfig(char *pString)
     char JSON_STR[512] = {0};
 
 #if defined (FEATURE_SUPPORT_PASSPOINT)
-    if(RETURN_OK != wifidb_get_gas_config(0,&gasConfig_struct)){
+    if(RETURN_OK != get_wifidb_obj()->desc.get_gas_config_fn(0,&gasConfig_struct)){
 #endif  
         copy_string(pString,WIFI_PASSPOINT_DEFAULT_GAS_CFG);
         return;
@@ -718,7 +718,7 @@ INT WiFi_SetGasConfig(char *JSON_STR)
         wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d GasConfig PauseForServerResponse=%d ResponseBufferingTime=%d QueryResponseLengthLimit=%d  ResponseTimeout=%d ComeBackDelay=%d\n",__func__, __LINE__,gasConfig_struct.PauseForServerResponse,gasConfig_struct.ResponseBufferingTime,gasConfig_struct.QueryResponseLengthLimit,gasConfig_struct.ResponseTimeout,gasConfig_struct.ComeBackDelay);
 #if defined(ENABLE_FEATURE_MESHWIFI)        
         //Update OVSDB
-        if(RETURN_OK != wifidb_update_gas_config(gasConfig_struct.AdvertisementID, &gasConfig_struct))
+        if(RETURN_OK != get_wifidb_obj()->desc.update_gas_config_fn(gasConfig_struct.AdvertisementID, &gasConfig_struct))
         {
             wifi_util_dbg_print(WIFI_PASSPOINT,"Failed to update OVSDB with GAS Config. Adv-ID:%d\n",gasConfig_struct.AdvertisementID);
         }
@@ -776,7 +776,7 @@ INT WiFi_InitGasConfig(void)
     cJSON *gasCfg = NULL;
     cJSON *mainEntry = NULL;
 
-    if(RETURN_OK != wifidb_get_gas_config(0,&gasConfig_struct)){
+    if(RETURN_OK != get_wifidb_obj()->desc.get_gas_config_fn(0,&gasConfig_struct)){
         return WiFi_DefaultGasConfig();
     }
 
@@ -1779,25 +1779,25 @@ INT WiFi_InitInterworkingElement (uint8_t vapIndex)
     UINT InstanceNumber = vapIndex;
 
 #if defined(ENABLE_FEATURE_MESHWIFI)        
-    wifi_InterworkingElement_t  elem;
-    memset((char *)&elem, 0, sizeof(wifi_InterworkingElement_t));
+    wifi_interworking_t  elem;
+    memset((char *)&elem, 0, sizeof(wifi_interworking_t));
     //Update OVS DB
-    if(-1 == wifidb_get_interworking_config(getVAPName(vapIndex - 1),&elem)) {
+    if(-1 == get_wifidb_obj()->desc.update_wifi_interworking_cfg_fn(getVAPName(vapIndex - 1), &elem)) {
         wifi_util_dbg_print(WIFI_PASSPOINT,"Failed to Initialize Interwokring Configuration from DB for AP: %d. Setting Default\n",InstanceNumber);
         return WiFi_DefaultInterworkingConfig(vapIndex);//ONE_WIFI
     }
     
-    pCfg->interworking.interworkingEnabled = elem.interworkingEnabled;
-    pCfg->interworking.accessNetworkType = elem.accessNetworkType;
-    pCfg->interworking.internetAvailable = elem.internetAvailable;
-    pCfg->interworking.asra = elem.asra;
-    pCfg->interworking.esr = elem.esr;
-    pCfg->interworking.uesa = elem.uesa;
-    pCfg->interworking.venueOptionPresent = elem.venueOptionPresent;
-    pCfg->interworking.venueGroup = elem.venueGroup;
-    pCfg->interworking.venueType = elem.venueType;
-    pCfg->interworking.hessOptionPresent = elem.hessOptionPresent;
-    strcpy(pCfg->interworking.hessid,elem.hessid);//ONE_WIFI
+    pCfg->interworking.interworkingEnabled = elem.interworking.interworkingEnabled;
+    pCfg->interworking.accessNetworkType = elem.interworking.accessNetworkType;
+    pCfg->interworking.internetAvailable = elem.interworking.internetAvailable;
+    pCfg->interworking.asra = elem.interworking.asra;
+    pCfg->interworking.esr = elem.interworking.esr;
+    pCfg->interworking.uesa = elem.interworking.uesa;
+    pCfg->interworking.venueOptionPresent = elem.interworking.venueOptionPresent;
+    pCfg->interworking.venueGroup = elem.interworking.venueGroup;
+    pCfg->interworking.venueType = elem.interworking.venueType;
+    pCfg->interworking.hessOptionPresent = elem.interworking.hessOptionPresent;
+    strcpy(pCfg->interworking.hessid,elem.interworking.hessid);//ONE_WIFI
 
 #else
     char cfgFile[64];

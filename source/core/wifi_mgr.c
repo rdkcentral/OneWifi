@@ -354,7 +354,7 @@ int wifi_db_update_global_config(wifi_global_param_t *global_cfg)
     char strValue[256] = {0};
 
     memset(global_cfg, 0, sizeof(wifi_global_param_t));
-    wifidb_init_global_config_default(global_cfg);
+    get_wifidb_obj()->desc.init_global_config_default_fn(global_cfg);
 
     memset(strValue, 0, sizeof(strValue));
 #ifndef NEWPLATFORM_PORT
@@ -641,7 +641,7 @@ int wifi_db_update_global_config(wifi_global_param_t *global_cfg)
     }
 #endif // NEWPLATFORM_PORT
 
-    if (wifidb_update_wifi_global_config(global_cfg) != RETURN_OK) {
+    if (get_wifidb_obj()->desc.update_wifi_global_cfg_fn(global_cfg) != RETURN_OK) {
         wifi_util_dbg_print(WIFI_MGR,"%s:%d: Failed to update global config\n", __func__, __LINE__);
         return RETURN_ERR;
     } else {
@@ -692,7 +692,7 @@ void get_radio_params_from_psm(unsigned int radio_index, wifi_radio_operationPar
 
     memset(radio_cfg, 0, sizeof(wifi_radio_operationParam_t));
     memset(radio_feat_cfg, 0, sizeof(wifi_radio_feature_param_t));
-    wifidb_init_radio_config_default((instance_number - 1), radio_cfg, radio_feat_cfg);
+    get_wifidb_obj()->desc.init_radio_config_default_fn((instance_number - 1), radio_cfg, radio_feat_cfg);
 
 
 #if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
@@ -1000,7 +1000,7 @@ void get_psm_mac_list_entry(unsigned int instance_number, char *l_vap_name, unsi
             str_tolower(str);
             wifi_util_dbg_print(WIFI_MGR,"psm get mac after lower is %s\n", str);
             snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", l_vap_name, str);
-            wifidb_update_wifi_macfilter_config(macfilterkey, temp_psm_mac_param, true);
+            get_wifidb_obj()->desc.update_wifi_macfilter_config_fn(macfilterkey, temp_psm_mac_param, true);
         } else {
             wifi_util_dbg_print(WIFI_MGR,"[Failure] psm record_name: %s\n", recName);
         }
@@ -1021,7 +1021,7 @@ int get_vap_params_from_psm(unsigned int vap_index, wifi_vap_info_t *vap_config,
     int ret = -1;
 
     memset(vap_config, 0, sizeof(wifi_vap_info_t));
-    wifidb_init_vap_config_default((instance_number - 1), vap_config, rdk_vap_config);
+    get_wifidb_obj()->desc.init_vap_config_default_fn((instance_number - 1), vap_config, rdk_vap_config);
     if (isVapSTAMesh(vap_config->vap_index)) {
         return RETURN_ERR;
     }
@@ -1276,7 +1276,7 @@ int wifi_db_update_radio_config()
         get_radio_params_from_db(radio_index, &radio_cfg);
         wifi_util_dbg_print(WIFI_MGR,"%s:%d: %u ****success to get bandwidth value in wifi db\n",__func__, __LINE__,radio_cfg.channelWidth);
 
-        retval = wifidb_update_wifi_radio_config(radio_index, &radio_cfg, &radio_feat_cfg);
+        retval = get_wifidb_obj()->desc.update_radio_cfg_fn(radio_index, &radio_cfg, &radio_feat_cfg);
         if (retval != 0) {
             wifi_util_dbg_print(WIFI_MGR,"%s:%d: Failed to update radio config in wifi db\n",__func__, __LINE__);
         } else {
@@ -1314,7 +1314,7 @@ int wifi_db_update_vap_config()
             }
         }
 
-        retval = wifidb_update_wifi_vap_info(vap_cfg.vap_name, &vap_cfg, &rdk_vap_cfg);
+        retval = get_wifidb_obj()->desc.update_wifi_vap_info_fn(vap_cfg.vap_name, &vap_cfg, &rdk_vap_cfg);
         if (retval != 0) {
             wifi_util_error_print(WIFI_MGR,"%s:%d: Failed to update vap config in wifi db\n",__func__, __LINE__);
         } else {
@@ -1322,9 +1322,9 @@ int wifi_db_update_vap_config()
         }
 
         if (isVapSTAMesh(vap_cfg.vap_index)) {
-            retval = wifidb_update_wifi_security_config(vap_cfg.vap_name, &vap_cfg.u.sta_info.security);
+            retval = get_wifidb_obj()->desc.update_wifi_security_config_fn(vap_cfg.vap_name, &vap_cfg.u.sta_info.security);
         } else {
-            retval = wifidb_update_wifi_security_config(vap_cfg.vap_name, &vap_cfg.u.bss_info.security);
+            retval = get_wifidb_obj()->desc.update_wifi_security_config_fn(vap_cfg.vap_name, &vap_cfg.u.bss_info.security);
         }
         if (retval != 0) {
             wifi_util_error_print(WIFI_MGR,"%s:%d: Failed to update vap_%s security config in wifi db\n",__func__, __LINE__, vap_cfg.vap_name);
@@ -1514,7 +1514,7 @@ int get_all_param_from_psm_and_set_into_db(void)
 
     }
 
-    init_wifidb_data();
+    get_wifidb_obj()->desc.init_data_fn();
 
     //Set Wifi Global Parameters
     init_wifi_global_config();
@@ -1606,14 +1606,15 @@ int init_wifimgr()
     }
 #endif // DML_SUPPORT
 
+    wifidb_init(get_wifidb_obj());
     //Start Wifi DB server, and Initialize data Cache
-    init_wifidb();
+    get_wifidb_obj()->desc.init_fn();
     return 0;
 }
 
 void init_wifi_db_param(void)
 {
-    init_wifidb_data();
+    get_wifidb_obj()->desc.init_data_fn();
 
     /* Set Wifi Global Parameters */
     init_wifi_global_config();

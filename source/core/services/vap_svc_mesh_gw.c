@@ -83,11 +83,11 @@ int vap_svc_mesh_gw_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
                                                 radio_index, map->vap_array[i].vap_index);
         memcpy((unsigned char *)&map->vap_array[i], (unsigned char *)&p_tgt_vap_map->vap_array[0],
                     sizeof(wifi_vap_info_t));
-        wifidb_update_wifi_vap_info(getVAPName(map->vap_array[i].vap_index), &map->vap_array[i],
+        get_wifidb_obj()->desc.update_wifi_vap_info_fn(getVAPName(map->vap_array[i].vap_index), &map->vap_array[i],
             &rdk_vap_info[i]);
-        wifidb_update_wifi_interworking_config(getVAPName(map->vap_array[i].vap_index),
+        get_wifidb_obj()->desc.update_wifi_interworking_cfg_fn(getVAPName(map->vap_array[i].vap_index),
             &map->vap_array[i].u.bss_info.interworking);
-        wifidb_update_wifi_security_config(getVAPName(map->vap_array[i].vap_index),
+        get_wifidb_obj()->desc.update_wifi_security_config_fn(getVAPName(map->vap_array[i].vap_index),
             &map->vap_array[i].u.bss_info.security);
     }
     free(p_tgt_vap_map);

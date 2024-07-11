@@ -127,7 +127,7 @@ void process_prefer_private_mac_filter(mac_address_t prefer_private_mac)
 
             hash_map_put(rdk_vap_info->acl_map, strdup(new_mac_str), acl_entry);
             snprintf(macfilterkey, sizeof(macfilterkey), "%s-%s", rdk_vap_info->vap_name, new_mac_str);
-            wifidb_update_wifi_macfilter_config(macfilterkey, acl_entry, true);
+            get_wifidb_obj()->desc.update_wifi_macfilter_config_fn(macfilterkey, acl_entry, true);
             wifi_util_dbg_print(WIFI_CTRL,"add %s mac to %s\n",new_mac_str,rdk_vap_info->vap_name);
         }
     }
@@ -216,9 +216,9 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
         }
         wifi_util_info_print(WIFI_CTRL,"%s: wifi vap create success: radio_index:%d vap_index:%d greylist_rfc:%d\n",__FUNCTION__,
                                                 radio_index, map->vap_array[i].vap_index,greylist_rfc);
-        wifidb_print("%s: wifi vap create success: radio_index:%d vap_index:%d \n",__FUNCTION__,
+        get_wifidb_obj()->desc.print_fn("%s: wifi vap create success: radio_index:%d vap_index:%d \n",__FUNCTION__,
                                                 radio_index, map->vap_array[i].vap_index);
-        wifidb_print("%s:%d [Stop] Current time:[%llu]\r\n", __func__, __LINE__, get_current_ms_time());
+        get_wifidb_obj()->desc.print_fn("%s:%d [Stop] Current time:[%llu]\r\n", __func__, __LINE__, get_current_ms_time());
         wifi_util_error_print(WIFI_CTRL,"%s: passpoint.enable %d\n", __FUNCTION__,map->vap_array[i].u.bss_info.interworking.passpoint.enable);
         //Storing the config of passpoint in DB as received from blob though RFC is disabled
         if (isVapHotspotSecure(map->vap_array[i].vap_index)) {
@@ -230,15 +230,15 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
         memcpy((unsigned char *)&map->vap_array[i], (unsigned char *)&p_tgt_vap_map->vap_array[0],
                     sizeof(wifi_vap_info_t));
         memcpy((unsigned char *)&p_tgt_created_vap_map->vap_array[i], (unsigned char *)&p_tgt_vap_map->vap_array[0], sizeof(wifi_vap_info_t));
-        wifidb_update_wifi_vap_info(map->vap_array[i].vap_name, &map->vap_array[i],
+        get_wifidb_obj()->desc.update_wifi_vap_info_fn(map->vap_array[i].vap_name, &map->vap_array[i],
             &rdk_vap_info[i]);
-        wifidb_update_wifi_interworking_config(map->vap_array[i].vap_name,
+        get_wifidb_obj()->desc.update_wifi_interworking_cfg_fn(map->vap_array[i].vap_name,
             &map->vap_array[i].u.bss_info.interworking);
-        wifidb_update_wifi_security_config(map->vap_array[i].vap_name,
+        get_wifidb_obj()->desc.update_wifi_security_config_fn(map->vap_array[i].vap_name,
             &map->vap_array[i].u.bss_info.security);
-        wifidb_update_wifi_passpoint_config(map->vap_array[i].vap_name,
+        get_wifidb_obj()->desc.update_wifi_passpoint_cfg_fn(map->vap_array[i].vap_name,
             &map->vap_array[i].u.bss_info.interworking);
-        wifidb_update_wifi_anqp_config(map->vap_array[i].vap_name,
+        get_wifidb_obj()->desc.update_wifi_anqp_cfg_fn(map->vap_array[i].vap_name,
              &map->vap_array[i].u.bss_info.interworking);
     }
      update_global_cache(p_tgt_created_vap_map, rdk_vap_info);
@@ -365,7 +365,7 @@ void process_xfinity_enable(vap_svc_event_t event, void *data)
    else if (strcmp(public->vap_name,"hotspot_secure_6g") == 0)
         rfc_param->hotspot_secure_6g_last_enabled = public->enabled;
 
-    wifidb_update_rfc_config(0, rfc_param);
+    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
 #endif
 }
 
