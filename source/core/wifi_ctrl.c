@@ -2640,7 +2640,10 @@ int set_dml_init_status(bool status)
     int ret = RETURN_OK;
     wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
     wifi_util_info_print(WIFI_MGR, "%s Marking DML Init Complete. Start Wifi Ctrl\n", __FUNCTION__);
-    pthread_cond_signal(&wifi_mgr->dml_init_status);
+    pthread_mutex_lock(&wifi_mgr->lock);
+    wifi_mgr->dml_init_status.condition = true;
+    pthread_cond_signal(&wifi_mgr->dml_init_status.cv);
+    pthread_mutex_unlock(&wifi_mgr->lock);
     return ret;
 }
 #endif // DML_SUPPORT

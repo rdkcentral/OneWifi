@@ -3696,7 +3696,10 @@ void *webconfig_consumer_tests(void *arg)
 {
     wifi_mgr_t *mgr = (wifi_mgr_t *)arg;
 
-    pthread_cond_signal(&mgr->dml_init_status);
+    pthread_mutex_lock(&mgr->lock);
+    mgr->dml_init_status.condition = true;
+    pthread_cond_signal(&mgr->dml_init_status.cv);
+    pthread_mutex_unlock(&mgr->lock);
     printf("%s:%d:test program started\n", __func__, __LINE__);
 
     webconfig_consumer.test_over_rbus = false;

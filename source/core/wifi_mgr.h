@@ -57,7 +57,10 @@ typedef struct {
     wifi_ssp_t                      ssp;
     wifi_dml_parameters_t           dml_parameters;
     wifi_rfc_dml_parameters_t       rfc_dml_parameters;
-    pthread_cond_t                  dml_init_status;
+    struct {
+        pthread_cond_t cv;
+        bool condition;
+    }                               dml_init_status;
 #endif // DML_SUPPORT
     int                             db_version;
 } wifi_mgr_t;

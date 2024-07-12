@@ -1592,7 +1592,8 @@ int init_wifimgr()
     }
 
 #if DML_SUPPORT
-    pthread_cond_init(&g_wifi_mgr.dml_init_status, NULL);
+    g_wifi_mgr.dml_init_status.condition = false;
+    pthread_cond_init(&g_wifi_mgr.dml_init_status.cv, NULL);
     pthread_mutex_init(&g_wifi_mgr.lock, NULL);
 #endif // DML_SUPPORT
 
@@ -1662,11 +1663,15 @@ int start_wifimgr()
 #if DML_SUPPORT
     start_dml_main(&g_wifi_mgr.ssp);
     wifi_util_info_print(WIFI_MGR,"%s: waiting for dml init\n", __func__);
-    pthread_cond_wait(&g_wifi_mgr.dml_init_status,&g_wifi_mgr.lock);
-    wifi_util_info_print(WIFI_MGR,"%s: dml init complete\n", __func__);
+    pthread_mutex_lock(&g_wifi_mgr.lock);
+    while(!g_wifi_mgr.dml_init_status.condition) {
+        pthread_cond_wait(&g_wifi_mgr.dml_init_status.cv,&g_wifi_mgr.lock);
+    }
 
-    pthread_cond_destroy(&g_wifi_mgr.dml_init_status);
     pthread_mutex_unlock(&g_wifi_mgr.lock);
+    pthread_cond_destroy(&g_wifi_mgr.dml_init_status.cv);
+
+    wifi_util_info_print(WIFI_MGR,"%s: dml init complete\n", __func__);
 #else
     init_wifi_db_param();
 #endif // DML_SUPPORT
