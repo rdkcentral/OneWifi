@@ -341,6 +341,12 @@ void upload_single_client_active_msmt_data(blaster_hashmap_t *sta_info)
 
     if (fp == NULL)
     {
+        for (unsigned int radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
+            if(radio_stats[radio_index] != NULL){
+                free(radio_stats[radio_index]);
+                radio_stats[radio_index] = NULL;
+            }
+        }
         wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: Unable to open schema file: %s\n", __func__, __LINE__, WIFI_SINGLE_CLIENT_BLASTER_AVRO_FILENAME);
         return;
     }
@@ -357,6 +363,12 @@ void upload_single_client_active_msmt_data(blaster_hashmap_t *sta_info)
     if (size < 0)
     {
         wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: ftell error\n", __func__, __LINE__);
+        for (unsigned int radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
+            if(radio_stats[radio_index] != NULL){
+                free(radio_stats[radio_index]);
+                radio_stats[radio_index] = NULL;
+            }
+        }
         fclose(fp);
         return;
     }
@@ -376,6 +388,12 @@ void upload_single_client_active_msmt_data(blaster_hashmap_t *sta_info)
         }
         wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: allocating memory for entire content failed\n", __func__, __LINE__);
         /*CID: 146754 Dereference after null check*/
+        for (unsigned int radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
+            if(radio_stats[radio_index] != NULL){
+                free(radio_stats[radio_index]);
+                radio_stats[radio_index] = NULL;
+            }
+        }
         return;
     }
 
@@ -394,6 +412,12 @@ void upload_single_client_active_msmt_data(blaster_hashmap_t *sta_info)
         free(buff);
         wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: Unable to read schema file: %s\n", __func__, __LINE__, WIFI_SINGLE_CLIENT_BLASTER_AVRO_FILENAME);
         CcspTraceError(("%s:%d: !ERROR! Unable to read schema file: %s\n", __func__, __LINE__, WIFI_SINGLE_CLIENT_BLASTER_AVRO_FILENAME));
+        for (unsigned int radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
+            if(radio_stats[radio_index] != NULL){
+                free(radio_stats[radio_index]);
+                radio_stats[radio_index] = NULL;
+            }
+        }
         return ;
     }
 
@@ -405,6 +429,12 @@ void upload_single_client_active_msmt_data(blaster_hashmap_t *sta_info)
     {
         free(buff);
         buff = NULL;
+        for (unsigned int radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
+            if(radio_stats[radio_index] != NULL){
+                free(radio_stats[radio_index]);
+                radio_stats[radio_index] = NULL;
+            }
+        }
         wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: Unable to parse active measurement schema, len: %d, error:%s\n", __func__, __LINE__, size, avro_strerror());
         return;
     }

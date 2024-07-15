@@ -199,6 +199,10 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
     if (ret != RETURN_OK) {
         wifi_util_error_print(WIFI_MON, "%s : %d  Failed to get AP Associated Devices statistics for vap index %d \r\n",
                 __func__, __LINE__, args->vap_index);
+        if (dev_array != NULL) {
+            free(dev_array);
+            dev_array = NULL;
+        }
         return RETURN_ERR;
     }
 

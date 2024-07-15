@@ -173,6 +173,10 @@ int8_t hash_map_put    (hash_map_t *map, char *key, void *data)
     
     if (queue_push(map->queue, e) < 0) {
         free(key);
+        if (e->data != NULL) {
+            free(e->data);
+            e->data = NULL;
+        }
         free(e);
         return -1;
     }
