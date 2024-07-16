@@ -183,6 +183,7 @@ int apps_mgr_sm_event(wifi_apps_mgr_t *apps_mgr, wifi_event_type_t type, wifi_ev
     return RETURN_OK;
 }
 
+#ifdef ONEWIFI_CAC_APP_SUPPORT
 int apps_mgr_cac_event(wifi_apps_mgr_t *apps_mgr, wifi_event_type_t type, wifi_event_subtype_t sub_type, void *arg, int len)
 {
    wifi_app_t  *app = NULL;
@@ -211,7 +212,7 @@ int apps_mgr_cac_event(wifi_apps_mgr_t *apps_mgr, wifi_event_type_t type, wifi_e
 
     return RETURN_OK;
 }
-
+#endif
 int app_deinit(wifi_app_t *app, unsigned int create_flag)
 {
     if (create_flag & APP_DETACHED) {

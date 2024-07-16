@@ -183,6 +183,7 @@ wifi_app_descriptor_t app_desc[] = {
         analytics_init, analytics_event, analytics_deinit,
         NULL,NULL
     },
+#ifdef ONEWIFI_CAC_APP_SUPPORT
     {
         wifi_app_inst_cac, 0,
         wifi_event_type_hal_ind | wifi_event_type_exec | wifi_event_type_webconfig,
@@ -191,6 +192,7 @@ wifi_app_descriptor_t app_desc[] = {
         cac_init, cac_event, cac_deinit,
         cac_mgmt_frame_hook,NULL
     },
+#endif
 #if SM_APP
     {
         wifi_app_inst_sm, 0,

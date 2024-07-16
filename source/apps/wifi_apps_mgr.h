@@ -30,7 +30,9 @@ extern "C" {
 #ifdef CCSP_COMMON
 #include "wifi_analytics.h"
 #include "wifi_levl.h"
+#ifdef ONEWIFI_CAC_APP_SUPPORT
 #include "wifi_cac.h"
+#endif
 #include "wifi_sm.h"
 #include "wifi_motion.h"
 #include "wifi_csi.h"
@@ -67,7 +69,9 @@ typedef struct {
     union {
 #ifdef CCSP_COMMON
         levl_data_t          levl;
+#ifdef ONEWIFI_CAC_APP_SUPPORT
         cac_data_t           cac;
+#endif
         analytics_data_t     analytics;
         sm_data_t            sm_data;
         motion_data_t        motion;
