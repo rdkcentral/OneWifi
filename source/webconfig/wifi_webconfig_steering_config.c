@@ -53,7 +53,7 @@ webconfig_error_t init_steering_config_subdoc(webconfig_subdoc_t *doc)
 webconfig_error_t translate_from_steering_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
 {
     if ((data->descriptor & webconfig_data_descriptor_translate_to_ovsdb) == webconfig_data_descriptor_translate_to_ovsdb) {
-        if (translate_to_ovsdb_tables(webconfig_subdoc_type_steering_config, data) != webconfig_error_none) {
+        if (config->proto_desc.translate_to(webconfig_subdoc_type_steering_config, data) != webconfig_error_none) {
             return webconfig_error_translate_to_ovsdb;
         }
     } else if ((data->descriptor & webconfig_data_descriptor_translate_to_tr181) == webconfig_data_descriptor_translate_to_tr181) {
@@ -67,7 +67,7 @@ webconfig_error_t translate_from_steering_config_subdoc(webconfig_t *config, web
 webconfig_error_t translate_to_steering_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
 {
     if ((data->descriptor & webconfig_data_descriptor_translate_from_ovsdb) == webconfig_data_descriptor_translate_from_ovsdb) {
-        if (translate_from_ovsdb_tables(webconfig_subdoc_type_steering_config, data) != webconfig_error_none) {
+        if (config->proto_desc.translate_from(webconfig_subdoc_type_steering_config, data) != webconfig_error_none) {
             return webconfig_error_translate_from_ovsdb;
         }
     } else if ((data->descriptor & webconfig_data_descriptor_translate_from_tr181) == webconfig_data_descriptor_translate_from_tr181) {

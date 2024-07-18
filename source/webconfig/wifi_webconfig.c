@@ -232,6 +232,24 @@ webconfig_error_t webconfig_set(webconfig_t *config, webconfig_subdoc_data_t *da
 
 }
 
+static webconfig_error_t translate_to_proto(webconfig_subdoc_type_t type, webconfig_subdoc_data_t *data)
+{
+#ifdef ONEWIFI_OVSDB_TABLE_SUPPORT
+     return(translate_to_ovsdb_tables(type, data));
+#else
+    return webconfig_error_none;
+#endif
+}
+
+static webconfig_error_t translate_from_proto(webconfig_subdoc_type_t type, webconfig_subdoc_data_t *data)
+{
+#ifdef ONEWIFI_OVSDB_TABLE_SUPPORT
+    return(translate_from_ovsdb_tables(type, data));
+#else
+    return webconfig_error_none;
+#endif
+}
+
 webconfig_error_t webconfig_init(webconfig_t *config)
 {
 
@@ -537,6 +555,9 @@ webconfig_error_t webconfig_init(webconfig_t *config)
     config->subdocs[webconfig_subdoc_type_cac].decode_subdoc = decode_cac_config_subdoc;
     config->subdocs[webconfig_subdoc_type_cac].translate_to_subdoc = translate_to_cac_config_subdoc;
     config->subdocs[webconfig_subdoc_type_cac].translate_from_subdoc = translate_from_cac_config_subdoc;
+
+    config->proto_desc.translate_to = translate_to_proto;
+    config->proto_desc.translate_from = translate_from_proto;
 
     return webconfig_error_none;
 }

@@ -235,6 +235,14 @@ typedef struct {
     webconfig_subdoc_object_name_t  name;
 } webconfig_subdoc_object_t;
 
+typedef webconfig_error_t   (* wifi_webconfig_translate_to_proto_t)   (webconfig_subdoc_type_t type, webconfig_subdoc_data_t *data);
+typedef webconfig_error_t   (* wifi_webconfig_translate_from_proto_t) (webconfig_subdoc_type_t type, webconfig_subdoc_data_t *data);
+
+typedef struct {
+    wifi_webconfig_translate_to_proto_t     translate_to;
+    wifi_webconfig_translate_from_proto_t   translate_from;
+} webconfig_proto_desc_t;
+
 typedef struct webconfig_subdoc {
     webconfig_subdoc_type_t type;
     webconfig_subdoc_name_t name;
@@ -251,9 +259,10 @@ typedef struct webconfig_subdoc {
 } webconfig_subdoc_t;
 
 typedef struct webconfig {
-    webconfig_initializer_t     initializer;
+    webconfig_initializer_t initializer;
     webconfig_apply_data_t  apply_data;
-    webconfig_subdoc_t  subdocs[webconfig_subdoc_type_max];
+    webconfig_subdoc_t      subdocs[webconfig_subdoc_type_max];
+    webconfig_proto_desc_t  proto_desc;
 } webconfig_t;
 
 // common api for all processes linking with this library
