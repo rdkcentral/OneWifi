@@ -17241,6 +17241,9 @@ MacFiltTab_SetParamStringValue
     acl_entry_t *mac_acl_entry;
     void** acl_vap_context = (void **)get_acl_vap_context();
     wifi_vap_info_t *vap_info = (wifi_vap_info_t *)*acl_vap_context;
+    int mac_length = -1;
+    char formatted_mac[MAC_ADDR_LEN] = {0};
+
     /* check the parameter name and set the corresponding value */
     
     if (acl_entry ==  NULL) {
@@ -17258,6 +17261,31 @@ MacFiltTab_SetParamStringValue
     if( AnscEqualString(ParamName, "MACAddress", TRUE))
     {
         str_tolower(pString);
+        mac_length = strlen(pString);
+        if(mac_length != MAC_ADDR_LEN && mac_length != MIN_MAC_LEN) {
+            return FALSE;
+        }
+
+        if(mac_length == MIN_MAC_LEN) {
+            itr = 0;
+            for(count = 0; count < MIN_MAC_LEN; count++) {
+                formatted_mac[itr++] = pString[count];
+                if(count % 2 == 1 && count != MIN_MAC_LEN -1) {
+                    formatted_mac[itr++] = ':';
+                }
+            }
+            formatted_mac[itr++] = '\0';
+
+            if(IsValidMacAddress(formatted_mac) == FALSE ) {
+                return FALSE;
+            }
+        }
+        else {
+            if(IsValidMacAddress(pString) == FALSE ) {
+                return FALSE;
+            }
+        }
+
         str_to_mac_bytes(pString, new_mac);
         if (memcmp(new_mac, zero_mac, sizeof(mac_address_t)) == 0){
             //Invalid value returning FALSE
