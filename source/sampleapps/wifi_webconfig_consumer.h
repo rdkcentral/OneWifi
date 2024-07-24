@@ -30,6 +30,15 @@ extern "C" {
 #define MAX_WAIT            20
 #define RBUS_CLI_MAX_PARAM  25
 
+#define RBUS_WIFI_WPS_PIN_START            "Device.WiFi.WPS.Start"
+
+typedef enum {
+    rbus_bool_data,
+    rbus_int_data,
+    rbus_uint_data,
+    rbus_string_data
+} rbus_data_type_t;
+
 typedef enum {
     consumer_event_type_webconfig,
     consumer_event_type_max

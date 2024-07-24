@@ -104,7 +104,7 @@ typedef struct wifi_app {
     wifi_app_event_queue_t     queue;
     pthread_t             tid;
     wifi_app_data_t    data;
-    rbusHandle_t                rbus_handle;
+    bus_handle_t         handle;
     bool exit_app;
     unsigned int        poll_period;
     struct timespec     last_signalled_time;
@@ -115,7 +115,7 @@ typedef struct wifi_app {
 typedef struct wifi_apps_mgr {
     wifi_ctrl_t              *ctrl;
     wifi_platform_property_t *prop;
-    rbusHandle_t             rbus_handle;
+    bus_handle_t         handle;
     wifi_registered_apps_t apps_map;
 } __attribute__((__packed__)) wifi_apps_mgr_t;
 

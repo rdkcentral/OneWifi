@@ -34,7 +34,6 @@
 #include <errno.h>
 #include <unistd.h>
 #include <pthread.h>
-#include <rbus.h>
 #include "ieee80211.h"
 #ifdef CMWIFI_RDKB
 #define FILE_SYSTEM_UPTIME         "/var/systemUptime.txt"
@@ -52,7 +51,7 @@ void get_action_frame_evt_params(uint8_t *frame, uint32_t len, frame_data_t *mgm
 static void ctrl_queue_timeout_scheduler_tasks(wifi_ctrl_t *ctrl);
 static int pending_states_webconfig_analyzer(void *arg);
 #if DML_SUPPORT
-static int rbus_check_and_subscribe_events(void* arg);
+static int bus_check_and_subscribe_events(void* arg);
 static int sta_connectivity_selfheal(void* arg);
 static int run_greylist_event(void *arg);
 static int run_analytics_event(void* arg);
@@ -71,8 +70,8 @@ void deinit_wifi_ctrl(wifi_ctrl_t *ctrl)
         queue_destroy(ctrl->queue);
     }
 
-    if(ctrl->events_rbus_data.events_rbus_queue != NULL) {
-        queue_destroy(ctrl->events_rbus_data.events_rbus_queue);
+    if(ctrl->events_bus_data.events_bus_queue != NULL) {
+        queue_destroy(ctrl->events_bus_data.events_bus_queue);
     }
 
     /*Deinitialize the scheduler*/
@@ -83,7 +82,7 @@ void deinit_wifi_ctrl(wifi_ctrl_t *ctrl)
     pthread_mutexattr_destroy(&ctrl->attr);
     pthread_mutex_destroy(&ctrl->lock);
     pthread_cond_destroy(&ctrl->cond);
-    pthread_mutex_destroy(&ctrl->events_rbus_data.events_rbus_lock);
+    pthread_mutex_destroy(&ctrl->events_bus_data.events_bus_lock);
 }
 
 static int wifi_radio_set_enable(bool status)
@@ -192,17 +191,21 @@ unsigned int selfheal_event_publish_time(void)
 
 int reboot_device(wifi_ctrl_t *ctrl)
 {
-    int rc = 0;
+    bus_error_t rc;
 
-    rc = rbus_setStr(ctrl->rbus_handle, "Device.DeviceInfo.X_RDKCENTRAL-COM_LastRebootReason", "ECO Mode Reboot");
-    if (rc != RBUS_ERROR_SUCCESS) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d: rbusWrite Failed %d\n", __func__, __LINE__, rc);
+    rc = get_bus_descriptor()->bus_set_string_fn(&ctrl->handle,
+        "Device.DeviceInfo.X_RDKCENTRAL-COM_LastRebootReason", "ECO Mode Reboot");
+    if (rc != bus_error_success) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: bus: bus_set_string_fn Failed %d\n", __func__,
+            __LINE__, rc);
         return RETURN_ERR;
     }
 
-    rc = rbus_setStr(ctrl->rbus_handle, "Device.X_CISCO_COM_DeviceControl.RebootDevice", "Device");
-    if (rc != RBUS_ERROR_SUCCESS) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d: rbusWrite Failed %d\n", __func__, __LINE__, rc);
+    rc = get_bus_descriptor()->bus_set_string_fn(&ctrl->handle,
+        "Device.X_CISCO_COM_DeviceControl.RebootDevice", "Device");
+    if (rc != bus_error_success) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: bus: bus_set_string_fn Failed %d\n", __func__,
+            __LINE__, rc);
         return RETURN_ERR;
     }
 
@@ -211,12 +214,10 @@ int reboot_device(wifi_ctrl_t *ctrl)
 
 void selfheal_event_publish(wifi_ctrl_t *ctrl)
 {
-    rbusEvent_t event;
-    rbusObject_t rdata;
-    rbusValue_t value;
+    raw_data_t data;
     vap_svc_t *ext_svc;
-    int rc;
-    
+    bus_error_t rc;
+
     if (ctrl == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: NULL Pointer\n", __func__, __LINE__);
         return;
@@ -224,29 +225,21 @@ void selfheal_event_publish(wifi_ctrl_t *ctrl)
 
     ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
     if (ext_svc != NULL) {
-        rbusValue_Init(&value);
-        rbusObject_Init(&rdata, NULL);
         ext_svc->u.ext.selfheal_status = true;
 
-        rbusObject_SetValue(rdata, WIFI_STA_SELFHEAL_CONNECTION_TIMEOUT, value);
-        rbusValue_SetBoolean(value, ext_svc->u.ext.selfheal_status);
+        memset(&data, 0, sizeof(raw_data_t));
+        data.data_type = bus_data_type_boolean;
+        data.raw_data.b = (bool)ext_svc->u.ext.selfheal_status;
 
-
-        event.name = WIFI_STA_SELFHEAL_CONNECTION_TIMEOUT;
-        event.data = rdata;
-        event.type = RBUS_EVENT_GENERAL;
-        
-        rc = rbusEvent_Publish(ctrl->rbus_handle, &event);
-        if ((rc != RBUS_ERROR_SUCCESS) && (rc != RBUS_ERROR_NOSUBSCRIBERS)){
-            wifi_util_error_print(WIFI_CTRL, "%s:%d: rbusEvent_Publish Event failed\n", __func__, __LINE__);
+        rc = get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle,
+            WIFI_STA_SELFHEAL_CONNECTION_TIMEOUT, &data);
+        if (rc != bus_error_success) {
+            wifi_util_error_print(WIFI_CTRL,
+                "%s:%d: bus: bus_event_publish_fn Event failed for event: %s\n", __func__, __LINE__,
+                WIFI_STA_SELFHEAL_CONNECTION_TIMEOUT);
             ext_svc->u.ext.selfheal_status = false;
-            rbusValue_Release(value);
-            rbusObject_Release(rdata);
             return;
         }
-
-        rbusValue_Release(value);
-        rbusObject_Release(rdata);
     }
     return;
 }
@@ -563,16 +556,17 @@ bool check_for_greylisted_mac_filter(void)
     return false;
 }
 
-void rbus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
+void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
 {
-    rbusValue_t value;
-    int len = 0;
-    int rc = RBUS_ERROR_SUCCESS;
+    int rc = bus_error_success;
     unsigned int total_slept = 0;
-    //rdk_dev_mode_type_t mode;
+    char *pTmp = NULL;
+    // rdk_dev_mode_type_t mode;
     wifi_global_param_t global_param = { 0 };
     wifi_ctrl_t *ctrl;
+    raw_data_t data;
 
+    memset(&data, 0, sizeof(raw_data_t));
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     get_wifi_global_param(&global_param);
@@ -580,7 +574,7 @@ void rbus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
     if (strcmp(name, WIFI_DEVICE_MODE) == 0) {
 #ifdef ONEWIFI_DEFAULT_NETWORKING_MODE
         *ret_val = ONEWIFI_DEFAULT_NETWORKING_MODE;
-#else 
+#else
         *ret_val = (unsigned int)global_param.device_network_mode;
 #endif
         ctrl->network_mode = (unsigned int)*ret_val;
@@ -595,56 +589,85 @@ void rbus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
         *ret_val = DEVICE_TUNNEL_DOWN; // tunnel down
     }
 
-    while ((rc = rbus_get(ctrl->rbus_handle, name, &value)) != RBUS_ERROR_SUCCESS) {
+    while ((rc = get_bus_descriptor()->bus_data_get_fn(&ctrl->handle, name, &data)) !=
+        bus_error_success) {
         sleep(1);
         total_slept++;
         if (total_slept >= 5) {
-            wifi_util_dbg_print(WIFI_CTRL,"%s:%d Giving up on rbus_get for %s\n",__func__, __LINE__, name);
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d bus: Giving up on bus_data_get_fn for %s\n",
+                __func__, __LINE__, name);
             return;
         }
+
+        get_bus_descriptor()->bus_data_free_fn(&data);
+
+        memset(&data, 0, sizeof(raw_data_t));
     }
 
     if (strcmp(name, WIFI_DEVICE_MODE) == 0) {
-        *ret_val = rbusValue_GetUInt32(value);
-	ctrl->network_mode = (unsigned int)*ret_val;
+        if (data.data_type != bus_data_type_uint32) {
+            wifi_util_error_print(WIFI_CTRL,
+                "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%\n", __func__, __LINE__,
+                name, data.data_type, rc);
+            return;
+        }
+
+        *ret_val = data.raw_data.u32;
+        ctrl->network_mode = (unsigned int)*ret_val;
         if (global_param.device_network_mode != (int)*ret_val) {
             global_param.device_network_mode = (int)*ret_val;
             update_wifi_global_config(&global_param);
         }
     } else if (strcmp(name, WIFI_DEVICE_TUNNEL_STATUS) == 0) {
-        const char * pTmp = rbusValue_GetString(value, &len);
-        if(pTmp == NULL) {
-            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Unable to get  value in event:%s\n", __func__, __LINE__);
+        if (data.data_type != bus_data_type_string) {
+            wifi_util_error_print(WIFI_CTRL,
+                "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%\n", __func__, __LINE__,
+                name, data.data_type, rc);
             return;
         }
-        if(strcmp(pTmp,"Up") == 0) {
-            *ret_val = 1;
+
+        pTmp = (char *)data.raw_data.bytes;
+        if (pTmp == NULL) {
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: bus: Unable to get value in event:%s\n",
+                __func__, __LINE__);
+            return;
         }
-        else {
+        if (strcmp(pTmp, "Up") == 0) {
+            *ret_val = 1;
+        } else {
             *ret_val = 0;
         }
+
+        /* Ensure no corruption and name string is still valid */
+        if (name) {
+            get_bus_descriptor()->bus_data_free_fn(&data);
+        }
     }
-    wifi_util_dbg_print(WIFI_CTRL,"%s:%d rbus_get for %s: value:%d\n",__func__, __LINE__, name, *ret_val);
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d bus_data_get_fn for %s: value:%d\n", __func__, __LINE__,
+        name, *ret_val);
 }
 
-int rbus_get_active_gw_parameter(const char *name, unsigned int *ret_val)
+int bus_get_active_gw_parameter(const char *name, unsigned int *ret_val)
 {
-    rbusValue_t value;
-    int rc = RBUS_ERROR_SUCCESS;
     wifi_ctrl_t *ctrl;
+    raw_data_t data;
+    bus_error_t status;
+
+    memset(&data, 0, sizeof(raw_data_t));
 
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
-    rc = rbus_get(ctrl->rbus_handle, name, &value);
-
-    if(rc != RBUS_ERROR_SUCCESS) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d rbus_get failed for [%s] with error [%d]\n",__func__, __LINE__, name, rc);
-        return RETURN_ERR;
+    status = get_bus_descriptor()->bus_data_get_fn(&ctrl->handle, name, &data);
+    if (data.data_type != bus_data_type_boolean) {
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d '%s' bus_data_get_fn failed with data_type:%d, status:%d\n", __func__, __LINE__,
+            name, data.data_type, status);
+        return status;
     }
 
-    *ret_val = rbusValue_GetBoolean(value);
-
-    wifi_util_info_print(WIFI_CTRL,"%s:%d rbus_get for %s: value:%d\n",__func__, __LINE__, name, *ret_val);
+    *ret_val = (unsigned int)data.raw_data.b;
+    wifi_util_info_print(WIFI_CTRL, "%s:%d bus_data_get_fn for %s: ret_val:%d\n", __func__,
+        __LINE__, name, *ret_val);
     return RETURN_OK;
 }
 
@@ -681,14 +704,14 @@ void start_gateway_vaps()
 
     value = false;
     // start public if tunnel is up
-    rbus_get_vap_init_parameter(WIFI_DEVICE_TUNNEL_STATUS, &value);
+    bus_get_vap_init_parameter(WIFI_DEVICE_TUNNEL_STATUS, &value);
     if (value == true) {
         set_wifi_public_vap_enable_status();
         pub_svc->start_fn(pub_svc, WIFI_ALL_RADIO_INDICES, NULL);
     }
 
     value = false;
-    if (rbus_get_active_gw_parameter(WIFI_ACTIVE_GATEWAY_CHECK, &value) == RETURN_OK) {
+    if (bus_get_active_gw_parameter(WIFI_ACTIVE_GATEWAY_CHECK, &value) == RETURN_OK) {
         ctrl->active_gw_check = value;
         if (is_sta_enabled() == true) {
             wifi_util_info_print(WIFI_CTRL, "%s:%d start mesh sta\n",__func__, __LINE__);
@@ -757,68 +780,44 @@ bool get_notify_wifi_from_psm(char *PsmParamName)
 {
     int rc = 0;
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
+    raw_data_t data = { 0 };
     bool psm_notify_flag = false;
     char psm_notify_get[32] = "";
-    rbusValue_t value = NULL;
-    rbusProperty_t prop = NULL;
-    rbusObject_t inParams = NULL,outParams = NULL;
 
-    wifi_util_dbg_print(WIFI_CTRL,"%s PSMParam %s \n",__func__,PsmParamName);
+    wifi_util_dbg_print(WIFI_CTRL, "%s PSMParam %s \n", __func__, PsmParamName);
 
-    rbusObject_Init(&inParams, NULL);
-    rbusValue_Init(&value);
-    // Get PSM value of eRT.com.cisco.spvtg.ccsp.Device.WiFi.NotifyWiFiChanges
-    rbusProperty_Init(&prop, PsmParamName, value);
-    rbusObject_SetProperty(inParams,prop);
-    rbusProperty_Release(prop);
-
-    rc = rbusMethod_Invoke(g_wifi_mgr->ctrl.rbus_handle,"GetPSMRecordValue()" , inParams, &outParams);
-    if(inParams) {
-        rbusObject_Release(inParams);
-    }
-    if (RBUS_ERROR_SUCCESS == rc) {
-        prop = rbusObject_GetProperties(outParams);
-        value = rbusProperty_GetValue(prop);
-        strcpy(psm_notify_get,rbusValue_ToString(value,NULL,0));
-        wifi_util_dbg_print(WIFI_CTRL," PSMDB value=%s\n",psm_notify_get);
-        if (strcmp(psm_notify_get,"true") == 0)
+    data.data_type = bus_data_type_string;
+    rc = get_bus_descriptor()->bus_method_invoke_fn(&g_wifi_mgr->ctrl.handle, PsmParamName,
+        "GetPSMRecordValue()", NULL, &data, BUS_METHOD_GET);
+    if (rc == bus_error_success) {
+        strncpy(psm_notify_get, data.raw_data.bytes, (sizeof(psm_notify_get) - 1));
+        wifi_util_dbg_print(WIFI_CTRL, " PSMDB value=%s\n", psm_notify_get);
+        if ((psm_notify_get != NULL) && (strcmp(psm_notify_get, "true") == 0)) {
             psm_notify_flag = true;
-        else
+        } else {
             psm_notify_flag = false;
+        }
     }
-    rbusValue_Release(value);
-    wifi_util_dbg_print(WIFI_CTRL,"get_notify_wifi_from_psm ends\n");
+    wifi_util_dbg_print(WIFI_CTRL, "get_notify_wifi_from_psm ends: %d\n", rc);
     return psm_notify_flag;
 }
 
-void set_notify_wifi_to_psm(char *PsmParamName,char *pInValue)
+void set_notify_wifi_to_psm(char *PsmParamName, char *pInValue)
 {
-    rbusProperty_t prop = NULL;
-    rbusValue_t value = NULL;
-    rbusObject_t inParams = NULL,outParams = NULL;
+    bus_error_t rc;
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
-    rbusValue_Init(&value);
-    rbusObject_Init(&inParams, NULL);
-    int rc = 0;
-    wifi_util_dbg_print(WIFI_CTRL,"Notify flag and values are different PSMParam %s pInValue %s\n",PsmParamName,pInValue);
+    raw_data_t data = { 0 };
 
-    if (false == rbusValue_SetFromString(value, RBUS_STRING, pInValue)) {
-        wifi_util_dbg_print(WIFI_CTRL,"%s: Invalid value '%s' for the parameter %s\n\r", __FUNCTION__, pInValue, PsmParamName);
-    }
-    rbusProperty_Init(&prop, PsmParamName, value);
-    rbusObject_SetProperty(inParams,prop);
-    rbusValue_Release(value);
-    rbusProperty_Release(prop);
+    wifi_util_dbg_print(WIFI_CTRL, "Notify flag and values are different PSMParam %s pInValue %s\n",
+        PsmParamName, pInValue);
 
-    rc = rbusMethod_Invoke(g_wifi_mgr->ctrl.rbus_handle,"SetPSMRecordValue()" , inParams, &outParams);
-    if(inParams) {
-        rbusObject_Release(inParams);
-    }
-    if (RBUS_ERROR_SUCCESS != rc) {
+    data.data_type = bus_data_type_string;
+    data.raw_data.bytes = pInValue;
+    data.raw_data_len = strlen(pInValue);
+    rc = get_bus_descriptor()->bus_method_invoke_fn(&g_wifi_mgr->ctrl.handle, PsmParamName,
+        "SetPSMRecordValue()", &data, NULL, BUS_METHOD_SET);
 
-        wifi_util_error_print(WIFI_CTRL," %s failed for  with err: '%s'\n\r",__FUNCTION__,rbusError_ToString(rc));
-    }
-    wifi_util_dbg_print(WIFI_CTRL,"set_notify_wifi_to_psm ends\n");
+    wifi_util_dbg_print(WIFI_CTRL, "set_notify_wifi_to_psm ends: %d\n", rc);
 }
 
 #endif // DML_SUPPORT
@@ -828,124 +827,130 @@ int captive_portal_check(void)
 #ifdef WIFI_CAPTIVE_PORTAL
     uint8_t num_of_radios = getNumberRadios();
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
-    UINT radio_index =0;
+    UINT radio_index = 0;
     wifi_vap_info_map_t *wifi_vap_map = NULL;
-    UINT i =0;
-    int rc = 0;
-    bool default_private_credentials = false,get_config_wifi = false;
-    char default_ssid[128] = {0}, default_password[128] = {0};
-    rbusValue_t value = NULL, config_wifi_value = NULL;
+    UINT i = 0;
+    bus_error_t rc;
+    bool default_private_credentials = false, get_config_wifi = false;
+    bool portal_state;
+    char default_ssid[128] = { 0 }, default_password[128] = { 0 };
+    raw_data_t data;
+    memset(&data, 0, sizeof(raw_data_t));
 
 #if DML_SUPPORT
-    bool psm_notify_flag=false;
+    bool psm_notify_flag = false;
     char pInValue[32] = "";
     char *PsmParamName = "eRT.com.cisco.spvtg.ccsp.Device.WiFi.NotifyWiFiChanges";
 #endif //// DML_SUPPORT
 
-    rbusValue_Init(&value);
-    rbusValue_Init(&config_wifi_value);
-
-    //Get CONFIG_WIFI
-    rc = rbus_get(g_wifi_mgr->ctrl.rbus_handle, CONFIG_WIFI, &value);
-
-    if (rc != RBUS_ERROR_SUCCESS) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d rbus_get failed for [] with error [%d]\n",__func__, __LINE__, rc);
-        if (value != NULL) {
-            rbusValue_Release(value);
-        }
-        return RETURN_ERR;
+    // Get CONFIG_WIFI
+    rc = get_bus_descriptor()->bus_data_get_fn(&g_wifi_mgr->ctrl.handle, CONFIG_WIFI, &data);
+    if (data.data_type != bus_data_type_boolean) {
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d '%s' bus_data_get_fn failed with data_type:%d, status:%d\n", __func__, __LINE__,
+            CONFIG_WIFI, data.data_type, rc);
+        return rc;
     }
 
-    get_config_wifi = rbusValue_GetBoolean(value);
+    get_config_wifi = data.raw_data.b;
+    wifi_util_info_print(WIFI_CTRL, "CONFIG_WIFI=%d is_factory_reset_done=%d fun %s \n",
+        get_config_wifi, access(ONEWIFI_FR_FLAG, F_OK), __func__);
 
-    wifi_util_info_print(WIFI_CTRL,"CONFIG_WIFI=%d is_factory_reset_done=%d fun %s \n",get_config_wifi,access(ONEWIFI_FR_FLAG,F_OK),__func__);
-
-    //From previous release and captive portal is already customized then need not customize here
-    if ((access(ONEWIFI_FR_FLAG,F_OK) != 0) && get_config_wifi == false) {
-        wifi_util_info_print(WIFI_CTRL,"FactoryReset is not done and captive portal customization already done fun %s return\n",__func__);
-        rbusValue_Release(value);
+    // From previous release and captive portal is already customized then need not customize here
+    if ((access(ONEWIFI_FR_FLAG, F_OK) != 0) && get_config_wifi == false) {
+        wifi_util_info_print(WIFI_CTRL,
+            "FactoryReset is not done and captive portal customization already done fun %s "
+            "return\n",
+            __func__);
         return RETURN_OK;
     }
     get_ssid_from_device_mac(default_ssid);
 
-    for (radio_index = 0; radio_index < num_of_radios && !default_private_credentials; radio_index++) {
+    for (radio_index = 0; radio_index < num_of_radios && !default_private_credentials;
+         radio_index++) {
 
         wifi_vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(radio_index);
-        for ( i = 0; i < wifi_vap_map->num_vaps; i++) {
+        for (i = 0; i < wifi_vap_map->num_vaps; i++) {
 
-            if (strncmp(wifi_vap_map->vap_array[i].vap_name,"private_ssid",strlen("private_ssid"))== 0) {
+            if (strncmp(wifi_vap_map->vap_array[i].vap_name, "private_ssid",
+                    strlen("private_ssid")) == 0) {
 
-                wifi_hal_get_default_keypassphrase(default_password, wifi_vap_map->vap_array[i].vap_index);
+                wifi_hal_get_default_keypassphrase(default_password,
+                    wifi_vap_map->vap_array[i].vap_index);
 
-                if ((strcmp(wifi_vap_map->vap_array[i].u.bss_info.ssid,default_ssid) == 0) || \
-                      ((strcmp(wifi_vap_map->vap_array[i].u.bss_info.security.u.key.key,default_password) == 0))) {
+                if ((strcmp(wifi_vap_map->vap_array[i].u.bss_info.ssid, default_ssid) == 0) ||
+                    ((strcmp(wifi_vap_map->vap_array[i].u.bss_info.security.u.key.key,
+                          default_password) == 0))) {
 
-                    wifi_util_dbg_print(WIFI_CTRL,"private vaps have default credentials\n");
+                    wifi_util_dbg_print(WIFI_CTRL, "private vaps have default credentials\n");
                     default_private_credentials = true;
                     break;
                 }
             }
         }
     }
-    wifi_util_dbg_print(WIFI_CTRL,"Private vaps credentials= %d\n",default_private_credentials);
- 
+    wifi_util_dbg_print(WIFI_CTRL, "Private vaps credentials= %d\n", default_private_credentials);
+
 #if DML_SUPPORT
     // Get PSM value of eRT.com.cisco.spvtg.ccsp.Device.WiFi.NotifyWiFiChanges
     psm_notify_flag = get_notify_wifi_from_psm(PsmParamName);
 
     if (default_private_credentials != psm_notify_flag) {
-        wifi_util_dbg_print(WIFI_CTRL,"PSM Notify flag and wifi values are different\n");
+        wifi_util_dbg_print(WIFI_CTRL, "PSM Notify flag and wifi values are different\n");
         if (default_private_credentials) {
-            strcpy(pInValue,"true");
-        }
-        else {
-            strcpy(pInValue,"false");
+            strcpy(pInValue, "true");
+        } else {
+            strcpy(pInValue, "false");
         }
         // set PSM value of eRT.com.cisco.spvtg.ccsp.Device.WiFi.NotifyWiFiChanges
-        set_notify_wifi_to_psm(PsmParamName,pInValue);
+        set_notify_wifi_to_psm(PsmParamName, pInValue);
     }
 #endif // DML_SUPPORT
 
-    wifi_util_dbg_print(WIFI_CTRL,"CONFIG_WIFI= %d fun %s  and wifi_value %d \n",get_config_wifi,__func__,default_private_credentials);
+    wifi_util_dbg_print(WIFI_CTRL, "CONFIG_WIFI= %d fun %s  and wifi_value %d \n", get_config_wifi,
+        __func__, default_private_credentials);
 
     if (default_private_credentials != get_config_wifi) {
-        wifi_util_dbg_print(WIFI_CTRL,"set CONFIG_WIFI value to %d\n",default_private_credentials);
+        wifi_util_dbg_print(WIFI_CTRL, "set CONFIG_WIFI value to %d\n",
+            default_private_credentials);
         if (default_private_credentials) {
-            rbusValue_SetBoolean(config_wifi_value, true);
-        }
-        else {
-            rbusValue_SetBoolean(config_wifi_value, false);
-        }
- 
-        rc = rbus_set(g_wifi_mgr->ctrl.rbus_handle,CONFIG_WIFI,config_wifi_value,NULL);
-
-        if (rc != RBUS_ERROR_SUCCESS) {
-            wifi_util_error_print(WIFI_CTRL,"Rbus error Device.DeviceInfo.X_RDKCENTRAL-COM_ConfigureWiFi\n");
+            portal_state = true;
+        } else {
+            portal_state = false;
         }
 
+        memset(&data, 0, sizeof(raw_data_t));
+        data.data_type = bus_data_type_boolean;
+        data.raw_data.b = portal_state;
+
+        rc = get_bus_descriptor()->bus_set_fn(&g_wifi_mgr->ctrl.handle, CONFIG_WIFI, &data);
+        if (rc != bus_error_success) {
+            wifi_util_error_print(WIFI_CTRL,
+                "bus: bus_set_fn error Device.DeviceInfo.X_RDKCENTRAL-COM_ConfigureWiFi\n");
+        }
     }
-    rbusValue_Release(value);
-    rbusValue_Release(config_wifi_value);
-    wifi_util_info_print(WIFI_CTRL," Captive_portal Ends after NotifyWifiChanges\n");
-#else //WIFI_CAPTIVE_PORTAL
-    // Some devices use captive portal only for SelfHelp, and the UI need not be redirected to captive portal.
-    int rc =0;
-    rbusValue_t config_wifi_value = NULL;
+    wifi_util_info_print(WIFI_CTRL, " Captive_portal Ends after NotifyWifiChanges\n");
+#else // WIFI_CAPTIVE_PORTAL
+    // Some devices use captive portal only for SelfHelp, and the UI need not be redirected to
+    // captive portal.
+    bus_error_t rc;
+    bool portal_state = false;
+    raw_data_t data;
+    memset(&data, 0, sizeof(raw_data_t));
 
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
 
-    rbusValue_Init(&config_wifi_value);
-    rbusValue_SetBoolean(config_wifi_value, false);
+    data.data_type = bus_data_type_boolean;
+    data.raw_data.b = portal_state;
 
-    rc = rbus_set(g_wifi_mgr->ctrl.rbus_handle,CONFIG_WIFI,config_wifi_value,NULL);
-
-    if (rc != RBUS_ERROR_SUCCESS) {
-        wifi_util_error_print(WIFI_CTRL,"Rbus error Device.DeviceInfo.X_RDKCENTRAL-COM_ConfigureWiFi\n");
+    rc = get_bus_descriptor()->bus_set_fn(&g_wifi_mgr->ctrl.handle, CONFIG_WIFI, &data);
+    if (rc != bus_error_success) {
+        wifi_util_error_print(WIFI_CTRL,
+            "bus: bus_set_fn error Device.DeviceInfo.X_RDKCENTRAL-COM_ConfigureWiFi\n");
     }
 
-#endif //WIFI_CAPTIVE_PORTAL
+#endif // WIFI_CAPTIVE_PORTAL
     return RETURN_OK;
-
 }
 
 int start_wifi_health_monitor_thread(void)
@@ -1212,7 +1217,7 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
     pthread_mutexattr_init(&ctrl->attr);
     pthread_mutexattr_settype(&ctrl->attr, PTHREAD_MUTEX_RECURSIVE);
     pthread_mutex_init(&ctrl->lock, &ctrl->attr);
-    pthread_mutex_init(&ctrl->events_rbus_data.events_rbus_lock, NULL);
+    pthread_mutex_init(&ctrl->events_bus_data.events_bus_lock, NULL);
 
     ctrl->poll_period = QUEUE_WIFI_CTRL_TASK_TIMEOUT;
 
@@ -1238,10 +1243,10 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
         return RETURN_ERR;
     }
 
-    ctrl->events_rbus_data.events_rbus_queue = queue_create();
-    if (ctrl->events_rbus_data.events_rbus_queue == NULL) {
+    ctrl->events_bus_data.events_bus_queue = queue_create();
+    if (ctrl->events_bus_data.events_bus_queue == NULL) {
         deinit_wifi_ctrl(ctrl);
-        wifi_util_error_print(WIFI_CTRL,"RDK_LOG_WARN, WIFI %s: rbus data events queue create failed\n",__FUNCTION__);
+        wifi_util_error_print(WIFI_CTRL,"RDK_LOG_WARN, WIFI %s: bus data events queue create failed\n",__FUNCTION__);
         return RETURN_ERR;
     }
 
@@ -1250,12 +1255,12 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
         svc_init(&ctrl->ctrl_svc[i], (vap_svc_type_t)i);
     }
 
-    //Register to RBUS for webconfig interactions
-    rbus_register_handlers(ctrl);
+    //Register to BUS for webconfig interactions
+    bus_register_handlers(ctrl);
 
 #if DML_SUPPORT
-    // subscribe for RBUS events
-    rbus_subscribe_events(ctrl);
+    // subscribe for BUS events
+    bus_subscribe_events(ctrl);
 #endif
 
     //Register wifi hal sta connect/disconnect callback
@@ -1270,7 +1275,7 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
     /* Register wifi hal channel change events callback */
     wifi_chan_event_register(channel_change_callback);
 
-    ctrl->rbus_events_subscribed = false;
+    ctrl->bus_events_subscribed = false;
     ctrl->tunnel_events_subscribed = false;
 
     register_with_webconfig_framework();
@@ -1520,69 +1525,79 @@ int init_wireless_interface_mac()
 }
 int validate_and_sync_private_vap_credentials()
 {
-    char last_reboot_reason[32];
     uint8_t num_of_radios = getNumberRadios();
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
-    UINT radio_index =0;
+    UINT radio_index = 0;
     wifi_vap_info_map_t *wifi_vap_map = NULL;
-    UINT i =0;
-    int rc = 0, len =0;
-    const char * pTmp = NULL;
+    UINT i = 0;
+    int rc = 0;
+    char *pTmp = NULL;
     bool default_private_credentials = false;
-    char default_ssid[128] = {0}, default_password[128] = {0};
-    rbusValue_t value;
+    char default_ssid[128] = { 0 }, default_password[128] = { 0 };
+    raw_data_t data = { 0 };
 
-    memset(last_reboot_reason, 0, sizeof(last_reboot_reason));
-
-    rbusValue_Init(&value);
-    rc = rbus_get(g_wifi_mgr->ctrl.rbus_handle, LAST_REBOOT_REASON_NAMESPACE, &value);
-
-    if(rc != RBUS_ERROR_SUCCESS) {
-        wifi_util_error_print(WIFI_MGR,"[%s:%d] Rbus error param: %s\r\n", __func__, __LINE__, LAST_REBOOT_REASON_NAMESPACE);
-        rbusValue_Release(value);
-        return RETURN_ERR;
+    rc = get_bus_descriptor()->bus_data_get_fn(&g_wifi_mgr->ctrl.handle,
+        LAST_REBOOT_REASON_NAMESPACE, &data);
+    if (data.data_type != bus_data_type_string) {
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d '%s' bus_data_get_fn failed with data_type:%d, status:%d\n", __func__, __LINE__,
+            LAST_REBOOT_REASON_NAMESPACE, data.data_type, rc);
+        get_bus_descriptor()->bus_data_free_fn(&data);
+        return rc;
     }
 
-    pTmp = rbusValue_GetString(value, &len);
-    wifi_util_info_print(WIFI_CTRL,"Last reboot reason is %s\n",pTmp);
-    if (strcmp(pTmp,"factory-reset") && strcmp(pTmp,"WPS-Factory-Reset")) {
+    pTmp = (char *)data.raw_data.bytes;
+
+    wifi_util_info_print(WIFI_CTRL, "Last reboot reason is %s\n", pTmp);
+    if (strcmp(pTmp, "factory-reset") && strcmp(pTmp, "WPS-Factory-Reset")) {
 
         get_ssid_from_device_mac(default_ssid);
 
-        for (radio_index = 0; radio_index < num_of_radios && !default_private_credentials; radio_index++) {
+        for (radio_index = 0; radio_index < num_of_radios && !default_private_credentials;
+             radio_index++) {
 
             wifi_vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(radio_index);
-            for ( i = 0; i < wifi_vap_map->num_vaps; i++) {
+            for (i = 0; i < wifi_vap_map->num_vaps; i++) {
 
-                if (strncmp(wifi_vap_map->vap_array[i].vap_name,"private_ssid",strlen("private_ssid"))== 0) {
+                if (strncmp(wifi_vap_map->vap_array[i].vap_name, "private_ssid",
+                        strlen("private_ssid")) == 0) {
 
-                    wifi_hal_get_default_keypassphrase(default_password, wifi_vap_map->vap_array[i].vap_index);
+                    wifi_hal_get_default_keypassphrase(default_password,
+                        wifi_vap_map->vap_array[i].vap_index);
 
-                    if ((strcmp(wifi_vap_map->vap_array[i].u.bss_info.ssid,default_ssid) == 0) || \
-                        ((strcmp(wifi_vap_map->vap_array[i].u.bss_info.security.u.key.key,default_password) == 0))) {
+                    if ((strcmp(wifi_vap_map->vap_array[i].u.bss_info.ssid, default_ssid) == 0) ||
+                        ((strcmp(wifi_vap_map->vap_array[i].u.bss_info.security.u.key.key,
+                              default_password) == 0))) {
 
-                       wifi_util_error_print(WIFI_CTRL,"private vaps have default credentials\n");
-                       default_private_credentials = true;
-                       break;
+                        wifi_util_error_print(WIFI_CTRL, "private vaps have default credentials\n");
+                        default_private_credentials = true;
+                        break;
                     }
                 }
             }
         }
-        wifi_util_info_print(WIFI_CTRL,"Private vaps credentials= %d and reboot reason =%s\n",default_private_credentials,pTmp);
+        wifi_util_info_print(WIFI_CTRL, "Private vaps credentials= %d and reboot reason =%s\n",
+            default_private_credentials, pTmp);
         if (default_private_credentials) {
-            rc = rbus_setStr(g_wifi_mgr->ctrl.rbus_handle,SUBDOC_FORCE_RESET,PRIVATE_SUB_DOC);
-            if(rc != RBUS_ERROR_SUCCESS) {
-                wifi_util_error_print(WIFI_MGR,"[%s:%d] Rbus error in setting: %s\n", __func__, __LINE__, SUBDOC_FORCE_RESET);
-                get_stubs_descriptor()->v_secure_system_fn("touch /tmp/sw_upgrade_private_defaults");
-                rbusValue_Release(value);
+            rc = get_bus_descriptor()->bus_set_string_fn(&g_wifi_mgr->ctrl.handle,
+                SUBDOC_FORCE_RESET, PRIVATE_SUB_DOC);
+            if (rc != bus_error_success) {
+                wifi_util_error_print(WIFI_MGR,
+                    "[%s:%d] bus: bus_set_string_fn error in setting: %s\n", __func__, __LINE__,
+                    SUBDOC_FORCE_RESET);
+                get_stubs_descriptor()->v_secure_system_fn(
+                    "touch /tmp/sw_upgrade_private_defaults");
+                get_bus_descriptor()->bus_data_free_fn(&data);
                 return RETURN_ERR;
             }
-            wifi_util_info_print(WIFI_CTRL,"Force Reset called on %s because privatevap vap credentials are default \n",PRIVATE_SUB_DOC);
-
+            wifi_util_info_print(WIFI_CTRL,
+                "Force Reset called on %s because privatevap vap credentials are default \n",
+                PRIVATE_SUB_DOC);
         }
-
     }
-    rbusValue_Release(value);
+
+    get_bus_descriptor()->bus_data_free_fn(&data);
+
     return RETURN_OK;
 }
 
@@ -1891,13 +1906,13 @@ static int sync_wifi_hal_hotspot_vap_mac_entry(void *arg)
 }
 #endif
 
-static int rbus_check_and_subscribe_events(void* arg)
+static int bus_check_and_subscribe_events(void* arg)
 {
     wifi_ctrl_t *ctrl = NULL;
 
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
-    if ((ctrl->rbus_events_subscribed == false) || (ctrl->tunnel_events_subscribed == false) ||
+    if ((ctrl->bus_events_subscribed == false) || (ctrl->tunnel_events_subscribed == false) ||
         (ctrl->device_mode_subscribed == false) || (ctrl->active_gateway_check_subscribed == false) ||
         (ctrl->device_tunnel_status_subscribed == false) || (ctrl->device_wps_test_subscribed == false) ||
         (ctrl->test_device_mode_subscribed == false) || (ctrl->mesh_status_subscribed == false) ||
@@ -1906,7 +1921,7 @@ static int rbus_check_and_subscribe_events(void* arg)
         || (ctrl->eth_bh_status_subscribed == false)
 #endif
         ) {
-        rbus_subscribe_events(ctrl);
+        bus_subscribe_events(ctrl);
     }
     return TIMER_TASK_COMPLETE;
 }
@@ -1984,7 +1999,8 @@ static void ctrl_queue_timeout_scheduler_tasks(wifi_ctrl_t *ctrl)
 
     scheduler_add_timer_task(ctrl->sched, FALSE, NULL, sta_connectivity_selfheal, NULL, (STA_CONN_RETRY_TIMEOUT * 1000), 0, FALSE);
 
-    scheduler_add_timer_task(ctrl->sched, FALSE, NULL, rbus_check_and_subscribe_events, NULL, (ctrl->poll_period * 1000), 0, FALSE);
+    scheduler_add_timer_task(ctrl->sched, FALSE, NULL, bus_check_and_subscribe_events, NULL, (ctrl->poll_period * 1000), 0, FALSE);
+
     scheduler_add_timer_task(ctrl->sched, FALSE, NULL, pending_states_webconfig_analyzer, NULL, (ctrl->poll_period * 1000), 0, FALSE);
 
 #if defined (FEATURE_SUPPORT_ACL_SELFHEAL)
@@ -3112,45 +3128,22 @@ void Load_Hotspot_APIsolation_Settings(void)
     }
 }
 
-int get_rbus_param(rbusHandle_t rbus_handle, rbus_data_type_t data_type, const char *paramNames, void *data_value)
+int set_bus_bool_param(bus_handle_t *handle, const char *paramNames, bool data_value)
 {
-    rbusValue_t value;
     int rc = RETURN_ERR;
+    raw_data_t data;
 
-    rc = rbus_get(rbus_handle, paramNames, &value);
-    if (rc != RBUS_ERROR_SUCCESS) {
-        wifi_util_error_print(WIFI_MGR,"[%s:%d] rbus_get failed for [%s] with error [%d]\n", __func__, __LINE__, paramNames, rc);
+    data.data_type = bus_data_type_boolean;
+    data.raw_data.b = data_value;
+
+    rc = get_bus_descriptor()->bus_set_fn(handle, paramNames, &data);
+    if (rc != bus_error_success) {
+        wifi_util_error_print(WIFI_MGR, "[%s:%d] bus: bus_set_fn error param: %s\r\n", __func__,
+            __LINE__, paramNames);
         return RETURN_ERR;
     }
-
-    if (data_type == rbus_string_data) {
-        strcpy((char *)data_value, rbusValue_GetString(value, NULL));
-        wifi_util_dbg_print(WIFI_MGR,":%s:%d rbus get[%s] data value = [%s]\n", __func__, __LINE__, paramNames, (char *)data_value);
-    } else if (data_type == rbus_bool_data) {
-        *(bool *)data_value = rbusValue_GetBoolean(value);
-        wifi_util_dbg_print(WIFI_MGR,":%s:%d rbus get[%s] data value = [%d]\n", __func__, __LINE__, paramNames, *(bool *)data_value);
-    } else if (data_type == rbus_uint_data) {
-        *(unsigned int *)data_value = rbusValue_GetUInt32(value);
-        wifi_util_dbg_print(WIFI_MGR,":%s:%d rbus get[%s] data value = [%d]\n", __func__, __LINE__, paramNames, *(unsigned int *)data_value);
-    }
-
-    return RETURN_OK;
-}
-
-int set_rbus_bool_param(rbusHandle_t rbus_handle, const char *paramNames, bool data_value)
-{
-    rbusValue_t value;
-    int rc = RETURN_ERR;
-
-    rbusValue_Init(&value);
-    rbusValue_SetBoolean(value, data_value);
-
-    rc = rbus_set(rbus_handle, paramNames, value, NULL);
-    if(rc != RBUS_ERROR_SUCCESS) {
-        wifi_util_error_print(WIFI_MGR,"[%s:%d] Rbus error param: %s\r\n", __func__, __LINE__, paramNames);
-        return RETURN_ERR;
-    }
-    wifi_util_dbg_print(WIFI_MGR,"[%s:%d] wifi rbus set[%s]:value:%d\r\n", __func__, __LINE__, paramNames, data_value);
+    wifi_util_dbg_print(WIFI_MGR, "[%s:%d] bus: wifi bus set[%s]:value:%d\r\n", __func__, __LINE__,
+        paramNames, data_value);
 
     return RETURN_OK;
 }

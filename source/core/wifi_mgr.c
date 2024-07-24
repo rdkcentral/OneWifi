@@ -1355,38 +1355,35 @@ int wifi_db_update_psm_values()
     return retval;
 }
 
-static void rbus_subscription_handler(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription)
+static void bus_subscription_handler(bus_handle_t handle, bus_event_t *event,
+    bus_event_sub_t *subscription)
 {
 
-    wifi_util_dbg_print(WIFI_MGR,"%s:%d rbus rbus_subscription_handler\n", __func__, __LINE__);
+    wifi_util_dbg_print(WIFI_MGR, "%s:%d bus_subscription_handler\n", __func__, __LINE__);
 }
 
-int wifi_mgr_rbus_subsription(rbusHandle_t *rbus_handle)
+int wifi_mgr_bus_subsription(bus_handle_t *handle)
 {
     int rc;
     char *component_name = "WifiMgr";
 
-    rc = rbus_open(rbus_handle, component_name);
-
-    if (rc != RBUS_ERROR_SUCCESS) {
-        wifi_util_error_print(WIFI_MGR,"%s:%d Rbus open failed\n", __func__, __LINE__);
+    rc = get_bus_descriptor()->bus_open_fn(handle, component_name);
+    if (rc != bus_error_success) {
+        wifi_util_error_print(WIFI_MGR, "%s:%d bus: bus_open_fn open failed for component:%s, rc:%d\n",
+	 __func__, __LINE__, component_name, rc);
         return RETURN_ERR;
     }
 
-    wifi_util_dbg_print(WIFI_MGR,"%s:%d rbus open success\n", __func__, __LINE__);
+    wifi_util_dbg_print(WIFI_MGR, "%s:%d bus open success\n", __func__, __LINE__);
 
-    /*if (rbusEvent_Subscribe(*rbus_handle, WIFI_PSM_DB_NAMESPACE, rbus_subscription_handler, NULL, 0) != RBUS_ERROR_SUCCESS) {
-        wifi_util_dbg_print(WIFI_MGR,"%s:%d Rbus event:%s subscribe failed\n",__FUNCTION__, __LINE__, WIFI_PSM_DB_NAMESPACE);
+    if (get_bus_descriptor()->bus_event_subs_fn(handle, LAST_REBOOT_REASON_NAMESPACE,
+            bus_subscription_handler, NULL, 0) != bus_error_success) {
+        wifi_util_error_print(WIFI_MGR, "%s:%d bus event:%s subscribe failed\n", __FUNCTION__,
+            __LINE__, LAST_REBOOT_REASON_NAMESPACE);
         return RETURN_ERR;
     } else {
-        wifi_util_dbg_print(WIFI_MGR,"%s:%d Rbus event:%s subscribe success\n",__FUNCTION__, __LINE__, WIFI_PSM_DB_NAMESPACE);
-    }*/
-
-    if (rbusEvent_Subscribe(*rbus_handle, LAST_REBOOT_REASON_NAMESPACE, rbus_subscription_handler, NULL, 0) != RBUS_ERROR_SUCCESS) {
-        wifi_util_error_print(WIFI_MGR,"%s:%d Rbus event:%s subscribe failed\n",__FUNCTION__, __LINE__, LAST_REBOOT_REASON_NAMESPACE);
-        return RETURN_ERR;
-    } else {
-        wifi_util_dbg_print(WIFI_MGR,"%s:%d Rbus event:%s subscribe success\n",__FUNCTION__, __LINE__, LAST_REBOOT_REASON_NAMESPACE);
+        wifi_util_dbg_print(WIFI_MGR, "%s:%d bus: bus event:%s subscribe success\n", __FUNCTION__,
+            __LINE__, LAST_REBOOT_REASON_NAMESPACE);
     }
 
     return RETURN_OK;
@@ -1450,76 +1447,120 @@ int set_bool_psm_value(bool data_value, char *recName)
 int get_all_param_from_psm_and_set_into_db(void)
 {
     char inactive_firmware[64] = { 0 };
-    wifi_util_info_print(WIFI_MGR,"%s \n",__func__);
-/*      check for psm-db(Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.WiFi-PSM-DB.Enable) and
-**      last reboot reason(Device.DeviceInfo.X_RDKCENTRAL-COM_LastRebootReason)
-**      if psm-db is false and last reboot reason if not factory-reset,
-**      then update wifi-db with values from psm */
-    wifi_util_info_print(WIFI_MGR,"%s \n",__func__);
-    if (is_device_type_xb7() == true || is_device_type_xb8() == true || is_device_type_vbvxb10() == true || is_device_type_sercommxb10() == true || is_device_type_scxer10() == true || is_device_type_sr213() == true || is_device_type_cmxb7() == true || is_device_type_cbr2() == true) {
+    wifi_util_info_print(WIFI_MGR, "%s \n", __func__);
+    /*      check for psm-db(Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.WiFi-PSM-DB.Enable) and
+    **      last reboot reason(Device.DeviceInfo.X_RDKCENTRAL-COM_LastRebootReason)
+    **      if psm-db is false and last reboot reason if not factory-reset,
+    **      then update wifi-db with values from psm */
+    wifi_util_info_print(WIFI_MGR, "%s \n", __func__);
+    if (is_device_type_xb7() == true || is_device_type_xb8() == true ||
+        is_device_type_vbvxb10() == true || is_device_type_sercommxb10() == true ||
+        is_device_type_scxer10() == true || is_device_type_sr213() == true ||
+        is_device_type_cmxb7() == true || is_device_type_cbr2() == true) {
         bool wifi_psm_db_enabled = false;
         char last_reboot_reason[32];
+        raw_data_t data;
+
+        memset(&data, 0, sizeof(raw_data_t));
         memset(last_reboot_reason, 0, sizeof(last_reboot_reason));
 
-        rbusHandle_t rbus_handle;
-        if (wifi_mgr_rbus_subsription(&rbus_handle) == RETURN_OK) {
-            if (get_rbus_param(rbus_handle, rbus_bool_data, WIFI_PSM_DB_NAMESPACE, &wifi_psm_db_enabled) != RETURN_OK) {
+        bus_handle_t handle;
+        if (wifi_mgr_bus_subsription(&handle) == RETURN_OK) {
+            if (get_bus_descriptor()->bus_data_get_fn(&handle, WIFI_PSM_DB_NAMESPACE, &data) ==
+                bus_error_success) {
+                if (data.data_type != bus_data_type_boolean) {
+                    wifi_util_error_print(WIFI_CTRL,
+                        "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x\n", __func__,
+                        __LINE__, WIFI_PSM_DB_NAMESPACE, data.data_type);
+                    return 0;
+                }
+                wifi_psm_db_enabled = data.raw_data.b;
                 get_wifi_db_psm_enable_status(&wifi_psm_db_enabled);
             }
-            if (get_rbus_param(rbus_handle, rbus_string_data, LAST_REBOOT_REASON_NAMESPACE, last_reboot_reason) != RETURN_OK) {
+            memset(&data, 0, sizeof(raw_data_t));
+            if (get_bus_descriptor()->bus_data_get_fn(&handle, LAST_REBOOT_REASON_NAMESPACE,
+                    &data) == bus_error_success) {
+                if (data.data_type != bus_data_type_string) {
+                    wifi_util_error_print(WIFI_CTRL,
+                        "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x\n", __func__,
+                        __LINE__, LAST_REBOOT_REASON_NAMESPACE, data.data_type);
+                    get_bus_descriptor()->bus_data_free_fn(&data);
+                    return 0;
+                }
+                strncpy(last_reboot_reason, (char *)data.raw_data.bytes, data.raw_data_len);
                 get_wifi_last_reboot_reason_psm_value(last_reboot_reason);
+
+                get_bus_descriptor()->bus_data_free_fn(&data);
             }
         } else {
             get_wifi_db_psm_enable_status(&wifi_psm_db_enabled);
             get_wifi_last_reboot_reason_psm_value(last_reboot_reason);
         }
 
-        wifi_util_info_print(WIFI_MGR,"%s psm:%d last_reboot_reason:%s \n",__func__, wifi_psm_db_enabled, last_reboot_reason);
+        wifi_util_info_print(WIFI_MGR, "%s psm:%d last_reboot_reason:%s \n", __func__,
+            wifi_psm_db_enabled, last_reboot_reason);
 
-        if (get_rbus_param(rbus_handle, rbus_string_data, INACTIVE_FIRMWARE_NAMESPACE, inactive_firmware) == RETURN_OK) {
+        memset(&data, 0, sizeof(raw_data_t));
+
+        if (get_bus_descriptor()->bus_data_get_fn(&handle, INACTIVE_FIRMWARE_NAMESPACE, &data) ==
+            bus_error_success) {
+            if (data.data_type != bus_data_type_string) {
+                wifi_util_error_print(WIFI_CTRL,
+                    "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x\n", __func__, __LINE__,
+                    LAST_REBOOT_REASON_NAMESPACE, data.data_type);
+                get_bus_descriptor()->bus_data_free_fn(&data);
+                return 0;
+            }
+            strncpy(inactive_firmware, (char *)data.raw_data.bytes,
+                   (sizeof(inactive_firmware) - 1));
             if (access(ONEWIFI_DB_CONSOLIDATED_FLAG, F_OK) != 0) {
-                if (((strncmp(last_reboot_reason, "Software_upgrade", strlen("Software_upgrade")) == 0) ||
-                    (strncmp(last_reboot_reason, "Forced_Software_upgrade", strlen("Forced_Software_upgrade")) == 0))
-                    && is_db_upgrade_required(inactive_firmware)) {
+                if (((strncmp(last_reboot_reason, "Software_upgrade", strlen("Software_upgrade")) ==
+                         0) ||
+                        (strncmp(last_reboot_reason, "Forced_Software_upgrade",
+                             strlen("Forced_Software_upgrade")) == 0)) &&
+                    is_db_upgrade_required(inactive_firmware)) {
 
-                    wifi_util_info_print(WIFI_MGR,"ONEWIFI_MIGRATION_FLAG is created\n");
+                    wifi_util_info_print(WIFI_MGR, "ONEWIFI_MIGRATION_FLAG is created\n");
                 }
             }
+            get_bus_descriptor()->bus_data_free_fn(&data);
+
         }
 
         if ((access(ONEWIFI_MIGRATION_FLAG, F_OK) == 0)) {
             int retval;
             retval = wifi_db_update_psm_values();
             if (retval == RETURN_OK) {
-                wifi_util_info_print(WIFI_MGR,"%s updated WIFI DB from psm\n",__func__);
+                wifi_util_info_print(WIFI_MGR, "%s updated WIFI DB from psm\n", __func__);
             } else {
-                wifi_util_error_print(WIFI_MGR,"%s: failed to update WIFI DB from psm\n",__func__);
+                wifi_util_error_print(WIFI_MGR, "%s: failed to update WIFI DB from psm\n",
+                    __func__);
                 return RETURN_ERR;
             }
             sleep(1);
             remove_onewifi_factory_reset_flag();
             remove_onewifi_migration_flag();
-            wifi_util_info_print(WIFI_MGR,"%s FactoryReset flag removed  \n",__func__);
+            wifi_util_info_print(WIFI_MGR, "%s FactoryReset flag removed  \n", __func__);
         }
 
         if (wifi_psm_db_enabled == true) {
             set_bool_psm_value(false, WIFI_PSM_DB_NAMESPACE);
         }
-        if ((strncmp(last_reboot_reason, "factory-reset", strlen("factory-reset")) == 0) || (strncmp(last_reboot_reason, "WPS-Factory-Reset", strlen("WPS-Factory-Reset")) == 0) ||
-            ( strncmp(last_reboot_reason, "CM_variant_change", strlen("CM_variant_change")) == 0 )) {
+        if ((strncmp(last_reboot_reason, "factory-reset", strlen("factory-reset")) == 0) ||
+            (strncmp(last_reboot_reason, "WPS-Factory-Reset", strlen("WPS-Factory-Reset")) == 0) ||
+            (strncmp(last_reboot_reason, "CM_variant_change", strlen("CM_variant_change")) == 0)) {
             create_onewifi_factory_reset_flag();
             create_onewifi_factory_reset_reboot_flag();
-            wifi_util_info_print(WIFI_MGR,"%s FactoryReset is done \n",__func__);
+            wifi_util_info_print(WIFI_MGR, "%s FactoryReset is done \n", __func__);
         }
-
     }
 
     get_wifidb_obj()->desc.init_data_fn();
 
-    //Set Wifi Global Parameters
+    // Set Wifi Global Parameters
     init_wifi_global_config();
 
-    wifi_util_info_print(WIFI_MGR,"%s Done\n",__func__);
+    wifi_util_info_print(WIFI_MGR, "%s Done\n", __func__);
     return RETURN_OK;
 }
 #endif // DML_SUPPORT
@@ -1533,6 +1574,9 @@ int init_wifimgr()
     struct stat sb;
     char db_file[128];
     int hal_initialized = RETURN_ERR;
+
+    platform_init();
+    wifi_util_info_print(WIFI_CTRL, "%s:%d: wifi_bus_init success\n", __FUNCTION__, __LINE__);
 
     if(wifi_hal_pre_init() != RETURN_OK) {
         wifi_util_error_print(WIFI_MGR,"%s wifi hal pre_init failed\n", __func__);
@@ -1677,7 +1721,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    rbus_get_vap_init_parameter(WIFI_DEVICE_MODE, &g_wifi_mgr.ctrl.network_mode);
+    bus_get_vap_init_parameter(WIFI_DEVICE_MODE, &g_wifi_mgr.ctrl.network_mode);
     if (start_wifimgr() != 0) {
         wifi_util_error_print(WIFI_MGR,"%s: wifimgr start failed\n", __func__);
         return -1;

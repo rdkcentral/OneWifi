@@ -33,6 +33,7 @@ extern "C" {
 #if DML_SUPPORT
 #endif // DML_SUPPORT
 #include "wifi_ctrl.h"
+#include "platform_common.h"
 
 #define WIFI_PSM_DB_NAMESPACE         "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.WiFi-PSM-DB.Enable"
 #define LAST_REBOOT_REASON_NAMESPACE  "Device.DeviceInfo.X_RDKCENTRAL-COM_LastRebootReason"

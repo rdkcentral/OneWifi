@@ -20,8 +20,8 @@
 #ifndef WIFI_WEBCONFIG_DML_H
 #define WIFI_WEBCONFIG_DML_H
 
-#include "rbus.h"
 #include "wifi_webconfig.h"
+#include "bus.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -41,7 +41,7 @@ typedef struct {
     hash_map_t    *assoc_dev_hash_map[MAX_NUM_RADIOS][MAX_NUM_VAP_PER_RADIO];
     pthread_mutex_t assoc_dev_lock;
     acl_data_t acl_data;
-    rbusHandle_t	rbus_handle;
+    bus_handle_t         handle;
     instant_measurement_config_t harvester;
     queue_t    *csi_data_queue;
 } webconfig_dml_t;

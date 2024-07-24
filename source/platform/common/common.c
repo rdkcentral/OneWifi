@@ -17,25 +17,15 @@
   limitations under the License.
  **************************************************************************/
 
-#ifndef WIFI_WEBCONFIG_DML_H
-#define WIFI_WEBCONFIG_DML_H
+#include "platform_common.h"
+#include "bus.h"
 
-#include "wifi_webconfig.h"
+int platform_init(void)
+{
+    /* Initialize RBUS descriptor */
+    bus_init();
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-typedef struct {
-    webconfig_t             webconfig;
-    wifi_global_config_t    config;
-    wifi_hal_capability_t   hal_cap;
-    rdk_wifi_radio_t        radios[MAX_NUM_RADIOS];
-    bus_handle_t            handle;
-} webconfig_dml_t;
-
-#ifdef __cplusplus
+    /* t2_events_, v_secure_system etc init */
+    // system_init();
+    return 0;
 }
-#endif
-
-#endif // WIFI_WEBCONFIG__DML_H

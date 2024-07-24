@@ -1288,15 +1288,13 @@ int process_ext_sta_conn_status(wifi_service_node_t *node, wifi_core_data_t *dat
     bss_candidate_t *candidate = NULL;
     bool found_candidate = false, send_event = false;
     unsigned int i = 0, index, j = 0;
-    rbusEvent_t event;
-    rbusObject_t rdata;
-    rbusValue_t value;
     char name[64];
     wifi_sta_conn_info_t sta_conn_info;
     wifi_radio_operationParam_t *radio_params = NULL;
     wifi_radio_feature_param_t *radio_feat = NULL;
     mesh_sta_node_data_t *ext;
     wifi_ctrl_t *ctrl;
+    raw_data_t rawdata;
 
     ext = &node->data.u.sta_node_data;
     ctrl = node->ctrl;
@@ -1318,7 +1316,7 @@ int process_ext_sta_conn_status(wifi_service_node_t *node, wifi_core_data_t *dat
     for (i = 0; i < vap_map->num_vaps; i++) {
         if (vap_map->vap_array[i].vap_index == sta_data->stats.vap_index) {
             if (vap_map->vap_array[i].u.sta_info.conn_status != sta_data->stats.connect_status) {
-                // send rbus connect indication
+                // send bus connect indication
                 send_event = true;
             }
             temp_vap_info = &vap_map->vap_array[i];
@@ -1489,33 +1487,26 @@ int process_ext_sta_conn_status(wifi_service_node_t *node, wifi_core_data_t *dat
     if (send_event == true) {
         sprintf(name, "Device.WiFi.STA.%d.Connection.Status", index + 1);
 
-        wifi_util_dbg_print(WIFI_SERVICES, "%s:%d Rbus name: %s connection status: %s\n", __func__,
+        wifi_util_dbg_print(WIFI_SERVICES, "%s:%d bus name: %s connection status: %s\n", __func__,
             __LINE__, name, ext_conn_status_to_str(sta_data->stats.connect_status));
 
         memset(&sta_conn_info, 0, sizeof(wifi_sta_conn_info_t));
 
-        rbusValue_Init(&value);
-        rbusObject_Init(&rdata, NULL);
-        rbusObject_SetValue(rdata, name, value);
-        sta_conn_info.connect_status =  sta_data->stats.connect_status;
+        sta_conn_info.connect_status = sta_data->stats.connect_status;
         memcpy(sta_conn_info.bssid, sta_data->bss_info.bssid, sizeof(sta_conn_info.bssid));
-        rbusValue_SetBytes(value, (uint8_t *)&sta_conn_info, sizeof(sta_conn_info));
 
-        event.name = name;
-        event.data = rdata;
-        event.type = RBUS_EVENT_GENERAL;
+        memset(&rawdata, 0, sizeof(raw_data_t));
 
-        if (rbusEvent_Publish(ctrl->rbus_handle, &event) != RBUS_ERROR_SUCCESS) {
-            wifi_util_dbg_print(WIFI_SERVICES, "%s:%d: rbusEvent_Publish Event failed\n", __func__, __LINE__);
+        rawdata.data_type = bus_data_type_bytes;
+        rawdata.raw_data.bytes = (void *)sta_conn_info;
+        rawdata.raw_data_len = sizeof(wifi_sta_conn_info_t);
 
-            rbusValue_Release(value);
-            rbusObject_Release(rdata);
-
+        bus_error_t rc = get_bus_descriptor()->bus_event_publish_fn(&ctrl->bus_hdl, name, &rawdata);
+        if (rc != bus_error_success) {
+            wifi_util_dbg_print(WIFI_SERVICES, "%s:%d: bus_event_publish_fn Event failed rc:%d\n",
+                __func__, __LINE__, rc);
             return RETURN_ERR;
         }
-
-        rbusValue_Release(value);
-        rbusObject_Release(rdata);
     }
 
     if (candidate != NULL) {

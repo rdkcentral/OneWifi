@@ -25,7 +25,6 @@ extern "C" {
 #endif
 
 #include <ev.h>
-#include <rbus.h>
 #include <pthread.h>
 #include "wifi_base.h"
 #include "wifi_db.h"
@@ -75,8 +74,8 @@ extern "C" {
 #define WIFI_FORCE_DISABLE_RADIO           "WiFiForceDisableWiFiRadio"
 #define WIFI_FORCE_DISABLE_RADIO_STATUS    "WiFiForceDisableRadioStatus"
 
-#define WIFI_RBUS_WIFIAPI_COMMAND          "Device.WiFi.WiFiAPI.command"
-#define WIFI_RBUS_WIFIAPI_RESULT           "Device.WiFi.WiFiAPI.result"
+#define WIFI_BUS_WIFIAPI_COMMAND           "Device.WiFi.WiFiAPI.command"
+#define WIFI_BUS_WIFIAPI_RESULT            "Device.WiFi.WiFiAPI.result"
 
 #define WIFI_NORMALIZED_RSSI_LIST          "Device.DeviceInfo.X_RDKCENTRAL-COM_WIFI_TELEMETRY.NormalizedRssiList"
 #define WIFI_SNR_LIST                      "Device.DeviceInfo.X_RDKCENTRAL-COM_WIFI_TELEMETRY.SNRList"
@@ -89,11 +88,11 @@ extern "C" {
 
 #define TEST_WIFI_DEVICE_MODE              "Device.X_RDKCENTRAL-COM_DeviceControl.DeviceNetworkingMode_1"
 
-#define WIFI_RBUS_HOTSPOT_UP               "Device.WiFi.HotspotUp"
-#define WIFI_RBUS_HOTSPOT_DOWN             "Device.WiFi.HotspotDown"
+#define WIFI_BUS_HOTSPOT_UP                "Device.WiFi.HotspotUp"
+#define WIFI_BUS_HOTSPOT_DOWN              "Device.WiFi.HotspotDown"
 
 #define WIFI_WEBCONFIG_KICK_MAC            "Device.WiFi.KickAssocDevices"
-#define RBUS_WIFI_WPS_PIN_START            "Device.WiFi.WPS.Start"
+#define BUS_WIFI_WPS_PIN_START             "Device.WiFi.WPS.Start"
 
 #define ETH_BH_STATUS                      "Device.X_RDK_MeshAgent.EthernetBhaulUplink.Status"
 
@@ -115,7 +114,7 @@ extern "C" {
 
 #define SUBDOC_FORCE_RESET               "Device.X_RDK_WebConfig.webcfgSubdocForceReset"
 #define PRIVATE_SUB_DOC                  "privatessid"
-// Connected building wifi subdoc and rbus related constants
+// Connected building wifi subdoc and bus related constants
 #define MULTI_COMP_SUPPORTED_SUBDOC_COUNT 2
 #define MANAGED_WIFI_BRIDGE "Device.LAN.Bridge.1.Name"
 #define MANAGED_WIFI_INTERFACE "Device.LAN.Bridge.1.WiFiInterfaces"
@@ -127,13 +126,6 @@ extern "C" {
 #define MESH_STA 0b10000
 #define MESH_BACKHAUL 0b100000
 #define LNF 0b1000000
-
-typedef enum {
-    rbus_bool_data,
-    rbus_int_data,
-    rbus_uint_data,
-    rbus_string_data
-} rbus_data_type_t;
 
 typedef enum {
     ctrl_webconfig_state_none = 0,
@@ -210,13 +202,13 @@ typedef struct {
     wifi_event_subtype_t type;
     BOOL subscribed;
     unsigned int num_subscribers;
-}__attribute__((packed)) event_rbus_element_t;
+}__attribute__((packed)) event_bus_element_t;
 
 typedef struct {
     char                 *diag_events_json_buffer[MAX_VAP];
-    queue_t              *events_rbus_queue; //event_rbus_element_t
-    pthread_mutex_t      events_rbus_lock;
-} events_rbus_data_t;
+    queue_t              *events_bus_queue; //event_bus_element_t
+    pthread_mutex_t      events_bus_lock;
+} events_bus_data_t;
 
 typedef struct wifi_ctrl {
     bool                exit_ctrl;
@@ -230,8 +222,8 @@ typedef struct wifi_ctrl {
     struct scheduler    *sched;
     webconfig_t         webconfig;
     wifi_ctrl_webconfig_state_t webconfig_state;
-    rbusHandle_t        rbus_handle;
-    bool                rbus_events_subscribed;
+    bus_handle_t        handle;
+    bool                bus_events_subscribed;
     bool                active_gateway_check_subscribed;
     bool                tunnel_events_subscribed;
     bool                mesh_status_subscribed;
@@ -262,7 +254,7 @@ typedef struct wifi_ctrl {
     bool                db_consolidated;
     int                 speed_test_timeout;
     int                 speed_test_running;
-    events_rbus_data_t  events_rbus_data;
+    events_bus_data_t   events_bus_data;
 } wifi_ctrl_t;
 
 
@@ -378,8 +370,6 @@ bool get_wifi_mesh_vap_enable_status(void);
 int get_wifi_mesh_sta_network_status(uint8_t vapIndex, bool *status);
 bool check_for_greylisted_mac_filter(void);
 void wait_wifi_scan_result(wifi_ctrl_t *ctrl);
-int get_rbus_param(rbusHandle_t rbus_handle, rbus_data_type_t data_type, const char *paramNames, void *data_value);
-int set_rbus_bool_param(rbusHandle_t rbus_handle, const char *paramNames, bool data_value);
 bool is_sta_enabled(void);
 void reset_wifi_radios();
 wifi_platform_property_t *get_wifi_hal_cap_prop(void);

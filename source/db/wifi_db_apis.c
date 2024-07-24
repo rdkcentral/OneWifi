@@ -3121,7 +3121,7 @@ int wifidb_delete_all_preassoc_ctrl()
   Description : Delete table_Wifi_Connection_Control_Config entry from wifidb
  *************************************************************************************
 **************************************************************************************/
-int wifidb_delete_connection_ctrl(char *vap_name)
+int wifidb_delete_postassoc_ctrl(char *vap_name)
 {
     json_t *where;
     int ret = 0;
@@ -3137,34 +3137,6 @@ int wifidb_delete_connection_ctrl(char *vap_name)
         return -1;
     } else{
         wifidb_print("%s:%d Deleted WIFI DB. table_Wifi_Connection_Control_Config deleted successful. \n",__func__, __LINE__);
-    }
-
-    return 0;
-}
-
-/************************************************************************************
- ************************************************************************************
-  Function    : wifidb_delete_postassoc_ctrl
-  Parameter   : vap_name - Name of vap
-  Description : Delete table_Wifi_Postassoc_Control_Config entry from wifidb
- *************************************************************************************
-**************************************************************************************/
-int wifidb_delete_postassoc_ctrl(char *vap_name)
-{
-    json_t *where;
-    int ret = 0;
-    wifi_db_t *g_wifidb;
-    g_wifidb = (wifi_db_t*) get_wifidb_obj();
-
-    where = onewifi_ovsdb_tran_cond(OCLM_STR, "vap_name", OFUNC_EQ, vap_name);
-    ret = onewifi_ovsdb_table_delete_where(g_wifidb->wifidb_sock_path, &table_Wifi_Postassoc_Control_Config, where);
-    wifi_util_dbg_print(WIFI_DB,"%s:%d:VAP Config delete vap_name=%s ret=%d\n",__func__, __LINE__,vap_name,ret);
-    if(ret != 1)
-    {
-        wifidb_print("%s:%d WIFI DB Delete error !!!. Failed to delete table_Wifi_Postassoc_Control_Config \n",__func__, __LINE__);
-        return -1;
-    } else{
-        wifidb_print("%s:%d Deleted WIFI DB. table_Wifi_Postassoc_Control_Config deleted successful. \n",__func__, __LINE__);
     }
 
     return 0;
@@ -3213,6 +3185,34 @@ int wifidb_delete_all_postassoc_ctrl()
     }
     wifidb_print("%s:%d WIFI DB Delete error !!!. Failed to Delete \n",__func__, __LINE__);
     return -1;
+}
+
+/************************************************************************************
+ ************************************************************************************
+  Function    : wifidb_delete_connection_ctrl
+  Parameter   : vap_name - Name of vap
+  Description : Delete table_Wifi_Postassoc_Control_Config entry from wifidb
+ *************************************************************************************
+**************************************************************************************/
+int wifidb_delete_connection_ctrl(char *vap_name)
+{
+    json_t *where;
+    int ret = 0;
+    wifi_db_t *g_wifidb;
+    g_wifidb = (wifi_db_t*) get_wifidb_obj();
+
+    where = onewifi_ovsdb_tran_cond(OCLM_STR, "vap_name", OFUNC_EQ, vap_name);
+    ret = onewifi_ovsdb_table_delete_where(g_wifidb->wifidb_sock_path, &table_Wifi_Postassoc_Control_Config, where);
+    wifi_util_dbg_print(WIFI_DB,"%s:%d:VAP Config delete vap_name=%s ret=%d\n",__func__, __LINE__,vap_name,ret);
+    if(ret != 1)
+    {
+        wifidb_print("%s:%d WIFI DB Delete error !!!. Failed to delete table_Wifi_Connection_Control_Config \n",__func__, __LINE__);
+        return -1;
+    } else{
+        wifidb_print("%s:%d Deleted WIFI DB. table_Wifi_Postassoc_Control_Config deleted successful. \n",__func__, __LINE__);
+    }
+
+    return 0;
 }
 
 /************************************************************************************
@@ -4042,7 +4042,7 @@ void wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config)
 #else
     rfc_config.wpa3_rfc = false;
 #endif
-#if defined(_XER5_PRODUCT_REQ_) || defined(NEWPLATFORM_PORT)
+#if defined(ALWAYS_ENABLE_AX_2G) || defined(NEWPLATFORM_PORT)
     rfc_config.twoG80211axEnable_rfc = true;
 #else
     rfc_config.twoG80211axEnable_rfc = false;
@@ -4157,6 +4157,7 @@ static void wifidb_radio_config_upgrade(unsigned int index, wifi_radio_operation
     }
 #endif /* CONFIG_IEEE80211BE */
 }
+
 /************************************************************************************
  ************************************************************************************
   Function    : wifidb_vap_config_upgrade
@@ -4368,8 +4369,11 @@ void *start_wifidb_func(void *arg)
     wifi_mgr_t *g_wifidb;
 #if DML_SUPPORT
     char last_reboot_reason[32];
+    raw_data_t data = { 0 };
+
     memset(last_reboot_reason, 0, sizeof(last_reboot_reason));
 #endif
+
     g_wifidb = get_wifimgr_obj();
     prctl(PR_SET_NAME,  __func__, 0, 0, 0);
 
@@ -4398,10 +4402,20 @@ void *start_wifidb_func(void *arg)
         system(cmd);
 
 #if DML_SUPPORT
-        if (g_wifidb->ctrl.rbus_handle != NULL) {
-	    if (get_rbus_param(g_wifidb->ctrl.rbus_handle, rbus_string_data, LAST_REBOOT_REASON_NAMESPACE, last_reboot_reason) != RETURN_OK) {
-	        get_wifi_last_reboot_reason_psm_value(last_reboot_reason);
+        memset(&data, 0, sizeof(raw_data_t));
+
+        if (get_bus_descriptor()->bus_data_get_fn(&g_wifidb->ctrl.handle,
+                LAST_REBOOT_REASON_NAMESPACE, &data) == bus_error_success) {
+            if (data.data_type != bus_data_type_string) {
+                wifi_util_error_print(WIFI_CTRL,
+                    "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x\n", __func__, __LINE__,
+                    LAST_REBOOT_REASON_NAMESPACE, data.data_type);
+                get_bus_descriptor()->bus_data_free_fn(&data);
+                return NULL;
             }
+            strncpy(last_reboot_reason, (char *)data.raw_data.bytes, data.raw_data_len);
+            get_wifi_last_reboot_reason_psm_value(last_reboot_reason);
+            get_bus_descriptor()->bus_data_free_fn(&data);
         } else {
             get_wifi_last_reboot_reason_psm_value(last_reboot_reason);
         }
@@ -4818,7 +4832,7 @@ int rdk_wifi_GetRapidReconnectThresholdValue(int wlanIndex, int *rapidReconnThre
     if(ret != RETURN_OK)
     {
         rdk_wifi_dbg_print(1, "rdk wifi vap get index failure :%s\n",__FUNCTION__);
-        return ret;
+	return ret;
     }
     *rapidReconnThresholdValue = vap_map.u.bss_info.rapidReconnThreshold;
     rdk_wifi_dbg_print(1, "wifidb vap info get rapidReconnThresholdValue %d\n", *rapidReconnThresholdValue);

@@ -26,7 +26,6 @@
 #include "wifi_mgr.h"
 #include "wifi_util.h"
 #include "wifi_apps_mgr.h"
-#include <rbus.h>
 
 wifi_app_t *get_app_by_inst(wifi_apps_mgr_t *apps_mgr, wifi_app_inst_t inst)
 {

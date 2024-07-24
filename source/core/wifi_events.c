@@ -17,7 +17,6 @@
   limitations under the License.
  **************************************************************************/
 
-#include <rbus.h>
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -561,11 +560,11 @@ void events_update_clientdiagdata(unsigned int num_devs, int vap_idx, wifi_assoc
 
     getVAPArrayIndexFromVAPIndex((unsigned int) vap_idx, &vap_array_index);
 
-    pthread_mutex_lock(&ctrl->events_rbus_data.events_rbus_lock);
-    if(ctrl->events_rbus_data.diag_events_json_buffer[vap_array_index] != NULL)
+    pthread_mutex_lock(&ctrl->events_bus_data.events_bus_lock);
+    if(ctrl->events_bus_data.diag_events_json_buffer[vap_array_index] != NULL)
     {
 
-        pos = snprintf(ctrl->events_rbus_data.diag_events_json_buffer[vap_array_index],
+        pos = snprintf(ctrl->events_bus_data.diag_events_json_buffer[vap_array_index],
                 CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*BSS_MAX_NUM_STATIONS,
                 "{"
                 "\"Version\":\"1.0\","
@@ -576,7 +575,7 @@ void events_update_clientdiagdata(unsigned int num_devs, int vap_idx, wifi_assoc
                 vap_idx + 1);
         if(dev_array != NULL) {
             for(i=0; i<num_devs; i++) {
-                pos += snprintf(&ctrl->events_rbus_data.diag_events_json_buffer[vap_array_index][pos],
+                pos += snprintf(&ctrl->events_bus_data.diag_events_json_buffer[vap_array_index][pos],
                         (CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*BSS_MAX_NUM_STATIONS)-pos, "{"
                         "\"MAC\":\"%02x%02x%02x%02x%02x%02x\","
                         "\"MLDMAC\":\"%02x%02x%02x%02x%02x%02x\","
@@ -649,12 +648,12 @@ void events_update_clientdiagdata(unsigned int num_devs, int vap_idx, wifi_assoc
             pos--;
         }
 
-        snprintf(&ctrl->events_rbus_data.diag_events_json_buffer[vap_array_index][pos], (
+        snprintf(&ctrl->events_bus_data.diag_events_json_buffer[vap_array_index][pos], (
                     CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*BSS_MAX_NUM_STATIONS)-pos,"]"
                 "}"
                 "]"
                 "}");
     }
-    pthread_mutex_unlock(&ctrl->events_rbus_data.events_rbus_lock);
+    pthread_mutex_unlock(&ctrl->events_bus_data.events_bus_lock);
 }
 

@@ -130,7 +130,7 @@ typedef enum {
     wifi_event_type_cli_stat,
     wifi_event_type_txrx_rate,
     wifi_event_type_prefer_private_rfc,
-    wifi_event_type_mgmt_frame_rbus_rfc,
+    wifi_event_type_mgmt_frame_bus_rfc,
     wifi_event_type_sta_connect_in_progress,
     wifi_event_type_udhcp_ip_fail,
     wifi_event_type_trigger_disconnection,
@@ -206,10 +206,10 @@ int push_event_to_ctrl_queue(const void *msg, unsigned int len, wifi_event_type_
 int push_event_to_monitor_queue(wifi_monitor_data_t *mon_data, wifi_event_subtype_t sub_type, wifi_event_route_t *rt);
 int push_monitor_response_event_to_ctrl_queue(const void *msg, unsigned int len, wifi_event_type_t type, wifi_event_subtype_t sub_type, wifi_event_route_t *rt);
 
-// rbus events functions
-int events_rbus_init(void);
-int events_rbus_publish(wifi_event_t *event);
-int events_rbus_deinit(void);
+// bus events functions
+int events_bus_init(void);
+int events_bus_publish(wifi_event_t *event);
+int events_bus_deinit(void);
 void events_update_clientdiagdata(unsigned int num_devs, int vap_idx, wifi_associated_dev3_t *dev_array);
 wifi_event_t *create_wifi_event(unsigned int msg_len, wifi_event_type_t type, wifi_event_subtype_t sub_type);
 void destroy_wifi_event(wifi_event_t *event);

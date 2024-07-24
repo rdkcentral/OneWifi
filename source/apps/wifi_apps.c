@@ -26,7 +26,6 @@
 #include "wifi_mgr.h"
 #include "wifi_util.h"
 #include "wifi_apps_mgr.h"
-#include <rbus.h>
 
 #ifdef ONEWIFI_CSI_APP_SUPPORT
 extern int csi_init(wifi_app_t *app, unsigned int create_flag);

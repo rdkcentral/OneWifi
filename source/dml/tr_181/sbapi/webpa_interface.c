@@ -372,19 +372,20 @@ static int check_ethernet_wan_status()
     return ret;
 }
 
-char * getDeviceMac()
+char *getDeviceMac()
 {
 
     wifi_ctrl_t *ctrl;
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    int rc = RBUS_ERROR_SUCCESS;
-    rbusValue_t value;
-    const char *str;
+    int rc = bus_error_success;
+    char *str = NULL;
     int len = 0;
-    while(!strlen(webpa_interface.deviceMAC))
-    {
+    raw_data_t data;
+    memset(&data, 0, sizeof(raw_data_t));
+
+    while (!strlen(webpa_interface.deviceMAC)) {
         pthread_mutex_lock(&webpa_interface.device_mac_mutex);
-        int  fd = 0;
+        int fd = 0;
 #if defined(_COSA_BCM_MIPS_)
 #define CPE_MAC_NAMESPACE "Device.DPoE.Mac_address"
 #else
@@ -394,45 +395,47 @@ char * getDeviceMac()
 #define CPE_MAC_NAMESPACE "Device.X_CISCO_COM_CableModem.MACAddress"
 #endif
 #endif /*_COSA_BCM_MIPS_*/
-        token_t  token;
+        token_t token;
         char deviceMACValue[32] = { '\0' };
 
-        if (strlen(webpa_interface.deviceMAC))
-        {
+        if (strlen(webpa_interface.deviceMAC)) {
             pthread_mutex_unlock(&webpa_interface.device_mac_mutex);
             return NULL;
         }
 
         fd = s_sysevent_connect(&token);
-        if(CCSP_SUCCESS == check_ethernet_wan_status() && sysevent_get(fd, token, "eth_wan_mac", deviceMACValue, sizeof(deviceMACValue)) == 0 && deviceMACValue[0] != '\0')
-        {
-            AnscMacToLower(webpa_interface.deviceMAC, deviceMACValue, sizeof(webpa_interface.deviceMAC));
-        }
-        else
-        {
+        if (CCSP_SUCCESS == check_ethernet_wan_status() &&
+            sysevent_get(fd, token, "eth_wan_mac", deviceMACValue, sizeof(deviceMACValue)) == 0 &&
+            deviceMACValue[0] != '\0') {
+            AnscMacToLower(webpa_interface.deviceMAC, deviceMACValue,
+                sizeof(webpa_interface.deviceMAC));
+        } else {
             pthread_mutex_lock(&ctrl->lock);
-            rc = rbus_get(ctrl->rbus_handle, CPE_MAC_NAMESPACE, &value);
-            if(rc != RBUS_ERROR_SUCCESS) {
-                wifi_util_dbg_print(WIFI_MON, "%s:%d rbus_get failed for [%s] with error [%d]\n",__func__, __LINE__, CPE_MAC_NAMESPACE, rc);
+            rc = get_bus_descriptor()->bus_data_get_fn(&ctrl->handle, CPE_MAC_NAMESPACE, &data);
+            if (rc != bus_error_success || (data.data_type != bus_data_type_string)) {
+                wifi_util_dbg_print(WIFI_MON,
+                    "%s:%d bus_data_get_fn failed for [%s] with error [%d]\n", __func__, __LINE__,
+                    CPE_MAC_NAMESPACE, rc);
                 pthread_mutex_unlock(&ctrl->lock);
                 pthread_mutex_unlock(&webpa_interface.device_mac_mutex);
+                get_bus_descriptor()->bus_data_free_fn(&data);
                 return NULL;
             }
-
-            str = rbusValue_GetString(value, &len);
             if (str == NULL) {
-                wifi_util_dbg_print(WIFI_MON,"%s Null pointer,Rbus get string len=%d for : %s\n",__FUNCTION__,len, CPE_MAC_NAMESPACE);
+                wifi_util_dbg_print(WIFI_MON, "%s Null pointer, bus get string len=%d for : %s\n",
+                    __FUNCTION__, len, CPE_MAC_NAMESPACE);
                 pthread_mutex_unlock(&ctrl->lock);
                 pthread_mutex_unlock(&webpa_interface.device_mac_mutex);
+                get_bus_descriptor()->bus_data_free_fn(&data);
                 return NULL;
             }
             pthread_mutex_unlock(&ctrl->lock);
+            str = (char *)data.raw_data.bytes;
             AnscMacToLower(webpa_interface.deviceMAC, str, sizeof(webpa_interface.deviceMAC));
         }
 
         pthread_mutex_unlock(&webpa_interface.device_mac_mutex);
     }
+    get_bus_descriptor()->bus_data_free_fn(&data);
     return webpa_interface.deviceMAC;
 }
-
-

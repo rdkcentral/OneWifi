@@ -1167,7 +1167,7 @@ void *monitor_function  (void *data)
                 event_data = event->u.mon_data;
 
                 //Send data to wifi_events library
-                events_rbus_publish(event);
+                events_bus_publish(event);
                 switch (event->sub_type) {
                     case wifi_event_monitor_diagnostics:
                         //process_diagnostics(event_data->ap_index, &event_data->.devs);
@@ -1947,7 +1947,7 @@ int associated_device_diagnostics_send_event(void* arg)
     ap_index = (int *) arg;
     event->u.mon_data->ap_index = *ap_index;
 
-    events_rbus_publish(event);
+    events_bus_publish(event);
 
     destroy_wifi_event(event);
 

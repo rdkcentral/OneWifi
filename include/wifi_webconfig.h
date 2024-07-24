@@ -27,7 +27,6 @@ extern "C" {
 
 #include <stdbool.h>
 #include <wifi_base.h>
-#include <rbus.h>
 #include <cJSON.h>
 
 #define WIFI_WEBCONFIG_DOC_DATA_NORTH   "Device.WiFi.WebConfig.Data.Subdoc.North"

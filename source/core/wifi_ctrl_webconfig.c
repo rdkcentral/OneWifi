@@ -34,7 +34,6 @@
 #include "base64.h"
 #include <unistd.h>
 #include <pthread.h>
-#include <rbus.h>
 #ifdef WEBCONFIG_TESTS_OVER_QUEUE
 #include "wifi_webconfig_consumer.h"
 #endif
@@ -264,7 +263,7 @@ int webconfig_send_associate_status(wifi_ctrl_t *ctrl)
     return RETURN_OK;
 }
 
-/* This function is responsible for encoding the data and trigger rbus call */
+/* This function is responsible for encoding the data and trigger bus call */
 int webconfig_send_blaster_status(wifi_ctrl_t *ctrl)
 {
     webconfig_subdoc_data_t data;
@@ -1743,7 +1742,7 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
             if (data->descriptor & webconfig_data_descriptor_encoded) {
                 if (ctrl->webconfig_state & ctrl_webconfig_state_radio_cfg_rsp_pending) {
                     ctrl->webconfig_state &= ~ctrl_webconfig_state_radio_cfg_rsp_pending;
-                    ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
+                    ret = webconfig_bus_apply(ctrl, &data->u.encoded);
                 }
             } else {
                 if (check_wifi_csa_sched_timeout_active_status(ctrl) == true) {
@@ -1763,7 +1762,7 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
             if (data->descriptor & webconfig_data_descriptor_encoded) {
                 if (ctrl->webconfig_state & ctrl_webconfig_state_vap_private_cfg_rsp_pending) {
                     ctrl->webconfig_state  &= ~ctrl_webconfig_state_vap_private_cfg_rsp_pending;
-                    ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
+                    ret = webconfig_bus_apply(ctrl, &data->u.encoded);
                 }
             } else {
                 if (check_wifi_csa_sched_timeout_active_status(ctrl) == true) {
@@ -1784,7 +1783,7 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
             if (data->descriptor & webconfig_data_descriptor_encoded) {
                 if (ctrl->webconfig_state & ctrl_webconfig_state_vap_home_cfg_rsp_pending) {
                     ctrl->webconfig_state &= ~ctrl_webconfig_state_vap_home_cfg_rsp_pending;
-                    ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
+                    ret = webconfig_bus_apply(ctrl, &data->u.encoded);
                 }
             } else {
                 if (check_wifi_csa_sched_timeout_active_status(ctrl) == true) {
@@ -1803,7 +1802,7 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
             if (data->descriptor & webconfig_data_descriptor_encoded) {
                 if (ctrl->webconfig_state & ctrl_webconfig_state_vap_xfinity_cfg_rsp_pending) {
                     ctrl->webconfig_state &= ~ctrl_webconfig_state_vap_xfinity_cfg_rsp_pending;
-                    ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
+                    ret = webconfig_bus_apply(ctrl, &data->u.encoded);
                 }
             } else {
                 if (check_wifi_csa_sched_timeout_active_status(ctrl) == true) {
@@ -1831,7 +1830,7 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
             if (data->descriptor & webconfig_data_descriptor_encoded) {
                 if (ctrl->webconfig_state & ctrl_webconfig_state_vap_lnf_cfg_rsp_pending) {
                     ctrl->webconfig_state &= ~ctrl_webconfig_state_vap_lnf_cfg_rsp_pending;
-                    ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
+                    ret = webconfig_bus_apply(ctrl, &data->u.encoded);
                 }
             } else {
                 if (check_wifi_csa_sched_timeout_active_status(ctrl) == true) {
@@ -1850,7 +1849,7 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
             if (data->descriptor & webconfig_data_descriptor_encoded) {
                 if (ctrl->webconfig_state & ctrl_webconfig_state_vap_mesh_cfg_rsp_pending) {
                     ctrl->webconfig_state &= ~ctrl_webconfig_state_vap_mesh_cfg_rsp_pending;
-                    ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
+                    ret = webconfig_bus_apply(ctrl, &data->u.encoded);
                 }
             } else {
                 if (check_wifi_csa_sched_timeout_active_status(ctrl) == true) {
@@ -1882,7 +1881,7 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                     ctrl->webconfig_state &= ~(ctrl_webconfig_state_factoryreset_cfg_rsp_pending |
                                                 ctrl_webconfig_state_sta_conn_status_rsp_pending |
                                                 ctrl_webconfig_state_vap_mesh_sta_cfg_rsp_pending);
-                    ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
+                    ret = webconfig_bus_apply(ctrl, &data->u.encoded);
                 }
             } else {
                 if (check_wifi_csa_sched_timeout_active_status(ctrl) == true) {
@@ -1902,7 +1901,7 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
             if (data->descriptor & webconfig_data_descriptor_encoded) {
                 if (ctrl->webconfig_state & ctrl_webconfig_state_vap_mesh_backhaul_cfg_rsp_pending) {
                     ctrl->webconfig_state &= ~ctrl_webconfig_state_vap_mesh_backhaul_cfg_rsp_pending;
-                    ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
+                    ret = webconfig_bus_apply(ctrl, &data->u.encoded);
                 }
             } else {
                 if (check_wifi_csa_sched_timeout_active_status(ctrl) == true) {
@@ -1930,7 +1929,7 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
             if (data->descriptor & webconfig_data_descriptor_encoded) {
                 if (ctrl->webconfig_state & ctrl_webconfig_state_vap_mesh_backhaul_sta_cfg_rsp_pending) {
                     ctrl->webconfig_state &= ~ctrl_webconfig_state_vap_mesh_backhaul_sta_cfg_rsp_pending;
-                    ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
+                    ret = webconfig_bus_apply(ctrl, &data->u.encoded);
                 }
             } else {
                 if (check_wifi_csa_sched_timeout_active_status(ctrl) == true) {
@@ -1953,7 +1952,7 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
             if (data->descriptor & webconfig_data_descriptor_encoded) {
                 if (ctrl->webconfig_state & ctrl_webconfig_state_macfilter_cfg_rsp_pending) {
                     ctrl->webconfig_state &= ~ctrl_webconfig_state_macfilter_cfg_rsp_pending;
-                    ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
+                    ret = webconfig_bus_apply(ctrl, &data->u.encoded);
                 }
             } else {
                 ctrl->webconfig_state |= ctrl_webconfig_state_macfilter_cfg_rsp_pending;
@@ -1971,11 +1970,11 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                     if (ctrl->webconfig_state & ctrl_webconfig_state_blaster_cfg_init_rsp_pending) {
                         wifi_util_info_print(WIFI_CTRL, "%s:%d: Blaster Status updated as new\n", __func__, __LINE__);
                         ctrl->webconfig_state &= ~ctrl_webconfig_state_blaster_cfg_init_rsp_pending;
-                        ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
+                        ret = webconfig_bus_apply(ctrl, &data->u.encoded);
                     } else if (ctrl->webconfig_state & ctrl_webconfig_state_blaster_cfg_complete_rsp_pending) {
                         wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Blaster Status updated as complete\n", __func__, __LINE__);
                         ctrl->webconfig_state &= ~ctrl_webconfig_state_blaster_cfg_complete_rsp_pending;
-                        ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
+                        ret = webconfig_bus_apply(ctrl, &data->u.encoded);
 
                     }
                 } else if (ctrl->network_mode == rdk_dev_mode_type_gw) {
@@ -2008,7 +2007,7 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                 if (ctrl->webconfig_state & ctrl_webconfig_state_wifi_config_cfg_rsp_pending) {
                     ctrl->webconfig_state &= ~ctrl_webconfig_state_wifi_config_cfg_rsp_pending;
                     wifi_util_info_print(WIFI_MGR, "%s:%d: Publish of global wifi webconfig subdoc\n", __func__, __LINE__);
-                    ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
+                    ret = webconfig_bus_apply(ctrl, &data->u.encoded);
                 }
             } else {
                 ctrl->webconfig_state |= ctrl_webconfig_state_wifi_config_cfg_rsp_pending;
@@ -2073,7 +2072,7 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                 if (ctrl->webconfig_state & ctrl_webconfig_state_steering_clients_rsp_pending) {
                     ctrl->webconfig_state &= ~ctrl_webconfig_state_steering_clients_rsp_pending;
                     //TBD : to uncomment as part of integration of steering clients hal wrapper
-                    //ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
+                    //ret = webconfig_bus_apply(ctrl, &data->u.encoded);
                 }
             } else {
                 ctrl->webconfig_state |= ctrl_webconfig_state_steering_clients_rsp_pending;
@@ -2107,10 +2106,10 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
             if (data->descriptor & webconfig_data_descriptor_encoded) {
                 if (ctrl->webconfig_state & WEBCONFIG_DML_SUBDOC_STATES) {
                     ctrl->webconfig_state &= ~WEBCONFIG_DML_SUBDOC_STATES;
-                    ret = webconfig_rbus_apply(ctrl, &data->u.encoded);
+                    ret = webconfig_bus_apply(ctrl, &data->u.encoded);
                 } else if (ctrl->webconfig_state & ctrl_webconfig_state_trigger_dml_thread_data_update_pending) {
                     ctrl->webconfig_state &= ~ctrl_webconfig_state_trigger_dml_thread_data_update_pending;
-                    ret = webconfig_rbus_apply_for_dml_thread_update(ctrl, &data->u.encoded);
+                    ret = webconfig_bus_apply_for_dml_thread_update(ctrl, &data->u.encoded);
                 }
 
             } else {

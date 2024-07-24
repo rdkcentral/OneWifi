@@ -21,6 +21,7 @@
 #define WIFI_MOTION_H
 
 #include "wifi_csi.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -34,7 +35,7 @@ extern "C" {
 typedef struct {
     csi_base_app_t       csi_fns;
     pthread_mutex_t      lock;
-    rbusHandle_t         rbus_handle;
+    bus_handle_t         handle;
     int                  paused;
     int                  sched_handler_id;
     int                  speed_test_timeout;

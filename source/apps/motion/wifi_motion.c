@@ -30,7 +30,6 @@
 #if DML_SUPPORT
 #include "wifi_analytics.h"
 #endif
-#include <rbus.h>
 #include <telemetry_busmessage_sender.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -530,13 +529,13 @@ static int push_csi_data_dml_to_ctrl_queue(queue_t *csi_queue)
 
     if ((csi_queue == NULL)) {
         wifi_util_error_print(WIFI_APPS, "%s:%d: Error, queue is NULL\n", __func__, __LINE__);
-        return RBUS_ERROR_BUS_ERROR;
+        return bus_error_general;
     }
     data = (webconfig_subdoc_data_t *) malloc(sizeof(webconfig_subdoc_data_t));
     if (data == NULL) {
         wifi_util_error_print(WIFI_APPS, "%s: malloc failed to allocate webconfig_subdoc_data_t, size %d\n", \
                 __func__, sizeof(webconfig_subdoc_data_t));
-        return RBUS_ERROR_BUS_ERROR;
+        return bus_error_general;
     }
     memset(data, 0, sizeof(webconfig_subdoc_data_t));
     wifi_util_dbg_print(WIFI_APPS, "%s: queue count is %lu\n", __func__, queue_count(csi_queue));
@@ -551,7 +550,7 @@ static int push_csi_data_dml_to_ctrl_queue(queue_t *csi_queue)
         if (data != NULL) {
             free(data);
         }
-        return RBUS_ERROR_BUS_ERROR;
+        return bus_error_general;
     }
 
     wifi_util_info_print(WIFI_APPS, "%s:  CSI cache pushed to queue encoded data is %s\n", __FUNCTION__, str);
@@ -559,7 +558,7 @@ static int push_csi_data_dml_to_ctrl_queue(queue_t *csi_queue)
     if (data != NULL) {
         free(data);
     }
-    return RBUS_ERROR_SUCCESS;
+    return bus_error_success;
 }
 
 void csi_del_session(int csi_sess_number)
@@ -639,7 +638,7 @@ queue_t *update_csi_local_queue_from_motion_queue()
     return local_csi_queue;
 }
 
-rbusError_t csi_table_addrowhandler(rbusHandle_t handle, char const* tableName, char const* aliasName, uint32_t* instNum)
+bus_error_t csi_table_addrowhandler(bus_handle_t *handle, char const* tableName, char const* aliasName, uint32_t* instNum)
 {
     static int instanceCounter = 1;
     queue_t *local_csi_queue = NULL;
@@ -651,14 +650,14 @@ rbusError_t csi_table_addrowhandler(rbusHandle_t handle, char const* tableName, 
     local_csi_queue = update_csi_local_queue_from_motion_queue();
     if (local_csi_queue == NULL) {
         wifi_util_error_print(WIFI_APPS,"%s:%d update csi Queue from mgr Queue failed\n", __func__, __LINE__);
-        return RBUS_ERROR_BUS_ERROR;
+        return bus_error_general;
     }
 
     csi_data = (csi_data_t *)malloc(sizeof(csi_data_t));
     if (csi_data == NULL) {
         wifi_util_error_print(WIFI_APPS,"%s:%d NULL Pointer\n", __func__, __LINE__);
         queue_destroy(local_csi_queue);
-        return RBUS_ERROR_BUS_ERROR;
+        return bus_error_general;
     }
     memset(csi_data, 0, sizeof(csi_data_t));
     csi_data->csi_session_num = *instNum;
@@ -670,10 +669,10 @@ rbusError_t csi_table_addrowhandler(rbusHandle_t handle, char const* tableName, 
     wifi_util_dbg_print(WIFI_APPS, "%s(): exit\n", __FUNCTION__);
     UNREFERENCED_PARAMETER(handle);
     UNREFERENCED_PARAMETER(aliasName);
-    return RBUS_ERROR_SUCCESS;
+    return bus_error_success;
 }
 
-rbusError_t csi_table_removerowhandler(rbusHandle_t handle, char const *rowName)
+bus_error_t csi_table_removerowhandler(bus_handle_t *handle, char const *rowName)
 {
     csi_data_t *tmp_csi_data =  NULL;
     unsigned int itr, qcount;
@@ -685,7 +684,7 @@ rbusError_t csi_table_removerowhandler(rbusHandle_t handle, char const *rowName)
     local_csi_queue = update_csi_local_queue_from_motion_queue();
     if (local_csi_queue == NULL) {
         wifi_util_error_print(WIFI_APPS,"%s:%d update csi Queue from mgr Queue failed\n", __func__, __LINE__);
-        return RBUS_ERROR_BUS_ERROR;
+        return bus_error_general;
     }
 
     sscanf(rowName, "Device.WiFi.X_RDK_CSI.%d.", &idx);
@@ -706,16 +705,13 @@ rbusError_t csi_table_removerowhandler(rbusHandle_t handle, char const *rowName)
 
     UNREFERENCED_PARAMETER(handle);
 
-    return RBUS_ERROR_SUCCESS;
+    return bus_error_success;
 }
 
-rbusError_t csi_set_handler(rbusHandle_t handle, rbusProperty_t property, rbusSetHandlerOptions_t* opts)
+bus_error_t csi_set_handler(bus_handle_t *handle, bus_property_t property, bus_set_handler_options_t options)
 {
-    (void)handle;
-    (void)opts;
+    bus_error_t  status = bus_error_success;
     char const* name;
-    rbusValue_t value;
-    rbusValueType_t type;
     unsigned int idx = 0;
     int ret, apply = false;
     char parameter[MAX_EVENT_NAME_SIZE];
@@ -725,14 +721,14 @@ rbusError_t csi_set_handler(rbusHandle_t handle, rbusProperty_t property, rbusSe
     bool found = false;
     unsigned int csi_client_count;
     mac_address_t csi_client_list[MAX_NUM_CSI_CLIENTS];
+    raw_data_t data;
 
-    name = rbusProperty_GetName(property);
-    value = rbusProperty_GetValue(property);
-    type = rbusValue_GetType(value);
+    memset(&data, 0, sizeof(raw_data_t));
 
+    name = get_bus_descriptor()->bus_property_get_name_fn(handle, property);
     if (!name) {
-        wifi_util_error_print(WIFI_APPS, "%s %d: invalid rbus property name %s\n", __FUNCTION__, __LINE__, name);
-        return RBUS_ERROR_INVALID_INPUT;
+        wifi_util_error_print(WIFI_APPS, "%s %d: invalid bus property name %s\n", __FUNCTION__, __LINE__, name);
+        return bus_error_invalid_input;
     }
     wifi_util_dbg_print(WIFI_APPS, "%s(): %s\n", __FUNCTION__, name);
 
@@ -741,7 +737,7 @@ rbusError_t csi_set_handler(rbusHandle_t handle, rbusProperty_t property, rbusSe
     local_csi_queue = update_csi_local_queue_from_motion_queue();
     if (local_csi_queue == NULL) {
         wifi_util_error_print(WIFI_APPS,"%s:%d update csi Queue from mgr Queue failed\n", __func__, __LINE__);
-        return RBUS_ERROR_BUS_ERROR;
+        return bus_error_general;
     }
 
     ret = sscanf(name, "Device.WiFi.X_RDK_CSI.%4d.%200s", &idx, parameter);
@@ -757,27 +753,36 @@ rbusError_t csi_set_handler(rbusHandle_t handle, rbusProperty_t property, rbusSe
         if (csi_data == NULL) {
             wifi_util_error_print(WIFI_APPS,"%s:%d Could not find entry\n", __func__, __LINE__);
             queue_destroy(local_csi_queue);
-            return RBUS_ERROR_BUS_ERROR;
+            return bus_error_general;
         }
         if (strcmp(parameter, "ClientMaclist") == 0) {
+            char *pTmp = NULL;
 
-            if (type != RBUS_STRING) {
-                wifi_util_error_print(WIFI_APPS,"%s:%d '%s' Called Set handler with wrong data type\n", __func__, __LINE__, name);
+            status = get_bus_descriptor()->bus_property_data_get_fn(handle, property, options, &data);
+            if (data.data_type != bus_data_type_string) {
+                wifi_util_error_print(WIFI_CTRL,"%s:%d '%s' bus_property_data_get_fn failed with data_type:%d, status:%d\n",
+                    __func__, __LINE__, name, data.data_type, status);
                 queue_destroy(local_csi_queue);
-                return RBUS_ERROR_INVALID_INPUT;
+                return bus_error_invalid_input;
+            }
+
+            pTmp = (char *)data.raw_data.bytes;
+
+            if ((status != bus_error_success) || pTmp == NULL) {
+                wifi_util_error_print(WIFI_CTRL,"%s:%d '%s' bus_property_data_get_fn failed with data_type:%d, status:%d\n",
+                      __func__, __LINE__, name, data.data_type, status);
+                queue_destroy(local_csi_queue);
+                return bus_error_invalid_input;
             } else {
                 char *str, *cptr, *str_dup;
                 mac_address_t l_client_list[MAX_NUM_CSI_CLIENTS];
-                char const* pTmp = NULL;
-                int len = 0;
                 memset(l_client_list, 0, MAX_NUM_CSI_CLIENTS*sizeof(mac_address_t));
 
-                pTmp = rbusValue_GetString(value, &len);
                 str_dup = strdup(pTmp);
                 if (str_dup == NULL) {
                     wifi_util_error_print(WIFI_APPS,"%s:%d strdup failed\n", __func__, __LINE__);
                     queue_destroy(local_csi_queue);
-                    return RBUS_ERROR_BUS_ERROR;
+                    return bus_error_general;
                 }
                 itr = 0;
                 str = strtok_r(str_dup, ",", &cptr);
@@ -791,7 +796,7 @@ rbusError_t csi_set_handler(rbusHandle_t handle, rbusProperty_t property, rbusSe
                             free(str_dup);
                         }
                         queue_destroy(local_csi_queue);
-                        return RBUS_ERROR_BUS_ERROR;
+                        return bus_error_general;
                     }
                 }
                 if (memcmp(csi_data->csi_client_list, l_client_list,  MAX_NUM_CSI_CLIENTS*sizeof(mac_address_t)) != 0) {
@@ -823,7 +828,7 @@ rbusError_t csi_set_handler(rbusHandle_t handle, rbusProperty_t property, rbusSe
                                             free(str_dup);
                                         }
                                         queue_destroy(local_csi_queue);
-                                        return RBUS_ERROR_BUS_ERROR;
+                                        return bus_error_general;
                                     } else {
                                         memcpy(unique_mac_list[num_unique_mac-1], csi_client_list[j], sizeof(mac_address_t));
                                     }
@@ -843,13 +848,23 @@ rbusError_t csi_set_handler(rbusHandle_t handle, rbusProperty_t property, rbusSe
                 }
             }
         } else if (strcmp(parameter, "Enable") == 0) {
-            if (type != RBUS_BOOLEAN)
-            {
-                wifi_util_error_print(WIFI_APPS,"%s:%d '%s' Called Set handler with wrong data type\n", __func__, __LINE__, name);
+            bool enabled;
+
+            status = get_bus_descriptor()->bus_property_data_get_fn(handle, property, options, &data);
+            if (data.data_type != bus_data_type_boolean) {
+                wifi_util_error_print(WIFI_CTRL,"%s:%d '%s' bus_property_data_get_fn failed with data_type:%d, status:%d\n",
+                   __func__, __LINE__, name, data.data_type, status);
                 queue_destroy(local_csi_queue);
-                return RBUS_ERROR_INVALID_INPUT;
+                return bus_error_invalid_input;
+            }
+
+            enabled = data.raw_data.b;
+
+            if (status != bus_error_success) {
+                wifi_util_error_print(WIFI_APPS,"%s:%d '%s' Called get handler with wrong data type:%d\n", __func__, __LINE__, name, data.data_type);
+                queue_destroy(local_csi_queue);
+                return bus_error_invalid_input;
             } else {
-                bool enabled = rbusValue_GetBoolean(value);
                 if (enabled != csi_data->enabled) {
                     //check new configuration did not exceed the max number of csi clients
                     num_unique_mac = 0;
@@ -875,7 +890,7 @@ rbusError_t csi_set_handler(rbusHandle_t handle, rbusProperty_t property, rbusSe
                                         if (num_unique_mac > MAX_NUM_CSI_CLIENTS) {
                                             wifi_util_error_print(WIFI_APPS,"%s %d MAX_NUM_CSI_CLIENTS reached\n", __func__, __LINE__);
                                             queue_destroy(local_csi_queue);
-                                            return RBUS_ERROR_BUS_ERROR;
+                                            return bus_error_general;
                                         } else {
                                             memcpy(unique_mac_list[num_unique_mac-1], tmp_csi_data->csi_client_list[j], sizeof(mac_address_t));
                                         }
@@ -893,45 +908,46 @@ rbusError_t csi_set_handler(rbusHandle_t handle, rbusProperty_t property, rbusSe
             push_csi_data_dml_to_ctrl_queue(local_csi_queue);
         }
         queue_destroy(local_csi_queue);
-        return RBUS_ERROR_SUCCESS;
+        return bus_error_success;
     }
     queue_destroy(local_csi_queue);
-    return RBUS_ERROR_INVALID_INPUT;
+    return bus_error_invalid_input;
 }
 
-rbusError_t csi_get_handler(rbusHandle_t handle, rbusProperty_t property, rbusGetHandlerOptions_t* opts)
+bus_error_t csi_get_handler(bus_handle_t *handle, bus_property_t property, bus_get_handler_options_t options)
 {
-    UNREFERENCED_PARAMETER(handle);
-    UNREFERENCED_PARAMETER(opts);
+    bus_error_t status = bus_error_success;
     char const* name;
-    rbusValue_t value;
     unsigned int idx = 0;
     int ret;
     char parameter[MAX_EVENT_NAME_SIZE];
     unsigned int itr, count, qcount;
     csi_data_t *csi_data =  NULL;
     queue_t *csi_data_queue = get_csi_data_queue();
+    raw_data_t data;
 
-    name = rbusProperty_GetName(property);
+    name = get_bus_descriptor()->bus_property_get_name_fn(handle, property);
     if (!name) {
         wifi_util_dbg_print(WIFI_APPS, "%s(): invalid property name : %s \n", __FUNCTION__, name);
-        return RBUS_ERROR_INVALID_INPUT;
+        return bus_error_invalid_input;
     }
 
     if (csi_data_queue == NULL) {
         wifi_util_error_print(WIFI_APPS,"%s:%d queue pointer is NULL\n", __func__, __LINE__);
-        return RBUS_ERROR_BUS_ERROR;
+        return bus_error_general;
     }
+
+    memset(&data, 0, sizeof(raw_data_t));
 
     wifi_util_dbg_print(WIFI_APPS, "%s(): %s\n", __FUNCTION__, name);
     if (strcmp(name, "Device.WiFi.X_RDK_CSINumberOfEntries") == 0) {
         count = queue_count(csi_data_queue);
-        rbusValue_Init(&value);
-        rbusValue_SetUInt32(value, count);
-        rbusProperty_SetValue(property, value);
-        rbusValue_Release(value);
 
-        return RBUS_ERROR_SUCCESS;
+        data.data_type = bus_data_type_uint32;
+        data.raw_data.u32 = (uint32_t)count;
+
+        status = get_bus_descriptor()->bus_property_data_set_fn(handle, property, options, &data);
+        return status;
     }
 
     ret = sscanf(name, "Device.WiFi.X_RDK_CSI.%4d.%200s", &idx, parameter);
@@ -946,10 +962,9 @@ rbusError_t csi_get_handler(rbusHandle_t handle, rbusProperty_t property, rbusGe
 
         if (csi_data == NULL) {
             wifi_util_error_print(WIFI_APPS,"%s:%d Could not find entry\n", __func__, __LINE__);
-            return RBUS_ERROR_BUS_ERROR;
+            return bus_error_general;
         }
 
-        rbusValue_Init(&value);
         if (strcmp(parameter, "ClientMaclist") == 0) {
             char tmp_cli_list[128];
             mac_addr_str_t mac_str;
@@ -966,17 +981,24 @@ rbusError_t csi_get_handler(rbusHandle_t handle, rbusProperty_t property, rbusGe
                 int len  = strlen(tmp_cli_list);
                 tmp_cli_list[len-1] = '\0';
             }
-            rbusValue_SetString(value, tmp_cli_list);
-        } else if (strcmp(parameter, "Enable") == 0) {
-            rbusValue_SetBoolean(value, csi_data->enabled);
-        }
-        rbusProperty_SetValue(property, value);
-        rbusValue_Release(value);
 
-        return RBUS_ERROR_SUCCESS;
+            memset(&data, 0, sizeof(raw_data_t));
+            data.data_type = bus_data_type_string;
+            data.raw_data.bytes = (void *)tmp_cli_list;
+
+            status = get_bus_descriptor()->bus_property_data_set_fn(handle, property, options, &data);
+            return status;
+        } else if (strcmp(parameter, "Enable") == 0) {
+            memset(&data, 0, sizeof(raw_data_t));
+            data.data_type = bus_data_type_boolean;
+            data.raw_data.b = csi_data->enabled;
+
+            status = get_bus_descriptor()->bus_property_data_set_fn(handle, property, options, &data);
+            return status;
+        }
     }
 
-    return RBUS_ERROR_INVALID_INPUT;
+    return bus_error_invalid_input;
 }
 
 int webconfig_hal_csi_apply(webconfig_subdoc_decoded_data_t *data)
@@ -1139,7 +1161,7 @@ csi_session_t *get_csi_session_from_session_num(int session_num)
     return NULL;
 }
 
-rbusError_t eventHandler(rbusHandle_t handle, rbusEventSubAction_t action, const char* eventName, rbusFilter_t filter, int32_t interval, bool* autoPublish)
+bus_error_t eventHandler(bus_handle_t *handle, bus_event_sub_action_t action, const char* eventName, bus_filter_t filter, int32_t interval, bool* autoPublish)
 {
     UNREFERENCED_PARAMETER(handle);
     UNREFERENCED_PARAMETER(filter);
@@ -1149,14 +1171,14 @@ rbusError_t eventHandler(rbusHandle_t handle, rbusEventSubAction_t action, const
 
     *autoPublish = false;
     wifi_util_dbg_print(WIFI_APPS,"%s:%d eventHandler called: action=%s\n eventName=%s autoPublish:%d\n",
-            __func__, __LINE__, action == RBUS_EVENT_ACTION_SUBSCRIBE ? "subscribe" : "unsubscribe",
+            __func__, __LINE__, action == bus_event_action_subscribe ? "subscribe" : "unsubscribe",
             eventName, *autoPublish);
 
     sscanf(eventName, "Device.WiFi.X_RDK_CSI.%d.data", &idx);
     int csi_session = idx;
     csi_session_t *csi_data = (csi_session_t *)get_csi_session_from_session_num(idx);
     if (csi_data == NULL) {
-        if (action == RBUS_EVENT_ACTION_SUBSCRIBE) {
+        if (action == bus_event_action_subscribe) {
             wifi_util_dbg_print(WIFI_APPS, "WiFi_Motion_SubscriptionStarted %d\n", csi_session);
             memset(tmp, 0, sizeof(tmp));
             get_formatted_time(tmp);
@@ -1165,10 +1187,10 @@ rbusError_t eventHandler(rbusHandle_t handle, rbusEventSubAction_t action, const
             csi_set_interval(interval, csi_session);
             csi_enable_subscription(TRUE, csi_session);
             wifi_util_dbg_print(WIFI_APPS, "Exit %s: Event %s\n", __FUNCTION__, eventName);
-            return RBUS_ERROR_SUCCESS;
+            return bus_error_success;
         }
     }
-    if (action == RBUS_EVENT_ACTION_SUBSCRIBE) {
+    if (action == bus_event_action_subscribe) {
         /* TODO: interval needs to be multiple of WifiMonitor basic interval */
         if (interval > MAX_CSI_INTERVAL || interval < MIN_CSI_INTERVAL
                 ||  csi_data->subscribed == TRUE) {
@@ -1179,7 +1201,7 @@ rbusError_t eventHandler(rbusHandle_t handle, rbusEventSubAction_t action, const
             wifi_util_dbg_print(WIFI_APPS, "WiFi_Motion_SubscriptionFailed %d\n", csi_session);
             write_to_file(wifi_log,  "%s WiFi_CSI_SubscriptionFailed %d\n", tmp,csi_session);
             wifi_util_dbg_print(WIFI_APPS, "Exit %s: Event %s\n", __FUNCTION__, eventName);
-            return RBUS_ERROR_BUS_ERROR;
+            return bus_error_general;
         }
         wifi_util_dbg_print(WIFI_APPS, "WiFi_Motion_SubscriptionStarted %d\n", csi_session);
         memset(tmp, 0, sizeof(tmp));
@@ -1189,7 +1211,7 @@ rbusError_t eventHandler(rbusHandle_t handle, rbusEventSubAction_t action, const
         csi_set_interval(interval, csi_session);
         csi_enable_subscription(TRUE, csi_session);
         wifi_util_dbg_print(WIFI_APPS, "Exit %s: Event %s\n", __FUNCTION__, eventName);
-        return RBUS_ERROR_SUCCESS;
+        return bus_error_success;
     } else {
         wifi_util_dbg_print(WIFI_APPS, "WiFi_Motion_SubscriptionStopped %d\n", csi_session);
         memset(tmp, 0, sizeof(tmp));
@@ -1197,7 +1219,7 @@ rbusError_t eventHandler(rbusHandle_t handle, rbusEventSubAction_t action, const
         write_to_file(wifi_log,  "%s WiFi_CSI_SubscriptionCancelled %d\n", tmp,csi_session);
         csi_enable_subscription(FALSE, csi_session);
         wifi_util_dbg_print(WIFI_APPS, "Exit %s: Event %s\n", __FUNCTION__, eventName);
-        return RBUS_ERROR_SUCCESS;
+        return bus_error_success;
     }
 }
 
@@ -1687,20 +1709,20 @@ static void pipeSignalHandler(int sig)
 
 int motion_init(wifi_app_t *app, unsigned int create_flag)
 {
-    int rc = RBUS_ERROR_SUCCESS;
+    bus_error_t  rc = bus_error_success;
+    uint32_t num_elements = 0;
     char *component_name = "WifiAppsMotion";
-    rbusDataElement_t dataElements[] = {
-        { WIFI_CSI_TABLE, RBUS_ELEMENT_TYPE_TABLE,
-            { NULL, NULL, csi_table_addrowhandler, csi_table_removerowhandler, NULL, NULL}},
-        { WIFI_CSI_DATA, RBUS_ELEMENT_TYPE_EVENT,
-            { NULL, NULL, NULL, NULL, eventHandler, NULL}},
-        { WIFI_CSI_CLIENTMACLIST, RBUS_ELEMENT_TYPE_PROPERTY,
-            { csi_get_handler, csi_set_handler, NULL, NULL, NULL, NULL}},
-        { WIFI_CSI_ENABLE, RBUS_ELEMENT_TYPE_PROPERTY,
-            { csi_get_handler, csi_set_handler, NULL, NULL, NULL, NULL}},
-        { WIFI_CSI_NUMBEROFENTRIES, RBUS_ELEMENT_TYPE_PROPERTY,
-            { csi_get_handler, NULL, NULL, NULL, NULL, NULL}},
-
+    bus_data_element_t dataElements[] = {
+        { WIFI_CSI_TABLE, bus_element_type_table,
+            { NULL, NULL, csi_table_addrowhandler, csi_table_removerowhandler, NULL, NULL}, slow_speed, ZERO_TABLE},
+        { WIFI_CSI_DATA, bus_element_type_event,
+            { NULL, NULL, NULL, NULL, eventHandler, NULL}, slow_speed, ZERO_TABLE},
+        { WIFI_CSI_CLIENTMACLIST, bus_element_type_property,
+            { csi_get_handler, csi_set_handler, NULL, NULL, NULL, NULL}, slow_speed, ZERO_TABLE},
+        { WIFI_CSI_ENABLE, bus_element_type_property,
+            { csi_get_handler, csi_set_handler, NULL, NULL, NULL, NULL}, slow_speed, ZERO_TABLE},
+        { WIFI_CSI_NUMBEROFENTRIES, bus_element_type_property,
+            { csi_get_handler, NULL, NULL, NULL, NULL, NULL}, slow_speed, ZERO_TABLE},
     };
 
     //Creating named Pipe.
@@ -1751,20 +1773,19 @@ int motion_init(wifi_app_t *app, unsigned int create_flag)
     }
     wifi_util_info_print(WIFI_APPS, "%s:%d: Init Motion\n", __func__, __LINE__);
 
-
-    rc = rbus_open(&(app->data.u.motion.rbus_handle), component_name);
-    if (rc != RBUS_ERROR_SUCCESS) {
+    rc = get_bus_descriptor()->bus_open_fn(&app->data.u.motion.handle, component_name);
+    if (rc != bus_error_success) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d bus: bus_open_fn open failed for component:%s, rc:%d\n",
+            __func__, __LINE__, component_name, rc);
         return RETURN_ERR;
     }
 
-    rc = rbus_regDataElements(app->data.u.motion.rbus_handle, sizeof(dataElements)/sizeof(rbusDataElement_t), dataElements);
-    if (rc != RBUS_ERROR_SUCCESS) {
-        wifi_util_dbg_print(WIFI_APPS,"%s:%d rbus_regDataElements failed\n", __func__, __LINE__);
-        rbus_unregDataElements(app->data.u.motion.rbus_handle, sizeof(dataElements)/sizeof(rbusDataElement_t), dataElements);
-        rbus_close(app->rbus_handle);
-        return RETURN_ERR;
+    num_elements = (sizeof(dataElements)/sizeof(bus_data_element_t));
+    rc = get_bus_descriptor()->bus_reg_data_element_fn(&app->data.u.motion.handle, dataElements, num_elements); 
+    if (rc != bus_error_success) {
+        wifi_util_dbg_print(WIFI_APPS,"%s:%d bus_reg_data_element_fn failed\n", __func__, __LINE__);
     } else {
-        wifi_util_info_print(WIFI_APPS,"%s:%d Apps rbus_regDataElement success\n", __func__, __LINE__);
+        wifi_util_info_print(WIFI_APPS,"%s:%d Apps bus_reg_data_element_fn success\n", __func__, __LINE__);
     }
 
     return RETURN_OK;

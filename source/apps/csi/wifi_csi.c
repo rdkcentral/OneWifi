@@ -29,7 +29,6 @@
 #if DML_SUPPORT
 #include "wifi_analytics.h"
 #endif
-#include <rbus.h>
 
 INT process_csi(mac_address_t mac_addr, wifi_csi_data_t  *csi_data)
 {

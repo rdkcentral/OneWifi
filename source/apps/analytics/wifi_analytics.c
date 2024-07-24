@@ -32,7 +32,6 @@
 #include "wifi_analytics.h"
 #include "wifi_hal_rdk_framework.h"
 #include "wifi_monitor.h"
-#include <rbus.h>
 #include <sys/resource.h>
 #include "wifi_monitor.h"
 
@@ -831,7 +830,7 @@ int command_event_analytics(wifi_app_t *apps, wifi_event_subtype_t sub_type, voi
         case wifi_event_type_txrx_rate:
             break;
 
-        case wifi_event_type_mgmt_frame_rbus_rfc:
+        case wifi_event_type_mgmt_frame_bus_rfc:
             break;
 
         case wifi_event_type_sta_connect_in_progress:

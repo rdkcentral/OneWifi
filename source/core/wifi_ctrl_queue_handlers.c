@@ -34,7 +34,6 @@
 #include "scheduler.h"
 #include <unistd.h>
 #include <pthread.h>
-#include <rbus.h>
 #include "wifi_hal_rdk_framework.h"
 #include "wifi_passpoint.h"
 #if DML_SUPPORT
@@ -677,35 +676,25 @@ void process_anqp_gas_init_frame_event(frame_data_t *msg, uint32_t msg_length)
 
 void send_hotspot_status(char* vap_name, bool up)
 {
+    bus_error_t rc;
+    raw_data_t data;
+
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     if (ctrl == NULL) {
         wifi_util_error_print(WIFI_CTRL,"%s:%d NULL ctrl object\n", __func__,__LINE__);
         return;
     }
 
-    rbusValue_t value;
-    rbusObject_t data;
+    char *evt_name = up ? WIFI_BUS_HOTSPOT_UP : WIFI_BUS_HOTSPOT_DOWN;
 
-    rbusValue_Init(&value);
-    rbusValue_SetString(value, vap_name);
+    memset(&data, 0, sizeof(raw_data_t));
+    data.data_type = bus_data_type_string;
+    data.raw_data.bytes = (void *)vap_name;
 
-    char *evt_name = up ? WIFI_RBUS_HOTSPOT_UP : WIFI_RBUS_HOTSPOT_DOWN;
-
-    rbusObject_Init(&data, NULL);
-    rbusObject_SetValue(data, evt_name, value);
-
-    rbusEvent_t event;
-    event.name = evt_name;
-    event.data = data;
-    event.type = RBUS_EVENT_GENERAL;
-
-    int rc = rbusEvent_Publish(ctrl->rbus_handle, &event);
-    if(rc != RBUS_ERROR_SUCCESS){
-        wifi_util_error_print(WIFI_CTRL,"%s:%d rbusEvent_Publish %s failed for %s\n", __func__, __LINE__, event.name, vap_name);
+    rc = get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, evt_name, &data);
+    if(rc != bus_error_success) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d bus_event_publish_fn %s failed for %s\n", __func__, __LINE__, evt_name, vap_name);
     }
-
-    rbusValue_Release(value);
-    rbusObject_Release(data);
 }
 /* process_xfinity_vaps()  param can take values 0,1 and 2
     0 ---To disable xfinityvaps,
@@ -2943,7 +2932,7 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len, wifi_
         case wifi_event_type_notify_monitor_done:
             process_monitor_init_command();
             break;
-        case wifi_event_type_mgmt_frame_rbus_rfc:
+        case wifi_event_type_mgmt_frame_bus_rfc:
         case wifi_event_type_sta_connect_in_progress:
         case wifi_event_type_udhcp_ip_fail:
         case wifi_event_type_trigger_disconnection_analytics:
@@ -3123,4 +3112,3 @@ void handle_wifiapi_event(void *data, unsigned int len, wifi_event_subtype_t sub
     }
 
 }
-

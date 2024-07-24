@@ -321,44 +321,44 @@ void dml_cache_update(webconfig_subdoc_data_t *data)
     }
 }
 
-void set_webconfig_dml_data(rbusHandle_t handle, rbusEvent_t const* event, rbusEventSubscription_t* subscription)
+void set_webconfig_dml_data(bus_handle_t handle, bus_event_t *event, bus_event_sub_t *subscription)
 {
-    int len = 0;
-    const char * pTmp = NULL;
+    char *pTmp = NULL;
     webconfig_subdoc_data_t data;
-    rbusValue_t value;
+    raw_data_t rdata;
+    const char *eventName = event->name;
 
-    const char* eventName = event->name;
-
-    wifi_util_dbg_print(WIFI_DMCLI,"rbus event callback Event is %s \n",eventName);
-    value = rbusObject_GetValue(event->data, NULL );
-    if(!value)
-    {
-        wifi_util_error_print(WIFI_DMCLI,"%s FAIL: value is NULL\n",__FUNCTION__);
-        return;
-    }
-    pTmp = rbusValue_GetString(value, &len);
-    if (pTmp == NULL) {
-        wifi_util_error_print(WIFI_DMCLI,"%s Null pointer,Rbus set string len=%d\n",__FUNCTION__,len);
+    wifi_util_dbg_print(WIFI_DMCLI, "bus event callback Event is %s \n", eventName);
+    rdata.data_type = bus_data_type_string;
+    bus_error_t status = get_bus_descriptor()->bus_object_data_get_fn(&handle, event->data, &rdata,
+        NULL);
+    pTmp = rdata.raw_data.bytes;
+    if ((status != bus_error_success) || (pTmp == NULL)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: bus object data get failed for Event %s, %d",
+            __func__, __LINE__, eventName, status);
         return;
     }
 
     // setup the raw data
     memset(&data, 0, sizeof(webconfig_subdoc_data_t));
     data.descriptor = 0;
-    data.descriptor = webconfig_data_descriptor_encoded | webconfig_data_descriptor_translate_to_tr181;
+    data.descriptor = webconfig_data_descriptor_encoded |
+        webconfig_data_descriptor_translate_to_tr181;
 
-    //wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: dml Json:\n%s\r\n", __func__, __LINE__, data.u.encoded.raw);
-    wifi_util_info_print(WIFI_DMCLI,"%s:%d: hal capability update\r\n", __func__, __LINE__);
-    memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap, sizeof(wifi_hal_capability_t));
+    // wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: dml Json:\n%s\r\n", __func__, __LINE__,
+    // data.u.encoded.raw);
+    wifi_util_info_print(WIFI_DMCLI, "%s:%d: hal capability update\r\n", __func__, __LINE__);
+    memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&webconfig_dml.hal_cap,
+        sizeof(wifi_hal_capability_t));
 
     data.u.decoded.num_radios = webconfig_dml.hal_cap.wifi_prop.numRadios;
 
     // tell webconfig to decode
-    if (webconfig_decode(&webconfig_dml.webconfig, &data, pTmp) == webconfig_error_none){
-        wifi_util_info_print(WIFI_DMCLI,"%s %d webconfig_decode success \n",__FUNCTION__,__LINE__ );
+    if (webconfig_decode(&webconfig_dml.webconfig, &data, pTmp) == webconfig_error_none) {
+        wifi_util_info_print(WIFI_DMCLI, "%s %d webconfig_decode success \n", __FUNCTION__,
+            __LINE__);
     } else {
-        wifi_util_error_print(WIFI_DMCLI,"%s %d webconfig_decode fail \n",__FUNCTION__,__LINE__ );
+        wifi_util_error_print(WIFI_DMCLI, "%s %d webconfig_decode fail \n", __FUNCTION__, __LINE__);
         return;
     }
 
@@ -369,29 +369,33 @@ void set_webconfig_dml_data(rbusHandle_t handle, rbusEvent_t const* event, rbusE
     return;
 }
 
-
-void rbus_dmlwebconfig_register(webconfig_dml_t *consumer)
+void bus_dmlwebconfig_register(webconfig_dml_t *consumer)
 {
-    int rc = RBUS_ERROR_SUCCESS;
+    int rc = bus_error_success;
     char *component_name = "WebconfigDML";
 
-    rbusEventSubscription_t rbusEvents[] = {
-        { WIFI_WEBCONFIG_DOC_DATA_NORTH, NULL, 0, 0, set_webconfig_dml_data, NULL, NULL, NULL, false}, // DML Subdoc
-        { WIFI_WEBCONFIG_INIT_DML_DATA, NULL, 0, 0, set_webconfig_dml_data, NULL, NULL, NULL, false}, // DML Subdoc
+    bus_event_sub_t bus_events[] = {
+        { WIFI_WEBCONFIG_DOC_DATA_NORTH, NULL, 0, 0, set_webconfig_dml_data, NULL, NULL, NULL,
+         false }, // DML Subdoc
+        { WIFI_WEBCONFIG_INIT_DML_DATA,  NULL, 0, 0, set_webconfig_dml_data, NULL, NULL, NULL,
+         false }, // DML Subdoc
     };
 
-    wifi_util_dbg_print(WIFI_DMCLI,"%s rbus open \n",__FUNCTION__);
-    rc = rbus_open(&consumer->rbus_handle, component_name);
-
-    if (rc != RBUS_ERROR_SUCCESS) {
-        wifi_util_error_print(WIFI_DMCLI,"%s Rbus open failed\n",__FUNCTION__);
+    wifi_util_dbg_print(WIFI_DMCLI, "%s bus_open_fn open \n", __FUNCTION__);
+    rc = get_bus_descriptor()->bus_open_fn(&consumer->handle, component_name);
+    if (rc != bus_error_success) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d bus: bus_open_fn open failed for component:%s, rc:%d\n",
+	 __func__, __LINE__, component_name, rc);
         return;
     }
 
-    wifi_util_info_print(WIFI_DMCLI,"%s  rbus open success\n",__FUNCTION__);
-    rc = rbusEvent_SubscribeEx(consumer->rbus_handle, rbusEvents, ARRAY_SIZE(rbusEvents), 0);
-    if(rc != RBUS_ERROR_SUCCESS) {
-            wifi_util_error_print(WIFI_DMCLI,"Unable to subscribe to event  with rbus error code : %d\n", rc);
+    wifi_util_info_print(WIFI_DMCLI, "%s  bus open success\n", __FUNCTION__);
+    rc = get_bus_descriptor()->bus_event_subs_ex_fn(&consumer->handle, bus_events,
+        ARRAY_SIZE(bus_events), 0);
+
+    if (rc != bus_error_success) {
+        wifi_util_error_print(WIFI_DMCLI,
+            "Unable to subscribe to event  with bus error code : %d\n", rc);
     }
     return;
 }
@@ -410,25 +414,11 @@ void get_associated_devices_data(unsigned int radio_index)
     assoc_dev_data_t *assoc_dev_data, *temp_assoc_dev_data;
     char key[64] = {0};
 
-#if 0
-    //This part of code will be enabled once the rbus_get issue is resolved
-    rc = rbus_get(webconfig_dml.rbus_handle, paramNames[0], &value);
-    if (rc != RBUS_ERROR_SUCCESS) {
-        wifi_util_dbg_print(WIFI_DMCLI,"rbus_get failed for [%s] with error [%d]\n", paramNames[0], rc);
-        return;
-    }
-    str = rbusValue_GetString(value, (int*) &len);
-    if (str == NULL) {
-        wifi_util_dbg_print(WIFI_DMCLI,"%s Null pointer,Rbus set string len=%d\n",__FUNCTION__,len);
-        return;
-    }
-#else
     str = (char *)get_assoc_devices_blob();
     if (str == NULL) {
         wifi_util_error_print(WIFI_DMCLI,"%s %d Null pointer get_assoc_devices_blob string\n", __func__, __LINE__);
         return;
     }
-#endif
     memset(&data, 0, sizeof(webconfig_subdoc_data_t));
     memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&webconfig_dml.radios, get_num_radio_dml()*sizeof(rdk_wifi_radio_t));
     memcpy((unsigned char *)&data.u.decoded.config, (unsigned char *)&webconfig_dml.config,  sizeof(wifi_global_config_t));
@@ -575,21 +565,31 @@ hash_map_t** get_acl_hash_map(wifi_vap_info_t *vap_info)
 
 int init(webconfig_dml_t *consumer)
 {
-    //const char *paramNames[] = {WIFI_WEBCONFIG_INIT_DATA}, *str;
-    const char *paramNames[] = {WIFI_WEBCONFIG_INIT_DML_DATA}, *str;
-    rbusValue_t value;
-    int rc = RBUS_ERROR_SUCCESS;
-    unsigned int len, itr=0, itrj=0;
+    // const char *paramNames[] = {WIFI_WEBCONFIG_INIT_DATA}, *str;
+    const char *paramNames[] = { WIFI_WEBCONFIG_INIT_DML_DATA }, *str;
+    bus_error_t rc = bus_error_success;
+    unsigned int len, itr = 0, itrj = 0;
     webconfig_subdoc_data_t data;
     char *dbg_str;
+    raw_data_t raw_data;
 
-    rbus_dmlwebconfig_register(consumer);
-    rc = rbus_get(consumer->rbus_handle, paramNames[0], &value);
-    if (rc != RBUS_ERROR_SUCCESS) {
-        wifi_util_error_print(WIFI_DMCLI,"rbus_get failed for [%s] with error [%d]\n", paramNames[0], rc);
+    memset(&raw_data, 0, sizeof(raw_data));
+
+    bus_dmlwebconfig_register(consumer);
+    rc = get_bus_descriptor()->bus_data_get_fn(&consumer->handle, paramNames[0], &raw_data);
+    if (raw_data.data_type != bus_data_type_string) {
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%d\n", __func__, __LINE__,
+            paramNames[0], raw_data.data_type, rc);
+        return rc;
+    }
+    str = (char *)raw_data.raw_data.bytes;
+    len = raw_data.raw_data_len;
+    if (rc != bus_error_success || str == NULL) {
+        wifi_util_error_print(WIFI_DMCLI, "bus_data_get_fn failed for [%s] with error [%d]\n",
+            paramNames[0], rc);
         return -1;
     }
-
     //Initialize Webconfig Framework
     consumer->webconfig.initializer = webconfig_initializer_dml;
     consumer->webconfig.apply_data = (webconfig_apply_data_t)webconfig_dml_apply;
@@ -597,6 +597,10 @@ int init(webconfig_dml_t *consumer)
     if (webconfig_init(&consumer->webconfig) != webconfig_error_none) {
         wifi_util_error_print(WIFI_DMCLI,"[%s]:%d Init WiFi Web Config  fail\n",__FUNCTION__,__LINE__);
         // unregister and deinit everything
+        if (raw_data.raw_data.bytes) {
+            get_bus_descriptor()->bus_data_free_fn(&raw_data);
+        }
+
         return RETURN_ERR;
     }
     pthread_mutex_init(&consumer->assoc_dev_lock, NULL);
@@ -615,10 +619,16 @@ int init(webconfig_dml_t *consumer)
         }
     }
 
-    wifi_util_info_print(WIFI_DMCLI,"%s %d rbus_get WIFI_WEBCONFIG_INIT_DML_DATA successfull \n",__FUNCTION__,__LINE__ );
-    str = rbusValue_GetString(value, (int*) &len);
+    wifi_util_info_print(WIFI_DMCLI,
+        "%s %d bus_data_get_fn WIFI_WEBCONFIG_INIT_DML_DATA successfull \n", __FUNCTION__,
+        __LINE__);
     if (str == NULL) {
-        wifi_util_error_print(WIFI_DMCLI,"%s Null pointer,Rbus set string len=%d\n",__FUNCTION__,len);
+        wifi_util_error_print(WIFI_DMCLI, "%s Null pointer, bus set string len=%d\n", __FUNCTION__,
+            len);
+        if (raw_data.raw_data.bytes) {
+            get_bus_descriptor()->bus_data_free_fn(&raw_data);
+        }
+
         return RETURN_ERR;
     }
 
@@ -629,7 +639,7 @@ int init(webconfig_dml_t *consumer)
         json_param_obscure(dbg_str, "RadiusSecret");
         json_param_obscure(dbg_str, "SecondaryRadiusSecret");
         json_param_obscure(dbg_str, "DasSecret");
-        wifi_util_dbg_print(WIFI_DMCLI,"%s %d rbus_get value=%s\n",__FUNCTION__,__LINE__,dbg_str);
+        wifi_util_dbg_print(WIFI_DMCLI,"%s %d get_bus_fn value=%s\n",__FUNCTION__,__LINE__,dbg_str);
         free(dbg_str);
     }
 
@@ -639,10 +649,13 @@ int init(webconfig_dml_t *consumer)
     data.descriptor |= webconfig_data_descriptor_encoded;
 
     // tell webconfig to decode
-    if (webconfig_decode(&consumer->webconfig, &data, str) == webconfig_error_none){
-        wifi_util_info_print(WIFI_DMCLI,"%s %d webconfig_decode success \n",__FUNCTION__,__LINE__ );
+    if (webconfig_decode(&consumer->webconfig, &data, str) == webconfig_error_none) {
+        wifi_util_info_print(WIFI_DMCLI, "%s %d webconfig_decode success \n", __FUNCTION__,
+            __LINE__);
     } else {
-        wifi_util_error_print(WIFI_DMCLI,"%s %d webconfig_decode fail \n",__FUNCTION__,__LINE__ );
+        wifi_util_error_print(WIFI_DMCLI, "%s %d webconfig_decode fail \n", __FUNCTION__, __LINE__);
+        get_bus_descriptor()->bus_data_free_fn(&raw_data);
+
         return 0;
     }
 
@@ -667,6 +680,8 @@ int init(webconfig_dml_t *consumer)
     update_dml_stats_default();
 
     webconfig_data_free(&data);
+
+    get_bus_descriptor()->bus_data_free_fn(&raw_data);
 
     return 0;
 }
@@ -1140,13 +1155,21 @@ int push_blaster_config_dml_to_ctrl_queue()
     webconfig_subdoc_data_t data;
     char *str = NULL;
     int ret = 0;
-    static rbusHandle_t rbus_handle;
-    ret = rbus_open(&rbus_handle, "trace-blaster");
-    char traceParent[512] = {0};
-    char traceState[512] = {0};
-    ret =  rbusHandle_GetTraceContextAsString(rbus_handle, traceParent, sizeof(traceParent), traceState, sizeof(traceState));
+    bus_handle_t handle;
 
-    if ( ret == RBUS_ERROR_SUCCESS) {
+    ret = get_bus_descriptor()->bus_open_fn(&handle, "trace-blaster");
+    if (ret != bus_error_success) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d bus: bus_open_fn open failed for component:%s, ret:%d\n",
+	 __func__, __LINE__, "trace-blaster", ret);
+        return RETURN_ERR;
+    }
+
+    char traceParent[512] = { 0 };
+    char traceState[512] = { 0 };
+    ret = get_bus_descriptor()->bus_get_trace_context_fn(&handle, traceParent, sizeof(traceParent),
+        traceState, sizeof(traceState));
+
+    if(ret == bus_error_success) {
         wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: After getting the trace context traceparent:%s, tracestate:%s\n", __func__, __LINE__,traceParent,traceState);
         char *telemetry_buf = NULL;
         telemetry_buf = malloc(sizeof(char)*1024);

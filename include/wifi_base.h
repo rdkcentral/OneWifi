@@ -28,7 +28,6 @@ extern "C" {
 #include "collection.h"
 #include <pthread.h>
 #include <sys/time.h>
-#include <rbus.h>
 
 #define WIFI_STA_2G_VAP_CONNECT_STATUS      "Device.WiFi.STA.1.Connection.Status"
 #define WIFI_STA_5G_VAP_CONNECT_STATUS      "Device.WiFi.STA.2.Connection.Status"
