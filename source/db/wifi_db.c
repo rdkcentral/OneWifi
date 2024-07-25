@@ -5867,10 +5867,10 @@ void wifidb_vap_config_correction(wifi_vap_info_map_t *l_vap_map_param)
         if (isVapPrivate(vap_config->vap_index) &&
             is_sec_mode_personal(vap_config->u.bss_info.security.mode)) {
             if (vap_config->u.bss_info.wps.enable == false) {
-#ifndef NEWPLATFORM_PORT
+#if !defined(NEWPLATFORM_PORT) && !defined(_SR213_PRODUCT_REQ_)
                 vap_config->u.bss_info.wps.enable = true;
-#endif
                 wifi_util_info_print(WIFI_DB, "%s:%d: force wps enabled for private_vap:%d\r\n",__func__, __LINE__, vap_config->vap_index);
+#endif
             }
             continue;
         }
