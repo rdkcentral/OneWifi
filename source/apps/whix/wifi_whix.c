@@ -71,7 +71,7 @@ static const char *wifi_health_log = "/rdklogs/logs/wifihealth.txt";
 
 
 typedef struct {
-     wifi_associated_dev3_t assoc_dev_stats[MAX_ASSOCIATED_WIFI_DEVS];
+     wifi_associated_dev3_t assoc_dev_stats[BSS_MAX_NUM_STATIONS];
      size_t   stat_array_size;
 } whix_assoc_data_t;
 

@@ -121,7 +121,6 @@ typedef struct {
 
 typedef void *wifi_analytics_data_t;
 
-#define MAX_ASSOCIATED_WIFI_DEVS    64
 #define MAC_ADDR_LEN    6
 #define STA_KEY_LEN     2*MAC_ADDR_LEN + 6
 #define MAX_IPC_DATA_LEN    1024
@@ -157,7 +156,7 @@ typedef signed short    rssi_t;
 typedef char            sta_key_t[STA_KEY_LEN];
 typedef struct {
     unsigned int num;
-    wifi_associated_dev3_t  devs[MAX_ASSOCIATED_WIFI_DEVS];
+    wifi_associated_dev3_t  devs[BSS_MAX_NUM_STATIONS];
 } associated_devs_t;
 typedef struct {
     mac_address_t  sta_mac;

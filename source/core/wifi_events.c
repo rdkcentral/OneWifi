@@ -571,7 +571,7 @@ void events_update_clientdiagdata(unsigned int num_devs, int vap_idx, wifi_assoc
     {
 
         pos = snprintf(ctrl->events_rbus_data.diag_events_json_buffer[vap_array_index],
-                CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*MAX_ASSOCIATED_WIFI_DEVS,
+                CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*BSS_MAX_NUM_STATIONS,
                 "{"
                 "\"Version\":\"1.0\","
                 "\"AssociatedClientsDiagnostics\":["
@@ -582,7 +582,7 @@ void events_update_clientdiagdata(unsigned int num_devs, int vap_idx, wifi_assoc
         if(dev_array != NULL) {
             for(i=0; i<num_devs; i++) {
                 pos += snprintf(&ctrl->events_rbus_data.diag_events_json_buffer[vap_array_index][pos],
-                        (CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*MAX_ASSOCIATED_WIFI_DEVS)-pos, "{"
+                        (CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*BSS_MAX_NUM_STATIONS)-pos, "{"
                         "\"MAC\":\"%02x%02x%02x%02x%02x%02x\","
                         "\"DownlinkDataRate\":\"%d\","
                         "\"UplinkDataRate\":\"%d\","
@@ -646,7 +646,7 @@ void events_update_clientdiagdata(unsigned int num_devs, int vap_idx, wifi_assoc
         }
 
         snprintf(&ctrl->events_rbus_data.diag_events_json_buffer[vap_array_index][pos], (
-                    CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*MAX_ASSOCIATED_WIFI_DEVS)-pos,"]"
+                    CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*BSS_MAX_NUM_STATIONS)-pos,"]"
                 "}"
                 "]"
                 "}");

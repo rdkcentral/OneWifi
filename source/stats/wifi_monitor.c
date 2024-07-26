@@ -262,7 +262,7 @@ int harvester_get_associated_device_info(int vap_index, char **harvester_buf)
         return RETURN_ERR;
     }
     pos = snprintf(harvester_buf[vap_index],
-                CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*MAX_ASSOCIATED_WIFI_DEVS,
+                CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*BSS_MAX_NUM_STATIONS,
                 "{"
                 "\"Version\":\"1.0\","
                 "\"AssociatedClientsDiagnostics\":["
@@ -274,7 +274,7 @@ int harvester_get_associated_device_info(int vap_index, char **harvester_buf)
     sta_data = hash_map_get_first(g_monitor_module.bssid_data[vap_index].sta_map);
     while (sta_data != NULL) {
         pos += snprintf(&harvester_buf[vap_index][pos],
-                (CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*MAX_ASSOCIATED_WIFI_DEVS)-pos, "{"
+                (CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*BSS_MAX_NUM_STATIONS)-pos, "{"
                         "\"MAC\":\"%02x%02x%02x%02x%02x%02x\","
                         "\"DownlinkDataRate\":\"%d\","
                         "\"UplinkDataRate\":\"%d\","
@@ -341,7 +341,7 @@ int harvester_get_associated_device_info(int vap_index, char **harvester_buf)
     }
 
     snprintf(&harvester_buf[vap_index][pos], (
-             CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*MAX_ASSOCIATED_WIFI_DEVS)-pos,"]"
+             CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*BSS_MAX_NUM_STATIONS)-pos,"]"
              "}"
              "]"
              "}");

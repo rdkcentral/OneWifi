@@ -1759,7 +1759,7 @@ rbusError_t eventSubHandler(rbusHandle_t handle, rbusEventSubAction_t action, co
                     {
                         memset(tmp, 0, sizeof(tmp));
                         get_formatted_time(tmp);
-                        events_rbus_data->diag_events_json_buffer[vap_array_index] = (char *)malloc(CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*MAX_ASSOCIATED_WIFI_DEVS);
+                        events_rbus_data->diag_events_json_buffer[vap_array_index] = (char *)malloc(CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*BSS_MAX_NUM_STATIONS);
                         if(events_rbus_data->diag_events_json_buffer[vap_array_index] == NULL)
                             if(events_rbus_data->diag_events_json_buffer[vap_array_index] == NULL)
                             {
@@ -1769,9 +1769,9 @@ rbusError_t eventSubHandler(rbusHandle_t handle, rbusEventSubAction_t action, co
                                 wifi_util_dbg_print(WIFI_CTRL, "Exit %s: Event %s\n", __FUNCTION__, eventName);
                                 return RBUS_ERROR_BUS_ERROR;
                             }
-                        memset(events_rbus_data->diag_events_json_buffer[vap_array_index], 0, (CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*MAX_ASSOCIATED_WIFI_DEVS));
+                        memset(events_rbus_data->diag_events_json_buffer[vap_array_index], 0, (CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*BSS_MAX_NUM_STATIONS));
                         snprintf(events_rbus_data->diag_events_json_buffer[vap_array_index], 
-                                CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*MAX_ASSOCIATED_WIFI_DEVS,
+                                CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*BSS_MAX_NUM_STATIONS,
                                 "{"
                                 "\"Version\":\"1.0\","
                                 "\"AssociatedClientsDiagnostics\":["
@@ -1914,7 +1914,7 @@ rbusError_t ap_get_handler(rbusHandle_t handle, rbusProperty_t property, rbusGet
             //unlock event mutex before updating monitor data to avoid deadlock
             pthread_mutex_unlock(&events_rbus_data->events_rbus_lock);
             char *harvester_buf[MAX_VAP];
-            harvester_buf[vap_array_index] = (char *) malloc(CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*MAX_ASSOCIATED_WIFI_DEVS);
+            harvester_buf[vap_array_index] = (char *) malloc(CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*BSS_MAX_NUM_STATIONS);
             if (harvester_buf[vap_array_index] == NULL) {
                 wifi_util_error_print(WIFI_CTRL, "%s %d Memory allocation failed\n", __func__, __LINE__);
                 return  RBUS_ERROR_BUS_ERROR;

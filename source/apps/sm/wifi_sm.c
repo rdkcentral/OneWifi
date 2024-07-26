@@ -32,7 +32,7 @@
 #define APP_TO_DCA 2
 
 typedef struct {
-    sta_data_t  assoc_stats[MAX_ASSOCIATED_WIFI_DEVS];
+    sta_data_t  assoc_stats[BSS_MAX_NUM_STATIONS];
     size_t      stat_array_size;
 } client_assoc_data_t;
 
