@@ -584,6 +584,8 @@ void events_update_clientdiagdata(unsigned int num_devs, int vap_idx, wifi_assoc
                 pos += snprintf(&ctrl->events_rbus_data.diag_events_json_buffer[vap_array_index][pos],
                         (CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*BSS_MAX_NUM_STATIONS)-pos, "{"
                         "\"MAC\":\"%02x%02x%02x%02x%02x%02x\","
+                        "\"MLDMAC\":\"%02x%02x%02x%02x%02x%02x\","
+                        "\"MLDEnable\":\"%d\","
                         "\"DownlinkDataRate\":\"%d\","
                         "\"UplinkDataRate\":\"%d\","
                         "\"BytesSent\":\"%lu\","
@@ -614,6 +616,13 @@ void events_update_clientdiagdata(unsigned int num_devs, int vap_idx, wifi_assoc
                   dev_array->cli_MACAddress[3],
                   dev_array->cli_MACAddress[4],
                   dev_array->cli_MACAddress[5],
+                  dev_array->cli_MLDAddr[0],
+                  dev_array->cli_MLDAddr[1],
+                  dev_array->cli_MLDAddr[2],
+                  dev_array->cli_MLDAddr[3],
+                  dev_array->cli_MLDAddr[4],
+                  dev_array->cli_MLDAddr[5],
+                  dev_array->cli_MLDEnable,
                   dev_array->cli_MaxDownlinkRate,
                   dev_array->cli_MaxUplinkRate,
                   dev_array->cli_BytesSent,

@@ -111,10 +111,13 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
     unsigned int vap_array_index;
     wifi_associated_dev3_t  *hal_sta;
     sta_key_t   sta_key;
+    sta_key_t   mld_sta_key;
     unsigned int i = 0;
     hash_map_t *sta_map;
     sta_data_t *sta = NULL,  *tmp_sta = NULL;
     int ret = RETURN_OK;
+    int mld_mac_present = 0;
+    mac_address_t zero_mac = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
     wifi_platform_property_t *wifi_prop = get_wifi_hal_cap_prop();
 #ifndef CCSP_WIFI_HAL
     char *radio_type = NULL;
@@ -210,7 +213,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
     wifi_util_dbg_print(WIFI_MON, "%s:%d: diag result: number of devs: %d\n",
         __func__, __LINE__, num_devs);
     for (i = 0; i < num_devs; i++) {
-        wifi_util_dbg_print(WIFI_MON, "cli_MACAddress: %s\ncli_AuthenticationState: %d\n"
+        wifi_util_dbg_print(WIFI_MON, "cli_MACAddress: %s\ncli_MLDAddr: %s\ncli_MLDEnable: %d\ncli_AuthenticationState: %d\n"
             "cli_LastDataDownlinkRate: %d\ncli_LastDataUplinkRate: %d\ncli_SignalStrength: %d\n"
             "cli_Retransmissions: %d\ncli_Active: %d\ncli_OperatingStandard: %s\n"
             "cli_OperatingChannelBandwidth: %s\ncli_SNR: %d\ncli_InterferenceSources: %s\n"
@@ -222,6 +225,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
             "cli_MultipleRetryCount: %lu\ncli_MaxDownlinkRate: %d\ncli_MaxUplinkRate: %d\n"
             "cli_activeNumSpatialStreams: %d\ncli_TxFrames: %llu\ncli_RxRetries: %llu\n"
             "cli_RxErrors: %llu\n", to_sta_key(dev_array[i].cli_MACAddress, sta_key),
+            to_sta_key(dev_array[i].cli_MLDAddr, mld_sta_key), dev_array[i].cli_MLDEnable,
             dev_array[i].cli_AuthenticationState, dev_array[i].cli_LastDataDownlinkRate,
             dev_array[i].cli_LastDataUplinkRate, dev_array[i].cli_SignalStrength,
             dev_array[i].cli_Retransmissions, dev_array[i].cli_Active,
@@ -267,7 +271,13 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
 
     if (hal_sta != NULL) {
         for (i = 0; i < num_devs; i++) {
-            to_sta_key(hal_sta->cli_MACAddress, sta_key);
+            if (memcmp(hal_sta->cli_MLDAddr, zero_mac, sizeof(mac_address_t)) == 0) {
+                to_sta_key(hal_sta->cli_MACAddress, sta_key);
+                mld_mac_present = 0;
+            } else {
+                to_sta_key(hal_sta->cli_MLDAddr, sta_key);
+                mld_mac_present = 1;
+            }
             str_tolower(sta_key);
             sta = (sta_data_t *)hash_map_get(sta_map, sta_key);
             if (sta == NULL) {
@@ -277,10 +287,22 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                     break;
                 }
                 memset(sta, 0, sizeof(sta_data_t));
-                memcpy(sta->sta_mac, hal_sta->cli_MACAddress, sizeof(mac_addr_t));
+                if (mld_mac_present == 0) {
+                    memcpy(sta->sta_mac, hal_sta->cli_MACAddress, sizeof(mac_address_t));
+                } else {
+                    wifi_util_dbg_print(WIFI_MON, "%s:%d mld mac %s\n", __func__, __LINE__, to_sta_key(hal_sta->cli_MLDAddr, mld_sta_key));
+                    memcpy(sta->sta_mac, hal_sta->cli_MLDAddr, sizeof(mac_address_t));
+                    memcpy(sta->link_mac, hal_sta->cli_MACAddress, sizeof(mac_address_t));
+                    memcpy(hal_sta->cli_MACAddress, hal_sta->cli_MLDAddr, sizeof(mac_address_t));
+                    sta->primary_link = 0;
+                }
                 hash_map_put(sta_map, strdup(sta_key), sta);
                 sta->last_connected_time.tv_sec = tv_now.tv_sec;
                 sta->last_connected_time.tv_nsec = tv_now.tv_nsec;
+            } else {
+                if (mld_mac_present != 0) {
+                    memcpy(hal_sta->cli_MACAddress, hal_sta->cli_MLDAddr, sizeof(mac_address_t));
+                }
             }
             memcpy((unsigned char *)&sta->dev_stats_last, (unsigned char *)&sta->dev_stats, sizeof(wifi_associated_dev3_t));
             memcpy((unsigned char *)&sta->dev_stats, (unsigned char *)hal_sta, sizeof(wifi_associated_dev3_t));

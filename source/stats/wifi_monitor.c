@@ -277,6 +277,8 @@ int harvester_get_associated_device_info(int vap_index, char **harvester_buf)
         pos += snprintf(&harvester_buf[vap_index][pos],
                 (CLIENTDIAG_JSON_BUFFER_SIZE*(sizeof(char))*BSS_MAX_NUM_STATIONS)-pos, "{"
                         "\"MAC\":\"%02x%02x%02x%02x%02x%02x\","
+                        "\"MLDMAC\":\"%02x%02x%02x%02x%02x%02x\","
+                        "\"MLDEnable\":\"%d\","
                         "\"DownlinkDataRate\":\"%d\","
                         "\"UplinkDataRate\":\"%d\","
                         "\"BytesSent\":\"%lu\","
@@ -307,6 +309,13 @@ int harvester_get_associated_device_info(int vap_index, char **harvester_buf)
                         sta_data->dev_stats.cli_MACAddress[3],
                         sta_data->dev_stats.cli_MACAddress[4],
                         sta_data->dev_stats.cli_MACAddress[5],
+                        sta_data->dev_stats.cli_MLDAddr[0],
+                        sta_data->dev_stats.cli_MLDAddr[1],
+                        sta_data->dev_stats.cli_MLDAddr[2],
+                        sta_data->dev_stats.cli_MLDAddr[3],
+                        sta_data->dev_stats.cli_MLDAddr[4],
+                        sta_data->dev_stats.cli_MLDAddr[5],
+                        sta_data->dev_stats.cli_MLDEnable,
                         sta_data->dev_stats.cli_MaxDownlinkRate,
                         sta_data->dev_stats.cli_MaxUplinkRate,
                         sta_data->dev_stats.cli_BytesSent,
@@ -719,6 +728,7 @@ int get_sta_stats_info (assoc_dev_data_t *assoc_dev_data) {
     assoc_dev_data->dev_stats.cli_SignalStrength = sta_data->dev_stats.cli_SignalStrength;
     assoc_dev_data->dev_stats.cli_Retransmissions = sta_data->dev_stats.cli_Retransmissions;
     assoc_dev_data->dev_stats.cli_Active = sta_data->dev_stats.cli_Active;
+    memcpy(assoc_dev_data->dev_stats.cli_MLDAddr, sta_data->dev_stats.cli_MLDAddr, sizeof(mac_address_t));
     memcpy(assoc_dev_data->dev_stats.cli_OperatingStandard, sta_data->dev_stats.cli_OperatingStandard, sizeof(char)*64);
     memcpy(assoc_dev_data->dev_stats.cli_OperatingChannelBandwidth, sta_data->dev_stats.cli_OperatingChannelBandwidth, sizeof(char)*64);
     assoc_dev_data->dev_stats.cli_SNR = sta_data->dev_stats.cli_SNR;
@@ -739,6 +749,7 @@ int get_sta_stats_info (assoc_dev_data_t *assoc_dev_data) {
     assoc_dev_data->dev_stats.cli_FailedRetransCount = sta_data->dev_stats.cli_FailedRetransCount;
     assoc_dev_data->dev_stats.cli_RetryCount = sta_data->dev_stats.cli_RetryCount;
     assoc_dev_data->dev_stats.cli_MultipleRetryCount = sta_data->dev_stats.cli_MultipleRetryCount;
+    assoc_dev_data->dev_stats.cli_MLDEnable = sta_data->dev_stats.cli_MLDEnable;
 
     pthread_mutex_unlock(&g_monitor_module.data_lock);
     return 0;
@@ -979,6 +990,7 @@ void process_connect(unsigned int ap_index, auth_deauth_dev_t *dev)
         memset(sta, 0, sizeof(sta_data_t));
         memcpy(sta->sta_mac, dev->sta_mac, sizeof(mac_addr_t));
         memcpy(sta->dev_stats.cli_MACAddress, dev->sta_mac, sizeof(mac_addr_t));
+        sta->primary_link = 1;
         hash_map_put(sta_map, strdup(sta_key), sta);
         pthread_mutex_unlock(&g_monitor_module.data_lock);
     }

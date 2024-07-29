@@ -778,7 +778,7 @@ typedef struct {
 } __attribute__((__packed__)) assoc_req_elem_t;
 
 typedef struct {
-    mac_address_t  sta_mac;
+    mac_address_t  sta_mac; /* this is mld-mac addr for wifi7 clients */
     unsigned int    good_rssi_time;
     unsigned int    bad_rssi_time;
     struct timespec  disconnected_time;
@@ -802,6 +802,10 @@ typedef struct {
 #ifndef CCSP_WIFI_HAL
     int             sleep_mode;
 #endif //CCSP_WIFI_HAL
+
+    /* wifi7 client specific data */
+    bool            primary_link; /* TRUE for auth/primary link, FALSE for secondary links */
+    mac_address_t   link_mac;     /* link mac addr */
 } sta_data_t;
 
 typedef enum {
