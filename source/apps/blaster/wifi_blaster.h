@@ -91,13 +91,6 @@ typedef enum
     ACTIVE_MSMT_STATUS_UNDEFINED
 } active_msmt_status_t;
 
-typedef struct active_msmt_queue_t active_msmt_queue_t;
-
-struct active_msmt_queue_t {
-    active_msmt_t data;
-    active_msmt_queue_t *next;
-};
-
 typedef struct {
     pthread_mutex_t                lock;
     active_msmt_t                  active_msmt;
@@ -106,11 +99,13 @@ typedef struct {
     active_msmt_status_t           status;
     char                           status_desc[512];
     bool                           is_running;
-    active_msmt_queue_t            *queue;
     hash_map_t                     *active_msmt_map;
     int                            num_req_count;
     int                            num_res_count;
     bool                           reponse_received;
+    queue_t                        *worker_queue;
+    pthread_mutex_t                worker_lock;
+    pthread_t                      worker_thread_id;
 } wifi_actvie_msmt_t;
 
 typedef struct {

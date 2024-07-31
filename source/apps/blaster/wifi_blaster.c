@@ -854,21 +854,6 @@ void SetActiveMsmtStepSrcMac(char *SrcMac, ULONG StepIns)
     memcpy(g_active_msmt->active_msmt.Step[StepIns].SrcMac, bmac, sizeof(mac_address_t));
 }
 
-static void active_msmt_queue_push(active_msmt_queue_t **q, active_msmt_t *data)
-{
-    active_msmt_queue_t **it = q;
-
-    for (; it && *it; it = &(*it)->next);
-
-    if ((*it = calloc(1, sizeof(active_msmt_queue_t))) == NULL) {
-        wifi_util_error_print(WIFI_BLASTER, "%s:%d Unable to allocate memory!\n", __func__, __LINE__);
-        return;
-    }
-
-    wifi_util_dbg_print(WIFI_BLASTER, "%s:%d Pushing [%s] to queue\n", __func__, __LINE__, data->PlanId);
-    memcpy(&(*it)->data, data, sizeof(active_msmt_t));
-}
-
 /*********************************************************************************/
 /*                                                                               */
 /* FUNCTION NAME : GetActiveMsmtPktSize                                          */
@@ -1557,13 +1542,51 @@ void WiFiBlastClient(void)
     wifi_util_dbg_print(WIFI_BLASTER, "%s : %d exiting the function\n",__func__,__LINE__);
 }
 
-static void *active_msmt_worker(void *ctx)
+static int send_monitor_event(int event, const char *event_data)
 {
-    int oldcanceltype;
-    char *telemetry_buf = NULL;
-    active_msmt_t *cfg;
+    int ret;
+    wifi_monitor_data_t *data;
+
+    data = calloc(1, sizeof(wifi_monitor_data_t));
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_BLASTER, "%s:%d failed to allocate monitor event data %s\n",
+            __func__, __LINE__, event_data);
+        return -1;
+    }
+
+    strncpy((char *)data->u.msg.data, event_data, sizeof(MAX_FRAME_SZ) - 1);
+    ret = push_event_to_monitor_queue(data, event, NULL);
+    if (ret != RETURN_OK) {
+        wifi_util_error_print(WIFI_BLASTER, "%s:%d failed to push monitor event %s\n", __func__,
+            __LINE__, event_data);
+    }
+
+    free(data);
+    return ret;
+}
+
+static void send_telemetry_event(char *event, wifi_actvie_msmt_t *active_msmt)
+{
+    char *telemetry_buf;
+
+    telemetry_buf = malloc(1024);
+    if (telemetry_buf == NULL) {
+        wifi_util_error_print(WIFI_BLASTER, "%s:%d failed to allocate telemetry buffer for %s\n",
+            __func__, __LINE__, event);
+        return;
+    }
+
+    snprintf(telemetry_buf, 1024, "%s %s", active_msmt->active_msmt.t_header.traceParent,
+        active_msmt->active_msmt.t_header.traceState);
+
+    get_stubs_descriptor()->t2_event_s_fn(event, telemetry_buf);
+
+    free(telemetry_buf);
+}
+
+static void process_request(active_msmt_t *cfg)
+{
     wifi_actvie_msmt_t  *g_active_msmt = get_wifi_blaster();
-    active_msmt_queue_t *it = g_active_msmt->queue;
     active_msmt_t *act_msmt = &g_active_msmt->active_msmt;
     active_msmt_status_t status;
     wifi_mgr_t *mgr = get_wifimgr_obj();
@@ -1571,174 +1594,138 @@ static void *active_msmt_worker(void *ctx)
     char msg[256] = {};
     bool report = false;
 
-    prctl(PR_SET_NAME,  __func__, 0, 0, 0);
-
-    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, &oldcanceltype);
-    UNREFERENCED_PARAMETER(ctx);
+    active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d Enter\n", __func__, __LINE__);
 
     pthread_mutex_lock(&g_active_msmt->lock);
-    g_active_msmt->is_running = true;
-    wifi_monitor_data_t *data;
-    data = (wifi_monitor_data_t *) malloc(sizeof(wifi_monitor_data_t));
-    if (data == NULL) {
-        wifi_util_error_print(WIFI_BLASTER,"%s:%d data allocation failed\r\n", __func__, __LINE__);
-        pthread_mutex_unlock(&g_active_msmt->lock);
-        return NULL;
+
+    wifi_util_info_print(WIFI_BLASTER, "%s:%d trace headers are %s and %s\n", __func__, __LINE__,
+        cfg->t_header.traceParent, cfg->t_header.traceState);
+    SetBlasterTraceContext(cfg->t_header.traceParent, cfg->t_header.traceState);
+    send_telemetry_event("TRACE_WIFIBLAST_ENABLED", g_active_msmt);
+    wifi_util_dbg_print(WIFI_BLASTER,"%s:%d blast is enabled\n", __func__, __LINE__);
+    SetActiveMsmtStatus(__func__, ACTIVE_MSMT_STATUS_SUCCEED);
+    ResetActiveMsmtStepInstances();
+
+    if (ctrl->network_mode == rdk_dev_mode_type_ext) {
+
+        if (ActiveMsmtConfValidation(cfg) != RETURN_OK) {
+            wifi_util_error_print(WIFI_BLASTER, "%s:%d Active measurement conf is invalid!\n", __func__, __LINE__);
+            mgr->ctrl.webconfig_state |= ctrl_webconfig_state_blaster_cfg_complete_rsp_pending;
+            pthread_mutex_unlock(&g_active_msmt->lock);
+            return;
+        }
+
+        SetActiveMsmtSampleDuration(cfg->ActiveMsmtSampleDuration / cfg->ActiveMsmtNumberOfSamples);
+        SetBlasterMqttTopic((char *)cfg->blaster_mqtt_topic);
+    } else {
+        SetActiveMsmtSampleDuration(cfg->ActiveMsmtSampleDuration);
     }
-    memset(data, 0, sizeof(wifi_monitor_data_t));
-    strncpy((char *) data->u.msg.data, "active_msmt started", sizeof(MAX_FRAME_SZ)-1);
-    push_event_to_monitor_queue(data, wifi_event_monitor_started_active_msmt, NULL);
-    pthread_mutex_unlock(&g_active_msmt->lock);
 
-    while (true) {
+    SetActiveMsmtPktSize(cfg->ActiveMsmtPktSize);
+    SetActiveMsmtNumberOfSamples(cfg->ActiveMsmtNumberOfSamples);
+    SetActiveMsmtPlanID((char *)cfg->PlanId);
+    wifi_util_info_print(WIFI_BLASTER, "%s:%d trace headers are %s and %s\n", __func__, __LINE__,
+        cfg->t_header.traceParent, cfg->t_header.traceState);
+    SetBlasterTraceContext(cfg->t_header.traceParent, cfg->t_header.traceState);
+    wifi_util_info_print(WIFI_BLASTER, "Done Setting SetBlasterTraceContext\n");
 
-        pthread_mutex_lock(&g_active_msmt->lock);
-
-        if (it == NULL) {
-            g_active_msmt->is_running = false;
-            memset(data, 0, sizeof(wifi_monitor_data_t));
-            strncpy((char *) data->u.msg.data, "active_msmt stoped", sizeof(MAX_FRAME_SZ)-1);
-            push_event_to_monitor_queue(data, wifi_event_monitor_stop_active_msmt, NULL);
-            telemetry_buf = malloc(sizeof(char)*1024);
-            if (telemetry_buf == NULL) {
-                wifi_util_error_print(WIFI_BLASTER,"%s:%d telemetry_buf allocation failed\r\n", __func__, __LINE__);
-                if (data != NULL) {
-                    free(data);
-                    data = NULL;
-                }
-                pthread_mutex_unlock(&g_active_msmt->lock);
-                return NULL;
-            }
-            memset(telemetry_buf, 0, sizeof(char)*1024);
-            snprintf(telemetry_buf, sizeof(char)*1024, "%s %s",g_active_msmt->active_msmt.t_header.traceParent, g_active_msmt->active_msmt.t_header.traceState);
-            get_stubs_descriptor()->t2_event_s_fn("TRACE_WIFIBLAST_NOT_ENABLED", telemetry_buf);
-            wifi_util_dbg_print(WIFI_BLASTER,"%s:%d blast is disabled\n", __func__, __LINE__);
-            if (telemetry_buf != NULL) {
-                free(telemetry_buf);
-                telemetry_buf = NULL;
-            }
-            pthread_mutex_unlock(&g_active_msmt->lock);
-            break;
+    for (unsigned int i = 0; i < MAX_STEP_COUNT; i++) {
+        if(strlen((char *) cfg->Step[i].DestMac) != 0) {
+            SetActiveMsmtStepID(cfg->Step[i].StepId, i);
+            SetActiveMsmtStepDstMac((char *)cfg->Step[i].DestMac, i);
+            SetActiveMsmtStepSrcMac((char *)cfg->Step[i].SrcMac, i);
         }
+    }
 
-        cfg = &it->data;
-        telemetry_buf = malloc(sizeof(char)*1024);
-        if (telemetry_buf == NULL) {
-            wifi_util_error_print(WIFI_BLASTER,"%s:%d telemetry_buf allocation failed\r\n", __func__, __LINE__);
-            if (data != NULL) {
-                free(data);
-                data = NULL;
-            }
-            pthread_mutex_unlock(&g_active_msmt->lock);
-            return NULL;
-        }
-        memset(telemetry_buf, 0, sizeof(char)*1024);
-        wifi_util_info_print(WIFI_BLASTER, "active_msmt_worker: trace headers are %s and %s \n",cfg->t_header.traceParent, cfg->t_header.traceState);
-        SetBlasterTraceContext(cfg->t_header.traceParent, cfg->t_header.traceState);
-        snprintf(telemetry_buf, sizeof(char)*1024, "%s %s",g_active_msmt->active_msmt.t_header.traceParent, g_active_msmt->active_msmt.t_header.traceState);
-        get_stubs_descriptor()->t2_event_s_fn("TRACE_WIFIBLAST_ENABLED", telemetry_buf);
-        wifi_util_dbg_print(WIFI_BLASTER,"%s:%d blast is enabled\n", __func__, __LINE__);
-        if (telemetry_buf != NULL) {
-            free(telemetry_buf);
-            telemetry_buf = NULL;
-        }
-        SetActiveMsmtStatus(__func__, ACTIVE_MSMT_STATUS_SUCCEED);
-        ResetActiveMsmtStepInstances();
+    SetActiveMsmtEnable(cfg->ActiveMsmtEnable);
+
+    if (DeviceMemory_DataGet(&act_msmt->ActiveMsmtResources.util_mem) != true ||
+        DeviceLoad_DataGet(&act_msmt->ActiveMsmtResources) != true ||
+        active_msmt_calc_cpu_util(WIFI_BLASTER_CPU_CALC_PERIOD, &act_msmt->ActiveMsmtResources.util_cpu) != true) {
+
+        snprintf(msg, sizeof(msg), "Failed to fill in health stats");
+        status = ACTIVE_MSMT_STATUS_FAILED;
+        report = true;
+
+    } else if (act_msmt->ActiveMsmtResources.util_cpu > WIFI_BLASTER_CPU_THRESHOLD) {
+
+        snprintf(msg, sizeof(msg), "Skip because of high CPU usage [%u]%%. Threshold [%d]%%",
+            act_msmt->ActiveMsmtResources.util_cpu, WIFI_BLASTER_CPU_THRESHOLD);
+        status = ACTIVE_MSMT_STATUS_BUSY;
+        report = true;
+
+    } else if (act_msmt->ActiveMsmtResources.util_mem < WIFI_BLASTER_MEM_THRESHOLD) {
+
+        snprintf(msg, sizeof(msg), "Skip because of low free RAM memory [%u]KB.  Threshold [%d]KB",
+            act_msmt->ActiveMsmtResources.util_mem, WIFI_BLASTER_MEM_THRESHOLD);
+        status = ACTIVE_MSMT_STATUS_BUSY;
+        report = true;
+    }
+
+    if (report == true) {
 
         if (ctrl->network_mode == rdk_dev_mode_type_ext) {
-
-            if (ActiveMsmtConfValidation(cfg) != RETURN_OK) {
-                wifi_util_error_print(WIFI_BLASTER, "%s:%d Active measurement conf is invalid!\n", __func__, __LINE__);
-                mgr->ctrl.webconfig_state |= ctrl_webconfig_state_blaster_cfg_complete_rsp_pending;
-
-                g_active_msmt->queue = it->next;
-                free(it);
-                it = g_active_msmt->queue;
-
-                pthread_mutex_unlock(&g_active_msmt->lock);
-                continue;
-            }
-
-            SetActiveMsmtSampleDuration(cfg->ActiveMsmtSampleDuration / cfg->ActiveMsmtNumberOfSamples);
-            SetBlasterMqttTopic((char *)cfg->blaster_mqtt_topic);
-        } else {
-            SetActiveMsmtSampleDuration(cfg->ActiveMsmtSampleDuration);
+            active_msmt_report_all_steps(cfg, msg, status);
         }
 
-        SetActiveMsmtPktSize(cfg->ActiveMsmtPktSize);
-        SetActiveMsmtNumberOfSamples(cfg->ActiveMsmtNumberOfSamples);
-        SetActiveMsmtPlanID((char *)cfg->PlanId);
-        wifi_util_info_print(WIFI_BLASTER, "active_msmt_worker: trace headers are %s and %s \n",cfg->t_header.traceParent, cfg->t_header.traceState);
-        SetBlasterTraceContext(cfg->t_header.traceParent, cfg->t_header.traceState);
-        wifi_util_info_print(WIFI_BLASTER, "Done Setting SetBlasterTraceContext\n");
+        active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d %s\n" ,__FUNCTION__, __LINE__, msg);
+        mgr->ctrl.webconfig_state |= ctrl_webconfig_state_blaster_cfg_complete_rsp_pending;
 
-        for (unsigned int i = 0; i < MAX_STEP_COUNT; i++) {
-            if(strlen((char *) cfg->Step[i].DestMac) != 0) {
-                SetActiveMsmtStepID(cfg->Step[i].StepId, i);
-                SetActiveMsmtStepDstMac((char *)cfg->Step[i].DestMac, i);
-                SetActiveMsmtStepSrcMac((char *)cfg->Step[i].SrcMac, i);
-            }
-        }
+        pthread_mutex_unlock(&g_active_msmt->lock);
+        return;
+    }
 
-        SetActiveMsmtEnable(cfg->ActiveMsmtEnable);
+    pthread_mutex_unlock(&g_active_msmt->lock);
 
-        if (DeviceMemory_DataGet(&act_msmt->ActiveMsmtResources.util_mem) != true ||
-            DeviceLoad_DataGet(&act_msmt->ActiveMsmtResources) != true ||
-            active_msmt_calc_cpu_util(WIFI_BLASTER_CPU_CALC_PERIOD, &act_msmt->ActiveMsmtResources.util_cpu) != true) {
+    active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d Starting to proceed PlanId [%s]\n", __func__, __LINE__, cfg->PlanId);
+    WiFiBlastClient();
+    active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d Done PlanId [%s]\n", __func__, __LINE__, cfg->PlanId);
 
-            snprintf(msg, sizeof(msg), "Failed to fill in health stats");
-            status = ACTIVE_MSMT_STATUS_FAILED;
-            report = true;
+    pthread_mutex_lock(&g_active_msmt->lock);
+    send_telemetry_event("TRACE_WIFIBLAST_NOT_ENABLED", g_active_msmt);
+    pthread_mutex_unlock(&g_active_msmt->lock);
 
-        } else if (act_msmt->ActiveMsmtResources.util_cpu > WIFI_BLASTER_CPU_THRESHOLD) {
+    active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d Exit\n", __func__, __LINE__);
+}
 
-            snprintf(msg, sizeof(msg), "Skip because of high CPU usage [%u]%%. Threshold [%d]%%",
-                act_msmt->ActiveMsmtResources.util_cpu, WIFI_BLASTER_CPU_THRESHOLD);
-            status = ACTIVE_MSMT_STATUS_BUSY;
-            report = true;
+static void *active_msmt_worker(void *ctx)
+{
+    int oldcanceltype;
+    active_msmt_t *request;
+    wifi_actvie_msmt_t *active_msmt = ctx;
 
-        } else if (act_msmt->ActiveMsmtResources.util_mem < WIFI_BLASTER_MEM_THRESHOLD) {
+    active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d Enter\n", __func__, __LINE__);
 
-            snprintf(msg, sizeof(msg), "Skip because of low free RAM memory [%u]KB.  Threshold [%d]KB",
-                act_msmt->ActiveMsmtResources.util_mem, WIFI_BLASTER_MEM_THRESHOLD);
-            status = ACTIVE_MSMT_STATUS_BUSY;
-            report = true;
-        }
+    prctl(PR_SET_NAME, __func__, 0, 0, 0);
+    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, &oldcanceltype);
 
-        if (report == true) {
+    pthread_mutex_lock(&active_msmt->worker_lock);
 
-            if (ctrl->network_mode == rdk_dev_mode_type_ext) {
-                active_msmt_report_all_steps(cfg, msg, status);
-            }
+    send_monitor_event(wifi_event_monitor_started_active_msmt, "active_msmt started");
 
-            active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d %s\n" ,__FUNCTION__, __LINE__, msg);
-            mgr->ctrl.webconfig_state |= ctrl_webconfig_state_blaster_cfg_complete_rsp_pending;
-
-            g_active_msmt->queue = it->next;
-            free(it);
-            it = g_active_msmt->queue;
-            report = false;
-
-            pthread_mutex_unlock(&g_active_msmt->lock);
+    while (queue_count(active_msmt->worker_queue)) {
+        request = queue_pop(active_msmt->worker_queue);
+        if (request == NULL) {
             continue;
         }
 
-        pthread_mutex_unlock(&g_active_msmt->lock);
+        pthread_mutex_unlock(&active_msmt->worker_lock);
 
-        active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d Starting to proceed PlanId [%s]\n", __func__, __LINE__, cfg->PlanId);
-        WiFiBlastClient();
+        process_request(request);
+        free(request);
 
-        pthread_mutex_lock(&g_active_msmt->lock);
-        g_active_msmt->queue = it->next;
-        free(it);
-        it = g_active_msmt->queue;
-        pthread_mutex_unlock(&g_active_msmt->lock);
+        pthread_mutex_lock(&active_msmt->worker_lock);
     }
+
+    active_msmt->is_running = false;
+    active_msmt->worker_thread_id = 0;
+
+    send_monitor_event(wifi_event_monitor_stop_active_msmt, "active_msmt stopped");
+
+    pthread_mutex_unlock(&active_msmt->worker_lock);
 
     active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d Exit\n", __func__, __LINE__);
 
-    free(data);
-    data = NULL;
     return NULL;
 }
 
@@ -2180,14 +2167,62 @@ void calculate_throughput()
     g_active_msmt->num_res_count++;
     return;
 }
+
+static int start_worker_thread(wifi_actvie_msmt_t *active_msmt)
+{
+    int ret;
+    pthread_attr_t attr;
+
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+
+    ret = pthread_create(&active_msmt->worker_thread_id, &attr, active_msmt_worker, active_msmt);
+    if (ret != 0) {
+        active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d failed to create msmt worker thread, "
+            "err %d (%s)\n", __func__, __LINE__, ret, strerror(ret));
+        ret = -1;
+        goto exit;
+    }
+
+    active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d sucessfully created msmt thread\n",
+        __func__, __LINE__);
+
+exit:
+    pthread_attr_destroy(&attr);
+    return ret;
+}
+
+static void active_msmt_queue_push(active_msmt_t *cfg)
+{
+    active_msmt_t *request;
+    wifi_actvie_msmt_t *g_active_msmt = get_wifi_blaster();
+
+    request = malloc(sizeof(active_msmt_t));
+    if (request == NULL) {
+        wifi_util_dbg_print(WIFI_BLASTER, "%s:%d failed to allocate memory for msmt request\n",
+            __func__, __LINE__);
+        return;
+    }
+    memcpy(request, cfg, sizeof(active_msmt_t));
+
+    wifi_util_dbg_print(WIFI_BLASTER, "%s:%d Pushing [%s] to queue\n", __func__, __LINE__,
+        request->PlanId);
+
+    pthread_mutex_lock(&g_active_msmt->worker_lock);
+
+    queue_push(g_active_msmt->worker_queue, request);
+    if (g_active_msmt->is_running == false && start_worker_thread(g_active_msmt) == 0) {
+        g_active_msmt->is_running = true;
+    }
+
+    pthread_mutex_unlock(&g_active_msmt->worker_lock);
+}
+
 /* This function process the active measurement step info
   from the active_msmt_monitor thread and calls wifiblaster.
 */
 void process_active_msmt_step(active_msmt_t *cfg)
 {
-    pthread_t id;
-    pthread_attr_t attr;
-    pthread_attr_t *attrp = NULL;
     wifi_actvie_msmt_t  *g_active_msmt = get_wifi_blaster();
     active_msmt_t *act_msmt = &g_active_msmt->active_msmt;
     wifi_ctrl_t *ctrl = get_wifictrl_obj();
@@ -2252,34 +2287,10 @@ void process_active_msmt_step(active_msmt_t *cfg)
         return;
     }
 
-    active_msmt_queue_push(&g_active_msmt->queue, cfg);
-
-    if (g_active_msmt->is_running == false) {
-
-        attrp = &attr;
-        pthread_attr_init(&attr);
-        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-
-        if (pthread_create(&id, attrp, active_msmt_worker, NULL) != 0) {
-            active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d: Fail to spawn 'active_msmt_worker' thread errno: %d - %s\n",
-                __FUNCTION__, __LINE__, errno, strerror(errno));
-
-            if(attrp != NULL) {
-                pthread_attr_destroy(attrp);
-            }
-
-            pthread_mutex_unlock(&g_active_msmt->lock);
-            return;
-        }
-
-        active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d: Sucessfully created thread for starting blast\n", __FUNCTION__, __LINE__);
-
-        if(attrp != NULL) {
-            pthread_attr_destroy(attrp);
-        }
-    }
-
     pthread_mutex_unlock(&g_active_msmt->lock);
+
+    active_msmt_queue_push(cfg);
+
     wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: exiting this function\n",__func__, __LINE__);
 }
 
@@ -2411,11 +2422,25 @@ int blaster_init(wifi_app_t *app, unsigned int create_flag)
         wifi_util_error_print(WIFI_BLASTER, "%s:%d Pktgen support is missed!\n", __func__, __LINE__);
         return RETURN_ERR;
     }
+
+    pthread_mutex_init(&app->data.u.blaster.g_active_msmt.worker_lock, NULL);
+    app->data.u.blaster.g_active_msmt.worker_queue = queue_create();
+    if (app->data.u.blaster.g_active_msmt.worker_queue == NULL) {
+        wifi_util_error_print(WIFI_BLASTER, "%s:%d failed to create worker queue\n", __func__,
+            __LINE__);
+        return RETURN_ERR;
+    }
+
     return RETURN_OK;
 }
 
 int blaster_deinit(wifi_app_t *app)
 {
+    if (app->data.u.blaster.g_active_msmt.worker_thread_id != 0) {
+        pthread_cancel(app->data.u.blaster.g_active_msmt.worker_thread_id);
+    }
+    queue_destroy(app->data.u.blaster.g_active_msmt.worker_queue);
+    pthread_mutex_destroy(&app->data.u.blaster.g_active_msmt.worker_lock);
     push_blaster_config_event_to_monitor_queue(mon_stats_request_state_stop);
     pthread_mutex_destroy(&app->data.u.blaster.g_active_msmt.lock);
     return RETURN_OK;
