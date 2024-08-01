@@ -1346,7 +1346,7 @@ int wifi_db_update_vap_config()
         vap_index = VAP_INDEX(mgr->hal_cap, index);
         get_vap_params_from_psm(vap_index, &vap_cfg, &rdk_vap_cfg);
 
-        if (!isVapHotspot(vap_index)) {
+        if (!isVapHotspot(vap_index) && !isVapSTAMesh(vap_index)) {
             if (get_total_mac_list_from_psm((vap_index + 1), &total_mac_list, strValue) == RETURN_OK) {
                 mac_list_entry_update_data(strValue, mac_index_list);
                 get_psm_mac_list_entry((vap_index + 1), vap_cfg.vap_name, total_mac_list, mac_index_list);
