@@ -332,7 +332,12 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
         } else {
             
             if (timespecisset(&(sta->total_connected_time))) {
-                if (timespeccmp(&(sta->last_disconnected_time), &(mon_data->bssid_data[vap_array_index].last_sta_update_time), >)) {//sta disconnected before counter update
+                if (sta->dev_stats.cli_Active == true) {
+                    sta->last_disconnected_time.tv_sec = tv_now.tv_sec;
+                    sta->last_disconnected_time.tv_nsec = tv_now.tv_nsec;
+                    t_diff.tv_sec = 0;
+                    t_diff.tv_nsec = 0;
+                } else if (timespeccmp(&(sta->last_disconnected_time), &(mon_data->bssid_data[vap_array_index].last_sta_update_time), >)) {//sta disconnected before counter update
                     timespecsub(&tv_now, &(sta->last_disconnected_time), &t_diff);
                 } else {
                     timespecsub(&tv_now, &(mon_data->bssid_data[vap_array_index].last_sta_update_time), &t_diff);
