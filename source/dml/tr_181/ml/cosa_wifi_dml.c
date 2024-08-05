@@ -2216,7 +2216,7 @@ Radio_GetParamUlongValue
     {
         /* collect value */
         upSecs = get_Uptime();
-        *puLong = upSecs - startTime[instance_number - 1];
+        *puLong = upSecs - startTime[instance_number];
         return TRUE;
     }
     if( AnscEqualString(ParamName, "Status", TRUE))
@@ -5111,7 +5111,7 @@ SSID_GetParamStringValue
     if( AnscEqualString(ParamName, "Alias", TRUE))
     {
         /* collect value */
-        if(instance_number>16 || instance_number<0)
+        if(instance_number>(MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO) || instance_number<0)
         {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d invalid vap instance %d\n", __FUNCTION__,__LINE__,instance_number);
             return FALSE;
