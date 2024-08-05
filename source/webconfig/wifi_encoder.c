@@ -1563,6 +1563,7 @@ webconfig_error_t encode_levl_object(const levl_config_t *levl, cJSON *levl_obj)
     cJSON_AddStringToObject(levl_obj, "clientMac", mac_string);
     cJSON_AddNumberToObject(levl_obj, "maxNumberCSIClients", levl->max_num_csi_clients);
     cJSON_AddNumberToObject(levl_obj, "Duration", levl->levl_sounding_duration);
+    cJSON_AddNumberToObject(levl_obj, "Interval", levl->levl_publish_interval);
 
     return webconfig_error_none;
 }

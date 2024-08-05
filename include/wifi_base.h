@@ -344,6 +344,7 @@ typedef struct {
     mac_address_t clientMac;
     int max_num_csi_clients;
     int levl_sounding_duration;
+    int levl_publish_interval;
 }levl_config_t;
 
 #if DML_SUPPORT

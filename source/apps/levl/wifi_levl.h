@@ -41,6 +41,7 @@ extern "C" {
 #define WIFI_LEVL_CSI_DATA                  "Device.WiFi.X_RDK_CSI_LEVL.data"
 #define WIFI_LEVL_SOUNDING_DURATION         "Device.WiFi.X_RDK_CSI_LEVL.Duration"
 #define WIFI_LEVL_CSI_STATUS                "Device.WiFi.X_RDK_CSI_LEVL.soundingStatus"
+#define WIFI_LEVL_CSI_MAC_DATA              "Device.WiFi.X_RDK_CSI_LEVL.clientMacData"
 #define RADIO_LEVL_TEMPERATURE_TABLE        "Device.WiFi.Events.Radio.{i}."
 #define RADIO_LEVL_TEMPERATURE_EVENT        "Device.WiFi.Events.Radio.{i}.Temperature"
 
@@ -61,6 +62,9 @@ typedef struct {
     mac_address_t mac_addr;
     unsigned int  ap_index;
     int           request_count;
+    int duration;
+    int interval;
+    struct timeval last_time_publish;
 }levl_sched_data_t;
 
 typedef struct {
@@ -72,6 +76,7 @@ typedef struct {
     int                  max_num_csi_clients;
     int                  num_current_sounding;
     int                  sounding_duration;
+    int                  publish_interval;
     bool                 csi_event_subscribed;
     bool                 temperature_event_subscribed[MAX_NUM_RADIOS];
     int                  radio_temperature_interval[MAX_NUM_RADIOS];

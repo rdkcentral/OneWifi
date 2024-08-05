@@ -37,8 +37,10 @@
 
 #define MAX_EVENT_NAME_SIZE     200
 #define MIN_TEMPERATURE_INTERVAL_MS 5000
+#define MIN_LEVL_PUBLISH_INTERVAL_MS 100
+#define MIN_LEVL_SOUNDING_DURATION_MS 1000
 #define UNREFERENCED_PARAMETER(_p_)         (void)(_p_)
-static int schedule_mac_for_sounding(int ap_index, mac_address_t mac_address);
+static int schedule_mac_for_sounding(int ap_index, mac_address_t mac_address, int duration, int interval);
 static int process_levl_sounding_timeout(timeout_data_t *t_data);
 static int process_levl_postpone_sounding(wifi_app_t *app);
 
@@ -125,7 +127,7 @@ static int schedule_from_pending_map(wifi_app_t *wifi_app)
             }
 
             //schedule for sounding
-            schedule_mac_for_sounding(ap_index, mac_addr);
+            schedule_mac_for_sounding(ap_index, mac_addr, levl_sc_data->duration, levl_sc_data->interval);
             break;
         }
     }
@@ -442,7 +444,7 @@ static int process_levl_sounding_timeout(timeout_data_t *t_data)
     return 0;
 }
 
-static int schedule_mac_for_sounding(int ap_index, mac_address_t mac_address)
+static int schedule_mac_for_sounding(int ap_index, mac_address_t mac_address, int duration, int interval)
 {
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     hash_map_t *curr_map = NULL, *p_map = NULL;
@@ -450,6 +452,7 @@ static int schedule_mac_for_sounding(int ap_index, mac_address_t mac_address)
     wifi_apps_mgr_t *apps_mgr;
     mac_addr_str_t mac_str;
     timeout_data_t *t_data = NULL;
+    struct timeval t_now = {0};
     apps_mgr = &ctrl->apps_mgr;
     levl_sched_data_t *levl_sc_data = NULL;
     wifi_app_t *wifi_app = NULL;
@@ -492,6 +495,9 @@ static int schedule_mac_for_sounding(int ap_index, mac_address_t mac_address)
     }
     memcpy(levl_sc_data->mac_addr, mac_address, sizeof(mac_address_t));
     levl_sc_data->ap_index = ap_index;
+    levl_sc_data->duration = duration;
+    levl_sc_data->interval = interval;
+    levl_sc_data->last_time_publish = t_now;
 
     if (wifi_app->data.u.levl.paused) {
         wifi_util_info_print(WIFI_APPS,"%s:%d Speed test in progress, pushing to control map\n", __func__, __LINE__);
@@ -526,7 +532,7 @@ static int schedule_mac_for_sounding(int ap_index, mac_address_t mac_address)
         levl_csi_status_publish(wifi_app->rbus_handle, mac_address, 1);
 
         scheduler_add_timer_task(ctrl->sched, FALSE, &(levl_sc_data->sched_handler_id),
-                process_levl_sounding_timeout, t_data, wifi_app->data.u.levl.sounding_duration, 1, FALSE);
+                process_levl_sounding_timeout, t_data, levl_sc_data->duration, 1, FALSE);
         hash_map_put(curr_map, strdup(mac_str), levl_sc_data);
     } else {
         //Push MAC to pending queue
@@ -579,10 +585,36 @@ void levl_csi_publish(mac_address_t mac_address, wifi_csi_dev_t *csi_dev_data)
     return;
 }
 
+static bool levl_check_timeout(levl_sched_data_t *sched_data, struct timeval *t_now)
+{
+    struct timeval interval;
+    int  interval_ms_margin;
+    struct timeval timeout;
+
+    if (sched_data == NULL || t_now == NULL) {
+        wifi_util_dbg_print(WIFI_APPS, "%s: Invalid arguments. sched_data %p and t_now %p\n", __func__, sched_data, t_now);
+        return FALSE;
+    }
+
+    interval_ms_margin = sched_data->interval - (MIN_CSI_INTERVAL/2);
+
+    interval.tv_sec = (interval_ms_margin / 1000);
+    interval.tv_usec = (interval_ms_margin % 1000) * 1000;
+
+    timeradd(&sched_data->last_time_publish, &interval, &timeout);
+
+    if (timercmp(t_now, &timeout, >)) {
+        return TRUE;
+    } else {
+        return FALSE;
+    }
+}
+
 int process_levl_csi(wifi_app_t *app, wifi_csi_dev_t *csi_data)
 {
     mac_address_t mac_addr;
     mac_addr_str_t mac_str = { 0 };
+    struct timeval t_now = {0};
     memset(mac_addr, 0, sizeof(mac_address_t));
     memcpy(mac_addr, csi_data->sta_mac, sizeof(mac_address_t));
 
@@ -595,7 +627,21 @@ int process_levl_csi(wifi_app_t *app, wifi_csi_dev_t *csi_data)
     }
     wifi_util_dbg_print(WIFI_APPS, "%s: Levl CSI data received - MAC  %02x:%02x:%02x:%02x:%02x:%02x\n",__func__, mac_addr[0], mac_addr[1],
                                                         mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
-    levl_csi_publish(mac_addr, csi_data);
+    //publish only when interval reaches apps->data.u.levl.publish_interval
+    levl_sched_data_t *levl_sc_data = NULL;
+    to_mac_str(mac_addr, mac_str);
+    levl_sc_data = (levl_sched_data_t *)hash_map_get(app->data.u.levl.curr_sounding_mac_map, mac_str);
+
+    if (levl_sc_data == NULL) {
+        return RETURN_ERR;
+    }
+    //calculate timeout with current time and last time publish
+    gettimeofday(&t_now, NULL);
+
+    if ((levl_sc_data->interval == 0) || levl_check_timeout(levl_sc_data, &t_now)) {
+        levl_csi_publish(mac_addr, csi_data);
+        levl_sc_data->last_time_publish = t_now;
+    }
 
     return RETURN_OK;
 }
@@ -698,8 +744,8 @@ int levl_event_webconfig_set_data(wifi_app_t *apps, void *arg, wifi_event_subtyp
                 wifi_util_dbg_print(WIFI_APPS,"%s:%d NULL pointer \n", __func__, __LINE__);
                 return RETURN_ERR;
             }
-            wifi_util_dbg_print(WIFI_APPS,"%s:%d Received config Client num %d, Client MAC %02x:... %02x\n", __func__, __LINE__,
-                    levl_config->max_num_csi_clients, levl_config->clientMac[0], levl_config->clientMac[5]);
+            wifi_util_dbg_print(WIFI_APPS,"%s:%d Received config Client num %d, Client MAC %02x:... %02x publish interval %d sounding duration %d\n", __func__, __LINE__,
+                    levl_config->max_num_csi_clients, levl_config->clientMac[0], levl_config->clientMac[5], levl_config->levl_publish_interval, levl_config->levl_sounding_duration);
             if (levl_config->max_num_csi_clients == 0) {
                 max_value = MAX_LEVL_CSI_CLIENTS;
             } else {
@@ -709,12 +755,16 @@ int levl_event_webconfig_set_data(wifi_app_t *apps, void *arg, wifi_event_subtyp
             if (levl_config->levl_sounding_duration != apps->data.u.levl.sounding_duration) {
                 apps->data.u.levl.sounding_duration = levl_config->levl_sounding_duration;
             }
+
+            if (levl_config->levl_publish_interval != apps->data.u.levl.publish_interval) {
+                apps->data.u.levl.publish_interval = levl_config->levl_publish_interval;
+            }
             if (memcmp(null_mac, levl_config->clientMac, sizeof(mac_address_t)) != 0) {
                 ap_index = get_ap_index_from_clientmac(levl_config->clientMac);
                 if (ap_index < 0) {
                     wifi_util_dbg_print(WIFI_APPS,"%s:%d Client is not connected not pushing to queue\n", __func__, __LINE__);
                 } else {
-                    schedule_mac_for_sounding(ap_index, levl_config->clientMac);
+                    schedule_mac_for_sounding(ap_index, levl_config->clientMac, levl_config->levl_sounding_duration, levl_config->levl_publish_interval);
                 }
             }
             break;
@@ -1286,7 +1336,12 @@ rbusError_t levl_get_handler(rbusHandle_t handle, rbusProperty_t property, rbusG
             duration = wifi_app->data.u.levl.sounding_duration;
         }
         rbusValue_SetUInt32(value, duration);
+    } else if (strcmp(parameter, "clientMacData") == 0) {
+        char buff[32] = {0};
+        snprintf(buff, sizeof(buff), " ");
+        rbusValue_SetString(value, buff);
     }
+
     rbusProperty_SetValue(property, value);
     rbusValue_Release(value);
     return RBUS_ERROR_SUCCESS;
@@ -1396,6 +1451,48 @@ rbusError_t levl_set_handler(rbusHandle_t handle, rbusProperty_t property, rbusS
         } else {
             levl->levl_sounding_duration = levl_sounding_duration;
         }
+    } else if (strcmp(parameter, "clientMacData") == 0) {
+        if (type != RBUS_STRING) {
+            wifi_util_error_print(WIFI_CTRL,"%s:%d '%s' Called Set handler with wrong data type\n", __func__, __LINE__, name);
+            if (levl != NULL) {
+                free(levl);
+            }
+            return RBUS_ERROR_INVALID_INPUT;
+        }
+        char *mac_data = NULL, *saveptr = NULL, *ptr = NULL;
+        int interval = 0, duration = 0;
+        pTmp = rbusValue_GetString(value, &len);
+
+        ptr = strdup(pTmp);
+        mac_data = strtok_r(ptr, ";", &saveptr);
+        if (mac_data != NULL)
+            string_mac_to_uint8_mac(levl->clientMac, mac_data);
+
+        mac_data = strtok_r(NULL, ";", &saveptr);
+        if (mac_data != NULL) {
+            interval = atoi(mac_data);
+            if (interval < MIN_LEVL_PUBLISH_INTERVAL_MS) {
+                wifi_util_error_print(WIFI_APPS, "%s:%d The publish interval should be at least %dms\n", __func__, __LINE__, MIN_LEVL_PUBLISH_INTERVAL_MS);
+                free(levl);
+                free(ptr);
+                return RBUS_ERROR_INVALID_INPUT;
+            }
+            levl->levl_publish_interval = interval;
+       }
+
+        mac_data = strtok_r(NULL, ";", &saveptr);
+        if (mac_data != NULL) {
+            duration = atoi(mac_data);
+            if (duration < MIN_LEVL_SOUNDING_DURATION_MS) {
+                wifi_util_error_print(WIFI_APPS, "%s:%d The sounding duration should be at least %dms\n", __func__, __LINE__, MIN_LEVL_SOUNDING_DURATION_MS);
+                free(levl);
+                free(ptr);
+                return RBUS_ERROR_INVALID_INPUT;
+            }
+            levl->levl_sounding_duration = duration;
+        }
+
+        free(ptr);
     }
 
     push_levl_data_dml_to_ctrl_queue(&levl);
@@ -1603,6 +1700,8 @@ int levl_init(wifi_app_t *app, unsigned int create_flag)
         { WIFI_LEVL_NUMBEROFENTRIES, RBUS_ELEMENT_TYPE_PROPERTY,
             { levl_get_handler, levl_set_handler, NULL, NULL, NULL, NULL}},
         { WIFI_LEVL_SOUNDING_DURATION, RBUS_ELEMENT_TYPE_PROPERTY,
+            { levl_get_handler, levl_set_handler, NULL, NULL, NULL, NULL}},
+        { WIFI_LEVL_CSI_MAC_DATA, RBUS_ELEMENT_TYPE_PROPERTY,
             { levl_get_handler, levl_set_handler, NULL, NULL, NULL, NULL}},
         { WIFI_LEVL_CSI_STATUS, RBUS_ELEMENT_TYPE_EVENT,
             { NULL, NULL, NULL, NULL, NULL, NULL }},

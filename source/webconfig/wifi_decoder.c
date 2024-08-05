@@ -3200,6 +3200,10 @@ webconfig_error_t decode_levl_object(const cJSON *levl_cfg, levl_config_t *levl_
     decode_param_integer(levl_cfg, "Duration", param);
     levl_config->levl_sounding_duration = param->valuedouble;
 
+    //Interval
+    decode_param_integer(levl_cfg, "Interval", param);
+    levl_config->levl_publish_interval = param->valuedouble;
+
     return webconfig_error_none;
 }
 
