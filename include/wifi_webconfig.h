@@ -51,7 +51,7 @@ extern "C" {
 #define MAX_PWD_LEN                63
 
 #define     WEBCONFIG_MAGIC_SIGNATUTRE  0xdecddecd
-#define     WEBCONFIG_MAX_ASSOCIATED_CLIENTS 75 * MAX_NUM_RADIOS
+#define     WEBCONFIG_MAX_ASSOCIATED_CLIENTS BSS_MAX_NUM_STATIONS * MAX_NUM_RADIOS
 
 typedef enum {
     webconfig_error_none,
