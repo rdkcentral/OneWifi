@@ -3622,6 +3622,25 @@ void webconf_process_private_vap(const char* enb)
         wifi_util_info_print(WIFI_CTRL, "%s:%d: PushBlobRequest Complete\n", __func__, __LINE__ );
     }
 }
+
+bool webconfig_to_wifi_update_params(const char* raw)
+{
+    webconfig_t *config;
+    webconfig_subdoc_data_t data = {0};
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t*)get_wifictrl_obj();
+    wifi_mgr_t *mgr = (wifi_mgr_t*)get_wifimgr_obj();
+
+    config = &ctrl->webconfig;
+    memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap, sizeof(wifi_hal_capability_t));
+    if (webconfig_decode(config, &data, raw) == webconfig_error_none && webconfig_data_free(&data) == webconfig_error_none)
+    {
+        wifi_util_info_print(WIFI_CTRL,"%s:%d: WebConfig blob has been successfully applied\n",__FUNCTION__,__LINE__);
+        return true;
+    }
+    wifi_util_error_print(WIFI_CTRL,"%s:%d: WebConfig blob apply has failed\n",__FUNCTION__,__LINE__);
+    return false;
+}
+
 pErr webconf_process_managed_subdoc(void* data)
 {
     pErr execRetVal = NULL;
@@ -4112,12 +4131,17 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
 
         char *vap_blob_str = cJSON_Print(n_blob);
         wifi_util_dbg_print(WIFI_CTRL,"WebConfig blob is %s\n",vap_blob_str);
-        // push blob to ctrl queue
-        push_event_to_ctrl_queue(vap_blob_str, strlen(vap_blob_str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_tunnel, NULL);
-
+        if (webconfig_to_wifi_update_params(vap_blob_str))
+        {
+            execRetVal->ErrorCode = BLOB_EXEC_SUCCESS;
+        }
+        else
+        {
+            execRetVal->ErrorCode = VALIDATION_FALIED;
+            wifi_util_error_print(WIFI_CTRL, "%s(): Validation failed: %s\n", __FUNCTION__, execRetVal->ErrorMsg);
+        }
         cJSON_free(vap_blob_str);
         cJSON_Delete(n_blob);
-        execRetVal->ErrorCode = BLOB_EXEC_SUCCESS;
     }
     else {
         execRetVal->ErrorCode = VALIDATION_FALIED;
