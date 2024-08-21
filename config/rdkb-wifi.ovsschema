@@ -1,6 +1,6 @@
 {
   "name": "Wifi_Rdk_Database",
-  "version": "1.00.025",
+  "version": "1.00.027",
   "cksum": "2353365742 523",
   "tables": {
     "Wifi_Device_Config": {
@@ -1673,7 +1673,16 @@
             "max": 1
           }
         },
-        "wifioffchannelscan_rfc": {
+        "wifi_offchannelscan_app_rfc": {
+          "type": {
+            "key": {
+              "type": "boolean"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "wifi_offchannelscan_sm_rfc": {
           "type": {
             "key": {
               "type": "boolean"

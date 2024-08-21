@@ -2401,25 +2401,38 @@ wifi_rfc_dml_parameters_t* get_wifi_db_rfc_parameters(void)
     return &p_wifi_db_data->rfc_dml_parameters;
 }
 
-wifi_rfc_dml_parameters_t* get_ctrl_rfc_parameters(void)
+wifi_rfc_dml_parameters_t *get_ctrl_rfc_parameters(void)
 {
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
-    g_wifi_mgr->ctrl.rfc_params.wifipasspoint_rfc = g_wifi_mgr->rfc_dml_parameters.wifipasspoint_rfc;
-    g_wifi_mgr->ctrl.rfc_params.wifiinterworking_rfc= g_wifi_mgr->rfc_dml_parameters.wifiinterworking_rfc;
-    g_wifi_mgr->ctrl.rfc_params.radiusgreylist_rfc = g_wifi_mgr->rfc_dml_parameters.radiusgreylist_rfc;
-    g_wifi_mgr->ctrl.rfc_params.dfsatbootup_rfc  = g_wifi_mgr->rfc_dml_parameters.dfsatbootup_rfc ;
+    g_wifi_mgr->ctrl.rfc_params.wifipasspoint_rfc =
+        g_wifi_mgr->rfc_dml_parameters.wifipasspoint_rfc;
+    g_wifi_mgr->ctrl.rfc_params.wifiinterworking_rfc =
+        g_wifi_mgr->rfc_dml_parameters.wifiinterworking_rfc;
+    g_wifi_mgr->ctrl.rfc_params.radiusgreylist_rfc =
+        g_wifi_mgr->rfc_dml_parameters.radiusgreylist_rfc;
+    g_wifi_mgr->ctrl.rfc_params.dfsatbootup_rfc = g_wifi_mgr->rfc_dml_parameters.dfsatbootup_rfc;
     g_wifi_mgr->ctrl.rfc_params.dfs_rfc = g_wifi_mgr->rfc_dml_parameters.dfs_rfc;
     g_wifi_mgr->ctrl.rfc_params.wpa3_rfc = g_wifi_mgr->rfc_dml_parameters.wpa3_rfc;
     g_wifi_mgr->ctrl.rfc_params.levl_enabled_rfc = g_wifi_mgr->rfc_dml_parameters.levl_enabled_rfc;
-    g_wifi_mgr->ctrl.rfc_params.twoG80211axEnable_rfc = g_wifi_mgr->rfc_dml_parameters.twoG80211axEnable_rfc;
-    g_wifi_mgr->ctrl.rfc_params.hotspot_open_2g_last_enabled = g_wifi_mgr->rfc_dml_parameters.hotspot_open_2g_last_enabled;
-    g_wifi_mgr->ctrl.rfc_params.hotspot_open_5g_last_enabled = g_wifi_mgr->rfc_dml_parameters.hotspot_open_5g_last_enabled;
-    g_wifi_mgr->ctrl.rfc_params.hotspot_open_6g_last_enabled = g_wifi_mgr->rfc_dml_parameters.hotspot_open_6g_last_enabled;
-    g_wifi_mgr->ctrl.rfc_params.hotspot_secure_2g_last_enabled = g_wifi_mgr->rfc_dml_parameters.hotspot_secure_2g_last_enabled;
-    g_wifi_mgr->ctrl.rfc_params.hotspot_secure_5g_last_enabled = g_wifi_mgr->rfc_dml_parameters.hotspot_secure_5g_last_enabled;
-    g_wifi_mgr->ctrl.rfc_params.hotspot_secure_6g_last_enabled = g_wifi_mgr->rfc_dml_parameters.hotspot_secure_6g_last_enabled;
-    g_wifi_mgr->ctrl.rfc_params.wifioffchannelscan_rfc = g_wifi_mgr->rfc_dml_parameters.wifioffchannelscan_rfc;
-    strcpy(g_wifi_mgr->ctrl.rfc_params.rfc_id,g_wifi_mgr->rfc_dml_parameters.rfc_id);
+    g_wifi_mgr->ctrl.rfc_params.twoG80211axEnable_rfc =
+        g_wifi_mgr->rfc_dml_parameters.twoG80211axEnable_rfc;
+    g_wifi_mgr->ctrl.rfc_params.hotspot_open_2g_last_enabled =
+        g_wifi_mgr->rfc_dml_parameters.hotspot_open_2g_last_enabled;
+    g_wifi_mgr->ctrl.rfc_params.hotspot_open_5g_last_enabled =
+        g_wifi_mgr->rfc_dml_parameters.hotspot_open_5g_last_enabled;
+    g_wifi_mgr->ctrl.rfc_params.hotspot_open_6g_last_enabled =
+        g_wifi_mgr->rfc_dml_parameters.hotspot_open_6g_last_enabled;
+    g_wifi_mgr->ctrl.rfc_params.hotspot_secure_2g_last_enabled =
+        g_wifi_mgr->rfc_dml_parameters.hotspot_secure_2g_last_enabled;
+    g_wifi_mgr->ctrl.rfc_params.hotspot_secure_5g_last_enabled =
+        g_wifi_mgr->rfc_dml_parameters.hotspot_secure_5g_last_enabled;
+    g_wifi_mgr->ctrl.rfc_params.hotspot_secure_6g_last_enabled =
+        g_wifi_mgr->rfc_dml_parameters.hotspot_secure_6g_last_enabled;
+    g_wifi_mgr->ctrl.rfc_params.wifi_offchannelscan_app_rfc =
+        g_wifi_mgr->rfc_dml_parameters.wifi_offchannelscan_app_rfc;
+    g_wifi_mgr->ctrl.rfc_params.wifi_offchannelscan_sm_rfc =
+        g_wifi_mgr->rfc_dml_parameters.wifi_offchannelscan_sm_rfc;
+    strcpy(g_wifi_mgr->ctrl.rfc_params.rfc_id, g_wifi_mgr->rfc_dml_parameters.rfc_id);
     return &g_wifi_mgr->ctrl.rfc_params;
 }
 

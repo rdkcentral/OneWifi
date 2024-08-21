@@ -371,13 +371,17 @@ WiFi_GetParamBoolValue
         *pBool = rfc_pcfg->wifipasspoint_rfc;
         return TRUE;
     }
-    if (AnscEqualString(ParamName, "WiFi-OffChannelScan", TRUE))
-    {
+    if (AnscEqualString(ParamName, "WiFi-OffChannelScan-APP", TRUE)) {
 #if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
-        *pBool = rfc_pcfg->wifioffchannelscan_rfc;
+        *pBool = rfc_pcfg->wifi_offchannelscan_app_rfc;
 #else //FEATURE_OFF_CHANNEL_SCAN_5G
         *pBool = FALSE;
 #endif //FEATURE_OFF_CHANNEL_SCAN_5G
+        return TRUE;
+    }
+    if (AnscEqualString(ParamName, "WiFi-OffChannelScan", TRUE))
+    {
+        *pBool = rfc_pcfg->wifi_offchannelscan_sm_rfc;
         return TRUE;
     }
     if (AnscEqualString(ParamName, "WiFi-Interworking", TRUE))
@@ -1063,16 +1067,21 @@ WiFi_SetParamBoolValue
         }
         return TRUE;
     }
-    if (AnscEqualString(ParamName, "WiFi-OffChannelScan", TRUE))
-    {
+    if (AnscEqualString(ParamName, "WiFi-OffChannelScan-APP", TRUE)) {
 #if defined(FEATURE_OFF_CHANNEL_SCAN_5G)
-        if(bValue != rfc_pcfg->wifioffchannelscan_rfc) {
-            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_wifi_offchannelscan_rfc);
+        if(bValue != rfc_pcfg->wifi_offchannelscan_app_rfc) {
+            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_wifi_offchannelscan_app_rfc);
         }
         return TRUE;
 #else //FEATURE_OFF_CHANNEL_SCAN_5G
         return FALSE;
 #endif //FEATURE_OFF_CHANNEL_SCAN_5G
+    }
+    if (AnscEqualString(ParamName, "WiFi-OffChannelScan", TRUE)) {
+        if(bValue != rfc_pcfg->wifi_offchannelscan_sm_rfc) {
+            push_rfc_dml_cache_to_one_wifidb(bValue,wifi_event_type_wifi_offchannelscan_sm_rfc);
+        }
+        return TRUE;
     }
     if (AnscEqualString(ParamName, "WiFi-Interworking", TRUE))
     {

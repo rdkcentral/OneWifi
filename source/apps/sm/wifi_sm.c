@@ -534,10 +534,10 @@ int handle_sm_command_event(wifi_app_t *app, wifi_event_t *event)
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
     stats_config_t *cur_stats_cfg = NULL;
     hash_map_t *cur_app_stats_cfg_map = app->data.u.sm_data.sm_stats_config_map;
-    bool off_scan_rfc = g_wifi_mgr->rfc_dml_parameters.wifioffchannelscan_rfc;
+    bool off_scan_rfc = g_wifi_mgr->rfc_dml_parameters.wifi_offchannelscan_sm_rfc;
 
     wifi_util_dbg_print(WIFI_SM, "inside %s:%d off_scan_rfc:%d\n",__func__, __LINE__,off_scan_rfc);
-    if (event->sub_type == wifi_event_type_wifi_offchannelscan_rfc )
+    if (event->sub_type == wifi_event_type_wifi_offchannelscan_sm_rfc )
     {
        //search for the off_chan_scan elements in wifi_stats_config
        if (cur_app_stats_cfg_map != NULL)
@@ -602,7 +602,7 @@ int handle_sm_webconfig_event(wifi_app_t *app, wifi_event_t *event)
 {
 
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
-    bool off_scan_rfc = g_wifi_mgr->rfc_dml_parameters.wifioffchannelscan_rfc;
+    bool off_scan_rfc = g_wifi_mgr->rfc_dml_parameters.wifi_offchannelscan_sm_rfc;
     webconfig_subdoc_data_t *webconfig_data = NULL;
     if (event == NULL) {
         wifi_util_dbg_print(WIFI_SM,"%s %d input arguements are NULL\n", __func__, __LINE__);

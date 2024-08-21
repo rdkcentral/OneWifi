@@ -72,17 +72,24 @@ off_channel_param_t *get_wifi_ocs(unsigned int radioIndex)
     return &wifi_app->data.u.ocs[radioIndex];
 }
 
-int print_ocs_state (void *arg) {
+int print_ocs_state(void *arg)
+{
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
     for (UINT radioIndex = 0; radioIndex < getNumberRadios(); radioIndex++) {
-        if(is_radio_band_5G(mgr->radio_config[radioIndex].oper.band)) {
-            CcspTraceInfo(("Off_channel_scan feature is disabled returning Radio index = %u RFC = %d; TScan = %lu; NScan = %lu; Tidle = %lu\n", radioIndex, mgr->rfc_dml_parameters.wifioffchannelscan_rfc, mgr->radio_config[radioIndex].feature.OffChanTscanInMsec, ((mgr->radio_config[radioIndex].feature.OffChanNscanInSec != 0)?((24*3600)/mgr->radio_config[radioIndex].feature.OffChanNscanInSec):mgr->radio_config[radioIndex].feature.OffChanNscanInSec), mgr->radio_config[radioIndex].feature.OffChanTidleInSec));
+        if (is_radio_band_5G(mgr->radio_config[radioIndex].oper.band)) {
+            CcspTraceInfo(("Off_channel_scan feature is disabled returning Radio index = %u RFC = "
+                           "%d; TScan = %lu; NScan = %lu; Tidle = %lu\n",
+                radioIndex, mgr->rfc_dml_parameters.wifi_offchannelscan_app_rfc,
+                mgr->radio_config[radioIndex].feature.OffChanTscanInMsec,
+                ((mgr->radio_config[radioIndex].feature.OffChanNscanInSec != 0) ?
+                        ((24 * 3600) / mgr->radio_config[radioIndex].feature.OffChanNscanInSec) :
+                        mgr->radio_config[radioIndex].feature.OffChanNscanInSec),
+                mgr->radio_config[radioIndex].feature.OffChanTidleInSec));
         }
     }
     return TIMER_TASK_COMPLETE;
 }
-
 
 static void ocs_route(wifi_event_route_t *route)
 {
@@ -319,22 +326,23 @@ int SetOffChanTidle(unsigned int radioIndex, ULONG Tidle)
 /**************************************************************************************************************************/
 int SetOffChanParams(unsigned int radioIndex, ULONG Tscan, ULONG Nscan, ULONG Tidle)
 {
-
     int ret = 0;
 
-    if (radioIndex >= getNumberRadios()){
-        wifi_util_error_print(WIFI_OCS,"%s:%d:invalid radioIndex %u\n", __func__, __LINE__, radioIndex);
+    if (radioIndex >= getNumberRadios()) {
+        wifi_util_error_print(WIFI_OCS, "%s:%d:invalid radioIndex %u\n", __func__, __LINE__,
+            radioIndex);
         return RETURN_ERR;
     }
     ret |= SetOffChanTscan(radioIndex, Tscan);
     ret |= SetOffChanNscan(radioIndex, Nscan);
     ret |= SetOffChanTidle(radioIndex, Tidle);
 
-    if(ret != 0)
-    {
-        wifi_util_error_print(WIFI_OCS,"%s:%d:Error in assignment for %u\n", __func__, __LINE__, radioIndex);
+    if (ret != 0) {
+        wifi_util_error_print(WIFI_OCS, "%s:%d:Error in assignment for %u\n", __func__, __LINE__,
+            radioIndex);
         return RETURN_ERR;
     }
+    wifi_util_dbg_print(WIFI_OCS, "%s:%d: SetOffChanParams success\n", __func__, __LINE__);
     return RETURN_OK;
 }
 
@@ -449,14 +457,13 @@ void off_chan_print_chan_stats_data(wifi_provider_response_t *provider_response)
                              __func__, __LINE__, radio_index, off_chan_scan_data[count].ch_number, off_chan_scan_data[count].ch_utilization, off_chan_scan_data[count].ch_utilization_total);
     }
 }
-
 void config_ocs()
 {
     unsigned int radioIndex = 0;
     wifi_mgr_t *mgr = get_wifimgr_obj();
     unsigned int total_radios = getNumberRadios();
 
-    wifi_util_dbg_print(WIFI_OCS,"%s:%d: Entered in config os\n", __func__, __LINE__);
+    wifi_util_dbg_print(WIFI_OCS,"%s:%d: Entered in config ocs\n", __func__, __LINE__);
 
     for (radioIndex = 0; radioIndex < total_radios; radioIndex++)
     {
@@ -479,23 +486,24 @@ void config_ocs()
 
 void handle_ocs_command_event(wifi_app_t *app, wifi_event_t *event)
 {
-    switch(event->sub_type) {
-        case wifi_event_type_notify_monitor_done:
-            wifi_util_dbg_print(WIFI_OCS,"%s:%d calling config_ocs for monitor_done\n", __func__, __LINE__);
+    switch (event->sub_type) {
+    case wifi_event_type_notify_monitor_done:
+        wifi_util_dbg_print(WIFI_OCS, "%s:%d calling config_ocs for monitor_done\n", __func__,
+            __LINE__);
+        config_ocs();
+        is_monitor_done = TRUE;
+        break;
+    case wifi_event_type_wifi_offchannelscan_app_rfc:
+        wifi_util_dbg_print(WIFI_OCS, "%s:%d calling config_ocs for change in off_chan rfc \n",
+            __func__, __LINE__);
+        if (is_monitor_done) {
             config_ocs();
-            is_monitor_done = TRUE;
-            break;
-        case wifi_event_type_wifi_offchannelscan_rfc:
-            wifi_util_dbg_print(WIFI_OCS,"%s:%d calling config_ocs for change in off_chan rfc \n", __func__, __LINE__);
-            if (is_monitor_done) {
-                config_ocs();
-            }
-            break;
-        default:
-            break;
+        }
+        break;
+    default:
+        break;
     }
 }
-
 
 void handle_monitor_ocs_event(wifi_app_t *app, wifi_event_t *event)
 {
@@ -520,7 +528,7 @@ int validate_ocs()
 {
     wifi_mgr_t *mgr = get_wifimgr_obj();
     if (mgr == NULL) {
-        wifi_util_error_print(WIFI_OCS,"%s:%d: mgr is NULL\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_OCS, "%s:%d: mgr is NULL\n", __func__, __LINE__);
         return RETURN_ERR;
     }
 
@@ -529,18 +537,31 @@ int validate_ocs()
         if ((is_radio_band_5G(mgr->radio_config[radioIndex].oper.band))) {
             off_channel_param_t *ocs_cfg = get_wifi_ocs(radioIndex);
 
-            CcspTraceInfo(("Off_channel_scan feature newly configured values RFC = %d; TScan = %lu; NScan = %lu; Tidle = %lu\n", mgr->rfc_dml_parameters.wifioffchannelscan_rfc, mgr->radio_config[radioIndex].feature.OffChanTscanInMsec, ((mgr->radio_config[radioIndex].feature.OffChanNscanInSec != 0)? ((24*3600)/mgr->radio_config[radioIndex].feature.OffChanNscanInSec):mgr->radio_config[radioIndex].feature.OffChanNscanInSec), mgr->radio_config[radioIndex].feature.OffChanTidleInSec));
+            CcspTraceInfo(("Off_channel_scan feature newly configured values RFC = %d; TScan = "
+                           "%lu; NScan = %lu; Tidle = %lu\n",
+                mgr->rfc_dml_parameters.wifi_offchannelscan_app_rfc,
+                mgr->radio_config[radioIndex].feature.OffChanTscanInMsec,
+                ((mgr->radio_config[radioIndex].feature.OffChanNscanInSec != 0) ?
+                        ((24 * 3600) / mgr->radio_config[radioIndex].feature.OffChanNscanInSec) :
+                        mgr->radio_config[radioIndex].feature.OffChanNscanInSec),
+                mgr->radio_config[radioIndex].feature.OffChanTidleInSec));
             if (ocs_cfg->NscanSec == mgr->radio_config[radioIndex].feature.OffChanNscanInSec &&
                 ocs_cfg->TscanMsec == mgr->radio_config[radioIndex].feature.OffChanTscanInMsec &&
                 ocs_cfg->TidleSec == mgr->radio_config[radioIndex].feature.OffChanTidleInSec) {
-                wifi_util_info_print(WIFI_OCS,"%s:%d: No change in Offchannel Params\n", __func__, __LINE__);
+                wifi_util_info_print(WIFI_OCS, "%s:%d: No change in Offchannel Params\n", __func__,
+                    __LINE__);
                 continue;
             }
-            if (SetOffChanParams(radioIndex, mgr->radio_config[radioIndex].feature.OffChanTscanInMsec, mgr->radio_config[radioIndex].feature.OffChanNscanInSec, mgr->radio_config[radioIndex].feature.OffChanTidleInSec) != RETURN_OK) {
-                wifi_util_error_print(WIFI_OCS,"%s:%d: Unable to set Offchannel Params\n", __func__, __LINE__);
+
+            if (SetOffChanParams(radioIndex,
+                    mgr->radio_config[radioIndex].feature.OffChanTscanInMsec,
+                    mgr->radio_config[radioIndex].feature.OffChanNscanInSec,
+                    mgr->radio_config[radioIndex].feature.OffChanTidleInSec) != RETURN_OK) {
+                wifi_util_error_print(WIFI_OCS, "%s:%d: Unable to set Offchannel Params\n",
+                    __func__, __LINE__);
                 return RETURN_ERR;
             }
-            if (mgr->rfc_dml_parameters.wifioffchannelscan_rfc) {
+            if (mgr->rfc_dml_parameters.wifi_offchannelscan_app_rfc) {
                 off_chan_scan_init(radioIndex);
             }
         }
@@ -561,6 +582,10 @@ void handle_ocs_webconfig_event(wifi_app_t *app, wifi_event_t *event)
 
 int ocs_event(wifi_app_t *app, wifi_event_t *event)
 {
+    if(app == NULL || event == NULL) {
+        wifi_util_error_print(WIFI_OCS,"%s:%d: app or event is NULL\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
     switch(event->event_type) {
         case wifi_event_type_webconfig:
             handle_ocs_webconfig_event(app, event);
@@ -594,7 +619,6 @@ int ocs_deinit(wifi_app_t *app)
 
     return RETURN_OK;
 }
-
 /**************************************************************************************************************************/
 /*                                                                                                                        */
 /* FUNCTION NAME : off_chan_scan_init                                                                                     */
@@ -620,7 +644,7 @@ static int off_chan_scan_init (unsigned int radio_index)
     bool dfs_enable = g_wifi_mgr->rfc_dml_parameters.dfs_rfc;
     bool dfs_boot = g_wifi_mgr->rfc_dml_parameters.dfsatbootup_rfc;
     bool dfs = (dfs_enable | dfs_boot); /* checking if dfs is enabled in run time or boot up */
-    ocs_cfg->off_scan_rfc = g_wifi_mgr->rfc_dml_parameters.wifioffchannelscan_rfc;
+    ocs_cfg->off_scan_rfc = g_wifi_mgr->rfc_dml_parameters.wifi_offchannelscan_app_rfc;
     Tscan = ocs_cfg->TscanMsec;
     Nscan = ocs_cfg->NscanSec;
     Tidle = ocs_cfg->TidleSec;

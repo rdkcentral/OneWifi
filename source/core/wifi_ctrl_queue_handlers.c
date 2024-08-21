@@ -2135,11 +2135,21 @@ void process_prefer_private_rfc(bool type)
     }
 }
 
-void process_wifi_offchannelscan_rfc(bool type)
+void process_wifi_offchannelscan_app_rfc(bool type) // ocs scan for 5g radio in gateway
 {
-    wifi_util_dbg_print(WIFI_DB,"WIFI Enter RFC Func %s: %d : bool %d\n",__FUNCTION__,__LINE__,type);
-    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
-    rfc_param->wifioffchannelscan_rfc = type;
+    wifi_util_dbg_print(WIFI_DB, "WIFI Enter RFC Func %s: %d : bool %d\n", __FUNCTION__, __LINE__,
+        type);
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
+    rfc_param->wifi_offchannelscan_app_rfc = type;
+    wifidb_update_rfc_config(0, rfc_param);
+}
+
+void process_wifi_offchannelscan_sm_rfc(bool type)
+{
+    wifi_util_dbg_print(WIFI_DB, "WIFI Enter RFC Func %s: %d : bool %d\n", __FUNCTION__, __LINE__,
+        type);
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
+    rfc_param->wifi_offchannelscan_sm_rfc = type;
     wifidb_update_rfc_config(0, rfc_param);
 }
 
@@ -2818,7 +2828,6 @@ static void process_monitor_init_command(void)
 
 void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len, wifi_event_subtype_t subtype)
 {
-
     switch (subtype) {
         case wifi_event_type_active_gw_check:
             process_active_gw_check_command(*(bool *)data);
@@ -2833,8 +2842,11 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len, wifi_
         case wifi_event_type_wifi_passpoint_rfc:
             process_wifi_passpoint_rfc(*(bool *)data);
             break;
-        case wifi_event_type_wifi_offchannelscan_rfc:
-            process_wifi_offchannelscan_rfc(*(bool *)data);
+        case wifi_event_type_wifi_offchannelscan_app_rfc:
+            process_wifi_offchannelscan_app_rfc(*(bool *)data);
+            break;
+        case wifi_event_type_wifi_offchannelscan_sm_rfc :
+            process_wifi_offchannelscan_sm_rfc(*(bool *)data);
             break;
         case wifi_event_type_wifi_interworking_rfc:
             process_wifi_interworking_rfc(*(bool *)data);

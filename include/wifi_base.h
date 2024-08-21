@@ -368,7 +368,8 @@ typedef struct {
 } wifi_dml_parameters_t;
 
 typedef struct {
-    bool wifioffchannelscan_rfc;
+    bool wifi_offchannelscan_app_rfc;
+    bool wifi_offchannelscan_sm_rfc;
     bool wifipasspoint_rfc;
     bool wifiinterworking_rfc;
     bool radiusgreylist_rfc;

@@ -302,6 +302,12 @@
             <writable>true</writable>
         </parameter>
         <parameter>
+            <name>WiFi-OffChannelScan-APP</name>
+            <type>boolean</type>
+            <syntax>bool</syntax>
+            <writable>true</writable>
+        </parameter>
+        <parameter>
             <name>WiFi-OffChannelScan</name>
             <type>boolean</type>
             <syntax>bool</syntax>

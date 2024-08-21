@@ -1198,22 +1198,32 @@ void CosaDmlWiFiGetRFCDataFromPSM(void)
     }
 
     push_rfc_dml_cache_to_one_wifidb(l_passpoint_RFC,wifi_event_type_wifi_passpoint_rfc);
-
 #if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
+    bool q_offchannelscan_RFC;
+    char *str1 = NULL;
+    str1 = PSM_Get_Record_Status("Device.DeviceInfo.X_RDK_RFC.Feature.WifiOffChannelScan.Enable",
+        strValue);
+    if (str1 != NULL) {
+        q_offchannelscan_RFC = _ansc_atoi(str1);
+    } else {
+        /* Set default value */
+        q_offchannelscan_RFC = 0;
+    }
+    push_rfc_dml_cache_to_one_wifidb(q_offchannelscan_RFC,
+        wifi_event_type_wifi_offchannelscan_app_rfc);
+#endif // FEATURE_OFF_CHANNEL_SCAN_5G
     bool l_offchannelscan_RFC;
     char *str = NULL;
-    str = PSM_Get_Record_Status("Device.DeviceInfo.X_RDK_RFC.Feature.OffChannelScan.Enable", strValue);
-    if (str != NULL){
+    str = PSM_Get_Record_Status("Device.DeviceInfo.X_RDK_RFC.Feature.OffChannelScan.Enable",
+        strValue);
+    if (str != NULL) {
         l_offchannelscan_RFC = _ansc_atoi(str);
-    }
-    else
-    {
+    } else {
         /* Set default value */
         l_offchannelscan_RFC = 0;
     }
-
-    push_rfc_dml_cache_to_one_wifidb(l_offchannelscan_RFC, wifi_event_type_wifi_offchannelscan_rfc);
-#endif //FEATURE_OFF_CHANNEL_SCAN_5G
+    push_rfc_dml_cache_to_one_wifidb(l_offchannelscan_RFC,
+        wifi_event_type_wifi_offchannelscan_sm_rfc);
 
 #if defined (FEATURE_SUPPORT_RADIUSGREYLIST)
     CosaDmlWiFiGetEnableRadiusGreylist((BOOLEAN *)&wifi_radius_greylist_status);
