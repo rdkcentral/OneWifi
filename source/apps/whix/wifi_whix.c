@@ -1068,13 +1068,12 @@ int upload_client_telemetry_data(unsigned int num_devs, unsigned int vap_index, 
     }
     wifi_util_dbg_print(WIFI_APPS," %s:%d vap_index=%d and repurposed_vap_name=%s\n",__func__,__LINE__,vap_index,vap_info->repurposed_vap_name);
 
-        // IsCosaDmlWiFivAPStatsFeatureEnabled needs to be set to get telemetry of some stats, the TR object is
-        // Device.WiFi.X_RDKCENTRAL-COM_vAPStatsEnable
         wifi_global_param_t *global_param = get_wifidb_wifi_global_param();
         BOOL sWiFiDmlvApStatsFeatureEnableCfg = global_param->vap_stats_feature;
         get_device_flag(trflag, sizeof(trflag), WIFI_TxRx_RATE_LIST);
         get_device_flag(nrflag, sizeof(nrflag), WIFI_NORMALIZED_RSSI_LIST);
         get_device_flag(stflag, sizeof(stflag), WIFI_CLI_STAT_LIST);
+        UNREFERENCED_PARAMETER(sWiFiDmlvApStatsFeatureEnableCfg);
         // see if list has changed
         // Use memcmp() and memcpy() here as it's an array of bits for each VAP, not string.
         if (monitor_param->cliStatsList[vap_index] != stflag[vap_index]) {
@@ -1263,7 +1262,7 @@ int upload_client_telemetry_data(unsigned int num_devs, unsigned int vap_index, 
             get_stubs_descriptor()->t2_event_s_fn(eventName, telemetryBuff);
         }
         wifi_util_dbg_print(WIFI_MON, "%s", buff);
-        if ((sWiFiDmlvApStatsFeatureEnableCfg == true) && nrflag[vap_index]) {
+        if (nrflag[vap_index]) {
             get_formatted_time(tmp);
             memset(buff, 0, MAX_BUFF_SIZE);
             snprintf(buff, MAX_BUFF_SIZE - 1, "%s WIFI_NORMALIZED_RSSI_%d:", tmp, vap_index + 1);
@@ -1277,7 +1276,7 @@ int upload_client_telemetry_data(unsigned int num_devs, unsigned int vap_index, 
             write_to_file(wifi_health_log, buff);
             wifi_util_dbg_print(WIFI_MON, "%s", buff);
         }
-        if ((sWiFiDmlvApStatsFeatureEnableCfg == true) && snflag[vap_index]) {
+        if (snflag[vap_index]) {
             get_formatted_time(tmp);
             memset(buff, 0, MAX_BUFF_SIZE);
             memset(telemetryBuff, 0, MAX_BUFF_SIZE);
@@ -1344,7 +1343,7 @@ int upload_client_telemetry_data(unsigned int num_devs, unsigned int vap_index, 
         }
         wifi_util_dbg_print(WIFI_MON, "%s", buff);
 
-        if ((sWiFiDmlvApStatsFeatureEnableCfg == true) && trflag[vap_index]) {
+        if (trflag[vap_index]) {
             get_formatted_time(tmp);
             memset(buff, 0, MAX_BUFF_SIZE);
             memset(telemetryBuff, 0, MAX_BUFF_SIZE);
@@ -1367,7 +1366,7 @@ int upload_client_telemetry_data(unsigned int num_devs, unsigned int vap_index, 
             }
             wifi_util_dbg_print(WIFI_MON, "%s", buff);
         }
-        if ((sWiFiDmlvApStatsFeatureEnableCfg == true) && trflag[vap_index]) {
+        if (trflag[vap_index]) {
             get_formatted_time(tmp);
             memset(buff, 0, MAX_BUFF_SIZE);
             memset(telemetryBuff, 0, MAX_BUFF_SIZE);
@@ -1390,7 +1389,7 @@ int upload_client_telemetry_data(unsigned int num_devs, unsigned int vap_index, 
             }
             wifi_util_dbg_print(WIFI_MON, "%s", buff);
         }
-        if ((sWiFiDmlvApStatsFeatureEnableCfg == true) && trflag[vap_index]) {
+        if (trflag[vap_index]) {
             get_formatted_time(tmp);
             memset(buff, 0, MAX_BUFF_SIZE);
             snprintf(buff, MAX_BUFF_SIZE - 1, "%s WIFI_RXTXCLIENTDELTA_%d:", tmp, vap_index + 1);
@@ -1404,7 +1403,7 @@ int upload_client_telemetry_data(unsigned int num_devs, unsigned int vap_index, 
             write_to_file(wifi_health_log, buff);
             wifi_util_dbg_print(WIFI_MON, "%s", buff);
         }
-        if ((sWiFiDmlvApStatsFeatureEnableCfg == true) && stflag[vap_index]) {
+        if (stflag[vap_index]) {
             get_formatted_time(tmp);
             memset(buff, 0, MAX_BUFF_SIZE);
             snprintf(buff, MAX_BUFF_SIZE - 1, "%s WIFI_BYTESSENTCLIENTS_%d:", tmp, vap_index + 1);
@@ -1419,7 +1418,7 @@ int upload_client_telemetry_data(unsigned int num_devs, unsigned int vap_index, 
             write_to_file(wifi_health_log, buff);
             wifi_util_dbg_print(WIFI_MON, "%s", buff);
         }
-        if ((sWiFiDmlvApStatsFeatureEnableCfg == true) && stflag[vap_index]) {
+        if (stflag[vap_index]) {
             get_formatted_time(tmp);
             memset(buff, 0, MAX_BUFF_SIZE);
             snprintf(buff, MAX_BUFF_SIZE - 1, "%s WIFI_BYTESRECEIVEDCLIENTS_%d:", tmp, vap_index + 1);
@@ -1434,7 +1433,7 @@ int upload_client_telemetry_data(unsigned int num_devs, unsigned int vap_index, 
             write_to_file(wifi_health_log, buff);
             wifi_util_dbg_print(WIFI_MON, "%s", buff);
         }
-        if ((sWiFiDmlvApStatsFeatureEnableCfg == true) && stflag[vap_index]) {
+        if (stflag[vap_index]) {
             get_formatted_time(tmp);
             memset(buff, 0, MAX_BUFF_SIZE);
             memset(telemetryBuff, 0, MAX_BUFF_SIZE);
@@ -1458,7 +1457,7 @@ int upload_client_telemetry_data(unsigned int num_devs, unsigned int vap_index, 
             }
             wifi_util_dbg_print(WIFI_MON, "%s", buff);
         }
-        if ((sWiFiDmlvApStatsFeatureEnableCfg == true) && stflag[vap_index]) {
+        if (stflag[vap_index]) {
             get_formatted_time(tmp);
             memset(buff, 0, MAX_BUFF_SIZE);
             snprintf(buff, MAX_BUFF_SIZE - 1, "%s WIFI_PACKETSRECEIVEDCLIENTS_%d:", tmp, vap_index + 1);
@@ -1473,7 +1472,7 @@ int upload_client_telemetry_data(unsigned int num_devs, unsigned int vap_index, 
             write_to_file(wifi_health_log, buff);
             wifi_util_dbg_print(WIFI_MON, "%s", buff);
         }
-        if ((sWiFiDmlvApStatsFeatureEnableCfg == true) && stflag[vap_index]) {
+        if (stflag[vap_index]) {
             get_formatted_time(tmp);
             memset(buff, 0, MAX_BUFF_SIZE);
             memset(telemetryBuff, 0, MAX_BUFF_SIZE);
@@ -1498,7 +1497,7 @@ int upload_client_telemetry_data(unsigned int num_devs, unsigned int vap_index, 
             }
             wifi_util_dbg_print(WIFI_MON, "%s", buff);
         }
-        if ((sWiFiDmlvApStatsFeatureEnableCfg == true) && stflag[vap_index]) {
+        if (stflag[vap_index]) {
             get_formatted_time(tmp);
             memset(buff, 0, MAX_BUFF_SIZE);
             memset(telemetryBuff, 0, MAX_BUFF_SIZE);
@@ -1523,7 +1522,7 @@ int upload_client_telemetry_data(unsigned int num_devs, unsigned int vap_index, 
             }
             wifi_util_dbg_print(WIFI_MON, "%s", buff);
         }
-        if ((sWiFiDmlvApStatsFeatureEnableCfg == true) && stflag[vap_index]) {
+        if (stflag[vap_index]) {
             get_formatted_time(tmp);
             memset(buff, 0, MAX_BUFF_SIZE);
             snprintf(buff, MAX_BUFF_SIZE - 1, "%s WIFI_FAILEDRETRANSCOUNT_%d:", tmp, vap_index + 1);
@@ -1538,7 +1537,7 @@ int upload_client_telemetry_data(unsigned int num_devs, unsigned int vap_index, 
             write_to_file(wifi_health_log, buff);
             wifi_util_dbg_print(WIFI_MON, "%s", buff);
         }
-        if ((sWiFiDmlvApStatsFeatureEnableCfg == true) && stflag[vap_index]) {
+        if (stflag[vap_index]) {
             get_formatted_time(tmp);
             memset(buff, 0, MAX_BUFF_SIZE);
             snprintf(buff, MAX_BUFF_SIZE - 1, "%s WIFI_RETRYCOUNT_%d:", tmp, vap_index + 1);
@@ -1553,7 +1552,7 @@ int upload_client_telemetry_data(unsigned int num_devs, unsigned int vap_index, 
             write_to_file(wifi_health_log, buff);
             wifi_util_dbg_print(WIFI_MON, "%s", buff);
         }
-        if ((sWiFiDmlvApStatsFeatureEnableCfg == true) && stflag[vap_index]) {
+        if (stflag[vap_index]) {
             get_formatted_time(tmp);
             memset(buff, 0, MAX_BUFF_SIZE);
             snprintf(buff, MAX_BUFF_SIZE - 1, "%s WIFI_MULTIPLERETRYCOUNT_%d:", tmp, vap_index + 1);
