@@ -46,6 +46,7 @@
 #include "webconfig_external_proto.h"
 
 #define BLASTER_STATE_LEN    10
+#define INVALID_INDEX        256
 
 static webconfig_subdoc_data_t  webconfig_ovsdb_data;
 /* global pointer to webconfig subdoc encoded data to avoid memory loss when passing data to OVSM */
@@ -58,6 +59,7 @@ const char* security_config_find_by_key(const struct schema_Wifi_VIF_Config *vco
         char *key);
 webconfig_error_t translate_ovsdb_to_vap_info_radius_settings(const struct
     schema_Wifi_VIF_Config *vap_row, wifi_vap_info_t *vap);
+
 
 struct ovs_vapname_cloudvifname_map {
     char cloudvifname[64];
@@ -599,6 +601,97 @@ void get_translator_config_wpa_mfp(
     }
 }
 
+bool is_ovs_vif_config_changed(webconfig_subdoc_type_t type, webconfig_subdoc_data_t *data,
+    rdk_wifi_radio_t *rdk_wifi_radio_state)
+{
+    unsigned int num_ssid = 0;
+    unsigned int i;
+    wifi_vap_name_t vap_names[MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO];
+    webconfig_subdoc_decoded_data_t *decoded_params;
+    wifi_hal_capability_t *hal_cap;
+    int vap_index = 0;
+    unsigned int radio_index = INVALID_INDEX; 
+    unsigned int vap_array_index = INVALID_INDEX;
+    bool is_mesh_sta_vap = false;
+
+    decoded_params = &data->u.decoded;
+    hal_cap = &decoded_params->hal_cap;
+
+    switch (type) {
+    case webconfig_subdoc_type_private:
+        num_ssid = get_list_of_private_ssid(&hal_cap->wifi_prop, MAX_NUM_RADIOS, vap_names);
+        break;
+    case webconfig_subdoc_type_home:
+        num_ssid = get_list_of_iot_ssid(&hal_cap->wifi_prop, MAX_NUM_RADIOS, &vap_names[num_ssid]);
+        break;
+    case webconfig_subdoc_type_lnf:
+        num_ssid = get_list_of_lnf_psk(&hal_cap->wifi_prop, MAX_NUM_RADIOS, &vap_names[num_ssid]);
+        num_ssid += get_list_of_lnf_radius(&hal_cap->wifi_prop, MAX_NUM_RADIOS,
+            &vap_names[num_ssid]);
+        break;
+    case webconfig_subdoc_type_mesh_backhaul:
+        num_ssid = get_list_of_mesh_backhaul(&hal_cap->wifi_prop, MAX_NUM_RADIOS,
+            &vap_names[num_ssid]);
+        break;
+    case webconfig_subdoc_type_mesh_backhaul_sta:
+        if (memcmp(decoded_params->radios, rdk_wifi_radio_state,
+                MAX_NUM_RADIOS * sizeof(rdk_wifi_radio_t)) != 0) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Configuration changed for mesh_sta\n",
+                __func__, __LINE__);
+            return true;
+        } else {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: No change of configuration for mesh_sta\n",
+                __func__, __LINE__);
+            return false;
+        }
+
+        break;
+    default:
+        return true;
+    }
+
+    for (i = 0; i < num_ssid; i++) {
+        vap_index = convert_vap_name_to_index(&hal_cap->wifi_prop, vap_names[i]);
+        if (vap_index == RETURN_ERR) {
+            continue;
+        }
+        radio_index = convert_vap_name_to_radio_array_index(&hal_cap->wifi_prop, vap_names[i]);
+        if ((int)radio_index == RETURN_ERR) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: wrong index:%d vap_name %s\n", __func__,
+                __LINE__, i, vap_names[i]);
+            // Not possible condition
+            return true;
+        }
+        vap_array_index = convert_vap_name_to_array_index(&hal_cap->wifi_prop, vap_names[i]);
+        if ((int)vap_array_index == RETURN_ERR) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: wrong index:%d vap_name %s\n", __func__,
+                __LINE__, i, vap_names[i]);
+            // Not possible condition
+            return true;
+        }
+
+        wifi_vap_info_t *new_vap_info =
+            &decoded_params->radios[radio_index].vaps.vap_map.vap_array[vap_array_index];
+
+        wifi_vap_info_t *old_vap_info =
+            &rdk_wifi_radio_state[radio_index].vaps.vap_map.vap_array[vap_array_index];
+        rdk_wifi_vap_info_t *old_rdk_vap_info =
+            &rdk_wifi_radio_state[radio_index].vaps.rdk_vap_array[vap_array_index];
+        rdk_wifi_vap_info_t *new_rdk_vap_info =
+            &decoded_params->radios[radio_index].vaps.rdk_vap_array[vap_array_index];
+
+        if (is_vap_param_config_changed(old_vap_info, new_vap_info, old_rdk_vap_info,
+                new_rdk_vap_info, is_mesh_sta_vap) == true) {
+            // vap configuration changed no need to check further
+            wifi_util_dbg_print(WIFI_WEBCONFIG,
+                "%s:%d: Configuration changed for index:%d vap_name %s\n", __func__, __LINE__, i,
+                vap_names[i]);
+            return true;
+        }
+    }
+    return false;
+}
+
 void get_translator_config_wpa_psks(
         const struct schema_Wifi_VIF_Config *vconfig,
         wifi_vap_info_t *vap,
@@ -895,19 +988,33 @@ webconfig_error_t webconfig_convert_ifname_to_subdoc_type(const char *ifname, we
 }
 
 webconfig_error_t webconfig_ovsdb_encode(webconfig_t *config,
-        const webconfig_external_ovsdb_t *data,
-        webconfig_subdoc_type_t type,
-        char **str)
+    const webconfig_external_ovsdb_t *data, webconfig_subdoc_type_t type, char **str)
 {
-    wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: OVSM encode subdoc type %d\n", __func__, __LINE__, type);
+    // rdk_wifi_radio_state change is added to avoid redundant config update from ovsm
+    // this redundant update is triggered as part of ovsm config table update
+    rdk_wifi_radio_t *rdk_wifi_radio_state;
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: OVSM encode subdoc type %d\n", __func__, __LINE__,
+        type);
 
     webconfig_ovsdb_data.u.decoded.external_protos = (webconfig_external_ovsdb_t *)data;
     webconfig_ovsdb_data.descriptor = webconfig_data_descriptor_translate_from_ovsdb;
     debug_external_protos(&webconfig_ovsdb_data, __func__, __LINE__);
 
+    rdk_wifi_radio_state = calloc(MAX_NUM_RADIOS, sizeof(rdk_wifi_radio_t));
+    if (rdk_wifi_radio_state == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: calloc failed for rdk_wifi_radio_state\n",
+            __func__, __LINE__);
+        return webconfig_error_encode;
+    }
+
+    memcpy(rdk_wifi_radio_state, webconfig_ovsdb_data.u.decoded.radios,
+        (MAX_NUM_RADIOS * sizeof(rdk_wifi_radio_t)));
+
+    // Here webconfig_ovsdb_data's decoded_params will be updated.
     if (webconfig_encode(config, &webconfig_ovsdb_data, type) != webconfig_error_none) {
         *str = NULL;
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: OVSM encode failed\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: OVSM encode failed\n", __func__, __LINE__);
+        free(rdk_wifi_radio_state);
         return webconfig_error_encode;
     }
 
@@ -915,32 +1022,42 @@ webconfig_error_t webconfig_ovsdb_encode(webconfig_t *config,
         free(webconfig_ovsdb_raw_data_ptr);
         webconfig_ovsdb_raw_data_ptr = NULL;
     }
+
+    // Here new decoded_params will be compared with the old rdk_wifi_radio_state
+    // for configuration change
+    if (is_ovs_vif_config_changed(type, &webconfig_ovsdb_data, rdk_wifi_radio_state) == false) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: No change in config for subdoc type : %d\n",
+            __func__, __LINE__, type);
+        *str = NULL;
+        free(rdk_wifi_radio_state);
+        return webconfig_error_translate_from_ovsdb_cfg_no_change;
+    }
     webconfig_ovsdb_raw_data_ptr = webconfig_ovsdb_data.u.encoded.raw;
 
     *str = webconfig_ovsdb_raw_data_ptr;
+    free(rdk_wifi_radio_state);
     return webconfig_error_none;
 }
 
 webconfig_error_t webconfig_ovsdb_decode(webconfig_t *config, const char *str,
-        webconfig_external_ovsdb_t *data,
-        webconfig_subdoc_type_t *type)
+    webconfig_external_ovsdb_t *data, webconfig_subdoc_type_t *type)
 {
     webconfig_ovsdb_data.u.decoded.external_protos = (webconfig_external_ovsdb_t *)data;
     webconfig_ovsdb_data.descriptor = webconfig_data_descriptor_translate_to_ovsdb;
 
     if (webconfig_decode(config, &webconfig_ovsdb_data, str) != webconfig_error_none) {
         //        *data = NULL;
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: OVSM decode failed\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: OVSM decode failed\n", __func__, __LINE__);
         return webconfig_error_decode;
     }
 
-    wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: OVSM decode subdoc type %d sucessfully\n", __func__, __LINE__, webconfig_ovsdb_data.type);
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: OVSM decode subdoc type %d sucessfully\n",
+        __func__, __LINE__, webconfig_ovsdb_data.type);
     *type = webconfig_ovsdb_data.type;
     debug_external_protos(&webconfig_ovsdb_data, __func__, __LINE__);
     webconfig_data_free(&webconfig_ovsdb_data);
     return webconfig_error_none;
 }
-
 
 webconfig_error_t free_vap_object_assoc_client_entries(webconfig_subdoc_data_t *data)
 {
@@ -7575,7 +7692,7 @@ webconfig_error_t   translate_from_ovsdb_tables(webconfig_subdoc_type_t type, we
                 return webconfig_error_translate_from_ovsdb;
             }
         break;
-        
+
         case webconfig_subdoc_type_stats_config:
             if (translate_config_from_ovsdb_for_stats_config(data) != webconfig_error_none) {
                 wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: vap_object translation from ovsdb failed\n", __func__, __LINE__);

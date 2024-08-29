@@ -3583,3 +3583,130 @@ bool is_6g_supported_device(wifi_platform_property_t *wifi_prop)
     }
     return false;
 }
+
+bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t *vap_info_new,
+    rdk_wifi_vap_info_t *rdk_old, rdk_wifi_vap_info_t *rdk_new, bool isSta)
+{
+
+    if ((vap_info_old == NULL) || (vap_info_new == NULL) || (rdk_old == NULL) ||
+        (rdk_new == NULL)) {
+        wifi_util_error_print(WIFI_WEBCONFIG,
+            "%s:%d: input args are NULL vap_info_old : %p vap_info_new : %p rdk_old : %p rdk_new : "
+            "%p\n",
+            __func__, __LINE__, vap_info_old, vap_info_new, rdk_old, rdk_new);
+        return true;
+    }
+
+    if (IS_CHANGED(rdk_old->exists, rdk_new->exists)) {
+        return true;
+    }
+
+#ifndef CCSP_COMMON
+    if ((rdk_old->exists | rdk_new->exists) == false) {
+        return false;
+    }
+#endif // CCSP_COMMON
+
+    if (IS_CHANGED(vap_info_old->vap_index, vap_info_new->vap_index) ||
+        IS_STR_CHANGED(vap_info_old->vap_name, vap_info_new->vap_name, sizeof(wifi_vap_name_t)) ||
+        IS_CHANGED(vap_info_old->radio_index, vap_info_new->radio_index) ||
+        IS_STR_CHANGED(vap_info_old->bridge_name, vap_info_new->bridge_name,
+            sizeof(vap_info_old->bridge_name)) ||
+        IS_CHANGED(vap_info_old->vap_mode, vap_info_new->vap_mode)) {
+        return true;
+    }
+
+    if (isSta) {
+        // Ignore change of conn_status, scan_params, mac to avoid reconfiguration and disconnection
+        // BSSID change is handled by event.
+        if (IS_STR_CHANGED(vap_info_old->u.sta_info.ssid, vap_info_new->u.sta_info.ssid,
+                sizeof(ssid_t)) ||
+            IS_CHANGED(vap_info_old->u.sta_info.enabled, vap_info_new->u.sta_info.enabled) ||
+            IS_BIN_CHANGED(&vap_info_old->u.sta_info.security, &vap_info_new->u.sta_info.security,
+                sizeof(wifi_vap_security_t))) {
+            return true;
+        }
+#ifndef CCSP_COMMON
+        char old_bssid_str[32], new_bssid_str[32];
+
+        if (memcmp(vap_info_old->u.sta_info.bssid, vap_info_new->u.sta_info.bssid,
+                sizeof(bssid_t)) != 0) {
+            uint8_mac_to_string_mac(vap_info_old->u.sta_info.bssid, old_bssid_str);
+            uint8_mac_to_string_mac(vap_info_new->u.sta_info.bssid, new_bssid_str);
+            wifi_util_info_print(WIFI_CTRL, "%s:%d: mesh sta bssid changed [%s] -> [%s]\n",
+                __func__, __LINE__, old_bssid_str, new_bssid_str);
+            return true;
+        }
+#endif
+    } else {
+        // Ignore bssid change to avoid reconfiguration and disconnection
+        if (IS_STR_CHANGED(vap_info_old->u.bss_info.ssid, vap_info_new->u.bss_info.ssid,
+                sizeof(vap_info_old->u.bss_info.ssid)) ||
+            IS_CHANGED(vap_info_old->u.bss_info.enabled, vap_info_new->u.bss_info.enabled) ||
+            IS_CHANGED(vap_info_old->u.bss_info.showSsid, vap_info_new->u.bss_info.showSsid) ||
+            IS_CHANGED(vap_info_old->u.bss_info.isolation, vap_info_new->u.bss_info.isolation) ||
+            IS_CHANGED(vap_info_old->u.bss_info.mgmtPowerControl,
+                vap_info_new->u.bss_info.mgmtPowerControl) ||
+            IS_CHANGED(vap_info_old->u.bss_info.bssMaxSta, vap_info_new->u.bss_info.bssMaxSta) ||
+            IS_CHANGED(vap_info_old->u.bss_info.bssTransitionActivated,
+                vap_info_new->u.bss_info.bssTransitionActivated) ||
+            IS_CHANGED(vap_info_old->u.bss_info.nbrReportActivated,
+                vap_info_new->u.bss_info.nbrReportActivated) ||
+            IS_CHANGED(vap_info_old->u.bss_info.rapidReconnectEnable,
+                vap_info_new->u.bss_info.rapidReconnectEnable) ||
+            IS_CHANGED(vap_info_old->u.bss_info.rapidReconnThreshold,
+                vap_info_new->u.bss_info.rapidReconnThreshold) ||
+            IS_CHANGED(vap_info_old->u.bss_info.vapStatsEnable,
+                vap_info_new->u.bss_info.vapStatsEnable) ||
+            IS_BIN_CHANGED(&vap_info_old->u.bss_info.security, &vap_info_new->u.bss_info.security,
+                sizeof(wifi_vap_security_t)) ||
+            IS_BIN_CHANGED(&vap_info_old->u.bss_info.interworking,
+                &vap_info_new->u.bss_info.interworking, sizeof(wifi_interworking_t)) ||
+            IS_CHANGED(vap_info_old->u.bss_info.mac_filter_enable,
+                vap_info_new->u.bss_info.mac_filter_enable) ||
+            IS_CHANGED(vap_info_old->u.bss_info.mac_filter_mode,
+                vap_info_new->u.bss_info.mac_filter_mode) ||
+            IS_CHANGED(vap_info_old->u.bss_info.sec_changed,
+                vap_info_new->u.bss_info.sec_changed) ||
+            IS_BIN_CHANGED(&vap_info_old->u.bss_info.wps, &vap_info_new->u.bss_info.wps,
+                sizeof(wifi_wps_t)) ||
+            IS_CHANGED(vap_info_old->u.bss_info.wmm_enabled,
+                vap_info_new->u.bss_info.wmm_enabled) ||
+            IS_CHANGED(vap_info_old->u.bss_info.UAPSDEnabled,
+                vap_info_new->u.bss_info.UAPSDEnabled) ||
+            IS_CHANGED(vap_info_old->u.bss_info.beaconRate, vap_info_new->u.bss_info.beaconRate) ||
+            IS_CHANGED(vap_info_old->u.bss_info.wmmNoAck, vap_info_new->u.bss_info.wmmNoAck) ||
+            IS_CHANGED(vap_info_old->u.bss_info.wepKeyLength,
+                vap_info_new->u.bss_info.wepKeyLength) ||
+            IS_CHANGED(vap_info_old->u.bss_info.bssHotspot, vap_info_new->u.bss_info.bssHotspot) ||
+            IS_CHANGED(vap_info_old->u.bss_info.wpsPushButton,
+                vap_info_new->u.bss_info.wpsPushButton) ||
+            IS_CHANGED(vap_info_old->u.bss_info.connected_building_enabled,
+                vap_info_new->u.bss_info.connected_building_enabled) ||
+            IS_BIN_CHANGED(&vap_info_old->u.bss_info.beaconRateCtl,
+                &vap_info_new->u.bss_info.beaconRateCtl,
+                sizeof(vap_info_old->u.bss_info.beaconRateCtl)) ||
+            IS_CHANGED(vap_info_old->u.bss_info.network_initiated_greylist,
+                vap_info_new->u.bss_info.network_initiated_greylist) ||
+            IS_CHANGED(vap_info_old->u.bss_info.mcast2ucast,
+                vap_info_new->u.bss_info.mcast2ucast) ||
+            IS_STR_CHANGED(vap_info_old->u.bss_info.preassoc.basic_data_transmit_rates,
+                vap_info_new->u.bss_info.preassoc.basic_data_transmit_rates,
+                sizeof(vap_info_old->u.bss_info.preassoc.basic_data_transmit_rates)) ||
+            IS_STR_CHANGED(vap_info_old->u.bss_info.preassoc.operational_data_transmit_rates,
+                vap_info_new->u.bss_info.preassoc.operational_data_transmit_rates,
+                sizeof(vap_info_old->u.bss_info.preassoc.operational_data_transmit_rates)) ||
+            IS_STR_CHANGED(vap_info_old->u.bss_info.preassoc.supported_data_transmit_rates,
+                vap_info_new->u.bss_info.preassoc.supported_data_transmit_rates,
+                sizeof(vap_info_old->u.bss_info.preassoc.supported_data_transmit_rates)) ||
+            IS_STR_CHANGED(vap_info_old->u.bss_info.preassoc.minimum_advertised_mcs,
+                vap_info_new->u.bss_info.preassoc.minimum_advertised_mcs,
+                sizeof(vap_info_old->u.bss_info.preassoc.minimum_advertised_mcs)) ||
+            IS_STR_CHANGED(vap_info_old->u.bss_info.preassoc.sixGOpInfoMinRate,
+                vap_info_new->u.bss_info.preassoc.sixGOpInfoMinRate,
+                sizeof(vap_info_old->u.bss_info.preassoc.sixGOpInfoMinRate))) {
+            return true;
+        }
+    }
+    return false;
+}

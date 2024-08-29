@@ -41,10 +41,6 @@
 #include "ccsp_WifiLog_wrapper.h"
 
 #define OW_CONF_BARRIER_TIMEOUT_MSEC (60 * 1000)
-#define IS_CHANGED(old, new) ((old != new)? wifi_util_dbg_print(WIFI_CTRL,"%s:Changed param %s: [%d] -> [%d].\n",__func__,#old,old,new),1: 0)
-#define IS_STR_CHANGED(old, new, size) ((strncmp(old, new, size) != 0)? wifi_util_dbg_print(WIFI_CTRL,"%s:Changed param %s: [%s] -> [%s].\n",__func__,#old,old,new), 1 : 0)
-#define IS_BIN_CHANGED(old, new, size) ((memcmp(old, new, size) != 0)? wifi_util_dbg_print(WIFI_CTRL,"%s:Changed param %s.\n",__func__,#old), 1 : 0)
-
 /* local functions */
 static int decode_ssid_blob(wifi_vap_info_t *vap_info, cJSON *ssid,char *bridge_name,bool managed_wifi, pErr execRetVal);
 static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security, pErr execRetVal);
@@ -546,80 +542,6 @@ void vap_param_config_changed_event_logging(wifi_vap_info_t *old, wifi_vap_info_
     } else {
           CcspWifiEventTrace(("RDK_LOG_NOTICE, Wifi radio %s is set to DOWN\n",name));
     }
-}
-
-static bool is_vap_param_config_changed(wifi_vap_info_t *old, wifi_vap_info_t *new,
-    rdk_wifi_vap_info_t *rdk_old, rdk_wifi_vap_info_t *rdk_new, bool isSta)
-{
-    if (IS_CHANGED(rdk_old->exists, rdk_new->exists)) {
-        return true;
-    }
-
-    if (IS_CHANGED(old->vap_index, new->vap_index) ||
-            IS_STR_CHANGED(old->vap_name, new->vap_name, sizeof(wifi_vap_name_t)) ||
-            IS_CHANGED(old->radio_index, new->radio_index) ||
-            IS_STR_CHANGED(old->bridge_name, new->bridge_name, sizeof(old->bridge_name)) ||
-            IS_CHANGED(old->vap_mode, new->vap_mode)) {
-        return true;
-    }
-
-    if (isSta) {
-        // Ignore change of conn_status, scan_params, mac to avoid reconfiguration and disconnection
-        // BSSID change is handled by event.
-        if (IS_STR_CHANGED(old->u.sta_info.ssid, new->u.sta_info.ssid, sizeof(ssid_t)) ||
-                IS_CHANGED(old->u.sta_info.enabled, new->u.sta_info.enabled) ||
-                IS_BIN_CHANGED(&old->u.sta_info.security, &new->u.sta_info.security,
-                sizeof(wifi_vap_security_t))) {
-            return true;
-        }
-    } else {
-        // Ignore bssid change to avoid reconfiguration and disconnection
-        if (IS_STR_CHANGED(old->u.bss_info.ssid, new->u.bss_info.ssid,
-                sizeof(old->u.bss_info.ssid)) ||
-                IS_CHANGED(old->u.bss_info.enabled, new->u.bss_info.enabled) ||
-                IS_CHANGED(old->u.bss_info.showSsid, new->u.bss_info.showSsid) ||
-                IS_CHANGED(old->u.bss_info.isolation, new->u.bss_info.isolation) ||
-                IS_CHANGED(old->u.bss_info.mgmtPowerControl, new->u.bss_info.mgmtPowerControl) ||
-                IS_CHANGED(old->u.bss_info.bssMaxSta, new->u.bss_info.bssMaxSta) ||
-                IS_CHANGED(old->u.bss_info.bssTransitionActivated,
-                new->u.bss_info.bssTransitionActivated) ||
-                IS_CHANGED(old->u.bss_info.nbrReportActivated,
-                new->u.bss_info.nbrReportActivated) ||
-                IS_CHANGED(old->u.bss_info.rapidReconnectEnable,
-                new->u.bss_info.rapidReconnectEnable) ||
-                IS_CHANGED(old->u.bss_info.rapidReconnThreshold,
-                new->u.bss_info.rapidReconnThreshold) ||
-                IS_CHANGED(old->u.bss_info.vapStatsEnable, new->u.bss_info.vapStatsEnable) ||
-                IS_BIN_CHANGED(&old->u.bss_info.security, &new->u.bss_info.security,
-                sizeof(wifi_vap_security_t)) ||
-                IS_BIN_CHANGED(&old->u.bss_info.interworking, &new->u.bss_info.interworking,
-                sizeof(wifi_interworking_t)) ||
-                IS_CHANGED(old->u.bss_info.mac_filter_enable, new->u.bss_info.mac_filter_enable) ||
-                IS_CHANGED(old->u.bss_info.mac_filter_mode, new->u.bss_info.mac_filter_mode) ||
-                IS_CHANGED(old->u.bss_info.sec_changed, new->u.bss_info.sec_changed) ||
-                IS_BIN_CHANGED(&old->u.bss_info.wps, &new->u.bss_info.wps, sizeof(wifi_wps_t)) ||
-                IS_CHANGED(old->u.bss_info.wmm_enabled, new->u.bss_info.wmm_enabled) ||
-                IS_CHANGED(old->u.bss_info.UAPSDEnabled, new->u.bss_info.UAPSDEnabled) ||
-                IS_CHANGED(old->u.bss_info.beaconRate, new->u.bss_info.beaconRate) ||
-                IS_CHANGED(old->u.bss_info.wmmNoAck, new->u.bss_info.wmmNoAck) ||
-                IS_CHANGED(old->u.bss_info.wepKeyLength, new->u.bss_info.wepKeyLength) ||
-                IS_CHANGED(old->u.bss_info.bssHotspot, new->u.bss_info.bssHotspot) ||
-                IS_CHANGED(old->u.bss_info.wpsPushButton, new->u.bss_info.wpsPushButton) ||
-                IS_CHANGED(old->u.bss_info.connected_building_enabled, new->u.bss_info.connected_building_enabled) ||
-                IS_BIN_CHANGED(&old->u.bss_info.beaconRateCtl, &new->u.bss_info.beaconRateCtl,
-                sizeof(old->u.bss_info.beaconRateCtl)) ||
-                IS_CHANGED(old->u.bss_info.network_initiated_greylist,
-                new->u.bss_info.network_initiated_greylist) ||
-                IS_CHANGED(old->u.bss_info.mcast2ucast, new->u.bss_info.mcast2ucast) ||
-                IS_STR_CHANGED(old->u.bss_info.preassoc.basic_data_transmit_rates, new->u.bss_info.preassoc.basic_data_transmit_rates, sizeof(old->u.bss_info.preassoc.basic_data_transmit_rates)) ||
-                IS_STR_CHANGED(old->u.bss_info.preassoc.operational_data_transmit_rates, new->u.bss_info.preassoc.operational_data_transmit_rates, sizeof(old->u.bss_info.preassoc.operational_data_transmit_rates)) ||
-                IS_STR_CHANGED(old->u.bss_info.preassoc.supported_data_transmit_rates ,new->u.bss_info.preassoc.supported_data_transmit_rates, sizeof(old->u.bss_info.preassoc.supported_data_transmit_rates)) ||
-                IS_STR_CHANGED(old->u.bss_info.preassoc.minimum_advertised_mcs, new->u.bss_info.preassoc.minimum_advertised_mcs, sizeof(old->u.bss_info.preassoc.minimum_advertised_mcs)) ||
-                IS_STR_CHANGED(old->u.bss_info.preassoc.sixGOpInfoMinRate, new->u.bss_info.preassoc.sixGOpInfoMinRate, sizeof(old->u.bss_info.preassoc.sixGOpInfoMinRate))) {
-            return true;
-        }
-    }
-    return false;
 }
 
 static void webconfig_send_sta_bssid_change_event(wifi_ctrl_t *ctrl, wifi_vap_info_t *old,
