@@ -39,7 +39,6 @@ AM_LDFLAGS += -lpthread
 AM_LDFLAGS += -ldl
 AM_LDFLAGS += -ljansson
 AM_LDFLAGS += -lrt
-if CCSP_COMMON_SUPPORT
 
 if !HAL_IPC
 AM_LDFLAGS += -lhal_wifi
@@ -48,7 +47,6 @@ endif
 AM_LDFLAGS += -L$(top_builddir)/../CcspCommonLibrary/lib
 AM_LDFLAGS += -lccsp_common
 AM_LDFLAGS += -lrdk_wifihal
-endif #CCSP_COMMON_SUPPORT
 
 AM_CPPFLAGS = -Wall -Werror
 ACLOCAL_AMFLAGS = -I m4
@@ -64,7 +62,6 @@ endif
 
 libwifi_webconfig_la_CFLAGS =  $(SYSTEMD_CFLAGS)
 libwifi_webconfig_la_CFLAGS += $(DML_ENABLE_FLAG)
-libwifi_webconfig_la_CFLAGS += $(CCSP_COMMON_FLAG)
 
 libwifi_webconfig_la_SOURCES = wifi_webconfig.c wifi_encoder.c wifi_decoder.c wifi_ovsdb_translator.c  wifi_webconfig_home.c wifi_webconfig_mesh.c wifi_webconfig_private.c wifi_webconfig_radio.c  wifi_webconfig_xfinity.c wifi_webconfig_associated_client.c wifi_webconfig_wifiapi_radio.c wifi_webconfig_wifiapi_vap.c wifi_webconfig_macfilter.c wifi_webconfig_blaster.c wifi_webconfig_harvester.c wifi_webconfig_wifi_config.c wifi_webconfig_csi.c wifi_webconfig_mesh_sta.c wifi_webconfig_mesh_backhaul.c wifi_webconfig_null.c wifi_webconfig_stats_config.c wifi_webconfig_steering_config.c wifi_webconfig_steering_clients.c wifi_webconfig_lnf.c wifi_webconfig_vif_neighbors.c wifi_webconfig_mesh_backhaul_sta.c wifi_webconfig_dml.c wifi_webconfig_levl.c wifi_webconfig_cac.c
 

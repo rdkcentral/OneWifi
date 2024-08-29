@@ -72,9 +72,6 @@ typedef struct active_msmt_data {
     char           Operating_standard[OPER_BUFFER_LEN + 1];
     char           Operating_channelwidth[OPER_BUFFER_LEN + 1];
     mac_address_t  cli_MACAddress;
-#ifndef CCSP_COMMON
-    unsigned long  RetransCount;
-#endif // CCSP_COMMON
 } active_msmt_data_t;
 
 typedef struct {

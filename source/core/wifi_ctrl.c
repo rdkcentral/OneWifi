@@ -528,7 +528,6 @@ bool is_acs_channel_updated(unsigned int num_radios)
     return true;
 }
 
-#if CCSP_COMMON
 bool check_for_greylisted_mac_filter(void)
 {
     acl_entry_t *acl_entry = NULL;
@@ -563,7 +562,6 @@ bool check_for_greylisted_mac_filter(void)
     }
     return false;
 }
-#endif // CCSP_COMMON
 
 void rbus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
 {
@@ -1599,7 +1597,6 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
     init_wireless_interface_mac();
 
 
-#if CCSP_COMMON
     ctrl->webconfig_state = ctrl_webconfig_state_vap_all_cfg_rsp_pending;
     telemetry_bootup_time_wifibroadcast(); //Telemetry Marker for btime_wifibcast_split
 
@@ -1609,9 +1606,6 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
 
     /* start wifi apps */
     wifi_hal_platform_post_init();
-#else
-  ctrl->webconfig_state = ctrl_webconfig_state_none;
-#endif
 
     if (monitor_ret == 0) {
         //Start Wifi Monitor Thread
@@ -1632,12 +1626,10 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
     ctrl->ctrl_initialized = true;
     ctrl_queue_loop(ctrl);
 
-#if CCSP_COMMON
     apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL);
 #ifdef ONEWIFI_CAC_APP_SUPPORT
     apps_mgr_cac_event(&ctrl->apps_mgr, wifi_event_type_exec, wifi_event_exec_stop, NULL, 0);
 #endif
-#endif // CCSP_COMMON
     wifi_util_info_print(WIFI_CTRL,"%s:%d Exited queue_wifi_ctrl_task.\n",__FUNCTION__,__LINE__);
     return RETURN_OK;
 }
@@ -1699,9 +1691,7 @@ void resched_data_to_ctrl_queue()
                 continue;
             }
             str = queue_data->u.encoded.raw;
-#if CCSP_COMMON
             apps_mgr_analytics_event(&l_ctrl->apps_mgr, wifi_event_type_webconfig, wifi_event_webconfig_data_resched_to_ctrl_queue, queue_data);
-#endif
             push_event_to_ctrl_queue(str, strlen(str), wifi_event_type_webconfig, wifi_event_webconfig_data_resched_to_ctrl_queue, NULL);
 
             //Free the allocated memory
@@ -1901,7 +1891,6 @@ static int sync_wifi_hal_hotspot_vap_mac_entry(void *arg)
 }
 #endif
 
-#if CCSP_COMMON
 static int rbus_check_and_subscribe_events(void* arg)
 {
     wifi_ctrl_t *ctrl = NULL;
@@ -1972,7 +1961,6 @@ static int run_cac_event(void* arg)
     return TIMER_TASK_COMPLETE;
 }
 #endif
-#endif //CCSP_COMMON
 
 static int pending_states_webconfig_analyzer(void *arg)
 {
@@ -1986,7 +1974,6 @@ static int pending_states_webconfig_analyzer(void *arg)
 
 static void ctrl_queue_timeout_scheduler_tasks(wifi_ctrl_t *ctrl)
 {
-#if CCSP_COMMON
     scheduler_add_timer_task(ctrl->sched, FALSE, NULL, run_analytics_event, NULL, (ANAYLYTICS_PERIOD * 1000), 0, FALSE);
 
 #ifdef ONEWIFI_CAC_APP_SUPPORT
@@ -1998,7 +1985,6 @@ static void ctrl_queue_timeout_scheduler_tasks(wifi_ctrl_t *ctrl)
     scheduler_add_timer_task(ctrl->sched, FALSE, NULL, sta_connectivity_selfheal, NULL, (STA_CONN_RETRY_TIMEOUT * 1000), 0, FALSE);
 
     scheduler_add_timer_task(ctrl->sched, FALSE, NULL, rbus_check_and_subscribe_events, NULL, (ctrl->poll_period * 1000), 0, FALSE);
-#endif //CCSP_COMMON
     scheduler_add_timer_task(ctrl->sched, FALSE, NULL, pending_states_webconfig_analyzer, NULL, (ctrl->poll_period * 1000), 0, FALSE);
 
 #if defined (FEATURE_SUPPORT_ACL_SELFHEAL)
@@ -2397,7 +2383,7 @@ int  get_wifi_rfc_parameters(char *str, void *value)
     } else {
         ret = RETURN_ERR;
     }
-#endif // CCSP_COMMON
+#endif
 
     return ret;
 }

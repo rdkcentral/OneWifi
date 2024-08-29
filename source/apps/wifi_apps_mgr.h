@@ -27,7 +27,6 @@ extern "C" {
 #include "wifi_hal.h"
 #include "wifi_base.h"
 
-#ifdef CCSP_COMMON
 #include "wifi_analytics.h"
 #include "wifi_levl.h"
 #ifdef ONEWIFI_CAC_APP_SUPPORT
@@ -39,7 +38,6 @@ extern "C" {
 #include "wifi_whix.h"
 #include "wifi_harvester.h"
 #include "wifi_ocs.h"
-#endif  //CCSP_COMMON
 
 #ifdef ONEWIFI_BLASTER_APP_SUPPORT
 #include "wifi_blaster.h"
@@ -67,7 +65,6 @@ typedef int (* wifi_app_deinit_fn_t)(wifi_app_t *app);
 typedef int (* wifi_app_update_fn_t)(wifi_app_t *app);
 typedef struct {
     union {
-#ifdef CCSP_COMMON
         levl_data_t          levl;
 #ifdef ONEWIFI_CAC_APP_SUPPORT
         cac_data_t           cac;
@@ -77,7 +74,6 @@ typedef struct {
         motion_data_t        motion;
         csi_app_t            csi;
         whix_data_t          whix;
-#endif  //CCSP_COMMON
 #ifdef ONEWIFI_BLASTER_APP_SUPPORT
         blaster_data_t       blaster;
 #endif

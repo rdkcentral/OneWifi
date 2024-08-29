@@ -75,11 +75,7 @@ int generate_assoc_client_clctr_stats_key(wifi_mon_stats_args_t *args, char *key
 
     memset(key_str, 0, key_len);
 
-#ifdef CCSP_COMMON
     snprintf(key_str, key_len, "%02d-%02d", mon_stats_type_associated_device_stats, args->vap_index);
-#else
-    snprintf(key_str, key_len, "%02d-%02d-%02x:%02x:%02x:%02x:%02x:%02x", mon_stats_type_associated_device_stats, args->vap_index, MAC_ARG(args->target_mac));
-#endif
 
     wifi_util_dbg_print(WIFI_MON, "%s:%d collector stats key: %s\n", __func__,__LINE__, key_str);
 
@@ -216,9 +212,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
             dev_array[i].cli_RxErrors);
     }
 
-#ifdef CCSP_COMMON
     events_update_clientdiagdata(num_devs, args->vap_index, dev_array);
-#endif
     if (mon_data->bssid_data[vap_array_index].sta_map == NULL) {
         mon_data->bssid_data[vap_array_index].sta_map = hash_map_create();
         if (mon_data->bssid_data[vap_array_index].sta_map == NULL) {

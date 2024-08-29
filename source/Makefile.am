@@ -22,13 +22,10 @@ if WITH_LIBWEBCONFIG
 SUBDIRS += webconfig
 endif
 
-if CCSP_COMMON_SUPPORT
 SUBDIRS += test/core
 SUBDIRS += sampleapps
 SUBDIRS += dml
 
 if WITH_GTEST_SUPPORT
 SUBDIRS += test
-endif
-
 endif

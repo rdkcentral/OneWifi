@@ -17,11 +17,9 @@
   limitations under the License.
  **************************************************************************/
 
-#ifdef CCSP_COMMON
 #include <telemetry_busmessage_sender.h>
 #include "cosa_wifi_apis.h"
 #include "ccsp_psm_helper.h"
-#endif // CCSP_COMMON
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -47,7 +45,6 @@
 #ifdef MQTTCM
 #include <mqttcm_lib/mqttcm_conn.h>
 #endif
-#ifdef CCSP_COMMON
 #include "ansc_status.h"
 #include <sysevent/sysevent.h>
 #include "ccsp_base_api.h"
@@ -56,12 +53,10 @@
 #include "ccsp_trace.h"
 #include "safec_lib_common.h"
 #include "ccsp_WifiLog_wrapper.h"
-#endif // CCSP_COMMON
 #include <sched.h>
 #include "scheduler.h"
 #include "timespec_macro.h"
 
-#ifdef CCSP_COMMON
 #include <netinet/tcp.h>    //Provides declarations for tcp header
 #include <netinet/ip.h> //Provides declarations for ip header
 #include <arpa/inet.h> // inet_addr
@@ -81,7 +76,6 @@
 #include <netinet/ip6.h>
 #include "wifi_events.h"
 #include "common/ieee802_11_defs.h"
-#endif // CCSP_COMMON
 #include "const.h"
 #include "pktgen.h"
 
@@ -104,7 +98,6 @@
 #define MQTTCM_DISABLE_FLAG "/mnt/data/pstore/disable_mqttcm"
 #endif
 
-#ifdef CCSP_COMMON
 #define RSN_SELECTOR_GET(a) WPA_GET_BE32((const uint8_t *) (a))
 #define RSN_SELECTOR(a, b, c, d) \
     ((((uint32_t) (a)) << 24) | (((uint32_t) (b)) << 16) | (((uint32_t) (c)) << 8) | \
@@ -151,9 +144,7 @@ struct rsn_data {
     uint8_t ver[2]; /* little endian */
     uint8_t data[];
 } __attribute__ ((packed));
-#endif
 
-#ifdef CCSP_COMMON
 #define NDA_RTA(r) \
   ((struct rtattr *)(((char *)(r)) + NLMSG_ALIGN(sizeof(struct ndmsg))))
 
@@ -185,7 +176,6 @@ extern void* bus_handle;
 #define ASSOC_REQ_MAC_HEADER_LEN 24 + 2 + 2 // 4 bytes after mac header reserved for fixed len fields
 
 char *instSchemaIdBuffer = "8b27dafc-0c4d-40a1-b62c-f24a34074914/4388e585dd7c0d32ac47e71f634b579b";
-#endif // CCSP_COMMON
 
 static wifi_monitor_t g_monitor_module;
 bool             mqttcm_enabled = false;
@@ -193,7 +183,6 @@ static wifi_apps_coordinator_t g_apps_coordinator;
 wifi_apps_coordinator_t *get_apps_coordinator(void);
 hash_map_t * coordinator_get_collector_list(void);
 
-#ifdef CCSP_COMMON
 static unsigned msg_id = 1000;
 static const char *wifi_health_log = "/rdklogs/logs/wifihealth.txt";
 int radio_stats_monitor = 0;
@@ -231,7 +220,6 @@ static void scheduler_telemetry_tasks(void);
 int csi_sendPingData(void * arg);
 static int csi_update_pinger(int ap_index, mac_addr_t mac_addr, bool pause_pinger);
 static int clientdiag_sheduler_enable(int ap_index);
-#endif // CCSP_COMMON
 
 void deinit_wifi_monitor(void);
 void SetBlasterMqttTopic(char *mqtt_topic);
@@ -245,7 +233,6 @@ static inline char *to_sta_key    (mac_addr_t mac, sta_key_t key)
     return (char *)key;
 }
 
-#ifdef CCSP_COMMON
 BOOL IsWiFiApStatsEnable(UINT uvAPIndex)
 {
     return ((sWiFiDmlApStatsEnableCfg[uvAPIndex]) ? TRUE : FALSE);
@@ -526,7 +513,6 @@ BOOL client_fast_redeauth(unsigned int apIndex, char *mac)
     return FALSE;
 }
 
-#endif // CCSP_COMMON
 
 static char*
 macbytes_to_string(mac_address_t mac, unsigned char* string)
@@ -541,7 +527,6 @@ macbytes_to_string(mac_address_t mac, unsigned char* string)
     return (char *)string;
 }
 
-#ifdef CCSP_COMMON
 static void
 reset_client_stats_info(unsigned int apIndex)
 {
@@ -793,7 +778,6 @@ int get_sta_stats_for_vap(int ap_index, wifi_associated_dev3_t *assoc_dev_array,
     pthread_mutex_unlock(&g_monitor_module.data_lock);
     return 0;
 }
-#endif
 
 void send_wifi_disconnect_event_to_ctrl(mac_address_t mac_addr, unsigned int ap_index)
 {
@@ -806,7 +790,6 @@ void send_wifi_disconnect_event_to_ctrl(mac_address_t mac_addr, unsigned int ap_
     push_event_to_ctrl_queue(&assoc_data, sizeof(assoc_data), wifi_event_type_hal_ind, wifi_event_hal_disassoc_device, NULL);
 }
 
-#ifdef CCSP_COMMON
 sta_data_t *create_sta_data_hash_map(hash_map_t *sta_map, mac_addr_t l_sta_mac)
 {
     pthread_mutex_lock(&g_monitor_module.data_lock);
@@ -960,19 +943,16 @@ void process_deauthenticate	(unsigned int ap_index, auth_deauth_dev_t *dev)
     process_disconnect(ap_index, dev);
 }
 
-#endif // CCSP_COMMON
 
 void process_connect(unsigned int ap_index, auth_deauth_dev_t *dev)
 {
     sta_key_t sta_key;
     sta_data_t *sta;
     hash_map_t     *sta_map;
-#ifdef CCSP_COMMON
     struct timespec tv_now, t_diff, t_tmp;
     unsigned int i = 0;
     int vap_status = 0;
     wifi_mgr_t *mgr = get_wifimgr_obj();
-#endif // CCSP_COMMON
     unsigned int vap_array_index;
     getVAPArrayIndexFromVAPIndex(ap_index, &vap_array_index);
 
@@ -992,7 +972,6 @@ void process_connect(unsigned int ap_index, auth_deauth_dev_t *dev)
         pthread_mutex_unlock(&g_monitor_module.data_lock);
     }
 
-#ifdef CCSP_COMMON
     clock_gettime(CLOCK_MONOTONIC, &tv_now);
     if (timespecisset(&(sta->last_connected_time))) {
         if (timespeccmp(&(sta->last_disconnected_time), &(g_monitor_module.bssid_data[vap_array_index].last_sta_update_time), >)) {//sta disconnected before counter update
@@ -1026,11 +1005,9 @@ void process_connect(unsigned int ap_index, auth_deauth_dev_t *dev)
 
     /* reset stats of client */
     memset((unsigned char *)&sta->dev_stats_last, 0, sizeof(wifi_associated_dev3_t));
-#endif // CCSP_COMMON
     memset((unsigned char *)&sta->dev_stats, 0, sizeof(wifi_associated_dev3_t));
     memcpy(&sta->dev_stats, &dev->dev_stats, sizeof(wifi_associated_dev3_t));
     sta->dev_stats.cli_Active = true;
-#ifdef CCSP_COMMON
     sta->connection_authorized = true;
     /*To avoid duplicate entries in hash map of different vAPs eg:RDKB-21582
       Also when clients moved away from a vAP and connect back to other vAP this will be usefull*/
@@ -1055,7 +1032,6 @@ void process_connect(unsigned int ap_index, auth_deauth_dev_t *dev)
             }
         }
     }
-#endif // CCSP_COMMON
 }
 
 void process_disconnect	(unsigned int ap_index, auth_deauth_dev_t *dev)
@@ -1063,10 +1039,8 @@ void process_disconnect	(unsigned int ap_index, auth_deauth_dev_t *dev)
     sta_key_t sta_key;
     sta_data_t *sta;
     hash_map_t     *sta_map;
-#ifdef CCSP_COMMON
     struct timespec tv_now, t_diff, t_tmp;
     instant_msmt_t msmt;
-#endif // CCSP_COMMON
     unsigned int vap_array_index;
 
     getVAPArrayIndexFromVAPIndex(ap_index, &vap_array_index);
@@ -1079,7 +1053,6 @@ void process_disconnect	(unsigned int ap_index, auth_deauth_dev_t *dev)
         return;
     }
 
-#ifdef CCSP_COMMON
     clock_gettime(CLOCK_MONOTONIC, &tv_now);
     if (timespeccmp(&(sta->last_connected_time), &(g_monitor_module.bssid_data[vap_array_index].last_sta_update_time), >)) {//sta disconnected before counter update
         timespecsub(&tv_now, &(sta->last_connected_time), &t_diff);
@@ -1106,15 +1079,7 @@ void process_disconnect	(unsigned int ap_index, auth_deauth_dev_t *dev)
     /* stop the instant measurement only if the client for which instant measuremnt
       is running got disconnected from AP
       */
-#else
-    sta = hash_map_remove(sta_map, sta_key);
-    if (sta != NULL) {
-        free(sta);
-    }
-#endif // CCSP_COMMON
 }
-
-#ifdef CCSP_COMMON
 
 int get_neighbor_scan_cfg(int radio_index,
                           wifi_neighbor_ap2_t *neighbor_results,
@@ -1130,7 +1095,6 @@ int get_neighbor_scan_cfg(int radio_index,
     return 0;
 }
 
-#endif // CCSP_COMMON
 
 void clear_sta_counters(unsigned int vap_index)
 {
@@ -1170,10 +1134,8 @@ void *monitor_function  (void *data)
     strncpy(event_buff, "Init completed", sizeof(event_buff)-1);
     push_event_to_ctrl_queue(event_buff, (strlen(event_buff) +1), wifi_event_type_command, wifi_event_type_notify_monitor_done, NULL);
 
-#ifdef CCSP_COMMON
     /* Set the monitor_initialization_done flag to notify */
     monitor_initialization_done = true;
-#endif // CCSP_COMMON
 
     prctl(PR_SET_NAME,  __func__, 0, 0, 0);
 
@@ -1204,16 +1166,12 @@ void *monitor_function  (void *data)
 
                 event_data = event->u.mon_data;
 
-#ifdef CCSP_COMMON
                 //Send data to wifi_events library
                 events_rbus_publish(event);
-#endif // CCSP_COMMON
                 switch (event->sub_type) {
-#ifdef CCSP_COMMON
                     case wifi_event_monitor_diagnostics:
                         //process_diagnostics(event_data->ap_index, &event_data->.devs);
                     break;
-#endif // CCSP_COMMON
 
                     case wifi_event_monitor_connect:
                         process_connect(event_data->ap_index, &event_data->u.dev);
@@ -1222,7 +1180,6 @@ void *monitor_function  (void *data)
                     case wifi_event_monitor_disconnect:
                         process_disconnect(event_data->ap_index, &event_data->u.dev);
                     break;
-#ifdef CCSP_COMMON
 
                     case wifi_event_monitor_deauthenticate:
                         process_deauthenticate(event_data->ap_index, &event_data->u.dev);
@@ -1254,7 +1211,6 @@ void *monitor_function  (void *data)
                         g_monitor_module.inst_msmt_id = 0;
                         scheduler_telemetry_tasks();
                     break;
-#endif // CCSP_COMMON
                     case wifi_event_monitor_data_collection_config:
                         coordinator_check_stats_config(&event_data->u.mon_stats_config);
                     break;
@@ -1295,7 +1251,6 @@ void *monitor_function  (void *data)
     return NULL;
 }
 
-#ifdef CCSP_COMMON
 static int refresh_task_period(void *arg)
 {
     unsigned int    new_upload_period;
@@ -1313,7 +1268,6 @@ static int refresh_task_period(void *arg)
     }
     return TIMER_TASK_COMPLETE;
 }
-#endif // CCSP_COMMON
 
 bool is_device_associated(int ap_index, char *mac)
 {
@@ -1336,7 +1290,6 @@ bool is_device_associated(int ap_index, char *mac)
     return false;
 }
 
-#ifdef CCSP_COMMON
 int timeval_subtract (struct timeval *result, struct timeval *end, struct timeval *start)
 {
     if(result == NULL || end == NULL || start == NULL) {
@@ -1361,7 +1314,6 @@ int timeval_subtract (struct timeval *result, struct timeval *end, struct timeva
 
     return (end->tv_sec < start->tv_sec);
 }
-#endif // CCSP_COMMON
 
 int  getApIndexfromClientMac(char *check_mac)
 {
@@ -1389,7 +1341,6 @@ int  getApIndexfromClientMac(char *check_mac)
     return -1;
 }
 
-#ifdef CCSP_COMMON
 static void rtattr_parse(struct rtattr *table[], int max, struct rtattr *rta, int len)
 {
     unsigned short type;
@@ -2044,7 +1995,6 @@ static int readLogInterval()
     return logInterval;
 }
 
-#endif // CCSP_COMMON
 
 
 int get_radio_data(int radio_index, wifi_radioTrafficStats2_t *radio_traffic_stats)
@@ -2083,9 +2033,7 @@ int radio_diagnostics(void *arg)
     wifi_radioTrafficStats2_t radioTrafficStats;
     //char            ChannelsInUse[256] = {0};
     char            RadioFreqBand[64] = {0};
-#ifdef CCSP_COMMON
     char            RadioChanBand[64] = {0};
-#endif // CCSP_COMMON
     static unsigned int radiocnt = 0;
     wifi_radio_operationParam_t* radioOperation = getRadioOperationParam(radiocnt);
     wifi_freq_bands_t band_enum;
@@ -2102,7 +2050,6 @@ int radio_diagnostics(void *arg)
     if (radioOperation != NULL) {
         if(radioOperation->enable) {
 
-#ifdef CCSP_COMMON
             if (wifi_getRadioTrafficStats2(radiocnt, &radioTrafficStats) == RETURN_OK) {
                 /* update the g_active_msmt with the radio data */
                 g_monitor_module.radio_data[radiocnt].NoiseFloor = radioTrafficStats.radio_NoiseFloor;
@@ -2152,7 +2099,6 @@ int radio_diagnostics(void *arg)
             } else {
                 wifi_util_error_print(WIFI_MON, "%s : %d wifi_getRadioTrafficStats2 failed for rdx : %d\n",__func__,__LINE__,radiocnt);
             }
-#endif // CCSP_COMMON
         } else {
             wifi_util_dbg_print(WIFI_MON, "%s : %d Radio : %d is not enabled\n",__func__,__LINE__,radiocnt);
         }
@@ -2167,7 +2113,6 @@ int radio_diagnostics(void *arg)
     return TIMER_TASK_CONTINUE;
 }
 
-#ifdef CCSP_COMMON
 bool active_sta_connection_status(int ap_index, char *mac)
 {
     sta_data_t  *sta;
@@ -2664,7 +2609,6 @@ static void scheduler_telemetry_tasks(void)
         }
     }
 }
-#endif // CCSP_COMMON
 
 void update_ecomode_radios()
 {
@@ -2706,12 +2650,10 @@ int init_wifi_monitor()
 {
     unsigned int i = 0;
     pthread_condattr_t cond_attr;
-#ifdef CCSP_COMMON
     wifi_mgr_t *mgr = get_wifimgr_obj();
     unsigned int uptimeval = 0;
     int rssi;
     UINT vap_index, radio;
-#endif // CCSP_COMMON
     //Initialize MQTTCM
     wifi_util_info_print(WIFI_MON,"%s:%d Monitor init\n", __func__, __LINE__);
 #ifdef MQTTCM
@@ -2727,7 +2669,6 @@ int init_wifi_monitor()
     }
 #endif
     update_ecomode_radios();
-#if CCSP_COMMON
     memset(g_monitor_module.cliStatsList, 0, MAX_VAP);
     g_monitor_module.upload_period = get_upload_period(60);//Default value 60
     uptimeval=get_sys_uptime();
@@ -2754,12 +2695,9 @@ int init_wifi_monitor()
             wifi_util_dbg_print(WIFI_MON, "%s: wrong vapIndex:%d \n", __FUNCTION__, i);
         }
     }
-#endif // CCSP_COMMON
 
     clock_gettime(CLOCK_MONOTONIC, &g_monitor_module.last_signalled_time);
-#ifdef CCSP_COMMON
     clock_gettime(CLOCK_MONOTONIC, &g_monitor_module.last_polled_time);
-#endif // CCSP_COMMON
     pthread_condattr_init(&cond_attr);
     pthread_condattr_setclock(&cond_attr, CLOCK_MONOTONIC);
     pthread_cond_init(&g_monitor_module.cond, &cond_attr);
@@ -2796,14 +2734,11 @@ int init_wifi_monitor()
         wifi_util_error_print(WIFI_MON, "collector list hash map create failed\n");
         return -1;
     }
-#ifdef CCSP_COMMON
 
     g_monitor_module.client_telemetry_id = 0;
     g_monitor_module.refresh_task_id = 0;
-#endif // CCSP_COMMON
     g_monitor_module.radio_diagnostics_id = 0;
 
-#ifdef CCSP_COMMON
     g_monitor_module.csi_sched_id = 0;
     g_monitor_module.csi_sched_interval = 0;
     for (i = 0; i < getTotalNumberVAPs(); i++) {
@@ -2816,36 +2751,25 @@ int init_wifi_monitor()
         g_monitor_module.clientdiag_sched_arg[i] = vap_index;
         g_monitor_module.clientdiag_sched_interval[i] = 0;
     }
-#endif // CCSP_COMMON
 
-#ifdef CCSP_COMMON
     scheduler_telemetry_tasks();
-#else
-    //RADIO_STATS_INTERVAL - 30 seconds
-    scheduler_add_timer_task(g_monitor_module.sched, FALSE, &g_monitor_module.radio_diagnostics_id, radio_diagnostics, NULL,
-        RADIO_STATS_INTERVAL_MS, 0, FALSE);
-#endif // CCSP_COMMON
 
-#ifdef CCSP_COMMON
     pthread_mutex_init(&g_events_monitor.lock, NULL);
     g_events_monitor.csi_pinger_map = hash_map_create();
     if (g_events_monitor.csi_pinger_map == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d NULL pinger map\n", __func__, __LINE__);
         return -1;
     }
-#endif // CCSP_COMMON
 
     g_monitor_module.exit_monitor = false;
     /* Initializing the lock for active measurement g_active_msmt.lock */
 
-#if CCSP_COMMON
     wifi_hal_newApAssociatedDevice_callback_register(device_associated);
     wifi_vapstatus_callback_register(vapstatus_callback);
     wifi_hal_apDeAuthEvent_callback_register(device_deauthenticated);
     wifi_hal_apDisassociatedDevice_callback_register(device_disassociated);
     wifi_hal_radius_eap_failure_callback_register(radius_eap_failure_callback);
     scheduler_add_timer_task(g_monitor_module.sched, FALSE, NULL, refresh_assoc_frame_entry, NULL, (MAX_ASSOC_FRAME_REFRESH_PERIOD * 1000), 0, FALSE);
-#endif // CCSP_COMMON
 
     wifi_util_dbg_print(WIFI_MON, "%s:%d Wi-Fi monitor is initialized successfully\n", __func__, __LINE__);
 
@@ -2856,11 +2780,9 @@ int start_wifi_monitor ()
 {
     unsigned int i;
     UINT vap_index, radio;
-#ifdef CCSP_COMMON
     //ONEWIFI To avoid the st
         //Cleanup all CSI clients configured in driver
     unsigned char def_mac[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-#endif // CCSP_COMMON
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
     onewifi_pktgen_uninit();
@@ -2879,11 +2801,9 @@ int start_wifi_monitor ()
             wifi_util_dbg_print(WIFI_MON, "%s:%d vap_bss_info->bssid is %s for vap %d", __func__,__LINE__,to_mac_str(g_monitor_module.bssid_data[i].bssid, mac_str), vap_index);
         }
 
-#ifdef CCSP_COMMON
         //ONEWIFI To avoid the segmentation Fault
         //Cleanup all CSI clients configured in driver
         wifi_enableCSIEngine(vap_index, def_mac, FALSE);
-#endif // CCSP_COMMON
     }
 
     pthread_attr_t attr;
@@ -2905,7 +2825,6 @@ int start_wifi_monitor ()
     if(attrp != NULL)
         pthread_attr_destroy( attrp );
 
-#ifdef CCSP_COMMON
     g_monitor_module.sysevent_fd = sysevent_open("127.0.0.1", SE_SERVER_WELL_KNOWN_PORT, SE_VERSION, "wifiMonitor", &g_monitor_module.sysevent_token);
     if (g_monitor_module.sysevent_fd < 0) {
         wifi_util_error_print(WIFI_MON, "%s:%d: Failed to open sysevent\n", __func__, __LINE__);
@@ -2916,7 +2835,6 @@ int start_wifi_monitor ()
         //wifi_util_dbg_print(WIFI_MON, "%s:%d: Failed to initialize paroduc task\n", __func__, __LINE__);
 
     }
-#endif // CCSP_COMMON
 
     return 0;
 }
@@ -2932,16 +2850,13 @@ void deinit_wifi_monitor()
        wbm_mqttcm_stop();
     }
 #endif
-#ifdef CCSP_COMMON
     csi_pinger_data_t *pinger_data = NULL, *tmp_pinger_data = NULL;
     mac_addr_str_t mac_str = { 0 };
     sysevent_close(g_monitor_module.sysevent_fd, g_monitor_module.sysevent_token);
-#endif // CCSP_COMMON
     if(g_monitor_module.queue != NULL)
         queue_destroy(g_monitor_module.queue);
 
     scheduler_deinit(&(g_monitor_module.sched));
-#ifdef CCSP_COMMON
     if(g_events_monitor.csi_pinger_map != NULL) {
         pinger_data = hash_map_get_first(g_events_monitor.csi_pinger_map);
         while (pinger_data != NULL) {
@@ -2956,7 +2871,6 @@ void deinit_wifi_monitor()
         hash_map_destroy(g_events_monitor.csi_pinger_map);
     }
     pthread_mutex_destroy(&g_events_monitor.lock);
-#endif // CCSP_COMMON
 
     collector_list = coordinator_get_collector_list();
 
@@ -2986,7 +2900,6 @@ void deinit_wifi_monitor()
     /* destory the active measurement g_active_msmt.lock */
 }
 
-#ifdef CCSP_COMMON
 char* GetInstAssocDevSchemaIdBuffer()
 {
     return instSchemaIdBuffer;
@@ -3001,9 +2914,7 @@ int GetInstAssocDevSchemaIdBufferSize()
 
     return len;
 }
-#endif // CCSP_COMMON 
 
-#ifdef CCSP_COMMON
 /* This function returns the system uptime at the time of init */
 long get_sys_uptime()
 {
@@ -3049,7 +2960,6 @@ long get_sys_uptime()
 
      return atoi(buff);
 }
-#endif // CCSP_COMMON
 
 wifi_monitor_t *get_wifi_monitor()
 {
@@ -3085,7 +2995,6 @@ int isVapEnabled (int wlanIndex)
     return 0;
 }
 
-#ifdef CCSP_COMMON
 sta_data_t *get_stats_for_sta(unsigned int apIndex, mac_addr_t mac)
 {
     sta_data_t  *sta;
@@ -3109,7 +3018,6 @@ sta_data_t *get_stats_for_sta(unsigned int apIndex, mac_addr_t mac)
     pthread_mutex_unlock(&g_monitor_module.data_lock);
     return NULL;
 }
-#endif //CCSP_COMMON
 
 int get_dev_stats_for_radio(unsigned int radio_index, radio_data_t *radio_stats)
 {
@@ -3123,7 +3031,6 @@ int get_dev_stats_for_radio(unsigned int radio_index, radio_data_t *radio_stats)
     return RETURN_ERR;
 }
 
-#ifdef CCSP_COMMON
 int get_radio_channel_utilization(unsigned int radio_index, int *chan_util)
 {
     int ret = RETURN_ERR;
@@ -3137,7 +3044,6 @@ int get_radio_channel_utilization(unsigned int radio_index, int *chan_util)
 
     return ret;
 }
-#endif // CCSP_COMMON
 
 int coordinator_calculate_clctr_interval(wifi_mon_collector_element_t *collector_elem, wifi_mon_provider_element_t *new_provider_elem , unsigned long *new_interval)
 {

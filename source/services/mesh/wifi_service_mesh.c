@@ -855,9 +855,7 @@ void ext_try_connecting(wifi_service_node_t *node)
         scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_conn_status_ind_timeout_handler_id,
             process_ext_connect_event_timeout, node, EXT_CONN_STATUS_IND_TIMEOUT, 1, FALSE);
 
-#if CCSP_COMMON
         apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_command, wifi_event_type_sta_connect_in_progress, candidate);
-#endif // CCSP_COMMON
     } else {
         ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
         scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,

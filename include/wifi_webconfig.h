@@ -153,9 +153,7 @@ typedef enum {
 #if DML_SUPPORT
     webconfig_initializer_dml,
 #endif
-#if CCSP_COMMON
     webconfig_initializer_wifievents,
-#endif
     webconfig_initializer_cci,
     webconfig_initializer_max
 } webconfig_initializer_t;

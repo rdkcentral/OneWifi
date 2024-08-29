@@ -17,11 +17,9 @@
   limitations under the License.
  **************************************************************************/
 
-#ifdef CCSP_COMMON
 #include <telemetry_busmessage_sender.h>
 #include "cosa_wifi_apis.h"
 #include "ccsp_psm_helper.h"
-#endif // CCSP_COMMON
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -43,7 +41,6 @@
 #include <sys/un.h>
 #include <assert.h>
 #include <limits.h>
-#ifdef CCSP_COMMON
 #include "ansc_status.h"
 #include <sysevent/sysevent.h>
 #include "ccsp_base_api.h"
@@ -51,7 +48,6 @@
 #include "ccsp_trace.h"
 #include "safec_lib_common.h"
 #include "ccsp_WifiLog_wrapper.h"
-#endif // CCSP_COMMON
 #include "secure_wrapper.h"
 
 #ifndef  UNREFERENCED_PARAMETER

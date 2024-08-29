@@ -3943,12 +3943,6 @@ static webconfig_error_t set_deleted_entries_to_default(webconfig_subdoc_data_t 
             rdk_vap = &radio->vaps.rdk_vap_array[vap_arr_index];
             memcpy(vap, default_vap, sizeof(wifi_vap_info_t));
 
-#ifndef CCSP_COMMON // If a VAP row is deleted POD interface MUST be disabled. 
-            if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == TRUE) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Setting STA VAP state to false [%s]\n", __func__, __LINE__,vap->vap_name);
-                vap->u.sta_info.enabled = false;
-            }
-#endif
             radio->vaps.vap_map.num_vaps = default_radio->vaps.vap_map.num_vaps;
             rdk_vap->exists = false;
             *presence_mask  |= (1 << missing_vap_index);

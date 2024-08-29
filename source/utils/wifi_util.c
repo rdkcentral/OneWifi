@@ -3341,7 +3341,6 @@ int wifi_radio_operationParam_validation(wifi_hal_capability_t  *hal_cap, wifi_r
     radiocap = &hal_cap->wifi_prop.radiocap[radio_index];
 
 // TODO: remove #if after reading channel width from driver to hal-wrapper is fixed
-#if CCSP_COMMON
     // Channelwidth check from the capability
     // TODO: now channelWidth[band_arr_index] = 0xf which is lower than 0x20 for 320MHz mask!!!
     // temporary make exclusion for 6g band to allow us to set 320MHz for test purpouses
@@ -3354,7 +3353,6 @@ int wifi_radio_operationParam_validation(wifi_hal_capability_t  *hal_cap, wifi_r
                 __func__, __LINE__, oper->channelWidth, radio_index, radiocap->channelWidth[band_arr_index]);
         return RETURN_ERR;
     }
-#endif
 
     /* Channel validation
      * Objective: Check whether the target channel is supported by the  driver (using hal capability).

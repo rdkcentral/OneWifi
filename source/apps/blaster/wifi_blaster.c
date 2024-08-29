@@ -16,11 +16,9 @@
   See the License for the specific language governing permissions and
   limitations under the License.
  **************************************************************************/
-#ifdef CCSP_COMMON
 #include <telemetry_busmessage_sender.h>
 #include "cosa_wifi_apis.h"
 #include "ccsp_psm_helper.h"
-#endif // CCSP_COMMON
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -45,7 +43,6 @@
 #include <sys/un.h>
 #include <assert.h>
 #include <limits.h>
-#ifdef CCSP_COMMON
 #include "ansc_status.h"
 #include <sysevent/sysevent.h>
 #include "ccsp_base_api.h"
@@ -54,12 +51,10 @@
 #include "ccsp_trace.h"
 #include "safec_lib_common.h"
 #include "ccsp_WifiLog_wrapper.h"
-#endif // CCSP_COMMON
 #include <sched.h>
 #include "scheduler.h"
 #include "wifi_apps_mgr.h"
 
-#ifdef CCSP_COMMON
 #include <netinet/tcp.h>    //Provides declarations for tcp header
 #include <netinet/ip.h> //Provides declarations for ip header
 #include <arpa/inet.h> // inet_addr
@@ -79,7 +74,6 @@
 #include <netinet/ip6.h>
 #include "wifi_events.h"
 #include "common/ieee802_11_defs.h"
-#endif // CCSP_COMMON
 #include "const.h"
 #include "pktgen.h"
 
@@ -104,10 +98,6 @@ void calculate_throughput();
 #define WIFI_BLASTER_CPU_THRESHOLD     90   // percentage
 #define WIFI_BLASTER_MEM_THRESHOLD     8096 // Kb
 #define WIFI_BLASTER_CPU_CALC_PERIOD   1    // seconds
-
-#ifndef CCSP_COMMON
-#define WIFI_BLASTER_WAKEUP_LIMIT 2
-#endif // CCSP_COMMON
 
 #define blaster_app_sample_blaster 10
 #define LINUX_PROC_MEMINFO_FILE  "/proc/meminfo"
@@ -286,7 +276,6 @@ static void active_msmt_log_message( blaster_log_level_t level,char *fmt, ...)
     vsnprintf(msg, sizeof(msg), fmt, args);
     va_end(args);
 
-#ifdef CCSP_COMMON
 switch(level){
     case BLASTER_INFO_LOG:
         CcspTraceInfo((msg));
@@ -297,7 +286,6 @@ switch(level){
     default:
         break;
 }
-#endif // CCSP_COMMON
 
     wifi_util_dbg_print(WIFI_BLASTER, msg);
 }
@@ -1928,11 +1916,6 @@ static void sample_blaster(wifi_provider_response_t *provider_response)
     unsigned int *SampleCount = get_sample_count();
     wifi_apps_mgr_t *apps_mgr;
     wifi_app_t *wifi_app =  NULL;
-#ifndef CCSP_COMMON
-    int sleep_mode = 0;
-    int wakeup_cnt = 0;
-    unsigned long prevSentAck = 0;
-#endif
 
     apps_mgr = &ctrl->apps_mgr;
     if (apps_mgr == NULL){
@@ -1966,9 +1949,7 @@ static void sample_blaster(wifi_provider_response_t *provider_response)
 
 if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
 
-#ifdef CCSP_COMMON
     active_msmt_log_message(BLASTER_DEBUG_LOG, "%s : %d WIFI_HAL enabled, calling wifi_getApAssociatedClientDiagnosticResult\n",__func__,__LINE__);
-#endif // CCSP_COMMON
 
     if (radio_index != RETURN_ERR) {
         wifi_util_error_print(WIFI_BLASTER, "%s: bmac is %02x:%02x:%02x:%02x:%02x:%02x\n", __func__, bmac[0], bmac[1], bmac[2], bmac[3], bmac[4], bmac[5]);
@@ -1980,30 +1961,12 @@ if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
                 is_associated = true;
                 dev_conn = &assoc_stats[count].dev_stats;
                 g_active_msmt->reponse_received = TRUE;
-#ifndef CCSP_COMMON
-                sleep_mode = assoc_stats[count].sleep_mode;
-#endif //CCSP_COMMON
                 wifi_util_error_print(WIFI_BLASTER, "%s: bmac is %02x:%02x:%02x:%02x:%02x:%02x found \n", __func__, bmac[0], bmac[1], bmac[2], bmac[3], bmac[4], bmac[5]);
                 break;
             }
         }
         if(is_associated){
             is_associated = false;
-#ifndef CCSP_COMMON
-            if (sleep_mode && (prevSentAck == dev_conn->cli_DataFramesSentAck) && wakeup_cnt < WIFI_BLASTER_WAKEUP_LIMIT) {
-                wakeup_cnt++;
-            } else if (sleep_mode && wakeup_cnt >= WIFI_BLASTER_WAKEUP_LIMIT) {
-                snprintf(msg, sizeof(msg), "The client is in sleeping mode");
-
-                SetActiveMsmtStatus(__func__, ACTIVE_MSMT_STATUS_SLEEP_CLIENT);
-                active_msmt_set_status_desc(__func__, g_active_msmt->active_msmt.PlanId, step->StepId, step->DestMac, msg);
-                active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d %s\n", __func__, __LINE__, msg);
-                g_active_msmt->num_res_count++;
-                return;
-            }
-
-            prevSentAck = dev_conn->cli_DataFramesSentAck;
-#endif // CCSP_COMMON
 
             if (wifi_app->data.u.blaster.frameCountSample == NULL) {
                 wifi_util_error_print(WIFI_BLASTER, "%s:%d Framecount sample is NULL \n", __func__, __LINE__);
@@ -2017,13 +1980,9 @@ if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
             g_active_msmt->active_msmt_data[*SampleCount].TxPhyRate = dev_conn->cli_LastDataDownlinkRate;
             g_active_msmt->active_msmt_data[*SampleCount].RxPhyRate = dev_conn->cli_LastDataUplinkRate;
             g_active_msmt->active_msmt_data[*SampleCount].SNR = dev_conn->cli_SNR;
-#ifdef CCSP_COMMON
             g_active_msmt->active_msmt_data[*SampleCount].ReTransmission = dev_conn->cli_Retransmissions;
             g_active_msmt->active_msmt_data[*SampleCount].MaxTxRate = dev_conn->cli_MaxDownlinkRate;
             g_active_msmt->active_msmt_data[*SampleCount].MaxRxRate = dev_conn->cli_MaxUplinkRate;
-#else
-            g_active_msmt->active_msmt_data[*SampleCount].RetransCount = dev_conn->cli_RetransCount;
-#endif // CCSP_COMMON
 #if defined (_PP203X_PRODUCT_REQ_)
             if (radioOperation != NULL) {
                 convert_channel_width_to_str(radioOperation->channelWidth, g_active_msmt->active_msmt_data[*SampleCount].Operating_channelwidth, OPER_BUFFER_LEN);
@@ -2039,9 +1998,7 @@ if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
 #endif //_PP203X_PRODUCT_REQ_
 
             (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentAck = dev_conn->cli_DataFramesSentAck;
-#ifdef CCSP_COMMON
             (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentTotal = dev_conn->cli_PacketsSent + dev_conn->cli_DataFramesSentNoAck;
-#endif // CCSP_COMMON
 
             wifi_util_dbg_print(WIFI_BLASTER,"samplecount[%d] : PacketsSentAck[%lu] PacketsSentTotal[%lu]"
                     " WaitAndLatencyInMs[%d ms] RSSI[%d] TxRate[%lu Mbps] RxRate[%lu Mbps] SNR[%d]"
@@ -2066,12 +2023,8 @@ if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
                     active_msmt_set_status_desc(__func__, g_active_msmt->active_msmt.PlanId, step->StepId, step->DestMac, msg);
                 }
 
-#ifdef CCSP_COMMON
                 active_msmt_log_message(BLASTER_DEBUG_LOG, "%s : %d Unable to get provider response for : %s\n",__func__,__LINE__,g_active_msmt->curStepData.DestMac);
                 (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentTotal = 0;
-#else
-                wifi_util_dbg_print(WIFI_BLASTER,"%s:%d ow_mesh_ext_get_device_stats failed for mac:%s\n",__func__,__LINE__,g_active_msmt->curStepData.DestMac);
-#endif // CCSP_COMMON
                 (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentAck = 0;
                 (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].WaitAndLatencyInMs = 0;
                 g_active_msmt->num_res_count++;
@@ -2079,9 +2032,7 @@ if ( *SampleCount <= (GetActiveMsmtNumberOfSamples())) {
             }
         } else {
             active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d radio_index is invalid. So, client is treated as offline\n",__func__, __LINE__);
-#ifdef CCSP_COMMON
             (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentTotal = 0;
-#endif // CCSP_COMMON
             (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].PacketsSentAck = 0;
             (wifi_app->data.u.blaster.frameCountSample)[*SampleCount].WaitAndLatencyInMs = 0;
             strncpy(g_active_msmt->active_msmt_data[*SampleCount].Operating_standard, "NULL",OPER_BUFFER_LEN);
@@ -2133,10 +2084,8 @@ void calculate_throughput()
         return;
     }
 
-#ifdef CCSP_COMMON
     unsigned long DiffsamplesAck = 0, Diffsamples = 0, TotalAckSamples = 0, TotalSamples = 0;
     double  tp = 0, AckRate = 0, AckSum = 0, Rate = 0, AvgAckThroughput = 0;
-#endif // CCSP_COMMON
 
     int index = g_active_msmt->curStepData.ApIndex;
     int radio_index = get_radio_index_for_vap_index(&(get_wifimgr_obj())->hal_cap.wifi_prop, index);
@@ -2150,7 +2099,6 @@ void calculate_throughput()
 #endif
 
     wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: calculating the throughput\n", __func__, __LINE__);
-#ifdef CCSP_COMMON
     // Analyze samples and get Throughput
     for (SampleCount = 0; SampleCount < GetActiveMsmtNumberOfSamples() ; SampleCount++) {
         DiffsamplesAck = (wifi_app->data.u.blaster.frameCountSample)[SampleCount+1].PacketsSentAck - (wifi_app->data.u.blaster.frameCountSample)[SampleCount].PacketsSentAck;
@@ -2187,35 +2135,6 @@ void calculate_throughput()
     AvgThroughput = Sum/GetActiveMsmtNumberOfSamples();
     active_msmt_log_message(BLASTER_DEBUG_LOG, "\nTotal number of ACK Packets = %lu   Total number of Packets = %lu   Total Duration = %lu ms\n", TotalAckSamples, TotalSamples, totalduration );
     active_msmt_log_message(BLASTER_DEBUG_LOG, "Calculated Average : ACK Packets Throughput[%.2lf Mbps]  Total Packets Throughput[%.2lf Mbps]\n\n", AvgAckThroughput, AvgThroughput );
-#else
-
-    /* Actual count of samples is N+1. MQTT report operates with [1, N+1] samples.
-     * The 0 sample is involved to provide ability to get delta for PacketsSentAck & ReTransmission
-     */
-
-    for (SampleCount = 1; SampleCount < GetActiveMsmtNumberOfSamples() + 1; SampleCount++) {
-        uint64_t bits_diff;
-
-        /* PacketsSentAck could be 0 for few samples due to the sleep mode */
-        if (!(wifi_app->data.u.blaster.frameCountSample)[SampleCount].PacketsSentAck) {
-            continue;
-        }
-
-        bits_diff = ((wifi_app->data.u.blaster.frameCountSample)[SampleCount].PacketsSentAck - (wifi_app->data.u.blaster.frameCountSample)[SampleCount - 1].PacketsSentAck) * 8;
-
-        /* Analytics for MQTT report */
-        g_active_msmt->active_msmt_data[SampleCount - 1].throughput = (bits_diff / 1000.0) / (wifi_app->data.u.blaster.frameCountSample)[SampleCount].WaitAndLatencyInMs;
-        g_active_msmt->active_msmt_data[SampleCount - 1].ReTransmission = g_active_msmt->active_msmt_data[SampleCount].RetransCount -
-            g_active_msmt->active_msmt_data[SampleCount - 1].RetransCount;
-
-        /* Analytics for logs */
-        totalduration += (wifi_app->data.u.blaster.frameCountSample)[SampleCount].WaitAndLatencyInMs;
-        Sum += g_active_msmt->active_msmt_data[SampleCount - 1].throughput;
-    }
-
-    AvgThroughput = Sum / GetActiveMsmtNumberOfSamples();
-    wifi_util_dbg_print(WIFI_BLASTER, "%s:%d Total duration: %lu ms, Avg Throughput: %.2lf Mbps\n", __func__, __LINE__, totalduration, AvgThroughput);
-#endif // CCSP_COMMON
 
     if (onewifi_pktgen_stop_wifi_blast() != RETURN_OK) {
         wifi_util_error_print(WIFI_BLASTER, "%s:%d: Failed to stop pktgen\n", __FUNCTION__, __LINE__);

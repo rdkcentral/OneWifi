@@ -1690,7 +1690,6 @@ rbusError_t events_STAtable_addrowhandler(rbusHandle_t handle, char const* table
     return RBUS_ERROR_SUCCESS;
 }
 
-#ifdef CCSP_COMMON
 static event_rbus_element_t *events_getEventElement(char *eventName)
 {
     int i;
@@ -1710,7 +1709,6 @@ static event_rbus_element_t *events_getEventElement(char *eventName)
     }
     return NULL;
 }
-#endif
 
 rbusError_t eventSubHandler(rbusHandle_t handle, rbusEventSubAction_t action, const char* eventName, rbusFilter_t filter, int32_t interval, bool* autoPublish)
 {
@@ -1722,7 +1720,6 @@ rbusError_t eventSubHandler(rbusHandle_t handle, rbusEventSubAction_t action, co
             __func__, __LINE__, action == RBUS_EVENT_ACTION_SUBSCRIBE ? "subscribe" : "unsubscribe",
             eventName, *autoPublish);
 
-#ifdef CCSP_COMMON
     unsigned int idx = 0;
     int ret = 0;
     event_rbus_element_t *event;
@@ -1872,12 +1869,10 @@ rbusError_t eventSubHandler(rbusHandle_t handle, rbusEventSubAction_t action, co
     }
     pthread_mutex_unlock(&events_rbus_data->events_rbus_lock);
     wifi_util_dbg_print(WIFI_CTRL, "Exit %s: Event %s\n", __FUNCTION__, eventName);
-#endif
 
     return RBUS_ERROR_SUCCESS;
 }
 
-#ifdef CCSP_COMMON
 rbusError_t ap_get_handler(rbusHandle_t handle, rbusProperty_t property, rbusGetHandlerOptions_t* opts)
 {
     UNREFERENCED_PARAMETER(handle);
@@ -2152,11 +2147,9 @@ int events_rbus_publish(wifi_event_t *evt)
 
     return 0;
 }
-#endif
 
 rbusError_t get_client_assoc_request_multi(rbusHandle_t handle, char const* methodName, rbusObject_t inParams, rbusObject_t outParams,rbusMethodAsyncHandle_t asyncHandle)
 {
-#ifdef CCSP_COMMON
     sta_data_t *sta;
     unsigned int vap_index =0;
     frame_data_t   tmp_data;
@@ -2209,11 +2202,9 @@ rbusError_t get_client_assoc_request_multi(rbusHandle_t handle, char const* meth
     rbusObject_Init(&rdata, NULL);
     rbusValue_SetBytes(value, (uint8_t *)l_data,(sizeof(l_data->frame) + l_data->frame.len));
     rbusObject_SetValue(outParams,WIFI_CLIENT_GET_ASSOC_REQ,value);
-#endif
     return RBUS_ERROR_SUCCESS;
 }
 
-#ifdef CCSP_COMMON
 rbusError_t set_force_vap_apply(rbusHandle_t handle, rbusProperty_t property, rbusSetHandlerOptions_t* opts)
 {
     UNREFERENCED_PARAMETER(handle);
@@ -2287,7 +2278,6 @@ rbusError_t set_force_vap_apply(rbusHandle_t handle, rbusProperty_t property, rb
 
     return  RBUS_ERROR_INVALID_INPUT;
 }
-#endif
 
 void rbus_register_handlers(wifi_ctrl_t *ctrl)
 {
@@ -2337,7 +2327,6 @@ void rbus_register_handlers(wifi_ctrl_t *ctrl)
                                 { get_sta_disconnection, set_sta_disconnection, NULL, NULL, NULL, NULL}},
                                 { WIFI_STA_SELFHEAL_CONNECTION_TIMEOUT, RBUS_ELEMENT_TYPE_EVENT,
                                 { get_sta_connection_timeout, NULL, NULL, NULL, NULL, NULL}},
-#ifdef CCSP_COMMON
                                 { WIFI_ACCESSPOINT_TABLE, RBUS_ELEMENT_TYPE_TABLE,
                                 { NULL, NULL, ap_table_addrowhandler, ap_table_removerowhandler,NULL, NULL}},
                                 { WIFI_ACCESSPOINT_DEV_CONNECTED, RBUS_ELEMENT_TYPE_EVENT,
@@ -2350,7 +2339,6 @@ void rbus_register_handlers(wifi_ctrl_t *ctrl)
                                 { ap_get_handler, NULL, NULL, NULL, eventSubHandler, NULL}},
                                 { WIFI_ACCESSPOINT_FORCE_APPLY, RBUS_ELEMENT_TYPE_METHOD,
                                 { NULL, set_force_vap_apply, NULL, NULL, NULL, NULL}},
-#endif
                                 { ACCESSPOINT_ASSOC_REQ_EVENT, RBUS_ELEMENT_TYPE_METHOD,
                                     { NULL, NULL, NULL, NULL, NULL, NULL}},
                                 { WIFI_CLIENT_GET_ASSOC_REQ,RBUS_ELEMENT_TYPE_METHOD,
@@ -2382,14 +2370,12 @@ void rbus_register_handlers(wifi_ctrl_t *ctrl)
         }
     }
 
-#ifdef CCSP_COMMON
     for(index = 1; index <= getTotalNumberVAPs(NULL); index++) {
         rc = rbusTable_addRow(ctrl->rbus_handle, "Device.WiFi.AccessPoint.", NULL, NULL);
         if(rc != RBUS_ERROR_SUCCESS) {
             wifi_util_info_print(WIFI_CTRL, "%s() rbusTable_addRow failed %d\n", __FUNCTION__, rc);
         }
     }
-#endif
 
     wifi_util_info_print(WIFI_CTRL,"%s rbus event register:[%s]:%s\r\n",__FUNCTION__, WIFI_STA_2G_VAP_CONNECT_STATUS, WIFI_STA_5G_VAP_CONNECT_STATUS);
 

@@ -16,11 +16,9 @@
   See the License for the specific language governing permissions and
   limitations under the License.
  **************************************************************************/
-#ifdef CCSP_COMMON
 #include <telemetry_busmessage_sender.h>
 #include "cosa_wifi_apis.h"
 #include "ccsp_psm_helper.h"
-#endif // CCSP_COMMON
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>

@@ -132,37 +132,29 @@ typedef struct {
     int last_scanned_channel[MAX_NUM_RADIOS];
     int scan_status[MAX_NUM_RADIOS];
     int scan_results_retries[MAX_NUM_RADIOS];
-#ifdef CCSP_COMMON
     unsigned int        upload_period;
     unsigned int        current_poll_iter;
     instant_msmt_t      inst_msmt;
-#endif // CCSP_COMMON
     struct timespec     last_signalled_time;
     rssi_t              sta_health_rssi_threshold;
-#ifdef CCSP_COMMON
     struct timespec     last_polled_time;
     int                 sysevent_fd;
     unsigned int        sysevent_token;
     ap_params_t         ap_params[MAX_VAP];
     char                cliStatsList[MAX_VAP];
-#endif // CCSP_COMMON
     struct scheduler *sched;
-#ifdef CCSP_COMMON
     int client_telemetry_id;
     int client_debug_id;
     int inst_msmt_id;
     int curr_chan_util_period;
     int refresh_task_id;
     int vap_status_id;
-#endif // CCSP_COMMON
     int radio_diagnostics_id;
-#ifdef CCSP_COMMON
     int clientdiag_id[MAX_VAP];
     int clientdiag_sched_arg[MAX_VAP];
     unsigned int clientdiag_sched_interval[MAX_VAP];
     int csi_sched_id;
     unsigned int csi_sched_interval;
-#endif // CCSP_COMMON
     bool radio_presence[MAX_NUM_RADIOS];
     bool is_blaster_running;
 } wifi_monitor_t;
@@ -175,7 +167,6 @@ typedef struct {
     long             client_ip_age;
 } csi_pinger_data_t;
 
-#ifdef CCSP_COMMON
 typedef struct {
     unsigned int        interval;
     struct timeval      last_publish_time;
@@ -213,7 +204,6 @@ unsigned int GetINSTDefReportingPeriod();
 int get_dev_stats_for_radio(unsigned int radio_index, radio_data_t *radio_stats);
 int get_radio_channel_utilization(unsigned int radio_index, int *chan_util);
 sta_data_t *get_stats_for_sta(unsigned int apIndex, mac_addr_t mac);
-#endif // CCSP_COMMON
 
 wifi_monitor_t *get_wifi_monitor ();
 char *get_formatted_time(char *time);

@@ -489,9 +489,7 @@ int process_udhcp_ip_check(vap_svc_t *svc)
         ext->ext_udhcp_ip_check_id = 0;
         ip_check_count = 0;
         wifi_util_error_print(WIFI_CTRL,"%s:%d No IP on connected interface triggering a disconnect\n", __func__, __LINE__);
-#if CCSP_COMMON
         apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_command, wifi_event_type_udhcp_ip_fail, ext);
-#endif
         ext->disconn_retry++;
         wifi_util_info_print(WIFI_CTRL, "%s:%d execute sta disconnect for vap index: %d\n",
             __func__, __LINE__, ext->connected_vap_index);
@@ -841,9 +839,7 @@ void ext_try_connecting(vap_svc_t *svc)
         scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_conn_status_ind_timeout_handler_id,
             process_ext_connect_event_timeout, svc, EXT_CONN_STATUS_IND_TIMEOUT, 1, FALSE);
 
-#if CCSP_COMMON
         apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_command, wifi_event_type_sta_connect_in_progress, candidate);
-#endif // CCSP_COMMON
     } else {
         ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
         scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,

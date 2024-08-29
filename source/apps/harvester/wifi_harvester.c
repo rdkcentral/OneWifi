@@ -16,12 +16,10 @@
   See the License for the specific language governing permissions and
   limitations under the License.
  **************************************************************************/
-#ifdef CCSP_COMMON
 #include <telemetry_busmessage_sender.h>
 #include "cosa_wifi_apis.h"
 #include "ccsp_psm_helper.h"
 #include <avro.h>
-#endif // CCSP_COMMON
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -44,7 +42,6 @@
 #include <limits.h>
 #include <uuid/uuid.h>
 #include "wifi_webconfig.h"
-#ifdef CCSP_COMMON
 #include "ansc_status.h"
 #include <sysevent/sysevent.h>
 #include "ccsp_base_api.h"
@@ -53,15 +50,12 @@
 #include "safec_lib_common.h"
 #include "ccsp_WifiLog_wrapper.h"
 #include "platform-logger.h"
-#endif // CCSP_COMMON
 
-#ifdef CCSP_COMMON
 typedef enum {
     single_client_msmt_type_all,
     single_client_msmt_type_all_per_bssid,
     single_client_msmt_type_one,
 } single_client_msmt_type_t;
-#endif // CCSP_COMMON
 
 void process_instant_msmt_stop();
 static wifi_harvester_t g_harvester_module;
@@ -167,7 +161,6 @@ static int push_harvester_config_event_to_monitor_queue(wifi_mon_stats_request_s
     return RETURN_OK;
 }
 
-#ifdef CCSP_COMMON
 
 void upload_single_client_msmt_data(sta_data_t *sta_info)
 {
@@ -733,7 +726,6 @@ void process_instant_msmt_start()
         data = NULL;
     }
 }
-#endif // CCSP_COMMON
 
 void monitor_enable_instant_msmt(mac_address_t sta_mac, bool enable)
 {

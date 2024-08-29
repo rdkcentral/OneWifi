@@ -31,10 +31,8 @@ AM_CFLAGS += -D_ANSC_LITTLE_ENDIAN_
 endif
 
 AM_LDFLAGS =  -L$(top_builddir)/../hal/lib
-if CCSP_COMMON_SUPPORT
 if !HAL_IPC
 AM_LDFLAGS += -lhal_wifi
-endif
 endif
 AM_LDFLAGS += -lwebconfig_framework
 AM_LDFLAGS += -lsecure_wrapper
@@ -49,13 +47,9 @@ if WITH_LIBWEBCONFIG
 AM_LDFLAGS += -L$(top_builddir)/source/webconfig/
 endif
 AM_LDFLAGS += -lwifi_webconfig
-if CCSP_COMMON_SUPPORT
 AM_LDFLAGS += -L$(top_builddir)/../CcspCommonLibrary/lib
 AM_LDFLAGS += -lccsp_common
 AM_LDFLAGS += -lrdk_wifihal
-else
-AM_LDFLAGS += -lcjson
-endif
 
 AM_CPPFLAGS = -Wall -Werror
 
@@ -73,7 +67,6 @@ endif
 
 OneWifi_CFLAGS =  $(SYSTEMD_CFLAGS)
 OneWifi_CFLAGS += $(DML_ENABLE_FLAG)
-OneWifi_CFLAGS += $(CCSP_COMMON_FLAG)
 OneWifi_CFLAGS += $(JOURNALCTL_ENABLE_FLAG)
 OneWifi_CFLAGS += $(SM_APP_FLAG)
 OneWifi_CFLAGS += -I${PKG_CONFIG_SYSROOT_DIR}/usr/include/protobuf-c
@@ -84,23 +77,17 @@ OneWifi_SOURCES += $(top_srcdir)/source/db/wifi_db.c $(top_srcdir)/source/db/wif
 
 OneWifi_SOURCES += $(top_srcdir)/source/core/services/vap_svc.c  $(top_srcdir)/source/core/services/vap_svc_mesh_gw.c $(top_srcdir)/source/core/services/vap_svc_private.c $(top_srcdir)/source/core/services/vap_svc_public.c $(top_srcdir)/source/core/wifi_events.c
 
-if CCSP_COMMON_SUPPORT
 OneWifi_SOURCES += $(top_srcdir)/source/core/services/vap_svc_mesh_ext.c
-endif
 
 OneWifi_SOURCES += $(top_srcdir)/source/utils/jsonconv.c $(top_srcdir)/source/utils/collection.c $(top_srcdir)/source/utils/scheduler.c $(top_srcdir)/source/utils/caps.c
 OneWifi_SOURCES += $(top_srcdir)/source/stats/wifi_monitor.c $(top_srcdir)/source/utils/ext_blaster.pb-c.c $(top_srcdir)/source/stats/wifi_stats.c $(top_srcdir)/source/stats/wifi_stats_radio_channel.c $(top_srcdir)/source/stats/wifi_stats_neighbor_report.c $(top_srcdir)/source/stats/wifi_stats_radio_diagnostics.c $(top_srcdir)/source/stats/wifi_stats_assoc_client.c $(top_srcdir)/source/stats/wifi_stats_radio_temperature.c
 
 OneWifi_SOURCES += $(top_srcdir)/source/stubs/wifi_stubs.c
 
-if CCSP_COMMON_SUPPORT
 OneWifi_SOURCES += wifi_easy_connect.c
 OneWifi_SOURCES += $(top_srcdir)/source/stats/wifi_associated_devices_msmt.c
 OneWifi_SOURCES += $(top_srcdir)/lib/log/log_journal.c
 OneWifi_SOURCES += $(top_srcdir)/source/apps/wifi_apps.c $(top_srcdir)/source/apps/wifi_apps_mgr.c $(top_srcdir)/source/apps/analytics/wifi_analytics.c $(top_srcdir)/source/apps/levl/wifi_levl.c $(top_srcdir)/source/apps/csi/wifi_csi.c $(top_srcdir)/source/apps/motion/wifi_motion.c $(top_srcdir)/source/apps/whix/wifi_whix.c $(top_srcdir)/source/apps/harvester/wifi_harvester.c  $(top_srcdir)/source/apps/blaster/wifi_blaster.c $(top_srcdir)/source/apps/blaster/wifi_single_client_msmt.c  $(top_srcdir)/source/apps/ocs/wifi_ocs.c
-else
-OneWifi_SOURCES += $(top_srcdir)/source/apps/wifi_apps.c $(top_srcdir)/source/apps/wifi_apps_mgr.c $(top_srcdir)/source/apps/blaster/wifi_blaster.c $(top_srcdir)/source/apps/blaster/wifi_single_client_msmt.c
-endif
 
 if SM_APP_SUPPORT
 OneWifi_SOURCES += $(top_srcdir)/source/apps/sm/wifi_sm.c $(top_srcdir)/source/apps/sm/sm_utils.c $(top_srcdir)/source/apps/sm/sm_report.c $(top_srcdir)/source/apps/sm/sm_client_cache.c $(top_srcdir)/source/apps/sm/sm_client_report.c $(top_srcdir)/source/apps/sm/sm_survey_cache.c $(top_srcdir)/source/apps/sm/sm_survey_report.c $(top_srcdir)/source/apps/sm/sm_neighbor_cache.c $(top_srcdir)/source/apps/sm/sm_neighbor_report.c
@@ -117,19 +104,15 @@ OneWifi_SOURCES += $(top_srcdir)/lib/common/os_time.c $(top_srcdir)/lib/common/u
 
 OneWifi_LDFLAGS = -rdynamic -lwebconfig_framework -lsecure_wrapper $(SYSTEMD_LDFLAGS) -luuid -lsecure_wrapper -lmsgpackc -lcjson  -lm -ljansson -lev -lprotobuf-c -ltrower-base64 
 
-if CCSP_COMMON_SUPPORT
 OneWifi_LDFLAGS += -lccsp_common -lutapi -lsyscfg -lprint_uptime -lsysevent -lrdk_wifihal -lavro
-endif
 
 OneWifi_CPPFLAGS += -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/ -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/ -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/ap -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/utils -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/drivers/ -I$(PKG_CONFIG_SYSROOT_DIR)$(includedir)/qca/qca-wifi/os/linux/include/ -I${PKG_CONFIG_SYSROOT_DIR}${libdir}/ -DEXTERNAL_USE_ONLY
 
 AM_CFLAGS += -DCONFIG_WPS -DCONFIG_IEEE80211R_AP -DCONFIG_IEEE80211R -DCONFIG_ETH_P_OUI -DCONFIG_IEEE80211W
 AM_CFLAGS += -DEAP_SERVER_FAST
 
-if CCSP_COMMON_SUPPORT
 OneWifi_LDFLAGS += -lhostap
 OneWifi_LDFLAGS += -lnl-idiag-3
-endif
 OneWifi_LDFLAGS += -lnl-3
 OneWifi_LDFLAGS += -lnl-genl-3
 OneWifi_LDFLAGS += -lnl-route-3

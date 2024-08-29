@@ -38,9 +38,7 @@
 #ifdef WEBCONFIG_TESTS_OVER_QUEUE
 #include "wifi_webconfig_consumer.h"
 #endif
-#ifdef CCSP_COMMON
 #include "ccsp_WifiLog_wrapper.h"
-#endif
 
 #define OW_CONF_BARRIER_TIMEOUT_MSEC (60 * 1000)
 #define IS_CHANGED(old, new) ((old != new)? wifi_util_dbg_print(WIFI_CTRL,"%s:Changed param %s: [%d] -> [%d].\n",__func__,#old,old,new),1: 0)
@@ -447,9 +445,7 @@ int webconfig_analyze_pending_states(wifi_ctrl_t *ctrl)
             break;
     }
 
-#if CCSP_COMMON
     apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, wifi_event_webconfig_set_status, &type);
-#endif // CCSP_COMMON
 
     return RETURN_OK;
 }
@@ -486,7 +482,6 @@ static bool is_postassoc_cac_config_changed(wifi_vap_info_t *old, wifi_vap_info_
 
 void vap_param_config_changed_event_logging(wifi_vap_info_t *old, wifi_vap_info_t *new,char name[16],wifi_radio_operationParam_t *radio)
 {
-#ifdef CCSP_COMMON
     if (radio->enable) {
         CcspWifiEventTrace(("RDK_LOG_NOTICE,  WiFi radio %s is set to UP\n",name));
         if (new->u.bss_info.enabled) {
@@ -551,10 +546,6 @@ void vap_param_config_changed_event_logging(wifi_vap_info_t *old, wifi_vap_info_
     } else {
           CcspWifiEventTrace(("RDK_LOG_NOTICE, Wifi radio %s is set to DOWN\n",name));
     }
-#else
-    wifi_util_dbg_print(WIFI_CTRL,"%s:%d Not Inside CCSP_COMMON macro. \n",__func__,__LINE__);
-    return;
-#endif
 }
 
 static bool is_vap_param_config_changed(wifi_vap_info_t *old, wifi_vap_info_t *new,
@@ -563,12 +554,6 @@ static bool is_vap_param_config_changed(wifi_vap_info_t *old, wifi_vap_info_t *n
     if (IS_CHANGED(rdk_old->exists, rdk_new->exists)) {
         return true;
     }
-
-#ifndef CCSP_COMMON
-    if ((rdk_old->exists | rdk_new->exists) == false) {
-        return false;
-    }
-#endif // CCSP_COMMON
 
     if (IS_CHANGED(old->vap_index, new->vap_index) ||
             IS_STR_CHANGED(old->vap_name, new->vap_name, sizeof(wifi_vap_name_t)) ||
@@ -587,17 +572,6 @@ static bool is_vap_param_config_changed(wifi_vap_info_t *old, wifi_vap_info_t *n
                 sizeof(wifi_vap_security_t))) {
             return true;
         }
-#ifndef CCSP_COMMON
-        char old_bssid_str[32], new_bssid_str[32];
-
-        if (memcmp(old->u.sta_info.bssid, new->u.sta_info.bssid, sizeof(bssid_t)) != 0) {
-            uint8_mac_to_string_mac(old->u.sta_info.bssid, old_bssid_str);
-            uint8_mac_to_string_mac(new->u.sta_info.bssid, new_bssid_str);
-            wifi_util_info_print(WIFI_CTRL, "%s:%d: mesh sta bssid changed [%s] -> [%s]\n", __func__,
-        __LINE__, old_bssid_str, new_bssid_str);
-            return true;
-        }
-#endif
     } else {
         // Ignore bssid change to avoid reconfiguration and disconnection
         if (IS_STR_CHANGED(old->u.bss_info.ssid, new->u.bss_info.ssid,
@@ -648,7 +622,6 @@ static bool is_vap_param_config_changed(wifi_vap_info_t *old, wifi_vap_info_t *n
     return false;
 }
 
-#ifdef CCSP_COMMON
 static void webconfig_send_sta_bssid_change_event(wifi_ctrl_t *ctrl, wifi_vap_info_t *old,
     wifi_vap_info_t *new)
 {
@@ -674,7 +647,6 @@ static void webconfig_send_sta_bssid_change_event(wifi_ctrl_t *ctrl, wifi_vap_in
     ext_svc->event_fn(ext_svc, wifi_event_type_webconfig, wifi_event_webconfig_set_data_sta_bssid,
         vap_svc_event_none, new);
 }
-#endif
 
 //We need to know that config applied due to force apply
 bool is_force_apply_true(rdk_wifi_vap_info_t *rdk_vap_info) {
@@ -701,10 +673,8 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
     wifi_vap_info_map_t *mgr_vap_map, *p_tgt_vap_map = NULL;
     bool found_target = false;
     wifi_mgr_t *mgr = get_wifimgr_obj();
-#if CCSP_COMMON
     char update_status[128];
     public_vaps_data_t pub;
-#endif // CCSP_COMMON
     rdk_wifi_vap_info_t *mgr_rdk_vap_info, *rdk_vap_info;
     rdk_wifi_vap_info_t tgt_rdk_vap_info;
     int ret = 0;
@@ -779,7 +749,6 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
 
         found_target = false;
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Found vap map source and target for vap name: %s\n", __func__, __LINE__, vap_info->vap_name);
-#if CCSP_COMMON
         // STA BSSID change is handled by event to avoid disconnection.
         webconfig_send_sta_bssid_change_event(ctrl, mgr_vap_info, vap_info);
 
@@ -789,7 +758,6 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
         if (ctrl->network_mode == rdk_dev_mode_type_ext && isVapSTAMesh(tgt_vap_index)) {
             mgr_rdk_vap_info->exists = rdk_vap_info->exists;
         }
-#endif
 
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Comparing VAP [%s] with [%s]. \n",__func__, __LINE__,mgr_vap_info->vap_name,vap_info->vap_name);
         if (is_vap_param_config_changed(mgr_vap_info, vap_info, mgr_rdk_vap_info, rdk_vap_info,
@@ -841,7 +809,6 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
                 return RETURN_ERR;
             }
 
-#if CCSP_COMMON
             memset(update_status, 0, sizeof(update_status));
             snprintf(update_status, sizeof(update_status), "%s %s", vap_names[i], (ret == RETURN_OK)?"success":"fail");
             apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, wifi_event_webconfig_hal_result, update_status);
@@ -855,7 +822,6 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
                        vap_svc_event_none, &pub);
                 }
             }
-#endif // CCSP_COMMON
             /* XXX: This memcpy should be deleted later. Mgr's cache should be
              * updated only from WifiDb callbacks (see update_fn).
              *
@@ -1672,15 +1638,10 @@ void ecomode_telemetry_update_and_reboot(unsigned int index, bool active)
 
 void radio_param_config_changed_event_logging(wifi_radio_operationParam_t *old , wifi_radio_operationParam_t *new,char name[16])
 {
-#ifdef CCSP_COMMON
     if(IS_CHANGED(old->enable,new->enable))
     {
         CcspWifiEventTrace(("RDK_LOG_NOTICE, Wifi radio %s is set to %s\n",name,((new->enable==1)?"UP":"DOWN")));
     }
-#else
-    wifi_util_dbg_print(WIFI_CTRL,"%s:%d Not Inside CCSP_COMMON Macro. \n",__func__,__LINE__);
-    return;
-#endif
 }
 
 int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
@@ -1738,7 +1699,6 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
             print_wifi_hal_radio_data(WIFI_WEBCONFIG, "New", i, &radio_data->oper);
 
 // Optimizer will try to change, channel on current STA along with parent change, So it shouldn't skip for pods. 
-#ifdef CCSP_COMMON
             if (ctrl->network_mode == rdk_dev_mode_type_ext) {
                 vap_svc_t *ext_svc;
                 ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
@@ -1756,7 +1716,6 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
                     }
                 }
             }
-#endif // CCSP_COMMON
 #if defined (FEATURE_SUPPORT_ECOPOWERDOWN)
             // Save the ECO mode state before update to the DB
             old_ecomode = mgr_radio_data->oper.EcoPowerDown;
@@ -1833,19 +1792,15 @@ int push_data_to_apply_pending_queue(webconfig_subdoc_data_t *data)
     memcpy(temp_data, data, sizeof(webconfig_subdoc_data_t));
     temp_data->u.encoded.raw = strdup(data->u.encoded.raw);
     queue_push(ctrl->vif_apply_pending_queue, temp_data);
-#if CCSP_COMMON
     apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, wifi_event_webconfig_data_to_apply_pending_queue, data);
-#endif // CCSP_COMMON
 
     return RETURN_OK;
 }
 
 void webconfig_analytic_event_data_to_hal_apply(webconfig_subdoc_data_t *data)
 {
-#if CCSP_COMMON
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, wifi_event_webconfig_data_to_hal_apply, data);
-#endif // CCSP_COMMON
     return;
 }
 
@@ -1899,10 +1854,8 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                     ret = webconfig_hal_private_vap_apply(ctrl, &data->u.decoded);
                 }
             }
-#if CCSP_COMMON
             //This is for captive_portal_check for private SSID when defaults modified
             captive_portal_check();
-#endif
             break;
 
         case webconfig_subdoc_type_home:

@@ -43,11 +43,9 @@ AM_LDFLAGS += -lpthread
 AM_LDFLAGS += -ldl
 AM_LDFLAGS += -ljansson
 AM_LDFLAGS += -lrt
-if CCSP_COMMON_SUPPORT
 AM_LDFLAGS += -L$(top_builddir)/../CcspCommonLibrary/lib
 AM_LDFLAGS += -lccsp_common
 AM_LDFLAGS += -lrdk_wifihal
-endif
 
 AM_CPPFLAGS = -Wall -Werror
 ACLOCAL_AMFLAGS = -I m4
@@ -59,21 +57,17 @@ libwifi_utils_la_CPPFLAGS = -I/var/tmp/pc-rdkb/include/dbus-1.0 -I$(top_srcdir)/
 
 libwifi_utils_la_CFLAGS =  $(SYSTEMD_CFLAGS)
 libwifi_utils_la_CFLAGS += $(DML_ENABLE_FLAG)
-libwifi_utils_la_CFLAGS += $(CCSP_COMMON_FLAG)
 libwifi_utils_la_SOURCES = wifi_validator.c
 libwifi_utils_la_SOURCES += ext_blaster.pb-c.c
 
 
 libwifi_utils_la_LDFLAGS = -rdynamic -lwebconfig_framework -lsecure_wrapper $(SYSTEMD_LDFLAGS) -lsecure_wrapper -lmsgpackc -lcjson -lm -ljansson -static
 
-if CCSP_COMMON_SUPPORT
 libwifi_utils_la_LDFLAGS += -lccsp_common -lsyscfg -lprint_uptime -lsysevent -lrdk_wifihal
 
 if !HAL_IPC
 libwifi_utils_la_LDFLAGS += -lhal_wifi
 endif
-
-endif #CCSP_COMMON_SUPPORT
 
 libwifi_utils_la_CPPFLAGS += -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/ -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/ -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/ap -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/utils -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/drivers/ -I$(PKG_CONFIG_SYSROOT_DIR)$(includedir)/qca/qca-wifi/os/linux/include/ -I${PKG_CONFIG_SYSROOT_DIR}${libdir}/ -DEXTERNAL_USE_ONLY
 

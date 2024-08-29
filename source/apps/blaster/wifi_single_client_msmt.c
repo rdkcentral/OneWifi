@@ -18,9 +18,7 @@
 
  ****************************************************************************/
 
-#ifdef CCSP_COMMON
 #include <avro.h>
-#endif // CCSP_COMMON
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,9 +29,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <sys/time.h>
-#ifdef CCSP_COMMON
 #include "cosa_apis.h"
-#endif // CCSP_COMMON
 #include "wifi_hal.h"
 #include "collection.h"
 #include "wifi_monitor.h"
@@ -45,14 +41,12 @@
 #ifdef MQTTCM
 #include <mqttcm_lib/mqttcm_conn.h>
 #endif
-#ifdef CCSP_COMMON
 #include "ansc_status.h"
 #include <sysevent/sysevent.h>
 #include "ccsp_base_api.h"
 #include "harvester.h"
 #include "ccsp_WifiLog_wrapper.h"
 #include "ccsp_trace.h"
-#endif // CCSP_COMMON
 #include "platform-logger.h"
 #include "ext_blaster.pb-c.h"
 #include "qm_conn.h"
@@ -68,7 +62,6 @@
 
 // HASH - 4388e585dd7c0d32ac47e71f634b579b
 
-#ifdef CCSP_COMMON
 static void to_plan_id (unsigned char *PlanId, unsigned char Plan[])
 {
     int i=0;
@@ -81,7 +74,6 @@ static void to_plan_id (unsigned char *PlanId, unsigned char Plan[])
         PlanId += 2;
     }
 }
-#endif // CCSP_COMMON
 
 static void to_plan_char(unsigned char *plan, unsigned char *key)
 {
@@ -94,8 +86,6 @@ static void to_plan_char(unsigned char *plan, unsigned char *key)
         plan++;
     }
 }
-
-#ifdef CCSP_COMMON
 
 /* Active Measurement Data values */
 
@@ -120,17 +110,14 @@ uint8_t ACTUUIDVAL[16] = {0x96, 0x67, 0x31, 0x04, 0x5a, 0x8b, 0x49, 0x76,
 #define SCHEMA_ID_LENGTH  32
 #define MAC_KEY_LEN 13
 #define  ARRAY_SZ(x)    (sizeof(x) / sizeof((x)[0]))
-#endif // CCSP_COMMON
 
 #define PLAN_ID_LENGTH_POD 48
 
-#ifdef CCSP_COMMON
 typedef enum {
     single_client_msmt_type_all,
     single_client_msmt_type_all_per_bssid,
     single_client_msmt_type_one,
 } single_client_msmt_type_t;
-#endif // CCSP_COMMON
 
 static char *to_sta_key    (mac_addr_t mac, sta_key_t key) {
     snprintf(key, STA_KEY_LEN, "%02x:%02x:%02x:%02x:%02x:%02x",
@@ -138,7 +125,6 @@ static char *to_sta_key    (mac_addr_t mac, sta_key_t key) {
     return (char *)key;
 }
 extern bool             mqttcm_enabled;
-#ifdef CCSP_COMMON
 static void printBlastMetricData(single_client_msmt_type_t msmtType, wifi_actvie_msmt_t *blaster_stats,
                                 blaster_hashmap_t *staData, bool activeClient, const char *callerFunc)
 {
@@ -263,11 +249,9 @@ static void printBlastMetricData(single_client_msmt_type_t msmtType, wifi_actvie
         }
     }
 }
-#endif // CCSP_COMMON
 
 void upload_single_client_active_msmt_data(blaster_hashmap_t *sta_info)
 {
-#ifdef CCSP_COMMON
     char *telemetry_buf = NULL;
     const char * serviceName = "wifi";
     const char * dest = "event:raw.kestrel.reports.WifiSingleClientActiveMeasurement";
@@ -1137,7 +1121,6 @@ void upload_single_client_active_msmt_data(blaster_hashmap_t *sta_info)
         free(telemetry_buf);
         telemetry_buf = NULL;
     }
-#endif // CCSP_COMMON
 }
 
 typedef struct blaster_report_pb {
@@ -1353,10 +1336,8 @@ static ExtBlaster__WifiBlastResult__RadioMetrics* ExtBlaster_report_radio_struct
     int num_of_samples = GetActiveMsmtNumberOfSamples();
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     bool twoG80211axEnable = false;
-#ifdef CCSP_COMMON
     wifi_rfc_dml_parameters_t *rfc_pcfg = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
     twoG80211axEnable = rfc_pcfg->twoG80211axEnable_rfc;
-#endif // CCSP_COMMON
 
     for (unsigned int radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
         radio_stats[radio_index] = (radio_data_t *) malloc (sizeof(radio_data_t));

@@ -60,7 +60,6 @@ onewifi_component_test_app_LDFLAGS += -lwifi_webconfig
 onewifi_component_test_app_CPPFLAGS += -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/opensync_headers
 
 onewifi_component_test_app_CFLAGS = $(DML_ENABLE_FLAG)
-onewifi_component_test_app_CFLAGS += $(CCSP_COMMON_FLAG)
 onewifi_component_test_app_CFLAGS += $(JOURNALCTL_ENABLE_FLAG)
 
 bin_PROGRAMS += wifi_events_consumer
