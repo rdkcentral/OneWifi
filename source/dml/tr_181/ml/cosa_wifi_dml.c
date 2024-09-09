@@ -863,11 +863,7 @@ WiFi_SetParamBoolValue
 
     if(AnscEqualString(ParamName, "X_CISCO_COM_ResetRadios", TRUE))
     {
-        radio_reset_count++;
-
-        wifi_util_info_print(WIFI_DMCLI,"Restarting OneWifi... \n");
-        v_secure_system("systemctl restart onewifi.service &");
-
+	radio_reset_count++;
         return TRUE;
     }
 
