@@ -1092,9 +1092,11 @@ WiFi_SetParamBoolValue
     }
     if (AnscEqualString(ParamName, "2G80211axEnable", TRUE))
     {
+#ifndef ALWAYS_ENABLE_AX_2G
         if(bValue != rfc_pcfg->twoG80211axEnable_rfc) {
             push_rfc_dml_cache_to_one_wifidb(bValue,wifi_event_type_twoG80211axEnable_rfc);
         }
+#endif
         return TRUE;
     }
 
