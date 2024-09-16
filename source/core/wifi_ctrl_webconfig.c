@@ -1767,6 +1767,14 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
             }
 #endif // defined (FEATURE_SUPPORT_ECOPOWERDOWN)
             wifi_util_dbg_print(WIFI_WEBCONFIG,"[%s]:WIFI RFC OW CORE THREAD DISABLED \r\n",__FUNCTION__);
+
+            if (wifi_radio_operationParam_validation(&mgr->hal_cap, &radio_data->oper) !=
+                RETURN_OK) {
+                wifi_util_error_print(WIFI_MGR, "%s:%d: failed to validate %s parameters\n",
+                    __func__, __LINE__, radio_data->name);
+                return RETURN_ERR;
+            }
+
             ret = wifi_hal_setRadioOperatingParameters(mgr_radio_data->vaps.radio_index, &radio_data->oper);
 
             if (ret != RETURN_OK) {

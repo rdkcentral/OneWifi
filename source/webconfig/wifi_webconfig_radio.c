@@ -102,12 +102,6 @@ webconfig_error_t encode_radio_subdoc(webconfig_t *config, webconfig_subdoc_data
         obj = cJSON_CreateObject();
         cJSON_AddItemToArray(obj_array, obj);
 
-        if (wifi_radio_operationParam_validation(&params->hal_cap, &radio->oper) != RETURN_OK) {
-            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Validation failed for radio object %s\n", __func__, __LINE__, radio->name);
-            cJSON_Delete(json);
-            return webconfig_error_encode;
-        }
-
         if (encode_radio_object(radio, obj) != webconfig_error_none) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode radio object\n", __func__, __LINE__);
             cJSON_Delete(json);
