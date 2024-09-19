@@ -1311,11 +1311,7 @@ void update_dml_radio_default() {
 #ifdef CONFIG_IEEE80211BE
             strncpy(radio_cfg[i].SupportedStandards,"g,n,ax,be",sizeof(radio_cfg[i].SupportedStandards)-1);
 #else
-#if defined(_XER5_PRODUCT_REQ_)
-            strncpy(radio_cfg[i].SupportedStandards,"g,n,ax,b",sizeof(radio_cfg[i].SupportedStandards)-1);
-#else
             strncpy(radio_cfg[i].SupportedStandards,"g,n,ax",sizeof(radio_cfg[i].SupportedStandards)-1);
-#endif
 #endif /* CONFIG_IEEE80211BE */
         } else if (radio_cfg[i].SupportedFrequencyBands == WIFI_FREQUENCY_5_BAND) {
             radio_cfg[i].MaxBitRate = 4804;
