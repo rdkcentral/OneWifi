@@ -251,7 +251,7 @@ static bus_error_t bus_event_publish(bus_handle_t *handle, char const *name, raw
         wifi_util_error_print(WIFI_CTRL, "%s:%d: bus: rbusEvent_Publish Event failed:%d, \
             name:%s\n", __func__, __LINE__, rc, name);
     } else {
-        wifi_util_info_print(WIFI_CTRL, "%s:%d: bus: bus_event_publish() is successful. \
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: bus: bus_event_publish() is successful. \
             name:%s, rc:%d\n", __func__, __LINE__, name, rc);
     }
 
