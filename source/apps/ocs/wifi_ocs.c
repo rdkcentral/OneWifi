@@ -675,7 +675,6 @@ static int off_chan_scan_init (unsigned int radio_index)
             UINT ocs_scheduler_interval = (((int) ocs_cfg->curr_off_channel_scan_period) * SEC_TO_MILLISEC);
 
             scheduler_add_timer_task(ctrl->sched, FALSE, &ocs_cfg->ocs_scheduler_id, print_ocs_state, NULL, ocs_scheduler_interval, 0, 0);
-            ocs_cfg->ocs_scheduler_id++;
             push_ocs_config_event_to_monitor_queue(mon_stats_request_state_stop, radio_index);
         }
         return RETURN_OK;
@@ -702,7 +701,6 @@ static int off_chan_scan_init (unsigned int radio_index)
         if (ocs_cfg->ocs_scheduler_id == 0) {
             UINT ocs_scheduler_interval = (((int) ocs_cfg->curr_off_channel_scan_period) * SEC_TO_MILLISEC);
             scheduler_add_timer_task(ctrl->sched, FALSE, &ocs_cfg->ocs_scheduler_id, print_ocs_state, NULL, ocs_scheduler_interval, 0, 0);
-            ocs_cfg->ocs_scheduler_id++;
             push_ocs_config_event_to_monitor_queue(mon_stats_request_state_stop, radio_index);
         }
         return RETURN_OK;
