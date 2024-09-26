@@ -184,7 +184,7 @@ struct wifiCountryEnumStrMapMember wifiCountryMapMembers[] =
     {wifi_countrycode_JM,"JM","388"}, /**< JAMAICA */
     {wifi_countrycode_JP,"JP","392"}, /**< JAPAN */
     {wifi_countrycode_JE,"JE","832"}, /**< JERSEY */
-    {wifi_countrycode_JO,"jo","400"}, /**< JORDAN */
+    {wifi_countrycode_JO,"JO","400"}, /**< JORDAN */
     {wifi_countrycode_KE,"KE","404"}, /**< KENYA */
     {wifi_countrycode_KG,"KG","417"}, /**< KYRGYZSTAN */
     {wifi_countrycode_KH,"KH","116"}, /**< CAMBODIA */
@@ -318,7 +318,12 @@ struct wifiCountryEnumStrMapMember wifiCountryMapMembers[] =
     {wifi_countrycode_YU,"YU","890"}, /**< YUGOSLAVIA */
     {wifi_countrycode_ZA,"ZA","710"}, /**< SOUTH AFRICA */
     {wifi_countrycode_ZM,"ZM","894"}, /**< ZAMBIA */
-    {wifi_countrycode_ZW,"ZW","716"} /**< ZIMBABWE */
+    {wifi_countrycode_ZW,"ZW","716"}, /**< ZIMBABWE */
+    {wifi_countrycode_AX,"AX","248"}, /**< ALAND_ISLANDS */
+    {wifi_countrycode_BL,"BL","652"}, /**< SAINT_BARTHELEMY */
+    {wifi_countrycode_CW,"CW","531"}, /**< CURACAO */
+    {wifi_countrycode_MF,"MF","663"}, /**< SAINT_MARTIN */
+    {wifi_countrycode_SX,"SX","534"} /**< SINT_MAARTEN */
 };
 
 struct wifiEnvironmentEnumStrMap wifiEnviromentMap[] =
