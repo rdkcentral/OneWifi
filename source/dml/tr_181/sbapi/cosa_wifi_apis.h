@@ -294,4 +294,6 @@ INT getSecurityTypeFromString(const char *securityName, wifi_security_modes_t *s
 
 void WriteWiFiLog(char *);
 void AssociatedDevice_callback_register();
+int decode_json_obj(bus_handle_t *handle, const char *json_name);
+int get_partner_id(char *partner_id);
 #endif

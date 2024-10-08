@@ -55,6 +55,9 @@ typedef void (* wifi_ccsp_trace_alert_t) (char *format, ...);
 typedef void (* wifi_ccsp_trace_notice_t) (char *format, ...);
 typedef void (* wifi_ccsp_trace_info_t) (char *format, ...);
 typedef void (* wifi_ccsp_trace_debug_t) (char *format, ...);
+typedef char * (* psm_get_value_t) (char *recName, char *strValue);
+typedef int (* psm_set_value_t) (char *recName, char *strValue);
+typedef int (* get_partner_id_t) (char *partner_id);
 
 typedef struct {
     wifi_ccsp_init_t                  init_fn;
@@ -66,6 +69,9 @@ typedef struct {
     wifi_ccsp_trace_notice_t          CcspTraceNoticeRdkb_fn;
     wifi_ccsp_trace_info_t            CcspTraceInfoRdkb_fn;
     wifi_ccsp_trace_debug_t           CcspTraceDebugRdkb_fn;
+    psm_get_value_t                   psm_get_value_fn;
+    psm_set_value_t                   psm_set_value_fn;
+    get_partner_id_t                  get_partner_id_fn;
 } wifi_ccsp_desc_t;
 
 typedef struct {
@@ -94,6 +100,10 @@ typedef struct {
     loglevel = strtok_r(TempChar,",",&logmsg);(void)(loglevel);     \
     syslog_event("OneWifi", LOG_NOTICE, "%s", logmsg);              \
 }
+
+char *psm_get_value_Rdkb(char *recName, char *strValue);
+int psm_set_value_Rdkb(char *recName, char *strValue);
+int get_partner_id_Rdkb(char *partner_id);
 
 #ifdef __cplusplus
 }

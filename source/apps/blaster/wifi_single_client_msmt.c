@@ -41,7 +41,6 @@
 #include <mqttcm_lib/mqttcm_conn.h>
 #endif
 #include <sysevent/sysevent.h>
-#include "harvester.h"
 #include "ext_blaster.pb-c.h"
 #include "qm_conn.h"
 #include "wifi_util.h"
@@ -50,6 +49,7 @@
 #include "wifi_blaster.h"
 #include "const.h"
 #include <stdint.h>
+#include "misc.h"
 
 #define PROTOBUF_MAC_SIZE 13
 
@@ -553,7 +553,7 @@ void upload_single_client_active_msmt_data(blaster_hashmap_t *sta_info)
     /* MAC - Get CPE mac address, do it only pointer is NULL */
     if ( macStr == NULL )
     {
-        macStr = getDeviceMac();
+        macStr =  get_stubs_descriptor()->getDeviceMac_fn();
         if (macStr != NULL) {
             strncpy( CpemacStr, macStr, sizeof(CpemacStr));
             wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: RDK_LOG_DEBUG, Received DeviceMac from Atom side: %s\n",__func__, __LINE__, macStr);
@@ -1098,7 +1098,7 @@ void upload_single_client_active_msmt_data(blaster_hashmap_t *sta_info)
 
     size += MAGIC_NUMBER_SIZE + SCHEMA_ID_LENGTH;
     wifi_util_dbg_print(WIFI_BLASTER, ":%s TraceParent:%s, TraceState:%s \n", __func__,blaster->active_msmt.t_header.traceParent, blaster->active_msmt.t_header.traceState);
-    sendWebpaMsg((char *)(serviceName),  (char *)(dest), trans_id, blaster->active_msmt.t_header.traceParent, blaster->active_msmt.t_header.traceState, (char *)(contentType), buff, size);//ONE_WIFI TBD
+    get_misc_descriptor()->sendWebpaMsg_fn((char *)(serviceName),  (char *)(dest), trans_id, blaster->active_msmt.t_header.traceParent, blaster->active_msmt.t_header.traceState, (char *)(contentType), buff, size);
     telemetry_buf = malloc(sizeof(char)*1024);
     if (telemetry_buf == NULL) {
         wifi_util_error_print(WIFI_BLASTER,"%s:%d telemetry_buf allocation failed\r\n", __func__, __LINE__);
