@@ -78,6 +78,21 @@ void CcspTraceDebugRdkb(char *format, ...)
 {
 
 }
+
+char *psm_get_value_Rdkb(char *recName, char *strValue)
+{
+    return NULL;
+}
+
+int psm_set_value_Rdkb(char *recName, char *strValue)
+{
+    return 0;
+}
+
+int get_partner_id_Rdkb(char *partner_id)
+{
+    return get_partner_id(partner_id);
+}
 #endif
 
 void wifi_ccsp_rdkb_init(wifi_ccsp_t *ccsp)
@@ -91,4 +106,7 @@ void wifi_ccsp_rdkb_init(wifi_ccsp_t *ccsp)
     ccsp->desc.CcspTraceNoticeRdkb_fn = CcspTraceNoticeRdkb;
     ccsp->desc.CcspTraceInfoRdkb_fn = CcspTraceInfoRdkb;
     ccsp->desc.CcspTraceDebugRdkb_fn = CcspTraceDebugRdkb;
+    ccsp->desc.psm_get_value_fn = psm_get_value_Rdkb;
+    ccsp->desc.psm_set_value_fn = psm_set_value_Rdkb;
+    ccsp->desc.get_partner_id_fn = get_partner_id_Rdkb;
 }

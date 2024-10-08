@@ -124,6 +124,8 @@ extern "C" {
 #define MESH_BACKHAUL 0b100000
 #define LNF 0b1000000
 
+#define BUS_DML_CONFIG_FILE "bus_dml_config.json"
+
 typedef enum {
     ctrl_webconfig_state_none = 0,
     ctrl_webconfig_state_radio_cfg_rsp_pending = 0x0001,

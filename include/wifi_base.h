@@ -102,6 +102,20 @@ extern "C" {
 
 #define DEFAULT_SOUNDING_DURATION_MS 2000
 
+#if (defined SIMULATION)
+#define NEIGHBORHOOD_SCAN_AVRO_FILENAME         "GatewayAccessPointNeighborScanReport.avsc"
+#define INTERFACE_DEVICES_WIFI_AVRO_FILENAME            "InterfaceDevicesWifi.avsc"
+#define WIFI_SINGLE_CLIENT_AVRO_FILENAME        "/usr/ccsp/wifi/WifiSingleClient.avsc"
+#define RADIO_INTERFACE_STATS_AVRO_FILENAME             "RadioInterfacesStatistics.avsc"
+#else
+#define NEIGHBORHOOD_SCAN_AVRO_FILENAME         "/usr/ccsp/harvester/GatewayAccessPointNeighborScanReport.avsc"
+#define INTERFACE_DEVICES_WIFI_AVRO_FILENAME            "/usr/ccsp/harvester/InterfaceDevicesWifi.avsc"
+#define WIFI_SINGLE_CLIENT_AVRO_FILENAME        "/usr/ccsp/wifi/WifiSingleClient.avsc"
+#define RADIO_INTERFACE_STATS_AVRO_FILENAME             "/usr/ccsp/harvester/RadioInterfacesStatistics.avsc"
+#define WIFI_SINGLE_CLIENT_BLASTER_AVRO_FILENAME        "/usr/ccsp/wifi/WifiSingleClientActiveMeasurement.avsc"
+#endif
+#define CHK_AVRO_ERR (strlen(avro_strerror()) > 0)
+
 #define CFG_ID_LEN             64
 typedef char stats_cfg_id_t[CFG_ID_LEN];
 

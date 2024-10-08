@@ -24,7 +24,11 @@
 #include "ccsp_trace.h"
 #include "util.h"
 #include "wifi_hal.h"
+#include "wifi_util.h"
 #include <stdarg.h>
+
+extern void* bus_handle;
+extern char g_Subsystem[32];
 
 void init_ccsp()
 {
@@ -125,4 +129,53 @@ void CcspTraceDebugRdkb(char *format, ...)
         free(buffer);
     }
     va_end(args);
+}
+
+char *psm_get_value_Rdkb(char *recName, char *strValue)
+{
+    int retry = 0;
+    int ret_psm_get = RETURN_ERR;
+
+    while (retry++ < 2) {
+        ret_psm_get = PSM_Get_Record_Value2(bus_handle, g_Subsystem, recName, NULL, &strValue);
+        if (ret_psm_get == RDKB_CCSP_SUCCESS) {
+            wifi_util_dbg_print(WIFI_MGR,"%s:%d ret_psm_get success for %s and strValue is %s\n", __func__,
+                __LINE__, recName, strValue);
+            return strValue;
+        } else if (ret_psm_get == CCSP_CR_ERR_INVALID_PARAM) {
+            wifi_util_dbg_print(WIFI_MGR,"%s:%d PSM_Get_Record_Value2 (%s) returned error %d \n", __func__,
+                __LINE__, recName, ret_psm_get);
+            return NULL;
+        } else {
+            wifi_util_dbg_print(WIFI_MGR,"%s:%d PSM_Get_Record_Value2 param (%s) returned error %d"
+                " retry in 10 seconds \n", __func__, __LINE__, recName, ret_psm_get);
+            continue;
+        }
+    }
+
+    return NULL;
+}
+
+int psm_set_value_Rdkb(char *recName, char *strValue)
+{
+    int retPsmSet;
+    int ret = RETURN_ERR;
+
+    wifi_util_dbg_print(WIFI_MGR, "%s:%d record_name:%s\n",__func__, __LINE__, recName);
+
+    retPsmSet = PSM_Set_Record_Value2(bus_handle, g_Subsystem, recName, ccsp_rdkb_string, strValue);
+    if(retPsmSet == RDKB_CCSP_SUCCESS) {
+        wifi_util_dbg_print(WIFI_MGR, "%s:%d set bool value:%s\n",__func__, __LINE__, strValue);
+        ret = RETURN_OK;
+    } else {
+        wifi_util_dbg_print(WIFI_MGR, "%s:%d PSM_Set_Record_Value2 returned error %d while"
+            " setting bool param:%s\n",__func__, __LINE__, retPsmSet, strValue);
+    }
+
+    return ret;
+}
+
+int get_partner_id_Rdkb(char *partner_id)
+{
+    return ((getPartnerId(partner_id) == RDKB_CCSP_SUCCESS) ? RETURN_OK : RETURN_ERR);
 }

@@ -27,6 +27,8 @@
 extern "C" {
 #endif
 
+#define WIFI_XHS_LNF_FLAG_FILE_NAME "/nvram/.bcmwifi_xhs_lnf_enabled"
+
 typedef struct {
     void    *acl_vap_context;
     queue_t* new_entry_queue[MAX_NUM_RADIOS][MAX_NUM_VAP_PER_RADIO];
@@ -109,6 +111,7 @@ typedef struct {
     INT ReceivedSignalLevelNumberOfEntries;
 }__attribute__((packed)) dml_stats_default;
 
+int init(webconfig_dml_t *consumer);
 webconfig_dml_t* get_webconfig_dml();
 active_msmt_t* get_dml_blaster(void);
 active_msmt_t *get_dml_cache_blaster(void);
@@ -157,6 +160,8 @@ dml_radio_default *get_radio_default_obj(int r_index) ;
 dml_global_default *get_global_default_obj();
 dml_stats_default *get_stats_default_obj(int r_index);
 wifi_channelBandwidth_t sync_bandwidth_and_hw_variant(uint32_t variant, wifi_channelBandwidth_t current_bw);
+UINT get_max_num_vaps_per_radio_dml(uint32_t radio_index);
+rdk_wifi_radio_t* get_dml_cache_radio_map_param(uint8_t radio_index);
 
 #ifdef __cplusplus
 }

@@ -70,4 +70,5 @@ void wifi_dml_init(wifi_dml_t *dml)
     dml->desc.start_dml_fn = start_dml;
     dml->desc.set_dml_init_status_fn = set_dml_init_status;
     dml->desc.ssp_init_fn = ssp_init;
+    dml->desc.push_data_to_ssp_queue_fn = push_data_to_ssp_queue;
 }

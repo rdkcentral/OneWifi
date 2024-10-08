@@ -34,10 +34,16 @@ void ssp_init()
 
 }
 
+int push_data_to_ssp_queue(const void *msg, unsigned int len, uint32_t type, uint32_t sub_type)
+{
+    return 0;
+}
+
 void wifi_dml_init(wifi_dml_t *dml)
 {
     dml->desc.start_dml_fn = start_dml;
     dml->desc.set_dml_init_status_fn = set_dml_init_status;
     dml->desc.ssp_init_fn = ssp_init;
+    dml->desc.push_data_to_ssp_queue_fn = push_data_to_ssp_queue;
 }
 
