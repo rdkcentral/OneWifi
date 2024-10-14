@@ -3326,7 +3326,7 @@ Radio_SetParamIntValue
             return  TRUE;
         }
 
-        if (isValidTransmitPower(rcfg[instance_number].TransmitPowerSupported,iValue) != TRUE)
+        if (isValidTransmitPower(rcfg->TransmitPowerSupported,iValue) != TRUE)
         {
             return FALSE;
         }
