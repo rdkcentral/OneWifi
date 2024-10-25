@@ -58,6 +58,39 @@ webconfig_error_t encode_radio_setup_object(const rdk_wifi_vap_map_t *vap_map, c
     return webconfig_error_none;
 }
 
+webconfig_error_t encode_radio_operating_classes(const wifi_radio_operationParam_t *oper, cJSON *radio_object)
+{
+    cJSON *obj_array, *obj;
+    unsigned int i,j;
+    const wifi_operating_classes_t *oper_classes;
+    int nonOperableChannel[MAXNUMNONOPERABLECHANNELS];
+
+    // NumberofOpClass
+    cJSON_AddNumberToObject(radio_object, "NumberOfOpClass", oper->numOperatingClasses);
+
+    obj_array = cJSON_CreateArray();
+    cJSON_AddItemToObject(radio_object, "OperatingClasses", obj_array);
+
+    for (i = 0; i < oper->numOperatingClasses; i++) {
+        oper_classes = &oper->operatingClasses[i];
+        obj = cJSON_CreateObject();
+        cJSON_AddItemToArray(obj_array, obj);
+        cJSON_AddNumberToObject(obj, "NumberOfNonOperChan", oper_classes->numberOfNonOperChan);
+        cJSON_AddNumberToObject(obj, "Class", oper_classes->opClass);
+        cJSON_AddNumberToObject(obj, "MaxTxPower", oper_classes->maxTxPower);
+        for (j = 0;(j < oper_classes->numberOfNonOperChan && j < MAXNUMNONOPERABLECHANNELS); j++) {
+            nonOperableChannel[j] = oper_classes->nonOperable[j];
+        }
+        if (j != 0) {
+            cJSON_AddItemToObject(obj, "NonOperable",
+                cJSON_CreateIntArray(nonOperableChannel, j));
+        } else {
+            cJSON_AddStringToObject(obj, "NonOperable", "[]");
+        }
+    }
+    return webconfig_error_none;
+}
+
 webconfig_error_t encode_radio_object(const rdk_wifi_radio_t *radio, cJSON *radio_object)
 {
     const wifi_radio_operationParam_t *radio_info;
@@ -267,6 +300,12 @@ webconfig_error_t encode_radio_object(const rdk_wifi_radio_t *radio, cJSON *radi
 
     //Tidle
     cJSON_AddNumberToObject(radio_object, "Tidle", radio_feat->OffChanTidleInSec);
+
+    //Operating Class details
+    if (encode_radio_operating_classes(radio_info, radio_object) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d Radio operation classes failed\n", __func__, __LINE__);
+        return webconfig_error_encode;
+    }
 
     return webconfig_error_none;
 }
