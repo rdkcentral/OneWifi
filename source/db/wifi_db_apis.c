@@ -6167,6 +6167,7 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
     switch (cfg.band) {
         case WIFI_FREQUENCY_2_4_BAND:
             cfg.op_class = 12;
+            cfg.operatingClass = 81;
             cfg.channel = 1;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
 #if defined(_XER5_PRODUCT_REQ_)
@@ -6186,7 +6187,8 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
             break;
         case WIFI_FREQUENCY_5_BAND:
         case WIFI_FREQUENCY_5L_BAND:
-            cfg.op_class = 1;
+            cfg.op_class = 128;
+            cfg.operatingClass = 128;
 #if defined (_PP203X_PRODUCT_REQ_)
             cfg.beaconInterval = 200;
 #endif 
@@ -6204,7 +6206,8 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #endif /* CONFIG_IEEE80211BE */
             break;
         case WIFI_FREQUENCY_5H_BAND:
-            cfg.op_class = 3;
+            cfg.op_class = 128;
+            cfg.operatingClass = 128;
             cfg.channel = 157;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
 #if defined (_PP203X_PRODUCT_REQ_)
@@ -6221,6 +6224,7 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
             break;
         case WIFI_FREQUENCY_6_BAND:
             cfg.op_class = 131;
+            cfg.operatingClass = 131;
             cfg.channel = 197;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_160MHZ;
             cfg.variant = WIFI_80211_VARIANT_AX;
@@ -6289,6 +6293,8 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
     }
 
     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Tscan:%lu Nscan:%lu Nidle:%lu\n", __func__, __LINE__, Fcfg.OffChanTscanInMsec, Fcfg.OffChanNscanInSec, Fcfg.OffChanTidleInSec);
+    /* Call the function to update the operating classes based on Country code and Radio */
+    update_radio_operating_classes(&cfg);
     pthread_mutex_lock(&g_wifidb->data_cache_lock);
     memcpy(config,&cfg,sizeof(cfg));
     memcpy(feat_config, &Fcfg, sizeof(Fcfg));
