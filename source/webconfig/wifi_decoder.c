@@ -2450,6 +2450,50 @@ webconfig_error_t decode_radio_setup_object(const cJSON *obj_radio_setup, rdk_wi
     return webconfig_error_none;
 }
 
+webconfig_error_t decode_radio_operating_classes(const cJSON *obj_radio_setup, wifi_radio_operationParam_t *oper)
+{
+    const cJSON *param, *obj_array, *obj, *non_operable_channels, *iterator;
+    unsigned int i,j;
+    wifi_operating_classes_t *oper_classes;
+
+    //NumberofOpClass
+    decode_param_integer(obj_radio_setup, "NumberOfOpClass", param);
+    oper->numOperatingClasses = param->valuedouble;
+
+    decode_param_array(obj_radio_setup, "OperatingClasses", obj_array);
+    for (i = 0; i < oper->numOperatingClasses; i++) {
+        oper_classes = &oper->operatingClasses[i];
+        memset(oper_classes, 0, sizeof(wifi_operating_classes_t));
+
+        obj = cJSON_GetArrayItem(obj_array, i);
+        decode_param_integer(obj, "NumberOfNonOperChan", param);
+        oper_classes->numberOfNonOperChan = param->valuedouble;
+        decode_param_integer(obj, "Class", param);
+        oper_classes->opClass = param->valuedouble;
+        decode_param_integer(obj, "MaxTxPower", param);
+        oper_classes->maxTxPower = param->valuedouble;
+
+        /* NonOperable Array */
+        if (oper_classes->numberOfNonOperChan != 0) {
+            non_operable_channels = cJSON_GetObjectItem(obj, "NonOperable");
+            if (non_operable_channels == NULL) {
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s %d: NonOperable is NULL for opClass:%d NumberofNonOperChan:%d\n",
+                    __FUNCTION__, __LINE__, oper_classes->opClass, oper_classes->numberOfNonOperChan);
+                return webconfig_error_decode;
+            }
+
+            j = 0;
+            cJSON_ArrayForEach(iterator, non_operable_channels) {
+                if ((cJSON_IsNumber(iterator)) && (j < MAXNUMNONOPERABLECHANNELS)) {
+                    oper_classes->nonOperable[j] = iterator->valuedouble;
+                    j++;
+                }
+            }
+        }
+    }
+    return webconfig_error_none;
+}
+
 webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *radio)
 {
     const cJSON  *param;
@@ -2730,6 +2774,11 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
     // Tidle
     decode_param_integer(obj_radio, "Tidle", param);
     radio_feat->OffChanTidleInSec = param->valuedouble;
+
+    if (decode_radio_operating_classes(obj_radio, radio_info) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_LIB,"%s:%d Radio operation classes decode failed\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
 
     return webconfig_error_none;
 }

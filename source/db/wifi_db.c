@@ -175,6 +175,8 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
     }
 
     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Tscan:%lu Nscan:%lu Nidle:%lu\n", __func__, __LINE__, Fcfg.OffChanTscanInMsec, Fcfg.OffChanNscanInSec, Fcfg.OffChanTidleInSec);
+    /* Call the function to update the operating classes based on Country code and Radio */
+    update_radio_operating_classes(&cfg);
     pthread_mutex_lock(&g_wifidb->data_cache_lock);
     memcpy(config,&cfg,sizeof(cfg));
     memcpy(feat_config, &Fcfg, sizeof(Fcfg));
