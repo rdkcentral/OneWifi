@@ -2163,9 +2163,11 @@ webconfig_error_t decode_wifi_global_config(const cJSON *global_cfg, wifi_global
     decode_param_integer(global_cfg, "VlanCfgVersion", param);
     global_info->vlan_cfg_version = param->valuedouble;
 
+#ifndef EASY_MESH_NODE
     //WpsPin
     decode_param_string(global_cfg, "WpsPin", param);
     strcpy(global_info->wps_pin, param->valuestring);
+#endif
 
     // BandsteeringEnable
     decode_param_bool(global_cfg, "BandsteeringEnable", param);
@@ -2220,6 +2222,7 @@ webconfig_error_t decode_wifi_global_config(const cJSON *global_cfg, wifi_global
     decode_param_integer(global_cfg, "FixedWmmParams", param);
     global_info->fixed_wmm_params = param->valuedouble;
 
+#ifndef EASY_MESH_NODE
     //WifiRegionCode
     decode_param_string(global_cfg, "WifiRegionCode", param);
     strcpy(global_info->wifi_region_code, param->valuestring);
@@ -2253,6 +2256,7 @@ webconfig_error_t decode_wifi_global_config(const cJSON *global_cfg, wifi_global
     //TxRxRateList
     decode_param_string(global_cfg, "TxRxRateList", param);
     strncpy(global_info->txrx_rate_list, param->valuestring, sizeof(global_info->txrx_rate_list));
+#endif
 
     wifi_util_dbg_print(WIFI_WEBCONFIG,"wifi global Parameters decode successfully\n");
     return webconfig_error_none;

@@ -47,6 +47,7 @@ typedef void (*ext_proto_put_sta_info_t)(void *data_model, em_sta_info_t *sta_in
 typedef struct {
     void *data_model; /* agent data model dm_easy_mesh_t */
 
+    void *m2ctrl_vapconfig;
     // descriptors to access data model
     ext_proto_get_num_radio_t   get_num_radio;
     ext_proto_set_num_radio_t   set_num_radio;
@@ -66,7 +67,7 @@ typedef struct {
     ext_proto_put_sta_info_t   put_sta_info;
 } webconfig_external_easymesh_t;
 
-void webconfig_proto_easymesh_init(webconfig_external_easymesh_t *proto, void *data_model,
+void webconfig_proto_easymesh_init(webconfig_external_easymesh_t *proto, void *data_model, void *m2ctrl_vapconfig,
         ext_proto_get_num_radio_t   get_num_radio, ext_proto_set_num_radio_t set_num_radio,
         ext_proto_get_num_op_class_t   get_num_op_class, ext_proto_set_num_op_class_t set_num_op_class,
         ext_proto_get_num_bss_t   get_num_bss, ext_proto_set_num_bss_t set_num_bss,

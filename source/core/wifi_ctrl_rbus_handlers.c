@@ -172,6 +172,7 @@ int stats_bus_publish(wifi_ctrl_t *ctrl, void *stats_data)
         memset(&rdata, 0, sizeof(raw_data_t));
         rdata.data_type = bus_data_type_string;
         rdata.raw_data.bytes = (void *)data->u.encoded.raw;
+        rdata.raw_data_len = strlen(data->u.encoded.raw) + 1;
 
         status = get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, eventName, &rdata);
         if (status != bus_error_success) {
@@ -199,6 +200,7 @@ int webconfig_client_notify_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_encoded_da
     memset(&rdata, 0, sizeof(raw_data_t));
     rdata.data_type = bus_data_type_string;
     rdata.raw_data.bytes = (void *)data->raw;
+    rdata.raw_data_len = strlen(rdata.raw_data.bytes) + 1;
 
     rc = get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, WIFI_WEBCONFIG_GET_ASSOC,
         &rdata);
@@ -418,6 +420,7 @@ int webconfig_bus_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_encoded_data_t *data
     memset(&rdata, 0, sizeof(raw_data_t));
     rdata.data_type = bus_data_type_string;
     rdata.raw_data.bytes = (void *)data->raw;
+    rdata.raw_data_len = strlen(data->raw) + 1;
 
     rc = get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, WIFI_WEBCONFIG_DOC_DATA_NORTH,
         &rdata);
