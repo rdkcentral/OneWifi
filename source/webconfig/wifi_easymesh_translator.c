@@ -238,6 +238,13 @@ webconfig_error_t   translate_device_object_to_easymesh_for_dml(webconfig_subdoc
         return webconfig_error_translate_to_easymesh;
     }
 
+    // Check if proto is is uninitialized (all internal values and pointers are 0)
+    uint8_t empty_proto[sizeof(webconfig_external_easymesh_t)] = {0}; 
+    if (memcmp(proto, empty_proto, sizeof(webconfig_external_easymesh_t)) == 0) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: external_protos is uninitialized or invalid\n", __func__, __LINE__);
+        return webconfig_error_translate_to_easymesh;
+    }
+
     if (proto->get_device_info(proto->data_model) == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: get_device_info is NULL\n",__func__, __LINE__);
     } else {
