@@ -223,6 +223,8 @@ int events_bus_init(void);
 int events_bus_publish(wifi_event_t *event);
 int events_bus_deinit(void);
 void events_update_clientdiagdata(unsigned int num_devs, int vap_idx, wifi_associated_dev3_t *dev_array);
+const char *wifi_event_type_to_string(wifi_event_type_t type);
+const char *wifi_event_subtype_to_string(wifi_event_subtype_t type);
 wifi_event_t *create_wifi_event(unsigned int msg_len, wifi_event_type_t type, wifi_event_subtype_t sub_type);
 void destroy_wifi_event(wifi_event_t *event);
 int copy_msg_to_event(const void *msg, unsigned int msg_len, wifi_event_type_t type, wifi_event_subtype_t sub_type, wifi_event_route_t *rt, wifi_event_t *event);

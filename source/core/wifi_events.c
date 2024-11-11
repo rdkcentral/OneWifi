@@ -30,6 +30,167 @@
 
 extern bool monitor_initialization_done;
 
+const char *wifi_event_type_to_string(wifi_event_type_t type)
+{
+#define DOC2S(x) \
+    case x:      \
+        return #x;
+    switch (type) {
+        DOC2S(wifi_event_type_exec)
+        DOC2S(wifi_event_type_webconfig)
+        DOC2S(wifi_event_type_hal_ind)
+        DOC2S(wifi_event_type_command)
+        DOC2S(wifi_event_type_monitor)
+        DOC2S(wifi_event_type_net)
+        DOC2S(wifi_event_type_wifiapi)
+        DOC2S(wifi_event_type_analytic)
+        DOC2S(wifi_event_type_csi)
+        DOC2S(wifi_event_type_speed_test)
+        DOC2S(wifi_event_type_max)
+    default:
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: event not handle[%d]\r\n", __func__, __LINE__,
+            type);
+        break;
+    }
+
+    return "unknown event";
+}
+
+const char *wifi_event_subtype_to_string(wifi_event_subtype_t type)
+{
+#define DOC2S(x) \
+    case x:      \
+        return #x;
+    switch (type) {
+        DOC2S(wifi_event_exec_start)
+        DOC2S(wifi_event_exec_stop)
+        DOC2S(wifi_event_exec_timeout)
+        DOC2S(wifi_event_exec_max)
+        DOC2S(wifi_event_webconfig_set_data)
+        DOC2S(wifi_event_webconfig_set_status)
+        DOC2S(wifi_event_webconfig_hal_result)
+        DOC2S(wifi_event_webconfig_get_data)
+        DOC2S(wifi_event_webconfig_set_data_tunnel)
+        DOC2S(wifi_event_webconfig_set_data_dml)
+        DOC2S(wifi_event_webconfig_set_data_webconfig)
+        DOC2S(wifi_event_webconfig_set_data_ovsm)
+        DOC2S(wifi_event_webconfig_data_resched_to_ctrl_queue)
+        DOC2S(wifi_event_webconfig_data_to_apply_pending_queue)
+        DOC2S(wifi_event_webconfig_data_to_hal_apply)
+        DOC2S(wifi_event_webconfig_set_data_sta_bssid)
+        DOC2S(wifi_event_webconfig_data_req_from_dml)
+        DOC2S(wifi_event_webconfig_set_data_force_apply)
+        DOC2S(wifi_event_webconfig_max)
+        DOC2S(wifi_event_hal_unknown_frame)
+        DOC2S(wifi_event_hal_mgmt_frames)
+        DOC2S(wifi_event_hal_probe_req_frame)
+        DOC2S(wifi_event_hal_probe_rsp_frame)
+        DOC2S(wifi_event_hal_auth_frame)
+        DOC2S(wifi_event_hal_deauth_frame)
+        DOC2S(wifi_event_hal_assoc_req_frame)
+        DOC2S(wifi_event_hal_assoc_rsp_frame)
+        DOC2S(wifi_event_hal_reassoc_req_frame)
+        DOC2S(wifi_event_hal_reassoc_rsp_frame)
+        DOC2S(wifi_event_hal_dpp_public_action_frame)
+        DOC2S(wifi_event_hal_dpp_config_req_frame)
+        DOC2S(wifi_event_hal_anqp_gas_init_frame)
+        DOC2S(wifi_event_hal_sta_conn_status)
+        DOC2S(wifi_event_hal_assoc_device)
+        DOC2S(wifi_event_hal_disassoc_device)
+        DOC2S(wifi_event_scan_results)
+        DOC2S(wifi_event_hal_channel_change)
+        DOC2S(wifi_event_radius_greylist)
+        DOC2S(wifi_event_hal_potential_misconfiguration)
+        DOC2S(wifi_event_hal_analytics)
+        DOC2S(wifi_event_radius_eap_failure)
+        DOC2S(wifi_event_radius_fallback_and_failover)
+        DOC2S(wifi_event_type_csi_data)
+        DOC2S(wifi_event_hal_max)
+        DOC2S(wifi_event_type_active_gw_check)
+        DOC2S(wifi_event_type_command_factory_reset)
+        DOC2S(wifi_event_type_radius_grey_list_rfc)
+        DOC2S(wifi_event_type_wifi_passpoint_rfc)
+        DOC2S(wifi_event_type_wifi_interworking_rfc)
+        DOC2S(wifi_event_type_wpa3_rfc)
+        DOC2S(wifi_event_type_dfs_rfc)
+        DOC2S(wifi_event_type_dfs_atbootup_rfc)
+        DOC2S(wifi_event_type_command_kickmac)
+        DOC2S(wifi_event_type_command_kick_assoc_devices)
+        DOC2S(wifi_event_type_command_wps)
+        DOC2S(wifi_event_type_command_wps_pin)
+        DOC2S(wifi_event_type_command_wps_cancel)
+        DOC2S(wifi_event_type_command_wifi_host_sync)
+        DOC2S(wifi_event_type_device_network_mode)
+        DOC2S(wifi_event_type_twoG80211axEnable_rfc)
+        DOC2S(wifi_event_type_command_wifi_neighborscan)
+        DOC2S(wifi_event_type_command_mesh_status)
+        DOC2S(wifi_event_type_normalized_rssi)
+        DOC2S(wifi_event_type_snr)
+        DOC2S(wifi_event_type_cli_stat)
+        DOC2S(wifi_event_type_txrx_rate)
+        DOC2S(wifi_event_type_prefer_private_rfc)
+        DOC2S(wifi_event_type_mgmt_frame_bus_rfc)
+        DOC2S(wifi_event_type_sta_connect_in_progress)
+        DOC2S(wifi_event_type_udhcp_ip_fail)
+        DOC2S(wifi_event_type_trigger_disconnection)
+        DOC2S(wifi_event_type_trigger_disconnection_analytics)
+        DOC2S(wifi_event_type_new_bssid)
+        DOC2S(wifi_event_type_xfinity_enable)
+        DOC2S(wifi_event_type_wifi_offchannelscan_app_rfc)
+        DOC2S(wifi_event_type_wifi_offchannelscan_sm_rfc)
+        DOC2S(wifi_event_type_levl_rfc)
+        DOC2S(wifi_event_type_eth_bh_status)
+        DOC2S(wifi_event_type_managed_wifi_disable)
+        DOC2S(wifi_event_type_notify_monitor_done)
+        DOC2S(wifi_event_type_start_inst_msmt)
+        DOC2S(wifi_event_type_stop_inst_msmt)
+        DOC2S(wifi_event_type_xfinity_rrm)
+        DOC2S(wifi_event_type_collect_stats)
+        DOC2S(wifi_event_command_max)
+        DOC2S(wifi_event_monitor_diagnostics)
+        DOC2S(wifi_event_monitor_connect)
+        DOC2S(wifi_event_monitor_disconnect)
+        DOC2S(wifi_event_monitor_deauthenticate)
+        DOC2S(wifi_event_monitor_start_inst_msmt)
+        DOC2S(wifi_event_monitor_stop_inst_msmt)
+        DOC2S(wifi_event_monitor_started_active_msmt)
+        DOC2S(wifi_event_monitor_stop_active_msmt)
+        DOC2S(wifi_event_monitor_stats_flag_change)
+        DOC2S(wifi_event_monitor_radio_stats_flag_change)
+        DOC2S(wifi_event_monitor_vap_stats_flag_change)
+        DOC2S(wifi_event_monitor_process_active_msmt)
+        DOC2S(wifi_event_monitor_csi)
+        DOC2S(wifi_event_monitor_csi_pinger)
+        DOC2S(wifi_event_monitor_clientdiag_update_config)
+        DOC2S(wifi_event_monitor_data_collection_config)
+        DOC2S(wifi_event_monitor_provider_response)
+        DOC2S(wifi_event_monitor_assoc_req)
+        DOC2S(wifi_event_monitor_clear_sta_counters)
+        DOC2S(wifi_event_monitor_get_radiostats_onchan)
+        DOC2S(wifi_event_monitor_get_radiostats_offchan)
+        DOC2S(wifi_event_monitor_get_radiostats_fullchan)
+        DOC2S(wifi_event_monitor_get_neighborstats_onchan)
+        DOC2S(wifi_event_monitor_get_neighborstats_offchan)
+        DOC2S(wifi_event_monitor_get_neighborstats_fullchan)
+        DOC2S(wifi_event_monitor_get_assocdevice_stats)
+        DOC2S(wifi_event_monitor_get_radiodiag_stats)
+        DOC2S(wifi_event_monitor_get_radio_temperature)
+        DOC2S(wifi_event_monitor_set_subscribe)
+        DOC2S(wifi_event_monitor_max)
+        DOC2S(wifi_event_type_xfinity_tunnel_up)
+        DOC2S(wifi_event_type_xfinity_tunnel_down)
+        DOC2S(wifi_event_type_xfinity_tunnel_max)
+        DOC2S(wifi_event_type_wifiapi_execution)
+        DOC2S(wifi_event_type_wifiapi_max)
+    default:
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: event not handle[%d]\r\n", __func__, __LINE__,
+            type);
+        break;
+    }
+
+    return "unknown event";
+}
+
 void free_cloned_event(wifi_event_t *clone)
 {
     destroy_wifi_event(clone);
@@ -38,8 +199,8 @@ void free_cloned_event(wifi_event_t *clone)
 int clone_wifi_event(wifi_event_t *event, wifi_event_t **clone)
 {
     wifi_event_t *cloned;
-    wifi_event_type_t     event_type;
-    wifi_event_subtype_t  sub_type;
+    wifi_event_type_t event_type;
+    wifi_event_subtype_t sub_type;
     void *msg = NULL;
     unsigned int msg_len = 0;
 
@@ -47,44 +208,48 @@ int clone_wifi_event(wifi_event_t *event, wifi_event_t **clone)
     sub_type = event->sub_type;
 
     switch (event_type) {
-        case wifi_event_type_exec:
-        case wifi_event_type_webconfig:
-        case wifi_event_type_hal_ind:
-        case wifi_event_type_command:
-        case wifi_event_type_net:
-        case wifi_event_type_wifiapi:
-        case wifi_event_type_speed_test:
-            msg_len = event->u.core_data.len;
-            msg = event->u.core_data.msg;
+    case wifi_event_type_exec:
+    case wifi_event_type_webconfig:
+    case wifi_event_type_hal_ind:
+    case wifi_event_type_command:
+    case wifi_event_type_net:
+    case wifi_event_type_wifiapi:
+    case wifi_event_type_speed_test:
+        msg_len = event->u.core_data.len;
+        msg = event->u.core_data.msg;
         break;
-        case wifi_event_type_monitor:
-            if (event->sub_type == wifi_event_monitor_provider_response) {
-                msg = event->u.provider_response;
-                msg_len = sizeof(wifi_provider_response_t);
-            } else {
-                msg = event->u.mon_data;
-                msg_len = sizeof(wifi_monitor_data_t);
-            }
+    case wifi_event_type_monitor:
+        if (event->sub_type == wifi_event_monitor_provider_response) {
+            msg = event->u.provider_response;
+            msg_len = sizeof(wifi_provider_response_t);
+        } else {
+            msg = event->u.mon_data;
+            msg_len = sizeof(wifi_monitor_data_t);
+        }
         break;
-        case wifi_event_type_analytic:
+    case wifi_event_type_analytic:
         break;
-        default:
-            wifi_util_error_print(WIFI_CTRL,"%s %d Invalid event type : %d\n",__FUNCTION__, __LINE__, event->event_type);
-            return RETURN_ERR;
-
+    default:
+        wifi_util_error_print(WIFI_CTRL, "%s %d Invalid event type : %s\n", __FUNCTION__, __LINE__,
+            wifi_event_type_to_string(event->event_type));
+        return RETURN_ERR;
     }
 
-    if ((event_type == wifi_event_type_monitor) && (sub_type == wifi_event_monitor_provider_response)) {
-        cloned = (wifi_event_t *)create_wifi_monitor_response_event(msg, msg_len, event_type, sub_type);
+    if ((event_type == wifi_event_type_monitor) &&
+        (sub_type == wifi_event_monitor_provider_response)) {
+        cloned = (wifi_event_t *)create_wifi_monitor_response_event(msg, msg_len, event_type,
+            sub_type);
     } else {
         cloned = (wifi_event_t *)create_wifi_event(msg_len, event_type, sub_type);
     }
     if (cloned == NULL) {
-        wifi_util_error_print(WIFI_CTRL,"%s %d data malloc null for event_type : %d\n",__FUNCTION__, __LINE__, event_type);
+        wifi_util_error_print(WIFI_CTRL, "%s %d data malloc null for event_type : %d\n",
+            __FUNCTION__, __LINE__, event_type);
         return RETURN_ERR;
     }
     if (copy_msg_to_event(msg, msg_len, event_type, sub_type, &event->route, cloned) != RETURN_OK) {
-        wifi_util_error_print(WIFI_CTRL,"%s %d unable to copy msg to event : %d \n",__FUNCTION__, __LINE__, event_type);
+        wifi_util_error_print(WIFI_CTRL, "%s %d unable to copy msg to event : %d \n", __FUNCTION__,
+            __LINE__, event_type);
         destroy_wifi_event(cloned);
         return RETURN_ERR;
     }
@@ -94,79 +259,89 @@ int clone_wifi_event(wifi_event_t *event, wifi_event_t **clone)
     return RETURN_OK;
 }
 
-
-wifi_event_t *create_wifi_event(unsigned int msg_len, wifi_event_type_t type, wifi_event_subtype_t sub_type)
+wifi_event_t *create_wifi_event(unsigned int msg_len, wifi_event_type_t type,
+    wifi_event_subtype_t sub_type)
 {
     wifi_event_t *event;
     if (type >= wifi_event_type_max) {
-        wifi_util_error_print(WIFI_CTRL,"%s %d Invalid event type %d\n",__FUNCTION__, __LINE__, type);
+        wifi_util_error_print(WIFI_CTRL, "%s %d Invalid event type %d\n", __FUNCTION__, __LINE__,
+            type);
         return NULL;
     }
     event = (wifi_event_t *)calloc(1, sizeof(wifi_event_t));
     if (event == NULL) {
-        wifi_util_error_print(WIFI_CTRL,"%s %d memory allocation failed for event type : %d subtype : %d\n",__FUNCTION__, __LINE__, type, sub_type);
+        wifi_util_error_print(WIFI_CTRL,
+            "%s %d memory allocation failed for event type : %s subtype : %s\n", __FUNCTION__,
+            __LINE__, wifi_event_type_to_string(type), wifi_event_subtype_to_string(sub_type));
         return NULL;
     }
 
-    switch(type) {
-        case wifi_event_type_exec:
-        case wifi_event_type_webconfig:
-        case wifi_event_type_hal_ind:
-        case wifi_event_type_command:
-        case wifi_event_type_net:
-        case wifi_event_type_wifiapi:
-        case wifi_event_type_speed_test:
-            if (msg_len != 0) {
-                event->u.core_data.msg = calloc(1, (msg_len + 1));
-                if (event->u.core_data.msg == NULL) {
-                    wifi_util_error_print(WIFI_CTRL,"%s %d data message malloc null for type : %d\n",__FUNCTION__, __LINE__, type);
-                    free(event);
-                    event = NULL;
-                    return NULL;
-                }
-                event->u.core_data.len = msg_len;
-            } else {
-                event->u.core_data.len = 0;
+    switch (type) {
+    case wifi_event_type_exec:
+    case wifi_event_type_webconfig:
+    case wifi_event_type_hal_ind:
+    case wifi_event_type_command:
+    case wifi_event_type_net:
+    case wifi_event_type_wifiapi:
+    case wifi_event_type_speed_test:
+        if (msg_len != 0) {
+            event->u.core_data.msg = calloc(1, (msg_len + 1));
+            if (event->u.core_data.msg == NULL) {
+                wifi_util_error_print(WIFI_CTRL, "%s %d data message malloc null for type : %s\n",
+                    __FUNCTION__, __LINE__, wifi_event_type_to_string(type));
+                free(event);
+                event = NULL;
+                return NULL;
             }
+            event->u.core_data.len = msg_len;
+        } else {
+            event->u.core_data.len = 0;
+        }
         break;
-        case wifi_event_type_monitor:
-            if ((sub_type == wifi_event_monitor_provider_response) || (sub_type == wifi_event_type_collect_stats)) {
-                event->u.provider_response = calloc(1, (msg_len));
-                if (event->u.provider_response == NULL) {
-                    wifi_util_error_print(WIFI_CTRL,"%s %d data message malloc null for type : %d subtype : %d\n",__FUNCTION__, __LINE__, type, sub_type);
-                    free(event);
-                    event = NULL;
-                    return NULL;
-                }
-            } else {
-                event->u.mon_data = calloc(1, (msg_len));
-                if (event->u.mon_data == NULL) {
-                    wifi_util_error_print(WIFI_CTRL,"%s %d data message malloc null\n",__FUNCTION__, __LINE__);
-                    free(event);
-                    event = NULL;
-                    return NULL;
-                }
-
+    case wifi_event_type_monitor:
+        if ((sub_type == wifi_event_monitor_provider_response) ||
+            (sub_type == wifi_event_type_collect_stats)) {
+            event->u.provider_response = calloc(1, (msg_len));
+            if (event->u.provider_response == NULL) {
+                wifi_util_error_print(WIFI_CTRL,
+                    "%s %d data message malloc null for type : %s subtype : %s\n", __FUNCTION__,
+                    __LINE__, wifi_event_type_to_string(type),
+                    wifi_event_subtype_to_string(sub_type));
+                free(event);
+                event = NULL;
+                return NULL;
             }
-        break;
-        case wifi_event_type_csi:
-            if (sub_type == wifi_event_type_csi_data) {
-                event->u.csi = calloc(1, (msg_len));
-                if (event->u.csi == NULL) {
-                    wifi_util_error_print(WIFI_CTRL,"%s %d data message malloc null\n",__FUNCTION__, __LINE__);
-                    free(event);
-                    event = NULL;
-                    return NULL;
-                }
+        } else {
+            event->u.mon_data = calloc(1, (msg_len));
+            if (event->u.mon_data == NULL) {
+                wifi_util_error_print(WIFI_CTRL, "%s %d data message malloc null\n", __FUNCTION__,
+                    __LINE__);
+                free(event);
+                event = NULL;
+                return NULL;
             }
+        }
         break;
-        case wifi_event_type_analytic:
+    case wifi_event_type_csi:
+        if (sub_type == wifi_event_type_csi_data) {
+            event->u.csi = calloc(1, (msg_len));
+            if (event->u.csi == NULL) {
+                wifi_util_error_print(WIFI_CTRL, "%s %d data message malloc null\n", __FUNCTION__,
+                    __LINE__);
+                free(event);
+                event = NULL;
+                return NULL;
+            }
+        }
         break;
-        default:
-            wifi_util_error_print(WIFI_CTRL,"%s %d Invalid event type : %d\n",__FUNCTION__, __LINE__, type);
-            free(event);
-            event = NULL;
-            return NULL;
+    case wifi_event_type_analytic:
+        break;
+    default:
+        wifi_util_error_print(WIFI_CTRL, "%s %d Invalid event type : %s\n", __FUNCTION__, __LINE__,
+            wifi_event_type_to_string(type));
+        free(event);
+        event = NULL;
+        return NULL;
     }
 
     event->event_type = type;
@@ -175,110 +350,128 @@ wifi_event_t *create_wifi_event(unsigned int msg_len, wifi_event_type_t type, wi
     return event;
 }
 
-wifi_event_t *create_wifi_monitor_response_event(const void *msg, unsigned int msg_len, wifi_event_type_t type, wifi_event_subtype_t sub_type)
+wifi_event_t *create_wifi_monitor_response_event(const void *msg, unsigned int msg_len,
+    wifi_event_type_t type, wifi_event_subtype_t sub_type)
 {
     wifi_event_t *event;
 
     if (type >= wifi_event_type_max) {
-        wifi_util_error_print(WIFI_CTRL,"%s %d Invalid event : %d\n",__FUNCTION__, __LINE__, type);
+        wifi_util_error_print(WIFI_CTRL, "%s %d Invalid event : %s\n", __FUNCTION__, __LINE__,
+            wifi_event_type_to_string(type));
         return NULL;
     }
 
     if (msg == NULL) {
-        wifi_util_error_print(WIFI_CTRL,"%s %d Input msg is NULL\n",__FUNCTION__, __LINE__);
+        wifi_util_error_print(WIFI_CTRL, "%s %d Input msg is NULL\n", __FUNCTION__, __LINE__);
         return NULL;
     }
 
     if (type != wifi_event_type_monitor) {
-        wifi_util_error_print(WIFI_CTRL,"%s %d Invalid type : %d\n",__FUNCTION__, __LINE__, type);
+        wifi_util_error_print(WIFI_CTRL, "%s %d Invalid type : %s\n", __FUNCTION__, __LINE__,
+            wifi_event_type_to_string(type));
         return NULL;
     }
 
-    if (sub_type != wifi_event_monitor_provider_response && sub_type != wifi_event_type_collect_stats) {
-        wifi_util_error_print(WIFI_CTRL,"%s %d Invalid sub_type: %d\n", __FUNCTION__, __LINE__, sub_type);
+    if (sub_type != wifi_event_monitor_provider_response &&
+        sub_type != wifi_event_type_collect_stats) {
+        wifi_util_error_print(WIFI_CTRL, "%s %d Invalid sub_type: %s\n", __FUNCTION__, __LINE__,
+            wifi_event_subtype_to_string(sub_type));
         return NULL;
     }
     event = (wifi_event_t *)create_wifi_event(msg_len, type, sub_type);
     if (event == NULL) {
-        wifi_util_error_print(WIFI_CTRL,"%s %d create wifi event failed for type : %d sub_type : %d \n",__FUNCTION__, __LINE__, type, sub_type);
+        wifi_util_error_print(WIFI_CTRL,
+            "%s %d create wifi event failed for type : %s sub_type : %s \n", __FUNCTION__, __LINE__,
+            wifi_event_type_to_string(type), wifi_event_subtype_to_string(sub_type));
         return NULL;
     }
 
     const wifi_provider_response_t *response = msg;
 
     switch (response->data_type) {
-        case mon_stats_type_radio_channel_stats:
-            if (response->stat_array_size > 0) {
-                event->u.provider_response->stat_pointer = calloc(response->stat_array_size, sizeof(radio_chan_data_t));
-                if (event->u.provider_response->stat_pointer == NULL) {
-                    wifi_util_error_print(WIFI_CTRL,"%s %d response allocation failed for %d\n",__FUNCTION__, __LINE__, response->data_type);
-                    free(event->u.provider_response);
-                    event->u.provider_response = NULL;
-                    free(event);
-                    event = NULL;
-                    return NULL;
-                }
+    case mon_stats_type_radio_channel_stats:
+        if (response->stat_array_size > 0) {
+            event->u.provider_response->stat_pointer = calloc(response->stat_array_size,
+                sizeof(radio_chan_data_t));
+            if (event->u.provider_response->stat_pointer == NULL) {
+                wifi_util_error_print(WIFI_CTRL, "%s %d response allocation failed for %d\n",
+                    __FUNCTION__, __LINE__, response->data_type);
+                free(event->u.provider_response);
+                event->u.provider_response = NULL;
+                free(event);
+                event = NULL;
+                return NULL;
             }
-        break;
-        case mon_stats_type_neighbor_stats:
-            if (response->stat_array_size > 0) {
-                event->u.provider_response->stat_pointer = calloc(response->stat_array_size, sizeof(wifi_neighbor_ap2_t));
-                if (event->u.provider_response->stat_pointer == NULL) {
-                    wifi_util_error_print(WIFI_CTRL,"%s %d response allocation failed for %d\n",__FUNCTION__, __LINE__, response->data_type);
-                    free(event->u.provider_response);
-                    event->u.provider_response = NULL;
-                    free(event);
-                    event = NULL;
-                    return NULL;
-                }
-            }
-        break;
-        case mon_stats_type_associated_device_stats:
-            if (response->stat_array_size > 0) {
-                event->u.provider_response->stat_pointer = calloc(response->stat_array_size, sizeof(sta_data_t));
-                if (event->u.provider_response->stat_pointer == NULL) {
-                    wifi_util_error_print(WIFI_CTRL,"%s %d response allocation failed for %d\n",__FUNCTION__, __LINE__, response->data_type);
-                    free(event->u.provider_response);
-                    event->u.provider_response = NULL;
-                    free(event);
-                    event = NULL;
-                    return NULL;
-                }
-            }
-        break;
-        case mon_stats_type_radio_diagnostic_stats:
-            if (response->stat_array_size > 0) {
-                event->u.provider_response->stat_pointer = calloc(response->stat_array_size, sizeof(radio_data_t));
-                if (event->u.provider_response->stat_pointer == NULL) {
-                    wifi_util_error_print(WIFI_CTRL,"%s %d response allocation failed for %d\n",__FUNCTION__, __LINE__, response->data_type);
-                    free(event->u.provider_response);
-                    event->u.provider_response = NULL;
-                    free(event);
-                    event = NULL;
-                    return NULL;
-                }
-            }
-        break;
-        case mon_stats_type_radio_temperature:
-            if (response->stat_array_size > 0) {
-                event->u.provider_response->stat_pointer = calloc(response->stat_array_size, sizeof(radio_data_t));
-                if (event->u.provider_response->stat_pointer == NULL) {
-                    wifi_util_error_print(WIFI_CTRL,"%s %d response allocation failed for %d\n",__FUNCTION__, __LINE__, response->data_type);
-                    free(event->u.provider_response);
-                    event->u.provider_response = NULL;
-                    free(event);
-                    event = NULL;
-                    return NULL;
-                 }
         }
         break;
-        default:
-            wifi_util_error_print(WIFI_CTRL,"%s %d default response type : %d\n",__FUNCTION__, __LINE__, response->data_type);
-            free(event->u.provider_response);
-            event->u.provider_response = NULL;
-            free(event);
-            event = NULL;
-            return NULL;
+    case mon_stats_type_neighbor_stats:
+        if (response->stat_array_size > 0) {
+            event->u.provider_response->stat_pointer = calloc(response->stat_array_size,
+                sizeof(wifi_neighbor_ap2_t));
+            if (event->u.provider_response->stat_pointer == NULL) {
+                wifi_util_error_print(WIFI_CTRL, "%s %d response allocation failed for %d\n",
+                    __FUNCTION__, __LINE__, response->data_type);
+                free(event->u.provider_response);
+                event->u.provider_response = NULL;
+                free(event);
+                event = NULL;
+                return NULL;
+            }
+        }
+        break;
+    case mon_stats_type_associated_device_stats:
+        if (response->stat_array_size > 0) {
+            event->u.provider_response->stat_pointer = calloc(response->stat_array_size,
+                sizeof(sta_data_t));
+            if (event->u.provider_response->stat_pointer == NULL) {
+                wifi_util_error_print(WIFI_CTRL, "%s %d response allocation failed for %d\n",
+                    __FUNCTION__, __LINE__, response->data_type);
+                free(event->u.provider_response);
+                event->u.provider_response = NULL;
+                free(event);
+                event = NULL;
+                return NULL;
+            }
+        }
+        break;
+    case mon_stats_type_radio_diagnostic_stats:
+        if (response->stat_array_size > 0) {
+            event->u.provider_response->stat_pointer = calloc(response->stat_array_size,
+                sizeof(radio_data_t));
+            if (event->u.provider_response->stat_pointer == NULL) {
+                wifi_util_error_print(WIFI_CTRL, "%s %d response allocation failed for %d\n",
+                    __FUNCTION__, __LINE__, response->data_type);
+                free(event->u.provider_response);
+                event->u.provider_response = NULL;
+                free(event);
+                event = NULL;
+                return NULL;
+            }
+        }
+        break;
+    case mon_stats_type_radio_temperature:
+        if (response->stat_array_size > 0) {
+            event->u.provider_response->stat_pointer = calloc(response->stat_array_size,
+                sizeof(radio_data_t));
+            if (event->u.provider_response->stat_pointer == NULL) {
+                wifi_util_error_print(WIFI_CTRL, "%s %d response allocation failed for %d\n",
+                    __FUNCTION__, __LINE__, response->data_type);
+                free(event->u.provider_response);
+                event->u.provider_response = NULL;
+                free(event);
+                event = NULL;
+                return NULL;
+            }
+        }
+        break;
+    default:
+        wifi_util_error_print(WIFI_CTRL, "%s %d default response type : %d\n", __FUNCTION__,
+            __LINE__, response->data_type);
+        free(event->u.provider_response);
+        event->u.provider_response = NULL;
+        free(event);
+        event = NULL;
+        return NULL;
     }
 
     event->event_type = type;
@@ -345,90 +538,117 @@ void destroy_wifi_event(wifi_event_t *event)
     return;
 }
 
-int copy_msg_to_event(const void *data, unsigned int msg_len, wifi_event_type_t type, wifi_event_subtype_t sub_type, wifi_event_route_t *rt, wifi_event_t *event)
+int copy_msg_to_event(const void *data, unsigned int msg_len, wifi_event_type_t type,
+    wifi_event_subtype_t sub_type, wifi_event_route_t *rt, wifi_event_t *event)
 {
     if ((data == NULL) || (event == NULL)) {
-        wifi_util_error_print(WIFI_CTRL,"%s %d Input arguements are NULL data : %p event : %p\n",__FUNCTION__, __LINE__, data, event);
+        wifi_util_error_print(WIFI_CTRL, "%s %d Input arguements are NULL data : %p event : %p\n",
+            __FUNCTION__, __LINE__, data, event);
         return RETURN_ERR;
     }
-    switch(type) {
-        case wifi_event_type_exec:
-        case wifi_event_type_webconfig:
-        case wifi_event_type_hal_ind:
-        case wifi_event_type_command:
-        case wifi_event_type_net:
-        case wifi_event_type_wifiapi:
-        case wifi_event_type_speed_test:
-            if (msg_len != 0) {
-                memcpy(event->u.core_data.msg, data, msg_len);
-                event->u.core_data.len = msg_len;
-            } else {
-                event->u.core_data.len = 0;
-            }
+    switch (type) {
+    case wifi_event_type_exec:
+    case wifi_event_type_webconfig:
+    case wifi_event_type_hal_ind:
+    case wifi_event_type_command:
+    case wifi_event_type_net:
+    case wifi_event_type_wifiapi:
+    case wifi_event_type_speed_test:
+        if (msg_len != 0) {
+            memcpy(event->u.core_data.msg, data, msg_len);
+            event->u.core_data.len = msg_len;
+        } else {
+            event->u.core_data.len = 0;
+        }
         break;
-        case wifi_event_type_monitor:
-            if ((sub_type == wifi_event_monitor_provider_response) || (sub_type == wifi_event_type_collect_stats)) {
-                const wifi_provider_response_t *response = data;
-                switch (response->data_type) {
-                    case mon_stats_type_radio_channel_stats:
-                        if ((event->u.provider_response->stat_pointer == NULL) || (response->stat_pointer == NULL)) {
-                            wifi_util_error_print(WIFI_CTRL,"%s %d data_type %d stat_pointer is NULL : %p, %p\n",__FUNCTION__, __LINE__, response->data_type, event->u.provider_response->stat_pointer, response->stat_pointer);
-                            return RETURN_ERR;
-                        }
-                        memcpy(event->u.provider_response->stat_pointer, response->stat_pointer, (response->stat_array_size*sizeof(radio_chan_data_t)));
-                    break;
-                    case mon_stats_type_neighbor_stats:
-                        if (event->u.provider_response->stat_pointer != NULL) {
-                            if (response->stat_pointer == NULL) {
-                                wifi_util_error_print(WIFI_CTRL,"%s %d data_type %d stat_pointer is NULL : %p\n",__FUNCTION__, __LINE__, response->data_type, response->stat_pointer);
-                                return RETURN_ERR;
-                            }
-                            memcpy(event->u.provider_response->stat_pointer, response->stat_pointer, (response->stat_array_size*sizeof(wifi_neighbor_ap2_t)));
-                        } else {
-                            event->u.provider_response->stat_pointer = NULL;
-                        }
-                    break;
-                    case mon_stats_type_associated_device_stats:
-                        if (event->u.provider_response->stat_pointer != NULL) {
-                            if (response->stat_pointer == NULL) {
-                                wifi_util_error_print(WIFI_CTRL,"%s %d data_type %d stat_pointer is NULL : %p\n",__FUNCTION__, __LINE__, response->data_type, response->stat_pointer);
-                                return RETURN_ERR;
-                            }
-                            memcpy(event->u.provider_response->stat_pointer, response->stat_pointer, (response->stat_array_size*sizeof(sta_data_t)));
-                        } else {
-                            event->u.provider_response->stat_pointer = NULL;
-                        }
-                    break;
-                    case mon_stats_type_radio_diagnostic_stats:
-                        if ((event->u.provider_response->stat_pointer == NULL) || (response->stat_pointer == NULL)) {
-                            wifi_util_error_print(WIFI_CTRL,"%s %d data_type %d stat_pointer is NULL : %p, %p\n",__FUNCTION__, __LINE__, response->data_type, event->u.provider_response->stat_pointer, response->stat_pointer);
-                            return RETURN_ERR;
-                        }
-                        memcpy(event->u.provider_response->stat_pointer, response->stat_pointer, (response->stat_array_size*sizeof(radio_data_t)));
-                    break;
-                    case mon_stats_type_radio_temperature:
-                        if ((event->u.provider_response->stat_pointer == NULL) || (response->stat_pointer == NULL)) {
-                            wifi_util_error_print(WIFI_CTRL,"%s %d data_type %d stat_pointer is NULL : %p, %p\n",__FUNCTION__, __LINE__, response->data_type, event->u.provider_response->stat_pointer, response->stat_pointer);
-                            return RETURN_ERR;
-                        }
-                        memcpy(event->u.provider_response->stat_pointer, response->stat_pointer, (response->stat_array_size*sizeof(radio_data_t)));
-                    break;
-                    default:
-                        wifi_util_error_print(WIFI_CTRL,"%s %d default response type : %d\n",__FUNCTION__, __LINE__, response->data_type);
-                        return RETURN_ERR;
+    case wifi_event_type_monitor:
+        if ((sub_type == wifi_event_monitor_provider_response) ||
+            (sub_type == wifi_event_type_collect_stats)) {
+            const wifi_provider_response_t *response = data;
+            switch (response->data_type) {
+            case mon_stats_type_radio_channel_stats:
+                if ((event->u.provider_response->stat_pointer == NULL) ||
+                    (response->stat_pointer == NULL)) {
+                    wifi_util_error_print(WIFI_CTRL,
+                        "%s %d data_type %d stat_pointer is NULL : %p, %p\n", __FUNCTION__,
+                        __LINE__, response->data_type, event->u.provider_response->stat_pointer,
+                        response->stat_pointer);
+                    return RETURN_ERR;
                 }
-                event->u.provider_response->data_type = response->data_type;
-                memcpy(&event->u.provider_response->args, &response->args, sizeof(wifi_mon_stats_args_t));
-                event->u.provider_response->stat_array_size = response->stat_array_size;
-            } else {
-                memcpy(event->u.mon_data, data, sizeof(wifi_monitor_data_t));
+                memcpy(event->u.provider_response->stat_pointer, response->stat_pointer,
+                    (response->stat_array_size * sizeof(radio_chan_data_t)));
+                break;
+            case mon_stats_type_neighbor_stats:
+                if (event->u.provider_response->stat_pointer != NULL) {
+                    if (response->stat_pointer == NULL) {
+                        wifi_util_error_print(WIFI_CTRL,
+                            "%s %d data_type %d stat_pointer is NULL : %p\n", __FUNCTION__,
+                            __LINE__, response->data_type, response->stat_pointer);
+                        return RETURN_ERR;
+                    }
+                    memcpy(event->u.provider_response->stat_pointer, response->stat_pointer,
+                        (response->stat_array_size * sizeof(wifi_neighbor_ap2_t)));
+                } else {
+                    event->u.provider_response->stat_pointer = NULL;
+                }
+                break;
+            case mon_stats_type_associated_device_stats:
+                if (event->u.provider_response->stat_pointer != NULL) {
+                    if (response->stat_pointer == NULL) {
+                        wifi_util_error_print(WIFI_CTRL,
+                            "%s %d data_type %d stat_pointer is NULL : %p\n", __FUNCTION__,
+                            __LINE__, response->data_type, response->stat_pointer);
+                        return RETURN_ERR;
+                    }
+                    memcpy(event->u.provider_response->stat_pointer, response->stat_pointer,
+                        (response->stat_array_size * sizeof(sta_data_t)));
+                } else {
+                    event->u.provider_response->stat_pointer = NULL;
+                }
+                break;
+            case mon_stats_type_radio_diagnostic_stats:
+                if ((event->u.provider_response->stat_pointer == NULL) ||
+                    (response->stat_pointer == NULL)) {
+                    wifi_util_error_print(WIFI_CTRL,
+                        "%s %d data_type %d stat_pointer is NULL : %p, %p\n", __FUNCTION__,
+                        __LINE__, response->data_type, event->u.provider_response->stat_pointer,
+                        response->stat_pointer);
+                    return RETURN_ERR;
+                }
+                memcpy(event->u.provider_response->stat_pointer, response->stat_pointer,
+                    (response->stat_array_size * sizeof(radio_data_t)));
+                break;
+            case mon_stats_type_radio_temperature:
+                if ((event->u.provider_response->stat_pointer == NULL) ||
+                    (response->stat_pointer == NULL)) {
+                    wifi_util_error_print(WIFI_CTRL,
+                        "%s %d data_type %d stat_pointer is NULL : %p, %p\n", __FUNCTION__,
+                        __LINE__, response->data_type, event->u.provider_response->stat_pointer,
+                        response->stat_pointer);
+                    return RETURN_ERR;
+                }
+                memcpy(event->u.provider_response->stat_pointer, response->stat_pointer,
+                    (response->stat_array_size * sizeof(radio_data_t)));
+                break;
+            default:
+                wifi_util_error_print(WIFI_CTRL, "%s %d default response type : %d\n", __FUNCTION__,
+                    __LINE__, response->data_type);
+                return RETURN_ERR;
             }
+            event->u.provider_response->data_type = response->data_type;
+            memcpy(&event->u.provider_response->args, &response->args,
+                sizeof(wifi_mon_stats_args_t));
+            event->u.provider_response->stat_array_size = response->stat_array_size;
+        } else {
+            memcpy(event->u.mon_data, data, sizeof(wifi_monitor_data_t));
+        }
         break;
-        case wifi_event_type_analytic:
+    case wifi_event_type_analytic:
         break;
-        default:
-            wifi_util_error_print(WIFI_CTRL,"%s %d Invalid type : %d\n",__FUNCTION__, __LINE__, type);
-            return RETURN_ERR;
+    default:
+        wifi_util_error_print(WIFI_CTRL, "%s %d Invalid type : %s\n", __FUNCTION__, __LINE__,
+            wifi_event_type_to_string(type));
+        return RETURN_ERR;
     }
 
     if (rt != NULL) {
@@ -440,20 +660,25 @@ int copy_msg_to_event(const void *data, unsigned int msg_len, wifi_event_type_t 
     return RETURN_OK;
 }
 
-int push_monitor_response_event_to_ctrl_queue(const void *msg, unsigned int len, wifi_event_type_t type, wifi_event_subtype_t sub_type, wifi_event_route_t *rt)
+int push_monitor_response_event_to_ctrl_queue(const void *msg, unsigned int len,
+    wifi_event_type_t type, wifi_event_subtype_t sub_type, wifi_event_route_t *rt)
 {
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     wifi_event_t *event;
 
-    if(msg == NULL) {
-        wifi_util_error_print(WIFI_CTRL,"%s %d  msg is null\n",__FUNCTION__, __LINE__);
+    if (msg == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s %d  msg is null\n", __FUNCTION__, __LINE__);
         return RETURN_ERR;
     }
 
-    if ((sub_type == wifi_event_monitor_provider_response) || (sub_type == wifi_event_type_collect_stats)) {
+    if ((sub_type == wifi_event_monitor_provider_response) ||
+        (sub_type == wifi_event_type_collect_stats)) {
         event = create_wifi_monitor_response_event(msg, len, type, sub_type);
-        if(event == NULL) {
-            wifi_util_error_print(WIFI_CTRL,"%s %d create monitor response event failed for event type : %d subtype : %d\n",__FUNCTION__, __LINE__, type, sub_type);
+        if (event == NULL) {
+            wifi_util_error_print(WIFI_CTRL,
+                "%s %d create monitor response event failed for event type : %s subtype : %s\n",
+                __FUNCTION__, __LINE__, wifi_event_type_to_string(type),
+                wifi_event_subtype_to_string(sub_type));
             return RETURN_ERR;
         }
 
@@ -462,7 +687,10 @@ int push_monitor_response_event_to_ctrl_queue(const void *msg, unsigned int len,
         }
 
         if (copy_msg_to_event(msg, len, type, sub_type, rt, event) != RETURN_OK) {
-            wifi_util_error_print(WIFI_CTRL,"%s %d unable to copy monitor response event type : %d subtype : %d\n",__FUNCTION__, __LINE__, type, sub_type);
+            wifi_util_error_print(WIFI_CTRL,
+                "%s %d unable to copy monitor response event type : %s subtype : %s\n",
+                __FUNCTION__, __LINE__, wifi_event_type_to_string(type),
+                wifi_event_subtype_to_string(sub_type));
             destroy_wifi_event(event);
             return RETURN_ERR;
         }
@@ -472,26 +700,30 @@ int push_monitor_response_event_to_ctrl_queue(const void *msg, unsigned int len,
         pthread_cond_signal(&ctrl->cond);
         pthread_mutex_unlock(&ctrl->lock);
     } else {
-        wifi_util_error_print(WIFI_CTRL,"%s %d Invalid type : %d subtype : %d\n",__FUNCTION__, __LINE__, type, sub_type);
+        wifi_util_error_print(WIFI_CTRL, "%s %d Invalid type : %s subtype : %s\n", __FUNCTION__,
+            __LINE__, wifi_event_type_to_string(type), wifi_event_subtype_to_string(sub_type));
         return RETURN_ERR;
     }
 
     return RETURN_OK;
 }
 
-int push_event_to_ctrl_queue(const void *msg, unsigned int len, wifi_event_type_t type, wifi_event_subtype_t sub_type, wifi_event_route_t *rt)
+int push_event_to_ctrl_queue(const void *msg, unsigned int len, wifi_event_type_t type,
+    wifi_event_subtype_t sub_type, wifi_event_route_t *rt)
 {
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     wifi_event_t *event;
 
-    if(msg == NULL) {
-        wifi_util_error_print(WIFI_CTRL,"%s %d  msg is null\n",__FUNCTION__, __LINE__);
+    if (msg == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s %d  msg is null\n", __FUNCTION__, __LINE__);
         return RETURN_ERR;
     }
 
     event = create_wifi_event(len, type, sub_type);
-    if(event == NULL) {
-        wifi_util_error_print(WIFI_CTRL,"%s %d create wifi event allocation failed for type : %d subtype : %d\n",__FUNCTION__, __LINE__, type, sub_type);
+    if (event == NULL) {
+        wifi_util_error_print(WIFI_CTRL,
+            "%s %d create wifi event allocation failed for type : %s subtype : %s\n", __FUNCTION__,
+            __LINE__, wifi_event_type_to_string(type), wifi_event_subtype_to_string(sub_type));
         return RETURN_ERR;
     }
     if (rt != NULL) {
@@ -515,29 +747,34 @@ int push_event_to_ctrl_queue(const void *msg, unsigned int len, wifi_event_type_
     return RETURN_OK;
 }
 
-int push_event_to_monitor_queue(wifi_monitor_data_t *mon_data, wifi_event_subtype_t sub_type, wifi_event_route_t *rt)
+int push_event_to_monitor_queue(wifi_monitor_data_t *mon_data, wifi_event_subtype_t sub_type,
+    wifi_event_route_t *rt)
 {
     wifi_monitor_t *monitor_param = (wifi_monitor_t *)get_wifi_monitor();
     wifi_event_t *event;
 
     /* Check if monitor queue is initialized */
     if (monitor_initialization_done == false) {
-        wifi_util_error_print(WIFI_CTRL,"%s %d: Monitor queue is not ready yet. subtype: %d\n", __FUNCTION__, __LINE__, sub_type);
+        wifi_util_error_print(WIFI_CTRL, "%s %d: Monitor queue is not ready yet. subtype: %s\n",
+            __FUNCTION__, __LINE__, wifi_event_subtype_to_string(sub_type));
         return RETURN_ERR;
     }
-    if(mon_data == NULL) {
-        wifi_util_error_print(WIFI_CTRL,"%s %d: input monitor data is null\n",__FUNCTION__, __LINE__);
+    if (mon_data == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s %d: input monitor data is null\n", __FUNCTION__,
+            __LINE__);
         return RETURN_ERR;
     }
 
     event = create_wifi_event(sizeof(wifi_monitor_data_t), wifi_event_type_monitor, sub_type);
-    if(event == NULL) {
-        wifi_util_error_print(WIFI_CTRL,"%s %d data malloc null\n",__FUNCTION__, __LINE__);
+    if (event == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s %d data malloc null\n", __FUNCTION__, __LINE__);
         return RETURN_ERR;
     }
 
-    if (copy_msg_to_event(mon_data, sizeof(wifi_monitor_data_t), wifi_event_type_monitor, sub_type, rt, event) != RETURN_OK) {
-        wifi_util_error_print(WIFI_CTRL,"%s %d unable to copy msg to event for sub_type : %d\n",__FUNCTION__, __LINE__, sub_type);
+    if (copy_msg_to_event(mon_data, sizeof(wifi_monitor_data_t), wifi_event_type_monitor, sub_type,
+            rt, event) != RETURN_OK) {
+        wifi_util_error_print(WIFI_CTRL, "%s %d unable to copy msg to event for sub_type : %s\n",
+            __FUNCTION__, __LINE__, wifi_event_subtype_to_string(sub_type));
         destroy_wifi_event(event);
         return RETURN_ERR;
     }

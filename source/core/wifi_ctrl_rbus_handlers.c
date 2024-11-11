@@ -2504,8 +2504,8 @@ int events_bus_publish(wifi_event_t *evt)
     }
 
     if (evt->sub_type != wifi_event_monitor_csi) {
-        wifi_util_info_print(WIFI_CTRL, "%s(): bus_event_publish_fn Event %d\n", __FUNCTION__,
-            evt->sub_type);
+        wifi_util_info_print(WIFI_CTRL, "%s(): bus_event_publish_fn Event %s\n", __FUNCTION__,
+            wifi_event_subtype_to_string(evt->sub_type));
     }
 
     switch (evt->sub_type) {
@@ -2528,8 +2528,8 @@ int events_bus_publish(wifi_event_t *evt)
                 wifi_util_error_print(WIFI_CTRL, "%s(): bus_event_publish_fn Event failed: %d\n",
                     __FUNCTION__, rc);
             } else {
-                wifi_util_dbg_print(WIFI_CTRL, "%s(): device_diagnostics Event %d %s \n",
-                    __FUNCTION__, evt->sub_type, eventName);
+                wifi_util_dbg_print(WIFI_CTRL, "%s(): device_diagnostics Event %s %s \n",
+                    __FUNCTION__, wifi_event_subtype_to_string(evt->sub_type), eventName);
             }
         }
         break;
@@ -2559,8 +2559,8 @@ int events_bus_publish(wifi_event_t *evt)
                 wifi_util_error_print(WIFI_CTRL, "%s(): bus_event_publish_fn Event failed: %d\n",
                     __FUNCTION__, rc);
             } else {
-                wifi_util_dbg_print(WIFI_CTRL, "%s(): Event - %d %s \n", __FUNCTION__,
-                    evt->sub_type, eventName);
+                wifi_util_dbg_print(WIFI_CTRL, "%s(): Event - %s %s \n", __FUNCTION__,
+                    wifi_event_subtype_to_string(evt->sub_type), eventName);
             }
         }
         break;

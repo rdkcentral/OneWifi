@@ -1330,17 +1330,18 @@ void motion_disassoc_device_event(wifi_app_t *apps, void *data)
 int hal_event_motion(wifi_app_t *app, wifi_event_subtype_t sub_type, void *data)
 {
     switch (sub_type) {
-        case wifi_event_hal_assoc_device:
-            wifi_util_dbg_print(WIFI_APPS,"%s:%d Got Assoc device for Levl\n", __func__, __LINE__);
-            motion_assoc_device_event(app, data);
-            break;
-        case wifi_event_hal_disassoc_device:
-            wifi_util_dbg_print(WIFI_APPS,"%s:%d Got DisAssoc device for Levl\n", __func__, __LINE__);
-            motion_disassoc_device_event(app, data);
-            break;
-        default:
-            wifi_util_dbg_print(WIFI_APPS,"%s:%d app sub_event:%d not handle\r\n", __func__, __LINE__, sub_type);
-            break;
+    case wifi_event_hal_assoc_device:
+        wifi_util_dbg_print(WIFI_APPS, "%s:%d Got Assoc device for Levl\n", __func__, __LINE__);
+        motion_assoc_device_event(app, data);
+        break;
+    case wifi_event_hal_disassoc_device:
+        wifi_util_dbg_print(WIFI_APPS, "%s:%d Got DisAssoc device for Levl\n", __func__, __LINE__);
+        motion_disassoc_device_event(app, data);
+        break;
+    default:
+        wifi_util_dbg_print(WIFI_APPS, "%s:%d app sub_event:%s not handle\r\n", __func__, __LINE__,
+            wifi_event_subtype_to_string(sub_type));
+        break;
     }
     return RETURN_OK;
 }

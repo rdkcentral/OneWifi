@@ -818,48 +818,50 @@ int webconfig_event_levl(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *
 
 int hal_event_levl(wifi_app_t *app, wifi_event_subtype_t sub_type, void *data)
 {
-    switch(sub_type) {
-        case wifi_event_hal_probe_req_frame:
-            apps_probe_req_frame_event(app, data);
-            break;
-        case wifi_event_hal_probe_rsp_frame:
-            apps_probe_rsp_frame_event(app, data);
-            break;
-        case wifi_event_hal_auth_frame:
-            apps_auth_frame_event(app, data);
-            break;
-        case wifi_event_hal_assoc_req_frame:
-            apps_assoc_req_frame_event(app, data);
-            break;
-        case wifi_event_hal_assoc_rsp_frame:
-            apps_assoc_rsp_frame_event(app, data);
-            break;
-        case wifi_event_hal_reassoc_req_frame:
-            apps_reassoc_req_frame_event(app, data);
-            break;
-        case wifi_event_hal_reassoc_rsp_frame:
-            apps_reassoc_rsp_frame_event(app, data);
-            break;
-        case wifi_event_hal_disassoc_device:
-            wifi_util_dbg_print(WIFI_APPS,"%s:%d Got DisAssoc device for Levl\n", __func__, __LINE__);
-            levl_disassoc_device_event(app, data);
-            break;
-        default:
-            wifi_util_dbg_print(WIFI_APPS,"%s:%d app sub_event:%d not handle\r\n", __func__, __LINE__, sub_type);
-            break;
+    switch (sub_type) {
+    case wifi_event_hal_probe_req_frame:
+        apps_probe_req_frame_event(app, data);
+        break;
+    case wifi_event_hal_probe_rsp_frame:
+        apps_probe_rsp_frame_event(app, data);
+        break;
+    case wifi_event_hal_auth_frame:
+        apps_auth_frame_event(app, data);
+        break;
+    case wifi_event_hal_assoc_req_frame:
+        apps_assoc_req_frame_event(app, data);
+        break;
+    case wifi_event_hal_assoc_rsp_frame:
+        apps_assoc_rsp_frame_event(app, data);
+        break;
+    case wifi_event_hal_reassoc_req_frame:
+        apps_reassoc_req_frame_event(app, data);
+        break;
+    case wifi_event_hal_reassoc_rsp_frame:
+        apps_reassoc_rsp_frame_event(app, data);
+        break;
+    case wifi_event_hal_disassoc_device:
+        wifi_util_dbg_print(WIFI_APPS, "%s:%d Got DisAssoc device for Levl\n", __func__, __LINE__);
+        levl_disassoc_device_event(app, data);
+        break;
+    default:
+        wifi_util_dbg_print(WIFI_APPS, "%s:%d app sub_event:%s not handle\r\n", __func__, __LINE__,
+            wifi_event_subtype_to_string(sub_type));
+        break;
     }
     return RETURN_OK;
 }
 
 int levl_event_csi(wifi_app_t *app, wifi_event_subtype_t sub_type, wifi_csi_dev_t *csi)
 {
-    switch(sub_type) {
-        case wifi_event_type_csi_data:
-            process_levl_csi(app, csi);
-            break;
-        default:
-            wifi_util_dbg_print(WIFI_APPS,"%s:%d wrong apps event:%d\n", __func__, __LINE__, sub_type);
-            break;
+    switch (sub_type) {
+    case wifi_event_type_csi_data:
+        process_levl_csi(app, csi);
+        break;
+    default:
+        wifi_util_dbg_print(WIFI_APPS, "%s:%d wrong apps event:%s\n", __func__, __LINE__,
+            wifi_event_subtype_to_string(sub_type));
+        break;
     }
 
     return RETURN_OK;

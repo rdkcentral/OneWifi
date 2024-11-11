@@ -624,20 +624,21 @@ static int analytics_event_new_bssid(wifi_app_t *apps, void *arg)
 int exec_event_analytics(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *arg)
 {
     switch (sub_type) {
-        case wifi_event_exec_start:
-            analytics_event_exec_start(apps, arg);
-            break;
+    case wifi_event_exec_start:
+        analytics_event_exec_start(apps, arg);
+        break;
 
-        case wifi_event_exec_stop:
-            analytics_event_exec_stop(apps, arg);
-            break;
+    case wifi_event_exec_stop:
+        analytics_event_exec_stop(apps, arg);
+        break;
 
-        case wifi_event_exec_timeout:
-            analytics_event_exec_timeout(apps, arg);
-            break;
-        default:
-            wifi_util_error_print(WIFI_APPS,"%s:%d: event not handle[%d]\r\n",__func__, __LINE__, sub_type);
-            break;
+    case wifi_event_exec_timeout:
+        analytics_event_exec_timeout(apps, arg);
+        break;
+    default:
+        wifi_util_dbg_print(WIFI_APPS, "%s:%d: event not handle %s\r\n", __func__, __LINE__,
+            wifi_event_subtype_to_string(sub_type));
+        break;
     }
     return RETURN_OK;
 }
@@ -645,38 +646,39 @@ int exec_event_analytics(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *
 int webconfig_event_analytics(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *arg)
 {
     switch (sub_type) {
-        case wifi_event_webconfig_set_data:
-        case wifi_event_webconfig_set_data_dml:
-        case wifi_event_webconfig_set_data_webconfig:
-        case wifi_event_webconfig_set_data_ovsm:
-        case wifi_event_webconfig_data_resched_to_ctrl_queue:
-        case wifi_event_webconfig_data_to_hal_apply:
-        case wifi_event_webconfig_data_to_apply_pending_queue:
-        case wifi_event_webconfig_set_data_force_apply:
-            analytics_event_webconfig_set_data(apps, arg, sub_type);
-            break;
-
-        case wifi_event_webconfig_set_status:
-            analytics_event_webconfig_set_status(apps, arg);
-            break;
-
-        case wifi_event_webconfig_hal_result:
-            analytics_event_webconfig_hal_result(apps, arg);
-            break;
-
-        case wifi_event_webconfig_get_data:
-            analytics_event_webconfig_get_data(apps, arg);
-            break;
-
-        case wifi_event_webconfig_set_data_tunnel:
-            analytics_event_webconfig_set_data_tunnel(apps, arg);
-            break;
-        case wifi_event_webconfig_data_req_from_dml:
-            analytics_event_webconfig_get_data_for_dmlthread(apps, arg, sub_type);
+    case wifi_event_webconfig_set_data:
+    case wifi_event_webconfig_set_data_dml:
+    case wifi_event_webconfig_set_data_webconfig:
+    case wifi_event_webconfig_set_data_ovsm:
+    case wifi_event_webconfig_data_resched_to_ctrl_queue:
+    case wifi_event_webconfig_data_to_hal_apply:
+    case wifi_event_webconfig_data_to_apply_pending_queue:
+    case wifi_event_webconfig_set_data_force_apply:
+        analytics_event_webconfig_set_data(apps, arg, sub_type);
         break;
-        default:
-            wifi_util_error_print(WIFI_APPS,"%s:%d: event not handle[%d]\r\n",__func__, __LINE__, sub_type);
-            break;
+
+    case wifi_event_webconfig_set_status:
+        analytics_event_webconfig_set_status(apps, arg);
+        break;
+
+    case wifi_event_webconfig_hal_result:
+        analytics_event_webconfig_hal_result(apps, arg);
+        break;
+
+    case wifi_event_webconfig_get_data:
+        analytics_event_webconfig_get_data(apps, arg);
+        break;
+
+    case wifi_event_webconfig_set_data_tunnel:
+        analytics_event_webconfig_set_data_tunnel(apps, arg);
+        break;
+    case wifi_event_webconfig_data_req_from_dml:
+        analytics_event_webconfig_get_data_for_dmlthread(apps, arg, sub_type);
+        break;
+    default:
+        wifi_util_dbg_print(WIFI_APPS, "%s:%d: event not handle %s\r\n", __func__, __LINE__,
+            wifi_event_subtype_to_string(sub_type));
+        break;
     }
 
     return RETURN_OK;
@@ -685,73 +687,74 @@ int webconfig_event_analytics(wifi_app_t *apps, wifi_event_subtype_t sub_type, v
 int hal_event_analytics(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *arg)
 {
     switch (sub_type) {
-        case wifi_event_hal_unknown_frame:
-            analytics_event_hal_unknown_frame(apps, arg);
-            break;
+    case wifi_event_hal_unknown_frame:
+        analytics_event_hal_unknown_frame(apps, arg);
+        break;
 
-        case wifi_event_hal_mgmt_frames:
-            analytics_event_hal_mgmt_frame(apps, arg);
-            break;
+    case wifi_event_hal_mgmt_frames:
+        analytics_event_hal_mgmt_frame(apps, arg);
+        break;
 
-        case wifi_event_hal_probe_req_frame:
-            analytics_event_hal_probe_req_frame(apps, arg);
-            break;
+    case wifi_event_hal_probe_req_frame:
+        analytics_event_hal_probe_req_frame(apps, arg);
+        break;
 
-        case wifi_event_hal_auth_frame:
-            analytics_event_hal_auth_frame(apps, arg);
-            break;
+    case wifi_event_hal_auth_frame:
+        analytics_event_hal_auth_frame(apps, arg);
+        break;
 
-        case wifi_event_hal_assoc_req_frame:
-            analytics_event_hal_assoc_req_frame(apps, arg);
-            break;
+    case wifi_event_hal_assoc_req_frame:
+        analytics_event_hal_assoc_req_frame(apps, arg);
+        break;
 
-        case wifi_event_hal_assoc_rsp_frame:
-            analytics_event_hal_assoc_rsp_frame(apps, arg);
-            break;
+    case wifi_event_hal_assoc_rsp_frame:
+        analytics_event_hal_assoc_rsp_frame(apps, arg);
+        break;
 
-        case wifi_event_hal_reassoc_req_frame:
-            analytics_event_hal_reassoc_req_frame(apps, arg);
-            break;
+    case wifi_event_hal_reassoc_req_frame:
+        analytics_event_hal_reassoc_req_frame(apps, arg);
+        break;
 
-        case wifi_event_hal_reassoc_rsp_frame:
-            analytics_event_hal_reassoc_rsp_frame(apps, arg);
-            break;
+    case wifi_event_hal_reassoc_rsp_frame:
+        analytics_event_hal_reassoc_rsp_frame(apps, arg);
+        break;
 
-        case wifi_event_hal_sta_conn_status:
-            analytics_event_hal_sta_conn_status(apps, arg);
-            break;
+    case wifi_event_hal_sta_conn_status:
+        analytics_event_hal_sta_conn_status(apps, arg);
+        break;
 
-        case wifi_event_hal_assoc_device:
-            analytics_event_hal_assoc_device(apps, arg);
-            break;
+    case wifi_event_hal_assoc_device:
+        analytics_event_hal_assoc_device(apps, arg);
+        break;
 
-        case wifi_event_hal_disassoc_device:
-            analytics_event_hal_disassoc_device(apps, arg);
-            break;
+    case wifi_event_hal_disassoc_device:
+        analytics_event_hal_disassoc_device(apps, arg);
+        break;
 
-        case wifi_event_scan_results:
-            analytics_event_hal_scan_results(apps, arg);
-            break;
+    case wifi_event_scan_results:
+        analytics_event_hal_scan_results(apps, arg);
+        break;
 
-        case wifi_event_hal_channel_change:
-            analytics_event_hal_channel_change(apps, arg);
-            break;
+    case wifi_event_hal_channel_change:
+        analytics_event_hal_channel_change(apps, arg);
+        break;
 
-        case wifi_event_radius_greylist:
-            analytics_event_hal_radius_greylist(apps, arg);
-            break;
+    case wifi_event_radius_greylist:
+        analytics_event_hal_radius_greylist(apps, arg);
+        break;
 
-        case wifi_event_hal_potential_misconfiguration:
-            analytics_event_hal_potential_misconfiguration(apps, arg);
-            break;
+    case wifi_event_hal_potential_misconfiguration:
+        analytics_event_hal_potential_misconfiguration(apps, arg);
+        break;
 
-        case wifi_event_hal_analytics:
-            analytics_event_hal_analytics(apps, arg);
-            break;
+    case wifi_event_hal_analytics:
+        analytics_event_hal_analytics(apps, arg);
+        break;
 
-        default:
-            wifi_util_error_print(WIFI_APPS,"%s:%d: event not handle[%d]\r\n",__func__, __LINE__, sub_type);
-            break;
+    default:
+        wifi_util_dbg_print(WIFI_APPS, "%s:%d: event not handle %s\r\n", __func__, __LINE__,
+            wifi_event_subtype_to_string(sub_type));
+        break;
     }
 
     return RETURN_OK;
@@ -760,99 +763,100 @@ int hal_event_analytics(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *a
 int command_event_analytics(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *arg)
 {
     switch (sub_type) {
-        case wifi_event_type_active_gw_check:
-            analytics_event_active_gw_check(apps, arg);
-            break;
+    case wifi_event_type_active_gw_check:
+        analytics_event_active_gw_check(apps, arg);
+        break;
 
-        case wifi_event_type_command_factory_reset:
-            analytics_event_command_factory_reset(apps, arg);
-            break;
+    case wifi_event_type_command_factory_reset:
+        analytics_event_command_factory_reset(apps, arg);
+        break;
 
-        case wifi_event_type_radius_grey_list_rfc:
-            break;
+    case wifi_event_type_radius_grey_list_rfc:
+        break;
 
-        case wifi_event_type_wifi_passpoint_rfc:
-            break;
+    case wifi_event_type_wifi_passpoint_rfc:
+        break;
 
-        case wifi_event_type_wifi_interworking_rfc:
-            break;
+    case wifi_event_type_wifi_interworking_rfc:
+        break;
 
-        case wifi_event_type_wpa3_rfc:
-            analytics_event_wpa3_rfc(apps, arg);
-            break;
+    case wifi_event_type_wpa3_rfc:
+        analytics_event_wpa3_rfc(apps, arg);
+        break;
 
-        case wifi_event_type_dfs_rfc:
-            break;
+    case wifi_event_type_dfs_rfc:
+        break;
 
-        case wifi_event_type_dfs_atbootup_rfc:
-            break;
+    case wifi_event_type_dfs_atbootup_rfc:
+        break;
 
-        case wifi_event_type_command_kickmac:
-            analytics_event_command_kickmac(apps, arg);
-            break;
+    case wifi_event_type_command_kickmac:
+        analytics_event_command_kickmac(apps, arg);
+        break;
 
-        case wifi_event_type_command_kick_assoc_devices:
-            analytics_event_command_kick_assoc_devices(apps, arg);
-            break;
+    case wifi_event_type_command_kick_assoc_devices:
+        analytics_event_command_kick_assoc_devices(apps, arg);
+        break;
 
-        case wifi_event_type_command_wps:
-            break;
+    case wifi_event_type_command_wps:
+        break;
 
-        case wifi_event_type_command_wps_cancel:
-            break;
+    case wifi_event_type_command_wps_cancel:
+        break;
 
-        case wifi_event_type_command_wifi_host_sync:
-            break;
+    case wifi_event_type_command_wifi_host_sync:
+        break;
 
-        case wifi_event_type_device_network_mode:
-            break;
+    case wifi_event_type_device_network_mode:
+        break;
 
-        case wifi_event_type_twoG80211axEnable_rfc:
-            break;
+    case wifi_event_type_twoG80211axEnable_rfc:
+        break;
 
-        case wifi_event_type_command_wifi_neighborscan:
-            break;
+    case wifi_event_type_command_wifi_neighborscan:
+        break;
 
-        case wifi_event_type_command_mesh_status:
-            break;
+    case wifi_event_type_command_mesh_status:
+        break;
 
-        case wifi_event_type_normalized_rssi:
-            break;
+    case wifi_event_type_normalized_rssi:
+        break;
 
-        case wifi_event_type_snr:
-            break;
+    case wifi_event_type_snr:
+        break;
 
-        case wifi_event_type_cli_stat:
-            break;
+    case wifi_event_type_cli_stat:
+        break;
 
-        case wifi_event_type_txrx_rate:
-            break;
+    case wifi_event_type_txrx_rate:
+        break;
 
-        case wifi_event_type_mgmt_frame_bus_rfc:
-            break;
+    case wifi_event_type_mgmt_frame_bus_rfc:
+        break;
 
-        case wifi_event_type_sta_connect_in_progress:
-            analytics_event_sta_connect_in_progress(apps, arg);
-            break;
+    case wifi_event_type_sta_connect_in_progress:
+        analytics_event_sta_connect_in_progress(apps, arg);
+        break;
 
-        case wifi_event_type_udhcp_ip_fail:
-            analytics_event_udhcp_ip_fail(apps, arg);
-            break;
+    case wifi_event_type_udhcp_ip_fail:
+        analytics_event_udhcp_ip_fail(apps, arg);
+        break;
 
-        case wifi_event_type_trigger_disconnection_analytics:
-            analytics_event_trigger_disconnection_analytics(apps, arg);
-            break;
+    case wifi_event_type_trigger_disconnection_analytics:
+        analytics_event_trigger_disconnection_analytics(apps, arg);
+        break;
 
-        case wifi_event_type_new_bssid:
-            analytics_event_new_bssid(apps, arg);
-            break;
+    case wifi_event_type_new_bssid:
+        analytics_event_new_bssid(apps, arg);
+        break;
 
-        case wifi_event_type_eth_bh_status:
-            break;
+    case wifi_event_type_eth_bh_status:
+        break;
 
-        default:
-            wifi_util_error_print(WIFI_APPS,"%s:%d: event not handle[%d]\r\n",__func__, __LINE__, sub_type);
-            break;
+    default:
+        wifi_util_dbg_print(WIFI_APPS, "%s:%d: event not handle %s\r\n", __func__, __LINE__,
+            wifi_event_subtype_to_string(sub_type));
+        break;
     }
     return RETURN_OK;
 }
