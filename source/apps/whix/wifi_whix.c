@@ -53,7 +53,7 @@
 #define TELEMETRY_UPDATE_INTERVAL_MS 3600000 // 1 hour
 #define CAPTURE_VAP_STATUS_INTERVAL_MS 5*60*1000 // 5 minutes
 #define RADIO_DIAG_STATS_INTERVAL_MS 30000 // 30 seconds
-
+#define WIFI_CHANUTIL_PROVIDER_DELAY_SEC 5 // 5 seconds
 static unsigned int vap_up_arr[MAX_VAP]={0};
 static unsigned char vap_nas_status[MAX_VAP]={0};
 static unsigned int vap_iteration=0;
@@ -2000,6 +2000,7 @@ static void whix_common_config_to_monitor_queue(wifi_monitor_data_t *data, bool 
             data->u.mon_stats_config.interval_ms = (global_param->whix_log_interval) * 1000;
         }
     } else {
+        data->u.mon_stats_config.delay_provider_sec = WIFI_CHANUTIL_PROVIDER_DELAY_SEC;
         if (is_channel_util) {
             data->u.mon_stats_config.interval_ms = CHAN_UTIL_INTERVAL_MS;
         } else {
