@@ -3723,3 +3723,613 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
     }
     return false;
 }
+
+// Countrycode: US, Band 2.4G
+static const wifi_operating_classes_t us_24G[] = {
+    { 81, -30, 2, { 12, 13 } },
+    { 83, -30, 0, {}         },
+    { 84, -30, 2, { 12, 13 } },
+};
+
+// Countrycode: US, Band 5G
+static const wifi_operating_classes_t us_5G[] = {
+    { 115, -30, 0, {}           },
+    { 116, -30, 0, {}           },
+    { 117, -30, 0, {}           },
+    { 118, -30, 0, {}           },
+    { 119, -30, 0, {}           },
+    { 120, -30, 0, {}           },
+    { 121, -30, 0, {}           },
+    { 122, -30, 0, {}           },
+    { 123, -30, 0, {}           },
+    { 124, -30, 0, {}           },
+    { 125, -30, 2, { 169, 173 } },
+    { 126, -30, 0, {}           },
+    { 127, -30, 1, { 169 }      },
+    // Revisit Below Operating Class as multiAP.json example indicates nonOperable as
+    // [106, 122, 138, 155] and singleAp.json indicates [42,58] but as per Table E-1 these channels
+    // are operable.
+    { 128, -30, 0, {}           },
+    // Revisit Below Operating Class as singleAP.json example indicates nonOperable as
+    // [50] but as per Table E-1 the channel is operable.
+    { 129, -30, 0, {}           },
+    // Revisit Below Operating Class as multiAP.json example indicates nonOperable as
+    // [106, 122, 138, 155] and singleAp.json indicates [42,58] but as per Table E-1 these channels
+    // are operable.
+    { 130, -30, 0, {}           },
+};
+
+// Countrycode: US, Band 6G
+static const wifi_operating_classes_t us_6G[] = {
+    { 131, 23,  0, {}      },
+    { 132, 23,  0, {}      },
+    { 133, 23,  0, {}      },
+    { 134, 23,  1, { 169 } },
+    { 135, -30, 0, {}      },
+    { 136, 23,  0, {}      },
+};
+
+// Countrycode: EU, Band 2.4G
+static const wifi_operating_classes_t eu_24G[] = {
+    { 81, -30, 0, {} },
+    { 83, -30, 0, {} },
+    { 84, -30, 0, {} },
+};
+
+// Countrycode: EU, Band 5G
+static const wifi_operating_classes_t eu_5G[] = {
+    { 115, -30, 0, {}           },
+    { 116, -30, 0, {}           },
+    { 117, -30, 0, {}           },
+    { 118, -30, 0, {}           },
+    { 119, -30, 0, {}           },
+    { 120, -30, 0, {}           },
+    { 121, -30, 0, {}           },
+    { 122, -30, 0, {}           },
+    { 123, -30, 0, {}           },
+    { 125, -30, 1, { 173 }      },
+    // Revisit Below Operating Class as multiAP.json example indicates nonOperable as
+    // [106, 122, 138, 155] and singleAp.json indicates [42,58] but as per Table E-2
+    // [138,155] is nonOperable.
+    { 128, -30, 2, { 138, 155 } },
+    // Revisit Below Operating Class as singleAp.json example indicates [50] as nonOperable
+    // but as per Table E-2 this channel is operable.
+    { 129, -30, 0, {}           },
+    // Revisit Below Operating Class as multiAP.json example indicates nonOperable as
+    // [106, 122, 138, 155] and singleAp.json indicates [42,58] but as per Table E-2
+    // [138,155] is nonOperable.
+    { 130, -30, 2, { 138, 155 } },
+};
+
+// Countrycode: EU, Band 6G
+// Revisit if different from US
+static const wifi_operating_classes_t eu_6G[] = {
+    { 131, 23,  0, {}      },
+    { 132, 23,  0, {}      },
+    { 133, 23,  0, {}      },
+    { 134, 23,  1, { 169 } },
+    { 135, -30, 0, {}      },
+    { 136, 23,  0, {}      },
+};
+
+// Countrycode: JP, Band 2.4G
+static const wifi_operating_classes_t jp_24G[] = {
+    { 81, -30, 0, {} },
+    { 83, -30, 0, {} },
+    { 84, -30, 0, {} },
+};
+
+// Countrycode: JP, Band 5G
+static const wifi_operating_classes_t jp_5G[] = {
+    { 115, -30, 0, {}      },
+    { 116, -30, 0, {}      },
+    { 117, -30, 0, {}      },
+    { 118, -30, 0, {}      },
+    { 119, -30, 0, {}      },
+    { 120, -30, 0, {}      },
+    { 121, -30, 0, {}      },
+    { 122, -30, 0, {}      },
+    { 123, -30, 0, {}      },
+    // Revisit Below Operating Class as multiAP.json example indicates nonOperable as
+    // [106, 122, 138, 155] and singleAp.json indicates [42,58] but as per Table E-3
+    // only 155 is nonOperable.
+    { 128, -30, 1, { 155 } },
+    // Revisit Below Operating Class as singleAp.json example indicates [50] as nonOperable
+    // but as per Table E-3 it is operable.
+    { 129, -30, 0, {}      },
+    // Revisit Below Operating Class as multiAP.json example indicates nonOperable as
+    // [106, 122, 138, 155] and singleAp.json indicates [42,58] but as per Table E-3
+    // only 155 is nonOperable.
+    { 130, -30, 1, { 155 } },
+};
+
+// Countrycode: JP, Band 6G TBD: Revisit if different from US
+// Revisit if different from US
+static const wifi_operating_classes_t jp_6G[] = {
+    { 131, 23,  0, {}      },
+    { 132, 23,  0, {}      },
+    { 133, 23,  0, {}      },
+    { 134, 23,  1, { 169 } },
+    { 135, -30, 0, {}      },
+    { 136, 23,  0, {}      },
+};
+
+// Countrycode: CN, Band 2.4G
+static const wifi_operating_classes_t cn_24G[] = {
+    { 81, -30, 0, {} },
+    { 83, -30, 0, {} },
+    { 84, -30, 0, {} },
+};
+
+// Countrycode: CN, Band 5G
+static const wifi_operating_classes_t cn_5G[] = {
+    { 115, -30, 0, {}                },
+    { 116, -30, 0, {}                },
+    { 118, -30, 0, {}                },
+    { 119, -30, 0, {}                },
+    { 125, -30, 2, { 169, 173 }      },
+    { 126, -30, 1, { 165 }           },
+    // Revisit below operating class if the nonOperable channels are not appropriate
+    { 128, -30, 3, { 106, 122, 138 } },
+    // Revisit below operating class if the nonOperable channels are not appropriate
+    { 129, -30, 1, { 114 }           },
+    // Revisit below operating class if the nonOperable channels are not appropriate
+    { 130, -30, 3, { 106, 122, 138 } },
+};
+
+// Countrycode: CN, Band 6G
+// Revisit if different from US
+static const wifi_operating_classes_t cn_6G[] = {
+    { 131, 23,  0, {}      },
+    { 132, 23,  0, {}      },
+    { 133, 23,  0, {}      },
+    { 134, 23,  1, { 169 } },
+    { 135, -30, 0, {}      },
+    { 136, 23,  0, {}      },
+};
+
+// Countrycode: others, Band 2.4G
+static const wifi_operating_classes_t others_24G[] = {
+    { 81, -30, 0, {} },
+    { 83, -30, 0, {} },
+    { 84, -30, 0, {} },
+};
+
+// Countrycode: others, Band 5G
+static const wifi_operating_classes_t others_5G[] = {
+    { 115, -30, 0, {} },
+    { 116, -30, 0, {} },
+    { 117, -30, 0, {} },
+    { 118, -30, 0, {} },
+    { 119, -30, 0, {} },
+    { 120, -30, 0, {} },
+    { 121, -30, 0, {} },
+    { 122, -30, 0, {} },
+    { 123, -30, 0, {} },
+    { 124, -30, 0, {} },
+    { 125, -30, 0, {} },
+    { 126, -30, 0, {} },
+    { 127, -30, 0, {} },
+    // Revisit below operating class if the nonOperable channels are not appropriate
+    { 128, -30, 0, {} },
+    // Revisit below operating class if the nonOperable channels are not appropriate
+    { 129, -30, 0, {} },
+    // Revisit below operating class if the nonOperable channels are not appropriate
+    { 130, -30, 0, {} },
+};
+
+// Countrycode: others, Band 6G
+// Revisit if different from US
+static const wifi_operating_classes_t others_6G[] = {
+    { 131, 23,  0, {}      },
+    { 132, 23,  0, {}      },
+    { 133, 23,  0, {}      },
+    { 134, 23,  1, { 169 } },
+    { 135, -30, 0, {}      },
+    { 136, 23,  0, {}      },
+};
+
+typedef enum {
+    WIFI_REGION_US,
+    WIFI_REGION_EU,
+    WIFI_REGION_JP,
+    WIFI_REGION_CN,
+    WIFI_REGION_OTHER,
+    WIFI_REGION_UNKNOWN,
+} wifi_region_t;
+
+wifi_region_t get_region_from_countrycode(wifi_countrycode_type_t countryCode)
+{
+    if (countryCode > wifi_countrycode_ZW) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Error, Countrycode %d not known.\n", __func__,
+            __LINE__, countryCode);
+        return WIFI_REGION_UNKNOWN;
+    }
+
+    switch (countryCode) {
+    case wifi_countrycode_US: /**< UNITED STATES */
+    case wifi_countrycode_CA: /**< CANADA */
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Countrycode %d part of US region.\n", __func__,
+            __LINE__, countryCode);
+        return WIFI_REGION_US;
+
+    case wifi_countrycode_AL: /**< ALBANIA */
+    case wifi_countrycode_AM: /**< ARMENIA */
+    case wifi_countrycode_AT: /**< AUSTRIA */
+    case wifi_countrycode_AZ: /**< AZERBAIJAN */
+    case wifi_countrycode_BA: /**< BOSNIA AND HERZEGOVINA */
+    case wifi_countrycode_BE: /**< BELGIUM */
+    case wifi_countrycode_BG: /**< BULGARIA */
+    case wifi_countrycode_BY: /**< BELARUS */
+    case wifi_countrycode_CH: /**< SWITZERLAND */
+    case wifi_countrycode_CY: /**< CYPRUS */
+    case wifi_countrycode_CZ: /**< CZECH REPUBLIC */
+    case wifi_countrycode_DE: /**< GERMANY */
+    case wifi_countrycode_DK: /**< DENMARK */
+    case wifi_countrycode_EE: /**< ESTONIA */
+    case wifi_countrycode_ES: /**< SPAIN */
+    case wifi_countrycode_FI: /**< FINLAND */
+    case wifi_countrycode_FR: /**< FRANCE */
+    case wifi_countrycode_GE: /**< GEORGIA */
+    case wifi_countrycode_HR: /**< CROATIA */
+    case wifi_countrycode_HU: /**< HUNGARY */
+    case wifi_countrycode_IE: /**< IRELAND */
+    case wifi_countrycode_IS: /**< ICELAND */
+    case wifi_countrycode_IT: /**< ITALY */
+    case wifi_countrycode_LI: /**< LIECHTENSTEIN */
+    case wifi_countrycode_LT: /**< LITHUANIA */
+    case wifi_countrycode_LU: /**< LUXEMBOURG */
+    case wifi_countrycode_LV: /**< LATVIA */
+    case wifi_countrycode_MD: /**< MOLDOVA, REPUBLIC OF */
+    case wifi_countrycode_ME: /**< MONTENEGRO */
+    case wifi_countrycode_MK: /**< MACEDONIA, THE FORMER YUGOSLAV REPUBLIC OF */
+    case wifi_countrycode_MT: /**< MALTA */
+    case wifi_countrycode_NL: /**< NETHERLANDS */
+    case wifi_countrycode_NO: /**< NORWAY */
+    case wifi_countrycode_PL: /**< POLAND */
+    case wifi_countrycode_PT: /**< PORTUGAL */
+    case wifi_countrycode_RO: /**< ROMANIA */
+    case wifi_countrycode_RS: /**< SERBIA */
+    case wifi_countrycode_RU: /**< RUSSIAN FEDERATION */
+    case wifi_countrycode_SE: /**< SWEDEN */
+    case wifi_countrycode_SI: /**< SLOVENIA */
+    case wifi_countrycode_SK: /**< SLOVAKIA */
+    case wifi_countrycode_TR: /**< TURKEY */
+    case wifi_countrycode_UA: /**< UKRAINE */
+    case wifi_countrycode_GB: /**< UNITED KINGDOM */
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Countrycode %d part of EU region.\n", __func__,
+            __LINE__, countryCode);
+        return WIFI_REGION_EU;
+
+    case wifi_countrycode_JP: /**< JAPAN */
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Countrycode %d part of JP region.\n", __func__,
+            __LINE__, countryCode);
+        return WIFI_REGION_JP;
+
+    case wifi_countrycode_CN: /**< CHINA */
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Countrycode %d part of CN region.\n", __func__,
+            __LINE__, countryCode);
+        return WIFI_REGION_CN;
+
+    case wifi_countrycode_AC: /**< ASCENSION ISLAND */
+    case wifi_countrycode_AD: /**< ANDORRA */
+    case wifi_countrycode_AE: /**< UNITED ARAB EMIRATES */
+    case wifi_countrycode_AF: /**< AFGHANISTAN */
+    case wifi_countrycode_AG: /**< ANTIGUA AND BARBUDA */
+    case wifi_countrycode_AI: /**< ANGUILLA */
+    case wifi_countrycode_AN: /**< NETHERLANDS ANTILLES */
+    case wifi_countrycode_AO: /**< ANGOLA */
+    case wifi_countrycode_AQ: /**< ANTARCTICA */
+    case wifi_countrycode_AR: /**< ARGENTINA */
+    case wifi_countrycode_AS: /**< AMERICAN SAMOA */
+    case wifi_countrycode_AU: /**< AUSTRALIA */
+    case wifi_countrycode_AW: /**< ARUBA */
+    case wifi_countrycode_BB: /**< BARBADOS */
+    case wifi_countrycode_BD: /**< BANGLADESH */
+    case wifi_countrycode_BF: /**< BURKINA FASO */
+    case wifi_countrycode_BH: /**< BAHRAIN */
+    case wifi_countrycode_BI: /**< BURUNDI */
+    case wifi_countrycode_BJ: /**< BENIN */
+    case wifi_countrycode_BM: /**< BERMUDA */
+    case wifi_countrycode_BN: /**< BRUNEI DARUSSALAM */
+    case wifi_countrycode_BO: /**< BOLIVIA */
+    case wifi_countrycode_BR: /**< BRAZIL */
+    case wifi_countrycode_BS: /**< BAHAMAS */
+    case wifi_countrycode_BT: /**< BHUTAN */
+    case wifi_countrycode_BV: /**< BOUVET ISLAND */
+    case wifi_countrycode_BW: /**< BOTSWANA */
+    case wifi_countrycode_BZ: /**< BELIZE */
+    case wifi_countrycode_CC: /**< COCOS (KEELING) ISLANDS */
+    case wifi_countrycode_CD: /**< CONGO, THE DEMOCRATIC REPUBLIC OF THE */
+    case wifi_countrycode_CF: /**< CENTRAL AFRICAN REPUBLIC */
+    case wifi_countrycode_CG: /**< CONGO */
+    case wifi_countrycode_CI: /**< COTE D'IVOIRE */
+    case wifi_countrycode_CK: /**< COOK ISLANDS */
+    case wifi_countrycode_CL: /**< CHILE */
+    case wifi_countrycode_CM: /**< CAMEROON */
+    case wifi_countrycode_CO: /**< COLOMBIA */
+    case wifi_countrycode_CP: /**< CLIPPERTON ISLAND */
+    case wifi_countrycode_CR: /**< COSTA RICA */
+    case wifi_countrycode_CU: /**< CUBA */
+    case wifi_countrycode_CV: /**< CAPE VERDE */
+    case wifi_countrycode_CX: /**< CHRISTMAS ISLAND */
+    case wifi_countrycode_DJ: /**< DJIBOUTI */
+    case wifi_countrycode_DM: /**< DOMINICA */
+    case wifi_countrycode_DO: /**< DOMINICAN REPUBLIC */
+    case wifi_countrycode_DZ: /**< ALGERIA */
+    case wifi_countrycode_EC: /**< ECUADOR */
+    case wifi_countrycode_EG: /**< EGYPT */
+    case wifi_countrycode_EH: /**< WESTERN SAHARA */
+    case wifi_countrycode_ER: /**< ERITREA */
+    case wifi_countrycode_ET: /**< ETHIOPIA */
+    case wifi_countrycode_FJ: /**< FIJI */
+    case wifi_countrycode_FK: /**< FALKLAND ISLANDS (MALVINAS) */
+    case wifi_countrycode_FM: /**< MICRONESIA, FEDERATED STATES OF */
+    case wifi_countrycode_FO: /**< FAROE ISLANDS */
+    case wifi_countrycode_GA: /**< GABON */
+    case wifi_countrycode_GD: /**< GRENADA */
+    case wifi_countrycode_GF: /**< FRENCH GUIANA */
+    case wifi_countrycode_GG: /**< GUERNSEY */
+    case wifi_countrycode_GH: /**< GHANA */
+    case wifi_countrycode_GI: /**< GIBRALTAR */
+    case wifi_countrycode_GL: /**< GREENLAND */
+    case wifi_countrycode_GM: /**< GAMBIA */
+    case wifi_countrycode_GN: /**< GUINEA */
+    case wifi_countrycode_GP: /**< GUADELOUPE */
+    case wifi_countrycode_GQ: /**< EQUATORIAL GUINEA */
+    case wifi_countrycode_GR: /**< GREECE */
+    case wifi_countrycode_GS: /**< SOUTH GEORGIA AND THE SOUTH SANDWICH ISLANDS */
+    case wifi_countrycode_GT: /**< GUATEMALA */
+    case wifi_countrycode_GU: /**< GUAM */
+    case wifi_countrycode_GW: /**< GUINEA-BISSAU */
+    case wifi_countrycode_GY: /**< GUYANA */
+    case wifi_countrycode_HT: /**< HAITI */
+    case wifi_countrycode_HM: /**< HEARD ISLAND AND MCDONALD ISLANDS */
+    case wifi_countrycode_HN: /**< HONDURAS */
+    case wifi_countrycode_HK: /**< HONG KONG */
+    case wifi_countrycode_IN: /**< INDIA */
+    case wifi_countrycode_ID: /**< INDONESIA */
+    case wifi_countrycode_IR: /**< IRAN, ISLAMIC REPUBLIC OF */
+    case wifi_countrycode_IQ: /**< IRAQ */
+    case wifi_countrycode_IL: /**< ISRAEL */
+    case wifi_countrycode_IM: /**< MAN, ISLE OF */
+    case wifi_countrycode_IO: /**< BRITISH INDIAN OCEAN TERRITORY */
+    case wifi_countrycode_JM: /**< JAMAICA */
+    case wifi_countrycode_JE: /**< JERSEY */
+    case wifi_countrycode_JO: /**< JORDAN */
+    case wifi_countrycode_KE: /**< KENYA */
+    case wifi_countrycode_KG: /**< KYRGYZSTAN */
+    case wifi_countrycode_KH: /**< CAMBODIA */
+    case wifi_countrycode_KI: /**< KIRIBATI */
+    case wifi_countrycode_KM: /**< COMOROS */
+    case wifi_countrycode_KN: /**< SAINT KITTS AND NEVIS */
+    case wifi_countrycode_KP: /**< KOREA, DEMOCRATIC PEOPLE'S REPUBLIC OF */
+    case wifi_countrycode_KR: /**< KOREA, REPUBLIC OF */
+    case wifi_countrycode_KW: /**< KUWAIT */
+    case wifi_countrycode_KY: /**< CAYMAN ISLANDS */
+    case wifi_countrycode_KZ: /**< KAZAKHSTAN */
+    case wifi_countrycode_LA: /**< LAO PEOPLE'S DEMOCRATIC REPUBLIC */
+    case wifi_countrycode_LB: /**< LEBANON */
+    case wifi_countrycode_LC: /**< SAINT LUCIA */
+    case wifi_countrycode_LK: /**< SRI LANKA */
+    case wifi_countrycode_LR: /**< LIBERIA */
+    case wifi_countrycode_LS: /**< LESOTHO */
+    case wifi_countrycode_LY: /**< LIBYAN ARAB JAMAHIRIYA */
+    case wifi_countrycode_MA: /**< MOROCCO */
+    case wifi_countrycode_MC: /**< MONACO */
+    case wifi_countrycode_MG: /**< MADAGASCAR */
+    case wifi_countrycode_MH: /**< MARSHALL ISLANDS */
+    case wifi_countrycode_ML: /**< MALI */
+    case wifi_countrycode_MM: /**< MYANMAR */
+    case wifi_countrycode_MN: /**< MONGOLIA */
+    case wifi_countrycode_MO: /**< MACAO */
+    case wifi_countrycode_MQ: /**< MARTINIQUE */
+    case wifi_countrycode_MR: /**< MAURITANIA */
+    case wifi_countrycode_MS: /**< MONTSERRAT */
+    case wifi_countrycode_MU: /**< MAURITIUS */
+    case wifi_countrycode_MV: /**< MALDIVES */
+    case wifi_countrycode_MW: /**< MALAWI */
+    case wifi_countrycode_MX: /**< MEXICO */
+    case wifi_countrycode_MY: /**< MALAYSIA */
+    case wifi_countrycode_MZ: /**< MOZAMBIQUE */
+    case wifi_countrycode_NA: /**< NAMIBIA */
+    case wifi_countrycode_NC: /**< NEW CALEDONIA */
+    case wifi_countrycode_NE: /**< NIGER */
+    case wifi_countrycode_NF: /**< NORFOLK ISLAND */
+    case wifi_countrycode_NG: /**< NIGERIA */
+    case wifi_countrycode_NI: /**< NICARAGUA */
+    case wifi_countrycode_NP: /**< NEPAL */
+    case wifi_countrycode_NR: /**< NAURU */
+    case wifi_countrycode_NU: /**< NIUE */
+    case wifi_countrycode_NZ: /**< NEW ZEALAND */
+    case wifi_countrycode_MP: /**< NORTHERN MARIANA ISLANDS */
+    case wifi_countrycode_OM: /**< OMAN */
+    case wifi_countrycode_PA: /**< PANAMA */
+    case wifi_countrycode_PE: /**< PERU */
+    case wifi_countrycode_PF: /**< FRENCH POLYNESIA */
+    case wifi_countrycode_PG: /**< PAPUA NEW GUINEA */
+    case wifi_countrycode_PH: /**< PHILIPPINES */
+    case wifi_countrycode_PK: /**< PAKISTAN */
+    case wifi_countrycode_PM: /**< SAINT PIERRE AND MIQUELON */
+    case wifi_countrycode_PN: /**< PITCAIRN */
+    case wifi_countrycode_PR: /**< PUERTO RICO */
+    case wifi_countrycode_PS: /**< PALESTINIAN TERRITORY, OCCUPIED */
+    case wifi_countrycode_PW: /**< PALAU */
+    case wifi_countrycode_PY: /**< PARAGUAY */
+    case wifi_countrycode_QA: /**< QATAR */
+    case wifi_countrycode_RE: /**< REUNION */
+    case wifi_countrycode_RW: /**< RWANDA */
+    case wifi_countrycode_SA: /**< SAUDI ARABIA */
+    case wifi_countrycode_SB: /**< SOLOMON ISLANDS */
+    case wifi_countrycode_SD: /**< SUDAN */
+    case wifi_countrycode_SC: /**< SEYCHELLES */
+    case wifi_countrycode_SG: /**< SINGAPORE */
+    case wifi_countrycode_SH: /**< SAINT HELENA */
+    case wifi_countrycode_SJ: /**< SVALBARD AND JAN MAYEN */
+    case wifi_countrycode_SL: /**< SIERRA LEONE */
+    case wifi_countrycode_SM: /**< SAN MARINO */
+    case wifi_countrycode_SN: /**< SENEGAL */
+    case wifi_countrycode_SO: /**< SOMALIA */
+    case wifi_countrycode_SR: /**< SURINAME */
+    case wifi_countrycode_ST: /**< SAO TOME AND PRINCIPE */
+    case wifi_countrycode_SV: /**< EL SALVADOR */
+    case wifi_countrycode_SY: /**< SYRIAN ARAB REPUBLIC */
+    case wifi_countrycode_SZ: /**< SWAZILAND */
+    case wifi_countrycode_TA: /**< TRISTAN DA CUNHA */
+    case wifi_countrycode_TC: /**< TURKS AND CAICOS ISLANDS */
+    case wifi_countrycode_TD: /**< CHAD */
+    case wifi_countrycode_TF: /**< FRENCH SOUTHERN TERRITORIES */
+    case wifi_countrycode_TG: /**< TOGO */
+    case wifi_countrycode_TH: /**< THAILAND */
+    case wifi_countrycode_TJ: /**< TAJIKISTAN */
+    case wifi_countrycode_TK: /**< TOKELAU */
+    case wifi_countrycode_TL: /**< TIMOR-LESTE (EAST TIMOR) */
+    case wifi_countrycode_TM: /**< TURKMENISTAN */
+    case wifi_countrycode_TN: /**< TUNISIA */
+    case wifi_countrycode_TO: /**< TONGA */
+    case wifi_countrycode_TT: /**< TRINIDAD AND TOBAGO */
+    case wifi_countrycode_TV: /**< TUVALU */
+    case wifi_countrycode_TW: /**< TAIWAN, PROVINCE OF CHINA */
+    case wifi_countrycode_TZ: /**< TANZANIA, UNITED REPUBLIC OF */
+    case wifi_countrycode_UG: /**< UGANDA */
+    case wifi_countrycode_UM: /**< UNITED STATES MINOR OUTLYING ISLANDS */
+    case wifi_countrycode_UY: /**< URUGUAY */
+    case wifi_countrycode_UZ: /**< UZBEKISTAN */
+    case wifi_countrycode_VA: /**< HOLY SEE (VATICAN CITY STATE) */
+    case wifi_countrycode_VC: /**< SAINT VINCENT AND THE GRENADINES */
+    case wifi_countrycode_VE: /**< VENEZUELA */
+    case wifi_countrycode_VG: /**< VIRGIN ISLANDS, BRITISH */
+    case wifi_countrycode_VI: /**< VIRGIN ISLANDS, U.S. */
+    case wifi_countrycode_VN: /**< VIET NAM */
+    case wifi_countrycode_VU: /**< VANUATU */
+    case wifi_countrycode_WF: /**< WALLIS AND FUTUNA */
+    case wifi_countrycode_WS: /**< SAMOA */
+    case wifi_countrycode_YE: /**< YEMEN */
+    case wifi_countrycode_YT: /**< MAYOTTE */
+    case wifi_countrycode_YU: /**< YUGOSLAVIA */
+    case wifi_countrycode_ZA: /**< SOUTH AFRICA */
+    case wifi_countrycode_ZM: /**< ZAMBIA */
+    case wifi_countrycode_ZW: /**< ZIMBABWE */
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Countrycode %d other region.\n", __func__, __LINE__,
+            countryCode);
+        return WIFI_REGION_OTHER;
+
+    default:
+        return WIFI_REGION_UNKNOWN;
+    }
+}
+
+/* Function to update the operating classes in the oper structure */
+int update_radio_operating_classes(wifi_radio_operationParam_t *oper)
+{
+    wifi_region_t region;
+    const wifi_operating_classes_t *oper_classes_to_copy = NULL;
+    int num_operating_classes = 0;
+
+    if (oper == NULL) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Error, Input operationParam is NULL.\n", __func__,
+            __LINE__);
+        return RETURN_ERR;
+    }
+
+    oper->numOperatingClasses = 0;
+    memset(oper->operatingClasses, 0, sizeof(wifi_operating_classes_t) * MAXNUMOPERCLASSESPERBAND);
+
+    region = get_region_from_countrycode(oper->countryCode);
+    if (region > WIFI_REGION_OTHER) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Error, Unknown region: %d.\n", __func__, __LINE__,
+            region);
+        return RETURN_ERR;
+    }
+
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d: region:%d, band:%d.\n", __func__, __LINE__, region,
+        oper->band);
+    if (oper->band == WIFI_FREQUENCY_2_4_BAND) {
+        switch (region) {
+        case WIFI_REGION_US:
+            oper_classes_to_copy = us_24G;
+            num_operating_classes = ARRAY_SIZE(us_24G);
+            break;
+        case WIFI_REGION_EU:
+            oper_classes_to_copy = eu_24G;
+            num_operating_classes = ARRAY_SIZE(eu_24G);
+            break;
+        case WIFI_REGION_JP:
+            oper_classes_to_copy = jp_24G;
+            num_operating_classes = ARRAY_SIZE(jp_24G);
+            break;
+        case WIFI_REGION_CN:
+            oper_classes_to_copy = cn_24G;
+            num_operating_classes = ARRAY_SIZE(cn_24G);
+            break;
+        case WIFI_REGION_OTHER:
+            oper_classes_to_copy = others_24G;
+            num_operating_classes = ARRAY_SIZE(others_24G);
+            break;
+        default:
+            return RETURN_ERR;
+        }
+    } else if (oper->band == WIFI_FREQUENCY_5_BAND || oper->band == WIFI_FREQUENCY_5H_BAND ||
+        oper->band == WIFI_FREQUENCY_5L_BAND) {
+        switch (region) {
+        case WIFI_REGION_US:
+            oper_classes_to_copy = us_5G;
+            num_operating_classes = ARRAY_SIZE(us_5G);
+            break;
+        case WIFI_REGION_EU:
+            oper_classes_to_copy = eu_5G;
+            num_operating_classes = ARRAY_SIZE(eu_5G);
+            break;
+        case WIFI_REGION_JP:
+            oper_classes_to_copy = jp_5G;
+            num_operating_classes = ARRAY_SIZE(jp_5G);
+            break;
+        case WIFI_REGION_CN:
+            oper_classes_to_copy = cn_5G;
+            num_operating_classes = ARRAY_SIZE(cn_5G);
+            break;
+        case WIFI_REGION_OTHER:
+            oper_classes_to_copy = others_5G;
+            num_operating_classes = ARRAY_SIZE(others_5G);
+            break;
+        default:
+            return RETURN_ERR;
+        }
+    } else if (oper->band == WIFI_FREQUENCY_6_BAND) {
+        switch (region) {
+        case WIFI_REGION_US:
+            oper_classes_to_copy = us_6G;
+            num_operating_classes = ARRAY_SIZE(us_6G);
+            break;
+        case WIFI_REGION_EU:
+            oper_classes_to_copy = eu_6G;
+            num_operating_classes = ARRAY_SIZE(eu_6G);
+            break;
+        case WIFI_REGION_JP:
+            oper_classes_to_copy = jp_6G;
+            num_operating_classes = ARRAY_SIZE(jp_6G);
+            break;
+        case WIFI_REGION_CN:
+            oper_classes_to_copy = cn_6G;
+            num_operating_classes = ARRAY_SIZE(cn_6G);
+            break;
+        case WIFI_REGION_OTHER:
+            oper_classes_to_copy = others_6G;
+            num_operating_classes = ARRAY_SIZE(others_6G);
+            break;
+        default:
+            return RETURN_ERR;
+        }
+    } else {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Error, Unknown band: %d.\n", __func__, __LINE__,
+            oper->band);
+        return RETURN_ERR;
+    }
+    memcpy(oper->operatingClasses, oper_classes_to_copy,
+        sizeof(wifi_operating_classes_t) * num_operating_classes);
+    oper->numOperatingClasses = num_operating_classes;
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Copied %u operating classes.\n", __func__, __LINE__,
+        oper->numOperatingClasses);
+
+    return RETURN_OK;
+}
