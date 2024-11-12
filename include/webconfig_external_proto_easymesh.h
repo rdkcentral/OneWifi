@@ -39,10 +39,10 @@ typedef em_radio_info_t *	(*ext_proto_em_get_radio_info_t)(void *data_model, uns
 typedef em_ieee_1905_security_info_t *	(*ext_proto_em_get_ieee_1905_security_info_t)(void *data_model);
 typedef em_bss_info_t *     (*ext_proto_em_get_bss_info_t)(void *data_model, unsigned bss_index);
 typedef em_op_class_info_t *     (*ext_proto_em_get_op_class_info_t)(void *data_model, unsigned int radio_index);
-typedef em_sta_info_t *	(*ext_proto_get_first_sta_info_t)(void *data_model);
-typedef em_sta_info_t *	(*ext_proto_get_next_sta_info_t)(void *data_model, em_sta_info_t *sta_info);
-typedef em_sta_info_t *	(*ext_proto_get_sta_info_t)(void *data_model, unsigned char *mac);
-typedef void (*ext_proto_put_sta_info_t)(void *data_model, em_sta_info_t *sta_info);
+typedef em_sta_info_t * (*ext_proto_get_first_sta_info_t)(void *data_model, em_target_sta_map_t target);
+typedef em_sta_info_t * (*ext_proto_get_next_sta_info_t)(void *data_model, em_sta_info_t *sta_info, em_target_sta_map_t target);
+typedef em_sta_info_t * (*ext_proto_get_sta_info_t)(void *data_model, mac_address_t sta, bssid_t bssid, mac_address_t ruid, em_target_sta_map_t target);
+typedef void (*ext_proto_put_sta_info_t)(void *data_model, em_sta_info_t *sta_info, em_target_sta_map_t target);
 
 typedef struct {
     void *data_model; /* agent data model dm_easy_mesh_t */

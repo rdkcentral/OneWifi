@@ -425,17 +425,6 @@ webconfig_error_t translate_vap_info_to_em_common(const wifi_vap_info_t *vap, co
     return webconfig_error_none;
 }
 
-// This will be replaced with generic API addressing all VAPS with new design 
-int convert_vap_name_to_radio_index(char *vap_name, int *radio_index, int *vap_index){
-    if(strcmp(vap_name,"private_ssid_2g") == 0){
-        *radio_index = 0;
-        *vap_index = 0;
-        return 0;
-    }
-    return -1;
-}
-
-
 //Converting data elements of assoc client stats to em_sta_info_t of easymesh
 webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_subdoc_data_t *data)
 {
@@ -449,10 +438,8 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
     assoc_dev_data_t *assoc_dev_data = NULL;
     rdk_wifi_vap_info_t *rdk_vap_info = NULL;
     webconfig_external_easymesh_t *proto = NULL;
-    int radio_index;
-    int vap_index;
-    char sta_list_key[64];
-    mac_addr_str_t mac_str;
+    em_long_string_t key;
+    mac_addr_str_t sta_str, bss_str, radio_str;
 
     decoded_params = &data->u.decoded;
     if (decoded_params == NULL) {
@@ -479,7 +466,7 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
             //Get the corresponding vap
             vap = &vap_map->vap_array[j];
             if (vap == NULL) {
-                wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the vap entry for %d\n", __func__, __LINE__, vap->vap_index);
+                wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the vap entry\n", __func__, __LINE__);
                 return webconfig_error_translate_to_easymesh;
             }
 
@@ -492,6 +479,7 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
             if (rdk_vap_info->associated_devices_diff_map != NULL) {
                 assoc_dev_data = hash_map_get_first(rdk_vap_info->associated_devices_diff_map);
                 while (assoc_dev_data != NULL) {
+                    memset(key, 0, sizeof(key));
                     if (associated_client_count >= WEBCONFIG_MAX_ASSOCIATED_CLIENTS) {
                         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Exceeded max number of associated clients %d, vap_name '%s'\n", __func__, __LINE__, WEBCONFIG_MAX_ASSOCIATED_CLIENTS, rdk_vap_info->vap_name);
                         break;
@@ -503,22 +491,17 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
                         return webconfig_error_translate_to_easymesh;
                     }
 
-                    if(convert_vap_name_to_radio_index("private_ssid_2g",&radio_index, &vap_index)!=0){
-                        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: cannot find radio index\n", __func__, __LINE__);
-                        return webconfig_error_translate_to_easymesh;
-                    }
-
-                    em_radio_info_t *radio_info = proto->get_radio_info(proto->data_model, radio_index);
-                    em_bss_info_t *bss_info = proto->get_bss_info(proto->data_model, vap_index);
+                    em_radio_info_t *radio_info = proto->get_radio_info(proto->data_model, vap->radio_index);
+                    em_bss_info_t *bss_info = proto->get_bss_info(proto->data_model, rdk_vap_info->vap_index);
                     proto->set_num_radio(proto->data_model, decoded_params->num_radios);
                     proto->set_num_bss(proto->data_model, radio->vaps.num_vaps);
 
-                    to_mac_str(radio_info->id.mac, mac_str);
-                    snprintf(sta_list_key+strlen(sta_list_key),sizeof(sta_list_key),"%s-",mac_str);
-                    to_mac_str(bss_info->bssid.mac, mac_str);
-                    snprintf(sta_list_key+strlen(sta_list_key),sizeof(sta_list_key),"%s-", mac_str);
-                    to_mac_str(assoc_dev_data->dev_stats.cli_MACAddress, mac_str);
-                    snprintf(sta_list_key+strlen(sta_list_key),sizeof(sta_list_key),"%s", mac_str);
+                    to_mac_str(assoc_dev_data->dev_stats.cli_MACAddress, sta_str);
+                    to_mac_str(bss_info->bssid.mac, bss_str);
+                    to_mac_str(radio_info->id.mac, radio_str);
+                    snprintf(key, sizeof(key), "%s@%s@%s", sta_str, bss_str, radio_str);
+                    printf("\n%s:%d: Add key=%s\n", __func__, __LINE__, key);
+                    printf("\n%s:%d: client_state: %d\n", __func__, __LINE__, assoc_dev_data->client_state);
 
                     memcpy(em_sta_dev_info->id, assoc_dev_data->dev_stats.cli_MACAddress, sizeof(mac_address_t));
                     memcpy(em_sta_dev_info->bssid, vap->u.bss_info.bssid, sizeof(mac_address_t));
@@ -533,12 +516,10 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
                     em_sta_dev_info->bytes_rx=assoc_dev_data->dev_stats.cli_BytesReceived;
                     em_sta_dev_info->errors_tx=assoc_dev_data->dev_stats.cli_ErrorsSent;
 
-                    //Todo:
-                    proto->put_sta_info(proto->data_model, em_sta_dev_info);
-                    //Re-checking if put data was successful
-                    if(proto->get_first_sta_info(proto->data_model) == NULL)
-                    {
-                        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: hash map sta found empty\n", __func__, __LINE__);
+                    if (assoc_dev_data->client_state == 0) {
+                        proto->put_sta_info(proto->data_model, em_sta_dev_info, em_target_sta_map_assoc);
+                    } else {
+                        proto->put_sta_info(proto->data_model, em_sta_dev_info, em_target_sta_map_disassoc);
                     }
                     free(em_sta_dev_info);
                     associated_client_count++;
@@ -558,14 +539,10 @@ webconfig_error_t translate_sta_object_to_easymesh_for_assocdev_stats(webconfig_
     struct tm *local_time;
     char time_str[32] = {0};
     int sta_size = 0;
-    char sta_list_key[64];
-    mac_addr_str_t mac_str;
-    mac_addr_str_t get_mac;
     em_sta_info_t *em_sta_dev_info;
-    em_sta_info_t *em_get_sta;
     webconfig_external_easymesh_t *proto;
-    int radio_index;
-    int vap_index;
+    bssid_t bssid;
+    mac_address_t ruid;
 
     webconfig_subdoc_decoded_data_t *params = &data->u.decoded;
     if (params == NULL) {
@@ -596,27 +573,9 @@ webconfig_error_t translate_sta_object_to_easymesh_for_assocdev_stats(webconfig_
     }
 
     for (unsigned int count = 0; count < sta_size; count++) {
-        memset(sta_list_key,0,sizeof(sta_list_key));
-        if(convert_vap_name_to_radio_index("private_ssid_2g",&radio_index, &vap_index)!=0){
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: cannot find radio index\n", __func__, __LINE__);
-            return webconfig_error_translate_to_easymesh;
-        }
-        
-        em_radio_info_t *radio_info = proto->get_radio_info(proto->data_model, radio_index);
-        em_bss_info_t *bss_info = proto->get_bss_info(proto->data_model, vap_index);
-
-        to_mac_str(radio_info->id.mac, mac_str);
-
-        to_mac_str(bss_info->bssid.mac, mac_str);
-
-        to_mac_str(client_stats[count].cli_MACAddress, mac_str);
-        snprintf(sta_list_key+strlen(sta_list_key),sizeof(sta_list_key),"%s", mac_str);
-
-        em_sta_dev_info = proto->get_sta_info(proto->data_model, client_stats[count].cli_MACAddress);
+        em_sta_dev_info = proto->get_sta_info(proto->data_model, client_stats[count].cli_MACAddress, bssid, ruid, em_target_sta_map_assoc);
         if (em_sta_dev_info != NULL) {     
             memcpy(em_sta_dev_info[count].id, client_stats[count].cli_MACAddress, sizeof(mac_address_t));
-            memcpy(em_sta_dev_info->bssid, bss_info->bssid.mac, sizeof(mac_address_t));
-            memcpy(em_sta_dev_info->radiomac, radio_info->id.mac, sizeof(mac_address_t));
             em_sta_dev_info[count].last_ul_rate             = client_stats[count].cli_LastDataUplinkRate;
             memcpy(em_sta_dev_info[count].timestamp, time_str ,sizeof(em_sta_dev_info[count].timestamp));
             em_sta_dev_info[count].last_dl_rate             = client_stats[count].cli_LastDataDownlinkRate;
@@ -627,19 +586,12 @@ webconfig_error_t translate_sta_object_to_easymesh_for_assocdev_stats(webconfig_
             em_sta_dev_info[count].bytes_tx                 = client_stats[count].cli_BytesSent;
             em_sta_dev_info[count].bytes_rx                 = client_stats[count].cli_BytesReceived;
             em_sta_dev_info[count].errors_tx                = client_stats[count].cli_ErrorsSent;
-
-            //Re-checking if put data was successful
-            if(proto->get_first_sta_info(proto->data_model) == NULL)
-            {
-                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: hash map sta found empty\n", __func__, __LINE__);
-            }
         }
     }
     return webconfig_error_none;
 }
 
 // translate_sta_info_to_em_common() converts common data elements of wifi_vap_info_t related to sta to em_bss_info_t of  easymesh
-
 webconfig_error_t translate_sta_info_to_em_common(const wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, em_bss_info_t *vap_row, em_ssid_2_vid_map_info_t  *ssid_vid_map, wifi_platform_property_t *wifi_prop)
 {
     wifi_security_modes_t enum_sec;
