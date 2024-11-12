@@ -4511,7 +4511,7 @@ webconfig_error_t decode_radio_channel_radio_stats_object(wifi_provider_response
     }
     size = cJSON_GetArraySize(radio_stats_arr);
 
-    *chan_stats = (wifi_provider_response_t*) malloc(sizeof(wifi_provider_response_t));
+    *chan_stats = (wifi_provider_response_t*) calloc(1, sizeof(wifi_provider_response_t));
     if (*chan_stats == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Failed to allocate memory\n", __func__, __LINE__);
         return webconfig_error_decode;
@@ -4603,7 +4603,7 @@ webconfig_error_t decode_radio_neighbor_stats_object(wifi_provider_response_t **
     }
     size = cJSON_GetArraySize(neighbor_stats_arr);
 
-    *chan_stats = (wifi_provider_response_t*) malloc(sizeof(wifi_provider_response_t));
+    *chan_stats = (wifi_provider_response_t*) calloc(1, sizeof(wifi_provider_response_t));
     if (*chan_stats == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Failed to allocate memory\n", __func__, __LINE__);
         return webconfig_error_decode;
@@ -4718,7 +4718,7 @@ webconfig_error_t decode_assocdev_stats_object(wifi_provider_response_t **assoc_
     }
     size = cJSON_GetArraySize(assoc_stats_arr);
 
-    *assoc_stats = (wifi_provider_response_t*) malloc(sizeof(wifi_provider_response_t));
+    *assoc_stats = (wifi_provider_response_t*) calloc(1, sizeof(wifi_provider_response_t));
     if (*assoc_stats == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Failed to allocate memory\n", __func__, __LINE__);
         return webconfig_error_decode;
@@ -4876,7 +4876,7 @@ webconfig_error_t decode_radiodiag_stats_object(wifi_provider_response_t **diag_
     }
     size = cJSON_GetArraySize(diag_stats_arr);
 
-    *diag_stats = (wifi_provider_response_t*) malloc(sizeof(wifi_provider_response_t));
+    *diag_stats = (wifi_provider_response_t*) calloc(1, sizeof(wifi_provider_response_t));
     if (*diag_stats == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Failed to allocate memory\n", __func__, __LINE__);
         return webconfig_error_decode;
@@ -4898,17 +4898,8 @@ webconfig_error_t decode_radiodiag_stats_object(wifi_provider_response_t **diag_
             return webconfig_error_decode;
         }
 
-        decode_param_string(diag_data, "frequency_band", param);
-        strncpy(diagnostic_data[count].frequency_band, param->valuestring, sizeof(diagnostic_data[count].frequency_band) - 1);
-
-        decode_param_string(diag_data, "ChannelsInUse", param);
-        strncpy(diagnostic_data[count].ChannelsInUse, param->valuestring, sizeof(diagnostic_data[count].ChannelsInUse) - 1);
-
         decode_param_integer(diag_data, "primary_radio_channel", param);
         diagnostic_data[count].primary_radio_channel = param->valuedouble;
-
-        decode_param_string(diag_data, "channel_bandwidth", param);
-        strncpy(diagnostic_data[count].channel_bandwidth, param->valuestring, sizeof(diagnostic_data[count].channel_bandwidth) - 1);
 
         decode_param_integer(diag_data, "RadioActivityFactor", param);
         diagnostic_data[count].RadioActivityFactor = param->valuedouble;
@@ -4921,9 +4912,6 @@ webconfig_error_t decode_radiodiag_stats_object(wifi_provider_response_t **diag_
 
         decode_param_integer(diag_data, "channelUtil", param);
         diagnostic_data[count].channelUtil = param->valuedouble;
-
-        decode_param_integer(diag_data, "channelInterference", param);
-        diagnostic_data[count].channelInterference = param->valuedouble;
 
         decode_param_integer(diag_data, "radio_BytesSent", param);
         diagnostic_data[count].radio_BytesSent = param->valuedouble;
@@ -5002,7 +4990,7 @@ webconfig_error_t decode_radio_temperature_stats_object(wifi_provider_response_t
     }
     size = cJSON_GetArraySize(temp_stats_arr);
 
-    *temp_stats = (wifi_provider_response_t*) malloc(sizeof(wifi_provider_response_t));
+    *temp_stats = (wifi_provider_response_t*) calloc(1, sizeof(wifi_provider_response_t));
     if (*temp_stats == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Failed to allocate memory\n", __func__, __LINE__);
         return webconfig_error_decode;

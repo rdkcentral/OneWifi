@@ -2306,15 +2306,11 @@ webconfig_error_t encode_radiodiag_params(wifi_provider_response_t *radiodiag_st
         }
 
         cJSON_AddItemToArray(radiodiag_obj, diag_obj);
-        cJSON_AddStringToObject(diag_obj, "frequency_band", diag_stats[count].frequency_band);
-        cJSON_AddStringToObject(diag_obj, "ChannelsInUse", diag_stats[count].ChannelsInUse);
         cJSON_AddNumberToObject(diag_obj, "primary_radio_channel", diag_stats[count].primary_radio_channel);
-        cJSON_AddStringToObject(diag_obj, "channel_bandwidth", diag_stats[count].channel_bandwidth);
         cJSON_AddNumberToObject(diag_obj, "RadioActivityFactor", diag_stats[count].RadioActivityFactor);
         cJSON_AddNumberToObject(diag_obj, "CarrierSenseThreshold_Exceeded", diag_stats[count].CarrierSenseThreshold_Exceeded);
         cJSON_AddNumberToObject(diag_obj, "NoiseFloor", diag_stats[count].NoiseFloor);
         cJSON_AddNumberToObject(diag_obj, "channelUtil", diag_stats[count].channelUtil);
-        cJSON_AddNumberToObject(diag_obj, "channelInterference", diag_stats[count].channelInterference);
         cJSON_AddNumberToObject(diag_obj, "radio_BytesSent", diag_stats[count].radio_BytesSent);
         cJSON_AddNumberToObject(diag_obj, "radio_BytesReceived", diag_stats[count].radio_BytesReceived);
         cJSON_AddNumberToObject(diag_obj, "radio_PacketsSent", diag_stats[count].radio_PacketsSent);
