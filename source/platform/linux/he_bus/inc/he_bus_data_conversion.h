@@ -42,7 +42,7 @@ he_bus_error_t handle_bus_msg_data(he_bus_handle_t handle, int fd,
     he_bus_raw_data_msg_t *p_msg_data, he_bus_raw_data_msg_t *p_res_data);
 
 uint32_t set_bus_object_data(char *event_name, he_bus_data_object_t *p_obj_data,
-    he_bus_msg_sub_type_t msg_sub_type, he_bus_raw_data_t *cfg_data);
+    he_bus_msg_sub_type_t msg_sub_type, he_bus_raw_data_t *cfg_data, he_bus_error_t ret_status);
 
 he_bus_error_t validate_sub_response(he_bus_event_sub_t *sub_data_map,
     he_bus_raw_data_msg_t *recv_data);
@@ -50,7 +50,7 @@ he_bus_error_t prepare_initial_bus_header(he_bus_raw_data_msg_t *p_data, char *c
     he_bus_msg_type_t msg_type);
 he_bus_error_t prepare_rem_payload_bus_msg_data(char *event_name,
     he_bus_raw_data_msg_t *p_base_hdr_data, he_bus_msg_sub_type_t msg_sub_type,
-    he_bus_raw_data_t *payload_data);
+    he_bus_raw_data_t *payload_data, he_bus_error_t ret_status);
 
 #ifdef __cplusplus
 }
