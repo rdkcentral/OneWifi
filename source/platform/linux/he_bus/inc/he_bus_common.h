@@ -211,6 +211,7 @@ typedef struct he_bus_data_object {
     he_bus_name_string_t name;
     he_bus_msg_sub_type_t msg_sub_type;
     bool is_data_set;
+    he_bus_error_t status;
     he_bus_raw_data_t data;
     struct he_bus_data_object *next_data;
 } he_bus_data_object_t;

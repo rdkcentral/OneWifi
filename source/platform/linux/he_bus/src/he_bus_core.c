@@ -764,7 +764,7 @@ he_bus_error_t bus_publish_data_to_all_sub(he_bus_handle_t handle, he_bus_data_o
     }
 
     ret = prepare_rem_payload_bus_msg_data(obj_data->name, &raw_data, obj_data->msg_sub_type,
-        &obj_data->data);
+        &obj_data->data, he_bus_error_success);
     if (ret != he_bus_error_success) {
         he_bus_core_error_print("%s:%d rem bus payload preapre is failed:%d for %s\r\n", __func__,
             __LINE__, ret, obj_data->name);
@@ -814,6 +814,7 @@ he_bus_error_t he_bus_publish_event(he_bus_handle_t handle, char *event_name,
     strncpy(obj_data.name, event_name, obj_data.name_len);
     obj_data.msg_sub_type = he_bus_msg_publish_event;
     obj_data.is_data_set = true;
+    obj_data.status = he_bus_error_success;
     obj_data.data.data_type = p_data->data_type;
     obj_data.data.raw_data = p_data->raw_data;
     obj_data.data.raw_data_len = p_data->raw_data_len;
@@ -884,7 +885,7 @@ he_bus_error_t he_bus_event_sub_to_provider(he_bus_handle_t handle,
             payload_data.raw_data_len = sizeof(sub_payload_data_t);
 
             status = prepare_rem_payload_bus_msg_data(event_name, &sub_data, msg_sub_type,
-                &payload_data);
+                &payload_data, he_bus_error_success);
             if (status != he_bus_error_success) {
                 he_bus_core_error_print("%s:%d rem bus payload preapre is failed:%d for %s\r\n",
                     __func__, __LINE__, status, event_name);
@@ -1018,7 +1019,7 @@ he_bus_error_t he_bus_get_data(he_bus_handle_t handle, char *event_name, he_bus_
     }
 
     status = prepare_rem_payload_bus_msg_data(event_name, &req_data, he_bus_msg_get_event,
-        &payload_data);
+        &payload_data, he_bus_error_success);
     if (status != he_bus_error_success) {
         he_bus_core_error_print("%s:%d rem bus payload preapre is failed:%d for %s\r\n", __func__,
             __LINE__, status, event_name);
@@ -1050,7 +1051,13 @@ he_bus_error_t he_bus_get_data(he_bus_handle_t handle, char *event_name, he_bus_
             if (!strncmp(event_name, p_obj_data->name, (strlen(p_obj_data->name) + 1))) {
                 he_bus_core_info_print("%s:%d event:%s bus get response found\r\n", __func__,
                     __LINE__, event_name);
-                memcpy(p_data, &p_obj_data->data, sizeof(p_obj_data->data));
+                if (p_obj_data->status == he_bus_error_success) {
+                    memcpy(p_data, &p_obj_data->data, sizeof(p_obj_data->data));
+                } else {
+                    he_bus_core_error_print("%s:%d event:%s bus get is falied:%d\r\n", __func__,
+                    __LINE__, event_name, p_obj_data->status);
+                    status = p_obj_data->status;
+                }
             }
         } else {
             he_bus_core_info_print("%s:%d event:%s bus get response:%d\r\n", __func__, __LINE__,
@@ -1083,7 +1090,8 @@ he_bus_error_t he_bus_set_data(he_bus_handle_t handle, char *event_name, he_bus_
         return status;
     }
 
-    status = prepare_rem_payload_bus_msg_data(event_name, &req_data, he_bus_msg_set_event, p_data);
+    status = prepare_rem_payload_bus_msg_data(event_name, &req_data, he_bus_msg_set_event, p_data,
+        he_bus_error_success);
     if (status != he_bus_error_success) {
         he_bus_core_error_print("%s:%d rem bus payload preapre is failed:%d for %s\r\n", __func__,
             __LINE__, status, event_name);
@@ -1113,17 +1121,9 @@ he_bus_error_t he_bus_set_data(he_bus_handle_t handle, char *event_name, he_bus_
         if (recv_data.msg_type == he_bus_msg_response &&
             p_obj_data->msg_sub_type == he_bus_msg_set_event) {
             if (!strncmp(event_name, p_obj_data->name, (strlen(p_obj_data->name) + 1))) {
-                he_bus_core_info_print("%s:%d event:%s bus set response found\r\n", __func__,
-                    __LINE__, event_name);
-                if (p_obj_data->data.data_type == he_bus_data_type_uint32) {
-                    status = p_obj_data->data.raw_data.u32;
-                } else {
-                    he_bus_core_info_print(
-                        "%s:%d event:%s bus set response:%d data type is not supported:%d\r\n",
-                        __func__, __LINE__, event_name, recv_data.msg_type,
-                        p_obj_data->data.data_type);
-                    status = he_bus_error_destination_response_failure;
-                }
+                he_bus_core_info_print("%s:%d event:%s bus set response found:%d\r\n", __func__,
+                    __LINE__, event_name, p_obj_data->status);
+                status = p_obj_data->status;
             }
         } else {
             he_bus_core_info_print("%s:%d event:%s bus set response:%d\r\n", __func__, __LINE__,
