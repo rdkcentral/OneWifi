@@ -3015,6 +3015,71 @@ webconfig_error_t decode_device_info(const cJSON *device_cfg, wifi_platform_prop
     return webconfig_error_none;
 }
 
+unsigned char *stringtohex(unsigned int in_len, char *in, unsigned int out_len, unsigned char *out)
+{
+    unsigned int i;
+    unsigned char tmp1, tmp2;
+
+    if (out_len < in_len / 2) {
+        return NULL;
+    }
+
+    for (i = 0; i < in_len; i++) {
+        if (in[2 * i] <= '9') {
+            tmp1 = (unsigned char)in[2 * i] - 0x30;
+        } else {
+            tmp1 = (unsigned char)in[2 * i] - 0x61 + 0xa;
+        }
+
+        tmp1 = tmp1 << 4;
+
+        if (in[2 * i + 1] <= '9') {
+            tmp2 = (unsigned char)in[2 * i + 1] - 0x30;
+        } else {
+            tmp2 = (unsigned char)in[2 * i + 1] - 0x61 + 0xa;
+        }
+
+        tmp2 &= 0xf;
+
+        out[i] = tmp1 | tmp2;
+    }
+
+    return out;
+}
+
+webconfig_error_t decode_frame_data(cJSON *obj_assoc_client, frame_data_t *frame)
+{
+    char *tmp_assoc_frame_string;
+    unsigned char *out_ptr;
+    cJSON *value_object;
+
+    value_object = cJSON_GetObjectItem(obj_assoc_client, "FrameData");
+    if ((value_object == NULL) || (cJSON_IsString(value_object) == false)) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: FrameData Invalid or not present\n", __func__,
+            __LINE__);
+        return webconfig_error_decode;
+    }
+
+    tmp_assoc_frame_string = cJSON_GetStringValue(value_object);
+    if (tmp_assoc_frame_string == NULL || strlen(tmp_assoc_frame_string) == 0) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: FrameData empty\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    memset(frame, 0, sizeof(frame_data_t));
+    out_ptr = stringtohex(strlen(tmp_assoc_frame_string), tmp_assoc_frame_string,
+        sizeof(frame->data), frame->data);
+    if (out_ptr == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed converting Framedata to hex\n",
+            __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+    frame->frame.len = strlen(tmp_assoc_frame_string) / 2;
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Frame Length:%u\n", __func__, __LINE__,
+        frame->frame.len);
+    return webconfig_error_none;
+}
+
 webconfig_error_t decode_associated_clients_object(webconfig_subdoc_data_t *data, cJSON *obj_vaps, assoclist_type_t assoclist_type)
 {
 
@@ -3363,6 +3428,12 @@ webconfig_error_t decode_associated_clients_object(webconfig_subdoc_data_t *data
                 return webconfig_error_decode;
             }
             assoc_dev_data.dev_stats.cli_MultipleRetryCount = value_object->valuedouble;
+
+            if (decode_frame_data(assoc_client, &assoc_dev_data.sta_data.msg_data) !=
+                webconfig_error_none) {
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Decode frame data failed for client %s\n",
+                    __func__, __LINE__, tmp_mac_key);
+            }
 
             if (associated_devices_map != NULL) {
                 str_tolower(tmp_mac_key);
