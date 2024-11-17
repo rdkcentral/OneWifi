@@ -1732,6 +1732,7 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
                 ctrl->webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
                 return RETURN_ERR;
             }
+            wifi_util_dbg_print(WIFI_MGR, "%s:%d: config applied.\n", __func__, __LINE__);
 
             start_wifi_sched_timer(mgr_radio_data->vaps.radio_index, ctrl, wifi_radio_sched);
 
