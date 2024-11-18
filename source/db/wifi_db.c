@@ -113,7 +113,7 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
         case WIFI_FREQUENCY_6_BAND:
             cfg.op_class = 131;
             cfg.operatingClass = 131;
-            cfg.channel = 197;
+            cfg.channel = 5;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_160MHZ;
             cfg.variant = WIFI_80211_VARIANT_AX;
 
@@ -328,7 +328,7 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
                 cfg.u.sta_info.scan_params.channel.channel = 157;
                 break;
             case WIFI_FREQUENCY_6_BAND:
-                cfg.u.sta_info.scan_params.channel.channel = 197;
+                cfg.u.sta_info.scan_params.channel.channel = 5;
                 break;
             default:
                 wifi_util_error_print(WIFI_DB,"%s:%d invalid band %d\n", __func__, __LINE__, band);
