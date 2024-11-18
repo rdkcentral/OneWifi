@@ -823,6 +823,24 @@ char *strfmt(const char *fmt, ...)
     return NULL;
 }
 
+char *vstrfmt(const char *fmt, va_list args)
+{
+    va_list args_copy;
+    char c, *p;
+    int n;
+
+    va_copy(args_copy, args);
+    n = vsnprintf(&c, 1, fmt, args_copy);
+    va_end(args_copy);
+
+    if (n >= 0 && (p = malloc(++n))) {
+        vsnprintf(p, n, fmt, args);
+        return p;
+    }
+
+    return NULL;
+}
+
 char *argvstr(const char *const*argv)
 {
     char *q;
