@@ -558,20 +558,26 @@ int check_scan_complete_read_results(void *arg)
     args = c_elem->args;
     ret = wifi_getNeighboringWiFiStatus(args->radio_index, &neigh_stats, &ap_count);
     if (ret != RETURN_OK) {
-        if (errno == EAGAIN && mon_data->scan_results_retries[args->radio_index] < RADIO_SCAN_MAX_RESULTS_RETRIES) {
+        if ((errno == EAGAIN || ret == WIFI_HAL_NOT_READY) &&
+            mon_data->scan_results_retries[args->radio_index] < RADIO_SCAN_MAX_RESULTS_RETRIES) {
             mon_data->scan_results_retries[args->radio_index]++;
-            scheduler_add_timer_task(mon_data->sched, FALSE, &id, check_scan_complete_read_results, c_elem,
-                    RADIO_SCAN_RESULT_INTERVAL, 1, FALSE);
+            scheduler_add_timer_task(mon_data->sched, FALSE, &id, check_scan_complete_read_results,
+                c_elem, RADIO_SCAN_RESULT_INTERVAL, 1, FALSE);
             c_elem->u.radio_channel_neighbor_data.scan_complete_task_id = id;
 
-            wifi_util_dbg_print(WIFI_MON, "%s : %d  Neighbor wifi status for index %d not ready. Retry (%d)\n",__func__,__LINE__, args->radio_index, mon_data->scan_results_retries[args->radio_index]);
+            wifi_util_dbg_print(WIFI_MON,
+                "%s : %d  Neighbor wifi status for index %d not ready. Retry (%d)\n", __func__,
+                __LINE__, args->radio_index, mon_data->scan_results_retries[args->radio_index]);
             return RETURN_OK;
         }
-        wifi_util_error_print(WIFI_MON, "%s : %d  Failed to get Neighbor wifi status for scan mode %d radio index %d\n",__func__,__LINE__, args->scan_mode, args->radio_index);
+        wifi_util_error_print(WIFI_MON,
+            "%s : %d  Failed to get Neighbor wifi status for scan mode %d radio index %d\n",
+            __func__, __LINE__, args->scan_mode, args->radio_index);
         mon_data->scan_status[args->radio_index] = 0;
         return RETURN_ERR;
     }
-    wifi_util_dbg_print(WIFI_MON, "%s : %d  Scan complete scan mode %d radio index %d\n",__func__,__LINE__, args->scan_mode, args->radio_index);
+    wifi_util_dbg_print(WIFI_MON, "%s : %d  Scan complete scan mode %d radio index %d\n", __func__,
+        __LINE__, args->scan_mode, args->radio_index);
     mon_data->scan_status[args->radio_index] = 0;
 
     //Update Neighbour Cache
