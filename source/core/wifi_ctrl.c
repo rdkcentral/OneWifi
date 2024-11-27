@@ -1039,12 +1039,26 @@ int mgmt_wifi_frame_recv(int ap_index, wifi_frame_t *frame)
     frame_data_t wifi_mgmt_frame;
 
     memset(&wifi_mgmt_frame, 0, sizeof(wifi_mgmt_frame));
-
     memcpy(wifi_mgmt_frame.data, frame->data, frame->len);
-    memcpy(&mgmt_frame.frame, frame, sizeof(wifi_frame_t));
+    memcpy(&wifi_mgmt_frame.frame, frame, sizeof(wifi_frame_t));
+
+    raw_data_t rdata;
+    memset(&rdata, 0, sizeof(raw_data_t));
+    rdata.data_type = bus_data_type_bytes;
+    rdata.raw_data.bytes = (void *)frame;
+    rdata.raw_data_len = sizeof(wifi_frame_t)+frame->len;
+
+    // Publish the management frame to the X_RDK_mgmtFrameRecieved 
+    bus_handle_t m_bus_hdl;
+    bus_init(&m_bus_hdl);
+
+    char event_name[200] = {0};
+    sprintf(event_name, "Device.WiFi.AccessPoint.%d.X_RDK_mgmtFrameRecieved", ap_index);
+
+    get_bus_descriptor()->bus_event_publish_fn(&m_bus_hdl, event_name, &rdata);
 
     //In side this API we have allocate memory and send it to control queue
-    push_event_to_ctrl_queue((frame_data_t *)&wifi_mgmt_frame, (sizeof(wifi_mgmt_frame) + len), wifi_event_type_hal_ind, wifi_event_hal_mgmt_frames, NULL);
+    push_event_to_ctrl_queue((frame_data_t *)&wifi_mgmt_frame, (sizeof(wifi_mgmt_frame) + frame->len), wifi_event_type_hal_ind, wifi_event_hal_mgmt_frames, NULL);
 
     return RETURN_OK;
 }
@@ -1113,6 +1127,21 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
                 break;
         }
     }
+
+    raw_data_t rdata;
+    memset(&rdata, 0, sizeof(raw_data_t));
+    rdata.data_type = bus_data_type_bytes;
+    rdata.raw_data.bytes = (void *)&mgmt_frame.frame;
+    rdata.raw_data_len = sizeof(wifi_frame_t)+mgmt_frame.frame.len;
+
+    // Publish the management frame to the X_RDK_mgmtFrameRecieved 
+    bus_handle_t m_bus_hdl;
+    bus_init(&m_bus_hdl);
+
+    char event_name[200] = {0};
+    sprintf(event_name, "Device.WiFi.AccessPoint.%d.X_RDK_mgmtFrameRecieved", ap_index);
+
+    get_bus_descriptor()->bus_event_publish_fn(&m_bus_hdl, event_name, &rdata);
 
     push_event_to_ctrl_queue((frame_data_t *)&mgmt_frame, sizeof(mgmt_frame), wifi_event_type_hal_ind, evt_subtype, NULL);
     return RETURN_OK;
