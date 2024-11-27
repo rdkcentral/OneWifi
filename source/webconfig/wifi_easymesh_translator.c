@@ -687,8 +687,12 @@ webconfig_error_t translate_sta_object_to_easymesh_for_assocdev_stats(webconfig_
     int sta_size = 0;
     em_sta_info_t *em_sta_dev_info;
     webconfig_external_easymesh_t *proto;
-    bssid_t bssid;
-    mac_address_t ruid;
+    em_radio_info_t *radio_info;
+    em_bss_info_t *bss_info;
+    wifi_provider_response_t **assoc_device_stats;
+    wifi_associated_dev3_t *client_stats;
+    int vap_index = 0, radio_index = 0;
+    wifi_platform_property_t *wifi_prop;
 
     webconfig_subdoc_decoded_data_t *params = &data->u.decoded;
     if (params == NULL) {
@@ -696,14 +700,18 @@ webconfig_error_t translate_sta_object_to_easymesh_for_assocdev_stats(webconfig_
         return webconfig_error_decode;
     }
 
-    wifi_provider_response_t **assoc_device_stats = (wifi_provider_response_t **)&params->collect_stats.stats;
+    assoc_device_stats = (wifi_provider_response_t **)&params->collect_stats.stats;
     sta_size = (*assoc_device_stats)->stat_array_size;
 
-    wifi_associated_dev3_t *client_stats = (wifi_associated_dev3_t*)(*assoc_device_stats)->stat_pointer;
+    client_stats = (wifi_associated_dev3_t*)(*assoc_device_stats)->stat_pointer;
     if (client_stats == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Dev Stats is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_to_easymesh;
     }
+
+    vap_index = (*assoc_device_stats)->args.vap_index;
+    wifi_prop = &data->u.decoded.hal_cap.wifi_prop;
+    radio_index = get_radio_index_for_vap_index(wifi_prop, vap_index);
 
     response_time = (*assoc_device_stats)->response_time;
     local_time = localtime(&response_time);
@@ -719,14 +727,26 @@ webconfig_error_t translate_sta_object_to_easymesh_for_assocdev_stats(webconfig_
     }
 
     for (unsigned int count = 0; count < sta_size; count++) {
-        em_sta_dev_info = proto->get_sta_info(proto->data_model, client_stats[count].cli_MACAddress, bssid, ruid, em_target_sta_map_assoc);
+        radio_info = proto->get_radio_info(proto->data_model, radio_index);
+        bss_info = proto->get_bss_info(proto->data_model, vap_index);
+        em_sta_dev_info = proto->get_sta_info(proto->data_model, client_stats[count].cli_MACAddress, \
+             bss_info->bssid.mac, radio_info->id.mac, em_target_sta_map_consolidated);
         if (em_sta_dev_info != NULL) {     
             memcpy(em_sta_dev_info[count].id, client_stats[count].cli_MACAddress, sizeof(mac_address_t));
-            em_sta_dev_info[count].last_ul_rate             = client_stats[count].cli_LastDataUplinkRate;
             memcpy(em_sta_dev_info[count].timestamp, time_str ,sizeof(em_sta_dev_info[count].timestamp));
+            em_sta_dev_info[count].last_ul_rate             = client_stats[count].cli_LastDataUplinkRate;
             em_sta_dev_info[count].last_dl_rate             = client_stats[count].cli_LastDataDownlinkRate;
+            //TODO: formulae derivation pending
+            em_sta_dev_info[count].est_ul_rate              = client_stats[count].cli_LastDataUplinkRate;
+            em_sta_dev_info[count].est_dl_rate              = client_stats[count].cli_LastDataDownlinkRate;
             em_sta_dev_info[count].retrans_count            = client_stats[count].cli_RetransCount;
+            //TODO: formulae derivation pending
+            em_sta_dev_info[count].rcpi                     = 0;
             em_sta_dev_info[count].signal_strength          = client_stats[count].cli_SignalStrength;
+            //TODO: formulae derivation pending
+            em_sta_dev_info[count].util_tx                  = client_stats[count].cli_BytesSent;
+            //TODO: formulae derivation pending
+            em_sta_dev_info[count].util_rx                  = client_stats[count].cli_BytesReceived;
             em_sta_dev_info[count].pkts_tx                  = client_stats[count].cli_PacketsSent;
             em_sta_dev_info[count].pkts_rx                  = client_stats[count].cli_PacketsReceived;
             em_sta_dev_info[count].bytes_tx                 = client_stats[count].cli_BytesSent;
