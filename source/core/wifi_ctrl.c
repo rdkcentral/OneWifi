@@ -1135,14 +1135,17 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
     rdata.raw_data_len = sizeof(wifi_frame_t)+mgmt_frame.frame.len;
 
     // Publish the management frame to the X_RDK_mgmtFrameRecieved 
-    bus_handle_t m_bus_hdl;
-    bus_init(&m_bus_hdl);
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    if (ctrl != NULL){
 
-    char event_name[200] = {0};
-    sprintf(event_name, "Device.WiFi.AccessPoint.%d.X_RDK_mgmtFrameRecieved", ap_index);
+    	char event_name[200] = {0};
+    	sprintf(event_name, "Device.WiFi.AccessPoint.%d.X_RDK_mgmtFrameRecieved", ap_index);
 
-    get_bus_descriptor()->bus_event_publish_fn(&m_bus_hdl, event_name, &rdata);
-
+    	get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, event_name, &rdata);
+    } else {
+	wifi_util_dbg_print(WIFI_CTRL,"%s:%d NULL ctrl object. Not publishing managment frame...\n", __func__,__LINE__);
+    }
+    
     push_event_to_ctrl_queue((frame_data_t *)&mgmt_frame, sizeof(mgmt_frame), wifi_event_type_hal_ind, evt_subtype, NULL);
     return RETURN_OK;
 }
