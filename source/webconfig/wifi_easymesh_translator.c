@@ -289,9 +289,131 @@ webconfig_error_t   translate_device_object_to_easymesh_for_dml(webconfig_subdoc
 
     return webconfig_error_none;
 }
+// This routine converts Radio webconfig subdoc values to em_radio_list_t,em_radio_info_t easymesh structures
+webconfig_error_t translate_radio_object_to_easymesh_for_radio(webconfig_subdoc_data_t *data)
+{
+    em_radio_info_t *em_radio_info;
+    em_op_class_info_t *em_op_class_info;
+    unsigned int radio_index = 0, bss_count = 0;
+    rdk_wifi_radio_t *radio;
+    wifi_vap_info_t *vap;
+    wifi_vap_info_map_t *vap_map;
+    radio_interface_mapping_t *radio_iface_map;
+    webconfig_external_easymesh_t *proto;
+    wifi_radio_operationParam_t *oper_param;
+    webconfig_subdoc_decoded_data_t *decoded_params;
+    unsigned int no_of_opclass = 0, i = 0, j = 0;
+
+    decoded_params = &data->u.decoded;
+    if (decoded_params == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: decoded_params is NULL\n", __func__, __LINE__);
+        return webconfig_error_translate_to_easymesh;
+    }
+
+    proto = (webconfig_external_easymesh_t *)data->u.decoded.external_protos;
+    if (proto == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: external_protos is NULL\n", __func__, __LINE__);
+        return webconfig_error_translate_to_easymesh;
+    }
+
+    if (proto->get_radio_info(proto->data_model, 0) == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: em_radio_info is NULL\n", __func__, __LINE__);
+        return webconfig_error_translate_to_easymesh;
+    }
+
+    if ((decoded_params->num_radios < MIN_NUM_RADIOS) || (decoded_params->num_radios > MAX_NUM_RADIOS )){
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid number of radios : %x\n", 
+            __func__, __LINE__, decoded_params->num_radios);
+        return webconfig_error_translate_to_easymesh;
+    }
+    wifi_platform_property_t *wifi_prop = &data->u.decoded.hal_cap.wifi_prop;
+    proto->set_num_radio(proto->data_model, decoded_params->num_radios);
+    for (unsigned int index = 0; index < decoded_params->num_radios; index++) {
+        em_radio_info = proto->get_radio_info(proto->data_model, index);
+        radio = &decoded_params->radios[index];
+        em_op_class_info = proto->get_op_class_info(proto->data_model, index);
+        oper_param = &decoded_params->radios[index].oper;
+        radio_index = convert_radio_name_to_radio_index(decoded_params->radios[index].name);
+        em_radio_info->enabled = oper_param->enable;
+        radio_iface_map = NULL;
+        for (unsigned int k = 0; k < (sizeof(wifi_prop->radio_interface_map)/sizeof(radio_interface_mapping_t)); k++) {
+            if (wifi_prop->radio_interface_map[k].radio_index == radio_index) {
+                radio_iface_map = &(wifi_prop->radio_interface_map[k]);
+                break;
+            }
+        }
+        if (radio_iface_map == NULL) {
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the interface map entry for \n", __func__, __LINE__);
+            return webconfig_error_translate_to_easymesh;
+        }
+        strncpy(em_radio_info->id.name, radio->name, sizeof(em_interface_name_t));
+        mac_address_from_name(radio_iface_map->interface_name, em_radio_info->id.mac);
+        no_of_opclass = proto->get_num_op_class(proto->data_model);
+        for (i = 0; i < oper_param->numOperatingClasses; i++) {
+            for (j = 0; j < no_of_opclass; j++) {
+                em_op_class_info = proto->get_op_class_info(proto->data_model, j);
+                //op class already exist so updating
+                if ((memcmp(em_radio_info->id.mac, em_op_class_info->id.ruid, sizeof(mac_address_t)) == 0) &&
+                        (oper_param->operatingClasses[i].opClass == em_op_class_info->op_class) &&
+                        ( em_op_class_info->id.type) == em_op_class_type_capability ) {
+                    em_op_class_info->op_class = oper_param->operatingClasses[i].opClass;
+                    em_op_class_info->id.op_class = oper_param->operatingClasses[i].opClass;
+                    em_op_class_info->max_tx_power = oper_param->operatingClasses[i].maxTxPower;
+                    em_op_class_info->num_channels = oper_param->operatingClasses[i].numberOfNonOperChan;
+                    for(int k = 0; k < oper_param->operatingClasses[i].numberOfNonOperChan; k++) {
+                        em_op_class_info->channels[k] = oper_param->operatingClasses[i].nonOperable[k];
+                    }
+                    break;
+                }
+            }
+            //Add new entry
+            if (j == no_of_opclass) { 
+                em_op_class_info = proto->get_op_class_info(proto->data_model, j);
+                mac_address_from_name(radio_iface_map->interface_name,em_op_class_info->id.ruid);
+                em_op_class_info->id.type = em_op_class_type_capability;
+                em_op_class_info->id.op_class = oper_param->operatingClasses[i].opClass;
+                em_op_class_info->op_class = oper_param->operatingClasses[i].opClass;
+                em_op_class_info->max_tx_power = oper_param->operatingClasses[i].maxTxPower;
+                em_op_class_info->num_channels = oper_param->operatingClasses[i].numberOfNonOperChan;
+                for(int k = 0; k < oper_param->operatingClasses[j].numberOfNonOperChan; k++) {
+                    em_op_class_info->channels[k] = oper_param->operatingClasses[i].nonOperable[k];
+                }
+                no_of_opclass++;
+                proto->set_num_op_class(proto->data_model, no_of_opclass);
+            }
+        }
+
+        //Update current operating class
+        for (j = 0; j < no_of_opclass; j++) {
+            em_op_class_info = proto->get_op_class_info(proto->data_model, j);
+            if ((memcmp(em_radio_info->id.mac, em_op_class_info->id.ruid, sizeof(mac_address_t)) == 0) &&
+                    (oper_param->operatingClass == em_op_class_info->op_class) &&
+                    (em_op_class_info->id.type == em_op_class_type_current )) {
+                em_op_class_info->op_class = oper_param->operatingClass;
+                em_op_class_info->id.op_class = oper_param->operatingClass;
+                em_op_class_info->channel = oper_param->channel;
+                break;
+            }
+        }
+        //New op class
+        if (j == no_of_opclass) {
+            em_op_class_info = proto->get_op_class_info(proto->data_model, j);
+            mac_address_from_name(radio_iface_map->interface_name,em_op_class_info->id.ruid);
+            em_op_class_info->id.type = em_op_class_type_current;
+            em_op_class_info->id.op_class = oper_param->operatingClass;
+            em_op_class_info->op_class = oper_param->operatingClass;
+            em_op_class_info->channel = oper_param->channel;
+            no_of_opclass++;
+            proto->set_num_op_class(proto->data_model,no_of_opclass);
+        }
+
+    }
+
+    return webconfig_error_none;
+}
 
 // This routine converts DML webconfig subdoc values to em_radio_list_t,em_radio_info_t easymesh structures
-webconfig_error_t   translate_radio_object_to_easymesh_for_dml(webconfig_subdoc_data_t *data)
+webconfig_error_t translate_radio_object_to_easymesh_for_dml(webconfig_subdoc_data_t *data)
 {
     em_radio_info_t *em_radio_info;
     em_op_class_info_t *em_op_class_info;
@@ -301,7 +423,7 @@ webconfig_error_t   translate_radio_object_to_easymesh_for_dml(webconfig_subdoc_
     wifi_vap_info_map_t *vap_map;
     radio_interface_mapping_t *radio_iface_map;
     webconfig_external_easymesh_t *proto;
-    wifi_radio_operationParam_t  *oper_param;
+    wifi_radio_operationParam_t *oper_param;
     webconfig_subdoc_decoded_data_t *decoded_params;
 
     decoded_params = &data->u.decoded;
@@ -322,13 +444,15 @@ webconfig_error_t   translate_radio_object_to_easymesh_for_dml(webconfig_subdoc_
     }
 
     if ((decoded_params->num_radios < MIN_NUM_RADIOS) || (decoded_params->num_radios > MAX_NUM_RADIOS )) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid number of radios : %x\n", __func__, __LINE__, decoded_params->num_radios);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid number of radios : %x\n", 
+            __func__, __LINE__, decoded_params->num_radios);
         return webconfig_error_translate_to_easymesh;
     }
     wifi_platform_property_t *wifi_prop = &data->u.decoded.hal_cap.wifi_prop;
     for (unsigned int index = 0; index < decoded_params->num_radios; index++) {
         em_radio_info = proto->get_radio_info(proto->data_model, index);
         radio = &decoded_params->radios[index];
+        em_op_class_info = proto->get_op_class_info(proto->data_model, index);
         bss_count = 0;
         vap_map = &radio->vaps.vap_map;
         for (unsigned int j = 0; j < radio->vaps.num_vaps; j++) {
@@ -342,6 +466,7 @@ webconfig_error_t   translate_radio_object_to_easymesh_for_dml(webconfig_subdoc_
         oper_param = &decoded_params->radios[index].oper;
         radio_index = convert_radio_name_to_radio_index(decoded_params->radios[index].name);
         em_radio_info->enabled = oper_param->enable;
+        em_radio_info->band = oper_param->band;
         radio_iface_map = NULL;
         for (unsigned int k = 0; k < (sizeof(wifi_prop->radio_interface_map)/sizeof(radio_interface_mapping_t)); k++) {
             if (wifi_prop->radio_interface_map[k].radio_index == radio_index) {
@@ -355,19 +480,29 @@ webconfig_error_t   translate_radio_object_to_easymesh_for_dml(webconfig_subdoc_
         }
         strncpy(em_radio_info->id.name,radio_iface_map->radio_name, sizeof(em_interface_name_t));
         mac_address_from_name(radio_iface_map->interface_name, em_radio_info->id.mac);
-        for (unsigned int j = 0 ; j < oper_param->numOperatingClasses; j++) {
+        for (unsigned int j = 0; j < oper_param->numOperatingClasses; j++) {
             em_op_class_info = proto->get_op_class_info(proto->data_model, j);
             mac_address_from_name(radio_iface_map->interface_name, em_op_class_info->id.ruid);
             em_op_class_info->id.type = 2;
-            em_op_class_info->id.index = j;
+            em_op_class_info->id.op_class = oper_param->operatingClasses[j].opClass;
             em_op_class_info->op_class = oper_param->operatingClasses[j].opClass;
             em_op_class_info->max_tx_power = oper_param->operatingClasses[j].maxTxPower;
-            em_op_class_info->num_non_op_channels = oper_param->operatingClasses[j].numberOfNonOperChan;
+            em_op_class_info->num_channels = oper_param->operatingClasses[j].numberOfNonOperChan;
             for(int i = 0; i < oper_param->operatingClasses[j].numberOfNonOperChan; i++) {
-                em_op_class_info->non_op_channel[i] = oper_param->operatingClasses[j].nonOperable[i];
+                em_op_class_info->channels[i] = oper_param->operatingClasses[j].nonOperable[i];
             }
         }
-        proto->set_num_op_class(proto->data_model, oper_param->numOperatingClasses);
+        //Update current operating class
+        em_op_class_info = proto->get_op_class_info(proto->data_model, oper_param->numOperatingClasses);
+        mac_address_from_name(radio_iface_map->interface_name,em_op_class_info->id.ruid);
+        em_op_class_info->id.type = 1;
+        em_op_class_info->op_class = oper_param->operatingClass;
+        em_op_class_info->id.op_class = oper_param->operatingClass;
+        em_op_class_info->channel = oper_param->channel;
+
+        //Incrementing the number of operating classes by one, as the dml lacks an operating class for current.
+        proto->set_num_op_class(proto->data_model, (oper_param->numOperatingClasses+1));
+        mac_address_from_name(radio_iface_map->interface_name, em_radio_info->id.mac);
 
         //Add default params of radio_info
         em_radio_info->number_of_unassoc_sta = 0;
@@ -553,8 +688,12 @@ webconfig_error_t translate_sta_object_to_easymesh_for_assocdev_stats(webconfig_
     int sta_size = 0;
     em_sta_info_t *em_sta_dev_info;
     webconfig_external_easymesh_t *proto;
-    bssid_t bssid;
-    mac_address_t ruid;
+    em_radio_info_t *radio_info;
+    em_bss_info_t *bss_info;
+    wifi_provider_response_t **assoc_device_stats;
+    wifi_associated_dev3_t *client_stats;
+    int vap_index = 0, radio_index = 0;
+    wifi_platform_property_t *wifi_prop;
 
     webconfig_subdoc_decoded_data_t *params = &data->u.decoded;
     if (params == NULL) {
@@ -562,14 +701,18 @@ webconfig_error_t translate_sta_object_to_easymesh_for_assocdev_stats(webconfig_
         return webconfig_error_decode;
     }
 
-    wifi_provider_response_t **assoc_device_stats = (wifi_provider_response_t **)&params->collect_stats.stats;
+    assoc_device_stats = (wifi_provider_response_t **)&params->collect_stats.stats;
     sta_size = (*assoc_device_stats)->stat_array_size;
 
-    wifi_associated_dev3_t *client_stats = (wifi_associated_dev3_t*)(*assoc_device_stats)->stat_pointer;
+    client_stats = (wifi_associated_dev3_t*)(*assoc_device_stats)->stat_pointer;
     if (client_stats == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Dev Stats is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_to_easymesh;
     }
+
+    vap_index = (*assoc_device_stats)->args.vap_index;
+    wifi_prop = &data->u.decoded.hal_cap.wifi_prop;
+    radio_index = get_radio_index_for_vap_index(wifi_prop, vap_index);
 
     response_time = (*assoc_device_stats)->response_time;
     local_time = localtime(&response_time);
@@ -585,14 +728,26 @@ webconfig_error_t translate_sta_object_to_easymesh_for_assocdev_stats(webconfig_
     }
 
     for (unsigned int count = 0; count < sta_size; count++) {
-        em_sta_dev_info = proto->get_sta_info(proto->data_model, client_stats[count].cli_MACAddress, bssid, ruid, em_target_sta_map_assoc);
+        radio_info = proto->get_radio_info(proto->data_model, radio_index);
+        bss_info = proto->get_bss_info(proto->data_model, vap_index);
+        em_sta_dev_info = proto->get_sta_info(proto->data_model, client_stats[count].cli_MACAddress, \
+             bss_info->bssid.mac, radio_info->id.mac, em_target_sta_map_consolidated);
         if (em_sta_dev_info != NULL) {     
             memcpy(em_sta_dev_info[count].id, client_stats[count].cli_MACAddress, sizeof(mac_address_t));
-            em_sta_dev_info[count].last_ul_rate             = client_stats[count].cli_LastDataUplinkRate;
             memcpy(em_sta_dev_info[count].timestamp, time_str ,sizeof(em_sta_dev_info[count].timestamp));
+            em_sta_dev_info[count].last_ul_rate             = client_stats[count].cli_LastDataUplinkRate;
             em_sta_dev_info[count].last_dl_rate             = client_stats[count].cli_LastDataDownlinkRate;
+            //TODO: formulae derivation pending
+            em_sta_dev_info[count].est_ul_rate              = client_stats[count].cli_LastDataUplinkRate;
+            em_sta_dev_info[count].est_dl_rate              = client_stats[count].cli_LastDataDownlinkRate;
             em_sta_dev_info[count].retrans_count            = client_stats[count].cli_RetransCount;
+            //TODO: formulae derivation pending
+            em_sta_dev_info[count].rcpi                     = 0;
             em_sta_dev_info[count].signal_strength          = client_stats[count].cli_SignalStrength;
+            //TODO: formulae derivation pending
+            em_sta_dev_info[count].util_tx                  = client_stats[count].cli_BytesSent;
+            //TODO: formulae derivation pending
+            em_sta_dev_info[count].util_rx                  = client_stats[count].cli_BytesReceived;
             em_sta_dev_info[count].pkts_tx                  = client_stats[count].cli_PacketsSent;
             em_sta_dev_info[count].pkts_rx                  = client_stats[count].cli_PacketsReceived;
             em_sta_dev_info[count].bytes_tx                 = client_stats[count].cli_BytesSent;
@@ -1398,6 +1553,71 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_object(webconfig_subdoc
     return webconfig_error_none;
 }
 
+//translate_radio_object_from_easymesh_to_radio() converts data elements of  easymesh to Onewifi
+webconfig_error_t translate_radio_object_from_easymesh_to_radio(webconfig_subdoc_data_t *data)
+{
+    webconfig_subdoc_decoded_data_t *decoded_params;
+    wifi_radio_operationParam_t  *oper_param;
+    webconfig_external_easymesh_t *proto;
+    unsigned int i,j,radio_index;
+    rdk_wifi_radio_t *radio;
+    em_op_class_info_t *em_op_class_info;
+    radio_interface_mapping_t *radio_iface_map;
+    unsigned int num;
+    wifi_platform_property_t *wifi_prop = &data->u.decoded.hal_cap.wifi_prop;
+    mac_address_t ruid;
+    decoded_params = &data->u.decoded;
+
+    if (decoded_params == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: decoded_params is NULL\n", __func__, __LINE__);
+        return webconfig_error_translate_from_easymesh;
+    }
+
+    proto = (webconfig_external_easymesh_t *)data->u.decoded.external_protos;
+    if (proto == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: external_protos is NULL\n", __func__, __LINE__);
+        return webconfig_error_translate_from_easymesh;
+    }
+
+    if (proto->get_op_class_info(proto->data_model, 0) == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: get_op_class_info is NULL\n", __func__, __LINE__);
+        return webconfig_error_translate_from_easymesh;
+    }
+
+    if ((decoded_params->num_radios < MIN_NUM_RADIOS) || (decoded_params->num_radios > MAX_NUM_RADIOS )){
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid number of radios : %x\n", 
+            __func__, __LINE__, decoded_params->num_radios);
+        return webconfig_error_invalid_subdoc;
+    }
+
+    for (i = 0; i < decoded_params->num_radios; i++) {
+        radio = &decoded_params->radios[i];
+        oper_param = &decoded_params->radios[i].oper;
+        num = proto->get_num_op_class(proto->data_model);
+        radio_index = convert_radio_name_to_radio_index(decoded_params->radios[i].name);
+        radio_iface_map = NULL;
+        for (unsigned int k = 0; k < (sizeof(wifi_prop->radio_interface_map)/sizeof(radio_interface_mapping_t)); k++) {
+            if (wifi_prop->radio_interface_map[k].radio_index == radio_index) {
+                radio_iface_map = &(wifi_prop->radio_interface_map[k]);
+                break;
+            }
+        }
+        if (radio_iface_map == NULL) {
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the interface map entry for \n", __func__, __LINE__);
+            return webconfig_error_translate_to_easymesh;
+        }
+        mac_address_from_name(radio_iface_map->interface_name, ruid);
+        for (j = 0; j < num; j++) {
+            em_op_class_info = proto->get_op_class_info(proto->data_model, j);
+            if ((em_op_class_info != NULL) && (em_op_class_info->id.type == 1) &&
+                (memcmp(&ruid, em_op_class_info->id.ruid, sizeof(mac_address_t)) == 0)) {
+                oper_param->op_class = em_op_class_info->op_class ;
+                oper_param->channel = em_op_class_info->channel;
+            }
+        }
+    }
+    return webconfig_error_none;
+}
 //translate_device_object_from_easymesh_to_dml() converts data elements of em_device_info_t of  easymesh to Onewifi
 webconfig_error_t   translate_device_object_from_easymesh_to_dml(webconfig_subdoc_data_t *data)
 {
@@ -1624,6 +1844,14 @@ webconfig_error_t  translate_to_easymesh_tables(webconfig_subdoc_type_t type, we
             }
             break;
 
+        case webconfig_subdoc_type_radio:
+            if (translate_radio_object_to_easymesh_for_radio(data) != webconfig_error_none) {
+                wifi_util_error_print(WIFI_WEBCONFIG,
+                    "%s:%d: webconfig_subdoc_type_dml radio_object translation to easymesh failed\n", __func__, __LINE__);
+                return webconfig_error_translate_to_easymesh;
+            }
+            break;
+
           //TO-DO
    /*     case webconfig_subdoc_type_radiodiag_stats:
             if (translate_radiodiag_stats_to_easymesh(data) != webconfig_error_none) {
@@ -1698,6 +1926,15 @@ webconfig_error_t   translate_from_easymesh_tables(webconfig_subdoc_type_t type,
                 return webconfig_error_translate_from_easymesh;
             }
             break;
+
+        case webconfig_subdoc_type_radio:
+            if (translate_radio_object_from_easymesh_to_radio(data) != webconfig_error_none) {
+                wifi_util_error_print(WIFI_WEBCONFIG, 
+                    "%s:%d: webconfig_subdoc_type_radio translation to easymesh failed\n", __func__, __LINE__);
+                return webconfig_error_translate_from_easymesh;
+            }
+            break;
+
         default:
             break;
     }
