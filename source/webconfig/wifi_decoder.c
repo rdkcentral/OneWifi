@@ -4769,16 +4769,16 @@ webconfig_error_t decode_assocdev_stats_object(wifi_provider_response_t **assoc_
         decode_param_bool(assoc_data, "cli_Active", param);
         client_stats_data[count].cli_Active = (param->type & cJSON_True) ? true:false;
 
-        decode_param_string(assoc_data, "cli_OperatingStandard", param);
+        decode_param_allow_empty_string(assoc_data, "cli_OperatingStandard", param);
         strncpy(client_stats_data[count].cli_OperatingStandard, param->valuestring, sizeof(client_stats_data[count].cli_OperatingStandard) - 1);
 
-        decode_param_string(assoc_data, "cli_OperatingChannelBandwidth", param);
+        decode_param_allow_empty_string(assoc_data, "cli_OperatingChannelBandwidth", param);
         strncpy(client_stats_data[count].cli_OperatingChannelBandwidth, param->valuestring, sizeof(client_stats_data[count].cli_OperatingChannelBandwidth) - 1);
 
         decode_param_integer(assoc_data, "cli_SNR", param);
         client_stats_data[count].cli_SNR = param->valuedouble;
 
-        decode_param_string(assoc_data, "cli_InterferenceSources", param);
+        decode_param_allow_empty_string(assoc_data, "cli_InterferenceSources", param);
         strncpy(client_stats_data[count].cli_InterferenceSources, param->valuestring, sizeof(client_stats_data[count].cli_InterferenceSources) - 1);
 
         decode_param_integer(assoc_data, "cli_DataFramesSentAck", param);
