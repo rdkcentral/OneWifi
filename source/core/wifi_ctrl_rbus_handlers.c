@@ -2646,6 +2646,52 @@ bus_error_t get_client_assoc_request_multi(char const* methodName, raw_data_t *i
     return bus_error_success;
 }
 
+bus_error_t bus_send_action_frame(char *name, raw_data_t *p_data)
+{
+    unsigned int idx = 0;
+    int ret;
+    bool force_apply = false;
+    webconfig_subdoc_data_t *data;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    unsigned int num_of_radios = getNumberRadios();
+    unsigned int vap_array_index;
+    unsigned int radio_index;
+    int subdoc_type;
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+
+    if (!name) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d property name is not found\r\n", __FUNCTION__,
+            __LINE__);
+        return bus_error_invalid_input;
+    }
+
+    if (p_data->data_type != bus_data_type_bytes) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d-%s wrong bus data_type:%x\n", __func__,
+            __LINE__, name, p_data->data_type);
+        return bus_error_invalid_input;
+    }
+
+    ret = sscanf(name, "Device.WiFi.AccessPoint.%d.SendActionFrame", &idx);
+    if (ret == 1 || idx < 0 || idx > num_of_radios * MAX_NUM_VAP_PER_RADIO) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid name : %s\r\n", __func__, __LINE__, name);
+        return bus_error_invalid_input;
+    }
+
+    if (p_data->raw_data_len < sizeof(action_frame_params_t) + 1){
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid parameter size : %s\r\n", __func__, __LINE__, name);
+        return bus_error_invalid_input;
+    }
+
+    action_frame_params_t* params = (action_frame_params_t*)(p_data->raw_data.bytes);
+
+    if (wifi_sendActionFrame(idx, params->dest_addr, params->frequency, params->frame_data, params->frame_len)){
+        wifi_util_error_print(WIFI_CTRL, "%s:%d HAL sendActionFrame method failed : %s\r\n", __func__, __LINE__, name);
+        return bus_error_general;
+    }
+
+    return bus_error_success;
+}
+
 bus_error_t set_force_vap_apply(char *name, raw_data_t *p_data)
 {
     unsigned int idx = 0;
@@ -2812,6 +2858,12 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
                                 { WIFI_ACCESSPOINT_DIAGDATA, bus_element_type_event,
                                     { ap_get_handler, NULL, NULL, NULL, eventSubHandler, NULL}, slow_speed, ZERO_TABLE,
                                     { bus_data_type_string, false, 0, 0, 0, NULL } },
+                                { WIFI_ACCESSPOINT_MGMT_FRAME_RECV, bus_element_type_event,
+                                    { NULL, NULL, NULL, NULL, eventSubHandler, NULL}, high_speed, ZERO_TABLE,
+                                    { bus_data_type_bytes, false, 0, 0, 0, NULL } },
+                                { WIFI_ACCESSPOINT_ACT_FRAME_SEND, bus_element_type_method,
+                                    { NULL, bus_send_action_frame, NULL, NULL, NULL, NULL}, high_speed, ZERO_TABLE,
+                                    { bus_data_type_bytes, true, 0, 0, 0, NULL } },
                                 { WIFI_ACCESSPOINT_FORCE_APPLY, bus_element_type_method,
                                     { NULL, set_force_vap_apply, NULL, NULL, NULL, NULL}, slow_speed, ZERO_TABLE,
                                     { bus_data_type_boolean, true, 0, 0, 0, NULL } },

@@ -55,6 +55,8 @@ extern "C" {
 #define WIFI_ACCESSPOINT_DEV_DISCONNECTED   "Device.WiFi.AccessPoint.{i}.X_RDK_deviceDisconnected"
 #define WIFI_ACCESSPOINT_DEV_DEAUTH         "Device.WiFi.AccessPoint.{i}.X_RDK_deviceDeauthenticated"
 #define WIFI_ACCESSPOINT_DIAGDATA           "Device.WiFi.AccessPoint.{i}.X_RDK_DiagData"
+#define WIFI_ACCESSPOINT_MGMT_FRAME_RECV    "Device.WiFi.AccessPoint.{i}.X_RDK_mgmtFrameRecieved"
+#define WIFI_ACCESSPOINT_ACT_FRAME_SEND     "Device.WiFi.AccessPoint.{i}.SendActionFrame"
 #define WIFI_ACCESSPOINT_FORCE_APPLY        "Device.WiFi.AccessPoint.{i}.ForceApply"
 #define WIFI_ACCESSPOINT_RADIUS_CONNECTED_ENDPOINT   "Device.WiFi.AccessPoint.{i}.Security.ConnectedRadiusEndpoint"
 #define WIFI_CSI_TABLE                      "Device.WiFi.X_RDK_CSI.{i}."
@@ -262,6 +264,13 @@ typedef enum {
     whix_app_event_type_radio_diag_stats,
     whix_app_event_type_max
 } whix_app_event_type_t;
+
+typedef struct {
+    mac_addr_t dest_addr;
+    unsigned int frequency;
+    unsigned int frame_len;
+    uint8_t frame_data[0];
+} __attribute__((packed)) action_frame_params_t;
 
 typedef struct {
     unsigned int            radio_index;
