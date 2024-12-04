@@ -422,6 +422,9 @@ int webconfig_bus_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_encoded_data_t *data
     rdata.raw_data.bytes = (void *)data->raw;
     rdata.raw_data_len = strlen(data->raw) + 1;
 
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d: [AH]:bus_event_publish_fn WIFI_WEBCONFIG_DOC_DATA_NORTH initiated %d\n", __func__,
+            __LINE__);
+
     rc = get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, WIFI_WEBCONFIG_DOC_DATA_NORTH,
         &rdata);
     if (rc != bus_error_success) {
