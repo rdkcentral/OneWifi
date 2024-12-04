@@ -621,6 +621,43 @@ webconfig_error_t webconfig_init(webconfig_t *config)
     config->subdocs[webconfig_subdoc_type_radio_temperature].decode_subdoc = decode_radio_temperature_stats_subdoc;
     config->subdocs[webconfig_subdoc_type_radio_temperature].translate_to_subdoc = translate_to_radio_temperature_stats_subdoc;
     config->subdocs[webconfig_subdoc_type_radio_temperature].translate_from_subdoc = translate_from_radio_temperature_stats_subdoc;
+
+    config->subdocs[webconfig_subdoc_type_vap_24G].type = webconfig_subdoc_type_vap_24G;
+    strcpy(config->subdocs[webconfig_subdoc_type_vap_24G].name, "Vap_2.4G");
+    config->subdocs[webconfig_subdoc_type_vap_24G].major = 1;
+    config->subdocs[webconfig_subdoc_type_vap_24G].minor = 1;
+    config->subdocs[webconfig_subdoc_type_vap_24G].init_subdoc = init_multivap_subdoc;
+    config->subdocs[webconfig_subdoc_type_vap_24G].init_subdoc(&config->subdocs[webconfig_subdoc_type_vap_24G]);
+    config->subdocs[webconfig_subdoc_type_vap_24G].access_check_subdoc = access_check_multivap_subdoc;
+    config->subdocs[webconfig_subdoc_type_vap_24G].encode_subdoc = encode_multivap_subdoc;
+    config->subdocs[webconfig_subdoc_type_vap_24G].decode_subdoc = decode_multivap_subdoc;
+    config->subdocs[webconfig_subdoc_type_vap_24G].translate_to_subdoc = translate_to_multivap_subdoc;
+    config->subdocs[webconfig_subdoc_type_vap_24G].translate_from_subdoc = translate_from_multivap_subdoc;
+
+    config->subdocs[webconfig_subdoc_type_vap_5G].type = webconfig_subdoc_type_vap_5G;
+    strcpy(config->subdocs[webconfig_subdoc_type_vap_5G].name, "Vap_5G");
+    config->subdocs[webconfig_subdoc_type_vap_5G].major = 1;
+    config->subdocs[webconfig_subdoc_type_vap_5G].minor = 1;
+    config->subdocs[webconfig_subdoc_type_vap_5G].init_subdoc = init_multivap_subdoc;
+    config->subdocs[webconfig_subdoc_type_vap_5G].init_subdoc(&config->subdocs[webconfig_subdoc_type_vap_5G]);
+    config->subdocs[webconfig_subdoc_type_vap_5G].access_check_subdoc = access_check_multivap_subdoc;
+    config->subdocs[webconfig_subdoc_type_vap_5G].encode_subdoc = encode_multivap_subdoc;
+    config->subdocs[webconfig_subdoc_type_vap_5G].decode_subdoc = decode_multivap_subdoc;
+    config->subdocs[webconfig_subdoc_type_vap_5G].translate_to_subdoc = translate_to_multivap_subdoc;
+    config->subdocs[webconfig_subdoc_type_vap_5G].translate_from_subdoc = translate_from_multivap_subdoc;
+
+    config->subdocs[webconfig_subdoc_type_vap_6G].type = webconfig_subdoc_type_vap_6G;
+    strcpy(config->subdocs[webconfig_subdoc_type_vap_6G].name, "Vap_6G");
+    config->subdocs[webconfig_subdoc_type_vap_6G].major = 1;
+    config->subdocs[webconfig_subdoc_type_vap_6G].minor = 1;
+    config->subdocs[webconfig_subdoc_type_vap_6G].init_subdoc = init_multivap_subdoc;
+    config->subdocs[webconfig_subdoc_type_vap_6G].init_subdoc(&config->subdocs[webconfig_subdoc_type_vap_6G]);
+    config->subdocs[webconfig_subdoc_type_vap_6G].access_check_subdoc = access_check_multivap_subdoc;
+    config->subdocs[webconfig_subdoc_type_vap_6G].encode_subdoc = encode_multivap_subdoc;
+    config->subdocs[webconfig_subdoc_type_vap_6G].decode_subdoc = decode_multivap_subdoc;
+    config->subdocs[webconfig_subdoc_type_vap_6G].translate_to_subdoc = translate_to_multivap_subdoc;
+    config->subdocs[webconfig_subdoc_type_vap_6G].translate_from_subdoc = translate_from_multivap_subdoc;
+
     config->proto_desc.translate_to = translate_to_proto;
     config->proto_desc.translate_from = translate_from_proto;
 

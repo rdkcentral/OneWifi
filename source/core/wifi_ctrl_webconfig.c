@@ -661,6 +661,9 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
         }
 
         if (found_target == false) {
+            wifi_util_error_print(WIFI_MGR,
+                "%s:%d: Could not find tgt_radio_idx:%d for vap name:%s\n", __func__, __LINE__,
+                tgt_radio_idx, vap_names[i]);
             continue;
         }
 
@@ -676,6 +679,9 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
         }
 
         if (found_target == false) {
+            wifi_util_error_print(WIFI_MGR,
+                "%s:%d: Could not find tgt_vap_index:%d for vap name:%s\n", __func__, __LINE__,
+                tgt_vap_index, vap_names[i]);
             continue;
         }
 
@@ -1376,6 +1382,51 @@ int webconfig_hal_mesh_backhaul_vap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_de
             vap_names[num_vaps] = vap_name;
             num_vaps++;
         }
+    }
+    return webconfig_hal_vap_apply_by_name(ctrl, data, vap_names, num_vaps);
+}
+
+int webconfig_hal_multivap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data,
+    webconfig_subdoc_type_t doc_type)
+{
+    unsigned int num_vaps = 0;
+    unsigned int ap_index;
+    char *vap_name;
+    char *vap_names[MAX_NUM_VAP_PER_RADIO];
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    rdk_wifi_vap_map_t *mgr_vap_map = NULL;
+    int radio_index = -1;
+
+    switch (doc_type) {
+    case webconfig_subdoc_type_vap_24G:
+        radio_index = 0;
+        break;
+    case webconfig_subdoc_type_vap_5G:
+        radio_index = 1;
+        break;
+    case webconfig_subdoc_type_vap_6G:
+        radio_index = 2;
+        break;
+    default:
+        // Invalid doc_type return err
+        wifi_util_error_print(WIFI_MGR, "%s:%d Invalid doc_type:%d\n", __func__, __LINE__,
+            doc_type);
+        return RETURN_ERR;
+    }
+
+    wifi_util_dbg_print(WIFI_MGR, "%s:%d Selected Radio Index:%d for doc_type:%d\n", __func__,
+        __LINE__, radio_index, doc_type);
+    mgr_vap_map = &mgr->radio_config[radio_index].vaps;
+    if (mgr_vap_map == NULL) {
+        wifi_util_error_print(WIFI_MGR, "%s:%d Error vap_map is NULL for Radio Index:%d\n",
+            __func__, __LINE__, radio_index);
+        return RETURN_ERR;
+    }
+
+    // Consider all the Vap associated with the radio_index
+    for (UINT index = 0; index < mgr_vap_map->num_vaps; index++) {
+        vap_names[num_vaps] = mgr_vap_map->rdk_vap_array[index].vap_name;
+        num_vaps++;
     }
     return webconfig_hal_vap_apply_by_name(ctrl, data, vap_names, num_vaps);
 }
@@ -2158,6 +2209,37 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                 wifi_util_error_print(WIFI_MGR, "%s:%d: Not expected apply to dml webconfig subdoc\n", __func__, __LINE__);
             }
 #endif
+            break;
+
+        case webconfig_subdoc_type_vap_24G:
+        case webconfig_subdoc_type_vap_5G:
+        case webconfig_subdoc_type_vap_6G:
+            wifi_ctrl_webconfig_state_t conf_state_pending;
+            if (doc->type == webconfig_subdoc_type_vap_24G) {
+                conf_state_pending = ctrl_webconfig_state_vap_24G_cfg_rsp_pending;
+            } else if (doc->type == webconfig_subdoc_type_vap_5G) {
+                conf_state_pending = ctrl_webconfig_state_vap_5G_cfg_rsp_pending;
+            } else {
+                conf_state_pending = ctrl_webconfig_state_vap_6G_cfg_rsp_pending;
+            }
+            if (data->descriptor & webconfig_data_descriptor_encoded) {
+                if (ctrl->webconfig_state & conf_state_pending) {
+                    ctrl->webconfig_state &= ~conf_state_pending;
+                    ret = webconfig_bus_apply(ctrl, &data->u.encoded);
+                }
+            } else {
+                if (check_wifi_csa_sched_timeout_active_status(ctrl) == true) {
+                    if (push_data_to_apply_pending_queue(data) != RETURN_OK) {
+                        return webconfig_error_apply;
+                    }
+                } else {
+                    ctrl->webconfig_state |= conf_state_pending;
+                    webconfig_analytic_event_data_to_hal_apply(data);
+                    ret = webconfig_hal_multivap_apply(ctrl, &data->u.decoded, doc->type);
+                }
+            }
+            // This is for captive_portal_check for private SSID when defaults modified
+            captive_portal_check();
             break;
 
         default:

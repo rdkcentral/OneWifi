@@ -128,6 +128,9 @@ typedef enum {
     webconfig_subdoc_type_assocdev_stats,
     webconfig_subdoc_type_radiodiag_stats,
     webconfig_subdoc_type_radio_temperature,
+    webconfig_subdoc_type_vap_24G,
+    webconfig_subdoc_type_vap_5G,
+    webconfig_subdoc_type_vap_6G,
     webconfig_subdoc_type_max
 } webconfig_subdoc_type_t;
 
@@ -578,6 +581,14 @@ webconfig_error_t       decode_radio_temperature_stats_subdoc(webconfig_t *confi
 webconfig_error_t       encode_radio_temperature_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_to_radio_temperature_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_from_radio_temperature_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+// Vap_24G, Vap_5G and Vap_6G 
+webconfig_error_t       init_multivap_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_multivap_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_multivap_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_multivap_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_multivap_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_multivap_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 #ifdef __cplusplus
 }
 #endif

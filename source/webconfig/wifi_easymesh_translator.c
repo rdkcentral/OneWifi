@@ -1860,6 +1860,11 @@ webconfig_error_t  translate_to_easymesh_tables(webconfig_subdoc_type_t type, we
             }
             break; */
 
+        case webconfig_subdoc_type_vap_24G:
+        case webconfig_subdoc_type_vap_5G:
+        case webconfig_subdoc_type_vap_6G:
+            //TBD: Update the necessary datastructures of easymesh
+
         default:
             break;
     }
@@ -1934,6 +1939,11 @@ webconfig_error_t   translate_from_easymesh_tables(webconfig_subdoc_type_t type,
                 return webconfig_error_translate_from_easymesh;
             }
             break;
+
+        case webconfig_subdoc_type_vap_24G:
+        case webconfig_subdoc_type_vap_5G:
+        case webconfig_subdoc_type_vap_6G:
+            //TBD: Update the necessary datastructures from easymesh to OneWifi.
 
         default:
             break;
