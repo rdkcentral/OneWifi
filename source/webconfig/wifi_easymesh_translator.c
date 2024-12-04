@@ -740,26 +740,26 @@ webconfig_error_t translate_sta_object_to_easymesh_for_assocdev_stats(webconfig_
         em_sta_dev_info = proto->get_sta_info(proto->data_model, client_stats[count].cli_MACAddress, \
              bss_info->bssid.mac, radio_info->id.mac, em_target_sta_map_consolidated);
         if (em_sta_dev_info != NULL) {     
-            memcpy(em_sta_dev_info[count].id, client_stats[count].cli_MACAddress, sizeof(mac_address_t));
-            memcpy(em_sta_dev_info[count].timestamp, time_str ,sizeof(em_sta_dev_info[count].timestamp));
-            em_sta_dev_info[count].last_ul_rate             = client_stats[count].cli_LastDataUplinkRate;
-            em_sta_dev_info[count].last_dl_rate             = client_stats[count].cli_LastDataDownlinkRate;
+            memcpy(em_sta_dev_info->id, client_stats[count].cli_MACAddress, sizeof(mac_address_t));
+            memcpy(em_sta_dev_info->timestamp, time_str ,sizeof(em_sta_dev_info->timestamp));
+            em_sta_dev_info->last_ul_rate             = client_stats[count].cli_LastDataUplinkRate;
+            em_sta_dev_info->last_dl_rate             = client_stats[count].cli_LastDataDownlinkRate;
             //TODO: formulae derivation pending
-            em_sta_dev_info[count].est_ul_rate              = client_stats[count].cli_LastDataUplinkRate;
-            em_sta_dev_info[count].est_dl_rate              = client_stats[count].cli_LastDataDownlinkRate;
-            em_sta_dev_info[count].retrans_count            = client_stats[count].cli_RetransCount;
+            em_sta_dev_info->est_ul_rate              = client_stats[count].cli_LastDataUplinkRate;
+            em_sta_dev_info->est_dl_rate              = client_stats[count].cli_LastDataDownlinkRate;
+            em_sta_dev_info->retrans_count            = client_stats[count].cli_RetransCount;
             //TODO: formulae derivation pending
-            em_sta_dev_info[count].rcpi                     = 0;
-            em_sta_dev_info[count].signal_strength          = client_stats[count].cli_SignalStrength;
+            em_sta_dev_info->rcpi                     = 0;
+            em_sta_dev_info->signal_strength          = client_stats[count].cli_SignalStrength;
             //TODO: formulae derivation pending
-            em_sta_dev_info[count].util_tx                  = client_stats[count].cli_BytesSent;
+            em_sta_dev_info->util_tx                  = client_stats[count].cli_BytesSent;
             //TODO: formulae derivation pending
-            em_sta_dev_info[count].util_rx                  = client_stats[count].cli_BytesReceived;
-            em_sta_dev_info[count].pkts_tx                  = client_stats[count].cli_PacketsSent;
-            em_sta_dev_info[count].pkts_rx                  = client_stats[count].cli_PacketsReceived;
-            em_sta_dev_info[count].bytes_tx                 = client_stats[count].cli_BytesSent;
-            em_sta_dev_info[count].bytes_rx                 = client_stats[count].cli_BytesReceived;
-            em_sta_dev_info[count].errors_tx                = client_stats[count].cli_ErrorsSent;
+            em_sta_dev_info->util_rx                  = client_stats[count].cli_BytesReceived;
+            em_sta_dev_info->pkts_tx                  = client_stats[count].cli_PacketsSent;
+            em_sta_dev_info->pkts_rx                  = client_stats[count].cli_PacketsReceived;
+            em_sta_dev_info->bytes_tx                 = client_stats[count].cli_BytesSent;
+            em_sta_dev_info->bytes_rx                 = client_stats[count].cli_BytesReceived;
+            em_sta_dev_info->errors_tx                = client_stats[count].cli_ErrorsSent;
         }
     }
     return webconfig_error_none;
