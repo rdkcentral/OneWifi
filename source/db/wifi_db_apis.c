@@ -7247,11 +7247,14 @@ char* Get_PSM_Record_Status(char *recName, char *strValue)
 {
     int retry = 0;
     int retPsmGet = RETURN_ERR;
+    char strVal[256] = {0};
     while(retry++ < 2) {
         retPsmGet = PSM_Get_Record_Value2(bus_handle, g_Subsystem, recName, NULL, &strValue);
         if (retPsmGet == RDKB_CCSP_SUCCESS) {
             wifi_util_dbg_print(WIFI_MGR,"%s:%d retPsmGet success for %s and strValue is %s\n", __FUNCTION__,__LINE__, recName, strValue);
-            return strValue;
+            strncpy(strVal, strValue, (strlen(strValue) + 1));
+            ((CCSP_MESSAGE_BUS_INFO *)bus_handle)->freefunc(strValue);
+            return strVal;
         } else if (retPsmGet == CCSP_CR_ERR_INVALID_PARAM) {
             wifi_util_dbg_print(WIFI_MGR,"%s:%d PSM_Get_Record_Value2 (%s) returned error %d \n",__FUNCTION__,__LINE__,recName,retPsmGet);
             return NULL;
@@ -7583,6 +7586,7 @@ int get_total_mac_list_from_psm(int instance_number, unsigned int *total_entries
     {
         wifi_util_dbg_print(WIFI_MGR, "%s:%d  mac list data:%s\n",__func__, __LINE__, l_strValue);
         strncpy(strValue, l_strValue, (strlen(l_strValue) + 1));
+        ((CCSP_MESSAGE_BUS_INFO *)bus_handle)->freefunc(l_strValue);
         sscanf(strValue, "%d:", &l_total_entries);
         wifi_util_dbg_print(WIFI_MGR, "%s:%d  recName: %s total entry:%d\n",__func__, __LINE__, recName, l_total_entries);
         if (l_total_entries != 0) {
@@ -7593,6 +7597,10 @@ int get_total_mac_list_from_psm(int instance_number, unsigned int *total_entries
         }
     } else {
         wifi_util_dbg_print(WIFI_MGR, "%s:%d PSM maclist get failure:%d mac list data:%s\n",__func__, __LINE__, retPsmGet, l_strValue);
+        if(retPsmGet == CCSP_SUCCESS)
+        {
+            ((CCSP_MESSAGE_BUS_INFO *)bus_handle)->freefunc(l_strValue);
+        }
     }
 
     return RETURN_ERR;
