@@ -20,7 +20,6 @@
 #include "webconfig_framework.h"
 #include "wifi_data_plane.h"
 #include "wifi_monitor.h"
-#include "plugin_main_apis.h"
 #include <sys/socket.h>
 #include <sys/sysinfo.h>
 #include <sys/un.h>
@@ -50,7 +49,8 @@ wifi_GASConfiguration_t g_gas_config;
 
 wifi_vap_info_map_t g_vap_maps[2];
 
-#ifndef FEATURE_SUPPORT_PASSPOINT
+#ifdef FEATURE_SUPPORT_PASSPOINT
+#ifndef ENABLE_FEATURE_MESHWIFI
 static long readFileToBuffer(const char *fileName, char **buffer)
 {
     FILE    *infile = NULL;
@@ -108,7 +108,8 @@ static long readFileToBuffer(const char *fileName, char **buffer)
     }
     return numbytes;
 }
-#endif
+#endif //ENABLE_FEATURE_MESHWIFI
+#endif //FEATURE_SUPPORT_PASSPOINT
 
 void process_passpoint_timeout()
 {

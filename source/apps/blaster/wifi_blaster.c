@@ -42,7 +42,6 @@
 #include <assert.h>
 #include <limits.h>
 #include <sysevent/sysevent.h>
-#include "harvester.h"
 #include "wifi_passpoint.h"
 #include "safec_lib_common.h"
 #include <sched.h>
