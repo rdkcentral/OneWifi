@@ -456,10 +456,12 @@ int webconfig_analyze_pending_states(wifi_ctrl_t *ctrl)
 
         case ctrl_webconfig_state_blaster_cfg_complete_rsp_pending:
                 /* Once the blaster triggered successfully, update the status as completed and pass it to OVSM */
+                type = webconfig_subdoc_type_blaster;
                 mgr->blaster_config_global.Status = blaster_state_completed;
                 webconfig_send_blaster_status(ctrl);
             break;
         case ctrl_webconfig_state_steering_clients_rsp_pending:
+            type = webconfig_subdoc_type_steering_clients;
             webconfig_send_steering_clients_status(ctrl);
             break;
         case ctrl_webconfig_state_trigger_dml_thread_data_update_pending:
@@ -1696,7 +1698,6 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
                 ctrl->webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
                 return RETURN_ERR;
             }
-            wifi_util_dbg_print(WIFI_MGR, "%s:%d: config applied.\n", __func__, __LINE__);
 
             start_wifi_sched_timer(mgr_radio_data->vaps.radio_index, ctrl, wifi_radio_sched);
 
@@ -2012,6 +2013,7 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
 
                     }
                 } else if (ctrl->network_mode == rdk_dev_mode_type_gw) {
+                    ctrl->webconfig_state &= ~(ctrl_webconfig_state_blaster_cfg_init_rsp_pending | ctrl_webconfig_state_blaster_cfg_complete_rsp_pending);
                     wifi_util_error_print(WIFI_CTRL, "%s:%d: Device is in GW Mode. No need to send blaster status\n", __func__, __LINE__);
                 }
             } else {

@@ -35,7 +35,9 @@
 
 const char *subdoc_type_to_string(webconfig_subdoc_type_t type)
 {
-#define	DOC2S(x) case x: return #x;
+#define DOC2S(x) \
+    case x:      \
+        return #x;
     switch (type) {
         DOC2S(webconfig_subdoc_type_private)
         DOC2S(webconfig_subdoc_type_null)
@@ -45,7 +47,6 @@ const char *subdoc_type_to_string(webconfig_subdoc_type_t type)
         DOC2S(webconfig_subdoc_type_mesh)
         DOC2S(webconfig_subdoc_type_mesh_backhaul)
         DOC2S(webconfig_subdoc_type_mesh_sta)
-        DOC2S(webconfig_subdoc_type_mesh_backhaul_sta)
         DOC2S(webconfig_subdoc_type_lnf)
         DOC2S(webconfig_subdoc_type_dml)
         DOC2S(webconfig_subdoc_type_associated_clients)
@@ -56,11 +57,22 @@ const char *subdoc_type_to_string(webconfig_subdoc_type_t type)
         DOC2S(webconfig_subdoc_type_harvester)
         DOC2S(webconfig_subdoc_type_wifi_config)
         DOC2S(webconfig_subdoc_type_csi)
+        DOC2S(webconfig_subdoc_type_stats_config)
+        DOC2S(webconfig_subdoc_type_steering_config)
+        DOC2S(webconfig_subdoc_type_steering_clients)
+        DOC2S(webconfig_subdoc_type_vif_neighbors)
+        DOC2S(webconfig_subdoc_type_mesh_backhaul_sta)
         DOC2S(webconfig_subdoc_type_levl)
         DOC2S(webconfig_subdoc_type_cac)
-        default:
-            wifi_util_error_print(WIFI_APPS,"%s:%d: event not handle[%d]\r\n",__func__, __LINE__, type);
-            break;
+        DOC2S(webconfig_subdoc_type_radio_stats)
+        DOC2S(webconfig_subdoc_type_neighbor_stats)
+        DOC2S(webconfig_subdoc_type_assocdev_stats)
+        DOC2S(webconfig_subdoc_type_radiodiag_stats)
+        DOC2S(webconfig_subdoc_type_radio_temperature)
+    default:
+        wifi_util_error_print(WIFI_APPS, "%s:%d: event not handle[%d]\r\n", __func__, __LINE__,
+            type);
+        break;
     }
 
     return "unknown subdoc";

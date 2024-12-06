@@ -1625,10 +1625,9 @@ static void process_request(active_msmt_t *cfg)
 
         if (ctrl->network_mode == rdk_dev_mode_type_ext) {
             active_msmt_report_all_steps(cfg, msg, status);
+            mgr->ctrl.webconfig_state |= ctrl_webconfig_state_blaster_cfg_complete_rsp_pending;
         }
-
         active_msmt_log_message(BLASTER_DEBUG_LOG, "%s:%d %s\n" ,__FUNCTION__, __LINE__, msg);
-        mgr->ctrl.webconfig_state |= ctrl_webconfig_state_blaster_cfg_complete_rsp_pending;
 
         pthread_mutex_unlock(&g_active_msmt->lock);
         return;
