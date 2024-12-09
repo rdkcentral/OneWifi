@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h> /* strdup() */
+#include <stdlib.h>
 #include "const.h"
 #include "wifi_hal.h"
 #include "wifi_ctrl.h"
@@ -1591,6 +1592,8 @@ static bool is_radio_param_config_changed(wifi_radio_operationParam_t *old , wif
 }
 
 #if defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+#define ECOMODE_COMPLETE_MARKER_FILE "/tmp/ecomode_operation_done"
+#define MAX_RETRY_VALUE 15
 void ecomode_telemetry_update_and_reboot(unsigned int index, bool active)
 {
     CHAR eventName[32] = {0};
@@ -1599,7 +1602,29 @@ void ecomode_telemetry_update_and_reboot(unsigned int index, bool active)
     snprintf(eventName, sizeof(eventName), "WIFI_RADIO_%d_ECOPOWERMODE", index + 1);
     get_stubs_descriptor()->t2_event_s_fn(eventName, active ? "Active" : "Inactive");
     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s: EcoPowerDown telemetry: %s %s uploaded for Radio %d\n", __FUNCTION__, eventName, active ? "Active" : "Inactive", index + 1);
+#ifdef DISABLE_ECO_REBOOT
+    wifi_util_dbg_print(WIFI_WEBCONFIG,
+        "%s: EcoPowerDown telemetry: Restarting OneWiFi to apply EcoMode. \n", __FUNCTION__);
+    /**
+     * The ECOMode operation in the lower layer stack typically takes approximately 10-12 seconds to
+     * complete. This ensures the OneWiFi service is restarted once the EDPD operation is finished.
+     */
+    int max_retries = MAX_RETRY_VALUE;
+    int attempt = 0;
+
+    while (attempt < max_retries) {
+        if (access(ECOMODE_COMPLETE_MARKER_FILE, F_OK) == 0) {
+            /* EcoMode operation completed. */
+            break;
+        } else {
+            sleep(1);
+        }
+        attempt++;
+    }
+    system("systemctl restart onewifi.service");
+#else
     reboot_device(ctrl);
+#endif
 }
 #endif // defined (FEATURE_SUPPORT_ECOPOWERDOWN)
 
