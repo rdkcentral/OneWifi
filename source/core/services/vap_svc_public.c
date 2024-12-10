@@ -25,6 +25,9 @@
 #include "wifi_ctrl.h"
 #include "wifi_mgr.h"
 #include "wifi_util.h"
+#include "scheduler.h"
+
+#define MFPC_TIMER 300
 
 bool vap_svc_is_public(unsigned int vap_index)
 {
@@ -133,6 +136,28 @@ void process_prefer_private_mac_filter(mac_address_t prefer_private_mac)
     }
 }
 
+int update_managementFramePower(void *arg) {
+    unsigned int itr, itrj;
+    wifi_vap_info_map_t *vap_info_map = NULL;
+    int output = 0;
+    uint8_t num_radios = getNumberRadios();
+
+    for(itr = 0; itr < num_radios; itr++) {
+        vap_info_map = get_wifidb_vap_map(itr);
+        for(itrj = 0; itrj < getMaxNumberVAPsPerRadio(itr); itrj++) {
+            if(isVapHotspot(vap_info_map->vap_array[itrj].vap_index) && vap_info_map->vap_array[itrj].u.bss_info.enabled) {
+                wifi_getApManagementFramePowerControl(vap_info_map->vap_array[itrj].vap_index, &output);
+                if(output == 0) {
+                    wifi_util_info_print(WIFI_CTRL,"%s:%d setting mgmtPower:%d index:%d \n", __func__,__LINE__, vap_info_map->vap_array[itrj].u.bss_info.mgmtPowerControl, vap_info_map->vap_array[itrj].vap_index);
+                    wifi_setApManagementFramePowerControl(vap_info_map->vap_array[itrj].vap_index, vap_info_map->vap_array[itrj].u.bss_info.mgmtPowerControl);
+                }
+            }
+        }
+    }
+
+    return RETURN_OK;
+}
+
 int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map,
     rdk_wifi_vap_info_t *rdk_vap_info)
 {
@@ -141,6 +166,11 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
     wifi_vap_info_map_t *p_tgt_vap_map, *p_tgt_created_vap_map;
     bool greylist_rfc = false;
     bool rfc_passpoint_enable = false;
+    wifi_ctrl_t *ctrl;
+    wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
+
+    ctrl = &mgr->ctrl;
+
     p_tgt_vap_map = (wifi_vap_info_map_t *) malloc( sizeof(wifi_vap_info_map_t) );
     if (p_tgt_vap_map == NULL) {
         wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to allocate memory.\n", __func__,__LINE__);
@@ -238,6 +268,9 @@ int vap_svc_public_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_inf
             &map->vap_array[i].u.bss_info.interworking);
         get_wifidb_obj()->desc.update_wifi_anqp_cfg_fn(map->vap_array[i].vap_name,
              &map->vap_array[i].u.bss_info.interworking);
+        if(map->vap_array[i].u.bss_info.mgmtPowerControl != 0) {
+            scheduler_add_timer_task(ctrl->sched, FALSE, NULL, update_managementFramePower, NULL, MFPC_TIMER * 1000, 1, FALSE);
+        }
     }
      update_global_cache(p_tgt_created_vap_map, rdk_vap_info);
     //Load all the Acl entries related to the created public vaps
