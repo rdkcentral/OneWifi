@@ -745,9 +745,9 @@ webconfig_error_t translate_sta_object_to_easymesh_for_assocdev_stats(webconfig_
             em_sta_dev_info->rcpi                     = 0;
             em_sta_dev_info->signal_strength          = client_stats[count].cli_SignalStrength;
             //TODO: formulae derivation pending
-            em_sta_dev_info->util_tx                  = client_stats[count].cli_BytesSent;
+            //em_sta_dev_info->util_tx                  = client_stats[count].cli_BytesSent;
             //TODO: formulae derivation pending
-            em_sta_dev_info->util_rx                  = client_stats[count].cli_BytesReceived;
+            //em_sta_dev_info->util_rx                  = client_stats[count].cli_BytesReceived;
             em_sta_dev_info->pkts_tx                  = client_stats[count].cli_PacketsSent;
             em_sta_dev_info->pkts_rx                  = client_stats[count].cli_PacketsReceived;
             em_sta_dev_info->bytes_tx                 = client_stats[count].cli_BytesSent;
