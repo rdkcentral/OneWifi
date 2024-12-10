@@ -131,6 +131,9 @@ typedef enum {
     webconfig_subdoc_type_vap_24G,
     webconfig_subdoc_type_vap_5G,
     webconfig_subdoc_type_vap_6G,
+    webconfig_subdoc_type_radio_24G,
+    webconfig_subdoc_type_radio_5G,
+    webconfig_subdoc_type_radio_6G,
     webconfig_subdoc_type_memwraptool,
     webconfig_subdoc_type_max
 } webconfig_subdoc_type_t;
@@ -599,6 +602,14 @@ webconfig_error_t       decode_multivap_subdoc(webconfig_t *config, webconfig_su
 webconfig_error_t       encode_multivap_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_to_multivap_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_from_multivap_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+// Per Radio Config for 2.4G, 5G and 6G
+webconfig_error_t       init_single_radio_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_single_radio_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_single_radio_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_single_radio_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_single_radio_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_single_radio_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 #ifdef __cplusplus
 }
 #endif
