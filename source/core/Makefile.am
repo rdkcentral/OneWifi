@@ -47,8 +47,10 @@ if WITH_LIBWEBCONFIG
 AM_LDFLAGS += -L$(top_builddir)/source/webconfig/
 endif
 AM_LDFLAGS += -lwifi_webconfig
+if ONEWIFI_DML_SUPPORT
 AM_LDFLAGS += -L$(top_builddir)/../CcspCommonLibrary/lib
 AM_LDFLAGS += -lccsp_common
+endif
 AM_LDFLAGS += -lrdk_wifihal
 
 AM_CPPFLAGS = -Wall -Werror
@@ -61,7 +63,15 @@ OneWifi_CPPFLAGS = -I/var/tmp/pc-rdkb/include/dbus-1.0 -I$(top_srcdir)/../CcspCo
 
 OneWifi_CPPFLAGS += -I$(top_srcdir)/source/platform/rdkb/ -I$(top_srcdir)/source/platform/common/
 
-OneWifi_CPPFLAGS += -I$(top_srcdir)/source/dml/rdkb/ -I$(top_srcdir)/source/dml/wifi_ssp -I$(top_srcdir)/source/dml/dml_webconfig -I$(top_srcdir)/source/dml/tr_181/ml -I$(top_srcdir)/source/dml/tr_181/sbapi -I$(top_srcdir)/include/tr_181/ml -I$(top_srcdir)/source/apps  -I$(top_srcdir)/source/apps/analytics -I$(top_srcdir)/source/apps/levl -I$(top_srcdir)/source/apps/sm -I$(top_srcdir)/source/apps/csi -I$(top_srcdir)/source/apps/motion -I$(top_srcdir)/source/apps/whix  -I$(top_srcdir)/source/apps/harvester -I$(top_srcdir)/source/apps/blaster -I$(top_srcdir)/source/apps/ocs -I$(top_srcdir)/source/ccsp
+if ONEWIFI_DML_SUPPORT
+OneWifi_CPPFLAGS += -I$(top_srcdir)/source/dml/wifi_ssp -I$(top_srcdir)/source/dml/tr_181/ml -I$(top_srcdir)/source/dml/tr_181/sbapi -I$(top_srcdir)/include/tr_181/ml
+else
+OneWifi_CPPFLAGS += -I$(top_srcdir)/source/platform/common/data_model/
+endif
+OneWifi_CPPFLAGS += -I$(top_srcdir)/source/dml/rdkb/
+OneWifi_CPPFLAGS += -I$(top_srcdir)/source/dml/dml_webconfig
+
+OneWifi_CPPFLAGS += -I$(top_srcdir)/source/apps  -I$(top_srcdir)/source/apps/analytics -I$(top_srcdir)/source/apps/levl -I$(top_srcdir)/source/apps/sm -I$(top_srcdir)/source/apps/csi -I$(top_srcdir)/source/apps/motion -I$(top_srcdir)/source/apps/whix  -I$(top_srcdir)/source/apps/harvester -I$(top_srcdir)/source/apps/blaster -I$(top_srcdir)/source/apps/ocs -I$(top_srcdir)/source/ccsp
 
 OneWifi_CFLAGS =  $(SYSTEMD_CFLAGS)
 OneWifi_CFLAGS += $(JOURNALCTL_ENABLE_FLAG)
@@ -81,10 +91,19 @@ OneWifi_SOURCES += $(top_srcdir)/source/stats/wifi_monitor.c $(top_srcdir)/sourc
 
 OneWifi_SOURCES += $(top_srcdir)/source/stubs/wifi_stubs.c
 
-OneWifi_SOURCES += $(top_srcdir)/source/platform/rdkb/bus.c $(top_srcdir)/source/platform/common/common.c $(top_srcdir)/source/platform/common/bus_common.c $(top_srcdir)/source/ccsp/ccsp.c $(top_srcdir)/source/ccsp/ccsp_api.c $(top_srcdir)/source/platform/rdkb/misc.c
+OneWifi_SOURCES += $(top_srcdir)/source/platform/rdkb/bus.c $(top_srcdir)/source/platform/common/common.c $(top_srcdir)/source/platform/common/bus_common.c
+OneWifi_SOURCES += $(top_srcdir)/source/ccsp/ccsp.c
 
+if ONEWIFI_DML_SUPPORT
+OneWifi_SOURCES += $(top_srcdir)/source/ccsp/ccsp_api.c
+endif
+
+OneWifi_SOURCES += $(top_srcdir)/source/platform/rdkb/misc.c
+
+if ONEWIFI_DML_SUPPORT
 if EASYCONNECT_SUPPORT
 OneWifi_SOURCES += wifi_easy_connect.c
+endif
 endif
 OneWifi_SOURCES += $(top_srcdir)/source/stats/wifi_associated_devices_msmt.c
 OneWifi_SOURCES += $(top_srcdir)/lib/log/log_journal.c
@@ -98,7 +117,13 @@ OneWifi_SOURCES += $(top_srcdir)/source/apps/cac/wifi_cac.c
 OneWifi_CPPFLAGS += -I$(top_srcdir)/source/apps/cac/
 endif
 
+if ONEWIFI_DML_SUPPORT
 OneWifi_SOURCES += $(top_srcdir)/source/dml/wifi_ssp/ssp_main.c $(top_srcdir)/source/dml/wifi_ssp/ssp_loop.c $(top_srcdir)/source/dml/wifi_ssp/ssp_messagebus_interface.c $(top_srcdir)/source/dml/wifi_ssp/ssp_action.c $(top_srcdir)/source/dml/wifi_ssp/dm_pack_datamodel.c  $(top_srcdir)/source/dml/tr_181/sbapi/webpa_interface.c $(top_srcdir)/source/dml/tr_181/sbapi/webpa_interface_without_seshat.c $(top_srcdir)/source/dml/tr_181/sbapi/webpa_interface_with_seshat.c  $(top_srcdir)/source/dml/tr_181/sbapi/cosa_dbus_api.c
+else
+OneWifi_SOURCES += $(top_srcdir)/source/platform/common/data_model/wifi_data_model.c $(top_srcdir)/source/platform/common/data_model/wifi_data_model_parse.c $(top_srcdir)/source/platform/common/data_model/wifi_dml_cb.c $(top_srcdir)/source/platform/common/data_model/wifi_dml_api.c
+#we need this file for new dml implementation
+OneWifi_SOURCES += $(top_srcdir)/source/dml/dml_webconfig/dml_onewifi_api.c
+endif
 
 OneWifi_SOURCES += $(top_srcdir)/source/dml/rdkb/wifi_dml.c
 
@@ -106,7 +131,10 @@ OneWifi_SOURCES += $(top_srcdir)/lib/common/os_time.c $(top_srcdir)/lib/common/u
 
 OneWifi_LDFLAGS = -rdynamic -lwebconfig_framework -lsecure_wrapper $(SYSTEMD_LDFLAGS) -luuid -lsecure_wrapper -lmsgpackc -lcjson  -lm -ljansson -lev -lprotobuf-c -ltrower-base64 
 
-OneWifi_LDFLAGS += -lccsp_common -lutapi -lsyscfg -lprint_uptime -lsysevent -lrdk_wifihal -lavro
+if ONEWIFI_DML_SUPPORT
+OneWifi_LDFLAGS += -lccsp_common
+endif
+OneWifi_LDFLAGS += -lutapi -lsyscfg -lprint_uptime -lsysevent -lrdk_wifihal -lavro
 
 OneWifi_CPPFLAGS += -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/ -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/ -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/ap -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/utils -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/drivers/ -I$(PKG_CONFIG_SYSROOT_DIR)$(includedir)/qca/qca-wifi/os/linux/include/ -I${PKG_CONFIG_SYSROOT_DIR}${libdir}/ -DEXTERNAL_USE_ONLY
 

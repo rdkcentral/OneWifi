@@ -4338,3 +4338,40 @@ int update_radio_operating_classes(wifi_radio_operationParam_t *oper)
 
     return RETURN_OK;
 }
+
+int get_partner_id(char *partner_id)
+{
+    char buffer[64];
+    FILE *file;
+    char *pos = NULL;
+    int ret = RETURN_ERR;
+
+    if ((file = popen("syscfg get partner_id", "r")) != NULL) {
+        pos = fgets(buffer, sizeof(buffer), file);
+        pclose(file);
+    }
+
+    if ((pos == NULL) &&
+            ((file = popen("/lib/rdk/getpartner_id.sh Getpartner_id", "r")) != NULL)) {
+        pos = fgets(buffer, sizeof(buffer), file);
+        pclose(file);
+    }
+
+    if (pos) {
+        size_t len = strlen (pos);
+
+        if ((len > 0) && (pos[len - 1] == '\n')) {
+            len--;
+        }
+
+        memcpy(partner_id, pos, len);
+        partner_id[len] = 0;
+
+        ret = RETURN_OK;
+    } else {
+        wifi_util_error_print(WIFI_DMCLI,"%s : Error in opening File\n", __func__);
+        *partner_id = 0;
+    }
+
+    return ret;
+}
