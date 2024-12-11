@@ -412,8 +412,8 @@ int tcm_notify_deny_association(wifi_ctrl_t *ctrl, int ap_index, mac_addr_str_t 
         snr_gradient);
 
     if (vap_info != NULL) {
-        strncpy(vap_info->u.bss_info.preassoc.tcm_client_deny_assoc_info, str,
-            sizeof(vap_info->u.bss_info.preassoc.tcm_client_deny_assoc_info));
+        strncpy(vap_info->u.bss_info.preassoc.client_deny_assoc_info, str,
+            sizeof(vap_info->u.bss_info.preassoc.client_deny_assoc_info));
     }
 
     rc = get_bus_descriptor()->bus_set_string_fn(&ctrl->handle, WIFI_NOTIFY_DENY_TCM_ASSOCIATION, str);
