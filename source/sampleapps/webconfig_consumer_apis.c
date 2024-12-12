@@ -1811,6 +1811,7 @@ int get_device_network_mode_from_ctrl_thread(webconfig_consumer_t *consumer, uns
     }
 
     str = rbusValue_GetString(value, &len);
+    rbusValue_Release(value);
     if (str == NULL) {
         printf("%s Null pointer,Rbus set string len=%d\n",__FUNCTION__,len);
         return -1;
@@ -2309,6 +2310,7 @@ int get_rbus_sta_interface_name(const char *paramNames)
 
     printf(":%s:%d Sta interface name = [%s]\n", __func__, __LINE__, rbusValue_GetString(value, NULL));
 
+    rbusValue_Release(value);
     return 0;
 }
 
