@@ -34,6 +34,7 @@
 #include "ctype.h"
 #include "wifi_ctrl.h"
 #include "wifi_util.h"
+#include "util.h"
 
 #define TCM_EXPWEIGHT "0.6"
 #define TCM_GRADTHRESHOLD "0.18"
@@ -1533,6 +1534,7 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
     cJSON *object = NULL;
     bool connected_value = false;
     bool mdu_value = false, intval = false;
+    char *extra_vendor_ies = NULL;
 
     // VAP Name
     decode_param_string(vap, "VapName", param);
@@ -1759,6 +1761,24 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
 
     decode_param_bool(vap, "MboEnabled", param);
     vap_info->u.bss_info.mbo_enabled = (param->type & cJSON_True) ? true : false;
+
+    // Hex Encoded ExtraVendorIEs
+    decode_param_allow_empty_string(vap, "ExtraVendorIEs", param);
+    extra_vendor_ies = param->valuestring;
+
+    if (extra_vendor_ies != NULL) {
+        size_t input_len = strlen(extra_vendor_ies);
+        for (unsigned int i = 0; i < sizeof(vap_info->u.bss_info.vendor_elements); i++) {
+            unsigned int element;
+            // Check if we have at least 2 chars remaining
+            if (2 * i + 1 >= input_len || sscanf(extra_vendor_ies + 2 * i, "%02x", &element) != 1) {
+                vap_info->u.bss_info.vendor_elements[i] = (unsigned char)element;
+                // Set length to number of successfully parsed elements
+                vap_info->u.bss_info.vendor_elements_len = i;
+                break;
+            }
+        }
+    }
 
     return webconfig_error_none;
 }
@@ -2080,6 +2100,7 @@ webconfig_error_t decode_private_vap_object(const cJSON *vap, wifi_vap_info_t *v
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Passpoint enabled, so decode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
+
 
 
     return webconfig_error_none;
