@@ -53,7 +53,7 @@ static int run_analytics_event(void* arg);
 
 static int switch_dfs_channel(void *arg);
 int dfs_channel;
-
+void start_wifi_sched_timer(unsigned int, struct wifi_ctrl *ctrl, wifi_scheduler_type_t type);
 void deinit_wifi_ctrl(wifi_ctrl_t *ctrl)
 {
     if(ctrl->vif_apply_pending_queue != NULL) {
@@ -439,6 +439,7 @@ int start_radios(rdk_dev_mode_type_t mode)
         ctrl->acs_pending[index] = false;
         if (wifi_radio_oper_param->autoChannelEnabled == true) {
             ctrl->acs_pending[index] = true;
+            start_wifi_sched_timer(index, ctrl, wifi_acs_sched); //Starting the acs_scheduler
         }
 
         //In case of reboot/FR, Non DFS channel will be selected and radio will switch to DFS Channel after 1 min.
@@ -988,6 +989,7 @@ int start_wifi_health_monitor_thread(void)
 int scan_results_callback(int radio_index, wifi_bss_info_t **bss, unsigned int *num)
 {
     scan_results_t  res;
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     memset(&res, 0, sizeof(scan_results_t));
 
     res.radio_index = radio_index;
@@ -1000,8 +1002,10 @@ int scan_results_callback(int radio_index, wifi_bss_info_t **bss, unsigned int *
         res.num = *num;
         memcpy((unsigned char *)res.bss, (unsigned char *)(*bss), (*num)*sizeof(wifi_bss_info_t));
     }
-
-    push_event_to_ctrl_queue(&res, sizeof(scan_results_t), wifi_event_type_hal_ind, wifi_event_scan_results, NULL);
+    if (ctrl->network_mode == rdk_dev_mode_type_ext) {
+        push_event_to_ctrl_queue(&res, sizeof(scan_results_t), wifi_event_type_hal_ind,
+            wifi_event_scan_results, NULL);
+    }
     free(*bss);
 
     return 0;
@@ -1652,6 +1656,7 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl)
 
     ctrl_queue_timeout_scheduler_tasks(ctrl);
     ctrl->webconfig_state = ctrl_webconfig_state_associated_clients_full_cfg_rsp_pending;
+    webconfig_send_full_associate_status(ctrl);
     ctrl->exit_ctrl = false;
     ctrl->ctrl_initialized = true;
     ctrl_queue_loop(ctrl);
@@ -1757,6 +1762,9 @@ int wifi_sched_timeout(void *arg)
         case wifi_vap_sched:
             handler_id = sched_id->wifi_vap_sched_handler_id;
             break;
+        case wifi_acs_sched:
+            handler_id = sched_id->wifi_acs_sched_handler_id;
+            break;
         default:
             free(args);
             wifi_util_error_print(WIFI_CTRL, "%s:%d: wifi index:%d invalid type:%d\n", __func__, __LINE__, args->index, args->type);
@@ -1770,9 +1778,11 @@ int wifi_sched_timeout(void *arg)
     if (args->type == wifi_csa_sched) {
         resched_data_to_ctrl_queue();
     }
+    if (args->type == wifi_acs_sched) {
+        l_ctrl->acs_pending[args->index] = false; // Clearing acs_pending flag
+    }
 
     free(args);
-
     return TIMER_TASK_COMPLETE;
 }
 
@@ -1797,6 +1807,10 @@ void start_wifi_sched_timer(unsigned int index, wifi_ctrl_t *l_ctrl, wifi_schedu
             handler_id = sched_id->wifi_vap_sched_handler_id;
             VAP_ARRAY_INDEX(vap_array_index, mgr->hal_cap, index);
             handler_index = vap_array_index;
+            break;
+        case wifi_acs_sched:
+            handler_id = sched_id->wifi_acs_sched_handler_id;
+            handler_index = index;
             break;
         default:
             wifi_util_error_print(WIFI_CTRL, "%s:%d: wifi index:%d invalid type:%d\n", __func__, __LINE__, index, type);
@@ -1844,6 +1858,10 @@ void stop_wifi_sched_timer(unsigned int index, wifi_ctrl_t *l_ctrl, wifi_schedul
             VAP_ARRAY_INDEX(vap_array_index, mgr->hal_cap, index);
             handler_index = vap_array_index;
             break;
+        case wifi_acs_sched:
+            handler_id = sched_id->wifi_acs_sched_handler_id;
+            handler_index = index;
+            break;
         default:
             wifi_util_error_print(WIFI_CTRL, "%s:%d: wifi index:%d invalid type:%d\n", __func__, __LINE__, index, type);
             return;
@@ -1857,6 +1875,9 @@ void stop_wifi_sched_timer(unsigned int index, wifi_ctrl_t *l_ctrl, wifi_schedul
 
         if (type == wifi_csa_sched) {
             resched_data_to_ctrl_queue();
+        }
+        if (type == wifi_acs_sched) {
+            l_ctrl->acs_pending[handler_index] = false; // Clearing acs_pending flag
         }
     }
 }
@@ -2454,6 +2475,8 @@ wifi_rfc_dml_parameters_t *get_ctrl_rfc_parameters(void)
         g_wifi_mgr->rfc_dml_parameters.wifi_offchannelscan_app_rfc;
     g_wifi_mgr->ctrl.rfc_params.wifi_offchannelscan_sm_rfc =
         g_wifi_mgr->rfc_dml_parameters.wifi_offchannelscan_sm_rfc;
+    g_wifi_mgr->ctrl.rfc_params.tcm_enabled_rfc =
+        g_wifi_mgr->rfc_dml_parameters.tcm_enabled_rfc;
     strcpy(g_wifi_mgr->ctrl.rfc_params.rfc_id, g_wifi_mgr->rfc_dml_parameters.rfc_id);
     return &g_wifi_mgr->ctrl.rfc_params;
 }

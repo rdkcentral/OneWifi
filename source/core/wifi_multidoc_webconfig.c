@@ -1086,6 +1086,12 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
             cJSON_AddStringToObject(PreAssocDeny, "MinimumAdvertisedMCS", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.preassoc.minimum_advertised_mcs);
             cJSON_AddStringToObject(PreAssocDeny, "6GOpInfoMinRate", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.preassoc.sixGOpInfoMinRate);
 
+            cJSON *TcmPreAssocDeny =  cJSON_AddObjectToObject(vapConnectionControl_o,"TcmPreAssociationDeny");
+            cJSON_AddNumberToObject(TcmPreAssocDeny, "TcmWaitTime", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.preassoc.time_ms);
+            cJSON_AddNumberToObject(TcmPreAssocDeny, "TcmMinMgmtFrames", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.preassoc.min_num_mgmt_frames);
+            cJSON_AddStringToObject(TcmPreAssocDeny, "TcmExpWeightage", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.preassoc.tcm_exp_weightage);
+            cJSON_AddStringToObject(TcmPreAssocDeny, "TcmGradientThreshold", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.preassoc.tcm_gradient_threshold);
+
             cJSON *PostAssocDeny =  cJSON_AddObjectToObject(vapConnectionControl_o,"PostAssociationDeny");
             cJSON_AddStringToObject(PostAssocDeny, "RssiUpThreshold", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.postassoc.rssi_up_threshold);
             cJSON_AddStringToObject(PostAssocDeny, "SnrThreshold", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.postassoc.snr_threshold);

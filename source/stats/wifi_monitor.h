@@ -121,6 +121,7 @@ typedef struct {
     int last_scanned_channel[MAX_NUM_RADIOS];
     int scan_status[MAX_NUM_RADIOS];
     int scan_results_retries[MAX_NUM_RADIOS];
+    int scan_trigger_retries[MAX_NUM_RADIOS];
     unsigned int        upload_period;
     unsigned int        current_poll_iter;
     instant_msmt_t      inst_msmt;
@@ -231,6 +232,7 @@ typedef struct {
 
 typedef struct {
     int scan_complete_task_id;
+    int scan_trigger_task_id;
 } collector_radio_channel_neighbor_data_t;
 
 

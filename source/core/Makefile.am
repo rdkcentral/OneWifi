@@ -83,7 +83,9 @@ OneWifi_SOURCES += $(top_srcdir)/source/stubs/wifi_stubs.c
 
 OneWifi_SOURCES += $(top_srcdir)/source/platform/rdkb/bus.c $(top_srcdir)/source/platform/common/common.c $(top_srcdir)/source/platform/common/bus_common.c $(top_srcdir)/source/ccsp/ccsp.c $(top_srcdir)/source/ccsp/ccsp_api.c $(top_srcdir)/source/platform/rdkb/misc.c
 
+if EASYCONNECT_SUPPORT
 OneWifi_SOURCES += wifi_easy_connect.c
+endif
 OneWifi_SOURCES += $(top_srcdir)/source/stats/wifi_associated_devices_msmt.c
 OneWifi_SOURCES += $(top_srcdir)/lib/log/log_journal.c
 OneWifi_SOURCES += $(top_srcdir)/source/apps/wifi_apps.c $(top_srcdir)/source/apps/wifi_apps_mgr.c $(top_srcdir)/source/apps/analytics/wifi_analytics.c $(top_srcdir)/source/apps/levl/wifi_levl.c $(top_srcdir)/source/apps/csi/wifi_csi.c $(top_srcdir)/source/apps/motion/wifi_motion.c $(top_srcdir)/source/apps/whix/wifi_whix.c $(top_srcdir)/source/apps/harvester/wifi_harvester.c  $(top_srcdir)/source/apps/blaster/wifi_blaster.c $(top_srcdir)/source/apps/blaster/wifi_single_client_msmt.c  $(top_srcdir)/source/apps/ocs/wifi_ocs.c

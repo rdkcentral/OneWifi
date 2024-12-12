@@ -90,6 +90,19 @@ AC_ARG_ENABLE([journalctl],
 AM_CONDITIONAL([JOURNALCTL_SUPPORT], [test x$JOURNALCTL_SUPPORT_ENABLE = xtrue])
 AC_SUBST(JOURNALCTL_ENABLE_FLAG)
 
+AC_ARG_ENABLE([easyconnect],
+             AS_HELP_STRING([--enable-easyconnect],[enable EasyConnect support (default is no)]),
+             [
+              case "${enableval}" in
+               yes) EASYCONNECT_SUPPORT_ENABLE=true
+                    EASYCONNECT_SUPPORT_FLAG="-DEASYCONNECT_SUPPORT";;
+               no)  EASYCONNECT_SUPPORT_ENABLE=false AC_MSG_ERROR([EasyConnect support is disabled]);;
+               *)   AC_MSG_ERROR([bad value ${enableval} for --enable-easyconnect ]);;
+              esac
+             ],
+             [echo "EasyConnect is disabled"])
+AM_CONDITIONAL([EASYCONNECT_SUPPORT], [test x$EASYCONNECT_SUPPORT_ENABLE = xtrue])
+
 AM_CONDITIONAL([HAL_IPC], [test x$HAL_IPC = xtrue])
 AM_CONDITIONAL([ONEWIFI_CAC_APP_SUPPORT], [test x$ONEWIFI_CAC_APP_SUPPORT = xtrue])
 

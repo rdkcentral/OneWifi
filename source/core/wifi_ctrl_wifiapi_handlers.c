@@ -52,6 +52,7 @@ struct hal_api_info {
     {"wifi_configNeighborReports",          3, "<vap index> <neighbor report enable> <neighbor report auto reply>" },
     {"wifi_hal_getRadioTemperature",        1, "<radio index>" },
     {"wifi_getRadioChannelStats",           1, "<radio index>"},
+    {"wifi_getApAssociatedDeviceDiagnosticResult3",   1, "<vap index>"},
 };
 
 
@@ -604,6 +605,68 @@ err:
     }
 }
 
+static void wifiapi_handle_get_ApAssocDeviceDiagnosticResult(char **args, unsigned int num_args,
+     char *result_buf, int result_buf_size)
+{
+        sta_key_t sta_key;
+	sta_key_t mld_sta_key;
+	int vap_index;
+	 vap_index = atoi(args[1]);
+	 wifi_associated_dev3_t *dev_array = NULL;
+	 unsigned int num_devs = 0;
+		if (wifi_getApAssociatedDeviceDiagnosticResult3(vap_index, &dev_array, &num_devs) != RETURN_OK) {
+          snprintf(result_buf, result_buf_size, "Failed to get AP Associated Device Diagnostic Result\n");
+	     if (dev_array != NULL) {
+             free(dev_array);
+             dev_array = NULL;
+         }
+         return;
+      }
+		char* to_sta_key(uint8_t *mac_address, sta_key_t sta_key) {
+    snprintf(sta_key, STA_KEY_LEN, "%02x:%02x:%02x:%02x:%02x:%02x",
+             mac_address[0], mac_address[1], mac_address[2],
+             mac_address[3], mac_address[4], mac_address[5]);
+    return sta_key;
+}
+      snprintf(result_buf, result_buf_size, "diag result: number of devs: %d\n", num_devs);
+      for (unsigned int i = 0; i < num_devs; i++) {
+              snprintf(result_buf, result_buf_size,
+	          "\ncli_MACAddress: %s cli_MLDAddr: %s cli_MLDEnable: %d cli_AuthenticationState: %d"
+              " cli_LastDataDownlinkRate: %d cli_LastDataUplinkRate: %d cli_SignalStrength: %d"
+              " cli_Retransmissions: %d cli_Active: %d cli_OperatingStandard: %s"
+              " cli_OperatingChannelBandwidth: %s cli_SNR: %d cli_InterferenceSources: %s"
+              " cli_DataFramesSentAck: %lu cli_DataFramesSentNoAck: %lu cli_BytesSent: %lu"
+              " cli_BytesReceived: %lu cli_RSSI: %d cli_MinRSSI: %d cli_MaxRSSI: %d"
+              " cli_Disassociations: %d cli_AuthenticationFailures: %d cli_Associations: %llu"
+              " cli_PacketsSent: %lu cli_PacketsReceived: %lu cli_ErrorsSent: %lu"
+              " cli_RetransCount: %lu cli_FailedRetransCount: %lu cli_RetryCount: %lu"
+              " cli_MultipleRetryCount: %lu cli_MaxDownlinkRate: %d cli_MaxUplinkRate: %d"
+              " cli_activeNumSpatialStreams: %d cli_TxFrames: %llu cli_RxRetries: %llu"
+              " cli_RxErrors: %llu\n",
+              to_sta_key(dev_array[i].cli_MACAddress, sta_key),
+              to_sta_key(dev_array[i].cli_MLDAddr, mld_sta_key), dev_array[i].cli_MLDEnable,
+              dev_array[i].cli_AuthenticationState, dev_array[i].cli_LastDataDownlinkRate,
+              dev_array[i].cli_LastDataUplinkRate, dev_array[i].cli_SignalStrength,
+              dev_array[i].cli_Retransmissions, dev_array[i].cli_Active,
+              dev_array[i].cli_OperatingStandard, dev_array[i].cli_OperatingChannelBandwidth,
+              dev_array[i].cli_SNR, dev_array[i].cli_InterferenceSources,
+              dev_array[i].cli_DataFramesSentAck, dev_array[i].cli_DataFramesSentNoAck,
+              dev_array[i].cli_BytesSent, dev_array[i].cli_BytesReceived, dev_array[i].cli_RSSI,
+              dev_array[i].cli_MinRSSI, dev_array[i].cli_MaxRSSI, dev_array[i].cli_Disassociations,
+              dev_array[i].cli_AuthenticationFailures, dev_array[i].cli_Associations,
+              dev_array[i].cli_PacketsSent, dev_array[i].cli_PacketsReceived,
+              dev_array[i].cli_ErrorsSent, dev_array[i].cli_RetransCount,
+              dev_array[i].cli_FailedRetransCount, dev_array[i].cli_RetryCount,
+              dev_array[i].cli_MultipleRetryCount, dev_array[i].cli_MaxDownlinkRate,
+              dev_array[i].cli_MaxUplinkRate, dev_array[i].cli_activeNumSpatialStreams,
+              dev_array[i].cli_TxFrames, dev_array[i].cli_RxRetries, dev_array[i].cli_RxErrors);
+      if (dev_array != NULL) {
+        free(dev_array);
+        dev_array = NULL;
+    }
+      }
+}
+
 void process_wifiapi_command(char *command, unsigned int len)
 {
     char input[1024];
@@ -913,7 +976,10 @@ void process_wifiapi_command(char *command, unsigned int len)
         wifiapi_handle_hal_get_radio_temperature(args, num_args, buff, sizeof(buff));
     } else if (strcmp(args[0], "wifi_getRadioChannelStats") == 0) {
         wifiapi_handle_get_radio_channel_stats(args, num_args, buff, sizeof(buff));
-    } else {
+    } else if (strcmp(args[0], "wifi_getApAssociatedDeviceDiagnosticResult3") == 0) {
+        wifiapi_handle_get_ApAssocDeviceDiagnosticResult(args, num_args, buff, sizeof(buff));
+    }
+    else {
         unsigned int idx = 0;
         idx += snprintf(&buff[idx], sizeof(buff)-idx, "wifi_api2: Invalid API '%s'\nSupported APIs:\n", args[0]);
         if (idx >= sizeof(buff)) goto publish;

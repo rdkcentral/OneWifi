@@ -1858,21 +1858,22 @@ int process_ext_channel_change(vap_svc_t *svc, void *arg)
 int process_ext_hal_ind(vap_svc_t *svc, wifi_event_subtype_t sub_type, void *arg)
 {
     switch (sub_type) {
-        case wifi_event_scan_results:
-            process_ext_scan_results(svc, arg);
-            break;
+    case wifi_event_scan_results:
+        process_ext_scan_results(svc, arg);
+        break;
 
-        case wifi_event_hal_sta_conn_status:
-            process_ext_sta_conn_status(svc, arg);
-            break;
+    case wifi_event_hal_sta_conn_status:
+        process_ext_sta_conn_status(svc, arg);
+        break;
 
-        case wifi_event_hal_channel_change:
-            process_ext_channel_change(svc, arg);
-            break;
+    case wifi_event_hal_channel_change:
+        process_ext_channel_change(svc, arg);
+        break;
 
-        default:
-            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: assert - sub_type:%d\r\n", __func__, __LINE__, sub_type);
-            assert(sub_type >= wifi_event_hal_max);
+    default:
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: assert - sub_type:%s\r\n", __func__, __LINE__,
+            wifi_event_subtype_to_string(sub_type));
+        assert(sub_type >= wifi_event_hal_max);
         break;
     }
 
@@ -1882,20 +1883,21 @@ int process_ext_hal_ind(vap_svc_t *svc, wifi_event_subtype_t sub_type, void *arg
 int process_ext_command(vap_svc_t *svc, wifi_event_subtype_t sub_type, void *arg)
 {
     switch (sub_type) {
-        case wifi_event_type_device_network_mode:
-            break;
+    case wifi_event_type_device_network_mode:
+        break;
 
-        case wifi_event_type_trigger_disconnection:
-            process_ext_trigger_disconnection(svc, arg);
-            break;
+    case wifi_event_type_trigger_disconnection:
+        process_ext_trigger_disconnection(svc, arg);
+        break;
 
-        case wifi_event_type_eth_bh_status:
-            break;
+    case wifi_event_type_eth_bh_status:
+        break;
 
-        default:
-            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: assert - sub_type:%d\r\n", __func__, __LINE__, sub_type);
-            assert(sub_type >= wifi_event_command_max);
-            break;
+    default:
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: assert - sub_type:%s\r\n", __func__, __LINE__,
+            wifi_event_subtype_to_string(sub_type));
+        assert(sub_type >= wifi_event_command_max);
+        break;
     }
 
     return 0;
@@ -1904,14 +1906,15 @@ int process_ext_command(vap_svc_t *svc, wifi_event_subtype_t sub_type, void *arg
 int process_ext_exec(vap_svc_t *svc, wifi_event_subtype_t sub_type, void *arg)
 {
     switch (sub_type) {
-        case wifi_event_exec_timeout:
-            process_ext_exec_timeout(svc, arg);
-            break;
+    case wifi_event_exec_timeout:
+        process_ext_exec_timeout(svc, arg);
+        break;
 
-        default:
-            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: assert - sub_type:%d\r\n", __func__, __LINE__, sub_type);
-            assert(sub_type >= wifi_event_exec_max);
-            break;
+    default:
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: assert - sub_type:%s\r\n", __func__, __LINE__,
+            wifi_event_subtype_to_string(sub_type));
+        assert(sub_type >= wifi_event_exec_max);
+        break;
     }
 
     return 0;
@@ -1935,28 +1938,30 @@ int process_ext_webconfig(vap_svc_t *svc, wifi_event_subtype_t sub_type, void *a
     return 0;
 }
 
-int vap_svc_mesh_ext_event(vap_svc_t *svc, wifi_event_type_t type, wifi_event_subtype_t sub_type, vap_svc_event_t event, void *arg)
+int vap_svc_mesh_ext_event(vap_svc_t *svc, wifi_event_type_t type, wifi_event_subtype_t sub_type,
+    vap_svc_event_t event, void *arg)
 {
     switch (type) {
-        case wifi_event_type_exec:
-            process_ext_exec(svc, sub_type, arg);
-            break;
+    case wifi_event_type_exec:
+        process_ext_exec(svc, sub_type, arg);
+        break;
 
-        case wifi_event_type_command:
-            process_ext_command(svc, sub_type, arg);
-            break;
+    case wifi_event_type_command:
+        process_ext_command(svc, sub_type, arg);
+        break;
 
-        case wifi_event_type_hal_ind:
-            process_ext_hal_ind(svc, sub_type, arg);
-            break;
+    case wifi_event_type_hal_ind:
+        process_ext_hal_ind(svc, sub_type, arg);
+        break;
 
-        case wifi_event_type_webconfig:
-            process_ext_webconfig(svc, sub_type, arg);
-            break;
+    case wifi_event_type_webconfig:
+        process_ext_webconfig(svc, sub_type, arg);
+        break;
 
-        default:
-            wifi_util_dbg_print(WIFI_CTRL, "%s:%d: default - sub_type:%d\r\n", __func__, __LINE__, sub_type);
-            break;
+    default:
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: default - sub_type:%s\r\n", __func__, __LINE__,
+            wifi_event_subtype_to_string(sub_type));
+        break;
     }
 
     return 0;

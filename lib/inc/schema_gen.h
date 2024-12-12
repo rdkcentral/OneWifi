@@ -195,6 +195,7 @@
         PJS_OVS_BOOL(hotspot_secure_6g_last_enabled) \
         PJS_OVS_BOOL(wifi_offchannelscan_app_rfc) \
         PJS_OVS_BOOL(wifi_offchannelscan_sm_rfc) \
+        PJS_OVS_BOOL(tcm_enabled_rfc) \
   )
 
 #define PJS_SCHEMA_Wifi_MacFilter_Config \
@@ -1630,6 +1631,10 @@
         PJS_OVS_STRING(supported_data_transmit_rates, 128 + 1) \
         PJS_OVS_STRING(minimum_advertised_mcs, 128 + 1) \
         PJS_OVS_STRING(sixGOpInfoMinRate, 128 + 1) \
+        PJS_OVS_INT(time_ms) \
+        PJS_OVS_INT(min_num_mgmt_frames) \
+        PJS_OVS_STRING(tcm_exp_weightage, 128 + 1) \
+        PJS_OVS_STRING(tcm_gradient_threshold, 128 + 1) \
         PJS_OVS_STRING(vap_name, 128 + 1) \
     )
 
@@ -2096,7 +2101,8 @@
     COLUMN(hotspot_secure_5g_last_enabled) \
     COLUMN(hotspot_secure_6g_last_enabled) \
     COLUMN(wifi_offchannelscan_app_rfc) \
-    COLUMN(wifi_offchannelscan_sm_rfc)
+    COLUMN(wifi_offchannelscan_sm_rfc) \
+    COLUMN(tcm_enabled_rfc)
 
 #define SCHEMA__Wifi_MacFilter_Config "Wifi_MacFilter_Config"
 #define SCHEMA_COLUMN__Wifi_MacFilter_Config(COLUMN) \
@@ -3274,6 +3280,10 @@
     COLUMN(supported_data_transmit_rates) \
     COLUMN(minimum_advertised_mcs) \
     COLUMN(sixGOpInfoMinRate) \
+    COLUMN(time_ms) \
+    COLUMN(min_num_mgmt_frames) \
+    COLUMN(tcm_exp_weightage) \
+    COLUMN(tcm_gradient_threshold) \
     COLUMN(vap_name) \
 
 #define SCHEMA__Wifi_Postassoc_Control_Config "Wifi_Postassoc_Control_Config"
@@ -3428,6 +3438,7 @@
 #define SCHEMA__Wifi_Rfc_Config__wifi_offchannelscan_app_rfc "wifi_offchannelscan_app_rfc"
 #define SCHEMA__Wifi_Rfc_Config__wifi_offchannelscan_sm_rfc "wifi_offchannelscan_sm_rfc"
 #define SCHEMA__Wifi_Rfc_Config__Levl_rfc "levl_enabled_rfc"
+#define SCHEMA__Wifi_Rfc_Config__tcm_enabled_rfc "tcm_enabled_rfc"
 
 #define SCHEMA__Alarms__code "code"
 #define SCHEMA__Alarms__timestamp "timestamp"
@@ -4513,6 +4524,10 @@
 #define SCHEMA__Wifi_Preassoc_Control_Config__supported_data_transmit_rates "supported_data_transmit_rates"
 #define SCHEMA__Wifi_Preassoc_Control_Config__minimum_advertised_mcs "minimum_advertised_mcs"
 #define SCHEMA__Wifi_Preassoc_Control_Config__sixGOpInfoMinRate "sixGOpInfoMinRate"
+#define SCHEMA__Wifi_Preassoc_Control_Config__time_ms "time_ms"
+#define SCHEMA__Wifi_Preassoc_Control_Config__min_num_mgmt_frames "min_num_mgmt_frames"
+#define SCHEMA__Wifi_Preassoc_Control_Config__tcm_exp_weightage "tcm_exp_weightage"
+#define SCHEMA__Wifi_Preassoc_Control_Config__tcm_gradient_threshold "tcm_gradient_threshold"
 #define SCHEMA__Wifi_Preassoc_Control_Config__vap_name "vap_name"
 
 #define SCHEMA__Wifi_Postassoc_Control_Config__rssi_up_threshold "rssi_up_threshold"

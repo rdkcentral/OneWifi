@@ -45,8 +45,6 @@
 #include "wifi_data_plane.h"
 #include "wifi_util.h"
 
-#if !defined(_BWG_PRODUCT_REQ_)
-#if !defined(_XF3_PRODUCT_REQ_) && !defined(_CBR_PRODUCT_REQ_) && !defined(_HUB4_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_) && !defined(_PLATFORM_TURRIS_) && !defined(_PLATFORM_RASPBERRYPI_) && !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_XER5_PRODUCT_REQ_) && !defined(_SCER11BEL_PRODUCT_REQ_) && !defined(_PLATFORM_BANANAPI_R4_)
 static const char *wifi_health_log = "/rdklogs/logs/wifihealth.txt";
 
 extern bool is_device_associated(int ap_index, char *mac);
@@ -847,6 +845,3 @@ get_easy_connect_best_enrollee_channels	(unsigned int ap_index)
 {
     return &g_easy_connect.channels_on_ap[ap_index];
 }
-
-#endif //#if !defined(_XF3_PRODUCT_REQ_) && !defined(_CBR_PRODUCT_REQ_) && !defined(_HUB4_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_) && !defined(_PLATFORM_TURRIS_) && !defined(_PLATFORM_RASPBERRYPI_) && !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_XER5_PRODUCT_REQ_)  && !defined(_SCER11BEL_PRODUCT_REQ_) && !defined(_PLATFORM_BANANAPI_R4_)
-#endif //#if !defined(_BWG_PRODUCT_REQ_)

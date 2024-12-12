@@ -180,12 +180,14 @@ typedef struct {
     int  wifi_csa_sched_handler_id[MAX_NUM_RADIOS];
     int  wifi_radio_sched_handler_id[MAX_NUM_RADIOS];
     int  wifi_vap_sched_handler_id[MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO];
+    int  wifi_acs_sched_handler_id[MAX_NUM_RADIOS];
 } wifi_scheduler_id_t;
 
 typedef enum {
     wifi_csa_sched,
     wifi_radio_sched,
     wifi_vap_sched,
+    wifi_acs_sched
 } wifi_scheduler_type_t;
 
 typedef struct {
@@ -377,6 +379,7 @@ wifi_vap_security_t * Get_wifi_object_sta_security_parameter(uint8_t vapIndex);
 char *get_assoc_devices_blob();
 void get_subdoc_name_from_vap_index(uint8_t vap_index, int* subdoc);
 int dfs_nop_start_timer(void *args);
+int webconfig_send_full_associate_status(wifi_ctrl_t *ctrl);
 
 #ifdef __cplusplus
 }

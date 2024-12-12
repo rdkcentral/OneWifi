@@ -73,6 +73,11 @@
 #define RDKB_CCSP_SUCCESS               100
 #define ONEWIFI_DB_VERSION_DFS_TIMER_RADAR_DETECT_FLAG 100030
 #define DFS_DEFAULT_TIMER_IN_MIN 30
+#define ONEWIFI_DB_VERSION_TCM_FLAG 100031
+#define TCM_TIMEOUT_MS 150
+#define TCM_MIN_MGMT_FRAMES 3
+#define TCM_WEIGHTAGE "0.6"
+#define TCM_THRESHOLD "0.18"
 
 ovsdb_table_t table_Wifi_Radio_Config;
 ovsdb_table_t table_Wifi_VAP_Config;
@@ -231,6 +236,7 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon, struct schema_Wifi_Rf
         rfc_param->wifi_offchannelscan_app_rfc = new_rec->wifi_offchannelscan_app_rfc;
         rfc_param->wifi_offchannelscan_sm_rfc = new_rec->wifi_offchannelscan_sm_rfc;
         rfc_param->hotspot_secure_6g_last_enabled = new_rec->hotspot_secure_6g_last_enabled;
+        rfc_param->tcm_enabled_rfc = new_rec->tcm_enabled_rfc;
 
         wifi_util_dbg_print(WIFI_DB,
             "%s:%d wifipasspoint_rfc=%d wifiinterworking_rfc=%d radiusgreylist_rfc=%d "
@@ -238,7 +244,7 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon, struct schema_Wifi_Rf
             "hotspot_open_2g_last_enabled=%dhotspot_open_5g_last_enabled=%d "
             "hotspot_open_6g_last_enabled=%d hotspot_secure_2g_last_enabled=%d "
             "hotspot_secure_5g_last_enabled=%d hotspot_secure_6g_last_enabled=%d "
-            "wifi_offchannelscan_app_rfc=%d offchannelscan=%d rfc_id=%s levl_enabled_rfc=%d\n",
+            "wifi_offchannelscan_app_rfc=%d offchannelscan=%d rfc_id=%s levl_enabled_rfc=%d tcm_enabled_rfc=%d \n",
             __func__, __LINE__, rfc_param->wifipasspoint_rfc, rfc_param->wifiinterworking_rfc,
             rfc_param->radiusgreylist_rfc, rfc_param->dfsatbootup_rfc, rfc_param->dfs_rfc,
             rfc_param->wpa3_rfc, rfc_param->twoG80211axEnable_rfc,
@@ -246,7 +252,7 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon, struct schema_Wifi_Rf
             rfc_param->hotspot_open_6g_last_enabled, rfc_param->hotspot_secure_2g_last_enabled,
             rfc_param->hotspot_secure_5g_last_enabled, rfc_param->hotspot_secure_6g_last_enabled,
             rfc_param->wifi_offchannelscan_app_rfc, rfc_param->wifi_offchannelscan_sm_rfc,
-            rfc_param->rfc_id, rfc_param->levl_enabled_rfc);
+            rfc_param->rfc_id, rfc_param->levl_enabled_rfc,rfc_param->tcm_enabled_rfc);
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
     }
 }
@@ -1370,7 +1376,11 @@ void callback_Wifi_Preassoc_Control_Config(ovsdb_update_monitor_t *mon,
         strcpy(l_preassoc_ctrl_cfg->supported_data_transmit_rates, new_rec->supported_data_transmit_rates);
         strcpy(l_preassoc_ctrl_cfg->minimum_advertised_mcs, new_rec->minimum_advertised_mcs);
         strcpy(l_preassoc_ctrl_cfg->sixGOpInfoMinRate, new_rec->sixGOpInfoMinRate);
-        wifi_util_dbg_print(WIFI_DB,"%s:%d: Update Wifi_Preassoc_Control_Config table vap_name=%s rssi_up_threshold=%s snr_threshold=%s cu_threshold=%s basic_data_transmit_rates=%s operational_data_transmit_rates=%s supported_data_transmit_rates=%s minimum_advertised_mcs=%s\n",__func__, __LINE__,new_rec->vap_name,new_rec->rssi_up_threshold,new_rec->snr_threshold,new_rec->cu_threshold,new_rec->basic_data_transmit_rates,new_rec->operational_data_transmit_rates,new_rec->supported_data_transmit_rates,new_rec->minimum_advertised_mcs);
+        l_preassoc_ctrl_cfg->time_ms = new_rec->time_ms;
+        l_preassoc_ctrl_cfg->min_num_mgmt_frames = new_rec->min_num_mgmt_frames;
+        strcpy(l_preassoc_ctrl_cfg->tcm_exp_weightage, new_rec->tcm_exp_weightage);
+        strcpy(l_preassoc_ctrl_cfg->tcm_gradient_threshold, new_rec->tcm_gradient_threshold);
+        wifi_util_dbg_print(WIFI_DB,"%s:%d: Update Wifi_Preassoc_Control_Config table vap_name=%s rssi_up_threshold=%s snr_threshold=%s cu_threshold=%s basic_data_transmit_rates=%s operational_data_transmit_rates=%s supported_data_transmit_rates=%s minimum_advertised_mcs=%s tcm_timeout:%d tcm_min_mgmt_frames:%d tcmexp:%s tcmgradient:%s \n",__func__, __LINE__,new_rec->vap_name,new_rec->rssi_up_threshold,new_rec->snr_threshold,new_rec->cu_threshold,new_rec->basic_data_transmit_rates,new_rec->operational_data_transmit_rates,new_rec->supported_data_transmit_rates,new_rec->minimum_advertised_mcs,new_rec->time_ms,new_rec->min_num_mgmt_frames,new_rec->tcm_exp_weightage,new_rec->tcm_gradient_threshold);
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
         vap_index = convert_vap_name_to_index(&g_wifidb->hal_cap.wifi_prop, new_rec->vap_name);
         if(vap_index == -1) {
@@ -1666,6 +1676,7 @@ int wifidb_get_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_info)
     rfc_info->hotspot_secure_6g_last_enabled= pcfg->hotspot_secure_6g_last_enabled;
     rfc_info->wifi_offchannelscan_app_rfc = pcfg->wifi_offchannelscan_app_rfc;
     rfc_info->wifi_offchannelscan_sm_rfc = pcfg->wifi_offchannelscan_sm_rfc;
+    rfc_info->tcm_enabled_rfc = pcfg->tcm_enabled_rfc;
     free(pcfg);
     return 0;
 }
@@ -2596,6 +2607,10 @@ int wifidb_update_preassoc_ctrl_config(char *vap_name, wifi_preassoc_control_t *
     strcpy(cfg.supported_data_transmit_rates, preassoc->supported_data_transmit_rates);
     strcpy(cfg.minimum_advertised_mcs, preassoc->minimum_advertised_mcs);
     strcpy(cfg.sixGOpInfoMinRate, preassoc->sixGOpInfoMinRate);
+    cfg.time_ms = preassoc->time_ms;
+    cfg.min_num_mgmt_frames = preassoc->min_num_mgmt_frames;
+    strcpy(cfg.tcm_exp_weightage, preassoc->tcm_exp_weightage);
+    strcpy(cfg.tcm_gradient_threshold, preassoc->tcm_gradient_threshold);
 
     if (onewifi_ovsdb_table_upsert_with_parent(g_wifidb->wifidb_sock_path, &table_Wifi_Preassoc_Control_Config, &cfg, false, filter_preassoc, SCHEMA_TABLE(Wifi_Connection_Control_Config), onewifi_ovsdb_where_simple(SCHEMA_COLUMN(Wifi_Connection_Control_Config,vap_name), vap_name), SCHEMA_COLUMN(Wifi_Connection_Control_Config, pre_assoc)) ==  false) {
         wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Wifi_Preassoc_Control Config table \n",__func__, __LINE__);
@@ -2640,6 +2655,10 @@ int wifidb_get_preassoc_ctrl_config(char *vap_name, wifi_preassoc_control_t *pre
     strcpy(preassoc->supported_data_transmit_rates, pcfg->supported_data_transmit_rates);
     strcpy(preassoc->minimum_advertised_mcs, pcfg->minimum_advertised_mcs);
     strcpy(preassoc->sixGOpInfoMinRate, pcfg->sixGOpInfoMinRate);
+    preassoc->time_ms = pcfg->time_ms;
+    preassoc->min_num_mgmt_frames = pcfg->min_num_mgmt_frames;
+    strcpy(preassoc->tcm_exp_weightage, pcfg->tcm_exp_weightage);
+    strcpy(preassoc->tcm_gradient_threshold, pcfg->tcm_gradient_threshold);
     free(pcfg);
     return 0;
 }
@@ -4098,7 +4117,10 @@ int wifidb_init_preassoc_conn_ctrl_config_default(int vapIndex, wifi_preassoc_co
     strcpy(preassoc_connection_ctrl.supported_data_transmit_rates, "disabled");
     strcpy(preassoc_connection_ctrl.minimum_advertised_mcs, "disabled");
     strcpy(preassoc_connection_ctrl.sixGOpInfoMinRate, "disabled");
-
+    preassoc_connection_ctrl.time_ms = TCM_TIMEOUT_MS;
+    preassoc_connection_ctrl.min_num_mgmt_frames = TCM_MIN_MGMT_FRAMES;
+    strcpy(preassoc_connection_ctrl.tcm_exp_weightage, TCM_WEIGHTAGE);
+    strcpy(preassoc_connection_ctrl.tcm_gradient_threshold, TCM_THRESHOLD);
     pthread_mutex_lock(&g_wifidb->data_cache_lock);
     memcpy(config, &preassoc_connection_ctrl, sizeof(wifi_preassoc_control_t));
     pthread_mutex_unlock(&g_wifidb->data_cache_lock);
@@ -4196,7 +4218,7 @@ void wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config)
     rfc_config.hotspot_secure_6g_last_enabled = false;
     rfc_config.wifi_offchannelscan_app_rfc = false;
     rfc_config.wifi_offchannelscan_sm_rfc = false;
-
+    rfc_config.tcm_enabled_rfc = false;
     pthread_mutex_lock(&g_wifidb->data_cache_lock);
     memcpy(config,&rfc_config,sizeof(wifi_rfc_dml_parameters_t));
     pthread_mutex_unlock(&g_wifidb->data_cache_lock);
@@ -4358,6 +4380,15 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
                 config->vap_array[i].vap_index);
             wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i],
                 &rdk_config[i]);
+        }
+        if (g_wifidb->db_version < ONEWIFI_DB_VERSION_TCM_FLAG) {
+            wifi_util_info_print(WIFI_DB, "%s:%d upgrade vap config, db version %d\n", __func__,
+                                 __LINE__, g_wifidb->db_version);
+            config->vap_array[i].u.bss_info.preassoc.time_ms = TCM_TIMEOUT_MS;
+            config->vap_array[i].u.bss_info.preassoc.min_num_mgmt_frames = TCM_MIN_MGMT_FRAMES;
+            strncpy(config->vap_array[i].u.bss_info.preassoc.tcm_exp_weightage, TCM_WEIGHTAGE, sizeof(config->vap_array[i].u.bss_info.preassoc.tcm_exp_weightage));
+            strncpy(config->vap_array[i].u.bss_info.preassoc.tcm_gradient_threshold, TCM_THRESHOLD, sizeof(config->vap_array[i].u.bss_info.preassoc.tcm_gradient_threshold));
+            wifidb_update_wifi_cac_config(config);
         }
     }
 }
@@ -5381,7 +5412,7 @@ int wifidb_update_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_param)
     cfg.hotspot_secure_6g_last_enabled = rfc_param->hotspot_secure_6g_last_enabled;
     cfg.wifi_offchannelscan_app_rfc = rfc_param->wifi_offchannelscan_app_rfc;
     cfg.wifi_offchannelscan_sm_rfc = rfc_param->wifi_offchannelscan_sm_rfc;
-
+    cfg.tcm_enabled_rfc = rfc_param->tcm_enabled_rfc;
     if (update == true) {
         where = onewifi_ovsdb_tran_cond(OCLM_STR, "rfc_id", OFUNC_EQ, index); 
         ret = onewifi_ovsdb_table_update_where(g_wifidb->wifidb_sock_path, &table_Wifi_Rfc_Config, where, &cfg);
@@ -6250,7 +6281,7 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
         case WIFI_FREQUENCY_6_BAND:
             cfg.op_class = 131;
             cfg.operatingClass = 131;
-            cfg.channel = 197;
+            cfg.channel = 5;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_160MHZ;
             cfg.variant = WIFI_80211_VARIANT_AX;
 
@@ -6428,7 +6459,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
                 cfg.u.sta_info.scan_params.channel.channel = 157;
                 break;
             case WIFI_FREQUENCY_6_BAND:
-                cfg.u.sta_info.scan_params.channel.channel = 197;
+                cfg.u.sta_info.scan_params.channel.channel = 5;
                 break;
             default:
                 wifi_util_error_print(WIFI_DB,"%s:%d invalid band %d\n", __func__, __LINE__, band);

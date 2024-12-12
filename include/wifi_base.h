@@ -417,6 +417,7 @@ typedef struct {
     bool blaster_enabled_rfc;
     bool greylist_enabled_rfc;
     bool cac_enabled_rfc;
+    bool tcm_enabled_rfc;
 } wifi_rfc_dml_parameters_t;
 
 typedef struct {

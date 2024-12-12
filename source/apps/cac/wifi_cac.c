@@ -479,20 +479,21 @@ int cac_event_exec_timeout(wifi_app_t *apps, void *arg)
 int exec_event_cac(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *arg)
 {
     switch (sub_type) {
-        case wifi_event_exec_start:
-            cac_event_exec_start(apps, arg);
-            break;
+    case wifi_event_exec_start:
+        cac_event_exec_start(apps, arg);
+        break;
 
-        case wifi_event_exec_stop:
-            cac_event_exec_stop(apps, arg);
-            break;
+    case wifi_event_exec_stop:
+        cac_event_exec_stop(apps, arg);
+        break;
 
-        case wifi_event_exec_timeout:
-            cac_event_exec_timeout(apps, arg);
-            break;
-        default:
-            wifi_util_error_print(WIFI_APPS,"%s:%d: event not handle[%d]\r\n",__func__, __LINE__, sub_type);
-            break;
+    case wifi_event_exec_timeout:
+        cac_event_exec_timeout(apps, arg);
+        break;
+    default:
+        wifi_util_error_print(WIFI_APPS, "%s:%d: event not handle %s\r\n", __func__, __LINE__,
+            wifi_event_subtype_to_string(sub_type));
+        break;
     }
     return RETURN_OK;
 }
@@ -929,38 +930,39 @@ int cac_event_webconfig_set_data(wifi_app_t *apps, webconfig_subdoc_data_t *doc,
     return RETURN_OK;
 }
 
-
-int webconfig_event_cac(wifi_app_t *apps, wifi_event_subtype_t sub_type, webconfig_subdoc_data_t *doc)
+int webconfig_event_cac(wifi_app_t *apps, wifi_event_subtype_t sub_type,
+    webconfig_subdoc_data_t *doc)
 {
     switch (sub_type) {
-        case wifi_event_webconfig_set_data:
-            break;
-        case wifi_event_webconfig_set_data_dml:
-            break;
-        case wifi_event_webconfig_set_data_webconfig:
-            break;
-        case wifi_event_webconfig_set_data_ovsm:
-            break;
-        case wifi_event_webconfig_data_resched_to_ctrl_queue:
-            break;
-        case wifi_event_webconfig_data_to_hal_apply:
-            break;
-        case wifi_event_webconfig_data_to_apply_pending_queue:
-            cac_event_webconfig_set_data(apps, doc, sub_type);
-            break;
-        case wifi_event_webconfig_set_status:
-            break;
-        case wifi_event_webconfig_hal_result:
-            break;
-        case wifi_event_webconfig_get_data:
-            break;
-        case wifi_event_webconfig_set_data_tunnel:
-            break;
-        case wifi_event_webconfig_data_req_from_dml:
-            break;
-        default:
-            wifi_util_error_print(WIFI_APPS,"%s:%d: event not handle[%d]\r\n",__func__, __LINE__, sub_type);
-            break;
+    case wifi_event_webconfig_set_data:
+        break;
+    case wifi_event_webconfig_set_data_dml:
+        break;
+    case wifi_event_webconfig_set_data_webconfig:
+        break;
+    case wifi_event_webconfig_set_data_ovsm:
+        break;
+    case wifi_event_webconfig_data_resched_to_ctrl_queue:
+        break;
+    case wifi_event_webconfig_data_to_hal_apply:
+        break;
+    case wifi_event_webconfig_data_to_apply_pending_queue:
+        cac_event_webconfig_set_data(apps, doc, sub_type);
+        break;
+    case wifi_event_webconfig_set_status:
+        break;
+    case wifi_event_webconfig_hal_result:
+        break;
+    case wifi_event_webconfig_get_data:
+        break;
+    case wifi_event_webconfig_set_data_tunnel:
+        break;
+    case wifi_event_webconfig_data_req_from_dml:
+        break;
+    default:
+        wifi_util_dbg_print(WIFI_APPS, "%s:%d: event not handle %s\r\n", __func__, __LINE__,
+            wifi_event_subtype_to_string(sub_type));
+        break;
     }
 
     return RETURN_OK;
@@ -1063,48 +1065,49 @@ int cac_event_hal_disassoc_device(wifi_app_t *apps, void *arg)
 
 int hal_event_cac(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *arg)
 {
-    //wifi_util_info_print(WIFI_APPS,"%s:%d: event handled[%d]\r\n",__func__, __LINE__, sub_type);
+    // wifi_util_info_print(WIFI_APPS,"%s:%d: event handled[%d]\r\n",__func__, __LINE__, sub_type);
     switch (sub_type) {
-        case wifi_event_hal_unknown_frame:
-            break;
-        case wifi_event_hal_mgmt_frames:
-            break;
-        case wifi_event_hal_probe_req_frame:
-            cac_mgmt_frame_event(apps, (frame_data_t *)arg, WLAN_FC_STYPE_PROBE_REQ);
-            break;
-        case wifi_event_hal_auth_frame:
-            break;
-        case wifi_event_hal_assoc_req_frame:
-            cac_mgmt_frame_event(apps, (frame_data_t *)arg, WLAN_FC_STYPE_ASSOC_RESP);
-            break;
-        case wifi_event_hal_assoc_rsp_frame:
-            break;
-        case wifi_event_hal_reassoc_req_frame:
-            cac_mgmt_frame_event(apps, (frame_data_t *)arg, WLAN_FC_STYPE_REASSOC_RESP);
-            break;
-        case wifi_event_hal_reassoc_rsp_frame:
-            break;
-        case wifi_event_hal_sta_conn_status:
-            break;
-        case wifi_event_hal_assoc_device:
-            cac_event_hal_assoc_device(apps, arg);
-            break;
-        case wifi_event_hal_disassoc_device:
-            cac_event_hal_disassoc_device(apps, arg);
-            break;
-        case wifi_event_scan_results:
-            break;
-        case wifi_event_hal_channel_change:
-            break;
-        case wifi_event_radius_greylist:
-            break;
-        case wifi_event_hal_potential_misconfiguration:
-            break;
-        case wifi_event_hal_analytics:
-            break;
-        default:
-            wifi_util_error_print(WIFI_APPS,"%s:%d: event not handle[%d]\r\n",__func__, __LINE__, sub_type);
-            break;
+    case wifi_event_hal_unknown_frame:
+        break;
+    case wifi_event_hal_mgmt_frames:
+        break;
+    case wifi_event_hal_probe_req_frame:
+        cac_mgmt_frame_event(apps, (frame_data_t *)arg, WLAN_FC_STYPE_PROBE_REQ);
+        break;
+    case wifi_event_hal_auth_frame:
+        break;
+    case wifi_event_hal_assoc_req_frame:
+        cac_mgmt_frame_event(apps, (frame_data_t *)arg, WLAN_FC_STYPE_ASSOC_RESP);
+        break;
+    case wifi_event_hal_assoc_rsp_frame:
+        break;
+    case wifi_event_hal_reassoc_req_frame:
+        cac_mgmt_frame_event(apps, (frame_data_t *)arg, WLAN_FC_STYPE_REASSOC_RESP);
+        break;
+    case wifi_event_hal_reassoc_rsp_frame:
+        break;
+    case wifi_event_hal_sta_conn_status:
+        break;
+    case wifi_event_hal_assoc_device:
+        cac_event_hal_assoc_device(apps, arg);
+        break;
+    case wifi_event_hal_disassoc_device:
+        cac_event_hal_disassoc_device(apps, arg);
+        break;
+    case wifi_event_scan_results:
+        break;
+    case wifi_event_hal_channel_change:
+        break;
+    case wifi_event_radius_greylist:
+        break;
+    case wifi_event_hal_potential_misconfiguration:
+        break;
+    case wifi_event_hal_analytics:
+        break;
+    default:
+        wifi_util_dbg_print(WIFI_APPS, "%s:%d: event not handle %s\r\n", __func__, __LINE__,
+            wifi_event_subtype_to_string(sub_type));
+        break;
     }
 
     return RETURN_OK;

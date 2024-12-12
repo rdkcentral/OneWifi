@@ -22,75 +22,107 @@
 /*For RDKB platforms invoking direct CcspCommonLibrary APIs  */
 #include "ccsp.h"
 #include "ccsp_trace.h"
+#include "util.h"
 #include "wifi_hal.h"
+#include <stdarg.h>
 
 void init_ccsp()
 {
-   /* Placeholder for time being */
+    /* Placeholder for time being */
 }
 
-void CcspTraceEmergencyRdkb(char  *format, ...)
+void CcspTraceEmergencyRdkb(char *format, ...)
 {
     va_list args;
     va_start(args, format);
-    CcspTraceEmergency((format, args));
+    char *buffer = vstrfmt(format, args);
+    if (buffer) {
+        CcspTraceEmergency((buffer));
+        free(buffer);
+    }
     va_end(args);
 }
 
-void CcspTraceAlertRdkb(char  *format, ...)
+void CcspTraceAlertRdkb(char *format, ...)
 {
     va_list args;
     va_start(args, format);
-    CcspTraceAlert((format, args));
+    char *buffer = vstrfmt(format, args);
+    if (buffer) {
+        CcspTraceAlert((buffer));
+        free(buffer);
+    }
     va_end(args);
 }
 
-void CcspTraceCriticalRdkb(char  *format, ...)
+void CcspTraceCriticalRdkb(char *format, ...)
 {
     va_list args;
     va_start(args, format);
-    CcspTraceCritical((format, args));
+    char *buffer = vstrfmt(format, args);
+    if (buffer) {
+        CcspTraceCritical((buffer));
+        free(buffer);
+    }
     va_end(args);
 }
 
-
-void CcspTraceErrorRdkb(char  *format, ...)
+void CcspTraceErrorRdkb(char *format, ...)
 {
     va_list args;
     va_start(args, format);
-    CcspTraceError((format, args));
+    char *buffer = vstrfmt(format, args);
+    if (buffer) {
+        CcspTraceError((buffer));
+        free(buffer);
+    }
     va_end(args);
 }
 
-void CcspTraceWarningRdkb(char  *format, ...)
+void CcspTraceWarningRdkb(char *format, ...)
 {
     va_list args;
     va_start(args, format);
-    CcspTraceWarning((format, args));
+    char *buffer = vstrfmt(format, args);
+    if (buffer) {
+        CcspTraceWarning((buffer));
+        free(buffer);
+    }
     va_end(args);
 }
 
-void CcspTraceNoticeRdkb(char  *format, ...)
+void CcspTraceNoticeRdkb(char *format, ...)
 {
     va_list args;
     va_start(args, format);
-    CcspTraceNotice((format, args));
+    char *buffer = vstrfmt(format, args);
+    if (buffer) {
+        CcspTraceNotice((buffer));
+        free(buffer);
+    }
     va_end(args);
 }
 
-void CcspTraceInfoRdkb(char  *format, ...)
+void CcspTraceInfoRdkb(char *format, ...)
 {
     va_list args;
     va_start(args, format);
-    CcspTraceInfo((format, args));
+    char *buffer = vstrfmt(format, args);
+    if (buffer) {
+        CcspTraceInfo((buffer));
+        free(buffer);
+    }
     va_end(args);
 }
 
-void CcspTraceDebugRdkb(char  *format, ...)
+void CcspTraceDebugRdkb(char *format, ...)
 {
     va_list args;
     va_start(args, format);
-    CcspTraceDebug((format, args));
+    char *buffer = vstrfmt(format, args);
+    if (buffer) {
+        CcspTraceDebug((buffer));
+        free(buffer);
+    }
     va_end(args);
-
 }

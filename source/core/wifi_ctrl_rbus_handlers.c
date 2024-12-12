@@ -550,11 +550,13 @@ bus_error_t webconfig_init_data_get_subdoc(char *event_name, raw_data_t *p_data)
         memset(&data, 0, sizeof(webconfig_subdoc_data_t));
         memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&mgr->radio_config,
             num_of_radios * sizeof(rdk_wifi_radio_t));
+        memcpy((unsigned char *)&data.u.decoded.config, (unsigned char *)&mgr->global_config,
+            sizeof(wifi_global_config_t));
         memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
             sizeof(wifi_hal_capability_t));
         data.u.decoded.num_radios = num_of_radios;
         // tell webconfig to encode
-        webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_mesh_sta);
+        webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_dml);
 
         uint32_t str_size = (strlen(data.u.encoded.raw) + 1);
         p_data->data_type = bus_data_type_string;
@@ -2504,8 +2506,8 @@ int events_bus_publish(wifi_event_t *evt)
     }
 
     if (evt->sub_type != wifi_event_monitor_csi) {
-        wifi_util_info_print(WIFI_CTRL, "%s(): bus_event_publish_fn Event %d\n", __FUNCTION__,
-            evt->sub_type);
+        wifi_util_info_print(WIFI_CTRL, "%s(): bus_event_publish_fn Event %s\n", __FUNCTION__,
+            wifi_event_subtype_to_string(evt->sub_type));
     }
 
     switch (evt->sub_type) {
@@ -2528,8 +2530,8 @@ int events_bus_publish(wifi_event_t *evt)
                 wifi_util_error_print(WIFI_CTRL, "%s(): bus_event_publish_fn Event failed: %d\n",
                     __FUNCTION__, rc);
             } else {
-                wifi_util_dbg_print(WIFI_CTRL, "%s(): device_diagnostics Event %d %s \n",
-                    __FUNCTION__, evt->sub_type, eventName);
+                wifi_util_dbg_print(WIFI_CTRL, "%s(): device_diagnostics Event %s %s \n",
+                    __FUNCTION__, wifi_event_subtype_to_string(evt->sub_type), eventName);
             }
         }
         break;
@@ -2559,8 +2561,8 @@ int events_bus_publish(wifi_event_t *evt)
                 wifi_util_error_print(WIFI_CTRL, "%s(): bus_event_publish_fn Event failed: %d\n",
                     __FUNCTION__, rc);
             } else {
-                wifi_util_dbg_print(WIFI_CTRL, "%s(): Event - %d %s \n", __FUNCTION__,
-                    evt->sub_type, eventName);
+                wifi_util_dbg_print(WIFI_CTRL, "%s(): Event - %s %s \n", __FUNCTION__,
+                    wifi_event_subtype_to_string(evt->sub_type), eventName);
             }
         }
         break;

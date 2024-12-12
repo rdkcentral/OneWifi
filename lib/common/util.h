@@ -127,6 +127,7 @@ char *strschr(const char *s, int c, size_t n);
 char *strsrchr(const char *s, int c, size_t n);
 #define strdupafree(s) ({ char *__p = s, *__q = __p ? strdupa(__p) : NULL; free(__p); __q; })
 char *strfmt(const char *fmt, ...) __attribute__ ((format(printf, 1, 2)));
+char *vstrfmt(const char *fmt, va_list args);
 #define strfmta(fmt, ...) strdupafree(strfmt(fmt, ##__VA_ARGS__))
 char *argvstr(const char *const*argv);
 #define argvstra(argv) strdupafree(argvstr(argv))

@@ -53,7 +53,7 @@
 #define TELEMETRY_UPDATE_INTERVAL_MS 3600000 // 1 hour
 #define CAPTURE_VAP_STATUS_INTERVAL_MS 5*60*1000 // 5 minutes
 #define RADIO_DIAG_STATS_INTERVAL_MS 30000 // 30 seconds
-
+#define WIFI_CHANUTIL_PROVIDER_DELAY_SEC 5 // 5 seconds
 static unsigned int vap_up_arr[MAX_VAP]={0};
 static unsigned char vap_nas_status[MAX_VAP]={0};
 static unsigned int vap_iteration=0;
@@ -357,14 +357,14 @@ int whix_upload_ap_telemetry_pmf()
                         break;
                 }
                 get_formatted_time(tmp);
-                rc = sprintf_s(log_buf, sizeof(log_buf), "%s WIFI_INFO_PMF_CONFIG_%d:%s\n", tmp, i+1, telemetry_buf);
-                if(rc < EOK)
-                {
+                rc = sprintf_s(log_buf, sizeof(log_buf), "%s WIFI_INFO_PMF_CONFIG_%d:%s\n", tmp,
+                    vap_index + 1, telemetry_buf);
+                if (rc < EOK) {
                     ERR_CHK(rc);
                 }
                 write_to_file(wifi_health_log, log_buf);
                 wifi_util_dbg_print(WIFI_APPS, "%s", log_buf);
-                rc = sprintf_s(tmp, sizeof(tmp), "WIFI_INFO_PMF_CONFIG_%d", i+1);
+                rc = sprintf_s(tmp, sizeof(tmp), "WIFI_INFO_PMF_CONFIG_%d", vap_index + 1);
                 if(rc < EOK)
                 {
                     ERR_CHK(rc);
@@ -1095,6 +1095,7 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
     wifi_vap_info_t *vap_info = NULL;
     bool is_managed_wifi = false;
     unsigned int vap_array_index;
+    unsigned int active_num_dev = 0;
     unsigned int radioIndex = getRadioIndexFromAp(vap_index);
     wifi_mgr_t *wifi_mgr = (wifi_mgr_t *) get_wifimgr_obj();
 
@@ -1189,13 +1190,14 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
             snprintf(tmp, 32, "%s,", to_sta_key(sta[i].sta_mac, sta_key));
             strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
             strncat(telemetryBuff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
+            active_num_dev++;
         }
     }
     strncat(buff, "\n", 2);
-    if (0 != num_devs) {
+    if (0 != active_num_dev) {
         write_to_file(wifi_health_log, buff);
     }
-    print_sta_client_telemetry_data(num_devs, vap_index, sta);
+    print_sta_client_telemetry_data(active_num_dev, vap_index, sta);
     /*
       "header": "2GclientMac_split", "content": "WIFI_MAC_1:", "type": "wifihealth.txt",
       "header": "5GclientMac_split", "content": "WIFI_MAC_2:", "type": "wifihealth.txt",
@@ -1224,7 +1226,7 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
         get_formatted_time(tmp);
         memset(buff, 0, MAX_BUFF_SIZE);
         snprintf(buff, MAX_BUFF_SIZE - 1, "%s WIFI_MAC_%d_TOTAL_COUNT:%d\n", tmp, vap_index + 1,
-            num_devs);
+            active_num_dev);
         write_to_file(wifi_health_log, buff);
         //    "header": "Total_2G_clients_split", "content": "WIFI_MAC_1_TOTAL_COUNT:", "type":
         //    "wifihealth.txt", "header": "Total_5G_clients_split", "content":
@@ -1233,29 +1235,29 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
         //    "header": "xh_cnt_2_split","content": "WIFI_MAC_4_TOTAL_COUNT:","type":
         //    "wifihealth.txt",
         if (isVapPrivate(vap_index)) {
-            if (0 == num_devs) {
+            if (0 == active_num_dev) {
                 snprintf(eventName, sizeof(eventName), "WIFI_INFO_Zero_%s_Clients", t_string);
                 get_stubs_descriptor()->t2_event_d_fn(eventName, 1);
             } else {
                 snprintf(eventName, sizeof(eventName), "Total_%s_clients_split", t_string);
-                get_stubs_descriptor()->t2_event_d_fn(eventName, num_devs);
+                get_stubs_descriptor()->t2_event_d_fn(eventName, active_num_dev);
             }
         } else if (isVapXhs(vap_index)) {
             snprintf(eventName, sizeof(eventName), "xh_cnt_%d_split", radioIndex + 1);
-            get_stubs_descriptor()->t2_event_d_fn(eventName, num_devs);
+            get_stubs_descriptor()->t2_event_d_fn(eventName, active_num_dev);
         } else if (isVapMesh(vap_index)) {
             snprintf(eventName, sizeof(eventName), "Total_%s_PodClients_split", t_string);
-            get_stubs_descriptor()->t2_event_d_fn(eventName, num_devs);
+            get_stubs_descriptor()->t2_event_d_fn(eventName, active_num_dev);
         } else if (isVapLnfPsk(vap_index) && is_managed_wifi) {
             snprintf(eventName, sizeof(eventName), "MG_cnt_%s_split", t_string);
-            get_stubs_descriptor()->t2_event_d_fn(eventName, num_devs);
+            get_stubs_descriptor()->t2_event_d_fn(eventName, active_num_dev);
         }
     } else {
         wifi_util_error_print(WIFI_APPS, "%s-%d Failed to get band for radio Index %d\n", __func__,
             __LINE__, radioIndex);
     }
     /* If number of device connected is 0, then dont print the markers */
-    if (0 == num_devs) {
+    if (0 == active_num_dev) {
         return RETURN_OK;
     }
     wifi_util_dbg_print(WIFI_APPS, "%s", buff);
@@ -2000,6 +2002,7 @@ static void whix_common_config_to_monitor_queue(wifi_monitor_data_t *data, bool 
             data->u.mon_stats_config.interval_ms = (global_param->whix_log_interval) * 1000;
         }
     } else {
+        data->u.mon_stats_config.delay_provider_sec = WIFI_CHANUTIL_PROVIDER_DELAY_SEC;
         if (is_channel_util) {
             data->u.mon_stats_config.interval_ms = CHAN_UTIL_INTERVAL_MS;
         } else {

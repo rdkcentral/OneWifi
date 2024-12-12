@@ -57,7 +57,8 @@ typedef enum {
     WIFI_SM,
     WIFI_BLASTER,
     WIFI_OCS,
-    WIFI_BUS
+    WIFI_BUS,
+    WIFI_TCM
 } wifi_dbg_type_t;
 
 typedef enum {
@@ -85,7 +86,7 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
 #define MAC_ADDR_LEN 6
 typedef unsigned char mac_addr_t[MAC_ADDR_LEN];
 
-#define MAX_WIFI_COUNTRYCODE 247
+#define MAX_WIFI_COUNTRYCODE 252
 #ifdef RASPBERRY_PI_PORT
     #define MIN_NUM_RADIOS 1
 #else
