@@ -24,7 +24,9 @@ endif
 
 SUBDIRS += test/core
 SUBDIRS += sampleapps
+if ONEWIFI_DML_SUPPORT
 SUBDIRS += dml
+endif
 
 if WITH_GTEST_SUPPORT
 SUBDIRS += test
