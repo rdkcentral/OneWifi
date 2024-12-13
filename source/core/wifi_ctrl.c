@@ -1088,6 +1088,10 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
         memcpy(mgmt_frame.data, frame, len);
         mgmt_frame.frame.len = len;
         evt_subtype = wifi_event_hal_probe_req_frame;
+    } else if (type == WIFI_MGMT_FRAME_TYPE_PROBE_RSP) {
+        memcpy(mgmt_frame.data, frame, len);
+        mgmt_frame.frame.len = len;
+        evt_subtype = wifi_event_hal_probe_rsp_frame;
     } else if (type == WIFI_MGMT_FRAME_TYPE_AUTH) {
         memcpy(mgmt_frame.data, frame, len);
         mgmt_frame.frame.len = len;

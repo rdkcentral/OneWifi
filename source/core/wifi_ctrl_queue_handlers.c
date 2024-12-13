@@ -139,6 +139,11 @@ void process_probe_req_frame_event(frame_data_t *msg, uint32_t msg_length)
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d rssi:%d phy_rate:%d\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir, msg->frame.sig_dbm, msg->frame.phy_rate);
 }
 
+void process_probe_rsp_frame_event(frame_data_t* msg, uint32_t msg_length)
+{
+    wifi_util_dbg_print(WIFI_CTRL,  "%s:%d Wi-Fi mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n", __func__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir);
+}
+
 void process_auth_frame_event(frame_data_t *msg, uint32_t msg_length)
 {
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir);
@@ -3197,6 +3202,10 @@ void handle_hal_indication(wifi_ctrl_t *ctrl, void *data, unsigned int len,
 
     case wifi_event_hal_auth_frame:
         process_auth_frame_event(data, len);
+        break;
+
+    case wifi_event_hal_probe_rsp_frame:
+        process_probe_rsp_frame_event(data, len);
         break;
 
     case wifi_event_hal_assoc_req_frame:

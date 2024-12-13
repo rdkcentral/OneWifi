@@ -56,6 +56,7 @@ extern "C" {
 #define WIFI_ACCESSPOINT_DEV_DEAUTH         "Device.WiFi.AccessPoint.{i}.X_RDK_deviceDeauthenticated"
 #define WIFI_ACCESSPOINT_DIAGDATA           "Device.WiFi.AccessPoint.{i}.X_RDK_DiagData"
 #define WIFI_ACCESSPOINT_FORCE_APPLY        "Device.WiFi.AccessPoint.{i}.ForceApply"
+#define WIFI_ACCESSPOINT_CCE_IND_PROBE      "Device.WiFi.AccessPoint.{i}.Mgmt.Probe.CCEInd"
 #define WIFI_ACCESSPOINT_RADIUS_CONNECTED_ENDPOINT   "Device.WiFi.AccessPoint.{i}.Security.ConnectedRadiusEndpoint"
 #define WIFI_ACCESSPOINT_RAWFRAME_MGMT_ACTION_TX     "Device.WiFi.AccessPoint.{i}.RawFrame.Mgmt.Action.Tx"
 #define WIFI_ACCESSPOINT_RAWFRAME_MGMT_ACTION_RX     "Device.WiFi.AccessPoint.{i}.RawFrame.Mgmt.Action.Rx"
