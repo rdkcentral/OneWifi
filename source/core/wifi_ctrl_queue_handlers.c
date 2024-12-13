@@ -129,6 +129,32 @@ int remove_xfinity_acl_entries(bool remove_all_greylist_entry,bool prefer_privat
     }
     return RETURN_OK;
 }
+
+static bool frame_contains_ie(const frame_data_t *const msg, uint32_t msg_len, uint32_t element_id, uint8_t *payload, uint32_t payload_len)
+{
+    const uint8_t *frame_raw = msg->frame.data;
+    const uint32_t frame_len = msg->frame.len;
+    int i = 0;
+    while (i + 2 < frame_len) {
+        uint8_t ie_id = frame_raw[i];
+        uint8_t ie_len = frame_raw[i + 1];
+        // bounds check
+        if (i + 2 + ie_len > frame_len) {
+            return false;
+        }
+        if (ie_id == element_id) {
+            // ie: [id, len, payload...]
+            if (ie_len >= payload_len && memcmp(&frame_raw[i + 2], payload, payload_len) == 0) {
+                return true;
+            }
+        }
+        // try next IE
+        i += (2 + ie_len);
+    }
+    // never found
+    return false;
+}
+
 void process_unknown_frame_event(frame_data_t *msg, uint32_t msg_length)
 {
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n", __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir);
@@ -142,6 +168,19 @@ void process_probe_req_frame_event(frame_data_t *msg, uint32_t msg_length)
 void process_probe_rsp_frame_event(frame_data_t* msg, uint32_t msg_length)
 {
     wifi_util_dbg_print(WIFI_CTRL,  "%s:%d Wi-Fi mgmt frame message: ap_index:%d length:%d type:%d dir:%d\r\n", __func__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir);
+    const uint8_t wfa_dpp_payload[] = {0x50, 0x6F, 0x9A, 0x1E};
+    const uint8_t vendor_specific_ie_id = 0xDD;
+    if (frame_contains_ie(msg, msg_length, vendor_specific_ie_id, wfa_dpp_payload, sizeof(wfa_dpp_payload))) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: Probe response contains CCE IE\n", __func__, __LINE__);
+        wifi_ctrl_t *ctrl = get_wifictrl_obj();
+        raw_data_t rdata = {0};
+        rdata.data_type = bus_data_type_bytes;
+        rdata.raw_data.bytes = (void *)msg;
+        rdata.raw_data_len = msg_length;
+        char path[256] = {0};
+        snprintf(path, sizeof(path), "Device.WiFi.AccessPoint.%d.Mgmt.Probe.CCEInd", msg->frame.ap_index);
+        get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, path, &rdata);
+    }
 }
 
 void process_auth_frame_event(frame_data_t *msg, uint32_t msg_length)
