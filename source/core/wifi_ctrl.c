@@ -1132,6 +1132,7 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
     wifi_actionFrameHdr_t *paction = NULL;
     frame_data_t mgmt_frame;
     wifi_event_subtype_t evt_subtype = wifi_event_hal_unknown_frame;
+    wifi_monitor_data_t data;
 
     if (len == 0) {
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d Recived zero length frame\n", __func__, __LINE__);
@@ -1178,6 +1179,11 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
         mgmt_frame.frame.len = len;
         evt_subtype = wifi_event_hal_reassoc_rsp_frame;
     } else if (type == WIFI_MGMT_FRAME_TYPE_ACTION) {
+        memset(&data, 0, sizeof(wifi_monitor_data_t));
+        data.ap_index = ap_index;
+        data.u.msg.frame.len = len;
+        memcpy(&data.u.msg.data, frame, len);
+        push_event_to_monitor_queue(&data, wifi_event_monitor_action_frame, NULL);
         paction = (wifi_actionFrameHdr_t *)(frame + sizeof(struct ieee80211_frame));
         switch (paction->cat) {
             case wifi_action_frame_type_public:
