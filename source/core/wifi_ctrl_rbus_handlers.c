@@ -2948,6 +2948,9 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
                                     { bus_data_type_bytes, false, 0, 0, 0, NULL } },
                                 { WIFI_ACCESSPOINT_CCE_IND_PROBE, bus_element_type_event,
                                     { NULL, NULL, NULL, NULL, eventSubHandler, NULL}, slow_speed, ZERO_TABLE,
+                                    { bus_data_type_bytes, false, 0, 0, 0, NULL} },
+                                { WIFI_ACCESSPOINT_CCE_IND_BEACON, bus_element_type_event,
+                                    { NULL, NULL, NULL, NULL, eventSubHandler, NULL}, slow_speed, ZERO_TABLE,
                                     { bus_data_type_bytes, false, 0, 0, 0, NULL} }
     };
 
