@@ -90,64 +90,66 @@ static void *handle_parodus(void *arg)
     struct timespec time_to_wait;
     struct timespec tv_now;
     int rc = -1, ret = 0;
-    wrp_msg_t *wrp_msg ;
+    wrp_msg_t *wrp_msg;
     webpa_interface_t *interface = (webpa_interface_t *)arg;
     int count = 0;
 
-    prctl(PR_SET_NAME,  __func__, 0, 0, 0);
+    prctl(PR_SET_NAME, __func__, 0, 0, 0);
 
     pthread_detach(pthread_self());
 
     while (interface->thread_exit == false) {
-	clock_gettime(CLOCK_MONOTONIC, &tv_now);
-			
-	time_to_wait.tv_nsec = 0;
-	time_to_wait.tv_sec = tv_now.tv_sec + 120;
+        clock_gettime(CLOCK_MONOTONIC, &tv_now);
 
-	pthread_mutex_lock(&interface->lock);
+        time_to_wait.tv_nsec = 0;
+        time_to_wait.tv_sec = tv_now.tv_sec + 120;
+
+        pthread_mutex_lock(&interface->lock);
         rc = pthread_cond_timedwait(&interface->cond, &interface->lock, &time_to_wait);
-		
-	if ((rc == ETIMEDOUT) || (rc == 0)) {
 
-		// get the data from the queue and try to send all the messages
-		while ((count = queue_count(interface->queue)) >= 0) {
+        if ((rc == ETIMEDOUT) || (rc == 0)) {
 
-			wifi_util_dbg_print(WIFI_MON, "%s:%d: Queue count:%d\n", __func__, __LINE__, count);
-			if (count == 0) {
-				break;	
-			}
+            // get the data from the queue and try to send all the messages
+            while ((count = queue_count(interface->queue)) >= 0) {
 
-			wrp_msg = queue_peek(interface->queue, (uint32_t)(count - 1));
-			if (wrp_msg == NULL) {
-				assert(0);
-			}
+                wifi_util_dbg_print(WIFI_MON, "%s:%d: Queue count:%d\n", __func__, __LINE__, count);
+                if (count == 0) {
+                    break;
+                }
 
-			wifi_util_dbg_print(WIFI_MON, "Source:%s Destination:%s Content Type:%s\n", wrp_msg->u.event.source, wrp_msg->u.event.dest, wrp_msg->u.event.content_type);
-			//print_b64_endcoded_buffer(wrp_msg->u.event.payload, wrp_msg->u.event.payload_size);
+                wrp_msg = queue_peek(interface->queue, (uint32_t)(count - 1));
+                if (wrp_msg == NULL) {
+                    assert(0);
+                }
 
-			ret = libparodus_send(interface->client_instance, wrp_msg);
-			if (ret != 0) {
-				CcspTraceError(("Parodus send failed: '%s'\n",libparodus_strerror(ret)));
-			}
-                        wifi_util_dbg_print(WIFI_MON, "%s:%d Parodus sent successfully \n",__func__, __LINE__);
-			queue_remove(interface->queue, (uint32_t)count - 1);
-			free(wrp_msg->u.event.source);
-			free(wrp_msg->u.event.dest);
-			free(wrp_msg->u.event.content_type);
-			free(wrp_msg->u.event.payload);
-                        free(wrp_msg->u.event.headers->headers[0]);
-                        free(wrp_msg->u.event.headers->headers[1]);
-                        free(wrp_msg->u.event.headers);
-	       		free(wrp_msg);
-		}
-		pthread_mutex_unlock(&interface->lock);
+                wifi_util_info_print(WIFI_MON, "Source:%s Destination:%s Content Type:%s\n",
+                    wrp_msg->u.event.source, wrp_msg->u.event.dest, wrp_msg->u.event.content_type);
+                // print_b64_endcoded_buffer(wrp_msg->u.event.payload,
+                // wrp_msg->u.event.payload_size);
 
-	}
+                ret = libparodus_send(interface->client_instance, wrp_msg);
+                if (ret != 0) {
+                    CcspTraceError(("Parodus send failed: '%s'\n", libparodus_strerror(ret)));
+                }
+                wifi_util_info_print(WIFI_MON, "%s:%d Parodus sent successfully \n", __func__,
+                    __LINE__);
+                queue_remove(interface->queue, (uint32_t)count - 1);
+                free(wrp_msg->u.event.source);
+                free(wrp_msg->u.event.dest);
+                free(wrp_msg->u.event.content_type);
+                free(wrp_msg->u.event.payload);
+                free(wrp_msg->u.event.headers->headers[0]);
+                free(wrp_msg->u.event.headers->headers[1]);
+                free(wrp_msg->u.event.headers);
+                free(wrp_msg);
+            }
+            pthread_mutex_unlock(&interface->lock);
+        }
     }
 
-	rc = libparodus_shutdown(interface->client_instance);
+    rc = libparodus_shutdown(interface->client_instance);
 
-	return 0;
+    return 0;
 }
 void sendWebpaMsg(char *serviceName, char *dest, char *trans_id, char *traceParent, char *traceState, char *contentType, char *payload, unsigned int payload_len)
 {
@@ -421,6 +423,7 @@ char *getDeviceMac()
                 get_bus_descriptor()->bus_data_free_fn(&data);
                 return NULL;
             }
+            str = (char *)data.raw_data.bytes;
             if (str == NULL) {
                 wifi_util_dbg_print(WIFI_MON, "%s Null pointer, bus get string len=%d for : %s\n",
                     __FUNCTION__, len, CPE_MAC_NAMESPACE);
@@ -430,7 +433,6 @@ char *getDeviceMac()
                 return NULL;
             }
             pthread_mutex_unlock(&ctrl->lock);
-            str = (char *)data.raw_data.bytes;
             AnscMacToLower(webpa_interface.deviceMAC, str, sizeof(webpa_interface.deviceMAC));
         }
 

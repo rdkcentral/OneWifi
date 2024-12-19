@@ -87,10 +87,11 @@ static void to_plan_char(unsigned char *plan, unsigned char *key)
 
 // UUID - 96673104-5a8b-4976-82dd-b204f13dfeee
 
-// HASH - 43a46540f87428b5ca3a090dcd00f68b
+// HASH - 3b9ae70c21cf6410cf29e5c65427fe40
 
-uint8_t ACTHASHVAL[16] = {0x43, 0xa4, 0x65, 0x40, 0xf8, 0x74, 0x28, 0xb5,
-                          0xca, 0x3a, 0x09, 0x0d, 0xcd, 0x00, 0xf6, 0x8b
+
+uint8_t ACTHASHVAL[16] = {0x3b, 0x9a, 0xe7, 0x0c, 0x21, 0xcf, 0x64, 0x10,
+                          0xcf, 0x29, 0xe5, 0xc6, 0x54, 0x27, 0xfe, 0x40
                          };
 
 uint8_t ACTUUIDVAL[16] = {0x96, 0x67, 0x31, 0x04, 0x5a, 0x8b, 0x49, 0x76,
@@ -247,6 +248,20 @@ static void printBlastMetricData(single_client_msmt_type_t msmtType, wifi_actvie
     }
 }
 
+static char *get_frequency_band_from_radio_index(int radioIndex,
+    radio_data_t *radio_stats[])
+{
+    if (strstr("2.4GHz", radio_stats[radioIndex]->frequency_band)) {
+        return "radio_2_4G";
+    } else if (strstr("5GHz", radio_stats[radioIndex]->frequency_band)) {
+        return "radio_5G";
+    } else if (strstr("6GHz", radio_stats[radioIndex]->frequency_band)) {
+        return "radio_6G";
+    }
+
+    return "Not_found";
+}
+
 void upload_single_client_active_msmt_data(blaster_hashmap_t *sta_info)
 {
     char *telemetry_buf = NULL;
@@ -254,6 +269,7 @@ void upload_single_client_active_msmt_data(blaster_hashmap_t *sta_info)
     const char * dest = "event:raw.kestrel.reports.WifiSingleClientActiveMeasurement";
     const char * contentType = "avro/binary"; // contentType "application/json", "avro/binary"
     unsigned char PlanId[PLAN_ID_LENGTH];
+    char *schema_version = "1.1";
     uuid_t transaction_id;
     char trans_id[37];
     FILE *fp;
@@ -479,6 +495,37 @@ void upload_single_client_active_msmt_data(blaster_hashmap_t *sta_info)
     // uuid - fixed 16 bytes
     uuid_generate_random(transaction_id);
     uuid_unparse(transaction_id, trans_id);
+
+    wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: schema version is %s\n", __func__, __LINE__,
+        schema_version);
+    avro_value_get_by_name(&adr, "header", &adrField, NULL);
+
+    if (CHK_AVRO_ERR) {
+        wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: Avro error: %s\n", __func__, __LINE__,
+            avro_strerror());
+    }
+
+    avro_value_get_by_name(&adrField, "schema_version", &adrField, NULL);
+
+    if (CHK_AVRO_ERR) {
+        wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: Avro error: %s\n", __func__, __LINE__,
+            avro_strerror());
+    }
+
+    avro_value_set_branch(&adrField, 1, &optional);
+
+    if (CHK_AVRO_ERR) {
+        wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: Avro error: %s\n", __func__, __LINE__,
+            avro_strerror());
+    }
+
+    avro_value_set_fixed(&optional, schema_version, 16);
+
+    if (CHK_AVRO_ERR) {
+        wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: Avro error: %s\n", __func__, __LINE__,
+            avro_strerror());
+    }
+
     unsigned char PlanId_hex[16];
     int loop = 0;
     memset(PlanId_hex, '\0', 16);
@@ -688,16 +735,12 @@ void upload_single_client_active_msmt_data(blaster_hashmap_t *sta_info)
         if ( CHK_AVRO_ERR ) {
              wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: Avro error: %s\n", __func__, __LINE__, avro_strerror());
         }
-        if (RadioCount == 0)
-        {
-            wifi_util_dbg_print(WIFI_BLASTER, "RDK_LOG_DEBUG, radio number set to : \"%s\"\n", "radio_2_4G");
-            avro_value_set_enum(&optional, avro_schema_enum_get_by_name(avro_value_get_schema(&optional), "radio_2_4G"));
-        }
-        else if (RadioCount == 1)
-        {
-            wifi_util_dbg_print(WIFI_BLASTER, "RDK_LOG_DEBUG, radio number set to : \"%s\"\n", "radio_5G");
-            avro_value_set_enum(&optional, avro_schema_enum_get_by_name(avro_value_get_schema(&optional), "radio_5G"));
-        }
+
+        char *radio_name = get_frequency_band_from_radio_index(RadioCount, radio_stats);
+        wifi_util_dbg_print(WIFI_BLASTER, "RDK_LOG_DEBUG, radio number set to : \"%s\"\n",
+            radio_name);
+        avro_value_set_enum(&optional,
+            avro_schema_enum_get_by_name(avro_value_get_schema(&optional), radio_name));
 
         //noise_floor
         avro_value_get_by_name(&rdr, "noise_floor", &brdrField, NULL);
@@ -902,6 +945,11 @@ void upload_single_client_active_msmt_data(blaster_hashmap_t *sta_info)
         {
             wifi_util_dbg_print(WIFI_BLASTER, "RDK_LOG_DEBUG, frequency_band = \"%s\"\n", "5GHz, set to _5GHz" );
             avro_value_set_enum(&optional, avro_schema_enum_get_by_name(avro_value_get_schema(&optional), "_5GHz" ));
+        } else if (strstr("6GHz", radio_stats[radio_idx]->frequency_band)) {
+            wifi_util_dbg_print(WIFI_BLASTER, "RDK_LOG_DEBUG, frequency_band = \"%s\"\n",
+                "6GHz, set to _6GHz");
+            avro_value_set_enum(&optional,
+                avro_schema_enum_get_by_name(avro_value_get_schema(&optional), "_6GHz"));
         }
     }
     if ( CHK_AVRO_ERR ) {
@@ -1044,6 +1092,50 @@ void upload_single_client_active_msmt_data(blaster_hashmap_t *sta_info)
             wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: Avro error: %s\n", __func__, __LINE__, avro_strerror());
         }
     }
+
+    avro_value_t cpu_dr = { 0 };
+    avro_value_get_by_name(&adrField, "blast_metrics", &drField, NULL);
+    avro_value_set_branch(&drField, 1, &optional);
+
+    // CPU health metrics
+    wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: WiFiBlasterCPUMetrics %s\n", __func__, __LINE__,
+        avro_strerror());
+    avro_value_get_by_name(&optional, "WiFiBlasterCPUMetrics", &drField, NULL);
+    avro_value_set_branch(&drField, 1, &cpu_dr);
+    if (CHK_AVRO_ERR) {
+        wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: Avro error: %s\n", __func__, __LINE__,
+            avro_strerror());
+    }
+    wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: CPU Usage : 0 %s\n", __func__, __LINE__,
+        avro_strerror());
+    avro_value_get_by_name(&cpu_dr, "CPU_Usage", &drField, NULL);
+    avro_value_set_branch(&drField, 1, &optional);
+    avro_value_set_int(&optional, 0);
+    if (CHK_AVRO_ERR) {
+        wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: Avro error: %s\n", __func__, __LINE__,
+            avro_strerror());
+    }
+
+    wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: Memory Usage : 0 %s\n", __func__, __LINE__,
+        avro_strerror());
+    avro_value_get_by_name(&cpu_dr, "Memory_Usage", &drField, NULL);
+    avro_value_set_branch(&drField, 1, &optional);
+    avro_value_set_long(&optional, 0);
+    if (CHK_AVRO_ERR) {
+        wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: Avro error: %s\n", __func__, __LINE__,
+            avro_strerror());
+    }
+
+    wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: Load Average : 0.0 %s\n", __func__, __LINE__,
+        avro_strerror());
+    avro_value_get_by_name(&cpu_dr, "Load_Average", &drField, NULL);
+    avro_value_set_branch(&drField, 1, &optional);
+    avro_value_set_long(&optional, 0);
+    if (CHK_AVRO_ERR) {
+        wifi_util_dbg_print(WIFI_BLASTER, "%s:%d: Avro error: %s\n", __func__, __LINE__,
+            avro_strerror());
+    }
+
     /* free the sta_data->sta_active_msmt_data allocated memory */
     if (sta_data->sta_active_msmt_data != NULL)
     {
