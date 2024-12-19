@@ -934,6 +934,105 @@ bus_error_t hotspot_event_handler(char* eventName, bus_event_sub_action_t action
     return bus_error_success;
 }
 
+bus_error_t add_vendor_ie_command(char *name, raw_data_t *p_data)
+{
+    if (!name) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d property name is not found\r\n", __FUNCTION__,
+            __LINE__);
+        return bus_error_invalid_input;
+    }
+
+    unsigned int num_of_radios = getNumberRadios();
+    unsigned int idx = 0;
+
+    int ret = sscanf(name, "Device.WiFi.AccessPoint.%d.AddVendorSpecificIE", &idx);
+    if (ret < 1 || idx < 0 || idx > num_of_radios * MAX_NUM_VAP_PER_RADIO) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid access point index : %s\r\n", __func__,
+            __LINE__, name);
+        return bus_error_invalid_input;
+    }
+
+    // Decrement the vap index to match the vap index in the radio_config
+    // vap index in radio_config starts from 0
+    // vap index in bus starts from 1
+    idx -= 1;
+
+    if ((p_data->data_type != bus_data_type_bytes) || (p_data->raw_data.bytes == NULL)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d wrong bus data_type:%x\n", __func__, __LINE__,
+            p_data->data_type);
+        return bus_error_invalid_input;
+    }
+
+    // Check if the raw data length is less than 4 (OUI length + 1 byte minimum payload)
+    if (p_data->raw_data_len < 4) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid raw data length : %d\r\n", __func__,
+            __LINE__, p_data->raw_data_len);
+        return bus_error_invalid_input;
+    }
+
+    // Add vap idx to the start of the raw data
+    // Data format: [vap_idx, oui[3], payload]
+    uint8_t pTmp[1 + p_data->raw_data_len];
+    pTmp[0] = idx;
+    memcpy(&pTmp[1], p_data->raw_data.bytes, p_data->raw_data_len);
+
+    wifi_util_dbg_print(WIFI_CTRL, "%s bus set string %s\n", __FUNCTION__, pTmp);
+    push_event_to_ctrl_queue(pTmp, 1 + p_data->raw_data_len, wifi_event_type_command,
+        wifi_event_type_command_add_vendor_ie, NULL);
+
+    return bus_error_success;
+}
+
+bus_error_t rm_vendor_ie_command(char *name, raw_data_t *p_data)
+{
+
+    if (!name) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d property name is not found\r\n", __FUNCTION__,
+            __LINE__);
+        return bus_error_invalid_input;
+    }
+
+    unsigned int num_of_radios = getNumberRadios();
+    unsigned int idx = 0;
+
+    int ret = sscanf(name, "Device.WiFi.AccessPoint.%d.RemoveVendorSpecificIE", &idx);
+    if (ret < 1 || idx < 1 || idx > num_of_radios * MAX_NUM_VAP_PER_RADIO) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid access point index : %s\r\n", __func__,
+            __LINE__, name);
+        return bus_error_invalid_input;
+    }
+
+    // Decrement the vap index to match the vap index in the radio_config
+    // vap index in radio_config starts from 0
+    // vap index in bus starts from 1
+    idx -= 1;
+
+    if ((p_data->data_type != bus_data_type_bytes) || (p_data->raw_data.bytes == NULL)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d wrong bus data_type:%x\n", __func__, __LINE__,
+            p_data->data_type);
+        return bus_error_invalid_input;
+    }
+
+    // Check if the raw data length is less than 4 (OUI length + 1 byte minimum payload)
+    if (p_data->raw_data_len < 4) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid raw data length : %d\r\n", __func__,
+            __LINE__, p_data->raw_data_len);
+        return bus_error_invalid_input;
+    }
+
+    // Add vap idx to the start of the raw data
+    // Data format: [vap_idx, oui[3], payload]
+    uint8_t pTmp[1 + p_data->raw_data_len];
+    pTmp[0] = idx;
+    memcpy(&pTmp[1], p_data->raw_data.bytes, p_data->raw_data_len);
+
+    wifi_util_dbg_print(WIFI_CTRL, "%s bus set string %s\n", __FUNCTION__, pTmp);
+    push_event_to_ctrl_queue(pTmp, 1 + p_data->raw_data_len, wifi_event_type_command,
+        wifi_event_type_command_rm_vendor_ie, NULL);
+
+    return bus_error_success;
+}
+
 int wifiapi_result_publish(void)
 {
     bus_error_t rc;
@@ -2910,6 +3009,12 @@ void bus_register_handlers(wifi_ctrl_t *ctrl)
                                 { ACCESSPOINT_ASSOC_REQ_EVENT, bus_element_type_method,
                                     { NULL, NULL, NULL, NULL, NULL, NULL}, slow_speed, ZERO_TABLE,
                                     { bus_data_type_string, true, 0, 0, 0, NULL } },
+                                { WIFI_ACCESSPOINT_ADD_VENDOR_IE, bus_element_type_method,
+                                    { NULL, add_vendor_ie_command, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
+                                    { bus_data_type_bytes, true, 0, 0, 0, NULL } },
+                                { WIFI_ACCESSPOINT_RM_VENDOR_IE, bus_element_type_method,
+                                    { NULL, rm_vendor_ie_command, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
+                                    { bus_data_type_bytes, true, 0, 0, 0, NULL } },
                                 { WIFI_CLIENT_GET_ASSOC_REQ,bus_element_type_method,
                                     { NULL, NULL, NULL, NULL, NULL, get_client_assoc_request_multi}, slow_speed, ZERO_TABLE,
                                     { bus_data_type_bytes, true, 0, 0, 0, NULL } },

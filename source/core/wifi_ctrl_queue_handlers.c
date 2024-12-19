@@ -1118,6 +1118,96 @@ void kick_all_macs(int vap_index, int timeout, rdk_wifi_vap_info_t* rdk_vap_info
     return;
 }
 
+void process_add_vendor_ie_event(void *data, unsigned int len)
+{
+    if (data == NULL || len == 0) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d NULL data Pointer\n", __func__, __LINE__);
+        return;
+    }
+
+    /* Data Format:
+    {
+        uint8_t ap_index;
+        uint8_t oui[3];
+        uint8_t ie_payload_data[];
+    }
+    */
+
+    uint8_t *mut_data = (uint8_t *)data;
+
+    // Extract AP index (1 byte)
+    uint8_t ap_index = *mut_data;
+    mut_data += sizeof(uint8_t);
+
+    // Extract OUI (Next 3 bytes)
+    uint8_t oui[3] = { 0 };
+    memcpy(oui, mut_data, 3);
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d OUI: %02x:%02x:%02x\n", __func__, __LINE__, oui[0],
+        oui[1], oui[2]);
+    mut_data += 3;
+
+    // Extract IE data (Remaining bytes)
+    uint8_t *ie_payload_data = mut_data;
+
+    unsigned int payload_data_len = len - (mut_data - (uint8_t *)data); // Length of IE data
+
+    int ret = wifi_addVendorSpecificIE(ap_index, oui, ie_payload_data, payload_data_len);
+    if (ret != WIFI_HAL_SUCCESS) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d wifi_addVendorSpecificIE failed with error: %d\n",
+            __func__, __LINE__, ret);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d ap_index: %d, oui: %02x:%02x:%02x, data_len: %d\n",
+            __func__, __LINE__, ap_index, oui[0], oui[1], oui[2], payload_data_len);
+        return;
+    }
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Added Vendor Specific IE successfully\n", __func__,
+        __LINE__);
+}
+
+void process_rm_vendor_ie_event(void *data, unsigned int len)
+{
+    if (data == NULL || len == 0) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d NULL data Pointer\n", __func__, __LINE__);
+        return;
+    }
+
+    /* Data Format:
+    {
+        uint8_t ap_index;
+        uint8_t oui[3];
+        uint8_t ie_payload_data[];
+    }
+    */
+
+    uint8_t *mut_data = (uint8_t *)data;
+
+    // Extract AP index (1 byte)
+    uint8_t ap_index = *mut_data;
+    mut_data += sizeof(uint8_t);
+
+    // Extract OUI (Next 3 bytes)
+    uint8_t oui[3] = { 0 };
+    memcpy(oui, mut_data, 3);
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d OUI: %02x:%02x:%02x\n", __func__, __LINE__, oui[0],
+        oui[1], oui[2]);
+    mut_data += 3;
+
+    // Extract IE data (Remaining bytes)
+    uint8_t *ie_payload_data = mut_data;
+
+    unsigned int payload_data_len = len - (mut_data - (uint8_t *)data); // Length of IE data
+
+    int ret = wifi_removeVendorSpecificIE(ap_index, oui, ie_payload_data, payload_data_len);
+    if (ret != WIFI_HAL_SUCCESS) {
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d wifi_removeVendorSpecificIE failed with error: %d\n", __func__, __LINE__, ret);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d ap_index: %d, oui: %02x:%02x:%02x, data_len: %d\n",
+            __func__, __LINE__, ap_index, oui[0], oui[1], oui[2], payload_data_len);
+        return;
+    }
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Removed Vendor Specific IE successfully\n", __func__,
+        __LINE__);
+}
+
 void process_kick_assoc_devices_event(void *data)
 {
     wifi_util_dbg_print(WIFI_CTRL,"Inside %s\n", __func__);
@@ -3091,7 +3181,12 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
     case wifi_event_type_command_kick_assoc_devices:
         process_kick_assoc_devices_event(data);
         break;
-
+    case wifi_event_type_command_add_vendor_ie:
+        process_add_vendor_ie_event(data, len);
+        break;
+    case wifi_event_type_command_rm_vendor_ie:
+        process_rm_vendor_ie_event(data, len);
+        break;
     case wifi_event_type_command_wps:
         process_wps_command_event(*(unsigned int *)data);
         break;
