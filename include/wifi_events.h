@@ -126,6 +126,8 @@ typedef enum {
     wifi_event_type_twoG80211axEnable_rfc,
     wifi_event_type_command_wifi_neighborscan,
     wifi_event_type_command_mesh_status,
+    wifi_event_type_command_add_vendor_ie,
+    wifi_event_type_command_rm_vendor_ie,
     wifi_event_type_normalized_rssi,
     wifi_event_type_snr,
     wifi_event_type_cli_stat,
