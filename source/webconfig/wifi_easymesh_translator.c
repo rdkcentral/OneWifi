@@ -447,7 +447,15 @@ webconfig_error_t translate_radio_object_to_easymesh_for_dml(webconfig_subdoc_da
         oper_param = &decoded_params->radios[index].oper;
         radio_index = convert_radio_name_to_radio_index(decoded_params->radios[index].name);
         em_radio_info->enabled = oper_param->enable;
-        em_radio_info->band = oper_param->band;
+
+        if (oper_param->band == WIFI_FREQUENCY_2_4_BAND) {  
+            em_radio_info->band = 0;
+        } else if (oper_param->band == WIFI_FREQUENCY_5_BAND) {
+            em_radio_info->band = 1;
+        } else if (oper_param->band == WIFI_FREQUENCY_60_BAND) {
+            em_radio_info->band = 2;
+        }
+
         radio_iface_map = NULL;
         for (unsigned int k = 0; k < (sizeof(wifi_prop->radio_interface_map)/sizeof(radio_interface_mapping_t)); k++) {
             if (wifi_prop->radio_interface_map[k].radio_index == radio_index) {
@@ -728,9 +736,9 @@ webconfig_error_t translate_sta_object_to_easymesh_for_assocdev_stats(webconfig_
             em_sta_dev_info->rcpi                     = 0;
             em_sta_dev_info->signal_strength          = client_stats[count].cli_SignalStrength;
             //TODO: formulae derivation pending
-            em_sta_dev_info->util_tx                  = client_stats[count].cli_BytesSent;
+            //em_sta_dev_info->util_tx                  = client_stats[count].cli_BytesSent;
             //TODO: formulae derivation pending
-            em_sta_dev_info->util_rx                  = client_stats[count].cli_BytesReceived;
+            //em_sta_dev_info->util_rx                  = client_stats[count].cli_BytesReceived;
             em_sta_dev_info->pkts_tx                  = client_stats[count].cli_PacketsSent;
             em_sta_dev_info->pkts_rx                  = client_stats[count].cli_PacketsReceived;
             em_sta_dev_info->bytes_tx                 = client_stats[count].cli_BytesSent;
