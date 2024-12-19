@@ -94,6 +94,7 @@ typedef enum {
     wifi_event_hal_dpp_public_action_frame,
     wifi_event_hal_dpp_config_req_frame,
     wifi_event_hal_anqp_gas_init_frame,
+    wifi_event_hal_beacon_frame,
     wifi_event_hal_sta_conn_status,
     wifi_event_hal_assoc_device,
     wifi_event_hal_disassoc_device,
