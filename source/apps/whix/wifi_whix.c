@@ -1998,13 +1998,14 @@ static void whix_common_config_to_monitor_queue(wifi_monitor_data_t *data, bool 
     if ((global_param != NULL) && (global_param->whix_chutility_loginterval != 0) && (global_param->whix_log_interval != 0)) {
         if (is_channel_util) {
             data->u.mon_stats_config.interval_ms = (global_param->whix_chutility_loginterval) * 1000;
+            data->u.mon_stats_config.delay_provider_sec = WIFI_CHANUTIL_PROVIDER_DELAY_SEC;
         } else {
             data->u.mon_stats_config.interval_ms = (global_param->whix_log_interval) * 1000;
         }
     } else {
-        data->u.mon_stats_config.delay_provider_sec = WIFI_CHANUTIL_PROVIDER_DELAY_SEC;
         if (is_channel_util) {
             data->u.mon_stats_config.interval_ms = CHAN_UTIL_INTERVAL_MS;
+            data->u.mon_stats_config.delay_provider_sec = WIFI_CHANUTIL_PROVIDER_DELAY_SEC;
         } else {
             data->u.mon_stats_config.interval_ms = TELEMETRY_UPDATE_INTERVAL_MS;
         }
