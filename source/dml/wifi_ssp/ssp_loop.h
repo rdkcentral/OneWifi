@@ -42,22 +42,7 @@ extern "C" {
 #endif
 
 #include "wifi_base.h"
-
-typedef enum {
-    ssp_event_type_psm_read,
-    ssp_event_type_psm_write,
-    ssp_event_type_max
-} ssp_event_type_t;
-
-typedef enum {
-    radio_config,
-    radio_feature_config,
-    vap_config,
-    global_config,
-    security_config,
-    mac_config_add,
-    mac_config_delete
-} ssp_event_subtype_t;
+#include "wifi_dml.h"
 
 typedef int (* ssp_loop_post)(const void *msg, unsigned int len, ssp_event_type_t type, ssp_event_subtype_t sub_type);
 
