@@ -447,7 +447,14 @@ webconfig_error_t translate_radio_object_to_easymesh_for_dml(webconfig_subdoc_da
         oper_param = &decoded_params->radios[index].oper;
         radio_index = convert_radio_name_to_radio_index(decoded_params->radios[index].name);
         em_radio_info->enabled = oper_param->enable;
-        em_radio_info->band = oper_param->band;
+        //translate frequency band of wifi_freq_bands_t to em_freq_band_t specified in IEEE-1905-1-2013 table 6-23 
+        if (oper_param->band == WIFI_FREQUENCY_2_4_BAND) {
+            em_radio_info->band = 0;
+        } else if (oper_param->band == WIFI_FREQUENCY_5_BAND) {
+            em_radio_info->band = 1;
+        } else if (oper_param->band == WIFI_FREQUENCY_60_BAND) {
+            em_radio_info->band = 2;
+        }
         radio_iface_map = NULL;
         for (unsigned int k = 0; k < (sizeof(wifi_prop->radio_interface_map)/sizeof(radio_interface_mapping_t)); k++) {
             if (wifi_prop->radio_interface_map[k].radio_index == radio_index) {
