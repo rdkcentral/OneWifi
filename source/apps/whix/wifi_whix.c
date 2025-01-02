@@ -991,46 +991,48 @@ static void get_device_flag(char flag[], int size, char *list_name)
 /* Log VAP status on percentage basis */
 static void logVAPUpStatus()
 {
-    int i=0;
-    int vapup_percentage=0;
+    int i = 0;
+    int vapup_percentage = 0;
     unsigned int vap_iter = 0;
-    char log_buf[1024]={0};
-    char telemetry_buf[1024]={0};
-    char vap_buf[16]={0};
-    char tmp[128]={0};
+    char log_buf[1024] = { 0 };
+    char telemetry_buf[1024] = { 0 };
+    char vap_buf[16] = { 0 };
+    char tmp[128] = { 0 };
     errno_t rc = -1;
     UINT vap_index = 0;
 
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
-    wifi_util_dbg_print(WIFI_APPS, "Entering %s:%d \n",__FUNCTION__,__LINE__);
+    wifi_util_dbg_print(WIFI_APPS, "Entering %s:%d \n", __FUNCTION__, __LINE__);
     get_formatted_time(tmp);
-    rc = sprintf_s(log_buf, sizeof(log_buf), "%s WIFI_VAP_PERCENT_UP:",tmp);
-    if(rc < EOK) {
+    rc = sprintf_s(log_buf, sizeof(log_buf), "%s WIFI_VAP_PERCENT_UP:", tmp);
+    if (rc < EOK) {
         ERR_CHK(rc);
     }
 
     curr_uptime_val = get_sys_uptime();
-    vap_iter = (curr_uptime_val - prev_uptime_val)/(60*5); /*One iteration per 5 mins*/
+    vap_iter = (curr_uptime_val - prev_uptime_val) / (60 * 5); /*One iteration per 5 mins*/
     /* syncing the vap_iteration to the upload period */
     if ((vap_iter > vap_iteration) || (vap_iteration < 1)) {
         capture_vapup_status();
         if (vap_iteration < 1) {
-            wifi_util_dbg_print(WIFI_APPS, "%s:%d vap_iteration is not updated\n", __func__, __LINE__);
+            wifi_util_dbg_print(WIFI_APPS, "%s:%d vap_iteration is not updated\n", __func__,
+                __LINE__);
             return;
         }
         skip = 1;
     }
-    for(i = 0; i < (int)getTotalNumberVAPs(); i++)
-    {
+    for (i = 0; i < (int)getTotalNumberVAPs(); i++) {
         vap_index = VAP_INDEX(mgr->hal_cap, i);
-        wifi_util_dbg_print(WIFI_APPS, "vap_index is %d vap_iteration is %d and vap_up_arr value is %d\n", vap_index, vap_iteration, vap_up_arr[vap_index]);
-        vapup_percentage = (vap_up_arr[vap_index]*100)/vap_iteration;
+        wifi_util_dbg_print(WIFI_APPS,
+            "vap_index is %d vap_iteration is %d and vap_up_arr value is %d\n", vap_index,
+            vap_iteration, vap_up_arr[vap_index]);
+        vapup_percentage = (vap_up_arr[vap_index] * 100) / vap_iteration;
 
-        char delimiter = (i+1) < ((int)getTotalNumberVAPs()+1) ?';':' ';
-        rc = sprintf_s(vap_buf, sizeof(vap_buf), "%d,%d%c",(vap_index + 1),vapup_percentage, delimiter);
-        if(rc < EOK)
-        {
+        char delimiter = (i + 1) < ((int)getTotalNumberVAPs() + 1) ? ';' : ' ';
+        rc = sprintf_s(vap_buf, sizeof(vap_buf), "%d,%d%c", (vap_index + 1), vapup_percentage,
+            delimiter);
+        if (rc < EOK) {
             ERR_CHK(rc);
         }
         rc = strcat_s(log_buf, sizeof(log_buf), vap_buf);
@@ -1040,13 +1042,13 @@ static void logVAPUpStatus()
     }
     rc = strcat_s(log_buf, sizeof(log_buf), "\n");
     ERR_CHK(rc);
-    write_to_file(wifi_health_log,log_buf);
+    write_to_file(wifi_health_log, log_buf);
     wifi_util_dbg_print(WIFI_APPS, "%s", log_buf);
     get_stubs_descriptor()->t2_event_s_fn("WIFI_VAPPERC_split", telemetry_buf);
     prev_uptime_val = curr_uptime_val;
     vap_iteration = 0;
-    memset(vap_up_arr, 0,sizeof(vap_up_arr));
-    wifi_util_dbg_print(WIFI_APPS, "Exiting %s:%d \n",__FUNCTION__,__LINE__);
+    memset(vap_up_arr, 0, sizeof(vap_up_arr));
+    wifi_util_dbg_print(WIFI_APPS, "Exiting %s:%d \n", __FUNCTION__, __LINE__);
 }
 
 void print_sta_client_telemetry_data(unsigned int num_devs, int vap_index, sta_data_t *sta_data)
@@ -1889,7 +1891,7 @@ static unsigned char updateNasIpStatus (int apIndex)
 int capture_vapup_status()
 {
     int i = 0, vap_status = 0;
-    wifi_monitor_t *monitor_param = (wifi_monitor_t *)get_wifi_monitor();
+    wifi_vap_info_t *vap_info;
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
     if (skip == 1) {
@@ -1898,11 +1900,17 @@ int capture_vapup_status()
         return RETURN_OK;
     }
 
-    for(i = 0; i < (int)getTotalNumberVAPs(); i++) {
+    for (i = 0; i < (int)getTotalNumberVAPs(); i++) {
         UINT vap_index = VAP_INDEX(mgr->hal_cap, i);
-        vap_status = monitor_param->bssid_data[vap_index].ap_params.ap_status;
+        vap_info = getVapInfo(vap_index);
+        if (vap_info == NULL) {
+            wifi_util_error_print(WIFI_APPS, "%s:%d: vap_info is NULL for vap_index : %d\r\n",
+                __func__, __LINE__, vap_index);
+            return RETURN_ERR;
+        }
+        vap_status = vap_info->u.bss_info.enabled;
         if (vap_status) {
-            vap_up_arr[vap_index] = vap_up_arr[vap_index]+1;
+            vap_up_arr[vap_index] = vap_up_arr[vap_index] + 1;
             if (!vap_nas_status[vap_index]) {
                 vap_nas_status[vap_index] = updateNasIpStatus(vap_index);
             }
