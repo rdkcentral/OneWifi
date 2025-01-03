@@ -371,8 +371,9 @@ typedef enum {
 typedef enum {
     rdk_dev_mode_type_gw,
     rdk_dev_mode_type_ext,
-    rdk_dev_mode_type_em_node,
-    rdk_dev_mode_type_em_colocated_node
+    rdk_dev_mode_type_em_gw,
+    rdk_dev_mode_type_em_ext,
+    rdk_dev_mode_type_sta
 } rdk_dev_mode_type_t;
 
 typedef struct {

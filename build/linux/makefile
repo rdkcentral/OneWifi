@@ -53,6 +53,9 @@ INCLUDE_HOSTAP_LIB_DIRS = \
     -I$(WIFI_HOSTAP_SRC)/utils \
     -I$(WIFI_HOSTAP_SRC)/drivers \
 
+DBUS_LIBS := $(shell $(PKG_CONFIG) --libs dbus-1)
+DBUS_INCLUDE := $(shell $(PKG_CONFIG) --cflags dbus-1)
+
 EXCLUDE = $(WIFI_RDK_HAL)/src/wifi_hal_frame_test.c $(WIFI_RDK_HAL)/src/wifi_hal_dpp.c
 
 HAL_LIB_SOURCES = $(filter-out $(EXCLUDE),$(wildcard $(WIFI_RDK_HAL)/src/*.c)) \
@@ -252,6 +255,8 @@ LIBDIRS = \
     -L$(INSTALLDIR)/lib \
     -L/usr/local/lib    \
     -L/usr/local/ssl/lib/ \
+    -L/usr/include/dbus-1.0 -I/usr/lib/x86_64-linux-gnu/dbus-1.0/include/ \
+    -L/usr/lib/aarch64-linux-gnu/dbus-1.0/include/ \
 
 ifneq ($(OS), Darwin)
 LIBDIRS += -L$(INSTALLDIR)/lib/platform/x86-64
@@ -259,7 +264,7 @@ else
 LIBDIRS += -L$(INSTALLDIR)/lib/platform/darwin
 endif
 
-LIBS = -lm -luuid -lwifihal  -lpthread -ldl -ljansson -lev -lssl -lcrypto -lnl-3 -lnl-genl-3 -lnl-route-3 -lavro -lcjson
+LIBS = -lm -luuid -lwifihal  -lpthread -ldl -ljansson -lev -lssl -lcrypto -lnl-3 -lnl-genl-3 -lnl-route-3 -lavro -lcjson 
 
 #
 # The CXXSOURCES macro contains a list of source files.
@@ -389,13 +394,17 @@ ALLOBJECTS = $(CXXOBJECTS) $(COBJECTS) $(WEBCONFIG_OBJECTS) $(HEBUS_OBJECTS)
 
 CFLAGS = $(INCLUDEDIRS) $(INCLUDE_HE_LIB_DIRS) -g -fPIC -D_ANSC_LINUX -D_COSA_INTEL_USG_ATOM_ -DUSE_NOTIFY_COMPONENT -DCISCO_XB3_PLATFORM_CHANGES -DDUAL_CORE_XB3 -DFEATURE_ONE_WIFI -DWIFI_HAL_VERSION_3 -DFEATURE_SUPPORT_PASSPOINT -DFEATURE_SUPPORT_WEBCONFIG -DRASPBERRY_PI_PORT  -DNL80211_ACL -D_PLATFORM_RASPBERRYPI_ -DEASY_MESH_NODE  
 
+CFLAGS += -I/usr/include/dbus-1.0 -I/usr/lib/x86_64-linux-gnu/dbus-1.0/include
+CFLAGS += -I/usr/lib/aarch64-linux-gnu/dbus-1.0/include/
+
 ifneq ($(OS), Darwin)
 CFLAGS += -DPLATFORM_LINUX
 else
 CFLAGS += -DPLATFORM_OSX
 endif
 
-LDFLAGS = $(LIBDIRS) $(LIBS)
+LDFLAGS = $(LIBDIRS) $(LIBS) -ldbus-1
+#LDFLAGS = $(LIBDIRS) $(LIBS)
 
 $(BUILD_DIR):
 	@mkdir -p $(INSTALLDIR)/lib
@@ -419,6 +428,7 @@ $(WEBCONFIG_LIBRARY): $(ALL_WEBCFG_LIB_OBJECTS)
 
 $(HE_BUS_LIBRARY): $(ALL_HEBUS_LIB_OBJECTS)
 	$(AR)  $@  $^
+
 #
 # Link target: automatically builds its object dependencies before
 # executing its link command.

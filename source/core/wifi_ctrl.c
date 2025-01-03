@@ -38,6 +38,11 @@
 #endif
 #define ONEWIFI_FR_FLAG  "/nvram/wifi/onewifi_factory_reset_flag"
 
+#define CONTROLLER_PROCESS_NAME    "em_controller"
+#define CONTROLLER_PRESENT_FLAG    "/nvram/controller_present"
+#define STATION_PRESENT_FLAG       "/nvram/station_present"
+#define OVS_MODULE                 "/sys/module/openvswitch"
+
 unsigned int get_Uptime(void);
 unsigned int startTime[MAX_NUM_RADIOS];
 #define BUF_SIZE              256
@@ -278,8 +283,9 @@ bool is_sta_enabled(void)
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     //wifi_util_dbg_print(WIFI_CTRL,"[%s:%d] device mode:%d active_gw_check:%d\r\n",
     //    __func__, __LINE__, ctrl->network_mode, ctrl->active_gw_check);
-    return ((ctrl->network_mode == rdk_dev_mode_type_ext || ctrl->active_gw_check == true) &&
-        ctrl->eth_bh_status == false);
+    return ((ctrl->network_mode == rdk_dev_mode_type_ext || 
+             ctrl->network_mode == rdk_dev_mode_type_sta ||
+	     ctrl->active_gw_check == true) && ctrl->eth_bh_status == false);
 }
 
 void ctrl_queue_loop(wifi_ctrl_t *ctrl)
@@ -365,6 +371,7 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
 
             /*Run the scheduler*/
             scheduler_execute(ctrl->sched, ctrl->last_polled_time, (ctrl->poll_period*1000));
+
         } else {
             wifi_util_dbg_print(WIFI_CTRL,"RDK_LOG_WARN, WIFI %s: Invalid Return Status %d\n",__FUNCTION__,rc);
             continue;
@@ -375,11 +382,11 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
     return;
 }
 
-int init_wifi_global_config(void)
+int init_wifi_gas_config(void)
 {
-    static bool wifi_global_param_init = false;
-    if (wifi_global_param_init == true) {
-        wifi_util_info_print(WIFI_CTRL, "%s:%d wifi global params already initialized\r\n",__func__, __LINE__);
+    static bool wifi_gas_param_init = false;
+    if (wifi_gas_param_init == true) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d wifi gas params already initialized\r\n",__func__, __LINE__);
         return RETURN_OK;
     }
     if (RETURN_OK != get_misc_descriptor()->WiFi_InitGasConfig_fn()) {
@@ -387,7 +394,7 @@ int init_wifi_global_config(void)
         return RETURN_ERR;
     }
 
-    wifi_global_param_init = true;
+    wifi_gas_param_init = true;
     return RETURN_OK;
 }
 
@@ -431,7 +438,7 @@ int start_radios(rdk_dev_mode_type_t mode)
 
         wifi_util_dbg_print(WIFI_CTRL,"%s:index: %d num_of_radios:%d\n",__FUNCTION__, index, num_of_radios);
 
-        if((mode == rdk_dev_mode_type_ext) && (wifi_radio_oper_param->band == WIFI_FREQUENCY_2_4_BAND) && (wifi_radio_oper_param->channel != 1)) {
+        if((mode == rdk_dev_mode_type_ext || mode == rdk_dev_mode_type_sta) && (wifi_radio_oper_param->band == WIFI_FREQUENCY_2_4_BAND) && (wifi_radio_oper_param->channel != 1)) {
             wifi_radio_oper_param->channel = 1;
             wifi_util_dbg_print(WIFI_CTRL,"%s: initializing radio_index:%d with channel 1\n",__FUNCTION__, index);
         }
@@ -557,58 +564,115 @@ bool check_for_greylisted_mac_filter(void)
     return false;
 }
 
-void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
+int is_process_running(const char *process_name) {
+    char command[BUF_SIZE];
+    char buffer[BUF_SIZE * 2];
+    FILE *fp = NULL;
+
+    snprintf(command, sizeof(command), "ps -e | grep -w %s | grep -v grep", process_name);
+
+    fp = popen(command, "r");
+    if (fp == NULL) {
+        perror("popen failed\n");
+        return -1;
+    }
+
+    /* Scan the output buffer to determine if process is running or not */
+    while (fgets(buffer, sizeof(buffer), fp) != NULL) {
+        if (strstr(buffer, process_name) != NULL) {
+            pclose(fp);
+            /* Process is running */
+            return 1;
+        }
+    }
+
+    pclose(fp);
+
+    /* Process is not running */
+    return 0;
+}
+
+void check_device_modes(unsigned int *ret_val)
+{
+
+    /* scan for controller process */
+    char process_name[BUF_SIZE / 2] = CONTROLLER_PROCESS_NAME;
+
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d: process: '%s' '%s' running.\n",
+        __func__, __LINE__, process_name, ((is_process_running(process_name)) ? "is" : "is not"));
+
+    /* Check for possible modes */
+    if (access(CONTROLLER_PRESENT_FLAG, F_OK) == 0) {
+        /* CONTROLLER_PRESENT_FLAG is present, set as EM gateway mode */
+        *ret_val = (unsigned int)rdk_dev_mode_type_em_gw;
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: network_mode: rdk_dev_mode_type_em_gw\n",
+        __func__, __LINE__);
+    } else if (access(STATION_PRESENT_FLAG, F_OK) == 0) {
+        /* STATION_PRESENT_FLAG is present, mark device as station mode */
+        *ret_val = (unsigned int)rdk_dev_mode_type_sta;
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: network_mode: rdk_dev_mode_type_sta\n",
+        __func__, __LINE__);
+    } else if (access(OVS_MODULE, F_OK) == 0) {
+        /* Check for opensync flag */
+        *ret_val = (unsigned int)rdk_dev_mode_type_em_ext;
+        //*ret_val = (unsigned int)rdk_dev_mode_type_em_ext_ovs;
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: network_mode: rdk_dev_mode_type_em_ext_ovs\n",
+        __func__, __LINE__);
+    } else {
+        /* Defensively set mode to run OneWifi in Gateway mode */
+        *ret_val = (unsigned int)rdk_dev_mode_type_gw;
+        wifi_util_dbg_print(WIFI_CTRL, "%s:%d: network_mode: rdk_dev_mode_type_em_ext\n",
+        __func__, __LINE__);
+    }
+}
+
+int bus_get_network_mode(const char *name, unsigned int *ret_val)
 {
     int rc = bus_error_success;
-    unsigned int total_slept = 0;
-    char *pTmp = NULL;
-    // rdk_dev_mode_type_t mode;
-    wifi_global_param_t global_param = { 0 };
+    unsigned int total_slept = 0; 
+    wifi_global_param_t global_param = { 0 }; 
     wifi_ctrl_t *ctrl;
     raw_data_t data;
 
     memset(&data, 0, sizeof(raw_data_t));
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
+    if (strcmp(name, WIFI_DEVICE_MODE) != 0) { 
+        wifi_util_dbg_print(WIFI_BUS, "%s:%d: bus_data_get_fn for %s\n",
+            __func__, __LINE__, name);
+        return bus_error_invalid_input;
+    }    
+
     get_wifidb_obj()->desc.get_wifi_global_param_fn(&global_param);
-    // set all default return values first
-    if (strcmp(name, WIFI_DEVICE_MODE) == 0) {
-#ifdef EASY_MESH_NODE
-       wifi_util_info_print(WIFI_CTRL,"%s:%d\n",__func__,__LINE__);
-       *ret_val = (unsigned int)rdk_dev_mode_type_em_node;
-
-#elif EASY_MESH_COLOCATED_NODE
-       wifi_util_info_print(WIFI_CTRL,"%s:%d\n",__func__,__LINE__);
-       *ret_val = (unsigned int)rdk_dev_mode_type_em_colocated_node;
-
-#else
-       wifi_util_info_print(WIFI_CTRL,"%s:%d\n",__func__,__LINE__);
-#ifdef ONEWIFI_DEFAULT_NETWORKING_MODE
-        *ret_val = ONEWIFI_DEFAULT_NETWORKING_MODE;
-#else
-        *ret_val = (unsigned int)global_param.device_network_mode;
-#endif
-#endif
-        ctrl->network_mode = (unsigned int)*ret_val;
 
 #ifdef ONEWIFI_DEFAULT_DEVICE_TYPE
-        ctrl->dev_type = ONEWIFI_DEFAULT_DEVICE_TYPE;
+    ctrl->dev_type = ONEWIFI_DEFAULT_DEVICE_TYPE;
 #else
-        ctrl->dev_type = dev_subtype_rdk;
+    ctrl->dev_type = dev_subtype_rdk;
 #endif
 
-    } else if (strcmp(name, WIFI_DEVICE_TUNNEL_STATUS) == 0) {
-        *ret_val = DEVICE_TUNNEL_DOWN; // tunnel down
-    }
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d --=====> \n", __func__, __LINE__);
+
+    check_device_modes(ret_val);
+    //ctrl->network_mode = rdk_dev_mode_type_ext;
+    //global_param.device_network_mode = rdk_dev_mode_type_ext;
+    ctrl->network_mode = (unsigned int)*ret_val;
+    global_param.device_network_mode = (int)*ret_val;
+    update_wifi_global_config(&global_param);
+    return 0;
 
     while ((rc = get_bus_descriptor()->bus_data_get_fn(&ctrl->handle, name, &data)) !=
         bus_error_success) {
         sleep(1);
         total_slept++;
         if (total_slept >= 5) {
-            wifi_util_dbg_print(WIFI_CTRL, "%s:%d bus: Giving up on bus_data_get_fn for %s\n",
-                __func__, __LINE__, name);
-            return;
+            /* BUS interface failed to determine the mode, try for other mode's */
+            check_device_modes(ret_val);
+
+            ctrl->network_mode = (unsigned int)*ret_val;
+            global_param.device_network_mode = (int)*ret_val;
+
+            return 0;
         }
 
         get_bus_descriptor()->bus_data_free_fn(&data);
@@ -616,23 +680,38 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
         memset(&data, 0, sizeof(raw_data_t));
     }
 
-    if (strcmp(name, WIFI_DEVICE_MODE) == 0) {
-        if (data.data_type != bus_data_type_uint32) {
-            wifi_util_error_print(WIFI_CTRL,
-                "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%\n", __func__, __LINE__,
-                name, data.data_type, rc);
-            return;
-        }
+    if (data.data_type != bus_data_type_uint32) {
+        wifi_util_error_print(WIFI_BUS,
+            "%s:%d bus_data_get_fn failed for '%s', data_type:0x%x, rc:%\n",
+            __func__, __LINE__, name, data.data_type, rc);
+        return -1;
+    }
 
-        *ret_val = data.raw_data.u32;
-        ctrl->network_mode = (unsigned int)*ret_val;
-        if (global_param.device_network_mode != (int)*ret_val) {
-            global_param.device_network_mode = (int)*ret_val;
-            update_wifi_global_config(&global_param);
-        }
-    } else if (strcmp(name, WIFI_DEVICE_TUNNEL_STATUS) == 0) {
+    *ret_val = data.raw_data.u32;
+    ctrl->network_mode = (unsigned int)*ret_val;
+    if (global_param.device_network_mode != (int)*ret_val) {
+        global_param.device_network_mode = (int)*ret_val;
+        update_wifi_global_config(&global_param);
+    }
+    wifi_util_info_print(WIFI_CTRL, "%s:%d: network_mode:%d, dev_type:%d\n",
+        __func__, __LINE__, *ret_val, ctrl->dev_type);
+
+    return 0;
+}
+
+void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
+{
+    int rc = bus_error_success;
+    char *pTmp = NULL;
+    raw_data_t data;
+
+    memset(&data, 0, sizeof(raw_data_t));
+
+    if (strcmp(name, WIFI_DEVICE_TUNNEL_STATUS) == 0) {
+        *ret_val = DEVICE_TUNNEL_DOWN; // tunnel down
+
         if (data.data_type != bus_data_type_string) {
-            wifi_util_error_print(WIFI_CTRL,
+            wifi_util_error_print(WIFI_BUS,
                 "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%\n", __func__, __LINE__,
                 name, data.data_type, rc);
             return;
@@ -683,14 +762,14 @@ int bus_get_active_gw_parameter(const char *name, unsigned int *ret_val)
     return RETURN_OK;
 }
 
-void start_extender_vaps(void)
+void start_svc_vaps(vap_svc_type_t type)
 {
     wifi_ctrl_t *ctrl;
-    vap_svc_t *ext_svc;
+    vap_svc_t *svc;
 
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
-    ext_svc->start_fn(ext_svc, WIFI_ALL_RADIO_INDICES, NULL);
+    svc = get_svc_by_type(ctrl, type);
+    svc->start_fn(svc, WIFI_ALL_RADIO_INDICES, NULL);
 }
 
 void start_gateway_vaps()
@@ -727,7 +806,7 @@ void start_gateway_vaps()
         ctrl->active_gw_check = value;
         if (is_sta_enabled() == true) {
             wifi_util_info_print(WIFI_CTRL, "%s:%d start mesh sta\n",__func__, __LINE__);
-            start_extender_vaps();
+            start_svc_vaps(vap_svc_type_mesh_ext);
         }
     }
 }
@@ -748,14 +827,14 @@ void stop_gateway_vaps()
     mesh_gw_svc->stop_fn(mesh_gw_svc, WIFI_ALL_RADIO_INDICES, NULL);	
 }
 
-void stop_extender_vaps(void)
+void stop_svc_vaps(vap_svc_type_t type)
 {
     wifi_ctrl_t *ctrl;
-    vap_svc_t *ext_svc;	
+    vap_svc_t *svc;
 
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
-    ext_svc->stop_fn(ext_svc, WIFI_ALL_RADIO_INDICES, NULL);
+    svc = get_svc_by_type(ctrl, type);
+    svc->stop_fn(svc, WIFI_ALL_RADIO_INDICES, NULL);
 }
 
 int start_wifi_services(void)
@@ -779,22 +858,32 @@ int start_wifi_services(void)
         start_radios(rdk_dev_mode_type_ext);
         if (is_sta_enabled()) {
             wifi_util_info_print(WIFI_CTRL, "%s:%d start mesh sta\n",__func__, __LINE__);
-            start_extender_vaps();
+            start_svc_vaps(vap_svc_type_mesh_ext);
         } else {
             wifi_util_info_print(WIFI_CTRL, "%s:%d mesh sta disabled\n",__func__, __LINE__);
         }
-    } else if (ctrl->network_mode == rdk_dev_mode_type_em_node) {
-        wifi_util_info_print(WIFI_CTRL, "%s:%d start em_mode\n",__func__, __LINE__);
+    } else if (ctrl->network_mode == rdk_dev_mode_type_em_gw) {
+        /* Controller is running. */
+        wifi_util_info_print(WIFI_CTRL, "%s:%d start rdk_dev_mode_type_em_gw mode\n",__func__, __LINE__);
         start_radios(rdk_dev_mode_type_gw);
-        start_extender_vaps();
-    } else if (ctrl->network_mode == rdk_dev_mode_type_em_colocated_node) {
-        wifi_util_info_print(WIFI_CTRL, "%s:%d start em_colocated mode\n",__func__, __LINE__);
+    } else if (ctrl->network_mode == rdk_dev_mode_type_em_ext) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d start rdk_dev_mode_type_em_ext mode\n",__func__, __LINE__);
         start_radios(rdk_dev_mode_type_gw);
+        start_svc_vaps(vap_svc_type_mesh_ext);
+    } else if (ctrl->network_mode == rdk_dev_mode_type_sta) {
+        /* Station mode to connect available and preferred APs */
+#if 0
+        wifi_util_info_print(WIFI_CTRL, "%s:%d start STA vaps\n",__func__, __LINE__);
+        start_radios(rdk_dev_mode_type_gw);
+        start_gateway_vaps();
+#else
+        start_radios(rdk_dev_mode_type_sta);
+        start_svc_vaps(vap_svc_type_sta);
+#endif
     }
 
     return RETURN_OK;
 }
-
 bool get_notify_wifi_from_psm(char *PsmParamName)
 {
     int rc = 0;
@@ -1002,7 +1091,7 @@ int scan_results_callback(int radio_index, wifi_bss_info_t **bss, unsigned int *
         res.num = *num;
         memcpy((unsigned char *)res.bss, (unsigned char *)(*bss), (*num)*sizeof(wifi_bss_info_t));
     }
-    if (ctrl->network_mode == rdk_dev_mode_type_ext) {
+    if (ctrl->network_mode == rdk_dev_mode_type_ext || ctrl->network_mode == rdk_dev_mode_type_sta) {
         push_event_to_ctrl_queue(&res, sizeof(scan_results_t), wifi_event_type_hal_ind,
             wifi_event_scan_results, NULL);
     }
@@ -2956,6 +3045,11 @@ BOOL isVapLnfSecure(UINT apIndex)
 BOOL isVapSTAMesh(UINT apIndex)
 {
     return is_vap_mesh_sta(&(get_wifimgr_obj())->hal_cap.wifi_prop, apIndex);
+}
+
+BOOL isVapSTA(UINT apIndex)
+{
+    return is_vap_sta(&(get_wifimgr_obj())->hal_cap.wifi_prop, apIndex);
 }
 
 BOOL isVapMeshBackhaul(UINT apIndex)
