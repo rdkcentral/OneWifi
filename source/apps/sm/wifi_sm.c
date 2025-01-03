@@ -345,12 +345,15 @@ int neighbor_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_t *
     sm_route(&route);
 
     if (sm_common_config_to_monitor_queue(data, stat_config_entry) != RETURN_OK) {
-        wifi_util_error_print(WIFI_SM,"%s:%d SM Config creation failed %d\r\n", __func__, __LINE__, stat_config_entry->stats_type);
+        wifi_util_error_print(WIFI_SM, "%s:%d SM Config creation failed %d\r\n", __func__, __LINE__,
+            stat_config_entry->stats_type);
         return RETURN_ERR;
     }
 
-    if (sm_survey_type_conversion(&halw_scan_type, &stat_config_entry->survey_type, APP_TO_DCA) != RETURN_OK) {
-        wifi_util_error_print(WIFI_SM,"%s:%d Invalid survey type %d\r\n", __func__, __LINE__, stat_config_entry->survey_type);
+    if (sm_survey_type_conversion(&halw_scan_type, &stat_config_entry->survey_type, APP_TO_DCA) !=
+        RETURN_OK) {
+        wifi_util_error_print(WIFI_SM, "%s:%d Invalid survey type %d\r\n", __func__, __LINE__,
+            stat_config_entry->survey_type);
         return RETURN_ERR;
     }
     data->u.mon_stats_config.args.scan_mode = halw_scan_type;
@@ -359,21 +362,25 @@ int neighbor_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_t *
 
     if (stat_config_entry->survey_type == survey_type_on_channel) {
         data->u.mon_stats_config.args.scan_mode = WIFI_RADIO_SCAN_MODE_ONCHAN;
+        data->u.mon_stats_config.args.dwell_time = stat_config_entry->survey_interval;
         data->u.mon_stats_config.args.channel_list.num_channels = 0;
     } else {
         data->u.mon_stats_config.args.scan_mode = WIFI_RADIO_SCAN_MODE_OFFCHAN;
-        data->u.mon_stats_config.args.channel_list.num_channels = stat_config_entry->channels_list.num_channels;
-        for (i = 0;i < stat_config_entry->channels_list.num_channels; i++) {
-            data->u.mon_stats_config.args.channel_list.channels_list[i] = stat_config_entry->channels_list.channels_list[i];
+        data->u.mon_stats_config.args.dwell_time = stat_config_entry->survey_interval;
+        data->u.mon_stats_config.args.channel_list.num_channels =
+            stat_config_entry->channels_list.num_channels;
+        for (i = 0; i < stat_config_entry->channels_list.num_channels; i++) {
+            data->u.mon_stats_config.args.channel_list.channels_list[i] =
+                stat_config_entry->channels_list.channels_list[i];
         }
     }
 
     if (data->u.mon_stats_config.interval_ms == 0) {
-        data->u.mon_stats_config.interval_ms = stat_config_entry->reporting_interval * 1000; //converting seconds to ms
+        data->u.mon_stats_config.interval_ms = stat_config_entry->reporting_interval *
+            1000; // converting seconds to ms
     }
 
     data->u.mon_stats_config.args.app_info = sm_app_event_type_neighbor;
-
     push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
 
     return RETURN_OK;
@@ -386,12 +393,15 @@ int survey_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_t *st
     wifi_event_route_t route;
     sm_route(&route);
     if (sm_common_config_to_monitor_queue(data, stat_config_entry) != RETURN_OK) {
-        wifi_util_error_print(WIFI_SM,"%s:%d SM Config creation failed %d\r\n", __func__, __LINE__, stat_config_entry->stats_type);
+        wifi_util_error_print(WIFI_SM, "%s:%d SM Config creation failed %d\r\n", __func__, __LINE__,
+            stat_config_entry->stats_type);
         return RETURN_ERR;
     }
 
-    if (sm_survey_type_conversion(&halw_scan_type, &stat_config_entry->survey_type, APP_TO_DCA) != RETURN_OK) {
-        wifi_util_error_print(WIFI_SM,"%s:%d Invalid survey type %d\r\n", __func__, __LINE__, stat_config_entry->survey_type);
+    if (sm_survey_type_conversion(&halw_scan_type, &stat_config_entry->survey_type, APP_TO_DCA) !=
+        RETURN_OK) {
+        wifi_util_error_print(WIFI_SM, "%s:%d Invalid survey type %d\r\n", __func__, __LINE__,
+            stat_config_entry->survey_type);
         return RETURN_ERR;
     }
     data->u.mon_stats_config.args.scan_mode = halw_scan_type;
@@ -400,22 +410,25 @@ int survey_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_t *st
 
     if (stat_config_entry->survey_type == survey_type_on_channel) {
         data->u.mon_stats_config.args.channel_list.num_channels = 0;
+        data->u.mon_stats_config.args.dwell_time = stat_config_entry->survey_interval;
         data->u.mon_stats_config.args.scan_mode = WIFI_RADIO_SCAN_MODE_ONCHAN;
     } else {
-        data->u.mon_stats_config.args.channel_list.num_channels = stat_config_entry->channels_list.num_channels;
-        for (i = 0;i < stat_config_entry->channels_list.num_channels; i++) {
-            data->u.mon_stats_config.args.channel_list.channels_list[i] = stat_config_entry->channels_list.channels_list[i];
+        data->u.mon_stats_config.args.dwell_time = stat_config_entry->survey_interval;
+        data->u.mon_stats_config.args.channel_list.num_channels =
+            stat_config_entry->channels_list.num_channels;
+        for (i = 0; i < stat_config_entry->channels_list.num_channels; i++) {
+            data->u.mon_stats_config.args.channel_list.channels_list[i] =
+                stat_config_entry->channels_list.channels_list[i];
         }
         data->u.mon_stats_config.args.scan_mode = WIFI_RADIO_SCAN_MODE_OFFCHAN;
     }
-    data->u.mon_stats_config.args.app_info = sm_app_event_type_survey;
-    //data->u.mon_stats_config.start_immediately = true;
 
+    data->u.mon_stats_config.args.app_info = sm_app_event_type_survey;
+    // data->u.mon_stats_config.start_immediately = true;
     push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
 
     return RETURN_OK;
 }
-
 
 int client_diag_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_t *stat_config_entry)
 {
