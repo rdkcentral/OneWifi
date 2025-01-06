@@ -25,7 +25,6 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
-#include "harvester.h"
 #include <sys/time.h>
 #include "collection.h"
 #include "wifi_hal.h"
@@ -44,6 +43,8 @@
 #include "wifi_passpoint.h"
 #include "safec_lib_common.h"
 #include <stdint.h>
+#include "wifi_stubs.h"
+#include "misc.h"
 
 typedef enum {
     single_client_msmt_type_all,
@@ -294,7 +295,7 @@ void upload_single_client_msmt_data(sta_data_t *sta_info)
     /* MAC - Get CPE mac address, do it only pointer is NULL */
     if ( macStr == NULL )
     {
-        macStr = getDeviceMac();
+        macStr =  get_stubs_descriptor()->getDeviceMac_fn();
         strncpy( CpemacStr, macStr, sizeof(CpemacStr));
         wifi_util_dbg_print(WIFI_HARVESTER, "%s:%d:RDK_LOG_DEBUG, Received DeviceMac from Atom side: %s\n",__func__,__LINE__,macStr);
     }
@@ -592,7 +593,7 @@ void upload_single_client_msmt_data(sta_data_t *sta_info)
      avro_writer_free(writer);
 
      size += MAGIC_NUMBER_SIZE + SCHEMA_ID_LENGTH;
-     sendWebpaMsg((char *)(serviceName), (char *)(dest), trans_id, NULL, NULL, (char *)(contentType), buff, size);//ONE_WIFI
+     get_misc_descriptor()->sendWebpaMsg_fn((char *)(serviceName), (char *)(dest), trans_id, NULL, NULL, (char *)(contentType), buff, size);
      wifi_util_dbg_print(WIFI_HARVESTER, "Creating telemetry record successful\n");
      wifi_mgr->wifi_ccsp.desc.CcspTraceInfoRdkb_fn("%s-%d Creation of Telemetry record is successful\n", __FUNCTION__, __LINE__);
 }
