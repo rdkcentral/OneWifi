@@ -392,6 +392,41 @@ int notify_LM_Lite(wifi_ctrl_t *ctrl, LM_wifi_hosts_t *phosts, bool sync)
     return RETURN_OK;
 }
 
+int tcm_notify_deny_association(wifi_ctrl_t *ctrl, int ap_index, mac_addr_str_t mac,
+    double threshold_val, double snr_gradient, char *exp_weight, int timeout,
+    int min_num_mgmt_frames, int current_mgmt_frames, int reason)
+{
+    bus_error_t rc;
+    char str[64];
+    wifi_vap_info_t *vap_info = NULL;
+
+    memset(str, 0, 64);
+
+    if (ctrl == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: NULL Pointer \n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    vap_info = getVapInfo(ap_index);
+
+    snprintf(str, sizeof(str), "%d,%lf,%lf,%s,%d,%d,%d,%s,%d", (ap_index + 1), threshold_val,
+        snr_gradient, exp_weight, timeout, min_num_mgmt_frames, current_mgmt_frames, mac, reason);
+
+    if (vap_info != NULL) {
+        strncpy(vap_info->u.bss_info.preassoc.tcm_client_deny_assoc_info, str,
+            sizeof(vap_info->u.bss_info.preassoc.tcm_client_deny_assoc_info));
+    }
+
+    rc = get_bus_descriptor()->bus_set_string_fn(&ctrl->handle, WIFI_NOTIFY_DENY_TCM_ASSOCIATION,
+        str);
+    if (rc != bus_error_success) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: bus: bus_set_string_fn Failed %d\n", __func__,
+            __LINE__, rc);
+        return RETURN_ERR;
+    }
+    return RETURN_OK;
+}
+
 int webconfig_bus_apply_for_dml_thread_update(wifi_ctrl_t *ctrl,
     webconfig_subdoc_encoded_data_t *data)
 {

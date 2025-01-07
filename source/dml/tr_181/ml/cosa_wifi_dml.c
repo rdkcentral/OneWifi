@@ -9287,6 +9287,12 @@ ConnectionControl_GetParamStringValue
         return 0;
     }
 
+    if( AnscEqualString(ParamName, "TcmClientDenyAssociation", TRUE))
+    {
+        snprintf(pValue,*pUlSize,pcfg->u.bss_info.preassoc.tcm_client_deny_assoc_info);
+        return 0;
+    }
+
     return -1;
 }
 
