@@ -350,6 +350,8 @@ int webconfig_analyze_pending_states(wifi_ctrl_t *ctrl)
 {
     static int pending_state = ctrl_webconfig_state_max;
     webconfig_subdoc_type_t type = webconfig_subdoc_type_unknown;
+    int radio_index = -1;
+    int state;
 
     wifi_mgr_t *mgr = get_wifimgr_obj();
     if ((ctrl->webconfig_state & CTRL_WEBCONFIG_STATE_MASK) == 0) {
@@ -511,8 +513,7 @@ int webconfig_analyze_pending_states(wifi_ctrl_t *ctrl)
         case ctrl_webconfig_state_radio_24G_rsp_pending:
         case ctrl_webconfig_state_radio_5G_rsp_pending:
         case ctrl_webconfig_state_radio_6G_rsp_pending:
-            int radio_index = -1;
-            int state = (ctrl->webconfig_state & pending_state);
+            state = (ctrl->webconfig_state & pending_state);
             if (state == ctrl_webconfig_state_radio_24G_rsp_pending) {
                 radio_index = 0;
                 type = webconfig_subdoc_type_radio_24G;
@@ -1459,8 +1460,6 @@ int webconfig_hal_multivap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_dat
     webconfig_subdoc_type_t doc_type)
 {
     unsigned int num_vaps = 0;
-    unsigned int ap_index;
-    char *vap_name;
     char *vap_names[MAX_NUM_VAP_PER_RADIO];
     wifi_mgr_t *mgr = get_wifimgr_obj();
     rdk_wifi_vap_map_t *mgr_vap_map = NULL;
@@ -2079,6 +2078,9 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
     int ret = RETURN_OK;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     vap_svc_t  *pub_svc = NULL;
+    wifi_ctrl_webconfig_state_t conf_state_pending;
+    wifi_ctrl_webconfig_state_t radio_state_pending;
+
     wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: webconfig_state:%02x doc_type:%d doc_name:%s\n", 
             __func__, __LINE__, ctrl->webconfig_state, doc->type, doc->name);
 
@@ -2481,7 +2483,6 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
         case webconfig_subdoc_type_vap_24G:
         case webconfig_subdoc_type_vap_5G:
         case webconfig_subdoc_type_vap_6G:
-            wifi_ctrl_webconfig_state_t conf_state_pending;
             if (doc->type == webconfig_subdoc_type_vap_24G) {
                 conf_state_pending = ctrl_webconfig_state_vap_24G_cfg_rsp_pending;
             } else if (doc->type == webconfig_subdoc_type_vap_5G) {
@@ -2512,7 +2513,6 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
         case webconfig_subdoc_type_radio_24G:
         case webconfig_subdoc_type_radio_5G:
         case webconfig_subdoc_type_radio_6G:
-            wifi_ctrl_webconfig_state_t radio_state_pending;
             if (doc->type == webconfig_subdoc_type_radio_24G) {
                 radio_state_pending = ctrl_webconfig_state_radio_24G_rsp_pending;
             } else if (doc->type == webconfig_subdoc_type_radio_5G) {

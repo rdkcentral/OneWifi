@@ -169,7 +169,7 @@ webconfig_error_t encode_multivap_subdoc(webconfig_t *config, webconfig_subdoc_d
         break;
     }
 
-    if (radio_index < 0 || radio_index >= params->num_radios) {
+    if (radio_index < 0 || radio_index >= (int)params->num_radios) {
         wifi_util_error_print(WIFI_WEBCONFIG,
             "%s:%d radio index:%d not correct for num_radios:%d.\n", __func__, __LINE__,
             radio_index, params->num_radios);
@@ -340,7 +340,7 @@ webconfig_error_t decode_multivap_subdoc(webconfig_t *config, webconfig_subdoc_d
     rdk_wifi_vap_info_t *rdk_vap_info;
     cJSON *json = data->u.encoded.json;
     webconfig_subdoc_decoded_data_t *params;
-    unsigned int i = 0, j = 0;
+    unsigned int i = 0;
     char *str;
 
     wifi_util_dbg_print(WIFI_WEBCONFIG, "%s: Enter subdoc_type:%d\n", __FUNCTION__, data->type);
