@@ -2032,7 +2032,7 @@ int webconfig_hal_single_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded
             old_ecomode, new_ecomode);
         if (old_ecomode != new_ecomode) {
             // write the value to database and reboot
-            ecomode_telemetry_update_and_reboot(i, new_ecomode);
+            ecomode_telemetry_update_and_reboot(radio_index, new_ecomode);
         }
 #endif // defined (FEATURE_SUPPORT_ECOPOWERDOWN)
         if (is_radio_6g_modified) {
