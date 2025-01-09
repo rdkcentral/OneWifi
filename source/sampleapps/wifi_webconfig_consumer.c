@@ -361,6 +361,7 @@ int initial_sync(webconfig_consumer_t *consumer)
     printf("%s:%d: init cache trigger successful\n", __func__, __LINE__);
 
     str = rbusValue_GetString(value, &len);
+    rbusValue_Release(value);
     if (str == NULL) {
         printf("%s Null pointer,Rbus set string len=%d\n",__FUNCTION__,len);
         return -1;

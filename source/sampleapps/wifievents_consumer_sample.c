@@ -80,16 +80,17 @@ static void wifievents_get_device_vaps()
 {
     char cmd[200];
     int i;
-    rbusValue_t value;
     int rc = RBUS_ERROR_SUCCESS;
 
     for (i = 0; i < MAX_VAP; i++) {
+        rbusValue_t value;
         snprintf(cmd, sizeof(cmd), "Device.WiFi.SSID.%d.Enable", i + 1);
         rc = rbus_get(g_handle, cmd, &value);
         if (rc != RBUS_ERROR_SUCCESS) {
             g_device_vaps_list[i] = -1;
         } else {
             g_device_vaps_list[i] = i + 1;
+            rbusValue_Release(value);
         }
     }
 }
