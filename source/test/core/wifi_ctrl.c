@@ -256,12 +256,13 @@ int start_wifi_ctrl(wifi_ctrl_t *ctrl, int argc, char *argv[])
     	    printf("%s:%d: start scan success\n", __func__, __LINE__);
 	}
     }
+
     sleep(10);
 
     printf("\n\n%s:%d:connecting ... %s %s %d\n\n", __func__, __LINE__, bss.ssid, password, bss.freq);
-#if 0
+
     wifi_hal_connect(14, &bss);
-#endif
+
     //wifi_authenticator_run();
 
     while (1) {

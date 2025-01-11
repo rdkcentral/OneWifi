@@ -58,16 +58,13 @@ void process_scan_results_event(scan_results_t *results, unsigned int len)
 {
     wifi_ctrl_t *ctrl;
     vap_svc_t *ext_svc;
-    vap_svc_t *sta_svc;
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
 
     ctrl = &mgr->ctrl;
 
     ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
-    sta_svc = get_svc_by_type(ctrl, vap_svc_type_sta);
     if (is_sta_enabled()) {
         ext_svc->event_fn(ext_svc, wifi_event_type_hal_ind, wifi_event_scan_results, vap_svc_event_none, results);
-        sta_svc->event_fn(sta_svc, wifi_event_type_hal_ind, wifi_event_scan_results, vap_svc_event_none, results);
     }
 }
 
@@ -859,18 +856,15 @@ void process_sta_conn_status_event(rdk_sta_data_t *sta_data, unsigned int len)
 {
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     vap_svc_t *ext_svc;
-    vap_svc_t *sta_svc;
 
     update_sta_presence(sta_data);
 
     ctrl->webconfig_state |= ctrl_webconfig_state_sta_conn_status_rsp_pending;
 
     ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
-    sta_svc = get_svc_by_type(ctrl, vap_svc_type_sta);
 
     if(is_sta_enabled()) {
         ext_svc->event_fn(ext_svc, wifi_event_type_hal_ind, wifi_event_hal_sta_conn_status, vap_svc_event_none, sta_data);
-        sta_svc->event_fn(sta_svc, wifi_event_type_hal_ind, wifi_event_hal_sta_conn_status, vap_svc_event_none, sta_data);
     }
 }
 
@@ -901,14 +895,12 @@ void process_active_gw_check_command(bool active_gw_check)
         wifi_util_info_print(WIFI_CTRL, "%s:%d: stop xfinity vaps\n", __func__, __LINE__);
         process_xfinity_vaps(hotspot_vap_disable, false);
         wifi_util_info_print(WIFI_CTRL, "%s:%d: start mesh sta\n", __func__, __LINE__);
-        start_svc_vaps(vap_svc_type_mesh_ext);
-        start_svc_vaps(vap_svc_type_sta);
+        start_extender_vaps();
     } else {
         wifi_util_info_print(WIFI_CTRL, "%s:%d: start xfinity vaps\n", __func__, __LINE__);
         process_xfinity_vaps(hotspot_vap_enable, false);
         wifi_util_info_print(WIFI_CTRL, "%s:%d: stop mesh sta\n", __func__, __LINE__);
-        stop_svc_vaps(vap_svc_type_mesh_ext);
-        stop_svc_vaps(vap_svc_type_sta);
+        stop_extender_vaps();
     }
 
     ctrl->webconfig_state |= ctrl_webconfig_state_vap_mesh_sta_cfg_rsp_pending;
@@ -2274,7 +2266,7 @@ static void update_wifi_vap_config(int device_mode)
     rdk_wifi_vap_info_t *rdk_vap_info;
     wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
 
-    if (device_mode != rdk_dev_mode_type_ext || device_mode != rdk_dev_mode_type_sta) {
+    if (device_mode != rdk_dev_mode_type_ext) {
         return;
     }
 
@@ -2315,30 +2307,21 @@ void process_device_mode_command_event(int device_mode)
         global_param->device_network_mode = device_mode;
         update_wifi_global_config(global_param);
         update_wifi_vap_config(device_mode);
-        if (device_mode == rdk_dev_mode_type_ext || device_mode == rdk_dev_mode_type_sta) {
+        if (device_mode == rdk_dev_mode_type_ext) {
             if (is_sta_enabled() == true) {
                 wifi_util_info_print(WIFI_CTRL, "%s:%d: start mesh sta\n", __func__, __LINE__);
-                start_svc_vaps(vap_svc_type_mesh_ext);
-                start_svc_vaps(vap_svc_type_sta);
+                start_extender_vaps();
             } else {
                 wifi_util_info_print(WIFI_CTRL, "%s:%d: mesh sta disabled\n", __func__, __LINE__);
             }
         } else if (device_mode == rdk_dev_mode_type_gw) {
             if (is_sta_enabled() == false) {
                 wifi_util_info_print(WIFI_CTRL, "%s:%d: stop mesh sta\n", __func__, __LINE__);
-                stop_svc_vaps(vap_svc_type_mesh_ext);
-                stop_svc_vaps(vap_svc_type_sta);
+                stop_extender_vaps();
             }
             wifi_util_info_print(WIFI_CTRL, "%s:%d: start gw vaps\n", __func__, __LINE__);
             start_gateway_vaps();
-        } else if (device_mode == rdk_dev_mode_type_sta) {
-            if (is_sta_enabled() == true) {
-                wifi_util_info_print(WIFI_CTRL, "%s:%d: start sta service\n", __func__, __LINE__);
-                start_svc_vaps(vap_svc_type_sta);
-            } else {
-                wifi_util_info_print(WIFI_CTRL, "%s:%d: sta service disabled\n", __func__, __LINE__);
-            }
-	}
+        }
     }
     ctrl->webconfig_state |= ctrl_webconfig_state_vap_all_cfg_rsp_pending;
 }
@@ -2348,23 +2331,14 @@ void process_sta_trigger_disconnection(unsigned int disconnection_type)
     wifi_mgr_t *g_wifidb;
     wifi_ctrl_t *ctrl;
     vap_svc_t *ext_svc;
-    vap_svc_t *sta_svc;
     g_wifidb = get_wifimgr_obj();
 
     if (g_wifidb != NULL) {
         ctrl = &g_wifidb->ctrl;
-        if (ctrl->network_mode == rdk_dev_mode_type_ext || ctrl->network_mode == rdk_dev_mode_type_sta) {
+        if (ctrl->network_mode == rdk_dev_mode_type_ext) {
             ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
             if (ext_svc != NULL) {
                 ext_svc->event_fn(ext_svc, wifi_event_type_command,
-                    wifi_event_type_trigger_disconnection, vap_svc_event_none, &disconnection_type);
-            } else {
-                wifi_util_error_print(WIFI_CTRL, "%s:%d NULL svc Pointer not triggering disconnection\r\n", __func__, __LINE__);
-            }
-
-            sta_svc = get_svc_by_type(ctrl, vap_svc_type_sta);
-            if (sta_svc != NULL) {
-                sta_svc->event_fn(sta_svc, wifi_event_type_command,
                     wifi_event_type_trigger_disconnection, vap_svc_event_none, &disconnection_type);
             } else {
                 wifi_util_error_print(WIFI_CTRL, "%s:%d NULL svc Pointer not triggering disconnection\r\n", __func__, __LINE__);
@@ -2582,7 +2556,6 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
     g_wifidb = get_wifimgr_obj();
     wifi_ctrl_t *ctrl;
     vap_svc_t *ext_svc;
-    vap_svc_t *sta_svc;
     vap_svc_t  *pub_svc = NULL;
     int ret = 0;
 
@@ -2607,8 +2580,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
     }
 
     ctrl = &g_wifidb->ctrl;
-    if ((ch_chg->event == WIFI_EVENT_CHANNELS_CHANGED) && (ctrl->network_mode == rdk_dev_mode_type_ext || 
-        ctrl->network_mode == rdk_dev_mode_type_sta)) {
+    if ((ch_chg->event == WIFI_EVENT_CHANNELS_CHANGED) && (ctrl->network_mode == rdk_dev_mode_type_ext)) {
 
         ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
         if (wifi_radio_operationParam_validation(&g_wifidb->hal_cap, &temp_radio_params) != RETURN_OK) {
@@ -2617,14 +2589,6 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
             return;
         }
         ext_svc->event_fn(ext_svc, wifi_event_type_hal_ind, wifi_event_hal_channel_change, vap_svc_event_none, ch_chg);
-
-        sta_svc = get_svc_by_type(ctrl, vap_svc_type_sta);
-        if (wifi_radio_operationParam_validation(&g_wifidb->hal_cap, &temp_radio_params) != RETURN_OK) {
-            wifi_util_error_print(WIFI_CTRL,"%s:%d: channel: %d bw: %d on radio: %d could not be set\n",
-                __FUNCTION__, __LINE__, ch_chg->channel, ch_chg->channelWidth, ch_chg->radioIndex);
-            return;
-        }
-        sta_svc->event_fn(sta_svc, wifi_event_type_hal_ind, wifi_event_hal_channel_change, vap_svc_event_none, ch_chg);
     }
 
     if (radio_params->band == WIFI_FREQUENCY_6_BAND ) {
@@ -2995,12 +2959,10 @@ static void process_eth_bh_status_command(bool eth_bh_status)
 
     if (is_enabled == true) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d: start mesh sta\n", __func__, __LINE__);
-        start_svc_vaps(vap_svc_type_mesh_ext);
-        start_svc_vaps(vap_svc_type_sta);
+        start_extender_vaps();
     } else {
         wifi_util_info_print(WIFI_CTRL, "%s:%d: stop mesh sta\n", __func__, __LINE__);
-        stop_svc_vaps(vap_svc_type_mesh_ext);
-        stop_svc_vaps(vap_svc_type_sta);
+        stop_extender_vaps();
     }
 
     ctrl->webconfig_state |= ctrl_webconfig_state_vap_mesh_sta_cfg_rsp_pending;

@@ -167,8 +167,6 @@ int mesh_service_create_nodes(wifi_service_t *svc, rdk_wifi_radio_t *radio_confi
                 node_desc = &mesh_backhaul_6g_desc;
             } else if (strncmp(node_name, "mesh_sta_2g", sizeof(node_name)) == 0) {
                 node_desc = &mesh_sta_2g_desc;
-            } else if (strncmp(node_name, "mesh_sta_2g", strlen("mesh_sta")) == 0) {
-                node_desc = &mesh_sta_2g_desc;
             } else if (strncmp(node_name, "mesh_sta_5g", sizeof(node_name)) == 0) {
                 node_desc = &mesh_sta_5g_desc;
             } else if (strncmp(node_name, "mesh_sta_6g", sizeof(node_name)) == 0) {

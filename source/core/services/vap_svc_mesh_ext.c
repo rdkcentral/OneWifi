@@ -574,10 +574,9 @@ void ext_start_scan(vap_svc_t *svc)
         (void)memcpy(channels.channels_list, channels_list,
                sizeof(*channels_list) * num_channels);
         channels.num_channels = num_channels;
-#if 0
+
         wifi_hal_startScan(radio_index, WIFI_RADIO_SCAN_MODE_OFFCHAN, dwell_time,
             channels.num_channels, channels.channels_list);
-#endif
     }
 
     scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_scan_result_timeout_handler_id,
@@ -826,12 +825,11 @@ void ext_try_connecting(vap_svc_t *svc)
         // Set to disabled in order to detect state change on connection retry
         reset_sta_state(svc, vap_index);
         ext->conn_retry++;
-#if 0
         if (wifi_hal_connect(vap_index, &candidate->external_ap) == RETURN_ERR) {
             wifi_util_error_print(WIFI_CTRL, "%s:%d sta connect failed for vap index: %d, "
                 "retry after timeout\n", __func__, __LINE__, vap_index);
         }
-#endif
+
         if (ext->ext_conn_status_ind_timeout_handler_id != 0) {
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d connect status timer is in progress, cancel\n",
                 __func__, __LINE__);
