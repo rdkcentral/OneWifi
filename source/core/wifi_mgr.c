@@ -334,7 +334,8 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    bus_get_vap_init_parameter(WIFI_DEVICE_MODE, &g_wifi_mgr.ctrl.network_mode);
+    bus_get_network_mode(WIFI_DEVICE_MODE, &g_wifi_mgr.ctrl.network_mode);
+
     if (start_wifimgr() != 0) {
         wifi_util_error_print(WIFI_MGR,"%s: wifimgr start failed\n", __func__);
         return -1;

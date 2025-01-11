@@ -322,6 +322,7 @@ BOOL isVapLnf(UINT apIndex);
 BOOL isVapLnfPsk(UINT apIndex);
 BOOL isVapMesh(UINT apIndex);
 BOOL isVapSTAMesh(UINT apIndex);
+BOOL isVapSTA(UINT apIndex);
 BOOL isVapHotspotSecure(UINT apIndex);
 BOOL isVapHotspotOpen5g(UINT apIndex);
 BOOL isVapHotspotOpen6g(UINT apIndex);
