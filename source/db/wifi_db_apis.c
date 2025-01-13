@@ -4353,7 +4353,7 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
 
     for (i = 0; i < config->num_vaps; i++) {
         if (g_wifidb->db_version < ONEWIFI_DB_VERSION_EXISTS_FLAG) {
-            if (ctrl->network_mode != rdk_dev_mode_type_ext) {
+            if (ctrl->network_mode != rdk_dev_mode_type_ext || ctrl->network_mode != rdk_dev_mode_type_sta) {
                 rdk_config[i].exists = true;
                 wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i],
                     &rdk_config[i]);
@@ -4404,7 +4404,7 @@ static void wifidb_vap_config_ext(wifi_vap_info_map_t *config, rdk_wifi_vap_info
     unsigned int i;
     wifi_ctrl_t *ctrl = get_wifictrl_obj();
 
-    if (ctrl->network_mode != rdk_dev_mode_type_ext) {
+    if (ctrl->network_mode != rdk_dev_mode_type_ext || ctrl->network_mode != rdk_dev_mode_type_sta) {
         return;
     }
 
@@ -6771,11 +6771,8 @@ int wifidb_init_global_config_default(wifi_global_param_t *config)
     strncpy(cfg.txrx_rate_list, tempBuf, sizeof(cfg.txrx_rate_list)-1);
     cfg.txrx_rate_list[sizeof(cfg.txrx_rate_list)-1] = '\0';
 
-#ifdef ONEWIFI_DEFAULT_NETWORKING_MODE
-    cfg.device_network_mode = ONEWIFI_DEFAULT_NETWORKING_MODE;
-#else
-    cfg.device_network_mode = rdk_dev_mode_type_gw;
-#endif
+    /* Update network mode which was set very early stage of OneWifi bring-up */
+    cfg.device_network_mode = g_wifidb->global_config.global_parameters.device_network_mode;
 
     pthread_mutex_lock(&g_wifidb->data_cache_lock);
     memcpy(config,&cfg,sizeof(cfg));
@@ -8471,8 +8468,8 @@ int get_all_param_from_psm_and_set_into_db(void)
 
     get_wifidb_obj()->desc.init_data_fn();
 
-    // Set Wifi Global Parameters
-    init_wifi_global_config();
+    /* Set Wifi Gas configuration */
+    init_wifi_gas_config();
 
     wifi_util_info_print(WIFI_MGR, "%s Done\n", __func__);
     return RETURN_OK;

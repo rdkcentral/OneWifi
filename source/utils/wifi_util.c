@@ -1446,6 +1446,27 @@ BOOL is_vap_mesh_sta(wifi_platform_property_t *wifi_prop, UINT ap_index)
     return (strncmp((char *)&vap_prop->vap_name[0], "mesh_sta", strlen("mesh_sta"))) ? FALSE :TRUE;
 }
 
+BOOL is_vap_sta(wifi_platform_property_t *wifi_prop, UINT ap_index)
+{
+    int sta = 0;
+    int mesh_sta = 0;
+
+    wifi_interface_name_idex_map_t* vap_prop;
+
+    if ((vap_prop = GET_VAP_INDEX_PROPERTY(wifi_prop, ap_index)) == NULL) {
+        return FALSE;
+    }
+
+    sta = (strncmp((char *)&vap_prop->vap_name[0], "sta", strlen("sta"))) ? FALSE :TRUE;
+    mesh_sta = (strncmp((char *)&vap_prop->vap_name[0], "mesh_sta", strlen("mesh_sta"))) ? FALSE :TRUE;
+
+    if (sta || mesh_sta) {
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
 BOOL is_vap_hotspot_secure_5g(wifi_platform_property_t *wifi_prop, UINT ap_index)
 {
     wifi_interface_name_idex_map_t* vap_prop;
