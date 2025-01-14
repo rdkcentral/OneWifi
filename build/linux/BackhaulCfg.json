@@ -1,0 +1,7 @@
+{
+    "_comment": [
+        "This is a sample JSON configuration for Backhaul configuration to be read for Mesh Sta"
+    ],
+    "Backhaul_SSID": "XFSETUP-433C",
+    "Backhaul_KeyPassphrase": "cactus9246fancy"
+}

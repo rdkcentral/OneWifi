@@ -457,3 +457,7 @@ run:
 setup:
 	./build/linux/setup.sh
 
+vapsetup:
+	cp ./build/linux/MultiVap_InterfaceMap.json /nvram/InterfaceMap.json
+	cp ./build/linux/BackhaulCfg.json /nvram/BackhaulCfg.json
+	./build/linux/create_virtual_intf.sh wlan1 4

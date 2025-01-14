@@ -278,7 +278,8 @@ bool is_sta_enabled(void)
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     //wifi_util_dbg_print(WIFI_CTRL,"[%s:%d] device mode:%d active_gw_check:%d\r\n",
     //    __func__, __LINE__, ctrl->network_mode, ctrl->active_gw_check);
-    return ((ctrl->network_mode == rdk_dev_mode_type_ext || ctrl->active_gw_check == true) &&
+    return ((ctrl->network_mode == rdk_dev_mode_type_ext ||
+                ctrl->network_mode == rdk_dev_mode_type_em_node || ctrl->active_gw_check == true) &&
         ctrl->eth_bh_status == false);
 }
 
@@ -576,7 +577,6 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
 #ifdef EASY_MESH_NODE
        wifi_util_info_print(WIFI_CTRL,"%s:%d\n",__func__,__LINE__);
        *ret_val = (unsigned int)rdk_dev_mode_type_em_node;
-
 #elif EASY_MESH_COLOCATED_NODE
        wifi_util_info_print(WIFI_CTRL,"%s:%d\n",__func__,__LINE__);
        *ret_val = (unsigned int)rdk_dev_mode_type_em_colocated_node;
@@ -1002,7 +1002,8 @@ int scan_results_callback(int radio_index, wifi_bss_info_t **bss, unsigned int *
         res.num = *num;
         memcpy((unsigned char *)res.bss, (unsigned char *)(*bss), (*num)*sizeof(wifi_bss_info_t));
     }
-    if (ctrl->network_mode == rdk_dev_mode_type_ext) {
+    if (ctrl->network_mode == rdk_dev_mode_type_ext ||
+        ctrl->network_mode == rdk_dev_mode_type_em_node) {
         push_event_to_ctrl_queue(&res, sizeof(scan_results_t), wifi_event_type_hal_ind,
             wifi_event_scan_results, NULL);
     }
