@@ -1,0 +1,16 @@
+{
+    "_comment": [
+        "This is a sample JSON file of Easymesh configuration to be read by OneWifi",
+        "and will be configured in /nvram as part of either",
+        " a) Wifi-reset by the controller, in case of collocated agent OR",
+        " b) as part of DPP Onboarding, in case of remote agent.",
+        "The AL_MAC_ADDR is the mac address of interface on which IEEE1905 packets are transmitted",
+        "Colocated_mode is to indicate whether OneWifi is part of local or remote agent."
+        "The backhaul SSID and KeyPassphrase will be used for configuring Mesh backhaul",
+        "or connecting to Mesh backhaul in case of backhaul STA"
+    ],
+    "AL_MAC_ADDR":  "d8:3a:dd:a2:05:5c",
+    "Colocated_mode": 0,
+    "Backhaul_SSID": "Mesh_Backhaul",
+    "Backhaul_KeyPassphrase": "test-backhaul"
+}
