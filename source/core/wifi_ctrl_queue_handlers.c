@@ -66,7 +66,7 @@ void process_scan_results_event(scan_results_t *results, unsigned int len)
     ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
     sta_svc = get_svc_by_type(ctrl, vap_svc_type_sta);
     if (is_sta_enabled()) {
-        ext_svc->event_fn(ext_svc, wifi_event_type_hal_ind, wifi_event_scan_results, vap_svc_event_none, results);
+        //ext_svc->event_fn(ext_svc, wifi_event_type_hal_ind, wifi_event_scan_results, vap_svc_event_none, results);
         sta_svc->event_fn(sta_svc, wifi_event_type_hal_ind, wifi_event_scan_results, vap_svc_event_none, results);
     }
 }

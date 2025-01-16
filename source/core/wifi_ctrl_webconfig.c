@@ -1827,7 +1827,7 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
                 sta_svc = get_svc_by_type(ctrl, vap_svc_type_sta);
                 if (sta_svc != NULL) {
                     vap_svc_sta_t *sta;
-                    sta = &sta_svc->s.sta;
+                    sta = &sta_svc->u.sta;
                     unsigned int connected_radio_index = 0;
                     connected_radio_index = get_radio_index_for_vap_index(sta_svc->prop, sta->connected_vap_index);
                     if ((sta->conn_state == connection_state_connected) && (connected_radio_index == mgr_radio_data->vaps.radio_index) && (mgr_radio_data->oper.channel != radio_data->oper.channel)) {
@@ -2015,7 +2015,7 @@ int webconfig_hal_single_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded
             sta_svc = get_svc_by_type(ctrl, vap_svc_type_sta);
             if (sta_svc != NULL) {
                 vap_svc_sta_t *sta;
-                sta = &sta_svc->s.sta;
+                sta = &sta_svc->u.sta;
                 unsigned int connected_radio_index = 0;
                 connected_radio_index = get_radio_index_for_vap_index(sta_svc->prop,
                     sta->connected_vap_index);

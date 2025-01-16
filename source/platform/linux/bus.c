@@ -336,6 +336,11 @@ static bus_error_t bus_remove_table_row(bus_handle_t *handle, char const *name)
     return bus_error_success;
 }
 
+static bus_error_t bus_register_obj(char const *name, void *cb_ptr, bus_handle_t *handle)
+{
+    return bus_error_success;
+}
+
 static void bus_desc_init(wifi_bus_desc_t *desc)
 {
     desc->bus_init_fn                     = bus_init;
@@ -356,4 +361,5 @@ static void bus_desc_init(wifi_bus_desc_t *desc)
     desc->bus_reg_table_row_fn            = bus_reg_table_row;
     desc->bus_unreg_table_row_fn          = bus_unreg_table_row;
     desc->bus_remove_table_row_fn         = bus_remove_table_row;
+    desc->bus_register_obj_fn             = bus_register_obj;
 }

@@ -574,7 +574,7 @@ void ext_start_scan(vap_svc_t *svc)
         (void)memcpy(channels.channels_list, channels_list,
                sizeof(*channels_list) * num_channels);
         channels.num_channels = num_channels;
-#if 0
+#if 1
         wifi_hal_startScan(radio_index, WIFI_RADIO_SCAN_MODE_OFFCHAN, dwell_time,
             channels.num_channels, channels.channels_list);
 #endif
@@ -826,7 +826,7 @@ void ext_try_connecting(vap_svc_t *svc)
         // Set to disabled in order to detect state change on connection retry
         reset_sta_state(svc, vap_index);
         ext->conn_retry++;
-#if 0
+#if 1
         if (wifi_hal_connect(vap_index, &candidate->external_ap) == RETURN_ERR) {
             wifi_util_error_print(WIFI_CTRL, "%s:%d sta connect failed for vap index: %d, "
                 "retry after timeout\n", __func__, __LINE__, vap_index);
@@ -856,7 +856,7 @@ int process_ext_connect_algorithm(vap_svc_t *svc)
 
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d process connection state: %s\r\n", __func__, __LINE__,
         ext_conn_state_to_str(ext->conn_state));
-
+#if 0
     ext->ext_connect_algo_processor_id = 0;
 
     switch (ext->conn_state) {
@@ -893,7 +893,7 @@ int process_ext_connect_algorithm(vap_svc_t *svc)
             ext_try_disconnecting(svc);
             break;
     }
-
+#endif
     return 0;
 }
 
@@ -948,6 +948,13 @@ int vap_svc_mesh_ext_start(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
     ctrl = svc->ctrl;
     ext = &svc->u.ext;
 
+        pthread_t thread_id;
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+    int ret = 0; 
+
+
     wifi_util_info_print(WIFI_CTRL, "%s:%d mesh service start\n", __func__, __LINE__);
 
     if (ext->is_started == true) {
@@ -965,7 +972,6 @@ int vap_svc_mesh_ext_start(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
     scheduler_add_timer_task(ctrl->sched, FALSE, &ext->ext_connect_algo_processor_id,
                 process_ext_connect_algorithm, svc,
                 EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1, FALSE);
-
     ext->is_started = true;
 
     return 0;
@@ -1421,6 +1427,10 @@ int process_ext_scan_results(vap_svc_t *svc, void *arg)
         scan_list->conn_attempt = connection_attempt_wait;
         scan_list->conn_retry_attempt = 0;
         scan_list->radio_freq_band = band;
+
+	//copy_scan_result_to_bss_nm(&bss_nm, tmp_bss);
+	//update_scan_results(&bss_nm, i);
+
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d: AP with ssid:%s, bssid:%s, rssi:%d, freq:%d\n",
             __func__, __LINE__, tmp_bss->ssid, to_mac_str(tmp_bss->bssid, bssid_str), tmp_bss->rssi, tmp_bss->freq);
         wifi_util_info_print(WIFI_CTRL, "%s:%d: AP with ssid:%s, bssid:%s, rssi:%d, freq:%d\n",

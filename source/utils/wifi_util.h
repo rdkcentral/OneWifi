@@ -58,7 +58,8 @@ typedef enum {
     WIFI_BLASTER,
     WIFI_OCS,
     WIFI_BUS,
-    WIFI_TCM
+    WIFI_TCM,
+    WIFI_SUPP
 } wifi_dbg_type_t;
 
 typedef enum {

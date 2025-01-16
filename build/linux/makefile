@@ -230,6 +230,7 @@ INCLUDEDIRS = \
     -I$(ONE_WIFI_HOME)/source/apps/sm \
     -I$(ONE_WIFI_HOME)/source/apps/whix \
     -I$(ONE_WIFI_HOME)/source/core/services \
+    -I$(ONE_WIFI_HOME)/source/core/services/rdkb_supp/inc \
     -I$(ONE_WIFI_HOME)/include/tr_181/ml \
     -I$(ONE_WIFI_HOME)/include \
     -I$(ONE_WIFI_HOME)/source/db \
@@ -287,6 +288,7 @@ CSOURCES = $(wildcard $(ONE_WIFI_HOME)/source/db/wifi_db.c) \
     $(wildcard $(ONE_WIFI_HOME)/source/apps/*.c) \
     $(wildcard $(ONE_WIFI_HOME)/source/stubs/*.c) \
     $(wildcard $(ONE_WIFI_HOME)/source/stats/*.c)	\
+    $(wildcard $(ONE_WIFI_HOME)/source/core/services/rdkb_supp/src/*.c)	\
     $(ONE_WIFI_HOME)/lib/common/util.c		\
     $(ONE_WIFI_HOME)/source/core/wifi_8021x.c	\
     $(ONE_WIFI_HOME)/source/core/wifi_ctrl_wifiapi_handlers.c	\

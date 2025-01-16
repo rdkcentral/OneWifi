@@ -651,16 +651,6 @@ int bus_get_network_mode(const char *name, unsigned int *ret_val)
     ctrl->dev_type = dev_subtype_rdk;
 #endif
 
-    wifi_util_dbg_print(WIFI_CTRL, "%s:%d --=====> \n", __func__, __LINE__);
-
-    check_device_modes(ret_val);
-    //ctrl->network_mode = rdk_dev_mode_type_ext;
-    //global_param.device_network_mode = rdk_dev_mode_type_ext;
-    ctrl->network_mode = (unsigned int)*ret_val;
-    global_param.device_network_mode = (int)*ret_val;
-    update_wifi_global_config(&global_param);
-    return 0;
-
     while ((rc = get_bus_descriptor()->bus_data_get_fn(&ctrl->handle, name, &data)) !=
         bus_error_success) {
         sleep(1);
@@ -671,6 +661,11 @@ int bus_get_network_mode(const char *name, unsigned int *ret_val)
 
             ctrl->network_mode = (unsigned int)*ret_val;
             global_param.device_network_mode = (int)*ret_val;
+
+            update_wifi_global_config(&global_param);
+
+            wifi_util_info_print(WIFI_CTRL, "%s:%d: network_mode:%d, dev_type:%d\n",
+                __func__, __LINE__, *ret_val, ctrl->dev_type);
 
             return 0;
         }

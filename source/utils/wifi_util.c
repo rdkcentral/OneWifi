@@ -814,6 +814,11 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
             snprintf(module_filename, sizeof(module_filename), "wifiTransientClientMgmtCtrl");
             break;
         }
+        case WIFI_SUPP:{
+            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiSuppDbg");
+            snprintf(module_filename, sizeof(module_filename), "wifiSupp");
+            break;
+        }
         default:
             return;
     }

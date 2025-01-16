@@ -171,10 +171,8 @@ typedef struct vap_svc {
     wifi_platform_property_t *prop;
     union {
               vap_svc_ext_t   ext;
-          } u;
-    union {
               vap_svc_sta_t   sta;
-          } s;
+          } u;
     vap_svc_start_fn_t       start_fn;
     vap_svc_stop_fn_t        stop_fn;
     vap_svc_update_fn_t      update_fn;

@@ -261,6 +261,7 @@ typedef bus_error_t (* wifi_bus_method_invoke_t)                (bus_handle_t *h
 typedef bus_error_t (* wifi_bus_reg_table_row_t)                (bus_handle_t *handle, char const *name, uint32_t row_index, char const *alias);
 typedef bus_error_t (* wifi_bus_unreg_table_row_t)              (bus_handle_t *handle, char const *name);
 typedef bus_error_t (* wifi_bus_remove_table_row_t)             (bus_handle_t *handle, char const *name);
+typedef bus_error_t (* wifi_bus_register_obj_t) (char const *name, void *cb_ptr, bus_handle_t *handle);
 
 typedef struct {
     wifi_bus_init_t                bus_init_fn;
@@ -281,6 +282,7 @@ typedef struct {
     wifi_bus_reg_table_row_t       bus_reg_table_row_fn;
     wifi_bus_unreg_table_row_t     bus_unreg_table_row_fn;
     wifi_bus_remove_table_row_t    bus_remove_table_row_fn;
+    wifi_bus_register_obj_t        bus_register_obj_fn;
 } wifi_bus_desc_t;
 
 typedef struct bus_event_sub {
