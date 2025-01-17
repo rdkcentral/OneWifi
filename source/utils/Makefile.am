@@ -43,8 +43,10 @@ AM_LDFLAGS += -lpthread
 AM_LDFLAGS += -ldl
 AM_LDFLAGS += -ljansson
 AM_LDFLAGS += -lrt
+if ONEWIFI_DML_SUPPORT
 AM_LDFLAGS += -L$(top_builddir)/../CcspCommonLibrary/lib
 AM_LDFLAGS += -lccsp_common
+endif
 AM_LDFLAGS += -lrdk_wifihal
 
 AM_CPPFLAGS = -Wall -Werror
@@ -63,7 +65,10 @@ libwifi_utils_la_SOURCES += ext_blaster.pb-c.c
 
 libwifi_utils_la_LDFLAGS = -rdynamic -lwebconfig_framework -lsecure_wrapper $(SYSTEMD_LDFLAGS) -lsecure_wrapper -lmsgpackc -lcjson -lm -ljansson -static
 
-libwifi_utils_la_LDFLAGS += -lccsp_common -lsyscfg -lprint_uptime -lsysevent -lrdk_wifihal
+if ONEWIFI_DML_SUPPORT
+libwifi_utils_la_LDFLAGS += -lccsp_common
+endif
+libwifi_utils_la_LDFLAGS += -lsyscfg -lprint_uptime -lsysevent -lrdk_wifihal
 
 if !HAL_IPC
 libwifi_utils_la_LDFLAGS += -lhal_wifi

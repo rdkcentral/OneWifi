@@ -350,6 +350,8 @@ int webconfig_analyze_pending_states(wifi_ctrl_t *ctrl)
 {
     static int pending_state = ctrl_webconfig_state_max;
     webconfig_subdoc_type_t type = webconfig_subdoc_type_unknown;
+    int radio_index = -1;
+    int state;
 
     wifi_mgr_t *mgr = get_wifimgr_obj();
     if ((ctrl->webconfig_state & CTRL_WEBCONFIG_STATE_MASK) == 0) {
@@ -511,8 +513,7 @@ int webconfig_analyze_pending_states(wifi_ctrl_t *ctrl)
         case ctrl_webconfig_state_radio_24G_rsp_pending:
         case ctrl_webconfig_state_radio_5G_rsp_pending:
         case ctrl_webconfig_state_radio_6G_rsp_pending:
-            int radio_index = -1;
-            int state = (ctrl->webconfig_state & pending_state);
+            state = (ctrl->webconfig_state & pending_state);
             if (state == ctrl_webconfig_state_radio_24G_rsp_pending) {
                 radio_index = 0;
                 type = webconfig_subdoc_type_radio_24G;
@@ -552,18 +553,6 @@ static bool is_preassoc_cac_config_changed(wifi_vap_info_t *old, wifi_vap_info_t
         || (IS_STR_CHANGED(old->u.bss_info.preassoc.minimum_advertised_mcs, new->u.bss_info.preassoc.minimum_advertised_mcs, sizeof(old->u.bss_info.preassoc.minimum_advertised_mcs)))
         || (IS_STR_CHANGED(old->u.bss_info.preassoc.sixGOpInfoMinRate, new->u.bss_info.preassoc.sixGOpInfoMinRate, sizeof(old->u.bss_info.preassoc.sixGOpInfoMinRate)))
         || (IS_CHANGED(old->u.bss_info.preassoc.time_ms, new->u.bss_info.preassoc.time_ms))
-        || (IS_CHANGED(old->u.bss_info.preassoc.min_num_mgmt_frames, new->u.bss_info.preassoc.min_num_mgmt_frames))
-        || (IS_STR_CHANGED(old->u.bss_info.preassoc.tcm_exp_weightage, new->u.bss_info.preassoc.tcm_exp_weightage, sizeof(old->u.bss_info.preassoc.tcm_exp_weightage)))
-        || (IS_STR_CHANGED(old->u.bss_info.preassoc.tcm_gradient_threshold, new->u.bss_info.preassoc.tcm_gradient_threshold, sizeof(old->u.bss_info.preassoc.tcm_gradient_threshold)))) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-static bool is_preassoc_tcm_config_changed(wifi_vap_info_t *old, wifi_vap_info_t *new)
-{
-    if ((IS_CHANGED(old->u.bss_info.preassoc.time_ms, new->u.bss_info.preassoc.time_ms))
         || (IS_CHANGED(old->u.bss_info.preassoc.min_num_mgmt_frames, new->u.bss_info.preassoc.min_num_mgmt_frames))
         || (IS_STR_CHANGED(old->u.bss_info.preassoc.tcm_exp_weightage, new->u.bss_info.preassoc.tcm_exp_weightage, sizeof(old->u.bss_info.preassoc.tcm_exp_weightage)))
         || (IS_STR_CHANGED(old->u.bss_info.preassoc.tcm_gradient_threshold, new->u.bss_info.preassoc.tcm_gradient_threshold, sizeof(old->u.bss_info.preassoc.tcm_gradient_threshold)))) {
@@ -1319,8 +1308,7 @@ int webconfig_cac_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data
         for (vap_index = 0; vap_index < getNumberVAPsPerRadio(radio_index); vap_index++) {
             wifi_util_dbg_print(WIFI_CTRL,"Comparing cac config\n");
 
-            if (is_preassoc_tcm_config_changed(&l_vap_maps->vap_array[vap_index], &data->radios[radio_index].vaps.vap_map.vap_array[vap_index])
-                || is_preassoc_cac_config_changed(&l_vap_maps->vap_array[vap_index], &data->radios[radio_index].vaps.vap_map.vap_array[vap_index])
+            if (is_preassoc_cac_config_changed(&l_vap_maps->vap_array[vap_index], &data->radios[radio_index].vaps.vap_map.vap_array[vap_index])
                 || is_postassoc_cac_config_changed(&l_vap_maps->vap_array[vap_index], &data->radios[radio_index].vaps.vap_map.vap_array[vap_index])) {
                 // cac or tcm data changed apply
                 wifi_util_info_print(WIFI_CTRL, "%s:%d: Change detected in received cac config, applying new configuration for vap: %d\n",
@@ -1472,8 +1460,6 @@ int webconfig_hal_multivap_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_dat
     webconfig_subdoc_type_t doc_type)
 {
     unsigned int num_vaps = 0;
-    unsigned int ap_index;
-    char *vap_name;
     char *vap_names[MAX_NUM_VAP_PER_RADIO];
     wifi_mgr_t *mgr = get_wifimgr_obj();
     rdk_wifi_vap_map_t *mgr_vap_map = NULL;
@@ -2046,7 +2032,7 @@ int webconfig_hal_single_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded
             old_ecomode, new_ecomode);
         if (old_ecomode != new_ecomode) {
             // write the value to database and reboot
-            ecomode_telemetry_update_and_reboot(i, new_ecomode);
+            ecomode_telemetry_update_and_reboot(radio_index, new_ecomode);
         }
 #endif // defined (FEATURE_SUPPORT_ECOPOWERDOWN)
         if (is_radio_6g_modified) {
@@ -2092,6 +2078,9 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
     int ret = RETURN_OK;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     vap_svc_t  *pub_svc = NULL;
+    wifi_ctrl_webconfig_state_t conf_state_pending;
+    wifi_ctrl_webconfig_state_t radio_state_pending;
+
     wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: webconfig_state:%02x doc_type:%d doc_name:%s\n", 
             __func__, __LINE__, ctrl->webconfig_state, doc->type, doc->name);
 
@@ -2494,7 +2483,6 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
         case webconfig_subdoc_type_vap_24G:
         case webconfig_subdoc_type_vap_5G:
         case webconfig_subdoc_type_vap_6G:
-            wifi_ctrl_webconfig_state_t conf_state_pending;
             if (doc->type == webconfig_subdoc_type_vap_24G) {
                 conf_state_pending = ctrl_webconfig_state_vap_24G_cfg_rsp_pending;
             } else if (doc->type == webconfig_subdoc_type_vap_5G) {
@@ -2525,7 +2513,6 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
         case webconfig_subdoc_type_radio_24G:
         case webconfig_subdoc_type_radio_5G:
         case webconfig_subdoc_type_radio_6G:
-            wifi_ctrl_webconfig_state_t radio_state_pending;
             if (doc->type == webconfig_subdoc_type_radio_24G) {
                 radio_state_pending = ctrl_webconfig_state_radio_24G_rsp_pending;
             } else if (doc->type == webconfig_subdoc_type_radio_5G) {

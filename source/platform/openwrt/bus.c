@@ -154,6 +154,22 @@ wifi_bus_desc_t *get_bus_descriptor(void)
     return &g_bus.desc;
 }
 
+static bus_error_t bus_reg_table_row(bus_handle_t *handle, char const *name,
+    uint32_t row_index, char const *alias)
+{
+    return bus_error_success;
+}
+
+static bus_error_t bus_unreg_table_row(bus_handle_t *handle, char const *name)
+{
+    return bus_error_success;
+}
+
+static bus_error_t bus_remove_table_row(bus_handle_t *handle, char const *name)
+{
+    return bus_error_success;
+}
+
 void wifi_bus_init(void)
 {
     g_bus.desc.bus_init_fn = bus_init;
@@ -175,4 +191,7 @@ void wifi_bus_init(void)
     g_bus.desc.bus_property_get_name_fn = bus_property_get_name;
     g_bus.desc.bus_method_invoke_fn = bus_method_invoke;
     g_bus.desc.bus_get_trace_context_fn = bus_get_trace_context;
+    g_bus.bus_reg_table_row_fn = bus_reg_table_row;
+    g_bus.bus_unreg_table_row_fn = bus_unreg_table_row;
+    g_bus.bus_remove_table_row_fn = bus_remove_table_row;
 }

@@ -828,9 +828,13 @@ static void upload_client_debug_stats_sta_vap_activity_stats(INT apIndex)
 int upload_client_debug_stats_whix(unsigned int num_devs, int vap_index, sta_data_t *sta)
 {
     static int vap_status = 0;
-
-    wifi_monitor_t *monitor_param = (wifi_monitor_t *)get_wifi_monitor();
-    vap_status = monitor_param->bssid_data[vap_index].ap_params.ap_status;
+    wifi_vap_info_t *vap_info;
+    vap_info = getVapInfo(vap_index);
+    if (vap_info == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d: vap_info is NULL for vap_index : %d\r\n", __func__, __LINE__, vap_index);
+        return RETURN_ERR;
+    }
+    vap_status = vap_info->u.bss_info.enabled;
 
     if (NULL == sta && num_devs != 0) {
         wifi_util_error_print(WIFI_APPS, "%s:%d sta is NULL and num_devs %u\n", __func__, __LINE__, num_devs);
