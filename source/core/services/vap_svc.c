@@ -71,6 +71,14 @@ int svc_init(vap_svc_t *svc, vap_svc_type_t type)
             svc->is_my_fn = vap_svc_is_mesh_ext;
             break;
 
+        case vap_svc_type_sta:
+            svc->start_fn = vap_svc_sta_start;
+            svc->stop_fn = vap_svc_sta_stop;
+            svc->update_fn = vap_svc_sta_update;
+            svc->event_fn = vap_svc_sta_event;
+            svc->is_my_fn = vap_svc_is_sta;
+            break;
+
         case vap_svc_type_max:
             wifi_util_dbg_print(WIFI_CTRL,"%s:%d ctrl task service init event\n", __func__, __LINE__);
             break;
@@ -333,6 +341,9 @@ vap_svc_t *get_svc_by_name(wifi_ctrl_t *ct, char *vap_name)
         type = vap_svc_type_public;
     } else if (strstr(vap_name, "hotspot") != NULL) {
         type = vap_svc_type_public;
+    } else if ((strncmp(vap_name, "sta", strlen("sta")) == 0) ||
+              strncmp(vap_name, "mesh_sta", strlen("mesh_sta")) == 0) {
+        type = vap_svc_type_sta;
     } else if (strncmp(vap_name, "mesh_sta", strlen("mesh_sta")) == 0) {
         type = vap_svc_type_mesh_ext;
     } else if (strncmp(vap_name, "mesh_backhaul", strlen("mesh_backhaul")) == 0) {

@@ -132,7 +132,7 @@ int webconfig_blaster_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *
     mgr->blaster_config_global = data->blaster;
 
     /* If Device operating in POD mode, Send the blaster status as new to the cloud */
-    if (ctrl->network_mode == rdk_dev_mode_type_ext) {
+    if (ctrl->network_mode == rdk_dev_mode_type_ext || ctrl->network_mode == rdk_dev_mode_type_sta) {
         wifi_util_info_print(WIFI_CTRL, "%s %d POD MOde Activated. Sending Blaster status to cloud\n", __func__, __LINE__);
         mgr->ctrl.webconfig_state |= ctrl_webconfig_state_blaster_cfg_init_rsp_pending;
         webconfig_send_blaster_status(ctrl);
@@ -649,9 +649,10 @@ static void webconfig_send_sta_bssid_change_event(wifi_ctrl_t *ctrl, wifi_vap_in
     wifi_vap_info_t *new)
 {
     vap_svc_t *ext_svc;
+    vap_svc_t *sta_svc;
     char old_bssid_str[32], new_bssid_str[32];
 
-    if (ctrl->network_mode != rdk_dev_mode_type_ext ||
+    if (ctrl->network_mode != rdk_dev_mode_type_ext || ctrl->network_mode != rdk_dev_mode_type_sta ||
             !isVapSTAMesh(new->vap_index) ||
             memcmp(old->u.sta_info.bssid, new->u.sta_info.bssid, sizeof(bssid_t)) == 0) {
         return;
@@ -669,6 +670,14 @@ static void webconfig_send_sta_bssid_change_event(wifi_ctrl_t *ctrl, wifi_vap_in
 
     ext_svc->event_fn(ext_svc, wifi_event_type_webconfig, wifi_event_webconfig_set_data_sta_bssid,
         vap_svc_event_none, new);
+
+    sta_svc = get_svc_by_type(ctrl, vap_svc_type_sta);
+    if (sta_svc == NULL) {
+        return;
+    }
+    sta_svc->event_fn(sta_svc, wifi_event_type_webconfig, wifi_event_webconfig_set_data_sta_bssid,
+        vap_svc_event_none, new);
+
 }
 
 //We need to know that config applied due to force apply
@@ -784,7 +793,7 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
         // Ignore exists flag change because STA interfaces always enabled in HAL. This allows to
         // avoid redundant reconfiguration with STA disconnection.
         // For pods, STA is just like any other AP interface, deletion is allowed.
-        if (ctrl->network_mode == rdk_dev_mode_type_ext && isVapSTAMesh(tgt_vap_index)) {
+        if ((ctrl->network_mode == rdk_dev_mode_type_ext || ctrl->network_mode == rdk_dev_mode_type_sta) && isVapSTAMesh(tgt_vap_index)) {
             mgr_rdk_vap_info->exists = rdk_vap_info->exists;
         }
 
@@ -1812,6 +1821,25 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
                     }
                 }
             }
+
+            if (ctrl->network_mode == rdk_dev_mode_type_sta) {
+                vap_svc_t *sta_svc;
+                sta_svc = get_svc_by_type(ctrl, vap_svc_type_sta);
+                if (sta_svc != NULL) {
+                    vap_svc_sta_t *sta;
+                    sta = &sta_svc->u.sta;
+                    unsigned int connected_radio_index = 0;
+                    connected_radio_index = get_radio_index_for_vap_index(sta_svc->prop, sta->connected_vap_index);
+                    if ((sta->conn_state == connection_state_connected) && (connected_radio_index == mgr_radio_data->vaps.radio_index) && (mgr_radio_data->oper.channel != radio_data->oper.channel)) {
+                        start_wifi_sched_timer(mgr_radio_data->vaps.radio_index, ctrl, wifi_csa_sched);
+                        sta_svc->event_fn(sta_svc, wifi_event_type_webconfig, wifi_event_webconfig_set_data, vap_svc_event_none, &radio_data->oper);
+                        // driver does not change channel in STA connected state therefore skip
+                        // wifi_hal_setRadioOperatingParameters and update channel on disconnection/CSA
+                        continue;
+                    }
+                }
+            }
+#
 #if defined (FEATURE_SUPPORT_ECOPOWERDOWN)
             // Save the ECO mode state before update to the DB
             old_ecomode = mgr_radio_data->oper.EcoPowerDown;
@@ -1982,6 +2010,28 @@ int webconfig_hal_single_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded
                 }
             }
         }
+        if (ctrl->network_mode == rdk_dev_mode_type_sta) {
+            vap_svc_t *sta_svc;
+            sta_svc = get_svc_by_type(ctrl, vap_svc_type_sta);
+            if (sta_svc != NULL) {
+                vap_svc_sta_t *sta;
+                sta = &sta_svc->u.sta;
+                unsigned int connected_radio_index = 0;
+                connected_radio_index = get_radio_index_for_vap_index(sta_svc->prop,
+                    sta->connected_vap_index);
+                if ((sta->conn_state == connection_state_connected) &&
+                    (connected_radio_index == mgr_radio_data->vaps.radio_index) &&
+                    (mgr_radio_data->oper.channel != radio_data->oper.channel)) {
+                    start_wifi_sched_timer(mgr_radio_data->vaps.radio_index, ctrl, wifi_csa_sched);
+                    sta_svc->event_fn(sta_svc, wifi_event_type_webconfig,
+                        wifi_event_webconfig_set_data, vap_svc_event_none, &radio_data->oper);
+                    // driver does not change channel in STA connected state therefore skip
+                    // wifi_hal_setRadioOperatingParameters and update channel on disconnection/CSA
+                    return RETURN_OK;
+                }
+            }
+        }
+
 #if defined(FEATURE_SUPPORT_ECOPOWERDOWN)
         // Save the ECO mode state before update to the DB
         old_ecomode = mgr_radio_data->oper.EcoPowerDown;
@@ -2317,7 +2367,7 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
         case webconfig_subdoc_type_blaster:
             if (data->descriptor & webconfig_data_descriptor_encoded) {
                 /* If Device is operating in POD Mode, send the status to cloud */
-                if (ctrl->network_mode == rdk_dev_mode_type_ext) {
+                if (ctrl->network_mode == rdk_dev_mode_type_ext || ctrl->network_mode == rdk_dev_mode_type_sta) {
                     if (ctrl->webconfig_state & ctrl_webconfig_state_blaster_cfg_init_rsp_pending) {
                         wifi_util_info_print(WIFI_CTRL, "%s:%d: Blaster Status updated as new\n", __func__, __LINE__);
                         ctrl->webconfig_state &= ~ctrl_webconfig_state_blaster_cfg_init_rsp_pending;

@@ -58,7 +58,8 @@ typedef enum {
     WIFI_BLASTER,
     WIFI_OCS,
     WIFI_BUS,
-    WIFI_TCM
+    WIFI_TCM,
+    WIFI_SUPP
 } wifi_dbg_type_t;
 
 typedef enum {
@@ -276,6 +277,7 @@ BOOL is_vap_hotspot_secure_5g(wifi_platform_property_t *wifi_prop, unsigned int 
 BOOL is_vap_hotspot_secure_6g(wifi_platform_property_t *wifi_prop, unsigned int ap_index);
 BOOL is_vap_lnf_radius(wifi_platform_property_t *wifi_prop, unsigned int ap_index);
 BOOL is_vap_mesh_sta(wifi_platform_property_t *wifi_prop, unsigned int ap_index);
+BOOL is_vap_sta(wifi_platform_property_t *wifi_prop, unsigned int ap_index);
 int country_code_conversion(wifi_countrycode_type_t *country_code, char *country, int country_len,
     unsigned int conv_type);
 int country_id_conversion(wifi_countrycode_type_t *country_code, char *country_id,

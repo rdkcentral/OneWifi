@@ -370,7 +370,7 @@ typedef struct {
     char          wps_pin[10];
 } __attribute__((__packed__)) wps_pin_config_t;
 
-#define MAX_SCANNED_VAPS       32
+#define MAX_SCANNED_VAPS       64
 
 typedef struct {
     unsigned int radio_index;
@@ -386,8 +386,9 @@ typedef enum {
 typedef enum {
     rdk_dev_mode_type_gw,
     rdk_dev_mode_type_ext,
-    rdk_dev_mode_type_em_node,
-    rdk_dev_mode_type_em_colocated_node
+    rdk_dev_mode_type_em_gw,
+    rdk_dev_mode_type_em_ext,
+    rdk_dev_mode_type_sta
 } rdk_dev_mode_type_t;
 
 typedef struct {

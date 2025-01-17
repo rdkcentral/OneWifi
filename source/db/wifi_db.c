@@ -38,7 +38,7 @@ void init_wifidb(void)
     init_wifidb_data();
 
     /* Set Wifi Global Parameters */
-    init_wifi_global_config();
+    init_wifi_gas_config();
 }
 
 #define OFFCHAN_DEFAULT_TSCAN_IN_MSEC 63
@@ -283,7 +283,10 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
     cfg.radio_index = wifi_hal_cap_obj->wifi_prop.interface_map[vap_array_index].rdk_radio_index;
     convert_radio_index_to_freq_band(&wifi_hal_cap_obj->wifi_prop, cfg.radio_index, &band);
 
-    if (isVapSTAMesh(vap_index)) {
+    printf("%s:%d: vap_array_index %d vap_index %d vap_name %s, isVapSTAMesh(vap_index):%d\n",__func__, __LINE__, vap_array_index, vap_index,
+                                        wifi_hal_cap_obj->wifi_prop.interface_map[vap_array_index].vap_name, isVapSTAMesh(vap_index));
+
+    if (isVapSTAMesh(vap_index) || isVapSTA(vap_index)) {
         cfg.vap_mode = wifi_vap_mode_sta;
         if (band == WIFI_FREQUENCY_6_BAND) {
             cfg.u.sta_info.security.mode = wifi_security_mode_wpa3_personal;
@@ -309,6 +312,18 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         } else {
             strcpy(cfg.u.sta_info.security.u.key.key, INVALID_KEY);
         }
+
+#ifndef ANIKET_PHONE
+        strcpy(cfg.u.sta_info.ssid, "1_Aniket");
+        strcpy(cfg.u.sta_info.security.u.key.key, "1234567890");
+#else
+        strcpy(cfg.u.sta_info.ssid, "VIKaS_XB8_2G");
+        strcpy(cfg.u.sta_info.security.u.key.key, "hello123");
+#endif
+        printf("===>%s:%d: vap_array_index %d vap_index %d vap_name %s, ssid:%s, key:%s!\n",__func__, __LINE__, vap_array_index, vap_index,
+                                        wifi_hal_cap_obj->wifi_prop.interface_map[vap_array_index].vap_name, cfg.u.sta_info.ssid, cfg.u.sta_info.security.u.key.key);
+
+
         if ((strlen(cfg.u.sta_info.security.u.key.key) < MIN_PWD_LEN) || (strlen(cfg.u.sta_info.security.u.key.key) > MAX_PWD_LEN)) {
             wifi_util_error_print(WIFI_DB, "%s:%d: Incorrect password length %d for vap '%s'\n", __func__, __LINE__, strlen(cfg.u.sta_info.security.u.key.key), vap_name);
             strncpy(cfg.u.sta_info.security.u.key.key, INVALID_KEY, sizeof(cfg.u.sta_info.security.u.key.key));
@@ -720,6 +735,18 @@ int update_wifi_interworking_config(char *vap_name, wifi_interworking_t *config)
 
 int update_wifi_global_config(wifi_global_param_t *config)
 {
+    wifi_global_param_t cfg;
+    wifi_mgr_t *g_wifi = get_wifimgr_obj();
+
+    memset(&cfg,0,sizeof(cfg));
+
+    /* Update network mode which was set very early stage of OneWifi bring-up */
+    cfg.device_network_mode = g_wifi->global_config.global_parameters.device_network_mode;
+
+    pthread_mutex_lock(&g_wifi->data_cache_lock);
+    memcpy(config,&cfg,sizeof(cfg));
+    pthread_mutex_unlock(&g_wifi->data_cache_lock);
+
     return 0;
 }
 

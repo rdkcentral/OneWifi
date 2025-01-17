@@ -2154,14 +2154,16 @@ int parse_input_parameters(char *first_input, char *second_input, char *input_fi
     } else if (!strncmp(first_input, "-c", strlen("-c"))) {
         if (!strncmp(second_input, "0", strlen("0"))) {
             get_device_network_mode_from_ctrl_thread(consumer, &device_network_mode);
-            if (device_network_mode == rdk_dev_mode_type_ext) {
+            if ((device_network_mode == rdk_dev_mode_type_ext) ||
+               (device_network_mode == rdk_dev_mode_type_sta)) {
                 consumer_app_trigger_wan_test(consumer, consumer_test_start_wan_manager, false);
             } else {
                 printf("%s:%d: current mode is %d, wan manager test-case run only in extender(station) mode\r\n", __func__, __LINE__, device_network_mode);
             }
         } else if (!strncmp(second_input, "1", strlen("1"))) {
             get_device_network_mode_from_ctrl_thread(consumer, &device_network_mode);
-            if (device_network_mode == rdk_dev_mode_type_ext) {
+            if ((device_network_mode == rdk_dev_mode_type_ext)
+               (device_network_mode == rdk_dev_mode_type_sta)) {
                 consumer_app_trigger_wan_test(consumer, consumer_test_start_wan_manager, true);
             } else {
                 printf("%s:%d: current mode is %d, wan manager test-case run only in extender(station) mode\r\n", __func__, __LINE__, device_network_mode);

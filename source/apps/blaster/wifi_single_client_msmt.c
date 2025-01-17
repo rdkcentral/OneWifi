@@ -1926,7 +1926,9 @@ void stream_client_msmt_data(bool ActiveMsmtFlag)
 
         if (ctrl->network_mode == rdk_dev_mode_type_gw) {
             upload_single_client_active_msmt_data(sta);
-        } else if (act_monitor->status != ACTIVE_MSMT_STATUS_SUCCEED && ctrl->network_mode == rdk_dev_mode_type_ext) {
+        } else if (act_monitor->status != ACTIVE_MSMT_STATUS_SUCCEED &&
+                  (ctrl->network_mode == rdk_dev_mode_type_ext ||
+                  ctrl->network_mode == rdk_dev_mode_type_sta)) {
             pod_upload_single_client_active_msmt_data(sta);
         }
     }

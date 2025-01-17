@@ -580,7 +580,7 @@ bus_error_t webconfig_init_data_get_subdoc(char *event_name, raw_data_t *p_data)
         p_data->raw_data_len = str_size;
 
         webconfig_data_free(&data);
-    } else if (ctrl->network_mode == rdk_dev_mode_type_ext) {
+    } else if (ctrl->network_mode == rdk_dev_mode_type_ext || ctrl->network_mode == rdk_dev_mode_type_sta) {
         if (check_wifi_radio_sched_timeout_active_status(ctrl) == true) {
             wifi_util_dbg_print(WIFI_CTRL, "%s wifidb and cache are not synced!\n", __FUNCTION__);
             return bus_error_invalid_operation;
