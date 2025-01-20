@@ -2528,6 +2528,8 @@ wifi_rfc_dml_parameters_t *get_ctrl_rfc_parameters(void)
         g_wifi_mgr->rfc_dml_parameters.wifi_offchannelscan_sm_rfc;
     g_wifi_mgr->ctrl.rfc_params.tcm_enabled_rfc =
         g_wifi_mgr->rfc_dml_parameters.tcm_enabled_rfc;
+    g_wifi_mgr->ctrl.rfc_dml_parameters.rsn_override_activate =
+        g_wifi_mgr->rfc_dml_parameters.rsn_override_activate;
     strcpy(g_wifi_mgr->ctrl.rfc_params.rfc_id, g_wifi_mgr->rfc_dml_parameters.rfc_id);
     return &g_wifi_mgr->ctrl.rfc_params;
 }

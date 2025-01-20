@@ -179,7 +179,8 @@ static inline bool is_personal_sec(wifi_security_modes_t mode)
         mode == wifi_security_mode_wpa2_personal ||
         mode == wifi_security_mode_wpa_wpa2_personal ||
         mode == wifi_security_mode_wpa3_personal ||
-        mode == wifi_security_mode_wpa3_transition;
+        mode == wifi_security_mode_wpa3_transition ||
+        mode == wifi_security_mode_wpa3_compatibility;
 }
 
 static inline bool is_enterprise_sec(wifi_security_modes_t mode)
@@ -421,6 +422,12 @@ WiFi_GetParamBoolValue
     if (AnscEqualString(ParamName, "Tcm", TRUE))
     {
         *pBool = rfc_pcfg->tcm_enabled_rfc;
+        return TRUE;
+    }
+
+    if(AnscEqualString(ParamName, "RSNOverrideActivated", TRUE))
+    {
+        *pBool = rfc_pcfg->rsn_override_activate;
         return TRUE;
     }
 
@@ -1182,6 +1189,15 @@ WiFi_SetParamBoolValue
         }
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Tcm started\n", __FUNCTION__,__LINE__);
         return TRUE;
+    }
+
+    if(AnscEqualString(ParamName, "RSNOverrideActivated", TRUE))
+    {
+        if(bvalue != rfc_pcfg->rsn_override_activate) {
+            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_rsn_override_rfc);
+            wifi_util_error_print(WIFI_DMCLI,"%s:%d setting RSNOverride to %d \n", __FUNCTION__, __LINE__, bValue);
+        }
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d RSNOverride is %d \n", __FUNCTION__, __LINE__, bValue);
     }
 
     return FALSE;
@@ -8593,6 +8609,8 @@ Security_SetParamStringValue
             memset(&l_security_cfg->u, 0, sizeof(l_security_cfg->u));
         }
 
+        if(TmpMode == wifi_security_mode_wpa3_compatibility && )
+
         l_security_cfg->mode = TmpMode;
         switch (l_security_cfg->mode)
         {
@@ -8628,6 +8646,9 @@ Security_SetParamStringValue
                 break;
             case wifi_security_mode_enhanced_open:
                 l_security_cfg->mfp = wifi_mfp_cfg_required;
+                break;
+            case wifi_security_mode_wpa3_compatibility:
+                l_security_cfg->u.key.type = wifi_security_key_type_psk_sae;
                 break;
             default:
                 break;

@@ -150,6 +150,7 @@ typedef enum {
     wifi_event_type_collect_stats,
     wifi_event_type_tcm_rfc,
     wifi_event_type_send_action_frame,
+    wifi_event_type_rsn_override_rfc,
     wifi_event_command_max,
 
 

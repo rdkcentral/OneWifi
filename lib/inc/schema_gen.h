@@ -196,6 +196,7 @@
         PJS_OVS_BOOL(wifi_offchannelscan_app_rfc) \
         PJS_OVS_BOOL(wifi_offchannelscan_sm_rfc) \
         PJS_OVS_BOOL(tcm_enabled_rfc) \
+        PJS_OVS_BOOL(rsn_override_activate) \
   )
 
 #define PJS_SCHEMA_Wifi_MacFilter_Config \
@@ -2102,7 +2103,8 @@
     COLUMN(hotspot_secure_6g_last_enabled) \
     COLUMN(wifi_offchannelscan_app_rfc) \
     COLUMN(wifi_offchannelscan_sm_rfc) \
-    COLUMN(tcm_enabled_rfc)
+    COLUMN(tcm_enabled_rfc) \
+    COLUMN(rsn_override_activate)
 
 #define SCHEMA__Wifi_MacFilter_Config "Wifi_MacFilter_Config"
 #define SCHEMA_COLUMN__Wifi_MacFilter_Config(COLUMN) \
@@ -3439,6 +3441,7 @@
 #define SCHEMA__Wifi_Rfc_Config__wifi_offchannelscan_sm_rfc "wifi_offchannelscan_sm_rfc"
 #define SCHEMA__Wifi_Rfc_Config__Levl_rfc "levl_enabled_rfc"
 #define SCHEMA__Wifi_Rfc_Config__tcm_enabled_rfc "tcm_enabled_rfc"
+#define SCHEMA__Wifi_Rfc_Config__rsn_override_activate "rsn_override_activate"
 
 #define SCHEMA__Alarms__code "code"
 #define SCHEMA__Alarms__timestamp "timestamp"

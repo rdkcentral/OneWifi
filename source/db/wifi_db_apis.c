@@ -231,6 +231,7 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon, struct schema_Wifi_Rf
         rfc_param->wifi_offchannelscan_sm_rfc = new_rec->wifi_offchannelscan_sm_rfc;
         rfc_param->hotspot_secure_6g_last_enabled = new_rec->hotspot_secure_6g_last_enabled;
         rfc_param->tcm_enabled_rfc = new_rec->tcm_enabled_rfc;
+        rfc_param->rsn_override_activate = new_rec->rsn_override_activate;
 
         wifi_util_dbg_print(WIFI_DB,
             "%s:%d wifipasspoint_rfc=%d wifiinterworking_rfc=%d radiusgreylist_rfc=%d "
@@ -238,7 +239,8 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon, struct schema_Wifi_Rf
             "hotspot_open_2g_last_enabled=%dhotspot_open_5g_last_enabled=%d "
             "hotspot_open_6g_last_enabled=%d hotspot_secure_2g_last_enabled=%d "
             "hotspot_secure_5g_last_enabled=%d hotspot_secure_6g_last_enabled=%d "
-            "wifi_offchannelscan_app_rfc=%d offchannelscan=%d rfc_id=%s levl_enabled_rfc=%d tcm_enabled_rfc=%d \n",
+            "wifi_offchannelscan_app_rfc=%d offchannelscan=%d rfc_id=%s "
+            "levl_enabled_rfc=%d tcm_enabled_rfc=%d rsn_override_activate=%d \n",
             __func__, __LINE__, rfc_param->wifipasspoint_rfc, rfc_param->wifiinterworking_rfc,
             rfc_param->radiusgreylist_rfc, rfc_param->dfsatbootup_rfc, rfc_param->dfs_rfc,
             rfc_param->wpa3_rfc, rfc_param->twoG80211axEnable_rfc,
@@ -246,7 +248,8 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon, struct schema_Wifi_Rf
             rfc_param->hotspot_open_6g_last_enabled, rfc_param->hotspot_secure_2g_last_enabled,
             rfc_param->hotspot_secure_5g_last_enabled, rfc_param->hotspot_secure_6g_last_enabled,
             rfc_param->wifi_offchannelscan_app_rfc, rfc_param->wifi_offchannelscan_sm_rfc,
-            rfc_param->rfc_id, rfc_param->levl_enabled_rfc,rfc_param->tcm_enabled_rfc);
+            rfc_param->rfc_id, rfc_param->levl_enabled_rfc,rfc_param->tcm_enabled_rfc,
+            rfc_param->rsn_override_activate);
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
     }
 }
@@ -1671,6 +1674,7 @@ int wifidb_get_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_info)
     rfc_info->wifi_offchannelscan_app_rfc = pcfg->wifi_offchannelscan_app_rfc;
     rfc_info->wifi_offchannelscan_sm_rfc = pcfg->wifi_offchannelscan_sm_rfc;
     rfc_info->tcm_enabled_rfc = pcfg->tcm_enabled_rfc;
+    rfc_info->rsn_override_activate = pcfg->rsn_override_activate;
     free(pcfg);
     return 0;
 }
@@ -4216,6 +4220,7 @@ void wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config)
     rfc_config.wifi_offchannelscan_app_rfc = false;
     rfc_config.wifi_offchannelscan_sm_rfc = false;
     rfc_config.tcm_enabled_rfc = false;
+    rfc_config.rsn_override_activate = false;
     pthread_mutex_lock(&g_wifidb->data_cache_lock);
     memcpy(config,&rfc_config,sizeof(wifi_rfc_dml_parameters_t));
     pthread_mutex_unlock(&g_wifidb->data_cache_lock);
@@ -5411,6 +5416,8 @@ int wifidb_update_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_param)
     cfg.wifi_offchannelscan_app_rfc = rfc_param->wifi_offchannelscan_app_rfc;
     cfg.wifi_offchannelscan_sm_rfc = rfc_param->wifi_offchannelscan_sm_rfc;
     cfg.tcm_enabled_rfc = rfc_param->tcm_enabled_rfc;
+    cfg.rsn_override_activate = rfc_param->rsn_override_activate;
+    wifi_util_dbg_print(WIFI_DB,"%s:%d: rsn_override_activate:%d \n", __func__, __LINE__, rfc_param->rsn_override_activate);
     if (update == true) {
         where = onewifi_ovsdb_tran_cond(OCLM_STR, "rfc_id", OFUNC_EQ, index); 
         ret = onewifi_ovsdb_table_update_where(g_wifidb->wifidb_sock_path, &table_Wifi_Rfc_Config, where, &cfg);
