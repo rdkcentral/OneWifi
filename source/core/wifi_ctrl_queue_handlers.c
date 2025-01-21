@@ -3042,7 +3042,7 @@ void process_send_action_frame_command(void *data, unsigned int len)
 
 void process_rsn_override_rfc(bool type)
 {
-    wifi_util_error_print(WIFI_DB, "Enter func %s: %d : RSN RFC: %d\n", __FUNCTION__, __LINE__, rsn_override_activate);
+    wifi_util_error_print(WIFI_DB, "Enter func %s: %d : RSN RFC: %d\n", __FUNCTION__, __LINE__, type);
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
     wifi_vap_info_map_t tgt_vap_map;
     wifi_vap_info_t *vapInfo = NULL;
