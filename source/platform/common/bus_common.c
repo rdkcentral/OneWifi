@@ -24,6 +24,16 @@
 #include "bus.h"
 #include "bus_common.h"
 
+#define COMPARE_INT_RANGE(min_value, max_value, set_value) do { \
+    if ((set_value) < (min_value)) { \
+        wifi_util_info_print(WIFI_BUS, "Value %d is less than the minimum value (%d)\n", (set_value), (min_value)); \
+        return RETURN_ERR; \
+    } else if ((set_value) > (max_value)) { \
+        wifi_util_info_print(WIFI_BUS, "Value %d is greater than the maximum value (%d)\n", (set_value), (max_value)); \
+        return RETURN_ERR; \
+    } \
+} while (0)
+
 pthread_mutex_t *get_bus_mux_mutex(void)
 {
     wifi_bus_t *p_bus = get_bus_obj();
@@ -684,4 +694,80 @@ bus_error_t bus_table_remove_row(elem_node_map_t *p_root_node, char *p_name_spac
         return free_node_elems(table_row_node);
     }
     return bus_error_destination_not_found;
+}
+
+int check_dm_min_max_data_range(long int min_data, long int max_data, raw_data_t *bus_set_data)
+{
+    if (min_data == 0 && max_data == 0) {
+        wifi_util_info_print(WIFI_BUS,"%s:%d: int range validation is not needed\n",__func__, __LINE__);
+        return RETURN_OK;
+    }
+
+    wifi_util_info_print(WIFI_BUS,"%s:%d: set data type:%d\n",__func__, __LINE__, bus_set_data->data_type);
+    if (bus_set_data->data_type == bus_data_type_boolean) {
+        COMPARE_INT_RANGE((bool)min_data, (bool)max_data, bus_set_data->raw_data.b);
+    } else if (bus_set_data->data_type == bus_data_type_int8) {
+        COMPARE_INT_RANGE((int8_t)min_data, (int8_t)max_data, bus_set_data->raw_data.i8);
+    } else if (bus_set_data->data_type == bus_data_type_uint8) {
+        COMPARE_INT_RANGE((uint8_t)min_data, (uint8_t)max_data, bus_set_data->raw_data.u8);
+    } else if (bus_set_data->data_type == bus_data_type_int16) {
+        COMPARE_INT_RANGE((int16_t)min_data, (int16_t)max_data, bus_set_data->raw_data.i16);
+    } else if (bus_set_data->data_type == bus_data_type_uint16) {
+        COMPARE_INT_RANGE((uint16_t)min_data, (uint16_t)max_data, bus_set_data->raw_data.u16);
+    } else if (bus_set_data->data_type == bus_data_type_int32) {
+        COMPARE_INT_RANGE((int32_t)min_data, (int32_t)max_data, bus_set_data->raw_data.i32);
+    } else if (bus_set_data->data_type == bus_data_type_uint32) {
+        COMPARE_INT_RANGE((uint32_t)min_data, (uint32_t)max_data, bus_set_data->raw_data.u32);
+    }
+
+    return RETURN_OK;
+}
+
+int validate_dm_string_param(uint32_t num_of_str, char **str, char *set_str)
+{
+    if (num_of_str == 0) {
+        wifi_util_info_print(WIFI_BUS,"%s:%d: string validation is not set\n",__func__, __LINE__);
+    } else if (str == NULL || set_str == NULL) {
+        wifi_util_info_print(WIFI_BUS,"%s:%d: input string is NULL:%p:%p\n", __func__, __LINE__, str, set_str);
+    } else {
+        uint32_t index;
+        bool str_found = false;
+
+        for(index = 0; index < num_of_str; index++) {
+            if (str[index] && (strncmp(str[index], set_str, strlen(set_str) + 1) == 0)) {
+                str_found = true;
+                break;
+	    }
+        }
+        if (str_found == false) {
+            wifi_util_info_print(WIFI_BUS,"%s:%d: string:%s validation is failed:%d\n",__func__,
+                __LINE__, set_str, num_of_str);
+            return RETURN_ERR;
+	}
+    }
+
+    return RETURN_OK;
+}
+
+int validate_dm_set_parameters(data_model_properties_t *data_model_prop, raw_data_t *bus_set_data)
+{
+    int ret = RETURN_ERR;
+
+    BUS_CHECK_NULL_WITH_RC(data_model_prop, ret);
+
+    if (data_model_prop->data_permission == false) {
+        wifi_util_error_print(WIFI_BUS,"%s:%d: data is not permit to set\n",__func__, __LINE__);
+        return ret;
+    }
+
+    ret = check_dm_min_max_data_range(data_model_prop->min_data_range, data_model_prop->max_data_range, bus_set_data);
+    if (ret != RETURN_OK) {
+        wifi_util_error_print(WIFI_BUS,"%s:%d: set data min/max data range is not propered\n",__func__, __LINE__);
+        return ret;
+    } else if (bus_set_data->data_type == bus_data_type_string) {
+        ret = validate_dm_string_param(data_model_prop->num_of_str_validation, data_model_prop->str_validation,
+            (char *)bus_set_data->raw_data.bytes);
+    }
+
+    return ret;
 }

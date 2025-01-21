@@ -31,7 +31,7 @@
 #include "dml_onewifi_api.h"
 #include "wifi_util.h"
 #include "wifi_mgr.h"
-#include "../../../stubs/wifi_stubs.h"
+#include "wifi_stubs.h"
 
 webconfig_dml_t webconfig_dml;
 
@@ -157,6 +157,18 @@ UINT get_total_num_vap_dml()
     }
 
     return numberOfVap;
+}
+
+UINT get_max_num_vaps_per_radio_dml(uint32_t radio_index)
+{
+    webconfig_dml_t* pwebconfig = get_webconfig_dml();
+
+    if (pwebconfig == NULL){
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d Error: value is NULL\n", __func__, __LINE__);
+        return MAX_NUM_VAP_PER_RADIO;
+    } else {
+        return pwebconfig->hal_cap.wifi_prop.radiocap[radio_index].maxNumberVAPs;
+    }
 }
 
 UINT get_max_num_vap_dml()
@@ -290,6 +302,105 @@ void mac_filter_dml_cache_update(webconfig_subdoc_data_t *data)
     }
 }
 
+void full_assoc_list_update(webconfig_subdoc_decoded_data_t *params)
+{
+    int r_index = 0, v_index = 0;
+    assoc_dev_data_t *assoc_dev_data, *temp_assoc_dev_data;
+    char key[64] = {0};
+
+    pthread_mutex_lock(&webconfig_dml.assoc_dev_lock);
+    for (r_index = 0; r_index < (int)get_num_radio_dml(); r_index++) {
+        for (v_index = 0; v_index < MAX_NUM_VAP_PER_RADIO; v_index++) {
+            hash_map_t** assoc_dev_map = get_dml_assoc_dev_hash_map(r_index, v_index);
+            if ((assoc_dev_map != NULL) && (*assoc_dev_map != NULL)) {
+                assoc_dev_data = hash_map_get_first(*assoc_dev_map);
+                while (assoc_dev_data != NULL) {
+                    memset(key, 0, sizeof(key));
+                    to_mac_str(assoc_dev_data->dev_stats.cli_MACAddress, key);
+                    assoc_dev_data = hash_map_get_next(*assoc_dev_map, assoc_dev_data);
+                    temp_assoc_dev_data = hash_map_remove(*assoc_dev_map, key);
+                    if (temp_assoc_dev_data != NULL) {
+                        free(temp_assoc_dev_data);
+                    }
+                }
+                hash_map_destroy(*assoc_dev_map);
+            }
+            *assoc_dev_map = params->radios[r_index].vaps.rdk_vap_array[v_index].associated_devices_map;
+        }
+    }
+    pthread_mutex_unlock(&webconfig_dml.assoc_dev_lock);
+}
+
+void existing_assoc_list_update(webconfig_subdoc_decoded_data_t *params)
+{
+    int r_index = 0, v_index = 0;
+    assoc_dev_data_t *assoc_dev_data, *temp_assoc_dev_data;
+    char key[64] = {0};
+    hash_map_t *associated_devices_map = NULL;
+    assoc_dev_data_t *dml_temp_assoc_data;
+
+    pthread_mutex_lock(&webconfig_dml.assoc_dev_lock);
+    for (r_index = 0; r_index < (int)get_num_radio_dml(); r_index++) {
+        for (v_index = 0; v_index < MAX_NUM_VAP_PER_RADIO; v_index++) {
+            associated_devices_map = params->radios[r_index].vaps.rdk_vap_array[v_index].associated_devices_diff_map;
+            if (associated_devices_map != NULL) {
+                hash_map_t** dml_assoc_dev_map = get_dml_assoc_dev_hash_map(r_index, v_index);
+                if (*dml_assoc_dev_map == NULL) {
+                    *dml_assoc_dev_map = hash_map_create();
+                }
+
+                assoc_dev_data = hash_map_get_first(associated_devices_map);
+                while (assoc_dev_data != NULL) {
+                    memset(key, 0, sizeof(key));
+                    to_mac_str(assoc_dev_data->dev_stats.cli_MACAddress, key);
+                    assoc_dev_data = hash_map_get_next(associated_devices_map, assoc_dev_data);
+                    temp_assoc_dev_data = hash_map_remove(associated_devices_map, key);
+                    if (temp_assoc_dev_data == NULL) {
+                        continue;
+                    }
+
+                    dml_temp_assoc_data = hash_map_get(*dml_assoc_dev_map, key);
+                    if (temp_assoc_dev_data->client_state == client_state_disconnected) {
+                        if (dml_temp_assoc_data != NULL) {
+                            assoc_dev_data_t *p_dml_temp_assoc = hash_map_remove(*dml_assoc_dev_map, key);
+                            if (p_dml_temp_assoc != NULL) {
+                                free(p_dml_temp_assoc);
+                            }
+                        } else {
+                            wifi_util_error_print(WIFI_DMCLI,"%s:%d:disconnect client not present:%s\n", __func__, __LINE__, key);
+                        }
+                    } else if (temp_assoc_dev_data->client_state == client_state_connected) {
+                        if (dml_temp_assoc_data == NULL) {
+                            hash_map_put(*dml_assoc_dev_map, strdup(key), temp_assoc_dev_data);
+                            continue;
+                        } else {
+                            memcpy(dml_temp_assoc_data, temp_assoc_dev_data, sizeof(assoc_dev_data_t));
+                        }
+                    }
+                    free(temp_assoc_dev_data);
+                }
+            }
+        }
+    }
+    pthread_mutex_unlock(&webconfig_dml.assoc_dev_lock);
+}
+
+void update_dml_assoc_list(webconfig_subdoc_data_t *data)
+{
+    webconfig_subdoc_decoded_data_t *params;
+
+    params = &data->u.decoded;
+
+    if (params->assoclist_notifier_type == assoclist_notifier_full) {
+        full_assoc_list_update(params);
+    } else if (params->assoclist_notifier_type == assoclist_notifier_diff) {
+        existing_assoc_list_update(params);
+    } else {
+        wifi_util_error_print(WIFI_DMCLI,"%s %d wrong assoclist_notifier_type:%d\r\n", __func__,
+            __LINE__, params->assoclist_notifier_type);
+    }
+}
+
 void dml_cache_update(webconfig_subdoc_data_t *data)
 {
     webconfig_subdoc_decoded_data_t *params;
@@ -310,10 +421,28 @@ void dml_cache_update(webconfig_subdoc_data_t *data)
             memcpy((unsigned char *)&webconfig_dml.config, (unsigned char *)&data->u.decoded.config, sizeof(wifi_global_config_t));
             memcpy((unsigned char *)&webconfig_dml.hal_cap,(unsigned char *)&data->u.decoded.hal_cap, sizeof(wifi_hal_capability_t));
             webconfig_dml.hal_cap.wifi_prop.numRadios = data->u.decoded.num_radios;
+#ifndef ONEWIFI_DML_SUPPORT
+            sync_dml_macfilter_table_entries();
+#endif
             break;
         case webconfig_subdoc_type_wifi_config:
             wifi_util_info_print(WIFI_DMCLI,"%s:%d subdoc parse and update global config:%d\n",__func__, __LINE__, data->type);
             memcpy((unsigned char *)&webconfig_dml.config, (unsigned char *)&data->u.decoded.config, sizeof(wifi_global_config_t));
+            break;
+        case webconfig_subdoc_type_mac_filter:
+            wifi_util_info_print(WIFI_DMCLI,"%s:%d subdoc parse and update macfilter entries:%d\n", __func__,
+                __LINE__, data->type);
+#ifndef ONEWIFI_DML_SUPPORT
+            sync_dml_macfilter_table_entries();
+#endif
+            break;
+        case webconfig_subdoc_type_associated_clients:
+            wifi_util_info_print(WIFI_DMCLI,"%s:%d subdoc parse and update assoc entries\n", __func__,
+                __LINE__);
+            update_dml_assoc_list(data);
+#ifndef ONEWIFI_DML_SUPPORT
+            sync_dml_sta_assoc_table_entries();
+#endif
             break;
         default:
             update_dml_subdoc_vap_data(data);
@@ -373,6 +502,9 @@ void bus_dmlwebconfig_register(webconfig_dml_t *consumer)
          false }, // DML Subdoc
         { WIFI_WEBCONFIG_INIT_DML_DATA,  NULL, 0, 0, set_webconfig_dml_data, NULL, NULL, NULL,
          false }, // DML Subdoc
+        {
+            WIFI_WEBCONFIG_GET_ASSOC,  NULL, 0, 0, set_webconfig_dml_data, NULL, NULL, NULL, false
+        }
     };
 
     wifi_util_dbg_print(WIFI_DMCLI, "%s bus_open_fn open \n", __FUNCTION__);
@@ -673,6 +805,11 @@ int init(webconfig_dml_t *consumer)
     update_dml_global_default();
     update_dml_stats_default();
 
+#ifndef ONEWIFI_DML_SUPPORT
+    sync_dml_macfilter_table_entries();
+    sync_dml_sta_assoc_table_entries();
+#endif
+
     webconfig_data_free(&data);
 
     get_bus_descriptor()->bus_data_free_fn(&raw_data);
@@ -694,6 +831,16 @@ wifi_vap_info_map_t* get_dml_cache_vap_map(uint8_t radio_index)
     }
     wifi_util_error_print(WIFI_DMCLI, "%s: wrong radio_index %d\n", __FUNCTION__, radio_index);
     return NULL;
+}
+
+rdk_wifi_radio_t* get_dml_cache_radio_map_param(uint8_t radio_index)
+{
+    if (radio_index < get_num_radio_dml()) {
+        return &webconfig_dml.radios[radio_index];
+    } else {
+        wifi_util_error_print(WIFI_DMCLI, "%s: wrong radio_index %d\n", __FUNCTION__, radio_index);
+        return NULL;
+    }
 }
 
 wifi_radio_operationParam_t* get_dml_cache_radio_map(uint8_t radio_index)
@@ -1463,4 +1610,147 @@ wifi_channelBandwidth_t sync_bandwidth_and_hw_variant(uint32_t variant, wifi_cha
     } else {
         return 0;
     }
+}
+
+bool wifi_factory_reset(bool factory_reset_all_vaps)
+{
+    wifi_vap_info_t default_vap;
+    wifi_vap_info_t *p_vapInfo = NULL;
+    rdk_wifi_vap_info_t rdk_default_vap;
+    rdk_wifi_vap_info_t *rdk_vap_info;
+    acl_entry_t *temp_acl_entry, *acl_entry;
+    mac_addr_str_t mac_str;
+    wifi_global_config_t *global_wifi_config;
+    global_wifi_config = (wifi_global_config_t*) get_dml_cache_global_wifi_config();
+    wifi_radio_operationParam_t *wifiRadioOperParam = NULL;
+    unsigned int vap_index;
+    wifi_radio_operationParam_t rcfg;
+    wifi_radio_feature_param_t *wifiRadioFeatParam = NULL;
+    wifi_radio_feature_param_t fcfg;
+
+    wifi_util_info_print(WIFI_DMCLI,"Enter %s:%d \n",__func__, __LINE__);
+    if (global_wifi_config == NULL) {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get Global Config\n", __FUNCTION__,__LINE__);
+        return FALSE;
+    }
+
+    //Reset to all radios params to default
+    for (UINT i= 0; i < getNumberRadios(); i++) {
+        wifiRadioOperParam = (wifi_radio_operationParam_t *) get_dml_cache_radio_map(i);
+        wifiRadioFeatParam = (wifi_radio_feature_param_t *) get_dml_cache_radio_feat_map(i);
+        if (wifiRadioOperParam == NULL || wifiRadioFeatParam == NULL) {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get Radio Param and Radio Feat Param for instance_number:%d\n", __FUNCTION__,__LINE__,i);
+            return FALSE;
+        }
+        wifidb_init_radio_config_default(i,&rcfg,&fcfg);
+
+        wifi_rfc_dml_parameters_t *rfc_param = get_wifi_db_rfc_parameters();
+        if (wifidb_get_rfc_config(0,rfc_param) != 0) {
+            wifi_util_error_print(WIFI_DMCLI,"%s:%d: Error getting RFC config\n",__func__, __LINE__);
+        }
+
+        //Update the 2.4Ghz radio AX mode based on the RFC twoG80211axEnable_rfc
+        if (WIFI_FREQUENCY_2_4_BAND == rcfg.band) {
+            if(rfc_param->twoG80211axEnable_rfc) {
+                rcfg.variant = rcfg.variant | WIFI_80211_VARIANT_AX;
+                wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: Updated default config with twoG80211axEnable_rfc\n",__func__, __LINE__);
+            }
+        }
+
+        //Update DFS RFC for 5GHz radio
+        if( (WIFI_FREQUENCY_5_BAND == rcfg.band) || (WIFI_FREQUENCY_5L_BAND == rcfg.band) || (WIFI_FREQUENCY_5H_BAND == rcfg.band) ) {
+            rcfg.DfsEnabled = rfc_param->dfs_rfc;
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: Updated default config for DFS RFC %d\n",__func__, __LINE__, rfc_param->dfs_rfc);
+        }
+
+        memcpy((unsigned char *)wifiRadioOperParam,(unsigned char *)&rcfg,sizeof(wifi_radio_operationParam_t));
+        memcpy((unsigned char *)wifiRadioFeatParam, (unsigned char *)&fcfg, sizeof(wifi_radio_feature_param_t));
+        is_radio_config_changed = TRUE;
+    }
+
+    remove(WIFI_STUCK_DETECT_FILE_NAME);
+    wifi_util_info_print(WIFI_MGR,"%s:%d removed selfHeal wifi stuck file:%s\n", __FUNCTION__,__LINE__, WIFI_STUCK_DETECT_FILE_NAME);
+
+    if (factory_reset_all_vaps) {
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d remove xhs/lnf flag file:%s\n", __FUNCTION__, __LINE__, WIFI_XHS_LNF_FLAG_FILE_NAME);
+        (void)remove(WIFI_XHS_LNF_FLAG_FILE_NAME);
+    }
+
+    for (UINT index = 0; index < getTotalNumberVAPs(); index++) {
+        vap_index = VAP_INDEX(((webconfig_dml_t *)get_webconfig_dml())->hal_cap, index);
+
+        if (!factory_reset_all_vaps && !isVapPrivate(vap_index))
+            continue;
+
+        p_vapInfo = (wifi_vap_info_t *) get_dml_cache_vap_info(vap_index);
+        rdk_vap_info = (rdk_wifi_vap_info_t *)get_dml_cache_rdk_vap_info(vap_index);
+
+        if (p_vapInfo != NULL) {
+            hash_map_t** acl_dev_map = (hash_map_t **)get_acl_hash_map(p_vapInfo);
+
+            if ((acl_dev_map != NULL) && (*acl_dev_map)) {
+                acl_entry =(acl_entry_t *)hash_map_get_first(*acl_dev_map);
+                while (acl_entry != NULL) {
+                       to_mac_str(acl_entry->mac,mac_str);
+                       wifi_util_dbg_print(WIFI_DMCLI,"Mac address in  acl_entry %s\n",mac_str);
+                       acl_entry = hash_map_get_next(*acl_dev_map,acl_entry);
+                       temp_acl_entry = hash_map_remove(*acl_dev_map, mac_str);
+                       if (temp_acl_entry != NULL) {
+                           free(temp_acl_entry);
+                       }
+                }
+            }
+
+            if ((acl_dev_map != NULL) && (*acl_dev_map)) {
+                hash_map_destroy(*acl_dev_map);
+                *acl_dev_map = NULL;
+            }
+
+            wifidb_init_vap_config_default(vap_index,&default_vap,&rdk_default_vap);
+            wifidb_init_interworking_config_default(vap_index,&default_vap.u.bss_info.interworking);
+            memcpy((unsigned char *)p_vapInfo,(unsigned char *)&default_vap,sizeof(wifi_vap_info_t));
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)
+            if(rdk_default_vap.exists == false) {
+#if defined(_SR213_PRODUCT_REQ_)
+                if(vap_index != 2 && vap_index != 3) {
+                    wifi_util_error_print(WIFI_DMCLI,"%s:%d VAP_EXISTS_FALSE for vap_index=%d, setting to TRUE. \n",__FUNCTION__,__LINE__,vap_index);
+                    rdk_default_vap.exists = true;
+                }
+#else
+                wifi_util_error_print(WIFI_DMCLI,"%s:%d VAP_EXISTS_FALSE for vap_index=%d, setting to TRUE. \n",__FUNCTION__,__LINE__,vap_index);
+                rdk_default_vap.exists = true;
+#endif /*_SR213_PRODUCT_REQ_*/
+            }
+#endif /*!defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)*/
+            rdk_vap_info->exists = rdk_default_vap.exists;
+            set_dml_cache_vap_config_changed(vap_index);
+        }
+    }
+
+    if (push_radio_dml_cache_to_one_wifidb() == RETURN_ERR) {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Failed in setting Radios to default\n",__func__, __LINE__);
+        return FALSE;
+    }
+
+    wifi_util_info_print(WIFI_DMCLI,"%s:%d RadioSettings are set to default \n",__func__, __LINE__);
+    if (push_acl_list_dml_cache_to_one_wifidb(p_vapInfo) != RETURN_OK) {
+        wifi_util_info_print(WIFI_DMCLI,"%s:%d MacFilter deletion  falied \n",__func__, __LINE__);
+        return FALSE;
+    }
+
+    create_onewifi_factory_reset_flag();
+    wifi_util_info_print(WIFI_MGR,"%s FactoryReset is done and preferPprivate=%d \n",__func__, global_wifi_config->global_parameters.prefer_private);
+    if (global_wifi_config->global_parameters.prefer_private) {
+        global_wifi_config->global_parameters.prefer_private = false;
+        push_global_config_dml_cache_to_one_wifidb();
+        push_prefer_private_ctrl_queue(false);
+    }
+
+    if (push_vap_dml_cache_to_one_wifidb() == RETURN_ERR)
+    {
+        wifi_util_info_print(WIFI_DMCLI,"%s:%d ApplyAccessPointSettings falied \n",__func__, __LINE__);
+        return FALSE;
+    }
+    wifi_util_info_print(WIFI_DMCLI,"Exit %s:%d \n",__func__, __LINE__);
+    return TRUE;
 }

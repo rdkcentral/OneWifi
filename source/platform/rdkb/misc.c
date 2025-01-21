@@ -60,7 +60,7 @@ void rdkb_daemonize()
     sem_unlink ("pSemCcspWifi");
     /* unlink prevents the semaphore existing forever */
     /* if a crash occurs during the execution         */
-    wifi_util_dbg_print(WIFI_MGR,"Semaphore initialization Done!!\n");
+    wifi_util_info_print(WIFI_MGR,"Semaphore initialization Done!!:%p\n", sem);
 
     switch (fork()) {
         case 0:
@@ -97,6 +97,11 @@ void rdkb_daemonize()
     }
 }
 
+void rdkb_sendWebpaMsg(char *serviceName, char *dest, char *trans_id, char *traceParent, char *traceState, char *contentType, char *payload, unsigned int payload_len)
+{
+    sendWebpaMsg(serviceName, dest, trans_id, traceParent, traceState, contentType, payload, payload_len);
+}
+
 void wifi_misc_init(wifi_misc_t *misc)
 {
    misc->desc.sysevent_open_fn = rdkb_sysevent_open;
@@ -107,4 +112,5 @@ void wifi_misc_init(wifi_misc_t *misc)
    misc->desc.wifi_getRadioTrafficStats2_fn = rdkb_wifi_getRadioTrafficStats2;
    misc->desc.WiFi_InitGasConfig_fn = rdkb_WiFi_InitGasConfig;
    misc->desc.daemonize_fn = rdkb_daemonize;
+   misc->desc.sendWebpaMsg_fn = rdkb_sendWebpaMsg;
 }

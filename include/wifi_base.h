@@ -75,6 +75,7 @@ extern "C" {
 #define WIFI_COLLECT_STATS_RADIO_TEMPERATURE           "Device.WiFi.CollectStats.Radio.{i}.RadioTemperatureStats"
 #define WIFI_COLLECT_STATS_VAP_TABLE                   "Device.WiFi.CollectStats.AccessPoint.{i}."
 #define WIFI_COLLECT_STATS_ASSOC_DEVICE_STATS          "Device.WiFi.CollectStats.AccessPoint.{i}.AssociatedDeviceStats"
+#define WIFI_NOTIFY_DENY_TCM_ASSOCIATION               "Device.WiFi.ConnectionControl.TcmClientDenyAssociation"
 #define WIFI_STUCK_DETECT_FILE_NAME         "/nvram/wifi_stuck_detect"
 
 #define PLAN_ID_LENGTH     38
@@ -103,6 +104,20 @@ extern "C" {
 #define wifi_app_inst_base          0x01
 
 #define DEFAULT_SOUNDING_DURATION_MS 2000
+
+#if (defined SIMULATION)
+#define NEIGHBORHOOD_SCAN_AVRO_FILENAME         "GatewayAccessPointNeighborScanReport.avsc"
+#define INTERFACE_DEVICES_WIFI_AVRO_FILENAME            "InterfaceDevicesWifi.avsc"
+#define WIFI_SINGLE_CLIENT_AVRO_FILENAME        "/usr/ccsp/wifi/WifiSingleClient.avsc"
+#define RADIO_INTERFACE_STATS_AVRO_FILENAME             "RadioInterfacesStatistics.avsc"
+#else
+#define NEIGHBORHOOD_SCAN_AVRO_FILENAME         "/usr/ccsp/harvester/GatewayAccessPointNeighborScanReport.avsc"
+#define INTERFACE_DEVICES_WIFI_AVRO_FILENAME            "/usr/ccsp/harvester/InterfaceDevicesWifi.avsc"
+#define WIFI_SINGLE_CLIENT_AVRO_FILENAME        "/usr/ccsp/wifi/WifiSingleClient.avsc"
+#define RADIO_INTERFACE_STATS_AVRO_FILENAME             "/usr/ccsp/harvester/RadioInterfacesStatistics.avsc"
+#define WIFI_SINGLE_CLIENT_BLASTER_AVRO_FILENAME        "/usr/ccsp/wifi/WifiSingleClientActiveMeasurement.avsc"
+#endif
+#define CHK_AVRO_ERR (strlen(avro_strerror()) > 0)
 
 #define CFG_ID_LEN             64
 typedef char stats_cfg_id_t[CFG_ID_LEN];

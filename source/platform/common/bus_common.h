@@ -258,6 +258,9 @@ typedef bus_error_t (* wifi_bus_event_subscribe_ex_t)           (bus_handle_t *h
 typedef bus_error_t (* wifi_bus_event_subscribe_ex_async_t)     (bus_handle_t *handle, bus_event_sub_t *l_sub_info_map, int num_sub, void *l_sub_handler, int timeout);
 typedef bus_error_t (* wifi_bus_reg_elements_t)                 (bus_handle_t *handle, bus_data_element_t *data_element, uint32_t num_of_element);
 typedef bus_error_t (* wifi_bus_method_invoke_t)                (bus_handle_t *handle, void *paramName, char *event, raw_data_t *input_data, raw_data_t *output_data, bool input_bus_data);
+typedef bus_error_t (* wifi_bus_reg_table_row_t)                (bus_handle_t *handle, char const *name, uint32_t row_index, char const *alias);
+typedef bus_error_t (* wifi_bus_unreg_table_row_t)              (bus_handle_t *handle, char const *name);
+typedef bus_error_t (* wifi_bus_remove_table_row_t)             (bus_handle_t *handle, char const *name);
 
 typedef struct {
     wifi_bus_init_t                bus_init_fn;
@@ -275,6 +278,9 @@ typedef struct {
     wifi_bus_event_subscribe_ex_async_t  bus_event_subs_ex_async_fn;
     wifi_bus_method_invoke_t       bus_method_invoke_fn;
     wifi_bus_get_trace_context_t   bus_get_trace_context_fn;
+    wifi_bus_reg_table_row_t       bus_reg_table_row_fn;
+    wifi_bus_unreg_table_row_t     bus_unreg_table_row_fn;
+    wifi_bus_remove_table_row_t    bus_remove_table_row_fn;
 } wifi_bus_desc_t;
 
 typedef struct bus_event_sub {
@@ -375,6 +381,8 @@ elem_node_map_t *get_bus_node_info(elem_node_map_t *cb_root, char *name);
 bus_error_t bus_table_add_row(elem_node_map_t *p_root_node, char *name_space, uint32_t table_index);
 bus_error_t bus_table_remove_row(elem_node_map_t *p_root_node, char *p_name_space);
 void print_registered_elems(elem_node_map_t *root, int level);
+
+int validate_dm_set_parameters(data_model_properties_t *data_model_prop, raw_data_t *bus_set_data);
 
 #ifdef __cplusplus
 }

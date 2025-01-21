@@ -124,6 +124,8 @@ extern "C" {
 #define MESH_BACKHAUL 0b100000
 #define LNF 0b1000000
 
+#define BUS_DML_CONFIG_FILE "bus_dml_config.json"
+
 typedef enum {
     ctrl_webconfig_state_none = 0,
     ctrl_webconfig_state_radio_cfg_rsp_pending = 0x0001,
@@ -296,6 +298,11 @@ typedef enum {
     cli_stat_list_type,
     txrx_rate_list_type
 } marker_list_t;
+
+typedef struct {
+    uint8_t radio_index;
+    unsigned int dfs_channel;
+} dfs_channel_data_t;
 
 typedef struct {
     wifi_vap_name_t  vap_name;;

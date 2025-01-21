@@ -20,6 +20,7 @@
 #ifndef _WIFI_DML_H_
 #define _WIFI_DML_H_
 
+#include <stdint.h>
 #include "stdbool.h"
 #include <pthread.h>
 
@@ -35,11 +36,13 @@ extern "C"
 typedef void (* wifi_start_dml_t)();
 typedef void (* wifi_set_dml_init_status_t)(bool status);
 typedef void (* wifi_ssp_init_t)();
+typedef int (* push_data_to_ssp_queue_t)(const void *msg, unsigned int len, uint32_t type, uint32_t sub_type);
 
 typedef struct {
     wifi_start_dml_t                 start_dml_fn;
     wifi_set_dml_init_status_t       set_dml_init_status_fn;
     wifi_ssp_init_t                  ssp_init_fn;
+    push_data_to_ssp_queue_t         push_data_to_ssp_queue_fn;
 } wifidml_desc_t;
 
 typedef struct {
