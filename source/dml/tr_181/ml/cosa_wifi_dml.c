@@ -425,7 +425,7 @@ WiFi_GetParamBoolValue
         return TRUE;
     }
 
-    if(AnscEqualString(ParamName, "RSNOverrideActivated", TRUE))
+    if(AnscEqualString(ParamName, "WPA3_Personal_Compatibility", TRUE))
     {
         *pBool = rfc_pcfg->rsn_override_activate;
         return TRUE;
@@ -1191,9 +1191,9 @@ WiFi_SetParamBoolValue
         return TRUE;
     }
 
-    if(AnscEqualString(ParamName, "RSNOverrideActivated", TRUE))
+    if(AnscEqualString(ParamName, "WPA3_Personal_Compatibility", TRUE))
     {
-        if(bvalue != rfc_pcfg->rsn_override_activate) {
+        if(bValue != rfc_pcfg->rsn_override_activate) {
             push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_rsn_override_rfc);
             wifi_util_error_print(WIFI_DMCLI,"%s:%d setting RSNOverride to %d \n", __FUNCTION__, __LINE__, bValue);
         }
@@ -8564,6 +8564,7 @@ Security_SetParamStringValue
     {
         wifi_security_modes_t TmpMode;
         COSA_DML_WIFI_SECURITY cosaTmpMode;
+        wifi_rfc_dml_parameters_t *rfc_pcfg = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
 
         if (!getSecurityTypeFromString(pString, &TmpMode, &cosaTmpMode))
         {
@@ -8609,7 +8610,10 @@ Security_SetParamStringValue
             memset(&l_security_cfg->u, 0, sizeof(l_security_cfg->u));
         }
 
-        if(TmpMode == wifi_security_mode_wpa3_compatibility && )
+        if(TmpMode == wifi_security_mode_wpa3_compatibility && !rfc_pcfg->rsn_override_activate) {
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d WPA3 Compatibility mode is not supported when  RFC is disabled");
+            return FALSE;
+        }
 
         l_security_cfg->mode = TmpMode;
         switch (l_security_cfg->mode)

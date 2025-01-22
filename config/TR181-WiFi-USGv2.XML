@@ -338,7 +338,7 @@
             <writable>true</writable>
         </parameter>
         <parameter>
-            <name>RSNOverrideActivated</name>
+            <name>WPA3_Personal_Compatibility</name>
             <type>boolean</type>
             <syntax>bool</syntax>
             <writable>true</writable>
