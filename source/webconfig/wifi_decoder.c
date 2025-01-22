@@ -3723,15 +3723,15 @@ webconfig_error_t decode_cac_object(wifi_vap_info_t *vap_info, cJSON *obj_array 
         return webconfig_error_decode;
     }
 
-    decode_param_object(obj_array, "TcmPreAssociationDeny", preassoc);
-    if (decode_tcm_preassoc_object(preassoc, &vap_info->u.bss_info.preassoc) != webconfig_error_none) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: tcm preassoc  objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
-        return webconfig_error_decode;
-    }
-
     decode_param_object(obj_array, "PostAssociationDeny", postassoc);
     if (decode_postassoc_cac_object(postassoc, &vap_info->u.bss_info.postassoc) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: postassoc cac objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        return webconfig_error_decode;
+    }
+
+    decode_param_object(obj_array, "TcmPreAssociationDeny", preassoc);
+    if (decode_tcm_preassoc_object(preassoc, &vap_info->u.bss_info.preassoc) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: tcm preassoc  objects validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
 

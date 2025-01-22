@@ -587,18 +587,18 @@ webconfig_error_t encode_connection_ctrl_object(const wifi_vap_info_t *vap_info,
     }
 
     obj = cJSON_CreateObject();
-    cJSON_AddItemToObject(vap_obj, "TcmPreAssociationDeny", obj);
-    if (encode_tcm_preassoc_object(&vap_info->u.bss_info.preassoc, obj) != webconfig_error_none) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d TcmPreassoc object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
-        return webconfig_error_encode;
-    }
-
-    obj = cJSON_CreateObject();
     cJSON_AddItemToObject(vap_obj, "PostAssociationDeny", obj);
     if (encode_postassoc_object(&vap_info->u.bss_info.postassoc, obj) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Postassoc object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
 
+    }
+
+    obj = cJSON_CreateObject();
+    cJSON_AddItemToObject(vap_obj, "TcmPreAssociationDeny", obj);
+    if (encode_tcm_preassoc_object(&vap_info->u.bss_info.preassoc, obj) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d TcmPreassoc object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        return webconfig_error_encode;
     }
 
     return webconfig_error_none;
