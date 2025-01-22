@@ -70,7 +70,6 @@
 #define RDKB_CCSP_SUCCESS               100
 #define ONEWIFI_DB_VERSION_DFS_TIMER_RADAR_DETECT_FLAG 100030
 #define DFS_DEFAULT_TIMER_IN_MIN 30
-#define ONEWIFI_DB_VERSION_TCM_FLAG 100031
 #define TCM_TIMEOUT_MS 150
 #define TCM_MIN_MGMT_FRAMES 3
 #define TCM_WEIGHTAGE "0.6"
@@ -4378,15 +4377,6 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
                 config->vap_array[i].vap_index);
             wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i],
                 &rdk_config[i]);
-        }
-        if (g_wifidb->db_version < ONEWIFI_DB_VERSION_TCM_FLAG) {
-            wifi_util_info_print(WIFI_DB, "%s:%d upgrade vap config, db version %d\n", __func__,
-                                 __LINE__, g_wifidb->db_version);
-            config->vap_array[i].u.bss_info.preassoc.time_ms = TCM_TIMEOUT_MS;
-            config->vap_array[i].u.bss_info.preassoc.min_num_mgmt_frames = TCM_MIN_MGMT_FRAMES;
-            strncpy(config->vap_array[i].u.bss_info.preassoc.tcm_exp_weightage, TCM_WEIGHTAGE, sizeof(config->vap_array[i].u.bss_info.preassoc.tcm_exp_weightage));
-            strncpy(config->vap_array[i].u.bss_info.preassoc.tcm_gradient_threshold, TCM_THRESHOLD, sizeof(config->vap_array[i].u.bss_info.preassoc.tcm_gradient_threshold));
-            wifidb_update_wifi_cac_config(config);
         }
     }
 }
