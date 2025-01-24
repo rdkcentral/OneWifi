@@ -1217,6 +1217,9 @@ webconfig_error_t decode_security_object(const cJSON *security, wifi_vap_securit
         security_info->mode = wifi_security_mode_wpa_wpa2_enterprise;
     } else if (strcmp(param->valuestring, "WPA3-Enterprise") == 0) {
         security_info->mode = wifi_security_mode_wpa3_enterprise;
+    } else if (strcmp(param->valuestring, "WPA3-Personal-Compatibility")) {
+        security_info->mode = wifi_security_mode_wpa3_compatibility;
+        security_info->u.key.type = wifi_security_key_type_psk_sae;
     } else {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to decode security mode: %s\n",
             __func__, __LINE__, param->valuestring);

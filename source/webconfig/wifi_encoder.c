@@ -1051,6 +1051,10 @@ webconfig_error_t encode_security_object(const wifi_vap_security_t *security_inf
             cJSON_AddStringToObject(security, "Mode", "WPA3-Enterprise");
             break;
 
+        case wifi_security_mode_wpa3_compatibility:
+            cJSON_AddStringToObject(security, "Mode", "WPA3-Personal-Compatibility");
+            break;
+
         default:
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to encode security mode: %d\n",
                 __func__, __LINE__, security_info->mode);
