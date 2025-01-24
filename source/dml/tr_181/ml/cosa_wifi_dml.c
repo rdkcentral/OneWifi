@@ -2806,18 +2806,82 @@ Radio_GetParamStringValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:pcfg->basicDataTransmitRates=%d\n",__func__, __LINE__, pcfg->basicDataTransmitRates);
         if ( pcfg->basicDataTransmitRates & WIFI_BITRATE_6MBPS )
         {
+	    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:pcfg->basicDataTransmit 6 is printed\n",__func__, __LINE__);
             strcat(buf, "6");
         }
 
         if ( pcfg->basicDataTransmitRates & WIFI_BITRATE_12MBPS )
         {
+		wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:pcfg->basicDataTransmitRates 12 is entered\n",__func__, __LINE__);
             if (AnscSizeOfString(buf) != 0)
             {
+		wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:pcfg->basicDataTransmit ,12 is printed\n",__func__, __LINE__);
                 strcat(buf, ",12");
             }
             else
             {
+		wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:pcfg->basicDataTransmit 12 is printed\n",__func__, __LINE__);    
                 strcat(buf, "12");
+            }
+        }
+
+	if ( pcfg->basicDataTransmitRates & WIFI_BITRATE_1MBPS )
+        {
+                wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:pcfg->basicDataTransmitRates 1 is entered\n",__func__, __LINE__);
+            if (AnscSizeOfString(buf) != 0)
+            {
+                wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:pcfg->basicDataTransmit ,1 is printed\n",__func__, __LINE__);
+                strcat(buf, ",1");
+            }
+            else
+            {
+                wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:pcfg->basicDataTransmit 1 is printed\n",__func__, __LINE__);
+                strcat(buf, "1");
+            }
+        }
+
+	if ( pcfg->basicDataTransmitRates & WIFI_BITRATE_2MBPS )
+        {
+                wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:pcfg->basicDataTransmitRates 2 is entered\n",__func__, __LINE__);
+            if (AnscSizeOfString(buf) != 0)
+            {
+                wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:pcfg->basicDataTransmit ,2 is printed\n",__func__, __LINE__);
+                strcat(buf, ",2");
+            }
+            else
+            {
+                wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:pcfg->basicDataTransmit 2 is printed\n",__func__, __LINE__);
+                strcat(buf, "2");
+            }
+        }
+
+	if ( pcfg->basicDataTransmitRates & WIFI_BITRATE_5_5MBPS )
+        {
+                wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:pcfg->basicDataTransmitRates 5.5 is entered\n",__func__, __LINE__);
+            if (AnscSizeOfString(buf) != 0)
+            {
+                wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:pcfg->basicDataTransmit ,5.5 is printed\n",__func__, __LINE__);
+                strcat(buf, ",5.5");
+            }
+            else
+            {
+                wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:pcfg->basicDataTransmit 5.5 is printed\n",__func__, __LINE__);
+                strcat(buf, "5.5");
+            }
+        }
+
+	if ( pcfg->basicDataTransmitRates & WIFI_BITRATE_11MBPS )
+        {
+                wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:pcfg->basicDataTransmitRates 11 is entered\n",__func__, __LINE__);
+            if (AnscSizeOfString(buf) != 0)
+            {
+                wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:pcfg->basicDataTransmit ,11 is printed\n",__func__, __LINE__);
+                strcat(buf, ",11");
+            }
+            else
+            {
+                wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:pcfg->basicDataTransmit 11 is printed\n",__func__, __LINE__);
+                strcat(buf, "11");
             }
         }
 
@@ -2825,21 +2889,26 @@ Radio_GetParamStringValue
         {
             if (AnscSizeOfString(buf) != 0)
             {
+		wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:pcfg->basicDataTransmitRates 24 is entered\n",__func__, __LINE__);
+		wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:pcfg->basicDataTransmit ,24 is printed\n",__func__, __LINE__);
                 strcat(buf, ",24");
             }
             else
             {
+		wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:pcfg->basicDataTransmit 24 is printed\n",__func__, __LINE__);
                 strcat(buf, "24");
             }
         }
 
         if ( AnscSizeOfString(buf) < *pUlSize)
         {
+	    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:pcfg->basicDataTransmitRates AnscSizeOfString(buf)\n",__func__, __LINE__);
             AnscCopyString(pValue, buf);
             return 0;
         }
         else
         {
+	    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:pcfg->basicDataTransmitRates AnscSizeOfString(buf)\n",__func__, __LINE__);
             *pUlSize = AnscSizeOfString(buf)+1;
             return 1;
         }
