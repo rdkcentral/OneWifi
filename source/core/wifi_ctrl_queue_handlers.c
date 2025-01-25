@@ -3044,13 +3044,13 @@ void process_rsn_override_rfc(bool type)
 {
     wifi_util_error_print(WIFI_DB, "Enter func %s: %d : RSN RFC: %d\n", __FUNCTION__, __LINE__, type);
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
-    wifi_vap_info_map_t tgt_vap_map;
-    wifi_vap_info_t *vapInfo = NULL;
-    wifi_radio_operationParam_t *radio_params = NULL;
     vap_svc_t *svc;
+    wifi_vap_info_map_t tgt_vap_map;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_radio_operationParam_t *radio_params = NULL;
     UINT apIndex = 0, ret;
     rdk_wifi_vap_info_t *rdk_vap_info;
+    wifi_vap_info_t *vapInfo = NULL;
     char update_status[128];
 
     rfc_param->rsn_override_activate = type;
@@ -3063,6 +3063,11 @@ void process_rsn_override_rfc(bool type)
         radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(rIdx);
 
         if ((svc = get_svc_by_name(ctrl, vapInfo->vap_name)) == NULL) {
+            continue;
+        }
+
+        if (radio_params->band == WIFI_FREQUENCY_6_BAND) {
+            wifi_util_dbg_print(WIFI_DB,"%s: %d 6GHz radio supports only WPA3 personal mode. WPA3-RFC: %d\n",__FUNCTION__,__LINE__,type);
             continue;
         }
 

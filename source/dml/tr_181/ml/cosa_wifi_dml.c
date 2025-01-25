@@ -8610,8 +8610,9 @@ Security_SetParamStringValue
             memset(&l_security_cfg->u, 0, sizeof(l_security_cfg->u));
         }
 
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d TmpMode:%d rsn_override_activate:%d ", __func__, __LINE__, TmpMode, rfc_pcfg->rsn_override_activate);
         if(TmpMode == wifi_security_mode_wpa3_compatibility && !rfc_pcfg->rsn_override_activate) {
-            wifi_util_error_print(WIFI_DMCLI, "%s:%d WPA3 Compatibility mode is not supported when  RFC is disabled");
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d WPA3 Compatibility mode is not supported when  RFC is disabled \n", __func__, __LINE__);
             return FALSE;
         }
 
