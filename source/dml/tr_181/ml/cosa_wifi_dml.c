@@ -1198,6 +1198,7 @@ WiFi_SetParamBoolValue
             wifi_util_error_print(WIFI_DMCLI,"%s:%d setting RSNOverride to %d \n", __FUNCTION__, __LINE__, bValue);
         }
         wifi_util_error_print(WIFI_DMCLI,"%s:%d RSNOverride is %d \n", __FUNCTION__, __LINE__, bValue);
+        return TRUE;
     }
 
     return FALSE;
