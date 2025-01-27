@@ -1193,7 +1193,7 @@ webconfig_error_t decode_security_object(const cJSON *security, wifi_vap_securit
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
 
     decode_param_string(security, "Mode", param);
-    if(strcmp(param->valuestring, "WPA3-Personal-Compatibility") && !rfc_param->rsn_override_activate) {
+    if(!strcmp(param->valuestring, "WPA3-Personal-Compatibility") && !rfc_param->rsn_override_activate) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d RFC for security mode %s is disabled \n",
             __func__, __LINE__, param->valuestring);
         return webconfig_error_decode;
