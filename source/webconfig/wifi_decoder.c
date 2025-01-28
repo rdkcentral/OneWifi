@@ -3026,7 +3026,7 @@ unsigned char *stringtohex(unsigned int in_len, char *in, unsigned int out_len, 
         return NULL;
     }
 
-    for (i = 0; i < in_len; i++) {
+    for (i = 0; i < in_len / 2; i++) {
         if (in[2 * i] <= '9') {
             tmp1 = (unsigned char)in[2 * i] - 0x30;
         } else {
