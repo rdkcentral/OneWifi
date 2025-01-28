@@ -66,6 +66,7 @@ webconfig_error_t webconfig_encode(webconfig_t *config, webconfig_subdoc_data_t 
 
 webconfig_error_t webconfig_decode(webconfig_t *config, webconfig_subdoc_data_t *data, const char *str)
 {
+    test_undefined_function();
     wifi_util_error_print(WIFI_WEBCONFIG,"--------------### %s:%d\n", __func__,__LINE__);
     webconfig_error_t ret = webconfig_error_none;
 
