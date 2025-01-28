@@ -66,6 +66,7 @@ webconfig_error_t webconfig_encode(webconfig_t *config, webconfig_subdoc_data_t 
 
 webconfig_error_t webconfig_decode(webconfig_t *config, webconfig_subdoc_data_t *data, const char *str)
 {
+    wifi_util_error_print(WIFI_WEBCONFIG,"--------------### %s:%d\n", __func__,__LINE__);
     webconfig_error_t ret = webconfig_error_none;
 
     data->u.encoded.raw = (webconfig_subdoc_encoded_raw_t)calloc(strlen(str) + 1, sizeof(char));
@@ -74,16 +75,24 @@ webconfig_error_t webconfig_decode(webconfig_t *config, webconfig_subdoc_data_t 
         return webconfig_error_decode;
     }
 
+    if (str == NULL) {
+	wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d Failed to allocate memory.\n", __func__,__LINE__);
+	return webconfig_error_decode;
+    }
+
     strcpy(data->u.encoded.raw, str);
 
     data->signature = WEBCONFIG_MAGIC_SIGNATUTRE;
     data->type = webconfig_subdoc_type_unknown;
     data->descriptor |= webconfig_data_descriptor_encoded;
 
+    wifi_util_error_print(WIFI_WEBCONFIG,"--------------### Before webconfig_set() in %s\n", __func__);
     ret = webconfig_set(config, data);
+    wifi_util_error_print(WIFI_WEBCONFIG,"--------------### After webconfig_set() in %s\n", __func__);
     if (ret != webconfig_error_none) {
         webconfig_data_free(data);
     }
+    wifi_util_error_print(WIFI_WEBCONFIG,"--------------### Before return in %s\n", __func__);
 
     return ret;
 }
@@ -187,10 +196,12 @@ webconfig_error_t webconfig_set(webconfig_t *config, webconfig_subdoc_data_t *da
     webconfig_subdoc_t  *doc;
     webconfig_error_t err = RETURN_OK;
 
+    wifi_util_error_print(WIFI_WEBCONFIG,"@@@@@@@@@@@@@@@ IN %s:%d\n", __func__, __LINE__);
     if (validate_subdoc_data(config, data) == false) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Invalid data .. not parsable\n", __func__, __LINE__);
         return webconfig_error_invalid_subdoc;
     }
+    wifi_util_error_print(WIFI_WEBCONFIG,"@@@@@@@@@@@@@@@ IN webconfig_set, After validate_subdoc_data()\n");
 
     doc = &config->subdocs[data->type];
     if (doc->access_check_subdoc(config, data) != webconfig_error_none) {
@@ -198,8 +209,10 @@ webconfig_error_t webconfig_set(webconfig_t *config, webconfig_subdoc_data_t *da
             __func__, __LINE__, doc->type, config->initializer);
         return webconfig_error_not_permitted;
     }
+    wifi_util_error_print(WIFI_WEBCONFIG,"@@@@@@@@@@@@@@@ IN webconfig_set, After doc->access_check_subdoc()\n");
 
     if ((data->descriptor & webconfig_data_descriptor_decoded) == webconfig_data_descriptor_decoded) {
+	wifi_util_error_print(WIFI_WEBCONFIG,"@@@@@@@@@@@@@@@ IN webconfig_set, IN if webconfig_data_descriptor_decoded\n");
         if ((err = doc->translate_to_subdoc(config, data)) != webconfig_error_none) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Subdocument translation failed\n", __func__, __LINE__);
         } else if ((err = doc->encode_subdoc(config, data)) != webconfig_error_none) {
@@ -210,6 +223,7 @@ webconfig_error_t webconfig_set(webconfig_t *config, webconfig_subdoc_data_t *da
             err = webconfig_error_apply;
         }
     } else if ((data->descriptor & webconfig_data_descriptor_encoded) == webconfig_data_descriptor_encoded) {
+	wifi_util_error_print(WIFI_WEBCONFIG,"@@@@@@@@@@@@@@@ IN webconfig_set, IN if else webconfig_data_descriptor_encoded\n");
         if ((err = doc->decode_subdoc(config, data)) != webconfig_error_none) {
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Subdocument decode failed\n", __func__, __LINE__);
         } else if ((err = doc->translate_from_subdoc(config, data)) != webconfig_error_none) {
@@ -220,6 +234,7 @@ webconfig_error_t webconfig_set(webconfig_t *config, webconfig_subdoc_data_t *da
             err = webconfig_error_apply;
         }
     }
+    wifi_util_error_print(WIFI_WEBCONFIG,"@@@@@@@@@@@@@@@ IN webconfig_set, Before Return\n");
 
 
     data->descriptor = 0;
