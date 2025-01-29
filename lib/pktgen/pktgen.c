@@ -105,7 +105,8 @@ static int pktgen_configure(char *if_name, char *dest_mac, int packet_size)
 {
     char dev_path[PATH_MAX];
     int ret;
-
+    FILE *file_ptr;
+    file_ptr = fopen("/nvram/outputpktgen.txt", "a+");
     ret = pgctrl_command(PKTGEN_CNTRL_FILE, "reset\n");
     if (ret < 0) {
         LOGE("%s: Failed to reset. Trying to continue.", __func__);
@@ -113,6 +114,16 @@ static int pktgen_configure(char *if_name, char *dest_mac, int packet_size)
 
     ret = pgctrl_command(PKTGEN_THREAD_FILE_0, "add_device %s\n", if_name);
     if (ret < 0) {
+	ret = pgctrl_command(PKTGEN_THREAD_FILE_0, "rem_device_all\n");
+	if(file_ptr == NULL)
+	{
+		LOGE("%s: Error opening the file", __func__);
+		return -1;
+	}
+	fprintf(file_ptr, "remove_all_device is called\n");
+	fclose(file_ptr);
+    ret = pgctrl_command(PKTGEN_THREAD_FILE_0, "add_device %s\n", if_name);
+    fprintf(file_ptr, "add_device is called again\n");
         LOGE("%s: Failed to configure new device.", __func__);
         return -1;
     }
