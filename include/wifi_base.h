@@ -817,6 +817,17 @@ typedef struct {
 } __attribute__((__packed__)) assoc_req_elem_t;
 
 typedef struct {
+    mac_address_t sta_mac;
+    int expected_akm_24_24_count;
+    int expected_akm_8_8_count;
+    int expected_akm_2_2_count;
+    int less_than_expected_akm_24_8_count;
+    int less_than_expected_akm_24_2_count;
+    int less_than_expected_akm_8_2_count;
+    time_t connection_time;
+} telemetry_data_t;
+
+typedef struct {
     int ap_index;
     wifi_associated_dev3_t dev_stats;
     int reason;
@@ -849,6 +860,8 @@ typedef struct {
     struct active_msmt_data *sta_active_msmt_data;
     bool            connection_authorized;
     assoc_req_elem_t assoc_frame_data;
+    int             assoc_akm;
+    int             eapol_akm;
 
     /* wifi7 client specific data */
     bool            primary_link; /* TRUE for auth/primary link, FALSE for secondary links */
