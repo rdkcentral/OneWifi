@@ -2296,6 +2296,26 @@ int vapstatus_callback(int apIndex, wifi_vapstatus_t status)
     return 0;
 }
 
+int device_max_client_rejection(int ap_index, char *mac, int reason)
+{
+    assoc_dev_data_t assoc_data;
+    mac_address_t mac_addr;
+    sta_key_t sta_key;
+
+    str_to_mac_bytes(mac, mac_addr);
+    memset(&assoc_data, 0, sizeof(assoc_dev_data_t));
+    assoc_data.ap_index = ap_index;
+    memcpy(assoc_data.dev_stats.cli_MACAddress, mac_addr, sizeof(mac_addr));
+    assoc_data.reason = reason;
+    wifi_util_info_print(WIFI_MON,
+        "%s:%d: Device Failed to connect on interface:%d mac: %s with reason %d\n", __func__,
+        __LINE__, ap_index, to_sta_key(mac_addr, sta_key), reason);
+
+    push_event_to_ctrl_queue(&assoc_data, sizeof(assoc_data), wifi_event_type_hal_ind,
+        wifi_event_hal_deauth_frame, NULL);
+    return 0;
+}
+
 int device_deauthenticated(int ap_index, char *mac, int reason)
 {
     wifi_monitor_data_t data;
@@ -2810,6 +2830,7 @@ int init_wifi_monitor()
     wifi_vapstatus_callback_register(vapstatus_callback);
     wifi_hal_apDeAuthEvent_callback_register(device_deauthenticated);
     wifi_hal_apDisassociatedDevice_callback_register(device_disassociated);
+    wifi_hal_ap_max_client_rejection_callback_register(device_max_client_rejection);
     wifi_hal_radius_eap_failure_callback_register(radius_eap_failure_callback);
     wifi_hal_radiusFallback_failover_callback_register(radius_fallback_and_failover_callback);
     scheduler_add_timer_task(g_monitor_module.sched, FALSE, NULL, refresh_assoc_frame_entry, NULL, (MAX_ASSOC_FRAME_REFRESH_PERIOD * 1000), 0, FALSE);

@@ -21,6 +21,11 @@
 #define _WIFI_WHIX_H_
 
 typedef struct {
+    unsigned int ap_rejected_sta_count;
+    char last_time_ap_rejected_sta[128];
+} rejected_client_stat_t;
+
+typedef struct {
     int radius_failure_count[MAX_VAP];
     int eap_failure_count[MAX_VAP];
     int sched_handler_id;
@@ -29,6 +34,8 @@ typedef struct {
     int carriersensethreshold_exceeded[MAX_NUM_RADIOS];
     int channel_util[MAX_NUM_RADIOS];
     BOOL cli_stat_list[MAX_VAP];
+    rejected_client_stat_t rejected_client_stats[MAX_VAP];
+    int vap_max_client_id;
 } whix_data_t;
 
 #endif //_WIFI_WHIX_H_
