@@ -2882,7 +2882,7 @@ unsigned char *stringtohex(unsigned int in_len, char *in, unsigned int out_len, 
         return NULL;
     }
 
-    for (i = 0; i < in_len; i++) {
+    for (i = 0; i < in_len / 2; i++) {
         if (in[2 * i] <= '9') {
             tmp1 = (unsigned char)in[2 * i] - 0x30;
         } else {
@@ -2913,15 +2913,15 @@ webconfig_error_t decode_frame_data(cJSON *obj_assoc_client, frame_data_t *frame
 
     value_object = cJSON_GetObjectItem(obj_assoc_client, "FrameData");
     if ((value_object == NULL) || (cJSON_IsString(value_object) == false)) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: FrameData Invalid or not present\n", __func__,
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: FrameData Invalid or not present\n", __func__,
             __LINE__);
-        return webconfig_error_decode;
+        return webconfig_error_none;
     }
 
     tmp_assoc_frame_string = cJSON_GetStringValue(value_object);
     if (tmp_assoc_frame_string == NULL || strlen(tmp_assoc_frame_string) == 0) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: FrameData empty\n", __func__, __LINE__);
-        return webconfig_error_decode;
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: FrameData empty\n", __func__, __LINE__);
+        return webconfig_error_none;
     }
 
     memset(frame, 0, sizeof(frame_data_t));
