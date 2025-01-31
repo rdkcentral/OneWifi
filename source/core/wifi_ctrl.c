@@ -406,6 +406,22 @@ unsigned int get_Uptime(void)
     return upSecs;
 }
 
+unsigned int dfs_fallback_channel(wifi_platform_property_t *wifi_prop, wifi_freq_bands_t wifi_band)
+{
+    unsigned int channel = 0;
+    int non_dfs_channel_list_5g[] = {36, 40, 44, 48, 149, 153, 157, 161, 165};
+    int num_channels = sizeof(non_dfs_channel_list_5g)/sizeof(non_dfs_channel_list_5g[0]);
+
+    for (int i = 0; i < num_channels; i++) {
+        if ((is_wifi_channel_valid(wifi_prop, wifi_band, non_dfs_channel_list_5g[i])) == RETURN_OK) {
+            channel = non_dfs_channel_list_5g[i];
+            break;
+        }
+    }
+    wifi_util_info_print(WIFI_CTRL,"%s:%d DFS Fallback channel for band %d is %d\n", __func__, __LINE__, wifi_band, channel);
+    return channel;
+}
+
 int start_radios(rdk_dev_mode_type_t mode)
 {
     wifi_radio_operationParam_t *wifi_radio_oper_param = NULL;
@@ -441,6 +457,11 @@ int start_radios(rdk_dev_mode_type_t mode)
             start_wifi_sched_timer(index, ctrl, wifi_acs_sched); //Starting the acs_scheduler
         }
 
+        wifi_platform_property_t *wifi_prop =  (wifi_platform_property_t *) get_wifi_hal_cap_prop();
+        if ((wifi_radio_oper_param->EcoPowerDown == false) && (wifi_prop->radio_presence[index] == false)) {
+            wifi_util_error_print(WIFI_CTRL,"%s: !!!!-ALERT-!!!-Radio not present-!!!-Kernel driver interface down-!!!.Index %d\n",__FUNCTION__, index);
+        }
+
         //In case of reboot/FR, Non DFS channel will be selected and radio will switch to DFS Channel after 1 min.
         if( (wifi_radio_oper_param->band == WIFI_FREQUENCY_5_BAND ) || ( wifi_radio_oper_param->band == WIFI_FREQUENCY_5L_BAND ) || ( wifi_radio_oper_param->band == WIFI_FREQUENCY_5H_BAND)) {
             if (wifi_radio_oper_param->channel >= 52 && wifi_radio_oper_param->channel <= 144) {
@@ -451,6 +472,9 @@ int start_radios(rdk_dev_mode_type_t mode)
                     dfs_channel_data->radio_index = index;
                     dfs_channel_data->dfs_channel = wifi_radio_oper_param->channel;
                     wifi_radio_oper_param->channel = 44;
+                    if ((is_wifi_channel_valid(wifi_prop, wifi_radio_oper_param->band, wifi_radio_oper_param->channel)) != RETURN_OK) {
+                        wifi_radio_oper_param->channel = dfs_fallback_channel(wifi_prop, wifi_radio_oper_param->band);
+                    }
                     wifi_radio_oper_param->op_class = 1;
                     wifi_util_info_print(WIFI_CTRL,
                         "%s:%d Calling switch_dfs_channel for dfs_chan:%d \n", __func__, __LINE__,
@@ -459,6 +483,9 @@ int start_radios(rdk_dev_mode_type_t mode)
                         dfs_channel_data, (60 * 1000), 1, FALSE);
                 } else {
                     wifi_radio_oper_param->channel = 36;
+                    if ((is_wifi_channel_valid(wifi_prop, wifi_radio_oper_param->band, wifi_radio_oper_param->channel)) != RETURN_OK) {
+                        wifi_radio_oper_param->channel = dfs_fallback_channel(wifi_prop, wifi_radio_oper_param->band);
+                    }
                     wifi_radio_oper_param->op_class = 1;
                 }
             }
@@ -469,10 +496,6 @@ int start_radios(rdk_dev_mode_type_t mode)
             }
         }
 
-        wifi_platform_property_t *wifi_prop =  (wifi_platform_property_t *) get_wifi_hal_cap_prop();
-        if ((wifi_radio_oper_param->EcoPowerDown == false) && (wifi_prop->radio_presence[index] == false)) {
-            wifi_util_error_print(WIFI_CTRL,"%s: !!!!-ALERT-!!!-Radio not present-!!!-Kernel driver interface down-!!!.Index %d\n",__FUNCTION__, index);
-        }
         ret = wifi_hal_setRadioOperatingParameters(index, wifi_radio_oper_param);
         if (ret != RETURN_OK) {
             wifi_util_error_print(WIFI_CTRL,"%s: wifi radio parameter set failure: radio_index:%d\n",__FUNCTION__, index);
