@@ -169,7 +169,7 @@ webconfig_error_t encode_multivap_subdoc(webconfig_t *config, webconfig_subdoc_d
         break;
     }
 
-    if (radio_index < 0 || radio_index >= params->num_radios) {
+    if (radio_index < 0 || radio_index >= (int)params->num_radios) {
         wifi_util_error_print(WIFI_WEBCONFIG,
             "%s:%d radio index:%d not correct for num_radios:%d.\n", __func__, __LINE__,
             radio_index, params->num_radios);
@@ -328,19 +328,15 @@ webconfig_error_t encode_multivap_subdoc(webconfig_t *config, webconfig_subdoc_d
 
 webconfig_error_t decode_multivap_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
 {
-    webconfig_subdoc_t *doc;
     cJSON *obj_vaps;
     cJSON *obj, *obj_vap;
     unsigned int size, radio_index, vap_array_index;
-    unsigned int presence_count = 0;
     char *name;
-    unsigned int num_lnf_ssid;
-    wifi_vap_name_t vap_names[MAX_NUM_VAP_PER_RADIO];
     wifi_vap_info_t *vap_info;
     rdk_wifi_vap_info_t *rdk_vap_info;
     cJSON *json = data->u.encoded.json;
     webconfig_subdoc_decoded_data_t *params;
-    unsigned int i = 0, j = 0;
+    unsigned int i = 0;
     char *str;
 
     wifi_util_dbg_print(WIFI_WEBCONFIG, "%s: Enter subdoc_type:%d\n", __FUNCTION__, data->type);
@@ -354,7 +350,6 @@ webconfig_error_t decode_multivap_subdoc(webconfig_t *config, webconfig_subdoc_d
     cJSON_free(str);
 
     params = &data->u.decoded;
-    doc = &config->subdocs[data->type];
 
     // decode VAP objects
     obj_vaps = cJSON_GetObjectItem(json, "WifiVapConfig");

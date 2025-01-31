@@ -300,6 +300,11 @@ typedef enum {
 } marker_list_t;
 
 typedef struct {
+    uint8_t radio_index;
+    unsigned int dfs_channel;
+} dfs_channel_data_t;
+
+typedef struct {
     wifi_vap_name_t  vap_name;;
     bool enabled;
 } public_vaps_data_t;
