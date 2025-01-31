@@ -2785,6 +2785,12 @@ INSTMSMT_PH2 -->
                                     <syntax>string</syntax>
                                     <writable>true</writable>
                                 </parameter>
+                                <parameter>
+                                    <name>TcmClientDenyAssociation</name>
+                                    <type>string</type>
+                                    <syntax>string</syntax>
+                                    <writable>true</writable>
+                                </parameter>
                             </parameters>
                             <objects>
                                 <object>
