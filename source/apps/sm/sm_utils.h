@@ -74,7 +74,7 @@ size_t get_ds_dlist_len(ds_dlist_t *list);
 
 /* time utils*/
 uint64_t get_real_ms();
-uint64_t timeval_to_ms(struct timeval *ts);
+uint64_t timeval_to_ms(struct timespec *ts);
 
 /* other */
 int rssi_to_above_noise_floor(int rssi);

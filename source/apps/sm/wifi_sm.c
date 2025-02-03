@@ -27,6 +27,7 @@
 #include "wifi_mgr.h"
 #include "wifi_sm.h"
 #include "const.h"
+#include "sm_utils.h"
 
 #define DCA_TO_APP 1
 #define APP_TO_DCA 2
@@ -92,18 +93,26 @@ int neighbor_response(wifi_provider_response_t *provider_response)
     wifi_neighborScanMode_t halw_scan_type = provider_response->args.scan_mode;
 
     if (sm_survey_type_conversion(&halw_scan_type, &survey_type, DCA_TO_APP) != RETURN_OK) {
-        wifi_util_error_print(WIFI_SM,"%s:%d: failed to convert scan_mode %d to survey_type for radio_index : %d\r\n",
+        wifi_util_error_print(WIFI_SM,
+            "%s:%d: failed to convert scan_mode %d to survey_type for radio_index : %d\r\n",
             __func__, __LINE__, provider_response->args.scan_mode, radio_index);
         return RETURN_ERR;
     }
 
-    neighbor_ap =  (wifi_neighbor_ap2_t *)provider_response->stat_pointer;
+    neighbor_ap = (wifi_neighbor_ap2_t *)provider_response->stat_pointer;
 
-    wifi_util_dbg_print(WIFI_SM,"%s:%d: radio_index : %d stats_array_size : %d\r\n",__func__, __LINE__, radio_index, provider_response->stat_array_size);
+    wifi_util_dbg_print(WIFI_SM, "%s:%d: radio_index : %d stats_array_size : %d\r\n", __func__,
+        __LINE__, radio_index, provider_response->stat_array_size);
 
-    for (count = 0; count < provider_response->stat_array_size; count++) {
-        wifi_util_dbg_print(WIFI_SM,"%s:%d: count : %d ap_SSID : %s\r\n",__func__, __LINE__, count, neighbor_ap[count].ap_SSID);
-        sm_neighbor_sample_store(radio_index, survey_type, &neighbor_ap[count]);
+    if (provider_response->stat_array_size == 0) {
+        wifi_util_dbg_print(WIFI_SM, "%s:%d: No neighbor APs found in %s on %s\r\n", __func__,
+            __LINE__, survey_type_to_str(survey_type), radio_index_to_radio_type_str(radio_index));
+    } else {
+        for (count = 0; count < provider_response->stat_array_size; count++) {
+            wifi_util_dbg_print(WIFI_SM, "%s:%d: count : %d ap_SSID : %s\r\n", __func__, __LINE__,
+                count, neighbor_ap[count].ap_SSID);
+            sm_neighbor_sample_store(radio_index, survey_type, &neighbor_ap[count]);
+        }
     }
     return RETURN_OK;
 }
