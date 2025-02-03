@@ -6243,7 +6243,7 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
             cfg.variant |= WIFI_80211_VARIANT_BE;
 #endif /* !(defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)) */
 #endif /* CONFIG_IEEE80211BE */
-#if defined(_PP203X_PRODUCT_REQ_)
+#if defined (_PP203X_PRODUCT_REQ_)
             cfg.beaconInterval = 200;
 #endif
             if (is_device_type_sr213() == true) {
@@ -6267,9 +6267,9 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
             cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC | WIFI_80211_VARIANT_AX;
 #endif
             if (is_device_type_sr213() == true) {
-                cfg.basicDataTransmitRates = WIFI_BITRATE_6MBPS | WIFI_BITRATE_24MBPS;
+                cfg.basicDataTransmitRates = WIFI_BITRATE_6MBPS | WIFI_BITRATE_12MBPS | WIFI_BITRATE_24MBPS;
             }
-            wifi_util_dbg_print(WIFI_DB,"%s:%d: Values for 5g are set at 5L\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_DB,"%s:%d: Values for 5g are set at 5L\n", __func__, __LINE__);
 #ifdef CONFIG_IEEE80211BE
             cfg.variant |= WIFI_80211_VARIANT_BE;
 #endif /* CONFIG_IEEE80211BE */
@@ -6279,7 +6279,7 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
             cfg.operatingClass = 128;
             cfg.channel = 157;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
-            wifi_util_dbg_print(WIFI_DB,"%s:%d: Values for 5g are set at 5H\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_DB,"%s:%d: Values for 5g are set at 5H\n", __func__, __LINE__);
 #if defined (_PP203X_PRODUCT_REQ_)
             cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC;
             cfg.beaconInterval = 200;

@@ -190,7 +190,7 @@ void default_em_bss_info(em_bss_info_t  *vap_row)
 // sets the default values in em_device_info_t Easymesh structure
 void default_em_device_info(em_device_info_t  *device_info, em_ieee_1905_security_info_t *security_info)
 {
-    strncpy(device_info->net_id,"02:01:02:01:00:01",strlen("02:01:02:01:00:01"));
+    strncpy(device_info->id.net_id,"OneWifiMesh",strlen("OneWifiMesh"));
     strncpy(device_info->multi_ap_cap,"4A==",strlen("4A=="));
     strncpy(device_info->exec_env,"testEnv",strlen("testEnv"));
     memset(device_info->primary_device_type,'\0',sizeof(device_info->primary_device_type));
@@ -212,7 +212,7 @@ void default_em_device_info(em_device_info_t  *device_info, em_ieee_1905_securit
     device_info->sec_1905.encr_flags = 0;
     device_info->sec_1905.conn_flags = 0;
     device_info->sec_1905.cfg_methods = 0;
-    memcpy(security_info->id,device_info->id.mac,sizeof(mac_address_t));
+    memcpy(security_info->id, device_info->intf.mac,sizeof(mac_address_t));
     security_info->sec_cap.onboarding_proto = 0;
     security_info->sec_cap.integrity_algo = 0;
     security_info->sec_cap.encryption_algo = 0;
@@ -266,7 +266,7 @@ webconfig_error_t   translate_device_object_to_easymesh_for_dml(webconfig_subdoc
     strncpy(device_info->manufacturer_model, wifi_prop->manufacturerModel, strlen(wifi_prop->manufacturerModel));
     strncpy(device_info->manufacturer, wifi_prop->manufacturer, strlen(wifi_prop->manufacturer));
     strncpy(device_info->serial_number, wifi_prop->serialNo, strlen(wifi_prop->serialNo));
-    memcpy(device_info->id.mac, wifi_prop->al_1905_mac, sizeof(mac_address_t));
+    memcpy(device_info->intf.mac, wifi_prop->al_1905_mac, sizeof(mac_address_t));
     memcpy(device_info->backhaul_alid.mac, wifi_prop->al_1905_mac, sizeof(mac_address_t));
     interfacename_from_mac((const mac_address_t *)device_info->backhaul_alid.mac,device_info->backhaul_alid.name);
     //proto->set_num_radio(proto->data_model, wifi_prop->numRadios);
@@ -359,8 +359,8 @@ webconfig_error_t translate_radio_object_to_easymesh_for_radio(webconfig_subdoc_
             wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the interface map entry for \n", __func__, __LINE__);
             return webconfig_error_translate_to_easymesh;
         }
-        strncpy(em_radio_info->id.name, radio->name, sizeof(em_interface_name_t));
-        mac_address_from_name(radio_iface_map->interface_name, em_radio_info->id.mac);
+        strncpy(em_radio_info->intf.name, radio->name, sizeof(em_interface_name_t));
+        mac_address_from_name(radio_iface_map->interface_name, em_radio_info->intf.mac);
         no_of_opclass = proto->get_num_op_class(proto->data_model);
         radio_count ++;
         for (i = 0; i < oper_param->numOperatingClasses; i++) {
@@ -466,8 +466,8 @@ webconfig_error_t translate_radio_object_to_easymesh_for_dml(webconfig_subdoc_da
             wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the interface map entry for \n", __func__, __LINE__);
             return webconfig_error_translate_to_easymesh;
         }
-        strncpy(em_radio_info->id.name,radio_iface_map->radio_name, sizeof(em_interface_name_t));
-        mac_address_from_name(radio_iface_map->interface_name, em_radio_info->id.mac);
+        strncpy(em_radio_info->intf.name,radio_iface_map->radio_name, sizeof(em_interface_name_t));
+        mac_address_from_name(radio_iface_map->interface_name, em_radio_info->intf.mac);
         op_class_count = proto->get_num_op_class(proto->data_model);
         for (unsigned int j = 0; j < oper_param->numOperatingClasses; j++) {
             em_op_class_info = (em_op_class_info_t *)(proto->get_op_class_info(proto->data_model, op_class_count));
@@ -492,7 +492,7 @@ webconfig_error_t translate_radio_object_to_easymesh_for_dml(webconfig_subdoc_da
 
         //Incrementing the number of operating classes by one, as the dml lacks an operating class for current.
         proto->set_num_op_class(proto->data_model, (op_class_count+1));
-        mac_address_from_name(radio_iface_map->interface_name, em_radio_info->id.mac);
+        mac_address_from_name(radio_iface_map->interface_name, em_radio_info->intf.mac);
 
         //Add default params of radio_info
         em_radio_info->number_of_unassoc_sta = 0;
@@ -626,14 +626,14 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
 
                     to_mac_str(assoc_dev_data->dev_stats.cli_MACAddress, sta_str);
                     to_mac_str(bss_info->bssid.mac, bss_str);
-                    to_mac_str(radio_info->id.mac, radio_str);
+                    to_mac_str(radio_info->intf.mac, radio_str);
                     snprintf(key, sizeof(key), "%s@%s@%s", sta_str, bss_str, radio_str);
                     printf("\n%s:%d: Add key=%s\n", __func__, __LINE__, key);
                     printf("\n%s:%d: client_state: %d\n", __func__, __LINE__, assoc_dev_data->client_state);
 
                     memcpy(em_sta_dev_info->id, assoc_dev_data->dev_stats.cli_MACAddress, sizeof(mac_address_t));
                     memcpy(em_sta_dev_info->bssid, vap->u.bss_info.bssid, sizeof(mac_address_t));
-                    memcpy(em_sta_dev_info->radiomac, radio_info->id.mac, sizeof(mac_address_t));
+                    memcpy(em_sta_dev_info->radiomac, radio_info->intf.mac, sizeof(mac_address_t));
                     em_sta_dev_info->last_ul_rate = assoc_dev_data->dev_stats.cli_LastDataUplinkRate;
                     em_sta_dev_info->last_dl_rate = assoc_dev_data->dev_stats.cli_LastDataDownlinkRate;
                     em_sta_dev_info->retrans_count = assoc_dev_data->dev_stats.cli_RetransCount;
@@ -721,7 +721,7 @@ webconfig_error_t translate_sta_object_to_easymesh_for_assocdev_stats(webconfig_
         radio_info = proto->get_radio_info(proto->data_model, radio_index);
         bss_info = proto->get_bss_info(proto->data_model, vap_index);
         em_sta_dev_info = proto->get_sta_info(proto->data_model, client_stats[count].cli_MACAddress, \
-             bss_info->bssid.mac, radio_info->id.mac, em_target_sta_map_consolidated);
+             bss_info->bssid.mac, radio_info->intf.mac, em_target_sta_map_consolidated);
         if (em_sta_dev_info != NULL) {     
             memcpy(em_sta_dev_info->id, client_stats[count].cli_MACAddress, sizeof(mac_address_t));
             memcpy(em_sta_dev_info->timestamp, time_str ,sizeof(em_sta_dev_info->timestamp));
@@ -1877,7 +1877,7 @@ webconfig_error_t   translate_device_object_from_easymesh_to_dml(webconfig_subdo
     strncpy(wifi_prop->manufacturerModel,device_info->manufacturer_model, strlen(device_info->manufacturer_model));
     strncpy (wifi_prop->manufacturer, device_info->manufacturer, strlen(device_info->manufacturer));
     strncpy(wifi_prop->serialNo, device_info->serial_number,strlen(device_info->serial_number));
-    memcpy( wifi_prop->al_1905_mac, device_info->id.mac, sizeof(mac_address_t));
+    memcpy( wifi_prop->al_1905_mac, device_info->intf.mac, sizeof(mac_address_t));
     for (unsigned int i = 0; i < decoded_params->num_radios; i++) {
         radio = &decoded_params->radios[i];
         radio->oper.DfsEnabled =  device_info->dfs_enable;
