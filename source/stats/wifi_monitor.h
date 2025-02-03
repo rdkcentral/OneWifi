@@ -70,7 +70,8 @@ typedef enum {
 typedef enum {
     SECURITY_WPA2_Personal = 0x00000010,
     SECURITY_WPA3_Personal = 0x00000200,
-    SECURITY_WPA3_Personal_Transition = 0x00000400
+    SECURITY_WPA3_Personal_Transition = 0x00000400,
+    SECURITY_WPA3_Compatibility = 0x00002000
 } sec_t;
 
 

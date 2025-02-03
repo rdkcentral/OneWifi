@@ -287,26 +287,31 @@ int set_wpa3_assoc_frame_data(frame_data_t *msg) {
     frame = (struct ieee80211_mgmt *)msg->data;
     str = to_mac_str(frame->sa, mac_str);
     if (str == NULL) {
-        wifi_util_error_print(WIFI_MON, "%s:%d mac str convert failure\r\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_MON, "%s:%d Harsha mac str convert failure\r\n", __func__, __LINE__);
         return RETURN_ERR;
     }
 
-    wifi_util_dbg_print(WIFI_MON, "%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d src mac:%s rssi:%d\r\n", __func__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir, str, msg->frame.sig_dbm);
+    wifi_util_dbg_print(WIFI_MON, "%s:%d Harsha  wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d src mac:%s rssi:%d\r\n", __func__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir, str, msg->frame.sig_dbm);
 
     sta_map = get_wpa3_sta_data_map(msg->frame.ap_index);
     if (sta_map == NULL) {
-        wifi_util_error_print(WIFI_MON, "%s:%d sta_data map not found for vap_index:%d\r\n", __func__, __LINE__, msg->frame.ap_index);
+        wifi_util_error_print(WIFI_MON, "%s:%d Harsha sta_data map not found for vap_index:%d\r\n", __func__, __LINE__, msg->frame.ap_index);
         return RETURN_ERR;
     }
 
     sta = (telemetry_data_t *)hash_map_get(sta_map, mac_str);
+    if (sta == NULL) {
+	  wifi_util_error_print(WIFI_MON, "%s:%d Harsha sta is null \r\n", __func__, __LINE__);
+    }
     if (sta == NULL || memcmp(sta->sta_mac, zero_mac, sizeof(mac_address_t)) == 0) {
-	 
+
+        wifi_util_error_print(WIFI_MON, "%s:%d Harsha mac str is zero_mac that is :%s \r\n", __func__, __LINE__,sta->sta_mac);	    
         sta = create_wpa3_sta_data_hash_map(sta_map, frame->sa);
         if (sta == NULL) {
 		 
             return RETURN_ERR;
         }
+	wifi_util_error_print(WIFI_MON, "%s:%d Harsha after created mac str is :%s \r\n", __func__, __LINE__,sta->sta_mac);
         sta->expected_akm_24_24_count = 0;
         sta->expected_akm_8_8_count = 0;
 	sta->expected_akm_2_2_count = 0;
@@ -317,7 +322,7 @@ int set_wpa3_assoc_frame_data(frame_data_t *msg) {
         time(&frame_timestamp);
         memcpy(&sta->connection_time, &frame_timestamp, sizeof(frame_timestamp));
     }
-    wifi_util_info_print(WIFI_MON, "Updated STA entry for MAC: %s\r\n", str);
+    wifi_util_info_print(WIFI_MON, "Harsha STA MAC: %s\r\n", str);
     wifi_util_info_print(WIFI_MON, "%s:%d Harsha done\r\n", __func__, __LINE__);
     return RETURN_OK;
 }
@@ -345,7 +350,7 @@ int update_wpa3_sta_data(unsigned int vap_index) {
             
             //wifi_util_dbg_print(WIFI_MON, "%s:%d connection time:%ld, current time:%ld\r\n", __func__, __LINE__, sta->connection_time, current_timestamp);
             //wifi_util_dbg_print(WIFI_MON, "%s:%d vap_index:%d sta_mac:%s\r\n", __func__, __LINE__, vap_index, to_mac_str(sta->sta_mac, mac_str));
-            if ((current_timestamp - sta->connection_time) > MAX_AKM_REPORT_REFRESH_PERIOD) {
+            if ((current_timestamp - sta->connection_time) >= MAX_AKM_REPORT_REFRESH_PERIOD) {
 	        if (hash_map_get(sta_map1, mac_str) == NULL) {
 	            wifi_util_dbg_print(WIFI_MON, "%s:%d harsha raw sta_mac: %02x:%02x:%02x:%02x:%02x:%02x\r\n",__func__, __LINE__, sta->sta_mac[0], sta->sta_mac[1], sta->sta_mac[2], sta->sta_mac[3], sta->sta_mac[4], sta->sta_mac[5]);
                     wifi_util_dbg_print(WIFI_MON, "%s:%d harsha time diff:%d connection time:%ld, current time:%ld \r\n", __func__, __LINE__, (current_timestamp - sta->connection_time), sta->connection_time, current_timestamp);
@@ -1147,7 +1152,7 @@ int set_sta_client_mode(int ap_index, char *mac, int key_mgmt, frame_type_t fram
     int mode = 0;
     wifi_vap_security_t *security = (wifi_vap_security_t *)Get_wifi_object_bss_security_parameter(ap_index);
     if (security != NULL) {
-        if ((int)security->mode == (int)SECURITY_WPA3_Personal || (int)security->mode == (int)SECURITY_WPA3_Personal_Transition) {
+        if ((int)security->mode == (int)SECURITY_WPA3_Personal || (int)security->mode == (int)SECURITY_WPA3_Personal_Transition || (int)security->mode == (int)SECURITY_WPA3_Compatibility) {
             mode = 8;
         }
         if ((int)security->mode == (int)SECURITY_WPA2_Personal) {
@@ -1170,12 +1175,12 @@ int set_sta_client_mode(int ap_index, char *mac, int key_mgmt, frame_type_t fram
 
     if (frame_type == ASSOC_REQUEST || frame_type == REASSOC_REQUEST) {
         sta->assoc_akm = key_mgmt;
-        rsn_variant_t variant = get_rsn_variant(band, key_mgmt);
+        rsn_variant_t variant = (((int)security->mode == (int)SECURITY_WPA3_Compatibility)?get_rsn_variant(band, key_mgmt):0);
         telemetry_event_wpa3(ap_index, mac, variant, frame_type, key_mgmt);
         sta->eapol_akm = 0;
     } else if (frame_type == EAPOL) {
         sta->eapol_akm = key_mgmt;
-        rsn_variant_t variant = get_rsn_variant(band, key_mgmt);
+	rsn_variant_t variant = (((int)security->mode == (int)SECURITY_WPA3_Compatibility)?get_rsn_variant(band, key_mgmt):0);
         telemetry_event_wpa3(ap_index, mac, variant, frame_type, key_mgmt);
         if (sta->assoc_akm == sta->eapol_akm) {
             wifi_util_dbg_print(WIFI_MON, "%s:%d Harsha equal station found for vap_index:%d station :%s and set the mode:%d eapol_mode:%d assoc_mode:%d band:%d \r\n", __func__, __LINE__, ap_index, mac, key_mgmt, sta->eapol_akm, sta->assoc_akm, band);
