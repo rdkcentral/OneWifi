@@ -6347,7 +6347,7 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
     cfg.chanUtilSelfHealEnable = 0;
     cfg.EcoPowerDown = false;
     cfg.factoryResetSsid = 0;
-    if (!is_device_type_sr213() == true) {
+    if (is_device_type_sr213() != true) {
         cfg.basicDataTransmitRates = WIFI_BITRATE_6MBPS | WIFI_BITRATE_12MBPS | WIFI_BITRATE_24MBPS;
     }
     cfg.operationalDataTransmitRates = WIFI_BITRATE_6MBPS | WIFI_BITRATE_9MBPS | WIFI_BITRATE_12MBPS | WIFI_BITRATE_18MBPS | WIFI_BITRATE_24MBPS | WIFI_BITRATE_36MBPS | WIFI_BITRATE_48MBPS | WIFI_BITRATE_54MBPS;
