@@ -3090,6 +3090,7 @@ void process_rsn_override_rfc(bool type)
             }
             vapInfo->u.bss_info.security.mode = wifi_security_mode_wpa3_compatibility;
             vapInfo->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
+            vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
         } else {
             if(rfc_param->wpa3_rfc) {
                 vapInfo->u.bss_info.security.mode = wifi_security_mode_wpa3_transition;

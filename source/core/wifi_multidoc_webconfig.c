@@ -339,6 +339,7 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security,pErr 
         } else if (!strcmp(value, "WPA3-Personal-Compatibility")) {
             vap_info->u.bss_info.security.mode = wifi_security_mode_wpa3_compatibility;
             vap_info->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
+            vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
         } else {
             if (execRetVal) {
                 strncpy(execRetVal->ErrorMsg,"Invalid Security Mode",sizeof(execRetVal->ErrorMsg)-1);

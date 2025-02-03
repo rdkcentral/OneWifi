@@ -7889,7 +7889,7 @@ void get_security_modes_supported(int vap_index, int *mode)
         COSA_DML_WIFI_SECURITY_WPA2_Personal | COSA_DML_WIFI_SECURITY_WPA2_Enterprise |
         COSA_DML_WIFI_SECURITY_WPA_WPA2_Personal | COSA_DML_WIFI_SECURITY_WPA_WPA2_Enterprise |
         COSA_DML_WIFI_SECURITY_WPA3_Personal | COSA_DML_WIFI_SECURITY_WPA3_Personal_Transition |
-        COSA_DML_WIFI_SECURITY_WPA3_Enterprise | COSA_DML_WIFI_SECURITY_WPA3_Personal_Transition;
+        COSA_DML_WIFI_SECURITY_WPA3_Enterprise | COSA_DML_WIFI_SECURITY_WPA3_Personal_Compatibility ;
 }
 
 /**********************************************************************  
@@ -8655,6 +8655,7 @@ Security_SetParamStringValue
                 break;
             case wifi_security_mode_wpa3_compatibility:
                 l_security_cfg->u.key.type = wifi_security_key_type_psk_sae;
+                l_security_cfg->mfp = wifi_mfp_cfg_disabled;
                 break;
             default:
                 break;
