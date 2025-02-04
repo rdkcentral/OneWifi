@@ -6623,8 +6623,13 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
 #else
         if (isVapPrivate(vap_index)) {
             cfg.u.bss_info.bssMaxSta = wifi_hal_cap_obj->wifi_prop.BssMaxStaAllow;
+            wifi_util_info_print(WIFI_DB, "%s:%d  vap_index:%d maxassoc:%d", __func__, __LINE__, vap_index, cfg.u.bss_info.bssMaxSta);
+        } else if (isVapHotspotOpen5g(vap_index) || isVapHotspotSecure5g(vap_index)) {
+            cfg.u.bss_info.bssMaxSta = 15;
+            wifi_util_info_print(WIFI_DB, "%s:%d vap_index:%d maxassoc:%d", __func__, __LINE__, vap_index, cfg.u.bss_info.bssMaxSta);
         } else {
-            cfg.u.bss_info.bssMaxSta = BSS_MAX_NUM_STA_COMMON;
+            cfg.u.bss_info.bssMaxSta =  BSS_MAX_NUM_STA_COMMON;
+            wifi_util_info_print(WIFI_DB,"%s:%d  maxassoc:%d", __func__,__LINE__, cfg.u.bss_info.bssMaxSta);
         }
 #endif // NEWPLATFORM_PORT
 #endif //_SKY_HUB_COMMON_PRODUCT_REQ_
