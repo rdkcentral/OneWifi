@@ -22,6 +22,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <limits.h>
 #include "scheduler.h"
 #include "timespec_macro.h"
 
@@ -42,6 +43,7 @@ struct timer_task {
 static int scheduler_calculate_timeout(struct scheduler *sched, struct timespec t_now);
 static int scheduler_get_number_tasks_pending(struct scheduler *sched, bool high_prio);
 static int scheduler_remove_complete_tasks(struct scheduler *sched);
+static struct timer_task *scheduler_find_timer_task(struct scheduler *sched, int id);
 
 struct scheduler * scheduler_init(void)
 {
@@ -92,12 +94,35 @@ int scheduler_deinit(struct scheduler **sched)
     return 0;
 }
 
+static int scheduler_get_new_id(struct scheduler *sched)
+{
+    int old_id;
+    static int new_id = 0;
+
+    old_id = new_id;
+
+    do {
+        /* 0 id is reserved for uninitialized timer */
+        if (new_id == INT_MAX) {
+            new_id = 1;
+        } else {
+            new_id++;
+        }
+    } while (scheduler_find_timer_task(sched, new_id) != NULL && new_id != old_id);
+
+    /* overflow */
+    if (new_id == old_id) {
+        return -1;
+    }
+
+    return new_id;
+}
+
 int scheduler_add_timer_task(struct scheduler *sched, bool high_prio, int *id,
                                 int (*cb)(void *arg), void *arg, unsigned int interval_ms,
                                 unsigned int repetitions, bool start_immediately)
 {
     struct timer_task *tt;
-    static int new_id = 0;
     struct
     {
         queue_t *timer_list;
@@ -126,6 +151,8 @@ int scheduler_add_timer_task(struct scheduler *sched, bool high_prio, int *id,
     if (start_immediately) {
         clock_gettime(CLOCK_MONOTONIC, &(tt->timeout));
     }
+
+    pthread_mutex_lock(&sched->lock);
     if (high_prio) {
         sched_queue.timer_list = sched->high_priority_timer_list;
         sched_queue.num_tasks = &sched->num_hp_tasks;
@@ -136,9 +163,12 @@ int scheduler_add_timer_task(struct scheduler *sched, bool high_prio, int *id,
         sched_queue.index = &sched->index;
     }
 
-    pthread_mutex_lock(&sched->lock);
-    new_id++;
-    tt->id = new_id;
+    tt->id = scheduler_get_new_id(sched);
+    if (tt->id == -1) {
+	free(tt);
+	pthread_mutex_unlock(&sched->lock);
+	return -1;
+    }
     queue_push(sched_queue.timer_list, tt);
     (*sched_queue.num_tasks)++;
     (*sched_queue.index)++;
