@@ -6362,7 +6362,7 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
         Fcfg.OffChanNscanInSec = 0;
         Fcfg.OffChanTidleInSec = 0;
     }
-
+    wifi_util_dbg_print(WIFI_DB,"Sample\n");
     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Tscan:%lu Nscan:%lu Nidle:%lu\n", __func__, __LINE__, Fcfg.OffChanTscanInMsec, Fcfg.OffChanNscanInSec, Fcfg.OffChanTidleInSec);
     /* Call the function to update the operating classes based on Country code and Radio */
     update_radio_operating_classes(&cfg);
