@@ -6247,8 +6247,7 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
             cfg.beaconInterval = 200;
 #endif
             if (is_device_type_sr213() == true) {
-                cfg.basicDataTransmitRates = WIFI_BITRATE_1MBPS | WIFI_BITRATE_2MBPS | \
-                    WIFI_BITRATE_5_5MBPS | WIFI_BITRATE_11MBPS;
+                cfg.basicDataTransmitRates = WIFI_BITRATE_1MBPS | WIFI_BITRATE_2MBPS | WIFI_BITRATE_5_5MBPS | WIFI_BITRATE_11MBPS;
             }
             break;
         case WIFI_FREQUENCY_5_BAND:
