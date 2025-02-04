@@ -49,19 +49,19 @@
                     "SupportedDataTransmitRates": "12,24,36,48,54",
                     "MinimumAdvertisedMCS": "3"
                 },
-                "TcmPreAssociationDeny": {
-                    "TcmWaitTime": 150,
-                    "TcmMinMgmtFrames": 3,
-                    "TcmExpWeightage": "0.6",
-                    "TcmGradientThreshold": "0.18"
-                },
                 "PostAssociationDeny": {
                     "RssiUpThreshold": "-70",
                     "SnrThreshold": "55",
                     "CuThreshold": "55",
                     "SamplingInterval": "10",
                     "SamplingCount": "3"
-               }
+               },
+               "TcmPreAssociationDeny": {
+                    "TcmWaitTime": 150,
+                    "TcmMinMgmtFrames": 3,
+                    "TcmExpWeightage": "0.6",
+                    "TcmGradientThreshold": "0.18"
+                }
             },
             "Interworking": {
               "ANQP": {
@@ -152,18 +152,18 @@
                 "SupportedDataTransmitRates": "12,24,36,48,54",
                 "MinimumAdvertisedMCS": "3"
             },
-            "TcmPreAssociationDeny": {
-                "TcmWaitTime": 150,
-                "TcmMinMgmtFrames": 3,
-                "TcmExpWeightage": "0.6",
-                "TcmGradientThreshold": "0.18"
-            },
             "PostAssociationDeny": {
                 "RssiUpThreshold": "-70",
                 "SnrThreshold": "55",
                 "CuThreshold": "55",
                 "SamplingInterval": "10",
                 "SamplingCount": "3"
+            },
+            "TcmPreAssociationDeny": {
+                "TcmWaitTime": 150,
+                "TcmMinMgmtFrames": 3,
+                "TcmExpWeightage": "0.6",
+                "TcmGradientThreshold": "0.18"
             }
         },
         "Interworking": {
@@ -253,18 +253,18 @@
                     "SupportedDataTransmitRates": "12,24,36,48,54",
                     "MinimumAdvertisedMCS": "3"
                 },
-                "TcmPreAssociationDeny": {
-                    "TcmWaitTime": 150,
-                    "TcmMinMgmtFrames": 3,
-                    "TcmExpWeightage": "0.6",
-                    "TcmGradientThreshold": "0.18"
-                },
                 "PostAssociationDeny": {
                     "RssiUpThreshold": "-70",
                     "SnrThreshold": "55",
                     "CuThreshold": "55",
                     "SamplingInterval": "10",
                     "SamplingCount": "3"
+                },
+                "TcmPreAssociationDeny": {
+                    "TcmWaitTime": 150,
+                    "TcmMinMgmtFrames": 3,
+                    "TcmExpWeightage": "0.6",
+                    "TcmGradientThreshold": "0.18"
                 }
             },
             "Interworking": {
@@ -356,18 +356,18 @@
                 "SupportedDataTransmitRates": "12,24,36,48,54",
                 "MinimumAdvertisedMCS": "3"
             },
-            "TcmPreAssociationDeny": {
-                "TcmWaitTime": 150,
-                "TcmMinMgmtFrames": 3,
-                "TcmExpWeightage": "0.6",
-                "TcmGradientThreshold": "0.18"
-            },
             "PostAssociationDeny": {
                 "RssiUpThreshold": "-70",
                 "SnrThreshold": "55",
                 "CuThreshold": "55",
                 "SamplingInterval": "10",
                 "SamplingCount": "3"
+            },
+            "TcmPreAssociationDeny": {
+                "TcmWaitTime": 150,
+                "TcmMinMgmtFrames": 3,
+                "TcmExpWeightage": "0.6",
+                "TcmGradientThreshold": "0.18"
             }
         },
         "Interworking": {
@@ -460,18 +460,18 @@
                 "MinimumAdvertisedMCS": "3",
                 "6GOpInfoMinRate": ""
             },
-            "TcmPreAssociationDeny": {
-                "TcmWaitTime": 150,
-                "TcmMinMgmtFrames": 3,
-                "TcmExpWeightage": "0.6",
-                "TcmGradientThreshold": "0.18"
-            },
             "PostAssociationDeny": {
                 "RssiUpThreshold": "-70",
                 "SnrThreshold": "55",
                 "CuThreshold": "55",
                 "SamplingInterval": "10",
                 "SamplingCount": "3"
+            },
+            "TcmPreAssociationDeny": {
+                "TcmWaitTime": 150,
+                "TcmMinMgmtFrames": 3,
+                "TcmExpWeightage": "0.6",
+                "TcmGradientThreshold": "0.18"
             }
         },
         "Interworking": {
@@ -564,18 +564,18 @@
                 "MinimumAdvertisedMCS": "3",
                 "6GOpInfoMinRate": ""
             },
-            "TcmPreAssociationDeny": {
-                "TcmWaitTime": 150,
-                "TcmMinMgmtFrames": 3,
-                "TcmExpWeightage": "0.6",
-                "TcmGradientThreshold": "0.18"
-            },
             "PostAssociationDeny": {
                 "RssiUpThreshold": "-70",
                 "SnrThreshold": "55",
                 "CuThreshold": "55",
                 "SamplingInterval": "10",
                 "SamplingCount": "3"
+            },
+            "TcmPreAssociationDeny": {
+                "TcmWaitTime": 150,
+                "TcmMinMgmtFrames": 3,
+                "TcmExpWeightage": "0.6",
+                "TcmGradientThreshold": "0.18"
             }
         },
         "Interworking": {
