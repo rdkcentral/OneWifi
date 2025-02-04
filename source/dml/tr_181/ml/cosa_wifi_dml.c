@@ -2821,6 +2821,54 @@ Radio_GetParamStringValue
             }
         }
 
+        if (pcfg->basicDataTransmitRates & WIFI_BITRATE_1MBPS)
+        {
+            if (AnscSizeOfString(buf) != 0)
+            {
+                strcat(buf, ",1");
+            }
+            else
+            {
+                strcat(buf, "1");
+            }
+        }
+
+        if (pcfg->basicDataTransmitRates & WIFI_BITRATE_2MBPS)
+        {
+            if (AnscSizeOfString(buf) != 0)
+            {
+                strcat(buf, ",2");
+            }
+            else
+            {
+                strcat(buf, "2");
+            }
+        }
+
+        if (pcfg->basicDataTransmitRates & WIFI_BITRATE_5_5MBPS)
+        {
+            if (AnscSizeOfString(buf) != 0)
+            {
+                strcat(buf, ",5.5");
+            }
+            else
+            {
+                strcat(buf, "5.5");
+            }
+        }
+
+        if (pcfg->basicDataTransmitRates & WIFI_BITRATE_11MBPS)
+        {
+            if (AnscSizeOfString(buf) != 0)
+            {
+                strcat(buf, ",11");
+            }
+            else
+            {
+                strcat(buf, "11");
+            }
+        }
+
         if ( pcfg->basicDataTransmitRates & WIFI_BITRATE_24MBPS )
         {
             if (AnscSizeOfString(buf) != 0)
