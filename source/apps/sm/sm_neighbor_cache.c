@@ -121,8 +121,8 @@ static sm_neighbor_t* neighbor_get_or_alloc(sm_neighbor_cache_t *cache, sm_neigh
     return neighbor;
 }
 
-
-static int neighbor_convert_hal_to_sample(unsigned int radio_index, wifi_neighbor_ap2_t *hal, dpp_neighbor_record_list_t *result)
+static int neighbor_convert_hal_to_sample(unsigned int radio_index, wifi_neighbor_ap2_t *hal,
+    dpp_neighbor_record_list_t *result, survey_type_t survey_type)
 {
     CHECK_NULL(hal);
     CHECK_NULL(result);
@@ -137,14 +137,15 @@ static int neighbor_convert_hal_to_sample(unsigned int radio_index, wifi_neighbo
     entry->lastseen = time(NULL); /* TODO: get the time of the scan ? */
     entry->chanwidth = str_to_dpp_chan_width(hal->ap_OperatingChannelBandwidth);
 
-    wifi_util_dbg_print(WIFI_SM, "%s:%d: Fetched neighbor sample on %s channel %u SSID %s\n", __func__, __LINE__, radio_index_to_radio_type_str(radio_index), hal->ap_Channel, hal->ap_SSID);
+    wifi_util_dbg_print(WIFI_SM, "%s:%d: Fetched neighbor %s sample on %s channel %u SSID %s\n",
+        __func__, __LINE__, survey_type_to_str(survey_type),
+        radio_index_to_radio_type_str(radio_index), hal->ap_Channel, hal->ap_SSID);
 
     return RETURN_OK;
 }
 
-
 static int neighbor_sample_add(sm_neighbor_cache_t *cache, survey_type_t survey_type,
-                             unsigned int radio_index, wifi_neighbor_ap2_t *stats)
+    unsigned int radio_index, wifi_neighbor_ap2_t *stats)
 {
     CHECK_NULL(cache);
     CHECK_NULL(stats);
@@ -152,7 +153,7 @@ static int neighbor_sample_add(sm_neighbor_cache_t *cache, survey_type_t survey_
     int rc = RETURN_ERR;
     dpp_neighbor_record_list_t *sample = NULL;
     sm_neighbor_t *neighbor = NULL;
-    sm_neighbor_id_t neighbor_id = {0};
+    sm_neighbor_id_t neighbor_id = { 0 };
     sm_neighbor_scan_t *scan = NULL;
 
     if (RETURN_OK != neighbor_id_get(radio_index, stats->ap_BSSID, neighbor_id)) {
@@ -162,13 +163,15 @@ static int neighbor_sample_add(sm_neighbor_cache_t *cache, survey_type_t survey_
 
     sample = dpp_neighbor_record_alloc();
     if (!sample) {
-        wifi_util_error_print(WIFI_SM, "%s:%d: failed to alloc new record for cache\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_SM, "%s:%d: failed to alloc new record for cache\n", __func__,
+            __LINE__);
         goto exit_err;
     }
 
     neighbor = neighbor_get_or_alloc(cache, neighbor_id);
     if (!neighbor) {
-        wifi_util_error_print(WIFI_SM, "%s:%d: failed to get neighbor for %.*s\n", __func__, __LINE__, sizeof(sm_neighbor_id_t), neighbor_id);
+        wifi_util_error_print(WIFI_SM, "%s:%d: failed to get neighbor for %.*s\n", __func__,
+            __LINE__, sizeof(sm_neighbor_id_t), neighbor_id);
         goto exit_err;
     }
 
@@ -178,9 +181,10 @@ static int neighbor_sample_add(sm_neighbor_cache_t *cache, survey_type_t survey_
         goto exit_err;
     }
 
-    rc = neighbor_convert_hal_to_sample(radio_index, stats, sample);
+    rc = neighbor_convert_hal_to_sample(radio_index, stats, sample, survey_type);
     if (rc != RETURN_OK) {
-        wifi_util_error_print(WIFI_SM, "%s:%d: failed to convert hal to sample\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_SM, "%s:%d: failed to convert hal to sample\n", __func__,
+            __LINE__);
         goto exit_err;
     }
 
