@@ -4603,7 +4603,7 @@ void *start_wifidb_func(void *arg)
             strncpy(last_reboot_reason, (char *)data.raw_data.bytes, data.raw_data_len);
             get_bus_descriptor()->bus_data_free_fn(&data);
         } else {
-            get_wifi_last_reboot_reason_psm_value(last_reboot_reason);
+	    syscfg_get( NULL, "X_RDKCENTRAL-COM_LastRebootReason", last_reboot_reason, sizeof(last_reboot_reason));
         }
         wifi_util_info_print(WIFI_DB, "%s:%d last_reboot_reason:%s \n", __func__, __LINE__,
             last_reboot_reason);
