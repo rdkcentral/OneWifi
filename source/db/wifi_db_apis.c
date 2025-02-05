@@ -8312,7 +8312,6 @@ int wifi_mgr_bus_subsription(bus_handle_t *handle)
     }
 
     wifi_util_dbg_print(WIFI_MGR, "%s:%d bus open success\n", __func__, __LINE__);
-
     if (get_bus_descriptor()->bus_event_subs_fn(handle, LAST_REBOOT_REASON_NAMESPACE,
             bus_subscription_handler, NULL, 0) != bus_error_success) {
         wifi_util_error_print(WIFI_MGR, "%s:%d bus event:%s subscribe failed\n", __FUNCTION__,
@@ -8376,7 +8375,7 @@ int get_all_param_from_psm_and_set_into_db(void)
     if (is_device_type_xb7() == true || is_device_type_xb8() == true ||
         is_device_type_vbvxb10() == true || is_device_type_sercommxb10() == true ||
         is_device_type_scxer10() == true || is_device_type_sr213() == true ||
-        is_device_type_cmxb7() == true || is_device_type_cbr2() == true) {
+        is_device_type_cmxb7() == true || is_device_type_cbr2() == true || is_device_type_vbvxer5() == true) {
         bool wifi_psm_db_enabled = false;
         char last_reboot_reason[32];
         raw_data_t data;
