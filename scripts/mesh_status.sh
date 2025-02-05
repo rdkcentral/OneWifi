@@ -38,22 +38,47 @@ else
  echo_t "Meshwifi has been disabled"  >> /rdklogs/logs/MeshAgentLog.txt.0
 fi
 
+# Function to check if a MAC address line in lease file has the xle model
+check_mac_address() {
+    local mac_address=$1
+    local file_path="/nvram/dnsmasq.leases"
+    local search_string="WNXL11BWL"
+    grep -q "$mac_address.*$search_string" "$file_path"
+    if [ $? -eq 0 ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
 #Print mac address of wifi and ethernet pod macs
 
 #WiFi Pod
 maclist="POD_BACKHAUL_MAC:"
+xlemaclist="XLE_BACKHAUL_MAC:"
 linktype="POD_BACKHAUL_LINK:"
+xlelinktype="XLE_BACKHAUL_LINK:"
 ports="POD_BACKHAUL_PORT:"
+xleports="XLE_BACKHAUL_PORT:"
 pod_found=false
+xle_found=false
 
 for vap in 12 13; do
  if [ $Pods_$vap -gt 0 ]; then
   cliMac=`dmcli eRT getv Device.WiFi.AccessPoint.$((vap+1)).AssociatedDevice. | grep -w MACAddress -A1 | grep -w "value:" | sed "s/.*value: //g"`
   for mac in $cliMac; do 
-   maclist="$maclist $mac,"
-   linktype="$linktype WiFi,"
-   ports="$ports $vap"
-   pod_found=true
+    check_mac_address "$mac"
+    if [ $? -eq 0 ]; then
+        xlemaclist="$xlemaclist $mac,"
+        xlelinktype="$xlelinktype WiFi,"
+        xleports="$xleports $vap"
+        xle_found=true 
+    else
+        maclist="$maclist $mac,"
+        linktype="$linktype WiFi,"
+        ports="$ports $vap"
+        pod_found=true
+    fi
   done
  else
   echo "Nothing on $vap vap"
@@ -74,17 +99,31 @@ for i in $(echo $pod_mac | sed "s/,/ /g"); do
   check=`dmcli eRT getv Device.Ethernet.Interface.$port.X_RDKCENTRAL-COM_AssociatedDevice. | grep -i $podmac2`
   if [ "$check" != "" ]; then
    echo "Pod mac $podmac2 found in $port address"
-   maclist="$maclist $podmac2,"
-  linktype="$linktype Ethernet,"
-  ports="$ports $port"
+    check_mac_address "$mac"
+    if [ $? -eq 0 ]; then
+        xlemaclist="$xlemaclist $mac,"
+        xlelinktype="$xlelinktype Ethernet,"
+        xleports="$xleports $port"
+        xle_found=true
+    else
+        maclist="$maclist $podmac2,"
+        linktype="$linktype Ethernet,"
+        ports="$ports $port"
+        pod_found=true
+    fi
   phy_rate=`dmcli eRT getv Device.Ethernet.Interface.$port.CurrentBitRate | grep -i value | cut -d":" -f3`
   echo_t "Ethernet backhaul network: Port: $port, cli-addr: $podmac2 , Link Phy-Rate:$phy_rate Mbps" >> /rdklogs/logs/MeshAgentLog.txt.0
-  pod_found=true
   fi
  done 
 done
 
 echo $maclist
+echo $xlemaclist
+if $xle_found; then
+ echo_t "$xlemaclist"  >> /rdklogs/logs/MeshAgentLog.txt.0
+ echo_t "$xlelinktype" >> /rdklogs/logs/MeshAgentLog.txt.0
+ echo_t "$xleports"    >> /rdklogs/logs/MeshAgentLog.txt.0
+fi
 if $pod_found; then
  echo_t "$maclist"  >> /rdklogs/logs/MeshAgentLog.txt.0
  echo_t "$linktype" >> /rdklogs/logs/MeshAgentLog.txt.0
