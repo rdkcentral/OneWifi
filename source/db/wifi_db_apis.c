@@ -6267,7 +6267,7 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
             cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC | WIFI_80211_VARIANT_AX;
 #endif
             if (is_device_type_sr213() == true) {
-                cfg.basicDataTransmitRates = WIFI_BITRATE_6MBPS | WIFI_BITRATE_12MBPS |
+                cfg.basicDataTransmitRates = WIFI_BITRATE_6MBPS | WIFI_BITRATE_12MBPS | \
                     WIFI_BITRATE_24MBPS;
             }
 #ifdef CONFIG_IEEE80211BE
