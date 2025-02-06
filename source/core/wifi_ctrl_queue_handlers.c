@@ -2090,6 +2090,7 @@ void process_twoG80211axEnable_rfc(bool type)
         return;
     }
     ret = enable_wifi_radio_ax_mode(radio_index, radio_params, radio_feat_params, type);
+#ifndef ALWAYS_ENABLE_AX_2G
     if (ret == RETURN_OK) {
         rfc_param->twoG80211axEnable_rfc = type;
         ret = get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
@@ -2097,6 +2098,7 @@ void process_twoG80211axEnable_rfc(bool type)
             g_wifi_mgr->rfc_dml_parameters.twoG80211axEnable_rfc = type;
         }
     }
+#endif
 }
 
 void process_prefer_private_rfc(bool type)

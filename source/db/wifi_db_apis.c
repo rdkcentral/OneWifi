@@ -221,7 +221,11 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon, struct schema_Wifi_Rf
         rfc_param->dfs_rfc = new_rec->dfs_rfc;
         rfc_param->wpa3_rfc = new_rec->wpa3_rfc;
         rfc_param->levl_enabled_rfc = new_rec->levl_enabled_rfc;
+#ifdef ALWAYS_ENABLE_AX_2G
+        rfc_param->twoG80211axEnable_rfc = true;
+#else
         rfc_param->twoG80211axEnable_rfc = new_rec->twoG80211axEnable_rfc;
+#endif
         rfc_param->hotspot_open_2g_last_enabled = new_rec->hotspot_open_2g_last_enabled;
         rfc_param->hotspot_open_5g_last_enabled = new_rec->hotspot_open_5g_last_enabled;
         rfc_param->hotspot_open_6g_last_enabled = new_rec->hotspot_open_6g_last_enabled;
@@ -1661,7 +1665,11 @@ int wifidb_get_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_info)
     rfc_info->dfs_rfc = pcfg->dfs_rfc;
     rfc_info->wpa3_rfc = pcfg->wpa3_rfc;
     rfc_info->levl_enabled_rfc = pcfg->levl_enabled_rfc;
+#ifdef ALWAYS_ENABLE_AX_2G
+    rfc_info->twoG80211axEnable_rfc = true;
+#else 
     rfc_info->twoG80211axEnable_rfc = pcfg->twoG80211axEnable_rfc;
+#endif
     rfc_info->hotspot_open_2g_last_enabled= pcfg->hotspot_open_2g_last_enabled;
     rfc_info->hotspot_open_5g_last_enabled= pcfg->hotspot_open_5g_last_enabled;
     rfc_info->hotspot_open_6g_last_enabled= pcfg->hotspot_open_6g_last_enabled;
@@ -5404,7 +5412,11 @@ int wifidb_update_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_param)
     cfg.dfs_rfc = rfc_param->dfs_rfc;
     cfg.wpa3_rfc = rfc_param->wpa3_rfc;
     cfg.levl_enabled_rfc = rfc_param->levl_enabled_rfc;
+#ifdef ALWAYS_ENABLE_AX_2G
+    cfg.twoG80211axEnable_rfc = true;
+#else
     cfg.twoG80211axEnable_rfc = rfc_param->twoG80211axEnable_rfc;
+#endif
     cfg.hotspot_open_2g_last_enabled = rfc_param->hotspot_open_2g_last_enabled;
     cfg.hotspot_open_5g_last_enabled = rfc_param->hotspot_open_5g_last_enabled;
     cfg.hotspot_open_6g_last_enabled = rfc_param->hotspot_open_6g_last_enabled;
