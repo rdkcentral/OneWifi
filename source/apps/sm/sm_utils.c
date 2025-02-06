@@ -51,9 +51,9 @@ typedef struct {
 } stats_type_to_str_t;
 
 static const stats_type_to_str_t stats_type_mapping[] = {
-    { stats_type_neighbor, "Neighbor" },
-    { stats_type_survey,   "Survey"   },
-    { stats_type_client,   "Client"   },
+    { stats_type_neighbor, "neighbor" },
+    { stats_type_survey,   "survey"   },
+    { stats_type_client,   "client"   },
 };
 
 #define NOISE_FLOOR (-95)

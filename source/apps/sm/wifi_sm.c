@@ -731,9 +731,11 @@ int handle_sm_webconfig_event(wifi_app_t *app, wifi_event_t *event)
                         radio_type_t radio_type = freq_band_to_dpp_radio_type(
                             new_stats_cfg->radio_type);
                         wifi_util_error_print(WIFI_SM,
-                            "%s %d Reconfigured sampling interval of %s for %s radio as %u\n",
-                            __func__, __LINE__, stats_type_to_str(new_stats_cfg->stats_type),
-                            radio_get_name_from_type(radio_type), new_stats_cfg->sampling_interval);
+                            "%s %d Reconfigured sampling interval as %u secs for %s stats type of "
+                            "%s radio\n",
+                            __func__, __LINE__, new_stats_cfg->sampling_interval,
+                            stats_type_to_str(new_stats_cfg->stats_type),
+                            radio_get_name_from_type(radio_type));
                     }
                     memcpy(cur_stats_cfg, new_stats_cfg, sizeof(stats_config_t));
                     if (!off_scan_rfc && cur_stats_cfg->survey_type == survey_type_off_channel &&
