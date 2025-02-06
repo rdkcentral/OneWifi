@@ -1661,7 +1661,11 @@ int wifidb_get_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_info)
     rfc_info->dfs_rfc = pcfg->dfs_rfc;
     rfc_info->wpa3_rfc = pcfg->wpa3_rfc;
     rfc_info->levl_enabled_rfc = pcfg->levl_enabled_rfc;
+#ifdef ALWAYS_ENABLE_AX_2G
+    rfc_info->twoG80211axEnable_rfc = true;
+#else
     rfc_info->twoG80211axEnable_rfc = pcfg->twoG80211axEnable_rfc;
+#endif
     rfc_info->hotspot_open_2g_last_enabled= pcfg->hotspot_open_2g_last_enabled;
     rfc_info->hotspot_open_5g_last_enabled= pcfg->hotspot_open_5g_last_enabled;
     rfc_info->hotspot_open_6g_last_enabled= pcfg->hotspot_open_6g_last_enabled;
@@ -7029,6 +7033,9 @@ void init_wifidb_data()
         if (wifidb_get_rfc_config(0,rfc_param) != 0) {
             wifi_util_error_print(WIFI_DB,"%s:%d: Error getting RFC config\n",__func__, __LINE__);
         }
+#ifdef ALWAYS_ENABLE_AX_2G
+        wifidb_update_rfc_config(0, rfc_param);
+#endif
         get_wifi_country_code_from_bootstrap_json(country_code, COUNTRY_CODE_LEN);
         pthread_mutex_lock(&g_wifidb->data_cache_lock);
         for (r_index = 0; r_index < num_radio; r_index++) {
