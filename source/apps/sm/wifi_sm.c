@@ -728,7 +728,8 @@ int handle_sm_webconfig_event(wifi_app_t *app, wifi_event_t *event)
             } else {
                 if (memcmp(cur_stats_cfg, new_stats_cfg, sizeof(stats_config_t)) != 0) {
                     if (new_stats_cfg->sampling_interval != cur_stats_cfg->sampling_interval) {
-                        char *radio_type = freq_band_to_dpp_radio_type(new_stats_cfg->radio_type);
+                        radio_type_t radio_type = freq_band_to_dpp_radio_type(
+                            new_stats_cfg->radio_type);
                         wifi_util_error_print(WIFI_SM,
                             "%s %d Reconfigured sampling interval of %s for %s radio as %u\n",
                             __func__, __LINE__, stats_type_to_str(new_stats_cfg->stats_type),
