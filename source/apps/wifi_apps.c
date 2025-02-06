@@ -249,7 +249,7 @@ wifi_app_descriptor_t app_desc[] = {
     },
     {
         wifi_app_inst_whix, 0,
-        wifi_event_type_webconfig | wifi_event_type_monitor | wifi_event_type_command,
+        wifi_event_type_webconfig | wifi_event_type_monitor | wifi_event_type_command | wifi_event_type_hal_ind,
         true, true,
         "WHIX telemetry",
         whix_init, whix_event, whix_deinit,
