@@ -3109,9 +3109,9 @@ webconfig_error_t translate_vap_object_to_ovsdb_associated_clients(const rdk_wif
     }
 
     is_hotspot = is_vap_hotspot(wifi_prop, rdk_vap_info->vap_index) == TRUE;
-    wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d Vap name: %s\n", __func__, __LINE__, rdk_vap_info->vap_name);
+    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Vap name: %s\n", __func__, __LINE__, rdk_vap_info->vap_name);
     if (is_hotspot) {
-        wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d associated clients for vap: %s will not be translated to ovsdb.\n", __func__, __LINE__, rdk_vap_info->vap_name);
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d associated clients for vap: %s will not be translated to ovsdb.\n", __func__, __LINE__, rdk_vap_info->vap_name);
     }
 
     associated_client_count = *client_count;
