@@ -259,15 +259,6 @@ static void schedule_connect_sm(vap_svc_t *svc)
         process_ext_connect_algorithm, svc, EXT_CONNECT_ALGO_PROCESSOR_INTERVAL, 1, FALSE);
 }
 
-static void ext_reset_radios(vap_svc_t *svc)
-{
-    vap_svc_ext_t *ext = &svc->u.ext;
-
-    reset_wifi_radios();
-    ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
-    schedule_connect_sm(svc);
-}
-
 void ext_incomplete_scan_list(vap_svc_t *svc)
 {
     vap_svc_ext_t *ext = &svc->u.ext;
@@ -311,9 +302,10 @@ static int process_ext_connect_event_timeout(vap_svc_t *svc)
     }
 
     if (ext->conn_retry >= STA_MAX_CONNECT_ATTEMPT) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d not received connection event, reset radios\n",
-            __func__, __LINE__);
-        ext_reset_radios(svc);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d not received connection event\n", __func__,
+            __LINE__);
+        ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
+        schedule_connect_sm(svc);
         ext->conn_retry = 0;
         return 0;
     }
@@ -354,9 +346,10 @@ static int process_udhcp_disconnect_event_timeout(vap_svc_t *svc)
     }
 
     if (ext->disconn_retry >= STA_MAX_DISCONNECT_ATTEMPT) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d not received disconnection event, reset radios\n",
-            __func__, __LINE__);
-        ext_reset_radios(svc);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d not received disconnection event\n", __func__,
+            __LINE__);
+        ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
+        schedule_connect_sm(svc);
         ext->disconn_retry = 0;
         return 0;
     }
@@ -395,9 +388,10 @@ static int process_trigger_disconnection_event_timeout(vap_svc_t *svc)
     }
 
     if (ext->disconn_retry >= STA_MAX_DISCONNECT_ATTEMPT) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d not received disconnection event, reset radios\n",
-            __func__, __LINE__);
-        ext_reset_radios(svc);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d not received disconnection event\n", __func__,
+            __LINE__);
+        ext_set_conn_state(ext, connection_state_disconnected_scan_list_none, __func__, __LINE__);
+        schedule_connect_sm(svc);
         ext->disconn_retry = 0;
         return 0;
     }
@@ -1212,6 +1206,8 @@ int scan_result_wait_timeout(vap_svc_t *svc)
 {
     vap_svc_ext_t *ext = &svc->u.ext;
 
+    ext->ext_scan_result_wait_timeout_handler_id = 0;
+
     if (ext->conn_state == connection_state_disconnected_scan_list_in_progress) {
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d - received only %u radio scan results\r\n", __func__,
             __LINE__, ext->scanned_radios);
@@ -1364,15 +1360,16 @@ int process_ext_scan_results(vap_svc_t *svc, void *arg)
     if (ext->candidates_list.scan_list && (ext->candidates_list.scan_count > 1))
         sort_bss_results_by_rssi(ext->candidates_list.scan_list, 0, ext->candidates_list.scan_count - 1);
 
+    if (ext->ext_scan_result_wait_timeout_handler_id != 0) {
+        scheduler_cancel_timer_task(ctrl->sched, ext->ext_scan_result_wait_timeout_handler_id);
+        ext->ext_scan_result_wait_timeout_handler_id = 0;
+    }
+
     ext->scanned_radios++;
     if (ext->scanned_radios >= getNumberRadios()) {
         ext_set_conn_state(ext, connection_state_disconnected_scan_list_all, __func__, __LINE__);
         ext->scanned_radios = 0;
 
-        if (ext->ext_scan_result_wait_timeout_handler_id != 0) {
-            scheduler_cancel_timer_task(ctrl->sched, ext->ext_scan_result_wait_timeout_handler_id);
-            ext->ext_scan_result_wait_timeout_handler_id = 0;
-        }
         schedule_connect_sm(svc);
     } else {
         ext_set_conn_state(ext, connection_state_disconnected_scan_list_in_progress, __func__,
