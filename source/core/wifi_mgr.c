@@ -207,6 +207,11 @@ bool is_device_type_scxer10(void)
 {
     return is_supported_gateway_device("SCER11BEL");
 }
+bool is_device_type_vbvxer5(void)
+{
+    return is_supported_gateway_device("VTER11QEL");
+}
+
 
 int init_wifimgr()
 {

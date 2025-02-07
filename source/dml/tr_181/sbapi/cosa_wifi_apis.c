@@ -1705,6 +1705,7 @@ ANSC_STATUS UpdateJsonParamLegacy
         memset( data, 0, ( sizeof(char) * (len + 1) ));
         /*CID: 70535 Ignoring number of bytes read*/
         if(1 != fread( data, len, 1, fileRead )) {
+            free( data ); // free memory if fread fails
             fclose( fileRead );
             return ANSC_STATUS_FAILURE;
         }
@@ -1950,6 +1951,7 @@ ANSC_STATUS UpdateJsonParam
         memset( data, 0, ( sizeof(char) * (len + 1) ));
         /*CID: 70144 Ignoring number of bytes read*/
         if( 1 != fread( data, len, 1, fileRead )) {
+            free( data ); // free memory if fread fails
             fclose( fileRead );
             return ANSC_STATUS_FAILURE;
         }
