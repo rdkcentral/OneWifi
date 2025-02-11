@@ -38,6 +38,7 @@ extern "C" {
 #include "wifi_whix.h"
 #include "wifi_harvester.h"
 #include "wifi_ocs.h"
+#include "wifi_easymesh.h"
 
 #ifdef ONEWIFI_BLASTER_APP_SUPPORT
 #include "wifi_blaster.h"
@@ -71,6 +72,7 @@ typedef struct {
 #endif
         analytics_data_t     analytics;
         sm_data_t            sm_data;
+        easymesh_data_t      easymesh_data;
         motion_data_t        motion;
         csi_app_t            csi;
         whix_data_t          whix;

@@ -117,6 +117,7 @@ typedef enum {
     webconfig_subdoc_type_wifi_config,
     webconfig_subdoc_type_csi,
     webconfig_subdoc_type_stats_config,
+    webconfig_subdoc_type_easymesh_config,
     webconfig_subdoc_type_steering_config,
     webconfig_subdoc_type_steering_clients,
     webconfig_subdoc_type_vif_neighbors,

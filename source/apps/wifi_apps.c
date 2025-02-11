@@ -224,6 +224,16 @@ wifi_app_descriptor_t app_desc[] = {
         NULL,NULL
     },
 #endif
+#if EM_APP
+    {
+        wifi_app_inst_easymesh, 0,
+        wifi_event_type_monitor | wifi_event_type_webconfig,
+        true, true,
+        "Easy Mesh",
+        em_init, em_event, em_deinit,
+        NULL,NULL
+    },
+#endif
     {
         wifi_app_inst_csi, 0, 0,
         true, true,
