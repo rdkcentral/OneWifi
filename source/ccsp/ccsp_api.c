@@ -25,6 +25,7 @@
 #include "util.h"
 #include "wifi_hal.h"
 #include "wifi_util.h"
+#include "cosa_dbus_api.h"
 #include <stdarg.h>
 
 extern void* bus_handle;
@@ -131,16 +132,19 @@ void CcspTraceDebugRdkb(char *format, ...)
     va_end(args);
 }
 
-char *psm_get_value_Rdkb(char *recName, char *strValue)
+char *psm_get_value_Rdkb(char *recName, char *strValue, unsigned int str_size)
 {
     int retry = 0;
     int ret_psm_get = RETURN_ERR;
+    char *strVal = NULL;
 
     while (retry++ < 2) {
-        ret_psm_get = PSM_Get_Record_Value2(bus_handle, g_Subsystem, recName, NULL, &strValue);
+        ret_psm_get = PSM_Get_Record_Value2(bus_handle, g_Subsystem, recName, NULL, &strVal);
         if (ret_psm_get == RDKB_CCSP_SUCCESS) {
             wifi_util_dbg_print(WIFI_MGR,"%s:%d ret_psm_get success for %s and strValue is %s\n", __func__,
                 __LINE__, recName, strValue);
+            strncpy(strValue, strVal, str_size);
+            ((CCSP_MESSAGE_BUS_INFO *)bus_handle)->freefunc(strVal);
             return strValue;
         } else if (ret_psm_get == CCSP_CR_ERR_INVALID_PARAM) {
             wifi_util_dbg_print(WIFI_MGR,"%s:%d PSM_Get_Record_Value2 (%s) returned error %d \n", __func__,
