@@ -23,7 +23,6 @@
 #include <pthread.h>
 #include <unistd.h>
 #include "collection.h"
-#include "WIFI_EM.h"
 #include "wifi_monitor.h"
 #include "wifi_util.h"
 #include "wifi_ctrl.h"
