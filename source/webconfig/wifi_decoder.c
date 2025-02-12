@@ -5294,6 +5294,59 @@ webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_c
         decode_param_integer(radio_metrics_obj, "STA Status", param);
         em_config->radio_metrics_policies.radio_metrics_policy[i].sta_status = param->valuedouble;
     }
+    return webconfig_error_none;
+}
 
+webconfig_error_t decode_sta_mgr_object(const cJSON *obj_sta_cfg, sta_data_ts *sta_data,
+    wifi_platform_property_t *hal_prop)
+{
+    const cJSON *param;
+    cJSON *br_item;
+    unsigned int itr;
+    bR_data_t *bR_data;
+    char key[64] = {0};
+    // Vap Name.
+    decode_param_string(obj_sta_cfg, "VapName", param);
+    sta_data->ap_index = convert_vap_name_to_index(hal_prop, param->valuestring);
+
+    // MacAddr.
+    decode_param_string(obj_sta_cfg, "MacAddress", param);
+    strncpy(key, param->valuestring, sizeof(key));
+    str_to_mac_bytes(param->valuestring, sta_data->mac_addr);
+
+    if (sta_data->bR_map == NULL) {
+        sta_data->bR_map = hash_map_create();
+    }
+    // BeaconReport.
+    cJSON *array_obj = cJSON_GetObjectItem(obj_sta_cfg, "BeaconReport");
+    if (array_obj != NULL) {
+        unsigned int size = cJSON_GetArraySize(array_obj);
+        for (itr = 0; itr < size; itr++) {
+            br_item = cJSON_GetArrayItem(array_obj, itr);
+            if (br_item == NULL) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: null Json Pointer \n", __func__,
+                    __LINE__);
+                return webconfig_error_decode;
+            }
+            bR_data = (bR_data_t *)malloc(sizeof(bR_data_t));
+            memset(bR_data, 0, sizeof(bR_data_t));
+            decode_param_string(br_item, "BSSID", param);
+            str_to_mac_bytes(param->valuestring, bR_data->bssid);
+
+            decode_param_integer(br_item, "Operating Class", param);
+            bR_data->op_class = param->valuedouble;
+
+            decode_param_integer(br_item, "Channel Number", param);
+            bR_data->channel = param->valuedouble;
+
+            decode_param_integer(br_item, "RCPI", param);
+            bR_data->rcpi = param->valuedouble;
+
+            decode_param_integer(br_item, "RSNI", param);
+            bR_data->rssi = param->valuedouble;
+
+            hash_map_put(sta_data->bR_map, strdup(key), bR_data);
+        }
+    }
     return webconfig_error_none;
 }
