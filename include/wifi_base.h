@@ -1066,6 +1066,57 @@ typedef struct {
     unsigned int            radio_Temperature;
 } radio_data_t;
 
+typedef char marker_name[32];
+
+typedef struct {
+    int interval;
+    marker_name managed_client_marker;
+} ap_metrics_policy_t;
+
+typedef struct {
+    int sta_count;
+    mac_addr_t disallowed_sta[0];
+} local_steering_disallowed_policy_t;
+
+typedef struct {
+    int sta_count;
+    mac_addr_t disallowed_sta[0];
+} btm_steering_disallowed_policy_t;
+
+typedef struct {
+    bssid_t bssid;
+    bool profile_1_bsta_disallowed;
+    bool profile_2_bsta_disallowed;
+} backhaul_bss_config_policy_t;
+
+typedef struct {
+    bool report_independent_channel_scan;
+} channel_scan_reporting_policy_t;
+
+typedef struct {
+    mac_addr_t ruid;
+    int sta_rcpi_threshold;
+    int sta_rcpi_hysteresis;
+    int ap_util_threshold;
+    bool traffic_stats;
+    bool link_metrics;
+    bool sta_status;
+} radio_metrics_policy_t;
+
+typedef struct {
+    int radio_count;
+    radio_metrics_policy_t radio_metrics_policy[0];
+} radio_metrics_policies_t;
+
+typedef struct {
+    ap_metrics_policy_t ap_metric_policy;
+    local_steering_disallowed_policy_t local_steering_dslw_policy;
+    btm_steering_disallowed_policy_t btm_steering_dslw_policy;
+    backhaul_bss_config_policy_t backhaul_bss_config_policy;
+    channel_scan_reporting_policy_t channel_scan_reporting_policy;
+    radio_metrics_policies_t radio_metrics_policies;
+} em_config_t;
+
 #ifdef __cplusplus
 }
 #endif

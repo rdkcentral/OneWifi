@@ -31,6 +31,7 @@ include build/linux/makefile.inc
 
 
 EASY_MESH_NODE = 1
+EM_APP = 1
 
 # wifi hal rules
 HAL_LIBRARY = $(INSTALLDIR)/lib/libwifihal.a
@@ -220,7 +221,6 @@ INCLUDEDIRS = \
     -I$(ONE_WIFI_HOME)/source/apps/blaster \
     -I$(ONE_WIFI_HOME)/source/apps/cac \
     -I$(ONE_WIFI_HOME)/source/apps/csi \
-    -I$(ONE_WIFI_HOME)/source/apps/em \
     -I$(ONE_WIFI_HOME)/source/apps/harvester \
     -I$(ONE_WIFI_HOME)/source/apps/levl \
     -I$(ONE_WIFI_HOME)/source/apps/motion \
@@ -241,6 +241,7 @@ INCLUDEDIRS = \
     -I$(ONE_WIFI_HOME)/lib/osa \
     -I$(ONE_WIFI_HOME)/lib/const \
     -I$(ONE_WIFI_HOME)/lib/schema \
+    -I$(ONE_WIFI_HOME)/lib/datapipeline \
     -I$(WIFI_HAL_INTERFACE) \
     -I/usr/local/ssl/include/ \
     -I/usr/include/libnl3 \
@@ -248,6 +249,7 @@ INCLUDEDIRS = \
     -I$(WIFI_HOSTAP_SRC) \
     -I$(WIFI_HOSTAP_SRC)/ap \
     -I$(WIFI_NETLINK)/include \
+    #-I$(ONE_WIFI_HOME)/source/apps/em \
 
 LIBDIRS = \
     -L$(INSTALLDIR)/lib \
@@ -300,6 +302,8 @@ CSOURCES = $(wildcard $(ONE_WIFI_HOME)/source/db/wifi_db.c) \
     $(ONE_WIFI_HOME)/source/platform/linux/misc.c 	\
     $(ONE_WIFI_HOME)/source/platform/linux/bus.c	\
     $(ONE_WIFI_HOME)/source/platform/common/common.c   \
+    #$(wildcard $(ONE_WIFI_HOME)/source/apps/em/*.c) \
+
 
 WEBCONFIG_SOURCES = $(ONE_WIFI_HOME)/source/webconfig/wifi_decoder.c	\
         $(ONE_WIFI_HOME)/source/webconfig/wifi_encoder.c	\
@@ -331,6 +335,7 @@ WEBCONFIG_SOURCES = $(ONE_WIFI_HOME)/source/webconfig/wifi_decoder.c	\
         $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_radiodiag_stats.c    \
         $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_multivap.c    \
         $(ONE_WIFI_HOME)/source/utils/wifi_util.c	\
+        #$(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_easymesh_config.c  \
 
 HEBUS_SOURCES = $(wildcard $(ONE_WIFI_HOME)/source/platform/linux/he_bus/src/*.c)  \
 
@@ -377,6 +382,11 @@ ifdef ONEWIFI_BLASTER_APP_SUPPORT
 	WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_blaster.c
 endif
 
+ifdef EM_APP
+    INCLUDEDIRS +=  -I$(ONE_WIFI_HOME)/source/apps/em
+	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/em/*.c)
+	WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_easymesh_config.c
+endif
 
 COBJECTS = $(CSOURCES:.c=.o)  # expands to list of object files
 
@@ -388,7 +398,7 @@ ALL_HEBUS_LIB_OBJECTS = $(HEBUS_OBJECTS)
 
 ALLOBJECTS = $(CXXOBJECTS) $(COBJECTS) $(WEBCONFIG_OBJECTS) $(HEBUS_OBJECTS)
 
-CFLAGS = $(INCLUDEDIRS) $(INCLUDE_HE_LIB_DIRS) -g -fPIC -D_ANSC_LINUX -D_COSA_INTEL_USG_ATOM_ -DUSE_NOTIFY_COMPONENT -DCISCO_XB3_PLATFORM_CHANGES -DDUAL_CORE_XB3 -DFEATURE_ONE_WIFI -DWIFI_HAL_VERSION_3 -DFEATURE_SUPPORT_PASSPOINT -DFEATURE_SUPPORT_WEBCONFIG -DRASPBERRY_PI_PORT  -DNL80211_ACL -D_PLATFORM_RASPBERRYPI_ -DEASY_MESH_NODE  
+CFLAGS = $(INCLUDEDIRS) $(INCLUDE_HE_LIB_DIRS) -g -fPIC -D_ANSC_LINUX -D_COSA_INTEL_USG_ATOM_ -DUSE_NOTIFY_COMPONENT -DCISCO_XB3_PLATFORM_CHANGES -DDUAL_CORE_XB3 -DFEATURE_ONE_WIFI -DWIFI_HAL_VERSION_3 -DFEATURE_SUPPORT_PASSPOINT -DFEATURE_SUPPORT_WEBCONFIG -DRASPBERRY_PI_PORT  -DNL80211_ACL -D_PLATFORM_RASPBERRYPI_ -DEASY_MESH_NODE  -DEM_APP
 
 ifneq ($(OS), Darwin)
 CFLAGS += -DPLATFORM_LINUX
