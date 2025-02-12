@@ -5162,106 +5162,137 @@ webconfig_error_t decode_radio_temperature_stats_object(wifi_provider_response_t
 
 webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_config)
 {
-    const cJSON  *param;
+    const cJSON  *param, *disallowed_sta_array, *sta_obj, *radio_metrics_obj;
+    const cJSON *policy_obj, *managed_client_marker_array, *local_steering_policy, *btm_steering_policy, *backhaul_policy, *channel_scan_policy, *radio_metrics_array;
 
-    const cJSON *policy_obj = cJSON_GetObjectItem(em_cfg, "Policy");
+    policy_obj = cJSON_GetObjectItem(em_cfg, "Policy");
     if (policy_obj == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: cjson object is NULL\n", __func__, __LINE__);
         return webconfig_error_decode;
     }
 
     // AP Metrics Reporting Policy
     const cJSON *ap_metrics_policy = cJSON_GetObjectItem(policy_obj, "AP Metrics Reporting Policy");
-    if (ap_metrics_policy != NULL) {
-        decode_param_integer(ap_metrics_policy, "Interval", param);
-        em_config->ap_metric_policy.interval = param->valuedouble;
-        printf("    AP Metrics Reporting Interval: %f\n", em_config->ap_metric_policy.interval);
-
-        const cJSON *managed_client_marker_array = cJSON_GetObjectItem(ap_metrics_policy, "Managed Client Marker");
-        if (cJSON_IsArray(managed_client_marker_array)) {
-            int num_managed_client_markers = cJSON_GetArraySize(managed_client_marker_array);
-            for (int i = 0; i < num_managed_client_markers; i++) {
-                const cJSON *marker = cJSON_GetArrayItem(managed_client_marker_array, i);
-                printf("    marker->valuestring: %s\n", marker->valuestring);
-                strncpy(em_config->ap_metric_policy.managed_client_marker, marker->valuestring, sizeof(marker_name));
-                printf("    Managed Client Marker %d: %s\n", i, em_config->ap_metric_policy.managed_client_marker);
-            }
-        }
+    if (ap_metrics_policy == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: AP Metrics Repoting Policy is NULL\n", __func__, __LINE__);
+        return webconfig_error_decode;
     }
 
+    decode_param_integer(ap_metrics_policy, "Interval", param);
+    em_config->ap_metric_policy.interval = param->valuedouble;
+
+    decode_param_allow_optional_string(ap_metrics_policy, "Managed Client Marker", param);
+    strncpy(em_config->ap_metric_policy.managed_client_marker, param->valuestring, sizeof(marker_name));
+
     // Local Steering Disallowed Policy
-    const cJSON *local_steering_policy = cJSON_GetObjectItem(policy_obj, "Local Steering Disallowed Policy");
-    if (local_steering_policy != NULL) {
-        const cJSON *disallowed_sta_array = cJSON_GetObjectItem(local_steering_policy, "Disallowed STA");
-        if (cJSON_IsArray(disallowed_sta_array)) {
-            em_config->local_steering_dslw_policy.sta_count = cJSON_GetArraySize(disallowed_sta_array);
-            for (int i = 0; i < em_config->local_steering_dslw_policy.sta_count; i++) {
-                const cJSON *sta_obj = cJSON_GetArrayItem(disallowed_sta_array, i);
-                decode_param_string(sta_obj, "MAC", param);
-                str_to_mac_bytes(param->valuestring, em_config->local_steering_dslw_policy.disallowed_sta[i]);
-                printf("    Local Steering Disallowed STA %d: %s\n", i, param->valuestring);
-            }
-        }
+    local_steering_policy = cJSON_GetObjectItem(policy_obj, "Local Steering Disallowed Policy");
+    if (local_steering_policy == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Local Steering Disallowed Policy is NULL\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    disallowed_sta_array = cJSON_GetObjectItem(local_steering_policy, "Disallowed STA");
+    if (disallowed_sta_array == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL Json pointer\n", __func__, __LINE__);
+    }
+
+    if (cJSON_IsArray(disallowed_sta_array) == false) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Local Disallowed STA object not present\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    em_config->local_steering_dslw_policy.sta_count = cJSON_GetArraySize(disallowed_sta_array);
+    for (int i = 0; i < em_config->local_steering_dslw_policy.sta_count; i++) {
+        sta_obj = cJSON_GetArrayItem(disallowed_sta_array, i);
+        decode_param_allow_optional_string(sta_obj, "MAC", param);
+        str_to_mac_bytes(param->valuestring, em_config->local_steering_dslw_policy.disallowed_sta[i]);
     }
 
     // BTM Steering Disallowed Policy
-    const cJSON *btm_steering_policy = cJSON_GetObjectItem(policy_obj, "BTM Steering Disallowed Policy");
-    if (btm_steering_policy != NULL) {
-        const cJSON *disallowed_sta_array = cJSON_GetObjectItem(btm_steering_policy, "Disallowed STA");
-        if (cJSON_IsArray(disallowed_sta_array)) {
-            em_config->btm_steering_dslw_policy.sta_count = cJSON_GetArraySize(disallowed_sta_array);
-            for (int i = 0; i < em_config->btm_steering_dslw_policy.sta_count; i++) {
-                const cJSON *sta_obj = cJSON_GetArrayItem(disallowed_sta_array, i);
-                decode_param_string(sta_obj, "MAC", param);
-                str_to_mac_bytes(param->valuestring, em_config->btm_steering_dslw_policy.disallowed_sta[i]);
-                printf("    BTM Steering Disallowed STA %d: %s\n", i, param->valuestring);
-            }
-        }
+    btm_steering_policy = cJSON_GetObjectItem(policy_obj, "BTM Steering Disallowed Policy");
+    if (btm_steering_policy == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: BTM Steering Disallowed Policy is NULL\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    disallowed_sta_array = cJSON_GetObjectItem(btm_steering_policy, "Disallowed STA");
+    if (disallowed_sta_array == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL Json pointer\n", __func__, __LINE__);
+    }
+
+    if (cJSON_IsArray(disallowed_sta_array) == false) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: BTM Disallowed STA object not present\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    em_config->btm_steering_dslw_policy.sta_count = cJSON_GetArraySize(disallowed_sta_array);
+    for (int i = 0; i < em_config->btm_steering_dslw_policy.sta_count; i++) {
+        sta_obj = cJSON_GetArrayItem(disallowed_sta_array, i);
+        decode_param_string(sta_obj, "MAC", param);
+        str_to_mac_bytes(param->valuestring, em_config->btm_steering_dslw_policy.disallowed_sta[i]);
     }
 
     // Backhaul BSS Configuration Policy
-    const cJSON *backhaul_policy = cJSON_GetObjectItem(policy_obj, "Backhaul BSS Configuration Policy");
-    if (backhaul_policy != NULL) {
-        //decode_param_string(backhaul_policy, "Backhaul Config", param);
-        //strncpy(em_config->backhaul_bss_config_policy, param->valuestring, sizeof(em_config->backhaul_bss_config_policy) - 1);
-        //printf("    Backhaul Config: %s\n", em_config->backhaul_bss_config_policy);
+    backhaul_policy = cJSON_GetObjectItem(policy_obj, "Backhaul BSS Configuration Policy");
+    if (backhaul_policy == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Backhaul BSS Configuration Policy is NULL\n", __func__, __LINE__);
+        return webconfig_error_decode;
     }
+
+    decode_param_allow_optional_string(backhaul_policy, "BSSID", param);
+    strncpy(em_config->backhaul_bss_config_policy.bssid, param->valuestring, sizeof(bssid_t));
+
+    decode_param_allow_optional_string(backhaul_policy, "Profile-1 bSTA Disallowed", param);
+    em_config->backhaul_bss_config_policy.profile_1_bsta_disallowed = param->valuedouble;
+
+    decode_param_allow_optional_string(backhaul_policy, "Profile-2 bSTA Disallowed", param);
+    em_config->backhaul_bss_config_policy.profile_2_bsta_disallowed = param->valuedouble;
 
     // Channel Scan Reporting Policy
-    const cJSON *channel_scan_policy = cJSON_GetObjectItem(policy_obj, "Channel Scan Reporting Policy");
-    if (channel_scan_policy != NULL) {
-        decode_param_integer(channel_scan_policy, "Report Independent Channel Scans", param);
-        em_config->channel_scan_reporting_policy.report_independent_channel_scan = param->valuedouble;
-        printf("    Channel Scan Report: %f\n", em_config->channel_scan_reporting_policy.report_independent_channel_scan);
+    channel_scan_policy = cJSON_GetObjectItem(policy_obj, "Channel Scan Reporting Policy");
+    if (channel_scan_policy == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Channel Scan Reporting Policy is NULL\n", __func__, __LINE__);
+        return webconfig_error_decode;
     }
 
+    decode_param_integer(channel_scan_policy, "Report Independent Channel Scans", param);
+    em_config->channel_scan_reporting_policy.report_independent_channel_scan = param->valuedouble;
+
     // Radio Specific Metrics Policy
-    const cJSON *radio_metrics_array = cJSON_GetObjectItem(policy_obj, "Radio Specific Metrics Policy");
-    if (cJSON_IsArray(radio_metrics_array)) {
-        em_config->radio_metrics_policies.radio_count = cJSON_GetArraySize(radio_metrics_array);
-        for (int i = 0; i < em_config->radio_metrics_policies.radio_count; i++) {
-            const cJSON *radio_metrics_obj = cJSON_GetArrayItem(radio_metrics_array, i);
-            decode_param_string(radio_metrics_obj, "ID", param);
-            strncpy(em_config->radio_metrics_policies.radio_metrics_policy[i].ruid, param->valuestring, strlen(em_config->radio_metrics_policies.radio_metrics_policy[i].ruid) + 1);
-            printf("    Radio ID %d: %s\n", i, em_config->radio_metrics_policies.radio_metrics_policy[i].ruid);
-            decode_param_integer(radio_metrics_obj, "STA RCPI Threshold", param);
-            em_config->radio_metrics_policies.radio_metrics_policy[i].sta_rcpi_threshold = param->valuedouble;
-            printf("    STA RCPI Threshold %d: %f\n", i, em_config->radio_metrics_policies.radio_metrics_policy[i].sta_rcpi_threshold);
-            decode_param_integer(radio_metrics_obj, "STA RCPI Hysteresis", param);
-            em_config->radio_metrics_policies.radio_metrics_policy[i].sta_rcpi_hysteresis = param->valuedouble;
-            printf("    STA RCPI Hysteresis %d: %f\n", i, em_config->radio_metrics_policies.radio_metrics_policy[i].sta_rcpi_hysteresis);
-            decode_param_integer(radio_metrics_obj, "AP Utilization Threshold", param);
-            em_config->radio_metrics_policies.radio_metrics_policy[i].ap_util_threshold = param->valuedouble;
-            printf("    AP Utilization Threshold %d: %f\n", i, em_config->radio_metrics_policies.radio_metrics_policy[i].ap_util_threshold);
-            decode_param_integer(radio_metrics_obj, "STA Traffic Stats", param);
-            em_config->radio_metrics_policies.radio_metrics_policy[i].traffic_stats = param->valuedouble;
-            printf("    STA Traffic Stats %d: %f\n", i, em_config->radio_metrics_policies.radio_metrics_policy[i].traffic_stats);
-            decode_param_integer(radio_metrics_obj, "STA Link Metrics", param);
-            em_config->radio_metrics_policies.radio_metrics_policy[i].link_metrics = param->valuedouble;
-            printf("    STA Link Metrics %d: %f\n", i, em_config->radio_metrics_policies.radio_metrics_policy[i].link_metrics);
-            decode_param_integer(radio_metrics_obj, "STA Status", param);
-            em_config->radio_metrics_policies.radio_metrics_policy[i].sta_status = param->valuedouble;
-            printf("    STA Status %d: %f\n", i, em_config->radio_metrics_policies.radio_metrics_policy[i].sta_status);
-        }
+    radio_metrics_array = cJSON_GetObjectItem(policy_obj, "Radio Specific Metrics Policy");
+    if (radio_metrics_array == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL Json pointer\n", __func__, __LINE__);
+    }
+
+    if (cJSON_IsArray(radio_metrics_array) == false) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Radio Specific Metrics Policy object not present\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    em_config->radio_metrics_policies.radio_count = cJSON_GetArraySize(radio_metrics_array);
+    for (int i = 0; i < em_config->radio_metrics_policies.radio_count; i++) {
+        radio_metrics_obj = cJSON_GetArrayItem(radio_metrics_array, i);
+
+        decode_param_allow_optional_string(radio_metrics_obj, "ID", param);
+        strncpy(em_config->radio_metrics_policies.radio_metrics_policy[i].ruid, param->valuestring, strlen(em_config->radio_metrics_policies.radio_metrics_policy[i].ruid) + 1);
+
+        decode_param_integer(radio_metrics_obj, "STA RCPI Threshold", param);
+        em_config->radio_metrics_policies.radio_metrics_policy[i].sta_rcpi_threshold = param->valuedouble;
+
+        decode_param_integer(radio_metrics_obj, "STA RCPI Hysteresis", param);
+        em_config->radio_metrics_policies.radio_metrics_policy[i].sta_rcpi_hysteresis = param->valuedouble;
+
+        decode_param_integer(radio_metrics_obj, "AP Utilization Threshold", param);
+        em_config->radio_metrics_policies.radio_metrics_policy[i].ap_util_threshold = param->valuedouble;
+
+        decode_param_integer(radio_metrics_obj, "STA Traffic Stats", param);
+        em_config->radio_metrics_policies.radio_metrics_policy[i].traffic_stats = param->valuedouble;
+
+        decode_param_integer(radio_metrics_obj, "STA Link Metrics", param);
+        em_config->radio_metrics_policies.radio_metrics_policy[i].link_metrics = param->valuedouble;
+
+        decode_param_integer(radio_metrics_obj, "STA Status", param);
+        em_config->radio_metrics_policies.radio_metrics_policy[i].sta_status = param->valuedouble;
     }
 
     return webconfig_error_none;
