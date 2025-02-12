@@ -23,36 +23,6 @@ typedef struct {
 
 client_assoc_stats_t client_assoc_stats[MAX_NUM_RADIOS];
 
-int em_survey_type_conversion(wifi_neighborScanMode_t *halw_scan_type, survey_type_t *app_stat_type, unsigned int conv_type)
-{
-    //is RADIO_SCAN_TYPE_NONE is required? as None survey type is not present
-    unsigned int i = 0;
-    wifi_neighborScanMode_t halw_scan_enum[] = {WIFI_RADIO_SCAN_MODE_FULL, WIFI_RADIO_SCAN_MODE_ONCHAN, WIFI_RADIO_SCAN_MODE_OFFCHAN};
-    survey_type_t app_stat_enum[] = {survey_type_full, survey_type_on_channel, survey_type_off_channel};
-
-    if ((halw_scan_type == NULL) || (app_stat_type == NULL)) {
-        return RETURN_ERR;
-    }
-
-    if (conv_type == APP_TO_DCA) {
-        for (i = 0; i < ARRAY_SIZE(app_stat_enum); i++) {
-            if (*app_stat_type == app_stat_enum[i]) {
-                *halw_scan_type = halw_scan_enum[i];
-                return RETURN_OK;
-            }
-        }
-    } else if (conv_type == DCA_TO_APP) {
-        for (i = 0; i < ARRAY_SIZE(halw_scan_enum); i++) {
-            if (*halw_scan_type == halw_scan_enum[i]) {
-                *app_stat_type = app_stat_enum[i];
-                return RETURN_OK;
-            }
-        }
-    }
-
-    return RETURN_ERR;
-}
-
 int em_common_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_t *stat_config_entry)
 {
     data->u.mon_stats_config.inst = wifi_app_inst_easymesh;
@@ -120,160 +90,6 @@ int em_route(wifi_event_route_t *route)
     memset(route, 0, sizeof(wifi_event_route_t));
     route->dst = wifi_sub_component_mon;
     route->u.inst_bit_map = wifi_app_inst_easymesh;
-    return RETURN_OK;
-}
-
-int neighbor_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_t *stat_config_entry)
-{
-    int i = 0;
-    wifi_event_route_t route;
-    wifi_neighborScanMode_t halw_scan_type;
-    em_route(&route);
-
-    if (em_common_config_to_monitor_queue(data, stat_config_entry) != RETURN_OK) {
-        wifi_util_error_print(WIFI_EM,"%s:%d em Config creation failed %d\r\n", __func__, __LINE__, stat_config_entry->stats_type);
-        return RETURN_ERR;
-    }
-
-    if (em_survey_type_conversion(&halw_scan_type, &stat_config_entry->survey_type, APP_TO_DCA) != RETURN_OK) {
-        wifi_util_error_print(WIFI_EM,"%s:%d Invalid survey type %d\r\n", __func__, __LINE__, stat_config_entry->survey_type);
-        return RETURN_ERR;
-    }
-    data->u.mon_stats_config.args.scan_mode = halw_scan_type;
-
-    data->u.mon_stats_config.data_type = mon_stats_type_neighbor_stats;
-
-    if (stat_config_entry->survey_type == survey_type_on_channel) {
-        data->u.mon_stats_config.args.scan_mode = WIFI_RADIO_SCAN_MODE_ONCHAN;
-        data->u.mon_stats_config.args.channel_list.num_channels = 0;
-    } else {
-        data->u.mon_stats_config.args.scan_mode = WIFI_RADIO_SCAN_MODE_OFFCHAN;
-        data->u.mon_stats_config.args.channel_list.num_channels = stat_config_entry->channels_list.num_channels;
-        for (i = 0;i < stat_config_entry->channels_list.num_channels; i++) {
-            data->u.mon_stats_config.args.channel_list.channels_list[i] = stat_config_entry->channels_list.channels_list[i];
-        }
-    }
-
-    if (data->u.mon_stats_config.interval_ms == 0) {
-        data->u.mon_stats_config.interval_ms = stat_config_entry->reporting_interval * 1000; //converting seconds to ms
-    }
-
-    data->u.mon_stats_config.args.app_info = em_app_event_type_neighbor;
-
-    push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
-
-    return RETURN_OK;
-}
-
-int survey_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_t *stat_config_entry)
-{
-    int i = 0;
-    wifi_neighborScanMode_t halw_scan_type;
-    wifi_event_route_t route;
-    em_route(&route);
-    if (em_common_config_to_monitor_queue(data, stat_config_entry) != RETURN_OK) {
-        wifi_util_error_print(WIFI_EM,"%s:%d em Config creation failed %d\r\n", __func__, __LINE__, stat_config_entry->stats_type);
-        return RETURN_ERR;
-    }
-
-    if (em_survey_type_conversion(&halw_scan_type, &stat_config_entry->survey_type, APP_TO_DCA) != RETURN_OK) {
-        wifi_util_error_print(WIFI_EM,"%s:%d Invalid survey type %d\r\n", __func__, __LINE__, stat_config_entry->survey_type);
-        return RETURN_ERR;
-    }
-    data->u.mon_stats_config.args.scan_mode = halw_scan_type;
-
-    data->u.mon_stats_config.data_type = mon_stats_type_radio_channel_stats;
-
-    if (stat_config_entry->survey_type == survey_type_on_channel) {
-        data->u.mon_stats_config.args.channel_list.num_channels = 0;
-        data->u.mon_stats_config.args.scan_mode = WIFI_RADIO_SCAN_MODE_ONCHAN;
-    } else {
-        data->u.mon_stats_config.args.channel_list.num_channels = stat_config_entry->channels_list.num_channels;
-        for (i = 0;i < stat_config_entry->channels_list.num_channels; i++) {
-            data->u.mon_stats_config.args.channel_list.channels_list[i] = stat_config_entry->channels_list.channels_list[i];
-        }
-        data->u.mon_stats_config.args.scan_mode = WIFI_RADIO_SCAN_MODE_OFFCHAN;
-    }
-    data->u.mon_stats_config.args.app_info = em_app_event_type_survey;
-
-    push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
-
-    return RETURN_OK;
-}
-
-int neighbor_response(wifi_provider_response_t *provider_response)
-{
-    unsigned int radio_index = 0;
-    radio_index = provider_response->args.radio_index;
-    unsigned int count = 0;
-    wifi_neighbor_ap2_t *neighbor_ap = NULL;
-    survey_type_t survey_type;
-    wifi_neighborScanMode_t halw_scan_type = provider_response->args.scan_mode;
-
-    if (em_survey_type_conversion(&halw_scan_type, &survey_type, DCA_TO_APP) != RETURN_OK) {
-        wifi_util_error_print(WIFI_EM,"%s:%d: failed to convert scan_mode %d to survey_type for radio_index : %d\r\n",
-            __func__, __LINE__, provider_response->args.scan_mode, radio_index);
-        return RETURN_ERR;
-    }
-
-    neighbor_ap =  (wifi_neighbor_ap2_t *)provider_response->stat_pointer;
-
-    wifi_util_dbg_print(WIFI_EM, "%s:%d: radio_index : %d stats_array_size : %d\r\n", __func__,
-        __LINE__, radio_index, provider_response->stat_array_size);
-    if (provider_response->stat_array_size == 0) {
-        wifi_util_dbg_print(WIFI_EM, "%s:%d: No neighbor APs found in %s on %s\r\n", __func__,
-            __LINE__, survey_type_to_str(survey_type), radio_index_to_radio_type_str(radio_index));
-    } else {
-        for (count = 0; count < provider_response->stat_array_size; count++) {
-            wifi_util_dbg_print(WIFI_EM, "%s:%d: count : %d ap_SSID : %s\r\n", __func__, __LINE__,
-                count, neighbor_ap[count].ap_SSID);
-            //em_neighbor_sample_store(radio_index, survey_type, &neighbor_ap[count]);//are we interested in caching responses? we don't need contructing reports and sedning it over pipeline as it is opensync specific?
-        }
-    }
-    return RETURN_OK;
-}
-
-int capacity_response(wifi_provider_response_t *provider_response)
-{
-    unsigned int radio_index = 0;
-    radio_index = provider_response->args.radio_index;
-    radio_chan_data_t *channelStats = NULL;
-    unsigned int count = 0;
-
-    wifi_util_dbg_print(WIFI_EM,"%s:%d: radio_index : %d stats_array_size : %d\r\n",__func__, __LINE__, radio_index, provider_response->stat_array_size);
-
-    channelStats = (radio_chan_data_t *)provider_response->stat_pointer;
-    for (count = 0; count < provider_response->stat_array_size; count++) {
-        wifi_util_dbg_print(WIFI_EM,"%s:%d: radio_index : %d channel_num : %d ch_utilization : %d\r\n",__func__, __LINE__, radio_index, channelStats[count].ch_number, channelStats[count].ch_utilization);
-    }
-
-    return RETURN_OK;
-}
-
-int survey_response(wifi_provider_response_t *provider_response)
-{
-    unsigned int radio_index = 0;
-    unsigned int count = 0;
-    radio_index = provider_response->args.radio_index;
-    radio_chan_data_t *channelStats = NULL;
-    survey_type_t survey_type;
-    wifi_neighborScanMode_t halw_scan_type = provider_response->args.scan_mode;
-
-    if (em_survey_type_conversion(&halw_scan_type, &survey_type, DCA_TO_APP) != RETURN_OK) {
-        wifi_util_error_print(WIFI_EM,"%s:%d: failed to convert scan_mode %d to survey_type for radio_index : %d\r\n",
-                              __func__, __LINE__, provider_response->args.scan_mode, radio_index);
-        return RETURN_ERR;
-    }
-
-    wifi_util_dbg_print(WIFI_EM,"%s:%d: radio_index : %d stats_array_size : %d\r\n",__func__, __LINE__, radio_index, provider_response->stat_array_size);
-
-    channelStats = provider_response->stat_pointer;
-    for (count = 0; count < provider_response->stat_array_size; count++) {
-        wifi_util_dbg_print(WIFI_EM,"%s:%d: radio_index : %d channel_num : %d ch_utilization : %d ch_utilization_total:%lld survey_type : %d\r\n",
-                            __func__, __LINE__, radio_index, channelStats[count].ch_number, channelStats[count].ch_utilization, channelStats[count].ch_utilization_total, survey_type);
-        //sm_survey_sample_store(radio_index, survey_type, &channelStats[count]);//here
-    }
-
     return RETURN_OK;
 }
 
@@ -366,16 +182,8 @@ int handle_monitor_provider_response(wifi_app_t *app, wifi_event_t *event)
     }
 
     switch (provider_response->args.app_info) {
-        case em_app_event_type_neighbor:
-            ret = neighbor_response(provider_response);
-        break;
-        case em_app_event_type_capacity:
-            ret = capacity_response(provider_response);
-        break;
-        case em_app_event_type_survey:
-            ret = survey_response(provider_response);
-        break;
-        case em_app_event_type_assoc_dev_diag:
+
+        case em_app_event_type_assoc_dev_stats:
             ret = assoc_client_response(provider_response);
         break;
         default:
@@ -444,7 +252,7 @@ int client_diag_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_
         }
     }
 
-    data->u.mon_stats_config.args.app_info = em_app_event_type_assoc_dev_diag;
+    data->u.mon_stats_config.args.app_info = em_app_event_type_assoc_dev_stats;
 
     //for each vap push the event to monitor queue
     for (vapArrayIndex = 0; vapArrayIndex < getNumberVAPsPerRadio(data->u.mon_stats_config.args.radio_index); vapArrayIndex++) {
@@ -454,26 +262,6 @@ int client_diag_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_
         }
     }
 
-    return RETURN_OK;
-}
-
-int capacity_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_t *stat_config_entry)
-{
-    wifi_event_route_t route;
-    em_route(&route);
-    if (em_common_config_to_monitor_queue(data, stat_config_entry) != RETURN_OK) {
-        wifi_util_error_print(WIFI_EM,"%s:%d em Config creation failed %d\r\n", __func__, __LINE__, stat_config_entry->stats_type);
-        return RETURN_ERR;
-    }
-
-    data->u.mon_stats_config.data_type = mon_stats_type_radio_channel_stats;
-    //for capacity its on channel
-    data->u.mon_stats_config.args.channel_list.num_channels = 0;
-    data->u.mon_stats_config.args.scan_mode = WIFI_RADIO_SCAN_MODE_ONCHAN;
-
-    data->u.mon_stats_config.args.app_info = em_app_event_type_capacity;
-
-    push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
     return RETURN_OK;
 }
 
@@ -497,18 +285,11 @@ int push_em_config_event_to_monitor_queue(wifi_app_t *app, wifi_mon_stats_reques
     data->u.mon_stats_config.req_state = state;
 
     switch (stat_config_entry->stats_type) {
-        case stats_type_neighbor:
-            ret = neighbor_config_to_monitor_queue(data, stat_config_entry);
-        break;
-        case stats_type_survey:
-            ret = survey_config_to_monitor_queue(data, stat_config_entry);
-        break;
+
         case stats_type_client:
             ret = client_diag_config_to_monitor_queue(data, stat_config_entry); // wifi_getApAssociatedDeviceDiagnosticResult3
         break;
-        case stats_type_capacity:
-            ret = capacity_config_to_monitor_queue(data, stat_config_entry);
-        break;
+
         default:
             wifi_util_error_print(WIFI_EM,"%s:%d: stats_type not handled[%d]\r\n",__func__, __LINE__, stat_config_entry->stats_type);
             free(data);

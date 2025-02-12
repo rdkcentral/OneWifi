@@ -79,12 +79,7 @@ typedef struct {
 } em_policies_t;
 
 typedef enum {
-    easymesh_app_event_type_neighbor = 1,
-    easymesh_app_event_type_survey,
-    easymesh_app_event_type_capacity,
-    easymesh_app_event_type_assoc_dev_diag,
-    easymesh_app_event_type_assoc_dev_stats,
-    easymesh_app_event_type_max
+    em_app_event_type_assoc_dev_stats,
 } em_app_event_type_t;
 
 int em_init(wifi_app_t *app, unsigned int create_flag);
