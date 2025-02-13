@@ -114,16 +114,13 @@ static int pktgen_configure(char *if_name, char *dest_mac, int packet_size)
 
     ret = pgctrl_command(PKTGEN_THREAD_FILE_0, "add_device %s\n", if_name);
     if (ret < 0) {
-	ret = pgctrl_command(PKTGEN_THREAD_FILE_0, "rem_device wl0.1\n");
-    fprintf(file_ptr, "rem_device wl0.1 is called\n");
-    ret = pgctrl_command(PKTGEN_THREAD_FILE_0, "rem_device wl1.1\n");
-    fprintf(file_ptr, "rem_device wl1.1 is called\n");
 	if(file_ptr == NULL)
 	{
 		LOGE("%s: Error opening the file", __func__);
 		return -1;
 	}
-	fprintf(file_ptr, "rem_device is called\n");
+    ret = pgctrl_command(PKTGEN_THREAD_FILE_0, "reset\n");
+    fprintf(file_ptr, "reset is called\n");
     ret = pgctrl_command(PKTGEN_THREAD_FILE_0, "add_device %s\n", if_name);
     fprintf(file_ptr, "add_device is called again\n");
     fclose(file_ptr);
