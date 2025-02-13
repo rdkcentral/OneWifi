@@ -220,6 +220,7 @@ INCLUDEDIRS = \
     -I$(ONE_WIFI_HOME)/source/apps/blaster \
     -I$(ONE_WIFI_HOME)/source/apps/cac \
     -I$(ONE_WIFI_HOME)/source/apps/csi \
+    -I$(ONE_WIFI_HOME)/source/apps/em \
     -I$(ONE_WIFI_HOME)/source/apps/harvester \
     -I$(ONE_WIFI_HOME)/source/apps/levl \
     -I$(ONE_WIFI_HOME)/source/apps/motion \
