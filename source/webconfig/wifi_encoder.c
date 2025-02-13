@@ -343,6 +343,7 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
     const rdk_wifi_vap_info_t *rdk_vap_info, cJSON *vap_object)
 {
     char mac_str[32];
+    char extra_vendor_ies_hex_str[(vap_info->u.bss_info.vendor_elements_len * 2) + 1];
 
     //VAP Name
     cJSON_AddStringToObject(vap_object, "VapName", vap_info->vap_name);
@@ -454,6 +455,13 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
         vap_info->u.bss_info.hostap_mgt_frame_ctrl);
 
     cJSON_AddBoolToObject(vap_object, "MboEnabled", vap_info->u.bss_info.mbo_enabled);
+
+    memset(extra_vendor_ies_hex_str, 0, sizeof(extra_vendor_ies_hex_str));
+    for (int i = 0; i < vap_info->u.bss_info.vendor_elements_len; i++) {
+        sprintf(extra_vendor_ies_hex_str + (i * 2), "%02x",
+            vap_info->u.bss_info.vendor_elements[i]);
+    }
+    cJSON_AddStringToObject(vap_object, "ExtraVendorIEs", extra_vendor_ies_hex_str);
 
     return webconfig_error_none;
 }
