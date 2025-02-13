@@ -34,6 +34,7 @@
 #include "ctype.h"
 #include "wifi_ctrl.h"
 #include "wifi_util.h"
+#include "util.h"
 
 #define TCM_EXPWEIGHT "0.6"
 #define TCM_GRADTHRESHOLD "0.18"
@@ -1454,6 +1455,7 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
     const cJSON  *param;
     cJSON *object = NULL;
     bool connected_value = false;
+    char *extra_vendor_ies = NULL;
 
     //VAP Name
     decode_param_string(vap, "VapName", param);
@@ -1625,6 +1627,26 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
 
     decode_param_bool(vap, "MboEnabled", param);
     vap_info->u.bss_info.mbo_enabled = (param->type & cJSON_True) ? true : false;
+
+    // Hex Encoded ExtraVendorIEs
+    decode_param_allow_empty_string(vap, "ExtraVendorIEs", param);
+    extra_vendor_ies = param->valuestring;
+
+    if (extra_vendor_ies != NULL) {
+        size_t input_len = strlen(extra_vendor_ies);
+        for (int i = 0; i < sizeof(vap_info->u.bss_info.vendor_elements); i++) {
+            // Check if we have at least 2 chars remaining
+            if (2 * i + 1 >= input_len ||
+                sscanf(extra_vendor_ies + 2 * i, "%02x",
+                    &vap_info->u.bss_info.vendor_elements[i]) != 1) {
+                // Set length to number of successfully parsed elements
+                vap_info->u.bss_info.vendor_elements_len = i;
+                break;
+            }
+        }
+    }
+
+    
 
     return webconfig_error_none;
 }
@@ -1946,6 +1968,7 @@ webconfig_error_t decode_private_vap_object(const cJSON *vap, wifi_vap_info_t *v
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Passpoint enabled, so decode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
+
 
 
     return webconfig_error_none;
@@ -2519,19 +2542,19 @@ webconfig_error_t decode_radio_curr_operating_classes(const cJSON *obj_radio_set
         wifi_util_info_print(WIFI_WEBCONFIG,
             "%s:%d Not updating channel:%u from CurrentOperatingClasses as oper->channel:%u is "
             "already populated.\n",
-            __FUNCTION__, __LINE__, param->valuedouble, oper->channel);
+            __FUNCTION__, __LINE__, (unsigned int)param->valuedouble, oper->channel);
     }
     return webconfig_error_none;
 }
 
 webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *radio)
 {
-    const cJSON  *param;
+    const cJSON *param;
     char *ptr, *tmp;
     unsigned int num_of_channel = 0;
     int ret;
     int radio_index = 0;
-    char* ctx = NULL;
+    char *ctx = NULL;
     int idx = 0;
     char tmp_buf[512];
     wifi_radio_operationParam_t *radio_info = &radio->oper;
@@ -2543,7 +2566,7 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
     // WifiRadioSetup
     decode_param_object(obj_radio, "WifiRadioSetup", param);
     if (decode_radio_setup_object(param, &radio->vaps) != webconfig_error_none) {
-        wifi_util_error_print(WIFI_LIB,"%s:%d Radio setup decode failed\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_LIB, "%s:%d Radio setup decode failed\n", __func__, __LINE__);
         return webconfig_error_decode;
     }
 
@@ -2557,66 +2580,72 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
     // FreqBand
     decode_param_integer(obj_radio, "FreqBand", param);
     radio_info->band = param->valuedouble;
-    switch(radio_info->band) {
-        case WIFI_FREQUENCY_2_4_BAND:
-        case WIFI_FREQUENCY_5_BAND:
-        case WIFI_FREQUENCY_5L_BAND:
-        case WIFI_FREQUENCY_5H_BAND:
-        case WIFI_FREQUENCY_6_BAND:
-        case WIFI_FREQUENCY_60_BAND:
-            break;
+    switch (radio_info->band) {
+    case WIFI_FREQUENCY_2_4_BAND:
+    case WIFI_FREQUENCY_5_BAND:
+    case WIFI_FREQUENCY_5L_BAND:
+    case WIFI_FREQUENCY_5H_BAND:
+    case WIFI_FREQUENCY_6_BAND:
+    case WIFI_FREQUENCY_60_BAND:
+        break;
 
-        default:
-            wifi_util_error_print(WIFI_WEBCONFIG,"Invalid wifi radio band 0x%x\n", radio_info->band);
-            return webconfig_error_decode;
+    default:
+        wifi_util_error_print(WIFI_WEBCONFIG, "Invalid wifi radio band 0x%x\n", radio_info->band);
+        return webconfig_error_decode;
     }
 
     if (convert_freq_band_to_radio_index(radio_info->band, &radio_index) != webconfig_error_none) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s %d failed for convert_freq_band_to_radio_index for band 0x%x\n", __FUNCTION__, __LINE__, radio_info->band);
+        wifi_util_error_print(WIFI_WEBCONFIG,
+            "%s %d failed for convert_freq_band_to_radio_index for band 0x%x\n", __FUNCTION__,
+            __LINE__, radio_info->band);
         return webconfig_error_decode;
     }
-    radio_feat->radio_index = radio_index; //Required for decoded radio_feat value
+    radio_feat->radio_index = radio_index; // Required for decoded radio_feat value
 
     // Enabled
     decode_param_bool(obj_radio, "Enabled", param);
-    radio_info->enable = (param->type & cJSON_True) ? true:false;
-
+    radio_info->enable = (param->type & cJSON_True) ? true : false;
 
     // AutoChannelEnabled
     decode_param_bool(obj_radio, "AutoChannelEnabled", param);
-    radio_info->autoChannelEnabled = (param->type & cJSON_True) ? true:false;
+    radio_info->autoChannelEnabled = (param->type & cJSON_True) ? true : false;
 
     // DFSEnable
     decode_param_bool(obj_radio, "DFSEnable", param);
-    radio_info->DfsEnabled = (param->type & cJSON_True) ? true:false;
+    radio_info->DfsEnabled = (param->type & cJSON_True) ? true : false;
 
     // DfsEnabledBootup
     decode_param_bool(obj_radio, "DfsEnabledBootup", param);
-    radio_info->DfsEnabledBootup = (param->type & cJSON_True) ? true:false;
+    radio_info->DfsEnabledBootup = (param->type & cJSON_True) ? true : false;
 
     // ChannelAvailability
     decode_param_string(obj_radio, "ChannelAvailability", param);
     memset(tmp_buf, 0, sizeof(tmp_buf));
-    snprintf(tmp_buf,sizeof(tmp_buf),"%s",param->valuestring);
-    char* token = strtok_r(tmp_buf, ",", &ctx);
-    while (token != NULL){
-        sscanf( token, "%3d:%1d", &radio_info->channel_map[idx].ch_number, (int*)&radio_info->channel_map[idx].ch_state );
+    snprintf(tmp_buf, sizeof(tmp_buf), "%s", param->valuestring);
+    char *token = strtok_r(tmp_buf, ",", &ctx);
+    while (token != NULL) {
+        sscanf(token, "%3d:%1d", &radio_info->channel_map[idx].ch_number,
+            (int *)&radio_info->channel_map[idx].ch_state);
         idx++;
         token = strtok_r(NULL, ",", &ctx);
     }
 
-    //radarInfo
+    // radarInfo
     decode_param_string(obj_radio, "radarInfo", param);
     sscanf(param->valuestring, "last_channel:%d,num_detected:%d,time:%lld",
-           &radio->radarInfo.last_channel,&radio->radarInfo.num_detected,&radio->radarInfo.timestamp );
+        &radio->radarInfo.last_channel, &radio->radarInfo.num_detected,
+        &radio->radarInfo.timestamp);
 
     // Channel
     decode_param_integer(obj_radio, "Channel", param);
-    ret = decode_wifi_channel(radio_info->band, &wifi_radio_channel, radio_info->DfsEnabled, param->valuedouble);
+    ret = decode_wifi_channel(radio_info->band, &wifi_radio_channel, radio_info->DfsEnabled,
+        param->valuedouble);
     if (ret != webconfig_error_none) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"Invalid wifi radio channel configuration. channel %d %d\n",
-            radio_info->channel, param->valuedouble);
-        //strncpy(execRetVal->ErrorMsg, "Invalid wifi radio channel config",sizeof(execRetVal->ErrorMsg)-1);
+        wifi_util_error_print(WIFI_WEBCONFIG,
+            "Invalid wifi radio channel configuration. channel %d %d\n", radio_info->channel,
+            param->valuedouble);
+        // strncpy(execRetVal->ErrorMsg, "Invalid wifi radio channel
+        // config",sizeof(execRetVal->ErrorMsg)-1);
         return webconfig_error_decode;
     }
     radio_info->channel = wifi_radio_channel;
@@ -2625,9 +2654,9 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
     decode_param_integer(obj_radio, "NumSecondaryChannels", param);
     radio_info->numSecondaryChannels = param->valuedouble;
 
-    if  (radio_info->numSecondaryChannels > 0) {
-        //SecondaryChannelsList
-        decode_param_string(obj_radio, "SecondaryChannelsList",param);
+    if (radio_info->numSecondaryChannels > 0) {
+        // SecondaryChannelsList
+        decode_param_string(obj_radio, "SecondaryChannelsList", param);
         ptr = param->valuestring;
         tmp = param->valuestring;
 
@@ -2640,9 +2669,11 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
         // Last channel
         radio_info->channelSecondary[num_of_channel++] = atoi(tmp);
 
-        if(num_of_channel != radio_info->numSecondaryChannels) {
-            wifi_util_error_print(WIFI_WEBCONFIG,"number of secondary channels and secondary chaneel list not match\n");
-            //strncpy(execRetVal->ErrorMsg, "Invalid Secondary channel list",sizeof(execRetVal->ErrorMsg)-1);
+        if (num_of_channel != radio_info->numSecondaryChannels) {
+            wifi_util_error_print(WIFI_WEBCONFIG,
+                "number of secondary channels and secondary chaneel list not match\n");
+            // strncpy(execRetVal->ErrorMsg, "Invalid Secondary channel
+            // list",sizeof(execRetVal->ErrorMsg)-1);
             return webconfig_error_decode;
         }
     }
@@ -2650,24 +2681,32 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
     // ChannelWidth
     decode_param_integer(obj_radio, "ChannelWidth", param);
     radio_info->channelWidth = param->valuedouble;
-    if ((radio_info->channelWidth < WIFI_CHANNELBANDWIDTH_20MHZ)
-        || (radio_info->channelWidth > WIFI_CHANNELBANDWIDTH_320MHZ)) {
-        //TODO: Do we need to check fot the 320MHZ ?
-        if ( (radio_info->channelWidth == WIFI_CHANNELBANDWIDTH_160MHZ) && (radio_info->band == WIFI_FREQUENCY_5_BAND || radio_info->band == WIFI_FREQUENCY_5L_BAND || radio_info->band == WIFI_FREQUENCY_5H_BAND) && (radio_info->DfsEnabled != true) )
-        {
-            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: DFS Disabled!! Cannot set to ChanWidth = %d  \n",__func__, __LINE__,radio_info->channelWidth);
+    if ((radio_info->channelWidth < WIFI_CHANNELBANDWIDTH_20MHZ) ||
+        (radio_info->channelWidth > WIFI_CHANNELBANDWIDTH_320MHZ)) {
+        // TODO: Do we need to check fot the 320MHZ ?
+        if ((radio_info->channelWidth == WIFI_CHANNELBANDWIDTH_160MHZ) &&
+            (radio_info->band == WIFI_FREQUENCY_5_BAND ||
+                radio_info->band == WIFI_FREQUENCY_5L_BAND ||
+                radio_info->band == WIFI_FREQUENCY_5H_BAND) &&
+            (radio_info->DfsEnabled != true)) {
+            wifi_util_error_print(WIFI_WEBCONFIG,
+                "%s:%d: DFS Disabled!! Cannot set to ChanWidth = %d  \n", __func__, __LINE__,
+                radio_info->channelWidth);
             return webconfig_error_decode;
         }
-        wifi_util_error_print(WIFI_WEBCONFIG,"Invalid wifi radio channelWidth[%d] configuration, should be between %d and %d\n", radio_info->channelWidth, WIFI_CHANNELBANDWIDTH_20MHZ,
-                                            WIFI_CHANNELBANDWIDTH_80_80MHZ);
+        wifi_util_error_print(WIFI_WEBCONFIG,
+            "Invalid wifi radio channelWidth[%d] configuration, should be between %d and %d\n",
+            radio_info->channelWidth, WIFI_CHANNELBANDWIDTH_20MHZ, WIFI_CHANNELBANDWIDTH_80_80MHZ);
         return webconfig_error_decode;
     }
 
     // HwMode
     decode_param_integer(obj_radio, "HwMode", param);
     if (validate_wifi_hw_variant(radio_info->band, param->valuedouble) != RETURN_OK) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"Invalid wifi radio hardware mode [%d] configuration\n", param->valuedouble);
-        //strncpy(execRetVal->ErrorMsg, "Invalid wifi radio hardware mode config",sizeof(execRetVal->ErrorMsg)-1);
+        wifi_util_error_print(WIFI_WEBCONFIG,
+            "Invalid wifi radio hardware mode [%d] configuration\n", param->valuedouble);
+        // strncpy(execRetVal->ErrorMsg, "Invalid wifi radio hardware mode
+        // config",sizeof(execRetVal->ErrorMsg)-1);
         return webconfig_error_decode;
     }
     radio_info->variant = param->valuedouble;
@@ -2680,8 +2719,9 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
     decode_param_string(obj_radio, "Country", param);
     ret = decode_contry_code(&country_code, param->valuestring);
     if (ret != webconfig_error_none) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"Invalid wifi radio contry code '%s'\n", param->valuestring);
-        //strncpy(execRetVal->ErrorMsg, "Invalid wifi radio code",sizeof(execRetVal->ErrorMsg)-1);
+        wifi_util_error_print(WIFI_WEBCONFIG, "Invalid wifi radio contry code '%s'\n",
+            param->valuestring);
+        // strncpy(execRetVal->ErrorMsg, "Invalid wifi radio code",sizeof(execRetVal->ErrorMsg)-1);
         return webconfig_error_decode;
     }
     radio_info->countryCode = country_code;
@@ -2689,19 +2729,20 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
     // RegDomain
     decode_param_integer(obj_radio, "RegDomain", param);
     radio_info->regDomain = param->valuedouble;
-    
-    //OperatingEnvironment
+
+    // OperatingEnvironment
     decode_param_string(obj_radio, "OperatingEnvironment", param);
     ret = decode_operating_environment(&operating_environment, param->valuestring);
     if (ret != webconfig_error_none) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"Invalid wifi Operating Environment '%s'\n", param->valuestring);
+        wifi_util_error_print(WIFI_WEBCONFIG, "Invalid wifi Operating Environment '%s'\n",
+            param->valuestring);
         return webconfig_error_decode;
     }
     radio_info->operatingEnvironment = operating_environment;
 
     // DcsEnabled
     decode_param_bool(obj_radio, "DcsEnabled", param);
-    radio_info->DCSEnabled = (param->type & cJSON_True) ? true:false;
+    radio_info->DCSEnabled = (param->type & cJSON_True) ? true : false;
 
     // DtimPeriod
     decode_param_integer(obj_radio, "DtimPeriod", param);
@@ -2742,7 +2783,7 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
 
     // FactoryResetSsid
     decode_param_bool(obj_radio, "FactoryResetSsid", param);
-    radio_info->factoryResetSsid = (param->type & cJSON_True) ? true:false;
+    radio_info->factoryResetSsid = (param->type & cJSON_True) ? true : false;
 
     // RadioStatsMeasuringRate
     decode_param_integer(obj_radio, "RadioStatsMeasuringRate", param);
@@ -2754,19 +2795,19 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
 
     // CtsProtection
     decode_param_bool(obj_radio, "CtsProtection", param);
-    radio_info->ctsProtection = (param->type & cJSON_True) ? true:false;
+    radio_info->ctsProtection = (param->type & cJSON_True) ? true : false;
 
     // ObssCoex
     decode_param_bool(obj_radio, "ObssCoex", param);
-    radio_info->obssCoex = (param->type & cJSON_True) ? true:false;
+    radio_info->obssCoex = (param->type & cJSON_True) ? true : false;
 
     // StbcEnable
     decode_param_bool(obj_radio, "StbcEnable", param);
-    radio_info->stbcEnable = (param->type & cJSON_True) ? true:false;
+    radio_info->stbcEnable = (param->type & cJSON_True) ? true : false;
 
     // GreenFieldEnable
     decode_param_bool(obj_radio, "GreenFieldEnable", param);
-    radio_info->greenFieldEnable = (param->type & cJSON_True) ? true:false;
+    radio_info->greenFieldEnable = (param->type & cJSON_True) ? true : false;
 
     // UserControl
     decode_param_integer(obj_radio, "UserControl", param);
@@ -2782,14 +2823,15 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
 
     // ChanUtilSelfHealEnable
     decode_param_bool(obj_radio, "ChanUtilSelfHealEnable", param);
-    radio_info->chanUtilSelfHealEnable = (param->type & cJSON_True) ? true:false;
+    radio_info->chanUtilSelfHealEnable = (param->type & cJSON_True) ? true : false;
 
     // EcoPowerDown
     decode_param_bool(obj_radio, "EcoPowerDown", param);
-    radio_info->EcoPowerDown = (param->type & cJSON_True) ? true:false;
+    radio_info->EcoPowerDown = (param->type & cJSON_True) ? true : false;
 #ifdef FEATURE_SUPPORT_ECOPOWERDOWN
-    if (radio_info->EcoPowerDown && radio_info->enable ) {
-        wifi_util_error_print(WIFI_WEBCONFIG," Radio is in eco mode, so not allowed to radio in enable state\n");
+    if (radio_info->EcoPowerDown && radio_info->enable) {
+        wifi_util_error_print(WIFI_WEBCONFIG,
+            " Radio is in eco mode, so not allowed to radio in enable state\n");
         return webconfig_error_decode;
     }
 #endif // FEATURE_SUPPORT_ECOPOWERDOWN
@@ -2800,7 +2842,8 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
 
     // Nscan
     decode_param_integer(obj_radio, "Nscan", param);
-    radio_feat->OffChanNscanInSec = (param->valuedouble != 0) ? (24*3600)/(param->valuedouble) : 0; //Converting to seconds
+    radio_feat->OffChanNscanInSec = (param->valuedouble != 0) ? (24 * 3600) / (param->valuedouble) :
+                                                                0; // Converting to seconds
 
     // Tidle
     decode_param_integer(obj_radio, "Tidle", param);
@@ -2810,9 +2853,10 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
     decode_param_integer(obj_radio, "DfsTimer", param);
     radio_info->DFSTimer = param->valuedouble;
 
-    //RadarDetected
+    // RadarDetected
     decode_param_string(obj_radio, "RadarDetected", param);
-    strncpy(radio_info->radarDetected, param->valuestring, sizeof(radio_info->radarDetected));
+    strncpy(radio_info->radarDetected, param->valuestring, sizeof(radio_info->radarDetected) - 1);
+    radio_info->radarDetected[sizeof(radio_info->radarDetected) - 1] = '\0';
 
     if (decode_radio_operating_classes(obj_radio, radio_info) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Radio operation classes decode failed\n",
@@ -2821,8 +2865,8 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
     }
 
     if (decode_radio_curr_operating_classes(obj_radio, radio_info) != webconfig_error_none) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Radio current operation class decoding failed\n",
-            __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG,
+            "%s:%d Radio current operation class decoding failed\n", __func__, __LINE__);
     }
     return webconfig_error_none;
 }
@@ -3550,7 +3594,8 @@ webconfig_error_t decode_preassoc_cac_object(const cJSON *preassoc, wifi_preasso
     return webconfig_error_none;
 }
 
-webconfig_error_t decode_tcm_preassoc_object(const cJSON *preassoc, wifi_preassoc_control_t *preassoc_info)
+webconfig_error_t decode_tcm_preassoc_object(const cJSON *preassoc,
+    wifi_preassoc_control_t *preassoc_info)
 {
     const cJSON *param;
     int ret;
@@ -3564,32 +3609,45 @@ webconfig_error_t decode_tcm_preassoc_object(const cJSON *preassoc, wifi_preasso
 
     decode_param_allow_empty_string(preassoc, "TcmExpWeightage", param);
     if ((strcmp(param->valuestring, TCM_EXPWEIGHT) == 0) || (strlen(param->valuestring) == 0)) {
-        strcpy((char *)preassoc_info->tcm_exp_weightage, TCM_EXPWEIGHT);
+        strncpy((char *)preassoc_info->tcm_exp_weightage, TCM_EXPWEIGHT,
+            sizeof(preassoc_info->tcm_exp_weightage) - 1);
+        preassoc_info->tcm_exp_weightage[sizeof(preassoc_info->tcm_exp_weightage) - 1] = '\0';
     } else {
         ret = sscanf(param->valuestring, "%f", &fval);
 
         if (ret != 1) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Incorrect format.\n", __FUNCTION__,__LINE__);
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Incorrect format.\n", __FUNCTION__,
+                __LINE__);
             return webconfig_error_decode;
         }
 
-        strcpy((char *)preassoc_info->tcm_exp_weightage, param->valuestring);
+        strncpy((char *)preassoc_info->tcm_exp_weightage, param->valuestring,
+            sizeof(preassoc_info->tcm_exp_weightage) - 1);
+        preassoc_info->tcm_exp_weightage[sizeof(preassoc_info->tcm_exp_weightage) - 1] = '\0';
     }
 
     decode_param_allow_empty_string(preassoc, "TcmGradientThreshold", param);
     if ((strcmp(param->valuestring, TCM_GRADTHRESHOLD) == 0) || (strlen(param->valuestring) == 0)) {
-        strcpy((char *)preassoc_info->tcm_gradient_threshold, TCM_GRADTHRESHOLD);
+        strncpy((char *)preassoc_info->tcm_gradient_threshold, TCM_GRADTHRESHOLD,
+            sizeof(preassoc_info->tcm_gradient_threshold) - 1);
+        preassoc_info->tcm_gradient_threshold[sizeof(preassoc_info->tcm_gradient_threshold) - 1] =
+            '\0';
     } else {
         ret = sscanf(param->valuestring, "%f", &fval);
 
         if (ret != 1) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Incorrect format \n", __FUNCTION__,__LINE__);
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Incorrect format \n", __FUNCTION__,
+                __LINE__);
             return webconfig_error_decode;
         }
 
-        strcpy((char *)preassoc_info->tcm_gradient_threshold, param->valuestring);
+        strncpy((char *)preassoc_info->tcm_gradient_threshold, param->valuestring,
+            sizeof(preassoc_info->tcm_gradient_threshold) - 1);
+        preassoc_info->tcm_gradient_threshold[sizeof(preassoc_info->tcm_gradient_threshold) - 1] =
+            '\0';
     }
-    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: decoding tcm preassoc settings passed\n", __func__, __LINE__);
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: decoding tcm preassoc settings passed\n", __func__,
+        __LINE__);
 
     return webconfig_error_none;
 }

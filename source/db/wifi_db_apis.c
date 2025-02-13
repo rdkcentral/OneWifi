@@ -1661,7 +1661,11 @@ int wifidb_get_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_info)
     rfc_info->dfs_rfc = pcfg->dfs_rfc;
     rfc_info->wpa3_rfc = pcfg->wpa3_rfc;
     rfc_info->levl_enabled_rfc = pcfg->levl_enabled_rfc;
+#ifdef ALWAYS_ENABLE_AX_2G
+    rfc_info->twoG80211axEnable_rfc = true;
+#else
     rfc_info->twoG80211axEnable_rfc = pcfg->twoG80211axEnable_rfc;
+#endif
     rfc_info->hotspot_open_2g_last_enabled= pcfg->hotspot_open_2g_last_enabled;
     rfc_info->hotspot_open_5g_last_enabled= pcfg->hotspot_open_5g_last_enabled;
     rfc_info->hotspot_open_6g_last_enabled= pcfg->hotspot_open_6g_last_enabled;
@@ -6623,8 +6627,13 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
 #else
         if (isVapPrivate(vap_index)) {
             cfg.u.bss_info.bssMaxSta = wifi_hal_cap_obj->wifi_prop.BssMaxStaAllow;
+            wifi_util_info_print(WIFI_DB, "%s:%d  vap_index:%d maxassoc:%d", __func__, __LINE__, vap_index, cfg.u.bss_info.bssMaxSta);
+        } else if (is_device_type_cbr2() && (isVapHotspotOpen5g(vap_index) || isVapHotspotSecure5g(vap_index))) {
+            cfg.u.bss_info.bssMaxSta = BSS_MAX_NUM_STA_HOTSPOT_CBRV2;
+            wifi_util_info_print(WIFI_DB, "%s:%d vap_index:%d maxassoc:%d", __func__, __LINE__, vap_index, cfg.u.bss_info.bssMaxSta);
         } else {
-            cfg.u.bss_info.bssMaxSta = BSS_MAX_NUM_STA_COMMON;
+            cfg.u.bss_info.bssMaxSta =  BSS_MAX_NUM_STA_COMMON;
+            wifi_util_info_print(WIFI_DB,"%s:%d  maxassoc:%d", __func__,__LINE__, cfg.u.bss_info.bssMaxSta);
         }
 #endif // NEWPLATFORM_PORT
 #endif //_SKY_HUB_COMMON_PRODUCT_REQ_
@@ -7024,6 +7033,9 @@ void init_wifidb_data()
         if (wifidb_get_rfc_config(0,rfc_param) != 0) {
             wifi_util_error_print(WIFI_DB,"%s:%d: Error getting RFC config\n",__func__, __LINE__);
         }
+#ifdef ALWAYS_ENABLE_AX_2G
+        wifidb_update_rfc_config(0, rfc_param);
+#endif
         get_wifi_country_code_from_bootstrap_json(country_code, COUNTRY_CODE_LEN);
         pthread_mutex_lock(&g_wifidb->data_cache_lock);
         for (r_index = 0; r_index < num_radio; r_index++) {
@@ -8312,7 +8324,6 @@ int wifi_mgr_bus_subsription(bus_handle_t *handle)
     }
 
     wifi_util_dbg_print(WIFI_MGR, "%s:%d bus open success\n", __func__, __LINE__);
-
     if (get_bus_descriptor()->bus_event_subs_fn(handle, LAST_REBOOT_REASON_NAMESPACE,
             bus_subscription_handler, NULL, 0) != bus_error_success) {
         wifi_util_error_print(WIFI_MGR, "%s:%d bus event:%s subscribe failed\n", __FUNCTION__,
@@ -8376,7 +8387,7 @@ int get_all_param_from_psm_and_set_into_db(void)
     if (is_device_type_xb7() == true || is_device_type_xb8() == true ||
         is_device_type_vbvxb10() == true || is_device_type_sercommxb10() == true ||
         is_device_type_scxer10() == true || is_device_type_sr213() == true ||
-        is_device_type_cmxb7() == true || is_device_type_cbr2() == true) {
+        is_device_type_cmxb7() == true || is_device_type_cbr2() == true || is_device_type_vbvxer5() == true) {
         bool wifi_psm_db_enabled = false;
         char last_reboot_reason[32];
         raw_data_t data;

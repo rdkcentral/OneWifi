@@ -3094,6 +3094,7 @@ webconfig_error_t translate_vap_object_to_ovsdb_associated_clients(const rdk_wif
     assoc_dev_data_t *diff_assoc_dev_data;
     hash_map_t *diff_assoc_map = NULL;
     mac_addr_str_t diff_mac_str;
+    bool is_hotspot;
 
     if ((rdk_vap_info == NULL) || (clients_table == NULL)) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Input arguments are NULL\n", __func__, __LINE__);
@@ -3107,8 +3108,15 @@ webconfig_error_t translate_vap_object_to_ovsdb_associated_clients(const rdk_wif
         diff_assoc_map = rdk_vap_info->associated_devices_diff_map;
     }
 
+    is_hotspot = is_vap_hotspot(wifi_prop, rdk_vap_info->vap_index) == TRUE;
+    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Vap name: %s\n", __func__, __LINE__, rdk_vap_info->vap_name);
+    if (is_hotspot) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d associated clients for vap: %s will not be translated to ovsdb.\n", __func__, __LINE__, rdk_vap_info->vap_name);
+    }
+
     associated_client_count = *client_count;
-    if (rdk_vap_info->associated_devices_map != NULL) {
+    if (!is_hotspot &&
+        rdk_vap_info->associated_devices_map != NULL) {
         assoc_dev_data = hash_map_get_first(rdk_vap_info->associated_devices_map);
 
         while (assoc_dev_data != NULL) {

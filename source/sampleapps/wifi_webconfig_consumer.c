@@ -363,11 +363,13 @@ int initial_sync(webconfig_consumer_t *consumer)
     str = rbusValue_GetString(value, &len);
     if (str == NULL) {
         printf("%s Null pointer,Rbus set string len=%d\n",__FUNCTION__,len);
+        rbusValue_Release(value);
         return -1;
     }
 
     printf("%s:%d data send to consumer event len : %d\n",__FUNCTION__, __LINE__, len);
     handle_webconfig_consumer_event(consumer, str, len, consumer_event_webconfig_set_data);
+    rbusValue_Release(value);
 
     return 0;
 }

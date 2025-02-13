@@ -2817,7 +2817,8 @@ bus_error_t set_force_vap_apply(char *name, raw_data_t *p_data)
             sizeof(wifi_hal_capability_t));
         data->u.decoded.num_radios = num_of_radios;
 
-        getVAPArrayIndexFromVAPIndex((unsigned int)idx - 1, &vap_array_index);
+        vap_array_index = convert_vap_index_to_vap_array_index(&mgr->hal_cap.wifi_prop,
+            (unsigned int)idx - 1);
 
         radio_index = getRadioIndexFromAp((unsigned int)idx - 1);
 
