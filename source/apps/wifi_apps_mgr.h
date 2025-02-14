@@ -72,7 +72,7 @@ typedef struct {
 #endif
         analytics_data_t     analytics;
         sm_data_t            sm_data;
-        em_data_t      em_data;
+        em_data_t            em_data;
         motion_data_t        motion;
         csi_app_t            csi;
         whix_data_t          whix;
