@@ -2671,6 +2671,9 @@ void update_ecomode_radios()
 
     for (radio = 0; radio < getNumberRadios(); radio++)
     {
+	if (radio == 0) {
+		mgr->hal_cap.wifi_prop.radio_presence[radio] = false;
+	}
         g_monitor_module.radio_presence[radio] = mgr->hal_cap.wifi_prop.radio_presence[radio];
     }
 }
