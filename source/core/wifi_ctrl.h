@@ -91,6 +91,11 @@ extern "C" {
 #define HOTSPOT_VAP_MAC_FILTER_ENTRY_SYNC  (15 * 60)
 
 #define MAX_WIFI_SCHED_TIMEOUT         (4 * 1000)
+#define MAX_WIFI_SCHED_CSA_TIMEOUT     (8 * 1000)
+
+#define MAX_HOTSPOT_BLOB_SET_TIMEOUT             100
+#define MAX_WEBCONFIG_HOTSPOT_BLOB_SET_TIMEOUT   120
+#define MAX_VAP_RE_CFG_APPLY_RETRY     2
 
 //This is a dummy string if the value is not passed.
 #define INVALID_KEY                      "12345678"
@@ -207,6 +212,13 @@ typedef struct {
     pthread_mutex_t      events_bus_lock;
 } events_bus_data_t;
 
+typedef struct hotspot_cfg_sem_param {
+    bool is_init;
+    pthread_mutex_t lock;
+    pthread_cond_t cond;
+    bool cfg_status;
+} hotspot_cfg_sem_param_t;
+
 typedef struct wifi_ctrl {
     bool                exit_ctrl;
     queue_t             *queue;
@@ -253,6 +265,7 @@ typedef struct wifi_ctrl {
     int                 speed_test_timeout;
     int                 speed_test_running;
     events_bus_data_t   events_bus_data;
+    hotspot_cfg_sem_param_t hotspot_sem_param;
 } wifi_ctrl_t;
 
 
@@ -385,6 +398,9 @@ char *get_assoc_devices_blob();
 void get_subdoc_name_from_vap_index(uint8_t vap_index, int* subdoc);
 int dfs_nop_start_timer(void *args);
 int webconfig_send_full_associate_status(wifi_ctrl_t *ctrl);
+
+bool hotspot_cfg_sem_wait_duration(uint32_t time_in_sec);
+void hotspot_cfg_sem_signal(bool status);
 
 #ifdef __cplusplus
 }
