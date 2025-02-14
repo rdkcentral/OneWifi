@@ -180,6 +180,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
 
     UINT radio = get_radio_index_for_vap_index(wifi_prop, args->vap_index);
     wifi_util_info_print(WIFI_MON, "%s:%d The Radio updated from vap index is %u\n", __func__, __LINE__, radio);
+    wifi_util_info_print(WIFI_MON, "%s:%d The vap index value is %u\n", __func__, __LINE__, args->vap_index);
     if ((unsigned)RETURN_ERR == radio) {
         wifi_util_error_print(WIFI_MON, "%s:%d Error in getting wifi_prop\n", __func__, __LINE__);
         return RETURN_ERR;
