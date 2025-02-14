@@ -1970,6 +1970,7 @@ int handle_whix_provider_response(wifi_app_t *app, wifi_event_t *event)
     }
 
     radio = provider_response->args.radio_index;
+    wifi_util_info_print(WIFI_APPS, "%s:%d The func is excuted for the radio : %d \n", __func__, __LINE__, radio);
     wifi_platform_property_t *wifi_prop = (wifi_platform_property_t *)get_wifi_hal_cap_prop();
 
     if (wifi_prop->radio_presence[radio] == false) {
@@ -2112,8 +2113,10 @@ static void config_associated_device_stats(wifi_monitor_data_t *data)
 
     for (radio_index = 0; radio_index < getNumberRadios(); radio_index++) {
         //for each vap push the event to monitor queue
+	wifi_util_info_print(WIFI_APPS, "%s Loop is executed for the radio index : %d \n", __func__, radio_index);
         for (vapArrayIndex = 0; vapArrayIndex < getNumberVAPsPerRadio(radio_index); vapArrayIndex++) {
             data->u.mon_stats_config.args.vap_index = wifi_mgr->radio_config[radio_index].vaps.rdk_vap_array[vapArrayIndex].vap_index;
+	     wifi_util_info_print(WIFI_APPS, "%s The vap index is : %u \n", __func__, data->u.mon_stats_config.args.vap_index);
             if (!isVapSTAMesh(data->u.mon_stats_config.args.vap_index)) {
                 push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
             }
