@@ -53,6 +53,15 @@ webconfig_error_t translate_from_em_config_subdoc(webconfig_t *config, webconfig
 
 webconfig_error_t translate_to_em_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
 {
+    if ((data->descriptor & webconfig_data_descriptor_translate_from_easymesh) == webconfig_data_descriptor_translate_from_easymesh) {
+        if (config->proto_desc.translate_from(webconfig_subdoc_type_em_config, data) != webconfig_error_none) {
+            if ((data->descriptor & webconfig_data_descriptor_translate_from_easymesh) == webconfig_data_descriptor_translate_from_easymesh) {
+                return webconfig_error_translate_from_easymesh;
+            }
+        }
+    } else {
+        // no translation required
+    }
     return webconfig_error_none;
 }
 

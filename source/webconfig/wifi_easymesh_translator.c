@@ -1989,6 +1989,74 @@ webconfig_error_t   translate_vap_object_from_easymesh_to_dml(webconfig_subdoc_d
     }
     return webconfig_error_none;
 }
+
+//translate_policy_cfg_object_from_easymesh_to_em_cfg() converts data elements of em_policy_cfg_params_t of easymesh to Onewifi
+webconfig_error_t   translate_policy_cfg_object_from_easymesh_to_em_cfg(webconfig_subdoc_data_t *data)
+{
+    em_policy_cfg_params_t *em_policy_cfg;
+    em_config_t *policy_cfg;
+    webconfig_subdoc_decoded_data_t *decoded_params;
+    webconfig_external_easymesh_t *proto;
+
+    decoded_params = &data->u.decoded;
+    if (decoded_params == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: decoded_params is NULL\n", __func__, __LINE__);
+        return webconfig_error_translate_from_easymesh;
+    }
+
+    proto = (webconfig_external_easymesh_t *)data->u.decoded.external_protos;
+    if (proto == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: external_protos is NULL\n", __func__, __LINE__);
+        return webconfig_error_translate_from_easymesh;
+    }
+
+    em_policy_cfg = proto->policy_config;
+    if (em_policy_cfg == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d:rcvd policy cfg is NULL\n", __func__, __LINE__);
+        return webconfig_error_translate_from_easymesh;
+    }
+
+    policy_cfg = &decoded_params->em_config;
+
+    //ap metric policy
+    policy_cfg->ap_metric_policy.interval = em_policy_cfg->metrics_policy.interval;
+    strncpy(policy_cfg->ap_metric_policy.managed_client_marker, em_policy_cfg->vendor_policy.managed_client_marker , strlen(em_policy_cfg->vendor_policy.managed_client_marker)+1);
+
+    //local steering policy
+    policy_cfg->local_steering_dslw_policy.sta_count = em_policy_cfg->steering_policy.local_steer_policy.num_sta;
+    for (int i = 0; i < policy_cfg->local_steering_dslw_policy.sta_count; i++) {
+        memcpy(policy_cfg->local_steering_dslw_policy.disallowed_sta[i], em_policy_cfg->steering_policy.local_steer_policy.sta_mac[i], sizeof(mac_addr_t));
+    }
+
+    //btm steering policy
+    policy_cfg->btm_steering_dslw_policy.sta_count = em_policy_cfg->steering_policy.btm_steer_policy.num_sta;
+    for (int i = 0; i < policy_cfg->btm_steering_dslw_policy.sta_count; i++) {
+        memcpy(policy_cfg->btm_steering_dslw_policy.disallowed_sta[i], em_policy_cfg->steering_policy.btm_steer_policy.sta_mac[i], sizeof(mac_addr_t));
+    }
+
+    //backhaul bss config policy
+    memcpy(policy_cfg->backhaul_bss_config_policy.bssid, em_policy_cfg->bh_bss_cfg_policy.bssid, sizeof(bssid_t));
+    policy_cfg->backhaul_bss_config_policy.profile_1_bsta_disallowed = em_policy_cfg->bh_bss_cfg_policy.p1_bsta_disallowed;
+    policy_cfg->backhaul_bss_config_policy.profile_1_bsta_disallowed = em_policy_cfg->bh_bss_cfg_policy.p2_bsta_disallowed;
+
+    //channel scan reporting policy
+    policy_cfg->channel_scan_reporting_policy.report_independent_channel_scan = em_policy_cfg->channel_scan_policy.rprt_ind_ch_scan;
+
+    //radio metrics policy
+    policy_cfg->radio_metrics_policies.radio_count = em_policy_cfg->metrics_policy.radios_num;
+    for (int i = 0; i < policy_cfg->radio_metrics_policies.radio_count; i++) {
+        memcpy(policy_cfg->radio_metrics_policies.radio_metrics_policy[i].ruid, em_policy_cfg->metrics_policy.radios[i].ruid, sizeof(mac_addr_t));
+        policy_cfg->radio_metrics_policies.radio_metrics_policy[i].sta_rcpi_threshold   = em_policy_cfg->metrics_policy.radios[i].rcpi_thres;
+        policy_cfg->radio_metrics_policies.radio_metrics_policy[i].sta_rcpi_hysteresis  = em_policy_cfg->metrics_policy.radios[i].rcpi_hysteresis;
+        policy_cfg->radio_metrics_policies.radio_metrics_policy[i].ap_util_threshold    = em_policy_cfg->metrics_policy.radios[i].util_thres;
+        policy_cfg->radio_metrics_policies.radio_metrics_policy[i].link_metrics         = (em_policy_cfg->metrics_policy.radios[i].sta_policy >> 2) & 1;
+        policy_cfg->radio_metrics_policies.radio_metrics_policy[i].traffic_stats        = (em_policy_cfg->metrics_policy.radios[i].sta_policy >> 1) & 1;
+        policy_cfg->radio_metrics_policies.radio_metrics_policy[i].sta_status           = (em_policy_cfg->metrics_policy.radios[i].sta_policy >> 3) & 1;
+    }
+
+    return webconfig_error_none;
+}
+
 // translate_to_easymesh_tables() is translations of OneWifi structures to Easymesh structures based on type
 webconfig_error_t  translate_to_easymesh_tables(webconfig_subdoc_type_t type, webconfig_subdoc_data_t *data)
 {
@@ -2193,13 +2261,21 @@ webconfig_error_t   translate_from_easymesh_tables(webconfig_subdoc_type_t type,
             }
             break;
 
+        case webconfig_subdoc_type_em_config:
+            if (translate_policy_cfg_object_from_easymesh_to_em_cfg(data) != webconfig_error_none) {
+                wifi_util_error_print(WIFI_WEBCONFIG, 
+                    "%s:%d: webconfig_subdoc_type_em_config policy_cfg object translation from easymesh failed\n", __func__, __LINE__);
+                return webconfig_error_translate_from_easymesh;
+            }
+            break;
+
         default:
             break;
     }
     return webconfig_error_none;
 }
 
-void webconfig_proto_easymesh_init(webconfig_external_easymesh_t *proto, void *data_model, void *m2ctrl_vapconfig,
+void webconfig_proto_easymesh_init(webconfig_external_easymesh_t *proto, void *data_model, void *m2ctrl_vapconfig, void *policy_config,
         ext_proto_get_num_radio_t get_num_radios, ext_proto_set_num_radio_t set_num_radios,
         ext_proto_get_num_op_class_t get_num_op_class, ext_proto_set_num_op_class_t set_num_op_class,
         ext_proto_get_num_bss_t get_num_bss, ext_proto_set_num_bss_t set_num_bss,
@@ -2211,6 +2287,7 @@ void webconfig_proto_easymesh_init(webconfig_external_easymesh_t *proto, void *d
 {
     proto->data_model = data_model;
     proto->m2ctrl_vapconfig = m2ctrl_vapconfig;
+    proto->policy_config = policy_config;
     proto->get_num_radio = get_num_radios;
     proto->set_num_radio = set_num_radios;
     proto->get_num_op_class = get_num_op_class;
