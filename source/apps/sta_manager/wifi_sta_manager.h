@@ -11,6 +11,7 @@ typedef enum {
 
 typedef struct {
     hash_map_t *sta_mgr_map;
+    ap_metrics_policy_t ap_metrics_policy;
 } sta_mgr_data_t;
 
 #endif
