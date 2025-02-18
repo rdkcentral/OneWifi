@@ -1004,7 +1004,7 @@ bus_error_t bus_init(bus_handle_t *handle)
 
 static bus_error_t bus_open(bus_handle_t *handle, char *component_name)
 {
-    rbusError_t rc = bus_error_success;
+    rbusError_t rc = RBUS_ERROR_SUCCESS;
     VERIFY_NULL_WITH_RC(handle);
     VERIFY_NULL_WITH_RC(component_name);
 
@@ -1050,7 +1050,7 @@ static bus_error_t bus_get_trace_context(bus_handle_t *handle, char *traceParent
 
 static bus_error_t bus_set(bus_handle_t *handle, char const *name, raw_data_t *data)
 {
-    rbusError_t rc = bus_error_success;
+    rbusError_t rc = RBUS_ERROR_SUCCESS;
     VERIFY_NULL_WITH_RC(name);
 
     rbusHandle_t p_rbus_handle = handle->u.rbus_handle;
@@ -1290,7 +1290,7 @@ static bool remove_substring(char *str, const char *sub)
 bus_error_t bus_reg_data_elements(bus_handle_t *handle, bus_data_element_t *data_element,
     uint32_t num_of_element)
 {
-    rbusError_t rc = bus_error_success;
+    rbusError_t rc = RBUS_ERROR_SUCCESS;
     bus_name_string_t name = { 0 };
     rbusHandle_t p_rbus_handle = handle->u.rbus_handle;
     rbusDataElement_t *rbus_dataElements;
@@ -1441,7 +1441,7 @@ bus_error_t bus_method_invoke(bus_handle_t *handle, void *paramName, char *event
 bus_error_t bus_event_subscribe(bus_handle_t *handle, char const *event_name, void *cb,
     void *userData, int timeout)
 {
-    rbusError_t rc = bus_error_success;
+    rbusError_t rc = RBUS_ERROR_SUCCESS;
     rbusHandle_t p_rbus_handle = handle->u.rbus_handle;
     rbus_sub_callback_table_t rbus_cb = { 0 };
     bus_sub_callback_table_t  user_cb;
@@ -1459,7 +1459,7 @@ bus_error_t bus_event_subscribe(bus_handle_t *handle, char const *event_name, vo
 bus_error_t bus_event_subscribe_ex(bus_handle_t *handle, bus_event_sub_t *l_sub_info_map,
     int num_sub, int timeout)
 {
-    rbusError_t ret = bus_error_success;
+    rbusError_t ret = RBUS_ERROR_SUCCESS;
     rbusHandle_t p_rbus_handle = handle->u.rbus_handle;
     rbusEventSubscription_t *sub_info_map;
     rbus_sub_callback_table_t rbus_cb = {0};
@@ -1500,7 +1500,7 @@ bus_error_t bus_event_subscribe_ex(bus_handle_t *handle, bus_event_sub_t *l_sub_
 bus_error_t bus_event_subscribe_ex_async(bus_handle_t *handle, bus_event_sub_t *l_sub_info_map,
     int num_sub, void *l_sub_handler, int timeout)
 {
-    rbusError_t ret = bus_error_success;
+    rbusError_t ret = RBUS_ERROR_SUCCESS;
     rbusHandle_t p_rbus_handle = handle->u.rbus_handle;
     rbusEventSubscription_t *sub_info_map;
     rbus_sub_callback_table_t rbus_cb = {0};
