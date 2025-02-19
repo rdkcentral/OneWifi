@@ -1506,7 +1506,7 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
         bool       bGFOSuppportFlag = TRUE;
 
         memset(&data, 0, sizeof(raw_data_t));
-        rc = get_bus_descriptor()->bus_data_get_fn(&ctrl->handle, TR181_GLOBAL_FEATURE_PARAM_GFO_SUPPORTED, &data);
+        int rc = get_bus_descriptor()->bus_data_get_fn(&ctrl->handle, TR181_GLOBAL_FEATURE_PARAM_GFO_SUPPORTED, &data);
         if (rc == bus_error_success)
         {
             bGFOSuppportFlag = data.raw_data.b;
