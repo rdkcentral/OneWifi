@@ -28,7 +28,8 @@ typedef struct wifi_app wifi_app_t;
 
 typedef char short_string[32];
 typedef struct {
-    hash_map_t           *em_stats_config_map;
+    stats_type_t          stats_type;
+    em_config_t           em_config;
 } em_data_t;
 
 typedef enum {
