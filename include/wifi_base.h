@@ -400,7 +400,6 @@ typedef struct {
 
 typedef struct {
     int rssi_threshold;
-    bool ReconnectCountEnable[MAX_VAP];
     bool FeatureMFPConfig;
     int ChUtilityLogInterval;
     int DeviceLogInterval;

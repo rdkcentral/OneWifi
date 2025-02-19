@@ -56,7 +56,6 @@ extern "C" {
 #define MAX_LEVL_CSI_CLIENTS        5
 
 #define RSSI_THRESHOLD                     "RssiThresholdValue"
-#define RECONNECT_COUNT_STATUS             "ReconnectCountStatus"
 #define MFP_FEATURE_STATUS                 "MfpFeatureStatus"
 #define CH_UTILITY_LOG_INTERVAL            "ChUtilityLogInterval"
 #define DEVICE_LOG_INTERVAL                "DeviceLogInterval"
