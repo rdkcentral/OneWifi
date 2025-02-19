@@ -39,7 +39,6 @@ extern "C" {
 #include "wifi_harvester.h"
 #include "wifi_ocs.h"
 #include "wifi_em.h"
-#include "wifi_easymesh.h"
 #include "wifi_sta_manager.h"
 
 #ifdef ONEWIFI_BLASTER_APP_SUPPORT
