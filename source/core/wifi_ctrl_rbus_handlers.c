@@ -668,7 +668,7 @@ bus_error_t webconfig_set_subdoc(char *event_name, raw_data_t *p_data)
 
 static void MarkerListConfigHandler (char *event_name, raw_data_t *p_data)
 {
-    marker_list_t list_type;
+    wifi_event_subtype_t list_type;
     const char *pTmp = NULL;
 
     if (strcmp(event_name, WIFI_NORMALIZED_RSSI_LIST) == 0) {
