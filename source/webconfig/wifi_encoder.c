@@ -2396,3 +2396,75 @@ webconfig_error_t encode_radio_temperature_params(wifi_provider_response_t *radi
 
     return webconfig_error_none;
 }
+
+webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *emconfig_obj)
+{
+    if ((em_config  == NULL) || (em_config  == NULL)) {
+        return webconfig_error_encode;
+    }
+
+    cJSON *policy_obj = cJSON_CreateObject();
+    cJSON_AddItemToObject(emconfig_obj, "Policy", policy_obj);
+
+    // AP Metrics Reporting Policy
+    cJSON *ap_metrics_policy = cJSON_CreateObject();
+    cJSON_AddItemToObject(policy_obj, "AP Metrics Reporting Policy", ap_metrics_policy);
+    cJSON_AddNumberToObject(ap_metrics_policy, "Interval", em_config->ap_metric_policy.interval);
+
+    cJSON *managed_client_marker_array = cJSON_CreateArray();
+    cJSON_AddItemToObject(ap_metrics_policy, "Managed Client Marker", managed_client_marker_array);
+
+    int num_managed_client_markers = cJSON_GetArraySize(managed_client_marker_array);
+    for (int i = 0; i < num_managed_client_markers; i++) {
+        cJSON_AddItemToArray(managed_client_marker_array, cJSON_CreateString(em_config->ap_metric_policy.managed_client_marker));
+    }
+
+    /* // Local Steering Disallowed Policy
+    cJSON *local_steering_policy = cJSON_CreateObject();
+    cJSON_AddItemToObject(policy_obj, "Local Steering Disallowed Policy", local_steering_policy);
+    cJSON *disallowed_sta_array = cJSON_CreateArray();
+    cJSON_AddItemToObject(local_steering_policy, "Disallowed STA", disallowed_sta_array);
+    for (int i = 0; i < em_config->local_steering.num_sta; i++) {
+        cJSON *sta_obj = cJSON_CreateObject();
+        cJSON_AddItemToArray(disallowed_sta_array, sta_obj);
+        cJSON_AddStringToObject(sta_obj, "MAC", em_config->local_steering.sta_mac[i]);
+    }
+
+    // BTM Steering Disallowed Policy
+    cJSON *btm_steering_policy = cJSON_CreateObject();
+    cJSON_AddItemToObject(policy_obj, "BTM Steering Disallowed Policy", btm_steering_policy);
+    disallowed_sta_array = cJSON_CreateArray();
+    cJSON_AddItemToObject(btm_steering_policy, "Disallowed STA", disallowed_sta_array);
+    for (int i = 0; i < em_config->btm_steering.num_sta; i++) {
+        cJSON *sta_obj = cJSON_CreateObject();
+        cJSON_AddItemToArray(disallowed_sta_array, sta_obj);
+        cJSON_AddStringToObject(sta_obj, "MAC", em_config->btm_steering.sta_mac[i]);
+    }
+
+    // Backhaul BSS Configuration Policy
+    cJSON *backhaul_policy = cJSON_CreateObject();
+    cJSON_AddItemToObject(policy_obj, "Backhaul BSS Configuration Policy", backhaul_policy);
+    cJSON_AddStringToObject(backhaul_policy, "Backhaul Config", em_config->backhaul_config);
+
+    // Channel Scan Reporting Policy
+    cJSON *channel_scan_policy = cJSON_CreateObject();
+    cJSON_AddItemToObject(policy_obj, "Channel Scan Reporting Policy", channel_scan_policy);
+    cJSON_AddNumberToObject(channel_scan_policy, "Report Independent Channel Scans", em_config->channel_scan_report);
+
+    // Radio Specific Metrics Policy
+    cJSON *radio_metrics_array = cJSON_CreateArray();
+    cJSON_AddItemToObject(policy_obj, "Radio Specific Metrics Policy", radio_metrics_array);
+    for (int i = 0; i < em_config->num_radio_metrics; i++) {
+        cJSON *radio_metrics_obj = cJSON_CreateObject();
+        cJSON_AddItemToArray(radio_metrics_array, radio_metrics_obj);
+        cJSON_AddStringToObject(radio_metrics_obj, "ID", em_config->radio_metrics[i].radio_id);
+        cJSON_AddNumberToObject(radio_metrics_obj, "STA RCPI Threshold", em_config->radio_metrics[i].sta_rcpi_threshold);
+        cJSON_AddNumberToObject(radio_metrics_obj, "STA RCPI Hysteresis", em_config->radio_metrics[i].sta_rcpi_hysteresis);
+        cJSON_AddNumberToObject(radio_metrics_obj, "AP Utilization Threshold", em_config->radio_metrics[i].ap_util_threshold);
+        cJSON_AddNumberToObject(radio_metrics_obj, "STA Traffic Stats", em_config->radio_metrics[i].sta_traffic_stats);
+        cJSON_AddNumberToObject(radio_metrics_obj, "STA Link Metrics", em_config->radio_metrics[i].sta_link_metrics);
+        cJSON_AddNumberToObject(radio_metrics_obj, "STA Status", em_config->radio_metrics[i].sta_status);
+    } */
+
+    return webconfig_error_none;
+}
