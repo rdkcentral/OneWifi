@@ -61,33 +61,36 @@ webconfig_error_t translate_to_sta_manager_subdoc(webconfig_t *config,
     return webconfig_error_none;
 }
 
-webconfig_error_t encode_sta_manager_object(sta_data_ts *sta_data, cJSON **sta_manager_obj)
+webconfig_error_t encode_sta_manager_object(sta_beacon_report_reponse_t *sta_data,
+    cJSON **sta_manager_obj)
 {
-    int itr = 0;
+    unsigned int itr = 0;
     cJSON *object, *obj_array;
-    if ((sta_data == NULL) && (*sta_manager_obj == NULL)) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer\n", __func__, __LINE__);
+    if (sta_data == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d NULL sta_data Pointer\n", __func__, __LINE__);
+        return webconfig_error_encode;
+    }
+
+    if (*sta_manager_obj == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d NULL sta_manager_obj Pointer\n", __func__,
+            __LINE__);
         return webconfig_error_encode;
     }
 
     obj_array = cJSON_CreateArray();
     mac_addr_str_t mac_str;
     cJSON_AddItemToObject(*sta_manager_obj, "BeaconReport", obj_array);
-    bR_data_t *bR_report = (bR_data_t *)hash_map_get_first(sta_data->bR_map);
-    while (bR_report != NULL) {
+    beacon_response_data_t *bR_report = sta_data->data;
+    for (itr = 0; (itr < sta_data->num_br_data) && (bR_report != NULL); itr++) {
         object = cJSON_CreateObject();
         cJSON_AddItemToArray(obj_array, object);
         to_mac_str(bR_report->bssid, mac_str);
         cJSON_AddStringToObject(object, "BSSID", mac_str);
-        cJSON_AddNumberToObject(object, "Opertating Class", bR_report->op_class);
+        cJSON_AddNumberToObject(object, "Operating Class", bR_report->op_class);
         cJSON_AddNumberToObject(object, "Channel Number", bR_report->channel);
         cJSON_AddNumberToObject(object, "RCPI", bR_report->rcpi);
         cJSON_AddNumberToObject(object, "RSNI", bR_report->rssi);
-        bR_report = (bR_data_t *)hash_map_get_next(sta_data->bR_map, bR_report);
-        itr++;
-    }
-    if (bR_report == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL Pointer %d\n", __func__, __LINE__, itr);
+        bR_report++;
     }
 
     return webconfig_error_none;
@@ -96,7 +99,7 @@ webconfig_error_t encode_sta_manager_object(sta_data_ts *sta_data, cJSON **sta_m
 webconfig_error_t encode_sta_manager_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
 {
     cJSON *json, *object;
-    cJSON *obj_array;
+    // cJSON *obj_array;
     char *str;
     char *vap_name;
     webconfig_subdoc_decoded_data_t *params;
@@ -127,14 +130,13 @@ webconfig_error_t encode_sta_manager_subdoc(webconfig_t *config, webconfig_subdo
 
     // Encode mac object
 
-    obj_array = cJSON_CreateArray();
-    cJSON_AddItemToObject(json, "WiFiBeaconReport", obj_array);
     object = cJSON_CreateObject();
-    cJSON_AddItemToArray(obj_array, object);
+    cJSON_AddItemToObject(json, "WiFiBeaconReport", object);
     vap_name = get_vap_name(&params->hal_cap.wifi_prop, params->stamgr.ap_index);
     cJSON_AddStringToObject(object, "VapName", vap_name);
     to_mac_str(params->stamgr.mac_addr, mac_str);
     cJSON_AddStringToObject(object, "MacAddress", mac_str);
+    cJSON_AddNumberToObject(object, "NumofReport", params->stamgr.num_br_data);
     if (encode_sta_manager_object(&params->stamgr, &object) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode mac object\n", __func__,
             __LINE__);
@@ -179,7 +181,7 @@ webconfig_error_t decode_sta_manager_subdoc(webconfig_t *config, webconfig_subdo
         return webconfig_error_decode;
     }
 
-    memset(&params->stamgr, 0, sizeof(sta_data_ts));
+    memset(&params->stamgr, 0, sizeof(sta_beacon_report_reponse_t));
     cJSON *obj_config = cJSON_GetObjectItem(json, "WiFiBeaconReport");
     if (obj_config == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: object not present\n", __func__, __LINE__);

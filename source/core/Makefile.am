@@ -71,7 +71,7 @@ endif
 OneWifi_CPPFLAGS += -I$(top_srcdir)/source/dml/rdkb/
 OneWifi_CPPFLAGS += -I$(top_srcdir)/source/dml/dml_webconfig
 
-OneWifi_CPPFLAGS += -I$(top_srcdir)/source/apps/sta_manager -I$(top_srcdir)/source/apps  -I$(top_srcdir)/source/apps/analytics -I$(top_srcdir)/source/apps/levl -I$(top_srcdir)/source/apps/sm -I$(top_srcdir)/source/apps/csi -I$(top_srcdir)/source/apps/motion -I$(top_srcdir)/source/apps/whix  -I$(top_srcdir)/source/apps/harvester -I$(top_srcdir)/source/apps/blaster -I$(top_srcdir)/source/apps/ocs -I$(top_srcdir)/source/ccsp
+OneWifi_CPPFLAGS += -I$(top_srcdir)/source/apps/em -I$(top_srcdir)/source/apps/sta_manager -I$(top_srcdir)/source/apps/em -I$(top_srcdir)/source/apps  -I$(top_srcdir)/source/apps/analytics -I$(top_srcdir)/source/apps/levl -I$(top_srcdir)/source/apps/sm -I$(top_srcdir)/source/apps/csi -I$(top_srcdir)/source/apps/motion -I$(top_srcdir)/source/apps/whix  -I$(top_srcdir)/source/apps/harvester -I$(top_srcdir)/source/apps/blaster -I$(top_srcdir)/source/apps/ocs -I$(top_srcdir)/source/ccsp
 
 OneWifi_CFLAGS =  $(SYSTEMD_CFLAGS)
 OneWifi_CFLAGS += $(JOURNALCTL_ENABLE_FLAG)

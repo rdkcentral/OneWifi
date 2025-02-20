@@ -139,8 +139,9 @@ typedef enum {
     wifi_app_inst_whix = wifi_app_inst_base << 13,
     wifi_app_inst_core = wifi_app_inst_base << 14,
     wifi_app_inst_ocs = wifi_app_inst_base << 15,
-	wifi_app_inst_sta_mgr = wifi_app_inst_base << 16,
-    wifi_app_inst_max = wifi_app_inst_base << 17
+    wifi_app_inst_easyconnect = wifi_app_inst_base << 16,
+    wifi_app_inst_sta_mgr = wifi_app_inst_base << 17,
+    wifi_app_inst_max = wifi_app_inst_base << 18
 } wifi_app_inst_t;
 
 typedef struct {
@@ -274,23 +275,6 @@ typedef struct {
     size_t len;
     wifi_BeaconReport_t *data;
 } beacon_repo_data_t;
-
-
-typedef struct {
-	mac_address_t bssid;
-	UCHAR op_class;
-	UCHAR channel;
-	UCHAR rcpi;
-	UCHAR rssi;
-}bR_data_t;
-
-typedef struct {
-	mac_address_t mac_addr;
-	hash_map_t *bR_map;
-	unsigned int ap_index;
-	int          sched_handler_id;
-	unsigned char  dialog_token;
-}sta_data_ts;
 
 // data collection api type
 typedef enum {
@@ -1110,6 +1094,7 @@ typedef struct {
     marker_name managed_client_marker;
 } ap_metrics_policy_t;
 
+#define MAX_DIS_STA 30
 typedef struct {
     int sta_count;
     mac_addr_t disallowed_sta[16];
@@ -1148,6 +1133,30 @@ typedef struct {
     channel_scan_reporting_policy_t channel_scan_reporting_policy;
     radio_metrics_policies_t radio_metrics_policies;
 } em_config_t;
+
+typedef struct {
+    unsigned char dialog_token;
+    size_t size;
+    wifi_BeaconReport_t *beacon_repo;
+} wifi_hal_rrm_report_t;
+
+typedef struct {
+    mac_address_t bssid;
+    UCHAR op_class;
+    UCHAR channel;
+    UCHAR rcpi;
+    UCHAR rssi;
+} beacon_response_data_t;
+
+#define MAX_BR_DATA 30
+typedef struct {
+    mac_address_t mac_addr;
+    beacon_response_data_t data[MAX_BR_DATA];
+    unsigned int ap_index;
+    unsigned int num_br_data;
+    int sched_handler_id;
+    unsigned char dialog_token;
+} sta_beacon_report_reponse_t;
 
 #ifdef __cplusplus
 }

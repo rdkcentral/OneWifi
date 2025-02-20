@@ -59,7 +59,8 @@ typedef enum {
     WIFI_BLASTER,
     WIFI_OCS,
     WIFI_BUS,
-    WIFI_TCM
+    WIFI_TCM,
+    WIFI_EC,
 } wifi_dbg_type_t;
 
 typedef enum {
@@ -394,6 +395,8 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
     rdk_wifi_vap_info_t *rdk_old, rdk_wifi_vap_info_t *rdk_new, bool isSta);
 int update_radio_operating_classes(wifi_radio_operationParam_t *oper);
 int get_partner_id(char *partner_id);
+int interfacename_from_mac(const mac_address_t *mac, char *ifname);
+int mac_address_from_name(const char *ifname, mac_address_t mac);
 #ifdef __cplusplus
 }
 #endif

@@ -317,26 +317,7 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         }
 
         cfg.u.sta_info.scan_params.channel.band = band;
-
-        switch(band) {
-            case WIFI_FREQUENCY_2_4_BAND:
-                cfg.u.sta_info.scan_params.channel.channel = 1;
-                break;
-            case WIFI_FREQUENCY_5_BAND:
-            case WIFI_FREQUENCY_5L_BAND:
-                cfg.u.sta_info.scan_params.channel.channel = 44;
-                break;
-            case WIFI_FREQUENCY_5H_BAND:
-                cfg.u.sta_info.scan_params.channel.channel = 157;
-                break;
-            case WIFI_FREQUENCY_6_BAND:
-                cfg.u.sta_info.scan_params.channel.channel = 5;
-                break;
-            default:
-                wifi_util_error_print(WIFI_DB,"%s:%d invalid band %d\n", __func__, __LINE__, band);
-                break;
-        }
-
+        cfg.u.sta_info.scan_params.channel.channel = 0;
         cfg.u.sta_info.conn_status = wifi_connection_status_disabled;
         memset(&cfg.u.sta_info.bssid, 0, sizeof(cfg.u.sta_info.bssid));
     } else {
@@ -427,7 +408,7 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         cfg.u.bss_info.beaconRate = WIFI_BITRATE_6MBPS;
         strncpy(cfg.u.bss_info.beaconRateCtl,"6Mbps",sizeof(cfg.u.bss_info.beaconRateCtl)-1);
         cfg.vap_mode = wifi_vap_mode_ap;
-        if (isVapPrivate(vap_index)) {
+        if (isVapPrivate(vap_index) || isVapMeshBackhaul(vap_index)) {
             cfg.u.bss_info.showSsid = true;
             cfg.u.bss_info.wps.methods = WIFI_ONBOARDINGMETHODS_PUSHBUTTON;
             memset(wps_pin, 0, sizeof(wps_pin));
@@ -443,8 +424,9 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         } else {
             cfg.u.bss_info.showSsid = false;
         }
-        if ((vap_index == 2) || isVapLnf(vap_index) || isVapPrivate(vap_index)) {
-             cfg.u.bss_info.enabled = true;
+        if ((vap_index == 2) || isVapLnf(vap_index) || isVapPrivate(vap_index) ||
+            isVapMeshBackhaul(vap_index) || isVapXhs(vap_index)) {
+            cfg.u.bss_info.enabled = true;
         }
 
         if (isVapPrivate(vap_index)) {
@@ -457,7 +439,6 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
 
         if (wifi_hal_get_default_ssid(ssid, vap_index) == 0) {
             strcpy(cfg.u.bss_info.ssid, ssid);
-
         } else {
            strcpy(cfg.u.bss_info.ssid, vap_name);
         }
@@ -647,7 +628,59 @@ void wifidb_print(char *format, ...)
 int wifidb_get_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
     rdk_wifi_vap_info_t *rdk_config)
 {
-    return 0;
+    wifi_platform_property_t *wifi_prop = NULL;
+    int ret = RETURN_OK;
+
+    wifi_prop = &((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop;
+    if (vap_name == NULL || config == NULL || wifi_prop == NULL) {
+        wifi_util_error_print(WIFI_DB, "%s:%d Failed to Get VAP info - Null pointer\n", __func__,
+            __LINE__);
+        return RETURN_ERR;
+    }
+    config->vap_index = convert_vap_name_to_index(wifi_prop, vap_name);
+    config->radio_index = convert_vap_name_to_radio_array_index(wifi_prop, vap_name);
+    strncpy(config->vap_name, vap_name, (sizeof(config->vap_name) - 1));
+    ret = get_bridgename_from_vapname(wifi_prop, vap_name, config->bridge_name,
+        sizeof(config->bridge_name));
+
+    rdk_config->exists = TRUE;
+
+    if (isVapSTAMesh(config->vap_index)) {
+        strncpy(config->u.sta_info.ssid, "Mesh_Backhaul", (sizeof(config->u.sta_info.ssid) - 1));
+        config->u.sta_info.enabled = TRUE;
+        config->u.sta_info.scan_params.period = 10;
+        config->u.sta_info.scan_params.channel.channel = 0;
+        config->u.sta_info.scan_params.channel.band = WIFI_FREQUENCY_2_4_BAND |
+            WIFI_FREQUENCY_5_BAND | WIFI_FREQUENCY_6_BAND;
+    } else {
+        strncpy(config->u.bss_info.ssid, "Mesh_Backhaul ", (sizeof(config->u.bss_info.ssid) - 1));
+        config->u.bss_info.enabled = TRUE;
+        config->u.bss_info.showSsid = TRUE;
+        config->u.bss_info.isolation = FALSE;
+        config->u.bss_info.mgmtPowerControl = 100;
+        config->u.bss_info.bssMaxSta = 32;
+        config->u.bss_info.bssTransitionActivated = FALSE;
+        config->u.bss_info.nbrReportActivated = FALSE;
+        config->u.bss_info.network_initiated_greylist = FALSE;
+        config->u.bss_info.connected_building_enabled = FALSE;
+        config->u.bss_info.rapidReconnectEnable = FALSE;
+        config->u.bss_info.rapidReconnThreshold = 0;
+        config->u.bss_info.vapStatsEnable = TRUE;
+        config->u.bss_info.mac_filter_enable = FALSE;
+        config->u.bss_info.mac_filter_mode = wifi_mac_filter_mode_white_list;
+        config->u.bss_info.wmm_enabled = TRUE;
+        config->u.bss_info.UAPSDEnabled = TRUE;
+        config->u.bss_info.beaconRate = WIFI_BITRATE_DEFAULT;
+        config->u.bss_info.wmmNoAck = 0;
+        config->u.bss_info.wepKeyLength = 0;
+        config->u.bss_info.bssHotspot = FALSE;
+        config->u.bss_info.wpsPushButton = FALSE;
+        config->u.bss_info.wps.methods = WIFI_ONBOARDINGMETHODS_EASYCONNECT | WIFI_ONBOARDINGMETHODS_PUSHBUTTON;
+        config->u.bss_info.wps.enable = TRUE;
+        config->u.bss_info.hostap_mgt_frame_ctrl = TRUE;
+        config->u.bss_info.mbo_enabled = TRUE;
+    }
+    return ret;
 }
 
 int wifidb_update_wifi_macfilter_config(char *macfilter_key, acl_entry_t *config, bool add)

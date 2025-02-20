@@ -1,0 +1,75 @@
+{
+    "_comment": [
+        "This is a sample JSON configuration for Raspberry PI with below assumptions:",
+        " 1) External USB wifi adapter being used is Canakit usb wifi adapter, which supports 8 2.4G VAPs.",
+        "     Link: https://www.canakit.com/raspberry-pi-wifi.html",
+        " 2) Interfaces specified in InterfaceName have already been created seperately and",
+        "     this file is only providing the interface mapping associated for that interface.",
+        " 3) Built in Wifi of Rpi is using interface wlan0.",
+        "Some details on the outline of the elements:",
+        "PhyList is an array of phys supported on device with Index specifying the actual phy index.",
+        "Each phy has an array of RadioList which depicts the radios supported on that phy.",
+        "The index in the RadioList specifies the radio type 0 means 2.4G, 1 means 5G and 2 means 6G.",
+        "The RadioName in the RadioList specifies the primary interface associate with that radio.",
+        "The fields in InterfaceList is self-explanatory with vapName specifying the type of VAP."
+    ],
+    "PhyList": [
+        {
+            "Index": 0,
+            "RadioList": [
+                {
+                    "Index": 1,
+                    "RadioName": "wlan0",
+                    "InterfaceList": [
+                        {
+                            "InterfaceName": "wlan0",
+                            "Bridge": "brlan0",
+                            "vlanId": 0,
+                            "vapIndex": 1,
+                            "vapName": "mesh_sta_5g"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "Index": 1,
+            "RadioList": [
+                {
+                    "Index": 0,
+                    "RadioName": "wlan1",
+                    "InterfaceList": [
+                        {
+                            "InterfaceName": "wlan1.1",
+                            "Bridge": "brlan0",
+                            "vlanId": 0,
+                            "vapIndex": 2,
+                            "vapName": "private_ssid_2g"
+                        },
+                        {
+                            "InterfaceName": "wlan1.2",
+                            "Bridge": "brlan0",
+                            "vlanId": 0,
+                            "vapIndex": 3,
+                            "vapName": "iot_ssid_2g"
+                        },
+                        {
+                            "InterfaceName": "wlan1.3",
+                            "Bridge": "brlan0",
+                            "vlanId": 0,
+                            "vapIndex": 4,
+                            "vapName": "lnf_psk_2g"
+                        },
+                        {
+                            "InterfaceName": "wlan1.4",
+                            "Bridge": "brlan0",
+                            "vlanId": 0,
+                            "vapIndex": 5,
+                            "vapName": "mesh_backhaul_2g"
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

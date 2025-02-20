@@ -54,63 +54,6 @@ static webconfig_subdoc_data_t  webconfig_easymesh_data;
 /* global pointer to webconfig subdoc encoded data to avoid memory loss when passing data to  */
 static char *webconfig_easymesh_raw_data_ptr = NULL;
 
-// This routine will take mac adderess from the user and returns interfacename
-int interfacename_from_mac(const mac_address_t *mac, char *ifname)
-{
-    struct ifaddrs *ifaddr = NULL, *tmp = NULL;
-    struct sockaddr *addr;
-    struct sockaddr_ll *ll_addr;
-    bool found = false;
-
-    if (getifaddrs(&ifaddr) != 0) {
-        wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: Failed to get interfae information\n", __func__, __LINE__);
-        return -1;
-    }
-
-    tmp = ifaddr;
-    while (tmp != NULL) {
-        addr = tmp->ifa_addr;
-        ll_addr = (struct sockaddr_ll*)tmp->ifa_addr;
-        if ((addr != NULL) && (addr->sa_family == AF_PACKET) && (memcmp(ll_addr->sll_addr, mac, sizeof(mac_address_t)) == 0)) {
-            strncpy(ifname, tmp->ifa_name, strlen(tmp->ifa_name));
-            found = true;
-            break;
-        }
-
-        tmp = tmp->ifa_next;
-    }
-
-    freeifaddrs(ifaddr);
-
-    return (found == true) ? 0:-1;
-}
-
-// This routine will take mac adderess from the user and returns interfacename
-int mac_address_from_name(const char *ifname, mac_address_t mac)
-{
-    int sock;
-    struct ifreq ifr;
-
-    if ((sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP)) < 0) {
-        wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: Failed to create socket\n", __func__, __LINE__);
-        return -1;
-    }
-
-    memset(&ifr, 0, sizeof(struct ifreq));
-    ifr.ifr_addr.sa_family = AF_INET;
-    strcpy(ifr.ifr_name, ifname);
-    if (ioctl(sock, SIOCGIFHWADDR, &ifr) != 0) {
-        close(sock);
-        wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: ioctl failed to get hardware address for interface:%s\n", __func__, __LINE__, ifname);
-        return -1;
-    }
-
-    memcpy(mac, (unsigned char *)ifr.ifr_hwaddr.sa_data, sizeof(mac_address_t));
-
-    close(sock);
-
-    return 0;
-}
 // webconfig_easymesh_decode() will convert the onewifi structures to easymesh structures
 webconfig_error_t webconfig_easymesh_decode(webconfig_t *config, const char *str,
         webconfig_external_easymesh_t *data,

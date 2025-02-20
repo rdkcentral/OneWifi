@@ -39,12 +39,15 @@ extern "C" {
 #include "wifi_harvester.h"
 #include "wifi_ocs.h"
 #include "wifi_em.h"
-#include "wifi_easymesh.h"
 #include "wifi_sta_manager.h"
 
 #ifdef ONEWIFI_BLASTER_APP_SUPPORT
 #include "wifi_blaster.h"
 #endif
+
+#ifdef ONEWIFI_EASYCONNECT_APP_SUPPORT
+#include "wifi_easyconnect.h"
+#endif // ONEWIFI_EASYCONNECT_APP_SUPPORT
 
 #define MAX_APP_INIT_DATA 1024
 #define APP_DETACHED 0x01
@@ -78,13 +81,16 @@ typedef struct {
         motion_data_t        motion;
         csi_app_t            csi;
         whix_data_t          whix;
-        sta_mgr_data_t       sta_mgr;
+        sta_mgr_data_t      sta_mgr;
 #ifdef ONEWIFI_BLASTER_APP_SUPPORT
         blaster_data_t       blaster;
 #endif
 #if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
         off_channel_param_t  ocs[MAX_NUM_RADIOS];
 #endif //FEATURE_OFF_CHANNEL_SCAN_5G
+#ifdef ONEWIFI_EASYCONNECT_APP_SUPPORT
+        easyconnect_data_t ec;
+#endif // ONEWIFI_EASYCONNECT_APP_SUPPORT
     } u;
 } wifi_app_data_t;
 

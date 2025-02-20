@@ -196,7 +196,28 @@ int blaster_event(wifi_app_t *app, wifi_event_t *event)
     return 0;
 }
 
-#endif
+#endif // ONEWIFI_BLASTER_APP_SUPPORT
+
+#ifdef ONEWIFI_EASYCONNECT_APP_SUPPORT
+extern int easyconnect_init(wifi_app_t *app, unsigned int create_flag);
+extern int easyconnect_deinit(wifi_app_t *app);
+extern int easyconnect_event(wifi_app_t *app, wifi_event_t *event);
+#else
+int easyconnect_init(wifi_app_t *app, unsigned int create_flag)
+{
+    return 0;
+}
+
+int easyconnect_deinit(wifi_app_t *app)
+{
+    return 0;
+}
+
+int easyconnect_event(wifi_app_t *app, wifi_event_t *event)
+{
+    return 0;
+}
+#endif // ONEWIFI_EASYCONNECT_APP_SUPPORT
 
 
 wifi_app_descriptor_t app_desc[] = {
@@ -297,6 +318,16 @@ wifi_app_descriptor_t app_desc[] = {
         blaster_init, blaster_event, blaster_deinit,
         NULL, NULL
     },
+#ifdef ONEWIFI_EASYCONNECT_APP_SUPPORT
+    {
+        wifi_app_inst_easyconnect, 0,
+        wifi_event_type_hal_ind,
+        true, true,
+        "EasyConnect",
+        easyconnect_init, easyconnect_event, easyconnect_deinit,
+        NULL, NULL
+    },
+#endif // ONEWIFI_EASYCONNECT_APP_SUPPORT
     {
         wifi_app_inst_sta_mgr, 0,
         wifi_event_type_hal_ind | wifi_event_type_exec | wifi_event_type_webconfig,
@@ -304,8 +335,7 @@ wifi_app_descriptor_t app_desc[] = {
         "Station Manager",
         sta_mgr_init, sta_mgr_event, sta_mgr_deinit,
         NULL, NULL
-    }
-
+    },
 };
 
 wifi_app_descriptor_t* get_app_desc(int *size){

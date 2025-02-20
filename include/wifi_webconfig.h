@@ -209,7 +209,7 @@ typedef struct {
     unsigned int num_radios;
     assoclist_notifier_type_t assoclist_notifier_type;
     void *external_protos;
-    sta_data_ts stamgr;
+    sta_beacon_report_reponse_t stamgr;
     collect_subscribed_stats_t collect_stats;
     em_config_t em_config;
 } webconfig_subdoc_decoded_data_t;

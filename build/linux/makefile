@@ -70,6 +70,7 @@ HAL_LIB_SOURCES = $(filter-out $(EXCLUDE),$(wildcard $(WIFI_RDK_HAL)/src/*.c)) \
     $(WIFI_HOSTAP_SRC)/ap/ap_mlme.c   \
     $(WIFI_HOSTAP_SRC)/ap/ap_list.c   \
     $(WIFI_HOSTAP_SRC)/ap/sta_info.c   \
+    $(WIFI_HOSTAP_SRC)/ap/wnm_ap.c \
     $(WIFI_HOSTAP_SRC)/ap/wpa_auth.c   \
     $(WIFI_HOSTAP_SRC)/ap/wpa_auth_ie.c   \
     $(WIFI_HOSTAP_SRC)/ap/wpa_auth_glue.c   \
@@ -175,7 +176,7 @@ HAL_LIB_SOURCES = $(filter-out $(EXCLUDE),$(wildcard $(WIFI_RDK_HAL)/src/*.c)) \
 HAL_LIB_OBJECTS = $(HAL_LIB_SOURCES:.c=.o)  # expands to list of object files
 ALL_HAL_LIB_OBJECTS = $(HAL_LIB_OBJECTS)
 HAL_LIB_FLAGS = -g -fPIC $(INCLUDE_HAL_LIB_DIRS) -DENABLE_FEATURE_MESHWIFI -DRASPBERRY_PI_PORT -D_PLATFORM_RASPBERRYPI_ -DCONFIG_HW_CAPABILITIES
-HOSTAP_LIB_FLAGS = -g -fPIC $(INCLUDE_HOSTAP_LIB_DIRS) -DHOSTAPD -DCONFIG_CRYPTO_INTERNAL -DCONFIG_DRIVER_NL80211 -DNEED_AP_MLME -DCONFIG_IEEE80211AC -DCONFIG_IEEE80211AX -DCONFIG_IEEE80211N -DCONFIG_WPS -DIEEE8021X_EAPOL -DEAP_SERVER_IDENTITY -DEAP_SERVER_MD5 -DEAP_SERVER_TLS -DEAP_SERVER_MSCHAPV2 -DEAP_SERVER_PEAP -DEAP_SERVER_TTLS -DCONFIG_ECC -DRDK_ONEWIFI -DCONFIG_IEEE80211W -DCONFIG_OPENSSL_CMAC -DCONFIG_LIBNL20
+HOSTAP_LIB_FLAGS = -g -fPIC $(INCLUDE_HOSTAP_LIB_DIRS) -DHOSTAPD -DCONFIG_CRYPTO_INTERNAL -DCONFIG_DRIVER_NL80211 -DNEED_AP_MLME -DCONFIG_IEEE80211AC -DCONFIG_IEEE80211AX -DCONFIG_IEEE80211N -DCONFIG_WPS -DIEEE8021X_EAPOL -DEAP_SERVER_IDENTITY -DEAP_SERVER_MD5 -DEAP_SERVER_TLS -DEAP_SERVER_MSCHAPV2 -DEAP_SERVER_PEAP -DEAP_SERVER_TTLS -DCONFIG_ECC -DRDK_ONEWIFI -DCONFIG_IEEE80211W -DCONFIG_OPENSSL_CMAC -DCONFIG_LIBNL20 -DCONFIG_WNM_AP
 HOSTAP_LIB_FLAGS +=  -DHOSTAPD_2_10 -DCONFIG_WEP -DFEATURE_SUPPORT_RADIUSGREYLIST -DCONFIG_DRIVER_BRCM -DCONFIG_DRIVER_BRCM_MAP
 
 # wifi agent rules
@@ -227,7 +228,9 @@ INCLUDEDIRS = \
     -I$(ONE_WIFI_HOME)/source/apps/ocs \
     -I$(ONE_WIFI_HOME)/source/apps/sm \
     -I$(ONE_WIFI_HOME)/source/apps/whix \
+    -I$(ONE_WIFI_HOME)/source/apps/easyconnect \
     -I$(ONE_WIFI_HOME)/source/apps/em \
+    -I$(ONE_WIFI_HOME)/source/apps/sta_manager \
     -I$(ONE_WIFI_HOME)/source/core/services \
     -I$(ONE_WIFI_HOME)/include/tr_181/ml \
     -I$(ONE_WIFI_HOME)/include \
@@ -302,6 +305,7 @@ CSOURCES = $(wildcard $(ONE_WIFI_HOME)/source/db/wifi_db.c) \
     $(ONE_WIFI_HOME)/source/platform/linux/misc.c 	\
     $(ONE_WIFI_HOME)/source/platform/linux/bus.c	\
     $(ONE_WIFI_HOME)/source/platform/common/common.c   \
+    $(wildcard $(ONE_WIFI_HOME)/source/apps/sta_manager/*.c)   \
     #$(wildcard $(ONE_WIFI_HOME)/source/apps/em/*.c) \
 
 
@@ -335,6 +339,7 @@ WEBCONFIG_SOURCES = $(ONE_WIFI_HOME)/source/webconfig/wifi_decoder.c	\
         $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_radiodiag_stats.c    \
         $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_multivap.c    \
         $(ONE_WIFI_HOME)/source/utils/wifi_util.c	\
+        $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_sta_manager.c  \
         #$(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_easymesh_config.c  \
 
 HEBUS_SOURCES = $(wildcard $(ONE_WIFI_HOME)/source/platform/linux/he_bus/src/*.c)  \
@@ -380,6 +385,10 @@ endif
 ifdef ONEWIFI_BLASTER_APP_SUPPORT 
 	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/blaster/*.c) \
 	WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_blaster.c
+endif
+
+ifdef ONEWIFI_EASYCONNECT_APP_SUPPORT
+	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/easyconnect/*.c)
 endif
 
 ifdef EM_APP
@@ -468,3 +477,7 @@ run:
 setup:
 	./build/linux/setup.sh
 
+vapsetup:
+	cp ./build/linux/MultiVap_InterfaceMap.json /nvram/InterfaceMap.json
+	cp ./build/linux/EasymeshCfg.json /nvram/EasymeshCfg.json
+	./build/linux/create_virtual_intf.sh wlan1 4
