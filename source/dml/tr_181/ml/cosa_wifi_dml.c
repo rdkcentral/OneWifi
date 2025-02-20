@@ -404,7 +404,7 @@ WiFi_GetParamBoolValue
             }
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Log_upload got %s and val=%d\n", __FUNCTION__,__LINE__,path,val);
         }
-        fclose(fp);
+        pclose(fp);
         return TRUE;
     }
 

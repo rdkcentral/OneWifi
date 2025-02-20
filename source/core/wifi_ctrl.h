@@ -56,7 +56,6 @@ extern "C" {
 #define MAX_LEVL_CSI_CLIENTS        5
 
 #define RSSI_THRESHOLD                     "RssiThresholdValue"
-#define RECONNECT_COUNT_STATUS             "ReconnectCountStatus"
 #define MFP_FEATURE_STATUS                 "MfpFeatureStatus"
 #define CH_UTILITY_LOG_INTERVAL            "ChUtilityLogInterval"
 #define DEVICE_LOG_INTERVAL                "DeviceLogInterval"
@@ -92,6 +91,8 @@ extern "C" {
 #define BUS_WIFI_WPS_PIN_START             "Device.WiFi.WPS.Start"
 
 #define ETH_BH_STATUS                      "Device.X_RDK_MeshAgent.EthernetBhaulUplink.Status"
+
+#define TR181_GLOBAL_FEATURE_PARAM_GFO_SUPPORTED "Device.X_RDK_Features.GatewayFailover.Enable"
 
 #define WIFI_ALL_RADIO_INDICES             0xffff
 #define DEVICE_TUNNEL_UP                   1
