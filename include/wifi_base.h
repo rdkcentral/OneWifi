@@ -1110,12 +1110,12 @@ typedef struct {
 
 typedef struct {
     int sta_count;
-    mac_addr_t disallowed_sta[0];
+    mac_addr_t *disallowed_sta;
 } local_steering_disallowed_policy_t;
 
 typedef struct {
     int sta_count;
-    mac_addr_t disallowed_sta[0];
+    mac_addr_t *disallowed_sta;
 } btm_steering_disallowed_policy_t;
 
 typedef struct {
@@ -1140,7 +1140,7 @@ typedef struct {
 
 typedef struct {
     int radio_count;
-    radio_metrics_policy_t radio_metrics_policy[0];
+    radio_metrics_policy_t *radio_metrics_policy;
 } radio_metrics_policies_t;
 
 typedef struct {
