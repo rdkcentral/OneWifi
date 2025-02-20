@@ -114,7 +114,7 @@ webconfig_error_t   app_free_macfilter_entries(webconfig_subdoc_data_t *data)
     return webconfig_error_none;
 }
 
-int push_data_to_consumer_queue(const void *msg, unsigned int len, wifi_event_type_t type, wifi_event_subtype_t sub_type)
+int push_data_to_consumer_queue(const void *msg, unsigned int len, consumer_event_type_t type, consumer_event_subtype_t sub_type)
 {
     consumer_event_t *data;
     webconfig_consumer_t *consumer = &webconfig_consumer;
@@ -1661,7 +1661,7 @@ void consumer_app_trigger_subdoc_test( webconfig_consumer_t *consumer, consumer_
 
         case consumer_test_start_band_steer_client_subdoc:
             consumer->steer_client_test_pending_count = 0;
-            consumer->test_state = consumer_test_start_band_steer_client_subdoc;
+            consumer->test_state = consumer_test_state_band_steer_client_test_pending;
             test_steeringclient_subdoc_change(consumer);
             break;
 
@@ -1673,7 +1673,7 @@ void consumer_app_trigger_subdoc_test( webconfig_consumer_t *consumer, consumer_
 
        case consumer_test_start_vif_neighbors_subdoc:
             consumer->vif_neighbors_test_pending_count = 0;
-            consumer->test_state = consumer_test_start_vif_neighbors_subdoc;
+            consumer->test_state = consumer_test_state_vif_neighbors_test_pending;
             test_vif_neighbors_subdoc_change(consumer);
             break;
 
