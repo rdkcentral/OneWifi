@@ -2373,6 +2373,50 @@ webconfig_error_t encode_radiodiag_params(wifi_provider_response_t *radiodiag_st
     return webconfig_error_none;
 }
 
+
+webconfig_error_t encode_sta_manager_object(sta_beacon_report_reponse_t *sta_data,
+    cJSON **sta_manager_obj)
+{
+    char assoc_frame_string[MAX_FRAME_SZ * 2 + 1];
+    //unsigned int itr = 0;
+    //cJSON *object, *obj_array;
+    if (sta_data == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d NULL sta_data Pointer\n", __func__, __LINE__);
+        return webconfig_error_encode;
+    }
+
+    if (*sta_manager_obj == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d NULL sta_manager_obj Pointer\n", __func__,
+            __LINE__);
+        return webconfig_error_encode;
+    }
+
+    memset(assoc_frame_string, 0, sizeof(assoc_frame_string));
+    if (sta_data->data_len != 0) {
+        hextostring(sta_data->data_len, sta_data->data, MAX_FRAME_SZ * 2 + 1, assoc_frame_string);
+    } else {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d No Report Data\n", __func__, __LINE__);
+        return webconfig_error_encode;
+    }
+    cJSON_AddStringToObject(*sta_manager_obj, "ReportData", assoc_frame_string);
+    /*
+    cJSON_AddItemToObject(*sta_manager_obj, "BeaconReport", obj_array);
+    beacon_response_data_t *bR_report = sta_data->data;
+    for (itr = 0; (itr < sta_data->num_br_data) && (bR_report != NULL); itr++) {
+        object = cJSON_CreateObject();
+        cJSON_AddItemToArray(obj_array, object);
+        to_mac_str(bR_report->bssid, mac_str);
+        cJSON_AddStringToObject(object, "BSSID", mac_str);
+        cJSON_AddNumberToObject(object, "Operating Class", bR_report->op_class);
+        cJSON_AddNumberToObject(object, "Channel Number", bR_report->channel);
+        cJSON_AddNumberToObject(object, "RCPI", bR_report->rcpi);
+        cJSON_AddNumberToObject(object, "RSNI", bR_report->rssi);
+        bR_report++;
+    }
+*/
+    return webconfig_error_none;
+}
+
 webconfig_error_t encode_radio_temperature_params(wifi_provider_response_t *radiotemperature_stats, cJSON *radiotemp_obj)
 {
     cJSON *temp_obj;

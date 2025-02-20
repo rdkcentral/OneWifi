@@ -5164,10 +5164,8 @@ webconfig_error_t decode_sta_mgr_object(const cJSON *obj_sta_cfg,
     sta_beacon_report_reponse_t *sta_data, wifi_platform_property_t *hal_prop)
 {
     const cJSON *param = NULL;
-    cJSON *br_item;
-    unsigned int itr = 0;
-    beacon_response_data_t *bR_data = NULL;
     char key[64] = { 0 };
+    unsigned char *out_ptr;
     // Vap Name.
     decode_param_string(obj_sta_cfg, "VapName", param);
     sta_data->ap_index = convert_vap_name_to_index(hal_prop, param->valuestring);
@@ -5176,11 +5174,26 @@ webconfig_error_t decode_sta_mgr_object(const cJSON *obj_sta_cfg,
 	decode_param_string(obj_sta_cfg, "MacAddress", param);
 	strncpy(key, param->valuestring, sizeof(key));
 	str_to_mac_bytes(param->valuestring, sta_data->mac_addr);
-	bR_data = sta_data->data;
-	memset(bR_data, 0, sizeof(beacon_response_data_t) * MAX_BR_DATA);
 
+    //NumofReport
+    decode_param_integer(obj_sta_cfg, "NumofReport", param);
+    sta_data->num_br_data = param->valuedouble;
+
+    //FrameLen
+    decode_param_integer(obj_sta_cfg, "FrameLen", param);
+    sta_data->data_len = param->valuedouble;
+
+    decode_param_string(obj_sta_cfg, "ReportData", param);
+    out_ptr = stringtohex(strlen(param->valuestring), param->valuestring, sta_data->data_len,
+        sta_data->data);
+    if (out_ptr == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Error to convert ot string \n", __func__,
+            __LINE__);
+        return webconfig_error_decode;
+    }
+#if 0
 	// BeaconReport.
-    cJSON *array_obj = cJSON_GetObjectItem(obj_sta_cfg, "BeaconReport");
+    cJSON *array_obj = cJSON_GetObjectItem(obj_sta_cfg, "ReportData");
     if (array_obj != NULL) {
         unsigned int size = cJSON_GetArraySize(array_obj);
         for (itr = 0; itr < size; itr++) {
@@ -5208,6 +5221,7 @@ webconfig_error_t decode_sta_mgr_object(const cJSON *obj_sta_cfg,
         }
     }
     sta_data->num_br_data = itr;
+#endif
     return webconfig_error_none;
 }
 
