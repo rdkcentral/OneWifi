@@ -1017,7 +1017,7 @@ int start_wifi_health_monitor_thread(void)
 int scan_results_callback(int radio_index, wifi_bss_info_t **bss, unsigned int *num)
 {
     scan_results_t  res;
-    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+
     memset(&res, 0, sizeof(scan_results_t));
 
     res.radio_index = radio_index;
@@ -1030,7 +1030,7 @@ int scan_results_callback(int radio_index, wifi_bss_info_t **bss, unsigned int *
         res.num = *num;
         memcpy((unsigned char *)res.bss, (unsigned char *)(*bss), (*num)*sizeof(wifi_bss_info_t));
     }
-    if (ctrl->network_mode == rdk_dev_mode_type_ext) {
+    if (is_sta_enabled()) {
         push_event_to_ctrl_queue(&res, sizeof(scan_results_t), wifi_event_type_hal_ind,
             wifi_event_scan_results, NULL);
     }
@@ -2578,34 +2578,6 @@ int set_multi_radio_dml_parameters(uint8_t radio_index, char *str, void *value)
     } else {
         ret = RETURN_ERR;
         wifi_util_dbg_print(WIFI_CTRL, "%s set multi radio dml data not match %s: radio_index:%d \n", __FUNCTION__, str, radio_index);
-    }
-    return ret;
-}
-
-int get_multi_vap_dml_parameters(uint8_t ap_index, char *str, void *value)
-{
-    int ret = RETURN_OK;
-    wifi_mgr_t *l_wifi_mgr = get_wifimgr_obj();
-    wifi_util_dbg_print(WIFI_CTRL, "%s get multi vap structure data %s: ap_index:%d \n", __FUNCTION__, str, ap_index);
-    if ((strcmp(str, RECONNECT_COUNT_STATUS) == 0)) {
-        *(bool*)value = l_wifi_mgr->dml_parameters.ReconnectCountEnable[ap_index];
-    } else {
-        ret = RETURN_ERR;
-        wifi_util_dbg_print(WIFI_CTRL, "%s get multi vap structure data not match %s: ap_index:%d \n", __FUNCTION__, str, ap_index);
-    }
-    return ret;
-}
-
-int set_multi_vap_dml_parameters(uint8_t ap_index, char *str, void *value)
-{
-    int ret = RETURN_OK;
-    wifi_mgr_t *l_wifi_mgr = get_wifimgr_obj();
-    wifi_util_dbg_print(WIFI_CTRL, "%s set multi vap structure data %s: ap_index:%d \n", __FUNCTION__, str, ap_index);
-    if ((strcmp(str, RECONNECT_COUNT_STATUS) == 0)) {
-        l_wifi_mgr->dml_parameters.ReconnectCountEnable[ap_index] = *(bool*)value;
-    } else {
-        ret = RETURN_ERR;
-        wifi_util_dbg_print(WIFI_CTRL, "%s set multi vap structure data not match %s: ap_index:%d \n", __FUNCTION__, str, ap_index);
     }
     return ret;
 }

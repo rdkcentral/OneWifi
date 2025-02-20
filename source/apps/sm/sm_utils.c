@@ -45,6 +45,16 @@ static const survey_type_to_dpp_scan_type_t scan_type_mapping[] = {
     {survey_type_off_channel, WIFI_RADIO_SCAN_MODE_OFFCHAN, RADIO_SCAN_TYPE_OFFCHAN, "off_channel"},
 };
 
+typedef struct {
+    stats_type_t stats_type;
+    char *description;
+} stats_type_to_str_t;
+
+static const stats_type_to_str_t stats_type_mapping[] = {
+    { stats_type_neighbor, "neighbor" },
+    { stats_type_survey,   "survey"   },
+    { stats_type_client,   "client"   },
+};
 
 #define NOISE_FLOOR (-95)
 
@@ -145,6 +155,16 @@ radio_scan_type_t neighbor_scan_mode_to_dpp_scan_type(wifi_neighborScanMode_t sc
     return RADIO_SCAN_TYPE_NONE;
 }
 
+char* stats_type_to_str(stats_type_t stats_type)
+{
+    for (size_t i = 0; i < ARRAY_SIZE(stats_type_mapping); i++) {
+        if (stats_type == stats_type_mapping[i].stats_type) {
+            return stats_type_mapping[i].description;
+        }
+    }
+    wifi_util_error_print(WIFI_SM, "%s:%d failed to convert stats_type=%d\n",__func__, __LINE__, stats_type);
+    return "unknown";
+}
 
 char* survey_type_to_str(survey_type_t survey_type)
 {

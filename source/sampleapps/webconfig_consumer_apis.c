@@ -114,7 +114,7 @@ webconfig_error_t   app_free_macfilter_entries(webconfig_subdoc_data_t *data)
     return webconfig_error_none;
 }
 
-int push_data_to_consumer_queue(const void *msg, unsigned int len, wifi_event_type_t type, wifi_event_subtype_t sub_type)
+int push_data_to_consumer_queue(const void *msg, unsigned int len, consumer_event_type_t type, consumer_event_subtype_t sub_type)
 {
     consumer_event_t *data;
     webconfig_consumer_t *consumer = &webconfig_consumer;
@@ -1661,7 +1661,7 @@ void consumer_app_trigger_subdoc_test( webconfig_consumer_t *consumer, consumer_
 
         case consumer_test_start_band_steer_client_subdoc:
             consumer->steer_client_test_pending_count = 0;
-            consumer->test_state = consumer_test_start_band_steer_client_subdoc;
+            consumer->test_state = consumer_test_state_band_steer_client_test_pending;
             test_steeringclient_subdoc_change(consumer);
             break;
 
@@ -1673,7 +1673,7 @@ void consumer_app_trigger_subdoc_test( webconfig_consumer_t *consumer, consumer_
 
        case consumer_test_start_vif_neighbors_subdoc:
             consumer->vif_neighbors_test_pending_count = 0;
-            consumer->test_state = consumer_test_start_vif_neighbors_subdoc;
+            consumer->test_state = consumer_test_state_vif_neighbors_test_pending;
             test_vif_neighbors_subdoc_change(consumer);
             break;
 
@@ -1813,6 +1813,7 @@ int get_device_network_mode_from_ctrl_thread(webconfig_consumer_t *consumer, uns
     str = rbusValue_GetString(value, &len);
     if (str == NULL) {
         printf("%s Null pointer,Rbus set string len=%d\n",__FUNCTION__,len);
+        rbusValue_Release(value);
         return -1;
     }
 
@@ -1827,6 +1828,7 @@ int get_device_network_mode_from_ctrl_thread(webconfig_consumer_t *consumer, uns
         *device_network_mode = consumer->config.global_parameters.device_network_mode;
     }
 
+    rbusValue_Release(value);
     webconfig_data_free(&data);
 
     return 0;
@@ -2309,6 +2311,7 @@ int get_rbus_sta_interface_name(const char *paramNames)
 
     printf(":%s:%d Sta interface name = [%s]\n", __func__, __LINE__, rbusValue_GetString(value, NULL));
 
+    rbusValue_Release(value);
     return 0;
 }
 

@@ -139,7 +139,8 @@ typedef enum {
     wifi_app_inst_whix = wifi_app_inst_base << 13,
     wifi_app_inst_core = wifi_app_inst_base << 14,
     wifi_app_inst_ocs = wifi_app_inst_base << 15,
-    wifi_app_inst_max = wifi_app_inst_base << 16
+    wifi_app_inst_easyconnect = wifi_app_inst_base << 16,
+    wifi_app_inst_max = wifi_app_inst_base << 17
 } wifi_app_inst_t;
 
 typedef struct {
@@ -178,6 +179,7 @@ typedef void *wifi_analytics_data_t;
 #define BSS_MAX_NUM_STA_SKY      64      /**< Max supported stations for SKY HUB specific platforms */
 #define BSS_MAX_NUM_STA_XB8      100     /**< Max supported stations for TCHX8 specific platform */
 #define BSS_MAX_NUM_STATIONS     100     /**< Max supported stations by RDK-B firmware which would varies based on platform */
+#define BSS_MAX_NUM_STA_HOTSPOT_CBRV2    15      /**< Max supported stations for hotspot vaps in CBR2 platform */
 
 typedef unsigned char   mac_addr_t[MAC_ADDR_LEN];
 typedef signed short    rssi_t;
@@ -399,7 +401,6 @@ typedef struct {
 
 typedef struct {
     int rssi_threshold;
-    bool ReconnectCountEnable[MAX_VAP];
     bool FeatureMFPConfig;
     int ChUtilityLogInterval;
     int DeviceLogInterval;

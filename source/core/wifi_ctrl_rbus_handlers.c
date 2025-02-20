@@ -668,7 +668,7 @@ bus_error_t webconfig_set_subdoc(char *event_name, raw_data_t *p_data)
 
 static void MarkerListConfigHandler (char *event_name, raw_data_t *p_data)
 {
-    marker_list_t list_type;
+    wifi_event_subtype_t list_type;
     const char *pTmp = NULL;
 
     if (strcmp(event_name, WIFI_NORMALIZED_RSSI_LIST) == 0) {
@@ -1500,14 +1500,34 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
 
 #if defined(GATEWAY_FAILOVER_SUPPORTED)
     if (ctrl->active_gateway_check_subscribed == false) {
-        if (bus_desc->bus_event_subs_fn(&ctrl->handle, WIFI_ACTIVE_GATEWAY_CHECK,
-                activeGatewayCheckHandler, NULL, 0) != bus_error_success) {
-            // wifi_util_dbg_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe
-            // failed\n",__FUNCTION__, __LINE__, WIFI_ACTIVE_GATEWAY_CHECK);
-        } else {
+        // Check whether GFO is applicable or not. If not supported then no need to subscribe.
+        raw_data_t data;
+        bool bGFOSuppportFlag = TRUE;
+
+        memset(&data, 0, sizeof(raw_data_t));
+        int rc = get_bus_descriptor()->bus_data_get_fn(&ctrl->handle,
+            TR181_GLOBAL_FEATURE_PARAM_GFO_SUPPORTED, &data);
+        if (rc == bus_error_success) {
+            bGFOSuppportFlag = data.raw_data.b;
+            wifi_util_info_print(WIFI_CTRL, "%s:%d bus: param:%s feature:%s\n", __FUNCTION__,
+                __LINE__, TR181_GLOBAL_FEATURE_PARAM_GFO_SUPPORTED,
+                bGFOSuppportFlag ? "SUPPORTED" : "NOT SUPPORTED");
+        }
+
+        if (FALSE == bGFOSuppportFlag) {
             ctrl->active_gateway_check_subscribed = true;
-            wifi_util_info_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe success\n",
+            wifi_util_info_print(WIFI_CTRL,
+                "%s:%d bus: bus event:%s ignoring subscribe due to GatewayFailOver feature not "
+                "supported\n",
                 __FUNCTION__, __LINE__, WIFI_ACTIVE_GATEWAY_CHECK);
+        } else {
+            if (bus_desc->bus_event_subs_fn(&ctrl->handle, WIFI_ACTIVE_GATEWAY_CHECK,
+                    activeGatewayCheckHandler, NULL, 0) != bus_error_success) {
+            } else {
+                ctrl->active_gateway_check_subscribed = true;
+                wifi_util_info_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe success\n",
+                    __FUNCTION__, __LINE__, WIFI_ACTIVE_GATEWAY_CHECK);
+            }
         }
     }
 #endif
@@ -2817,7 +2837,8 @@ bus_error_t set_force_vap_apply(char *name, raw_data_t *p_data)
             sizeof(wifi_hal_capability_t));
         data->u.decoded.num_radios = num_of_radios;
 
-        getVAPArrayIndexFromVAPIndex((unsigned int)idx - 1, &vap_array_index);
+        vap_array_index = convert_vap_index_to_vap_array_index(&mgr->hal_cap.wifi_prop,
+            (unsigned int)idx - 1);
 
         radio_index = getRadioIndexFromAp((unsigned int)idx - 1);
 

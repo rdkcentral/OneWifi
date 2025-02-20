@@ -292,10 +292,10 @@ int sm_client_samples_calc_total(ds_dlist_t *samples, dpp_client_record_t *resul
 
     result->duration_ms = DELTA(duration_ms);
 
-    mac_addr_str_t mac_str = {0};
+    mac_addr_str_t mac_str = { 0 };
     to_mac_str(result->info.mac, mac_str);
     wifi_util_dbg_print(WIFI_SM, "%s:%d: Processed calculation %s client %s sample stats total: \n",
-                        __func__, __LINE__, radio_get_name_from_type(result->info.type), mac_str);
+        __func__, __LINE__, radio_get_name_from_type(result->info.type), mac_str);
     CLIENT_STATS_PRINT(stats.bytes_tx, mac_str);
     CLIENT_STATS_PRINT(stats.bytes_rx, mac_str);
     CLIENT_STATS_PRINT(stats.frames_tx, mac_str);
@@ -304,8 +304,10 @@ int sm_client_samples_calc_total(ds_dlist_t *samples, dpp_client_record_t *resul
     CLIENT_STATS_PRINT(stats.retries_rx, mac_str);
     CLIENT_STATS_PRINT(stats.errors_tx, mac_str);
     CLIENT_STATS_PRINT(stats.errors_rx, mac_str);
-    wifi_util_dbg_print(WIFI_SM, "%s:%d: Client %s stats.rssi=%d\n", __func__, __LINE__, mac_str, result->stats.rssi);
-
+    wifi_util_dbg_print(WIFI_SM, "%s:%d: Client %s stats.rssi=%d\n", __func__, __LINE__, mac_str,
+        result->stats.rssi);
+    wifi_util_dbg_print(WIFI_SM, "%s:%d: Client %s is_connected=%d\n", __func__, __LINE__, mac_str,
+        result->is_connected);
     return RETURN_OK;
 }
 
