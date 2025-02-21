@@ -2506,7 +2506,7 @@ INSTMSMT_PH2 -->
                                 </parameter>
                                 <parameter>
                                     <name>X_CISCO_COM_EncryptionMethod</name>
-                                    <type>string: TKIP(1),AES(2),AES+TKIP(3)</type>
+                                    <type>string: TKIP(1),AES(2),AES+TKIP(3),AES+GCMP(4)</type>
                                     <syntax>uint32/mapped</syntax>
                                     <writable>true</writable>
                                 </parameter>
