@@ -2199,7 +2199,7 @@ webconfig_error_t   translate_from_easymesh_tables(webconfig_subdoc_type_t type,
     return webconfig_error_none;
 }
 
-void webconfig_proto_easymesh_init(webconfig_external_easymesh_t *proto, void *data_model, void *m2ctrl_vapconfig,
+void webconfig_proto_easymesh_init(webconfig_external_easymesh_t *proto, void *data_model, void *m2ctrl_vapconfig, void *policy_config,
         ext_proto_get_num_radio_t get_num_radios, ext_proto_set_num_radio_t set_num_radios,
         ext_proto_get_num_op_class_t get_num_op_class, ext_proto_set_num_op_class_t set_num_op_class,
         ext_proto_get_num_bss_t get_num_bss, ext_proto_set_num_bss_t set_num_bss,
@@ -2211,6 +2211,7 @@ void webconfig_proto_easymesh_init(webconfig_external_easymesh_t *proto, void *d
 {
     proto->data_model = data_model;
     proto->m2ctrl_vapconfig = m2ctrl_vapconfig;
+    proto->policy_config = policy_config;
     proto->get_num_radio = get_num_radios;
     proto->set_num_radio = set_num_radios;
     proto->get_num_op_class = get_num_op_class;
