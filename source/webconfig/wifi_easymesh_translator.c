@@ -1290,13 +1290,6 @@ webconfig_error_t translate_beacon_report_object_to_easymesh_sta_info(webconfig_
     memcpy(em_sta_dev_info.radiomac, radio_info->intf.mac, sizeof(mac_address_t));
     em_sta_dev_info.num_beacon_meas_report = params->stamgr.num_br_data;
 
-    for (unsigned int count = 0; count < params->stamgr.num_br_data; count++) {
-        memcpy(em_sta_dev_info.beacon_report[count].br_bssid, params->stamgr.data[count].bssid, sizeof(mac_address_t));
-        em_sta_dev_info.beacon_report[count].br_op_class       = params->stamgr.data[count].op_class;
-        em_sta_dev_info.beacon_report[count].br_channel        = params->stamgr.data[count].channel;
-        em_sta_dev_info.beacon_report[count].br_rcpi           = params->stamgr.data[count].rcpi;
-        em_sta_dev_info.beacon_report[count].br_rsni           = params->stamgr.data[count].rssi;
-    }
     proto->put_sta_info(proto->data_model, &em_sta_dev_info, em_target_sta_map_consolidated);
 
     return webconfig_error_none;

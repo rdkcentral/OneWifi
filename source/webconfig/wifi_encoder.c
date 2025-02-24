@@ -2372,6 +2372,32 @@ webconfig_error_t encode_radiodiag_params(wifi_provider_response_t *radiodiag_st
     return webconfig_error_none;
 }
 
+webconfig_error_t encode_sta_manager_object(sta_beacon_report_reponse_t *sta_data,
+    cJSON **sta_manager_obj)
+{
+    char assoc_frame_string[MAX_FRAME_SZ * 2 + 1];
+    if (sta_data == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d NULL sta_data Pointer\n", __func__, __LINE__);
+        return webconfig_error_encode;
+    }
+
+    if (*sta_manager_obj == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d NULL sta_manager_obj Pointer\n", __func__,
+            __LINE__);
+        return webconfig_error_encode;
+    }
+
+    memset(assoc_frame_string, 0, sizeof(assoc_frame_string));
+    if (sta_data->data_len != 0) {
+        hextostring(sta_data->data_len, sta_data->data, MAX_FRAME_SZ * 2 + 1, assoc_frame_string);
+    } else {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d No Report Data\n", __func__, __LINE__);
+        return webconfig_error_encode;
+    }
+    cJSON_AddStringToObject(*sta_manager_obj, "ReportData", assoc_frame_string);
+    return webconfig_error_none;
+}
+
 webconfig_error_t encode_radio_temperature_params(wifi_provider_response_t *radiotemperature_stats, cJSON *radiotemp_obj)
 {
     cJSON *temp_obj;
