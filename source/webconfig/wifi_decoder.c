@@ -1452,18 +1452,19 @@ webconfig_error_t decode_operating_environment(wifi_operating_env_t *operating_e
 webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *vap_info,
     rdk_wifi_vap_info_t *rdk_vap_info, wifi_platform_property_t *wifi_prop)
 {
-    const cJSON  *param;
+    const cJSON *param;
     cJSON *object = NULL;
     bool connected_value = false;
     char *extra_vendor_ies = NULL;
 
-    //VAP Name
+    // VAP Name
     decode_param_string(vap, "VapName", param);
     strcpy(vap_info->vap_name, param->valuestring);
 
     vap_info->vap_index = convert_vap_name_to_index(wifi_prop, vap_info->vap_name);
     if ((int)vap_info->vap_index < 0) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s %d :Invalid vapname %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s %d :Invalid vapname %s\n", __FUNCTION__, __LINE__,
+            vap_info->vap_name);
         return webconfig_error_decode;
     }
     // Radio Index
@@ -1478,22 +1479,24 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
     decode_param_bool(vap, "Exists", param);
     rdk_vap_info->exists = (param->type & cJSON_True) ? true : false;
 
-    //Bridge Name
+    // Bridge Name
     decode_param_allow_empty_string(vap, "BridgeName", param);
-    strncpy(vap_info->bridge_name, param->valuestring,WIFI_BRIDGE_NAME_LEN-1);
+    strncpy(vap_info->bridge_name, param->valuestring, WIFI_BRIDGE_NAME_LEN - 1);
 
-    //repurposed vap_name
+    // repurposed vap_name
     decode_param_allow_empty_string(vap, "RepurposedVapName", param);
-    strncpy(vap_info->repurposed_vap_name, param->valuestring,sizeof(vap_info->repurposed_vap_name)-1);
+    strncpy(vap_info->repurposed_vap_name, param->valuestring,
+        sizeof(vap_info->repurposed_vap_name) - 1);
 
     // SSID
     decode_param_string(vap, "SSID", param);
-    strcpy(vap_info->u.bss_info.ssid, param->valuestring);
 
-    if (decode_ssid_name(vap_info->u.bss_info.ssid) != webconfig_error_none) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s %d : Ssid name validation failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+    if (decode_ssid_name(param->valuestring) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s %d : Ssid name validation failed for %s\n",
+            __FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
     }
+    strncpy(vap_info->u.bss_info.ssid, param->valuestring, sizeof(vap_info->u.bss_info.ssid) - 1);
 
     // BSSID
     decode_param_string(vap, "BSSID", param);
@@ -1501,15 +1504,15 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
 
     // Enabled
     decode_param_bool(vap, "Enabled", param);
-    vap_info->u.bss_info.enabled = (param->type & cJSON_True) ? true:false;
+    vap_info->u.bss_info.enabled = (param->type & cJSON_True) ? true : false;
 
     // Broadcast SSID
     decode_param_bool(vap, "SSIDAdvertisementEnabled", param);
-    vap_info->u.bss_info.showSsid = (param->type & cJSON_True) ? true:false;
+    vap_info->u.bss_info.showSsid = (param->type & cJSON_True) ? true : false;
 
     // Isolation
     decode_param_bool(vap, "IsolationEnable", param);
-    vap_info->u.bss_info.isolation = (param->type & cJSON_True) ? true:false;
+    vap_info->u.bss_info.isolation = (param->type & cJSON_True) ? true : false;
 
     // ManagementFramePowerControl
     decode_param_integer(vap, "ManagementFramePowerControl", param);
@@ -1521,33 +1524,33 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
 
     // BSSTransitionActivated
     decode_param_bool(vap, "BSSTransitionActivated", param);
-    vap_info->u.bss_info.bssTransitionActivated = (param->type & cJSON_True) ? true:false;
+    vap_info->u.bss_info.bssTransitionActivated = (param->type & cJSON_True) ? true : false;
 
     // NeighborReportActivated
     decode_param_bool(vap, "NeighborReportActivated", param);
-    vap_info->u.bss_info.nbrReportActivated = (param->type & cJSON_True) ? true:false;
+    vap_info->u.bss_info.nbrReportActivated = (param->type & cJSON_True) ? true : false;
 
     // NetworkGreyList since this is not mandatory field we need
     // check for its existence before decode
     object = cJSON_GetObjectItem(vap, "NetworkGreyList");
     if (object != NULL) {
         decode_param_bool(vap, "NetworkGreyList", param);
-        vap_info->u.bss_info.network_initiated_greylist = (param->type & cJSON_True) ? true:false;
+        vap_info->u.bss_info.network_initiated_greylist = (param->type & cJSON_True) ? true : false;
     }
 
     // force_apply is not mandatory
     object = cJSON_GetObjectItem(vap, "ForceApply");
     if (object != NULL) {
         decode_param_bool(vap, "ForceApply", param);
-        rdk_vap_info->force_apply = (param->type & cJSON_True) ? true:false;
+        rdk_vap_info->force_apply = (param->type & cJSON_True) ? true : false;
     } else {
-          //update the force_apply flag to false if force_apply not present
-          rdk_vap_info->force_apply = false;
+        // update the force_apply flag to false if force_apply not present
+        rdk_vap_info->force_apply = false;
     }
 
     // RapidReconnCountEnable
     decode_param_bool(vap, "RapidReconnCountEnable", param);
-    vap_info->u.bss_info.rapidReconnectEnable = (param->type & cJSON_True) ? true:false;
+    vap_info->u.bss_info.rapidReconnectEnable = (param->type & cJSON_True) ? true : false;
 
     // RapidReconnThreshold
     decode_param_integer(vap, "RapidReconnThreshold", param);
@@ -1555,26 +1558,29 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
 
     // VapStatsEnable
     decode_param_bool(vap, "VapStatsEnable", param);
-    vap_info->u.bss_info.vapStatsEnable = (param->type & cJSON_True) ? true:false;
+    vap_info->u.bss_info.vapStatsEnable = (param->type & cJSON_True) ? true : false;
 
     // MacFilterEnable
     decode_param_bool(vap, "MacFilterEnable", param);
-    vap_info->u.bss_info.mac_filter_enable = (param->type & cJSON_True) ? true:false;
+    vap_info->u.bss_info.mac_filter_enable = (param->type & cJSON_True) ? true : false;
 
     // MacFilterMode
     decode_param_integer(vap, "MacFilterMode", param);
     vap_info->u.bss_info.mac_filter_mode = param->valuedouble;
     if ((vap_info->u.bss_info.mac_filter_mode < 0) || (vap_info->u.bss_info.mac_filter_mode > 1)) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"Invalid wifi vap mac filter mode %d, should be between 0 and 1\n", vap_info->u.bss_info.mac_filter_mode);
-        //strncpy(execRetVal->ErrorMsg, "Invalid wifi vap mac filter mode: 0..1",sizeof(execRetVal->ErrorMsg)-1);
+        wifi_util_error_print(WIFI_WEBCONFIG,
+            "Invalid wifi vap mac filter mode %d, should be between 0 and 1\n",
+            vap_info->u.bss_info.mac_filter_mode);
+        // strncpy(execRetVal->ErrorMsg, "Invalid wifi vap mac filter mode:
+        // 0..1",sizeof(execRetVal->ErrorMsg)-1);
         return webconfig_error_decode;
     }
     // WmmEnabled
     decode_param_bool(vap, "WmmEnabled", param);
-    vap_info->u.bss_info.wmm_enabled = (param->type & cJSON_True) ? true:false;
+    vap_info->u.bss_info.wmm_enabled = (param->type & cJSON_True) ? true : false;
 
     decode_param_bool(vap, "UapsdEnabled", param);
-    vap_info->u.bss_info.UAPSDEnabled = (param->type & cJSON_True) ? true:false;
+    vap_info->u.bss_info.UAPSDEnabled = (param->type & cJSON_True) ? true : false;
 
     decode_param_integer(vap, "BeaconRate", param);
     vap_info->u.bss_info.beaconRate = param->valuedouble;
@@ -1589,21 +1595,21 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
 
     // BssHotspot
     decode_param_bool(vap, "BssHotspot", param);
-    vap_info->u.bss_info.bssHotspot = (param->type & cJSON_True) ? true:false;
+    vap_info->u.bss_info.bssHotspot = (param->type & cJSON_True) ? true : false;
 
     // wpsPushButton
     decode_param_integer(vap, "WpsPushButton", param);
     vap_info->u.bss_info.wpsPushButton = param->valuedouble;
 
-    //wpsEnable
+    // wpsEnable
     decode_param_bool(vap, "WpsEnable", param);
-    vap_info->u.bss_info.wps.enable  = (param->type & cJSON_True) ? true:false;
+    vap_info->u.bss_info.wps.enable = (param->type & cJSON_True) ? true : false;
 
-    //wpsConfigMethodsEnabled
-    if(strstr(vap_info->vap_name, "private") != NULL) {
+    // wpsConfigMethodsEnabled
+    if (strstr(vap_info->vap_name, "private") != NULL) {
         decode_param_integer(vap, "WpsConfigMethodsEnabled", param);
         vap_info->u.bss_info.wps.methods = param->valuedouble;
-        //WpsConfigPin
+        // WpsConfigPin
         decode_param_allow_empty_string(vap, "WpsConfigPin", param);
         strcpy(vap_info->u.bss_info.wps.pin, param->valuestring);
     }
@@ -1612,13 +1618,13 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
     decode_param_string(vap, "BeaconRateCtl", param);
     strcpy(vap_info->u.bss_info.beaconRateCtl, param->valuestring);
 
-    //connected_building_enabled params
+    // connected_building_enabled params
     decode_param_allow_empty_bool(vap, "Connected_building_enabled", param, connected_value);
     if (!connected_value) {
         vap_info->u.bss_info.connected_building_enabled = false;
     } else {
         decode_param_bool(vap, "Connected_building_enabled", param);
-        vap_info->u.bss_info.connected_building_enabled = (param->type & cJSON_True) ? true:false;
+        vap_info->u.bss_info.connected_building_enabled = (param->type & cJSON_True) ? true : false;
     }
 
     // HostapMgtFrameCtrl

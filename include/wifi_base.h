@@ -139,7 +139,8 @@ typedef enum {
     wifi_app_inst_whix = wifi_app_inst_base << 13,
     wifi_app_inst_core = wifi_app_inst_base << 14,
     wifi_app_inst_ocs = wifi_app_inst_base << 15,
-    wifi_app_inst_max = wifi_app_inst_base << 16
+    wifi_app_inst_easyconnect = wifi_app_inst_base << 16,
+    wifi_app_inst_max = wifi_app_inst_base << 17
 } wifi_app_inst_t;
 
 typedef struct {
@@ -400,7 +401,6 @@ typedef struct {
 
 typedef struct {
     int rssi_threshold;
-    bool ReconnectCountEnable[MAX_VAP];
     bool FeatureMFPConfig;
     int ChUtilityLogInterval;
     int DeviceLogInterval;
