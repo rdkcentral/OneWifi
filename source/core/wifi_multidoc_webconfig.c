@@ -1071,6 +1071,15 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
         cJSON_AddBoolToObject(vb_entry, "MboEnabled",
             wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.mbo_enabled);
 
+        char* extra_vendor_ies_hex_str = ( char* )malloc(sizeof(char) * ((wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.vendor_elements_len * 2) + 1));
+        memset(extra_vendor_ies_hex_str, 0, sizeof(char) * ((wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.vendor_elements_len * 2) + 1));
+        for (unsigned int i = 0; i < wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.vendor_elements_len; i++) {
+            sprintf(extra_vendor_ies_hex_str + (i * 2), "%02x", (unsigned int) wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.vendor_elements[i]);
+        }
+        cJSON_AddStringToObject(vb_entry, "ExtraVendorIEs", extra_vendor_ies_hex_str);
+        free(extra_vendor_ies_hex_str);
+        extra_vendor_ies_hex_str = NULL;
+
         cJSON *vapConnectionControl_o = cJSON_GetObjectItem(vb_entry, "VapConnectionControl");
         if (vapConnectionControl_o == NULL) {
             wifi_util_info_print(WIFI_CTRL, "vapConnectionContro param is not present\n");
