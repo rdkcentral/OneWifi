@@ -21,7 +21,7 @@
 #define BUS_H
 
 #include "bus_common.h"
-#include <rbus.h>
+#include <rbus/rbus.h>
 
 #ifdef __cplusplus
 extern "C" {
