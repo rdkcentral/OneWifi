@@ -136,6 +136,7 @@ typedef enum {
     webconfig_subdoc_type_radio_24G,
     webconfig_subdoc_type_radio_5G,
     webconfig_subdoc_type_radio_6G,
+    webconfig_subdoc_type_em_channel_stats,
     webconfig_subdoc_type_max
 } webconfig_subdoc_type_t;
 
