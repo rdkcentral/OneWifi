@@ -2037,7 +2037,11 @@ void process_wpa3_rfc(bool type)
             }
             vapInfo->u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
             vapInfo->u.bss_info.security.wpa3_transition_disable = false;
+#if defined(WIFI_HAL_VERSION_3)
             vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
+#else
+#error "WIFI_HAL_VERSION_3 is currently required"
+#endif
             vapInfo->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
         } else {
             if (vapInfo->u.bss_info.security.mode == wifi_security_mode_wpa2_personal) {
