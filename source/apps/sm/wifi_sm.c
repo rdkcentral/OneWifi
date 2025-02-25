@@ -46,6 +46,7 @@ typedef struct {
 } client_assoc_stats_t;
 
 static int sm_stats_to_monitor_set(wifi_app_t *app, bool enable);
+static void sm_events_subscribe(void);
 
 client_assoc_stats_t client_assoc_stats[MAX_NUM_RADIOS];
 
@@ -560,7 +561,7 @@ int handle_sm_command_event(wifi_app_t *app, wifi_event_t *event)
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
     stats_config_t *cur_stats_cfg = NULL;
     hash_map_t *cur_app_stats_cfg_map = app->data.u.sm_data.sm_stats_config_map;
-    bool *sm_app_enable, off_scan_rfc = g_wifi_mgr->rfc_dml_parameters.wifi_offchannelscan_sm_rfc;
+    bool sm_app_enable, off_scan_rfc = g_wifi_mgr->rfc_dml_parameters.wifi_offchannelscan_sm_rfc;
 
     wifi_util_dbg_print(WIFI_SM, "inside %s:%d off_scan_rfc:%d\n",__func__, __LINE__,off_scan_rfc);
     if (event->sub_type == wifi_event_type_wifi_offchannelscan_sm_rfc )
@@ -588,10 +589,11 @@ int handle_sm_command_event(wifi_app_t *app, wifi_event_t *event)
            }
        }
    } else if (event->sub_type == wifi_event_type_sm_app_enable) {
-       sm_app_enable = event->u.core_data.msg;
-       if (sm_app_enable) {
-           wifi_util_dbg_print(WIFI_SM, "%s:%d: Received SM app enable event. sm_app_enable=%d\n", __func__, __LINE__, *sm_app_enable);
-           sm_stats_to_monitor_set(app, *sm_app_enable);
+       if (event->u.core_data.msg) {
+           sm_app_enable = *(bool *)event->u.core_data.msg;
+           wifi_util_dbg_print(WIFI_SM, "%s:%d: Received SM app enable event. sm_app_enable=%d\n",
+               __func__, __LINE__, sm_app_enable);
+           sm_stats_to_monitor_set(app, sm_app_enable);
        } else {
            wifi_util_error_print(WIFI_SM,
                "inside %s:%d sub_type: wifi_event_type_sm_app_enable sm_app_enable=NULL\n",
@@ -799,7 +801,7 @@ static void sm_app_enable_handler(char *event_name, raw_data_t *p_data)
 
     wifi_util_dbg_print(WIFI_SM, "%s:%d recvd event\n", __func__, __LINE__);
 
-    if ((strncmp(event_name, BUS_SM_APP_ENABLE, strlen(BUS_SM_APP_ENABLE) + 1) != 0) ||
+    if ((strcmp(event_name, BUS_SM_APP_ENABLE) != 0) ||
         (p_data->data_type != bus_data_type_boolean)) {
         wifi_util_error_print(WIFI_SM, "%s:%d invalid event received,%s:%x\n", __func__, __LINE__,
             event_name, p_data->data_type);
@@ -812,26 +814,37 @@ static void sm_app_enable_handler(char *event_name, raw_data_t *p_data)
         wifi_event_type_sm_app_enable, NULL);
 }
 
+static int sm_events_timer_task(void *args)
+{
+    sm_events_subscribe();
+    return TIMER_TASK_COMPLETE;
+}
+
 static void sm_events_subscribe(void)
 {
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     wifi_bus_desc_t *bus_desc = get_bus_descriptor();
-    int rc;
-
-    wifi_util_dbg_print(WIFI_SM, "%s:%d Init events\n", __func__, __LINE__);
+    static int task_id = 0;
+    bool add_timer_task = false;
 
     if (ctrl->sm_app_enable_subscribed == false) {
-        rc = bus_desc->bus_event_subs_fn(&ctrl->handle, BUS_SM_APP_ENABLE, sm_app_enable_handler,
-                NULL, 0);
-        if (rc != bus_error_success) {
+        if (bus_desc->bus_event_subs_fn(&ctrl->handle, BUS_SM_APP_ENABLE, sm_app_enable_handler,
+                NULL, 0) != bus_error_success) {
             wifi_util_dbg_print(WIFI_SM, "%s:%d: event:%s subscribe failed\n", __FUNCTION__,
                 __LINE__, BUS_SM_APP_ENABLE);
+            add_timer_task = true;
         } else {
             ctrl->sm_app_enable_subscribed = true;
             wifi_util_info_print(WIFI_SM, "%s:%d: event:%s subscribe success\n", __FUNCTION__,
                 __LINE__, BUS_SM_APP_ENABLE);
         }
-        wifi_util_dbg_print(WIFI_SM, "%s:%d rc=%d\n", __func__, __LINE__, rc);
+    }
+
+    if (add_timer_task && task_id == 0) {
+        scheduler_add_timer_task(ctrl->sched, FALSE, &task_id, sm_events_timer_task, NULL,
+            (ctrl->poll_period * 1000), 0, FALSE);
+    } else if (!add_timer_task && task_id != 0) {
+        scheduler_cancel_timer_task(ctrl->sched, task_id);
     }
 }
 
