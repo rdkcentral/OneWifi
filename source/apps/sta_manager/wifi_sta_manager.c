@@ -12,8 +12,10 @@
 #include "wifi_sta_manager.h"
 #include "common/ieee802_11_defs.h"
 
+#if TEST_CODE
 //TODO: Test Data, remove later
 unsigned int g_sched_id;
+#endif
 
 static int sta_mgr_send_action_frame(sta_beacon_report_reponse_t *sched_data)
 {
@@ -504,6 +506,7 @@ int sta_mgr_event(wifi_app_t *app, wifi_event_t *event)
     return RETURN_OK;
 }
 
+#if TEST_CODE
 //TODO: Test Data, remove later
 //Please replace with associated bssid and sta
 unsigned char binaryData[] = {
@@ -545,7 +548,7 @@ unsigned char binaryData[] = {
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08,
         0x53, 0x4b, 0x59, 0x42, 0x42, 0x43, 0x34, 0x42,
         0x02, 0x02, 0x01, 0x80
-      };
+};
 
 static int send_em_test_data(void *arg)
 {
@@ -569,6 +572,7 @@ static int send_em_test_data(void *arg)
 
     return 0;
 }
+#endif
 
 int sta_mgr_init(wifi_app_t *app, unsigned int create_flag)
 {
@@ -594,10 +598,11 @@ int sta_mgr_init(wifi_app_t *app, unsigned int create_flag)
         app->data.u.sta_mgr.sta_mgr_map = hash_map_create();
     }
 
-    //TODO: Test Data, remove later
+    //TODO: Test Data, for manual check without a real client
+#if TEST_CODE
     scheduler_add_timer_task(ctrl->sched, FALSE, &(g_sched_id), send_em_test_data,
         NULL, 10000, 0, FALSE);
-
+#endif
     return 0;
 }
 
