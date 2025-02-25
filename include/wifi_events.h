@@ -57,13 +57,15 @@ typedef enum {
 
 typedef enum {
     // Controller loop execution
-    wifi_event_exec_start = wifi_event_type_base << wifi_event_type_exec,       // wifi_event_type_base << 0
+    wifi_event_exec_start = wifi_event_type_base
+        << wifi_event_type_exec, // wifi_event_type_base << 0
     wifi_event_exec_stop,
     wifi_event_exec_timeout,
     wifi_event_exec_max,
 
     // WebConfig event sub types
-    wifi_event_webconfig_set_data = wifi_event_type_base << (wifi_event_type_webconfig + 2),    // wifi_event_type_base << 3
+    wifi_event_webconfig_set_data = wifi_event_type_base
+        << (wifi_event_type_webconfig + 2), // wifi_event_type_base << 3
     wifi_event_webconfig_set_status,
     wifi_event_webconfig_hal_result,
     wifi_event_webconfig_get_data,
@@ -77,11 +79,13 @@ typedef enum {
     wifi_event_webconfig_set_data_sta_bssid,
     wifi_event_webconfig_data_req_from_dml,
     wifi_event_webconfig_set_data_force_apply,
+    wifi_event_webconfig_em_config,
+    wifi_event_webconfig_br_report,
     wifi_event_webconfig_max,
 
-
     // HAL events
-    wifi_event_hal_unknown_frame = wifi_event_type_base << (wifi_event_type_hal_ind + 6), // wifi_event_type_base << 8
+    wifi_event_hal_unknown_frame = wifi_event_type_base
+        << (wifi_event_type_hal_ind + 6), // wifi_event_type_base << 8
     wifi_event_hal_mgmt_frames,
     wifi_event_hal_probe_req_frame,
     wifi_event_hal_probe_rsp_frame,
@@ -105,10 +109,12 @@ typedef enum {
     wifi_event_radius_eap_failure,
     wifi_event_radius_fallback_and_failover,
     wifi_event_type_csi_data,
+    wifi_event_br_report,
     wifi_event_hal_max,
 
     // Commands
-    wifi_event_type_active_gw_check = wifi_event_type_base << (wifi_event_type_command + 10), // wifi_event_type_base << 13
+    wifi_event_type_active_gw_check = wifi_event_type_base
+        << (wifi_event_type_command + 10), // wifi_event_type_base << 13
     wifi_event_type_command_factory_reset,
     wifi_event_type_radius_grey_list_rfc,
     wifi_event_type_wifi_passpoint_rfc,
@@ -152,8 +158,8 @@ typedef enum {
     wifi_event_type_send_action_frame,
     wifi_event_command_max,
 
-
-    wifi_event_monitor_diagnostics = wifi_event_type_base << (wifi_event_type_monitor + 14), // wifi_event_type_base << 18,
+    wifi_event_monitor_diagnostics = wifi_event_type_base
+        << (wifi_event_type_monitor + 14), // wifi_event_type_base << 18,
     wifi_event_monitor_connect,
     wifi_event_monitor_disconnect,
     wifi_event_monitor_deauthenticate,
@@ -171,7 +177,7 @@ typedef enum {
     wifi_event_monitor_data_collection_config,
     wifi_event_monitor_provider_response,
     wifi_event_monitor_assoc_req,
-    wifi_event_monitor_clear_sta_counters, //goodbad rssi time and rapid reconnects
+    wifi_event_monitor_clear_sta_counters, // goodbad rssi time and rapid reconnects
     wifi_event_monitor_get_radiostats_onchan,
     wifi_event_monitor_get_radiostats_offchan,
     wifi_event_monitor_get_radiostats_fullchan,
@@ -186,12 +192,14 @@ typedef enum {
     wifi_event_monitor_max,
 
     // Tunnel
-    wifi_event_type_xfinity_tunnel_up = wifi_event_type_base << (wifi_event_type_net + 18), // wifi_event_type_base << 23
+    wifi_event_type_xfinity_tunnel_up = wifi_event_type_base
+        << (wifi_event_type_net + 18), // wifi_event_type_base << 23
     wifi_event_type_xfinity_tunnel_down,
     wifi_event_type_xfinity_tunnel_max,
 
     // wif_api
-    wifi_event_type_wifiapi_execution = wifi_event_type_base << (wifi_event_type_wifiapi + 22), // wifi_event_type_base << 28
+    wifi_event_type_wifiapi_execution = wifi_event_type_base
+        << (wifi_event_type_wifiapi + 22), // wifi_event_type_base << 28
     wifi_event_type_wifiapi_max = wifi_event_type_base << 31
 } wifi_event_subtype_t;
 

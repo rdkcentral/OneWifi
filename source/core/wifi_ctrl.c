@@ -277,7 +277,8 @@ bool is_sta_enabled(void)
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     //wifi_util_dbg_print(WIFI_CTRL,"[%s:%d] device mode:%d active_gw_check:%d\r\n",
     //    __func__, __LINE__, ctrl->network_mode, ctrl->active_gw_check);
-    return ((ctrl->network_mode == rdk_dev_mode_type_ext || ctrl->active_gw_check == true) &&
+    return ((ctrl->network_mode == rdk_dev_mode_type_ext ||
+                ctrl->network_mode == rdk_dev_mode_type_em_node || ctrl->active_gw_check == true) &&
         ctrl->eth_bh_status == false);
 }
 
@@ -601,14 +602,25 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
     get_wifidb_obj()->desc.get_wifi_global_param_fn(&global_param);
     // set all default return values first
     if (strcmp(name, WIFI_DEVICE_MODE) == 0) {
-#ifdef EASY_MESH_NODE
-       wifi_util_info_print(WIFI_CTRL,"%s:%d\n",__func__,__LINE__);
-       *ret_val = (unsigned int)rdk_dev_mode_type_em_node;
-
-#elif EASY_MESH_COLOCATED_NODE
-       wifi_util_info_print(WIFI_CTRL,"%s:%d\n",__func__,__LINE__);
-       *ret_val = (unsigned int)rdk_dev_mode_type_em_colocated_node;
-
+#if defined EASY_MESH_NODE || defined EASY_MESH_COLOCATED_NODE
+        wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
+        int colocated_mode = ((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop.colocated_mode;
+        /* Initially assign this to em_node mode to start with */
+        *ret_val = (unsigned int)rdk_dev_mode_type_em_node;
+        while (colocated_mode == -1) {
+            /* sleep for 1 second and re-read the wifi_hal_getHalCapability till we get 
+               a valid colocated_mode */
+            sleep(1);
+            total_slept++;
+            wifi_hal_getHalCapability(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap);
+            colocated_mode = ((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop.colocated_mode;
+        }
+        if (colocated_mode == 1) {
+            *ret_val = (unsigned int)rdk_dev_mode_type_em_colocated_node;
+        } else if (colocated_mode == 0) {
+            *ret_val = (unsigned int)rdk_dev_mode_type_em_node;
+        }
+        wifi_util_info_print(WIFI_CTRL, "%s:%d: network_mode:%d.\n", __func__, __LINE__, *ret_val);
 #else
        wifi_util_info_print(WIFI_CTRL,"%s:%d\n",__func__,__LINE__);
 #ifdef ONEWIFI_DEFAULT_NETWORKING_MODE
@@ -624,7 +636,6 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
 #else
         ctrl->dev_type = dev_subtype_rdk;
 #endif
-
     } else if (strcmp(name, WIFI_DEVICE_TUNNEL_STATUS) == 0) {
         *ret_val = DEVICE_TUNNEL_DOWN; // tunnel down
     }
@@ -818,6 +829,7 @@ int start_wifi_services(void)
     } else if (ctrl->network_mode == rdk_dev_mode_type_em_colocated_node) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d start em_colocated mode\n",__func__, __LINE__);
         start_radios(rdk_dev_mode_type_gw);
+        start_gateway_vaps();
     }
 
     return RETURN_OK;
@@ -1137,6 +1149,9 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
         mgmt_frame.frame.len = len;
         evt_subtype = wifi_event_hal_reassoc_rsp_frame;
     } else if (type == WIFI_MGMT_FRAME_TYPE_ACTION) {
+        memcpy(mgmt_frame.data, frame, len);
+        mgmt_frame.frame.len = len;
+        evt_subtype = wifi_event_hal_dpp_public_action_frame;
         memset(&data, 0, sizeof(wifi_monitor_data_t));
         data.ap_index = ap_index;
         data.u.msg.frame.len = len;

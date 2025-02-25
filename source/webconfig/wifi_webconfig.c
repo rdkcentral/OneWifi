@@ -108,13 +108,13 @@ webconfig_subdoc_type_t find_subdoc_type(webconfig_t *config, cJSON *json)
     char *name;
 
     if ((obj = cJSON_GetObjectItem(json, "SubDocName")) == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Could not find SubDocName key in data",
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Could not find SubDocName key in data\n",
             __func__, __LINE__);
         return webconfig_subdoc_type_unknown;
     }
 
     if (cJSON_IsString(obj) == false) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Invalid value for subdoc", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Invalid value for subdoc\n", __func__, __LINE__);
         return webconfig_subdoc_type_unknown;
     }
 
@@ -534,6 +534,18 @@ webconfig_error_t webconfig_init(webconfig_t *config)
     config->subdocs[webconfig_subdoc_type_vif_neighbors].translate_to_subdoc = translate_to_vif_neighbors_subdoc;
     config->subdocs[webconfig_subdoc_type_vif_neighbors].translate_from_subdoc = translate_from_vif_neighbors_subdoc;
 
+    config->subdocs[webconfig_subdoc_type_sta_manager].type = webconfig_subdoc_type_sta_manager;
+    strcpy(config->subdocs[webconfig_subdoc_type_sta_manager].name, "Beacon Report");
+    config->subdocs[webconfig_subdoc_type_sta_manager].major = 1;
+    config->subdocs[webconfig_subdoc_type_sta_manager].minor = 1;
+    config->subdocs[webconfig_subdoc_type_sta_manager].init_subdoc = init_sta_manager_subdoc;
+    config->subdocs[webconfig_subdoc_type_sta_manager].init_subdoc(&config->subdocs[webconfig_subdoc_type_sta_manager]);
+    config->subdocs[webconfig_subdoc_type_sta_manager].access_check_subdoc = access_check_sta_manager_subdoc;
+    config->subdocs[webconfig_subdoc_type_sta_manager].encode_subdoc = encode_sta_manager_subdoc;
+    config->subdocs[webconfig_subdoc_type_sta_manager].decode_subdoc = decode_sta_manager_subdoc;
+    config->subdocs[webconfig_subdoc_type_sta_manager].translate_to_subdoc = translate_to_sta_manager_subdoc;
+    config->subdocs[webconfig_subdoc_type_sta_manager].translate_from_subdoc = translate_from_sta_manager_subdoc;
+
 #ifdef ONEWIFI_LEVL_APP_SUPPORT
     config->subdocs[webconfig_subdoc_type_levl].type = webconfig_subdoc_type_levl;
     strcpy(config->subdocs[webconfig_subdoc_type_levl].name, "levl data");
@@ -694,6 +706,7 @@ webconfig_error_t webconfig_init(webconfig_t *config)
     config->subdocs[webconfig_subdoc_type_radio_6G].translate_to_subdoc = translate_to_single_radio_subdoc;
     config->subdocs[webconfig_subdoc_type_radio_6G].translate_from_subdoc = translate_from_single_radio_subdoc;
 
+#ifdef EM_APP
     config->subdocs[webconfig_subdoc_type_em_config].type = webconfig_subdoc_type_em_config;
     strcpy(config->subdocs[webconfig_subdoc_type_em_config].name, "Easymesh Config");
     config->subdocs[webconfig_subdoc_type_em_config].major = 1;
@@ -705,6 +718,7 @@ webconfig_error_t webconfig_init(webconfig_t *config)
     config->subdocs[webconfig_subdoc_type_em_config].decode_subdoc = decode_em_config_subdoc;
     config->subdocs[webconfig_subdoc_type_em_config].translate_to_subdoc = translate_to_em_config_subdoc;
     config->subdocs[webconfig_subdoc_type_em_config].translate_from_subdoc = translate_from_em_config_subdoc;
+#endif //EM_APP Support
 
     config->proto_desc.translate_to = translate_to_proto;
     config->proto_desc.translate_from = translate_from_proto;

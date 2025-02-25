@@ -71,11 +71,12 @@ endif
 OneWifi_CPPFLAGS += -I$(top_srcdir)/source/dml/rdkb/
 OneWifi_CPPFLAGS += -I$(top_srcdir)/source/dml/dml_webconfig
 
-OneWifi_CPPFLAGS += -I$(top_srcdir)/source/apps  -I$(top_srcdir)/source/apps/analytics -I$(top_srcdir)/source/apps/levl -I$(top_srcdir)/source/apps/sm -I$(top_srcdir)/source/apps/csi -I$(top_srcdir)/source/apps/motion -I$(top_srcdir)/source/apps/whix  -I$(top_srcdir)/source/apps/harvester -I$(top_srcdir)/source/apps/blaster -I$(top_srcdir)/source/apps/ocs -I$(top_srcdir)/source/ccsp
+OneWifi_CPPFLAGS += -I$(top_srcdir)/source/apps/em -I$(top_srcdir)/source/apps/sta_manager -I$(top_srcdir)/source/apps/em -I$(top_srcdir)/source/apps  -I$(top_srcdir)/source/apps/analytics -I$(top_srcdir)/source/apps/levl -I$(top_srcdir)/source/apps/sm -I$(top_srcdir)/source/apps/csi -I$(top_srcdir)/source/apps/motion -I$(top_srcdir)/source/apps/whix  -I$(top_srcdir)/source/apps/harvester -I$(top_srcdir)/source/apps/blaster -I$(top_srcdir)/source/apps/ocs -I$(top_srcdir)/source/ccsp
 
 OneWifi_CFLAGS =  $(SYSTEMD_CFLAGS)
 OneWifi_CFLAGS += $(JOURNALCTL_ENABLE_FLAG)
 OneWifi_CFLAGS += $(SM_APP_FLAG)
+OneWifi_CFLAGS += $(EASYMESH_APP_FLAG)
 OneWifi_CFLAGS += -I${PKG_CONFIG_SYSROOT_DIR}/usr/include/protobuf-c
 
 OneWifi_SOURCES = wifi_mgr.c wifi_ctrl.c wifi_passpoint.c wifi_8021x.c wifi_data_plane.c wifi_ctrl_queue_handlers.c wifi_ctrl_rbus_handlers.c wifi_multidoc_webconfig.c wifi_ctrl_webconfig.c wifi_ctrl_wifiapi_handlers.c
@@ -107,7 +108,7 @@ endif
 endif
 OneWifi_SOURCES += $(top_srcdir)/source/stats/wifi_associated_devices_msmt.c
 OneWifi_SOURCES += $(top_srcdir)/lib/log/log_journal.c
-OneWifi_SOURCES += $(top_srcdir)/source/apps/wifi_apps.c $(top_srcdir)/source/apps/wifi_apps_mgr.c $(top_srcdir)/source/apps/analytics/wifi_analytics.c $(top_srcdir)/source/apps/levl/wifi_levl.c $(top_srcdir)/source/apps/csi/wifi_csi.c $(top_srcdir)/source/apps/motion/wifi_motion.c $(top_srcdir)/source/apps/whix/wifi_whix.c $(top_srcdir)/source/apps/harvester/wifi_harvester.c  $(top_srcdir)/source/apps/blaster/wifi_blaster.c $(top_srcdir)/source/apps/blaster/wifi_single_client_msmt.c  $(top_srcdir)/source/apps/ocs/wifi_ocs.c
+OneWifi_SOURCES += $(top_srcdir)/source/apps/wifi_apps.c  $(top_srcdir)/source/apps/sta_manager/wifi_sta_manager.c $(top_srcdir)/source/apps/wifi_apps_mgr.c $(top_srcdir)/source/apps/analytics/wifi_analytics.c $(top_srcdir)/source/apps/levl/wifi_levl.c $(top_srcdir)/source/apps/csi/wifi_csi.c $(top_srcdir)/source/apps/motion/wifi_motion.c $(top_srcdir)/source/apps/whix/wifi_whix.c $(top_srcdir)/source/apps/harvester/wifi_harvester.c  $(top_srcdir)/source/apps/blaster/wifi_blaster.c $(top_srcdir)/source/apps/blaster/wifi_single_client_msmt.c  $(top_srcdir)/source/apps/ocs/wifi_ocs.c
 
 if SM_APP_SUPPORT
 OneWifi_SOURCES += $(top_srcdir)/source/apps/sm/wifi_sm.c $(top_srcdir)/source/apps/sm/sm_utils.c $(top_srcdir)/source/apps/sm/sm_report.c $(top_srcdir)/source/apps/sm/sm_client_cache.c $(top_srcdir)/source/apps/sm/sm_client_report.c $(top_srcdir)/source/apps/sm/sm_survey_cache.c $(top_srcdir)/source/apps/sm/sm_survey_report.c $(top_srcdir)/source/apps/sm/sm_neighbor_cache.c $(top_srcdir)/source/apps/sm/sm_neighbor_report.c

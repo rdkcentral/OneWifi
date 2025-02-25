@@ -2,9 +2,9 @@ name: Build Check on Arm64
 
 on:
   push:
-    branches: [ "develop" ]
+    branches: [ "em-app" ]
   pull_request:
-    branches: [ "develop" ]
+    branches: [ "em-app" ]
 
 jobs:
   build:
@@ -22,6 +22,7 @@ jobs:
         mkdir -p easymesh_project
         git clone https://github.com/rdkcentral/unified-wifi-mesh.git easymesh_project/unified-wifi-mesh
         mv OneWifi easymesh_project/OneWifi
+        git clone https://github.com/rdkcentral/rdk-wifi-hal.git -b em-app easymesh_project/rdk-wifi-hal
 
     - name: Set up dependencies
       run: |
