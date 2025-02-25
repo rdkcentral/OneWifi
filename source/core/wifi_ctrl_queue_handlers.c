@@ -3601,6 +3601,7 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
     case wifi_event_type_start_inst_msmt:
     case wifi_event_type_stop_inst_msmt:
     case wifi_event_type_xfinity_rrm:
+    case wifi_event_type_sm_app_enable:
         // not handle here
         break;
     default:
