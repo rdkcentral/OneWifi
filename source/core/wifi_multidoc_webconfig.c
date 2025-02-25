@@ -127,6 +127,7 @@ pErr webconf_config_handler(void *blob)
 static int validate_private_home_security_param(char *mode_enabled, char *encryption_method, pErr execRetVal)
 {
      wifi_util_info_print(WIFI_CTRL,"Enter %s mode_enabled=%s,encryption_method=%s\n",__func__,mode_enabled,encryption_method);
+     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
 
     if ((strcmp(mode_enabled, "None") != 0) &&
         ((strcmp(encryption_method, "TKIP") != 0) && (strcmp(encryption_method, "AES") != 0) &&
@@ -146,6 +147,13 @@ static int validate_private_home_security_param(char *mode_enabled, char *encryp
         }
      return RETURN_ERR;
     }
+
+    if( (strcmp(mode_enabled, "WPA3-Personal-Compatibility") == 0) && !rfc_param->wpa3_compatibility_enable) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d RFC for WPA3-Personal-Compatibility is not enabled \n",
+            __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
      wifi_util_info_print(WIFI_CTRL,"%s: securityparam validation passed \n",__FUNCTION__);
     return RETURN_OK;
 
@@ -336,6 +344,10 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security,pErr 
             vap_info->u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
             vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
             vap_info->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
+        } else if (!strcmp(value, "WPA3-Personal-Compatibility")) {
+            vap_info->u.bss_info.security.mode = wifi_security_mode_wpa3_compatibility;
+            vap_info->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
+            vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
         } else {
             if (execRetVal) {
                 strncpy(execRetVal->ErrorMsg,"Invalid Security Mode",sizeof(execRetVal->ErrorMsg)-1);
