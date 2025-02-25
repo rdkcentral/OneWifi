@@ -1309,6 +1309,23 @@ static void frame_802_11_injector_Handler(char *event_name, raw_data_t *p_data)
     }
 }
 
+static void sm_app_enable_Handler(char *event_name, raw_data_t *p_data)
+{
+    bool sm_app_enable;
+
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Recvd Event\n", __func__, __LINE__);
+
+    if((strcmp(event_name, BUS_SM_APP_ENABLE) != 0) || (p_data->data_type != bus_data_type_boolean)) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d Invalid event received,%s:%x\n", __func__, __LINE__, event_name, p_data->data_type);
+        return;
+    }
+
+    sm_app_enable = p_data->raw_data.b;
+
+    push_event_to_ctrl_queue(&sm_app_enable, sizeof(sm_app_enable), wifi_event_type_command,
+        wifi_event_type_sm_app_enable, NULL);
+}
+
 static void wps_test_event_receive_handler(char *event_name, raw_data_t *p_data)
 {
     uint32_t vap_index = 0;
@@ -1598,6 +1615,19 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
             ctrl->frame_802_11_injector_subscribed = true;
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe success\n",
                 __FUNCTION__, __LINE__, WIFI_FRAME_INJECTOR_TO_ONEWIFI);
+        }
+    }
+
+    if (ctrl->sm_app_enable_subscribed == false) {
+        if (bus_desc->bus_event_subs_fn(&ctrl->handle, BUS_SM_APP_ENABLE, sm_app_enable_Handler, NULL,
+                0) != bus_error_success) {
+            // wifi_util_dbg_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe failed\n",
+            // __FUNCTION__,
+            //     __LINE__, BUS_SM_APP_ENABLE);
+        } else {
+            ctrl->sm_app_enable_subscribed = true;
+            wifi_util_info_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe success\n",
+                __FUNCTION__, __LINE__, BUS_SM_APP_ENABLE);
         }
     }
 
