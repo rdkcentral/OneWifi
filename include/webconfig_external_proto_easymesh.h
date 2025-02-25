@@ -42,14 +42,11 @@ typedef em_sta_info_t * (*ext_proto_get_next_sta_info_t)(void *data_model, em_st
 typedef em_sta_info_t * (*ext_proto_get_sta_info_t)(void *data_model, mac_address_t sta, bssid_t bssid, mac_address_t ruid, em_target_sta_map_t target);
 typedef void (*ext_proto_put_sta_info_t)(void *data_model, em_sta_info_t *sta_info, em_target_sta_map_t target);
 typedef em_bss_info_t * (*ext_proto_em_get_bss_info_with_mac_t)(void *data_model, mac_address_t mac);
-typedef unsigned int (*ext_proto_get_num_scan_results_t)(void *data_model);
-typedef void (*ext_proto_set_num_scan_results_t)(void *data_model, unsigned int num);
-typedef em_scan_result_t * (*ext_proto_get_scan_result_info_t)(void *data_model, unsigned int index);
 
 typedef struct {
     void *data_model; /* agent data model dm_easy_mesh_t */
 
-    void *m2ctrl_vapconfig;
+    void *m2ctrl_radioconfig;
     void *policy_config;
     // descriptors to access data model
     ext_proto_get_num_radio_t   get_num_radio;
@@ -69,9 +66,6 @@ typedef struct {
     ext_proto_get_sta_info_t   get_sta_info;
     ext_proto_put_sta_info_t   put_sta_info;
     ext_proto_em_get_bss_info_with_mac_t   get_bss_info_with_mac;
-    ext_proto_get_num_scan_results_t get_num_scan_results;
-    ext_proto_set_num_scan_results_t set_num_scan_results;
-    ext_proto_get_scan_result_info_t get_scan_result_info;
 } webconfig_external_easymesh_t;
 
 void webconfig_proto_easymesh_init(webconfig_external_easymesh_t *proto, void *data_model, void *m2ctrl_vapconfig, void *policy_config,
@@ -82,8 +76,7 @@ void webconfig_proto_easymesh_init(webconfig_external_easymesh_t *proto, void *d
         ext_proto_em_get_radio_info_t get_radio, ext_proto_em_get_ieee_1905_security_info_t get_sec,
         ext_proto_em_get_bss_info_t get_bss, ext_proto_em_get_op_class_info_t get_op_class,
         ext_proto_get_first_sta_info_t get_first_sta, ext_proto_get_next_sta_info_t get_next_sta,
-        ext_proto_get_sta_info_t get_sta, ext_proto_put_sta_info_t put_sta, ext_proto_em_get_bss_info_with_mac_t get_bss_info_with_mac,
-        ext_proto_get_num_scan_results_t get_num_scan_res, ext_proto_set_num_scan_results_t set_num_scan_res, ext_proto_get_scan_result_info_t get_scan_result);
+        ext_proto_get_sta_info_t get_sta, ext_proto_put_sta_info_t put_sta, ext_proto_em_get_bss_info_with_mac_t get_bss_info_with_mac);
 
 #ifdef __cplusplus
 }

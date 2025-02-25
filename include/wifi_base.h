@@ -1138,18 +1138,11 @@ typedef struct {
     wifi_BeaconReport_t *beacon_repo;
 } wifi_hal_rrm_report_t;
 
-typedef struct {
-    mac_address_t bssid;
-    UCHAR op_class;
-    UCHAR channel;
-    UCHAR rcpi;
-    UCHAR rssi;
-} beacon_response_data_t;
-
-#define MAX_BR_DATA 30
+#define MAX_BR_DATA 400
 typedef struct {
     mac_address_t mac_addr;
-    beacon_response_data_t data[MAX_BR_DATA];
+    unsigned int data_len;
+    unsigned char data[MAX_BR_DATA];
     unsigned int ap_index;
     unsigned int num_br_data;
     int sched_handler_id;

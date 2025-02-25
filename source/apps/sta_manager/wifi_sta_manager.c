@@ -133,6 +133,7 @@ static int sta_mgr_handle_assoc_device(wifi_app_t *app, void *arg)
 {
     assoc_dev_data_t *assoc_data = (assoc_dev_data_t *)arg;
     char client_mac[32];
+    unsigned int interval;
 
     wifi_util_dbg_print(WIFI_APPS, "%s:%d : Got assoc event \n", __func__, __LINE__);
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
@@ -152,8 +153,14 @@ static int sta_mgr_handle_assoc_device(wifi_app_t *app, void *arg)
             t_sta_data->ap_index = assoc_data->ap_index;
             wifi_util_dbg_print(WIFI_APPS, "%s:%d : Scheduling frame push for %s \n", __func__,
                 __LINE__, client_mac);
+
+            if (app->data.u.sta_mgr.ap_metrics_policy.interval < 0) {
+                interval = 10;
+            } else {
+                interval = app->data.u.sta_mgr.ap_metrics_policy.interval;
+            }
             scheduler_add_timer_task(ctrl->sched, FALSE, &(t_sta_data->sched_handler_id),
-                sta_mgr_send_action_frame, t_sta_data, 10000, 0, FALSE);
+                sta_mgr_send_action_frame, t_sta_data, (interval * 1000), 0, FALSE);
             hash_map_put(app->data.u.sta_mgr.sta_mgr_map, strdup(client_mac), t_sta_data);
         }
     }
@@ -245,32 +252,20 @@ int publish_data(sta_beacon_report_reponse_t *p_data)
 }
 
 static int sta_mgr_process_beacon_rep(mac_address_t bssid, wifi_hal_rrm_report_t *rep,
-    wifi_app_t *app)
+    wifi_app_t *app, const struct ieee80211_mgmt *mgmt, size_t len)
 {
-    wifi_BeaconReport_t *data = rep->beacon_repo;
-    mac_addr_str_t r_bssid, key;
+    mac_addr_str_t key;
     sta_beacon_report_reponse_t *p_data = NULL;
 
     to_mac_str(bssid, key);
     p_data = (sta_beacon_report_reponse_t *)hash_map_get(app->data.u.sta_mgr.sta_mgr_map, key);
     sta_mgr_remove_br_report(p_data);
     p_data->num_br_data = rep->size;
-    for (size_t itr = 0; itr < rep->size; itr++) {
-        if (p_data != NULL) {
-            to_mac_str(data->bssid, r_bssid);
-            memcpy(p_data->data[itr].bssid, data->bssid, ETH_ALEN);
-            p_data->data[itr].op_class = data->opClass;
-            p_data->data[itr].channel = data->channel;
-            p_data->data[itr].rcpi = data->rcpi;
-            p_data->data[itr].rssi = data->rsni;
-        } else {
-            return -1;
-        }
-        data++;
-    }
     // to be removed
     publish_data(p_data);
 
+    p_data->data_len = len - IEEE80211_HDRLEN - 1 - sizeof(mgmt->u.action.u.rrm);
+    memcpy(p_data->data, mgmt->u.action.u.rrm.variable, p_data->data_len);
     push_event_to_ctrl_queue(p_data, sizeof(sta_beacon_report_reponse_t), wifi_event_type_hal_ind,
         wifi_event_br_report, NULL);
     return 0;
@@ -293,7 +288,7 @@ static int sta_mgr_handle_action_frame(wifi_app_t *apps, void *arg)
         if (ctrl->network_mode == rdk_dev_mode_type_gw) {
             if (wifi_hal_parse_rm_beaon_report(mgmt_frame->frame.ap_index, mgmt, len, &rep) ==
                 RETURN_OK) {
-                sta_mgr_process_beacon_rep(mac_addr, &rep, apps);
+                sta_mgr_process_beacon_rep(mac_addr, &rep, apps, mgmt, len);
             }
         }
     } else if (mgmt->u.action.u.rrm.action == WLAN_RRM_RADIO_MEASUREMENT_REQUEST) {
@@ -519,6 +514,7 @@ static int send_em_test_data(void *arg)
     temp_data_t.ap_index = 0;
     mac_addr_t sta_mac = {0x82,0x5c,0xec,0x20,0xc0,0xd9};
     memcpy(temp_data_t.mac_addr, sta_mac, sizeof(mac_addr_t));
+#if 0
     for (int itr = 0; itr < 2; itr++) {
         memcpy(temp_data_t.data[itr].bssid, null_mac, ETH_ALEN);
         temp_data_t.data[itr].op_class = 1;
@@ -526,7 +522,7 @@ static int send_em_test_data(void *arg)
         temp_data_t.data[itr].rcpi = 122;
         temp_data_t.data[itr].rssi = 234;
     }
-
+#endif
 	push_event_to_ctrl_queue(&temp_data_t, sizeof(sta_beacon_report_reponse_t), 
 			wifi_event_type_hal_ind, wifi_event_br_report, NULL);
 
