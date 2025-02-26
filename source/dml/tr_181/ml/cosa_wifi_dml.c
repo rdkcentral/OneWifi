@@ -76,7 +76,7 @@
 #include "ccsp_psm_helper.h"
 #include "cosa_dbus_api.h"
 #include "collection.h"
-#include "wifi_hal.h"
+#include <wifi_hal.h>
 #include "../../../stubs/wifi_stubs.h"
 #include "wifi_monitor.h"
 
@@ -113,7 +113,6 @@ extern unsigned int startTime[MAX_NUM_RADIOS];
 uint8_t g_radio_instance_num = 0;
 extern void* g_pDslhDmlAgent;
 extern int gChannelSwitchingCount;
-extern bool wifi_api_is_device_associated(int ap_index, char *mac);
 
 /***********************************************************************
  IMPORTANT NOTE:
