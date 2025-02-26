@@ -76,6 +76,7 @@
 #define TCM_WEIGHTAGE "0.6"
 #define TCM_THRESHOLD "0.18"
 #define ONEWIFI_DB_VERSION_WPA3_COMP_FLAG 100032
+#define WPA3_COMPATIBILITY 8192
 
 ovsdb_table_t table_Wifi_Radio_Config;
 ovsdb_table_t table_Wifi_VAP_Config;
@@ -4403,10 +4404,12 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
         }
 
         if( g_wifidb->db_version < ONEWIFI_DB_VERSION_WPA3_COMP_FLAG ) {
-            config->vap_array[i].u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
-            config->vap_array[i].u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
-            wifi_util_info_print(WIFI_DB, "%s Update security mode:%d mfp:%d \n", __func__, config->vap_array[i].u.bss_info.security.mode,
-                    config->vap_array[i].u.bss_info.security.mfp);
+            if( config->vap_array[i].u.bss_info.security.mode == WPA3_COMPATIBILITY) {
+                config->vap_array[i].u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
+                config->vap_array[i].u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
+                wifi_util_info_print(WIFI_DB, "%s Update security mode:%d mfp:%d \n", __func__, config->vap_array[i].u.bss_info.security.mode,
+                        config->vap_array[i].u.bss_info.security.mfp);
+            }
         }
     }
 }
