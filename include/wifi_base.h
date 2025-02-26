@@ -78,6 +78,11 @@ extern "C" {
 #define WIFI_NOTIFY_DENY_TCM_ASSOCIATION               "Device.WiFi.ConnectionControl.TcmClientDenyAssociation"
 #define WIFI_STUCK_DETECT_FILE_NAME         "/nvram/wifi_stuck_detect"
 
+#define MAX_OPERATING_CLASS 48
+#define MAX_CHANNEL_BW_LEN 16
+#define MAX_NEIGHBORS 32
+#define MAX_RESULTS 32
+
 #define PLAN_ID_LENGTH     38
 #define MAX_STEP_COUNT  32 /*Active Measurement Step Count */
 #define  MAC_ADDRESS_LENGTH  13
@@ -1078,6 +1083,49 @@ typedef struct {
     ULONG                   radio_StatisticsStartTime;
     unsigned int            radio_Temperature;
 } radio_data_t;
+
+typedef struct {
+    UCHAR operating_class;
+    UINT num_channels;
+    UCHAR channels[MAX_CHANNELS];
+} operating_class_t;
+
+typedef struct {
+    BOOL perform_fresh_scan;
+    UINT num_radios;
+    mac_address_t ruid;
+    UINT num_operating_classes;
+    operating_class_t operating_classes[MAX_OPERATING_CLASS];
+} channel_scan_request_t;
+
+typedef struct {
+    bssid_t bssid;
+    ssid_t ssid;
+    CHAR signal_strength;
+    CHAR channel_bandwidth[MAX_CHANNEL_BW_LEN];
+    UCHAR bss_load_element_present;
+    UCHAR bss_color;
+    UCHAR channel_utilization;
+    USHORT station_count;
+    UINT aggregate_scan_duration;
+    UCHAR scan_type;  // 0: Passive, 1: Active
+} neighbor_bss_t;
+
+typedef struct {
+    UCHAR operating_class;
+    UCHAR channel;
+    UCHAR scan_status;
+    CHAR time_stamp[32];
+    UCHAR utilization;
+    UCHAR noise;
+    USHORT num_neighbors;
+    neighbor_bss_t neighbors[MAX_NEIGHBORS];
+} channel_scan_result_t;
+
+typedef struct {
+    UINT num_results;
+    channel_scan_result_t results[MAX_RESULTS];
+} channel_scan_response_t;
 
 #ifdef __cplusplus
 }
