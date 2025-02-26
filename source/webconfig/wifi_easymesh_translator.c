@@ -1304,6 +1304,7 @@ webconfig_error_t translate_beacon_report_object_to_easymesh_sta_info(webconfig_
     memcpy(em_sta_dev_info.bssid, bss_info->bssid.mac, sizeof(mac_address_t));
     memcpy(em_sta_dev_info.radiomac, radio_info->intf.mac, sizeof(mac_address_t));
     em_sta_dev_info.beacon_report_len = params->stamgr.data_len;
+    em_sta_dev_info.num_beacon_meas_report = params->stamgr.num_br_data;
 
     memcpy(em_sta_dev_info.beacon_report_elem, params->stamgr.data, params->stamgr.data_len);
 
