@@ -18,7 +18,7 @@
  */
 
 #include "webpa_interface.h"
-#include "base64.h"
+#include <trower-base64/base64.h>
 #include "ccsp_dm_api.h"
 #include "collection.h"
 #include "cosa_apis.h"
@@ -28,7 +28,7 @@
 #include "stdlib.h"
 #include "wifi_ctrl.h"
 #include "wifi_util.h"
-#include <libparodus.h>
+#include <libparodus/libparodus.h>
 #include <math.h>
 #include <syscfg/syscfg.h>
 #include <sysevent/sysevent.h>
