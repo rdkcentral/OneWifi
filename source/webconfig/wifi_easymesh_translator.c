@@ -728,7 +728,7 @@ webconfig_error_t translate_sta_info_to_em_common(const wifi_vap_info_t *vap, co
             vap->u.sta_info.bssid[4], vap->u.sta_info.bssid[5]);
     str_to_mac_bytes(mac_str,vap_row->bssid.mac);
     strncpy(vap_row->bssid.name,iface_map->interface_name,sizeof(vap_row->bssid.name));
-	convert_vap_name_to_hault_type(&vap_row->id.haul_type, vap->vap_name);
+    convert_vap_name_to_hault_type(&vap_row->id.haul_type, vap->vap_name);
 
     radio_iface_map = NULL;
     for (k = 0; k < (sizeof(wifi_prop->radio_interface_map)/sizeof(radio_interface_mapping_t)); k++) {
@@ -1532,6 +1532,7 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_per_radio(webconfig_sub
     radio_interface_mapping_t *radio_iface_map;
     m2ctrl_radioconfig *radio_config;
     mac_address_t mac;
+    em_haul_type_t haultype;
 
     if (decoded_params == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: decoded_params is NULL\n", __func__, __LINE__);
@@ -1624,7 +1625,8 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_per_radio(webconfig_sub
 
         if (radio_config != NULL) {
             for(k = 0; k < radio_config->noofbssconfig; k++) {
-                if(memcmp(radio_config->bssid_mac[k], vap_info_row->bssid.mac, sizeof(mac_address_t)) == 0) {
+                convert_vap_name_to_hault_type(&haultype, vap->vap_name );
+                if (radio_config->haultype[k] == haultype) {
                     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: ssid=%s sec_mode=%d password=%s", __func__, __LINE__,
                     radio_config->ssid[k],radio_config->authtype[k],radio_config->password[k]);
                     vap->u.bss_info.security.mode = radio_config->authtype[k];
@@ -1635,6 +1637,82 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_per_radio(webconfig_sub
             }
         }
     }
+
+    return webconfig_error_none;
+}
+
+//translating onewifi channel stas to easymesh channel stats info structure
+webconfig_error_t translate_channel_stats_to_easymesh_channel_info(webconfig_subdoc_data_t *data)
+{
+    channel_scan_response_t *channel_st;
+    webconfig_external_easymesh_t *proto;
+    int i, j, count = 0;
+
+    webconfig_subdoc_decoded_data_t *params = &data->u.decoded;
+    if (params == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: decoded_params is NULL\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    channel_st = (channel_scan_response_t *)params->collect_stats.stats;
+    if (channel_st == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Dev Stats is NULL\n", __func__, __LINE__);
+        return webconfig_error_translate_to_easymesh;
+    }
+
+    proto = (webconfig_external_easymesh_t *)params->external_protos;
+    if (proto == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: em_sta_info_t is NULL\n", __func__, __LINE__);
+        return webconfig_error_translate_to_easymesh;
+    }
+
+    for (i = 0; i < channel_st->num_results; i++) {
+
+        em_scan_result_t em_scan_result;
+        channel_scan_result_t *src = &channel_st->results[i];
+
+        em_scan_result.id.op_class = src->operating_class;
+        em_scan_result.id.channel = src->channel;
+        memset(em_scan_result.id.net_id, 0, sizeof(em_scan_result.id.net_id));
+        memset(em_scan_result.id.dev_mac, 0, sizeof(em_scan_result.id.dev_mac));
+        memset(em_scan_result.id.scanner_mac, 0, sizeof(em_scan_result.id.scanner_mac));
+
+        em_scan_result.scan_status = src->scan_status;
+        strncpy(em_scan_result.timestamp, src->time_stamp, sizeof(em_scan_result.timestamp) - 1);
+        em_scan_result.timestamp[sizeof(em_scan_result.timestamp) - 1] = '\0';
+        em_scan_result.util = src->utilization;
+        em_scan_result.noise = src->noise;
+        em_scan_result.num_neighbors = src->num_neighbors;
+        em_scan_result.aggr_scan_duration = 0;
+        em_scan_result.scan_type = 0;
+
+        for (j = 0; j < src->num_neighbors && j < EM_MAX_NEIGHORS; j++) {
+            neighbor_bss_t *src_neighbor = &src->neighbors[j];
+            em_neighbor_t *dst_neighbor = &em_scan_result.neighbor[j];
+
+            memcpy(dst_neighbor->bssid, src_neighbor->bssid, sizeof(bssid_t));
+            strncpy(dst_neighbor->ssid, src_neighbor->ssid, strlen(src_neighbor->ssid) + 1);
+            dst_neighbor->signal_strength = (signed char)src_neighbor->signal_strength;
+            if (strncmp(src_neighbor->channel_bandwidth, "20", strlen("20")) == 0) {
+                dst_neighbor->bandwidth = WIFI_CHANNELBANDWIDTH_20MHZ;
+            } else if (strncmp(src_neighbor->channel_bandwidth, "40", strlen("40")) == 0) {
+                dst_neighbor->bandwidth = WIFI_CHANNELBANDWIDTH_40MHZ;
+            } else if (strncmp(src_neighbor->channel_bandwidth, "80", strlen("80")) == 0) {
+                dst_neighbor->bandwidth = WIFI_CHANNELBANDWIDTH_40MHZ;
+            } else if (strncmp(src_neighbor->channel_bandwidth, "160", strlen("160")) == 0) {
+                dst_neighbor->bandwidth = WIFI_CHANNELBANDWIDTH_160MHZ;
+            } else if (strncmp(src_neighbor->channel_bandwidth, "320", strlen("320")) == 0) {
+                dst_neighbor->bandwidth = WIFI_CHANNELBANDWIDTH_320MHZ;
+            }
+            dst_neighbor->bss_color = 0x8f;
+            dst_neighbor->channel_util = 00;
+            dst_neighbor->sta_count = (unsigned short)src_neighbor->station_count;
+        }
+        count++;
+        proto->put_scan_results(proto->data_model, &em_scan_result);
+    }
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: No of scan results : %d \n", __func__, __LINE__, count);
 
     return webconfig_error_none;
 }
@@ -1654,6 +1732,7 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_object(webconfig_subdoc
     decoded_params = &data->u.decoded;
     radio_interface_mapping_t *radio_iface_map;
     m2ctrl_radioconfig *radio_config;
+    em_haul_type_t haultype;
 
     if (decoded_params == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: decoded_params is NULL\n", __func__, __LINE__);
@@ -1745,7 +1824,8 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_object(webconfig_subdoc
             }
             if (radio_config != NULL) {
                 for(k = 0; k < radio_config->noofbssconfig; k++) {
-                    if(memcmp(radio_config->bssid_mac[k], vap_info_row->bssid.mac, sizeof(mac_address_t)) == 0) {
+                    convert_vap_name_to_hault_type(&haultype, vap->vap_name );
+                    if (radio_config->haultype[k] == haultype) {
                         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: ssid=%s sec_mode=%d password=%s", __func__, __LINE__,
                         radio_config->ssid[k],radio_config->authtype[k],radio_config->password[k]);
                         vap->u.bss_info.security.mode = radio_config->authtype[k];
@@ -2175,6 +2255,13 @@ webconfig_error_t  translate_to_easymesh_tables(webconfig_subdoc_type_t type, we
                 return webconfig_error_translate_to_easymesh;
             }
             break;
+        case webconfig_subdoc_type_em_channel_stats:
+            if (translate_channel_stats_to_easymesh_channel_info(data) != webconfig_error_none) {
+                wifi_util_error_print(WIFI_WEBCONFIG,
+                    "%s:%d: webconfig_subdoc_type_em_channel_stats EM channel stats translation to easymesh failed\n", __func__, __LINE__);
+                return webconfig_error_translate_to_easymesh;
+            }
+            break;
 
         case webconfig_subdoc_type_sta_manager:
             if (translate_beacon_report_object_to_easymesh_sta_info(data, WIFI_FREQUENCY_6_BAND) != webconfig_error_none) {
@@ -2294,7 +2381,8 @@ void webconfig_proto_easymesh_init(webconfig_external_easymesh_t *proto, void *d
         ext_proto_em_get_radio_info_t get_radio, ext_proto_em_get_ieee_1905_security_info_t get_sec,
         ext_proto_em_get_bss_info_t get_bss, ext_proto_em_get_op_class_info_t get_op_class,
         ext_proto_get_first_sta_info_t get_first_sta, ext_proto_get_next_sta_info_t get_next_sta,
-        ext_proto_get_sta_info_t get_sta, ext_proto_put_sta_info_t put_sta, ext_proto_em_get_bss_info_with_mac_t get_bss_with_mac)
+        ext_proto_get_sta_info_t get_sta, ext_proto_put_sta_info_t put_sta, ext_proto_em_get_bss_info_with_mac_t get_bss_with_mac,
+        ext_proto_put_scan_results_t put_scan_res)
 {
     proto->data_model = data_model;
     proto->m2ctrl_radioconfig = m2ctrl_radioconfig;
@@ -2316,4 +2404,5 @@ void webconfig_proto_easymesh_init(webconfig_external_easymesh_t *proto, void *d
     proto->get_sta_info = get_sta;
     proto->put_sta_info = put_sta;
     proto->get_bss_info_with_mac = get_bss_with_mac;
+    proto->put_scan_results = put_scan_res;
 }

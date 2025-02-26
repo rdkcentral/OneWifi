@@ -2267,6 +2267,60 @@ webconfig_error_t encode_neighbor_radio_params(wifi_provider_response_t *neigh_s
     return webconfig_error_none;
 }
 
+webconfig_error_t encode_em_channel_stats_params(channel_scan_response_t *neigh_stats, cJSON *neigh_stats_obj)
+{
+    int i, j;
+    char mac_str[32];
+    cJSON *channel_obj, *neighbors_arr, *neighbor_obj;
+
+    if (neigh_stats == NULL || neigh_stats_obj == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid input parameters\n", __func__, __LINE__);
+        return webconfig_error_encode;
+    }
+
+    for (i = 0; i < neigh_stats->num_results; i++) {
+        channel_obj = cJSON_CreateObject();
+        if (channel_obj == NULL) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: JSON object creation failed\n", __func__, __LINE__);
+            return webconfig_error_encode;
+        }
+
+        cJSON_AddItemToArray(neigh_stats_obj, channel_obj);
+        cJSON_AddNumberToObject(channel_obj, "OperatingClass", neigh_stats->results[i].operating_class);
+        cJSON_AddNumberToObject(channel_obj, "Channel", neigh_stats->results[i].channel);
+        cJSON_AddNumberToObject(channel_obj, "ScanStatus", neigh_stats->results[i].scan_status);
+        cJSON_AddStringToObject(channel_obj, "Timestamp", neigh_stats->results[i].time_stamp);
+        cJSON_AddNumberToObject(channel_obj, "Utilization", neigh_stats->results[i].utilization);
+        cJSON_AddNumberToObject(channel_obj, "Noise", neigh_stats->results[i].noise);
+
+        neighbors_arr = cJSON_CreateArray();
+        cJSON_AddItemToObject(channel_obj, "Neighbors", neighbors_arr);
+
+        for (j = 0; j < neigh_stats->results[i].num_neighbors; j++) {
+            neighbor_obj = cJSON_CreateObject();
+            if (neighbor_obj == NULL) {
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: JSON object creation failed\n", __func__, __LINE__);
+                return webconfig_error_encode;
+            }
+
+            cJSON_AddItemToArray(neighbors_arr, neighbor_obj);
+            uint8_mac_to_string_mac((uint8_t *)neigh_stats->results[i].neighbors[j].bssid, mac_str);
+            cJSON_AddStringToObject(neighbor_obj, "BSSID", mac_str);
+            cJSON_AddStringToObject(neighbor_obj, "SSID", neigh_stats->results[i].neighbors[j].ssid);
+            cJSON_AddNumberToObject(neighbor_obj, "SignalStrength", neigh_stats->results[i].neighbors[j].signal_strength);
+            cJSON_AddStringToObject(neighbor_obj, "ChannelBandwidth", neigh_stats->results[i].neighbors[j].channel_bandwidth);
+            cJSON_AddNumberToObject(neighbor_obj, "BSSLoadElementPresent", neigh_stats->results[i].neighbors[j].bss_load_element_present);
+            cJSON_AddNumberToObject(neighbor_obj, "BSSColor", neigh_stats->results[i].neighbors[j].bss_color);
+            cJSON_AddNumberToObject(neighbor_obj, "ChannelUtilization", neigh_stats->results[i].neighbors[j].channel_utilization);
+            cJSON_AddNumberToObject(neighbor_obj, "StationCount", neigh_stats->results[i].neighbors[j].station_count);
+            cJSON_AddNumberToObject(neighbor_obj, "AggregateScanDuration", neigh_stats->results[i].neighbors[j].aggregate_scan_duration);
+            cJSON_AddNumberToObject(neighbor_obj, "ScanType", neigh_stats->results[i].neighbors[j].scan_type);
+        }
+    }
+
+    return webconfig_error_none;
+}
+
 webconfig_error_t encode_assocdevice_params(wifi_provider_response_t *assoc_dev_stats, cJSON *assoc_stats_obj)
 {
     char str[32] = {0};
@@ -2372,6 +2426,43 @@ webconfig_error_t encode_radiodiag_params(wifi_provider_response_t *radiodiag_st
     return webconfig_error_none;
 }
 
+void print_hex_dump(unsigned int length, unsigned char *buffer)
+{
+    int i;
+    unsigned char buff[512] = {};
+    const unsigned char * pc = (const unsigned char *)buffer;
+
+    if (length > 500) return;
+
+    if ((pc == NULL) || (length <= 0)) {
+        printf ("buffer NULL or BAD LENGTH = %d :\n", length);
+        return;
+    }
+
+    for (i = 0; i < length; i++) {
+        if ((i % 16) == 0) {
+            if (i != 0)
+                printf ("  %s\n", buff);
+            printf ("  %04x ", i);
+        }
+
+        printf (" %02x", pc[i]);
+
+        if (!isprint(pc[i]))
+            buff[i % 16] = '.';
+        else
+            buff[i % 16] = pc[i];
+        buff[(i % 16) + 1] = '\0';
+    }
+
+    while ((i % 16) != 0) {
+        printf ("   ");
+        i++;
+    }
+
+    printf ("  %s\n", buff);
+}
+
 webconfig_error_t encode_sta_manager_object(sta_beacon_report_reponse_t *sta_data,
     cJSON **sta_manager_obj)
 {
@@ -2389,7 +2480,9 @@ webconfig_error_t encode_sta_manager_object(sta_beacon_report_reponse_t *sta_dat
 
     memset(assoc_frame_string, 0, sizeof(assoc_frame_string));
     if (sta_data->data_len != 0) {
+	//print_hex_dump(sta_data->data_len, sta_data->data);
         hextostring(sta_data->data_len, sta_data->data, MAX_FRAME_SZ * 2 + 1, assoc_frame_string);
+	//printf("assoc_frame_string:%s\n", assoc_frame_string);
     } else {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d No Report Data\n", __func__, __LINE__);
         return webconfig_error_encode;

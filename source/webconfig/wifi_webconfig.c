@@ -718,6 +718,18 @@ webconfig_error_t webconfig_init(webconfig_t *config)
     config->subdocs[webconfig_subdoc_type_em_config].decode_subdoc = decode_em_config_subdoc;
     config->subdocs[webconfig_subdoc_type_em_config].translate_to_subdoc = translate_to_em_config_subdoc;
     config->subdocs[webconfig_subdoc_type_em_config].translate_from_subdoc = translate_from_em_config_subdoc;
+
+    config->subdocs[webconfig_subdoc_type_em_channel_stats].type = webconfig_subdoc_type_em_channel_stats;
+    strcpy(config->subdocs[webconfig_subdoc_type_em_channel_stats].name, "EM_Channel_Stats");
+    config->subdocs[webconfig_subdoc_type_em_channel_stats].major = 1;
+    config->subdocs[webconfig_subdoc_type_em_channel_stats].minor = 1;
+    config->subdocs[webconfig_subdoc_type_em_channel_stats].init_subdoc = init_em_channel_stats_subdoc;
+    config->subdocs[webconfig_subdoc_type_em_channel_stats].init_subdoc(&config->subdocs[webconfig_subdoc_type_em_channel_stats]);
+    config->subdocs[webconfig_subdoc_type_em_channel_stats].access_check_subdoc = access_check_em_channel_stats_subdoc;
+    config->subdocs[webconfig_subdoc_type_em_channel_stats].encode_subdoc = encode_em_channel_stats_subdoc;
+    config->subdocs[webconfig_subdoc_type_em_channel_stats].decode_subdoc = decode_em_channel_stats_subdoc;
+    config->subdocs[webconfig_subdoc_type_em_channel_stats].translate_to_subdoc = translate_to_em_channel_stats_subdoc;
+    config->subdocs[webconfig_subdoc_type_em_channel_stats].translate_from_subdoc = translate_from_em_channel_stats_subdoc;
 #endif //EM_APP Support
 
     config->proto_desc.translate_to = translate_to_proto;

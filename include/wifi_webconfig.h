@@ -136,6 +136,7 @@ typedef enum {
     webconfig_subdoc_type_radio_24G,
     webconfig_subdoc_type_radio_5G,
     webconfig_subdoc_type_radio_6G,
+    webconfig_subdoc_type_em_channel_stats,
     webconfig_subdoc_type_max
 } webconfig_subdoc_type_t;
 
@@ -622,6 +623,14 @@ webconfig_error_t       decode_em_config_subdoc(webconfig_t *config, webconfig_s
 webconfig_error_t       encode_em_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_to_em_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_from_em_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+// EM Channel stats
+webconfig_error_t       init_em_channel_stats_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_em_channel_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_em_channel_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_em_channel_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_em_channel_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_em_channel_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 
 #ifdef __cplusplus
 }

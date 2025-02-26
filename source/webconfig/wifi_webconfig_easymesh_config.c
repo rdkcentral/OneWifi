@@ -37,7 +37,6 @@ webconfig_error_t init_em_config_subdoc(webconfig_subdoc_t *doc)
 {
     doc->num_objects = sizeof(em_config_objects)/sizeof(webconfig_subdoc_object_t);
     memcpy((unsigned char *)doc->objects, (unsigned char *)&em_config_objects, sizeof(em_config_objects));
-
     return webconfig_error_none;
 }
 
@@ -164,7 +163,6 @@ webconfig_error_t decode_em_config_subdoc(webconfig_t *config, webconfig_subdoc_
     cJSON_Delete(json);
 
     wifi_util_info_print(WIFI_EM, "%s:%d: decode success\n", __func__, __LINE__);
-
     return webconfig_error_none;
 }
 

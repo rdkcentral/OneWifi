@@ -69,6 +69,7 @@ const char *subdoc_type_to_string(webconfig_subdoc_type_t type)
         DOC2S(webconfig_subdoc_type_assocdev_stats)
         DOC2S(webconfig_subdoc_type_radiodiag_stats)
         DOC2S(webconfig_subdoc_type_radio_temperature)
+        DOC2S(webconfig_subdoc_type_em_channel_stats)
     default:
         wifi_util_error_print(WIFI_APPS, "%s:%d: event not handle[%d]\r\n", __func__, __LINE__,
             type);

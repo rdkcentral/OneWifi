@@ -4826,6 +4826,121 @@ webconfig_error_t decode_radio_neighbor_stats_object(wifi_provider_response_t **
     return webconfig_error_none;
 }
 
+webconfig_error_t decode_em_channel_stats_object(channel_scan_response_t **chan_stats, cJSON *json)
+{
+    cJSON *channel_scan_arr, *channel_scan, *neighbor_arr, *neighbor;
+    const cJSON *param;
+    int num_results = 0, num_neighbors = 0;
+
+    if (json == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: cJSON object is NULL\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    *chan_stats = (channel_scan_response_t *)calloc(1, sizeof(channel_scan_response_t));
+    if (*chan_stats == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Memory allocation failed\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    channel_scan_arr = cJSON_GetObjectItem(json, "ChannelScanResponse");
+    if ((channel_scan_arr == NULL) || (!cJSON_IsArray(channel_scan_arr))) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: ChannelScanResponse array not present or invalid\n", __func__, __LINE__);
+        return webconfig_error_invalid_subdoc;
+    }
+
+    num_results = cJSON_GetArraySize(channel_scan_arr);
+    (*chan_stats)->num_results = num_results;
+
+    if (num_results > MAX_RESULTS) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Number of results exceeds MAX_RESULTS limit\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    for (int i = 0; i < num_results; i++) {
+        channel_scan = cJSON_GetArrayItem(channel_scan_arr, i);
+        if (channel_scan == NULL) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Null JSON pointer at index %d\n", __func__, __LINE__, i);
+            return webconfig_error_decode;
+        }
+
+        channel_scan_result_t *result = &((*chan_stats)->results[i]);
+
+        decode_param_integer(channel_scan, "OperatingClass", param);
+        result->operating_class = param->valuedouble;
+
+        decode_param_integer(channel_scan, "Channel", param);
+        result->channel = param->valuedouble;
+
+        decode_param_integer(channel_scan, "ScanStatus", param);
+        result->scan_status = param->valuedouble;
+
+        decode_param_string(channel_scan, "Timestamp", param);
+        strncpy(result->time_stamp, param->valuestring, sizeof(result->time_stamp) - 1);
+
+        decode_param_integer(channel_scan, "Utilization", param);
+        result->utilization = param->valuedouble;
+
+        decode_param_integer(channel_scan, "Noise", param);
+        result->noise = param->valuedouble;
+
+        neighbor_arr = cJSON_GetObjectItem(channel_scan, "Neighbors");
+        if ((neighbor_arr != NULL) && (cJSON_IsArray(neighbor_arr))) {
+            num_neighbors = cJSON_GetArraySize(neighbor_arr);
+            result->num_neighbors = num_neighbors;
+
+            if (num_neighbors > MAX_NEIGHBORS) {
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Number of neighbors exceeds MAX_NEIGHBORS limit\n", __func__, __LINE__);
+                return webconfig_error_decode;
+            }
+
+            for (int j = 0; j < num_neighbors; j++) {
+                neighbor = cJSON_GetArrayItem(neighbor_arr, j);
+                if (neighbor == NULL) {
+                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Null JSON pointer at index %d\n", __func__, __LINE__, j);
+                    return webconfig_error_decode;
+                }
+
+                neighbor_bss_t *neighbor_data = &result->neighbors[j];
+
+                decode_param_string(neighbor, "BSSID", param);
+                string_mac_to_uint8_mac(neighbor_data->bssid, param->valuestring);
+
+                decode_param_string(neighbor, "SSID", param);
+                strncpy(neighbor_data->ssid, param->valuestring, sizeof(neighbor_data->ssid) - 1);
+
+                decode_param_integer(neighbor, "SignalStrength", param);
+                neighbor_data->signal_strength = param->valuedouble;
+
+                decode_param_string(neighbor, "ChannelBandwidth", param);
+                strncpy(neighbor_data->channel_bandwidth, param->valuestring, sizeof(neighbor_data->channel_bandwidth) - 1);
+
+                decode_param_integer(neighbor, "BSSLoadElementPresent", param);
+                neighbor_data->bss_load_element_present = param->valuedouble;
+
+                decode_param_integer(neighbor, "BSSColor", param);
+                neighbor_data->bss_color = param->valuedouble;
+
+                decode_param_integer(neighbor, "ChannelUtilization", param);
+                neighbor_data->channel_utilization = param->valuedouble;
+
+                decode_param_integer(neighbor, "StationCount", param);
+                neighbor_data->station_count = param->valuedouble;
+
+                decode_param_integer(neighbor, "AggregateScanDuration", param);
+                neighbor_data->aggregate_scan_duration = param->valuedouble;
+
+                decode_param_integer(neighbor, "ScanType", param);
+                neighbor_data->scan_type = param->valuedouble;
+            }
+        } else {
+            result->num_neighbors = 0;
+        }
+    }
+
+    return webconfig_error_none;
+}
+
 webconfig_error_t decode_assocdev_stats_object(wifi_provider_response_t **assoc_stats, cJSON *json)
 {
     cJSON *assoc_stats_arr;

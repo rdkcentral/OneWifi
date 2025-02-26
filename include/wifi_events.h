@@ -156,6 +156,7 @@ typedef enum {
     wifi_event_type_collect_stats,
     wifi_event_type_tcm_rfc,
     wifi_event_type_send_action_frame,
+    wifi_event_type_start_channel_scan,
     wifi_event_command_max,
 
     wifi_event_monitor_diagnostics = wifi_event_type_base

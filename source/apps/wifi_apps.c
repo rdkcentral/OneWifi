@@ -278,7 +278,7 @@ wifi_app_descriptor_t app_desc[] = {
 #if EM_APP
     {
         wifi_app_inst_easymesh, 0,
-        wifi_event_type_monitor | wifi_event_type_webconfig | wifi_event_type_hal_ind,
+        wifi_event_type_monitor | wifi_event_type_webconfig | wifi_event_type_hal_ind | wifi_event_type_command,
         true, true,
         "Easy Mesh",
         em_init, em_event, em_deinit,

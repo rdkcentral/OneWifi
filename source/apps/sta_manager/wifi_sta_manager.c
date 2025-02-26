@@ -106,7 +106,8 @@ static int sta_mgr_handle_disassoc_device(wifi_app_t *app, void *arg)
     assoc_dev_data_t *assoc_data = (assoc_dev_data_t *)arg;
     char client_mac[32];
 
-    if (ctrl->network_mode == rdk_dev_mode_type_gw) {
+    if (ctrl->network_mode == rdk_dev_mode_type_gw || ctrl->network_mode == rdk_dev_mode_type_em_colocated_node ||
+        ctrl->network_mode == rdk_dev_mode_type_em_node) {
         wifi_util_dbg_print(WIFI_APPS, "%s:%d : Got disassoc event \n", __func__, __LINE__);
         to_mac_str((unsigned char *)assoc_data->dev_stats.cli_MACAddress, client_mac);
         sta_beacon_report_reponse_t *t_sta_data = (sta_beacon_report_reponse_t *)hash_map_remove(
@@ -141,7 +142,8 @@ static int sta_mgr_handle_assoc_device(wifi_app_t *app, void *arg)
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     to_mac_str(assoc_data->dev_stats.cli_MACAddress, client_mac);
     // Schedule onlyfor gw mode
-    if ((ctrl->network_mode == rdk_dev_mode_type_gw) && (sta_mgr_is_marker_present())) {
+    if ((ctrl->network_mode == rdk_dev_mode_type_gw || ctrl->network_mode == rdk_dev_mode_type_em_colocated_node ||
+        ctrl->network_mode == rdk_dev_mode_type_em_node) && (sta_mgr_is_marker_present())) {
 
         if (hash_map_get(app->data.u.sta_mgr.sta_mgr_map, client_mac) == NULL) {
             sta_beacon_report_reponse_t *t_sta_data = (sta_beacon_report_reponse_t *)malloc(
@@ -263,13 +265,13 @@ static int sta_mgr_process_beacon_rep(mac_address_t bssid, wifi_hal_rrm_report_t
     p_data = (sta_beacon_report_reponse_t *)hash_map_get(app->data.u.sta_mgr.sta_mgr_map, key);
     sta_mgr_remove_br_report(p_data);
     p_data->num_br_data = rep->size;
-    // to be removed
-    publish_data(p_data);
 
     p_data->data_len = len - IEEE80211_HDRLEN - 1 - sizeof(mgmt->u.action.u.rrm);
     memcpy(p_data->data, mgmt->u.action.u.rrm.variable, p_data->data_len);
     push_event_to_ctrl_queue(p_data, sizeof(sta_beacon_report_reponse_t), wifi_event_type_hal_ind,
         wifi_event_br_report, NULL);
+    // to be removed
+    publish_data(p_data);
     return 0;
 }
 
@@ -286,8 +288,11 @@ static int sta_mgr_handle_action_frame(wifi_app_t *apps, void *arg)
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     memcpy(mac_addr, mgmt->sa, ETH_ALEN);
+    wifi_util_dbg_print(WIFI_APPS,
+                "%s:%d: rrm.action:%d, mode:%d\n", __func__, __LINE__, mgmt->u.action.u.rrm.action, ctrl->network_mode);
     if (mgmt->u.action.u.rrm.action == WLAN_RRM_RADIO_MEASUREMENT_REPORT) {
-        if (ctrl->network_mode == rdk_dev_mode_type_gw) {
+        if (ctrl->network_mode == rdk_dev_mode_type_gw || ctrl->network_mode == rdk_dev_mode_type_em_colocated_node ||
+        ctrl->network_mode == rdk_dev_mode_type_em_node) {
             if (wifi_hal_parse_rm_beaon_report(mgmt_frame->frame.ap_index, mgmt, len, &rep) ==
                 RETURN_OK) {
                 sta_mgr_process_beacon_rep(mac_addr, &rep, apps, mgmt, len);
@@ -295,7 +300,8 @@ static int sta_mgr_handle_action_frame(wifi_app_t *apps, void *arg)
         }
     } else if (mgmt->u.action.u.rrm.action == WLAN_RRM_RADIO_MEASUREMENT_REQUEST) {
 
-        if (ctrl->network_mode != rdk_dev_mode_type_gw) {
+        if (ctrl->network_mode != rdk_dev_mode_type_gw && ctrl->network_mode != rdk_dev_mode_type_em_colocated_node &&
+        ctrl->network_mode != rdk_dev_mode_type_em_node) {
             wifi_hal_parse_rm_beacon_request(mgmt_frame->frame.ap_index, mgmt, len, &req);
             wifi_util_dbg_print(WIFI_APPS,
                 "%s:%d: got duration  %d  op_class %d  duration_mandatory %d dialog_token %d\n",
@@ -312,6 +318,8 @@ int sta_mgr_hal_event_sta_mgr(wifi_app_t *apps, wifi_event_subtype_t sub_type, v
 {
     switch (sub_type) {
     case wifi_event_hal_dpp_public_action_frame:
+        wifi_util_info_print(WIFI_APPS, "%s:%d: wifi_event_hal_dpp_public_action_frame.\n", __func__,
+            __LINE__);
         sta_mgr_handle_action_frame(apps, arg);
         break;
     case wifi_event_hal_assoc_device:
@@ -325,6 +333,8 @@ int sta_mgr_hal_event_sta_mgr(wifi_app_t *apps, wifi_event_subtype_t sub_type, v
         sta_mgr_handle_disassoc_device(apps, arg);
         break;
     default:
+        wifi_util_info_print(WIFI_APPS, "%s:%d: sub_type:%d.\n", __func__,
+            __LINE__, sub_type);
         break;
     }
 
@@ -594,7 +604,8 @@ int sta_mgr_init(wifi_app_t *app, unsigned int create_flag)
         return RETURN_ERR;
     }
 
-    if (ctrl->network_mode == rdk_dev_mode_type_gw) {
+    if (ctrl->network_mode == rdk_dev_mode_type_gw || ctrl->network_mode == rdk_dev_mode_type_em_colocated_node ||
+        ctrl->network_mode == rdk_dev_mode_type_em_node) {
         app->data.u.sta_mgr.sta_mgr_map = hash_map_create();
     }
 
@@ -613,7 +624,8 @@ int sta_mgr_deinit(wifi_app_t *app)
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     wifi_util_info_print(WIFI_APPS, "%s:%d: deinit sta manager\n", __func__, __LINE__);
-    if (ctrl->network_mode == rdk_dev_mode_type_gw) {
+    if (ctrl->network_mode == rdk_dev_mode_type_gw || ctrl->network_mode == rdk_dev_mode_type_em_colocated_node ||
+        ctrl->network_mode == rdk_dev_mode_type_em_node) {
         sta_beacon_report_reponse_t *t_sta_data = (sta_beacon_report_reponse_t *)hash_map_get_first(
             app->data.u.sta_mgr.sta_mgr_map);
         while (t_sta_data != NULL) {
