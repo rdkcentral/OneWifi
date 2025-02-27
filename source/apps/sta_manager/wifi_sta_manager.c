@@ -216,7 +216,7 @@ void sta_mgr_remove_br_report(sta_beacon_report_reponse_t *p_data)
     memset(p_data->data, 0, sizeof(p_data->data));
     return;
 }
-
+#if TEST_ENCODE
 // test Code.
 int publish_data(sta_beacon_report_reponse_t *p_data)
 {
@@ -243,7 +243,6 @@ int publish_data(sta_beacon_report_reponse_t *p_data)
         }
         return -1;
     }
-#if 0
     const char *str = data->u.encoded.raw;
     memset(data, 0, sizeof(webconfig_subdoc_data_t));
     data->u.decoded.hal_cap = mgr->hal_cap;
@@ -251,9 +250,9 @@ int publish_data(sta_beacon_report_reponse_t *p_data)
         wifi_util_info_print(WIFI_APPS, "%s:%d data->u.decoded.stamgr %d\n", __func__, __LINE__,
             data->u.decoded.stamgr.num_br_data);
     }
-#endif
     return 0;
 }
+#endif
 
 static int sta_mgr_process_beacon_rep(mac_address_t bssid, wifi_hal_rrm_report_t *rep,
     wifi_app_t *app, const struct ieee80211_mgmt *mgmt, size_t len)
@@ -263,6 +262,10 @@ static int sta_mgr_process_beacon_rep(mac_address_t bssid, wifi_hal_rrm_report_t
 
     to_mac_str(bssid, key);
     p_data = (sta_beacon_report_reponse_t *)hash_map_get(app->data.u.sta_mgr.sta_mgr_map, key);
+    if (p_data == NULL) {
+        wifi_util_dbg_print(WIFI_APPS, "%s:%d Unknown client\n", __func__, __LINE__);
+        return -1;
+    }
     sta_mgr_remove_br_report(p_data);
     p_data->num_br_data = rep->size;
 
@@ -270,8 +273,10 @@ static int sta_mgr_process_beacon_rep(mac_address_t bssid, wifi_hal_rrm_report_t
     memcpy(p_data->data, mgmt->u.action.u.rrm.variable, p_data->data_len);
     push_event_to_ctrl_queue(p_data, sizeof(sta_beacon_report_reponse_t), wifi_event_type_hal_ind,
         wifi_event_br_report, NULL);
+#if TEST_ENCODE
     // to be removed
     publish_data(p_data);
+#endif
     return 0;
 }
 
@@ -287,6 +292,12 @@ static int sta_mgr_handle_action_frame(wifi_app_t *apps, void *arg)
 
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
+    if (len <= 32) {
+        wifi_util_dbg_print(WIFI_APPS, "%s:%d Invalid Beacon Report Not processing\n", __func__,
+            __LINE__);
+        return -1;
+    }
+
     memcpy(mac_addr, mgmt->sa, ETH_ALEN);
     wifi_util_dbg_print(WIFI_APPS,
                 "%s:%d: rrm.action:%d, mode:%d\n", __func__, __LINE__, mgmt->u.action.u.rrm.action, ctrl->network_mode);
@@ -295,7 +306,9 @@ static int sta_mgr_handle_action_frame(wifi_app_t *apps, void *arg)
         ctrl->network_mode == rdk_dev_mode_type_em_node) {
             if (wifi_hal_parse_rm_beaon_report(mgmt_frame->frame.ap_index, mgmt, len, &rep) ==
                 RETURN_OK) {
-                sta_mgr_process_beacon_rep(mac_addr, &rep, apps, mgmt, len);
+                if (rep.size <= 5) {
+                    sta_mgr_process_beacon_rep(mac_addr, &rep, apps, mgmt, len);
+                }
             }
         }
     } else if (mgmt->u.action.u.rrm.action == WLAN_RRM_RADIO_MEASUREMENT_REQUEST) {
