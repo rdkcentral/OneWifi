@@ -43,6 +43,8 @@ typedef struct {
     unsigned int    req_stats_vap_mask;
 } client_assoc_stats_t;
 
+static int sm_stats_to_monitor_set(wifi_app_t *app, bool enable);
+
 client_assoc_stats_t client_assoc_stats[MAX_NUM_RADIOS];
 
 int sm_survey_type_conversion(wifi_neighborScanMode_t *halw_scan_type, survey_type_t *app_stat_type, unsigned int conv_type)
@@ -556,7 +558,7 @@ int handle_sm_command_event(wifi_app_t *app, wifi_event_t *event)
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
     stats_config_t *cur_stats_cfg = NULL;
     hash_map_t *cur_app_stats_cfg_map = app->data.u.sm_data.sm_stats_config_map;
-    bool off_scan_rfc = g_wifi_mgr->rfc_dml_parameters.wifi_offchannelscan_sm_rfc;
+    bool *sm_app_enable, off_scan_rfc = g_wifi_mgr->rfc_dml_parameters.wifi_offchannelscan_sm_rfc;
 
     wifi_util_dbg_print(WIFI_SM, "inside %s:%d off_scan_rfc:%d\n",__func__, __LINE__,off_scan_rfc);
     if (event->sub_type == wifi_event_type_wifi_offchannelscan_sm_rfc )
@@ -582,6 +584,18 @@ int handle_sm_command_event(wifi_app_t *app, wifi_event_t *event)
                  }
                  cur_stats_cfg = hash_map_get_next(cur_app_stats_cfg_map, cur_stats_cfg);
            }
+       }
+   }
+   else if (event->sub_type == wifi_event_type_sm_app_enable)
+   {
+       sm_app_enable = event->u.core_data.msg;
+       if (sm_app_enable)
+       {
+           sm_stats_to_monitor_set(app, *sm_app_enable);
+       }
+       else
+       {
+           wifi_util_error_print(WIFI_SM, "inside %s:%d sub_type: wifi_event_type_sm_app_enable sm_app_enable=NULL\n",__func__, __LINE__);
        }
    }
    return RETURN_OK;
@@ -771,7 +785,7 @@ int sm_event(wifi_app_t *app, wifi_event_t *event)
             monitor_event_sm(app, event);
         break;
         case wifi_event_type_command:
-            handle_sm_command_event(app,event);
+            handle_sm_command_event(app, event);
         break;
         default:
         break;

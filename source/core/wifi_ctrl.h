@@ -89,6 +89,7 @@ extern "C" {
 
 #define WIFI_WEBCONFIG_KICK_MAC            "Device.WiFi.KickAssocDevices"
 #define BUS_WIFI_WPS_PIN_START             "Device.WiFi.WPS.Start"
+#define BUS_SM_APP_ENABLE                  "Device.X_RDK_MeshAgent.SM_APP.Enable"
 
 #define ETH_BH_STATUS                      "Device.X_RDK_MeshAgent.EthernetBhaulUplink.Status"
 
@@ -243,6 +244,7 @@ typedef struct wifi_ctrl {
     bool                frame_802_11_injector_subscribed;
     bool                factory_reset;
     bool                marker_list_config_subscribed;
+    bool                sm_app_enable_subscribed;
     bool                eth_bh_status_subscribed;
     wifiapi_t           wifiapi;
     wifi_rfc_dml_parameters_t    rfc_params;
