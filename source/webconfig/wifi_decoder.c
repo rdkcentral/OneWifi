@@ -1229,6 +1229,7 @@ webconfig_error_t decode_security_object(const cJSON *security, wifi_vap_securit
 
     if (band == WIFI_FREQUENCY_6_BAND &&
         security_info->mode != wifi_security_mode_wpa3_personal &&
+        security_info->mode != wifi_security_mode_wpa3_compatibility &&
         security_info->mode != wifi_security_mode_wpa3_enterprise &&
         security_info->mode != wifi_security_mode_enhanced_open) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid security mode for 6G interface: %d\n",
