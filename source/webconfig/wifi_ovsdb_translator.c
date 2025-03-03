@@ -601,6 +601,52 @@ void get_translator_config_wpa_mfp(
     }
 }
 
+bool maclist_changed(unsigned int vap_index, hash_map_t *new_acl_map, hash_map_t *current_acl_map)
+{
+    acl_entry_t *new_acl_entry, *current_acl_entry;
+    mac_addr_str_t current_mac_str;
+    mac_addr_str_t new_mac_str;
+
+    if (new_acl_map == NULL && current_acl_map == NULL) {
+        return false;
+    }
+    if (new_acl_map == NULL || current_acl_map == NULL) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: macfilter changed for vap_index %d\n", __func__,
+            __LINE__, vap_index);
+        return true;
+    }
+
+    if (current_acl_map != NULL) {
+        current_acl_entry = hash_map_get_first(current_acl_map);
+        while (current_acl_entry != NULL) {
+            to_mac_str(current_acl_entry->mac, current_mac_str);
+            str_tolower(current_mac_str);
+            if (hash_map_get(new_acl_map, current_mac_str) == NULL) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: macfilter changed for vap_index %d\n",
+                    __func__, __LINE__, vap_index);
+                return true;
+            }
+            current_acl_entry = hash_map_get_next(current_acl_map, current_acl_entry);
+        }
+    }
+
+    if (new_acl_map != NULL) {
+        new_acl_entry = hash_map_get_first(new_acl_map);
+        while (new_acl_entry != NULL) {
+            to_mac_str(new_acl_entry->mac, new_mac_str);
+            str_tolower(new_mac_str);
+            if (hash_map_get(current_acl_map, new_mac_str) == NULL) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: macfilter changed for vap_index %d\n",
+                    __func__, __LINE__, vap_index);
+                return true;
+            }
+            new_acl_entry = hash_map_get_next(new_acl_map, new_acl_entry);
+        }
+    }
+
+    return false;
+}
+
 bool is_ovs_vif_config_changed(webconfig_subdoc_type_t type, webconfig_subdoc_data_t *data,
     rdk_wifi_radio_t *rdk_wifi_radio_state)
 {
@@ -684,8 +730,16 @@ bool is_ovs_vif_config_changed(webconfig_subdoc_type_t type, webconfig_subdoc_da
                 new_rdk_vap_info, is_mesh_sta_vap) == true) {
             // vap configuration changed no need to check further
             wifi_util_dbg_print(WIFI_WEBCONFIG,
-                "%s:%d: Configuration changed for index:%d vap_name %s\n", __func__, __LINE__, i,
-                vap_names[i]);
+                "%s:%d: VAP configuration changed for index:%d vap_name %s\n", __func__, __LINE__,
+                i, vap_names[i]);
+            return true;
+        }
+        if (type == webconfig_subdoc_type_mesh_backhaul &&
+            maclist_changed(vap_index, old_rdk_vap_info->acl_map, new_rdk_vap_info->acl_map) ==
+                true) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,
+                "%s:%d: Macfilter list configuration changed for index:%d vap_name %s\n", __func__,
+                __LINE__, i, vap_names[i]);
             return true;
         }
     }
