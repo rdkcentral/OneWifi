@@ -5772,13 +5772,14 @@ int wifidb_update_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
         wifi_util_error_print(WIFI_DB,"%s:%d: %s invalid vap name \n",__func__, __LINE__,vap_name);
         return RETURN_ERR;
     }
+
+    cfg_sec.security_mode = sec->mode;
     if( sec->mode == WPA3_COMPATIBILITY ) {
         cfg_sec.security_mode = sec->mode;
         int sec_mode_old = 0;
 	cfg_sec.security_mode = wifidb_get_wifi_security_config_old_mode(vap_name, sec, &sec_mode_old);
 	wifi_util_error_print(WIFI_DB,"%s:%d: security_mode:%d \n",__func__, __LINE__, cfg_sec.security_mode);
     }
-    cfg_sec.security_mode = (sec->mode == WPA3_COMPATIBILITY) ? (wifi_security_modes_t)wifi_security_mode_wpa2_personal : sec->mode;
     cfg_sec.encryption_method = sec->encr;
     convert_security_mode_integer_to_string(sec->mfp,(char *)&cfg_sec.mfp_config);
     strncpy(cfg_sec.vap_name,vap_name,(sizeof(cfg_sec.vap_name)-1));
