@@ -149,9 +149,12 @@ static int validate_private_home_security_param(char *mode_enabled, char *encryp
     }
 
     if( (strcmp(mode_enabled, "WPA3-Personal-Compatibility") == 0) && !rfc_param->wpa3_compatibility_enable) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d RFC for WPA3-Personal-Compatibility is not enabled \n",
+        wifi_util_error_print(WIFI_CTRL, "%s:%d RFC for WPA3-Personal-Compatibility is not enabled \n",
             __func__, __LINE__);
-        return webconfig_error_decode;
+        if (execRetVal) {
+            strncpy(execRetVal->ErrorMsg,"Invalid Security Mode, RFC for WPA3-Personal-Compatibility is not enabled\n",sizeof(execRetVal->ErrorMsg)-1);
+        }
+        return RETURN_ERR;
     }
 
      wifi_util_info_print(WIFI_CTRL,"%s: securityparam validation passed \n",__FUNCTION__);
