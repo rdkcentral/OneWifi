@@ -3100,6 +3100,7 @@ void process_rsn_override_rfc(bool type)
                 vapInfo->u.bss_info.security.wpa3_transition_disable = false;
                 vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
                 vapInfo->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
+	        break;
             }
 
             if (vapInfo->u.bss_info.security.mode == wifi_security_mode_wpa2_personal) {
