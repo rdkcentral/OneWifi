@@ -5720,7 +5720,7 @@ int wifidb_get_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
     return RETURN_OK;
 }
 
-int wifidb_get_wifi_security_config_old_mode(int vap_index)
+int wifidb_get_wifi_security_config_old_mode(char *vap_name, int vap_index)
 {
     struct schema_Wifi_Security_Config  *pcfg;
     json_t *where;
@@ -5775,7 +5775,7 @@ int wifidb_update_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
 
     cfg_sec.security_mode = sec->mode;
     if( sec->mode == WPA3_COMPATIBILITY ) {
-	cfg_sec.security_mode = wifidb_get_wifi_security_config_old_mode(vap_index);
+	cfg_sec.security_mode = wifidb_get_wifi_security_config_old_mode(vap_name, vap_index);
 	wifi_util_error_print(WIFI_DB,"%s:%d: security_mode:%d \n",__func__, __LINE__, cfg_sec.security_mode);
     }
     cfg_sec.encryption_method = sec->encr;
