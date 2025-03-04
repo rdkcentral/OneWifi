@@ -264,8 +264,6 @@ typedef struct {
     wifi_csi_data_t csi;
 } __attribute__((packed)) wifi_csi_dev_t;
 
-
-
 typedef struct wifi_hal_rrm_request {
     uint8_t dialog_token;
     uint8_t duration;

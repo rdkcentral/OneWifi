@@ -1,21 +1,16 @@
+#include "common/ieee802_11_defs.h"
 #include "stdlib.h"
 #include "wifi_ctrl.h"
 #include "wifi_hal.h"
 #include "wifi_mgr.h"
 #include "wifi_monitor.h"
+#include "wifi_sta_manager.h"
 #include "wifi_util.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <sys/time.h>
-#include "wifi_sta_manager.h"
-#include "common/ieee802_11_defs.h"
-
-#if TEST_CODE
-//TODO: Test Data, remove later
-unsigned int g_sched_id;
-#endif
 
 static int sta_mgr_send_action_frame(sta_beacon_report_reponse_t *sched_data)
 {
@@ -106,7 +101,8 @@ static int sta_mgr_handle_disassoc_device(wifi_app_t *app, void *arg)
     assoc_dev_data_t *assoc_data = (assoc_dev_data_t *)arg;
     char client_mac[32];
 
-    if (ctrl->network_mode == rdk_dev_mode_type_gw || ctrl->network_mode == rdk_dev_mode_type_em_colocated_node ||
+    if (ctrl->network_mode == rdk_dev_mode_type_gw ||
+        ctrl->network_mode == rdk_dev_mode_type_em_colocated_node ||
         ctrl->network_mode == rdk_dev_mode_type_em_node) {
         wifi_util_dbg_print(WIFI_APPS, "%s:%d : Got disassoc event \n", __func__, __LINE__);
         to_mac_str((unsigned char *)assoc_data->dev_stats.cli_MACAddress, client_mac);
@@ -142,8 +138,10 @@ static int sta_mgr_handle_assoc_device(wifi_app_t *app, void *arg)
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     to_mac_str(assoc_data->dev_stats.cli_MACAddress, client_mac);
     // Schedule onlyfor gw mode
-    if ((ctrl->network_mode == rdk_dev_mode_type_gw || ctrl->network_mode == rdk_dev_mode_type_em_colocated_node ||
-        ctrl->network_mode == rdk_dev_mode_type_em_node) && (sta_mgr_is_marker_present())) {
+    if ((ctrl->network_mode == rdk_dev_mode_type_gw ||
+            ctrl->network_mode == rdk_dev_mode_type_em_colocated_node ||
+            ctrl->network_mode == rdk_dev_mode_type_em_node) &&
+        (sta_mgr_is_marker_present())) {
 
         if (hash_map_get(app->data.u.sta_mgr.sta_mgr_map, client_mac) == NULL) {
             sta_beacon_report_reponse_t *t_sta_data = (sta_beacon_report_reponse_t *)malloc(
@@ -299,11 +297,12 @@ static int sta_mgr_handle_action_frame(wifi_app_t *apps, void *arg)
     }
 
     memcpy(mac_addr, mgmt->sa, ETH_ALEN);
-    wifi_util_dbg_print(WIFI_APPS,
-                "%s:%d: rrm.action:%d, mode:%d\n", __func__, __LINE__, mgmt->u.action.u.rrm.action, ctrl->network_mode);
+    wifi_util_dbg_print(WIFI_APPS, "%s:%d: rrm.action:%d, mode:%d\n", __func__, __LINE__,
+        mgmt->u.action.u.rrm.action, ctrl->network_mode);
     if (mgmt->u.action.u.rrm.action == WLAN_RRM_RADIO_MEASUREMENT_REPORT) {
-        if (ctrl->network_mode == rdk_dev_mode_type_gw || ctrl->network_mode == rdk_dev_mode_type_em_colocated_node ||
-        ctrl->network_mode == rdk_dev_mode_type_em_node) {
+        if (ctrl->network_mode == rdk_dev_mode_type_gw ||
+            ctrl->network_mode == rdk_dev_mode_type_em_colocated_node ||
+            ctrl->network_mode == rdk_dev_mode_type_em_node) {
             if (wifi_hal_parse_rm_beaon_report(mgmt_frame->frame.ap_index, mgmt, len, &rep) ==
                 RETURN_OK) {
                 if (rep.size <= 5) {
@@ -313,8 +312,9 @@ static int sta_mgr_handle_action_frame(wifi_app_t *apps, void *arg)
         }
     } else if (mgmt->u.action.u.rrm.action == WLAN_RRM_RADIO_MEASUREMENT_REQUEST) {
 
-        if (ctrl->network_mode != rdk_dev_mode_type_gw && ctrl->network_mode != rdk_dev_mode_type_em_colocated_node &&
-        ctrl->network_mode != rdk_dev_mode_type_em_node) {
+        if (ctrl->network_mode != rdk_dev_mode_type_gw &&
+            ctrl->network_mode != rdk_dev_mode_type_em_colocated_node &&
+            ctrl->network_mode != rdk_dev_mode_type_em_node) {
             wifi_hal_parse_rm_beacon_request(mgmt_frame->frame.ap_index, mgmt, len, &req);
             wifi_util_dbg_print(WIFI_APPS,
                 "%s:%d: got duration  %d  op_class %d  duration_mandatory %d dialog_token %d\n",
@@ -331,8 +331,8 @@ int sta_mgr_hal_event_sta_mgr(wifi_app_t *apps, wifi_event_subtype_t sub_type, v
 {
     switch (sub_type) {
     case wifi_event_hal_dpp_public_action_frame:
-        wifi_util_info_print(WIFI_APPS, "%s:%d: wifi_event_hal_dpp_public_action_frame.\n", __func__,
-            __LINE__);
+        wifi_util_info_print(WIFI_APPS, "%s:%d: wifi_event_hal_dpp_public_action_frame.\n",
+            __func__, __LINE__);
         sta_mgr_handle_action_frame(apps, arg);
         break;
     case wifi_event_hal_assoc_device:
@@ -346,8 +346,7 @@ int sta_mgr_hal_event_sta_mgr(wifi_app_t *apps, wifi_event_subtype_t sub_type, v
         sta_mgr_handle_disassoc_device(apps, arg);
         break;
     default:
-        wifi_util_info_print(WIFI_APPS, "%s:%d: sub_type:%d.\n", __func__,
-            __LINE__, sub_type);
+        wifi_util_info_print(WIFI_APPS, "%s:%d: sub_type:%d.\n", __func__, __LINE__, sub_type);
         break;
     }
 
@@ -529,74 +528,6 @@ int sta_mgr_event(wifi_app_t *app, wifi_event_t *event)
     return RETURN_OK;
 }
 
-#if TEST_CODE
-//TODO: Test Data, remove later
-//Please replace with associated bssid and sta
-unsigned char binaryData[] = {
-        0x27, 0x39, 0x01, 0x00, 0x05, 0x01, 0x24, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x58, 0xbe, 0xd4, 0x52, 0xee, 0x0e,
-        0x11, 0xcb, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
-        0x16, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x53,
-        0x4b, 0x59, 0x37, 0x39, 0x42, 0x35, 0x37, 0x02,
-        0x02, 0x01, 0x80, 0x27, 0x39, 0x01, 0x00, 0x05,
-        0x01, 0x24, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x68, 0xc6, 0xd8,// d8:3a:dd:f1:6a:b1
-        0x3a, 0xdd, 0xf1, 0x6a, 0xb1, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x01, 0x16, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x08, 0x53, 0x4b, 0x59, 0x51, 0x5a, 0x52,
-        0x39, 0x4a, 0x02, 0x02, 0x01, 0x80, 0x27, 0x39,
-        0x01, 0x00, 0x05, 0x01, 0x24, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x86, 0xd5, 0xa0, 0xbd, 0xcd, 0xfe, 0x3a, 0x85,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x16, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x08, 0x53, 0x4b, 0x59,
-        0x4e, 0x49, 0x39, 0x42, 0x52, 0x02, 0x02, 0x01,
-        0x80, 0x27, 0x3e, 0x01, 0x00, 0x05, 0x01, 0x24,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x6a, 0xc7, 0x00, 0xa3, 0x88,
-        0x78, 0x1d, 0xcd, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x01, 0x1b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0d,
-        0x53, 0x4b, 0x59, 0x57, 0x49, 0x46, 0x49, 0x5f,
-        0x5a, 0x58, 0x32, 0x4a, 0x5a, 0x02, 0x02, 0x01,
-        0x80, 0x27, 0x39, 0x01, 0x00, 0x05, 0x01, 0x24,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x62, 0xc3, 0x78, 0x3e, 0x53,
-        0xfe, 0x52, 0x53, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x01, 0x16, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08,
-        0x53, 0x4b, 0x59, 0x42, 0x42, 0x43, 0x34, 0x42,
-        0x02, 0x02, 0x01, 0x80
-};
-
-static int send_em_test_data(void *arg)
-{
-    wifi_util_info_print(WIFI_APPS, "%s:%d Pushing to ctrl queue\n", __func__, __LINE__);
-    unsigned char null_mac[6] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
-    sta_beacon_report_reponse_t temp_data_t;
-    temp_data_t.num_br_data = 5;
-    temp_data_t.ap_index = 0;
-
-    mac_addr_t sta_mac = {0x82,0x5c,0xec,0x20,0xc0,0xd9};
-    memcpy(temp_data_t.mac_addr, sta_mac, sizeof(mac_addr_t));
-
-    temp_data_t.data_len = sizeof(binaryData);
-
-    wifi_util_info_print(WIFI_APPS, "%s:%d size of len %d\n", __func__, __LINE__, temp_data_t.data_len);
-
-    memcpy(temp_data_t.data, binaryData, temp_data_t.data_len);
-
-    push_event_to_ctrl_queue(&temp_data_t, sizeof(sta_beacon_report_reponse_t),
-        wifi_event_type_hal_ind, wifi_event_br_report, NULL);
-
-    return 0;
-}
-#endif
-
 int sta_mgr_init(wifi_app_t *app, unsigned int create_flag)
 {
 
@@ -617,16 +548,12 @@ int sta_mgr_init(wifi_app_t *app, unsigned int create_flag)
         return RETURN_ERR;
     }
 
-    if (ctrl->network_mode == rdk_dev_mode_type_gw || ctrl->network_mode == rdk_dev_mode_type_em_colocated_node ||
+    if (ctrl->network_mode == rdk_dev_mode_type_gw ||
+        ctrl->network_mode == rdk_dev_mode_type_em_colocated_node ||
         ctrl->network_mode == rdk_dev_mode_type_em_node) {
         app->data.u.sta_mgr.sta_mgr_map = hash_map_create();
     }
 
-    //TODO: Test Data, for manual check without a real client
-#if TEST_CODE
-    scheduler_add_timer_task(ctrl->sched, FALSE, &(g_sched_id), send_em_test_data,
-        NULL, 10000, 0, FALSE);
-#endif
     return 0;
 }
 
@@ -637,7 +564,8 @@ int sta_mgr_deinit(wifi_app_t *app)
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     wifi_util_info_print(WIFI_APPS, "%s:%d: deinit sta manager\n", __func__, __LINE__);
-    if (ctrl->network_mode == rdk_dev_mode_type_gw || ctrl->network_mode == rdk_dev_mode_type_em_colocated_node ||
+    if (ctrl->network_mode == rdk_dev_mode_type_gw ||
+        ctrl->network_mode == rdk_dev_mode_type_em_colocated_node ||
         ctrl->network_mode == rdk_dev_mode_type_em_node) {
         sta_beacon_report_reponse_t *t_sta_data = (sta_beacon_report_reponse_t *)hash_map_get_first(
             app->data.u.sta_mgr.sta_mgr_map);

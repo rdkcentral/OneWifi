@@ -16,27 +16,28 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 **************************************************************************/
+#include "collection.h"
+#include "wifi_ctrl.h"
+#include "wifi_monitor.h"
+#include "wifi_util.h"
+#include <pthread.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdarg.h>
-#include <pthread.h>
 #include <unistd.h>
-#include "collection.h"
-#include "wifi_monitor.h"
-#include "wifi_util.h"
-#include "wifi_ctrl.h"
 
-webconfig_subdoc_object_t   em_config_objects[3] = {
-    { webconfig_subdoc_object_type_version, "Version" },
-    { webconfig_subdoc_object_type_subdoc, "SubDocName" },
+webconfig_subdoc_object_t em_config_objects[3] = {
+    { webconfig_subdoc_object_type_version,   "Version"      },
+    { webconfig_subdoc_object_type_subdoc,    "SubDocName"   },
     { webconfig_subdoc_object_type_em_config, "WifiEMConfig" },
 };
 
 webconfig_error_t init_em_config_subdoc(webconfig_subdoc_t *doc)
 {
-    doc->num_objects = sizeof(em_config_objects)/sizeof(webconfig_subdoc_object_t);
-    memcpy((unsigned char *)doc->objects, (unsigned char *)&em_config_objects, sizeof(em_config_objects));
+    doc->num_objects = sizeof(em_config_objects) / sizeof(webconfig_subdoc_object_t);
+    memcpy((unsigned char *)doc->objects, (unsigned char *)&em_config_objects,
+        sizeof(em_config_objects));
     return webconfig_error_none;
 }
 
@@ -45,16 +46,20 @@ webconfig_error_t access_check_em_config_subdoc(webconfig_t *config, webconfig_s
     return webconfig_error_none;
 }
 
-webconfig_error_t translate_from_em_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
+webconfig_error_t translate_from_em_config_subdoc(webconfig_t *config,
+    webconfig_subdoc_data_t *data)
 {
     return webconfig_error_none;
 }
 
 webconfig_error_t translate_to_em_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
 {
-    if ((data->descriptor & webconfig_data_descriptor_translate_from_easymesh) == webconfig_data_descriptor_translate_from_easymesh) {
-        if (config->proto_desc.translate_from(webconfig_subdoc_type_em_config, data) != webconfig_error_none) {
-            if ((data->descriptor & webconfig_data_descriptor_translate_from_easymesh) == webconfig_data_descriptor_translate_from_easymesh) {
+    if ((data->descriptor & webconfig_data_descriptor_translate_from_easymesh) ==
+        webconfig_data_descriptor_translate_from_easymesh) {
+        if (config->proto_desc.translate_from(webconfig_subdoc_type_em_config, data) !=
+            webconfig_error_none) {
+            if ((data->descriptor & webconfig_data_descriptor_translate_from_easymesh) ==
+                webconfig_data_descriptor_translate_from_easymesh) {
                 return webconfig_error_translate_from_easymesh;
             }
         }
@@ -99,7 +104,8 @@ webconfig_error_t encode_em_config_subdoc(webconfig_t *config, webconfig_subdoc_
     cJSON_AddItemToArray(array_emconfig, obj_emconfig);
 
     if (encode_em_config_object(&params->em_config, obj_emconfig) != webconfig_error_none) {
-        wifi_util_error_print(WIFI_EM, "%s:%d: Failed to encode wifi easymesh config\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_EM, "%s:%d: Failed to encode wifi easymesh config\n", __func__,
+            __LINE__);
         return webconfig_error_encode;
     }
 
@@ -124,7 +130,7 @@ webconfig_error_t decode_em_config_subdoc(webconfig_t *config, webconfig_subdoc_
 {
     webconfig_subdoc_decoded_data_t *params;
     cJSON *json, *em_config;
-    
+
     params = &data->u.decoded;
     if (params == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL json pointer\n", __func__, __LINE__);
@@ -152,7 +158,8 @@ webconfig_error_t decode_em_config_subdoc(webconfig_t *config, webconfig_subdoc_
         for (int i = 0; i < arr_sz; i++) {
             const cJSON *policy_cfg = cJSON_GetArrayItem(em_config, i);
             if (decode_em_policy_object(policy_cfg, &params->em_config) != webconfig_error_none) {
-                wifi_util_error_print(WIFI_EM, "%s:%d: EM config object Validation Failed\n", __func__, __LINE__);
+                wifi_util_error_print(WIFI_EM, "%s:%d: EM config object Validation Failed\n",
+                    __func__, __LINE__);
                 cJSON_Delete(json);
                 wifi_util_error_print(WIFI_EM, "%s\n", (char *)data->u.encoded.raw);
                 return webconfig_error_decode;
@@ -165,4 +172,3 @@ webconfig_error_t decode_em_config_subdoc(webconfig_t *config, webconfig_subdoc_
     wifi_util_info_print(WIFI_EM, "%s:%d: decode success\n", __func__, __LINE__);
     return webconfig_error_none;
 }
-

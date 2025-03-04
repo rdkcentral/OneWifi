@@ -52,13 +52,17 @@ webconfig_error_t access_check_sta_manager_subdoc(webconfig_t *config,
 webconfig_error_t translate_from_sta_manager_subdoc(webconfig_t *config,
     webconfig_subdoc_data_t *data)
 {
-    if ((data->descriptor & webconfig_data_descriptor_translate_to_easymesh) == webconfig_data_descriptor_translate_to_easymesh) {
-        if (config->proto_desc.translate_to(webconfig_subdoc_type_sta_manager, data) != webconfig_error_none) {
-            if ((data->descriptor & webconfig_data_descriptor_translate_to_easymesh) == webconfig_data_descriptor_translate_to_easymesh) {
+    if ((data->descriptor & webconfig_data_descriptor_translate_to_easymesh) ==
+        webconfig_data_descriptor_translate_to_easymesh) {
+        if (config->proto_desc.translate_to(webconfig_subdoc_type_sta_manager, data) !=
+            webconfig_error_none) {
+            if ((data->descriptor & webconfig_data_descriptor_translate_to_easymesh) ==
+                webconfig_data_descriptor_translate_to_easymesh) {
                 return webconfig_error_translate_from_easymesh;
             }
         }
-    } else if ((data->descriptor & webconfig_data_descriptor_translate_to_tr181) == webconfig_data_descriptor_translate_to_tr181) {
+    } else if ((data->descriptor & webconfig_data_descriptor_translate_to_tr181) ==
+        webconfig_data_descriptor_translate_to_tr181) {
 
     } else {
         // no translation required
