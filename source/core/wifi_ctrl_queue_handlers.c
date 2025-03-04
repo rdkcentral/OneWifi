@@ -3095,14 +3095,6 @@ void process_rsn_override_rfc(bool type)
             vapInfo->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
             vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
         } else {
-            if(rfc_param->wpa3_rfc) {
-                vapInfo->u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
-                vapInfo->u.bss_info.security.wpa3_transition_disable = false;
-                vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
-                vapInfo->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
-	        break;
-            }
-
             if (vapInfo->u.bss_info.security.mode == wifi_security_mode_wpa2_personal) {
                 continue;
             }
@@ -3110,6 +3102,13 @@ void process_rsn_override_rfc(bool type)
             if ((radio_params->band == WIFI_FREQUENCY_2_4_BAND) || (radio_params->band == WIFI_FREQUENCY_5_BAND)) {
                     vapInfo->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
                     vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
+            }
+
+	    if(rfc_param->wpa3_rfc) {
+                vapInfo->u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
+                vapInfo->u.bss_info.security.wpa3_transition_disable = false;
+                vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
+                vapInfo->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
             }
         }
         memset(&tgt_vap_map, 0, sizeof(wifi_vap_info_map_t));
