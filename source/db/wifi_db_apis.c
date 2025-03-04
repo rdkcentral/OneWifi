@@ -5720,25 +5720,25 @@ int wifidb_get_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
     return RETURN_OK;
 }
 
-int wifidb_get_wifi_security_config_old_mode(char *vap_name, wifi_vap_security_t *sec, int *sec_mode_old)
+int wifidb_get_wifi_security_config_old_mode(int vap_index)
 {
     struct schema_Wifi_Security_Config  *pcfg;
     json_t *where;
     wifi_db_t *g_wifidb;
     g_wifidb = (wifi_db_t*) get_wifidb_obj();
-    int count;
+    int count, sec_mode_old = 0;
 
     where = onewifi_ovsdb_tran_cond(OCLM_STR, "vap_name", OFUNC_EQ, vap_name);
     pcfg = onewifi_ovsdb_table_select_where(g_wifidb->wifidb_sock_path, &table_Wifi_Security_Config, where, &count);
 
     if (pcfg == NULL) {
         wifidb_print("%s:%d Table table_Wifi_Security_Config table not found, entry count=%d \n",__func__, __LINE__, count);
-        return -1;
+        return wifi_security_mode_wpa2_personal;
     }
-    *sec_mode_old = pcfg->security_mode;
-    wifi_util_error_print(WIFI_DB,"%s:%d: sec_mode_old:%d security_mode:%d \n",__func__, __LINE__, *sec_mode_old, pcfg->security_mode);
+    sec_mode_old = (isVapPrivate(vap_index) && !pcfg->security_mode) ? wifi_security_mode_wpa2_personal : pcfg->security_mode;
+    wifi_util_error_print(WIFI_DB,"%s:%d: sec_mode_old:%d security_mode:%d \n",__func__, __LINE__, sec_mode_old, pcfg->security_mode);
 
-     return *sec_mode_old;
+    return sec_mode_old;
 }
 
 /************************************************************************************
@@ -5775,9 +5775,7 @@ int wifidb_update_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
 
     cfg_sec.security_mode = sec->mode;
     if( sec->mode == WPA3_COMPATIBILITY ) {
-        cfg_sec.security_mode = sec->mode;
-        int sec_mode_old = 0;
-	cfg_sec.security_mode = wifidb_get_wifi_security_config_old_mode(vap_name, sec, &sec_mode_old);
+	cfg_sec.security_mode = wifidb_get_wifi_security_config_old_mode(vap_index);
 	wifi_util_error_print(WIFI_DB,"%s:%d: security_mode:%d \n",__func__, __LINE__, cfg_sec.security_mode);
     }
     cfg_sec.encryption_method = sec->encr;
