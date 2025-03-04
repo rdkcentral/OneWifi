@@ -610,11 +610,6 @@ bool maclist_changed(unsigned int vap_index, hash_map_t *new_acl_map, hash_map_t
     if (new_acl_map == NULL && current_acl_map == NULL) {
         return false;
     }
-    if (new_acl_map == NULL || current_acl_map == NULL) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: macfilter changed for vap_index %d\n", __func__,
-            __LINE__, vap_index);
-        return true;
-    }
 
     if (current_acl_map != NULL) {
         current_acl_entry = hash_map_get_first(current_acl_map);
@@ -643,7 +638,6 @@ bool maclist_changed(unsigned int vap_index, hash_map_t *new_acl_map, hash_map_t
             new_acl_entry = hash_map_get_next(new_acl_map, new_acl_entry);
         }
     }
-
     return false;
 }
 
@@ -1043,6 +1037,40 @@ webconfig_error_t webconfig_convert_ifname_to_subdoc_type(const char *ifname, we
     return webconfig_error_translate_from_ovsdb;
 }
 
+static void clone_maclist_map(unsigned int num_radios, rdk_wifi_radio_t *src, rdk_wifi_radio_t *dst)
+{
+    unsigned int i = 0, j = 0;
+    rdk_wifi_vap_info_t *rdk_vap_info_src, *rdk_vap_info_dst;
+
+    for (i = 0; i < num_radios; i++) {
+        for (j = 0; j < src[i].vaps.num_vaps; j++) {
+            rdk_vap_info_src = &(src[i].vaps.rdk_vap_array[j]);
+            rdk_vap_info_dst = &(dst[i].vaps.rdk_vap_array[j]);
+            if (rdk_vap_info_src->acl_map != NULL) {
+                rdk_vap_info_dst->acl_map = hash_map_clone(rdk_vap_info_src->acl_map,
+                    sizeof(acl_entry_t));
+            } else {
+                rdk_vap_info_dst->acl_map = NULL;
+            }
+        }
+    }
+}
+
+static void free_maclist_map(unsigned int num_radios, rdk_wifi_radio_t *radio)
+{
+    unsigned int i = 0, j = 0;
+    rdk_wifi_vap_info_t *rdk_vap_info;
+
+    for (i = 0; i < num_radios; i++) {
+        for (j = 0; j < radio[i].vaps.num_vaps; j++) {
+            rdk_vap_info = &(radio[i].vaps.rdk_vap_array[j]);
+            if (rdk_vap_info->acl_map != NULL) {
+                hash_map_destroy(rdk_vap_info->acl_map);
+            }
+        }
+    }
+}
+
 webconfig_error_t webconfig_ovsdb_encode(webconfig_t *config,
     const webconfig_external_ovsdb_t *data, webconfig_subdoc_type_t type, char **str)
 {
@@ -1065,11 +1093,14 @@ webconfig_error_t webconfig_ovsdb_encode(webconfig_t *config,
 
     memcpy(rdk_wifi_radio_state, webconfig_ovsdb_data.u.decoded.radios,
         (MAX_NUM_RADIOS * sizeof(rdk_wifi_radio_t)));
+    clone_maclist_map(webconfig_ovsdb_data.u.decoded.num_radios,
+        webconfig_ovsdb_data.u.decoded.radios, rdk_wifi_radio_state);
 
     // Here webconfig_ovsdb_data's decoded_params will be updated.
     if (webconfig_encode(config, &webconfig_ovsdb_data, type) != webconfig_error_none) {
         *str = NULL;
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: OVSM encode failed\n", __func__, __LINE__);
+        free_maclist_map(webconfig_ovsdb_data.u.decoded.num_radios, rdk_wifi_radio_state);
         free(rdk_wifi_radio_state);
         return webconfig_error_encode;
     }
@@ -1085,12 +1116,14 @@ webconfig_error_t webconfig_ovsdb_encode(webconfig_t *config,
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: No change in config for subdoc type : %d\n",
             __func__, __LINE__, type);
         *str = NULL;
+        free_maclist_map(webconfig_ovsdb_data.u.decoded.num_radios, rdk_wifi_radio_state);
         free(rdk_wifi_radio_state);
         return webconfig_error_translate_from_ovsdb_cfg_no_change;
     }
     webconfig_ovsdb_raw_data_ptr = webconfig_ovsdb_data.u.encoded.raw;
 
     *str = webconfig_ovsdb_raw_data_ptr;
+    free_maclist_map(webconfig_ovsdb_data.u.decoded.num_radios, rdk_wifi_radio_state);
     free(rdk_wifi_radio_state);
     return webconfig_error_none;
 }
