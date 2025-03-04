@@ -1390,6 +1390,23 @@ static int eth_bh_status_notify()
 }
 #endif
 
+static void acs_keep_out_evt_handler(char* event_name, raw_data_t *p_data)
+{
+    wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Inside and checking if data type is bus_data_type_string\n",__FUNCTION__,__LINE__);
+    
+    if (p_data->data_type != bus_data_type_string) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d SREESH event:%s wrong data type:%x\n", __func__, __LINE__,
+            event_name, p_data->data_type);
+        return;
+    }
+
+    //char* json_schema = (char*)malloc(p_data->raw_data_len*sizeof(char));
+    char json_schema[128];
+    strncpy(json_schema,p_data->raw_data.bytes, p_data->raw_data_len);
+    wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Value of JSON schema = %s and pushing the event onto a thread\n",__FUNCTION__,__LINE__,json_schema);
+    push_event_to_ctrl_queue(json_schema, strlen(json_schema), wifi_event_type_hal_ind, wifi_event_hal_acs_keep_out, NULL);
+}
+
 void speed_test_handler (char *event_name, raw_data_t *p_data)
 {
     speed_test_data_t speed_test_data = { 0 };

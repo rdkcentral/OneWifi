@@ -2862,6 +2862,18 @@ int get_neighbor_scan_results(void *arg)
     return TIMER_TASK_COMPLETE;
 }
 
+void process_acs_keep_out_channels_event(void* data)
+{
+    wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Inside\n",__FUNCTION__,__LINE__);
+    int *arr = (int*)malloc(17*sizeof(int));
+    if(!arr)
+    {
+        wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH The pointer arr is NULL\n",__FUNCTION__,__LINE__);
+    }
+    //Process the decoding of the JSON file inside wifi_decoder.c instead of here. This is just a wrapper.
+    decode_acs_keep_out_json(data,arr);
+    //wifi_hal_set_acs_exclusion_list(arr);
+}
 
 void process_neighbor_scan_command_event()
 {
@@ -3348,6 +3360,11 @@ void handle_hal_indication(wifi_ctrl_t *ctrl, void *data, unsigned int len,
 
     case wifi_event_hal_channel_change:
         process_channel_change_event(data, nop_start_reboot, dfs_timer_secs);
+        break;
+
+    case wifi_event_hal_acs_keep_out:
+        wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH About to call process_acs_keep_out_channels\n",__FUNCTION__,__LINE__);
+        process_acs_keep_out_channels_event(data);
         break;
 
     default:
