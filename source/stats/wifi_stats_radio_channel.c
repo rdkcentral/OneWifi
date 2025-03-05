@@ -774,6 +774,9 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
     int bytes_written = 0;
     int count = 0;
     int id = 0;
+    int on_chan_list[MAX_CHANNELS] = {0};
+    int onchan_num_channels = 0;
+    int new_num_channels = 0;
     wifi_mon_stats_args_t *args = NULL;
 
     if (c_elem == NULL) {
@@ -852,13 +855,28 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
                 return RETURN_OK;
             }
         }
-
+	if (get_on_channel_scan_list(radioOperation->band, radioOperation->channelWidth, radioOperation->channel, on_chan_list, &onchan_num_channels) != 0) {
+	    onchan_num_channels = 1;
+	    on_chan_list[0] = radioOperation->channel;
+    }
         if ((unsigned int)args->channel_list.channels_list[0] == radioOperation->channel &&
             args->channel_list.num_channels > 1) {
             channels[0] = args->channel_list.channels_list[1];
         } else {
             channels[0] = args->channel_list.channels_list[0];
         }
+	// skip on-channel scan list
+	for (int i = 0; i < args->channel_list.num_channels; i++) {
+		int unmatched = 1;
+		for (int j = 0; j < onchan_num_channels; j++) {
+			if ((int)args->channel_list.channels_list[i] == on_chan_list[j]) {
+			                unmatched = 0;
+            }
+        }
+		if (unmatched){
+        channels[new_num_channels++] = args->channel_list.channels_list[i];
+		}
+    }
         for (i = 0; i < args->channel_list.num_channels; i++) {
             if (mon_data->last_scanned_channel[args->radio_index] ==
                 args->channel_list.channels_list[i]) {
