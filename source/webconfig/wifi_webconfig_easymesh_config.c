@@ -16,16 +16,16 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 **************************************************************************/
-#include "collection.h"
-#include "wifi_ctrl.h"
-#include "wifi_monitor.h"
-#include "wifi_util.h"
-#include <pthread.h>
-#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
+#include <pthread.h>
 #include <unistd.h>
+#include "collection.h"
+#include "wifi_monitor.h"
+#include "wifi_util.h"
+#include "wifi_ctrl.h"
 
 webconfig_subdoc_object_t em_config_objects[3] = {
     { webconfig_subdoc_object_type_version,   "Version"      },

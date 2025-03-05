@@ -1,11 +1,11 @@
-#include "const.h"
-#include "scheduler.h"
-#include "wifi_em.h"
-#include "wifi_em_utils.h"
-#include "wifi_hal.h"
-#include "wifi_mgr.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include "scheduler.h"
+#include "wifi_hal.h"
+#include "wifi_mgr.h"
+#include "wifi_em.h"
+#include "wifi_em_utils.h"
+#include "const.h"
 
 #define DCA_TO_APP 1
 #define APP_TO_DCA 2
