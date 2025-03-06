@@ -1647,8 +1647,8 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
                     ctrl->mesh_keep_out_chans_subscribed = true;
                     wifi_util_info_print(WIFI_CTRL, "%s:%d SREESH bus: bus event:%s subscribe success\n",
                         __FUNCTION__, __LINE__, ACS_KEEP_OUT);
-                }
-            }
+        }
+    }
         
 #if defined(RDKB_EXTENDER_ENABLED)
     if (ctrl->eth_bh_status_subscribed == false) {
