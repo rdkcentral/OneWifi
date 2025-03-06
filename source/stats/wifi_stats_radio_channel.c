@@ -871,6 +871,7 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
 		for (int j = 0; j < onchan_num_channels; j++) {
 			if ((int)args->channel_list.channels_list[i] == on_chan_list[j]) {
 			                unmatched = 0;
+					break;
             }
         }
 		if (unmatched){
