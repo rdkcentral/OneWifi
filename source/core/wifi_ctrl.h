@@ -91,7 +91,7 @@ extern "C" {
 #define BUS_WIFI_WPS_PIN_START             "Device.WiFi.WPS.Start"
 
 #define ETH_BH_STATUS                      "Device.X_RDK_MeshAgent.EthernetBhaulUplink.Status"
-#define ACS_KEEP_OUT                       "Device.X_RDK_MeshAgent.MeshBackHaul.Ifname"
+#define ACS_KEEP_OUT                       "Device.X_RDK_MeshAgent.Mesh.ChannelPlan.Data.KeepOut"
  
 #define TR181_GLOBAL_FEATURE_PARAM_GFO_SUPPORTED "Device.X_RDK_Features.GatewayFailover.Enable"
 

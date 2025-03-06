@@ -2490,7 +2490,7 @@ webconfig_error_t decode_radio_setup_object(const cJSON *obj_radio_setup, rdk_wi
     return webconfig_error_none;
 }
 
-void decode_acs_keep_out_json(void *json_string, int* buff6)
+void decode_acs_keep_out_json(void *json_string, hash_map_t *radio6g)
 {
     cJSON *json = cJSON_Parse((const char*)json_string);
     if (json == NULL) {
@@ -2501,11 +2501,24 @@ void decode_acs_keep_out_json(void *json_string, int* buff6)
         }
         return;
     }
-    int len = 0;
+    int len_160mhz = 0;
+    int len_320mhz = 0;
     wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH %s\n",__FUNCTION__,__LINE__,(char*)json_string);
     // Navigate to ChannelExclusion
     cJSON *channelExclusion = cJSON_GetObjectItem(json, "ChannelExclusion");
     wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH After cJSON_GetObjectItem of ChannelExclusion\n",__func__,__LINE__);
+    int *buff_320mhz = (int*)malloc(17*sizeof(int));
+    int *buff_160mhz = (int*)malloc(9*sizeof(int));
+    if(!buff_320mhz)
+    {
+        wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH The pointer arr_320mhz is NULL\n",__FUNCTION__,__LINE__);
+        return;
+    }
+    if(!buff_160mhz)
+    {
+        wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH The pointer arr_160mhz is NULL\n",__FUNCTION__,__LINE__);
+        return; 
+    }
     if (cJSON_IsArray(channelExclusion)) {
         cJSON *radioParams = cJSON_GetObjectItem(channelExclusion->child, "radio6G");
         wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH After cJSON_GetObjectItem of radio6G\n",__func__,__LINE__);
@@ -2514,16 +2527,15 @@ void decode_acs_keep_out_json(void *json_string, int* buff6)
             cJSON *bandwidth160 = cJSON_GetObjectItem(radioParams, "160");
             wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH After cJSON_GetObjectItem of 160\n",__func__,__LINE__);
             if (bandwidth160 != NULL) {
-            cJSON *bandwidth160 = cJSON_GetObjectItem(radioParams, "160");
-            wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH After cJSON_GetObjectItem of 160\n",__func__,__LINE__);
-            if (bandwidth160 != NULL) {
                 wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Radio 6G - Bandwidth 160: \n",__func__,__LINE__);
                 cJSON *channel;
                 cJSON_ArrayForEach(channel, bandwidth160) {
-                    buff6[len] = channel->valueint;
-                    wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH channel->valueint = %d && buff6[len] = %d\n",__FUNCTION__,__LINE__,channel->valueint,buff6[len]);
-                    len++;
+                    buff_160mhz[len_160mhz] = channel->valueint;
+                    wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH channel->valueint = %d && buff_160mhz[len] = %d\n",__FUNCTION__,__LINE__,channel->valueint,buff_160mhz[len_160mhz]);
+                    len_160mhz++;
                 }
+                buff_160mhz[len_160mhz] = -1;
+                hash_map_put(radio6g,"160",buff_160mhz);
             }
             wifi_hal_info_print("%s:%d SREESH About to retrieve 320 MHz\n",__FUNCTION__,__LINE__);
             cJSON *bandwidth320 = cJSON_GetObjectItem(radioParams, "320");
@@ -2531,23 +2543,26 @@ void decode_acs_keep_out_json(void *json_string, int* buff6)
                 wifi_hal_info_print("%s:%d SREESH Radio 6G - Bandwidth 320: \n",__func__,__LINE__);
                 cJSON *channel;
                 cJSON_ArrayForEach(channel, bandwidth320) {
-                    buff6[len] = channel->valueint;
-                    wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH channel->valueint = %d && buff6[i] = %d\n",__FUNCTION__,__LINE__,channel->valueint,buff6[len]);
-                    len++;
+                    buff_320mhz[len_320mhz] = channel->valueint;
+                    wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH channel->valueint = %d && buff_320mhz[i] = %d\n",__FUNCTION__,__LINE__,channel->valueint,buff_320mhz[len_320mhz]);
+                    len_320mhz++;
             }
+            buff_320mhz[len_320mhz] = -1;
+            hash_map_put(radio6g,"320",buff_320mhz);
         }
     }
-    buff6[len] = -1;
     // Clean up
-    }
-    for(int i=0;i<len;i++)
+    for(int i=0;i<=len_160mhz;i++)
     {
-        wifi_util_info_print(WIFI_CTRL,"%s:%d buff6[%d] = %d\t",__FUNCTION__,__LINE__,i,buff6[i]);
+        wifi_util_info_print(WIFI_CTRL,"%s:%d buff_160mhz[%d] = %d\t",__FUNCTION__,__LINE__,i,buff_160mhz[i]);
     }
-    wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH \n",__FUNCTION__,__LINE__);
-}
-cJSON_Delete(json);
-wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH cJSON_Delete has been called\n",__FUNCTION__,__LINE__);
+    for(int i=0;i<=len_320mhz;i++)
+    {
+        wifi_util_info_print(WIFI_CTRL,"%s:%d buff_320mhz[%d] = %d\t",__FUNCTION__,__LINE__,i,buff_320mhz[i]);
+    }
+    }
+    cJSON_Delete(json);
+    wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH cJSON_Delete has been called\n",__FUNCTION__,__LINE__);
 }
 
 webconfig_error_t decode_radio_operating_classes(const cJSON *obj_radio_setup,
