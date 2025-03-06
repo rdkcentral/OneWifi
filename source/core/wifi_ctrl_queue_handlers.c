@@ -2879,7 +2879,7 @@ void process_acs_keep_out_channels_event(void* data)
     //Process the decoding of the JSON file inside wifi_decoder.c instead of here. This is just a wrapper.
     decode_acs_keep_out_json(data,radio6g);
     int ret = wifi_hal_set_acs_exclusion_list(radio6g); // Do this via platform.c file through wifi_hal.c file
-    wifi_hal_info_print("%s:%d SREESH Value of ret = %d\n",__func__,__LINE__,ret);
+    wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Value of ret = %d\n",__func__,__LINE__,ret);
     if(radio6g)
     {
         hash_map_destroy(radio6g);
