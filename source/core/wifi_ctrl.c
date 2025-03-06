@@ -2550,6 +2550,8 @@ wifi_rfc_dml_parameters_t *get_ctrl_rfc_parameters(void)
         g_wifi_mgr->rfc_dml_parameters.wifi_offchannelscan_sm_rfc;
     g_wifi_mgr->ctrl.rfc_params.tcm_enabled_rfc =
         g_wifi_mgr->rfc_dml_parameters.tcm_enabled_rfc;
+    g_wifi_mgr->ctrl.rfc_params.wpa3_compatibility_enable =
+        g_wifi_mgr->rfc_dml_parameters.wpa3_compatibility_enable;
     strcpy(g_wifi_mgr->ctrl.rfc_params.rfc_id, g_wifi_mgr->rfc_dml_parameters.rfc_id);
     return &g_wifi_mgr->ctrl.rfc_params;
 }
@@ -2578,34 +2580,6 @@ int set_multi_radio_dml_parameters(uint8_t radio_index, char *str, void *value)
     } else {
         ret = RETURN_ERR;
         wifi_util_dbg_print(WIFI_CTRL, "%s set multi radio dml data not match %s: radio_index:%d \n", __FUNCTION__, str, radio_index);
-    }
-    return ret;
-}
-
-int get_multi_vap_dml_parameters(uint8_t ap_index, char *str, void *value)
-{
-    int ret = RETURN_OK;
-    wifi_mgr_t *l_wifi_mgr = get_wifimgr_obj();
-    wifi_util_dbg_print(WIFI_CTRL, "%s get multi vap structure data %s: ap_index:%d \n", __FUNCTION__, str, ap_index);
-    if ((strcmp(str, RECONNECT_COUNT_STATUS) == 0)) {
-        *(bool*)value = l_wifi_mgr->dml_parameters.ReconnectCountEnable[ap_index];
-    } else {
-        ret = RETURN_ERR;
-        wifi_util_dbg_print(WIFI_CTRL, "%s get multi vap structure data not match %s: ap_index:%d \n", __FUNCTION__, str, ap_index);
-    }
-    return ret;
-}
-
-int set_multi_vap_dml_parameters(uint8_t ap_index, char *str, void *value)
-{
-    int ret = RETURN_OK;
-    wifi_mgr_t *l_wifi_mgr = get_wifimgr_obj();
-    wifi_util_dbg_print(WIFI_CTRL, "%s set multi vap structure data %s: ap_index:%d \n", __FUNCTION__, str, ap_index);
-    if ((strcmp(str, RECONNECT_COUNT_STATUS) == 0)) {
-        l_wifi_mgr->dml_parameters.ReconnectCountEnable[ap_index] = *(bool*)value;
-    } else {
-        ret = RETURN_ERR;
-        wifi_util_dbg_print(WIFI_CTRL, "%s set multi vap structure data not match %s: ap_index:%d \n", __FUNCTION__, str, ap_index);
     }
     return ret;
 }

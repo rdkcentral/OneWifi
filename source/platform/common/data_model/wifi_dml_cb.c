@@ -29,7 +29,8 @@ static inline bool is_personal_sec(wifi_security_modes_t mode)
         mode == wifi_security_mode_wpa2_personal ||
         mode == wifi_security_mode_wpa_wpa2_personal ||
         mode == wifi_security_mode_wpa3_personal ||
-        mode == wifi_security_mode_wpa3_transition;
+        mode == wifi_security_mode_wpa3_transition ||
+        mode == wifi_security_mode_wpa3_compatibility;
 }
 
 static inline bool is_enterprise_sec(wifi_security_modes_t mode)
@@ -496,6 +497,13 @@ bool wifi_set_param_bool_value(void *obj_ins_context, char *param_name, bool out
         } else {
             get_stubs_descriptor()->v_secure_system_fn("/usr/ccsp/wifi/wifi_logupload.sh stop");
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Log_upload stopped\n", __func__, __LINE__);
+        }
+    } else if (STR_CMP(param_name, "WPA3_Personal_Compatibility")) {
+        wifi_rfc_dml_parameters_t *p_rfc_cfg = (wifi_rfc_dml_parameters_t *)get_ctrl_rfc_parameters();
+        DM_CHECK_NULL_WITH_RC(p_rfc_cfg, false);
+
+        if(output_value != p_rfc_cfg->wpa3_compatibility_enable){
+            push_rfc_dml_cache_to_one_wifidb(output_value, wifi_event_type_rsn_override_rfc);
         }
     } else {
         wifi_util_info_print(WIFI_DMCLI,"%s:%d: unsupported param name:%s\n",__func__, __LINE__, param_name);
@@ -2755,6 +2763,10 @@ bool security_set_param_string_value(void *obj_ins_context, char *param_name, sc
              return false;
         }
 
+        if(rfc_pcfg->wpa3_compatibility_enable == false && (l_tmp_sec_mode == wifi_security_mode_wpa3_compatibility)) {
+            wifi_util_error_print(WIFI_DMCLI,"%s:%d WPA3 personal compatibility is Disabled \n",__func__, __LINE__);
+        }
+
         // cleanup key/radius for personal-enterprise-open mode change
         if ((is_personal_sec(l_tmp_sec_mode) && !is_personal_sec(p_dm_sec_cfg->mode)) ||
             (is_enterprise_sec(l_tmp_sec_mode) && !is_enterprise_sec(p_dm_sec_cfg->mode)) ||
@@ -2796,6 +2808,10 @@ bool security_set_param_string_value(void *obj_ins_context, char *param_name, sc
                 break;
             case wifi_security_mode_enhanced_open:
                 p_dm_sec_cfg->mfp = wifi_mfp_cfg_required;
+                break;
+            case wifi_security_mode_wpa3_compatibility:
+                l_security_cfg->u.key.type = wifi_security_key_type_psk_sae;
+                p_dm_sec_cfg->mfp = wifi_mfp_cfg_disabled;
                 break;
             default:
                 break;

@@ -117,6 +117,7 @@ typedef enum {
     webconfig_subdoc_type_wifi_config,
     webconfig_subdoc_type_csi,
     webconfig_subdoc_type_stats_config,
+    webconfig_subdoc_type_em_config,
     webconfig_subdoc_type_steering_config,
     webconfig_subdoc_type_steering_clients,
     webconfig_subdoc_type_vif_neighbors,
@@ -128,12 +129,14 @@ typedef enum {
     webconfig_subdoc_type_assocdev_stats,
     webconfig_subdoc_type_radiodiag_stats,
     webconfig_subdoc_type_radio_temperature,
+    webconfig_subdoc_type_sta_manager,
     webconfig_subdoc_type_vap_24G,
     webconfig_subdoc_type_vap_5G,
     webconfig_subdoc_type_vap_6G,
     webconfig_subdoc_type_radio_24G,
     webconfig_subdoc_type_radio_5G,
     webconfig_subdoc_type_radio_6G,
+    webconfig_subdoc_type_em_channel_stats,
     webconfig_subdoc_type_max
 } webconfig_subdoc_type_t;
 
@@ -156,6 +159,7 @@ typedef enum {
     webconfig_subdoc_object_type_vif_neighbors,
     webconfig_subdoc_object_type_levl,
     webconfig_subdoc_object_type_cac,
+    webconfig_subdoc_object_type_em_config,
     webconfig_subdoc_object_max
 } webconfig_subdoc_object_type_t;
 
@@ -600,6 +604,15 @@ webconfig_error_t       decode_single_radio_subdoc(webconfig_t *config, webconfi
 webconfig_error_t       encode_single_radio_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_to_single_radio_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_from_single_radio_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+// EM Config
+webconfig_error_t       init_em_config_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_em_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_em_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_em_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_em_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_em_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
 #ifdef __cplusplus
 }
 #endif

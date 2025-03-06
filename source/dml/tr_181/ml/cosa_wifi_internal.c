@@ -932,7 +932,7 @@ void CosaDmlWiFiGetDataFromPSM(void)
 {
     uint8_t index;
     int rssi = 0;
-    bool bReconnectCountEnable = 0, bFeatureMFPConfig = 0;
+    bool bFeatureMFPConfig = 0;
     bool l_boolValue;
     int  l_intValue;
     char recName[256];
@@ -952,23 +952,6 @@ void CosaDmlWiFiGetDataFromPSM(void)
     }
     set_vap_dml_parameters(RSSI_THRESHOLD, &rssi);
     
-    for (index = 0; index < getTotalNumberVAPs(); index++)
-    {
-        UINT apIndex;
-
-        apIndex = VAP_INDEX(((webconfig_dml_t *)get_webconfig_dml())->hal_cap, index);
-        if (CosaDmlWiFi_GetRapidReconnectCountEnable(apIndex , (BOOLEAN *) &bReconnectCountEnable, false) != ANSC_STATUS_SUCCESS)
-        {
-            /* Set default value */
-            if (isVapPrivate(apIndex)) {
-                bReconnectCountEnable = 1;
-            } else {
-                bReconnectCountEnable = 0;
-            }
-        }
-        set_multi_vap_dml_parameters(apIndex, RECONNECT_COUNT_STATUS, &bReconnectCountEnable);
-    }
-
     if(CosaDmlWiFi_GetFeatureMFPConfigValue((BOOLEAN *) &bFeatureMFPConfig) != ANSC_STATUS_SUCCESS)
     {
         /* Set Default value */

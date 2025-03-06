@@ -1711,32 +1711,27 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
         wifi_util_error_print(WIFI_APPS, "%s: wrong vapIndex:%d \n", __FUNCTION__, vap_index);
     }
     if (sendIndication == true) {
-        bool bReconnectCountEnable = 0;
-        // check whether Reconnect Count is enabled or not fro individual vAP
-        get_multi_vap_dml_parameters(vap_index, RECONNECT_COUNT_STATUS, &bReconnectCountEnable);
-        if (bReconnectCountEnable == true) {
-            get_formatted_time(tmp);
-            memset(buff, 0, MAX_BUFF_SIZE);
-            memset(telemetryBuff, 0, MAX_BUFF_SIZE);
-            snprintf(buff, MAX_BUFF_SIZE - 1, "%s WIFI_RECONNECT_%d:", tmp, vap_index + 1);
-            for (i = 0; i < num_devs; i++) {
-                snprintf(tmp, CLIENT_TELEMETRY_PARAM_MAX_LEN, "%s,%d;",
-                    to_sta_key(sta[i].sta_mac, sta_key), sta[i].rapid_reconnects);
-                strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
-                strncat(telemetryBuff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
-                sta[i].rapid_reconnects = 0;
-            }
-            strncat(buff, "\n", 2);
-            write_to_file(wifi_health_log, buff);
-            if (isVapPrivate(vap_index)) {
-                snprintf(eventName, sizeof(eventName), "WIFI_REC_%d_split", vap_index + 1);
-                get_stubs_descriptor()->t2_event_s_fn(eventName, telemetryBuff);
-            } else if (isVapLnfPsk(vap_index) && is_managed_wifi) {
-                snprintf(eventName, sizeof(eventName), "MG_REC_%d_split", vap_index + 1);
-                get_stubs_descriptor()->t2_event_s_fn(eventName, telemetryBuff);
-            }
-            wifi_util_dbg_print(WIFI_APPS, "%s", buff);
+        get_formatted_time(tmp);
+        memset(buff, 0, MAX_BUFF_SIZE);
+        memset(telemetryBuff, 0, MAX_BUFF_SIZE);
+        snprintf(buff, MAX_BUFF_SIZE - 1, "%s WIFI_RECONNECT_%d:", tmp, vap_index + 1);
+        for (i = 0; i < num_devs; i++) {
+            snprintf(tmp, CLIENT_TELEMETRY_PARAM_MAX_LEN, "%s,%d;",
+                to_sta_key(sta[i].sta_mac, sta_key), sta[i].rapid_reconnects);
+            strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
+            strncat(telemetryBuff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
+            sta[i].rapid_reconnects = 0;
         }
+        strncat(buff, "\n", 2);
+        write_to_file(wifi_health_log, buff);
+        if (isVapPrivate(vap_index)) {
+            snprintf(eventName, sizeof(eventName), "WIFI_REC_%d_split", vap_index + 1);
+            get_stubs_descriptor()->t2_event_s_fn(eventName, telemetryBuff);
+        } else if (isVapLnfPsk(vap_index) && is_managed_wifi) {
+            snprintf(eventName, sizeof(eventName), "MG_REC_%d_split", vap_index + 1);
+            get_stubs_descriptor()->t2_event_s_fn(eventName, telemetryBuff);
+        }
+        wifi_util_dbg_print(WIFI_APPS, "%s", buff);
     }
 
     wifi_platform_property_t *wifi_prop = (wifi_platform_property_t *)get_wifi_hal_cap_prop();
@@ -2114,6 +2109,7 @@ static void config_associated_device_stats(wifi_monitor_data_t *data)
         //for each vap push the event to monitor queue
         for (vapArrayIndex = 0; vapArrayIndex < getNumberVAPsPerRadio(radio_index); vapArrayIndex++) {
             data->u.mon_stats_config.args.vap_index = wifi_mgr->radio_config[radio_index].vaps.rdk_vap_array[vapArrayIndex].vap_index;
+            data->u.mon_stats_config.args.radio_index = radio_index;
             if (!isVapSTAMesh(data->u.mon_stats_config.args.vap_index)) {
                 push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
             }

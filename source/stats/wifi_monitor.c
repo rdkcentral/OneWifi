@@ -145,7 +145,7 @@ bool monitor_initialization_done;
 static events_monitor_t g_events_monitor;
 
 int harvester_get_associated_device_info(int vap_index, char **harvester_buf);
-
+hash_map_t *get_sta_data_map(unsigned int vap_index);
 extern void* bus_handle;
 //extern char g_Subsystem[32];
 //#define SINGLE_CLIENT_WIFI_AVRO_FILENAME "WifiSingleClient.avsc"
@@ -164,6 +164,8 @@ extern void* bus_handle;
 
 #define MIN_TO_MILLISEC 60000
 #define SEC_TO_MILLISEC 1000
+
+#define MAX_AKM_REPORT_REFRESH_PERIOD 3600
 
 #define ASSOC_REQ_MAC_HEADER_LEN 24 + 2 + 2 // 4 bytes after mac header reserved for fixed len fields
 
@@ -212,7 +214,7 @@ static void scheduler_telemetry_tasks(void);
 int csi_sendPingData(void * arg);
 static int csi_update_pinger(int ap_index, mac_addr_t mac_addr, bool pause_pinger);
 static int clientdiag_sheduler_enable(int ap_index);
-
+void telemetry_event_akm_count(telemetry_data_t *sta1,int vapindex, char *mac);
 void deinit_wifi_monitor(void);
 void SetBlasterMqttTopic(char *mqtt_topic);
 
@@ -226,6 +228,128 @@ static inline char *to_sta_key    (mac_addr_t mac, sta_key_t key)
 BOOL IsWiFiApStatsEnable(UINT uvAPIndex)
 {
     return ((sWiFiDmlApStatsEnableCfg[uvAPIndex]) ? TRUE : FALSE);
+}
+
+telemetry_data_t *create_wpa3_enhanced_sta_data_hash_map(hash_map_t *sta_map, mac_addr_t l_sta_mac) {
+
+    pthread_mutex_lock(&g_monitor_module.data_lock);
+    mac_addr_str_t mac_str = { 0 };
+    telemetry_data_t *sta = NULL;
+
+    sta = (telemetry_data_t *)malloc(sizeof(telemetry_data_t));
+    if (sta == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d malloc allocation failure\r\n", __func__, __LINE__);
+        pthread_mutex_unlock(&g_monitor_module.data_lock);
+        return NULL;
+    }
+    memset(sta, 0, sizeof(telemetry_data_t));
+    memcpy(sta->sta_mac, l_sta_mac, sizeof(mac_addr_t));
+    char *mac_str_dup = strdup(to_mac_str(l_sta_mac, mac_str));
+    if (mac_str_dup == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d strdup allocation failure\r\n", __func__, __LINE__);
+        free(sta);
+        pthread_mutex_unlock(&g_monitor_module.data_lock);
+        return NULL;
+    }
+    hash_map_put(sta_map, mac_str_dup, sta);
+    wifi_util_dbg_print(WIFI_MON, "Created STA entry for MAC: %s\r\n", mac_str_dup);
+    pthread_mutex_unlock(&g_monitor_module.data_lock);
+    return sta;
+}
+
+hash_map_t *get_wpa3_enhanced_sta_data_map(unsigned int vap_index) {
+
+    pthread_mutex_lock(&g_monitor_module.data_lock);
+    unsigned int vap_array_index;
+    char vap_name[32] = {0};
+    convert_vap_index_to_name(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, vap_index, vap_name);
+    if (strlen(vap_name) <= 0) {
+        wifi_util_error_print(WIFI_MON, "%s:%d wrong vap_index:%d\r\n", __func__, __LINE__, vap_index);
+        pthread_mutex_unlock(&g_monitor_module.data_lock);
+        return NULL;
+    }
+    getVAPArrayIndexFromVAPIndex(vap_index, &vap_array_index);
+    pthread_mutex_unlock(&g_monitor_module.data_lock);
+    wifi_util_dbg_print(WIFI_MON, "Retrieved STA data map for VAP index: %d vap name:%s \r\n", vap_index, vap_name);
+    return g_monitor_module.bssid_data[vap_array_index].wpa3_sta_map;
+}
+
+int wpa3_enhanced_assoc_frame_data(frame_data_t *msg) {
+
+    hash_map_t *sta_map;
+    telemetry_data_t *sta;
+    struct ieee80211_mgmt *frame;
+    mac_addr_str_t mac_str = { 0 };
+    char *str;
+    frame = (struct ieee80211_mgmt *)msg->data;
+    str = to_mac_str(frame->sa, mac_str);
+    if (str == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d mac str convert failure\r\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    wifi_util_dbg_print(WIFI_MON, "%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d src mac:%s rssi:%d\r\n", __func__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir, str, msg->frame.sig_dbm);
+    if (!isVapPrivate(msg->frame.ap_index)){
+        wifi_util_dbg_print(WIFI_MON, "%s:%d It's not a private vap\r\n", __func__, __LINE__);
+        return RETURN_OK;
+    }
+    sta_map = get_wpa3_enhanced_sta_data_map(msg->frame.ap_index);
+    if (sta_map == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d sta_data map not found for vap_index:%d\r\n", __func__, __LINE__, msg->frame.ap_index);
+        return RETURN_ERR;
+    }
+    sta = (telemetry_data_t *)hash_map_get(sta_map, mac_str);
+    if (sta == NULL) {
+        sta = create_wpa3_enhanced_sta_data_hash_map(sta_map, frame->sa);
+        if (sta == NULL) {
+	     wifi_util_error_print(WIFI_MON, "%s:%d sta is showing null even after created \r\n", __func__, __LINE__); 
+            return RETURN_ERR;
+        }
+    }
+    wifi_util_dbg_print(WIFI_MON, "%s:%d STA MAC:%s \n", __func__, __LINE__, str);
+    return RETURN_OK;
+}
+
+int update_wpa3_enhanced_sta_data(unsigned int vap_index) {
+
+    hash_map_t *sta_map;
+    telemetry_data_t *sta,*tmpsta;
+    mac_addr_str_t mac_str = { 0 };
+    sta_map = get_wpa3_enhanced_sta_data_map(vap_index);
+    int vapindex = (int)vap_index;
+    if (sta_map == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d sta_data map not found for vap_index:%d\r\n", __func__, __LINE__, vap_index);
+        return RETURN_ERR;
+    }
+    sta = hash_map_get_first(sta_map);
+    while (sta != NULL) {
+        char *sta_mac_str = to_mac_str(sta->sta_mac, mac_str);
+        telemetry_event_akm_count(sta, vapindex, sta_mac_str);
+	sta = hash_map_get_next(sta_map, sta);
+	tmpsta=hash_map_remove(sta_map,mac_str);
+	if(tmpsta!= NULL) {
+	    free(tmpsta);
+	}
+    }
+    return RETURN_OK;
+}
+
+void update_wpa3_enhanced_sta_all_vap_data_entry(void) {
+
+    unsigned int index, vap_index;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    for (index = 0; index < getTotalNumberVAPs(); index++) {
+        vap_index = VAP_INDEX(mgr->hal_cap, index);
+        if (isVapPrivate(vap_index)){
+            update_wpa3_enhanced_sta_data(vap_index);
+        }
+    }
+}
+
+static int reset_wpa3_enhanced_sta_data(void *arg) {
+
+    update_wpa3_enhanced_sta_all_vap_data_entry();
+    return TIMER_TASK_COMPLETE;
 }
 
 int harvester_get_associated_device_info(int vap_index, char **harvester_buf)
@@ -849,6 +973,7 @@ int set_assoc_req_frame_data(frame_data_t *msg)
             return RETURN_ERR;
         }
     }
+    wpa3_enhanced_assoc_frame_data(msg);
     (void)memset(&sta->assoc_frame_data, 0, sizeof(assoc_req_elem_t));
     (void)memcpy(&sta->assoc_frame_data.msg_data, msg, sizeof(frame_data_t));
     (void)time(&frame_timestamp);
@@ -904,6 +1029,126 @@ static int refresh_assoc_frame_entry(void *arg)
 {
     update_assoc_frame_all_vap_data_entry();
     return TIMER_TASK_COMPLETE;
+}
+
+rsn_variant_t get_rsn_variant(wifi_band_t band, int auth_type) {
+    if ((band == BAND_2_4GHZ || band == BAND_5GHZ) && auth_type == WPA2_PSK) {
+        return RSNE;
+    } else if ((band == BAND_2_4GHZ || band == BAND_5GHZ) && auth_type == WPA3_SAE) {
+        return RSNO;
+    } else if (band == BAND_6GHZ && auth_type == WPA3_SAE) {
+        return RSNE;
+    } else if ((band == BAND_6GHZ || band == BAND_5GHZ || band == BAND_2_4GHZ) && auth_type == WPA3_SAE_EXT) {
+        return RSNO2;
+    } else {
+        return UNKNOWN;
+    }
+}
+
+void telemetry_event_akm_count(telemetry_data_t *sta1,int vapindex, char *mac) {
+    char telemetry_buff[64] = {0};
+    char telemetry_val[128] = {0};
+    char telemetry_buff_grep[64] = {0};
+
+    if (!mac) {
+        wifi_util_info_print(WIFI_MON, "Error: MAC address is NULL\n");
+        return;
+    }
+
+    memset(telemetry_buff, 0, sizeof(telemetry_buff));
+    memset(telemetry_val, 0, sizeof(telemetry_val));
+    memset(telemetry_buff_grep, 0, sizeof(telemetry_buff_grep));
+
+    snprintf(telemetry_buff, sizeof(telemetry_buff), "WPA3_COMPAT_AKM_COUNT");
+    snprintf(telemetry_val, sizeof(telemetry_val),
+             "%d,%s,(24,24)-%d,(24,8)-%d,(24,2)-%d,(8,8)-%d,(8,2)-%d,(2,2)-%d", vapindex, mac, sta1->akm_24_24_count, sta1->akm_24_8_count, sta1->akm_24_2_count, sta1->akm_8_8_count,sta1->akm_8_2_count, sta1->akm_2_2_count);
+    strncpy(telemetry_buff_grep, telemetry_buff, sizeof(telemetry_buff_grep) - 1);
+    telemetry_buff_grep[sizeof(telemetry_buff_grep) - 1] = '\0';
+    wifi_util_info_print(WIFI_MON, "%s:%s\n", telemetry_buff_grep, telemetry_val);
+    get_stubs_descriptor()->t2_event_s_fn(telemetry_buff, telemetry_val);
+}
+
+void telemetry_event_wpa3_enhanced(int vapindex, char *mac, int rsnvariant, frame_type_t frame_type, int key_mgmt, wifi_security_modes_t mode, const char *status) {
+    char telemetry_buff[64] = {0};
+    char telemetry_val[128] = {0};
+    char telemetry_buff_str[64] = {0};
+
+    if (!mac) {
+        wifi_util_info_print(WIFI_MON, "Error: MAC address is NULL\n");
+        return;
+    }
+
+    memset(telemetry_buff, 0, sizeof(telemetry_buff));
+    memset(telemetry_val, 0, sizeof(telemetry_val));
+    memset(telemetry_buff_str, 0, sizeof(telemetry_buff_str));
+
+    snprintf(telemetry_buff, sizeof(telemetry_buff), "WPA3_ENHANCED_COMPAT");
+    snprintf(telemetry_val, sizeof(telemetry_val),
+             "%d,%s,%d,%d,%d,%d,%s", vapindex, mac, rsnvariant, frame_type, key_mgmt, mode, status);
+    strncpy(telemetry_buff_str, telemetry_buff, sizeof(telemetry_buff_str) - 1);
+    telemetry_buff_str[sizeof(telemetry_buff_str) - 1] = '\0';
+    wifi_util_dbg_print(WIFI_MON, "%s:%s\n", telemetry_buff_str, telemetry_val);
+    get_stubs_descriptor()->t2_event_s_fn(telemetry_buff, telemetry_val);
+}
+
+void wpa3_enhanced_connection_akms_count(telemetry_data_t *sta, int expected_akm, int actual_akm) {
+    if (expected_akm == WPA3_SAE_EXT) {
+        if (actual_akm == WPA3_SAE_EXT) {
+            sta->akm_24_24_count = sta->akm_24_24_count + 1;
+        } else if (actual_akm == WPA3_SAE) {
+            sta->akm_24_8_count = sta->akm_24_8_count + 1;
+        } else if (actual_akm == WPA2_PSK) {
+            sta->akm_24_2_count = sta->akm_24_2_count + 1;
+        }
+    } else if (expected_akm == WPA3_SAE) {
+        if (actual_akm == WPA3_SAE) {
+            sta->akm_8_8_count = sta->akm_8_8_count + 1;
+        } else if (actual_akm == WPA2_PSK) {
+            sta->akm_8_2_count = sta->akm_8_2_count + 1;
+        }
+    } else if (expected_akm == WPA2_PSK) {
+        if (actual_akm == WPA2_PSK) {
+            sta->akm_2_2_count = sta->akm_2_2_count + 1;
+        }
+    }
+}
+
+int set_sta_client_mode(int ap_index, char *mac, int key_mgmt, frame_type_t frame_type, int band, int mode) {
+    hash_map_t *sta_map;
+    telemetry_data_t *sta;
+    wifi_vap_security_t *security = (wifi_vap_security_t *)Get_wifi_object_bss_security_parameter(ap_index);
+    sta_map = get_wpa3_enhanced_sta_data_map(ap_index);
+    if (sta_map == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d sta_data map not found for vap_index:%d\r\n", __func__, __LINE__, ap_index);
+        return RETURN_ERR;
+    }
+
+    sta = (telemetry_data_t *)hash_map_get(sta_map, mac);
+    if (NULL == sta) {
+        wifi_util_error_print(WIFI_MON, "%s:%d station is not found for vap_index:%d station :%s \r\n", __func__, __LINE__, ap_index, mac);
+        return RETURN_ERR;
+    }
+
+    if (frame_type == ASSOC_REQUEST || frame_type == REASSOC_REQUEST) {
+        sta->assoc_akm = key_mgmt;
+        rsn_variant_t variant = (((int)security->mode == (int)SECURITY_WPA3_Compatibility)?get_rsn_variant(band, key_mgmt):0);
+        telemetry_event_wpa3_enhanced(ap_index, mac, variant, frame_type, key_mgmt, security->mode,"CONNECTION_IN_PROGRESS");
+        sta->eapol_akm = 0;
+    } else if (frame_type == EAPOL) {
+        sta->eapol_akm = key_mgmt;
+	rsn_variant_t variant = (((int)security->mode == (int)SECURITY_WPA3_Compatibility)?get_rsn_variant(band, key_mgmt):0);
+        if (sta->assoc_akm == sta->eapol_akm) {
+            telemetry_event_wpa3_enhanced(ap_index, mac, variant, frame_type, key_mgmt, security->mode,"AKM_MATCHED_CONNECTED");
+            wifi_util_dbg_print(WIFI_MON, "%s:%d :%d assoc and eapol akms are equal for station found for vap_index:%d station :%s and set the mode:%d eapol_mode:%d assoc_mode:%d band:%d \r\n", __func__, __LINE__, (int)security->mode, ap_index, mac, key_mgmt, sta->eapol_akm, sta->assoc_akm, band);
+	    wpa3_enhanced_connection_akms_count(sta, mode, sta->eapol_akm);
+        }
+        else {
+            telemetry_event_wpa3_enhanced(ap_index, mac, variant, frame_type, key_mgmt, security->mode,"AKM_MISMATCH_DISCONNECTION");
+            wifi_util_dbg_print(WIFI_MON, "%s:%d assoc and eapol akms are not not equal station found for vap_index:%d station :%s and set the mode:%d eapol_mode:%d assoc_mode:%d band:%d \r\n", __func__, __LINE__, ap_index, mac, key_mgmt, sta->eapol_akm, sta->assoc_akm, band);
+        }
+    }
+    wifi_util_dbg_print(WIFI_MON, "%s:%d station found for vap_index:%d station :%s and set the key_mgmt:%d eapol_mode:%d assoc_mode:%d band:%d,mode:%d \r\n", __func__, __LINE__, ap_index, mac, key_mgmt, sta->eapol_akm, sta->assoc_akm, band, mode);
+    return RETURN_OK;
 }
 
 void process_deauthenticate	(unsigned int ap_index, auth_deauth_dev_t *dev)
@@ -2550,6 +2795,8 @@ static void get_client_assoc_frame(int ap_index, wifi_associated_dev_t *associat
             memcpy(&assoc_data->sta_data, &sta->assoc_frame_data, sizeof(assoc_req_elem_t));
             wifi_util_dbg_print(WIFI_MON,"%s:%d assoc_frame_data of length:%d copied\n",
                 __func__, __LINE__, sta->assoc_frame_data.msg_data.frame.len);
+            wifi_util_dbg_print(WIFI_MON,"%s:%d sta found for mac:%s \n", __func__, __LINE__, mac_addr);
+
             return;
         } else {
             wifi_util_error_print(WIFI_MON,"%s:%d assoc req frame not found for vap_index:%d: sta_mac:%s time:%ld\r\n",
@@ -2768,6 +3015,15 @@ int init_wifi_monitor()
         }
     }
 
+    for (i = 0; i < getTotalNumberVAPs(); i++) {
+        g_monitor_module.bssid_data[i].wpa3_sta_map = hash_map_create();
+        if (g_monitor_module.bssid_data[i].wpa3_sta_map == NULL) {
+            deinit_wifi_monitor();
+            wifi_util_error_print(WIFI_MON, "wpa3_sta_map create error\n");
+            return -1;
+        }
+    }
+
     g_monitor_module.queue = queue_create();
     if (g_monitor_module.queue == NULL) {
         deinit_wifi_monitor();
@@ -2833,8 +3089,9 @@ int init_wifi_monitor()
     wifi_hal_ap_max_client_rejection_callback_register(device_max_client_rejection);
     wifi_hal_radius_eap_failure_callback_register(radius_eap_failure_callback);
     wifi_hal_radiusFallback_failover_callback_register(radius_fallback_and_failover_callback);
+    wifi_hal_stamode_callback_register(set_sta_client_mode);
     scheduler_add_timer_task(g_monitor_module.sched, FALSE, NULL, refresh_assoc_frame_entry, NULL, (MAX_ASSOC_FRAME_REFRESH_PERIOD * 1000), 0, FALSE);
-
+    scheduler_add_timer_task(g_monitor_module.sched, FALSE, NULL, reset_wpa3_enhanced_sta_data, NULL, (MAX_AKM_REPORT_REFRESH_PERIOD * 1000), 0, FALSE);
     wifi_util_dbg_print(WIFI_MON, "%s:%d Wi-Fi monitor is initialized successfully\n", __func__, __LINE__);
 
     return 0;
@@ -2907,6 +3164,8 @@ void deinit_wifi_monitor()
 {
     unsigned int i;
     sta_data_t *sta, *temp_sta;
+    telemetry_data_t *stat,*temp_stat;
+    mac_addr_str_t mac_stri = { 0 };
     char key[64] = {0};
     hash_map_t *collector_list = NULL;
 #ifdef MQTTCM
@@ -2955,6 +3214,23 @@ void deinit_wifi_monitor()
                 }
             }
             hash_map_destroy(g_monitor_module.bssid_data[i].sta_map);
+        }
+    }
+
+    for (i = 0; i < getTotalNumberVAPs(); i++) {
+        if(g_monitor_module.bssid_data[i].wpa3_sta_map != NULL) {
+            stat = hash_map_get_first(g_monitor_module.bssid_data[i].wpa3_sta_map);
+            while (stat != NULL) {
+                memset(key, 0, sizeof(key));
+                to_sta_key(stat->sta_mac, key);
+                wifi_util_info_print(WIFI_MON, "Processing STA with MAC: %s\r\n", to_mac_str(stat->sta_mac, mac_stri));
+                stat = hash_map_get_next(g_monitor_module.bssid_data[i].wpa3_sta_map, stat);
+                temp_stat = hash_map_remove(g_monitor_module.bssid_data[i].wpa3_sta_map, key);
+                if (temp_stat != NULL) {
+                    free(temp_stat);
+                }
+            }
+            hash_map_destroy(g_monitor_module.bssid_data[i].wpa3_sta_map);
         }
     }
 
@@ -3734,4 +4010,3 @@ void free_coordinator(hash_map_t *collector_list)
         hash_map_destroy(collector_list);
     }
 }
-
