@@ -2507,7 +2507,8 @@ void decode_acs_keep_out_json(void *json_string, hash_map_t *radio6g)
     // Navigate to ChannelExclusion
     cJSON *channelExclusion = cJSON_GetObjectItem(json, "ChannelExclusion");
     wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH After cJSON_GetObjectItem of ChannelExclusion\n",__func__,__LINE__);
-    int *buff_320mhz = (int*)malloc(17*sizeof(int));
+    if (cJSON_IsArray(channelExclusion)) {
+        int *buff_320mhz = (int*)malloc(17*sizeof(int));
     int *buff_160mhz = (int*)malloc(9*sizeof(int));
     if(!buff_320mhz)
     {
@@ -2519,7 +2520,6 @@ void decode_acs_keep_out_json(void *json_string, hash_map_t *radio6g)
         wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH The pointer arr_160mhz is NULL\n",__FUNCTION__,__LINE__);
         return; 
     }
-    if (cJSON_IsArray(channelExclusion)) {
         cJSON *radioParams = cJSON_GetObjectItem(channelExclusion->child, "radio6G");
         wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH After cJSON_GetObjectItem of radio6G\n",__func__,__LINE__);
         // Check for specific bandwidths and print their parameters
@@ -2537,10 +2537,10 @@ void decode_acs_keep_out_json(void *json_string, hash_map_t *radio6g)
                 buff_160mhz[len_160mhz] = -1;
                 hash_map_put(radio6g,"160",buff_160mhz);
             }
-            wifi_hal_info_print("%s:%d SREESH About to retrieve 320 MHz\n",__FUNCTION__,__LINE__);
+            wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH About to retrieve 320 MHz\n",__FUNCTION__,__LINE__);
             cJSON *bandwidth320 = cJSON_GetObjectItem(radioParams, "320");
             if (bandwidth320 != NULL) {
-                wifi_hal_info_print("%s:%d SREESH Radio 6G - Bandwidth 320: \n",__func__,__LINE__);
+                wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Radio 6G - Bandwidth 320: \n",__func__,__LINE__);
                 cJSON *channel;
                 cJSON_ArrayForEach(channel, bandwidth320) {
                     buff_320mhz[len_320mhz] = channel->valueint;
