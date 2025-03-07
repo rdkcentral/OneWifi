@@ -855,10 +855,11 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
                 return RETURN_OK;
             }
         }
-        if (get_on_channel_scan_list(radioOperation->band, radioOperation->channelWidth, radioOperation->channel, on_chan_list, &onchan_num_channels) != 0) {
-            onchan_num_channels = 1;
-            on_chan_list[0] = radioOperation->channel;
-        }
+        if (get_on_channel_scan_list(radioOperation->band, radioOperation->channelWidth,
+		radioOperation->channel, on_chan_list, &onchan_num_channels) != 0) {
+		onchan_num_channels = 1;
+		on_chan_list[0] = radioOperation->channel;
+	}
         if ((unsigned int)args->channel_list.channels_list[0] == radioOperation->channel &&
             args->channel_list.num_channels > 1) {
             channels[0] = args->channel_list.channels_list[1];
@@ -874,7 +875,7 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
                     break;
                 }
             }
-            if (unmatched){
+            if (unmatched) {
                 channels[new_num_channels++] = args->channel_list.channels_list[i];
             }
         }
