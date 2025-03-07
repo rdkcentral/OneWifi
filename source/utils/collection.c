@@ -17,6 +17,7 @@
   limitations under the License.
 **************************************************************************/
 
+#include <cstddef>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -159,9 +160,10 @@ int8_t hash_map_put    (hash_map_t *map, char *key, void *data)
 {
     hash_element_t *e;
     
-    if (map == NULL) {
+    if (map == NULL || map->queue == NULL || key == NULL) {
         return -1;
     }
+
     map->itr = NULL;
     e = (hash_element_t *)malloc(sizeof(hash_element_t));
     if (e == NULL) {
@@ -173,6 +175,7 @@ int8_t hash_map_put    (hash_map_t *map, char *key, void *data)
     
     if (queue_push(map->queue, e) < 0) {
         free(key);
+        key = NULL;
         if (e->data != NULL) {
             free(e->data);
             e->data = NULL;
@@ -185,7 +188,6 @@ int8_t hash_map_put    (hash_map_t *map, char *key, void *data)
 
 void *hash_map_get   (hash_map_t *map, const char *key)
 {
-    uint32_t i = 0;
     hash_element_t *he;
     element_t    *e;
 
@@ -199,12 +201,11 @@ void *hash_map_get   (hash_map_t *map, const char *key)
     while (e != NULL) {
         if (e->data != NULL) {
             he = (hash_element_t *) e->data;
-            if (he != NULL && (strncmp(he->key, key, HASH_MAP_MAX_KEY_SIZE) == 0)) {
+            if (he != NULL && he->key != NULL && (strncmp(he->key, key, HASH_MAP_MAX_KEY_SIZE) == 0)) {
                 return he->data;
             }
         }
         e = e->next;
-        i++;
     }
     
     return NULL;
@@ -212,7 +213,6 @@ void *hash_map_get   (hash_map_t *map, const char *key)
 
 void *hash_map_remove   (hash_map_t *map, const char *key)
 {
-    uint32_t i = 0;
     hash_element_t *he;
     element_t    *e, *prev = NULL;
     bool found = false;
@@ -229,14 +229,13 @@ void *hash_map_remove   (hash_map_t *map, const char *key)
     while (e != NULL) {
         if (e->data != NULL) {
             he = (hash_element_t *) e->data;
-            if (he != NULL && (strncmp(he->key, key, HASH_MAP_MAX_KEY_SIZE) == 0)) {
+            if (he != NULL && he->key != NULL && (strncmp(he->key, key, HASH_MAP_MAX_KEY_SIZE) == 0)) {
                 found = true;
                 break;
             }
         }
         prev = e;
         e = e->next;
-        i++;
     }
     
     if (found == false) {
