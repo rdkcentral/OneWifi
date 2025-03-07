@@ -1401,13 +1401,13 @@ static void acs_keep_out_evt_handler(char* event_name, raw_data_t *p_data)
     }
 
     //char* json_schema = (char*)malloc(p_data->raw_data_len*sizeof(char));
-    wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Value of (char*)p_data->raw_data.bytes = %d and p_data->raw_data_len = %d\n",__FUNCTION__,__LINE__,(char*)p_data->raw_data.bytes,p_data->raw_data_len);
+    wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Value of (char*)p_data->raw_data.bytes = %s and p_data->raw_data_len = %d\n",__FUNCTION__,__LINE__,(char*)p_data->raw_data.bytes,p_data->raw_data_len);
     char json_schema[128];
-    char sample_json_schema[128];
-    strncpy(json_schema,(char*)p_data->raw_data.bytes, p_data->raw_data_len);
-    strcpy(sample_json_schema,(char*)p_data->raw_data.bytes);
-    wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Value of JSON schema = %s and Sample JSON = %s and pushing the event onto a thread\n",__FUNCTION__,__LINE__,json_schema, sample_json_schema);
-    push_event_to_ctrl_queue(json_schema, strlen(json_schema), wifi_event_type_hal_ind, wifi_event_hal_acs_keep_out, NULL);
+    //char sample_json_schema[128];
+    /*strncpy(json_schema,(char*)p_data->raw_data.bytes, p_data->raw_data_len);*/
+    strcpy(json_schema,(char*)p_data->raw_data.bytes);
+    wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Value of JSON schema = %s and strlen = %ld and pushing the event onto a thread\n",__FUNCTION__,__LINE__,json_schema, strlen(json_schema));
+    push_event_to_ctrl_queue(json_schema, (strlen(json_schema) + 1), wifi_event_type_hal_ind, wifi_event_hal_acs_keep_out, NULL);
 }
 
 void speed_test_handler (char *event_name, raw_data_t *p_data)
