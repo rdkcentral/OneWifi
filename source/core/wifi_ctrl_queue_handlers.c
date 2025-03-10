@@ -2864,27 +2864,9 @@ int get_neighbor_scan_results(void *arg)
 
 void process_acs_keep_out_channels_event(void* data)
 {
-    wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Inside\n",__FUNCTION__,__LINE__);
-    hash_map_t *radio6g = hash_map_create();
-    if(!radio6g)
-    {
-        wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Unable to allocate memory for radio6g hashmap\n",__FUNCTION__,__LINE__);
-        return;
-    }
-    /*if(!prim_chan_list_6g)
-    {
-        wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Unable to allocate memory for prim_chan_list_6g hashmap\n",__FUNCTION__,__LINE__);
-        return;
-    }*/
+    wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Enter\n",__FUNCTION__,__LINE__);
     //Process the decoding of the JSON file inside wifi_decoder.c instead of here. This is just a wrapper.
     decode_acs_keep_out_json(data,radio6g);
-    int ret = wifi_hal_set_acs_exclusion_list(radio6g); // Do this via platform.c file through wifi_hal.c file
-    wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Value of ret = %d\n",__func__,__LINE__,ret);
-    if(radio6g)
-    {
-        hash_map_destroy(radio6g);
-        wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Destroying the hash map for 6G\n",__FUNCTION__,__LINE__);
-    }
     wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Exiting from this function\n",__FUNCTION__,__LINE__);
 }
 
