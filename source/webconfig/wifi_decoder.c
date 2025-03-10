@@ -2495,7 +2495,7 @@ void process_bandwidth(cJSON *radioParams, const char *bandwidth_str, wifi_freq_
     cJSON *bandwidth = cJSON_GetObjectItem(radioParams, bandwidth_str);
     if (bandwidth != NULL) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d Processing bandwidth %s\n", __FUNCTION__, __LINE__, bandwidth_str);
-        *chanlist = (wifi_channel_list_per_bandwidth*)malloc(sizeof(wifi_channel_list_per_bandwidth));
+        *chanlist = (wifi_channels_list_per_bandwidth*)malloc(sizeof(wifi_channels_list_per_bandwidth));
         (*chanlist)->num_channels_list = 0;
 
         int channels_list[MAX_CHANNELS];
@@ -2517,7 +2517,7 @@ void process_bandwidth(cJSON *radioParams, const char *bandwidth_str, wifi_freq_
         }
         char bandstr[10];
         wifi_channelBandwidth_to_str(bandstr, sizeof(bandstr), bandwidth_type);
-        wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Value of bandwidth string = %s\n",__FUNCTION_,__LINE__,bandstr);
+        wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Value of bandwidth string = %s\n",__FUNCTION__,__LINE__,bandstr);
         hash_map_put(radio_chanmap, strdup(bandstr), *chanlist);
     }
     else
@@ -2533,7 +2533,10 @@ int decode_bandwidth_from_json(cJSON *radioParams, wifi_freq_bands_t band, hash_
     const char *bandwidths[] = {"20","40","80","160"};
 #endif
     int arr_size = ARRAY_SZ(bandwidths);
-    wifi_channels_list_per_bandwidth *chanlists[arr_size] = {NULL};
+    wifi_channels_list_per_bandwidth *chanlists[arr_size];
+    for (int i = 0; i < arr_size; i++) {
+        chanlists[i] = NULL;
+    }    
     wifi_util_info_print(WIFI_CTRL, "%s:%d About to retrieve bandwidths\n", __FUNCTION__, __LINE__);
     for (int i = 0, j = WIFI_CHANNELBANDWIDTH_20MHZ; i < arr_size; i++, j *= 2) {
         wifi_channelBandwidth_t bandwidth = (wifi_channelBandwidth_t)j;
@@ -2556,7 +2559,7 @@ void decode_acs_keep_out_json(void *json_string) {
     cJSON *channelExclusion = cJSON_GetObjectItem(json, "ChannelExclusion");
     if (!channelExclusion) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d SREESH ChannelExclusion is not present and hence must remove entries\n", __FUNCTION__, __LINE__);
-        wifi_hal_set_acs_keep_out_chans(NULL,radioIndex);
+        wifi_hal_set_acs_keep_out_chans(NULL,-1);
         cJSON_Delete(json);
         return;
     }
