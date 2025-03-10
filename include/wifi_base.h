@@ -194,6 +194,8 @@ typedef void *wifi_analytics_data_t;
 #define BSS_MAX_NUM_STA_HOTSPOT_CBRV2    15      /**< Max supported stations for hotspot vaps in CBR2 platform */
 #define BSS_MAX_NUM_STA_HOTSPOT_XB      5      /**< Max supported stations for hotspot vaps in XB platform */
 
+#define STA_MAX_BSS_ASSOCIATIONS  1
+
 typedef unsigned char   mac_addr_t[MAC_ADDR_LEN];
 typedef signed short    rssi_t;
 typedef char            sta_key_t[STA_KEY_LEN];
@@ -1178,6 +1180,50 @@ typedef struct {
     channel_scan_reporting_policy_t channel_scan_reporting_policy;
     radio_metrics_policies_t radio_metrics_policies;
 } em_config_t;
+
+typedef struct {
+    mac_addr_t bssid;
+    int time_delta;
+    int est_mac_rate_down;
+    int est_mac_rate_up;
+    int rcpi;
+} assoc_sta_link_metrics_data_t;
+typedef struct {
+    mac_addr_t sta_mac;
+    int num_bssid;
+    assoc_sta_link_metrics_data_t assoc_sta_link_metrics_data[STA_MAX_BSS_ASSOCIATIONS];
+} assoc_sta_link_metrics_t;
+
+typedef struct {
+    int reason_code;
+    mac_addr_t sta_mac;
+} error_code_t;
+
+typedef struct {
+    mac_addr_t bssid;
+    int last_data_downlink_rate;
+    int last_data_uplink_rate;
+    int utilization_receive;
+    int utilization_transmit;
+} assoc_sta_ext_link_metrics_data_t;
+
+typedef struct {
+    mac_addr_t sta_mac;
+    int num_bssid;
+    assoc_sta_ext_link_metrics_data_t assoc_sta_ext_link_metrics_data[STA_MAX_BSS_ASSOCIATIONS];
+} assoc_sta_ext_link_metrics_t;
+
+typedef struct {
+    assoc_sta_link_metrics_t assoc_sta_link_metrics;
+    error_code_t error_code;
+    assoc_sta_ext_link_metrics_t assoc_sta_ext_link_metrics;
+} per_sta_metrics_t;
+
+typedef struct {
+    int vap_index;
+    unsigned int sta_count;
+    per_sta_metrics_t *per_sta_metrics;
+} em_assoc_sta_link_metrics_rsp_t;
 
 typedef struct {
     unsigned char dialog_token;
