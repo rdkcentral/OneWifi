@@ -2491,7 +2491,7 @@ webconfig_error_t decode_radio_setup_object(const cJSON *obj_radio_setup, rdk_wi
 }
 
 // Define a function to handle bandwidth processing
-void process_bandwidth(cJSON *radioParams, const char *bandwidth_str, wifi_freq_bands_t band, wifi_channel_list_per_bandwidth **chanlist, int bandwidth_type, hash_map_t *radio_chanmap) {
+void process_bandwidth(cJSON *radioParams, const char *bandwidth_str, wifi_freq_bands_t band, wifi_channels_list_per_bandwidth **chanlist, int bandwidth_type, hash_map_t *radio_chanmap) {
     cJSON *bandwidth = cJSON_GetObjectItem(radioParams, bandwidth_str);
     if (bandwidth != NULL) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d Processing bandwidth %s\n", __FUNCTION__, __LINE__, bandwidth_str);
@@ -2533,9 +2533,9 @@ int decode_bandwidth_from_json(cJSON *radioParams, wifi_freq_bands_t band, hash_
     const char *bandwidths[] = {"20","40","80","160"};
 #endif
     int arr_size = ARRAY_SZ(bandwidths);
-    wifi_channel_list_per_bandwidth *chanlists[arr_size] = {NULL};
+    wifi_channels_list_per_bandwidth *chanlists[arr_size] = {NULL};
     wifi_util_info_print(WIFI_CTRL, "%s:%d About to retrieve bandwidths\n", __FUNCTION__, __LINE__);
-    for (int i = 0, int j = WIFI_CHANNELBANDWIDTH_20MHZ; i < arr_size; i++, j *= 2) {
+    for (int i = 0, j = WIFI_CHANNELBANDWIDTH_20MHZ; i < arr_size; i++, j *= 2) {
         wifi_channelBandwidth_t bandwidth = (wifi_channelBandwidth_t)j;
         process_bandwidth(radioParams, bandwidths[i], band, &chanlists[i], bandwidth, radio_chanmap);
     }
@@ -2556,6 +2556,7 @@ void decode_acs_keep_out_json(void *json_string) {
     cJSON *channelExclusion = cJSON_GetObjectItem(json, "ChannelExclusion");
     if (!channelExclusion) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d SREESH ChannelExclusion is not present and hence must remove entries\n", __FUNCTION__, __LINE__);
+        wifi_hal_set_acs_keep_out_chans(NULL,radioIndex);
         cJSON_Delete(json);
         return;
     }
@@ -2563,7 +2564,7 @@ void decode_acs_keep_out_json(void *json_string) {
     if (cJSON_IsArray(channelExclusion)) {
         // Define radio parameters and their corresponding frequency bands
         const char *radioNames[] = {"radio2G", "radio5G","radio5GL","radio5GH" ,"radio6G"};
-        for (int i = 0, int j = WIFI_FREQUENCY_2_4_BAND; i < ARRAY_SZ(radioNames); i++, j *= 2) {
+        for (int i = 0, j = WIFI_FREQUENCY_2_4_BAND; i < ARRAY_SZ(radioNames); i++, j *= 2) {
             cJSON *radioParams = cJSON_GetObjectItem(channelExclusion->child, radioNames[i]);
             if (radioParams != NULL) {
                 hash_map_t *radio_chanmap = hash_map_create();
@@ -2591,7 +2592,7 @@ void decode_acs_keep_out_json(void *json_string) {
             }
             else
             {
-                wifi_util_info_print("%s:%d SREESH We do not have entries for radioNames[%d] = %s\n",__FUNCTION__,__LINE__,i,radioNames[i]);
+                wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH We do not have entries for radioNames[%d] = %s\n",__FUNCTION__,__LINE__,i,radioNames[i]);
             }
         }
     }

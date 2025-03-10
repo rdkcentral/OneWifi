@@ -2866,7 +2866,7 @@ void process_acs_keep_out_channels_event(void* data)
 {
     wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Enter\n",__FUNCTION__,__LINE__);
     //Process the decoding of the JSON file inside wifi_decoder.c instead of here. This is just a wrapper.
-    decode_acs_keep_out_json(data,radio6g);
+    decode_acs_keep_out_json(data);
     wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Exiting from this function\n",__FUNCTION__,__LINE__);
 }
 
