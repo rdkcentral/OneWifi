@@ -396,7 +396,8 @@ ifdef EM_APP
 	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/em/*.c)
 	WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_easymesh_config.c    \
                 $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_beacon_report.c  \
-                $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_em_channel_stats.c
+                $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_em_channel_stats.c  \
+                $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_em_sta_link_metrics.c
 endif
 
 COBJECTS = $(CSOURCES:.c=.o)  # expands to list of object files
