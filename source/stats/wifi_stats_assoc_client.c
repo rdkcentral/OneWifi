@@ -343,12 +343,12 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                     &t_diff);
             }
             // update thresholds if changed
-            if (get_vap_dml_parameters(RSSI_THRESHOLD, &rssi) == 0) {
-                mon_data->sta_health_rssi_threshold = rssi;
-                wifi_util_dbg_print(WIFI_MON, "%s:%d RSSI threshold updated to %d\n", __func__,
-                    __LINE__, mon_data->sta_health_rssi_threshold);
+            wifi_global_param_t *global_param = get_wifidb_wifi_global_param();
+            if (mon_data->sta_health_rssi_threshold != global_param->good_rssi_threshold) {
+                wifi_util_dbg_print(WIFI_MON, "%s:%d RSSI threshold updated to %d from %d\n", __func__,
+                    __LINE__, global_param->good_rssi_threshold, mon_data->sta_health_rssi_threshold);
+                mon_data->sta_health_rssi_threshold = global_param->good_rssi_threshold;
             }
-
             if (sta->dev_stats.cli_SignalStrength >= mon_data->sta_health_rssi_threshold) {
                 sta->good_rssi_time += t_diff.tv_sec;
             } else {
