@@ -408,7 +408,7 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         cfg.u.bss_info.beaconRate = WIFI_BITRATE_6MBPS;
         strncpy(cfg.u.bss_info.beaconRateCtl,"6Mbps",sizeof(cfg.u.bss_info.beaconRateCtl)-1);
         cfg.vap_mode = wifi_vap_mode_ap;
-        if (isVapPrivate(vap_index) || isVapMeshBackhaul(vap_index)) {
+        if (isVapPrivate(vap_index)) {
             cfg.u.bss_info.showSsid = true;
             cfg.u.bss_info.wps.methods = WIFI_ONBOARDINGMETHODS_PUSHBUTTON;
             memset(wps_pin, 0, sizeof(wps_pin));
