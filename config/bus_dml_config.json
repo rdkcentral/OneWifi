@@ -1,0 +1,1773 @@
+{
+	"definitions": {
+		"uint32_t": {
+			"type": "integer",
+			"minimum": 0,
+			"maximum": 4294967295
+		},
+		"int32_t": {
+			"type": "integer",
+			"minimum": -2147483648,
+			"maximum": 2147483647
+		},
+		"uint16_t": {
+			"type": "integer",
+			"minimum": 0,
+			"maximum": 65535
+		},
+		"uint8_t": {
+			"type": "integer",
+			"minimum": 0,
+			"maximum": 255
+		},
+		"boolean": {
+			"type": "bool",
+			"minimum": 0,
+			"maximum": 1
+		},
+		"string": {
+			"type": "string",
+			"minimum": 1,
+			"maximum": 64
+		},
+		"timestamp_t": {
+			"title": "Timestamp",
+			"type": "string",
+			"format": "date-time"
+		},
+		"macaddr_t": {
+			"title": "MAC Address",
+			"type": "string",
+			"minLength": 17,
+			"maxLength": 17,
+			"pattern": "^([0-9a-fA-F][0-9a-fA-F]:){5}[0-9a-fA-F][0-9a-fA-F]$"
+		},
+		"rssi_t": {
+			"title": "RSSI",
+			"type": "integer",
+			"minimum": 0,
+			"maximum": 255
+		},
+		"txpower_t": {
+			"title": "Tx Power",
+			"type": "integer",
+			"minimum": -1,
+			"maximum": 100
+		},
+		"whix_log_interval_t": {
+			"title": "WHIX Log Interval",
+			"type": "integer",
+			"minimum": 300,
+			"maximum": 3600
+		},
+		"whix_ch_utility_log_interval_t": {
+			"title": "whix ch utility log interval",
+			"type": "integer",
+			"minimum": 5,
+			"maximum": 3600
+		},
+		"channel_t": {
+			"title": "Channel",
+			"type": "unsigned_int",
+			"minimum": 0,
+			"maximum": 255
+		},
+		"rssi_threshold_t": {
+			"title": "rssi threshold",
+			"type": "integer",
+			"minimum": -100,
+			"maximum": -30
+		},
+		"rts_threshold_t": {
+			"title": "rts threshold",
+			"type": "unsigned_int",
+			"minimum": 0,
+			"maximum": 2347
+		},
+		"frag_threshold_t": {
+			"title": "frag threshold",
+			"type": "unsigned_int",
+			"minimum": 256,
+			"maximum": 2346
+		},
+		"dtim_interval_t": {
+			"title": "dtim interval",
+			"type": "unsigned_int",
+			"minimum": 0,
+			"maximum": 255
+		},
+		"beacon_interval_t": {
+			"title": "beacon interval",
+			"type": "unsigned_int",
+			"minimum": 100,
+			"maximum": 3500
+		},
+		"cts_protection_t": {
+			"title": "cts protection",
+			"type": "unsigned_int",
+			"minimum": 0,
+			"maximum": 1
+		},
+		"tx_rate_t": {
+			"title": "tx rate",
+			"type": "unsigned_int",
+			"minimum": 1,
+			"maximum": 9
+		},
+		"basic_rate_t": {
+			"title": "basic rate",
+			"type": "unsigned_int",
+			"minimum": 1,
+			"maximum": 3
+		},
+		"ap_retry_limit_t": {
+			"title": "ap retry limit",
+			"type": "unsigned_int",
+			"minimum": 0,
+			"maximum": 255
+		},
+		"rapid_reconnect_max_time_t": {
+			"title": "rapid reconnect max time",
+			"type": "integer",
+			"minimum": 15,
+			"maximum": 1200
+		},
+		"eapol_key_timeout_t": {
+			"title": "eapol key timeout",
+			"type": "unsigned_int",
+			"minimum": 100,
+			"maximum": 5000
+		},
+		"eap_identity_req_timeout_t": {
+			"title": "eap identity req timeout",
+			"type": "unsigned_int",
+			"minimum": 0,
+			"maximum": 5000
+		},
+		"eap_req_timeout_t": {
+			"title": "eap_req_timeout_t",
+			"type": "unsigned_int",
+			"minimum": 10,
+			"maximum": 5000
+		},
+		"bandwidth_t": {
+			"title": "Radio Bandwidth",
+			"type": "string",
+			"enum": [
+				"Auto",
+				"20MHz",
+				"40MHz",
+				"80MHz",
+				"160MHz",
+				"80_80MHz",
+				"320MHz"
+			]
+		},
+		"guard_interval_t": {
+			"title": "guard interval",
+			"type": "string",
+			"enum": [
+				"400nsec",
+				"800nsec",
+				"Auto",
+				"1600nsec",
+				"3200nsec"
+			]
+		},
+		"encryption_method_t": {
+			"title": "encryption method",
+			"type": "string",
+			"enum": [
+				"TKIP",
+				"AES",
+				"AES+TKIP"
+			]
+		},
+		"wifi_status_t": {
+			"title": "WiFi radio/Vap status information",
+			"type": "string",
+			"enum": [
+				"Up",
+				"Down",
+				"Unknown",
+				"Dormant",
+				"NotPresent",
+				"LowerLayerDown",
+				"Error",
+				"DeepSleep"
+			]
+		}
+	},
+	"Device": {
+		"WiFi": {
+			"List_Of_Def": {
+				"ApplyRadioSettings": {
+					"type": "boolean",
+					"writable": true
+				},
+				"ApplyAccessPointSettings": {
+					"type": "boolean",
+					"writable": true
+				},
+				"X_CISCO_COM_FactoryReset": {
+					"type": "boolean",
+					"writable": true
+				},
+				"X_CISCO_COM_EnableTelnet": {
+					"type": "boolean",
+					"writable": true
+				},
+				"X_CISCO_COM_ResetRadios": {
+					"type": "boolean",
+					"writable": true
+				},
+				"WiFiStuckDetect": {
+					"type": "boolean",
+					"writable": true
+				},
+				"X_RDKCENTRAL-COM_WiFiHost_Sync": {
+					"type": "boolean",
+					"writable": true
+				},
+				"2G80211axEnable": {
+					"type": "boolean",
+					"writable": true
+				},
+				"X_RDKCENTRAL-COM_PreferPrivate": {
+					"type": "boolean",
+					"writable": true
+				},
+				"X_RDKCENTRAL-COM_RapidReconnectIndicationEnable": {
+					"type": "boolean",
+					"writable": true
+				},
+				"X_RDKCENTRAL-COM_vAPStatsEnable": {
+					"type": "boolean",
+					"writable": true
+				},
+				"FeatureMFPConfig": {
+					"type": "boolean",
+					"writable": true
+				},
+				"TxOverflowSelfheal": {
+					"type": "boolean",
+					"writable": true
+				},
+				"X_RDK-CENTRAL_COM_ForceDisable": {
+					"type": "boolean",
+					"writable": true
+				},
+				"Managed_WiFi_Enabled": {
+					"type": "boolean",
+					"writable": true
+				},
+				"X_RDKCENTRAL-COM_EnableRadiusGreyList": {
+					"type": "boolean",
+					"writable": true
+				},
+				"X_RDKCENTRAL-COM_EnableHostapdAuthenticator": {
+					"type": "boolean",
+					"writable": true
+				},
+				"DFS": {
+					"type": "boolean",
+					"writable": true
+				},
+				"Levl": {
+					"type": "boolean",
+					"writable": true
+				},
+				"DFSatBootUp": {
+					"type": "boolean",
+					"writable": true
+				},
+				"WiFi-Interworking": {
+					"type": "boolean",
+					"writable": true
+				},
+				"WiFi-Passpoint": {
+					"type": "boolean",
+					"writable": true
+				},
+				"WiFi-OffChannelScan-APP": {
+					"type": "boolean",
+					"writable": true
+				},
+				"WiFi-OffChannelScan": {
+					"type": "boolean",
+					"writable": true
+				},
+				"WPA3_Personal_Transition": {
+					"type": "boolean",
+					"writable": true
+				},
+				"Log_Upload": {
+					"type": "boolean",
+					"writable": true
+				},
+				"X_RDKCENTRAL-COM_AssocCountThreshold": {
+					"type": "int32_t",
+					"writable": true
+				},
+				"X_RDKCENTRAL-COM_AssocMonitorDuration": {
+					"type": "int32_t",
+					"writable": true
+				},
+				"X_RDKCENTRAL-COM_AssocGateTime": {
+					"type": "int32_t",
+					"writable": true
+				},
+				"WHIX_LogInterval": {
+					"type": "whix_log_interval_t",
+					"writable": true
+				},
+				"WHIX_ChUtility_LogInterval": {
+					"type": "whix_ch_utility_log_interval_t",
+					"writable": true
+				},
+				"X_RDKCENTRAL-COM_GoodRssiThreshold": {
+					"type": "rssi_threshold_t",
+					"writable": true
+				},
+				"RadioNumberOfEntries": {
+					"type": "uint32_t",
+					"writable": false
+				},
+				"SSIDNumberOfEntries": {
+					"type": "uint32_t",
+					"writable": false
+				},
+				"AccessPointNumberOfEntries": {
+					"type": "uint32_t",
+					"writable": false
+				},
+				"X_CISCO_COM_RadioPower": {
+					"type": "string",
+					"writable": true
+				},
+				"X_CISCO_COM_FactoryResetRadioAndAp": {
+					"type": "string",
+					"writable": true
+				},
+				"X_RDK_VapData": {
+					"type": "string",
+					"writable": true
+				},
+				"X_RDK_RadioData": {
+					"type": "string",
+					"writable": true
+				},
+				"X_RDKCENTRAL-COM_WiFi_Notification": {
+					"type": "string",
+					"writable": true
+				},
+				"X_RDKCENTRAL-COM_Connected-Client": {
+					"type": "string",
+					"writable": true
+				},
+				"X_RDKCENTRAL-COM_Br0_Sync": {
+					"type": "string",
+					"writable": true
+				},
+				"Status": {
+					"type": "wifi_status_t",
+					"writable": true
+				},
+				"X_RDKCENTRAL-COM_GASConfiguration": {
+					"type": "string",
+					"writable": true
+				},
+				"Log_Enable": {
+					"type": "string",
+					"writable": true
+				}
+			},
+			"X_RDKCENTRAL-COM_Report":{
+				"List_Of_Def": {
+					"WifiClient": {
+						"List_Of_Def": {
+							"Enabled": {
+								"type": "boolean",
+								"writable": true
+							},
+							"ReportingPeriod": {
+								"type": "uint32_t",
+								"writable": true
+							},
+							"MacAddress": {
+								"type": "string",
+								"writable": true
+							},
+							"Schema": {
+								"type": "string",
+								"writable": false
+							},
+							"SchemaID": {
+								"type": "string",
+								"writable": false
+							},
+							"Default": {
+								"List_Of_Def": {
+									"ReportingPeriod": {
+										"type": "uint32_t",
+										"writable": true
+									},
+									"OverrideTTL": {
+										"type": "uint32_t",
+										"writable": true
+									}
+								}
+							}
+						}
+					}
+				}
+			},
+			"X_RDKCENTRAL-COM_Syndication":{
+				"List_Of_Def": {
+					"WiFiRegion": {
+						"List_Of_Def": {
+							"Code": {
+								"type": "string",
+								"writable": true
+							}
+						}
+					}
+				}
+			},
+			"Radio": {
+				"Num_Of_Objects": 3,
+				"List_Of_Def": [
+					{
+						"Enable": {
+							"type": "boolean",
+							"writable": true
+						}
+					},
+					{
+						"AutoChannelSupported": {
+							"type": "boolean",
+							"writable": false
+						}
+					},
+					{
+						"AutoChannelEnable": {
+							"type": "boolean",
+							"writable": true
+						}
+					},
+					{
+						"IEEE80211hSupported": {
+							"type": "boolean",
+							"writable": false
+						}
+					},
+					{
+						"IEEE80211hEnabled": {
+							"type": "boolean",
+							"writable": true
+						}
+					},
+					{
+						"X_CISCO_COM_FrameBurst": {
+							"type": "boolean",
+							"writable": true
+						}
+					},
+					{
+						"X_CISCO_COM_APIsolation": {
+							"type": "boolean",
+							"writable": true
+						}
+					},
+					{
+						"X_CISCO_COM_ApplySetting": {
+							"type": "boolean",
+							"writable": true
+						}
+					},
+					{
+						"X_COMCAST_COM_DFSSupport": {
+							"type": "boolean",
+							"writable": false
+						}
+					},
+					{
+						"X_COMCAST_COM_DFSEnable": {
+							"type": "boolean",
+							"writable": true
+						}
+					},
+					{
+						"X_COMCAST-COM_DCSEnable": {
+							"type": "boolean",
+							"writable": true
+						}
+					},
+					{
+						"X_COMCAST-COM_RtsThresholdSupported": {
+							"type": "boolean",
+							"writable": false
+						}
+					},
+					{
+						"X_RDK_EcoPowerDown": {
+							"type": "boolean",
+							"writable": true
+						}
+					},
+					{
+						"MCS": {
+							"type": "int32_t",
+							"writable": true
+						}
+					},
+					{
+						"X_RDKCENTRAL-COM_clientInactivityTimeout": {
+							"type": "int32_t",
+							"writable": false
+						}
+					},
+					{
+						"TransmitPower": {
+							"type": "txpower_t",
+							"writable": true
+						}
+					},
+					{
+						"AutoChannelRefreshPeriod": {
+							"type": "uint32_t",
+							"writable": true
+						}
+					},
+					{
+						"Channel": {
+							"type": "channel_t",
+							"writable": true
+						}
+					},
+					{
+						"X_CISCO_COM_RTSThreshold": {
+							"type": "rts_threshold_t",
+							"writable": true
+						}
+					},
+					{
+						"X_CISCO_COM_FragmentationThreshold": {
+							"type": "frag_threshold_t",
+							"writable": true
+						}
+					},
+					{
+						"X_CISCO_COM_DTIMInterval": {
+							"type": "dtim_interval_t",
+							"writable": true
+						}
+					},
+					{
+						"X_COMCAST-COM_BeaconInterval": {
+							"type": "beacon_interval_t",
+							"writable": true
+						}
+					},
+					{
+						"BeaconPeriod": {
+							"type": "beacon_interval_t",
+							"writable": true
+						}
+					},
+					{
+						"X_CISCO_COM_CTSProtectionMode": {
+							"type": "cts_protection_t",
+							"writable": true
+						}
+					},
+					{
+						"X_CISCO_COM_TxRate": {
+							"type": "tx_rate_t",
+							"writable": false
+						}
+					},
+					{
+						"X_CISCO_COM_BasicRate": {
+							"type": "basic_rate_t",
+							"writable": false
+						}
+					},
+					{
+						"X_RDKCENTRAL-COM_ChannelUtilThreshold": {
+							"type": "uint32_t",
+							"writable": false
+						}
+					},
+					{
+						"X_RDKCENTRAL-COM_ChanUtilSelfHealEnable": {
+							"type": "uint32_t",
+							"writable": false
+						}
+					},
+					{
+						"RadioResetCount": {
+							"type": "uint32_t",
+							"writable": false
+						}
+					},
+					{
+						"ExtensionChannel": {
+							"type": "uint32_t",
+							"writable": true
+						}
+					},
+					{
+						"Alias": {
+							"type": "string",
+							"writable": true
+						}
+					},
+					{
+						"Status": {
+							"type": "wifi_status_t",
+							"writable": false
+						}
+					},
+					{
+						"Name": {
+							"type": "string",
+							"writable": false
+						}
+					},
+					{
+						"SupportedFrequencyBands": {
+							"type": "string",
+							"writable": false
+						}
+					},
+					{
+						"OperatingFrequencyBand": {
+							"type": "string",
+							"writable": false
+						}
+					},
+					{
+						"SupportedStandards": {
+							"type": "string",
+							"writable": false
+						}
+					},
+					{
+						"OperatingStandards": {
+							"type": "string",
+							"writable": true
+						}
+					},
+					{
+						"PossibleChannels": {
+							"type": "string",
+							"writable": false
+						}
+					},
+					{
+						"OperatingChannelBandwidth": {
+							"type": "bandwidth_t",
+							"writable": true
+						}
+					},
+					{
+						"GuardInterval": {
+							"type": "guard_interval_t",
+							"writable": true
+						}
+					},
+					{
+						"TransmitPowerSupported": {
+							"type": "string",
+							"writable": false
+						}
+					},
+					{
+						"RegulatoryDomain": {
+							"type": "string",
+							"writable": true
+						}
+					},
+					{
+						"BasicDataTransmitRates": {
+							"type": "string",
+							"writable": true
+						}
+					},
+					{
+						"SupportedDataTransmitRates": {
+							"type": "string",
+							"writable": false
+						}
+					},
+					{
+						"OperationalDataTransmitRates": {
+							"type": "string",
+							"writable": true
+						}
+					},
+					{
+						"X_CISCO_COM_ApChannelScan": {
+							"type": "string",
+							"writable": false
+						}
+					},
+					{
+						"ChannelsInUse": {
+							"type": "string",
+							"writable": false
+						}
+					}
+				]
+			},
+			"AccessPoint": {
+				"Num_Of_Objects": 24,
+				"List_Of_Def": [
+					{
+						"Enable": {
+							"type": "boolean",
+							"writable": true
+						}
+					},
+					{
+						"WMMCapability": {
+							"type": "boolean",
+							"writable": false
+						}
+					},
+					{
+						"UAPSDCapability": {
+							"type": "boolean",
+							"writable": false
+						}
+					},
+					{
+						"WMMEnable": {
+							"type": "boolean",
+							"writable": true
+						}
+					},
+					{
+						"UAPSDEnable": {
+							"type": "boolean",
+							"writable": true
+						}
+					},
+					{
+						"IsolationEnable": {
+							"type": "boolean",
+							"writable": true
+						}
+					},
+					{
+						"X_CISCO_COM_BssCountStaAsCpe": {
+							"type": "boolean",
+							"writable": true
+						}
+					},
+					{
+						"X_CISCO_COM_BssHotSpot": {
+							"type": "boolean",
+							"writable": true
+						}
+					},
+					{
+						"SSIDAdvertisementEnabled": {
+							"type": "boolean",
+							"writable": true
+						}
+					},
+					{
+						"X_CISCO_COM_KickAssocDevices": {
+							"type": "boolean",
+							"writable": true
+						}
+					},
+					{
+						"X_RDKCENTRAL-COM_InterworkingServiceCapability": {
+							"type": "boolean",
+							"writable": false
+						}
+					},
+					{
+						"X_RDKCENTRAL-COM_InterworkingServiceEnable": {
+							"type": "boolean",
+							"writable": true
+						}
+					},
+					{
+						"X_RDKCENTRAL-COM_InterworkingApplySettings": {
+							"type": "boolean",
+							"writable": true
+						}
+					},
+					{
+						"X_RDKCENTRAL-COM_rapidReconnectCountEnable": {
+							"type": "boolean",
+							"writable": true
+						}
+					},
+					{
+						"X_RDKCENTRAL-COM_StatsEnable": {
+							"type": "boolean",
+							"writable": true
+						}
+					},
+					{
+						"X_RDKCENTRAL-COM_WirelessManagementImplemented": {
+							"type": "boolean",
+							"writable": false
+						}
+					},
+					{
+						"X_RDKCENTRAL-COM_BSSTransitionImplemented": {
+							"type": "boolean",
+							"writable": false
+						}
+					},
+					{
+						"X_RDKCENTRAL-COM_BSSTransitionActivated": {
+							"type": "boolean",
+							"writable": true
+						}
+					},
+					{
+						"X_RDKCENTRAL-COM_NeighborReportActivated": {
+							"type": "boolean",
+							"writable": true
+						}
+					},
+					{
+						"Connected_Building_Enabled": {
+							"type": "boolean",
+							"writable": true
+						}
+					},
+					{
+						"X_RDKCENTRAL-COM_HostapMgtFrameCtrl": {
+							"type": "boolean",
+							"writable": true
+						}
+					},
+					{
+						"X_CISCO_COM_WmmNoAck": {
+							"type": "int32_t",
+							"writable": true
+						}
+					},
+					{
+						"X_CISCO_COM_MulticastRate": {
+							"type": "int32_t",
+							"writable": true
+						}
+					},
+					{
+						"X_CISCO_COM_BssMaxNumSta": {
+							"type": "int32_t",
+							"writable": true
+						}
+					},
+					{
+						"X_CISCO_COM_BssUserStatus": {
+							"type": "int32_t",
+							"writable": false
+						}
+					},
+					{
+						"X_RDKCENTRAL-COM_ManagementFramePowerControl": {
+							"type": "int32_t",
+							"writable": true
+						}
+					},
+					{
+						"X_RDKCENTRAL-COM_rapidReconnectMaxTime": {
+							"type": "rapid_reconnect_max_time_t",
+							"writable": true
+						}
+					},
+					{
+						"AssociatedDeviceNumberOfEntries": {
+							"type": "uint32_t",
+							"writable": false
+						}
+					},
+					{
+						"MaxAssociatedDevices": {
+							"type": "uint32_t",
+							"writable": true
+						}
+					},
+					{
+						"X_COMCAST-COM_AssociatedDevicesHighWatermarkThreshold": {
+							"type": "uint32_t",
+							"writable": true
+						}
+					},
+					{
+						"X_COMCAST-COM_AssociatedDevicesHighWatermarkThresholdReached": {
+							"type": "uint32_t",
+							"writable": false
+						}
+					},
+					{
+						"X_COMCAST-COM_AssociatedDevicesHighWatermark": {
+							"type": "uint32_t",
+							"writable": false
+						}
+					},
+					{
+						"X_COMCAST-COM_AssociatedDevicesHighWatermarkDate": {
+							"type": "uint32_t",
+							"writable": false
+						}
+					},
+					{
+						"X_COMCAST-COM_TXOverflow": {
+							"type": "uint32_t",
+							"writable": false
+						}
+					},
+					{
+						"RetryLimit": {
+							"type": "ap_retry_limit_t",
+							"writable": true
+						}
+					},
+					{
+						"X_CISCO_COM_LongRetryLimit": {
+							"type": "ap_retry_limit_t",
+							"writable": true
+						}
+					},
+					{
+						"X_CISCO_COM_MacFilterTableNumberOfEntries": {
+							"type": "uint32_t",
+							"writable": false
+						}
+					},
+					{
+						"Status": {
+							"type": "wifi_status_t",
+							"writable": false
+						}
+					},
+					{
+						"Alias": {
+							"type": "string",
+							"writable": false
+						}
+					},
+					{
+						"SSIDReference": {
+							"type": "string",
+							"writable": false
+						}
+					},
+					{
+						"X_RDKCENTRAL-COM_BeaconRate": {
+							"type": "string",
+							"writable": true
+						}
+					},
+					{
+						"X_COMCAST-COM_MAC_FilteringMode": {
+							"type": "string",
+							"writable": false
+						}
+					},
+					{
+						"X_RDKCENTRAL-COM_InterworkingElement": {
+							"List_Of_Def": {
+								"Internet": {
+									"type": "boolean",
+									"writable": true
+								},
+								"ASRA": {
+									"type": "boolean",
+									"writable": true
+								},
+								"ESR": {
+									"type": "boolean",
+									"writable": true
+								},
+								"UESA": {
+									"type": "boolean",
+									"writable": true
+								},
+								"HESSOptionPresent": {
+									"type": "boolean",
+									"writable": true
+								},
+								"AccessNetworkType": {
+									"type": "uint32_t",
+									"writable": true
+								},
+								"VenueInfo.Group": {
+									"type": "uint32_t",
+									"writable": true
+								},
+								"VenueInfo.Type": {
+									"type": "uint32_t",
+									"writable": true
+								},
+								"HESSID": {
+									"type": "string",
+									"writable": true
+								}
+							}
+						}
+					},
+					{
+						"X_CISCO_COM_MACFilter": {
+							"List_Of_Def": {
+								"Enable": {
+									"type": "boolean",
+									"writable": true
+								},
+								"FilterAsBlackList": {
+									"type": "boolean",
+									"writable": true
+								}
+							}
+						}
+					},
+					{
+						"Security": {
+							"List_Of_Def": {
+								"X_RDKCENTRAL-COM_TransitionDisable": {
+									"type": "boolean",
+									"writable": true
+								},
+								"Reset": {
+									"type": "boolean",
+									"writable": true
+								},
+								"X_CISCO_COM_RadiusReAuthInterval": {
+									"type": "int32_t",
+									"writable": true
+								},
+								"X_CISCO_COM_DefaultKey": {
+									"type": "int32_t",
+									"writable": true
+								},
+								"RekeyingInterval": {
+									"type": "uint32_t",
+									"writable": true
+								},
+								"RadiusServerPort": {
+									"type": "uint32_t",
+									"writable": true
+								},
+								"SecondaryRadiusServerPort": {
+									"type": "uint32_t",
+									"writable": true
+								},
+								"RadiusDASPort": {
+									"type": "uint32_t",
+									"writable": true
+								},
+								"X_CISCO_COM_WEPKey64BitNumberOfEntries": {
+									"type": "uint32_t",
+									"writable": false
+								},
+								"X_CISCO_COM_WEPKey128BitNumberOfEntries": {
+									"type": "uint32_t",
+									"writable": false
+								},
+								"ModesSupported": {
+									"type": "string",
+									"writable": false
+								},
+								"ModeEnabled": {
+									"type": "string",
+									"writable": true
+								},
+								"WEPKey": {
+									"type": "string",
+									"writable": true
+								},
+								"X_CISCO_COM_WEPKey": {
+									"type": "string",
+									"writable": true
+								},
+								"X_COMCAST-COM_WEPKey": {
+									"type": "string",
+									"writable": true
+								},
+								"PreSharedKey": {
+									"type": "string",
+									"writable": true
+								},
+								"KeyPassphrase":{
+									"type": "string",
+									"writable": true
+								},
+								"SAEPassphrase":{
+									"type": "string",
+									"writable": true
+								},
+								"X_COMCAST-COM_DefaultKeyPassphrase":{
+									"type": "string",
+									"writable": false
+								},
+								"X_COMCAST-COM_KeyPassphrase":{
+									"type": "string",
+									"writable": true
+								},
+								"X_CISCO_COM_EncryptionMethod":{
+									"type": "encryption_method_t",
+									"writable": true
+								},
+								"RadiusServerIPAddr":{
+									"type": "string",
+									"writable": true
+								},
+								"RadiusSecret":{
+									"type": "string",
+									"writable": true
+								},
+								"SecondaryRadiusServerIPAddr":{
+									"type": "string",
+									"writable": true
+								},
+								"SecondaryRadiusSecret":{
+									"type": "string",
+									"writable": true
+								},
+								"RadiusDASIPAddr":{
+									"type": "string",
+									"writable": true
+								},
+								"RadiusDASSecret":{
+									"type": "string",
+									"writable": true
+								},
+								"MFPConfig":{
+									"type": "string",
+									"writable": true
+								},
+								"X_COMCAST-COM_RadiusSettings": {
+									"List_Of_Def": {
+										"PMKCaching": {
+											"type": "boolean",
+											"writable": true
+										},
+										"RadiusServerRetries": {
+											"type": "int32_t",
+											"writable": true
+										},
+										"RadiusServerRequestTimeout": {
+											"type": "int32_t",
+											"writable": true
+										},
+										"PMKLifetime": {
+											"type": "int32_t",
+											"writable": true
+										},
+										"PMKCacheInterval": {
+											"type": "int32_t",
+											"writable": true
+										},
+										"MaxAuthenticationAttempts": {
+											"type": "int32_t",
+											"writable": true
+										},
+										"BlacklistTableTimeout": {
+											"type": "int32_t",
+											"writable": true
+										},
+										"IdentityRequestRetryInterval": {
+											"type": "int32_t",
+											"writable": true
+										},
+										"QuietPeriodAfterFailedAuthentication": {
+											"type": "int32_t",
+											"writable": true
+										}
+									}
+                                                                },
+								"X_RDKCENTRAL-COM_Authenticator": {
+									"List_Of_Def": {
+										"EAPOLKeyTimeout": {
+											"type": "eapol_key_timeout_t",
+											"writable": true
+										},
+										"EAPOLKeyRetries": {
+											"type": "uint32_t",
+											"writable": true
+										},
+										"EAPIdentityRequestTimeout": {
+											"type": "eap_identity_req_timeout_t",
+											"writable": true
+										},
+										"EAPIdentityRequestRetries": {
+											"type": "uint32_t",
+											"writable": true
+										},
+										"EAPRequestTimeout": {
+											"type": "eap_req_timeout_t",
+											"writable": true
+										},
+										"EAPRequestRetries": {
+											"type": "uint32_t",
+											"writable": true
+										}
+									}
+								}
+							}
+						}
+					},
+					{
+						"ConnectionControl": {
+							"List_Of_Def": {
+								"ClientForceDisassociation": {
+									"type": "string",
+									"writable": true
+								},
+								"ClientDenyAssociation": {
+									"type": "string",
+									"writable": true
+								},
+								"PreAssocDeny":{
+									"List_Of_Def": {
+										"RssiUpThresholdSupported": {
+											"type": "string",
+											"writable": false
+										},
+										"RssiUpThreshold": {
+											"type": "string",
+											"writable": true
+										},
+										"SnrThresholdSupported": {
+											"type": "string",
+											"writable": false
+										},
+										"SnrThreshold": {
+											"type": "string",
+											"writable": true
+										},
+										"CuThresholdSupported": {
+											"type": "string",
+											"writable": false
+										},
+										"CuThreshold": {
+											"type": "string",
+											"writable": true
+										},
+										"BasicDataTransmitRates": {
+											"type": "string",
+											"writable": true
+										},
+										"OperationalDataTransmitRates": {
+											"type": "string",
+											"writable": true
+										},
+										"SupportedDataTransmitRates": {
+											"type": "string",
+											"writable": true
+										},
+										"MinimumAdvertisedMCS": {
+											"type": "string",
+											"writable": true
+										},
+										"6GOpInfoMinRate": {
+											"type": "string",
+											"writable": true
+										}
+									}
+								},
+								"PostAssocDisc": {
+									"List_Of_Def": {
+										"RssiUpThresholdSupported": {
+											"type": "string",
+											"writable": false
+										},
+										"RssiUpThreshold": {
+											"type": "string",
+											"writable": true
+										},
+										"SamplingIntervalSupported": {
+											"type": "string",
+												"writable": false
+										},
+										"SamplingInterval": {
+											"type": "string",
+											"writable": true
+										},
+										"SnrThresholdSupported": {
+											"type": "string",
+											"writable": false
+										},
+										"SnrThreshold": {
+											"type": "string",
+											"writable": true
+										},
+										"SamplingCountSupported": {
+											"type": "string",
+											"writable": false
+										},
+										"SamplingCount": {
+											"type": "string",
+											"writable": true
+										},
+										"CuThresholdSupported": {
+											"type": "string",
+											"writable": false
+										},
+										"CuThreshold": {
+											"type": "string",
+											"writable": true
+										}
+									}
+								}
+							}
+						}
+					},
+					{
+						"WPS": {
+							"List_Of_Def": {
+								"Enable": {
+									"type": "boolean",
+									"writable": true
+								},
+								"X_CISCO_COM_ActivatePushButton": {
+									"type": "boolean",
+									"writable": true
+								},
+								"X_Comcast_com_Configured": {
+									"type": "boolean",
+									"writable": false
+								},
+								"X_CISCO_COM_CancelSession": {
+									"type": "boolean",
+									"writable": true
+								},
+								"X_CISCO_COM_WpsPushButton": {
+									"type": "int32_t",
+									"writable": true
+								},
+								"ConfigMethodsSupported": {
+									"type": "string",
+									"writable": false
+								},
+								"ConfigMethodsEnabled": {
+									"type": "string",
+									"writable": true
+								},
+								"X_CISCO_COM_Pin": {
+									"type": "string",
+									"writable": false
+								},
+								"X_CISCO_COM_ClientPin": {
+									"type": "string",
+									"writable": true
+								}
+							}
+						}
+					},
+					{
+						"X_RDKCENTRAL-COM_InterworkingService": {
+							"List_Of_Def": {
+								"Parameters": {
+									"type": "string",
+									"writable": true
+								}
+							}
+						}
+					},
+					{
+						"X_RDKCENTRAL-COM_Passpoint": {
+							"List_Of_Def": {
+								"Capability": {
+									"type": "boolean",
+									"writable": false
+								},
+								"Enable": {
+									"type": "boolean",
+									"writable": true
+								},
+								"Parameters": {
+									"type": "string",
+									"writable": true
+								},
+								"WANMetrics": {
+									"type": "string",
+									"writable": false
+								},
+								"Stats": {
+									"type": "string",
+									"writable": false
+								}
+							}
+						}
+					},
+					{
+						"AssociatedDevice": {
+							"Num_Of_Objects": 0,
+							"List_Of_Def": [
+								{
+									"AuthenticationState": {
+										"type": "boolean",
+										"writable": false
+									}
+								},
+								{
+									"Active": {
+										"type": "boolean",
+										"writable": false
+									}
+								},
+								{
+									"SignalStrength": {
+										"type": "int32_t",
+										"writable": false
+									}
+								},
+								{
+									"X_COMCAST-COM_SNR": {
+										"type": "int32_t",
+										"writable": false
+									}
+								},
+								{
+									"X_RDKCENTRAL-COM_SNR": {
+										"type": "int32_t",
+										"writable": false
+									}
+								},
+								{
+									"X_COMCAST-COM_RSSI": {
+										"type": "int32_t",
+										"writable": false
+									}
+								},
+								{
+									"X_COMCAST-COM_MinRSSI": {
+										"type": "int32_t",
+										"writable": false
+									}
+								},
+								{
+									"X_COMCAST-COM_MaxRSSI": {
+										"type": "int32_t",
+										"writable": false
+									}
+								},
+								{
+									"LastDataDownlinkRate": {
+										"type": "uint32_t",
+										"writable": false
+									}
+								},
+								{
+									"LastDataUplinkRate": {
+										"type": "uint32_t",
+										"writable": false
+									}
+								},
+								{
+									"Retransmissions": {
+										"type": "uint32_t",
+										"writable": false
+									}
+								},
+								{
+									"X_COMCAST-COM_DataFramesSentAck": {
+										"type": "uint32_t",
+										"writable": false
+									}
+								},
+								{
+									"X_COMCAST-COM_DataFramesSentNoAck": {
+										"type": "uint32_t",
+										"writable": false
+									}
+								},
+								{
+									"X_COMCAST-COM_BytesSent": {
+										"type": "uint32_t",
+										"writable": false
+									}
+								},
+								{
+									"X_COMCAST-COM_BytesReceived": {
+										"type": "uint32_t",
+										"writable": false
+									}
+								},
+								{
+									"X_COMCAST-COM_Disassociations": {
+										"type": "uint32_t",
+										"writable": false
+									}
+								},
+								{
+									"X_COMCAST-COM_AuthenticationFailures": {
+										"type": "uint32_t",
+										"writable": false
+									}
+								},
+								{
+									"MACAddress": {
+										"type": "macaddr_t",
+										"writable": false
+									}
+								},
+								{
+									"X_COMCAST-COM_OperatingStandard": {
+										"type": "string",
+										"writable": false
+									}
+								},
+								{
+									"X_COMCAST-COM_OperatingChannelBandwidth": {
+										"type": "string",
+										"writable": false
+									}
+								},
+								{
+									"X_COMCAST-COM_InterferenceSources": {
+										"type": "string",
+										"writable": false
+									}
+								}
+							]
+						}
+					},
+					{
+						"X_CISCO_COM_MacFilterTable":{
+							"Num_Of_Objects": 0,
+							"List_Of_Def": [
+								{
+									"MACAddress": {
+										"type": "macaddr_t",
+										"writable": true
+									}
+								},
+								{
+									"DeviceName": {
+										"type": "string",
+										"writable": true
+									}
+								}
+							]
+						}
+					}
+				]
+			},
+			"SSID": {
+				"Num_Of_Objects": 24,
+				"List_Of_Def": [
+					{
+						"Enable": {
+							"type": "boolean",
+							"writable": true
+						}
+					},
+					{
+						"X_CISCO_COM_EnableOnline": {
+							"type": "boolean",
+							"writable": true
+						}
+					},
+					{
+						"X_CISCO_COM_RouterEnabled": {
+							"type": "boolean",
+							"writable": true
+						}
+					},
+					{
+						"LastChange": {
+							"type": "uint32_t",
+                                                        "writable": false
+						}
+					},
+					{
+						"Status": {
+							"type": "wifi_status_t",
+							"writable": false
+						}
+					},
+					{
+						"Alias": {
+							"type": "string",
+							"writable": false
+						}
+					},
+					{
+						"Name": {
+							"type": "string",
+							"writable": false
+						}
+					},
+					{
+						"LowerLayers": {
+							"type": "string",
+							"writable": false
+						}
+					},
+					{
+						"BSSID": {
+							"type": "macaddr_t",
+							"writable": false
+						}
+					},
+					{
+						"MACAddress": {
+							"type": "macaddr_t",
+							"writable": false
+						}
+					},
+					{
+						"SSID": {
+							"type": "string",
+							"writable": true
+						}
+					},
+					{
+						"X_COMCAST-COM_DefaultSSID": {
+							"type": "string",
+							"writable": false
+						}
+					},
+					{
+						"Repurposed_VapName": {
+							"type": "string",
+							"writable": false
+						}
+					}
+				]
+			},
+			"NeighboringWiFiDiagnostic": {
+				"List_Of_Def": {
+					"Enable": {
+						"type": "boolean",
+						"writable": true
+					},
+					"DiagnosticsState": {
+						"type": "string",
+						"writable": true
+					},
+					"ResultNumberOfEntries": {
+						"type": "uint32_t",
+						"writable": false
+					},
+					"Result": {
+						"Num_Of_Objects": 0,
+						"List_Of_Def": [
+							{
+								"SignalStrength": {
+									"type": "int32_t",
+									"writable": false
+								}
+							},
+							{
+								"Noise": {
+									"type": "int32_t",
+									"writable": false
+								}
+							},
+							{
+								"Channel": {
+									"type": "uint32_t",
+									"writable": false
+								}
+							},
+							{
+								"BeaconPeriod": {
+									"type": "uint32_t",
+									"writable": false
+								}
+							},
+							{
+								"DTIMPeriod": {
+									"type": "uint32_t",
+									"writable": false
+								}
+							},
+							{
+								"X_COMCAST-COM_ChannelUtilization": {
+									"type": "uint32_t",
+									"writable": false
+								}
+							},
+							{
+								"Radio": {
+									"type": "string",
+									"writable": false
+								}
+							},
+							{
+								"SSID": {
+									"type": "string",
+									"writable": false
+								}
+							},
+							{
+								"BSSID": {
+									"type": "string",
+									"writable": false
+								}
+							},
+							{
+								"Mode": {
+									"type": "string",
+									"writable": false
+								}
+							},
+							{
+								"SecurityModeEnabled": {
+									"type": "string",
+									"writable": false
+								}
+							},
+							{
+								"EncryptionMode": {
+									"type": "string",
+									"writable": false
+								}
+							},
+							{
+								"OperatingFrequencyBand": {
+									"type": "string",
+									"writable": false
+								}
+							},
+							{
+								"SupportedStandards": {
+									"type": "string",
+									"writable": false
+								}
+							},
+							{
+								"OperatingStandards": {
+									"type": "string",
+									"writable": false
+								}
+							},
+							{
+								"OperatingChannelBandwidth": {
+									"type": "string",
+									"writable": false
+								}
+							},
+							{
+								"BasicDataTransferRates": {
+									"type": "string",
+									"writable": false
+								}
+							},
+							{
+								"SupportedDataTransferRates": {
+									"type": "string",
+									"writable": false
+								}
+							}
+						]
+					}
+				}
+			}
+		}
+	}
+}

@@ -34,13 +34,9 @@ webconfig_error_t access_check_associated_clients_subdoc(webconfig_t *config, we
 
 webconfig_error_t translate_from_associated_clients_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
 {
-    if (((data->descriptor & webconfig_data_descriptor_translate_to_ovsdb) == webconfig_data_descriptor_translate_to_ovsdb) ||  ((data->descriptor & webconfig_data_descriptor_translate_to_easymesh) == webconfig_data_descriptor_translate_to_easymesh)) {
+    if ((data->descriptor & webconfig_data_descriptor_translate_to_ovsdb) == webconfig_data_descriptor_translate_to_ovsdb) {
         if (config->proto_desc.translate_to(webconfig_subdoc_type_associated_clients, data) != webconfig_error_none) {
-            if ((data->descriptor & webconfig_data_descriptor_translate_to_ovsdb) == webconfig_data_descriptor_translate_to_ovsdb) {
-                return webconfig_error_translate_to_ovsdb;
-            } else {
-                return webconfig_error_translate_to_easymesh;
-            }
+            return webconfig_error_translate_to_ovsdb;
         }
     } else if ((data->descriptor & webconfig_data_descriptor_translate_to_tr181) == webconfig_data_descriptor_translate_to_tr181) {
 
@@ -53,13 +49,9 @@ webconfig_error_t translate_from_associated_clients_subdoc(webconfig_t *config, 
 
 webconfig_error_t translate_to_associated_clients_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
 {
-    if (((data->descriptor & webconfig_data_descriptor_translate_from_ovsdb) == webconfig_data_descriptor_translate_from_ovsdb) || ((data->descriptor & webconfig_data_descriptor_translate_from_easymesh) == webconfig_data_descriptor_translate_from_easymesh)) {
+    if ((data->descriptor & webconfig_data_descriptor_translate_from_ovsdb) == webconfig_data_descriptor_translate_from_ovsdb) {
         if (config->proto_desc.translate_from(webconfig_subdoc_type_associated_clients, data) != webconfig_error_none) {
-            if ((data->descriptor & webconfig_data_descriptor_translate_from_ovsdb) == webconfig_data_descriptor_translate_from_ovsdb) {
-                return webconfig_error_translate_from_ovsdb;
-            } else {
-                return webconfig_error_translate_from_easymesh;
-            }
+            return webconfig_error_translate_from_ovsdb;
         }
     } else if ((data->descriptor & webconfig_data_descriptor_translate_from_tr181) == webconfig_data_descriptor_translate_from_tr181) {
 

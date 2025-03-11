@@ -33,6 +33,7 @@ typedef int (* initparodusTask_t) ();
 typedef int (* wifi_getRadioTrafficStats2_t) (int radioIndex, wifi_radioTrafficStats2_t *output_struct);
 typedef int (* WiFi_InitGasConfig_t) ();
 typedef void (* daemonize_t) ();
+typedef void (* sendWebpaMsg_t) (char *serviceName, char *dest, char *trans_id, char *traceParent, char *traceState, char *contentType, char *payload, unsigned int payload_len);
 
 typedef struct {
     sysevent_open_t sysevent_open_fn;
@@ -42,6 +43,7 @@ typedef struct {
     wifi_getRadioTrafficStats2_t wifi_getRadioTrafficStats2_fn;
     WiFi_InitGasConfig_t WiFi_InitGasConfig_fn;
     daemonize_t daemonize_fn;
+    sendWebpaMsg_t sendWebpaMsg_fn;
 } wifi_misc_desc_t;
 
 #ifdef __cplusplus

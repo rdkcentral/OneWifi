@@ -25,10 +25,6 @@
 #include <webconfig_external_proto_easymesh.h>
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 typedef struct {
     union {
         webconfig_external_ovsdb_t ovsdb;
@@ -73,8 +69,5 @@ webconfig_error_t webconfig_easymesh_decode(webconfig_t *config,
                 webconfig_external_easymesh_t *out,
                 webconfig_subdoc_type_t *type);
 
-#endif
-#ifdef __cplusplus
-}
 #endif
 #endif //EXTERNAL_PROTO_H

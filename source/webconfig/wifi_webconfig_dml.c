@@ -379,7 +379,7 @@ webconfig_error_t decode_dml_subdoc(webconfig_t *config, webconfig_subdoc_data_t
   #if defined EASY_MESH_NODE || defined EASY_MESH_COLOCATED_NODE
     // decode DeviceInfo object
     obj_config = cJSON_GetObjectItem(json, "DeviceInfo");
-    if (decode_device_info(obj_config, wifi_prop) != webconfig_error_none) {
+    if (decode_device_info(obj_config, &wifi_prop) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode device object\n", __func__, __LINE__);
         cJSON_Delete(json);
         return webconfig_error_encode;

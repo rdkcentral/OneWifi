@@ -43,8 +43,8 @@ int set_wifi_blob_version(char* subdoc,uint32_t version)
 
 size_t wifi_vap_cfg_timeout_handler()
 {
-    wifi_util_info_print(WIFI_CTRL, "%s: Enter\n", __func__);
-    return 100;
+    wifi_util_info_print(WIFI_CTRL, "%s: Enter max blob timeout value:%d\n", __func__, MAX_WEBCONFIG_HOTSPOT_BLOB_SET_TIMEOUT);
+    return MAX_WEBCONFIG_HOTSPOT_BLOB_SET_TIMEOUT;
 }
 
 int wifi_vap_cfg_rollback_handler()
@@ -62,7 +62,7 @@ static int webconf_rollback_handler(void)
 {
     //TODO: what should rollback handler do in the context of OneWifi
 
-    wifi_util_dbg_print(WIFI_CTRL, "%s: Enter\n", __func__);
+    wifi_util_info_print(WIFI_CTRL, "%s: Enter\n", __func__);
     return RETURN_OK;
 }
 
@@ -853,23 +853,6 @@ bool webconf_ver_txn(const char* bb, uint32_t *ver, uint16_t *txn)
 
     return true;
 }
-bool webconfig_to_wifi_update_params(const char* raw)
-{
-    webconfig_t *config;
-    webconfig_subdoc_data_t data = {0};
-    wifi_ctrl_t *ctrl = (wifi_ctrl_t*)get_wifictrl_obj();
-    wifi_mgr_t *mgr = (wifi_mgr_t*)get_wifimgr_obj();
-
-    config = &ctrl->webconfig;
-    memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap, sizeof(wifi_hal_capability_t));
-    if (webconfig_decode(config, &data, raw) == webconfig_error_none && webconfig_data_free(&data) == webconfig_error_none)
-    {
-        wifi_util_info_print(WIFI_CTRL,"%s:%d: WebConfig blob has been successfully applied\n",__FUNCTION__,__LINE__);
-        return true;
-    }
-    wifi_util_error_print(WIFI_CTRL,"%s:%d: WebConfig blob apply has failed\n",__FUNCTION__,__LINE__);
-    return false;
-}
 
 pErr wifi_vap_cfg_subdoc_handler(void *data)
 {
@@ -1068,6 +1051,7 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
         cJSON_AddStringToObject(vb_entry, "RepurposedVapName", wifi_vap_map->vap_array[vapArrayIndex].repurposed_vap_name);
 
         cJSON_AddBoolToObject(vb_entry, "HostapMgtFrameCtrl", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.hostap_mgt_frame_ctrl);
+
         cJSON_AddBoolToObject(vb_entry, "MboEnabled",
             wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.mbo_enabled);
 
@@ -1096,7 +1080,16 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
         else {
             wifi_util_info_print(WIFI_CTRL, "vapConnectionContro param is present in blob\n");
         }
-
+        
+        const cJSON *value = cJSON_GetObjectItem(vapConnectionControl_o, "TcmPreAssociationDeny");     
+        if ((value == NULL) || (cJSON_IsObject(value) == false))
+        {
+            cJSON *TcmPreAssocDeny =  cJSON_AddObjectToObject(vapConnectionControl_o,"TcmPreAssociationDeny");
+            cJSON_AddNumberToObject(TcmPreAssocDeny, "TcmWaitTime", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.preassoc.time_ms);
+            cJSON_AddNumberToObject(TcmPreAssocDeny, "TcmMinMgmtFrames", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.preassoc.min_num_mgmt_frames);
+            cJSON_AddStringToObject(TcmPreAssocDeny, "TcmExpWeightage", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.preassoc.tcm_exp_weightage);
+            cJSON_AddStringToObject(TcmPreAssocDeny, "TcmGradientThreshold", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.preassoc.tcm_gradient_threshold);
+        }
         /*
         Correct integrity of interworking field in the VAP object is very important. Let's check it here to avoid
         reporting code 300 (SUCCESS) for webconfig agent even if it's not correct.
@@ -1166,19 +1159,22 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
 
         char *vap_blob_str = cJSON_Print(n_blob);
         wifi_util_dbg_print(WIFI_CTRL,"WebConfig blob is %s\n",vap_blob_str);
-        if (webconfig_to_wifi_update_params(vap_blob_str))
-        {
+        wifi_util_info_print(WIFI_CTRL,"%s:%d pushing WebConfig blob to ctrl queue\n", __func__, __LINE__);
+        push_event_to_ctrl_queue(vap_blob_str, strlen(vap_blob_str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_tunnel, NULL);
+
+        bool ret_value = hotspot_cfg_sem_wait_duration(MAX_HOTSPOT_BLOB_SET_TIMEOUT);
+        if (ret_value == false) {
+            execRetVal->ErrorCode = BLOB_EXECUTION_TIMEDOUT;
+            strncpy(execRetVal->ErrorMsg, "subdoc apply is failed", sizeof(execRetVal->ErrorMsg)-1);
+            wifi_util_error_print(WIFI_CTRL, "%s:%d WebConfig blob apply is failed:%s\n", __func__,
+                __LINE__, execRetVal->ErrorMsg);
+        } else {
+            wifi_util_info_print(WIFI_CTRL,"%s:%d WebConfig blob is applied success\n", __func__, __LINE__);
             execRetVal->ErrorCode = BLOB_EXEC_SUCCESS;
-        }
-        else
-        {
-            execRetVal->ErrorCode = VALIDATION_FALIED;
-            wifi_util_error_print(WIFI_CTRL, "%s(): Validation failed: %s\n", __FUNCTION__, execRetVal->ErrorMsg);
         }
 
         cJSON_free(vap_blob_str);
         cJSON_Delete(n_blob);
-        execRetVal->ErrorCode = BLOB_EXEC_SUCCESS;
     }
     else {
         execRetVal->ErrorCode = VALIDATION_FALIED;

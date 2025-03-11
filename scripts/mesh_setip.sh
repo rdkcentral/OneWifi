@@ -59,6 +59,9 @@ fi
 bridgeUtilEnable=`syscfg get bridge_util_enable`
 USE_BRIDGEUTILS=0
 
+secBhaulEnable=`syscfg get SecureBackhaul_Enable`
+wifiDynamicProfile=`sysevent get wifiDynamicProfile` # 0 - LnF, 1 - mesh onboarding
+
 if [ "x$ovs_enable" = "xtrue" ] || [ "x$bridgeUtilEnable" = "xtrue" ] ; then
 	if [ "$MODEL_NUM" == "CGM4331COM" ] || [ "$MODEL_NUM" == "CGM4981COM" ] ||  [ "$MODEL_NUM" == "CGM601TCOM" ] || [ "$MODEL_NUM" == "SG417DBCT" ] || [ "$MODEL_NUM" == "SCER11BEL" ] || [ "$MODEL_NUM" == "VTER11QEL" ] || [ "$MODEL_NUM" == "SR300" ] || [ "$MODEL_NUM" == "SE501" ] || [ "$MODEL_NUM" == "WNXL11BWL" ] || [ "$MODEL_NUM" == "TG4482A" ] || [ "$MODEL_NUM" == "SR213" ] || [ "$MODEL_NUM" == "CGA4332COM" ]; then
 	  USE_BRIDGEUTILS=1
@@ -69,6 +72,7 @@ fi
 if [ "$MODEL_NUM" == "PX5001" ] || [ "$MODEL_NUM" == "CGM4331COM" ] || [ "$MODEL_NUM" == "CGM4981COM" ] || [ "$MODEL_NUM" == "CGM601TCOM" ] || [ "$MODEL_NUM" == "SG417DBCT" ] || [ "$MODEL_NUM" == "SCER11BEL" ] || [ "$MODEL_NUM" == "VTER11QEL" ] || [ "$MODEL_NUM" == "TG4482A" ] || [ "$MODEL_NUM" == "WNXL11BWL" ] || [ "$MODEL_NUM" == "CGA4332COM" ]; then
  IF_MESHBR24="brlan112"
  IF_MESHBR50="brlan113"
+ IF_MESHBRONBOARD="brlan115"
  IF_MESHVAP24="`psmcli get dmsb.l2net.13.Members.OneWiFi`"
  IF_MESHVAP50="`psmcli get dmsb.l2net.14.Members.OneWiFi`"
  PLUME_BH1_NAME="brlan112"
@@ -275,37 +279,52 @@ if [ "$MODEL_NUM" == "VTER11QEL" ]; then
 fi
 
 if [ "$MODEL_NUM" == "PX5001" ] || [ "$MODEL_NUM" == "CGM4331COM" ] || [ "$MODEL_NUM" == "CGM4981COM" ] || [ "$MODEL_NUM" == "CGM601TCOM" ] ||  [ "$MODEL_NUM" == "SG417DBCT" ] || [ "$MODEL_NUM" == "SCER11BEL" ] || [ "$MODEL_NUM" == "VTER11QEL" ] || [ "$MODEL_NUM" == "SR201" ] || [ "$MODEL_NUM" == "SR203" ]  || [ "$MODEL_NUM" == "SR300" ] ||  [ "$MODEL_NUM" == "SE501" ] || [ "$MODEL_NUM" == "TG4482A" ] || [ "$MODEL_NUM" == "WNXL11BWL" ] || [ "$MODEL_NUM" == "SR213" ] || [ "$MODEL_NUM" == "CGA4332COM" ]; then
-        brctl112=`brctl show | grep "$IF_MESHVAP24"`
-        brctl113=`brctl show | grep "$IF_MESHVAP50"`
-        if [ "$brctl113" == "" ] || [ "$brctl112" == "" ] && [ "$MODEL_NUM" == "PX5001" ]; then
-                mesh_bridges
+    brctl112=`brctl show | grep "$IF_MESHVAP24"`
+    brctl113=`brctl show | grep "$IF_MESHVAP50"`
+    if [ "$brctl113" == "" ] || [ "$brctl112" == "" ] && [ "$MODEL_NUM" == "PX5001" ]; then
+        mesh_bridges
+    fi
+    #RDKB-15951- Xf3 & Sky specific change: Moving over bhaul to br403 Prash
+    if [ "x$ovs_enable" = "xtrue" ] || [ "x$bridgeUtilEnable" = "xtrue" ];then
+        if [ "x$ovs_enable" = "xtrue" ]; then
+            ifbr403=`ovs-vsctl show | grep br403`
+            ifbr412=`ovs-vsctl show | grep br412`
+        else
+            ifbr403=`brctl show | grep br403`
+            ifbr412=`brctl show | grep br412`
         fi
-        #RDKB-15951- Xf3 & Sky specific change: Moving over bhaul to br403 Prash
-        if [ "x$ovs_enable" = "xtrue" ] || [ "x$bridgeUtilEnable" = "xtrue" ];then
-	    if [ "x$ovs_enable" = "xtrue" ]; then
-            	ifbr403=`ovs-vsctl show | grep br403`
-	    else
-		ifbr403=`brctl show | grep br403`
-	    fi
-            if [ "$DEVICE_MODE" == "1" ]; then
-                echo "XLE is in Extender Mode skipping backhaul bridge configuration"
-            elif [ "$ifbr403" == "" ]; then
+        if [ "$DEVICE_MODE" == "1" ]; then
+            echo "XLE is in Extender Mode skipping backhaul bridge configuration"
+        else
+            if [ "$ifbr403" == "" ]; then
                 sysevent set meshbhaul-setup 10
             fi
-        else
-            brctl403=`brctl show | grep br403`
-            if [ "$DEVICE_MODE" == "1" ]; then
-                echo "XLE is in Extender Mode skipping backhaul bridge configuration"
-            elif [ "$brctl403" == "" ]; then
-                mesh_bhaul
+            if [ "$secBhaulEnable" == "1" ]; then
+                if [ "$ifbr412" == "" ]; then
+                    sysevent set meshonboard-setup 18       # Trigger to initialise br412 bridge
+                fi
+                if [ "$wifiDynamicProfile" == "1" ]; then   # Only create brlan115 onboarding bridge with interface wl0.4 if wifiDynamicProfile is already set to 1 (mesh onboarding)
+                    sysevent set multinet-up 19             # Trigger to initialise brlan115 onboarding bridge
+                fi
+            else
+                sysevent set multinet-down 18           # Trigger to remove br412 bridge
+                sysevent set multinet-down 19           # Trigger to remove brlan115 onboarding bridge
             fi
         fi
-        if [ "$DEVICE_MODE" == "1" ] && [ "$MODEL_NUM" == "WNXL11BWL" ]; then
-            echo "....................sysevent set dhcp_conf_change.............."
-            sysevent set dhcp_conf_change "interface=brlan113|dhcp-range=169.254.71.2,169.254.71.254,255.255.255.0,infinite"
-            sleep 1
-            sysevent set dhcp_conf_change "interface=brlan112|dhcp-range=169.254.70.2,169.254.70.254,255.255.255.0,infinite"
+    else
+        brctl403=`brctl show | grep br403`
+        if [ "$DEVICE_MODE" == "1" ]; then
+            echo "XLE is in Extender Mode skipping backhaul bridge configuration"
+        elif [ "$brctl403" == "" ]; then
+            mesh_bhaul
         fi
+    fi
+    if [ "$DEVICE_MODE" == "1" ] && [ "$MODEL_NUM" == "WNXL11BWL" ]; then
+        echo "....................sysevent set dhcp_conf_change.............."
+        sysevent set dhcp_conf_change "interface=brlan113|dhcp-range=169.254.71.2,169.254.71.254,255.255.255.0,infinite"
+        sleep 1
+        sysevent set dhcp_conf_change "interface=brlan112|dhcp-range=169.254.70.2,169.254.70.254,255.255.255.0,infinite"
+    fi
 
 fi
 

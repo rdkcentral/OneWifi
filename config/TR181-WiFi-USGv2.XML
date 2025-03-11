@@ -331,6 +331,12 @@
             <syntax>bool</syntax>
             <writable>true</writable>
         </parameter>
+        <parameter>
+            <name>Tcm</name>
+            <type>boolean</type>
+            <syntax>bool</syntax>
+            <writable>true</writable>
+        </parameter>
 	</parameters>
 	<objects>
         <object>
@@ -2779,6 +2785,12 @@ INSTMSMT_PH2 -->
                                     <syntax>string</syntax>
                                     <writable>true</writable>
                                 </parameter>
+                                <parameter>
+                                    <name>TcmClientDenyAssociation</name>
+                                    <type>string</type>
+                                    <syntax>string</syntax>
+                                    <writable>true</writable>
+                                </parameter>
                             </parameters>
                             <objects>
                                 <object>
@@ -2860,6 +2872,30 @@ INSTMSMT_PH2 -->
                                         </parameter>
                                         <parameter>
                                             <name>6GOpInfoMinRate</name>
+                                            <type>string(32)</type>
+                                            <syntax>string</syntax>
+                                            <writable>true</writable>
+                                        </parameter>
+                                        <parameter>
+                                            <name>TcmWaitTime</name>
+                                            <type>int</type>
+                                            <syntax>int</syntax>
+                                            <writable>true</writable>
+                                        </parameter>
+                                        <parameter>
+                                            <name>TcmMinMgmtFrames</name>
+                                            <type>int</type>
+                                            <syntax>int</syntax>
+                                            <writable>true</writable>
+                                        </parameter>
+                                        <parameter>
+                                            <name>TcmExpWeightage</name>
+                                            <type>string(32)</type>
+                                            <syntax>string</syntax>
+                                            <writable>true</writable>
+                                        </parameter>
+                                        <parameter>
+                                            <name>TcmGradientThreshold</name>
                                             <type>string(32)</type>
                                             <syntax>string</syntax>
                                             <writable>true</writable>

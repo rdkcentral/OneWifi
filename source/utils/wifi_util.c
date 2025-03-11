@@ -184,7 +184,7 @@ struct wifiCountryEnumStrMapMember wifiCountryMapMembers[] =
     {wifi_countrycode_JM,"JM","388"}, /**< JAMAICA */
     {wifi_countrycode_JP,"JP","392"}, /**< JAPAN */
     {wifi_countrycode_JE,"JE","832"}, /**< JERSEY */
-    {wifi_countrycode_JO,"jo","400"}, /**< JORDAN */
+    {wifi_countrycode_JO,"JO","400"}, /**< JORDAN */
     {wifi_countrycode_KE,"KE","404"}, /**< KENYA */
     {wifi_countrycode_KG,"KG","417"}, /**< KYRGYZSTAN */
     {wifi_countrycode_KH,"KH","116"}, /**< CAMBODIA */
@@ -318,7 +318,12 @@ struct wifiCountryEnumStrMapMember wifiCountryMapMembers[] =
     {wifi_countrycode_YU,"YU","890"}, /**< YUGOSLAVIA */
     {wifi_countrycode_ZA,"ZA","710"}, /**< SOUTH AFRICA */
     {wifi_countrycode_ZM,"ZM","894"}, /**< ZAMBIA */
-    {wifi_countrycode_ZW,"ZW","716"} /**< ZIMBABWE */
+    {wifi_countrycode_ZW,"ZW","716"}, /**< ZIMBABWE */
+    {wifi_countrycode_AX,"AX","248"}, /**< ALAND_ISLANDS */
+    {wifi_countrycode_BL,"BL","652"}, /**< SAINT_BARTHELEMY */
+    {wifi_countrycode_CW,"CW","531"}, /**< CURACAO */
+    {wifi_countrycode_MF,"MF","663"}, /**< SAINT_MARTIN */
+    {wifi_countrycode_SX,"SX","534"} /**< SINT_MAARTEN */
 };
 
 struct wifiEnvironmentEnumStrMap wifiEnviromentMap[] =
@@ -802,6 +807,11 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
         case WIFI_BUS:{
             snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiBusDbg");
             snprintf(module_filename, sizeof(module_filename), "wifiBus");
+            break;
+        }
+        case WIFI_TCM:{
+            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiTCMDbg");
+            snprintf(module_filename, sizeof(module_filename), "wifiTransientClientMgmtCtrl");
             break;
         }
         default:
@@ -3575,44 +3585,6 @@ bool is_6g_supported_device(wifi_platform_property_t *wifi_prop)
     return false;
 }
 
-wifi_scan_mode_mapper wifiScanModeMap[] =
-{
-    {WIFI_RADIO_SCAN_MODE_NONE, "None"},
-    {WIFI_RADIO_SCAN_MODE_FULL, "Full"},
-    {WIFI_RADIO_SCAN_MODE_ONCHAN, "OnChannel"},
-    {WIFI_RADIO_SCAN_MODE_OFFCHAN, "OffChannel"},
-    {WIFI_RADIO_SCAN_MODE_SURVEY, "Survey"}
-};
-
-
-int scan_mode_type_conversion(wifi_neighborScanMode_t *scan_mode_enum, char *scan_mode_str, int scan_mode_len, unsigned int conv_type)
-{
-    char arr_str[][16] = {"none", "Full", "OnChannel", "OffChannel", "Survey"};
-    wifi_neighborScanMode_t arr_enum[] = { WIFI_RADIO_SCAN_MODE_NONE, WIFI_RADIO_SCAN_MODE_FULL, WIFI_RADIO_SCAN_MODE_ONCHAN, WIFI_RADIO_SCAN_MODE_OFFCHAN, WIFI_RADIO_SCAN_MODE_SURVEY};
-
-    unsigned int i = 0;
-    if ((scan_mode_enum == NULL) || (scan_mode_str == NULL)) {
-        return RETURN_ERR;
-    }
-    if (conv_type == STRING_TO_ENUM) {
-        for (i = 0; i < ARRAY_SIZE(arr_str); i++) {
-            if (strcmp(arr_str[i], scan_mode_str) == 0) {
-                *scan_mode_enum = arr_enum[i];
-                return RETURN_OK;
-            }
-        }
-    } else if (conv_type == ENUM_TO_STRING) {
-        for (i = 0; i < ARRAY_SIZE(arr_enum); i++) {
-            if (arr_enum[i] == *scan_mode_enum) {
-                snprintf(scan_mode_str, scan_mode_len, "%s", arr_str[i]);
-                return RETURN_OK;
-            }
-        }
-    }
-
-    return RETURN_ERR;
-}
-
 bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t *vap_info_new,
     rdk_wifi_vap_info_t *rdk_old, rdk_wifi_vap_info_t *rdk_new, bool isSta)
 {
@@ -3717,11 +3689,88 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
                 vap_info_new->u.bss_info.preassoc.sixGOpInfoMinRate,
                 sizeof(vap_info_old->u.bss_info.preassoc.sixGOpInfoMinRate)) ||
             IS_CHANGED(vap_info_old->u.bss_info.hostap_mgt_frame_ctrl,
-                vap_info_new->u.bss_info.hostap_mgt_frame_ctrl)) {
+                vap_info_new->u.bss_info.hostap_mgt_frame_ctrl) ||
+            IS_CHANGED(vap_info_old->u.bss_info.mbo_enabled,
+                vap_info_new->u.bss_info.mbo_enabled)) {
             return true;
         }
     }
     return false;
+}
+
+wifi_scan_mode_mapper wifiScanModeMap[] =
+{
+    {WIFI_RADIO_SCAN_MODE_NONE, "None"},
+    {WIFI_RADIO_SCAN_MODE_FULL, "Full"},
+    {WIFI_RADIO_SCAN_MODE_ONCHAN, "OnChannel"},
+    {WIFI_RADIO_SCAN_MODE_OFFCHAN, "OffChannel"},
+    {WIFI_RADIO_SCAN_MODE_SURVEY, "Survey"}
+};
+
+
+int scan_mode_type_conversion(wifi_neighborScanMode_t *scan_mode_enum, char *scan_mode_str, int scan_mode_len, unsigned int conv_type)
+{
+    char arr_str[][16] = {"none", "Full", "OnChannel", "OffChannel", "Survey"};
+    wifi_neighborScanMode_t arr_enum[] = { WIFI_RADIO_SCAN_MODE_NONE, WIFI_RADIO_SCAN_MODE_FULL, WIFI_RADIO_SCAN_MODE_ONCHAN, WIFI_RADIO_SCAN_MODE_OFFCHAN, WIFI_RADIO_SCAN_MODE_SURVEY};
+
+    unsigned int i = 0;
+    if ((scan_mode_enum == NULL) || (scan_mode_str == NULL)) {
+        return RETURN_ERR;
+    }
+    if (conv_type == STRING_TO_ENUM) {
+        for (i = 0; i < ARRAY_SIZE(arr_str); i++) {
+            if (strcmp(arr_str[i], scan_mode_str) == 0) {
+                *scan_mode_enum = arr_enum[i];
+                return RETURN_OK;
+            }
+        }
+    } else if (conv_type == ENUM_TO_STRING) {
+        for (i = 0; i < ARRAY_SIZE(arr_enum); i++) {
+            if (arr_enum[i] == *scan_mode_enum) {
+                snprintf(scan_mode_str, scan_mode_len, "%s", arr_str[i]);
+                return RETURN_OK;
+            }
+        }
+    }
+
+    return RETURN_ERR;
+}
+
+int get_partner_id(char *partner_id)
+{
+    char buffer[64];
+    FILE *file;
+    char *pos = NULL;
+    int ret = RETURN_ERR;
+
+    if ((file = popen("syscfg get partner_id", "r")) != NULL) {
+        pos = fgets(buffer, sizeof(buffer), file);
+        pclose(file);
+    }
+
+    if ((pos == NULL) &&
+            ((file = popen("/lib/rdk/getpartner_id.sh Getpartner_id", "r")) != NULL)) {
+        pos = fgets(buffer, sizeof(buffer), file);
+        pclose(file);
+    }
+
+    if (pos) {
+        size_t len = strlen (pos);
+
+        if ((len > 0) && (pos[len - 1] == '\n')) {
+            len--;
+        }
+
+        memcpy(partner_id, pos, len);
+        partner_id[len] = 0;
+
+        ret = RETURN_OK;
+    } else {
+        wifi_util_error_print(WIFI_DMCLI,"%s : Error in opening File\n", __func__);
+        *partner_id = 0;
+    }
+
+    return ret;
 }
 
 // Countrycode: US, Band 2.4G

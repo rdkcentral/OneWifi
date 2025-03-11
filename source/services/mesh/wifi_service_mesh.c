@@ -1719,61 +1719,66 @@ int process_ext_webconfig_set_data(wifi_service_node_t *node, wifi_core_data_t *
     return 0;
 }
 
-
-int process_sta_hal_ind(wifi_service_node_t *node, wifi_event_subtype_t sub_type, wifi_core_data_t *data)
+int process_sta_hal_ind(wifi_service_node_t *node, wifi_event_subtype_t sub_type,
+    wifi_core_data_t *data)
 {
     switch (sub_type) {
-        case wifi_event_scan_results:
-            process_ext_scan_results(node, data);
-            break;
+    case wifi_event_scan_results:
+        process_ext_scan_results(node, data);
+        break;
 
-        case wifi_event_hal_sta_conn_status:
-            process_ext_sta_conn_status(node, data);
-            break;
+    case wifi_event_hal_sta_conn_status:
+        process_ext_sta_conn_status(node, data);
+        break;
 
-        case wifi_event_hal_channel_change:
-            process_ext_channel_change(node, data);
-            break;
+    case wifi_event_hal_channel_change:
+        process_ext_channel_change(node, data);
+        break;
 
-        default:
-            wifi_util_dbg_print(WIFI_SERVICES, "%s:%d: assert - sub_type:%d\r\n", __func__, __LINE__, sub_type);
-            assert(sub_type >= wifi_event_hal_max);
+    default:
+        wifi_util_dbg_print(WIFI_SERVICES, "%s:%d: assert - sub_type:%s\r\n", __func__, __LINE__,
+            wifi_event_subtype_to_string(sub_type));
+        assert(sub_type >= wifi_event_hal_max);
         break;
     }
 
     return 0;
 }
 
-int process_sta_command(wifi_service_node_t *node, wifi_event_subtype_t sub_type, wifi_core_data_t *data)
+int process_sta_command(wifi_service_node_t *node, wifi_event_subtype_t sub_type,
+    wifi_core_data_t *data)
 {
     switch (sub_type) {
-        case wifi_event_type_device_network_mode:
-            break;
+    case wifi_event_type_device_network_mode:
+        break;
 
-        case wifi_event_type_trigger_disconnection:
-            process_ext_trigger_disconnection(node, data);
-            break;
+    case wifi_event_type_trigger_disconnection:
+        process_ext_trigger_disconnection(node, data);
+        break;
 
-        default:
-            wifi_util_dbg_print(WIFI_SERVICES, "%s:%d: assert - sub_type:%d\r\n", __func__, __LINE__, sub_type);
-            assert(sub_type >= wifi_event_command_max);
-            break;
+    default:
+        wifi_util_dbg_print(WIFI_SERVICES, "%s:%d: assert - sub_type:%s\r\n", __func__, __LINE__,
+            wifi_event_subtype_to_string(sub_type));
+        assert(sub_type >= wifi_event_command_max);
+        break;
     }
 
     return 0;
 }
 
-int process_sta_exec(wifi_service_node_t *node, wifi_event_subtype_t sub_type, wifi_core_data_t *data)
+int process_sta_exec(wifi_service_node_t *node, wifi_event_subtype_t sub_type,
+    wifi_core_data_t *data)
 {
     switch (sub_type) {
-        case wifi_event_exec_timeout:
-            process_ext_exec_timeout(node, data);
-            break;
+    case wifi_event_exec_timeout:
+        process_ext_exec_timeout(node, data);
+        break;
 
-        default:
-            wifi_util_dbg_print(WIFI_SERVICES, "%s:%d: assert - sub_type:%d\r\n", __func__, __LINE__, sub_type);
-            assert(sub_type >= wifi_event_exec_max);
-            break;
+    default:
+        wifi_util_dbg_print(WIFI_SERVICES, "%s:%d: assert - sub_type:%s\r\n", __func__, __LINE__,
+            wifi_event_subtype_to_string(sub_type));
+        assert(sub_type >= wifi_event_exec_max);
+        break;
     }
 
     return 0;
@@ -1799,30 +1804,30 @@ int process_sta_webconfig(wifi_service_node_t *node, wifi_event_subtype_t sub_ty
 
 int mesh_sta_node_event(wifi_service_node_t *node, wifi_event_t *event)
 {
-    wifi_util_dbg_print(WIFI_SERVICES,"%s:%d: node: %s\n", __func__, __LINE__, node->desc.name);
+    wifi_util_dbg_print(WIFI_SERVICES, "%s:%d: node: %s\n", __func__, __LINE__, node->desc.name);
 
     switch (event->event_type) {
-        case wifi_event_type_exec:
-            process_sta_exec(node, event->sub_type, &event->u.core_data);
-            break;
+    case wifi_event_type_exec:
+        process_sta_exec(node, event->sub_type, &event->u.core_data);
+        break;
 
-        case wifi_event_type_command:
-            process_sta_command(node, event->sub_type, &event->u.core_data);
-            break;
+    case wifi_event_type_command:
+        process_sta_command(node, event->sub_type, &event->u.core_data);
+        break;
 
-        case wifi_event_type_hal_ind:
-            process_sta_hal_ind(node, event->sub_type, &event->u.core_data);
-            break;
+    case wifi_event_type_hal_ind:
+        process_sta_hal_ind(node, event->sub_type, &event->u.core_data);
+        break;
 
-        case wifi_event_type_webconfig:
-            process_sta_webconfig(node, event->sub_type, &event->u.core_data);
-            break;
+    case wifi_event_type_webconfig:
+        process_sta_webconfig(node, event->sub_type, &event->u.core_data);
+        break;
 
-        default:
-            wifi_util_dbg_print(WIFI_SERVICES, "%s:%d: default - sub_type:%d\r\n", __func__, __LINE__, event->sub_type);
-            break;
+    default:
+        wifi_util_dbg_print(WIFI_SERVICES, "%s:%d: default - sub_type:%s\r\n", __func__, __LINE__,
+            wifi_event_subtype_to_string(event->sub_type));
+        break;
     }
 
     return 0;
 }
-

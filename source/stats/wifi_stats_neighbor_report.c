@@ -87,7 +87,7 @@ int copy_neighbor_ap_stats_from_cache(wifi_mon_provider_element_t *p_elem, void 
             }
         }
         if (ap_count_total > 0) {
-            wifi_util_dbg_print(WIFI_MON, "%s:%d  radio index %, ap count total %d\n",__func__,__LINE__, args->radio_index, ap_count_total);
+            wifi_util_dbg_print(WIFI_MON, "%s:%d  radio index %d, ap count total %d\n",__func__,__LINE__, args->radio_index, ap_count_total);
             neigh_stat = (wifi_neighbor_ap2_t *) calloc(ap_count_total, sizeof(wifi_neighbor_ap2_t));
             if (neigh_stat == NULL) {
                 wifi_util_error_print(WIFI_MON, "%s:%d Failed to alloc memory for radio %d\n",__func__,__LINE__, args->radio_index);

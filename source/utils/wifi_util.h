@@ -30,7 +30,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/prctl.h>
-#include "bus.h"
 #include "ccsp.h"
 
 #ifdef __cplusplus
@@ -57,7 +56,8 @@ typedef enum {
     WIFI_SM,
     WIFI_BLASTER,
     WIFI_OCS,
-    WIFI_BUS
+    WIFI_BUS,
+    WIFI_TCM
 } wifi_dbg_type_t;
 
 typedef enum {
@@ -85,12 +85,8 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
 #define MAC_ADDR_LEN 6
 typedef unsigned char mac_addr_t[MAC_ADDR_LEN];
 
-#define MAX_WIFI_COUNTRYCODE 247
-#ifdef RASPBERRY_PI_PORT
-    #define MIN_NUM_RADIOS 1
-#else
-    #define MIN_NUM_RADIOS 2
-#endif
+#define MAX_WIFI_COUNTRYCODE 252
+#define MIN_NUM_RADIOS 2
 struct wifiCountryEnumStrMapMember {
     wifi_countrycode_type_t countryCode;
     char countryStr[4];
@@ -387,9 +383,10 @@ int convert_bool_to_ascii_string(bool l_bool_param, char *l_string, size_t str_l
 void json_param_obscure(char *json, char *param);
 bool is_5g_20M_channel_in_dfs(int channel);
 bool is_6g_supported_device(wifi_platform_property_t *wifi_prop);
-int scan_mode_type_conversion(wifi_neighborScanMode_t *scan_mode_enum, char *scan_mode_str, int scan_mode_len, unsigned int conv_type);
 bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t *vap_info_new,
     rdk_wifi_vap_info_t *rdk_old, rdk_wifi_vap_info_t *rdk_new, bool isSta);
+int scan_mode_type_conversion(wifi_neighborScanMode_t *scan_mode_enum, char *scan_mode_str, int scan_mode_len, unsigned int conv_type);
+int get_partner_id(char *partner_id);
 int update_radio_operating_classes(wifi_radio_operationParam_t *oper);
 #ifdef __cplusplus
 }

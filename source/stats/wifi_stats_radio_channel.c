@@ -30,8 +30,10 @@
 #include "wifi_util.h"
 
 #define RADIO_SCAN_RESULT_INTERVAL 200 //200 ms
-#define RADIO_SCAN_MAX_RESULTS_RETRIES 150 //30 seconds
-
+#define RADIO_SCAN_MAX_RESULTS_RETRIES_FULL_SCAN 150 //30 seconds
+#define RADIO_SCAN_MAX_RESULTS_RETRIES_ON_AND_OFF_SCAN 35 //7 seconds
+#define NEIGHBOR_SCAN_RETRY_INTERVAL 45 //45ms
+#define NEIGHBOR_SCAN_MAX_RETRY 10
 
 int validate_radio_channel_args(wifi_mon_stats_args_t *args)
 {
@@ -542,6 +544,51 @@ int execute_radio_channel_stats_api(wifi_mon_collector_element_t *c_elem, wifi_m
     return RETURN_OK;
 }
 
+int retrigger_neighbor_scan(void *arg)
+{
+    wifi_mon_collector_element_t *c_elem = (wifi_mon_collector_element_t *)arg;
+    wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
+    wifi_mon_stats_args_t *args = NULL;
+    int ret = RETURN_OK;
+    int id = 0;
+
+    args = c_elem->args;
+    if (args == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d input arguments are NULL args : %p\n", __func__,
+            __LINE__, args);
+        return RETURN_ERR;
+    }
+
+    if (mon_data->radio_presence[args->radio_index] == false) {
+        wifi_util_info_print(WIFI_MON, "%s:%d radio_presence is false for radio : %d\n", __func__,
+            __LINE__, args->radio_index);
+        return RETURN_OK;
+    }
+
+    if (mon_data->scan_trigger_retries[args->radio_index] < NEIGHBOR_SCAN_MAX_RETRY) {
+        ret = execute_radio_channel_api(c_elem, mon_data, c_elem->collector_task_interval_ms);
+        if (ret != RETURN_OK) {
+            mon_data->scan_trigger_retries[args->radio_index]++;
+            scheduler_add_timer_task(mon_data->sched, FALSE, &id, retrigger_neighbor_scan, c_elem,
+                NEIGHBOR_SCAN_RETRY_INTERVAL, 1, FALSE);
+            c_elem->u.radio_channel_neighbor_data.scan_trigger_task_id = id;
+            wifi_util_dbg_print(WIFI_MON,
+                "%s:%d  Retry (%d) to trigger scan for scan mode %d radio index %d\n", __func__,
+                __LINE__, mon_data->scan_trigger_retries[args->radio_index], args->scan_mode,
+                args->radio_index);
+            return RETURN_OK;
+        }
+        return ret;
+    }
+
+    mon_data->scan_status[args->radio_index] = 0;
+    mon_data->scan_trigger_retries[args->radio_index] = 0;
+    wifi_util_error_print(WIFI_MON,
+        "%s:%d Failed to trigger scan for scan mode %d radio index %d\n", __func__, __LINE__,
+        args->scan_mode, args->radio_index);
+
+    return RETURN_ERR;
+}
 
 int check_scan_complete_read_results(void *arg)
 {
@@ -558,27 +605,73 @@ int check_scan_complete_read_results(void *arg)
     args = c_elem->args;
     ret = wifi_getNeighboringWiFiStatus(args->radio_index, &neigh_stats, &ap_count);
     if (ret != RETURN_OK) {
-        if (errno == EAGAIN && mon_data->scan_results_retries[args->radio_index] < RADIO_SCAN_MAX_RESULTS_RETRIES) {
-            mon_data->scan_results_retries[args->radio_index]++;
-            scheduler_add_timer_task(mon_data->sched, FALSE, &id, check_scan_complete_read_results, c_elem,
-                    RADIO_SCAN_RESULT_INTERVAL, 1, FALSE);
-            c_elem->u.radio_channel_neighbor_data.scan_complete_task_id = id;
-
-            wifi_util_dbg_print(WIFI_MON, "%s : %d  Neighbor wifi status for index %d not ready. Retry (%d)\n",__func__,__LINE__, args->radio_index, mon_data->scan_results_retries[args->radio_index]);
-            return RETURN_OK;
+        if (errno == EAGAIN || ret == WIFI_HAL_NOT_READY) {
+            int max_retries = 0;
+            if (args->scan_mode == WIFI_RADIO_SCAN_MODE_FULL) {
+                max_retries = RADIO_SCAN_MAX_RESULTS_RETRIES_FULL_SCAN;
+            } else if (args->scan_mode == WIFI_RADIO_SCAN_MODE_ONCHAN ||
+                args->scan_mode == WIFI_RADIO_SCAN_MODE_OFFCHAN) {
+                max_retries = RADIO_SCAN_MAX_RESULTS_RETRIES_ON_AND_OFF_SCAN;
+            }
+            if (mon_data->scan_results_retries[args->radio_index] < max_retries) {
+                mon_data->scan_results_retries[args->radio_index]++;
+                scheduler_add_timer_task(mon_data->sched, FALSE, &id,
+                    check_scan_complete_read_results, c_elem, RADIO_SCAN_RESULT_INTERVAL, 1, FALSE);
+                c_elem->u.radio_channel_neighbor_data.scan_complete_task_id = id;
+                wifi_util_dbg_print(WIFI_MON,
+                    "%s : %d  Neighbor wifi status for index %d not ready. Retry (%d)\n", __func__,
+                    __LINE__, args->radio_index, mon_data->scan_results_retries[args->radio_index]);
+                return RETURN_OK;
+            }
+            wifi_util_error_print(WIFI_MON,
+                "%s : %d  Failed to trigger scan for scan mode %d radio index %d\n", __func__,
+                __LINE__, args->scan_mode, args->radio_index);
+        } else {
+            if (mon_data->scan_trigger_retries[args->radio_index] < NEIGHBOR_SCAN_MAX_RETRY) {
+                mon_data->scan_trigger_retries[args->radio_index]++;
+                scheduler_add_timer_task(mon_data->sched, FALSE, &id, retrigger_neighbor_scan,
+                    c_elem, NEIGHBOR_SCAN_RETRY_INTERVAL, 1, FALSE);
+                c_elem->u.radio_channel_neighbor_data.scan_trigger_task_id = id;
+                wifi_util_dbg_print(WIFI_MON,
+                    "%s:%d  Retry (%d) to trigger scan for scan mode %d radio index %d\n", __func__,
+                    __LINE__, mon_data->scan_trigger_retries[args->radio_index], args->scan_mode,
+                    args->radio_index);
+                return RETURN_OK;
+            }
         }
-        wifi_util_error_print(WIFI_MON, "%s : %d  Failed to get Neighbor wifi status for scan mode %d radio index %d\n",__func__,__LINE__, args->scan_mode, args->radio_index);
+        mon_data->scan_trigger_retries[args->radio_index] = 0;
         mon_data->scan_status[args->radio_index] = 0;
+        wifi_util_error_print(WIFI_MON,
+            "%s : %d  Failed to get Neighbor wifi status for scan mode %d radio index %d\n",
+            __func__, __LINE__, args->scan_mode, args->radio_index);
         return RETURN_ERR;
     }
-    wifi_util_dbg_print(WIFI_MON, "%s : %d  Scan complete scan mode %d radio index %d\n",__func__,__LINE__, args->scan_mode, args->radio_index);
+
+    wifi_util_dbg_print(WIFI_MON, "%s : %d  Scan complete scan mode %d radio index %d\n", __func__,
+        __LINE__, args->scan_mode, args->radio_index);
     mon_data->scan_status[args->radio_index] = 0;
+    mon_data->scan_trigger_retries[args->radio_index] = 0;
 
     //Update Neighbour Cache
     pthread_mutex_lock(&mon_data->data_lock);
 
     for (unsigned int i = 0; i < ap_count; i++) {
-        wifi_util_dbg_print(WIFI_MON, "%s:%d Radio: %d Count %d Scan_mode %d ap_SSID %s ap_BSSID %s ap_Mode %s ap_Channel %u ap_SignalStrength %d ap_SecurityModeEnabled %s ap_EncryptionMode %s ap_OperatingFrequencyBand %s ap_SupportedStandards %s ap_OperatingStandards %s ap_OperatingChannelBandwidth %s ap_BeaconPeriod %u ap_Noise %d ap_BasicDataTransferRates %s ap_SupportedDataTransferRates %s ap_DTIMPeriod %u ap_ChannelUtilization %u", __func__, __LINE__, args->radio_index, i, args->scan_mode, neigh_stats[i].ap_SSID, neigh_stats[i].ap_BSSID, neigh_stats[i].ap_Mode, neigh_stats[i].ap_Channel, neigh_stats[i].ap_SignalStrength, neigh_stats[i].ap_SecurityModeEnabled, neigh_stats[i].ap_EncryptionMode, neigh_stats[i].ap_OperatingFrequencyBand, neigh_stats[i].ap_SupportedStandards, neigh_stats[i].ap_OperatingStandards, neigh_stats[i].ap_OperatingChannelBandwidth, neigh_stats[i].ap_BeaconPeriod, neigh_stats[i].ap_Noise, neigh_stats[i].ap_BasicDataTransferRates, neigh_stats[i].ap_SupportedDataTransferRates, neigh_stats[i].ap_DTIMPeriod, neigh_stats[i].ap_ChannelUtilization);
+        wifi_util_dbg_print(WIFI_MON,
+            "%s:%d Radio: %d Count %d Scan_mode %d ap_SSID %s ap_BSSID %s ap_Mode %s ap_Channel %u "
+            "ap_SignalStrength %d ap_SecurityModeEnabled %s ap_EncryptionMode %s "
+            "ap_OperatingFrequencyBand %s ap_SupportedStandards %s ap_OperatingStandards %s "
+            "ap_OperatingChannelBandwidth %s ap_BeaconPeriod %u ap_Noise %d "
+            "ap_BasicDataTransferRates %s ap_SupportedDataTransferRates %s ap_DTIMPeriod %u "
+            "ap_ChannelUtilization %u\n",
+            __func__, __LINE__, args->radio_index, i, args->scan_mode, neigh_stats[i].ap_SSID,
+            neigh_stats[i].ap_BSSID, neigh_stats[i].ap_Mode, neigh_stats[i].ap_Channel,
+            neigh_stats[i].ap_SignalStrength, neigh_stats[i].ap_SecurityModeEnabled,
+            neigh_stats[i].ap_EncryptionMode, neigh_stats[i].ap_OperatingFrequencyBand,
+            neigh_stats[i].ap_SupportedStandards, neigh_stats[i].ap_OperatingStandards,
+            neigh_stats[i].ap_OperatingChannelBandwidth, neigh_stats[i].ap_BeaconPeriod,
+            neigh_stats[i].ap_Noise, neigh_stats[i].ap_BasicDataTransferRates,
+            neigh_stats[i].ap_SupportedDataTransferRates, neigh_stats[i].ap_DTIMPeriod,
+            neigh_stats[i].ap_ChannelUtilization);
     }
     wifi_util_dbg_print(WIFI_MON, "%s : %d  radio index %d scan_mode %d, found %d neighbors\n",__func__,__LINE__, args->radio_index, args->scan_mode, ap_count);
     neighscan_stats_data = (neighscan_diag_cfg_t *)&mon_data->neighbor_scan_cfg;
@@ -784,8 +877,19 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
         }
     } else {
         dwell_time = args->dwell_time;
-        if (dwell_time ==  0) {
-            dwell_time = 10;
+        if (dwell_time == 0) {
+            dwell_time = 20;
+        }
+        if (args->scan_mode == WIFI_RADIO_SCAN_MODE_ONCHAN) {
+            // make sure dwell time is less than 20ms if DFS channel
+            if (radioOperation->band == WIFI_FREQUENCY_5L_BAND ||
+                radioOperation->band == WIFI_FREQUENCY_5H_BAND ||
+                radioOperation->band == WIFI_FREQUENCY_5_BAND) {
+                if (is_5g_20M_channel_in_dfs(radioOperation->channel) ||
+                    radioOperation->channelWidth == WIFI_CHANNELBANDWIDTH_160MHZ) {
+                    dwell_time = 20;
+                }
+            }
         }
     }
 
@@ -808,11 +912,18 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
     int private_vap_index = getPrivateApFromRadioIndex(args->radio_index);
     ret = wifi_startNeighborScan(private_vap_index, args->scan_mode, dwell_time, num_channels, (unsigned int *)channels);
     if (ret != RETURN_OK) {
-        wifi_util_error_print(WIFI_MON, "%s : %d  Failed to trigger scan for radio index %d\n",__func__,__LINE__, args->radio_index);
-        return RETURN_ERR;
+        mon_data->scan_trigger_retries[args->radio_index]++;
+        scheduler_add_timer_task(mon_data->sched, FALSE, &id, retrigger_neighbor_scan, c_elem,
+            NEIGHBOR_SCAN_RETRY_INTERVAL, 1, FALSE);
+        c_elem->u.radio_channel_neighbor_data.scan_trigger_task_id = id;
+        wifi_util_dbg_print(WIFI_MON,
+            "%s:%d  Retry (%d) to trigger scan for scan mode %d radio index %d\n", __func__,
+            __LINE__, mon_data->scan_trigger_retries[args->radio_index], args->scan_mode,
+            args->radio_index);
+        return RETURN_OK;
     }
     scheduler_add_timer_task(mon_data->sched, FALSE, &id, check_scan_complete_read_results, c_elem,
-            RADIO_SCAN_RESULT_INTERVAL, 1, FALSE);
+            RADIO_SCAN_RESULT_INTERVAL/2, 1, FALSE);
     c_elem->u.radio_channel_neighbor_data.scan_complete_task_id = id;
 
     return RETURN_OK;

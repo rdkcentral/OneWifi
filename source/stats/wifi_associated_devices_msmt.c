@@ -37,10 +37,10 @@
 #include <sys/un.h>
 #include <assert.h>
 #include <uuid/uuid.h>
-#include "harvester.h"
 #include "wifi_stubs.h"
 
 #include "wifi_util.h"
+#include "misc.h"
 
 // HASH - 7985cdc3a29f21c283fdcc0fcdcce550
 // UUID - ec57a5b6-b167-4623-baff-399f063bd56a
@@ -589,7 +589,7 @@ void upload_associated_devices_msmt_data(bssid_data_t *bssid_info, sta_data_t *s
 
     size += MAGIC_NUMBER_SIZE + SCHEMA_ID_LENGTH;
 #ifdef ONEWIFI_HARVESTER_APP_SUPPORT
-    sendWebpaMsg((char *)serviceName,(char *) dest, trans_id, NULL, NULL, (char *)contentType, buff, size);//ONE_WIFI
+    get_misc_descriptor()->sendWebpaMsg_fn((char *)serviceName,(char *) dest, trans_id, NULL, NULL, (char *)contentType, buff, size);
 #endif
     wifi_util_dbg_print(WIFI_MON, "Creating telemetry record successful\n");
 }

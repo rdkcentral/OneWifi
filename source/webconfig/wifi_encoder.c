@@ -35,6 +35,8 @@
 #include "wifi_ctrl.h"
 #include "wifi_util.h"
 
+#define TCM_WEIGH "0.6"
+#define TCMTHRESHOLD "0.18"
 webconfig_error_t encode_radio_setup_object(const rdk_wifi_vap_map_t *vap_map, cJSON *radio_object)
 {
     cJSON *obj_array, *obj;
@@ -544,11 +546,31 @@ webconfig_error_t encode_preassoc_object(const wifi_preassoc_control_t *preassoc
     } else {
         cJSON_AddStringToObject(preassoc, "6GOpInfoMinRate", preassoc_info->sixGOpInfoMinRate);
     }
-
     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Encoding preassoc settings passed\n", __func__, __LINE__);
 
     return webconfig_error_none;
 }
+
+
+webconfig_error_t encode_tcm_preassoc_object(const wifi_preassoc_control_t *preassoc_info, cJSON *preassoc)
+{
+    cJSON_AddNumberToObject(preassoc, "TcmWaitTime", preassoc_info->time_ms);
+    cJSON_AddNumberToObject(preassoc, "TcmMinMgmtFrames", preassoc_info->min_num_mgmt_frames);
+    if(strlen((char *)preassoc_info->tcm_exp_weightage) == 0) {
+        cJSON_AddStringToObject(preassoc, "TcmExpWeightage", TCM_WEIGH);
+    } else {
+        cJSON_AddStringToObject(preassoc, "TcmExpWeightage", preassoc_info->tcm_exp_weightage);
+    }
+    if(strlen((char *)preassoc_info->tcm_gradient_threshold) == 0) {
+        cJSON_AddStringToObject(preassoc, "TcmGradientThreshold", TCMTHRESHOLD);
+    } else {
+        cJSON_AddStringToObject(preassoc, "TcmGradientThreshold", preassoc_info->tcm_gradient_threshold);
+    }
+    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Encoding tcm preassoc settings passed\n", __func__, __LINE__);
+
+    return webconfig_error_none;
+}
+
 
 webconfig_error_t encode_connection_ctrl_object(const wifi_vap_info_t *vap_info, cJSON *vap_obj)
 {
@@ -561,6 +583,13 @@ webconfig_error_t encode_connection_ctrl_object(const wifi_vap_info_t *vap_info,
     cJSON_AddItemToObject(vap_obj, "PreAssociationDeny", obj);
     if (encode_preassoc_object(&vap_info->u.bss_info.preassoc, obj) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Preassoc object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
+        return webconfig_error_encode;
+    }
+
+    obj = cJSON_CreateObject();
+    cJSON_AddItemToObject(vap_obj, "TcmPreAssociationDeny", obj);
+    if (encode_tcm_preassoc_object(&vap_info->u.bss_info.preassoc, obj) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d TcmPreassoc object encode failed for %s\n",__FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_encode;
     }
 
@@ -1496,56 +1525,6 @@ webconfig_error_t encode_mesh_sta_object(const wifi_vap_info_t *vap_info,
     return webconfig_error_none;
 }
 
-char *hextostring(unsigned int in_len, unsigned char *in, unsigned int out_len, char *out)
-{
-    unsigned int i;
-    unsigned char tmp;
-
-    if (out_len < 2 * in_len + 1) {
-        return NULL;
-    }
-
-    memset(out, 0, out_len);
-
-    for (i = 0; i < in_len; i++) {
-        tmp = in[i] >> 4;
-        if (tmp < 0xa) {
-            out[2 * i] = tmp + 0x30;
-        } else {
-            out[2 * i] = tmp - 0xa + 0x61;
-        }
-
-        tmp = in[i] & 0xf;
-        if (tmp < 0xa) {
-            out[2 * i + 1] = tmp + 0x30;
-        } else {
-            out[2 * i + 1] = tmp - 0xa + 0x61;
-        }
-    }
-
-    return out;
-}
-
-webconfig_error_t encode_frame_data(cJSON *obj_assoc_client, frame_data_t *frame)
-{
-    char assoc_frame_string[MAX_FRAME_SZ * 2 + 1];
-
-    memset(assoc_frame_string, 0, sizeof(assoc_frame_string));
-
-    if (frame->frame.len != 0) {
-        hextostring(frame->frame.len, frame->data, MAX_FRAME_SZ * 2 + 1, assoc_frame_string);
-    } else {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Frame Data is empty.\n", __func__, __LINE__);
-        return webconfig_error_none;
-    }
-
-    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Frame Data:\"%s\" Length:%u\n", __func__, __LINE__,
-        assoc_frame_string, strlen(assoc_frame_string));
-    cJSON_AddStringToObject(obj_assoc_client, "FrameData", assoc_frame_string);
-
-    return webconfig_error_none;
-}
-
 webconfig_error_t encode_associated_client_object(rdk_wifi_vap_info_t *rdk_vap_info, cJSON *assoc_array, assoclist_type_t assoclist_type)
 {
     bool print_assoc_client = false;
@@ -1628,11 +1607,6 @@ webconfig_error_t encode_associated_client_object(rdk_wifi_vap_info_t *rdk_vap_i
                 cJSON_AddNumberToObject(obj_assoc_client, "FailedRetransCount", assoc_dev_data->dev_stats.cli_FailedRetransCount);
                 cJSON_AddNumberToObject(obj_assoc_client, "RetryCount", assoc_dev_data->dev_stats.cli_RetryCount);
                 cJSON_AddNumberToObject(obj_assoc_client, "MultipleRetryCount", assoc_dev_data->dev_stats.cli_MultipleRetryCount);
-                if (encode_frame_data(obj_assoc_client, &assoc_dev_data->sta_data.msg_data) !=
-                    webconfig_error_none) {
-                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Encode frame data failed for client %s\n",
-                        __func__, __LINE__, mac_string);
-                }
             }
             assoc_dev_data = hash_map_get_next(devices_map, assoc_dev_data);
         }
@@ -2306,15 +2280,11 @@ webconfig_error_t encode_radiodiag_params(wifi_provider_response_t *radiodiag_st
         }
 
         cJSON_AddItemToArray(radiodiag_obj, diag_obj);
-        cJSON_AddStringToObject(diag_obj, "frequency_band", diag_stats[count].frequency_band);
-        cJSON_AddStringToObject(diag_obj, "ChannelsInUse", diag_stats[count].ChannelsInUse);
         cJSON_AddNumberToObject(diag_obj, "primary_radio_channel", diag_stats[count].primary_radio_channel);
-        cJSON_AddStringToObject(diag_obj, "channel_bandwidth", diag_stats[count].channel_bandwidth);
         cJSON_AddNumberToObject(diag_obj, "RadioActivityFactor", diag_stats[count].RadioActivityFactor);
         cJSON_AddNumberToObject(diag_obj, "CarrierSenseThreshold_Exceeded", diag_stats[count].CarrierSenseThreshold_Exceeded);
         cJSON_AddNumberToObject(diag_obj, "NoiseFloor", diag_stats[count].NoiseFloor);
         cJSON_AddNumberToObject(diag_obj, "channelUtil", diag_stats[count].channelUtil);
-        cJSON_AddNumberToObject(diag_obj, "channelInterference", diag_stats[count].channelInterference);
         cJSON_AddNumberToObject(diag_obj, "radio_BytesSent", diag_stats[count].radio_BytesSent);
         cJSON_AddNumberToObject(diag_obj, "radio_BytesReceived", diag_stats[count].radio_BytesReceived);
         cJSON_AddNumberToObject(diag_obj, "radio_PacketsSent", diag_stats[count].radio_PacketsSent);

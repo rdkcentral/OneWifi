@@ -601,6 +601,46 @@ void get_translator_config_wpa_mfp(
     }
 }
 
+bool maclist_changed(unsigned int vap_index, hash_map_t *new_acl_map, hash_map_t *current_acl_map)
+{
+    acl_entry_t *new_acl_entry, *current_acl_entry;
+    mac_addr_str_t current_mac_str;
+    mac_addr_str_t new_mac_str;
+
+    if (new_acl_map == NULL && current_acl_map == NULL) {
+        return false;
+    }
+
+    if (current_acl_map != NULL) {
+        current_acl_entry = hash_map_get_first(current_acl_map);
+        while (current_acl_entry != NULL) {
+            to_mac_str(current_acl_entry->mac, current_mac_str);
+            str_tolower(current_mac_str);
+            if (hash_map_get(new_acl_map, current_mac_str) == NULL) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: macfilter changed for vap_index %d\n",
+                    __func__, __LINE__, vap_index);
+                return true;
+            }
+            current_acl_entry = hash_map_get_next(current_acl_map, current_acl_entry);
+        }
+    }
+
+    if (new_acl_map != NULL) {
+        new_acl_entry = hash_map_get_first(new_acl_map);
+        while (new_acl_entry != NULL) {
+            to_mac_str(new_acl_entry->mac, new_mac_str);
+            str_tolower(new_mac_str);
+            if (hash_map_get(current_acl_map, new_mac_str) == NULL) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: macfilter changed for vap_index %d\n",
+                    __func__, __LINE__, vap_index);
+                return true;
+            }
+            new_acl_entry = hash_map_get_next(new_acl_map, new_acl_entry);
+        }
+    }
+    return false;
+}
+
 bool is_ovs_vif_config_changed(webconfig_subdoc_type_t type, webconfig_subdoc_data_t *data,
     rdk_wifi_radio_t *rdk_wifi_radio_state)
 {
@@ -684,8 +724,16 @@ bool is_ovs_vif_config_changed(webconfig_subdoc_type_t type, webconfig_subdoc_da
                 new_rdk_vap_info, is_mesh_sta_vap) == true) {
             // vap configuration changed no need to check further
             wifi_util_dbg_print(WIFI_WEBCONFIG,
-                "%s:%d: Configuration changed for index:%d vap_name %s\n", __func__, __LINE__, i,
-                vap_names[i]);
+                "%s:%d: VAP configuration changed for index:%d vap_name %s\n", __func__, __LINE__,
+                i, vap_names[i]);
+            return true;
+        }
+        if (type == webconfig_subdoc_type_mesh_backhaul &&
+            maclist_changed(vap_index, old_rdk_vap_info->acl_map, new_rdk_vap_info->acl_map) ==
+                true) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,
+                "%s:%d: Macfilter list configuration changed for index:%d vap_name %s\n", __func__,
+                __LINE__, i, vap_names[i]);
             return true;
         }
     }
@@ -989,6 +1037,40 @@ webconfig_error_t webconfig_convert_ifname_to_subdoc_type(const char *ifname, we
     return webconfig_error_translate_from_ovsdb;
 }
 
+static void clone_maclist_map(unsigned int num_radios, rdk_wifi_radio_t *src, rdk_wifi_radio_t *dst)
+{
+    unsigned int i = 0, j = 0;
+    rdk_wifi_vap_info_t *rdk_vap_info_src, *rdk_vap_info_dst;
+
+    for (i = 0; i < num_radios; i++) {
+        for (j = 0; j < src[i].vaps.num_vaps; j++) {
+            rdk_vap_info_src = &(src[i].vaps.rdk_vap_array[j]);
+            rdk_vap_info_dst = &(dst[i].vaps.rdk_vap_array[j]);
+            if (rdk_vap_info_src->acl_map != NULL) {
+                rdk_vap_info_dst->acl_map = hash_map_clone(rdk_vap_info_src->acl_map,
+                    sizeof(acl_entry_t));
+            } else {
+                rdk_vap_info_dst->acl_map = NULL;
+            }
+        }
+    }
+}
+
+static void free_maclist_map(unsigned int num_radios, rdk_wifi_radio_t *radio)
+{
+    unsigned int i = 0, j = 0;
+    rdk_wifi_vap_info_t *rdk_vap_info;
+
+    for (i = 0; i < num_radios; i++) {
+        for (j = 0; j < radio[i].vaps.num_vaps; j++) {
+            rdk_vap_info = &(radio[i].vaps.rdk_vap_array[j]);
+            if (rdk_vap_info->acl_map != NULL) {
+                hash_map_destroy(rdk_vap_info->acl_map);
+            }
+        }
+    }
+}
+
 webconfig_error_t webconfig_ovsdb_encode(webconfig_t *config,
     const webconfig_external_ovsdb_t *data, webconfig_subdoc_type_t type, char **str)
 {
@@ -1011,11 +1093,14 @@ webconfig_error_t webconfig_ovsdb_encode(webconfig_t *config,
 
     memcpy(rdk_wifi_radio_state, webconfig_ovsdb_data.u.decoded.radios,
         (MAX_NUM_RADIOS * sizeof(rdk_wifi_radio_t)));
+    clone_maclist_map(webconfig_ovsdb_data.u.decoded.num_radios,
+        webconfig_ovsdb_data.u.decoded.radios, rdk_wifi_radio_state);
 
     // Here webconfig_ovsdb_data's decoded_params will be updated.
     if (webconfig_encode(config, &webconfig_ovsdb_data, type) != webconfig_error_none) {
         *str = NULL;
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: OVSM encode failed\n", __func__, __LINE__);
+        free_maclist_map(webconfig_ovsdb_data.u.decoded.num_radios, rdk_wifi_radio_state);
         free(rdk_wifi_radio_state);
         return webconfig_error_encode;
     }
@@ -1031,12 +1116,14 @@ webconfig_error_t webconfig_ovsdb_encode(webconfig_t *config,
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: No change in config for subdoc type : %d\n",
             __func__, __LINE__, type);
         *str = NULL;
+        free_maclist_map(webconfig_ovsdb_data.u.decoded.num_radios, rdk_wifi_radio_state);
         free(rdk_wifi_radio_state);
         return webconfig_error_translate_from_ovsdb_cfg_no_change;
     }
     webconfig_ovsdb_raw_data_ptr = webconfig_ovsdb_data.u.encoded.raw;
 
     *str = webconfig_ovsdb_raw_data_ptr;
+    free_maclist_map(webconfig_ovsdb_data.u.decoded.num_radios, rdk_wifi_radio_state);
     free(rdk_wifi_radio_state);
     return webconfig_error_none;
 }
@@ -3094,6 +3181,7 @@ webconfig_error_t translate_vap_object_to_ovsdb_associated_clients(const rdk_wif
     assoc_dev_data_t *diff_assoc_dev_data;
     hash_map_t *diff_assoc_map = NULL;
     mac_addr_str_t diff_mac_str;
+    bool is_hotspot;
 
     if ((rdk_vap_info == NULL) || (clients_table == NULL)) {
         wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Input arguments are NULL\n", __func__, __LINE__);
@@ -3107,8 +3195,15 @@ webconfig_error_t translate_vap_object_to_ovsdb_associated_clients(const rdk_wif
         diff_assoc_map = rdk_vap_info->associated_devices_diff_map;
     }
 
+    is_hotspot = is_vap_hotspot(wifi_prop, rdk_vap_info->vap_index) == TRUE;
+    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d Vap name: %s\n", __func__, __LINE__, rdk_vap_info->vap_name);
+    if (is_hotspot) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d associated clients for vap: %s will not be translated to ovsdb.\n", __func__, __LINE__, rdk_vap_info->vap_name);
+    }
+
     associated_client_count = *client_count;
-    if (rdk_vap_info->associated_devices_map != NULL) {
+    if (!is_hotspot &&
+        rdk_vap_info->associated_devices_map != NULL) {
         assoc_dev_data = hash_map_get_first(rdk_vap_info->associated_devices_map);
 
         while (assoc_dev_data != NULL) {

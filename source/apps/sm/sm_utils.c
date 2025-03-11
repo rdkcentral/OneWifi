@@ -214,15 +214,13 @@ uint64_t get_real_ms()
     return (uint64_t)ts.tv_sec * MSEC_IN_SEC + ts.tv_nsec / NSEC_IN_MSEC;
 }
 
-
-uint64_t timeval_to_ms(struct timeval *ts)
+uint64_t timeval_to_ms(struct timespec *ts)
 {
     if (!ts) {
         return 0;
     }
-    return (uint64_t)ts->tv_sec * MSEC_IN_SEC + ts->tv_usec / USEC_IN_MSEC;
+    return (uint64_t)ts->tv_sec * MSEC_IN_SEC + ts->tv_nsec / NSEC_IN_MSEC;
 }
-
 
 int rssi_to_above_noise_floor(int rssi)
 {

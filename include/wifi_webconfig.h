@@ -83,9 +83,9 @@ typedef enum {
     webconfig_error_translate_from_ovsdb,
     webconfig_error_translate_to_tr181,
     webconfig_error_translate_from_tr181,
+    webconfig_error_translate_from_ovsdb_cfg_no_change,
     webconfig_error_translate_to_easymesh,
     webconfig_error_translate_from_easymesh,
-    webconfig_error_translate_from_ovsdb_cfg_no_change,
     webconfig_error_max
 } webconfig_error_t;
 

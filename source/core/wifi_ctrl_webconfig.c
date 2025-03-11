@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h> /* strdup() */
+#include <stdlib.h>
 #include "const.h"
 #include "wifi_hal.h"
 #include "wifi_ctrl.h"
@@ -35,6 +36,7 @@
 #include "wifi_webconfig_consumer.h"
 #endif
 #define OW_CONF_BARRIER_TIMEOUT_MSEC (60 * 1000)
+
 
 struct ow_conf_vif_config_cb_arg
 {
@@ -112,9 +114,12 @@ void print_wifi_hal_vap_wps_data(wifi_dbg_type_t log_file_type, char *prefix, un
     wifi_util_info_print(log_file_type,"%s:%d: [%s] Wifi_wps_Config vap_index=%d\n enable:%d\n methods:%d\r\n", __func__, __LINE__, prefix, vap_index, l_wifi_wps->enable, l_wifi_wps->methods);
 }
 
-#define WEBCONFIG_DML_SUBDOC_STATES (ctrl_webconfig_state_vap_all_cfg_rsp_pending| \
-                                     ctrl_webconfig_state_macfilter_cfg_rsp_pending| \
-                                     ctrl_webconfig_state_factoryreset_cfg_rsp_pending)
+#define WEBCONFIG_DML_SUBDOC_STATES                         \
+    (ctrl_webconfig_state_vap_all_cfg_rsp_pending |         \
+        ctrl_webconfig_state_macfilter_cfg_rsp_pending |    \
+        ctrl_webconfig_state_factoryreset_cfg_rsp_pending | \
+        ctrl_webconfig_state_sta_conn_status_rsp_pending |  \
+        ctrl_webconfig_state_vap_mesh_sta_cfg_rsp_pending)
 
 int webconfig_blaster_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
@@ -398,12 +403,12 @@ int webconfig_analyze_pending_states(wifi_ctrl_t *ctrl)
             }
         break;
         case ctrl_webconfig_state_sta_conn_status_rsp_pending:
-            type = webconfig_subdoc_type_mesh_sta;
+            type = webconfig_subdoc_type_dml;
             webconfig_send_vap_subdoc_status(ctrl, type);
         break;
         case ctrl_webconfig_state_vap_mesh_sta_cfg_rsp_pending:
             if (check_wifi_vap_sched_timeout_active_status(ctrl, isVapSTAMesh) == false) {
-                type = webconfig_subdoc_type_mesh_sta;
+                type = webconfig_subdoc_type_dml;
                 webconfig_send_vap_subdoc_status(ctrl, type);
             } else {
                 return RETURN_OK;
@@ -434,13 +439,8 @@ int webconfig_analyze_pending_states(wifi_ctrl_t *ctrl)
             webconfig_send_dml_subdoc_status(ctrl);
             break;
         case ctrl_webconfig_state_factoryreset_cfg_rsp_pending:
-            if(ctrl->network_mode == rdk_dev_mode_type_gw) {
-                type = webconfig_subdoc_type_dml;
-                webconfig_send_dml_subdoc_status(ctrl);
-            } else  if(ctrl->network_mode == rdk_dev_mode_type_ext) {
-                type = webconfig_subdoc_type_mesh_sta;
-                webconfig_send_vap_subdoc_status(ctrl, type);
-            }
+            type = webconfig_subdoc_type_dml;
+            webconfig_send_dml_subdoc_status(ctrl);
         break;
         case ctrl_webconfig_state_wifi_config_cfg_rsp_pending:
             type = webconfig_subdoc_type_wifi_config;
@@ -458,10 +458,12 @@ int webconfig_analyze_pending_states(wifi_ctrl_t *ctrl)
 
         case ctrl_webconfig_state_blaster_cfg_complete_rsp_pending:
                 /* Once the blaster triggered successfully, update the status as completed and pass it to OVSM */
+                type = webconfig_subdoc_type_blaster;
                 mgr->blaster_config_global.Status = blaster_state_completed;
                 webconfig_send_blaster_status(ctrl);
             break;
         case ctrl_webconfig_state_steering_clients_rsp_pending:
+            type = webconfig_subdoc_type_steering_clients;
             webconfig_send_steering_clients_status(ctrl);
             break;
         case ctrl_webconfig_state_trigger_dml_thread_data_update_pending:
@@ -485,7 +487,11 @@ static bool is_preassoc_cac_config_changed(wifi_vap_info_t *old, wifi_vap_info_t
         || (IS_STR_CHANGED(old->u.bss_info.preassoc.operational_data_transmit_rates, new->u.bss_info.preassoc.operational_data_transmit_rates, sizeof(old->u.bss_info.preassoc.operational_data_transmit_rates)))
         || (IS_STR_CHANGED(old->u.bss_info.preassoc.supported_data_transmit_rates, new->u.bss_info.preassoc.supported_data_transmit_rates, sizeof(old->u.bss_info.preassoc.supported_data_transmit_rates)))
         || (IS_STR_CHANGED(old->u.bss_info.preassoc.minimum_advertised_mcs, new->u.bss_info.preassoc.minimum_advertised_mcs, sizeof(old->u.bss_info.preassoc.minimum_advertised_mcs)))
-        || (IS_STR_CHANGED(old->u.bss_info.preassoc.sixGOpInfoMinRate, new->u.bss_info.preassoc.sixGOpInfoMinRate, sizeof(old->u.bss_info.preassoc.sixGOpInfoMinRate)))) {
+        || (IS_STR_CHANGED(old->u.bss_info.preassoc.sixGOpInfoMinRate, new->u.bss_info.preassoc.sixGOpInfoMinRate, sizeof(old->u.bss_info.preassoc.sixGOpInfoMinRate)))
+        || (IS_CHANGED(old->u.bss_info.preassoc.time_ms, new->u.bss_info.preassoc.time_ms))
+        || (IS_CHANGED(old->u.bss_info.preassoc.min_num_mgmt_frames, new->u.bss_info.preassoc.min_num_mgmt_frames))
+        || (IS_STR_CHANGED(old->u.bss_info.preassoc.tcm_exp_weightage, new->u.bss_info.preassoc.tcm_exp_weightage, sizeof(old->u.bss_info.preassoc.tcm_exp_weightage)))
+        || (IS_STR_CHANGED(old->u.bss_info.preassoc.tcm_gradient_threshold, new->u.bss_info.preassoc.tcm_gradient_threshold, sizeof(old->u.bss_info.preassoc.tcm_gradient_threshold)))) {
         return true;
     } else {
         return false;
@@ -756,7 +762,9 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
 
             if (svc->update_fn(svc, tgt_radio_idx, p_tgt_vap_map, &tgt_rdk_vap_info) != RETURN_OK) {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: failed to apply\n", __func__, __LINE__);
-                stop_wifi_sched_timer(vap_info->vap_index, ctrl, wifi_vap_sched);
+                memset(update_status, 0, sizeof(update_status));
+                snprintf(update_status, sizeof(update_status), "%s %s", vap_names[i], "fail");
+                apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, wifi_event_webconfig_hal_result, update_status);
                 free(p_tgt_vap_map);
                 p_tgt_vap_map = NULL;
                 return RETURN_ERR;
@@ -1232,9 +1240,9 @@ int webconfig_cac_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data
         for (vap_index = 0; vap_index < getNumberVAPsPerRadio(radio_index); vap_index++) {
             wifi_util_dbg_print(WIFI_CTRL,"Comparing cac config\n");
 
-            if (is_preassoc_cac_config_changed(&l_vap_maps->vap_array[vap_index], &data->radios[radio_index].vaps.vap_map.vap_array[vap_index]) 
+            if (is_preassoc_cac_config_changed(&l_vap_maps->vap_array[vap_index], &data->radios[radio_index].vaps.vap_map.vap_array[vap_index])
                 || is_postassoc_cac_config_changed(&l_vap_maps->vap_array[vap_index], &data->radios[radio_index].vaps.vap_map.vap_array[vap_index])) {
-                // cac data changed apply
+                // cac or tcm data changed apply
                 wifi_util_info_print(WIFI_CTRL, "%s:%d: Change detected in received cac config, applying new configuration for vap: %d\n",
                                     __func__, __LINE__, vap_index);
                 wifidb_update_wifi_cac_config(&data->radios[radio_index].vaps.vap_map);
@@ -1576,6 +1584,8 @@ static bool is_radio_param_config_changed(wifi_radio_operationParam_t *old , wif
 }
 
 #if defined (FEATURE_SUPPORT_ECOPOWERDOWN)
+#define ECOMODE_COMPLETE_MARKER_FILE "/tmp/ecomode_operation_done"
+#define MAX_RETRY_VALUE 15
 void ecomode_telemetry_update_and_reboot(unsigned int index, bool active)
 {
     CHAR eventName[32] = {0};
@@ -1584,7 +1594,29 @@ void ecomode_telemetry_update_and_reboot(unsigned int index, bool active)
     snprintf(eventName, sizeof(eventName), "WIFI_RADIO_%d_ECOPOWERMODE", index + 1);
     get_stubs_descriptor()->t2_event_s_fn(eventName, active ? "Active" : "Inactive");
     wifi_util_dbg_print(WIFI_WEBCONFIG,"%s: EcoPowerDown telemetry: %s %s uploaded for Radio %d\n", __FUNCTION__, eventName, active ? "Active" : "Inactive", index + 1);
+#ifdef DISABLE_ECO_REBOOT
+    wifi_util_dbg_print(WIFI_WEBCONFIG,
+        "%s: EcoPowerDown telemetry: Restarting OneWiFi to apply EcoMode. \n", __FUNCTION__);
+    /**
+     * The ECOMode operation in the lower layer stack typically takes approximately 10-12 seconds to
+     * complete. This ensures the OneWiFi service is restarted once the EDPD operation is finished.
+     */
+    int max_retries = MAX_RETRY_VALUE;
+    int attempt = 0;
+
+    while (attempt < max_retries) {
+        if (access(ECOMODE_COMPLETE_MARKER_FILE, F_OK) == 0) {
+            /* EcoMode operation completed. */
+            break;
+        } else {
+            sleep(1);
+        }
+        attempt++;
+    }
+    system("systemctl restart onewifi.service");
+#else
     reboot_device(ctrl);
+#endif
 }
 #endif // defined (FEATURE_SUPPORT_ECOPOWERDOWN)
 
@@ -1694,7 +1726,6 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
                 ctrl->webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
                 return RETURN_ERR;
             }
-            wifi_util_dbg_print(WIFI_MGR, "%s:%d: config applied.\n", __func__, __LINE__);
 
             start_wifi_sched_timer(mgr_radio_data->vaps.radio_index, ctrl, wifi_radio_sched);
 
@@ -1805,6 +1836,22 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                     ctrl->webconfig_state |= ctrl_webconfig_state_vap_private_cfg_rsp_pending;
                     webconfig_analytic_event_data_to_hal_apply(data);
                     ret = webconfig_hal_private_vap_apply(ctrl, &data->u.decoded);
+                    if (ret != RETURN_OK) {
+                        static uint8_t max_re_apply_retry = 0;
+                        if (max_re_apply_retry < MAX_VAP_RE_CFG_APPLY_RETRY) {
+                            if (push_data_to_apply_pending_queue(data) != RETURN_OK) {
+                                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d vap subdoc pending queue"
+                                    " is failed\n", __func__, __LINE__);
+                                return webconfig_error_apply;
+                            }
+                            max_re_apply_retry++;
+                        } else {
+                            max_re_apply_retry = 0;
+                        }
+                        // we will improve this code later.
+                        // Beause this is not sending proper error code.
+                        ret = RETURN_OK;
+                    }
                 }
             }
             //This is for captive_portal_check for private SSID when defaults modified
@@ -1845,6 +1892,9 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                     ctrl->webconfig_state |= ctrl_webconfig_state_vap_xfinity_cfg_rsp_pending;
                     webconfig_analytic_event_data_to_hal_apply(data);
                     ret = webconfig_hal_xfinity_vap_apply(ctrl, &data->u.decoded);
+                    bool status = ((ret == RETURN_OK) ? true : false);
+                    hotspot_cfg_sem_signal(status);
+                    wifi_util_info_print(WIFI_CTRL,":%s:%d xfinity blob cfg status:%d\n", __func__, __LINE__, ret);
                     webconfig_cac_apply(ctrl, &data->u.decoded);
                     if (is_6g_supported_device((&(get_wifimgr_obj())->hal_cap.wifi_prop))) {
                         wifi_util_info_print(WIFI_CTRL,"6g supported device add rnr of 6g\n");
@@ -2010,6 +2060,7 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
 
                     }
                 } else if (ctrl->network_mode == rdk_dev_mode_type_gw) {
+                    ctrl->webconfig_state &= ~(ctrl_webconfig_state_blaster_cfg_init_rsp_pending | ctrl_webconfig_state_blaster_cfg_complete_rsp_pending);
                     wifi_util_error_print(WIFI_CTRL, "%s:%d: Device is in GW Mode. No need to send blaster status\n", __func__, __LINE__);
                 }
             } else {

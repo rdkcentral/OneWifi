@@ -44,8 +44,11 @@ if !HAL_IPC
 AM_LDFLAGS += -lhal_wifi
 endif
 
+if ONEWIFI_DML_SUPPORT
 AM_LDFLAGS += -L$(top_builddir)/../CcspCommonLibrary/lib
 AM_LDFLAGS += -lccsp_common
+endif
+
 AM_LDFLAGS += -lrdk_wifihal
 
 AM_CPPFLAGS = -Wall -Werror
