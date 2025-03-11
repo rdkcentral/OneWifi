@@ -306,8 +306,6 @@ CSOURCES = $(wildcard $(ONE_WIFI_HOME)/source/db/wifi_db.c) \
     $(ONE_WIFI_HOME)/source/platform/linux/bus.c	\
     $(ONE_WIFI_HOME)/source/platform/common/common.c   \
     $(wildcard $(ONE_WIFI_HOME)/source/apps/sta_manager/*.c)   \
-    #$(wildcard $(ONE_WIFI_HOME)/source/apps/em/*.c) \
-
 
 WEBCONFIG_SOURCES = $(ONE_WIFI_HOME)/source/webconfig/wifi_decoder.c	\
         $(ONE_WIFI_HOME)/source/webconfig/wifi_encoder.c	\

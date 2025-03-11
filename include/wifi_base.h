@@ -267,9 +267,9 @@ typedef struct {
 typedef struct wifi_hal_rrm_request {
     uint8_t dialog_token;
     uint8_t duration;
-    bool    duration_mandatory;
+    bool duration_mandatory;
     uint8_t op_class;
-       uint8_t channel;
+    uint8_t channel;
 } wifi_hal_rrm_request_t;
 
 typedef struct {
