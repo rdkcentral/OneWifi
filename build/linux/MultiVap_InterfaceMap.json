@@ -26,7 +26,7 @@
                             "Bridge": "brlan0",
                             "vlanId": 0,
                             "vapIndex": 1,
-                            "vapName": "mesh_sta_5g"
+                            "vapName": "private_ssid_5g"
                         }
                     ]
                 }
@@ -66,6 +66,13 @@
                             "vlanId": 0,
                             "vapIndex": 5,
                             "vapName": "mesh_backhaul_2g"
+                        },
+                        {
+                            "InterfaceName": "wlan1",
+                            "Bridge": "brlan0",
+                            "vlanId": 0,
+                            "vapIndex": 0,
+                            "vapName": "mesh_sta_2g"
                         }
                     ]
                 }

@@ -419,7 +419,7 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
                 strcpy(cfg.u.bss_info.wps.pin, "12345678");
             }
         }
-        else if (isVapHotspot(vap_index)) {
+        else if (isVapHotspot(vap_index) || isVapMeshBackhaul(vap_index)) {
             cfg.u.bss_info.showSsid = true;
         } else {
             cfg.u.bss_info.showSsid = false;

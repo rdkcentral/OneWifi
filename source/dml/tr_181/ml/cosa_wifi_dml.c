@@ -179,7 +179,8 @@ static inline bool is_personal_sec(wifi_security_modes_t mode)
         mode == wifi_security_mode_wpa2_personal ||
         mode == wifi_security_mode_wpa_wpa2_personal ||
         mode == wifi_security_mode_wpa3_personal ||
-        mode == wifi_security_mode_wpa3_transition;
+        mode == wifi_security_mode_wpa3_transition ||
+        mode == wifi_security_mode_wpa3_compatibility;
 }
 
 static inline bool is_enterprise_sec(wifi_security_modes_t mode)
@@ -421,6 +422,12 @@ WiFi_GetParamBoolValue
     if (AnscEqualString(ParamName, "Tcm", TRUE))
     {
         *pBool = rfc_pcfg->tcm_enabled_rfc;
+        return TRUE;
+    }
+
+    if(AnscEqualString(ParamName, "WPA3_Personal_Compatibility", TRUE))
+    {
+        *pBool = rfc_pcfg->wpa3_compatibility_enable;
         return TRUE;
     }
 
@@ -1181,6 +1188,15 @@ WiFi_SetParamBoolValue
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Tcm rfc value set bvalue is %d \n", __FUNCTION__,__LINE__,bValue);
         }
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Tcm started\n", __FUNCTION__,__LINE__);
+        return TRUE;
+    }
+
+    if(AnscEqualString(ParamName, "WPA3_Personal_Compatibility", TRUE))
+    {
+        if(bValue != rfc_pcfg->wpa3_compatibility_enable) {
+            push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_rsn_override_rfc);
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d setting WPA3_Personal_Compatibility RFC to %d \n", __FUNCTION__, __LINE__, bValue);
+        }
         return TRUE;
     }
 
@@ -7920,7 +7936,7 @@ void get_security_modes_supported(int vap_index, int *mode)
         COSA_DML_WIFI_SECURITY_WPA2_Personal | COSA_DML_WIFI_SECURITY_WPA2_Enterprise |
         COSA_DML_WIFI_SECURITY_WPA_WPA2_Personal | COSA_DML_WIFI_SECURITY_WPA_WPA2_Enterprise |
         COSA_DML_WIFI_SECURITY_WPA3_Personal | COSA_DML_WIFI_SECURITY_WPA3_Personal_Transition |
-        COSA_DML_WIFI_SECURITY_WPA3_Enterprise;
+        COSA_DML_WIFI_SECURITY_WPA3_Enterprise | COSA_DML_WIFI_SECURITY_WPA3_Personal_Compatibility ;
 }
 
 /**********************************************************************  
@@ -8596,6 +8612,7 @@ Security_SetParamStringValue
     {
         wifi_security_modes_t TmpMode;
         COSA_DML_WIFI_SECURITY cosaTmpMode;
+        wifi_rfc_dml_parameters_t *rfc_pcfg = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
 
         if (!getSecurityTypeFromString(pString, &TmpMode, &cosaTmpMode))
         {
@@ -8641,6 +8658,11 @@ Security_SetParamStringValue
             memset(&l_security_cfg->u, 0, sizeof(l_security_cfg->u));
         }
 
+        if(TmpMode == wifi_security_mode_wpa3_compatibility && !rfc_pcfg->wpa3_compatibility_enable) {
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d WPA3 Compatibility mode is not supported when  RFC is disabled \n", __func__, __LINE__);
+            return FALSE;
+        }
+
         l_security_cfg->mode = TmpMode;
         switch (l_security_cfg->mode)
         {
@@ -8676,6 +8698,10 @@ Security_SetParamStringValue
                 break;
             case wifi_security_mode_enhanced_open:
                 l_security_cfg->mfp = wifi_mfp_cfg_required;
+                break;
+            case wifi_security_mode_wpa3_compatibility:
+                l_security_cfg->u.key.type = wifi_security_key_type_psk_sae;
+                l_security_cfg->mfp = wifi_mfp_cfg_disabled;
                 break;
             default:
                 break;

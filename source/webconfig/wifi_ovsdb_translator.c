@@ -594,11 +594,51 @@ void get_translator_config_wpa_mfp(
 {
     if (vap->u.bss_info.security.mode == wifi_security_mode_wpa3_personal || vap->u.bss_info.security.mode == wifi_security_mode_wpa3_enterprise) {
         vap->u.bss_info.security.mfp = wifi_mfp_cfg_required;
-    } else if (vap->u.bss_info.security.mode == wifi_security_mode_wpa3_transition) {
+    } else if (vap->u.bss_info.security.mode == wifi_security_mode_wpa3_transition || vap->u.bss_info.security.mode == wifi_security_mode_wpa3_compatibility) {
         vap->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
     } else {
         vap->u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
     }
+}
+
+bool maclist_changed(unsigned int vap_index, hash_map_t *new_acl_map, hash_map_t *current_acl_map)
+{
+    acl_entry_t *new_acl_entry, *current_acl_entry;
+    mac_addr_str_t current_mac_str;
+    mac_addr_str_t new_mac_str;
+
+    if (new_acl_map == NULL && current_acl_map == NULL) {
+        return false;
+    }
+
+    if (current_acl_map != NULL) {
+        current_acl_entry = hash_map_get_first(current_acl_map);
+        while (current_acl_entry != NULL) {
+            to_mac_str(current_acl_entry->mac, current_mac_str);
+            str_tolower(current_mac_str);
+            if (hash_map_get(new_acl_map, current_mac_str) == NULL) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: macfilter changed for vap_index %d\n",
+                    __func__, __LINE__, vap_index);
+                return true;
+            }
+            current_acl_entry = hash_map_get_next(current_acl_map, current_acl_entry);
+        }
+    }
+
+    if (new_acl_map != NULL) {
+        new_acl_entry = hash_map_get_first(new_acl_map);
+        while (new_acl_entry != NULL) {
+            to_mac_str(new_acl_entry->mac, new_mac_str);
+            str_tolower(new_mac_str);
+            if (hash_map_get(current_acl_map, new_mac_str) == NULL) {
+                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: macfilter changed for vap_index %d\n",
+                    __func__, __LINE__, vap_index);
+                return true;
+            }
+            new_acl_entry = hash_map_get_next(new_acl_map, new_acl_entry);
+        }
+    }
+    return false;
 }
 
 bool is_ovs_vif_config_changed(webconfig_subdoc_type_t type, webconfig_subdoc_data_t *data,
@@ -684,8 +724,16 @@ bool is_ovs_vif_config_changed(webconfig_subdoc_type_t type, webconfig_subdoc_da
                 new_rdk_vap_info, is_mesh_sta_vap) == true) {
             // vap configuration changed no need to check further
             wifi_util_dbg_print(WIFI_WEBCONFIG,
-                "%s:%d: Configuration changed for index:%d vap_name %s\n", __func__, __LINE__, i,
-                vap_names[i]);
+                "%s:%d: VAP configuration changed for index:%d vap_name %s\n", __func__, __LINE__,
+                i, vap_names[i]);
+            return true;
+        }
+        if (type == webconfig_subdoc_type_mesh_backhaul &&
+            maclist_changed(vap_index, old_rdk_vap_info->acl_map, new_rdk_vap_info->acl_map) ==
+                true) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,
+                "%s:%d: Macfilter list configuration changed for index:%d vap_name %s\n", __func__,
+                __LINE__, i, vap_names[i]);
             return true;
         }
     }
@@ -989,6 +1037,40 @@ webconfig_error_t webconfig_convert_ifname_to_subdoc_type(const char *ifname, we
     return webconfig_error_translate_from_ovsdb;
 }
 
+static void clone_maclist_map(unsigned int num_radios, rdk_wifi_radio_t *src, rdk_wifi_radio_t *dst)
+{
+    unsigned int i = 0, j = 0;
+    rdk_wifi_vap_info_t *rdk_vap_info_src, *rdk_vap_info_dst;
+
+    for (i = 0; i < num_radios; i++) {
+        for (j = 0; j < src[i].vaps.num_vaps; j++) {
+            rdk_vap_info_src = &(src[i].vaps.rdk_vap_array[j]);
+            rdk_vap_info_dst = &(dst[i].vaps.rdk_vap_array[j]);
+            if (rdk_vap_info_src->acl_map != NULL) {
+                rdk_vap_info_dst->acl_map = hash_map_clone(rdk_vap_info_src->acl_map,
+                    sizeof(acl_entry_t));
+            } else {
+                rdk_vap_info_dst->acl_map = NULL;
+            }
+        }
+    }
+}
+
+static void free_maclist_map(unsigned int num_radios, rdk_wifi_radio_t *radio)
+{
+    unsigned int i = 0, j = 0;
+    rdk_wifi_vap_info_t *rdk_vap_info;
+
+    for (i = 0; i < num_radios; i++) {
+        for (j = 0; j < radio[i].vaps.num_vaps; j++) {
+            rdk_vap_info = &(radio[i].vaps.rdk_vap_array[j]);
+            if (rdk_vap_info->acl_map != NULL) {
+                hash_map_destroy(rdk_vap_info->acl_map);
+            }
+        }
+    }
+}
+
 webconfig_error_t webconfig_ovsdb_encode(webconfig_t *config,
     const webconfig_external_ovsdb_t *data, webconfig_subdoc_type_t type, char **str)
 {
@@ -1011,11 +1093,14 @@ webconfig_error_t webconfig_ovsdb_encode(webconfig_t *config,
 
     memcpy(rdk_wifi_radio_state, webconfig_ovsdb_data.u.decoded.radios,
         (MAX_NUM_RADIOS * sizeof(rdk_wifi_radio_t)));
+    clone_maclist_map(webconfig_ovsdb_data.u.decoded.num_radios,
+        webconfig_ovsdb_data.u.decoded.radios, rdk_wifi_radio_state);
 
     // Here webconfig_ovsdb_data's decoded_params will be updated.
     if (webconfig_encode(config, &webconfig_ovsdb_data, type) != webconfig_error_none) {
         *str = NULL;
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: OVSM encode failed\n", __func__, __LINE__);
+        free_maclist_map(webconfig_ovsdb_data.u.decoded.num_radios, rdk_wifi_radio_state);
         free(rdk_wifi_radio_state);
         return webconfig_error_encode;
     }
@@ -1031,12 +1116,14 @@ webconfig_error_t webconfig_ovsdb_encode(webconfig_t *config,
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: No change in config for subdoc type : %d\n",
             __func__, __LINE__, type);
         *str = NULL;
+        free_maclist_map(webconfig_ovsdb_data.u.decoded.num_radios, rdk_wifi_radio_state);
         free(rdk_wifi_radio_state);
         return webconfig_error_translate_from_ovsdb_cfg_no_change;
     }
     webconfig_ovsdb_raw_data_ptr = webconfig_ovsdb_data.u.encoded.raw;
 
     *str = webconfig_ovsdb_raw_data_ptr;
+    free_maclist_map(webconfig_ovsdb_data.u.decoded.num_radios, rdk_wifi_radio_state);
     free(rdk_wifi_radio_state);
     return webconfig_error_none;
 }
@@ -1819,7 +1906,7 @@ BOOL update_secmode_for_wpa3(wifi_vap_info_t *vap_info, char *mode_str, int mode
     }
 
     if (to_ovsdb) {
-        if ((vap_info->u.bss_info.security.mode == wifi_security_mode_wpa3_transition) || (vap_info->u.bss_info.security.mode == wifi_security_mode_wpa3_personal)) {
+        if ((vap_info->u.bss_info.security.mode == wifi_security_mode_wpa3_transition) || (vap_info->u.bss_info.security.mode == wifi_security_mode_wpa3_personal) || (vap_info->u.bss_info.security.mode == wifi_security_mode_wpa3_compatibility)) {
             snprintf(mode_str, mode_len, "2");
             snprintf(encrypt_str, encrypt_len, "WPA-PSK");
             ret = true;
@@ -1835,6 +1922,7 @@ BOOL update_secmode_for_wpa3(wifi_vap_info_t *vap_info, char *mode_str, int mode
         }
     } else {
         if ((vap_info->u.bss_info.security.mode == wifi_security_mode_wpa3_transition) || (vap_info->u.bss_info.security.mode == wifi_security_mode_wpa3_personal)
+        || (vap_info->u.bss_info.security.mode == wifi_security_mode_wpa3_compatibility)
         || (vap_info->u.bss_info.security.mode == wifi_security_mode_wpa3_enterprise) || (vap_info->u.bss_info.security.mode == wifi_security_mode_enhanced_open)) {
             ret = true;
         }
@@ -1874,7 +1962,8 @@ static inline bool is_personal_sec(wifi_security_modes_t mode)
         mode == wifi_security_mode_wpa2_personal ||
         mode == wifi_security_mode_wpa_wpa2_personal ||
         mode == wifi_security_mode_wpa3_personal ||
-        mode == wifi_security_mode_wpa3_transition;
+        mode == wifi_security_mode_wpa3_transition ||
+        mode == wifi_security_mode_wpa3_compatibility;
 }
 
 static inline bool is_enterprise_sec(wifi_security_modes_t mode)
@@ -3505,6 +3594,17 @@ webconfig_error_t translate_ovsdb_to_vap_info_radius_settings(const struct schem
     return webconfig_error_none;
 }
 
+static bool is_security_mode_updated(wifi_security_modes_t old, wifi_security_modes_t new)
+{
+    /*
+     * WPA3-Personal Compatibility is mapped to WPA3-Personal Transition for opensync.
+     * Thus, if ovsm is pushing WPA3-PT over OneWifi cached WPA3-PC, this change MUST be ignored.
+     * For Gateway devices, Opensync Mesh Controller will not push VAP security configuration,
+     * however, OVSM may push a config if it restarts. In this case, OneWifi cache contains a proper value.
+     */
+    return (old != wifi_security_mode_wpa3_compatibility || new != wifi_security_mode_wpa3_transition);
+}
+
 static webconfig_error_t translate_ovsdb_to_vap_info_sec_legacy(const struct
     schema_Wifi_VIF_Config *vap_row, wifi_vap_info_t *vap)
 {
@@ -3540,8 +3640,11 @@ static webconfig_error_t translate_ovsdb_to_vap_info_sec_legacy(const struct
                 __func__, __LINE__, str_mode);
             return webconfig_error_translate_from_ovsdb;
         }
-        vap->u.bss_info.security.mode = mode_enum;
-        vap->u.bss_info.security.encr = encryp_enum;
+
+        if (is_security_mode_updated(vap->u.bss_info.security.mode, mode_enum)) {
+            vap->u.bss_info.security.mode = mode_enum;
+            vap->u.bss_info.security.encr = encryp_enum;
+        }
     }
 
     if (!is_personal_sec(vap->u.bss_info.security.mode)) {
@@ -3593,7 +3696,9 @@ static webconfig_error_t translate_ovsdb_to_vap_info_sec_new(const struct
                 __func__, __LINE__, vap_row->wpa_key_mgmt[0] ? vap_row->wpa_key_mgmt[0] : "NULL");
             return webconfig_error_translate_from_ovsdb;
         }
-        vap->u.bss_info.security.mode = enum_sec;
+        if (is_security_mode_updated(vap->u.bss_info.security.mode, enum_sec)) {
+            vap->u.bss_info.security.mode = enum_sec;
+        }
     }
 
     get_translator_config_wpa_mfp(vap);
