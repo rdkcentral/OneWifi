@@ -36,7 +36,8 @@ git clone https://github.com/rdkcentral/hostap-patches.git hostap-patches
 patch_filenames="hostap-patches/0001-OneWifi-related-hostap-patch-for-2.10-based-hostap.patch \
 	hostap-patches/0002-radius_failover_2.10.patch \
 	hostap-patches/0003-mbssid_support_2.10.patch \
-        hostap-patches/wpa3_compatibility_hostap_2_10.patch"
+        hostap-patches/wpa3_compatibility_hostap_2_10.patch \
+        hostap-patches/Dynamic_NAS_IP_Update_2_10.patch"
 echo "Applying patches ..."
 git am $patch_filenames
 
