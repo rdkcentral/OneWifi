@@ -39,10 +39,6 @@ typedef enum {
     em_app_event_type_assoc_dev_stats,
 } em_app_event_type_t;
 
-int em_init(wifi_app_t *app, unsigned int create_flag);
-int em_deinit(wifi_app_t *app);
-int em_event(wifi_app_t *app, wifi_event_t *event);
-
 #ifdef __cplusplus
 }
 #endif

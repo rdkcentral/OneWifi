@@ -213,7 +213,7 @@ int easyconnect_event(wifi_app_t *app, wifi_event_t *event)
 }
 #endif // ONEWIFI_EASYCONNECT_APP_SUPPORT
 
-#if EM_APP
+#ifdef EM_APP
 extern int em_init(wifi_app_t *app, unsigned int create_flag);
 extern int em_deinit(wifi_app_t *app);
 extern int em_update(wifi_app_t *app);
