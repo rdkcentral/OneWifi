@@ -155,10 +155,10 @@ void    queue_destroy   (queue_t *q)
     free(q);
 }
 
-int8_t hash_map_put    (hash_map_t *map, char *key, void *data)
+int8_t hash_map_put(hash_map_t *map, char *key, void *data)
 {
     hash_element_t *e;
-    
+
     if (map == NULL || map->queue == NULL || key == NULL) {
         return -1;
     }
@@ -171,7 +171,7 @@ int8_t hash_map_put    (hash_map_t *map, char *key, void *data)
     memset(e, 0, sizeof(hash_element_t));
     e->key = key;
     e->data = data;
-    
+
     if (queue_push(map->queue, e) < 0) {
         free(key);
         key = NULL;
@@ -182,13 +182,13 @@ int8_t hash_map_put    (hash_map_t *map, char *key, void *data)
         free(e);
         return -1;
     }
-    return 0;    
+    return 0;
 }
 
-void *hash_map_get   (hash_map_t *map, const char *key)
+void *hash_map_get(hash_map_t *map, const char *key)
 {
     hash_element_t *he;
-    element_t    *e;
+    element_t *e;
 
     if (map == NULL || map->queue == NULL) {
         return NULL;
@@ -199,21 +199,22 @@ void *hash_map_get   (hash_map_t *map, const char *key)
     }
     while (e != NULL) {
         if (e->data != NULL) {
-            he = (hash_element_t *) e->data;
-            if (he != NULL && he->key != NULL && (strncmp(he->key, key, HASH_MAP_MAX_KEY_SIZE) == 0)) {
+            he = (hash_element_t *)e->data;
+            if (he != NULL && he->key != NULL &&
+                (strncmp(he->key, key, HASH_MAP_MAX_KEY_SIZE) == 0)) {
                 return he->data;
             }
         }
         e = e->next;
     }
-    
+
     return NULL;
 }
 
-void *hash_map_remove   (hash_map_t *map, const char *key)
+void *hash_map_remove(hash_map_t *map, const char *key)
 {
     hash_element_t *he;
-    element_t    *e, *prev = NULL;
+    element_t *e, *prev = NULL;
     bool found = false;
     void *data;
 
@@ -227,8 +228,9 @@ void *hash_map_remove   (hash_map_t *map, const char *key)
     }
     while (e != NULL) {
         if (e->data != NULL) {
-            he = (hash_element_t *) e->data;
-            if (he != NULL && he->key != NULL && (strncmp(he->key, key, HASH_MAP_MAX_KEY_SIZE) == 0)) {
+            he = (hash_element_t *)e->data;
+            if (he != NULL && he->key != NULL &&
+                (strncmp(he->key, key, HASH_MAP_MAX_KEY_SIZE) == 0)) {
                 found = true;
                 break;
             }
@@ -236,11 +238,11 @@ void *hash_map_remove   (hash_map_t *map, const char *key)
         prev = e;
         e = e->next;
     }
-    
+
     if (found == false) {
         return NULL;
     }
-    
+
     if (prev == NULL) {
         map->queue->head = e->next;
     } else {
@@ -252,7 +254,7 @@ void *hash_map_remove   (hash_map_t *map, const char *key)
     data = he->data;
     free(he->key);
     free(he);
-    
+
     return data;
 }
 
