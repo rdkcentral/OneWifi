@@ -2986,7 +2986,6 @@ int init_wifi_monitor()
     pthread_condattr_t cond_attr;
     wifi_mgr_t *mgr = get_wifimgr_obj();
     unsigned int uptimeval = 0;
-    int rssi;
     UINT vap_index, radio;
     wifi_global_param_t *global_param;
 
