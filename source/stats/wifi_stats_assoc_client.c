@@ -163,7 +163,6 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
     wifi_platform_property_t *wifi_prop = get_wifi_hal_cap_prop();
     struct timespec tv_now, t_diff, t_tmp;
     unsigned int disconnected_time;
-    int rssi = 0;
 
     if (c_elem == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d input arguments are NULL args : %p\n", __func__,
