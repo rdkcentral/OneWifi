@@ -41,6 +41,8 @@
 //This Macro ONE_WIFI_CHANGES, used to modify the validator changes. Re-check is required where the macro is used
 #define ONE_WIFI_CHANGES
 
+#define  ARRAY_SZ(x)    (sizeof(x) / sizeof((x)[0]))
+
 #define decode_param_string(json, key, value) \
 {   \
     value = cJSON_GetObjectItem(json, key);     \
