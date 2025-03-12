@@ -2554,53 +2554,69 @@ void decode_acs_keep_out_json(void *json_string) {
         }
         return;
     }
+
     wifi_util_info_print(WIFI_CTRL, "%s:%d SREESH %s\n", __FUNCTION__, __LINE__, (char*)json_string);
-    // Navigate to ChannelExclusion
+
+    // Retrieve ChannelExclusion
     cJSON *channelExclusion = cJSON_GetObjectItem(json, "ChannelExclusion");
+    wifi_util_info_print(WIFI_CTRL, "%s:%d SREESH After cJSON_GetObjectItem of ChannelExclusion\n", __func__,__LINE__);
+
+    // Define radio names and frequency bands
+    const char *radioNames[] = {"radio2G", "radio5G","radio5GL","radio5GH" ,"radio6G"};
+    wifi_freq_bands_t freq_band;
+    int radioIndex;
+    int numRadios = ARRAY_SZ(radioNames);
+    // Handle absence of ChannelExclusion
     if (!channelExclusion) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d SREESH ChannelExclusion is not present and hence must remove entries\n", __FUNCTION__, __LINE__);
-        wifi_hal_set_acs_keep_out_chans(NULL,-1);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d SREESH ChannelExclusion is not present and hence must remove entries\n", __FUNCTION__,__LINE__);
+        for(int i = 0;i<getNumberRadios();i++){
+            wifi_util_info_print(WIFI_CTRL, "%s:%d SREESH Removing entries for radioIndex = %d\n", __FUNCTION__,__LINE__,radioIndex);
+            wifi_hal_set_acs_keep_out_chans(NULL, i); // Remove entries
+        }
         cJSON_Delete(json);
         return;
     }
-    wifi_util_info_print(WIFI_CTRL, "%s:%d SREESH After cJSON_GetObjectItem of ChannelExclusion\n", __func__, __LINE__);
+    // Process ChannelExclusion array
     if (cJSON_IsArray(channelExclusion)) {
-        // Define radio parameters and their corresponding frequency bands
-        const char *radioNames[] = {"radio2G", "radio5G","radio5GL","radio5GH" ,"radio6G"};
-        for (int i = 0, j = WIFI_FREQUENCY_2_4_BAND; i < ARRAY_SZ(radioNames); i++, j *= 2) {
-            cJSON *radioParams = cJSON_GetObjectItem(channelExclusion->child, radioNames[i]);
-            if (radioParams != NULL) {
-                hash_map_t *radio_chanmap = hash_map_create();
-                if(!radio_chanmap)
-                {
-                    wifi_util_error_print(WIFI_CTRL,"%s:%d SREESH Could not create hashmap\n",__FUNCTION__,__LINE__);
-                    return;
-                }
-                wifi_freq_bands_t freq_band = (wifi_freq_bands_t)j;
-                int radioIndex;
+        wifi_util_info_print(WIFI_CTRL, "%s:%d SREESH cJSON_IsArray is true\n",__func__,__LINE__);
+        cJSON *item = NULL;
+        cJSON_ArrayForEach(item, channelExclusion) {
+            wifi_util_info_print(WIFI_CTRL, "%s:%d SREESH Inside cJSON_ArrayForEach\n", __func__, __LINE__);
+            if (!cJSON_IsObject(item)) {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d SREESH Expected object but got something else\n", __FUNCTION__, __LINE__);
+                continue;
+            }
+            for (int i = 0, j = WIFI_FREQUENCY_2_4_BAND; i < numRadios; i++, j *= 2) {
+                freq_band = (wifi_freq_bands_t)j;
                 if (convert_freq_band_to_radio_index(freq_band, &radioIndex) != RETURN_OK) {
                     wifi_util_error_print(WIFI_CTRL,"%s:%d: SREESH convert freq_band 0x%x to radio_index failed\n",__func__, __LINE__, freq_band);
-                    return;
+                    continue;
                 }
-                wifi_util_info_print(WIFI_CTRL, "%s:%d SREESH After cJSON_GetObjectItem of %s and freq band = 0x%x and radioIndex = %d\n", __func__, __LINE__, radioNames[i],freq_band,radioIndex);
-                decode_bandwidth_from_json(radioParams, freq_band, radio_chanmap);
-                if(wifi_hal_set_acs_keep_out_chans(radio_chanmap, radioIndex) == RETURN_ERR)
-                {
-                    wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH wifi_hal_set_acs_keep_out_chans has failed\n",__FUNCTION__,__LINE__);
+                cJSON *radioParams = cJSON_GetObjectItem(item, radioNames[i]);
+                if (radioParams != NULL) {
+                    hash_map_t *radio_chanmap = hash_map_create();
+                    if (!radio_chanmap) {
+                        wifi_util_error_print(WIFI_CTRL, "%s:%d SREESH Could not create hashmap for radioIndex = %d\n", __FUNCTION__, __LINE__,radioIndex);
+                        continue;
+                    }
+                    wifi_util_info_print(WIFI_CTRL, "%s:%d SREESH After cJSON_GetObjectItem of %s and freq band = 0x%x and radioIndex = %d\n", __func__, __LINE__, radioNames[i], freq_band, radioIndex);
+                    decode_bandwidth_from_json(radioParams, freq_band, radio_chanmap);
+                    if (wifi_hal_set_acs_keep_out_chans(radio_chanmap, radioIndex) == RETURN_ERR) {
+                        wifi_util_info_print(WIFI_CTRL, "%s:%d SREESH wifi_hal_set_acs_keep_out_chans has failed\n", __FUNCTION__, __LINE__);
+                    }
+                    if (radio_chanmap) {
+                        hash_map_destroy(radio_chanmap);
+                        wifi_util_info_print(WIFI_CTRL, "%s:%d SREESH Destroyed the hashmap\n", __FUNCTION__, __LINE__);
+                    }
+                } else {
+                    wifi_util_info_print(WIFI_CTRL, "%s:%d SREESH We do not have entries for radioNames[%d] = %s and hence will be clearing it\n", __FUNCTION__, __LINE__, i, radioNames[i]);
+                    wifi_hal_set_acs_keep_out_chans(NULL, radioIndex); // Clear entries
                 }
-                if (radio_chanmap) {
-                    hash_map_destroy(radio_chanmap);
-                    wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Destroyed the hashmap\n",__FUNCTION__,__LINE__);
-                }
-            }
-            else
-            {
-                wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH We do not have entries for radioNames[%d] = %s\n",__FUNCTION__,__LINE__,i,radioNames[i]);
             }
         }
     }
     cJSON_Delete(json);
-    wifi_util_info_print(WIFI_CTRL, "%s:%d SREESH cJSON_Delete has been called\n", __FUNCTION__,__LINE__);
+    wifi_util_info_print(WIFI_CTRL, "%s:%d SREESH cJSON_Delete has been called\n", __FUNCTION__, __LINE__);
 }
 
 webconfig_error_t decode_radio_operating_classes(const cJSON *obj_radio_setup,
