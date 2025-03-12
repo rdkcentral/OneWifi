@@ -1278,7 +1278,7 @@ void process_disconnect	(unsigned int ap_index, auth_deauth_dev_t *dev)
     struct timespec tv_now, t_diff, t_tmp;
     instant_msmt_t msmt;
     unsigned int vap_array_index;
-
+    pthread_mutex_lock(&g_monitor_module.data_lock);
     getVAPArrayIndexFromVAPIndex(ap_index, &vap_array_index);
     sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
     wifi_util_info_print(WIFI_MON, "Device:%s disconnected on ap:%d\n", to_sta_key(dev->sta_mac, sta_key), ap_index);
@@ -1286,6 +1286,7 @@ void process_disconnect	(unsigned int ap_index, auth_deauth_dev_t *dev)
     sta = (sta_data_t *)hash_map_get(sta_map, sta_key);
     if (sta == NULL) {
         wifi_util_info_print(WIFI_MON, "Device:%s could not be found on sta map of ap:%d\n", sta_key, ap_index);
+        pthread_mutex_unlock(&g_monitor_module.data_lock);
         return;
     }
 
@@ -1308,7 +1309,7 @@ void process_disconnect	(unsigned int ap_index, auth_deauth_dev_t *dev)
     wifi_util_dbg_print(WIFI_MON, "%s:%d total_connected_time %lld ms\n", __func__, __LINE__, (long long)(sta->total_connected_time.tv_sec*1000)+(sta->total_connected_time.tv_nsec/1000000));
     wifi_util_dbg_print(WIFI_MON, "%s:%d total_disconnected_time %lld ms\n", __func__, __LINE__, (long long)(sta->total_disconnected_time.tv_sec*1000)+(sta->total_disconnected_time.tv_nsec/1000000));
 
-
+    pthread_mutex_unlock(&g_monitor_module.data_lock);
     // stop instant measurements if its going on with this client device
     msmt.ap_index = ap_index;
     memcpy(msmt.sta_mac, dev->sta_mac, sizeof(mac_address_t));
