@@ -193,6 +193,9 @@ get_sub_string(wifi_channelBandwidth_t bandwidth, char *dest)
         case WIFI_CHANNELBANDWIDTH_160MHZ:
             strncpy(dest, "160", 4);
         break;
+        case WIFI_CHANNELBANDWIDTH_320MHZ:
+            strncpy(dest, "320", 4);
+        break;
         case WIFI_CHANNELBANDWIDTH_80_80MHZ:
             /* TODO */
             strncpy(dest, "80", 3);
