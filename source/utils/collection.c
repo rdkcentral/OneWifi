@@ -17,7 +17,6 @@
   limitations under the License.
 **************************************************************************/
 
-#include <cstddef>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -159,11 +158,7 @@ void    queue_destroy   (queue_t *q)
 int8_t hash_map_put(hash_map_t *map, char *key, void *data)
 {
     hash_element_t *e;
-<<<<<<< HEAD
-
-=======
     
->>>>>>> develop
     if (map == NULL || map->queue == NULL || key == NULL) {
         return -1;
     }
@@ -233,14 +228,8 @@ void *hash_map_remove(hash_map_t *map, const char *key)
     }
     while (e != NULL) {
         if (e->data != NULL) {
-<<<<<<< HEAD
-            he = (hash_element_t *)e->data;
-            if (he != NULL && he->key != NULL &&
-                (strncmp(he->key, key, HASH_MAP_MAX_KEY_SIZE) == 0)) {
-=======
             he = (hash_element_t *) e->data;
             if (he != NULL && he->key != NULL && (strncmp(he->key, key, HASH_MAP_MAX_KEY_SIZE) == 0)) {
->>>>>>> develop
                 found = true;
                 break;
             }
