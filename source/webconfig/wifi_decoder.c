@@ -2563,9 +2563,12 @@ void decode_acs_keep_out_json(void *json_string) {
 
     // Define radio names and frequency bands
     const char *radioNames[] = {"radio2G", "radio5G","radio5GL","radio5GH" ,"radio6G"};
+    wifi_util_info_print(WIFI_CTRL, "%s:%d SREESH Just after the const char* radioNames initialization\n",__func__,__LINE__);
     wifi_freq_bands_t freq_band;
     int radioIndex;
+    wifi_util_info_print(WIFI_CTRL,"%s:%d Just before the ARRAY_SZ function for radioNames\n",__func__,__LINE__);
     int numRadios = ARRAY_SZ(radioNames);
+    wifi_util_info_print(WIFI_CTRL, "%s:%d SREESH Just after the ARRAY_SZ function for radioNames\n",__func__,__LINE__);
     // Handle absence of ChannelExclusion
     if (!channelExclusion) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d SREESH ChannelExclusion is not present and hence must remove entries\n", __FUNCTION__,__LINE__);
