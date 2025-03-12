@@ -71,7 +71,7 @@ webconfig_error_t translate_to_em_config_subdoc(webconfig_t *config, webconfig_s
 
 webconfig_error_t encode_em_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
 {
-    cJSON *json, *obj_emconfig, *device_list, *device_obj, *policy_obj;
+    cJSON *json, *obj_emconfig;
     char *str;
     webconfig_subdoc_decoded_data_t *params;
 

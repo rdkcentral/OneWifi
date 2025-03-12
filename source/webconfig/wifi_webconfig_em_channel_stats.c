@@ -89,10 +89,6 @@ webconfig_error_t encode_em_channel_stats_subdoc(webconfig_t *config, webconfig_
     cJSON *json, *st_obj_arr;
     webconfig_subdoc_decoded_data_t *params;
     char *str;
-    char scan_mode[MAX_SCAN_MODE_LEN] = {0};
-    time_t response_time;
-    struct tm *local_time;
-    char time_str[32] = {0};
 
     if (data == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL data Pointer\n", __func__, __LINE__);
