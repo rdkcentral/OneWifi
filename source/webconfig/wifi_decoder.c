@@ -2569,7 +2569,7 @@ void decode_acs_keep_out_json(void *json_string) {
     // Handle absence of ChannelExclusion
     if (!channelExclusion) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d SREESH ChannelExclusion is not present and hence must remove entries\n", __FUNCTION__,__LINE__);
-        for(int i = 0;i<getNumberRadios();i++){
+        for(int i = 0;i<(int)getNumberRadios();i++){
             wifi_util_info_print(WIFI_CTRL, "%s:%d SREESH Removing entries for radioIndex = %d\n", __FUNCTION__,__LINE__,radioIndex);
             wifi_hal_set_acs_keep_out_chans(NULL, i); // Remove entries
         }
