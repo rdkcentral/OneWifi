@@ -1410,6 +1410,35 @@ static void acs_keep_out_evt_handler(char* event_name, raw_data_t *p_data)
     push_event_to_ctrl_queue(json_schema, (strlen(json_schema) + 1), wifi_event_type_hal_ind, wifi_event_hal_acs_keep_out, NULL);
 }
 
+void* bus_get_keep_out_json()
+{
+    wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Inside\n",__FUNCTION__,__LINE__);
+    bus_error_t rc;
+    wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
+    raw_data_t data;
+    memset(&data, 0, sizeof(raw_data_t));
+    rc = get_bus_descriptor()->bus_data_get_fn(&g_wifi_mgr->ctrl.handle, ACS_KEEP_OUT,
+        &data);
+    if (data.data_type != bus_data_type_string) {
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d '%s' SREESH bus_data_get_fn failed with data_type:0x%x, rc:%d\n", __func__, __LINE__,
+            MANAGED_WIFI_BRIDGE, data.data_type, rc);
+        get_bus_descriptor()->bus_data_free_fn(&data);
+        return NULL;
+    }
+    wifi_hal_info_print(WIFI_CTRL,"%s:%d SREESH Value of (char*)data.raw_data.bytes = %s and data.raw_data_len = %d\n",__FUNCTION__,__LINE__,(char*)data.raw_data.bytes,data.raw_data_len);
+    char *json_schema = (char*)malloc((data.raw_data_len + 1)*sizeof(char));
+    strncpy(json_schema,(char*)data.raw_data.bytes, data.raw_data_len);
+    wifi_hal_info_print(WIFI_CTRL,"%s:%d SREESH Value of JSON schema = %s and strlen = %ld\n",__FUNCTION__,__LINE__,json_schema, strlen(json_schema));
+    get_bus_descriptor()->bus_data_free_fn(&data);
+    if(json_schema == NULL || (strcmp(json_schema,"(null)") == 0))
+    {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d SREESH json_schema is either NULL or has value (null)\n",__FUNCTION__,__LINE__);
+        return NULL;
+    }
+    return (void*)json_schema;
+}
+
 void speed_test_handler (char *event_name, raw_data_t *p_data)
 {
     speed_test_data_t speed_test_data = { 0 };

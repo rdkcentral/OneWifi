@@ -389,6 +389,7 @@ int convert_bool_to_ascii_string(bool l_bool_param, char *l_string, size_t str_l
 void json_param_obscure(char *json, char *param);
 bool is_5g_20M_channel_in_dfs(int channel);
 void decode_acs_keep_out_json(void *data);
+void* bus_get_keep_out_json();
 bool is_6g_supported_device(wifi_platform_property_t *wifi_prop);
 int scan_mode_type_conversion(wifi_neighborScanMode_t *scan_mode_enum, char *scan_mode_str, int scan_mode_len, unsigned int conv_type);
 bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t *vap_info_new,

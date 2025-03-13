@@ -430,6 +430,7 @@ int start_radios(rdk_dev_mode_type_t mode)
     uint8_t num_of_radios = getNumberRadios();
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     wifi_platform_property_t *wifi_prop =  (wifi_platform_property_t *) get_wifi_hal_cap_prop();
+    void* keep_out_json;
 
     wifi_util_info_print(WIFI_CTRL,"%s(): Start radios %d\n", __FUNCTION__, num_of_radios);
     //Check for the number of radios
@@ -494,6 +495,12 @@ int start_radios(rdk_dev_mode_type_t mode)
 
         if ((wifi_radio_oper_param->EcoPowerDown == false) && (wifi_prop->radio_presence[index] == false)) {
             wifi_util_error_print(WIFI_CTRL,"%s: !!!!-ALERT-!!!-Radio not present-!!!-Kernel driver interface down-!!!.Index %d\n",__FUNCTION__, index);
+        }
+        keep_out_json = bus_get_keep_out_json();
+        if (keep_out_json != NULL)
+        {
+            wifi_util_info_print(WIFI_CTRL,"%s: SREESH Keepout json is present, setting keepout for radio index %d\n",__FUNCTION__, index);
+            decode_acs_keep_out_json(keep_out_json);
         }
         ret = wifi_hal_setRadioOperatingParameters(index, wifi_radio_oper_param);
         if (ret != RETURN_OK) {
