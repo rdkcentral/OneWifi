@@ -1422,7 +1422,7 @@ void* bus_get_keep_out_json()
     if (data.data_type != bus_data_type_string) {
         wifi_util_error_print(WIFI_CTRL,
             "%s:%d '%s' SREESH bus_data_get_fn failed with data_type:0x%x, rc:%d\n", __func__, __LINE__,
-            MANAGED_WIFI_BRIDGE, data.data_type, rc);
+            ACS_KEEP_OUT, data.data_type, rc);
         get_bus_descriptor()->bus_data_free_fn(&data);
         return NULL;
     }
