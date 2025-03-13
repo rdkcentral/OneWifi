@@ -206,10 +206,13 @@ char* PSM_Get_Record_Status(char *recName, char *strValue)
 {
     int retry = 0;
     int retPsmGet = CCSP_SUCCESS;
+    char *strVal = NULL;
     while(retry++ < 2) {
-        retPsmGet = PSM_Get_Record_Value2(bus_handle, g_Subsystem, recName, NULL, &strValue);
+        retPsmGet = PSM_Get_Record_Value2(bus_handle, g_Subsystem, recName, NULL, &strVal);
         if (retPsmGet == CCSP_SUCCESS) {
             wifi_util_dbg_print(WIFI_PSM,"%s:%d retPsmGet success for %s and strValue is %s\n", __FUNCTION__,__LINE__, recName, strValue);
+            strncpy(strValue, strVal, (strlen(strVal) + 1));
+            ((CCSP_MESSAGE_BUS_INFO *)bus_handle)->freefunc(strVal);
             return strValue;
         } else if (retPsmGet == CCSP_CR_ERR_INVALID_PARAM) {
             wifi_util_dbg_print(WIFI_PSM,"%s:%d PSM_Get_Record_Value2 (%s) returned error %d \n",__FUNCTION__,__LINE__,recName,retPsmGet);
