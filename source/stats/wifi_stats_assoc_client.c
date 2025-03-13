@@ -214,7 +214,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                 }
             }
         }
-        phread_mutex_unlock(&mon_data->data_lock);
+        pthread_mutex_unlock(&mon_data->data_lock);
         return RETURN_OK;
     }
 
