@@ -1426,10 +1426,10 @@ void* bus_get_keep_out_json()
         get_bus_descriptor()->bus_data_free_fn(&data);
         return NULL;
     }
-    wifi_hal_info_print(WIFI_CTRL,"%s:%d SREESH Value of (char*)data.raw_data.bytes = %s and data.raw_data_len = %d\n",__FUNCTION__,__LINE__,(char*)data.raw_data.bytes,data.raw_data_len);
+    wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Value of (char*)data.raw_data.bytes = %s and data.raw_data_len = %d\n",__FUNCTION__,__LINE__,(char*)data.raw_data.bytes,data.raw_data_len);
     char *json_schema = (char*)malloc((data.raw_data_len + 1)*sizeof(char));
     strncpy(json_schema,(char*)data.raw_data.bytes, data.raw_data_len);
-    wifi_hal_info_print(WIFI_CTRL,"%s:%d SREESH Value of JSON schema = %s and strlen = %ld\n",__FUNCTION__,__LINE__,json_schema, strlen(json_schema));
+    wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Value of JSON schema = %s and strlen = %ld\n",__FUNCTION__,__LINE__,json_schema, strlen(json_schema));
     get_bus_descriptor()->bus_data_free_fn(&data);
     if(json_schema == NULL || (strcmp(json_schema,"(null)") == 0))
     {
