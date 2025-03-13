@@ -1768,16 +1768,19 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
 
     if (extra_vendor_ies != NULL) {
         size_t input_len = strlen(extra_vendor_ies);
-        for (unsigned int i = 0; i < sizeof(vap_info->u.bss_info.vendor_elements); i++) {
-            unsigned int element;
-            // Check if we have at least 2 chars remaining
-            if (2 * i + 1 >= input_len || sscanf(extra_vendor_ies + 2 * i, "%02x", &element) != 1) {
+        unsigned int element;
+        unsigned int i;
+        for (i = 0; i < sizeof(vap_info->u.bss_info.vendor_elements); i++) {
+            // Make sure we have two characters for a valid hex number.
+            if (2 * i + 2 > input_len)
+                break;
+            if (sscanf(extra_vendor_ies + 2 * i, "%02x", &element) == 1) {
                 vap_info->u.bss_info.vendor_elements[i] = (unsigned char)element;
-                // Set length to number of successfully parsed elements
-                vap_info->u.bss_info.vendor_elements_len = i;
+            } else {
                 break;
             }
         }
+        vap_info->u.bss_info.vendor_elements_len = i;
     }
 
     return webconfig_error_none;
