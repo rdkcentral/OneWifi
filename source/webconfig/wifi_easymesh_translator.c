@@ -473,7 +473,7 @@ webconfig_error_t translate_radio_object_to_easymesh_for_dml(webconfig_subdoc_da
     return webconfig_error_none;
 }
 
-// translate_vap_info_to_em_common() converts common data elements of wwifi_vap_info_ifi_vap_info_t to em_bss_info_t of  easymesh
+// translate_vap_info_to_em_common() converts common data elements of wifi_vap_info_t to em_bss_info_t of easymesh
 webconfig_error_t translate_vap_info_to_em_common(const wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, em_bss_info_t *vap_row, em_ssid_2_vid_map_info_t  *ssid_vid_map, wifi_platform_property_t *wifi_prop)
 {
     unsigned k = 0;
@@ -486,6 +486,12 @@ webconfig_error_t translate_vap_info_to_em_common(const wifi_vap_info_t *vap, co
     }
     vap_row->enabled = vap->u.bss_info.enabled;
     strncpy(vap_row->ssid, vap->u.bss_info.ssid, sizeof(vap_row->ssid));
+
+    // Set the em_bss_info_t vendor_elements to the same as wifi_vap_info_t vendor_elements
+    memset(vap_row->vendor_elements, 0, sizeof(vap_row->vendor_elements));
+    memcpy(vap_row->vendor_elements, vap->u.bss_info.vendor_elements, vap->u.bss_info.vendor_elements_len);
+    vap_row->vendor_elements_len = vap->u.bss_info.vendor_elements_len;
+
 
     sprintf(mac_str, "%02x:%02x:%02x:%02x:%02x:%02x", vap->u.bss_info.bssid[0], vap->u.bss_info.bssid[1],
             vap->u.bss_info.bssid[2], vap->u.bss_info.bssid[3],
@@ -1327,6 +1333,10 @@ webconfig_error_t translate_em_common_to_vap_info_common( wifi_vap_info_t *vap, 
     }
     vap->u.bss_info.enabled = vap_row->enabled ;
     strncpy(vap->u.bss_info.ssid,vap_row->ssid, sizeof(vap->u.bss_info.ssid));
+
+    memset(vap->u.bss_info.vendor_elements, 0, sizeof(vap->u.bss_info.vendor_elements));
+    memcpy(vap->u.bss_info.vendor_elements, vap_row->vendor_elements, vap_row->vendor_elements_len);
+    vap->u.bss_info.vendor_elements_len = vap_row->vendor_elements_len;
 
     return webconfig_error_none;
 }
