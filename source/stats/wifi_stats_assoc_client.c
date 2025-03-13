@@ -136,7 +136,6 @@ int process_assoc_dev_stats(wifi_mon_stats_args_t *args, hash_map_t *sta_map, vo
         }
         temp_sta = hash_map_get_next(sta_map, temp_sta);
     }
-
     *stats = sta;
     *stat_array_size = count;
 
