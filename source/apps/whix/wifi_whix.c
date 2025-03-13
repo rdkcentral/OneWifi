@@ -347,7 +347,7 @@ int whix_upload_ap_telemetry_pmf()
     // "header":  "WIFI_INFO_PMF_ENABLE"
     // "content": "WiFi_INFO_PMF_enable:"
     // "type": "wifihealth.txt",
-    get_vap_dml_parameters(MFP_FEATURE_STATUS, &bFeatureMFPConfig);
+    bFeatureMFPConfig = mgr->global_config.global_parameters.mfp_config_feature;
     rc = sprintf_s(telemetry_buf, sizeof(telemetry_buf), "%s", bFeatureMFPConfig?"true":"false");
     if(rc < EOK)
     {
