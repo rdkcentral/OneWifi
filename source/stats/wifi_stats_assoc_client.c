@@ -154,6 +154,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
     sta_key_t sta_key;
     sta_key_t mld_sta_key;
     unsigned int i = 0;
+    queue_t *new_queue;
     hash_map_t *sta_map;
     sta_data_t *sta = NULL, *tmp_sta = NULL;
     int ret = RETURN_OK;
@@ -393,6 +394,16 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
             }
         }
     }
+    new_queue = queue_create();
+    if (new_queue == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d Failed to create queue\n", __func__, __LINE__);
+        if (dev_array != NULL) {
+            free(dev_array);
+            dev_array = NULL;
+        }
+        pthread_mutex_unlock(&mon_data->data_lock);
+        return RETURN_ERR;
+    }
     sta = hash_map_get_first(sta_map);
     while (sta != NULL) {
         int send_disconnect_event = 1;
@@ -450,6 +461,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                 }
             }
         }
+
         sta = hash_map_get_next(sta_map, sta);
         if (tmp_sta != NULL) {
             wifi_util_info_print(WIFI_MON,
@@ -458,8 +470,19 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
             wifi_util_info_print(WIFI_MON, "[%s:%d] Station info for, vap:%d ClientMac:%s\n",
                 __func__, __LINE__, (args->vap_index + 1),
                 to_sta_key(tmp_sta->dev_stats.cli_MACAddress, sta_key));
-            if (send_disconnect_event) {
-                send_wifi_disconnect_event_to_ctrl(tmp_sta->sta_mac, args->vap_index);
+            mac_addr_t *mac_copy = malloc(sizeof(mac_addr_t));
+            if (mac_copy == NULL) {
+                wifi_util_error_print(WIFI_MON, "%s:%d Failed to allocate memory for mac_copy\n",
+                    __func__, __LINE__);
+                continue;
+            }
+
+            memcpy(mac_copy, sta->sta_mac, sizeof(mac_addr_t));
+            if (queue_push(new_queue, mac_copy) != 0) {
+                wifi_util_error_print(WIFI_MON, "%s:%d Failed to push mac_copy to queue\n",
+                    __func__, __LINE__);
+                free(mac_copy); // Free the memory if push fails
+                continue;
             }
             memset(sta_key, 0, sizeof(sta_key_t));
             to_sta_key(tmp_sta->sta_mac, sta_key);
@@ -474,6 +497,18 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
         free(dev_array);
         dev_array = NULL;
     }
+    pthread_mutex_unlock(&mon_data->data_lock);
+
+    while (queue_count(new_queue) > 0) {
+        mac_addr_t *mac = pop_queue(new_queue);
+        if (mac != NULL) {
+            if (send_disconnect_event) {
+                send_wifi_disconnect_event_to_ctrl(mac, args->vap_index);
+            }
+            free(mac);
+        }
+    }
+    destroy_queue(new_queue);
 
     mon_data->bssid_data[vap_array_index].last_sta_update_time.tv_sec = tv_now.tv_sec;
     mon_data->bssid_data[vap_array_index].last_sta_update_time.tv_nsec = tv_now.tv_nsec;
@@ -482,7 +517,9 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
         (c_elem->stats_clctr.stats_type_subscribed & 1 << mon_stats_type_associated_device_stats)) {
         void *assoc_data = NULL;
         unsigned int dev_count = 0;
+        pthread_mutex_lock(&mon_data->data_lock);
         process_assoc_dev_stats(args, sta_map, &assoc_data, &dev_count);
+        pthread_mutex_unlock(&mon_data->data_lock);
         if (dev_count == 0) {
             wifi_util_dbg_print(WIFI_MON, "%s:%d device count is %d\n", __func__, __LINE__,
                 dev_count);
@@ -491,7 +528,6 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                 assoc_data = NULL;
             }
             wifi_util_dbg_print(WIFI_MON, "%s:%d assoc_data is NULL\n", __func__, __LINE__);
-            pthread_mutex_unlock(&mon_data->data_lock);
             return RETURN_ERR;
         }
         wifi_provider_response_t *collect_stats;
@@ -503,14 +539,12 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                 free(assoc_data);
                 assoc_data = NULL;
             }
-            pthread_mutex_unlock(&mon_data->data_lock);
             return RETURN_ERR;
         }
         collect_stats->data_type = mon_stats_type_associated_device_stats;
         collect_stats->args.vap_index = args->vap_index;
         collect_stats->stat_pointer = assoc_data;
         collect_stats->stat_array_size = dev_count;
-        pthread_mutex_unlock(&mon_data->data_lock);
         wifi_util_dbg_print(WIFI_MON,
             "Sending assoc client stats event to core of size %d for %d\n", dev_count,
             collect_stats->args.vap_index);
@@ -521,7 +555,6 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
         free(collect_stats);
         collect_stats = NULL;
     }
-    pthread_mutex_unlock(&mon_data->data_lock);
     return RETURN_OK;
 }
 
