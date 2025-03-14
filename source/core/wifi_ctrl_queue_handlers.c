@@ -2864,9 +2864,7 @@ int get_neighbor_scan_results(void *arg)
 
 void process_acs_keep_out_channels_event(void* data)
 {
-    wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Enter\n",__FUNCTION__,__LINE__);
     decode_acs_keep_out_json(data);
-    wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Exiting from this function\n",__FUNCTION__,__LINE__);
 }
 
 void process_neighbor_scan_command_event()
@@ -3357,7 +3355,6 @@ void handle_hal_indication(wifi_ctrl_t *ctrl, void *data, unsigned int len,
         break;
 
     case wifi_event_hal_acs_keep_out:
-        wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH About to call process_acs_keep_out_channels\n",__FUNCTION__,__LINE__);
         process_acs_keep_out_channels_event(data);
         break;
 

@@ -1393,14 +1393,12 @@ static int eth_bh_status_notify()
 static void acs_keep_out_evt_handler(char* event_name, raw_data_t *p_data)
 {    
     if (p_data->data_type != bus_data_type_string) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d SREESH event:%s wrong data type:%x\n", __func__, __LINE__,
+        wifi_util_error_print(WIFI_CTRL, "%s:%d event:%s wrong data type:%x\n", __func__, __LINE__,
             event_name, p_data->data_type);
         return;
     }
-    wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Value of (char*)p_data->raw_data.bytes = %s and p_data->raw_data_len = %d\n",__FUNCTION__,__LINE__,(char*)p_data->raw_data.bytes,p_data->raw_data_len);
     char *json_schema = (char *)malloc((p_data->raw_data_len + 1)*sizeof(char));
     strncpy(json_schema,(char*)p_data->raw_data.bytes, p_data->raw_data_len);
-    wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Value of JSON schema = %s and strlen = %ld\n",__FUNCTION__,__LINE__,json_schema, strlen(json_schema));
     push_event_to_ctrl_queue(json_schema, (strlen(json_schema) + 1), wifi_event_type_hal_ind, wifi_event_hal_acs_keep_out, NULL);
 }
 
@@ -1414,15 +1412,13 @@ void* bus_get_keep_out_json()
         &data);
     if (data.data_type != bus_data_type_string) {
         wifi_util_error_print(WIFI_CTRL,
-            "%s:%d '%s' SREESH bus_data_get_fn failed with data_type:0x%x, rc:%d\n", __func__, __LINE__,
+            "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%d\n", __func__, __LINE__,
             ACS_KEEP_OUT, data.data_type, rc);
         get_bus_descriptor()->bus_data_free_fn(&data);
         return NULL;
     }
-    wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Value of (char*)data.raw_data.bytes = %s and data.raw_data_len = %d\n",__FUNCTION__,__LINE__,(char*)data.raw_data.bytes,data.raw_data_len);
     char *json_schema = (char*)malloc((data.raw_data_len + 1)*sizeof(char));
     strncpy(json_schema,(char*)data.raw_data.bytes, data.raw_data_len);
-    wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Value of JSON schema = %s and strlen = %ld\n",__FUNCTION__,__LINE__,json_schema, strlen(json_schema));
     get_bus_descriptor()->bus_data_free_fn(&data);
     return (void*)json_schema;
 }
@@ -1659,13 +1655,11 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
     }
 
     if (ctrl->mesh_keep_out_chans_subscribed == false) {
-        if (bus_desc->bus_event_subs_fn(&ctrl->handle, ACS_KEEP_OUT, acs_keep_out_evt_handler, NULL,0) != bus_error_success) {
-        wifi_util_info_print(WIFI_CTRL, "%s:%d SREESH bus: bus event:%s subscribe failed\n",
-                     __FUNCTION__,
-                         __LINE__, ACS_KEEP_OUT);
+        if (bus_desc->bus_event_subs_fn(&ctrl->handle, ACS_KEEP_OUT, acs_keep_out_evt_handler,
+                 NULL,0) != bus_error_success) {
                 } else {
                     ctrl->mesh_keep_out_chans_subscribed = true;
-                    wifi_util_info_print(WIFI_CTRL, "%s:%d SREESH bus: bus event:%s subscribe success\n",
+                    wifi_util_dbg_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe success\n",
                         __FUNCTION__, __LINE__, ACS_KEEP_OUT);
         }
     }

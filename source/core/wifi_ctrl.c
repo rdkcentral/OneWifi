@@ -441,11 +441,7 @@ int start_radios(rdk_dev_mode_type_t mode)
     void* keep_out_json = bus_get_keep_out_json();
     if (keep_out_json != NULL)
     {
-        wifi_util_info_print(WIFI_CTRL,"%s: SREESH Keepout json is present, setting keepout for radio index %d\n",__FUNCTION__, index);
-        if(decode_acs_keep_out_json(keep_out_json) != webconfig_error_none)
-        {
-            wifi_util_error_print(WIFI_CTRL,"%s:%d Unable to decode Keep Out JSON\n", __func__, __LINE__);
-        }
+        decode_acs_keep_out_json(keep_out_json);
     }
 
     for (index = 0; index < num_of_radios; index++) {
