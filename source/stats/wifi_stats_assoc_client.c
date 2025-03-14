@@ -405,7 +405,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
         return RETURN_ERR;
     }
     sta = hash_map_get_first(sta_map);
-    int send_disconnect_event;
+    int send_disconnect_event = 0;
     while (sta != NULL) {
         send_disconnect_event = 1;
         if (sta->updated == true) {
@@ -503,7 +503,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
     while (queue_count(new_queue) > 0) {
         mac_address_t *mac = (mac_address_t *)queue_pop(new_queue);
         if (mac != NULL) {
-            if (send_disconnect_event) {
+            if (send_disconnect_event == 1) {
                 send_wifi_disconnect_event_to_ctrl(mac, args->vap_index);
             }
             free(mac);
