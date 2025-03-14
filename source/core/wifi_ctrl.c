@@ -438,6 +438,12 @@ int start_radios(rdk_dev_mode_type_t mode)
         wifi_util_error_print(WIFI_CTRL,"WIFI %s : Number of Radios %d exceeds supported %d Radios \n",__FUNCTION__, getNumberRadios(), MAX_NUM_RADIOS);
         return RETURN_ERR;
     }
+    //Apply Keep out configs in case RBUS event is missed due to OneWifi restart.
+    void* keep_out_json = bus_get_keep_out_json();
+    if (keep_out_json != NULL)
+    {
+        decode_acs_keep_out_json(keep_out_json);
+    }
 
     for (index = 0; index < num_of_radios; index++) {
         wifi_radio_oper_param = (wifi_radio_operationParam_t *)get_wifidb_radio_map(index);
@@ -2040,7 +2046,7 @@ static int bus_check_and_subscribe_events(void* arg)
         (ctrl->device_mode_subscribed == false) || (ctrl->active_gateway_check_subscribed == false) ||
         (ctrl->device_tunnel_status_subscribed == false) || (ctrl->device_wps_test_subscribed == false) ||
         (ctrl->test_device_mode_subscribed == false) || (ctrl->mesh_status_subscribed == false) ||
-        (ctrl->marker_list_config_subscribed == false)
+        (ctrl->marker_list_config_subscribed == false) || (ctrl->mesh_keep_out_chans_subscribed == false)
 #if defined (RDKB_EXTENDER_ENABLED)
         || (ctrl->eth_bh_status_subscribed == false)
 #endif

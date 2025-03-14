@@ -2862,6 +2862,10 @@ int get_neighbor_scan_results(void *arg)
     return TIMER_TASK_COMPLETE;
 }
 
+void process_acs_keep_out_channels_event(void* data)
+{
+    decode_acs_keep_out_json(data);
+}
 
 void process_neighbor_scan_command_event()
 {
@@ -3348,6 +3352,10 @@ void handle_hal_indication(wifi_ctrl_t *ctrl, void *data, unsigned int len,
 
     case wifi_event_hal_channel_change:
         process_channel_change_event(data, nop_start_reboot, dfs_timer_secs);
+        break;
+
+    case wifi_event_hal_acs_keep_out:
+        process_acs_keep_out_channels_event(data);
         break;
 
     default:

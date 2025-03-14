@@ -41,6 +41,7 @@
 //This Macro ONE_WIFI_CHANGES, used to modify the validator changes. Re-check is required where the macro is used
 #define ONE_WIFI_CHANGES
 
+#define  ARRAY_SZ(x)    (sizeof(x) / sizeof((x)[0]))
 #define decode_param_string(json, key, value) \
 {   \
     value = cJSON_GetObjectItem(json, key);     \
@@ -2488,6 +2489,108 @@ webconfig_error_t decode_radio_setup_object(const cJSON *obj_radio_setup, rdk_wi
     }
 
     return webconfig_error_none;
+}
+
+// Define a function to handle bandwidth processing
+webconfig_error_t process_bandwidth(cJSON *radioParams, const char *bandwidth_str, wifi_freq_bands_t band, wifi_channels_list_per_bandwidth **chanlist, int bandwidth_type, hash_map_t *radio_chanmap) {
+    cJSON *bandwidth = cJSON_GetObjectItem(radioParams, bandwidth_str);
+    if (bandwidth != NULL) {
+        *chanlist = (wifi_channels_list_per_bandwidth*)malloc(sizeof(wifi_channels_list_per_bandwidth));
+        (*chanlist)->num_channels_list = 0;
+        int channels_list[MAX_CHANNELS];
+        int num_channels = 0;
+        cJSON *channel;
+        cJSON_ArrayForEach(channel, bandwidth) {
+            if (get_on_channel_scan_list(band, bandwidth_type, channel->valueint, channels_list, &num_channels) == 0) {
+                memcpy((*chanlist)->channels_list[(*chanlist)->num_channels_list].channels_list, channels_list, sizeof(channels_list));
+                (*chanlist)->channels_list[(*chanlist)->num_channels_list].num_channels = num_channels;
+                (*chanlist)->num_channels_list++;
+            } else {
+                free(*chanlist);
+                return webconfig_error_decode;
+            }
+        }
+        char bandstr[10];
+        wifi_channelBandwidth_to_str(bandstr, sizeof(bandstr), bandwidth_type);
+        hash_map_put(radio_chanmap, strdup(bandstr), *chanlist);
+    }
+    return webconfig_error_none;
+}
+
+webconfig_error_t decode_bandwidth_from_json(cJSON *radioParams, wifi_freq_bands_t band, hash_map_t *radio_chanmap) {
+#ifdef CONFIG_IEEE80211BE
+    const char *bandwidths[] = {"20", "40", "80", "160","8080" ,"320"};
+#else
+    const char *bandwidths[] = {"20","40","80","160"};
+#endif
+    int arr_size = ARRAY_SZ(bandwidths);
+    wifi_channels_list_per_bandwidth *chanlists[arr_size];
+    for (int i = 0; i < arr_size; i++) {
+        chanlists[i] = NULL;
+    }
+    for (int i = 0, j = WIFI_CHANNELBANDWIDTH_20MHZ; i < arr_size; i++, j *= 2) {
+        wifi_channelBandwidth_t bandwidth = (wifi_channelBandwidth_t)j;
+        if(process_bandwidth(radioParams, bandwidths[i], band, &chanlists[i], bandwidth, radio_chanmap) != webconfig_error_none) {
+            return webconfig_error_decode;
+        }
+    }
+    return webconfig_error_none; 
+}
+
+void decode_acs_keep_out_json(void *json_string) {
+    cJSON *json = cJSON_Parse((const char*)json_string);
+    if (json == NULL) {
+        const char *error_ptr = cJSON_GetErrorPtr();
+        if (error_ptr != NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Error before: %s\n", __FUNCTION__, __LINE__, error_ptr);
+        }
+        return;
+    }
+    cJSON *channelExclusion = NULL;
+    cJSON *item = NULL;
+    const char *radioNames[] = {"radio2G", "radio5G","radio5GL","radio5GH" ,"radio6G"};
+    wifi_freq_bands_t freq_band;
+    int radioIndex;
+    int numRadios = ARRAY_SZ(radioNames);
+    cJSON *channelExclusion = cJSON_GetObjectItem(json, "ChannelExclusion");
+    if(!channelExclusion) {
+        for(int i = 0;i<(int)getNumberRadios();i++){
+            wifi_hal_set_acs_keep_out_chans(NULL, i); // Remove entries
+        }
+        cJSON_Delete(json);
+        return;
+    }
+    cJSON_ArrayForEach(item, channelExclusion) {
+    for (int i = 0, j = WIFI_FREQUENCY_2_4_BAND; i < numRadios; i++, j *= 2) {
+        freq_band = (wifi_freq_bands_t)j;
+        if (convert_freq_band_to_radio_index(freq_band, &radioIndex) != RETURN_OK) {
+            continue;
+        }
+        cJSON *radioParams = cJSON_GetObjectItem(item, radioNames[i]);
+        if (radioParams != NULL && cJSON_GetObjectSize(radioParams) > 0) {
+            hash_map_t *radio_chanmap = hash_map_create();
+            if (!radio_chanmap) {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d Could not create hashmap for radioIndex = %d\n", __FUNCTION__, __LINE__,radioIndex);
+                continue;
+            }
+            if(decode_bandwidth_from_json(radioParams, freq_band, radio_chanmap) != webconfig_error_none)
+            {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d decode_bandwidth_from_json returned error\n", __FUNCTION__, __LINE__);
+                return;
+            }
+            if (wifi_hal_set_acs_keep_out_chans(radio_chanmap, radioIndex) == RETURN_ERR) {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d wifi_hal_set_acs_keep_out_chans has failed\n", __FUNCTION__,__LINE__);
+                return;
+            }
+            if (radio_chanmap) {
+                hash_map_destroy(radio_chanmap);
+            }
+            }else {
+                wifi_hal_set_acs_keep_out_chans(NULL, radioIndex); // Clear entries
+            }
+        }
+    }
+    cJSON_Delete(json);
 }
 
 webconfig_error_t decode_radio_operating_classes(const cJSON *obj_radio_setup,
