@@ -472,7 +472,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
             wifi_util_info_print(WIFI_MON, "[%s:%d] Station info for, vap:%d ClientMac:%s\n",
                 __func__, __LINE__, (args->vap_index + 1),
                 to_sta_key(tmp_sta->dev_stats.cli_MACAddress, sta_key));
-            strncpy(mac_copy, tmp_sta->sta_mac, sizeof(mac_address_t));
+            memcpy(mac_copy, tmp_sta->sta_mac, sizeof(mac_address_t));
             if (queue_push(new_queue, mac_copy) == -1) {
                 wifi_util_error_print(WIFI_MON, "%s:%d Failed to push mac_copy to queue\n",
                     __func__, __LINE__);
@@ -494,7 +494,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
     pthread_mutex_unlock(&mon_data->data_lock);
 
     while (queue_count(new_queue) > 0) {
-        strncpy(mac, (unsigned char *)queue_pop(new_queue), sizeof(mac_address_t));
+        memcpy(mac, (mac_address_t *)queue_pop(new_queue), sizeof(mac_address_t));
         if (send_disconnect_event == 1) {
             send_wifi_disconnect_event_to_ctrl(mac, args->vap_index);
         }
