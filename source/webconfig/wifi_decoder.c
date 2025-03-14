@@ -2541,7 +2541,7 @@ webconfig_error_t decode_bandwidth_from_json(cJSON *radioParams, wifi_freq_bands
     return webconfig_error_none; 
 }
 
-webconfig_error_t decode_acs_keep_out_json(void *json_string) {
+void decode_acs_keep_out_json(void *json_string) {
     cJSON *json = cJSON_Parse((const char*)json_string);
     if (json == NULL) {
         const char *error_ptr = cJSON_GetErrorPtr();
@@ -2551,6 +2551,7 @@ webconfig_error_t decode_acs_keep_out_json(void *json_string) {
         return;
     }
     cJSON *channelExclusion = NULL;
+    cJSON *item = NULL;
     wifi_util_info_print(WIFI_CTRL, "%s:%d Latest Keep Out JSON Schema %s\n", __FUNCTION__, __LINE__, (char*)json_string);
     const char *radioNames[] = {"radio2G", "radio5G","radio5GL","radio5GH" ,"radio6G"};
     wifi_freq_bands_t freq_band;
@@ -2572,7 +2573,11 @@ webconfig_error_t decode_acs_keep_out_json(void *json_string) {
                 continue;
             }
             wifi_util_info_print(WIFI_CTRL, "%s:%d SREESH After cJSON_GetObjectItem of %s and freq band = 0x%x and radioIndex = %d\n", __func__, __LINE__, radioNames[i], freq_band, radioIndex);
-            decode_bandwidth_from_json(radioParams, freq_band, radio_chanmap);
+            if(decode_bandwidth_from_json(radioParams, freq_band, radio_chanmap) != webconfig_error_none)
+            {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d SREESH decode_bandwidth_from_json returned error\n", __FUNCTION__, __LINE__);
+                return;
+            }
             if (wifi_hal_set_acs_keep_out_chans(radio_chanmap, radioIndex) == RETURN_ERR) {
                 wifi_util_info_print(WIFI_CTRL, "%s:%d SREESH wifi_hal_set_acs_keep_out_chans has failed\n", __FUNCTION__,__LINE__);
             }
@@ -2587,7 +2592,6 @@ webconfig_error_t decode_acs_keep_out_json(void *json_string) {
         }
     }
     cJSON_Delete(json);
-    return webconfig_error_none;
     wifi_util_info_print(WIFI_CTRL, "%s:%d SREESH cJSON_Delete has been called\n", __FUNCTION__, __LINE__);
 }
 
