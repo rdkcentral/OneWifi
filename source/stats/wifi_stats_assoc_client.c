@@ -136,7 +136,6 @@ int process_assoc_dev_stats(wifi_mon_stats_args_t *args, hash_map_t *sta_map, vo
         }
         temp_sta = hash_map_get_next(sta_map, temp_sta);
     }
-
     *stats = sta;
     *stat_array_size = count;
 
@@ -155,6 +154,8 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
     sta_key_t sta_key;
     sta_key_t mld_sta_key;
     unsigned int i = 0;
+    queue_t *new_queue;
+    mac_address_t mac_copy, mac;
     hash_map_t *sta_map;
     sta_data_t *sta = NULL, *tmp_sta = NULL;
     int ret = RETURN_OK;
@@ -202,6 +203,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
     if (bss_param->enabled == false) {
         wifi_util_dbg_print(WIFI_MON, "%s:%d vap_index %d enabled is false, clearing the sta_map\n",
             __func__, __LINE__, args->vap_index);
+        pthread_mutex_lock(&mon_data->data_lock);
         if (mon_data->bssid_data[vap_array_index].sta_map != NULL) {
             sta = hash_map_get_first(mon_data->bssid_data[vap_array_index].sta_map);
             while (sta != NULL) {
@@ -210,9 +212,11 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                 tmp_sta = hash_map_remove(mon_data->bssid_data[vap_array_index].sta_map, sta_key);
                 if (tmp_sta != NULL) {
                     free(tmp_sta);
+                    tmp_sta = NULL;
                 }
             }
         }
+        pthread_mutex_unlock(&mon_data->data_lock);
         return RETURN_OK;
     }
 
@@ -264,6 +268,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
     }
 
     events_update_clientdiagdata(num_devs, args->vap_index, dev_array);
+    pthread_mutex_lock(&mon_data->data_lock);
     if (mon_data->bssid_data[vap_array_index].sta_map == NULL) {
         mon_data->bssid_data[vap_array_index].sta_map = hash_map_create();
         if (mon_data->bssid_data[vap_array_index].sta_map == NULL) {
@@ -274,6 +279,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                 free(dev_array);
                 dev_array = NULL;
             }
+            pthread_mutex_unlock(&mon_data->data_lock);
             return RETURN_ERR;
         }
     }
@@ -344,8 +350,9 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
             // update thresholds if changed
             wifi_global_param_t *global_param = get_wifidb_wifi_global_param();
             if (mon_data->sta_health_rssi_threshold != global_param->good_rssi_threshold) {
-                wifi_util_dbg_print(WIFI_MON, "%s:%d RSSI threshold updated to %d from %d\n", __func__,
-                    __LINE__, global_param->good_rssi_threshold, mon_data->sta_health_rssi_threshold);
+                wifi_util_dbg_print(WIFI_MON, "%s:%d RSSI threshold updated to %d from %d\n",
+                    __func__, __LINE__, global_param->good_rssi_threshold,
+                    mon_data->sta_health_rssi_threshold);
                 mon_data->sta_health_rssi_threshold = global_param->good_rssi_threshold;
             }
             if (sta->dev_stats.cli_SignalStrength >= mon_data->sta_health_rssi_threshold) {
@@ -388,9 +395,20 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
             }
         }
     }
+    new_queue = queue_create();
+    if (new_queue == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d Failed to create queue\n", __func__, __LINE__);
+        if (dev_array != NULL) {
+            free(dev_array);
+            dev_array = NULL;
+        }
+        pthread_mutex_unlock(&mon_data->data_lock);
+        return RETURN_ERR;
+    }
     sta = hash_map_get_first(sta_map);
+    int send_disconnect_event = 0;
     while (sta != NULL) {
-        int send_disconnect_event = 1;
+        send_disconnect_event = 1;
         if (sta->updated == true) {
             sta->updated = false;
         } else {
@@ -445,6 +463,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                 }
             }
         }
+
         sta = hash_map_get_next(sta_map, sta);
         if (tmp_sta != NULL) {
             wifi_util_info_print(WIFI_MON,
@@ -453,8 +472,11 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
             wifi_util_info_print(WIFI_MON, "[%s:%d] Station info for, vap:%d ClientMac:%s\n",
                 __func__, __LINE__, (args->vap_index + 1),
                 to_sta_key(tmp_sta->dev_stats.cli_MACAddress, sta_key));
-            if (send_disconnect_event) {
-                send_wifi_disconnect_event_to_ctrl(tmp_sta->sta_mac, args->vap_index);
+            memcpy(mac_copy, tmp_sta->sta_mac, sizeof(mac_address_t));
+            if (queue_push(new_queue, mac_copy) == -1) {
+                wifi_util_error_print(WIFI_MON, "%s:%d Failed to push mac_copy to queue\n",
+                    __func__, __LINE__);
+                continue;
             }
             memset(sta_key, 0, sizeof(sta_key_t));
             to_sta_key(tmp_sta->sta_mac, sta_key);
@@ -469,6 +491,15 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
         free(dev_array);
         dev_array = NULL;
     }
+    pthread_mutex_unlock(&mon_data->data_lock);
+
+    while (queue_count(new_queue) > 0) {
+        memcpy(mac, (mac_address_t *)queue_pop(new_queue), sizeof(mac_address_t));
+        if (send_disconnect_event == 1) {
+            send_wifi_disconnect_event_to_ctrl(mac, args->vap_index);
+        }
+    }
+    queue_destroy(new_queue);
 
     mon_data->bssid_data[vap_array_index].last_sta_update_time.tv_sec = tv_now.tv_sec;
     mon_data->bssid_data[vap_array_index].last_sta_update_time.tv_nsec = tv_now.tv_nsec;
@@ -477,8 +508,9 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
         (c_elem->stats_clctr.stats_type_subscribed & 1 << mon_stats_type_associated_device_stats)) {
         void *assoc_data = NULL;
         unsigned int dev_count = 0;
-
+        pthread_mutex_lock(&mon_data->data_lock);
         process_assoc_dev_stats(args, sta_map, &assoc_data, &dev_count);
+        pthread_mutex_unlock(&mon_data->data_lock);
         if (dev_count == 0) {
             wifi_util_dbg_print(WIFI_MON, "%s:%d device count is %d\n", __func__, __LINE__,
                 dev_count);
@@ -487,6 +519,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                 assoc_data = NULL;
             }
             wifi_util_dbg_print(WIFI_MON, "%s:%d assoc_data is NULL\n", __func__, __LINE__);
+            return RETURN_ERR;
         }
         wifi_provider_response_t *collect_stats;
         collect_stats = (wifi_provider_response_t *)malloc(sizeof(wifi_provider_response_t));
@@ -509,7 +542,9 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
         push_monitor_response_event_to_ctrl_queue(collect_stats, sizeof(wifi_provider_response_t),
             wifi_event_type_monitor, wifi_event_type_collect_stats, NULL);
         free(assoc_data);
+        assoc_data = NULL;
         free(collect_stats);
+        collect_stats = NULL;
     }
     return RETURN_OK;
 }
@@ -551,11 +586,12 @@ int copy_assoc_client_stats_from_cache(wifi_mon_provider_element_t *p_elem, void
         *stat_array_size = 0;
         return RETURN_OK;
     }
-
+    pthread_mutex_lock(&mon_cache->data_lock);
     sta_map = mon_cache->bssid_data[vap_array_index].sta_map ;
     if(sta_map == NULL) {
         *stats = NULL;
         *stat_array_size = 0;
+        pthread_mutex_unlock(&mon_cache->data_lock);
         return RETURN_OK;
     }
 
@@ -563,6 +599,7 @@ int copy_assoc_client_stats_from_cache(wifi_mon_provider_element_t *p_elem, void
     if (sta_count == 0) {
         *stats = NULL;
         *stat_array_size = 0;
+        pthread_mutex_unlock(&mon_cache->data_lock);
         return RETURN_OK;
     }
 
@@ -570,6 +607,7 @@ int copy_assoc_client_stats_from_cache(wifi_mon_provider_element_t *p_elem, void
     if (sta == NULL) {
         wifi_util_error_print(WIFI_MON, "%s : %d Failed to allocate memory for sta structure for %d\n",
                 __func__,__LINE__, args->vap_index);
+        pthread_mutex_unlock(&mon_cache->data_lock);
         return RETURN_ERR;
     }
 
@@ -586,7 +624,7 @@ int copy_assoc_client_stats_from_cache(wifi_mon_provider_element_t *p_elem, void
 
     *stats = sta;
     *stat_array_size = sta_count;
-
+    pthread_mutex_unlock(&mon_cache->data_lock);
     return RETURN_OK;
 }
 
