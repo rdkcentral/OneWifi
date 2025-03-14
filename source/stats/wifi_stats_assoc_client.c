@@ -155,6 +155,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
     sta_key_t mld_sta_key;
     unsigned int i = 0;
     queue_t *new_queue;
+    mac_address_t mac_copy, mac;
     hash_map_t *sta_map;
     sta_data_t *sta = NULL, *tmp_sta = NULL;
     int ret = RETURN_OK;
@@ -471,18 +472,10 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
             wifi_util_info_print(WIFI_MON, "[%s:%d] Station info for, vap:%d ClientMac:%s\n",
                 __func__, __LINE__, (args->vap_index + 1),
                 to_sta_key(tmp_sta->dev_stats.cli_MACAddress, sta_key));
-             mac_address_t *mac_copy = malloc(sizeof(mac_address_t));
-            if (mac_copy == NULL) {
-                wifi_util_error_print(WIFI_MON, "%s:%d Failed to allocate memory for mac_copy\n",
-                    __func__, __LINE__);
-                continue;
-            }
-
-            memcpy(mac_copy, sta->sta_mac, sizeof(mac_address_t));
-            if (queue_push(new_queue, mac_copy)) {
+            strncpy(mac_copy, tmp_sta->sta_mac, sizeof(mac_address_t));
+            if (queue_push(new_queue, mac_copy) == -1) {
                 wifi_util_error_print(WIFI_MON, "%s:%d Failed to push mac_copy to queue\n",
                     __func__, __LINE__);
-                free(mac_copy);
                 continue;
             }
             memset(sta_key, 0, sizeof(sta_key_t));
@@ -501,15 +494,12 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
     pthread_mutex_unlock(&mon_data->data_lock);
 
     while (queue_count(new_queue) > 0) {
-        mac_address_t *mac = (mac_address_t *)queue_pop(new_queue);
-        if (mac != NULL) {
-            if (send_disconnect_event == 1) {
-                send_wifi_disconnect_event_to_ctrl(mac, args->vap_index);
-            }
-            free(mac);
+        strncpy(mac, (unsigned char *)queue_pop(new_queue), sizeof(mac_address_t));
+        if (send_disconnect_event == 1) {
+            send_wifi_disconnect_event_to_ctrl(mac, args->vap_index);
         }
     }
-    destroy_queue(new_queue);
+    queue_destroy(new_queue);
 
     mon_data->bssid_data[vap_array_index].last_sta_update_time.tv_sec = tv_now.tv_sec;
     mon_data->bssid_data[vap_array_index].last_sta_update_time.tv_nsec = tv_now.tv_nsec;
