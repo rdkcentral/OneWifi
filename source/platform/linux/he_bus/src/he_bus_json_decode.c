@@ -143,7 +143,7 @@ int get_data_model_prop(cJSON *wifi_def_obj, char *data_str_type,
             data_model_value->num_of_str_validation = cJSON_GetArraySize(param);
             data_model_value->str_validation = he_bus_malloc(
                 sizeof(char *) * data_model_value->num_of_str_validation);
-            VERIFY_NULL_WITH_RETURN_INT(data_model_value->str_validation);
+            HE_BUS_VERIFY_NULL_WITH_RETURN_INT(data_model_value->str_validation);
             for (int i = 0; i < data_model_value->num_of_str_validation; i++) {
                 cJSON *item = cJSON_GetArrayItem(param, i);
                 if (item != NULL && cJSON_IsString(item)) {
@@ -224,7 +224,7 @@ static int construct_namespace_and_register(he_bus_handle_t handle, cJSON *cfg_p
         for (int index = 0; index < num_of_elements; index++) {
             current_element = cJSON_GetArrayItem(cfg_param, index);
             current_element = current_element->child;
-            VERIFY_NULL_WITH_RETURN_INT(current_element);
+            HE_BUS_VERIFY_NULL_WITH_RETURN_INT(current_element);
 
             snprintf(full_namespace, sizeof(full_namespace), "%s.%s", name_prefix,
                 current_element->string);
@@ -246,7 +246,7 @@ static int construct_namespace_and_register(he_bus_handle_t handle, cJSON *cfg_p
 static void decode_wifi_object_recurse(he_bus_handle_t handle, cJSON *node, cJSON *wifi_def_obj,
     char *l_name_prefix)
 {
-    VERIFY_NULL(node);
+    HE_BUS_VERIFY_NULL(node);
     cJSON *child = node->child;
     he_bus_name_string_t name_prefix;
     char new_name_prefix[128];
