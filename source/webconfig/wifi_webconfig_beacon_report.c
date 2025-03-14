@@ -28,33 +28,33 @@
 #include <string.h>
 #include <unistd.h>
 
-webconfig_subdoc_object_t sta_manager_objects[3] = {
+webconfig_subdoc_object_t beacon_report_objects[3] = {
     { webconfig_subdoc_object_type_version, "Version"      },
     { webconfig_subdoc_object_type_subdoc,  "SubDocName"   },
     { webconfig_subdoc_object_type_csi,     "BeaconReport" },
 };
 
-webconfig_error_t init_sta_manager_subdoc(webconfig_subdoc_t *doc)
+webconfig_error_t init_beacon_report_subdoc(webconfig_subdoc_t *doc)
 {
-    doc->num_objects = sizeof(sta_manager_objects) / sizeof(webconfig_subdoc_object_t);
-    memcpy((unsigned char *)doc->objects, (unsigned char *)&sta_manager_objects,
-        sizeof(sta_manager_objects));
+    doc->num_objects = sizeof(beacon_report_objects) / sizeof(webconfig_subdoc_object_t);
+    memcpy((unsigned char *)doc->objects, (unsigned char *)&beacon_report_objects,
+        sizeof(beacon_report_objects));
 
     return webconfig_error_none;
 }
 
-webconfig_error_t access_check_sta_manager_subdoc(webconfig_t *config,
+webconfig_error_t access_check_beacon_report_subdoc(webconfig_t *config,
     webconfig_subdoc_data_t *data)
 {
     return webconfig_error_none;
 }
 
-webconfig_error_t translate_from_sta_manager_subdoc(webconfig_t *config,
+webconfig_error_t translate_from_beacon_report_subdoc(webconfig_t *config,
     webconfig_subdoc_data_t *data)
 {
     if ((data->descriptor & webconfig_data_descriptor_translate_to_easymesh) ==
         webconfig_data_descriptor_translate_to_easymesh) {
-        if (config->proto_desc.translate_to(webconfig_subdoc_type_sta_manager, data) !=
+        if (config->proto_desc.translate_to(webconfig_subdoc_type_beacon_report, data) !=
             webconfig_error_none) {
             if ((data->descriptor & webconfig_data_descriptor_translate_to_easymesh) ==
                 webconfig_data_descriptor_translate_to_easymesh) {
@@ -71,13 +71,13 @@ webconfig_error_t translate_from_sta_manager_subdoc(webconfig_t *config,
     return webconfig_error_none;
 }
 
-webconfig_error_t translate_to_sta_manager_subdoc(webconfig_t *config,
+webconfig_error_t translate_to_beacon_report_subdoc(webconfig_t *config,
     webconfig_subdoc_data_t *data)
 {
     return webconfig_error_none;
 }
 
-webconfig_error_t encode_sta_manager_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
+webconfig_error_t encode_beacon_report_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
 {
     cJSON *json, *object;
     // cJSON *obj_array;
@@ -113,13 +113,13 @@ webconfig_error_t encode_sta_manager_subdoc(webconfig_t *config, webconfig_subdo
 
     object = cJSON_CreateObject();
     cJSON_AddItemToObject(json, "WiFiBeaconReport", object);
-    vap_name = get_vap_name(&params->hal_cap.wifi_prop, params->stamgr.ap_index);
+    vap_name = get_vap_name(&params->hal_cap.wifi_prop, params->sta_beacon_report.ap_index);
     cJSON_AddStringToObject(object, "VapName", vap_name);
-    to_mac_str(params->stamgr.mac_addr, mac_str);
+    to_mac_str(params->sta_beacon_report.mac_addr, mac_str);
     cJSON_AddStringToObject(object, "MacAddress", mac_str);
-    cJSON_AddNumberToObject(object, "NumofReport", params->stamgr.num_br_data);
-    cJSON_AddNumberToObject(object, "FrameLen", params->stamgr.data_len);
-    if (encode_sta_manager_object(&params->stamgr, &object) != webconfig_error_none) {
+    cJSON_AddNumberToObject(object, "NumofReport", params->sta_beacon_report.num_br_data);
+    cJSON_AddNumberToObject(object, "FrameLen", params->sta_beacon_report.data_len);
+    if (encode_beacon_report_object(&params->sta_beacon_report, &object) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode mac object\n", __func__,
             __LINE__);
         cJSON_Delete(json);
@@ -144,7 +144,7 @@ webconfig_error_t encode_sta_manager_subdoc(webconfig_t *config, webconfig_subdo
     return webconfig_error_none;
 }
 
-webconfig_error_t decode_sta_manager_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
+webconfig_error_t decode_beacon_report_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
 {
     cJSON *json;
 
@@ -163,7 +163,7 @@ webconfig_error_t decode_sta_manager_subdoc(webconfig_t *config, webconfig_subdo
         return webconfig_error_decode;
     }
 
-    memset(&params->stamgr, 0, sizeof(sta_beacon_report_reponse_t));
+    memset(&params->sta_beacon_report, 0, sizeof(sta_beacon_report_reponse_t));
     cJSON *obj_config = cJSON_GetObjectItem(json, "WiFiBeaconReport");
     if (obj_config == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: object not present\n", __func__, __LINE__);
@@ -172,7 +172,7 @@ webconfig_error_t decode_sta_manager_subdoc(webconfig_t *config, webconfig_subdo
         return webconfig_error_invalid_subdoc;
     }
 
-    if (decode_sta_mgr_object(obj_config, &params->stamgr, &params->hal_cap.wifi_prop) !=
+    if (decode_sta_beacon_report_object(obj_config, &params->sta_beacon_report, &params->hal_cap.wifi_prop) !=
         webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: object Validation Failed\n", __func__,
             __LINE__);
@@ -184,3 +184,4 @@ webconfig_error_t decode_sta_manager_subdoc(webconfig_t *config, webconfig_subdo
     cJSON_Delete(json);
     return webconfig_error_none;
 }
+

@@ -1,7 +1,6 @@
 #include "wifi_em_utils.h"
 #include "wifi_util.h"
 #include "wifi_mgr.h"
-
 #include <const.h>
 
 #define NOISE_FLOOR (-95)

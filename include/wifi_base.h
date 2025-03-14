@@ -145,8 +145,7 @@ typedef enum {
     wifi_app_inst_core = wifi_app_inst_base << 14,
     wifi_app_inst_ocs = wifi_app_inst_base << 15,
     wifi_app_inst_easyconnect = wifi_app_inst_base << 16,
-    wifi_app_inst_sta_mgr = wifi_app_inst_base << 17,
-    wifi_app_inst_max = wifi_app_inst_base << 18
+    wifi_app_inst_max = wifi_app_inst_base << 17
 } wifi_app_inst_t;
 
 typedef struct {
@@ -264,6 +263,7 @@ typedef struct {
     wifi_csi_data_t csi;
 } __attribute__((packed)) wifi_csi_dev_t;
 
+#ifdef EM_APP
 typedef struct wifi_hal_rrm_request {
     uint8_t dialog_token;
     uint8_t duration;
@@ -278,6 +278,7 @@ typedef struct {
     size_t len;
     wifi_BeaconReport_t *data;
 } beacon_repo_data_t;
+#endif
 
 // data collection api type
 typedef enum {
@@ -1100,6 +1101,7 @@ typedef struct {
     unsigned int            radio_Temperature;
 } radio_data_t;
 
+#ifdef EM_APP
 typedef char marker_name[32];
 
 typedef struct {
@@ -1207,6 +1209,7 @@ typedef struct {
     UINT num_results;
     channel_scan_result_t results[MAX_RESULTS];
 } channel_scan_response_t;
+#endif
 
 #ifdef __cplusplus
 }

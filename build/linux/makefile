@@ -334,8 +334,6 @@ WEBCONFIG_SOURCES = $(ONE_WIFI_HOME)/source/webconfig/wifi_decoder.c	\
         $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_radio_temperature.c    \
         $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_radiodiag_stats.c    \
         $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_multivap.c    \
-        $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_easymesh_config.c    \
-        $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_sta_manager.c  \
         $(ONE_WIFI_HOME)/source/utils/wifi_util.c	\
 
 HEBUS_SOURCES = $(wildcard $(ONE_WIFI_HOME)/source/platform/linux/he_bus/src/*.c)  \
@@ -390,7 +388,9 @@ endif
 ifdef EM_APP
     #INCLUDEDIRS +=  -I$(ONE_WIFI_HOME)/source/apps/em
 	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/em/*.c)
-	WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_em_channel_stats.c
+	WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_easymesh_config.c    \
+                $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_beacon_report.c  \
+                $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_em_channel_stats.c
 endif
 
 COBJECTS = $(CSOURCES:.c=.o)  # expands to list of object files

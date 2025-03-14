@@ -1271,6 +1271,7 @@ webconfig_error_t translate_per_radio_vap_object_to_easymesh_bss_info(webconfig_
     return webconfig_error_none;
 }
 
+#ifdef EM_APP
 // translate_beacon_report_object_to_easymesh_sta_info() converts data elements of
 // sta_beacon_report_reponse_t to em_sta_info_t of  easymesh
 webconfig_error_t translate_beacon_report_object_to_easymesh_sta_info(webconfig_subdoc_data_t *data,
@@ -1290,7 +1291,7 @@ webconfig_error_t translate_beacon_report_object_to_easymesh_sta_info(webconfig_
         return webconfig_error_decode;
     }
 
-    vap_index = params->stamgr.ap_index;
+    vap_index = params->sta_beacon_report.ap_index;
     wifi_prop = &data->u.decoded.hal_cap.wifi_prop;
     radio_index = get_radio_index_for_vap_index(wifi_prop, vap_index);
 
@@ -1303,18 +1304,19 @@ webconfig_error_t translate_beacon_report_object_to_easymesh_sta_info(webconfig_
     radio_info = proto->get_radio_info(proto->data_model, radio_index);
     bss_info = proto->get_bss_info(proto->data_model, vap_index);
 
-    memcpy(em_sta_dev_info.id, params->stamgr.mac_addr, sizeof(mac_address_t));
+    memcpy(em_sta_dev_info.id, params->sta_beacon_report.mac_addr, sizeof(mac_address_t));
     memcpy(em_sta_dev_info.bssid, bss_info->bssid.mac, sizeof(mac_address_t));
     memcpy(em_sta_dev_info.radiomac, radio_info->intf.mac, sizeof(mac_address_t));
-    em_sta_dev_info.beacon_report_len = params->stamgr.data_len;
-    em_sta_dev_info.num_beacon_meas_report = params->stamgr.num_br_data;
+    em_sta_dev_info.beacon_report_len = params->sta_beacon_report.data_len;
+    em_sta_dev_info.num_beacon_meas_report = params->sta_beacon_report.num_br_data;
 
-    memcpy(em_sta_dev_info.beacon_report_elem, params->stamgr.data, params->stamgr.data_len);
+    memcpy(em_sta_dev_info.beacon_report_elem, params->sta_beacon_report.data, params->sta_beacon_report.data_len);
 
     proto->put_sta_info(proto->data_model, &em_sta_dev_info, em_target_sta_map_consolidated);
 
     return webconfig_error_none;
 }
+#endif
 
 // translate_em_common_to_vap_info_common() converts common data elements of em_bss_info_t to wifi_vap_info_t  of Onewifi
 webconfig_error_t translate_em_common_to_vap_info_common( wifi_vap_info_t *vap, const em_bss_info_t *vap_row)
@@ -1645,6 +1647,7 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_per_radio(webconfig_sub
     return webconfig_error_none;
 }
 
+#ifdef EM_APP
 //translating onewifi channel stas to easymesh channel stats info structure
 webconfig_error_t translate_channel_stats_to_easymesh_channel_info(webconfig_subdoc_data_t *data)
 {
@@ -1720,6 +1723,7 @@ webconfig_error_t translate_channel_stats_to_easymesh_channel_info(webconfig_sub
 
     return webconfig_error_none;
 }
+#endif
 
 // translate_from_easymesh_bssinfo_to_vap_object() converts data elements of wifi_vap_info_t to em_bss_info_t of  easymesh
 webconfig_error_t translate_from_easymesh_bssinfo_to_vap_object(webconfig_subdoc_data_t *data,char *vap_name)
@@ -2077,6 +2081,7 @@ webconfig_error_t   translate_vap_object_from_easymesh_to_dml(webconfig_subdoc_d
     return webconfig_error_none;
 }
 
+#ifdef EM_APP
 // translate_policy_cfg_object_from_easymesh_to_em_cfg() converts data elements of
 // em_policy_cfg_params_t of easymesh to Onewifi
 webconfig_error_t translate_policy_cfg_object_from_easymesh_to_em_cfg(webconfig_subdoc_data_t *data)
@@ -2164,6 +2169,7 @@ webconfig_error_t translate_policy_cfg_object_from_easymesh_to_em_cfg(webconfig_
 
     return webconfig_error_none;
 }
+#endif
 
 // translate_to_easymesh_tables() is translations of OneWifi structures to Easymesh structures based on type
 webconfig_error_t  translate_to_easymesh_tables(webconfig_subdoc_type_t type, webconfig_subdoc_data_t *data)
@@ -2280,6 +2286,7 @@ webconfig_error_t  translate_to_easymesh_tables(webconfig_subdoc_type_t type, we
                 return webconfig_error_translate_to_easymesh;
             }
             break;
+#ifdef EM_APP
         case webconfig_subdoc_type_em_channel_stats:
             if (translate_channel_stats_to_easymesh_channel_info(data) != webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG,
@@ -2288,7 +2295,7 @@ webconfig_error_t  translate_to_easymesh_tables(webconfig_subdoc_type_t type, we
             }
             break;
 
-        case webconfig_subdoc_type_sta_manager:
+        case webconfig_subdoc_type_beacon_report:
             if (translate_beacon_report_object_to_easymesh_sta_info(data, WIFI_FREQUENCY_6_BAND) !=
                 webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG,
@@ -2298,6 +2305,7 @@ webconfig_error_t  translate_to_easymesh_tables(webconfig_subdoc_type_t type, we
                 return webconfig_error_translate_to_easymesh;
             }
             break;
+#endif
 
         default:
             break;
@@ -2387,6 +2395,7 @@ webconfig_error_t   translate_from_easymesh_tables(webconfig_subdoc_type_t type,
             }
             break;
 
+#ifdef EM_APP
         case webconfig_subdoc_type_em_config:
             if (translate_policy_cfg_object_from_easymesh_to_em_cfg(data) != webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG,
@@ -2396,6 +2405,7 @@ webconfig_error_t   translate_from_easymesh_tables(webconfig_subdoc_type_t type,
                 return webconfig_error_translate_from_easymesh;
             }
             break;
+#endif
 
         default:
             break;

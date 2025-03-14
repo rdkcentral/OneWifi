@@ -534,17 +534,19 @@ webconfig_error_t webconfig_init(webconfig_t *config)
     config->subdocs[webconfig_subdoc_type_vif_neighbors].translate_to_subdoc = translate_to_vif_neighbors_subdoc;
     config->subdocs[webconfig_subdoc_type_vif_neighbors].translate_from_subdoc = translate_from_vif_neighbors_subdoc;
 
-    config->subdocs[webconfig_subdoc_type_sta_manager].type = webconfig_subdoc_type_sta_manager;
-    strcpy(config->subdocs[webconfig_subdoc_type_sta_manager].name, "Beacon Report");
-    config->subdocs[webconfig_subdoc_type_sta_manager].major = 1;
-    config->subdocs[webconfig_subdoc_type_sta_manager].minor = 1;
-    config->subdocs[webconfig_subdoc_type_sta_manager].init_subdoc = init_sta_manager_subdoc;
-    config->subdocs[webconfig_subdoc_type_sta_manager].init_subdoc(&config->subdocs[webconfig_subdoc_type_sta_manager]);
-    config->subdocs[webconfig_subdoc_type_sta_manager].access_check_subdoc = access_check_sta_manager_subdoc;
-    config->subdocs[webconfig_subdoc_type_sta_manager].encode_subdoc = encode_sta_manager_subdoc;
-    config->subdocs[webconfig_subdoc_type_sta_manager].decode_subdoc = decode_sta_manager_subdoc;
-    config->subdocs[webconfig_subdoc_type_sta_manager].translate_to_subdoc = translate_to_sta_manager_subdoc;
-    config->subdocs[webconfig_subdoc_type_sta_manager].translate_from_subdoc = translate_from_sta_manager_subdoc;
+#ifdef EM_APP
+    config->subdocs[webconfig_subdoc_type_beacon_report].type = webconfig_subdoc_type_beacon_report;
+    strcpy(config->subdocs[webconfig_subdoc_type_beacon_report].name, "Beacon Report");
+    config->subdocs[webconfig_subdoc_type_beacon_report].major = 1;
+    config->subdocs[webconfig_subdoc_type_beacon_report].minor = 1;
+    config->subdocs[webconfig_subdoc_type_beacon_report].init_subdoc = init_beacon_report_subdoc;
+    config->subdocs[webconfig_subdoc_type_beacon_report].init_subdoc(&config->subdocs[webconfig_subdoc_type_beacon_report]);
+    config->subdocs[webconfig_subdoc_type_beacon_report].access_check_subdoc = access_check_beacon_report_subdoc;
+    config->subdocs[webconfig_subdoc_type_beacon_report].encode_subdoc = encode_beacon_report_subdoc;
+    config->subdocs[webconfig_subdoc_type_beacon_report].decode_subdoc = decode_beacon_report_subdoc;
+    config->subdocs[webconfig_subdoc_type_beacon_report].translate_to_subdoc = translate_to_beacon_report_subdoc;
+    config->subdocs[webconfig_subdoc_type_beacon_report].translate_from_subdoc = translate_from_beacon_report_subdoc;
+#endif
 
 #ifdef ONEWIFI_LEVL_APP_SUPPORT
     config->subdocs[webconfig_subdoc_type_levl].type = webconfig_subdoc_type_levl;

@@ -877,13 +877,13 @@ static int em_beacon_report_publish(bus_handle_t *handle, void *msg_data)
     }
 
     memset(wb_data, 0, sizeof(webconfig_subdoc_data_t));
-    memcpy(&(wb_data->u.decoded.stamgr), msg_data, sizeof(sta_beacon_report_reponse_t));
+    memcpy(&(wb_data->u.decoded.sta_beacon_report), msg_data, sizeof(sta_beacon_report_reponse_t));
 
     mgr = get_wifimgr_obj();
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
     wb_data->u.decoded.hal_cap = mgr->hal_cap;
-    if (webconfig_encode(&ctrl->webconfig, wb_data, webconfig_subdoc_type_sta_manager) !=
+    if (webconfig_encode(&ctrl->webconfig, wb_data, webconfig_subdoc_type_beacon_report) !=
         webconfig_error_none) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: Webconfig set failed\n", __func__, __LINE__);
         if (wb_data != NULL) {

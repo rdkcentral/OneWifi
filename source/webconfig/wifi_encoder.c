@@ -2279,9 +2279,11 @@ webconfig_error_t encode_neighbor_radio_params(wifi_provider_response_t *neigh_s
     return webconfig_error_none;
 }
 
+#ifdef EM_APP
 webconfig_error_t encode_em_channel_stats_params(channel_scan_response_t *neigh_stats, cJSON *neigh_stats_obj)
 {
-    int i, j;
+    unsigned int i;
+    unsigned short j;
     char mac_str[32];
     cJSON *channel_obj, *neighbors_arr, *neighbor_obj;
 
@@ -2332,6 +2334,7 @@ webconfig_error_t encode_em_channel_stats_params(channel_scan_response_t *neigh_
 
     return webconfig_error_none;
 }
+#endif
 
 webconfig_error_t encode_assocdevice_params(wifi_provider_response_t *assoc_dev_stats, cJSON *assoc_stats_obj)
 {
@@ -2440,7 +2443,7 @@ webconfig_error_t encode_radiodiag_params(wifi_provider_response_t *radiodiag_st
 
 void print_hex_dump(unsigned int length, unsigned char *buffer)
 {
-    int i;
+    unsigned int i;
     unsigned char buff[512] = {};
     const unsigned char * pc = (const unsigned char *)buffer;
 
@@ -2475,8 +2478,9 @@ void print_hex_dump(unsigned int length, unsigned char *buffer)
     printf ("  %s\n", buff);
 }
 
-webconfig_error_t encode_sta_manager_object(sta_beacon_report_reponse_t *sta_data,
-    cJSON **sta_manager_obj)
+#ifdef EM_APP
+webconfig_error_t encode_beacon_report_object(sta_beacon_report_reponse_t *sta_data,
+    cJSON **beacon_report_obj)
 {
     char assoc_frame_string[MAX_FRAME_SZ * 2 + 1];
     if (sta_data == NULL) {
@@ -2484,8 +2488,8 @@ webconfig_error_t encode_sta_manager_object(sta_beacon_report_reponse_t *sta_dat
         return webconfig_error_encode;
     }
 
-    if (*sta_manager_obj == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d NULL sta_manager_obj Pointer\n", __func__,
+    if (*beacon_report_obj == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d NULL beacon_report_obj Pointer\n", __func__,
             __LINE__);
         return webconfig_error_encode;
     }
@@ -2499,9 +2503,10 @@ webconfig_error_t encode_sta_manager_object(sta_beacon_report_reponse_t *sta_dat
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d No Report Data\n", __func__, __LINE__);
         return webconfig_error_encode;
     }
-    cJSON_AddStringToObject(*sta_manager_obj, "ReportData", assoc_frame_string);
+    cJSON_AddStringToObject(*beacon_report_obj, "ReportData", assoc_frame_string);
     return webconfig_error_none;
 }
+#endif
 
 webconfig_error_t encode_radio_temperature_params(wifi_provider_response_t *radiotemperature_stats, cJSON *radiotemp_obj)
 {
@@ -2528,6 +2533,7 @@ webconfig_error_t encode_radio_temperature_params(wifi_provider_response_t *radi
     return webconfig_error_none;
 }
 
+#ifdef EM_APP
 webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *emconfig_obj)
 {
     if ((em_config == NULL) || (em_config == NULL)) {
@@ -2581,7 +2587,7 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
         }
         cJSON_AddItemToArray(param_arr, param_obj);
         cJSON_AddStringToObject(param_obj, "MAC",
-            em_config->local_steering_dslw_policy.disallowed_sta[i]);
+            (const char *)em_config->local_steering_dslw_policy.disallowed_sta[i]);
     }
 
     // BTM Steering Disallowed Policy
@@ -2606,7 +2612,7 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
         }
         cJSON_AddItemToArray(param_arr, param_obj);
         cJSON_AddStringToObject(param_obj, "MAC",
-            em_config->btm_steering_dslw_policy.disallowed_sta[i]);
+            (const char *)em_config->btm_steering_dslw_policy.disallowed_sta[i]);
     }
 
     // Backhaul BSS Configuration Policy
@@ -2616,7 +2622,8 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
             __LINE__);
     }
     cJSON_AddItemToObject(policy_obj, "Backhaul BSS Configuration Policy", param_obj);
-    cJSON_AddStringToObject(param_obj, "BSSID", em_config->backhaul_bss_config_policy.bssid);
+    cJSON_AddStringToObject(param_obj, "BSSID",
+        (const char *)em_config->backhaul_bss_config_policy.bssid);
     cJSON_AddBoolToObject(param_obj, "Profile-1 bSTA Disallowed",
         0); // em_config->backhaul_bss_config_policy.profile_1_bsta_disallowed);
     cJSON_AddBoolToObject(param_obj, "Profile-2 bSTA Disallowed",
@@ -2647,7 +2654,7 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
         }
         cJSON_AddItemToArray(param_arr, param_obj);
 
-        uint8_mac_to_string_mac(em_config->radio_metrics_policies.radio_metrics_policy[i].ruid,
+        uint8_mac_to_string_mac((uint8_t *)em_config->radio_metrics_policies.radio_metrics_policy[i].ruid,
             mac_str);
         cJSON_AddStringToObject(param_obj, "ID", mac_str);
         cJSON_AddNumberToObject(param_obj, "STA RCPI Threshold",
@@ -2666,3 +2673,4 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
 
     return webconfig_error_none;
 }
+#endif

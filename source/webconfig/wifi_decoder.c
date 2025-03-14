@@ -4837,6 +4837,7 @@ webconfig_error_t decode_radio_neighbor_stats_object(wifi_provider_response_t **
     return webconfig_error_none;
 }
 
+#ifdef EM_APP
 webconfig_error_t decode_em_channel_stats_object(channel_scan_response_t **chan_stats, cJSON *json)
 {
     cJSON *channel_scan_arr, *channel_scan, *neighbor_arr, *neighbor;
@@ -4951,6 +4952,7 @@ webconfig_error_t decode_em_channel_stats_object(channel_scan_response_t **chan_
 
     return webconfig_error_none;
 }
+#endif
 
 webconfig_error_t decode_assocdev_stats_object(wifi_provider_response_t **assoc_stats, cJSON *json)
 {
@@ -5290,7 +5292,7 @@ webconfig_error_t decode_radio_temperature_stats_object(wifi_provider_response_t
     return webconfig_error_none;
 }
 
-webconfig_error_t decode_sta_mgr_object(const cJSON *obj_sta_cfg,
+webconfig_error_t decode_sta_beacon_report_object(const cJSON *obj_sta_cfg,
     sta_beacon_report_reponse_t *sta_data, wifi_platform_property_t *hal_prop)
 {
     const cJSON *param = NULL;
