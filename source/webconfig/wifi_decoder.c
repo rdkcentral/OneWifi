@@ -5292,6 +5292,7 @@ webconfig_error_t decode_radio_temperature_stats_object(wifi_provider_response_t
     return webconfig_error_none;
 }
 
+#ifdef EM_APP
 webconfig_error_t decode_sta_beacon_report_object(const cJSON *obj_sta_cfg,
     sta_beacon_report_reponse_t *sta_data, wifi_platform_property_t *hal_prop)
 {
@@ -5483,3 +5484,4 @@ webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_c
     }
     return webconfig_error_none;
 }
+#endif
