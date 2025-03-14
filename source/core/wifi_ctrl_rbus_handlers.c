@@ -1391,28 +1391,21 @@ static int eth_bh_status_notify()
 #endif
 
 static void acs_keep_out_evt_handler(char* event_name, raw_data_t *p_data)
-{
-    wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Inside and checking if data type is bus_data_type_string\n",__FUNCTION__,__LINE__);
-    
+{    
     if (p_data->data_type != bus_data_type_string) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d SREESH event:%s wrong data type:%x\n", __func__, __LINE__,
             event_name, p_data->data_type);
         return;
     }
-
-    //char* json_schema = (char*)malloc(p_data->raw_data_len*sizeof(char));
     wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Value of (char*)p_data->raw_data.bytes = %s and p_data->raw_data_len = %d\n",__FUNCTION__,__LINE__,(char*)p_data->raw_data.bytes,p_data->raw_data_len);
-    char json_schema[128];
-    //char sample_json_schema[128];
-    /*strncpy(json_schema,(char*)p_data->raw_data.bytes, p_data->raw_data_len);*/
-    strcpy(json_schema,(char*)p_data->raw_data.bytes);
-    wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Value of JSON schema = %s and strlen = %ld and pushing the event onto a thread\n",__FUNCTION__,__LINE__,json_schema, strlen(json_schema));
+    char *json_schema = (char *)malloc((p_data->raw_data_len + 1)*sizeof(char));
+    strncpy(json_schema,(char*)p_data->raw_data.bytes, p_data->raw_data_len);
+    wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Value of JSON schema = %s and strlen = %ld\n",__FUNCTION__,__LINE__,json_schema, strlen(json_schema));
     push_event_to_ctrl_queue(json_schema, (strlen(json_schema) + 1), wifi_event_type_hal_ind, wifi_event_hal_acs_keep_out, NULL);
 }
 
 void* bus_get_keep_out_json()
 {
-    wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Inside\n",__FUNCTION__,__LINE__);
     bus_error_t rc;
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
     raw_data_t data;
@@ -1431,11 +1424,6 @@ void* bus_get_keep_out_json()
     strncpy(json_schema,(char*)data.raw_data.bytes, data.raw_data_len);
     wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Value of JSON schema = %s and strlen = %ld\n",__FUNCTION__,__LINE__,json_schema, strlen(json_schema));
     get_bus_descriptor()->bus_data_free_fn(&data);
-    if(json_schema == NULL || (strcmp(json_schema,"(null)") == 0))
-    {
-        wifi_util_error_print(WIFI_CTRL,"%s:%d SREESH json_schema is either NULL or has value (null)\n",__FUNCTION__,__LINE__);
-        return NULL;
-    }
     return (void*)json_schema;
 }
 
