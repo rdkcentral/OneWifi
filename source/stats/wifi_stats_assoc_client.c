@@ -478,7 +478,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
             }
 
             memcpy(mac_copy, sta->sta_mac, sizeof(mac_addr_t));
-            if (queue_push(new_queue, mac_copy) != 0) {
+            if (queue_push(new_queue, mac_copy)) {
                 wifi_util_error_print(WIFI_MON, "%s:%d Failed to push mac_copy to queue\n",
                     __func__, __LINE__);
                 free(mac_copy); // Free the memory if push fails
