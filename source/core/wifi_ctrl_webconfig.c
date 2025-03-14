@@ -1700,7 +1700,9 @@ static bool is_radio_param_config_changed(wifi_radio_operationParam_t *old , wif
 void ecomode_telemetry_update_and_reboot(unsigned int index, bool active)
 {
     CHAR eventName[32] = {0};
+#ifndef DISABLE_ECO_REBOOT
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+#endif
 
     snprintf(eventName, sizeof(eventName), "WIFI_RADIO_%d_ECOPOWERMODE", index + 1);
     get_stubs_descriptor()->t2_event_s_fn(eventName, active ? "Active" : "Inactive");

@@ -186,9 +186,9 @@ element_node_t *get_empty_element_node(void)
     node = (element_node_t *)he_bus_calloc(1, sizeof(element_node_t));
     node->type = 0; // default of zero means OBJECT and if this gets used as a leaf, it will get
                     // update to be a either parameter, event, or method
-    ERROR_CHECK(pthread_mutexattr_init(&attrib));
-    ERROR_CHECK(pthread_mutexattr_settype(&attrib, PTHREAD_MUTEX_ERRORCHECK));
-    ERROR_CHECK(pthread_mutex_init(&node->element_mutex, &attrib));
+    HE_BUS_ERROR_CHECK(pthread_mutexattr_init(&attrib));
+    HE_BUS_ERROR_CHECK(pthread_mutexattr_settype(&attrib, PTHREAD_MUTEX_ERRORCHECK));
+    HE_BUS_ERROR_CHECK(pthread_mutex_init(&node->element_mutex, &attrib));
     node->reference_childs = actual_child_node;
 
     return node;
@@ -264,7 +264,7 @@ he_bus_error_t add_table_row(he_bus_handle_t handle, element_node_t *table_root,
 
 element_node_t *link_tables_with_new_node(element_node_t *parent_node)
 {
-    VERIFY_NULL_WITH_RETURN_ADDR(parent_node);
+    HE_BUS_VERIFY_NULL_WITH_RETURN_ADDR(parent_node);
 
     element_node_t *child_node_reference = parent_node->child;
     element_node_t *next_node = parent_node->nextSibling;
@@ -528,7 +528,7 @@ element_node_t *retrieve_instance_element(he_bus_handle_t handle, element_node_t
 void node_elements_free(element_node_t *node, traversal_cb_param_t param)
 {
     (void)param;
-    VERIFY_NULL(node);
+    HE_BUS_VERIFY_NULL(node);
 
     if (node->subscriptions) {
         //@TODO TBD Do we need to send un-subscribe event notification to provider subscription
@@ -551,7 +551,7 @@ void node_elements_free(element_node_t *node, traversal_cb_param_t param)
 static void node_element_recurse_traversal(element_node_t *node,
     node_element_traversal_arg_t *input_action)
 {
-    VERIFY_NULL(node);
+    HE_BUS_VERIFY_NULL(node);
     element_node_t *child = node->child;
 
     if (node->reference_childs != ref_child_node) {
@@ -571,7 +571,7 @@ static void node_element_recurse_traversal(element_node_t *node,
 
 void node_element_traversal(element_node_t *node, node_element_traversal_arg_t *input_action)
 {
-    VERIFY_NULL(node);
+    HE_BUS_VERIFY_NULL(node);
     element_node_t *parent = node->parent;
     element_node_t *child = node->child;
 
@@ -679,8 +679,8 @@ void printRegisteredElements(element_node_t *root, int level)
 
 void retrive_existing_sub_entries_cb(element_node_t *node, traversal_cb_param_t param)
 {
-    VERIFY_NULL(node);
-    VERIFY_NULL(param.u.node_data);
+    HE_BUS_VERIFY_NULL(node);
+    HE_BUS_VERIFY_NULL(param.u.node_data);
 
     node_element_persistent_data_t *element_data;
     element_data = hash_map_get(param.u.node_data, node->full_name);
@@ -694,8 +694,8 @@ void retrive_existing_sub_entries_cb(element_node_t *node, traversal_cb_param_t 
 
 void save_existing_sub_entries_cb(element_node_t *node, traversal_cb_param_t param)
 {
-    VERIFY_NULL(node);
-    VERIFY_NULL(param.u.node_data);
+    HE_BUS_VERIFY_NULL(node);
+    HE_BUS_VERIFY_NULL(param.u.node_data);
     node_element_persistent_data_t *element_data = he_bus_malloc(
         sizeof(node_element_persistent_data_t));
 
@@ -1140,8 +1140,8 @@ he_bus_error_t he_bus_set_data(he_bus_handle_t handle, char *event_name, he_bus_
 
 void remove_client_existing_sub_info_cb(element_node_t *node, traversal_cb_param_t param)
 {
-    VERIFY_NULL(node);
-    VERIFY_NULL(param.u.comp_name);
+    HE_BUS_VERIFY_NULL(node);
+    HE_BUS_VERIFY_NULL(param.u.comp_name);
 
     if (node->subscriptions != NULL) {
         ELM_LOCK(node->element_mutex);
