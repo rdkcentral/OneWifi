@@ -29,7 +29,7 @@ extern "C" {
 #include <pthread.h>
 #include <stdint.h>
 
-#define ERROR_CHECK(CMD)                                                                      \
+#define HE_BUS_ERROR_CHECK(CMD)                                                                      \
     {                                                                                         \
         int err;                                                                              \
         if ((err = CMD) != 0) {                                                               \
@@ -40,39 +40,39 @@ extern "C" {
 #define INIT_HANDLE_MUTEX(handle_mutex)                                            \
     {                                                                              \
         pthread_mutexattr_t attrib;                                                \
-        ERROR_CHECK(pthread_mutexattr_init(&attrib));                              \
-        ERROR_CHECK(pthread_mutexattr_settype(&attrib, PTHREAD_MUTEX_ERRORCHECK)); \
-        ERROR_CHECK(pthread_mutex_init(&handle_mutex, &attrib));                   \
+        HE_BUS_ERROR_CHECK(pthread_mutexattr_init(&attrib));                              \
+        HE_BUS_ERROR_CHECK(pthread_mutexattr_settype(&attrib, PTHREAD_MUTEX_ERRORCHECK)); \
+        HE_BUS_ERROR_CHECK(pthread_mutex_init(&handle_mutex, &attrib));                   \
     }
 
 #define DEINIT_HANDLE_MUTEX(handle_mutex)                  \
     {                                                      \
-        ERROR_CHECK(pthread_mutex_destroy(&handle_mutex)); \
+        HE_BUS_ERROR_CHECK(pthread_mutex_destroy(&handle_mutex)); \
     }
 
 #define HANDLE_LOCK(handle_mutex)                      \
     {                                                  \
-        ERROR_CHECK(pthread_mutex_lock(&handle_mutex)) \
+        HE_BUS_ERROR_CHECK(pthread_mutex_lock(&handle_mutex)) \
     }
 
 #define HANDLE_UNLOCK(handle_mutex)                      \
     {                                                    \
-        ERROR_CHECK(pthread_mutex_unlock(&handle_mutex)) \
+        HE_BUS_ERROR_CHECK(pthread_mutex_unlock(&handle_mutex)) \
     }
 
 #define ELM_LOCK(l_mutex)                         \
     {                                             \
-        ERROR_CHECK(pthread_mutex_lock(&l_mutex)) \
+        HE_BUS_ERROR_CHECK(pthread_mutex_lock(&l_mutex)) \
     }
 
 #define ELM_UNLOCK(l_mutex)                         \
     {                                               \
-        ERROR_CHECK(pthread_mutex_unlock(&l_mutex)) \
+        HE_BUS_ERROR_CHECK(pthread_mutex_unlock(&l_mutex)) \
     }
 
 #define DEINIT_ELM_MUTEX(l_mutex)                     \
     {                                                 \
-        ERROR_CHECK(pthread_mutex_destroy(&l_mutex)); \
+        HE_BUS_ERROR_CHECK(pthread_mutex_destroy(&l_mutex)); \
     }
 
 typedef enum child_node_reference { actual_child_node, ref_child_node } child_node_reference_t;
