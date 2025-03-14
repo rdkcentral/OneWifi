@@ -2554,7 +2554,7 @@ void decode_acs_keep_out_json(void *json_string) {
     int numRadios = ARRAY_SZ(radioNames);
     cJSON *channelExclusion = cJSON_GetObjectItem(json, "ChannelExclusion");
     if(!channelExclusion) {
-        for(int i = 0;i<getNumberRadios();i++){
+        for(int i = 0;i<(int)getNumberRadios();i++){
             wifi_hal_set_acs_keep_out_chans(NULL, i); // Remove entries
         }
         cJSON_Delete(json);
