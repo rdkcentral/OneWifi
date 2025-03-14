@@ -28,6 +28,7 @@
 #include "wifi_util.h"
 #include "wifi_ctrl.h"
 
+#ifdef EM_APP
 webconfig_subdoc_object_t   em_channel_stats_objects[3] = {
     { webconfig_subdoc_object_type_version, "Version" },
     { webconfig_subdoc_object_type_subdoc, "SubDocName" },
@@ -194,3 +195,4 @@ webconfig_error_t decode_em_channel_stats_subdoc(webconfig_t *config, webconfig_
 
     return webconfig_error_none;
 }
+#endif

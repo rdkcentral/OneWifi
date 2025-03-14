@@ -28,6 +28,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#ifdef EM_APP
 webconfig_subdoc_object_t beacon_report_objects[3] = {
     { webconfig_subdoc_object_type_version, "Version"      },
     { webconfig_subdoc_object_type_subdoc,  "SubDocName"   },
@@ -184,4 +185,4 @@ webconfig_error_t decode_beacon_report_subdoc(webconfig_t *config, webconfig_sub
     cJSON_Delete(json);
     return webconfig_error_none;
 }
-
+#endif
