@@ -2864,6 +2864,7 @@ int get_neighbor_scan_results(void *arg)
 
 void process_acs_keep_out_channels_event(void* data)
 {
+    wifi_util_info_print(WIFI_CTRL, "%s:%d: Received ACS Keep Out Channels Event\n", __func__, __LINE__);
     decode_acs_keep_out_json(data);
 }
 
@@ -3354,10 +3355,6 @@ void handle_hal_indication(wifi_ctrl_t *ctrl, void *data, unsigned int len,
         process_channel_change_event(data, nop_start_reboot, dfs_timer_secs);
         break;
 
-    case wifi_event_hal_acs_keep_out:
-        process_acs_keep_out_channels_event(data);
-        break;
-
     default:
 
         wifi_util_error_print(WIFI_CTRL, "[%s]:WIFI hal handler not supported this event %s\r\n",
@@ -3504,6 +3501,11 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
     case wifi_event_webconfig_data_req_from_dml:
         apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, subtype, NULL);
         ctrl->webconfig_state |= ctrl_webconfig_state_trigger_dml_thread_data_update_pending;
+        break;
+    
+    case wifi_event_webconfig_data_to_hal_apply:
+        wifi_util_info_print(WIFI_CTRL, "%s:%d: SREESH webconfig_data_to_hal_apply\n", __func__, __LINE__);
+        process_acs_keep_out_channels_event(raw);
         break;
 
     default:

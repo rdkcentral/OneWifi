@@ -2567,7 +2567,9 @@ void decode_acs_keep_out_json(void *json_string) {
             continue;
         }
         cJSON *radioParams = cJSON_GetObjectItem(item, radioNames[i]);
-        if (radioParams != NULL && cJSON_GetObjectSize(radioParams) > 0) {
+        wifi_util_info_print(WIFI_CTRL, "%s:%d radioIndex = %d and radioNames[%d] = %s\n", __FUNCTION__, __LINE__,radioIndex,i,radioNames[i]);
+        if (radioParams != NULL && cJSON_isObject(radioParams) && radioParams->child != NULL) {
+            wifi_hal_info_print(WIFI_CTRL, "%s:%d radioParams is not NULL and radioParams->child is not NULL\n", __FUNCTION__, __LINE__);
             hash_map_t *radio_chanmap = hash_map_create();
             if (!radio_chanmap) {
                 wifi_util_error_print(WIFI_CTRL, "%s:%d Could not create hashmap for radioIndex = %d\n", __FUNCTION__, __LINE__,radioIndex);
