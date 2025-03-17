@@ -1399,8 +1399,7 @@ static void acs_keep_out_evt_handler(char* event_name, raw_data_t *p_data)
     }
     char *json_schema = (char *)malloc((p_data->raw_data_len + 1)*sizeof(char));
     strncpy(json_schema,(char*)p_data->raw_data.bytes, p_data->raw_data_len);
-    wifi_util_info_print(WIFI_CTRL, "%s:%d json_schema: %s p_data->raw_data.bytes = %s and p_data->raw_data_len = %d\n", __func__, __LINE__, json_schema,
-        (char*)p_data->raw_data.bytes, p_data->raw_data_len);
+    wifi_util_info_print(WIFI_CTRL, "%s:%d Received bus ACS Keep-Out json_schema: %s \n", __func__, __LINE__, json_schema);
     push_event_to_ctrl_queue(json_schema, (strlen(json_schema) + 1),wifi_event_type_webconfig,wifi_event_webconfig_data_to_hal_apply,NULL);
 }
 
@@ -1421,8 +1420,7 @@ void* bus_get_keep_out_json()
     }
     char *json_schema = (char*)malloc((data.raw_data_len + 1)*sizeof(char));
     strncpy(json_schema,(char*)data.raw_data.bytes, data.raw_data_len);
-    wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH json_schema: %s p_data->raw_data.bytes = %s and p_data->raw_data_len = %d\n", __func__, __LINE__, json_schema,
-        (char*)data.raw_data.bytes, data.raw_data_len);
+    wifi_util_info_print(WIFI_CTRL, "%s:%d bus get json_schema: %s \n", __func__, __LINE__, json_schema);
     get_bus_descriptor()->bus_data_free_fn(&data);
     return (void*)json_schema;
 }

@@ -2864,7 +2864,6 @@ int get_neighbor_scan_results(void *arg)
 
 void process_acs_keep_out_channels_event(const char* data)
 {
-    wifi_util_info_print(WIFI_CTRL, "%s:%d: Received ACS Keep Out Channels Event\n", __func__, __LINE__);
     decode_acs_keep_out_json(data);
 }
 
@@ -3504,7 +3503,6 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
         break;
     
     case wifi_event_webconfig_data_to_hal_apply: //Re-factor this for Phase 2
-        wifi_util_info_print(WIFI_CTRL, "%s:%d: SREESH webconfig_data_to_hal_apply\n", __func__, __LINE__);
         process_acs_keep_out_channels_event(raw);
         break;
 

@@ -2507,6 +2507,7 @@ webconfig_error_t process_bandwidth(cJSON *radioParams, const char *bandwidth_st
                 (*chanlist)->num_channels_list++;
             } else {
                 free(*chanlist);
+                wifi_util_error_print(WIFI_CTRL,"%s:%d get_on_channel_scan_list failed for bandwidth %s and primary channel = %d\n", __FUNCTION__, __LINE__, bandwidth_str,channel->valueint);
                 return webconfig_error_decode;
             }
         }
@@ -2566,9 +2567,7 @@ void decode_acs_keep_out_json(const char *json_string) {
             continue;
         }
         cJSON *radioParams = cJSON_GetObjectItem(item, radioNames[i]);
-        wifi_util_info_print(WIFI_CTRL, "%s:%d radioIndex = %d and radioNames[%d] = %s\n", __FUNCTION__, __LINE__,radioIndex,i,radioNames[i]);
         if (radioParams != NULL) {
-            wifi_util_info_print(WIFI_CTRL, "%s:%d radioParams is not NULL\n", __FUNCTION__, __LINE__);
             hash_map_t *radio_chanmap = hash_map_create();
             if (!radio_chanmap) {
                 wifi_util_error_print(WIFI_CTRL, "%s:%d Could not create hashmap for radioIndex = %d\n", __FUNCTION__, __LINE__,radioIndex);
