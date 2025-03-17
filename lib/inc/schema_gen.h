@@ -95,6 +95,7 @@
         PJS_OVS_INT(identity_req_retry_interval)\
         PJS_OVS_INT(server_retries)\
         PJS_OVS_BOOL(wpa3_transition_disable)\
+        PJS_OVS_INT(security_mode_new)\
     )
 
 #define PJS_SCHEMA_Wifi_VAP_Config \
@@ -196,6 +197,7 @@
         PJS_OVS_BOOL(wifi_offchannelscan_app_rfc) \
         PJS_OVS_BOOL(wifi_offchannelscan_sm_rfc) \
         PJS_OVS_BOOL(tcm_enabled_rfc) \
+        PJS_OVS_BOOL(wpa3_compatibility_enable) \
   )
 
 #define PJS_SCHEMA_Wifi_MacFilter_Config \
@@ -2012,7 +2014,8 @@
     COLUMN(blacklist_table_timeout)\
     COLUMN(identity_req_retry_interval)\
     COLUMN(server_retries)\
-    COLUMN(wpa3_transition_disable)
+    COLUMN(wpa3_transition_disable)\
+    COLUMN(security_mode_new)
 
 #define SCHEMA__Wifi_VAP_Config "Wifi_VAP_Config"
 #define SCHEMA_COLUMN__Wifi_VAP_Config(COLUMN) \
@@ -2102,7 +2105,8 @@
     COLUMN(hotspot_secure_6g_last_enabled) \
     COLUMN(wifi_offchannelscan_app_rfc) \
     COLUMN(wifi_offchannelscan_sm_rfc) \
-    COLUMN(tcm_enabled_rfc)
+    COLUMN(tcm_enabled_rfc) \
+    COLUMN(wpa3_compatibility_enable)
 
 #define SCHEMA__Wifi_MacFilter_Config "Wifi_MacFilter_Config"
 #define SCHEMA_COLUMN__Wifi_MacFilter_Config(COLUMN) \
@@ -3358,6 +3362,7 @@
 #define SCHEMA__Wifi_Security_Config__identity_req_retry_interval "identity_req_retry_interval"
 #define SCHEMA__Wifi_Security_Config__server_retries "server_retries"
 #define SCHEMA__Wifi_Security_Config__wpa3_transition_disable "wpa3_transition_disable"
+#define SCHEMA__Wifi_Security_Config__security_mode_new "security_mode_new"
 
 #define SCHEMA__Wifi_VAP_Config__vap_name "vap_name"
 #define SCHEMA__Wifi_VAP_Config__radio_name "radio_name"
@@ -3439,6 +3444,7 @@
 #define SCHEMA__Wifi_Rfc_Config__wifi_offchannelscan_sm_rfc "wifi_offchannelscan_sm_rfc"
 #define SCHEMA__Wifi_Rfc_Config__Levl_rfc "levl_enabled_rfc"
 #define SCHEMA__Wifi_Rfc_Config__tcm_enabled_rfc "tcm_enabled_rfc"
+#define SCHEMA__Wifi_Rfc_Config__wpa3_compatibility_enable "wpa3_compatibility_enable"
 
 #define SCHEMA__Alarms__code "code"
 #define SCHEMA__Alarms__timestamp "timestamp"

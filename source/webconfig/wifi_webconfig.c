@@ -694,6 +694,18 @@ webconfig_error_t webconfig_init(webconfig_t *config)
     config->subdocs[webconfig_subdoc_type_radio_6G].translate_to_subdoc = translate_to_single_radio_subdoc;
     config->subdocs[webconfig_subdoc_type_radio_6G].translate_from_subdoc = translate_from_single_radio_subdoc;
 
+    config->subdocs[webconfig_subdoc_type_em_config].type = webconfig_subdoc_type_em_config;
+    strcpy(config->subdocs[webconfig_subdoc_type_em_config].name, "Easymesh Config");
+    config->subdocs[webconfig_subdoc_type_em_config].major = 1;
+    config->subdocs[webconfig_subdoc_type_em_config].minor = 1;
+    config->subdocs[webconfig_subdoc_type_em_config].init_subdoc = init_em_config_subdoc;
+    config->subdocs[webconfig_subdoc_type_em_config].init_subdoc(&config->subdocs[webconfig_subdoc_type_em_config]);
+    config->subdocs[webconfig_subdoc_type_em_config].access_check_subdoc = access_check_em_config_subdoc;
+    config->subdocs[webconfig_subdoc_type_em_config].encode_subdoc = encode_em_config_subdoc;
+    config->subdocs[webconfig_subdoc_type_em_config].decode_subdoc = decode_em_config_subdoc;
+    config->subdocs[webconfig_subdoc_type_em_config].translate_to_subdoc = translate_to_em_config_subdoc;
+    config->subdocs[webconfig_subdoc_type_em_config].translate_from_subdoc = translate_from_em_config_subdoc;
+
     config->proto_desc.translate_to = translate_to_proto;
     config->proto_desc.translate_from = translate_from_proto;
 

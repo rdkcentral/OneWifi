@@ -69,63 +69,6 @@ void convert_vap_name_to_hault_type(em_haul_type_t *haultype, char *vapname)
         }
 }
 
-// This routine will take mac adderess from the user and returns interfacename
-int interfacename_from_mac(const mac_address_t *mac, char *ifname)
-{
-    struct ifaddrs *ifaddr = NULL, *tmp = NULL;
-    struct sockaddr *addr;
-    struct sockaddr_ll *ll_addr;
-    bool found = false;
-
-    if (getifaddrs(&ifaddr) != 0) {
-        wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: Failed to get interfae information\n", __func__, __LINE__);
-        return -1;
-    }
-
-    tmp = ifaddr;
-    while (tmp != NULL) {
-        addr = tmp->ifa_addr;
-        ll_addr = (struct sockaddr_ll*)tmp->ifa_addr;
-        if ((addr != NULL) && (addr->sa_family == AF_PACKET) && (memcmp(ll_addr->sll_addr, mac, sizeof(mac_address_t)) == 0)) {
-            strncpy(ifname, tmp->ifa_name, strlen(tmp->ifa_name));
-            found = true;
-            break;
-        }
-
-        tmp = tmp->ifa_next;
-    }
-
-    freeifaddrs(ifaddr);
-
-    return (found == true) ? 0:-1;
-}
-
-// This routine will take mac adderess from the user and returns interfacename
-int mac_address_from_name(const char *ifname, mac_address_t mac)
-{
-    int sock;
-    struct ifreq ifr;
-
-    if ((sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP)) < 0) {
-        wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: Failed to create socket\n", __func__, __LINE__);
-        return -1;
-    }
-
-    memset(&ifr, 0, sizeof(struct ifreq));
-    ifr.ifr_addr.sa_family = AF_INET;
-    strcpy(ifr.ifr_name, ifname);
-    if (ioctl(sock, SIOCGIFHWADDR, &ifr) != 0) {
-        close(sock);
-        wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: ioctl failed to get hardware address for interface:%s\n", __func__, __LINE__, ifname);
-        return -1;
-    }
-
-    memcpy(mac, (unsigned char *)ifr.ifr_hwaddr.sa_data, sizeof(mac_address_t));
-
-    close(sock);
-
-    return 0;
-}
 // webconfig_easymesh_decode() will convert the onewifi structures to easymesh structures
 webconfig_error_t webconfig_easymesh_decode(webconfig_t *config, const char *str,
         webconfig_external_easymesh_t *data,
@@ -785,7 +728,7 @@ webconfig_error_t translate_sta_info_to_em_common(const wifi_vap_info_t *vap, co
             vap->u.sta_info.bssid[4], vap->u.sta_info.bssid[5]);
     str_to_mac_bytes(mac_str,vap_row->bssid.mac);
     strncpy(vap_row->bssid.name,iface_map->interface_name,sizeof(vap_row->bssid.name));
-	convert_vap_name_to_hault_type(&vap_row->id.haul_type, vap->vap_name);
+    convert_vap_name_to_hault_type(&vap_row->id.haul_type, vap->vap_name);
 
     radio_iface_map = NULL;
     for (k = 0; k < (sizeof(wifi_prop->radio_interface_map)/sizeof(radio_interface_mapping_t)); k++) {
@@ -1547,6 +1490,7 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_per_radio(webconfig_sub
     radio_interface_mapping_t *radio_iface_map;
     m2ctrl_radioconfig *radio_config;
     mac_address_t mac;
+    em_haul_type_t haultype;
 
     if (decoded_params == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: decoded_params is NULL\n", __func__, __LINE__);
@@ -1639,7 +1583,8 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_per_radio(webconfig_sub
 
         if (radio_config != NULL) {
             for(k = 0; k < radio_config->noofbssconfig; k++) {
-                if(memcmp(radio_config->bssid_mac[k], vap_info_row->bssid.mac, sizeof(mac_address_t)) == 0) {
+                convert_vap_name_to_hault_type(&haultype, vap->vap_name );
+                if (radio_config->haultype[k] == haultype) {
                     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: ssid=%s sec_mode=%d password=%s", __func__, __LINE__,
                     radio_config->ssid[k],radio_config->authtype[k],radio_config->password[k]);
                     vap->u.bss_info.security.mode = radio_config->authtype[k];
@@ -1669,6 +1614,7 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_object(webconfig_subdoc
     decoded_params = &data->u.decoded;
     radio_interface_mapping_t *radio_iface_map;
     m2ctrl_radioconfig *radio_config;
+    em_haul_type_t haultype;
 
     if (decoded_params == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: decoded_params is NULL\n", __func__, __LINE__);
@@ -1760,7 +1706,8 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_object(webconfig_subdoc
             }
             if (radio_config != NULL) {
                 for(k = 0; k < radio_config->noofbssconfig; k++) {
-                    if(memcmp(radio_config->bssid_mac[k], vap_info_row->bssid.mac, sizeof(mac_address_t)) == 0) {
+                    convert_vap_name_to_hault_type(&haultype, vap->vap_name );
+                    if (radio_config->haultype[k] == haultype) {
                         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: ssid=%s sec_mode=%d password=%s", __func__, __LINE__,
                         radio_config->ssid[k],radio_config->authtype[k],radio_config->password[k]);
                         vap->u.bss_info.security.mode = radio_config->authtype[k];
@@ -2225,7 +2172,8 @@ void webconfig_proto_easymesh_init(webconfig_external_easymesh_t *proto, void *d
         ext_proto_em_get_radio_info_t get_radio, ext_proto_em_get_ieee_1905_security_info_t get_sec,
         ext_proto_em_get_bss_info_t get_bss, ext_proto_em_get_op_class_info_t get_op_class,
         ext_proto_get_first_sta_info_t get_first_sta, ext_proto_get_next_sta_info_t get_next_sta,
-        ext_proto_get_sta_info_t get_sta, ext_proto_put_sta_info_t put_sta, ext_proto_em_get_bss_info_with_mac_t get_bss_with_mac)
+        ext_proto_get_sta_info_t get_sta, ext_proto_put_sta_info_t put_sta, ext_proto_em_get_bss_info_with_mac_t get_bss_with_mac,
+        ext_proto_put_scan_results_t put_scan_res)
 {
     proto->data_model = data_model;
     proto->m2ctrl_radioconfig = m2ctrl_radioconfig;
@@ -2247,4 +2195,5 @@ void webconfig_proto_easymesh_init(webconfig_external_easymesh_t *proto, void *d
     proto->get_sta_info = get_sta;
     proto->put_sta_info = put_sta;
     proto->get_bss_info_with_mac = get_bss_with_mac;
+    proto->put_scan_results = put_scan_res;
 }

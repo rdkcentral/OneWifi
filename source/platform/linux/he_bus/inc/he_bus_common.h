@@ -49,15 +49,17 @@ typedef struct _he_bus_handle *he_bus_handle_t;
 #define HE_BUS_RES_RECV_TIMEOUT_S 10
 #define HE_BUS_MAX_NAME_LENGTH 64
 
-#define VERIFY_NULL(T) \
+#define HE_BUS_VERIFY_NULL(T) \
     if (NULL == T) {   \
         return;        \
     }
-#define VERIFY_NULL_WITH_RETURN_ADDR(T) \
+
+#define HE_BUS_VERIFY_NULL_WITH_RETURN_ADDR(T) \
     if (NULL == T) {                    \
         return NULL;                    \
     }
-#define VERIFY_NULL_WITH_RETURN_INT(T) \
+
+#define HE_BUS_VERIFY_NULL_WITH_RETURN_INT(T) \
     if (NULL == T) {                   \
         return HE_BUS_RETURN_ERR;      \
     }

@@ -107,7 +107,8 @@ _COSA_DML_WIFI_SECURITY
     COSA_DML_WIFI_SECURITY_WPA3_Personal                   = 0x00000200,
     COSA_DML_WIFI_SECURITY_WPA3_Personal_Transition        = 0x00000400,
     COSA_DML_WIFI_SECURITY_WPA3_Enterprise                 = 0x00000800,
-    COSA_DML_WIFI_SECURITY_Enhanced_Open                   = 0x00001000
+    COSA_DML_WIFI_SECURITY_Enhanced_Open                   = 0x00001000,
+    COSA_DML_WIFI_SECURITY_WPA3_Personal_Compatibility     = 0x00002000
 }
 COSA_DML_WIFI_SECURITY, *PCOSA_DML_WIFI_SECURITY;
 
@@ -249,30 +250,6 @@ CosaDmlWiFi_EnableTelnet
 
 ANSC_STATUS
 CosaDmlWiFi_setWebConfig(char *webconfstr, int size,uint8_t ssid);
-
-ANSC_STATUS
-CosaDmlWiFi_GetGoodRssiThresholdValue( int  *piRssiThresholdValue );
-
-ANSC_STATUS
-CosaDmlWiFi_GetAssocCountThresholdValue( int  *piAssocCountThresholdValue );
-
-ANSC_STATUS
-CosaDmlWiFi_GetAssocMonitorDurationValue( int  *piAssocMonitorDurationValue );
-
-ANSC_STATUS
-CosaDmlWiFi_GetAssocGateTimeValue( int  *piAssocGateTimeValue );
-
-ANSC_STATUS
-CosaDmlWiFi_GetRapidReconnectThresholdValue(ULONG vAPIndex, int	*rapidReconnThresholdValue );
-
-ANSC_STATUS
-CosaDmlWiFi_GetRapidReconnectCountEnable(ULONG vAPIndex, BOOLEAN *pbReconnectCountEnable, BOOLEAN usePersistent );
-
-ANSC_STATUS
-CosaDmlWiFi_GetApMFPConfigValue( ULONG vAPIndex, char *pMFPConfig );
-
-ANSC_STATUS
-CosaDmlWiFi_GetFeatureMFPConfigValue( BOOLEAN *pbFeatureMFPConfig );
 
 struct wifiDataTxRateHalMap
 {

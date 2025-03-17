@@ -174,7 +174,8 @@ struct wifiSecCosaHalMap wifiSecMap[] =
       {wifi_security_mode_wpa2_enterprise,     COSA_DML_WIFI_SECURITY_WPA2_Enterprise,          "WPA2-Enterprise"},
       {wifi_security_mode_wpa3_enterprise,     COSA_DML_WIFI_SECURITY_WPA3_Enterprise,          "WPA3-Enterprise"},
       {wifi_security_mode_wpa_wpa2_enterprise, COSA_DML_WIFI_SECURITY_WPA_WPA2_Enterprise,      "WPA-WPA2-Enterprise"},
-      {wifi_security_mode_enhanced_open,       COSA_DML_WIFI_SECURITY_Enhanced_Open,            "Enhanced-Open"}
+      {wifi_security_mode_enhanced_open,       COSA_DML_WIFI_SECURITY_Enhanced_Open,            "Enhanced-Open"},
+      {wifi_security_mode_wpa3_compatibility,  COSA_DML_WIFI_SECURITY_WPA3_Personal_Compatibility, "WPA3-Personal-Compatibility"}
 };
 
 struct wifiFreqBandHalMap wifiFreqBandMap[] =
@@ -577,89 +578,6 @@ CosaWiFiDmlGetWPA3TransitionRFC (BOOL *WPA3_RFC)
         *WPA3_RFC = atoi(strValue);
         ((CCSP_MESSAGE_BUS_INFO *)bus_handle)->freefunc(strValue);
     }
-}
-
-ANSC_STATUS
-CosaDmlWiFi_GetGoodRssiThresholdValue( int	*piRssiThresholdValue )
-{
-    wifi_global_param_t *pcfg = get_wifidb_wifi_global_param();
-    if (pcfg != NULL) {
-        *piRssiThresholdValue = pcfg->good_rssi_threshold;
-    } else {
-        CcspTraceInfo(("%s WIFI DB Failed to get global config\n", __FUNCTION__));
-        return ANSC_STATUS_FAILURE;
-    }
-    return ANSC_STATUS_SUCCESS;
-}
-
-ANSC_STATUS
-CosaDmlWiFi_GetAssocCountThresholdValue( int	*piAssocCountThresholdValue )
-{
-    wifi_global_param_t *pcfg = get_wifidb_wifi_global_param();
-    if (pcfg != NULL) {
-        *piAssocCountThresholdValue= pcfg->assoc_count_threshold;
-    } else {
-        CcspTraceInfo(("%s WIFI DB Failed to get global config\n", __FUNCTION__ ));
-        return ANSC_STATUS_FAILURE;
-    }
-    return ANSC_STATUS_SUCCESS;
-}
-
-ANSC_STATUS
-CosaDmlWiFi_GetAssocMonitorDurationValue( int	*piAssocMonitorDurationValue )
-{
-     wifi_global_param_t *pcfg = get_wifidb_wifi_global_param();
-     if (pcfg != NULL) {
-        *piAssocMonitorDurationValue = pcfg->assoc_monitor_duration;
-        CcspTraceInfo(("%s WIFI DB get success Value: %d\n", __FUNCTION__, *piAssocMonitorDurationValue))
-    } else {
-        CcspTraceInfo(("%s WIFI DB Failed to get global config\n", __FUNCTION__ ));
-        return ANSC_STATUS_FAILURE;
-    }
-    return ANSC_STATUS_SUCCESS;
-}
-
-ANSC_STATUS
-CosaDmlWiFi_GetAssocGateTimeValue( int	*piAssocGateTimeValue )
-{
-    wifi_global_param_t *pcfg = get_wifidb_wifi_global_param();
-    if (pcfg != NULL) {
-        *piAssocGateTimeValue = pcfg->assoc_gate_time;
-        CcspTraceInfo(("%s WIFI DB get success Value: %d\n", __FUNCTION__, *piAssocGateTimeValue));
-    } else {
-        CcspTraceInfo(("%s WIFI DB Failed to get global config\n", __FUNCTION__ ));
-        return ANSC_STATUS_FAILURE;
-    }
-    return ANSC_STATUS_SUCCESS;
-}
-
-ANSC_STATUS
-CosaDmlWiFi_GetRapidReconnectThresholdValue(ULONG vAPIndex, int	*rapidReconnThresholdValue )
-{
-    wifi_front_haul_bss_t  *pcfg= NULL;
-    pcfg = Get_wifi_object_bss_parameter(vAPIndex);
-    if(pcfg != NULL)
-    {
-        *rapidReconnThresholdValue = pcfg->rapidReconnThreshold;
-    } else {
-        CcspTraceInfo(("%s WIFI DB Failed to get vap config\n", __FUNCTION__ ));
-        return ANSC_STATUS_FAILURE;
-    }
-   return ANSC_STATUS_SUCCESS;
-}
-
-ANSC_STATUS
-CosaDmlWiFi_GetFeatureMFPConfigValue( BOOLEAN *pbFeatureMFPConfig )
-{
-    wifi_global_param_t *pcfg = get_wifidb_wifi_global_param();
-    if (pcfg != NULL) {
-       *pbFeatureMFPConfig = pcfg->mfp_config_feature;
-        CcspTraceInfo(("%s MFP config value %d\n",__FUNCTION__,pcfg->mfp_config_feature));
-    } else {
-       CcspTraceInfo(("%s Failed to get wifi db value\n", __FUNCTION__ ));
-       return ANSC_STATUS_FAILURE;
-    }	
-    return ANSC_STATUS_SUCCESS;
 }
 
 ANSC_STATUS
