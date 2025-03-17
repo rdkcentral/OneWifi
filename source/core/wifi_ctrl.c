@@ -441,7 +441,7 @@ int start_radios(rdk_dev_mode_type_t mode)
     void* keep_out_json = bus_get_keep_out_json();
     if (keep_out_json != NULL)
     {
-        decode_acs_keep_out_json(keep_out_json);
+        decode_acs_keep_out_json(keep_out_json,num_of_radios);
     }
 
     for (index = 0; index < num_of_radios; index++) {
