@@ -154,7 +154,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
     sta_key_t sta_key;
     sta_key_t mld_sta_key;
     unsigned int i = 0;
-    mac_address_t *mac_copy = NULL;
+    mac_address_t *mac_addr = NULL;
     queue_t *new_queue;
     hash_map_t *sta_map;
     sta_data_t *sta = NULL, *tmp_sta = NULL;
@@ -472,17 +472,18 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
             wifi_util_info_print(WIFI_MON, "[%s:%d] Station info for, vap:%d ClientMac:%s\n",
                 __func__, __LINE__, (args->vap_index + 1),
                 to_sta_key(tmp_sta->dev_stats.cli_MACAddress, sta_key));
-            mac_copy = (mac_address_t *)malloc(sizeof(mac_address_t));
-            if (mac_copy == NULL) {
-                wifi_util_error_print(WIFI_MON, "%s:%d Failed to allocate memory\n", __func__,
-                    __LINE__);
-                return RETURN_ERR;
-            }
-            memcpy(mac_copy, tmp_sta->sta_mac, sizeof(mac_address_t));
-            if (queue_push(new_queue, mac_copy) == -1) {
-                wifi_util_error_print(WIFI_MON, "%s:%d Failed to push mac_copy to queue\n",
-                    __func__, __LINE__);
-                continue;
+            if (send_disconnect_event == 1) {
+                mac_addr = (mac_address_t *)malloc(sizeof(mac_address_t));
+                if (mac_addr != NULL) {
+                    memcpy(mac_addr, tmp_sta->sta_mac, sizeof(mac_address_t));
+                    if (queue_push(new_queue, mac_addr) == -1) {
+                        wifi_util_error_print(WIFI_MON, "%s:%d Failed to push mac_addr to queue\n",
+                            __func__, __LINE__);
+                    }
+                } else {
+                    wifi_util_error_print(WIFI_MON, "%s:%d Pushed mac %s into the queue\n", __func__,
+                        __LINE__, mac_addr);
+                }
             }
             memset(sta_key, 0, sizeof(sta_key_t));
             to_sta_key(tmp_sta->sta_mac, sta_key);
@@ -500,11 +501,13 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
     pthread_mutex_unlock(&mon_data->data_lock);
 
     while (queue_count(new_queue) > 0) {
-        memcpy(mac_copy, (mac_address_t *)queue_pop(new_queue), sizeof(mac_address_t));
-        if (send_disconnect_event == 1) {
-            send_wifi_disconnect_event_to_ctrl(mac_copy, args->vap_index);
+        mac_addr = (mac_address_t *)queue_pop(new_queue);
+        if (mac_addr != NULL) {
+            wifi_util_info_print(WIFI_MON, "[%s:%d] Sending disconnect event for mac %s to ctrl\n",
+                __func__, __LINE__, mac_addr);
+            send_wifi_disconnect_event_to_ctrl(*mac_addr, args->vap_index);
         }
-        free(mac_copy);
+        free(mac_addr);
     }
     queue_destroy(new_queue);
 
@@ -526,7 +529,6 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                 assoc_data = NULL;
             }
             wifi_util_dbg_print(WIFI_MON, "%s:%d assoc_data is NULL\n", __func__, __LINE__);
-            return RETURN_ERR;
         }
         wifi_provider_response_t *collect_stats;
         collect_stats = (wifi_provider_response_t *)malloc(sizeof(wifi_provider_response_t));
