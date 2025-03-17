@@ -337,6 +337,12 @@
             <syntax>bool</syntax>
             <writable>true</writable>
         </parameter>
+        <parameter>
+            <name>WPA3_Personal_Compatibility</name>
+            <type>boolean</type>
+            <syntax>bool</syntax>
+            <writable>true</writable>
+        </parameter>
 	</parameters>
 	<objects>
         <object>

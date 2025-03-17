@@ -457,9 +457,8 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
     cJSON_AddBoolToObject(vap_object, "MboEnabled", vap_info->u.bss_info.mbo_enabled);
 
     memset(extra_vendor_ies_hex_str, 0, sizeof(extra_vendor_ies_hex_str));
-    for (int i = 0; i < vap_info->u.bss_info.vendor_elements_len; i++) {
-        sprintf(extra_vendor_ies_hex_str + (i * 2), "%02x",
-            vap_info->u.bss_info.vendor_elements[i]);
+    for (unsigned int i = 0; i < vap_info->u.bss_info.vendor_elements_len; i++) {
+        sprintf(extra_vendor_ies_hex_str + (i * 2), "%02x", (unsigned int) vap_info->u.bss_info.vendor_elements[i]);
     }
     cJSON_AddStringToObject(vap_object, "ExtraVendorIEs", extra_vendor_ies_hex_str);
 
@@ -1007,6 +1006,7 @@ webconfig_error_t encode_security_object(const wifi_vap_security_t *security_inf
 
     if (is_6g &&
         security_info->mode != wifi_security_mode_wpa3_personal &&
+        security_info->mode != wifi_security_mode_wpa3_compatibility &&
         security_info->mode != wifi_security_mode_wpa3_enterprise &&
         security_info->mode != wifi_security_mode_enhanced_open) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid security mode %d for 6G interface\n",
@@ -1059,6 +1059,10 @@ webconfig_error_t encode_security_object(const wifi_vap_security_t *security_inf
             cJSON_AddStringToObject(security, "Mode", "WPA3-Enterprise");
             break;
 
+        case wifi_security_mode_wpa3_compatibility:
+            cJSON_AddStringToObject(security, "Mode", "WPA3-Personal-Compatibility");
+            break;
+
         default:
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to encode security mode: %d\n",
                 __func__, __LINE__, security_info->mode);
@@ -1098,6 +1102,13 @@ webconfig_error_t encode_security_object(const wifi_vap_security_t *security_inf
         return webconfig_error_encode;
     }
 #endif // CONFIG_IEEE80211BE
+
+    if(security_info->mode == wifi_security_mode_wpa3_compatibility &&
+        security_info->mfp != wifi_mfp_cfg_disabled) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Invalid MFP Config %d for %d mode \n",
+            __func__, __LINE__, security_info->mfp, security_info->mode);
+        return webconfig_error_encode;
+    }
 
     if (security_info->mfp == wifi_mfp_cfg_disabled) {
         cJSON_AddStringToObject(security, "MFPConfig", "Disabled");

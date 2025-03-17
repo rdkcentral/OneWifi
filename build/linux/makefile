@@ -226,6 +226,7 @@ INCLUDEDIRS = \
     -I$(ONE_WIFI_HOME)/source/apps/ocs \
     -I$(ONE_WIFI_HOME)/source/apps/sm \
     -I$(ONE_WIFI_HOME)/source/apps/whix \
+    -I$(ONE_WIFI_HOME)/source/apps/easyconnect \
     -I$(ONE_WIFI_HOME)/source/core/services \
     -I$(ONE_WIFI_HOME)/include/tr_181/ml \
     -I$(ONE_WIFI_HOME)/include \
@@ -329,6 +330,7 @@ WEBCONFIG_SOURCES = $(ONE_WIFI_HOME)/source/webconfig/wifi_decoder.c	\
         $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_radio_temperature.c    \
         $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_radiodiag_stats.c    \
         $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_multivap.c    \
+        $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_easymesh_config.c    \
         $(ONE_WIFI_HOME)/source/utils/wifi_util.c	\
 
 HEBUS_SOURCES = $(wildcard $(ONE_WIFI_HOME)/source/platform/linux/he_bus/src/*.c)  \
@@ -376,6 +378,9 @@ ifdef ONEWIFI_BLASTER_APP_SUPPORT
 	WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_blaster.c
 endif
 
+ifdef ONEWIFI_EASYCONNECT_APP_SUPPORT
+	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/easyconnect/*.c)
+endif
 
 COBJECTS = $(CSOURCES:.c=.o)  # expands to list of object files
 
@@ -457,3 +462,7 @@ run:
 setup:
 	./build/linux/setup.sh
 
+vapsetup:
+	cp ./build/linux/MultiVap_InterfaceMap.json /nvram/InterfaceMap.json
+	cp ./build/linux/EasymeshCfg.json /nvram/EasymeshCfg.json
+	./build/linux/create_virtual_intf.sh wlan1 4

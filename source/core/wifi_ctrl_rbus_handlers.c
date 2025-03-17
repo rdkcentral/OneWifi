@@ -618,6 +618,66 @@ bus_error_t webconfig_get_dml_subdoc(char *event_name, raw_data_t *p_data)
     webconfig_subdoc_data_t data;
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    int vap_index;
+    wifi_back_haul_sta_t *sta_info;
+    wifi_platform_property_t *wifi_prop = &((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop;
+    mac_address_t zero_mac;
+    char ifname[100] = {0};
+    int ret = 0;
+    mac_addr_str_t mac_str;
+
+    memset(zero_mac, 0, sizeof(mac_address_t));
+    /*
+      In case of Easymesh mode few checks should be done before the dml subdoc is sent.
+       1) Check al_mac address is non-zero and colocated_mode is either 0 or 1. If any of
+          them incorrect, return bus_error.
+       2) If colocated_mode is 0 then check whether configured al_mac has a valid interface
+          and if it is a interface in interface map should be a sta interface and should be
+          in connected state.
+    */
+    if (ctrl->network_mode == rdk_dev_mode_type_em_node ||
+        ctrl->network_mode == rdk_dev_mode_type_em_colocated_node) {
+        /* check 1 */
+        if (memcmp(wifi_prop->al_1905_mac, zero_mac, sizeof(mac_address_t)) == 0 ||
+            wifi_prop->colocated_mode == -1) {
+            wifi_util_error_print(WIFI_CTRL,
+                "%s:%d FATAL Error al_mac:%s or colocated_mode:%d incorrect\n", __func__, __LINE__,
+                to_mac_str(wifi_prop->al_1905_mac, mac_str), wifi_prop->colocated_mode);
+            return bus_error_access_not_allowed;
+        }
+        /* check 2 */
+        if (wifi_prop->colocated_mode == 0) {
+            /* colocated_mode 0 check ifname is sta and connected*/
+            ret = interfacename_from_mac((const mac_address_t *)wifi_prop->al_1905_mac, ifname);
+            if (ret != 0) {
+                wifi_util_error_print(WIFI_CTRL,
+                    "%s:%d FATAL Error Interface not found for al_mac:%s\n", __func__, __LINE__,
+                    to_mac_str(wifi_prop->al_1905_mac, mac_str));
+                return bus_error_access_not_allowed;
+            }
+            vap_index = convert_ifname_to_vap_index(wifi_prop, ifname);
+            if (vap_index != -1) {
+                sta_info = get_wifi_object_sta_parameter(vap_index);
+                if (sta_info == NULL || sta_info->conn_status != wifi_connection_status_connected) {
+                    wifi_util_error_print(WIFI_CTRL,
+                        "%s:%d Error backhaul interface:%p is not sta interface or not connected, "
+                        "conn_status:%d\n",
+                        __func__, __LINE__, sta_info,
+                        (sta_info == NULL) ? 0 : sta_info->conn_status);
+                    return bus_error_access_not_allowed;
+                }
+            } else {
+                /* check the interface name before treating it as error */
+                if (strncmp(ifname, "eth", strlen("eth")) != 0 &&
+                    strncmp(ifname, "lo", strlen("lo")) != 0) {
+                    wifi_util_error_print(WIFI_CTRL,
+                        "%s:%d Error ifname:%s is not ethernet or loopback interface.\n", __func__,
+                        __LINE__, ifname);
+                    return bus_error_access_not_allowed;
+                }
+            }
+        }
+    }
 
     memset(&data, 0, sizeof(webconfig_subdoc_data_t));
     memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&mgr->radio_config,
@@ -638,7 +698,7 @@ bus_error_t webconfig_get_dml_subdoc(char *event_name, raw_data_t *p_data)
     p_data->data_type = bus_data_type_string;
     p_data->raw_data.bytes = malloc(str_size);
     if (p_data->raw_data.bytes == NULL) {
-        wifi_util_error_print(WIFI_CTRL,"%s:%d memory allocation is failed:%d\r\n",__func__,
+        wifi_util_error_print(WIFI_CTRL, "%s:%d memory allocation is failed:%d\r\n", __func__,
             __LINE__, str_size);
         return bus_error_out_of_resources;
     }
@@ -668,7 +728,7 @@ bus_error_t webconfig_set_subdoc(char *event_name, raw_data_t *p_data)
 
 static void MarkerListConfigHandler (char *event_name, raw_data_t *p_data)
 {
-    marker_list_t list_type;
+    wifi_event_subtype_t list_type;
     const char *pTmp = NULL;
 
     if (strcmp(event_name, WIFI_NORMALIZED_RSSI_LIST) == 0) {
@@ -1500,14 +1560,34 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
 
 #if defined(GATEWAY_FAILOVER_SUPPORTED)
     if (ctrl->active_gateway_check_subscribed == false) {
-        if (bus_desc->bus_event_subs_fn(&ctrl->handle, WIFI_ACTIVE_GATEWAY_CHECK,
-                activeGatewayCheckHandler, NULL, 0) != bus_error_success) {
-            // wifi_util_dbg_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe
-            // failed\n",__FUNCTION__, __LINE__, WIFI_ACTIVE_GATEWAY_CHECK);
-        } else {
+        // Check whether GFO is applicable or not. If not supported then no need to subscribe.
+        raw_data_t data;
+        bool bGFOSuppportFlag = TRUE;
+
+        memset(&data, 0, sizeof(raw_data_t));
+        int rc = get_bus_descriptor()->bus_data_get_fn(&ctrl->handle,
+            TR181_GLOBAL_FEATURE_PARAM_GFO_SUPPORTED, &data);
+        if (rc == bus_error_success) {
+            bGFOSuppportFlag = data.raw_data.b;
+            wifi_util_info_print(WIFI_CTRL, "%s:%d bus: param:%s feature:%s\n", __FUNCTION__,
+                __LINE__, TR181_GLOBAL_FEATURE_PARAM_GFO_SUPPORTED,
+                bGFOSuppportFlag ? "SUPPORTED" : "NOT SUPPORTED");
+        }
+
+        if (FALSE == bGFOSuppportFlag) {
             ctrl->active_gateway_check_subscribed = true;
-            wifi_util_info_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe success\n",
+            wifi_util_info_print(WIFI_CTRL,
+                "%s:%d bus: bus event:%s ignoring subscribe due to GatewayFailOver feature not "
+                "supported\n",
                 __FUNCTION__, __LINE__, WIFI_ACTIVE_GATEWAY_CHECK);
+        } else {
+            if (bus_desc->bus_event_subs_fn(&ctrl->handle, WIFI_ACTIVE_GATEWAY_CHECK,
+                    activeGatewayCheckHandler, NULL, 0) != bus_error_success) {
+            } else {
+                ctrl->active_gateway_check_subscribed = true;
+                wifi_util_info_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe success\n",
+                    __FUNCTION__, __LINE__, WIFI_ACTIVE_GATEWAY_CHECK);
+            }
         }
     }
 #endif
