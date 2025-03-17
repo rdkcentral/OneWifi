@@ -154,6 +154,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
     sta_key_t sta_key;
     sta_key_t mld_sta_key;
     unsigned int i = 0;
+    mac_address_t *mac_copy = NULL;
     queue_t *new_queue;
     hash_map_t *sta_map;
     sta_data_t *sta = NULL, *tmp_sta = NULL;
@@ -471,7 +472,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
             wifi_util_info_print(WIFI_MON, "[%s:%d] Station info for, vap:%d ClientMac:%s\n",
                 __func__, __LINE__, (args->vap_index + 1),
                 to_sta_key(tmp_sta->dev_stats.cli_MACAddress, sta_key));
-            mac_address_t *mac_copy = (mac_address_t *)malloc(sizeof(mac_address_t));
+            mac_copy = (mac_address_t *)malloc(sizeof(mac_address_t));
             if (mac_copy == NULL) {
                 wifi_util_error_print(WIFI_MON, "%s:%d Failed to allocate memory\n", __func__,
                     __LINE__);
@@ -499,7 +500,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
     pthread_mutex_unlock(&mon_data->data_lock);
 
     while (queue_count(new_queue) > 0) {
-        memcpy(mac, (mac_address_t *)queue_pop(new_queue), sizeof(mac_address_t));
+        memcpy(mac_copy, (mac_address_t *)queue_pop(new_queue), sizeof(mac_address_t));
         if (send_disconnect_event == 1) {
             send_wifi_disconnect_event_to_ctrl(mac_copy, args->vap_index);
         }
