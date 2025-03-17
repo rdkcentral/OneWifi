@@ -2546,7 +2546,6 @@ void decode_acs_keep_out_json(void *json_string) {
         }
         return;
     }
-    cJSON *channelExclusion = NULL;
     cJSON *item = NULL;
     const char *radioNames[] = {"radio2G", "radio5G","radio5GL","radio5GH" ,"radio6G"};
     wifi_freq_bands_t freq_band;
