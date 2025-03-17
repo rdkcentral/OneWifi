@@ -2862,7 +2862,7 @@ int get_neighbor_scan_results(void *arg)
     return TIMER_TASK_COMPLETE;
 }
 
-void process_acs_keep_out_channels_event(void* data)
+void process_acs_keep_out_channels_event(const char* data)
 {
     wifi_util_info_print(WIFI_CTRL, "%s:%d: Received ACS Keep Out Channels Event\n", __func__, __LINE__);
     decode_acs_keep_out_json(data);

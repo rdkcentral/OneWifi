@@ -2537,8 +2537,8 @@ webconfig_error_t decode_bandwidth_from_json(cJSON *radioParams, wifi_freq_bands
     return webconfig_error_none; 
 }
 
-void decode_acs_keep_out_json(void *json_string) {
-    cJSON *json = cJSON_Parse((const char*)json_string);
+void decode_acs_keep_out_json(const char *json_string) {
+    cJSON *json = cJSON_Parse(json_string);
     if (json == NULL) {
         const char *error_ptr = cJSON_GetErrorPtr();
         if (error_ptr != NULL) {
