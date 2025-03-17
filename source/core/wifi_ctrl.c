@@ -277,7 +277,8 @@ bool is_sta_enabled(void)
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     //wifi_util_dbg_print(WIFI_CTRL,"[%s:%d] device mode:%d active_gw_check:%d\r\n",
     //    __func__, __LINE__, ctrl->network_mode, ctrl->active_gw_check);
-    return ((ctrl->network_mode == rdk_dev_mode_type_ext || ctrl->active_gw_check == true) &&
+    return ((ctrl->network_mode == rdk_dev_mode_type_ext ||
+                ctrl->network_mode == rdk_dev_mode_type_em_node || ctrl->active_gw_check == true) &&
         ctrl->eth_bh_status == false);
 }
 
@@ -601,14 +602,25 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
     get_wifidb_obj()->desc.get_wifi_global_param_fn(&global_param);
     // set all default return values first
     if (strcmp(name, WIFI_DEVICE_MODE) == 0) {
-#ifdef EASY_MESH_NODE
-       wifi_util_info_print(WIFI_CTRL,"%s:%d\n",__func__,__LINE__);
-       *ret_val = (unsigned int)rdk_dev_mode_type_em_node;
-
-#elif EASY_MESH_COLOCATED_NODE
-       wifi_util_info_print(WIFI_CTRL,"%s:%d\n",__func__,__LINE__);
-       *ret_val = (unsigned int)rdk_dev_mode_type_em_colocated_node;
-
+#if defined EASY_MESH_NODE || defined EASY_MESH_COLOCATED_NODE
+        wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
+        int colocated_mode = ((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop.colocated_mode;
+        /* Initially assign this to em_node mode to start with */
+        *ret_val = (unsigned int)rdk_dev_mode_type_em_node;
+        while (colocated_mode == -1) {
+            /* sleep for 1 second and re-read the wifi_hal_getHalCapability till we get 
+               a valid colocated_mode */
+            sleep(1);
+            total_slept++;
+            wifi_hal_getHalCapability(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap);
+            colocated_mode = ((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop.colocated_mode;
+        }
+        if (colocated_mode == 1) {
+            *ret_val = (unsigned int)rdk_dev_mode_type_em_colocated_node;
+        } else if (colocated_mode == 0) {
+            *ret_val = (unsigned int)rdk_dev_mode_type_em_node;
+        }
+        wifi_util_info_print(WIFI_CTRL, "%s:%d: network_mode:%d.\n", __func__, __LINE__, *ret_val);
 #else
        wifi_util_info_print(WIFI_CTRL,"%s:%d\n",__func__,__LINE__);
 #ifdef ONEWIFI_DEFAULT_NETWORKING_MODE
@@ -624,7 +636,6 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
 #else
         ctrl->dev_type = dev_subtype_rdk;
 #endif
-
     } else if (strcmp(name, WIFI_DEVICE_TUNNEL_STATUS) == 0) {
         *ret_val = DEVICE_TUNNEL_DOWN; // tunnel down
     }
@@ -818,6 +829,7 @@ int start_wifi_services(void)
     } else if (ctrl->network_mode == rdk_dev_mode_type_em_colocated_node) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d start em_colocated mode\n",__func__, __LINE__);
         start_radios(rdk_dev_mode_type_gw);
+        start_gateway_vaps();
     }
 
     return RETURN_OK;
@@ -2505,12 +2517,6 @@ int  get_wifi_rfc_parameters(char *str, void *value)
     return ret;
 }
 
-wifi_dml_parameters_t* get_wifi_dml_parameters(void)
-{
-    wifi_mgr_t *p_wifi_db_data = get_wifimgr_obj();
-    return &p_wifi_db_data->dml_parameters;
-}
-
 wifi_rfc_dml_parameters_t* get_wifi_db_rfc_parameters(void)
 {
     wifi_mgr_t *p_wifi_db_data = get_wifimgr_obj();
@@ -2556,34 +2562,6 @@ wifi_rfc_dml_parameters_t *get_ctrl_rfc_parameters(void)
     return &g_wifi_mgr->ctrl.rfc_params;
 }
 
-int get_multi_radio_dml_parameters(uint8_t radio_index, char *str, void *value)
-{
-    int ret = RETURN_OK;
-    wifi_mgr_t *l_wifi_mgr = get_wifimgr_obj();
-    wifi_util_dbg_print(WIFI_CTRL, "%s get multi radio dml data %s: radio_index:%d \n", __FUNCTION__, str, radio_index);
-    if ((strcmp(str, FACTORY_RESET_SSID) == 0)) {
-        *(int*)value = l_wifi_mgr->dml_parameters.RadioFactoryResetSSID[radio_index];
-    } else {
-        ret = RETURN_ERR;
-        wifi_util_dbg_print(WIFI_CTRL, "%s get multi radio dml data not match %s: ap_index:%d \n", __FUNCTION__, str, radio_index);
-    }
-    return ret;
-}
-
-int set_multi_radio_dml_parameters(uint8_t radio_index, char *str, void *value)
-{
-    int ret = RETURN_OK;
-    wifi_mgr_t *l_wifi_mgr = get_wifimgr_obj();
-    wifi_util_dbg_print(WIFI_CTRL, "%s set multi radio dml data %s: radio_index:%d \n", __FUNCTION__, str, radio_index);
-    if ((strcmp(str, FACTORY_RESET_SSID) == 0)) {
-        l_wifi_mgr->dml_parameters.RadioFactoryResetSSID[radio_index] = *(int*)value;
-    } else {
-        ret = RETURN_ERR;
-        wifi_util_dbg_print(WIFI_CTRL, "%s set multi radio dml data not match %s: radio_index:%d \n", __FUNCTION__, str, radio_index);
-    }
-    return ret;
-}
-
 int get_device_config_list(char *d_list, int size, char *str)
 {
     int ret = RETURN_OK;
@@ -2616,79 +2594,6 @@ int get_device_config_list(char *d_list, int size, char *str)
     if (d_list == NULL) {
         wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Failed to get config for %s \n",__func__, __LINE__, str);
         return RETURN_ERR;
-    }
-    return ret;
-}
-
-
-int get_vap_dml_parameters(char *str, void *value)
-{
-    int ret = RETURN_OK;
-    wifi_mgr_t *l_wifi_mgr = get_wifimgr_obj();
-    wifi_util_dbg_print(WIFI_CTRL, "%s get vap structure data %s\n", __FUNCTION__, str);
-    if ((strcmp(str, RSSI_THRESHOLD) == 0)) {
-        *(int*)value = l_wifi_mgr->dml_parameters.rssi_threshold;
-    } else if ((strcmp(str, MFP_FEATURE_STATUS) == 0)) {
-        *(bool*)value = l_wifi_mgr->dml_parameters.FeatureMFPConfig;
-    } else if ((strcmp(str, WIFI_FACTORY_RESET) == 0)) {
-        *(bool*)value = l_wifi_mgr->dml_parameters.WifiFactoryReset;
-    } else if ((strcmp(str, VALIDATE_SSID_NAME) == 0)) {
-        *(bool*)value = l_wifi_mgr->dml_parameters.ValidateSSIDName;
-    } else if ((strcmp(str, FIXED_WMM_PARAMS) == 0)) {
-        *(int*)value = l_wifi_mgr->dml_parameters.FixedWmmParams;
-    } else if((strcmp(str, ASSOC_COUNT_THRESHOLD) == 0)) {
-        *(int*)value = l_wifi_mgr->dml_parameters.AssocCountThreshold;
-    } else if ((strcmp(str, ASSOC_MONITOR_DURATION) == 0)) {
-        *(int*)value = l_wifi_mgr->dml_parameters.AssocMonitorDuration;
-    } else if ((strcmp(str, ASSOC_GATE_TIME) == 0)) {
-        *(int*)value = l_wifi_mgr->dml_parameters.AssocGateTime;
-    } else if ((strcmp(str, WIFI_TX_OVERFLOW_SELF_HEAL) == 0)) {
-        *(bool*)value = l_wifi_mgr->dml_parameters.WiFiTxOverflowSelfheal;
-    } else if ((strcmp(str, WIFI_FORCE_DISABLE_RADIO) == 0)) {
-        *(bool*)value = l_wifi_mgr->dml_parameters.WiFiForceDisableWiFiRadio;
-    } else if ((strcmp(str, WIFI_FORCE_DISABLE_RADIO_STATUS) == 0)) {
-        *(int*)value = l_wifi_mgr->dml_parameters.WiFiForceDisableRadioStatus;
-    } else {
-        ret = RETURN_ERR;
-        wifi_util_dbg_print(WIFI_CTRL, "%s get vap structure data not match %s:\n", __FUNCTION__, str);
-    }
-    return ret;
-}
-
-int set_vap_dml_parameters(char *str, void *value)
-{
-    if(!str || !value) {
-        return RETURN_ERR;
-    }
-
-    int ret = RETURN_OK;
-    wifi_mgr_t *l_wifi_mgr = get_wifimgr_obj();
-    wifi_util_dbg_print(WIFI_CTRL, "%s set vap structure %s\n", __FUNCTION__, str);
-    if ((strcmp(str, RSSI_THRESHOLD) == 0)) {
-        l_wifi_mgr->dml_parameters.rssi_threshold = *(int*)value;
-    } else if ((strcmp(str, MFP_FEATURE_STATUS) == 0)) {
-        l_wifi_mgr->dml_parameters.FeatureMFPConfig = *(bool*)value;
-    } else if ((strcmp(str, WIFI_FACTORY_RESET) == 0)) {
-        l_wifi_mgr->dml_parameters.WifiFactoryReset = *(bool*)value;
-    } else if ((strcmp(str, VALIDATE_SSID_NAME) == 0)) {
-        l_wifi_mgr->dml_parameters.ValidateSSIDName = *(bool*)value;
-    } else if ((strcmp(str, FIXED_WMM_PARAMS) == 0)) {
-        l_wifi_mgr->dml_parameters.FixedWmmParams = *(int*)value;
-    } else if ((strcmp(str, ASSOC_COUNT_THRESHOLD) == 0)) {
-        l_wifi_mgr->dml_parameters.AssocCountThreshold = *(int*)value;
-    } else if ((strcmp(str, ASSOC_MONITOR_DURATION) == 0)) {
-        l_wifi_mgr->dml_parameters.AssocMonitorDuration = *(int*)value;
-    } else if ((strcmp(str, ASSOC_GATE_TIME) == 0)) {
-        l_wifi_mgr->dml_parameters.AssocGateTime = *(int*)value;
-    } else if ((strcmp(str, WIFI_TX_OVERFLOW_SELF_HEAL) == 0)) {
-        l_wifi_mgr->dml_parameters.WiFiTxOverflowSelfheal = *(bool*)value;
-    } else if ((strcmp(str, WIFI_FORCE_DISABLE_RADIO) == 0)) {
-        l_wifi_mgr->dml_parameters.WiFiForceDisableWiFiRadio = *(bool*)value;
-    } else if ((strcmp(str, WIFI_FORCE_DISABLE_RADIO_STATUS) == 0)) {
-        l_wifi_mgr->dml_parameters.WiFiForceDisableRadioStatus = *(int*)value;
-    } else {
-        ret = RETURN_ERR;
-        wifi_util_dbg_print(WIFI_CTRL, "%s set vap structure data not match %s:\n", __FUNCTION__, str);
     }
     return ret;
 }
