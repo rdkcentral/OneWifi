@@ -105,7 +105,6 @@ typedef enum {
     wifi_event_radius_eap_failure,
     wifi_event_radius_fallback_and_failover,
     wifi_event_type_csi_data,
-    wifi_event_hal_acs_keep_out,
     wifi_event_hal_max,
 
     // Commands

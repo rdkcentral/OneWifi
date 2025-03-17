@@ -3503,7 +3503,7 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
         ctrl->webconfig_state |= ctrl_webconfig_state_trigger_dml_thread_data_update_pending;
         break;
     
-    case wifi_event_webconfig_data_to_hal_apply:
+    case wifi_event_webconfig_data_to_hal_apply: //Re-factor this for Phase 2
         wifi_util_info_print(WIFI_CTRL, "%s:%d: SREESH webconfig_data_to_hal_apply\n", __func__, __LINE__);
         process_acs_keep_out_channels_event(raw);
         break;
