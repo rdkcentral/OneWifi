@@ -155,11 +155,11 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
     sta_key_t mld_sta_key;
     unsigned int i = 0;
     queue_t *new_queue;
-    mac_address_t mac_copy, mac;
     hash_map_t *sta_map;
     sta_data_t *sta = NULL, *tmp_sta = NULL;
     int ret = RETURN_OK;
     int mld_mac_present = 0;
+    int send_disconnect_event = 0;
     mac_address_t zero_mac = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
     wifi_platform_property_t *wifi_prop = get_wifi_hal_cap_prop();
     struct timespec tv_now, t_diff, t_tmp;
@@ -406,9 +406,8 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
         return RETURN_ERR;
     }
     sta = hash_map_get_first(sta_map);
-    int send_disconnect_event = 0;
     while (sta != NULL) {
-        send_disconnect_event = 1;
+      send_disconnect_event = 1;
         if (sta->updated == true) {
             sta->updated = false;
         } else {
@@ -472,6 +471,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
             wifi_util_info_print(WIFI_MON, "[%s:%d] Station info for, vap:%d ClientMac:%s\n",
                 __func__, __LINE__, (args->vap_index + 1),
                 to_sta_key(tmp_sta->dev_stats.cli_MACAddress, sta_key));
+            mac_address_t *mac_copy = (mac_address_t *)malloc(sizeof(mac_address_t));
             memcpy(mac_copy, tmp_sta->sta_mac, sizeof(mac_address_t));
             if (queue_push(new_queue, mac_copy) == -1) {
                 wifi_util_error_print(WIFI_MON, "%s:%d Failed to push mac_copy to queue\n",
@@ -496,8 +496,9 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
     while (queue_count(new_queue) > 0) {
         memcpy(mac, (mac_address_t *)queue_pop(new_queue), sizeof(mac_address_t));
         if (send_disconnect_event == 1) {
-            send_wifi_disconnect_event_to_ctrl(mac, args->vap_index);
+            send_wifi_disconnect_event_to_ctrl(mac_copy, args->vap_index);
         }
+        free(mac_copy);
     }
     queue_destroy(new_queue);
 
@@ -530,7 +531,6 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                 free(assoc_data);
                 assoc_data = NULL;
             }
-            return RETURN_ERR;
         }
         collect_stats->data_type = mon_stats_type_associated_device_stats;
         collect_stats->args.vap_index = args->vap_index;
@@ -542,9 +542,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
         push_monitor_response_event_to_ctrl_queue(collect_stats, sizeof(wifi_provider_response_t),
             wifi_event_type_monitor, wifi_event_type_collect_stats, NULL);
         free(assoc_data);
-        assoc_data = NULL;
         free(collect_stats);
-        collect_stats = NULL;
     }
     return RETURN_OK;
 }
