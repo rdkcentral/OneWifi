@@ -148,6 +148,7 @@ const char *wifi_event_subtype_to_string(wifi_event_subtype_t type)
         DOC2S(wifi_event_type_xfinity_rrm)
         DOC2S(wifi_event_type_collect_stats)
         DOC2S(wifi_event_type_send_action_frame)
+        DOC2S(wifi_event_type_start_channel_scan)
         DOC2S(wifi_event_type_rsn_override_rfc)
         DOC2S(wifi_event_command_max)
         DOC2S(wifi_event_monitor_diagnostics)
@@ -188,6 +189,8 @@ const char *wifi_event_subtype_to_string(wifi_event_subtype_t type)
         DOC2S(wifi_event_type_xfinity_tunnel_max)
         DOC2S(wifi_event_type_wifiapi_execution)
         DOC2S(wifi_event_type_wifiapi_max)
+        DOC2S(wifi_event_webconfig_br_report)
+        DOC2S(wifi_event_br_report)
     default:
         wifi_util_error_print(WIFI_CTRL, "%s:%d: event not handle[%d]\r\n", __func__, __LINE__,
             type);

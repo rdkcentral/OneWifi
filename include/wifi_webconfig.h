@@ -134,7 +134,11 @@ typedef enum {
     webconfig_subdoc_type_radio_24G,
     webconfig_subdoc_type_radio_5G,
     webconfig_subdoc_type_radio_6G,
+#ifdef EM_APP
+    webconfig_subdoc_type_em_config,
+    webconfig_subdoc_type_beacon_report,
     webconfig_subdoc_type_em_channel_stats,
+#endif
     webconfig_subdoc_type_memwraptool,
     webconfig_subdoc_type_max
 } webconfig_subdoc_type_t;
@@ -160,6 +164,7 @@ typedef enum {
     webconfig_subdoc_object_type_memwraptool,
     webconfig_subdoc_object_type_cac,
     webconfig_subdoc_object_type_em_config,
+    webconfig_subdoc_object_type_beacon_report,
     webconfig_subdoc_object_max
 } webconfig_subdoc_object_type_t;
 
@@ -210,6 +215,10 @@ typedef struct {
     assoclist_notifier_type_t assoclist_notifier_type;
     void *external_protos;
     collect_subscribed_stats_t collect_stats;
+#ifdef EM_APP
+    em_config_t em_config;
+    sta_beacon_report_reponse_t sta_beacon_report;
+#endif
 } webconfig_subdoc_decoded_data_t;
 
 typedef char  * webconfig_subdoc_encoded_raw_t;
@@ -554,6 +563,14 @@ webconfig_error_t       encode_memwraptool_subdoc(webconfig_t *config, webconfig
 webconfig_error_t       translate_to_memwraptool_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_from_memwraptool_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 
+// beacon report
+webconfig_error_t       init_beacon_report_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_beacon_report_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_beacon_report_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_beacon_report_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_beacon_report_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_beacon_report_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
 //  cac
 webconfig_error_t       init_cac_config_subdoc(webconfig_subdoc_t *doc);
 webconfig_error_t       access_check_cac_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
@@ -625,6 +642,14 @@ webconfig_error_t       decode_em_config_subdoc(webconfig_t *config, webconfig_s
 webconfig_error_t       encode_em_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_to_em_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 webconfig_error_t       translate_from_em_config_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+
+// EM Channel stats
+webconfig_error_t       init_em_channel_stats_subdoc(webconfig_subdoc_t *doc);
+webconfig_error_t       access_check_em_channel_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       decode_em_channel_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       encode_em_channel_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_to_em_channel_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
+webconfig_error_t       translate_from_em_channel_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data);
 
 #ifdef __cplusplus
 }
