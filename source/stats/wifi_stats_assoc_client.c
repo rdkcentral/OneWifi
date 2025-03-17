@@ -407,7 +407,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
     }
     sta = hash_map_get_first(sta_map);
     while (sta != NULL) {
-      send_disconnect_event = 1;
+        send_disconnect_event = 1;
         if (sta->updated == true) {
             sta->updated = false;
         } else {
