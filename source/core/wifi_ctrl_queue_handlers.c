@@ -2864,7 +2864,8 @@ int get_neighbor_scan_results(void *arg)
 
 void process_acs_keep_out_channels_event(const char* data)
 {
-    decode_acs_keep_out_json(data);
+    int numOfRadios = (int)getNumberRadios();
+    decode_acs_keep_out_json(data,numOfRadios);
 }
 
 void process_neighbor_scan_command_event()

@@ -2538,7 +2538,7 @@ webconfig_error_t decode_bandwidth_from_json(cJSON *radioParams, wifi_freq_bands
     return webconfig_error_none; 
 }
 
-void decode_acs_keep_out_json(const char *json_string) {
+void decode_acs_keep_out_json(const char *json_string, int num_of_radios) {
     cJSON *json = cJSON_Parse(json_string);
     if (json == NULL) {
         const char *error_ptr = cJSON_GetErrorPtr();
@@ -2554,7 +2554,7 @@ void decode_acs_keep_out_json(const char *json_string) {
     int numRadios = ARRAY_SZ(radioNames);
     cJSON *channelExclusion = cJSON_GetObjectItem(json, "ChannelExclusion");
     if(!channelExclusion) {
-        for(int i = 0;i<(int)getNumberRadios();i++){
+        for(int i = 0;i<num_of_radios;i++){
             wifi_hal_set_acs_keep_out_chans(NULL, i); // Remove entries
         }
         cJSON_Delete(json);
