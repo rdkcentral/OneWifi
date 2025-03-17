@@ -472,6 +472,11 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                 __func__, __LINE__, (args->vap_index + 1),
                 to_sta_key(tmp_sta->dev_stats.cli_MACAddress, sta_key));
             mac_address_t *mac_copy = (mac_address_t *)malloc(sizeof(mac_address_t));
+            if (mac_copy == NULL) {
+                wifi_util_error_print(WIFI_MON, "%s:%d Failed to allocate memory\n", __func__,
+                    __LINE__);
+                return RETURN_ERR;
+            }
             memcpy(mac_copy, tmp_sta->sta_mac, sizeof(mac_address_t));
             if (queue_push(new_queue, mac_copy) == -1) {
                 wifi_util_error_print(WIFI_MON, "%s:%d Failed to push mac_copy to queue\n",
