@@ -1659,6 +1659,8 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
     if (ctrl->mesh_keep_out_chans_subscribed == false) {
         if (bus_desc->bus_event_subs_fn(&ctrl->handle, ACS_KEEP_OUT, acs_keep_out_evt_handler,
                  NULL,0) != bus_error_success) {
+            // wifi_util_dbg_print(WIFI_CTRL,"%s:%d bus: bus event:%s subscribe
+            // failed\n",__FUNCTION__, __LINE__, ACS_KEEP_OUT);      
                 } else {
                     ctrl->mesh_keep_out_chans_subscribed = true;
                     wifi_util_dbg_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe success\n",
