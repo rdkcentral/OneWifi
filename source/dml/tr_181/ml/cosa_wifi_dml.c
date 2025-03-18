@@ -149,7 +149,53 @@ extern bool wifi_api_is_device_associated(int ap_index, char *mac);
  
 ***********************************************************************/
 
+#if !defined(_HUB4_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_)
+typedef enum{
+    ClientMac,
+    InitiatorBootstrapSubjectPublicKeyInfo,
+    ResponderBootstrapSubjectPublicKeyInfo,
+    Channels,
+    MaxRetryCount
+} dpp_cmd;
+
+typedef struct  {
+    char ClientMac;
+    char InitiatorBootstrapSubjectPublicKeyInfo;
+    char ResponderBootstrapSubjectPublicKeyInfo;
+    char Channels;
+    char MaxRetryCount;
+} __attribute__((packed)) status;
+
+static status dmcli_status = {0};
+
+static void set_status(dpp_cmd cmd)
+{
+    switch(cmd)
+    {
+        case ClientMac:
+            {dmcli_status.ClientMac = 1;}
+        break;
+        case InitiatorBootstrapSubjectPublicKeyInfo: 
+            { dmcli_status.InitiatorBootstrapSubjectPublicKeyInfo = 1;}
+        break ;
+        case ResponderBootstrapSubjectPublicKeyInfo: 
+            { dmcli_status.ResponderBootstrapSubjectPublicKeyInfo = 1;}
+        break;
+        case Channels:
+            { dmcli_status.Channels = 1;}
+        break;
+        case MaxRetryCount: 
+            { dmcli_status.MaxRetryCount = 1;}
+        break;
+        default:
+        break;
+    }
+}
+#endif // !defined(_HUB4_PRODUCT_REQ_)
+
+
 static BOOL isHotspotSSIDIpdated = FALSE;
+bool isDPPparamsNotFetched = TRUE;
 BOOL IsValidMacAddress(char *mac);
 ULONG InterworkingElement_Commit(ANSC_HANDLE hInsContext);
 void *Wifi_Hosts_Sync_Func(void *pt, int index, wifi_associated_dev_t *associated_dev, BOOL bCallForFullSync, BOOL bCallFromDisConnCB);
@@ -15221,6 +15267,8 @@ DPP_SetParamStringValue
         if(ANSC_STATUS_SUCCESS != CosaDmlWiFi_setDppReconfig(instance_number,ParamName,pString)){
             return FALSE;
         }
+        init_easy_connect(vapInfo);
+        init_wifi_data_plane();
         // set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
@@ -16133,47 +16181,7 @@ DPP_STA_SetParamUlongValue
             (
                 ANSC_HANDLE                 hInsContext,
                 char*                       ParamName,
-                char*                       pString
-            );
-
-    description:
-
-        This function is called to set string parameter value; 
-
-    argument:   ANSC_HANDLE                 hInsContext,
-                The instance handle;
-
-                char*                       ParamName,
-                The parameter name;
-
-                char*                       pString
-                The updated string value;
-
-    return:     TRUE if succeeded.
-
-**********************************************************************/
-BOOL
-DPP_STA_SetParamStringValue
-    (
-        ANSC_HANDLE                 hInsContext,
-        char*                       ParamName,
-        char*                       pString
-    )
 {
-    #if !defined(_HUB4_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_)
-    wifi_vap_dpp_sta_t  *pWifiDppSta  = (wifi_vap_dpp_sta_t*)hInsContext;
-    ULONG                           apIns, staIndex;
-    UCHAR dppVersion;
-    char    channelsList[128] = {0};
-    errno_t rc = -1;
-
-    if (GetInsNumsByWifiDppSta(pWifiDppSta, &apIns, &staIndex, &dppVersion) != ANSC_STATUS_SUCCESS)
-    {
-        return -1;
-    }
-        // check the parameter name and set the corresponding value 
-    if (strcmp(ParamName, "ClientMac") == 0)
-    {
         if (AnscSizeOfString(pString) > (sizeof(pWifiDppSta->ClientMac) - 1))
             return FALSE;
         if(WiFi_IsValidMacAddr(pString)  == 0)
@@ -21174,6 +21182,31 @@ Passpoint_SetParamBoolValue
             CcspTraceWarning(("Cannot Enable Passpoint. Interworking Disabled\n"));
             return FALSE;
         }
+	vapInfo->u.bs        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s does not support configuration\n", __FUNCTION__,__LINE__,pcfg->vap_name);
+        return TRUE;
+    }
+
+    //Check RFC value. Return FALSE if not enabled
+    char *strValue = NULL;
+    int retPsmGet = CCSP_SUCCESS;
+
+    if( AnscEqualString(ParamName, "Enable", TRUE)) {
+        if(bValue == vapInfo->u.bss_info.interworking.passpoint.enable){
+            CcspTraceWarning(("Passpoint value Already configured. Return Success\n"));
+            return TRUE;
+        }
+
+        retPsmGet = PSM_Get_Record_Value2(bus_handle,g_Subsystem, "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.WiFi-Passpoint.Enable", NULL, &strValue);
+        if ((retPsmGet != CCSP_SUCCESS) || (false == _ansc_atoi(strValue)) || (FALSE == _ansc_atoi(strValue))){
+            ((CCSP_MESSAGE_BUS_INFO *)bus_handle)->freefunc(strValue);
+            CcspTraceWarning(("Cannot Enable Passpoint. RFC Disabled\n"));
+            return FALSE;
+        }
+
+        if(false == vapInfo->u.bss_info.interworking.interworking.interworkingEnabled){
+            CcspTraceWarning(("Cannot Enable Passpoint. Interworking Disabled\n"));
+            return FALSE;
+        }
 	vapInfo->u.bss_info.interworking.passpoint.enable = bValue;
 	set_dml_cache_vap_config_changed(instance_number - 1);
 	return TRUE;
@@ -21257,4 +21290,3 @@ Passpoint_SetParamStringValue
     }
     return FALSE;
 }
-
