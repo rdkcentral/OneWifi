@@ -2862,21 +2862,35 @@ int get_neighbor_scan_results(void *arg)
     return TIMER_TASK_COMPLETE;
 }
 
-//Re-factor in Phase 2 of keepOut channel implementation
-int apply_acs_keep_out_chans(hash_map_t *map, int radioIndex)
-{
-    return wifi_hal_set_acs_keep_out_chans(map, radioIndex);
-}
-
-int retrieve_bandwidth_str(char *bandstr, size_t dest_size, wifi_channelBandwidth_t bandwidth)
-{
-    return wifi_channelBandwidth_to_str(bandstr, dest_size, bandwidth);
-}
-
 void process_acs_keep_out_channels_event(const char* data)
 {
     int numOfRadios = (int)getNumberRadios();
-    decode_acs_keep_out_json(data,numOfRadios);
+    wifi_radio_operationParam_t *radio_oper = NULL;
+    decode_acs_keep_out_json(data,numOfRadios,radio_oper);
+    for(int i=0;i<numOfRadios;i++)
+    {
+        radio_oper = (wifi_radio_operationParam_t *)get_wifidb_radio_map(i);
+        if(radio_oper)
+        {
+            wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Inside radio_oper is not NULL for radioindex = %d\n",__FUNCTION__,__LINE__,i);
+            if(radio_oper->acs_keep_out_reset)
+            {
+                wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Clearing the ACS from nvram for radioindex = %d\n",__FUNCTION__,__LINE__,i);
+                wifi_hal_set_acs_keep_out_chans(NULL,i);
+                radio_oper->acs_keep_out_reset = false;
+            }
+            else
+            {
+                wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Setting the ACS config to nvram for radioindex = %d\n",__FUNCTION__,__LINE__,i);
+                wifi_hal_set_acs_keep_out_chans(radio_oper,i);
+            }
+        }
+        else
+        {
+            wifi_util_error_print(WIFI_CTRL,"%s:%d SREESH radio_oper is NULL\n",__func__,__LINE__);
+        }
+    }
+    wifi_util_info_print(WIFI_CTRL,"%s:%d: SREESH process_acs_keep_out_channels_event completed\n",__func__,__LINE__);
 }
 
 void process_neighbor_scan_command_event()

@@ -6332,6 +6332,13 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
         }
     }
     cfg.autoChannelEnabled = true;
+    for(int i=0 ;i<MAX_NUM_CHANNELBANDWIDTH_SUPPORTED;i++)
+    {
+        wifi_util_info_print(WIFI_DB,"%s:%d SREESH Initializing inside DB\n",__FUNCTION__,__LINE__);
+        cfg.channels_per_bandwidth[i].num_channels_list = 0;
+        memset(cfg.channels_per_bandwidth[i].channels_list,0,sizeof(cfg.channels_per_bandwidth[i].channels_list));
+        cfg.channels_per_bandwidth[i].chanwidth = 0;
+    }
     cfg.csa_beacon_count = 100;
     country_code_val = wifi_countrycode_US;
     if (wifi_hal_get_default_country_code(country_code) < 0) {

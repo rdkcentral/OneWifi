@@ -335,6 +335,7 @@ int get_list_of_iot_ssid(wifi_platform_property_t *wifi_prop, int list_size,
 int get_radio_index_for_vap_index(wifi_platform_property_t *wifi_prop, int vap_index);
 int min_hw_mode_conversion(unsigned int vapIndex, char *inputStr, char *outputStr, char *tableType);
 int vif_radio_idx_conversion(unsigned int vapIndex, int *input, int *output, char *tableType);
+wifi_channelBandwidth_t string_to_channel_width_convert(const char *bandwidth_str);
 int get_on_channel_scan_list(wifi_freq_bands_t band, wifi_channelBandwidth_t bandwidth,
     int primary_channel, int *channel_list, int *channels_num);
 int get_allowed_channels(wifi_freq_bands_t band, wifi_radio_capabilities_t *radio_cap,
@@ -388,9 +389,7 @@ int convert_ascii_string_to_bool(char *l_string, bool *l_bool_param);
 int convert_bool_to_ascii_string(bool l_bool_param, char *l_string, size_t str_len);
 void json_param_obscure(char *json, char *param);
 bool is_5g_20M_channel_in_dfs(int channel);
-void decode_acs_keep_out_json(const char *data, int number_of_radios);
-int apply_acs_keep_out_chans(hash_map_t *hashmap, int radioIndex);
-int retrieve_bandwidth_str(char *bandstr, size_t dest_size, wifi_channelBandwidth_t bandwidth);
+void decode_acs_keep_out_json(const char *data, int number_of_radios, wifi_radio_operationParam_t *radio_oper);
 void* bus_get_keep_out_json();
 bool is_6g_supported_device(wifi_platform_property_t *wifi_prop);
 int scan_mode_type_conversion(wifi_neighborScanMode_t *scan_mode_enum, char *scan_mode_str, int scan_mode_len, unsigned int conv_type);

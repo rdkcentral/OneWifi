@@ -2297,6 +2297,28 @@ int  vif_radio_idx_conversion(unsigned int vapIndex, int *input, int *output, ch
     return RETURN_ERR;
 }
 
+wifi_channelBandwidth_t string_to_channel_width_convert(const char *bandwidth_str) {
+    if (bandwidth_str == NULL) {
+        return WIFI_CHANNELBANDWIDTH_80_80MHZ; // Default case or error handling
+    }
+
+    if (strcmp(bandwidth_str, "20") == 0) {
+        return WIFI_CHANNELBANDWIDTH_20MHZ;
+    } else if (strcmp(bandwidth_str, "40") == 0) {
+        return WIFI_CHANNELBANDWIDTH_40MHZ;
+    } else if (strcmp(bandwidth_str, "80") == 0) {
+        return WIFI_CHANNELBANDWIDTH_80MHZ;
+    } else if (strcmp(bandwidth_str, "160") == 0) {
+        return WIFI_CHANNELBANDWIDTH_160MHZ;
+#ifdef CONFIG_IEEE80211BE
+    } else if (strcmp(bandwidth_str, "320") == 0) {
+        return WIFI_CHANNELBANDWIDTH_320MHZ;
+#endif /* CONFIG_IEEE80211BE */
+    } else {
+        return WIFI_CHANNELBANDWIDTH_80_80MHZ;
+    }
+}
+
 int get_on_channel_scan_list(wifi_freq_bands_t band, wifi_channelBandwidth_t bandwidth, int primary_channel, int *channel_list, int *channels_num)
 {
     int channels_2g_40_mhz[11][2] = {
