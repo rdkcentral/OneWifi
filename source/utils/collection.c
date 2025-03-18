@@ -252,7 +252,6 @@ void *hash_map_remove(hash_map_t *map, const char *key)
 
     data = he->data;
     free(he->key);
-    he->key = NULL;
     free(he);
 
     return data;

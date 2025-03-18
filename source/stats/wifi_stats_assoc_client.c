@@ -154,13 +154,12 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
     sta_key_t sta_key;
     sta_key_t mld_sta_key;
     unsigned int i = 0;
-    unsigned char *mac_addr, *mac_addr1;
-    queue_t *new_queue;
+    unsigned char *mac_addr;
+    queue_t *disconnect_event_queue;
     hash_map_t *sta_map;
     sta_data_t *sta = NULL, *tmp_sta = NULL;
     int ret = RETURN_OK;
     int mld_mac_present = 0;
-    int send_disconnect_event = 0;
     mac_address_t zero_mac = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
     wifi_platform_property_t *wifi_prop = get_wifi_hal_cap_prop();
     struct timespec tv_now, t_diff, t_tmp;
@@ -213,7 +212,6 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                 tmp_sta = hash_map_remove(mon_data->bssid_data[vap_array_index].sta_map, sta_key);
                 if (tmp_sta != NULL) {
                     free(tmp_sta);
-                    tmp_sta = NULL;
                 }
             }
         }
@@ -396,8 +394,8 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
             }
         }
     }
-    new_queue = queue_create();
-    if (new_queue == NULL) {
+    disconnect_event_queue = queue_create();
+    if (disconnect_event_queue == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d Failed to create queue\n", __func__, __LINE__);
         if (dev_array != NULL) {
             free(dev_array);
@@ -408,7 +406,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
     }
     sta = hash_map_get_first(sta_map);
     while (sta != NULL) {
-        send_disconnect_event = 1;
+        int send_disconnect_event = 1;
         if (sta->updated == true) {
             sta->updated = false;
         } else {
@@ -476,15 +474,9 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                 mac_addr = (unsigned char *)malloc(sizeof(mac_address_t));
                 if (mac_addr != NULL) {
                     memcpy(mac_addr, tmp_sta->sta_mac, sizeof(mac_address_t));
-                    if (queue_push(new_queue, mac_addr) == -1) {
+                    if (queue_push(disconnect_event_queue, mac_addr) == -1) {
                         wifi_util_error_print(WIFI_MON,
                             "%s:%d Failed to push mac_addr %02x:%02x:%02x:%02x:%02x:%02x to "
-                            "queue\n",
-                            __func__, __LINE__, mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3],
-                            mac_addr[4], mac_addr[5]);
-                    } else {
-                        wifi_util_error_print(WIFI_MON,
-                            "%s:%d Pushed mac address %02x:%02x:%02x:%02x:%02x:%02x into the "
                             "queue\n",
                             __func__, __LINE__, mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3],
                             mac_addr[4], mac_addr[5]);
@@ -509,18 +501,18 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
     }
     pthread_mutex_unlock(&mon_data->data_lock);
 
-    while (queue_count(new_queue) > 0) {
-        mac_addr1 = (unsigned char *)queue_pop(new_queue);
-        if (mac_addr1 != NULL) {
+    while (queue_count(disconnect_event_queue) > 0) {
+        mac_addr = (unsigned char *)queue_pop(disconnect_event_queue);
+        if (mac_addr != NULL) {
             wifi_util_info_print(WIFI_MON,
                 "[%s:%d] Sending disconnect event for mac %02x:%02x:%02x:%02x:%02x:%02x to ctrl\n",
-                __func__, __LINE__, mac_addr1[0], mac_addr1[1], mac_addr1[2], mac_addr1[3],
-                mac_addr1[4], mac_addr1[5]);
-            send_wifi_disconnect_event_to_ctrl(mac_addr1, args->vap_index);
+                __func__, __LINE__, mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3],
+                mac_addr[4], mac_addr[5]);
+            send_wifi_disconnect_event_to_ctrl(mac_addr, args->vap_index);
         }
-        free(mac_addr1);
+        free(mac_addr);
     }
-    queue_destroy(new_queue);
+    queue_destroy(disconnect_event_queue);
 
     mon_data->bssid_data[vap_array_index].last_sta_update_time.tv_sec = tv_now.tv_sec;
     mon_data->bssid_data[vap_array_index].last_sta_update_time.tv_nsec = tv_now.tv_nsec;
@@ -550,6 +542,7 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                 free(assoc_data);
                 assoc_data = NULL;
             }
+            return RETURN_ERR;
         }
         collect_stats->data_type = mon_stats_type_associated_device_stats;
         collect_stats->args.vap_index = args->vap_index;
