@@ -2571,8 +2571,7 @@ webconfig_error_t decode_bandwidth_from_json(cJSON *radioParams, wifi_freq_bands
 }
 
 //Optimize in PHASE 2
-void decode_acs_keep_out_json(const char *json_string, int num_of_radios,
-    wifi_radio_operationParam_t *radio_oper)
+void decode_acs_keep_out_json(const char *json_string, int num_of_radios)
 {
     cJSON *json = cJSON_Parse(json_string);
     if (json == NULL) {
@@ -2583,6 +2582,7 @@ void decode_acs_keep_out_json(const char *json_string, int num_of_radios,
         }
         return;
     }
+    wifi_radio_operationParam_t *radio_oper = NULL;
     cJSON *item = NULL;
     const char *radioNames[] = { "radio2G", "radio5G", "radio5GL", "radio5GH", "radio6G" };
     wifi_freq_bands_t freq_band;

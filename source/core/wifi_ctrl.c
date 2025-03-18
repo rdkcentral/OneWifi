@@ -441,9 +441,9 @@ int start_radios(rdk_dev_mode_type_t mode)
     //Ensure RBUS event not missed in restart. Direct decode call as it is not conventional subdoc.
     void* keep_out_json = bus_get_keep_out_json();
     if (keep_out_json != NULL)
-    {
+    { 
         wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH json_schema at boot up time = %s\n",__FUNCTION__,__LINE__,(char*)keep_out_json);
-        decode_acs_keep_out_json(keep_out_json,num_of_radios);
+        process_acs_keep_out_channels_event((char*)keep_out_json);
     }
 
     for (index = 0; index < num_of_radios; index++) {

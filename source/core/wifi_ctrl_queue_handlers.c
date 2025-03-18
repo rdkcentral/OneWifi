@@ -2866,7 +2866,7 @@ void process_acs_keep_out_channels_event(const char* data)
 {
     int numOfRadios = (int)getNumberRadios();
     wifi_radio_operationParam_t *radio_oper = NULL;
-    decode_acs_keep_out_json(data,numOfRadios,radio_oper);
+    decode_acs_keep_out_json(data,numOfRadios);
     for(int i=0;i<numOfRadios;i++)
     {
         radio_oper = (wifi_radio_operationParam_t *)get_wifidb_radio_map(i);
