@@ -2583,8 +2583,6 @@ void decode_acs_keep_out_json(const char *json_string, unsigned int num_of_radio
         return;
     }
     wifi_radio_operationParam_t *radio_oper = NULL;
-    unsigned int i = 0;
-    int j = 0;
     cJSON *item = NULL;
     const char *radioNames[] = { "radio2G", "radio5G", "radio5GL", "radio5GH", "radio6G" };
     wifi_freq_bands_t freq_band;
@@ -2592,7 +2590,7 @@ void decode_acs_keep_out_json(const char *json_string, unsigned int num_of_radio
     int numRadios = ARRAY_SZ(radioNames);
     cJSON *channelExclusion = cJSON_GetObjectItem(json, "ChannelExclusion");
     if (!channelExclusion) {
-        for (i = 0; i < num_of_radios; i++) {
+        for (unsigned int i = 0; i < num_of_radios; i++) {
             radio_oper = (wifi_radio_operationParam_t *)get_radio_operationParam(i);
             radio_oper->acs_keep_out_reset = true; 
             for(int k = 0;k<MAX_NUM_CHANNELBANDWIDTH_SUPPORTED;k++)
@@ -2605,12 +2603,12 @@ void decode_acs_keep_out_json(const char *json_string, unsigned int num_of_radio
         return;
     }
     cJSON_ArrayForEach(item, channelExclusion) {
-        for (i = 0, j = WIFI_FREQUENCY_2_4_BAND; i < numRadios; i++, j *= 2) {
+        for (int i = 0, j = WIFI_FREQUENCY_2_4_BAND; i < numRadios; i++, j *= 2) {
             freq_band = (wifi_freq_bands_t)j;
             if (convert_freq_band_to_radio_index(freq_band, &radioIndex) != RETURN_OK) {
                 continue;
             }
-            radio_oper = (wifi_radio_operationParam_t *)get_radio_operationParam(radioIndex);
+            radio_oper = (wifi_radio_operationParam_t *)get_radio_operationParam((uint8_t)radioIndex);
             if (!radio_oper) {
                 wifi_util_error_print(WIFI_CTRL,
                     "%s:%d SREESH Could not retrieve values for radio_operationparam for radioIndex= "
