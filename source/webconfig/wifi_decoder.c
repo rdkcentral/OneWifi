@@ -2571,7 +2571,7 @@ webconfig_error_t decode_bandwidth_from_json(cJSON *radioParams, wifi_freq_bands
 }
 
 //Optimize in PHASE 2
-void decode_acs_keep_out_json(const char *json_string, int num_of_radios)
+void decode_acs_keep_out_json(const char *json_string, unsigned int num_of_radios)
 {
     cJSON *json = cJSON_Parse(json_string);
     if (json == NULL) {
@@ -2583,6 +2583,8 @@ void decode_acs_keep_out_json(const char *json_string, int num_of_radios)
         return;
     }
     wifi_radio_operationParam_t *radio_oper = NULL;
+    unsigned int i = 0;
+    int j = 0;
     cJSON *item = NULL;
     const char *radioNames[] = { "radio2G", "radio5G", "radio5GL", "radio5GH", "radio6G" };
     wifi_freq_bands_t freq_band;
@@ -2590,8 +2592,8 @@ void decode_acs_keep_out_json(const char *json_string, int num_of_radios)
     int numRadios = ARRAY_SZ(radioNames);
     cJSON *channelExclusion = cJSON_GetObjectItem(json, "ChannelExclusion");
     if (!channelExclusion) {
-        for (int i = 0; i < num_of_radios; i++) {
-            radio_oper = (wifi_radio_operationParam_t *)get_wifidb_radio_map(i);
+        for (i = 0; i < num_of_radios; i++) {
+            radio_oper = (wifi_radio_operationParam_t *)get_radio_operationParam(i);
             radio_oper->acs_keep_out_reset = true; 
             for(int k = 0;k<MAX_NUM_CHANNELBANDWIDTH_SUPPORTED;k++)
             {
@@ -2603,12 +2605,12 @@ void decode_acs_keep_out_json(const char *json_string, int num_of_radios)
         return;
     }
     cJSON_ArrayForEach(item, channelExclusion) {
-        for (int i = 0, j = WIFI_FREQUENCY_2_4_BAND; i < numRadios; i++, j *= 2) {
+        for (i = 0, j = WIFI_FREQUENCY_2_4_BAND; i < numRadios; i++, j *= 2) {
             freq_band = (wifi_freq_bands_t)j;
             if (convert_freq_band_to_radio_index(freq_band, &radioIndex) != RETURN_OK) {
                 continue;
             }
-            radio_oper = (wifi_radio_operationParam_t *)get_wifidb_radio_map(radioIndex);
+            radio_oper = (wifi_radio_operationParam_t *)get_radio_operationParam(radioIndex);
             if (!radio_oper) {
                 wifi_util_error_print(WIFI_CTRL,
                     "%s:%d SREESH Could not retrieve values for radio_operationparam for radioIndex= "
