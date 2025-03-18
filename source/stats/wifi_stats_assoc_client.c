@@ -478,13 +478,15 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                     memcpy(mac_addr, tmp_sta->sta_mac, sizeof(mac_address_t));
                     if (queue_push(new_queue, mac_addr) == -1) {
                         wifi_util_error_print(WIFI_MON,
-                            "%s:%d Failed to push mac_addr %02x:%02x:%02x:%02x:%02x:%02x to queue\n", __func__,
-                            __LINE__, mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3],
+                            "%s:%d Failed to push mac_addr %02x:%02x:%02x:%02x:%02x:%02x to "
+                            "queue\n",
+                            __func__, __LINE__, mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3],
                             mac_addr[4], mac_addr[5]);
                     } else {
                         wifi_util_error_print(WIFI_MON,
-                            "%s:%d Pushed mac address %02x:%02x:%02x:%02x:%02x:%02x into the queue\n", __func__,
-                            __LINE__, mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3],
+                            "%s:%d Pushed mac address %02x:%02x:%02x:%02x:%02x:%02x into the "
+                            "queue\n",
+                            __func__, __LINE__, mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3],
                             mac_addr[4], mac_addr[5]);
                     }
                 } else {
@@ -511,9 +513,9 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
         mac_addr1 = (unsigned char *)queue_pop(new_queue);
         if (mac_addr1 != NULL) {
             wifi_util_info_print(WIFI_MON,
-                "[%s:%d] Sending disconnect event for mac %02x:%02x:%02x:%02x:%02x:%02x to ctrl\n", __func__,
-                __LINE__, mac_addr1[0], mac_addr1[1], mac_addr1[2], mac_addr1[3], mac_addr1[4],
-                mac_addr1[5]);
+                "[%s:%d] Sending disconnect event for mac %02x:%02x:%02x:%02x:%02x:%02x to ctrl\n",
+                __func__, __LINE__, mac_addr1[0], mac_addr1[1], mac_addr1[2], mac_addr1[3],
+                mac_addr1[4], mac_addr1[5]);
             send_wifi_disconnect_event_to_ctrl(mac_addr1, args->vap_index);
         }
         free(mac_addr1);
