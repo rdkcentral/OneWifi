@@ -2512,7 +2512,7 @@ webconfig_error_t process_bandwidth(cJSON *radioParams, const char *bandwidth_st
             }
         }
         char bandstr[10];
-        wifi_channelBandwidth_to_str(bandstr, sizeof(bandstr), bandwidth_type);
+        retrieve_bandwidth_str(bandstr, sizeof(bandstr), bandwidth_type);
         hash_map_put(radio_chanmap, strdup(bandstr), *chanlist);
     }
     return webconfig_error_none;
@@ -2555,7 +2555,7 @@ void decode_acs_keep_out_json(const char *json_string, int num_of_radios) {
     cJSON *channelExclusion = cJSON_GetObjectItem(json, "ChannelExclusion");
     if(!channelExclusion) {
         for(int i = 0;i<num_of_radios;i++){
-            wifi_hal_set_acs_keep_out_chans(NULL, i); // Remove entries
+            apply_acs_keep_out_chans(NULL, i); // Remove entries
         }
         cJSON_Delete(json);
         return;
@@ -2576,9 +2576,9 @@ void decode_acs_keep_out_json(const char *json_string, int num_of_radios) {
             if(decode_bandwidth_from_json(radioParams, freq_band, radio_chanmap) != webconfig_error_none)
             {
                 wifi_util_error_print(WIFI_CTRL, "%s:%d decode_bandwidth_from_json returned error\n", __FUNCTION__, __LINE__);
-                return;
+                return; 
             }
-            if (wifi_hal_set_acs_keep_out_chans(radio_chanmap, radioIndex) == RETURN_ERR) {
+            if (apply_acs_keep_out_chans(radio_chanmap, radioIndex) == RETURN_ERR) {
                 wifi_util_error_print(WIFI_CTRL, "%s:%d wifi_hal_set_acs_keep_out_chans has failed\n", __FUNCTION__,__LINE__);
                 return;
             }
@@ -2586,7 +2586,7 @@ void decode_acs_keep_out_json(const char *json_string, int num_of_radios) {
                 hash_map_destroy(radio_chanmap);
             }
             }else {
-                wifi_hal_set_acs_keep_out_chans(NULL, radioIndex); // Clear entries
+                apply_acs_keep_out_chans(NULL, radioIndex); // Clear entries
             }
         }
     }

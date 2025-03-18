@@ -2862,6 +2862,17 @@ int get_neighbor_scan_results(void *arg)
     return TIMER_TASK_COMPLETE;
 }
 
+//Re-factor in Phase 2 of keepOut channel implementation
+int apply_acs_keep_out_chans(hash_map_t *map, int radioIndex)
+{
+    return wifi_hal_set_acs_keep_out_chans(map, radioIndex);
+}
+
+int retrieve_bandwidth_str(char *bandstr, size_t dest_size, wifi_channelBandwidth_t bandwidth)
+{
+    return wifi_channelBandwidth_to_str(bandstr, dest_size, bandwidth);
+}
+
 void process_acs_keep_out_channels_event(const char* data)
 {
     int numOfRadios = (int)getNumberRadios();

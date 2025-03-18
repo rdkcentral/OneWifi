@@ -437,10 +437,11 @@ int start_radios(rdk_dev_mode_type_t mode)
         wifi_util_error_print(WIFI_CTRL,"WIFI %s : Number of Radios %d exceeds supported %d Radios \n",__FUNCTION__, getNumberRadios(), MAX_NUM_RADIOS);
         return RETURN_ERR;
     }
-    //Apply Keep out configs in case RBUS event is missed due to OneWifi restart.
+    //Ensure RBUS event not missed in restart. Direct decode call as it is not conventional subdoc.
     void* keep_out_json = bus_get_keep_out_json();
     if (keep_out_json != NULL)
     {
+        wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH json_schema at boot up time = %s\n",__FUNCTION__,__LINE__,(char*)keep_out_json);
         decode_acs_keep_out_json(keep_out_json,num_of_radios);
     }
 
