@@ -331,9 +331,9 @@ void deinit_wifi_data_plane()
 
 int init_wifi_data_plane()
 {
-#if defined (DUAL_CORE_XB3) || \
-    (defined(_XB6_PRODUCT_REQ_) && !defined(_XB8_PRODUCT_REQ_)) || \
-    (defined(_CBR_PRODUCT_REQ_) && !(defined(_CBR2_PRODUCT_REQ_)) )
+// #if defined (DUAL_CORE_XB3) || \
+//     (defined(_XB6_PRODUCT_REQ_) && !defined(_XB8_PRODUCT_REQ_)) || \
+//     (defined(_CBR_PRODUCT_REQ_) && !(defined(_CBR2_PRODUCT_REQ_)) )
 
     pthread_condattr_t cond_attr;
     pthread_attr_t attr;
@@ -374,18 +374,18 @@ int init_wifi_data_plane()
     if(attrp != NULL) {
         pthread_attr_destroy( attrp );
     }
-#if 0
-    if(RETURN_OK != CosaDmlWiFi_initPasspoint()){
-        wifi_util_dbg_print(WIFI_MON,"CosaWifiInitialize Error - WiFi failed to Initialize Passpoint.\n");
-    }
-#else
+// #if 0
+//     if(RETURN_OK != CosaDmlWiFi_initPasspoint()){
+//         wifi_util_dbg_print(WIFI_MON,"CosaWifiInitialize Error - WiFi failed to Initialize Passpoint.\n");
+//     }
+// #else
     if(RETURN_OK != WiFi_initPasspoint()){
         wifi_util_dbg_print(WIFI_MON,"CosaWifiInitialize Error - WiFi failed to Initialize Passpoint.\n");
     }
-#endif//ONE_WIFI
-    //wifi_hal_mgmt_frame_callbacks_register(mgmt_frame_received_callback);
+// #endif//ONE_WIFI
+    wifi_hal_mgmt_frame_callbacks_register(mgmt_frame_received_callback);
     wifi_util_dbg_print(WIFI_MON, "%s:%d: init_wifi_data_plane completed ### \n", __func__, __LINE__);
-#endif
+// #endif
 
     return 0;
 }
@@ -556,7 +556,7 @@ void data_plane_queue_push(wifi_data_plane_queue_data_t *data)
     if(data && data->setSignalThread) {
         pthread_mutex_lock(&g_data_plane_module.lock);
         wifi_util_error_print(WIFI_DPP, "%s:%d: Begin 2\n", __func__, __LINE__);
-        queue_push(g_data_plane_module.queue, data);
+        queue_push(&g_data_plane_module.queue, data);
         wifi_util_error_print(WIFI_DPP, "%s:%d: Begin 3\n", __func__, __LINE__);
         pthread_cond_signal(&g_data_plane_module.cond);
         pthread_mutex_unlock(&g_data_plane_module.lock);
