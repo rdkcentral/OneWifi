@@ -3113,7 +3113,7 @@ void process_rsn_override_rfc(bool type)
         }
 
         if (radio_params->band == WIFI_FREQUENCY_6_BAND) {
-            wifi_util_info_print(WIFI_DB,"%s: %d 6GHz radio supports only WPA3 personal mode. WPA3-RFC: %d\n",__FUNCTION__,__LINE__,type);
+            wifi_util_info_print(WIFI_CTRL,"%s: %d 6GHz radio supports only WPA3 personal mode. WPA3-RFC: %d\n",__FUNCTION__,__LINE__,type);
             continue;
         }
 
@@ -3125,13 +3125,6 @@ void process_rsn_override_rfc(bool type)
             vapInfo->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
             vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
         } else {
-            if(rfc_param->wpa3_rfc) {
-                vapInfo->u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
-                vapInfo->u.bss_info.security.wpa3_transition_disable = false;
-                vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
-                vapInfo->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
-            }
-
             if (vapInfo->u.bss_info.security.mode == wifi_security_mode_wpa2_personal) {
                 continue;
             }
@@ -3139,6 +3132,13 @@ void process_rsn_override_rfc(bool type)
             if ((radio_params->band == WIFI_FREQUENCY_2_4_BAND) || (radio_params->band == WIFI_FREQUENCY_5_BAND)) {
                     vapInfo->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
                     vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
+            }
+
+	    if(rfc_param->wpa3_rfc) {
+                vapInfo->u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
+                vapInfo->u.bss_info.security.wpa3_transition_disable = false;
+                vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
+                vapInfo->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
             }
         }
         memset(&tgt_vap_map, 0, sizeof(wifi_vap_info_map_t));
@@ -3156,9 +3156,9 @@ void process_rsn_override_rfc(bool type)
         apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, wifi_event_webconfig_hal_result, update_status);
 
         if (ret != RETURN_OK) {
-            wifi_util_error_print(WIFI_DB,"%s:%d: Private vaps service update_fn failed \n",__func__, __LINE__);
+            wifi_util_error_print(WIFI_CTRL,"%s:%d: Private vaps service update_fn failed \n",__func__, __LINE__);
         } else {
-            wifi_util_dbg_print(WIFI_DB,"%s:%d: Updating security mode for apIndex %d secmode %d \n",__func__, __LINE__,apIndex,vapInfo->u.bss_info.security.mode);
+            wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Updating security mode for apIndex %d secmode %d \n",__func__, __LINE__,apIndex,vapInfo->u.bss_info.security.mode);
         }
     }
 }

@@ -149,9 +149,12 @@ static int validate_private_home_security_param(char *mode_enabled, char *encryp
     }
 
     if( (strcmp(mode_enabled, "WPA3-Personal-Compatibility") == 0) && !rfc_param->wpa3_compatibility_enable) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d RFC for WPA3-Personal-Compatibility is not enabled \n",
+        wifi_util_error_print(WIFI_CTRL, "%s:%d RFC for WPA3-Personal-Compatibility is not enabled \n",
             __func__, __LINE__);
-        return webconfig_error_decode;
+        if (execRetVal) {
+            strncpy(execRetVal->ErrorMsg,"Invalid Security Mode, RFC for WPA3-Personal-Compatibility is not enabled\n",sizeof(execRetVal->ErrorMsg)-1);
+        }
+        return RETURN_ERR;
     }
 
      wifi_util_info_print(WIFI_CTRL,"%s: securityparam validation passed \n",__FUNCTION__);
@@ -1082,6 +1085,21 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
         cJSON_AddBoolToObject(vb_entry, "HostapMgtFrameCtrl", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.hostap_mgt_frame_ctrl);
         cJSON_AddBoolToObject(vb_entry, "MboEnabled",
             wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.mbo_enabled);
+
+        char* extra_vendor_ies_hex_str = ( char* )malloc(sizeof(char) * ((wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.vendor_elements_len * 2) + 1));
+        if (extra_vendor_ies_hex_str != NULL) {
+            memset(extra_vendor_ies_hex_str, 0, sizeof(char) * ((wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.vendor_elements_len * 2) + 1));
+            for (unsigned int i = 0; i < wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.vendor_elements_len; i++) {
+                sprintf(extra_vendor_ies_hex_str + (i * 2), "%02x", (unsigned int) wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.vendor_elements[i]);
+            }
+            cJSON_AddStringToObject(vb_entry, "ExtraVendorIEs", extra_vendor_ies_hex_str);
+
+            free(extra_vendor_ies_hex_str);
+            extra_vendor_ies_hex_str = NULL;
+        }
+        else {
+            cJSON_AddStringToObject(vb_entry, "ExtraVendorIEs", "");
+        }
 
         cJSON *vapConnectionControl_o = cJSON_GetObjectItem(vb_entry, "VapConnectionControl");
         if (vapConnectionControl_o == NULL) {
