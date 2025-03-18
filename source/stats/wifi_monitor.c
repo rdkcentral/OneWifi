@@ -583,8 +583,8 @@ BOOL client_fast_redeauth(unsigned int apIndex, char *mac)
 
     wifi_util_dbg_print(WIFI_MON, "%s: Checking for client:%s deauth on ap:%d\n", __func__, mac, apIndex);
 
-    pthread_mutex_lock(&g_monitor_module.data_lock);
     getVAPArrayIndexFromVAPIndex(apIndex, &vap_array_index);
+    pthread_mutex_lock(&g_monitor_module.data_lock);
     sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
     str_tolower(mac);
     sta = (sta_data_t *)hash_map_get(sta_map, mac);
@@ -641,22 +641,23 @@ macbytes_to_string(mac_address_t mac, unsigned char* string)
     return (char *)string;
 }
 
-static void
-reset_client_stats_info(unsigned int apIndex)
+static void reset_client_stats_info(unsigned int apIndex)
 {
-    sta_data_t      *sta = NULL;
-    hash_map_t      *sta_map;
-    unsigned int    vap_array_index;
+    sta_data_t *sta = NULL;
+    hash_map_t *sta_map;
+    unsigned int vap_array_index;
 
+    pthread_mutex_lock(&g_monitor_module.data_lock);
     getVAPArrayIndexFromVAPIndex(apIndex, &vap_array_index);
     sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
 
     sta = hash_map_get_first(sta_map);
     while (sta != NULL) {
         memset((unsigned char *)&sta->dev_stats_last, 0, sizeof(wifi_associated_dev3_t));
-        memset((unsigned char *)&sta->dev_stats, 0,  sizeof(wifi_associated_dev3_t));
+        memset((unsigned char *)&sta->dev_stats, 0, sizeof(wifi_associated_dev3_t));
         sta = hash_map_get_next(sta_map, sta);
     }
+    pthread_mutex_unlock(&g_monitor_module.data_lock);
 }
 
 static void
@@ -802,9 +803,8 @@ int get_sta_stats_info (assoc_dev_data_t *assoc_dev_data) {
     sta_data_t *sta_data = NULL;
     sta_key_t sta_key;
 
-    pthread_mutex_lock(&g_monitor_module.data_lock);
-
     getVAPArrayIndexFromVAPIndex((unsigned int)assoc_dev_data->ap_index, &vap_array_index);
+    pthread_mutex_lock(&g_monitor_module.data_lock);
     sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
     memset(sta_key, 0, STA_KEY_LEN);
     to_sta_key(assoc_dev_data->dev_stats.cli_MACAddress, sta_key);
@@ -859,13 +859,12 @@ int get_sta_stats_for_vap(int ap_index, wifi_associated_dev3_t *assoc_dev_array,
     hash_map_t *sta_map = NULL;
     sta_data_t *sta_data = NULL;
     mac_addr_str_t assoc_mac, dev_mac;
-    pthread_mutex_lock(&g_monitor_module.data_lock);
     getVAPArrayIndexFromVAPIndex((unsigned int)ap_index, &vap_array_index);
     if(assoc_dev_array == NULL) {
         wifi_util_dbg_print(WIFI_MON, "%s:%d: assoc_dev_array is NULL\n", __func__, __LINE__);
-        pthread_mutex_unlock(&g_monitor_module.data_lock);
         return -1;
     }
+    pthread_mutex_lock(&g_monitor_module.data_lock);
     sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
     if (sta_map == NULL) {
         wifi_util_dbg_print(WIFI_MON, "%s:%d: NULL pointer:ap_index:%d,vap_array_index:%u \n", __func__, __LINE__,ap_index,vap_array_index);
@@ -1179,12 +1178,11 @@ void process_deauthenticate	(unsigned int ap_index, auth_deauth_dev_t *dev)
     process_disconnect(ap_index, dev);
 }
 
-
 void process_connect(unsigned int ap_index, auth_deauth_dev_t *dev)
 {
     sta_key_t sta_key;
     sta_data_t *sta;
-    hash_map_t     *sta_map;
+    hash_map_t *sta_map;
     struct timespec tv_now, t_diff, t_tmp;
     unsigned int i = 0;
     int vap_status = 0;
@@ -1192,52 +1190,69 @@ void process_connect(unsigned int ap_index, auth_deauth_dev_t *dev)
     unsigned int vap_array_index;
     getVAPArrayIndexFromVAPIndex(ap_index, &vap_array_index);
 
+    pthread_mutex_lock(&g_monitor_module.data_lock);
     sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
-    wifi_util_info_print(WIFI_MON, "sta map: %p Device:%s connected on ap:%d\n", sta_map, to_sta_key(dev->sta_mac, sta_key), ap_index);
+    wifi_util_info_print(WIFI_MON, "sta map: %p Device:%s connected on ap:%d\n", sta_map,
+        to_sta_key(dev->sta_mac, sta_key), ap_index);
     to_sta_key(dev->sta_mac, sta_key);
     str_tolower(sta_key);
     sta = (sta_data_t *)hash_map_get(sta_map, sta_key);
     if (sta == NULL) { /* new client */
-        pthread_mutex_lock(&g_monitor_module.data_lock);
         sta = (sta_data_t *)malloc(sizeof(sta_data_t));
+        if (sta == NULL) {
+            wifi_util_error_print(WIFI_MON, "%s:%d malloc allocation failure\r\n", __func__,
+                __LINE__);
+            pthread_mutex_unlock(&g_monitor_module.data_lock);
+            return;
+        }
         memset(sta, 0, sizeof(sta_data_t));
         memcpy(sta->sta_mac, dev->sta_mac, sizeof(mac_addr_t));
         memcpy(sta->dev_stats.cli_MACAddress, dev->sta_mac, sizeof(mac_addr_t));
         sta->primary_link = 1;
         hash_map_put(sta_map, strdup(sta_key), sta);
-        pthread_mutex_unlock(&g_monitor_module.data_lock);
     }
 
     clock_gettime(CLOCK_MONOTONIC, &tv_now);
     if (timespecisset(&(sta->last_connected_time))) {
-        if (timespeccmp(&(sta->last_disconnected_time), &(g_monitor_module.bssid_data[vap_array_index].last_sta_update_time), >)) {//sta disconnected before counter update
+        if (timespeccmp(&(sta->last_disconnected_time),
+                &(g_monitor_module.bssid_data[vap_array_index].last_sta_update_time),
+                >)) { // sta disconnected before counter update
             timespecsub(&tv_now, &(sta->last_disconnected_time), &t_diff);
         } else {
-            timespecsub(&tv_now, &(g_monitor_module.bssid_data[vap_array_index].last_sta_update_time), &t_diff);
+            timespecsub(&tv_now,
+                &(g_monitor_module.bssid_data[vap_array_index].last_sta_update_time), &t_diff);
         }
         t_tmp.tv_sec = sta->total_disconnected_time.tv_sec;
         t_tmp.tv_nsec = sta->total_disconnected_time.tv_nsec;
         timespecadd(&t_tmp, &t_diff, &(sta->total_disconnected_time));
     }
 
-    if(!sta->assoc_monitor_start_time)
+    if (!sta->assoc_monitor_start_time)
         sta->assoc_monitor_start_time = tv_now.tv_sec;
 
-    if ((UINT)(tv_now.tv_sec - sta->last_disconnected_time.tv_sec) <= g_monitor_module.bssid_data[i].ap_params.rapid_reconnect_threshold) {
+    if ((UINT)(tv_now.tv_sec - sta->last_disconnected_time.tv_sec) <=
+        g_monitor_module.bssid_data[i].ap_params.rapid_reconnect_threshold) {
         if (sta->dev_stats.cli_Active == false) {
-            wifi_util_dbg_print(WIFI_MON, "Device:%s connected on ap:%d connected within rapid reconnect time\n", to_sta_key(dev->sta_mac, sta_key), ap_index);
+            wifi_util_dbg_print(WIFI_MON,
+                "Device:%s connected on ap:%d connected within rapid reconnect time\n",
+                to_sta_key(dev->sta_mac, sta_key), ap_index);
             sta->rapid_reconnects++;
         }
     } else {
-        wifi_util_dbg_print(WIFI_MON, "Device:%s connected on ap:%d received another connection event\n", to_sta_key(dev->sta_mac, sta_key), ap_index);
+        wifi_util_dbg_print(WIFI_MON,
+            "Device:%s connected on ap:%d received another connection event\n",
+            to_sta_key(dev->sta_mac, sta_key), ap_index);
     }
 
     sta->last_connected_time.tv_sec = tv_now.tv_sec;
     sta->last_connected_time.tv_nsec = tv_now.tv_nsec;
 
-    wifi_util_dbg_print(WIFI_MON, "%s:%d total_connected_time %lld ms\n", __func__, __LINE__, (long long)((sta->total_connected_time.tv_sec*1000)+(sta->total_connected_time.tv_nsec/1000000)));
-    wifi_util_dbg_print(WIFI_MON, "%s:%d total_disconnected_time %lld ms\n", __func__, __LINE__, (long long)((sta->total_disconnected_time.tv_sec*1000)+(sta->total_disconnected_time.tv_nsec/1000000)));
-    
+    wifi_util_dbg_print(WIFI_MON, "%s:%d total_connected_time %lld ms\n", __func__, __LINE__,
+        (long long)((sta->total_connected_time.tv_sec * 1000) +
+            (sta->total_connected_time.tv_nsec / 1000000)));
+    wifi_util_dbg_print(WIFI_MON, "%s:%d total_disconnected_time %lld ms\n", __func__, __LINE__,
+        (long long)((sta->total_disconnected_time.tv_sec * 1000) +
+            (sta->total_disconnected_time.tv_nsec / 1000000)));
 
     /* reset stats of client */
     memset((unsigned char *)&sta->dev_stats_last, 0, sizeof(wifi_associated_dev3_t));
@@ -1245,6 +1260,7 @@ void process_connect(unsigned int ap_index, auth_deauth_dev_t *dev)
     memcpy(&sta->dev_stats, &dev->dev_stats, sizeof(wifi_associated_dev3_t));
     sta->dev_stats.cli_Active = true;
     sta->connection_authorized = true;
+
     /*To avoid duplicate entries in hash map of different vAPs eg:RDKB-21582
       Also when clients moved away from a vAP and connect back to other vAP this will be usefull*/
     for (i = 0; i < getTotalNumberVAPs(); i++) {
@@ -1253,8 +1269,9 @@ void process_connect(unsigned int ap_index, auth_deauth_dev_t *dev)
         if (g_monitor_module.radio_presence[radio] == false) {
             continue;
         }
-        if ( vap_index == ap_index)
+        if (vap_index == ap_index)
             continue;
+
         vap_status = g_monitor_module.bssid_data[vap_index].ap_params.ap_status;
         if (vap_status) {
             sta_map = g_monitor_module.bssid_data[i].sta_map;
@@ -1268,47 +1285,58 @@ void process_connect(unsigned int ap_index, auth_deauth_dev_t *dev)
             }
         }
     }
+    pthread_mutex_unlock(&g_monitor_module.data_lock);
 }
 
-void process_disconnect	(unsigned int ap_index, auth_deauth_dev_t *dev)
+void process_disconnect(unsigned int ap_index, auth_deauth_dev_t *dev)
 {
     sta_key_t sta_key;
     sta_data_t *sta;
-    hash_map_t     *sta_map;
+    hash_map_t *sta_map;
     struct timespec tv_now, t_diff, t_tmp;
     instant_msmt_t msmt;
     unsigned int vap_array_index;
-
     getVAPArrayIndexFromVAPIndex(ap_index, &vap_array_index);
+    pthread_mutex_lock(&g_monitor_module.data_lock);
     sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
-    wifi_util_info_print(WIFI_MON, "Device:%s disconnected on ap:%d\n", to_sta_key(dev->sta_mac, sta_key), ap_index);
+    wifi_util_info_print(WIFI_MON, "Device:%s disconnected on ap:%d\n",
+        to_sta_key(dev->sta_mac, sta_key), ap_index);
     str_tolower(sta_key);
     sta = (sta_data_t *)hash_map_get(sta_map, sta_key);
     if (sta == NULL) {
-        wifi_util_info_print(WIFI_MON, "Device:%s could not be found on sta map of ap:%d\n", sta_key, ap_index);
+        wifi_util_info_print(WIFI_MON, "Device:%s could not be found on sta map of ap:%d\n",
+            sta_key, ap_index);
+        pthread_mutex_unlock(&g_monitor_module.data_lock);
         return;
     }
 
     clock_gettime(CLOCK_MONOTONIC, &tv_now);
-    if (timespeccmp(&(sta->last_connected_time), &(g_monitor_module.bssid_data[vap_array_index].last_sta_update_time), >)) {//sta disconnected before counter update
+    if (timespeccmp(&(sta->last_connected_time),
+            &(g_monitor_module.bssid_data[vap_array_index].last_sta_update_time),
+            >)) { // sta disconnected before counter update
         timespecsub(&tv_now, &(sta->last_connected_time), &t_diff);
     } else {
-        timespecsub(&tv_now, &(g_monitor_module.bssid_data[vap_array_index].last_sta_update_time), &t_diff);
+        timespecsub(&tv_now, &(g_monitor_module.bssid_data[vap_array_index].last_sta_update_time),
+            &t_diff);
     }
     t_tmp.tv_sec = sta->total_connected_time.tv_sec;
     t_tmp.tv_nsec = sta->total_connected_time.tv_nsec;
     timespecadd(&t_tmp, &t_diff, &(sta->total_connected_time));
     sta->dev_stats.cli_Active = false;
     sta->connection_authorized = false;
-    if(!sta->deauth_monitor_start_time)
+    if (!sta->deauth_monitor_start_time)
         sta->deauth_monitor_start_time = tv_now.tv_sec;
 
     sta->last_disconnected_time.tv_sec = tv_now.tv_sec;
     sta->last_disconnected_time.tv_nsec = tv_now.tv_nsec;
-    wifi_util_dbg_print(WIFI_MON, "%s:%d total_connected_time %lld ms\n", __func__, __LINE__, (long long)(sta->total_connected_time.tv_sec*1000)+(sta->total_connected_time.tv_nsec/1000000));
-    wifi_util_dbg_print(WIFI_MON, "%s:%d total_disconnected_time %lld ms\n", __func__, __LINE__, (long long)(sta->total_disconnected_time.tv_sec*1000)+(sta->total_disconnected_time.tv_nsec/1000000));
+    wifi_util_dbg_print(WIFI_MON, "%s:%d total_connected_time %lld ms\n", __func__, __LINE__,
+        (long long)(sta->total_connected_time.tv_sec * 1000) +
+            (sta->total_connected_time.tv_nsec / 1000000));
+    wifi_util_dbg_print(WIFI_MON, "%s:%d total_disconnected_time %lld ms\n", __func__, __LINE__,
+        (long long)(sta->total_disconnected_time.tv_sec * 1000) +
+            (sta->total_disconnected_time.tv_nsec / 1000000));
 
-
+    pthread_mutex_unlock(&g_monitor_module.data_lock);
     // stop instant measurements if its going on with this client device
     msmt.ap_index = ap_index;
     memcpy(msmt.sta_mac, dev->sta_mac, sizeof(mac_address_t));
@@ -1316,7 +1344,6 @@ void process_disconnect	(unsigned int ap_index, auth_deauth_dev_t *dev)
       is running got disconnected from AP
       */
 }
-
 
 int get_neighbor_scan_cfg(int radio_index,
                           wifi_neighbor_ap2_t *neighbor_results,
@@ -1341,7 +1368,7 @@ void clear_sta_counters(unsigned int vap_index)
     unsigned int vap_array_index;
 
     getVAPArrayIndexFromVAPIndex(vap_index, &vap_array_index);
-
+    pthread_mutex_lock(&mon_data->data_lock);
     sta_map = mon_data->bssid_data[vap_array_index].sta_map;
     if (sta_map != NULL) {
         temp_sta = hash_map_get_first(sta_map);
@@ -1352,6 +1379,7 @@ void clear_sta_counters(unsigned int vap_index)
             temp_sta = hash_map_get_next(sta_map, temp_sta);
         }
     }
+    pthread_mutex_unlock(&mon_data->data_lock);
 }
 
 static void update_subscribe_data(wifi_monitor_data_t *event)
@@ -1600,20 +1628,23 @@ bool is_device_associated(int ap_index, char *mac)
 {
     mac_address_t bmac;
     sta_data_t *sta;
-    hash_map_t     *sta_map;
+    hash_map_t *sta_map;
     unsigned int vap_array_index;
 
     getVAPArrayIndexFromVAPIndex((unsigned int)ap_index, &vap_array_index);
-
     str_to_mac_bytes(mac, bmac);
+    pthread_mutex_lock(&g_monitor_module.data_lock);
     sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
     sta = hash_map_get_first(sta_map);
     while (sta != NULL) {
-        if ((memcmp(sta->sta_mac, bmac, sizeof(mac_address_t)) == 0) && (sta->dev_stats.cli_Active == true)) {
+        if ((memcmp(sta->sta_mac, bmac, sizeof(mac_address_t)) == 0) &&
+            (sta->dev_stats.cli_Active == true)) {
+            pthread_mutex_unlock(&g_monitor_module.data_lock);
             return true;
         }
         sta = hash_map_get_next(sta_map, sta);
     }
+    pthread_mutex_unlock(&g_monitor_module.data_lock);
     return false;
 }
 
@@ -2357,32 +2388,40 @@ int get_radio_data(int radio_index, wifi_radioTrafficStats2_t *radio_traffic_sta
 
 bool active_sta_connection_status(int ap_index, char *mac)
 {
-    sta_data_t  *sta;
-    hash_map_t  *sta_map;
+    sta_data_t *sta;
+    hash_map_t *sta_map;
     unsigned int vap_array_index;
 
     if (mac == NULL) {
-        wifi_util_dbg_print(WIFI_MON,"%s:%d input mac adrress is NULL for ap_index:%d\n", __func__, __LINE__, ap_index);
+        wifi_util_dbg_print(WIFI_MON, "%s:%d input mac adrress is NULL for ap_index:%d\n", __func__,
+            __LINE__, ap_index);
         return false;
     }
 
     getVAPArrayIndexFromVAPIndex(ap_index, &vap_array_index);
-
+    pthread_mutex_lock(&g_monitor_module.data_lock);
     sta_map = g_monitor_module.bssid_data[vap_array_index].sta_map;
     if (sta_map == NULL) {
-        wifi_util_dbg_print(WIFI_MON,"%s:%d: return, stamap is NULL for vap:%d\n", __func__, __LINE__, ap_index);
+        wifi_util_dbg_print(WIFI_MON, "%s:%d: return, stamap is NULL for vap:%d\n", __func__,
+            __LINE__, ap_index);
+        pthread_mutex_unlock(&g_monitor_module.data_lock);
         return false;
     }
     str_tolower(mac);
     sta = (sta_data_t *)hash_map_get(sta_map, mac);
 
     if (sta == NULL) {
-        wifi_util_dbg_print(WIFI_MON,"%s:%d: return, sta:%s is not part of hashmap on vap:%d\n", __func__, __LINE__, mac, ap_index);
+        wifi_util_dbg_print(WIFI_MON, "%s:%d: return, sta:%s is not part of hashmap on vap:%d\n",
+            __func__, __LINE__, mac, ap_index);
+        pthread_mutex_unlock(&g_monitor_module.data_lock);
         return false;
-    } else if(sta->connection_authorized != true) {
-        wifi_util_dbg_print(WIFI_MON,"%s:%d: return, sta:%s is not ACTIVE on vap:%d\n", __func__, __LINE__, mac, ap_index);
+    } else if (sta->connection_authorized != true) {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d: return, sta:%s is not ACTIVE on vap:%d\n", __func__,
+            __LINE__, mac, ap_index);
+        pthread_mutex_unlock(&g_monitor_module.data_lock);
         return false;
     }
+    pthread_mutex_unlock(&g_monitor_module.data_lock);
     return true;
 }
 
