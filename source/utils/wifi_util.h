@@ -390,7 +390,7 @@ int convert_ascii_string_to_bool(char *l_string, bool *l_bool_param);
 int convert_bool_to_ascii_string(bool l_bool_param, char *l_string, size_t str_len);
 void json_param_obscure(char *json, char *param);
 bool is_5g_20M_channel_in_dfs(int channel);
-void decode_acs_keep_out_json(const char *data, int number_of_radios);
+void decode_acs_keep_out_json(const char *data, unsigned int number_of_radios);
 wifi_radio_operationParam_t *get_radio_operationParam(unsigned int radio_index);
 void* bus_get_keep_out_json();
 bool is_6g_supported_device(wifi_platform_property_t *wifi_prop);
