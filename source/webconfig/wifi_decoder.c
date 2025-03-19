@@ -2533,15 +2533,15 @@ webconfig_error_t process_bandwidth(cJSON *radioParams, const char *bandwidth_st
                 return webconfig_error_decode;
             }
         }
+        chanlist->chanwidth = bandwidth_type;
         wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH channel bandwidth = 0x%x and bandwidth str = %s\n", __FUNCTION__, __LINE__, chanlist->chanwidth,bandwidth_str);
         for(int k=0;k<chanlist->num_channels_list;k++) {
-            wifi_util_dbg_print(WIFI_CTRL, "%s:%d SREESH Bandwidth %s num_channels %d\n", __FUNCTION__, __LINE__, bandwidth_str, chanlist->channels_list[k].num_channels);
+            wifi_util_info_print(WIFI_CTRL, "%s:%d SREESH Bandwidth %s num_channels %d\n", __FUNCTION__, __LINE__, bandwidth_str, chanlist->channels_list[k].num_channels);
             for(int l=0;l<chanlist->channels_list[k].num_channels;l++) {
-                wifi_util_dbg_print(WIFI_CTRL, "%s:%d SREESH Channel %d\t", __FUNCTION__, __LINE__, chanlist->channels_list[k].channels_list[l]);
+                wifi_util_info_print(WIFI_CTRL, "%s:%d SREESH Channel %d\t", __FUNCTION__, __LINE__, chanlist->channels_list[k].channels_list[l]);
             }
             wifi_util_info_print(WIFI_CTRL, "\n");
         }
-        chanlist->chanwidth = bandwidth_type;
     }
     else
     {
@@ -2566,6 +2566,7 @@ webconfig_error_t decode_bandwidth_from_json(cJSON *radioParams, wifi_freq_bands
                 &radioOperParams->channels_per_bandwidth[i], bw_type) != webconfig_error_none) {
             return webconfig_error_decode;
         }
+        radioOperParams->acs_keep_out_reset = false; // 5GH and 6G treated as RadioIndex 2
     }
     return webconfig_error_none;
 }
