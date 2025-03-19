@@ -6385,6 +6385,7 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
         memset(cfg.channels_per_bandwidth[i].channels_list,0,sizeof(cfg.channels_per_bandwidth[i].channels_list));
         cfg.channels_per_bandwidth[i].chanwidth = 0;
     }
+    cfg.acs_keep_out_reset = false;
     cfg.csa_beacon_count = 100;
     country_code_val = wifi_countrycode_US;
     if (wifi_hal_get_default_country_code(country_code) < 0) {
