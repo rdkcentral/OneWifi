@@ -2566,8 +2566,8 @@ webconfig_error_t decode_bandwidth_from_json(cJSON *radioParams, wifi_freq_bands
                 &radioOperParams->channels_per_bandwidth[i], bw_type) != webconfig_error_none) {
             return webconfig_error_decode;
         }
-        radioOperParams->acs_keep_out_reset = false; // 5GH and 6G treated as RadioIndex 2
     }
+    radioOperParams->acs_keep_out_reset = false; // 5GH and 6G treated as RadioIndex 2
     return webconfig_error_none;
 }
 
