@@ -2876,7 +2876,8 @@ void process_acs_keep_out_channels_event(const char* json_data)
         if(radio_oper)
         {
             radio_oper->acs_keep_out_reset = data.u.decoded.radios[i].oper.acs_keep_out_reset;
-            memcpy(radio_oper->channels_per_bandwidth,data.u.decoded.radios[i].oper.channels_per_bandwidth,sizeof(wifi_channels_list_per_bandwidth));
+            memcpy(radio_oper->channels_per_bandwidth, data.u.decoded.radios[i].oper.channels_per_bandwidth,sizeof(data.u.decoded.radios[i].oper.channels_per_bandwidth));
+            
             wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Inside radio_oper is not NULL for radioindex = %d\n",__FUNCTION__,__LINE__,i);
             if(radio_oper->acs_keep_out_reset)
             {
