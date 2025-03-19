@@ -1459,7 +1459,7 @@ static void acs_keep_out_evt_handler(char* event_name, raw_data_t *p_data)
     }
     char *json_schema = (char*)malloc((p_data->raw_data_len + 1)*sizeof(char));
     strncpy(json_schema,(char*)p_data->raw_data.bytes, p_data->raw_data_len);
-    json_schema[p_data.raw_data_len] = '\0';
+    json_schema[p_data->raw_data_len] = '\0';
     wifi_util_info_print(WIFI_CTRL, "%s:%d Received bus ACS Keep-Out json_schema: %s \n", __func__, __LINE__, json_schema);
     push_event_to_ctrl_queue(json_schema, (strlen(json_schema) + 1),wifi_event_type_webconfig,wifi_event_webconfig_data_to_hal_apply,NULL);
 }
