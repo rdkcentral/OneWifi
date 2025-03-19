@@ -4487,7 +4487,7 @@ void wifidb_vap_config_correction(wifi_vap_info_map_t *l_vap_map_param)
         if (isVapPrivate(vap_config->vap_index) &&
             is_sec_mode_personal(vap_config->u.bss_info.security.mode)) {
             if (vap_config->u.bss_info.wps.enable == false) {
-#if !defined(NEWPLATFORM_PORT) && !defined(_SR213_PRODUCT_REQ_)
+#if !defined(NEWPLATFORM_PORT) && !defined(_SR213_PRODUCT_REQ_) && !defined(_CBR2_PRODUCT_REQ_)
                 vap_config->u.bss_info.wps.enable = true;
 
                 wifi_util_info_print(WIFI_DB, "%s:%d: force wps enabled for private_vap:%d\r\n",__func__, __LINE__, vap_config->vap_index);
@@ -6570,7 +6570,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         if (isVapPrivate(vap_index)) {
             cfg.u.bss_info.vapStatsEnable = true;
             cfg.u.bss_info.wpsPushButton = 0;
-#ifdef NEWPLATFORM_PORT
+#if defined(NEWPLATFORM_PORT) || defined(_CBR2_PRODUCT_REQ_)
             cfg.u.bss_info.wps.enable = false;
 #else
             cfg.u.bss_info.wps.enable = true;
