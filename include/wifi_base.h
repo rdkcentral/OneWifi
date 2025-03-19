@@ -80,7 +80,7 @@ extern "C" {
 
 #define MAX_OPERATING_CLASS 48
 #define MAX_CHANNEL_BW_LEN 16
-#define MAX_NEIGHBORS 32
+#define MAX_NEIGHBORS 16
 #define MAX_RESULTS 32
 
 #define PLAN_ID_LENGTH     38
@@ -1172,8 +1172,6 @@ typedef struct {
     UCHAR bss_color;
     UCHAR channel_utilization;
     USHORT station_count;
-    UINT aggregate_scan_duration;
-    UCHAR scan_type;  // 0: Passive, 1: Active
 } neighbor_bss_t;
 
 typedef struct {
@@ -1185,9 +1183,12 @@ typedef struct {
     UCHAR noise;
     USHORT num_neighbors;
     neighbor_bss_t neighbors[MAX_NEIGHBORS];
+    UINT aggregate_scan_duration;
+    UCHAR scan_type;  // 0: Passive, 1: Active
 } channel_scan_result_t;
 
 typedef struct {
+    mac_address_t ruid;
     UINT num_results;
     channel_scan_result_t results[MAX_RESULTS];
 } channel_scan_response_t;
