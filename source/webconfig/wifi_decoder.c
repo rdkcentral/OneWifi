@@ -2494,7 +2494,7 @@ webconfig_error_t decode_radio_setup_object(const cJSON *obj_radio_setup, rdk_wi
     return webconfig_error_none;
 }
 
-int remove_chanlist_entries(wifi_channels_list_per_bandwidth *chanlist)
+int remove_chanlist_entries(wifi_channels_list_per_bandwidth_t *chanlist)
 {
     for (int i = 0; i < chanlist->num_channels_list; i++) {
         memset(chanlist->channels_list[i].channels_list, 0, sizeof(chanlist->channels_list[i].channels_list));
@@ -2508,7 +2508,7 @@ int remove_chanlist_entries(wifi_channels_list_per_bandwidth *chanlist)
 }
 
 webconfig_error_t process_bandwidth(cJSON *radioParams, const char *bandwidth_str,
-    wifi_freq_bands_t band, wifi_channels_list_per_bandwidth *chanlist,
+    wifi_freq_bands_t band, wifi_channels_list_per_bandwidth_t *chanlist,
     wifi_channelBandwidth_t bandwidth_type)
 {
     cJSON *bandwidth = cJSON_GetObjectItem(radioParams, bandwidth_str);
