@@ -2571,7 +2571,7 @@ webconfig_error_t decode_bandwidth_from_json(cJSON *radioParams, wifi_freq_bands
 }
 
 //Optimize in PHASE 2
-void decode_acs_keep_out_json(const char *json_string, unsigned int num_of_radios)
+void decode_acs_keep_out_json(const char *json_string, unsigned int num_of_radios, webconfig_subdoc_data_t *data)
 {
     cJSON *json = cJSON_Parse(json_string);
     if (json == NULL) {
@@ -2591,7 +2591,7 @@ void decode_acs_keep_out_json(const char *json_string, unsigned int num_of_radio
     cJSON *channelExclusion = cJSON_GetObjectItem(json, "ChannelExclusion");
     if (!channelExclusion) {
         for (unsigned int i = 0; i < num_of_radios; i++) {
-            radio_oper = (wifi_radio_operationParam_t *)get_radio_operationParam(i);
+            radio_oper = &data->u.decoded.radios[i].oper;
             radio_oper->acs_keep_out_reset = true; 
             for(int k = 0;k<MAX_NUM_CHANNELBANDWIDTH_SUPPORTED;k++)
             {
@@ -2608,7 +2608,7 @@ void decode_acs_keep_out_json(const char *json_string, unsigned int num_of_radio
             if (convert_freq_band_to_radio_index(freq_band, &radioIndex) != RETURN_OK) {
                 continue;
             }
-            radio_oper = (wifi_radio_operationParam_t *)get_radio_operationParam((uint8_t)radioIndex);
+            radio_oper = &data->u.decoded.radios[radioIndex].oper;
             if (!radio_oper) {
                 wifi_util_error_print(WIFI_CTRL,
                     "%s:%d SREESH Could not retrieve values for radio_operationparam for radioIndex= "

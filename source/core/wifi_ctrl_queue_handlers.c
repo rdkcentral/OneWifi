@@ -2865,13 +2865,18 @@ int get_neighbor_scan_results(void *arg)
 void process_acs_keep_out_channels_event(const char* data)
 {
     unsigned int numOfRadios = getNumberRadios();
+    webconfig_subdoc_data_t data;
     wifi_radio_operationParam_t *radio_oper = NULL;
-    decode_acs_keep_out_json(data,numOfRadios);
+    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+    wifi_util_info_print(WIFI_CTRL,"%s:%d: SREESH process_acs_keep_out_channels_event started\n",__func__,__LINE__);
+    decode_acs_keep_out_json(data,numOfRadios,&data);
     for(unsigned int i=0;i<numOfRadios;i++)
     {
         radio_oper = (wifi_radio_operationParam_t *)get_wifidb_radio_map(i);
         if(radio_oper)
         {
+            radio_oper->acs_keep_out_reset = data.u.decoded.radios[i].oper.acs_keep_out_reset;
+            radio_oper->channels_per_bandwidth = data.u.decoded.radios[i].oper.channels_per_bandwidth;
             wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Inside radio_oper is not NULL for radioindex = %d\n",__FUNCTION__,__LINE__,i);
             if(radio_oper->acs_keep_out_reset)
             {

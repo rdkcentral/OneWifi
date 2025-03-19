@@ -1264,11 +1264,6 @@ int macfilter_conversion(char *mac_list_type, size_t string_len,  wifi_vap_info_
     return RETURN_ERR;
 }
 
-wifi_radio_operationParam_t *get_radio_operationParam(unsigned int radio_index)
-{
-    return get_wifidb_radio_map(radio_index);
-}
-
 int ssid_broadcast_conversion(char *broadcast_string, size_t string_len, BOOL *broadcast_bool, unsigned int conv_type)
 {
     if ((broadcast_string == NULL) || (broadcast_bool == NULL)) {
