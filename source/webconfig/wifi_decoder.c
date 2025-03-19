@@ -2496,9 +2496,7 @@ webconfig_error_t decode_radio_setup_object(const cJSON *obj_radio_setup, rdk_wi
 
 int remove_chanlist_entries(wifi_channels_list_per_bandwidth *chanlist)
 {
-    wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Removing the entries here and chanlist->num_channels_list = %d\n",__FUNCTION__,__LINE__,chanlist->num_channels_list);
     for (int i = 0; i < chanlist->num_channels_list; i++) {
-        wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Inside the for loop \n",__FUNCTION__,__LINE__);
         memset(chanlist->channels_list[i].channels_list, 0, sizeof(chanlist->channels_list[i].channels_list));
         chanlist->channels_list[i].num_channels = 0;
     }
@@ -2525,27 +2523,17 @@ webconfig_error_t process_bandwidth(cJSON *radioParams, const char *bandwidth_st
                     channels_list, sizeof(channels_list));
                 chanlist->channels_list[chanlist->num_channels_list].num_channels = num_channels;
                 chanlist->num_channels_list++;
-                wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Have received the channel scan list\n",__FUNCTION__,__LINE__);
             } else {
                 wifi_util_error_print(WIFI_CTRL,
-                    "%s:%d SREESH get_on_channel_scan_list failed for %s channel %d\n", __FUNCTION__,
+                    "%s:%d get_on_channel_scan_list failed for bandwidth %s channel %d \n", __FUNCTION__,
                     __LINE__, bandwidth_str, channel->valueint);
                 return webconfig_error_decode;
             }
         }
         chanlist->chanwidth = bandwidth_type;
-        wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH channel bandwidth = 0x%x and bandwidth str = %s\n", __FUNCTION__, __LINE__, chanlist->chanwidth,bandwidth_str);
-        for(int k=0;k<chanlist->num_channels_list;k++) {
-            wifi_util_info_print(WIFI_CTRL, "%s:%d SREESH Bandwidth %s num_channels %d\n", __FUNCTION__, __LINE__, bandwidth_str, chanlist->channels_list[k].num_channels);
-            for(int l=0;l<chanlist->channels_list[k].num_channels;l++) {
-                wifi_util_info_print(WIFI_CTRL, "%s:%d SREESH Channel %d\t", __FUNCTION__, __LINE__, chanlist->channels_list[k].channels_list[l]);
-            }
-            wifi_util_info_print(WIFI_CTRL, "\n");
-        }
     }
     else
     {
-        wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Removing the entries for the bandwidth %s\n", __FUNCTION__, __LINE__, bandwidth_str);
         remove_chanlist_entries(chanlist);
     }
     return webconfig_error_none;
@@ -2596,7 +2584,6 @@ void decode_acs_keep_out_json(const char *json_string, unsigned int num_of_radio
             radio_oper->acs_keep_out_reset = true; 
             for(int k = 0;k<MAX_NUM_CHANNELBANDWIDTH_SUPPORTED;k++)
             {
-                wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Removing the entries for the Radio index = %d\n",__FUNCTION__,__LINE__,i);
                 remove_chanlist_entries(&radio_oper->channels_per_bandwidth[k]);
             }
         }
@@ -2612,7 +2599,7 @@ void decode_acs_keep_out_json(const char *json_string, unsigned int num_of_radio
             radio_oper = &data->u.decoded.radios[radioIndex].oper;
             if (!radio_oper) {
                 wifi_util_error_print(WIFI_CTRL,
-                    "%s:%d SREESH Could not retrieve values for radio_operationparam for radioIndex= "
+                    "%s:%d Could not retrieve values for radio_operationparam for radioIndex= "
                     "%d\n",
                     __FUNCTION__, __LINE__, radioIndex);
                 continue;
@@ -2622,12 +2609,11 @@ void decode_acs_keep_out_json(const char *json_string, unsigned int num_of_radio
                 if (decode_bandwidth_from_json(radioParams, freq_band, radio_oper) !=
                     webconfig_error_none) {
                     wifi_util_error_print(WIFI_CTRL,
-                        "%s:%d SREESH decode_bandwidth_from_json returned error\n", __FUNCTION__,
+                        "%s:%d decode_bandwidth_from_json returned error\n", __FUNCTION__,
                         __LINE__);
                     return;
                 }
             } else {
-                wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Removing the entries for the radioIndex %d\n", __FUNCTION__, __LINE__, radioIndex);
                 radio_oper->acs_keep_out_reset = true; // Optimize in Phase 2
                 for(int k = 0;k<MAX_NUM_CHANNELBANDWIDTH_SUPPORTED;k++)
                 {

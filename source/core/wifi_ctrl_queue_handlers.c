@@ -2868,7 +2868,6 @@ void process_acs_keep_out_channels_event(const char* json_data)
     webconfig_subdoc_data_t data;
     wifi_radio_operationParam_t *radio_oper = NULL;
     memset(&data, 0, sizeof(webconfig_subdoc_data_t));
-    wifi_util_info_print(WIFI_CTRL,"%s:%d: SREESH process_acs_keep_out_channels_event started\n",__func__,__LINE__);
     decode_acs_keep_out_json(json_data,numOfRadios,&data);
     for(unsigned int i=0;i<numOfRadios;i++)
     {
@@ -2877,26 +2876,17 @@ void process_acs_keep_out_channels_event(const char* json_data)
         {
             radio_oper->acs_keep_out_reset = data.u.decoded.radios[i].oper.acs_keep_out_reset;
             memcpy(radio_oper->channels_per_bandwidth, data.u.decoded.radios[i].oper.channels_per_bandwidth,sizeof(data.u.decoded.radios[i].oper.channels_per_bandwidth));
-            
-            wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Inside radio_oper is not NULL for radioindex = %d\n",__FUNCTION__,__LINE__,i);
             if(radio_oper->acs_keep_out_reset)
             {
-                wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Clearing the ACS from nvram for radioindex = %d\n",__FUNCTION__,__LINE__,i);
                 wifi_hal_set_acs_keep_out_chans(NULL,i);
                 radio_oper->acs_keep_out_reset = false;
             }
             else
             {
-                wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Setting the ACS config to nvram for radioindex = %d\n",__FUNCTION__,__LINE__,i);
                 wifi_hal_set_acs_keep_out_chans(radio_oper,i);
             }
         }
-        else
-        {
-            wifi_util_error_print(WIFI_CTRL,"%s:%d SREESH radio_oper is NULL\n",__func__,__LINE__);
-        }
     }
-    wifi_util_info_print(WIFI_CTRL,"%s:%d: SREESH process_acs_keep_out_channels_event completed\n",__func__,__LINE__);
 }
 
 void process_neighbor_scan_command_event()
