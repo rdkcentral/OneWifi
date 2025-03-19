@@ -22,6 +22,7 @@
 
 #include "wifi_base.h"
 #include "wifi_hal.h"
+#include "wifi_webconfig.h"
 #include <pthread.h>
 #include <stdarg.h>
 #include <stdbool.h>
