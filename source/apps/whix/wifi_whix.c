@@ -54,6 +54,15 @@
 #define CAPTURE_VAP_STATUS_INTERVAL_MS 5*60*1000 // 5 minutes
 #define RADIO_DIAG_STATS_INTERVAL_MS 30000 // 30 seconds
 #define WIFI_CHANUTIL_PROVIDER_DELAY_SEC 5 // 5 seconds
+#define MAC_FMT "%02x:%02x:%02x:%02x:%02x:%02x"
+#define MAC_ARG(arg) \
+    arg[0], \
+    arg[1], \
+    arg[2], \
+    arg[3], \
+    arg[4], \
+    arg[5]
+#define AP_UNABLE_TO_HANDLE_ADDITIONAL_ASSOCIATIONS 17
 static unsigned int vap_up_arr[MAX_VAP]={0};
 static unsigned char vap_nas_status[MAX_VAP]={0};
 static unsigned int vap_iteration=0;
@@ -78,6 +87,27 @@ typedef struct {
 #if 0
 whix_assoc_stats_t whix_assoc_stats[MAX_NUM_RADIOS];
 #endif
+
+static whix_data_t *get_whix_data()
+{
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_apps_mgr_t *apps_mgr = NULL;
+    wifi_app_t *wifi_app = NULL;
+
+    apps_mgr = &ctrl->apps_mgr;
+    if (apps_mgr == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d NULL Pointer \n", __func__, __LINE__);
+        return NULL;
+    }
+
+    wifi_app = get_app_by_inst(apps_mgr, wifi_app_inst_whix);
+    if (wifi_app == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d NULL Pointer \n", __func__, __LINE__);
+        return NULL;
+    }
+
+    return &wifi_app->data.u.whix;
+}
 
 static inline char *to_sta_key    (mac_addr_t mac, sta_key_t key)
 {
@@ -2111,6 +2141,99 @@ static void config_radio_diag_stats(wifi_monitor_data_t *data)
     }
 }
 
+static void update_rejected_client_stats(wifi_app_t *app, void *data)
+{
+    assoc_dev_data_t *assoc_data = (assoc_dev_data_t *)data;
+
+    if (assoc_data == NULL || assoc_data->ap_index >= MAX_VAP || assoc_data->ap_index < 0) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d: Invalid assoc_data\n", __func__, __LINE__);
+        return;
+    }
+
+    if (assoc_data->reason == AP_UNABLE_TO_HANDLE_ADDITIONAL_ASSOCIATIONS) {
+        char tmp[128] = { 0 };
+
+        rejected_client_stat_t *rejected_client_stats =
+            &app->data.u.whix.rejected_client_stats[assoc_data->ap_index];
+
+        wifi_util_info_print(WIFI_APPS,
+            "%s:%d: Device Failed to connect on interface:%d mac:" MAC_FMT "\n", __func__, __LINE__,
+            assoc_data->ap_index, MAC_ARG(assoc_data->dev_stats.cli_MACAddress));
+
+        get_formatted_time(tmp);
+        rejected_client_stats->ap_rejected_sta_count++;
+        memset(rejected_client_stats->last_time_ap_rejected_sta, 0,
+            sizeof(rejected_client_stats->last_time_ap_rejected_sta));
+        strncpy(rejected_client_stats->last_time_ap_rejected_sta, tmp,
+            sizeof(rejected_client_stats->last_time_ap_rejected_sta) - 1);
+    }
+}
+
+static void rejected_client_stats(void *args)
+{
+    whix_data_t *whix_obj = get_whix_data();
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    unsigned int vap_index;
+    char temp[128] = { 0 }, logbuf[1024] = { 0 }, event_name[38] = { 0 };
+
+    for (int ap_index = 0; ap_index < (int)getTotalNumberVAPs(); ap_index++) {
+        vap_index = VAP_INDEX(mgr->hal_cap, ap_index);
+        wifi_util_dbg_print(WIFI_APPS, "Value of ap_index %d and vap_index is %d\n", __func__,
+            ap_index, vap_index);
+        rejected_client_stat_t *ap_params = &whix_obj->rejected_client_stats[vap_index];
+
+        if (ap_params->ap_rejected_sta_count > 0) {
+            get_formatted_time(temp);
+            snprintf(logbuf, sizeof(logbuf), "%s RejectedClientsCountMaxThreshold_%d:%u\n", temp,
+                vap_index + 1, ap_params->ap_rejected_sta_count);
+            write_to_file(wifi_health_log, logbuf);
+
+            snprintf(event_name, sizeof(event_name), "RejectedClientsCountMaxThreshold_%d",
+                vap_index + 1);
+            get_stubs_descriptor()->t2_event_d_fn(event_name, ap_params->ap_rejected_sta_count);
+
+            if (strlen(ap_params->last_time_ap_rejected_sta) > 0) {
+                wifi_util_dbg_print(WIFI_APPS,
+                    "%s:%d: For Vap %d => ap_rejected_sta_count %d, ap_rejected_last_client %s\n",
+                    __func__, __LINE__, vap_index, ap_params->ap_rejected_sta_count,
+                    ap_params->last_time_ap_rejected_sta);
+
+                memset(logbuf, 0, sizeof(logbuf));
+                snprintf(logbuf, sizeof(logbuf), "%s LastClientRejectedTime_%d_split:%s\n", temp,
+                    vap_index + 1, ap_params->last_time_ap_rejected_sta);
+                write_to_file(wifi_health_log, logbuf);
+
+                memset(event_name, 0, sizeof(event_name));
+                snprintf(event_name, sizeof(event_name), "LastClientRejectedTime_%d_split",
+                    vap_index + 1);
+                get_stubs_descriptor()->t2_event_s_fn(event_name,
+                    ap_params->last_time_ap_rejected_sta);
+                memset(ap_params->last_time_ap_rejected_sta, '\0',
+                    sizeof(ap_params->last_time_ap_rejected_sta));
+            }
+            ap_params->ap_rejected_sta_count = 0;
+        }
+    }
+}
+
+static void config_rejected_client_stats(wifi_app_t *app)
+{
+    wifi_global_param_t *global_param = get_wifidb_wifi_global_param();
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+
+    if ((global_param != NULL) && (global_param->whix_log_interval != 0)) {
+        if (app->data.u.whix.vap_max_client_id != 0) {
+            scheduler_cancel_timer_task(ctrl->sched, app->data.u.whix.vap_max_client_id);
+            app->data.u.whix.vap_max_client_id = 0;
+        }
+        scheduler_add_timer_task(ctrl->sched, FALSE, &app->data.u.whix.vap_max_client_id,
+            rejected_client_stats, NULL, (global_param->whix_log_interval * 1000), 0, 0);
+    } else {
+        scheduler_add_timer_task(ctrl->sched, FALSE, &app->data.u.whix.vap_max_client_id,
+            rejected_client_stats, NULL, TELEMETRY_UPDATE_INTERVAL_MS, 0, 0);
+    }
+}
+
 static int push_whix_config_event_to_monitor_queue(wifi_mon_stats_request_state_t state,
     wifi_app_t *app)
 {
@@ -2135,6 +2258,8 @@ static int push_whix_config_event_to_monitor_queue(wifi_mon_stats_request_state_
     /* Add a scheduler task to calculate vapup status */
     scheduler_add_timer_task(ctrl->sched, FALSE, &(app->data.u.whix.sched_handler_id),
         capture_vapup_status, NULL, CAPTURE_VAP_STATUS_INTERVAL_MS, 0);
+
+    config_rejected_client_stats(app);
 
     memset(data, 0, sizeof(wifi_monitor_data_t));
     data->u.mon_stats_config.req_state = state;
@@ -2170,6 +2295,7 @@ void reconfigure_whix_interval(wifi_app_t *app, wifi_event_t *event)
     if (whix_log_interval && whix_chutil_interval) {
         push_whix_config_event_to_monitor_queue(mon_stats_request_state_start, app);
     }
+    config_rejected_client_stats(app);
 }
 
 static void wps_enable_telemetry(wifi_app_t *app, wifi_event_t *event)
@@ -2331,16 +2457,19 @@ void radius_failover_and_fallback_marker(wifi_app_t *app, void *data)
 
 void handle_whix_hal_ind_event(wifi_app_t *app, wifi_event_t *event)
 {
-    switch(event->sub_type) {
-        case wifi_event_radius_eap_failure:
-            radius_eap_failure_event_marker(app, event->u.core_data.msg);
+    switch (event->sub_type) {
+    case wifi_event_radius_eap_failure:
+        radius_eap_failure_event_marker(app, event->u.core_data.msg);
         break;
-        case wifi_event_radius_fallback_and_failover:
-            radius_failover_and_fallback_marker(app,event->u.core_data.msg);
+    case wifi_event_radius_fallback_and_failover:
+        radius_failover_and_fallback_marker(app, event->u.core_data.msg);
         break;
-        default:
+    case wifi_event_hal_deauth_frame:
+        update_rejected_client_stats(app, event->u.core_data.msg);
         break;
-     }
+    default:
+        break;
+    }
 }
 
 #ifdef ONEWIFI_WHIX_APP_SUPPORT

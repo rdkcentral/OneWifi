@@ -434,6 +434,7 @@ typedef struct {
     bool greylist_enabled_rfc;
     bool cac_enabled_rfc;
     bool tcm_enabled_rfc;
+    bool wpa3_compatibility_enable;
 } wifi_rfc_dml_parameters_t;
 
 typedef struct {
@@ -815,6 +816,18 @@ typedef struct {
     time_t        frame_timestamp;
     frame_data_t  msg_data;
 } __attribute__((__packed__)) assoc_req_elem_t;
+
+typedef struct {
+    mac_address_t sta_mac;
+    int assoc_akm;
+    int eapol_akm;
+    int akm_24_24_count;
+    int akm_8_8_count;
+    int akm_2_2_count;
+    int akm_24_8_count;
+    int akm_24_2_count;
+    int akm_8_2_count;
+} telemetry_data_t;
 
 typedef struct {
     mac_address_t  sta_mac; /* this is mld-mac addr for wifi7 clients */
