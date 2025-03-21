@@ -889,7 +889,7 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
             "11:22:33:44:55:66");
         convert_radio_index_to_freq_band(&hal_cap->wifi_prop, radioIndx, &band);
         default_vap_info->u.bss_info.mbo_enabled = true;
-#if defined (HOSTAP_MGMT_FRAME_CTRL)
+#if defined (FEATURE_HOSTAP_MGMT_FRAME_CTRL)
 #if !defined (_WNXL11BWL_PRODUCT_REQ_) || !defined (_SR213_PRODUCT_REQ_)
         default_vap_info->u.bss_info.hostap_mgt_frame_ctrl = true;
 #else

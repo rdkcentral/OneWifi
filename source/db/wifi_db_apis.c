@@ -77,6 +77,7 @@
 #define TCM_THRESHOLD "0.18"
 #define ONEWIFI_DB_VERSION_WPA3_COMP_FLAG 100032
 #define WPA3_COMPATIBILITY 8192
+#define ONEWIFI_DB_VERSION_HOSTAP_MGMT_FRAME_CTRL_FLAG 100033
 
 ovsdb_table_t table_Wifi_Radio_Config;
 ovsdb_table_t table_Wifi_VAP_Config;
@@ -4424,6 +4425,14 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
                 wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i], &rdk_config[i]);
             }
         }
+
+        if (g_wifidb->db_version < ONEWIFI_DB_VERSION_HOSTAP_MGMT_FRAME_CTRL_FLAG) {
+#if defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_)
+            config->vap_array[i].u.bss_info.hostap_mgt_frame_ctrl = true;
+            wifi_util_info_print(WIFI_DB, "%s Update hostap_mgt_frame_ctrl:%d \n", __func__, config->vap_array[i].u.bss_info.hostap_mgt_frame_ctrl);
+            wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i], &rdk_config[i]);
+#endif
+        }
     }
 }
 
@@ -6712,13 +6721,13 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
 #endif // NEWPLATFORM_PORT
 #endif //_SKY_HUB_COMMON_PRODUCT_REQ_
 
-#if defined (HOSTAP_MGMT_FRAME_CTRL)
+#if defined (FEATURE_HOSTAP_MGMT_FRAME_CTRL)
 #if !defined (_WNXL11BWL_PRODUCT_REQ_) || !defined (_SR213_PRODUCT_REQ_)
         cfg.u.bss_info.hostap_mgt_frame_ctrl = true;
 #else
         cfg.u.bss_info.hostap_mgt_frame_ctrl = false;
 #endif // !defined (_WNXL11BWL_PRODUCT_REQ_) || !defined (_SR213_PRODUCT_REQ_)
-#endif // HOSTAP_MGMT_FRAME_CTRL
+#endif // FEATURE_HOSTAP_MGMT_FRAME_CTRL
 
         memset(ssid, 0, sizeof(ssid));
 
