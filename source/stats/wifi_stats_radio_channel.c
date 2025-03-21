@@ -861,12 +861,6 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
 		onchan_num_channels = 1;
 		on_chan_list[0] = radioOperation->channel;
 	}
-        if ((unsigned int)args->channel_list.channels_list[0] == radioOperation->channel &&
-            args->channel_list.num_channels > 1) {
-            channels[0] = args->channel_list.channels_list[1];
-        } else {
-            channels[0] = args->channel_list.channels_list[0];
-        }
         // skip on-channel scan list
         for (int i = 0; i < args->channel_list.num_channels; i++) {
             int unmatched = 1;
@@ -883,10 +877,10 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
         for (i = 0; i < new_num_channels; i++) {
             if (mon_data->last_scanned_channel[args->radio_index] ==
                 updated_channels[i]) {
-                if ((i + 1) >= new_num_channels) {
-                    channels[0] = updated_channels[0];
+		    if ((i + 1) >= new_num_channels) {
+			    channels[0] = updated_channels[i]
 		    } else {
-                    channels[0] = updated_channels[i + 1];
+			    channels[0] = updated_channels[i + 1];
 		    }
 	    }
 	}
