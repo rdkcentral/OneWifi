@@ -618,6 +618,66 @@ bus_error_t webconfig_get_dml_subdoc(char *event_name, raw_data_t *p_data)
     webconfig_subdoc_data_t data;
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    int vap_index;
+    wifi_back_haul_sta_t *sta_info;
+    wifi_platform_property_t *wifi_prop = &((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop;
+    mac_address_t zero_mac;
+    char ifname[100] = {0};
+    int ret = 0;
+    mac_addr_str_t mac_str;
+
+    memset(zero_mac, 0, sizeof(mac_address_t));
+    /*
+      In case of Easymesh mode few checks should be done before the dml subdoc is sent.
+       1) Check al_mac address is non-zero and colocated_mode is either 0 or 1. If any of
+          them incorrect, return bus_error.
+       2) If colocated_mode is 0 then check whether configured al_mac has a valid interface
+          and if it is a interface in interface map should be a sta interface and should be
+          in connected state.
+    */
+    if (ctrl->network_mode == rdk_dev_mode_type_em_node ||
+        ctrl->network_mode == rdk_dev_mode_type_em_colocated_node) {
+        /* check 1 */
+        if (memcmp(wifi_prop->al_1905_mac, zero_mac, sizeof(mac_address_t)) == 0 ||
+            wifi_prop->colocated_mode == -1) {
+            wifi_util_error_print(WIFI_CTRL,
+                "%s:%d FATAL Error al_mac:%s or colocated_mode:%d incorrect\n", __func__, __LINE__,
+                to_mac_str(wifi_prop->al_1905_mac, mac_str), wifi_prop->colocated_mode);
+            return bus_error_access_not_allowed;
+        }
+        /* check 2 */
+        if (wifi_prop->colocated_mode == 0) {
+            /* colocated_mode 0 check ifname is sta and connected*/
+            ret = interfacename_from_mac((const mac_address_t *)wifi_prop->al_1905_mac, ifname);
+            if (ret != 0) {
+                wifi_util_error_print(WIFI_CTRL,
+                    "%s:%d FATAL Error Interface not found for al_mac:%s\n", __func__, __LINE__,
+                    to_mac_str(wifi_prop->al_1905_mac, mac_str));
+                return bus_error_access_not_allowed;
+            }
+            vap_index = convert_ifname_to_vap_index(wifi_prop, ifname);
+            if (vap_index != -1) {
+                sta_info = get_wifi_object_sta_parameter(vap_index);
+                if (sta_info == NULL || sta_info->conn_status != wifi_connection_status_connected) {
+                    wifi_util_error_print(WIFI_CTRL,
+                        "%s:%d Error backhaul interface:%p is not sta interface or not connected, "
+                        "conn_status:%d\n",
+                        __func__, __LINE__, sta_info,
+                        (sta_info == NULL) ? 0 : sta_info->conn_status);
+                    return bus_error_access_not_allowed;
+                }
+            } else {
+                /* check the interface name before treating it as error */
+                if (strncmp(ifname, "eth", strlen("eth")) != 0 &&
+                    strncmp(ifname, "lo", strlen("lo")) != 0) {
+                    wifi_util_error_print(WIFI_CTRL,
+                        "%s:%d Error ifname:%s is not ethernet or loopback interface.\n", __func__,
+                        __LINE__, ifname);
+                    return bus_error_access_not_allowed;
+                }
+            }
+        }
+    }
 
     memset(&data, 0, sizeof(webconfig_subdoc_data_t));
     memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&mgr->radio_config,
@@ -638,7 +698,7 @@ bus_error_t webconfig_get_dml_subdoc(char *event_name, raw_data_t *p_data)
     p_data->data_type = bus_data_type_string;
     p_data->raw_data.bytes = malloc(str_size);
     if (p_data->raw_data.bytes == NULL) {
-        wifi_util_error_print(WIFI_CTRL,"%s:%d memory allocation is failed:%d\r\n",__func__,
+        wifi_util_error_print(WIFI_CTRL, "%s:%d memory allocation is failed:%d\r\n", __func__,
             __LINE__, str_size);
         return bus_error_out_of_resources;
     }
@@ -1390,6 +1450,43 @@ static int eth_bh_status_notify()
 }
 #endif
 
+static void acs_keep_out_evt_handler(char* event_name, raw_data_t *p_data)
+{    
+    if (p_data->data_type != bus_data_type_string) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d event:%s wrong data type:%x\n", __func__, __LINE__,
+            event_name, p_data->data_type);
+        return;
+    }
+    char *json_schema = (char*)malloc((p_data->raw_data_len + 1)*sizeof(char));
+    strncpy(json_schema,(char*)p_data->raw_data.bytes, p_data->raw_data_len);
+    json_schema[p_data->raw_data_len] = '\0';
+    wifi_util_info_print(WIFI_CTRL, "%s:%d Received bus ACS Keep-Out json_schema: %s \n", __func__, __LINE__, json_schema);
+    push_event_to_ctrl_queue(json_schema, (strlen(json_schema) + 1),wifi_event_type_webconfig,wifi_event_webconfig_data_to_hal_apply,NULL);
+}
+
+void* bus_get_keep_out_json()
+{
+    bus_error_t rc;
+    wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
+    raw_data_t data;
+    memset(&data, 0, sizeof(raw_data_t));
+    rc = get_bus_descriptor()->bus_data_get_fn(&g_wifi_mgr->ctrl.handle, ACS_KEEP_OUT,
+        &data);
+    if (data.data_type != bus_data_type_string) {
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%d\n", __func__, __LINE__,
+            ACS_KEEP_OUT, data.data_type, rc);
+        get_bus_descriptor()->bus_data_free_fn(&data);
+        return NULL;
+    }
+    char *json_schema = (char*)malloc((data.raw_data_len + 1)*sizeof(char));
+    strncpy(json_schema,(char*)data.raw_data.bytes, data.raw_data_len);
+    json_schema[data.raw_data_len] = '\0';
+    wifi_util_info_print(WIFI_CTRL, "%s:%d bus get json_schema: %s \n", __func__, __LINE__, json_schema);
+    get_bus_descriptor()->bus_data_free_fn(&data);
+    return (void*)json_schema;
+}
+
 void speed_test_handler (char *event_name, raw_data_t *p_data)
 {
     speed_test_data_t speed_test_data = { 0 };
@@ -1621,6 +1718,16 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
         }
     }
 
+    if (ctrl->mesh_keep_out_chans_subscribed == false) {
+        if (bus_desc->bus_event_subs_fn(&ctrl->handle, ACS_KEEP_OUT, acs_keep_out_evt_handler,
+                 NULL,0) != bus_error_success) {
+            // wifi_util_dbg_print(WIFI_CTRL,"%s:%d bus: bus event:%s subscribe failed\n",__FUNCTION__, __LINE__, ACS_KEEP_OUT);      
+                } else {
+                    ctrl->mesh_keep_out_chans_subscribed = true;
+                    wifi_util_dbg_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe success\n",__FUNCTION__, __LINE__, ACS_KEEP_OUT);
+        }
+    }
+        
 #if defined(RDKB_EXTENDER_ENABLED)
     if (ctrl->eth_bh_status_subscribed == false) {
         if (bus_desc->bus_event_subs_fn(&ctrl->handle, ETH_BH_STATUS, eth_bh_status_handler, NULL,

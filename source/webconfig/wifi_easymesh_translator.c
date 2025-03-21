@@ -69,63 +69,6 @@ void convert_vap_name_to_hault_type(em_haul_type_t *haultype, char *vapname)
         }
 }
 
-// This routine will take mac adderess from the user and returns interfacename
-int interfacename_from_mac(const mac_address_t *mac, char *ifname)
-{
-    struct ifaddrs *ifaddr = NULL, *tmp = NULL;
-    struct sockaddr *addr;
-    struct sockaddr_ll *ll_addr;
-    bool found = false;
-
-    if (getifaddrs(&ifaddr) != 0) {
-        wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: Failed to get interfae information\n", __func__, __LINE__);
-        return -1;
-    }
-
-    tmp = ifaddr;
-    while (tmp != NULL) {
-        addr = tmp->ifa_addr;
-        ll_addr = (struct sockaddr_ll*)tmp->ifa_addr;
-        if ((addr != NULL) && (addr->sa_family == AF_PACKET) && (memcmp(ll_addr->sll_addr, mac, sizeof(mac_address_t)) == 0)) {
-            strncpy(ifname, tmp->ifa_name, strlen(tmp->ifa_name));
-            found = true;
-            break;
-        }
-
-        tmp = tmp->ifa_next;
-    }
-
-    freeifaddrs(ifaddr);
-
-    return (found == true) ? 0:-1;
-}
-
-// This routine will take mac adderess from the user and returns interfacename
-int mac_address_from_name(const char *ifname, mac_address_t mac)
-{
-    int sock;
-    struct ifreq ifr;
-
-    if ((sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP)) < 0) {
-        wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: Failed to create socket\n", __func__, __LINE__);
-        return -1;
-    }
-
-    memset(&ifr, 0, sizeof(struct ifreq));
-    ifr.ifr_addr.sa_family = AF_INET;
-    strcpy(ifr.ifr_name, ifname);
-    if (ioctl(sock, SIOCGIFHWADDR, &ifr) != 0) {
-        close(sock);
-        wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: ioctl failed to get hardware address for interface:%s\n", __func__, __LINE__, ifname);
-        return -1;
-    }
-
-    memcpy(mac, (unsigned char *)ifr.ifr_hwaddr.sa_data, sizeof(mac_address_t));
-
-    close(sock);
-
-    return 0;
-}
 // webconfig_easymesh_decode() will convert the onewifi structures to easymesh structures
 webconfig_error_t webconfig_easymesh_decode(webconfig_t *config, const char *str,
         webconfig_external_easymesh_t *data,
@@ -530,7 +473,7 @@ webconfig_error_t translate_radio_object_to_easymesh_for_dml(webconfig_subdoc_da
     return webconfig_error_none;
 }
 
-// translate_vap_info_to_em_common() converts common data elements of wwifi_vap_info_ifi_vap_info_t to em_bss_info_t of  easymesh
+// translate_vap_info_to_em_common() converts common data elements of wifi_vap_info_t to em_bss_info_t of easymesh
 webconfig_error_t translate_vap_info_to_em_common(const wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, em_bss_info_t *vap_row, em_ssid_2_vid_map_info_t  *ssid_vid_map, wifi_platform_property_t *wifi_prop)
 {
     unsigned k = 0;
@@ -543,6 +486,12 @@ webconfig_error_t translate_vap_info_to_em_common(const wifi_vap_info_t *vap, co
     }
     vap_row->enabled = vap->u.bss_info.enabled;
     strncpy(vap_row->ssid, vap->u.bss_info.ssid, sizeof(vap_row->ssid));
+
+    // Set the em_bss_info_t vendor_elements to the same as wifi_vap_info_t vendor_elements
+    memset(vap_row->vendor_elements, 0, sizeof(vap_row->vendor_elements));
+    memcpy(vap_row->vendor_elements, vap->u.bss_info.vendor_elements, vap->u.bss_info.vendor_elements_len);
+    vap_row->vendor_elements_len = vap->u.bss_info.vendor_elements_len;
+
 
     sprintf(mac_str, "%02x:%02x:%02x:%02x:%02x:%02x", vap->u.bss_info.bssid[0], vap->u.bss_info.bssid[1],
             vap->u.bss_info.bssid[2], vap->u.bss_info.bssid[3],
@@ -1327,6 +1276,54 @@ webconfig_error_t translate_per_radio_vap_object_to_easymesh_bss_info(webconfig_
     }
     return webconfig_error_none;
 }
+
+#ifdef EM_APP
+// translate_beacon_report_object_to_easymesh_sta_info() converts data elements of
+// sta_beacon_report_reponse_t to em_sta_info_t of  easymesh
+webconfig_error_t translate_beacon_report_object_to_easymesh_sta_info(webconfig_subdoc_data_t *data,
+    wifi_freq_bands_t freq_band)
+{
+    em_sta_info_t em_sta_dev_info;
+    webconfig_external_easymesh_t *proto;
+    em_radio_info_t *radio_info;
+    em_bss_info_t *bss_info;
+    int vap_index = 0, radio_index = 0;
+    wifi_platform_property_t *wifi_prop;
+    webconfig_subdoc_decoded_data_t *params = &data->u.decoded;
+
+    if (params == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: decoded_params is NULL\n", __func__,
+            __LINE__);
+        return webconfig_error_decode;
+    }
+
+    vap_index = params->sta_beacon_report.ap_index;
+    wifi_prop = &data->u.decoded.hal_cap.wifi_prop;
+    radio_index = get_radio_index_for_vap_index(wifi_prop, vap_index);
+
+    proto = (webconfig_external_easymesh_t *)params->external_protos;
+    if (proto == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: em_sta_info_t is NULL\n", __func__, __LINE__);
+        return webconfig_error_translate_to_easymesh;
+    }
+
+    radio_info = proto->get_radio_info(proto->data_model, radio_index);
+    bss_info = proto->get_bss_info(proto->data_model, vap_index);
+
+    memcpy(em_sta_dev_info.id, params->sta_beacon_report.mac_addr, sizeof(mac_address_t));
+    memcpy(em_sta_dev_info.bssid, bss_info->bssid.mac, sizeof(mac_address_t));
+    memcpy(em_sta_dev_info.radiomac, radio_info->intf.mac, sizeof(mac_address_t));
+    em_sta_dev_info.beacon_report_len = params->sta_beacon_report.data_len;
+    em_sta_dev_info.num_beacon_meas_report = params->sta_beacon_report.num_br_data;
+
+    memcpy(em_sta_dev_info.beacon_report_elem, params->sta_beacon_report.data, params->sta_beacon_report.data_len);
+
+    proto->put_sta_info(proto->data_model, &em_sta_dev_info, em_target_sta_map_consolidated);
+
+    return webconfig_error_none;
+}
+#endif
+
 // translate_em_common_to_vap_info_common() converts common data elements of em_bss_info_t to wifi_vap_info_t  of Onewifi
 webconfig_error_t translate_em_common_to_vap_info_common( wifi_vap_info_t *vap, const em_bss_info_t *vap_row)
 {
@@ -1336,6 +1333,10 @@ webconfig_error_t translate_em_common_to_vap_info_common( wifi_vap_info_t *vap, 
     }
     vap->u.bss_info.enabled = vap_row->enabled ;
     strncpy(vap->u.bss_info.ssid,vap_row->ssid, sizeof(vap->u.bss_info.ssid));
+
+    memset(vap->u.bss_info.vendor_elements, 0, sizeof(vap->u.bss_info.vendor_elements));
+    memcpy(vap->u.bss_info.vendor_elements, vap_row->vendor_elements, vap_row->vendor_elements_len);
+    vap->u.bss_info.vendor_elements_len = vap_row->vendor_elements_len;
 
     return webconfig_error_none;
 }
@@ -1655,6 +1656,84 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_per_radio(webconfig_sub
 
     return webconfig_error_none;
 }
+
+#ifdef EM_APP
+//translating onewifi channel stas to easymesh channel stats info structure
+webconfig_error_t translate_channel_stats_to_easymesh_channel_info(webconfig_subdoc_data_t *data)
+{
+    channel_scan_response_t *channel_st;
+    webconfig_external_easymesh_t *proto;
+    int i, j, count = 0;
+
+    webconfig_subdoc_decoded_data_t *params = &data->u.decoded;
+    if (params == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: decoded_params is NULL\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    channel_st = (channel_scan_response_t *)params->collect_stats.stats;
+    if (channel_st == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Dev Stats is NULL\n", __func__, __LINE__);
+        return webconfig_error_translate_to_easymesh;
+    }
+
+    proto = (webconfig_external_easymesh_t *)params->external_protos;
+    if (proto == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: em_sta_info_t is NULL\n", __func__, __LINE__);
+        return webconfig_error_translate_to_easymesh;
+    }
+
+    for (i = 0; i < channel_st->num_results; i++) {
+
+        em_scan_result_t em_scan_result;
+        channel_scan_result_t *src = &channel_st->results[i];
+
+        em_scan_result.id.op_class = src->operating_class;
+        em_scan_result.id.channel = src->channel;
+        memset(em_scan_result.id.net_id, 0, sizeof(em_scan_result.id.net_id));
+        memset(em_scan_result.id.dev_mac, 0, sizeof(em_scan_result.id.dev_mac));
+        memset(em_scan_result.id.scanner_mac, 0, sizeof(em_scan_result.id.scanner_mac));
+
+        em_scan_result.scan_status = src->scan_status;
+        strncpy(em_scan_result.timestamp, src->time_stamp, sizeof(em_scan_result.timestamp) - 1);
+        em_scan_result.timestamp[sizeof(em_scan_result.timestamp) - 1] = '\0';
+        em_scan_result.util = src->utilization;
+        em_scan_result.noise = src->noise;
+        em_scan_result.num_neighbors = src->num_neighbors;
+        em_scan_result.aggr_scan_duration = 0;
+        em_scan_result.scan_type = 0;
+
+        for (j = 0; j < src->num_neighbors && j < EM_MAX_NEIGHORS; j++) {
+            neighbor_bss_t *src_neighbor = &src->neighbors[j];
+            em_neighbor_t *dst_neighbor = &em_scan_result.neighbor[j];
+
+            memcpy(dst_neighbor->bssid, src_neighbor->bssid, sizeof(bssid_t));
+            strncpy(dst_neighbor->ssid, src_neighbor->ssid, strlen(src_neighbor->ssid) + 1);
+            dst_neighbor->signal_strength = (signed char)src_neighbor->signal_strength;
+            if (strncmp(src_neighbor->channel_bandwidth, "20", strlen("20")) == 0) {
+                dst_neighbor->bandwidth = WIFI_CHANNELBANDWIDTH_20MHZ;
+            } else if (strncmp(src_neighbor->channel_bandwidth, "40", strlen("40")) == 0) {
+                dst_neighbor->bandwidth = WIFI_CHANNELBANDWIDTH_40MHZ;
+            } else if (strncmp(src_neighbor->channel_bandwidth, "80", strlen("80")) == 0) {
+                dst_neighbor->bandwidth = WIFI_CHANNELBANDWIDTH_40MHZ;
+            } else if (strncmp(src_neighbor->channel_bandwidth, "160", strlen("160")) == 0) {
+                dst_neighbor->bandwidth = WIFI_CHANNELBANDWIDTH_160MHZ;
+            } else if (strncmp(src_neighbor->channel_bandwidth, "320", strlen("320")) == 0) {
+                dst_neighbor->bandwidth = WIFI_CHANNELBANDWIDTH_320MHZ;
+            }
+            dst_neighbor->bss_color = 0x8f;
+            dst_neighbor->channel_util = 00;
+            dst_neighbor->sta_count = (unsigned short)src_neighbor->station_count;
+        }
+        count++;
+        proto->put_scan_results(proto->data_model, &em_scan_result);
+    }
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: No of scan results : %d \n", __func__, __LINE__, count);
+
+    return webconfig_error_none;
+}
+#endif
 
 // translate_from_easymesh_bssinfo_to_vap_object() converts data elements of wifi_vap_info_t to em_bss_info_t of  easymesh
 webconfig_error_t translate_from_easymesh_bssinfo_to_vap_object(webconfig_subdoc_data_t *data,char *vap_name)
@@ -2011,6 +2090,97 @@ webconfig_error_t   translate_vap_object_from_easymesh_to_dml(webconfig_subdoc_d
     }
     return webconfig_error_none;
 }
+
+#ifdef EM_APP
+// translate_policy_cfg_object_from_easymesh_to_em_cfg() converts data elements of
+// em_policy_cfg_params_t of easymesh to Onewifi
+webconfig_error_t translate_policy_cfg_object_from_easymesh_to_em_cfg(webconfig_subdoc_data_t *data)
+{
+    em_policy_cfg_params_t *em_policy_cfg;
+    em_config_t *policy_cfg;
+    webconfig_subdoc_decoded_data_t *decoded_params;
+    webconfig_external_easymesh_t *proto;
+
+    decoded_params = &data->u.decoded;
+    if (decoded_params == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: decoded_params is NULL\n", __func__,
+            __LINE__);
+        return webconfig_error_translate_from_easymesh;
+    }
+
+    proto = (webconfig_external_easymesh_t *)data->u.decoded.external_protos;
+    if (proto == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: external_protos is NULL\n", __func__,
+            __LINE__);
+        return webconfig_error_translate_from_easymesh;
+    }
+
+    em_policy_cfg = proto->policy_config;
+    if (em_policy_cfg == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d:rcvd policy cfg is NULL\n", __func__,
+            __LINE__);
+        return webconfig_error_translate_from_easymesh;
+    }
+
+    policy_cfg = &decoded_params->em_config;
+
+    // ap metric policy
+    policy_cfg->ap_metric_policy.interval = em_policy_cfg->metrics_policy.interval;
+    strncpy(policy_cfg->ap_metric_policy.managed_client_marker,
+        em_policy_cfg->vendor_policy.managed_client_marker,
+        strlen(em_policy_cfg->vendor_policy.managed_client_marker) + 1);
+
+    // local steering policy
+    policy_cfg->local_steering_dslw_policy.sta_count =
+        em_policy_cfg->steering_policy.local_steer_policy.num_sta;
+    for (int i = 0; i < policy_cfg->local_steering_dslw_policy.sta_count; i++) {
+        memcpy(policy_cfg->local_steering_dslw_policy.disallowed_sta[i],
+            em_policy_cfg->steering_policy.local_steer_policy.sta_mac[i], sizeof(mac_addr_t));
+    }
+
+    // btm steering policy
+    policy_cfg->btm_steering_dslw_policy.sta_count =
+        em_policy_cfg->steering_policy.btm_steer_policy.num_sta;
+    for (int i = 0; i < policy_cfg->btm_steering_dslw_policy.sta_count; i++) {
+        memcpy(policy_cfg->btm_steering_dslw_policy.disallowed_sta[i],
+            em_policy_cfg->steering_policy.btm_steer_policy.sta_mac[i], sizeof(mac_addr_t));
+    }
+
+    // backhaul bss config policy
+    memcpy(policy_cfg->backhaul_bss_config_policy.bssid, em_policy_cfg->bh_bss_cfg_policy.bssid,
+        sizeof(bssid_t));
+    policy_cfg->backhaul_bss_config_policy.profile_1_bsta_disallowed =
+        em_policy_cfg->bh_bss_cfg_policy.p1_bsta_disallowed;
+    policy_cfg->backhaul_bss_config_policy.profile_1_bsta_disallowed =
+        em_policy_cfg->bh_bss_cfg_policy.p2_bsta_disallowed;
+
+    // channel scan reporting policy
+    policy_cfg->channel_scan_reporting_policy.report_independent_channel_scan =
+        em_policy_cfg->channel_scan_policy.rprt_ind_ch_scan;
+
+    // radio metrics policy
+    policy_cfg->radio_metrics_policies.radio_count = em_policy_cfg->metrics_policy.radios_num;
+    for (int i = 0; i < policy_cfg->radio_metrics_policies.radio_count; i++) {
+        memcpy(policy_cfg->radio_metrics_policies.radio_metrics_policy[i].ruid,
+            em_policy_cfg->metrics_policy.radios[i].ruid, sizeof(mac_addr_t));
+        policy_cfg->radio_metrics_policies.radio_metrics_policy[i].sta_rcpi_threshold =
+            em_policy_cfg->metrics_policy.radios[i].rcpi_thres;
+        policy_cfg->radio_metrics_policies.radio_metrics_policy[i].sta_rcpi_hysteresis =
+            em_policy_cfg->metrics_policy.radios[i].rcpi_hysteresis;
+        policy_cfg->radio_metrics_policies.radio_metrics_policy[i].ap_util_threshold =
+            em_policy_cfg->metrics_policy.radios[i].util_thres;
+        policy_cfg->radio_metrics_policies.radio_metrics_policy[i].link_metrics =
+            (em_policy_cfg->metrics_policy.radios[i].sta_policy >> 2) & 1;
+        policy_cfg->radio_metrics_policies.radio_metrics_policy[i].traffic_stats =
+            (em_policy_cfg->metrics_policy.radios[i].sta_policy >> 1) & 1;
+        policy_cfg->radio_metrics_policies.radio_metrics_policy[i].sta_status =
+            (em_policy_cfg->metrics_policy.radios[i].sta_policy >> 3) & 1;
+    }
+
+    return webconfig_error_none;
+}
+#endif
+
 // translate_to_easymesh_tables() is translations of OneWifi structures to Easymesh structures based on type
 webconfig_error_t  translate_to_easymesh_tables(webconfig_subdoc_type_t type, webconfig_subdoc_data_t *data)
 {
@@ -2126,6 +2296,26 @@ webconfig_error_t  translate_to_easymesh_tables(webconfig_subdoc_type_t type, we
                 return webconfig_error_translate_to_easymesh;
             }
             break;
+#ifdef EM_APP
+        case webconfig_subdoc_type_em_channel_stats:
+            if (translate_channel_stats_to_easymesh_channel_info(data) != webconfig_error_none) {
+                wifi_util_error_print(WIFI_WEBCONFIG,
+                    "%s:%d: webconfig_subdoc_type_em_channel_stats EM channel stats translation to easymesh failed\n", __func__, __LINE__);
+                return webconfig_error_translate_to_easymesh;
+            }
+            break;
+
+        case webconfig_subdoc_type_beacon_report:
+            if (translate_beacon_report_object_to_easymesh_sta_info(data, WIFI_FREQUENCY_6_BAND) !=
+                webconfig_error_none) {
+                wifi_util_error_print(WIFI_WEBCONFIG,
+                    "%s:%d: webconfig_subdoc_type_private vap_object translation to easymesh "
+                    "failed\n",
+                    __func__, __LINE__);
+                return webconfig_error_translate_to_easymesh;
+            }
+            break;
+#endif
 
         default:
             break;
@@ -2214,6 +2404,18 @@ webconfig_error_t   translate_from_easymesh_tables(webconfig_subdoc_type_t type,
                 return webconfig_error_translate_from_easymesh;
             }
             break;
+
+#ifdef EM_APP
+        case webconfig_subdoc_type_em_config:
+            if (translate_policy_cfg_object_from_easymesh_to_em_cfg(data) != webconfig_error_none) {
+                wifi_util_error_print(WIFI_WEBCONFIG,
+                    "%s:%d: webconfig_subdoc_type_em_config policy_cfg object translation from "
+                    "easymesh failed\n",
+                    __func__, __LINE__);
+                return webconfig_error_translate_from_easymesh;
+            }
+            break;
+#endif
 
         default:
             break;
