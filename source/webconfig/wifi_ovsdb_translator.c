@@ -895,11 +895,7 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
             default_vap_info->u.bss_info.vapStatsEnable = true;
             default_vap_info->u.bss_info.wpsPushButton = 0;
             wifi_util_error_print(WIFI_WEBCONFIG, "SJY %s:%d The def value of wps enable in ovsdb before check is %d\n", __func__, __LINE__, default_vap_info->u.bss_info.wps.enable);
-#if defined(_CBR2_PRODUCT_REQ_)
-            default_vap_info->u.bss_info.wps.enable = false;
-#else
             default_vap_info->u.bss_info.wps.enable = true;
-#endif
             wifi_util_error_print(WIFI_WEBCONFIG, "SJY %s:%d The def value of wps enable in ovsdb is %d\n", __func__, __LINE__, default_vap_info->u.bss_info.wps.enable);
             default_vap_info->u.bss_info.rapidReconnectEnable = true;
             if (band == WIFI_FREQUENCY_6_BAND) {
