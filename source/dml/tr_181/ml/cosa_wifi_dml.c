@@ -11768,6 +11768,8 @@ WPS_SetParamBoolValue
     /* check the parameter name and set the corresponding value */
     if (AnscEqualString(ParamName, "Enable", TRUE)) {
 #if defined(_CBR2_PRODUCT_REQ_)
+        wifi_util_info_print(WIFI_DMCLI, "%s:%d:WPS option is not supported for CBRV2\n", __func__,
+            __LINE__);
         return FALSE;
 #else
         if (vapInfo->u.bss_info.wps.enable != bValue) {
