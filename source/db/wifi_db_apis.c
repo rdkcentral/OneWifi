@@ -6712,6 +6712,14 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
 #endif // NEWPLATFORM_PORT
 #endif //_SKY_HUB_COMMON_PRODUCT_REQ_
 
+#if defined (HOSTAP_MGMT_FRAME_CTRL)
+#if !defined (_WNXL11BWL_PRODUCT_REQ_) || !defined (_SR213_PRODUCT_REQ_)
+        cfg.u.bss_info.hostap_mgt_frame_ctrl = true;
+#else
+        cfg.u.bss_info.hostap_mgt_frame_ctrl = false;
+#endif // !defined (_WNXL11BWL_PRODUCT_REQ_) || !defined (_SR213_PRODUCT_REQ_)
+#endif // HOSTAP_MGMT_FRAME_CTRL
+
         memset(ssid, 0, sizeof(ssid));
 
         if (wifi_hal_get_default_ssid(ssid, vap_index) == 0) {
