@@ -2552,7 +2552,6 @@ int wifidb_update_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
         cfg.bss_hotspot = config->u.bss_info.bssHotspot;
         cfg.wps_push_button = config->u.bss_info.wpsPushButton;
         cfg.wps_config_methods = config->u.bss_info.wps.methods;
-        wifi_util_error_print(WIFI_DB,"SJY %s:%d: The value of WPS Enable before if check is %d\n",__func__, __LINE__,config->u.bss_info.wps.enable);
 #if defined(_CBR2_PRODUCT_REQ_)
         if(config->u.bss_info.wps.enable != false) {
             cfg.wps_enabled = false;
@@ -2560,7 +2559,6 @@ int wifidb_update_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
 #else
         cfg.wps_enabled = config->u.bss_info.wps.enable;
 #endif /* _CBR2_PRODUCT_REQ_ */
-        wifi_util_error_print(WIFI_DB,"SJY %s:%d: The value of WPS Enabled in Wifi_VAP_config %d\n",__func__, __LINE__,cfg.wps_enabled);
         strncpy(cfg.beacon_rate_ctl,config->u.bss_info.beaconRateCtl,sizeof(cfg.beacon_rate_ctl)-1);
         strncpy(cfg.mfp_config,"Disabled",sizeof(cfg.mfp_config)-1);
         cfg.hostap_mgt_frame_ctrl = config->u.bss_info.hostap_mgt_frame_ctrl;
@@ -6590,7 +6588,6 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
 #else
             cfg.u.bss_info.wps.enable = true;
 #endif
-            wifi_util_error_print(WIFI_DB, "SJY %s:%d: Value of WPS enable in db is %d\n", __func__, __LINE__, cfg.u.bss_info.wps.enable);
             cfg.u.bss_info.rapidReconnectEnable = true;
         } else {
             cfg.u.bss_info.vapStatsEnable = false;

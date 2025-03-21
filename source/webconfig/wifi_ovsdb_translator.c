@@ -772,7 +772,7 @@ void get_translator_config_wpa_oftags(
 
 webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
 {
-    wifi_util_dbg_print(WIFI_WEBCONFIG, "SJY %s:%d\n", __func__, __LINE__);
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d\n", __func__, __LINE__);
     webconfig_subdoc_decoded_data_t *decoded_params, *default_decoded_params;
     wifi_hal_capability_t *hal_cap, *default_hal_cap;
     unsigned int i = 0;
@@ -894,9 +894,7 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
             default_vap_info->u.bss_info.network_initiated_greylist = false;
             default_vap_info->u.bss_info.vapStatsEnable = true;
             default_vap_info->u.bss_info.wpsPushButton = 0;
-            wifi_util_error_print(WIFI_WEBCONFIG, "SJY %s:%d The def value of wps enable in ovsdb before check is %d\n", __func__, __LINE__, default_vap_info->u.bss_info.wps.enable);
             default_vap_info->u.bss_info.wps.enable = true;
-            wifi_util_error_print(WIFI_WEBCONFIG, "SJY %s:%d The def value of wps enable in ovsdb is %d\n", __func__, __LINE__, default_vap_info->u.bss_info.wps.enable);
             default_vap_info->u.bss_info.rapidReconnectEnable = true;
             if (band == WIFI_FREQUENCY_6_BAND) {
                 default_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa3_personal;
