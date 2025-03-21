@@ -2862,6 +2862,32 @@ int get_neighbor_scan_results(void *arg)
     return TIMER_TASK_COMPLETE;
 }
 
+void process_acs_keep_out_channels_event(const char* json_data)
+{
+    unsigned int numOfRadios = getNumberRadios();
+    webconfig_subdoc_data_t data;
+    wifi_radio_operationParam_t *radio_oper = NULL;
+    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+    decode_acs_keep_out_json(json_data,numOfRadios,&data);
+    for(unsigned int i=0;i<numOfRadios;i++)
+    {
+        radio_oper = (wifi_radio_operationParam_t *)get_wifidb_radio_map(i);
+        if(radio_oper)
+        {
+            radio_oper->acs_keep_out_reset = data.u.decoded.radios[i].oper.acs_keep_out_reset;
+            memcpy(radio_oper->channels_per_bandwidth, data.u.decoded.radios[i].oper.channels_per_bandwidth,sizeof(data.u.decoded.radios[i].oper.channels_per_bandwidth));
+            if(radio_oper->acs_keep_out_reset)
+            {
+                wifi_hal_set_acs_keep_out_chans(NULL,i);
+                radio_oper->acs_keep_out_reset = false;
+            }
+            else
+            {
+                wifi_hal_set_acs_keep_out_chans(radio_oper,i);
+            }
+        }
+    }
+}
 
 void process_neighbor_scan_command_event()
 {
@@ -3496,6 +3522,10 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
     case wifi_event_webconfig_data_req_from_dml:
         apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, subtype, NULL);
         ctrl->webconfig_state |= ctrl_webconfig_state_trigger_dml_thread_data_update_pending;
+        break;
+    
+    case wifi_event_webconfig_data_to_hal_apply: //Re-factor this for Phase 2
+        process_acs_keep_out_channels_event(raw);
         break;
 
     default:

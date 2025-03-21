@@ -890,7 +890,12 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
         convert_radio_index_to_freq_band(&hal_cap->wifi_prop, radioIndx, &band);
         default_vap_info->u.bss_info.mbo_enabled = true;
 #if defined (HOSTAP_MGMT_FRAME_CTRL)
+#if !defined (_WNXL11BWL_PRODUCT_REQ_) || !defined (_SR213_PRODUCT_REQ_)
         default_vap_info->u.bss_info.hostap_mgt_frame_ctrl = true;
+#else
+        // Disable hostap mgt frame control for SR213 and WNXL11BWL
+        default_vap_info->u.bss_info.hostap_mgt_frame_ctrl = false;
+#endif
 #endif
         if (is_vap_private(&hal_cap->wifi_prop, vapIndex) == TRUE) {
             default_vap_info->u.bss_info.network_initiated_greylist = false;

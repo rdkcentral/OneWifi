@@ -6378,6 +6378,13 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
         }
     }
     cfg.autoChannelEnabled = true;
+    for(int i=0 ;i<MAX_NUM_CHANNELBANDWIDTH_SUPPORTED;i++)
+    {
+        cfg.channels_per_bandwidth[i].num_channels_list = 0;
+        memset(cfg.channels_per_bandwidth[i].channels_list,0,sizeof(cfg.channels_per_bandwidth[i].channels_list));
+        cfg.channels_per_bandwidth[i].chanwidth = 0;
+    }
+    cfg.acs_keep_out_reset = false;
     cfg.csa_beacon_count = 100;
     country_code_val = wifi_countrycode_US;
     if (wifi_hal_get_default_country_code(country_code) < 0) {
@@ -6706,8 +6713,13 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
 #endif //_SKY_HUB_COMMON_PRODUCT_REQ_
 
 #if defined (HOSTAP_MGMT_FRAME_CTRL)
+#if !defined (_WNXL11BWL_PRODUCT_REQ_) || !defined (_SR213_PRODUCT_REQ_)
         cfg.u.bss_info.hostap_mgt_frame_ctrl = true;
-#endif
+#else
+        cfg.u.bss_info.hostap_mgt_frame_ctrl = false;
+#endif // !defined (_WNXL11BWL_PRODUCT_REQ_) || !defined (_SR213_PRODUCT_REQ_)
+#endif // HOSTAP_MGMT_FRAME_CTRL
+
         memset(ssid, 0, sizeof(ssid));
 
         if (wifi_hal_get_default_ssid(ssid, vap_index) == 0) {
