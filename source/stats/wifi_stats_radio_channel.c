@@ -874,6 +874,7 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
                 updated_channels[new_num_channels++] = args->channel_list.channels_list[i];
             }
         }
+	channels[0] = updated_channels[0];
         for (i = 0; i < new_num_channels; i++) {
             if (mon_data->last_scanned_channel[args->radio_index] ==
                 updated_channels[i]) {
