@@ -2553,7 +2553,13 @@ int wifidb_update_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
         cfg.bss_hotspot = config->u.bss_info.bssHotspot;
         cfg.wps_push_button = config->u.bss_info.wpsPushButton;
         cfg.wps_config_methods = config->u.bss_info.wps.methods;
+#if defined(_CBR2_PRODUCT_REQ_)
+        if(config->u.bss_info.wps.enable != false) {
+            cfg.wps_enabled = false;
+        }
+#else
         cfg.wps_enabled = config->u.bss_info.wps.enable;
+#endif /* _CBR2_PRODUCT_REQ_ */
         strncpy(cfg.beacon_rate_ctl,config->u.bss_info.beaconRateCtl,sizeof(cfg.beacon_rate_ctl)-1);
         strncpy(cfg.mfp_config,"Disabled",sizeof(cfg.mfp_config)-1);
         cfg.hostap_mgt_frame_ctrl = config->u.bss_info.hostap_mgt_frame_ctrl;
@@ -4429,8 +4435,12 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
         if (g_wifidb->db_version < ONEWIFI_DB_VERSION_HOSTAP_MGMT_FRAME_CTRL_FLAG) {
 #if defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_)
             config->vap_array[i].u.bss_info.hostap_mgt_frame_ctrl = true;
-            wifi_util_info_print(WIFI_DB, "%s Update hostap_mgt_frame_ctrl:%d \n", __func__, config->vap_array[i].u.bss_info.hostap_mgt_frame_ctrl);
-            wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i], &rdk_config[i]);
+            wifi_util_dbg_print(WIFI_DB,
+                "%s:%d Update hostap_mgt_frame_ctrl:%d for vap_index:%d \n", __func__, __LINE__,
+                config->vap_array[i].u.bss_info.hostap_mgt_frame_ctrl,
+                config->vap_array[i].vap_index);
+            wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i],
+                &rdk_config[i]);
 #endif
         }
     }
@@ -4496,7 +4506,7 @@ void wifidb_vap_config_correction(wifi_vap_info_map_t *l_vap_map_param)
         if (isVapPrivate(vap_config->vap_index) &&
             is_sec_mode_personal(vap_config->u.bss_info.security.mode)) {
             if (vap_config->u.bss_info.wps.enable == false) {
-#if !defined(NEWPLATFORM_PORT) && !defined(_SR213_PRODUCT_REQ_)
+#if !defined(NEWPLATFORM_PORT) && !defined(_SR213_PRODUCT_REQ_) && !defined(_CBR2_PRODUCT_REQ_)
                 vap_config->u.bss_info.wps.enable = true;
 
                 wifi_util_info_print(WIFI_DB, "%s:%d: force wps enabled for private_vap:%d\r\n",__func__, __LINE__, vap_config->vap_index);
@@ -6586,7 +6596,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         if (isVapPrivate(vap_index)) {
             cfg.u.bss_info.vapStatsEnable = true;
             cfg.u.bss_info.wpsPushButton = 0;
-#ifdef NEWPLATFORM_PORT
+#if defined(NEWPLATFORM_PORT) || defined(_CBR2_PRODUCT_REQ_)
             cfg.u.bss_info.wps.enable = false;
 #else
             cfg.u.bss_info.wps.enable = true;
@@ -6721,13 +6731,11 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
 #endif // NEWPLATFORM_PORT
 #endif //_SKY_HUB_COMMON_PRODUCT_REQ_
 
-#if defined (FEATURE_HOSTAP_MGMT_FRAME_CTRL)
-#if !defined (_WNXL11BWL_PRODUCT_REQ_) || !defined (_SR213_PRODUCT_REQ_)
+#if defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_)
         cfg.u.bss_info.hostap_mgt_frame_ctrl = true;
-#else
-        cfg.u.bss_info.hostap_mgt_frame_ctrl = false;
-#endif // !defined (_WNXL11BWL_PRODUCT_REQ_) || !defined (_SR213_PRODUCT_REQ_)
-#endif // FEATURE_HOSTAP_MGMT_FRAME_CTRL
+        wifi_util_dbg_print(WIFI_DB, "%s:%d vap_index:%d hostap_mgt_frame_ctrl:%d\n", __func__,
+            __LINE__, vap_index, cfg.u.bss_info.hostap_mgt_frame_ctrl);
+#endif
 
         memset(ssid, 0, sizeof(ssid));
 
