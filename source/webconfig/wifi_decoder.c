@@ -5799,10 +5799,7 @@ webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_c
         radio_metrics_obj = cJSON_GetArrayItem(radio_metrics_array, i);
 
         decode_param_allow_optional_string(radio_metrics_obj, "ID", param);
-        strncpy((char *)em_config->radio_metrics_policies.radio_metrics_policy[i].ruid,
-            param->valuestring,
-            strlen((const char *)em_config->radio_metrics_policies.radio_metrics_policy[i].ruid) +
-                1);
+        str_to_mac_bytes(param->valuestring, em_config->radio_metrics_policies.radio_metrics_policy[i].ruid);
 
         decode_param_integer(radio_metrics_obj, "STA RCPI Threshold", param);
         em_config->radio_metrics_policies.radio_metrics_policy[i].sta_rcpi_threshold =
