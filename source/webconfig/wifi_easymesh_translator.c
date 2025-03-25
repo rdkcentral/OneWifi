@@ -340,8 +340,8 @@ webconfig_error_t translate_radio_object_to_easymesh_for_radio(webconfig_subdoc_
         em_op_class_info = proto->get_op_class_info(proto->data_model, no_of_opclass);
         mac_address_from_name(radio_iface_map->interface_name,em_op_class_info->id.ruid);
         em_op_class_info->id.type = em_op_class_type_current;
-        em_op_class_info->id.op_class = oper_param->operatingClass;
-        em_op_class_info->op_class = oper_param->operatingClass;
+        em_op_class_info->id.op_class = oper_param->op_class;
+        em_op_class_info->op_class = oper_param->op_class;
         em_op_class_info->channel = oper_param->channel;
         no_of_opclass++;
         proto->set_num_op_class(proto->data_model,no_of_opclass);
@@ -444,8 +444,8 @@ webconfig_error_t translate_radio_object_to_easymesh_for_dml(webconfig_subdoc_da
         em_op_class_info = proto->get_op_class_info(proto->data_model, op_class_count);
         mac_address_from_name(radio_iface_map->interface_name,em_op_class_info->id.ruid);
         em_op_class_info->id.type = 1;
-        em_op_class_info->op_class = oper_param->operatingClass;
-        em_op_class_info->id.op_class = oper_param->operatingClass;
+        em_op_class_info->op_class = oper_param->op_class;
+        em_op_class_info->id.op_class = oper_param->op_class;
         em_op_class_info->channel = oper_param->channel;
 
         //Incrementing the number of operating classes by one, as the dml lacks an operating class for current.

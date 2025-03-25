@@ -102,7 +102,7 @@ webconfig_error_t encode_radio_curr_operating_classes(const wifi_radio_operation
     // Add operating class and channel as first element in the array
     obj = cJSON_CreateObject();
     cJSON_AddItemToArray(obj_array, obj);
-    cJSON_AddNumberToObject(obj, "Class", oper->operatingClass);
+    cJSON_AddNumberToObject(obj, "Class", oper->op_class);
     cJSON_AddNumberToObject(obj, "Channel", oper->channel);
     return webconfig_error_none;
 }
@@ -249,7 +249,7 @@ webconfig_error_t encode_radio_object(const rdk_wifi_radio_t *radio, cJSON *radi
     cJSON_AddNumberToObject(radio_object, "DtimPeriod", radio_info->dtimPeriod);
 
     // OperatingClass
-    cJSON_AddNumberToObject(radio_object, "OperatingClass", radio_info->operatingClass);
+    cJSON_AddNumberToObject(radio_object, "OperatingClass", radio_info->op_class);
 
     // BasicDataTransmitRates
     cJSON_AddNumberToObject(radio_object, "BasicDataTransmitRates", radio_info->basicDataTransmitRates);

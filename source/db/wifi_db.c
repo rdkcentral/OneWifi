@@ -78,7 +78,7 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
 
     switch (cfg.band) {
         case WIFI_FREQUENCY_2_4_BAND:
-            cfg.op_class = 12;
+            cfg.op_class = 81;
             cfg.operatingClass = 81;
             cfg.channel = 1;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
