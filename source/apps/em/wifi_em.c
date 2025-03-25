@@ -10,7 +10,9 @@
 #define DCA_TO_APP 1
 #define APP_TO_DCA 2
 
-#define EM_NEIGBOUR_SCAN_PROVIDER_DELAY_SEC 5
+#define EM_NEIGBOUR_SCAN_PROVIDER_DELAY_SEC 5 // 5 Seconds
+#define EM_NEIGBOUR_SCAN_INTERVAL_MSEC 60000 // 60 Seconds
+
 static bool is_monitor_done = false;
 
 #define em_app_event_type_chan_stats 1
@@ -211,34 +213,103 @@ static int em_getOperatingClass(int channel, const char *band)
     return 0;
 }
 
-static void em_prepare_scan_response_data(wifi_neighbor_ap2_t *wifi_scan_data, int scan_count,
+static void config_em_neighbour_scan(wifi_monitor_data_t *data, unsigned int radioIndex)
+{
+    wifi_event_route_t route;
+    em_route(&route);
+
+    data->u.mon_stats_config.data_type = mon_stats_type_neighbor_stats;
+    data->u.mon_stats_config.args.app_info = em_app_event_type_neighbor_stats;
+
+    wifi_util_dbg_print(WIFI_EM, "%s:%d Pushing the event for app %d \n", __func__, __LINE__,
+        route.u.inst_bit_map);
+    push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
+}
+
+static void config_em_chan_util(wifi_monitor_data_t *data, unsigned int radioIndex)
+{
+    wifi_event_route_t route;
+    em_route(&route);
+
+    data->u.mon_stats_config.data_type = mon_stats_type_radio_channel_stats;
+    data->u.mon_stats_config.args.app_info = em_app_event_type_chan_stats;
+
+    wifi_util_dbg_print(WIFI_EM, "%s:%d Pushing the event for app %d \n", __func__, __LINE__,
+        route.u.inst_bit_map);
+
+    push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
+}
+
+static int em_prepare_scan_response_data(wifi_provider_response_t *provider_response,
     channel_scan_response_t *scan_response)
 {
 
-    memset(scan_response, 0, sizeof(channel_scan_response_t));
-
-    time_t response_time;
-    struct tm *local_time;
+    unsigned int scan_count = 0, radio_index;
+    mac_address_t radio_mac;
+    mac_addr_str_t mac_str;
+    wifi_neighbor_ap2_t *wifi_scan_data = NULL;
+    radio_interface_mapping_t *radio_iface_map = NULL;
     char time_str[32] = { 0 };
 
-    (void)time(&response_time);
-    local_time = localtime(&response_time);
-    if (local_time != NULL) {
-        strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", local_time);
+    wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
+    wifi_platform_property_t *wifi_prop = &wifi_mgr->hal_cap.wifi_prop;
+
+    wifi_scan_data = (wifi_neighbor_ap2_t *)provider_response->stat_pointer;
+    if (wifi_scan_data == NULL) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: wifi_scan_data is NULL\n", __func__, __LINE__);
+        return RETURN_ERR;
     }
+
+    if (provider_response->stat_array_size <= 0) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: provider_response is NULL\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    radio_index = provider_response->args.radio_index;
+    scan_count = provider_response->stat_array_size;
+    wifi_util_dbg_print(WIFI_EM, "%s:%d radio_index : %d scan_count : %d\n", __func__, __LINE__,
+        radio_index, scan_count);
+
+    for (unsigned int k = 0;
+        k < (sizeof(wifi_prop->radio_interface_map) / sizeof(radio_interface_mapping_t)); k++) {
+        if (wifi_prop->radio_interface_map[k].radio_index == radio_index) {
+            radio_iface_map = &(wifi_prop->radio_interface_map[k]);
+            break;
+        }
+    }
+    if (radio_iface_map == NULL) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: Unable to find the interface map entry\n", __func__,
+            __LINE__);
+        return RETURN_ERR;
+    }
+
+    memset(scan_response, 0, sizeof(channel_scan_response_t));
+
+    mac_address_from_name(radio_iface_map->interface_name, radio_mac);
+    memcpy(scan_response->ruid, radio_mac, sizeof(mac_address_t));
+
+    get_formatted_time(time_str);
 
     for (int i = 0; i < scan_count; i++) {
         wifi_neighbor_ap2_t *src = &wifi_scan_data[i];
-        int operating_class = em_getOperatingClass(src->ap_Channel, src->ap_OperatingFrequencyBand);
 
-        if (operating_class == 0)
+        //int op_class = wifi_freq_to_op_class(src->ap_freq);
+        int op_class = em_getOperatingClass(src->ap_Channel, src->ap_OperatingFrequencyBand);
+        if (op_class <= 0) {
+            wifi_util_error_print(WIFI_EM, "%s:%d : Invalid op_class (%d). Skipping scan result.\n",
+                __func__, __LINE__, op_class);
             continue;
-        if (strcmp(src->ap_SSID, "") == 0)
+        }
+
+        if (strcmp(src->ap_SSID, "") == 0) {
+            wifi_util_error_print(WIFI_EM, "%s:%d : Empty SSID found. Skipping scan result.\n",
+                __func__, __LINE__);
             continue;
+        }
 
         int res_index = -1;
         for (int j = 0; j < scan_response->num_results; j++) {
-            if (scan_response->results[j].operating_class == operating_class &&
+            if (scan_response->results[j].operating_class == op_class &&
                 scan_response->results[j].channel == src->ap_Channel) {
                 res_index = j;
                 break;
@@ -246,11 +317,15 @@ static void em_prepare_scan_response_data(wifi_neighbor_ap2_t *wifi_scan_data, i
         }
 
         if (res_index == -1) {
-            if (scan_response->num_results >= MAX_RESULTS)
+            if (scan_response->num_results >= MAX_RESULTS) {
+                wifi_util_error_print(WIFI_EM,
+                    "%s:%d : Maximum number of scan results reached. Skipping additional "
+                    "results.\n",
+                    __func__, __LINE__);
                 continue;
-
+            }
             res_index = scan_response->num_results;
-            scan_response->results[res_index].operating_class = operating_class;
+            scan_response->results[res_index].operating_class = op_class;
             scan_response->results[res_index].channel = src->ap_Channel;
             scan_response->results[res_index].scan_status = 0;
             strncpy(scan_response->results[res_index].time_stamp, time_str,
@@ -258,8 +333,12 @@ static void em_prepare_scan_response_data(wifi_neighbor_ap2_t *wifi_scan_data, i
             scan_response->results[res_index].utilization = src->ap_ChannelUtilization;
             scan_response->results[res_index].noise = src->ap_Noise;
             scan_response->results[res_index].num_neighbors = 0;
+            scan_response->results[res_index].aggregate_scan_duration = 0;
+            scan_response->results[res_index].scan_type = 0;
             scan_response->num_results++;
         }
+        wifi_util_dbg_print(WIFI_EM, "%s:%d op_class : %d channel : %d\n", __func__, __LINE__,
+            op_class, src->ap_Channel);
 
         channel_scan_result_t *res = &scan_response->results[res_index];
         if (res->num_neighbors < MAX_NEIGHBORS) {
@@ -275,29 +354,33 @@ static void em_prepare_scan_response_data(wifi_neighbor_ap2_t *wifi_scan_data, i
             neighbor->bss_load_element_present = 0;
             neighbor->bss_color = 0;
             neighbor->station_count = 0;
-            neighbor->aggregate_scan_duration = 0;
-            neighbor->scan_type = 0;
             res->num_neighbors++;
+            wifi_util_dbg_print(WIFI_EM, "%s:%d BSSID: %s SSID: %s\n", __func__, __LINE__,
+                src->ap_BSSID, src->ap_SSID);
+        } else {
+            wifi_util_error_print(WIFI_EM, "%s:%d : Maximum number of neighbors reached.\n",
+                __func__, __LINE__);
         }
     }
+    wifi_util_dbg_print(WIFI_EM, "%s:%d Scan results updated for radio mac : %s\n", __func__,
+        __LINE__, to_mac_str(radio_mac, mac_str));
+
+    return RETURN_OK;
 }
 
-static void em_publish_stats_data(wifi_provider_response_t *provider_response,
-    channel_scan_response_t *scan_response)
+static int em_publish_stats_data(channel_scan_response_t *scan_response)
 {
     webconfig_subdoc_data_t *data;
-    int rc;
     bus_error_t status;
     char eventName[MAX_EVENT_NAME_SIZE] = { 0 };
     webconfig_subdoc_type_t subdoc_type;
     time_t response_time;
     raw_data_t rdata;
+    wifi_apps_mgr_t *apps_mgr = NULL;
+    wifi_app_t *wifi_app = NULL;
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
 
-    wifi_provider_response_t *response = (wifi_provider_response_t *)provider_response;
-
     data = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
-
     if (data == NULL) {
         wifi_util_error_print(WIFI_EM, "%s:%d Error in allocation memory\n", __func__, __LINE__);
         return RETURN_ERR;
@@ -306,7 +389,6 @@ static void em_publish_stats_data(wifi_provider_response_t *provider_response,
     memset(data, '\0', sizeof(webconfig_subdoc_data_t));
     data->u.decoded.collect_stats.stats = (struct channel_scan_response_t *)malloc(
         sizeof(channel_scan_response_t));
-
     if (data->u.decoded.collect_stats.stats == NULL) {
         wifi_util_error_print(WIFI_EM, "%s:%d Error in allocating memory\n", __func__, __LINE__);
         free(data);
@@ -314,7 +396,6 @@ static void em_publish_stats_data(wifi_provider_response_t *provider_response,
     }
 
     (void)time(&response_time);
-    response->response_time = response_time;
 
     memcpy(data->u.decoded.collect_stats.stats, scan_response, sizeof(channel_scan_response_t));
 
@@ -322,10 +403,10 @@ static void em_publish_stats_data(wifi_provider_response_t *provider_response,
     strncpy(eventName, "Device.WiFi.EM.ChannelScanReport", sizeof(eventName) - 1);
 
     wifi_util_dbg_print(WIFI_EM, "%s:%d subdoc_type is %d and eventName is %s at %ld\n", __func__,
-        __LINE__, subdoc_type, eventName, response->response_time);
+        __LINE__, subdoc_type, eventName, response_time);
 
     if (webconfig_encode(&ctrl->webconfig, data, subdoc_type) != webconfig_error_none) {
-        wifi_util_error_print(WIFI_EM, "%s:%d Error in encoding radio stats\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_EM, "%s:%d Error in encoding channel scan stats\n", __func__, __LINE__);
         free(data->u.decoded.collect_stats.stats);
         free(data);
         return RETURN_ERR;
@@ -336,9 +417,7 @@ static void em_publish_stats_data(wifi_provider_response_t *provider_response,
     rdata.raw_data.bytes = (void *)data->u.encoded.raw;
     rdata.raw_data_len = strlen(data->u.encoded.raw) + 1;
 
-    wifi_apps_mgr_t *apps_mgr;
     apps_mgr = &ctrl->apps_mgr;
-    wifi_app_t *wifi_app = NULL;
     wifi_app = get_app_by_inst(apps_mgr, wifi_app_inst_easymesh);
 
     status = get_bus_descriptor()->bus_event_publish_fn(&wifi_app->ctrl->handle, eventName, &rdata);
@@ -352,36 +431,69 @@ static void em_publish_stats_data(wifi_provider_response_t *provider_response,
     }
     free(data->u.decoded.collect_stats.stats);
     free(data);
+
+    wifi_util_dbg_print(WIFI_EM, "%s:%d Scan results published\n", __func__, __LINE__);
+
+    return RETURN_OK;
+}
+
+static int em_stop_neighbor_scan(wifi_provider_response_t *provider_response)
+{
+    wifi_monitor_data_t *data;
+    unsigned int radio_index = provider_response->args.radio_index;
+
+    data = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: data allocation failed\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    wifi_util_dbg_print(WIFI_EM, "%s:%d: Radio index: %d\n", __func__, __LINE__, radio_index);
+
+    memset(data, 0, sizeof(wifi_monitor_data_t));
+
+    data->u.mon_stats_config.args.radio_index = radio_index;
+    data->u.mon_stats_config.interval_ms = EM_NEIGBOUR_SCAN_INTERVAL_MSEC;
+    data->u.mon_stats_config.args.scan_mode = provider_response->args.scan_mode;
+    data->u.mon_stats_config.inst = wifi_app_inst_easymesh;
+    data->u.mon_stats_config.req_state = mon_stats_request_state_stop;
+    data->u.mon_stats_config.start_immediately = false;
+    data->u.mon_stats_config.delay_provider_sec = EM_NEIGBOUR_SCAN_PROVIDER_DELAY_SEC;
+
+    config_em_neighbour_scan(data, radio_index);
+
+    if (NULL != data) {
+        free(data);
+        data = NULL;
+    }
 }
 
 static int em_process_neighbour_data(wifi_provider_response_t *provider_response)
 {
-    wifi_neighbor_ap2_t *chan_scan_data = NULL;
-    chan_scan_data = (wifi_neighbor_ap2_t *)provider_response->stat_pointer;
-    unsigned int i, j;
     channel_scan_response_t scan_response;
-    unsigned int radio_index;
     wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
 
-    if (wifi_mgr == NULL || chan_scan_data == NULL) {
+    wifi_util_dbg_print(WIFI_EM, "%s:%d: Processing neighbour stats data\n", __func__, __LINE__);
+
+    if (wifi_mgr == NULL) {
         wifi_util_error_print(WIFI_EM, "%s:%d: wifi_mgr or chan_scan_data is NULL\n", __func__,
             __LINE__);
         return RETURN_ERR;
     }
 
-    radio_index = provider_response->args.radio_index;
-    wifi_util_dbg_print(WIFI_EM, "%s:%d radio_index : %d stats_array_size : %d\r\n", __func__,
-        __LINE__, radio_index, provider_response->stat_array_size);
-
-    if (provider_response->stat_array_size <= 0) {
-        wifi_util_error_print(WIFI_EM, "%s:%d: provider_response is NULL\n", __func__, __LINE__);
+    if (em_prepare_scan_response_data(provider_response, &scan_response) != RETURN_OK) {
+        wifi_util_error_print(WIFI_EM, "%s:%d Prepare neighbour scan response failed\r\n", __func__,
+            __LINE__);
         return RETURN_ERR;
     }
 
-    em_prepare_scan_response_data(chan_scan_data, provider_response->stat_array_size,
-        &scan_response);
+    if (em_publish_stats_data(&scan_response) != RETURN_OK) {
+        wifi_util_error_print(WIFI_EM, "%s:%d Publishing neighbour stats data failed\r\n", __func__,
+            __LINE__);
+        return RETURN_ERR;
+    }
 
-    em_publish_stats_data(provider_response, &scan_response);
+    em_stop_neighbor_scan(provider_response);
 
     return RETURN_OK;
 }
@@ -709,51 +821,24 @@ int handle_em_webconfig_event(wifi_app_t *app, wifi_event_t *event)
     return RETURN_OK;
 }
 
-static void config_em_neighbour_scan(wifi_monitor_data_t *data, unsigned int radioIndex)
+static int em_process_scan_init_command(unsigned int radio_index, channel_scan_request_t *scan_req)
 {
-    wifi_event_route_t route;
-    em_route(&route);
-
-    data->u.mon_stats_config.data_type = mon_stats_type_neighbor_stats;
-    data->u.mon_stats_config.args.app_info = em_app_event_type_neighbor_stats;
-
-    wifi_util_dbg_print(WIFI_EM, "%s:%d Pushing the event for app %d \n", __func__, __LINE__,
-        route.u.inst_bit_map);
-    push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
-}
-
-static void config_em_chan_util(wifi_monitor_data_t *data, unsigned int radioIndex)
-{
-
-    wifi_event_route_t route;
-    em_route(&route);
-
-    data->u.mon_stats_config.data_type = mon_stats_type_radio_channel_stats;
-    data->u.mon_stats_config.args.app_info = em_app_event_type_chan_stats;
-
-    wifi_util_dbg_print(WIFI_EM, "%s:%d Pushing the event for app %d \n", __func__, __LINE__,
-        route.u.inst_bit_map);
-
-    push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
-}
-
-static void em_process_scan_init_command(unsigned int radio_index)
-{
-
-    wifi_util_dbg_print(WIFI_EM, "%s:%d Entering \n", __func__, __LINE__);
-
-    wifi_mgr_t *mgr = get_wifimgr_obj();
-    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    unsigned int total_radios = getNumberRadios();
+    wifi_mgr_t *mgr;
+    wifi_ctrl_t *ctrl;
     wifi_monitor_data_t *data;
-    wifi_radio_capabilities_t *wifiCapPtr = NULL;
     int valid_chan_count = 0;
+    char country[8] = { 0 };
+    unsigned global_op_class;
 
+    wifi_util_dbg_print(WIFI_EM, "%s:%d radio_index: %d \n", __func__, __LINE__, radio_index);
+
+    mgr = get_wifimgr_obj();
     if (mgr == NULL) {
         wifi_util_error_print(WIFI_EM, "%s:%d Mgr object is NULL \r\n", __func__, __LINE__);
         return RETURN_ERR;
     }
 
+    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     if (ctrl == NULL) {
         wifi_util_error_print(WIFI_EM, "%s:%d: ctrl is NULL\n", __func__, __LINE__);
         return RETURN_ERR;
@@ -767,52 +852,58 @@ static void em_process_scan_init_command(unsigned int radio_index)
 
     memset(data, 0, sizeof(wifi_monitor_data_t));
 
-    wifiCapPtr = getRadioCapability(radio_index);
-    if (wifiCapPtr == NULL) {
-        wifi_util_error_print(WIFI_EM, "%s:%d radioOperation or wifiCapPtr is null \n", __func__,
-            __LINE__);
-        if (NULL != data) {
-            free(data);
-            data = NULL;
+    get_coutry_str_from_code(mgr->radio_config[radio_index].oper.countryCode, country);
+    global_op_class = country_to_global_op_class(country,
+        mgr->radio_config[radio_index].oper.op_class);
+
+    for (int i = 0; i < scan_req->num_operating_classes; i++) {
+        if (scan_req->operating_classes[i].operating_class == global_op_class) {
+            for (int j = 0; j < scan_req->operating_classes[i].num_channels; j++) {
+                data->u.mon_stats_config.args.channel_list.channels_list[valid_chan_count] =
+                    scan_req->operating_classes[i].channels[j];
+                wifi_util_dbg_print(WIFI_EM, "%s:%d channel number:%u\n", __func__, __LINE__,
+                    scan_req->operating_classes[i].channels[j]);
+                valid_chan_count++;
+            }
+            break;
         }
-        return RETURN_ERR;
     }
 
-    for (int num = 0; num < wifiCapPtr->channel_list[0].num_channels; num++) {
-        data->u.mon_stats_config.args.channel_list.channels_list[valid_chan_count] =
-            wifiCapPtr->channel_list[0].channels_list[num];
-        valid_chan_count++;
-        wifi_util_dbg_print(WIFI_EM, "%s:%d channel_scan chan number:%u\n", __func__, __LINE__,
-            wifiCapPtr->channel_list[0].channels_list[num]);
-    }
-
-    data->u.mon_stats_config.args.radio_index = mgr->radio_config[radio_index].vaps.radio_index;
-    data->u.mon_stats_config.interval_ms = 30 * 1000;
-    data->u.mon_stats_config.args.channel_list.num_channels = valid_chan_count;
+    data->u.mon_stats_config.args.radio_index = radio_index;
+    //dummy value since it will be cancelled after first result
+    data->u.mon_stats_config.interval_ms = EM_NEIGBOUR_SCAN_INTERVAL_MSEC;
+    /*data->u.mon_stats_config.args.channel_list.num_channels = valid_chan_count;
+    if (valid_chan_count > 0)
+        data->u.mon_stats_config.args.scan_mode =
+            WIFI_RADIO_SCAN_MODE_SELECT_CHANNELS; // Scan only requested channels.
+    else
+        data->u.mon_stats_config.args.scan_mode =
+            WIFI_RADIO_SCAN_MODE_FULL; // Perform Full Scan since no channels in request. */
     data->u.mon_stats_config.args.scan_mode = WIFI_RADIO_SCAN_MODE_FULL;
     data->u.mon_stats_config.inst = wifi_app_inst_easymesh;
+    data->u.mon_stats_config.args.dwell_time = 20;
     data->u.mon_stats_config.req_state = mon_stats_request_state_start;
-    data->u.mon_stats_config.start_immediately = false;
+    data->u.mon_stats_config.start_immediately = true;
     data->u.mon_stats_config.delay_provider_sec = EM_NEIGBOUR_SCAN_PROVIDER_DELAY_SEC;
 
-    config_em_chan_util(data, radio_index);
     config_em_neighbour_scan(data, radio_index);
+    //config_em_chan_util(data, radio_index);
 
     if (NULL != data) {
         free(data);
         data = NULL;
     }
-
     return RETURN_OK;
 }
 
 static void em_config_channel_scan(void *data, unsigned int len)
 {
-
-    unsigned int radioIndex = 0;
+    mac_address_t radio_mac;
+    mac_addr_str_t mac_str;
+    radio_interface_mapping_t *radio_iface_map = NULL;
     channel_scan_request_t *scan_req;
-    wifi_mgr_t *mgr = get_wifimgr_obj();
-    unsigned int total_radios = getNumberRadios();
+    wifi_mgr_t *mgr;
+    wifi_platform_property_t *wifi_prop;
 
     if (data == NULL) {
         wifi_util_error_print(WIFI_EM, "%s:%d NUll data Pointer\n", __func__, __LINE__);
@@ -824,17 +915,29 @@ static void em_config_channel_scan(void *data, unsigned int len)
         return;
     }
 
+    mgr = get_wifimgr_obj();
     if (mgr == NULL) {
         wifi_util_error_print(WIFI_EM, "%s:%d Mgr object is NULL \r\n", __func__, __LINE__);
-        return RETURN_ERR;
+        return;
     }
 
+    wifi_prop = &mgr->hal_cap.wifi_prop;
     scan_req = (channel_scan_request_t *)data;
 
-    for (radioIndex = 0; radioIndex < total_radios; radioIndex++) {
-        wifi_util_dbg_print(WIFI_EM, "%s:%d band : %d ====\n", __func__, __LINE__,
-            mgr->radio_config[radioIndex].oper.band);
-        em_process_scan_init_command(radioIndex);
+    for (unsigned int k = 0;
+        k < (sizeof(wifi_prop->radio_interface_map) / sizeof(radio_interface_mapping_t)); k++) {
+        radio_iface_map = &(wifi_prop->radio_interface_map[k]);
+        if (radio_iface_map == NULL) {
+            printf("%s:%d: Unable to find the radio interface map entry \n", __func__, __LINE__);
+            return;
+        }
+        mac_address_from_name(radio_iface_map->interface_name, radio_mac);
+        if (memcmp(scan_req->ruid, radio_mac, sizeof(mac_addr_t)) == 0) {
+            wifi_util_dbg_print(WIFI_EM, "%s:%d Processing channel scan for Radio : %s\n", __func__,
+                __LINE__, to_mac_str(radio_mac, mac_str));
+            em_process_scan_init_command(wifi_prop->radio_interface_map[k].radio_index, scan_req);
+            break;
+        }
     }
 }
 
@@ -980,9 +1083,6 @@ bus_error_t start_channel_scan(char *name, raw_data_t *p_data)
 {
     unsigned int len = 0;
     char *pTmp = NULL;
-    unsigned int idx = 0;
-    int ret;
-    unsigned int num_of_radios = getNumberRadios();
 
     if (!name) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d property name is not found\r\n", __FUNCTION__,
