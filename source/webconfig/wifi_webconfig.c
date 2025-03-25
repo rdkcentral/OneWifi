@@ -108,13 +108,13 @@ webconfig_subdoc_type_t find_subdoc_type(webconfig_t *config, cJSON *json)
     char *name;
 
     if ((obj = cJSON_GetObjectItem(json, "SubDocName")) == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Could not find SubDocName key in data",
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Could not find SubDocName key in data\n",
             __func__, __LINE__);
         return webconfig_subdoc_type_unknown;
     }
 
     if (cJSON_IsString(obj) == false) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Invalid value for subdoc", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Invalid value for subdoc\n", __func__, __LINE__);
         return webconfig_subdoc_type_unknown;
     }
 
@@ -534,6 +534,20 @@ webconfig_error_t webconfig_init(webconfig_t *config)
     config->subdocs[webconfig_subdoc_type_vif_neighbors].translate_to_subdoc = translate_to_vif_neighbors_subdoc;
     config->subdocs[webconfig_subdoc_type_vif_neighbors].translate_from_subdoc = translate_from_vif_neighbors_subdoc;
 
+#ifdef EM_APP
+    config->subdocs[webconfig_subdoc_type_beacon_report].type = webconfig_subdoc_type_beacon_report;
+    strcpy(config->subdocs[webconfig_subdoc_type_beacon_report].name, "Beacon Report");
+    config->subdocs[webconfig_subdoc_type_beacon_report].major = 1;
+    config->subdocs[webconfig_subdoc_type_beacon_report].minor = 1;
+    config->subdocs[webconfig_subdoc_type_beacon_report].init_subdoc = init_beacon_report_subdoc;
+    config->subdocs[webconfig_subdoc_type_beacon_report].init_subdoc(&config->subdocs[webconfig_subdoc_type_beacon_report]);
+    config->subdocs[webconfig_subdoc_type_beacon_report].access_check_subdoc = access_check_beacon_report_subdoc;
+    config->subdocs[webconfig_subdoc_type_beacon_report].encode_subdoc = encode_beacon_report_subdoc;
+    config->subdocs[webconfig_subdoc_type_beacon_report].decode_subdoc = decode_beacon_report_subdoc;
+    config->subdocs[webconfig_subdoc_type_beacon_report].translate_to_subdoc = translate_to_beacon_report_subdoc;
+    config->subdocs[webconfig_subdoc_type_beacon_report].translate_from_subdoc = translate_from_beacon_report_subdoc;
+#endif
+
 #ifdef ONEWIFI_LEVL_APP_SUPPORT
     config->subdocs[webconfig_subdoc_type_levl].type = webconfig_subdoc_type_levl;
     strcpy(config->subdocs[webconfig_subdoc_type_levl].name, "levl data");
@@ -693,6 +707,32 @@ webconfig_error_t webconfig_init(webconfig_t *config)
     config->subdocs[webconfig_subdoc_type_radio_6G].decode_subdoc = decode_single_radio_subdoc;
     config->subdocs[webconfig_subdoc_type_radio_6G].translate_to_subdoc = translate_to_single_radio_subdoc;
     config->subdocs[webconfig_subdoc_type_radio_6G].translate_from_subdoc = translate_from_single_radio_subdoc;
+
+#ifdef EM_APP
+    config->subdocs[webconfig_subdoc_type_em_config].type = webconfig_subdoc_type_em_config;
+    strcpy(config->subdocs[webconfig_subdoc_type_em_config].name, "Easymesh Config");
+    config->subdocs[webconfig_subdoc_type_em_config].major = 1;
+    config->subdocs[webconfig_subdoc_type_em_config].minor = 1;
+    config->subdocs[webconfig_subdoc_type_em_config].init_subdoc = init_em_config_subdoc;
+    config->subdocs[webconfig_subdoc_type_em_config].init_subdoc(&config->subdocs[webconfig_subdoc_type_em_config]);
+    config->subdocs[webconfig_subdoc_type_em_config].access_check_subdoc = access_check_em_config_subdoc;
+    config->subdocs[webconfig_subdoc_type_em_config].encode_subdoc = encode_em_config_subdoc;
+    config->subdocs[webconfig_subdoc_type_em_config].decode_subdoc = decode_em_config_subdoc;
+    config->subdocs[webconfig_subdoc_type_em_config].translate_to_subdoc = translate_to_em_config_subdoc;
+    config->subdocs[webconfig_subdoc_type_em_config].translate_from_subdoc = translate_from_em_config_subdoc;
+
+    config->subdocs[webconfig_subdoc_type_em_channel_stats].type = webconfig_subdoc_type_em_channel_stats;
+    strcpy(config->subdocs[webconfig_subdoc_type_em_channel_stats].name, "EM_Channel_Stats");
+    config->subdocs[webconfig_subdoc_type_em_channel_stats].major = 1;
+    config->subdocs[webconfig_subdoc_type_em_channel_stats].minor = 1;
+    config->subdocs[webconfig_subdoc_type_em_channel_stats].init_subdoc = init_em_channel_stats_subdoc;
+    config->subdocs[webconfig_subdoc_type_em_channel_stats].init_subdoc(&config->subdocs[webconfig_subdoc_type_em_channel_stats]);
+    config->subdocs[webconfig_subdoc_type_em_channel_stats].access_check_subdoc = access_check_em_channel_stats_subdoc;
+    config->subdocs[webconfig_subdoc_type_em_channel_stats].encode_subdoc = encode_em_channel_stats_subdoc;
+    config->subdocs[webconfig_subdoc_type_em_channel_stats].decode_subdoc = decode_em_channel_stats_subdoc;
+    config->subdocs[webconfig_subdoc_type_em_channel_stats].translate_to_subdoc = translate_to_em_channel_stats_subdoc;
+    config->subdocs[webconfig_subdoc_type_em_channel_stats].translate_from_subdoc = translate_from_em_channel_stats_subdoc;
+#endif //EM_APP Support
 
     config->proto_desc.translate_to = translate_to_proto;
     config->proto_desc.translate_from = translate_from_proto;

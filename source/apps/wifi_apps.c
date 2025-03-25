@@ -190,8 +190,55 @@ int blaster_event(wifi_app_t *app, wifi_event_t *event)
     return 0;
 }
 
-#endif
+#endif // ONEWIFI_BLASTER_APP_SUPPORT
 
+#ifdef ONEWIFI_EASYCONNECT_APP_SUPPORT
+extern int easyconnect_init(wifi_app_t *app, unsigned int create_flag);
+extern int easyconnect_deinit(wifi_app_t *app);
+extern int easyconnect_event(wifi_app_t *app, wifi_event_t *event);
+#else
+int easyconnect_init(wifi_app_t *app, unsigned int create_flag)
+{
+    return 0;
+}
+
+int easyconnect_deinit(wifi_app_t *app)
+{
+    return 0;
+}
+
+int easyconnect_event(wifi_app_t *app, wifi_event_t *event)
+{
+    return 0;
+}
+#endif // ONEWIFI_EASYCONNECT_APP_SUPPORT
+
+#ifdef EM_APP
+extern int em_init(wifi_app_t *app, unsigned int create_flag);
+extern int em_deinit(wifi_app_t *app);
+extern int em_update(wifi_app_t *app);
+extern int em_event(wifi_app_t *app, wifi_event_t *event);
+#else
+int em_init(wifi_app_t *app, unsigned int create_flag)
+{
+    return 0;
+}
+
+int em_deinit(wifi_app_t *app)
+{
+    return 0;
+}
+
+int em_update(wifi_app_t *app)
+{
+    return 0;
+}
+
+int em_event(wifi_app_t *app, wifi_event_t *event)
+{
+    return 0;
+}
+#endif // EM_APP
 
 wifi_app_descriptor_t app_desc[] = {
 #ifdef ONEWIFI_ANALYTICS_APP_SUPPORT
@@ -221,6 +268,16 @@ wifi_app_descriptor_t app_desc[] = {
         true, true,
         "Stats Manager",
         sm_init, sm_event, sm_deinit,
+        NULL,NULL
+    },
+#endif
+#if EM_APP
+    {
+        wifi_app_inst_easymesh, 0,
+        wifi_event_type_monitor | wifi_event_type_webconfig | wifi_event_type_hal_ind | wifi_event_type_command,
+        true, true,
+        "Easy Mesh",
+        em_init, em_event, em_deinit,
         NULL,NULL
     },
 #endif
@@ -280,8 +337,17 @@ wifi_app_descriptor_t app_desc[] = {
         "Blaster",
         blaster_init, blaster_event, blaster_deinit,
         NULL, NULL
-    }
-
+    },
+#ifdef ONEWIFI_EASYCONNECT_APP_SUPPORT
+    {
+        wifi_app_inst_easyconnect, 0,
+        wifi_event_type_hal_ind,
+        true, true,
+        "EasyConnect",
+        easyconnect_init, easyconnect_event, easyconnect_deinit,
+        NULL, NULL
+    },
+#endif // ONEWIFI_EASYCONNECT_APP_SUPPORT
 };
 
 wifi_app_descriptor_t* get_app_desc(int *size){

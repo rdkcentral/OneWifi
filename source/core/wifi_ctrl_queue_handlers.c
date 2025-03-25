@@ -1893,6 +1893,13 @@ void process_wpa3_rfc(bool type)
             continue;
         }
 
+        /* If WPA3-Personal-Compatibility RFC is enabled and security mode is WPA3-Personal-compatibility,
+           change in WPA3-Personal-Transition RFC should not change security mode
+        */
+        if(rfc_param->wpa3_compatibility_enable && vapInfo->u.bss_info.security.mode == wifi_security_mode_wpa3_compatibility) {
+            continue;
+        }
+
         if (type) {
             if (vapInfo->u.bss_info.security.mode == wifi_security_mode_wpa3_transition) {
                 continue;
@@ -2855,6 +2862,32 @@ int get_neighbor_scan_results(void *arg)
     return TIMER_TASK_COMPLETE;
 }
 
+void process_acs_keep_out_channels_event(const char* json_data)
+{
+    unsigned int numOfRadios = getNumberRadios();
+    webconfig_subdoc_data_t data;
+    wifi_radio_operationParam_t *radio_oper = NULL;
+    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+    decode_acs_keep_out_json(json_data,numOfRadios,&data);
+    for(unsigned int i=0;i<numOfRadios;i++)
+    {
+        radio_oper = (wifi_radio_operationParam_t *)get_wifidb_radio_map(i);
+        if(radio_oper)
+        {
+            radio_oper->acs_keep_out_reset = data.u.decoded.radios[i].oper.acs_keep_out_reset;
+            memcpy(radio_oper->channels_per_bandwidth, data.u.decoded.radios[i].oper.channels_per_bandwidth,sizeof(data.u.decoded.radios[i].oper.channels_per_bandwidth));
+            if(radio_oper->acs_keep_out_reset)
+            {
+                wifi_hal_set_acs_keep_out_chans(NULL,i);
+                radio_oper->acs_keep_out_reset = false;
+            }
+            else
+            {
+                wifi_hal_set_acs_keep_out_chans(radio_oper,i);
+            }
+        }
+    }
+}
 
 void process_neighbor_scan_command_event()
 {
@@ -3050,6 +3083,82 @@ void process_send_action_frame_command(void *data, unsigned int len)
     return;
 }
 
+void process_rsn_override_rfc(bool type)
+{
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
+    vap_svc_t *svc;
+    wifi_vap_info_map_t tgt_vap_map;
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_radio_operationParam_t *radio_params = NULL;
+    UINT apIndex = 0, ret;
+    rdk_wifi_vap_info_t *rdk_vap_info;
+    wifi_vap_info_t *vapInfo = NULL;
+    char update_status[128];
+
+    rfc_param->wpa3_compatibility_enable = type;
+    get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
+    ctrl->webconfig_state |= ctrl_webconfig_state_vap_private_cfg_rsp_pending;
+
+    for(UINT rIdx = 0; rIdx < getNumberRadios(); rIdx++) {
+        apIndex = getPrivateApFromRadioIndex(rIdx);
+        vapInfo =  get_wifidb_vap_parameters(apIndex);
+        radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(rIdx);
+
+        if ((svc = get_svc_by_name(ctrl, vapInfo->vap_name)) == NULL) {
+            continue;
+        }
+
+        if (radio_params->band == WIFI_FREQUENCY_6_BAND) {
+            wifi_util_info_print(WIFI_CTRL,"%s: %d 6GHz radio supports only WPA3 personal mode. WPA3-RFC: %d\n",__FUNCTION__,__LINE__,type);
+            continue;
+        }
+
+        if(type) {
+            if(vapInfo->u.bss_info.security.mode == wifi_security_mode_wpa3_compatibility) {
+                continue;
+            }
+            vapInfo->u.bss_info.security.mode = wifi_security_mode_wpa3_compatibility;
+            vapInfo->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
+            vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
+        } else {
+            if (vapInfo->u.bss_info.security.mode == wifi_security_mode_wpa2_personal) {
+                continue;
+            }
+
+            if ((radio_params->band == WIFI_FREQUENCY_2_4_BAND) || (radio_params->band == WIFI_FREQUENCY_5_BAND)) {
+                    vapInfo->u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
+                    vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
+            }
+
+	    if(rfc_param->wpa3_rfc) {
+                vapInfo->u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
+                vapInfo->u.bss_info.security.wpa3_transition_disable = false;
+                vapInfo->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
+                vapInfo->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
+            }
+        }
+        memset(&tgt_vap_map, 0, sizeof(wifi_vap_info_map_t));
+        tgt_vap_map.num_vaps = 1;
+        memcpy(&tgt_vap_map.vap_array[0], vapInfo, sizeof(wifi_vap_info_t));
+        rdk_vap_info = get_wifidb_rdk_vap_info(apIndex);
+        if (rdk_vap_info == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to get rdk vap info for index %d\n",
+                __func__, __LINE__, apIndex);
+            continue;
+        }
+        ret = svc->update_fn(svc, rIdx, &tgt_vap_map, rdk_vap_info);
+        memset(update_status, 0, sizeof(update_status));
+        snprintf(update_status, sizeof(update_status), "%s %s", vapInfo->vap_name, (ret == RETURN_OK)?"success":"fail");
+        apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, wifi_event_webconfig_hal_result, update_status);
+
+        if (ret != RETURN_OK) {
+            wifi_util_error_print(WIFI_CTRL,"%s:%d: Private vaps service update_fn failed \n",__func__, __LINE__);
+        } else {
+            wifi_util_dbg_print(WIFI_CTRL,"%s:%d: Updating security mode for apIndex %d secmode %d \n",__func__, __LINE__,apIndex,vapInfo->u.bss_info.security.mode);
+        }
+    }
+}
+
 void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
     wifi_event_subtype_t subtype)
 {
@@ -3173,6 +3282,9 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
         break;
     case wifi_event_type_send_action_frame:
         process_send_action_frame_command(data, len);
+        break;
+    case wifi_event_type_rsn_override_rfc:
+        process_rsn_override_rfc(*(bool *)data);
         break;
     case wifi_event_type_mgmt_frame_bus_rfc:
     case wifi_event_type_sta_connect_in_progress:
@@ -3410,6 +3522,10 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
     case wifi_event_webconfig_data_req_from_dml:
         apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, subtype, NULL);
         ctrl->webconfig_state |= ctrl_webconfig_state_trigger_dml_thread_data_update_pending;
+        break;
+    
+    case wifi_event_webconfig_data_to_hal_apply: //Re-factor this for Phase 2
+        process_acs_keep_out_channels_event(raw);
         break;
 
     default:

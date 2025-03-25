@@ -30,6 +30,12 @@
 #include <netinet/in.h>
 #include <time.h>
 #include <openssl/sha.h>
+#include <net/if.h>
+#include <sys/ioctl.h>
+#include <linux/if_packet.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <ifaddrs.h>
 
 #define  ARRAY_SZ(x)    (sizeof(x) / sizeof((x)[0]))
 /* enable PID in debug logs */
@@ -794,6 +800,11 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
             snprintf(module_filename, sizeof(module_filename), "wifiSM");
             break;
         }
+        case WIFI_EM:{
+            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiEM");
+            snprintf(module_filename, sizeof(module_filename), "wifiEM");
+            break;
+        }
         case WIFI_BLASTER:{
             snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiBlaster");
             snprintf(module_filename, sizeof(module_filename), "wifiBlaster");
@@ -812,6 +823,11 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
         case WIFI_TCM:{
             snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiTCMDbg");
             snprintf(module_filename, sizeof(module_filename), "wifiTransientClientMgmtCtrl");
+            break;
+        }
+        case WIFI_EC: {
+            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiEc");
+            snprintf(module_filename, sizeof(module_filename), "wifiEc");
             break;
         }
         default:
@@ -1963,6 +1979,7 @@ int key_mgmt_conversion_legacy(wifi_security_modes_t *mode_enum, wifi_encryption
             snprintf(str_encryp, encryp_len, "SAE");
             break;
         case wifi_security_mode_wpa3_transition:
+        case wifi_security_mode_wpa3_compatibility:
             snprintf(str_mode, mode_len, "2");
             snprintf(str_encryp, encryp_len, "WPA-PSK SAE");
             break;
@@ -1982,8 +1999,8 @@ int key_mgmt_conversion_legacy(wifi_security_modes_t *mode_enum, wifi_encryption
 
 int key_mgmt_conversion(wifi_security_modes_t *enum_sec, char *str_sec, char *str_sec2, int sec_len, int sec_len2, unsigned int conv_type, int *len)
 {
-    char arr_str[][MAX_SEC_LEN] = {"wpa-psk", "wpa2-psk", "wpa2-eap", "sae", "wpa2-psk sae", "aes", "wpa-eap wpa2-eap", "enhanced-open", "wpa-eap", "wpa-psk wpa2-psk"};
-    wifi_security_modes_t  arr_num[] = {wifi_security_mode_wpa_personal, wifi_security_mode_wpa2_personal, wifi_security_mode_wpa2_enterprise, wifi_security_mode_wpa3_personal, wifi_security_mode_wpa3_transition, wifi_security_mode_wpa3_enterprise, wifi_security_mode_wpa_wpa2_enterprise, wifi_security_mode_enhanced_open, wifi_security_mode_wpa_enterprise, wifi_security_mode_wpa_wpa2_personal};
+    char arr_str[][MAX_SEC_LEN] = {"wpa-psk", "wpa2-psk", "wpa2-eap", "sae", "wpa2-psk sae", "wpa2-psk sae", "aes", "wpa-eap wpa2-eap", "enhanced-open", "wpa-eap", "wpa-psk wpa2-psk"};
+    wifi_security_modes_t  arr_num[] = {wifi_security_mode_wpa_personal, wifi_security_mode_wpa2_personal, wifi_security_mode_wpa2_enterprise, wifi_security_mode_wpa3_personal, wifi_security_mode_wpa3_transition, wifi_security_mode_wpa3_compatibility, wifi_security_mode_wpa3_enterprise, wifi_security_mode_wpa_wpa2_enterprise, wifi_security_mode_enhanced_open, wifi_security_mode_wpa_enterprise, wifi_security_mode_wpa_wpa2_personal};
     unsigned int i = 0;
 
     if ((enum_sec == NULL) || (str_sec == NULL)) {
@@ -2006,7 +2023,9 @@ int key_mgmt_conversion(wifi_security_modes_t *enum_sec, char *str_sec, char *st
     } else if (conv_type == ENUM_TO_STRING) {
         for (i = 0; i < ARRAY_SIZE(arr_num); i++) {
             if (arr_num[i]  == *enum_sec) {
-                if ((*enum_sec == wifi_security_mode_wpa3_transition) || (*enum_sec == wifi_security_mode_wpa_wpa2_enterprise) || (*enum_sec == wifi_security_mode_wpa_wpa2_personal)) {
+                if ((*enum_sec == wifi_security_mode_wpa3_transition) || (*enum_sec == wifi_security_mode_wpa3_compatibility)
+                    || (*enum_sec == wifi_security_mode_wpa_wpa2_enterprise) || (*enum_sec == wifi_security_mode_wpa_wpa2_personal))
+                {
                     *len = 2;
                     char *sec_safe;
                     char *sec1 = strtok_r(arr_str[i], " ", &sec_safe);
@@ -2287,6 +2306,28 @@ int  vif_radio_idx_conversion(unsigned int vapIndex, int *input, int *output, ch
     }
 
     return RETURN_ERR;
+}
+
+wifi_channelBandwidth_t string_to_channel_width_convert(const char *bandwidth_str) {
+    if (bandwidth_str == NULL) {
+        return WIFI_CHANNELBANDWIDTH_80_80MHZ; // Default case or error handling
+    }
+
+    if (strcmp(bandwidth_str, "20") == 0) {
+        return WIFI_CHANNELBANDWIDTH_20MHZ;
+    } else if (strcmp(bandwidth_str, "40") == 0) {
+        return WIFI_CHANNELBANDWIDTH_40MHZ;
+    } else if (strcmp(bandwidth_str, "80") == 0) {
+        return WIFI_CHANNELBANDWIDTH_80MHZ;
+    } else if (strcmp(bandwidth_str, "160") == 0) {
+        return WIFI_CHANNELBANDWIDTH_160MHZ;
+#ifdef CONFIG_IEEE80211BE
+    } else if (strcmp(bandwidth_str, "320") == 0) {
+        return WIFI_CHANNELBANDWIDTH_320MHZ;
+#endif /* CONFIG_IEEE80211BE */
+    } else {
+        return WIFI_CHANNELBANDWIDTH_80_80MHZ;
+    }
 }
 
 int get_on_channel_scan_list(wifi_freq_bands_t band, wifi_channelBandwidth_t bandwidth, int primary_channel, int *channel_list, int *channels_num)
@@ -4384,4 +4425,62 @@ int get_partner_id(char *partner_id)
     }
 
     return ret;
+}
+
+// This routine will take mac address from the user and returns interfacename
+int interfacename_from_mac(const mac_address_t *mac, char *ifname)
+{
+    struct ifaddrs *ifaddr = NULL, *tmp = NULL;
+    struct sockaddr *addr;
+    struct sockaddr_ll *ll_addr;
+    bool found = false;
+
+    if (getifaddrs(&ifaddr) != 0) {
+        wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: Failed to get interfae information\n", __func__, __LINE__);
+        return -1;
+    }
+
+    tmp = ifaddr;
+    while (tmp != NULL) {
+        addr = tmp->ifa_addr;
+        ll_addr = (struct sockaddr_ll*)tmp->ifa_addr;
+        if ((addr != NULL) && (addr->sa_family == AF_PACKET) && (memcmp(ll_addr->sll_addr, mac, sizeof(mac_address_t)) == 0)) {
+            strncpy(ifname, tmp->ifa_name, strlen(tmp->ifa_name));
+            found = true;
+            break;
+        }
+
+        tmp = tmp->ifa_next;
+    }
+
+    freeifaddrs(ifaddr);
+
+    return (found == true) ? 0:-1;
+}
+
+// This routine will take interfacename and return mac address
+int mac_address_from_name(const char *ifname, mac_address_t mac)
+{
+    int sock;
+    struct ifreq ifr;
+
+    if ((sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP)) < 0) {
+        wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: Failed to create socket\n", __func__, __LINE__);
+        return -1;
+    }
+
+    memset(&ifr, 0, sizeof(struct ifreq));
+    ifr.ifr_addr.sa_family = AF_INET;
+    strcpy(ifr.ifr_name, ifname);
+    if (ioctl(sock, SIOCGIFHWADDR, &ifr) != 0) {
+        close(sock);
+        wifi_util_info_print(WIFI_WEBCONFIG,"%s:%d: ioctl failed to get hardware address for interface:%s\n", __func__, __LINE__, ifname);
+        return -1;
+    }
+
+    memcpy(mac, (unsigned char *)ifr.ifr_hwaddr.sa_data, sizeof(mac_address_t));
+
+    close(sock);
+
+    return 0;
 }

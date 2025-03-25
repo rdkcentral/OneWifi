@@ -238,14 +238,16 @@ void apps_probe_req_frame_event(wifi_app_t *app, frame_data_t *msg)
         wifi_util_dbg_print(WIFI_APPS,"%s:%d mac str convert failure\r\n", __func__, __LINE__);
         return;
     }
-
+    pthread_mutex_lock(&app->data.u.levl.lock);
     if (app->data.u.levl.probe_req_map == NULL) {
         wifi_util_dbg_print(WIFI_APPS,"%s:%d probe hash map is null\r\n", __func__, __LINE__);
+        pthread_mutex_unlock(&app->data.u.levl.lock);
         return;
     }
     if (hash_map_count(app->data.u.levl.probe_req_map) > MAX_PROBE_ENTRIES) {
         wifi_util_dbg_print(WIFI_APPS,"%s:%d [SKIP] wifi mgmt frame message: ap_index:%d length:%d src mac:%s rssi:%d\r\n", __func__,
                             __LINE__, msg->frame.ap_index, msg->frame.len, str, msg->frame.sig_dbm);
+        pthread_mutex_unlock(&app->data.u.levl.lock);
         return;
     }
 
@@ -266,6 +268,7 @@ void apps_probe_req_frame_event(wifi_app_t *app, frame_data_t *msg)
         memset(&elem->msg_data, 0, sizeof(elem->msg_data));
         memcpy(&elem->msg_data, msg, sizeof(frame_data_t));
     }
+    pthread_mutex_unlock(&app->data.u.levl.lock);
 }
 
 void apps_probe_rsp_frame_event(wifi_app_t *app, frame_data_t *msg)
@@ -303,16 +306,18 @@ void apps_assoc_req_frame_event(wifi_app_t *app, frame_data_t *msg)
     wifi_util_dbg_print(WIFI_APPS,"%s:%d wifi mgmt frame message: ap_index:%d length:%d type:%d dir:%d src mac:%s rssi:%d\r\n",
             __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir, str, msg->frame.sig_dbm);
 
-
+    pthread_mutex_lock(&app->data.u.levl.lock);
     if ((elem = (probe_req_elem_t *)hash_map_get(app->data.u.levl.probe_req_map, mac_str)) == NULL) {
         wifi_util_dbg_print(WIFI_APPS,"%s:%d:probe not found for mac address:%s\n", __func__, __LINE__, str);
         //assert(1);
         // assoc request bus send
         snprintf(namespace, sizeof(namespace), WIFI_ANALYTICS_FRAME_EVENTS_NAMESPACE, msg->frame.ap_index+1);
+        pthread_mutex_unlock(&app->data.u.levl.lock);
         mgmt_frame_bus_send(&app->handle, namespace, msg);
     } else {
         // prob request bus send
         snprintf(namespace, sizeof(namespace), WIFI_ANALYTICS_FRAME_EVENTS_NAMESPACE, elem->msg_data.frame.ap_index+1);
+        pthread_mutex_unlock(&app->data.u.levl.lock);
         mgmt_frame_bus_send(&app->handle, namespace, &elem->msg_data);
 
         // assoc request bus send
@@ -320,6 +325,7 @@ void apps_assoc_req_frame_event(wifi_app_t *app, frame_data_t *msg)
         mgmt_frame_bus_send(&app->handle, namespace, msg);
 
         // remove prob request
+        pthread_mutex_lock(&app->data.u.levl.lock);
         tmp = elem;
         frame = (struct ieee80211_mgmt *)tmp->msg_data.data;
         str = to_mac_str((unsigned char *)frame->sa, mac_str);
@@ -329,7 +335,7 @@ void apps_assoc_req_frame_event(wifi_app_t *app, frame_data_t *msg)
                 free(tmp);
             }
         }
-
+        pthread_mutex_unlock(&app->data.u.levl.lock);
         wifi_util_dbg_print(WIFI_APPS,"%s:%d Send probe and assoc ap_index:%d length:%d type:%d dir:%d rssi:%d\r\n",
                 __FUNCTION__, __LINE__, msg->frame.ap_index, msg->frame.len, msg->frame.type, msg->frame.dir, msg->frame.sig_dbm);
 
@@ -620,9 +626,11 @@ int process_levl_csi(wifi_app_t *app, wifi_csi_dev_t *csi_data)
     memcpy(mac_addr, csi_data->sta_mac, sizeof(mac_address_t));
 
     to_mac_str((unsigned char *)mac_addr, mac_str);
+    pthread_mutex_lock(&app->data.u.levl.lock);
     if (app->data.u.levl.curr_sounding_mac_map != NULL) {
         if (hash_map_get(app->data.u.levl.curr_sounding_mac_map, mac_str) == NULL) {
             //Not subscribed by Levl app
+            pthread_mutex_unlock(&app->data.u.levl.lock);
             return RETURN_OK;
         }
     }
@@ -634,16 +642,16 @@ int process_levl_csi(wifi_app_t *app, wifi_csi_dev_t *csi_data)
     levl_sc_data = (levl_sched_data_t *)hash_map_get(app->data.u.levl.curr_sounding_mac_map, mac_str);
 
     if (levl_sc_data == NULL) {
+        pthread_mutex_unlock(&app->data.u.levl.lock);
         return RETURN_ERR;
     }
     //calculate timeout with current time and last time publish
     gettimeofday(&t_now, NULL);
-
+    pthread_mutex_unlock(&app->data.u.levl.lock);
     if ((levl_sc_data->interval == 0) || levl_check_timeout(levl_sc_data, &t_now)) {
         levl_csi_publish(mac_addr, csi_data);
         levl_sc_data->last_time_publish = t_now;
     }
-
     return RETURN_OK;
 }
 
@@ -668,10 +676,11 @@ void levl_disassoc_device_event(wifi_app_t *apps, void *data)
         wifi_util_error_print(WIFI_APPS,"%s:%d NULL Pointer \n", __func__, __LINE__);
         return;
     }
-
+    pthread_mutex_lock(&wifi_app->data.u.levl.lock);
     wifi_app_t *csi_app = wifi_app->data.u.levl.csi_app;
     if (csi_app == NULL) {
         wifi_util_error_print(WIFI_APPS,"%s:%d NULL Pointer \n", __func__, __LINE__);
+        pthread_mutex_unlock(&wifi_app->data.u.levl.lock);
         return;
     }
 
@@ -679,6 +688,7 @@ void levl_disassoc_device_event(wifi_app_t *apps, void *data)
     curr_map = wifi_app->data.u.levl.curr_sounding_mac_map;
     if ((curr_map == NULL) || (p_map == NULL)) {
         wifi_util_error_print(WIFI_APPS,"%s:%d NULL hash map Unable to handle disassoc\n", __func__, __LINE__);
+        pthread_mutex_unlock(&wifi_app->data.u.levl.lock);
         return;
     }
 
@@ -698,12 +708,12 @@ void levl_disassoc_device_event(wifi_app_t *apps, void *data)
             levl_sc_data->sched_handler_id = 0;
         }
         //Disable CSI Sounding
-        pthread_mutex_unlock(&apps->data.u.levl.lock);
         wifi_util_error_print(WIFI_APPS,"%s:%d Disabling Sounding for MAC %02x:...:%02x\n", __func__, __LINE__,
                 assoc_data->dev_stats.cli_MACAddress[0],assoc_data->dev_stats.cli_MACAddress[5]);
         csi_app->data.u.csi.csi_fns.csi_stop_fn(csi_app, assoc_data->ap_index, assoc_data->dev_stats.cli_MACAddress, wifi_app_inst_levl);
+        pthread_mutex_unlock(&wifi_app->data.u.levl.lock);
         levl_csi_status_publish(&wifi_app->handle, assoc_data->dev_stats.cli_MACAddress, 0);
-        pthread_mutex_lock(&apps->data.u.levl.lock);
+        pthread_mutex_lock(&wifi_app->data.u.levl.lock);
     }
 
     levl_sc_data = (levl_sched_data_t *)hash_map_remove(curr_map, mac_str);
@@ -719,7 +729,7 @@ void levl_disassoc_device_event(wifi_app_t *apps, void *data)
             free(levl_sc_data);
         }
     }
-
+    pthread_mutex_unlock(&wifi_app->data.u.levl.lock);
     return;
 }
 
@@ -956,7 +966,7 @@ int levl_event_speed_test(wifi_app_t *app, wifi_event_subtype_t sub_type, void *
         wifi_util_dbg_print(WIFI_APPS, "%s:%d NULL Pointer \n", __func__, __LINE__);
         return -1;
     }
-
+    pthread_mutex_lock(&app->data.u.levl.lock);
     if (speed_test_data->speed_test_running == 1) {
         app->data.u.levl.paused = true;
         process_csi_stop_levl(app);
@@ -974,6 +984,7 @@ int levl_event_speed_test(wifi_app_t *app, wifi_event_subtype_t sub_type, void *
             process_csi_start_levl(app);
         }
     }
+    pthread_mutex_unlock(&app->data.u.levl.lock);
     return 0;
 }
 
@@ -1093,13 +1104,14 @@ void monitor_radio_temperature(wifi_app_t *app, wifi_event_t *event)
 int levl_event(wifi_app_t *app, wifi_event_t *event)
 {
 
-    pthread_mutex_lock(&app->data.u.levl.lock);
     switch (event->event_type) {
         case wifi_event_type_hal_ind:
             hal_event_levl(app, event->sub_type, event->u.core_data.msg);
             break;
         case wifi_event_type_webconfig:
+            pthread_mutex_lock(&app->data.u.levl.lock);
             webconfig_event_levl(app, event->sub_type, event->u.webconfig_data);
+            pthread_mutex_unlock(&app->data.u.levl.lock);
             break;
         case wifi_event_type_monitor:
             monitor_radio_temperature(app, event);
@@ -1114,7 +1126,6 @@ int levl_event(wifi_app_t *app, wifi_event_t *event)
             wifi_util_dbg_print(WIFI_APPS,"%s:%d wrong apps event:%d\n", __func__, __LINE__, event->event_type);
         break;
     }
-    pthread_mutex_unlock(&app->data.u.levl.lock);
 
     return RETURN_OK;
 }
@@ -1198,7 +1209,9 @@ int levl_deinit(wifi_app_t *app)
     for (unsigned int radio_idx = 0; radio_idx < MAX_NUM_RADIOS; radio_idx++) {
         if (app->data.u.levl.temperature_event_subscribed[radio_idx] == TRUE) {
             app->data.u.levl.temperature_event_subscribed[radio_idx] = FALSE;
+            pthread_mutex_unlock(&app->data.u.levl.lock);
             push_radio_temperature_request_to_monitor_queue(mon_stats_request_state_stop, MIN_TEMPERATURE_INTERVAL_MS, radio_idx);
+            pthread_mutex_lock(&app->data.u.levl.lock);
         }
     }
 
@@ -1593,8 +1606,8 @@ bus_error_t levl_event_handler(char *eventName, bus_event_sub_action_t action, i
                 wifi_app->data.u.levl.temperature_event_subscribed[radio-1] = TRUE;
                 wifi_util_info_print(WIFI_APPS,"%s:%d Adding Subscription for radio %u with interval %d\n", __func__, __LINE__, radio-1, interval);
                 wifi_app->data.u.levl.radio_temperature_interval[radio-1] = interval;
-                push_radio_temperature_request_to_monitor_queue(mon_stats_request_state_start, interval, radio-1);
                 pthread_mutex_unlock(&wifi_app->data.u.levl.lock);
+                push_radio_temperature_request_to_monitor_queue(mon_stats_request_state_start, interval, radio-1);
                 return bus_error_success;
             }
         }
@@ -1626,7 +1639,9 @@ bus_error_t levl_event_handler(char *eventName, bus_event_sub_action_t action, i
             if (wifi_app->data.u.levl.temperature_event_subscribed[radio-1] == TRUE) {
                 wifi_app->data.u.levl.temperature_event_subscribed[radio-1] = FALSE;
                 /* If radio temperature event, then stop the request to collect data */
+                pthread_mutex_unlock(&wifi_app->data.u.levl.lock);
                 push_radio_temperature_request_to_monitor_queue(mon_stats_request_state_stop, wifi_app->data.u.levl.radio_temperature_interval[radio-1], radio-1);
+                return bus_error_success;
             }
         }
         if (strstr(eventName, "X_RDK_CSI_LEVL")) {

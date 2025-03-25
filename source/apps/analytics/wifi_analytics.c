@@ -69,6 +69,11 @@ const char *subdoc_type_to_string(webconfig_subdoc_type_t type)
         DOC2S(webconfig_subdoc_type_assocdev_stats)
         DOC2S(webconfig_subdoc_type_radiodiag_stats)
         DOC2S(webconfig_subdoc_type_radio_temperature)
+#ifdef EM_APP
+        DOC2S(webconfig_subdoc_type_em_config)
+        DOC2S(webconfig_subdoc_type_beacon_report)
+        DOC2S(webconfig_subdoc_type_em_channel_stats)
+#endif
     default:
         wifi_util_error_print(WIFI_APPS, "%s:%d: event not handle[%d]\r\n", __func__, __LINE__,
             type);
@@ -863,6 +868,10 @@ int command_event_analytics(wifi_app_t *apps, wifi_event_subtype_t sub_type, voi
         break;
 
     case wifi_event_type_eth_bh_status:
+        break;
+
+    case wifi_event_type_rsn_override_rfc:
+        wifi_util_info_print(WIFI_APPS, "%s:%d: Change in WPA3-Personal-Compatibility RFC %d \r\n", __func__, __LINE__, (bool *)arg);
         break;
 
     default:
