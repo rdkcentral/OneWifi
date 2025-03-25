@@ -1609,6 +1609,7 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
     decode_param_bool(vap, "BssHotspot", param);
     vap_info->u.bss_info.bssHotspot = (param->type & cJSON_True) ? true : false;
 
+#ifdef FEATURE_SUPPORT_WPS
     // wpsPushButton
     decode_param_integer(vap, "WpsPushButton", param);
     vap_info->u.bss_info.wpsPushButton = param->valuedouble;
@@ -1625,7 +1626,7 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
         decode_param_allow_empty_string(vap, "WpsConfigPin", param);
         strcpy(vap_info->u.bss_info.wps.pin, param->valuestring);
     }
-
+#endif
     // BeaconRateCtl
     decode_param_string(vap, "BeaconRateCtl", param);
     strcpy(vap_info->u.bss_info.beaconRateCtl, param->valuestring);
@@ -2208,9 +2209,11 @@ webconfig_error_t decode_wifi_global_config(const cJSON *global_cfg, wifi_global
     global_info->vlan_cfg_version = param->valuedouble;
 
 #ifndef EASY_MESH_NODE
-    //WpsPin
+    // WpsPin
+#ifdef FEATURE_SUPPORT_WPS
     decode_param_string(global_cfg, "WpsPin", param);
     strcpy(global_info->wps_pin, param->valuestring);
+#endif
 #endif
 
     // BandsteeringEnable

@@ -429,7 +429,7 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
 
     // BssHotspot
     cJSON_AddBoolToObject(vap_object, "BssHotspot", vap_info->u.bss_info.bssHotspot);
-
+#ifdef FEATURE_SUPPORT_WPS
     // wpsPushButton
     cJSON_AddNumberToObject(vap_object, "WpsPushButton", vap_info->u.bss_info.wpsPushButton);
 
@@ -442,7 +442,7 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
         //WpsConfigPin
         cJSON_AddStringToObject(vap_object, "WpsConfigPin", vap_info->u.bss_info.wps.pin);
     }
-
+#endif
     // BeaconRateCtl
     cJSON_AddStringToObject(vap_object, "BeaconRateCtl", vap_info->u.bss_info.beaconRateCtl);
 

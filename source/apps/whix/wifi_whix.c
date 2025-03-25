@@ -2353,6 +2353,7 @@ static void wps_enable_telemetry(wifi_app_t *app, wifi_event_t *event)
                  wifi_util_error_print(WIFI_APPS,"%s:%d: Failed to get vap_array_index for vap index %u and radio index %u\n", __func__, __LINE__, vap_index, radio_index);
                  continue;
              }
+#ifdef FEATURE_SUPPORT_WPS
              enable = webconfig_data->u.decoded.radios[radio_index].vaps.vap_map.vap_array[vap_array_index].u.bss_info.wps.enable;
              wifi_util_dbg_print(WIFI_APPS,"%s:%d WPS current enable value and previous enable value for radio %u is %d and %d\n", __func__, __LINE__, radio_index, enable, app->data.u.whix.wps_enabled[radio_index]);
              if (app->data.u.whix.wps_enabled[radio_index] != enable) {
@@ -2360,6 +2361,7 @@ static void wps_enable_telemetry(wifi_app_t *app, wifi_event_t *event)
                  fprintf(wifihealth_fp, "%s RDKB_WPS_ENABLED_%d %s\n", tmp, radio_index+1, enable ? "TRUE":"FALSE");
                  app->data.u.whix.wps_enabled[radio_index] = enable;
              }
+#endif
         }
     }
     fclose(wifihealth_fp);
@@ -2558,7 +2560,9 @@ int whix_init(wifi_app_t *app, unsigned int create_flag)
                  wifi_util_error_print(WIFI_APPS,"%s:%d: Failed to get vap_array_index for vap index %u\n", __func__, __LINE__, vap_index);
                  continue;
              }
+#ifdef FEATURE_SUPPORT_WPS
              app->data.u.whix.wps_enabled[radio_index] = wifi_mgr->radio_config[radio_index].vaps.vap_map.vap_array[vap_array_index].u.bss_info.wps.enable;
+#endif
         }
     }
     app->data.u.whix.sched_handler_id = 0;
