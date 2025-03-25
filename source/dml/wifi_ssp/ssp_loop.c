@@ -1050,7 +1050,8 @@ int get_psm_total_mac_list(int instance_number, unsigned int *total_entries, cha
     if((retPsmGet == CCSP_SUCCESS) && (strlen(l_strValue) > 0) )
     {
         wifi_util_dbg_print(WIFI_PSM, "%s:%d  mac list data:%s\n",__func__, __LINE__, l_strValue);
-        strncpy(strValue, l_strValue, (strlen(l_strValue) + 1));
+        snprintf(strValue, sizeof(strValue), "%s", l_strValue);
+        ((CCSP_MESSAGE_BUS_INFO *)bus_handle)->freefunc(l_strValue);
         sscanf(strValue, "%d:", &l_total_entries);
         wifi_util_dbg_print(WIFI_PSM, "%s:%d  recName: %s total entry:%d\n",__func__, __LINE__, recName, l_total_entries);
         if (l_total_entries != 0) {
@@ -1061,6 +1062,10 @@ int get_psm_total_mac_list(int instance_number, unsigned int *total_entries, cha
         }
     } else {
         wifi_util_dbg_print(WIFI_PSM, "%s:%d PSM maclist get failure:%d mac list data:%s\n",__func__, __LINE__, retPsmGet, l_strValue);
+        if(retPsmGet == CCSP_SUCCESS)
+        {
+            ((CCSP_MESSAGE_BUS_INFO *)bus_handle)->freefunc(l_strValue);
+        }
     }
 
     return RETURN_ERR;
