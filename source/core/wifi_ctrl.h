@@ -113,6 +113,8 @@ extern "C" {
 
 #define BUS_DML_CONFIG_FILE "bus_dml_config.json"
 
+#define CTRL_QUEUE_SIZE_MAX 500
+
 typedef enum {
     ctrl_webconfig_state_none = 0,
     ctrl_webconfig_state_radio_cfg_rsp_pending = 0x0001,
@@ -208,7 +210,7 @@ typedef struct {
 typedef struct wifi_ctrl {
     bool                exit_ctrl;
     queue_t             *queue;
-    pthread_mutex_t     lock;
+    pthread_mutex_t     queue_lock;
     pthread_cond_t      cond;
     pthread_mutexattr_t attr;
     unsigned int        poll_period;

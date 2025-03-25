@@ -1613,6 +1613,10 @@ webconfig_error_t encode_associated_client_object(rdk_wifi_vap_info_t *rdk_vap_i
     cJSON_AddStringToObject(obj_vaps, "VapName", rdk_vap_info->vap_name);
     cJSON_AddItemToObject(obj_vaps, "associatedClients", obj_array);
 
+    if (rdk_vap_info->associated_devices_lock == NULL) {
+        return webconfig_error_none;
+    }
+    pthread_mutex_lock(rdk_vap_info->associated_devices_lock);
     switch (assoclist_type)  {
         case assoclist_type_full:
             devices_map = rdk_vap_info->associated_devices_map;
@@ -1622,6 +1626,7 @@ webconfig_error_t encode_associated_client_object(rdk_wifi_vap_info_t *rdk_vap_i
             devices_map = rdk_vap_info->associated_devices_diff_map;
         break;
         default:
+            pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
             return webconfig_error_encode;
     }
 
@@ -1689,6 +1694,8 @@ webconfig_error_t encode_associated_client_object(rdk_wifi_vap_info_t *rdk_vap_i
             assoc_dev_data = hash_map_get_next(devices_map, assoc_dev_data);
         }
     }
+    pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
+
     return webconfig_error_none;
 }
 
