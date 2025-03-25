@@ -39,6 +39,7 @@ extern "C" {
 #include "wifi_harvester.h"
 #include "wifi_ocs.h"
 #include "wifi_em.h"
+#include "wifi_sta_mgr.h"
 
 #ifdef ONEWIFI_BLASTER_APP_SUPPORT
 #include "wifi_blaster.h"
@@ -89,6 +90,9 @@ typedef struct {
 #ifdef ONEWIFI_EASYCONNECT_APP_SUPPORT
         easyconnect_data_t ec;
 #endif // ONEWIFI_EASYCONNECT_APP_SUPPORT
+#ifdef ONEWIFI_STA_MANAGER_APP_SUPPORT
+        sta_mgr_data_t sta_mgr;
+#endif // ONEWIFI_STA_MANAGER_APP_SUPPORT
     } u;
 } wifi_app_data_t;
 
@@ -131,6 +135,8 @@ typedef struct wifi_apps_mgr {
 int apps_mgr_init(wifi_ctrl_t *ctrl, wifi_app_descriptor_t *desc, unsigned int num);
 int apps_mgr_event(wifi_apps_mgr_t *apps_mgr, wifi_event_t *event);
 wifi_app_t *get_app_by_inst(wifi_apps_mgr_t *apps, wifi_app_inst_t inst);
+
+int app_init(wifi_app_t *app, unsigned int create_flag);
 
 wifi_app_descriptor_t* get_app_desc(int *);
 #ifdef __cplusplus
