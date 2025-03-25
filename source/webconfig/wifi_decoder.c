@@ -5004,9 +5004,9 @@ webconfig_error_t decode_em_channel_stats_object(channel_scan_response_t **chan_
     num_results = cJSON_GetArraySize(channel_scan_arr);
     (*chan_stats)->num_results = num_results;
 
-    if (num_results > MAX_RESULTS) {
+    if (num_results > EM_MAX_RESULTS) {
         wifi_util_error_print(WIFI_WEBCONFIG,
-            "%s:%d: Number of results exceeds MAX_RESULTS limit\n", __func__, __LINE__);
+            "%s:%d: Number of results exceeds EM_MAX_RESULTS limit\n", __func__, __LINE__);
         return webconfig_error_decode;
     }
 
@@ -5049,9 +5049,9 @@ webconfig_error_t decode_em_channel_stats_object(channel_scan_response_t **chan_
             num_neighbors = cJSON_GetArraySize(neighbor_arr);
             result->num_neighbors = num_neighbors;
 
-            if (num_neighbors > MAX_NEIGHBORS) {
+            if (num_neighbors > EM_MAX_NEIGHBORS) {
                 wifi_util_error_print(WIFI_WEBCONFIG,
-                    "%s:%d: Number of neighbors exceeds MAX_NEIGHBORS limit\n", __func__, __LINE__);
+                    "%s:%d: Number of neighbors exceeds EM_MAX_NEIGHBORS limit\n", __func__, __LINE__);
                 return webconfig_error_decode;
             }
 
@@ -5520,7 +5520,7 @@ webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_c
     }
 
     em_config->local_steering_dslw_policy.sta_count = cJSON_GetArraySize(disallowed_sta_array);
-    for (int i = 0; (i < em_config->local_steering_dslw_policy.sta_count) && (i < MAX_DIS_STA);
+    for (int i = 0; (i < em_config->local_steering_dslw_policy.sta_count) && (i < EM_MAX_DIS_STA);
          i++) {
         sta_obj = cJSON_GetArrayItem(disallowed_sta_array, i);
         decode_param_allow_optional_string(sta_obj, "MAC", param);
@@ -5548,7 +5548,7 @@ webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_c
     }
 
     em_config->btm_steering_dslw_policy.sta_count = cJSON_GetArraySize(disallowed_sta_array);
-    for (int i = 0; i < em_config->btm_steering_dslw_policy.sta_count && (i < MAX_DIS_STA); i++) {
+    for (int i = 0; i < em_config->btm_steering_dslw_policy.sta_count && (i < EM_MAX_DIS_STA); i++) {
         sta_obj = cJSON_GetArrayItem(disallowed_sta_array, i);
         decode_param_string(sta_obj, "MAC", param);
         str_to_mac_bytes(param->valuestring, em_config->btm_steering_dslw_policy.disallowed_sta[i]);

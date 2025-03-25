@@ -78,8 +78,6 @@ extern "C" {
 #define WIFI_NOTIFY_DENY_TCM_ASSOCIATION               "Device.WiFi.ConnectionControl.TcmClientDenyAssociation"
 #define WIFI_STUCK_DETECT_FILE_NAME         "/nvram/wifi_stuck_detect"
 
-
-
 #define PLAN_ID_LENGTH     38
 #define MAX_STEP_COUNT  32 /*Active Measurement Step Count */
 #define  MAC_ADDRESS_LENGTH  13
@@ -1082,10 +1080,11 @@ typedef struct {
 
 #ifdef EM_APP
 
-#define MAX_OPERATING_CLASS 48
-#define MAX_CHANNEL_BW_LEN 16
-#define MAX_NEIGHBORS 16
-#define MAX_RESULTS 32
+#define EM_MAX_OPERATING_CLASS 48
+#define EM_MAX_CHANNEL_BW_LEN 16
+#define EM_MAX_NEIGHBORS 16
+#define EM_MAX_RESULTS 32
+#define EM_MAX_CHANNELS 64
 
 typedef char marker_name[32];
 
@@ -1094,10 +1093,10 @@ typedef struct {
     marker_name managed_client_marker;
 } ap_metrics_policy_t;
 
-#define MAX_DIS_STA 30
+#define EM_MAX_DIS_STA 30
 typedef struct {
     int sta_count;
-    mac_addr_t disallowed_sta[MAX_DIS_STA];
+    mac_addr_t disallowed_sta[EM_MAX_DIS_STA];
 } steering_disallowed_policy_t;
 
 typedef struct {
@@ -1120,10 +1119,10 @@ typedef struct {
     bool sta_status;
 } radio_metrics_policy_t;
 
-#define MAX_RADIO_POLICY 4
+#define EM_MAX_RADIO_POLICY 4
 typedef struct {
     int radio_count;
-    radio_metrics_policy_t radio_metrics_policy[MAX_RADIO_POLICY];
+    radio_metrics_policy_t radio_metrics_policy[EM_MAX_RADIO_POLICY];
 } radio_metrics_policies_t;
 
 typedef struct {
@@ -1141,11 +1140,11 @@ typedef struct {
     wifi_BeaconReport_t *beacon_repo;
 } wifi_hal_rrm_report_t;
 
-#define MAX_BR_DATA 400
+#define EM_MAX_BR_DATA 400
 typedef struct {
     mac_address_t mac_addr;
     unsigned int data_len;
-    unsigned char data[MAX_BR_DATA];
+    unsigned char data[EM_MAX_BR_DATA];
     unsigned int ap_index;
     unsigned int num_br_data;
     int sched_handler_id;
@@ -1155,7 +1154,7 @@ typedef struct {
 typedef struct {
     UCHAR operating_class;
     UINT num_channels;
-    UCHAR channels[MAX_CHANNELS];
+    UCHAR channels[EM_MAX_CHANNELS];
 } operating_class_t;
 
 typedef struct {
@@ -1163,14 +1162,14 @@ typedef struct {
     UINT num_radios;
     mac_address_t ruid;
     UINT num_operating_classes;
-    operating_class_t operating_classes[MAX_OPERATING_CLASS];
+    operating_class_t operating_classes[EM_MAX_OPERATING_CLASS];
 } channel_scan_request_t;
 
 typedef struct {
     bssid_t bssid;
     ssid_t ssid;
     CHAR signal_strength;
-    CHAR channel_bandwidth[MAX_CHANNEL_BW_LEN];
+    CHAR channel_bandwidth[EM_MAX_CHANNEL_BW_LEN];
     UCHAR bss_load_element_present;
     UCHAR bss_color;
     UCHAR channel_utilization;
@@ -1185,7 +1184,7 @@ typedef struct {
     UCHAR utilization;
     UCHAR noise;
     USHORT num_neighbors;
-    neighbor_bss_t neighbors[MAX_NEIGHBORS];
+    neighbor_bss_t neighbors[EM_MAX_NEIGHBORS];
     UINT aggregate_scan_duration;
     UCHAR scan_type;  // 0: Passive, 1: Active
 } channel_scan_result_t;
@@ -1193,7 +1192,7 @@ typedef struct {
 typedef struct {
     mac_address_t ruid;
     UINT num_results;
-    channel_scan_result_t results[MAX_RESULTS];
+    channel_scan_result_t results[EM_MAX_RESULTS];
 } channel_scan_response_t;
 #endif
 

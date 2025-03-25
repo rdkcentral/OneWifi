@@ -317,7 +317,7 @@ static int em_prepare_scan_response_data(wifi_provider_response_t *provider_resp
         }
 
         if (res_index == -1) {
-            if (scan_response->num_results >= MAX_RESULTS) {
+            if (scan_response->num_results >= EM_MAX_RESULTS) {
                 wifi_util_error_print(WIFI_EM,
                     "%s:%d : Maximum number of scan results reached. Skipping additional "
                     "results.\n",
@@ -341,7 +341,7 @@ static int em_prepare_scan_response_data(wifi_provider_response_t *provider_resp
             op_class, src->ap_Channel);
 
         channel_scan_result_t *res = &scan_response->results[res_index];
-        if (res->num_neighbors < MAX_NEIGHBORS) {
+        if (res->num_neighbors < EM_MAX_NEIGHBORS) {
             neighbor_bss_t *neighbor = &res->neighbors[res->num_neighbors];
             sscanf(src->ap_BSSID, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &neighbor->bssid[0],
                 &neighbor->bssid[1], &neighbor->bssid[2], &neighbor->bssid[3], &neighbor->bssid[4],
@@ -349,7 +349,7 @@ static int em_prepare_scan_response_data(wifi_provider_response_t *provider_resp
             strncpy(neighbor->ssid, src->ap_SSID, sizeof(ssid_t));
             neighbor->signal_strength = src->ap_SignalStrength;
             strncpy(neighbor->channel_bandwidth, src->ap_OperatingChannelBandwidth,
-                MAX_CHANNEL_BW_LEN);
+                EM_MAX_CHANNEL_BW_LEN);
             neighbor->channel_utilization = src->ap_ChannelUtilization;
             neighbor->bss_load_element_present = 0;
             neighbor->bss_color = 0;
