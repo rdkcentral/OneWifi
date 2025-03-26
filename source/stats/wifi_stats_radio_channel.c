@@ -875,14 +875,15 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
             }
         }
 	channels[0] = updated_channels[0];
-        for (i = 0; i < new_num_channels; i++) {
+	for (i = 0; i < new_num_channels; i++) {
             if (mon_data->last_scanned_channel[args->radio_index] ==
                 updated_channels[i]) {
 		    if ((i + 1) >= new_num_channels) {
-			    channels[0] = updated_channels[i];
+			    channels[0] = updated_channels[0];
 		    } else {
 			    channels[0] = updated_channels[i + 1];
 		    }
+		    break;
 	    }
 	}
         num_channels = 1;
