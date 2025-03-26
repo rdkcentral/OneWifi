@@ -11846,6 +11846,7 @@ WPS_SetParamIntValue
 #else
     /* WPS not supported */
     return FALSE;
+#endif
 
     /**********************************************************************
 
