@@ -77,6 +77,7 @@
 #define TCM_THRESHOLD "0.18"
 #define ONEWIFI_DB_VERSION_WPA3_COMP_FLAG 100032
 #define WPA3_COMPATIBILITY 8192
+#define ONEWIFI_DB_VERSION_HOSTAP_MGMT_FRAME_CTRL_FLAG 100033
 
 ovsdb_table_t table_Wifi_Radio_Config;
 ovsdb_table_t table_Wifi_VAP_Config;
@@ -4443,6 +4444,18 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
                 wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i], &rdk_config[i]);
             }
         }
+
+        if (g_wifidb->db_version < ONEWIFI_DB_VERSION_HOSTAP_MGMT_FRAME_CTRL_FLAG) {
+#if defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_)
+            config->vap_array[i].u.bss_info.hostap_mgt_frame_ctrl = true;
+            wifi_util_dbg_print(WIFI_DB,
+                "%s:%d Update hostap_mgt_frame_ctrl:%d for vap_index:%d \n", __func__, __LINE__,
+                config->vap_array[i].u.bss_info.hostap_mgt_frame_ctrl,
+                config->vap_array[i].vap_index);
+            wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i],
+                &rdk_config[i]);
+#endif
+        }
     }
 }
 
@@ -5300,25 +5313,25 @@ int ovsdb_get_radio_params(unsigned int radio_index, wifi_radio_operationParam_t
 {
     if (radio_index == 0) {
         params->band = WIFI_FREQUENCY_2_4_BAND;
-        params->op_class = 12;
+        params->operatingClass = 12;
         params->channel = 3;
         params->channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
         params->variant = WIFI_80211_VARIANT_G;
     } else if (radio_index == 1) {
         params->band = WIFI_FREQUENCY_5_BAND;
-        params->op_class = 1;
+        params->operatingClass = 1;
         params->channel = 36;
         params->channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
         params->variant = WIFI_80211_VARIANT_A;
     } else if (radio_index == 2) {
         params->band = WIFI_FREQUENCY_2_4_BAND;
-        params->op_class = 12;
+        params->operatingClass = 12;
         params->channel = 3;
         params->channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
         params->variant = WIFI_80211_VARIANT_N;
     } else if (radio_index == 3) {
         params->band = WIFI_FREQUENCY_2_4_BAND;
-        params->op_class = 12;
+        params->operatingClass = 12;
         params->channel = 3;
         params->channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
         params->variant = WIFI_80211_VARIANT_N;
@@ -6323,7 +6336,6 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 
     switch (cfg.band) {
         case WIFI_FREQUENCY_2_4_BAND:
-            cfg.op_class = 12;
             cfg.operatingClass = 81;
             cfg.channel = 1;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
@@ -6346,7 +6358,6 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
             break;
         case WIFI_FREQUENCY_5_BAND:
         case WIFI_FREQUENCY_5L_BAND:
-            cfg.op_class = 128;
             cfg.operatingClass = 128;
 #if defined (_PP203X_PRODUCT_REQ_)
             cfg.beaconInterval = 200;
@@ -6364,7 +6375,6 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #endif /* CONFIG_IEEE80211BE */
             break;
         case WIFI_FREQUENCY_5H_BAND:
-            cfg.op_class = 128;
             cfg.operatingClass = 128;
             cfg.channel = 157;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
@@ -6381,7 +6391,6 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #endif /* CONFIG_IEEE80211BE */
             break;
         case WIFI_FREQUENCY_6_BAND:
-            cfg.op_class = 131;
             cfg.operatingClass = 131;
             cfg.channel = 5;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_160MHZ;
@@ -6743,6 +6752,12 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         }
 #endif // NEWPLATFORM_PORT
 #endif //_SKY_HUB_COMMON_PRODUCT_REQ_
+
+#if defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_)
+        cfg.u.bss_info.hostap_mgt_frame_ctrl = true;
+        wifi_util_dbg_print(WIFI_DB, "%s:%d vap_index:%d hostap_mgt_frame_ctrl:%d\n", __func__,
+            __LINE__, vap_index, cfg.u.bss_info.hostap_mgt_frame_ctrl);
+#endif
 
         memset(ssid, 0, sizeof(ssid));
 
