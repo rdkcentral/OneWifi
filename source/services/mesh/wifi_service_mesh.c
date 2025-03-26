@@ -1393,7 +1393,7 @@ int process_ext_sta_conn_status(wifi_service_node_t *node, wifi_core_data_t *dat
                     pthread_mutex_lock(&mgr->data_cache_lock);
                     radio_params->channel = sta_data->stats.channel;
                     radio_params->channelWidth = sta_data->stats.channelWidth;
-                    radio_params->op_class = sta_data->stats.op_class;
+                    radio_params->operatingClass = sta_data->stats.op_class;
                     pthread_mutex_unlock(&mgr->data_cache_lock);
 
                     mgr->ctrl.webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
