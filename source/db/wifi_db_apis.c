@@ -4489,18 +4489,22 @@ void wifidb_vap_config_correction(wifi_vap_info_map_t *l_vap_map_param)
     for (index = 0; index < l_vap_map_param->num_vaps; index++) {
         vap_config = &l_vap_map_param->vap_array[index];
 
-        if ((isVapPrivate(vap_config->vap_index)) && (access(ONEWIFI_BSS_MAXASSOC_FLAG, F_OK) != 0) &&
+        if ((isVapPrivate(vap_config->vap_index)) &&
+            (access(ONEWIFI_BSS_MAXASSOC_FLAG, F_OK) != 0) &&
             (vap_config->u.bss_info.bssMaxSta != wifi_hal_cap_obj->wifi_prop.BssMaxStaAllow)) {
-                wifi_util_info_print(WIFI_DB, "%s:%d: Update bssMaxSta for private_vap:%d from %d to %d\r\n",
-                    __func__, __LINE__, vap_config->vap_index, vap_config->u.bss_info.bssMaxSta, wifi_hal_cap_obj->wifi_prop.BssMaxStaAllow);
-                vap_config->u.bss_info.bssMaxSta = wifi_hal_cap_obj->wifi_prop.BssMaxStaAllow;
+            wifi_util_info_print(WIFI_DB,
+                "%s:%d: Update bssMaxSta for private_vap:%d from %d to %d\r\n", __func__, __LINE__,
+                vap_config->vap_index, vap_config->u.bss_info.bssMaxSta,
+                wifi_hal_cap_obj->wifi_prop.BssMaxStaAllow);
+            vap_config->u.bss_info.bssMaxSta = wifi_hal_cap_obj->wifi_prop.BssMaxStaAllow;
 
-                rdk_vap_config = get_wifidb_rdk_vaps(vap_config->radio_index);
-                if (rdk_vap_config == NULL) {
-                    wifi_util_error_print(WIFI_DB, "%s:%d: failed to get rdk vaps for radio index %d\n", __func__, __LINE__, vap_config->radio_index);
-                } else {
-                    update_wifi_vap_info(vap_config->vap_name, vap_config, rdk_vap_config);
-                }
+            rdk_vap_config = get_wifidb_rdk_vaps(vap_config->radio_index);
+            if (rdk_vap_config == NULL) {
+                wifi_util_error_print(WIFI_DB, "%s:%d: failed to get rdk vaps for radio index %d\n",
+                    __func__, __LINE__, vap_config->radio_index);
+            } else {
+                update_wifi_vap_info(vap_config->vap_name, vap_config, rdk_vap_config);
+            }
         }
 
         if (isVapPrivate(vap_config->vap_index) &&
@@ -4510,15 +4514,16 @@ void wifidb_vap_config_correction(wifi_vap_info_map_t *l_vap_map_param)
                 vap_config->u.bss_info.wps.enable = true;
                 wifi_util_info_print(WIFI_DB, "%s:%d: force wps enabled for private_vap:%d\r\n",
                     __func__, __LINE__, vap_config->vap_index);
-#endif
             }
             continue;
+#endif
         }
         if (isVapLnfSecure(vap_config->vap_index) &&
             is_sec_mode_enterprise(vap_config->u.bss_info.security.mode)) {
             set_lnf_radius_server_ip(&vap_config->u.bss_info.security);
-            wifi_util_info_print(WIFI_DB,"%s:%d: Primary Ip and Secondry Ip: %s , %s\n", __func__, __LINE__, (char *)vap_config->u.bss_info.security.u.radius.ip,
-                                            (char *)vap_config->u.bss_info.security.u.radius.s_ip);
+            wifi_util_info_print(WIFI_DB, "%s:%d: Primary Ip and Secondry Ip: %s , %s\n", __func__,
+                __LINE__, (char *)vap_config->u.bss_info.security.u.radius.ip,
+                (char *)vap_config->u.bss_info.security.u.radius.s_ip);
             continue;
         }
     }
@@ -6481,12 +6486,14 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
 {
     wifi_mgr_t *g_wifidb;
     g_wifidb = get_wifimgr_obj();
-    wifi_hal_capability_t *wifi_hal_cap_obj = rdk_wifi_get_hal_capability_map();
+    wifi_hal_capability_t *wifi_hal_cap_obj = &g_wifidb->hal_cap;
     unsigned int vap_array_index;
     unsigned int found = 0;
     wifi_vap_info_t cfg;
     char vap_name[BUFFER_LENGTH_WIFIDB] = {0};
+#ifdef FEATURE_SUPPORT_WPS
     char wps_pin[128] = {0};
+#endif
     char password[128] = {0};
     char radius_key[128] = {0};
     char ssid[128] = {0};
@@ -6695,15 +6702,12 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             if ((wifi_hal_get_default_wps_pin(wps_pin) == RETURN_OK) && ((strlen(wps_pin) != 0))) {
                 strcpy(cfg.u.bss_info.wps.pin, wps_pin);
             } else {
-
                 wifi_util_error_print(WIFI_DB, "%s:%d: Incorrect wps pin for vap '%s'\n", __func__,
                     __LINE__, vap_name);
-
                 strcpy(cfg.u.bss_info.wps.pin, "12345678");
-#endif
             }
-        }
-        else if (isVapHotspot(vap_index)) {
+#endif
+        } else if (isVapHotspot(vap_index)) {
             cfg.u.bss_info.showSsid = true;
         } else {
             cfg.u.bss_info.showSsid = false;

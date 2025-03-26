@@ -817,8 +817,9 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
                     print_wifi_hal_vap_wps_data(WIFI_WEBCONFIG, "Old", tgt_vap_index, &mgr_vap_info->u.bss_info.wps);
                     print_wifi_hal_vap_wps_data(WIFI_WEBCONFIG, "New", tgt_vap_index, &vap_info->u.bss_info.wps);
                 }
-            } 
 #endif
+            } 
+
             p_tgt_vap_map = (wifi_vap_info_map_t *) malloc(sizeof(wifi_vap_info_map_t));
             if(p_tgt_vap_map == NULL ) {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to allocate memory.\n", __func__, __LINE__);
