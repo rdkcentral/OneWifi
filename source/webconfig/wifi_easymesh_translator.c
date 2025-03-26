@@ -1933,7 +1933,6 @@ webconfig_error_t translate_radio_object_from_easymesh_to_radio(webconfig_subdoc
             em_op_class_info = proto->get_op_class_info(proto->data_model, j);
             if ((em_op_class_info != NULL) && (em_op_class_info->id.type == 1) &&
                 (memcmp(&ruid, &em_op_class_info->id.ruid, sizeof(mac_address_t)) == 0)) {
-                oper_param->op_class = em_op_class_info->op_class;
                 oper_param->operatingClass = em_op_class_info->op_class;
                 oper_param->channel = em_op_class_info->channel;
             }

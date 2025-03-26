@@ -41,6 +41,7 @@
 //This Macro ONE_WIFI_CHANGES, used to modify the validator changes. Re-check is required where the macro is used
 #define ONE_WIFI_CHANGES
 
+#define  ARRAY_SZ(x)    (sizeof(x) / sizeof((x)[0]))
 #define decode_param_string(json, key, value) \
 {   \
     value = cJSON_GetObjectItem(json, key);     \
@@ -2493,6 +2494,137 @@ webconfig_error_t decode_radio_setup_object(const cJSON *obj_radio_setup, rdk_wi
     return webconfig_error_none;
 }
 
+int remove_chanlist_entries(wifi_channels_list_per_bandwidth_t *chanlist)
+{
+    for (int i = 0; i < chanlist->num_channels_list; i++) {
+        memset(chanlist->channels_list[i].channels_list, 0, sizeof(chanlist->channels_list[i].channels_list));
+        chanlist->channels_list[i].num_channels = 0;
+    }
+    if(chanlist->num_channels_list > 0) {
+        chanlist->num_channels_list = 0;
+        chanlist->chanwidth = 0;
+    }
+    return 0;
+}
+
+webconfig_error_t process_bandwidth(cJSON *radioParams, const char *bandwidth_str,
+    wifi_freq_bands_t band, wifi_channels_list_per_bandwidth_t *chanlist,
+    wifi_channelBandwidth_t bandwidth_type)
+{
+    cJSON *bandwidth = cJSON_GetObjectItem(radioParams, bandwidth_str);
+    if (bandwidth != NULL) {
+        int channels_list[MAX_CHANNELS];
+        int num_channels = 0;
+        cJSON *channel;
+        cJSON_ArrayForEach(channel, bandwidth) {
+            if (get_on_channel_scan_list(band, bandwidth_type, channel->valueint, channels_list,
+                    &num_channels) == 0) {
+                memcpy(chanlist->channels_list[chanlist->num_channels_list].channels_list,
+                    channels_list, sizeof(channels_list));
+                chanlist->channels_list[chanlist->num_channels_list].num_channels = num_channels;
+                chanlist->num_channels_list++;
+            } else {
+                wifi_util_error_print(WIFI_CTRL,
+                    "%s:%d get_on_channel_scan_list failed for bandwidth %s channel %d \n", __FUNCTION__,
+                    __LINE__, bandwidth_str, channel->valueint);
+                return webconfig_error_decode;
+            }
+        }
+        chanlist->chanwidth = bandwidth_type;
+    }
+    else
+    {
+        remove_chanlist_entries(chanlist);
+    }
+    return webconfig_error_none;
+}
+
+webconfig_error_t decode_bandwidth_from_json(cJSON *radioParams, wifi_freq_bands_t band,
+    wifi_radio_operationParam_t *radioOperParams)
+{
+    const char *bandwidths[] = { "20", "40", "80", "160",
+#ifdef CONFIG_IEEE80211BE
+        "8080", "320"
+#endif
+    };
+    const int arr_size = sizeof(bandwidths) / sizeof(bandwidths[0]);
+    for (int i = 0; i < arr_size; i++) {
+        wifi_channelBandwidth_t bw_type = string_to_channel_width_convert(bandwidths[i]);
+        if (process_bandwidth(radioParams, bandwidths[i], band,
+                &radioOperParams->channels_per_bandwidth[i], bw_type) != webconfig_error_none) {
+            return webconfig_error_decode;
+        }
+    }
+    radioOperParams->acs_keep_out_reset = false; // 5GH and 6G treated as RadioIndex 2
+    return webconfig_error_none;
+}
+
+//Optimize in PHASE 2
+void decode_acs_keep_out_json(const char *json_string, unsigned int num_of_radios, webconfig_subdoc_data_t *data)
+{
+    cJSON *json = cJSON_Parse(json_string);
+    if (json == NULL) {
+        const char *error_ptr = cJSON_GetErrorPtr();
+        if (error_ptr != NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Error before: %s\n", __FUNCTION__, __LINE__,
+                error_ptr);
+        }
+        return;
+    }
+    wifi_radio_operationParam_t *radio_oper = NULL;
+    cJSON *item = NULL;
+    const char *radioNames[] = { "radio2G", "radio5G", "radio5GL", "radio5GH", "radio6G" };
+    wifi_freq_bands_t freq_band;
+    int radioIndex;
+    int numRadios = ARRAY_SZ(radioNames);
+    cJSON *channelExclusion = cJSON_GetObjectItem(json, "ChannelExclusion");
+    if (!channelExclusion) {
+        for (unsigned int i = 0; i < num_of_radios; i++) {
+            radio_oper = &data->u.decoded.radios[i].oper;
+            radio_oper->acs_keep_out_reset = true; 
+            for(int k = 0;k<MAX_NUM_CHANNELBANDWIDTH_SUPPORTED;k++)
+            {
+                remove_chanlist_entries(&radio_oper->channels_per_bandwidth[k]);
+            }
+        }
+        cJSON_Delete(json);
+        return;
+    }
+    cJSON_ArrayForEach(item, channelExclusion) {
+        for (int i = 0, j = WIFI_FREQUENCY_2_4_BAND; i < numRadios; i++, j *= 2) {
+            freq_band = (wifi_freq_bands_t)j;
+            if (convert_freq_band_to_radio_index(freq_band, &radioIndex) != RETURN_OK) {
+                continue;
+            }
+            radio_oper = &data->u.decoded.radios[radioIndex].oper;
+            if (!radio_oper) {
+                wifi_util_error_print(WIFI_CTRL,
+                    "%s:%d Could not retrieve values for radio_operationparam for radioIndex= "
+                    "%d\n",
+                    __FUNCTION__, __LINE__, radioIndex);
+                continue;
+            }
+            cJSON *radioParams = cJSON_GetObjectItem(item, radioNames[i]);
+            if (radioParams != NULL) {
+                if (decode_bandwidth_from_json(radioParams, freq_band, radio_oper) !=
+                    webconfig_error_none) {
+                    wifi_util_error_print(WIFI_CTRL,
+                        "%s:%d decode_bandwidth_from_json returned error\n", __FUNCTION__,
+                        __LINE__);
+                    return;
+                }
+            } else {
+                radio_oper->acs_keep_out_reset = true; // Optimize in Phase 2
+                for(int k = 0;k<MAX_NUM_CHANNELBANDWIDTH_SUPPORTED;k++)
+                {
+                    remove_chanlist_entries(&radio_oper->channels_per_bandwidth[k]);
+                }
+            }
+        }
+    }
+    cJSON_Delete(json);
+}
+
 webconfig_error_t decode_radio_operating_classes(const cJSON *obj_radio_setup,
     wifi_radio_operationParam_t *oper)
 {
@@ -2550,7 +2682,6 @@ webconfig_error_t decode_radio_curr_operating_classes(const cJSON *obj_radio_set
     obj = cJSON_GetArrayItem(obj_array, 0);
     decode_param_integer(obj, "Class", param);
     oper->operatingClass = param->valuedouble;
-    oper->op_class = param->valuedouble;
     decode_param_integer(obj, "Channel", param);
     // update the channel only if oper->channel is not configured
     // if oper->channel is already populated then don't overwrite.
@@ -2773,7 +2904,6 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
     // OperatingClass
     decode_param_integer(obj_radio, "OperatingClass", param);
     radio_info->operatingClass = param->valuedouble;
-    radio_info->op_class = param->valuedouble;
 
     // BasicDataTransmitRates
     decode_param_integer(obj_radio, "BasicDataTransmitRates", param);
@@ -4872,9 +5002,9 @@ webconfig_error_t decode_em_channel_stats_object(channel_scan_response_t **chan_
     num_results = cJSON_GetArraySize(channel_scan_arr);
     (*chan_stats)->num_results = num_results;
 
-    if (num_results > MAX_RESULTS) {
+    if (num_results > EM_MAX_RESULTS) {
         wifi_util_error_print(WIFI_WEBCONFIG,
-            "%s:%d: Number of results exceeds MAX_RESULTS limit\n", __func__, __LINE__);
+            "%s:%d: Number of results exceeds EM_MAX_RESULTS limit\n", __func__, __LINE__);
         return webconfig_error_decode;
     }
 
@@ -4917,9 +5047,9 @@ webconfig_error_t decode_em_channel_stats_object(channel_scan_response_t **chan_
             num_neighbors = cJSON_GetArraySize(neighbor_arr);
             result->num_neighbors = num_neighbors;
 
-            if (num_neighbors > MAX_NEIGHBORS) {
+            if (num_neighbors > EM_MAX_NEIGHBORS) {
                 wifi_util_error_print(WIFI_WEBCONFIG,
-                    "%s:%d: Number of neighbors exceeds MAX_NEIGHBORS limit\n", __func__, __LINE__);
+                    "%s:%d: Number of neighbors exceeds EM_MAX_NEIGHBORS limit\n", __func__, __LINE__);
                 return webconfig_error_decode;
             }
 
@@ -5388,7 +5518,7 @@ webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_c
     }
 
     em_config->local_steering_dslw_policy.sta_count = cJSON_GetArraySize(disallowed_sta_array);
-    for (int i = 0; (i < em_config->local_steering_dslw_policy.sta_count) && (i < MAX_DIS_STA);
+    for (int i = 0; (i < em_config->local_steering_dslw_policy.sta_count) && (i < EM_MAX_DIS_STA);
          i++) {
         sta_obj = cJSON_GetArrayItem(disallowed_sta_array, i);
         decode_param_allow_optional_string(sta_obj, "MAC", param);
@@ -5416,7 +5546,7 @@ webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_c
     }
 
     em_config->btm_steering_dslw_policy.sta_count = cJSON_GetArraySize(disallowed_sta_array);
-    for (int i = 0; i < em_config->btm_steering_dslw_policy.sta_count && (i < MAX_DIS_STA); i++) {
+    for (int i = 0; i < em_config->btm_steering_dslw_policy.sta_count && (i < EM_MAX_DIS_STA); i++) {
         sta_obj = cJSON_GetArrayItem(disallowed_sta_array, i);
         decode_param_string(sta_obj, "MAC", param);
         str_to_mac_bytes(param->valuestring, em_config->btm_steering_dslw_policy.disallowed_sta[i]);

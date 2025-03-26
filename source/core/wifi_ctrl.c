@@ -438,6 +438,13 @@ int start_radios(rdk_dev_mode_type_t mode)
         wifi_util_error_print(WIFI_CTRL,"WIFI %s : Number of Radios %d exceeds supported %d Radios \n",__FUNCTION__, getNumberRadios(), MAX_NUM_RADIOS);
         return RETURN_ERR;
     }
+    //Ensure RBUS event not missed in restart. Direct decode call as it is not conventional subdoc.
+    void* keep_out_json = bus_get_keep_out_json();
+    if (keep_out_json != NULL)
+    { 
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d ACS KeepOut json_schema at boot up time = %s\n",__FUNCTION__,__LINE__,(char*)keep_out_json);
+        process_acs_keep_out_channels_event((char*)keep_out_json);
+    }
 
     for (index = 0; index < num_of_radios; index++) {
         wifi_radio_oper_param = (wifi_radio_operationParam_t *)get_wifidb_radio_map(index);
@@ -472,7 +479,7 @@ int start_radios(rdk_dev_mode_type_t mode)
                     if ((is_wifi_channel_valid(wifi_prop, wifi_radio_oper_param->band, wifi_radio_oper_param->channel)) != RETURN_OK) {
                         wifi_radio_oper_param->channel = dfs_fallback_channel(wifi_prop, wifi_radio_oper_param->band);
                     }
-                    wifi_radio_oper_param->op_class = 1;
+                    wifi_radio_oper_param->operatingClass = 1;
                     wifi_util_info_print(WIFI_CTRL,
                         "%s:%d Calling switch_dfs_channel for dfs_chan:%d \n", __func__, __LINE__,
                         dfs_channel_data->dfs_channel);
@@ -483,7 +490,7 @@ int start_radios(rdk_dev_mode_type_t mode)
                     if ((is_wifi_channel_valid(wifi_prop, wifi_radio_oper_param->band, wifi_radio_oper_param->channel)) != RETURN_OK) {
                         wifi_radio_oper_param->channel = dfs_fallback_channel(wifi_prop, wifi_radio_oper_param->band);
                     }
-                    wifi_radio_oper_param->op_class = 1;
+                    wifi_radio_oper_param->operatingClass = 1;
                 }
             }
 
@@ -2043,7 +2050,7 @@ static int bus_check_and_subscribe_events(void* arg)
         (ctrl->device_mode_subscribed == false) || (ctrl->active_gateway_check_subscribed == false) ||
         (ctrl->device_tunnel_status_subscribed == false) || (ctrl->device_wps_test_subscribed == false) ||
         (ctrl->test_device_mode_subscribed == false) || (ctrl->mesh_status_subscribed == false) ||
-        (ctrl->marker_list_config_subscribed == false)
+        (ctrl->marker_list_config_subscribed == false) || (ctrl->mesh_keep_out_chans_subscribed == false)
 #if defined (RDKB_EXTENDER_ENABLED)
         || (ctrl->eth_bh_status_subscribed == false)
 #endif

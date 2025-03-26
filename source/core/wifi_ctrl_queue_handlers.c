@@ -2497,7 +2497,7 @@ int dfs_nop_start_timer(void *args)
         radio_channel_param.sub_event = WIFI_EVENT_RADAR_DETECTED;
         radio_channel_param.channel = dfs_radar_channel;
         radio_channel_param.channelWidth = dfs_radar_ch_bw;
-        radio_channel_param.op_class = radio_params->op_class;
+        radio_channel_param.op_class = radio_params->operatingClass;
 
         dfs_timer_secs = ((time_now - radar_detected_time)<(radio_params->DFSTimer * 60) && (time_now > radar_detected_time)) ? ( (radio_params->DFSTimer * 60) - (time_now - radar_detected_time)) : 0;
         if(dfs_timer_secs == 0) {
@@ -2554,7 +2554,7 @@ int dfs_nop_finish_timer(void *args)
             radio_channel_param.sub_event = WIFI_EVENT_RADAR_NOP_FINISHED;
             radio_channel_param.channel = nop_fin_dfs_ch;
             radio_channel_param.channelWidth = dfs_radar_ch_bw;
-            radio_channel_param.op_class = radio_params->op_class;
+            radio_channel_param.op_class = radio_params->operatingClass;
 
             wifi_util_dbg_print(WIFI_CTRL, "%s Nop_Finish for channel:%d BW:0x%x \n", __func__, nop_fin_dfs_ch, dfs_radar_ch_bw);
             process_channel_change_event(&radio_channel_param, is_nop_start_reboot, dfs_timer_secs);
@@ -2655,7 +2655,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
         pthread_mutex_lock(&g_wifidb->data_cache_lock);
         radio_params->channel = ch_chg->channel;
         radio_params->channelWidth = ch_chg->channelWidth;
-        radio_params->op_class = ch_chg->op_class;
+        radio_params->operatingClass = ch_chg->op_class;
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
     }
     else if ( (ch_chg->event == WIFI_EVENT_DFS_RADAR_DETECTED) && (radio_params->band == WIFI_FREQUENCY_5_BAND || radio_params->band == WIFI_FREQUENCY_5L_BAND || radio_params->band == WIFI_FREQUENCY_5H_BAND) ) {
@@ -2862,6 +2862,32 @@ int get_neighbor_scan_results(void *arg)
     return TIMER_TASK_COMPLETE;
 }
 
+void process_acs_keep_out_channels_event(const char* json_data)
+{
+    unsigned int numOfRadios = getNumberRadios();
+    webconfig_subdoc_data_t data;
+    wifi_radio_operationParam_t *radio_oper = NULL;
+    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+    decode_acs_keep_out_json(json_data,numOfRadios,&data);
+    for(unsigned int i=0;i<numOfRadios;i++)
+    {
+        radio_oper = (wifi_radio_operationParam_t *)get_wifidb_radio_map(i);
+        if(radio_oper)
+        {
+            radio_oper->acs_keep_out_reset = data.u.decoded.radios[i].oper.acs_keep_out_reset;
+            memcpy(radio_oper->channels_per_bandwidth, data.u.decoded.radios[i].oper.channels_per_bandwidth,sizeof(data.u.decoded.radios[i].oper.channels_per_bandwidth));
+            if(radio_oper->acs_keep_out_reset)
+            {
+                wifi_hal_set_acs_keep_out_chans(NULL,i);
+                radio_oper->acs_keep_out_reset = false;
+            }
+            else
+            {
+                wifi_hal_set_acs_keep_out_chans(radio_oper,i);
+            }
+        }
+    }
+}
 
 void process_neighbor_scan_command_event()
 {
@@ -3496,6 +3522,10 @@ void handle_webconfig_event(wifi_ctrl_t *ctrl, const char *raw, unsigned int len
     case wifi_event_webconfig_data_req_from_dml:
         apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, subtype, NULL);
         ctrl->webconfig_state |= ctrl_webconfig_state_trigger_dml_thread_data_update_pending;
+        break;
+    
+    case wifi_event_webconfig_data_to_hal_apply: //Re-factor this for Phase 2
+        process_acs_keep_out_channels_event(raw);
         break;
 
     default:
