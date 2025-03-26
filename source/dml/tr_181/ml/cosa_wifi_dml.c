@@ -11746,6 +11746,7 @@ WPS_SetParamBoolValue
         BOOL                        bValue
     )
 {
+#ifdef FEATURE_SUPPORT_WPS
     wifi_vap_info_t *pcfg = (wifi_vap_info_t *)hInsContext;
     if (pcfg == NULL)
     {
@@ -11764,7 +11765,6 @@ WPS_SetParamBoolValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s does not support configuration\n", __FUNCTION__,__LINE__,pcfg->vap_name);
         return TRUE;
     }
- #ifdef FEATURE_SUPPORT_WPS
     /* check the parameter name and set the corresponding value */
     if (AnscEqualString(ParamName, "Enable", TRUE)) {
         if (vapInfo->u.bss_info.wps.enable != bValue) {
@@ -11918,6 +11918,7 @@ WPS_SetParamIntValue
     **********************************************************************/
     BOOL WPS_SetParamStringValue(ANSC_HANDLE hInsContext, char *ParamName, char *pString)
     {
+#ifdef FEATURE_SUPPORT_WPS
         wifi_vap_info_t *pcfg = (wifi_vap_info_t *)hInsContext;
         if (pcfg == NULL) {
             wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Null pointer get fail\n", __FUNCTION__,
@@ -11935,7 +11936,6 @@ WPS_SetParamIntValue
                 __FUNCTION__, __LINE__, instance_number);
             return FALSE;
         }
-#ifdef FEATURE_SUPPORT_WPS
         /* check the parameter name and set the corresponding value */
         if (AnscEqualString(ParamName, "ConfigMethodsEnabled", TRUE)) {
             int match = 0;
@@ -12043,6 +12043,7 @@ WPS_SetParamIntValue
     **********************************************************************/
     BOOL WPS_Validate(ANSC_HANDLE hInsContext, char *pReturnParamName, ULONG *puLength)
     {
+#ifdef FEATURE_SUPPORT_WPS
         wifi_vap_info_t *pcfg = (wifi_vap_info_t *)hInsContext;
         if (pcfg == NULL) {
             wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Null pointer get fail\n", __FUNCTION__,
@@ -12061,7 +12062,6 @@ WPS_SetParamIntValue
         if (wifiApIsSecmodeOpenForPrivateAP(wlanIndex) != ANSC_STATUS_SUCCESS) {
             return FALSE;
         }
-#ifdef FEATURE_SUPPORT_WPS
         if (vapInfo->u.bss_info.wpsPushButton == true) {
             if (vapInfo->u.bss_info.wps.enable == false) {
                 CcspWifiTrace(
@@ -12109,6 +12109,7 @@ WPS_SetParamIntValue
     ULONG
     WPS_Commit(ANSC_HANDLE hInsContext)
     {
+#ifdef FEATURE_SUPPORT_WPS
         wifi_vap_info_t *pcfg = (wifi_vap_info_t *)hInsContext;
         uint8_t instance_number = convert_vap_name_to_index(
                                       &((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop,
@@ -12116,7 +12117,6 @@ WPS_SetParamIntValue
             1;
         INT wlanIndex = instance_number - 1;
         wifi_vap_info_t *vapInfo = (wifi_vap_info_t *)get_dml_cache_vap_info(instance_number - 1);
-#ifdef FEATURE_SUPPORT_WPS
         if (vapInfo->u.bss_info.wpsPushButton == true) {
             wifi_util_dbg_print(WIFI_DMCLI, "%s:%d:Activate push button for vap %d\n", __func__,
                 __LINE__, wlanIndex);
