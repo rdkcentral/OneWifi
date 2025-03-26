@@ -781,7 +781,9 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
     int vapIndex = 0;
     unsigned int radioIndx = 256; // some impossible values
     unsigned int vapArrayIndx = 256;
+#ifdef FEATURE_SUPPORT_WPS
     char wps_pin[128] = {0};
+#endif
     char password[128] = {0};
     char ssid[128] = {0};
     wifi_radio_operationParam_t  *oper_param;
