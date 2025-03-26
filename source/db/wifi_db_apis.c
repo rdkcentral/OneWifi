@@ -7580,7 +7580,7 @@ int wifi_db_update_global_config(wifi_global_param_t *global_cfg)
 #ifndef NEWPLATFORM_PORT
     memset(strValue, 0, sizeof(strValue));
     #ifdef FEATURE_SUPPORT_WPS
-    str = p_ccsp_desc->psm_get_value_fn(WpsPin, strValue);
+    str = p_ccsp_desc->psm_get_value_fn(WpsPin, strValue, sizeof(strValue));
     if (str != NULL) {
         //global_cfg->wps_pin = atoi(str);
         strcpy(global_cfg->wps_pin, str);
@@ -8595,7 +8595,7 @@ int get_all_param_from_psm_and_set_into_db(void)
         }
     }
 
-    get_wifidb_obj()->desc.init_data_fn();x 
+    get_wifidb_obj()->desc.init_data_fn();
 
     // Set Wifi Global Parameters
     init_wifi_global_config();
