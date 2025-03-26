@@ -78,7 +78,6 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
 
     switch (cfg.band) {
         case WIFI_FREQUENCY_2_4_BAND:
-            cfg.op_class = 12;
             cfg.operatingClass = 81;
             cfg.channel = 1;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
@@ -91,7 +90,6 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
             break;
         case WIFI_FREQUENCY_5_BAND:
         case WIFI_FREQUENCY_5L_BAND:
-            cfg.op_class = 128;
             cfg.operatingClass = 128;
             cfg.channel = 44;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
@@ -102,7 +100,6 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
 #endif /* CONFIG_IEEE80211BE */
             break;
         case WIFI_FREQUENCY_5H_BAND:
-            cfg.op_class = 128;
             cfg.operatingClass = 128;
             cfg.channel = 157;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
@@ -113,7 +110,6 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
 #endif /* CONFIG_IEEE80211BE */
             break;
         case WIFI_FREQUENCY_6_BAND:
-            cfg.op_class = 131;
             cfg.operatingClass = 131;
             cfg.channel = 5;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_160MHZ;
