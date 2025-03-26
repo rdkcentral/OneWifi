@@ -11792,10 +11792,8 @@ WPS_SetParamBoolValue
         push_event_to_ctrl_queue(&instance_number, sizeof(instance_number), wifi_event_type_command, wifi_event_type_command_wps_cancel, NULL);
         return TRUE;
     }
-#else
-    /* WPS not supported */
-    return FALSE;
 #endif
+    return FALSE;
 }
 
 /**********************************************************************  
@@ -11842,11 +11840,10 @@ WPS_SetParamIntValue
     if (AnscEqualString(ParamName, "X_CISCO_COM_WpsPushButton", TRUE)) {
         return TRUE;
     }
-}
-#else
-    /* WPS not supported */
-    return FALSE;
 #endif
+    return FALSE;
+}
+
 
     /**********************************************************************
 
