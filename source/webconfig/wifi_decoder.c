@@ -2682,7 +2682,6 @@ webconfig_error_t decode_radio_curr_operating_classes(const cJSON *obj_radio_set
     obj = cJSON_GetArrayItem(obj_array, 0);
     decode_param_integer(obj, "Class", param);
     oper->operatingClass = param->valuedouble;
-    oper->op_class = param->valuedouble;
     decode_param_integer(obj, "Channel", param);
     // update the channel only if oper->channel is not configured
     // if oper->channel is already populated then don't overwrite.
@@ -2905,7 +2904,6 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
     // OperatingClass
     decode_param_integer(obj_radio, "OperatingClass", param);
     radio_info->operatingClass = param->valuedouble;
-    radio_info->op_class = param->valuedouble;
 
     // BasicDataTransmitRates
     decode_param_integer(obj_radio, "BasicDataTransmitRates", param);

@@ -2497,7 +2497,7 @@ int dfs_nop_start_timer(void *args)
         radio_channel_param.sub_event = WIFI_EVENT_RADAR_DETECTED;
         radio_channel_param.channel = dfs_radar_channel;
         radio_channel_param.channelWidth = dfs_radar_ch_bw;
-        radio_channel_param.op_class = radio_params->op_class;
+        radio_channel_param.op_class = radio_params->operatingClass;
 
         dfs_timer_secs = ((time_now - radar_detected_time)<(radio_params->DFSTimer * 60) && (time_now > radar_detected_time)) ? ( (radio_params->DFSTimer * 60) - (time_now - radar_detected_time)) : 0;
         if(dfs_timer_secs == 0) {
@@ -2554,7 +2554,7 @@ int dfs_nop_finish_timer(void *args)
             radio_channel_param.sub_event = WIFI_EVENT_RADAR_NOP_FINISHED;
             radio_channel_param.channel = nop_fin_dfs_ch;
             radio_channel_param.channelWidth = dfs_radar_ch_bw;
-            radio_channel_param.op_class = radio_params->op_class;
+            radio_channel_param.op_class = radio_params->operatingClass;
 
             wifi_util_dbg_print(WIFI_CTRL, "%s Nop_Finish for channel:%d BW:0x%x \n", __func__, nop_fin_dfs_ch, dfs_radar_ch_bw);
             process_channel_change_event(&radio_channel_param, is_nop_start_reboot, dfs_timer_secs);
@@ -2655,7 +2655,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
         pthread_mutex_lock(&g_wifidb->data_cache_lock);
         radio_params->channel = ch_chg->channel;
         radio_params->channelWidth = ch_chg->channelWidth;
-        radio_params->op_class = ch_chg->op_class;
+        radio_params->operatingClass = ch_chg->op_class;
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
     }
     else if ( (ch_chg->event == WIFI_EVENT_DFS_RADAR_DETECTED) && (radio_params->band == WIFI_FREQUENCY_5_BAND || radio_params->band == WIFI_FREQUENCY_5L_BAND || radio_params->band == WIFI_FREQUENCY_5H_BAND) ) {

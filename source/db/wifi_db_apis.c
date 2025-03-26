@@ -5282,25 +5282,25 @@ int ovsdb_get_radio_params(unsigned int radio_index, wifi_radio_operationParam_t
 {
     if (radio_index == 0) {
         params->band = WIFI_FREQUENCY_2_4_BAND;
-        params->op_class = 12;
+        params->operatingClass = 12;
         params->channel = 3;
         params->channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
         params->variant = WIFI_80211_VARIANT_G;
     } else if (radio_index == 1) {
         params->band = WIFI_FREQUENCY_5_BAND;
-        params->op_class = 1;
+        params->operatingClass = 1;
         params->channel = 36;
         params->channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
         params->variant = WIFI_80211_VARIANT_A;
     } else if (radio_index == 2) {
         params->band = WIFI_FREQUENCY_2_4_BAND;
-        params->op_class = 12;
+        params->operatingClass = 12;
         params->channel = 3;
         params->channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
         params->variant = WIFI_80211_VARIANT_N;
     } else if (radio_index == 3) {
         params->band = WIFI_FREQUENCY_2_4_BAND;
-        params->op_class = 12;
+        params->operatingClass = 12;
         params->channel = 3;
         params->channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
         params->variant = WIFI_80211_VARIANT_N;
@@ -6299,7 +6299,6 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 
     switch (cfg.band) {
         case WIFI_FREQUENCY_2_4_BAND:
-            cfg.op_class = 12;
             cfg.operatingClass = 81;
             cfg.channel = 1;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
@@ -6322,7 +6321,6 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
             break;
         case WIFI_FREQUENCY_5_BAND:
         case WIFI_FREQUENCY_5L_BAND:
-            cfg.op_class = 128;
             cfg.operatingClass = 128;
 #if defined (_PP203X_PRODUCT_REQ_)
             cfg.beaconInterval = 200;
@@ -6340,7 +6338,6 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #endif /* CONFIG_IEEE80211BE */
             break;
         case WIFI_FREQUENCY_5H_BAND:
-            cfg.op_class = 128;
             cfg.operatingClass = 128;
             cfg.channel = 157;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
@@ -6357,7 +6354,6 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #endif /* CONFIG_IEEE80211BE */
             break;
         case WIFI_FREQUENCY_6_BAND:
-            cfg.op_class = 131;
             cfg.operatingClass = 131;
             cfg.channel = 5;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_160MHZ;
