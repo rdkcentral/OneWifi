@@ -874,21 +874,21 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
                 updated_channels[new_num_channels++] = args->channel_list.channels_list[i];
             }
         }
-	channels[0] = updated_channels[0];
-	for (i = 0; i < new_num_channels; i++) {
+        channels[0] = updated_channels[0];
+        for (i = 0; i < new_num_channels; i++) {
             if (mon_data->last_scanned_channel[args->radio_index] ==
                 updated_channels[i]) {
-		    if ((i + 1) >= new_num_channels) {
-			    channels[0] = updated_channels[0];
-		    } else {
-			    channels[0] = updated_channels[i + 1];
-		    }
-		    break;
-	    }
-	}
-        num_channels = 1;
-        mon_data->last_scanned_channel[args->radio_index] = channels[0];
-    }
+                    if ((i + 1) >= new_num_channels) {
+                        channels[0] = updated_channels[0];
+                    } else {
+                        channels[0] = updated_channels[i + 1];
+                    }
+                    break;
+                }
+            }
+            num_channels = 1;
+            mon_data->last_scanned_channel[args->radio_index] = channels[0];
+        }
 
     if (num_channels == 0) {
         wifi_util_error_print(WIFI_MON, "%s:%d invalid number of channels\n", __func__, __LINE__);
