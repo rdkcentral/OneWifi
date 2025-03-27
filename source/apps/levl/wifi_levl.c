@@ -810,6 +810,7 @@ void push_radio_temperature_request_to_monitor_queue(wifi_mon_stats_request_stat
     data->u.mon_stats_config.data_type = mon_stats_type_radio_temperature;
     data->u.mon_stats_config.args.radio_index = radio_index;
     push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
+    free(data);
 }
 
 int webconfig_event_levl(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *data)
