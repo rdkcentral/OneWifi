@@ -1322,7 +1322,6 @@ void process_disconnect(unsigned int ap_index, auth_deauth_dev_t *dev)
     t_tmp.tv_sec = sta->total_connected_time.tv_sec;
     t_tmp.tv_nsec = sta->total_connected_time.tv_nsec;
     timespecadd(&t_tmp, &t_diff, &(sta->total_connected_time));
-    sta->dev_stats.cli_Active = false;
     if (sta->dev_stats.cli_Active = false && (tv_now.tv_sec - sta->assoc_frame_data.frame_timestamp > 5)) {
         tmp_sta = hash_map_remove(sta_map, sta_key);
         if (tmp_sta != NULL) {
@@ -1330,6 +1329,7 @@ void process_disconnect(unsigned int ap_index, auth_deauth_dev_t *dev)
                 tmp_sta = NULL;
         }
     }
+    sta->dev_stats.cli_Active = false;
     sta->connection_authorized = false;
     if (!sta->deauth_monitor_start_time)
         sta->deauth_monitor_start_time = tv_now.tv_sec;
