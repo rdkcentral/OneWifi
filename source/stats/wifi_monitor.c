@@ -1322,11 +1322,12 @@ void process_disconnect(unsigned int ap_index, auth_deauth_dev_t *dev)
     t_tmp.tv_sec = sta->total_connected_time.tv_sec;
     t_tmp.tv_nsec = sta->total_connected_time.tv_nsec;
     timespecadd(&t_tmp, &t_diff, &(sta->total_connected_time));
-    if (sta->dev_stats.cli_Active = false && (tv_now.tv_sec - sta->assoc_frame_data.frame_timestamp > 5)) {
+    if (sta->dev_stats.cli_Active = false && (sta->total_connected_time.tv_sec == 0)) {
         tmp_sta = hash_map_remove(sta_map, sta_key);
         if (tmp_sta != NULL) {
-                free(tmp_sta);
-                tmp_sta = NULL;
+            free(tmp_sta);
+            tmp_sta = NULL;
+            return;
         }
     }
     sta->dev_stats.cli_Active = false;
