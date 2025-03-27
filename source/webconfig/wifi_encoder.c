@@ -682,8 +682,9 @@ webconfig_error_t encode_wifi_global_config(const wifi_global_param_t *global_in
     cJSON_AddNumberToObject(global_obj, "VlanCfgVersion", global_info->vlan_cfg_version);
 
     //WpsPin
+#ifdef FEATURE_SUPPORT_WPS
     cJSON_AddStringToObject(global_obj, "WpsPin", global_info->wps_pin);
-
+#endif
     // BandsteeringEnable
     cJSON_AddBoolToObject(global_obj, "BandsteeringEnable", (const cJSON_bool)global_info->bandsteering_enable);
 
