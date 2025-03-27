@@ -1291,7 +1291,7 @@ void process_connect(unsigned int ap_index, auth_deauth_dev_t *dev)
 void process_disconnect(unsigned int ap_index, auth_deauth_dev_t *dev)
 {
     sta_key_t sta_key;
-    sta_data_t *sta;
+    sta_data_t *sta, *tmp_sta;
     hash_map_t *sta_map;
     struct timespec tv_now, t_diff, t_tmp;
     instant_msmt_t msmt;
@@ -1323,6 +1323,13 @@ void process_disconnect(unsigned int ap_index, auth_deauth_dev_t *dev)
     t_tmp.tv_nsec = sta->total_connected_time.tv_nsec;
     timespecadd(&t_tmp, &t_diff, &(sta->total_connected_time));
     sta->dev_stats.cli_Active = false;
+    if (sta->dev_stats.cli_Active = false && (tv_now.tv_sec - sta->assoc_frame_data.frame_timestamp > 5)) {
+        tmp_sta = hash_map_remove(sta_map, sta_key);
+        if (tmp_sta != NULL) {
+                free(tmp_sta);
+                tmp_sta = NULL;
+        }
+    }
     sta->connection_authorized = false;
     if (!sta->deauth_monitor_start_time)
         sta->deauth_monitor_start_time = tv_now.tv_sec;
