@@ -140,7 +140,8 @@ typedef enum {
     wifi_app_inst_core = wifi_app_inst_base << 14,
     wifi_app_inst_ocs = wifi_app_inst_base << 15,
     wifi_app_inst_easyconnect = wifi_app_inst_base << 16,
-    wifi_app_inst_max = wifi_app_inst_base << 17
+    wifi_app_inst_sta_mgr = wifi_app_inst_base << 17,
+    wifi_app_inst_max = wifi_app_inst_base << 18
 } wifi_app_inst_t;
 
 typedef struct {

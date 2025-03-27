@@ -240,6 +240,27 @@ int em_event(wifi_app_t *app, wifi_event_t *event)
 }
 #endif // EM_APP
 
+#ifdef ONEWIFI_STA_MGR_APP_SUPPORT
+extern int sta_mgr_init(wifi_app_t *app, unsigned int create_flag);
+extern int sta_mgr_deinit(wifi_app_t *app);
+extern int sta_mgr_event(wifi_app_t *app, wifi_event_t *event);
+#else
+int sta_mgr_init(wifi_app_t *app, unsigned int create_flag)
+{
+    return 0;
+}
+
+int sta_mgr_deinit(wifi_app_t *app)
+{
+    return 0;
+}
+
+int sta_mgr_event(wifi_app_t *app, wifi_event_t *event)
+{
+    return 0;
+}
+#endif // ONEWIFI_STA_MGR_APP_SUPPORT
+
 wifi_app_descriptor_t app_desc[] = {
 #ifdef ONEWIFI_ANALYTICS_APP_SUPPORT
     {
@@ -347,7 +368,17 @@ wifi_app_descriptor_t app_desc[] = {
         easyconnect_init, easyconnect_event, easyconnect_deinit,
         NULL, NULL
     },
-#endif // ONEWIFI_EASYCONNECT_APP_SUPPORT
+#endif // ONEWIFI_EASYCONNECT_APP_SUPPORT,
+#ifdef ONEWIFI_STA_MGR_APP_SUPPORT
+    {
+        wifi_app_inst_sta_mgr, 0,
+        wifi_event_type_hal_ind | wifi_event_type_exec | wifi_event_type_webconfig,
+        true, true,
+        "Station Manager",
+        sta_mgr_init, sta_mgr_event, sta_mgr_deinit,
+        NULL, NULL
+    },
+#endif // ONEWIFI_STA_MGR_APP_SUPPORT
 };
 
 wifi_app_descriptor_t* get_app_desc(int *size){

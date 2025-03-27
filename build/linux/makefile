@@ -32,6 +32,7 @@ include build/linux/makefile.inc
 
 EASY_MESH_NODE = 1
 EM_APP = 1
+ONEWIFI_STA_MGR_APP_SUPPORT = 1
 
 # wifi hal rules
 HAL_LIBRARY = $(INSTALLDIR)/lib/libwifihal.a
@@ -230,6 +231,7 @@ INCLUDEDIRS = \
     -I$(ONE_WIFI_HOME)/source/apps/whix \
     -I$(ONE_WIFI_HOME)/source/apps/easyconnect \
     -I$(ONE_WIFI_HOME)/source/apps/em \
+    -I$(ONE_WIFI_HOME)/source/apps/sta_mgr \
     -I$(ONE_WIFI_HOME)/source/core/services \
     -I$(ONE_WIFI_HOME)/include/tr_181/ml \
     -I$(ONE_WIFI_HOME)/include \
@@ -391,6 +393,10 @@ ifdef EM_APP
 	WEBCONFIG_SOURCES += $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_easymesh_config.c    \
                 $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_beacon_report.c  \
                 $(ONE_WIFI_HOME)/source/webconfig/wifi_webconfig_em_channel_stats.c
+endif
+
+ifdef ONEWIFI_STA_MGR_APP_SUPPORT
+	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/sta_mgr/*.c)
 endif
 
 COBJECTS = $(CSOURCES:.c=.o)  # expands to list of object files

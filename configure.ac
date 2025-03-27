@@ -123,6 +123,22 @@ AM_CONDITIONAL([HAL_IPC], [test x$HAL_IPC = xtrue])
 AM_CONDITIONAL([ONEWIFI_CAC_APP_SUPPORT], [test x$ONEWIFI_CAC_APP_SUPPORT = xtrue])
 AM_CONDITIONAL([ONEWIFI_DML_SUPPORT], [test x$ONEWIFI_DML_SUPPORT_MAKEFILE = xtrue])
 
+ONEWIFI_STA_MGR_APP_SUPPORT_FLAG = " "
+AC_ARG_ENABLE([sta_mgr_app],
+             AS_HELP_STRING([--enable-sta-mgr-app],[enable sta mgr app (default is no)]),
+             [
+              case "${enableval}" in
+               yes) STA_MGR_APP_ENABLE=true
+                    ONEWIFI_STA_MGR_APP_SUPPORT_FLAG="-DONEWIFI_STA_MGR_APP_SUPPORT"
+                    ;;
+               no)  STA_MGR_APP_ENABLE=false AC_MSG_ERROR([em app is disabled]);;
+               *)   AC_MSG_ERROR([bad value ${enableval} for --enable-sta-mgr-app ]);;
+              esac
+             ],
+             [echo "sta mgr app is disabled"])
+AM_CONDITIONAL([ONEWIFI_STA_MGR_APP_SUPPORT], [test x$STA_MGR_APP_ENABLE = xtrue])
+AC_SUBST(ONEWIFI_STA_MGR_APP_SUPPORT_FLAG)
+
 # Specify ccsp cpu arch
 
 AC_ARG_WITH([ccsp-arch],
