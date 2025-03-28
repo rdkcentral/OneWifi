@@ -22,7 +22,7 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
-
+#include "wifi_util.h"
 static wifi_bus_t g_bus;
 static void bus_desc_init(wifi_bus_desc_t *desc);
 
@@ -243,6 +243,35 @@ bus_error_t bus_method_invoke(bus_handle_t *handle, void *paramName, char *event
     return ((rc != 0) ? -1 : 0);
 }
 
+bus_error_t bus_unreg_data_elements(bus_handle_t *handle, uint32_t num_of_element, bus_data_element_t *data_element)
+{
+    int rc = bus_error_success;
+    return ((rc != 0) ? -1 : 0);
+}
+
+char const* bus_error_to_string(bus_error_t bus_error)
+{
+    return NULL;
+}
+
+void *bus_convert_handle_to_ptr(bus_handle_t *handle)
+{
+    return &handle->u.he_bus_handle;
+}
+
+bus_error_t bus_event_subscribe_async(bus_handle_t *handle, char const *event_name, void *cb,
+    void *async_cb, void *userData, int timeout)
+{
+    int rc = bus_error_success;
+    return ((rc != 0) ? -1 : 0);
+}
+
+bus_error_t bus_event_unsubscribe(bus_handle_t *handle, char const *event_name)
+{
+    int rc = bus_error_success;
+    return ((rc != 0) ? -1 : 0);
+}
+
 bus_error_t bus_event_subscribe(bus_handle_t *handle, char const *event_name, void  *cb, void *userData, int timeout)
 {
     VERIFY_NULL_WITH_RC(handle);
@@ -345,15 +374,20 @@ static void bus_desc_init(wifi_bus_desc_t *desc)
     desc->bus_data_free_fn                = bus_data_free;
     desc->bus_set_fn                      = bus_set;
     desc->bus_reg_data_element_fn         = bus_reg_data_elements;
+    desc->bus_unreg_data_element_fn       = bus_unreg_data_elements;
     desc->bus_event_publish_fn            = bus_event_publish;
     desc->bus_raw_event_publish_fn        = bus_raw_event_publish;
     desc->bus_set_string_fn               = bus_set_string;
     desc->bus_event_subs_fn               = bus_event_subscribe;
+    desc->bus_event_subs_async_fn         = bus_event_subscribe_async;
     desc->bus_event_subs_ex_fn            = bus_event_subscribe_ex;
     desc->bus_event_subs_ex_async_fn      = bus_event_subscribe_ex_async;
+    desc->bus_event_unsubs_fn     	  = bus_event_unsubscribe;
     desc->bus_method_invoke_fn            = bus_method_invoke;
     desc->bus_get_trace_context_fn        = bus_get_trace_context;
     desc->bus_reg_table_row_fn            = bus_reg_table_row;
     desc->bus_unreg_table_row_fn          = bus_unreg_table_row;
     desc->bus_remove_table_row_fn         = bus_remove_table_row;
+    desc->bus_error_to_string_fn          = bus_error_to_string;
+    desc->bus_convert_handle_to_actual_ptr_fn = bus_convert_handle_to_ptr;
 }

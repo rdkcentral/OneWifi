@@ -37,6 +37,58 @@
 extern "C" {
 #endif
 
+#define UNREFERENCED_PARAMETER(_p_) (void)(_p_)
+
+#define VERIFY_NULL(T) \
+    do { \
+        if (NULL == (T)) { \
+            wifi_util_error_print(WIFI_BUS, "%s:%d Parameter '%s' is NULL\n", \
+                   __func__, __LINE__, #T); \
+            return; \
+        } \
+    } while(0)
+
+#define VERIFY_NULL_WITH_RETURN_ADDR(T) \
+    do { \
+        if (NULL == (T)) { \
+            wifi_util_error_print(WIFI_BUS, "%s:%d Parameter '%s' is NULL\n", \
+                   __func__, __LINE__, #T); \
+            return NULL; \
+        } \
+    } while(0)
+
+#define VERIFY_NULL_WITH_RETURN_INT(T) \
+    do { \
+        if (NULL == (T)) { \
+            wifi_util_error_print(WIFI_BUS, "%s:%d Parameter '%s' is NULL\n", \
+                   __func__, __LINE__, #T); \
+            return RETURN_ERR; \
+        } \
+    } while(0)
+
+#define BUS_CHECK_NULL_WITH_RC(ptr, rc) \
+    do { \
+        if ((ptr) == NULL) { \
+            wifi_util_error_print(WIFI_BUS, "%s:%d Parameter '%s' is NULL\n", \
+                   __func__, __LINE__, #ptr); \
+            return (rc); \
+        } \
+    } while (0)
+
+#define ERROR_CHECK(CMD) \
+    do { \
+        int l_error; \
+        if ((l_error = CMD) != 0) { \
+            wifi_util_info_print(WIFI_CTRL, "Error %d: running command " #CMD, l_error); \
+        } \
+    } while (0)
+
+#define VERIFY_NULL_WITH_RC(T) \
+    if (NULL == (T)) { \
+        wifi_util_error_print(WIFI_CTRL, "[%s] input parameter: %s is NULL\n", __func__, #T); \
+        return bus_error_invalid_input; \
+    }
+
 #define MAX_SCAN_MODE_LEN 16
 
 typedef enum {

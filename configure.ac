@@ -227,6 +227,7 @@ AC_C_INLINE
 AC_FUNC_MALLOC
 
 AC_CONFIG_FILES(
+    source/platform/Makefile
     source/dml/tr_181/sbapi/Makefile
     source/dml/tr_181/ml/Makefile
     source/dml/tr_181/Makefile

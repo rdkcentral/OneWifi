@@ -1288,8 +1288,9 @@ int levl_deinit(wifi_app_t *app)
 }
 #endif
 
-bus_error_t levl_get_handler(char *event_name, raw_data_t *p_data)
+bus_error_t levl_get_handler(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data)
 {
+    (void)user_data;
     bus_error_t ret = bus_error_success;
     char const* name = event_name;
     int max_value = 0, duration = 0;
@@ -1410,8 +1411,9 @@ void update_levl_config_from_levl_config(levl_config_t *levl)
     return;
 }
 
-bus_error_t levl_set_handler(char *event_name, raw_data_t *p_data)
+bus_error_t levl_set_handler(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data)
 {
+    (void)user_data;
     char const* name = event_name;
     unsigned int levl_sounding_duration = 0;
     char const* pTmp = NULL;

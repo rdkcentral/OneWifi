@@ -8425,9 +8425,10 @@ int wifi_db_update_psm_values()
 }
 
 //static void bus_subscription_handler(bus_handle_t handle, bus_event_t *event,
-static void bus_subscription_handler(char *event_name, raw_data_t *p_data)
+static void bus_subscription_handler(char *event_name, raw_data_t *p_data, void *userData)
 {
     (void)p_data;
+    (void)userData;
     wifi_util_dbg_print(WIFI_MGR,"%s:%d bus_subscription_handler:%s\n", __func__, __LINE__, event_name);
 }
 
