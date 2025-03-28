@@ -833,7 +833,7 @@ static int em_process_scan_init_command(unsigned int radio_index, channel_scan_r
 
     get_coutry_str_from_code(mgr->radio_config[radio_index].oper.countryCode, country);
     global_op_class = country_to_global_op_class(country,
-        mgr->radio_config[radio_index].oper.op_class);
+        mgr->radio_config[radio_index].oper.operatingClass);
 
     for (int i = 0; i < scan_req->num_operating_classes; i++) {
         if (scan_req->operating_classes[i].operating_class == global_op_class) {
