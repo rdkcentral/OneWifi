@@ -81,25 +81,25 @@ int ovsdb_get_radio_params(unsigned int radio_index, wifi_radio_operationParam_t
 {
     if (radio_index == 0) {
         params->band = WIFI_FREQUENCY_2_4_BAND;
-        params->op_class = 12;
+        params->operatingClass = 12;
         params->channel = 3;
         params->channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
         params->variant = WIFI_80211_VARIANT_G;
     } else if (radio_index == 1) {
         params->band = WIFI_FREQUENCY_2_4_BAND;
-        params->op_class = 12;
+        params->operatingClass = 12;
         params->channel = 3;
         params->channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
         params->variant = WIFI_80211_VARIANT_G;
     } else if (radio_index == 2) {
         params->band = WIFI_FREQUENCY_2_4_BAND;
-        params->op_class = 12;
+        params->operatingClass = 12;
         params->channel = 3;
         params->channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
         params->variant = WIFI_80211_VARIANT_N;
     } else if (radio_index == 3) {
         params->band = WIFI_FREQUENCY_2_4_BAND;
-        params->op_class = 12;
+        params->operatingClass = 12;
         params->channel = 3; 
         params->channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
         params->variant = WIFI_80211_VARIANT_N;
