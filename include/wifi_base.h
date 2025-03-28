@@ -1217,8 +1217,6 @@ typedef struct {
     UCHAR bss_color;
     UCHAR channel_utilization;
     USHORT station_count;
-    UINT aggregate_scan_duration;
-    UCHAR scan_type;  // 0: Passive, 1: Active
 } neighbor_bss_t;
 
 typedef struct {
@@ -1230,9 +1228,12 @@ typedef struct {
     UCHAR noise;
     USHORT num_neighbors;
     neighbor_bss_t neighbors[EM_MAX_NEIGHBORS];
+    UINT aggregate_scan_duration;
+    UCHAR scan_type;  // 0: Passive, 1: Active
 } channel_scan_result_t;
 
 typedef struct {
+    mac_address_t ruid;
     UINT num_results;
     channel_scan_result_t results[EM_MAX_RESULTS];
 } channel_scan_response_t;
