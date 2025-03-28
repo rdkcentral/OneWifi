@@ -1667,7 +1667,8 @@ webconfig_error_t translate_channel_stats_to_easymesh_channel_info(webconfig_sub
 
     webconfig_subdoc_decoded_data_t *params = &data->u.decoded;
     if (params == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: decoded_params is NULL\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: decoded_params is NULL\n", __func__,
+            __LINE__);
         return webconfig_error_decode;
     }
 
@@ -1679,7 +1680,7 @@ webconfig_error_t translate_channel_stats_to_easymesh_channel_info(webconfig_sub
 
     proto = (webconfig_external_easymesh_t *)params->external_protos;
     if (proto == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: em_sta_info_t is NULL\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: external proto is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_to_easymesh;
     }
 
@@ -1692,7 +1693,7 @@ webconfig_error_t translate_channel_stats_to_easymesh_channel_info(webconfig_sub
         em_scan_result.id.channel = src->channel;
         memset(em_scan_result.id.net_id, 0, sizeof(em_scan_result.id.net_id));
         memset(em_scan_result.id.dev_mac, 0, sizeof(em_scan_result.id.dev_mac));
-        memset(em_scan_result.id.scanner_mac, 0, sizeof(em_scan_result.id.scanner_mac));
+        memcpy(em_scan_result.id.scanner_mac, channel_st->ruid, sizeof(mac_address_t));
 
         em_scan_result.scan_status = src->scan_status;
         strncpy(em_scan_result.timestamp, src->time_stamp, sizeof(em_scan_result.timestamp) - 1);
@@ -1729,7 +1730,8 @@ webconfig_error_t translate_channel_stats_to_easymesh_channel_info(webconfig_sub
         proto->put_scan_results(proto->data_model, &em_scan_result);
     }
 
-    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: No of scan results : %d \n", __func__, __LINE__, count);
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: No of scan results : %d \n", __func__, __LINE__,
+        count);
 
     return webconfig_error_none;
 }
@@ -2299,7 +2301,7 @@ webconfig_error_t  translate_to_easymesh_tables(webconfig_subdoc_type_t type, we
         case webconfig_subdoc_type_em_channel_stats:
             if (translate_channel_stats_to_easymesh_channel_info(data) != webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG,
-                    "%s:%d: webconfig_subdoc_type_em_channel_stats EM channel stats translation to easymesh failed\n", __func__, __LINE__);
+                    "%s:%d: webconfig_subdoc_type_em_channel_stats translation to easymesh failed\n", __func__, __LINE__);
                 return webconfig_error_translate_to_easymesh;
             }
             break;

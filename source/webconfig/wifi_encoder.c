@@ -2280,7 +2280,8 @@ webconfig_error_t encode_neighbor_radio_params(wifi_provider_response_t *neigh_s
 }
 
 #ifdef EM_APP
-webconfig_error_t encode_em_channel_stats_params(channel_scan_response_t *neigh_stats, cJSON *neigh_stats_obj)
+webconfig_error_t encode_em_channel_stats_params(channel_scan_response_t *neigh_stats,
+    cJSON *neigh_stats_obj)
 {
     unsigned int i;
     unsigned short j;
@@ -2288,24 +2289,30 @@ webconfig_error_t encode_em_channel_stats_params(channel_scan_response_t *neigh_
     cJSON *channel_obj, *neighbors_arr, *neighbor_obj;
 
     if (neigh_stats == NULL || neigh_stats_obj == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid input parameters\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid input parameters\n", __func__,
+            __LINE__);
         return webconfig_error_encode;
     }
 
     for (i = 0; i < neigh_stats->num_results; i++) {
         channel_obj = cJSON_CreateObject();
         if (channel_obj == NULL) {
-            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: JSON object creation failed\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: JSON object creation failed\n", __func__,
+                __LINE__);
             return webconfig_error_encode;
         }
 
         cJSON_AddItemToArray(neigh_stats_obj, channel_obj);
-        cJSON_AddNumberToObject(channel_obj, "OperatingClass", neigh_stats->results[i].operating_class);
+        cJSON_AddNumberToObject(channel_obj, "OperatingClass",
+            neigh_stats->results[i].operating_class);
         cJSON_AddNumberToObject(channel_obj, "Channel", neigh_stats->results[i].channel);
         cJSON_AddNumberToObject(channel_obj, "ScanStatus", neigh_stats->results[i].scan_status);
         cJSON_AddStringToObject(channel_obj, "Timestamp", neigh_stats->results[i].time_stamp);
         cJSON_AddNumberToObject(channel_obj, "Utilization", neigh_stats->results[i].utilization);
         cJSON_AddNumberToObject(channel_obj, "Noise", neigh_stats->results[i].noise);
+        cJSON_AddNumberToObject(channel_obj, "AggregateScanDuration",
+            neigh_stats->results[i].aggregate_scan_duration);
+        cJSON_AddNumberToObject(channel_obj, "ScanType", neigh_stats->results[i].scan_type);
 
         neighbors_arr = cJSON_CreateArray();
         cJSON_AddItemToObject(channel_obj, "Neighbors", neighbors_arr);
@@ -2313,22 +2320,28 @@ webconfig_error_t encode_em_channel_stats_params(channel_scan_response_t *neigh_
         for (j = 0; j < neigh_stats->results[i].num_neighbors; j++) {
             neighbor_obj = cJSON_CreateObject();
             if (neighbor_obj == NULL) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: JSON object creation failed\n", __func__, __LINE__);
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: JSON object creation failed\n",
+                    __func__, __LINE__);
                 return webconfig_error_encode;
             }
 
             cJSON_AddItemToArray(neighbors_arr, neighbor_obj);
             uint8_mac_to_string_mac((uint8_t *)neigh_stats->results[i].neighbors[j].bssid, mac_str);
             cJSON_AddStringToObject(neighbor_obj, "BSSID", mac_str);
-            cJSON_AddStringToObject(neighbor_obj, "SSID", neigh_stats->results[i].neighbors[j].ssid);
-            cJSON_AddNumberToObject(neighbor_obj, "SignalStrength", neigh_stats->results[i].neighbors[j].signal_strength);
-            cJSON_AddStringToObject(neighbor_obj, "ChannelBandwidth", neigh_stats->results[i].neighbors[j].channel_bandwidth);
-            cJSON_AddNumberToObject(neighbor_obj, "BSSLoadElementPresent", neigh_stats->results[i].neighbors[j].bss_load_element_present);
-            cJSON_AddNumberToObject(neighbor_obj, "BSSColor", neigh_stats->results[i].neighbors[j].bss_color);
-            cJSON_AddNumberToObject(neighbor_obj, "ChannelUtilization", neigh_stats->results[i].neighbors[j].channel_utilization);
-            cJSON_AddNumberToObject(neighbor_obj, "StationCount", neigh_stats->results[i].neighbors[j].station_count);
-            cJSON_AddNumberToObject(neighbor_obj, "AggregateScanDuration", neigh_stats->results[i].neighbors[j].aggregate_scan_duration);
-            cJSON_AddNumberToObject(neighbor_obj, "ScanType", neigh_stats->results[i].neighbors[j].scan_type);
+            cJSON_AddStringToObject(neighbor_obj, "SSID",
+                neigh_stats->results[i].neighbors[j].ssid);
+            cJSON_AddNumberToObject(neighbor_obj, "SignalStrength",
+                neigh_stats->results[i].neighbors[j].signal_strength);
+            cJSON_AddStringToObject(neighbor_obj, "ChannelBandwidth",
+                neigh_stats->results[i].neighbors[j].channel_bandwidth);
+            cJSON_AddNumberToObject(neighbor_obj, "BSSLoadElementPresent",
+                neigh_stats->results[i].neighbors[j].bss_load_element_present);
+            cJSON_AddNumberToObject(neighbor_obj, "BSSColor",
+                neigh_stats->results[i].neighbors[j].bss_color);
+            cJSON_AddNumberToObject(neighbor_obj, "ChannelUtilization",
+                neigh_stats->results[i].neighbors[j].channel_utilization);
+            cJSON_AddNumberToObject(neighbor_obj, "StationCount",
+                neigh_stats->results[i].neighbors[j].station_count);
         }
     }
 
