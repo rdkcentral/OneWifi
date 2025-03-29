@@ -404,13 +404,12 @@ static int check_ethernet_wan_status()
 
 char *getDeviceMac()
 {
-
-    wifi_ctrl_t *ctrl;
-    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     int rc = bus_error_success;
     char *str = NULL;
     int len = 0;
     raw_data_t data;
+    char *component_name = "getDeviceMac";
+
     memset(&data, 0, sizeof(raw_data_t));
 
     while (!strlen(webpa_interface.deviceMAC)) {
@@ -440,32 +439,44 @@ char *getDeviceMac()
             AnscMacToLower(webpa_interface.deviceMAC, deviceMACValue,
                 sizeof(webpa_interface.deviceMAC));
         } else {
-            pthread_mutex_lock(&ctrl->lock);
-            rc = get_bus_descriptor()->bus_data_get_fn(&ctrl->handle, CPE_MAC_NAMESPACE, &data);
+            bus_handle_t bus_handle;
+
+            rc = get_bus_descriptor()->bus_open_fn(&bus_handle, component_name);
+            if (rc != bus_error_success) {
+                wifi_util_error_print(WIFI_DMCLI,
+                    "%s:%d bus: bus_open_fn open failed for component:%s, rc:%d\n", __func__,
+                    __LINE__, component_name, rc);
+                pthread_mutex_unlock(&webpa_interface.device_mac_mutex);
+                return NULL;
+            }
+
+            rc = get_bus_descriptor()->bus_data_get_fn(&bus_handle, CPE_MAC_NAMESPACE, &data);
             if (rc != bus_error_success || (data.data_type != bus_data_type_string)) {
                 wifi_util_dbg_print(WIFI_MON,
                     "%s:%d bus_data_get_fn failed for [%s] with error [%d]\n", __func__, __LINE__,
                     CPE_MAC_NAMESPACE, rc);
-                pthread_mutex_unlock(&ctrl->lock);
                 pthread_mutex_unlock(&webpa_interface.device_mac_mutex);
                 get_bus_descriptor()->bus_data_free_fn(&data);
+                get_bus_descriptor()->bus_close_fn(&bus_handle);
                 return NULL;
             }
             str = (char *)data.raw_data.bytes;
             if (str == NULL) {
                 wifi_util_dbg_print(WIFI_MON, "%s Null pointer, bus get string len=%d for : %s\n",
                     __FUNCTION__, len, CPE_MAC_NAMESPACE);
-                pthread_mutex_unlock(&ctrl->lock);
                 pthread_mutex_unlock(&webpa_interface.device_mac_mutex);
                 get_bus_descriptor()->bus_data_free_fn(&data);
+                get_bus_descriptor()->bus_close_fn(&bus_handle);
                 return NULL;
             }
-            pthread_mutex_unlock(&ctrl->lock);
             AnscMacToLower(webpa_interface.deviceMAC, str, sizeof(webpa_interface.deviceMAC));
+
+            get_bus_descriptor()->bus_data_free_fn(&data);
+            get_bus_descriptor()->bus_close_fn(&bus_handle);
         }
 
         pthread_mutex_unlock(&webpa_interface.device_mac_mutex);
     }
-    get_bus_descriptor()->bus_data_free_fn(&data);
+
     return webpa_interface.deviceMAC;
 }

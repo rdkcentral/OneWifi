@@ -569,6 +569,7 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
                 return webconfig_error_translate_to_easymesh;
             }
 
+            pthread_mutex_lock(rdk_vap_info->associated_devices_lock);
             if (rdk_vap_info->associated_devices_diff_map != NULL) {
                 assoc_dev_data = hash_map_get_first(rdk_vap_info->associated_devices_diff_map);
                 while (assoc_dev_data != NULL) {
@@ -580,6 +581,7 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
 
                     em_sta_dev_info = (em_sta_info_t *)malloc(sizeof(em_sta_info_t));
                     if (em_sta_dev_info == NULL) {
+                        pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
                         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: sta_info malloc failed\n", __func__, __LINE__);
                         return webconfig_error_translate_to_easymesh;
                     }
@@ -610,6 +612,7 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
                     em_sta_dev_info->errors_tx=assoc_dev_data->dev_stats.cli_ErrorsSent;
 
                     if (assoc_dev_data->sta_data.msg_data.data == NULL) {
+                        pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
                         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Association frame data not present\n", __func__, __LINE__);
                         return webconfig_error_translate_to_easymesh;
                     }
@@ -628,6 +631,7 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
                     assoc_dev_data = hash_map_get_next(rdk_vap_info->associated_devices_diff_map, assoc_dev_data);
                 }
             }
+            pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
         }
     }
 

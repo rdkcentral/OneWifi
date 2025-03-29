@@ -73,7 +73,7 @@ void deinit_wifi_ctrl(wifi_ctrl_t *ctrl)
     }
 
     pthread_mutexattr_destroy(&ctrl->attr);
-    pthread_mutex_destroy(&ctrl->lock);
+    pthread_mutex_destroy(&ctrl->queue_lock);
     pthread_cond_destroy(&ctrl->cond);
     pthread_mutex_destroy(&ctrl->events_bus_data.events_bus_lock);
 }
@@ -146,12 +146,15 @@ int get_ap_index_from_clientmac(mac_address_t mac_addr)
                 wifi_util_error_print(WIFI_CTRL,"%s:%d NULL pointers\n", __func__,__LINE__);
                 return -1;
             }
+            pthread_mutex_lock(rdk_vap_info->associated_devices_lock);
             if (rdk_vap_info->associated_devices_map) {
                 assoc_dev_data = hash_map_get(rdk_vap_info->associated_devices_map, mac_str);
                 if (assoc_dev_data != NULL) {
+                    pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
                     return vap_index;
                 }
             }
+            pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
         }
     }
     return -1;
@@ -290,7 +293,7 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
     int rc = 0;
     wifi_event_t *event = NULL;
 
-    pthread_mutex_lock(&ctrl->lock);
+    pthread_mutex_lock(&ctrl->queue_lock);
     while (ctrl->exit_ctrl == false) {
 
         clock_gettime(CLOCK_MONOTONIC, &tv_now);
@@ -304,7 +307,10 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
             }
         }
 
-        rc = pthread_cond_timedwait(&ctrl->cond, &ctrl->lock, &time_to_wait);
+        rc = 0;
+        if (queue_count(ctrl->queue) == 0) {
+            rc = pthread_cond_timedwait(&ctrl->cond, &ctrl->queue_lock, &time_to_wait);
+        }
 
         if ((rc == 0) || (queue_count(ctrl->queue) != 0)) {
             while (queue_count(ctrl->queue)) {
@@ -312,7 +318,7 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
                 if (event == NULL) {
                     continue;
                 }
-                pthread_mutex_unlock(&ctrl->lock);
+                pthread_mutex_unlock(&ctrl->queue_lock);
                 switch (event->event_type) {
                     case wifi_event_type_webconfig:
                         handle_webconfig_event(ctrl, event->u.core_data.msg, event->u.core_data.len, event->sub_type);
@@ -349,9 +355,10 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
                 destroy_wifi_event(event);
 
                 clock_gettime(CLOCK_MONOTONIC, &ctrl->last_signalled_time);
-                pthread_mutex_lock(&ctrl->lock);
+                pthread_mutex_lock(&ctrl->queue_lock);
             }
         } else if (rc == ETIMEDOUT) {
+            pthread_mutex_unlock(&ctrl->queue_lock);
             clock_gettime(CLOCK_MONOTONIC, &ctrl->last_polled_time);
 
             /*
@@ -365,12 +372,13 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
 
             /*Run the scheduler*/
             scheduler_execute(ctrl->sched, ctrl->last_polled_time, (ctrl->poll_period*1000));
+            pthread_mutex_lock(&ctrl->queue_lock);
         } else {
             wifi_util_dbg_print(WIFI_CTRL,"RDK_LOG_WARN, WIFI %s: Invalid Return Status %d\n",__FUNCTION__,rc);
             continue;
         }
     }
-    pthread_mutex_unlock(&ctrl->lock);
+    pthread_mutex_unlock(&ctrl->queue_lock);
 
     return;
 }
@@ -1290,7 +1298,7 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
     pthread_condattr_destroy(&cond_attr);
     pthread_mutexattr_init(&ctrl->attr);
     pthread_mutexattr_settype(&ctrl->attr, PTHREAD_MUTEX_RECURSIVE);
-    pthread_mutex_init(&ctrl->lock, &ctrl->attr);
+    pthread_mutex_init(&ctrl->queue_lock, &ctrl->attr);
     pthread_mutex_init(&ctrl->events_bus_data.events_bus_lock, NULL);
 
     ctrl->poll_period = QUEUE_WIFI_CTRL_TASK_TIMEOUT;
