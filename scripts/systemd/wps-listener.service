@@ -1,0 +1,12 @@
+[Unit]
+Description=WPS Button Listener
+After=multi-user.target
+
+[Service]
+ExecStart=/usr/bin/wps_pbc.sh
+Restart=always
+User=root
+
+[Install]
+WantedBy=multi-user.target
+
