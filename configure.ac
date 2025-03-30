@@ -107,39 +107,6 @@ AM_CONDITIONAL([HAL_IPC], [test x$HAL_IPC = xtrue])
 AM_CONDITIONAL([ONEWIFI_CAC_APP_SUPPORT], [test x$ONEWIFI_CAC_APP_SUPPORT = xtrue])
 AM_CONDITIONAL([ONEWIFI_DML_SUPPORT], [test x$ONEWIFI_DML_SUPPORT_MAKEFILE = xtrue])
 
-# Specify ccsp cpu arch
-
-AC_ARG_WITH([ccsp-arch],
-[AC_HELP_STRING([--with-ccsp-arch={arm,atom,pc,mips}],
-                [specify the ccsp board CPU platform])],
-[case x"$withval" in
-   xarm)
-     CCSP_ARCH=arm
-     ;;
-   xatom)
-     CCSP_ARCH=atom
-     ;;
-   xpc)
-     CCSP_ARCH=pc
-     ;;
-   xmips)
-     CCSP_ARCH=mips
-     ;;
-   *)
-     AC_MSG_ERROR([$withval is an invalid option to --with-ccsp-arch])
-     ;;
- esac],
-[CCSP_ARCH=''])
-if test x"${CCSP_ARCH}" != x; then
-  AC_DEFINE_UNQUOTED(CCSP_ARCH, "$CCSP_ARCH",
-                     [The board CPU architecture])
-fi
-
-AM_CONDITIONAL(CCSP_ARCH_ARM, test "x$CCSP_ARCH" = xarm)
-AM_CONDITIONAL(CCSP_ARCH_ATOM, test "x$CCSP_ARCH" = xatom)
-AM_CONDITIONAL(CCSP_ARCH_PC, test "x$CCSP_ARCH" = xpc)
-AM_CONDITIONAL(CCSP_ARCH_MIPS, test "x$CCSP_ARCH" = xmips)
-
 AC_ARG_ENABLE([libwebconfig],
              [  --enable-libwebconfig    Turn on building libwebconfig, otherwise link against sysroot],
              [case "${enableval}" in
@@ -161,30 +128,6 @@ AC_ARG_ENABLE([rdk-wifi-libhostap],
 [CCSP_HOSTAP_AUTH=''])
 if test x"${CCSP_HOSTAP_AUTH}" != x; then
   AC_DEFINE_UNQUOTED(CCSP_HOSTAP_AUTH, "$CCSP_HOSTAP_AUTH",
-                     [The CCSP platform device])
-fi
-# Specify ccsp platform (device)
-
-AC_ARG_WITH([ccsp-platform],
-[AC_HELP_STRING([--with-ccsp-platform={intel_usg,pc,bcm}],
-                [specify the ccsp platform])],
-[case x"$withval" in
-   xintel_usg)
-     CCSP_PLATFORM=intel_usg
-     ;;
-   xpc)
-     CCSP_PLATFORM=pc
-     ;;
-   xbcm)
-     CCSP_PLATFORM=bcm
-     ;;
-   *)
-     AC_MSG_ERROR([$withval is an invalid option to --with-ccsp-platform])
-     ;;
- esac],
-[CCSP_PLATFORM=''])
-if test x"${CCSP_PLATFORM}" != x; then
-  AC_DEFINE_UNQUOTED(CCSP_PLATFORM, "$CCSP_PLATFORM",
                      [The CCSP platform device])
 fi
 
