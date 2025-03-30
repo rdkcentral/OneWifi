@@ -203,30 +203,6 @@ if test x"${CCSP_HOSTAP_AUTH}" != x; then
   AC_DEFINE_UNQUOTED(CCSP_HOSTAP_AUTH, "$CCSP_HOSTAP_AUTH",
                      [The CCSP platform device])
 fi
-# Specify ccsp platform (device)
-
-AC_ARG_WITH([ccsp-platform],
-[AC_HELP_STRING([--with-ccsp-platform={intel_usg,pc,bcm}],
-                [specify the ccsp platform])],
-[case x"$withval" in
-   xintel_usg)
-     CCSP_PLATFORM=intel_usg
-     ;;
-   xpc)
-     CCSP_PLATFORM=pc
-     ;;
-   xbcm)
-     CCSP_PLATFORM=bcm
-     ;;
-   *)
-     AC_MSG_ERROR([$withval is an invalid option to --with-ccsp-platform])
-     ;;
- esac],
-[CCSP_PLATFORM=''])
-if test x"${CCSP_PLATFORM}" != x; then
-  AC_DEFINE_UNQUOTED(CCSP_PLATFORM, "$CCSP_PLATFORM",
-                     [The CCSP platform device])
-fi
 
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR([m4])
