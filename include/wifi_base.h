@@ -574,6 +574,7 @@ typedef struct {
     hash_map_t              *acl_map;
     hash_map_t              *associated_devices_map; //Full
     hash_map_t              *associated_devices_diff_map; //Add,Remove
+    pthread_mutex_t         *associated_devices_lock;
     int                     kick_device_task_counter;
     bool                    kick_device_config_change;
     bool                    is_mac_filter_initialized;
