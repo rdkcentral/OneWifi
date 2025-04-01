@@ -90,6 +90,7 @@ webconfig_error_t encode_em_channel_stats_subdoc(webconfig_t *config, webconfig_
     cJSON *json, *st_obj_arr;
     webconfig_subdoc_decoded_data_t *params;
     char *str;
+    mac_addr_str_t mac_str;
 
     if (data == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL data Pointer\n", __func__, __LINE__);
@@ -104,7 +105,8 @@ webconfig_error_t encode_em_channel_stats_subdoc(webconfig_t *config, webconfig_
 
     json = cJSON_CreateObject();
     if (json == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__,
+            __LINE__);
         return webconfig_error_encode;
     }
 
@@ -116,15 +118,21 @@ webconfig_error_t encode_em_channel_stats_subdoc(webconfig_t *config, webconfig_
     channel_scan_response_t *neigh_stats = params->collect_stats.stats;
 
     if ((neigh_stats == NULL) || (neigh_stats->num_results == 0)) {
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: No neighbor stats to encode \n", __func__, __LINE__);
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: No neighbor stats to encode \n", __func__,
+            __LINE__);
     }
+
+    to_mac_str(neigh_stats->ruid, mac_str);
+    cJSON_AddStringToObject(json, "ScannerMac", mac_str);
 
     st_obj_arr = cJSON_CreateArray();
     cJSON_AddItemToObject(json, "ChannelScanResponse", st_obj_arr);
 
-    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Encoding stats config object\n", __func__, __LINE__);
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Encoding channel scan response object\n", __func__,
+        __LINE__);
     if (encode_em_channel_stats_params(neigh_stats, st_obj_arr) != webconfig_error_none) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode stats config object\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode channel scan response object\n",
+            __func__, __LINE__);
         cJSON_Delete(json);
         return webconfig_error_encode;
     }
@@ -133,7 +141,8 @@ webconfig_error_t encode_em_channel_stats_subdoc(webconfig_t *config, webconfig_
 
     data->u.encoded.raw = (webconfig_subdoc_encoded_raw_t)calloc(strlen(str) + 1, sizeof(char));
     if (data->u.encoded.raw == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d Failed to allocate memory.\n", __func__,__LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Failed to allocate memory.\n", __func__,
+            __LINE__);
         cJSON_free(str);
         cJSON_Delete(json);
         return webconfig_error_encode;
@@ -149,7 +158,7 @@ webconfig_error_t encode_em_channel_stats_subdoc(webconfig_t *config, webconfig_
 
 webconfig_error_t decode_em_channel_stats_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
 {
-    webconfig_subdoc_t  *doc;
+    webconfig_subdoc_t *doc;
     unsigned int i;
     cJSON *json;
     webconfig_subdoc_decoded_data_t *params;
@@ -176,8 +185,9 @@ webconfig_error_t decode_em_channel_stats_subdoc(webconfig_t *config, webconfig_
 
     for (i = 0; i < doc->num_objects; i++) {
         if ((cJSON_GetObjectItem(json, doc->objects[i].name)) == NULL) {
-            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: object:%s not present, validation failed\n",
-                    __func__, __LINE__, doc->objects[i].name);
+            wifi_util_error_print(WIFI_WEBCONFIG,
+                "%s:%d: object:%s not present, validation failed\n", __func__, __LINE__,
+                doc->objects[i].name);
             cJSON_Delete(json);
             return webconfig_error_invalid_subdoc;
         }
@@ -185,7 +195,8 @@ webconfig_error_t decode_em_channel_stats_subdoc(webconfig_t *config, webconfig_
 
     channel_scan_response_t **ch_st = (channel_scan_response_t **)&params->collect_stats.stats;
     if (decode_em_channel_stats_object(ch_st, json) != webconfig_error_none) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to decode stats config\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to decode channel scan response object\n", __func__,
+            __LINE__);
         cJSON_Delete(json);
         free(*ch_st);
         return webconfig_error_invalid_subdoc;
