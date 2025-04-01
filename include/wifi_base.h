@@ -1188,6 +1188,7 @@ typedef struct {
     int est_mac_rate_up;
     int rcpi;
 } assoc_sta_link_metrics_data_t;
+
 typedef struct {
     mac_addr_t sta_mac;
     int num_bssid;
