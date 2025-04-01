@@ -127,11 +127,24 @@ int init_global_radio_config(rdk_wifi_radio_t *radios_cfg, UINT radio_index)
     for (i = 0; i < (sizeof(wifi_hal_cap_obj->wifi_prop.interface_map)/sizeof(wifi_interface_name_idex_map_t)); i++)
     {
         if (wifi_hal_cap_obj->wifi_prop.interface_map[i].vap_name[0] != '\0' && wifi_hal_cap_obj->wifi_prop.interface_map[i].rdk_radio_index == radio_index) {
+            pthread_mutex_t *associated_devices_lock;
+
             radios_cfg->vaps.rdk_vap_array[vap_array_index].vap_index = wifi_hal_cap_obj->wifi_prop.interface_map[i].index;
             radios_cfg->vaps.vap_map.vap_array[vap_array_index].vap_index = wifi_hal_cap_obj->wifi_prop.interface_map[i].index;
             radios_cfg->vaps.vap_map.vap_array[vap_array_index].radio_index = radio_index;
             strcpy((char *)radios_cfg->vaps.rdk_vap_array[vap_array_index].vap_name, (char *)wifi_hal_cap_obj->wifi_prop.interface_map[i].vap_name);
             strcpy((char *)radios_cfg->vaps.vap_map.vap_array[vap_array_index].vap_name, (char *)wifi_hal_cap_obj->wifi_prop.interface_map[i].vap_name);
+
+            // allocate mutex on heap since rdk_vap_array can be copied
+            associated_devices_lock = malloc(sizeof(pthread_mutex_t));
+            if (associated_devices_lock == NULL) {
+                wifi_util_error_print(WIFI_CTRL, "%s:%d failed to allocate lock\n", __func__,
+                    __LINE__);
+                return RETURN_ERR;
+            }
+            pthread_mutex_init(associated_devices_lock, NULL);
+            radios_cfg->vaps.rdk_vap_array[vap_array_index].associated_devices_lock =
+                associated_devices_lock;
 
             radios_cfg->vaps.rdk_vap_array[vap_array_index].associated_devices_map = hash_map_create();
             if (radios_cfg->vaps.rdk_vap_array[vap_array_index].associated_devices_map == NULL) {

@@ -117,7 +117,7 @@ int copy_neighbor_ap_stats_from_cache(wifi_mon_provider_element_t *p_elem, void 
         }
 
     } else {
-        if (args->scan_mode == WIFI_RADIO_SCAN_MODE_FULL) {
+        if (args->scan_mode == WIFI_RADIO_SCAN_MODE_FULL || args->scan_mode == WIFI_RADIO_SCAN_MODE_SELECT_CHANNELS ) {
             results = neighscan_stats_data->pResult[args->radio_index];
             ap_count = neighscan_stats_data->resultCountPerRadio[args->radio_index];
         } else if (args->scan_mode == WIFI_RADIO_SCAN_MODE_ONCHAN) {
