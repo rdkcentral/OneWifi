@@ -44,7 +44,7 @@ static int em_rssi_to_rcpi(int rssi)
     return (rssi + 110) * 2;
 }
 
-static unsigned em_get_radio_index_from_mac(mac_addr_t ruuid)
+static int em_get_radio_index_from_mac(mac_addr_t ruuid)
 {
     unsigned num_of_radios = getNumberRadios();
     wifi_vap_info_map_t *vap_map;
@@ -56,30 +56,42 @@ static unsigned em_get_radio_index_from_mac(mac_addr_t ruuid)
                 return vap_map->vap_array[j].radio_index;
         }
     }
+
+    wifi_util_error_print(WIFI_EM, "%s:%d Radio Index not found\n", __func__, __LINE__);
+
+    return RETURN_ERR;
 }
 
 static int em_match_radio_index_to_policy_index(radio_metrics_policies_t *radio_metrics_policies,
-    unsigned radio_index)
+    int radio_index)
 {
     int radio_count = radio_metrics_policies->radio_count;
-    unsigned found_index;
+    int found_index;
     for (int i = 0; i < radio_count; i++) {
         found_index = em_get_radio_index_from_mac(
             radio_metrics_policies->radio_metrics_policy[i].ruid);
         if (found_index == radio_index)
             return i;
     }
+
+    wifi_util_error_print(WIFI_EM, "%s:%d Radio Index was not matched with policy\n", __func__,
+        __LINE__);
+
+    return RETURN_ERR;
 }
 
 int em_common_config_to_monitor_queue(wifi_app_t *app, wifi_monitor_data_t *data)
 {
-    unsigned index;
+    int index;
     int radio_count = app->data.u.em_data.em_config.radio_metrics_policies.radio_count;
     for (int i = 0; i < radio_count; i++) {
         data[i].u.mon_stats_config.inst = wifi_app_inst_easymesh;
 
         index = em_get_radio_index_from_mac(
             app->data.u.em_data.em_config.radio_metrics_policies.radio_metrics_policy[i].ruid);
+
+        if (index != RETURN_ERR)
+            return RETURN_ERR;
 
         data[i].u.mon_stats_config.args.radio_index = index;
         data[i].u.mon_stats_config.interval_ms =
@@ -97,7 +109,7 @@ int em_route(wifi_event_route_t *route)
     return RETURN_OK;
 }
 
-static int prepare_sta_lins_metrics_data(webconfig_subdoc_data_t *data, client_assoc_data_t *stats)
+static int prepare_sta_links_metrics_data(webconfig_subdoc_data_t *data, client_assoc_data_t *stats)
 {
     int sta_count = 0;
     int sta_it = 0;
@@ -110,9 +122,8 @@ static int prepare_sta_lins_metrics_data(webconfig_subdoc_data_t *data, client_a
     data->u.decoded.em_sta_link_metrics_rsp.per_sta_metrics = (per_sta_metrics_t *)malloc(
         sta_count * sizeof(per_sta_metrics_t));
     if (data->u.decoded.em_sta_link_metrics_rsp.per_sta_metrics == NULL) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d Error in allocating table for encode stats\n",
+        wifi_util_error_print(WIFI_EM, "%s:%d Error in allocating table for encode stats\n",
             __func__, __LINE__);
-        free(data->u.decoded.em_sta_link_metrics_rsp.per_sta_metrics);
         free(data);
         return RETURN_ERR;
     }
@@ -189,11 +200,11 @@ static int em_sta_stats_publish(wifi_app_t *app, client_assoc_data_t *stats, uns
     memset(data, 0, sizeof(webconfig_subdoc_data_t));
     memset(&rdata, 0, sizeof(raw_data_t));
     data->u.decoded.em_sta_link_metrics_rsp.vap_index = vap_index;
-    prepare_sta_lins_metrics_data(data, stats);
+    prepare_sta_links_metrics_data(data, stats);
 
     if (webconfig_encode(&ctrl->webconfig, data, webconfig_subdoc_type_em_sta_link_metrics) !=
         webconfig_error_none) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d Error in encoding assocdev stats\n", __func__,
+        wifi_util_error_print(WIFI_EM, "%s:%d Error in encoding assocdev stats\n", __func__,
             __LINE__);
         free(data->u.decoded.em_sta_link_metrics_rsp.per_sta_metrics);
         free(data);
@@ -207,7 +218,7 @@ static int em_sta_stats_publish(wifi_app_t *app, client_assoc_data_t *stats, uns
     rc = get_bus_descriptor()->bus_event_publish_fn(&app->ctrl->handle,
         WIFI_EM_STA_LINK_METRICS_REPORT, &rdata);
     if (rc != bus_error_success) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d: bus: bus_event_publish_fn Event failed %d\n",
+        wifi_util_error_print(WIFI_EM, "%s:%d: bus: bus_event_publish_fn Event failed %d\n",
             __func__, __LINE__, rc);
         free(data->u.decoded.em_sta_link_metrics_rsp.per_sta_metrics);
         free(data);
@@ -225,6 +236,11 @@ static int handle_ready_client_stats(wifi_app_t *app, client_assoc_data_t *stats
     wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
     int RCPI;
     int policy_index = em_match_radio_index_to_policy_index(&app->data.u.em_data.em_config.radio_metrics_policies, radio_index);
+
+    if (policy_index == RETURN_ERR) {
+        return RETURN_ERR;
+    }
+
     int RCPI_threshold = app->data.u.em_data.em_config.radio_metrics_policies.radio_metrics_policy[policy_index].sta_rcpi_threshold;
     int RCPI_hysteresis = app->data.u.em_data.em_config.radio_metrics_policies.radio_metrics_policy[policy_index].sta_rcpi_hysteresis;
     wifi_app_t *wifi_app = NULL;
