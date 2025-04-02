@@ -594,7 +594,7 @@ void get_translator_config_wpa_mfp(
 {
     if (vap->u.bss_info.security.mode == wifi_security_mode_wpa3_personal || vap->u.bss_info.security.mode == wifi_security_mode_wpa3_enterprise) {
         vap->u.bss_info.security.mfp = wifi_mfp_cfg_required;
-    } else if (vap->u.bss_info.security.mode == wifi_security_mode_wpa3_transition) {
+    } else if (vap->u.bss_info.security.mode == wifi_security_mode_wpa3_transition || vap->u.bss_info.security.mode == wifi_security_mode_wpa3_compatibility) {
         vap->u.bss_info.security.mfp = wifi_mfp_cfg_optional;
     } else {
         vap->u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
@@ -1906,7 +1906,7 @@ BOOL update_secmode_for_wpa3(wifi_vap_info_t *vap_info, char *mode_str, int mode
     }
 
     if (to_ovsdb) {
-        if ((vap_info->u.bss_info.security.mode == wifi_security_mode_wpa3_transition) || (vap_info->u.bss_info.security.mode == wifi_security_mode_wpa3_personal)) {
+        if ((vap_info->u.bss_info.security.mode == wifi_security_mode_wpa3_transition) || (vap_info->u.bss_info.security.mode == wifi_security_mode_wpa3_personal) || (vap_info->u.bss_info.security.mode == wifi_security_mode_wpa3_compatibility)) {
             snprintf(mode_str, mode_len, "2");
             snprintf(encrypt_str, encrypt_len, "WPA-PSK");
             ret = true;
@@ -1922,6 +1922,7 @@ BOOL update_secmode_for_wpa3(wifi_vap_info_t *vap_info, char *mode_str, int mode
         }
     } else {
         if ((vap_info->u.bss_info.security.mode == wifi_security_mode_wpa3_transition) || (vap_info->u.bss_info.security.mode == wifi_security_mode_wpa3_personal)
+        || (vap_info->u.bss_info.security.mode == wifi_security_mode_wpa3_compatibility)
         || (vap_info->u.bss_info.security.mode == wifi_security_mode_wpa3_enterprise) || (vap_info->u.bss_info.security.mode == wifi_security_mode_enhanced_open)) {
             ret = true;
         }
@@ -1961,7 +1962,8 @@ static inline bool is_personal_sec(wifi_security_modes_t mode)
         mode == wifi_security_mode_wpa2_personal ||
         mode == wifi_security_mode_wpa_wpa2_personal ||
         mode == wifi_security_mode_wpa3_personal ||
-        mode == wifi_security_mode_wpa3_transition;
+        mode == wifi_security_mode_wpa3_transition ||
+        mode == wifi_security_mode_wpa3_compatibility;
 }
 
 static inline bool is_enterprise_sec(wifi_security_modes_t mode)
@@ -3592,6 +3594,17 @@ webconfig_error_t translate_ovsdb_to_vap_info_radius_settings(const struct schem
     return webconfig_error_none;
 }
 
+static bool is_security_mode_updated(wifi_security_modes_t old, wifi_security_modes_t new)
+{
+    /*
+     * WPA3-Personal Compatibility is mapped to WPA3-Personal Transition for opensync.
+     * Thus, if ovsm is pushing WPA3-PT over OneWifi cached WPA3-PC, this change MUST be ignored.
+     * For Gateway devices, Opensync Mesh Controller will not push VAP security configuration,
+     * however, OVSM may push a config if it restarts. In this case, OneWifi cache contains a proper value.
+     */
+    return (old != wifi_security_mode_wpa3_compatibility || new != wifi_security_mode_wpa3_transition);
+}
+
 static webconfig_error_t translate_ovsdb_to_vap_info_sec_legacy(const struct
     schema_Wifi_VIF_Config *vap_row, wifi_vap_info_t *vap)
 {
@@ -3627,8 +3640,10 @@ static webconfig_error_t translate_ovsdb_to_vap_info_sec_legacy(const struct
                 __func__, __LINE__, str_mode);
             return webconfig_error_translate_from_ovsdb;
         }
-        vap->u.bss_info.security.mode = mode_enum;
-        vap->u.bss_info.security.encr = encryp_enum;
+        if (is_security_mode_updated(vap->u.bss_info.security.mode, mode_enum)) {
+            vap->u.bss_info.security.mode = mode_enum;
+            vap->u.bss_info.security.encr = encryp_enum;
+        }
     }
 
     if (!is_personal_sec(vap->u.bss_info.security.mode)) {
@@ -3680,7 +3695,9 @@ static webconfig_error_t translate_ovsdb_to_vap_info_sec_new(const struct
                 __func__, __LINE__, vap_row->wpa_key_mgmt[0] ? vap_row->wpa_key_mgmt[0] : "NULL");
             return webconfig_error_translate_from_ovsdb;
         }
-        vap->u.bss_info.security.mode = enum_sec;
+        if (is_security_mode_updated(vap->u.bss_info.security.mode, enum_sec)) {
+            vap->u.bss_info.security.mode = enum_sec;
+        }
     }
 
     get_translator_config_wpa_mfp(vap);

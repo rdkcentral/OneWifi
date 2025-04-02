@@ -1,6 +1,6 @@
 {
   "name": "Wifi_Rdk_Database",
-  "version": "1.00.032",
+  "version": "1.00.033",
   "cksum": "2353365742 523",
   "tables": {
     "Wifi_Device_Config": {
@@ -306,7 +306,16 @@
             "min": 0,
             "max": 1
           }
-        }
+        },
+        "security_mode_new": {
+          "type": {
+            "key": {
+              "type": "integer"
+            },
+            "min": 0,
+            "max": 1
+          }
+         }
       },
     "isRoot": true
     },
@@ -1728,6 +1737,15 @@
           }
         },
         "wifi_offchannelscan_sm_rfc": {
+          "type": {
+            "key": {
+              "type": "boolean"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "wpa3_compatibility_enable": {
           "type": {
             "key": {
               "type": "boolean"

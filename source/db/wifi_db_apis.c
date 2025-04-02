@@ -77,6 +77,9 @@
 #define TCM_WEIGHTAGE "0.6"
 #define TCM_THRESHOLD "0.18"
 
+#define ONEWIFI_DB_VERSION_WPA3_COMP_FLAG 100033
+#define WPA3_COMPATIBILITY 8192
+
 ovsdb_table_t table_Wifi_Radio_Config;
 ovsdb_table_t table_Wifi_VAP_Config;
 ovsdb_table_t table_Wifi_Security_Config;
@@ -232,6 +235,7 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon, struct schema_Wifi_Rf
         rfc_param->wifi_offchannelscan_sm_rfc = new_rec->wifi_offchannelscan_sm_rfc;
         rfc_param->hotspot_secure_6g_last_enabled = new_rec->hotspot_secure_6g_last_enabled;
         rfc_param->tcm_enabled_rfc = new_rec->tcm_enabled_rfc;
+        rfc_param->wpa3_compatibility_enable = new_rec->wpa3_compatibility_enable;
 
         wifi_util_dbg_print(WIFI_DB,
             "%s:%d wifipasspoint_rfc=%d wifiinterworking_rfc=%d radiusgreylist_rfc=%d "
@@ -239,7 +243,8 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon, struct schema_Wifi_Rf
             "hotspot_open_2g_last_enabled=%dhotspot_open_5g_last_enabled=%d "
             "hotspot_open_6g_last_enabled=%d hotspot_secure_2g_last_enabled=%d "
             "hotspot_secure_5g_last_enabled=%d hotspot_secure_6g_last_enabled=%d "
-            "wifi_offchannelscan_app_rfc=%d offchannelscan=%d rfc_id=%s levl_enabled_rfc=%d tcm_enabled_rfc=%d \n",
+            "wifi_offchannelscan_app_rfc=%d offchannelscan=%d rfc_id=%s "
+            "levl_enabled_rfc=%d tcm_enabled_rfc=%d wpa3_compatibility_enable=%d \n",
             __func__, __LINE__, rfc_param->wifipasspoint_rfc, rfc_param->wifiinterworking_rfc,
             rfc_param->radiusgreylist_rfc, rfc_param->dfsatbootup_rfc, rfc_param->dfs_rfc,
             rfc_param->wpa3_rfc, rfc_param->twoG80211axEnable_rfc,
@@ -247,7 +252,8 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon, struct schema_Wifi_Rf
             rfc_param->hotspot_open_6g_last_enabled, rfc_param->hotspot_secure_2g_last_enabled,
             rfc_param->hotspot_secure_5g_last_enabled, rfc_param->hotspot_secure_6g_last_enabled,
             rfc_param->wifi_offchannelscan_app_rfc, rfc_param->wifi_offchannelscan_sm_rfc,
-            rfc_param->rfc_id, rfc_param->levl_enabled_rfc,rfc_param->tcm_enabled_rfc);
+            rfc_param->rfc_id, rfc_param->levl_enabled_rfc,rfc_param->tcm_enabled_rfc,
+            rfc_param->wpa3_compatibility_enable);
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
     }
 }
@@ -609,6 +615,7 @@ void callback_Wifi_Security_Config(ovsdb_update_monitor_t *mon,
 
         pthread_mutex_lock(&g_wifidb->data_cache_lock);
         l_security_cfg->mode = new_rec->security_mode;
+        l_security_cfg->mode = new_rec->security_mode_new;
         l_security_cfg->encr = new_rec->encryption_method;
 
         convert_security_mode_string_to_integer(&mfp,(char *)&new_rec->mfp_config);
@@ -655,7 +662,17 @@ void callback_Wifi_Security_Config(ovsdb_update_monitor_t *mon,
                 strncpy(l_security_cfg->u.radius.daskey,new_rec->das_key,sizeof(l_security_cfg->u.radius.daskey)-1);
             }
         }
-        wifi_util_dbg_print(WIFI_DB,"%s:%d: Get Wifi_Security_Config table Sec_mode=%d enc_mode=%d r_ser_ip=%s r_ser_port=%d rs_ser_ip=%s rs_ser_ip sec_rad_ser_port=%d mfg=%s cfg_key_type=%d vap_name=%s rekey_interval = %d strict_rekey  = %d eapol_key_timeout  = %d eapol_key_retries  = %d eap_identity_req_timeout  = %d eap_identity_req_retries  = %d eap_req_timeout = %d eap_req_retries = %d disable_pmksa_caching = %d max_auth_attempts=%d blacklist_table_timeout=%d identity_req_retry_interval=%d server_retries=%d das_ip = %s das_port=%d wpa3_transition_disable=%d\n",__func__, __LINE__,new_rec->security_mode,new_rec->encryption_method,new_rec->radius_server_ip,new_rec->radius_server_port,new_rec->secondary_radius_server_ip,new_rec->secondary_radius_server_port,new_rec->mfp_config,new_rec->key_type,new_rec->vap_name,new_rec->rekey_interval,new_rec->strict_rekey,new_rec->eapol_key_timeout,new_rec->eapol_key_retries,new_rec->eap_identity_req_timeout,new_rec->eap_identity_req_retries,new_rec->eap_req_timeout,new_rec->eap_req_retries,new_rec->disable_pmksa_caching,new_rec->max_auth_attempts,new_rec->blacklist_table_timeout,new_rec->identity_req_retry_interval,new_rec->server_retries,new_rec->das_ip,new_rec->das_port,new_rec->wpa3_transition_disable);
+        wifi_util_dbg_print(WIFI_DB,"%s:%d: Get Wifi_Security_Config table Sec_mode=%d enc_mode=%d r_ser_ip=%s r_ser_port=%d "
+                "rs_ser_ip=%s rs_ser_ip sec_rad_ser_port=%d mfg=%s cfg_key_type=%d vap_name=%s rekey_interval = %d strict_rekey  = %d "
+                "eapol_key_timeout  = %d eapol_key_retries  = %d eap_identity_req_timeout  = %d eap_identity_req_retries  = %d "
+                "eap_req_timeout = %d eap_req_retries = %d disable_pmksa_caching = %d max_auth_attempts=%d blacklist_table_timeout=%d "
+                "identity_req_retry_interval=%d server_retries=%d das_ip = %s das_port=%d wpa3_transition_disable=%d security_mode_new=%d\n",
+                __func__, __LINE__,new_rec->security_mode,new_rec->encryption_method,new_rec->radius_server_ip,new_rec->radius_server_port,
+                new_rec->secondary_radius_server_ip,new_rec->secondary_radius_server_port,new_rec->mfp_config,new_rec->key_type,new_rec->vap_name,
+                new_rec->rekey_interval,new_rec->strict_rekey,new_rec->eapol_key_timeout,new_rec->eapol_key_retries,new_rec->eap_identity_req_timeout,
+                new_rec->eap_identity_req_retries,new_rec->eap_req_timeout,new_rec->eap_req_retries,new_rec->disable_pmksa_caching,
+                new_rec->max_auth_attempts,new_rec->blacklist_table_timeout,new_rec->identity_req_retry_interval,new_rec->server_retries,
+                new_rec->das_ip,new_rec->das_port,new_rec->wpa3_transition_disable,new_rec->security_mode_new);
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
         vap_index = convert_vap_name_to_index(&g_wifidb->hal_cap.wifi_prop, new_rec->vap_name);
         if (vap_index == -1) {
@@ -1676,6 +1693,7 @@ int wifidb_get_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_info)
     rfc_info->wifi_offchannelscan_app_rfc = pcfg->wifi_offchannelscan_app_rfc;
     rfc_info->wifi_offchannelscan_sm_rfc = pcfg->wifi_offchannelscan_sm_rfc;
     rfc_info->tcm_enabled_rfc = pcfg->tcm_enabled_rfc;
+    rfc_info->wpa3_compatibility_enable = pcfg->wpa3_compatibility_enable;
     free(pcfg);
     return 0;
 }
@@ -4221,6 +4239,7 @@ void wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config)
     rfc_config.wifi_offchannelscan_app_rfc = false;
     rfc_config.wifi_offchannelscan_sm_rfc = false;
     rfc_config.tcm_enabled_rfc = false;
+    rfc_config.wpa3_compatibility_enable = false;
     pthread_mutex_lock(&g_wifidb->data_cache_lock);
     memcpy(config,&rfc_config,sizeof(wifi_rfc_dml_parameters_t));
     pthread_mutex_unlock(&g_wifidb->data_cache_lock);
@@ -4395,6 +4414,15 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
             strncpy(config->vap_array[i].u.bss_info.preassoc.tcm_exp_weightage, TCM_WEIGHTAGE, sizeof(config->vap_array[i].u.bss_info.preassoc.tcm_exp_weightage));
             strncpy(config->vap_array[i].u.bss_info.preassoc.tcm_gradient_threshold, TCM_THRESHOLD, sizeof(config->vap_array[i].u.bss_info.preassoc.tcm_gradient_threshold));
             wifidb_update_wifi_cac_config(config);
+        }
+        if( g_wifidb->db_version < ONEWIFI_DB_VERSION_WPA3_COMP_FLAG ) {
+            if( config->vap_array[i].u.bss_info.security.mode == WPA3_COMPATIBILITY) {
+                config->vap_array[i].u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
+                config->vap_array[i].u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
+                wifi_util_info_print(WIFI_DB, "%s Update security mode:%d mfp:%d \n", __func__, config->vap_array[i].u.bss_info.security.mode,
+                        config->vap_array[i].u.bss_info.security.mfp);
+                wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i], &rdk_config[i]);
+            }
         }
     }
 }
@@ -5419,6 +5447,7 @@ int wifidb_update_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_param)
     cfg.wifi_offchannelscan_app_rfc = rfc_param->wifi_offchannelscan_app_rfc;
     cfg.wifi_offchannelscan_sm_rfc = rfc_param->wifi_offchannelscan_sm_rfc;
     cfg.tcm_enabled_rfc = rfc_param->tcm_enabled_rfc;
+    cfg.wpa3_compatibility_enable = rfc_param->wpa3_compatibility_enable;
     if (update == true) {
         where = onewifi_ovsdb_tran_cond(OCLM_STR, "rfc_id", OFUNC_EQ, index); 
         ret = onewifi_ovsdb_table_update_where(g_wifidb->wifidb_sock_path, &table_Wifi_Rfc_Config, where, &cfg);
@@ -5691,6 +5720,25 @@ int wifidb_get_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
     return RETURN_OK;
 }
 
+int wifidb_get_wifi_security_config_old_mode(char *vap_name, int vap_index)
+{
+    struct schema_Wifi_Security_Config  *pcfg;
+    json_t *where;
+    wifi_db_t *g_wifidb;
+    g_wifidb = (wifi_db_t*) get_wifidb_obj();
+    int count, sec_mode_old = 0;
+
+    where = onewifi_ovsdb_tran_cond(OCLM_STR, "vap_name", OFUNC_EQ, vap_name);
+    pcfg = onewifi_ovsdb_table_select_where(g_wifidb->wifidb_sock_path, &table_Wifi_Security_Config, where, &count);
+
+    if (pcfg == NULL) {
+        wifidb_print("%s:%d Table table_Wifi_Security_Config table not found, entry count=%d \n",__func__, __LINE__, count);
+        return wifi_security_mode_wpa2_personal;
+    }
+    sec_mode_old = (isVapPrivate(vap_index) && !pcfg->security_mode) ? wifi_security_mode_wpa2_personal : pcfg->security_mode;
+
+    return sec_mode_old;
+}
 
 /************************************************************************************
  ************************************************************************************
@@ -5724,6 +5772,10 @@ int wifidb_update_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
         return RETURN_ERR;
     }
     cfg_sec.security_mode = sec->mode;
+    if( sec->mode == WPA3_COMPATIBILITY ) {
+	cfg_sec.security_mode = wifidb_get_wifi_security_config_old_mode(vap_name, vap_index);
+	wifi_util_info_print(WIFI_DB,"%s:%d: security_mode:%d \n",__func__, __LINE__, cfg_sec.security_mode);
+    }
     cfg_sec.encryption_method = sec->encr;
     convert_security_mode_integer_to_string(sec->mfp,(char *)&cfg_sec.mfp_config);
     strncpy(cfg_sec.vap_name,vap_name,(sizeof(cfg_sec.vap_name)-1));
@@ -5737,6 +5789,7 @@ int wifidb_update_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
     cfg_sec.eap_req_retries = sec->eap_req_retries;
     cfg_sec.disable_pmksa_caching = sec->disable_pmksa_caching;
     cfg_sec.wpa3_transition_disable = sec->wpa3_transition_disable;
+    cfg_sec.security_mode_new = sec->mode;
 
     if (!security_mode_support_radius(sec->mode))
     {
@@ -5775,7 +5828,15 @@ int wifidb_update_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
         cfg_sec.das_port = sec->u.radius.dasport;
         strncpy(cfg_sec.das_key,sec->u.radius.daskey,sizeof(cfg_sec.das_key)-1);
     }
-    wifi_util_dbg_print(WIFI_DB,"%s:%d: Updatetable_Wifi_Security_Config table Sec_mode=%d enc_mode=%d r_ser_ip=%s r_ser_port=%d rs_ser_ip=%s rs_ser_ip sec_rad_ser_port=%d mfg=%s cfg_key_type=%d cfg_vap_name=%s rekey_interval = %d strict_rekey  = %d eapol_key_timeout  = %d eapol_key_retries  = %d eap_identity_req_timeout  = %d eap_identity_req_retries  = %d eap_req_timeout = %d eap_req_retries = %d disable_pmksa_caching = %d max_auth_attempts=%d blacklist_table_timeout=%d identity_req_retry_interval=%d server_retries=%d das_ip = %s das_port=%d wpa3_transition_disable=%d",__func__, __LINE__,cfg_sec.security_mode,cfg_sec.encryption_method,cfg_sec.radius_server_ip,cfg_sec.radius_server_port,cfg_sec.secondary_radius_server_ip,cfg_sec.secondary_radius_server_port,cfg_sec.mfp_config,cfg_sec.key_type,cfg_sec.vap_name,cfg_sec.rekey_interval,cfg_sec.strict_rekey,cfg_sec.eapol_key_timeout,cfg_sec.eapol_key_retries,cfg_sec.eap_identity_req_timeout,cfg_sec.eap_identity_req_retries,cfg_sec.eap_req_timeout,cfg_sec.eap_req_retries,cfg_sec.disable_pmksa_caching,cfg_sec.max_auth_attempts,cfg_sec.blacklist_table_timeout,cfg_sec.identity_req_retry_interval,cfg_sec.server_retries,cfg_sec.das_ip,cfg_sec.das_port,cfg_sec.wpa3_transition_disable);
+    wifi_util_dbg_print(WIFI_DB,"%s:%d: Update table_Wifi_Security_Config table Sec_mode=%d enc_mode=%d r_ser_ip=%s r_ser_port=%d"
+            "rs_ser_ip=%s rs_ser_ip sec_rad_ser_port=%d mfg=%s cfg_key_type=%d cfg_vap_name=%s rekey_interval = %d strict_rekey  = %d"
+            "eapol_key_timeout  = %d eapol_key_retries  = %d eap_identity_req_timeout  = %d eap_identity_req_retries  = %d eap_req_timeout = %d"
+            "eap_req_retries = %d disable_pmksa_caching = %d max_auth_attempts=%d blacklist_table_timeout=%d identity_req_retry_interval=%d server_retries=%d "
+            "das_ip = %s das_port=%d wpa3_transition_disable=%d security_mode_new=%d \n",__func__, __LINE__,cfg_sec.security_mode,cfg_sec.encryption_method,
+            cfg_sec.radius_server_ip, cfg_sec.radius_server_port,cfg_sec.secondary_radius_server_ip,cfg_sec.secondary_radius_server_port,cfg_sec.mfp_config,
+            cfg_sec.key_type, cfg_sec.vap_name,cfg_sec.rekey_interval,cfg_sec.strict_rekey,cfg_sec.eapol_key_timeout,cfg_sec.eapol_key_retries, cfg_sec.eap_identity_req_timeout,
+            cfg_sec.eap_identity_req_retries,cfg_sec.eap_req_timeout,cfg_sec.eap_req_retries,cfg_sec.disable_pmksa_caching,cfg_sec.max_auth_attempts, cfg_sec.blacklist_table_timeout,
+            cfg_sec.identity_req_retry_interval,cfg_sec.server_retries,cfg_sec.das_ip,cfg_sec.das_port,cfg_sec.wpa3_transition_disable, cfg_sec.security_mode_new);
 
     if(onewifi_ovsdb_table_upsert_with_parent(g_wifidb->wifidb_sock_path,&table_Wifi_Security_Config,&cfg_sec,false,filter_vapsec,SCHEMA_TABLE(Wifi_VAP_Config),onewifi_ovsdb_where_simple(SCHEMA_COLUMN(Wifi_VAP_Config,vap_name),vap_name),SCHEMA_COLUMN(Wifi_VAP_Config,security)) == false)
     {

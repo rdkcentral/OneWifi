@@ -231,7 +231,7 @@ do
                         else
                             ssid_2g=`wl -i wl0.1 status | grep  -m 1 "BSSID:" | cut -d ":" -f2-7 | awk '{print $1}'`
                         fi
-                        if [ $ssid_2g ==  "00:00:00:00:00:00" ];then
+                        if [ "$ssid_2g" ==  "00:00:00:00:00:00" ];then
                             if [ $vap_2g_down == 1 ]; then
                                 time_diff=`expr $cur_timestamp - $pre_timestamp`
                                 echo_t "time_diff = $time_diff" >> $LOG_FILE
@@ -263,7 +263,7 @@ do
                         else
                             ssid_5g=`wl -i wl1.1 status | grep  -m 1 "BSSID:" | cut -d ":" -f2-7 | awk '{print $1}'`
                         fi
-                        if [ $ssid_5g ==  "00:00:00:00:00:00" ];then
+                        if [ "$ssid_5g" ==  "00:00:00:00:00:00" ];then
                             if [ $vap_5g_down == 1 ]; then
                                 time_diff=`expr $cur_timestamp - $pre_timestamp`
                                 echo_t "time_diff = $time_diff" >> $LOG_FILE
@@ -292,7 +292,7 @@ do
                     status_6g=`dmcli eRT getv Device.WiFi.AccessPoint.$private_6g_instance.Enable | grep "value:" | cut -f2- -d:| cut -f2- -d:`
                     if [ $status_6g == "true" ]; then
                         bss_status="`wl -i wl2.1 bss`"
-                        if [ $bss_status == "down" ]; then
+                        if [ "$bss_status" == "down" ]; then
                             if [ $vap_6g_down == 1 ]; then
                                 time_diff=`expr $cur_timestamp - $pre_timestamp`
                                 echo_t "time_diff = $time_diff" >> $LOG_FILE
