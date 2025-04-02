@@ -255,35 +255,35 @@ WiFi_GetParamBoolValue
     }
 
     wifi_rfc_dml_parameters_t *rfc_pcfg = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
-    if (AnscEqualString(ParamName, "ApplyRadioSettings", TRUE))
+    if (strcmp(ParamName, "ApplyRadioSettings") == 0)
     {
         /* always return false when get */
         *pBool = FALSE;
         return TRUE;
     }
-    if (AnscEqualString(ParamName, "ApplyAccessPointSettings", TRUE))
+    if (strcmp(ParamName, "ApplyAccessPointSettings") == 0)
     {
         /* always return false when get */
         *pBool = FALSE;
         return TRUE;
     }
-    if (AnscEqualString(ParamName, "X_CISCO_COM_FactoryReset", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_FactoryReset") == 0)
     {
         /* always return false when get */
         *pBool = FALSE;
         return TRUE;
     }
-    if (AnscEqualString(ParamName, "X_CISCO_COM_EnableTelnet", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_EnableTelnet") == 0)
     {
 	    return TRUE;
     }
-    if (AnscEqualString(ParamName, "X_CISCO_COM_ResetRadios", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_ResetRadios") == 0)
     {
         /* always return false when get */
         *pBool = FALSE;
         return TRUE;
     }
-    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_WiFiHost_Sync", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_WiFiHost_Sync") == 0)
     {
 	
         *pBool = FALSE;
@@ -291,42 +291,42 @@ WiFi_GetParamBoolValue
     }
 
 
-    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_PreferPrivate", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_PreferPrivate") == 0)
     {
         *pBool = pcfg->prefer_private;
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_RapidReconnectIndicationEnable", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_RapidReconnectIndicationEnable") == 0)
     {
         *pBool = pcfg->rapid_reconnect_enable;
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_vAPStatsEnable", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_vAPStatsEnable") == 0)
     {
         *pBool = pcfg->vap_stats_feature;
         return TRUE;
     }
-    if (AnscEqualString(ParamName, "FeatureMFPConfig", TRUE))
+    if (strcmp(ParamName, "FeatureMFPConfig") == 0)
     {
         *pBool = pcfg->mfp_config_feature;
          return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "TxOverflowSelfheal", TRUE))
+    if (strcmp(ParamName, "TxOverflowSelfheal") == 0)
     {
         *pBool = pcfg->tx_overflow_selfheal;
          return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "X_RDK-CENTRAL_COM_ForceDisable", TRUE))
+    if (strcmp(ParamName, "X_RDK-CENTRAL_COM_ForceDisable") == 0)
     {
         *pBool = pcfg->force_disable_radio_feature;
          return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_EnableRadiusGreyList", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_EnableRadiusGreyList") == 0)
     {
 #if defined (FEATURE_SUPPORT_RADIUSGREYLIST)
         *pBool = rfc_pcfg->radiusgreylist_rfc;
@@ -335,45 +335,45 @@ WiFi_GetParamBoolValue
 #endif
         return TRUE;
     }
-    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_EnableHostapdAuthenticator", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_EnableHostapdAuthenticator") == 0)
     {
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "DFSatBootUp", TRUE))
+    if (strcmp(ParamName, "DFSatBootUp") == 0)
     {
         *pBool = rfc_pcfg->dfsatbootup_rfc;
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "2G80211axEnable", TRUE))
+    if (strcmp(ParamName, "2G80211axEnable") == 0)
     {
         *pBool = rfc_pcfg->twoG80211axEnable_rfc;
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "Levl", TRUE))
+    if (strcmp(ParamName, "Levl") == 0)
     {
         *pBool = rfc_pcfg->levl_enabled_rfc;
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "DFS", TRUE))
+    if (strcmp(ParamName, "DFS") == 0)
     {
         *pBool = rfc_pcfg->dfs_rfc;
         return TRUE;
     }
-    if (AnscEqualString(ParamName, "WPA3_Personal_Transition", TRUE))
+    if (strcmp(ParamName, "WPA3_Personal_Transition") == 0)
     {
         *pBool = rfc_pcfg->wpa3_rfc;
         return TRUE;
     }
-    if (AnscEqualString(ParamName, "WiFi-Passpoint", TRUE))
+    if (strcmp(ParamName, "WiFi-Passpoint") == 0)
     {
         *pBool = rfc_pcfg->wifipasspoint_rfc;
         return TRUE;
     }
-    if (AnscEqualString(ParamName, "WiFi-OffChannelScan-APP", TRUE)) {
+    if (strcmp(ParamName, "WiFi-OffChannelScan-APP") == 0) {
 #if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
         *pBool = rfc_pcfg->wifi_offchannelscan_app_rfc;
 #else //FEATURE_OFF_CHANNEL_SCAN_5G
@@ -381,18 +381,18 @@ WiFi_GetParamBoolValue
 #endif //FEATURE_OFF_CHANNEL_SCAN_5G
         return TRUE;
     }
-    if (AnscEqualString(ParamName, "WiFi-OffChannelScan", TRUE))
+    if (strcmp(ParamName, "WiFi-OffChannelScan") == 0)
     {
         *pBool = rfc_pcfg->wifi_offchannelscan_sm_rfc;
         return TRUE;
     }
-    if (AnscEqualString(ParamName, "WiFi-Interworking", TRUE))
+    if (strcmp(ParamName, "WiFi-Interworking") == 0)
     {
         *pBool = rfc_pcfg->wifiinterworking_rfc;
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "Log_Upload", TRUE))
+    if (strcmp(ParamName, "Log_Upload") == 0)
     {
         fp = popen("crontab -l | grep -c copy_wifi_logs.sh","r");
         while(fgets(path,sizeof(path) , fp) != NULL) {
@@ -409,7 +409,7 @@ WiFi_GetParamBoolValue
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "WiFiStuckDetect", TRUE))
+    if (strcmp(ParamName, "WiFiStuckDetect") == 0)
     {
         if ((access(WIFI_STUCK_DETECT_FILE_NAME, R_OK)) != 0) {
             *pBool = FALSE;
@@ -419,13 +419,12 @@ WiFi_GetParamBoolValue
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "Tcm", TRUE))
+    if (strcmp(ParamName, "Tcm") == 0)
     {
         *pBool = rfc_pcfg->tcm_enabled_rfc;
         return TRUE;
     }
-
-    if(AnscEqualString(ParamName, "WPA3_Personal_Compatibility", TRUE))
+    if (strcmp(ParamName, "WPA3_Personal_Compatibility") == 0)
     {
         *pBool = rfc_pcfg->wpa3_compatibility_enable;
         return TRUE;
@@ -481,7 +480,7 @@ WiFi_GetParamIntValue
         return FALSE;
     }
     /* check the parameter name and return the corresponding value */
-    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_GoodRssiThreshold", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_GoodRssiThreshold") == 0)
     {
         /* collect value */
         *pInt = pcfg->good_rssi_threshold;
@@ -489,7 +488,7 @@ WiFi_GetParamIntValue
     }
 
     /* check the parameter name and return the corresponding value */
-    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_AssocCountThreshold", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_AssocCountThreshold") == 0)
     {
         /* collect value */
         *pInt = pcfg->assoc_count_threshold;
@@ -497,7 +496,7 @@ WiFi_GetParamIntValue
     }
 
     /* check the parameter name and return the corresponding value */
-    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_AssocMonitorDuration", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_AssocMonitorDuration") == 0)
     {
         /* collect value */
         *pInt = pcfg->assoc_monitor_duration;
@@ -505,21 +504,21 @@ WiFi_GetParamIntValue
     }
 
     /* check the parameter name and return the corresponding value */
-    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_AssocGateTime", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_AssocGateTime") == 0)
     {
         /* collect value */
         *pInt = pcfg->assoc_gate_time;
         return TRUE;
     }
      /* check the parameter name and return the corresponding value */
-    if (AnscEqualString(ParamName, "WHIX_LogInterval", TRUE))
+    if (strcmp(ParamName, "WHIX_LogInterval") == 0)
     {
         /* collect value */
         *pInt = pcfg->whix_log_interval; //seconds
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "WHIX_ChUtility_LogInterval", TRUE))
+    if (strcmp(ParamName, "WHIX_ChUtility_LogInterval") == 0)
     {
         /* collect value */
         *pInt = pcfg->whix_chutility_loginterval; //seconds
@@ -571,7 +570,7 @@ WiFi_GetParamUlongValue
     UNREFERENCED_PARAMETER(hInsContext);
 
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "Status", TRUE))
+    if (strcmp(ParamName, "Status") == 0)
     {
         UINT numOfRadios = get_num_radio_dml();
         *puLong = numOfRadios;
@@ -638,29 +637,29 @@ WiFi_GetParamStringValue
         return FALSE;
     }
 
-    if( AnscEqualString(ParamName, "X_CISCO_COM_RadioPower", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_RadioPower") == 0)
     {
         snprintf(pValue,*pUlSize,"%s",gcfg->RadioPower);
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "X_RDK_RadioData", TRUE))
+    if (strcmp(ParamName, "X_RDK_RadioData") == 0)
     {
 	CosaDmlWiFi_getWebConfig();
         return 0;
     }
 
-    if (AnscEqualString(ParamName, "X_CISCO_COM_ConfigFileBase64", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_ConfigFileBase64") == 0)
     {
         return 0;
     }
 
-    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_GASConfiguration", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_GASConfiguration") == 0)
     {
 	WiFi_GetGasConfig(pValue);
         return 0;
     }
-    if (AnscEqualString(ParamName, "Log_Enable", TRUE))
+    if (strcmp(ParamName, "Log_Enable") == 0)
     {
         char dest[512] = {0};
         if(access("/nvram/wifiDbDbg",F_OK) == 0)
@@ -832,7 +831,7 @@ WiFi_SetParamBoolValue
         return FALSE;
     }
     wifi_radio_operationParam_t *wifiRadioOperParam = NULL;
-    if (AnscEqualString(ParamName, "ApplyRadioSettings", TRUE ))
+    if (strcmp(ParamName, "ApplyRadioSettings") == 0)
     {
         if (bValue == TRUE){
 	    wifi_util_dbg_print(WIFI_DMCLI,"%s:%d ApplyRadioSettings push to queue \n",__func__, __LINE__);
@@ -851,7 +850,7 @@ WiFi_SetParamBoolValue
         }
         return TRUE;
     }
-    if (AnscEqualString(ParamName, "ApplyAccessPointSettings", TRUE ))
+    if (strcmp(ParamName, "ApplyAccessPointSettings") == 0)
     {
         if (bValue == TRUE){
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d ApplyAccessPointSettings push to queue \n",__func__, __LINE__);
@@ -865,21 +864,21 @@ WiFi_SetParamBoolValue
         }
         return TRUE;
     }
-    if(AnscEqualString(ParamName, "X_CISCO_COM_FactoryReset", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_FactoryReset") == 0)
     {
         if (wifi_factory_reset(true) != TRUE)
             return FALSE;
         return TRUE;
 	}
 
-    if(AnscEqualString(ParamName, "X_CISCO_COM_EnableTelnet", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_EnableTelnet") == 0)
     {
         if ( CosaDmlWiFi_EnableTelnet(bValue) == ANSC_STATUS_SUCCESS ) {
 	}
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "X_CISCO_COM_ResetRadios", TRUE)) {
+    if (strcmp(ParamName, "X_CISCO_COM_ResetRadios") == 0) {
         wifi_util_info_print(WIFI_DMCLI, "%s:%d Restarting Radios & VAPs \n", __func__, __LINE__);
         is_radio_config_changed = TRUE; // Force apply all Radio configuration
         g_update_wifi_region = TRUE; // Force apply all Global configuration
@@ -918,7 +917,7 @@ WiFi_SetParamBoolValue
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_WiFiHost_Sync", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_WiFiHost_Sync") == 0)
     {
         if (push_wifi_host_sync_to_ctrl_queue() == RETURN_ERR) {
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Failed to push host sync to ctrl queue\n", __func__, __LINE__);
@@ -927,7 +926,7 @@ WiFi_SetParamBoolValue
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "Managed_WiFi_Enabled", TRUE))
+    if (strcmp(ParamName, "Managed_WiFi_Enabled") == 0)
     {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d push_managed_wifi_disable_to_ctrl_queue to ctrl queue\n", __func__, __LINE__);
         if (!bValue) {
@@ -942,7 +941,7 @@ WiFi_SetParamBoolValue
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_PreferPrivate", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_PreferPrivate") == 0)
     {
         if(global_wifi_config->global_parameters.prefer_private == bValue)
         {
@@ -959,7 +958,7 @@ WiFi_SetParamBoolValue
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_RapidReconnectIndicationEnable", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_RapidReconnectIndicationEnable") == 0)
     {
         if(global_wifi_config->global_parameters.rapid_reconnect_enable == bValue)
         {
@@ -971,7 +970,7 @@ WiFi_SetParamBoolValue
         return TRUE;
     }
     
-    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_vAPStatsEnable", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_vAPStatsEnable") == 0)
     {
         if(global_wifi_config->global_parameters.vap_stats_feature == bValue)
         {
@@ -982,7 +981,7 @@ WiFi_SetParamBoolValue
         push_global_config_dml_cache_to_one_wifidb();
         return TRUE;
     }
-    if (AnscEqualString(ParamName, "FeatureMFPConfig", TRUE))
+    if (strcmp(ParamName, "FeatureMFPConfig") == 0)
     {
         if(global_wifi_config->global_parameters.mfp_config_feature == bValue)
         {
@@ -994,7 +993,7 @@ WiFi_SetParamBoolValue
         return TRUE;
     }
     
-    if (AnscEqualString(ParamName, "TxOverflowSelfheal", TRUE))
+    if (strcmp(ParamName, "TxOverflowSelfheal") == 0)
     {
         if(global_wifi_config->global_parameters.tx_overflow_selfheal == bValue)
         {
@@ -1006,7 +1005,7 @@ WiFi_SetParamBoolValue
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "X_RDK-CENTRAL_COM_ForceDisable", TRUE))
+    if (strcmp(ParamName, "X_RDK-CENTRAL_COM_ForceDisable") == 0)
     {
         if(global_wifi_config->global_parameters.force_disable_radio_feature == bValue)
         {
@@ -1059,7 +1058,7 @@ WiFi_SetParamBoolValue
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_EnableRadiusGreyList", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_EnableRadiusGreyList") == 0)
     {
 #if defined (FEATURE_SUPPORT_RADIUSGREYLIST)
         if(bValue != rfc_pcfg->radiusgreylist_rfc) {
@@ -1079,12 +1078,12 @@ WiFi_SetParamBoolValue
         return TRUE;
     }
     
-    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_EnableHostapdAuthenticator", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_EnableHostapdAuthenticator") == 0)
     {
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "DFSatBootUp", TRUE))
+    if (strcmp(ParamName, "DFSatBootUp") == 0)
     {
         if(bValue != rfc_pcfg->dfsatbootup_rfc) {
             push_rfc_dml_cache_to_one_wifidb(bValue,wifi_event_type_dfs_atbootup_rfc);
@@ -1092,28 +1091,28 @@ WiFi_SetParamBoolValue
 		return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "DFS", TRUE))
+    if (strcmp(ParamName, "DFS") == 0)
     {
         if(bValue != rfc_pcfg->dfs_rfc) {
             push_rfc_dml_cache_to_one_wifidb(bValue,wifi_event_type_dfs_rfc);
         }
         return TRUE;
     }
-    if (AnscEqualString(ParamName, "WPA3_Personal_Transition", TRUE))
+    if (strcmp(ParamName, "WPA3_Personal_Transition") == 0)
     {
         if(bValue != rfc_pcfg->wpa3_rfc){
             push_rfc_dml_cache_to_one_wifidb(bValue,wifi_event_type_wpa3_rfc);
         }
         return TRUE;
     }
-    if (AnscEqualString(ParamName, "WiFi-Passpoint", TRUE))
+    if (strcmp(ParamName, "WiFi-Passpoint") == 0)
     {
         if(bValue != rfc_pcfg->wifipasspoint_rfc) {
             push_rfc_dml_cache_to_one_wifidb(bValue,wifi_event_type_wifi_passpoint_rfc);
         }
         return TRUE;
     }
-    if (AnscEqualString(ParamName, "WiFi-OffChannelScan-APP", TRUE)) {
+    if (strcmp(ParamName, "WiFi-OffChannelScan-APP") == 0) {
 #if defined(FEATURE_OFF_CHANNEL_SCAN_5G)
         if(bValue != rfc_pcfg->wifi_offchannelscan_app_rfc) {
             push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_wifi_offchannelscan_app_rfc);
@@ -1123,20 +1122,20 @@ WiFi_SetParamBoolValue
         return FALSE;
 #endif //FEATURE_OFF_CHANNEL_SCAN_5G
     }
-    if (AnscEqualString(ParamName, "WiFi-OffChannelScan", TRUE)) {
+    if (strcmp(ParamName, "WiFi-OffChannelScan") == 0) {
         if(bValue != rfc_pcfg->wifi_offchannelscan_sm_rfc) {
             push_rfc_dml_cache_to_one_wifidb(bValue,wifi_event_type_wifi_offchannelscan_sm_rfc);
         }
         return TRUE;
     }
-    if (AnscEqualString(ParamName, "WiFi-Interworking", TRUE))
+    if (strcmp(ParamName, "WiFi-Interworking") == 0)
     {
         if(bValue != rfc_pcfg->wifiinterworking_rfc) {
             push_rfc_dml_cache_to_one_wifidb(bValue,wifi_event_type_wifi_interworking_rfc);
         }
         return TRUE;
     }
-    if (AnscEqualString(ParamName, "2G80211axEnable", TRUE))
+    if (strcmp(ParamName, "2G80211axEnable") == 0)
     {
 #ifndef ALWAYS_ENABLE_AX_2G
         if(bValue != rfc_pcfg->twoG80211axEnable_rfc) {
@@ -1146,7 +1145,7 @@ WiFi_SetParamBoolValue
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "Levl", TRUE))
+    if (strcmp(ParamName, "Levl") == 0)
     {
         if(bValue != rfc_pcfg->levl_enabled_rfc) {
             push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_levl_rfc);
@@ -1155,7 +1154,7 @@ WiFi_SetParamBoolValue
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "Log_Upload", TRUE))
+    if (strcmp(ParamName, "Log_Upload") == 0)
     {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Log_upload set\n", __FUNCTION__,__LINE__);
         if (bValue) {
@@ -1168,7 +1167,7 @@ WiFi_SetParamBoolValue
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "WiFiStuckDetect", TRUE))
+    if (strcmp(ParamName, "WiFiStuckDetect") == 0)
     {
         if (bValue) {
             FILE *fp = fopen(WIFI_STUCK_DETECT_FILE_NAME, "a+");
@@ -1181,7 +1180,7 @@ WiFi_SetParamBoolValue
         return TRUE;
     }
     
-    if (AnscEqualString(ParamName, "Tcm", TRUE))
+    if (strcmp(ParamName, "Tcm") == 0)
     {
         if(bValue != rfc_pcfg->tcm_enabled_rfc) {
             push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_tcm_rfc);
@@ -1191,7 +1190,7 @@ WiFi_SetParamBoolValue
         return TRUE;
     }
 
-    if(AnscEqualString(ParamName, "WPA3_Personal_Compatibility", TRUE))
+    if (strcmp(ParamName, "WPA3_Personal_Compatibility") == 0)
     {
         if(bValue != rfc_pcfg->wpa3_compatibility_enable) {
             push_rfc_dml_cache_to_one_wifidb(bValue, wifi_event_type_rsn_override_rfc);
@@ -1436,7 +1435,7 @@ WiFi_SetParamIntValue
     }
 
     /* check the parameter name and set the corresponding value */
-    if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_GoodRssiThreshold", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_GoodRssiThreshold") == 0)
     {
         if(global_wifi_config->global_parameters.good_rssi_threshold == iValue)
         {
@@ -1449,7 +1448,7 @@ WiFi_SetParamIntValue
     }
 
     /* check the parameter name and set the corresponding value */
-    if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_AssocCountThreshold", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_AssocCountThreshold") == 0)
     {
         if ( global_wifi_config->global_parameters.assoc_count_threshold == iValue )
         {
@@ -1463,7 +1462,7 @@ WiFi_SetParamIntValue
     }
 
     /* check the parameter name and set the corresponding value */
-    if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_AssocMonitorDuration", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_AssocMonitorDuration") == 0)
     {
         if ( global_wifi_config->global_parameters.assoc_monitor_duration == iValue )
         {
@@ -1476,7 +1475,7 @@ WiFi_SetParamIntValue
     }
 
     /* check the parameter name and set the corresponding value */
-    if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_AssocGateTime", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_AssocGateTime") == 0)
     {
         if (global_wifi_config->global_parameters.assoc_gate_time == iValue)
         {
@@ -1488,7 +1487,7 @@ WiFi_SetParamIntValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "WHIX_LogInterval", TRUE))
+    if (strcmp(ParamName, "WHIX_LogInterval") == 0)
     {
         if (global_wifi_config->global_parameters.whix_log_interval == iValue)
         {
@@ -1502,7 +1501,7 @@ WiFi_SetParamIntValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "WHIX_ChUtility_LogInterval", TRUE))
+    if (strcmp(ParamName, "WHIX_ChUtility_LogInterval") == 0)
     {
         if (global_wifi_config->global_parameters.whix_chutility_loginterval == iValue)
         {
@@ -1561,7 +1560,7 @@ WiFi_SetParamUlongValue
     UNREFERENCED_PARAMETER(hInsContext);
 
     /* check the parameter name and set the corresponding value */
-    if(AnscEqualString(ParamName, "Status", TRUE))
+    if (strcmp(ParamName, "Status") == 0)
     {
         return TRUE;
     }
@@ -1598,7 +1597,7 @@ WiFiRegion_GetParamStringValue
     }
 
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "Code", TRUE))
+    if (strcmp(ParamName, "Code") == 0)
     {
         AnscCopyString(pValue,pcfg->wifi_region_code);
         return 0;
@@ -1664,7 +1663,7 @@ WiFiRegion_SetParamStringValue
         return FALSE;
     }
 
-    if (AnscEqualString(ParamName, "Code", TRUE))
+    if (strcmp(ParamName, "Code") == 0)
     {
         if (strcmp(requestorStr, BS_SOURCE_RFC_STR) == 0 && strcmp(wifiRegionUpdateSource, BS_SOURCE_WEBPA_STR) == 0)
         {
@@ -1881,33 +1880,33 @@ Radio_GetParamBoolValue
     }
 
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "Enable", TRUE))
+    if (strcmp(ParamName, "Enable") == 0)
     {
         /* collect value */
         *pBool = pcfg->enable;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "Upstream", TRUE))
+    if (strcmp(ParamName, "Upstream") == 0)
     {
         *pBool = FALSE;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "AutoChannelSupported", TRUE))
+    if (strcmp(ParamName, "AutoChannelSupported") == 0)
     {
         *pBool = TRUE;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "AutoChannelEnable", TRUE))
+    if (strcmp(ParamName, "AutoChannelEnable") == 0)
     {
         /* collect value */
         *pBool = pcfg->autoChannelEnabled;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_RDK_EcoPowerDown", TRUE))
+    if (strcmp(ParamName, "X_RDK_EcoPowerDown") == 0)
     {
         /* collect value */
 #if defined (FEATURE_SUPPORT_ECOPOWERDOWN)
@@ -1918,19 +1917,19 @@ Radio_GetParamBoolValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "IEEE80211hSupported", TRUE))
+    if (strcmp(ParamName, "IEEE80211hSupported") == 0)
     {
         *pBool = TRUE;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "IEEE80211hEnabled", TRUE))
+    if (strcmp(ParamName, "IEEE80211hEnabled") == 0)
     {
         *pBool = rcfg->IEEE80211hEnabled;
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "X_COMCAST_COM_DFSSupport", TRUE))
+    if (strcmp(ParamName, "X_COMCAST_COM_DFSSupport") == 0)
     {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d X_COMCAST_COM_DFSSupport band %d num_channels %d\n", __FUNCTION__,__LINE__, pcfg->band, radio_capab.channel_list[0].num_channels);
         for (int i=0; i<radio_capab.channel_list[0].num_channels; i++) {
@@ -1944,127 +1943,127 @@ Radio_GetParamBoolValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_COMCAST_COM_DFSEnable", TRUE))
+    if (strcmp(ParamName, "X_COMCAST_COM_DFSEnable") == 0)
     {
         /* collect value */
         *pBool = pcfg->DfsEnabled;
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "X_COMCAST-COM_DCSSupported", TRUE))
+    if (strcmp(ParamName, "X_COMCAST-COM_DCSSupported") == 0)
     {
         *pBool = rcfg->DCSSupported;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_COMCAST-COM_DCSEnable", TRUE))
+    if (strcmp(ParamName, "X_COMCAST-COM_DCSEnable") == 0)
     {
         *pBool = pcfg->DCSEnabled;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_COMCAST_COM_IGMPSnoopingEnable", TRUE))
+    if (strcmp(ParamName, "X_COMCAST_COM_IGMPSnoopingEnable") == 0)
     {
         *pBool = rcfg->IGMPSnoopingEnabled;
         return TRUE;
     }
     
-    if( AnscEqualString(ParamName, "X_COMCAST-COM_AutoChannelRefreshPeriodSupported", TRUE))
+    if (strcmp(ParamName, "X_COMCAST-COM_AutoChannelRefreshPeriodSupported") == 0)
     {
         *pBool = FALSE;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_COMCAST-COM_IEEE80211hSupported", TRUE))
+    if (strcmp(ParamName, "X_COMCAST-COM_IEEE80211hSupported") == 0)
     {
         *pBool = FALSE;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_COMCAST-COM_ReverseDirectionGrantSupported", TRUE))
+    if (strcmp(ParamName, "X_COMCAST-COM_ReverseDirectionGrantSupported") == 0)
     {
         *pBool = FALSE;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_COMCAST-COM_RtsThresholdSupported", TRUE))
+    if (strcmp(ParamName, "X_COMCAST-COM_RtsThresholdSupported") == 0)
     {
           *pBool = FALSE;
           return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_CISCO_COM_APIsolation", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_APIsolation") == 0)
     {
         /* collect value */
         *pBool = rcfg->APIsolation;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_CISCO_COM_FrameBurst", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_FrameBurst") == 0)
     {
         /* collect value */
         *pBool = rcfg->FrameBurst;
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "X_CISCO_COM_ApplySetting", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_ApplySetting") == 0)
     {
         return TRUE;
     }
-    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_AutoChannelRefreshPeriodSupported", TRUE))
-    {
-        *pBool = FALSE;
-        return TRUE;
-    }
-
-    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_RtsThresholdSupported", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_AutoChannelRefreshPeriodSupported") == 0)
     {
         *pBool = FALSE;
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_ReverseDirectionGrantSupported", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_RtsThresholdSupported") == 0)
     {
         *pBool = FALSE;
         return TRUE;
     }
-    if (AnscEqualString(ParamName, "X_CISCO_COM_ReverseDirectionGrant", TRUE))
+
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_ReverseDirectionGrantSupported") == 0)
+    {
+        *pBool = FALSE;
+        return TRUE;
+    }
+    if (strcmp(ParamName, "X_CISCO_COM_ReverseDirectionGrant") == 0)
     {
         *pBool = rcfg->ReverseDirectionGrant;
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "X_CISCO_COM_AggregationMSDU", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_AggregationMSDU") == 0)
     {
         *pBool = rcfg->AggregationMSDU;
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "X_CISCO_COM_AutoBlockAck", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_AutoBlockAck") == 0)
     {
         *pBool = rcfg->AutoBlockAck;
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "X_CISCO_COM_DeclineBARequest", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_DeclineBARequest") == 0)
     {
         *pBool = rcfg->DeclineBARequest;
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "X_CISCO_COM_STBCEnable", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_STBCEnable") == 0)
     {
         *pBool = pcfg->stbcEnable;
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "X_CISCO_COM_11nGreenfieldEnabled", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_11nGreenfieldEnabled") == 0)
     {
         *pBool = pcfg->greenFieldEnable;
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "X_CISCO_COM_WirelessOnOffButton", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_WirelessOnOffButton") == 0)
     {
         *pBool = rcfg->WirelessOnOffButton;
         return TRUE;
@@ -2133,14 +2132,14 @@ Radio_GetParamIntValue
     }
 
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "MCS", TRUE))
+    if (strcmp(ParamName, "MCS") == 0)
     {
         /* collect value */
         *pInt = rcfg->MCS; 
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "TransmitPower", TRUE))
+    if (strcmp(ParamName, "TransmitPower") == 0)
     {
         /* collect value */
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: tx_power:%d\n",__func__, __LINE__, pcfg->transmitPower);
@@ -2149,59 +2148,59 @@ Radio_GetParamIntValue
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "X_CISCO_COM_MbssUserControl", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_MbssUserControl") == 0)
     {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: userControl:%d\n",__func__, __LINE__, pcfg->userControl);
         *pInt = pcfg->userControl;
         return TRUE;
     }
-    if (AnscEqualString(ParamName, "X_CISCO_COM_AdminControl", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_AdminControl") == 0)
     {
         *pInt = pcfg->adminControl;
         return TRUE;
     }
-    if (AnscEqualString(ParamName, "X_CISCO_COM_OnOffPushButtonTime", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_OnOffPushButtonTime") == 0)
     {
         *pInt = rcfg->OnOffPushButtonTime;
         return TRUE;
     }
-    if (AnscEqualString(ParamName, "X_CISCO_COM_ObssCoex", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_ObssCoex") == 0)
     {
         *pInt = pcfg->obssCoex;
         return TRUE;
     }
-    if (AnscEqualString(ParamName, "X_CISCO_COM_MulticastRate", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_MulticastRate") == 0)
     {
         *pInt = rcfg->MulticastRate;
         return TRUE;
     }
-    if (AnscEqualString(ParamName, "X_COMCAST-COM_CarrierSenseThresholdRange", TRUE))
+    if (strcmp(ParamName, "X_COMCAST-COM_CarrierSenseThresholdRange") == 0)
     {
          *pInt = rcfg->ThresholdRange;
          return TRUE;
     }
-    if (AnscEqualString(ParamName, "X_COMCAST-COM_CarrierSenseThresholdInUse", TRUE))
+    if (strcmp(ParamName, "X_COMCAST-COM_CarrierSenseThresholdInUse") == 0)
     {
         *pInt = rcfg->ThresholdInUse; 
         return TRUE;
     }
-    if (AnscEqualString(ParamName, "X_COMCAST-COM_ChannelSwitchingCount", TRUE))
+    if (strcmp(ParamName, "X_COMCAST-COM_ChannelSwitchingCount") == 0)
     {
 	*pInt = gChannelSwitchingCount;
         return TRUE;
     }
-    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_DCSDwelltime", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_DCSDwelltime") == 0)
     {
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_clientInactivityTimeout", TRUE) )
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_clientInactivityTimeout") == 0)
     {
         *pInt = 0;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_COMCAST_COM_DFSTimer", TRUE) ) {
+    if (strcmp(ParamName, "X_COMCAST_COM_DFSTimer") == 0) {
         *pInt = pcfg->DFSTimer;
         return TRUE;
     }
@@ -2293,14 +2292,14 @@ Radio_GetParamUlongValue
         return FALSE;
     }
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "X_COMCAST_COM_RadioUpTime", TRUE))
+    if (strcmp(ParamName, "X_COMCAST_COM_RadioUpTime") == 0)
     {
         /* collect value */
         upSecs = get_Uptime();
         *puLong = upSecs - startTime[instance_number];
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "Status", TRUE))
+    if (strcmp(ParamName, "Status") == 0)
     {
         if (global_wifi_config->global_parameters.force_disable_radio_feature == TRUE )
         {
@@ -2320,28 +2319,28 @@ Radio_GetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "LastChange", TRUE))
+    if (strcmp(ParamName, "LastChange") == 0)
     {
         /* collect value */
         *puLong = AnscGetTimeIntervalInSeconds(last_radio_change,AnscGetTickInSeconds());
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "MaxBitRate", TRUE))
+    if (strcmp(ParamName, "MaxBitRate") == 0)
     {
         /* collect value */
         *puLong = rcfg->MaxBitRate; 
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "SupportedFrequencyBands", TRUE))
+    if (strcmp(ParamName, "SupportedFrequencyBands") == 0)
     {
         /* collect value */
         *puLong = rcfg->SupportedFrequencyBands; 
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "Channel", TRUE))
+    if (strcmp(ParamName, "Channel") == 0)
     {
         /* collect value */
 	*puLong = pcfg->channel;
@@ -2349,13 +2348,13 @@ Radio_GetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "AutoChannelRefreshPeriod", TRUE))
+    if (strcmp(ParamName, "AutoChannelRefreshPeriod") == 0)
     {
         *puLong = rcfg->AutoChannelRefreshPeriod; 
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "OperatingChannelBandwidth", TRUE))
+    if (strcmp(ParamName, "OperatingChannelBandwidth") == 0)
     {
         /* collect value */
         UINT bw = 0;
@@ -2367,13 +2366,13 @@ Radio_GetParamUlongValue
         return FALSE;
     }
 
-    if( AnscEqualString(ParamName, "ExtensionChannel", TRUE))
+    if (strcmp(ParamName, "ExtensionChannel") == 0)
     {
         *puLong = rcfg->ExtensionChannel;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "GuardInterval", TRUE))
+    if (strcmp(ParamName, "GuardInterval") == 0)
     {
         /* collect value */
         COSA_DML_WIFI_GUARD_INTVL tmpGuardInterval = 0;
@@ -2386,7 +2385,7 @@ Radio_GetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_CISCO_COM_RTSThreshold", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_RTSThreshold") == 0)
     {
         /* collect value */
 	*puLong = pcfg->rtsThreshold;
@@ -2394,7 +2393,7 @@ Radio_GetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_CISCO_COM_FragmentationThreshold", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_FragmentationThreshold") == 0)
     {
         /* collect value */
 	*puLong = pcfg->fragmentationThreshold;
@@ -2402,7 +2401,7 @@ Radio_GetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_CISCO_COM_DTIMInterval", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_DTIMInterval") == 0)
     {
         /* collect value */
         *puLong = pcfg->dtimPeriod;
@@ -2418,21 +2417,21 @@ Radio_GetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_CISCO_COM_TxRate", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_TxRate") == 0)
     {
         /* collect value */
         *puLong = pcfg->transmitPower;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_CISCO_COM_BasicRate", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_BasicRate") == 0)
     {
         /* collect value */
         *puLong = rcfg->BasicRate;
         return TRUE;
     }
     
-    if( AnscEqualString(ParamName, "X_CISCO_COM_CTSProtectionMode", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_CTSProtectionMode") == 0)
     {
         /* collect value */
         *puLong = (FALSE == pcfg->ctsProtection) ? 0 : 1;
@@ -2440,38 +2439,38 @@ Radio_GetParamUlongValue
         return TRUE;
     }
 #if 0
-    if (AnscEqualString(ParamName, "X_CISCO_COM_HTTxStream", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_HTTxStream") == 0)
     {
         *puLong = pWifiRadioFull->Cfg.X_CISCO_COM_HTTxStream; 
         return TRUE;
     }
   
-    if (AnscEqualString(ParamName, "X_CISCO_COM_HTRxStream", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_HTRxStream") == 0)
     {
         *puLong = pWifiRadioFull->Cfg.X_CISCO_COM_HTRxStream; 
         return TRUE;
     }
  #endif   
-    if( AnscEqualString(ParamName, "RadioResetCount", TRUE) )
+    if (strcmp(ParamName, "RadioResetCount") == 0)
     {
         *puLong = radio_reset_count;
         return TRUE;
     }
     
-    if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_ChanUtilSelfHealEnable", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_ChanUtilSelfHealEnable") == 0)
     {
         *puLong = pcfg->chanUtilSelfHealEnable;
        	return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_ChannelUtilThreshold", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_ChannelUtilThreshold") == 0)
     {
 
         *puLong = pcfg->chanUtilThreshold;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_RDK_OffChannelTscan", TRUE))
+    if (strcmp(ParamName, "X_RDK_OffChannelTscan") == 0)
     {
 #if defined(FEATURE_OFF_CHANNEL_SCAN_5G)
         *puLong = fcfg->OffChanTscanInMsec;
@@ -2481,7 +2480,7 @@ Radio_GetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_RDK_OffChannelNscan", TRUE))
+    if (strcmp(ParamName, "X_RDK_OffChannelNscan") == 0)
     {
 #if defined(FEATURE_OFF_CHANNEL_SCAN_5G)
         if (fcfg->OffChanNscanInSec != 0)
@@ -2496,7 +2495,7 @@ Radio_GetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_RDK_OffChannelTidle", TRUE))
+    if (strcmp(ParamName, "X_RDK_OffChannelTidle") == 0)
     {
 #if defined(FEATURE_OFF_CHANNEL_SCAN_5G)
         *puLong = fcfg->OffChanTidleInSec;
@@ -2506,7 +2505,7 @@ Radio_GetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_RDK_OffChannelNchannel", TRUE))
+    if (strcmp(ParamName, "X_RDK_OffChannelNchannel") == 0)
     {
 #if defined(FEATURE_OFF_CHANNEL_SCAN_5G)
         if (is_radio_band_5G(pcfg->band))
@@ -2594,13 +2593,13 @@ Radio_GetParamStringValue
     wifi_rfc_dml_parameters_t *rfc_pcfg = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
 
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "Alias", TRUE))
+    if (strcmp(ParamName, "Alias") == 0)
     {
         snprintf(pValue, *pUlSize, "%s", rcfg->Alias);
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "Name", TRUE))
+    if (strcmp(ParamName, "Name") == 0)
     {
         /* collect value */
         INT instance_number = 0;
@@ -2614,7 +2613,7 @@ Radio_GetParamStringValue
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "LowerLayers", TRUE))
+    if (strcmp(ParamName, "LowerLayers") == 0)
     {
         /*TR-181: Since Radio is a layer 1 interface, 
           it is expected that LowerLayers will not be used
@@ -2624,7 +2623,7 @@ Radio_GetParamStringValue
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "OperatingFrequencyBand", TRUE))
+    if (strcmp(ParamName, "OperatingFrequencyBand") == 0)
     {
         /* collect value */
         if(10 < *pUlSize)
@@ -2658,7 +2657,7 @@ Radio_GetParamStringValue
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "OperatingStandards", TRUE))
+    if (strcmp(ParamName, "OperatingStandards") == 0)
     {
         /* collect value */
         char buf[512] = {0};
@@ -2757,7 +2756,7 @@ Radio_GetParamStringValue
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "PossibleChannels", TRUE))
+    if (strcmp(ParamName, "PossibleChannels") == 0)
     {
         wifi_rfc_dml_parameters_t *rfc_params = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
 
@@ -2772,25 +2771,25 @@ Radio_GetParamStringValue
             pValue, *pUlSize, rfc_params->dfs_rfc) == RETURN_OK ? 0 : -1;
     }
 
-    if( AnscEqualString(ParamName, "ChannelsInUse", TRUE))
+    if (strcmp(ParamName, "ChannelsInUse") == 0)
     {
         snprintf(pValue, *pUlSize, "%d", pcfg->channel);
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "X_CISCO_COM_ApChannelScan", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_ApChannelScan") == 0)
     {
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "TransmitPowerSupported", TRUE))
+    if (strcmp(ParamName, "TransmitPowerSupported") == 0)
     {
         /* collect value */
         snprintf(pValue, *pUlSize, "%s", rcfg->TransmitPowerSupported);
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "RegulatoryDomain", TRUE))
+    if (strcmp(ParamName, "RegulatoryDomain") == 0)
     {
         /* collect value */
         char regulatoryDomain[4];
@@ -2810,13 +2809,13 @@ Radio_GetParamStringValue
     }
 
 
-    if( AnscEqualString(ParamName, "SupportedStandards", TRUE))
+    if (strcmp(ParamName, "SupportedStandards") == 0)
     {
         snprintf(pValue, *pUlSize, "%s", rcfg->SupportedStandards);
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "BasicDataTransmitRates", TRUE))
+    if (strcmp(ParamName, "BasicDataTransmitRates") == 0)
     {
         char buf[512] = {0};
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:pcfg->basicDataTransmitRates=%d\n",__func__, __LINE__, pcfg->basicDataTransmitRates);
@@ -2909,15 +2908,14 @@ Radio_GetParamStringValue
         }
         return 0;  
     }
-    
-    if( AnscEqualString(ParamName, "SupportedDataTransmitRates", TRUE))
+    if (strcmp(ParamName, "SupportedDataTransmitRates") == 0)
     {
         /* collect value */
         snprintf(pValue, *pUlSize, "%s", "6,9,12,18,24,36,48,54");
         return 0;
     }
     
-    if( AnscEqualString(ParamName, "OperationalDataTransmitRates", TRUE))
+    if (strcmp(ParamName, "OperationalDataTransmitRates") == 0)
     {
         char buf[512] = {0};
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:pcfg->operationalDataTransmitRates=%d\n",__func__, __LINE__, pcfg->operationalDataTransmitRates);
@@ -3107,7 +3105,7 @@ Radio_SetParamBoolValue
         return FALSE;
     }
     /* check the parameter name and set the corresponding value */
-    if( AnscEqualString(ParamName, "Enable", TRUE))
+    if (strcmp(ParamName, "Enable") == 0)
     {
 	wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:enable=%d bValue = %d instanceNumber=%d true=%d false=%d  \n",__func__, __LINE__,wifiRadioOperParam->enable,bValue,instance_number,TRUE,FALSE);
         if(global_wifi_config->global_parameters.force_disable_radio_feature)
@@ -3132,7 +3130,7 @@ Radio_SetParamBoolValue
         return TRUE;
      }
 
-    if( AnscEqualString(ParamName, "AutoChannelEnable", TRUE))
+    if (strcmp(ParamName, "AutoChannelEnable") == 0)
     {
 	wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:autoChannelEnabled=%d bValue = %d  \n",__func__, __LINE__,wifiRadioOperParam->autoChannelEnabled,bValue);
         if (wifiRadioOperParam->autoChannelEnabled == bValue)
@@ -3146,13 +3144,13 @@ Radio_SetParamBoolValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "IEEE80211hEnabled", TRUE))
+    if (strcmp(ParamName, "IEEE80211hEnabled") == 0)
     {
         rcfg->IEEE80211hEnabled = bValue;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_COMCAST_COM_DFSEnable", TRUE))
+    if (strcmp(ParamName, "X_COMCAST_COM_DFSEnable") == 0)
     {
         wifi_rfc_dml_parameters_t *rfc_pcfg = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
         if (!(rfc_pcfg->dfs_rfc)) {
@@ -3164,7 +3162,7 @@ Radio_SetParamBoolValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_COMCAST-COM_DCSEnable", TRUE))
+    if (strcmp(ParamName, "X_COMCAST-COM_DCSEnable") == 0)
     {
         if (wifiRadioOperParam->DCSEnabled == bValue)
         {
@@ -3178,31 +3176,31 @@ Radio_SetParamBoolValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_COMCAST_COM_IGMPSnoopingEnable", TRUE))
+    if (strcmp(ParamName, "X_COMCAST_COM_IGMPSnoopingEnable") == 0)
     {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Cannot set IGMPSnoopingEnable \n",__func__,__LINE__);
         return FALSE;
     }
 
 
-    if( AnscEqualString(ParamName, "X_CISCO_COM_APIsolation", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_APIsolation") == 0)
     {
         rcfg->APIsolation = bValue;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_CISCO_COM_FrameBurst", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_FrameBurst") == 0)
     {
         rcfg->FrameBurst = bValue;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_CISCO_COM_ApplySetting", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_ApplySetting") == 0)
     {
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_CISCO_COM_ReverseDirectionGrant", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_ReverseDirectionGrant") == 0)
     {
         if (rcfg->ReverseDirectionGrant == bValue)
         {
@@ -3214,7 +3212,7 @@ Radio_SetParamBoolValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_CISCO_COM_AggregationMSDU", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_AggregationMSDU") == 0)
     {
 	if (rcfg->AggregationMSDU == bValue)
         {
@@ -3226,7 +3224,7 @@ Radio_SetParamBoolValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_CISCO_COM_AutoBlockAck", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_AutoBlockAck") == 0)
     {
 	if (rcfg->AutoBlockAck == bValue)
         {
@@ -3238,7 +3236,7 @@ Radio_SetParamBoolValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_CISCO_COM_DeclineBARequest", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_DeclineBARequest") == 0)
     {
 	if (rcfg->DeclineBARequest == bValue)
         {
@@ -3250,7 +3248,7 @@ Radio_SetParamBoolValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_CISCO_COM_STBCEnable", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_STBCEnable") == 0)
     {
         wifiRadioOperParam->stbcEnable = bValue;
         is_radio_config_changed = TRUE;
@@ -3258,7 +3256,7 @@ Radio_SetParamBoolValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_CISCO_COM_11nGreenfieldEnabled", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_11nGreenfieldEnabled") == 0)
     {
         wifiRadioOperParam->greenFieldEnable = bValue;
         is_radio_config_changed = TRUE;
@@ -3266,7 +3264,7 @@ Radio_SetParamBoolValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_CISCO_COM_WirelessOnOffButton", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_WirelessOnOffButton") == 0)
     {
 	if (rcfg->WirelessOnOffButton == bValue)
         {
@@ -3278,7 +3276,7 @@ Radio_SetParamBoolValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_RDK_EcoPowerDown", TRUE))
+    if (strcmp(ParamName, "X_RDK_EcoPowerDown") == 0)
     {
 #if defined (FEATURE_SUPPORT_ECOPOWERDOWN)
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: EcoPowerDown = %d bValue = %d  \n", __func__, __LINE__, wifiRadioOperParam->EcoPowerDown, bValue);
@@ -3431,13 +3429,13 @@ Radio_SetParamIntValue
     }
  
     /* check the parameter name and set the corresponding value */
-    if( AnscEqualString(ParamName, "MCS", TRUE))
+    if (strcmp(ParamName, "MCS") == 0)
     {
         rcfg->MCS = iValue;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "TransmitPower", TRUE))
+    if (strcmp(ParamName, "TransmitPower") == 0)
     {
         if (wifiRadioOperParam->transmitPower == (UINT)iValue)
         {
@@ -3455,7 +3453,7 @@ Radio_SetParamIntValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_CISCO_COM_MbssUserControl", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_MbssUserControl") == 0)
     {
         if (wifiRadioOperParam->userControl == (UINT)iValue)
         {
@@ -3469,7 +3467,7 @@ Radio_SetParamIntValue
 
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "X_CISCO_COM_AdminControl", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_AdminControl") == 0)
     {
         wifiRadioOperParam->adminControl = iValue;
         ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s adminControl: %d\n", __FUNCTION__, wifiRadioOperParam->adminControl);
@@ -3477,12 +3475,12 @@ Radio_SetParamIntValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:adminControl=%d bValue = %d  \n",__func__, __LINE__,wifiRadioOperParam->adminControl,iValue);
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "X_CISCO_COM_OnOffPushButtonTime", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_OnOffPushButtonTime") == 0)
     {
         rcfg->OnOffPushButtonTime = iValue;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "X_CISCO_COM_ObssCoex", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_ObssCoex") == 0)
     {
         if((iValue != 0) && (iValue != 1)) 
         {
@@ -3495,24 +3493,24 @@ Radio_SetParamIntValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:obssCoex=%d bValue = %d  \n",__func__, __LINE__,wifiRadioOperParam->obssCoex,iValue);
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "X_CISCO_COM_MulticastRate", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_MulticastRate") == 0)
     {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Cannot set MulticastRate \n",__func__,__LINE__);
         return FALSE;
     }
-    if( AnscEqualString(ParamName, "X_COMCAST-COM_CarrierSenseThresholdInUse", TRUE))
+    if (strcmp(ParamName, "X_COMCAST-COM_CarrierSenseThresholdInUse") == 0)
     {         
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Cannot set CarrierSenseThresholdInUse \n",__func__,__LINE__);
         return FALSE;
     }
     
-    if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_DCSDwelltime", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_DCSDwelltime") == 0)
     {
 
 	return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_COMCAST_COM_DFSTimer", TRUE) ) {
+    if (strcmp(ParamName, "X_COMCAST_COM_DFSTimer") == 0) {
         if(iValue < 30) {
             wifi_util_error_print(WIFI_DMCLI, "%s:%d: Invalid Timer value %d for the country code : %d\n", __func__, __LINE__, iValue, wifiRadioOperParam->countryCode);
             return FALSE;
@@ -3657,7 +3655,7 @@ Radio_SetParamUlongValue
 #endif //FEATURE_OFF_CHANNEL_SCAN_5G
 
     /* check the parameter name and set the corresponding value */
-    if( AnscEqualString(ParamName, "Channel", TRUE))
+    if (strcmp(ParamName, "Channel") == 0)
     {
         if (wifiRadioChannelIsValid(wlanIndex, uValue) != ANSC_STATUS_SUCCESS)
         {
@@ -3687,13 +3685,13 @@ Radio_SetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "AutoChannelRefreshPeriod", TRUE))
+    if (strcmp(ParamName, "AutoChannelRefreshPeriod") == 0)
     {
         rcfg->AutoChannelRefreshPeriod = uValue;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "OperatingChannelBandwidth", TRUE))
+    if (strcmp(ParamName, "OperatingChannelBandwidth") == 0)
     {
         if (operChanBandwidthDmlEnumtoHalEnum(uValue , &tmpChanWidth) != ANSC_STATUS_SUCCESS)
         {
@@ -3731,7 +3729,7 @@ Radio_SetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "ExtensionChannel", TRUE))
+    if (strcmp(ParamName, "ExtensionChannel") == 0)
     {
         ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s Extension Channel : %d\n", __FUNCTION__, uValue);
         if (rcfg->ExtensionChannel == uValue) {
@@ -3741,7 +3739,7 @@ Radio_SetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "GuardInterval", TRUE))
+    if (strcmp(ParamName, "GuardInterval") == 0)
     {
         wifi_guard_interval_t tmpGuardInterval = 0;
 
@@ -3762,7 +3760,7 @@ Radio_SetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_CISCO_COM_RTSThreshold", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_RTSThreshold") == 0)
     {
         if (uValue > 2347)
         {
@@ -3781,7 +3779,7 @@ Radio_SetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_CISCO_COM_FragmentationThreshold", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_FragmentationThreshold") == 0)
     {
         if (wifiRadioOperParam->fragmentationThreshold  == uValue)
         {
@@ -3800,7 +3798,7 @@ Radio_SetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_CISCO_COM_DTIMInterval", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_DTIMInterval") == 0)
     {
         if (wifiRadioOperParam->dtimPeriod == uValue)
         {
@@ -3840,19 +3838,19 @@ Radio_SetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_CISCO_COM_TxRate", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_TxRate") == 0)
     {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Cannot set TxRate \n",__func__,__LINE__);
         return FALSE;
     }
 
-    if( AnscEqualString(ParamName, "X_CISCO_COM_BasicRate", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_BasicRate") == 0)
     {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Cannot set BasicRate \n",__func__,__LINE__);
         return FALSE;
     }
 	
-    if( AnscEqualString(ParamName, "X_CISCO_COM_CTSProtectionMode", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_CTSProtectionMode") == 0)
     {
         if(wifiRadioOperParam->ctsProtection == uValue)
         {
@@ -3866,7 +3864,7 @@ Radio_SetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_ChanUtilSelfHealEnable", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_ChanUtilSelfHealEnable") == 0)
     {
         if(wifiRadioOperParam->chanUtilSelfHealEnable == uValue)
         {
@@ -3876,7 +3874,7 @@ Radio_SetParamUlongValue
         return FALSE;
     }
 
-    if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_ChannelUtilThreshold", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_ChannelUtilThreshold") == 0)
     {
         if(wifiRadioOperParam->chanUtilThreshold == uValue)
         {
@@ -3886,7 +3884,7 @@ Radio_SetParamUlongValue
         return FALSE;
     }
 
-    if( AnscEqualString(ParamName, "X_RDK_OffChannelTscan", TRUE))
+    if (strcmp(ParamName, "X_RDK_OffChannelTscan") == 0)
     {
 #if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
         if(!(is_radio_band_5G(wifiRadioOperParam->band)))
@@ -3907,7 +3905,7 @@ Radio_SetParamUlongValue
 #endif //FEATURE_OFF_CHANNEL_SCAN_5G
     }
 
-    if( AnscEqualString(ParamName, "X_RDK_OffChannelNscan", TRUE))
+    if (strcmp(ParamName, "X_RDK_OffChannelNscan") == 0)
     {
 #if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
         if(!(is_radio_band_5G(wifiRadioOperParam->band)))
@@ -3941,7 +3939,7 @@ Radio_SetParamUlongValue
 #endif //FEATURE_OFF_CHANNEL_SCAN_5G
     }
 
-    if( AnscEqualString(ParamName, "X_RDK_OffChannelTidle", TRUE))
+    if (strcmp(ParamName, "X_RDK_OffChannelTidle") == 0)
     {
 #if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
         if(!(is_radio_band_5G(wifiRadioOperParam->band)))
@@ -4076,16 +4074,16 @@ Radio_SetParamStringValue
     }
 
     /* check the parameter name and set the corresponding value */
-    if( AnscEqualString(ParamName, "Alias", TRUE))
+    if (strcmp(ParamName, "Alias") == 0)
     {
-        if ( AnscEqualString(pString, rcfg->Alias, TRUE)) {
+        if (strcmp(pString, rcfg->Alias) == 0) {
                 return TRUE;
         }
         strncpy(rcfg->Alias,pString,sizeof(rcfg->Alias)-1);
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "LowerLayers", TRUE))
+    if (strcmp(ParamName, "LowerLayers") == 0)
     {
         /*TR-181: Since Radio is a layer 1 interface, 
           it is expected that LowerLayers will not be used
@@ -4094,7 +4092,7 @@ Radio_SetParamStringValue
         return FALSE;
     }
 
-    if( AnscEqualString(ParamName, "RegulatoryDomain", TRUE))
+    if (strcmp(ParamName, "RegulatoryDomain") == 0)
     {
         char regulatoryDomainStr[4];
         size_t reg_len;
@@ -4142,7 +4140,7 @@ Radio_SetParamStringValue
         return TRUE;
     }
 
-    if(AnscEqualString(ParamName, "BasicDataTransmitRates", TRUE))
+    if (strcmp(ParamName, "BasicDataTransmitRates") == 0)
     {
         if(isValidTransmitRate(pString))
         {
@@ -4162,7 +4160,7 @@ Radio_SetParamStringValue
         }
 
     }
-    if(AnscEqualString(ParamName, "OperationalDataTransmitRates", TRUE))
+    if (strcmp(ParamName, "OperationalDataTransmitRates") == 0)
     {
         if(isValidTransmitRate(pString))
         {
@@ -4184,7 +4182,7 @@ Radio_SetParamStringValue
         }
     }
 
-    if(AnscEqualString(ParamName, "OperatingStandards", TRUE)) {
+    if (strcmp(ParamName, "OperatingStandards") == 0) {
         wifi_ieee80211Variant_t wifi_variant;
         wifi_rfc_dml_parameters_t *rfc_pcfg = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
 
@@ -4383,7 +4381,7 @@ ReceivedSignalLevel_GetParamIntValue
     if(!hInsContext)
         return FALSE;
 	
-    if( AnscEqualString(ParamName, "ReceivedSignalLevel", TRUE))   {
+    if (strcmp(ParamName, "ReceivedSignalLevel") == 0)   {
         return TRUE;
     }
     return FALSE;		
@@ -4459,7 +4457,7 @@ Stats3_GetParamBoolValue
 {
 
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "X_COMCAST-COM_RadioStatisticsEnable", TRUE))    {
+    if (strcmp(ParamName, "X_COMCAST-COM_RadioStatisticsEnable") == 0)    {
          return TRUE;
     }	
     return FALSE;
@@ -4473,7 +4471,7 @@ Stats3_SetParamBoolValue
         BOOL                        bValue
     )
 {
-    if( AnscEqualString(ParamName, "X_COMCAST-COM_RadioStatisticsEnable", TRUE))   {
+    if (strcmp(ParamName, "X_COMCAST-COM_RadioStatisticsEnable") == 0)   {
         return TRUE;
     }
     return FALSE;
@@ -4539,11 +4537,11 @@ Stats3_GetParamIntValue
     }
 
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "X_COMCAST-COM_NoiseFloor", TRUE))    {
+    if (strcmp(ParamName, "X_COMCAST-COM_NoiseFloor") == 0)    {
         *pInt = monitor_param->radio_data[instance_number].NoiseFloor; 
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "Noise", TRUE))    {
+    if (strcmp(ParamName, "Noise") == 0)    {
 	*pInt = monitor_param->radio_data[instance_number].NoiseFloor;
 	return TRUE;
     }
@@ -4585,27 +4583,27 @@ Stats3_GetParamIntValue
         *pInt = monitor_param->radio_data[instance_number].CarrierSenseThreshold_Exceeded;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "X_COMCAST-COM_RetransmissionMetric", TRUE))     {
+    if (strcmp(ParamName, "X_COMCAST-COM_RetransmissionMetric") == 0)     {
          *pInt = stats->RetransmissionMetric;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "X_COMCAST-COM_MaximumNoiseFloorOnChannel", TRUE))    {
+    if (strcmp(ParamName, "X_COMCAST-COM_MaximumNoiseFloorOnChannel") == 0)    {
         *pInt = stats->MaximumNoiseFloorOnChannel;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "X_COMCAST-COM_MinimumNoiseFloorOnChannel", TRUE))   {
+    if (strcmp(ParamName, "X_COMCAST-COM_MinimumNoiseFloorOnChannel") == 0)   {
         *pInt = stats->MinimumNoiseFloorOnChannel;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "X_COMCAST-COM_MedianNoiseFloorOnChannel", TRUE))    {
+    if (strcmp(ParamName, "X_COMCAST-COM_MedianNoiseFloorOnChannel") == 0)    {
         *pInt = stats->MedianNoiseFloorOnChannel;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "X_COMCAST-COM_RadioStatisticsMeasuringRate", TRUE)) {
+    if (strcmp(ParamName, "X_COMCAST-COM_RadioStatisticsMeasuringRate") == 0) {
         *pInt = stats->RadioStatisticsMeasuringRate;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "X_COMCAST-COM_RadioStatisticsMeasuringInterval", TRUE))    {
+    if (strcmp(ParamName, "X_COMCAST-COM_RadioStatisticsMeasuringInterval") == 0)    {
         *pInt = stats->RadioStatisticsMeasuringInterval;
         return TRUE;
     }
@@ -4672,59 +4670,59 @@ Stats3_GetParamUlongValue
     }
 
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "BytesSent", TRUE))   {
+    if (strcmp(ParamName, "BytesSent") == 0)   {
         *puLong = monitor_param->radio_data[instance_number].radio_BytesSent;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "BytesReceived", TRUE))    {
+    if (strcmp(ParamName, "BytesReceived") == 0)    {
         *puLong = monitor_param->radio_data[instance_number].radio_BytesReceived;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "PacketsSent", TRUE))    {
+    if (strcmp(ParamName, "PacketsSent") == 0)    {
         *puLong = monitor_param->radio_data[instance_number].radio_PacketsSent;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "PacketsReceived", TRUE))    {
+    if (strcmp(ParamName, "PacketsReceived") == 0)    {
         *puLong = monitor_param->radio_data[instance_number].radio_PacketsReceived;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "ErrorsSent", TRUE))    {
+    if (strcmp(ParamName, "ErrorsSent") == 0)    {
         *puLong = monitor_param->radio_data[instance_number].radio_ErrorsSent;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "ErrorsReceived", TRUE))    {
+    if (strcmp(ParamName, "ErrorsReceived") == 0)    {
         *puLong = monitor_param->radio_data[instance_number].radio_ErrorsReceived;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "DiscardPacketsSent", TRUE))    {
+    if (strcmp(ParamName, "DiscardPacketsSent") == 0)    {
         *puLong = monitor_param->radio_data[instance_number].radio_DiscardPacketsSent;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "DiscardPacketsReceived", TRUE))    {
+    if (strcmp(ParamName, "DiscardPacketsReceived") == 0)    {
         *puLong = monitor_param->radio_data[instance_number].radio_DiscardPacketsReceived;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "PLCPErrorCount", TRUE))    {
+    if (strcmp(ParamName, "PLCPErrorCount") == 0)    {
         *puLong = stats->PLCPErrorCount;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "FCSErrorCount", TRUE))    {
+    if (strcmp(ParamName, "FCSErrorCount") == 0)    {
         *puLong = stats->FCSErrorCount;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "InvalidMACCount", TRUE))    {
+    if (strcmp(ParamName, "InvalidMACCount") == 0)    {
         *puLong = monitor_param->radio_data[instance_number-1].radio_InvalidMACCount;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "PacketsOtherReceived", TRUE))    {
+    if (strcmp(ParamName, "PacketsOtherReceived") == 0)    {
         *puLong = stats->PacketsOtherReceived;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "X_COMCAST-COM_ChannelUtilization", TRUE))    {
+    if (strcmp(ParamName, "X_COMCAST-COM_ChannelUtilization") == 0)    {
         *puLong = monitor_param->radio_data[instance_number].channelUtil;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "X_COMCAST-COM_StatisticsStartTime", TRUE))    {
+    if (strcmp(ParamName, "X_COMCAST-COM_StatisticsStartTime") == 0)    {
         *puLong = stats->StatisticsStartTime;
         return TRUE;
     }
@@ -4792,7 +4790,7 @@ Stats3_SetParamIntValue
         return FALSE;
     }
  
-    if( AnscEqualString(ParamName, "X_COMCAST-COM_RadioStatisticsMeasuringRate", TRUE))   {
+    if (strcmp(ParamName, "X_COMCAST-COM_RadioStatisticsMeasuringRate") == 0)   {
         if( wifi_radio->radioStatsMeasuringRate == (UINT)iValue)
         {
             return TRUE;
@@ -4803,7 +4801,7 @@ Stats3_SetParamIntValue
         is_radio_config_changed = TRUE;
         return TRUE;
     }
-   if( AnscEqualString(ParamName, "X_COMCAST-COM_RadioStatisticsMeasuringInterval", TRUE))    {
+   if (strcmp(ParamName, "X_COMCAST-COM_RadioStatisticsMeasuringInterval") == 0)    {
         if( wifi_radio->radioStatsMeasuringInterval == (UINT)iValue)
         {
             return TRUE;
@@ -5015,7 +5013,7 @@ SSID_GetParamBoolValue
             return FALSE;
     }
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "Enable", TRUE))
+    if (strcmp(ParamName, "Enable") == 0)
     {
         if (global_wifi_config->global_parameters.force_disable_radio_feature == TRUE)
         {
@@ -5032,7 +5030,7 @@ SSID_GetParamBoolValue
     }
     
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "X_CISCO_COM_EnableOnline", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_EnableOnline") == 0)
     {
         if (isVapSTAMesh(pcfg->vap_index)) {
             *pBool = pcfg->u.sta_info.enabled;
@@ -5043,7 +5041,7 @@ SSID_GetParamBoolValue
     }
 
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "X_CISCO_COM_RouterEnabled", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_RouterEnabled") == 0)
     {
         *pBool = cfg->router_enabled;
         return TRUE;
@@ -5148,7 +5146,7 @@ SSID_GetParamUlongValue
     }
 
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "Status", TRUE))
+    if (strcmp(ParamName, "Status") == 0)
     {
         if (global_wifi_config->global_parameters.force_disable_radio_feature == TRUE ||
             ((webconfig_dml_t *)get_webconfig_dml())->radios[pcfg->radio_index].oper.enable == false)
@@ -5181,7 +5179,7 @@ SSID_GetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "LastChange", TRUE))
+    if (strcmp(ParamName, "LastChange") == 0)
     {
         /* collect value */
         *puLong  = AnscGetTimeIntervalInSeconds(last_vap_change, AnscGetTickInSeconds());
@@ -5251,7 +5249,7 @@ SSID_GetParamStringValue
     }
     memset(str,0,sizeof(str));
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "Alias", TRUE))
+    if (strcmp(ParamName, "Alias") == 0)
     {
         /* collect value */
         if(instance_number>(MAX_NUM_RADIOS * MAX_NUM_VAP_PER_RADIO) || instance_number<0)
@@ -5264,14 +5262,14 @@ SSID_GetParamStringValue
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "Name", TRUE))
+    if (strcmp(ParamName, "Name") == 0)
     {
         /* collect value */
         AnscCopyString(pValue, pcfg->vap_name);
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "LowerLayers", TRUE))
+    if (strcmp(ParamName, "LowerLayers") == 0)
     {
         int radioIndex = convert_vap_name_to_radio_array_index(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop, pcfg->vap_name);
 
@@ -5281,7 +5279,7 @@ SSID_GetParamStringValue
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "BSSID", TRUE))
+    if (strcmp(ParamName, "BSSID") == 0)
     {
 	char buff[24] = {0};
 
@@ -5314,7 +5312,7 @@ SSID_GetParamStringValue
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "MACAddress", TRUE))
+    if (strcmp(ParamName, "MACAddress") == 0)
     {
         char buff[24] = {0};
         if (isVapSTAMesh(pcfg->vap_index)) {
@@ -5346,7 +5344,7 @@ SSID_GetParamStringValue
         return 0;
   }
 
-    if( AnscEqualString(ParamName, "SSID", TRUE))
+    if (strcmp(ParamName, "SSID") == 0)
     {
         /* collect value */
         if(isVapSTAMesh(pcfg->vap_index)){
@@ -5358,7 +5356,7 @@ SSID_GetParamStringValue
         }
     }
 
-    if( AnscEqualString(ParamName, "X_COMCAST-COM_DefaultSSID", TRUE))
+    if (strcmp(ParamName, "X_COMCAST-COM_DefaultSSID") == 0)
     {
         /* collect value */
         char ssid[128] = {0};
@@ -5369,7 +5367,7 @@ SSID_GetParamStringValue
 
     }
 
-    if( AnscEqualString(ParamName, "Repurposed_VapName", TRUE))
+    if (strcmp(ParamName, "Repurposed_VapName") == 0)
     {
         /* collect value */
         if (strlen(pcfg->repurposed_vap_name) != 0) {
@@ -5453,7 +5451,7 @@ SSID_SetParamBoolValue
             return FALSE;
     }
     /* check the parameter name and set the corresponding value */
-    if( AnscEqualString(ParamName, "Enable", TRUE))
+    if (strcmp(ParamName, "Enable") == 0)
     {
         rdk_wifi_vap_info_t *rdk_vap_info;
         rdk_vap_info = (rdk_wifi_vap_info_t *)get_dml_cache_rdk_vap_info(vapInfo->vap_index);
@@ -5498,7 +5496,7 @@ SSID_SetParamBoolValue
     }
 
     /* check the parameter name and set the corresponding value */
-    if( AnscEqualString(ParamName, "X_CISCO_COM_EnableOnline", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_EnableOnline") == 0)
     {
         if (isVapSTAMesh(pcfg->vap_index)) {
             if (vapInfo->u.sta_info.enabled == bValue)
@@ -5528,7 +5526,7 @@ SSID_SetParamBoolValue
     }
 
     /* check the parameter name and set the corresponding value */
-    if( AnscEqualString(ParamName, "X_CISCO_COM_RouterEnabled", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_RouterEnabled") == 0)
     {
         /* SSID Enable object can be modified only when ForceDisableRadio feature is disabled */
         if(!(global_wifi_config->global_parameters.force_disable_radio_feature)) {
@@ -5699,20 +5697,20 @@ SSID_SetParamStringValue
         return FALSE;
     }
     /* check the parameter name and set the corresponding value */
-    if( AnscEqualString(ParamName, "Alias", TRUE))
+    if (strcmp(ParamName, "Alias") == 0)
     {
         /* save update to backup */
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Does not support modification\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
 
-    if( AnscEqualString(ParamName, "LowerLayers", TRUE))
+    if (strcmp(ParamName, "LowerLayers") == 0)
     {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Does not support modification\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
 
-    if ( AnscEqualString(ParamName, "SSID", TRUE) )
+    if (strcmp(ParamName, "SSID") == 0)
     {
         if(global_wifi_config->global_parameters.force_disable_radio_feature)
         {
@@ -5721,7 +5719,7 @@ SSID_SetParamStringValue
              return FALSE;
         }
         if (isVapSTAMesh(vapInfo->vap_index)) {
-            if ( AnscEqualString(vapInfo->u.sta_info.ssid, pString, TRUE) ) {
+            if (strcmp(vapInfo->u.sta_info.ssid, pString) == 0) {
                 return  TRUE;
             }
             snprintf(vapInfo->u.sta_info.ssid,sizeof(vapInfo->u.sta_info.ssid),"%s",pString);
@@ -5729,14 +5727,14 @@ SSID_SetParamStringValue
             return TRUE;
         }
 
-        if ( AnscEqualString(vapInfo->u.bss_info.ssid, pString, TRUE) )
+        if (strcmp(vapInfo->u.bss_info.ssid, pString) == 0)
         {
             return  TRUE;
         }
 
         if (IsSsidHotspot(instance_number) )
 	{
-	    if(AnscEqualString(pString, "OutOfService", FALSE)) /* case insensitive */
+	    if (strcasecmp(pString, "OutOfService") == 0) /* case insensitive */
 	    {
                 vapInfo->u.bss_info.enabled = FALSE;
 	        fprintf(stderr, "%s: Disable HHS SSID since it's set to OutOfService\n", __FUNCTION__);
@@ -6011,128 +6009,128 @@ Stats4_GetParamUlongValue
 {
 
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "BytesSent", TRUE))
+    if (strcmp(ParamName, "BytesSent") == 0)
     {
         *puLong = 0;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "BytesReceived", TRUE))
+    if (strcmp(ParamName, "BytesReceived") == 0)
     {
         *puLong = 0;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "PacketsSent", TRUE))
+    if (strcmp(ParamName, "PacketsSent") == 0)
     {
         *puLong = 0; 
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "PacketsReceived", TRUE))
+    if (strcmp(ParamName, "PacketsReceived") == 0)
     {
         *puLong = 0;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "ErrorsSent", TRUE))
+    if (strcmp(ParamName, "ErrorsSent") == 0)
     {
         *puLong = 0;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "ErrorsReceived", TRUE))
+    if (strcmp(ParamName, "ErrorsReceived") == 0)
     {
         *puLong = 0;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "UnicastPacketsSent", TRUE))
+    if (strcmp(ParamName, "UnicastPacketsSent") == 0)
     {
         *puLong = 0;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "UnicastPacketsReceived", TRUE))
+    if (strcmp(ParamName, "UnicastPacketsReceived") == 0)
     {
         *puLong = 0;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "DiscardPacketsSent", TRUE))
+    if (strcmp(ParamName, "DiscardPacketsSent") == 0)
     {
         *puLong = 0;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "DiscardPacketsReceived", TRUE))
+    if (strcmp(ParamName, "DiscardPacketsReceived") == 0)
     {
         *puLong = 0;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "MulticastPacketsSent", TRUE))
+    if (strcmp(ParamName, "MulticastPacketsSent") == 0)
     {
         *puLong = 0;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "MulticastPacketsReceived", TRUE))
+    if (strcmp(ParamName, "MulticastPacketsReceived") == 0)
     {
         *puLong = 0;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "BroadcastPacketsSent", TRUE))
+    if (strcmp(ParamName, "BroadcastPacketsSent") == 0)
     {
         *puLong = 0;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "BroadcastPacketsReceived", TRUE))
+    if (strcmp(ParamName, "BroadcastPacketsReceived") == 0)
     {
         *puLong = 0;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "UnknownProtoPacketsReceived", TRUE))
+    if (strcmp(ParamName, "UnknownProtoPacketsReceived") == 0)
     {
         *puLong = 0;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "RetransCount", TRUE))
+    if (strcmp(ParamName, "RetransCount") == 0)
     {
         *puLong = 0;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "FailedRetransCount", TRUE))
+    if (strcmp(ParamName, "FailedRetransCount") == 0)
     {
         *puLong = 0;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "RetryCount", TRUE))
+    if (strcmp(ParamName, "RetryCount") == 0)
     {
         *puLong = 0;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "MultipleRetryCount", TRUE))
+    if (strcmp(ParamName, "MultipleRetryCount") == 0)
     {
         *puLong = 0;
         return TRUE;
     }
     
 
-    if( AnscEqualString(ParamName, "ACKFailureCount", TRUE))
+    if (strcmp(ParamName, "ACKFailureCount") == 0)
     {
         *puLong = 0;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "AggregatedPacketCount", TRUE))
+    if (strcmp(ParamName, "AggregatedPacketCount") == 0)
     {
         *puLong = 0;
         return TRUE;
@@ -6365,7 +6363,7 @@ AccessPoint_GetParamBoolValue
         return FALSE;
     }
 
-    if( AnscEqualString(ParamName, "Enable", TRUE))
+    if (strcmp(ParamName, "Enable") == 0)
     {
         /* collect value */
         if (isVapSTAMesh(pcfg->vap_index)) {
@@ -6382,61 +6380,61 @@ AccessPoint_GetParamBoolValue
     }
 
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "IsolationEnable", TRUE))
+    if (strcmp(ParamName, "IsolationEnable") == 0)
     {
         *pBool = pcfg->u.bss_info.isolation;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "SSIDAdvertisementEnabled", TRUE))
+    if (strcmp(ParamName, "SSIDAdvertisementEnabled") == 0)
     {
         /* collect value */
         *pBool = pcfg->u.bss_info.showSsid;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "WMMCapability", TRUE))
+    if (strcmp(ParamName, "WMMCapability") == 0)
     {
         /* collect value */
 	*pBool = TRUE;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "UAPSDCapability", TRUE))
+    if (strcmp(ParamName, "UAPSDCapability") == 0)
     {
         /* collect value */
 	*pBool = TRUE;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "WMMEnable", TRUE))
+    if (strcmp(ParamName, "WMMEnable") == 0)
     {
         /* collect value */
         *pBool = pcfg->u.bss_info.wmm_enabled;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "UAPSDEnable", TRUE))
+    if (strcmp(ParamName, "UAPSDEnable") == 0)
     {
         /* collect value */
         *pBool = pcfg->u.bss_info.UAPSDEnabled;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_CISCO_COM_BssCountStaAsCpe", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_BssCountStaAsCpe") == 0)
     {
         /* collect value */
         *pBool = cfg->bss_count_sta_as_cpe;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "X_CISCO_COM_BssHotSpot", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_BssHotSpot") == 0)
     {
         /* collect value */
         *pBool = pcfg->u.bss_info.bssHotspot;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_CISCO_COM_KickAssocDevices", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_KickAssocDevices") == 0)
     {
         /* collect value */
         *pBool = cfg->kick_assoc_devices;
@@ -6445,27 +6443,27 @@ AccessPoint_GetParamBoolValue
 
 #if defined (FEATURE_SUPPORT_INTERWORKING)
 
-    if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_InterworkingServiceCapability", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_InterworkingServiceCapability") == 0)
     {
         /* collect value */
         //*pBool = pWifiAp->AP.Cfg.InterworkingCapability;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_InterworkingServiceEnable", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_InterworkingServiceEnable") == 0)
     {
         /* collect value */
         *pBool = pcfg->u.bss_info.interworking.interworking.interworkingEnabled;
         return TRUE;
     }
 #else
-    if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_InterworkingServiceCapability", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_InterworkingServiceCapability") == 0)
     {
         *pBool = FALSE;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_InterworkingServiceEnable", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_InterworkingServiceEnable") == 0)
     {
         /* collect value */
         *pBool = FALSE;
@@ -6473,21 +6471,21 @@ AccessPoint_GetParamBoolValue
     }
 #endif
 
-    if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_rapidReconnectCountEnable", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_rapidReconnectCountEnable") == 0)
     {
         /* collect value */
         *pBool = pcfg->u.bss_info.rapidReconnectEnable;
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_StatsEnable", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_StatsEnable") == 0)
     {
         /* collect value */
         *pBool = pcfg->u.bss_info.vapStatsEnable;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_BSSTransitionImplemented", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_BSSTransitionImplemented") == 0)
     {
         /* collect value */
         if(isVapHotspot(vap_index) || isVapSTAMesh(vap_index) || (vap_index == 3))
@@ -6500,31 +6498,31 @@ AccessPoint_GetParamBoolValue
         }
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_BSSTransitionActivated", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_BSSTransitionActivated") == 0)
     {
         /* collect value */
         *pBool = pcfg->u.bss_info.bssTransitionActivated;
         return TRUE;
     }
-    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_NeighborReportActivated", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_NeighborReportActivated") == 0)
     {
         *pBool = pcfg->u.bss_info.nbrReportActivated;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_WirelessManagementImplemented", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_WirelessManagementImplemented") == 0)
     {
         *pBool = 1;
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_InterworkingApplySettings", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_InterworkingApplySettings") == 0)
     {
         /* always return true when get */
         *pBool = TRUE;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "Connected_Building_Enabled", TRUE)) {
+    if (strcmp(ParamName, "Connected_Building_Enabled") == 0) {
         if(isVapHotspot(vap_index)) {
             *pBool = pcfg->u.bss_info.connected_building_enabled;
         } else {
@@ -6532,7 +6530,7 @@ AccessPoint_GetParamBoolValue
         }
     }
 
-    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_HostapMgtFrameCtrl", TRUE)) {
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_HostapMgtFrameCtrl") == 0) {
         *pBool = pcfg->u.bss_info.hostap_mgt_frame_ctrl;
         return TRUE;
     }
@@ -6597,7 +6595,7 @@ AccessPoint_GetParamIntValue
     }
 
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "X_CISCO_COM_WmmNoAck", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_WmmNoAck") == 0)
     {
         if (isVapSTAMesh(pcfg->vap_index)) {
            *pInt = 0;
@@ -6606,17 +6604,17 @@ AccessPoint_GetParamIntValue
         *pInt = pcfg->u.bss_info.wmmNoAck;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "X_CISCO_COM_MulticastRate", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_MulticastRate") == 0)
     {
         *pInt = cfg->multicast_rate;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "X_CISCO_COM_BssMaxNumSta", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_BssMaxNumSta") == 0)
     {
         *pInt = pcfg->u.bss_info.bssMaxSta;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "X_CISCO_COM_BssUserStatus", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_BssUserStatus") == 0)
     {
         if (isVapSTAMesh(pcfg->vap_index)) {
            *pInt = (pcfg->u.sta_info.enabled == TRUE)? 1 : 2;
@@ -6625,7 +6623,7 @@ AccessPoint_GetParamIntValue
         *pInt = (pcfg->u.bss_info.enabled == TRUE)? 1 : 2;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_ManagementFramePowerControl", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_ManagementFramePowerControl") == 0)
     {
         if (isVapSTAMesh(pcfg->vap_index)) {
            *pInt = 0;
@@ -6637,7 +6635,7 @@ AccessPoint_GetParamIntValue
         CcspTraceWarning(("X_RDKCENTRAL-COM_ManagementFramePowerControl_Get:<%d>\n", pcfg->u.bss_info.mgmtPowerControl));
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_rapidReconnectMaxTime", TRUE) )
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_rapidReconnectMaxTime") == 0)
     {
         if (isVapSTAMesh(pcfg->vap_index)) {
            *pInt = 180;
@@ -6707,7 +6705,7 @@ AccessPoint_GetParamUlongValue
     }
 
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "Status", TRUE))
+    if (strcmp(ParamName, "Status") == 0)
     {
         /* collect value */
         if (isVapSTAMesh(pcfg->vap_index)) {
@@ -6733,51 +6731,51 @@ AccessPoint_GetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "RetryLimit", TRUE))
+    if (strcmp(ParamName, "RetryLimit") == 0)
     {
         *puLong = cfg->retry_limit;
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "X_CISCO_COM_LongRetryLimit", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_LongRetryLimit") == 0)
     {
         *puLong = cfg->long_retry_limit;
         return TRUE;
     }
   
-    if (AnscEqualString(ParamName, "MaxAssociatedDevices", TRUE))
+    if (strcmp(ParamName, "MaxAssociatedDevices") == 0)
     {
         *puLong =  pcfg->u.bss_info.bssMaxSta;
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "X_COMCAST-COM_AssociatedDevicesHighWatermarkThreshold", TRUE))
+    if (strcmp(ParamName, "X_COMCAST-COM_AssociatedDevicesHighWatermarkThreshold") == 0)
     {
         *puLong = cfg->associated_devices_highwatermark_threshold; 
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "X_COMCAST-COM_AssociatedDevicesHighWatermarkThresholdReached", TRUE))
+    if (strcmp(ParamName, "X_COMCAST-COM_AssociatedDevicesHighWatermarkThresholdReached") == 0)
     {
         *puLong = 3; 
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "X_COMCAST-COM_AssociatedDevicesHighWatermark", TRUE))
+    if (strcmp(ParamName, "X_COMCAST-COM_AssociatedDevicesHighWatermark") == 0)
     {
         *puLong = 3; 
         return TRUE;
     }
 	
 	//zqiu
-    if( AnscEqualString(ParamName, "X_COMCAST-COM_AssociatedDevicesHighWatermarkDate", TRUE))
+    if (strcmp(ParamName, "X_COMCAST-COM_AssociatedDevicesHighWatermarkDate") == 0)
     {
 	//TODO: need cacultion for the time
 	*puLong = AnscGetTickInSeconds();
         return TRUE;
     }
 	
-    if (AnscEqualString(ParamName, "X_COMCAST-COM_TXOverflow", TRUE))
+    if (strcmp(ParamName, "X_COMCAST-COM_TXOverflow") == 0)
     {
         *puLong = cfg->txoverflow;
         return TRUE;
@@ -6846,19 +6844,19 @@ AccessPoint_GetParamStringValue
     instance_number = convert_vap_name_to_index(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop, pcfg->vap_name)+1;
 
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "Alias", TRUE))
+    if (strcmp(ParamName, "Alias") == 0)
     {
         snprintf(pValue,*pUlSize,"AccessPoint%d",instance_number);
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "SSIDReference", TRUE))
+    if (strcmp(ParamName, "SSIDReference") == 0)
     {
         snprintf(pValue,*pUlSize,"Device.WiFi.SSID.%d.",instance_number);
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_BeaconRate", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_BeaconRate") == 0)
     {
         if (isVapSTAMesh(pcfg->vap_index)) {
            AnscCopyString(pValue, "6Mbps");
@@ -6869,7 +6867,7 @@ AccessPoint_GetParamStringValue
 	return 0;
     }
 
-    if( AnscEqualString(ParamName, "X_COMCAST-COM_MAC_FilteringMode", TRUE))
+    if (strcmp(ParamName, "X_COMCAST-COM_MAC_FilteringMode") == 0)
     {
         if (isVapHotspot(pcfg->vap_index)) {
            snprintf(pValue, *pUlSize, "%s", "Deny");
@@ -6963,7 +6961,7 @@ AccessPoint_SetParamBoolValue
         return FALSE;
     }
 
-    if( AnscEqualString(ParamName, "Enable", TRUE))
+    if (strcmp(ParamName, "Enable") == 0)
     {
         if (global_wifi_config->global_parameters.force_disable_radio_feature)
         {
@@ -6987,7 +6985,7 @@ AccessPoint_SetParamBoolValue
     }
 
     //Following parameters are nots supported in Mesh STA Mode
-    if( AnscEqualString(ParamName, "IsolationEnable", TRUE))
+    if (strcmp(ParamName, "IsolationEnable") == 0)
     {
         if ( vapInfo->u.bss_info.isolation == bValue )
         {
@@ -7000,7 +6998,7 @@ AccessPoint_SetParamBoolValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "SSIDAdvertisementEnabled", TRUE))
+    if (strcmp(ParamName, "SSIDAdvertisementEnabled") == 0)
     {
         if ( vapInfo->u.bss_info.showSsid == bValue )
         {
@@ -7013,7 +7011,7 @@ AccessPoint_SetParamBoolValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "WMMEnable", TRUE))
+    if (strcmp(ParamName, "WMMEnable") == 0)
     {
         if ( vapInfo->u.bss_info.wmm_enabled == bValue )
         {
@@ -7026,7 +7024,7 @@ AccessPoint_SetParamBoolValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "UAPSDEnable", TRUE))
+    if (strcmp(ParamName, "UAPSDEnable") == 0)
     {
         if ( vapInfo->u.bss_info.UAPSDEnabled == bValue )
         {
@@ -7038,12 +7036,12 @@ AccessPoint_SetParamBoolValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_CISCO_COM_BssCountStaAsCpe", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_BssCountStaAsCpe") == 0)
     {
         cfg->bss_count_sta_as_cpe = bValue;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "X_CISCO_COM_BssHotSpot", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_BssHotSpot") == 0)
     {
         if ( vapInfo->u.bss_info.bssHotspot == bValue )
         {
@@ -7055,14 +7053,14 @@ AccessPoint_SetParamBoolValue
 
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "X_CISCO_COM_KickAssocDevices", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_KickAssocDevices") == 0)
     {
         cfg->kick_assoc_devices = bValue;
         return TRUE;
     }
 
 
-    if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_BSSTransitionActivated", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_BSSTransitionActivated") == 0)
     {
         if ( vapInfo->u.bss_info.bssTransitionActivated == bValue )
         {
@@ -7078,7 +7076,7 @@ AccessPoint_SetParamBoolValue
         return  TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_rapidReconnectCountEnable", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_rapidReconnectCountEnable") == 0)
     {
         if ( vapInfo->u.bss_info.rapidReconnectEnable == bValue )
         {
@@ -7089,7 +7087,7 @@ AccessPoint_SetParamBoolValue
 	return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_StatsEnable", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_StatsEnable") == 0)
     {
 
         if ( vapInfo->u.bss_info.vapStatsEnable == bValue )
@@ -7101,7 +7099,7 @@ AccessPoint_SetParamBoolValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_NeighborReportActivated", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_NeighborReportActivated") == 0)
     {
 
         if ( vapInfo->u.bss_info.nbrReportActivated == bValue )
@@ -7118,7 +7116,7 @@ AccessPoint_SetParamBoolValue
         return TRUE;
     }
     
-    if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_InterworkingServiceEnable", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_InterworkingServiceEnable") == 0)
     {
 
         if ( vapInfo->u.bss_info.interworking.interworking.interworkingEnabled == bValue )
@@ -7131,7 +7129,7 @@ AccessPoint_SetParamBoolValue
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_InterworkingApplySettings", TRUE ))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_InterworkingApplySettings") == 0)
     {
         if (bValue == TRUE){
             wifi_util_dbg_print(WIFI_DMCLI,"%s:%d X_RDKCENTRAL-COM_InterworkingApplySettings push to queue \n",__func__, __LINE__);
@@ -7146,7 +7144,7 @@ AccessPoint_SetParamBoolValue
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "connected_building_enabled", TRUE))
+    if (strcmp(ParamName, "connected_building_enabled") == 0)
     {
         if (!isVapHotspot(instance_number-1))
         {
@@ -7159,7 +7157,7 @@ AccessPoint_SetParamBoolValue
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_HostapMgtFrameCtrl", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_HostapMgtFrameCtrl") == 0)
     {
         vapInfo->u.bss_info.hostap_mgt_frame_ctrl = bValue;
         set_dml_cache_vap_config_changed(instance_number - 1);
@@ -7240,7 +7238,7 @@ AccessPoint_SetParamIntValue
     }
 
     /* check the parameter name and set the corresponding value */
-    if( AnscEqualString(ParamName, "X_CISCO_COM_WmmNoAck", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_WmmNoAck") == 0)
     {
         if (vapInfo->u.bss_info.wmmNoAck == (UINT) iValue )
         {
@@ -7252,13 +7250,13 @@ AccessPoint_SetParamIntValue
 
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "X_CISCO_COM_MulticastRate", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_MulticastRate") == 0)
     {
         cfg->multicast_rate = iValue;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_CISCO_COM_BssMaxNumSta", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_BssMaxNumSta") == 0)
     {
         if (vapInfo->u.bss_info.bssMaxSta == (UINT) iValue)
         {
@@ -7272,7 +7270,7 @@ AccessPoint_SetParamIntValue
         return (TRUE);
     }
 
-    if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_ManagementFramePowerControl", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_ManagementFramePowerControl") == 0)
     {
         if((iValue < -20) || (iValue > 0))
         {
@@ -7291,7 +7289,7 @@ AccessPoint_SetParamIntValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_rapidReconnectMaxTime", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_rapidReconnectMaxTime") == 0)
     {
         if ( vapInfo->u.bss_info.rapidReconnThreshold == (unsigned int)iValue )
         {
@@ -7368,19 +7366,19 @@ AccessPoint_SetParamUlongValue
     }
  
     /* check the parameter name and set the corresponding value */
-    if( AnscEqualString(ParamName, "RetryLimit", TRUE))
+    if (strcmp(ParamName, "RetryLimit") == 0)
     {
         cfg->retry_limit = uValue;   
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_CISCO_COM_LongRetryLimit", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_LongRetryLimit") == 0)
     {
         cfg->long_retry_limit = uValue;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "MaxAssociatedDevices", TRUE))
+    if (strcmp(ParamName, "MaxAssociatedDevices") == 0)
     {
 
         if (isVapSTAMesh(vapInfo->vap_index)) {
@@ -7399,7 +7397,7 @@ AccessPoint_SetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_COMCAST-COM_AssociatedDevicesHighWatermarkThreshold", TRUE))
+    if (strcmp(ParamName, "X_COMCAST-COM_AssociatedDevicesHighWatermarkThreshold") == 0)
     {
         cfg->associated_devices_highwatermark_threshold = uValue;
         return TRUE;
@@ -7719,7 +7717,7 @@ Security_GetParamBoolValue
             return FALSE;
         }
     }
-    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_TransitionDisable", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_TransitionDisable") == 0)
     {
         CosaWiFiDmlGetWPA3TransitionRFC(&WPA3_RFC);
 
@@ -7730,7 +7728,7 @@ Security_GetParamBoolValue
         }
     }
 
-    if( AnscEqualString(ParamName, "Reset", TRUE)) {
+    if (strcmp(ParamName, "Reset") == 0) {
         *pBool = FALSE;
     }
 
@@ -7775,13 +7773,13 @@ Security_GetParamIntValue
         int*                        pInt
     )
 {
-    if( AnscEqualString(ParamName, "X_CISCO_COM_RadiusReAuthInterval", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_RadiusReAuthInterval") == 0)
     {
         /* collect value */
         *pInt = 0;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "X_CISCO_COM_DefaultKey", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_DefaultKey") == 0)
     {
         /* collect value */
         *pInt = 0;
@@ -7856,28 +7854,28 @@ Security_GetParamUlongValue
     }
 
 
-    if( AnscEqualString(ParamName, "RekeyingInterval", TRUE))
+    if (strcmp(ParamName, "RekeyingInterval") == 0)
     {
         /* collect value */
         *puLong = pcfg->rekey_interval;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_CISCO_COM_EncryptionMethod", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_EncryptionMethod") == 0)
     {
         /* collect value */
         *puLong = pcfg->encr;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "RadiusServerPort", TRUE))
+    if (strcmp(ParamName, "RadiusServerPort") == 0)
     {
         /* collect value */
         *puLong = pcfg->u.radius.port;
         return TRUE;
     }
 	
-	if( AnscEqualString(ParamName, "SecondaryRadiusServerPort", TRUE))
+	if (strcmp(ParamName, "SecondaryRadiusServerPort") == 0)
     {
         /* collect value */
         *puLong = pcfg->u.radius.s_port;
@@ -7885,7 +7883,7 @@ Security_GetParamUlongValue
     }
 
 
-    if( AnscEqualString(ParamName, "RadiusDASPort", TRUE))
+    if (strcmp(ParamName, "RadiusDASPort") == 0)
     {
         /* collect value */
         *puLong = pcfg->u.radius.dasport;
@@ -8014,7 +8012,7 @@ Security_GetParamStringValue
 
 
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "ModesSupported", TRUE))
+    if (strcmp(ParamName, "ModesSupported") == 0)
     {
         /* collect value */
         char buf[512] = {0};
@@ -8041,7 +8039,7 @@ Security_GetParamStringValue
     }
  
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "ModeEnabled", TRUE))
+    if (strcmp(ParamName, "ModeEnabled") == 0)
     {
         /* collect value */
         char buf[32] = {0};
@@ -8055,7 +8053,7 @@ Security_GetParamStringValue
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "WEPKey", TRUE))
+    if (strcmp(ParamName, "WEPKey") == 0)
     {
         /* WEP Key should always return empty string when read */
         AnscCopyString(pValue, "");
@@ -8063,14 +8061,14 @@ Security_GetParamStringValue
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "PreSharedKey", TRUE))
+    if (strcmp(ParamName, "PreSharedKey") == 0)
     {
         /* PresharedKey should always return empty string when read */
         AnscCopyString(pValue, "");
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "X_COMCAST-COM_DefaultKeyPassphrase", TRUE))
+    if (strcmp(ParamName, "X_COMCAST-COM_DefaultKeyPassphrase") == 0)
     {
         char password[128] = {0};
 
@@ -8120,7 +8118,7 @@ Security_GetParamStringValue
         }
     }
 
-    if( AnscEqualString(ParamName, "SAEPassphrase", TRUE))
+    if (strcmp(ParamName, "SAEPassphrase") == 0)
     {
         if (AnscSizeOfString(pcfg->u.key.key) > 0)
         {
@@ -8137,21 +8135,21 @@ Security_GetParamStringValue
         }
     }
 
-    if( AnscEqualString(ParamName, "RadiusSecret", TRUE))
+    if (strcmp(ParamName, "RadiusSecret") == 0)
     {
         /* Radius Secret should always return empty string when read */
         AnscCopyString(pValue, "");
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "SecondaryRadiusSecret", TRUE))
+    if (strcmp(ParamName, "SecondaryRadiusSecret") == 0)
     {
         /* Radius Secret should always return empty string when read */
         AnscCopyString(pValue, "");
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "RadiusServerIPAddr", TRUE))
+    if (strcmp(ParamName, "RadiusServerIPAddr") == 0)
     {
         int result;
         result=strcmp((char *)&pcfg->u.radius.ip,"");
@@ -8166,7 +8164,7 @@ Security_GetParamStringValue
         return 0;
     }
     
-    if( AnscEqualString(ParamName, "SecondaryRadiusServerIPAddr", TRUE))
+    if (strcmp(ParamName, "SecondaryRadiusServerIPAddr") == 0)
     {
         int result;
         result=strcmp((char *)&pcfg->u.radius.s_ip,"");
@@ -8180,18 +8178,18 @@ Security_GetParamStringValue
         }
         return 0;
     }
-    if( AnscEqualString(ParamName, "MFPConfig", TRUE))
+    if (strcmp(ParamName, "MFPConfig") == 0)
     {
 	convert_security_mode_integer_to_string(pcfg->mfp,pValue);
         return 0;
     }
     
-    if( AnscEqualString(ParamName, "RadiusDASIPAddr", TRUE))
+    if (strcmp(ParamName, "RadiusDASIPAddr") == 0)
     {
         getIpStringFromAdrress(pValue,&pcfg->u.radius.dasip);
         return 0;
     }
-    if( AnscEqualString(ParamName, "RadiusDASSecret", TRUE))
+    if (strcmp(ParamName, "RadiusDASSecret") == 0)
     {
         /* Radius Secret should always return empty string when read */
         AnscCopyString(pValue, "");
@@ -8276,7 +8274,7 @@ Security_SetParamBoolValue
         }
     }
     /* check the parameter name and set the corresponding value */
-    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_TransitionDisable", TRUE))
+    if (strcmp(ParamName, "X_RDKCENTRAL-COM_TransitionDisable") == 0)
     {
         if (radioOperation->band == WIFI_FREQUENCY_6_BAND)
         {
@@ -8302,7 +8300,7 @@ Security_SetParamBoolValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "Reset", TRUE))
+    if (strcmp(ParamName, "Reset") == 0)
     {
         return TRUE;
     }
@@ -8350,12 +8348,12 @@ Security_SetParamIntValue
     )
 {
     /* check the parameter name and set the corresponding value */
-    if( AnscEqualString(ParamName, "X_CISCO_COM_RadiusReAuthInterval", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_RadiusReAuthInterval") == 0)
     {
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_CISCO_COM_DefaultKey", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_DefaultKey") == 0)
     {
         return TRUE;
     }
@@ -8436,7 +8434,7 @@ Security_SetParamUlongValue
     }
 
     /* check the parameter name and set the corresponding value */
-    if( AnscEqualString(ParamName, "RekeyingInterval", TRUE))
+    if (strcmp(ParamName, "RekeyingInterval") == 0)
     {
         if ( l_security_cfg->rekey_interval != uValue )
         {
@@ -8449,7 +8447,7 @@ Security_SetParamUlongValue
         return TRUE;
     }
   
-    if( AnscEqualString(ParamName, "X_CISCO_COM_EncryptionMethod", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_EncryptionMethod") == 0)
     {
         if ( l_security_cfg->encr != uValue )
         {
@@ -8461,7 +8459,7 @@ Security_SetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "RadiusServerPort", TRUE))
+    if (strcmp(ParamName, "RadiusServerPort") == 0)
     {
         if (!security_mode_support_radius(l_security_cfg->mode))
         {
@@ -8478,7 +8476,7 @@ Security_SetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "SecondaryRadiusServerPort", TRUE))
+    if (strcmp(ParamName, "SecondaryRadiusServerPort") == 0)
     {
         if (!security_mode_support_radius(l_security_cfg->mode))
         {
@@ -8495,7 +8493,7 @@ Security_SetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "RadiusDASPort", TRUE))
+    if (strcmp(ParamName, "RadiusDASPort") == 0)
     {
         if (!security_mode_support_radius(l_security_cfg->mode))
         {
@@ -9349,19 +9347,19 @@ ConnectionControl_GetParamStringValue
     }
 
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "ClientForceDisassociation", TRUE))
+    if (strcmp(ParamName, "ClientForceDisassociation") == 0)
     {
         snprintf(pValue,*pUlSize,pcfg->u.bss_info.postassoc.client_force_disassoc_info);
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "ClientDenyAssociation", TRUE))
+    if (strcmp(ParamName, "ClientDenyAssociation") == 0)
     {
         snprintf(pValue,*pUlSize,pcfg->u.bss_info.preassoc.client_deny_assoc_info);
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "TcmClientDenyAssociation", TRUE))
+    if (strcmp(ParamName, "TcmClientDenyAssociation") == 0)
     {
         snprintf(pValue,*pUlSize,pcfg->u.bss_info.preassoc.tcm_client_deny_assoc_info);
         return 0;
@@ -9750,13 +9748,13 @@ PreAssocDeny_GetParamIntValue
     }
 
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "TcmWaitTime", TRUE))
+    if (strcmp(ParamName, "TcmWaitTime") == 0)
     {
         *pInt = pcfg->u.bss_info.preassoc.time_ms;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "TcmMinMgmtFrames", TRUE))
+    if (strcmp(ParamName, "TcmMinMgmtFrames") == 0)
     {
         *pInt = pcfg->u.bss_info.preassoc.min_num_mgmt_frames;
         return TRUE;
@@ -9866,74 +9864,74 @@ PreAssocDeny_GetParamStringValue
     }
 
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "RssiUpThresholdSupported", TRUE))
+    if (strcmp(ParamName, "RssiUpThresholdSupported") == 0)
     {
         snprintf(pValue,*pUlSize,"disabled, 10 to 100");
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "SnrThresholdSupported", TRUE))
+    if (strcmp(ParamName, "SnrThresholdSupported") == 0)
     {
         snprintf(pValue,*pUlSize,"disabled, 1 to 100");
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "RssiUpThreshold", TRUE))
+    if (strcmp(ParamName, "RssiUpThreshold") == 0)
     {
         snprintf(pValue,*pUlSize,pcfg->u.bss_info.preassoc.rssi_up_threshold);
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "SnrThreshold", TRUE))
+    if (strcmp(ParamName, "SnrThreshold") == 0)
     {
         snprintf(pValue,*pUlSize,pcfg->u.bss_info.preassoc.snr_threshold);
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "CuThresholdSupported", TRUE))
+    if (strcmp(ParamName, "CuThresholdSupported") == 0)
     {
         snprintf(pValue,*pUlSize,"disabled, 0 to 100 (%% in integer)");
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "CuThreshold", TRUE))
+    if (strcmp(ParamName, "CuThreshold") == 0)
     {
         snprintf(pValue,*pUlSize,pcfg->u.bss_info.preassoc.cu_threshold);
         return 0;
     }
-    if( AnscEqualString(ParamName, "BasicDataTransmitRates", TRUE))
+    if (strcmp(ParamName, "BasicDataTransmitRates") == 0)
     {
         snprintf(pValue,*pUlSize,pcfg->u.bss_info.preassoc.basic_data_transmit_rates);
         return 0;
     }
-    if( AnscEqualString(ParamName, "OperationalDataTransmitRates", TRUE))
+    if (strcmp(ParamName, "OperationalDataTransmitRates") == 0)
     {
         snprintf(pValue,*pUlSize,pcfg->u.bss_info.preassoc.operational_data_transmit_rates);
         return 0;
     }
-    if( AnscEqualString(ParamName, "SupportedDataTransmitRates", TRUE))
+    if (strcmp(ParamName, "SupportedDataTransmitRates") == 0)
     {
         snprintf(pValue,*pUlSize,pcfg->u.bss_info.preassoc.supported_data_transmit_rates);
         return 0;
     }
-    if( AnscEqualString(ParamName, "MinimumAdvertisedMCS", TRUE))
+    if (strcmp(ParamName, "MinimumAdvertisedMCS") == 0)
     {
         snprintf(pValue,*pUlSize,pcfg->u.bss_info.preassoc.minimum_advertised_mcs);
         return 0;
     }
-    if( AnscEqualString(ParamName, "6GOpInfoMinRate", TRUE))
+    if (strcmp(ParamName, "6GOpInfoMinRate") == 0)
     {
         snprintf(pValue,*pUlSize,pcfg->u.bss_info.preassoc.sixGOpInfoMinRate);
         return 0;
     }
     
-    if( AnscEqualString(ParamName, "TcmExpWeightage", TRUE))
+    if (strcmp(ParamName, "TcmExpWeightage") == 0)
     {
         snprintf(pValue,*pUlSize,pcfg->u.bss_info.preassoc.tcm_exp_weightage);
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "TcmGradientThreshold", TRUE))
+    if (strcmp(ParamName, "TcmGradientThreshold") == 0)
     {
         snprintf(pValue,*pUlSize,pcfg->u.bss_info.preassoc.tcm_gradient_threshold);
         return 0;
@@ -10041,7 +10039,7 @@ PreAssocDeny_SetParamIntValue
         return TRUE;
     }
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "TcmWaitTime", TRUE))
+    if (strcmp(ParamName, "TcmWaitTime") == 0)
     {
         if (vapInfo->u.bss_info.preassoc.time_ms == iValue) {
             return TRUE;
@@ -10053,7 +10051,7 @@ PreAssocDeny_SetParamIntValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "TcmMinMgmtFrames", TRUE))
+    if (strcmp(ParamName, "TcmMinMgmtFrames") == 0)
     {
         if (vapInfo->u.bss_info.preassoc.min_num_mgmt_frames == iValue) {
             return TRUE;
@@ -10169,7 +10167,7 @@ PreAssocDeny_SetParamStringValue
     }
 
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "RssiUpThreshold", TRUE))
+    if (strcmp(ParamName, "RssiUpThreshold") == 0)
     {
         if(strcmp(pString, vapInfo->u.bss_info.preassoc.rssi_up_threshold) == 0) {
             return TRUE;
@@ -10199,7 +10197,7 @@ PreAssocDeny_SetParamStringValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "SnrThreshold", TRUE))
+    if (strcmp(ParamName, "SnrThreshold") == 0)
     {
         if(strcmp(pString, vapInfo->u.bss_info.preassoc.snr_threshold) == 0) {
             return TRUE;
@@ -10230,7 +10228,7 @@ PreAssocDeny_SetParamStringValue
     }
 
     /* check the parameter name and set the corresponding value */
-    if( AnscEqualString(ParamName, "CuThreshold", TRUE))
+    if (strcmp(ParamName, "CuThreshold") == 0)
     {
         if(strcmp(pString, vapInfo->u.bss_info.preassoc.cu_threshold) == 0) {
             return TRUE;
@@ -10260,7 +10258,7 @@ PreAssocDeny_SetParamStringValue
         return TRUE;
     }
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "BasicDataTransmitRates", TRUE))
+    if (strcmp(ParamName, "BasicDataTransmitRates") == 0)
     {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s Rate to set for preassoc\n", __FUNCTION__,__LINE__,pString);
           
@@ -10289,7 +10287,7 @@ PreAssocDeny_SetParamStringValue
     }
 
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "OperationalDataTransmitRates", TRUE))
+    if (strcmp(ParamName, "OperationalDataTransmitRates") == 0)
     {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s operational Rate to set for preassoc\n", __FUNCTION__,__LINE__,pString);
           
@@ -10318,7 +10316,7 @@ PreAssocDeny_SetParamStringValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s Not a valid format\n", __FUNCTION__,__LINE__,pString);
     }
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "SupportedDataTransmitRates", TRUE))
+    if (strcmp(ParamName, "SupportedDataTransmitRates") == 0)
     {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s Supported Rate to set for preassoc\n", __FUNCTION__,__LINE__,pString);
         if(strcmp(pString, vapInfo->u.bss_info.preassoc.supported_data_transmit_rates) == 0) {
@@ -10347,7 +10345,7 @@ PreAssocDeny_SetParamStringValue
     }
 
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "MinimumAdvertisedMCS", TRUE))
+    if (strcmp(ParamName, "MinimumAdvertisedMCS") == 0)
     {
         if(strcmp(pString, vapInfo->u.bss_info.preassoc.minimum_advertised_mcs) == 0) {
             return TRUE;
@@ -10379,7 +10377,7 @@ PreAssocDeny_SetParamStringValue
     }
 
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "6GOpInfoMinRate", TRUE))
+    if (strcmp(ParamName, "6GOpInfoMinRate") == 0)
     {
         if(strcmp(pString, vapInfo->u.bss_info.preassoc.sixGOpInfoMinRate) == 0) {
             return TRUE;
@@ -10397,7 +10395,7 @@ PreAssocDeny_SetParamStringValue
         return TRUE;
     }
     
-    if( AnscEqualString(ParamName, "TcmExpWeightage", TRUE))
+    if (strcmp(ParamName, "TcmExpWeightage") == 0)
     {
         if(strcmp(pString, vapInfo->u.bss_info.preassoc.tcm_exp_weightage) == 0) {
             return TRUE;
@@ -10416,7 +10414,7 @@ PreAssocDeny_SetParamStringValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "TcmGradientThreshold", TRUE))
+    if (strcmp(ParamName, "TcmGradientThreshold") == 0)
     {
         if(strcmp(pString, vapInfo->u.bss_info.preassoc.tcm_gradient_threshold) == 0) {
             return TRUE;
@@ -10750,61 +10748,61 @@ PostAssocDisc_GetParamStringValue
     }
 
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "RssiUpThresholdSupported", TRUE))
+    if (strcmp(ParamName, "RssiUpThresholdSupported") == 0)
     {
         snprintf(pValue,*pUlSize,"disabled, -50 to -95");
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "RssiUpThreshold", TRUE))
+    if (strcmp(ParamName, "RssiUpThreshold") == 0)
     {
         snprintf(pValue,*pUlSize,pcfg->u.bss_info.postassoc.rssi_up_threshold);
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "SamplingIntervalSupported", TRUE))
+    if (strcmp(ParamName, "SamplingIntervalSupported") == 0)
     {
         snprintf(pValue,*pUlSize,"1 to 10");
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "SamplingInterval", TRUE))
+    if (strcmp(ParamName, "SamplingInterval") == 0)
     {
         snprintf(pValue,*pUlSize,pcfg->u.bss_info.postassoc.sampling_interval);
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "SnrThresholdSupported", TRUE))
+    if (strcmp(ParamName, "SnrThresholdSupported") == 0)
     {
         snprintf(pValue,*pUlSize,"disabled, 1 to 100");
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "SnrThreshold", TRUE))
+    if (strcmp(ParamName, "SnrThreshold") == 0)
     {
         snprintf(pValue,*pUlSize,pcfg->u.bss_info.postassoc.snr_threshold);
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "SamplingCountSupported", TRUE))
+    if (strcmp(ParamName, "SamplingCountSupported") == 0)
     {
         snprintf(pValue,*pUlSize,"1 to 10");
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "SamplingCount", TRUE))
+    if (strcmp(ParamName, "SamplingCount") == 0)
     {
         snprintf(pValue,*pUlSize,pcfg->u.bss_info.postassoc.sampling_count);
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "CuThresholdSupported", TRUE))
+    if (strcmp(ParamName, "CuThresholdSupported") == 0)
     {
         snprintf(pValue,*pUlSize,"disabled, 0 to 100");
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "CuThreshold", TRUE))
+    if (strcmp(ParamName, "CuThreshold") == 0)
     {
         snprintf(pValue,*pUlSize,pcfg->u.bss_info.postassoc.cu_threshold);
         return 0;
@@ -10994,7 +10992,7 @@ PostAssocDisc_SetParamStringValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "RssiUpThreshold", TRUE))
+    if (strcmp(ParamName, "RssiUpThreshold") == 0)
     {
         if(strcmp(pString, vapInfo->u.bss_info.postassoc.rssi_up_threshold) == 0) {
             return TRUE;
@@ -11024,7 +11022,7 @@ PostAssocDisc_SetParamStringValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "SamplingInterval", TRUE))
+    if (strcmp(ParamName, "SamplingInterval") == 0)
     {
         if(strcmp(pString, vapInfo->u.bss_info.postassoc.sampling_interval) == 0) {
             return TRUE;
@@ -11048,7 +11046,7 @@ PostAssocDisc_SetParamStringValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "SnrThreshold", TRUE))
+    if (strcmp(ParamName, "SnrThreshold") == 0)
     {
         if(strcmp(pString, vapInfo->u.bss_info.postassoc.snr_threshold) == 0) {
             return TRUE;
@@ -11078,7 +11076,7 @@ PostAssocDisc_SetParamStringValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "SamplingCount", TRUE))
+    if (strcmp(ParamName, "SamplingCount") == 0)
     {
         if(strcmp(pString, vapInfo->u.bss_info.postassoc.sampling_count) == 0) {
             return TRUE;
@@ -11102,7 +11100,7 @@ PostAssocDisc_SetParamStringValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "CuThreshold", TRUE))
+    if (strcmp(ParamName, "CuThreshold") == 0)
     {
         if(strcmp(pString, vapInfo->u.bss_info.postassoc.cu_threshold) == 0) {
             return TRUE;
@@ -11314,7 +11312,7 @@ WPS_GetParamBoolValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "Enable", TRUE))
+    if (strcmp(ParamName, "Enable") == 0)
     {
         *pBool = pcfg->u.bss_info.wps.enable;
         return TRUE;
@@ -11370,7 +11368,7 @@ WPS_GetParamIntValue
     }
 
     /* check the parameter name and return the corresponding value */
-    if (AnscEqualString(ParamName, "X_CISCO_COM_WpsPushButton", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_WpsPushButton") == 0)
     {
         *pInt = pcfg->u.bss_info.wpsPushButton;
         return TRUE;
@@ -11488,7 +11486,7 @@ WPS_GetParamStringValue
         return FALSE;
     }
 
-    if( AnscEqualString(ParamName, "ConfigMethodsSupported", TRUE)) {
+    if (strcmp(ParamName, "ConfigMethodsSupported") == 0) {
         char buf[512] = {0};
         if (cfg->wps_methods & WIFI_ONBOARDINGMETHODS_USBFLASHDRIVE )
         {
@@ -11587,7 +11585,7 @@ WPS_GetParamStringValue
         }
     }
 
-    if( AnscEqualString(ParamName, "ConfigMethodsEnabled", TRUE))
+    if (strcmp(ParamName, "ConfigMethodsEnabled") == 0)
     {
         /* collect value */
         char buf[512] = {0};
@@ -11689,7 +11687,7 @@ WPS_GetParamStringValue
         }
     }
 
-    if (AnscEqualString(ParamName, "X_CISCO_COM_Pin", TRUE)) {
+    if (strcmp(ParamName, "X_CISCO_COM_Pin") == 0) {
         if ( AnscSizeOfString(cfg->wps_pin) > 0 )
         {
             if  ( AnscSizeOfString(cfg->wps_pin) < *pUlSize) {
@@ -11766,7 +11764,7 @@ WPS_SetParamBoolValue
     }
  
     /* check the parameter name and set the corresponding value */
-    if( AnscEqualString(ParamName, "Enable", TRUE))
+    if (strcmp(ParamName, "Enable") == 0) {
     {
         if (vapInfo->u.bss_info.wps.enable == bValue)
         {
@@ -11777,7 +11775,7 @@ WPS_SetParamBoolValue
        set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "X_CISCO_COM_ActivatePushButton", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_ActivatePushButton") == 0) 
     {
         if (vapInfo->u.bss_info.wpsPushButton == bValue)
         {
@@ -11790,7 +11788,7 @@ WPS_SetParamBoolValue
 
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "X_CISCO_COM_CancelSession", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_CancelSession") == 0)
     {
         instance_number -= 1;
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: WPS cancel for vap %d\n",__func__, __LINE__, instance_number);
@@ -11842,8 +11840,7 @@ WPS_SetParamIntValue
 {
  
     /* check the parameter name and set the corresponding value */
-
-    if (AnscEqualString(ParamName, "X_CISCO_COM_WpsPushButton", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_WpsPushButton") == 0)
     {
         return TRUE;
     }
@@ -11953,7 +11950,7 @@ WPS_SetParamStringValue
     }
 
     /* check the parameter name and set the corresponding value */
-    if( AnscEqualString(ParamName, "ConfigMethodsEnabled", TRUE))
+    if (strcmp(ParamName, "ConfigMethodsEnabled") == 0)
     {
         int match = 0;
 
@@ -12018,7 +12015,7 @@ WPS_SetParamStringValue
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "X_CISCO_COM_ClientPin", TRUE))
+    if (strcmp(ParamName, "X_CISCO_COM_ClientPin") == 0)
     {
         if ((strlen(pString) >= 4) && (strlen(pString) <= 8)) {
             push_wps_pin_dml_to_ctrl_queue((instance_number - 1), pString);
@@ -12321,7 +12318,7 @@ InterworkingElement_GetParamBoolValue
         return FALSE;
     }
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "Internet", TRUE))
+    if (strcmp(ParamName, "Internet") == 0)
     {
         /* collect value */
         if(isVapHotspot(vap_pcfg->vap_index))
@@ -12336,34 +12333,34 @@ InterworkingElement_GetParamBoolValue
 	}
     }
     
-    if( AnscEqualString(ParamName, "ASRA", TRUE))
+    if (strcmp(ParamName, "ASRA") == 0)
     {
         /* collect value */
         *pBool = pcfg->interworking.asra;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "ESR", TRUE))
+    if (strcmp(ParamName, "ESR") == 0)
     {
         /* collect value */
         *pBool = pcfg->interworking.esr;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "UESA", TRUE))
+    if (strcmp(ParamName, "UESA") == 0)
     {
         /* collect value */
         *pBool = pcfg->interworking.uesa;
         return TRUE;
     }
 
-   if( AnscEqualString(ParamName, "VenueOptionPresent", TRUE))
+   if (strcmp(ParamName, "VenueOptionPresent") == 0)
      {
         *pBool = pcfg->interworking.venueOptionPresent;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "HESSOptionPresent", TRUE))
+    if (strcmp(ParamName, "HESSOptionPresent") == 0)
     {
         /* collect value */
         *pBool = pcfg->interworking.hessOptionPresent;
@@ -12477,7 +12474,7 @@ InterworkingElement_GetParamUlongValue
         return FALSE;
     }
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "AccessNetworkType", TRUE))
+    if (strcmp(ParamName, "AccessNetworkType") == 0)
     {
         /* collect value */
         *puLong = pcfg->interworking.accessNetworkType;
@@ -12554,7 +12551,7 @@ InterworkingElement_GetParamStringValue
         return FALSE;
     }
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "HESSID", TRUE))
+    if (strcmp(ParamName, "HESSID") == 0)
     {
         /* collect value */
         AnscCopyString(pValue, pcfg->interworking.hessid);
@@ -12624,7 +12621,7 @@ InterworkingElement_SetParamBoolValue
     }
 
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "Internet", TRUE))
+    if (strcmp(ParamName, "Internet") == 0)
     {
         if(vapInfo->u.bss_info.interworking.interworking.internetAvailable == bValue)
         {
@@ -12636,7 +12633,7 @@ InterworkingElement_SetParamBoolValue
         return TRUE;
     }
     
-    if( AnscEqualString(ParamName, "ASRA", TRUE))
+    if (strcmp(ParamName, "ASRA") == 0)
     {
         if(vapInfo->u.bss_info.interworking.interworking.asra == bValue)
         {
@@ -12648,7 +12645,7 @@ InterworkingElement_SetParamBoolValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "ESR", TRUE))
+    if (strcmp(ParamName, "ESR") == 0)
     {
         if(vapInfo->u.bss_info.interworking.interworking.esr == bValue)
         {
@@ -12660,7 +12657,7 @@ InterworkingElement_SetParamBoolValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "UESA", TRUE))
+    if (strcmp(ParamName, "UESA") == 0)
     {
         if(vapInfo->u.bss_info.interworking.interworking.uesa == bValue)
         {
@@ -12672,7 +12669,7 @@ InterworkingElement_SetParamBoolValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "VenueOptionPresent", TRUE))
+    if (strcmp(ParamName, "VenueOptionPresent") == 0)
     {
         if(vapInfo->u.bss_info.interworking.interworking.venueOptionPresent == bValue)
         {
@@ -12684,7 +12681,7 @@ InterworkingElement_SetParamBoolValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "HESSOptionPresent", TRUE))
+    if (strcmp(ParamName, "HESSOptionPresent") == 0)
     {
         if(vapInfo->u.bss_info.interworking.interworking.hessOptionPresent == bValue)
         {
@@ -12804,7 +12801,7 @@ InterworkingElement_SetParamUlongValue
     }
 
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "AccessNetworkType", TRUE))
+    if (strcmp(ParamName, "AccessNetworkType") == 0)
     {
         if ((uValue < 6) || ((uValue < 16) && (uValue > 13)))
         {
@@ -12882,7 +12879,7 @@ InterworkingElement_SetParamStringValue
     }
 
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "HESSID", TRUE))
+    if (strcmp(ParamName, "HESSID") == 0)
     {
         AnscCopyString(vapInfo->u.bss_info.interworking.interworking.hessid, pString);
 	set_dml_cache_vap_config_changed(instance_number - 1);
@@ -13211,14 +13208,14 @@ BOOL InterworkingElement_Venue_GetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "Type", TRUE))
+    if (strcmp(ParamName, "Type") == 0)
     {
         /* collect value */
         *puLong = pcfg->interworking.venueType;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "Group", TRUE))
+    if (strcmp(ParamName, "Group") == 0)
     {
         /* collect value */
         *puLong = pcfg->interworking.venueGroup;
@@ -13283,7 +13280,7 @@ InterworkingElement_Venue_SetParamUlongValue
         return FALSE;
     }
 
-    if( AnscEqualString(ParamName, "Type", TRUE))
+    if (strcmp(ParamName, "Type") == 0)
     {
         int updateInvalidType = 0;
         if (uValue < 256)
@@ -13384,7 +13381,7 @@ InterworkingElement_Venue_SetParamUlongValue
         }
 
     }
-    if( AnscEqualString(ParamName, "Group", TRUE))
+    if (strcmp(ParamName, "Group") == 0)
     {
         if (uValue < 12)
         {
@@ -13415,33 +13412,33 @@ InterworkingElement_GetParamBoolValue
 )
 {
     UNREFERENCED_PARAMETER(hInsContext);
-    if( AnscEqualString(ParamName, "Internet", TRUE))
+    if (strcmp(ParamName, "Internet") == 0)
     {
         *pBool = false;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "ASRA", TRUE))
+    if (strcmp(ParamName, "ASRA") == 0)
     {
         *pBool = false;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "ESR", TRUE))
+    if (strcmp(ParamName, "ESR") == 0)
     {
         *pBool = false;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "UESA", TRUE))
+    if (strcmp(ParamName, "UESA") == 0)
     {
         *pBool = false;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "VenueOptionPresent", TRUE))
+    if (strcmp(ParamName, "VenueOptionPresent") == 0)
     {
         *pBool = false;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "HESSOptionPresent", TRUE))
+    if (strcmp(ParamName, "HESSOptionPresent") == 0)
     {
         *pBool = false;
         return TRUE;
@@ -13475,7 +13472,7 @@ InterworkingElement_GetParamUlongValue
 )
 {
     UNREFERENCED_PARAMETER(hInsContext);
-    if( AnscEqualString(ParamName, "AccessNetworkType", TRUE))
+    if (strcmp(ParamName, "AccessNetworkType") == 0)
     {
         *puLong = 0;
         return TRUE;
@@ -13494,7 +13491,7 @@ InterworkingElement_GetParamStringValue
 )
 {
     UNREFERENCED_PARAMETER(hInsContext);
-    if( AnscEqualString(ParamName, "HESSID", TRUE))
+    if (strcmp(ParamName, "HESSID") == 0)
     {
         AnscCopyString(pValue, "no support for non xb3");
         *pUlSize = AnscSizeOfString(pValue);
@@ -13514,14 +13511,14 @@ InterworkingElement_Venue_GetParamUlongValue
 )
 {
     UNREFERENCED_PARAMETER(hInsContext);
-    if( AnscEqualString(ParamName, "Type", TRUE))
+    if (strcmp(ParamName, "Type") == 0)
     {
         /* collect value */
         *puLong = 0;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "Group", TRUE))
+    if (strcmp(ParamName, "Group") == 0)
     {
         /* collect value */
         *puLong = 0;
@@ -13676,7 +13673,7 @@ GASConfig_GetParamBoolValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
         return FALSE;
     }
-    if( AnscEqualString(ParamName, "PauseForServerResponse", TRUE))
+    if (strcmp(ParamName, "PauseForServerResponse") == 0)
     {
         /* collect value */
         *pBool  = pcfg->PauseForServerResponse;
@@ -13733,27 +13730,27 @@ GASConfig_GetParamUlongValue
         return FALSE;
     }
     /* collect value */
-    if( AnscEqualString(ParamName, "AdvertisementID", TRUE))
+    if (strcmp(ParamName, "AdvertisementID") == 0)
     {
         *puLong  = pcfg->AdvertisementID;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "ResponseTimeout", TRUE))
+    if (strcmp(ParamName, "ResponseTimeout") == 0)
     {
         *puLong  = pcfg->ResponseTimeout;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "ComeBackDelay", TRUE))
+    if (strcmp(ParamName, "ComeBackDelay") == 0)
     {
         *puLong  = pcfg->ComeBackDelay;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "ResponseBufferingTime", TRUE))
+    if (strcmp(ParamName, "ResponseBufferingTime") == 0)
     {
         *puLong  = pcfg->ResponseBufferingTime;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "QueryResponseLengthLimit", TRUE))
+    if (strcmp(ParamName, "QueryResponseLengthLimit") == 0)
     {
         *puLong  = pcfg->QueryResponseLengthLimit;
         return TRUE;
@@ -13904,49 +13901,49 @@ GASStats_GetParamUlongValue
         return FALSE;
     }
     /* collect value */
-    if( AnscEqualString(ParamName, "AdvertisementID", TRUE))
+    if (strcmp(ParamName, "AdvertisementID") == 0)
     {
         *puLong  = pGASStats->AdvertisementID;
 
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "Queries", TRUE))
+    if (strcmp(ParamName, "Queries") == 0)
     {
         *puLong  = pGASStats->Queries;
 
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "QueryRate", TRUE))
+    if (strcmp(ParamName, "QueryRate") == 0)
     {
         *puLong  = pGASStats->QueryRate;
 
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "Responses", TRUE))
+    if (strcmp(ParamName, "Responses") == 0)
     {
         *puLong  = pGASStats->Responses;
 
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "ResponseRate", TRUE))
+    if (strcmp(ParamName, "ResponseRate") == 0)
     {
         *puLong  = pGASStats->ResponseRate;
 
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "NoRequestOutstanding", TRUE))
+    if (strcmp(ParamName, "NoRequestOutstanding") == 0)
     {
         *puLong  = pGASStats->NoRequestOutstanding;
 
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "ResponsesDiscarded", TRUE))
+    if (strcmp(ParamName, "ResponsesDiscarded") == 0)
     {
         *puLong  = pGASStats->ResponsesDiscarded;
 
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "FailedResponses", TRUE))
+    if (strcmp(ParamName, "FailedResponses") == 0)
     {
         *puLong  = pGASStats->FailedResponses;
 
@@ -14026,7 +14023,7 @@ MacFilter_GetParamBoolValue
     }
 
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "Enable", TRUE))
+    if (strcmp(ParamName, "Enable") == 0)
     {
         /* collect value */
         if(isVapHotspot(vapInfo->vap_index)){
@@ -14037,7 +14034,7 @@ MacFilter_GetParamBoolValue
         return TRUE;
     }
     
-    if( AnscEqualString(ParamName, "FilterAsBlackList", TRUE))
+    if (strcmp(ParamName, "FilterAsBlackList") == 0)
     {
         /* collect value */
         if ((vapInfo->u.bss_info.mac_filter_enable == true) && vapInfo->u.bss_info.mac_filter_mode == wifi_mac_filter_mode_black_list) {
@@ -14265,7 +14262,7 @@ MacFilter_SetParamBoolValue
     }
 
     /* check the parameter name and set the corresponding value */
-    if( AnscEqualString(ParamName, "Enable", TRUE))
+    if (strcmp(ParamName, "Enable") == 0)
     {
         /* save update to backup */
         if (vapInfo->u.bss_info.mac_filter_enable != bValue)
@@ -14276,7 +14273,7 @@ MacFilter_SetParamBoolValue
         }
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "FilterAsBlackList", TRUE))
+    if (strcmp(ParamName, "FilterAsBlackList") == 0)
     {
          /* save update to backup */
         if (vapInfo->u.bss_info.mac_filter_mode != !bValue)
@@ -14706,7 +14703,7 @@ DPP_GetParamUlongValue
         ULONG*                      puLong
     )
 {
-    if (AnscEqualString(ParamName, "Version", TRUE))
+    if (strcmp(ParamName, "Version") == 0)
     {
         return TRUE;
     }
@@ -14760,12 +14757,12 @@ DPP_GetParamStringValue
         ULONG*                      pUlSize
     )
 {
-    if( AnscEqualString(ParamName, "PrivateSigningKey", TRUE))
+    if (strcmp(ParamName, "PrivateSigningKey") == 0)
     {
         AnscCopyString(pValue, "");
         return 0;
     }
-    if( AnscEqualString(ParamName, "PrivateReconfigAccessKey", TRUE))
+    if (strcmp(ParamName, "PrivateReconfigAccessKey") == 0)
     {
         AnscCopyString(pValue, "");
         return 0;
@@ -15853,7 +15850,7 @@ AssociatedDevice1_GetParamBoolValue
     pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
 
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "AuthenticationState", TRUE))
+    if (strcmp(ParamName, "AuthenticationState") == 0)
     {
         /* collect value */
         *pBool = assoc_dev_data->dev_stats.cli_AuthenticationState;
@@ -15861,7 +15858,7 @@ AssociatedDevice1_GetParamBoolValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "Active", TRUE))
+    if (strcmp(ParamName, "Active") == 0)
     {
         /* collect value */
         *pBool = assoc_dev_data->dev_stats.cli_Active;
@@ -15952,7 +15949,7 @@ AssociatedDevice1_GetParamIntValue
     pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
 
    /* check the parameter name and return the corresponding value */
-   if( AnscEqualString(ParamName, "SignalStrength", TRUE))
+   if (strcmp(ParamName, "SignalStrength") == 0)
    {
        /* collect value */
        *pInt = assoc_dev_data->dev_stats.cli_SignalStrength;
@@ -15961,7 +15958,7 @@ AssociatedDevice1_GetParamIntValue
    }
 
 
-   if( AnscEqualString(ParamName, "X_COMCAST-COM_SNR", TRUE))
+   if (strcmp(ParamName, "X_COMCAST-COM_SNR") == 0)
    {
        /* collect value */
        *pInt = assoc_dev_data->dev_stats.cli_SNR;
@@ -15969,7 +15966,7 @@ AssociatedDevice1_GetParamIntValue
        return TRUE;
    }
 
-   if( AnscEqualString(ParamName, "X_RDKCENTRAL-COM_SNR", TRUE))
+   if (strcmp(ParamName, "X_RDKCENTRAL-COM_SNR") == 0)
    {
        /* collect value */
        *pInt = assoc_dev_data->dev_stats.cli_SNR;
@@ -15977,7 +15974,7 @@ AssociatedDevice1_GetParamIntValue
        return TRUE;
    }
 
-   if( AnscEqualString(ParamName, "X_COMCAST-COM_RSSI", TRUE))
+   if (strcmp(ParamName, "X_COMCAST-COM_RSSI") == 0)
    {
        /* collect value */
        *pInt = assoc_dev_data->dev_stats.cli_RSSI;
@@ -15985,7 +15982,7 @@ AssociatedDevice1_GetParamIntValue
        return TRUE;
    }
 
-   if( AnscEqualString(ParamName, "X_COMCAST-COM_MinRSSI", TRUE))
+   if (strcmp(ParamName, "X_COMCAST-COM_MinRSSI") == 0)
    {
        /* collect value */
        *pInt = assoc_dev_data->dev_stats.cli_MinRSSI;
@@ -15993,7 +15990,7 @@ AssociatedDevice1_GetParamIntValue
        return TRUE;
    }
 
-   if( AnscEqualString(ParamName, "X_COMCAST-COM_MaxRSSI", TRUE))
+   if (strcmp(ParamName, "X_COMCAST-COM_MaxRSSI") == 0)
    {
        /* collect value */
        *pInt = assoc_dev_data->dev_stats.cli_MaxRSSI;
@@ -16081,7 +16078,7 @@ AssociatedDevice1_GetParamUlongValue
     memcpy(assoc_dev_data, assoc_dev_data_temp, sizeof(assoc_dev_data_t));
     pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
     
-    if( AnscEqualString(ParamName, "LastDataDownlinkRate", TRUE))
+    if (strcmp(ParamName, "LastDataDownlinkRate") == 0)
     {
         /* collect value */
         *puLong = assoc_dev_data->dev_stats.cli_LastDataDownlinkRate;
@@ -16089,7 +16086,7 @@ AssociatedDevice1_GetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "LastDataUplinkRate", TRUE))
+    if (strcmp(ParamName, "LastDataUplinkRate") == 0)
     {
         /* collect value */
         *puLong = assoc_dev_data->dev_stats.cli_LastDataUplinkRate;
@@ -16097,7 +16094,7 @@ AssociatedDevice1_GetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "Retransmissions", TRUE))
+    if (strcmp(ParamName, "Retransmissions") == 0)
     {
         /* collect value */
         *puLong = assoc_dev_data->dev_stats.cli_Retransmissions;
@@ -16105,7 +16102,7 @@ AssociatedDevice1_GetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_COMCAST-COM_DataFramesSentAck", TRUE))
+    if (strcmp(ParamName, "X_COMCAST-COM_DataFramesSentAck") == 0)
     {
         /* collect value */
         *puLong = assoc_dev_data->dev_stats.cli_DataFramesSentAck;
@@ -16113,7 +16110,7 @@ AssociatedDevice1_GetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_COMCAST-COM_DataFramesSentNoAck", TRUE))
+    if (strcmp(ParamName, "X_COMCAST-COM_DataFramesSentNoAck") == 0)
     {
         /* collect value */
         *puLong = assoc_dev_data->dev_stats.cli_DataFramesSentNoAck;
@@ -16121,7 +16118,7 @@ AssociatedDevice1_GetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_COMCAST-COM_BytesSent", TRUE))
+    if (strcmp(ParamName, "X_COMCAST-COM_BytesSent") == 0)
     {
         /* collect value */
         *puLong = assoc_dev_data->dev_stats.cli_BytesSent;
@@ -16129,7 +16126,7 @@ AssociatedDevice1_GetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_COMCAST-COM_BytesReceived", TRUE))
+    if (strcmp(ParamName, "X_COMCAST-COM_BytesReceived") == 0)
     {
         /* collect value */
         *puLong = assoc_dev_data->dev_stats.cli_BytesReceived;
@@ -16137,7 +16134,7 @@ AssociatedDevice1_GetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_COMCAST-COM_Disassociations", TRUE))
+    if (strcmp(ParamName, "X_COMCAST-COM_Disassociations") == 0)
     {
         /* collect value */
         *puLong = assoc_dev_data->dev_stats.cli_Disassociations;
@@ -16145,7 +16142,7 @@ AssociatedDevice1_GetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "X_COMCAST-COM_AuthenticationFailures", TRUE))
+    if (strcmp(ParamName, "X_COMCAST-COM_AuthenticationFailures") == 0)
     {
         /* collect value */
         *puLong = assoc_dev_data->dev_stats.cli_AuthenticationFailures;
@@ -16244,7 +16241,7 @@ AssociatedDevice1_GetParamStringValue
     memcpy(assoc_dev_data, assoc_dev_data_temp, sizeof(assoc_dev_data_t));
     pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
     
-    if( AnscEqualString(ParamName, "MACAddress", TRUE))
+    if (strcmp(ParamName, "MACAddress") == 0)
     {
         char p_mac[18];
         snprintf(p_mac, 18, "%02x:%02x:%02x:%02x:%02x:%02x", assoc_dev_data->dev_stats.cli_MACAddress[0], assoc_dev_data->dev_stats.cli_MACAddress[1], assoc_dev_data->dev_stats.cli_MACAddress[2],
@@ -16264,7 +16261,7 @@ AssociatedDevice1_GetParamStringValue
 
         return 0;
     }
-    if( AnscEqualString(ParamName, "X_COMCAST-COM_OperatingStandard", TRUE))
+    if (strcmp(ParamName, "X_COMCAST-COM_OperatingStandard") == 0)
     {
         /* collect value */
         rc = strcpy_s(pValue, *pUlSize, assoc_dev_data->dev_stats.cli_OperatingStandard);
@@ -16273,7 +16270,7 @@ AssociatedDevice1_GetParamStringValue
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "X_COMCAST-COM_OperatingChannelBandwidth", TRUE))
+    if (strcmp(ParamName, "X_COMCAST-COM_OperatingChannelBandwidth") == 0)
     {
         /* collect value */
         rc = strcpy_s(pValue, *pUlSize, assoc_dev_data->dev_stats.cli_OperatingChannelBandwidth);
@@ -16282,7 +16279,7 @@ AssociatedDevice1_GetParamStringValue
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "X_COMCAST-COM_InterferenceSources", TRUE))
+    if (strcmp(ParamName, "X_COMCAST-COM_InterferenceSources") == 0)
     {
         /* collect value */
         rc = strcpy_s(pValue, *pUlSize, assoc_dev_data->dev_stats.cli_InterferenceSources);
@@ -16383,7 +16380,7 @@ Stats_GetParamUlongValue
     pthread_mutex_unlock(&((webconfig_dml_t*) get_webconfig_dml())->assoc_dev_lock);
     
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "BytesSent", TRUE))
+    if (strcmp(ParamName, "BytesSent") == 0)
     {
         /* collect value */
         *pULong = assoc_dev_data->dev_stats.cli_BytesSent;
@@ -16391,7 +16388,7 @@ Stats_GetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "BytesReceived", TRUE))
+    if (strcmp(ParamName, "BytesReceived") == 0)
     {
         /* collect value */
         *pULong = assoc_dev_data->dev_stats.cli_BytesReceived;
@@ -16399,7 +16396,7 @@ Stats_GetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "PacketsSent", TRUE))
+    if (strcmp(ParamName, "PacketsSent") == 0)
     {
         /* collect value */
         *pULong = assoc_dev_data->dev_stats.cli_PacketsSent;
@@ -16407,7 +16404,7 @@ Stats_GetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "PacketsReceived", TRUE))
+    if (strcmp(ParamName, "PacketsReceived") == 0)
     {
         /* collect value */
         *pULong = assoc_dev_data->dev_stats.cli_PacketsReceived;
@@ -16415,7 +16412,7 @@ Stats_GetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "ErrorsSent", TRUE))
+    if (strcmp(ParamName, "ErrorsSent") == 0)
     {
         /* collect value */
         *pULong = assoc_dev_data->dev_stats.cli_ErrorsSent;
@@ -16423,7 +16420,7 @@ Stats_GetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "RetransCount", TRUE))
+    if (strcmp(ParamName, "RetransCount") == 0)
     {
         /* collect value */
         *pULong = assoc_dev_data->dev_stats.cli_RetransCount;
@@ -16431,7 +16428,7 @@ Stats_GetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "FailedRetransCount", TRUE))
+    if (strcmp(ParamName, "FailedRetransCount") == 0)
     {
        /* collect value */
         *pULong = assoc_dev_data->dev_stats.cli_FailedRetransCount;
@@ -16439,7 +16436,7 @@ Stats_GetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "RetryCount", TRUE))
+    if (strcmp(ParamName, "RetryCount") == 0)
     {
         /* collect value */
         *pULong = assoc_dev_data->dev_stats.cli_RetryCount;
@@ -16447,7 +16444,7 @@ Stats_GetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "MultipleRetryCount", TRUE))
+    if (strcmp(ParamName, "MultipleRetryCount") == 0)
     {
         /* collect value */
         *pULong = assoc_dev_data->dev_stats.cli_MultipleRetryCount;
@@ -16499,7 +16496,7 @@ Stats_GetParamBoolValue
 {
     UNREFERENCED_PARAMETER(hInsContext);
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "InstantMeasurementsEnable", TRUE))
+    if (strcmp(ParamName, "InstantMeasurementsEnable") == 0)
     {
         /* collect value */
         return TRUE;
@@ -16541,7 +16538,7 @@ WEPKey64Bit_GetParamStringValue
     )
 {
 
-    if (AnscEqualString(ParamName, "WEPKey", TRUE))
+    if (strcmp(ParamName, "WEPKey") == 0)
     {
         return 0;
     }
@@ -16558,7 +16555,7 @@ WEPKey64Bit_SetParamStringValue
     )
 {
 
-    if (AnscEqualString(ParamName, "WEPKey", TRUE))
+    if (strcmp(ParamName, "WEPKey") == 0)
     {
         return TRUE;
     }
@@ -16626,7 +16623,7 @@ WEPKey128Bit_GetParamStringValue
     )
 {
 
-    if (AnscEqualString(ParamName, "WEPKey", TRUE))
+    if (strcmp(ParamName, "WEPKey") == 0)
     {
         return 0;
     }
@@ -16643,7 +16640,7 @@ WEPKey128Bit_SetParamStringValue
     )
 {
 
-    if (AnscEqualString(ParamName, "WEPKey", TRUE))
+    if (strcmp(ParamName, "WEPKey") == 0)
     {
         return TRUE;
     }
@@ -16713,7 +16710,7 @@ RadiusSettings_GetParamBoolValue
     }
 	
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "PMKCaching", TRUE))
+    if (strcmp(ParamName, "PMKCaching") == 0)
     {
         /* collect value */
         *pBool = l_security_cfg->disable_pmksa_caching;
@@ -16757,53 +16754,53 @@ RadiusSettings_GetParamIntValue
     }
 
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "RadiusServerRetries", TRUE))
+    if (strcmp(ParamName, "RadiusServerRetries") == 0)
     {
         /* collect value */
         *pInt = l_security_cfg->u.radius.server_retries;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "RadiusServerRequestTimeout", TRUE))
+    if (strcmp(ParamName, "RadiusServerRequestTimeout") == 0)
     {
         /* collect value */
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "PMKLifetime", TRUE))	
+    if (strcmp(ParamName, "PMKLifetime") == 0)	
     {
         /* collect value */
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "PMKCacheInterval", TRUE))
+    if (strcmp(ParamName, "PMKCacheInterval") == 0)
     {
         /* collect value */
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "MaxAuthenticationAttempts", TRUE))
+    if (strcmp(ParamName, "MaxAuthenticationAttempts") == 0)
     {
         /* collect value */
         *pInt = l_security_cfg->u.radius.max_auth_attempts;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "BlacklistTableTimeout", TRUE))
+    if (strcmp(ParamName, "BlacklistTableTimeout") == 0)
     {
         /* collect value */
         *pInt = l_security_cfg->u.radius.blacklist_table_timeout;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "IdentityRequestRetryInterval", TRUE))
+    if (strcmp(ParamName, "IdentityRequestRetryInterval") == 0)
     {
         /* collect value */
         *pInt = l_security_cfg->u.radius.identity_req_retry_interval;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "QuietPeriodAfterFailedAuthentication", TRUE))
+    if (strcmp(ParamName, "QuietPeriodAfterFailedAuthentication") == 0)
     {
         /* collect value */
         *pInt = 0; 
@@ -16857,7 +16854,7 @@ RadiusSettings_SetParamBoolValue
     AnscTraceWarning(("ParamName: %s bvalue:%d\n", ParamName, bValue));
 
     /* check the parameter name and set the corresponding value */
-    if( AnscEqualString(ParamName, "PMKCaching", TRUE))
+    if (strcmp(ParamName, "PMKCaching") == 0)
     {
         /* save update to backup */
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d disable_pmksa_caching=%d Value=%d  \n",__func__, __LINE__,l_security_cfg->disable_pmksa_caching,bValue);
@@ -16915,7 +16912,7 @@ RadiusSettings_SetParamIntValue
     AnscTraceWarning(("ParamName: %s iValue: %d\n", ParamName, iValue));
 
     /* check the parameter name and set the corresponding value */
-    if( AnscEqualString(ParamName, "RadiusServerRetries", TRUE))
+    if (strcmp(ParamName, "RadiusServerRetries") == 0)
     {
         if (!security_mode_support_radius(l_security_cfg->mode))
         {
@@ -16933,23 +16930,23 @@ RadiusSettings_SetParamIntValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "RadiusServerRequestTimeout", TRUE))
+    if (strcmp(ParamName, "RadiusServerRequestTimeout") == 0)
     {
         /* save update to backup */
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "PMKLifetime", TRUE))
+    if (strcmp(ParamName, "PMKLifetime") == 0)
     {
         /* save update to backup */
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "PMKCacheInterval", TRUE))
+    if (strcmp(ParamName, "PMKCacheInterval") == 0)
     {
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "MaxAuthenticationAttempts", TRUE))
+    if (strcmp(ParamName, "MaxAuthenticationAttempts") == 0)
     {
         if (!security_mode_support_radius(l_security_cfg->mode))
         {
@@ -16967,7 +16964,7 @@ RadiusSettings_SetParamIntValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "BlacklistTableTimeout", TRUE))
+    if (strcmp(ParamName, "BlacklistTableTimeout") == 0)
     {
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d blacklist_table_timeout=%d Value=%d  \n",__func__, __LINE__,l_security_cfg->u.radius.blacklist_table_timeout,iValue);
         if(l_security_cfg->u.radius.blacklist_table_timeout == ((unsigned int) iValue))
@@ -16979,7 +16976,7 @@ RadiusSettings_SetParamIntValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "IdentityRequestRetryInterval", TRUE))
+    if (strcmp(ParamName, "IdentityRequestRetryInterval") == 0)
     {
         if (!security_mode_support_radius(l_security_cfg->mode))
         {
@@ -16996,7 +16993,7 @@ RadiusSettings_SetParamIntValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "QuietPeriodAfterFailedAuthentication", TRUE))
+    if (strcmp(ParamName, "QuietPeriodAfterFailedAuthentication") == 0)
     {
         return TRUE;
     }
@@ -17056,42 +17053,42 @@ Authenticator_GetParamUlongValue
     }
 
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "EAPOLKeyTimeout", TRUE))
+    if (strcmp(ParamName, "EAPOLKeyTimeout") == 0)
     {
         /* collect value */
         *puLong = pcfg->eapol_key_timeout;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "EAPOLKeyRetries", TRUE))
+    if (strcmp(ParamName, "EAPOLKeyRetries") == 0)
     {
         /* collect value */
         *puLong = pcfg->eapol_key_retries;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "EAPIdentityRequestTimeout", TRUE))
+    if (strcmp(ParamName, "EAPIdentityRequestTimeout") == 0)
     {
         /* collect value */
         *puLong = pcfg->eap_identity_req_timeout;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "EAPIdentityRequestRetries", TRUE))
+    if (strcmp(ParamName, "EAPIdentityRequestRetries") == 0)
     {
 	    /* collect value */
         *puLong = pcfg->eap_identity_req_retries ;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "EAPRequestTimeout", TRUE))
+    if (strcmp(ParamName, "EAPRequestTimeout") == 0)
     {
         /* collect value */
         *puLong = pcfg->eap_req_timeout;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "EAPRequestRetries", TRUE))
+    if (strcmp(ParamName, "EAPRequestRetries") == 0)
     {
         /* collect value */
         *puLong = pcfg->eap_req_retries ;
@@ -17142,7 +17139,7 @@ Authenticator_SetParamUlongValue
         }
     }
     /* check the parameter name and set the corresponding value */
-    if( AnscEqualString(ParamName, "EAPOLKeyTimeout", TRUE))
+    if (strcmp(ParamName, "EAPOLKeyTimeout") == 0)
     {
         if ( l_security_cfg->eapol_key_timeout != uValue )
         {
@@ -17153,7 +17150,7 @@ Authenticator_SetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "EAPOLKeyRetries", TRUE))
+    if (strcmp(ParamName, "EAPOLKeyRetries") == 0)
     {
         if ( l_security_cfg->eapol_key_retries != uValue )
         {
@@ -17164,7 +17161,7 @@ Authenticator_SetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "EAPIdentityRequestTimeout", TRUE))
+    if (strcmp(ParamName, "EAPIdentityRequestTimeout") == 0)
     {
         if ( l_security_cfg->eap_identity_req_timeout != uValue )
         {
@@ -17175,7 +17172,7 @@ Authenticator_SetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "EAPIdentityRequestRetries", TRUE))
+    if (strcmp(ParamName, "EAPIdentityRequestRetries") == 0)
     {
         if ( l_security_cfg->eap_identity_req_retries != uValue )
         {
@@ -17186,7 +17183,7 @@ Authenticator_SetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "EAPRequestTimeout", TRUE))
+    if (strcmp(ParamName, "EAPRequestTimeout") == 0)
     {
         if ( l_security_cfg->eap_req_timeout != uValue )
         {
@@ -17197,7 +17194,7 @@ Authenticator_SetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "EAPRequestRetries", TRUE))
+    if (strcmp(ParamName, "EAPRequestRetries") == 0)
     {
         if ( l_security_cfg->eap_req_retries != uValue )
         {
@@ -17473,7 +17470,7 @@ MacFiltTab_GetParamStringValue
     acl_entry_t *acl_entry = (acl_entry_t *)hInsContext;
 
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "MACAddress", TRUE))
+    if (strcmp(ParamName, "MACAddress") == 0)
     {
         char buff[24] = {0};
         _ansc_sprintf(buff, "%02X:%02X:%02X:%02X:%02X:%02X", acl_entry->mac[0],
@@ -17493,7 +17490,7 @@ MacFiltTab_GetParamStringValue
             return 1;
         }
     }
-    if( AnscEqualString(ParamName, "DeviceName", TRUE))
+    if (strcmp(ParamName, "DeviceName") == 0)
     {
         if ( AnscSizeOfString(acl_entry->device_name) < *pUlSize)
         {
@@ -17543,7 +17540,7 @@ MacFiltTab_SetParamStringValue
         *acl_new_entry_queue = queue_create();
     }
 
-    if( AnscEqualString(ParamName, "MACAddress", TRUE))
+    if (strcmp(ParamName, "MACAddress") == 0)
     {
         str_tolower(pString);
         mac_length = strlen(pString);
@@ -17612,7 +17609,7 @@ MacFiltTab_SetParamStringValue
 
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "DeviceName", TRUE))
+    if (strcmp(ParamName, "DeviceName") == 0)
     {
         strncpy(acl_entry->device_name, pString, sizeof(acl_entry->device_name)-1);
         /* save update to backup */
@@ -17680,7 +17677,7 @@ NeighboringWiFiDiagnostic_GetParamBoolValue
         return FALSE;
     }
 
-    if (AnscEqualString(ParamName, "Enable", TRUE))
+    if (strcmp(ParamName, "Enable") == 0)
     {
         *pBool = global_wifi_config->global_parameters.diagnostic_enable;
         return TRUE;
@@ -17703,7 +17700,7 @@ NeighboringWiFiDiagnostic_GetParamStringValue
     errno_t rc = -1;
 
     wifi_monitor_t *monitor_param = (wifi_monitor_t *)get_wifi_monitor();
-    if(AnscEqualString(ParamName, "DiagnosticsState", TRUE))
+    if (strcmp(ParamName, "DiagnosticsState") == 0)
     {
         rc = strcpy_s(pValue, *pUlSize, monitor_param->neighbor_scan_cfg.DiagnosticsState);
         ERR_CHK(rc);
@@ -17730,7 +17727,7 @@ NeighboringWiFiDiagnostic_SetParamBoolValue
         return FALSE;
     }
 
-    if(AnscEqualString(ParamName, "Enable", TRUE))
+    if (strcmp(ParamName, "Enable") == 0)
     {
 // Set WiFi Neighbour Diagnostic switch value
         if(global_wifi_config->global_parameters.diagnostic_enable == bValue)
@@ -17760,7 +17757,7 @@ NeighboringWiFiDiagnostic_SetParamStringValue
     wifi_monitor_t *monitor_param = (wifi_monitor_t *)get_wifi_monitor();
     global_wifi_config = (wifi_global_config_t *) get_dml_cache_global_wifi_config();
 
-    if( AnscEqualString(ParamName, "DiagnosticsState", TRUE))   {
+    if (strcmp(ParamName, "DiagnosticsState") == 0)   {
         if( (strcmp(pString, "Requested") == 0) && (global_wifi_config->global_parameters.diagnostic_enable)) {
             if(strcmp(monitor_param->neighbor_scan_cfg.DiagnosticsState, "Requested") == 0)
                 return TRUE;
@@ -17837,12 +17834,12 @@ NeighboringScanResult_GetParamIntValue
 {
     wifi_neighbor_ap2_t *  pResult = (wifi_neighbor_ap2_t *)hInsContext;
 
-    if( AnscEqualString(ParamName, "SignalStrength", TRUE))    {
+    if (strcmp(ParamName, "SignalStrength") == 0)    {
         *pInt = pResult->ap_SignalStrength;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "Noise", TRUE))    {
+    if (strcmp(ParamName, "Noise") == 0)    {
         *pInt = pResult->ap_Noise;
         return TRUE;
     }
@@ -17859,19 +17856,19 @@ NeighboringScanResult_GetParamUlongValue
 {
     wifi_neighbor_ap2_t *  pResult = (wifi_neighbor_ap2_t *)hInsContext;
 
-    if( AnscEqualString(ParamName, "DTIMPeriod", TRUE))    {
+    if (strcmp(ParamName, "DTIMPeriod") == 0)    {
         *puLong = pResult->ap_DTIMPeriod;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "X_COMCAST-COM_ChannelUtilization", TRUE))    {
+    if (strcmp(ParamName, "X_COMCAST-COM_ChannelUtilization") == 0)    {
         *puLong = pResult->ap_ChannelUtilization;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "Channel", TRUE))    {
+    if (strcmp(ParamName, "Channel") == 0)    {
         *puLong = pResult->ap_Channel;
         return TRUE;  
     }
-    if(AnscEqualString(ParamName, "BeaconPeriod", TRUE))   {
+    if (strcmp(ParamName, "BeaconPeriod") == 0)   {
        *puLong = pResult->ap_BeaconPeriod;
        return TRUE;
     }
@@ -17892,7 +17889,7 @@ NeighboringScanResult_GetParamStringValue
     wifi_neighbor_ap2_t *  pResult = (wifi_neighbor_ap2_t *)hInsContext;
     errno_t rc = -1;
 
-    if( AnscEqualString(ParamName, "Radio", TRUE))    {
+    if (strcmp(ParamName, "Radio") == 0)    {
         wifi_freq_bands_t freqBand;
 
         if (freqBandStrToEnum(pResult->ap_OperatingFrequencyBand, &freqBand ) != ANSC_STATUS_SUCCESS)
@@ -17911,57 +17908,57 @@ NeighboringScanResult_GetParamStringValue
         }
         return -1;
     }
-    if(AnscEqualString(ParamName, "EncryptionMode", TRUE))    {
+    if (strcmp(ParamName, "EncryptionMode") == 0)    {
         rc = strcpy_s(pValue, *pUlSize, pResult->ap_EncryptionMode);
         ERR_CHK(rc);
         return 0;
     }
-    if( AnscEqualString(ParamName, "Mode", TRUE))    {
+    if (strcmp(ParamName, "Mode") == 0)    {
         rc = strcpy_s(pValue, *pUlSize, pResult->ap_Mode);
         ERR_CHK(rc);
         return 0;  
     }
-    if( AnscEqualString(ParamName, "SecurityModeEnabled", TRUE))    {
+    if (strcmp(ParamName, "SecurityModeEnabled") == 0)    {
         rc = strcpy_s(pValue, *pUlSize, pResult->ap_SecurityModeEnabled);
         ERR_CHK(rc);
         return 0;  
     }
-    if( AnscEqualString(ParamName, "BasicDataTransferRates", TRUE))    {
+    if (strcmp(ParamName, "BasicDataTransferRates") == 0)    {
         rc = strcpy_s(pValue, *pUlSize, pResult->ap_BasicDataTransferRates);
         ERR_CHK(rc);
         return 0;  
     } 
-    if( AnscEqualString(ParamName, "SupportedDataTransferRates", TRUE))    {
+    if (strcmp(ParamName, "SupportedDataTransferRates") == 0)    {
         rc = strcpy_s(pValue, *pUlSize, pResult->ap_SupportedDataTransferRates);
         ERR_CHK(rc);
         return 0;  
     }
-    if( AnscEqualString(ParamName, "OperatingChannelBandwidth", TRUE))    {
+    if (strcmp(ParamName, "OperatingChannelBandwidth") == 0)    {
         rc = strcpy_s(pValue, *pUlSize, pResult->ap_OperatingChannelBandwidth);
         ERR_CHK(rc);
         return 0;
     }
-    if( AnscEqualString(ParamName, "OperatingStandards", TRUE))    {
+    if (strcmp(ParamName, "OperatingStandards") == 0)    {
         rc = strcpy_s(pValue, *pUlSize, pResult->ap_OperatingStandards);
         ERR_CHK(rc);
         return 0;
     } 
-    if( AnscEqualString(ParamName, "SupportedStandards", TRUE))    {
+    if (strcmp(ParamName, "SupportedStandards") == 0)    {
         rc = strcpy_s(pValue, *pUlSize, pResult->ap_SupportedStandards);
         ERR_CHK(rc);
         return 0;
     } 
-    if( AnscEqualString(ParamName, "BSSID", TRUE))    {
+    if (strcmp(ParamName, "BSSID") == 0)    {
         rc = strcpy_s(pValue, *pUlSize, pResult->ap_BSSID);
         ERR_CHK(rc);
         return 0;
     }     
-    if(AnscEqualString(ParamName, "SSID", TRUE))     {
+    if (strcmp(ParamName, "SSID") == 0)     {
         rc = strcpy_s(pValue, *pUlSize, pResult->ap_SSID);
         ERR_CHK(rc);
         return 0;  
     }
-    if( AnscEqualString(ParamName, "OperatingFrequencyBand", TRUE))    {
+    if (strcmp(ParamName, "OperatingFrequencyBand") == 0)    {
         rc = strcpy_s(pValue, *pUlSize, pResult->ap_OperatingFrequencyBand);
         ERR_CHK(rc);
         return 0;
@@ -18032,13 +18029,13 @@ NeighboringScanResult_GetParamStringValue
         return FALSE;
     }
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "Enable", TRUE))
+    if (strcmp(ParamName, "Enable") == 0)
     {
         *pBool = pcfg->bandsteering_enable;
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "Capability", TRUE))
+    if (strcmp(ParamName, "Capability") == 0)
     {
         *pBool = TRUE;
         return TRUE;
@@ -18096,7 +18093,7 @@ NeighboringScanResult_GetParamStringValue
     }
     
     /* check the parameter name and set the corresponding value */
-    if( AnscEqualString(ParamName, "Enable", TRUE))
+    if (strcmp(ParamName, "Enable") == 0)
     {
         if(global_wifi_config->global_parameters.bandsteering_enable == bValue)
         {
@@ -18163,13 +18160,13 @@ NeighboringScanResult_GetParamStringValue
     
 	 /* check the parameter name and return the corresponding value */
 
-	 if( AnscEqualString(ParamName, "APGroup", TRUE))
+	 if (strcmp(ParamName, "APGroup") == 0)
 	 {
 		/* collect value */
 		 return 0;
 	 }
 
-	 if( AnscEqualString(ParamName, "History", TRUE))
+	 if (strcmp(ParamName, "History") == 0)
 	 {
 		 /* collect value */
 		 
@@ -18222,7 +18219,7 @@ NeighboringScanResult_GetParamStringValue
 	 UNREFERENCED_PARAMETER(hInsContext);
 	 /* check the parameter name and return the corresponding value */
 
-	 if( AnscEqualString(ParamName, "APGroup", TRUE))
+	 if (strcmp(ParamName, "APGroup") == 0)
 	 {
              return TRUE;
 	 }
@@ -18486,31 +18483,31 @@ BandSetting_GetEntry
 		 int*						 pInt
 	 )
  {
-	if( AnscEqualString(ParamName, "UtilizationThreshold", TRUE))
+	if (strcmp(ParamName, "UtilizationThreshold") == 0)
 	{
 		 /* collect value */
 		 return TRUE;
 	}
 	
-	if( AnscEqualString(ParamName, "RSSIThreshold", TRUE))
+	if (strcmp(ParamName, "RSSIThreshold") == 0)
 	{
 		 /* collect value */
 		 return TRUE;
 	}
 
-	 if( AnscEqualString(ParamName, "PhyRateThreshold", TRUE))
+	 if (strcmp(ParamName, "PhyRateThreshold") == 0)
 	 {
 		  /* collect value */
 		  return TRUE;
 	 }
 
-	 if( AnscEqualString(ParamName, "OverloadInactiveTime", TRUE))
+	 if (strcmp(ParamName, "OverloadInactiveTime") == 0)
 	 {
 		  /* collect value */
 		  return TRUE;
 	 }
 
-	 if( AnscEqualString(ParamName, "IdleInactiveTime", TRUE))
+	 if (strcmp(ParamName, "IdleInactiveTime") == 0)
 	 {
 		  /* collect value */
 		  return TRUE;
@@ -18560,31 +18557,31 @@ BandSetting_GetEntry
  {
 
 	 /* check the parameter name and set the corresponding value */
-	 if( AnscEqualString(ParamName, "UtilizationThreshold", TRUE))
+	 if (strcmp(ParamName, "UtilizationThreshold") == 0)
 	 {
 		 /* save update to backup */
 		 return TRUE;
 	 }
  
-	 if( AnscEqualString(ParamName, "RSSIThreshold", TRUE))
+	 if (strcmp(ParamName, "RSSIThreshold") == 0)
 	 {
 		 /* save update to backup */
 		 return TRUE;
 	 }
 
-	 if( AnscEqualString(ParamName, "PhyRateThreshold", TRUE))
+	 if (strcmp(ParamName, "PhyRateThreshold") == 0)
 	 {
 		 /* save update to backup */
 		 return TRUE;
 	 }
 
-	 if( AnscEqualString(ParamName, "OverloadInactiveTime", TRUE))
+	 if (strcmp(ParamName, "OverloadInactiveTime") == 0)
 	 {
 		 /* save update to backup */
 		 return TRUE;
 	 }
 
-	 if( AnscEqualString(ParamName, "IdleInactiveTime", TRUE))
+	 if (strcmp(ParamName, "IdleInactiveTime") == 0)
 	 {
 		 /* save update to backup */
 		 return TRUE;
@@ -18753,11 +18750,11 @@ ATM_GetParamBoolValue
 )
 {
 	UNREFERENCED_PARAMETER(hInsContext);
-	if (AnscEqualString(ParamName, "Capable", TRUE)) {
+	if (strcmp(ParamName, "Capable") == 0) {
 		return TRUE;
 	}
 
-    if (AnscEqualString(ParamName, "Enable", TRUE)) {
+    if (strcmp(ParamName, "Enable") == 0) {
 		return TRUE;
 	}
 
@@ -18803,7 +18800,7 @@ ATM_SetParamBoolValue
 )
 {
     UNREFERENCED_PARAMETER(hInsContext);
-    if( AnscEqualString(ParamName, "Enable", TRUE)) {
+    if (strcmp(ParamName, "Enable") == 0) {
         return TRUE;
     }
     return FALSE;
@@ -18938,7 +18935,7 @@ APGroup_GetParamStringValue
 {
     UNREFERENCED_PARAMETER(pUlSize);
 	
-    if( AnscEqualString(ParamName, "APList", TRUE)) {
+    if (strcmp(ParamName, "APList") == 0) {
         return 0;
     }
 
@@ -18985,7 +18982,7 @@ APGroup_GetParamUlongValue
     )
 {
 	
-	if( AnscEqualString(ParamName, "AirTimePercent", TRUE)) {
+	if (strcmp(ParamName, "AirTimePercent") == 0) {
 		return TRUE;
     }
 
@@ -19001,7 +18998,7 @@ APGroup_SetParamUlongValue (
 {
     CcspTraceInfo(("APGroup_SetParamUlongValue parameter '%s'\n", ParamName));
 CcspTraceInfo(("---- %s %s \n", __func__, 	ParamName));
-	if( AnscEqualString(ParamName, "AirTimePercent", TRUE))   {
+	if (strcmp(ParamName, "AirTimePercent") == 0)   {
         return TRUE;
     }
 	
@@ -19333,7 +19330,7 @@ Sta_GetParamStringValue
 {
     CcspTraceInfo(("Sta_GetParamStringValue parameter '%s'\n", ParamName)); 
 
-	if( AnscEqualString(ParamName, "MACAddress", TRUE)) {
+	if (strcmp(ParamName, "MACAddress") == 0) {
         /* collect value */
         return 0;
     }
@@ -19381,7 +19378,7 @@ Sta_GetParamUlongValue
     )
 {
     CcspTraceInfo(("Sta_GetParamUlongValue parameter '%s'\n", ParamName));
-	if( AnscEqualString(ParamName, "AirTimePercent", TRUE))  {
+	if (strcmp(ParamName, "AirTimePercent") == 0)  {
         /* collect value */
         return TRUE;
     }
@@ -19427,7 +19424,7 @@ Sta_SetParamStringValue
     )
 {
     CcspTraceInfo(("Sta_SetParamStringValue parameter '%s'\n", ParamName)); 
-    if( AnscEqualString(ParamName, "MACAddress", TRUE)) {
+    if (strcmp(ParamName, "MACAddress") == 0) {
 		return TRUE;
     }
     return FALSE;
@@ -19473,7 +19470,7 @@ Sta_SetParamUlongValue
 {
     CcspTraceInfo(("Sta_SetParamIntValue parameter '%s'\n", ParamName));
 
-	if( AnscEqualString(ParamName, "AirTimePercent", TRUE))	{
+	if (strcmp(ParamName, "AirTimePercent") == 0)	{
 		
 		return TRUE;
 	}
@@ -19670,7 +19667,7 @@ InterworkingService_GetParamStringValue
     }
 
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "Parameters", TRUE))
+    if (strcmp(ParamName, "Parameters") == 0)
     {
         /* collect value */
         if(pcfg->anqp.anqpParameters){
@@ -19749,9 +19746,9 @@ InterworkingService_SetParamStringValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "Parameters", TRUE))
+    if (strcmp(ParamName, "Parameters") == 0)
     {
-        if( AnscEqualString((char*)vapInfo->u.bss_info.interworking.anqp.anqpParameters, (char*) pString, TRUE)){
+        if (strcmp((char*)vapInfo->u.bss_info.interworking.anqp.anqpParameters, (char*) pString) == 0){
             return TRUE;
         }else{
             cJSON *p_root = cJSON_Parse(pString);
@@ -19837,11 +19834,11 @@ Passpoint_GetParamBoolValue
         return FALSE;
     }
 
-    if (AnscEqualString(ParamName, "Capability", TRUE)) {
+    if (strcmp(ParamName, "Capability") == 0) {
         return TRUE;
     }
 
-    if (AnscEqualString(ParamName, "Enable", TRUE)) {
+    if (strcmp(ParamName, "Enable") == 0) {
                 //WiFi_SetHS2Status(vap_pcfg->vap_index, false, true);
 	*pBool = interworking_pcfg->passpoint.enable;
         return TRUE;
@@ -19918,7 +19915,7 @@ Passpoint_GetParamStringValue
     }
 
         /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "Parameters", TRUE))
+    if (strcmp(ParamName, "Parameters") == 0)
     {
         if(pcfg->passpoint.hs2Parameters) {
             if( AnscSizeOfString((char *)pcfg->passpoint.hs2Parameters) < *pUlSize)
@@ -19933,7 +19930,7 @@ Passpoint_GetParamStringValue
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "WANMetrics", TRUE))
+    if (strcmp(ParamName, "WANMetrics") == 0)
     {
         WiFi_GetWANMetrics((vap_pcfg->vap_index + 1), (char *)&pcfg->passpoint.wanMetricsInfo,
                 sizeof(pcfg->passpoint.wanMetricsInfo));
@@ -19949,7 +19946,7 @@ Passpoint_GetParamStringValue
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "Stats", TRUE))
+    if (strcmp(ParamName, "Stats") == 0)
     {
         WiFi_GetHS2Stats((vap_pcfg->vap_index + 1));
         /* collect value */
@@ -20029,7 +20026,7 @@ Passpoint_SetParamBoolValue
     char *strValue = NULL;
     int retPsmGet = CCSP_SUCCESS;
 
-    if( AnscEqualString(ParamName, "Enable", TRUE)) {
+    if (strcmp(ParamName, "Enable") == 0) {
         if(bValue == vapInfo->u.bss_info.interworking.passpoint.enable){
             CcspTraceWarning(("Passpoint value Already configured. Return Success\n"));
             return TRUE;
@@ -20112,9 +20109,9 @@ Passpoint_SetParamStringValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "Parameters", TRUE))
+    if (strcmp(ParamName, "Parameters") == 0)
     {
-        if( AnscEqualString((char*)vapInfo->u.bss_info.interworking.passpoint.hs2Parameters, pString, TRUE)){
+        if (strcmp((char*)vapInfo->u.bss_info.interworking.passpoint.hs2Parameters, pString) == 0){
             return TRUE;
         }else {
              cJSON *p_root = cJSON_Parse(pString);

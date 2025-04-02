@@ -158,7 +158,7 @@ Logging_GetParamBoolValue
 {
     UNREFERENCED_PARAMETER(hInsContext);
     /* check the parameter name and return the corresponding value */
-    if( AnscEqualString(ParamName, "FlushAllLogs", TRUE))
+    if (strcmp(ParamName, "FlushAllLogs") == 0)
     {
         /* collect value */
         *pBool = FALSE;
@@ -212,7 +212,7 @@ Logging_SetParamBoolValue
     UNREFERENCED_PARAMETER(bValue);
    
     /* check the parameter name and set the corresponding value */
-    if( AnscEqualString(ParamName, "FlushAllLogs", TRUE))
+    if (strcmp(ParamName, "FlushAllLogs") == 0)
     {
         /* save update to backup */
 	CosaDmlLogging_FlushAllLogs();
