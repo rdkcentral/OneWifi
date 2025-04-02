@@ -6608,7 +6608,12 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         if (isVapMeshBackhaul(vap_index)) {
             cfg.u.bss_info.mac_filter_enable = true;
             cfg.u.bss_info.mac_filter_mode = wifi_mac_filter_mode_white_list;
-        } else {
+        }else if (isVapHotspot(vap_index)) {
+            cfg.u.bss_info.mac_filter_enable = true;
+            cfg.u.bss_info.mac_filter_mode = wifi_mac_filter_mode_black_list;
+            wifi_util_error_print(WIFI_DB,"%s:%d:POORNA mac_filter_enable is true with wifi_mac_filter_mode_black_list \n",__func__, __LINE__);
+        }  
+        else {
             cfg.u.bss_info.mac_filter_enable = false;
         }
         cfg.u.bss_info.UAPSDEnabled = true;
