@@ -32,6 +32,7 @@ include build/linux/makefile.inc
 
 EASY_MESH_NODE = 1
 EM_APP = 1
+ONEWIFI_STA_MGR_APP_SUPPORT = 1
 
 # wifi hal rules
 HAL_LIBRARY = $(INSTALLDIR)/lib/libwifihal.a
@@ -224,6 +225,7 @@ INCLUDEDIRS = \
     -I$(ONE_WIFI_HOME)/source/apps/csi \
     -I$(ONE_WIFI_HOME)/source/apps/harvester \
     -I$(ONE_WIFI_HOME)/source/apps/levl \
+    -I$(ONE_WIFI_HOME)/source/apps/sta_mgr \
     -I$(ONE_WIFI_HOME)/source/apps/motion \
     -I$(ONE_WIFI_HOME)/source/apps/ocs \
     -I$(ONE_WIFI_HOME)/source/apps/sm \
@@ -383,6 +385,10 @@ endif
 
 ifdef ONEWIFI_EASYCONNECT_APP_SUPPORT
 	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/easyconnect/*.c)
+endif
+
+ifdef ONEWIFI_STA_MGR_APP_SUPPORT
+	CSOURCES += $(wildcard $(ONE_WIFI_HOME)/source/apps/sta_mgr/*.c)
 endif
 
 ifdef EM_APP

@@ -607,7 +607,7 @@ int check_scan_complete_read_results(void *arg)
     if (ret != RETURN_OK) {
         if (errno == EAGAIN || ret == WIFI_HAL_NOT_READY) {
             int max_retries = 0;
-            if (args->scan_mode == WIFI_RADIO_SCAN_MODE_FULL) {
+            if (args->scan_mode == WIFI_RADIO_SCAN_MODE_FULL || args->scan_mode == WIFI_RADIO_SCAN_MODE_SELECT_CHANNELS) {
                 max_retries = RADIO_SCAN_MAX_RESULTS_RETRIES_FULL_SCAN;
             } else if (args->scan_mode == WIFI_RADIO_SCAN_MODE_ONCHAN ||
                 args->scan_mode == WIFI_RADIO_SCAN_MODE_OFFCHAN) {
@@ -675,7 +675,7 @@ int check_scan_complete_read_results(void *arg)
     }
     wifi_util_dbg_print(WIFI_MON, "%s : %d  radio index %d scan_mode %d, found %d neighbors\n",__func__,__LINE__, args->radio_index, args->scan_mode, ap_count);
     neighscan_stats_data = (neighscan_diag_cfg_t *)&mon_data->neighbor_scan_cfg;
-    if (args->scan_mode == WIFI_RADIO_SCAN_MODE_FULL) {
+    if (args->scan_mode == WIFI_RADIO_SCAN_MODE_FULL || args->scan_mode == WIFI_RADIO_SCAN_MODE_SELECT_CHANNELS) {
         temp_neigh_stats = neighscan_stats_data->pResult[args->radio_index];
         neighscan_stats_data->pResult[args->radio_index] = neigh_stats;
         neighscan_stats_data->resultCountPerRadio[args->radio_index] = ap_count;
@@ -838,6 +838,11 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
             }
         }
 
+    } else if (args->scan_mode == WIFI_RADIO_SCAN_MODE_SELECT_CHANNELS) {
+        for (int i = 0; i < args->channel_list.num_channels; i++) {
+            channels[i] = args->channel_list.channels_list[i];
+            num_channels++;
+        }
     } else {
         int i;
         if (args->channel_list.num_channels == 0) {
@@ -894,7 +899,7 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
         wifi_util_error_print(WIFI_MON, "%s:%d invalid number of channels\n", __func__, __LINE__);
         return RETURN_ERR;
     }
-    if (args->scan_mode == WIFI_RADIO_SCAN_MODE_FULL) {
+    if (args->scan_mode == WIFI_RADIO_SCAN_MODE_FULL || args->scan_mode == WIFI_RADIO_SCAN_MODE_SELECT_CHANNELS ) {
         dwell_time = args->dwell_time;
         if (radioOperation->band == WIFI_FREQUENCY_6_BAND) {
             if (args->dwell_time < 110) {

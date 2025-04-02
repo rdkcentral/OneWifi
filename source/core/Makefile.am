@@ -45,8 +45,10 @@ AM_LDFLAGS += -L$(top_builddir)/source/utils/
 AM_LDFLAGS += -lwifi_utils
 if WITH_LIBWEBCONFIG
 AM_LDFLAGS += -L$(top_builddir)/source/webconfig/
+AM_LDFLAGS += -L$(top_builddir)/source/platform/
 endif
 AM_LDFLAGS += -lwifi_webconfig
+AM_LDFLAGS += -lwifi_bus
 if ONEWIFI_DML_SUPPORT
 AM_LDFLAGS += -L$(top_builddir)/../CcspCommonLibrary/lib
 AM_LDFLAGS += -lccsp_common
@@ -61,7 +63,8 @@ bin_PROGRAMS = OneWifi
 
 OneWifi_CPPFLAGS = -I/var/tmp/pc-rdkb/include/dbus-1.0 -I$(top_srcdir)/../CcspCommonLibrary/source/ccsp/custom -I$(top_srcdir)/../CcspCommonLibrary/source/ccsp/include -I$(top_srcdir)/../CcspCommonLibrary/source/debug_api/include -I$(top_srcdir)/../CcspCommonLibrary/source/cosa/include -I$(top_srcdir)/../CcspCommonLibrary/source/cosa/include/linux -I$(top_srcdir)/../CcspCommonLibrary/source/ccsp/components/include -I$(top_srcdir)/../CcspCommonLibrary/source/cosa/package/slap/include -I$(top_srcdir)/../hal/include -I$(top_srcdir)/../CcspCommonLibrary/source/util_api/http/include -I$(top_srcdir)/../CcspCommonLibrary/source/util_api/ansc/include -I$(top_srcdir)/../CcspCommonLibrary/source/ccsp/components/common/MessageBusHelper/include -I$(top_srcdir)/../CcspCommonLibrary/source/ccsp/components/common/PoamIrepFolder -I$(top_srcdir)/include/wifi_ssp -I$(top_srcdir)/./include -I$(top_srcdir)/source/core -I$(top_srcdir)/source/db -I$(top_srcdir)/lib/ovsdb -I$(top_srcdir)/lib/inc -I$(top_srcdir)/lib/json_util -I$(top_srcdir)/lib/ds -I$(top_srcdir)/lib/common -I$(top_srcdir)/lib/pjs -I$(top_srcdir)/lib/log -I$(top_srcdir)/lib/const -I$(top_srcdir)/lib/schema -I$(top_srcdir)/lib/osp -I$(top_srcdir)/lib/osa -I$(top_srcdir)/lib/psfs -I$(top_srcdir)/lib/qm -I$(top_srcdir)/source/utils -I$(top_srcdir)/source/core/services -I$(top_srcdir)/source/stats -I$(top_srcdir)/lib/pktgen -I$(top_srcdir)/source/stubs -I$(top_srcdir)/lib/datapipeline $(CPPFLAGS)
 
-OneWifi_CPPFLAGS += -I$(top_srcdir)/source/platform/rdkb/ -I$(top_srcdir)/source/platform/common/
+OneWifi_CPPFLAGS += -I$(top_srcdir)/source/platform/rdkb/
+OneWifi_CPPFLAGS += -I$(top_srcdir)/source/platform/common/
 
 if ONEWIFI_DML_SUPPORT
 OneWifi_CPPFLAGS += -I$(top_srcdir)/source/dml/wifi_ssp -I$(top_srcdir)/source/dml/tr_181/ml -I$(top_srcdir)/source/dml/tr_181/sbapi -I$(top_srcdir)/include/tr_181/ml
@@ -71,7 +74,7 @@ endif
 OneWifi_CPPFLAGS += -I$(top_srcdir)/source/dml/rdkb/
 OneWifi_CPPFLAGS += -I$(top_srcdir)/source/dml/dml_webconfig
 
-OneWifi_CPPFLAGS += -I$(top_srcdir)/source/apps/em -I$(top_srcdir)/source/apps/em -I$(top_srcdir)/source/apps  -I$(top_srcdir)/source/apps/analytics -I$(top_srcdir)/source/apps/levl -I$(top_srcdir)/source/apps/sm -I$(top_srcdir)/source/apps/csi -I$(top_srcdir)/source/apps/motion -I$(top_srcdir)/source/apps/whix  -I$(top_srcdir)/source/apps/harvester -I$(top_srcdir)/source/apps/blaster -I$(top_srcdir)/source/apps/ocs -I$(top_srcdir)/source/ccsp
+OneWifi_CPPFLAGS += -I$(top_srcdir)/source/apps/em -I$(top_srcdir)/source/apps/em -I$(top_srcdir)/source/apps  -I$(top_srcdir)/source/apps/analytics -I$(top_srcdir)/source/apps/levl -I$(top_srcdir)/source/apps/sm -I$(top_srcdir)/source/apps/csi -I$(top_srcdir)/source/apps/motion -I$(top_srcdir)/source/apps/whix  -I$(top_srcdir)/source/apps/harvester -I$(top_srcdir)/source/apps/blaster -I$(top_srcdir)/source/apps/ocs -I$(top_srcdir)/source/ccsp -I$(top_srcdir)/source/apps/sta_mgr
 
 OneWifi_CFLAGS =  $(SYSTEMD_CFLAGS)
 OneWifi_CFLAGS += $(JOURNALCTL_ENABLE_FLAG)
@@ -91,8 +94,7 @@ OneWifi_SOURCES += $(top_srcdir)/source/utils/jsonconv.c $(top_srcdir)/source/ut
 OneWifi_SOURCES += $(top_srcdir)/source/stats/wifi_monitor.c $(top_srcdir)/source/utils/ext_blaster.pb-c.c $(top_srcdir)/source/stats/wifi_stats.c $(top_srcdir)/source/stats/wifi_stats_radio_channel.c $(top_srcdir)/source/stats/wifi_stats_neighbor_report.c $(top_srcdir)/source/stats/wifi_stats_radio_diagnostics.c $(top_srcdir)/source/stats/wifi_stats_assoc_client.c $(top_srcdir)/source/stats/wifi_stats_radio_temperature.c
 
 OneWifi_SOURCES += $(top_srcdir)/source/stubs/wifi_stubs.c
-
-OneWifi_SOURCES += $(top_srcdir)/source/platform/rdkb/bus.c $(top_srcdir)/source/platform/common/common.c $(top_srcdir)/source/platform/common/bus_common.c
+OneWifi_SOURCES += $(top_srcdir)/source/platform/common/common.c
 OneWifi_SOURCES += $(top_srcdir)/source/ccsp/ccsp.c
 
 if ONEWIFI_DML_SUPPORT
@@ -108,7 +110,11 @@ endif
 endif
 OneWifi_SOURCES += $(top_srcdir)/source/stats/wifi_associated_devices_msmt.c
 OneWifi_SOURCES += $(top_srcdir)/lib/log/log_journal.c
-OneWifi_SOURCES += $(top_srcdir)/source/apps/wifi_apps.c $(top_srcdir)/source/apps/wifi_apps_mgr.c $(top_srcdir)/source/apps/analytics/wifi_analytics.c $(top_srcdir)/source/apps/levl/wifi_levl.c $(top_srcdir)/source/apps/csi/wifi_csi.c $(top_srcdir)/source/apps/motion/wifi_motion.c $(top_srcdir)/source/apps/whix/wifi_whix.c $(top_srcdir)/source/apps/harvester/wifi_harvester.c  $(top_srcdir)/source/apps/blaster/wifi_blaster.c $(top_srcdir)/source/apps/blaster/wifi_single_client_msmt.c  $(top_srcdir)/source/apps/ocs/wifi_ocs.c
+OneWifi_SOURCES += $(top_srcdir)/source/apps/wifi_apps.c $(top_srcdir)/source/apps/wifi_apps_mgr.c $(top_srcdir)/source/apps/analytics/wifi_analytics.c $(top_srcdir)/source/apps/levl/wifi_levl.c $(top_srcdir)/source/apps/csi/wifi_csi.c $(top_srcdir)/source/apps/motion/wifi_motion.c $(top_srcdir)/source/apps/whix/wifi_whix.c $(top_srcdir)/source/apps/harvester/wifi_harvester.c  $(top_srcdir)/source/apps/blaster/wifi_blaster.c $(top_srcdir)/source/apps/blaster/wifi_single_client_msmt.c  $(top_srcdir)/source/apps/ocs/wifi_ocs.c 
+
+if ONEWIFI_STA_MGR_APP_SUPPORT
+OneWifi_SOURCES += $(top_srcdir)/source/apps/sta_mgr/wifi_sta_mgr.c
+endif
 
 if SM_APP_SUPPORT
 OneWifi_SOURCES += $(top_srcdir)/source/apps/sm/wifi_sm.c $(top_srcdir)/source/apps/sm/sm_utils.c $(top_srcdir)/source/apps/sm/sm_report.c $(top_srcdir)/source/apps/sm/sm_client_cache.c $(top_srcdir)/source/apps/sm/sm_client_report.c $(top_srcdir)/source/apps/sm/sm_survey_cache.c $(top_srcdir)/source/apps/sm/sm_survey_report.c $(top_srcdir)/source/apps/sm/sm_neighbor_cache.c $(top_srcdir)/source/apps/sm/sm_neighbor_report.c
@@ -151,7 +157,9 @@ OneWifi_LDFLAGS += -lnl-nf-3
 OneWifi_LDFLAGS += -L$(top_builddir)/source/utils/
 OneWifi_LDFLAGS += -lwifi_utils
 if WITH_LIBWEBCONFIG
+OneWifi_LDFLAGS += -L$(top_builddir)/source/platform/
 OneWifi_LDFLAGS += -L$(top_builddir)/source/webconfig/
 endif
 OneWifi_LDFLAGS += -lwifi_webconfig 
+OneWifi_LDFLAGS += -lwifi_bus
 #OneWifi_LDFLAGS += -llibnl-3.la llibnl-genl-3.la llibnl-route-3.la llibnl-nf-3.la llibnl-idiag-3

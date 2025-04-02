@@ -140,7 +140,8 @@ typedef enum {
     wifi_app_inst_core = wifi_app_inst_base << 14,
     wifi_app_inst_ocs = wifi_app_inst_base << 15,
     wifi_app_inst_easyconnect = wifi_app_inst_base << 16,
-    wifi_app_inst_max = wifi_app_inst_base << 17
+    wifi_app_inst_sta_mgr = wifi_app_inst_base << 17,
+    wifi_app_inst_max = wifi_app_inst_base << 18
 } wifi_app_inst_t;
 
 typedef struct {
@@ -601,6 +602,7 @@ typedef struct {
     hash_map_t              *acl_map;
     hash_map_t              *associated_devices_map; //Full
     hash_map_t              *associated_devices_diff_map; //Add,Remove
+    pthread_mutex_t         *associated_devices_lock;
     int                     kick_device_task_counter;
     bool                    kick_device_config_change;
     bool                    is_mac_filter_initialized;
@@ -1174,8 +1176,6 @@ typedef struct {
     UCHAR bss_color;
     UCHAR channel_utilization;
     USHORT station_count;
-    UINT aggregate_scan_duration;
-    UCHAR scan_type;  // 0: Passive, 1: Active
 } neighbor_bss_t;
 
 typedef struct {
@@ -1187,9 +1187,12 @@ typedef struct {
     UCHAR noise;
     USHORT num_neighbors;
     neighbor_bss_t neighbors[EM_MAX_NEIGHBORS];
+    UINT aggregate_scan_duration;
+    UCHAR scan_type;  // 0: Passive, 1: Active
 } channel_scan_result_t;
 
 typedef struct {
+    mac_address_t ruid;
     UINT num_results;
     channel_scan_result_t results[EM_MAX_RESULTS];
 } channel_scan_response_t;

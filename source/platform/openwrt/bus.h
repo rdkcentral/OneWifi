@@ -94,6 +94,7 @@ typedef bus_error_t (*bus_event_sub_handler_t)(bus_handle_t handle, bus_event_su
 typedef void (*bus_sub_async_resp_handler_t)(bus_handle_t handle, bus_event_subs_t *subscription,
     bus_error_t error);
 
+
 typedef struct bus_event_sub {
     char const *event_name;
     void *filter;
@@ -132,19 +133,24 @@ typedef bus_error_t (*wifi_bus_set_t)(bus_handle_t handle, char const *name, raw
 typedef bus_error_t (
     *wifi_bus_event_publish_t)(bus_handle_t handle, char const *name, raw_data_t *data);
 typedef bus_error_t (*wifi_bus_get_trace_context_t)(bus_handle_t handle, char *traceParent,
-    uint32_t traceParentLength, char *traceState, uint32_t traceStateLength);
+    uint32_t traceParentLength, char* traceState, uint32_t traceStateLength);
 typedef bus_error_t (
     *wifi_bus_raw_event_publish_t)(bus_handle_t handle, char *name, void *data, uint32_t size);
 typedef bus_error_t (
     *wifi_bus_set_str_t)(bus_handle_t handle, char const *param_name, char const *param_str);
 typedef bus_error_t (*wifi_bus_event_subs_t)(bus_handle_t handle, char const *event_name, void *cb,
     void *userData, int timeout);
+typedef bus_error_t (* wifi_bus_event_subs_async_t)(bus_handle_t *handle, char const* event_name,
+    void *cb, void *async_cb, void *userData, int timeout);
 typedef bus_error_t (*wifi_bus_event_subscribe_ex_t)(bus_handle_t handle,
     bus_event_sub_t *l_sub_info_map, int num_sub, int timeout);
 typedef bus_error_t (*wifi_bus_event_subscribe_ex_async_t)(bus_handle_t handle,
     bus_event_sub_t *l_sub_info_map, int num_sub, void *l_sub_handler, int timeout);
+typedef bus_error_t (* wifi_bus_event_unsubscribe_t)(bus_handle_t *handle, char const* event_name)
+;
 typedef bus_error_t (*wifi_bus_reg_elements_t)(bus_handle_t handle,
     bus_data_element_t *data_element, uint32_t num_of_element);
+typedef bus_error_t (*wifi_bus_unreg_elements_t)(bus_handle_t *handle, uint32_t num_of_element, bus_data_element_t *data_element)
 typedef bus_error_t (*wifi_bus_property_data_get_t)(bus_handle_t handle,
     bus_property_t l_bus_property, bus_set_handler_options_t l_options, raw_data_t *data);
 typedef bus_error_t (*wifi_bus_property_data_set_t)(bus_handle_t handle,
@@ -155,7 +161,9 @@ typedef bus_error_t (*wifi_bus_object_data_set_t)(bus_handle_t handle, bus_objec
     char *name, raw_data_t *data);
 typedef char *(*wifi_bus_property_get_name_t)(bus_handle_t handle, bus_property_t property);
 typedef bus_error_t (*wifi_bus_method_invoke_t)(bus_handle_t handle, void *paramName, char *event,
-    char *input_data, char *output_data, bool input_bus_data);
+    char *input_data, char *output_data, uint8_t input_bus_data);
+char const *(*wifi_bus_error_to_string_t)(bus_error_t bus_error);
+void *(*wifi_bus_handle_to_actual_ptr_t)(bus_handle_t handle);
 
 typedef struct {
     wifi_bus_init_t bus_init_fn;
@@ -164,12 +172,15 @@ typedef struct {
     wifi_bus_get_t bus_get_fn;
     wifi_bus_set_t bus_set_fn;
     wifi_bus_reg_elements_t bus_reg_data_element_fn;
+    wifi_bus_unreg_elements_t bus_unreg_data_element_fn;
     wifi_bus_event_publish_t bus_event_publish_fn;
     wifi_bus_raw_event_publish_t bus_raw_event_publish_fn;
     wifi_bus_set_str_t bus_set_string_fn;
     wifi_bus_event_subs_t bus_event_subs_fn;
+    wifi_bus_event_subs_async_t    bus_event_subs_async_fn;
     wifi_bus_event_subscribe_ex_t bus_event_subs_ex_fn;
     wifi_bus_event_subscribe_ex_async_t bus_event_subs_ex_async_fn;
+    wifi_bus_event_unsubscribe_t   bus_event_unsubs_fn;
     wifi_bus_property_data_get_t bus_property_data_get_fn;
     wifi_bus_property_data_set_t bus_property_data_set_fn;
     wifi_bus_object_data_get_t bus_object_data_get_fn;
@@ -177,6 +188,8 @@ typedef struct {
     wifi_bus_object_data_set_t bus_object_data_set_fn;
     wifi_bus_property_get_name_t bus_property_get_name_fn;
     wifi_bus_get_trace_context_t bus_get_trace_context_fn;
+    wifi_bus_error_to_string_t bus_error_to_string_fn;
+    wifi_bus_handle_to_actual_ptr_t bus_convert_handle_to_actual_ptr_fn;
 } wifi_bus_desc_t;
 
 typedef struct {

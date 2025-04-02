@@ -87,6 +87,12 @@ bus_error_t bus_reg_data_elements(bus_handle_t handle, bus_data_element_t *data_
     return rc;
 }
 
+bus_error_t bus_unreg_data_elements(bus_handle_t *handle, uint32_t num_of_element, bus_data_element_t *data_element)
+{
+    int rc = bus_error_success;
+    return rc;
+}
+
 bus_error_t bus_property_data_get(bus_handle_t handle, bus_property_t l_bus_property,
     bus_set_handler_options_t l_options, raw_data_t *data)
 {
@@ -134,6 +140,31 @@ bus_error_t bus_event_subscribe(bus_handle_t handle, char const *event_name, voi
     return ret;
 }
 
+bus_error_t bus_event_unsubscribe(bus_handle_t *handle, char const *event_name)
+{
+    bus_error_t ret = bus_error_success;
+    return ret;
+}
+
+bus_error_t bus_event_subscribe_async(bus_handle_t *handle, char const *event_name, void *cb,
+               void *async_cb, void *userData, int timeout)
+{
+    bus_error_t ret = bus_error_success;
+    return ret;
+}
+
+char const* bus_error_to_string(bus_error_t bus_error)
+{
+    rbusError_t ret = convert_bus_to_rbus_error_code(bus_error);
+    return rbusError_ToString(ret);
+}
+
+void *bus_convert_handle_to_ptr(bus_handle_t *handle)
+{
+	bus_error_t ret = bus_error_success;
+	return ret;
+}
+
 bus_error_t bus_event_subscribe_ex(bus_handle_t handle, bus_event_sub_t *l_sub_info_map,
     int num_sub, int timeout)
 {
@@ -178,6 +209,9 @@ void wifi_bus_init(void)
     g_bus.desc.bus_get_fn = bus_get;
     g_bus.desc.bus_set_fn = bus_set;
     g_bus.desc.bus_reg_data_element_fn = bus_reg_data_elements;
+    g_bus.desc.bus_unreg_data_element_fn = bus_unreg_data_elements;
+    g_bus.desc.bus_event_subs_async_fn = bus_event_subscribe_async;
+    g_bus.desc.bus_event_unsubs_fn = bus_event_unsubscribe;
     g_bus.desc.bus_event_publish_fn = bus_event_publish;
     g_bus.desc.bus_raw_event_publish_fn = bus_raw_event_publish;
     g_bus.desc.bus_set_string_fn = bus_set_string;
@@ -194,4 +228,6 @@ void wifi_bus_init(void)
     g_bus.bus_reg_table_row_fn = bus_reg_table_row;
     g_bus.bus_unreg_table_row_fn = bus_unreg_table_row;
     g_bus.bus_remove_table_row_fn = bus_remove_table_row;
+    g_bus.desc.bus_error_to_string_fn = bus_error_to_string;
+    g_bus.desc.bus_convert_handle_to_actual_ptr_fn = bus_convert_handle_to_ptr;
 }
