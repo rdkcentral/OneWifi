@@ -659,12 +659,10 @@ bus_error_t webconfig_get_dml_subdoc(char *event_name, raw_data_t *p_data, bus_u
             vap_index = convert_ifname_to_vap_index(wifi_prop, ifname);
             if (vap_index != -1) {
                 sta_info = get_wifi_object_sta_parameter(vap_index);
-                if (sta_info == NULL || sta_info->conn_status != wifi_connection_status_connected) {
+                if (sta_info == NULL) {
                     wifi_util_error_print(WIFI_CTRL,
-                        "%s:%d Error backhaul interface:%p is not sta interface or not connected, "
-                        "conn_status:%d\n",
-                        __func__, __LINE__, sta_info,
-                        (sta_info == NULL) ? 0 : sta_info->conn_status);
+                        "%s:%d Error backhaul interface:%s(Idx: %d, Ptr: %p) is not sta interface",
+                        __func__, __LINE__, ifname, vap_index, sta_info);
                     return bus_error_access_not_allowed;
                 }
             } else {
