@@ -91,6 +91,7 @@ extern "C" {
 #define BUS_WIFI_WPS_PIN_START             "Device.WiFi.WPS.Start"
 
 #define ETH_BH_STATUS                      "Device.X_RDK_MeshAgent.EthernetBhaulUplink.Status"
+#define ACS_KEEP_OUT                       "Device.X_RDK_MeshAgent.Mesh.ChannelPlan.Data.KeepOut"
 
 #define WIFI_ALL_RADIO_INDICES             0xffff
 #define DEVICE_TUNNEL_UP                   1
@@ -248,6 +249,7 @@ typedef struct wifi_ctrl {
     bool                factory_reset;
     bool                marker_list_config_subscribed;
     bool                eth_bh_status_subscribed;
+    bool                mesh_keep_out_chans_subscribed;
     wifiapi_t           wifiapi;
     wifi_rfc_dml_parameters_t    rfc_params;
     unsigned int        sta_tree_instance_num;
