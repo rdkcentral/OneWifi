@@ -11768,15 +11768,10 @@ WPS_SetParamBoolValue
     /* check the parameter name and set the corresponding value */
     if (AnscEqualString(ParamName, "Enable", TRUE)) {
         if (vapInfo->u.bss_info.wps.enable != bValue) {
-            wifi_util_info_print(WIFI_DMCLI, "SJY %s:%d:key=%d bValue=%d\n", __func__, __LINE__,
-                vapInfo->u.bss_info.wps.enable, bValue);
             vapInfo->u.bss_info.wps.enable = bValue;
-            wifi_util_info_print(WIFI_DMCLI, "SJY %s:%d:Value of wps enable is %d\n", __func__, __LINE__,
-                vapInfo->u.bss_info.wps.enable);
             set_dml_cache_vap_config_changed(instance_number - 1);
         }
         return TRUE;
-
     }
     if (AnscEqualString(ParamName, "X_CISCO_COM_ActivatePushButton", TRUE)) {
         if (vapInfo->u.bss_info.wpsPushButton != bValue) {

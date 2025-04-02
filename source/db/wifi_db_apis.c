@@ -810,7 +810,6 @@ void callback_Wifi_VAP_Config(ovsdb_update_monitor_t *mon,
         struct schema_Wifi_VAP_Config *old_rec,
         struct schema_Wifi_VAP_Config *new_rec)
 {
-    wifi_util_info_print(WIFI_DB,"SJY %s:%d\n", __func__, __LINE__);
     int radio_index = 0;
     int vap_index = 0;
     wifi_mgr_t *g_wifidb = get_wifimgr_obj();
@@ -999,12 +998,9 @@ void callback_Wifi_VAP_Config(ovsdb_update_monitor_t *mon,
             l_bss_param_cfg->wepKeyLength = new_rec->wep_key_length;
             l_bss_param_cfg->bssHotspot = new_rec->bss_hotspot;
 #if defined(FEATURE_SUPPORT_WPS)
-            wifi_util_info_print(WIFI_DB,"SJY %s:%d: WPS support enabled\n", __func__, __LINE__);
             l_bss_param_cfg->wpsPushButton = new_rec->wps_push_button;
             l_bss_param_cfg->wps.methods = new_rec->wps_config_methods;
             l_bss_param_cfg->wps.enable = new_rec->wps_enabled;
-            wifi_util_info_print(WIFI_DB,"SJY %s:%d: WPS push button %d config methods %d wps enabled %d\n",
-                __func__, __LINE__, new_rec->wps_push_button, new_rec->wps_config_methods, new_rec->wps_enabled);
 #endif
             if (strlen(new_rec->beacon_rate_ctl) != 0) {
                 strncpy(l_bss_param_cfg->beaconRateCtl, new_rec->beacon_rate_ctl,(sizeof(l_bss_param_cfg->beaconRateCtl)-1));
@@ -2564,15 +2560,9 @@ int wifidb_update_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
         cfg.wep_key_length = config->u.bss_info.wepKeyLength;
         cfg.bss_hotspot = config->u.bss_info.bssHotspot;
 #ifdef FEATURE_SUPPORT_WPS
-        wifi_util_info_print(WIFI_DB, "SJY %s:%d: WPS is supported\n", __func__, __LINE__);
         cfg.wps_push_button = config->u.bss_info.wpsPushButton;
         cfg.wps_config_methods = config->u.bss_info.wps.methods;
         cfg.wps_enabled = config->u.bss_info.wps.enable;
-        wifi_util_info_print(WIFI_DB,
-            "SJY %s:%d: Value of cfg.wps_enabled=%d and config->u.bss_info.wpsPushButton=%d and "
-            "config->u.bss_info.wps.methods=%d\n",
-            __func__, __LINE__, cfg.wps_enabled, config->u.bss_info.wpsPushButton,
-            config->u.bss_info.wps.methods);
 #endif
         strncpy(cfg.beacon_rate_ctl,config->u.bss_info.beaconRateCtl,sizeof(cfg.beacon_rate_ctl)-1);
         strncpy(cfg.mfp_config,"Disabled",sizeof(cfg.mfp_config)-1);
@@ -4500,7 +4490,6 @@ static void wifidb_vap_config_ext(wifi_vap_info_map_t *config, rdk_wifi_vap_info
 ********************************************** ****************************************/
 void wifidb_vap_config_correction(wifi_vap_info_map_t *l_vap_map_param)
 {
-    wifi_util_info_print(WIFI_DB, "SJY Entered %s:%d:\n", __func__, __LINE__);
     unsigned int index = 0;
     wifi_vap_info_t *vap_config = NULL;
     rdk_wifi_vap_info_t *rdk_vap_config = NULL;
@@ -5755,10 +5744,6 @@ int wifidb_get_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
             config->u.bss_info.wpsPushButton = pcfg->wps_push_button;
             config->u.bss_info.wps.methods = pcfg->wps_config_methods;
             config->u.bss_info.wps.enable = pcfg->wps_enabled;
-            wifi_util_info_print(WIFI_DB,
-                "SJY %s:%d: Value of wpsPushButton %d, wpsConfigMethods %d, wpsEnabled %d\n",
-                __func__, __LINE__, pcfg->wps_push_button, pcfg->wps_config_methods,
-                pcfg->wps_enabled);
 #endif
             if (strlen(pcfg->beacon_rate_ctl) != 0) {
                 strncpy(config->u.bss_info.beaconRateCtl, pcfg->beacon_rate_ctl,(sizeof(config->u.bss_info.beaconRateCtl)-1));
@@ -6627,10 +6612,8 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
             cfg.u.bss_info.vapStatsEnable = true;
             cfg.u.bss_info.wpsPushButton = 0;
 #ifdef FEATURE_SUPPORT_WPS
- wifi_util_info_print(WIFI_DB, "SJY %s:%d: Setting WPS enable as true as its supported\n", __func__, __LINE__);
             cfg.u.bss_info.wps.enable = true;
 #else
- wifi_util_info_print(WIFI_DB, "SJY %s:%d: Setting WPS enable as false as its not supported\n", __func__, __LINE__);
             cfg.u.bss_info.wps.enable = false;
 #endif
             cfg.u.bss_info.rapidReconnectEnable = true;
@@ -7610,16 +7593,19 @@ int wifi_db_update_global_config(wifi_global_param_t *global_cfg)
 
 #ifndef NEWPLATFORM_PORT
     memset(strValue, 0, sizeof(strValue));
-    #ifdef FEATURE_SUPPORT_WPS
+#ifdef FEATURE_SUPPORT_WPS
     str = p_ccsp_desc->psm_get_value_fn(WpsPin, strValue, sizeof(strValue));
     if (str != NULL) {
-        //global_cfg->wps_pin = atoi(str);
+        // global_cfg->wps_pin = atoi(str);
         strcpy(global_cfg->wps_pin, str);
-        wifi_util_dbg_print(WIFI_MGR,"global_cfg->wps_pin is %s and str is %s and atoi(str) is %d\n", global_cfg->wps_pin, str, atoi(str));
+        wifi_util_dbg_print(WIFI_MGR,
+            "global_cfg->wps_pin is %s and str is %s and atoi(str) is %d\n", global_cfg->wps_pin,
+            str, atoi(str));
     } else {
-        wifi_util_dbg_print(WIFI_MGR,":%s:%d str value for wps_pin:%s \r\n", __func__, __LINE__, str);
+        wifi_util_dbg_print(WIFI_MGR, ":%s:%d str value for wps_pin:%s \r\n", __func__, __LINE__,
+            str);
     }
-    #endif
+#endif
 
     memset(strValue, 0, sizeof(strValue));
     str = p_ccsp_desc->psm_get_value_fn(PreferPrivateConfigure, strValue, sizeof(strValue));
