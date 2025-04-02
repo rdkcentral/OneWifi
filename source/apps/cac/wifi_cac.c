@@ -378,9 +378,14 @@ int cac_event_exec_timeout(wifi_app_t *apps, void *arg)
 
             client->sampling_interval--;
 
+            get_radio_data(radio_index, &chan_stats);
+
             if (client->sampling_interval == 0 && client->sampling_count != 0) {
                 for (itr=0; itr<MAX_NUM_RADIOS; itr++) {
                     for (itrj=0; itrj<MAX_NUM_VAP_PER_RADIO; itrj++) {
+                        pthread_mutex_lock(mgr->radio_config[itr]
+                                               .vaps.rdk_vap_array[itrj]
+                                               .associated_devices_lock);
                         if (mgr->radio_config[itr].vaps.rdk_vap_array[itrj].associated_devices_map != NULL && !found) {
                             assoc_dev_data = hash_map_get_first(mgr->radio_config[itr].vaps.rdk_vap_array[itrj].associated_devices_map);
                             while (assoc_dev_data != NULL) {
@@ -388,23 +393,35 @@ int cac_event_exec_timeout(wifi_app_t *apps, void *arg)
                                 if (((unsigned int)assoc_dev_data->ap_index == client->ap_index) &&
                                     (memcmp(client->sta_mac,assoc_dev_data->dev_stats.cli_MACAddress,sizeof(mac_address_t))== 0 )) {
                                     found = true;
+
+                                    if (assoc_dev_data != NULL) {
+                                        client->rssi_avg = EXP_WEIGHT * client->rssi_avg +
+                                            (1 - EXP_WEIGHT) * assoc_dev_data->dev_stats.cli_RSSI;
+                                        client->snr_avg = EXP_WEIGHT * client->snr_avg +
+                                            (1 - EXP_WEIGHT) *
+                                                (assoc_dev_data->dev_stats.cli_RSSI -
+                                                    chan_stats.radio_NoiseFloor);
+                                        client->uplink_rate_avg = EXP_WEIGHT *
+                                                client->uplink_rate_avg +
+                                            (1 - EXP_WEIGHT) *
+                                                assoc_dev_data->dev_stats.cli_LastDataUplinkRate;
+                                        min_rate = get_minrate_from_mcs(
+                                            assoc_dev_data->dev_stats.cli_OperatingStandard,
+                                            assoc_dev_data->dev_stats.cli_OperatingChannelBandwidth,
+                                            mcs_conf);
+                                    }
                                     break;
                                 }
                                 assoc_dev_data = hash_map_get_next(mgr->radio_config[itr].vaps.rdk_vap_array[itrj].associated_devices_map, assoc_dev_data);
                             }
                         }
+                        pthread_mutex_unlock(mgr->radio_config[itr]
+                                                 .vaps.rdk_vap_array[itrj]
+                                                 .associated_devices_lock);
                     }
                 }
 
                 found = false;
-
-                get_radio_data(radio_index, &chan_stats);
-                if (assoc_dev_data != NULL) {
-                    client->rssi_avg = EXP_WEIGHT * client->rssi_avg + (1 - EXP_WEIGHT) * assoc_dev_data->dev_stats.cli_RSSI;
-                    client->snr_avg = EXP_WEIGHT * client->snr_avg + (1 - EXP_WEIGHT) * (assoc_dev_data->dev_stats.cli_RSSI - chan_stats.radio_NoiseFloor);
-                    client->uplink_rate_avg = EXP_WEIGHT * client->uplink_rate_avg + (1 - EXP_WEIGHT) * assoc_dev_data->dev_stats.cli_LastDataUplinkRate;
-                    min_rate = get_minrate_from_mcs(assoc_dev_data->dev_stats.cli_OperatingStandard, assoc_dev_data->dev_stats.cli_OperatingChannelBandwidth, mcs_conf);
-                }
 
                 client->sampling_count--;
 

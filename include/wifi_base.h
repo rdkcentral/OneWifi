@@ -78,11 +78,6 @@ extern "C" {
 #define WIFI_NOTIFY_DENY_TCM_ASSOCIATION               "Device.WiFi.ConnectionControl.TcmClientDenyAssociation"
 #define WIFI_STUCK_DETECT_FILE_NAME         "/nvram/wifi_stuck_detect"
 
-#define MAX_OPERATING_CLASS 48
-#define MAX_CHANNEL_BW_LEN 16
-#define MAX_NEIGHBORS 32
-#define MAX_RESULTS 32
-
 #define PLAN_ID_LENGTH     38
 #define MAX_STEP_COUNT  32 /*Active Measurement Step Count */
 #define  MAC_ADDRESS_LENGTH  13
@@ -145,7 +140,8 @@ typedef enum {
     wifi_app_inst_core = wifi_app_inst_base << 14,
     wifi_app_inst_ocs = wifi_app_inst_base << 15,
     wifi_app_inst_easyconnect = wifi_app_inst_base << 16,
-    wifi_app_inst_max = wifi_app_inst_base << 17
+    wifi_app_inst_sta_mgr = wifi_app_inst_base << 17,
+    wifi_app_inst_max = wifi_app_inst_base << 18
 } wifi_app_inst_t;
 
 typedef struct {
@@ -262,6 +258,23 @@ typedef struct {
     char header[CSI_HEADER_SIZE];
     wifi_csi_data_t csi;
 } __attribute__((packed)) wifi_csi_dev_t;
+
+#ifdef EM_APP
+typedef struct wifi_hal_rrm_request {
+    uint8_t dialog_token;
+    uint8_t duration;
+    bool duration_mandatory;
+    uint8_t op_class;
+    uint8_t channel;
+} wifi_hal_rrm_request_t;
+
+typedef struct {
+    mac_address_t sta_mac;
+    unsigned int ap_index;
+    size_t len;
+    wifi_BeaconReport_t *data;
+} beacon_repo_data_t;
+#endif
 
 // data collection api type
 typedef enum {
@@ -403,24 +416,6 @@ typedef struct {
     int levl_sounding_duration;
     int levl_publish_interval;
 }levl_config_t;
-
-typedef struct {
-    int rssi_threshold;
-    bool FeatureMFPConfig;
-    int ChUtilityLogInterval;
-    int DeviceLogInterval;
-
-    bool WifiFactoryReset;
-    int  RadioFactoryResetSSID[MAX_NUM_RADIOS];
-    bool ValidateSSIDName;
-    int  FixedWmmParams;
-    int  AssocCountThreshold;
-    int  AssocMonitorDuration;
-    int  AssocGateTime;
-    bool WiFiTxOverflowSelfheal;
-    bool WiFiForceDisableWiFiRadio;
-    int  WiFiForceDisableRadioStatus;
-} wifi_dml_parameters_t;
 
 typedef struct {
     bool wifi_offchannelscan_app_rfc;
@@ -607,6 +602,7 @@ typedef struct {
     hash_map_t              *acl_map;
     hash_map_t              *associated_devices_map; //Full
     hash_map_t              *associated_devices_diff_map; //Add,Remove
+    pthread_mutex_t         *associated_devices_lock;
     int                     kick_device_task_counter;
     bool                    kick_device_config_change;
     bool                    is_mac_filter_initialized;
@@ -1084,10 +1080,83 @@ typedef struct {
     unsigned int            radio_Temperature;
 } radio_data_t;
 
+#ifdef EM_APP
+
+#define EM_MAX_OPERATING_CLASS 48
+#define EM_MAX_CHANNEL_BW_LEN 16
+#define EM_MAX_NEIGHBORS 16
+#define EM_MAX_RESULTS 32
+#define EM_MAX_CHANNELS 64
+
+typedef char marker_name[32];
+
+typedef struct {
+    int interval;
+    marker_name managed_client_marker;
+} ap_metrics_policy_t;
+
+#define EM_MAX_DIS_STA 30
+typedef struct {
+    int sta_count;
+    mac_addr_t disallowed_sta[EM_MAX_DIS_STA];
+} steering_disallowed_policy_t;
+
+typedef struct {
+    bssid_t bssid;
+    bool profile_1_bsta_disallowed;
+    bool profile_2_bsta_disallowed;
+} backhaul_bss_config_policy_t;
+
+typedef struct {
+    bool report_independent_channel_scan;
+} channel_scan_reporting_policy_t;
+
+typedef struct {
+    mac_addr_t ruid;
+    int sta_rcpi_threshold;
+    int sta_rcpi_hysteresis;
+    int ap_util_threshold;
+    bool traffic_stats;
+    bool link_metrics;
+    bool sta_status;
+} radio_metrics_policy_t;
+
+#define EM_MAX_RADIO_POLICY 4
+typedef struct {
+    int radio_count;
+    radio_metrics_policy_t radio_metrics_policy[EM_MAX_RADIO_POLICY];
+} radio_metrics_policies_t;
+
+typedef struct {
+    ap_metrics_policy_t ap_metric_policy;
+    steering_disallowed_policy_t local_steering_dslw_policy;
+    steering_disallowed_policy_t btm_steering_dslw_policy;
+    backhaul_bss_config_policy_t backhaul_bss_config_policy;
+    channel_scan_reporting_policy_t channel_scan_reporting_policy;
+    radio_metrics_policies_t radio_metrics_policies;
+} em_config_t;
+
+typedef struct {
+    unsigned char dialog_token;
+    size_t size;
+    wifi_BeaconReport_t *beacon_repo;
+} wifi_hal_rrm_report_t;
+
+#define EM_MAX_BR_DATA 400
+typedef struct {
+    mac_address_t mac_addr;
+    unsigned int data_len;
+    unsigned char data[EM_MAX_BR_DATA];
+    unsigned int ap_index;
+    unsigned int num_br_data;
+    int sched_handler_id;
+    unsigned char dialog_token;
+} sta_beacon_report_reponse_t;
+
 typedef struct {
     UCHAR operating_class;
     UINT num_channels;
-    UCHAR channels[MAX_CHANNELS];
+    UCHAR channels[EM_MAX_CHANNELS];
 } operating_class_t;
 
 typedef struct {
@@ -1095,20 +1164,18 @@ typedef struct {
     UINT num_radios;
     mac_address_t ruid;
     UINT num_operating_classes;
-    operating_class_t operating_classes[MAX_OPERATING_CLASS];
+    operating_class_t operating_classes[EM_MAX_OPERATING_CLASS];
 } channel_scan_request_t;
 
 typedef struct {
     bssid_t bssid;
     ssid_t ssid;
     CHAR signal_strength;
-    CHAR channel_bandwidth[MAX_CHANNEL_BW_LEN];
+    CHAR channel_bandwidth[EM_MAX_CHANNEL_BW_LEN];
     UCHAR bss_load_element_present;
     UCHAR bss_color;
     UCHAR channel_utilization;
     USHORT station_count;
-    UINT aggregate_scan_duration;
-    UCHAR scan_type;  // 0: Passive, 1: Active
 } neighbor_bss_t;
 
 typedef struct {
@@ -1119,13 +1186,17 @@ typedef struct {
     UCHAR utilization;
     UCHAR noise;
     USHORT num_neighbors;
-    neighbor_bss_t neighbors[MAX_NEIGHBORS];
+    neighbor_bss_t neighbors[EM_MAX_NEIGHBORS];
+    UINT aggregate_scan_duration;
+    UCHAR scan_type;  // 0: Passive, 1: Active
 } channel_scan_result_t;
 
 typedef struct {
+    mac_address_t ruid;
     UINT num_results;
-    channel_scan_result_t results[MAX_RESULTS];
+    channel_scan_result_t results[EM_MAX_RESULTS];
 } channel_scan_response_t;
+#endif
 
 #ifdef __cplusplus
 }
