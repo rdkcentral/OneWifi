@@ -83,7 +83,7 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
             cfg.variant = WIFI_80211_VARIANT_G | WIFI_80211_VARIANT_N;
 #ifdef CONFIG_IEEE80211BE
-           /* Disable BE for 2.4 radio  */
+           /* Disable 2.4 BE for XER5/XER10/XB10  */
 //          cfg.variant |= WIFI_80211_VARIANT_BE;
 #endif /* CONFIG_IEEE80211BE */
             break;
