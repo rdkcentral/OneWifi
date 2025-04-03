@@ -2941,9 +2941,7 @@ int wifidb_update_wifi_global_config(wifi_global_param_t *config)
     cfg.wifi_active_msmt_num_samples = config->wifi_active_msmt_num_samples;
     cfg.wifi_active_msmt_sample_duration = config->wifi_active_msmt_sample_duration;
     cfg.vlan_cfg_version = config->vlan_cfg_version;
-#ifdef FEATURE_SUPPORT_WPS
     strncpy(cfg.wps_pin,config->wps_pin,sizeof(cfg.wps_pin)-1);
-#endif
     cfg.bandsteering_enable = config->bandsteering_enable;
     cfg.good_rssi_threshold = config->good_rssi_threshold;
     cfg.assoc_count_threshold = config->assoc_count_threshold;
@@ -6486,9 +6484,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
     unsigned int found = 0;
     wifi_vap_info_t cfg;
     char vap_name[BUFFER_LENGTH_WIFIDB] = {0};
-#ifdef FEATURE_SUPPORT_WPS
     char wps_pin[128] = {0};
-#endif
     char password[128] = {0};
     char radius_key[128] = {0};
     char ssid[128] = {0};
@@ -6691,7 +6687,6 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         cfg.vap_mode = wifi_vap_mode_ap;
         if (isVapPrivate(vap_index)) {
             cfg.u.bss_info.showSsid = true;
-#ifdef FEATURE_SUPPORT_WPS
             cfg.u.bss_info.wps.methods = WIFI_ONBOARDINGMETHODS_PUSHBUTTON;
             memset(wps_pin, 0, sizeof(wps_pin));
             if ((wifi_hal_get_default_wps_pin(wps_pin) == RETURN_OK) && ((strlen(wps_pin) != 0))) {
@@ -6701,7 +6696,6 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
                     __LINE__, vap_name);
                 strcpy(cfg.u.bss_info.wps.pin, "12345678");
             }
-#endif
         } else if (isVapHotspot(vap_index)) {
             cfg.u.bss_info.showSsid = true;
         } else {
@@ -6877,9 +6871,7 @@ int wifidb_init_global_config_default(wifi_global_param_t *config)
     cfg.diagnostic_enable = false;
     cfg.validate_ssid = true;
     cfg.factory_reset = 0;
-#ifdef FEATURE_SUPPORT_WPS
     strncpy(cfg.wps_pin, DEFAULT_WPS_PIN, sizeof(cfg.wps_pin)-1);
-#endif
     memset(temp, '\0', sizeof(temp));
     memset(tempBuf, '\0', MAX_BUF_SIZE);
     for (UINT i = 0; i < getNumberRadios(); i++) {
@@ -7586,7 +7578,6 @@ int wifi_db_update_global_config(wifi_global_param_t *global_cfg)
 
 #ifndef NEWPLATFORM_PORT
     memset(strValue, 0, sizeof(strValue));
-#ifdef FEATURE_SUPPORT_WPS
     str = p_ccsp_desc->psm_get_value_fn(WpsPin, strValue, sizeof(strValue));
     if (str != NULL) {
         // global_cfg->wps_pin = atoi(str);
@@ -7598,7 +7589,6 @@ int wifi_db_update_global_config(wifi_global_param_t *global_cfg)
         wifi_util_dbg_print(WIFI_MGR, ":%s:%d str value for wps_pin:%s \r\n", __func__, __LINE__,
             str);
     }
-#endif
 
     memset(strValue, 0, sizeof(strValue));
     str = p_ccsp_desc->psm_get_value_fn(PreferPrivateConfigure, strValue, sizeof(strValue));
