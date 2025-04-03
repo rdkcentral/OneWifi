@@ -4351,9 +4351,7 @@ static void wifidb_radio_config_upgrade(unsigned int index, wifi_radio_operation
     if (g_wifidb->db_version < ONEWIFI_DB_VERSION_IEEE80211BE_FLAG) {
         wifi_util_info_print(WIFI_DB, "%s:%d upgrade radio=%d config, old db version: %d total radios: %u\n",
             __func__, __LINE__, index, g_wifidb->db_version, total_radios);
-#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
         if (config->band != WIFI_FREQUENCY_2_4_BAND)
-#endif /*defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)*/
             config->variant |= WIFI_80211_VARIANT_BE;
         if(wifidb_update_wifi_radio_config(index, config, rdk_config) != RETURN_OK) {
             wifi_util_error_print(WIFI_DB,"%s:%d error in updating radio config\n", __func__,__LINE__);
@@ -6310,11 +6308,6 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #ifdef NEWPLATFORM_PORT
             cfg.variant |= WIFI_80211_VARIANT_AX;
 #endif /* NEWPLATFORM_PORT */
-#ifdef CONFIG_IEEE80211BE
-#if !(defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_))
-            cfg.variant |= WIFI_80211_VARIANT_BE;
-#endif /* !(defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)) */
-#endif /* CONFIG_IEEE80211BE */
 #if defined (_PP203X_PRODUCT_REQ_)
             cfg.beaconInterval = 200;
 #endif
