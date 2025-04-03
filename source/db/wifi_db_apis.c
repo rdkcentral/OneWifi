@@ -6687,6 +6687,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         cfg.vap_mode = wifi_vap_mode_ap;
         if (isVapPrivate(vap_index)) {
             cfg.u.bss_info.showSsid = true;
+#ifdef FEATURE_SUPPORT_WPS
             cfg.u.bss_info.wps.methods = WIFI_ONBOARDINGMETHODS_PUSHBUTTON;
             memset(wps_pin, 0, sizeof(wps_pin));
             if ((wifi_hal_get_default_wps_pin(wps_pin) == RETURN_OK) && ((strlen(wps_pin) != 0))) {
@@ -6696,6 +6697,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
                     __LINE__, vap_name);
                 strcpy(cfg.u.bss_info.wps.pin, "12345678");
             }
+#endif
         } else if (isVapHotspot(vap_index)) {
             cfg.u.bss_info.showSsid = true;
         } else {
