@@ -6482,7 +6482,9 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
     unsigned int found = 0;
     wifi_vap_info_t cfg;
     char vap_name[BUFFER_LENGTH_WIFIDB] = {0};
+#ifdef FEATURE_SUPPORT_WPS
     char wps_pin[128] = {0};
+#endif
     char password[128] = {0};
     char radius_key[128] = {0};
     char ssid[128] = {0};
