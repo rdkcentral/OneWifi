@@ -30,6 +30,8 @@
 
 #define  ANSC_STATUS_SUCCESS                        0
 
+#define MONITOR_QUEUE_SIZE_MAX 500
+
 typedef struct {
     unsigned int        rapid_reconnect_threshold;
     wifi_vapstatus_t    ap_status;
