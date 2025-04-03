@@ -781,9 +781,7 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
     int vapIndex = 0;
     unsigned int radioIndx = 256; // some impossible values
     unsigned int vapArrayIndx = 256;
-#ifdef FEATURE_SUPPORT_WPS
     char wps_pin[128] = {0};
-#endif
     char password[128] = {0};
     char ssid[128] = {0};
     wifi_radio_operationParam_t  *oper_param;
@@ -899,10 +897,8 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
         if (is_vap_private(&hal_cap->wifi_prop, vapIndex) == TRUE) {
             default_vap_info->u.bss_info.network_initiated_greylist = false;
             default_vap_info->u.bss_info.vapStatsEnable = true;
-#ifdef FEATURE_SUPPORT_WPS
             default_vap_info->u.bss_info.wpsPushButton = 0;
             default_vap_info->u.bss_info.wps.enable = true;
-#endif
             default_vap_info->u.bss_info.rapidReconnectEnable = true;
             if (band == WIFI_FREQUENCY_6_BAND) {
                 default_vap_info->u.bss_info.security.mode = wifi_security_mode_wpa3_personal;
@@ -923,10 +919,8 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
             strcpy(default_vap_info->u.bss_info.ssid, default_vap_info->vap_name);
             memset(password, 0, sizeof(password));
             strcpy(default_vap_info->u.bss_info.security.u.key.key, INVALID_KEY);
-#ifdef FEATURE_SUPPORT_WPS
             memset(wps_pin, 0, sizeof(wps_pin));
             strcpy(default_vap_info->u.bss_info.wps.pin, INVALID_KEY);
-#endif
             default_vap_info->u.bss_info.showSsid = true;
             default_vap_info->u.bss_info.mbo_enabled = false;
 
@@ -2160,10 +2154,8 @@ webconfig_error_t translate_vap_info_to_ovsdb_common(const wifi_vap_info_t *vap,
     vap_row->ap_bridge = vap->u.bss_info.isolation;
     vap_row->btm = vap->u.bss_info.bssTransitionActivated;
     vap_row->rrm = vap->u.bss_info.nbrReportActivated;
-#ifdef FEATURE_SUPPORT_WPS
     vap_row->wps = vap->u.bss_info.wps.enable;
     strncpy(vap_row->wps_pbc_key_id, vap->u.bss_info.wps.pin, sizeof(vap_row->wps_pbc_key_id));
-#endif
     vap_row->vlan_id = iface_map->vlan_id;
     return webconfig_error_none;
 }
@@ -2707,7 +2699,7 @@ webconfig_error_t translate_vap_info_to_vif_state_common(const wifi_vap_info_t *
     } else {
         vap_row->rrm_exists = false;
     }
-#ifdef FEATURE_SUPPORT_WPS
+
     if (vap->u.bss_info.wps.enable) {
         vap_row->wps = vap->u.bss_info.wps.enable;
         vap_row->wps_exists = true;
@@ -2722,7 +2714,7 @@ webconfig_error_t translate_vap_info_to_vif_state_common(const wifi_vap_info_t *
     } else {
         vap_row->wps_pbc_key_id_exists = false;
     }
-#endif
+
     vap_row->vlan_id = iface_map->vlan_id;
     memset(vap_row->parent, 0, sizeof(vap_row->parent));
 
@@ -3882,11 +3874,11 @@ webconfig_error_t translate_ovsdb_to_vap_info_common(const struct schema_Wifi_VI
     vap->u.bss_info.isolation = vap_row->ap_bridge;
     vap->u.bss_info.bssTransitionActivated = vap_row->btm;
     vap->u.bss_info.nbrReportActivated = vap_row->rrm;
-#ifdef FEATURE_SUPPORT_WPS
     vap->u.bss_info.wps.enable = vap_row->wps;
-    snprintf(vap->u.bss_info.wps.pin, sizeof(vap->u.bss_info.wps.pin),"%s",vap_row->wps_pbc_key_id);
-#endif
-    wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: vapIndex : %d min_hw_mode %s\n", __func__, __LINE__, vap->vap_index, vap_row->min_hw_mode);
+    snprintf(vap->u.bss_info.wps.pin, sizeof(vap->u.bss_info.wps.pin), "%s",
+        vap_row->wps_pbc_key_id);
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: vapIndex : %d min_hw_mode %s\n", __func__, __LINE__,
+        vap->vap_index, vap_row->min_hw_mode);
     min_hw_mode_conversion(vap->vap_index, (char *)vap_row->min_hw_mode, "", "CONFIG");
     vif_radio_idx_conversion(vap->vap_index, (int *)&vap_row->vif_radio_idx, NULL, "CONFIG");
 

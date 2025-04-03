@@ -11789,6 +11789,8 @@ WPS_SetParamBoolValue
         push_event_to_ctrl_queue(&instance_number, sizeof(instance_number), wifi_event_type_command, wifi_event_type_command_wps_cancel, NULL);
         return TRUE;
     }
+#else
+    wifi_util_info_print(WIFI_DMCLI, "%s:%d: WPS not supported\n", __func__, __LINE__);
 #endif
     return FALSE;
 }
@@ -11837,6 +11839,8 @@ WPS_SetParamIntValue
     if (AnscEqualString(ParamName, "X_CISCO_COM_WpsPushButton", TRUE)) {
         return TRUE;
     }
+#else
+    wifi_util_info_print(WIFI_DMCLI, "%s:%d: WPS not supported\n", __func__, __LINE__);
 #endif
     return FALSE;
 }
@@ -12004,6 +12008,8 @@ WPS_SetParamIntValue
             }
             return TRUE;
         }
+#else
+        wifi_util_info_print(WIFI_DMCLI, "%s:%d WPS is not supported\n", __FUNCTION__, __LINE__);
 #endif
         return FALSE;
     }

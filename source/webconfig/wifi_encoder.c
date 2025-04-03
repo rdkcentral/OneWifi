@@ -429,7 +429,6 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
 
     // BssHotspot
     cJSON_AddBoolToObject(vap_object, "BssHotspot", vap_info->u.bss_info.bssHotspot);
-#ifdef FEATURE_SUPPORT_WPS
     // wpsPushButton
     cJSON_AddNumberToObject(vap_object, "WpsPushButton", vap_info->u.bss_info.wpsPushButton);
 
@@ -442,7 +441,6 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
         //WpsConfigPin
         cJSON_AddStringToObject(vap_object, "WpsConfigPin", vap_info->u.bss_info.wps.pin);
     }
-#endif
     // BeaconRateCtl
     cJSON_AddStringToObject(vap_object, "BeaconRateCtl", vap_info->u.bss_info.beaconRateCtl);
 
@@ -682,9 +680,8 @@ webconfig_error_t encode_wifi_global_config(const wifi_global_param_t *global_in
     cJSON_AddNumberToObject(global_obj, "VlanCfgVersion", global_info->vlan_cfg_version);
 
     //WpsPin
-#ifdef FEATURE_SUPPORT_WPS
     cJSON_AddStringToObject(global_obj, "WpsPin", global_info->wps_pin);
-#endif
+    
     // BandsteeringEnable
     cJSON_AddBoolToObject(global_obj, "BandsteeringEnable", (const cJSON_bool)global_info->bandsteering_enable);
 
