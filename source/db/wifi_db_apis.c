@@ -130,9 +130,7 @@ static char *NeighborReportActivated     = "eRT.com.cisco.spvtg.ccsp.tr181pa.Dev
 static char *WhixLoginterval = "dmsb.device.deviceinfo.X_RDKCENTRAL-COM_WHIX.LogInterval";
 static char *WhixChUtilityLoginterval = "dmsb.device.deviceinfo.X_RDKCENTRAL-COM_WHIX.ChUtilityLogInterval";
 #ifndef NEWPLATFORM_PORT
-#ifdef FEATURE_SUPPORT_WPS
 static char *WpsPin = "eRT.com.cisco.spvtg.ccsp.Device.WiFi.WPSPin";
-#endif
 static char *FixedWmmParams        = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.FixedWmmParamsValues";
 static char *WifiVlanCfgVersion ="eRT.com.cisco.spvtg.ccsp.Device.WiFi.VlanCfgVerion";
 static char *PreferPrivate      = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.PreferPrivate";
