@@ -208,6 +208,7 @@ typedef void        (* wifi_bus_data_free_t)                    (raw_data_t *dat
 typedef bus_error_t (* wifi_bus_set_t)                          (bus_handle_t *handle, char const *name, raw_data_t *data);
 typedef bus_error_t (* wifi_bus_event_publish_t)                (bus_handle_t *handle, char const *name, raw_data_t *data);
 typedef bus_error_t (* wifi_bus_get_trace_context_t)            (bus_handle_t *handle, char* traceParent, uint32_t traceParentLength, char* traceState, uint32_t traceStateLength);
+typedef bus_error_t (* wifi_bus_set_trace_context_t)            (bus_handle_t *handle, const char* traceParent, const char* traceState);
 typedef bus_error_t (* wifi_bus_raw_event_publish_t)            (bus_handle_t *handle, char *name, void *data, uint32_t size);
 typedef bus_error_t (* wifi_bus_set_str_t)                      (bus_handle_t *handle, char const* param_name, char const *param_str);
 typedef bus_error_t (* wifi_bus_event_subs_t)                   (bus_handle_t *handle, char const* event_name, void *cb, void *userData, int timeout);
@@ -247,6 +248,7 @@ typedef struct {
     wifi_bus_reg_table_row_t       bus_reg_table_row_fn;
     wifi_bus_unreg_table_row_t     bus_unreg_table_row_fn;
     wifi_bus_remove_table_row_t    bus_remove_table_row_fn;
+    wifi_bus_set_trace_context_t   bus_set_trace_context_fn;
     wifi_bus_error_to_string_t    bus_error_to_string_fn;
     wifi_bus_handle_to_actual_ptr_t bus_convert_handle_to_actual_ptr_fn;
 } wifi_bus_desc_t;

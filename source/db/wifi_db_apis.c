@@ -8516,7 +8516,7 @@ int get_all_param_from_psm_and_set_into_db(void)
         memset(&data, 0, sizeof(raw_data_t));
         memset(last_reboot_reason, 0, sizeof(last_reboot_reason));
 
-        bus_handle_t handle;
+        bus_handle_t handle = {0};
         if (wifi_mgr_bus_subsription(&handle) == RETURN_OK) {
             if (get_bus_descriptor()->bus_data_get_fn(&handle, WIFI_PSM_DB_NAMESPACE, &data) ==
                 bus_error_success) {
