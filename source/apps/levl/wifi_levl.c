@@ -810,6 +810,7 @@ void push_radio_temperature_request_to_monitor_queue(wifi_mon_stats_request_stat
     data->u.mon_stats_config.data_type = mon_stats_type_radio_temperature;
     data->u.mon_stats_config.args.radio_index = radio_index;
     push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
+    free(data);
 }
 
 int webconfig_event_levl(wifi_app_t *apps, wifi_event_subtype_t sub_type, void *data)
@@ -1287,8 +1288,9 @@ int levl_deinit(wifi_app_t *app)
 }
 #endif
 
-bus_error_t levl_get_handler(char *event_name, raw_data_t *p_data)
+bus_error_t levl_get_handler(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data)
 {
+    (void)user_data;
     bus_error_t ret = bus_error_success;
     char const* name = event_name;
     int max_value = 0, duration = 0;
@@ -1409,8 +1411,9 @@ void update_levl_config_from_levl_config(levl_config_t *levl)
     return;
 }
 
-bus_error_t levl_set_handler(char *event_name, raw_data_t *p_data)
+bus_error_t levl_set_handler(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data)
 {
+    (void)user_data;
     char const* name = event_name;
     unsigned int levl_sounding_duration = 0;
     char const* pTmp = NULL;

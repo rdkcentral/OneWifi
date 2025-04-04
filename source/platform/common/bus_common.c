@@ -23,6 +23,7 @@
 #include <stdbool.h>
 #include "bus.h"
 #include "bus_common.h"
+#include "wifi_util.h"
 
 #define COMPARE_INT_RANGE(min_value, max_value, set_value) do { \
     if ((set_value) < (min_value)) { \
