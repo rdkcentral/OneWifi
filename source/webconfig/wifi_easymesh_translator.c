@@ -47,6 +47,7 @@
 #include "schema.h"
 #include "schema_gen.h"
 #include "webconfig_external_proto.h"
+#include "webconfig_external_proto_easymesh.h"
 #include "common/ieee802_11_defs.h"
 
 // static member to store the subdoc
