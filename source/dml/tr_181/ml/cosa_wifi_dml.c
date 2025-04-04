@@ -11746,6 +11746,7 @@ WPS_SetParamBoolValue
         BOOL                        bValue
     )
 {
+#ifdef FEATURE_SUPPORT_WPS
     wifi_vap_info_t *pcfg = (wifi_vap_info_t *)hInsContext;
     if (pcfg == NULL)
     {
@@ -11764,34 +11765,21 @@ WPS_SetParamBoolValue
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s does not support configuration\n", __FUNCTION__,__LINE__,pcfg->vap_name);
         return TRUE;
     }
- 
     /* check the parameter name and set the corresponding value */
     if (AnscEqualString(ParamName, "Enable", TRUE)) {
-#if defined(_CBR2_PRODUCT_REQ_)
-        wifi_util_info_print(WIFI_DMCLI, "%s:%d:WPS option is not supported for CBRV2\n", __func__,
-            __LINE__);
-        return FALSE;
-#else
         if (vapInfo->u.bss_info.wps.enable != bValue) {
-            wifi_util_dbg_print(WIFI_DMCLI, "%s:%d:key=%d bValue=%d  \n", __func__, __LINE__,
-                vapInfo->u.bss_info.wps.enable, bValue);
             vapInfo->u.bss_info.wps.enable = bValue;
             set_dml_cache_vap_config_changed(instance_number - 1);
         }
         return TRUE;
-#endif
     }
-    if( AnscEqualString(ParamName, "X_CISCO_COM_ActivatePushButton", TRUE))
-    {
-        if (vapInfo->u.bss_info.wpsPushButton == bValue)
-        {
-            return TRUE;
+    if (AnscEqualString(ParamName, "X_CISCO_COM_ActivatePushButton", TRUE)) {
+        if (vapInfo->u.bss_info.wpsPushButton != bValue) {
+            wifi_util_dbg_print(WIFI_DMCLI, "%s:%d:key=%d bValue=%d\n", __func__, __LINE__,
+                vapInfo->u.bss_info.wpsPushButton, bValue);
+            vapInfo->u.bss_info.wpsPushButton = bValue;
+            set_dml_cache_vap_config_changed(instance_number - 1);
         }
-
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:key=%d bValue=%d  \n",__func__, __LINE__,vapInfo->u.bss_info.wpsPushButton,bValue);
-        vapInfo->u.bss_info.wpsPushButton = bValue;
-        set_dml_cache_vap_config_changed(instance_number - 1);
-
         return TRUE;
     }
     if( AnscEqualString(ParamName, "X_CISCO_COM_CancelSession", TRUE))
@@ -11801,8 +11789,9 @@ WPS_SetParamBoolValue
         push_event_to_ctrl_queue(&instance_number, sizeof(instance_number), wifi_event_type_command, wifi_event_type_command_wps_cancel, NULL);
         return TRUE;
     }
-
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+#else
+    wifi_util_info_print(WIFI_DMCLI, "%s:%d: WPS not supported\n", __func__, __LINE__);
+#endif
     return FALSE;
 }
 
@@ -11846,348 +11835,332 @@ WPS_SetParamIntValue
 {
  
     /* check the parameter name and set the corresponding value */
-
-    if (AnscEqualString(ParamName, "X_CISCO_COM_WpsPushButton", TRUE))
-    {
+#ifdef FEATURE_SUPPORT_WPS
+    if (AnscEqualString(ParamName, "X_CISCO_COM_WpsPushButton", TRUE)) {
         return TRUE;
     }
-
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
+#else
+    wifi_util_info_print(WIFI_DMCLI, "%s:%d: WPS not supported\n", __func__, __LINE__);
+#endif
     return FALSE;
 }
 
-/**********************************************************************  
 
-    caller:     owner of this object 
+    /**********************************************************************
 
-    prototype: 
+        caller:     owner of this object
 
-        BOOL
-        WPS_SetParamUlongValue
-            (
-                ANSC_HANDLE                 hInsContext,
-                char*                       ParamName,
-                ULONG                       uValue
-            );
+        prototype:
 
-    description:
+            BOOL
+            WPS_SetParamUlongValue
+                (
+                    ANSC_HANDLE                 hInsContext,
+                    char*                       ParamName,
+                    ULONG                       uValue
+                );
 
-        This function is called to set ULONG parameter value; 
+        description:
 
-    argument:   ANSC_HANDLE                 hInsContext,
-                The instance handle;
+            This function is called to set ULONG parameter value;
 
-                char*                       ParamName,
-                The parameter name;
+        argument:   ANSC_HANDLE                 hInsContext,
+                    The instance handle;
 
-                ULONG                       uValue
-                The updated ULONG value;
+                    char*                       ParamName,
+                    The parameter name;
 
-    return:     TRUE if succeeded.
+                    ULONG                       uValue
+                    The updated ULONG value;
 
-**********************************************************************/
-BOOL
-WPS_SetParamUlongValue
-    (
-        ANSC_HANDLE                 hInsContext,
-        char*                       ParamName,
-        ULONG                       uValue
-    )
-{
-    UNREFERENCED_PARAMETER(hInsContext);
-    UNREFERENCED_PARAMETER(ParamName);
-    UNREFERENCED_PARAMETER(uValue);
-    /* check the parameter name and set the corresponding value */
+        return:     TRUE if succeeded.
 
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
-    return FALSE;
-}
-
-/**********************************************************************  
-
-    caller:     owner of this object 
-
-    prototype: 
-
-        BOOL
-        WPS_SetParamStringValue
-            (
-                ANSC_HANDLE                 hInsContext,
-                char*                       ParamName,
-                char*                       pString
-            );
-
-    description:
-
-        This function is called to set string parameter value; 
-
-    argument:   ANSC_HANDLE                 hInsContext,
-                The instance handle;
-
-                char*                       ParamName,
-                The parameter name;
-
-                char*                       pString
-                The updated string value;
-
-    return:     TRUE if succeeded.
-
-**********************************************************************/
-BOOL
-WPS_SetParamStringValue
-    (
-        ANSC_HANDLE                 hInsContext,
-        char*                       ParamName,
-        char*                       pString
-    )
-{
-    wifi_vap_info_t *pcfg = (wifi_vap_info_t *)hInsContext;
-    if (pcfg == NULL)
+    **********************************************************************/
+    BOOL WPS_SetParamUlongValue(ANSC_HANDLE hInsContext, char *ParamName, ULONG uValue)
     {
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
-        return FALSE;
-    }
-    uint8_t instance_number = convert_vap_name_to_index(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop, pcfg->vap_name)+1;
-    wifi_vap_info_t *vapInfo = (wifi_vap_info_t *) get_dml_cache_vap_info(instance_number-1);
+        UNREFERENCED_PARAMETER(hInsContext);
+        UNREFERENCED_PARAMETER(ParamName);
+        UNREFERENCED_PARAMETER(uValue);
+        /* check the parameter name and set the corresponding value */
 
-    if (vapInfo == NULL)
-    {
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Unable to get VAP info for instance_number:%d\n", __FUNCTION__,__LINE__,instance_number);
+        /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
         return FALSE;
     }
 
-    /* check the parameter name and set the corresponding value */
-    if( AnscEqualString(ParamName, "ConfigMethodsEnabled", TRUE))
-    {
-        int match = 0;
+    /**********************************************************************
 
-        if (isVapSTAMesh(pcfg->vap_index)) {
-            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d %s does not support configuration\n", __FUNCTION__,__LINE__,pcfg->vap_name);
+        caller:     owner of this object
+
+        prototype:
+
+            BOOL
+            WPS_SetParamStringValue
+                (
+                    ANSC_HANDLE                 hInsContext,
+                    char*                       ParamName,
+                    char*                       pString
+                );
+
+        description:
+
+            This function is called to set string parameter value;
+
+        argument:   ANSC_HANDLE                 hInsContext,
+                    The instance handle;
+
+                    char*                       ParamName,
+                    The parameter name;
+
+                    char*                       pString
+                    The updated string value;
+
+        return:     TRUE if succeeded.
+
+    **********************************************************************/
+    BOOL WPS_SetParamStringValue(ANSC_HANDLE hInsContext, char *ParamName, char *pString)
+    {
+#ifdef FEATURE_SUPPORT_WPS
+        wifi_vap_info_t *pcfg = (wifi_vap_info_t *)hInsContext;
+        if (pcfg == NULL) {
+            wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Null pointer get fail\n", __FUNCTION__,
+                __LINE__);
+            return FALSE;
+        }
+        uint8_t instance_number = convert_vap_name_to_index(
+                                      &((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop,
+                                      pcfg->vap_name) +
+            1;
+        wifi_vap_info_t *vapInfo = (wifi_vap_info_t *)get_dml_cache_vap_info(instance_number - 1);
+
+        if (vapInfo == NULL) {
+            wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Unable to get VAP info for instance_number:%d\n",
+                __FUNCTION__, __LINE__, instance_number);
+            return FALSE;
+        }
+        /* check the parameter name and set the corresponding value */
+        if (AnscEqualString(ParamName, "ConfigMethodsEnabled", TRUE)) {
+            int match = 0;
+
+            if (isVapSTAMesh(pcfg->vap_index)) {
+                wifi_util_dbg_print(WIFI_DMCLI, "%s:%d %s does not support configuration\n",
+                    __FUNCTION__, __LINE__, pcfg->vap_name);
+                return TRUE;
+            }
+            // Needs to initialize by 0 before setting
+            vapInfo->u.bss_info.wps.methods = 0;
+            /* save update to backup */
+            if (_ansc_strstr(pString, "USBFlashDrive")) {
+                match++;
+                vapInfo->u.bss_info.wps.methods = (vapInfo->u.bss_info.wps.methods |
+                    WIFI_ONBOARDINGMETHODS_USBFLASHDRIVE);
+            }
+            if (_ansc_strstr(pString, "Ethernet")) {
+                match++;
+                vapInfo->u.bss_info.wps.methods = (vapInfo->u.bss_info.wps.methods |
+                    WIFI_ONBOARDINGMETHODS_ETHERNET);
+            }
+            if (_ansc_strstr(pString, "ExternalNFCToken")) {
+                match++;
+                vapInfo->u.bss_info.wps.methods = (vapInfo->u.bss_info.wps.methods |
+                    WIFI_ONBOARDINGMETHODS_EXTERNALNFCTOKEN);
+            }
+            if (_ansc_strstr(pString, "IntegratedNFCToken")) {
+                match++;
+                vapInfo->u.bss_info.wps.methods = (vapInfo->u.bss_info.wps.methods |
+                    WIFI_ONBOARDINGMETHODS_INTEGRATEDNFCTOKEN);
+            }
+            if (_ansc_strstr(pString, "NFCInterface")) {
+                match++;
+                vapInfo->u.bss_info.wps.methods = (vapInfo->u.bss_info.wps.methods |
+                    WIFI_ONBOARDINGMETHODS_NFCINTERFACE);
+            }
+            if (_ansc_strstr(pString, "PushButton")) {
+                match++;
+                vapInfo->u.bss_info.wps.methods = (vapInfo->u.bss_info.wps.methods |
+                    WIFI_ONBOARDINGMETHODS_PUSHBUTTON);
+            }
+            if (_ansc_strstr(pString, "PIN")) {
+                match++;
+                vapInfo->u.bss_info.wps.methods = (vapInfo->u.bss_info.wps.methods |
+                    WIFI_ONBOARDINGMETHODS_PIN);
+            }
+            if (_ansc_strstr(pString, "NONE")) {
+                match++;
+                vapInfo->u.bss_info.wps.methods = 0;
+                set_dml_cache_vap_config_changed(instance_number - 1);
+            }
+
+            // If match is not there then return error
+            if (match == 0) { // Might have passed value that is invalid
+                return FALSE;
+            }
+            if (vapInfo->u.bss_info.wps.methods != 0) {
+                set_dml_cache_vap_config_changed(instance_number - 1);
+            }
             return TRUE;
         }
-        //Needs to initialize by 0 before setting
-        vapInfo->u.bss_info.wps.methods = 0;
-        /* save update to backup */
-        if (_ansc_strstr(pString, "USBFlashDrive"))
-        {
-            match++;
-            vapInfo->u.bss_info.wps.methods = (vapInfo->u.bss_info.wps.methods  | WIFI_ONBOARDINGMETHODS_USBFLASHDRIVE);
+
+        if (AnscEqualString(ParamName, "X_CISCO_COM_ClientPin", TRUE)) {
+            if ((strlen(pString) >= 4) && (strlen(pString) <= 8)) {
+                push_wps_pin_dml_to_ctrl_queue((instance_number - 1), pString);
+            } else {
+                return FALSE;
+            }
+            return TRUE;
         }
-        if (_ansc_strstr(pString, "Ethernet"))
-        {
-            match++;
-            vapInfo->u.bss_info.wps.methods = (vapInfo->u.bss_info.wps.methods  | WIFI_ONBOARDINGMETHODS_ETHERNET);
-        }
-        if (_ansc_strstr(pString, "ExternalNFCToken"))
-        {
-            match++;
-            vapInfo->u.bss_info.wps.methods = (vapInfo->u.bss_info.wps.methods  | WIFI_ONBOARDINGMETHODS_EXTERNALNFCTOKEN);
-        }
-        if (_ansc_strstr(pString, "IntegratedNFCToken"))
-        {
-            match++;
-            vapInfo->u.bss_info.wps.methods = (vapInfo->u.bss_info.wps.methods  | WIFI_ONBOARDINGMETHODS_INTEGRATEDNFCTOKEN);
-        }
-        if (_ansc_strstr(pString, "NFCInterface"))
-        {
-            match++;
-            vapInfo->u.bss_info.wps.methods = (vapInfo->u.bss_info.wps.methods  | WIFI_ONBOARDINGMETHODS_NFCINTERFACE);
-        }
-        if (_ansc_strstr(pString, "PushButton"))
-        {
-            match++;
-            vapInfo->u.bss_info.wps.methods = (vapInfo->u.bss_info.wps.methods  | WIFI_ONBOARDINGMETHODS_PUSHBUTTON);
-        }
-        if (_ansc_strstr(pString, "PIN"))
-        {
-            match++;
-            vapInfo->u.bss_info.wps.methods = (vapInfo->u.bss_info.wps.methods  | WIFI_ONBOARDINGMETHODS_PIN);
-        }
-        if (_ansc_strstr(pString, "NONE"))
-        {
-            match++;
-            vapInfo->u.bss_info.wps.methods = 0;
-            set_dml_cache_vap_config_changed(instance_number - 1);
-        }
-
-        //If match is not there then return error
-        if (match == 0)
-        {   // Might have passed value that is invalid
-            return FALSE;
-        }
-        if (vapInfo->u.bss_info.wps.methods != 0)
-        {
-            set_dml_cache_vap_config_changed(instance_number - 1);
-        }
-        return TRUE;
-    }
-
-    if (AnscEqualString(ParamName, "X_CISCO_COM_ClientPin", TRUE))
-    {
-        if ((strlen(pString) >= 4) && (strlen(pString) <= 8)) {
-            push_wps_pin_dml_to_ctrl_queue((instance_number - 1), pString);
-        } else {
-            return FALSE;
-        }
-        return TRUE;
-    }
-
-
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
-    return FALSE;
-}
-
-/**********************************************************************  
-
-    caller:     owner of this object 
-
-    prototype: 
-
-        BOOL
-        WPS_Validate
-            (
-                ANSC_HANDLE                 hInsContext,
-                char*                       pReturnParamName,
-                ULONG*                      puLength
-            );
-
-    description:
-
-        This function is called to finally commit all the update.
-
-    argument:   ANSC_HANDLE                 hInsContext,
-                The instance handle;
-
-                char*                       pReturnParamName,
-                The buffer (128 bytes) of parameter name if there's a validation. 
-
-                ULONG*                      puLength
-                The output length of the param name. 
-
-    return:     TRUE if there's no validation.
-
-**********************************************************************/
-BOOL
-WPS_Validate
-    (
-        ANSC_HANDLE                 hInsContext,
-        char*                       pReturnParamName,
-        ULONG*                      puLength
-    )
-{
-    wifi_vap_info_t *pcfg = (wifi_vap_info_t *)hInsContext;
-    if (pcfg == NULL)
-    {
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
-        return FALSE;
-    }
-    uint8_t instance_number = convert_vap_name_to_index(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop, pcfg->vap_name)+1;
-    INT wlanIndex =  -1;
-    wlanIndex = instance_number -1;
-    dml_vap_default *cfg = (dml_vap_default *) get_vap_default(wlanIndex);
-    wifi_vap_info_t *vapInfo = (wifi_vap_info_t *) get_dml_cache_vap_info(instance_number-1);
-
-    if (wifiApIsSecmodeOpenForPrivateAP(wlanIndex) != ANSC_STATUS_SUCCESS)
-    {
+#else
+        wifi_util_info_print(WIFI_DMCLI, "%s:%d WPS is not supported\n", __FUNCTION__, __LINE__);
+#endif
         return FALSE;
     }
 
-    if (vapInfo->u.bss_info.wpsPushButton == true)
-    {
-        if (vapInfo->u.bss_info.wps.enable == false)
-        {
-            CcspWifiTrace(("RDK_LOG_ERROR,(%s) WPS is not enabled for vap %d\n", __func__, wlanIndex));
+    /**********************************************************************
 
-            vapInfo->u.bss_info.wpsPushButton = false;
+        caller:     owner of this object
+
+        prototype:
+
+            BOOL
+            WPS_Validate
+                (
+                    ANSC_HANDLE                 hInsContext,
+                    char*                       pReturnParamName,
+                    ULONG*                      puLength
+                );
+
+        description:
+
+            This function is called to finally commit all the update.
+
+        argument:   ANSC_HANDLE                 hInsContext,
+                    The instance handle;
+
+                    char*                       pReturnParamName,
+                    The buffer (128 bytes) of parameter name if there's a validation.
+
+                    ULONG*                      puLength
+                    The output length of the param name.
+
+        return:     TRUE if there's no validation.
+
+    **********************************************************************/
+    BOOL WPS_Validate(ANSC_HANDLE hInsContext, char *pReturnParamName, ULONG *puLength)
+    {
+#ifdef FEATURE_SUPPORT_WPS
+        wifi_vap_info_t *pcfg = (wifi_vap_info_t *)hInsContext;
+        if (pcfg == NULL) {
+            wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Null pointer get fail\n", __FUNCTION__,
+                __LINE__);
             return FALSE;
         }
+        uint8_t instance_number = convert_vap_name_to_index(
+                                      &((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop,
+                                      pcfg->vap_name) +
+            1;
+        INT wlanIndex = -1;
+        wlanIndex = instance_number - 1;
+        dml_vap_default *cfg = (dml_vap_default *)get_vap_default(wlanIndex);
+        wifi_vap_info_t *vapInfo = (wifi_vap_info_t *)get_dml_cache_vap_info(instance_number - 1);
 
-        if ((cfg->wps_methods & WIFI_ONBOARDINGMETHODS_PUSHBUTTON) == 0)
-        {
-            CcspWifiTrace(("RDK_LOG_ERROR,(%s) WPS PBC is not configured for vap %d\n", __func__, wlanIndex));
-
-            vapInfo->u.bss_info.wpsPushButton = false;
+        if (wifiApIsSecmodeOpenForPrivateAP(wlanIndex) != ANSC_STATUS_SUCCESS) {
             return FALSE;
         }
+        if (vapInfo->u.bss_info.wpsPushButton == true) {
+            if (vapInfo->u.bss_info.wps.enable == false) {
+                CcspWifiTrace(
+                    ("RDK_LOG_ERROR,(%s) WPS is not enabled for vap %d\n", __func__, wlanIndex));
+
+                vapInfo->u.bss_info.wpsPushButton = false;
+                return FALSE;
+            }
+
+            if ((cfg->wps_methods & WIFI_ONBOARDINGMETHODS_PUSHBUTTON) == 0) {
+                CcspWifiTrace(("RDK_LOG_ERROR,(%s) WPS PBC is not configured for vap %d\n",
+                    __func__, wlanIndex));
+
+                vapInfo->u.bss_info.wpsPushButton = false;
+                return FALSE;
+            }
+        }
+        return TRUE;
+#endif
+        return FALSE;
     }
-    return TRUE;
-}
 
-/**********************************************************************  
+    /**********************************************************************
 
-    caller:     owner of this object 
+        caller:     owner of this object
 
-    prototype: 
+        prototype:
 
-        ULONG
-        WPS_Commit
-            (
-                ANSC_HANDLE                 hInsContext
-            );
+            ULONG
+            WPS_Commit
+                (
+                    ANSC_HANDLE                 hInsContext
+                );
 
-    description:
+        description:
 
-        This function is called to finally commit all the update.
+            This function is called to finally commit all the update.
 
-    argument:   ANSC_HANDLE                 hInsContext,
-                The instance handle;
+        argument:   ANSC_HANDLE                 hInsContext,
+                    The instance handle;
 
-    return:     The status of the operation.
+        return:     The status of the operation.
 
-**********************************************************************/
-ULONG
-WPS_Commit
-    (
-        ANSC_HANDLE                 hInsContext
-    )
-{
-    wifi_vap_info_t *pcfg = (wifi_vap_info_t *)hInsContext;
-    uint8_t instance_number = convert_vap_name_to_index(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop, pcfg->vap_name)+1;
-    INT wlanIndex = instance_number -1;
-    wifi_vap_info_t *vapInfo = (wifi_vap_info_t *) get_dml_cache_vap_info(instance_number-1);
-
-    if (vapInfo->u.bss_info.wpsPushButton == true)
+    **********************************************************************/
+    ULONG
+    WPS_Commit(ANSC_HANDLE hInsContext)
     {
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:Activate push button for vap %d\n",__func__, __LINE__, wlanIndex);
-        push_event_to_ctrl_queue(&wlanIndex, sizeof(wlanIndex), wifi_event_type_command, wifi_event_type_command_wps, NULL);
-        vapInfo->u.bss_info.wpsPushButton = false;
+#ifdef FEATURE_SUPPORT_WPS
+        wifi_vap_info_t *pcfg = (wifi_vap_info_t *)hInsContext;
+        uint8_t instance_number = convert_vap_name_to_index(
+                                      &((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop,
+                                      pcfg->vap_name) +
+            1;
+        INT wlanIndex = instance_number - 1;
+        wifi_vap_info_t *vapInfo = (wifi_vap_info_t *)get_dml_cache_vap_info(instance_number - 1);
+        if (vapInfo->u.bss_info.wpsPushButton == true) {
+            wifi_util_dbg_print(WIFI_DMCLI, "%s:%d:Activate push button for vap %d\n", __func__,
+                __LINE__, wlanIndex);
+            push_event_to_ctrl_queue(&wlanIndex, sizeof(wlanIndex), wifi_event_type_command,
+                wifi_event_type_command_wps, NULL);
+            vapInfo->u.bss_info.wpsPushButton = false;
+        }
+        return TRUE;
+#endif
+        return FALSE;
     }
 
-    return TRUE;
-}
+    /**********************************************************************
 
-/**********************************************************************  
+        caller:     owner of this object
 
-    caller:     owner of this object 
+        prototype:
 
-    prototype: 
+            ULONG
+            WPS_Rollback
+                (
+                    ANSC_HANDLE                 hInsContext
+                );
 
-        ULONG
-        WPS_Rollback
-            (
-                ANSC_HANDLE                 hInsContext
-            );
+        description:
 
-    description:
+            This function is called to roll back the update whenever there's a
+            validation found.
 
-        This function is called to roll back the update whenever there's a 
-        validation found.
+        argument:   ANSC_HANDLE                 hInsContext,
+                    The instance handle;
 
-    argument:   ANSC_HANDLE                 hInsContext,
-                The instance handle;
+        return:     The status of the operation.
 
-    return:     The status of the operation.
-
-**********************************************************************/
-ULONG
-WPS_Rollback
-    (
-        ANSC_HANDLE                 hInsContext
-    )
-{
-    UNREFERENCED_PARAMETER(hInsContext);
-    return ANSC_STATUS_SUCCESS;
-}
+    **********************************************************************/
+    ULONG
+    WPS_Rollback(ANSC_HANDLE hInsContext)
+    {
+        UNREFERENCED_PARAMETER(hInsContext);
+        return ANSC_STATUS_SUCCESS;
+    }
 
 /**********************************************************************
 
@@ -12217,7 +12190,6 @@ BOOL
 IsValidMacAddress(char *mac)
 {
     int iter = 0, len = 0;
-
     len = strlen(mac);
     if(len != MAC_ADDR_LEN) {
 	CcspWifiTrace(("RDK_LOG_ERROR, (%s) MACAddress is not valid!!!\n", __func__));
