@@ -40,6 +40,14 @@
 #define ASSOCIATED_DEVICE_DIAG_INTERVAL_MS 5000 //5 seconds
 #define MAX_RESET_RADIO_PARAMS_RETRY_COUNTER  (5000 / 100)
 
+#define MAC_FMT "%02x:%02x:%02x:%02x:%02x:%02x"
+#define MAC_ARG(arg) \
+    arg[0], \
+    arg[1], \
+    arg[2], \
+    arg[3], \
+    arg[4], \
+    arg[5]
 
 static unsigned msg_id = 1000;
 
@@ -3106,10 +3114,14 @@ void process_send_action_frame_command(void *data, unsigned int len)
 
     params = (action_frame_params_t *)data;
 
-    if (wifi_sendActionFrame(params->ap_index, params->dest_addr, params->frequency,
-            params->frame_data, params->frame_len)) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d HAL sendActionFrame method failed :\r\n", __func__,
-            __LINE__);
+    if (wifi_sendActionFrameExt(params->ap_index, params->dest_addr, params->frequency,
+            params->wait_time_ms, params->frame_data, params->frame_len)) {
+
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d HAL sendActionFrame method failed (ap_index:%d, dest_addr:" MAC_FMT
+            ", frequency:%d, wait_time_ms:%d)\n",
+            __func__, __LINE__, params->ap_index, MAC_ARG(params->dest_addr), params->frequency,
+            params->wait_time_ms);
         return;
     }
 
