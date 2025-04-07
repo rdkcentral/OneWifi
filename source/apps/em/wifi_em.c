@@ -46,7 +46,7 @@ static int em_rssi_to_rcpi(int rssi)
 
 static int em_get_radio_index_from_mac(mac_addr_t ruuid)
 {
-    unsigned num_of_radios = getNumberRadios();
+    unsigned int num_of_radios = getNumberRadios();
     wifi_vap_info_map_t *vap_map;
 
     for (int i = 0; i < num_of_radios; i++) {
@@ -870,7 +870,7 @@ static int em_process_scan_init_command(unsigned int radio_index, channel_scan_r
     wifi_monitor_data_t *data;
     int valid_chan_count = 0;
     char country[8] = { 0 };
-    unsigned global_op_class;
+    unsigned int global_op_class;
 
     wifi_util_dbg_print(WIFI_EM, "%s:%d radio_index: %d \n", __func__, __LINE__, radio_index);
 
