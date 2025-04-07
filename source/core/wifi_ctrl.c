@@ -117,61 +117,6 @@ static int wifi_radio_set_enable(bool status)
     return ret;
 }
 
-
-static int client_connect_selfheal(void* arg)
-{
-    static const char* mac_addresses[128] = {
-       "AA:BB:CC:DD:EE:FF", "A1:B1:C1:D1:E1:F1", "A2:B2:C2:D2:E2:F2", "A3:B3:C3:D3:E3:F3",
-        "A4:B4:C4:D4:E4:F4", "A5:B5:C5:D5:E5:F5", "A6:B6:C6:D6:E6:F6", "A7:B7:C7:D7:E7:F7",
-        "A8:B8:C8:D8:E8:F8", "A9:B9:C9:D9:E9:F9", "AA:BA:CA:DA:EA:FA", "AB:BB:CB:DB:EB:FB",
-        "AC:BC:CC:DC:EC:FC", "AD:BD:CD:DD:ED:FD", "AE:BE:CE:DE:EE:FE", "AF:BF:CF:DF:EF:FF",
-        "B0:B1:B2:B3:B4:B5", "B6:B7:B8:B9:BA:BB", "BC:BD:BE:BF:C0:C1", "C2:C3:C4:C5:C6:C7",
-        "C8:C9:CA:CB:CC:CD", "CE:CF:D0:D1:D2:D3", "D4:D5:D6:D7:D8:D9", "DA:DB:DC:DD:DE:DF",
-        "E0:E1:E2:E3:E4:E5", "E6:E7:E8:E9:EA:EB", "EC:ED:EE:EF:F0:F1", "F2:F3:F4:F5:F6:F7",
-        "F8:F9:FA:FB:FC:FD", "FE:FF:00:01:02:03", "04:05:06:07:08:09", "0A:0B:0C:0D:0E:0F",
-        "10:11:12:13:14:15", "16:17:18:19:1A:1B", "1C:1D:1E:1F:20:21", "22:23:24:25:26:27",
-        "28:29:2A:2B:2C:2D", "2E:2F:30:31:32:33", "34:35:36:37:38:39", "3A:3B:3C:3D:3E:3F",
-        "40:41:42:43:44:45", "46:47:48:49:4A:4B", "4C:4D:4E:4F:50:51", "52:53:54:55:56:57",
-        "58:59:5A:5B:5C:5D", "5E:5F:60:61:62:63", "64:65:66:67:68:69", "6A:6B:6C:6D:6E:6F",
-        "70:71:72:73:74:75", "76:77:78:79:7A:7B", "7C:7D:7E:7F:80:81", "82:83:84:85:86:87",
-        "88:89:8A:8B:8C:8D", "8E:8F:90:91:92:93", "94:95:96:97:98:99", "9A:9B:9C:9D:9E:9F",
-        "A0:A1:A2:A3:A4:A5", "A6:A7:A8:A9:AA:AB", "AC:AD:AE:AF:B0:B1", "B2:B3:B4:B5:B6:B7",
-        "B8:B9:BA:BB:BC:BD", "BE:BF:C0:C1:C2:C3", "C4:C5:C6:C7:C8:C9", "CA:CB:CC:CD:CE:CF"
-       
-    };
-    static int i = 0;
-
-    for (i = 0; i < 64; i++) {
-        char mac[18];
-        strcpy(mac, mac_addresses[i]);
-        if (wifi_hal_addApAclDevice(9, mac) != RETURN_OK) 
-        {
-            wifi_util_dbg_print(WIFI_MGR, "%s:%d: POORNA SIMULATOR wifi_addApAclDevice failed for MAC %s.\n", __func__, __LINE__, mac);
-            return -1;
-        }
-        wifi_util_dbg_print(WIFI_MGR, "%s:%d: POORNA SIMULATOR wifi_addApAclDevice passed for MAC %s.\n", __func__, __LINE__, mac);
-        if (wifi_hal_addApAclDevice(5, mac) != RETURN_OK) 
-        {
-            wifi_util_dbg_print(WIFI_MGR, "%s:%d: POORNA SIMULATOR wifi_addApAclDevice failed for MAC %s.\n", __func__, __LINE__, mac);
-            return -1;
-        }
-        if (wifi_hal_addApAclDevice(18, mac) != RETURN_OK) 
-        {
-            wifi_util_dbg_print(WIFI_MGR, "%s:%d: POORNA SIMULATOR wifi_addApAclDevice failed for MAC %s.\n", __func__, __LINE__, mac);
-            return -1;
-        }
-        wifi_util_dbg_print(WIFI_MGR, "%s:%d: POORNA SIMULATOR wifi_addApAclDevice passed for MAC %s.\n", __func__, __LINE__, mac);
-        if (wifi_hal_addApAclDevice(20, mac) != RETURN_OK) 
-        {
-            wifi_util_dbg_print(WIFI_MGR, "%s:%d: POORNA SIMULATOR wifi_addApAclDevice failed for MAC %s.\n", __func__, __LINE__, mac);
-            return -1;
-        }
-        wifi_util_dbg_print(WIFI_MGR, "%s:%d: POORNA SIMULATOR wifi_addApAclDevice passed for MAC %s.\n", __func__, __LINE__, mac);
-    }
-    
-    return 0;
-}
-
 int get_ap_index_from_clientmac(mac_address_t mac_addr)
 {
     unsigned int r_itr = 0, v_itr = 0, vap_index = 0;
@@ -2199,7 +2144,6 @@ static void ctrl_queue_timeout_scheduler_tasks(wifi_ctrl_t *ctrl)
 
     scheduler_add_timer_task(ctrl->sched, FALSE, NULL, bus_check_and_subscribe_events, NULL, (ctrl->poll_period * 1000), 0, FALSE);
     scheduler_add_timer_task(ctrl->sched, FALSE, NULL, pending_states_webconfig_analyzer, NULL, (ctrl->poll_period * 1000), 0, FALSE);
-    scheduler_add_timer_task(ctrl->sched, false, NULL, client_connect_selfheal, NULL, 5000, 0, false);
 #if defined (FEATURE_SUPPORT_ACL_SELFHEAL)
     scheduler_add_timer_task(ctrl->sched, FALSE, NULL, sync_wifi_hal_hotspot_vap_mac_entry, NULL, (HOTSPOT_VAP_MAC_FILTER_ENTRY_SYNC * 1000), 0, FALSE);
 #endif
