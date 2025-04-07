@@ -139,9 +139,9 @@ static int client_connect_selfheal(void* arg)
         "B8:B9:BA:BB:BC:BD", "BE:BF:C0:C1:C2:C3", "C4:C5:C6:C7:C8:C9", "CA:CB:CC:CD:CE:CF"
        
     };
-    static int current_index = 0;
+    static int i = 0;
 
-    for (int i = 0; i < 64; i++) {
+    for (i = 0; i < 64; i++) {
         char mac[18];
         strcpy(mac, mac_addresses[i]);
         if (wifi_hal_addApAclDevice(9, mac) != RETURN_OK) 
