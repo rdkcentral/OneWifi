@@ -1,0 +1,54 @@
+include $(TOPDIR)/rules.mk
+
+PKG_NAME:=easymesh
+PKG_VERSION:=1.0
+PKG_RELEASE:=1
+
+include $(INCLUDE_DIR)/package.mk
+
+define Package/easymesh
+  SECTION:=base
+  CATEGORY:=Base system
+  TITLE:=EasyMesh
+  DEPENDS:=+avro-c +libopenssl +cJSON +libev +libnl +libnl-genl +libnl-route +libuuid +libstdcpp 
+endef
+
+define Package/easymesh/description
+  A simple EasyMesh utility package.
+endef
+
+TARGET_CFLAGS+= -ggdb3 -O0 -static -nostdinc++ -nodefaultlibs -Wl,--stack,2097152
+TARGET_LDFLAGS+= -lgcc -lc -luClibc++
+
+define Build/Prepare
+	echo "Preparing Easymesh..."
+	mkdir -p $(PKG_BUILD_DIR)
+	$(CP) -r ./OneWifi $(PKG_BUILD_DIR)/
+	$(CP) -r ./unified-wifi-mesh $(PKG_BUILD_DIR)/
+	$(CP) -r ./halinterface $(PKG_BUILD_DIR)/
+	$(CP) -r ./rdk-wifi-hal $(PKG_BUILD_DIR)/
+	$(CP) -r ./rdk-wifi-libhostap $(PKG_BUILD_DIR)/
+	$(CP) -r ./OneWifi/install $(PKG_BUILD_DIR)/
+	$(CP) -r ./OneWifi/install/bin $(PKG_BUILD_DIR)/
+endef
+
+define Build/Compile
+	echo "Compiling OneWifi..."
+	CFLAGS="$(TARGET_CPPFLAGS) $(TARGET_CFLAGS) $(TARGET_LDFLAGS)" \
+	$(MAKE) $(PKG_JOBS) -C $(PKG_BUILD_DIR)/OneWifi/build/openwrt/  \
+		$(TARGET_CONFIGURE_OPTS)
+
+	echo "Compiling Easymesh AGENT..."
+	CFLAGS="$(TARGET_CPPFLAGS) $(TARGET_CFLAGS) $(TARGET_LDFLAGS) $(STAGING_DIR)" \
+	$(MAKE) $(PKG_JOBS) -C $(PKG_BUILD_DIR)/unified-wifi-mesh/build/openwrt/agent/  \
+		$(TARGET_CONFIGURE_OPTS)
+endef
+
+define Package/easymesh/install
+	$(INSTALL_DIR) $(1)/usr/bin
+	# Assume onewifi executable is the output
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/unified-wifi-mesh/install/bin/onewifi_em_agent $(1)/usr/bin/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/OneWifi/install/bin/OneWifi $(1)/usr/bin/
+endef
+
+$(eval $(call BuildPackage,easymesh))
