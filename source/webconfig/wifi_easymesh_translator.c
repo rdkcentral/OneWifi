@@ -1704,7 +1704,7 @@ webconfig_error_t translate_channel_stats_to_easymesh_channel_info(webconfig_sub
         em_scan_result.aggr_scan_duration = 0;
         em_scan_result.scan_type = 0;
 
-        for (j = 0; j < src->num_neighbors && j < EM_MAX_NEIGHORS; j++) {
+        for (j = 0; j < src->num_neighbors && j < EM_MAX_NEIGHBORS; j++) {
             neighbor_bss_t *src_neighbor = &src->neighbors[j];
             em_neighbor_t *dst_neighbor = &em_scan_result.neighbor[j];
 

@@ -120,7 +120,9 @@ static char *ApIsolationEnable    = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiF
 static char *BeaconRateCtl   = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.Radio.AccessPoint.%d.BeaconRateCtl";
 static char *BSSTransitionActivated    = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.BSSTransitionActivated";
 static char *BssHotSpot        = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.HotSpot";
+#ifdef FEATURE_SUPPORT_WPS
 static char *WpsPushButton = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.WpsPushButton";
+#endif
 static char *RapidReconnThreshold        = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.RapidReconnThreshold";
 static char *RapidReconnCountEnable      = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.RapidReconnCountEnable";
 static char *vAPStatsEnable = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.vAPStatsEnable";
@@ -993,9 +995,11 @@ void callback_Wifi_VAP_Config(ovsdb_update_monitor_t *mon,
             l_bss_param_cfg->wmmNoAck = new_rec->wmm_noack;
             l_bss_param_cfg->wepKeyLength = new_rec->wep_key_length;
             l_bss_param_cfg->bssHotspot = new_rec->bss_hotspot;
+#if defined(FEATURE_SUPPORT_WPS)
             l_bss_param_cfg->wpsPushButton = new_rec->wps_push_button;
             l_bss_param_cfg->wps.methods = new_rec->wps_config_methods;
             l_bss_param_cfg->wps.enable = new_rec->wps_enabled;
+#endif
             if (strlen(new_rec->beacon_rate_ctl) != 0) {
                 strncpy(l_bss_param_cfg->beaconRateCtl, new_rec->beacon_rate_ctl,(sizeof(l_bss_param_cfg->beaconRateCtl)-1));
             }
@@ -1139,11 +1143,13 @@ void callback_Wifi_Global_Config(ovsdb_update_monitor_t *mon,
         g_wifidb->global_config.global_parameters.wifi_active_msmt_num_samples = new_rec->wifi_active_msmt_num_samples;
         g_wifidb->global_config.global_parameters.wifi_active_msmt_sample_duration = new_rec->wifi_active_msmt_sample_duration;
         g_wifidb->global_config.global_parameters.vlan_cfg_version = new_rec->vlan_cfg_version;
+#ifdef FEATURE_SUPPORT_WPS
         if (strlen(new_rec->wps_pin) != 0) {
             strncpy(g_wifidb->global_config.global_parameters.wps_pin,new_rec->wps_pin,sizeof(g_wifidb->global_config.global_parameters.wps_pin)-1);
         } else {
             strcpy(g_wifidb->global_config.global_parameters.wps_pin, DEFAULT_WPS_PIN);
         }
+#endif
         g_wifidb->global_config.global_parameters.bandsteering_enable = new_rec->bandsteering_enable;
         g_wifidb->global_config.global_parameters.good_rssi_threshold = new_rec->good_rssi_threshold;
         g_wifidb->global_config.global_parameters.assoc_count_threshold = new_rec->assoc_count_threshold;
@@ -2551,15 +2557,11 @@ int wifidb_update_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
         cfg.wmm_noack = config->u.bss_info.wmmNoAck;
         cfg.wep_key_length = config->u.bss_info.wepKeyLength;
         cfg.bss_hotspot = config->u.bss_info.bssHotspot;
+#ifdef FEATURE_SUPPORT_WPS
         cfg.wps_push_button = config->u.bss_info.wpsPushButton;
         cfg.wps_config_methods = config->u.bss_info.wps.methods;
-#if defined(_CBR2_PRODUCT_REQ_)
-        if(config->u.bss_info.wps.enable != false) {
-            cfg.wps_enabled = false;
-        }
-#else
         cfg.wps_enabled = config->u.bss_info.wps.enable;
-#endif /* _CBR2_PRODUCT_REQ_ */
+#endif
         strncpy(cfg.beacon_rate_ctl,config->u.bss_info.beaconRateCtl,sizeof(cfg.beacon_rate_ctl)-1);
         strncpy(cfg.mfp_config,"Disabled",sizeof(cfg.mfp_config)-1);
         cfg.hostap_mgt_frame_ctrl = config->u.bss_info.hostap_mgt_frame_ctrl;
@@ -3019,11 +3021,13 @@ int wifidb_get_wifi_global_config(wifi_global_param_t *config)
         config->wifi_active_msmt_num_samples = pcfg->wifi_active_msmt_num_samples;
         config->wifi_active_msmt_sample_duration = pcfg->wifi_active_msmt_sample_duration;
         config->vlan_cfg_version = pcfg->vlan_cfg_version;
+#ifdef FEATURE_SUPPORT_WPS
         if (strlen(pcfg->wps_pin) != 0) {
             strncpy(config->wps_pin,pcfg->wps_pin,sizeof(config->wps_pin)-1);
         } else {
             strcpy(config->wps_pin, DEFAULT_WPS_PIN);
         }
+#endif
         config->bandsteering_enable = pcfg->bandsteering_enable;
         config->good_rssi_threshold = pcfg->good_rssi_threshold;
         config->assoc_count_threshold = pcfg->assoc_count_threshold;
@@ -4351,9 +4355,7 @@ static void wifidb_radio_config_upgrade(unsigned int index, wifi_radio_operation
     if (g_wifidb->db_version < ONEWIFI_DB_VERSION_IEEE80211BE_FLAG) {
         wifi_util_info_print(WIFI_DB, "%s:%d upgrade radio=%d config, old db version: %d total radios: %u\n",
             __func__, __LINE__, index, g_wifidb->db_version, total_radios);
-#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
         if (config->band != WIFI_FREQUENCY_2_4_BAND)
-#endif /*defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)*/
             config->variant |= WIFI_80211_VARIANT_BE;
         if(wifidb_update_wifi_radio_config(index, config, rdk_config) != RETURN_OK) {
             wifi_util_error_print(WIFI_DB,"%s:%d error in updating radio config\n", __func__,__LINE__);
@@ -4491,36 +4493,41 @@ void wifidb_vap_config_correction(wifi_vap_info_map_t *l_vap_map_param)
     for (index = 0; index < l_vap_map_param->num_vaps; index++) {
         vap_config = &l_vap_map_param->vap_array[index];
 
-        if ((isVapPrivate(vap_config->vap_index)) && (access(ONEWIFI_BSS_MAXASSOC_FLAG, F_OK) != 0) &&
+        if ((isVapPrivate(vap_config->vap_index)) &&
+            (access(ONEWIFI_BSS_MAXASSOC_FLAG, F_OK) != 0) &&
             (vap_config->u.bss_info.bssMaxSta != wifi_hal_cap_obj->wifi_prop.BssMaxStaAllow)) {
-                wifi_util_info_print(WIFI_DB, "%s:%d: Update bssMaxSta for private_vap:%d from %d to %d\r\n",
-                    __func__, __LINE__, vap_config->vap_index, vap_config->u.bss_info.bssMaxSta, wifi_hal_cap_obj->wifi_prop.BssMaxStaAllow);
-                vap_config->u.bss_info.bssMaxSta = wifi_hal_cap_obj->wifi_prop.BssMaxStaAllow;
+            wifi_util_info_print(WIFI_DB,
+                "%s:%d: Update bssMaxSta for private_vap:%d from %d to %d\r\n", __func__, __LINE__,
+                vap_config->vap_index, vap_config->u.bss_info.bssMaxSta,
+                wifi_hal_cap_obj->wifi_prop.BssMaxStaAllow);
+            vap_config->u.bss_info.bssMaxSta = wifi_hal_cap_obj->wifi_prop.BssMaxStaAllow;
 
-                rdk_vap_config = get_wifidb_rdk_vaps(vap_config->radio_index);
-                if (rdk_vap_config == NULL) {
-                    wifi_util_error_print(WIFI_DB, "%s:%d: failed to get rdk vaps for radio index %d\n", __func__, __LINE__, vap_config->radio_index);
-                } else {
-                    update_wifi_vap_info(vap_config->vap_name, vap_config, rdk_vap_config);
-                }
+            rdk_vap_config = get_wifidb_rdk_vaps(vap_config->radio_index);
+            if (rdk_vap_config == NULL) {
+                wifi_util_error_print(WIFI_DB, "%s:%d: failed to get rdk vaps for radio index %d\n",
+                    __func__, __LINE__, vap_config->radio_index);
+            } else {
+                update_wifi_vap_info(vap_config->vap_name, vap_config, rdk_vap_config);
+            }
         }
 
         if (isVapPrivate(vap_config->vap_index) &&
             is_sec_mode_personal(vap_config->u.bss_info.security.mode)) {
+#ifdef FEATURE_SUPPORT_WPS
             if (vap_config->u.bss_info.wps.enable == false) {
-#if !defined(NEWPLATFORM_PORT) && !defined(_SR213_PRODUCT_REQ_) && !defined(_CBR2_PRODUCT_REQ_)
                 vap_config->u.bss_info.wps.enable = true;
-
-                wifi_util_info_print(WIFI_DB, "%s:%d: force wps enabled for private_vap:%d\r\n",__func__, __LINE__, vap_config->vap_index);
-#endif
+                wifi_util_info_print(WIFI_DB, "%s:%d: force wps enabled for private_vap:%d\r\n",
+                    __func__, __LINE__, vap_config->vap_index);
             }
             continue;
+#endif
         }
         if (isVapLnfSecure(vap_config->vap_index) &&
             is_sec_mode_enterprise(vap_config->u.bss_info.security.mode)) {
             set_lnf_radius_server_ip(&vap_config->u.bss_info.security);
-            wifi_util_info_print(WIFI_DB,"%s:%d: Primary Ip and Secondry Ip: %s , %s\n", __func__, __LINE__, (char *)vap_config->u.bss_info.security.u.radius.ip,
-                                            (char *)vap_config->u.bss_info.security.u.radius.s_ip);
+            wifi_util_info_print(WIFI_DB, "%s:%d: Primary Ip and Secondry Ip: %s , %s\n", __func__,
+                __LINE__, (char *)vap_config->u.bss_info.security.u.radius.ip,
+                (char *)vap_config->u.bss_info.security.u.radius.s_ip);
             continue;
         }
     }
@@ -5727,9 +5734,11 @@ int wifidb_get_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
             config->u.bss_info.wmmNoAck = pcfg->wmm_noack;
             config->u.bss_info.wepKeyLength = pcfg->wep_key_length;
             config->u.bss_info.bssHotspot = pcfg->bss_hotspot;
+#if defined(FEATURE_SUPPORT_WPS)
             config->u.bss_info.wpsPushButton = pcfg->wps_push_button;
             config->u.bss_info.wps.methods = pcfg->wps_config_methods;
             config->u.bss_info.wps.enable = pcfg->wps_enabled;
+#endif
             if (strlen(pcfg->beacon_rate_ctl) != 0) {
                 strncpy(config->u.bss_info.beaconRateCtl, pcfg->beacon_rate_ctl,(sizeof(config->u.bss_info.beaconRateCtl)-1));
             }
@@ -6325,11 +6334,6 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #ifdef NEWPLATFORM_PORT
             cfg.variant |= WIFI_80211_VARIANT_AX;
 #endif /* NEWPLATFORM_PORT */
-#ifdef CONFIG_IEEE80211BE
-#if !(defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_))
-            cfg.variant |= WIFI_80211_VARIANT_BE;
-#endif /* !(defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)) */
-#endif /* CONFIG_IEEE80211BE */
 #if defined (_PP203X_PRODUCT_REQ_)
             cfg.beaconInterval = 200;
 #endif
@@ -6473,12 +6477,14 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
 {
     wifi_mgr_t *g_wifidb;
     g_wifidb = get_wifimgr_obj();
-    wifi_hal_capability_t *wifi_hal_cap_obj = rdk_wifi_get_hal_capability_map();
+    wifi_hal_capability_t *wifi_hal_cap_obj = &g_wifidb->hal_cap;
     unsigned int vap_array_index;
     unsigned int found = 0;
     wifi_vap_info_t cfg;
     char vap_name[BUFFER_LENGTH_WIFIDB] = {0};
+#ifdef FEATURE_SUPPORT_WPS
     char wps_pin[128] = {0};
+#endif
     char password[128] = {0};
     char radius_key[128] = {0};
     char ssid[128] = {0};
@@ -6594,10 +6600,10 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         if (isVapPrivate(vap_index)) {
             cfg.u.bss_info.vapStatsEnable = true;
             cfg.u.bss_info.wpsPushButton = 0;
-#if defined(NEWPLATFORM_PORT) || defined(_CBR2_PRODUCT_REQ_)
-            cfg.u.bss_info.wps.enable = false;
-#else
+#ifdef FEATURE_SUPPORT_WPS
             cfg.u.bss_info.wps.enable = true;
+#else
+            cfg.u.bss_info.wps.enable = false;
 #endif
             cfg.u.bss_info.rapidReconnectEnable = true;
         } else {
@@ -6686,18 +6692,18 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         cfg.vap_mode = wifi_vap_mode_ap;
         if (isVapPrivate(vap_index)) {
             cfg.u.bss_info.showSsid = true;
+#ifdef FEATURE_SUPPORT_WPS
             cfg.u.bss_info.wps.methods = WIFI_ONBOARDINGMETHODS_PUSHBUTTON;
             memset(wps_pin, 0, sizeof(wps_pin));
             if ((wifi_hal_get_default_wps_pin(wps_pin) == RETURN_OK) && ((strlen(wps_pin) != 0))) {
                 strcpy(cfg.u.bss_info.wps.pin, wps_pin);
             } else {
-#ifndef NEWPLATFORM_PORT
-                wifi_util_error_print(WIFI_DB, "%s:%d: Incorrect wps pin for vap '%s'\n", __func__, __LINE__, vap_name);
-#endif
+                wifi_util_error_print(WIFI_DB, "%s:%d: Incorrect wps pin for vap '%s'\n", __func__,
+                    __LINE__, vap_name);
                 strcpy(cfg.u.bss_info.wps.pin, "12345678");
             }
-        }
-        else if (isVapHotspot(vap_index)) {
+#endif
+        } else if (isVapHotspot(vap_index)) {
             cfg.u.bss_info.showSsid = true;
         } else {
             cfg.u.bss_info.showSsid = false;
@@ -7581,11 +7587,14 @@ int wifi_db_update_global_config(wifi_global_param_t *global_cfg)
     memset(strValue, 0, sizeof(strValue));
     str = p_ccsp_desc->psm_get_value_fn(WpsPin, strValue, sizeof(strValue));
     if (str != NULL) {
-        //global_cfg->wps_pin = atoi(str);
+        // global_cfg->wps_pin = atoi(str);
         strcpy(global_cfg->wps_pin, str);
-        wifi_util_dbg_print(WIFI_MGR,"global_cfg->wps_pin is %s and str is %s and atoi(str) is %d\n", global_cfg->wps_pin, str, atoi(str));
+        wifi_util_dbg_print(WIFI_MGR,
+            "global_cfg->wps_pin is %s and str is %s and atoi(str) is %d\n", global_cfg->wps_pin,
+            str, atoi(str));
     } else {
-        wifi_util_dbg_print(WIFI_MGR,":%s:%d str value for wps_pin:%s \r\n", __func__, __LINE__, str);
+        wifi_util_dbg_print(WIFI_MGR, ":%s:%d str value for wps_pin:%s \r\n", __func__, __LINE__,
+            str);
     }
 
     memset(strValue, 0, sizeof(strValue));
@@ -8198,6 +8207,7 @@ int get_vap_params_from_psm(unsigned int vap_index, wifi_vap_info_t *vap_config,
 
     memset(recName, 0, sizeof(recName));
     memset(strValue, 0, sizeof(strValue));
+#ifdef FEATURE_SUPPORT_WPS
     snprintf(recName, sizeof(recName), WpsPushButton, instance_number);
     str = p_ccsp_desc->psm_get_value_fn(recName, strValue, sizeof(strValue));
     if (str != NULL) {
@@ -8206,6 +8216,7 @@ int get_vap_params_from_psm(unsigned int vap_index, wifi_vap_info_t *vap_config,
     } else {
         wifi_util_dbg_print(WIFI_MGR,"%s:%d str value for wpsPushButton:%s \r\n", __func__, __LINE__, str);
     }
+#endif
 
     memset(recName, 0, sizeof(recName));
     memset(strValue, 0, sizeof(strValue));
@@ -8502,7 +8513,7 @@ int get_all_param_from_psm_and_set_into_db(void)
         memset(&data, 0, sizeof(raw_data_t));
         memset(last_reboot_reason, 0, sizeof(last_reboot_reason));
 
-        bus_handle_t handle;
+        bus_handle_t handle = {0};
         if (wifi_mgr_bus_subsription(&handle) == RETURN_OK) {
             if (get_bus_descriptor()->bus_data_get_fn(&handle, WIFI_PSM_DB_NAMESPACE, &data) ==
                 bus_error_success) {

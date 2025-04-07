@@ -2211,12 +2211,15 @@ void process_tcm_rfc(bool type)
 
 void process_wps_command_event(unsigned int vap_index)
 {
+#ifdef FEATURE_SUPPORT_WPS
     wifi_util_info_print(WIFI_CTRL,"%s:%d wifi wps test vap index = %d\n",__func__, __LINE__, vap_index);
     wifi_hal_setApWpsButtonPush(vap_index);
+#endif
 }
 
 void process_wps_pin_command_event(void *data)
 {
+#ifdef FEATURE_SUPPORT_WPS
     wps_pin_config_t  *wps_config = (wps_pin_config_t *)data;
     if (wps_config == NULL) {
         wifi_util_error_print(WIFI_CTRL,"%s:%d wps pin config data is NULL\n",__func__, __LINE__);
@@ -2226,10 +2229,12 @@ void process_wps_pin_command_event(void *data)
     wifi_util_info_print(WIFI_CTRL,"%s:%d wifi wps pin vap index = %d, wps_pin:%s\n",__func__, __LINE__,
                                         wps_config->vap_index, wps_config->wps_pin);
     wifi_hal_setApWpsPin(wps_config->vap_index, wps_config->wps_pin);
+#endif
 }
 
 static void process_wps_cancel_event(void *data)
 {
+#ifdef FEATURE_SUPPORT_WPS
     if (data == NULL) {
         wifi_util_error_print(WIFI_CTRL,"%s:%d data is NULL\n",__func__, __LINE__);
         return;
@@ -2240,6 +2245,7 @@ static void process_wps_cancel_event(void *data)
     wifi_util_info_print(WIFI_CTRL,"%s:%d wps pbc cancel vap index = %d\n",
         __func__, __LINE__, vap_index);
     wifi_hal_setApWpsCancel(vap_index);
+#endif
 }
 
 void marker_list_config_event(char *data, marker_list_t list_type)
