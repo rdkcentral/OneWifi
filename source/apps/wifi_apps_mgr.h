@@ -100,6 +100,9 @@ typedef struct {
 #ifdef ONEWIFI_EASYCONNECT_APP_SUPPORT
         easyconnect_data_t ec;
 #endif // ONEWIFI_EASYCONNECT_APP_SUPPORT
+#ifdef EM_APP
+        em_data_t            em_data;
+#endif //EM_APP
     } u;
 } wifi_app_data_t;
 

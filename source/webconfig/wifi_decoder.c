@@ -5826,7 +5826,7 @@ webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_c
     return webconfig_error_none;
 }
 
-decode_em_sta_link_metrics_object(const cJSON *em_sta_link, em_assoc_sta_link_metrics_rsp_t *sta_link_metrics)
+webconfig_error_t decode_em_sta_link_metrics_object(const cJSON *em_sta_link, em_assoc_sta_link_metrics_rsp_t *sta_link_metrics)
 {
     const cJSON *param;
     const cJSON *rsp_obj, *sta_link_metrics_obj, *error_code_obj, *sta_ext_link_metrics_obj, *array_item, *per_bssid_metrics, *bssid_metrics_arr_item;
@@ -5898,7 +5898,7 @@ decode_em_sta_link_metrics_object(const cJSON *em_sta_link, em_assoc_sta_link_me
             return webconfig_error_decode;
         }else {
             decode_param_integer(error_code_obj, "Reason Code", param);
-            sta_link_metrics->per_sta_metrics[i].error_code.reason_code = param->valuestring;
+            sta_link_metrics->per_sta_metrics[i].error_code.reason_code = param->valuedouble;
 
             decode_param_allow_optional_string(sta_link_metrics_obj, "STA MAC", param);
             str_to_mac_bytes(param->valuestring, sta_link_metrics->per_sta_metrics[i].error_code.sta_mac);
