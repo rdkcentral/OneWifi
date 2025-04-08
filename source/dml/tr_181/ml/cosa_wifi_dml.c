@@ -10046,6 +10046,12 @@ PreAssocDeny_SetParamIntValue
         if (vapInfo->u.bss_info.preassoc.time_ms == iValue) {
             return TRUE;
         }
+
+        if (iValue < 0 || iValue > 1000) {
+            wifi_util_error_print(WIFI_DMCLI,"%s:%d Invalid value for TcmWaitTime\n",__func__, __LINE__);
+            return FALSE;
+        }
+
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: DMCLI value set :%d \n",__func__, __LINE__,iValue);
         vapInfo->u.bss_info.preassoc.time_ms = iValue;
         set_cac_cache_changed(instance_number - 1);
@@ -10058,6 +10064,12 @@ PreAssocDeny_SetParamIntValue
         if (vapInfo->u.bss_info.preassoc.min_num_mgmt_frames == iValue) {
             return TRUE;
         }
+
+        if (iValue < 3|| iValue > 10) {
+            wifi_util_error_print(WIFI_DMCLI,"%s:%d Invalid value for TcmMinMgmtFrames\n",__func__, __LINE__);
+            return FALSE;
+        }
+
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: DMCLI value set :%d \n",__func__, __LINE__,iValue);
         vapInfo->u.bss_info.preassoc.min_num_mgmt_frames = iValue;
         set_cac_cache_changed(instance_number - 1);
@@ -10403,13 +10415,13 @@ PreAssocDeny_SetParamStringValue
             return TRUE;
         }
 
-        if (strcmp(pString, TCM_EXP_WEIGHTAGE) == 0) {
-            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Trying to set default value \n", __FUNCTION__,__LINE__);
-            strncpy(vapInfo->u.bss_info.preassoc.tcm_exp_weightage, TCM_EXP_WEIGHTAGE, sizeof(vapInfo->u.bss_info.preassoc.tcm_exp_weightage));
-            set_cac_cache_changed(instance_number - 1);
-            set_dml_cache_vap_config_changed(instance_number - 1);
-            return TRUE;
+        ret = sscanf(pString, "%d", &val);
+        if(ret < 0 || ret > 1)
+        {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Incorrect TcmExpWeightage value: should be 0 or 1\n", __FUNCTION__,__LINE__);
+            return FALSE;
         }
+
         strncpy(vapInfo->u.bss_info.preassoc.tcm_exp_weightage, pString, sizeof(vapInfo->u.bss_info.preassoc.tcm_exp_weightage));
         set_cac_cache_changed(instance_number - 1);
         set_dml_cache_vap_config_changed(instance_number - 1);
@@ -10422,13 +10434,6 @@ PreAssocDeny_SetParamStringValue
             return TRUE;
         }
 
-        if (strcmp(pString, TCM_GRADIENT_THRESHOLD) == 0) {
-            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d trying to set default value \n", __FUNCTION__,__LINE__);
-            strncpy(vapInfo->u.bss_info.preassoc.tcm_gradient_threshold, TCM_GRADIENT_THRESHOLD, sizeof(vapInfo->u.bss_info.preassoc.tcm_gradient_threshold));
-            set_cac_cache_changed(instance_number - 1);
-            set_dml_cache_vap_config_changed(instance_number - 1);
-            return TRUE;
-        }
         strncpy(vapInfo->u.bss_info.preassoc.tcm_gradient_threshold, pString, sizeof(vapInfo->u.bss_info.preassoc.tcm_gradient_threshold));
         set_cac_cache_changed(instance_number - 1);
         set_dml_cache_vap_config_changed(instance_number - 1);

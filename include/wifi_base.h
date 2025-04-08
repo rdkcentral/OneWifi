@@ -306,6 +306,7 @@ typedef struct {
     unsigned int ap_index;
     mac_addr_t dest_addr;
     unsigned int frequency;
+    unsigned int wait_time_ms;
     unsigned int frame_len;
     uint8_t frame_data[0];
 } __attribute__((packed)) action_frame_params_t;
