@@ -2726,6 +2726,7 @@ webconfig_error_t encode_em_sta_link_metrics_object(const em_assoc_sta_link_metr
 
             uint8_mac_to_string_mac(sta_link_metrics->per_sta_metrics[i].assoc_sta_link_metrics.sta_mac, mac_str);
             cJSON_AddStringToObject(assoc_sta_link_metrics_obj, "STA MAC", mac_str);
+            cJSON_AddStringToObject(assoc_sta_link_metrics_obj, "Client Type", sta_link_metrics->per_sta_metrics[i].assoc_sta_link_metrics.client_type);
             cJSON_AddNumberToObject(assoc_sta_link_metrics_obj, "Number of BSSIDs", 
                 sta_link_metrics->per_sta_metrics[i].assoc_sta_link_metrics.num_bssid);
             
