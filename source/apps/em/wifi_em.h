@@ -27,12 +27,13 @@ extern "C" {
 #define WIFI_EM_CHANNEL_SCAN_REQUEST          "Device.WiFi.EM.ChannelScanRequest"
 #define WIFI_EM_CHANNEL_SCAN_REPORT           "Device.WiFi.EM.ChannelScanReport"
 #define WIFI_EM_BEACON_REPORT                 "Device.WiFi.EM.BeaconReport"
+#define WIFI_EM_STA_LINK_METRICS_REPORT       "Device.WiFi.EM.STALinkMetricsReport"
 
 typedef struct wifi_app wifi_app_t;
 
 typedef char short_string[32];
 typedef struct {
-    hash_map_t           *em_stats_config_map;
+    em_config_t           em_config;
 } em_data_t;
 
 typedef enum {

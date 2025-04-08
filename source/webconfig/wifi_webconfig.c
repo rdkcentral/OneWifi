@@ -732,6 +732,19 @@ webconfig_error_t webconfig_init(webconfig_t *config)
     config->subdocs[webconfig_subdoc_type_em_channel_stats].decode_subdoc = decode_em_channel_stats_subdoc;
     config->subdocs[webconfig_subdoc_type_em_channel_stats].translate_to_subdoc = translate_to_em_channel_stats_subdoc;
     config->subdocs[webconfig_subdoc_type_em_channel_stats].translate_from_subdoc = translate_from_em_channel_stats_subdoc;
+    
+    config->subdocs[webconfig_subdoc_type_em_sta_link_metrics].type = webconfig_subdoc_type_em_sta_link_metrics;
+    strcpy(config->subdocs[webconfig_subdoc_type_em_sta_link_metrics].name, "Easymesh STA link metrics");
+    config->subdocs[webconfig_subdoc_type_em_sta_link_metrics].major = 1;
+    config->subdocs[webconfig_subdoc_type_em_sta_link_metrics].minor = 1;
+    config->subdocs[webconfig_subdoc_type_em_sta_link_metrics].init_subdoc = init_em_sta_link_subdoc;
+    config->subdocs[webconfig_subdoc_type_em_sta_link_metrics].init_subdoc(&config->subdocs[webconfig_subdoc_type_em_sta_link_metrics]);
+    config->subdocs[webconfig_subdoc_type_em_sta_link_metrics].access_check_subdoc = access_check_em_sta_link_subdoc;
+    config->subdocs[webconfig_subdoc_type_em_sta_link_metrics].encode_subdoc = encode_em_sta_link_subdoc;
+    config->subdocs[webconfig_subdoc_type_em_sta_link_metrics].decode_subdoc = decode_em_sta_link_subdoc;
+    config->subdocs[webconfig_subdoc_type_em_sta_link_metrics].translate_to_subdoc = translate_to_em_sta_link_subdoc;
+    config->subdocs[webconfig_subdoc_type_em_sta_link_metrics].translate_from_subdoc = translate_from_em_sta_link_subdoc;
+
 #endif //EM_APP Support
 
     config->proto_desc.translate_to = translate_to_proto;

@@ -38,7 +38,9 @@ extern "C" {
 #include "wifi_whix.h"
 #include "wifi_harvester.h"
 #include "wifi_ocs.h"
+#ifdef EM_APP
 #include "wifi_em.h"
+#endif
 #ifdef ONEWIFI_STA_MGR_APP_SUPPORT
 #include "wifi_sta_mgr.h"
 #endif
@@ -78,7 +80,6 @@ typedef struct {
 #endif
         analytics_data_t     analytics;
         sm_data_t            sm_data;
-        em_data_t            em_data;
         motion_data_t        motion;
         csi_app_t            csi;
         whix_data_t          whix;
@@ -94,6 +95,9 @@ typedef struct {
 #ifdef ONEWIFI_EASYCONNECT_APP_SUPPORT
         easyconnect_data_t ec;
 #endif // ONEWIFI_EASYCONNECT_APP_SUPPORT
+#ifdef EM_APP
+        em_data_t            em_data;
+#endif //EM_APP
     } u;
 } wifi_app_data_t;
 
