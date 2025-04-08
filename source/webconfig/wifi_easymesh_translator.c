@@ -713,6 +713,72 @@ webconfig_error_t translate_sta_object_to_easymesh_for_assocdev_stats(webconfig_
     return webconfig_error_none;
 }
 
+#ifdef EM_APP
+webconfig_error_t translate_sta_link_metrics_object_to_easy_mesh_sta_info(webconfig_subdoc_data_t *data)
+{
+    time_t response_time;
+    struct tm *local_time;
+    char time_str[32] = {0};
+    int sta_size = 0;
+    em_sta_info_t *em_sta_dev_info;
+    webconfig_external_easymesh_t *proto;
+    em_radio_info_t *radio_info;
+    em_bss_info_t *bss_info;
+    per_sta_metrics_t sta_stats;
+    int vap_index = 0, radio_index = 0;
+    wifi_platform_property_t *wifi_prop;
+
+    webconfig_subdoc_decoded_data_t *params = &data->u.decoded;
+    if (params == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: decoded_params is NULL\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    sta_size = params->em_sta_link_metrics_rsp.sta_count;
+
+    if (sta_size == 0) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Dev Stats is NULL\n", __func__, __LINE__);
+        return webconfig_error_translate_to_easymesh;
+    }
+
+    vap_index = params->em_sta_link_metrics_rsp.vap_index;
+    wifi_prop = &data->u.decoded.hal_cap.wifi_prop;
+    radio_index = get_radio_index_for_vap_index(wifi_prop, vap_index);
+
+    proto = (webconfig_external_easymesh_t *)params->external_protos;
+    if (proto == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: em_sta_info_t is NULL\n", __func__, __LINE__);
+        return webconfig_error_translate_to_easymesh;
+    }
+
+    for (unsigned int count = 0; count < sta_size; count++) {
+
+        sta_stats = params->em_sta_link_metrics_rsp.per_sta_metrics[count];
+        radio_info = proto->get_radio_info(proto->data_model, radio_index);
+        bss_info = proto->get_bss_info(proto->data_model, vap_index);
+        em_sta_dev_info = proto->get_sta_info(proto->data_model, sta_stats.assoc_sta_link_metrics.sta_mac, \
+             bss_info->bssid.mac, radio_info->intf.mac, em_target_sta_map_consolidated);
+        if (em_sta_dev_info != NULL) {     
+            memcpy(em_sta_dev_info->id, sta_stats.assoc_sta_link_metrics.sta_mac, sizeof(mac_address_t));
+            memcpy(em_sta_dev_info->bssid, sta_stats.assoc_sta_link_metrics.assoc_sta_link_metrics_data[0].bssid, sizeof(mac_address_t));
+
+            em_sta_dev_info->last_ul_rate             = sta_stats.assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[0].last_data_uplink_rate;
+            em_sta_dev_info->last_dl_rate             = sta_stats.assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[0].last_data_downlink_rate;
+           
+            em_sta_dev_info->est_ul_rate              = sta_stats.assoc_sta_link_metrics.assoc_sta_link_metrics_data[0].est_mac_rate_up;
+            em_sta_dev_info->est_dl_rate              = sta_stats.assoc_sta_link_metrics.assoc_sta_link_metrics_data[0].est_mac_rate_down;
+
+            em_sta_dev_info->rcpi                     = sta_stats.assoc_sta_link_metrics.assoc_sta_link_metrics_data[0].rcpi;
+
+            em_sta_dev_info->util_tx                  = sta_stats.assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[0].utilization_transmit;
+
+            em_sta_dev_info->util_rx                  = sta_stats.assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[0].utilization_receive;   
+        }
+    }
+    return webconfig_error_none;
+}
+#endif
+
 // translate_sta_info_to_em_common() converts common data elements of wifi_vap_info_t related to sta to em_bss_info_t of  easymesh
 webconfig_error_t translate_sta_info_to_em_common(const wifi_vap_info_t *vap, const wifi_interface_name_idex_map_t *iface_map, em_bss_info_t *vap_row, em_ssid_2_vid_map_info_t  *ssid_vid_map, wifi_platform_property_t *wifi_prop)
 {
@@ -2313,6 +2379,14 @@ webconfig_error_t  translate_to_easymesh_tables(webconfig_subdoc_type_t type, we
                     "%s:%d: webconfig_subdoc_type_private vap_object translation to easymesh "
                     "failed\n",
                     __func__, __LINE__);
+                return webconfig_error_translate_to_easymesh;
+            }
+            break;
+            
+        case webconfig_subdoc_type_em_sta_link_metrics:
+            if(translate_sta_link_metrics_object_to_easy_mesh_sta_info(data) != webconfig_error_none){
+                wifi_util_error_print(WIFI_WEBCONFIG, 
+                    "%s:%d: webconfig_subdoc_type_em_sta_link_metrics translation to easymesh failed\n", __func__, __LINE__);
                 return webconfig_error_translate_to_easymesh;
             }
             break;
