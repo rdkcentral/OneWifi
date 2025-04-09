@@ -211,6 +211,7 @@ INCLUDEDIRS = \
     -I$(ONE_WIFI_HOME)/source/dml/wifi_ssp \
     -I$(ONE_WIFI_HOME)/source/ccsp \
     -I$(ONE_WIFI_HOME)/source/utils \
+    -I$(ONE_WIFI_HOME)/source/utils/mtrx/inc \
     -I$(ONE_WIFI_HOME)/source/stats \
     -I$(ONE_WIFI_HOME)/source/stubs \
     -I$(ONE_WIFI_HOME)/source/dml/linux \
@@ -302,6 +303,7 @@ CSOURCES = $(wildcard $(ONE_WIFI_HOME)/source/db/wifi_db.c) \
     $(ONE_WIFI_HOME)/source/ccsp/ccsp.c \
     $(ONE_WIFI_HOME)/source/utils/collection.c	\
     $(ONE_WIFI_HOME)/source/utils/scheduler.c	\
+    $(ONE_WIFI_HOME)/source/utils/mtrx/src/mtrx.c	\
     $(ONE_WIFI_HOME)/source/dml/linux/wifi_dml.c \
     $(ONE_WIFI_HOME)/source/platform/linux/misc.c 	\
     $(ONE_WIFI_HOME)/source/platform/linux/bus.c	\
