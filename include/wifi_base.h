@@ -1164,7 +1164,7 @@ typedef struct {
     int ap_util_threshold;
     bool traffic_stats;
     bool link_metrics;
-    bool sta_status;
+    char sta_status;
 } radio_metrics_policy_t;
 
 #define EM_MAX_RADIO_POLICY 4
@@ -1192,6 +1192,7 @@ typedef struct {
 
 typedef struct {
     mac_addr_t sta_mac;
+    unsigned char client_type[32];
     int num_bssid;
     assoc_sta_link_metrics_data_t assoc_sta_link_metrics_data[STA_MAX_BSS_ASSOCIATIONS];
 } assoc_sta_link_metrics_t;
@@ -1243,6 +1244,11 @@ typedef struct {
     int sched_handler_id;
     unsigned char dialog_token;
 } sta_beacon_report_reponse_t;
+
+typedef struct {
+    mac_address_t mac_addr;
+    unsigned char client_type[32];
+} sta_client_info_t;
 
 typedef struct {
     UCHAR operating_class;
