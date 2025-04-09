@@ -4,11 +4,14 @@ ONEWIFI_DIR=$(pwd)
 HOSTAP_DIR="$(pwd)/../rdk-wifi-libhostap/source"
 UPSTREAM_HOSTAP_URL="git://w1.fi/hostap.git"
 SRCREV_2_10="9d07b9447e76059a2ddef2a879c57d0934634188"
+STA_MGR_DIR="$(pwd)/../WiFiStaManager"
 
 #git clone other wifi related components
 cd ..
 git clone https://github.com/rdkcentral/rdk-wifi-hal.git rdk-wifi-hal
 git clone https://github.com/rdkcentral/rdkb-halif-wifi.git halinterface
+git clone -b 25Q2_sprint https://gerrit.teamccp.com/rdk/rdkb/components/opensource/ccsp/WiFiStaManager/generic WiFiStaManager
+
 cd $ONEWIFI_DIR
 mkdir -p install/bin
 mkdir -p install/lib
@@ -19,6 +22,11 @@ if [ -d "$HOSTAP_DIR" ]; then
         echo "Hostap directory $HOSTAP_DIR  already exists."
 else
         mkdir -p $HOSTAP_DIR
+fi
+
+if [ -d "$STA_MGR_DIR" ]; then
+       echo "copying sta_mgr..."
+       cp -r $STA_MGR_DIR/* $ONEWIFI_DIR/../../source/apps/sta_mgr
 fi
 
 #clone the upstream hostap in HOSTAP_DIR as hostap-x.xx

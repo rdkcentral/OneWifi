@@ -32,9 +32,14 @@ extern "C" {
 typedef struct wifi_app wifi_app_t;
 
 typedef char short_string[32];
+
 typedef struct {
     em_config_t           em_config;
 } em_data_t;
+
+typedef struct {
+    hash_map_t *client_type_map;
+} sta_client_type_data_t;
 
 typedef enum {
     em_app_event_type_assoc_dev_stats,

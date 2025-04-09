@@ -584,6 +584,8 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
                         return webconfig_error_translate_to_easymesh;
                     }
 
+                    memset(em_sta_dev_info, 0, sizeof(em_sta_dev_info));
+
                     em_radio_info_t *radio_info = proto->get_radio_info(proto->data_model, vap->radio_index);
                     em_bss_info_t *bss_info = proto->get_bss_info(proto->data_model, rdk_vap_info->vap_index);
                     proto->set_num_radio(proto->data_model, decoded_params->num_radios);
@@ -593,8 +595,8 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
                     to_mac_str(bss_info->bssid.mac, bss_str);
                     to_mac_str(radio_info->intf.mac, radio_str);
                     snprintf(key, sizeof(key), "%s@%s@%s", sta_str, bss_str, radio_str);
-                    printf("\n%s:%d: Add key=%s\n", __func__, __LINE__, key);
-                    printf("\n%s:%d: client_state: %d\n", __func__, __LINE__, assoc_dev_data->client_state);
+                    printf("%s:%d: Add key=%s\n", __func__, __LINE__, key);
+                    printf("%s:%d: client_state: %d\n", __func__, __LINE__, assoc_dev_data->client_state);
 
                     memcpy(em_sta_dev_info->id, assoc_dev_data->dev_stats.cli_MACAddress, sizeof(mac_address_t));
                     memcpy(em_sta_dev_info->bssid, vap->u.bss_info.bssid, sizeof(mac_address_t));
@@ -619,8 +621,10 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
                     em_sta_dev_info->frame_body_len = tag_len;
 
                     if (assoc_dev_data->client_state == 0) {
+                        em_sta_dev_info->associated = true;
                         proto->put_sta_info(proto->data_model, em_sta_dev_info, em_target_sta_map_assoc);
                     } else {
+                        em_sta_dev_info->associated = false;
                         proto->put_sta_info(proto->data_model, em_sta_dev_info, em_target_sta_map_disassoc);
                     }
                     free(em_sta_dev_info);
@@ -752,27 +756,36 @@ webconfig_error_t translate_sta_link_metrics_object_to_easy_mesh_sta_info(webcon
     }
 
     for (unsigned int count = 0; count < sta_size; count++) {
-
         sta_stats = params->em_sta_link_metrics_rsp.per_sta_metrics[count];
         radio_info = proto->get_radio_info(proto->data_model, radio_index);
         bss_info = proto->get_bss_info(proto->data_model, vap_index);
         em_sta_dev_info = proto->get_sta_info(proto->data_model, sta_stats.assoc_sta_link_metrics.sta_mac, \
-             bss_info->bssid.mac, radio_info->intf.mac, em_target_sta_map_consolidated);
-        if (em_sta_dev_info != NULL) {     
+            bss_info->bssid.mac, radio_info->intf.mac, em_target_sta_map_consolidated);
+
+        em_radio_info_t *radio_info = proto->get_radio_info(proto->data_model, radio_index);
+        em_bss_info_t *bss_info = proto->get_bss_info(proto->data_model, vap_index);
+
+        if (em_sta_dev_info != NULL) {
             memcpy(em_sta_dev_info->id, sta_stats.assoc_sta_link_metrics.sta_mac, sizeof(mac_address_t));
-            memcpy(em_sta_dev_info->bssid, sta_stats.assoc_sta_link_metrics.assoc_sta_link_metrics_data[0].bssid, sizeof(mac_address_t));
+            memcpy(em_sta_dev_info->bssid, bss_info->bssid.mac, sizeof(mac_address_t));
+            memcpy(em_sta_dev_info->radiomac, radio_info->intf.mac, sizeof(mac_address_t));
+
+            strncpy(em_sta_dev_info->sta_client_type, sta_stats.assoc_sta_link_metrics.client_type, sizeof(em_sta_dev_info->sta_client_type));
+            em_sta_dev_info->sta_client_type[strlen(sta_stats.assoc_sta_link_metrics.client_type)] = '\0';
 
             em_sta_dev_info->last_ul_rate             = sta_stats.assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[0].last_data_uplink_rate;
             em_sta_dev_info->last_dl_rate             = sta_stats.assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[0].last_data_downlink_rate;
-           
+
             em_sta_dev_info->est_ul_rate              = sta_stats.assoc_sta_link_metrics.assoc_sta_link_metrics_data[0].est_mac_rate_up;
             em_sta_dev_info->est_dl_rate              = sta_stats.assoc_sta_link_metrics.assoc_sta_link_metrics_data[0].est_mac_rate_down;
 
             em_sta_dev_info->rcpi                     = sta_stats.assoc_sta_link_metrics.assoc_sta_link_metrics_data[0].rcpi;
 
             em_sta_dev_info->util_tx                  = sta_stats.assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[0].utilization_transmit;
-
             em_sta_dev_info->util_rx                  = sta_stats.assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[0].utilization_receive;   
+
+            // Update the consolidated map and also put into assoc map to identify which entries are new
+            proto->put_sta_info(proto->data_model, em_sta_dev_info, em_target_sta_map_assoc);
         }
     }
     return webconfig_error_none;
@@ -1346,8 +1359,7 @@ webconfig_error_t translate_per_radio_vap_object_to_easymesh_bss_info(webconfig_
 #ifdef EM_APP
 // translate_beacon_report_object_to_easymesh_sta_info() converts data elements of
 // sta_beacon_report_reponse_t to em_sta_info_t of  easymesh
-webconfig_error_t translate_beacon_report_object_to_easymesh_sta_info(webconfig_subdoc_data_t *data,
-    wifi_freq_bands_t freq_band)
+webconfig_error_t translate_beacon_report_object_to_easymesh_sta_info(webconfig_subdoc_data_t *data)
 {
     em_sta_info_t em_sta_dev_info;
     webconfig_external_easymesh_t *proto;
@@ -2239,9 +2251,9 @@ webconfig_error_t translate_policy_cfg_object_from_easymesh_to_em_cfg(webconfig_
         policy_cfg->radio_metrics_policies.radio_metrics_policy[i].link_metrics =
             (em_policy_cfg->metrics_policy.radios[i].sta_policy >> 2) & 1;
         policy_cfg->radio_metrics_policies.radio_metrics_policy[i].traffic_stats =
-            (em_policy_cfg->metrics_policy.radios[i].sta_policy >> 1) & 1;
+            (em_policy_cfg->metrics_policy.radios[i].sta_policy >> 7) & 1;
         policy_cfg->radio_metrics_policies.radio_metrics_policy[i].sta_status =
-            (em_policy_cfg->metrics_policy.radios[i].sta_policy >> 3) & 1;
+            (em_policy_cfg->metrics_policy.radios[i].sta_policy >> 5) & 1;
     }
 
     return webconfig_error_none;
@@ -2373,7 +2385,7 @@ webconfig_error_t  translate_to_easymesh_tables(webconfig_subdoc_type_t type, we
             break;
 
         case webconfig_subdoc_type_beacon_report:
-            if (translate_beacon_report_object_to_easymesh_sta_info(data, WIFI_FREQUENCY_6_BAND) !=
+            if (translate_beacon_report_object_to_easymesh_sta_info(data) !=
                 webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG,
                     "%s:%d: webconfig_subdoc_type_private vap_object translation to easymesh "
