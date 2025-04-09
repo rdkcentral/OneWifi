@@ -56,14 +56,10 @@ void process_event_timeout(wifi_data_plane_event_t *event, wifi_data_plane_t *mo
 {
        switch (event->type) {
 
-#if !defined(_BWG_PRODUCT_REQ_)
-#if defined (DUAL_CORE_XB3) || (defined(_XB6_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_))
-                case wifi_data_plane_event_type_dpp:
-                    //process_easy_connect_event_timeout(event->u.dpp_ctx, &module->module_easy_connect);//ONE_WIFI
+              case wifi_data_plane_event_type_dpp:
+                    process_easy_connect_event_timeout(event->u.dpp_ctx, &module->module_easy_connect);//ONE_WIFI
                     break;
 
-#endif
-#endif
                 default:
                     UNREFERENCED_PARAMETER(module);
                     break;
@@ -99,13 +95,9 @@ void process_event(wifi_data_plane_event_t *event, wifi_data_plane_t *module)
 
        switch (event->type) {
 
-#if defined (DUAL_CORE_XB3) || (defined(_XB6_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_))
-#if !defined(_BWG_PRODUCT_REQ_)
                case wifi_data_plane_event_type_dpp:
-                       //process_easy_connect_event(event->u.dpp_ctx, &module->module_easy_connect);//ONE_WIFI
+                       process_easy_connect_event(event->u.dpp_ctx, &module->module_easy_connect);//ONE_WIFI
                        break;
-#endif
-#endif
                case wifi_data_plane_event_type_anqp:
                        process_passpoint_event(event->u.anqp_ctx);
                        break;
@@ -339,9 +331,9 @@ void deinit_wifi_data_plane()
 
 int init_wifi_data_plane()
 {
-#if defined (DUAL_CORE_XB3) || \
-    (defined(_XB6_PRODUCT_REQ_) && !defined(_XB8_PRODUCT_REQ_)) || \
-    (defined(_CBR_PRODUCT_REQ_) && !(defined(_CBR2_PRODUCT_REQ_)) )
+// #if defined (DUAL_CORE_XB3) || \
+//     (defined(_XB6_PRODUCT_REQ_) && !defined(_XB8_PRODUCT_REQ_)) || \
+//     (defined(_CBR_PRODUCT_REQ_) && !(defined(_CBR2_PRODUCT_REQ_)) )
 
     pthread_condattr_t cond_attr;
     pthread_attr_t attr;
@@ -382,18 +374,18 @@ int init_wifi_data_plane()
     if(attrp != NULL) {
         pthread_attr_destroy( attrp );
     }
-#if 0
-    if(RETURN_OK != CosaDmlWiFi_initPasspoint()){
-        wifi_util_dbg_print(WIFI_MON,"CosaWifiInitialize Error - WiFi failed to Initialize Passpoint.\n");
-    }
-#else
+// #if 0
+//     if(RETURN_OK != CosaDmlWiFi_initPasspoint()){
+//         wifi_util_dbg_print(WIFI_MON,"CosaWifiInitialize Error - WiFi failed to Initialize Passpoint.\n");
+//     }
+// #else
     if(RETURN_OK != WiFi_initPasspoint()){
         wifi_util_dbg_print(WIFI_MON,"CosaWifiInitialize Error - WiFi failed to Initialize Passpoint.\n");
     }
-#endif//ONE_WIFI
-    //wifi_hal_mgmt_frame_callbacks_register(mgmt_frame_received_callback);
+// #endif//ONE_WIFI
+    wifi_hal_mgmt_frame_callbacks_register(mgmt_frame_received_callback);
     wifi_util_dbg_print(WIFI_MON, "%s:%d: init_wifi_data_plane completed ### \n", __func__, __LINE__);
-#endif
+// #endif
 
     return 0;
 }
@@ -402,7 +394,6 @@ bool data_plane_queue_check_event(wifi_data_plane_event_type_t type, void *ctx)
 {
     bool matched = false;
 
-#if defined (DUAL_CORE_XB3) || (defined(_XB6_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_))
     unsigned int i, count;
     wifi_data_plane_queue_data_t *queue_data = NULL;
     wifi_data_plane_event_t *event;
@@ -421,15 +412,10 @@ bool data_plane_queue_check_event(wifi_data_plane_event_type_t type, void *ctx)
             switch (event->type) {
 
                 case wifi_data_plane_event_type_dpp:
-#if !defined(_BWG_PRODUCT_REQ_)
-#if 0
+
                     if (is_matching_easy_connect_event(event->u.dpp_ctx, ctx) == true) {
                         matched = true;
                     }
-#endif//ONE_WIFI
-#else
-                    UNREFERENCED_PARAMETER(ctx);
-#endif
                     break;
 
                 case wifi_data_plane_event_type_anqp:
@@ -448,11 +434,6 @@ bool data_plane_queue_check_event(wifi_data_plane_event_type_t type, void *ctx)
 
     pthread_mutex_unlock(&g_data_plane_module.lock);
 
-#else
-    UNREFERENCED_PARAMETER(type);
-    UNREFERENCED_PARAMETER(ctx);
-#endif
-
     return matched;
                             
 }
@@ -460,7 +441,6 @@ void *
 data_plane_queue_remove_event(wifi_data_plane_event_type_t type, void *ctx)
 {
        void *ptr = NULL;
-#if defined (DUAL_CORE_XB3) || (defined(_XB6_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_))
     unsigned int i, count;
     wifi_data_plane_event_t *event;
     wifi_data_plane_queue_data_t *queue_data = NULL;
@@ -479,16 +459,12 @@ data_plane_queue_remove_event(wifi_data_plane_event_type_t type, void *ctx)
 
                        switch (event->type) {
                                case wifi_data_plane_event_type_dpp:
-#if !defined(_BWG_PRODUCT_REQ_)
-#if 0
+
                                        if (is_matching_easy_connect_event(event->u.dpp_ctx, ctx) == true) {
                                                ptr = event->u.dpp_ctx;
                                                matched = true; 
                                        }
-#endif//ONE_WIFI
-#else
-                                        UNREFERENCED_PARAMETER(ctx);
-#endif
+#
                                        break;
 
                                case wifi_data_plane_event_type_anqp:
@@ -508,11 +484,6 @@ data_plane_queue_remove_event(wifi_data_plane_event_type_t type, void *ctx)
 
 
     pthread_mutex_unlock(&g_data_plane_module.lock);
-
-#else
-    UNREFERENCED_PARAMETER(type);
-    UNREFERENCED_PARAMETER(ctx);
-#endif
 
        return ptr;             
 }
@@ -555,6 +526,8 @@ data_plane_queue_create_packet(void *ptr, wifi_data_plane_packet_type_t type, BO
 wifi_data_plane_queue_data_t *
 data_plane_queue_create_event(void *ptr, wifi_data_plane_event_type_t type, BOOL setSignalThread)
 {
+    wifi_util_error_print(WIFI_DPP, "%s:%d: Begin \n", __func__, __LINE__);
+
        wifi_data_plane_queue_data_t *data;
 
        data = malloc(sizeof(wifi_data_plane_queue_data_t));
@@ -572,7 +545,8 @@ data_plane_queue_create_event(void *ptr, wifi_data_plane_event_type_t type, BOOL
                case wifi_data_plane_event_type_anqp:
                        data->u.event.u.anqp_ctx = ptr;
                        break;
-       }       
+       }    
+       wifi_util_error_print(WIFI_DPP, "%s:%d: End  \n", __func__, __LINE__);   
 
        return data;            
 }
@@ -581,7 +555,9 @@ void data_plane_queue_push(wifi_data_plane_queue_data_t *data)
 {
     if(data && data->setSignalThread) {
         pthread_mutex_lock(&g_data_plane_module.lock);
-        queue_push(g_data_plane_module.queue, data);
+        wifi_util_error_print(WIFI_DPP, "%s:%d: Begin 2\n", __func__, __LINE__);
+        queue_push(&g_data_plane_module.queue, data);
+        wifi_util_error_print(WIFI_DPP, "%s:%d: Begin 3\n", __func__, __LINE__);
         pthread_cond_signal(&g_data_plane_module.cond);
         pthread_mutex_unlock(&g_data_plane_module.lock);
     } else {
