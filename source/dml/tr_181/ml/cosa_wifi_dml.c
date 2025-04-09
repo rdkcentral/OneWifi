@@ -3703,7 +3703,7 @@ Radio_SetParamUlongValue
         }
 
         if ((tmpChanWidth == WIFI_CHANNELBANDWIDTH_320MHZ) &&
-            (wifiRadioOperParam->band == WIFI_FREQUENCY_5_BAND)) {
+            (wifiRadioOperParam->band != WIFI_FREQUENCY_6_BAND)) {
             wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: 320MHZ bandwidth not supported for 5GHZ band\n",
                 __func__, __LINE__, tmpChanWidth);
             return FALSE;
