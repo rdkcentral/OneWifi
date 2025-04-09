@@ -5839,7 +5839,6 @@ webconfig_error_t decode_em_sta_link_metrics_object(const cJSON *em_sta_link, em
     const cJSON *param;
     const cJSON *rsp_obj, *sta_link_metrics_obj, *error_code_obj, *sta_ext_link_metrics_obj, *array_item, *per_bssid_metrics, *bssid_metrics_arr_item;
 
-
     decode_param_integer(em_sta_link, "Vap Index", param);
     sta_link_metrics->vap_index = param->valuedouble;
 
@@ -5868,10 +5867,14 @@ webconfig_error_t decode_em_sta_link_metrics_object(const cJSON *em_sta_link, em
             return webconfig_error_decode;
         }else {
             decode_param_allow_optional_string(sta_link_metrics_obj, "STA MAC", param);
-            str_to_mac_bytes(param->valuestring, sta_link_metrics->per_sta_metrics[i].assoc_sta_ext_link_metrics.sta_mac);
+            str_to_mac_bytes(param->valuestring, sta_link_metrics->per_sta_metrics[i].assoc_sta_link_metrics.sta_mac);
+
+            decode_param_allow_empty_string(sta_link_metrics_obj, "Client Type", param);
+            strncpy(sta_link_metrics->per_sta_metrics[i].assoc_sta_link_metrics.client_type, param->valuestring, strlen(param->valuestring));
+            sta_link_metrics->per_sta_metrics[i].assoc_sta_link_metrics.client_type[strlen(param->valuestring)] = '\0';
 
             decode_param_integer(sta_link_metrics_obj, "Number of BSSIDs", param);
-            sta_link_metrics->per_sta_metrics[i].assoc_sta_ext_link_metrics.num_bssid = param->valuedouble;
+            sta_link_metrics->per_sta_metrics[i].assoc_sta_link_metrics.num_bssid = param->valuedouble;
 
             per_bssid_metrics = cJSON_GetObjectItem(sta_link_metrics_obj, "Per BSSID Metrics");
             if (per_bssid_metrics == NULL) {
@@ -5900,16 +5903,18 @@ webconfig_error_t decode_em_sta_link_metrics_object(const cJSON *em_sta_link, em
         }
 
         // Error Code
-        error_code_obj = cJSON_GetObjectItem(array_item, "Error Code");
-        if (error_code_obj == NULL) {
-            wifi_util_error_print(WIFI_EM,"%s:%d: cjson object is NULL\n", __func__, __LINE__);
-            return webconfig_error_decode;
-        }else {
-            decode_param_integer(error_code_obj, "Reason Code", param);
-            sta_link_metrics->per_sta_metrics[i].error_code.reason_code = param->valuedouble;
+        if (sta_link_metrics->per_sta_metrics[i].assoc_sta_link_metrics.num_bssid == 0) {
+            error_code_obj = cJSON_GetObjectItem(array_item, "Error Code");
+            if (error_code_obj == NULL) {
+                wifi_util_error_print(WIFI_EM,"%s:%d: cjson object is NULL\n", __func__, __LINE__);
+                return webconfig_error_decode;
+            }else {
+                decode_param_integer(error_code_obj, "Reason Code", param);
+                sta_link_metrics->per_sta_metrics[i].error_code.reason_code = param->valuestring;
 
-            decode_param_allow_optional_string(sta_link_metrics_obj, "STA MAC", param);
-            str_to_mac_bytes(param->valuestring, sta_link_metrics->per_sta_metrics[i].error_code.sta_mac);
+                decode_param_allow_optional_string(sta_link_metrics_obj, "STA MAC", param);
+                str_to_mac_bytes(param->valuestring, sta_link_metrics->per_sta_metrics[i].error_code.sta_mac);
+            }
         }
 
         // Associated STA Extended Link Metrics 

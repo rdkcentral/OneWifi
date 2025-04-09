@@ -90,9 +90,6 @@ typedef struct {
 #if defined (FEATURE_OFF_CHANNEL_SCAN_5G)
         off_channel_param_t  ocs[MAX_NUM_RADIOS];
 #endif //FEATURE_OFF_CHANNEL_SCAN_5G
-#ifdef EM_APP
-        em_data_t            em_data;
-#endif //EM_APP
         memwraptool_config_t memwraptool;
 #ifdef ONEWIFI_STA_MGR_APP_SUPPORT
         sta_mgr_data_t sta_mgr;

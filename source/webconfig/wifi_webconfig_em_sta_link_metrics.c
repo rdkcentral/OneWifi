@@ -28,7 +28,6 @@
 #include "wifi_util.h"
 #include "wifi_ctrl.h"
 
-#ifdef EM_APP
 webconfig_subdoc_object_t   em_sta_link_metrics_objects[3] = {
     { webconfig_subdoc_object_type_version, "Version" },
     { webconfig_subdoc_object_type_subdoc, "SubDocName" },
@@ -99,7 +98,7 @@ webconfig_error_t encode_em_sta_link_subdoc(webconfig_t *config, webconfig_subdo
     data->u.encoded.json = json;
 
     cJSON_AddStringToObject(json, "Version", "1.0");
-    cJSON_AddStringToObject(json, "SubDocName", "EM_STA_link_metrics");
+    cJSON_AddStringToObject(json, "SubDocName", "Easymesh STA link metrics");
     cJSON_AddNumberToObject(json, "Vap Index", params->em_sta_link_metrics_rsp.vap_index);
 
     obj_emstalink = cJSON_CreateArray();
@@ -158,4 +157,4 @@ webconfig_error_t decode_em_sta_link_subdoc(webconfig_t *config, webconfig_subdo
     wifi_util_info_print(WIFI_EM, "%s:%d: decode success\n", __func__, __LINE__);
     return webconfig_error_none;
 }
-#endif
+
