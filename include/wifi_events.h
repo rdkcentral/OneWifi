@@ -158,6 +158,7 @@ typedef enum {
     wifi_event_type_send_action_frame,
     wifi_event_type_start_channel_scan,
     wifi_event_type_rsn_override_rfc,
+    wifi_event_type_sta_client_info,
     wifi_event_command_max,
 
     wifi_event_monitor_diagnostics = wifi_event_type_base
