@@ -3113,7 +3113,7 @@ void process_send_action_frame_command(void *data, unsigned int len)
     }
 
     params = (action_frame_params_t *)data;
-
+#if 0
     if (wifi_sendActionFrameExt(params->ap_index, params->dest_addr, params->frequency,
             params->wait_time_ms, params->frame_data, params->frame_len)) {
 
@@ -3124,6 +3124,7 @@ void process_send_action_frame_command(void *data, unsigned int len)
             params->wait_time_ms);
         return;
     }
+#endif
 
     return;
 }
