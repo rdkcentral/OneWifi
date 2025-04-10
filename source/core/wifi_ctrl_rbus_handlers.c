@@ -1384,6 +1384,45 @@ static int eth_bh_status_notify()
 }
 #endif
 
+static void acs_keep_out_evt_handler(char *event_name, raw_data_t *p_data)
+{
+    if (p_data->data_type != bus_data_type_string) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d event:%s wrong data type:%x\n", __func__, __LINE__,
+            event_name, p_data->data_type);
+        return;
+    }
+    char *json_schema = (char *)malloc((p_data->raw_data_len + 1) * sizeof(char));
+    strncpy(json_schema, (char *)p_data->raw_data.bytes, p_data->raw_data_len);
+    json_schema[p_data->raw_data_len] = '\0';
+    wifi_util_info_print(WIFI_CTRL, "%s:%d Received bus ACS Keep-Out json_schema: %s \n", __func__,
+        __LINE__, json_schema);
+    push_event_to_ctrl_queue(json_schema, (strlen(json_schema) + 1), wifi_event_type_webconfig,
+        wifi_event_webconfig_data_to_hal_apply, NULL);
+}
+
+void *bus_get_keep_out_json()
+{
+    bus_error_t rc;
+    wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
+    raw_data_t data;
+    memset(&data, 0, sizeof(raw_data_t));
+    rc = get_bus_descriptor()->bus_data_get_fn(&g_wifi_mgr->ctrl.handle, ACS_KEEP_OUT, &data);
+    if (data.data_type != bus_data_type_string) {
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%d\n", __func__, __LINE__,
+            ACS_KEEP_OUT, data.data_type, rc);
+        get_bus_descriptor()->bus_data_free_fn(&data);
+        return NULL;
+    }
+    char *json_schema = (char *)malloc((data.raw_data_len + 1) * sizeof(char));
+    strncpy(json_schema, (char *)data.raw_data.bytes, data.raw_data_len);
+    json_schema[data.raw_data_len] = '\0';
+    wifi_util_info_print(WIFI_CTRL, "%s:%d bus get json_schema: %s \n", __func__, __LINE__,
+        json_schema);
+    get_bus_descriptor()->bus_data_free_fn(&data);
+    return (void *)json_schema;
+}
+
 void speed_test_handler (char *event_name, raw_data_t *p_data)
 {
     speed_test_data_t speed_test_data = { 0 };
@@ -1592,6 +1631,18 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
             ctrl->frame_802_11_injector_subscribed = true;
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe success\n",
                 __FUNCTION__, __LINE__, WIFI_FRAME_INJECTOR_TO_ONEWIFI);
+        }
+    }
+
+    if (ctrl->mesh_keep_out_chans_subscribed == false) {
+        if (bus_desc->bus_event_subs_fn(&ctrl->handle, ACS_KEEP_OUT, acs_keep_out_evt_handler, NULL,
+                0) != bus_error_success) {
+            // wifi_util_dbg_print(WIFI_CTRL,"%s:%d bus: bus event:%s subscribe
+            // failed\n",__FUNCTION__, __LINE__, ACS_KEEP_OUT);
+        } else {
+            ctrl->mesh_keep_out_chans_subscribed = true;
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe success\n",
+                __FUNCTION__, __LINE__, ACS_KEEP_OUT);
         }
     }
 
