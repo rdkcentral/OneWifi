@@ -5821,15 +5821,17 @@ webconfig_error_t decode_em_policy_object(const cJSON *em_cfg, em_config_t *em_c
         em_config->radio_metrics_policies.radio_metrics_policy[i].ap_util_threshold =
             param->valuedouble;
 
-        decode_param_integer(radio_metrics_obj, "STA Traffic Stats", param);
+        decode_param_bool(radio_metrics_obj, "STA Traffic Stats", param);
         em_config->radio_metrics_policies.radio_metrics_policy[i].traffic_stats =
-            param->valuedouble;
+            (param->type & cJSON_True) ? true : false;
 
-        decode_param_integer(radio_metrics_obj, "STA Link Metrics", param);
-        em_config->radio_metrics_policies.radio_metrics_policy[i].link_metrics = param->valuedouble;
+        decode_param_bool(radio_metrics_obj, "STA Link Metrics", param);
+        em_config->radio_metrics_policies.radio_metrics_policy[i].link_metrics =
+            (param->type & cJSON_True) ? true : false;
 
-        decode_param_integer(radio_metrics_obj, "STA Status", param);
-        em_config->radio_metrics_policies.radio_metrics_policy[i].sta_status = param->valuedouble;
+        decode_param_bool(radio_metrics_obj, "STA Status", param);
+        em_config->radio_metrics_policies.radio_metrics_policy[i].sta_status =
+            (param->type & cJSON_True) ? true : false;
     }
     return webconfig_error_none;
 }

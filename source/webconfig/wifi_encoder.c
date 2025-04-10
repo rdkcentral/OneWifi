@@ -2803,11 +2803,11 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
             em_config->radio_metrics_policies.radio_metrics_policy[i].sta_rcpi_hysteresis);
         cJSON_AddNumberToObject(param_obj, "AP Utilization Threshold",
             em_config->radio_metrics_policies.radio_metrics_policy[i].ap_util_threshold);
-        cJSON_AddNumberToObject(param_obj, "STA Traffic Stats",
+        cJSON_AddBoolToObject(param_obj, "STA Traffic Stats",
             em_config->radio_metrics_policies.radio_metrics_policy[i].traffic_stats);
-        cJSON_AddNumberToObject(param_obj, "STA Link Metrics",
+        cJSON_AddBoolToObject(param_obj, "STA Link Metrics",
             em_config->radio_metrics_policies.radio_metrics_policy[i].link_metrics);
-        cJSON_AddNumberToObject(param_obj, "STA Status",
+        cJSON_AddBoolToObject(param_obj, "STA Status",
             em_config->radio_metrics_policies.radio_metrics_policy[i].sta_status);
     }
 
