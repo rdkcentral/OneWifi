@@ -10,7 +10,10 @@ STA_MGR_DIR="$(pwd)/../WiFiStaManager"
 cd ..
 git clone https://github.com/rdkcentral/rdk-wifi-hal.git rdk-wifi-hal
 git clone https://github.com/rdkcentral/rdkb-halif-wifi.git halinterface
-git clone -b 25Q2_sprint https://gerrit.teamccp.com/rdk/rdkb/components/opensource/ccsp/WiFiStaManager/generic WiFiStaManager
+
+if [ "$1" == "stamgr" ]; then
+		git clone -b 25Q2_sprint https://gerrit.teamccp.com/rdk/rdkb/components/opensource/ccsp/WiFiStaManager/generic WiFiStaManager
+fi
 
 cd $ONEWIFI_DIR
 mkdir -p install/bin
