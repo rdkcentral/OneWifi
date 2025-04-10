@@ -1121,7 +1121,7 @@ typedef struct {
     int ap_util_threshold;
     bool traffic_stats;
     bool link_metrics;
-    char sta_status;
+    bool sta_status;
 } radio_metrics_policy_t;
 
 #define EM_MAX_RADIO_POLICY 4

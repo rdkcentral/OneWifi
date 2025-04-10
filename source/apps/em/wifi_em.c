@@ -12,7 +12,7 @@
 
 #define EM_NEIGBOUR_SCAN_PROVIDER_DELAY_SEC 5 // 5 Seconds
 #define EM_NEIGBOUR_SCAN_INTERVAL_MSEC 60000 // 60 Seconds
-#define EM_LINK_METRICS_COLLECT_INTERVAL_MSEC 10000 // 10 Seconds
+#define EM_DEF_LINK_METRICS_COLLECT_INTERVAL_MSEC 5000 // 10 Seconds
 
 static bool is_monitor_done = false;
 
@@ -100,9 +100,18 @@ int em_common_config_to_monitor_queue(wifi_app_t *app, wifi_monitor_data_t *data
             return RETURN_ERR;
 
         data[i].u.mon_stats_config.args.radio_index = index;
-        data[i].u.mon_stats_config.interval_ms =
-            app->data.u.em_data.em_config.ap_metric_policy.interval *
-            1000; // converting seconds to ms
+        if (app->data.u.em_data.em_config.ap_metric_policy.interval == 0) {
+            data[i].u.mon_stats_config.interval_ms = EM_DEF_LINK_METRICS_COLLECT_INTERVAL_MSEC;
+        } else {
+            data[i].u.mon_stats_config.interval_ms =
+                app->data.u.em_data.em_config.ap_metric_policy.interval *
+                1000; // converting seconds to ms
+        }
+
+        data[i].u.mon_stats_config.args.dwell_time = EM_DEF_LINK_METRICS_COLLECT_INTERVAL_MSEC;
+
+        wifi_util_dbg_print(WIFI_EM, "%s:%d AP metrics interval policy rcvd: %d\n", __func__,
+            __LINE__, data[i].u.mon_stats_config.interval_ms);
     }
     return RETURN_OK;
 }
@@ -267,6 +276,8 @@ static int handle_ready_client_stats(wifi_app_t *app, client_assoc_data_t *stats
     int policy_index = em_match_radio_index_to_policy_index(
         &app->data.u.em_data.em_config.radio_metrics_policies, radio_index);
 
+    bool sta_lm_inclusion_pol = app->data.u.em_data.em_config.radio_metrics_policies.radio_metrics_policy[radio_index].link_metrics;
+
     if (policy_index == RETURN_ERR) {
         return RETURN_ERR;
     }
@@ -313,6 +324,10 @@ static int handle_ready_client_stats(wifi_app_t *app, client_assoc_data_t *stats
                         stats[tmp_vap_array_index].threshold_hit[i] = true;
                         stats[tmp_vap_array_index].hit_count++;
                         hit_count++;
+                    } else if (sta_lm_inclusion_pol == true) {
+                        stats[tmp_vap_array_index].threshold_hit[i] = true;
+                        stats[tmp_vap_array_index].hit_count++;
+                        hit_count++;
                     } else {
                         stats[tmp_vap_array_index].threshold_hit[i] = false;
                     }
@@ -323,10 +338,52 @@ static int handle_ready_client_stats(wifi_app_t *app, client_assoc_data_t *stats
         vap_mask >>= 1;
     }
 
-    if (hit_count > 0)
+    if (hit_count > 0) {
         em_sta_stats_publish(app, stats, vap_index);
+    }
 
     return RETURN_OK;
+}
+
+static int em_stop_metrics_report(int radio_index, wifi_app_t *app)
+{
+    wifi_monitor_data_t *data;
+    wifi_event_route_t route;
+    wifi_mgr_t *wifi_mgr = get_wifimgr_obj();
+    int interval = app->data.u.em_data.em_config.ap_metric_policy.interval;
+
+    data = (wifi_monitor_data_t *)malloc(sizeof(wifi_monitor_data_t));
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_EM, "%s:%d: data allocation failed\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    memset(data, 0, sizeof(wifi_monitor_data_t));
+
+    if (app->data.u.em_data.em_config.ap_metric_policy.interval == 0) {
+        interval = EM_DEF_LINK_METRICS_COLLECT_INTERVAL_MSEC;
+    } else {
+        interval = app->data.u.em_data.em_config.ap_metric_policy.interval;
+    }
+
+    data->u.mon_stats_config.args.radio_index = radio_index;
+    data->u.mon_stats_config.interval_ms = interval;
+    data->u.mon_stats_config.data_type = mon_stats_type_associated_device_stats;
+    data->u.mon_stats_config.args.app_info = em_app_event_type_assoc_dev_stats;
+    data->u.mon_stats_config.inst = wifi_app_inst_easymesh;
+    data->u.mon_stats_config.req_state = mon_stats_request_state_stop;
+    data->u.mon_stats_config.start_immediately = true;
+    data->u.mon_stats_config.delay_provider_sec = EM_NEIGBOUR_SCAN_PROVIDER_DELAY_SEC;
+
+    em_route(&route);
+
+    push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config,
+       &route);
+
+    if (NULL != data) {
+        free(data);
+        data = NULL;
+    }
 }
 
 int assoc_client_response(wifi_app_t *app, wifi_provider_response_t *provider_response)
@@ -378,6 +435,11 @@ int assoc_client_response(wifi_app_t *app, wifi_provider_response_t *provider_re
             MAX_NUM_VAP_PER_RADIO, client_assoc_stats[radio_index].assoc_stats_vap_presence_mask,
             radio_index, vap_index);
         client_assoc_stats[radio_index].assoc_stats_vap_presence_mask = 0;
+    }
+
+    if (app->data.u.em_data.em_config.ap_metric_policy.interval == 0) {
+        // Cancel the interval data collection if ap mertrics policy interval is 0
+        em_stop_metrics_report(radio_index, app);
     }
 
     return RETURN_OK;
@@ -835,7 +897,6 @@ int client_diag_config_to_monitor_queue(wifi_app_t *app, wifi_monitor_data_t *da
 
     for (int i = 0; i < radio_count; i++) {
         data[i].u.mon_stats_config.data_type = mon_stats_type_associated_device_stats;
-        data[i].u.mon_stats_config.interval_ms = EM_LINK_METRICS_COLLECT_INTERVAL_MSEC;
 
         if (client_assoc_stats[data[i].u.mon_stats_config.args.radio_index].req_stats_vap_mask ==
             0) {
