@@ -483,6 +483,9 @@ run:
 setup:
 	./build/linux/setup.sh
 
+stamgrsetup:
+	./build/linux/stamgr_setup.sh
+
 vapsetup:
 	cp ./build/linux/MultiVap_InterfaceMap.json /nvram/InterfaceMap.json
 	cp ./build/linux/EasymeshCfg.json /nvram/EasymeshCfg.json
