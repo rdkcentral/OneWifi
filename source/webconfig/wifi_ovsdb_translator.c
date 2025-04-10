@@ -872,6 +872,7 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
         default_vap_info->u.bss_info.nbrReportActivated = false;
         default_vap_info->u.bss_info.rapidReconnThreshold = 180;
         default_vap_info->u.bss_info.mac_filter_enable = false;
+        default_vap_info->u.bss_info.mac_filter_mode = wifi_mac_filter_mode_black_list;
         default_vap_info->u.bss_info.UAPSDEnabled = true;
         default_vap_info->u.bss_info.wmmNoAck = false;
         default_vap_info->u.bss_info.wepKeyLength = 128;
@@ -939,6 +940,8 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
                 default_vap_info->u.bss_info.security.encr = wifi_encryption_aes;
                 default_vap_info->u.bss_info.security.mfp = wifi_mfp_cfg_required;
             }
+            default_vap_info->u.bss_info.mac_filter_enable = true;
+            default_vap_info->u.bss_info.mac_filter_mode = wifi_mac_filter_mode_white_list;
         } else if(is_vap_lnf_radius(&hal_cap->wifi_prop, vapIndex) == TRUE) {
             strcpy(default_vap_info->u.bss_info.security.u.radius.identity, "lnf_radius_identity");
             default_vap_info->u.bss_info.security.u.radius.port = 1812;
