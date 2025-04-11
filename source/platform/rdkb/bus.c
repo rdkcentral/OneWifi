@@ -1065,6 +1065,7 @@ static bus_error_t bus_set(bus_handle_t *handle, char const *name, raw_data_t *d
 {
     rbusError_t rc = RBUS_ERROR_SUCCESS;
     VERIFY_NULL_WITH_RC(name);
+    VERIFY_NULL_WITH_RC(data->raw_data.bytes);
 
     rbusHandle_t p_rbus_handle = handle->u.rbus_handle;
 
