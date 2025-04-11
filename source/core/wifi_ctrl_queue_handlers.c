@@ -3124,6 +3124,7 @@ void process_send_action_frame_command(void *data, unsigned int len)
             params->wait_time_ms);
         return;
     }
+
     return;
 }
 
