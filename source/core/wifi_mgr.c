@@ -32,7 +32,9 @@
 #include "wifi_ctrl.h"
 #include <stdlib.h>
 #include "wifi_util.h"
+#ifdef __GLIBC__
 #include <execinfo.h>
+#endif
 #include "util.h"
 #include "misc.h"
 

@@ -494,7 +494,7 @@ int get_managed_guest_bridge(char *brval, unsigned long length)
         brname = (char *)data.raw_data.bytes;
         wifi_util_dbg_print(WIFI_CTRL, "Managed_wifi bridge name is %s\n", brname);
         token = strrchr(brname, ':');
-        snprintf(brval, length, token + 1);
+        snprintf(brval, length, "%s", token + 1);
         wifi_util_info_print(WIFI_CTRL, "Managed_wifi bridge val is %s\n", brval);
         get_bus_descriptor()->bus_data_free_fn(&data);
         return RETURN_OK;
