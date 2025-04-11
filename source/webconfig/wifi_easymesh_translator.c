@@ -2249,7 +2249,7 @@ webconfig_error_t translate_policy_cfg_object_from_easymesh_to_em_cfg(webconfig_
         policy_cfg->radio_metrics_policies.radio_metrics_policy[i].ap_util_threshold =
             em_policy_cfg->metrics_policy.radios[i].util_thres;
         policy_cfg->radio_metrics_policies.radio_metrics_policy[i].link_metrics =
-            (em_policy_cfg->metrics_policy.radios[i].sta_policy >> 2) & 1;
+            (em_policy_cfg->metrics_policy.radios[i].sta_policy >> 6) & 1;
         policy_cfg->radio_metrics_policies.radio_metrics_policy[i].traffic_stats =
             (em_policy_cfg->metrics_policy.radios[i].sta_policy >> 7) & 1;
         policy_cfg->radio_metrics_policies.radio_metrics_policy[i].sta_status =
