@@ -3100,7 +3100,6 @@ static void process_monitor_init_command(void)
 
 void process_send_action_frame_command(void *data, unsigned int len)
 {
-#if 0
     action_frame_params_t *params;
 
     if (data == NULL) {
@@ -3125,8 +3124,6 @@ void process_send_action_frame_command(void *data, unsigned int len)
             params->wait_time_ms);
         return;
     }
-#endif
-
     return;
 }
 

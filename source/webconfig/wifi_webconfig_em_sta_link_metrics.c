@@ -158,4 +158,4 @@ webconfig_error_t decode_em_sta_link_subdoc(webconfig_t *config, webconfig_subdo
     wifi_util_info_print(WIFI_EM, "%s:%d: decode success\n", __func__, __LINE__);
     return webconfig_error_none;
 }
-#endif // EM_APP
+#endif
