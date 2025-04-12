@@ -82,11 +82,6 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
             cfg.channel = 1;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
             cfg.variant = WIFI_80211_VARIANT_G | WIFI_80211_VARIANT_N;
-#ifdef CONFIG_IEEE80211BE
-#if !(defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_))
-            cfg.variant |= WIFI_80211_VARIANT_BE;
-#endif /* !(defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)) */
-#endif /* CONFIG_IEEE80211BE */
             break;
         case WIFI_FREQUENCY_5_BAND:
         case WIFI_FREQUENCY_5L_BAND:
@@ -354,8 +349,12 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         if (isVapMeshBackhaul(vap_index)) {
             cfg.u.bss_info.mac_filter_enable = true;
             cfg.u.bss_info.mac_filter_mode = wifi_mac_filter_mode_white_list;
+        } else if (isVapHotspot(vap_index)) {
+            cfg.u.bss_info.mac_filter_enable = true;
+            cfg.u.bss_info.mac_filter_mode = wifi_mac_filter_mode_black_list;
         } else {
             cfg.u.bss_info.mac_filter_enable = false;
+            cfg.u.bss_info.mac_filter_mode = wifi_mac_filter_mode_black_list;
         }
         cfg.u.bss_info.UAPSDEnabled = true;
         cfg.u.bss_info.wmmNoAck = false;

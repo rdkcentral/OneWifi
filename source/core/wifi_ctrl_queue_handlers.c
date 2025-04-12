@@ -40,6 +40,14 @@
 #define ASSOCIATED_DEVICE_DIAG_INTERVAL_MS 5000 //5 seconds
 #define MAX_RESET_RADIO_PARAMS_RETRY_COUNTER  (5000 / 100)
 
+#define MAC_FMT "%02x:%02x:%02x:%02x:%02x:%02x"
+#define MAC_ARG(arg) \
+    arg[0], \
+    arg[1], \
+    arg[2], \
+    arg[3], \
+    arg[4], \
+    arg[5]
 
 static unsigned msg_id = 1000;
 
@@ -2211,12 +2219,15 @@ void process_tcm_rfc(bool type)
 
 void process_wps_command_event(unsigned int vap_index)
 {
+#ifdef FEATURE_SUPPORT_WPS
     wifi_util_info_print(WIFI_CTRL,"%s:%d wifi wps test vap index = %d\n",__func__, __LINE__, vap_index);
     wifi_hal_setApWpsButtonPush(vap_index);
+#endif
 }
 
 void process_wps_pin_command_event(void *data)
 {
+#ifdef FEATURE_SUPPORT_WPS
     wps_pin_config_t  *wps_config = (wps_pin_config_t *)data;
     if (wps_config == NULL) {
         wifi_util_error_print(WIFI_CTRL,"%s:%d wps pin config data is NULL\n",__func__, __LINE__);
@@ -2226,10 +2237,12 @@ void process_wps_pin_command_event(void *data)
     wifi_util_info_print(WIFI_CTRL,"%s:%d wifi wps pin vap index = %d, wps_pin:%s\n",__func__, __LINE__,
                                         wps_config->vap_index, wps_config->wps_pin);
     wifi_hal_setApWpsPin(wps_config->vap_index, wps_config->wps_pin);
+#endif
 }
 
 static void process_wps_cancel_event(void *data)
 {
+#ifdef FEATURE_SUPPORT_WPS
     if (data == NULL) {
         wifi_util_error_print(WIFI_CTRL,"%s:%d data is NULL\n",__func__, __LINE__);
         return;
@@ -2240,6 +2253,7 @@ static void process_wps_cancel_event(void *data)
     wifi_util_info_print(WIFI_CTRL,"%s:%d wps pbc cancel vap index = %d\n",
         __func__, __LINE__, vap_index);
     wifi_hal_setApWpsCancel(vap_index);
+#endif
 }
 
 void marker_list_config_event(char *data, marker_list_t list_type)
@@ -3100,10 +3114,14 @@ void process_send_action_frame_command(void *data, unsigned int len)
 
     params = (action_frame_params_t *)data;
 
-    if (wifi_sendActionFrame(params->ap_index, params->dest_addr, params->frequency,
-            params->frame_data, params->frame_len)) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d HAL sendActionFrame method failed :\r\n", __func__,
-            __LINE__);
+    if (wifi_sendActionFrameExt(params->ap_index, params->dest_addr, params->frequency,
+            params->wait_time_ms, params->frame_data, params->frame_len)) {
+
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d HAL sendActionFrame method failed (ap_index:%d, dest_addr:" MAC_FMT
+            ", frequency:%d, wait_time_ms:%d)\n",
+            __func__, __LINE__, params->ap_index, MAC_ARG(params->dest_addr), params->frequency,
+            params->wait_time_ms);
         return;
     }
 

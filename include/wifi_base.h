@@ -182,6 +182,8 @@ typedef void *wifi_analytics_data_t;
 #define BSS_MAX_NUM_STATIONS     100     /**< Max supported stations by RDK-B firmware which would varies based on platform */
 #define BSS_MAX_NUM_STA_HOTSPOT_CBRV2    15      /**< Max supported stations for hotspot vaps in CBR2 platform */
 
+#define STA_MAX_BSS_ASSOCIATIONS  1
+
 typedef unsigned char   mac_addr_t[MAC_ADDR_LEN];
 typedef signed short    rssi_t;
 typedef char            sta_key_t[STA_KEY_LEN];
@@ -304,6 +306,7 @@ typedef struct {
     unsigned int ap_index;
     mac_addr_t dest_addr;
     unsigned int frequency;
+    unsigned int wait_time_ms;
     unsigned int frame_len;
     uint8_t frame_data[0];
 } __attribute__((packed)) action_frame_params_t;
@@ -1137,6 +1140,52 @@ typedef struct {
 } em_config_t;
 
 typedef struct {
+    mac_addr_t bssid;
+    int time_delta;
+    int est_mac_rate_down;
+    int est_mac_rate_up;
+    int rcpi;
+} assoc_sta_link_metrics_data_t;
+
+typedef struct {
+    mac_addr_t sta_mac;
+    unsigned char client_type[32];
+    int num_bssid;
+    assoc_sta_link_metrics_data_t assoc_sta_link_metrics_data[STA_MAX_BSS_ASSOCIATIONS];
+} assoc_sta_link_metrics_t;
+
+typedef struct {
+    int reason_code;
+    mac_addr_t sta_mac;
+} error_code_t;
+
+typedef struct {
+    mac_addr_t bssid;
+    int last_data_downlink_rate;
+    int last_data_uplink_rate;
+    int utilization_receive;
+    int utilization_transmit;
+} assoc_sta_ext_link_metrics_data_t;
+
+typedef struct {
+    mac_addr_t sta_mac;
+    int num_bssid;
+    assoc_sta_ext_link_metrics_data_t assoc_sta_ext_link_metrics_data[STA_MAX_BSS_ASSOCIATIONS];
+} assoc_sta_ext_link_metrics_t;
+
+typedef struct {
+    assoc_sta_link_metrics_t assoc_sta_link_metrics;
+    error_code_t error_code;
+    assoc_sta_ext_link_metrics_t assoc_sta_ext_link_metrics;
+} per_sta_metrics_t;
+
+typedef struct {
+    int vap_index;
+    unsigned int sta_count;
+    per_sta_metrics_t *per_sta_metrics;
+} em_assoc_sta_link_metrics_rsp_t;
+
+typedef struct {
     unsigned char dialog_token;
     size_t size;
     wifi_BeaconReport_t *beacon_repo;
@@ -1152,6 +1201,11 @@ typedef struct {
     int sched_handler_id;
     unsigned char dialog_token;
 } sta_beacon_report_reponse_t;
+
+typedef struct {
+    mac_address_t mac_addr;
+    unsigned char client_type[32];
+} sta_client_info_t;
 
 typedef struct {
     UCHAR operating_class;

@@ -2,7 +2,7 @@
   If not stated otherwise in this file or this component's LICENSE file the
   following copyright and licenses apply:
 
-  Copyright 2018 RDK Management
+  Copyright 2024 RDK Management
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -17,36 +17,27 @@
   limitations under the License.
  **************************************************************************/
 
-#ifndef WIFI_EM_H
-#define WIFI_EM_H
+#ifndef _MISC_H_
+#define _MISC_H_
+
+#include "misc_common.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-#define WIFI_EM_CHANNEL_SCAN_REQUEST          "Device.WiFi.EM.ChannelScanRequest"
-#define WIFI_EM_CHANNEL_SCAN_REPORT           "Device.WiFi.EM.ChannelScanReport"
-#define WIFI_EM_BEACON_REPORT                 "Device.WiFi.EM.BeaconReport"
-#define WIFI_EM_STA_LINK_METRICS_REPORT       "Device.WiFi.EM.STALinkMetricsReport"
-
-typedef struct wifi_app wifi_app_t;
-
-typedef char short_string[32];
+void wifi_misc_init();
 
 typedef struct {
-    em_config_t           em_config;
-} em_data_t;
+    wifi_misc_desc_t                desc;
+} wifi_misc_t;
 
-typedef struct {
-    hash_map_t *client_type_map;
-} sta_client_type_data_t;
-
-typedef enum {
-    em_app_event_type_assoc_dev_stats,
-} em_app_event_type_t;
+wifi_misc_desc_t *get_misc_descriptor();
+wifi_misc_t *get_misc_obj();
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // WIFI_EM_H
+#endif //_MISC_H
