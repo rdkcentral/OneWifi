@@ -3693,41 +3693,53 @@ Radio_SetParamUlongValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "OperatingChannelBandwidth", TRUE))
-    {
-        if (operChanBandwidthDmlEnumtoHalEnum(uValue , &tmpChanWidth) != ANSC_STATUS_SUCCESS)
-        {
+    if (AnscEqualString(ParamName, "OperatingChannelBandwidth", TRUE)) {
+        if (operChanBandwidthDmlEnumtoHalEnum(uValue, &tmpChanWidth) != ANSC_STATUS_SUCCESS) {
             return FALSE;
         }
 
-        if (wifiRadioOperParam->channelWidth == tmpChanWidth)
-        {
+        if (wifiRadioOperParam->channelWidth == tmpChanWidth) {
             return TRUE;
         }
 
-        if ( (tmpChanWidth == WIFI_CHANNELBANDWIDTH_160MHZ) && (wifiRadioOperParam->band == WIFI_FREQUENCY_5_BAND) && (rfc_pcfg->dfs_rfc != true) )
-        {
-            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: DFS Disabled!! Cannot set to tmpChanWidth = %d  \n",__func__, __LINE__,tmpChanWidth);
+        if ((tmpChanWidth == WIFI_CHANNELBANDWIDTH_320MHZ) &&
+            (wifiRadioOperParam->band != WIFI_FREQUENCY_6_BAND)) {
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d: 320MHZ bandwidth supported only for 6GHZ band\n",
+                __func__, __LINE__);
+            return FALSE;
+        }
+
+        if ((tmpChanWidth == WIFI_CHANNELBANDWIDTH_160MHZ) &&
+            (wifiRadioOperParam->band == WIFI_FREQUENCY_5_BAND) && (rfc_pcfg->dfs_rfc != true)) {
+            wifi_util_dbg_print(WIFI_DMCLI,
+                "%s:%d: DFS Disabled!! Cannot set to tmpChanWidth = %d\n", __func__, __LINE__,
+                tmpChanWidth);
             return FALSE;
         }
 
         if (wifiRadioOperParam->band == WIFI_FREQUENCY_2_4_BAND) {
             if ((tmpChanWidth != WIFI_CHANNELBANDWIDTH_20MHZ) &&
                 (tmpChanWidth != WIFI_CHANNELBANDWIDTH_40MHZ)) {
-                wifi_util_error_print(WIFI_DMCLI,"%s:%d: Cannot set tmpChanWidth = %d for band %d\n",__func__, __LINE__, tmpChanWidth, wifiRadioOperParam->band);
+                wifi_util_error_print(WIFI_DMCLI,
+                    "%s:%d: Cannot set tmpChanWidth = %d for band %d\n", __func__, __LINE__,
+                    tmpChanWidth, wifiRadioOperParam->band);
                 return FALSE;
             }
         }
 
-        if (is_bandwidth_and_hw_variant_compatible(wifiRadioOperParam->variant, tmpChanWidth) != true) {
-            wifi_util_error_print(WIFI_DMCLI,"%s:%d:tmpChanWidth = %d variant:%d \n",__func__, __LINE__, tmpChanWidth, wifiRadioOperParam->variant);
+        if (is_bandwidth_and_hw_variant_compatible(wifiRadioOperParam->variant, tmpChanWidth) !=
+            true) {
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d:tmpChanWidth = %d variant:%d\n", __func__,
+                __LINE__, tmpChanWidth, wifiRadioOperParam->variant);
             return FALSE;
         }
 
         wifiRadioOperParam->channelWidth = tmpChanWidth;
-        ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s OperatingChannelBandwidth : %d\n", __FUNCTION__, wifiRadioOperParam->channelWidth);
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: New channelWidth=%d\n", __func__, __LINE__, wifiRadioOperParam->channelWidth);
-        is_radio_config_changed = TRUE; 
+        ccspWifiDbgPrint(CCSP_WIFI_TRACE, "%s OperatingChannelBandwidth : %d\n", __FUNCTION__,
+            wifiRadioOperParam->channelWidth);
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: New channelWidth=%d\n", __func__, __LINE__,
+            wifiRadioOperParam->channelWidth);
+        is_radio_config_changed = TRUE;
         return TRUE;
     }
 
