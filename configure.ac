@@ -55,6 +55,18 @@ AC_ARG_ENABLE([libwebconfig],
              [echo "libwebconfig is disabled"])
 AM_CONDITIONAL([WITH_LIBWEBCONFIG], [test x$LIBWEBCONFIG_ENABLED = xtrue])
 
+AC_ARG_ENABLE([easymesh],
+             AS_HELP_STRING([--enable-easymesh],[enable easymesh (default is no)]),
+             [
+              case "${enableval}" in
+               yes) EASYMESH_ENABLED=true;;
+               no) EASYMESH_ENABLED=false;;
+               *) AC_MSG_ERROR([bad value ${enableval} for --enable-easymesh ]);;
+              esac
+             ],
+             [echo "easymesh is disabled"])
+AM_CONDITIONAL([WITH_EASYMESH], [test x$EASYMESH_ENABLED = xtrue])
+
 AC_PREFIX_DEFAULT(`pwd`)
 AC_ENABLE_SHARED
 AC_DISABLE_STATIC
