@@ -107,6 +107,15 @@ struct ovs_vapname_cloudvifname_map  cloud_vif_map[] = {
     {"svc-g-ap-50",  "hotspot_secure_5g"},
     {"svc-g-ap-60",  "hotspot_secure_6g"},
 }; 
+#elif defined (TARGET_GEMINI7_2)
+struct ovs_vapname_cloudvifname_map  cloud_vif_map[] = {
+    {"bhaul-sta-24",   "mesh_sta_2g"},
+    {"home-ap-24", "private_ssid_2g"},
+    {"bhaul-ap-24", "mesh_backhaul_2g"},
+    {"bhaul-sta-50",   "mesh_sta_5g"},
+    {"home-ap-50", "private_ssid_5g"},
+    {"bhaul-ap-50", "mesh_backhaul_5g"},
+}
 #else
 struct ovs_vapname_cloudvifname_map  cloud_vif_map[] = {
     {"wl0",   "mesh_sta_2g"},
@@ -156,7 +165,7 @@ struct ovs_radioname_cloudradioname_map {
     char cloudradioname[64];
 };
 
-#if defined (_PP203X_PRODUCT_REQ_) || defined (_XER5_PRODUCT_REQ_)
+#if defined (_PP203X_PRODUCT_REQ_) || defined (_XER5_PRODUCT_REQ_) || defined (TARGET_GEMINI7_2)
 struct ovs_radioname_cloudradioname_map cloud_radio_map[] = {
     {0, "wifi0"},
     {1, "wifi1"},
