@@ -64,6 +64,7 @@ extern "C" {
 radio_type_t freq_band_to_dpp_radio_type(wifi_freq_bands_t freq_band);
 report_type_t reporting_type_to_dpp_report_type(reporting_type_t report_type);
 radio_scan_type_t survey_type_to_dpp_scan_type(survey_type_t survey_type);
+char* stats_type_to_str(stats_type_t stats_type);
 char* survey_type_to_str(survey_type_t survey_type);
 char* neighbor_scan_mode_to_str(wifi_neighborScanMode_t scan_mode);
 radio_chanwidth_t str_to_dpp_chan_width(char *str);
