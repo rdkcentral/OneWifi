@@ -65,7 +65,7 @@
 #define OFFCHAN_DEFAULT_TSCAN_IN_MSEC 63
 #define OFFCHAN_DEFAULT_NSCAN_IN_SEC 10800
 #define OFFCHAN_DEFAULT_TIDLE_IN_SEC 5
-#define BOOTSTRAP_INFO_FILE             "/op/secure/bootstrap.json"
+#define BOOTSTRAP_INFO_FILE             "/opt/secure/bootstrap.json"
 #define COUNTRY_CODE_LEN 4
 #define RDKB_CCSP_SUCCESS               100
 #define ONEWIFI_DB_VERSION_DFS_TIMER_RADAR_DETECT_FLAG 100030
