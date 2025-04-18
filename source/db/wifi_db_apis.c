@@ -80,6 +80,8 @@
 #define ONEWIFI_DB_VERSION_WPA3_COMP_FLAG 100033
 #define WPA3_COMPATIBILITY 8192
 
+#define ONEWIFI_DB_VERSION_HOSTAP_MGMT_FRAME_CTRL_FLAG 100034
+
 ovsdb_table_t table_Wifi_Radio_Config;
 ovsdb_table_t table_Wifi_VAP_Config;
 ovsdb_table_t table_Wifi_Security_Config;
@@ -4395,12 +4397,16 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
 #if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)
         if (rdk_config[i].exists == false) {
 #if defined(_SR213_PRODUCT_REQ_)
-            if (config->vap_array[i].vap_index !=2  &&  config->vap_array[i].vap_index != 3 ) {
-                wifi_util_error_print(WIFI_DB,"%s:%d VAP_EXISTS_FALSE for vap_index=%d, setting to TRUE. \n",__FUNCTION__,__LINE__,config->vap_array[i].vap_index);
+            if (config->vap_array[i].vap_index != 2 && config->vap_array[i].vap_index != 3) {
+                wifi_util_error_print(WIFI_DB,
+                    "%s:%d VAP_EXISTS_FALSE for vap_index=%d, setting to TRUE. \n", __FUNCTION__,
+                    __LINE__, config->vap_array[i].vap_index);
                 rdk_config[i].exists = true;
             }
 #else
-            wifi_util_error_print(WIFI_DB,"%s:%d VAP_EXISTS_FALSE for vap_index=%d, setting to TRUE. \n",__FUNCTION__,__LINE__,config->vap_array[i].vap_index);
+            wifi_util_error_print(WIFI_DB,
+                "%s:%d VAP_EXISTS_FALSE for vap_index=%d, setting to TRUE. \n", __FUNCTION__,
+                __LINE__, config->vap_array[i].vap_index);
             rdk_config[i].exists = true;
 #endif
         }
@@ -4414,21 +4420,36 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
         }
         if (g_wifidb->db_version < ONEWIFI_DB_VERSION_TCM_FLAG) {
             wifi_util_info_print(WIFI_DB, "%s:%d upgrade vap config, db version %d\n", __func__,
-                                 __LINE__, g_wifidb->db_version);
+                __LINE__, g_wifidb->db_version);
             config->vap_array[i].u.bss_info.preassoc.time_ms = TCM_TIMEOUT_MS;
             config->vap_array[i].u.bss_info.preassoc.min_num_mgmt_frames = TCM_MIN_MGMT_FRAMES;
-            strncpy(config->vap_array[i].u.bss_info.preassoc.tcm_exp_weightage, TCM_WEIGHTAGE, sizeof(config->vap_array[i].u.bss_info.preassoc.tcm_exp_weightage));
-            strncpy(config->vap_array[i].u.bss_info.preassoc.tcm_gradient_threshold, TCM_THRESHOLD, sizeof(config->vap_array[i].u.bss_info.preassoc.tcm_gradient_threshold));
+            strncpy(config->vap_array[i].u.bss_info.preassoc.tcm_exp_weightage, TCM_WEIGHTAGE,
+                sizeof(config->vap_array[i].u.bss_info.preassoc.tcm_exp_weightage));
+            strncpy(config->vap_array[i].u.bss_info.preassoc.tcm_gradient_threshold, TCM_THRESHOLD,
+                sizeof(config->vap_array[i].u.bss_info.preassoc.tcm_gradient_threshold));
             wifidb_update_wifi_cac_config(config);
         }
-        if( g_wifidb->db_version < ONEWIFI_DB_VERSION_WPA3_COMP_FLAG ) {
-            if( config->vap_array[i].u.bss_info.security.mode == WPA3_COMPATIBILITY) {
+        if (g_wifidb->db_version < ONEWIFI_DB_VERSION_WPA3_COMP_FLAG) {
+            if (config->vap_array[i].u.bss_info.security.mode == WPA3_COMPATIBILITY) {
                 config->vap_array[i].u.bss_info.security.mode = wifi_security_mode_wpa2_personal;
                 config->vap_array[i].u.bss_info.security.mfp = wifi_mfp_cfg_disabled;
-                wifi_util_info_print(WIFI_DB, "%s Update security mode:%d mfp:%d \n", __func__, config->vap_array[i].u.bss_info.security.mode,
-                        config->vap_array[i].u.bss_info.security.mfp);
-                wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i], &rdk_config[i]);
+                wifi_util_info_print(WIFI_DB, "%s Update security mode:%d mfp:%d \n", __func__,
+                    config->vap_array[i].u.bss_info.security.mode,
+                    config->vap_array[i].u.bss_info.security.mfp);
+                wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i],
+                    &rdk_config[i]);
             }
+        }
+        if (g_wifidb->db_version < ONEWIFI_DB_VERSION_HOSTAP_MGMT_FRAME_CTRL_FLAG) {
+#if defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_)
+            config->vap_array[i].u.bss_info.hostap_mgt_frame_ctrl = true;
+            wifi_util_dbg_print(WIFI_DB,
+                "%s:%d Update hostap_mgt_frame_ctrl:%d for vap_index:%d \n", __func__, __LINE__,
+                config->vap_array[i].u.bss_info.hostap_mgt_frame_ctrl,
+                config->vap_array[i].vap_index);
+            wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i],
+                &rdk_config[i]);
+#endif
         }
     }
 }
@@ -6712,6 +6733,12 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         }
 #endif // NEWPLATFORM_PORT
 #endif //_SKY_HUB_COMMON_PRODUCT_REQ_
+
+#if defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_)
+        cfg.u.bss_info.hostap_mgt_frame_ctrl = true;
+        wifi_util_dbg_print(WIFI_DB, "%s:%d vap_index:%d hostap_mgt_frame_ctrl:%d\n", __func__,
+            __LINE__, vap_index, cfg.u.bss_info.hostap_mgt_frame_ctrl);
+#endif
 
         memset(ssid, 0, sizeof(ssid));
 
