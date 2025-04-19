@@ -72,6 +72,7 @@ libwifi_webconfig_la_SOURCES = wifi_webconfig.c wifi_encoder.c wifi_decoder.c wi
 
 if EM_APP_SUPPORT
 libwifi_webconfig_la_SOURCES += wifi_webconfig_em_channel_stats.c wifi_webconfig_em_sta_link_metrics.c
+libwifi_webconfig_la_CFLAGS += $(EM_APP_FLAG)
 endif
 
 if WITH_EASYMESH
