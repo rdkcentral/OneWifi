@@ -804,7 +804,7 @@ webconfig_error_t translate_sta_info_to_em_common(const wifi_vap_info_t *vap, co
 
     if ((vap_row == NULL) || (vap == NULL)) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: input argument is NULL\n", __func__, __LINE__);
-        return webconfig_error_translate_from_easymesh;
+        return webconfig_error_translate_to_easymesh;
     }
     default_em_bss_info(vap_row);
 
@@ -825,7 +825,7 @@ webconfig_error_t translate_sta_info_to_em_common(const wifi_vap_info_t *vap, co
                 sizeof(vap_row->fronthaul_akm[1]), ENUM_TO_STRING, &len) != RETURN_OK) {
 
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed top convert key mgmt: "
-                "security mode 0x%x\n", __func__, __LINE__, vap->u.bss_info.security.mode);
+                "security mode 0x%x\n", __func__, __LINE__, vap->u.sta_info.security.mode);
     }
     vap_row->num_fronthaul_akms = len;
     // Set backhaul AKMs to empty
@@ -834,10 +834,10 @@ webconfig_error_t translate_sta_info_to_em_common(const wifi_vap_info_t *vap, co
         vap_row->backhaul_akm[i][0] = '\0';
     }
 
-    /*
-    Copy Passphrase
-    strncpy(vap_row->mesh_sta_passphrase, vap->u.bss_info.security.u.key.key, sizeof(vap_row->mesh_sta_passphrase));
-    */
+    
+    //Copy Passphrase
+    strncpy(vap_row->mesh_sta_passphrase, vap->u.sta_info.security.u.key.key, sizeof(vap_row->mesh_sta_passphrase));
+    
     // Find the radio interface map
     for (k = 0; k < (sizeof(wifi_prop->radio_interface_map)/sizeof(radio_interface_mapping_t)); k++) {
         if (wifi_prop->radio_interface_map[k].radio_index == vap->radio_index) {
@@ -1445,14 +1445,14 @@ webconfig_error_t translate_em_common_to_sta_info_common(wifi_vap_info_t *vap, c
                                STRING_TO_ENUM, &len) != RETURN_OK) {
 
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed top convert key mgmt: "
-                "security mode 0x%x\n", __func__, __LINE__, vap->u.bss_info.security.mode);
+                "security mode 0x%x\n", __func__, __LINE__, vap->u.sta_info.security.mode);
     }
 
     vap->u.sta_info.security.mode = enum_sec;
-    /*
-    Copy Passphrase
-    strncpy(vap->u.bss_info.security.u.key.key, vap_row->mesh_sta_passphrase, sizeof(vap->u.bss_info.security.u.key.key));
-    */
+    
+    //Copy Passphrase
+    strncpy(vap->u.sta_info.security.u.key.key, vap_row->mesh_sta_passphrase, sizeof(vap->u.sta_info.security.u.key.key));
+    
     return webconfig_error_none;
 }
 // translate_em_bss_to_private_vap_info() em_bss_info_t data elements of wifi_vap_info_t of Onewifi for private vaps
