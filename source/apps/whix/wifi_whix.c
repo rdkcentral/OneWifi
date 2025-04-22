@@ -1506,7 +1506,7 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
         snprintf(buff, MAX_BUFF_SIZE - 1, "%s WIFI_BYTESSENTCLIENTS_%d:", tmp, vap_index + 1);
         for (i = 0; i < num_devs; i++) {
             if (sta[i].dev_stats.cli_Active == true) {
-		wifi_util_dbg_print(WIFI_APPS, "Bytes Sent %lu and Bytes Sent last %lu\n", sta[i].dev_stats.cli_BytesSent, sta[i].dev_stats_last.cli_BytesSent);
+                wifi_util_dbg_print(WIFI_APPS, "Bytes Sent %lu and Bytes Sent last %lu\n", sta[i].dev_stats.cli_BytesSent, sta[i].dev_stats_last.cli_BytesSent);
                 snprintf(tmp, 32, "%lu,",
                     sta[i].dev_stats.cli_BytesSent - sta[i].dev_stats_last.cli_BytesSent);
                 sta[i].dev_stats_last.cli_BytesSent = sta[i].dev_stats.cli_BytesSent;
