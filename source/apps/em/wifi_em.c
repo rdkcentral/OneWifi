@@ -838,6 +838,31 @@ static int em_handle_disassoc_device(wifi_app_t *app, void *arg)
     return 0;
 }
 
+static int em_handle_sta_conn_status(wifi_app_t *app, void *data)
+{
+    rdk_sta_data_t *sta_data = (rdk_sta_data_t *)data;
+    if (sta_data == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d: NULL STA data!\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    // Publish the whole rdk_sta_data_t
+    wifi_ctrl_t *wifi_ctrl = get_wifictrl_obj();
+    raw_data_t rdata = {0};
+    rdata.raw_data.bytes = malloc(sizeof(rdk_sta_data_t));
+    if (rdata.raw_data.bytes == NULL) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d: Could not allocate for rdk_sta_data_t\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    rdata.data_type = bus_data_type_bytes;
+    memcpy(rdata.raw_data.bytes, sta_data, sizeof(rdk_sta_data_t));
+    rdata.raw_data_len = sizeof(rdk_sta_data_t);
+    char path[256] = {0};
+    snprintf(path, sizeof(path), WIFI_EM_ASSOCIATION_STATUS);
+    get_bus_descriptor()->bus_event_publish_fn(&wifi_ctrl->handle, path, &rdata);
+    free(rdata.raw_data.bytes);
+}
+
 int monitor_event_em(wifi_app_t *app, wifi_event_t *event)
 {
     int ret = RETURN_ERR;
@@ -1258,6 +1283,10 @@ int handle_em_hal_event(wifi_app_t *app, wifi_event_subtype_t sub_type, void *da
             __LINE__);
         em_handle_disassoc_device(app, data);
         break;
+    
+    case wifi_event_hal_sta_conn_status:
+        em_handle_sta_conn_status(app, data);
+        break;
 
     default:
         wifi_util_dbg_print(WIFI_EM, "%s:%d app sub_event:%s not handled\r\n", __func__, __LINE__,
@@ -1332,7 +1361,10 @@ int em_init(wifi_app_t *app, unsigned int create_flag)
             { bus_data_type_string, false, 0, 0, 0, NULL } },
         { WIFI_EM_STA_LINK_METRICS_REPORT, bus_element_type_method,
             { NULL, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
-            { bus_data_type_string, false, 0, 0, 0, NULL } }
+            { bus_data_type_string, false, 0, 0, 0, NULL } },
+        { WIFI_EM_ASSOCIATION_STATUS, bus_element_type_method,
+            { NULL, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
+            { bus_data_type_byte, false, 0, 0, 0, NULL } } ,
     };
     policy_config->btm_steering_dslw_policy.sta_count = 0;
     policy_config->local_steering_dslw_policy.sta_count = 0;

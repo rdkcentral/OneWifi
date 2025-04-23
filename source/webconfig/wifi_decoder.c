@@ -2923,6 +2923,10 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
     // TransmitPower
     decode_param_integer(obj_radio, "TransmitPower", param);
     radio_info->transmitPower = param->valuedouble;
+    if (radio_info->transmitPower == 0) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "Invalid TransmitPower value 0, set to 100\n");
+        radio_info->transmitPower = 100;
+    }
 
     // RtsThreshold
     decode_param_integer(obj_radio, "RtsThreshold", param);

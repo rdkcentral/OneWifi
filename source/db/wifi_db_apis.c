@@ -385,7 +385,9 @@ void callback_Wifi_Radio_Config(ovsdb_update_monitor_t *mon,
         l_radio_cfg->operationalDataTransmitRates = new_rec->operational_data_transmit_rate;
         l_radio_cfg->fragmentationThreshold = new_rec->fragmentation_threshold;
         l_radio_cfg->guardInterval = new_rec->guard_interval;
-        l_radio_cfg->transmitPower = new_rec->transmit_power;
+        if (new_rec->transmit_power != 0) {
+            l_radio_cfg->transmitPower = new_rec->transmit_power;
+        }
         l_radio_cfg->rtsThreshold = new_rec->rts_threshold;
         l_radio_cfg->factoryResetSsid = new_rec->factory_reset_ssid;
         l_radio_cfg->radioStatsMeasuringRate = new_rec->radio_stats_measuring_rate;
@@ -1956,7 +1958,7 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
     config->operationalDataTransmitRates = cfg->operational_data_transmit_rate;
     config->fragmentationThreshold = cfg->fragmentation_threshold;
     config->guardInterval = cfg->guard_interval;
-    config->transmitPower = cfg->transmit_power;
+    config->transmitPower = cfg->transmit_power != 0 ? cfg->transmit_power : 100;
     config->rtsThreshold = cfg->rts_threshold;
     config->factoryResetSsid = cfg->factory_reset_ssid;
     config->radioStatsMeasuringRate = cfg->radio_stats_measuring_rate;
