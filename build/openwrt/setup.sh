@@ -47,7 +47,7 @@ rm -rf hostap-patches
 #return back to initial directory
 cd $ONEWIFI_DIR
 #Copy the Toplevel Makefile of OpenWRT for Easymesh package and golden MT7966 config
-cp build/openwrt/Makefile ../Makefile
+cp build/openwrt/Makefile_package ../Makefile
 cp build/openwrt/MT7966.config ../../../.config
 #Copy the avro dependency to package/libs
 cp -r build/openwrt/avro ../../libs/.
