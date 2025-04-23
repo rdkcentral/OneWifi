@@ -58,6 +58,26 @@ EXCLUDE = $(WIFI_RDK_HAL)/src/wifi_hal_frame_test.c $(WIFI_RDK_HAL)/src/wifi_hal
 HAL_LIB_SOURCES = $(filter-out $(EXCLUDE),$(wildcard $(WIFI_RDK_HAL)/src/*.c)) \
     $(wildcard $(WIFI_RDK_HAL)/platform/banana-pi/*.c) \
     $(wildcard $(WIFI_DEVICE_HAL)/*.c) \
+    $(WIFI_HOSTAP_SUPPLICANT)/sme.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/wmm_ac.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/wps_supplicant.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/wpas_glue.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/interworking.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/op_classes.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/events.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/hs20_supplicant.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/scan.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/bss.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/notify.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/wpa_supplicant.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/robust_av.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/bssid_ignore.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/config.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/gas_query.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/offchannel.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/rrm.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/config_file.c \
+    $(WIFI_HOSTAP_SUPPLICANT)/eap_register.c \
     $(WIFI_HOSTAP_SRC)/ap/ieee802_11_auth.c \
     $(WIFI_HOSTAP_SRC)/ap/ap_config.c   \
     $(WIFI_HOSTAP_SRC)/ap/ieee802_11.c   \
@@ -95,6 +115,8 @@ HAL_LIB_SOURCES = $(filter-out $(EXCLUDE),$(wildcard $(WIFI_RDK_HAL)/src/*.c)) \
     $(WIFI_HOSTAP_SRC)/ap/dfs.c   \
     $(WIFI_HOSTAP_SRC)/ap/utils.c   \
     $(WIFI_HOSTAP_SRC)/ap/greylist.c   \
+    $(WIFI_HOSTAP_SRC)/ap/hs20.c   \
+    $(WIFI_HOSTAP_SRC)/ap/gas_serv.c   \
     $(WIFI_HOSTAP_SRC)/eapol_auth/eapol_auth_sm.c   \
     $(WIFI_HOSTAP_SRC)/eap_server/eap_server.c   \
     $(WIFI_HOSTAP_SRC)/eap_server/eap_server_methods.c   \
@@ -131,12 +153,15 @@ HAL_LIB_SOURCES = $(filter-out $(EXCLUDE),$(wildcard $(WIFI_RDK_HAL)/src/*.c)) \
     $(WIFI_HOSTAP_SRC)/utils/uuid.c    \
     $(WIFI_HOSTAP_SRC)/utils/radiotap.c    \
     $(WIFI_HOSTAP_SRC)/utils/crc32.c    \
+    $(WIFI_HOSTAP_SRC)/utils/bitfield.c    \
+    $(WIFI_HOSTAP_SRC)/utils/config.c    \
     $(WIFI_HOSTAP_SRC)/common/wpa_common.c    \
     $(WIFI_HOSTAP_SRC)/common/sae.c    \
     $(WIFI_HOSTAP_SRC)/common/hw_features_common.c    \
     $(WIFI_HOSTAP_SRC)/common/ieee802_11_common.c    \
     $(WIFI_HOSTAP_SRC)/common/ctrl_iface_common.c    \
     $(WIFI_HOSTAP_SRC)/common/dragonfly.c    \
+    $(WIFI_HOSTAP_SRC)/common/gas.c    \
     $(WIFI_HOSTAP_SRC)/crypto/crypto_openssl.c    \
     $(WIFI_HOSTAP_SRC)/crypto/ms_funcs.c    \
     $(WIFI_HOSTAP_SRC)/crypto/sha1-prf.c    \
@@ -182,7 +207,7 @@ HAL_LIB_OBJECTS = $(HAL_LIB_SOURCES:.c=.o)  # expands to list of object files
 ALL_HAL_LIB_OBJECTS = $(HAL_LIB_OBJECTS)
 HAL_LIB_FLAGS = -g -fPIC $(INCLUDE_HAL_LIB_DIRS) -DENABLE_FEATURE_MESHWIFI -DBANANA_PI_PORT -D_PLATFORM_BANANAPI_R4_ -DCONFIG_HW_CAPABILITIES
 HOSTAP_LIB_FLAGS = -g -fPIC $(INCLUDE_HOSTAP_LIB_DIRS) -DHOSTAPD -DCONFIG_CRYPTO_INTERNAL -DCONFIG_DRIVER_NL80211 -DNEED_AP_MLME -DCONFIG_IEEE80211AC -DCONFIG_IEEE80211AX -DCONFIG_IEEE80211N -DCONFIG_WPS -DIEEE8021X_EAPOL -DEAP_SERVER_IDENTITY -DEAP_SERVER_MD5 -DEAP_SERVER_TLS -DEAP_SERVER_MSCHAPV2 -DEAP_SERVER_PEAP -DEAP_SERVER_TTLS -DCONFIG_ECC -DRDK_ONEWIFI -DCONFIG_IEEE80211W -DCONFIG_OPENSSL_CMAC -DCONFIG_LIBNL20 -DCONFIG_WNM_AP
-HOSTAP_LIB_FLAGS +=  -DHOSTAPD_2_10 -DCONFIG_WEP -DFEATURE_SUPPORT_RADIUSGREYLIST -DCONFIG_DRIVER_BRCM -DCONFIG_DRIVER_BRCM_MAP -DCONFIG_SAE -DCONFIG_SUITEB192 -DCONFIG_SUITE -DCONFIG_SUITEB -DCONFIG_SUITEB192 -DCONFIG_CRYPTO_INTERNAL -DCONFIG_SHA256 -DCONFIG_SHA384 -DCONFIG_SHA512 -DCONFIG_HMAC_SHA384_KDF
+HOSTAP_LIB_FLAGS +=  -DHOSTAPD_2_10 -DCONFIG_WEP -DFEATURE_SUPPORT_RADIUSGREYLIST -DCONFIG_DRIVER_BRCM -DCONFIG_DRIVER_BRCM_MAP -DCONFIG_SAE -DCONFIG_SUITEB192 -DCONFIG_SUITE -DCONFIG_SUITEB -DCONFIG_SUITEB192 -DCONFIG_CRYPTO_INTERNAL -DCONFIG_SHA256 -DCONFIG_SHA384 -DCONFIG_SHA512 -DCONFIG_HMAC_SHA384_KDF -DCONFIG_SME -DCONFIG_INTERWORKING -DCONFIG_GAS -DCONFIG_HS20
 
 # wifi agent rules
 
