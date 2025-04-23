@@ -24,7 +24,9 @@
 #include <sys/sysinfo.h>
 #include <sys/un.h>
 #include <assert.h>
+#ifdef ONEWIFI_SYSEVENT_SUPPORT
 #include <sysevent/sysevent.h>
+#endif
 #include <cjson/cJSON.h>
 #include <dirent.h>
 #include <errno.h>

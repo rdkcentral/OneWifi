@@ -390,10 +390,12 @@ int init_wifi_global_config(void)
         wifi_util_info_print(WIFI_CTRL, "%s:%d wifi global params already initialized\r\n",__func__, __LINE__);
         return RETURN_OK;
     }
+#ifdef ONEWIFI_SYSEVENT_SUPPORT
     if (RETURN_OK != get_misc_descriptor()->WiFi_InitGasConfig_fn()) {
         wifi_util_error_print(WIFI_CTRL,"RDK_LOG_WARN, RDKB_SYSTEM_BOOT_UP_LOG : CosaWifiInitialize - WiFi failed to Initialize GAS Configuration.\n");
         return RETURN_ERR;
     }
+#endif
 
     wifi_global_param_init = true;
     return RETURN_OK;

@@ -74,7 +74,11 @@ libwifi_utils_la_LDFLAGS = -rdynamic -lwebconfig_framework -lsecure_wrapper $(SY
 if ONEWIFI_DML_SUPPORT
 libwifi_utils_la_LDFLAGS += -lccsp_common
 endif
-libwifi_utils_la_LDFLAGS += -lsyscfg -lprint_uptime -lsysevent -lrdk_wifihal
+
+if ONEWIFI_SYSEVENT_SUPPORT
+libwifi_utils_la_LDFLAGS += -lsyscfg -lprint_uptime -lsysevent
+endif
+libwifi_utils_la_LDFLAGS += -lrdk_wifihal
 
 if !HAL_IPC
 libwifi_utils_la_LDFLAGS += -lhal_wifi
