@@ -6334,7 +6334,7 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #ifdef NEWPLATFORM_PORT
             cfg.variant |= WIFI_80211_VARIANT_AX;
 #endif /* NEWPLATFORM_PORT */
-#ifdef CONFIG_IEEE80211BE
+#if defined(_PLATFORM_BANANAPI_R4_) && defined(CONFIG_IEEE80211BE)
             cfg.variant |= WIFI_80211_VARIANT_BE;
 #endif /* CONFIG_IEEE80211BE */
 #if defined (_PP203X_PRODUCT_REQ_)
