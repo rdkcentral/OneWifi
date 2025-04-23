@@ -197,6 +197,8 @@ static char *ext_conn_state_to_str(connection_state_t conn_state)
         return "disconnected_scan_list_in_progress";
     case connection_state_disconnected_scan_list_all:
         return "disconnected_scan_list_all";
+    case connection_state_disconnected_steady:
+        return "disconnected_steady";
     case connection_state_connection_in_progress:
         return "connection_in_progress";
     case connection_state_connection_to_lcb_in_progress:
@@ -215,7 +217,7 @@ static char *ext_conn_state_to_str(connection_state_t conn_state)
         break;
     }
 
-    return "udefined state";
+    return "undefined state";
 }
 
 static char *ext_conn_status_to_str(wifi_connection_status_t status)
@@ -821,6 +823,10 @@ int process_ext_connect_algorithm(vap_svc_t *svc)
     ext->ext_connect_algo_processor_id = 0;
 
     switch (ext->conn_state) {
+        case connection_state_disconnected_steady:
+            // Don't scan, don't attempt connection, just do nothing
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d disconnected steady state\n", __func__, __LINE__);
+            break;
         case connection_state_disconnected_scan_list_none:
             ext_start_scan(svc);
             break;
