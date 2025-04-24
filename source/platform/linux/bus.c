@@ -39,11 +39,14 @@ bool is_server_process(void)
 
     snprintf(file_name, sizeof(file_name), "/proc/%d/comm", getpid());
     if ((fp = fopen(file_name, "r")) != NULL) {
-        fgets(file_name, sizeof(file_name), fp);
-        fclose(fp);
+        if (fgets(file_name, sizeof(file_name), fp) != NULL) {
+            fclose(fp);
 
-        if (strstr(file_name, BUS_SERVER_PROCESS_NAME)) {
-            return true;
+            if (strstr(file_name, BUS_SERVER_PROCESS_NAME)) {
+                return true;
+            }
+        } else {
+            fclose(fp);
         }
     }
 
