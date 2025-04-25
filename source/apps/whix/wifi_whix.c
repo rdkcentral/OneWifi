@@ -1140,6 +1140,7 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
     hash_map_t *last_stats_map = app->data.u.whix.last_stats_map;
     wifi_associated_dev3_t *dev_stats_last = NULL;
     bool update_flag[num_devs];
+    memset(update_flag, 0, sizeof(update_flag));
 
     if (NULL == sta && num_devs != 0) {
         wifi_util_error_print(WIFI_APPS, "%s:%d sta is NULL and num_devs %u\n", __func__, __LINE__,
@@ -1511,24 +1512,25 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
         for (i = 0; i < num_devs; i++) {
             wifi_util_dbg_print(WIFI_APPS, "PAVI1:%d\n", __LINE__);
             to_sta_key(sta[i].sta_mac, sta_key);
-	    wifi_util_dbg_print(WIFI_APPS, "PAVI2:%d\n", __LINE__);
+            wifi_util_dbg_print(WIFI_APPS, "PAVI2:%d\n", __LINE__);
             dev_stats_last = (wifi_associated_dev3_t *)hash_map_get(last_stats_map, sta_key);
-	    wifi_util_dbg_print(WIFI_APPS, "PAVI3:%d\n", __LINE__);
+            wifi_util_dbg_print(WIFI_APPS, "PAVI3:%d\n", __LINE__);
 
             if (dev_stats_last == NULL) {
-		wifi_util_dbg_print(WIFI_APPS, "PAVI4:%d Not found\n", __LINE__);
+                wifi_util_dbg_print(WIFI_APPS, "PAVI4:%d Not found\n", __LINE__);
                 // MAC not found, so use the last used data as 0
-                hash_map_put(app->data.u.whix.last_stats_map,
-                    strdup(sta_key), &sta[i]);
-		wifi_util_dbg_print(WIFI_APPS, "PAVI5:%d\n", __LINE__);
+                hash_map_put(app->data.u.whix.last_stats_map, strdup(sta_key), &sta[i]);
+                wifi_util_dbg_print(WIFI_APPS, "PAVI5:%d\n", __LINE__);
                 update_flag[i] = true;
-		wifi_util_dbg_print(WIFI_APPS, "PAVI6:%d\n", __LINE__);
+                wifi_util_dbg_print(WIFI_APPS, "PAVI6:%d\n", __LINE__);
             }
             if (sta[i].dev_stats.cli_Active == true) {
                 wifi_util_dbg_print(WIFI_APPS, "Bytes Sent %lu and Bytes Sent last from hash %lu\n",
-                    sta[i].dev_stats.cli_BytesSent, dev_stats_last->cli_BytesSent);
+                    sta[i].dev_stats.cli_BytesSent,
+                    (update_flag[i] ? 0 : dev_stats_last->cli_BytesSent));
                 snprintf(tmp, 32, "%lu,",
-                    sta[i].dev_stats.cli_BytesSent - dev_stats_last->cli_BytesSent);
+                    sta[i].dev_stats.cli_BytesSent -
+                        (update_flag[i] ? 0 : dev_stats_last->cli_BytesSent));
                 dev_stats_last->cli_BytesSent = sta[i].dev_stats.cli_BytesSent;
                 strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
             }
@@ -1549,7 +1551,8 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
                         sta_key);
                 }
                 snprintf(tmp, 32, "%lu,",
-                    sta[i].dev_stats.cli_BytesReceived - dev_stats_last->cli_BytesReceived);
+                    sta[i].dev_stats.cli_BytesReceived -
+                        (update_flag[i] ? 0 : dev_stats_last->cli_BytesReceived));
                 dev_stats_last->cli_BytesReceived = sta[i].dev_stats.cli_BytesReceived;
                 strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
             }
@@ -1571,7 +1574,8 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
                         sta_key);
                 }
                 snprintf(tmp, 32, "%lu,",
-                    sta[i].dev_stats.cli_PacketsSent - dev_stats_last->cli_PacketsSent);
+                    sta[i].dev_stats.cli_PacketsSent -
+                        (update_flag[i] ? 0 : dev_stats_last->cli_PacketsSent));
                 dev_stats_last->cli_PacketsSent = sta[i].dev_stats.cli_PacketsSent;
                 strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
                 strncat(telemetryBuff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
@@ -1601,7 +1605,8 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
                         sta_key);
                 }
                 snprintf(tmp, 32, "%lu,",
-                    sta[i].dev_stats.cli_PacketsReceived - dev_stats_last->cli_PacketsReceived);
+                    sta[i].dev_stats.cli_PacketsReceived -
+                        (update_flag[i] ? 0 : dev_stats_last->cli_PacketsReceived));
                 dev_stats_last->cli_PacketsReceived = sta[i].dev_stats.cli_PacketsReceived;
                 strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
             }
@@ -1623,7 +1628,8 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
                         sta_key);
                 }
                 snprintf(tmp, 32, "%lu,",
-                    sta[i].dev_stats.cli_ErrorsSent - dev_stats_last->cli_ErrorsSent);
+                    sta[i].dev_stats.cli_ErrorsSent -
+                        (update_flag[i] ? 0 : dev_stats_last->cli_ErrorsSent));
                 dev_stats_last->cli_ErrorsSent = sta[i].dev_stats.cli_ErrorsSent;
                 strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
                 strncat(telemetryBuff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
@@ -1653,7 +1659,8 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
                         sta_key);
                 }
                 snprintf(tmp, 32, "%lu,",
-                    sta[i].dev_stats.cli_RetransCount - dev_stats_last->cli_RetransCount);
+                    sta[i].dev_stats.cli_RetransCount -
+                        (update_flag[i] ? 0 : dev_stats_last->cli_RetransCount));
                 dev_stats_last->cli_RetransCount = sta[i].dev_stats.cli_RetransCount;
                 strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
                 strncat(telemetryBuff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
@@ -1683,7 +1690,7 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
                 }
                 snprintf(tmp, 32, "%lu,",
                     sta[i].dev_stats.cli_FailedRetransCount -
-                        dev_stats_last->cli_FailedRetransCount);
+                        (update_flag[i] ? 0 : dev_stats_last->cli_FailedRetransCount));
                 dev_stats_last->cli_FailedRetransCount = sta[i].dev_stats.cli_FailedRetransCount;
                 strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
             }
@@ -1704,7 +1711,8 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
                         sta_key);
                 }
                 snprintf(tmp, 32, "%lu,",
-                    sta[i].dev_stats.cli_RetryCount - dev_stats_last->cli_RetryCount);
+                    sta[i].dev_stats.cli_RetryCount -
+                        (update_flag[i] ? 0 : dev_stats_last->cli_RetryCount));
                 dev_stats_last->cli_RetryCount = sta[i].dev_stats.cli_RetryCount;
                 strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
             }
@@ -1726,7 +1734,7 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
                 }
                 snprintf(tmp, 32, "%lu,",
                     sta[i].dev_stats.cli_MultipleRetryCount -
-                        dev_stats_last->cli_MultipleRetryCount);
+                        (update_flag[i] ? 0 : dev_stats_last->cli_MultipleRetryCount));
                 dev_stats_last->cli_MultipleRetryCount = sta[i].dev_stats.cli_MultipleRetryCount;
                 strncat(buff, tmp, MAX_BUFF_SIZE - strlen(buff) - 1);
             }
