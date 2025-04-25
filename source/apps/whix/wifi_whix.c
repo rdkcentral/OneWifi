@@ -1518,8 +1518,16 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
 
             if (dev_stats_last == NULL) {
                 wifi_util_dbg_print(WIFI_APPS, "PAVI4:%d Not found\n", __LINE__);
+                dev_stats_last = (wifi_associated_dev3_t *)calloc(sizeof(wifi_associated_dev3_t),
+                    1);
+                if (dev_stats_last == NULL) {
+                    wifi_util_error_print(WIFI_APPS, "%s:%d Error in allocating memory\n",
+                        __func__, __LINE__);
+                    return RETURN_ERR;
+                }
                 // MAC not found, so use the last used data as 0
-                hash_map_put(app->data.u.whix.last_stats_map, strdup(sta_key), &sta[i]);
+                memcpy(dev_stats_last, &sta[i], sizeof(wifi_associated_dev3_t));
+                hash_map_put(app->data.u.whix.last_stats_map, strdup(sta_key), dev_stats_last);
                 wifi_util_dbg_print(WIFI_APPS, "PAVI5:%d\n", __LINE__);
                 update_flag[i] = true;
                 wifi_util_dbg_print(WIFI_APPS, "PAVI6:%d\n", __LINE__);
