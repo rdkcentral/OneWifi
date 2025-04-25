@@ -65,7 +65,7 @@
 #define OFFCHAN_DEFAULT_TSCAN_IN_MSEC 63
 #define OFFCHAN_DEFAULT_NSCAN_IN_SEC 10800
 #define OFFCHAN_DEFAULT_TIDLE_IN_SEC 5
-#define BOOTSTRAP_INFO_FILE             "/nvram/bootstrap.json"
+#define BOOTSTRAP_INFO_FILE             "/opt/secure/bootstrap.json"
 #define COUNTRY_CODE_LEN 4
 #define RDKB_CCSP_SUCCESS               100
 #define ONEWIFI_DB_VERSION_DFS_TIMER_RADAR_DETECT_FLAG 100030
@@ -385,7 +385,9 @@ void callback_Wifi_Radio_Config(ovsdb_update_monitor_t *mon,
         l_radio_cfg->operationalDataTransmitRates = new_rec->operational_data_transmit_rate;
         l_radio_cfg->fragmentationThreshold = new_rec->fragmentation_threshold;
         l_radio_cfg->guardInterval = new_rec->guard_interval;
-        l_radio_cfg->transmitPower = new_rec->transmit_power;
+        if (new_rec->transmit_power != 0) {
+            l_radio_cfg->transmitPower = new_rec->transmit_power;
+        }
         l_radio_cfg->rtsThreshold = new_rec->rts_threshold;
         l_radio_cfg->factoryResetSsid = new_rec->factory_reset_ssid;
         l_radio_cfg->radioStatsMeasuringRate = new_rec->radio_stats_measuring_rate;
@@ -1956,7 +1958,7 @@ int wifidb_get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *c
     config->operationalDataTransmitRates = cfg->operational_data_transmit_rate;
     config->fragmentationThreshold = cfg->fragmentation_threshold;
     config->guardInterval = cfg->guard_interval;
-    config->transmitPower = cfg->transmit_power;
+    config->transmitPower = cfg->transmit_power != 0 ? cfg->transmit_power : 100;
     config->rtsThreshold = cfg->rts_threshold;
     config->factoryResetSsid = cfg->factory_reset_ssid;
     config->radioStatsMeasuringRate = cfg->radio_stats_measuring_rate;
@@ -2201,7 +2203,7 @@ int wifidb_get_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
         sec->encr = wifi_encryption_aes;
         wifi_util_error_print(WIFI_DB, "%s:%d Invalid Security mode for 6G %d\n", __func__, __LINE__, pcfg->security_mode);
     } else {
-        sec->mode = pcfg->security_mode;
+        sec->mode = (pcfg->security_mode_new == WPA3_COMPATIBILITY) ? pcfg->security_mode_new : pcfg->security_mode;
         sec->encr = pcfg->encryption_method;
     }
 
@@ -4436,7 +4438,7 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
 
         if (g_wifidb->db_version < ONEWIFI_DB_VERSION_HOSTAP_MGMT_FRAME_CTRL_FLAG) {
 #if defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || \
-    defined(_SCER11BEL_PRODUCT_REQ_)
+    defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_)
             config->vap_array[i].u.bss_info.hostap_mgt_frame_ctrl = true;
             wifi_util_dbg_print(WIFI_DB,
                 "%s:%d Update hostap_mgt_frame_ctrl:%d for vap_index:%d \n", __func__, __LINE__,
@@ -4445,7 +4447,7 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
             wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i],
                 &rdk_config[i]);
 #endif // defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) ||
-       // defined(_SCER11BEL_PRODUCT_REQ_)
+       // defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_)
         }
     }
 }
@@ -6334,6 +6336,9 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #ifdef NEWPLATFORM_PORT
             cfg.variant |= WIFI_80211_VARIANT_AX;
 #endif /* NEWPLATFORM_PORT */
+#if defined(_PLATFORM_BANANAPI_R4_) && defined(CONFIG_IEEE80211BE)
+            cfg.variant |= WIFI_80211_VARIANT_BE;
+#endif /* CONFIG_IEEE80211BE */
 #if defined (_PP203X_PRODUCT_REQ_)
             cfg.beaconInterval = 200;
 #endif
@@ -6654,7 +6659,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
                 cfg.u.bss_info.security.mfp = wifi_mfp_cfg_required;
                 cfg.u.bss_info.security.u.key.type = wifi_security_key_type_sae;
             } else {
-#if defined(_XB8_PRODUCT_REQ_) || defined(_SR213_PRODUCT_REQ_) || defined(_XER5_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
+#if defined(_XB8_PRODUCT_REQ_) || defined(_SR213_PRODUCT_REQ_) || defined(_XER5_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_) || defined(_PLATFORM_BANANAPI_R4_)
                 cfg.u.bss_info.security.mode = wifi_security_mode_wpa3_transition;
                 cfg.u.bss_info.security.wpa3_transition_disable = false;
                 cfg.u.bss_info.security.mfp = wifi_mfp_cfg_optional;
@@ -6706,9 +6711,15 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         } else {
             cfg.u.bss_info.showSsid = false;
         }
+#if defined(_XER5_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
+        if (isVapLnf(vap_index) || isVapPrivate(vap_index)) {
+             cfg.u.bss_info.enabled = true; 
+        }
+#else
         if ((vap_index == 2) || isVapLnf(vap_index) || isVapPrivate(vap_index)) {
              cfg.u.bss_info.enabled = true;
         }
+#endif
 #if defined(_SKY_HUB_COMMON_PRODUCT_REQ_)
 #ifndef _SCER11BEL_PRODUCT_REQ_
         if (isVapXhs(vap_index)) {
@@ -6739,12 +6750,12 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
 #endif //_SKY_HUB_COMMON_PRODUCT_REQ_
 
 #if defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || \
-    defined(_SCER11BEL_PRODUCT_REQ_)
+    defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_)
         cfg.u.bss_info.hostap_mgt_frame_ctrl = true;
         wifi_util_dbg_print(WIFI_DB, "%s:%d vap_index:%d hostap_mgt_frame_ctrl:%d\n", __func__,
             __LINE__, vap_index, cfg.u.bss_info.hostap_mgt_frame_ctrl);
 #endif // defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) ||
-       // defined(_SCER11BEL_PRODUCT_REQ_)
+       // defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_)
 
         memset(ssid, 0, sizeof(ssid));
 

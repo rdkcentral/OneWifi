@@ -655,7 +655,15 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
         *ret_val = DEVICE_TUNNEL_DOWN; // tunnel down
     }
 
-    while ((rc = get_bus_descriptor()->bus_data_get_fn(&ctrl->handle, name, &data)) !=
+#if defined EASY_MESH_NODE || defined EASY_MESH_COLOCATED_NODE
+   if (ctrl->network_mode == rdk_dev_mode_type_em_node ) {
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d Don't need to proceed for DML fetch for RemoteAgent case, NetworkMode: %d\n",
+                __func__, __LINE__, ctrl->network_mode);
+            return;
+   }
+#endif
+
+   while ((rc = get_bus_descriptor()->bus_data_get_fn(&ctrl->handle, name, &data)) !=
         bus_error_success) {
         sleep(1);
         total_slept++;

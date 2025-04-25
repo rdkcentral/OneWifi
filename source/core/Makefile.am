@@ -115,6 +115,11 @@ OneWifi_SOURCES += $(top_srcdir)/lib/log/log_journal.c
 endif
 OneWifi_SOURCES += $(top_srcdir)/source/apps/wifi_apps.c $(top_srcdir)/source/apps/wifi_apps_mgr.c $(top_srcdir)/source/apps/analytics/wifi_analytics.c $(top_srcdir)/source/apps/levl/wifi_levl.c $(top_srcdir)/source/apps/csi/wifi_csi.c $(top_srcdir)/source/apps/motion/wifi_motion.c $(top_srcdir)/source/apps/whix/wifi_whix.c $(top_srcdir)/source/apps/harvester/wifi_harvester.c  $(top_srcdir)/source/apps/blaster/wifi_blaster.c $(top_srcdir)/source/apps/blaster/wifi_single_client_msmt.c  $(top_srcdir)/source/apps/ocs/wifi_ocs.c 
 
+if EM_APP_SUPPORT
+OneWifi_SOURCES += $(top_srcdir)/source/apps/em/wifi_em.c $(top_srcdir)/source/apps/em/wifi_em_utils.c
+OneWifi_CPPFLAGS += -I$(top_srcdir)/source/apps/em/
+endif
+
 if ONEWIFI_STA_MGR_APP_SUPPORT
 OneWifi_SOURCES += $(top_srcdir)/source/apps/sta_mgr/wifi_sta_mgr.c
 endif

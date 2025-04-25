@@ -348,7 +348,9 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         cfg.u.bss_info.rapidReconnThreshold = 180;
         if (isVapMeshBackhaul(vap_index)) {
             cfg.u.bss_info.mac_filter_enable = true;
-            cfg.u.bss_info.mac_filter_mode = wifi_mac_filter_mode_white_list;
+            //TBD: Changing to blacklist is a temporary change. This needs to
+            //be updated appropriately to configure connecting sta as part of whitelist.
+            cfg.u.bss_info.mac_filter_mode = wifi_mac_filter_mode_black_list;
         } else if (isVapHotspot(vap_index)) {
             cfg.u.bss_info.mac_filter_enable = true;
             cfg.u.bss_info.mac_filter_mode = wifi_mac_filter_mode_black_list;
@@ -426,10 +428,18 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         } else {
             cfg.u.bss_info.showSsid = false;
         }
+/*For XER5/XB10/XER10 2.4G XHS is disable by default*/
+#if defined(_XER5_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
+        if (isVapLnf(vap_index) || isVapPrivate(vap_index) ||
+            isVapMeshBackhaul(vap_index) || isVapXhs(vap_index)) {
+            cfg.u.bss_info.enabled = true;
+        }
+#else
         if ((vap_index == 2) || isVapLnf(vap_index) || isVapPrivate(vap_index) ||
             isVapMeshBackhaul(vap_index) || isVapXhs(vap_index)) {
             cfg.u.bss_info.enabled = true;
         }
+#endif 
 
         if (isVapPrivate(vap_index)) {
             cfg.u.bss_info.bssMaxSta = wifi_hal_cap_obj->wifi_prop.BssMaxStaAllow;

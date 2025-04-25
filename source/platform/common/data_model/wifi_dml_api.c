@@ -17,7 +17,10 @@
 extern sem_t *sem;
 
 #define PARTNERS_INFO_FILE              "/nvram/partners_defaults.json"
-#define BOOTSTRAP_INFO_FILE             "/nvram/bootstrap.json"
+#define BOOTSTRAP_INFO_FILE             "/opt/secure/bootstrap.json"
+#define BOOTSTRAP_INFO_FILE_BACKUP      "/nvram/bootstrap.json"
+#define CLEAR_TRACK_FILE                "/nvram/ClearUnencryptedData_flags"
+#define NVRAM_BOOTSTRAP_CLEARED         (1 << 0)
 
 int set_output_string(scratch_data_buff_t *output_value, char *str)
 {   
@@ -1884,6 +1887,17 @@ int update_json_param(char *p_key, char *partner_id, char *p_value, char *p_sour
                     cjson_out = cJSON_Print(json);
                     wifi_util_error_print(WIFI_DMCLI, "Updated json content is %s\n", cjson_out);
                     config_update_status = write_to_json(cjson_out, BOOTSTRAP_INFO_FILE);
+                    //Check CLEAR_TRACK_FILE and update in nvram, if needed.
+                    unsigned int flags = 0;
+                    FILE *fp = fopen(CLEAR_TRACK_FILE, "r");
+                    if (fp) {
+                        fscanf(fp, "%u", &flags);
+                        fclose(fp);
+                    }
+                    if ((flags & NVRAM_BOOTSTRAP_CLEARED) == 0) {
+                        wifi_util_error_print(WIFI_DMCLI, "%s: Updating %s\n", __FUNCTION__, BOOTSTRAP_INFO_FILE_BACKUP);
+                        write_to_json(cjson_out, BOOTSTRAP_INFO_FILE_BACKUP);
+                    }
                     cJSON_free(cjson_out);
                     if (!config_update_status) {
                         wifi_util_error_print(WIFI_DMCLI, "Bootstrap config update: %s, %s, %s, %s \n", p_key,
