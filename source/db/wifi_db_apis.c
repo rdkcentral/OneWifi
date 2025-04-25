@@ -6711,9 +6711,15 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         } else {
             cfg.u.bss_info.showSsid = false;
         }
+#if defined(_XER5_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
+        if (isVapLnf(vap_index) || isVapPrivate(vap_index)) {
+             cfg.u.bss_info.enabled = true; 
+        }
+#else
         if ((vap_index == 2) || isVapLnf(vap_index) || isVapPrivate(vap_index)) {
              cfg.u.bss_info.enabled = true;
         }
+#endif
 #if defined(_SKY_HUB_COMMON_PRODUCT_REQ_)
 #ifndef _SCER11BEL_PRODUCT_REQ_
         if (isVapXhs(vap_index)) {
