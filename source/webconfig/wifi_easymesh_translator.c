@@ -410,7 +410,7 @@ webconfig_error_t translate_radio_object_to_easymesh_for_dml(webconfig_subdoc_da
             em_radio_info->band = 0;
         } else if (oper_param->band == WIFI_FREQUENCY_5_BAND) {
             em_radio_info->band = 1;
-        } else if (oper_param->band == WIFI_FREQUENCY_60_BAND) {
+        } else if (oper_param->band == WIFI_FREQUENCY_6_BAND) {
             em_radio_info->band = 2;
         }
         radio_iface_map = NULL;
