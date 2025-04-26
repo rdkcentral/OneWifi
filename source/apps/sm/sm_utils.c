@@ -85,6 +85,7 @@ static const str_to_dpp_chan_width_t chan_width_mapping[] = {
     { "80",              RADIO_CHAN_WIDTH_80MHZ},
     { "40",              RADIO_CHAN_WIDTH_40MHZ},
     { "20",              RADIO_CHAN_WIDTH_20MHZ},
+    { "320MHz",          RADIO_CHAN_WIDTH_320MHZ},
 };
 
 
