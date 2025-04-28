@@ -29,6 +29,8 @@ extern "C" {
 #define WIFI_EM_BEACON_REPORT                 "Device.WiFi.EM.BeaconReport"
 #define WIFI_EM_STA_LINK_METRICS_REPORT       "Device.WiFi.EM.STALinkMetricsReport"
 #define WIFI_EM_ASSOCIATION_STATUS            "Device.WiFi.EM.AssociationStatus"
+#define WIFI_SET_DISCONN_STEADY_STATE         "Device.WiFi.EM.SetDisconnSteadyState"
+#define WIFI_SET_DISCONN_SCAN_NONE_STATE      "Device.WiFi.EM.SetDisconnScanNoneState"
 
 typedef struct wifi_app wifi_app_t;
 

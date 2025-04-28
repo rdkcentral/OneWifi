@@ -1162,7 +1162,69 @@ static void em_config_channel_scan(void *data, unsigned int len)
         }
     }
 }
+static void em_toggle_disconn_steady_state(void *data, unsigned int len)
+{
 
+    vap_svc_t* ext_svc = NULL;
+    vap_svc_ext_t* ext = NULL;
+    bool do_set;
+
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_EM, "%s:%d NUll data Pointer\n", __func__, __LINE__);
+        return;
+    }
+    if (len < sizeof(bool)) {
+        wifi_util_error_print(WIFI_EM, "%s:%d Invalid parameter size \r\n", __func__, __LINE__);
+        return;
+    }
+    
+    do_set = *(bool *)data;
+    if (do_set) {
+        wifi_util_dbg_print(WIFI_EM, "%s:%d: Setting disconnected steady state\n", __func__,
+            __LINE__);
+    } else {
+        wifi_util_dbg_print(WIFI_EM, "%s:%d: Unsetting disconnected steady state -> "
+                                     "Setting disconnected scan list none state \n", __func__,
+                                     __LINE__);
+    }
+
+
+
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+
+    ext_svc = get_svc_by_type(ctrl, vap_svc_type_mesh_ext);
+    ext = &ext_svc->u.ext;
+
+    if (do_set){
+        if (ext->conn_state == connection_state_connected ||
+            ext->conn_state == connection_state_connected_scan_list ||
+            ext->conn_state == connection_state_connected_wait_for_csa || 
+            ext->conn_state == connection_state_connection_in_progress ||
+            ext->conn_state == connection_state_connection_to_lcb_in_progress ||
+            ext->conn_state == connection_state_connection_to_nb_in_progress) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d cannot transition from `connection_state_*` state "
+                                             "(%d) to `connection_state_disconnected_steady`\r\n",
+                                             __FUNCTION__, __LINE__, ext->conn_state);
+            return bus_error_general;
+        }
+    
+        ext->conn_state = connection_state_disconnected_steady;
+    } else {
+        if (ext->conn_state != connection_state_disconnected_steady) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d cannot selectively transition from any state "
+                                             "besides `connection_state_disconnected_steady` to "
+                                             "`connection_state_disconnected_scan_list_none`\r\n",
+                                             __FUNCTION__, __LINE__);
+            return bus_error_general;
+        }
+        ext->conn_state = connection_state_disconnected_scan_list_none;
+
+        // Timeout to reset the SVC
+        ext_svc->event_fn(ext_svc, wifi_event_type_exec, wifi_event_exec_timeout, vap_svc_event_none, NULL);
+    }
+
+    return bus_error_success;
+}
 void handle_em_command_event(wifi_app_t *app, wifi_event_t *event)
 {
     switch (event->sub_type) {
@@ -1180,6 +1242,9 @@ void handle_em_command_event(wifi_app_t *app, wifi_event_t *event)
         handle_sta_client_info(app, event->u.core_data.msg);
         break;
 
+    case wifi_event_type_toggle_disconn_steady_state:
+        em_toggle_disconn_steady_state(event->u.core_data.msg, event->u.core_data.len);
+        break;
     default:
         break;
     }
@@ -1342,6 +1407,42 @@ bus_error_t start_channel_scan(char *name, raw_data_t *p_data)
     return bus_error_success;
 }
 
+bus_error_t set_disconn_steady_state(char *name, raw_data_t *p_data, bus_user_data_t *user_data)
+{
+    (void)p_data;
+    (void)user_data;
+    
+    if (!name) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d property name is not found\r\n", __FUNCTION__,
+            __LINE__);
+        return bus_error_element_name_missing;
+    }
+
+    bool do_set_disconn_steady_state = true;
+    push_event_to_ctrl_queue((char *)&do_set_disconn_steady_state, (unsigned int)sizeof(bool), 
+                              wifi_event_type_command, wifi_event_type_toggle_disconn_steady_state, NULL);
+
+    return bus_error_success;
+}
+
+bus_error_t set_disconn_scan_none_state(char *name, raw_data_t *p_data, bus_user_data_t *user_data)
+{
+
+    (void)p_data;
+    (void)user_data;
+    if (!name) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d property name is not found\r\n", __FUNCTION__,
+            __LINE__);
+        return bus_error_element_name_missing;
+    }
+
+    bool do_set_disconn_steady_state = false;
+    push_event_to_ctrl_queue((char *)&do_set_disconn_steady_state, (unsigned int)sizeof(bool), 
+                              wifi_event_type_command, wifi_event_type_toggle_disconn_steady_state, NULL);
+
+    return bus_error_success;
+}
+
 int em_init(wifi_app_t *app, unsigned int create_flag)
 {
     int rc = RETURN_OK;
@@ -1353,6 +1454,12 @@ int em_init(wifi_app_t *app, unsigned int create_flag)
         { WIFI_EM_CHANNEL_SCAN_REQUEST, bus_element_type_method,
             { NULL, start_channel_scan, NULL, NULL, NULL, NULL}, slow_speed, ZERO_TABLE,
             { bus_data_type_bytes, true, 0, 0, 0, NULL } },
+        { WIFI_SET_DISCONN_STEADY_STATE, bus_element_type_method,
+            { NULL, set_disconn_steady_state, NULL, NULL, NULL, NULL}, slow_speed, ZERO_TABLE,
+            { bus_data_type_none, true, 0, 0, 0, NULL } },
+        { WIFI_SET_DISCONN_SCAN_NONE_STATE, bus_element_type_method,
+            { NULL, set_disconn_scan_none_state, NULL, NULL, NULL, NULL}, slow_speed, ZERO_TABLE,
+            { bus_data_type_none, true, 0, 0, 0, NULL } },
         { WIFI_EM_CHANNEL_SCAN_REPORT, bus_element_type_event,
             { NULL, NULL, NULL, NULL, NULL, NULL}, slow_speed, ZERO_TABLE,
             { bus_data_type_bytes, false, 0, 0, 0, NULL } },
