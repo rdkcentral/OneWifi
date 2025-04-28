@@ -78,20 +78,13 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
 
     switch (cfg.band) {
         case WIFI_FREQUENCY_2_4_BAND:
-            cfg.op_class = 12;
             cfg.operatingClass = 81;
             cfg.channel = 1;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
             cfg.variant = WIFI_80211_VARIANT_G | WIFI_80211_VARIANT_N;
-#ifdef CONFIG_IEEE80211BE
-#if !(defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_))
-            cfg.variant |= WIFI_80211_VARIANT_BE;
-#endif /* !(defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)) */
-#endif /* CONFIG_IEEE80211BE */
             break;
         case WIFI_FREQUENCY_5_BAND:
         case WIFI_FREQUENCY_5L_BAND:
-            cfg.op_class = 128;
             cfg.operatingClass = 128;
             cfg.channel = 44;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
@@ -102,7 +95,6 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
 #endif /* CONFIG_IEEE80211BE */
             break;
         case WIFI_FREQUENCY_5H_BAND:
-            cfg.op_class = 128;
             cfg.operatingClass = 128;
             cfg.channel = 157;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
@@ -113,7 +105,6 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
 #endif /* CONFIG_IEEE80211BE */
             break;
         case WIFI_FREQUENCY_6_BAND:
-            cfg.op_class = 131;
             cfg.operatingClass = 131;
             cfg.channel = 5;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_160MHZ;
@@ -140,6 +131,13 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
         }
     }
     cfg.autoChannelEnabled = true;
+    for(int i=0 ;i<MAX_NUM_CHANNELBANDWIDTH_SUPPORTED;i++)
+    {
+        cfg.channels_per_bandwidth[i].num_channels_list = 0;
+        memset(cfg.channels_per_bandwidth[i].channels_list,0,sizeof(cfg.channels_per_bandwidth[i].channels_list));
+        cfg.channels_per_bandwidth[i].chanwidth = 0;
+    }
+    cfg.acs_keep_out_reset = false;
     cfg.csa_beacon_count = 100;
     country_code_val = wifi_countrycode_US;
     if (wifi_hal_get_default_country_code(country_code) < 0) {
@@ -350,9 +348,15 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         cfg.u.bss_info.rapidReconnThreshold = 180;
         if (isVapMeshBackhaul(vap_index)) {
             cfg.u.bss_info.mac_filter_enable = true;
-            cfg.u.bss_info.mac_filter_mode = wifi_mac_filter_mode_white_list;
+            //TBD: Changing to blacklist is a temporary change. This needs to
+            //be updated appropriately to configure connecting sta as part of whitelist.
+            cfg.u.bss_info.mac_filter_mode = wifi_mac_filter_mode_black_list;
+        } else if (isVapHotspot(vap_index)) {
+            cfg.u.bss_info.mac_filter_enable = true;
+            cfg.u.bss_info.mac_filter_mode = wifi_mac_filter_mode_black_list;
         } else {
             cfg.u.bss_info.mac_filter_enable = false;
+            cfg.u.bss_info.mac_filter_mode = wifi_mac_filter_mode_black_list;
         }
         cfg.u.bss_info.UAPSDEnabled = true;
         cfg.u.bss_info.wmmNoAck = false;
@@ -430,10 +434,18 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         } else {
             cfg.u.bss_info.showSsid = false;
         }
+/*For XER5/XB10/XER10 2.4G XHS is disable by default*/
+#if defined(_XER5_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
+        if (isVapLnf(vap_index) || isVapPrivate(vap_index) ||
+            isVapMeshBackhaul(vap_index) || isVapXhs(vap_index)) {
+            cfg.u.bss_info.enabled = true;
+        }
+#else
         if ((vap_index == 2) || isVapLnf(vap_index) || isVapPrivate(vap_index) ||
             isVapMeshBackhaul(vap_index) || isVapXhs(vap_index)) {
             cfg.u.bss_info.enabled = true;
         }
+#endif 
 
         if (isVapPrivate(vap_index)) {
             cfg.u.bss_info.bssMaxSta = wifi_hal_cap_obj->wifi_prop.BssMaxStaAllow;

@@ -22,6 +22,7 @@
 
 #include "wifi_base.h"
 #include "wifi_hal.h"
+#include "wifi_webconfig.h"
 #include <pthread.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -36,6 +37,58 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#define UNREFERENCED_PARAMETER(_p_) (void)(_p_)
+
+#define VERIFY_NULL(T) \
+    do { \
+        if (NULL == (T)) { \
+            wifi_util_error_print(WIFI_BUS, "%s:%d Parameter '%s' is NULL\n", \
+                   __func__, __LINE__, #T); \
+            return; \
+        } \
+    } while(0)
+
+#define VERIFY_NULL_WITH_RETURN_ADDR(T) \
+    do { \
+        if (NULL == (T)) { \
+            wifi_util_error_print(WIFI_BUS, "%s:%d Parameter '%s' is NULL\n", \
+                   __func__, __LINE__, #T); \
+            return NULL; \
+        } \
+    } while(0)
+
+#define VERIFY_NULL_WITH_RETURN_INT(T) \
+    do { \
+        if (NULL == (T)) { \
+            wifi_util_error_print(WIFI_BUS, "%s:%d Parameter '%s' is NULL\n", \
+                   __func__, __LINE__, #T); \
+            return RETURN_ERR; \
+        } \
+    } while(0)
+
+#define BUS_CHECK_NULL_WITH_RC(ptr, rc) \
+    do { \
+        if ((ptr) == NULL) { \
+            wifi_util_error_print(WIFI_BUS, "%s:%d Parameter '%s' is NULL\n", \
+                   __func__, __LINE__, #ptr); \
+            return (rc); \
+        } \
+    } while (0)
+
+#define ERROR_CHECK(CMD) \
+    do { \
+        int l_error; \
+        if ((l_error = CMD) != 0) { \
+            wifi_util_info_print(WIFI_CTRL, "Error %d: running command " #CMD, l_error); \
+        } \
+    } while (0)
+
+#define VERIFY_NULL_WITH_RC(T) \
+    if (NULL == (T)) { \
+        wifi_util_error_print(WIFI_CTRL, "[%s] input parameter: %s is NULL\n", __func__, #T); \
+        return bus_error_invalid_input; \
+    }
 
 #define MAX_SCAN_MODE_LEN 16
 
@@ -61,6 +114,7 @@ typedef enum {
     WIFI_BUS,
     WIFI_TCM,
     WIFI_EC,
+    WIFI_CSI,
 } wifi_dbg_type_t;
 
 typedef enum {
@@ -336,6 +390,7 @@ int get_list_of_iot_ssid(wifi_platform_property_t *wifi_prop, int list_size,
 int get_radio_index_for_vap_index(wifi_platform_property_t *wifi_prop, int vap_index);
 int min_hw_mode_conversion(unsigned int vapIndex, char *inputStr, char *outputStr, char *tableType);
 int vif_radio_idx_conversion(unsigned int vapIndex, int *input, int *output, char *tableType);
+wifi_channelBandwidth_t string_to_channel_width_convert(const char *bandwidth_str);
 int get_on_channel_scan_list(wifi_freq_bands_t band, wifi_channelBandwidth_t bandwidth,
     int primary_channel, int *channel_list, int *channels_num);
 int get_allowed_channels(wifi_freq_bands_t band, wifi_radio_capabilities_t *radio_cap,
@@ -389,6 +444,8 @@ int convert_ascii_string_to_bool(char *l_string, bool *l_bool_param);
 int convert_bool_to_ascii_string(bool l_bool_param, char *l_string, size_t str_len);
 void json_param_obscure(char *json, char *param);
 bool is_5g_20M_channel_in_dfs(int channel);
+void decode_acs_keep_out_json(const char *data, unsigned int number_of_radios, webconfig_subdoc_data_t *subdoc_data);
+void* bus_get_keep_out_json();
 bool is_6g_supported_device(wifi_platform_property_t *wifi_prop);
 int scan_mode_type_conversion(wifi_neighborScanMode_t *scan_mode_enum, char *scan_mode_str, int scan_mode_len, unsigned int conv_type);
 bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t *vap_info_new,

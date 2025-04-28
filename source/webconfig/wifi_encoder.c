@@ -263,8 +263,9 @@ webconfig_error_t encode_radio_object(const rdk_wifi_radio_t *radio, cJSON *radi
     // GuardInterval
     cJSON_AddNumberToObject(radio_object, "GuardInterval", radio_info->guardInterval);
 
-    // TransmitPower
-    cJSON_AddNumberToObject(radio_object, "TransmitPower", radio_info->transmitPower);
+    // TransmitPower, 0 not allowed
+    cJSON_AddNumberToObject(radio_object, "TransmitPower",
+        radio_info->transmitPower != 0 ? radio_info->transmitPower : 100);
 
     // BeaconInterval
     cJSON_AddNumberToObject(radio_object, "BeaconInterval", radio_info->beaconInterval);
@@ -446,7 +447,6 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
 
     // BssHotspot
     cJSON_AddBoolToObject(vap_object, "BssHotspot", vap_info->u.bss_info.bssHotspot);
-
     // wpsPushButton
     cJSON_AddNumberToObject(vap_object, "WpsPushButton", vap_info->u.bss_info.wpsPushButton);
 
@@ -459,7 +459,6 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
         //WpsConfigPin
         cJSON_AddStringToObject(vap_object, "WpsConfigPin", vap_info->u.bss_info.wps.pin);
     }
-
     // BeaconRateCtl
     cJSON_AddStringToObject(vap_object, "BeaconRateCtl", vap_info->u.bss_info.beaconRateCtl);
 
@@ -700,7 +699,7 @@ webconfig_error_t encode_wifi_global_config(const wifi_global_param_t *global_in
 
     //WpsPin
     cJSON_AddStringToObject(global_obj, "WpsPin", global_info->wps_pin);
-
+    
     // BandsteeringEnable
     cJSON_AddBoolToObject(global_obj, "BandsteeringEnable", (const cJSON_bool)global_info->bandsteering_enable);
 
@@ -1614,6 +1613,8 @@ webconfig_error_t encode_frame_data(cJSON *obj_assoc_client, frame_data_t *frame
 webconfig_error_t encode_associated_client_object(rdk_wifi_vap_info_t *rdk_vap_info, cJSON *assoc_array, assoclist_type_t assoclist_type)
 {
     bool print_assoc_client = false, include_frame_data = false;
+    pthread_mutex_t *associated_devices_lock;
+
     if ((rdk_vap_info == NULL) || (assoc_array == NULL)) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Associated Client encode failed\n",__FUNCTION__, __LINE__);
         return webconfig_error_encode;
@@ -1630,6 +1631,10 @@ webconfig_error_t encode_associated_client_object(rdk_wifi_vap_info_t *rdk_vap_i
     cJSON_AddStringToObject(obj_vaps, "VapName", rdk_vap_info->vap_name);
     cJSON_AddItemToObject(obj_vaps, "associatedClients", obj_array);
 
+    associated_devices_lock = rdk_vap_info->associated_devices_lock;
+    if (associated_devices_lock != NULL) {
+        pthread_mutex_lock(associated_devices_lock);
+    }
     switch (assoclist_type)  {
         case assoclist_type_full:
             devices_map = rdk_vap_info->associated_devices_map;
@@ -1639,6 +1644,9 @@ webconfig_error_t encode_associated_client_object(rdk_wifi_vap_info_t *rdk_vap_i
             devices_map = rdk_vap_info->associated_devices_diff_map;
         break;
         default:
+            if (associated_devices_lock != NULL) {
+                pthread_mutex_unlock(associated_devices_lock);
+            }
             return webconfig_error_encode;
     }
 
@@ -1706,6 +1714,10 @@ webconfig_error_t encode_associated_client_object(rdk_wifi_vap_info_t *rdk_vap_i
             assoc_dev_data = hash_map_get_next(devices_map, assoc_dev_data);
         }
     }
+    if (associated_devices_lock != NULL) {
+        pthread_mutex_unlock(associated_devices_lock);
+    }
+
     return webconfig_error_none;
 }
 
@@ -2297,7 +2309,8 @@ webconfig_error_t encode_neighbor_radio_params(wifi_provider_response_t *neigh_s
 }
 
 #ifdef EM_APP
-webconfig_error_t encode_em_channel_stats_params(channel_scan_response_t *neigh_stats, cJSON *neigh_stats_obj)
+webconfig_error_t encode_em_channel_stats_params(channel_scan_response_t *neigh_stats,
+    cJSON *neigh_stats_obj)
 {
     unsigned int i;
     unsigned short j;
@@ -2305,24 +2318,30 @@ webconfig_error_t encode_em_channel_stats_params(channel_scan_response_t *neigh_
     cJSON *channel_obj, *neighbors_arr, *neighbor_obj;
 
     if (neigh_stats == NULL || neigh_stats_obj == NULL) {
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid input parameters\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid input parameters\n", __func__,
+            __LINE__);
         return webconfig_error_encode;
     }
 
     for (i = 0; i < neigh_stats->num_results; i++) {
         channel_obj = cJSON_CreateObject();
         if (channel_obj == NULL) {
-            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: JSON object creation failed\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: JSON object creation failed\n", __func__,
+                __LINE__);
             return webconfig_error_encode;
         }
 
         cJSON_AddItemToArray(neigh_stats_obj, channel_obj);
-        cJSON_AddNumberToObject(channel_obj, "OperatingClass", neigh_stats->results[i].operating_class);
+        cJSON_AddNumberToObject(channel_obj, "OperatingClass",
+            neigh_stats->results[i].operating_class);
         cJSON_AddNumberToObject(channel_obj, "Channel", neigh_stats->results[i].channel);
         cJSON_AddNumberToObject(channel_obj, "ScanStatus", neigh_stats->results[i].scan_status);
         cJSON_AddStringToObject(channel_obj, "Timestamp", neigh_stats->results[i].time_stamp);
         cJSON_AddNumberToObject(channel_obj, "Utilization", neigh_stats->results[i].utilization);
         cJSON_AddNumberToObject(channel_obj, "Noise", neigh_stats->results[i].noise);
+        cJSON_AddNumberToObject(channel_obj, "AggregateScanDuration",
+            neigh_stats->results[i].aggregate_scan_duration);
+        cJSON_AddNumberToObject(channel_obj, "ScanType", neigh_stats->results[i].scan_type);
 
         neighbors_arr = cJSON_CreateArray();
         cJSON_AddItemToObject(channel_obj, "Neighbors", neighbors_arr);
@@ -2330,22 +2349,28 @@ webconfig_error_t encode_em_channel_stats_params(channel_scan_response_t *neigh_
         for (j = 0; j < neigh_stats->results[i].num_neighbors; j++) {
             neighbor_obj = cJSON_CreateObject();
             if (neighbor_obj == NULL) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: JSON object creation failed\n", __func__, __LINE__);
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: JSON object creation failed\n",
+                    __func__, __LINE__);
                 return webconfig_error_encode;
             }
 
             cJSON_AddItemToArray(neighbors_arr, neighbor_obj);
             uint8_mac_to_string_mac((uint8_t *)neigh_stats->results[i].neighbors[j].bssid, mac_str);
             cJSON_AddStringToObject(neighbor_obj, "BSSID", mac_str);
-            cJSON_AddStringToObject(neighbor_obj, "SSID", neigh_stats->results[i].neighbors[j].ssid);
-            cJSON_AddNumberToObject(neighbor_obj, "SignalStrength", neigh_stats->results[i].neighbors[j].signal_strength);
-            cJSON_AddStringToObject(neighbor_obj, "ChannelBandwidth", neigh_stats->results[i].neighbors[j].channel_bandwidth);
-            cJSON_AddNumberToObject(neighbor_obj, "BSSLoadElementPresent", neigh_stats->results[i].neighbors[j].bss_load_element_present);
-            cJSON_AddNumberToObject(neighbor_obj, "BSSColor", neigh_stats->results[i].neighbors[j].bss_color);
-            cJSON_AddNumberToObject(neighbor_obj, "ChannelUtilization", neigh_stats->results[i].neighbors[j].channel_utilization);
-            cJSON_AddNumberToObject(neighbor_obj, "StationCount", neigh_stats->results[i].neighbors[j].station_count);
-            cJSON_AddNumberToObject(neighbor_obj, "AggregateScanDuration", neigh_stats->results[i].neighbors[j].aggregate_scan_duration);
-            cJSON_AddNumberToObject(neighbor_obj, "ScanType", neigh_stats->results[i].neighbors[j].scan_type);
+            cJSON_AddStringToObject(neighbor_obj, "SSID",
+                neigh_stats->results[i].neighbors[j].ssid);
+            cJSON_AddNumberToObject(neighbor_obj, "SignalStrength",
+                neigh_stats->results[i].neighbors[j].signal_strength);
+            cJSON_AddStringToObject(neighbor_obj, "ChannelBandwidth",
+                neigh_stats->results[i].neighbors[j].channel_bandwidth);
+            cJSON_AddNumberToObject(neighbor_obj, "BSSLoadElementPresent",
+                neigh_stats->results[i].neighbors[j].bss_load_element_present);
+            cJSON_AddNumberToObject(neighbor_obj, "BSSColor",
+                neigh_stats->results[i].neighbors[j].bss_color);
+            cJSON_AddNumberToObject(neighbor_obj, "ChannelUtilization",
+                neigh_stats->results[i].neighbors[j].channel_utilization);
+            cJSON_AddNumberToObject(neighbor_obj, "StationCount",
+                neigh_stats->results[i].neighbors[j].station_count);
         }
     }
 
@@ -2631,7 +2656,7 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
         cJSON_AddStringToObject(param_obj, "MAC",
             (const char *)em_config->btm_steering_dslw_policy.disallowed_sta[i]);
     }
-
+    
     // Backhaul BSS Configuration Policy
     param_obj = cJSON_CreateObject();
     if (param_obj == NULL) {
@@ -2680,14 +2705,130 @@ webconfig_error_t encode_em_config_object(const em_config_t *em_config, cJSON *e
             em_config->radio_metrics_policies.radio_metrics_policy[i].sta_rcpi_hysteresis);
         cJSON_AddNumberToObject(param_obj, "AP Utilization Threshold",
             em_config->radio_metrics_policies.radio_metrics_policy[i].ap_util_threshold);
-        cJSON_AddNumberToObject(param_obj, "STA Traffic Stats",
+        cJSON_AddBoolToObject(param_obj, "STA Traffic Stats",
             em_config->radio_metrics_policies.radio_metrics_policy[i].traffic_stats);
-        cJSON_AddNumberToObject(param_obj, "STA Link Metrics",
+        cJSON_AddBoolToObject(param_obj, "STA Link Metrics",
             em_config->radio_metrics_policies.radio_metrics_policy[i].link_metrics);
-        cJSON_AddNumberToObject(param_obj, "STA Status",
+        cJSON_AddBoolToObject(param_obj, "STA Status",
             em_config->radio_metrics_policies.radio_metrics_policy[i].sta_status);
     }
 
+    return webconfig_error_none;
+}
+
+webconfig_error_t encode_em_sta_link_metrics_object(const em_assoc_sta_link_metrics_rsp_t *sta_link_metrics, cJSON *sta_link_metrics_obj)
+{
+    if ((sta_link_metrics  == NULL) || (sta_link_metrics_obj  == NULL)) {
+        return webconfig_error_encode;
+    }
+
+    char mac_str[32];
+    cJSON *assoc_sta_link_metrics_obj, *error_code_obj, *assoc_sta_ext_link_metrics_obj, *param_obj, *temp_obj, *param_arr;
+
+    for (int i = 0; i < sta_link_metrics->sta_count; i++)
+    {
+        param_obj = cJSON_CreateObject();
+        if (param_obj == NULL) {
+            wifi_util_dbg_print(WIFI_EM, "%s:%d: json create object failed\n", __func__, __LINE__);
+        }
+        cJSON_AddItemToArray(sta_link_metrics_obj, param_obj);
+
+        // Associated STA Link Metrics
+        if (sta_link_metrics->per_sta_metrics[i].assoc_sta_link_metrics.num_bssid != 0)
+        {
+            assoc_sta_link_metrics_obj = cJSON_CreateObject();
+            if (assoc_sta_link_metrics_obj == NULL) {
+                wifi_util_dbg_print(WIFI_EM, "%s:%d: json create object failed\n", __func__, __LINE__);
+            }
+            cJSON_AddItemToObject(param_obj, "Associated STA Link Metrics", assoc_sta_link_metrics_obj);
+
+            uint8_mac_to_string_mac(sta_link_metrics->per_sta_metrics[i].assoc_sta_link_metrics.sta_mac, mac_str);
+            cJSON_AddStringToObject(assoc_sta_link_metrics_obj, "STA MAC", mac_str);
+            cJSON_AddStringToObject(assoc_sta_link_metrics_obj, "Client Type", sta_link_metrics->per_sta_metrics[i].assoc_sta_link_metrics.client_type);
+            cJSON_AddNumberToObject(assoc_sta_link_metrics_obj, "Number of BSSIDs", 
+                sta_link_metrics->per_sta_metrics[i].assoc_sta_link_metrics.num_bssid);
+            
+            param_arr = cJSON_CreateArray();
+            if (param_arr == NULL) {
+                wifi_util_dbg_print(WIFI_EM, "%s:%d: json create object failed\n", __func__, __LINE__);
+            }
+            cJSON_AddItemToObject(assoc_sta_link_metrics_obj, "Per BSSID Metrics", param_arr);
+    
+            for (int j = 0; j < sta_link_metrics->per_sta_metrics[i].assoc_sta_link_metrics.num_bssid; j++)
+            {
+                temp_obj = cJSON_CreateObject();
+                if (temp_obj == NULL) {
+                    wifi_util_dbg_print(WIFI_EM, "%s:%d: json create object failed\n", __func__, __LINE__);
+                }
+                uint8_mac_to_string_mac(sta_link_metrics->per_sta_metrics[i].assoc_sta_link_metrics.assoc_sta_link_metrics_data[j].bssid, mac_str);
+                cJSON_AddStringToObject(temp_obj, "BSSID", mac_str);
+                cJSON_AddNumberToObject(temp_obj, "Time Delta", 
+                    sta_link_metrics->per_sta_metrics[i].assoc_sta_link_metrics.assoc_sta_link_metrics_data[j].time_delta);
+                cJSON_AddNumberToObject(temp_obj, 
+                    "Estimated Mac Rate Down", sta_link_metrics->per_sta_metrics[i].assoc_sta_link_metrics.assoc_sta_link_metrics_data[j].est_mac_rate_down);
+                cJSON_AddNumberToObject(temp_obj, 
+                    "Estimated Mac Rate Up", sta_link_metrics->per_sta_metrics[i].assoc_sta_link_metrics.assoc_sta_link_metrics_data[j].est_mac_rate_up);
+                cJSON_AddNumberToObject(temp_obj, 
+                    "RCPI", sta_link_metrics->per_sta_metrics[i].assoc_sta_link_metrics.assoc_sta_link_metrics_data[j].rcpi);
+                cJSON_AddItemToArray(param_arr, temp_obj);
+            }
+        }
+
+        // Error Code
+        if (sta_link_metrics->per_sta_metrics[i].assoc_sta_link_metrics.num_bssid == 0)
+        {
+            error_code_obj = cJSON_CreateObject();
+            if (error_code_obj == NULL) {
+                wifi_util_dbg_print(WIFI_EM, "%s:%d: json create object failed\n", __func__, __LINE__);
+            }
+            cJSON_AddItemToObject(param_obj, "Error Code", error_code_obj);
+    
+            cJSON_AddNumberToObject(error_code_obj, "Reason Code", 
+                sta_link_metrics->per_sta_metrics[i].error_code.reason_code);
+            uint8_mac_to_string_mac(sta_link_metrics->per_sta_metrics[i].error_code.sta_mac, mac_str);
+            cJSON_AddStringToObject(error_code_obj, "STA MAC", mac_str);
+        }
+
+        // Associated STA Extended Link Metrics 
+        if (sta_link_metrics->per_sta_metrics[i].assoc_sta_ext_link_metrics.num_bssid != 0)
+        {
+            assoc_sta_ext_link_metrics_obj = cJSON_CreateObject();
+            if (assoc_sta_ext_link_metrics_obj == NULL) {
+                wifi_util_dbg_print(WIFI_EM, "%s:%d: json create object failed\n", __func__, __LINE__);
+            }
+            cJSON_AddItemToObject(param_obj, "Associated STA Extended Link Metrics", assoc_sta_ext_link_metrics_obj);
+    
+            uint8_mac_to_string_mac(sta_link_metrics->per_sta_metrics[i].assoc_sta_ext_link_metrics.sta_mac, mac_str);
+            cJSON_AddStringToObject(assoc_sta_ext_link_metrics_obj, "STA MAC", mac_str);
+            cJSON_AddNumberToObject(assoc_sta_ext_link_metrics_obj, 
+                "Number of BSSIDs", sta_link_metrics->per_sta_metrics[i].assoc_sta_ext_link_metrics.num_bssid);
+    
+            param_arr = cJSON_CreateArray();
+            if (param_arr == NULL) {
+                wifi_util_dbg_print(WIFI_EM, "%s:%d: json create object failed\n", __func__, __LINE__);
+            }
+            cJSON_AddItemToObject(assoc_sta_ext_link_metrics_obj, "Per BSSID Metrics", param_arr);
+    
+            for (int j = 0; j < sta_link_metrics->per_sta_metrics[i].assoc_sta_ext_link_metrics.num_bssid; j++)
+            {
+                temp_obj = cJSON_CreateObject();
+                if (temp_obj == NULL) {
+                    wifi_util_dbg_print(WIFI_EM, "%s:%d: json create object failed\n", __func__, __LINE__);
+                }
+                uint8_mac_to_string_mac(sta_link_metrics->per_sta_metrics[i].assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[j].bssid, mac_str);
+                cJSON_AddStringToObject(temp_obj, "BSSID", mac_str);
+                cJSON_AddNumberToObject(temp_obj, 
+                    "Last Data Downlink Rate", sta_link_metrics->per_sta_metrics[i].assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[j].last_data_downlink_rate);
+                cJSON_AddNumberToObject(temp_obj, 
+                    "Last Data Uplink Rate", sta_link_metrics->per_sta_metrics[i].assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[j].last_data_uplink_rate);
+                cJSON_AddNumberToObject(temp_obj, 
+                    "Utilization Receive", sta_link_metrics->per_sta_metrics[i].assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[j].utilization_receive);
+                cJSON_AddNumberToObject(temp_obj, 
+                    "Utilization Transmit", sta_link_metrics->per_sta_metrics[i].assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[j].utilization_transmit);
+                cJSON_AddItemToArray(param_arr, temp_obj);
+            }
+        }
+    }
     return webconfig_error_none;
 }
 #endif

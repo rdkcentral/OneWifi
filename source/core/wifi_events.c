@@ -149,6 +149,7 @@ const char *wifi_event_subtype_to_string(wifi_event_subtype_t type)
         DOC2S(wifi_event_type_send_action_frame)
         DOC2S(wifi_event_type_start_channel_scan)
         DOC2S(wifi_event_type_rsn_override_rfc)
+        DOC2S(wifi_event_type_sta_client_info)
         DOC2S(wifi_event_command_max)
         DOC2S(wifi_event_monitor_diagnostics)
         DOC2S(wifi_event_monitor_connect)
@@ -671,6 +672,7 @@ int push_monitor_response_event_to_ctrl_queue(const void *msg, unsigned int len,
 {
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     wifi_event_t *event;
+    bool is_limit_reached;
 
     if (msg == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s %d  msg is null\n", __FUNCTION__, __LINE__);
@@ -701,10 +703,21 @@ int push_monitor_response_event_to_ctrl_queue(const void *msg, unsigned int len,
             return RETURN_ERR;
         }
 
-        pthread_mutex_lock(&ctrl->lock);
-        queue_push(ctrl->queue, event);
-        pthread_cond_signal(&ctrl->cond);
-        pthread_mutex_unlock(&ctrl->lock);
+        pthread_mutex_lock(&ctrl->queue_lock);
+        is_limit_reached = queue_count(ctrl->queue) >= CTRL_QUEUE_SIZE_MAX;
+        if (!is_limit_reached) {
+            queue_push(ctrl->queue, event);
+            pthread_cond_signal(&ctrl->cond);
+        }
+        pthread_mutex_unlock(&ctrl->queue_lock);
+
+        if (is_limit_reached) {
+            wifi_util_error_print(WIFI_CTRL,
+                "%s:%d max queue size reached, drop message type: %s subtype: %s\n", __FUNCTION__,
+                __LINE__, wifi_event_type_to_string(type), wifi_event_subtype_to_string(sub_type));
+            destroy_wifi_event(event);
+            return RETURN_ERR;
+        }
     } else {
         wifi_util_error_print(WIFI_CTRL, "%s %d Invalid type : %s subtype : %s\n", __FUNCTION__,
             __LINE__, wifi_event_type_to_string(type), wifi_event_subtype_to_string(sub_type));
@@ -719,6 +732,7 @@ int push_event_to_ctrl_queue(const void *msg, unsigned int len, wifi_event_type_
 {
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
     wifi_event_t *event;
+    bool is_limit_reached;
 
     if (msg == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s %d  msg is null\n", __FUNCTION__, __LINE__);
@@ -745,10 +759,21 @@ int push_event_to_ctrl_queue(const void *msg, unsigned int len, wifi_event_type_
         event->u.core_data.len = 0;
     }
 
-    pthread_mutex_lock(&ctrl->lock);
-    queue_push(ctrl->queue, event);
-    pthread_cond_signal(&ctrl->cond);
-    pthread_mutex_unlock(&ctrl->lock);
+    pthread_mutex_lock(&ctrl->queue_lock);
+    is_limit_reached = queue_count(ctrl->queue) >= CTRL_QUEUE_SIZE_MAX;
+    if (!is_limit_reached) {
+        queue_push(ctrl->queue, event);
+        pthread_cond_signal(&ctrl->cond);
+    }
+    pthread_mutex_unlock(&ctrl->queue_lock);
+
+    if (is_limit_reached) {
+        wifi_util_error_print(WIFI_CTRL,
+            "%s:%d max queue size reached, drop message type: %s subtype: %s\n", __FUNCTION__,
+            __LINE__, wifi_event_type_to_string(type), wifi_event_subtype_to_string(sub_type));
+        destroy_wifi_event(event);
+        return RETURN_ERR;
+    }
 
     return RETURN_OK;
 }
@@ -758,6 +783,7 @@ int push_event_to_monitor_queue(wifi_monitor_data_t *mon_data, wifi_event_subtyp
 {
     wifi_monitor_t *monitor_param = (wifi_monitor_t *)get_wifi_monitor();
     wifi_event_t *event;
+    bool is_limit_reached;
 
     /* Check if monitor queue is initialized */
     if (monitor_initialization_done == false) {
@@ -786,9 +812,19 @@ int push_event_to_monitor_queue(wifi_monitor_data_t *mon_data, wifi_event_subtyp
     }
 
     pthread_mutex_lock(&monitor_param->queue_lock);
-    queue_push(monitor_param->queue, event);
-    pthread_cond_signal(&monitor_param->cond);
+    is_limit_reached = queue_count(monitor_param->queue) >= MONITOR_QUEUE_SIZE_MAX;
+    if (!is_limit_reached) {
+        queue_push(monitor_param->queue, event);
+        pthread_cond_signal(&monitor_param->cond);
+    }
     pthread_mutex_unlock(&monitor_param->queue_lock);
+
+    if (is_limit_reached) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d max queue size reached, drop message subtype: %s\n",
+            __FUNCTION__, __LINE__, wifi_event_subtype_to_string(sub_type));
+        destroy_wifi_event(event);
+        return RETURN_ERR;
+    }
 
     return RETURN_OK;
 }

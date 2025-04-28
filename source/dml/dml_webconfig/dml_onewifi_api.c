@@ -450,8 +450,9 @@ void dml_cache_update(webconfig_subdoc_data_t *data)
     }
 }
 
-void set_webconfig_dml_data(char *eventName, raw_data_t *p_data)
+void set_webconfig_dml_data(char *eventName, raw_data_t *p_data, void *userData)
 {
+    (void)userData;
     char *pTmp = NULL;
     webconfig_subdoc_data_t data;
 
@@ -1289,7 +1290,6 @@ int push_vap_dml_cache_to_one_wifidb()
     is_vap_cac_config_changed = FALSE;
     return RETURN_OK;
 }
-
 
 int push_blaster_config_dml_to_ctrl_queue()
 {

@@ -55,6 +55,18 @@ AC_ARG_ENABLE([libwebconfig],
              [echo "libwebconfig is disabled"])
 AM_CONDITIONAL([WITH_LIBWEBCONFIG], [test x$LIBWEBCONFIG_ENABLED = xtrue])
 
+AC_ARG_ENABLE([easymesh],
+             AS_HELP_STRING([--enable-easymesh],[enable easymesh (default is no)]),
+             [
+              case "${enableval}" in
+               yes) EASYMESH_ENABLED=true;;
+               no) EASYMESH_ENABLED=false;;
+               *) AC_MSG_ERROR([bad value ${enableval} for --enable-easymesh ]);;
+              esac
+             ],
+             [echo "easymesh is disabled"])
+AM_CONDITIONAL([WITH_EASYMESH], [test x$EASYMESH_ENABLED = xtrue])
+
 AC_PREFIX_DEFAULT(`pwd`)
 AC_ENABLE_SHARED
 AC_DISABLE_STATIC
@@ -121,7 +133,9 @@ AM_CONDITIONAL([EASYCONNECT_SUPPORT], [test x$EASYCONNECT_SUPPORT_ENABLE = xtrue
 
 AM_CONDITIONAL([HAL_IPC], [test x$HAL_IPC = xtrue])
 AM_CONDITIONAL([ONEWIFI_CAC_APP_SUPPORT], [test x$ONEWIFI_CAC_APP_SUPPORT = xtrue])
+AM_CONDITIONAL([ONEWIFI_STA_MGR_APP_SUPPORT], [test x$ONEWIFI_STA_MGR_APP_SUPPORT  = xtrue])
 AM_CONDITIONAL([ONEWIFI_DML_SUPPORT], [test x$ONEWIFI_DML_SUPPORT_MAKEFILE = xtrue])
+AM_CONDITIONAL([ONEWIFI_DBUS_SUPPORT], [test x$ONEWIFI_DBUS_SUPPORT = xtrue])
 
 # Specify ccsp cpu arch
 
@@ -243,6 +257,7 @@ AC_C_INLINE
 AC_FUNC_MALLOC
 
 AC_CONFIG_FILES(
+    source/platform/Makefile
     source/dml/tr_181/sbapi/Makefile
     source/dml/tr_181/ml/Makefile
     source/dml/tr_181/Makefile

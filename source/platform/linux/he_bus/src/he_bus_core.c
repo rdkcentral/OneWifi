@@ -117,6 +117,10 @@ he_bus_error_t he_bus_server_init(he_bus_handle_t *handle, char *component_name)
 {
     he_bus_error_t status = he_bus_error_success;
     he_bus_mgr_t *bus_mgr = get_bus_mgr_object();
+    ssize_t stack_size = 0x800000; /* 8MB */
+    pthread_attr_t attr;
+    pthread_attr_t *attrp = NULL;
+    int ret = 0;
 
     if (bus_mgr->bus_server_init != true) {
         status = bus_component_param_init(bus_mgr, handle, component_name);
@@ -129,16 +133,34 @@ he_bus_error_t he_bus_server_init(he_bus_handle_t *handle, char *component_name)
         he_bus_conn_info_t *conn_info = get_bus_connection_object(*handle);
         conn_info->server_info.is_running = true;
 
-        if (pthread_create(&bus_mgr->bus_broadcast_server_tid, NULL,
+        attrp = &attr;
+        pthread_attr_init(&attr);
+        ret = pthread_attr_setstacksize(&attr, stack_size);
+        if (ret != 0) {
+            he_bus_core_error_print("%s:%d pthread_attr_setstacksize failed for size:%ld ret:%d\n",
+                __func__, __LINE__, stack_size, ret);
+        }
+        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+
+        if (pthread_create(&bus_mgr->bus_broadcast_server_tid, attrp,
                 ipc_unix_broadcast_server_start, *handle) != 0) {
             he_bus_core_error_print(":%s broadcast server thread create error\n", __func__);
+            if(attrp != NULL) {
+                pthread_attr_destroy(attrp);
+            }
             return he_bus_error_not_inttialized;
         }
 
-        if (pthread_create(&bus_mgr->bus_unicast_server_tid, NULL, ipc_unix_unicast_server_start,
+        if (pthread_create(&bus_mgr->bus_unicast_server_tid, attrp, ipc_unix_unicast_server_start,
                 *handle) != 0) {
             he_bus_core_error_print(":%s unicast server thread create error\n", __func__);
+            if(attrp != NULL) {
+                pthread_attr_destroy(attrp);
+            }
             return he_bus_error_not_inttialized;
+        }
+        if(attrp != NULL) {
+            pthread_attr_destroy(attrp);
         }
 
         bus_mgr->bus_server_init = true;
@@ -151,6 +173,10 @@ he_bus_error_t he_bus_server_init(he_bus_handle_t *handle, char *component_name)
 
 he_bus_error_t he_bus_open(he_bus_handle_t *handle, char *component_name)
 {
+    ssize_t stack_size = 0x800000; /* 8MB */
+    pthread_attr_t attr;
+    pthread_attr_t *attrp = NULL;
+    int ret = 0;
     he_bus_error_t status = he_bus_error_success;
     he_bus_mgr_t *bus_mgr = get_bus_mgr_object();
 
@@ -164,10 +190,25 @@ he_bus_error_t he_bus_open(he_bus_handle_t *handle, char *component_name)
     he_bus_conn_info_t *conn_info = get_bus_connection_object(*handle);
     conn_info->client_info.is_running = true;
 
-    if (pthread_create(&bus_mgr->bus_client_tid, NULL, ipc_unix_broadcast_client_start, *handle) !=
+    attrp = &attr;
+    pthread_attr_init(&attr);
+    ret = pthread_attr_setstacksize(&attr, stack_size);
+    if (ret != 0) {
+        he_bus_core_error_print("%s:%d pthread_attr_setstacksize failed for size:%ld ret:%d\n",
+                __func__, __LINE__, stack_size, ret);
+    }
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+
+    if (pthread_create(&bus_mgr->bus_client_tid, attrp, ipc_unix_broadcast_client_start, *handle) !=
         0) {
         he_bus_core_error_print(":%s broadcast client thread create error\n", __func__);
+        if(attrp != NULL) {
+            pthread_attr_destroy(attrp);
+        }
         return he_bus_error_not_inttialized;
+    }
+    if(attrp != NULL) {
+        pthread_attr_destroy(attrp);
     }
 
     return status;
@@ -801,7 +842,7 @@ he_bus_error_t bus_publish_data_to_all_sub(he_bus_handle_t handle, he_bus_data_o
     return he_bus_error_success;
 }
 
-he_bus_error_t he_bus_publish_event(he_bus_handle_t handle, char *event_name,
+he_bus_error_t he_bus_publish_event(he_bus_handle_t handle, char const *event_name,
     he_bus_raw_data_t *p_data)
 {
     VERIFY_NULL_WITH_RC(event_name);
@@ -957,7 +998,7 @@ he_bus_error_t he_bus_event_sub_to_provider(he_bus_handle_t handle,
     return status;
 }
 
-he_bus_error_t he_bus_event_sub(he_bus_handle_t handle, char *event_name,
+he_bus_error_t he_bus_event_sub(he_bus_handle_t handle, char const *event_name,
     he_bus_event_consumer_sub_handler_t sub_handler, uint32_t timeout)
 {
     VERIFY_NULL_WITH_RC(event_name);
@@ -999,7 +1040,7 @@ he_bus_error_t he_bus_event_sub_ex_async(he_bus_handle_t handle, he_bus_event_su
 }
 
 // caller needs to free allocated memory
-he_bus_error_t he_bus_get_data(he_bus_handle_t handle, char *event_name, he_bus_raw_data_t *p_data)
+he_bus_error_t he_bus_get_data(he_bus_handle_t handle, char const *event_name, he_bus_raw_data_t *p_data)
 {
     VERIFY_NULL_WITH_RC(event_name);
     VERIFY_NULL_WITH_RC(handle);
@@ -1072,7 +1113,7 @@ he_bus_error_t he_bus_get_data(he_bus_handle_t handle, char *event_name, he_bus_
     return status;
 }
 
-he_bus_error_t he_bus_set_data(he_bus_handle_t handle, char *event_name, he_bus_raw_data_t *p_data)
+he_bus_error_t he_bus_set_data(he_bus_handle_t handle, char const *event_name, he_bus_raw_data_t *p_data)
 {
     VERIFY_NULL_WITH_RC(event_name);
     VERIFY_NULL_WITH_RC(handle);
