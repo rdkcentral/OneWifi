@@ -194,7 +194,7 @@ typedef union he_bus_raw_data_format {
     uint64_t u64;
     float f32;
     double f64;
-    void *bytes;
+    void const *bytes;
 } he_bus_raw_data_format_t;
 
 typedef struct he_bus_raw_data {

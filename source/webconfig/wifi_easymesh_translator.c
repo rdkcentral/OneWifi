@@ -66,6 +66,8 @@ void convert_vap_name_to_hault_type(em_haul_type_t *haultype, char *vapname)
                 *haultype = em_haul_type_configurator;
         } else if (strncmp("mesh_backhaul", vapname, strlen("mesh_backhaul")) == 0) {
                 *haultype = em_haul_type_backhaul;
+        } else if (strncmp("mesh_sta", vapname, strlen("mesh_sta")) == 0) {
+                *haultype = em_haul_type_backhaul;
         }
 }
 
@@ -410,7 +412,7 @@ webconfig_error_t translate_radio_object_to_easymesh_for_dml(webconfig_subdoc_da
             em_radio_info->band = 0;
         } else if (oper_param->band == WIFI_FREQUENCY_5_BAND) {
             em_radio_info->band = 1;
-        } else if (oper_param->band == WIFI_FREQUENCY_60_BAND) {
+        } else if (oper_param->band == WIFI_FREQUENCY_6_BAND) {
             em_radio_info->band = 2;
         }
         radio_iface_map = NULL;
@@ -797,25 +799,46 @@ webconfig_error_t translate_sta_info_to_em_common(const wifi_vap_info_t *vap, co
 {
     wifi_security_modes_t enum_sec;
     int len = 0;
-    char mac_str[128] = "";
     unsigned k = 0;
-    radio_interface_mapping_t *radio_iface_map;
+    radio_interface_mapping_t *radio_iface_map = NULL;
 
     if ((vap_row == NULL) || (vap == NULL)) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: input argument is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_to_easymesh;
     }
-    vap_row->enabled = vap->u.sta_info.enabled;
-    strncpy(vap_row->ssid, vap->u.sta_info.ssid, sizeof(vap_row->ssid));
+    default_em_bss_info(vap_row);
 
-    sprintf(mac_str, "%02x:%02x:%02x:%02x:%02x:%02x", vap->u.sta_info.bssid[0], vap->u.sta_info.bssid[1],
-            vap->u.sta_info.bssid[2], vap->u.sta_info.bssid[3],
-            vap->u.sta_info.bssid[4], vap->u.sta_info.bssid[5]);
-    str_to_mac_bytes(mac_str,vap_row->bssid.mac);
+    vap_row->enabled = vap->u.sta_info.enabled;
+
+    // Copy basic info
+    strncpy(vap_row->ssid, vap->u.sta_info.ssid, sizeof(vap->u.sta_info.ssid));
+    memcpy(vap_row->bssid.mac, vap->u.sta_info.bssid, sizeof(mac_address_t));
     strncpy(vap_row->bssid.name,iface_map->interface_name,sizeof(vap_row->bssid.name));
     convert_vap_name_to_hault_type(&vap_row->id.haul_type, vap->vap_name);
 
-    radio_iface_map = NULL;
+    // Copy security info (mode/AKMs)
+    enum_sec = vap->u.sta_info.security.mode;
+    
+    
+    if (key_mgmt_conversion(&enum_sec, vap_row->fronthaul_akm[0],
+                vap_row->fronthaul_akm[1], sizeof(vap_row->fronthaul_akm[0]),
+                sizeof(vap_row->fronthaul_akm[1]), ENUM_TO_STRING, &len) != RETURN_OK) {
+
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed top convert key mgmt: "
+                "security mode 0x%x\n", __func__, __LINE__, vap->u.sta_info.security.mode);
+    }
+    vap_row->num_fronthaul_akms = len;
+    // Set backhaul AKMs to empty
+    vap_row->num_backhaul_akms = 0;
+    for (int i=0;i<EM_MAX_AKMS ; i++){
+        vap_row->backhaul_akm[i][0] = '\0';
+    }
+
+    
+    //Copy Passphrase
+    strncpy(vap_row->mesh_sta_passphrase, vap->u.sta_info.security.u.key.key, sizeof(vap_row->mesh_sta_passphrase));
+    
+    // Find the radio interface map
     for (k = 0; k < (sizeof(wifi_prop->radio_interface_map)/sizeof(radio_interface_mapping_t)); k++) {
         if (wifi_prop->radio_interface_map[k].radio_index == vap->radio_index) {
             radio_iface_map = &(wifi_prop->radio_interface_map[k]);
@@ -826,24 +849,10 @@ webconfig_error_t translate_sta_info_to_em_common(const wifi_vap_info_t *vap, co
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the interface map entry for %d\n", __func__, __LINE__, vap->vap_index);
         return webconfig_error_translate_to_easymesh;
     }
-    strncpy(vap_row->ruid.name,radio_iface_map->radio_name,sizeof(vap_row->ruid.name));
-    mac_address_from_name(radio_iface_map->interface_name,vap_row->ruid.mac);
 
-    default_em_bss_info(vap_row);
-
-    vap_row->num_fronthaul_akms = 1;
-    enum_sec = vap->u.sta_info.security.mode;
-    if (key_mgmt_conversion(&enum_sec, vap_row->fronthaul_akm[0],
-                vap_row->fronthaul_akm[1], sizeof(vap_row->fronthaul_akm[0]),
-                sizeof(vap_row->fronthaul_akm[1]), ENUM_TO_STRING, &len) != RETURN_OK) {
-
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed top convert key mgmt: "
-                "security mode 0x%x\n", __func__, __LINE__, vap->u.bss_info.security.mode);
-    }
-    vap_row->num_backhaul_akms = 0;
-    for (int i=0;i<EM_MAX_AKMS ; i++){
-        vap_row->backhaul_akm[i][0] = '\0';
-    }
+    // Copy radio information
+    strncpy(vap_row->ruid.name, radio_iface_map->radio_name,sizeof(vap_row->ruid.name));
+    mac_address_from_name(radio_iface_map->interface_name, vap_row->ruid.mac);
 
     return webconfig_error_none;
 }
@@ -993,27 +1002,6 @@ webconfig_error_t translate_mesh_sta_info_to_em_bss_config(wifi_vap_info_t *vap,
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for common\n", __func__, __LINE__);
         return webconfig_error_translate_to_easymesh;
     }
-    /* vap_row->meshsta_use = true;
-
-       vap_row->num_mesh_sta_akms = 1;
-       enum_sec = vap->u.sta_info.security.mode;
-       if (key_mgmt_conversion(&enum_sec, vap_row->mesh_sta_akm[0],
-       vap_row->mesh_sta_akm[1], sizeof(vap_row->mesh_sta_akm[0]),
-       sizeof(vap_row->mesh_sta_akm[1]), ENUM_TO_STRING, &len) != RETURN_OK) {
-
-       wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed top convert key mgmt: "
-       "security mode 0x%x\n", __func__, __LINE__, vap->u.sta_info.security.mode);
-       }
-     */
-    enum_sec = vap->u.sta_info.security.mode;
-    if (key_mgmt_conversion(&enum_sec, vap_row->fronthaul_akm[0],
-                vap_row->fronthaul_akm[1], sizeof(vap_row->fronthaul_akm[0]),
-                sizeof(vap_row->fronthaul_akm[1]), ENUM_TO_STRING, &len) != RETURN_OK) {
-
-        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed top convert key mgmt: "
-                "security mode 0x%x\n", __func__, __LINE__, vap->u.sta_info.security.mode);
-    }
-    /*  strncpy(vap_row->mesh_sta_passphrase, vap->u.sta_info.security.u.key.key,strlen(vap->u.sta_info.security.u.key.key)); */
 
     return webconfig_error_none;
 }
@@ -1097,10 +1085,6 @@ webconfig_error_t translate_vap_object_to_easymesh_for_dml(webconfig_subdoc_data
                 wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Unable to find the interface map entry for %d\n", __func__, __LINE__, vap->vap_index);
                 return webconfig_error_translate_to_easymesh;
             }
-            if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == TRUE) {
-		        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Ignore the mesh sta config index %d\n", __func__, __LINE__, vap->vap_index);
-                continue;
-	        }
             em_bss_info =  (em_bss_info_t *)(proto->get_bss_info(proto->data_model, num_bss));
             if (em_bss_info == NULL) {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Cannot find bss info for index %d\n", __func__, __LINE__, vap->vap_index);
@@ -1135,6 +1119,14 @@ webconfig_error_t translate_vap_object_to_easymesh_for_dml(webconfig_subdoc_data
                     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of backhaul vap to EM failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_easymesh;
                 }
+            } else  if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == TRUE) {
+                if (translate_mesh_sta_info_to_em_bss_config(vap, iface_map, em_bss_info, ssid_vid_row, wifi_prop) != webconfig_error_none) {
+                    wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of mesh sta vap to EM failed for %d\n", __func__, __LINE__, vap->vap_index);
+                    return webconfig_error_translate_to_easymesh;
+                }
+            } else {
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unknown vap type %d\n", __func__, __LINE__, vap->vap_index);
+                return webconfig_error_translate_to_easymesh;
             }
         }
     }
@@ -1200,10 +1192,6 @@ webconfig_error_t translate_vap_object_to_easymesh_bss_info(webconfig_subdoc_dat
         for (j = 0; j < radio->vaps.num_vaps; j++) {
             //Get the corresponding vap
             vap = &vap_map->vap_array[j];
-            if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == TRUE) {
-		        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Ignore the mesh sta config index %d\n", __func__, __LINE__, vap->vap_index);
-                continue;
-	        }
             vap_info_row = proto->get_bss_info(proto->data_model, count);
             if (vap_info_row == NULL) {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Cannot find the bssid\n", __func__, __LINE__);
@@ -1241,6 +1229,14 @@ webconfig_error_t translate_vap_object_to_easymesh_bss_info(webconfig_subdoc_dat
                     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of backhaul vap to EM failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_easymesh;
                 }
+            } else if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == TRUE) {
+                if (translate_mesh_sta_info_to_em_bss_config(vap, iface_map, vap_info_row, ssid_vid_row, wifi_prop) != webconfig_error_none) {
+                    wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of mesh sta vap to EM failed for %d\n", __func__, __LINE__, vap->vap_index);
+                    return webconfig_error_translate_to_easymesh;
+                }
+            } else {
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unknown vap type %d\n", __func__, __LINE__, vap->vap_index);
+                return webconfig_error_translate_to_easymesh;
             }
         }
     }
@@ -1312,10 +1308,6 @@ webconfig_error_t translate_per_radio_vap_object_to_easymesh_bss_info(webconfig_
         for (j = 0; j < radio->vaps.num_vaps; j++) {
             //Get the corresponding vap
             vap = &vap_map->vap_array[j];
-            if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == TRUE) {
-		        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Ignore the mesh sta config index %d\n", __func__, __LINE__, vap->vap_index);
-                continue;
-	        }
             vap_info_row = proto->get_bss_info(proto->data_model, count);
             if (vap_info_row == NULL) {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Cannot find the bssid\n", __func__, __LINE__);
@@ -1350,6 +1342,14 @@ webconfig_error_t translate_per_radio_vap_object_to_easymesh_bss_info(webconfig_
                     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of backhaul vap to EM failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_to_easymesh;
                 }
+            } else if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == TRUE) {
+                if (translate_mesh_sta_info_to_em_bss_config(vap, iface_map, vap_info_row, ssid_vid_row, wifi_prop) != webconfig_error_none) {
+                    wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of mesh sta vap to EM failed for %d\n", __func__, __LINE__, vap->vap_index);
+                    return webconfig_error_translate_to_easymesh;
+                }
+            } else {
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unknown vap type %d\n", __func__, __LINE__, vap->vap_index);
+                return webconfig_error_translate_to_easymesh;
             }
         }
     }
@@ -1423,13 +1423,36 @@ webconfig_error_t translate_em_common_to_vap_info_common( wifi_vap_info_t *vap, 
 webconfig_error_t translate_em_common_to_sta_info_common(wifi_vap_info_t *vap, const em_bss_info_t *vap_row)
 {
 
+    wifi_security_modes_t enum_sec;
+    int len = 0;
+    unsigned k = 0;
+    radio_interface_mapping_t *radio_iface_map = NULL;
+
     if ((vap_row == NULL) || (vap == NULL)) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: input argument is NULL\n", __func__, __LINE__);
         return webconfig_error_translate_from_easymesh;
     }
-    vap->u.sta_info.enabled =  vap_row->enabled;
-    strncpy( vap->u.sta_info.ssid,vap_row->ssid, sizeof(vap->u.sta_info.ssid));
 
+    vap->u.sta_info.enabled = vap_row->enabled;
+
+    // Copy basic info
+    strncpy(vap->u.sta_info.ssid,      vap_row->ssid,       sizeof(vap->u.sta_info.ssid));
+    memcpy(vap->u.sta_info.bssid,      vap_row->bssid.mac,  sizeof(mac_address_t));
+
+    // Copy security info (mode/AKMs)
+    if (key_mgmt_conversion(&enum_sec, vap_row->fronthaul_akm[0], vap_row->fronthaul_akm[1], 
+                               sizeof(vap_row->fronthaul_akm[0]), sizeof(vap_row->fronthaul_akm[1]), 
+                               STRING_TO_ENUM, &len) != RETURN_OK) {
+
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed top convert key mgmt: "
+                "security mode 0x%x\n", __func__, __LINE__, vap->u.sta_info.security.mode);
+    }
+
+    vap->u.sta_info.security.mode = enum_sec;
+    
+    //Copy Passphrase
+    strncpy(vap->u.sta_info.security.u.key.key, vap_row->mesh_sta_passphrase, sizeof(vap->u.sta_info.security.u.key.key));
+    
     return webconfig_error_none;
 }
 // translate_em_bss_to_private_vap_info() em_bss_info_t data elements of wifi_vap_info_t of Onewifi for private vaps
@@ -1546,7 +1569,7 @@ webconfig_error_t translate_em_bss_to_mesh_backhaul_vap_info(wifi_vap_info_t *va
 }
 
 // translate_em_bss_to_mesh_sta_info() em_bss_info_t data elements of wifi_vap_info_t of Onewifi for mesh_sta vaps
-webconfig_error_t translate_em_bss_to_mesh_sta_info(wifi_vap_info_t *vap,   const em_bss_info_t *vap_row)
+webconfig_error_t translate_em_bss_to_mesh_sta_info(wifi_vap_info_t *vap, const em_bss_info_t *vap_row)
 {
     wifi_security_modes_t enum_sec;
     int len = 0;
@@ -1556,15 +1579,6 @@ webconfig_error_t translate_em_bss_to_mesh_sta_info(wifi_vap_info_t *vap,   cons
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation failed for common\n", __func__, __LINE__);
         return webconfig_error_translate_from_easymesh;
     }
-
-    /* if ((key_mgmt_conversion(&enum_sec, (char *)vap_row->mesh_sta_akm[0], (char *)vap_row->mesh_sta_akm[1], sizeof(vap_row->mesh_sta_akm[0]), sizeof(vap_row->mesh_sta_akm[1]), STRING_TO_ENUM, &len)) != RETURN_OK) {
-       wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: key mgmt conversion failed. wpa_key_mgmt '%s'\n", __func__, __LINE__,
-       (vap_row->mesh_sta_akm[0]) ? vap_row->mesh_sta_akm[0]: "NULL");
-       return webconfig_error_translate_from_easymesh;
-       }
-
-       vap->u.sta_info.security.mode = enum_sec;
-       strncpy(vap->u.sta_info.security.u.key.key,vap_row->mesh_sta_passphrase,strlen(vap->u.bss_info.security.u.key.key)); */
 
     return webconfig_error_none;
 }
@@ -1679,12 +1693,7 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_per_radio(webconfig_sub
     for (j = 0; j < radio->vaps.num_vaps; j++) {
         //Get the corresponding vap
         vap = &vap_map->vap_array[j];
-        if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == TRUE) {
-		    wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Ignore the mesh sta config index %d\n", __func__, __LINE__, vap->vap_index);
-            continue;
-        } else {
-            vap_info_row = proto->get_bss_info_with_mac(proto->data_model, vap->u.bss_info.bssid);
-		}
+        vap_info_row = proto->get_bss_info_with_mac(proto->data_model, vap->u.bss_info.bssid);
         if (vap_info_row == NULL) {
             wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: em_vap_info is NULL\n", __func__, __LINE__);
             continue;
@@ -1715,6 +1724,14 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_per_radio(webconfig_sub
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation from EM to  backhaul vap  failed for %d\n", __func__, __LINE__, vap->vap_index);
                 return webconfig_error_translate_from_easymesh;
             }
+        } else  if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == TRUE) {
+            if (translate_em_bss_to_mesh_sta_info(vap, vap_info_row) != webconfig_error_none) {
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation from EM to  mesh sta vap  failed for %d\n", __func__, __LINE__, vap->vap_index);
+                return webconfig_error_translate_from_easymesh;
+            }
+        } else {
+            wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unknown vap type %d\n", __func__, __LINE__, vap->vap_index);
+            return webconfig_error_translate_from_easymesh;
         }
 
         if (radio_config != NULL) {
@@ -1875,10 +1892,6 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_object(webconfig_subdoc
         for (j = 0; j < radio->vaps.num_vaps; j++) {
             //Get the corresponding vap
             vap = &vap_map->vap_array[j];
-            if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == TRUE) {
-		        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Ignore the mesh sta config index %d\n", __func__, __LINE__, vap->vap_index);
-                continue;
-	        }
             vap_info_row = proto->get_bss_info(proto->data_model, count);
             if (vap_info_row == NULL) {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: vap_info_row is NULL\n", __func__, __LINE__);
@@ -1919,7 +1932,17 @@ webconfig_error_t translate_from_easymesh_bssinfo_to_vap_object(webconfig_subdoc
                     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation from EM to  backhaul vap  failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_from_easymesh;
                 }
+            } else if (is_vap_mesh_sta(wifi_prop, vap->vap_index) == TRUE) {
+                if (translate_em_bss_to_mesh_sta_info(vap, vap_info_row) != webconfig_error_none) {
+                    wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation from EM to  mesh sta vap  failed for %d\n", __func__, __LINE__, vap->vap_index);
+                    return webconfig_error_translate_from_easymesh;
+                }
+            } else {
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unknown vap type %d\n", __func__, __LINE__, vap->vap_index);
+                return webconfig_error_translate_from_easymesh;
             }
+
+
             if (radio_config != NULL) {
                 for(k = 0; k < radio_config->noofbssconfig; k++) {
                     convert_vap_name_to_hault_type(&haultype, vap->vap_name );
@@ -2164,6 +2187,9 @@ webconfig_error_t   translate_vap_object_from_easymesh_to_dml(webconfig_subdoc_d
                     wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Translation of mesh_stavap to EM failed for %d\n", __func__, __LINE__, vap->vap_index);
                     return webconfig_error_translate_from_easymesh;
                 }
+            } else {
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Unknown vap type %d\n", __func__, __LINE__, vap->vap_index);
+                return webconfig_error_translate_from_easymesh;
             }
         }
     }
@@ -2298,6 +2324,7 @@ webconfig_error_t  translate_to_easymesh_tables(webconfig_subdoc_type_t type, we
             }
             break;
 
+        case webconfig_subdoc_type_mesh_backhaul_sta:
         case webconfig_subdoc_type_mesh_sta:
             if (translate_vap_object_to_easymesh_bss_info(data, "mesh_sta") != webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: webconfig_subdoc_type_mesh_sta vap_object translation to easymesh failed\n", __func__, __LINE__);
@@ -2447,7 +2474,8 @@ webconfig_error_t   translate_from_easymesh_tables(webconfig_subdoc_type_t type,
                 return webconfig_error_translate_from_easymesh;
             }
             break;
-
+        
+        case webconfig_subdoc_type_mesh_backhaul_sta:
         case webconfig_subdoc_type_mesh_sta:
             if (translate_from_easymesh_bssinfo_to_vap_object(data, "mesh_sta") != webconfig_error_none) {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: webconfig_subdoc_type_mesh_sta vap_object translation to easymesh failed\n", __func__, __LINE__);
