@@ -144,6 +144,11 @@
         PJS_OVS_BOOL(connected_building_enabled) \
         PJS_OVS_BOOL(hostap_mgt_frame_ctrl) \
         PJS_OVS_BOOL(mbo_enabled) \
+        PJS_OVS_BOOL(mld_enable) \
+        PJS_OVS_INT(mld_id) \
+        PJS_OVS_INT(mld_link_id) \
+        PJS_OVS_STRING(mld_addr, 32 + 1) \
+        PJS_OVS_BOOL(mld_apply) \
     )
 
 #define PJS_SCHEMA_Wifi_Interworking_Config \
@@ -2060,8 +2065,12 @@
     COLUMN(repurposed_vap_name)\
     COLUMN(connected_building_enabled)\
     COLUMN(hostap_mgt_frame_ctrl) \
-    COLUMN(mbo_enabled)
-
+    COLUMN(mbo_enabled)\
+    COLUMN(mld_enable)\
+    COLUMN(mld_id)\
+    COLUMN(mld_link_id)\
+    COLUMN(mld_addr)\
+    COLUMN(mld_apply)
 
 #define SCHEMA__Wifi_Interworking_Config "Wifi_Interworking_Config"
 #define SCHEMA_COLUMN__Wifi_Interworking_Config(COLUMN) \
@@ -3406,6 +3415,11 @@
 #define SCHEMA__Wifi_VAP_Config__connected_building_enabled "connected_building_enabled"
 #define SCHEMA__Wifi_VAP_Config__hostap_mgt_frame_ctrl "hostap_mgt_frame_ctrl"
 #define SCHEMA__Wifi_VAP_Config__mbo_enabled "mbo_enabled"
+#define SCHEMA__Wifi_VAP_Config__mld_enable "mld_enable"
+#define SCHEMA__Wifi_VAP_Config__mld_id "mld_id"
+#define SCHEMA__Wifi_VAP_Config__mld_link_id "mld_link_id"
+#define SCHEMA__Wifi_VAP_Config__mld_addr "mld_addr"
+#define SCHEMA__Wifi_VAP_Config__mld_apply "mld_apply"
 
 #define SCHEMA__Wifi_Interworking_Config__enable "enable"
 #define SCHEMA__Wifi_Interworking_Config__vap_name "vap_name"
