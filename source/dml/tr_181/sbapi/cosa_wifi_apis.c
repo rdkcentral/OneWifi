@@ -220,7 +220,9 @@ struct wifiGuardIntervalMap wifiGuardIntervalMap[] ={
 struct  wifiStdCosaHalMap wifiStdDmlMap[] =
 {
     {WIFI_80211_VARIANT_A,  COSA_DML_WIFI_STD_a,  "a"},
+#ifndef _XER5_PRODUCT_REQ_
     {WIFI_80211_VARIANT_B,  COSA_DML_WIFI_STD_b,  "b"},
+#endif
     {WIFI_80211_VARIANT_G,  COSA_DML_WIFI_STD_g,  "g"},
     {WIFI_80211_VARIANT_N,  COSA_DML_WIFI_STD_n,  "n"},
     {WIFI_80211_VARIANT_H,  COSA_DML_WIFI_STD_h,  "h"},

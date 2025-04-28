@@ -4214,7 +4214,22 @@ Radio_SetParamStringValue
         }
 
         // TODO: for debug purpouses only
+#ifdef _XER5_PRODUCT_REQ_
         static const char * const wifi_mode_strings[] =
+        {
+            "WIFI_80211_VARIANT_A",
+            "WIFI_80211_VARIANT_G",
+            "WIFI_80211_VARIANT_N",
+            "WIFI_80211_VARIANT_H",
+            "WIFI_80211_VARIANT_AC",
+            "WIFI_80211_VARIANT_AD",
+            "WIFI_80211_VARIANT_AX",
+#ifdef CONFIG_IEEE80211BE
+            "WIFI_80211_VARIANT_BE",
+#endif
+        };
+#else
+	static const char * const wifi_mode_strings[] =
         {
             "WIFI_80211_VARIANT_A",
             "WIFI_80211_VARIANT_B",
@@ -4228,6 +4243,7 @@ Radio_SetParamStringValue
             "WIFI_80211_VARIANT_BE",
 #endif /* CONFIG_IEEE80211BE */
         };
+#endif
 
         for (size_t i = 0; i < (sizeof(wifi_mode_strings) / sizeof(wifi_mode_strings[0])); i++) {
             if (wifi_variant & (1ul << i))
