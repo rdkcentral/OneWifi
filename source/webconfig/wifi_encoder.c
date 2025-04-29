@@ -2819,7 +2819,6 @@ webconfig_error_t encode_em_sta_link_metrics_object(const em_assoc_sta_link_metr
     return webconfig_error_none;
 }
 
-
 webconfig_error_t encode_em_sta_traffic_stats_object(int sta_cnt,
     assoc_sta_traffic_stats_t *sta_traffic_stats, cJSON *ap_report_obj)
 {
@@ -3020,6 +3019,7 @@ webconfig_error_t encode_em_ap_metrics_report_object(rdk_wifi_radio_t *radio,
     wifi_vap_info_t *vap = NULL;
     em_vap_metrics_t *ap_metrics = NULL;
     mac_addr_str_t mac_string;
+    int vap_arr_index = -1;
 
     if ((ap_report == NULL) || (emap_metrics_report_obj == NULL)) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NUll obj\n", __func__, __LINE__);
@@ -3045,59 +3045,69 @@ webconfig_error_t encode_em_ap_metrics_report_object(rdk_wifi_radio_t *radio,
     }
     cJSON_AddItemToObject(emap_metrics_report_obj, "Vap Info", param_arr);
 
-    for (int j = 0; j < MAX_NUM_VAP_PER_RADIO; j++) {
+    for (int j = 0; j < radio->vaps.num_vaps; j++) {
         vap = &vap_map->vap_array[j];
         if (vap == NULL) {
             continue;
         }
-        if ((strncmp(vap->u.bss_info.bssid, ap_report->vap_reports[j].vap_metrics.bssid,
-                 sizeof(bssid_t)) == 0) &&
-            (vap->u.bss_info.bssid[0] != 0)) {
-            ap_metrics = &ap_report->vap_reports[j];
 
-            param_obj = cJSON_CreateObject();
-            if ((param_obj == NULL)) {
-                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer\n", __func__, __LINE__);
-                return webconfig_error_encode;
+        for (int k = 0; k < MAX_NUM_VAP_PER_RADIO; k++) {
+            ap_metrics = &ap_report->vap_reports[k];
+            if ((strncmp(vap->u.bss_info.bssid, ap_metrics->vap_metrics.bssid,
+                sizeof(bssid_t)) == 0) &&
+                (vap->u.bss_info.bssid[0] != 0)) {
+                    vap_arr_index = k;
+                    break;
             }
-            cJSON_AddItemToArray(param_arr, param_obj);
-            cJSON_AddNumberToObject(param_obj, "VapIndex", vap->vap_index);
+        }
+        if(vap_arr_index == -1) {
+            continue;
+        }
 
-            temp_obj = cJSON_CreateObject();
-            if ((temp_obj == NULL)) {
-                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer\n", __func__, __LINE__);
-                return webconfig_error_encode;
-            }
-            cJSON_AddItemToObject(param_obj, "AP Metrics", temp_obj);
-            to_mac_str(vap->u.bss_info.bssid, mac_string);
-            cJSON_AddStringToObject(temp_obj, "BSSID", mac_string);
-            cJSON_AddNumberToObject(temp_obj, "Channel Util", ap_metrics->vap_metrics.channel_util);
-            cJSON_AddNumberToObject(temp_obj, "Number of Associated STAs",
-                ap_metrics->vap_metrics.num_of_assoc_stas);
+        ap_metrics = &ap_report->vap_reports[vap_arr_index];
 
-            // Create AP Extended Metrics array
-            temp_obj = cJSON_CreateObject();
-            if ((temp_obj == NULL)) {
-                wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer\n", __func__, __LINE__);
-                return webconfig_error_encode;
-            }
-            cJSON_AddItemToObject(param_obj, "AP Extended Metrics", temp_obj);
-            cJSON_AddStringToObject(temp_obj, "BSSID", mac_string);
-            cJSON_AddNumberToObject(temp_obj, "BSS.UnicastBytesSent",
-                ap_metrics->vap_metrics.unicast_bytes_sent);
-            cJSON_AddNumberToObject(temp_obj, "BSS.UnicastBytesReceived",
-                ap_metrics->vap_metrics.unicast_bytes_rcvd);
+        param_obj = cJSON_CreateObject();
+        if ((param_obj == NULL)) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer\n", __func__, __LINE__);
+            return webconfig_error_encode;
+        }
+        cJSON_AddItemToArray(param_arr, param_obj);
+        cJSON_AddNumberToObject(param_obj, "VapIndex", vap->vap_index);
 
-            // check sta link metrics and traffic stats
-            if (ap_metrics->is_sta_traffic_stats_enabled == true) {
-                encode_em_sta_traffic_stats_object(ap_metrics->sta_cnt,
-                    ap_metrics->sta_traffic_stats, param_obj);
-            }
+        temp_obj = cJSON_CreateObject();
+        if ((temp_obj == NULL)) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer\n", __func__, __LINE__);
+            return webconfig_error_encode;
+        }
+        cJSON_AddItemToObject(param_obj, "AP Metrics", temp_obj);
+        to_mac_str(vap->u.bss_info.bssid, mac_string);
+        cJSON_AddStringToObject(temp_obj, "BSSID", mac_string);
+        cJSON_AddNumberToObject(temp_obj, "Channel Util", ap_metrics->vap_metrics.channel_util);
+        cJSON_AddNumberToObject(temp_obj, "Number of Associated STAs",
+            ap_metrics->vap_metrics.num_of_assoc_stas);
 
-            if (ap_metrics->is_sta_link_metrics_enabled == true) {
-                encode_sta_link_metrics_object(ap_metrics->sta_link_metrics, ap_metrics->sta_cnt,
-                    param_obj);
-            }
+        // Create AP Extended Metrics array
+        temp_obj = cJSON_CreateObject();
+        if ((temp_obj == NULL)) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer\n", __func__, __LINE__);
+            return webconfig_error_encode;
+        }
+        cJSON_AddItemToObject(param_obj, "AP Extended Metrics", temp_obj);
+        cJSON_AddStringToObject(temp_obj, "BSSID", mac_string);
+        cJSON_AddNumberToObject(temp_obj, "BSS.UnicastBytesSent",
+            ap_metrics->vap_metrics.unicast_bytes_sent);
+        cJSON_AddNumberToObject(temp_obj, "BSS.UnicastBytesReceived",
+            ap_metrics->vap_metrics.unicast_bytes_rcvd);
+
+        // check sta link metrics and traffic stats
+        if (ap_metrics->is_sta_traffic_stats_enabled == true) {
+            encode_em_sta_traffic_stats_object(ap_metrics->sta_cnt,
+                ap_metrics->sta_traffic_stats, param_obj);
+        }
+
+        if (ap_metrics->is_sta_link_metrics_enabled == true) {
+            encode_sta_link_metrics_object(ap_metrics->sta_link_metrics, ap_metrics->sta_cnt,
+                param_obj);
         }
     }
 }

@@ -532,7 +532,6 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
     assoc_dev_data_t *assoc_dev_data = NULL;
     rdk_wifi_vap_info_t *rdk_vap_info = NULL;
     webconfig_external_easymesh_t *proto = NULL;
-    em_long_string_t key;
     mac_addr_str_t sta_str, bss_str, radio_str;
     struct ieee80211_mgmt *mgmt = NULL;
 
@@ -574,7 +573,6 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
             if (rdk_vap_info->associated_devices_diff_map != NULL) {
                 assoc_dev_data = hash_map_get_first(rdk_vap_info->associated_devices_diff_map);
                 while (assoc_dev_data != NULL) {
-                    memset(key, 0, sizeof(key));
                     if (associated_client_count >= WEBCONFIG_MAX_ASSOCIATED_CLIENTS) {
                         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Exceeded max number of associated clients %d, vap_name '%s'\n", __func__, __LINE__, WEBCONFIG_MAX_ASSOCIATED_CLIENTS, rdk_vap_info->vap_name);
                         break;
@@ -592,12 +590,6 @@ webconfig_error_t translate_associated_clients_to_easymesh_sta_info(webconfig_su
                     em_bss_info_t *bss_info = proto->get_bss_info(proto->data_model, rdk_vap_info->vap_index);
                     proto->set_num_radio(proto->data_model, decoded_params->num_radios);
                     proto->set_num_bss(proto->data_model, radio->vaps.num_vaps);
-
-                    to_mac_str(assoc_dev_data->dev_stats.cli_MACAddress, sta_str);
-                    to_mac_str(bss_info->bssid.mac, bss_str);
-                    to_mac_str(radio_info->intf.mac, radio_str);
-                    snprintf(key, sizeof(key), "%s@%s@%s", sta_str, bss_str, radio_str);
-                    printf("%s:%d: Add key=%s\n", __func__, __LINE__, key);
                     printf("%s:%d: client_state: %d\n", __func__, __LINE__, assoc_dev_data->client_state);
 
                     memcpy(em_sta_dev_info->id, assoc_dev_data->dev_stats.cli_MACAddress, sizeof(mac_address_t));
@@ -806,6 +798,7 @@ webconfig_error_t translate_ap_metrics_report_to_easy_mesh_bss_info(webconfig_su
     em_vap_metrics_t *ap_metrics = NULL;
     em_radio_info_t *radio_info = NULL;
     em_sta_info_t *em_sta_dev_info = NULL;
+    mac_addr_str_t bss_str;
 
     decoded_params = &data->u.decoded;
     if (decoded_params == NULL) {
@@ -842,19 +835,21 @@ webconfig_error_t translate_ap_metrics_report_to_easy_mesh_bss_info(webconfig_su
             continue;
         }
 
-        em_bss_info =  (em_bss_info_t *)(proto->get_bss_info(proto->data_model, j));
+        em_bss_info =  (em_bss_info_t *)(proto->get_bss_info_with_mac(proto->data_model, vap->u.bss_info.bssid));
         if (em_bss_info == NULL) {
             wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Cannot find bss info for index %d\n", __func__, __LINE__, vap->vap_index);
             continue;
         }
-
         em_bss_info->numberofsta = ap_metrics->sta_cnt;
-        wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Assoc Sta count %d\n", __func__, __LINE__, em_bss_info->numberofsta);
 
-        per_sta_metrics_t *sta_stats =NULL;
+        per_sta_metrics_t *sta_stats = NULL;
         for (unsigned int count = 0; count < em_bss_info->numberofsta; count++) {
             sta_stats = &ap_metrics->sta_link_metrics[count];
+            if (sta_stats == NULL) {
+                continue;
+            }
             radio_info = proto->get_radio_info(proto->data_model, radio_index);
+            //wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Assoc Sta count %d\n", __func__, __LINE__, em_bss_info->numberofsta);
             em_sta_dev_info = proto->get_sta_info(proto->data_model, sta_stats->sta_mac, \
                 em_bss_info->bssid.mac, radio_info->intf.mac, em_target_sta_map_consolidated);
 

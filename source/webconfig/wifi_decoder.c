@@ -5756,6 +5756,7 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
     int sta_cnt = 0;
     assoc_sta_link_metrics_data_t *sta_link_metrics_data = NULL;
     assoc_sta_ext_link_metrics_data_t *sta_ext_link_metrics_data = NULL;
+    int vapindex = -1;
 
     param_obj = cJSON_GetObjectItem(em_ap_report_obj, "EMAPMetricsReport");
     if (param_obj == NULL) {
@@ -5781,6 +5782,7 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
         }
 
         decode_param_integer(vap_obj, "VapIndex", value_object);
+        vapindex = value_object->valueint;
 
         // Decode AP Metrics
         param_obj = cJSON_GetObjectItem(vap_obj, "AP Metrics");
@@ -5796,6 +5798,9 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
             em_ap_report->vap_reports[j].sta_cnt =
                 em_ap_report->vap_reports[j].vap_metrics.num_of_assoc_stas = value_object->valueint;
         }
+
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d:Number of Assoc STAs: %d for vap index:%d of rad index:%d\n", __func__,
+            __LINE__, em_ap_report->vap_reports[j].sta_cnt, vapindex, em_ap_report->radio_index);
 
         // Decode AP Extended Metrics
         param_obj = cJSON_GetObjectItem(vap_obj, "AP Extended Metrics");
