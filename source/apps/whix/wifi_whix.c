@@ -2657,12 +2657,27 @@ int whix_init(wifi_app_t *app, unsigned int create_flag)
 int whix_deinit(wifi_app_t *app)
 {
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_associated_dev3_t *dev_stats = NULL;
+    void *tmp_data = NULL;
+    mac_addr_str_t mac_str;
 
     push_whix_config_event_to_monitor_queue(mon_stats_request_state_stop, app);
 
     if (app->data.u.whix.sched_handler_id != 0) {
-        scheduler_cancel_timer_task(ctrl->sched,  &(app->data.u.whix.sched_handler_id));
+        scheduler_cancel_timer_task(ctrl->sched, &(app->data.u.whix.sched_handler_id));
         app->data.u.whix.sched_handler_id = 0;
+    }
+
+    dev_stats = (wifi_associated_dev3_t *)hash_map_get_first(app->data.u.whix.last_stats_map);
+    while (dev_stats != NULL) {
+        memset(mac_str, 0, sizeof(mac_addr_str_t));
+        to_mac_str((unsigned char *)dev_stats->cli_MACAddress, mac_str);
+        dev_stats = hash_map_get_next(app->data.u.whix.last_stats_map, dev_stats);
+        tmp_data = (wifi_associated_dev3_t *)hash_map_remove(app->data.u.whix.last_stats_map,
+            mac_str);
+        if (tmp_data != NULL) {
+            free(tmp_data);
+        }
     }
 
     return RETURN_OK;
