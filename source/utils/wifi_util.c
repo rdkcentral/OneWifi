@@ -1225,11 +1225,11 @@ int macfilter_conversion(char *mac_list_type, size_t string_len,  wifi_vap_info_
             return RETURN_OK;
         } else if (strncmp(mac_list_type, "none", strlen("none")) == 0) {
             vap_info->u.bss_info.mac_filter_enable = FALSE;
-            vap_info->u.bss_info.mac_filter_mode = wifi_mac_filter_mode_white_list;
+            vap_info->u.bss_info.mac_filter_mode = wifi_mac_filter_mode_black_list;
             return RETURN_OK;
         } else if (mac_list_type[0] == '\0') {
             vap_info->u.bss_info.mac_filter_enable = FALSE;
-            vap_info->u.bss_info.mac_filter_mode = wifi_mac_filter_mode_white_list;
+            vap_info->u.bss_info.mac_filter_mode = wifi_mac_filter_mode_black_list;
             return RETURN_OK;
         }
     } else if (conv_type == ENUM_TO_STRING) {
