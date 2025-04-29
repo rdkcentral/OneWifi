@@ -1510,32 +1510,22 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
         memset(buff, 0, MAX_BUFF_SIZE);
         snprintf(buff, MAX_BUFF_SIZE - 1, "%s WIFI_BYTESSENTCLIENTS_%d:", tmp, vap_index + 1);
         for (i = 0; i < num_devs; i++) {
-            wifi_util_dbg_print(WIFI_APPS, "PAVI1:%d\n", __LINE__);
             to_sta_key(sta[i].sta_mac, sta_key);
-            wifi_util_dbg_print(WIFI_APPS, "PAVI2:%d\n", __LINE__);
             dev_stats_last = (wifi_associated_dev3_t *)hash_map_get(last_stats_map, sta_key);
-            wifi_util_dbg_print(WIFI_APPS, "PAVI3:%d\n", __LINE__);
-
             if (dev_stats_last == NULL) {
-                wifi_util_dbg_print(WIFI_APPS, "PAVI4:%d Not found\n", __LINE__);
                 dev_stats_last = (wifi_associated_dev3_t *)calloc(sizeof(wifi_associated_dev3_t),
                     1);
                 if (dev_stats_last == NULL) {
-                    wifi_util_error_print(WIFI_APPS, "%s:%d Error in allocating memory\n",
-                        __func__, __LINE__);
+                    wifi_util_error_print(WIFI_APPS, "%s:%d Error in allocating memory\n", __func__,
+                        __LINE__);
                     return RETURN_ERR;
                 }
                 // MAC not found, so use the last used data as 0
                 memcpy(dev_stats_last, &sta[i], sizeof(wifi_associated_dev3_t));
                 hash_map_put(app->data.u.whix.last_stats_map, strdup(sta_key), dev_stats_last);
-                wifi_util_dbg_print(WIFI_APPS, "PAVI5:%d\n", __LINE__);
                 update_flag[i] = true;
-                wifi_util_dbg_print(WIFI_APPS, "PAVI6:%d\n", __LINE__);
             }
             if (sta[i].dev_stats.cli_Active == true) {
-                wifi_util_dbg_print(WIFI_APPS, "Bytes Sent %lu and Bytes Sent last from hash %lu\n",
-                    sta[i].dev_stats.cli_BytesSent,
-                    (update_flag[i] ? 0 : dev_stats_last->cli_BytesSent));
                 snprintf(tmp, 32, "%lu,",
                     sta[i].dev_stats.cli_BytesSent -
                         (update_flag[i] ? 0 : dev_stats_last->cli_BytesSent));
@@ -2536,21 +2526,21 @@ void radius_failover_and_fallback_marker(wifi_app_t *app, void *data)
     }
 }
 
-void update_last_stats_map(wifi_app_t *app, void *data) 
+void update_last_stats_map(wifi_app_t *app, void *data)
 {
-	assoc_dev_data_t *assoc_data = (assoc_dev_data_t *) data;
-	char mac_str[32] = {0};
-	wifi_associated_dev3_t *sta_info = NULL;
+    assoc_dev_data_t *assoc_data = (assoc_dev_data_t *)data;
+    char mac_str[32] = { 0 };
+    wifi_associated_dev3_t *sta_info = NULL;
 
-	to_mac_str((unsigned char *)assoc_data->dev_stats.cli_MACAddress, mac_str);
+    to_mac_str((unsigned char *)assoc_data->dev_stats.cli_MACAddress, mac_str);
 
-	sta_info = (wifi_associated_dev3_t*) hash_map_get(app->data.u.whix.last_stats_map, mac_str);
-	if (sta_info != NULL) {
-		sta_info = hash_map_remove(app->data.u.whix.last_stats_map, mac_str);
-		if (sta_info != NULL) {
-			free(sta_info);
-		}
-	}
+    sta_info = (wifi_associated_dev3_t *)hash_map_get(app->data.u.whix.last_stats_map, mac_str);
+    if (sta_info != NULL) {
+        sta_info = hash_map_remove(app->data.u.whix.last_stats_map, mac_str);
+        if (sta_info != NULL) {
+            free(sta_info);
+        }
+    }
 }
 
 void handle_whix_hal_ind_event(wifi_app_t *app, wifi_event_t *event)
@@ -2660,7 +2650,6 @@ int whix_init(wifi_app_t *app, unsigned int create_flag)
         }
     }
     app->data.u.whix.sched_handler_id = 0;
-   
     app->data.u.whix.last_stats_map = hash_map_create();
     return RETURN_OK;
 }
