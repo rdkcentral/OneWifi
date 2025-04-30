@@ -2988,6 +2988,8 @@ int init_wifi_monitor()
     unsigned int uptimeval = 0;
     int rssi;
     UINT vap_index, radio;
+    wifi_global_param_t *global_param;
+
     //Initialize MQTTCM
     wifi_util_info_print(WIFI_MON,"%s:%d Monitor init\n", __func__, __LINE__);
 #ifdef MQTTCM
@@ -3009,11 +3011,10 @@ int init_wifi_monitor()
     chan_util_upload_period = get_chan_util_upload_period();
     wifi_util_dbg_print(WIFI_MON, "%s:%d system uptime val is %ld and upload period is %d in secs\n",
              __FUNCTION__,__LINE__,uptimeval,(g_monitor_module.upload_period*60));
-    if (get_vap_dml_parameters(RSSI_THRESHOLD, &rssi) != ANSC_STATUS_SUCCESS) {
-        g_monitor_module.sta_health_rssi_threshold = -65;
-    } else {
-        g_monitor_module.sta_health_rssi_threshold = rssi;
-    }
+    
+    global_param = get_wifidb_wifi_global_param();
+    g_monitor_module.sta_health_rssi_threshold = global_param->good_rssi_threshold;
+    
     for (i = 0; i < getTotalNumberVAPs(); i++) {
         UINT vap_index = VAP_INDEX(mgr->hal_cap, i);
         radio = RADIO_INDEX(mgr->hal_cap, i);
