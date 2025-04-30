@@ -849,6 +849,10 @@ webconfig_error_t translate_ap_metrics_report_to_easy_mesh_bss_info(webconfig_su
                 continue;
             }
             radio_info = proto->get_radio_info(proto->data_model, radio_index);
+            if (radio_info == NULL) {
+                wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Cannot find radio info for index %d\n", __func__, __LINE__, vap->vap_index);
+                continue;
+            }
             //wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Assoc Sta count %d\n", __func__, __LINE__, em_bss_info->numberofsta);
             em_sta_dev_info = proto->get_sta_info(proto->data_model, sta_stats->sta_mac, \
                 em_bss_info->bssid.mac, radio_info->intf.mac, em_target_sta_map_consolidated);

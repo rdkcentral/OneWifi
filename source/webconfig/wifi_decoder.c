@@ -5880,6 +5880,7 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
                 decode_param_allow_optional_string(link_metrics_obj, "Client Type", value_object);
                 strncpy(em_ap_report->vap_reports[j].sta_link_metrics[sta_cnt].client_type,
                     value_object->valuestring, strlen(value_object->valuestring));
+                em_ap_report->vap_reports[j].sta_link_metrics[sta_cnt].client_type[strlen(value_object->valuestring)] = '\0';
 
                 param_obj = cJSON_GetObjectItem(link_metrics_obj, "Associated STA Link Metrics");
                 if (param_obj == NULL) {
