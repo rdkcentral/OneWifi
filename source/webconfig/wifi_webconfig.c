@@ -697,7 +697,7 @@ webconfig_error_t webconfig_init(webconfig_t *config)
     config->subdocs[webconfig_subdoc_type_radio_5G].translate_from_subdoc = translate_from_single_radio_subdoc;
 
     config->subdocs[webconfig_subdoc_type_radio_6G].type = webconfig_subdoc_type_radio_6G;
-    strcpy(config->subdocs[webconfig_subdoc_type_radio_6G].name, "radio_5G");
+    strcpy(config->subdocs[webconfig_subdoc_type_radio_6G].name, "radio_6G");
     config->subdocs[webconfig_subdoc_type_radio_6G].major = 1;
     config->subdocs[webconfig_subdoc_type_radio_6G].minor = 1;
     config->subdocs[webconfig_subdoc_type_radio_6G].init_subdoc = init_single_radio_subdoc;
