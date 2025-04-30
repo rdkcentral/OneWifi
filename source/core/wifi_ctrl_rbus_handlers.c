@@ -1420,7 +1420,7 @@ static void wps_test_event_receive_handler(char *event_name, raw_data_t *p_data,
     }
 }
 
-#if defined EASY_MESH_NODE || defined EASY_MESH_COLOCATED_NODE
+#if defined(EASY_MESH_NODE) || defined(EASY_MESH_COLOCATED_NODE)
 static void wifi_sta_2g_status_handler(char *event_name, raw_data_t *p_data, void *userData)
 {
     (void)userData;
@@ -1790,7 +1790,7 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
     }
 #endif
 
-#if defined EASY_MESH_NODE || defined EASY_MESH_COLOCATED_NODE 
+#if defined(EASY_MESH_NODE) || defined(EASY_MESH_COLOCATED_NODE)
     if (ctrl->wifi_sta_2g_status_subscribed == false) {
         if (bus_desc->bus_event_subs_fn(&ctrl->handle, WIFI_STA_2G_VAP_CONNECT_STATUS, wifi_sta_2g_status_handler, NULL,
                 0) != bus_error_success) {
