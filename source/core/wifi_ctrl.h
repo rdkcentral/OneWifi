@@ -231,6 +231,8 @@ typedef struct wifi_ctrl {
     bool                frame_802_11_injector_subscribed;
     bool                factory_reset;
     bool                marker_list_config_subscribed;
+    bool                wifi_sta_2g_status_subscribed;
+    bool                wifi_sta_5g_status_subscribed;
     bool                eth_bh_status_subscribed;
     bool                mesh_keep_out_chans_subscribed;
     wifiapi_t           wifiapi;
