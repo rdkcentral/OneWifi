@@ -86,7 +86,7 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
         case WIFI_FREQUENCY_5_BAND:
         case WIFI_FREQUENCY_5L_BAND:
             cfg.operatingClass = 128;
-            cfg.channel = 44;
+            cfg.channel = 36;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
             cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC | WIFI_80211_VARIANT_AX;
 
