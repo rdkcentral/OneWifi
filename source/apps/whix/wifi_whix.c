@@ -1940,6 +1940,8 @@ int capture_vapup_status()
                 __func__, __LINE__, vap_index);
             return RETURN_ERR;
         }
+        if (mgr->radio_config[vap_info->radio_index].oper.enable) {
+          wifi_util_error_print(WIFI_APPS, "%s:%d: MJ entered at radio true\n", __func__, __LINE__, vap_index);
         vap_status = vap_info->u.bss_info.enabled;
         if (vap_status) {
             vap_up_arr[vap_index] = vap_up_arr[vap_index] + 1;
@@ -1949,6 +1951,13 @@ int capture_vapup_status()
         } else {
             vap_nas_status[vap_index] = 0;
         }
+    }else {
+        // Radio is disabled, set VAP status to disabled
+        wifi_util_error_print(WIFI_APPS, "%s:%d: MJ entered at radio false\n", __func__, __LINE__, vap_index);
+        vap_info->u.bss_info.enabled = 0;
+        vap_up_arr[vap_index] = 0;
+        vap_nas_status[vap_index] = 0;
+    }
     }
     vap_iteration++;
     return RETURN_OK;
