@@ -1704,7 +1704,6 @@ int upload_client_telemetry_data(wifi_app_t *app, unsigned int num_devs, unsigne
             dev_stats_last = (wifi_associated_dev3_t *)hash_map_get(last_stats_map, sta_key);
             if (dev_stats_last != NULL) {
                 memcpy(dev_stats_last, &sta[i].dev_stats, sizeof(wifi_associated_dev3_t));
-                hash_map_put(app->data.u.whix.last_stats_map, strdup(sta_key), dev_stats_last);
             }
         }
     }
