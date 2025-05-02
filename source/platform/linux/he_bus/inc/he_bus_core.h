@@ -150,7 +150,7 @@ typedef struct own_sub_element {
 } own_sub_element_t;
 
 typedef struct he_bus_event_sub {
-    char *event_name;
+    char const *event_name;
     he_bus_event_sub_action_t action;
     uint32_t interval;
     he_bus_sub_callback_table_t handler;
@@ -234,7 +234,7 @@ he_bus_error_t he_bus_open(he_bus_handle_t *handle, char *component_name);
 he_bus_error_t he_bus_close(he_bus_handle_t handle);
 he_bus_error_t he_bus_reg_data_elem(he_bus_handle_t handle, he_bus_data_element_t *p_bus_reg_data,
     uint32_t num_of_elem);
-he_bus_error_t he_bus_event_sub(he_bus_handle_t handle, char *event_name,
+he_bus_error_t he_bus_event_sub(he_bus_handle_t handle, char const *event_name,
     he_bus_event_consumer_sub_handler_t sub_handler, uint32_t interval);
 he_bus_error_t he_bus_event_sub_ex(he_bus_handle_t handle, he_bus_event_sub_t *p_sub_data_map,
     uint32_t num_of_sub, uint32_t timeout);
@@ -242,9 +242,9 @@ he_bus_error_t he_bus_event_sub_ex_async(he_bus_handle_t handle, he_bus_event_su
     uint32_t num_of_sub, he_bus_event_sub_ex_async_handler_t sub_ex_async_handler,
     uint32_t timeout);
 // caller needs to free allocated memory
-he_bus_error_t he_bus_get_data(he_bus_handle_t handle, char *event_name, he_bus_raw_data_t *p_data);
-he_bus_error_t he_bus_set_data(he_bus_handle_t handle, char *event_name, he_bus_raw_data_t *p_data);
-he_bus_error_t he_bus_publish_event(he_bus_handle_t handle, char *event_name,
+he_bus_error_t he_bus_get_data(he_bus_handle_t handle, char const *event_name, he_bus_raw_data_t *p_data);
+he_bus_error_t he_bus_set_data(he_bus_handle_t handle, char const *event_name, he_bus_raw_data_t *p_data);
+he_bus_error_t he_bus_publish_event(he_bus_handle_t handle, char const *event_name,
     he_bus_raw_data_t *p_data);
 
 #ifdef __cplusplus

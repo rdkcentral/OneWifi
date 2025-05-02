@@ -80,19 +80,19 @@ webconfig_error_t encode_em_sta_link_subdoc(webconfig_t *config, webconfig_subdo
     webconfig_subdoc_decoded_data_t *params;
 
     if (data == NULL) {
-        wifi_util_error_print(WIFI_EM, "%s:%d: NULL data Pointer\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL data Pointer\n", __func__, __LINE__);
         return webconfig_error_encode;
     }
 
     params = &data->u.decoded;
     if (params == NULL) {
-        wifi_util_error_print(WIFI_EM, "%s:%d: NULL Pointer\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL Pointer\n", __func__, __LINE__);
         return webconfig_error_encode;
     }
 
     json = cJSON_CreateObject();
     if (json == NULL) {
-        wifi_util_error_print(WIFI_EM, "%s:%d: json create object failed\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: json create object failed\n", __func__, __LINE__);
         return webconfig_error_encode;
     }
 
@@ -103,10 +103,10 @@ webconfig_error_t encode_em_sta_link_subdoc(webconfig_t *config, webconfig_subdo
     cJSON_AddNumberToObject(json, "Vap Index", params->em_sta_link_metrics_rsp.vap_index);
 
     obj_emstalink = cJSON_CreateArray();
-    cJSON_AddItemToObject(json, "Associated STA Link Metrics Response", obj_emstalink);
+    cJSON_AddItemToObject(json, "Associated STA Link Metrics Report", obj_emstalink);
     
     if (encode_em_sta_link_metrics_object(&params->em_sta_link_metrics_rsp, obj_emstalink) != webconfig_error_none) {
-        wifi_util_error_print(WIFI_EM, "%s:%d: Failed to encode wifi easymesh config\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed to encode wifi easymesh config\n", __func__, __LINE__);
         return webconfig_error_encode;
     }
 
@@ -114,14 +114,14 @@ webconfig_error_t encode_em_sta_link_subdoc(webconfig_t *config, webconfig_subdo
 
     data->u.encoded.raw = (webconfig_subdoc_encoded_raw_t)calloc(strlen(str) + 1, sizeof(char));
     if (data->u.encoded.raw == NULL) {
-        wifi_util_error_print(WIFI_EM, "%s:%d Failed to allocate memory.\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Failed to allocate memory.\n", __func__, __LINE__);
         cJSON_free(str);
         cJSON_Delete(json);
         return webconfig_error_encode;
     }
 
     memcpy(data->u.encoded.raw, str, strlen(str));
-    wifi_util_info_print(WIFI_EM, "%s:%d: encode success %s\n", __func__, __LINE__, str);
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: encode success %s\n", __func__, __LINE__, str);
     cJSON_free(str);
     cJSON_Delete(json);
     return webconfig_error_none;
@@ -130,8 +130,10 @@ webconfig_error_t encode_em_sta_link_subdoc(webconfig_t *config, webconfig_subdo
 webconfig_error_t decode_em_sta_link_subdoc(webconfig_t *config, webconfig_subdoc_data_t *data)
 {
     webconfig_subdoc_decoded_data_t *params;
-    cJSON *json, *em_sta_link;
-    
+    cJSON *json;
+    const cJSON *rsp_obj, *vap_index_item;
+    em_assoc_sta_link_metrics_rsp_t *sta_link_metrics;
+
     params = &data->u.decoded;
     if (params == NULL) {
         return webconfig_error_decode;
@@ -139,23 +141,37 @@ webconfig_error_t decode_em_sta_link_subdoc(webconfig_t *config, webconfig_subdo
 
     json = data->u.encoded.json;
     if (json == NULL) {
-        wifi_util_error_print(WIFI_EM, "%s:%d: NULL json pointer\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: NULL json pointer\n", __func__, __LINE__);
         return webconfig_error_decode;
     }
 
-    if (decode_em_sta_link_metrics_object(json, &params->em_sta_link_metrics_rsp) != webconfig_error_none) {
-        wifi_util_error_print(WIFI_EM, "%s:%d: STA Metrics object Validation Failed\n", __func__, __LINE__);
+    sta_link_metrics = &params->em_sta_link_metrics_rsp;
+
+    vap_index_item = cJSON_GetObjectItem(json, "Vap Index");
+    if (cJSON_IsNumber(vap_index_item)) {
+        sta_link_metrics->vap_index = vap_index_item->valueint;
+    } else {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Vap Index is invalid\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    rsp_obj = cJSON_GetObjectItem(json, "Associated STA Link Metrics Report");
+    if (rsp_obj == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: cjson object is NULL\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+
+    if (decode_em_sta_link_metrics_object(rsp_obj, &params->em_sta_link_metrics_rsp) != webconfig_error_none) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: STA Metrics object Validation Failed\n", __func__, __LINE__);
         cJSON_Delete(json);
         if(params->em_sta_link_metrics_rsp.per_sta_metrics != NULL)
             free(params->em_sta_link_metrics_rsp.per_sta_metrics);
-        wifi_util_error_print(WIFI_EM, "%s\n", (char *)data->u.encoded.raw);
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s\n", (char *)data->u.encoded.raw);
         return webconfig_error_decode;
     }
-            
-    
 
     cJSON_Delete(json);
-    wifi_util_info_print(WIFI_EM, "%s:%d: decode success\n", __func__, __LINE__);
+    wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: decode success\n", __func__, __LINE__);
     return webconfig_error_none;
 }
 #endif

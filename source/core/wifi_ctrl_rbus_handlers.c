@@ -1420,6 +1420,24 @@ static void wps_test_event_receive_handler(char *event_name, raw_data_t *p_data,
     }
 }
 
+#if defined(EASY_MESH_NODE) || defined(EASY_MESH_COLOCATED_NODE)
+static void wifi_sta_2g_status_handler(char *event_name, raw_data_t *p_data, void *userData)
+{
+    (void)userData;
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Received event:%s with data type :%x\n", __func__, __LINE__,
+            event_name, p_data->data_type);
+    return;
+}
+
+static void wifi_sta_5g_status_handler(char *event_name, raw_data_t *p_data, void *userData)
+{
+    (void)userData;
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Received event:%s with data type:%x\n", __func__, __LINE__,
+            event_name, p_data->data_type);
+    return;
+}
+#endif
+
 #if defined(RDKB_EXTENDER_ENABLED)
 static void eth_bh_status_handler(char *event_name, raw_data_t *p_data, void *userData)
 {
@@ -1768,6 +1786,34 @@ void bus_subscribe_events(wifi_ctrl_t *ctrl)
             wifi_util_info_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe success\n",
                 __FUNCTION__, __LINE__, ETH_BH_STATUS);
             eth_bh_status_notify();
+        }
+    }
+#endif
+
+#if defined(EASY_MESH_NODE) || defined(EASY_MESH_COLOCATED_NODE)
+    if (ctrl->wifi_sta_2g_status_subscribed == false) {
+        if (bus_desc->bus_event_subs_fn(&ctrl->handle, WIFI_STA_2G_VAP_CONNECT_STATUS, wifi_sta_2g_status_handler, NULL,
+                0) != bus_error_success) {
+              wifi_util_dbg_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe failed\n",
+              __FUNCTION__,
+                  __LINE__, WIFI_STA_2G_VAP_CONNECT_STATUS);
+        } else {
+            ctrl->wifi_sta_2g_status_subscribed = true;
+            wifi_util_info_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe success\n",
+                __FUNCTION__, __LINE__, WIFI_STA_2G_VAP_CONNECT_STATUS);
+        }
+    }
+
+    if (ctrl->wifi_sta_5g_status_subscribed == false) {
+        if (bus_desc->bus_event_subs_fn(&ctrl->handle, WIFI_STA_5G_VAP_CONNECT_STATUS, wifi_sta_5g_status_handler, NULL,
+                0) != bus_error_success) {
+              wifi_util_dbg_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe failed\n",
+              __FUNCTION__,
+                  __LINE__, WIFI_STA_5G_VAP_CONNECT_STATUS);
+        } else {
+            ctrl->wifi_sta_5g_status_subscribed = true;
+            wifi_util_info_print(WIFI_CTRL, "%s:%d bus: bus event:%s subscribe success\n",
+                __FUNCTION__, __LINE__, WIFI_STA_5G_VAP_CONNECT_STATUS);
         }
     }
 #endif
