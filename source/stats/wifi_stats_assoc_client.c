@@ -330,8 +330,6 @@ int execute_assoc_client_stats_api(wifi_mon_collector_element_t *c_elem, wifi_mo
                     memcpy(hal_sta->cli_MACAddress, hal_sta->cli_MLDAddr, sizeof(mac_address_t));
                 }
             }
-            memcpy((unsigned char *)&sta->dev_stats_last, (unsigned char *)&sta->dev_stats,
-                sizeof(wifi_associated_dev3_t));
             memcpy((unsigned char *)&sta->dev_stats, (unsigned char *)hal_sta,
                 sizeof(wifi_associated_dev3_t));
             sta->updated = true;

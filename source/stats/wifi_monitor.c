@@ -653,7 +653,6 @@ static void reset_client_stats_info(unsigned int apIndex)
 
     sta = hash_map_get_first(sta_map);
     while (sta != NULL) {
-        memset((unsigned char *)&sta->dev_stats_last, 0, sizeof(wifi_associated_dev3_t));
         memset((unsigned char *)&sta->dev_stats, 0, sizeof(wifi_associated_dev3_t));
         sta = hash_map_get_next(sta_map, sta);
     }
@@ -1255,7 +1254,6 @@ void process_connect(unsigned int ap_index, auth_deauth_dev_t *dev)
             (sta->total_disconnected_time.tv_nsec / 1000000)));
 
     /* reset stats of client */
-    memset((unsigned char *)&sta->dev_stats_last, 0, sizeof(wifi_associated_dev3_t));
     memset((unsigned char *)&sta->dev_stats, 0, sizeof(wifi_associated_dev3_t));
     memcpy(&sta->dev_stats, &dev->dev_stats, sizeof(wifi_associated_dev3_t));
     sta->dev_stats.cli_Active = true;
