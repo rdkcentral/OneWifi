@@ -1051,6 +1051,7 @@ static void logVAPUpStatus()
     vap_iter = (curr_uptime_val - prev_uptime_val) / (60 * 5); /*One iteration per 5 mins*/
     /* syncing the vap_iteration to the upload period */
     if ((vap_iter > vap_iteration) || (vap_iteration < 1)) {
+        memset(vap_up_arr, 0, sizeof(vap_up_arr));
         capture_vapup_status();
         if (vap_iteration < 1) {
             wifi_util_dbg_print(WIFI_APPS, "%s:%d vap_iteration is not updated\n", __func__,
@@ -1084,7 +1085,6 @@ static void logVAPUpStatus()
     get_stubs_descriptor()->t2_event_s_fn("WIFI_VAPPERC_split", telemetry_buf);
     prev_uptime_val = curr_uptime_val;
     vap_iteration = 0;
-    memset(vap_up_arr, 0, sizeof(vap_up_arr));
     wifi_util_dbg_print(WIFI_APPS, "Exiting %s:%d \n", __FUNCTION__, __LINE__);
 }
 
@@ -1942,26 +1942,25 @@ int capture_vapup_status()
             return RETURN_ERR;
         }
         
-        // Check if the radio associated with the VAP is enabled
         if (mgr->radio_config[vap_info->radio_index].oper.enable) {
-            // Radio is enabled
-            if (vap_info->u.bss_info.enabled) {
-                // VAP is enabled
-                vap_up_arr[vap_index] = vap_up_arr[vap_index] + 1;
-                if (!vap_nas_status[vap_index]) {
-                    vap_nas_status[vap_index] = updateNasIpStatus(vap_index);
-                }
-            } else {
-                // VAP is disabled, reset counters
-                vap_up_arr[vap_index] = 0;
-                vap_nas_status[vap_index] = 0;
-            }
-        } else {
-            // Radio is disabled, set VAP status to disabled and reset counters
-            vap_info->u.bss_info.enabled = 0;
-            vap_up_arr[vap_index] = 0;
-            vap_nas_status[vap_index] = 0;
-        }
+            wifi_util_error_print(WIFI_APPS, "%s:%d: MJ entered at radio true\n", __func__, __LINE__);
+          vap_status = vap_info->u.bss_info.enabled;
+          if (vap_status) {
+              vap_up_arr[vap_index] = vap_up_arr[vap_index] + 1;
+              wifi_util_error_print(WIFI_APPS, "%s:%d: MJ vap_up_array:%d\n", __func__, __LINE__, vap_up_arr[vap_index]);
+              if (!vap_nas_status[vap_index]) {
+                  vap_nas_status[vap_index] = updateNasIpStatus(vap_index);
+              }
+          } else {
+              vap_nas_status[vap_index] = 0;
+          }
+      }else {
+          // Radio is disabled, set VAP status to disabled
+          wifi_util_error_print(WIFI_APPS, "%s:%d: MJ entered at radio false\n", __func__, __LINE__);
+          vap_info->u.bss_info.enabled = 0;
+          vap_up_arr[vap_index] = 0;
+          vap_nas_status[vap_index] = 0;
+      }
     }
     vap_iteration++;
     return RETURN_OK;
