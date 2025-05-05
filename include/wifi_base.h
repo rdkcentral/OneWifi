@@ -856,7 +856,6 @@ typedef struct {
     unsigned int    rapid_reconnects;
     bool            updated;
     wifi_associated_dev3_t dev_stats;
-    wifi_associated_dev3_t dev_stats_last;
     unsigned int    reconnect_count;
     long            assoc_monitor_start_time;
     long            gate_time;
@@ -1148,8 +1147,6 @@ typedef struct {
 } assoc_sta_link_metrics_data_t;
 
 typedef struct {
-    mac_addr_t sta_mac;
-    unsigned char client_type[32];
     int num_bssid;
     assoc_sta_link_metrics_data_t assoc_sta_link_metrics_data[STA_MAX_BSS_ASSOCIATIONS];
 } assoc_sta_link_metrics_t;
@@ -1168,12 +1165,13 @@ typedef struct {
 } assoc_sta_ext_link_metrics_data_t;
 
 typedef struct {
-    mac_addr_t sta_mac;
     int num_bssid;
     assoc_sta_ext_link_metrics_data_t assoc_sta_ext_link_metrics_data[STA_MAX_BSS_ASSOCIATIONS];
 } assoc_sta_ext_link_metrics_t;
 
 typedef struct {
+    mac_addr_t sta_mac;
+    unsigned char client_type[32];
     assoc_sta_link_metrics_t assoc_sta_link_metrics;
     error_code_t error_code;
     assoc_sta_ext_link_metrics_t assoc_sta_ext_link_metrics;
@@ -1250,6 +1248,53 @@ typedef struct {
     UINT num_results;
     channel_scan_result_t results[EM_MAX_RESULTS];
 } channel_scan_response_t;
+
+typedef struct {
+    mac_addr_t sta_mac;
+    int bytes_sent;
+    int bytes_rcvd;
+    int packets_sent;
+    int packets_rcvd;
+    int tx_packtes_errs;
+    int rx_packtes_errs;
+    int retrans_cnt;
+} assoc_sta_traffic_stats_t;
+
+typedef struct {
+    bssid_t bssid;
+    int channel_util;
+    int num_of_assoc_stas;
+    bool inc_esp_ac_be;
+    bool inc_esp_ac_bk;
+    bool inc_esp_ac_vo;
+    bool inc_esp_ac_vi;
+    int esp_ac_be;
+    int esp_ac_bk;
+    int esp_ac_vo;
+    int esp_ac_vi;
+    // Extended report
+    int unicast_bytes_sent;
+    int unicast_bytes_rcvd;
+    int multicast_bytes_sent;
+    int multicast_bytes_rcvd;
+    int broadcast_bytes_sent;
+    int broadcast_bytes_rcvd;
+} ap_metrics_t;
+
+typedef struct {
+    ap_metrics_t vap_metrics;
+    int sta_cnt;
+    bool is_sta_traffic_stats_enabled;
+    assoc_sta_traffic_stats_t *sta_traffic_stats;
+    bool is_sta_link_metrics_enabled;
+    per_sta_metrics_t *sta_link_metrics;
+} em_vap_metrics_t;
+
+typedef struct {
+    int radio_index;
+    em_vap_metrics_t vap_reports[MAX_NUM_VAP_PER_RADIO];
+} em_ap_metrics_report_t;
+
 #endif
 
 #ifdef __cplusplus
