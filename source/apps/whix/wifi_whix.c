@@ -2003,7 +2003,8 @@ int capture_vapup_status()
     int i = 0, vap_status = 0;
     wifi_vap_info_t *vap_info;
     wifi_mgr_t *mgr = get_wifimgr_obj();
-
+    wifi_global_config_t *global_wifi_config;
+    global_wifi_config = (wifi_global_config_t*) get_dml_cache_global_wifi_config();
     if (skip == 1) {
         wifi_util_dbg_print(WIFI_APPS, "Skipping as the calculation already made while syncing\n");
         skip = 0;
@@ -2020,10 +2021,13 @@ int capture_vapup_status()
             return RETURN_ERR;
         }
         
-        if (mgr->radio_config[vap_info->radio_index].oper.enable) {
-            wifi_util_error_print(WIFI_APPS, "%s:%d: MJ entered at radio true\n", __func__, __LINE__);
-          vap_status = vap_info->u.bss_info.enabled;
-          if (vap_status) {
+      if (mgr->radio_config[vap_info->radio_index].oper.enable == FALSE || global_wifi_config->global_parameters.force_disable_radio_feature == TRUE){
+        wifi_util_error_print(WIFI_APPS, "%s:%d: MJ entered at radio false\n", __func__, __LINE__);
+        vap_up_arr[vap_index] = 0;
+    }else{
+        vap_status = vap_info->u.bss_info.enabled;
+        wifi_util_error_print(WIFI_APPS, "%s:%d: MJ entered at radio true\n", __func__, __LINE__);
+        if (vap_status) {
               vap_up_arr[vap_index] = vap_up_arr[vap_index] + 1;
               wifi_util_error_print(WIFI_APPS, "%s:%d: MJ vap_up_array:%d\n", __func__, __LINE__, vap_up_arr[vap_index]);
               if (!vap_nas_status[vap_index]) {
@@ -2032,11 +2036,6 @@ int capture_vapup_status()
           } else {
               vap_nas_status[vap_index] = 0;
           }
-      }else {
-          // Radio is disabled, set VAP status to disabled
-          wifi_util_error_print(WIFI_APPS, "%s:%d: MJ entered at radio false\n", __func__, __LINE__);
-          vap_up_arr[vap_index] = 0;
-      }
     }
     vap_iteration++;
     return RETURN_OK;
