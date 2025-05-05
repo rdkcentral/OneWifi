@@ -2035,9 +2035,7 @@ int capture_vapup_status()
       }else {
           // Radio is disabled, set VAP status to disabled
           wifi_util_error_print(WIFI_APPS, "%s:%d: MJ entered at radio false\n", __func__, __LINE__);
-          vap_info->u.bss_info.enabled = 0;
           vap_up_arr[vap_index] = 0;
-          vap_nas_status[vap_index] = 0;
       }
     }
     vap_iteration++;
