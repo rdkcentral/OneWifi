@@ -1051,7 +1051,6 @@ static void logVAPUpStatus()
     vap_iter = (curr_uptime_val - prev_uptime_val) / (60 * 5); /*One iteration per 5 mins*/
     /* syncing the vap_iteration to the upload period */
     if ((vap_iter > vap_iteration) || (vap_iteration < 1)) {
-        memset(vap_up_arr, 0, sizeof(vap_up_arr));
         capture_vapup_status();
         if (vap_iteration < 1) {
             wifi_util_dbg_print(WIFI_APPS, "%s:%d vap_iteration is not updated\n", __func__,
@@ -1085,6 +1084,7 @@ static void logVAPUpStatus()
     get_stubs_descriptor()->t2_event_s_fn("WIFI_VAPPERC_split", telemetry_buf);
     prev_uptime_val = curr_uptime_val;
     vap_iteration = 0;
+    memset(vap_up_arr, 0, sizeof(vap_up_arr));
     wifi_util_dbg_print(WIFI_APPS, "Exiting %s:%d \n", __FUNCTION__, __LINE__);
 }
 
