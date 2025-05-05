@@ -6010,6 +6010,7 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
             em_ap_report->vap_reports[j].vap_metrics.unicast_bytes_sent = value_object->valueint;
         }
 
+        em_ap_report->vap_reports[j].sta_traffic_stats = NULL;
         // Traffic stats
         assoc_sta_arr = cJSON_GetObjectItem(vap_obj, "Associated STA Traffic Stats");
         if (assoc_sta_arr != NULL && cJSON_IsArray(assoc_sta_arr)) {
@@ -6053,6 +6054,7 @@ webconfig_error_t decode_em_ap_metrics_report_object(const cJSON *em_ap_report_o
             }
         }
 
+        em_ap_report->vap_reports[j].sta_link_metrics = NULL;
         // Decode AP Extended Metrics
         assoc_sta_arr = cJSON_GetObjectItem(vap_obj, "Associated STA Link Metrics Report");
         if (assoc_sta_arr != NULL && cJSON_IsArray(assoc_sta_arr)) {
