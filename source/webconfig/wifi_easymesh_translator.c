@@ -844,23 +844,24 @@ webconfig_error_t translate_ap_metrics_report_to_easy_mesh_bss_info(webconfig_su
 
         per_sta_metrics_t *sta_stats = NULL;
         for (unsigned int count = 0; count < em_bss_info->numberofsta; count++) {
-            sta_stats = &ap_metrics->sta_link_metrics[count];
-            if (sta_stats == NULL) {
-                continue;
-            }
             radio_info = proto->get_radio_info(proto->data_model, radio_index);
             if (radio_info == NULL) {
                 wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Cannot find radio info for index %d\n", __func__, __LINE__, vap->vap_index);
                 continue;
             }
             //wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Assoc Sta count %d\n", __func__, __LINE__, em_bss_info->numberofsta);
+            sta_stats = &ap_metrics->sta_link_metrics[count];
+            if (sta_stats == NULL) {
+                continue;
+            }
             em_sta_dev_info = proto->get_sta_info(proto->data_model, sta_stats->sta_mac, \
                 em_bss_info->bssid.mac, radio_info->intf.mac, em_target_sta_map_consolidated);
-
-            if (em_sta_dev_info != NULL) {
-                // Update the consolidated map
-                // Link metrics and Extended Link metrics
-                if (ap_metrics->is_sta_link_metrics_enabled == true) {
+            // Update the consolidated map
+            // Link metrics and Extended Link metrics
+            if (ap_metrics->is_sta_link_metrics_enabled == true) {
+                em_sta_dev_info = proto->get_sta_info(proto->data_model, sta_stats->sta_mac, \
+                    em_bss_info->bssid.mac, radio_info->intf.mac, em_target_sta_map_consolidated);
+                if (em_sta_dev_info != NULL) {
                     strncpy(em_sta_dev_info->sta_client_type, sta_stats->client_type, sizeof(em_sta_dev_info->sta_client_type));
                     em_sta_dev_info->sta_client_type[strlen(sta_stats->client_type)] = '\0';
                     em_sta_dev_info->last_ul_rate             = sta_stats->assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[0].last_data_uplink_rate;
@@ -870,9 +871,15 @@ webconfig_error_t translate_ap_metrics_report_to_easy_mesh_bss_info(webconfig_su
                     em_sta_dev_info->rcpi                     = sta_stats->assoc_sta_link_metrics.assoc_sta_link_metrics_data[0].rcpi;
                     em_sta_dev_info->util_tx                  = sta_stats->assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[0].utilization_transmit;
                     em_sta_dev_info->util_rx                  = sta_stats->assoc_sta_ext_link_metrics.assoc_sta_ext_link_metrics_data[0].utilization_receive;
+                    //wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: LM updated %d\n", __func__, __LINE__);
                 }
+            }
 
-                if (ap_metrics->is_sta_traffic_stats_enabled == true) {
+            if (ap_metrics->is_sta_traffic_stats_enabled == true) {
+                em_sta_dev_info = proto->get_sta_info(proto->data_model, sta_stats->sta_mac, \
+                    em_bss_info->bssid.mac, radio_info->intf.mac, em_target_sta_map_consolidated);
+
+                if (em_sta_dev_info != NULL) {
                     //Traffic stats
                     em_sta_dev_info->pkts_tx                  = ap_metrics->sta_traffic_stats[count].packets_sent;
                     em_sta_dev_info->pkts_rx                  = ap_metrics->sta_traffic_stats[count].packets_rcvd;
@@ -881,6 +888,7 @@ webconfig_error_t translate_ap_metrics_report_to_easy_mesh_bss_info(webconfig_su
                     em_sta_dev_info->errors_tx                = ap_metrics->sta_traffic_stats[count].tx_packtes_errs;
                     em_sta_dev_info->errors_rx                = ap_metrics->sta_traffic_stats[count].rx_packtes_errs;
                     em_sta_dev_info->retrans_count            = ap_metrics->sta_traffic_stats[count].rx_packtes_errs;
+                    //wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: Traffic stats  updated\n", __func__, __LINE__);
                 }
             }
         }
