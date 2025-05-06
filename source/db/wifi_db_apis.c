@@ -6306,6 +6306,7 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
     wifi_radio_feature_param_t Fcfg;
     memset(&Fcfg,0,sizeof(Fcfg));
     memset(&cfg,0,sizeof(cfg));
+    wifi_ctrl_t *ctrl = get_wifictrl_obj();
 
     wifi_radio_capabilities_t radio_capab = g_wifidb->hal_cap.wifi_prop.radiocap[radio_index];
 
@@ -6326,7 +6327,10 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
     switch (cfg.band) {
         case WIFI_FREQUENCY_2_4_BAND:
             cfg.operatingClass = 81;
-            cfg.channel = 1;
+            if (ctrl->network_mode == rdk_dev_mode_type_em_node)
+                cfg.channel = 6;
+            else
+                cfg.channel = 1;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
 #if defined(_XER5_PRODUCT_REQ_)
             cfg.variant = WIFI_80211_VARIANT_G | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AX;
@@ -6349,7 +6353,10 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #if defined (_PP203X_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_)
             cfg.beaconInterval = 200;
 #endif
-            cfg.channel = 44;
+            if (ctrl->network_mode == rdk_dev_mode_type_em_node)
+                cfg.channel = 36;
+            else
+                cfg.channel = 44;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
 #if defined (_PP203X_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_)
             cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC;
@@ -6495,6 +6502,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
     char ssid[128] = {0};
     int band;
     bool exists = true;
+    wifi_ctrl_t *ctrl = get_wifictrl_obj();
 
     memset(&cfg,0,sizeof(cfg));
 
@@ -6561,11 +6569,17 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
 
         switch(band) {
             case WIFI_FREQUENCY_2_4_BAND:
-                cfg.u.sta_info.scan_params.channel.channel = 1;
+                if (ctrl->network_mode == rdk_dev_mode_type_em_node)
+                    cfg.u.sta_info.scan_params.channel.channel = 6;
+		else
+                    cfg.u.sta_info.scan_params.channel.channel = 1;
                 break;
             case WIFI_FREQUENCY_5_BAND:
             case WIFI_FREQUENCY_5L_BAND:
-                cfg.u.sta_info.scan_params.channel.channel = 44;
+		if (ctrl->network_mode == rdk_dev_mode_type_em_node)
+                    cfg.u.sta_info.scan_params.channel.channel = 36;
+		else
+                    cfg.u.sta_info.scan_params.channel.channel = 44;
                 break;
             case WIFI_FREQUENCY_5H_BAND:
                 cfg.u.sta_info.scan_params.channel.channel = 157;
