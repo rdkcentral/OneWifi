@@ -2816,52 +2816,72 @@ Radio_GetParamStringValue
         return 0;
     }
 
-    if( AnscEqualString(ParamName, "BasicDataTransmitRates", TRUE))
-    {
-        char buf[512] = {0};
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:pcfg->basicDataTransmitRates=%d\n",__func__, __LINE__, pcfg->basicDataTransmitRates);
-        if ( pcfg->basicDataTransmitRates & WIFI_BITRATE_6MBPS )
-        {
+    if (AnscEqualString(ParamName, "BasicDataTransmitRates", TRUE)) {
+        char buf[512] = { 0 };
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d:pcfg->basicDataTransmitRates=%d\n", __func__,
+            __LINE__, pcfg->basicDataTransmitRates);
+        if (pcfg->basicDataTransmitRates & WIFI_BITRATE_6MBPS) {
             strcat(buf, "6");
         }
 
-        if ( pcfg->basicDataTransmitRates & WIFI_BITRATE_12MBPS )
-        {
-            if (AnscSizeOfString(buf) != 0)
-            {
+        if (pcfg->basicDataTransmitRates & WIFI_BITRATE_12MBPS) {
+            if (AnscSizeOfString(buf) != 0) {
                 strcat(buf, ",12");
-            }
-            else
-            {
+            } else {
                 strcat(buf, "12");
             }
         }
 
-        if ( pcfg->basicDataTransmitRates & WIFI_BITRATE_24MBPS )
-        {
-            if (AnscSizeOfString(buf) != 0)
-            {
-                strcat(buf, ",24");
+        if (pcfg->basicDataTransmitRates & WIFI_BITRATE_1MBPS) {
+            if (AnscSizeOfString(buf) != 0) {
+                strcat(buf, ",1");
+            } else {
+                strcat(buf, "1");
             }
-            else
-            {
+        }
+
+        if (pcfg->basicDataTransmitRates & WIFI_BITRATE_2MBPS) {
+            if (AnscSizeOfString(buf) != 0) {
+                strcat(buf, ",2");
+            } else {
+                strcat(buf, "2");
+            }
+        }
+
+        if (pcfg->basicDataTransmitRates & WIFI_BITRATE_5_5MBPS) {
+            if (AnscSizeOfString(buf) != 0) {
+                strcat(buf, ",5.5");
+            } else {
+                strcat(buf, "5.5");
+            }
+        }
+
+        if (pcfg->basicDataTransmitRates & WIFI_BITRATE_11MBPS) {
+            if (AnscSizeOfString(buf) != 0) {
+                strcat(buf, ",11");
+            } else {
+                strcat(buf, "11");
+            }
+        }
+
+        if (pcfg->basicDataTransmitRates & WIFI_BITRATE_24MBPS) {
+            if (AnscSizeOfString(buf) != 0) {
+                strcat(buf, ",24");
+            } else {
                 strcat(buf, "24");
             }
         }
 
-        if ( AnscSizeOfString(buf) < *pUlSize)
-        {
+        if (AnscSizeOfString(buf) < *pUlSize) {
             AnscCopyString(pValue, buf);
             return 0;
-        }
-        else
-        {
-            *pUlSize = AnscSizeOfString(buf)+1;
+        } else {
+            *pUlSize = AnscSizeOfString(buf) + 1;
             return 1;
         }
-        return 0;  
+        return 0;
     }
-    
+
     if( AnscEqualString(ParamName, "SupportedDataTransmitRates", TRUE))
     {
         /* collect value */

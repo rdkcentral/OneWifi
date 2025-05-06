@@ -2197,7 +2197,7 @@ int wifidb_get_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
         sec->encr = wifi_encryption_aes;
         wifi_util_error_print(WIFI_DB, "%s:%d Invalid Security mode for 6G %d\n", __func__, __LINE__, pcfg->security_mode);
     } else {
-        sec->mode = pcfg->security_mode;
+        sec->mode = (pcfg->security_mode_new == WPA3_COMPATIBILITY) ? pcfg->security_mode_new : pcfg->security_mode;
         sec->encr = pcfg->encryption_method;
     }
 
@@ -4353,9 +4353,7 @@ static void wifidb_radio_config_upgrade(unsigned int index, wifi_radio_operation
     if (g_wifidb->db_version < ONEWIFI_DB_VERSION_IEEE80211BE_FLAG) {
         wifi_util_info_print(WIFI_DB, "%s:%d upgrade radio=%d config, old db version: %d total radios: %u\n",
             __func__, __LINE__, index, g_wifidb->db_version, total_radios);
-#if defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)
         if (config->band != WIFI_FREQUENCY_2_4_BAND)
-#endif /*defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)*/
             config->variant |= WIFI_80211_VARIANT_BE;
         if(wifidb_update_wifi_radio_config(index, config, rdk_config) != RETURN_OK) {
             wifi_util_error_print(WIFI_DB,"%s:%d error in updating radio config\n", __func__,__LINE__);
@@ -6331,11 +6329,6 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #ifdef NEWPLATFORM_PORT
             cfg.variant |= WIFI_80211_VARIANT_AX;
 #endif /* NEWPLATFORM_PORT */
-#ifdef CONFIG_IEEE80211BE
-#if !(defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_))
-            cfg.variant |= WIFI_80211_VARIANT_BE;
-#endif /* !(defined(_XB10_PRODUCT_REQ_) || defined(_SCER11BEL_PRODUCT_REQ_)) */
-#endif /* CONFIG_IEEE80211BE */
 #if defined (_PP203X_PRODUCT_REQ_)
             cfg.beaconInterval = 200;
 #endif
@@ -6441,7 +6434,12 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
     cfg.chanUtilSelfHealEnable = 0;
     cfg.EcoPowerDown = false;
     cfg.factoryResetSsid = 0;
-    cfg.basicDataTransmitRates = WIFI_BITRATE_6MBPS | WIFI_BITRATE_12MBPS | WIFI_BITRATE_24MBPS;
+    if ((is_device_type_sr213() == true) && (WIFI_FREQUENCY_2_4_BAND == cfg.band)) {
+        cfg.basicDataTransmitRates = WIFI_BITRATE_1MBPS | WIFI_BITRATE_2MBPS |
+            WIFI_BITRATE_5_5MBPS | WIFI_BITRATE_11MBPS;
+    } else {
+        cfg.basicDataTransmitRates = WIFI_BITRATE_6MBPS | WIFI_BITRATE_12MBPS | WIFI_BITRATE_24MBPS;
+    }
     cfg.operationalDataTransmitRates = WIFI_BITRATE_6MBPS | WIFI_BITRATE_9MBPS | WIFI_BITRATE_12MBPS | WIFI_BITRATE_18MBPS | WIFI_BITRATE_24MBPS | WIFI_BITRATE_36MBPS | WIFI_BITRATE_48MBPS | WIFI_BITRATE_54MBPS;
     Fcfg.radio_index = radio_index;
     cfg.DFSTimer = DFS_DEFAULT_TIMER_IN_MIN;
