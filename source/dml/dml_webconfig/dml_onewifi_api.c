@@ -1724,7 +1724,7 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
             wifidb_init_vap_config_default(vap_index,&default_vap,&rdk_default_vap);
             wifidb_init_interworking_config_default(vap_index,&default_vap.u.bss_info.interworking);
             memcpy((unsigned char *)p_vapInfo,(unsigned char *)&default_vap,sizeof(wifi_vap_info_t));
-#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
             if(rdk_default_vap.exists == false) {
 #if defined(_SR213_PRODUCT_REQ_)
                 if(vap_index != 2 && vap_index != 3) {
@@ -1736,7 +1736,7 @@ bool wifi_factory_reset(bool factory_reset_all_vaps)
                 rdk_default_vap.exists = true;
 #endif /*_SR213_PRODUCT_REQ_*/
             }
-#endif /*!defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)*/
+#endif /*!defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)*/
             rdk_vap_info->exists = rdk_default_vap.exists;
             set_dml_cache_vap_config_changed(vap_index);
         }

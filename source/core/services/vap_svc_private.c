@@ -126,7 +126,7 @@ int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
             wifi_util_error_print(WIFI_CTRL,"%s:%d VAP_EXISTS_FALSE for vap_index=%d, setting to TRUE \n",__FUNCTION__,__LINE__,map->vap_array[i].vap_index);
             rdk_vap_info[i].exists = true;
         }
-#elif !defined(_PP203X_PRODUCT_REQ_)
+#elif !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
         if(rdk_vap_info[i].exists == false) {
 #if defined(_SR213_PRODUCT_REQ_)
             if(map->vap_array[i].vap_index != 2 && map->vap_array[i].vap_index != 3) {
@@ -138,7 +138,7 @@ int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
             rdk_vap_info[i].exists = true;
 #endif /* _SR213_PRODUCT_REQ_ */
         }
-#endif /* !defined(_PP203X_PRODUCT_REQ_) */
+#endif /* !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_) */
         p_tgt_vap_map->vap_array[0].u.bss_info.enabled &= rdk_vap_info[i].exists;
 
         ret = wifi_hal_createVAP(radio_index, p_tgt_vap_map);
