@@ -895,7 +895,7 @@ void callback_Wifi_VAP_Config(ovsdb_update_monitor_t *mon,
             return;
         }
         pthread_mutex_lock(&g_wifidb->data_cache_lock);
-#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
         if(new_rec->exists == false) {
 #if defined(_SR213_PRODUCT_REQ_)
             if(vap_index != 2 && vap_index != 3) {
@@ -908,7 +908,7 @@ void callback_Wifi_VAP_Config(ovsdb_update_monitor_t *mon,
             new_rec->exists = true;
 #endif /* _SR213_PRODUCT_REQ_ */
         }
-#endif /*!defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)*/
+#endif /*!defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)*/
         l_rdk_vap_info->exists = new_rec->exists;
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
 
@@ -2599,7 +2599,7 @@ int wifidb_update_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
         rdk_config->exists = true;
 #endif /* _SR213_PRODUCT_REQ_ */
     }
-#endif /* !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) */
+#endif /* !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_) */
     cfg.exists = rdk_config->exists;
 
     if (isVapSTAMesh(l_vap_index)) {
@@ -4578,7 +4578,7 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
                     &rdk_config[i]);
             }
         }
-#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
         if (rdk_config[i].exists == false) {
 #if defined(_SR213_PRODUCT_REQ_)
             if (config->vap_array[i].vap_index != 2 && config->vap_array[i].vap_index != 3) {
@@ -5915,7 +5915,7 @@ int wifidb_get_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
         if (strlen(pcfg->repurposed_vap_name) != 0) {
             strncpy(config->repurposed_vap_name, pcfg->repurposed_vap_name, (strlen(pcfg->repurposed_vap_name) + 1));
         }
-#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
         if(pcfg->exists == false) {
 #if defined(_SR213_PRODUCT_REQ_)
             if(vap_index != 2 && vap_index != 3) {
@@ -5927,7 +5927,7 @@ int wifidb_get_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
             pcfg->exists = true;
 #endif /* _SR213_PRODUCT_REQ_ */
         }
-#endif /* defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)*/
+#endif /* defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)*/
         rdk_config->exists = pcfg->exists;
 
         if (isVapSTAMesh(vap_index)) {
@@ -6573,7 +6573,7 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #ifdef NEWPLATFORM_PORT
             cfg.variant |= WIFI_80211_VARIANT_AX;
 #endif /* NEWPLATFORM_PORT */
-#if defined (_PP203X_PRODUCT_REQ_)
+#if defined (_PP203X_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_)
             cfg.beaconInterval = 200;
 #endif
             break;
@@ -6581,12 +6581,12 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
         case WIFI_FREQUENCY_5L_BAND:
             cfg.op_class = 128;
             cfg.operatingClass = 128;
-#if defined (_PP203X_PRODUCT_REQ_)
+#if defined (_PP203X_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_)
             cfg.beaconInterval = 200;
 #endif
             cfg.channel = 44;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
-#if defined (_PP203X_PRODUCT_REQ_)
+#if defined (_PP203X_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_)
             cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC;
             cfg.DfsEnabled = true;
 #else
@@ -6602,7 +6602,7 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
             cfg.operatingClass = 128;
             cfg.channel = 157;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
-#if defined (_PP203X_PRODUCT_REQ_)
+#if defined (_PP203X_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_)
             cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC;
             cfg.beaconInterval = 200;
             cfg.DfsEnabled = true;
@@ -7051,16 +7051,16 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
                 strncpy(cfg.u.bss_info.security.u.key.key, INVALID_KEY, sizeof(cfg.u.bss_info.security.u.key.key));
             }
         }
-#if defined(_WNXL11BWL_PRODUCT_REQ_) || defined(_PP203X_PRODUCT_REQ_) //NEED _SCER11BEL_PRODUCT_REQ_ XER10 is GW..  STA is NOT needed ????
+#if defined(_WNXL11BWL_PRODUCT_REQ_) || defined(_PP203X_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_) //NEED _SCER11BEL_PRODUCT_REQ_ XER10 is GW..  STA is NOT needed ????
         //Disabling all vaps except STA Vaps by default in XLE
         cfg.u.bss_info.enabled = false;
         exists = false;
-#endif //_WNXL11BWL_PRODUCT_REQ_ , _PP203X_PRODUCT_REQ_
+#endif //_WNXL11BWL_PRODUCT_REQ_ , _PP203X_PRODUCT_REQ_ , _GREXT02ACTS_PRODUCT_REQ_
     }
 
     pthread_mutex_lock(&g_wifidb->data_cache_lock);
     memcpy(config,&cfg,sizeof(cfg));
-#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
     if(exists == false) {
 #if defined(_SR213_PRODUCT_REQ_)
         if(vap_index != 2 && vap_index != 3) {
@@ -7072,7 +7072,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         exists = true;
 #endif /* _SR213_PRODUCT_REQ_ */
     }
-#endif /* !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)*/
+#endif /* !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)*/
     rdk_config->exists = exists;
     pthread_mutex_unlock(&g_wifidb->data_cache_lock);
     return RETURN_OK;
