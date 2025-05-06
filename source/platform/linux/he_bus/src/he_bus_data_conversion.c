@@ -211,6 +211,10 @@ uint32_t convert_he_bus_data_object_to_buffer(uint8_t *tmp, he_bus_data_object_t
     tmp += sizeof(p_obj_data->is_data_set);
     obj_data_len += sizeof(p_obj_data->is_data_set);
 
+    memcpy(tmp, &p_obj_data->status, sizeof(p_obj_data->status));
+    tmp += sizeof(p_obj_data->status);
+    obj_data_len += sizeof(p_obj_data->status);
+
     raw_data_len = convert_he_bus_raw_data_to_buffer(&p_obj_data->data, tmp);
     tmp += raw_data_len;
     obj_data_len += raw_data_len;
@@ -242,6 +246,10 @@ uint32_t convert_buffer_to_bus_data_object(he_bus_data_object_t *p_obj_data, uin
     memcpy(&p_obj_data->is_data_set, tmp, sizeof(p_obj_data->is_data_set));
     tmp += sizeof(p_obj_data->is_data_set);
     obj_data_len += sizeof(p_obj_data->is_data_set);
+
+    memcpy(&p_obj_data->status, tmp, sizeof(p_obj_data->status));
+    tmp += sizeof(p_obj_data->status);
+    obj_data_len += sizeof(p_obj_data->status);
 
     raw_data_len = convert_buffer_to_raw_data(tmp, &p_obj_data->data);
     tmp += raw_data_len;
@@ -419,7 +427,7 @@ uint32_t set_bus_object_payload_data(he_bus_raw_data_t *src_data, he_bus_raw_dat
 }
 
 uint32_t set_bus_object_data(char *event_name, he_bus_data_object_t *p_obj_data,
-    he_bus_msg_sub_type_t msg_sub_type, he_bus_raw_data_t *cfg_data)
+    he_bus_msg_sub_type_t msg_sub_type, he_bus_raw_data_t *cfg_data, he_bus_error_t ret_status)
 {
     uint32_t total_len = 0;
 
@@ -432,6 +440,8 @@ uint32_t set_bus_object_data(char *event_name, he_bus_data_object_t *p_obj_data,
         total_len += sizeof(p_obj_data->msg_sub_type);
         p_obj_data->is_data_set = true;
         total_len += sizeof(p_obj_data->is_data_set);
+        p_obj_data->status = ret_status;
+        total_len += sizeof(p_obj_data->status);
         total_len += set_bus_object_payload_data(&p_obj_data->data, cfg_data);
         p_obj_data->next_data = NULL;
     } else {
@@ -445,6 +455,8 @@ uint32_t set_bus_object_data(char *event_name, he_bus_data_object_t *p_obj_data,
         total_len += sizeof(tmp->msg_sub_type);
         tmp->is_data_set = true;
         total_len += sizeof(tmp->is_data_set);
+        p_obj_data->status = ret_status;
+        total_len += sizeof(p_obj_data->status);
         total_len += set_bus_object_payload_data(&tmp->data, cfg_data);
 
         if (p_obj_data->next_data == NULL) {
@@ -650,16 +662,13 @@ he_bus_error_t handle_bus_msg_req_data(he_bus_handle_t handle, int fd,
             ret = process_bus_get_event(handle, p_msg_data->component_name, p_obj_data,
                 &payload_data);
             prepare_rem_payload_bus_msg_data(p_obj_data->name, p_res_data, p_obj_data->msg_sub_type,
-                &payload_data);
+                &payload_data, ret);
             break;
         case he_bus_msg_set_event:
             ret = process_bus_set_event(handle, p_msg_data->component_name, p_obj_data);
-            payload_data.data_type = he_bus_data_type_uint32;
-            payload_data.raw_data.u32 = ret;
-            payload_data.raw_data_len = sizeof(uint32_t);
 
             prepare_rem_payload_bus_msg_data(p_obj_data->name, p_res_data, p_obj_data->msg_sub_type,
-                &payload_data);
+                &payload_data, ret);
             break;
         case he_bus_msg_table_insert_event:
 
@@ -673,23 +682,17 @@ he_bus_error_t handle_bus_msg_req_data(he_bus_handle_t handle, int fd,
         case he_bus_msg_sub_event:
         case he_bus_msg_sub_ex_async_event:
             ret = process_bus_sub_event(handle, fd, p_msg_data->component_name, p_obj_data);
-            payload_data.data_type = he_bus_data_type_uint32;
-            payload_data.raw_data.u32 = ret;
-            payload_data.raw_data_len = sizeof(uint32_t);
 
             prepare_rem_payload_bus_msg_data(p_obj_data->name, p_res_data, p_obj_data->msg_sub_type,
-                &payload_data);
+                &payload_data, ret);
             break;
         default:
             he_bus_core_error_print("%s:%d unsupported msg sub type:%d from:%s\r\n", __func__,
                 __LINE__, p_obj_data->msg_sub_type, p_obj_data->name);
             ret = he_bus_error_invalid_input;
-            payload_data.data_type = he_bus_data_type_uint32;
-            payload_data.raw_data.u32 = ret;
-            payload_data.raw_data_len = sizeof(uint32_t);
 
             prepare_rem_payload_bus_msg_data(p_obj_data->name, p_res_data, p_obj_data->msg_sub_type,
-                &payload_data);
+                &payload_data, ret);
             break;
         }
         l_num_of_obj--;
@@ -884,9 +887,7 @@ he_bus_error_t validate_sub_response(he_bus_event_sub_t *sub_data_map,
 
     while (index < recv_data->num_of_obj) {
         if (!strncmp(sub_data_map->event_name, p_data->name, (strlen(p_data->name) + 1))) {
-            if (p_data->data.data_type == he_bus_data_type_uint32) {
-                return p_data->data.raw_data.u32;
-            }
+            return p_data->status;
         }
         p_data = p_data->next_data;
         index++;
@@ -925,7 +926,7 @@ he_bus_error_t prepare_initial_bus_header(he_bus_raw_data_msg_t *p_data, char *c
 
 he_bus_error_t prepare_rem_payload_bus_msg_data(char *event_name,
     he_bus_raw_data_msg_t *p_base_hdr_data, he_bus_msg_sub_type_t msg_sub_type,
-    he_bus_raw_data_t *payload_data)
+    he_bus_raw_data_t *payload_data, he_bus_error_t ret_status)
 {
     if (event_name == NULL || p_base_hdr_data == NULL) {
         he_bus_core_error_print("%s:%d input argument is NULL for msg sub type:%d\r\n", __func__,
@@ -936,7 +937,7 @@ he_bus_error_t prepare_rem_payload_bus_msg_data(char *event_name,
     he_bus_data_object_t *p_obj_data = &p_base_hdr_data->data_obj;
     uint32_t payload_len = 0;
 
-    payload_len = set_bus_object_data(event_name, p_obj_data, msg_sub_type, payload_data);
+    payload_len = set_bus_object_data(event_name, p_obj_data, msg_sub_type, payload_data, ret_status);
     p_base_hdr_data->num_of_obj++;
     p_base_hdr_data->total_raw_msg_len += payload_len;
     return he_bus_error_success;
