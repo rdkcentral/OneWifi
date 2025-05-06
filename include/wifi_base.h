@@ -390,24 +390,6 @@ typedef struct {
 }levl_config_t;
 
 typedef struct {
-    int rssi_threshold;
-    bool FeatureMFPConfig;
-    int ChUtilityLogInterval;
-    int DeviceLogInterval;
-
-    bool WifiFactoryReset;
-    int  RadioFactoryResetSSID[MAX_NUM_RADIOS];
-    bool ValidateSSIDName;
-    int  FixedWmmParams;
-    int  AssocCountThreshold;
-    int  AssocMonitorDuration;
-    int  AssocGateTime;
-    bool WiFiTxOverflowSelfheal;
-    bool WiFiForceDisableWiFiRadio;
-    int  WiFiForceDisableRadioStatus;
-} wifi_dml_parameters_t;
-
-typedef struct {
     bool wifi_offchannelscan_app_rfc;
     bool wifi_offchannelscan_sm_rfc;
     bool wifipasspoint_rfc;

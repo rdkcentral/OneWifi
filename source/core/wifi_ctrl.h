@@ -55,21 +55,6 @@ extern "C" {
 #define MAX_NUM_CSI_CLIENTS         5
 #define MAX_LEVL_CSI_CLIENTS        5
 
-#define RSSI_THRESHOLD                     "RssiThresholdValue"
-#define MFP_FEATURE_STATUS                 "MfpFeatureStatus"
-#define CH_UTILITY_LOG_INTERVAL            "ChUtilityLogInterval"
-#define DEVICE_LOG_INTERVAL                "DeviceLogInterval"
-#define WIFI_FACTORY_RESET                 "WifiFactoryReset"
-#define FACTORY_RESET_SSID                 "FactoryResetSSID"
-#define VALIDATE_SSID_NAME                 "ValidateSSIDName"
-#define FIXED_WMM_PARAMS                   "FixedWmmParams"
-#define ASSOC_COUNT_THRESHOLD              "AssocCountThreshold"
-#define ASSOC_MONITOR_DURATION             "AssocMonitorDuration"
-#define ASSOC_GATE_TIME                    "AssocGateTime"
-#define WIFI_TX_OVERFLOW_SELF_HEAL         "WiFiTxOverflowSelfheal"
-#define WIFI_FORCE_DISABLE_RADIO           "WiFiForceDisableWiFiRadio"
-#define WIFI_FORCE_DISABLE_RADIO_STATUS    "WiFiForceDisableRadioStatus"
-
 #define WIFI_BUS_WIFIAPI_COMMAND           "Device.WiFi.WiFiAPI.command"
 #define WIFI_BUS_WIFIAPI_RESULT            "Device.WiFi.WiFiAPI.result"
 
