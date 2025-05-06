@@ -2037,10 +2037,11 @@ int capture_vapup_status()
               vap_nas_status[vap_index] = 0;
           }
     }
+}
     vap_iteration++;
     return RETURN_OK;
 }
-}
+
 int handle_whix_provider_response(wifi_app_t *app, wifi_event_t *event)
 {
     // Handle the response for stats, radio confs
