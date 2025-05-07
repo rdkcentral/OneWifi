@@ -44,8 +44,7 @@
 #include "safec_lib_common.h"
 #include "secure_wrapper.h"
 #include <stdint.h>
-#include "wifi_base.h"
-#include "dml_onewifi_api.h"
+
 #ifndef  UNREFERENCED_PARAMETER
 #define UNREFERENCED_PARAMETER(_p_)         (void)(_p_)
 #endif
@@ -2020,23 +2019,21 @@ int capture_vapup_status()
                                   __func__, __LINE__, vap_index);
             return RETURN_ERR;
         }
-        
-      if (mgr->radio_config[vap_info->radio_index].oper.enable == FALSE || mgr->global_config.global_parameters.force_disable_radio_feature == TRUE){
-        wifi_util_error_print(WIFI_APPS, "%s:%d: MJ entered at radio false\n", __func__, __LINE__);
-        vap_up_arr[vap_index] = 0;
-    }else{
-        vap_status = vap_info->u.bss_info.enabled;
-        wifi_util_error_print(WIFI_APPS, "%s:%d: MJ entered at radio true\n", __func__, __LINE__);
-        if (vap_status) {
-              vap_up_arr[vap_index] = vap_up_arr[vap_index] + 1;
-              wifi_util_error_print(WIFI_APPS, "%s:%d: MJ vap_up_array:%d\n", __func__, __LINE__, vap_up_arr[vap_index]);
-              if (!vap_nas_status[vap_index]) {
-                  vap_nas_status[vap_index] = updateNasIpStatus(vap_index);
-              }
-          } else {
-              vap_nas_status[vap_index] = 0;
-          }
-    }
+
+        if (mgr->radio_config[vap_info->radio_index].oper.enable == FALSE ||
+            mgr->global_config.global_parameters.force_disable_radio_feature == TRUE) {
+            vap_up_arr[vap_index] = 0;
+        } else {
+            vap_status = vap_info->u.bss_info.enabled;
+            if (vap_status) {
+                vap_up_arr[vap_index] = vap_up_arr[vap_index] + 1;
+                if (!vap_nas_status[vap_index]) {
+                    vap_nas_status[vap_index] = updateNasIpStatus(vap_index);
+                }
+            } else {
+                vap_nas_status[vap_index] = 0;
+            }
+        }
 }
     vap_iteration++;
     return RETURN_OK;
