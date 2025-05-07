@@ -1623,7 +1623,6 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
         decode_param_allow_empty_string(vap, "WpsConfigPin", param);
         strcpy(vap_info->u.bss_info.wps.pin, param->valuestring);
     }
-
     // BeaconRateCtl
     decode_param_string(vap, "BeaconRateCtl", param);
     strcpy(vap_info->u.bss_info.beaconRateCtl, param->valuestring);
@@ -2183,9 +2182,11 @@ webconfig_error_t decode_wifi_global_config(const cJSON *global_cfg, wifi_global
     decode_param_integer(global_cfg, "VlanCfgVersion", param);
     global_info->vlan_cfg_version = param->valuedouble;
 
-    //WpsPin
+ #ifndef EASY_MESH_NODE
+    // WpsPin
     decode_param_string(global_cfg, "WpsPin", param);
     strcpy(global_info->wps_pin, param->valuestring);
+#endif
 
     // BandsteeringEnable
     decode_param_bool(global_cfg, "BandsteeringEnable", param);
