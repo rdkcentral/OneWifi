@@ -849,7 +849,11 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
         switch (level) {
             case WIFI_LOG_LVL_INFO:
             case WIFI_LOG_LVL_ERROR:
+#if defined DEVICE_EXTENDER
+                snprintf(filename, sizeof(filename), "/var/log/messages");
+#else
                 snprintf(filename, sizeof(filename), "/rdklogs/logs/%s.txt", module_filename);
+#endif
                 fpg = fopen(filename, "a+");
                 if (fpg == NULL) {
                     return;
@@ -2070,6 +2074,13 @@ int get_radio_if_hw_type(unsigned int radio_index, char *str, int str_len)
     if (radio_index == 0) {
     }
     else {
+    }
+#elif defined (_GREXT02ACTS_PRODUCT_REQ_)
+    if (radio_index == 0) {
+        snprintf(str, str_len, "qca5332");
+    }
+    else {
+        snprintf(str, str_len, "qcn6224");
     }
 #else 
     snprintf(str, str_len, "BCM43684");
