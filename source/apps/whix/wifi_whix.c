@@ -2004,8 +2004,7 @@ int capture_vapup_status()
     int i = 0, vap_status = 0;
     wifi_vap_info_t *vap_info;
     wifi_mgr_t *mgr = get_wifimgr_obj();
-    wifi_global_config_t *global_wifi_config;
-    global_wifi_config = get_dml_cache_global_wifi_config();
+    
     if (skip == 1) {
         wifi_util_dbg_print(WIFI_APPS, "Skipping as the calculation already made while syncing\n");
         skip = 0;
@@ -2022,7 +2021,7 @@ int capture_vapup_status()
             return RETURN_ERR;
         }
         
-      if (mgr->radio_config[vap_info->radio_index].oper.enable == FALSE || global_wifi_config->global_parameters.force_disable_radio_feature == TRUE){
+      if (mgr->radio_config[vap_info->radio_index].oper.enable == FALSE || mgr->global_config.force_disable_radio_feature == TRUE){
         wifi_util_error_print(WIFI_APPS, "%s:%d: MJ entered at radio false\n", __func__, __LINE__);
         vap_up_arr[vap_index] = 0;
     }else{
