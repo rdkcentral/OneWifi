@@ -44,8 +44,8 @@
 #include "safec_lib_common.h"
 #include "secure_wrapper.h"
 #include <stdint.h>
-#include <wifi_base.h>
-
+#include "wifi_base.h"
+#include "dml_onewifi_api.h"
 #ifndef  UNREFERENCED_PARAMETER
 #define UNREFERENCED_PARAMETER(_p_)         (void)(_p_)
 #endif
