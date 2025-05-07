@@ -138,6 +138,8 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
 
 #define PARTNER_ID_LEN 64
 
+#define MAX_SEC_LEN 64
+
 #define MIN_MAC_LEN 12
 #define MAC_ADDR_LEN 6
 typedef unsigned char mac_addr_t[MAC_ADDR_LEN];
@@ -350,8 +352,8 @@ int is_wifi_channel_valid(wifi_platform_property_t *wifi_prop, wifi_freq_bands_t
 int key_mgmt_conversion_legacy(wifi_security_modes_t *mode_enum,
     wifi_encryption_method_t *encryp_enum, char *str_mode, int mode_len, char *str_encryp,
     int encryp_len, unsigned int conv_type);
-int key_mgmt_conversion(wifi_security_modes_t *enum_sec, char *str_sec, char *str_sec2, int sec_len,
-    int sec_len2, unsigned int conv_type, int *len);
+int key_mgmt_conversion(wifi_security_modes_t *enum_sec, int *sec_len, unsigned int conv_type,
+    int wpa_key_mgmt_len, char (*wpa_key_mgmt)[MAX_SEC_LEN]);
 int get_radio_if_hw_type(unsigned int radio_index, char *str, int str_len);
 char *to_mac_str(mac_address_t mac, mac_addr_str_t key);
 int is_ssid_name_valid(char *ssid_name);
