@@ -2003,7 +2003,7 @@ int capture_vapup_status()
     int i = 0, vap_status = 0;
     wifi_vap_info_t *vap_info;
     wifi_mgr_t *mgr = get_wifimgr_obj();
-    
+
     if (skip == 1) {
         wifi_util_dbg_print(WIFI_APPS, "Skipping as the calculation already made while syncing\n");
         skip = 0;
@@ -2013,10 +2013,10 @@ int capture_vapup_status()
     for (i = 0; i < (int)getTotalNumberVAPs(); i++) {
         UINT vap_index = VAP_INDEX(mgr->hal_cap, i);
         vap_info = getVapInfo(vap_index);
-        
+
         if (vap_info == NULL) {
             wifi_util_error_print(WIFI_APPS, "%s:%d: vap_info is NULL for vap_index : %d\r\n",
-                                  __func__, __LINE__, vap_index);
+                __func__, __LINE__, vap_index);
             return RETURN_ERR;
         }
 
