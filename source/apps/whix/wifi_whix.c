@@ -2005,7 +2005,7 @@ int capture_vapup_status()
     wifi_vap_info_t *vap_info;
     wifi_mgr_t *mgr = get_wifimgr_obj();
     wifi_global_config_t *global_wifi_config;
-    global_wifi_config = (wifi_global_config_t*) (uintptr_t)get_dml_cache_global_wifi_config();
+    global_wifi_config = get_dml_cache_global_wifi_config();
     if (skip == 1) {
         wifi_util_dbg_print(WIFI_APPS, "Skipping as the calculation already made while syncing\n");
         skip = 0;
