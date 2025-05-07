@@ -2021,7 +2021,7 @@ int capture_vapup_status()
             return RETURN_ERR;
         }
         
-      if (mgr->radio_config[vap_info->radio_index].oper.enable == FALSE || mgr->global_config.global_paramters.force_disable_radio_feature == TRUE){
+      if (mgr->radio_config[vap_info->radio_index].oper.enable == FALSE || mgr->global_config.global_parameters.force_disable_radio_feature == TRUE){
         wifi_util_error_print(WIFI_APPS, "%s:%d: MJ entered at radio false\n", __func__, __LINE__);
         vap_up_arr[vap_index] = 0;
     }else{
