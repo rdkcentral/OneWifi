@@ -2013,7 +2013,6 @@ int capture_vapup_status()
     for (i = 0; i < (int)getTotalNumberVAPs(); i++) {
         UINT vap_index = VAP_INDEX(mgr->hal_cap, i);
         vap_info = getVapInfo(vap_index);
-
         if (vap_info == NULL) {
             wifi_util_error_print(WIFI_APPS, "%s:%d: vap_info is NULL for vap_index : %d\r\n",
                 __func__, __LINE__, vap_index);
@@ -2034,7 +2033,7 @@ int capture_vapup_status()
                 vap_nas_status[vap_index] = 0;
             }
         }
-}
+    }
     vap_iteration++;
     return RETURN_OK;
 }
