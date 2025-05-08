@@ -2019,10 +2019,8 @@ int capture_vapup_status()
             return RETURN_ERR;
         }
 
-        if (mgr->radio_config[vap_info->radio_index].oper.enable == FALSE ||
-            mgr->global_config.global_parameters.force_disable_radio_feature == TRUE) {
-            vap_up_arr[vap_index] = 0;
-        } else {
+        if (mgr->radio_config[vap_info->radio_index].oper.enable == TRUE ||
+            mgr->global_config.global_parameters.force_disable_radio_feature == FALSE) {
             vap_status = vap_info->u.bss_info.enabled;
             if (vap_status) {
                 vap_up_arr[vap_index] = vap_up_arr[vap_index] + 1;
