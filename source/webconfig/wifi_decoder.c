@@ -2418,7 +2418,7 @@ int validate_wifi_hw_variant(wifi_freq_bands_t radio_band, wifi_ieee80211Variant
         MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_B);
         MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_G);
         MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_N);
-#if !defined (_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
+#if !defined (_PP203X_PRODUCT_REQ_)
         MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_AX);
 #endif
 #ifdef CONFIG_IEEE80211BE
@@ -2434,7 +2434,7 @@ int validate_wifi_hw_variant(wifi_freq_bands_t radio_band, wifi_ieee80211Variant
         MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_N);
         MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_H);
         MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_AC);
-#if !defined (_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
+#if !defined (_PP203X_PRODUCT_REQ_)
         MASK_BITSET(wifi_hw_mode, WIFI_80211_VARIANT_AX);
 #endif
 #ifdef CONFIG_IEEE80211BE
