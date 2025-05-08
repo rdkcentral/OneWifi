@@ -1039,7 +1039,7 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
         cJSON_AddNumberToObject(vb_entry, "VapMode", 0);
         cJSON_AddItemToObject(vb_entry, "BridgeName", cJSON_CreateString(br_name));
         cJSON_AddItemToObject(vb_entry, "BSSID", cJSON_CreateString("00:00:00:00:00:00"));
-#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
        if(rdk_vap_info->exists == false) {
 #if defined(_SR213_PRODUCT_REQ_)
            if(wifi_vap_map->vap_array[vapArrayIndex].vap_index != 2 && wifi_vap_map->vap_array[vapArrayIndex].vap_index != 3) {
@@ -1051,7 +1051,7 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
            rdk_vap_info->exists = true;
 #endif /* _SR213_PRODUCT_REQ_ */
        }
-#endif /* !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) */
+#endif /* !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_) */
         cJSON_AddBoolToObject(vb_entry, "Exists", rdk_vap_info->exists);
 
         cJSON_AddBoolToObject(vb_entry, "MacFilterEnable", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.mac_filter_enable);
