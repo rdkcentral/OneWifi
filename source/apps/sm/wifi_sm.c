@@ -411,11 +411,15 @@ int survey_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_t *st
 
     data->u.mon_stats_config.data_type = mon_stats_type_radio_channel_stats;
 
+    wifi_util_error_print(WIFI_SM,"SJY %s:%d The incoming survey type is %d\n", stat_config_entry->survey_type);
+    
     if (stat_config_entry->survey_type == survey_type_on_channel) {
         data->u.mon_stats_config.args.channel_list.num_channels = 0;
+        wifi_util_error_print(WIFI_SM,"SJY %s:%d The value of survey interval in ON_CHANNEL is %u ms\n", stat_config_entry->survey_interval);
         data->u.mon_stats_config.args.dwell_time = stat_config_entry->survey_interval;
         data->u.mon_stats_config.args.scan_mode = WIFI_RADIO_SCAN_MODE_ONCHAN;
     } else {
+        wifi_util_error_print(WIFI_SM,"SJY %s:%d The value of survey interval in OFF_CHANNEL is %u ms\n", stat_config_entry->survey_interval);
         data->u.mon_stats_config.args.dwell_time = stat_config_entry->survey_interval;
         data->u.mon_stats_config.args.channel_list.num_channels =
             stat_config_entry->channels_list.num_channels;
@@ -428,6 +432,7 @@ int survey_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_t *st
 
     data->u.mon_stats_config.args.app_info = sm_app_event_type_survey;
     // data->u.mon_stats_config.start_immediately = true;
+    wifi_util_error_print(WIFI_SM,"SJY %s:%d The value of survey interval before pushing is %u ms\n", stat_config_entry->survey_interval);
     push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
 
     return RETURN_OK;

@@ -3627,8 +3627,9 @@ wifi_mon_collector_element_t * coordinator_create_collector_elem(wifi_mon_stats_
         free(collector_elem);
         return NULL;
     }
-
+    wifi_util_error_print(WIFI_MON,"SJY %s:%d The value of survey_interval_ms before memcpy is %d\n", stats_config->args.dwell_time);
     memcpy(collector_elem->args, &stats_config->args, sizeof(wifi_mon_stats_args_t));
+    wifi_util_error_print(WIFI_MON,"SJY %s:%d The value of survey_interval_ms after memcpy is %d\n", collector_elem->args->dwell_time);
 
     return collector_elem;
 }
@@ -3912,6 +3913,9 @@ int coordinator_check_stats_config(wifi_mon_stats_config_t *mon_stats_config)
     wifi_mon_stats_descriptor_t *stat_desc = NULL;
     wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
     clctr_subscription_t *clctr_subscription;
+
+    wifi_util_error_print(WIFI_MON, "SJY %s:%d: stats_type %d  interval_ms %d from app %d\n", __func__,__LINE__,
+                                    mon_stats_config->data_type, mon_stats_config->interval_ms, mon_stats_config->inst);
 
     if (stats_common_args_validation(mon_stats_config) != RETURN_OK) {
         wifi_util_error_print(WIFI_MON, "%s:%d: common args validation failed. stats_type %d  interval_ms %d from app %d\n", __func__,__LINE__,
