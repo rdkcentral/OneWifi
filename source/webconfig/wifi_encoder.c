@@ -263,8 +263,9 @@ webconfig_error_t encode_radio_object(const rdk_wifi_radio_t *radio, cJSON *radi
     // GuardInterval
     cJSON_AddNumberToObject(radio_object, "GuardInterval", radio_info->guardInterval);
 
-    // TransmitPower
-    cJSON_AddNumberToObject(radio_object, "TransmitPower", radio_info->transmitPower);
+    // TransmitPower, 0 not allowed
+    cJSON_AddNumberToObject(radio_object, "TransmitPower",
+        radio_info->transmitPower != 0 ? radio_info->transmitPower : 100);
 
     // BeaconInterval
     cJSON_AddNumberToObject(radio_object, "BeaconInterval", radio_info->beaconInterval);
