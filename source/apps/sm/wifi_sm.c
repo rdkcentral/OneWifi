@@ -746,11 +746,7 @@ int handle_sm_webconfig_event(wifi_app_t *app, wifi_event_t *event)
                     }
                     if (new_stats_cfg->survey_interval != cur_stats_cfg->survey_interval) {
                         wifi_util_error_print(WIFI_SM,
-                            "SJY %s %d Reconfigured survey interval as %u secs for %s stats type of "
-                            "%s radio\n",
-                            __func__, __LINE__, new_stats_cfg->survey_interval,
-                            stats_type_to_str(new_stats_cfg->stats_type),
-                            radio_get_name_from_type(radio_type));
+                            "SJY %s %d Reconfigured survey interval as %u secs\n", __func__, __LINE__, new_stats_cfg->survey_interval);
                     }
                     memcpy(cur_stats_cfg, new_stats_cfg, sizeof(stats_config_t));
                     wifi_util_error_print(WIFI_SM,
