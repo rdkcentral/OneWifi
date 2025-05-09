@@ -3627,9 +3627,11 @@ wifi_mon_collector_element_t * coordinator_create_collector_elem(wifi_mon_stats_
         free(collector_elem);
         return NULL;
     }
+
     wifi_util_error_print(WIFI_MON,"SJY %s:%d The value of survey_interval_ms before memcpy is %d\n", stats_config->args.dwell_time);
     memcpy(collector_elem->args, &stats_config->args, sizeof(wifi_mon_stats_args_t));
     wifi_util_error_print(WIFI_MON,"SJY %s:%d The value of survey_interval_ms after memcpy is %d\n", collector_elem->args->dwell_time);
+
 
     return collector_elem;
 }
