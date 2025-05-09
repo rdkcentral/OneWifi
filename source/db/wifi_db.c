@@ -568,8 +568,68 @@ void init_wifidb_data(void)
 
 }
 
-int update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *config, wifi_radio_feature_param_t *feat_config)
+int update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *config,
+    wifi_radio_feature_param_t *feat_config)
 {
+    wifi_mgr_t *g_wifidb = get_wifimgr_obj();
+    wifi_radio_operationParam_t *radio_oper_conf;
+    wifi_radio_feature_param_t *radio_feat_conf;
+
+    if ((config == NULL) || (feat_config == NULL) || (g_wifidb == NULL)) {
+        wifidb_print(
+            "%s:%d Failed to update Radio Config and Radio Feat Config for radio_index %d \n",
+            __func__, __LINE__, radio_index);
+        return -1;
+    }
+
+    radio_oper_conf = get_wifidb_radio_map(radio_index);
+    if (radio_oper_conf == NULL) {
+        wifi_util_dbg_print(WIFI_DB, "%s:%d: failed to get radio oper configuration for index %d\n",
+            __func__, __LINE__, radio_index);
+        return -1;
+    }
+
+    radio_feat_conf = get_wifidb_radio_feat_map(radio_index);
+    if (radio_feat_conf == NULL) {
+        wifi_util_dbg_print(WIFI_DB,
+            "%s:%d: failed to get radio feature configuration for index %d\n", __func__, __LINE__,
+            radio_index);
+        return -1;
+    }
+
+    wifi_util_dbg_print(WIFI_DB, "%s:%d:Update Radio Config for radio_index=%d \n", __func__,
+        __LINE__, radio_index);
+
+    /* Call the function to update the operating classes based on Country code and Radio */
+    update_radio_operating_classes(config);
+    pthread_mutex_lock(&g_wifidb->data_cache_lock);
+    memcpy(radio_oper_conf, config, sizeof(wifi_radio_operationParam_t));
+    memcpy(radio_feat_conf, feat_config, sizeof(wifi_radio_feature_param_t));
+    pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+
+    wifi_util_dbg_print(WIFI_DB,
+        "%s:%d: Wifi_Radio_Config data enabled=%d freq_band=%d auto_channel_enabled=%d channel=%d  "
+        "channel_width=%d hw_mode=%d csa_beacon_count=%d country=%d dcs_enabled=%d "
+        "numSecondaryChannels=%d dtim_period %d beacon_interval %d "
+        "operating_class %d basic_data_transmit_rate %d operational_data_transmit_rate %d  "
+        "fragmentation_threshold %d guard_interval %d transmit_power %d rts_threshold %d "
+        "factory_reset_ssid = %d  radio_stats_measuring_rate = %d   radio_stats_measuring_interval "
+        "= %d cts_protection = %d obss_coex = %d  stbc_enable = %d  greenfield_enable = %d "
+        "user_control = %d  admin_control = %d  chan_util_threshold = %d  "
+        "chan_util_selfheal_enable = %d  eco_power_down = %d DFSTimer:%d radarDetected:%s \n",
+        __func__, __LINE__, config->enable, config->band, config->autoChannelEnabled,
+        config->channel, config->channelWidth, config->variant, config->csa_beacon_count,
+        config->countryCode, config->DCSEnabled, config->numSecondaryChannels, config->dtimPeriod,
+        config->beaconInterval, config->operatingClass, config->basicDataTransmitRates,
+        config->operationalDataTransmitRates, config->fragmentationThreshold, config->guardInterval,
+        config->transmitPower, config->rtsThreshold, config->factoryResetSsid,
+        config->radioStatsMeasuringRate, config->radioStatsMeasuringInterval, config->ctsProtection,
+        config->obssCoex, config->stbcEnable, config->greenFieldEnable, config->userControl,
+        config->adminControl, config->chanUtilThreshold, config->chanUtilSelfHealEnable,
+        config->EcoPowerDown, config->DFSTimer, config->radarDetected);
+    wifi_util_dbg_print(WIFI_DB, " %s:%d Wifi_Radio_Config data Tscan=%lu Nscan=%lu Tidle=%lu \n",
+        __FUNCTION__, __LINE__, feat_config->OffChanTscanInMsec, feat_config->OffChanNscanInSec,
+        feat_config->OffChanTidleInSec);
     return 0;
 }
 
@@ -685,7 +745,7 @@ int wifidb_update_wifi_cac_config(wifi_vap_info_map_t *config)
 
 int wifidb_update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *config, wifi_radio_feature_param_t *feat_config)
 {
-    return 0;
+    return update_wifi_radio_config(radio_index, config, feat_config);
 }
 
 int get_wifi_global_param(wifi_global_param_t *config)

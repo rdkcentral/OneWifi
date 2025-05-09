@@ -846,6 +846,7 @@ int get_sta_stats_info (assoc_dev_data_t *assoc_dev_data) {
     assoc_dev_data->dev_stats.cli_RetryCount = sta_data->dev_stats.cli_RetryCount;
     assoc_dev_data->dev_stats.cli_MultipleRetryCount = sta_data->dev_stats.cli_MultipleRetryCount;
     assoc_dev_data->dev_stats.cli_MLDEnable = sta_data->dev_stats.cli_MLDEnable;
+    memcpy(&assoc_dev_data->sta_data, &sta_data->assoc_frame_data, sizeof(assoc_req_elem_t));
 
     pthread_mutex_unlock(&g_monitor_module.data_lock);
     return 0;
@@ -2814,7 +2815,8 @@ static void parse_assoc_ies(const uint8_t *ies, size_t ies_len, assoc_dev_data_t
     }
 }
 
-static void get_client_assoc_frame(int ap_index, wifi_associated_dev_t *associated_dev, frame_data_t *frame_buff)
+static void get_client_assoc_frame(int ap_index, wifi_associated_dev_t *associated_dev,
+    assoc_dev_data_t *assoc_data)
 {
     sta_data_t *sta;
     char mac_addr[MAC_STR_LEN];
@@ -2830,7 +2832,9 @@ static void get_client_assoc_frame(int ap_index, wifi_associated_dev_t *associat
 
     if (sta != NULL) {
         if (sta->assoc_frame_data.msg_data.frame.len != 0) {
-            memcpy(frame_buff, &sta->assoc_frame_data.msg_data, sizeof(frame_data_t));
+            memcpy(&assoc_data->sta_data, &sta->assoc_frame_data, sizeof(assoc_req_elem_t));
+            wifi_util_dbg_print(WIFI_MON,"%s:%d assoc_frame_data of length:%d copied\n",
+                __func__, __LINE__, sta->assoc_frame_data.msg_data.frame.len);
             return;
         } else {
             wifi_util_error_print(WIFI_MON,"%s:%d assoc req frame not found for vap_index:%d: sta_mac:%s time:%ld\r\n",
@@ -2848,13 +2852,12 @@ int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
     wifi_monitor_data_t data;
     assoc_dev_data_t assoc_data;
     wifi_radioTrafficStats2_t chan_stats;
-    frame_data_t frame;
+    frame_data_t *frame;
     int radio_index;
     char vap_name[32];
 
     memset(&assoc_data, 0, sizeof(assoc_data));
     memset(&data, 0, sizeof(wifi_monitor_data_t));
-    memset(&frame, 0, sizeof(wifi_frame_t));
 
     data.id = msg_id++;
 
@@ -2874,7 +2877,8 @@ int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
     convert_vap_index_to_name(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, ap_index, vap_name);
     radio_index = convert_vap_name_to_radio_array_index(&((wifi_mgr_t *)get_wifimgr_obj())->hal_cap.wifi_prop, vap_name);
     get_radio_data(radio_index, &chan_stats);
-    get_client_assoc_frame(ap_index, associated_dev, &frame);
+    //Update the assoc frame of the associated_dev in assoc_data
+    get_client_assoc_frame(ap_index, associated_dev, &assoc_data);
 
     memcpy(assoc_data.dev_stats.cli_MACAddress, data.u.dev.sta_mac, sizeof(mac_address_t));
     assoc_data.dev_stats.cli_SignalStrength = associated_dev->cli_SignalStrength;
@@ -2905,9 +2909,10 @@ int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
     snprintf(assoc_data.dev_stats.cli_OperatingChannelBandwidth, sizeof(assoc_data.dev_stats.cli_OperatingChannelBandwidth),"%s", associated_dev->cli_OperatingChannelBandwidth);
     snprintf(assoc_data.dev_stats.cli_InterferenceSources, sizeof(assoc_data.dev_stats.cli_InterferenceSources),"%s", associated_dev->cli_InterferenceSources);
 
-    if (frame.frame.len != 0) {
-        parse_assoc_ies((uint8_t *)(frame.data + ASSOC_REQ_MAC_HEADER_LEN),
-            (size_t)(frame.frame.len - ASSOC_REQ_MAC_HEADER_LEN), &assoc_data);
+    frame = &assoc_data.sta_data.msg_data;
+    if (frame->frame.len != 0) {
+        parse_assoc_ies((uint8_t *)(frame->data + ASSOC_REQ_MAC_HEADER_LEN),
+            (size_t)(frame->frame.len - ASSOC_REQ_MAC_HEADER_LEN), &assoc_data);
     }
     else {
         wifi_util_dbg_print(WIFI_MON, "%s:%d Cannot parse assoc ies: frame len is 0\n", __func__, __LINE__);

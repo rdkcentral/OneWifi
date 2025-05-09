@@ -390,24 +390,6 @@ typedef struct {
 }levl_config_t;
 
 typedef struct {
-    int rssi_threshold;
-    bool FeatureMFPConfig;
-    int ChUtilityLogInterval;
-    int DeviceLogInterval;
-
-    bool WifiFactoryReset;
-    int  RadioFactoryResetSSID[MAX_NUM_RADIOS];
-    bool ValidateSSIDName;
-    int  FixedWmmParams;
-    int  AssocCountThreshold;
-    int  AssocMonitorDuration;
-    int  AssocGateTime;
-    bool WiFiTxOverflowSelfheal;
-    bool WiFiForceDisableWiFiRadio;
-    int  WiFiForceDisableRadioStatus;
-} wifi_dml_parameters_t;
-
-typedef struct {
     bool wifi_offchannelscan_app_rfc;
     bool wifi_offchannelscan_sm_rfc;
     bool wifipasspoint_rfc;
@@ -803,19 +785,20 @@ typedef struct {
 } __attribute__((__packed__)) conn_security_t;
 
 typedef struct {
+    time_t frame_timestamp;
+    frame_data_t msg_data;
+} __attribute__((__packed__)) assoc_req_elem_t;
+
+typedef struct {
     int ap_index;
     wifi_associated_dev3_t dev_stats;
     int reason;
     client_state_t client_state;
     conn_security_t conn_security;
+    assoc_req_elem_t sta_data;
 } __attribute__((__packed__)) assoc_dev_data_t;
 
 struct active_msmt_data;
-
-typedef struct {
-    time_t        frame_timestamp;
-    frame_data_t  msg_data;
-} __attribute__((__packed__)) assoc_req_elem_t;
 
 typedef struct {
     mac_address_t sta_mac;

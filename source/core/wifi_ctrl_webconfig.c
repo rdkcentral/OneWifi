@@ -1593,7 +1593,9 @@ static bool is_radio_param_config_changed(wifi_radio_operationParam_t *old , wif
 void ecomode_telemetry_update_and_reboot(unsigned int index, bool active)
 {
     CHAR eventName[32] = {0};
+#ifndef DISABLE_ECO_REBOOT
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+#endif
 
     snprintf(eventName, sizeof(eventName), "WIFI_RADIO_%d_ECOPOWERMODE", index + 1);
     get_stubs_descriptor()->t2_event_s_fn(eventName, active ? "Active" : "Inactive");
@@ -1730,6 +1732,7 @@ int webconfig_hal_radio_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t
                 ctrl->webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
                 return RETURN_ERR;
             }
+            wifi_util_dbg_print(WIFI_MGR, "%s:%d: config applied.\n", __func__, __LINE__);
 
             start_wifi_sched_timer(mgr_radio_data->vaps.radio_index, ctrl, wifi_radio_sched);
 
