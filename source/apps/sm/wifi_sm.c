@@ -744,17 +744,32 @@ int handle_sm_webconfig_event(wifi_app_t *app, wifi_event_t *event)
                             stats_type_to_str(new_stats_cfg->stats_type),
                             radio_get_name_from_type(radio_type));
                     }
+                    if (new_stats_cfg->survey_interval != cur_stats_cfg->survey_interval) {
+                        wifi_util_error_print(WIFI_SM,
+                            "SJY %s %d Reconfigured survey interval as %u secs for %s stats type of "
+                            "%s radio\n",
+                            __func__, __LINE__, new_stats_cfg->survey_interval,
+                            stats_type_to_str(new_stats_cfg->stats_type),
+                            radio_get_name_from_type(radio_type));
+                    }
                     memcpy(cur_stats_cfg, new_stats_cfg, sizeof(stats_config_t));
+                    wifi_util_error_print(WIFI_SM,
+                        "SJY %s %d The value of survey interval in cur cfg is %u ms\n",cur_stats_cfg->survey_interval);
                     if (!off_scan_rfc && cur_stats_cfg->survey_type == survey_type_off_channel &&
                         (cur_stats_cfg->radio_type == WIFI_FREQUENCY_5_BAND ||
                             cur_stats_cfg->radio_type == WIFI_FREQUENCY_5L_BAND ||
-                            cur_stats_cfg->radio_type == WIFI_FREQUENCY_5H_BAND)) {
+                            cur_stats_cfg->radio_type == WIFI_FREQUENCY_5H_BAND)) { 
                         if (is_scan_scheduled(app, cur_stats_cfg)) {
+                            wifi_util_error_print(WIFI_SM,
+                                "SJY %s:%d Stopping the scan id='%s'\n", __func__, __LINE__,
+                                cur_stats_cfg->stats_cfg_id);
                             push_sm_config_event_to_monitor_queue(app, mon_stats_request_state_stop,
                                 cur_stats_cfg);
                         }
                     } else {
                         // Notification for update entry.
+                        wifi_util_error_print(WIFI_SM,
+                            "SJY %s:%d Pushing the event to monitor queue in else condition\n", __func__, __LINE__);
                         push_sm_config_event_to_monitor_queue(app, mon_stats_request_state_start,
                             cur_stats_cfg);
                     }

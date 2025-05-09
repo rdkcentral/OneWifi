@@ -3628,11 +3628,9 @@ wifi_mon_collector_element_t * coordinator_create_collector_elem(wifi_mon_stats_
         return NULL;
     }
 
-    wifi_util_error_print(WIFI_MON,"SJY %s:%d The value of survey_interval_ms before memcpy is %d\n", stats_config->args.dwell_time);
+    wifi_util_error_print(WIFI_MON,"SJY %s:%d The value of survey_interval_ms before memcpy is %d\n", __func__, __LINE__, stats_config->args.dwell_time);
     memcpy(collector_elem->args, &stats_config->args, sizeof(wifi_mon_stats_args_t));
-    wifi_util_error_print(WIFI_MON,"SJY %s:%d The value of survey_interval_ms after memcpy is %d\n", collector_elem->args->dwell_time);
-
-
+    wifi_util_error_print(WIFI_MON,"SJY %s:%d The value of survey_interval_ms after memcpy is %d\n", __func__, __LINE__, collector_elem->args->dwell_time);
     return collector_elem;
 }
 
@@ -3672,7 +3670,7 @@ wifi_mon_provider_element_t  *coordinator_create_provider_elem(wifi_mon_stats_co
         free(provider_elem);
         return NULL;
     }
-
+    wifi_util_error_print(WIFI_MON,"SJY %s:%d The value of survey_interval_ms before memcpy is %d\n", __func__, __LINE__, stats_config->args.dwell_time);
     memcpy(provider_elem->mon_stats_config, stats_config, sizeof(wifi_mon_stats_config_t));
 
     return provider_elem;
