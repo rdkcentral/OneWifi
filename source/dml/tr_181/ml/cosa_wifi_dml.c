@@ -4214,10 +4214,12 @@ Radio_SetParamStringValue
         }
 
         // TODO: for debug purpouses only
-        static const char * const wifi_mode_strings[] =
+	static const char * const wifi_mode_strings[] =
         {
             "WIFI_80211_VARIANT_A",
+#ifndef _XER5_PRODUCT_REQ_
             "WIFI_80211_VARIANT_B",
+#endif
             "WIFI_80211_VARIANT_G",
             "WIFI_80211_VARIANT_N",
             "WIFI_80211_VARIANT_H",
