@@ -1205,8 +1205,15 @@ void process_kick_assoc_devices_event(void *data)
     timeout = atoi(s_timeout);
 
     if (vap_info->u.bss_info.mac_filter_enable == FALSE) {
-        if (wifi_setApMacAddressControlMode(vap_index, 2) != RETURN_OK) {
-            wifi_util_error_print(WIFI_CTRL, "%s:%d: wifi_setApMacAddressControlMode failed vap_index %d", __func__, __LINE__, vap_index);
+        #ifdef NL80211_ACL
+        if (wifi_hal_setApMacAddressControlMode(vap_index, 2) != RETURN_OK)
+#else
+        if (wifi_setApMacAddressControlMode(vap_index, 2) != RETURN_OK)
+#endif // NL80211_ACL
+        {
+            wifi_util_error_print(WIFI_CTRL,
+                "%s:%d: set ACL failed failed vap_index %d", __func__, __LINE__,
+                vap_index);
             free(str_dup);
             return;
         }
