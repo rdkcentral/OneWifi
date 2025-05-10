@@ -63,6 +63,28 @@ static void publish_cce_ie_info(const wifi_bss_info_t *bss_info, unsigned radio_
     free(rdata.raw_data.bytes);
 }
 
+static void publish_bss_info(const wifi_bss_info_t *bss_info)
+{
+    if (bss_info == NULL) {
+        wifi_util_error_print(WIFI_EC, "%s:%d: NULL BSS info!\n", __func__, __LINE__);
+        return;
+    }
+    wifi_ctrl_t *ctrl = get_wifictrl_obj();
+    raw_data_t rdata = { 0 };
+    rdata.raw_data.bytes = malloc(sizeof(wifi_bss_info_t));
+    if (rdata.raw_data.bytes == NULL) {
+        wifi_util_error_print(WIFI_EC, "%s:%d: Failed to malloc for wifi_bss_info_t!\n", __func__,
+            __LINE__);
+        return;
+    }
+    rdata.data_type = bus_data_type_bytes;
+    memcpy(rdata.raw_data.bytes, bss_info, sizeof(*bss_info));
+    rdata.raw_data_len = sizeof(*bss_info);
+    char path[256] = { 0 };
+    get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, WIFI_EASYCONNECT_BSS_INFO, &rdata);
+    free(rdata.raw_data.bytes);
+}
+
 static void handle_wifi_event_scan_results(wifi_app_t *app, void *data)
 {
     int i;
@@ -109,6 +131,18 @@ static void handle_wifi_event_scan_results(wifi_app_t *app, void *data)
     }
     wifi_util_dbg_print(WIFI_EC, "%s:%d parsed and published %d frames containing CCE IE\n",
         __func__, __LINE__, n);
+
+    // According to EasyConnect 6.5.2, for Reconfiguration,
+    // an Enrollee must broadcast a Reconfiguration Annoncement
+    // on each channel where the Configuration Response's SSID is heard.
+    // So, publish the whole BSS info to a different path for
+    // subscribers to work with.
+    for (i = 0; i < scan_results->num; i++) {
+        wifi_bss_info_t *bss_info = &scan_results->bss[i];
+        if (!bss_info) continue;
+        publish_bss_info(bss_info);
+    }
+
 }
 
 static void handle_hal_event(wifi_app_t *app, wifi_event_subtype_t event_subtype, void *data)
@@ -221,6 +255,9 @@ int easyconnect_init(wifi_app_t *app, unsigned int create_flags)
         { WIFI_EASYCONNECT_RADIO_CCE_IND, bus_element_type_event,
          { NULL, NULL, NULL, NULL, event_sub_handler, NULL }, slow_speed, ZERO_TABLE,
          { bus_data_type_bytes, false, 0, 0, 0, NULL } },
+        { WIFI_EASYCONNECT_BSS_INFO, bus_element_type_method,
+         { NULL, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
+         { bus_data_type_bytes, false, 0, 0, 0, NULL } } ,
     };
     // clang-format on
 

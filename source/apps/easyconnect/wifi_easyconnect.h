@@ -26,6 +26,7 @@ extern "C" {
 
 #define WIFI_EASYCONNECT_RADIO_TABLE        "Device.WiFi.Radio.{i}"
 #define WIFI_EASYCONNECT_RADIO_CCE_IND      "Device.WiFi.Radio.{i}.CCEInd"
+#define WIFI_EASYCONNECT_BSS_INFO           "Device.WiFi.EC.BSSInfo"
 
 typedef struct _easyconnect_data {
     bool subscriptions[MAX_NUM_RADIOS];
