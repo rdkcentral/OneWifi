@@ -1064,7 +1064,13 @@ static void logVAPUpStatus()
         wifi_util_dbg_print(WIFI_APPS,
             "vap_index is %d vap_iteration is %d and vap_up_arr value is %d\n", vap_index,
             vap_iteration, vap_up_arr[vap_index]);
-        vapup_percentage = (vap_up_arr[vap_index] * 100) / vap_iteration;
+            int radio_index =  VAP_RADIO_INDEX(mgr->hal_cap, vap_index);
+            int radio_active_count = radio_up_arr[radio_index];
+            if (radio_active_count > 0) {
+                vapup_percentage = (vap_up_arr[vap_index] * 100) / radio_active_count;
+            } else {
+                vapup_percentage = 0;
+            }
 
         char delimiter = (i + 1) < ((int)getTotalNumberVAPs() + 1) ? ';' : ' ';
         rc = sprintf_s(vap_buf, sizeof(vap_buf), "%d,%d%c", (vap_index + 1), vapup_percentage,
@@ -1085,6 +1091,7 @@ static void logVAPUpStatus()
     prev_uptime_val = curr_uptime_val;
     vap_iteration = 0;
     memset(vap_up_arr, 0, sizeof(vap_up_arr));
+    memset(radio_up_arr, 0, sizeof(radio_up_arr));
     wifi_util_dbg_print(WIFI_APPS, "Exiting %s:%d \n", __FUNCTION__, __LINE__);
 }
 
@@ -2012,6 +2019,7 @@ int capture_vapup_status()
 
     for (i = 0; i < (int)getTotalNumberVAPs(); i++) {
         UINT vap_index = VAP_INDEX(mgr->hal_cap, i);
+        int radio_index = VAP_RADIO_INDEX(mgr->hal_cap, i);
         vap_info = getVapInfo(vap_index);
         if (vap_info == NULL) {
             wifi_util_error_print(WIFI_APPS, "%s:%d: vap_info is NULL for vap_index : %d\r\n",
@@ -2019,19 +2027,22 @@ int capture_vapup_status()
             return RETURN_ERR;
         }
 
-        if (mgr->radio_config[vap_info->radio_index].oper.enable == TRUE ||
-            mgr->global_config.global_parameters.force_disable_radio_feature == FALSE) {
             vap_status = vap_info->u.bss_info.enabled;
-            if (vap_status) {
-                vap_up_arr[vap_index] = vap_up_arr[vap_index] + 1;
-                if (!vap_nas_status[vap_index]) {
-                    vap_nas_status[vap_index] = updateNasIpStatus(vap_index);
+            if (mgr->radio_config[vap_info->radio_index].oper.enable == TRUE ||
+                mgr->global_config.global_parameters.force_disable_radio_feature == FALSE) {
+                radio_up_arr[radio_index]++;
+    
+                if (vap_status) {
+                    vap_up_arr[vap_index]++;
+                    if (!vap_nas_status[vap_index]) {
+                        vap_nas_status[vap_index] = updateNasIpStatus(vap_index);
+                    }
+                } else {
+                    vap_nas_status[vap_index] = 0;
                 }
-            } else {
-                vap_nas_status[vap_index] = 0;
             }
         }
-    }
+    
     vap_iteration++;
     return RETURN_OK;
 }
