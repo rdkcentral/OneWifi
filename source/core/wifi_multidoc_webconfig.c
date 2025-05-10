@@ -129,9 +129,9 @@ static int validate_private_home_security_param(char *mode_enabled, char *encryp
      wifi_util_info_print(WIFI_CTRL,"Enter %s mode_enabled=%s,encryption_method=%s\n",__func__,mode_enabled,encryption_method);
      wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
 
-    if ((strcmp(mode_enabled, "None") != 0) &&
-        ((strcmp(encryption_method, "TKIP") != 0) && (strcmp(encryption_method, "AES") != 0) &&
-        (strcmp(encryption_method, "AES+TKIP") != 0))) {
+    if (strcmp(mode_enabled, "None") != 0 &&
+        (strcmp(encryption_method, "TKIP") != 0 && strcmp(encryption_method, "AES") != 0 &&
+        strcmp(encryption_method, "AES+TKIP") != 0 && strcmp(encryption_method, "AES+GCMP"))) {
          wifi_util_error_print(WIFI_CTRL,"%s: Invalid Encryption Method \n",__FUNCTION__);
         if (execRetVal) {
             strncpy(execRetVal->ErrorMsg,"Invalid Encryption Method",sizeof(execRetVal->ErrorMsg)-1);
@@ -139,8 +139,10 @@ static int validate_private_home_security_param(char *mode_enabled, char *encryp
         return RETURN_ERR;
     }
 
-    if (((strcmp(mode_enabled, "WPA-WPA2-Enterprise") == 0) || (strcmp(mode_enabled, "WPA-WPA2-Personal") == 0)) &&
-        ((strcmp(encryption_method, "AES+TKIP") != 0) && (strcmp(encryption_method, "AES") != 0))) {
+    if ((strcmp(mode_enabled, "WPA-WPA2-Enterprise") == 0 || 
+        strcmp(mode_enabled, "WPA-WPA2-Personal") == 0) &&
+        (strcmp(encryption_method, "AES+TKIP") != 0 && strcmp(encryption_method, "AES") != 0 &&
+        strcmp(encryption_method, "AES+GCMP") != 0)) {
          wifi_util_error_print(WIFI_CTRL,"%s: Invalid Encryption Security Combination\n",__FUNCTION__);
         if (execRetVal) {
             strncpy(execRetVal->ErrorMsg,"Invalid Encryption Security Combination",sizeof(execRetVal->ErrorMsg)-1);
@@ -298,7 +300,8 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security,pErr 
             vap_info->u.bss_info.security.encr = wifi_encryption_aes_tkip;
         } else if (!strcmp(value, "TKIP")) {
             vap_info->u.bss_info.security.encr = wifi_encryption_tkip;
-
+        } else if (!strcmp(value, "AES+GCMP")) {
+            vap_info->u.bss_info.security.encr = wifi_encryption_aes_gcmp256;
         } else {
             wifi_util_error_print(WIFI_CTRL, "%s: unknown \"EncryptionMethod\n: %s\n", __func__, value);
             if (execRetVal) {

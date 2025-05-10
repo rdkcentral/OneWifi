@@ -1121,7 +1121,8 @@ webconfig_error_t encode_security_object(const wifi_vap_security_t *security_inf
         return webconfig_error_encode;
     }
 
-    if (security_info->encr != wifi_encryption_aes &&
+    if ((security_info->encr != wifi_encryption_aes &&
+        security_info->encr != wifi_encryption_aes_gcmp256) &&
         (security_info->mode == wifi_security_mode_enhanced_open ||
         security_info->mode == wifi_security_mode_wpa3_enterprise ||
         security_info->mode == wifi_security_mode_wpa3_personal)) {
@@ -1149,7 +1150,9 @@ webconfig_error_t encode_security_object(const wifi_vap_security_t *security_inf
         case wifi_encryption_aes_tkip:
             cJSON_AddStringToObject(security, "EncryptionMethod", "AES+TKIP");
             break;
-
+        case wifi_encryption_aes_gcmp256:
+            cJSON_AddStringToObject(security, "EncryptionMethod", "AES+GCMP");
+            break;
         default:
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to encode encryption method: %d\n",
                 __func__, __LINE__, security_info->encr);
