@@ -1037,7 +1037,7 @@ static void logVAPUpStatus()
     char tmp[128] = { 0 };
     errno_t rc = -1;
     UINT vap_index = 0;
-
+    static int radio_up_arr[MAX_NUM_RADIOS] = {0};
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
     wifi_util_dbg_print(WIFI_APPS, "Entering %s:%d \n", __FUNCTION__, __LINE__);
@@ -2028,7 +2028,7 @@ int capture_vapup_status()
         }
 
             vap_status = vap_info->u.bss_info.enabled;
-            if (mgr->radio_config[vap_info->radio_index].oper.enable == TRUE ||
+            if (mgr->radio_config[radio_index].oper.enable == TRUE ||
                 mgr->global_config.global_parameters.force_disable_radio_feature == FALSE) {
                 radio_up_arr[radio_index]++;
     
