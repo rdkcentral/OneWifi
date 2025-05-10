@@ -428,7 +428,6 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
 
     // BssHotspot
     cJSON_AddBoolToObject(vap_object, "BssHotspot", vap_info->u.bss_info.bssHotspot);
-
     // wpsPushButton
     cJSON_AddNumberToObject(vap_object, "WpsPushButton", vap_info->u.bss_info.wpsPushButton);
 
@@ -441,7 +440,6 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
         //WpsConfigPin
         cJSON_AddStringToObject(vap_object, "WpsConfigPin", vap_info->u.bss_info.wps.pin);
     }
-
     // BeaconRateCtl
     cJSON_AddStringToObject(vap_object, "BeaconRateCtl", vap_info->u.bss_info.beaconRateCtl);
 
@@ -676,7 +674,7 @@ webconfig_error_t encode_wifi_global_config(const wifi_global_param_t *global_in
 
     //WpsPin
     cJSON_AddStringToObject(global_obj, "WpsPin", global_info->wps_pin);
-
+    
     // BandsteeringEnable
     cJSON_AddBoolToObject(global_obj, "BandsteeringEnable", (const cJSON_bool)global_info->bandsteering_enable);
 
@@ -1537,6 +1535,56 @@ webconfig_error_t encode_mesh_sta_object(const wifi_vap_info_t *vap_info,
     return webconfig_error_none;
 }
 
+char *hextostring(unsigned int in_len, unsigned char *in, unsigned int out_len, char *out)
+{
+    unsigned int i;
+    unsigned char tmp;
+
+    if (out_len < 2 * in_len + 1) {
+        return NULL;
+    }
+
+    memset(out, 0, out_len);
+
+    for (i = 0; i < in_len; i++) {
+        tmp = in[i] >> 4;
+        if (tmp < 0xa) {
+            out[2 * i] = tmp + 0x30;
+        } else {
+            out[2 * i] = tmp - 0xa + 0x61;
+        }
+
+        tmp = in[i] & 0xf;
+        if (tmp < 0xa) {
+            out[2 * i + 1] = tmp + 0x30;
+        } else {
+            out[2 * i + 1] = tmp - 0xa + 0x61;
+        }
+    }
+
+    return out;
+}
+
+webconfig_error_t encode_frame_data(cJSON *obj_assoc_client, frame_data_t *frame)
+{
+    char assoc_frame_string[MAX_FRAME_SZ * 2 + 1];
+
+    memset(assoc_frame_string, 0, sizeof(assoc_frame_string));
+
+    if (frame->frame.len != 0) {
+        hextostring(frame->frame.len, frame->data, MAX_FRAME_SZ * 2 + 1, assoc_frame_string);
+    } else {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Frame Data is empty.\n", __func__, __LINE__);
+        return webconfig_error_none;
+    }
+
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Frame Data:\"%s\" Length:%u\n", __func__, __LINE__,
+        assoc_frame_string, strlen(assoc_frame_string));
+    cJSON_AddStringToObject(obj_assoc_client, "FrameData", assoc_frame_string);
+
+    return webconfig_error_none;
+}
+
 webconfig_error_t encode_associated_client_object(rdk_wifi_vap_info_t *rdk_vap_info, cJSON *assoc_array, assoclist_type_t assoclist_type)
 {
     bool print_assoc_client = false;
@@ -1619,6 +1667,11 @@ webconfig_error_t encode_associated_client_object(rdk_wifi_vap_info_t *rdk_vap_i
                 cJSON_AddNumberToObject(obj_assoc_client, "FailedRetransCount", assoc_dev_data->dev_stats.cli_FailedRetransCount);
                 cJSON_AddNumberToObject(obj_assoc_client, "RetryCount", assoc_dev_data->dev_stats.cli_RetryCount);
                 cJSON_AddNumberToObject(obj_assoc_client, "MultipleRetryCount", assoc_dev_data->dev_stats.cli_MultipleRetryCount);
+                if (encode_frame_data(obj_assoc_client, &assoc_dev_data->sta_data.msg_data) !=
+                    webconfig_error_none) {
+                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Encode frame data failed for client %s\n",
+                        __func__, __LINE__, mac_string);
+                }
             }
             assoc_dev_data = hash_map_get_next(devices_map, assoc_dev_data);
         }

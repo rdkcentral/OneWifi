@@ -1623,7 +1623,6 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
         decode_param_allow_empty_string(vap, "WpsConfigPin", param);
         strcpy(vap_info->u.bss_info.wps.pin, param->valuestring);
     }
-
     // BeaconRateCtl
     decode_param_string(vap, "BeaconRateCtl", param);
     strcpy(vap_info->u.bss_info.beaconRateCtl, param->valuestring);
@@ -2183,9 +2182,11 @@ webconfig_error_t decode_wifi_global_config(const cJSON *global_cfg, wifi_global
     decode_param_integer(global_cfg, "VlanCfgVersion", param);
     global_info->vlan_cfg_version = param->valuedouble;
 
-    //WpsPin
+ #ifndef EASY_MESH_NODE
+    // WpsPin
     decode_param_string(global_cfg, "WpsPin", param);
     strcpy(global_info->wps_pin, param->valuestring);
+#endif
 
     // BandsteeringEnable
     decode_param_bool(global_cfg, "BandsteeringEnable", param);
@@ -2652,6 +2653,7 @@ webconfig_error_t decode_radio_curr_operating_classes(const cJSON *obj_radio_set
     obj = cJSON_GetArrayItem(obj_array, 0);
     decode_param_integer(obj, "Class", param);
     oper->operatingClass = param->valuedouble;
+    oper->op_class = param->valuedouble;
     decode_param_integer(obj, "Channel", param);
     // update the channel only if oper->channel is not configured
     // if oper->channel is already populated then don't overwrite.
@@ -2856,6 +2858,7 @@ webconfig_error_t decode_radio_object(const cJSON *obj_radio, rdk_wifi_radio_t *
     // OperatingClass
     decode_param_integer(obj_radio, "OperatingClass", param);
     radio_info->operatingClass = param->valuedouble;
+    radio_info->op_class = param->valuedouble;
 
     // BasicDataTransmitRates
     decode_param_integer(obj_radio, "BasicDataTransmitRates", param);
@@ -3011,6 +3014,71 @@ webconfig_error_t decode_device_info(const cJSON *device_cfg, wifi_platform_prop
     decode_param_string(device_cfg, "AL1905-MAC", param);
     str_to_mac_bytes(param->valuestring,info->al_1905_mac);
 
+    return webconfig_error_none;
+}
+
+unsigned char *stringtohex(unsigned int in_len, char *in, unsigned int out_len, unsigned char *out)
+{
+    unsigned int i;
+    unsigned char tmp1, tmp2;
+
+    if (out_len < in_len / 2) {
+        return NULL;
+    }
+
+    for (i = 0; i < in_len / 2; i++) {
+        if (in[2 * i] <= '9') {
+            tmp1 = (unsigned char)in[2 * i] - 0x30;
+        } else {
+            tmp1 = (unsigned char)in[2 * i] - 0x61 + 0xa;
+        }
+
+        tmp1 = tmp1 << 4;
+
+        if (in[2 * i + 1] <= '9') {
+            tmp2 = (unsigned char)in[2 * i + 1] - 0x30;
+        } else {
+            tmp2 = (unsigned char)in[2 * i + 1] - 0x61 + 0xa;
+        }
+
+        tmp2 &= 0xf;
+
+        out[i] = tmp1 | tmp2;
+    }
+
+    return out;
+}
+
+webconfig_error_t decode_frame_data(cJSON *obj_assoc_client, frame_data_t *frame)
+{
+    char *tmp_assoc_frame_string;
+    unsigned char *out_ptr;
+    cJSON *value_object;
+
+    value_object = cJSON_GetObjectItem(obj_assoc_client, "FrameData");
+    if ((value_object == NULL) || (cJSON_IsString(value_object) == false)) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: FrameData Invalid or not present\n", __func__,
+            __LINE__);
+        return webconfig_error_none;
+    }
+
+    tmp_assoc_frame_string = cJSON_GetStringValue(value_object);
+    if (tmp_assoc_frame_string == NULL || strlen(tmp_assoc_frame_string) == 0) {
+        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: FrameData empty\n", __func__, __LINE__);
+        return webconfig_error_none;
+    }
+
+    memset(frame, 0, sizeof(frame_data_t));
+    out_ptr = stringtohex(strlen(tmp_assoc_frame_string), tmp_assoc_frame_string,
+        sizeof(frame->data), frame->data);
+    if (out_ptr == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Failed converting Framedata to hex\n",
+            __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+    frame->frame.len = strlen(tmp_assoc_frame_string) / 2;
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d Frame Length:%u\n", __func__, __LINE__,
+        frame->frame.len);
     return webconfig_error_none;
 }
 
@@ -3362,6 +3430,12 @@ webconfig_error_t decode_associated_clients_object(webconfig_subdoc_data_t *data
                 return webconfig_error_decode;
             }
             assoc_dev_data.dev_stats.cli_MultipleRetryCount = value_object->valuedouble;
+
+            if (decode_frame_data(assoc_client, &assoc_dev_data.sta_data.msg_data) !=
+                webconfig_error_none) {
+                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Decode frame data failed for client %s\n",
+                    __func__, __LINE__, tmp_mac_key);
+            }
 
             if (associated_devices_map != NULL) {
                 str_tolower(tmp_mac_key);

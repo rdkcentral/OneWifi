@@ -193,6 +193,9 @@ get_sub_string(wifi_channelBandwidth_t bandwidth, char *dest)
         case WIFI_CHANNELBANDWIDTH_160MHZ:
             strncpy(dest, "160", 4);
         break;
+        case WIFI_CHANNELBANDWIDTH_320MHZ:
+            strncpy(dest, "320", 4);
+        break;
         case WIFI_CHANNELBANDWIDTH_80_80MHZ:
             /* TODO */
             strncpy(dest, "80", 3);
@@ -344,7 +347,7 @@ int whix_upload_ap_telemetry_pmf()
     // "header":  "WIFI_INFO_PMF_ENABLE"
     // "content": "WiFi_INFO_PMF_enable:"
     // "type": "wifihealth.txt",
-    get_vap_dml_parameters(MFP_FEATURE_STATUS, &bFeatureMFPConfig);
+    bFeatureMFPConfig = mgr->global_config.global_parameters.mfp_config_feature;
     rc = sprintf_s(telemetry_buf, sizeof(telemetry_buf), "%s", bFeatureMFPConfig?"true":"false");
     if(rc < EOK)
     {
@@ -2301,11 +2304,12 @@ void reconfigure_whix_interval(wifi_app_t *app, wifi_event_t *event)
 
 static void wps_enable_telemetry(wifi_app_t *app, wifi_event_t *event)
 {
-    bool enable = 0;
+#ifdef FEATURE_SUPPORT_WPS
     unsigned int radio_index = 0;
     unsigned int vap_index = 0;
     int vap_array_index = 0;
     int band = 0;
+    bool enable = 0;
     char tmp[128];
     FILE *wifihealth_fp = NULL;
     webconfig_subdoc_data_t *webconfig_data = NULL;
@@ -2357,9 +2361,11 @@ static void wps_enable_telemetry(wifi_app_t *app, wifi_event_t *event)
                  fprintf(wifihealth_fp, "%s RDKB_WPS_ENABLED_%d %s\n", tmp, radio_index+1, enable ? "TRUE":"FALSE");
                  app->data.u.whix.wps_enabled[radio_index] = enable;
              }
+
         }
     }
     fclose(wifihealth_fp);
+#endif
 }
 
 void handle_whix_command_event(wifi_app_t *app, wifi_event_t *event)
@@ -2555,7 +2561,9 @@ int whix_init(wifi_app_t *app, unsigned int create_flag)
                  wifi_util_error_print(WIFI_APPS,"%s:%d: Failed to get vap_array_index for vap index %u\n", __func__, __LINE__, vap_index);
                  continue;
              }
+#ifdef FEATURE_SUPPORT_WPS
              app->data.u.whix.wps_enabled[radio_index] = wifi_mgr->radio_config[radio_index].vaps.vap_map.vap_array[vap_array_index].u.bss_info.wps.enable;
+#endif
         }
     }
     app->data.u.whix.sched_handler_id = 0;

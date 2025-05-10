@@ -250,30 +250,6 @@ CosaDmlWiFi_EnableTelnet
 ANSC_STATUS
 CosaDmlWiFi_setWebConfig(char *webconfstr, int size,uint8_t ssid);
 
-ANSC_STATUS
-CosaDmlWiFi_GetGoodRssiThresholdValue( int  *piRssiThresholdValue );
-
-ANSC_STATUS
-CosaDmlWiFi_GetAssocCountThresholdValue( int  *piAssocCountThresholdValue );
-
-ANSC_STATUS
-CosaDmlWiFi_GetAssocMonitorDurationValue( int  *piAssocMonitorDurationValue );
-
-ANSC_STATUS
-CosaDmlWiFi_GetAssocGateTimeValue( int  *piAssocGateTimeValue );
-
-ANSC_STATUS
-CosaDmlWiFi_GetRapidReconnectThresholdValue(ULONG vAPIndex, int	*rapidReconnThresholdValue );
-
-ANSC_STATUS
-CosaDmlWiFi_GetRapidReconnectCountEnable(ULONG vAPIndex, BOOLEAN *pbReconnectCountEnable, BOOLEAN usePersistent );
-
-ANSC_STATUS
-CosaDmlWiFi_GetApMFPConfigValue( ULONG vAPIndex, char *pMFPConfig );
-
-ANSC_STATUS
-CosaDmlWiFi_GetFeatureMFPConfigValue( BOOLEAN *pbFeatureMFPConfig );
-
 struct wifiDataTxRateHalMap
 {
     wifi_bitrate_t  DataTxRateEnum;
