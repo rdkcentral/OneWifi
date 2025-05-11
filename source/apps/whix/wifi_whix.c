@@ -63,6 +63,7 @@
     arg[4], \
     arg[5]
 #define AP_UNABLE_TO_HANDLE_ADDITIONAL_ASSOCIATIONS 17
+static unsigned int radio_up_arr[MAX_NUM_RADIOS]={0};
 static unsigned int vap_up_arr[MAX_VAP]={0};
 static unsigned char vap_nas_status[MAX_VAP]={0};
 static unsigned int vap_iteration=0;
@@ -1037,7 +1038,6 @@ static void logVAPUpStatus()
     char tmp[128] = { 0 };
     errno_t rc = -1;
     UINT vap_index = 0;
-    static int radio_up_arr[MAX_NUM_RADIOS] = {0};
     wifi_mgr_t *mgr = get_wifimgr_obj();
 
     wifi_util_dbg_print(WIFI_APPS, "Entering %s:%d \n", __FUNCTION__, __LINE__);
