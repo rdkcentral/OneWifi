@@ -1072,15 +1072,6 @@ void kick_all_macs(int vap_index, int timeout, rdk_wifi_vap_info_t* rdk_vap_info
     }
 
     memset(assoc_maclist, 0, 2048);
-    pthread_mutex_lock(rdk_vap_info->associated_devices_lock);
-    if (rdk_vap_info->associated_devices_map == NULL) {
-        pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
-        wifi_util_error_print(WIFI_CTRL, "%s:%d Error Associated devices hash map is NULL\n",
-            __func__, __LINE__);
-        free(kick_details);
-        free(assoc_maclist);
-        return;
-    }
     assoc_dev_data = hash_map_get_first(rdk_vap_info->associated_devices_map);
     while (assoc_dev_data != NULL) {
         memset(mac_str, 0, sizeof(mac_addr_str_t));
@@ -1119,7 +1110,6 @@ void kick_all_macs(int vap_index, int timeout, rdk_wifi_vap_info_t* rdk_vap_info
         strcat(assoc_maclist, ",");
         assoc_dev_data = hash_map_get_next(rdk_vap_info->associated_devices_map, assoc_dev_data);
     }
-    pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
     int len = strlen(assoc_maclist);
     if (len > 0) {
         assoc_maclist[len-1] = '\0';
