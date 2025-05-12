@@ -1064,7 +1064,7 @@ static void logVAPUpStatus()
         wifi_util_dbg_print(WIFI_APPS,
             "vap_index is %d vap_iteration is %d and vap_up_arr value is %d\n", vap_index,
             vap_iteration, vap_up_arr[vap_index]);
-            int radio_index =  VAP_RADIO_INDEX(mgr->hal_cap, vap_index);
+            int radio_index =  RADIO_INDEX(mgr->hal_cap, vap_index);
             int radio_active_count = radio_up_arr[radio_index];
             if (radio_active_count > 0) {
                 vapup_percentage = (vap_up_arr[vap_index] * 100) / radio_active_count;
@@ -2019,7 +2019,7 @@ int capture_vapup_status()
 
     for (i = 0; i < (int)getTotalNumberVAPs(); i++) {
         UINT vap_index = VAP_INDEX(mgr->hal_cap, i);
-        int radio_index = VAP_RADIO_INDEX(mgr->hal_cap, i);
+        int radio_index = RADIO_INDEX(mgr->hal_cap, i);
         vap_info = getVapInfo(vap_index);
         if (vap_info == NULL) {
             wifi_util_error_print(WIFI_APPS, "%s:%d: vap_info is NULL for vap_index : %d\r\n",
