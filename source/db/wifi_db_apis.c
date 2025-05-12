@@ -6722,9 +6722,9 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         strncpy(cfg.u.bss_info.beaconRateCtl,"6Mbps",sizeof(cfg.u.bss_info.beaconRateCtl)-1);
         cfg.vap_mode = wifi_vap_mode_ap;
         /*TODO: Are values correct? */
-        cfg.u.bss_info.mld_info.common_info.mld_enable = 1;
-        cfg.u.bss_info.mld_info.common_info.mld_id = 1;
-        cfg.u.bss_info.mld_info.common_info.mld_link_id = 1;
+        cfg.u.bss_info.mld_info.common_info.mld_enable = 0;
+        cfg.u.bss_info.mld_info.common_info.mld_id = 255;
+        cfg.u.bss_info.mld_info.common_info.mld_link_id = 255;
         cfg.u.bss_info.mld_info.common_info.mld_apply = 1;
         memset(&cfg.u.bss_info.mld_info.common_info.mld_addr, 0, sizeof(cfg.u.bss_info.mld_info.common_info.mld_addr));
         if (isVapPrivate(vap_index)) {
