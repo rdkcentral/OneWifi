@@ -706,6 +706,7 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
     rdk_wifi_vap_info_t *mgr_rdk_vap_info, *rdk_vap_info;
     rdk_wifi_vap_info_t tgt_rdk_vap_info;
     int ret = 0;
+    bool is_vap_restart_required = true;
 
     for (i = 0; i < size; i++) {
 
@@ -835,15 +836,28 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
             memset(&tgt_rdk_vap_info, 0, sizeof(rdk_wifi_vap_info_t));
             memcpy(&tgt_rdk_vap_info, rdk_vap_info, sizeof(rdk_wifi_vap_info_t));
 
-            start_wifi_sched_timer(vap_info->vap_index, ctrl, wifi_vap_sched);
-
-            if (svc->update_fn(svc, tgt_radio_idx, p_tgt_vap_map, &tgt_rdk_vap_info) != RETURN_OK) {
-                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: failed to apply\n", __func__, __LINE__);
-                stop_wifi_sched_timer(vap_info->vap_index, ctrl, wifi_vap_sched);
-                free(p_tgt_vap_map);
-                p_tgt_vap_map = NULL;
-                return RETURN_ERR;
+#if defined(EASY_MESH_NODE) || defined(EASY_MESH_COLOCATED_NODE)
+            if(IS_STR_CHANGED(mgr_vap_info->u.bss_info.ssid, vap_info->u.bss_info.ssid,sizeof(vap_info->u.bss_info.ssid))
+                            || IS_STR_CHANGED(mgr_vap_info->u.bss_info.security.u.key.key, vap_info->u.bss_info.security.u.key.key,sizeof(vap_info->u.bss_info.security.u.key.key)) 
+                            || IS_CHANGED(mgr_vap_info->u.bss_info.security.mode, vap_info->u.bss_info.security.mode)){
+            //To-do - handle multiple paramater check based on need
+                is_vap_restart_required = true;
             }
+            else{
+                is_vap_restart_required = false;
+            }
+#endif
+
+            if(is_vap_restart_required == true) {
+                start_wifi_sched_timer(vap_info->vap_index, ctrl, wifi_vap_sched);
+                if (svc->update_fn(svc, tgt_radio_idx, p_tgt_vap_map, &tgt_rdk_vap_info) != RETURN_OK) {
+                    wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: failed to apply\n", __func__, __LINE__);
+                    stop_wifi_sched_timer(vap_info->vap_index, ctrl, wifi_vap_sched);
+                    free(p_tgt_vap_map);
+                    p_tgt_vap_map = NULL;
+                    return RETURN_ERR;
+                }
+	    }
 
             memset(update_status, 0, sizeof(update_status));
             snprintf(update_status, sizeof(update_status), "%s %s", vap_names[i], (ret == RETURN_OK)?"success":"fail");
