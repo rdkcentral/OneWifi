@@ -78,11 +78,6 @@ extern "C" {
 #define WIFI_NOTIFY_DENY_TCM_ASSOCIATION               "Device.WiFi.ConnectionControl.TcmClientDenyAssociation"
 #define WIFI_STUCK_DETECT_FILE_NAME         "/nvram/wifi_stuck_detect"
 
-#define MAX_OPERATING_CLASS 48
-#define MAX_CHANNEL_BW_LEN 16
-#define MAX_NEIGHBORS 32
-#define MAX_RESULTS 32
-
 #define PLAN_ID_LENGTH     38
 #define MAX_STEP_COUNT  32 /*Active Measurement Step Count */
 #define  MAC_ADDRESS_LENGTH  13
@@ -145,7 +140,8 @@ typedef enum {
     wifi_app_inst_core = wifi_app_inst_base << 14,
     wifi_app_inst_ocs = wifi_app_inst_base << 15,
     wifi_app_inst_easyconnect = wifi_app_inst_base << 16,
-    wifi_app_inst_max = wifi_app_inst_base << 17
+    wifi_app_inst_sta_mgr = wifi_app_inst_base << 17,
+    wifi_app_inst_max = wifi_app_inst_base << 18
 } wifi_app_inst_t;
 
 typedef struct {
@@ -185,6 +181,8 @@ typedef void *wifi_analytics_data_t;
 #define BSS_MAX_NUM_STA_XB8      100     /**< Max supported stations for TCHX8 specific platform */
 #define BSS_MAX_NUM_STATIONS     100     /**< Max supported stations by RDK-B firmware which would varies based on platform */
 #define BSS_MAX_NUM_STA_HOTSPOT_CBRV2    15      /**< Max supported stations for hotspot vaps in CBR2 platform */
+
+#define STA_MAX_BSS_ASSOCIATIONS  1
 
 typedef unsigned char   mac_addr_t[MAC_ADDR_LEN];
 typedef signed short    rssi_t;
@@ -263,6 +261,23 @@ typedef struct {
     wifi_csi_data_t csi;
 } __attribute__((packed)) wifi_csi_dev_t;
 
+#ifdef EM_APP
+typedef struct wifi_hal_rrm_request {
+    uint8_t dialog_token;
+    uint8_t duration;
+    bool duration_mandatory;
+    uint8_t op_class;
+    uint8_t channel;
+} wifi_hal_rrm_request_t;
+
+typedef struct {
+    mac_address_t sta_mac;
+    unsigned int ap_index;
+    size_t len;
+    wifi_BeaconReport_t *data;
+} beacon_repo_data_t;
+#endif
+
 // data collection api type
 typedef enum {
     mon_stats_type_radio_channel_stats=1,
@@ -291,6 +306,7 @@ typedef struct {
     unsigned int ap_index;
     mac_addr_t dest_addr;
     unsigned int frequency;
+    unsigned int wait_time_ms;
     unsigned int frame_len;
     uint8_t frame_data[0];
 } __attribute__((packed)) action_frame_params_t;
@@ -589,6 +605,7 @@ typedef struct {
     hash_map_t              *acl_map;
     hash_map_t              *associated_devices_map; //Full
     hash_map_t              *associated_devices_diff_map; //Add,Remove
+    pthread_mutex_t         *associated_devices_lock;
     int                     kick_device_task_counter;
     bool                    kick_device_config_change;
     bool                    is_mac_filter_initialized;
@@ -839,7 +856,6 @@ typedef struct {
     unsigned int    rapid_reconnects;
     bool            updated;
     wifi_associated_dev3_t dev_stats;
-    wifi_associated_dev3_t dev_stats_last;
     unsigned int    reconnect_count;
     long            assoc_monitor_start_time;
     long            gate_time;
@@ -1066,10 +1082,133 @@ typedef struct {
     unsigned int            radio_Temperature;
 } radio_data_t;
 
+#ifdef EM_APP
+
+#define EM_MAX_OPERATING_CLASS 48
+#define EM_MAX_CHANNEL_BW_LEN 16
+#define EM_MAX_NEIGHBORS 16
+#define EM_MAX_RESULTS 32
+#define EM_MAX_CHANNELS 64
+
+typedef char marker_name[32];
+
+typedef struct {
+    int interval;
+    marker_name managed_client_marker;
+} ap_metrics_policy_t;
+
+#define EM_MAX_DIS_STA 30
+typedef struct {
+    int sta_count;
+    mac_addr_t disallowed_sta[EM_MAX_DIS_STA];
+} steering_disallowed_policy_t;
+
+typedef struct {
+    bssid_t bssid;
+    bool profile_1_bsta_disallowed;
+    bool profile_2_bsta_disallowed;
+} backhaul_bss_config_policy_t;
+
+typedef struct {
+    bool report_independent_channel_scan;
+} channel_scan_reporting_policy_t;
+
+typedef struct {
+    mac_addr_t ruid;
+    int sta_rcpi_threshold;
+    int sta_rcpi_hysteresis;
+    int ap_util_threshold;
+    bool traffic_stats;
+    bool link_metrics;
+    bool sta_status;
+} radio_metrics_policy_t;
+
+#define EM_MAX_RADIO_POLICY 4
+typedef struct {
+    int radio_count;
+    radio_metrics_policy_t radio_metrics_policy[EM_MAX_RADIO_POLICY];
+} radio_metrics_policies_t;
+
+typedef struct {
+    ap_metrics_policy_t ap_metric_policy;
+    steering_disallowed_policy_t local_steering_dslw_policy;
+    steering_disallowed_policy_t btm_steering_dslw_policy;
+    backhaul_bss_config_policy_t backhaul_bss_config_policy;
+    channel_scan_reporting_policy_t channel_scan_reporting_policy;
+    radio_metrics_policies_t radio_metrics_policies;
+} em_config_t;
+
+typedef struct {
+    mac_addr_t bssid;
+    int time_delta;
+    int est_mac_rate_down;
+    int est_mac_rate_up;
+    int rcpi;
+} assoc_sta_link_metrics_data_t;
+
+typedef struct {
+    int num_bssid;
+    assoc_sta_link_metrics_data_t assoc_sta_link_metrics_data[STA_MAX_BSS_ASSOCIATIONS];
+} assoc_sta_link_metrics_t;
+
+typedef struct {
+    int reason_code;
+    mac_addr_t sta_mac;
+} error_code_t;
+
+typedef struct {
+    mac_addr_t bssid;
+    int last_data_downlink_rate;
+    int last_data_uplink_rate;
+    int utilization_receive;
+    int utilization_transmit;
+} assoc_sta_ext_link_metrics_data_t;
+
+typedef struct {
+    int num_bssid;
+    assoc_sta_ext_link_metrics_data_t assoc_sta_ext_link_metrics_data[STA_MAX_BSS_ASSOCIATIONS];
+} assoc_sta_ext_link_metrics_t;
+
+typedef struct {
+    mac_addr_t sta_mac;
+    unsigned char client_type[32];
+    assoc_sta_link_metrics_t assoc_sta_link_metrics;
+    error_code_t error_code;
+    assoc_sta_ext_link_metrics_t assoc_sta_ext_link_metrics;
+} per_sta_metrics_t;
+
+typedef struct {
+    int vap_index;
+    unsigned int sta_count;
+    per_sta_metrics_t *per_sta_metrics;
+} em_assoc_sta_link_metrics_rsp_t;
+
+typedef struct {
+    unsigned char dialog_token;
+    size_t size;
+    wifi_BeaconReport_t *beacon_repo;
+} wifi_hal_rrm_report_t;
+
+#define EM_MAX_BR_DATA 400
+typedef struct {
+    mac_address_t mac_addr;
+    unsigned int data_len;
+    unsigned char data[EM_MAX_BR_DATA];
+    unsigned int ap_index;
+    unsigned int num_br_data;
+    int sched_handler_id;
+    unsigned char dialog_token;
+} sta_beacon_report_reponse_t;
+
+typedef struct {
+    mac_address_t mac_addr;
+    unsigned char client_type[32];
+} sta_client_info_t;
+
 typedef struct {
     UCHAR operating_class;
     UINT num_channels;
-    UCHAR channels[MAX_CHANNELS];
+    UCHAR channels[EM_MAX_CHANNELS];
 } operating_class_t;
 
 typedef struct {
@@ -1077,20 +1216,18 @@ typedef struct {
     UINT num_radios;
     mac_address_t ruid;
     UINT num_operating_classes;
-    operating_class_t operating_classes[MAX_OPERATING_CLASS];
+    operating_class_t operating_classes[EM_MAX_OPERATING_CLASS];
 } channel_scan_request_t;
 
 typedef struct {
     bssid_t bssid;
     ssid_t ssid;
     CHAR signal_strength;
-    CHAR channel_bandwidth[MAX_CHANNEL_BW_LEN];
+    CHAR channel_bandwidth[EM_MAX_CHANNEL_BW_LEN];
     UCHAR bss_load_element_present;
     UCHAR bss_color;
     UCHAR channel_utilization;
     USHORT station_count;
-    UINT aggregate_scan_duration;
-    UCHAR scan_type;  // 0: Passive, 1: Active
 } neighbor_bss_t;
 
 typedef struct {
@@ -1101,13 +1238,64 @@ typedef struct {
     UCHAR utilization;
     UCHAR noise;
     USHORT num_neighbors;
-    neighbor_bss_t neighbors[MAX_NEIGHBORS];
+    neighbor_bss_t neighbors[EM_MAX_NEIGHBORS];
+    UINT aggregate_scan_duration;
+    UCHAR scan_type;  // 0: Passive, 1: Active
 } channel_scan_result_t;
 
 typedef struct {
+    mac_address_t ruid;
     UINT num_results;
-    channel_scan_result_t results[MAX_RESULTS];
+    channel_scan_result_t results[EM_MAX_RESULTS];
 } channel_scan_response_t;
+
+typedef struct {
+    mac_addr_t sta_mac;
+    int bytes_sent;
+    int bytes_rcvd;
+    int packets_sent;
+    int packets_rcvd;
+    int tx_packtes_errs;
+    int rx_packtes_errs;
+    int retrans_cnt;
+} assoc_sta_traffic_stats_t;
+
+typedef struct {
+    bssid_t bssid;
+    int channel_util;
+    int num_of_assoc_stas;
+    bool inc_esp_ac_be;
+    bool inc_esp_ac_bk;
+    bool inc_esp_ac_vo;
+    bool inc_esp_ac_vi;
+    int esp_ac_be;
+    int esp_ac_bk;
+    int esp_ac_vo;
+    int esp_ac_vi;
+    // Extended report
+    int unicast_bytes_sent;
+    int unicast_bytes_rcvd;
+    int multicast_bytes_sent;
+    int multicast_bytes_rcvd;
+    int broadcast_bytes_sent;
+    int broadcast_bytes_rcvd;
+} ap_metrics_t;
+
+typedef struct {
+    ap_metrics_t vap_metrics;
+    int sta_cnt;
+    bool is_sta_traffic_stats_enabled;
+    assoc_sta_traffic_stats_t *sta_traffic_stats;
+    bool is_sta_link_metrics_enabled;
+    per_sta_metrics_t *sta_link_metrics;
+} em_vap_metrics_t;
+
+typedef struct {
+    int radio_index;
+    em_vap_metrics_t vap_reports[MAX_NUM_VAP_PER_RADIO];
+} em_ap_metrics_report_t;
+
+#endif
 
 #ifdef __cplusplus
 }

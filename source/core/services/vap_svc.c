@@ -252,7 +252,7 @@ int vap_svc_start_stop(vap_svc_t *svc, bool enable)
                 tgt_vap_map->vap_array[tgt_vap_map->num_vaps].u.bss_info.enabled &=
                     tgt_rdk_vaps[tgt_vap_map->num_vaps].exists;
             }
-#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
             if(tgt_rdk_vaps[tgt_vap_map->num_vaps].exists == false) {
 #if defined(_SR213_PRODUCT_REQ_)
                 if(vap_map->vap_array[j].vap_index != 2 && vap_map->vap_array[j].vap_index != 3) {
@@ -264,7 +264,7 @@ int vap_svc_start_stop(vap_svc_t *svc, bool enable)
                 tgt_rdk_vaps[tgt_vap_map->num_vaps].exists = true;
 #endif /* _SR213_PRODUCT_REQ_ */
             }
-#endif /* defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)*/
+#endif /* defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)*/
 
             tgt_vap_map->num_vaps++;
         }

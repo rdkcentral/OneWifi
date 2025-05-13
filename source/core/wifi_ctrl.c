@@ -73,7 +73,7 @@ void deinit_wifi_ctrl(wifi_ctrl_t *ctrl)
     }
 
     pthread_mutexattr_destroy(&ctrl->attr);
-    pthread_mutex_destroy(&ctrl->lock);
+    pthread_mutex_destroy(&ctrl->queue_lock);
     pthread_cond_destroy(&ctrl->cond);
     pthread_mutex_destroy(&ctrl->events_bus_data.events_bus_lock);
 }
@@ -146,12 +146,15 @@ int get_ap_index_from_clientmac(mac_address_t mac_addr)
                 wifi_util_error_print(WIFI_CTRL,"%s:%d NULL pointers\n", __func__,__LINE__);
                 return -1;
             }
+            pthread_mutex_lock(rdk_vap_info->associated_devices_lock);
             if (rdk_vap_info->associated_devices_map) {
                 assoc_dev_data = hash_map_get(rdk_vap_info->associated_devices_map, mac_str);
                 if (assoc_dev_data != NULL) {
+                    pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
                     return vap_index;
                 }
             }
+            pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
         }
     }
     return -1;
@@ -290,7 +293,7 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
     int rc = 0;
     wifi_event_t *event = NULL;
 
-    pthread_mutex_lock(&ctrl->lock);
+    pthread_mutex_lock(&ctrl->queue_lock);
     while (ctrl->exit_ctrl == false) {
 
         clock_gettime(CLOCK_MONOTONIC, &tv_now);
@@ -304,7 +307,10 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
             }
         }
 
-        rc = pthread_cond_timedwait(&ctrl->cond, &ctrl->lock, &time_to_wait);
+        rc = 0;
+        if (queue_count(ctrl->queue) == 0) {
+            rc = pthread_cond_timedwait(&ctrl->cond, &ctrl->queue_lock, &time_to_wait);
+        }
 
         if ((rc == 0) || (queue_count(ctrl->queue) != 0)) {
             while (queue_count(ctrl->queue)) {
@@ -312,7 +318,7 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
                 if (event == NULL) {
                     continue;
                 }
-                pthread_mutex_unlock(&ctrl->lock);
+                pthread_mutex_unlock(&ctrl->queue_lock);
                 switch (event->event_type) {
                     case wifi_event_type_webconfig:
                         handle_webconfig_event(ctrl, event->u.core_data.msg, event->u.core_data.len, event->sub_type);
@@ -349,9 +355,10 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
                 destroy_wifi_event(event);
 
                 clock_gettime(CLOCK_MONOTONIC, &ctrl->last_signalled_time);
-                pthread_mutex_lock(&ctrl->lock);
+                pthread_mutex_lock(&ctrl->queue_lock);
             }
         } else if (rc == ETIMEDOUT) {
+            pthread_mutex_unlock(&ctrl->queue_lock);
             clock_gettime(CLOCK_MONOTONIC, &ctrl->last_polled_time);
 
             /*
@@ -365,12 +372,13 @@ void ctrl_queue_loop(wifi_ctrl_t *ctrl)
 
             /*Run the scheduler*/
             scheduler_execute(ctrl->sched, ctrl->last_polled_time, (ctrl->poll_period*1000));
+            pthread_mutex_lock(&ctrl->queue_lock);
         } else {
             wifi_util_dbg_print(WIFI_CTRL,"RDK_LOG_WARN, WIFI %s: Invalid Return Status %d\n",__FUNCTION__,rc);
             continue;
         }
     }
-    pthread_mutex_unlock(&ctrl->lock);
+    pthread_mutex_unlock(&ctrl->queue_lock);
 
     return;
 }
@@ -438,6 +446,13 @@ int start_radios(rdk_dev_mode_type_t mode)
         wifi_util_error_print(WIFI_CTRL,"WIFI %s : Number of Radios %d exceeds supported %d Radios \n",__FUNCTION__, getNumberRadios(), MAX_NUM_RADIOS);
         return RETURN_ERR;
     }
+    //Ensure RBUS event not missed in restart. Direct decode call as it is not conventional subdoc.
+    void* keep_out_json = bus_get_keep_out_json();
+    if (keep_out_json != NULL)
+    { 
+        wifi_util_dbg_print(WIFI_CTRL,"%s:%d ACS KeepOut json_schema at boot up time = %s\n",__FUNCTION__,__LINE__,(char*)keep_out_json);
+        process_acs_keep_out_channels_event((char*)keep_out_json);
+    }
 
     for (index = 0; index < num_of_radios; index++) {
         wifi_radio_oper_param = (wifi_radio_operationParam_t *)get_wifidb_radio_map(index);
@@ -472,7 +487,7 @@ int start_radios(rdk_dev_mode_type_t mode)
                     if ((is_wifi_channel_valid(wifi_prop, wifi_radio_oper_param->band, wifi_radio_oper_param->channel)) != RETURN_OK) {
                         wifi_radio_oper_param->channel = dfs_fallback_channel(wifi_prop, wifi_radio_oper_param->band);
                     }
-                    wifi_radio_oper_param->op_class = 1;
+                    wifi_radio_oper_param->operatingClass = 1;
                     wifi_util_info_print(WIFI_CTRL,
                         "%s:%d Calling switch_dfs_channel for dfs_chan:%d \n", __func__, __LINE__,
                         dfs_channel_data->dfs_channel);
@@ -483,7 +498,7 @@ int start_radios(rdk_dev_mode_type_t mode)
                     if ((is_wifi_channel_valid(wifi_prop, wifi_radio_oper_param->band, wifi_radio_oper_param->channel)) != RETURN_OK) {
                         wifi_radio_oper_param->channel = dfs_fallback_channel(wifi_prop, wifi_radio_oper_param->band);
                     }
-                    wifi_radio_oper_param->op_class = 1;
+                    wifi_radio_oper_param->operatingClass = 1;
                 }
             }
 
@@ -640,7 +655,15 @@ void bus_get_vap_init_parameter(const char *name, unsigned int *ret_val)
         *ret_val = DEVICE_TUNNEL_DOWN; // tunnel down
     }
 
-    while ((rc = get_bus_descriptor()->bus_data_get_fn(&ctrl->handle, name, &data)) !=
+#if defined EASY_MESH_NODE || defined EASY_MESH_COLOCATED_NODE
+   if (ctrl->network_mode == rdk_dev_mode_type_em_node ) {
+            wifi_util_dbg_print(WIFI_CTRL, "%s:%d Don't need to proceed for DML fetch for RemoteAgent case, NetworkMode: %d\n",
+                __func__, __LINE__, ctrl->network_mode);
+            return;
+   }
+#endif
+
+   while ((rc = get_bus_descriptor()->bus_data_get_fn(&ctrl->handle, name, &data)) !=
         bus_error_success) {
         sleep(1);
         total_slept++;
@@ -857,6 +880,7 @@ bool get_notify_wifi_from_psm(char *PsmParamName)
             psm_notify_flag = false;
         }
     }
+    get_bus_descriptor()->bus_data_free_fn(&data);
     wifi_util_dbg_print(WIFI_CTRL, "get_notify_wifi_from_psm ends: %d\n", rc);
 
     return psm_notify_flag;
@@ -1149,6 +1173,9 @@ int mgmt_wifi_frame_recv(int ap_index, mac_address_t sta_mac, uint8_t *frame, ui
         mgmt_frame.frame.len = len;
         evt_subtype = wifi_event_hal_reassoc_rsp_frame;
     } else if (type == WIFI_MGMT_FRAME_TYPE_ACTION) {
+        memcpy(mgmt_frame.data, frame, len);
+        mgmt_frame.frame.len = len;
+        evt_subtype = wifi_event_hal_dpp_public_action_frame;
         memset(&data, 0, sizeof(wifi_monitor_data_t));
         data.ap_index = ap_index;
         data.u.msg.frame.len = len;
@@ -1279,7 +1306,7 @@ int init_wifi_ctrl(wifi_ctrl_t *ctrl)
     pthread_condattr_destroy(&cond_attr);
     pthread_mutexattr_init(&ctrl->attr);
     pthread_mutexattr_settype(&ctrl->attr, PTHREAD_MUTEX_RECURSIVE);
-    pthread_mutex_init(&ctrl->lock, &ctrl->attr);
+    pthread_mutex_init(&ctrl->queue_lock, &ctrl->attr);
     pthread_mutex_init(&ctrl->events_bus_data.events_bus_lock, NULL);
 
     ctrl->poll_period = QUEUE_WIFI_CTRL_TASK_TIMEOUT;
@@ -2040,7 +2067,7 @@ static int bus_check_and_subscribe_events(void* arg)
         (ctrl->device_mode_subscribed == false) || (ctrl->active_gateway_check_subscribed == false) ||
         (ctrl->device_tunnel_status_subscribed == false) || (ctrl->device_wps_test_subscribed == false) ||
         (ctrl->test_device_mode_subscribed == false) || (ctrl->mesh_status_subscribed == false) ||
-        (ctrl->marker_list_config_subscribed == false)
+        (ctrl->marker_list_config_subscribed == false) || (ctrl->mesh_keep_out_chans_subscribed == false)
 #if defined (RDKB_EXTENDER_ENABLED)
         || (ctrl->eth_bh_status_subscribed == false)
 #endif

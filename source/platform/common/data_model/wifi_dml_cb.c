@@ -2163,7 +2163,7 @@ bool ssid_set_param_bool_value(void *obj_ins_context, char *param_name, bool out
             dm_rdk_vap_info->exists = output_value;
         }
 
-#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
         if (output_value == false) {
             wifi_util_error_print(WIFI_DMCLI,"%s:%d User is Trying to disable SSID for vap_index=%d\n", __func__,
                 __LINE__, p_dm_vap_info->vap_index);
@@ -2810,7 +2810,7 @@ bool security_set_param_string_value(void *obj_ins_context, char *param_name, sc
                 p_dm_sec_cfg->mfp = wifi_mfp_cfg_required;
                 break;
             case wifi_security_mode_wpa3_compatibility:
-                l_security_cfg->u.key.type = wifi_security_key_type_psk_sae;
+                p_dm_sec_cfg->u.key.type = wifi_security_key_type_psk_sae;
                 p_dm_sec_cfg->mfp = wifi_mfp_cfg_disabled;
                 break;
             default:

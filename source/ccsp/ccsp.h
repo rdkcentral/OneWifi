@@ -55,7 +55,7 @@ typedef void (* wifi_ccsp_trace_alert_t) (char *format, ...);
 typedef void (* wifi_ccsp_trace_notice_t) (char *format, ...);
 typedef void (* wifi_ccsp_trace_info_t) (char *format, ...);
 typedef void (* wifi_ccsp_trace_debug_t) (char *format, ...);
-typedef char * (* psm_get_value_t) (char *recName, char *strValue);
+typedef char * (* psm_get_value_t) (char *recName, char *strValue, unsigned int str_size);
 typedef int (* psm_set_value_t) (char *recName, char *strValue);
 typedef int (* get_partner_id_t) (char *partner_id);
 
@@ -101,7 +101,7 @@ typedef struct {
     syslog_event("OneWifi", LOG_NOTICE, "%s", logmsg);              \
 }
 
-char *psm_get_value_Rdkb(char *recName, char *strValue);
+char *psm_get_value_Rdkb(char *recName, char *strValue, unsigned int str_size);
 int psm_set_value_Rdkb(char *recName, char *strValue);
 int get_partner_id_Rdkb(char *partner_id);
 
