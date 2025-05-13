@@ -3945,7 +3945,7 @@ int coordinator_check_stats_config(wifi_mon_stats_config_t *mon_stats_config)
         wifi_util_error_print(WIFI_MON, "%s:%d: Failed to get collector list\n", __func__,__LINE__);
         return RETURN_ERR;
     }
-    wifi_util_error_print(WIFI_MON,"SJY %s:%d: The generated collector elem key is %s\n", stats_key);
+    wifi_util_error_print(WIFI_MON,"SJY %s:%d: The generated collector elem key is %s\n", __func__, __LINE__, stats_key);
     collector_elem = (wifi_mon_collector_element_t *)hash_map_get(collector_list, stats_key);
     if (collector_elem == NULL) {
         if (mon_stats_config->req_state == mon_stats_request_state_start) {
