@@ -59,7 +59,7 @@ int generate_radio_channel_clctr_stats_key(wifi_mon_stats_args_t *args, char *ke
 
     memset(key_str, 0, key_len);
 
-    snprintf(key_str, key_len, "%02d-%02d-%02d", mon_stats_type_radio_channel_stats, args->radio_index, args->scan_mode);
+    snprintf(key_str, key_len, "%02d-%02d-%02d-%08d", mon_stats_type_radio_channel_stats, args->radio_index, args->scan_mode, args->app_info);
 
     wifi_util_dbg_print(WIFI_MON, "%s:%d collector stats key: %s\n", __func__,__LINE__, key_str);
     return RETURN_OK;
