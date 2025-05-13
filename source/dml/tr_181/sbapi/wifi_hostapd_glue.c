@@ -690,6 +690,9 @@ static int hostapd_tr181_config_parse_cipher(int encryptionMethod)
         case COSA_DML_WIFI_AP_SEC_AES_TKIP:
             strcpy(conf_value, "TKIP CCMP");
             break;
+        case COSA_DML_WIFI_AP_SEC_AES_GCMP:
+            strcpy(conf_value, "CCMP GCMP-256");
+            break;
         default:
             wpa_printf(MSG_ERROR, "Wrong encryption method configured\n");
             return -1;
