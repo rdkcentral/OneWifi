@@ -6668,6 +6668,20 @@ AccessPoint_GetParamBoolValue
         return TRUE;
     }
 
+    if( AnscEqualString(ParamName, "MLD_Enable", TRUE))
+    {
+        /* collect value */
+        *pBool = pcfg->u.bss_info.mld_info.common_info.mld_enable;
+        return TRUE;
+    }
+
+    if( AnscEqualString(ParamName, "MLD_Apply", TRUE))
+    {
+        /* collect value */
+        *pBool = pcfg->u.bss_info.mld_info.common_info.mld_apply;
+        return TRUE;
+    }
+
     if( AnscEqualString(ParamName, "WMMCapability", TRUE))
     {
         /* collect value */
@@ -6892,6 +6906,16 @@ AccessPoint_GetParamIntValue
     if( AnscEqualString(ParamName, "X_CISCO_COM_BssMaxNumSta", TRUE))
     {
         *pInt = pcfg->u.bss_info.bssMaxSta;
+        return TRUE;
+    }
+    if( AnscEqualString(ParamName, "MLD_ID", TRUE))
+    {
+        *pInt = pcfg->u.bss_info.mld_info.common_info.mld_id;
+        return TRUE;
+    }
+    if( AnscEqualString(ParamName, "MLD_Link_ID", TRUE))
+    {
+        *pInt = pcfg->u.bss_info.mld_info.common_info.mld_link_id;
         return TRUE;
     }
     if( AnscEqualString(ParamName, "X_CISCO_COM_BssUserStatus", TRUE))
@@ -7171,6 +7195,38 @@ AccessPoint_GetParamStringValue
         return 0;
 
     }
+
+    if( AnscEqualString(ParamName, "MLD_Addr", TRUE))
+    {
+        char buff[24] = {0};
+        if (isVapSTAMesh(pcfg->vap_index)) {
+            _ansc_sprintf
+            (
+                buff,
+                "%02X:%02X:%02X:%02X:%02X:%02X",
+                0x0,
+                0x0,
+                0x0,
+                0x0,
+                0x0,
+                0x0
+            );
+        } else {
+            _ansc_sprintf
+            (
+                buff,
+                "%02X:%02X:%02X:%02X:%02X:%02X",
+                pcfg->u.bss_info.mld_info.common_info.mld_addr[0],
+                pcfg->u.bss_info.mld_info.common_info.mld_addr[1],
+                pcfg->u.bss_info.mld_info.common_info.mld_addr[2],
+                pcfg->u.bss_info.mld_info.common_info.mld_addr[3],
+                pcfg->u.bss_info.mld_info.common_info.mld_addr[4],
+                pcfg->u.bss_info.mld_info.common_info.mld_addr[5]
+            );
+        }
+        memcpy(pValue, buff, strlen(buff)+1);
+        return 0;
+     }
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     return -1;
 }
@@ -7293,6 +7349,32 @@ AccessPoint_SetParamBoolValue
         
         /* save update to backup */
         vapInfo->u.bss_info.showSsid = bValue;
+        set_dml_cache_vap_config_changed(instance_number - 1);
+        return TRUE;
+    }
+
+    if( AnscEqualString(ParamName, "MLD_Enable", TRUE))
+    {
+        if ( vapInfo->u.bss_info.mld_info.common_info.mld_enable == bValue )
+        {
+            return TRUE;
+        }
+
+        /* save update to backup */
+        vapInfo->u.bss_info.mld_info.common_info.mld_enable = bValue;
+        set_dml_cache_vap_config_changed(instance_number - 1);
+        return TRUE;
+    }
+
+    if( AnscEqualString(ParamName, "MLD_Apply", TRUE))
+    {
+        if ( vapInfo->u.bss_info.mld_info.common_info.mld_apply == bValue )
+        {
+            return TRUE;
+        }
+
+        /* save update to backup */
+        vapInfo->u.bss_info.mld_info.common_info.mld_apply = bValue;
         set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
@@ -7613,6 +7695,29 @@ AccessPoint_SetParamIntValue
         return (TRUE);
     }
     
+    if( AnscEqualString(ParamName, "MLD_ID", TRUE))
+    {
+        if ( vapInfo->u.bss_info.mld_info.common_info.mld_id == (unsigned int)iValue )
+        {
+            return  TRUE;
+        }
+        /* save update to backup */
+        vapInfo->u.bss_info.mld_info.common_info.mld_id = iValue;
+        set_dml_cache_vap_config_changed(instance_number - 1);
+        return TRUE;
+    }
+
+    if( AnscEqualString(ParamName, "MLD_Link_ID", TRUE))
+    {
+        if ( vapInfo->u.bss_info.mld_info.common_info.mld_link_id == (unsigned int)iValue )
+        {
+            return  TRUE;
+        }
+        /* save update to backup */
+        vapInfo->u.bss_info.mld_info.common_info.mld_link_id = iValue;
+        set_dml_cache_vap_config_changed(instance_number - 1);
+        return TRUE;
+    }
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     return FALSE;
 }
