@@ -3983,6 +3983,9 @@ int coordinator_check_stats_config(wifi_mon_stats_config_t *mon_stats_config)
         }
     } else {
         wifi_util_error_print(WIFI_MON, "SJY %s:%d: collector_elem is not NULL and the key is %s\n", __func__,__LINE__,collector_elem->key);
+        wifi_util_error_print(WIFI_MON, "SJY %s:%d: The value of dwell time in collector elem is %d\n", __func__, __LINE__, collector_elem->args->dwell_time);
+        wifi_util_error_print(WIFI_MON, "SJY %s:%d: The radio index in collector elem is %d\n", __func__, __LINE__, collector_elem->args->radio_index);
+        wifi_util_error_print(WIFI_MON, "SJY %s:%d: The value of scan mode in collector elem is %d\n", __func__, __LINE__, collector_elem->args->scan_mode);
         if (mon_stats_config->req_state == mon_stats_request_state_start) {
             if (coordinator_update_task(collector_elem, mon_stats_config) != RETURN_OK) {
                 wifi_util_error_print(WIFI_MON, "%s:%d: update task failed for key : %s for app  %d\n", __func__,__LINE__, stats_key, mon_stats_config->inst);
