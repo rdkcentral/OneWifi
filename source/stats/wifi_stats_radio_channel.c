@@ -59,7 +59,7 @@ int generate_radio_channel_clctr_stats_key(wifi_mon_stats_args_t *args, char *ke
 
     memset(key_str, 0, key_len);
 
-    snprintf(key_str, key_len, "%02d-%02d-%02d-%08d", mon_stats_type_radio_channel_stats, args->radio_index, args->scan_mode, args->app_info);
+    snprintf(key_str, key_len, "%02d-%02d-%02d", mon_stats_type_radio_channel_stats, args->radio_index, args->scan_mode);
 
     wifi_util_dbg_print(WIFI_MON, "%s:%d collector stats key: %s\n", __func__,__LINE__, key_str);
     return RETURN_OK;
@@ -1131,7 +1131,13 @@ int update_radio_channels_collector_args(void *ce)
         return RETURN_ERR;
     }
 
+    wifi_util_error_print(WIFI_MON, "SJY %s:%d The dwell time value is %d\n", __func__, __LINE__, collector_elem->args->dwell_time);
+    wifi_util_error_print(WIFI_MON, "SJY %s:%d The scan mode value is %d\n", __func__, __LINE__, collector_elem->args->scan_mode);
+    wifi_util_error_print(WIFI_MON, "SJY %s:%d The radio index value is %d\n", __func__, __LINE__, collector_elem->args->radio_index);
+    wifi_util_error_print(WIFI_MON, "SJY %s:%d The channel list size is %d\n", __func__, __LINE__, collector_elem->args->channel_list.num_channels);
+    wifi_util_error_print(WIFI_MON, "SJY %s:%d The app info is %d\n", __func__, __LINE__, collector_elem->args->app_info);
     if (collector_elem->args->scan_mode == WIFI_RADIO_SCAN_MODE_OFFCHAN) {
+        wifi_util_error_print(WIFI_MON,"SJY %s:%d The incoming scan mode is OFFCHAN and returns\n", __func__, __LINE__);
         return RETURN_OK;
     }
     radioOperation = getRadioOperationParam(collector_elem->args->radio_index);

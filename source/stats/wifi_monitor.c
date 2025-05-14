@@ -3456,6 +3456,42 @@ int coordinator_calculate_clctr_interval(wifi_mon_collector_element_t *collector
     return RETURN_OK;
 }
 
+int coordinator_update_clctr_dwell_time( wifi_mon_collector_element_t *collector_elem, wifi_mon_provider_element_t *new_provider_elem, unsigned int *new_dwell_time) {
+    wifi_mon_provider_element_t *provider_elem = NULL;
+    unsigned int temp_new_dwell_time = 0;
+    int i = 0;
+    if (collector_elem->provider_list == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: APP list is NULL\n", __func__,__LINE__);
+        return RETURN_ERR;
+    }
+    if (new_provider_elem == NULL || new_dwell_time == NULL) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: dup_provider_elem or new_dwell_time NULL\n", __func__,__LINE__);
+        return RETURN_ERR;
+    }
+
+    temp_new_dwell_time = new_provider_elem->mon_stats_config->args.dwell_time;
+    wifi_util_error_print(WIFI_MON,"SJY %s:%d the value of temp new dwell time is %u and app info is %d and radio index is %d and inst is %d and scan mode is %d and data type is %d \n", __func__,__LINE__, temp_new_dwell_time, new_provider_elem->mon_stats_config->args.app_info, new_provider_elem->mon_stats_config->args.radio_index, new_provider_elem->mon_stats_config.inst, new_provider_elem->mon_stats_config->args.scan_mode, new_provider_elem->mon_stats_config.data_type);
+    //Traverse through the providers
+    provider_elem = hash_map_get_first(collector_elem->provider_list);
+    while (provider_elem != NULL) {
+        wifi_util_error_print(WIFI_MON,"SJY %s:%d the value of i is %d\n", __func__,__LINE__, i);
+        wifi_util_error_print(WIFI_MON,"SJY %s:%d the value of existing provider_elem->key is %s\n", __func__,__LINE__, provider_elem->key);
+        wifi_util_error_print(WIFI_MON,"SJY %s:%d the value of new_provider_elem->key is %s\n", __func__,__LINE__, new_provider_elem->key);
+
+
+        wifi_util_error_print(WIFI_MON,"SJY %s:%d the value of existing provider dwell time is %u and app info is %d and radio index is %d and inst is %d and scan mode is %d and data type is %d\n", __func__,__LINE__, temp_new_dwell_time, provider_elem->mon_stats_config->args.app_info, provider_elem->mon_stats_config->args.radio_index, provider_elem->mon_stats_config.inst, provider_elem->mon_stats_config->args.scan_mode, provider_elem->mon_stats_config.data_type);
+        if (strncmp(new_provider_elem->key, provider_elem->key, strlen(new_provider_elem->key)) != 0) {
+            if (temp_new_dwell_time > provider_elem->mon_stats_config->args.dwell_time) {
+                temp_new_dwell_time = provider_elem->mon_stats_config->args.dwell_time;
+            }
+        }
+        provider_elem = hash_map_get_next(collector_elem->provider_list, provider_elem);
+        i++;
+    }
+    *new_dwell_time = temp_new_dwell_time;
+    wifi_util_error_print(WIFI_MON,"%s:%d the value of new dwell time is %u\n", __func__,__LINE__, *new_dwell_time);
+    return RETURN_OK;
+}
 
 #define POSTPONE_TIME 200 //ms
 #define MAX_POSTPONE_EXECUTION  (30000/POSTPONE_TIME) //scan can time up to 30 seconds
@@ -3768,13 +3804,14 @@ int coordinator_create_task(wifi_mon_collector_element_t **collector_elem, wifi_
     return RETURN_OK;
 }
 
-int collector_task_update(wifi_mon_collector_element_t *collector_elem, unsigned long *new_collector_interval)
+int collector_task_update(wifi_mon_collector_element_t *collector_elem, unsigned long *new_collector_interval, unsigned int *new_dwell_time)
 {
     wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
 
     collector_elem->collector_task_interval_ms = *new_collector_interval;
+    collector_elem->args->dwell_time = *new_dwell_time;
+    wifi_util_error_print(WIFI_MON, "%s:%d: New collector dwell time : %d for key : %s\n", __func__,__LINE__, collector_elem->args->dwell_time, collector_elem->key);
     wifi_util_info_print(WIFI_MON, "%s:%d: New collector interval : %d for key : %s\n", __func__,__LINE__, collector_elem->collector_task_interval_ms, collector_elem->key);
-
     if (collector_elem->stat_desc->update_collector_args != NULL) {
         collector_elem->stat_desc->update_collector_args((void*)collector_elem);
     }
@@ -3804,6 +3841,7 @@ int coordinator_update_task(wifi_mon_collector_element_t *collector_elem, wifi_m
         }
     unsigned long new_collector_interval = 0;
     wifi_mon_provider_element_t *dup_provider_elem = NULL;
+    unsigned int new_dwell_time = 0;
     dup_provider_elem = coordinator_create_provider_elem(stats_config, collector_elem->stat_desc);
     if (dup_provider_elem == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d: coordinator_create_provider_elem failed\n", __func__,__LINE__);
@@ -3815,7 +3853,14 @@ int coordinator_update_task(wifi_mon_collector_element_t *collector_elem, wifi_m
         return RETURN_ERR;
     }
 
-    collector_task_update(collector_elem, &new_collector_interval);
+    if (coordinator_update_clctr_dwell_time(collector_elem, dup_provider_elem, &new_dwell_time) != RETURN_OK) {
+        wifi_util_error_print(WIFI_MON, "%s:%d: coordinator_update_clctr_dwell_time failed\n", __func__,__LINE__);
+        coordinator_free_provider_elem(&dup_provider_elem);
+        return RETURN_ERR;
+    }
+
+    collector_task_update(collector_elem, &new_collector_interval, &new_dwell_time);
+    
 
     wifi_mon_provider_element_t *provider_elem = (wifi_mon_provider_element_t *)hash_map_get(collector_elem->provider_list, dup_provider_elem->key);
     if (provider_elem == NULL) {
@@ -3982,10 +4027,6 @@ int coordinator_check_stats_config(wifi_mon_stats_config_t *mon_stats_config)
             return RETURN_ERR;
         }
     } else {
-        wifi_util_error_print(WIFI_MON, "SJY %s:%d: collector_elem is not NULL and the key is %s\n", __func__,__LINE__,collector_elem->key);
-        wifi_util_error_print(WIFI_MON, "SJY %s:%d: The value of dwell time in collector elem is %d\n", __func__, __LINE__, collector_elem->args->dwell_time);
-        wifi_util_error_print(WIFI_MON, "SJY %s:%d: The radio index in collector elem is %d\n", __func__, __LINE__, collector_elem->args->radio_index);
-        wifi_util_error_print(WIFI_MON, "SJY %s:%d: The value of scan mode in collector elem is %d\n", __func__, __LINE__, collector_elem->args->scan_mode);
         if (mon_stats_config->req_state == mon_stats_request_state_start) {
             if (coordinator_update_task(collector_elem, mon_stats_config) != RETURN_OK) {
                 wifi_util_error_print(WIFI_MON, "%s:%d: update task failed for key : %s for app  %d\n", __func__,__LINE__, stats_key, mon_stats_config->inst);

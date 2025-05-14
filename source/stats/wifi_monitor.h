@@ -328,7 +328,8 @@ int provider_execute_task(void *arg);
 
 int coordinator_update_task(wifi_mon_collector_element_t *collector_elem, wifi_mon_stats_config_t *stats_config);
 int coordinator_calculate_clctr_interval(wifi_mon_collector_element_t *collector_elem, wifi_mon_provider_element_t *new_provider_elem , unsigned long *new_interval);
-int collector_task_update(wifi_mon_collector_element_t *collector_elem, unsigned long *new_collector_interval);
+int coordinator_update_clctr_dwell_time( wifi_mon_collector_element_t *collector_elem, wifi_mon_provider_element_t *new_provider_elem, unsigned int *new_dwell_time);
+int collector_task_update(wifi_mon_collector_element_t *collector_elem, unsigned long *new_collector_interval, unsigned int *new_dwell_time);
 int provider_task_update(wifi_mon_provider_element_t *provider_elem, unsigned long *new_provider_interval);
 void coordinator_free_provider_elem(wifi_mon_provider_element_t **provider_elem);
 wifi_mon_stats_descriptor_t *wifi_mon_get_stats_descriptor(wifi_mon_stats_type_t stats_type);

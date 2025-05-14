@@ -663,13 +663,13 @@ int handle_sm_webconfig_event(wifi_app_t *app, wifi_event_t *event)
     // update neigbour sampling_interval to survey interval if value is 0
     new_stats_cfg = hash_map_get_first(new_ctrl_stats_cfg_map);
     while (new_stats_cfg != NULL) {
-        wifi_util_error_print(WIFI_SM,"SJY %s:%d The value of survey interval is %u", __func__ , __LINE__, new_stats_cfg->survey_interval);
+        wifi_util_error_print(WIFI_SM,"SJY %s:%d The value of survey interval is %u\n", __func__ , __LINE__, new_stats_cfg->survey_interval);
         if (new_stats_cfg->stats_type == stats_type_neighbor &&
             new_stats_cfg->sampling_interval == 0) {
             // search survey configuration.
             tmp_stats_cfg = hash_map_get_first(new_ctrl_stats_cfg_map);
             while (tmp_stats_cfg != NULL) {
-                wifi_util_error_print(WIFI_SM,"SJY %s:%d The value of survey interval in tmp stats cfg is %u", __func__ , __LINE__, tmp_stats_cfg->survey_interval);
+                wifi_util_error_print(WIFI_SM,"SJY %s:%d The value of survey interval in tmp stats cfg is %u\n", __func__ , __LINE__, tmp_stats_cfg->survey_interval);
                 if (tmp_stats_cfg->stats_type == stats_type_survey &&
                     tmp_stats_cfg->radio_type == new_stats_cfg->radio_type &&
                     tmp_stats_cfg->survey_type == new_stats_cfg->survey_type &&
@@ -680,6 +680,32 @@ int handle_sm_webconfig_event(wifi_app_t *app, wifi_event_t *event)
                         "stats_type_neighbor(radio_type %d, survey_type %d) to %u\n",
                         __func__, __LINE__, new_stats_cfg->radio_type, new_stats_cfg->survey_type,
                         new_stats_cfg->sampling_interval);
+                    break;
+                }
+                tmp_stats_cfg = hash_map_get_next(new_ctrl_stats_cfg_map, tmp_stats_cfg);
+            }
+        }
+        new_stats_cfg = hash_map_get_next(new_ctrl_stats_cfg_map, new_stats_cfg);
+    }
+
+    // update neigbour survey_interval to survey interval if value is 0
+    new_stats_cfg = hash_map_get_first(new_ctrl_stats_cfg_map);
+    while (new_stats_cfg != NULL) {
+        if (new_stats_cfg->stats_type == stats_type_neighbor &&
+            new_stats_cfg->survey_interval == 0) {
+            // search survey configuration.
+            tmp_stats_cfg = hash_map_get_first(new_ctrl_stats_cfg_map);
+            while (tmp_stats_cfg != NULL) {
+                if (tmp_stats_cfg->stats_type == stats_type_survey &&
+                    tmp_stats_cfg->radio_type == new_stats_cfg->radio_type &&
+                    tmp_stats_cfg->survey_type == new_stats_cfg->survey_type &&
+                    tmp_stats_cfg->survey_interval != 0) {
+                    new_stats_cfg->survey_interval = tmp_stats_cfg->survey_interval;
+                    wifi_util_dbg_print(WIFI_SM,
+                        "SJY %s %d update survey_interval for neighbor "
+                        "stats_type_neighbor(radio_type %d, survey_type %d) to %u\n",
+                        __func__, __LINE__, new_stats_cfg->radio_type, new_stats_cfg->survey_type,
+                        new_stats_cfg->survey_interval);
                     break;
                 }
                 tmp_stats_cfg = hash_map_get_next(new_ctrl_stats_cfg_map, tmp_stats_cfg);
