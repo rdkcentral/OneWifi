@@ -1589,6 +1589,8 @@ webconfig_error_t encode_frame_data(cJSON *obj_assoc_client, frame_data_t *frame
 webconfig_error_t encode_associated_client_object(rdk_wifi_vap_info_t *rdk_vap_info, cJSON *assoc_array, assoclist_type_t assoclist_type)
 {
     bool print_assoc_client = false;
+    pthread_mutex_t *associated_devices_lock;
+
     if ((rdk_vap_info == NULL) || (assoc_array == NULL)) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Associated Client encode failed\n",__FUNCTION__, __LINE__);
         return webconfig_error_encode;
@@ -1605,6 +1607,10 @@ webconfig_error_t encode_associated_client_object(rdk_wifi_vap_info_t *rdk_vap_i
     cJSON_AddStringToObject(obj_vaps, "VapName", rdk_vap_info->vap_name);
     cJSON_AddItemToObject(obj_vaps, "associatedClients", obj_array);
 
+    associated_devices_lock = rdk_vap_info->associated_devices_lock;
+    if (associated_devices_lock != NULL) {
+        pthread_mutex_lock(associated_devices_lock);
+    }
     switch (assoclist_type)  {
         case assoclist_type_full:
             devices_map = rdk_vap_info->associated_devices_map;
@@ -1614,6 +1620,9 @@ webconfig_error_t encode_associated_client_object(rdk_wifi_vap_info_t *rdk_vap_i
             devices_map = rdk_vap_info->associated_devices_diff_map;
         break;
         default:
+            if (associated_devices_lock != NULL) {
+                pthread_mutex_unlock(associated_devices_lock);
+            }
             return webconfig_error_encode;
     }
 
@@ -1677,6 +1686,10 @@ webconfig_error_t encode_associated_client_object(rdk_wifi_vap_info_t *rdk_vap_i
             assoc_dev_data = hash_map_get_next(devices_map, assoc_dev_data);
         }
     }
+    if (associated_devices_lock != NULL) {
+        pthread_mutex_unlock(associated_devices_lock);
+    }
+
     return webconfig_error_none;
 }
 
