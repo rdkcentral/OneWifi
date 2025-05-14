@@ -3456,9 +3456,9 @@ int coordinator_calculate_clctr_interval(wifi_mon_collector_element_t *collector
     return RETURN_OK;
 }
 
-int coordinator_update_clctr_dwell_time( wifi_mon_collector_element_t *collector_elem, wifi_mon_provider_element_t *new_provider_elem, unsigned int *new_dwell_time) {
+int coordinator_update_clctr_dwell_time( wifi_mon_collector_element_t *collector_elem, wifi_mon_provider_element_t *new_provider_elem, int *new_dwell_time) {
     wifi_mon_provider_element_t *provider_elem = NULL;
-    unsigned int temp_new_dwell_time = 0;
+    int temp_new_dwell_time = 0;
     int i = 0;
     if (collector_elem->provider_list == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d: APP list is NULL\n", __func__,__LINE__);
@@ -3470,7 +3470,7 @@ int coordinator_update_clctr_dwell_time( wifi_mon_collector_element_t *collector
     }
 
     temp_new_dwell_time = new_provider_elem->mon_stats_config->args.dwell_time;
-    wifi_util_error_print(WIFI_MON,"SJY %s:%d the value of temp new dwell time is %u and app info is %d and radio index is %d and inst is %d and scan mode is %d and data type is %d \n", __func__,__LINE__, temp_new_dwell_time, new_provider_elem->mon_stats_config->args.app_info, new_provider_elem->mon_stats_config->args.radio_index, new_provider_elem->mon_stats_config.inst, new_provider_elem->mon_stats_config->args.scan_mode, new_provider_elem->mon_stats_config.data_type);
+    wifi_util_error_print(WIFI_MON,"SJY %s:%d the value of temp new dwell time is %u and app info is %d and radio index is %d and inst is %d and scan mode is %d and data type is %d \n", __func__,__LINE__, temp_new_dwell_time, new_provider_elem->mon_stats_config->args.app_info, new_provider_elem->mon_stats_config->args.radio_index, new_provider_elem->mon_stats_config->inst, new_provider_elem->mon_stats_config->args.scan_mode, new_provider_elem->mon_stats_config->data_type);
     //Traverse through the providers
     provider_elem = hash_map_get_first(collector_elem->provider_list);
     while (provider_elem != NULL) {
@@ -3479,7 +3479,7 @@ int coordinator_update_clctr_dwell_time( wifi_mon_collector_element_t *collector
         wifi_util_error_print(WIFI_MON,"SJY %s:%d the value of new_provider_elem->key is %s\n", __func__,__LINE__, new_provider_elem->key);
 
 
-        wifi_util_error_print(WIFI_MON,"SJY %s:%d the value of existing provider dwell time is %u and app info is %d and radio index is %d and inst is %d and scan mode is %d and data type is %d\n", __func__,__LINE__, temp_new_dwell_time, provider_elem->mon_stats_config->args.app_info, provider_elem->mon_stats_config->args.radio_index, provider_elem->mon_stats_config.inst, provider_elem->mon_stats_config->args.scan_mode, provider_elem->mon_stats_config.data_type);
+        wifi_util_error_print(WIFI_MON,"SJY %s:%d the value of existing provider dwell time is %u and app info is %d and radio index is %d and inst is %d and scan mode is %d and data type is %d\n", __func__,__LINE__, provider_elem->mon_stats_config->args.dwell_time, provider_elem->mon_stats_config->args.app_info, provider_elem->mon_stats_config->args.radio_index, provider_elem->mon_stats_config->inst, provider_elem->mon_stats_config->args.scan_mode, provider_elem->mon_stats_config->data_type);
         if (strncmp(new_provider_elem->key, provider_elem->key, strlen(new_provider_elem->key)) != 0) {
             if (temp_new_dwell_time > provider_elem->mon_stats_config->args.dwell_time) {
                 temp_new_dwell_time = provider_elem->mon_stats_config->args.dwell_time;
@@ -3804,7 +3804,7 @@ int coordinator_create_task(wifi_mon_collector_element_t **collector_elem, wifi_
     return RETURN_OK;
 }
 
-int collector_task_update(wifi_mon_collector_element_t *collector_elem, unsigned long *new_collector_interval, unsigned int *new_dwell_time)
+int collector_task_update(wifi_mon_collector_element_t *collector_elem, unsigned long *new_collector_interval, int *new_dwell_time)
 {
     wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
 
@@ -3902,6 +3902,7 @@ int coordinator_stop_task(wifi_mon_collector_element_t **collector_elem, wifi_mo
     hash_map_t  *collector_list = coordinator_get_collector_list();
     wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
     unsigned long new_collector_interval = 0;
+    int new_dwell_time = 0;
     unsigned int count = 0;
 
     (*collector_elem)->stat_desc->generate_stats_provider_key(stats_config, key, sizeof(key));
@@ -3943,7 +3944,7 @@ int coordinator_stop_task(wifi_mon_collector_element_t **collector_elem, wifi_mo
                 wifi_util_error_print(WIFI_MON, "%s %d invalid interval : %d\n",__func__,__LINE__, new_collector_interval);
                 return RETURN_ERR;
             }
-            collector_task_update(*collector_elem, &new_collector_interval);
+            collector_task_update(*collector_elem, &new_collector_interval, &new_dwell_time);
         }
     }
 
