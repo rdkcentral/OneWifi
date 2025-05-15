@@ -3657,7 +3657,9 @@ wifi_mon_collector_element_t * coordinator_create_collector_elem(wifi_mon_stats_
         free(collector_elem);
         return NULL;
     }
+
     memcpy(collector_elem->args, &stats_config->args, sizeof(wifi_mon_stats_args_t));
+
     return collector_elem;
 }
 
@@ -3697,6 +3699,7 @@ wifi_mon_provider_element_t  *coordinator_create_provider_elem(wifi_mon_stats_co
         free(provider_elem);
         return NULL;
     }
+
     memcpy(provider_elem->mon_stats_config, stats_config, sizeof(wifi_mon_stats_config_t));
 
     return provider_elem;
@@ -3802,6 +3805,7 @@ int collector_task_update(wifi_mon_collector_element_t *collector_elem, unsigned
     collector_elem->args->dwell_time = *new_dwell_time;
     wifi_util_info_print(WIFI_MON, "%s:%d: New collector dwell time : %d for key : %s\n", __func__,__LINE__, collector_elem->args->dwell_time, collector_elem->key);
     wifi_util_info_print(WIFI_MON, "%s:%d: New collector interval : %d for key : %s\n", __func__,__LINE__, collector_elem->collector_task_interval_ms, collector_elem->key);
+
     if (collector_elem->stat_desc->update_collector_args != NULL) {
         collector_elem->stat_desc->update_collector_args((void*)collector_elem);
     }
