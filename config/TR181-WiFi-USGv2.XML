@@ -3336,7 +3336,7 @@ INSTMSMT_PH2 -->
                                 <parameters>
                                     <parameter>
                                         <name>Version</name>
-                                        <type>unsignedInt[1:2]</type>
+                                        <type>unsignedInt[1:3]</type>
                                         <syntax>uint32</syntax>
                                         <writable>true</writable>
                                     </parameter>
