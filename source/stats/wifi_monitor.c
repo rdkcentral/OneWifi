@@ -3472,13 +3472,11 @@ int coordinator_update_clctr_dwell_time(wifi_mon_collector_element_t *collector_
     }
 
     temp_new_dwell_time = new_provider_elem->mon_stats_config->args.dwell_time;
-    wifi_util_error_print(WIFI_MON,"SJY %s:%d the value of temp new dwell time is %u and app info is %d and radio index is %d and inst is %d and scan mode is %d and data type is %d \n", __func__,__LINE__, temp_new_dwell_time, new_provider_elem->mon_stats_config->args.app_info, new_provider_elem->mon_stats_config->args.radio_index, new_provider_elem->mon_stats_config->inst, new_provider_elem->mon_stats_config->args.scan_mode, new_provider_elem->mon_stats_config->data_type);
     // Traverse through the providers
     provider_elem = hash_map_get_first(collector_elem->provider_list);
     while (provider_elem != NULL) {
         if (strncmp(new_provider_elem->key, provider_elem->key, strlen(new_provider_elem->key)) !=
             0) {
-            wifi_util_error_print(WIFI_MON,"SJY %s:%d the value of existing provider dwell time is %u and app info is %d and radio index is %d and inst is %d and scan mode is %d and data type is %d\n", __func__,__LINE__, provider_elem->mon_stats_config->args.dwell_time, provider_elem->mon_stats_config->args.app_info, provider_elem->mon_stats_config->args.radio_index, provider_elem->mon_stats_config->inst, provider_elem->mon_stats_config->args.scan_mode, provider_elem->mon_stats_config->data_type);
             if (provider_elem->mon_stats_config->args.dwell_time > temp_new_dwell_time) {
                 temp_new_dwell_time = provider_elem->mon_stats_config->args.dwell_time;
             }
@@ -3802,7 +3800,7 @@ int collector_task_update(wifi_mon_collector_element_t *collector_elem, unsigned
 
     collector_elem->collector_task_interval_ms = *new_collector_interval;
     collector_elem->args->dwell_time = *new_dwell_time;
-    wifi_util_error_print(WIFI_MON, "%s:%d: New collector dwell time : %d for key : %s\n", __func__,__LINE__, collector_elem->args->dwell_time, collector_elem->key);
+    wifi_util_info_print(WIFI_MON, "%s:%d: New collector dwell time : %d for key : %s\n", __func__,__LINE__, collector_elem->args->dwell_time, collector_elem->key);
     wifi_util_info_print(WIFI_MON, "%s:%d: New collector interval : %d for key : %s\n", __func__,__LINE__, collector_elem->collector_task_interval_ms, collector_elem->key);
     if (collector_elem->stat_desc->update_collector_args != NULL) {
         collector_elem->stat_desc->update_collector_args((void*)collector_elem);
