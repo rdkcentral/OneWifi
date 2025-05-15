@@ -20033,15 +20033,15 @@ Passpoint_GetParamStringValue
 
     if( AnscEqualString(ParamName, "WANMetrics", TRUE))
     {
-        WiFi_GetWANMetrics((vap_pcfg->vap_index + 1), (char *)&pcfg->passpoint.wanMetricsInfo,
-                sizeof(pcfg->passpoint.wanMetricsInfo));
+        char WANMetricsInfo[256] = {0};
+        WiFi_GetWANMetrics((vap_pcfg->vap_index + 1), WANMetricsInfo, sizeof(WANMetricsInfo));
         /* collect value */
-        if( AnscSizeOfString((char *)&pcfg->passpoint.wanMetricsInfo) < *pUlSize)
+	if( AnscSizeOfString(WANMetricsInfo) < *pUlSize)
         {
-            AnscCopyString(pValue, (char *)&pcfg->passpoint.wanMetricsInfo);
+	    AnscCopyString(pValue, WANMetricsInfo);
             return 0;
         }else{
-            *pUlSize = AnscSizeOfString((char *)&pcfg->passpoint.wanMetricsInfo)+1;
+	    *pUlSize = AnscSizeOfString(WANMetricsInfo)+1;
             return 1;
         }
         return 0;
