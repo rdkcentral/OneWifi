@@ -3456,6 +3456,7 @@ int coordinator_calculate_clctr_interval(wifi_mon_collector_element_t *collector
     return RETURN_OK;
 }
 
+
 #define POSTPONE_TIME 200 //ms
 #define MAX_POSTPONE_EXECUTION  (30000/POSTPONE_TIME) //scan can time up to 30 seconds
 
@@ -3843,6 +3844,7 @@ int coordinator_update_task(wifi_mon_collector_element_t *collector_elem, wifi_m
         provider_task_update(provider_elem, &dup_provider_elem->provider_task_interval_ms);
         coordinator_free_provider_elem(&dup_provider_elem);
     }
+
     collector_task_update(collector_elem, &new_collector_interval);
     return RETURN_OK;
 }
@@ -3855,7 +3857,6 @@ int coordinator_stop_task(wifi_mon_collector_element_t **collector_elem, wifi_mo
     hash_map_t  *collector_list = coordinator_get_collector_list();
     wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
     unsigned long new_collector_interval = 0;
-    int new_dwell_time = 0;
     unsigned int count = 0;
 
     (*collector_elem)->stat_desc->generate_stats_provider_key(stats_config, key, sizeof(key));

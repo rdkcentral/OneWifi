@@ -1131,7 +1131,6 @@ int update_radio_channels_collector_args(void *ce)
     if (collector_elem->args->scan_mode == WIFI_RADIO_SCAN_MODE_OFFCHAN) {
         return RETURN_OK;
     }
-
     radioOperation = getRadioOperationParam(collector_elem->args->radio_index);
     if (radioOperation == NULL) {
         wifi_util_error_print(WIFI_MON,"%s:%d NULL radioOperation pointer for radio : %d\n", __func__, __LINE__, collector_elem->args->radio_index);
@@ -1168,6 +1167,5 @@ int update_radio_channels_collector_args(void *ce)
         }
     }
     collector_elem->args->channel_list.num_channels = i;
-
     return RETURN_OK;
 }
