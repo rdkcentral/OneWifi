@@ -4496,7 +4496,6 @@ webconfig_error_t translate_statsconfig_from_ovsdb_to_rdk(const struct schema_Wi
     stat_config->sampling_interval = config_row->sampling_interval;
     stat_config->survey_interval = config_row->survey_interval_ms;
 
-
     for (i = 0; i < config_row->threshold_len; i++) {
         if (strcmp(config_row->threshold_keys[i], "util" ) == 0) {
             stat_config->threshold_util = config_row->threshold[i];
