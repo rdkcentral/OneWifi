@@ -3456,40 +3456,34 @@ int coordinator_calculate_clctr_interval(wifi_mon_collector_element_t *collector
     return RETURN_OK;
 }
 
-int coordinator_update_clctr_dwell_time( wifi_mon_collector_element_t *collector_elem, wifi_mon_provider_element_t *new_provider_elem, int *new_dwell_time) {
+int coordinator_update_clctr_dwell_time(wifi_mon_collector_element_t *collector_elem,
+    wifi_mon_provider_element_t *new_provider_elem, int *new_dwell_time)
+{
     wifi_mon_provider_element_t *provider_elem = NULL;
     int temp_new_dwell_time = 0;
-    int i = 0;
     if (collector_elem->provider_list == NULL) {
-        wifi_util_error_print(WIFI_MON, "%s:%d: APP list is NULL\n", __func__,__LINE__);
+        wifi_util_error_print(WIFI_MON, "%s:%d: APP list is NULL\n", __func__, __LINE__);
         return RETURN_ERR;
     }
     if (new_provider_elem == NULL || new_dwell_time == NULL) {
-        wifi_util_error_print(WIFI_MON, "%s:%d: dup_provider_elem or new_dwell_time NULL\n", __func__,__LINE__);
+        wifi_util_error_print(WIFI_MON, "%s:%d: dup_provider_elem or new_dwell_time NULL\n",
+            __func__, __LINE__);
         return RETURN_ERR;
     }
 
     temp_new_dwell_time = new_provider_elem->mon_stats_config->args.dwell_time;
-    wifi_util_error_print(WIFI_MON,"SJY %s:%d the value of temp new dwell time is %u and app info is %d and radio index is %d and inst is %d and scan mode is %d and data type is %d \n", __func__,__LINE__, temp_new_dwell_time, new_provider_elem->mon_stats_config->args.app_info, new_provider_elem->mon_stats_config->args.radio_index, new_provider_elem->mon_stats_config->inst, new_provider_elem->mon_stats_config->args.scan_mode, new_provider_elem->mon_stats_config->data_type);
-    //Traverse through the providers
+    // Traverse through the providers
     provider_elem = hash_map_get_first(collector_elem->provider_list);
     while (provider_elem != NULL) {
-        wifi_util_error_print(WIFI_MON,"SJY %s:%d the value of i is %d\n", __func__,__LINE__, i);
-        wifi_util_error_print(WIFI_MON,"SJY %s:%d the value of existing provider_elem->key is %s\n", __func__,__LINE__, provider_elem->key);
-        wifi_util_error_print(WIFI_MON,"SJY %s:%d the value of new_provider_elem->key is %s\n", __func__,__LINE__, new_provider_elem->key);
-
-
-        wifi_util_error_print(WIFI_MON,"SJY %s:%d the value of existing provider dwell time is %u and app info is %d and radio index is %d and inst is %d and scan mode is %d and data type is %d\n", __func__,__LINE__, provider_elem->mon_stats_config->args.dwell_time, provider_elem->mon_stats_config->args.app_info, provider_elem->mon_stats_config->args.radio_index, provider_elem->mon_stats_config->inst, provider_elem->mon_stats_config->args.scan_mode, provider_elem->mon_stats_config->data_type);
-        if (strncmp(new_provider_elem->key, provider_elem->key, strlen(new_provider_elem->key)) != 0) {
-            if (temp_new_dwell_time > provider_elem->mon_stats_config->args.dwell_time) {
+        if (strncmp(new_provider_elem->key, provider_elem->key, strlen(new_provider_elem->key)) !=
+            0) {
+            if (provider_elem->mon_stats_config->args.dwell_time > temp_new_dwell_time) {
                 temp_new_dwell_time = provider_elem->mon_stats_config->args.dwell_time;
             }
         }
         provider_elem = hash_map_get_next(collector_elem->provider_list, provider_elem);
-        i++;
     }
     *new_dwell_time = temp_new_dwell_time;
-    wifi_util_error_print(WIFI_MON,"%s:%d the value of new dwell time is %u\n", __func__,__LINE__, *new_dwell_time);
     return RETURN_OK;
 }
 
@@ -3663,10 +3657,7 @@ wifi_mon_collector_element_t * coordinator_create_collector_elem(wifi_mon_stats_
         free(collector_elem);
         return NULL;
     }
-
-    wifi_util_error_print(WIFI_MON,"SJY %s:%d The value of survey_interval_ms before memcpy is %d\n", __func__, __LINE__, stats_config->args.dwell_time);
     memcpy(collector_elem->args, &stats_config->args, sizeof(wifi_mon_stats_args_t));
-    wifi_util_error_print(WIFI_MON,"SJY %s:%d The value of survey_interval_ms after memcpy is %d\n", __func__, __LINE__, collector_elem->args->dwell_time);
     return collector_elem;
 }
 
@@ -3706,7 +3697,6 @@ wifi_mon_provider_element_t  *coordinator_create_provider_elem(wifi_mon_stats_co
         free(provider_elem);
         return NULL;
     }
-    wifi_util_error_print(WIFI_MON,"SJY %s:%d The value of survey_interval_ms before memcpy is %d\n", __func__, __LINE__, stats_config->args.dwell_time);
     memcpy(provider_elem->mon_stats_config, stats_config, sizeof(wifi_mon_stats_config_t));
 
     return provider_elem;
@@ -3960,8 +3950,6 @@ int coordinator_check_stats_config(wifi_mon_stats_config_t *mon_stats_config)
     wifi_monitor_t *mon_data = (wifi_monitor_t *)get_wifi_monitor();
     clctr_subscription_t *clctr_subscription;
 
-    wifi_util_error_print(WIFI_MON, "SJY %s:%d: stats_type %d  interval_ms %d from app %d\n", __func__,__LINE__,
-                                    mon_stats_config->data_type, mon_stats_config->interval_ms, mon_stats_config->inst);
 
     if (stats_common_args_validation(mon_stats_config) != RETURN_OK) {
         wifi_util_error_print(WIFI_MON, "%s:%d: common args validation failed. stats_type %d  interval_ms %d from app %d\n", __func__,__LINE__,
@@ -3991,7 +3979,6 @@ int coordinator_check_stats_config(wifi_mon_stats_config_t *mon_stats_config)
         wifi_util_error_print(WIFI_MON, "%s:%d: Failed to get collector list\n", __func__,__LINE__);
         return RETURN_ERR;
     }
-    wifi_util_error_print(WIFI_MON,"SJY %s:%d: The generated collector elem key is %s\n", __func__, __LINE__, stats_key);
     collector_elem = (wifi_mon_collector_element_t *)hash_map_get(collector_list, stats_key);
     if (collector_elem == NULL) {
         if (mon_stats_config->req_state == mon_stats_request_state_start) {

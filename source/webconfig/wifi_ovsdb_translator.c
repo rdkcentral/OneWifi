@@ -4495,8 +4495,7 @@ webconfig_error_t translate_statsconfig_from_ovsdb_to_rdk(const struct schema_Wi
     stat_config->reporting_count = config_row->reporting_count;
     stat_config->sampling_interval = config_row->sampling_interval;
     stat_config->survey_interval = config_row->survey_interval_ms;
-    wifi_util_error_print(WIFI_WEBCONFIG,"SJY %s:%d: survey_interval_ms : %d\n", __func__, __LINE__, config_row->survey_interval_ms);
-    wifi_util_error_print(WIFI_WEBCONFIG,"SJY %s:%d: sampling_interval : %d\n", __func__, __LINE__, config_row->sampling_interval);
+
 
     for (i = 0; i < config_row->threshold_len; i++) {
         if (strcmp(config_row->threshold_keys[i], "util" ) == 0) {

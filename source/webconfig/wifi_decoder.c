@@ -4342,10 +4342,8 @@ webconfig_error_t decode_stats_config_object(hash_map_t **stats_map, cJSON *st_a
         temp_sta_cfg.report_type = param->valuedouble;
         decode_param_integer(st_obj, "RadioType", param);
         temp_sta_cfg.radio_type = param->valuedouble;
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "SJY %s:%d: RadioType %d\n", __func__, __LINE__, temp_sta_cfg.radio_type);
         decode_param_integer(st_obj, "SurveyType", param);
         temp_sta_cfg.survey_type = param->valuedouble;
-        wifi_util_error_print(WIFI_WEBCONFIG, "SJY %s:%d: SurveyType %d\n", __func__, __LINE__, temp_sta_cfg.survey_type);
         decode_param_integer(st_obj, "ReportingInterval", param);
         temp_sta_cfg.reporting_interval = param->valuedouble;
         decode_param_integer(st_obj, "ReportingCount", param);
@@ -4354,7 +4352,6 @@ webconfig_error_t decode_stats_config_object(hash_map_t **stats_map, cJSON *st_a
         temp_sta_cfg.sampling_interval = param->valuedouble;
         decode_param_integer(st_obj, "SurveyInterval", param);
         temp_sta_cfg.survey_interval = param->valuedouble;
-        wifi_util_error_print(WIFI_WEBCONFIG, "SJY %s:%d: SurveyInterval %d\n", __func__, __LINE__, temp_sta_cfg.survey_interval);
         decode_param_integer(st_obj, "ThresholdUtil", param);
         temp_sta_cfg.threshold_util = param->valuedouble;
         decode_param_integer(st_obj, "ThresholdMaxDelay", param);

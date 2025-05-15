@@ -411,16 +411,11 @@ int survey_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_t *st
 
     data->u.mon_stats_config.data_type = mon_stats_type_radio_channel_stats;
 
-    wifi_util_error_print(WIFI_SM,"SJY %s:%d The incoming survey type is %d\n", __func__ ,__LINE__, stat_config_entry->survey_type);
-    
     if (stat_config_entry->survey_type == survey_type_on_channel) {
         data->u.mon_stats_config.args.channel_list.num_channels = 0;
-        wifi_util_error_print(WIFI_SM,"SJY %s:%d The value of survey interval in ON_CHANNEL is %u ms\n", __func__ ,__LINE__, stat_config_entry->survey_interval);
         data->u.mon_stats_config.args.dwell_time = stat_config_entry->survey_interval;
         data->u.mon_stats_config.args.scan_mode = WIFI_RADIO_SCAN_MODE_ONCHAN;
     } else {
-        wifi_util_error_print(WIFI_SM,"SJY %s:%d The value of survey interval in OFF_CHANNEL is %u ms\n", __func__ ,__LINE__, stat_config_entry->survey_interval);
-
         data->u.mon_stats_config.args.dwell_time = stat_config_entry->survey_interval;
         data->u.mon_stats_config.args.channel_list.num_channels =
             stat_config_entry->channels_list.num_channels;
@@ -433,7 +428,6 @@ int survey_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_t *st
 
     data->u.mon_stats_config.args.app_info = sm_app_event_type_survey;
     // data->u.mon_stats_config.start_immediately = true;
-    wifi_util_error_print(WIFI_SM,"SJY %s:%d The value of survey interval before pushing is %u ms\n", __func__, __LINE__, stat_config_entry->survey_interval);
 
     push_event_to_monitor_queue(data, wifi_event_monitor_data_collection_config, &route);
 
@@ -663,13 +657,11 @@ int handle_sm_webconfig_event(wifi_app_t *app, wifi_event_t *event)
     // update neigbour sampling_interval to survey interval if value is 0
     new_stats_cfg = hash_map_get_first(new_ctrl_stats_cfg_map);
     while (new_stats_cfg != NULL) {
-        wifi_util_error_print(WIFI_SM,"SJY %s:%d The value of survey interval is %u\n", __func__ , __LINE__, new_stats_cfg->survey_interval);
         if (new_stats_cfg->stats_type == stats_type_neighbor &&
             new_stats_cfg->sampling_interval == 0) {
             // search survey configuration.
             tmp_stats_cfg = hash_map_get_first(new_ctrl_stats_cfg_map);
             while (tmp_stats_cfg != NULL) {
-                wifi_util_error_print(WIFI_SM,"SJY %s:%d The value of survey interval in tmp stats cfg is %u\n", __func__ , __LINE__, tmp_stats_cfg->survey_interval);
                 if (tmp_stats_cfg->stats_type == stats_type_survey &&
                     tmp_stats_cfg->radio_type == new_stats_cfg->radio_type &&
                     tmp_stats_cfg->survey_type == new_stats_cfg->survey_type &&
@@ -688,7 +680,7 @@ int handle_sm_webconfig_event(wifi_app_t *app, wifi_event_t *event)
         new_stats_cfg = hash_map_get_next(new_ctrl_stats_cfg_map, new_stats_cfg);
     }
 
-    // update neigbour survey_interval to survey interval if value is 0
+    // update neigbour survey_interval to survey's interval if value is 0
     new_stats_cfg = hash_map_get_first(new_ctrl_stats_cfg_map);
     while (new_stats_cfg != NULL) {
         if (new_stats_cfg->stats_type == stats_type_neighbor &&
@@ -702,7 +694,7 @@ int handle_sm_webconfig_event(wifi_app_t *app, wifi_event_t *event)
                     tmp_stats_cfg->survey_interval != 0) {
                     new_stats_cfg->survey_interval = tmp_stats_cfg->survey_interval;
                     wifi_util_dbg_print(WIFI_SM,
-                        "SJY %s %d update survey_interval for neighbor "
+                        "%s %d update survey_interval for neighbor "
                         "stats_type_neighbor(radio_type %d, survey_type %d) to %u\n",
                         __func__, __LINE__, new_stats_cfg->radio_type, new_stats_cfg->survey_type,
                         new_stats_cfg->survey_interval);
@@ -718,7 +710,6 @@ int handle_sm_webconfig_event(wifi_app_t *app, wifi_event_t *event)
     if (cur_app_stats_cfg_map != NULL) {
         cur_stats_cfg = hash_map_get_first(cur_app_stats_cfg_map);
         while (cur_stats_cfg != NULL) {
-            wifi_util_error_print(WIFI_SM,"SJY %s:%d The current value of survey interval is %u\n", __func__, __LINE__, cur_stats_cfg->survey_interval);
             if (hash_map_get(new_ctrl_stats_cfg_map, cur_stats_cfg->stats_cfg_id) == NULL) {
                 // send the delete and remove elem from cur_stats_cfg
                 memset(key, 0, sizeof(key));
@@ -773,12 +764,6 @@ int handle_sm_webconfig_event(wifi_app_t *app, wifi_event_t *event)
                             stats_type_to_str(new_stats_cfg->stats_type),
                             radio_get_name_from_type(radio_type));
                     }
-                    wifi_util_error_print(WIFI_SM,
-                        "SJY %s %d The value of survey interval in cur cfg is %u ms\n", __func__ , __LINE__,cur_stats_cfg->survey_interval);
-                    if (new_stats_cfg->survey_interval != cur_stats_cfg->survey_interval) {
-                        wifi_util_error_print(WIFI_SM,
-                            "SJY %s %d Reconfigured survey interval as %u secs\n", __func__, __LINE__, new_stats_cfg->survey_interval);
-                    }
                     memcpy(cur_stats_cfg, new_stats_cfg, sizeof(stats_config_t));
                     if (!off_scan_rfc && cur_stats_cfg->survey_type == survey_type_off_channel &&
                         (cur_stats_cfg->radio_type == WIFI_FREQUENCY_5_BAND ||
@@ -786,15 +771,13 @@ int handle_sm_webconfig_event(wifi_app_t *app, wifi_event_t *event)
                             cur_stats_cfg->radio_type == WIFI_FREQUENCY_5H_BAND)) { 
                         if (is_scan_scheduled(app, cur_stats_cfg)) {
                             wifi_util_error_print(WIFI_SM,
-                                "SJY %s:%d Stopping the scan id='%s'\n", __func__, __LINE__,
+                                "%s:%d Stopping the scan id='%s'\n", __func__, __LINE__,
                                 cur_stats_cfg->stats_cfg_id);
                             push_sm_config_event_to_monitor_queue(app, mon_stats_request_state_stop,
                                 cur_stats_cfg);
                         }
                     } else {
                         // Notification for update entry.
-                        wifi_util_error_print(WIFI_SM,
-                            "SJY %s:%d Pushing the event to monitor queue in else condition\n", __func__, __LINE__);
                         push_sm_config_event_to_monitor_queue(app, mon_stats_request_state_start,
                             cur_stats_cfg);
                     }
