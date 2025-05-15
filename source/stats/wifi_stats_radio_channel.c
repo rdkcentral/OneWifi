@@ -1126,7 +1126,6 @@ int update_radio_channels_collector_args(void *ce)
         provider_elem = hash_map_get_next(collector_elem->provider_list, provider_elem);
     }
     collector_elem->args->dwell_time = new_dwell_time;
-    wifi_util_dbg_print(WIFI_MON, "SJY %s:%d updated collector dwell time %d \n", __func__, __LINE__,collector_elem->args->dwell_time);
 
     if (collector_elem->args->scan_mode == WIFI_RADIO_SCAN_MODE_OFFCHAN) {
         return RETURN_OK;
