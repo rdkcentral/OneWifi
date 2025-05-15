@@ -3809,6 +3809,12 @@ int coordinator_update_task(wifi_mon_collector_element_t *collector_elem, wifi_m
         return RETURN_ERR;
     }
 
+    if (coordinator_calculate_clctr_interval(collector_elem, dup_provider_elem,
+            &new_collector_interval) != RETURN_OK) {
+        coordinator_free_provider_elem(&dup_provider_elem);
+        return RETURN_ERR;
+    }
+
     wifi_mon_provider_element_t *provider_elem = (wifi_mon_provider_element_t *)hash_map_get(collector_elem->provider_list, dup_provider_elem->key);
     if (provider_elem == NULL) {
         provider_elem = dup_provider_elem;
