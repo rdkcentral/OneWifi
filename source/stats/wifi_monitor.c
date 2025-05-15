@@ -3803,7 +3803,6 @@ int coordinator_update_task(wifi_mon_collector_element_t *collector_elem, wifi_m
         }
     unsigned long new_collector_interval = 0;
     wifi_mon_provider_element_t *dup_provider_elem = NULL;
-    int new_dwell_time = 0;
     dup_provider_elem = coordinator_create_provider_elem(stats_config, collector_elem->stat_desc);
     if (dup_provider_elem == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d: coordinator_create_provider_elem failed\n", __func__,__LINE__);
