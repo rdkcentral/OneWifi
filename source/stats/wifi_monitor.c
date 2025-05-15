@@ -3472,11 +3472,13 @@ int coordinator_update_clctr_dwell_time(wifi_mon_collector_element_t *collector_
     }
 
     temp_new_dwell_time = new_provider_elem->mon_stats_config->args.dwell_time;
+    wifi_util_error_print(WIFI_MON,"SJY %s:%d the value of temp new dwell time is %u and app info is %d and radio index is %d and inst is %d and scan mode is %d and data type is %d \n", __func__,__LINE__, temp_new_dwell_time, new_provider_elem->mon_stats_config->args.app_info, new_provider_elem->mon_stats_config->args.radio_index, new_provider_elem->mon_stats_config->inst, new_provider_elem->mon_stats_config->args.scan_mode, new_provider_elem->mon_stats_config->data_type);
     // Traverse through the providers
     provider_elem = hash_map_get_first(collector_elem->provider_list);
     while (provider_elem != NULL) {
         if (strncmp(new_provider_elem->key, provider_elem->key, strlen(new_provider_elem->key)) !=
             0) {
+            wifi_util_error_print(WIFI_MON,"SJY %s:%d the value of existing provider dwell time is %u and app info is %d and radio index is %d and inst is %d and scan mode is %d and data type is %d\n", __func__,__LINE__, provider_elem->mon_stats_config->args.dwell_time, provider_elem->mon_stats_config->args.app_info, provider_elem->mon_stats_config->args.radio_index, provider_elem->mon_stats_config->inst, provider_elem->mon_stats_config->args.scan_mode, provider_elem->mon_stats_config->data_type);
             if (provider_elem->mon_stats_config->args.dwell_time > temp_new_dwell_time) {
                 temp_new_dwell_time = provider_elem->mon_stats_config->args.dwell_time;
             }

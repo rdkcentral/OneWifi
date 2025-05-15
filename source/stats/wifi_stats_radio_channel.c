@@ -792,7 +792,7 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
             __LINE__, args);
         return RETURN_ERR;
     }
-
+    
     if (mon_data->radio_presence[args->radio_index] == false) {
         wifi_util_info_print(WIFI_MON, "%s:%d radio_presence is false for radio : %d\n", __func__,
             __LINE__, args->radio_index);
@@ -1116,6 +1116,11 @@ int update_radio_channels_collector_args(void *ce)
         return RETURN_ERR;
     }
 
+    wifi_util_error_print(WIFI_MON, "SJY %s:%d The dwell time value is %d\n", __func__, __LINE__, collector_elem->args->dwell_time);
+    wifi_util_error_print(WIFI_MON, "SJY %s:%d The scan mode value is %d\n", __func__, __LINE__, collector_elem->args->scan_mode);
+    wifi_util_error_print(WIFI_MON, "SJY %s:%d The radio index value is %d\n", __func__, __LINE__, collector_elem->args->radio_index);
+    wifi_util_error_print(WIFI_MON, "SJY %s:%d The channel list size is %d\n", __func__, __LINE__, collector_elem->args->channel_list.num_channels);
+    wifi_util_error_print(WIFI_MON, "SJY %s:%d The app info is %d\n", __func__, __LINE__, collector_elem->args->app_info);
     if (collector_elem->args->scan_mode == WIFI_RADIO_SCAN_MODE_OFFCHAN) {
         return RETURN_OK;
     }
