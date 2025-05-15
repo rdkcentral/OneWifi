@@ -95,7 +95,10 @@ bool is_harvester_device_associated(int ap_index, mac_address_t sta_mac)
         wifi_util_error_print(WIFI_HARVESTER, "%s: Failed to get rdk_vap_info from vap index %d\n", __func__, ap_index);
         return false;
     }
+
+    pthread_mutex_lock(rdk_vap_info->associated_devices_lock);
     if (rdk_vap_info->associated_devices_map == NULL) {
+        pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
         wifi_util_error_print(WIFI_HARVESTER,"%s:%d NULL  associated_devices_map  pointer  for  %d\n", __func__, __LINE__, rdk_vap_info->vap_index);
         return false;
     }
@@ -104,6 +107,7 @@ bool is_harvester_device_associated(int ap_index, mac_address_t sta_mac)
 
     to_sta_key(sta_mac, sta_key);
     sta = (assoc_dev_data_t *) hash_map_get(rdk_vap_info->associated_devices_map, sta_key);
+    pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
     if (sta == NULL) {
         wifi_util_error_print(WIFI_HARVESTER, "%s: Failed to get sta from vap index %d\n", __func__, ap_index);
         return false;

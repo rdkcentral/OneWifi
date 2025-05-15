@@ -781,22 +781,26 @@ bus_error_t get_assoc_clients_data(char *event_name, raw_data_t *p_data)
         return bus_error_invalid_operation;
     }
 
-    pthread_mutex_lock(&ctrl->lock);
     for (itr = 0; itr < MAX_NUM_RADIOS; itr++) {
         for (itrj = 0; itrj < MAX_NUM_VAP_PER_RADIO; itrj++) {
-            if (mgr->radio_config[itr].vaps.rdk_vap_array[itrj].associated_devices_map != NULL) {
-                assoc_dev_data = hash_map_get_first(
-                    mgr->radio_config[itr].vaps.rdk_vap_array[itrj].associated_devices_map);
+            rdk_wifi_vap_info_t *rdk_vap_info = &mgr->radio_config[itr].vaps.rdk_vap_array[itrj];
+
+            if (rdk_vap_info->associated_devices_lock == NULL) {
+                continue;
+            }
+            pthread_mutex_lock(rdk_vap_info->associated_devices_lock);
+            if (rdk_vap_info->associated_devices_map != NULL) {
+                assoc_dev_data = hash_map_get_first(rdk_vap_info->associated_devices_map);
                 while (assoc_dev_data != NULL) {
                     get_sta_stats_info(assoc_dev_data);
-                    assoc_dev_data = hash_map_get_next(
-                        mgr->radio_config[itr].vaps.rdk_vap_array[itrj].associated_devices_map,
+                    assoc_dev_data = hash_map_get_next(rdk_vap_info->associated_devices_map,
                         assoc_dev_data);
                 }
             }
+            pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
         }
     }
-    pthread_mutex_unlock(&ctrl->lock);
+
     memset(&data, 0, sizeof(webconfig_subdoc_data_t));
 
     memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&mgr->radio_config,
@@ -977,7 +981,6 @@ int wifiapi_result_publish(void)
         status = bus_error_invalid_input;
         return status;
     }
-    pthread_mutex_lock(&ctrl->lock);
 
     if (ctrl->wifiapi.result == NULL) {
         len = strlen("Result not avaiable");
@@ -993,7 +996,6 @@ int wifiapi_result_publish(void)
     rdata.raw_data_len = len;
 
     rc = get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, WIFI_BUS_WIFIAPI_RESULT, &rdata);
-    pthread_mutex_unlock(&ctrl->lock);
 
     if (rc != bus_error_success) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d bus_event_publish_fn %s failed: %d\n", __func__,
@@ -1018,22 +1020,25 @@ char *get_assoc_devices_blob()
         return NULL;
     }
 
-    pthread_mutex_lock(&ctrl->lock);
     for (itr = 0; itr < MAX_NUM_RADIOS; itr++) {
         for (itrj = 0; itrj < MAX_NUM_VAP_PER_RADIO; itrj++) {
-            if (mgr->radio_config[itr].vaps.rdk_vap_array[itrj].associated_devices_map != NULL) {
-                assoc_dev_data = hash_map_get_first(
-                    mgr->radio_config[itr].vaps.rdk_vap_array[itrj].associated_devices_map);
+            rdk_wifi_vap_info_t *rdk_vap_info = &mgr->radio_config[itr].vaps.rdk_vap_array[itrj];
+
+            if (rdk_vap_info->associated_devices_lock == NULL) {
+                continue;
+            }
+            pthread_mutex_lock(rdk_vap_info->associated_devices_lock);
+            if (rdk_vap_info->associated_devices_map != NULL) {
+                assoc_dev_data = hash_map_get_first(rdk_vap_info->associated_devices_map);
                 while (assoc_dev_data != NULL) {
                     get_sta_stats_info(assoc_dev_data);
-                    assoc_dev_data = hash_map_get_next(
-                        mgr->radio_config[itr].vaps.rdk_vap_array[itrj].associated_devices_map,
+                    assoc_dev_data = hash_map_get_next(rdk_vap_info->associated_devices_map,
                         assoc_dev_data);
                 }
             }
+            pthread_mutex_unlock(rdk_vap_info->associated_devices_lock);
         }
     }
-    pthread_mutex_unlock(&ctrl->lock);
 
     pdata = (webconfig_subdoc_data_t *)malloc(sizeof(webconfig_subdoc_data_t));
     if (pdata == NULL) {
