@@ -4121,12 +4121,13 @@ int wifidb_init_interworking_config_default(int vapIndex,void /*wifi_Interworkin
     strcpy(interworking.hessid,"11:22:33:44:55:66");
     if (isVapHotspot(vapIndex))    //Xfinity hotspot vaps
     {
-         interworking.accessNetworkType = 2;
+        interworking.accessNetworkType = 2;
+        interworking.venueOptionPresent = 1;
     } else {
-         interworking.accessNetworkType = 0;
+        interworking.accessNetworkType = 0;
+        interworking.venueOptionPresent = 0;
     }
 
-    interworking.venueOptionPresent = 1;
     interworking.venueGroup = 0;
     interworking.venueType = 0;
 
