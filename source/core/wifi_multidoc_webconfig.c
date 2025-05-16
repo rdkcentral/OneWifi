@@ -422,7 +422,8 @@ static int update_vap_info(void *data, wifi_vap_info_t *vap_info,pErr execRetVal
     ssid_obj = cJSON_GetObjectItem(root, ssid);
     if (ssid_obj == NULL) {
         status = RETURN_ERR;
-        wifi_util_dbg_print(WIFI_CTRL, "%s: Failed to get %s SSID\n", __func__, vap_info->vap_name);
+        wifi_util_error_print(WIFI_CTRL, "%s: Failed to get %s SSID\n", __func__,
+            vap_info->vap_name);
         goto done;
     }
 
@@ -813,9 +814,9 @@ char *unpackDecode(const char* enb)
     msgpack_object msg_obj;
 
     msgpack_zone_init(&msg_z, MAX_JSON_BUFSIZE);
-    msgpack_zone_init(&msg_z, MAX_JSON_BUFSIZE);
     if(msgpack_unpack((const char*)msg, (size_t)msg_size, NULL, &msg_z, &msg_obj) != MSGPACK_UNPACK_SUCCESS) {
         msgpack_zone_destroy(&msg_z);
+        free(msg);
         wifi_util_error_print(WIFI_CTRL, "%s: Failed to unpack blob\n", __func__);
         return NULL;
     }
@@ -839,6 +840,7 @@ char *unpackDecode(const char* enb)
     }
 
     msgpack_zone_destroy(&msg_z);
+    free(msg);
 //    wifi_util_dbg_print(WIFI_CTRL, "%s, blob\n%s\n", __func__, dej);
     return dej; // decoded, unpacked json - caller should free memory
 }
