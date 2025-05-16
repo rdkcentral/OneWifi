@@ -1094,7 +1094,8 @@ int validate_enterprise_security(const cJSON *security, wifi_vap_info_t *vap_inf
     }
 
         validate_param_string(security, "EncryptionMethod", param);
-        if ((strcmp(param->valuestring, "AES") != 0) && (strcmp(param->valuestring, "AES+TKIP") != 0)) {
+        if (strcmp(param->valuestring, "AES") != 0 && strcmp(param->valuestring, "AES+TKIP") != 0 &&
+            strcmp(param->valuestring, "AES+GCMP") != 0) {
             wifi_util_dbg_print(WIFI_PASSPOINT,"%s:%d: Xfinity WiFi VAP Encrytpion mode is Invalid:%s\n", 
                     __func__, __LINE__, param->valuestring);
             strncpy(execRetVal->ErrorMsg, "Invalid enc mode for hotspot secure vap",sizeof(execRetVal->ErrorMsg)-1);  
@@ -1158,10 +1159,12 @@ int validate_personal_security(const cJSON *security, wifi_vap_info_t *vap_info,
 
         if (strcmp(param->valuestring, "TKIP") == 0) {
             vap_info->u.bss_info.security.encr = wifi_encryption_tkip;
-        } else if(strcmp(param->valuestring, "AES") == 0) {
+        } else if (strcmp(param->valuestring, "AES") == 0) {
             vap_info->u.bss_info.security.encr = wifi_encryption_aes;
-        } else if(strcmp(param->valuestring, "AES+TKIP") == 0) {
+        } else if (strcmp(param->valuestring, "AES+TKIP") == 0) {
             vap_info->u.bss_info.security.encr = wifi_encryption_aes_tkip;
+        } else if (strcmp(param->valuestring, "AES+GCMP") == 0) {
+            vap_info->u.bss_info.security.encr = wifi_encryption_aes_gcmp256;
         } else {
             get_wificcsp_obj()->desc.CcspTraceErrorRdkb_fn("WIFI_PASSPOINT, %s: Invalid Encryption method for private vap\n", __FUNCTION__);
             strncpy(execRetVal->ErrorMsg, "Invalid Encryption method",sizeof(execRetVal->ErrorMsg)-1);
@@ -1507,6 +1510,26 @@ int validate_vap(const cJSON *vap, wifi_vap_info_t *vap_info, wifi_platform_prop
 	// Broadcast SSID
 	validate_param_bool(vap, "SSIDAdvertisementEnabled", param);
 	vap_info->u.bss_info.showSsid = (param->type & cJSON_True) ? true:false;
+
+    // MLD Enable
+    validate_param_bool(vap, "MLD_Enable", param);
+	vap_info->u.bss_info.mld_info.common_info.mld_enable = (param->type & cJSON_True) ? true:false;
+
+    // MLD Apply
+	validate_param_bool(vap, "MLD_Apply", param);
+	vap_info->u.bss_info.mld_info.common_info.mld_apply = (param->type & cJSON_True) ? true:false;
+
+    // MLD ID
+	validate_param_integer(vap, "MLD_ID", param);
+	vap_info->u.bss_info.mld_info.common_info.mld_id = param->valuedouble;
+
+    // MLD Link ID
+	validate_param_integer(vap, "MLD_Link_ID", param);
+	vap_info->u.bss_info.mld_info.common_info.mld_link_id = param->valuedouble;
+
+    // MLD_Addr
+    validate_param_string(vap, "MLD_Addr", param);
+    string_mac_to_uint8_mac((uint8_t *)&vap_info->u.bss_info.mld_info.common_info.mld_addr, param->valuestring);
 
 	// Isolation
 	validate_param_bool(vap, "IsolationEnable", param);

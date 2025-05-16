@@ -344,6 +344,7 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
     const rdk_wifi_vap_info_t *rdk_vap_info, cJSON *vap_object)
 {
     char mac_str[32];
+    char mld_mac_str[32];
     char extra_vendor_ies_hex_str[(vap_info->u.bss_info.vendor_elements_len * 2) + 1];
 
     //VAP Name
@@ -376,6 +377,22 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
 
     // Broadcast SSID
     cJSON_AddBoolToObject(vap_object, "SSIDAdvertisementEnabled", vap_info->u.bss_info.showSsid);
+
+    // MLD Enable
+    cJSON_AddBoolToObject(vap_object, "MLD_Enable", vap_info->u.bss_info.mld_info.common_info.mld_enable);
+
+    // MLD Apply
+    cJSON_AddBoolToObject(vap_object, "MLD_Apply", vap_info->u.bss_info.mld_info.common_info.mld_apply);
+
+    // MLD_ID
+    cJSON_AddNumberToObject(vap_object, "MLD_ID", vap_info->u.bss_info.mld_info.common_info.mld_id);
+
+    // MLD_Link_ID
+    cJSON_AddNumberToObject(vap_object, "MLD_Link_ID", vap_info->u.bss_info.mld_info.common_info.mld_link_id);
+
+    // MLD_Addr
+    uint8_mac_to_string_mac((uint8_t *)vap_info->u.bss_info.mld_info.common_info.mld_addr, mld_mac_str);
+    cJSON_AddStringToObject(vap_object, "MLD_Addr", mld_mac_str);
 
     // Isolation
     cJSON_AddBoolToObject(vap_object, "IsolationEnable", vap_info->u.bss_info.isolation);
@@ -1121,7 +1138,8 @@ webconfig_error_t encode_security_object(const wifi_vap_security_t *security_inf
         return webconfig_error_encode;
     }
 
-    if (security_info->encr != wifi_encryption_aes &&
+    if ((security_info->encr != wifi_encryption_aes &&
+        security_info->encr != wifi_encryption_aes_gcmp256) &&
         (security_info->mode == wifi_security_mode_enhanced_open ||
         security_info->mode == wifi_security_mode_wpa3_enterprise ||
         security_info->mode == wifi_security_mode_wpa3_personal)) {
@@ -1149,7 +1167,9 @@ webconfig_error_t encode_security_object(const wifi_vap_security_t *security_inf
         case wifi_encryption_aes_tkip:
             cJSON_AddStringToObject(security, "EncryptionMethod", "AES+TKIP");
             break;
-
+        case wifi_encryption_aes_gcmp256:
+            cJSON_AddStringToObject(security, "EncryptionMethod", "AES+GCMP");
+            break;
         default:
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to encode encryption method: %d\n",
                 __func__, __LINE__, security_info->encr);
