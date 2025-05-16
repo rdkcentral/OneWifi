@@ -679,6 +679,32 @@ int handle_sm_webconfig_event(wifi_app_t *app, wifi_event_t *event)
         new_stats_cfg = hash_map_get_next(new_ctrl_stats_cfg_map, new_stats_cfg);
     }
 
+    // update neigbour survey_interval to survey's interval if value is 0
+    new_stats_cfg = hash_map_get_first(new_ctrl_stats_cfg_map);
+    while (new_stats_cfg != NULL) {
+        if (new_stats_cfg->stats_type == stats_type_neighbor &&
+            new_stats_cfg->survey_interval == 0) {
+            // search survey configuration.
+            tmp_stats_cfg = hash_map_get_first(new_ctrl_stats_cfg_map);
+            while (tmp_stats_cfg != NULL) {
+                if (tmp_stats_cfg->stats_type == stats_type_survey &&
+                    tmp_stats_cfg->radio_type == new_stats_cfg->radio_type &&
+                    tmp_stats_cfg->survey_type == new_stats_cfg->survey_type &&
+                    tmp_stats_cfg->survey_interval != 0) {
+                    new_stats_cfg->survey_interval = tmp_stats_cfg->survey_interval;
+                    wifi_util_dbg_print(WIFI_SM,
+                        "%s %d update survey_interval for neighbor "
+                        "stats_type_neighbor(radio_type %d, survey_type %d) to %u\n",
+                        __func__, __LINE__, new_stats_cfg->radio_type, new_stats_cfg->survey_type,
+                        new_stats_cfg->survey_interval);
+                    break;
+                }
+                tmp_stats_cfg = hash_map_get_next(new_ctrl_stats_cfg_map, tmp_stats_cfg);
+            }
+        }
+        new_stats_cfg = hash_map_get_next(new_ctrl_stats_cfg_map, new_stats_cfg);
+    }
+
     // search for the deleted elements if any in new_ctrl_stats_cfg
     if (cur_app_stats_cfg_map != NULL) {
         cur_stats_cfg = hash_map_get_first(cur_app_stats_cfg_map);
@@ -741,7 +767,7 @@ int handle_sm_webconfig_event(wifi_app_t *app, wifi_event_t *event)
                     if (!off_scan_rfc && cur_stats_cfg->survey_type == survey_type_off_channel &&
                         (cur_stats_cfg->radio_type == WIFI_FREQUENCY_5_BAND ||
                             cur_stats_cfg->radio_type == WIFI_FREQUENCY_5L_BAND ||
-                            cur_stats_cfg->radio_type == WIFI_FREQUENCY_5H_BAND)) {
+                            cur_stats_cfg->radio_type == WIFI_FREQUENCY_5H_BAND)) { 
                         if (is_scan_scheduled(app, cur_stats_cfg)) {
                             push_sm_config_event_to_monitor_queue(app, mon_stats_request_state_stop,
                                 cur_stats_cfg);
