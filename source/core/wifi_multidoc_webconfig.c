@@ -1042,6 +1042,18 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
         cJSON_AddNumberToObject(vb_entry, "VapMode", 0);
         cJSON_AddItemToObject(vb_entry, "BridgeName", cJSON_CreateString(br_name));
         cJSON_AddItemToObject(vb_entry, "BSSID", cJSON_CreateString("00:00:00:00:00:00"));
+
+	/* MLD Configuration */
+	cJSON_AddBoolToObject(vb_entry, "MLD_Enable", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.mld_info.common_info.mld_enable);
+	cJSON_AddBoolToObject(vb_entry, "MLD_Apply", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.mld_info.common_info.mld_apply);
+	cJSON_AddNumberToObject(vb_entry, "MLD_ID", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.mld_info.common_info.mld_id);
+	cJSON_AddNumberToObject(vb_entry, "MLD_Link_ID", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.mld_info.common_info.mld_link_id);
+
+	/* Convert MLD MAC address to string and add */
+	char mld_mac_str[18] = {0};
+	uint8_mac_to_string_mac((uint8_t *)wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.mld_info.common_info.mld_addr, mld_mac_str);
+	cJSON_AddStringToObject(vb_entry, "MLD_Addr", mld_mac_str);
+
 #if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
        if(rdk_vap_info->exists == false) {
 #if defined(_SR213_PRODUCT_REQ_)
