@@ -100,6 +100,9 @@ extern "C" {
 #define MIN_DIAG_INTERVAL   5000
 #define CSI_PING_INTERVAL   100
 
+#define RSS_MEM_THRESHOLD1_DEFAULT 81920
+#define RSS_MEM_THRESHOLD2_DEFAULT 112640
+
 #define wifi_sub_component_base     0x01
 #define wifi_app_inst_base          0x01
 
@@ -472,6 +475,8 @@ typedef struct {
     int  assoc_gate_time;
     int  whix_log_interval; //seconds
     int  whix_chutility_loginterval; //seconds
+    ULONG rss_mem_threshold1;
+    ULONG rss_mem_threshold2;
     int  assoc_monitor_duration;
     bool rapid_reconnect_enable;
     bool vap_stats_feature;
