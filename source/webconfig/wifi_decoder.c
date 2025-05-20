@@ -349,6 +349,7 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
     }
 
     cJSON_ArrayForEach(anqpEntry, anqpList){
+        UCHAR eap_method_count = 0;
         wifi_naiRealm_t *realmInfoBuf = (wifi_naiRealm_t *)next_pos;
         next_pos += sizeof(realmInfoBuf->data_field_length);
 
@@ -374,15 +375,18 @@ webconfig_error_t decode_anqp_object(const cJSON *anqp, wifi_interworking_t *int
         cJSON_AddNumberToObject(realmStats, "Timeout", 0);**/
 
         decode_param_array(anqpEntry,"EAP",subList);
-        realmInfoBuf->eap_method_count = cJSON_GetArraySize(subList);
-        if(realmInfoBuf->eap_method_count > 16){
+        eap_method_count = cJSON_GetArraySize(subList);
+        if(eap_method_count > 16){
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: EAP entries cannot be more than 16. Discarding Configuration\n", __func__, __LINE__);
             return webconfig_error_eap_entries;
         }
+        *next_pos = eap_method_count;
         next_pos += sizeof(realmInfoBuf->eap_method_count);
 
         cJSON_ArrayForEach(subEntry, subList){
             wifi_eapMethod_t *eapBuf = (wifi_eapMethod_t *)next_pos;
+            next_pos += sizeof(eapBuf->length);
+
             decode_param_integer(subEntry,"Method",subParam);
             eapBuf->method = subParam->valuedouble;
             next_pos += sizeof(eapBuf->method);
