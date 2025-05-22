@@ -48,6 +48,7 @@
 #define BLASTER_STATE_LEN    10
 #define INVALID_INDEX        256
 
+static pthread_mutex_t webconfig_data_lock = PTHREAD_MUTEX_INITIALIZER;
 static webconfig_subdoc_data_t  webconfig_ovsdb_data;
 /* global pointer to webconfig subdoc encoded data to avoid memory loss when passing data to OVSM */
 static char *webconfig_ovsdb_raw_data_ptr = NULL;
@@ -1097,6 +1098,8 @@ webconfig_error_t webconfig_ovsdb_encode(webconfig_t *config,
     wifi_util_info_print(WIFI_WEBCONFIG, "%s:%d: OVSM encode subdoc type %d\n", __func__, __LINE__,
         type);
 
+    pthread_mutex_lock(&webconfig_data_lock);
+
     webconfig_ovsdb_data.u.decoded.external_protos = (webconfig_external_ovsdb_t *)data;
     webconfig_ovsdb_data.descriptor = webconfig_data_descriptor_translate_from_ovsdb;
     debug_external_protos(&webconfig_ovsdb_data, __func__, __LINE__);
@@ -1105,6 +1108,7 @@ webconfig_error_t webconfig_ovsdb_encode(webconfig_t *config,
     if (rdk_wifi_radio_state == NULL) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: calloc failed for rdk_wifi_radio_state\n",
             __func__, __LINE__);
+        pthread_mutex_unlock(&webconfig_data_lock);
         return webconfig_error_encode;
     }
 
@@ -1119,6 +1123,7 @@ webconfig_error_t webconfig_ovsdb_encode(webconfig_t *config,
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: OVSM encode failed\n", __func__, __LINE__);
         free_maclist_map(webconfig_ovsdb_data.u.decoded.num_radios, rdk_wifi_radio_state);
         free(rdk_wifi_radio_state);
+        pthread_mutex_unlock(&webconfig_data_lock);
         return webconfig_error_encode;
     }
 
@@ -1135,6 +1140,7 @@ webconfig_error_t webconfig_ovsdb_encode(webconfig_t *config,
         *str = NULL;
         free_maclist_map(webconfig_ovsdb_data.u.decoded.num_radios, rdk_wifi_radio_state);
         free(rdk_wifi_radio_state);
+        pthread_mutex_unlock(&webconfig_data_lock);
         return webconfig_error_translate_from_ovsdb_cfg_no_change;
     }
     webconfig_ovsdb_raw_data_ptr = webconfig_ovsdb_data.u.encoded.raw;
@@ -1142,18 +1148,23 @@ webconfig_error_t webconfig_ovsdb_encode(webconfig_t *config,
     *str = webconfig_ovsdb_raw_data_ptr;
     free_maclist_map(webconfig_ovsdb_data.u.decoded.num_radios, rdk_wifi_radio_state);
     free(rdk_wifi_radio_state);
+
+    pthread_mutex_unlock(&webconfig_data_lock);
+
     return webconfig_error_none;
 }
 
 webconfig_error_t webconfig_ovsdb_decode(webconfig_t *config, const char *str,
     webconfig_external_ovsdb_t *data, webconfig_subdoc_type_t *type)
 {
+    pthread_mutex_lock(&webconfig_data_lock);
     webconfig_ovsdb_data.u.decoded.external_protos = (webconfig_external_ovsdb_t *)data;
     webconfig_ovsdb_data.descriptor = webconfig_data_descriptor_translate_to_ovsdb;
 
     if (webconfig_decode(config, &webconfig_ovsdb_data, str) != webconfig_error_none) {
         //        *data = NULL;
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: OVSM decode failed\n", __func__, __LINE__);
+        pthread_mutex_unlock(&webconfig_data_lock);
         return webconfig_error_decode;
     }
 
@@ -1162,6 +1173,7 @@ webconfig_error_t webconfig_ovsdb_decode(webconfig_t *config, const char *str,
     *type = webconfig_ovsdb_data.type;
     debug_external_protos(&webconfig_ovsdb_data, __func__, __LINE__);
     webconfig_data_free(&webconfig_ovsdb_data);
+    pthread_mutex_unlock(&webconfig_data_lock);
     return webconfig_error_none;
 }
 
