@@ -362,11 +362,9 @@ int neighbor_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_t *
 
     if (stat_config_entry->survey_type == survey_type_on_channel) {
         data->u.mon_stats_config.args.scan_mode = WIFI_RADIO_SCAN_MODE_ONCHAN;
-        data->u.mon_stats_config.args.dwell_time = stat_config_entry->survey_interval;
         data->u.mon_stats_config.args.channel_list.num_channels = 0;
     } else {
         data->u.mon_stats_config.args.scan_mode = WIFI_RADIO_SCAN_MODE_OFFCHAN;
-        data->u.mon_stats_config.args.dwell_time = stat_config_entry->survey_interval;
         data->u.mon_stats_config.args.channel_list.num_channels = stat_config_entry->channels_list.num_channels;
         for (i = 0;i < stat_config_entry->channels_list.num_channels; i++) {
             data->u.mon_stats_config.args.channel_list.channels_list[i] = stat_config_entry->channels_list.channels_list[i];
@@ -405,10 +403,8 @@ int survey_config_to_monitor_queue(wifi_monitor_data_t *data, stats_config_t *st
 
     if (stat_config_entry->survey_type == survey_type_on_channel) {
         data->u.mon_stats_config.args.channel_list.num_channels = 0;
-        data->u.mon_stats_config.args.dwell_time = stat_config_entry->survey_interval;
         data->u.mon_stats_config.args.scan_mode = WIFI_RADIO_SCAN_MODE_ONCHAN;
     } else {
-        data->u.mon_stats_config.args.dwell_time = stat_config_entry->survey_interval;
         data->u.mon_stats_config.args.channel_list.num_channels = stat_config_entry->channels_list.num_channels;
         for (i = 0;i < stat_config_entry->channels_list.num_channels; i++) {
             data->u.mon_stats_config.args.channel_list.channels_list[i] = stat_config_entry->channels_list.channels_list[i];
