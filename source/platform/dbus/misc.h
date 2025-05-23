@@ -17,37 +17,27 @@
   limitations under the License.
  **************************************************************************/
 
-#ifndef BUS_H
-#define BUS_H
+#ifndef _MISC_H_
+#define _MISC_H_
 
-#include "bus_common.h"
-#include <rbus.h>
+#include "misc_common.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-typedef struct bus_handle {
-    union {
-        rbusHandle_t rbus_handle;
-    } u;
-} bus_handle_t;
-
-typedef struct rbus_sub_callback_table {
-    rbusEventHandler_t                sub_handler;
-    rbusSubscribeAsyncRespHandler_t   sub_ex_async_handler;
-} rbus_sub_callback_table_t;
+void wifi_misc_init();
 
 typedef struct {
-    wifi_bus_desc_t        desc;
-    bus_cb_multiplexing_t  bus_cb_mux;
-} wifi_bus_t;
+    wifi_misc_desc_t                desc;
+} wifi_misc_t;
 
-wifi_bus_desc_t *get_bus_descriptor();
-wifi_bus_t *get_bus_obj(void);
-bus_error_t bus_init(bus_handle_t *handle);
+wifi_misc_desc_t *get_misc_descriptor();
+wifi_misc_t *get_misc_obj();
+
 #ifdef __cplusplus
 }
 #endif
 
-#endif // BUS_H
+#endif //_MISC_H

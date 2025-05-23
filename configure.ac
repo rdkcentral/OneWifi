@@ -106,6 +106,7 @@ AM_CONDITIONAL([EASYCONNECT_SUPPORT], [test x$EASYCONNECT_SUPPORT_ENABLE = xtrue
 AM_CONDITIONAL([HAL_IPC], [test x$HAL_IPC = xtrue])
 AM_CONDITIONAL([ONEWIFI_CAC_APP_SUPPORT], [test x$ONEWIFI_CAC_APP_SUPPORT = xtrue])
 AM_CONDITIONAL([ONEWIFI_DML_SUPPORT], [test x$ONEWIFI_DML_SUPPORT_MAKEFILE = xtrue])
+AM_CONDITIONAL([ONEWIFI_DBUS_SUPPORT], [test x$ONEWIFI_DBUS_SUPPORT = xtrue])
 
 # Specify ccsp cpu arch
 
@@ -227,6 +228,7 @@ AC_C_INLINE
 AC_FUNC_MALLOC
 
 AC_CONFIG_FILES(
+    source/platform/Makefile
     source/dml/tr_181/sbapi/Makefile
     source/dml/tr_181/ml/Makefile
     source/dml/tr_181/Makefile

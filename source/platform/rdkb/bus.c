@@ -16,16 +16,16 @@
   See the License for the specific language governing permissions and
   limitations under the License.
  **************************************************************************/
-
 #include "bus.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <stdbool.h>
+#include <unistd.h>
+#include "wifi_util.h"
 
 static wifi_bus_t g_bus;
-
 /* Function pointer address return */
 wifi_bus_t *get_bus_obj(void)
 {
@@ -463,6 +463,11 @@ rbusValueType_t convert_bus_to_rbus_data_type(bus_data_type_t bus_data_type)
     return rbus_data_type;
 }
 
+void *bus_convert_handle_to_ptr(bus_handle_t *handle)
+{
+    return &handle->u.rbus_handle;
+}
+
 void free_raw_data_struct(raw_data_t *p_data)
 {
     if ((p_data->data_type == bus_data_type_string || p_data->data_type == bus_data_type_bytes) && p_data->raw_data.bytes != NULL) {
@@ -565,7 +570,6 @@ bus_error_t set_rbus_property_data(char *event_name, rbusProperty_t property, ra
 
     rbusProperty_SetValue(property, value);
     rbusValue_Release(value);
-
     return ret;
 }
 
@@ -599,8 +603,8 @@ bus_error_t get_rbus_object_data(char *name, rbusObject_t inParams, raw_data_t *
             bus_data->raw_data_len = sizeof(uint32_t);
         break;
         case RBUS_INT32:
-            bus_data->raw_data.i32 = rbusValue_GetInt32(value);
-            bus_data->raw_data_len = sizeof(int32_t);
+	    bus_data->raw_data.i32 = rbusValue_GetInt32(value);
+	    bus_data->raw_data_len = sizeof(int32_t);
         break;
         case RBUS_BOOLEAN:
             bus_data->raw_data.b = rbusValue_GetBoolean(value);
@@ -634,7 +638,6 @@ bus_error_t set_rbus_object_data(char *name, rbusObject_t outParams, raw_data_t 
 {
     bus_error_t rc = bus_error_success;
     rbusValue_t  value;
-
     rbusValue_Init(&value);
     wifi_util_dbg_print(WIFI_BUS,"%s:%d Rbus object:%s data type=%d set\r\n", __func__, __LINE__, name, bus_data->data_type);
 
@@ -642,12 +645,14 @@ bus_error_t set_rbus_object_data(char *name, rbusObject_t outParams, raw_data_t 
         case bus_data_type_bytes:
             rbusValue_SetBytes(value, (uint8_t *)bus_data->raw_data.bytes, bus_data->raw_data_len);
         break;
+        case bus_data_type_string:
+            rbusValue_SetString(value, (char *)bus_data->raw_data.bytes);
+        break;
         default:
             wifi_util_error_print(WIFI_BUS,"%s Rbus:%s value type not found =%d\n",__FUNCTION__, name, bus_data->data_type);
             rc = bus_error_invalid_input;
         break;
     }
-
     rbusObject_SetValue(outParams, name, value);
     rbusValue_Release(value);
 
@@ -659,6 +664,7 @@ rbusError_t rbus_get_handler(rbusHandle_t handle, rbusProperty_t property, rbusG
     raw_data_t  bus_data = { 0 };
     bus_error_t ret = bus_error_success;
     char *event_name;
+    bus_user_data_t bus_userdata;
     event_name = (char *)rbusProperty_GetName(property);
 
     if (event_name == NULL) {
@@ -672,6 +678,7 @@ rbusError_t rbus_get_handler(rbusHandle_t handle, rbusProperty_t property, rbusG
     rbusValue_t value = rbusProperty_GetValue(property);
     rbusValueType_t type = rbusValue_GetType(value);
     bus_data.data_type = convert_rbus_to_bus_data_type(type);
+    bus_userdata.handle = handle;
 
     bus_mux_reg_node_data_t *reg_node_data = get_bus_cb_data_info(get_bus_mux_reg_cb_map(), event_name);
     if (reg_node_data == NULL) {
@@ -688,7 +695,7 @@ rbusError_t rbus_get_handler(rbusHandle_t handle, rbusProperty_t property, rbusG
 #endif
     }
     if (user_cb->get_handler != NULL) {
-        ret = user_cb->get_handler(event_name, &bus_data);
+        ret = user_cb->get_handler(event_name, &bus_data, &bus_userdata);
         if (ret == bus_error_success) {
             ret = set_rbus_property_data(event_name, property, &bus_data);
         } else {
@@ -704,8 +711,10 @@ rbusError_t rbus_set_handler(rbusHandle_t handle, rbusProperty_t property, rbusS
 {
     raw_data_t  bus_data = { 0 };
     bus_error_t ret = bus_error_success;
+    bus_user_data_t bus_userdata;
     char *event_name;
     event_name = (char *)rbusProperty_GetName(property);
+
 
     if (event_name == NULL) {
         wifi_util_error_print(WIFI_BUS,"%s:%d rbus event name is NULL\n", __func__, __LINE__);
@@ -713,6 +722,8 @@ rbusError_t rbus_set_handler(rbusHandle_t handle, rbusProperty_t property, rbusS
     } else if (options != NULL && options->requestingComponent != NULL) {
         wifi_util_info_print(WIFI_BUS,"%s:%d rbus data set end comp:%s\n", __func__, __LINE__, options->requestingComponent);
     }
+
+    bus_userdata.handle = handle;
 
     wifi_util_info_print(WIFI_BUS,"%s:%d rbus cb triggered for %s\n", __func__, __LINE__, event_name);
     bus_mux_reg_node_data_t *reg_node_data = get_bus_cb_data_info(get_bus_mux_reg_cb_map(), event_name);
@@ -732,7 +743,7 @@ rbusError_t rbus_set_handler(rbusHandle_t handle, rbusProperty_t property, rbusS
                 return RBUS_ERROR_INVALID_OPERATION;
             }
 #endif
-            ret = user_cb->set_handler(event_name, &bus_data);
+            ret = user_cb->set_handler(event_name, &bus_data, &bus_userdata);
             if (ret != bus_error_success) {
                 wifi_util_error_print(WIFI_BUS,"%s:%d user cb processing failed:%d for %s\n", __func__,
                     __LINE__, ret, event_name);
@@ -807,9 +818,8 @@ rbusError_t rbus_method_handler(rbusHandle_t handle, char const* methodName, rbu
                 ret = set_rbus_object_data((char *)methodName, outParams, &bus_output_data);
             }
             free_raw_data_struct(&bus_output_data);
-	}
+        }
     }
-
     return convert_bus_to_rbus_error_code(ret);
 }
 
@@ -838,6 +848,7 @@ static void rbus_sub_handler(rbusHandle_t handle, rbusEvent_t const* event,
     bus_error_t ret = bus_error_success;
     raw_data_t  bus_data = { 0 };
     char *event_name = (char *)subscription->eventName;
+    void *userData = subscription->userData;
 
     wifi_util_info_print(WIFI_BUS,"%s:%d rbus sub cb triggered for %s\n", __func__, __LINE__, event_name);
     bus_mux_sub_node_data_t  *sub_node_data = get_bus_cb_data_info(get_bus_mux_sub_cb_map(), event_name);
@@ -849,7 +860,7 @@ static void rbus_sub_handler(rbusHandle_t handle, rbusEvent_t const* event,
     if (user_cb->sub_handler != NULL) {
         ret = get_rbus_object_data(event_name, event->data, &bus_data);
         if (ret == bus_error_success) {
-            user_cb->sub_handler((char *)event_name, &bus_data);
+            user_cb->sub_handler((char *)event_name, &bus_data, userData);
         }
     }
 }
@@ -862,6 +873,7 @@ void rbus_sub_ex_async_handler(rbusHandle_t handle, rbusEventSubscription_t* sub
     wifi_util_info_print(WIFI_BUS,"%s:%d rbus sub ex async cb triggered\n", __func__, __LINE__);
     if (subscription) {
         char *event_name = (char *)subscription->eventName;
+        void *userData = subscription->userData;
         wifi_util_dbg_print(WIFI_BUS, "%s: %d event name (%s) subscribe %s\n", __func__, __LINE__,
                         subscription->eventName, bus_error == bus_error_success ? "success" : "failed");
         bus_mux_sub_node_data_t  *sub_node_data = get_bus_cb_data_info(get_bus_mux_sub_cb_map(), event_name);
@@ -871,7 +883,7 @@ void rbus_sub_ex_async_handler(rbusHandle_t handle, rbusEventSubscription_t* sub
         }
         bus_sub_callback_table_t *user_cb = &sub_node_data->cb_table;
         if (user_cb->sub_ex_async_handler != NULL) {
-            user_cb->sub_ex_async_handler((char *)event_name, bus_error);
+            user_cb->sub_ex_async_handler((char *)event_name, bus_error, userData);
         }
     }
 }
@@ -1033,6 +1045,7 @@ static bus_error_t bus_close(bus_handle_t *handle)
         __func__, __LINE__, rc, handle->u.rbus_handle);
     return convert_rbus_to_bus_error_code(rc);
 }
+
 
 static bus_error_t bus_get_trace_context(bus_handle_t *handle, char *traceParent,
     uint32_t traceParentLength, char *traceState, uint32_t traceStateLength)
@@ -1287,6 +1300,49 @@ static bool remove_substring(char *str, const char *sub)
     return false;
 }
 
+bus_error_t bus_unreg_data_elements(bus_handle_t *handle, uint32_t num_of_element, bus_data_element_t *data_element)
+{
+    rbusError_t rc = bus_error_success;
+    rbusHandle_t p_rbus_handle = handle->u.rbus_handle;
+    rbusDataElement_t *rbus_dataElements;
+    uint32_t index = 0;
+
+    wifi_util_dbg_print(WIFI_BUS, "%s:%d bus: bus_unreg_data_elements() hdl:%p, \
+        num_of_element:%d\n", __func__, __LINE__, p_rbus_handle, num_of_element);
+    if (p_rbus_handle == NULL || data_element == NULL) {
+       wifi_util_error_print(WIFI_BUS, "%s bus: input param is NULL\n", __func__);
+       return bus_error_invalid_input;
+    }
+
+    rbus_dataElements = calloc(1, num_of_element * sizeof(rbusDataElement_t));
+    if (rbus_dataElements == NULL) {
+        wifi_util_error_print(WIFI_BUS, "%s:%d bus: bus_reg_data_elements() calloc is failed\n",
+            __func__, __LINE__);
+        return bus_error_out_of_resources;
+    }
+
+    for (index = 0; index < num_of_element; index++) {
+         rbus_dataElements[index].name = data_element[index].full_name;
+         rbus_dataElements[index].type = convert_bus_to_rbus_elem_type(data_element[index].type);
+    }
+
+    rc = rbus_unregDataElements(p_rbus_handle, num_of_element, rbus_dataElements);
+    if (rc != RBUS_ERROR_SUCCESS) {
+        wifi_util_error_print(WIFI_BUS, "%s:%d: bus: rbus_unregDataElements failed. \
+            rc:%d.\n", __func__, __LINE__, rc);
+        free(rbus_dataElements);
+        return convert_rbus_to_bus_error_code(rc);
+    }
+
+    for (index = 0; index < num_of_element; index++) {
+        bus_table_remove_row(get_bus_mux_reg_cb_map(), data_element[index].full_name);
+        wifi_util_dbg_print(WIFI_BUS, "%s:%d %s entry removed\n", __func__, __LINE__, data_element[index].full_name);
+    }
+    free(rbus_dataElements);
+
+    return bus_error_success;
+}
+
 bus_error_t bus_reg_data_elements(bus_handle_t *handle, bus_data_element_t *data_element,
     uint32_t num_of_element)
 {
@@ -1360,7 +1416,7 @@ bus_error_t bus_reg_data_elements(bus_handle_t *handle, bus_data_element_t *data
 }
 
 bus_error_t bus_method_invoke(bus_handle_t *handle, void *paramName, char *event,
-    raw_data_t *input_data, raw_data_t *output_data, bool input_bus_data)
+    raw_data_t *input_data, raw_data_t *output_data, uint8_t input_bus_data)
 {
     rbusError_t rc;
     rbusHandle_t p_rbus_handle = handle->u.rbus_handle;
@@ -1368,19 +1424,23 @@ bus_error_t bus_method_invoke(bus_handle_t *handle, void *paramName, char *event
     rbusProperty_t prop = NULL;
     rbusObject_t inParams = NULL, outParams = NULL;
     int len = 0;
-
+    void *ptr = NULL;
     rbusObject_Init(&inParams, NULL);
     rbusValue_Init(&value);
 
-    if (input_bus_data == BUS_METHOD_SET) {
+    if ((input_bus_data == BUS_METHOD_SET) || (input_bus_data == BUS_METHOD_SET_GET)) {
         if (input_data->data_type == bus_data_type_string) {
             if (false ==
                 rbusValue_SetFromString(value, RBUS_STRING, (char *)input_data->raw_data.bytes)) {
                 wifi_util_dbg_print(WIFI_BUS, "%s: bus: Invalid value '%s' for the parameter %s\n\r",
                     __func__, input_data->raw_data.bytes, paramName);
             }
+        } else if (input_data->data_type == bus_data_type_bytes) {
+              rbusValue_SetBytes(value, (uint8_t *)input_data->raw_data.bytes, input_data->raw_data_len);
+        } else if (input_data->data_type == bus_data_type_int32) {
+              rbusValue_SetInt32(value, input_data->raw_data.i32);
         } else {
-            wifi_util_dbg_print(WIFI_BUS, "%s: bus: Invalid data_type '%d' for the parameter %s\n\r",
+              wifi_util_dbg_print(WIFI_BUS, "%s: bus: Invalid data_type '%d' for the parameter %s\n\r",
                 __func__, input_data->data_type, paramName);
         }
     }
@@ -1394,9 +1454,22 @@ bus_error_t bus_method_invoke(bus_handle_t *handle, void *paramName, char *event
         rbusObject_Release(inParams);
     }
 
-    if ((RBUS_ERROR_SUCCESS == rc) && (input_bus_data == BUS_METHOD_GET)) {
+    if (outParams == NULL) {
+        wifi_util_error_print(WIFI_BUS, "%s %d Out param is NULL\n", __func__, __LINE__);
+	return bus_error_general;
+    }
+
+    if ((RBUS_ERROR_SUCCESS == rc) && ((input_bus_data == BUS_METHOD_GET) || (input_bus_data == BUS_METHOD_SET_GET))) {
         prop = rbusObject_GetProperties(outParams);
+        if (prop == NULL) {
+            wifi_util_error_print(WIFI_BUS, "%s %d prop is NULL\n", __func__, __LINE__);
+	    return bus_error_general;
+        }
         value = rbusProperty_GetValue(prop);
+        if (value == NULL) {
+            wifi_util_error_print(WIFI_BUS, "%s %d value is NULL\n", __func__, __LINE__);
+	    return bus_error_general;
+        }
         switch (output_data->data_type) {
         case bus_data_type_boolean:
             output_data->raw_data.b = rbusValue_GetBoolean(value);
@@ -1404,10 +1477,8 @@ bus_error_t bus_method_invoke(bus_handle_t *handle, void *paramName, char *event
             output_data->data_type = bus_data_type_boolean;
             break;
         case bus_data_type_string:
-            output_data->raw_data.bytes = (void *)rbusValue_GetString(value, &len);
+            ptr = (void *)rbusValue_GetString(value, &len);
             output_data->raw_data_len = (unsigned int)len;
-            wifi_util_dbg_print(WIFI_BUS, "%s bus: bus_method_invoke-string: string:%s, len=%d\n",
-                __func__, output_data->raw_data.bytes, output_data->raw_data_len);
             break;
         case bus_data_type_uint32:
             output_data->raw_data.u32 = (uint32_t)rbusValue_GetUInt32(value);
@@ -1418,10 +1489,8 @@ bus_error_t bus_method_invoke(bus_handle_t *handle, void *paramName, char *event
             output_data->raw_data_len = sizeof(int32_t);
             break;
         case bus_data_type_bytes:
-            output_data->raw_data.bytes = (void *)rbusValue_GetBytes(value, &len);
+            ptr = (void *)rbusValue_GetBytes(value, &len);
             output_data->raw_data_len = (unsigned int)len;
-            wifi_util_dbg_print(WIFI_BUS, "%s bus: bus_method_invoke-bytes: len=%d\n", __func__,
-                output_data->raw_data_len);
             break;
         default:
             wifi_util_dbg_print(WIFI_BUS, "%s bus:value type not found =0x%x\n", __func__,
@@ -1434,6 +1503,15 @@ bus_error_t bus_method_invoke(bus_handle_t *handle, void *paramName, char *event
             rbusError_ToString(rc));
     }
 
+    if ((ptr) && (event) && (output_data->data_type == bus_data_type_bytes || output_data->data_type == bus_data_type_string)) {
+        output_data->raw_data.bytes = (void *)calloc(len + 1, sizeof(char));
+        if (output_data->raw_data.bytes == NULL) {
+            wifi_util_error_print(WIFI_BUS, "%s:%d: bus: memory alloc is failed:%d for name:%s\n", 
+	        __func__, __LINE__, len, event);
+           return bus_error_out_of_resources;
+        }
+        memcpy(output_data->raw_data.bytes, ptr, len);
+    }
     rbusValue_Release(value);
     return convert_rbus_to_bus_error_code(rc);
 }
@@ -1455,6 +1533,40 @@ bus_error_t bus_event_subscribe(bus_handle_t *handle, char const *event_name, vo
 
     return convert_rbus_to_bus_error_code(rc);
 }
+
+bus_error_t bus_event_unsubscribe(bus_handle_t *handle, char const *event_name) {
+    rbusError_t rc = bus_error_success;
+    rbusHandle_t p_rbus_handle = handle->u.rbus_handle; 
+    rc = rbusEvent_Unsubscribe(p_rbus_handle, event_name);
+    wifi_util_dbg_print(WIFI_BUS,"%s:%d rbus event name:%s, rc:%d\n", __func__, __LINE__, event_name, rc);
+    if (rc != RBUS_ERROR_SUCCESS) {
+        return convert_rbus_to_bus_error_code(rc);
+    }
+
+    bus_table_remove_row(get_bus_mux_sub_cb_map(), (char *)event_name);
+    wifi_util_info_print(WIFI_BUS,"%s:%d rbus event name:%s removed successfully\n", __func__, __LINE__, event_name);
+
+    return convert_rbus_to_bus_error_code(rc);
+}
+
+bus_error_t bus_event_subscribe_async(bus_handle_t *handle, char const *event_name, void *cb,
+    void *async_cb, void *userData, int timeout)
+{
+    rbusError_t rc = bus_error_success;
+    rbusHandle_t p_rbus_handle = handle->u.rbus_handle;
+    rbus_sub_callback_table_t rbus_cb = { 0 };
+    bus_sub_callback_table_t  user_cb;
+
+    user_cb.sub_handler = cb;
+    user_cb.sub_ex_async_handler = async_cb;
+
+    bus_sub_cb_registration((char *)event_name, &rbus_cb, &user_cb);
+
+    rc = rbusEvent_SubscribeAsync(p_rbus_handle, event_name, rbus_cb.sub_handler, rbus_cb.sub_ex_async_handler, userData, timeout);
+
+    return convert_rbus_to_bus_error_code(rc);
+}
+
 
 bus_error_t bus_event_subscribe_ex(bus_handle_t *handle, bus_event_sub_t *l_sub_info_map,
     int num_sub, int timeout)
@@ -1495,6 +1607,12 @@ bus_error_t bus_event_subscribe_ex(bus_handle_t *handle, bus_event_sub_t *l_sub_
 
     free(sub_info_map);
     return convert_rbus_to_bus_error_code(ret);
+}
+
+char const* bus_error_to_string(bus_error_t bus_error)
+{
+    rbusError_t ret = convert_bus_to_rbus_error_code(bus_error);
+    return rbusError_ToString(ret);
 }
 
 bus_error_t bus_event_subscribe_ex_async(bus_handle_t *handle, bus_event_sub_t *l_sub_info_map,
@@ -1620,13 +1738,18 @@ void rdkb_bus_desc_init(wifi_bus_desc_t *desc)
     desc->bus_data_free_fn = bus_data_free;
     desc->bus_set_fn = bus_set;
     desc->bus_reg_data_element_fn = bus_reg_data_elements;
+    desc->bus_unreg_data_element_fn = bus_unreg_data_elements;
     desc->bus_event_publish_fn = bus_event_publish;
     desc->bus_raw_event_publish_fn = bus_raw_event_publish;
     desc->bus_set_string_fn = bus_set_string;
     desc->bus_event_subs_fn = bus_event_subscribe;
+    desc->bus_event_subs_async_fn = bus_event_subscribe_async;
+    desc->bus_event_unsubs_fn = bus_event_unsubscribe;
     desc->bus_event_subs_ex_fn = bus_event_subscribe_ex;
     desc->bus_event_subs_ex_async_fn = bus_event_subscribe_ex_async;
     desc->bus_method_invoke_fn = bus_method_invoke;
+    desc->bus_error_to_string_fn = bus_error_to_string;
+    desc->bus_convert_handle_to_actual_ptr_fn = bus_convert_handle_to_ptr;
     desc->bus_get_trace_context_fn = bus_get_trace_context;
     desc->bus_reg_table_row_fn = bus_reg_table_row;
     desc->bus_unreg_table_row_fn = bus_unreg_table_row;

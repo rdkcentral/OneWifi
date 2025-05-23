@@ -16,51 +16,16 @@
   See the License for the specific language governing permissions and
   limitations under the License.
  **************************************************************************/
-
 #ifndef BUS_COMMON_H
 #define BUS_COMMON_H
 
-#include "wifi_util.h"
+#include <stdint.h>
+#include <stdbool.h>
+#include <pthread.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#define VERIFY_NULL(T) \
-    do { \
-        if (NULL == (T)) { \
-            wifi_util_error_print(WIFI_BUS, "%s:%d Parameter '%s' is NULL\n", \
-                   __func__, __LINE__, #T); \
-            return; \
-        } \
-    } while(0)
-
-#define VERIFY_NULL_WITH_RETURN_ADDR(T) \
-    do { \
-        if (NULL == (T)) { \
-            wifi_util_error_print(WIFI_BUS, "%s:%d Parameter '%s' is NULL\n", \
-                   __func__, __LINE__, #T); \
-            return NULL; \
-        } \
-    } while(0)
-
-#define VERIFY_NULL_WITH_RETURN_INT(T) \
-    do { \
-        if (NULL == (T)) { \
-            wifi_util_error_print(WIFI_BUS, "%s:%d Parameter '%s' is NULL\n", \
-                   __func__, __LINE__, #T); \
-            return RETURN_ERR; \
-        } \
-    } while(0)
-
-#define BUS_CHECK_NULL_WITH_RC(ptr, rc) \
-    do { \
-        if ((ptr) == NULL) { \
-            wifi_util_error_print(WIFI_BUS, "%s:%d Parameter '%s' is NULL\n", \
-                   __func__, __LINE__, #ptr); \
-            return (rc); \
-        } \
-    } while (0)
 
 #define BUS_SERVER_PROCESS_NAME     "OneWifi"
 #define BUS_MAX_NAME_LENGTH         128
@@ -70,14 +35,7 @@ extern "C" {
 
 #define BUS_METHOD_GET              0
 #define BUS_METHOD_SET              1
-
-#define ERROR_CHECK(CMD) \
-    do { \
-        int l_error; \
-        if ((l_error = CMD) != 0) { \
-            wifi_util_info_print(WIFI_CTRL, "Error %d: running command " #CMD, l_error); \
-        } \
-    } while (0)
+#define BUS_METHOD_SET_GET         2
 
 #define DEINIT_MUTEX(mutex) \
     do { \
@@ -179,12 +137,6 @@ typedef enum bus_error
     bus_error_direct_con_not_exist             /**< Direct connection not exist */
 } bus_error_t;
 
-#define VERIFY_NULL_WITH_RC(T) \
-    if (NULL == (T)) { \
-        wifi_util_error_print(WIFI_CTRL, "[%s] input parameter: %s is NULL\n", __func__, #T); \
-        return bus_error_invalid_input; \
-    }
-
 typedef enum child_node_ref {
     original_child_node,
     reference_child_node
@@ -227,20 +179,25 @@ typedef struct raw_data {
     unsigned int             raw_data_len;
 } raw_data_t;
 
+
+typedef struct bus_user_data {
+       void *handle;
+}bus_user_data_t;
+
 typedef struct bus_event_sub bus_event_sub_t;
 typedef struct elem_node_map elem_node_map_t;
 typedef struct bus_handle bus_handle_t;
 typedef struct bus_data_element bus_data_element_t;
 
-typedef bus_error_t (*bus_get_handler_t)(char *event_name, raw_data_t *p_data);
-typedef bus_error_t (*bus_set_handler_t)(char *event_name, raw_data_t *p_data);
+typedef bus_error_t (*bus_get_handler_t)(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data);
+typedef bus_error_t (*bus_set_handler_t)(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data);
 typedef bus_error_t (*bus_table_add_row_handler_t)(char const* tableName, char const* aliasName, uint32_t* instNum);
 typedef bus_error_t (*bus_table_remove_row_handler_t)(char const* rowName);
 typedef bus_error_t (*bus_method_handler_t)(char const* methodName, raw_data_t *inParams, raw_data_t *outParams, void *asyncHandle);
 typedef bus_error_t (*bus_name_sub_handler_t)(char *eventName, bus_event_sub_action_t action, int32_t interval, bool* autoPublish);
 
-typedef bus_error_t (*bus_event_sub_handler_t)(char *event_name, raw_data_t *p_data);
-typedef bus_error_t (*bus_event_sub_ex_async_handler_t)(char *event_name, bus_error_t ret);
+typedef bus_error_t (*bus_event_sub_handler_t)(char *event_name, raw_data_t *p_data, void *userData);
+typedef bus_error_t (*bus_event_sub_ex_async_handler_t)(char *event_name, bus_error_t ret, void *userData);
 
 /* Following are bus function pointers */
 typedef bus_error_t (* wifi_bus_init_t)                         (bus_handle_t *handle);
@@ -251,16 +208,23 @@ typedef void        (* wifi_bus_data_free_t)                    (raw_data_t *dat
 typedef bus_error_t (* wifi_bus_set_t)                          (bus_handle_t *handle, char const *name, raw_data_t *data);
 typedef bus_error_t (* wifi_bus_event_publish_t)                (bus_handle_t *handle, char const *name, raw_data_t *data);
 typedef bus_error_t (* wifi_bus_get_trace_context_t)            (bus_handle_t *handle, char* traceParent, uint32_t traceParentLength, char* traceState, uint32_t traceStateLength);
+typedef bus_error_t (* wifi_bus_set_trace_context_t)            (bus_handle_t *handle, const char* traceParent, const char* traceState);
 typedef bus_error_t (* wifi_bus_raw_event_publish_t)            (bus_handle_t *handle, char *name, void *data, uint32_t size);
 typedef bus_error_t (* wifi_bus_set_str_t)                      (bus_handle_t *handle, char const* param_name, char const *param_str);
 typedef bus_error_t (* wifi_bus_event_subs_t)                   (bus_handle_t *handle, char const* event_name, void *cb, void *userData, int timeout);
+typedef bus_error_t (* wifi_bus_event_subs_async_t)             (bus_handle_t *handle, char const* event_name, void *cb, void *async_cb, void *userData, int timeout);
 typedef bus_error_t (* wifi_bus_event_subscribe_ex_t)           (bus_handle_t *handle, bus_event_sub_t *l_sub_info_map, int num_sub, int timeout);
 typedef bus_error_t (* wifi_bus_event_subscribe_ex_async_t)     (bus_handle_t *handle, bus_event_sub_t *l_sub_info_map, int num_sub, void *l_sub_handler, int timeout);
+typedef bus_error_t (* wifi_bus_event_unsubscribe_t)             (bus_handle_t *handle, char const* event_name);
 typedef bus_error_t (* wifi_bus_reg_elements_t)                 (bus_handle_t *handle, bus_data_element_t *data_element, uint32_t num_of_element);
-typedef bus_error_t (* wifi_bus_method_invoke_t)                (bus_handle_t *handle, void *paramName, char *event, raw_data_t *input_data, raw_data_t *output_data, bool input_bus_data);
+typedef bus_error_t (* wifi_bus_method_invoke_t)                (bus_handle_t *handle, void *paramName, char *event, raw_data_t *input_data, raw_data_t *output_data, uint8_t input_bus_data);
 typedef bus_error_t (* wifi_bus_reg_table_row_t)                (bus_handle_t *handle, char const *name, uint32_t row_index, char const *alias);
 typedef bus_error_t (* wifi_bus_unreg_table_row_t)              (bus_handle_t *handle, char const *name);
 typedef bus_error_t (* wifi_bus_remove_table_row_t)             (bus_handle_t *handle, char const *name);
+typedef bus_error_t (* wifi_bus_unreg_elements_t)              (bus_handle_t *handle, uint32_t num_of_element, bus_data_element_t *data_element);
+typedef bus_error_t (* wifi_bus_method_invoke_t)                (bus_handle_t *handle, void *paramName, char *event, raw_data_t *input_data, raw_data_t *output_data, uint8_t input_bus_data);
+typedef char const* (* wifi_bus_error_to_string_t)                        (bus_error_t bus_error);
+typedef void* (*wifi_bus_handle_to_actual_ptr_t) (bus_handle_t *handle);
 
 typedef struct {
     wifi_bus_init_t                bus_init_fn;
@@ -270,17 +234,23 @@ typedef struct {
     wifi_bus_data_free_t           bus_data_free_fn;
     wifi_bus_set_t                 bus_set_fn;
     wifi_bus_reg_elements_t        bus_reg_data_element_fn;
+    wifi_bus_unreg_elements_t      bus_unreg_data_element_fn;
     wifi_bus_event_publish_t       bus_event_publish_fn;
     wifi_bus_raw_event_publish_t   bus_raw_event_publish_fn;
     wifi_bus_set_str_t             bus_set_string_fn;
     wifi_bus_event_subs_t          bus_event_subs_fn;
+    wifi_bus_event_subs_async_t    bus_event_subs_async_fn;
     wifi_bus_event_subscribe_ex_t  bus_event_subs_ex_fn;
     wifi_bus_event_subscribe_ex_async_t  bus_event_subs_ex_async_fn;
+    wifi_bus_event_unsubscribe_t   bus_event_unsubs_fn;
     wifi_bus_method_invoke_t       bus_method_invoke_fn;
     wifi_bus_get_trace_context_t   bus_get_trace_context_fn;
     wifi_bus_reg_table_row_t       bus_reg_table_row_fn;
     wifi_bus_unreg_table_row_t     bus_unreg_table_row_fn;
     wifi_bus_remove_table_row_t    bus_remove_table_row_fn;
+    wifi_bus_set_trace_context_t   bus_set_trace_context_fn;
+    wifi_bus_error_to_string_t    bus_error_to_string_fn;
+    wifi_bus_handle_to_actual_ptr_t bus_convert_handle_to_actual_ptr_fn;
 } wifi_bus_desc_t;
 
 typedef struct bus_event_sub {

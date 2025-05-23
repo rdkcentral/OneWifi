@@ -82,8 +82,8 @@ typedef struct element_node element_node_t;
 typedef struct data_model_prop data_model_prop_t;
 typedef struct _he_bus_handle *he_bus_handle_t;
 
-typedef he_bus_error_t (*he_bus_get_handler_t)(char *event_name, he_bus_raw_data_t *p_data);
-typedef he_bus_error_t (*he_bus_set_handler_t)(char *event_name, he_bus_raw_data_t *p_data);
+typedef he_bus_error_t (*he_bus_get_handler_t)(char *event_name, he_bus_raw_data_t *p_data, void *user_data);
+typedef he_bus_error_t (*he_bus_set_handler_t)(char *event_name, he_bus_raw_data_t *p_data, void *user_data);
 typedef he_bus_error_t (*he_bus_table_add_row_handler_t)(char const *tableName,
     char const *aliasName, uint32_t *instNum);
 typedef he_bus_error_t (*he_bus_table_remove_row_handler_t)(char const *rowName);
@@ -93,8 +93,8 @@ typedef he_bus_error_t (*he_bus_event_sub_handler_t)(char *eventName,
     he_bus_event_sub_action_t action, int32_t interval, bool *autoPublish);
 
 typedef he_bus_error_t (
-    *he_bus_event_consumer_sub_handler_t)(char *event_name, he_bus_raw_data_t *p_data);
-typedef he_bus_error_t (*he_bus_event_sub_ex_async_handler_t)(char *event_name, he_bus_error_t ret);
+    *he_bus_event_consumer_sub_handler_t)(char *event_name, he_bus_raw_data_t *p_data, void *userData);
+typedef he_bus_error_t (*he_bus_event_sub_ex_async_handler_t)(char *event_name, he_bus_error_t ret, void *userData);
 
 typedef struct he_bus_callback_table {
     he_bus_get_handler_t get_handler; /**< Get parameters handler for the named paramter   */

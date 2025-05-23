@@ -885,6 +885,7 @@ bool get_notify_wifi_from_psm(char *PsmParamName)
             psm_notify_flag = false;
         }
     }
+    get_bus_descriptor()->bus_data_free_fn(&data);
     wifi_util_dbg_print(WIFI_CTRL, "get_notify_wifi_from_psm ends: %d\n", rc);
 
     return psm_notify_flag;

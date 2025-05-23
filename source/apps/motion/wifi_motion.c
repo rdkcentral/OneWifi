@@ -705,8 +705,9 @@ bus_error_t csi_table_removerowhandler(char const *rowName)
     return bus_error_success;
 }
 
-bus_error_t csi_set_handler(char *event_name, raw_data_t *p_data)
+bus_error_t csi_set_handler(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data)
 {
+    (void)user_data;
     char const* name = event_name;
     unsigned int idx = 0;
     int ret, apply = false;
@@ -895,8 +896,9 @@ bus_error_t csi_set_handler(char *event_name, raw_data_t *p_data)
     return bus_error_invalid_input;
 }
 
-bus_error_t csi_get_handler(char *event_name, raw_data_t *p_data)
+bus_error_t csi_get_handler(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data)
 {
+    (void)user_data;
     bus_error_t status = bus_error_success;
     char const* name = event_name;
     unsigned int idx = 0;

@@ -8425,9 +8425,10 @@ int wifi_db_update_psm_values()
 }
 
 //static void bus_subscription_handler(bus_handle_t handle, bus_event_t *event,
-static void bus_subscription_handler(char *event_name, raw_data_t *p_data)
+static void bus_subscription_handler(char *event_name, raw_data_t *p_data, void *userData)
 {
     (void)p_data;
+    (void)userData;
     wifi_util_dbg_print(WIFI_MGR,"%s:%d bus_subscription_handler:%s\n", __func__, __LINE__, event_name);
 }
 
@@ -8515,7 +8516,7 @@ int get_all_param_from_psm_and_set_into_db(void)
         memset(&data, 0, sizeof(raw_data_t));
         memset(last_reboot_reason, 0, sizeof(last_reboot_reason));
 
-        bus_handle_t handle;
+        bus_handle_t handle = {0};
         if (wifi_mgr_bus_subsription(&handle) == RETURN_OK) {
             if (get_bus_descriptor()->bus_data_get_fn(&handle, WIFI_PSM_DB_NAMESPACE, &data) ==
                 bus_error_success) {

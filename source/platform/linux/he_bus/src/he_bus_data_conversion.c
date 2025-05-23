@@ -578,6 +578,7 @@ he_bus_error_t process_bus_get_event(he_bus_handle_t handle, char *comp_name,
     VERIFY_NULL_WITH_RC(p_res_raw_data);
 
     he_bus_error_t status = he_bus_error_success;
+    void *he_bus_userdata;
     if (handle->root_element == NULL || p_obj_data->name_len == 0) {
         he_bus_core_error_print("%s:%d Node root element or object name is NULL - msg from:%s\r\n",
             __func__, __LINE__, comp_name);
@@ -593,7 +594,8 @@ he_bus_error_t process_bus_get_event(he_bus_handle_t handle, char *comp_name,
     } else {
         if (node->cb_table.get_handler != NULL) {
             ELM_LOCK(node->element_mutex);
-            status = node->cb_table.get_handler(p_obj_data->name, p_res_raw_data);
+	    he_bus_userdata = handle;
+            status = node->cb_table.get_handler(p_obj_data->name, p_res_raw_data, he_bus_userdata);
             ELM_UNLOCK(node->element_mutex);
         } else {
             he_bus_core_error_print("%s:%d Node get handler is not found for :%s namespace\r\n",
@@ -610,7 +612,7 @@ he_bus_error_t process_bus_set_event(he_bus_handle_t handle, char *comp_name,
     VERIFY_NULL_WITH_RC(handle);
     VERIFY_NULL_WITH_RC(comp_name);
     VERIFY_NULL_WITH_RC(p_obj_data);
-
+    void *he_bus_userdata;
     he_bus_error_t status = he_bus_error_success;
     if (handle->root_element == NULL || p_obj_data->name_len == 0) {
         he_bus_core_error_print("%s:%d Node root element or object name is NULL - msg from:%s\r\n",
@@ -626,8 +628,9 @@ he_bus_error_t process_bus_set_event(he_bus_handle_t handle, char *comp_name,
         return he_bus_error_destination_not_found;
     } else {
         if (node->cb_table.set_handler != NULL) {
+	    he_bus_userdata = handle;
             ELM_LOCK(node->element_mutex);
-            status = node->cb_table.set_handler(p_obj_data->name, &p_obj_data->data);
+            status = node->cb_table.set_handler(p_obj_data->name, &p_obj_data->data, he_bus_userdata);
             ELM_UNLOCK(node->element_mutex);
         } else {
             he_bus_core_error_print("%s:%d Node get handler is not found for :%s namespace\r\n",
@@ -719,8 +722,9 @@ he_bus_error_t process_bus_sub_ex_async_res_event(hash_map_t *p_sub_map, char *c
         if (p_sub_data->sub_cb_table.sub_ex_async_handler != NULL) {
             he_bus_core_dbg_print("%s:%d Async subscribe callback is triggered\r\n", __func__,
                 __LINE__);
+	    void *userData = NULL;
             p_sub_data->sub_cb_table.sub_ex_async_handler(p_obj_data->name,
-                (he_bus_error_t)p_obj_data->data.raw_data.u32);
+                (he_bus_error_t)p_obj_data->data.raw_data.u32, userData);
         }
         if (p_obj_data->data.data_type == he_bus_data_type_uint32 &&
             p_obj_data->data.raw_data.u32 != he_bus_error_success) {
@@ -777,13 +781,14 @@ he_bus_error_t process_bus_publish_event(hash_map_t *p_sub_map, he_bus_data_obje
         return he_bus_error_invalid_input;
     }
 
+    void *userData = NULL;
     own_sub_element_t *p_sub_data = get_bus_user_cb(p_sub_map, p_obj_data->name);
     if (p_sub_data != NULL) {
         he_bus_core_info_print("%s:%d subscribe callback is found for [%s]\r\n", __func__, __LINE__,
             p_obj_data->name);
         if (p_sub_data->sub_cb_table.sub_handler != NULL) {
             he_bus_core_dbg_print("%s:%d subscribe callback is triggered\r\n", __func__, __LINE__);
-            p_sub_data->sub_cb_table.sub_handler(p_obj_data->name, &p_obj_data->data);
+            p_sub_data->sub_cb_table.sub_handler(p_obj_data->name, &p_obj_data->data, userData);
         }
     } else {
         he_bus_core_error_print("%s:%d subscribe callback not found for [%s]\r\n", __func__,
