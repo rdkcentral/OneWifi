@@ -1220,7 +1220,7 @@ void process_kick_assoc_devices_event(void *data)
 
     if (vap_info->u.bss_info.mac_filter_enable == FALSE) {
         if (wifi_setApMacAddressControlMode(vap_index, 2) != RETURN_OK){
-            wifi_util_error_print(WIFI_CTRL, "%s:%d: set ACL failed failed vap_index %d ", __func__,__LINE__, vap_index);
+            wifi_util_error_print(WIFI_CTRL, "%s:%d: wifi_setApMacAddressControlMode failed vap_index %d", __func__, __LINE__, vap_index);
             free(str_dup);
             return;
         }
