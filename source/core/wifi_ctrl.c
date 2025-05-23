@@ -2638,6 +2638,8 @@ wifi_rfc_dml_parameters_t *get_ctrl_rfc_parameters(void)
         g_wifi_mgr->rfc_dml_parameters.hotspot_secure_5g_last_enabled;
     g_wifi_mgr->ctrl.rfc_params.hotspot_secure_6g_last_enabled =
         g_wifi_mgr->rfc_dml_parameters.hotspot_secure_6g_last_enabled;
+    g_wifi_mgr->ctrl.rfc_params.memwraptool_app_rfc =
+        g_wifi_mgr->rfc_dml_parameters.memwraptool_app_rfc;
     g_wifi_mgr->ctrl.rfc_params.wifi_offchannelscan_app_rfc =
         g_wifi_mgr->rfc_dml_parameters.wifi_offchannelscan_app_rfc;
     g_wifi_mgr->ctrl.rfc_params.wifi_offchannelscan_sm_rfc =

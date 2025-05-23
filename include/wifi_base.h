@@ -100,6 +100,12 @@ extern "C" {
 #define MIN_DIAG_INTERVAL   5000
 #define CSI_PING_INTERVAL   100
 
+#define DEFAULT_RSS_CHECK_INTERVAL 5
+#define DEFAULT_RSS_THRESHOLD 1000
+#define DEFAULT_RSS_MAXLIMIT 80000
+#define DEFAULT_HEAPWALK_DURATION 60
+#define DEFAULT_HEAPWALK_INTERVAL 15
+
 #define wifi_sub_component_base     0x01
 #define wifi_app_inst_base          0x01
 
@@ -141,7 +147,8 @@ typedef enum {
     wifi_app_inst_ocs = wifi_app_inst_base << 15,
     wifi_app_inst_easyconnect = wifi_app_inst_base << 16,
     wifi_app_inst_sta_mgr = wifi_app_inst_base << 17,
-    wifi_app_inst_max = wifi_app_inst_base << 18
+    wifi_app_inst_memwraptool = wifi_app_inst_base << 18,
+    wifi_app_inst_max = wifi_app_inst_base << 19
 } wifi_app_inst_t;
 
 typedef struct {
@@ -421,6 +428,15 @@ typedef struct {
 }levl_config_t;
 
 typedef struct {
+    unsigned int rss_check_interval;
+    unsigned int rss_threshold;
+    unsigned int rss_maxlimit;
+    unsigned int heapwalk_duration;
+    unsigned int heapwalk_interval;
+    bool enable;
+} __attribute__((packed)) memwraptool_config_t;
+
+typedef struct {
     bool wifi_offchannelscan_app_rfc;
     bool wifi_offchannelscan_sm_rfc;
     bool wifipasspoint_rfc;
@@ -448,6 +464,7 @@ typedef struct {
     bool cac_enabled_rfc;
     bool tcm_enabled_rfc;
     bool wpa3_compatibility_enable;
+    bool memwraptool_app_rfc;
 } wifi_rfc_dml_parameters_t;
 
 typedef struct {
@@ -487,6 +504,7 @@ typedef struct {
     char cli_stat_list[MAX_BUF_LENGTH];
     char snr_list[MAX_BUF_LENGTH];
     char txrx_rate_list[MAX_BUF_LENGTH];
+    memwraptool_config_t memwraptool;
 } __attribute__((packed)) wifi_global_param_t;
 
 typedef struct {

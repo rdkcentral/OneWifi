@@ -3665,6 +3665,32 @@ webconfig_error_t decode_levl_object(const cJSON *levl_cfg, levl_config_t *levl_
     return webconfig_error_none;
 }
 
+webconfig_error_t decode_memwraptool_object(const cJSON *memwraptool_cfg,
+    memwraptool_config_t *memwrap_info)
+{
+    const cJSON *param;
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Entering\n", __func__, __LINE__);
+    decode_param_bool(memwraptool_cfg, "enable", param);
+    memwrap_info->enable = (param->type & cJSON_True) ? true : false;
+
+    decode_param_integer(memwraptool_cfg, "rss_check_interval", param);
+    memwrap_info->rss_check_interval = param->valuedouble;
+
+    decode_param_integer(memwraptool_cfg, "rss_threshold", param);
+    memwrap_info->rss_threshold = param->valuedouble;
+
+    decode_param_integer(memwraptool_cfg, "rss_maxlimit", param);
+    memwrap_info->rss_maxlimit = param->valuedouble;
+
+    decode_param_integer(memwraptool_cfg, "heapwalk_duration", param);
+    memwrap_info->heapwalk_duration = param->valuedouble;
+
+    decode_param_integer(memwraptool_cfg, "heapwalk_interval", param);
+    memwrap_info->heapwalk_interval = param->valuedouble;
+    wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d: Exiting\n", __func__, __LINE__);
+    return webconfig_error_none;
+}
+
 webconfig_error_t decode_preassoc_cac_object(const cJSON *preassoc, wifi_preassoc_control_t *preassoc_info)
 {
     const cJSON *param;
