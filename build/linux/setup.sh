@@ -34,7 +34,7 @@ git clone https://github.com/rdkcentral/hostap-patches.git hostap-patches
 
 #Apply the patch
 patch_filenames="hostap-patches/0001-OneWifi-related-hostap-patch-for-2.10-based-hostap.patch \
-hostap-patches/0002-radius_failover_2.10.patch"
+        hostap-patches/0002-radius_failover_2.10.patch"
 echo "Applying patches ..."
 git am $patch_filenames
 

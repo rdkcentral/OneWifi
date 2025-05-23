@@ -1219,11 +1219,9 @@ void process_kick_assoc_devices_event(void *data)
     timeout = atoi(s_timeout);
 
     if (vap_info->u.bss_info.mac_filter_enable == FALSE) {
-        if (wifi_setApMacAddressControlMode(vap_index, 2) != RETURN_OK)
-        {
-            wifi_util_error_print(WIFI_CTRL,
-                "%s:%d: set ACL failed failed vap_index %d", __func__, __LINE__,
-                vap_index);
+        if (wifi_setApMacAddressControlMode(vap_index, 2) != RETURN_OK){
+            wifi_util_error_print(WIFI_CTRL, "%s:%d: set ACL failed failed vap_index %d ", __func__,
+                __LINE__, vap_index);
             free(str_dup);
             return;
         }
@@ -1331,7 +1329,7 @@ void process_kick_assoc_devices_event(void *data)
 
     wifi_util_info_print(WIFI_CTRL, "%s:%d vap_index is %s mac_list is %s timeout is %s\n", __func__, __LINE__, s_vapindex, s_maclist, s_timeout);
     return;
-}    
+}
 void process_greylist_mac_filter(void *data)
 {
     long int  expiry_time = 0;
