@@ -2012,7 +2012,7 @@
             "max": 1
           }
         },
-        "rss_mem_threshold1" : {
+        "rss_memory_restart_threshold_low" : {
           "type": {
             "key": {
               "type": "integer"
@@ -2021,7 +2021,7 @@
             "max": 1
           }
         },
-        "rss_mem_threshold2" : {
+        "rss_memory_restart_threshold_high" : {
           "type": {
             "key": {
               "type": "integer"

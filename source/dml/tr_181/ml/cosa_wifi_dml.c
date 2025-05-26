@@ -16453,7 +16453,7 @@ RSSMemory_GetParamUlongValue
     if( AnscEqualString(ParamName, "Threshold1", TRUE))
     {
         /* collect value */
-        *pULong = pcfg->rss_mem_threshold1;
+        *pULong = pcfg->rss_memory_restart_threshold_low;
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: RSS Threshold1 = %d\n",__func__, __LINE__, *pULong);
         return TRUE;
     }
@@ -16461,7 +16461,7 @@ RSSMemory_GetParamUlongValue
     if( AnscEqualString(ParamName, "Threshold2", TRUE))
     {
         /* collect value */
-        *pULong = pcfg->rss_mem_threshold2;
+        *pULong = pcfg->rss_memory_restart_threshold_high;
         wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: RSS Threshold2 = %d\n",__func__, __LINE__, *pULong);
         return TRUE;
     }
@@ -16489,12 +16489,12 @@ RSSMemory_SetParamUlongValue
     /* check the parameter name and set the corresponding value */
     if( AnscEqualString(ParamName, "Threshold1", TRUE))
     {
-        if(global_wifi_config->global_parameters.rss_mem_threshold1 == iValue)
+        if(global_wifi_config->global_parameters.rss_memory_restart_threshold_low == iValue)
         {
             return TRUE;
         }
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: RSS Threshold1 = %d New Value = %d\n",__func__, __LINE__, global_wifi_config->global_parameters.rss_mem_threshold1, iValue);
-        global_wifi_config->global_parameters.rss_mem_threshold1 = iValue;
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: RSS Threshold1 = %d New Value = %d\n",__func__, __LINE__, global_wifi_config->global_parameters.rss_memory_restart_threshold_low, iValue);
+        global_wifi_config->global_parameters.rss_memory_restart_threshold_low = iValue;
         if (push_global_config_dml_cache_to_one_wifidb() != RETURN_OK) {
             wifi_util_error_print(WIFI_DMCLI,"%s:%d: Failed to push RSS Threshold1 value to onewifi db\n",__func__, __LINE__);
         }
@@ -16503,12 +16503,12 @@ RSSMemory_SetParamUlongValue
 
     if( AnscEqualString(ParamName, "Threshold2", TRUE))
     {
-        if(global_wifi_config->global_parameters.rss_mem_threshold2 == iValue)
+        if(global_wifi_config->global_parameters.rss_memory_restart_threshold_high == iValue)
         {
             return TRUE;
         }
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: RSS Threshold2 = %d New Value = %d\n",__func__, __LINE__, global_wifi_config->global_parameters.rss_mem_threshold2, iValue);
-        global_wifi_config->global_parameters.rss_mem_threshold2 = iValue;
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: RSS Threshold2 = %d New Value = %d\n",__func__, __LINE__, global_wifi_config->global_parameters.rss_memory_restart_threshold_high, iValue);
+        global_wifi_config->global_parameters.rss_memory_restart_threshold_high = iValue;
         if (push_global_config_dml_cache_to_one_wifidb() != RETURN_OK) {
             wifi_util_error_print(WIFI_DMCLI,"%s:%d: Failed to push RSS Threshold2 value to onewifi db\n",__func__, __LINE__);
         }
