@@ -81,6 +81,7 @@ HAL_LIB_SOURCES = $(filter-out $(EXCLUDE),$(wildcard $(WIFI_RDK_HAL)/src/*.c)) \
     $(WIFI_HOSTAP_SRC)/ap/tkip_countermeasures.c   \
     $(WIFI_HOSTAP_SRC)/ap/hostapd.c   \
     $(WIFI_HOSTAP_SRC)/ap/beacon.c   \
+    $(WIFI_HOSTAP_SRC)/ap/hs20.c  \
     $(WIFI_HOSTAP_SRC)/ap/rrm.c   \
     $(WIFI_HOSTAP_SRC)/ap/wmm.c   \
     $(WIFI_HOSTAP_SRC)/ap/authsrv.c   \
