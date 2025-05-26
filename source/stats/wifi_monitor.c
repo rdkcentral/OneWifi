@@ -653,7 +653,6 @@ static void reset_client_stats_info(unsigned int apIndex)
 
     sta = hash_map_get_first(sta_map);
     while (sta != NULL) {
-        memset((unsigned char *)&sta->dev_stats_last, 0, sizeof(wifi_associated_dev3_t));
         memset((unsigned char *)&sta->dev_stats, 0, sizeof(wifi_associated_dev3_t));
         sta = hash_map_get_next(sta_map, sta);
     }
@@ -1255,7 +1254,6 @@ void process_connect(unsigned int ap_index, auth_deauth_dev_t *dev)
             (sta->total_disconnected_time.tv_nsec / 1000000)));
 
     /* reset stats of client */
-    memset((unsigned char *)&sta->dev_stats_last, 0, sizeof(wifi_associated_dev3_t));
     memset((unsigned char *)&sta->dev_stats, 0, sizeof(wifi_associated_dev3_t));
     memcpy(&sta->dev_stats, &dev->dev_stats, sizeof(wifi_associated_dev3_t));
     sta->dev_stats.cli_Active = true;
@@ -3811,12 +3809,11 @@ int coordinator_update_task(wifi_mon_collector_element_t *collector_elem, wifi_m
         return RETURN_ERR;
     }
 
-    if (coordinator_calculate_clctr_interval(collector_elem, dup_provider_elem, &new_collector_interval) != RETURN_OK) {
+    if (coordinator_calculate_clctr_interval(collector_elem, dup_provider_elem,
+            &new_collector_interval) != RETURN_OK) {
         coordinator_free_provider_elem(&dup_provider_elem);
         return RETURN_ERR;
     }
-
-    collector_task_update(collector_elem, &new_collector_interval);
 
     wifi_mon_provider_element_t *provider_elem = (wifi_mon_provider_element_t *)hash_map_get(collector_elem->provider_list, dup_provider_elem->key);
     if (provider_elem == NULL) {
@@ -3847,6 +3844,7 @@ int coordinator_update_task(wifi_mon_collector_element_t *collector_elem, wifi_m
         coordinator_free_provider_elem(&dup_provider_elem);
     }
 
+    collector_task_update(collector_elem, &new_collector_interval);
     return RETURN_OK;
 }
 

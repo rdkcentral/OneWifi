@@ -43,8 +43,8 @@ int set_wifi_blob_version(char* subdoc,uint32_t version)
 
 size_t wifi_vap_cfg_timeout_handler()
 {
-    wifi_util_info_print(WIFI_CTRL, "%s: Enter\n", __func__);
-    return 100;
+    wifi_util_info_print(WIFI_CTRL, "%s: Enter max blob timeout value:%d\n", __func__, MAX_WEBCONFIG_HOTSPOT_BLOB_SET_TIMEOUT);
+    return MAX_WEBCONFIG_HOTSPOT_BLOB_SET_TIMEOUT;
 }
 
 int wifi_vap_cfg_rollback_handler()
@@ -62,7 +62,7 @@ static int webconf_rollback_handler(void)
 {
     //TODO: what should rollback handler do in the context of OneWifi
 
-    wifi_util_dbg_print(WIFI_CTRL, "%s: Enter\n", __func__);
+    wifi_util_info_print(WIFI_CTRL, "%s: Enter\n", __func__);
     return RETURN_OK;
 }
 
@@ -129,9 +129,9 @@ static int validate_private_home_security_param(char *mode_enabled, char *encryp
      wifi_util_info_print(WIFI_CTRL,"Enter %s mode_enabled=%s,encryption_method=%s\n",__func__,mode_enabled,encryption_method);
      wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *) get_ctrl_rfc_parameters();
 
-    if ((strcmp(mode_enabled, "None") != 0) &&
-        ((strcmp(encryption_method, "TKIP") != 0) && (strcmp(encryption_method, "AES") != 0) &&
-        (strcmp(encryption_method, "AES+TKIP") != 0))) {
+    if (strcmp(mode_enabled, "None") != 0 &&
+        (strcmp(encryption_method, "TKIP") != 0 && strcmp(encryption_method, "AES") != 0 &&
+        strcmp(encryption_method, "AES+TKIP") != 0 && strcmp(encryption_method, "AES+GCMP"))) {
          wifi_util_error_print(WIFI_CTRL,"%s: Invalid Encryption Method \n",__FUNCTION__);
         if (execRetVal) {
             strncpy(execRetVal->ErrorMsg,"Invalid Encryption Method",sizeof(execRetVal->ErrorMsg)-1);
@@ -139,8 +139,10 @@ static int validate_private_home_security_param(char *mode_enabled, char *encryp
         return RETURN_ERR;
     }
 
-    if (((strcmp(mode_enabled, "WPA-WPA2-Enterprise") == 0) || (strcmp(mode_enabled, "WPA-WPA2-Personal") == 0)) &&
-        ((strcmp(encryption_method, "AES+TKIP") != 0) && (strcmp(encryption_method, "AES") != 0))) {
+    if ((strcmp(mode_enabled, "WPA-WPA2-Enterprise") == 0 || 
+        strcmp(mode_enabled, "WPA-WPA2-Personal") == 0) &&
+        (strcmp(encryption_method, "AES+TKIP") != 0 && strcmp(encryption_method, "AES") != 0 &&
+        strcmp(encryption_method, "AES+GCMP") != 0)) {
          wifi_util_error_print(WIFI_CTRL,"%s: Invalid Encryption Security Combination\n",__FUNCTION__);
         if (execRetVal) {
             strncpy(execRetVal->ErrorMsg,"Invalid Encryption Security Combination",sizeof(execRetVal->ErrorMsg)-1);
@@ -298,7 +300,8 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security,pErr 
             vap_info->u.bss_info.security.encr = wifi_encryption_aes_tkip;
         } else if (!strcmp(value, "TKIP")) {
             vap_info->u.bss_info.security.encr = wifi_encryption_tkip;
-
+        } else if (!strcmp(value, "AES+GCMP")) {
+            vap_info->u.bss_info.security.encr = wifi_encryption_aes_gcmp256;
         } else {
             wifi_util_error_print(WIFI_CTRL, "%s: unknown \"EncryptionMethod\n: %s\n", __func__, value);
             if (execRetVal) {
@@ -419,7 +422,8 @@ static int update_vap_info(void *data, wifi_vap_info_t *vap_info,pErr execRetVal
     ssid_obj = cJSON_GetObjectItem(root, ssid);
     if (ssid_obj == NULL) {
         status = RETURN_ERR;
-        wifi_util_dbg_print(WIFI_CTRL, "%s: Failed to get %s SSID\n", __func__, vap_info->vap_name);
+        wifi_util_error_print(WIFI_CTRL, "%s: Failed to get %s SSID\n", __func__,
+            vap_info->vap_name);
         goto done;
     }
 
@@ -810,9 +814,9 @@ char *unpackDecode(const char* enb)
     msgpack_object msg_obj;
 
     msgpack_zone_init(&msg_z, MAX_JSON_BUFSIZE);
-    msgpack_zone_init(&msg_z, MAX_JSON_BUFSIZE);
     if(msgpack_unpack((const char*)msg, (size_t)msg_size, NULL, &msg_z, &msg_obj) != MSGPACK_UNPACK_SUCCESS) {
         msgpack_zone_destroy(&msg_z);
+        free(msg);
         wifi_util_error_print(WIFI_CTRL, "%s: Failed to unpack blob\n", __func__);
         return NULL;
     }
@@ -836,6 +840,7 @@ char *unpackDecode(const char* enb)
     }
 
     msgpack_zone_destroy(&msg_z);
+    free(msg);
 //    wifi_util_dbg_print(WIFI_CTRL, "%s, blob\n%s\n", __func__, dej);
     return dej; // decoded, unpacked json - caller should free memory
 }
@@ -867,23 +872,6 @@ bool webconf_ver_txn(const char* bb, uint32_t *ver, uint16_t *txn)
     cJSON_Delete(root);
 
     return true;
-}
-bool webconfig_to_wifi_update_params(const char* raw)
-{
-    webconfig_t *config;
-    webconfig_subdoc_data_t data = {0};
-    wifi_ctrl_t *ctrl = (wifi_ctrl_t*)get_wifictrl_obj();
-    wifi_mgr_t *mgr = (wifi_mgr_t*)get_wifimgr_obj();
-
-    config = &ctrl->webconfig;
-    memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap, sizeof(wifi_hal_capability_t));
-    if (webconfig_decode(config, &data, raw) == webconfig_error_none && webconfig_data_free(&data) == webconfig_error_none)
-    {
-        wifi_util_info_print(WIFI_CTRL,"%s:%d: WebConfig blob has been successfully applied\n",__FUNCTION__,__LINE__);
-        return true;
-    }
-    wifi_util_error_print(WIFI_CTRL,"%s:%d: WebConfig blob apply has failed\n",__FUNCTION__,__LINE__);
-    return false;
 }
 
 pErr wifi_vap_cfg_subdoc_handler(void *data)
@@ -1039,7 +1027,19 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
         cJSON_AddNumberToObject(vb_entry, "VapMode", 0);
         cJSON_AddItemToObject(vb_entry, "BridgeName", cJSON_CreateString(br_name));
         cJSON_AddItemToObject(vb_entry, "BSSID", cJSON_CreateString("00:00:00:00:00:00"));
-#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_)
+
+	/* MLD Configuration */
+	cJSON_AddBoolToObject(vb_entry, "MLD_Enable", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.mld_info.common_info.mld_enable);
+	cJSON_AddBoolToObject(vb_entry, "MLD_Apply", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.mld_info.common_info.mld_apply);
+	cJSON_AddNumberToObject(vb_entry, "MLD_ID", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.mld_info.common_info.mld_id);
+	cJSON_AddNumberToObject(vb_entry, "MLD_Link_ID", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.mld_info.common_info.mld_link_id);
+
+	/* Convert MLD MAC address to string and add */
+	char mld_mac_str[18] = {0};
+	uint8_mac_to_string_mac((uint8_t *)wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.mld_info.common_info.mld_addr, mld_mac_str);
+	cJSON_AddStringToObject(vb_entry, "MLD_Addr", mld_mac_str);
+
+#if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
        if(rdk_vap_info->exists == false) {
 #if defined(_SR213_PRODUCT_REQ_)
            if(wifi_vap_map->vap_array[vapArrayIndex].vap_index != 2 && wifi_vap_map->vap_array[vapArrayIndex].vap_index != 3) {
@@ -1051,7 +1051,7 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
            rdk_vap_info->exists = true;
 #endif /* _SR213_PRODUCT_REQ_ */
        }
-#endif /* !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) */
+#endif /* !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_) */
         cJSON_AddBoolToObject(vb_entry, "Exists", rdk_vap_info->exists);
 
         cJSON_AddBoolToObject(vb_entry, "MacFilterEnable", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.mac_filter_enable);
@@ -1206,19 +1206,22 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
 
         char *vap_blob_str = cJSON_Print(n_blob);
         wifi_util_dbg_print(WIFI_CTRL,"WebConfig blob is %s\n",vap_blob_str);
-        if (webconfig_to_wifi_update_params(vap_blob_str))
-        {
+        wifi_util_info_print(WIFI_CTRL,"%s:%d pushing WebConfig blob to ctrl queue\n", __func__, __LINE__);
+        push_event_to_ctrl_queue(vap_blob_str, strlen(vap_blob_str), wifi_event_type_webconfig, wifi_event_webconfig_set_data_tunnel, NULL);
+
+        bool ret_value = hotspot_cfg_sem_wait_duration(MAX_HOTSPOT_BLOB_SET_TIMEOUT);
+        if (ret_value == false) {
+            execRetVal->ErrorCode = BLOB_EXECUTION_TIMEDOUT;
+            strncpy(execRetVal->ErrorMsg, "subdoc apply is failed", sizeof(execRetVal->ErrorMsg)-1);
+            wifi_util_error_print(WIFI_CTRL, "%s:%d WebConfig blob apply is failed:%s\n", __func__,
+                __LINE__, execRetVal->ErrorMsg);
+        } else {
+            wifi_util_info_print(WIFI_CTRL,"%s:%d WebConfig blob is applied success\n", __func__, __LINE__);
             execRetVal->ErrorCode = BLOB_EXEC_SUCCESS;
-        }
-        else
-        {
-            execRetVal->ErrorCode = VALIDATION_FALIED;
-            wifi_util_error_print(WIFI_CTRL, "%s(): Validation failed: %s\n", __FUNCTION__, execRetVal->ErrorMsg);
         }
 
         cJSON_free(vap_blob_str);
         cJSON_Delete(n_blob);
-        execRetVal->ErrorCode = BLOB_EXEC_SUCCESS;
     }
     else {
         execRetVal->ErrorCode = VALIDATION_FALIED;

@@ -95,7 +95,7 @@ void fsa_copy(const void *array, int size, int len, int num, void *dest, int dsi
 #define fsa_item(arr, size, len, i) \
     ((i) >= (len) \
      ? (LOG(CRIT, "FSA out of bounds %d >= %d", i, len), NULL) \
-     : (arr) + (i) * (size))
+     : (void *)((uintptr_t)(arr) + (uintptr_t)(i) * (uintptr_t)(size)))
 
 char *str_tolower(char *str);
 char *str_toupper(char *str);

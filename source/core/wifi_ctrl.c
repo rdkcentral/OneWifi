@@ -1889,6 +1889,9 @@ int wifi_sched_timeout(void *arg)
 
     if (args->type == wifi_csa_sched) {
         resched_data_to_ctrl_queue();
+    } else if ((check_wifi_csa_sched_timeout_active_status(l_ctrl) == false)
+        && (args->type == wifi_vap_sched)) {
+        resched_data_to_ctrl_queue();
     }
     if (args->type == wifi_acs_sched) {
         l_ctrl->acs_pending[args->index] = false; // Clearing acs_pending flag
@@ -1941,12 +1944,69 @@ void start_wifi_sched_timer(unsigned int index, wifi_ctrl_t *l_ctrl, wifi_schedu
         args->type = type;
         args->index = handler_index;
 
-        scheduler_add_timer_task(l_ctrl->sched, FALSE, &handler_id[handler_index],
-            wifi_sched_timeout, args, MAX_WIFI_SCHED_TIMEOUT, 1, FALSE);
+        if(type == wifi_csa_sched) {
+            scheduler_add_timer_task(l_ctrl->sched, FALSE, &handler_id[handler_index],
+                wifi_sched_timeout, args, MAX_WIFI_SCHED_CSA_TIMEOUT, 1, FALSE);
+        } else {
+            scheduler_add_timer_task(l_ctrl->sched, FALSE, &handler_id[handler_index],
+                wifi_sched_timeout, args, MAX_WIFI_SCHED_TIMEOUT, 1, FALSE);
+        }
     } else {
         wifi_util_info_print(WIFI_CTRL,"%s:%d - Already wifi index:%d type:%d scheduler timer started\r\n",
                                 __func__, __LINE__, handler_index, type);
     }
+}
+
+void hotspot_cfg_sem_signal(bool status)
+{
+    wifi_ctrl_t *ctrl = NULL;
+
+    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+
+    if (ctrl->hotspot_sem_param.is_init == true) {
+        pthread_mutex_lock(&ctrl->hotspot_sem_param.lock);
+        ctrl->hotspot_sem_param.cfg_status = status;
+        pthread_cond_signal(&ctrl->hotspot_sem_param.cond);
+        pthread_mutex_unlock(&ctrl->hotspot_sem_param.lock);
+    }
+}
+
+bool hotspot_cfg_sem_wait_duration(uint32_t time_in_sec)
+{
+    struct timespec ts;
+    int ret;
+    bool status = false;
+
+    wifi_ctrl_t *ctrl = NULL;
+
+    ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    if (ctrl->hotspot_sem_param.is_init == false) {
+        pthread_condattr_t  cond_attr;
+        pthread_condattr_init(&cond_attr);
+        pthread_condattr_setclock(&cond_attr, CLOCK_MONOTONIC);
+        pthread_cond_init(&ctrl->hotspot_sem_param.cond, &cond_attr);
+        pthread_condattr_destroy(&cond_attr);
+        pthread_mutex_init(&ctrl->hotspot_sem_param.lock, NULL);
+        ctrl->hotspot_sem_param.is_init = true;
+    }
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+
+    /* Add wait duration*/
+    ts.tv_sec += time_in_sec;
+
+    pthread_mutex_lock(&ctrl->hotspot_sem_param.lock);
+    ret = pthread_cond_timedwait(&ctrl->hotspot_sem_param.cond, &ctrl->hotspot_sem_param.lock, &ts);
+    if (ret == 0) {
+        status = ctrl->hotspot_sem_param.cfg_status;
+    }
+
+    pthread_mutex_unlock(&ctrl->hotspot_sem_param.lock);
+
+    ctrl->hotspot_sem_param.is_init = false;
+    pthread_mutex_destroy(&ctrl->hotspot_sem_param.lock);
+    pthread_cond_destroy(&ctrl->hotspot_sem_param.cond);
+
+    return status;
 }
 
 void stop_wifi_sched_timer(unsigned int index, wifi_ctrl_t *l_ctrl, wifi_scheduler_type_t type)
@@ -2103,6 +2163,7 @@ static int run_greylist_event(void *arg)
     }
     return TIMER_TASK_COMPLETE;
 }
+
 static int run_analytics_event(void* arg)
 {
     wifi_ctrl_t *ctrl = NULL;

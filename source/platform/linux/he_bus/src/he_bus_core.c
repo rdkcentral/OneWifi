@@ -842,7 +842,7 @@ he_bus_error_t bus_publish_data_to_all_sub(he_bus_handle_t handle, he_bus_data_o
     return he_bus_error_success;
 }
 
-he_bus_error_t he_bus_publish_event(he_bus_handle_t handle, char *event_name,
+he_bus_error_t he_bus_publish_event(he_bus_handle_t handle, char const *event_name,
     he_bus_raw_data_t *p_data)
 {
     VERIFY_NULL_WITH_RC(event_name);
@@ -998,7 +998,7 @@ he_bus_error_t he_bus_event_sub_to_provider(he_bus_handle_t handle,
     return status;
 }
 
-he_bus_error_t he_bus_event_sub(he_bus_handle_t handle, char *event_name,
+he_bus_error_t he_bus_event_sub(he_bus_handle_t handle, char const *event_name,
     he_bus_event_consumer_sub_handler_t sub_handler, uint32_t timeout)
 {
     VERIFY_NULL_WITH_RC(event_name);
@@ -1040,7 +1040,7 @@ he_bus_error_t he_bus_event_sub_ex_async(he_bus_handle_t handle, he_bus_event_su
 }
 
 // caller needs to free allocated memory
-he_bus_error_t he_bus_get_data(he_bus_handle_t handle, char *event_name, he_bus_raw_data_t *p_data)
+he_bus_error_t he_bus_get_data(he_bus_handle_t handle, char const *event_name, he_bus_raw_data_t *p_data)
 {
     VERIFY_NULL_WITH_RC(event_name);
     VERIFY_NULL_WITH_RC(handle);
@@ -1113,7 +1113,7 @@ he_bus_error_t he_bus_get_data(he_bus_handle_t handle, char *event_name, he_bus_
     return status;
 }
 
-he_bus_error_t he_bus_set_data(he_bus_handle_t handle, char *event_name, he_bus_raw_data_t *p_data)
+he_bus_error_t he_bus_set_data(he_bus_handle_t handle, char const *event_name, he_bus_raw_data_t *p_data)
 {
     VERIFY_NULL_WITH_RC(event_name);
     VERIFY_NULL_WITH_RC(handle);

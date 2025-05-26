@@ -37,7 +37,8 @@ patch_filenames="hostap-patches/0001-OneWifi-related-hostap-patch-for-2.10-based
 	hostap-patches/0002-radius_failover_2.10.patch \
 	hostap-patches/0003-mbssid_support_2.10.patch \
         hostap-patches/wpa3_compatibility_hostap_2_10.patch \
-        hostap-patches/0005-RDKB-58414-Dynamically-update-NAS_2_10.patch"
+        hostap-patches/0005-RDKB-58414-Dynamically-update-NAS_2_10.patch \
+        hostap-patches/0006-RDKB-59523-connectivity-via-supplicant.patch"
 echo "Applying patches ..."
 git am $patch_filenames
 
@@ -47,7 +48,7 @@ rm -rf hostap-patches
 #return back to initial directory
 cd $ONEWIFI_DIR
 #Copy the Toplevel Makefile of OpenWRT for Easymesh package and golden MT7966 config
-cp build/openwrt/Makefile ../Makefile
+cp build/openwrt/Makefile_package ../Makefile
 cp build/openwrt/MT7966.config ../../../.config
 #Copy the avro dependency to package/libs
 cp -r build/openwrt/avro ../../libs/.
