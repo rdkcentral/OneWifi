@@ -839,7 +839,9 @@ int webconfig_hal_vap_apply_by_name(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_
 
             if (svc->update_fn(svc, tgt_radio_idx, p_tgt_vap_map, &tgt_rdk_vap_info) != RETURN_OK) {
                 wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: failed to apply\n", __func__, __LINE__);
-                stop_wifi_sched_timer(vap_info->vap_index, ctrl, wifi_vap_sched);
+                memset(update_status, 0, sizeof(update_status));
+                snprintf(update_status, sizeof(update_status), "%s %s", vap_names[i], "fail");
+                apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_webconfig, wifi_event_webconfig_hal_result, update_status);
                 free(p_tgt_vap_map);
                 p_tgt_vap_map = NULL;
                 return RETURN_ERR;
@@ -2138,6 +2140,22 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                     ctrl->webconfig_state |= ctrl_webconfig_state_vap_private_cfg_rsp_pending;
                     webconfig_analytic_event_data_to_hal_apply(data);
                     ret = webconfig_hal_private_vap_apply(ctrl, &data->u.decoded);
+                    if (ret != RETURN_OK) {
+                        static uint8_t max_re_apply_retry = 0;
+                        if (max_re_apply_retry < MAX_VAP_RE_CFG_APPLY_RETRY) {
+                            if (push_data_to_apply_pending_queue(data) != RETURN_OK) {
+                                wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d vap subdoc pending queue"
+                                    " is failed\n", __func__, __LINE__);
+                                return webconfig_error_apply;
+                            }
+                            max_re_apply_retry++;
+                        } else {
+                            max_re_apply_retry = 0;
+                        }
+                        // we will improve this code later.
+                        // Beause this is not sending proper error code.
+                        ret = RETURN_OK;
+                    }
                 }
             }
             //This is for captive_portal_check for private SSID when defaults modified
@@ -2178,6 +2196,9 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                     ctrl->webconfig_state |= ctrl_webconfig_state_vap_xfinity_cfg_rsp_pending;
                     webconfig_analytic_event_data_to_hal_apply(data);
                     ret = webconfig_hal_xfinity_vap_apply(ctrl, &data->u.decoded);
+                    bool status = ((ret == RETURN_OK) ? true : false);
+                    hotspot_cfg_sem_signal(status);
+                    wifi_util_info_print(WIFI_CTRL,":%s:%d xfinity blob cfg status:%d\n", __func__, __LINE__, ret);
                     webconfig_cac_apply(ctrl, &data->u.decoded);
                     if (is_6g_supported_device((&(get_wifimgr_obj())->hal_cap.wifi_prop))) {
                         wifi_util_info_print(WIFI_CTRL,"6g supported device add rnr of 6g\n");

@@ -2004,49 +2004,64 @@ int key_mgmt_conversion_legacy(wifi_security_modes_t *mode_enum, wifi_encryption
     return ret;
 }
 
-#define MAX_SEC_LEN 32
+typedef struct {
+    const char keys[16][MAX_SEC_LEN];
+    int len;
+    wifi_security_modes_t mode;
+} security_mapping_table_t;
 
-int key_mgmt_conversion(wifi_security_modes_t *enum_sec, char *str_sec, char *str_sec2, int sec_len, int sec_len2, unsigned int conv_type, int *len)
+static const security_mapping_table_t security_map[] = {
+    { .keys = { "wpa-psk" },        .len = 1, .mode = wifi_security_mode_wpa_personal },
+    { .keys = { "wpa2-psk" },       .len = 1, .mode = wifi_security_mode_wpa2_personal },
+    { .keys = { "wpa2-eap" },       .len = 1, .mode = wifi_security_mode_wpa2_enterprise },
+    { .keys = { "sae" },            .len = 1, .mode = wifi_security_mode_wpa3_personal },
+    { .keys = { "aes" },            .len = 1, .mode = wifi_security_mode_wpa3_enterprise },
+    { .keys = { "enhanced-open" },  .len = 1, .mode = wifi_security_mode_enhanced_open },
+    { .keys = { "wpa-eap" },        .len = 1, .mode = wifi_security_mode_wpa_enterprise },
+    { .keys = { "wpa-eap", "wpa2-eap" },    .len = 2, .mode = wifi_security_mode_wpa_wpa2_enterprise },
+    { .keys = { "wpa2-psk", "sae" },        .len = 2, .mode = wifi_security_mode_wpa3_transition },
+    { .keys = { "wpa-psk", "wpa2-psk" },    .len = 2, .mode = wifi_security_mode_wpa_wpa2_personal },
+    { .keys = { "wpa2-psk", "sae", "rsno" },    .len = 3, .mode = wifi_security_mode_wpa3_compatibility }
+};
+
+int key_mgmt_conversion(wifi_security_modes_t *enum_sec, int *sec_len, unsigned int conv_type,
+    int wpa_key_mgmt_len, char (*wpa_key_mgmt)[MAX_SEC_LEN])
 {
-    char arr_str[][MAX_SEC_LEN] = {"wpa-psk", "wpa2-psk", "wpa2-eap", "sae", "wpa2-psk sae", "wpa2-psk sae", "aes", "wpa-eap wpa2-eap", "enhanced-open", "wpa-eap", "wpa-psk wpa2-psk"};
-    wifi_security_modes_t  arr_num[] = {wifi_security_mode_wpa_personal, wifi_security_mode_wpa2_personal, wifi_security_mode_wpa2_enterprise, wifi_security_mode_wpa3_personal, wifi_security_mode_wpa3_transition, wifi_security_mode_wpa3_compatibility, wifi_security_mode_wpa3_enterprise, wifi_security_mode_wpa_wpa2_enterprise, wifi_security_mode_enhanced_open, wifi_security_mode_wpa_enterprise, wifi_security_mode_wpa_wpa2_personal};
-    unsigned int i = 0;
+    int i, j = 0;
+    int num_key_found = 0;
+    char key_mgmt_buff_str[MAX_SEC_LEN] = {0};
 
-    if ((enum_sec == NULL) || (str_sec == NULL)) {
+    if ((enum_sec == NULL) || wpa_key_mgmt == NULL) {
         return RETURN_ERR;
     }
 
     if (conv_type == STRING_TO_ENUM) {
-        char str_buff[MAX_SEC_LEN] = {0};
-        if (strlen(str_sec2) != 0) {
-            snprintf(str_buff, sizeof(str_buff), "%s %s", str_sec2, str_sec);
-        } else {
-            snprintf(str_buff, sizeof(str_buff), "%s", str_sec);
+        for (i = 0; i < wpa_key_mgmt_len; i++) {
+            snprintf(key_mgmt_buff_str + strlen(key_mgmt_buff_str), sizeof(key_mgmt_buff_str) - strlen(key_mgmt_buff_str), "%s", wpa_key_mgmt[i]);
         }
-        for (i = 0; i < ARRAY_SIZE(arr_str); i++) {
-            if (strcmp(arr_str[i], str_buff) == 0) {
-                *enum_sec = arr_num[i];
+        for (i = 0; i < ARRAY_LEN(security_map); i++) {
+            if (wpa_key_mgmt_len != security_map[i].len) {
+                continue;
+            }
+            num_key_found = 0;
+            for (j = 0; j < wpa_key_mgmt_len; j++) {
+                char *found_key = strstr(key_mgmt_buff_str, security_map[i].keys[j]);
+                if (found_key == NULL) {
+                    break;
+                }
+                num_key_found++;
+            }
+            if (num_key_found == wpa_key_mgmt_len) {
+                *enum_sec = security_map[i].mode;
                 return RETURN_OK;
             }
         }
     } else if (conv_type == ENUM_TO_STRING) {
-        for (i = 0; i < ARRAY_SIZE(arr_num); i++) {
-            if (arr_num[i]  == *enum_sec) {
-                if ((*enum_sec == wifi_security_mode_wpa3_transition) || (*enum_sec == wifi_security_mode_wpa3_compatibility)
-                    || (*enum_sec == wifi_security_mode_wpa_wpa2_enterprise) || (*enum_sec == wifi_security_mode_wpa_wpa2_personal))
-                {
-                    *len = 2;
-                    char *sec_safe;
-                    char *sec1 = strtok_r(arr_str[i], " ", &sec_safe);
-                    char *sec2 = NULL;
-                    if (NULL != sec1) {
-                       sec2 = strtok_r(NULL, " ", &sec_safe);
-                       snprintf(str_sec, sec_len, "%s", sec1);
-                       snprintf(str_sec2, sec_len2, "%s", sec2);
-                    }
-                } else {
-                    *len = 1;
-                    snprintf(str_sec, sec_len, "%s", arr_str[i]);
+        for (i = 0; i < ARRAY_LEN(security_map); i++) {
+            if (*enum_sec == security_map[i].mode) {
+                *sec_len = security_map[i].len;
+                for (j = 0; j < security_map[i].len; j++) {
+                    snprintf(wpa_key_mgmt[j], sizeof(wpa_key_mgmt[j]), "%s", security_map[i].keys[j]);
                 }
                 return RETURN_OK;
             }
