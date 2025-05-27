@@ -917,6 +917,21 @@ bool isglobalParamChanged(wifi_global_config_t *data_config)
     return false;
 }
 
+bool ismemwraptoolParamChanged(wifi_global_config_t *data_config)
+{
+    wifi_global_config_t *mgr_global_config;
+    mgr_global_config = get_wifidb_wifi_global_config();
+    memwraptool_config_t mgr_memwraptool_config, data_memwraptool_config;
+    mgr_memwraptool_config = mgr_global_config->global_parameters.memwraptool;
+    data_memwraptool_config = data_config->global_parameters.memwraptool;
+    if (memcmp(&mgr_memwraptool_config, &data_memwraptool_config, sizeof(memwraptool_config_t)) !=
+        0) {
+        wifi_util_dbg_print(WIFI_CTRL, "memwraptool param changed\n");
+        return true;
+    }
+    return false;
+}
+
 int webconfig_stats_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
     wifi_mgr_t *mgr = get_wifimgr_obj();
@@ -1269,6 +1284,29 @@ int webconfig_vif_neighbors_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_da
     return ret;
 }
 
+int webconfig_memwraptool_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
+{
+    wifi_util_dbg_print(WIFI_CTRL, "Inside webconfig_memwraptool_apply\n");
+    wifi_global_config_t *data_global_config;
+    data_global_config = &data->config;
+    bool memwraptool_param_changed = false;
+    memwraptool_param_changed = ismemwraptoolParamChanged(data_global_config);
+
+    if (memwraptool_param_changed == 0) {
+        wifi_util_dbg_print(WIFI_CTRL, "memwraptool param is not modified\n");
+        return RETURN_ERR;
+    }
+
+    if (memwraptool_param_changed) {
+        wifi_util_dbg_print(WIFI_CTRL,
+            "memwraptool param is modified hence update the memwraptool config in DB\n");
+        if (update_wifi_global_config(&data_global_config->global_parameters) == -1) {
+            wifi_util_dbg_print(WIFI_CTRL, "memwraptool config value is not updated in DB\n");
+            return RETURN_ERR;
+        }
+    }
+    return RETURN_OK;
+}
 
 int webconfig_global_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
@@ -2385,6 +2423,18 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                 wifi_util_error_print(WIFI_MGR, "%s:%d: Not expected publish of cac webconfig subdoc\n", __func__, __LINE__);
             } else {
                 ret = webconfig_cac_apply(ctrl, &data->u.decoded);
+            }
+            break;
+
+        case webconfig_subdoc_type_memwraptool:
+            wifi_util_dbg_print(WIFI_MGR, "%s:%d: memwraptool webconfig subdoc\n", __func__,
+                __LINE__);
+            if (data->descriptor & webconfig_data_descriptor_encoded) {
+                wifi_util_error_print(WIFI_MGR,
+                    "%s:%d: Not expected publish of memwraptool webconfig subdoc\n", __func__,
+                    __LINE__);
+            } else {
+                ret = webconfig_memwraptool_apply(ctrl, &data->u.decoded);
             }
             break;
 

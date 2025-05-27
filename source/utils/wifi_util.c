@@ -810,6 +810,11 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
             snprintf(module_filename, sizeof(module_filename), "wifiBlaster");
             break;
         }
+        case WIFI_MEMWRAPTOOL: {
+            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiMemwrapTool");
+            snprintf(module_filename, sizeof(module_filename), "wifiMemwrapTool");
+            break;
+        }
         case WIFI_OCS:{
             snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiOcsDbg");
             snprintf(module_filename, sizeof(module_filename), "wifiOcs");

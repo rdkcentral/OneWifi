@@ -192,6 +192,7 @@
         PJS_OVS_BOOL(dfs_rfc) \
         PJS_OVS_BOOL(wpa3_rfc) \
         PJS_OVS_BOOL(levl_enabled_rfc) \
+        PJS_OVS_BOOL(memwraptool_app_rfc) \
         PJS_OVS_BOOL(twoG80211axEnable_rfc) \
         PJS_OVS_BOOL(hotspot_open_2g_last_enabled) \
         PJS_OVS_BOOL(hotspot_open_5g_last_enabled) \
@@ -1609,6 +1610,12 @@
         PJS_OVS_INT(assoc_gate_time) \
         PJS_OVS_INT(whix_log_interval) \
         PJS_OVS_INT(whix_chutility_loginterval) \
+        PJS_OVS_INT(rss_check_interval) \
+        PJS_OVS_INT(rss_threshold) \
+        PJS_OVS_INT(rss_maxlimit) \
+        PJS_OVS_INT(heapwalk_duration) \
+        PJS_OVS_INT(heapwalk_interval) \
+        PJS_OVS_BOOL(memwraptool_enable) \
         PJS_OVS_INT(assoc_monitor_duration) \
         PJS_OVS_BOOL(rapid_reconnect_enable) \
         PJS_OVS_BOOL(vap_stats_feature) \
@@ -2105,6 +2112,7 @@
     COLUMN(dfs_rfc) \
     COLUMN(wpa3_rfc) \
     COLUMN(levl_enabled_rfc) \
+    COLUMN(memwraptool_app_rfc) \
     COLUMN(twoG80211axEnable_rfc) \
     COLUMN(hotspot_open_2g_last_enabled) \
     COLUMN(hotspot_open_5g_last_enabled) \
@@ -3267,6 +3275,12 @@
     COLUMN(assoc_gate_time) \
     COLUMN(whix_log_interval) \
     COLUMN(whix_chutility_loginterval) \
+    COLUMN(rss_check_interval) \
+    COLUMN(rss_threshold) \
+    COLUMN(rss_maxlimit) \
+    COLUMN(heapwalk_duration) \
+    COLUMN(heapwalk_interval) \
+    COLUMN(memwraptool_enable) \
     COLUMN(assoc_monitor_duration) \
     COLUMN(rapid_reconnect_enable) \
     COLUMN(vap_stats_feature) \
@@ -3455,6 +3469,7 @@
 #define SCHEMA__Wifi_Rfc_Config__hotspot_secure_5g_last_enabled "hotspot_secure_5g_last_enabled"
 #define SCHEMA__Wifi_Rfc_Config__hotspot_secure_6g_last_enabled "hotspot_secure_6g_last_enabled"
 #define SCHEMA__Wifi_Rfc_Config__wifi_offchannelscan_app_rfc "wifi_offchannelscan_app_rfc"
+#define SCHEMA__Wifi_Rfc_Config__memwraptool_app_rfc "memwraptool_app_rfc"
 #define SCHEMA__Wifi_Rfc_Config__wifi_offchannelscan_sm_rfc "wifi_offchannelscan_sm_rfc"
 #define SCHEMA__Wifi_Rfc_Config__Levl_rfc "levl_enabled_rfc"
 #define SCHEMA__Wifi_Rfc_Config__tcm_enabled_rfc "tcm_enabled_rfc"
@@ -4520,6 +4535,12 @@
 #define SCHEMA__Wifi_Global_Config__assoc_gate_time "assoc_gate_time"
 #define SCHEMA__Wifi_Global_Config__whix_log_interval "whix_log_interval"
 #define SCHEMA__Wifi_Global_Config__whix_chutility_loginterval "whix_chutility_loginterval"
+#define SCHEMA__Wifi_Global_Config__rss_check_interval "rss_check_interval"
+#define SCHEMA__Wifi_Global_Config__rss_threshold "rss_threshold"
+#define SCHEMA__Wifi_Global_Config__rss_maxlimit "rss_maxlimit"
+#define SCHEMA__Wifi_Global_Config__heapwalk_duration "heapwalk_duration"
+#define SCHEMA__Wifi_Global_Config__heapwalk_interval "heapwalk_interval"
+#define SCHEMA__Wifi_Global_Config__memwraptool_enable "memwraptool_enable"
 #define SCHEMA__Wifi_Global_Config__assoc_monitor_duration "assoc_monitor_duration"
 #define SCHEMA__Wifi_Global_Config__rapid_reconnect_enable "rapid_reconnect_enable"
 #define SCHEMA__Wifi_Global_Config__vap_stats_feature "vap_stats_feature"
