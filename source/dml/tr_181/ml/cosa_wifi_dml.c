@@ -16516,11 +16516,6 @@ BOOL RSSMemory_SetParamUlongValue(ANSC_HANDLE hInsContext, char *ParamName, ULON
 
 ***********************************************************************/
 
-
- 
-
-
-
 /**********************************************************************  
 
     caller:     owner of this object 
