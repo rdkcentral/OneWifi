@@ -416,6 +416,7 @@ do
         fi
         ((force_reset_subdoc++))
     fi
+
     # Check if OneWifi process RSS memory usage exceeds threshold, if does restart OneWifi.
     onewifi_mem_restart
     sleep 5m
