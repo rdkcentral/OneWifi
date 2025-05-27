@@ -78,7 +78,7 @@
 #define ONEWIFI_DB_VERSION_WPA3_COMP_FLAG 100032
 #define WPA3_COMPATIBILITY 8192
 #define ONEWIFI_DB_VERSION_HOSTAP_MGMT_FRAME_CTRL_FLAG 100033
-#define ONEWIFI_RSS_MEMORY_THRESHOLD_FLAG 100035
+#define ONEWIFI_DB_VERSION_RSS_MEMORY_THRESHOLD_FLAG 100035
 
 ovsdb_table_t table_Wifi_Radio_Config;
 ovsdb_table_t table_Wifi_VAP_Config;
@@ -4312,11 +4312,14 @@ static void wifidb_global_config_upgrade()
         }
     }
 
-    if( g_wifidb->db_version < ONEWIFI_RSS_MEMORY_THRESHOLD_FLAG) {
-        wifi_util_dbg_print(WIFI_DB, "%s:%d upgrade global config, old db version %d \n", __func__, __LINE__, g_wifidb->db_version);
-        g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_low = RSS_MEM_THRESHOLD1_DEFAULT;
-        g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_high = RSS_MEM_THRESHOLD2_DEFAULT;
-        }
+    if (g_wifidb->db_version < ONEWIFI_DB_VERSION_RSS_MEMORY_THRESHOLD_FLAG) {
+        wifi_util_dbg_print(WIFI_DB, "%s:%d upgrade global config, old db version %d \n", __func__,
+            __LINE__, g_wifidb->db_version);
+        g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_low =
+            RSS_MEM_THRESHOLD1_DEFAULT;
+        g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_high =
+            RSS_MEM_THRESHOLD2_DEFAULT;
+    }
 }
 
 /************************************************************************************

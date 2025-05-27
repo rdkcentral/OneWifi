@@ -100,8 +100,8 @@ extern "C" {
 #define MIN_DIAG_INTERVAL   5000
 #define CSI_PING_INTERVAL   100
 
-#define RSS_MEM_THRESHOLD1_DEFAULT 81920
-#define RSS_MEM_THRESHOLD2_DEFAULT 112640
+#define RSS_MEM_THRESHOLD1_DEFAULT 81920 /*Threshold1 is 80MB*/
+#define RSS_MEM_THRESHOLD2_DEFAULT 112640 /*Threshold2 is 110MB*/
 
 #define wifi_sub_component_base     0x01
 #define wifi_app_inst_base          0x01
