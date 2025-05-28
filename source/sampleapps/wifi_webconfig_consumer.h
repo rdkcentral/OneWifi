@@ -20,7 +20,7 @@
 #ifndef WIFI_WEBCONFIG_CONSUMER_H
 #define WIFI_WEBCONFIG_CONSUMER_H
 
-#include "rbus.h"
+#include <rbus/rbus.h>
 #include "wifi_webconfig.h"
 
 #ifdef __cplusplus
