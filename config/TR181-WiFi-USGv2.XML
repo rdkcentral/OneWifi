@@ -2043,6 +2043,36 @@ INSTMSMT_PH2 -->
                         </object>
                     </objects>
                 </object>
+                    <object>
+                        <name>WiFiRestart</name>
+                        <objectType>object</objectType>
+                        <functions></functions>
+	                    <parameters></parameters>
+                        <objects>
+                            <object>
+                                <name>RSSMemory</name>
+                                <objectType>object</objectType>
+                                <functions>
+                                    <func_GetParamUlongValue>RSSMemory_GetParamUlongValue</func_GetParamUlongValue>
+                                    <func_SetParamUlongValue>RSSMemory_SetParamUlongValue</func_SetParamUlongValue>
+                                </functions>
+                                <parameters>
+                                    <parameter>
+                                        <name>Threshold1</name>
+                                        <type>unsignedInt</type>
+                                        <syntax>uint32</syntax>
+                                        <writable>true</writable>
+                                    </parameter>
+                                    <parameter>
+                                        <name>Threshold2</name>
+                                        <type>unsignedInt</type>
+                                        <syntax>uint32</syntax>
+                                        <writable>true</writable>
+                                    </parameter>
+                                </parameters>
+                            </object>
+                        </objects>
+                    </object>
                 <object>
                     <name>AccessPoint</name>
                     <objectType>staticTable</objectType>

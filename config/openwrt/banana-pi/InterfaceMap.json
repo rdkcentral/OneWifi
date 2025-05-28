@@ -1,0 +1,62 @@
+{
+    "PhyList": [
+        {
+            "Index": 0,
+            "RadioList": [
+                 {
+                    "Index": 2,
+                    "RadioName": "wifi2",
+                    "InterfaceList": [
+                        {
+                            "InterfaceName": "wifi2",
+                            "Bridge": "br-lan",
+                            "vlanId": 0,
+                            "vapIndex": 16,
+                            "vapName": "private_ssid_6g"
+                        }
+                    ]
+                },
+                {
+                    "Index": 1,
+                    "RadioName": "wifi1",
+                    "InterfaceList": [
+                        {
+                            "InterfaceName": "wifi1",
+                            "Bridge": "br-lan",
+                            "vlanId": 0,
+                            "vapIndex": 1,
+                            "vapName": "private_ssid_5g"
+                        },
+                        {
+                            "InterfaceName": "wifi1.1",
+                            "Bridge": "br-lan",
+                            "vlanId": 0,
+                            "vapIndex": 15,
+                            "vapName": "mesh_sta_5g"
+                        },
+                        {
+                            "InterfaceName": "wifi1.2",
+                            "Bridge": "br-lan",
+                            "vlanId": 0,
+                            "vapIndex": 13,
+                            "vapName": "mesh_backhaul_5g"
+                        }
+                    ]
+                },
+                {
+                    "Index": 0,
+                    "RadioName": "wifi0",
+                    "InterfaceList": [
+                        {
+                            "InterfaceName": "wifi0",
+                            "Bridge": "br-lan",
+                            "vlanId": 0,
+                            "vapIndex": 0,
+                            "vapName": "private_ssid_2g"
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
