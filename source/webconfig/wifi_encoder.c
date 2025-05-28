@@ -718,6 +718,12 @@ webconfig_error_t encode_wifi_global_config(const wifi_global_param_t *global_in
     //Whix_ChUtility_Loginterval
     cJSON_AddNumberToObject(global_obj, "whix_chutility_loginterval", global_info->whix_chutility_loginterval);
 
+    // RSS Mem threshold1
+    cJSON_AddNumberToObject(global_obj, "rss_memory_restart_threshold_low", global_info->rss_memory_restart_threshold_low);
+
+    // RSS Mem threshold2
+    cJSON_AddNumberToObject(global_obj, "rss_memory_restart_threshold_high", global_info->rss_memory_restart_threshold_high);
+
     //AssocMonitorDuration
     cJSON_AddNumberToObject(global_obj, "AssocMonitorDuration", global_info->assoc_monitor_duration);
 

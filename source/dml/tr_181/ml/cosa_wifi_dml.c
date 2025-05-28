@@ -16393,6 +16393,148 @@ AssociatedDevice1_GetParamStringValue
     return -1;
 }
 
+/**********************************************************************
+ APIs for Object:
+   WiFi.WiFiRestart.RssMemory
+
+   * RSSMemory_GetParamUlongValue
+   * RSSMemory_SetParamUlongValue
+
+************************************************************************/
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        RSSMemory_GetParamUlongValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                ULONG*                       pULong
+            );
+
+    description:
+
+        This function is called to retrieve Boolean parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+               ULONG*                       pULong
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+
+BOOL RSSMemory_GetParamUlongValue(ANSC_HANDLE hInsContext, char *ParamName, ULONG *pULong)
+{
+    wifi_util_error_print(WIFI_DMCLI, "Enters %s:%d\n", __func__, __LINE__);
+    UNREFERENCED_PARAMETER(hInsContext);
+    wifi_global_param_t *pcfg = (wifi_global_param_t *)get_dml_wifi_global_param();
+
+    if (pcfg == NULL) {
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d  NULL pointer Get fail\n", __FUNCTION__, __LINE__);
+        return FALSE;
+    }
+
+    if (AnscEqualString(ParamName, "Threshold1", TRUE)) {
+        /* collect value */
+        *pULong = pcfg->rss_memory_restart_threshold_low;
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: RSS Threshold1 = %d\n", __func__, __LINE__,
+            *pULong);
+        return TRUE;
+    }
+
+    if (AnscEqualString(ParamName, "Threshold2", TRUE)) {
+        /* collect value */
+        *pULong = pcfg->rss_memory_restart_threshold_high;
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: RSS Threshold2 = %d\n", __func__, __LINE__,
+            *pULong);
+        return TRUE;
+    }
+    return FALSE;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        RSSMemory_SetParamUlongValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                ULONG                       iValue
+            );
+
+    description:
+
+        This function is called to set ULONG parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                ULONG                       iValue
+                The updated value;
+
+    return:     TRUE if succeeded.
+**********************************************************************/
+
+BOOL RSSMemory_SetParamUlongValue(ANSC_HANDLE hInsContext, char *ParamName, ULONG iValue)
+{
+    wifi_util_error_print(WIFI_DMCLI, "Enters %s:%d\n", __func__, __LINE__);
+    UNREFERENCED_PARAMETER(hInsContext);
+    wifi_global_config_t *global_wifi_config;
+    global_wifi_config = (wifi_global_config_t *)get_dml_cache_global_wifi_config();
+
+    if (global_wifi_config == NULL) {
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Unable to get Global Config\n", __FUNCTION__,
+            __LINE__);
+        return FALSE;
+    }
+    /* check the parameter name and set the corresponding value */
+    if (AnscEqualString(ParamName, "Threshold1", TRUE)) {
+        if (global_wifi_config->global_parameters.rss_memory_restart_threshold_low == iValue) {
+            return TRUE;
+        }
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: RSS Threshold1 = %d New Value = %d\n", __func__,
+            __LINE__, global_wifi_config->global_parameters.rss_memory_restart_threshold_low,
+            iValue);
+        global_wifi_config->global_parameters.rss_memory_restart_threshold_low = iValue;
+        if (push_global_config_dml_cache_to_one_wifidb() != RETURN_OK) {
+            wifi_util_error_print(WIFI_DMCLI,
+                "%s:%d: Failed to push RSS Threshold1 value to onewifi db\n", __func__, __LINE__);
+        }
+        return TRUE;
+    }
+
+    if (AnscEqualString(ParamName, "Threshold2", TRUE)) {
+        if (global_wifi_config->global_parameters.rss_memory_restart_threshold_high == iValue) {
+            return TRUE;
+        }
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: RSS Threshold2 = %d New Value = %d\n", __func__,
+            __LINE__, global_wifi_config->global_parameters.rss_memory_restart_threshold_high,
+            iValue);
+        global_wifi_config->global_parameters.rss_memory_restart_threshold_high = iValue;
+        if (push_global_config_dml_cache_to_one_wifidb() != RETURN_OK) {
+            wifi_util_error_print(WIFI_DMCLI,
+                "%s:%d: Failed to push RSS Threshold2 value to onewifi db\n", __func__, __LINE__);
+        }
+        return TRUE;
+    }
+    return FALSE;
+}
 
 /***********************************************************************
 

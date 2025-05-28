@@ -1609,6 +1609,8 @@
         PJS_OVS_INT(assoc_gate_time) \
         PJS_OVS_INT(whix_log_interval) \
         PJS_OVS_INT(whix_chutility_loginterval) \
+        PJS_OVS_INT(rss_memory_restart_threshold_low) \
+        PJS_OVS_INT(rss_memory_restart_threshold_high) \
         PJS_OVS_INT(assoc_monitor_duration) \
         PJS_OVS_BOOL(rapid_reconnect_enable) \
         PJS_OVS_BOOL(vap_stats_feature) \
@@ -3267,6 +3269,8 @@
     COLUMN(assoc_gate_time) \
     COLUMN(whix_log_interval) \
     COLUMN(whix_chutility_loginterval) \
+    COLUMN(rss_memory_restart_threshold_low) \
+    COLUMN(rss_memory_restart_threshold_high) \
     COLUMN(assoc_monitor_duration) \
     COLUMN(rapid_reconnect_enable) \
     COLUMN(vap_stats_feature) \
@@ -4520,6 +4524,8 @@
 #define SCHEMA__Wifi_Global_Config__assoc_gate_time "assoc_gate_time"
 #define SCHEMA__Wifi_Global_Config__whix_log_interval "whix_log_interval"
 #define SCHEMA__Wifi_Global_Config__whix_chutility_loginterval "whix_chutility_loginterval"
+#define SCHEMA__Wifi_Global_Config__threshold1 "rss_memory_restart_threshold_low"
+#define SCHEMA__Wifi_Global_Config__threshold2 "rss_memory_restart_threshold_high"
 #define SCHEMA__Wifi_Global_Config__assoc_monitor_duration "assoc_monitor_duration"
 #define SCHEMA__Wifi_Global_Config__rapid_reconnect_enable "rapid_reconnect_enable"
 #define SCHEMA__Wifi_Global_Config__vap_stats_feature "vap_stats_feature"

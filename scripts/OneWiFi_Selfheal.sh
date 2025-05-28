@@ -30,6 +30,7 @@ cur_rxprobe_req_5g_cnt=0
 pre_txprobe_resp_5g_cnt=0
 cur_txprobe_resp_5g_cnt=0
 force_reset_subdoc=0
+onewifi_last_restart=0
 webcfg_rfc_enabled=""
 
 SW_UPGRADE_DEFAULT_FILE="/tmp/sw_upgrade_private_defaults"
@@ -176,6 +177,52 @@ check_bss_queue_one_min()
             break
         fi
     done
+}
+
+onewifi_mem_restart() {
+    # Find the OneWifi process PID
+    onewifi_pid=$(ps | grep "/usr/bin/OneWifi -subsys eRT\." | grep -v grep | awk '{print $1}')
+    STATUS_FILE="/proc/$onewifi_pid/status"
+    if [ -z "$onewifi_pid" ]; then
+        echo_t "OneWifi process not found in ps output" >> $LOG_FILE
+        return
+    fi
+
+    checkMaintenanceWindow
+    m_win=0
+    if [ "$reb_window" == "1" ]; then
+        m_win=1
+    fi
+
+    # Get memory usage (VmRSS in kB)
+    vmrss=$(grep -i 'VmRSS' "$STATUS_FILE" | awk '{print $2}')
+
+    # Get thresholds (in kB)
+    threshold1=$(dmcli eRT retv Device.WiFi.WiFiRestart.RSSMemory.Threshold1)
+    threshold2=$(dmcli eRT retv Device.WiFi.WiFiRestart.RSSMemory.Threshold2)
+
+    now=$(date +%s)
+    time_since_last_restart=$((now - onewifi_last_restart))
+
+    if [ "$vmrss" -ge "$threshold2" ]; then
+        if [ "$time_since_last_restart" -ge 86400 ]; then
+            echo_t "RSS Memory of Onewifi exceeds RSS threshold2 value and restarting Onewifi [Rss : ($vmrss kB) Threshold2 : ($threshold2 kB)]" >> $LOG_FILE
+            systemctl restart onewifi.service
+            onewifi_last_restart=$now
+        else
+            echo_t "OneWifi restart skipped for RSS threshold2 since last restart time is less than 24 hrs [Rss : ($vmrss kB) Threshold2 : ($threshold2 kB)]" >> $LOG_FILE
+        fi
+    elif [ "$vmrss" -ge "$threshold1" ] && [ "$m_win" -eq 1 ]; then
+        if [ "$time_since_last_restart" -ge 86400 ]; then
+            echo_t "RSS Memory of Onewifi exceeds RSS threshold1 value during maintenance window and restarting Onewifi [Rss : ($vmrss kB) Threshold1 : ($threshold1 kB)]" >> $LOG_FILE
+            systemctl restart onewifi.service
+            onewifi_last_restart=$now
+        else
+            echo_t "OneWifi restart skipped for RSS threshold1 since last restart time is less than 24 hrs [Rss : ($vmrss kB) Threshold1 : ($threshold1 kB)]" >> $LOG_FILE
+        fi
+    else
+        echo_t "RSS Memory usage of Onewifi is within the RSS threshold values [Rss : ($vmrss kB)]" >> $LOG_FILE
+    fi
 }
 
 while true
@@ -370,6 +417,8 @@ do
         ((force_reset_subdoc++))
     fi
 
+    # Check if OneWifi process RSS memory usage exceeds threshold, if does restart OneWifi.
+    onewifi_mem_restart
     sleep 5m
     ((check_count++))
 done

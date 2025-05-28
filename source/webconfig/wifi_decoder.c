@@ -2300,6 +2300,12 @@ webconfig_error_t decode_wifi_global_config(const cJSON *global_cfg, wifi_global
     decode_param_integer(global_cfg, "whix_chutility_loginterval", param);
     global_info->whix_chutility_loginterval = param->valuedouble;
 
+    //Rss threshold
+    decode_param_integer(global_cfg, "rss_memory_restart_threshold_low", param);
+    global_info->rss_memory_restart_threshold_low = param->valuedouble;
+
+    decode_param_integer(global_cfg, "rss_memory_restart_threshold_high", param);
+    global_info->rss_memory_restart_threshold_high = param->valuedouble;
 
     //AssocMonitorDuration
     decode_param_integer(global_cfg, "AssocMonitorDuration", param);
