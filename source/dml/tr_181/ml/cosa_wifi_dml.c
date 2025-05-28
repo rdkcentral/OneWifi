@@ -149,7 +149,53 @@ extern bool wifi_api_is_device_associated(int ap_index, char *mac);
  
 ***********************************************************************/
 
+#if !defined(_HUB4_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_)
+typedef enum{
+    ClientMac,
+    InitiatorBootstrapSubjectPublicKeyInfo,
+    ResponderBootstrapSubjectPublicKeyInfo,
+    Channels,
+    MaxRetryCount
+} dpp_cmd;
+
+typedef struct  {
+    char ClientMac;
+    char InitiatorBootstrapSubjectPublicKeyInfo;
+    char ResponderBootstrapSubjectPublicKeyInfo;
+    char Channels;
+    char MaxRetryCount;
+} __attribute__((packed)) status;
+
+static status dmcli_status = {0};
+
+static void set_status(dpp_cmd cmd)
+{
+    switch(cmd)
+    {
+        case ClientMac:
+            {dmcli_status.ClientMac = 1;}
+        break;
+        case InitiatorBootstrapSubjectPublicKeyInfo: 
+            { dmcli_status.InitiatorBootstrapSubjectPublicKeyInfo = 1;}
+        break ;
+        case ResponderBootstrapSubjectPublicKeyInfo: 
+            { dmcli_status.ResponderBootstrapSubjectPublicKeyInfo = 1;}
+        break;
+        case Channels:
+            { dmcli_status.Channels = 1;}
+        break;
+        case MaxRetryCount: 
+            { dmcli_status.MaxRetryCount = 1;}
+        break;
+        default:
+        break;
+    }
+}
+#endif // !defined(_HUB4_PRODUCT_REQ_)
+
+
 static BOOL isHotspotSSIDIpdated = FALSE;
+bool isDPPparamsNotFetched = FALSE;
 BOOL IsValidMacAddress(char *mac);
 ULONG InterworkingElement_Commit(ANSC_HANDLE hInsContext);
 void *Wifi_Hosts_Sync_Func(void *pt, int index, wifi_associated_dev_t *associated_dev, BOOL bCallForFullSync, BOOL bCallFromDisConnCB);
@@ -14730,7 +14776,7 @@ DPP_Commit
     )
 {
     UNREFERENCED_PARAMETER(hInsContext);
-    return ANSC_STATUS_FAILURE;
+    return ANSC_STATUS_SUCCESS;
 }
 
 /**********************************************************************  
@@ -14804,11 +14850,266 @@ DPP_GetParamUlongValue
         ULONG*                      puLong
     )
 {
-    if (AnscEqualString(ParamName, "Version", TRUE))
+#if !defined(_HUB4_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_)//dpp_test
+    if (isDPPparamsNotFetched)
     {
+        CosaDmlWifi_getDppConfigFromPSM();
+    }
+    wifi_vap_info_t *pcfg = (wifi_vap_info_t *)hInsContext;
+
+    if (pcfg == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
+        return FALSE;
+    }
+    uint8_t instance_number = convert_vap_name_to_index(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop, pcfg->vap_name)+1;
+    wifi_vap_info_t *vapInfo = (wifi_vap_info_t *) get_dml_cache_vap_info(instance_number-1);
+    // wifi_vap_dpp_t *pWifiDpp = (wifi_vap_dpp_t *)(&vapInfo->vap_dpp);
+
+    if (strcmp(ParamName, "Version") == 0)
+    {
+        *puLong = vapInfo->vap_dpp.version;
         return TRUE;
     }
+#else
+    if (strcmp(ParamName, "Version") == 0)
+    {
+        *puLong = 0;
+        return TRUE;
+    }
+#endif // !defined(_HUB4_PRODUCT_REQ_)
+    UNREFERENCED_PARAMETER(hInsContext);
+    UNREFERENCED_PARAMETER(ParamName);
+    UNREFERENCED_PARAMETER(puLong);
     return FALSE;
+}
+
+
+char* PSM_Get_Record_Status2(char *recName, char *strValue)
+{
+    int retry = 0;
+    int retPsmGet = CCSP_SUCCESS;
+    while(retry++ < 2) {
+        retPsmGet = PSM_Get_Record_Value2(bus_handle, g_Subsystem, recName, NULL, &strValue);
+        if (retPsmGet == CCSP_SUCCESS) {
+            wifi_util_dbg_print(WIFI_PSM,"%s:%d retPsmGet success for %s and strValue is %s\n", __FUNCTION__,__LINE__, recName, strValue);
+            return strValue;
+        } else if (retPsmGet == CCSP_CR_ERR_INVALID_PARAM) {
+            wifi_util_dbg_print(WIFI_PSM,"%s:%d PSM_Get_Record_Value2 (%s) returned error %d \n",__FUNCTION__,__LINE__,recName,retPsmGet);
+            return NULL;
+        } else {
+            wifi_util_dbg_print(WIFI_PSM,"%s:%d PSM_Get_Record_Value2 param (%s) returned error %d retry in 10 seconds \n",__FUNCTION__,__LINE__,recName,retPsmGet);
+            continue;
+        }
+    }
+    return NULL;
+}
+
+void CosaDmlWifi_getDppConfigFromPSM(){
+
+    char recName[256];
+    char strValue[256] = {0};
+    char *str = NULL;
+    
+    int staIndex;
+    static char *DppVersion   = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.X_RDKCENTRAL-COM_DPP.Version";
+    static char *DppPrivateSigningKey   = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.X_RDKCENTRAL-COM_DPP.PrivateSigningKey";
+    static char *DppPrivateReconfigAccessKey   = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.X_RDKCENTRAL-COM_DPP.PrivateReconfigAccessKey";
+
+    static char *DppClientMac   = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.X_RDKCENTRAL-COM_DPP.STA.%d.ClientMac";
+    static char *DppInitPubKeyInfo   = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.X_RDKCENTRAL-COM_DPP.STA.%d.InitiatorBootstrapSubjectPublicKeyInfo";
+    static char *DppRespPubKeyInfo   = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.X_RDKCENTRAL-COM_DPP.STA.%d.ResponderBootstrapSubjectPublicKeyInfo";
+    static char *DppChannels   = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.X_RDKCENTRAL-COM_DPP.STA.%d.Channels";
+    static char *DppMaxRetryCnt   = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.X_RDKCENTRAL-COM_DPP.STA.%d.MaxRetryCount";
+    // static char *DppActivate   = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.X_RDKCENTRAL-COM_DPP.STA.%d.Activate";
+    static char *DppActivationStatus   = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.X_RDKCENTRAL-COM_DPP.STA.%d.ActivationStatus";
+    static char *DppEnrolleeRespStatus   = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.X_RDKCENTRAL-COM_DPP.STA.%d.EnrolleeResponderStatus";
+    static char *DppEnrolleeKeyManagement   = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.X_RDKCENTRAL-COM_DPP.STA.%d.KeyManagement";
+
+    wifi_vap_dpp_sta_t *pWifiDppSta;
+
+    ULONG instance_number = 1;
+    if(isDPPparamsNotFetched) {
+        isDPPparamsNotFetched = FALSE;
+    }
+    /* for each Device.WiFi.AccessPoint.{i}. */
+    
+    for (   instance_number = 1; instance_number < MAX_NUM_VAP_PER_RADIO; instance_number++
+        )
+    {
+        wifi_vap_info_t *vapInfo = (wifi_vap_info_t *) get_dml_cache_vap_info(instance_number-1);
+        if(vapInfo == NULL) {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
+            return;
+        }
+
+            memset(recName, 0, sizeof(recName));
+            memset(strValue, 0, sizeof(strValue));
+            snprintf(recName, sizeof(recName), DppPrivateSigningKey, instance_number);
+            
+            wifi_util_error_print(WIFI_DMCLI, "%s: dpp_test recName %s \n", __FUNCTION__,recName);
+
+            str = PSM_Get_Record_Status2(recName, strValue);
+            wifi_util_error_print(WIFI_DMCLI, "%s: dpp_test strValue for DppPrivateSigningKey %s \n", __FUNCTION__,str);
+            if (str != NULL) {
+                AnscZeroMemory(vapInfo->vap_dpp.reconfig.PrivateSigningKey, sizeof(vapInfo->vap_dpp.reconfig.PrivateSigningKey));
+                strcpy_s(vapInfo->vap_dpp.reconfig.PrivateSigningKey, sizeof(vapInfo->vap_dpp.reconfig.PrivateSigningKey), str);
+
+                wifi_util_error_print(WIFI_DMCLI,"dpp_test vap_dpp_cfg.reconfig.PrivateSigningKey is %s \n", str);
+            } else {
+                AnscZeroMemory(vapInfo->vap_dpp.reconfig.PrivateSigningKey, sizeof(vapInfo->vap_dpp.reconfig.PrivateSigningKey));
+                strcpy_s(vapInfo->vap_dpp.reconfig.PrivateSigningKey, sizeof(vapInfo->vap_dpp.reconfig.PrivateSigningKey), "default123");
+
+                wifi_util_error_print(WIFI_DMCLI, "%s: dpp_test default value of vap_dpp_cfg.reconfig.PrivateSigningKey %s \n", __FUNCTION__,vapInfo->vap_dpp.reconfig.PrivateSigningKey);
+            
+            }            
+            memset(recName, 0, sizeof(recName));
+            memset(strValue, 0, sizeof(strValue));
+            snprintf(recName, sizeof(recName), DppPrivateReconfigAccessKey, instance_number);
+            
+            str = PSM_Get_Record_Status2(recName, strValue);
+            if (str != NULL) {
+                AnscZeroMemory(vapInfo->vap_dpp.reconfig.PrivateReconfigAccessKey, sizeof(vapInfo->vap_dpp.reconfig.PrivateReconfigAccessKey));
+                strcpy_s(vapInfo->vap_dpp.reconfig.PrivateReconfigAccessKey, sizeof(vapInfo->vap_dpp.reconfig.PrivateReconfigAccessKey), str);
+
+                wifi_util_error_print(WIFI_DMCLI, "%s: dpp_test vap_dpp.reconfig.PrivateReconfigAccessKey %s \n", __FUNCTION__,vapInfo->vap_dpp.reconfig.PrivateReconfigAccessKey);
+            } else {
+                AnscZeroMemory(vapInfo->vap_dpp.reconfig.PrivateReconfigAccessKey, sizeof(vapInfo->vap_dpp.reconfig.PrivateReconfigAccessKey));
+                strcpy_s(vapInfo->vap_dpp.reconfig.PrivateReconfigAccessKey, sizeof(vapInfo->vap_dpp.reconfig.PrivateReconfigAccessKey), "default123");
+
+                wifi_util_error_print(WIFI_DMCLI, "%s: dpp_test default of vap_dpp.reconfig.PrivateReconfigAccessKey %s \n", __FUNCTION__,vapInfo->vap_dpp.reconfig.PrivateReconfigAccessKey);
+            }
+
+            memset(recName, 0, sizeof(recName));
+            memset(strValue, 0, sizeof(strValue));
+            snprintf(recName, sizeof(recName), DppVersion, instance_number);
+            str = PSM_Get_Record_Status2(recName, strValue);            
+            if (str != NULL) {
+                vapInfo->vap_dpp.version = _ansc_atoi(str);
+                wifi_util_error_print(WIFI_DMCLI,"dpp_test vap_dpp_cfg.version is %d \n", vapInfo->vap_dpp.version);
+            } else {
+                vapInfo->vap_dpp.version = 1;
+                wifi_util_error_print(WIFI_DMCLI,":%s:%d dpp_test default of vap_dpp_cfg.version %d \n", __func__, __LINE__, vapInfo->vap_dpp.version);
+            }
+            
+            
+
+//dpp_test for station
+        /* for each Device.WiFi.AccessPoint.{i}.X_RDKCENTRAL-COM_DPP.STA.{i}. */
+        
+        for (staIndex = 1; staIndex <= COSA_DML_WIFI_DPP_STA_MAX; staIndex++)
+        {
+            pWifiDppSta = &vapInfo->vap_dpp.sta_array[staIndex-1];
+            if(!pWifiDppSta)
+                continue;
+
+            memset(recName, 0, sizeof(recName));
+            memset(strValue, 0, sizeof(strValue));
+            snprintf(recName, sizeof(recName), DppClientMac, instance_number, staIndex);
+            str = PSM_Get_Record_Status2(recName, strValue);            
+            if (str != NULL) {
+                strcpy(pWifiDppSta->ClientMac, str);
+                wifi_util_error_print(WIFI_DMCLI,"dpp_test pWifiDppSta->ClientMac is %d \n", pWifiDppSta->ClientMac);
+            } else {
+                strcpy(pWifiDppSta->ClientMac, "");
+                wifi_util_error_print(WIFI_DMCLI,":%s:%d dpp_test default of pWifiDppSta->ClientMac = %s \n", __func__, __LINE__, pWifiDppSta->ClientMac);
+            }
+
+           
+            memset(recName, 0, sizeof(recName));
+            memset(strValue, 0, sizeof(strValue));
+            snprintf(recName, sizeof(recName), DppInitPubKeyInfo, instance_number, staIndex);
+            str = PSM_Get_Record_Status2(recName, strValue); 
+            if (str != NULL) {
+                strcpy(pWifiDppSta->InitiatorBootstrapSubjectPublicKeyInfo, str);
+                wifi_util_error_print(WIFI_DMCLI, "%s: dpp_test pWifiDppSta->InitiatorBootstrapSubjectPublicKeyInfo %s \n", __FUNCTION__,pWifiDppSta->InitiatorBootstrapSubjectPublicKeyInfo);
+            } else {
+                strcpy(pWifiDppSta->InitiatorBootstrapSubjectPublicKeyInfo, "");
+                wifi_util_error_print(WIFI_DMCLI,":%s:%d dpp_test default of pWifiDppSta->InitiatorBootstrapSubjectPublicKeyInfo = %s \n", __func__, __LINE__, pWifiDppSta->InitiatorBootstrapSubjectPublicKeyInfo);
+            }
+
+            memset(recName, 0, sizeof(recName));
+            memset(strValue, 0, sizeof(strValue));
+            snprintf(recName, sizeof(recName), DppRespPubKeyInfo, instance_number, staIndex);
+            str = PSM_Get_Record_Status2(recName, strValue); 
+            if (str != NULL) {
+                strcpy(pWifiDppSta->ResponderBootstrapSubjectPublicKeyInfo, str);
+                wifi_util_error_print(WIFI_DMCLI, "%s: dpp_test pWifiDppSta->ResponderBootstrapSubjectPublicKeyInfo %s \n", __FUNCTION__,pWifiDppSta->ResponderBootstrapSubjectPublicKeyInfo);
+            } else {
+                strcpy(pWifiDppSta->ResponderBootstrapSubjectPublicKeyInfo, "");
+                wifi_util_error_print(WIFI_DMCLI,":%s:%d dpp_test default of pWifiDppSta->ResponderBootstrapSubjectPublicKeyInfo = %s \n", __func__, __LINE__, pWifiDppSta->ResponderBootstrapSubjectPublicKeyInfo);
+            }
+
+            memset(recName, 0, sizeof(recName));
+            memset(strValue, 0, sizeof(strValue));
+            snprintf(recName, sizeof(recName), DppChannels, instance_number, staIndex);
+            str = PSM_Get_Record_Status2(recName, strValue); 
+            if (str != NULL) {
+                CosaDmlWiFi_ParseEasyConnectEnrolleeChannels(instance_number - 1, pWifiDppSta, str);
+                wifi_util_error_print(WIFI_DMCLI, "%s: dpp_test  %d \n", __FUNCTION__,pWifiDppSta->Channels);
+            } else {
+                CosaDmlWiFi_ParseEasyConnectEnrolleeChannels(instance_number - 1, pWifiDppSta, "");
+                wifi_util_error_print(WIFI_DMCLI,":%s:%d dpp_test default of pWifiDppSta->Channels = %d \n", __func__, __LINE__, pWifiDppSta->Channels);
+            }
+
+            memset(recName, 0, sizeof(recName));
+            memset(strValue, 0, sizeof(strValue));
+            snprintf(recName, sizeof(recName), DppMaxRetryCnt, instance_number, staIndex);
+            str = PSM_Get_Record_Status2(recName, strValue); 
+            if (str != NULL) {
+                pWifiDppSta->MaxRetryCount = _ansc_atoi(str);
+                wifi_util_error_print(WIFI_DMCLI, "%s: dpp_test  %d \n", __FUNCTION__,pWifiDppSta->MaxRetryCount);
+            } else {
+                pWifiDppSta->MaxRetryCount = 0;
+                wifi_util_error_print(WIFI_DMCLI,":%s:%d dpp_test default of pWifiDppSta->MaxRetryCount = %d \n", __func__, __LINE__, pWifiDppSta->MaxRetryCount);
+            }
+
+            //Always Initialize to false
+            pWifiDppSta->Activate = FALSE;
+
+            memset(recName, 0, sizeof(recName));
+            memset(strValue, 0, sizeof(strValue));
+            snprintf(recName, sizeof(recName), DppActivationStatus, instance_number, staIndex);
+            str = PSM_Get_Record_Status2(recName, strValue); 
+            if (str != NULL) {
+                strcpy(pWifiDppSta->ActivationStatus, str);
+                wifi_util_error_print(WIFI_DMCLI, "%s: dpp_test pWifiDppSta->ActivationStatus %s \n", __FUNCTION__,pWifiDppSta->ActivationStatus);
+            } else {
+                strcpy(pWifiDppSta->ActivationStatus, "");
+                wifi_util_error_print(WIFI_DMCLI,":%s:%d dpp_test default of pWifiDppSta->ActivationStatus = %s \n", __func__, __LINE__, pWifiDppSta->ActivationStatus);
+            }
+
+            memset(recName, 0, sizeof(recName));
+            memset(strValue, 0, sizeof(strValue));
+            snprintf(recName, sizeof(recName), DppEnrolleeRespStatus, instance_number, staIndex);
+            str = PSM_Get_Record_Status2(recName, strValue); 
+            if (str != NULL) {
+                strcpy(pWifiDppSta->EnrolleeResponderStatus, str);
+                wifi_util_error_print(WIFI_DMCLI, "%s: dpp_test pWifiDppSta->EnrolleeResponderStatus %s \n", __FUNCTION__,pWifiDppSta->EnrolleeResponderStatus);
+            } else {
+                strcpy(pWifiDppSta->EnrolleeResponderStatus, "");
+                wifi_util_error_print(WIFI_DMCLI,":%s:%d dpp_test default of pWifiDppSta->EnrolleeResponderStatus = %s \n", __func__, __LINE__, pWifiDppSta->EnrolleeResponderStatus);
+            }
+
+            memset(recName, 0, sizeof(recName));
+            memset(strValue, 0, sizeof(strValue));
+            snprintf(recName, sizeof(recName), DppEnrolleeKeyManagement, instance_number, staIndex);
+            str = PSM_Get_Record_Status2(recName, strValue); 
+            if (str != NULL) {
+                strcpy(pWifiDppSta->Cred.KeyManagement, str);
+                wifi_util_error_print(WIFI_DMCLI, "%s: dpp_test pWifiDppSta->Cred.KeyManagement %s \n", __FUNCTION__,pWifiDppSta->Cred.KeyManagement);
+            } else {
+                strcpy(pWifiDppSta->Cred.KeyManagement, "");
+                wifi_util_error_print(WIFI_DMCLI,":%s:%d dpp_test default of pWifiDppSta->Cred.KeyManagement = %s \n", __func__, __LINE__, pWifiDppSta->Cred.KeyManagement);
+            }
+            // if (WiFi_startDPP(vapInfo, staIndex) == ANSC_STATUS_SUCCESS)
+            //     {
+            //         // save update from backup
+            //         CcspTraceError(("%s:%d:SUCCESS\n",__func__, __LINE__));
+            //         pWifiDppSta->Activate = TRUE;
+            //     }
+        }
+    }
 }
 
 /**********************************************************************  
@@ -14858,16 +15159,62 @@ DPP_GetParamStringValue
         ULONG*                      pUlSize
     )
 {
-    if( AnscEqualString(ParamName, "PrivateSigningKey", TRUE))
+#if !defined(_HUB4_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_)
+    wifi_vap_info_t *pcfg = (wifi_vap_info_t *)hInsContext;
+
+    if (pcfg == NULL)
     {
-        AnscCopyString(pValue, "");
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
+        return FALSE;
+    }
+    uint8_t instance_number = convert_vap_name_to_index(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop, pcfg->vap_name)+1;
+    wifi_vap_info_t *vapInfo = (wifi_vap_info_t *) get_dml_cache_vap_info(instance_number-1);
+    errno_t                         rc           = -1;
+    if (strcmp(ParamName, "PrivateSigningKey") == 0)
+    {
+        if( AnscSizeOfString(vapInfo->vap_dpp.reconfig.PrivateSigningKey) < *pUlSize)
+        {
+            rc = strcpy_s(pValue, *pUlSize, vapInfo->vap_dpp.reconfig.PrivateSigningKey);
+            AnscCopyString(pValue, vapInfo->vap_dpp.reconfig.PrivateSigningKey);
+            ERR_CHK(rc);
+            CcspWifiTrace(("RDK_LOG_ERROR, dpp_test(%s)value(%s),  1 validation error!!!\n", __func__,vapInfo->vap_dpp.reconfig.PrivateSigningKey)); 
+            return 0;
+        }
+        else {
+            *pUlSize = AnscSizeOfString(vapInfo->vap_dpp.reconfig.PrivateSigningKey) +1;
+            CcspWifiTrace(("RDK_LOG_ERROR, dpp_test(%s)value(%s), 2 validation error!!!\n", __func__,vapInfo->vap_dpp.reconfig.PrivateSigningKey)); 
+            return 1;
+        }
+    }
+    if (strcmp(ParamName, "PrivateReconfigAccessKey") == 0)
+    {
+        if( AnscSizeOfString(vapInfo->vap_dpp.reconfig.PrivateReconfigAccessKey) < *pUlSize)
+        {
+
+            rc = strcpy_s(pValue, *pUlSize, vapInfo->vap_dpp.reconfig.PrivateReconfigAccessKey);
+            ERR_CHK(rc);
+            AnscCopyString(pValue, vapInfo->vap_dpp.reconfig.PrivateReconfigAccessKey);
+            CcspWifiTrace(("RDK_LOG_ERROR, dpp_test(%s)value(%s), 3 validation error!!!\n", __func__,vapInfo->vap_dpp.reconfig.PrivateReconfigAccessKey)); 
+            return 0;
+        }
+        else {
+            *pUlSize = AnscSizeOfString(vapInfo->vap_dpp.reconfig.PrivateReconfigAccessKey) +1;
+            CcspWifiTrace(("RDK_LOG_ERROR, dpp_test(%s)value(%s), 4 validation error!!!\n", __func__,vapInfo->vap_dpp.reconfig.PrivateReconfigAccessKey)); 
+            return 1;
+        }
+    }
+#else
+    if (strcmp(ParamName, "PrivateSigningKey") == 0)
+    {
+        pValue[0] = '\0';
         return 0;
     }
-    if( AnscEqualString(ParamName, "PrivateReconfigAccessKey", TRUE))
+    if (strcmp(ParamName, "PrivateReconfigAccessKey") == 0)
     {
-        AnscCopyString(pValue, "");
+        pValue[0] = '\0';
         return 0;
     }
+#endif // !defined(_HUB4_PRODUCT_REQ_)
     UNREFERENCED_PARAMETER(hInsContext);
     UNREFERENCED_PARAMETER(ParamName);
     UNREFERENCED_PARAMETER(pValue);
@@ -14913,9 +15260,33 @@ DPP_SetParamUlongValue
         ULONG                       uValue
     )
 {
+#if !defined(_HUB4_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_)
+    
+    wifi_vap_info_t *pcfg = (wifi_vap_info_t *)hInsContext;
+
+    if (pcfg == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
+        return FALSE;
+    }
+    uint8_t instance_number = convert_vap_name_to_index(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop, pcfg->vap_name)+1;
+    wifi_vap_info_t *vapInfo = (wifi_vap_info_t *) get_dml_cache_vap_info(instance_number-1);
+
+    /* check the parameter name and set the corresponding value */
+    if (strcmp(ParamName, "Version") == 0)
+    {
+        vapInfo->vap_dpp.version = uValue;
+        if(ANSC_STATUS_SUCCESS != CosaDmlWiFi_setDppVersion(instance_number,uValue)){
+            return FALSE;
+        }
+        set_dml_cache_vap_config_changed(instance_number - 1);
+        return TRUE;
+    }
+#else // !defined(_HUB4_PRODUCT_REQ_)
     UNREFERENCED_PARAMETER(hInsContext);
     UNREFERENCED_PARAMETER(ParamName);
     UNREFERENCED_PARAMETER(uValue);
+#endif
     return FALSE;
 }
 
@@ -14957,9 +15328,53 @@ DPP_SetParamStringValue
         char*                       pString
     )
 {
+#if !defined(_HUB4_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_)
+    wifi_vap_info_t *pcfg = (wifi_vap_info_t *)hInsContext;
+
+    if (pcfg == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
+        return FALSE;
+    }
+    uint8_t instance_number = convert_vap_name_to_index(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop, pcfg->vap_name)+1;
+    wifi_vap_info_t *vapInfo = (wifi_vap_info_t *) get_dml_cache_vap_info(instance_number-1);
+
+    errno_t                         rc           = -1;
+    if (strcmp(ParamName, "PrivateSigningKey") == 0)
+    {
+        if (AnscSizeOfString(pString) > (sizeof(vapInfo->vap_dpp.reconfig.PrivateSigningKey) - 1))
+            return FALSE;
+
+        AnscZeroMemory(vapInfo->vap_dpp.reconfig.PrivateSigningKey, sizeof(vapInfo->vap_dpp.reconfig.PrivateSigningKey));
+        rc = strcpy_s(vapInfo->vap_dpp.reconfig.PrivateSigningKey, sizeof(vapInfo->vap_dpp.reconfig.PrivateSigningKey), pString);
+        ERR_CHK(rc);
+        if(ANSC_STATUS_SUCCESS != CosaDmlWiFi_setDppReconfig(instance_number,ParamName,pString)){
+            return FALSE;
+        }
+        // set_dml_cache_vap_config_changed(instance_number - 1);
+        return TRUE;
+    }
+    if (strcmp(ParamName, "PrivateReconfigAccessKey") == 0)
+    {
+        if (AnscSizeOfString(pString) > (sizeof(vapInfo->vap_dpp.reconfig.PrivateReconfigAccessKey) - 1))
+            return FALSE;
+
+        AnscZeroMemory(vapInfo->vap_dpp.reconfig.PrivateReconfigAccessKey, sizeof(vapInfo->vap_dpp.reconfig.PrivateReconfigAccessKey));
+        rc = strcpy_s(vapInfo->vap_dpp.reconfig.PrivateReconfigAccessKey, sizeof(vapInfo->vap_dpp.reconfig.PrivateReconfigAccessKey), pString);
+        ERR_CHK(rc);
+        if(ANSC_STATUS_SUCCESS != CosaDmlWiFi_setDppReconfig(instance_number,ParamName,pString)){
+            return FALSE;
+        }
+        init_easy_connect(vapInfo->vap_dpp);
+        init_wifi_data_plane();
+        // set_dml_cache_vap_config_changed(instance_number - 1);
+        return TRUE;
+    }
+#else // !defined(_HUB4_PRODUCT_REQ_)
     UNREFERENCED_PARAMETER(hInsContext);
     UNREFERENCED_PARAMETER(pString);
     UNREFERENCED_PARAMETER(ParamName);
+#endif
     return FALSE;
 }
 
@@ -14983,6 +15398,284 @@ DPP_SetParamStringValue
 
 ***********************************************************************/
 
+ULONG
+DPP_STA_GetEntryCount
+    (
+        ANSC_HANDLE                 hInsContext
+    )
+{
+    UNREFERENCED_PARAMETER(hInsContext);
+    return COSA_DML_WIFI_DPP_STA_MAX;
+}
+
+static ANSC_STATUS GetInsNumsByWifiDppSta(wifi_vap_dpp_sta_t *pWifiDppSta, ULONG *apIns, ULONG *dppStaIdx,UCHAR *dppVersion)
+{
+   
+    int staIndex;
+    ULONG instance_number = 1;
+    /* for each Device.WiFi.AccessPoint.{i}. */
+    
+    for (   instance_number = 1; instance_number < MAX_NUM_VAP_PER_RADIO; instance_number++)
+    {
+
+        wifi_vap_info_t *vapInfo = (wifi_vap_info_t *) get_dml_cache_vap_info(instance_number-1);
+        if(vapInfo == NULL) {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
+            return;
+        }    
+        /* for each Device.WiFi.AccessPoint.{i}.X_RDKCENTRAL-COM_DPP.STA.{i}. */
+        
+        for (staIndex = 1; staIndex <= COSA_DML_WIFI_DPP_STA_MAX; staIndex++)
+        {
+
+            if((ANSC_HANDLE)pWifiDppSta == (ANSC_HANDLE)&vapInfo->vap_dpp.sta_array[staIndex-1]){
+                *apIns=instance_number;
+                *dppStaIdx=staIndex;
+                *dppVersion=&vapInfo->vap_dpp.version;
+                //wifi_util_error_print(WIFI_DMCLI, "%s:%d inside the if cond: apind-%lu , staind-%lu\n", __func__, __LINE__,*apIns,*dppStaIdx);
+                return ANSC_STATUS_SUCCESS;
+            }  
+        }
+    }
+    
+    CcspTraceError(("%s:%d:FAILED\n",__func__, __LINE__));
+    return ANSC_STATUS_FAILURE;
+}
+
+static wifi_vap_info_t * GetApInsByDppSta(wifi_vap_dpp_sta_t *pWifiDppSta, ULONG *dppStaIdx)
+{
+    int staIndex;
+    ULONG instance_number = 1;
+    /* for each Device.WiFi.AccessPoint.{i}. */
+    wifi_util_error_print(WIFI_DMCLI,"%s:%d inside get ap\n", __FUNCTION__,__LINE__);
+
+    for (   instance_number = 1; instance_number < MAX_NUM_VAP_PER_RADIO; instance_number++)
+    {
+
+        wifi_vap_info_t *vapInfo = (wifi_vap_info_t *) get_dml_cache_vap_info(instance_number-1);
+        if(vapInfo == NULL) {
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
+            return;
+        }    
+        /* for each Device.WiFi.AccessPoint.{i}.X_RDKCENTRAL-COM_DPP.STA.{i}. */
+        
+        for (staIndex = 1; staIndex <= COSA_DML_WIFI_DPP_STA_MAX; staIndex++)
+        {
+            wifi_util_error_print(WIFI_DMCLI,"%s:%d inside get ap sta loop\n", __FUNCTION__,__LINE__);
+
+            if((ANSC_HANDLE)pWifiDppSta == (ANSC_HANDLE)&vapInfo->vap_dpp.sta_array[staIndex-1]){
+                *dppStaIdx=staIndex;
+                wifi_util_error_print(WIFI_DMCLI, "%s:%d inside the if cond: apind-%lu , staind-%lu\n", __func__, __LINE__,*dppStaIdx);
+                return vapInfo;
+            }  
+        }
+    }
+    CcspTraceError(("%s:%d:FAILED\n",__func__, __LINE__));
+    return NULL;
+}
+
+static BOOL DPP_STA_ProvisionStart_Validate(wifi_vap_dpp_sta_t *pWifiDppSta)
+{
+// #if !defined(_BWG_PRODUCT_REQ_)
+// #if !defined(_XF3_PRODUCT_REQ_) && !defined(_CBR_PRODUCT_REQ_) && !defined(_HUB4_PRODUCT_REQ_) && !defined(_PLATFORM_RASPBERRYPI_) && !defined(_PLATFORM_TURRIS_)
+    int asn1len;
+    const unsigned char *key;
+    ULONG apIns, staIndex;
+    char buff[512];
+    unsigned char keyasn1[1024];
+
+    if ((WiFi_IsValidMacAddr(pWifiDppSta->ClientMac) == 0) ||
+        (strlen(pWifiDppSta->InitiatorBootstrapSubjectPublicKeyInfo) <= 0) ||
+        (strlen(pWifiDppSta->ResponderBootstrapSubjectPublicKeyInfo) <= 0) ||
+        (pWifiDppSta->NumChannels == 0)) {
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d One or more parameters were empty\n", __func__, __LINE__);
+         return FALSE;
+    }
+
+    if (pWifiDppSta->Activate == TRUE) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d Activation already in progress\n", __func__, __LINE__);
+        snprintf(buff, sizeof(buff), "%s\n", "Wifi DPP: Activation already done");
+        return FALSE;
+    }
+
+    /* check the parameter name and return the corresponding value */
+    if ((pWifiDppSta->MaxRetryCount < 0) || (pWifiDppSta->MaxRetryCount > 120))
+    {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d: MaxRetryCount validation error!!!\n", __func__, __LINE__);
+        CcspWifiTrace(("RDK_LOG_ERROR,(%s), MaxRetryCount validation error!!!\n", __func__));
+        CcspTraceError(("%s:%d:FAILED\n",__func__, __LINE__));
+        return FALSE;
+    }
+
+    memset(keyasn1, 0, sizeof(keyasn1));
+    if ((asn1len = EVP_DecodeBlock(keyasn1, (unsigned char *)pWifiDppSta->ResponderBootstrapSubjectPublicKeyInfo,
+                strlen(pWifiDppSta->ResponderBootstrapSubjectPublicKeyInfo))) < 0) {
+        CcspTraceError(("%s:%d:FAILED\n",__func__, __LINE__));
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d Failed to decode base 64 responder public key\n", __func__, __LINE__);
+        return FALSE;
+    }
+        key = keyasn1;
+    if (!(d2i_EC_PUBKEY(NULL, &key, asn1len))) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d Failed to decode base 64 responder public key\n", __func__, __LINE__);
+        CcspTraceError(("%s:%d:FAILED\n",__func__, __LINE__));
+        return FALSE;
+    }
+
+    memset(keyasn1, 0, sizeof(keyasn1));
+    if ((asn1len = EVP_DecodeBlock(keyasn1, (unsigned char *)pWifiDppSta->InitiatorBootstrapSubjectPublicKeyInfo, 
+                strlen(pWifiDppSta->InitiatorBootstrapSubjectPublicKeyInfo))) < 0) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d Failed to decode base 64 initiator public key\n", __func__, __LINE__);
+        CcspTraceError(("%s:%d:FAILED\n",__func__, __LINE__));
+        return FALSE;
+    }
+
+    key = keyasn1;
+    if (!(d2i_EC_PUBKEY(NULL, &key, asn1len))) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d Failed to decode base 64 initiator public key\n", __func__, __LINE__);
+        CcspTraceError(("%s:%d:FAILED\n",__func__, __LINE__));
+        return FALSE;
+
+    }
+
+    wifi_util_error_print(WIFI_DMCLI, "%s:%d validation end \n", __func__, __LINE__);
+        
+    return TRUE;
+}
+
+static BOOL IsValidChannel(int apIndex, int channel)
+{
+#ifdef WIFI_HAL_VERSION_3
+    UINT radioIndex = getRadioIndexFromAp(apIndex);
+    if(wifiRadioChannelIsValid(radioIndex, channel) == ANSC_STATUS_SUCCESS)
+    {
+        return TRUE;
+    }
+    return FALSE;
+#else
+    BOOL ret = FALSE;
+    ULONG IsChanHome = 0;
+
+    switch(channel)
+    {
+        case 1 ... 11: //2.4 Ghz
+        {
+            ret = ((apIndex == 0) ? TRUE: FALSE);
+        }
+        break;
+        case 36:
+        case 38:
+        case 40:
+        case 42:
+        case 44:
+        case 46:
+        case 48:
+        {
+            ret = ((apIndex == 1) ? TRUE: FALSE);
+        } 
+        break;
+        case 50: //DFS
+        case 52: //DFS
+        case 54: //DFS
+        case 56: //DFS
+        case 58: //DFS
+        case 60: //DFS
+        case 62: //DFS
+        case 64: //DFS
+	{
+		wifi_getRadioChannel(apIndex, &IsChanHome);
+		if((ULONG)channel == IsChanHome) {
+			ret = TRUE;
+		}
+		else {
+			ret = FALSE; //don't allow DFS ch if not home channel
+		}
+	}
+        break;
+        case 68: //UNII-2e
+        case 96: //UNII-3
+        {
+            ret = FALSE;
+        }
+        break;
+        case 100: //DFS
+        case 102: //DFS
+        case 104: //DFS
+        case 106:
+        case 108: //DFS
+        case 110:
+        case 112: //DFS
+        case 114:
+        case 116: //DFS
+        case 118:
+        case 120: //DFS
+        case 122:
+        case 124: //DFS
+        case 126:
+        case 128: //DFS
+        case 132: //DFS
+        case 134:
+        case 136: //DFS
+        case 138:
+        case 140: //DFS
+        case 142:
+        case 144:
+	{
+		wifi_getRadioChannel(apIndex, &IsChanHome);
+		if((ULONG)channel == IsChanHome) {
+			ret = TRUE;
+		}
+		else {
+			ret = FALSE; //don't allow DFS ch if not home channel
+		}
+	}
+        break;
+        case 149:
+        case 151:
+        case 153:
+        case 155:
+        case 157:
+        case 159:
+        case 161:
+        case 165:
+        {
+            ret = ((apIndex == 1) ? TRUE: FALSE);
+        }
+        break;
+        default:
+            ret = FALSE;
+        break;
+    }
+
+    return ret;  
+#endif
+}
+
+ANSC_HANDLE
+DPP_STA_GetEntry
+    (
+        ANSC_HANDLE                 hInsContext,
+        ULONG                       nIndex,
+        ULONG*                      pInsNumber
+    )
+{
+    wifi_vap_info_t *pcfg = (wifi_vap_info_t *)hInsContext;
+
+    if (pcfg == NULL)
+    {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Null pointer get fail\n", __FUNCTION__,__LINE__);
+        return FALSE;
+    }
+    uint8_t instance_number = convert_vap_name_to_index(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop, pcfg->vap_name)+1;
+    wifi_vap_info_t *vapInfo = (wifi_vap_info_t *) get_dml_cache_vap_info(instance_number-1);
+    wifi_vap_dpp_t *pWifiDppSta = (wifi_vap_dpp_t *)(&vapInfo->vap_dpp);
+    //pWifiDppSta->sta_array[nIndex].MaxRetryCount = 10;
+
+    if (nIndex >= COSA_DML_WIFI_DPP_STA_MAX)
+        return (ANSC_HANDLE)NULL;
+
+    *pInsNumber = nIndex + 1;
+    return (ANSC_HANDLE)&pWifiDppSta->sta_array[nIndex];
+}
 /**********************************************************************  
 
     caller:     owner of this object
@@ -15021,9 +15714,21 @@ DPP_STA_GetParamBoolValue
         BOOL*                       pBool
     )
 {
+#if !defined(_HUB4_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_)
+    wifi_vap_dpp_sta_t  *pWifiDppSta  = (wifi_vap_dpp_sta_t*)hInsContext;
+    
+    /* check the parameter name and return the corresponding value */
+    if (strcmp(ParamName, "Activate") == 0)
+    {
+        /* collect value */
+        *pBool = pWifiDppSta->Activate;
+        return TRUE;
+    }
+#else // !defined(_HUB4_PRODUCT_REQ_)
     UNREFERENCED_PARAMETER(hInsContext);
     UNREFERENCED_PARAMETER(ParamName);
     UNREFERENCED_PARAMETER(pBool);
+#endif
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     return FALSE;
 }
@@ -15112,9 +15817,19 @@ DPP_STA_GetParamUlongValue
         ULONG*                      puLong
     )
 {
+#if !defined(_HUB4_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_)
+     wifi_vap_dpp_sta_t  *pWifiDppSta  = (wifi_vap_dpp_sta_t*)hInsContext;
+
+    if (strcmp(ParamName, "MaxRetryCount") == 0)
+    {
+        *puLong = pWifiDppSta->MaxRetryCount;
+        return TRUE;
+    }
+#else // !defined(_HUB4_PRODUCT_REQ_)
     UNREFERENCED_PARAMETER(hInsContext);
     UNREFERENCED_PARAMETER(ParamName);
     UNREFERENCED_PARAMETER(puLong);
+#endif
     return FALSE;
 }
 
@@ -15165,10 +15880,131 @@ DPP_STA_GetParamStringValue
         ULONG*                      pUlSize
     )
 {
+    #if !defined(_HUB4_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_)
+    wifi_vap_dpp_sta_t  *pWifiDppSta  = (wifi_vap_dpp_sta_t*)hInsContext;
+    ULONG apIns, staIndex;
+    UCHAR dppVersion;
+	unsigned int i;
+	errno_t rc = -1;
+
+    if (GetInsNumsByWifiDppSta(pWifiDppSta, &apIns, &staIndex, &dppVersion) != ANSC_STATUS_SUCCESS)
+    {
+        return -1;
+    }
+    /* check the parameter name and return the corresponding value */
+    if (strcmp(ParamName, "ClientMac") == 0)
+    {
+        /* collect value */
+        if( AnscSizeOfString(pWifiDppSta->ClientMac) < *pUlSize)
+        {
+            /* collect value */
+            rc = strcpy_s(pValue, *pUlSize, pWifiDppSta->ClientMac);
+            ERR_CHK(rc);
+            return 0;
+        }
+        else
+        {
+            *pUlSize = AnscSizeOfString(pWifiDppSta->ClientMac)+1;
+            return 1;
+        }
+    }
+
+    if (strcmp(ParamName, "Channels") == 0)
+    {
+        char channelsList[256];
+
+        channelsList[0] = 0;
+
+        for (i = 0; i < pWifiDppSta->NumChannels && i < 32 ; i++) {
+            if (pWifiDppSta->Channels[i] == 0)
+            	break;
+            sprintf(&channelsList[strlen(channelsList)], "%d,", pWifiDppSta->Channels[i]);
+        }
+
+        if (pWifiDppSta->NumChannels > 0) {
+            channelsList[strlen(channelsList) - 1] = 0;
+        }
+
+        /* collect value */
+        if( AnscSizeOfString(channelsList) < *pUlSize)
+        { 
+            /* collect value */
+            strncpy(pValue, channelsList,(strlen(channelsList)+1));
+            return 0;
+        }
+        else
+        {
+            *pUlSize = AnscSizeOfString(channelsList)+1;
+            return 1;
+        }
+    }
+
+    if (strcmp(ParamName, "InitiatorBootstrapSubjectPublicKeyInfo") == 0)
+    {
+        if( AnscSizeOfString(pWifiDppSta->InitiatorBootstrapSubjectPublicKeyInfo) < *pUlSize)
+        {
+            rc = strcpy_s(pValue, *pUlSize, pWifiDppSta->InitiatorBootstrapSubjectPublicKeyInfo);
+            ERR_CHK(rc);
+            return 0;
+        }
+        else {
+            *pUlSize = AnscSizeOfString(pWifiDppSta->InitiatorBootstrapSubjectPublicKeyInfo) +1;
+            return 1;
+        }
+    }
+
+    if (strcmp(ParamName, "ResponderBootstrapSubjectPublicKeyInfo") == 0)
+    {
+        if( AnscSizeOfString(pWifiDppSta->ResponderBootstrapSubjectPublicKeyInfo) < *pUlSize)
+        {
+            rc = strcpy_s(pValue, *pUlSize, pWifiDppSta->ResponderBootstrapSubjectPublicKeyInfo);
+            ERR_CHK(rc);
+            return 0;
+        }
+        else
+        {
+            *pUlSize = AnscSizeOfString(pWifiDppSta->ResponderBootstrapSubjectPublicKeyInfo) +1;
+            return 1;
+        }
+    }
+
+    if (strcmp(ParamName, "ActivationStatus") == 0)
+    {
+        if( AnscSizeOfString((char*)pWifiDppSta->ActivationStatus) < *pUlSize)
+        {
+            /* collect value */
+            rc = strcpy_s(pValue, *pUlSize, (char*)pWifiDppSta->ActivationStatus);
+            ERR_CHK(rc);
+            return 0;
+        }
+        else
+        {
+            *pUlSize = AnscSizeOfString((char*)pWifiDppSta->ActivationStatus) +1;
+            return 1;
+        }
+    }
+
+    if (strcmp(ParamName, "EnrolleeResponderStatus") == 0)
+    {
+        /* collect value */
+        if( AnscSizeOfString((char*)pWifiDppSta->EnrolleeResponderStatus) < *pUlSize)
+        {
+            rc = strcpy_s(pValue, *pUlSize, (char*)pWifiDppSta->EnrolleeResponderStatus);
+            ERR_CHK(rc);
+            return 0;
+        }
+        else
+        {
+            *pUlSize = AnscSizeOfString((char*)pWifiDppSta->EnrolleeResponderStatus) +1;
+            return 1;
+        }
+    }
+#else // !defined(_HUB4_PRODUCT_REQ_)
     UNREFERENCED_PARAMETER(hInsContext);
     UNREFERENCED_PARAMETER(ParamName);
     UNREFERENCED_PARAMETER(pValue);
     UNREFERENCED_PARAMETER(pUlSize);
+#endif
     return -1;
 }
 
@@ -15210,11 +16046,107 @@ DPP_STA_SetParamBoolValue
         BOOL                        bValue
     )
 {
+#if !defined(_HUB4_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_)
+    wifi_vap_dpp_sta_t  *pWifiDppSta  = (wifi_vap_dpp_sta_t*)hInsContext;
+    ULONG                           apIns = 0, staIndex = 0;
+    wifi_vap_info_t *vap_info= NULL;
+
+    BOOL ret;
+    BOOL rfc;
+    char *recName = "Device.DeviceInfo.X_RDKCENTRAL-COM_RFC.Feature.EasyConnect.Enable";
+    char* strValue = NULL;
+    wifi_util_error_print(WIFI_DMCLI,"%s:%d inside the activate fn\n", __FUNCTION__,__LINE__);
+
+
+    if(PSM_Get_Record_Value2(bus_handle,g_Subsystem, recName, NULL, &strValue) != CCSP_SUCCESS) {
+        //wifi_dpp_dml_dbg_print(1, "%s: fail to get PSM record for RFC EasyConnect\n", __func__);
+        CcspTraceError(("%s: fail to get PSM record for RFC EasyConnect\n",__func__));
+    }
+    else
+    {
+        rfc = atoi(strValue);
+        ((CCSP_MESSAGE_BUS_INFO *)bus_handle)->freefunc(strValue);
+        if(!rfc)
+        {
+            CcspTraceError(("%s: RFC for EasyConnect is disabled. Enable RFC to activate DPP\n",__func__));
+            return FALSE;
+        }
+    }
+    wifi_util_error_print(WIFI_DMCLI,"%s:%d before the parameter comparison\n", __FUNCTION__,__LINE__);
+
+    
+    //check the parameter name and set the corresponding value 
+    if (strcmp(ParamName, "Activate") == 0)
+    {
+        if (bValue == TRUE) {
+            wifi_util_error_print(WIFI_DMCLI,"%s:%d b4 getapins\n", __FUNCTION__,__LINE__);
+
+            if (NULL == (vap_info =  GetApInsByDppSta(pWifiDppSta, &staIndex)))
+            {
+                CcspTraceError(("%s:%d:GetApIns failed\n",__func__, __LINE__));
+                return FALSE;
+            }
+            wifi_util_error_print(WIFI_DMCLI,"%s:%d after getapins\n", __FUNCTION__,__LINE__);
+
+            if((dmcli_status.MaxRetryCount == 1) &&
+               (dmcli_status.ClientMac == 1) &&
+               (dmcli_status.InitiatorBootstrapSubjectPublicKeyInfo == 1) &&
+               (dmcli_status.ResponderBootstrapSubjectPublicKeyInfo == 1) &&
+               (dmcli_status.Channels == 1))
+            {
+                if (pWifiDppSta->Activate == TRUE) //for new request if activate is true means it's fatched from PS.
+                    pWifiDppSta->Activate = FALSE;
+                wifi_util_error_print(WIFI_DMCLI,"%s:%d b4 provisionstart\n", __FUNCTION__,__LINE__);
+
+                if ((DPP_STA_ProvisionStart_Validate(pWifiDppSta) == FALSE))
+                {
+                    CcspTraceError(("%s:%d: Validate failed\n",__func__, __LINE__));
+                    return FALSE;
+                }
+                wifi_util_error_print(WIFI_DMCLI,"%s:%d after provisionstart\n", __FUNCTION__,__LINE__);
+
+                // init_easy_connect(vap_info);
+
+                // sleep(10);
+            if (WiFi_startDPP(vap_info, staIndex) == ANSC_STATUS_SUCCESS)
+                {
+                    // save update to backup 
+                    CcspTraceError(("%s:%d:SUCCESS\n",__func__, __LINE__));
+                    pWifiDppSta->Activate = bValue;
+                    memset(&dmcli_status, 0x0, sizeof(status)); //clear
+                    ret = TRUE;
+                }else{
+                    ret = FALSE;
+                }
+                wifi_util_error_print(WIFI_DMCLI,"%s:%d b4 set dpp value\n", __FUNCTION__,__LINE__);
+
+                if(ANSC_STATUS_SUCCESS != CosaDmlWiFi_setDppValue(apIns,staIndex,"ActivationStatus", (char*)pWifiDppSta->ActivationStatus)){
+                    CcspTraceError(("%s\n", "set ActivationStatus to PSM failed"));
+                }
+                if(ANSC_STATUS_SUCCESS != CosaDmlWiFi_setDppValue(apIns,staIndex,"EnrolleeResponderStatus", (char*)pWifiDppSta->EnrolleeResponderStatus)){
+                    CcspTraceError(("%s\n", "set EnrolleeResponderStatus to PSM failed"));
+                }
+                wifi_util_error_print(WIFI_DMCLI,"%s:%d after set dpp value\n", __FUNCTION__,__LINE__);
+
+                return ret;
+            } else {
+                char buff[64];
+                CcspTraceError(("%s:%d: Not all expected parameters present\n",__func__, __LINE__));
+                snprintf(buff, sizeof(buff), "%s\n", "Wifi DPP: ActStatus_Config_Error");
+                return FALSE;
+            }
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d at the end\n", __FUNCTION__,__LINE__);
+
+        }
+    }
+#else // !defined(_HUB4_PRODUCT_REQ_)
+    //CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName));
     UNREFERENCED_PARAMETER(hInsContext);
     UNREFERENCED_PARAMETER(ParamName);
     UNREFERENCED_PARAMETER(bValue);
 
-    return FALSE;
+#endif
+    return FALSE; 
 }
 
 /**********************************************************************  
@@ -15299,9 +16231,38 @@ DPP_STA_SetParamUlongValue
         ULONG                       uValue
     )
 {
+    #if !defined(_HUB4_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_)
+    wifi_vap_dpp_sta_t  *pWifiDppSta  = (wifi_vap_dpp_sta_t*)hInsContext;
+    ULONG apIns, staIndex;
+    UCHAR dppVersion;
+    char setValue[8]={0};
+    errno_t rc  = -1;
+
+    rc = sprintf_s(setValue, sizeof(setValue), "%li",uValue);
+    if(rc < EOK)
+    {
+        ERR_CHK(rc);
+    }
+
+    if (GetInsNumsByWifiDppSta(pWifiDppSta, &apIns, &staIndex, &dppVersion) != ANSC_STATUS_SUCCESS)
+    {
+        return -1;
+    }
+    /* check the parameter name and set the corresponding value */
+    if (strcmp(ParamName, "MaxRetryCount") == 0)
+    {
+        pWifiDppSta->MaxRetryCount = uValue;
+        if(ANSC_STATUS_SUCCESS != CosaDmlWiFi_setDppValue(apIns,staIndex,ParamName,setValue)){
+            return FALSE;
+        }
+        (void) set_status(MaxRetryCount);
+        return TRUE;
+    }
+#else // !defined(_HUB4_PRODUCT_REQ_)
     UNREFERENCED_PARAMETER(hInsContext);
     UNREFERENCED_PARAMETER(ParamName);
     UNREFERENCED_PARAMETER(uValue);
+#endif
     return FALSE;
 }
 
@@ -15343,9 +16304,159 @@ DPP_STA_SetParamStringValue
         char*                       pString
     )
 {
+    #if !defined(_HUB4_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_)
+    wifi_vap_dpp_sta_t  *pWifiDppSta  = (wifi_vap_dpp_sta_t*)hInsContext;
+    ULONG                           apIns, staIndex;
+    UCHAR dppVersion;
+    char    channelsList[128] = {0};
+    errno_t rc = -1;
+
+    if (GetInsNumsByWifiDppSta(pWifiDppSta, &apIns, &staIndex, &dppVersion) != ANSC_STATUS_SUCCESS)
+    {
+        return -1;
+    }
+        // check the parameter name and set the corresponding value 
+    if (strcmp(ParamName, "ClientMac") == 0)
+    {
+        if (AnscSizeOfString(pString) > (sizeof(pWifiDppSta->ClientMac) - 1))
+            return FALSE;
+        if(WiFi_IsValidMacAddr(pString)  == 0)
+            return FALSE;
+
+        rc = strcpy_s(pWifiDppSta->ClientMac, sizeof(pWifiDppSta->ClientMac), pString);
+        //wifi_util_error_print(WIFI_DMCLI,"%s:%d APINDEX:%lu,staindex:%lu\n", __FUNCTION__,__LINE__,apIns,staIndex);
+        ERR_CHK(rc);
+        if(ANSC_STATUS_SUCCESS != CosaDmlWiFi_setDppValue(apIns,staIndex,ParamName,pString)){
+            return FALSE;
+        }
+        (void) set_status(ClientMac);
+        return TRUE;
+    }
+
+    if (strcmp(ParamName, "InitiatorBootstrapSubjectPublicKeyInfo") == 0)
+    {
+
+        if (AnscSizeOfString(pString) > (sizeof(pWifiDppSta->InitiatorBootstrapSubjectPublicKeyInfo) - 1))
+            return FALSE;
+
+        AnscZeroMemory(pWifiDppSta->InitiatorBootstrapSubjectPublicKeyInfo, sizeof(pWifiDppSta->InitiatorBootstrapSubjectPublicKeyInfo));
+        rc = strcpy_s(pWifiDppSta->InitiatorBootstrapSubjectPublicKeyInfo, sizeof(pWifiDppSta->InitiatorBootstrapSubjectPublicKeyInfo), pString);
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d InitiatorBootstrapSubjectPublicKeyInfo:%s\n", __FUNCTION__,__LINE__,pWifiDppSta->InitiatorBootstrapSubjectPublicKeyInfo);
+        ERR_CHK(rc);
+        if(ANSC_STATUS_SUCCESS != CosaDmlWiFi_setDppValue(apIns,staIndex,ParamName,pString)){
+            return FALSE;
+        }
+        (void) set_status(InitiatorBootstrapSubjectPublicKeyInfo);
+        return TRUE;
+    }
+
+    if (strcmp(ParamName, "ResponderBootstrapSubjectPublicKeyInfo") == 0)
+    {
+        if (AnscSizeOfString(pString) > (sizeof(pWifiDppSta->ResponderBootstrapSubjectPublicKeyInfo) - 1))
+            return FALSE;
+
+        AnscZeroMemory(pWifiDppSta->ResponderBootstrapSubjectPublicKeyInfo, sizeof(pWifiDppSta->ResponderBootstrapSubjectPublicKeyInfo));
+        rc = strcpy_s(pWifiDppSta->ResponderBootstrapSubjectPublicKeyInfo, sizeof(pWifiDppSta->ResponderBootstrapSubjectPublicKeyInfo), pString);
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d ResponderBootstrapSubjectPublicKeyInfo:%s\n", __FUNCTION__,__LINE__,pWifiDppSta->ResponderBootstrapSubjectPublicKeyInfo);
+        ERR_CHK(rc);
+        if(ANSC_STATUS_SUCCESS != CosaDmlWiFi_setDppValue(apIns,staIndex,ParamName,pString)){
+            return FALSE;
+        }
+        (void) set_status(ResponderBootstrapSubjectPublicKeyInfo);
+        return TRUE;
+    }
+
+    if (strcmp(ParamName, "KeyManagement") == 0)
+    {
+        
+        if (AnscSizeOfString(pString) > sizeof(pWifiDppSta->Cred.KeyManagement) - 1)
+            return FALSE;
+
+        AnscZeroMemory(pWifiDppSta->Cred.KeyManagement, sizeof(pWifiDppSta->Cred.KeyManagement));
+        rc = strcpy_s(pWifiDppSta->Cred.KeyManagement, sizeof(pWifiDppSta->Cred.KeyManagement), pString);
+        
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d Cred.KeyManagement:%s\n", __FUNCTION__,__LINE__,pWifiDppSta->Cred.KeyManagement);
+        ERR_CHK(rc);
+        if(ANSC_STATUS_SUCCESS != CosaDmlWiFi_setDppValue(apIns,staIndex,ParamName,pString)){
+            return FALSE;
+        }
+        return TRUE;
+    }
+
+    if (strcmp(ParamName, "Channels") == 0)
+    {
+
+        CcspWifiTrace(("RDK_LOG_WARN, %s-%d\n",__FUNCTION__,__LINE__));
+        if((GetInsNumsByWifiDppSta(pWifiDppSta, &apIns, &staIndex, &dppVersion) != ANSC_STATUS_SUCCESS))
+        {
+            CcspTraceError(("***Error*****DPP: no AP Index\n"));
+            return FALSE;
+        }
+
+        if(AnscSizeOfString((char *)pWifiDppSta->Channels))
+        {
+
+            int channel[32] = {0x0};
+            int i = 0;
+            char *tmp = NULL, token[256] = {0};
+            char    *saveptr = NULL;
+            wifi_util_error_print(WIFI_DMCLI,"%s:%d 2 inside ka 1st if:\n", __FUNCTION__,__LINE__);
+
+	        AnscZeroMemory(token, sizeof(token));
+	        rc = strcpy_s(token, sizeof(token), pString);
+	        ERR_CHK(rc);
+        
+	        if ((0 != strlen(token)) && (0 != strncmp(token, " ", 1))) { //Check for Channel is Empty or not RDKB-27958
+                tmp=strtok_r(token, ",", &saveptr);
+                wifi_util_error_print(WIFI_DMCLI,"%s:%d inside if:\n", __FUNCTION__,__LINE__);
+
+                if(tmp == NULL)
+                {
+                    CcspTraceError(("********DPP Validate:Failed Channels\n"));
+                    wifi_util_error_print(WIFI_DMCLI,"%s:%dinside tmp is null:\n", __FUNCTION__,__LINE__);
+
+                    return FALSE;
+                }
+                while (tmp != NULL && i < 32 )
+                {
+                    channel[i] = atoi(tmp);
+                    tmp = strtok_r(NULL, ",", &saveptr);
+
+                    wifi_util_error_print(WIFI_DMCLI,"%s:%d, inside while:\n", __FUNCTION__,__LINE__);
+
+                    if(IsValidChannel(apIns-1, channel[i]) != TRUE)
+                    {
+                        CcspTraceError(("********DPP Validate:Failed Channels\n"));
+                        return FALSE;
+                    }
+                    i++;
+                }
+            } else {
+                CcspTraceInfo(("DPP empty string case entered !!!\n"));
+            }
+	    }
+
+        if (ANSC_STATUS_SUCCESS != CosaDmlWiFi_ParseEasyConnectEnrolleeChannels(apIns - 1, pWifiDppSta, pString)) {
+            CcspTraceError(("***Error*****DPP: no Enrollee channel\n"));
+            return FALSE;
+        }
+    
+        if (ANSC_STATUS_SUCCESS != CosaDmlWiFi_setDppValue(apIns,staIndex,ParamName, WiFi_ChannelsListToString(pWifiDppSta, channelsList))){
+            CcspTraceError(("***Error*****DPP: CosaDmlWiFi_setDppValue\n"));
+            return FALSE;
+        }
+        CcspTraceError(("***Error*****DPP: CosaDmlWiFi_setDppValue dpp_test Numchannels %d\n",pWifiDppSta->NumChannels));
+        
+        (void) set_status(Channels);
+        return TRUE;
+    }
+    
+#else // !defined(_HUB4_PRODUCT_REQ_)
+        // CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); 
     UNREFERENCED_PARAMETER(hInsContext);
     UNREFERENCED_PARAMETER(ParamName);
     UNREFERENCED_PARAMETER(pString);
+#endif
     return FALSE;
 }
 
@@ -15520,9 +16631,46 @@ DPP_STA_Credential_GetParamStringValue
     )
 {
     UNREFERENCED_PARAMETER(pUlSize);
+#if !defined(_HUB4_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_)
+    wifi_vap_dpp_sta_t  *pWifiDppSta  = (wifi_vap_dpp_sta_t*)hInsContext;
+    errno_t                         rc           = -1;
+    
+    // check the parameter name and return the corresponding value 
+    if (strcmp(ParamName, "KeyManagement") == 0)
+    {
+        //collect value 
+        rc = strcpy_s(pValue, *pUlSize, pWifiDppSta->Cred.KeyManagement);
+        ERR_CHK(rc);
+        //AnscCopyString(pValue, "not_allowed_to_show");
+        //wifi_dpp_dml_dbg_print(1, "%s= '%s'\n", ParamName, pWifiDppSta->Cred.KeyManagement);
+        return 0;
+    }
+
+    if (strcmp(ParamName, "psk_hex") == 0)
+    {
+        // collect value 
+        //AnscCopyString(pValue, pWifiDppSta->Cred.psk_hex);
+        rc = strcpy_s(pValue, *pUlSize, "not_allowed_to_show");
+        ERR_CHK(rc);
+        //wifi_dpp_dml_dbg_print(1, "%s= '%s'\n", ParamName, pWifiDppSta->Cred.psk_hex);
+        return 0;
+    }
+
+    if (strcmp(ParamName, "password") == 0)
+    {
+        // collect value 
+        //AnscCopyString(pValue, pWifiDppSta->Cred.password);
+        rc = strcpy_s(pValue, *pUlSize, "not_allowed_to_show");
+        ERR_CHK(rc);
+        //wifi_dpp_dml_dbg_print(1, "%s= '%s'\n", ParamName, pWifiDppSta->Cred.password);
+        return 0;
+    }
+#else // !defined(_HUB4_PRODUCT_REQ_)
+    // CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); 
     UNREFERENCED_PARAMETER(hInsContext);
     UNREFERENCED_PARAMETER(ParamName);
     UNREFERENCED_PARAMETER(pValue);
+#endif
     return -1;
 }
 
@@ -15564,11 +16712,37 @@ DPP_STA_Credential_SetParamStringValue
         char*                       pString
     )
 {
+#if !defined(_HUB4_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_)
+    wifi_vap_dpp_sta_t  *pWifiDppSta  = (wifi_vap_dpp_sta_t*)hInsContext;
+    ULONG                           apIns, staIndex;
+    UCHAR dppVersion;
+    errno_t                         rc           = -1;
+
+    if (GetInsNumsByWifiDppSta(pWifiDppSta, &apIns, &staIndex, &dppVersion) != ANSC_STATUS_SUCCESS)
+    {
+        return FALSE;
+    }
+
+    /* check the parameter name and set the corresponding value */
+    if (strcmp(ParamName, "KeyManagement") == 0)
+    {
+        if (AnscSizeOfString(pString) > sizeof(pWifiDppSta->Cred.KeyManagement) - 1)
+            return FALSE;
+
+        rc = strcpy_s(pWifiDppSta->Cred.KeyManagement, sizeof(pWifiDppSta->Cred.KeyManagement), pString);
+        ERR_CHK(rc);
+        if(ANSC_STATUS_SUCCESS != CosaDmlWiFi_setDppValue(apIns,staIndex,ParamName,pString)){
+            return FALSE;
+        }
+        return TRUE;
+    }
+#else// !defined(_HUB4_PRODUCT_REQ_)
+    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     UNREFERENCED_PARAMETER(hInsContext);
     UNREFERENCED_PARAMETER(ParamName);
     UNREFERENCED_PARAMETER(pString);
-    /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
-    return TRUE;
+#endif
+    return FALSE;
 }
 
 /**********************************************************************  

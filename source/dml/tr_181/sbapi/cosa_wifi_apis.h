@@ -270,6 +270,7 @@ ANSC_STATUS guardIntervalDmlEnumtoHalEnum(UINT ccspGiEnum, wifi_guard_interval_t
 ANSC_STATUS operChanBandwidthDmlEnumtoHalEnum(UINT ccspBw, wifi_channelBandwidth_t *halBw);
 INT getSecurityTypeFromString(const char *securityName, wifi_security_modes_t *securityType, COSA_DML_WIFI_SECURITY *cosaSecurityType);
 
+char *WiFi_ChannelsListToString(wifi_vap_dpp_sta_t *pWifiDppSta, char *string);
 void WriteWiFiLog(char *);
 void AssociatedDevice_callback_register();
 int decode_json_obj(bus_handle_t *handle, const char *json_name);

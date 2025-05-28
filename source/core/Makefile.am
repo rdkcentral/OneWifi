@@ -104,11 +104,7 @@ OneWifi_SOURCES += $(top_srcdir)/source/ccsp/ccsp_api.c
 endif
 OneWifi_SOURCES += $(top_srcdir)/source/platform/rdkb/misc.c $(top_srcdir)/source/platform/common/common.c
 
-if ONEWIFI_DML_SUPPORT
-if EASYCONNECT_SUPPORT
 OneWifi_SOURCES += wifi_easy_connect.c
-endif
-endif
 OneWifi_SOURCES += $(top_srcdir)/source/stats/wifi_associated_devices_msmt.c
 if JOURNALCTL_SUPPORT
 OneWifi_SOURCES += $(top_srcdir)/lib/log/log_journal.c
