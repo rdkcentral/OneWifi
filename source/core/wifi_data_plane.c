@@ -56,14 +56,10 @@ void process_event_timeout(wifi_data_plane_event_t *event, wifi_data_plane_t *mo
 {
        switch (event->type) {
 
-#if !defined(_BWG_PRODUCT_REQ_)
-#if defined (DUAL_CORE_XB3) || (defined(_XB6_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_))
-                case wifi_data_plane_event_type_dpp:
-                    //process_easy_connect_event_timeout(event->u.dpp_ctx, &module->module_easy_connect);//ONE_WIFI
+              case wifi_data_plane_event_type_dpp:
+                    process_easy_connect_event_timeout(event->u.dpp_ctx, &module->module_easy_connect);//ONE_WIFI
                     break;
 
-#endif
-#endif
                 default:
                     UNREFERENCED_PARAMETER(module);
                     break;
@@ -99,13 +95,9 @@ void process_event(wifi_data_plane_event_t *event, wifi_data_plane_t *module)
 
        switch (event->type) {
 
-#if defined (DUAL_CORE_XB3) || (defined(_XB6_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_))
-#if !defined(_BWG_PRODUCT_REQ_)
                case wifi_data_plane_event_type_dpp:
-                       //process_easy_connect_event(event->u.dpp_ctx, &module->module_easy_connect);//ONE_WIFI
+                       process_easy_connect_event(event->u.dpp_ctx, &module->module_easy_connect);//ONE_WIFI
                        break;
-#endif
-#endif
                case wifi_data_plane_event_type_anqp:
                        process_passpoint_event(event->u.anqp_ctx);
                        break;
@@ -147,19 +139,19 @@ void *process_data_plane_function  (void *data)
         pthread_mutex_lock(&proc_data->lock);
         rc = pthread_cond_timedwait(&proc_data->cond, &proc_data->lock, &time_to_wait);
 
-        if (rc == ETIMEDOUT) {
-            /*wifi_util_dbg_print(WIFI_MON, "%s:%d: Running eloop\n", __func__, __LINE__);
-            hapd_wpa_run();
-            timeout_count++;
-            if (timeout_count < 100) {
-                pthread_mutex_unlock(&proc_data->lock);
-                continue;
-            }
-            timeout_count = 0;*/
-            //wifi_util_dbg_print(WIFI_MON, "%s:%d: Data plane timed out\n", __func__, __LINE__);
-            process_timeout();
-            clock_gettime(CLOCK_MONOTONIC, &proc_data->last_polled_time);
-        }
+        // if (rc == ETIMEDOUT) {
+        //     wifi_util_dbg_print(WIFI_MON, "%s:%d: Running eloop\n", __func__, __LINE__);
+        //     hapd_wpa_run();
+        //     timeout_count++;
+        //     if (timeout_count < 100) {
+        //         pthread_mutex_unlock(&proc_data->lock);
+        //         continue;
+        //     }
+        //     timeout_count = 0;
+        //     //wifi_util_dbg_print(WIFI_MON, "%s:%d: Data plane timed out\n", __func__, __LINE__);
+        //     process_timeout();
+        //     clock_gettime(CLOCK_MONOTONIC, &proc_data->last_polled_time);
+        // }
 
         // dequeue data
         count = queue_count(proc_data->queue);
@@ -286,23 +278,25 @@ void auth_frame_received(unsigned int ap_index, mac_address_t sta, void *data, u
 
 void eapol_frame_sent(unsigned int ap_index, mac_address_t sta, wifi_eapol_type_t type, void *data, unsigned int len)
 {
-    // wifi_8021x_data_t *eapol;
+    wifi_util_error_print(WIFI_DPP, "%s:%d: Test DPP  ... \n", __func__, __LINE__);
 
-    //printf("%s:%d Enter: frame length:%d\n", __func__, __LINE__, len);
+    wifi_8021x_data_t *eapol;
 
-    // eapol = malloc(sizeof(wifi_8021x_data_t));
-    // memset(eapol, 0, sizeof(wifi_8021x_data_t));
+    printf("%s:%d Enter: frame length:%d\n", __func__, __LINE__, len);
 
-    // eapol->data = malloc(len);
-    // memcpy(eapol->data, data, len);
-    // eapol->len = len;
+    eapol = malloc(sizeof(wifi_8021x_data_t));
+    memset(eapol, 0, sizeof(wifi_8021x_data_t));
 
-    // eapol->vap = ap_index;
-    // memcpy(eapol->mac, sta, sizeof(mac_address_t));
-    // eapol->type = type;
-    // eapol->dir = wifi_direction_downlink;
+    eapol->data = malloc(len);
+    memcpy(eapol->data, data, len);
+    eapol->len = len;
 
-    //data_plane_queue_push(data_plane_queue_create_packet(eapol, wifi_data_plane_packet_type_8021x, TRUE));
+    eapol->vap = ap_index;
+    memcpy(eapol->mac, sta, sizeof(mac_address_t));
+    eapol->type = type;
+    eapol->dir = wifi_direction_downlink;
+
+    data_plane_queue_push(data_plane_queue_create_packet(eapol, wifi_data_plane_packet_type_8021x, TRUE));
 
 }
 
@@ -339,10 +333,9 @@ void deinit_wifi_data_plane()
 
 int init_wifi_data_plane()
 {
-#if defined (DUAL_CORE_XB3) || \
-    (defined(_XB6_PRODUCT_REQ_) && !defined(_XB8_PRODUCT_REQ_)) || \
-    (defined(_CBR_PRODUCT_REQ_) && !(defined(_CBR2_PRODUCT_REQ_)) )
 
+wifi_util_error_print(WIFI_DPP, "%s:%d: Test DPP ... \n", __func__, __LINE__);
+    
     pthread_condattr_t cond_attr;
     pthread_attr_t attr;
     pthread_attr_t *attrp = NULL;
@@ -391,18 +384,18 @@ int init_wifi_data_plane()
         wifi_util_dbg_print(WIFI_MON,"CosaWifiInitialize Error - WiFi failed to Initialize Passpoint.\n");
     }
 #endif//ONE_WIFI
-    //wifi_hal_mgmt_frame_callbacks_register(mgmt_frame_received_callback);
-    wifi_util_dbg_print(WIFI_MON, "%s:%d: init_wifi_data_plane completed ### \n", __func__, __LINE__);
-#endif
+    wifi_hal_mgmt_frame_callbacks_register(mgmt_frame_received_callback);
+    wifi_util_error_print(WIFI_MON, "%s:%d: init_wifi_data_plane completed ### \n", __func__, __LINE__);
+// #endif
 
     return 0;
 }
 
 bool data_plane_queue_check_event(wifi_data_plane_event_type_t type, void *ctx)
 {
+    wifi_util_error_print(WIFI_DPP, "%s:%d: Test DPP  ... \n", __func__, __LINE__);
     bool matched = false;
 
-#if defined (DUAL_CORE_XB3) || (defined(_XB6_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_))
     unsigned int i, count;
     wifi_data_plane_queue_data_t *queue_data = NULL;
     wifi_data_plane_event_t *event;
@@ -421,15 +414,10 @@ bool data_plane_queue_check_event(wifi_data_plane_event_type_t type, void *ctx)
             switch (event->type) {
 
                 case wifi_data_plane_event_type_dpp:
-#if !defined(_BWG_PRODUCT_REQ_)
-#if 0
+
                     if (is_matching_easy_connect_event(event->u.dpp_ctx, ctx) == true) {
                         matched = true;
                     }
-#endif//ONE_WIFI
-#else
-                    UNREFERENCED_PARAMETER(ctx);
-#endif
                     break;
 
                 case wifi_data_plane_event_type_anqp:
@@ -448,19 +436,15 @@ bool data_plane_queue_check_event(wifi_data_plane_event_type_t type, void *ctx)
 
     pthread_mutex_unlock(&g_data_plane_module.lock);
 
-#else
-    UNREFERENCED_PARAMETER(type);
-    UNREFERENCED_PARAMETER(ctx);
-#endif
-
     return matched;
                             
 }
 void *
 data_plane_queue_remove_event(wifi_data_plane_event_type_t type, void *ctx)
 {
+    wifi_util_error_print(WIFI_DPP, "%s:%d: Test DPP  ... \n", __func__, __LINE__);
+    
        void *ptr = NULL;
-#if defined (DUAL_CORE_XB3) || (defined(_XB6_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_))
     unsigned int i, count;
     wifi_data_plane_event_t *event;
     wifi_data_plane_queue_data_t *queue_data = NULL;
@@ -479,16 +463,12 @@ data_plane_queue_remove_event(wifi_data_plane_event_type_t type, void *ctx)
 
                        switch (event->type) {
                                case wifi_data_plane_event_type_dpp:
-#if !defined(_BWG_PRODUCT_REQ_)
-#if 0
+
                                        if (is_matching_easy_connect_event(event->u.dpp_ctx, ctx) == true) {
                                                ptr = event->u.dpp_ctx;
                                                matched = true; 
                                        }
-#endif//ONE_WIFI
-#else
-                                        UNREFERENCED_PARAMETER(ctx);
-#endif
+
                                        break;
 
                                case wifi_data_plane_event_type_anqp:
@@ -508,18 +488,16 @@ data_plane_queue_remove_event(wifi_data_plane_event_type_t type, void *ctx)
 
 
     pthread_mutex_unlock(&g_data_plane_module.lock);
-
-#else
-    UNREFERENCED_PARAMETER(type);
-    UNREFERENCED_PARAMETER(ctx);
-#endif
-
+    wifi_util_error_print(WIFI_DPP, "%s:%d: Test DPP 14 ... \n", __func__, __LINE__);
+    
        return ptr;             
 }
 
 wifi_data_plane_queue_data_t *
 data_plane_queue_create_packet(void *ptr, wifi_data_plane_packet_type_t type, BOOL setSignalThread)
 {
+    wifi_util_error_print(WIFI_DPP, "%s:%d: Test DPP  ... \n", __func__, __LINE__);
+
     wifi_data_plane_queue_data_t *data;
 
     data = malloc(sizeof(wifi_data_plane_queue_data_t));
@@ -566,13 +544,15 @@ data_plane_queue_create_event(void *ptr, wifi_data_plane_event_type_t type, BOOL
 
        switch (type) {
                case wifi_data_plane_event_type_dpp:
+                       wifi_util_error_print(WIFI_DPP, "%s:%d: wifi_data_plane_event_type_dpp \n", __func__, __LINE__);
                        data->u.event.u.dpp_ctx = ptr;
                        break;
 
                case wifi_data_plane_event_type_anqp:
                        data->u.event.u.anqp_ctx = ptr;
                        break;
-       }       
+       }    
+       wifi_util_error_print(WIFI_DPP, "%s:%d: End  \n", __func__, __LINE__);   
 
        return data;            
 }
