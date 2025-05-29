@@ -1811,6 +1811,22 @@ int validate_wifi_global_config(const cJSON *global_cfg, wifi_global_param_t *gl
     validate_param_string(global_cfg, "TxRxRatetList", param);
     copy_string(global_info->txrx_rate_list, param->valuestring);
 
+    // MgtFrameRateLimitEnable
+    validate_param_bool(global_cfg, "MgtFrameRateLimitEnable", param);
+    global_info->mgt_frame_rate_limit_enable = (param->type & cJSON_True) ? true : false;
+
+    // MgtFrameRateLimit
+    validate_param_integer(global_cfg, "MgtFrameRateLimit", param);
+    global_info->mgt_frame_rate_limit = param->valuedouble;
+
+    // MgtFrameRateLimitWindowSize
+    validate_param_integer(global_cfg, "MgtFrameRateLimitWindowSize", param);
+    global_info->mgt_frame_rate_limit_window_size = param->valuedouble;
+
+    // MgtFrameRateLimitCooldownTime
+    validate_param_integer(global_cfg, "MgtFrameRateLimitCooldownTime", param);
+    global_info->mgt_frame_rate_limit_cooldown_time = param->valuedouble;
+
     wifi_util_dbg_print(WIFI_PASSPOINT,"wifi global Parameters validate successfully\n");
     return RETURN_OK;
 }
