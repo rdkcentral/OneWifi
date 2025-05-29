@@ -218,7 +218,7 @@ static int decode_ssid_blob(wifi_vap_info_t *vap_info, cJSON *ssid, bool managed
         if (cJSON_IsBool(param)) {
             vap_info->u.bss_info.enabled = cJSON_IsTrue(param) ? true : false;
             wifi_util_info_print(WIFI_CTRL, "   \"Enable\": %s\n", (vap_info->u.bss_info.enabled) ? "true" : "false");
-            wifi_util_info_print(WIFI_SRI, "  \" MDU Enabled\": %s\n", (vap_info->u.bss_info.mdu_enabled = vap_info->u.bss_info.enabled && managed_wifi));
+            wifi_util_info_print(WIFI_SRI, "  \" MDU Enabled\": %d\n", (vap_info->u.bss_info.mdu_enabled = vap_info->u.bss_info.enabled && managed_wifi));
         } else {
             wifi_util_error_print(WIFI_CTRL, "%s: \"Enable\" is not boolean\n", __func__);
             return -1;
