@@ -105,8 +105,6 @@ extern "C" {
 #define PRIVATE_SUB_DOC                  "privatessid"
 // Connected building wifi subdoc and bus related constants
 #define MULTI_COMP_SUPPORTED_SUBDOC_COUNT 2
-#define MANAGED_WIFI_BRIDGE "Device.LAN.Bridge.1.Name"
-#define MANAGED_WIFI_INTERFACE "Device.LAN.Bridge.1.WiFiInterfaces"
 
 #define PRIVATE 0b0001
 #define HOTSPOT 0b0010
