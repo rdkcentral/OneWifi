@@ -718,7 +718,7 @@ static pErr private_home_exec_common_handler(void *blob, const char *vap_prefix,
     }
     webconfig_init_subdoc_data(data);
 
-    if (update_vap_info_with_blob_info(blob, NULL, vap_prefix, false, execRetVal) != 0) {
+    if (update_vap_info_with_blob_info(blob, NULL, data, vap_prefix, false, execRetVal) != 0) {
         wifi_util_error_print(WIFI_CTRL, "%s: json parse failure\n", __func__);
         execRetVal->ErrorCode = VALIDATION_FALIED;
         goto done;
