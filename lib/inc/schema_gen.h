@@ -149,6 +149,8 @@
         PJS_OVS_INT(mld_link_id) \
         PJS_OVS_STRING(mld_addr, 32 + 1) \
         PJS_OVS_BOOL(mld_apply) \
+        PJS_OVS_BOOL(mdu_enabled)\
+        PJS_OVS_INT(speed_tier)\
     )
 
 #define PJS_SCHEMA_Wifi_Interworking_Config \
@@ -2072,7 +2074,9 @@
     COLUMN(mld_id)\
     COLUMN(mld_link_id)\
     COLUMN(mld_addr)\
-    COLUMN(mld_apply)
+    COLUMN(mld_apply)\
+    COLUMN(mdu_enabled)\
+    COLUMN(speed_tier)
 
 #define SCHEMA__Wifi_Interworking_Config "Wifi_Interworking_Config"
 #define SCHEMA_COLUMN__Wifi_Interworking_Config(COLUMN) \
@@ -3424,6 +3428,8 @@
 #define SCHEMA__Wifi_VAP_Config__mld_link_id "mld_link_id"
 #define SCHEMA__Wifi_VAP_Config__mld_addr "mld_addr"
 #define SCHEMA__Wifi_VAP_Config__mld_apply "mld_apply"
+#define SCHEMA__Wifi_VAP_Config__mdu_enabled "mdu_enabled"
+#define SCHEMA__Wifi_VAP_Config__speed_tier "speed_tier"
 
 #define SCHEMA__Wifi_Interworking_Config__enable "enable"
 #define SCHEMA__Wifi_Interworking_Config__vap_name "vap_name"
