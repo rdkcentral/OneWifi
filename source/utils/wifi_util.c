@@ -3781,6 +3781,9 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
                 vap_info_new->u.bss_info.wpsPushButton) ||
             IS_CHANGED(vap_info_old->u.bss_info.connected_building_enabled,
                 vap_info_new->u.bss_info.connected_building_enabled) ||
+            IS_CHANGED(vap_info_old->u.bss_info.mdu_enabled, vap_info_new->u.bss_info.mdu_enabled) ||
+            IS_CHANGED(vap_info_old->u.bss_info.am_config.npc.speed_tier,
+                vap_info_new->u.bss_info.am_config.npc.speed_tier)
             IS_BIN_CHANGED(&vap_info_old->u.bss_info.beaconRateCtl,
                 &vap_info_new->u.bss_info.beaconRateCtl,
                 sizeof(vap_info_old->u.bss_info.beaconRateCtl)) ||
