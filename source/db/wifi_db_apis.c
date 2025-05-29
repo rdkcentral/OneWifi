@@ -977,7 +977,7 @@ void callback_Wifi_VAP_Config(ovsdb_update_monitor_t *mon,
             l_bss_param_cfg->network_initiated_greylist = new_rec->network_initiated_greylist;
             l_bss_param_cfg->connected_building_enabled = new_rec->connected_building_enabled;
             l_bss_param_cfg->mdu_enabled = new_rec->mdu_enabled;
-            l_bss_param_cfg->am_config.npc.speed_tier = new_rec->npc_speed_tier;
+            l_bss_param_cfg->am_config.npc.speed_tier = new_rec->speed_tier;
             wifi_util_info_print(WIFI_SRI,"%s:%d mdu_enabled %d speed_tier = %d\n",__func__,__LINE__,l_bss_param_cfg->mdu_enabled,l_bss_param_cfg->am_config.npc.speed_tier);
             l_bss_param_cfg->rapidReconnectEnable = new_rec->rapid_connect_enabled;
             l_bss_param_cfg->rapidReconnThreshold = new_rec->rapid_connect_threshold;
