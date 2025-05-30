@@ -729,7 +729,7 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
                 if(strstr(wifi_vap_map->vap_array[j].vap_name, "lnf_psk") != NULL) {
                     lnf_vap_info = &wifi_vap_map->vap_array[j];
                     if (strstr(wifi_vap_map->vap_array[j].vap_name, NAME_FREQUENCY_2_4_G) != NULL) {
-                        lnf_2g_vap = &lnf_vap_info;
+                        lnf_2g_vap = lnf_vap_info;
                     }
                     wifi_util_info_print(WIFI_SRI,"%s:%d SREESH Vap name is %s\n",__func__,__LINE__,lnf_vap_info->vap_name);
                 }
