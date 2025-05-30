@@ -2881,6 +2881,82 @@ UINT getPrivateApFromRadioIndex(UINT radioIndex)
     return 0;
 }
 
+UINT getLnfApFromRadioIndex(UINT radioIndex, char* vap_prefix)
+{
+    UINT apIndex;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    if (vap_prefix == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d vap_prefix is NULL \n", __FUNCTION__,__LINE__);
+        return 0;
+    }
+    for (UINT index = 0; index < getTotalNumberVAPs(); index++) {
+        apIndex = VAP_INDEX(mgr->hal_cap, index);
+        if((strncmp((CHAR *)getVAPName(apIndex), vap_prefix, strlen(vap_prefix)) == 0) &&
+               getRadioIndexFromAp(apIndex) == radioIndex ) {
+                wifi_util_info_print(WIFI_SRI,"%s:%d REturing apIndex = %u for radioIndex = %u for vap_name = %s\n",
+                                     __FUNCTION__, __LINE__, apIndex, radioIndex,(CHAR *)getVAPName(apIndex));
+            return apIndex;
+        }
+    }
+    wifi_util_dbg_print(WIFI_CTRL,"getLnfApFromRadioIndex not recognised for radioIndex %u!!!\n", radioIndex);
+    return 0;
+}
+
+UINT getHotspotApFromRadioIndex(UINT radioIndex, char* vap_prefix)
+{
+    UINT apIndex;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    if (vap_prefix == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d vap_prefix is NULL \n", __FUNCTION__,__LINE__);
+        return 0;
+    }
+    for (UINT index = 0; index < getTotalNumberVAPs(); index++) {
+        apIndex = VAP_INDEX(mgr->hal_cap, index);
+        if((strncmp((CHAR *)getVAPName(apIndex), vap_prefix, strlen(vap_prefix)) == 0) &&
+               getRadioIndexFromAp(apIndex) == radioIndex ) {
+                wifi_util_info_print(WIFI_SRI,"%s:%d REturing apIndex = %u for radioIndex = %u for vap_name = %s\n",
+                                     __FUNCTION__, __LINE__, apIndex, radioIndex, (CHAR *)getVAPName(apIndex));
+            return apIndex;
+        }
+    }
+    wifi_util_dbg_print(WIFI_CTRL,"getHotspotApFromRadioIndex not recognised for radioIndex %u!!!\n", radioIndex);
+    return 0;
+}
+
+int update_vap_params_to_hal_and_db(wifi_vap_info_t *vap, int radio_indx, bool enable_or_disable) {
+    if (!vap) {
+        wifi_util_error_print(WIFI_SRI, "%s:%d NULL vap object\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_util_info_print(WIFI_SRI, "%s:%d vap name = %s and radio_indx = %d\n",__func__,__LINE__,vap->vap_name,radio_indx);
+    wifi_vap_info_map_t tmp_vap_map;
+    memset((unsigned char *)&tmp_vap_map, 0, sizeof(wifi_vap_info_map_t));
+    tmp_vap_map.num_vaps = 1;
+    memcpy(&tmp_vap_map.vap_array[0], vap, sizeof(wifi_vap_info_t));
+
+    rdk_wifi_vap_info_t *rdk_vap_info = get_wifidb_rdk_vap_info(vap->vap_index);
+    if (!rdk_vap_info) {
+        wifi_util_error_print(WIFI_SRI, "%s:%d Failed to get rdk vap info for index %d\n",
+                              __func__, __LINE__, vap->vap_index);
+        return RETURN_ERR;
+    }
+    tmp_vap_map.vap_array[0].u.bss_info.enabled = enable_or_disable;
+    vap_svc_t *svc = get_svc_by_name(ctrl, vap->vap_name);
+    if (!svc) {
+        wifi_util_info_print(WIFI_SRI, "%s:%d: Service not found for vap_name %s\n", __func__, __LINE__, vap->vap_name);
+        return -1;
+    }
+
+    if (svc && svc->update_fn(svc, radio_indx, &tmp_vap_map, rdk_vap_info) == RETURN_OK) {
+        wifi_util_info_print(WIFI_SRI, "%s:%d VAP Update done for Lnf VAP %s\n", __func__, __LINE__, vap->vap_name);
+    } else {
+        wifi_util_info_print(WIFI_SRI, "%s:%d VAP Update failed for Lnf VAP %s\n", __func__, __LINE__, vap->vap_name);
+        return RETURN_ERR;
+    }
+    return RETURN_OK;
+}
+
 BOOL isVapPrivate(UINT apIndex)
 {
     return is_vap_private(&(get_wifimgr_obj())->hal_cap.wifi_prop, apIndex);
