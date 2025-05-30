@@ -714,7 +714,7 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
     vap_svc_t  *pub_svc = NULL;
     wifi_ctrl_t *ctrl;
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    wifi_vap_info_t *lnf_2g_vap = NULL;
+    wifi_vap_info_t *lnf_2g_vap = NULL, *lnf_vap_info = NULL;
     wifi_platform_property_t *wifi_prop = (&(get_wifimgr_obj())->hal_cap.wifi_prop);
     uint8_t num_radios = getNumberRadios();
     bool open_2g_enabled = false, open_5g_enabled = false, open_6g_enabled = false,sec_2g_enabled = false,sec_5g_enabled = false, sec_6g_enabled = false, hotspot_5g_enabled = false;
@@ -723,22 +723,19 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
     pub_svc = get_svc_by_type(ctrl, vap_svc_type_public);
     for(int radio_indx = 0; radio_indx < num_radios; ++radio_indx) {
         wifi_vap_info_map_t *wifi_vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(radio_indx);
-        wifi_vap_info_t *lnf_vap_info = NULL;
+        lnf_vap_info = (wifi_vap_info_t *)get_wifidb_vap_parameters(getLnfApFromRadioIndex(radio_indx, VAP_PREFIX_LNF_PSK));
+        wifi_util_info_print(WIFI_SRI,"%s:%d Value of lnf_vap_info->vap_name is %s.\n",__func__,__LINE__,lnf_vap_info->vap_name);
+        if (lnf_vap_info && strstr(lnf_vap_info->vap_name, NAME_FREQUENCY_2_4_G) != NULL) {
+            lnf_2g_vap = lnf_vap_info;
+            wifi_util_info_print(WIFI_SRI,"%s:%d lnf_2g_vap->vap_name is %s and NAME_FREQUENCY_2_4_G is %s\n",__func__,__LINE__,lnf_2g_vap->vap_name,NAME_FREQUENCY_2_4_G);
+        }
         wifi_util_info_print(WIFI_SRI,"%s:%d Value of wifi_vap_map->num_vaps is %d.\n",__func__,__LINE__,wifi_vap_map->num_vaps);
         for(unsigned int j = 0; j < wifi_vap_map->num_vaps; ++j) {
             wifi_util_info_print(WIFI_SRI,"%s:%d Vap name is %s and j = %d\n",__func__,__LINE__,wifi_vap_map->vap_array[j].vap_name,j);
             if(strstr(wifi_vap_map->vap_array[j].vap_name, "hotspot") == NULL) {
-                wifi_util_info_print(WIFI_SRI,"%s:%d Vap name is %s\n",__func__,__LINE__,wifi_vap_map->vap_array[j].vap_name);
-                if(strstr(wifi_vap_map->vap_array[j].vap_name,VAP_PREFIX_LNF_PSK) != NULL) {
-                    lnf_vap_info = &wifi_vap_map->vap_array[j];
-                    if (strstr(wifi_vap_map->vap_array[j].vap_name, NAME_FREQUENCY_2_4_G) != NULL) {
-                        lnf_2g_vap = lnf_vap_info;
-                    }
-                    wifi_util_info_print(WIFI_SRI,"%s:%d SREESH Vap name is %s\n",__func__,__LINE__,lnf_vap_info->vap_name);
-                }
                 continue;
             }
-
+            
             wifi_vap_info_map_t tmp_vap_map;
             memset((unsigned char *)&tmp_vap_map, 0, sizeof(wifi_vap_info_map_t));
             tmp_vap_map.num_vaps = 1;
@@ -763,7 +760,7 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
                     sec_5g_enabled = rfc_param->hotspot_secure_5g_last_enabled;
                     sec_6g_enabled = rfc_param->hotspot_secure_6g_last_enabled;
                 }
-                wifi_util_dbg_print(WIFI_CTRL," vap_name is %s and bool is %d:%d:%d:%d:%d:%d\n",tmp_vap_map.vap_array[0].vap_name,open_2g_enabled,open_5g_enabled,open_6g_enabled,sec_2g_enabled,sec_5g_enabled,sec_6g_enabled);
+                wifi_util_dbg_print(WIFI_SRI," vap_name is %s and bool is %d:%d:%d:%d:%d:%d\n",tmp_vap_map.vap_array[0].vap_name,open_2g_enabled,open_5g_enabled,open_6g_enabled,sec_2g_enabled,sec_5g_enabled,sec_6g_enabled);
 
                 if ((strcmp(tmp_vap_map.vap_array[0].vap_name,"hotspot_open_2g") == 0) && open_2g_enabled)
                     tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
