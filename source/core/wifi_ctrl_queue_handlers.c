@@ -797,7 +797,7 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
                     send_hotspot_status(wifi_vap_map->vap_array[j].vap_name, false);
                }
             } else {
-                wifi_util_info_print(WIFI_SRI, "%s:%d Able to create vaps. vap_enable %d and vap_nam = %s\n", __func__,__LINE__, param, tmp_map.vap_array[0].vap_name);
+                wifi_util_info_print(WIFI_SRI, "%s:%d Able to create vaps. vap_enable %d and vap_nam = %s\n", __func__,__LINE__, param, tmp_vap_map.vap_array[0].vap_name);
                 if (!lnf_vap_info)
                 {
                     wifi_util_info_print(WIFI_SRI, "%s:%d lnf_vap_info is NULL for radio index = %d\n", __func__,__LINE__,radio_indx);
