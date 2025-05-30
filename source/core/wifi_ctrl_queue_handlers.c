@@ -724,9 +724,12 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
     for(int radio_indx = 0; radio_indx < num_radios; ++radio_indx) {
         wifi_vap_info_map_t *wifi_vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(radio_indx);
         wifi_vap_info_t *lnf_vap_info = NULL;
+        wifi_util_info_print(WIFI_SRI,"%s:%d Value of wifi_vap_map->num_vaps is %d.\n",__func__,__LINE__,wifi_vap_map->num_vaps);
         for(unsigned int j = 0; j < wifi_vap_map->num_vaps; ++j) {
+            wifi_util_info_print(WIFI_SRI,"%s:%d Vap name is %s and j = %d\n",__func__,__LINE__,wifi_vap_map->vap_array[j].vap_name,j);
             if(strstr(wifi_vap_map->vap_array[j].vap_name, "hotspot") == NULL) {
-                if(strstr(wifi_vap_map->vap_array[j].vap_name, "lnf_psk") != NULL) {
+                wifi_util_info_print(WIFI_SRI,"%s:%d Vap name is %s\n",__func__,__LINE__,wifi_vap_map->vap_array[j].vap_name);
+                if(strstr(wifi_vap_map->vap_array[j].vap_name,VAP_PREFIX_LNF_PSK) != NULL) {
                     lnf_vap_info = &wifi_vap_map->vap_array[j];
                     if (strstr(wifi_vap_map->vap_array[j].vap_name, NAME_FREQUENCY_2_4_G) != NULL) {
                         lnf_2g_vap = lnf_vap_info;
@@ -794,9 +797,14 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
                     send_hotspot_status(wifi_vap_map->vap_array[j].vap_name, false);
                }
             } else {
-                wifi_util_info_print(WIFI_CTRL, "%s:%d Able to create vaps. vap_enable %d\n", __func__,__LINE__, param);
+                wifi_util_info_print(WIFI_SRI, "%s:%d Able to create vaps. vap_enable %d and vap_nam = %s\n", __func__,__LINE__, param, tmp_map.vap_array[0].vap_name);
+                if (!lnf_vap_info)
+                {
+                    wifi_util_info_print(WIFI_SRI, "%s:%d lnf_vap_info is NULL for radio index = %d\n", __func__,__LINE__,radio_indx);
+                    return;
+                }
                 wifi_util_info_print(WIFI_SRI, "%s:%d Able to create Hotspot vaps. vap_enable %d and lnf_vap->u.bss_info.enabled %d and tmp_vap_map.vap_array[0].u.bss_info.enabled %d\n", __func__,__LINE__, (int)param, lnf_vap_info->u.bss_info.enabled, tmp_vap_map.vap_array[0].u.bss_info.enabled);
-                if (lnf_vap_info->u.bss_info.mdu_enabled) {
+                if (!strstr(lnf_vap_info->vap_name,NAME_FREQUENCY_2_4_G) && lnf_vap_info->u.bss_info.mdu_enabled) {
                     wifi_util_info_print(WIFI_SRI,"%s:%d Before calling the update_vap_params_to_hal_and_db for lnf_vap_name %s inside loop\n", __func__,__LINE__,lnf_vap_info->vap_name);
                     if (update_vap_params_to_hal_and_db(lnf_vap_info, radio_indx, tmp_vap_map.vap_array[0].u.bss_info.enabled) != RETURN_OK) {
                         wifi_util_info_print(WIFI_SRI, "%s:%d Unable to create vaps\n", __func__,__LINE__);
@@ -815,6 +823,11 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
         }
     }
     wifi_util_info_print(WIFI_SRI,"%s:%d About to set the LnF VAP 2G with Hotspot 5G Secure configs\n",__func__,__LINE__);
+    if (!lnf_2g_vap)
+    {
+        wifi_util_info_print(WIFI_SRI,"%s:%d lnf_2g_vap is NULL\n", __func__,__LINE__);
+        return;
+    }
     if (lnf_2g_vap->u.bss_info.mdu_enabled) {
         if (update_vap_params_to_hal_and_db(lnf_2g_vap,0,hotspot_5g_enabled) != RETURN_OK)
         {
