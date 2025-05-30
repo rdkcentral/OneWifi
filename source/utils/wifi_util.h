@@ -145,7 +145,7 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
 typedef unsigned char mac_addr_t[MAC_ADDR_LEN];
 
 #define MAX_WIFI_COUNTRYCODE 252
-#ifdef RASPBERRY_PI_PORT
+#if defined RASPBERRY_PI_PORT || BANANA_PI_PORT
     #define MIN_NUM_RADIOS 1
 #else
     #define MIN_NUM_RADIOS 2
