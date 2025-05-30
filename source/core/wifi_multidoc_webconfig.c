@@ -373,12 +373,14 @@ static int decode_security_blob(wifi_vap_info_t *vap_info, cJSON *security,pErr 
 static int decode_amenities_blob(wifi_vap_info_t *vap_info, cJSON *amenities_blob, pErr execRetVal)
 {
     cJSON *param;
-    wifi_util_info_print(WIFI_SRI, "Amenities blob: %s\n", cJSON_Print(amenities_blob));
+    char *json_str = cJSON_Print(amenities_blob);
+    wifi_util_info_print(WIFI_SRI, "Amenities blob: %s\n", json_str);
     param = cJSON_GetObjectItem(amenities_blob, "network_parameters");
     if (param) {
         cJSON *speed_tier_param = cJSON_GetObjectItem(param, "speed_tier");
         if (!speed_tier_param || !cJSON_IsNumber(speed_tier_param)) {
             wifi_util_info_print(WIFI_SRI,"%s:%d speed_tier not found or not a number!\n",__func__,__LINE__);
+            free(json_str);
             return -1;
         } else {
             vap_info->u.bss_info.am_config.npc.speed_tier = speed_tier_param->valueint;
@@ -386,8 +388,10 @@ static int decode_amenities_blob(wifi_vap_info_t *vap_info, cJSON *amenities_blo
         }
     } else {
         wifi_util_error_print(WIFI_SRI, "%s: missing \"network_parameters\"\n", __func__);
+        free(json_str);
         return -1;
     }
+    free(json_str);
     return 0;
 }
 
@@ -757,7 +761,7 @@ static int connected_subdoc_handler(void *blob, void *amenities_blob, char *vap_
 
     if (amenities_blob == NULL)
     {
-        wifi_util_error_print(WIFI_SRI, "%s: Null amenities_blob\n", __func__);
+        wifi_util_error_print(WIFI_SRI, "%s: Null amenities_blob and managed_wifi_enabled is %d\n", __func__,managed_wifi_enabled);
     }
 
     data = (webconfig_subdoc_data_t *) malloc(sizeof(webconfig_subdoc_data_t));
