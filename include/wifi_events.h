@@ -194,6 +194,7 @@ typedef enum {
     wifi_event_monitor_set_subscribe,
     wifi_event_monitor_action_frame,
     wifi_event_monitor_max,
+    wifi_event_monitor_nop_start_status,
 
     // Tunnel
     wifi_event_type_xfinity_tunnel_up = wifi_event_type_base

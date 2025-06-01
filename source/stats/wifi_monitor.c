@@ -1357,6 +1357,40 @@ int get_neighbor_scan_cfg(int radio_index,
     return 0;
 }
 
+int get_nop_started_channels(wifi_mon_stats_config_t *data)
+{
+    int channel_list[MAX_DFS_CHANNELS];
+    int channels_num = 0;
+
+    if (!data) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Invalid input data\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    wifi_freq_bands_t band = data->band;
+    wifi_channelBandwidth_t bandwidth = data->channelWidth;
+    int primary_channel = data->nop_up_channel;
+
+    int ret = get_on_channel_scan_list(band, bandwidth, primary_channel, channel_list,
+        &channels_num);
+    if (ret != 0) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Channel scan list not found\n", __func__,
+            __LINE__);
+        return RETURN_ERR;
+    }
+
+    pthread_mutex_lock(&g_monitor_module.data_lock);
+    g_monitor_module.nop_channels_num = channels_num;
+    memcpy(g_monitor_module.nop_started_channels, channel_list,
+        channels_num * sizeof(unsigned int));
+    for (int j = 0; j < channels_num; j++) {
+        wifi_util_dbg_print(WIFI_MON, "%s:%d Channel %d: %u\n", __func__, __LINE__, j,
+            g_monitor_module.nop_started_channels[j]);
+    }
+    pthread_mutex_unlock(&g_monitor_module.data_lock);
+
+    return RETURN_OK;
+}
 
 void clear_sta_counters(unsigned int vap_index)
 {
@@ -1576,6 +1610,9 @@ void *monitor_function  (void *data)
                         update_subscribe_data(event_data);
                        // subscribe_stats = event_data->u.collect_stats.event_subscribe;
                     break;
+                    case wifi_event_monitor_nop_start_status:
+                        get_nop_started_channels(&event_data->u.mon_stats_config);
+                    break;   
                     default:
                     break;
 
