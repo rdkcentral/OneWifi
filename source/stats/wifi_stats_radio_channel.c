@@ -918,7 +918,7 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
                 radioOperation->band == WIFI_FREQUENCY_5_BAND) {
                 if (is_5g_20M_channel_in_dfs(radioOperation->channel) ||
                     radioOperation->channelWidth == WIFI_CHANNELBANDWIDTH_160MHZ) {
-                    dwell_time = 20;
+                    dwell_time = 15;
                 }
             }
         }
