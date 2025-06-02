@@ -6563,6 +6563,11 @@ AccessPoint_GetParamBoolValue
         return TRUE;
     }
 
+    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_InteropCtrl", TRUE)) {
+        *pBool = pcfg->u.bss_info.interop_ctrl;
+        return TRUE;
+    }
+
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     return FALSE;
 }
@@ -6683,6 +6688,12 @@ AccessPoint_GetParamIntValue
         return TRUE;
     }
 
+    if( AnscEqualString(ParamName, "X_CISCO_COM_INumSta", TRUE))
+    {
+        *pInt = pcfg->u.bss_info.inum_sta;
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d inumsta:%d \n", __FUNCTION__,__LINE__,pcfg->u.bss_info.inum_sta);
+        return TRUE;
+    }
 
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     return FALSE;
@@ -7263,6 +7274,15 @@ AccessPoint_SetParamBoolValue
         return TRUE;
     }
 
+    if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_InteropCtrl", TRUE))
+    {
+        vapInfo->u.bss_info.interop_ctrl = bValue;
+        set_dml_cache_vap_config_changed(instance_number - 1);
+
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: interop_ctrl value = %d\n", __func__,
+            __LINE__, vapInfo->u.bss_info.interop_ctrl);
+        return TRUE;
+    }
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     return FALSE;
 }
@@ -7420,6 +7440,20 @@ AccessPoint_SetParamIntValue
         set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
+
+    if( AnscEqualString(ParamName, "X_CISCO_COM_INumSta", TRUE))
+    {
+        if (vapInfo->u.bss_info.inum_sta == iValue)
+        {
+            return  TRUE;
+        }
+
+        /* Allow users to set max station for given VAP */
+        vapInfo->u.bss_info.inum_sta = iValue;
+        set_dml_cache_vap_config_changed(instance_number - 1);
+        return (TRUE);
+    }
+    
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     return FALSE;
 }

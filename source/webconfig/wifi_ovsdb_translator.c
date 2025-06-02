@@ -895,6 +895,7 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
         default_vap_info->vap_mode = wifi_vap_mode_ap;
         default_vap_info->u.bss_info.enabled = false;
         default_vap_info->u.bss_info.bssMaxSta = 75;
+        default_vap_info->u.bss_info.inum_sta = 0;
         snprintf(default_vap_info->u.bss_info.interworking.interworking.hessid,
             sizeof(default_vap_info->u.bss_info.interworking.interworking.hessid),
             "11:22:33:44:55:66");
@@ -903,6 +904,7 @@ webconfig_error_t translator_ovsdb_init(webconfig_subdoc_data_t *data)
 #if defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || \
     defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_) || defined(_SR213_PRODUCT_REQ_)
         default_vap_info->u.bss_info.hostap_mgt_frame_ctrl = true;
+        default_vap_info->u.bss_info.interop_ctrl = false;
 #endif // defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) ||
        // defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_) ||
        // defined(_SR213_PRODUCT_REQ_)
