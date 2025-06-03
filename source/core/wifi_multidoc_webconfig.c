@@ -801,6 +801,10 @@ static int connected_subdoc_handler(void *blob, void *amenities_blob, char *vap_
                 wifi_util_info_print(WIFI_SRI, "managed_interfaces = %s and lnf_psk_ifname=%s and radio_index = %d\n",managed_interfaces,(char *)lnf_psk_ifname, radio_index);
                 set_managed_guest_interfaces(managed_interfaces, radio_index);
             }
+            else
+            {
+                wifi_util_info_print(WIFI_SRI,"%s:%d lnf_psk_ifname is %s and managed_wifi_enabled = %d\n", __func__,__LINE__, lnf_psk_ifname==NULL?"null":(char *)lnf_psk_ifname, managed_wifi_enabled);
+            }
         }
     }
     ret = RETURN_OK;
