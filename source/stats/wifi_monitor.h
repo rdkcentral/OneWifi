@@ -185,7 +185,7 @@ typedef struct {
     bool is_blaster_running;
     hash_map_t  *clctr_subscriber_map; //clctr_subscription_t
     unsigned int nop_channels_num;
-    unsigned int nop_started_channels[MAX_DFS_CHANNELS];
+    unsigned int *nop_started_channels;
 } wifi_monitor_t;
 
 typedef struct {
