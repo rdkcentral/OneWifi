@@ -482,7 +482,7 @@ int get_managed_guest_bridge(char *brval, unsigned long length, int radio_index)
     char str[32];
     memset(str, 0, sizeof(str));
     snprintf(str, sizeof(str), "Device.LAN.Bridge.%d.Name", radio_index + 1);
-
+    wifi_util_info_print(WIFI_SRI, "Managed_wifi bridge name is %s\n", str);
     rc = get_bus_descriptor()->bus_data_get_fn(&g_wifi_mgr->ctrl.handle, str, &data);
     if (data.data_type != bus_data_type_string) {
         wifi_util_error_print(WIFI_SRI,
@@ -493,8 +493,9 @@ int get_managed_guest_bridge(char *brval, unsigned long length, int radio_index)
     }
 
     if (rc == bus_error_success) {
+        wifi_util_info_print(WIFI_SRI, "Managed_wifi bridge name is %s\n and inside rc == bus_error_success", str);
         brname = (char *)data.raw_data.bytes;
-        wifi_util_dbg_print(WIFI_SRI, "Managed_wifi bridge name is %s\n", brname);
+        wifi_util_info_print(WIFI_SRI, "Managed_wifi bridge name is %s\n", brname);
         token = strrchr(brname, ':');
         snprintf(brval, length, "%s", token + 1);
         wifi_util_info_print(WIFI_SRI, "Managed_wifi bridge val is %s\n", brval);
@@ -502,6 +503,7 @@ int get_managed_guest_bridge(char *brval, unsigned long length, int radio_index)
         return RETURN_OK;
     }
     /* Just in case if 'rc' value is not handled  correctly */
+    wifi_util_info_print(WIFI_SRI, "Managed_wifi bridge name is %s\n and value of rc = %d", str, rc);
     get_bus_descriptor()->bus_data_free_fn(&data);
     return RETURN_ERR;
 }

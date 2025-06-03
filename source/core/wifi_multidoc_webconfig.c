@@ -526,7 +526,7 @@ static int update_vap_info_managed_guest(void *data, void *amenities_blob, wifi_
             if (!strcmp(vap_info->vap_name,blob_vap_name_str)) {
                 wifi_util_error_print(WIFI_SRI, "%s: %d connected_building_enabled %d \n", __func__,__LINE__,connected_building_enabled);
                 wifi_util_info_print(WIFI_SRI,"%s:%d vap_info->vap_name = %s and radio_index = %d\n", __func__,__LINE__,vap_info->vap_name, radio_index);
-                int rc = get_managed_guest_bridge(&brval, sizeof(brval),radio_index);
+                int rc = get_managed_guest_bridge(brval, sizeof(brval),radio_index);
                 if (rc != 0)
                 {
                     snprintf(vap_info->bridge_name, sizeof(vap_info->bridge_name), "brlan%d", radio_index+16);
