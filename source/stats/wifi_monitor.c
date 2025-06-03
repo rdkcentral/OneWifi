@@ -1387,7 +1387,7 @@ static int get_nop_started_channels(wifi_mon_stats_config_t *data)
                 }
             }
 
-            if (found = false) {
+            if (found == false) {
                 unsigned int *new_ptr = realloc(g_monitor_module.nop_started_channels,
                     (g_monitor_module.nop_channels_num + 1) * sizeof(unsigned int));
                 if (new_ptr == NULL) {
