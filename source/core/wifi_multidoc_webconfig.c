@@ -797,7 +797,7 @@ static int connected_subdoc_handler(void *blob, void *amenities_blob, char *vap_
             lnf_psk_ifname = get_interface_name_for_vap_index(vap_index,(&data->u.decoded.hal_cap.wifi_prop));
 
             if ((lnf_psk_ifname != NULL) && managed_wifi_enabled) {
-                snprintf(managed_interfaces,sizeof(managed_interfaces),"ManagedWifi:%s",*lnf_psk_ifname);
+                snprintf(managed_interfaces,sizeof(managed_interfaces),"%s",*lnf_psk_ifname);
             } else {
                 wifi_util_error_print(WIFI_CTRL, "%s: managed_wifi_enabled is false \n", __func__);
                 strncpy(managed_interfaces,"ManagedWifi:",sizeof(managed_interfaces)-1);
