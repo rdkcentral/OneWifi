@@ -518,7 +518,7 @@ int set_managed_guest_interfaces(char *interface_name, int radio_index)
 {
     bus_error_t rc;
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
-    char str[32];
+    char str[48];
     memset(str, 0, sizeof(str));
     snprintf(str, sizeof(str), "Device.LAN.Bridge.%d.WiFiInterfaces", radio_index + 1);
     rc = get_bus_descriptor()->bus_set_string_fn(&g_wifi_mgr->ctrl.handle, str, interface_name);
@@ -528,7 +528,6 @@ int set_managed_guest_interfaces(char *interface_name, int radio_index)
     } else {
         wifi_util_dbg_print(WIFI_CTRL, "Successfuly set %s with %s \n", str, interface_name);
     }
-
     return RETURN_OK;
 }
 
