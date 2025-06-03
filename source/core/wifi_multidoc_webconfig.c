@@ -750,8 +750,7 @@ static int connected_subdoc_handler(void *blob, void *amenities_blob, char *vap_
     int num_vaps = 0,i = 0, vap_index = 0;
     webconfig_subdoc_data_t *data = NULL;
     wifi_interface_name_t *lnf_psk_ifname = NULL;
-    char managed_interfaces[128];
-
+    char managed_interfaces[8]; // fOR ENSURING null TERMINATION
     memset(managed_interfaces,0,sizeof(managed_interfaces));
 
     if (blob == NULL) {
@@ -798,13 +797,10 @@ static int connected_subdoc_handler(void *blob, void *amenities_blob, char *vap_
 
             if ((lnf_psk_ifname != NULL) && managed_wifi_enabled) {
                 snprintf(managed_interfaces,sizeof(managed_interfaces),"%s",*lnf_psk_ifname);
-            } else {
-                wifi_util_error_print(WIFI_CTRL, "%s: managed_wifi_enabled is false \n", __func__);
-                strncpy(managed_interfaces,"ManagedWifi:",sizeof(managed_interfaces)-1);
+                radio_index = convert_vap_name_to_radio_array_index(&data->u.decoded.hal_cap.wifi_prop, vap_names[i]);
+                wifi_util_info_print(WIFI_SRI, "managed_interfaces = %s and lnf_psk_ifname=%s and radio_index = %d\n",managed_interfaces,(char *)lnf_psk_ifname, radio_index);
+                set_managed_guest_interfaces(managed_interfaces, radio_index);
             }
-            radio_index = convert_vap_name_to_radio_array_index(&data->u.decoded.hal_cap.wifi_prop, vap_names[i]);
-            wifi_util_info_print(WIFI_SRI, "managed_interfaces = %s and lnf_psk_ifname=%s and radio_index = %d\n",managed_interfaces,(char *)lnf_psk_ifname, radio_index);
-            set_managed_guest_interfaces(managed_interfaces, radio_index);
         }
     }
     ret = RETURN_OK;
