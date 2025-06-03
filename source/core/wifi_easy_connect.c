@@ -32,7 +32,7 @@
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
 #include "collection.h"
-#include "wifi_hal.h"
+#include <wifi_hal.h>
 #include "wifi_easy_connect.h"
 #include "wifi_data_plane_types.h"
 #include <sys/socket.h>
@@ -46,8 +46,6 @@
 
 static const char *wifi_health_log = "/rdklogs/logs/wifihealth.txt";
 
-extern bool is_device_associated(int ap_index, char *mac);
-extern bool wifi_api_is_device_associated(int ap_index, char *mac);
 static wifi_easy_connect_t g_easy_connect = {0};
 
 PCOSA_DML_WIFI_DPP_STA_CFG find_dpp_sta_dml_wifi_ap(unsigned int ap_index, mac_address_t sta_mac);
