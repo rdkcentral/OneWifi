@@ -186,7 +186,6 @@ typedef struct {
     hash_map_t  *clctr_subscriber_map; //clctr_subscription_t
     unsigned int nop_channels_num;
     unsigned int nop_started_channels[MAX_DFS_CHANNELS];
-    bool nop_start_status;
 } wifi_monitor_t;
 
 typedef struct {
