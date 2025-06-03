@@ -2097,12 +2097,12 @@ static int update_lnf_vap_as_per_hotspot_enabled(wifi_vap_info_t *lnf_vap_info, 
         return -1;
     }
     lnf_vap_info->u.bss_info.security.repurposed_radius = hotspot_vap_info->u.bss_info.security.u.radius;
-    wifi_util_info_print(WIFI_SRI, "%s:%d Value of lnf vapInfo->vap_name = %s and lnf_vap_info->radio_index = %d and lnf_vap_info->u.bss_info.mdu_enabled = %d\n", __func__, __LINE__, lnf_vap_info->vap_name, lnf_vap_info->radio_index, lnf_vap_info->u.bss_info.mdu_enabled);
+    wifi_util_info_print(WIFI_SRI, "%s:%d SREESH Value of lnf vapInfo->vap_name = %s and lnf_vap_info->radio_index = %d and lnf_vap_info->u.bss_info.mdu_enabled = %d lnf_vap_info->u.bss_info.enabled = %d hotspot_vap_info->vap_name = %s hotspot_vap_info->u.bss_info.enabled = %d\n", __func__, __LINE__, lnf_vap_info->vap_name, lnf_vap_info->radio_index, lnf_vap_info->u.bss_info.mdu_enabled, lnf_vap_info->u.bss_info.enabled, hotspot_vap_info->vap_name, hotspot_vap_info->u.bss_info.enabled);
     wifi_util_info_print(WIFI_SRI, "%s:%d Lnf Primary IP = %s Primary Port = %d Secondary Ip = %s Secondary Port = %d\n",
         __func__, __LINE__, lnf_vap_info->u.bss_info.security.repurposed_radius.ip, lnf_vap_info->u.bss_info.security.repurposed_radius.port,
         lnf_vap_info->u.bss_info.security.repurposed_radius.s_ip, lnf_vap_info->u.bss_info.security.repurposed_radius.s_port);
     //Below condition ok for Hotspot VAP enablement as we only take care of actual config change 
-    if (lnf_vap_info->u.bss_info.mdu_enabled && lnf_vap_info->u.bss_info.enabled != hotspot_vap_info->u.bss_info.enabled)
+    if (lnf_vap_info->u.bss_info.mdu_enabled)
     {
         if (update_vap_params_to_hal_and_db(lnf_vap_info, lnf_vap_info->radio_index, hotspot_vap_info->u.bss_info.enabled) != RETURN_OK) {
             wifi_util_error_print(WIFI_SRI, "%s:%d Failed to update VAP params to DB\n", __func__, __LINE__);
