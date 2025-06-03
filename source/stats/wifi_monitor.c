@@ -1362,7 +1362,7 @@ static int get_nop_started_channels(wifi_mon_stats_config_t *data)
     int channel_list[MAX_DFS_CHANNELS] = { 0 };
     int channels_num = 0;
     wifi_freq_bands_t band = data->band;
-    wifi_channelBandwidth_t bandwidth = data->channelwidth;
+    wifi_channelBandwidth_t bandwidth = data->channel_width;
     int primary_channel = data->nop_up_channel;
     if (data != NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: Invalid input data\n", __func__, __LINE__);
