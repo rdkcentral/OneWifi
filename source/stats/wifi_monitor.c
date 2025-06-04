@@ -364,11 +364,8 @@ interop_data_t *create_interop_sta_data_hash_map(hash_map_t *sta_map, mac_addr_t
         return NULL;
     }
     memset(sta, 0, sizeof(interop_data_t));
-    wifi_util_info_print(WIFI_MON, "%s:%d memcopying station_mac\r\n", __func__, __LINE__);
     memmove(sta->sta_mac, l_sta_mac, sizeof(mac_addr_t));
-    wifi_util_info_print(WIFI_MON, "%s:%d memcopying ap_mac\r\n", __func__, __LINE__);
     memmove(sta->ap_mac, l_ap_mac, sizeof(mac_addr_t));
-    wifi_util_info_print(WIFI_MON, "%s:%d strdup for station_mac\r\n", __func__, __LINE__);
     char *mac_str_dup = strdup(to_mac_str(l_sta_mac, mac_str));
     if (mac_str_dup == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d strdup allocation failure\r\n", __func__, __LINE__);
@@ -428,11 +425,11 @@ int set_auth_req_frame_data(frame_data_t *msg) {
     ipenable = vap_bss_info->interop_ctrl;
     wifi_util_dbg_print(WIFI_MON, "%s:%d Ipstat:%d ipenable:%d ipstat:%d,ipenable:%d \r\n", __func__, __LINE__,vap_bss_info->inum_sta,vap_bss_info->interop_ctrl,ipstat,ipenable);
     if (ipenable == 0) {
-        wifi_util_dbg_print(WIFI_MON, "%s:%d interopctrl is disabled, ipstat:%d ipenable:%d \r\n", __func__, __LINE__,ipstat,ipenable);
+       // wifi_util_dbg_print(WIFI_MON, "%s:%d interopctrl is disabled, ipstat:%d ipenable:%d \r\n", __func__, __LINE__,ipstat,ipenable);
         return RETURN_OK;
     }
     if (!isVapPrivate(msg->frame.ap_index) && !(isVapHotspotSecure5g(msg->frame.ap_index) || isVapHotspotSecure6g(msg->frame.ap_index) || isVapHotspotOpen5g(msg->frame.ap_index) || isVapHotspotOpen6g(msg->frame.ap_index))){
-        wifi_util_dbg_print(WIFI_MON, "%s:%d It's not a private vap or hotspot vap \r\n", __func__, __LINE__);
+        //wifi_util_dbg_print(WIFI_MON, "%s:%d It's not a private vap or hotspot vap \r\n", __func__, __LINE__);
         return RETURN_OK;
     }
     sta_map = get_interop_sta_data_map(msg->frame.ap_index);
@@ -2473,7 +2470,6 @@ int associated_device_diagnostics_send_event(void* arg)
 int get_chan_util_upload_period()
 {
     int logInterval = DEFAULT_CHANUTIL_LOG_INTERVAL;//Default Value 15mins.
-    wifi_util_dbg_print(WIFI_MON, "start %s:%d loginterval = %d \n",__FUNCTION__,__LINE__,logInterval);
     wifi_global_param_t *global_param = get_wifidb_wifi_global_param();
 
     if (global_param == NULL) {
@@ -2482,12 +2478,12 @@ int get_chan_util_upload_period()
     }
 
     if ((global_param->whix_chutility_loginterval < Min_Chan_Util_LogInterval) || (global_param->whix_chutility_loginterval > Max_LogInterval)) {
-        wifi_util_dbg_print(WIFI_MON, "%s:%d exit Global channel utility loginterval is not in limit, updating the default value\n",__FUNCTION__,__LINE__);
+        wifi_util_dbg_print(WIFI_MON, "%s:%d Global channel utility loginterval is not in limit, updating the default value\n",__FUNCTION__,__LINE__);
         return logInterval;
     }
 
     logInterval = global_param->whix_chutility_loginterval;
-    wifi_util_dbg_print(WIFI_MON, "Exit %s:%d loginterval = %d \n",__FUNCTION__,__LINE__,logInterval);
+    wifi_util_dbg_print(WIFI_MON, "Exiting %s:%d loginterval = %d \n",__FUNCTION__,__LINE__,logInterval);
     return logInterval;
 }
 
@@ -2595,7 +2591,8 @@ int increment_reason_count(interop_data_t *telemetry, WlanReasonCode code, int a
             case AWLAN_REASON_AKMP_NOT_VALID: telemetry->sta_reason_counts[6]++; break;
             case AWLAN_REASON_IEEE_802_1X_AUTH_FAILED: telemetry->sta_reason_counts[7]++; break;
             case AWLAN_REASON_INVALID_PMKID: telemetry->sta_reason_counts[8]++; break;
-            default: wifi_util_dbg_print(WIFI_MON, "start %s:%d unknown reason code for station \n",__FUNCTION__,__LINE__); return -1;
+            default: //wifi_util_dbg_print(WIFI_MON, "%s:%d unknown reason code for station \n",__FUNCTION__,__LINE__);
+                  return -1;
         }
     }
     else if (ap == 1) {
@@ -2609,7 +2606,8 @@ int increment_reason_count(interop_data_t *telemetry, WlanReasonCode code, int a
             case AWLAN_REASON_AKMP_NOT_VALID: telemetry->ap_reason_counts[6]++; break;
             case AWLAN_REASON_IEEE_802_1X_AUTH_FAILED: telemetry->ap_reason_counts[7]++; break;
             case AWLAN_REASON_INVALID_PMKID: telemetry->ap_reason_counts[8]++; break;
-            default: wifi_util_dbg_print(WIFI_MON, "start %s:%d unknown reason code for ap \n",__FUNCTION__,__LINE__); return -1;
+            default: //wifi_util_dbg_print(WIFI_MON, "%s:%d unknown reason code for ap \n",__FUNCTION__,__LINE__); 
+                 return -1;
         }
     }
     else {
@@ -2628,7 +2626,8 @@ int increment_status_count(interop_data_t *telemetry, wlan_status_code_t code, i
             case AWLAN_STATUS_ROBUST_MGMT_FRAME_POLICY_VIOLATION: telemetry->sta_status_counts[3]++; break;
             case AWLAN_STATUS_AKMP_NOT_VALID: telemetry->sta_status_counts[4]++; break;
             case AWLAN_STATUS_INVALID_PMKID: telemetry->sta_status_counts[5]++; break;
-            default: wifi_util_dbg_print(WIFI_MON, "start %s:%d unknown status code for station \n",__FUNCTION__,__LINE__); return -1;
+            default: //wifi_util_dbg_print(WIFI_MON, "%s:%d unknown status code for station \n",__FUNCTION__,__LINE__);
+                 return -1;
         }
     }
     else if (ap == 1) {
@@ -2639,7 +2638,8 @@ int increment_status_count(interop_data_t *telemetry, wlan_status_code_t code, i
             case AWLAN_STATUS_ROBUST_MGMT_FRAME_POLICY_VIOLATION: telemetry->ap_status_counts[3]++; break;
             case AWLAN_STATUS_AKMP_NOT_VALID: telemetry->ap_status_counts[4]++; break;
             case AWLAN_STATUS_INVALID_PMKID: telemetry->ap_status_counts[5]++; break;
-            default: wifi_util_dbg_print(WIFI_MON, "start %s:%d unknown status code for ap \n",__FUNCTION__,__LINE__); return -1;
+            default: //wifi_util_dbg_print(WIFI_MON, "%s:%d unknown status code for ap \n",__FUNCTION__,__LINE__); 
+                 return -1;
         }
     }
     else {
@@ -3233,17 +3233,16 @@ int device_associated(int ap_index, wifi_associated_dev_t *associated_dev)
 static int new_chan_util_period = 0;
 static void update_interop_interval(void)
 {
-    wifi_util_dbg_print(WIFI_MON, "start %s:%d new ch util period = %d \n",__FUNCTION__,__LINE__,new_chan_util_period);
     new_chan_util_period = get_chan_util_upload_period();
     if (!g_monitor_module.inst_msmt_id) {
-        wifi_util_dbg_print(WIFI_MON, "%s:%d start new chan util period:%d monitor:%d \n", __func__, __LINE__,new_chan_util_period,g_monitor_module.curr_chan_util_period);
+        wifi_util_dbg_print(WIFI_MON, "%s:%d new chan util period:%d monitor:%d \n", __func__, __LINE__,new_chan_util_period,g_monitor_module.curr_chan_util_period);
 	if((g_monitor_module.curr_chan_util_period != new_chan_util_period) && (new_chan_util_period != 0)) {
 	    if (g_monitor_module.interop_id != 0) {
 	        scheduler_update_timer_task_interval(g_monitor_module.sched, g_monitor_module.interop_id, new_chan_util_period*1000);
 	        g_monitor_module.curr_chan_util_period = new_chan_util_period;
-		wifi_util_dbg_print(WIFI_MON, "%s:%d end new chan util period:%d monitor:%d \n", __func__, __LINE__,new_chan_util_period,g_monitor_module.curr_chan_util_period);
+		wifi_util_dbg_print(WIFI_MON, "%s:%d updating new chan util period:%d monitor:%d \n", __func__, __LINE__,new_chan_util_period,g_monitor_module.curr_chan_util_period);
 	    }
-	wifi_util_dbg_print(WIFI_MON, "%s:%d end new chan util period:%d monitor:%d \n", __func__, __LINE__,new_chan_util_period,g_monitor_module.curr_chan_util_period);
+	wifi_util_dbg_print(WIFI_MON, "%s:%d updated new chan util period:%d monitor:%d \n", __func__, __LINE__,new_chan_util_period,g_monitor_module.curr_chan_util_period);
 	}
     } else {
         if (g_monitor_module.interop_id != 0) {
@@ -3251,9 +3250,8 @@ static void update_interop_interval(void)
             g_monitor_module.interop_id = 0;
 	    wifi_util_dbg_print(WIFI_MON, "%s:%d setting interop id to zero new chan util period:%d monitor:%d \n", __func__, __LINE__,new_chan_util_period,g_monitor_module.curr_chan_util_period);
         }
-        wifi_util_dbg_print(WIFI_MON, "%s:%d exit interop id is zero new chan util period:%d monitor:%d \n", __func__, __LINE__,new_chan_util_period,g_monitor_module.curr_chan_util_period);
+        wifi_util_dbg_print(WIFI_MON, "%s:%d interop id is zero new chan util period:%d monitor:%d \n", __func__, __LINE__,new_chan_util_period,g_monitor_module.curr_chan_util_period);
     }
-    wifi_util_dbg_print(WIFI_MON, "exit %s:%d new ch util period = %d \n",__FUNCTION__,__LINE__,new_chan_util_period);
 }
 
 

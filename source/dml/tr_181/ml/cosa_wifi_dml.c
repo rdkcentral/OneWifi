@@ -92,7 +92,9 @@
 
 extern ULONG g_currentBsUpdate;
 #endif
-
+# define INTEROP_MIN_STA 0
+# define INTEROP_MAX_STA 32
+# define INTEROP_HOTSPOT_MAX_STA 5
 extern bool is_radio_config_changed;
 static int radio_reset_count;
 ULONG last_vap_change;
@@ -7448,6 +7450,15 @@ AccessPoint_SetParamIntValue
             return  TRUE;
         }
 
+        if (isVapHotspot(pcfg->vap_index) && (iValue < INTEROP_MIN_STA || iValue > INTEROP_HOTSPOT_MAX_STA)) {
+            wifi_util_error_print(WIFI_DMCLI,"%s:%d Invalid value for hotspot vap index:%d\n",__func__, __LINE__,pcfg->vap_index);
+            return FALSE;
+        }
+
+        if (iValue < INTEROP_MIN_STA || iValue > INTEROP_MAX_STA) {
+            wifi_util_error_print(WIFI_DMCLI,"%s:%d Invalid value for vap index:%d\n",__func__, __LINE__,pcfg->vap_index);
+            return FALSE;
+        }
         /* Allow users to set max station for given VAP */
         vapInfo->u.bss_info.inum_sta = iValue;
         set_dml_cache_vap_config_changed(instance_number - 1);
