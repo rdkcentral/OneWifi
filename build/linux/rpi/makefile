@@ -483,7 +483,7 @@ run:
 	./$(PROGRAM)
 
 setup:
-	./build/linux/setup.sh
+	./build/linux/rpi/setup.sh
 
 stamgrsetup:
 	./build/linux/stamgr_setup.sh
