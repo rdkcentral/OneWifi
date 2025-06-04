@@ -714,7 +714,7 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
     vap_svc_t  *pub_svc = NULL;
     wifi_ctrl_t *ctrl;
     ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    wifi_vap_info_t *lnf_2g_vap = NULL, *lnf_vap_info = NULL, *hotspot_5g_vap_info = NULL;
+    wifi_vap_info_t *lnf_2g_vap = NULL, *lnf_vap_info = NULL, hotspot_5g_vap_info;
     wifi_platform_property_t *wifi_prop = (&(get_wifimgr_obj())->hal_cap.wifi_prop);
     uint8_t num_radios = getNumberRadios();
     bool open_2g_enabled = false, open_5g_enabled = false, open_6g_enabled = false,sec_2g_enabled = false,sec_5g_enabled = false, sec_6g_enabled = false;
@@ -785,8 +785,8 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
 
             if (isVapHotspotSecure5g(wifi_vap_map->vap_array[j].vap_index))
             {
-                hotspot_5g_vap_info = tmp_vap_map.vap_array[0];
-                wifi_util_info_print(WIFI_SRI,"%s:%d Hotspot Secure 5G VAP tunnel enable status = %d copied and stored\n",__func__,__LINE__,hotspot_5g_vap_info->u.bss_info.enabled);
+                memcpy((unsigned char *)&hotspot_5g_vap_info, (unsigned char *)&tmp_vap_map.vap_array[0], sizeof(wifi_vap_info_t));
+                wifi_util_info_print(WIFI_SRI,"%s:%d Hotspot Secure 5G VAP tunnel enable status = %d and VAP Name = %s copied and stored\n",__func__,__LINE__,hotspot_5g_vap_info.u.bss_info.enabled, hotspot_5g_vap_info.vap_name);
             }
             if(pub_svc->update_fn(pub_svc,radio_indx, &tmp_vap_map, rdk_vap_info) != RETURN_OK) {
                 wifi_util_error_print(WIFI_SRI, "%s:%d Unable to create vaps\n", __func__,__LINE__);
@@ -818,13 +818,13 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
         }
     }
     wifi_util_info_print(WIFI_SRI,"%s:%d About to set the LnF VAP 2G with Hotspot 5G Secure configs\n",__func__,__LINE__);
-    if (!lnf_2g_vap || !hotspot_5g_vap_info)
+    if (!lnf_2g_vap)
     {
         wifi_util_info_print(WIFI_SRI,"%s:%d lnf_2g_vap is NULL\n", __func__,__LINE__);
         return;
     }
     if (lnf_2g_vap->u.bss_info.mdu_enabled) {
-        if (update_lnf_vap_as_per_hotspot_enabled(lnf_2g_vap, hotspot_5g_vap_info) == -1)
+        if (update_lnf_vap_as_per_hotspot_enabled(lnf_2g_vap, &hotspot_5g_vap_info) == -1)
         {
             wifi_util_info_print(WIFI_SRI, "%s:%d Unable to update LnF vaps as per Hotspot VAPs\n", __func__,__LINE__);
         }
