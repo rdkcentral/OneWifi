@@ -785,7 +785,7 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
 
             if (isVapHotspotSecure5g(wifi_vap_map->vap_array[j].vap_index))
             {
-                hotspot_5g_vap_info = &tmp_vap_map.vap_array[0];
+                hotspot_5g_vap_info = tmp_vap_map.vap_array[0];
                 wifi_util_info_print(WIFI_SRI,"%s:%d Hotspot Secure 5G VAP tunnel enable status = %d copied and stored\n",__func__,__LINE__,hotspot_5g_vap_info->u.bss_info.enabled);
             }
             if(pub_svc->update_fn(pub_svc,radio_indx, &tmp_vap_map, rdk_vap_info) != RETURN_OK) {
