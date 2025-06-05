@@ -58,7 +58,7 @@ static void publish_cce_ie_info(const wifi_bss_info_t *bss_info, unsigned radio_
     memcpy(rdata.raw_data.bytes, bss_info, sizeof(*bss_info));
     rdata.raw_data_len = sizeof(*bss_info);
     char path[256] = { 0 };
-    snprintf(path, sizeof(path), "Device.WiFi.Radio.%d.CCEInd", radio_idx + 1);
+    snprintf(path, sizeof(path), "Device.WiFi.Radio.%d.CCEInd", radio_idx);
     get_bus_descriptor()->bus_event_publish_fn(&ctrl->handle, path, &rdata);
     free(rdata.raw_data.bytes);
 }
@@ -96,6 +96,10 @@ static void handle_wifi_event_scan_results(wifi_app_t *app, void *data)
     }
     wifi_util_dbg_print(WIFI_EC, "%s:%d: Got scan results on radio %d\n", __func__, __LINE__,
         scan_results->radio_index);
+    if (scan_results->radio_index <= 0) {
+	    wifi_util_error_print(WIFI_EC, "%s:%d: Scan results contained invalid radio index %d!\n",
+			    __func__, __LINE__, scan_results->radio_index);
+    }
     if (app->data.u.ec.subscriptions[scan_results->radio_index] == false) {
         wifi_util_dbg_print(WIFI_EC,
             "%s:%d: Got a scan result on radio %d but there are no subscribers, skipping...\n",
@@ -188,15 +192,17 @@ static bus_error_t event_sub_handler(char *eventName, bus_event_sub_action_t act
             eventName, WIFI_EASYCONNECT_RADIO_CCE_IND);
         return bus_error_general;
     }
-    // ensure radio index is valid
-    if (radio_idx < 0 || radio_idx > MAX_NUM_RADIOS) {
-        wifi_util_error_print(WIFI_EC, "%s:%d: invalid radio index: %d\n", __func__, __LINE__,
-            radio_idx);
+
+    // ensure radio index is valid (typical standard is 1-based index)
+    if (radio_idx <= 0 || radio_idx > getNumberRadios()) {
+        wifi_util_error_print(WIFI_EC, "%s:%d: invalid radio index (%d), bounds: [1, %d]\n", __func__, __LINE__,
+            radio_idx, getNumberRadios());
         return bus_error_general;
     }
+
     if (action == bus_event_action_subscribe) {
-        wifi_util_info_print(WIFI_EC, "%s:%d: Adding subscrption for radio %d\n", __func__,
-            __LINE__, radio_idx);
+        wifi_util_info_print(WIFI_EC, "%s:%d: Adding subscription for radio %d\n", __func__,
+            __LINE__, radio_idx-1); // radio_idx is 1-based, subscriptions are 0-based
         wifi_app->data.u.ec.subscriptions[radio_idx - 1] = true;
     } else if (action == bus_event_action_unsubscribe) {
         wifi_app->data.u.ec.subscriptions[radio_idx - 1] = false;
@@ -213,11 +219,19 @@ static bus_error_t event_sub_handler(char *eventName, bus_event_sub_action_t act
 bus_error_t easyconnect_radio_addrowhandler(const char *tableName, const char *aliasName,
     uint32_t *instNum)
 {
-    static unsigned int instanceCounter = 1;
+    UNREFERENCED_PARAMETER(aliasName);
+
+    static int unsigned instanceCounter = 1;
+
+    if (instanceCounter > getNumberRadios(NULL)) {
+        instanceCounter = 1;
+    }
+
     *instNum = instanceCounter;
-    wifi_util_dbg_print(WIFI_EC, "%s:%d: tableName=%s aliasName=%s instNum=%d\n", __func__,
-        __LINE__, tableName, aliasName, *instNum);
-    instanceCounter = (instanceCounter % MAX_NUM_RADIOS) + 1;
+    instanceCounter++;
+
+    wifi_util_dbg_print(WIFI_EC, "%s(): %s %u\n", __func__, tableName, *instNum);
+
     return bus_error_success;
 }
 
@@ -247,11 +261,13 @@ int easyconnect_init(wifi_app_t *app, unsigned int create_flags)
     for (int i = 0; i < ARRAYSIZE(app->data.u.ec.subscriptions); i++) {
         app->data.u.ec.subscriptions[i] = false;
     }
+
+    int num_of_radio = getNumberRadios();
     // clang-format off
     bus_data_element_t data_elements[] = {
         { WIFI_EASYCONNECT_RADIO_TABLE,   bus_element_type_table,
          { NULL, NULL, easyconnect_radio_addrowhandler, easyconnect_radio_removerowhandler, NULL,
-          NULL }, slow_speed, MAX_NUM_RADIOS, { bus_data_type_object, false, 0, 0, 0, NULL } },
+          NULL }, slow_speed, num_of_radio, { bus_data_type_object, false, 0, 0, 0, NULL } },
         { WIFI_EASYCONNECT_RADIO_CCE_IND, bus_element_type_event,
          { NULL, NULL, NULL, NULL, event_sub_handler, NULL }, slow_speed, ZERO_TABLE,
          { bus_data_type_bytes, false, 0, 0, 0, NULL } },
