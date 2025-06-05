@@ -1203,6 +1203,7 @@ int webconfig_vif_neighbors_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_da
 int webconfig_global_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
     wifi_util_dbg_print(WIFI_CTRL,"Inside webconfig_global_config_apply\n");
+    wifi_global_param_t *param;
     wifi_global_config_t *data_global_config;
     data_global_config = &data->config;
     bool global_param_changed = false;
@@ -1217,9 +1218,16 @@ int webconfig_global_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_da
     }
 
     if (global_param_changed) {
-        wifi_util_dbg_print(WIFI_CTRL,"Global config value is changed hence update the global config in DB\n");
-        if(update_wifi_global_config(&data_global_config->global_parameters) == -1) {
-            wifi_util_dbg_print(WIFI_CTRL,"Global config value is not updated in DB\n");
+        param = &data_global_config->global_parameters;
+
+        wifi_hal_set_mgt_frame_rate_limit(param->mgt_frame_rate_limit_enable,
+            param->mgt_frame_rate_limit, param->mgt_frame_rate_limit_window_size,
+            param->mgt_frame_rate_limit_cooldown_time);
+
+        wifi_util_dbg_print(WIFI_CTRL,
+            "Global config value is changed hence update the global config in DB\n");
+        if (update_wifi_global_config(param) == -1) {
+            wifi_util_dbg_print(WIFI_CTRL, "Global config value is not updated in DB\n");
             return RETURN_ERR;
         }
     }

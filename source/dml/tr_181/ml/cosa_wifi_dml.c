@@ -20232,3 +20232,279 @@ Passpoint_SetParamStringValue
     return FALSE;
 }
 
+/***********************************************************************
+
+ APIs for Object:
+
+    WiFi.X_RDKCENTRAL-COM_MgtFrameRateLimit.
+
+    *  MgtFrameRateLimit_GetParamBoolValue
+    *  MgtFrameRateLimit_SetParamBoolValue
+    *  MgtFrameRateLimit_GetParamUlongValue
+    *  MgtFrameRateLimit_SetParamUlongValue
+
+***********************************************************************/
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        MgtFrameRateLimit_GetParamBoolValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                BOOL*                       pBool
+            );
+
+    description:
+
+        This function is called to retrieve Boolean parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                BOOL*                       pBool
+                The buffer of returned boolean value;
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+BOOL MgtFrameRateLimit_GetParamBoolValue(ANSC_HANDLE hInsContext, char *ParamName, BOOL *pBool)
+{
+    wifi_global_param_t *pcfg = get_dml_wifi_global_param();
+
+    UNREFERENCED_PARAMETER(hInsContext);
+
+    if (pcfg == NULL) {
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Failed to get global config\n", __func__, __LINE__);
+        return FALSE;
+    }
+
+    if (AnscEqualString(ParamName, "Enable", TRUE)) {
+        *pBool = pcfg->mgt_frame_rate_limit_enable;
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+/**********************************************************************  
+ 
+	 caller:	 owner of this object 
+ 
+	 prototype: 
+ 
+		 BOOL
+		 MgtFrameRateLimit_SetParamBoolValue
+			 (
+				 ANSC_HANDLE					hInsContext,
+				 char*						ParamName,
+				 BOOL						bValue
+			 );
+ 
+	 description:
+ 
+		 This function is called to set BOOL parameter value; 
+ 
+	 argument:	 ANSC_HANDLE				 hInsContext,
+				 The instance handle;
+ 
+				 char*						 ParamName,
+				 The parameter name;
+ 
+				 BOOL						 bValue
+				 The updated BOOL value;
+ 
+	 return:	 TRUE if succeeded.
+ 
+ **********************************************************************/
+BOOL MgtFrameRateLimit_SetParamBoolValue(ANSC_HANDLE hInsContext, char *ParamName, BOOL bValue)
+{
+    wifi_global_config_t *global_wifi_config = get_dml_cache_global_wifi_config();
+
+    UNREFERENCED_PARAMETER(hInsContext);
+
+    if (global_wifi_config == NULL) {
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Failed to get global config\n", __func__, __LINE__);
+        return FALSE;
+    }
+
+    if (AnscEqualString(ParamName, "Enable", TRUE)) {
+        if (global_wifi_config->global_parameters.mgt_frame_rate_limit_enable == bValue) {
+            return TRUE;
+        }
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d: RateLimit Enable: %d\n", __func__, __LINE__,
+            bValue);
+        global_wifi_config->global_parameters.mgt_frame_rate_limit_enable = bValue;
+
+        if (push_global_config_dml_cache_to_one_wifidb() != RETURN_OK) {
+            wifi_util_error_print(WIFI_DMCLI,
+                "%s:%d: Failed to push RateLimit Enable value to onewifi db\n", __func__, __LINE__);
+        }
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        MgtFrameRateLimit_GetParamUlongValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                ULONG*                      pULong
+            );
+
+    description:
+
+        This function is called to retrieve ULONG parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+               ULONG*                       pULong
+
+    return:     TRUE if succeeded.
+
+**********************************************************************/
+
+BOOL MgtFrameRateLimit_GetParamUlongValue(ANSC_HANDLE hInsContext, char *ParamName, ULONG *pULong)
+{
+    wifi_global_param_t *pcfg = get_dml_wifi_global_param();
+
+    UNREFERENCED_PARAMETER(hInsContext);
+
+    if (pcfg == NULL) {
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Failed to get global config\n", __func__, __LINE__);
+        return FALSE;
+    }
+
+    if (AnscEqualString(ParamName, "RateLimit", TRUE)) {
+        *pULong = pcfg->mgt_frame_rate_limit;
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d RateLimit: %d\n", __func__, __LINE__, *pULong);
+        return TRUE;
+    }
+
+    if (AnscEqualString(ParamName, "WindowSize", TRUE)) {
+        *pULong = pcfg->mgt_frame_rate_limit_window_size;
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Window size: %d\n", __func__, __LINE__, *pULong);
+        return TRUE;
+    }
+
+    if (AnscEqualString(ParamName, "CooldownTime", TRUE)) {
+        *pULong = pcfg->mgt_frame_rate_limit_cooldown_time;
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Cooldown time: %d\n", __func__, __LINE__, *pULong);
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+/**********************************************************************
+
+    caller:     owner of this object
+
+    prototype:
+
+        BOOL
+        MgtFrameRateLimit_SetParamUlongValue
+            (
+                ANSC_HANDLE                 hInsContext,
+                char*                       ParamName,
+                ULONG                       iValue
+            );
+
+    description:
+
+        This function is called to set ULONG parameter value;
+
+    argument:   ANSC_HANDLE                 hInsContext,
+                The instance handle;
+
+                char*                       ParamName,
+                The parameter name;
+
+                ULONG                       iValue
+                The updated value;
+
+    return:     TRUE if succeeded.
+**********************************************************************/
+
+BOOL MgtFrameRateLimit_SetParamUlongValue(ANSC_HANDLE hInsContext, char *ParamName, ULONG iValue)
+{
+    wifi_global_config_t *global_wifi_config = get_dml_cache_global_wifi_config();
+
+    UNREFERENCED_PARAMETER(hInsContext);
+
+    if (global_wifi_config == NULL) {
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Failed to get global config\n", __func__, __LINE__);
+        return FALSE;
+    }
+
+    if (AnscEqualString(ParamName, "RateLimit", TRUE)) {
+        if ((ULONG)global_wifi_config->global_parameters.mgt_frame_rate_limit == iValue) {
+            return TRUE;
+        }
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Rate Limit: %d\n", __func__, __LINE__, iValue);
+        global_wifi_config->global_parameters.mgt_frame_rate_limit = iValue;
+
+        if (push_global_config_dml_cache_to_one_wifidb() != RETURN_OK) {
+            wifi_util_error_print(WIFI_DMCLI,
+                "%s:%d: Failed to push RateLimit value to onewifi db\n", __func__, __LINE__);
+        }
+
+        return TRUE;
+    }
+
+    if (AnscEqualString(ParamName, "WindowSize", TRUE)) {
+        if ((ULONG)global_wifi_config->global_parameters.mgt_frame_rate_limit_window_size ==
+            iValue) {
+            return TRUE;
+        }
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Rate Limit Window Size: %d\n", __func__, __LINE__,
+            iValue);
+        global_wifi_config->global_parameters.mgt_frame_rate_limit_window_size = iValue;
+
+        if (push_global_config_dml_cache_to_one_wifidb() != RETURN_OK) {
+            wifi_util_error_print(WIFI_DMCLI,
+                "%s:%d: Failed to push RateLimit WindowSize value to onewifi db\n", __func__,
+                __LINE__);
+        }
+
+        return TRUE;
+    }
+
+    if (AnscEqualString(ParamName, "CooldownTime", TRUE)) {
+        if ((ULONG)global_wifi_config->global_parameters.mgt_frame_rate_limit_cooldown_time ==
+            iValue) {
+            return TRUE;
+        }
+        wifi_util_dbg_print(WIFI_DMCLI, "%s:%d Rate Limit CooldownTime: %d\n", __func__, __LINE__,
+            iValue);
+        global_wifi_config->global_parameters.mgt_frame_rate_limit_cooldown_time = iValue;
+
+        if (push_global_config_dml_cache_to_one_wifidb() != RETURN_OK) {
+            wifi_util_error_print(WIFI_DMCLI,
+                "%s:%d: Failed to push RateLimit CooldownTime value to onewifi db\n", __func__,
+                __LINE__);
+        }
+
+        return TRUE;
+    }
+
+    return FALSE;
+}
