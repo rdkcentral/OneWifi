@@ -2097,8 +2097,8 @@ void process_managed_wifi_enable()
 
     // Traverse radios starting from index 1 (defer radio 0)
     for (UINT rIdx = 1; rIdx < getNumberRadios(); rIdx++) {
-        UINT lnf_ap_index = getLnfApFromRadioIndex(rIdx, VAP_PREFIX_LNF_PSK);
-        UINT hotspot_ap_index = getHotspotApFromRadioIndex(rIdx, VAP_PREFIX_HOTSPOT_SECURE);
+        UINT lnf_ap_index = getApFromRadioIndex(rIdx, VAP_PREFIX_LNF_PSK);
+        UINT hotspot_ap_index = getApFromRadioIndex(rIdx, VAP_PREFIX_HOTSPOT_SECURE);
 
         wifi_vap_info_t *lnf_vap_info = get_wifidb_vap_parameters(lnf_ap_index);
         wifi_vap_info_t *hotspot_vap_info = get_wifidb_vap_parameters(hotspot_ap_index);
@@ -2114,7 +2114,7 @@ void process_managed_wifi_enable()
         update_lnf_vap_as_per_hotspot_enabled(lnf_vap_info, hotspot_vap_info);
     }
     // Handle radio 0 (deferred)
-    UINT lnf_ap_index_0 = getLnfApFromRadioIndex(0, VAP_PREFIX_LNF_PSK);
+    UINT lnf_ap_index_0 = getApFromRadioIndex(0, VAP_PREFIX_LNF_PSK);
     wifi_vap_info_t *lnf_vap_info_0 = get_wifidb_vap_parameters(lnf_ap_index_0);
     if (!lnf_vap_info_0) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to get LNF VAP info for index %u\n", __func__, __LINE__, lnf_ap_index_0);

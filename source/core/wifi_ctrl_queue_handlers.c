@@ -723,7 +723,7 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
     pub_svc = get_svc_by_type(ctrl, vap_svc_type_public);
     for(int radio_indx = 0; radio_indx < num_radios; ++radio_indx) {
         wifi_vap_info_map_t *wifi_vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(radio_indx);
-        lnf_vap_info = (wifi_vap_info_t *)get_wifidb_vap_parameters(getLnfApFromRadioIndex(radio_indx, VAP_PREFIX_LNF_PSK));
+        lnf_vap_info = (wifi_vap_info_t *)get_wifidb_vap_parameters(getApFromRadioIndex(radio_indx, VAP_PREFIX_LNF_PSK));
         wifi_util_info_print(WIFI_SRI,"%s:%d Value of lnf_vap_info->vap_name is %s.\n",__func__,__LINE__,lnf_vap_info->vap_name);
         if (lnf_vap_info && strstr(lnf_vap_info->vap_name, NAME_FREQUENCY_2_4_G) != NULL) {
             lnf_2g_vap = lnf_vap_info;

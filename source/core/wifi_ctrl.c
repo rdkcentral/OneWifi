@@ -2881,7 +2881,7 @@ UINT getPrivateApFromRadioIndex(UINT radioIndex)
     return 0;
 }
 
-UINT getLnfApFromRadioIndex(UINT radioIndex, char* vap_prefix)
+UINT getApFromRadioIndex(UINT radioIndex, char* vap_prefix)
 {
     UINT apIndex;
     wifi_mgr_t *mgr = get_wifimgr_obj();
@@ -2893,33 +2893,10 @@ UINT getLnfApFromRadioIndex(UINT radioIndex, char* vap_prefix)
         apIndex = VAP_INDEX(mgr->hal_cap, index);
         if((strncmp((CHAR *)getVAPName(apIndex), vap_prefix, strlen(vap_prefix)) == 0) &&
                getRadioIndexFromAp(apIndex) == radioIndex ) {
-                wifi_util_info_print(WIFI_SRI,"%s:%d REturing apIndex = %u for radioIndex = %u for vap_name = %s\n",
-                                     __FUNCTION__, __LINE__, apIndex, radioIndex,(CHAR *)getVAPName(apIndex));
             return apIndex;
         }
     }
-    wifi_util_dbg_print(WIFI_CTRL,"getLnfApFromRadioIndex not recognised for radioIndex %u!!!\n", radioIndex);
-    return 0;
-}
-
-UINT getHotspotApFromRadioIndex(UINT radioIndex, char* vap_prefix)
-{
-    UINT apIndex;
-    wifi_mgr_t *mgr = get_wifimgr_obj();
-    if (vap_prefix == NULL) {
-        wifi_util_error_print(WIFI_CTRL,"%s:%d vap_prefix is NULL \n", __FUNCTION__,__LINE__);
-        return 0;
-    }
-    for (UINT index = 0; index < getTotalNumberVAPs(); index++) {
-        apIndex = VAP_INDEX(mgr->hal_cap, index);
-        if((strncmp((CHAR *)getVAPName(apIndex), vap_prefix, strlen(vap_prefix)) == 0) &&
-               getRadioIndexFromAp(apIndex) == radioIndex ) {
-                wifi_util_info_print(WIFI_SRI,"%s:%d REturing apIndex = %u for radioIndex = %u for vap_name = %s\n",
-                                     __FUNCTION__, __LINE__, apIndex, radioIndex, (CHAR *)getVAPName(apIndex));
-            return apIndex;
-        }
-    }
-    wifi_util_dbg_print(WIFI_CTRL,"getHotspotApFromRadioIndex not recognised for radioIndex %u!!!\n", radioIndex);
+    wifi_util_dbg_print(WIFI_CTRL,"getApFromRadioIndex not recognised for radioIndex %u!!!\n", radioIndex);
     return 0;
 }
 
