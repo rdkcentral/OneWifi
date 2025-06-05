@@ -218,7 +218,7 @@ static int decode_ssid_blob(wifi_vap_info_t *vap_info, cJSON *ssid, bool managed
         if (cJSON_IsBool(param)) {
             vap_info->u.bss_info.enabled = cJSON_IsTrue(param) ? true : false;
             wifi_util_info_print(WIFI_CTRL, "   \"Enable\": %s\n", (vap_info->u.bss_info.enabled) ? "true" : "false");
-            wifi_util_info_print(WIFI_SRI, "  \" MDU Enabled\": %d\n", (vap_info->u.bss_info.mdu_enabled = vap_info->u.bss_info.enabled && managed_wifi));
+            wifi_util_info_print(WIFI_CTRL, "  \" MDU Enabled\": %d\n", (vap_info->u.bss_info.mdu_enabled = vap_info->u.bss_info.enabled && managed_wifi));
         } else {
             wifi_util_error_print(WIFI_CTRL, "%s: \"Enable\" is not boolean\n", __func__);
             return -1;
@@ -374,20 +374,20 @@ static int decode_amenities_blob(wifi_vap_info_t *vap_info, cJSON *amenities_blo
 {
     cJSON *param;
     char *json_str = cJSON_Print(amenities_blob);
-    wifi_util_info_print(WIFI_SRI, "Amenities blob: %s\n", json_str);
+    wifi_util_info_print(WIFI_CTRL, "Amenities blob: %s\n", json_str);
     param = cJSON_GetObjectItem(amenities_blob, "network_parameters");
     if (param) {
         cJSON *speed_tier_param = cJSON_GetObjectItem(param, "speed_tier");
         if (!speed_tier_param || !cJSON_IsNumber(speed_tier_param)) {
-            wifi_util_info_print(WIFI_SRI,"%s:%d speed_tier not found or not a number!\n",__func__,__LINE__);
+            wifi_util_error_print(WIFI_CTRL,"%s:%d speed_tier not found or not a number!\n",__func__,__LINE__);
             free(json_str);
             return -1;
         } else {
             vap_info->u.bss_info.am_config.npc.speed_tier = speed_tier_param->valueint;
-            wifi_util_info_print(WIFI_SRI, "   \"speed_tier\": %d\n", vap_info->u.bss_info.am_config.npc.speed_tier);
+            wifi_util_info_print(WIFI_CTRL, "   \"speed_tier\": %d\n", vap_info->u.bss_info.am_config.npc.speed_tier);
         }
     } else {
-        wifi_util_error_print(WIFI_SRI, "%s: missing \"network_parameters\"\n", __func__);
+        wifi_util_error_print(WIFI_CTRL, "%s: missing \"network_parameters\"\n", __func__);
         free(json_str);
         return -1;
     }
@@ -456,7 +456,7 @@ static int update_vap_info(void *data, wifi_vap_info_t *vap_info,pErr execRetVal
 
     /* get SSID */
     if (decode_ssid_blob(vap_info, ssid_obj, false, execRetVal) != 0) {
-        wifi_util_error_print(WIFI_SRI, "%s: Failed to decode SSID blob\n", __func__);
+        wifi_util_error_print(WIFI_CTRL, "%s: Failed to decode SSID blob\n", __func__);
         status = RETURN_ERR;
         goto done;
     }
@@ -491,12 +491,12 @@ static int update_vap_info_managed_guest(void *data, void *amenities_blob, wifi_
     memset(brval,0,sizeof(brval));
 
     if (connected_building_enabled) {
-        wifi_util_info_print(WIFI_SRI, "%s: %d connected_building_enabled %d \n", __func__,__LINE__,connected_building_enabled);
+        wifi_util_info_print(WIFI_CTRL, "%s: %d connected_building_enabled %d \n", __func__,__LINE__,connected_building_enabled);
         blob = cJSON_Print((cJSON *)data);
-        wifi_util_dbg_print(WIFI_SRI,"Managed guest  blob is %s\n",blob);
+        wifi_util_dbg_print(WIFI_CTRL,"Managed guest  blob is %s\n",blob);
         root = cJSON_Parse(blob);
         if(root == NULL) {
-            wifi_util_error_print(WIFI_SRI, "%s:Managed guest json  parse failure\n", __func__);
+            wifi_util_error_print(WIFI_CTRL, "%s:Managed guest json  parse failure\n", __func__);
             return RETURN_ERR;
         }
 
@@ -504,13 +504,13 @@ static int update_vap_info_managed_guest(void *data, void *amenities_blob, wifi_
 
             cJSON *blob_vap_name = cJSON_GetObjectItem(vb_entry, "VapName");
             if((blob_vap_name == NULL) || (cJSON_IsString(blob_vap_name) == false)) {
-                wifi_util_info_print(WIFI_SRI, "%s: Missing VapName\n", __func__);
+                wifi_util_info_print(WIFI_CTRL, "%s: Missing VapName\n", __func__);
                 continue;
             }
 
             char *blob_vap_name_str = cJSON_GetStringValue(blob_vap_name);
             strncpy(repurposed_vap_name,blob_vap_name_str,sizeof(repurposed_vap_name)-1);
-            wifi_util_info_print(WIFI_SRI, "repurposed_vap_name:%s %s: %d \n",repurposed_vap_name, __func__,__LINE__ );
+            wifi_util_info_print(WIFI_CTRL, "repurposed_vap_name:%s %s: %d \n",repurposed_vap_name, __func__,__LINE__ );
 
             if (strstr(blob_vap_name_str,"managed_guest_")) {
                 saveptr = strrchr(blob_vap_name_str, (int)'_');
@@ -524,8 +524,7 @@ static int update_vap_info_managed_guest(void *data, void *amenities_blob, wifi_
                 goto done;
             }
             if (!strcmp(vap_info->vap_name,blob_vap_name_str)) {
-                wifi_util_error_print(WIFI_SRI, "%s: %d connected_building_enabled %d \n", __func__,__LINE__,connected_building_enabled);
-                wifi_util_info_print(WIFI_SRI,"%s:%d vap_info->vap_name = %s and radio_index = %d\n", __func__,__LINE__,vap_info->vap_name, radio_index);
+                wifi_util_error_print(WIFI_CTRL, "%s: %d connected_building_enabled %d \n", __func__,__LINE__,connected_building_enabled);
                 int rc = get_managed_guest_bridge(brval, sizeof(brval),radio_index);
                 if (rc != 0)
                 {
@@ -535,17 +534,16 @@ static int update_vap_info_managed_guest(void *data, void *amenities_blob, wifi_
                 {
                     snprintf(vap_info->bridge_name, sizeof(vap_info->bridge_name), "%s", brval);
                 }
-                wifi_util_info_print(WIFI_SRI, "%s: %d vap_info->bridge_name = %s and vap_name = %s\n", __func__,__LINE__,vap_info->bridge_name,vap_info->vap_name);
-                
+                                
                 if (decode_ssid_blob(vap_info, vb_entry, true, execRetVal) != 0) {
-                    wifi_util_error_print(WIFI_SRI, "%s: Failed to decode SSID blob\n", __func__);
+                    wifi_util_error_print(WIFI_CTRL, "%s: Failed to decode SSID blob\n", __func__);
                     status = RETURN_ERR;
                     goto done;
                  }
 
                 security_obj = cJSON_GetObjectItem(vb_entry, "Security");
                 if (security_obj == NULL) {
-                    wifi_util_error_print(WIFI_SRI, "%s: Failed to get %s security\n", __func__, vap_info->vap_name);
+                    wifi_util_error_print(WIFI_CTRL, "%s: Failed to get %s security\n", __func__, vap_info->vap_name);
                     status = RETURN_ERR;
                     goto done;
                 }
@@ -553,13 +551,13 @@ static int update_vap_info_managed_guest(void *data, void *amenities_blob, wifi_
 
                 /* decode security blob */
                 if (decode_security_blob(vap_info, security_obj, execRetVal) != 0) {
-                    wifi_util_error_print(WIFI_SRI, "%s: Failed to decode security blob\n", __func__);
+                    wifi_util_error_print(WIFI_CTRL, "%s: Failed to decode security blob\n", __func__);
                     status = RETURN_ERR;
                     goto done;
                 }
 
                 if (decode_amenities_blob(vap_info, amenities_blob, execRetVal) != 0) {
-                    wifi_util_error_print(WIFI_SRI, "%s: Failed to decode amenities blob\n", __func__);
+                    wifi_util_error_print(WIFI_CTRL, "%s: Failed to decode amenities blob\n", __func__);
                     status = RETURN_ERR;
                     goto done;
                 }
@@ -569,14 +567,12 @@ static int update_vap_info_managed_guest(void *data, void *amenities_blob, wifi_
             }
         }
     } else {
-        wifi_util_info_print(WIFI_SRI, "%s: %d connected_building_enabled %d \n", __func__,__LINE__,connected_building_enabled);
+        wifi_util_info_print(WIFI_CTRL, "%s: %d connected_building_enabled %d \n", __func__,__LINE__,connected_building_enabled);
         snprintf(vap_info->bridge_name, sizeof(vap_info->bridge_name), "br106");
         vap_info->u.bss_info.showSsid = false;
         vap_info->u.bss_info.enabled = true;
         vap_info->u.bss_info.bssMaxSta = 75;
-        wifi_util_info_print(WIFI_SRI,"%s:%d Just before doing memset of repurposed_radius \n",__func__,__LINE__);
         memset(&vap_info->u.bss_info.security.repurposed_radius,0,sizeof(vap_info->u.bss_info.security.repurposed_radius));
-        wifi_util_info_print(WIFI_SRI,"%s:%d Just after doing memset of repurposed_radius \n",__func__,__LINE__);
         vap_info->u.bss_info.am_config.npc.speed_tier = 0;
         vap_info->u.bss_info.mdu_enabled = false;
         wifi_hal_get_default_ssid(ssid, vap_info->vap_index);
@@ -758,11 +754,6 @@ static int connected_subdoc_handler(void *blob, void *amenities_blob, char *vap_
         return ret;
     }
 
-    if (amenities_blob == NULL)
-    {
-        wifi_util_error_print(WIFI_SRI, "%s: Null amenities_blob and managed_wifi_enabled is %d\n", __func__,managed_wifi_enabled);
-    }
-
     data = (webconfig_subdoc_data_t *) malloc(sizeof(webconfig_subdoc_data_t));
     if (data == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s: malloc failed to allocate webconfig_subdoc_data_t, size %d\n", \
@@ -791,19 +782,13 @@ static int connected_subdoc_handler(void *blob, void *amenities_blob, char *vap_
         wifi_util_error_print(WIFI_CTRL, "%s: num_vaps =%d \n", __func__,num_vaps);
         for (i =0; i < num_vaps; i++) {
             unsigned int radio_index;
-            wifi_util_error_print(WIFI_SRI, "%s: num_vaps =%d \n", __func__,num_vaps);
             vap_index = convert_vap_name_to_index(&data->u.decoded.hal_cap.wifi_prop, vap_names[i]);
             lnf_psk_ifname = get_interface_name_for_vap_index(vap_index,(&data->u.decoded.hal_cap.wifi_prop));
 
             if ((lnf_psk_ifname != NULL) && managed_wifi_enabled) {
                 snprintf(managed_interfaces,sizeof(managed_interfaces),"%s",*lnf_psk_ifname);
                 radio_index = convert_vap_name_to_radio_array_index(&data->u.decoded.hal_cap.wifi_prop, vap_names[i]);
-                wifi_util_info_print(WIFI_SRI, "managed_interfaces = %s and lnf_psk_ifname=%s and radio_index = %d\n",managed_interfaces,(char *)lnf_psk_ifname, radio_index);
                 set_managed_guest_interfaces(managed_interfaces, radio_index);
-            }
-            else
-            {
-                wifi_util_info_print(WIFI_SRI,"%s:%d lnf_psk_ifname is %s and managed_wifi_enabled = %d\n", __func__,__LINE__, lnf_psk_ifname==NULL?"null":(char *)lnf_psk_ifname, managed_wifi_enabled);
             }
         }
     }
@@ -1371,7 +1356,7 @@ pErr webconf_process_managed_subdoc(void* data)
         return execRetVal;
     }
 
-    wifi_util_info_print(WIFI_SRI, "%s, Managed wifi blob\n%s\n", __func__, blob_buf);
+    wifi_util_info_print(WIFI_CTRL, "%s, Managed wifi blob\n%s\n", __func__, blob_buf);
 
 
     cJSON *root = cJSON_Parse(blob_buf);
@@ -1381,7 +1366,7 @@ pErr webconf_process_managed_subdoc(void* data)
         strncpy(execRetVal->ErrorMsg, "json parse failure", sizeof(execRetVal->ErrorMsg)-1);
         free(blob_buf);
         free(msg);
-        wifi_util_error_print(WIFI_SRI, "%s: json parse failure\n", __func__);
+        wifi_util_error_print(WIFI_CTRL, "%s: json parse failure\n", __func__);
         return execRetVal;
     }
     cJSON *managed_wifi_enabled = cJSON_GetObjectItem(root, "ManagedWifiEnabled");
@@ -1392,11 +1377,11 @@ pErr webconf_process_managed_subdoc(void* data)
         free(blob_buf);
         free(msg);
         cJSON_Delete(root);
-        wifi_util_error_print(WIFI_SRI, "%s: Failed to Get ManagedWifiEnabled\n", __func__);
+        wifi_util_error_print(WIFI_CTRL, "%s: Failed to Get ManagedWifiEnabled\n", __func__);
         return execRetVal;
     }
     connected_wifi_enabled = cJSON_IsTrue(managed_wifi_enabled)? true : false;
-    wifi_util_dbg_print(WIFI_SRI,"managed_wifi_enabled is %d\n",connected_wifi_enabled);
+    wifi_util_dbg_print(WIFI_CTRL,"managed_wifi_enabled is %d\n",connected_wifi_enabled);
 
     cJSON *amenities_blob = cJSON_DetachItemFromObject(root, "AmenitiesNetworkConfig");
     if (amenities_blob == NULL) {
@@ -1406,7 +1391,7 @@ pErr webconf_process_managed_subdoc(void* data)
         free(blob_buf);
         free(msg);
         cJSON_Delete(root);
-        wifi_util_error_print(WIFI_SRI, "%s: Failed to detach AmenitiesNetworkConfig\n", __func__);
+        wifi_util_error_print(WIFI_CTRL, "%s: Failed to detach AmenitiesNetworkConfig\n", __func__);
         return execRetVal;
     }
 

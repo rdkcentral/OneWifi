@@ -719,19 +719,15 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
     uint8_t num_radios = getNumberRadios();
     bool open_2g_enabled = false, open_5g_enabled = false, open_6g_enabled = false,sec_2g_enabled = false,sec_5g_enabled = false, sec_6g_enabled = false;
     wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
-    wifi_util_info_print(WIFI_SRI,"%s:%d Have entered this function.\n",__func__,__LINE__);
     pub_svc = get_svc_by_type(ctrl, vap_svc_type_public);
+
     for(int radio_indx = 0; radio_indx < num_radios; ++radio_indx) {
         wifi_vap_info_map_t *wifi_vap_map = (wifi_vap_info_map_t *)get_wifidb_vap_map(radio_indx);
         lnf_vap_info = (wifi_vap_info_t *)get_wifidb_vap_parameters(getApFromRadioIndex(radio_indx, VAP_PREFIX_LNF_PSK));
-        wifi_util_info_print(WIFI_SRI,"%s:%d Value of lnf_vap_info->vap_name is %s.\n",__func__,__LINE__,lnf_vap_info->vap_name);
         if (lnf_vap_info && strstr(lnf_vap_info->vap_name, NAME_FREQUENCY_2_4_G) != NULL) {
-            lnf_2g_vap = lnf_vap_info;
-            wifi_util_info_print(WIFI_SRI,"%s:%d lnf_2g_vap->vap_name is %s and NAME_FREQUENCY_2_4_G is %s\n",__func__,__LINE__,lnf_2g_vap->vap_name,NAME_FREQUENCY_2_4_G);
+            lnf_2g_vap = lnf_vap_info; // Store LnF 2.4GHz VAP config to later align it with Hotspot Secure 5GHz config
         }
-        wifi_util_info_print(WIFI_SRI,"%s:%d Value of wifi_vap_map->num_vaps is %d.\n",__func__,__LINE__,wifi_vap_map->num_vaps);
         for(unsigned int j = 0; j < wifi_vap_map->num_vaps; ++j) {
-            wifi_util_info_print(WIFI_SRI,"%s:%d Vap name is %s and j = %d\n",__func__,__LINE__,wifi_vap_map->vap_array[j].vap_name,j);
             if(strstr(wifi_vap_map->vap_array[j].vap_name, "hotspot") == NULL) {
                 continue;
             }
@@ -740,10 +736,9 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
             memset((unsigned char *)&tmp_vap_map, 0, sizeof(wifi_vap_info_map_t));
             tmp_vap_map.num_vaps = 1;
             memcpy((unsigned char *)&tmp_vap_map.vap_array[0], (unsigned char *)&wifi_vap_map->vap_array[j], sizeof(wifi_vap_info_t));
-            wifi_util_info_print(WIFI_SRI,"%s:%d Vap name is %s and copied them to the tmp_vap_map struct\n",__func__,__LINE__,wifi_vap_map->vap_array[j].vap_name);
             rdk_vap_info = get_wifidb_rdk_vap_info(wifi_vap_map->vap_array[j].vap_index);
             if (rdk_vap_info == NULL) {
-                wifi_util_error_print(WIFI_SRI, "%s:%d Failed to get rdk vap info for index %d\n",
+                wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to get rdk vap info for index %d\n",
                     __func__, __LINE__, wifi_vap_map->vap_array[j].vap_index);
                 continue;
             }
@@ -760,7 +755,7 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
                     sec_5g_enabled = rfc_param->hotspot_secure_5g_last_enabled;
                     sec_6g_enabled = rfc_param->hotspot_secure_6g_last_enabled;
                 }
-                wifi_util_dbg_print(WIFI_SRI," vap_name is %s and bool is %d:%d:%d:%d:%d:%d\n",tmp_vap_map.vap_array[0].vap_name,open_2g_enabled,open_5g_enabled,open_6g_enabled,sec_2g_enabled,sec_5g_enabled,sec_6g_enabled);
+                wifi_util_dbg_print(WIFI_CTRL," vap_name is %s and bool is %d:%d:%d:%d:%d:%d\n",tmp_vap_map.vap_array[0].vap_name,open_2g_enabled,open_5g_enabled,open_6g_enabled,sec_2g_enabled,sec_5g_enabled,sec_6g_enabled);
 
                 if ((strcmp(tmp_vap_map.vap_array[0].vap_name,"hotspot_open_2g") == 0) && open_2g_enabled)
                     tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
@@ -780,31 +775,28 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
                 else if ((strcmp(tmp_vap_map.vap_array[0].vap_name,"hotspot_secure_6g") == 0) && sec_6g_enabled)
                     tmp_vap_map.vap_array[0].u.bss_info.enabled = true;
 
-                wifi_util_dbg_print(WIFI_SRI,"enabled is %d\n",tmp_vap_map.vap_array[0].u.bss_info.enabled);
+                wifi_util_dbg_print(WIFI_CTRL,"enabled is %d\n",tmp_vap_map.vap_array[0].u.bss_info.enabled);
             }
 
             if (isVapHotspotSecure5g(wifi_vap_map->vap_array[j].vap_index))
             {
                 memcpy((unsigned char *)&hotspot_5g_vap_info, (unsigned char *)&tmp_vap_map.vap_array[0], sizeof(wifi_vap_info_t));
-                wifi_util_info_print(WIFI_SRI,"%s:%d Hotspot Secure 5G VAP tunnel enable status = %d and VAP Name = %s copied and stored\n",__func__,__LINE__,hotspot_5g_vap_info.u.bss_info.enabled, hotspot_5g_vap_info.vap_name);
             }
             if(pub_svc->update_fn(pub_svc,radio_indx, &tmp_vap_map, rdk_vap_info) != RETURN_OK) {
-                wifi_util_error_print(WIFI_SRI, "%s:%d Unable to create vaps\n", __func__,__LINE__);
+                wifi_util_error_print(WIFI_CTRL, "%s:%d Unable to create vaps\n", __func__,__LINE__);
                 if(hs_evt) {
                     send_hotspot_status(wifi_vap_map->vap_array[j].vap_name, false);
                }
             } else {
-                wifi_util_info_print(WIFI_SRI, "%s:%d Able to create vaps. vap_enable %d and vap_nam = %s\n", __func__,__LINE__, param, tmp_vap_map.vap_array[0].vap_name);
+                wifi_util_info_print(WIFI_CTRL, "%s:%d Able to create vaps. vap_enable %d and vap_name = %s\n", __func__,__LINE__, param, tmp_vap_map.vap_array[0].vap_name);
                 if (!lnf_vap_info)
                 {
-                    wifi_util_info_print(WIFI_SRI, "%s:%d lnf_vap_info is NULL for radio index = %d\n", __func__,__LINE__,radio_indx);
+                    wifi_util_info_print(WIFI_CTRL, "%s:%d lnf_vap_info is NULL for radio index = %d\n", __func__,__LINE__,radio_indx);
                     return;
                 }
-                wifi_util_info_print(WIFI_SRI, "%s:%d Able to create Hotspot vaps. vap_enable %d and lnf_vap->u.bss_info.enabled %d and tmp_vap_map.vap_array[0].u.bss_info.enabled %d\n", __func__,__LINE__, (int)param, lnf_vap_info->u.bss_info.enabled, tmp_vap_map.vap_array[0].u.bss_info.enabled);
                 if (!strstr(lnf_vap_info->vap_name, NAME_FREQUENCY_2_4_G) && lnf_vap_info->u.bss_info.mdu_enabled && !strncmp(tmp_vap_map.vap_array[0].vap_name, VAP_PREFIX_HOTSPOT_SECURE, strlen(VAP_PREFIX_HOTSPOT_SECURE))) {
-                    wifi_util_info_print(WIFI_SRI,"%s:%d Before calling the update_vap_params_to_hal_and_db for lnf_vap_name %s inside loop\n", __func__,__LINE__,lnf_vap_info->vap_name);
                     if (update_lnf_vap_as_per_hotspot_enabled(lnf_vap_info, &tmp_vap_map.vap_array[0]) == -1) {
-                        wifi_util_error_print(WIFI_SRI, "%s:%d Unable to update LnF vaps as per Hotspot VAPs\n", __func__,__LINE__);
+                        wifi_util_error_print(WIFI_CTRL, "%s:%d Unable to update LnF vaps as per Hotspot VAPs\n", __func__,__LINE__);
                         return;
                     }
                 }
@@ -817,20 +809,16 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
 
         }
     }
-    wifi_util_info_print(WIFI_SRI,"%s:%d About to set the LnF VAP 2G with Hotspot 5G Secure configs\n",__func__,__LINE__);
+
     if (!lnf_2g_vap)
     {
-        wifi_util_info_print(WIFI_SRI,"%s:%d lnf_2g_vap is NULL\n", __func__,__LINE__);
+        wifi_util_info_print(WIFI_CTRL,"%s:%d lnf_2g_vap is NULL\n", __func__,__LINE__);
         return;
     }
     if (lnf_2g_vap->u.bss_info.mdu_enabled) {
         if (update_lnf_vap_as_per_hotspot_enabled(lnf_2g_vap, &hotspot_5g_vap_info) == -1)
         {
-            wifi_util_info_print(WIFI_SRI, "%s:%d Unable to update LnF vaps as per Hotspot VAPs\n", __func__,__LINE__);
-        }
-        else
-        {
-            wifi_util_info_print(WIFI_SRI,"%s:%d Updated the LnF VAP status accordingly as per hotspot\n", __func__,__LINE__);
+            wifi_util_info_print(WIFI_CTRL, "%s:%d Unable to update LnF vaps as per Hotspot VAPs\n", __func__,__LINE__);
         }
     }
     if (is_6g_supported_device(wifi_prop) && param != hotspot_vap_param_update) {

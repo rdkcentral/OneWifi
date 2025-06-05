@@ -978,7 +978,6 @@ void callback_Wifi_VAP_Config(ovsdb_update_monitor_t *mon,
             l_bss_param_cfg->connected_building_enabled = new_rec->connected_building_enabled;
             l_bss_param_cfg->mdu_enabled = new_rec->mdu_enabled;
             l_bss_param_cfg->am_config.npc.speed_tier = new_rec->speed_tier;
-            wifi_util_info_print(WIFI_SRI,"%s:%d mdu_enabled %d speed_tier = %d\n",__func__,__LINE__,l_bss_param_cfg->mdu_enabled,l_bss_param_cfg->am_config.npc.speed_tier);
             l_bss_param_cfg->rapidReconnectEnable = new_rec->rapid_connect_enabled;
             l_bss_param_cfg->rapidReconnThreshold = new_rec->rapid_connect_threshold;
             l_bss_param_cfg->vapStatsEnable = new_rec->vap_stats_enable;
@@ -2558,7 +2557,6 @@ int wifidb_update_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
         cfg.connected_building_enabled = config->u.bss_info.connected_building_enabled;
         cfg.speed_tier = config->u.bss_info.am_config.npc.speed_tier;
         cfg.mdu_enabled = config->u.bss_info.mdu_enabled;
-        wifi_util_info_print(WIFI_SRI,"%s:%d Values of speed_tier = %d and mdu_enabled = %d\n",__func__,__LINE__,cfg.speed_tier,cfg.mdu_enabled);
         cfg.rapid_connect_enabled = config->u.bss_info.rapidReconnectEnable;
         cfg.rapid_connect_threshold = config->u.bss_info.rapidReconnThreshold;
         cfg.vap_stats_enable = config->u.bss_info.vapStatsEnable;
@@ -6659,7 +6657,6 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         cfg.u.bss_info.connected_building_enabled = false;
         cfg.u.bss_info.mdu_enabled = false;
         cfg.u.bss_info.am_config.npc.speed_tier = 0;
-        wifi_util_info_print(WIFI_SRI,"%s:%d Value of speed_tier = %d and mdu_enabled = %d\n",__FUNCTION__,__LINE__,cfg.u.bss_info.am_config.npc.speed_tier, cfg.u.bss_info.mdu_enabled);
         if (isVapPrivate(vap_index)) {
             cfg.u.bss_info.vapStatsEnable = true;
             cfg.u.bss_info.wpsPushButton = 0;

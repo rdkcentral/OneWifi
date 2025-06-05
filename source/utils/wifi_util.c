@@ -835,11 +835,6 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
             snprintf(module_filename, sizeof(module_filename), "wifiCsi");
             break;
         }
-        case WIFI_SRI: {
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiSri");
-            snprintf(module_filename, sizeof(module_filename), "wifiSri");
-            break;
-        }
         default:
             return;
     }

@@ -2902,11 +2902,9 @@ UINT getApFromRadioIndex(UINT radioIndex, char* vap_prefix)
 
 int update_vap_params_to_hal_and_db(wifi_vap_info_t *vap, int radio_indx, bool enable_or_disable) {
     if (!vap) {
-        wifi_util_error_print(WIFI_SRI, "%s:%d NULL vap object\n", __func__, __LINE__);
         return RETURN_ERR;
     }
     wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
-    wifi_util_info_print(WIFI_SRI, "%s:%d vap name = %s and radio_indx = %d\n",__func__,__LINE__,vap->vap_name,radio_indx);
     wifi_vap_info_map_t tmp_vap_map;
     memset((unsigned char *)&tmp_vap_map, 0, sizeof(wifi_vap_info_map_t));
     tmp_vap_map.num_vaps = 1;
@@ -2914,21 +2912,21 @@ int update_vap_params_to_hal_and_db(wifi_vap_info_t *vap, int radio_indx, bool e
 
     rdk_wifi_vap_info_t *rdk_vap_info = get_wifidb_rdk_vap_info(vap->vap_index);
     if (!rdk_vap_info) {
-        wifi_util_error_print(WIFI_SRI, "%s:%d Failed to get rdk vap info for index %d\n",
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to get rdk vap info for index %d\n",
                               __func__, __LINE__, vap->vap_index);
         return RETURN_ERR;
     }
     tmp_vap_map.vap_array[0].u.bss_info.enabled = enable_or_disable;
     vap_svc_t *svc = get_svc_by_name(ctrl, vap->vap_name);
     if (!svc) {
-        wifi_util_info_print(WIFI_SRI, "%s:%d: Service not found for vap_name %s\n", __func__, __LINE__, vap->vap_name);
+        wifi_util_info_print(WIFI_CTRL, "%s:%d: Service not found for vap_name %s\n", __func__, __LINE__, vap->vap_name);
         return -1;
     }
 
     if (svc && svc->update_fn(svc, radio_indx, &tmp_vap_map, rdk_vap_info) == RETURN_OK) {
-        wifi_util_info_print(WIFI_SRI, "%s:%d VAP Update done for Lnf VAP %s\n", __func__, __LINE__, vap->vap_name);
+        wifi_util_info_print(WIFI_CTRL, "%s:%d VAP Update done for Lnf VAP %s\n", __func__, __LINE__, vap->vap_name);
     } else {
-        wifi_util_info_print(WIFI_SRI, "%s:%d VAP Update failed for Lnf VAP %s\n", __func__, __LINE__, vap->vap_name);
+        wifi_util_info_print(WIFI_CTRL, "%s:%d VAP Update failed for Lnf VAP %s\n", __func__, __LINE__, vap->vap_name);
         return RETURN_ERR;
     }
     return RETURN_OK;
@@ -2937,23 +2935,22 @@ int update_vap_params_to_hal_and_db(wifi_vap_info_t *vap, int radio_indx, bool e
 int update_lnf_vap_as_per_hotspot_enabled(wifi_vap_info_t *lnf_vap_info, wifi_vap_info_t *hotspot_vap_info)
 {
     if (!lnf_vap_info || !hotspot_vap_info) {
-        wifi_util_error_print(WIFI_SRI, "%s:%d Null VAP info pointer(s)\n", __func__, __LINE__);
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Null VAP info pointer(s)\n", __func__, __LINE__);
         return -1;
     }
     lnf_vap_info->u.bss_info.security.repurposed_radius = hotspot_vap_info->u.bss_info.security.u.radius;
-    wifi_util_info_print(WIFI_SRI, "%s:%d SREESH Value of lnf vapInfo->vap_name = %s and lnf_vap_info->radio_index = %d and lnf_vap_info->u.bss_info.mdu_enabled = %d lnf_vap_info->u.bss_info.enabled = %d hotspot_vap_info->vap_name = %s hotspot_vap_info->u.bss_info.enabled = %d\n", __func__, __LINE__, lnf_vap_info->vap_name, lnf_vap_info->radio_index, lnf_vap_info->u.bss_info.mdu_enabled, lnf_vap_info->u.bss_info.enabled, hotspot_vap_info->vap_name, hotspot_vap_info->u.bss_info.enabled);
-    wifi_util_info_print(WIFI_SRI, "%s:%d Lnf Primary IP = %s Primary Port = %d Secondary Ip = %s Secondary Port = %d\n",
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Lnf Primary IP = %s Primary Port = %d Secondary Ip = %s Secondary Port = %d\n",
         __func__, __LINE__, lnf_vap_info->u.bss_info.security.repurposed_radius.ip, lnf_vap_info->u.bss_info.security.repurposed_radius.port,
         lnf_vap_info->u.bss_info.security.repurposed_radius.s_ip, lnf_vap_info->u.bss_info.security.repurposed_radius.s_port);
-    //Below condition ok for Hotspot VAP enablement as we only take care of actual config change 
+
     if (lnf_vap_info->u.bss_info.mdu_enabled)
     {
         if (update_vap_params_to_hal_and_db(lnf_vap_info, lnf_vap_info->radio_index, hotspot_vap_info->u.bss_info.enabled) != RETURN_OK) {
-            wifi_util_error_print(WIFI_SRI, "%s:%d Failed to update VAP params to DB\n", __func__, __LINE__);
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to update VAP params to DB\n", __func__, __LINE__);
             return -1;
         }
         lnf_vap_info->u.bss_info.enabled = hotspot_vap_info->u.bss_info.enabled;
-        wifi_util_info_print(WIFI_SRI, "%s:%d Value of lnf vapInfo->vap_name = %s and have made LnF Vap's enabled as same as hotspot vap enabled\n", __func__, __LINE__, lnf_vap_info->vap_name);
+        wifi_util_info_print(WIFI_CTRL, "%s:%d Value of lnf vapInfo->vap_name = %s and have made LnF Vap's enabled as same as hotspot vap enabled\n", __func__, __LINE__, lnf_vap_info->vap_name);
     }
     return 0;
 }

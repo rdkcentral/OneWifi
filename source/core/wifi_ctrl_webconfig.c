@@ -2092,7 +2092,6 @@ void webconfig_analytic_event_data_to_hal_apply(webconfig_subdoc_data_t *data)
 
 void process_managed_wifi_enable()
 {
-    wifi_util_info_print(WIFI_SRI, "%s:%d: Inside function\n", __func__, __LINE__);
     wifi_vap_info_t *hotspot5g_vap_info = NULL;
 
     // Traverse radios starting from index 1 (defer radio 0)
@@ -2104,12 +2103,11 @@ void process_managed_wifi_enable()
         wifi_vap_info_t *hotspot_vap_info = get_wifidb_vap_parameters(hotspot_ap_index);
 
         if (!lnf_vap_info || !hotspot_vap_info) {
-            wifi_util_error_print(WIFI_SRI, "%s:%d Failed to get LNF or Hotspot VAP info for radio %u\n", __func__, __LINE__, rIdx);
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to get LNF or Hotspot VAP info for radio %u\n", __func__, __LINE__, rIdx);
             continue;
         }
         if (isVapHotspotSecure5g(hotspot_ap_index)) {
             hotspot5g_vap_info = hotspot_vap_info;
-            wifi_util_info_print(WIFI_SRI, "%s:%d Hotspot 5G Secure VAP Credentials found for index %u\n", __func__, __LINE__, hotspot_ap_index);
         }
         update_lnf_vap_as_per_hotspot_enabled(lnf_vap_info, hotspot_vap_info);
     }
@@ -2125,7 +2123,6 @@ void process_managed_wifi_enable()
         return;
     }
     update_lnf_vap_as_per_hotspot_enabled(lnf_vap_info_0, hotspot5g_vap_info);
-    wifi_util_info_print(WIFI_SRI, "%s:%d Exiting function\n", __func__, __LINE__);
 }
 
 webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc_data_t *data)
@@ -2238,9 +2235,7 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                     bool status = ((ret == RETURN_OK) ? true : false);
                     hotspot_cfg_sem_signal(status);
                     wifi_util_info_print(WIFI_CTRL,":%s:%d xfinity blob cfg status:%d\n", __func__, __LINE__, ret);
-                    wifi_util_info_print(WIFI_SRI,"%s:%d Just before calling the process_wifi_managed_enable_disable\n",__func__,__LINE__);
                     process_managed_wifi_enable();
-                    wifi_util_info_print(WIFI_SRI,"%s:%d Just after calling the process_wifi_managed_enable_disable\n",__func__,__LINE__);
                     webconfig_cac_apply(ctrl, &data->u.decoded);
                     if (is_6g_supported_device((&(get_wifimgr_obj())->hal_cap.wifi_prop))) {
                         wifi_util_info_print(WIFI_CTRL,"6g supported device add rnr of 6g\n");
