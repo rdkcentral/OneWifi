@@ -5773,7 +5773,7 @@ webconfig_error_t decode_em_sta_link_metrics_object(const cJSON *em_sta_link, em
                 sta_link_metrics->per_sta_metrics[i].assoc_sta_link_metrics.assoc_sta_link_metrics_data[j].est_mac_rate_down = param->valuedouble;
     
                 decode_param_integer(bssid_metrics_arr_item, "Estimated Mac Rate Up", param);
-                sta_link_metrics->per_sta_metrics[i].assoc_sta_link_metrics.assoc_sta_link_metrics_data[j].est_mac_rate_down = param->valuedouble;
+                sta_link_metrics->per_sta_metrics[i].assoc_sta_link_metrics.assoc_sta_link_metrics_data[j].est_mac_rate_up = param->valuedouble;
     
                 decode_param_integer(bssid_metrics_arr_item, "RCPI", param);
                 sta_link_metrics->per_sta_metrics[i].assoc_sta_link_metrics.assoc_sta_link_metrics_data[j].rcpi = param->valuedouble;
