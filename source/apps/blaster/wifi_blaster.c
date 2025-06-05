@@ -1523,7 +1523,7 @@ void WiFiBlastClient(void)
     wifi_util_dbg_print(WIFI_BLASTER, "%s : %d exiting the function\n",__func__,__LINE__);
 }
 
-static int send_monitor_event(int event, const char *event_data)
+int send_monitor_event(int event, const char *event_data)
 {
     int ret;
     wifi_monitor_data_t *data;
