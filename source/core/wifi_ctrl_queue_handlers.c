@@ -801,7 +801,7 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
                     return;
                 }
                 wifi_util_info_print(WIFI_SRI, "%s:%d Able to create Hotspot vaps. vap_enable %d and lnf_vap->u.bss_info.enabled %d and tmp_vap_map.vap_array[0].u.bss_info.enabled %d\n", __func__,__LINE__, (int)param, lnf_vap_info->u.bss_info.enabled, tmp_vap_map.vap_array[0].u.bss_info.enabled);
-                if (!strstr(lnf_vap_info->vap_name, NAME_FREQUENCY_2_4_G) && lnf_vap_info->u.bss_info.mdu_enabled) {
+                if (!strstr(lnf_vap_info->vap_name, NAME_FREQUENCY_2_4_G) && lnf_vap_info->u.bss_info.mdu_enabled && !strncmp(tmp_vap_map.vap_array[0].vap_name, VAP_PREFIX_HOTSPOT_SECURE, strlen(VAP_PREFIX_HOTSPOT_SECURE))) {
                     wifi_util_info_print(WIFI_SRI,"%s:%d Before calling the update_vap_params_to_hal_and_db for lnf_vap_name %s inside loop\n", __func__,__LINE__,lnf_vap_info->vap_name);
                     if (update_lnf_vap_as_per_hotspot_enabled(lnf_vap_info, &tmp_vap_map.vap_array[0]) == -1) {
                         wifi_util_error_print(WIFI_SRI, "%s:%d Unable to update LnF vaps as per Hotspot VAPs\n", __func__,__LINE__);
