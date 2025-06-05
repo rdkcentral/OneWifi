@@ -10,7 +10,7 @@ define Package/easymesh
   SECTION:=base
   CATEGORY:=Base system
   TITLE:=EasyMesh
-  DEPENDS:=+avro-c +libopenssl +cJSON +libev +libnl +libnl-genl +libnl-route +libuuid +libstdcpp 
+  DEPENDS:=+avro-c +libopenssl +cJSON +libev +libnl +libnl-genl +libnl-route +libuuid +libstdcpp +libmariadb
 endef
 
 define Package/easymesh/description
@@ -42,12 +42,18 @@ define Build/Compile
 	CFLAGS="$(TARGET_CPPFLAGS) $(TARGET_CFLAGS) $(TARGET_LDFLAGS) $(STAGING_DIR)" \
 	$(MAKE) $(PKG_JOBS) -C $(PKG_BUILD_DIR)/unified-wifi-mesh/build/openwrt/agent/  \
 		$(TARGET_CONFIGURE_OPTS)
+
+	echo "Compiling Easymesh CTRL..."
+	CFLAGS="$(TARGET_CPPFLAGS) $(TARGET_CFLAGS) $(TARGET_LDFLAGS) $(STAGING_DIR)" \
+	$(MAKE) $(PKG_JOBS) -C $(PKG_BUILD_DIR)/unified-wifi-mesh/build/openwrt/ctrl/  \
+		$(TARGET_CONFIGURE_OPTS) $(TARGET_CPPFLAGS)
 endef
 
 define Package/easymesh/install
 	$(INSTALL_DIR) $(1)/usr/bin
 	# Assume onewifi executable is the output
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/unified-wifi-mesh/install/bin/onewifi_em_agent $(1)/usr/bin/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/unified-wifi-mesh/install/bin/onewifi_em_ctrl $(1)/usr/bin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/OneWifi/install/bin/OneWifi $(1)/usr/bin/
 endef
 

@@ -301,7 +301,6 @@ void CosaDmlWiFiGetFromPSM(void)
     wifi_radio_operationParam_t radio_cfg;
     wifi_radio_feature_param_t radio_feat_cfg;
     wifi_vap_info_t vap_config;
-    rdk_wifi_vap_info_t rdk_vap_config;
     wifi_front_haul_bss_t *bss_cfg;
     wifi_global_param_t global_cfg;
     UINT vap_index;
@@ -560,8 +559,6 @@ void CosaDmlWiFiGetFromPSM(void)
 
             vap_index = VAP_INDEX(((webconfig_dml_t *)get_webconfig_dml())->hal_cap, vap_array_index);
             instance_number = vap_index + 1;
-            memset(&vap_config, 0, sizeof(vap_config));
-            wifidb_init_vap_config_default(vap_index, &vap_config, &rdk_vap_config);
 
             if (isVapSTAMesh(vap_index)) {
                 continue;

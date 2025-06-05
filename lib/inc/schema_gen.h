@@ -1609,6 +1609,8 @@
         PJS_OVS_INT(assoc_gate_time) \
         PJS_OVS_INT(whix_log_interval) \
         PJS_OVS_INT(whix_chutility_loginterval) \
+        PJS_OVS_INT(rss_memory_restart_threshold_low) \
+        PJS_OVS_INT(rss_memory_restart_threshold_high) \
         PJS_OVS_INT(assoc_monitor_duration) \
         PJS_OVS_BOOL(rapid_reconnect_enable) \
         PJS_OVS_BOOL(vap_stats_feature) \
@@ -1624,6 +1626,10 @@
         PJS_OVS_STRING(snr_list, 128 + 1) \
         PJS_OVS_STRING(cli_stat_list, 128 + 1) \
         PJS_OVS_STRING(txrx_rate_list, 128 + 1) \
+        PJS_OVS_BOOL(mgt_frame_rate_limit_enable) \
+        PJS_OVS_INT(mgt_frame_rate_limit) \
+        PJS_OVS_INT(mgt_frame_rate_limit_window_size) \
+        PJS_OVS_INT(mgt_frame_rate_limit_cooldown_time) \
     )
 
 #define PJS_SCHEMA_Wifi_Preassoc_Control_Config \
@@ -3267,6 +3273,8 @@
     COLUMN(assoc_gate_time) \
     COLUMN(whix_log_interval) \
     COLUMN(whix_chutility_loginterval) \
+    COLUMN(rss_memory_restart_threshold_low) \
+    COLUMN(rss_memory_restart_threshold_high) \
     COLUMN(assoc_monitor_duration) \
     COLUMN(rapid_reconnect_enable) \
     COLUMN(vap_stats_feature) \
@@ -3282,6 +3290,10 @@
     COLUMN(snr_list) \
     COLUMN(cli_stat_list) \
     COLUMN(txrx_rate_list) \
+    COLUMN(mgt_frame_rate_limit_enable) \
+    COLUMN(mgt_frame_rate_limit) \
+    COLUMN(mgt_frame_rate_limit_window_size) \
+    COLUMN(mgt_frame_rate_limit_cooldown_time) \
 
 #define SCHEMA__Wifi_Preassoc_Control_Config "Wifi_Preassoc_Control_Config"
 #define SCHEMA_COLUMN__Wifi_Preassoc_Control_Config(COLUMN) \
@@ -4520,6 +4532,8 @@
 #define SCHEMA__Wifi_Global_Config__assoc_gate_time "assoc_gate_time"
 #define SCHEMA__Wifi_Global_Config__whix_log_interval "whix_log_interval"
 #define SCHEMA__Wifi_Global_Config__whix_chutility_loginterval "whix_chutility_loginterval"
+#define SCHEMA__Wifi_Global_Config__threshold1 "rss_memory_restart_threshold_low"
+#define SCHEMA__Wifi_Global_Config__threshold2 "rss_memory_restart_threshold_high"
 #define SCHEMA__Wifi_Global_Config__assoc_monitor_duration "assoc_monitor_duration"
 #define SCHEMA__Wifi_Global_Config__rapid_reconnect_enable "rapid_reconnect_enable"
 #define SCHEMA__Wifi_Global_Config__vap_stats_feature "vap_stats_feature"
@@ -4535,6 +4549,10 @@
 #define SCHEMA__Wifi_Global_Config__snr_list "snr_list"
 #define SCHEMA__Wifi_Global_Config__cli_stat_list "cli_stat_list"
 #define SCHEMA__Wifi_Global_Config__txrx_rate_list "txrx_rate_list"
+#define SCHEMA__Wifi_Global_Config__mgt_frame_rate_limit_enable "mgt_frame_rate_limit_enable"
+#define SCHEMA__Wifi_Global_Config__mgt_frame_rate_limit "mgt_frame_rate_limit"
+#define SCHEMA__Wifi_Global_Config__mgt_frame_rate_limit_window_size "mgt_frame_rate_limit_window_size"
+#define SCHEMA__Wifi_Global_Config__mgt_frame_rate_limit_cooldown_time "mgt_frame_rate_limit_cooldown_time"
 
 #define SCHEMA__Wifi_Preassoc_Control_Config__rssi_up_threshold "rssi_up_threshold"
 #define SCHEMA__Wifi_Preassoc_Control_Config__snr_threshold "snr_threshold"

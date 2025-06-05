@@ -43,7 +43,11 @@
 		"NormalizedRssiList": "1,2",
 		"SNRList": "1,2",
 		"CliStatList": "1,2",
-		"TxRxRateList": "1,2"
+		"TxRxRateList": "1,2",
+		"MgtFrameRateLimitEnable": false,
+		"MgtFrameRateLimit": 10,
+		"MgtFrameRateLimitWindowSize": 1,
+		"MgtFrameRateLimitCooldownTime": 30
 	},
 	"WifiRadioConfig": [
 		{

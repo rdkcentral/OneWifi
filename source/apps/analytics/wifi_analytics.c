@@ -322,6 +322,7 @@ int analytics_event_webconfig_get_data(wifi_app_t *apps, void *arg)
 
 int analytics_event_webconfig_set_data_tunnel(wifi_app_t *apps, void *arg)
 {
+    wifi_util_info_print(WIFI_ANALYTICS, analytics_format_webconfig_core, "set", "webconfig tunnel data");
     return RETURN_OK;
 }
 
