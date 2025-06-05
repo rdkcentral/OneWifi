@@ -1326,6 +1326,14 @@ typedef struct {
 } ap_metrics_t;
 
 typedef struct {
+    mac_addr_t ruid;
+    unsigned char noise;
+    unsigned char transmit;
+    unsigned char receive_self;
+    unsigned char receive_other;
+} radio_metrics_t;
+
+typedef struct {
     ap_metrics_t vap_metrics;
     int sta_cnt;
     bool is_sta_traffic_stats_enabled;
@@ -1336,6 +1344,7 @@ typedef struct {
 
 typedef struct {
     int radio_index;
+    radio_metrics_t radio_metrics;
     em_vap_metrics_t vap_reports[MAX_NUM_VAP_PER_RADIO];
 } em_ap_metrics_report_t;
 
