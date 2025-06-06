@@ -90,7 +90,6 @@
 #include "ansc_platform.h"
 #include "pack_file.h"
 #include "ccsp_WifiLog_wrapper.h"
-#include <sysevent/sysevent.h>
 #include <sys/sysinfo.h>
 #include "print_uptime.h"
 #include "wifi_passpoint.h"
