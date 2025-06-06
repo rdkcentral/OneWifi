@@ -3490,8 +3490,9 @@ void handle_hal_indication(wifi_ctrl_t *ctrl, void *data, unsigned int len,
             __FUNCTION__, wifi_event_subtype_to_string(subtype));
         break;
     }
-
+#if ONEWIFI_ANALYTICS_APP_SUPPORT
     apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_hal_ind, subtype, data);
+#endif
 }
 
 void update_subdoc_data(webconfig_subdoc_data_t *data, unsigned int num_ssid,
