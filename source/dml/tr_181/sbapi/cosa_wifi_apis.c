@@ -2018,3 +2018,274 @@ bool get_inst_override_ttl()
     instant_measurement_config_t *pcfg = (instant_measurement_config_t *) get_dml_harvester();
     return pcfg->u_inst_client_def_override_ttl;
 }
+// #if !defined(_HUB4_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_)
+
+ANSC_STATUS
+CosaDmlWiFi_setDppVersion(ULONG apIns, ULONG version){
+    int retPsmSet = CCSP_SUCCESS;
+    char recName[256];
+    char value[2]={0};
+    errno_t  rc   =  -1;
+    static char *DppVersion   = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.X_RDKCENTRAL-COM_DPP.Version";
+
+    rc = sprintf_s(value, sizeof(value) , "%li",version);
+    if(rc < EOK)
+    {
+        ERR_CHK(rc);
+    }
+    memset(recName, 0, sizeof(recName));
+    snprintf(recName, sizeof(recName), DppVersion, apIns);
+
+    retPsmSet = PSM_Set_Record_Value2(bus_handle,g_Subsystem, recName, ccsp_string, value);
+    if (retPsmSet == CCSP_SUCCESS) {
+        return ANSC_STATUS_SUCCESS;
+    }else{
+        CcspTraceError(("%s:%d: PSM Set Failed: %s\n", __func__, __LINE__,recName));
+        return ANSC_STATUS_FAILURE;
+    }
+}
+
+ANSC_STATUS
+CosaDmlWiFi_setDppReconfig(ULONG apIns,char* ParamName,char *value ){
+    int retPsmSet = CCSP_SUCCESS;
+    char recName[256];
+    static char *DppPrivateSigningKey   = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.X_RDKCENTRAL-COM_DPP.PrivateSigningKey";
+    static char *DppPrivateReconfigAccessKey   = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.X_RDKCENTRAL-COM_DPP.PrivateReconfigAccessKey";
+
+    memset(recName, 0, sizeof(recName));
+
+    if (strcmp(ParamName, "PrivateSigningKey") == 0){
+        snprintf(recName, sizeof(recName), DppPrivateSigningKey, apIns);
+    }else if (strcmp(ParamName, "PrivateReconfigAccessKey") == 0){
+        snprintf(recName, sizeof(recName), DppPrivateReconfigAccessKey, apIns);
+    }else{
+        CcspTraceError(("%s:%d: Invalid Config: %s\n", __func__, __LINE__,recName));
+        return ANSC_STATUS_FAILURE;
+    }
+    retPsmSet = PSM_Set_Record_Value2(bus_handle,g_Subsystem, recName, ccsp_string, value);
+    if (retPsmSet == CCSP_SUCCESS) {
+        return ANSC_STATUS_SUCCESS;
+    }else{
+        CcspTraceError(("%s:%d: PSM Set Failed: %s\n", __func__, __LINE__,recName));
+        return ANSC_STATUS_FAILURE;
+    }
+}
+
+ANSC_STATUS
+CosaDmlWiFi_setDppValue(ULONG apIns, ULONG staIndex,char* ParamName,char *value ){
+    int retPsmSet = CCSP_SUCCESS;
+    char recName[256];
+    static char *DppClientMac   = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.X_RDKCENTRAL-COM_DPP.STA.%d.ClientMac";
+    static char *DppInitPubKeyInfo   = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.X_RDKCENTRAL-COM_DPP.STA.%d.InitiatorBootstrapSubjectPublicKeyInfo";
+    static char *DppRespPubKeyInfo   = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.X_RDKCENTRAL-COM_DPP.STA.%d.ResponderBootstrapSubjectPublicKeyInfo";
+    static char *DppChannels   = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.X_RDKCENTRAL-COM_DPP.STA.%d.Channels";
+    static char *DppMaxRetryCnt   = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.X_RDKCENTRAL-COM_DPP.STA.%d.MaxRetryCount";
+    static char *DppActivate   = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.X_RDKCENTRAL-COM_DPP.STA.%d.Activate";
+    static char *DppActivationStatus   = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.X_RDKCENTRAL-COM_DPP.STA.%d.ActivationStatus";
+    static char *DppEnrolleeRespStatus   = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.X_RDKCENTRAL-COM_DPP.STA.%d.EnrolleeResponderStatus";
+    static char *DppEnrolleeKeyManagement   = "eRT.com.cisco.spvtg.ccsp.tr181pa.Device.WiFi.AccessPoint.%d.X_RDKCENTRAL-COM_DPP.STA.%d.KeyManagement";
+
+
+    if (strcmp(ParamName, "ClientMac") == 0){
+        wifi_util_error_print(WIFI_DMCLI,"%s:%d inside set fn fn\n", __FUNCTION__,__LINE__);
+        sprintf(recName, DppClientMac, apIns,staIndex);
+    }else if (strcmp(ParamName, "InitiatorBootstrapSubjectPublicKeyInfo") == 0){
+        sprintf(recName, DppInitPubKeyInfo, apIns,staIndex);
+    }else if (strcmp(ParamName, "ResponderBootstrapSubjectPublicKeyInfo") == 0){
+        sprintf(recName, DppRespPubKeyInfo, apIns,staIndex);
+    }else if (strcmp(ParamName, "Channels") == 0){
+        sprintf(recName, DppChannels, apIns,staIndex);
+    }else if (strcmp(ParamName, "MaxRetryCount") == 0){
+        sprintf(recName, DppMaxRetryCnt, apIns,staIndex);
+    }else if (strcmp(ParamName, "Activate") == 0){
+        sprintf(recName, DppActivate, apIns,staIndex);
+    }else if (strcmp(ParamName, "ActivationStatus") == 0){
+        sprintf(recName, DppActivationStatus, apIns,staIndex);
+    }else if (strcmp(ParamName, "EnrolleeResponderStatus") == 0){
+        sprintf(recName, DppEnrolleeRespStatus, apIns,staIndex);
+    }else if (strcmp(ParamName, "KeyManagement") == 0){
+        sprintf(recName, DppEnrolleeKeyManagement, apIns,staIndex);
+    }else {
+        return ANSC_STATUS_FAILURE;
+    }
+
+    retPsmSet = PSM_Set_Record_Value2(bus_handle,g_Subsystem, recName, ccsp_string, value);
+    if (retPsmSet == CCSP_SUCCESS) {
+        return ANSC_STATUS_SUCCESS;
+    }else{
+        CcspTraceError(("%s:%d: PSM Set Failed: %s\n", __func__, __LINE__,recName));
+        return ANSC_STATUS_FAILURE;
+    }
+}
+
+
+
+ANSC_STATUS
+WiFi_startDPP(wifi_vap_info_t *pWiFiAP, ULONG staIndex)
+{
+    if (start_device_provisioning(pWiFiAP, staIndex)  == RETURN_OK) {
+       CcspTraceError(("%s:%d: DPP Authentication Request Frame send success\n", __func__, __LINE__));
+       return ANSC_STATUS_SUCCESS;
+    } else {
+        CcspTraceError(("%s:%d: DPP Authentication Request Frame send failed\n", __func__, __LINE__));
+        return ANSC_STATUS_FAILURE;
+    }
+    return ANSC_STATUS_FAILURE;
+}
+
+BOOL CosaDmlWiFi_ValidateEasyConnectSingleChannelString(UINT apIndex, const char *pString)
+{
+//TODO for triband
+#ifdef WIFI_HAL_VERSION_3 
+    if((strncmp((CHAR *)getVAPName(apIndex), "private_ssid_2g", strlen("private_ssid_2g")) == 0) &&
+         (atoi(pString) >= 1) && (atoi(pString) <= 11)) {
+        return true;
+    }
+    if(strncmp((CHAR *)getVAPName(apIndex), "private_ssid_5g", strlen("private_ssid_5g")) == 0)
+    {
+        if (((atoi(pString) >= 36) && (atoi(pString) < 52)) ||
+            ((atoi(pString) >= 136) && (atoi(pString) <= 165)))
+        {
+            return true;
+        }
+    }
+
+#else
+    if ((apIndex == 0) && (atoi(pString) >= 1) && (atoi(pString) <= 11)) {
+        return true;
+    }
+    if ((apIndex == 1) && (atoi(pString) >= 36) && (atoi(pString) < 52)) {
+        return true;
+    }
+    if ((apIndex == 1) && (atoi(pString) >= 136) && (atoi(pString) <= 165)) {
+        return true;
+    }
+#endif
+    return false;
+}
+
+#if !defined(_HUB4_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_)
+void CosaDmlWiFi_AllPossibleEasyConnectChannels(UINT apIndex, wifi_vap_dpp_sta_t *pWifiDppSta)
+{
+#if !defined(_BWG_PRODUCT_REQ_)
+#if !defined(_XF3_PRODUCT_REQ_) && !defined(_CBR_PRODUCT_REQ_) && !defined(_HUB4_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_) && !defined(_PLATFORM_TURRIS_) && !defined(_PLATFORM_RASPBERRYPI_)
+    wifi_easy_connect_best_enrollee_channels_t *channels;
+    unsigned int i, tmp;
+    ULONG op_channel = 0;
+    channels = get_easy_connect_best_enrollee_channels(apIndex);
+    pWifiDppSta->NumChannels = channels->num;
+    for (i = 0; i < channels->num; i++) {
+        pWifiDppSta->Channels[i] = channels->channels[i];
+    }
+#ifdef WIFI_HAL_VERSION_3
+    if (wifi_getRadioChannel(getRadioIndexFromAp(apIndex), &op_channel) != RETURN_OK) {
+#else
+    if (wifi_getRadioChannel(apIndex%2, &op_channel) != RETURN_OK) {
+#endif
+        return;
+    }
+    for (i = 0; i < pWifiDppSta->NumChannels; i++) {
+        if (op_channel == pWifiDppSta->Channels[i]) {
+            //swap
+            tmp = pWifiDppSta->Channels[0];
+            pWifiDppSta->Channels[0] = op_channel;
+            pWifiDppSta->Channels[i] = tmp;
+            break;
+        }
+    }
+#endif //#if !defined(_XF3_PRODUCT_REQ_) && !defined(_CBR_PRODUCT_REQ_) && !defined(_HUB4_PRODUCT_REQ_) && !defined(_XB7_PRODUCT_REQ_) && !defined(_PLATFORM_TURRIS_) && !defined(_PLATFORM_RASPBERRYPI_)
+#endif //#if !defined(_BWG_PRODUCT_REQ_)
+    UNREFERENCED_PARAMETER(apIndex);
+    UNREFERENCED_PARAMETER(pWifiDppSta);
+}
+
+ANSC_STATUS CosaDmlWiFi_ParseEasyConnectEnrolleeChannels(UINT apIndex, wifi_vap_dpp_sta_t *pWifiDppSta, const char *pString)
+{
+    char tmpStr[256] = {0x0};
+    char *ptr, *tmp;
+    unsigned int i, j = 0;
+    CcspWifiTrace(("RDK_LOG_WARN, %s:%d\n",__FUNCTION__,__LINE__));
+    if (strcmp(pString, "") == 0) {
+        // Empty String
+        CosaDmlWiFi_AllPossibleEasyConnectChannels(apIndex, pWifiDppSta);
+    } else {
+        memset(tmpStr, 0, sizeof(tmpStr));
+        for (i = 0; i < strlen(pString) && i < sizeof(tmpStr); i++) {
+            if (((pString[i] >= '0') && (pString[i] <='9')) || pString[i] == ',') {
+                tmpStr[j] = pString[i];
+                j++;
+            }
+        }
+        // there is only one channel
+        if ((ptr = strchr(tmpStr, ',')) == NULL) {
+            if (CosaDmlWiFi_ValidateEasyConnectSingleChannelString(apIndex, tmpStr) == true) {
+                pWifiDppSta->NumChannels = 1;
+                pWifiDppSta->Channels[0] = atoi(tmpStr);
+            } else {
+                CosaDmlWiFi_AllPossibleEasyConnectChannels(apIndex, pWifiDppSta);
+            }
+        } else {
+            // there are comma separated channels
+            ptr = tmpStr;
+            tmp = tmpStr;
+            pWifiDppSta->NumChannels = 0;
+            while ((ptr = strchr(tmp, ',')) != NULL && (pWifiDppSta->NumChannels < 32)) {
+                *ptr = 0;
+                ptr++;
+                if (CosaDmlWiFi_ValidateEasyConnectSingleChannelString(apIndex, tmp) == true) {
+                    pWifiDppSta->Channels[pWifiDppSta->NumChannels] = atoi(tmp);
+                    pWifiDppSta->NumChannels += 1;
+                }
+                tmp = ptr;
+            }
+            if (CosaDmlWiFi_ValidateEasyConnectSingleChannelString(apIndex, tmp) == true && (pWifiDppSta->NumChannels < 32)) {
+                pWifiDppSta->Channels[pWifiDppSta->NumChannels] = atoi(tmp);
+                pWifiDppSta->NumChannels += 1;
+            }
+        }
+    }
+    return ANSC_STATUS_SUCCESS;
+}
+#endif
+/*int CosaDmlWiFi_IsValidMacAddr(const char* mac)
+{
+    int i = 0;
+    int s = 0;
+
+    while (*mac) 
+    {
+        if (isxdigit(*mac)) 
+        {
+            i++;
+        } 
+        else if (*mac == ':')
+        {
+            if (i == 0 || i / 2 - 1 != s)
+                break;
+            ++s;
+        }
+        else
+        {
+            s = -1;
+        }
+        ++mac;
+    }
+    return (i == 12 && (s == 5 || s == 0));
+}*/
+char *WiFi_ChannelsListToString(wifi_vap_dpp_sta_t *pWifiDppSta, char *string)
+{
+    char tmpStr[8];
+    unsigned int i;
+    errno_t rc = -1;
+    for (i = 0; i < pWifiDppSta->NumChannels; i++) {
+        snprintf(tmpStr, sizeof(tmpStr), "%d,", pWifiDppSta->Channels[i]);
+        /*string is a pointer pointing to 128 bytes */
+        rc = strcat_s(string, 128 ,tmpStr);
+        ERR_CHK(rc);
+    }
+    if (pWifiDppSta->NumChannels > 0) {
+        string[strlen(string) - 1] = 0;
+    }
+    wifi_util_error_print(WIFI_DMCLI,"%s:%d inside string fn:%d\n", __FUNCTION__,__LINE__,pWifiDppSta->NumChannels);
+    return string;
+}

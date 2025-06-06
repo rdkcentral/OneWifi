@@ -32,6 +32,7 @@ typedef struct {
     unsigned int    channels[32];
 } wifi_easy_connect_best_enrollee_channels_t;
 
+#define MAX_DPP_VAP 8
 typedef struct {
 	void 	*reconf_ctx;
 	char	reconf_pub_key[512];
@@ -43,8 +44,9 @@ typedef struct {
 } wifi_easy_connect_csign_t;
 
 typedef struct {
-    wifi_easy_connect_reconfig_t    reconfig[MAX_NUM_RADIOS];
-    wifi_easy_connect_csign_t       csign[MAX_NUM_RADIOS];
+    wifi_vap_info_t                 vapInfo;
+    wifi_easy_connect_reconfig_t    reconfig[MAX_DPP_VAP];
+    wifi_easy_connect_csign_t       csign[MAX_DPP_VAP];
     wifi_easy_connect_best_enrollee_channels_t    channels_on_ap[2];
 
 } wifi_easy_connect_t;
