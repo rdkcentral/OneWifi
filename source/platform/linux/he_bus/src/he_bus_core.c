@@ -1197,7 +1197,7 @@ he_bus_error_t he_bus_method_invoke(he_bus_handle_t handle, char const *event_na
 
     status = prepare_initial_bus_header(&req_data, handle->component_name, he_bus_msg_set);
     if (status != he_bus_error_success) {
-        he_bus_core_error_print("%s:%d initial bus header preapre is failed:%d\r\n", __func__,
+        he_bus_core_error_print("%s:%d initial bus header prepare is failed:%d\r\n", __func__,
             __LINE__, status);
         return status;
     }
@@ -1205,7 +1205,7 @@ he_bus_error_t he_bus_method_invoke(he_bus_handle_t handle, char const *event_na
     status = prepare_rem_payload_bus_msg_data(event_name, &req_data, he_bus_msg_method_event,
         p_input_data, he_bus_error_success);
     if (status != he_bus_error_success) {
-        he_bus_core_error_print("%s:%d rem bus payload preapre is failed:%d for %s\r\n", __func__,
+        he_bus_core_error_print("%s:%d rem bus payload prepare is failed:%d for %s\r\n", __func__,
             __LINE__, status, event_name);
         return status;
     }
