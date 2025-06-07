@@ -1602,10 +1602,10 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
     
     decode_param_allow_empty_integer(vap, "SpeedTier", param, intval);
     if (!intval) {
-        vap_info->u.bss_info.speed_tier = intval;
+        vap_info->u.bss_info.am_config.npc.speed_tier = intval;
     } else {
         decode_param_integer(vap, "SpeedTier", param);
-        vap_info->u.bss_info.speed_tier = param->valuedouble;
+        vap_info->u.bss_info.am_config.npc.speed_tier = param->valuedouble;
     }
 
     decode_param_allow_empty_bool(vap, "MDUEnabled", param, mdu_value);
