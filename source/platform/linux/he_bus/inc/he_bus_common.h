@@ -141,7 +141,8 @@ typedef enum {
     he_bus_msg_table_remove_event,
     he_bus_msg_publish_event,
     he_bus_msg_sub_event,
-    he_bus_msg_sub_ex_async_event
+    he_bus_msg_sub_ex_async_event,
+    he_bus_msg_method_event
 } he_bus_msg_sub_type_t;
 
 typedef enum he_bus_error {

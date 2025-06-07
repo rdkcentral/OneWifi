@@ -103,7 +103,7 @@ typedef struct he_bus_callback_table {
     he_bus_table_remove_row_handler_t table_remove_row_handler; /**< Remove a row from a table*/
     he_bus_event_sub_handler_t event_sub_handler; /**< Event subscribe and unsubscribe
                                                        handler for the event name */
-    he_bus_method_handler_t methodHandler; /**< Method handler  */
+    he_bus_method_handler_t method_handler; /**< Method handler  */
 } he_bus_callback_table_t;
 
 typedef struct he_bus_sub_callback_table {

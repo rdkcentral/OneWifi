@@ -228,7 +228,7 @@ bus_error_t bus_reg_data_elements(bus_handle_t *handle, bus_data_element_t *data
         p_data_elem_map[index].cb_table.table_add_row_handler  = (he_bus_table_add_row_handler_t)data_element[index].cb_table.table_add_row_handler;
         p_data_elem_map[index].cb_table.table_remove_row_handler  = (he_bus_table_remove_row_handler_t)data_element[index].cb_table.table_remove_row_handler;
         p_data_elem_map[index].cb_table.event_sub_handler  = (he_bus_event_sub_handler_t)data_element[index].cb_table.event_sub_handler;
-        p_data_elem_map[index].cb_table.methodHandler  = (he_bus_method_handler_t)data_element[index].cb_table.method_handler;
+        p_data_elem_map[index].cb_table.method_handler  = (he_bus_method_handler_t)data_element[index].cb_table.method_handler;
     }
 
     rc = he_bus_reg_data_elem(p_bus_handle, p_data_elem_map, num_of_element);
@@ -240,10 +240,20 @@ bus_error_t bus_reg_data_elements(bus_handle_t *handle, bus_data_element_t *data
     return (bus_error_t)rc;
 }
 
-bus_error_t bus_method_invoke(bus_handle_t *handle, void *paramName, char *event, char *data, bool *psm_notify_flag, uint8_t flag)
+bus_error_t bus_method_invoke(bus_handle_t *handle, void *paramName, char *event,
+    raw_data_t *input_data, raw_data_t *output_data, uint8_t input_bus_data)
 {
-    int rc = bus_error_success;
-    return ((rc != 0) ? -1 : 0);
+    VERIFY_NULL_WITH_RC(handle);
+    VERIFY_NULL_WITH_RC(event);
+
+    he_bus_error_t rc;
+    he_bus_handle_t p_bus_handle = handle->u.he_bus_handle;
+
+    rc = he_bus_method_invoke(p_bus_handle, event, input_data, output_data);
+    if (rc != HE_BUS_RETURN_OK) {
+        wifi_util_error_print(WIFI_BUS,"%s:%d method_invoke is failed:%d\n", __func__, __LINE__, rc);
+    }
+    return (bus_error_t)rc;
 }
 
 bus_error_t bus_unreg_data_elements(bus_handle_t *handle, uint32_t num_of_element, bus_data_element_t *data_element)
