@@ -39,6 +39,7 @@
 #include <sys/un.h>
 #include <assert.h>
 #include <limits.h>
+#include <sysevent/sysevent.h>
 #include "wifi_passpoint.h"
 #include "safec_lib_common.h"
 #include "secure_wrapper.h"

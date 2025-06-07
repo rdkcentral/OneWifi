@@ -394,6 +394,10 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
     uint8_mac_to_string_mac((uint8_t *)vap_info->u.bss_info.mld_info.common_info.mld_addr, mld_mac_str);
     cJSON_AddStringToObject(vap_object, "MLD_Addr", mld_mac_str);
 
+    cJSON_AddNumberToObject(vap_object, "SpeedTier", vap_info->u.bss_info.am_config.npc.speed_tier);
+
+    cJSON_AddBoolToObject(vap_object, "MDUEnabled", vap_info->u.bss_info.mdu_enabled);
+
     // Isolation
     cJSON_AddBoolToObject(vap_object, "IsolationEnable", vap_info->u.bss_info.isolation);
 
@@ -768,21 +772,6 @@ webconfig_error_t encode_wifi_global_config(const wifi_global_param_t *global_in
 
     //TxRxRateList
     cJSON_AddStringToObject(global_obj, "TxRxRateList", global_info->txrx_rate_list);
-
-    // MgtFrameRateLimitEnable
-    cJSON_AddBoolToObject(global_obj, "MgtFrameRateLimitEnable",
-        global_info->mgt_frame_rate_limit_enable);
-
-    // MgtFrameRateLimit
-    cJSON_AddNumberToObject(global_obj, "MgtFrameRateLimit", global_info->mgt_frame_rate_limit);
-
-    // MgtFrameRateLimitWindowSize
-    cJSON_AddNumberToObject(global_obj, "MgtFrameRateLimitWindowSize",
-        global_info->mgt_frame_rate_limit_window_size);
-
-    // MgtFrameRateLimitCooldownTime
-    cJSON_AddNumberToObject(global_obj, "MgtFrameRateLimitCooldownTime",
-        global_info->mgt_frame_rate_limit_cooldown_time);
 
     return webconfig_error_none;
 }
@@ -3094,8 +3083,9 @@ webconfig_error_t encode_em_ap_metrics_report_object(rdk_wifi_radio_t *radio,
 
         for (int k = 0; k < MAX_NUM_VAP_PER_RADIO; k++) {
             ap_metrics = &ap_report->vap_reports[k];
-            if (strncmp(vap->u.bss_info.bssid, ap_metrics->vap_metrics.bssid,
-                sizeof(bssid_t)) == 0) {
+            if ((strncmp(vap->u.bss_info.bssid, ap_metrics->vap_metrics.bssid,
+                sizeof(bssid_t)) == 0) &&
+                (vap->u.bss_info.bssid[0] != 0)) {
                     vap_arr_index = k;
                     break;
             }
@@ -3103,8 +3093,6 @@ webconfig_error_t encode_em_ap_metrics_report_object(rdk_wifi_radio_t *radio,
         if(vap_arr_index == -1) {
             continue;
         }
-
-        wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d vap_arr_index: %d\n", __func__, __LINE__, vap_arr_index);
 
         ap_metrics = &ap_report->vap_reports[vap_arr_index];
 
@@ -3140,25 +3128,6 @@ webconfig_error_t encode_em_ap_metrics_report_object(rdk_wifi_radio_t *radio,
             ap_metrics->vap_metrics.unicast_bytes_sent);
         cJSON_AddNumberToObject(temp_obj, "BSS.UnicastBytesReceived",
             ap_metrics->vap_metrics.unicast_bytes_rcvd);
-
-
-        // Create Radio Metrics
-        temp_obj = cJSON_CreateObject();
-        if ((temp_obj == NULL)) {
-            wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d NULL Pointer\n", __func__, __LINE__);
-            return webconfig_error_encode;
-        }
-        cJSON_AddItemToObject(param_obj, "Radio Metrics", temp_obj);
-        to_mac_str(ap_report->radio_metrics.ruid, mac_string);
-        cJSON_AddStringToObject(temp_obj, "Radio ID", mac_string);
-        cJSON_AddNumberToObject(temp_obj, "Radio.Noise",
-            ap_report->radio_metrics.noise);
-        cJSON_AddNumberToObject(temp_obj, "Radio.Transmit",
-            ap_report->radio_metrics.transmit);
-        cJSON_AddNumberToObject(temp_obj, "Radio.ReceiveSelf",
-            ap_report->radio_metrics.receive_self);
-        cJSON_AddNumberToObject(temp_obj, "Radio.ReceiveOther",
-            ap_report->radio_metrics.receive_other);
 
         // check sta link metrics and traffic stats
         if (ap_metrics->is_sta_traffic_stats_enabled == true) {

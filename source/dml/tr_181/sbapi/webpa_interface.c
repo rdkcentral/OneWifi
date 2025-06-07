@@ -31,6 +31,7 @@
 #include <libparodus.h>
 #include <math.h>
 #include <syscfg/syscfg.h>
+#include <sysevent/sysevent.h>
 
 #define MAX_PARAMETERNAME_LEN 512
 #define ETH_WAN_STATUS_PARAM "Device.Ethernet.X_RDKCENTRAL-COM_WAN.Enabled"
@@ -45,6 +46,7 @@ static void checkComponentHealthStatus(char *compName, char *dbusPath, char *sta
 static void waitForEthAgentComponentReady();
 static int check_ethernet_wan_status();
 static void *handle_parodus();
+int s_sysevent_connect(token_t *out_se_token);
 
 #define CCSP_AGENT_WEBPA_SUBSYSTEM "eRT."
 
@@ -407,11 +409,12 @@ char *getDeviceMac()
     int len = 0;
     raw_data_t data;
     char *component_name = "getDeviceMac";
-    FILE *fp;
+
     memset(&data, 0, sizeof(raw_data_t));
 
     while (!strlen(webpa_interface.deviceMAC)) {
         pthread_mutex_lock(&webpa_interface.device_mac_mutex);
+        int fd = 0;
 #if defined(_COSA_BCM_MIPS_)
 #define CPE_MAC_NAMESPACE "Device.DPoE.Mac_address"
 #else
@@ -421,6 +424,7 @@ char *getDeviceMac()
 #define CPE_MAC_NAMESPACE "Device.X_CISCO_COM_CableModem.MACAddress"
 #endif
 #endif /*_COSA_BCM_MIPS_*/
+        token_t token;
         char deviceMACValue[32] = { '\0' };
 
         if (strlen(webpa_interface.deviceMAC)) {
@@ -428,18 +432,12 @@ char *getDeviceMac()
             return NULL;
         }
 
-        if (CCSP_SUCCESS == check_ethernet_wan_status())
-        {
-	    fp = popen("sysevent get eth_wan_mac", "r");
-	    if (fp != NULL) {
-               if (fgets(deviceMACValue, sizeof(deviceMACValue), fp) != NULL)
-               {
-		  // ToDo :- Need to validate MAC address format
-		  AnscMacToLower(webpa_interface.deviceMAC, deviceMACValue,
-                  sizeof(webpa_interface.deviceMAC));
-               }
-	       pclose(fp);
-            }    
+        fd = s_sysevent_connect(&token);
+        if (CCSP_SUCCESS == check_ethernet_wan_status() &&
+            sysevent_get(fd, token, "eth_wan_mac", deviceMACValue, sizeof(deviceMACValue)) == 0 &&
+            deviceMACValue[0] != '\0') {
+            AnscMacToLower(webpa_interface.deviceMAC, deviceMACValue,
+                sizeof(webpa_interface.deviceMAC));
         } else {
             bus_handle_t bus_handle;
 

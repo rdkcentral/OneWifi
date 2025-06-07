@@ -1,4 +1,4 @@
-name: Build Check
+name: Build Check on Arm64
 
 on:
   push:
@@ -8,18 +8,8 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    
-    strategy:
-      matrix:
-        platform:
-          - name: "Raspberry Pi"
-            makefile_path: "build/linux/rpi/makefile"
-          - name: "Banana Pi R4"
-            makefile_path: "build/linux/bpi/makefile"
-      fail-fast: false
 
-    name: Build for ${{ matrix.platform.name }}
+    runs-on: ubuntu-latest
 
     steps:
     - name: Checkout current repository
@@ -32,14 +22,6 @@ jobs:
         mkdir -p easymesh_project
         git clone https://github.com/rdkcentral/unified-wifi-mesh.git easymesh_project/unified-wifi-mesh
         mv OneWifi easymesh_project/OneWifi
-
-    - name: Cache dependencies
-      uses: actions/cache@v4
-      with:
-        path: /var/cache/apt
-        key: ${{ runner.os }}-apt-${{ hashFiles('**/apt-packages') }}
-        restore-keys: |
-          ${{ runner.os }}-apt-
 
     - name: Set up dependencies
       run: |
@@ -68,16 +50,16 @@ jobs:
                                 file \
                                 golang
 
-    - name: Setup OneWiFi for ${{ matrix.platform.name }}
+    - name: Setup OneWiFi
       working-directory: easymesh_project/OneWifi
       run: |
         git config --global user.email "${{ github.actor }}@users.noreply.github.com"
         git config --global user.name "${{ github.actor }}"
-        make -f ${{ matrix.platform.makefile_path }} setup
+        make -f build/linux/makefile setup
       env:
         GITHUB_ACTOR: ${{ github.actor }}
 
-    - name: Build OneWiFi for ${{ matrix.platform.name }}
+    - name: Build OneWiFi
       working-directory: easymesh_project/OneWifi
       run: |
-        make -f ${{ matrix.platform.makefile_path }} all
+        make -f build/linux/makefile all

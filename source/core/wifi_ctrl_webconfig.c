@@ -1273,7 +1273,6 @@ int webconfig_vif_neighbors_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_da
 int webconfig_global_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_data_t *data)
 {
     wifi_util_dbg_print(WIFI_CTRL,"Inside webconfig_global_config_apply\n");
-    wifi_global_param_t *param;
     wifi_global_config_t *data_global_config;
     data_global_config = &data->config;
     bool global_param_changed = false;
@@ -1288,16 +1287,9 @@ int webconfig_global_config_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_decoded_da
     }
 
     if (global_param_changed) {
-        param = &data_global_config->global_parameters;
-
-        wifi_hal_set_mgt_frame_rate_limit(param->mgt_frame_rate_limit_enable,
-            param->mgt_frame_rate_limit, param->mgt_frame_rate_limit_window_size,
-            param->mgt_frame_rate_limit_cooldown_time);
-
-        wifi_util_dbg_print(WIFI_CTRL,
-            "Global config value is changed hence update the global config in DB\n");
-        if (update_wifi_global_config(param) == -1) {
-            wifi_util_dbg_print(WIFI_CTRL, "Global config value is not updated in DB\n");
+        wifi_util_dbg_print(WIFI_CTRL,"Global config value is changed hence update the global config in DB\n");
+        if(update_wifi_global_config(&data_global_config->global_parameters) == -1) {
+            wifi_util_dbg_print(WIFI_CTRL,"Global config value is not updated in DB\n");
             return RETURN_ERR;
         }
     }
@@ -2097,6 +2089,42 @@ void webconfig_analytic_event_data_to_hal_apply(webconfig_subdoc_data_t *data)
     return;
 }
 
+
+void process_managed_wifi_enable()
+{
+    wifi_vap_info_t *hotspot5g_vap_info = NULL;
+
+    // Traverse radios starting from index 1 (defer radio 0)
+    for (UINT rIdx = 1; rIdx < getNumberRadios(); rIdx++) {
+        UINT lnf_ap_index = getApFromRadioIndex(rIdx, VAP_PREFIX_LNF_PSK);
+        UINT hotspot_ap_index = getApFromRadioIndex(rIdx, VAP_PREFIX_HOTSPOT_SECURE);
+
+        wifi_vap_info_t *lnf_vap_info = get_wifidb_vap_parameters(lnf_ap_index);
+        wifi_vap_info_t *hotspot_vap_info = get_wifidb_vap_parameters(hotspot_ap_index);
+
+        if (!lnf_vap_info || !hotspot_vap_info) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to get LNF or Hotspot VAP info for radio %u\n", __func__, __LINE__, rIdx);
+            continue;
+        }
+        if (isVapHotspotSecure5g(hotspot_ap_index)) {
+            hotspot5g_vap_info = hotspot_vap_info;
+        }
+        update_lnf_vap_as_per_hotspot_enabled(lnf_vap_info, hotspot_vap_info);
+    }
+    // Handle radio 0 (deferred)
+    UINT lnf_ap_index_0 = getApFromRadioIndex(0, VAP_PREFIX_LNF_PSK);
+    wifi_vap_info_t *lnf_vap_info_0 = get_wifidb_vap_parameters(lnf_ap_index_0);
+    if (!lnf_vap_info_0) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to get LNF VAP info for index %u\n", __func__, __LINE__, lnf_ap_index_0);
+        return;
+    }
+    if (!hotspot5g_vap_info) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Hotspot 5G Secure VAP info not found, cannot update LNF radio 0\n", __func__, __LINE__);
+        return;
+    }
+    update_lnf_vap_as_per_hotspot_enabled(lnf_vap_info_0, hotspot5g_vap_info);
+}
+
 webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc_data_t *data)
 {
     int ret = RETURN_OK;
@@ -2207,6 +2235,7 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                     bool status = ((ret == RETURN_OK) ? true : false);
                     hotspot_cfg_sem_signal(status);
                     wifi_util_info_print(WIFI_CTRL,":%s:%d xfinity blob cfg status:%d\n", __func__, __LINE__, ret);
+                    process_managed_wifi_enable();
                     webconfig_cac_apply(ctrl, &data->u.decoded);
                     if (is_6g_supported_device((&(get_wifimgr_obj())->hal_cap.wifi_prop))) {
                         wifi_util_info_print(WIFI_CTRL,"6g supported device add rnr of 6g\n");

@@ -336,6 +336,8 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
 
         cfg.u.bss_info.network_initiated_greylist = false;
         cfg.u.bss_info.connected_building_enabled = false;
+        cfg.u.bss_info.mdu_enabled = false;
+        cfg.u.bss_info.am_config.npc.speed_tier = 0;
         if (isVapPrivate(vap_index)) {
             cfg.u.bss_info.vapStatsEnable = true;
             cfg.u.bss_info.wpsPushButton = 0;

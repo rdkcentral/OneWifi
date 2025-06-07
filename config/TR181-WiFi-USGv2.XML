@@ -918,43 +918,6 @@ INSTMSMT_PH2 -->
 			</objects>
 		</object>
 
-               <object>
-                    <name>X_RDKCENTRAL-COM_MgtFrameRateLimit</name>
-                    <objectType>object</objectType>
-                    <functions>
-                        <func_GetParamBoolValue>MgtFrameRateLimit_GetParamBoolValue</func_GetParamBoolValue>
-                        <func_SetParamBoolValue>MgtFrameRateLimit_SetParamBoolValue</func_SetParamBoolValue>
-                        <func_GetParamUlongValue>MgtFrameRateLimit_GetParamUlongValue</func_GetParamUlongValue>
-                        <func_SetParamUlongValue>MgtFrameRateLimit_SetParamUlongValue</func_SetParamUlongValue>
-                    </functions>
-                        <parameters>
-                        <parameter>
-                            <name>Enable</name>
-                            <type>boolean</type>
-                            <syntax>bool</syntax>
-                            <writable>true</writable>
-                        </parameter>
-                        <parameter>
-                            <name>RateLimit</name>
-                            <type>unsignedInt</type>
-                            <syntax>uint32</syntax>
-                            <writable>true</writable>
-                        </parameter>
-                        <parameter>
-                            <name>WindowSize</name>
-                            <type>unsignedInt</type>
-                            <syntax>uint32</syntax>
-                            <writable>true</writable>
-                        </parameter>
-                        <parameter>
-                            <name>CooldownTime</name>
-                            <type>unsignedInt</type>
-                            <syntax>uint32</syntax>
-                            <writable>true</writable>
-                        </parameter>
-                    </parameters>
-                </object>
-
                 <object>
                     <name>Radio</name>
                     <objectType>staticTable</objectType>

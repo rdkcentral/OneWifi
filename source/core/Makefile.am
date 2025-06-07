@@ -102,12 +102,7 @@ OneWifi_SOURCES += $(top_srcdir)/source/ccsp/ccsp.c
 if ONEWIFI_DML_SUPPORT
 OneWifi_SOURCES += $(top_srcdir)/source/ccsp/ccsp_api.c
 endif
-if USE_EXTENDER_MISC
-OneWifi_SOURCES += $(top_srcdir)/source/platform/extender/misc.c
-else
-OneWifi_SOURCES += $(top_srcdir)/source/platform/rdkb/misc.c 
-endif
-OneWifi_SOURCES += $(top_srcdir)/source/platform/common/common.c
+OneWifi_SOURCES += $(top_srcdir)/source/platform/rdkb/misc.c $(top_srcdir)/source/platform/common/common.c
 
 if ONEWIFI_DML_SUPPORT
 if EASYCONNECT_SUPPORT
@@ -118,32 +113,7 @@ OneWifi_SOURCES += $(top_srcdir)/source/stats/wifi_associated_devices_msmt.c
 if JOURNALCTL_SUPPORT
 OneWifi_SOURCES += $(top_srcdir)/lib/log/log_journal.c
 endif
-
-OneWifi_SOURCES += $(top_srcdir)/source/apps/wifi_apps.c $(top_srcdir)/source/apps/wifi_apps_mgr.c
-if ONEWIFI_ANALYTICS_APP_SUPPORT
-OneWifi_SOURCES += $(top_srcdir)/source/apps/analytics/wifi_analytics.c
-endif
-if ONEWIFI_LEVL_APP_SUPPORT
-OneWifi_SOURCES += $(top_srcdir)/source/apps/levl/wifi_levl.c
-endif
-if ONEWIFI_CSI_APP_SUPPORT
-OneWifi_SOURCES += $(top_srcdir)/source/apps/csi/wifi_csi.c
-endif
-if ONEWIFI_MOTION_APP_SUPPORT
-OneWifi_SOURCES += $(top_srcdir)/source/apps/motion/wifi_motion.c
-endif
-if ONEWIFI_WHIX_APP_SUPPORT
-OneWifi_SOURCES += $(top_srcdir)/source/apps/whix/wifi_whix.c
-endif
-if ONEWIFI_HARVESTER_APP_SUPPORT
-OneWifi_SOURCES += $(top_srcdir)/source/apps/harvester/wifi_harvester.c
-endif
-if ONEWIFI_BLASTER_APP_SUPPORT
-OneWifi_SOURCES += $(top_srcdir)/source/apps/blaster/wifi_blaster.c $(top_srcdir)/source/apps/blaster/wifi_single_client_msmt.c
-endif
-if FEATURE_OFF_CHANNEL_SCAN_5G
-OneWifi_SOURCES += $(top_srcdir)/source/apps/ocs/wifi_ocs.c
-endif
+OneWifi_SOURCES += $(top_srcdir)/source/apps/wifi_apps.c $(top_srcdir)/source/apps/wifi_apps_mgr.c $(top_srcdir)/source/apps/analytics/wifi_analytics.c $(top_srcdir)/source/apps/levl/wifi_levl.c $(top_srcdir)/source/apps/csi/wifi_csi.c $(top_srcdir)/source/apps/motion/wifi_motion.c $(top_srcdir)/source/apps/whix/wifi_whix.c $(top_srcdir)/source/apps/harvester/wifi_harvester.c  $(top_srcdir)/source/apps/blaster/wifi_blaster.c $(top_srcdir)/source/apps/blaster/wifi_single_client_msmt.c  $(top_srcdir)/source/apps/ocs/wifi_ocs.c 
 
 if EM_APP_SUPPORT
 OneWifi_SOURCES += $(top_srcdir)/source/apps/em/wifi_em.c $(top_srcdir)/source/apps/em/wifi_em_utils.c
@@ -162,7 +132,6 @@ OneWifi_SOURCES += $(top_srcdir)/source/apps/cac/wifi_cac.c
 OneWifi_CPPFLAGS += -I$(top_srcdir)/source/apps/cac/
 endif
 
-if USE_DML_SOURCES
 if ONEWIFI_DML_SUPPORT
 OneWifi_SOURCES += $(top_srcdir)/source/dml/wifi_ssp/ssp_main.c $(top_srcdir)/source/dml/wifi_ssp/ssp_loop.c $(top_srcdir)/source/dml/wifi_ssp/ssp_messagebus_interface.c $(top_srcdir)/source/dml/wifi_ssp/ssp_action.c $(top_srcdir)/source/dml/wifi_ssp/dm_pack_datamodel.c  $(top_srcdir)/source/dml/tr_181/sbapi/webpa_interface.c $(top_srcdir)/source/dml/tr_181/sbapi/webpa_interface_without_seshat.c $(top_srcdir)/source/dml/tr_181/sbapi/webpa_interface_with_seshat.c  $(top_srcdir)/source/dml/tr_181/sbapi/cosa_dbus_api.c
 else
@@ -172,7 +141,6 @@ OneWifi_SOURCES += $(top_srcdir)/source/dml/dml_webconfig/dml_onewifi_api.c
 endif
 
 OneWifi_SOURCES += $(top_srcdir)/source/dml/rdkb/wifi_dml.c
-endif
 
 OneWifi_SOURCES += $(top_srcdir)/lib/common/os_time.c $(top_srcdir)/lib/common/util.c $(top_srcdir)/lib/common/monitor.c $(top_srcdir)/lib/common/os.c $(top_srcdir)/lib/common/os_util.c $(top_srcdir)/lib/common/os_exec.c $(top_srcdir)/lib/const/const.c $(top_srcdir)/lib/ds/ds_tree.c $(top_srcdir)/lib/json_util/string.c $(top_srcdir)/lib/json_util/memdbg.c $(top_srcdir)/lib/json_util/future.c $(top_srcdir)/lib/log/log.c $(top_srcdir)/lib/log/log_syslog.c $(top_srcdir)/lib/log/log_stdout.c $(top_srcdir)/lib/log/log_traceback.c $(top_srcdir)/lib/osa/os_backtrace.c $(top_srcdir)/lib/osa/os_socket.c $(top_srcdir)/lib/osa/os_nif_linux.c $(top_srcdir)/lib/osa/os_regex.c $(top_srcdir)/lib/osa/os_proc.c $(top_srcdir)/lib/osa/os_file_ops.c $(top_srcdir)/lib/osa/os_file.c $(top_srcdir)/lib/osa/os_random.c $(top_srcdir)/lib/ovsdb/ovsdb.c $(top_srcdir)/lib/ovsdb/ovsdb_method.c $(top_srcdir)/lib/ovsdb/ovsdb_update.c $(top_srcdir)/lib/ovsdb/ovsdb_sync.c $(top_srcdir)/lib/ovsdb/ovsdb_sync_api.c $(top_srcdir)/lib/ovsdb/ovsdb_table.c $(top_srcdir)/lib/ovsdb/ovsdb_cache.c $(top_srcdir)/lib/ovsdb/ovsdb_utils.c $(top_srcdir)/lib/pjs/pjs_array.c $(top_srcdir)/lib/pjs/pjs_ovs_basic.c $(top_srcdir)/lib/pjs/pjs_basic.c $(top_srcdir)/lib/pjs/pjs_types.c $(top_srcdir)/lib/pjs/pjs_ovs_set.c $(top_srcdir)/lib/pjs/pjs_ovs_map.c $(top_srcdir)/lib/qm/qm_conn.c $(top_srcdir)/lib/schema/schema.c $(top_srcdir)/lib/pktgen/pktgen.c $(top_srcdir)/lib/datapipeline/dppline.c $(top_srcdir)/lib/datapipeline/opensync_stats.pb-c.c $(top_srcdir)/lib/datapipeline/osp_unit_rdk.c $(top_srcdir)/lib/datapipeline/devinfo.c
 
@@ -180,9 +148,8 @@ OneWifi_LDFLAGS = -rdynamic -lwebconfig_framework -lsecure_wrapper $(SYSTEMD_LDF
 
 if ONEWIFI_DML_SUPPORT
 OneWifi_LDFLAGS += -lccsp_common
-OneWifi_LDFLAGS += -lutapi -lsyscfg -lprint_uptime
 endif
-OneWifi_LDFLAGS += -lrdk_wifihal -lavro
+OneWifi_LDFLAGS += -lutapi -lsyscfg -lprint_uptime -lsysevent -lrdk_wifihal -lavro
 
 OneWifi_CPPFLAGS += -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/ -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/ -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/ap -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/utils -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/drivers/ -I$(PKG_CONFIG_SYSROOT_DIR)$(includedir)/qca/qca-wifi/os/linux/include/ -I${PKG_CONFIG_SYSROOT_DIR}${libdir}/ -DEXTERNAL_USE_ONLY
 

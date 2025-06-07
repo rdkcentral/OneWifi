@@ -149,6 +149,8 @@
         PJS_OVS_INT(mld_link_id) \
         PJS_OVS_STRING(mld_addr, 32 + 1) \
         PJS_OVS_BOOL(mld_apply) \
+        PJS_OVS_BOOL(mdu_enabled)\
+        PJS_OVS_INT(speed_tier)\
     )
 
 #define PJS_SCHEMA_Wifi_Interworking_Config \
@@ -1626,10 +1628,6 @@
         PJS_OVS_STRING(snr_list, 128 + 1) \
         PJS_OVS_STRING(cli_stat_list, 128 + 1) \
         PJS_OVS_STRING(txrx_rate_list, 128 + 1) \
-        PJS_OVS_BOOL(mgt_frame_rate_limit_enable) \
-        PJS_OVS_INT(mgt_frame_rate_limit) \
-        PJS_OVS_INT(mgt_frame_rate_limit_window_size) \
-        PJS_OVS_INT(mgt_frame_rate_limit_cooldown_time) \
     )
 
 #define PJS_SCHEMA_Wifi_Preassoc_Control_Config \
@@ -2076,7 +2074,9 @@
     COLUMN(mld_id)\
     COLUMN(mld_link_id)\
     COLUMN(mld_addr)\
-    COLUMN(mld_apply)
+    COLUMN(mld_apply)\
+    COLUMN(mdu_enabled)\
+    COLUMN(speed_tier)
 
 #define SCHEMA__Wifi_Interworking_Config "Wifi_Interworking_Config"
 #define SCHEMA_COLUMN__Wifi_Interworking_Config(COLUMN) \
@@ -3290,10 +3290,6 @@
     COLUMN(snr_list) \
     COLUMN(cli_stat_list) \
     COLUMN(txrx_rate_list) \
-    COLUMN(mgt_frame_rate_limit_enable) \
-    COLUMN(mgt_frame_rate_limit) \
-    COLUMN(mgt_frame_rate_limit_window_size) \
-    COLUMN(mgt_frame_rate_limit_cooldown_time) \
 
 #define SCHEMA__Wifi_Preassoc_Control_Config "Wifi_Preassoc_Control_Config"
 #define SCHEMA_COLUMN__Wifi_Preassoc_Control_Config(COLUMN) \
@@ -3432,6 +3428,8 @@
 #define SCHEMA__Wifi_VAP_Config__mld_link_id "mld_link_id"
 #define SCHEMA__Wifi_VAP_Config__mld_addr "mld_addr"
 #define SCHEMA__Wifi_VAP_Config__mld_apply "mld_apply"
+#define SCHEMA__Wifi_VAP_Config__mdu_enabled "mdu_enabled"
+#define SCHEMA__Wifi_VAP_Config__speed_tier "speed_tier"
 
 #define SCHEMA__Wifi_Interworking_Config__enable "enable"
 #define SCHEMA__Wifi_Interworking_Config__vap_name "vap_name"
@@ -4549,10 +4547,6 @@
 #define SCHEMA__Wifi_Global_Config__snr_list "snr_list"
 #define SCHEMA__Wifi_Global_Config__cli_stat_list "cli_stat_list"
 #define SCHEMA__Wifi_Global_Config__txrx_rate_list "txrx_rate_list"
-#define SCHEMA__Wifi_Global_Config__mgt_frame_rate_limit_enable "mgt_frame_rate_limit_enable"
-#define SCHEMA__Wifi_Global_Config__mgt_frame_rate_limit "mgt_frame_rate_limit"
-#define SCHEMA__Wifi_Global_Config__mgt_frame_rate_limit_window_size "mgt_frame_rate_limit_window_size"
-#define SCHEMA__Wifi_Global_Config__mgt_frame_rate_limit_cooldown_time "mgt_frame_rate_limit_cooldown_time"
 
 #define SCHEMA__Wifi_Preassoc_Control_Config__rssi_up_threshold "rssi_up_threshold"
 #define SCHEMA__Wifi_Preassoc_Control_Config__snr_threshold "snr_threshold"
