@@ -1615,7 +1615,6 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
         decode_param_bool(vap, "MDUEnabled", param);
         vap_info->u.bss_info.mdu_enabled = (param->type & cJSON_True) ? true : false;
     }
-    wifi_util_info_print(WIFI_SRI,"%s:%d After decoding the SPeed tier param and MDUEnabled param \n",__func__,__LINE__);
 
     // Isolation
     decode_param_bool(vap, "IsolationEnable", param);
