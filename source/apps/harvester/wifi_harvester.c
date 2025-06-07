@@ -39,6 +39,7 @@
 #include <limits.h>
 #include <uuid/uuid.h>
 #include "wifi_webconfig.h"
+#include <sysevent/sysevent.h>
 #include "wifi_passpoint.h"
 #include "safec_lib_common.h"
 #include <stdint.h>

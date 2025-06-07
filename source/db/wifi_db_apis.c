@@ -79,7 +79,6 @@
 #define WPA3_COMPATIBILITY 8192
 #define ONEWIFI_DB_VERSION_HOSTAP_MGMT_FRAME_CTRL_FLAG 100033
 #define ONEWIFI_DB_VERSION_RSS_MEMORY_THRESHOLD_FLAG 100035
-#define ONEWIFI_DB_VERSION_MGT_FRAME_RATE_LIMIT 100036
 
 ovsdb_table_t table_Wifi_Radio_Config;
 ovsdb_table_t table_Wifi_VAP_Config;
@@ -1197,51 +1196,7 @@ void callback_Wifi_Global_Config(ovsdb_update_monitor_t *mon,
             strncpy(g_wifidb->global_config.global_parameters.txrx_rate_list,new_rec->txrx_rate_list,sizeof(g_wifidb->global_config.global_parameters.txrx_rate_list)-1);
             g_wifidb->global_config.global_parameters.txrx_rate_list[sizeof(g_wifidb->global_config.global_parameters.txrx_rate_list)-1] = '\0';
         }
-
-        g_wifidb->global_config.global_parameters.mgt_frame_rate_limit_enable =
-            new_rec->mgt_frame_rate_limit_enable;
-        g_wifidb->global_config.global_parameters.mgt_frame_rate_limit =
-            new_rec->mgt_frame_rate_limit;
-        g_wifidb->global_config.global_parameters.mgt_frame_rate_limit_window_size =
-            new_rec->mgt_frame_rate_limit_window_size;
-        g_wifidb->global_config.global_parameters.mgt_frame_rate_limit_cooldown_time =
-            new_rec->mgt_frame_rate_limit_cooldown_time;
-
-        wifi_util_dbg_print(WIFI_DB,
-            "%s:%d notify_wifi_changes %d prefer_private %d prefer_private_configure %d "
-            "factory_reset %d tx_overflow_selfheal %d inst_wifi_client_enabled %d "
-            "inst_wifi_client_reporting_period %d inst_wifi_client_mac %s "
-            "inst_wifi_client_def_reporting_period %d wifi_active_msmt_enabled %d "
-            "wifi_active_msmt_pktsize %d wifi_active_msmt_num_samples %d "
-            "wifi_active_msmt_sample_duration %d vlan_cfg_version %d wps_pin %s "
-            "bandsteering_enable %d good_rssi_threshold %d assoc_count_threshold %d "
-            "assoc_gate_time %d whix_loginterval %d rss_memory_restart_threshold_low %lu "
-            "rss_memory_restart_threshold_high %lu assoc_monitor_duration %d "
-            "rapid_reconnect_enable %d vap_stats_feature %d mfp_config_feature %d "
-            "force_disable_radio_feature %d force_disable_radio_status %d fixed_wmm_params %d "
-            "wifi_region_code %s diagnostic_enable %d validate_ssid %d device_network_mode %d "
-            "normalized_rssi_list %s snr_list %s cli_stat_list %s txrx_rate_list %s "
-            "mgt_frame_rate_limit_enable %d mgt_frame_rate_limit %d mgt_frame_window_size %d"
-            "mgt_frame_cooldown_time %d\n",
-            __func__, __LINE__, new_rec->notify_wifi_changes, new_rec->prefer_private,
-            new_rec->prefer_private_configure, new_rec->factory_reset,
-            new_rec->tx_overflow_selfheal, new_rec->inst_wifi_client_enabled,
-            new_rec->inst_wifi_client_reporting_period, new_rec->inst_wifi_client_mac,
-            new_rec->inst_wifi_client_def_reporting_period, new_rec->wifi_active_msmt_enabled,
-            new_rec->wifi_active_msmt_pktsize, new_rec->wifi_active_msmt_num_samples,
-            new_rec->wifi_active_msmt_sample_duration, new_rec->vlan_cfg_version, new_rec->wps_pin,
-            new_rec->bandsteering_enable, new_rec->good_rssi_threshold,
-            new_rec->assoc_count_threshold, new_rec->assoc_gate_time, new_rec->whix_log_interval,
-            new_rec->rss_memory_restart_threshold_low, new_rec->rss_memory_restart_threshold_high,
-            new_rec->assoc_monitor_duration, new_rec->rapid_reconnect_enable,
-            new_rec->vap_stats_feature, new_rec->mfp_config_feature,
-            new_rec->force_disable_radio_feature, new_rec->force_disable_radio_status,
-            new_rec->fixed_wmm_params, new_rec->wifi_region_code, new_rec->diagnostic_enable,
-            new_rec->validate_ssid, new_rec->device_network_mode, new_rec->normalized_rssi_list,
-            new_rec->snr_list, new_rec->cli_stat_list, new_rec->txrx_rate_list,
-            new_rec->mgt_frame_rate_limit_enable, new_rec->mgt_frame_rate_limit,
-            new_rec->mgt_frame_rate_limit_window_size, new_rec->mgt_frame_rate_limit_cooldown_time);
-
+        wifi_util_dbg_print(WIFI_DB,"%s:%d  notify_wifi_changes %d  prefer_private %d  prefer_private_configure %d  factory_reset %d  tx_overflow_selfheal %d  inst_wifi_client_enabled %d  inst_wifi_client_reporting_period %d  inst_wifi_client_mac = %s inst_wifi_client_def_reporting_period %d  wifi_active_msmt_enabled %d  wifi_active_msmt_pktsize %d  wifi_active_msmt_num_samples %d  wifi_active_msmt_sample_duration %d  vlan_cfg_version %d  wps_pin = %s bandsteering_enable %d  good_rssi_threshold %d  assoc_count_threshold %d  assoc_gate_time %d whix_loginterval %d  rss_memory_restart_threshold_low %lu rss_memory_restart_threshold_high %lu assoc_monitor_duration %d  rapid_reconnect_enable %d  vap_stats_feature %d  mfp_config_feature %d  force_disable_radio_feature %d  force_disable_radio_status %d  fixed_wmm_params %d  wifi_region_code %s diagnostic_enable %d  validate_ssid %d device_network_mode:%d normalized_rssi_list %s snr_list %s cli_stat_list %s txrx_rate_list %s\r\n", __func__, __LINE__, new_rec->notify_wifi_changes,new_rec->prefer_private,new_rec->prefer_private_configure,new_rec->factory_reset,new_rec->tx_overflow_selfheal,new_rec->inst_wifi_client_enabled,new_rec->inst_wifi_client_reporting_period,new_rec->inst_wifi_client_mac, new_rec->inst_wifi_client_def_reporting_period,new_rec->wifi_active_msmt_enabled,new_rec->wifi_active_msmt_pktsize,new_rec->wifi_active_msmt_num_samples,new_rec->wifi_active_msmt_sample_duration,new_rec->vlan_cfg_version,new_rec->wps_pin, new_rec->bandsteering_enable,new_rec->good_rssi_threshold,new_rec->assoc_count_threshold,new_rec->assoc_gate_time, new_rec->whix_log_interval, new_rec->rss_memory_restart_threshold_low, new_rec->rss_memory_restart_threshold_high, new_rec->assoc_monitor_duration,new_rec->rapid_reconnect_enable,new_rec->vap_stats_feature,new_rec->mfp_config_feature,new_rec->force_disable_radio_feature,new_rec->force_disable_radio_status,new_rec->fixed_wmm_params,new_rec->wifi_region_code,new_rec->diagnostic_enable,new_rec->validate_ssid, new_rec->device_network_mode, new_rec->normalized_rssi_list, new_rec->snr_list, new_rec->cli_stat_list, new_rec->txrx_rate_list);
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
     }
     else
@@ -1896,13 +1851,11 @@ int wifidb_update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t
     else
     {
         wifidb_print("%s:%d Updated WIFI DB. Insert Wifi_Radio_Config table completed successful. \n",__func__, __LINE__);
-#if ONEWIFI_DML_SUPPORT
 #ifndef NEWPLATFORM_PORT
         wifidml_desc_t *p_desc = &get_wifidml_obj()->desc;
         p_desc->push_data_to_ssp_queue_fn(config, sizeof(wifi_radio_operationParam_t), ssp_event_type_psm_write, radio_config);
         p_desc->push_data_to_ssp_queue_fn(feat_config, sizeof(wifi_radio_feature_param_t), ssp_event_type_psm_write, radio_feature_config);
 #endif // NEWPLATFORM_PORT
-#endif
     }
 
     return 0;
@@ -2661,12 +2614,10 @@ int wifidb_update_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
     else
     {
         wifidb_print("%s:%d Updated WIFI DB. table_Wifi_VAP_Config table updated successful\n",__func__, __LINE__);
-#if ONEWIFI_DML_SUPPORT
 #ifndef NEWPLATFORM_PORT
         wifidml_desc_t *p_desc = &get_wifidml_obj()->desc;
         p_desc->push_data_to_ssp_queue_fn(config, sizeof(wifi_vap_info_t), ssp_event_type_psm_write, vap_config);
 #endif // NEWPLATFORM_PORT
-#endif
     }
     return RETURN_OK;
 }
@@ -3040,48 +2991,11 @@ int wifidb_update_wifi_global_config(wifi_global_param_t *config)
     strncpy(cfg.txrx_rate_list,config->txrx_rate_list,sizeof(cfg.txrx_rate_list)-1);
     cfg.txrx_rate_list[sizeof(cfg.txrx_rate_list)-1] = '\0';
 
-    cfg.mgt_frame_rate_limit_enable = config->mgt_frame_rate_limit_enable;
-    cfg.mgt_frame_rate_limit = config->mgt_frame_rate_limit;
-    cfg.mgt_frame_rate_limit_window_size = config->mgt_frame_rate_limit_window_size;
-    cfg.mgt_frame_rate_limit_cooldown_time = config->mgt_frame_rate_limit_cooldown_time;
-
-
-#if ONEWIFI_DML_SUPPORT
 #ifndef NEWPLATFORM_PORT
     wifidml_desc_t *p_desc = &get_wifidml_obj()->desc;
     p_desc->push_data_to_ssp_queue_fn(config, sizeof(wifi_global_param_t), ssp_event_type_psm_write, global_config);
 #endif // NEWPLATFORM_PORT
-#endif
-    wifi_util_dbg_print(WIFI_DB,
-        "%s:%d notify_wifi_changes %d prefer_private %d prefer_private_configure %d "
-        "factory_reset %d tx_overflow_selfheal %d inst_wifi_client_enabled %d "
-        "inst_wifi_client_reporting_period %d inst_wifi_client_mac %s "
-        "inst_wifi_client_def_reporting_period %d wifi_active_msmt_enabled %d "
-        "wifi_active_msmt_pktsize %d wifi_active_msmt_num_samples %d "
-        "wifi_active_msmt_sample_duration %d vlan_cfg_version %d wps_pin %s "
-        "bandsteering_enable %d good_rssi_threshold %d assoc_count_threshold %d assoc_gate_time "
-        "%d assoc_monitor_duration %d rapid_reconnect_enable %d vap_stats_feature %d "
-        "mfp_config_feature %d force_disable_radio_feature %d force_disable_radio_status %d "
-        "fixed_wmm_params %d wifi_region_code %s diagnostic_enable %d validate_ssid %d "
-        "device_network_mode:%d normalized_rssi_list %s snr_list %s cli_stat_list %s "
-        "txrx_rate_list %s mgt_frame_rate_limit_enable %d mgt_frame_rate_limit %d "
-        "mgt_frame_rate_limit_window_size %d mgt_frame_rate_limit_cooldown_time %d\n",
-        __func__, __LINE__, config->notify_wifi_changes, config->prefer_private,
-        config->prefer_private_configure, config->factory_reset, config->tx_overflow_selfheal,
-        config->inst_wifi_client_enabled, config->inst_wifi_client_reporting_period,
-        config->inst_wifi_client_mac, config->inst_wifi_client_def_reporting_period,
-        config->wifi_active_msmt_enabled, config->wifi_active_msmt_pktsize,
-        config->wifi_active_msmt_num_samples, config->wifi_active_msmt_sample_duration,
-        config->vlan_cfg_version, config->wps_pin, config->bandsteering_enable,
-        config->good_rssi_threshold, config->assoc_count_threshold, config->assoc_gate_time,
-        config->assoc_monitor_duration, config->rapid_reconnect_enable, config->vap_stats_feature,
-        config->mfp_config_feature, config->force_disable_radio_feature,
-        config->force_disable_radio_status, config->fixed_wmm_params, config->wifi_region_code,
-        config->diagnostic_enable, config->validate_ssid, config->device_network_mode,
-        config->normalized_rssi_list, config->snr_list, config->cli_stat_list,
-        config->txrx_rate_list, config->mgt_frame_rate_limit_enable, config->mgt_frame_rate_limit,
-        config->mgt_frame_rate_limit_window_size, config->mgt_frame_rate_limit_cooldown_time);
-
+    wifi_util_dbg_print(WIFI_DB,"\n %s:%d  notify_wifi_changes %d  prefer_private %d  prefer_private_configure %d  factory_reset %d  tx_overflow_selfheal %d  inst_wifi_client_enabled %d  inst_wifi_client_reporting_period %d  inst_wifi_client_mac = %s inst_wifi_client_def_reporting_period %d  wifi_active_msmt_enabled %d  wifi_active_msmt_pktsize %d  wifi_active_msmt_num_samples %d  wifi_active_msmt_sample_duration %d  vlan_cfg_version %d  wps_pin = %s bandsteering_enable %d  good_rssi_threshold %d  assoc_count_threshold %d  assoc_gate_time %d  assoc_monitor_duration %d  rapid_reconnect_enable %d  vap_stats_feature %d  mfp_config_feature %d  force_disable_radio_feature %d  force_disable_radio_status %d  fixed_wmm_params %d  wifi_region_code %s diagnostic_enable %d  validate_ssid %d device_network_mode:%d normalized_rssi_list %s snr_list %s cli_stat_list %s txrx_rate_list %s\r\n", __func__, __LINE__, config->notify_wifi_changes,config->prefer_private,config->prefer_private_configure,config->factory_reset,config->tx_overflow_selfheal,config->inst_wifi_client_enabled,config->inst_wifi_client_reporting_period,config->inst_wifi_client_mac, config->inst_wifi_client_def_reporting_period,config->wifi_active_msmt_enabled,config->wifi_active_msmt_pktsize,config->wifi_active_msmt_num_samples,config->wifi_active_msmt_sample_duration,config->vlan_cfg_version,config->wps_pin, config->bandsteering_enable,config->good_rssi_threshold,config->assoc_count_threshold,config->assoc_gate_time,config->assoc_monitor_duration,config->rapid_reconnect_enable,config->vap_stats_feature,config->mfp_config_feature,config->force_disable_radio_feature,config->force_disable_radio_status,config->fixed_wmm_params,config->wifi_region_code,config->diagnostic_enable,config->validate_ssid, config->device_network_mode,config->normalized_rssi_list,config->snr_list,config->cli_stat_list,config->txrx_rate_list);
 
     if (wifidb_update_table_entry(NULL,NULL,OCLM_UUID,&table_Wifi_Global_Config,&cfg,filter_global) <= 0)
     {
@@ -3173,42 +3087,8 @@ int wifidb_get_wifi_global_config(wifi_global_param_t *config)
             config->txrx_rate_list[sizeof(config->txrx_rate_list)-1] = '\0';
         }
 
-        config->mgt_frame_rate_limit_enable = pcfg->mgt_frame_rate_limit_enable;
-        config->mgt_frame_rate_limit = pcfg->mgt_frame_rate_limit;
-        config->mgt_frame_rate_limit_window_size = pcfg->mgt_frame_rate_limit_window_size;
-        config->mgt_frame_rate_limit_cooldown_time = pcfg->mgt_frame_rate_limit_cooldown_time;
+        wifi_util_dbg_print(WIFI_DB,"%s:%d  notify_wifi_changes %d  prefer_private %d  prefer_private_configure %d  factory_reset %d  tx_overflow_selfheal %d  inst_wifi_client_enabled %d  inst_wifi_client_reporting_period %d  inst_wifi_client_mac = %s inst_wifi_client_def_reporting_period %d  wifi_active_msmt_enabled %d  wifi_active_msmt_pktsize %d  wifi_active_msmt_num_samples %d  wifi_active_msmt_sample_duration %d  vlan_cfg_version %d  wps_pin = %s bandsteering_enable %d  good_rssi_threshold %d  assoc_count_threshold %d  assoc_gate_time %d  assoc_monitor_duration %d  rapid_reconnect_enable %d  vap_stats_feature %d  mfp_config_feature %d  force_disable_radio_feature %d  force_disable_radio_status %d  fixed_wmm_params %d  wifi_region_code %s diagnostic_enable %d  validate_ssid %d device_network_mode:%d normalized_rssi_list %s snr list %s txrx_rate_list %s cli_stat_list %s\r\n", __func__, __LINE__, config->notify_wifi_changes,config->prefer_private,config->prefer_private_configure,config->factory_reset,config->tx_overflow_selfheal,config->inst_wifi_client_enabled,config->inst_wifi_client_reporting_period,config->inst_wifi_client_mac, config->inst_wifi_client_def_reporting_period,config->wifi_active_msmt_enabled,config->wifi_active_msmt_pktsize,config->wifi_active_msmt_num_samples,config->wifi_active_msmt_sample_duration,config->vlan_cfg_version,config->wps_pin, config->bandsteering_enable,config->good_rssi_threshold,config->assoc_count_threshold,config->assoc_gate_time,config->assoc_monitor_duration,config->rapid_reconnect_enable,config->vap_stats_feature,config->mfp_config_feature,config->force_disable_radio_feature,config->force_disable_radio_status,config->fixed_wmm_params,config->wifi_region_code,config->diagnostic_enable,config->validate_ssid, config->device_network_mode,config->normalized_rssi_list, config->snr_list, config->txrx_rate_list, config->cli_stat_list);
 
-        wifi_util_dbg_print(WIFI_DB,
-            "%s:%d notify_wifi_changes %d prefer_private %d prefer_private_configure %d "
-            "factory_reset %d tx_overflow_selfheal %d inst_wifi_client_enabled %d "
-            "inst_wifi_client_reporting_period %d inst_wifi_client_mac %s "
-            "inst_wifi_client_def_reporting_period %d wifi_active_msmt_enabled %d "
-            "wifi_active_msmt_pktsize %d wifi_active_msmt_num_samples %d "
-            "wifi_active_msmt_sample_duration %d vlan_cfg_version %d wps_pin %s "
-            "bandsteering_enable %d good_rssi_threshold %d assoc_count_threshold %d "
-            "assoc_gate_time %d assoc_monitor_duration %d rapid_reconnect_enable %d "
-            "vap_stats_feature %d mfp_config_feature %d force_disable_radio_feature %d "
-            "force_disable_radio_status %d fixed_wmm_params %d wifi_region_code %s "
-            "diagnostic_enable %d validate_ssid %d device_network_mode:%d normalized_rssi_list %s "
-            "snr list %s txrx_rate_list %s cli_stat_list %s mgt_frame_rate_limit_enable %d"
-            "mgt_frame_rate_limit %d mgt_frame_rate_limit_window_size %d "
-            "mgt_frame_rate_limit_cooldown_time %d\n",
-            __func__, __LINE__, config->notify_wifi_changes, config->prefer_private,
-            config->prefer_private_configure, config->factory_reset, config->tx_overflow_selfheal,
-            config->inst_wifi_client_enabled, config->inst_wifi_client_reporting_period,
-            config->inst_wifi_client_mac, config->inst_wifi_client_def_reporting_period,
-            config->wifi_active_msmt_enabled, config->wifi_active_msmt_pktsize,
-            config->wifi_active_msmt_num_samples, config->wifi_active_msmt_sample_duration,
-            config->vlan_cfg_version, config->wps_pin, config->bandsteering_enable,
-            config->good_rssi_threshold, config->assoc_count_threshold, config->assoc_gate_time,
-            config->assoc_monitor_duration, config->rapid_reconnect_enable,
-            config->vap_stats_feature, config->mfp_config_feature,
-            config->force_disable_radio_feature, config->force_disable_radio_status,
-            config->fixed_wmm_params, config->wifi_region_code, config->diagnostic_enable,
-            config->validate_ssid, config->device_network_mode, config->normalized_rssi_list,
-            config->snr_list, config->txrx_rate_list, config->cli_stat_list,
-            config->mgt_frame_rate_limit_enable, config->mgt_frame_rate_limit,
-            config->mgt_frame_rate_limit_window_size, config->mgt_frame_rate_limit_cooldown_time);
     }
     free(pcfg);
     return 0;
@@ -4444,15 +4324,6 @@ static void wifidb_global_config_upgrade()
         g_wifidb->global_config.global_parameters.rss_memory_restart_threshold_high =
             RSS_MEM_THRESHOLD2_DEFAULT;
     }
-
-    if (g_wifidb->db_version < ONEWIFI_DB_VERSION_MGT_FRAME_RATE_LIMIT) {
-        wifi_util_dbg_print(WIFI_DB, "%s:%d upgrade global config, old db version %d \n", __func__,
-            __LINE__, g_wifidb->db_version);
-        g_wifidb->global_config.global_parameters.mgt_frame_rate_limit_enable = false;
-        g_wifidb->global_config.global_parameters.mgt_frame_rate_limit = 10;
-        g_wifidb->global_config.global_parameters.mgt_frame_rate_limit_window_size = 1;
-        g_wifidb->global_config.global_parameters.mgt_frame_rate_limit_cooldown_time = 30;
-    }
 }
 
 /************************************************************************************
@@ -4598,7 +4469,7 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
 
         if (g_wifidb->db_version < ONEWIFI_DB_VERSION_HOSTAP_MGMT_FRAME_CTRL_FLAG) {
 #if defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || \
-    defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_)
+    defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_) || defined(_SR213_PRODUCT_REQ_)
             config->vap_array[i].u.bss_info.hostap_mgt_frame_ctrl = true;
             wifi_util_dbg_print(WIFI_DB,
                 "%s:%d Update hostap_mgt_frame_ctrl:%d for vap_index:%d \n", __func__, __LINE__,
@@ -4607,7 +4478,8 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
             wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i],
                 &rdk_config[i]);
 #endif // defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) ||
-       // defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_)
+       // defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_) || 
+       // defined(_SR213_PRODUCT_REQ_)
         }
     }
 }
@@ -6045,14 +5917,12 @@ int wifidb_update_wifi_security_config(char *vap_name, wifi_vap_security_t *sec)
     else
     {
         wifidb_print("%s:%d Updated WIFI DB. Wifi Security Config table updated successful. \n",__func__, __LINE__);
-#if ONEWIFI_DML_SUPPORT
 #ifndef NEWPLATFORM_PORT
         wifidml_desc_t *p_desc = &get_wifidml_obj()->desc;
         psm_security_cfg.vap_index = convert_vap_name_to_index(&((wifi_mgr_t*) get_wifimgr_obj())->hal_cap.wifi_prop, vap_name);
         strncpy(psm_security_cfg.mfp, cfg_sec.mfp_config, sizeof(psm_security_cfg.mfp)-1);
         p_desc->push_data_to_ssp_queue_fn(&psm_security_cfg, sizeof(wifi_security_psm_param_t), ssp_event_type_psm_write, security_config);
 #endif // NEWPLATFORM_PORT
-#endif
     }
     return RETURN_OK;
 }
@@ -6097,12 +5967,10 @@ int wifidb_update_wifi_macfilter_config(char *macfilter_key, acl_entry_t *config
         str_tolower(tmp_mac_str);
         strncpy(l_mac_entry.device_name, config->device_name, sizeof(l_mac_entry.device_name)-1);
         strncpy(l_mac_entry.mac, tmp_mac_str, sizeof(l_mac_entry.mac)-1);
-#if ONEWIFI_DML_SUPPORT
 #ifndef NEWPLATFORM_PORT
         wifidml_desc_t *p_desc = &get_wifidml_obj()->desc;
         p_desc->push_data_to_ssp_queue_fn(&l_mac_entry, sizeof(l_mac_entry), ssp_event_type_psm_write, mac_config_delete);
 #endif // NEWPLATFORM_PORT
-#endif
 
         if (ret != 1) {
             wifidb_print("%s:%d WIFI DB update error !!!. Failed to delete table_Wifi_MacFilter_Config\n",__func__, __LINE__);
@@ -6143,12 +6011,10 @@ int wifidb_update_wifi_macfilter_config(char *macfilter_key, acl_entry_t *config
         l_mac_entry.acl_map = l_rdk_vap_array->acl_map;
         strncpy(l_mac_entry.device_name, cfg_mac.device_name, sizeof(l_mac_entry.device_name)-1);
         strncpy(l_mac_entry.mac, cfg_mac.device_mac, sizeof(l_mac_entry.mac)-1);
-#if ONEWIFI_DML_SUPPORT
 #ifndef NEWPLATFORM_PORT
         wifidml_desc_t *p_desc = &get_wifidml_obj()->desc;
         p_desc->push_data_to_ssp_queue_fn(&l_mac_entry, sizeof(l_mac_entry), ssp_event_type_psm_write, mac_config_add);
 #endif // NEWPLATFORM_PORT
-#endif
         if (onewifi_ovsdb_table_upsert_with_parent(g_wifidb->wifidb_sock_path, &table_Wifi_MacFilter_Config, &cfg_mac, false, filter_mac, SCHEMA_TABLE(Wifi_VAP_Config), onewifi_ovsdb_where_simple(SCHEMA_COLUMN(Wifi_VAP_Config,vap_name), vap_name), SCHEMA_COLUMN(Wifi_VAP_Config, mac_filter)) ==  false) {
             wifidb_print("%s:%d WIFI DB update error !!!. Failed to update Wifi_MacFilter Config table \n",__func__, __LINE__);
         }
@@ -6510,7 +6376,7 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
 #else
             cfg.variant = WIFI_80211_VARIANT_G | WIFI_80211_VARIANT_N;
 #endif
-#if defined (NEWPLATFORM_PORT) || defined (_GREXT02ACTS_PRODUCT_REQ_)
+#ifdef NEWPLATFORM_PORT
             cfg.variant |= WIFI_80211_VARIANT_AX;
 #endif /* NEWPLATFORM_PORT */
 #if defined(CONFIG_IEEE80211BE)
@@ -6531,7 +6397,7 @@ int wifidb_init_radio_config_default(int radio_index,wifi_radio_operationParam_t
             else
                 cfg.channel = 44;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_80MHZ;
-#if defined (_PP203X_PRODUCT_REQ_)
+#if defined (_PP203X_PRODUCT_REQ_) || defined (_GREXT02ACTS_PRODUCT_REQ_)
             cfg.variant = WIFI_80211_VARIANT_A | WIFI_80211_VARIANT_N | WIFI_80211_VARIANT_AC;
             cfg.DfsEnabled = true;
 #else
@@ -6945,12 +6811,13 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
 #endif //_SKY_HUB_COMMON_PRODUCT_REQ_
 
 #if defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) || \
-    defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_)
+    defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_) || defined(_SR213_PRODUCT_REQ_)
         cfg.u.bss_info.hostap_mgt_frame_ctrl = true;
         wifi_util_dbg_print(WIFI_DB, "%s:%d vap_index:%d hostap_mgt_frame_ctrl:%d\n", __func__,
             __LINE__, vap_index, cfg.u.bss_info.hostap_mgt_frame_ctrl);
 #endif // defined(_XB7_PRODUCT_REQ_) || defined(_XB8_PRODUCT_REQ_) || defined(_XB10_PRODUCT_REQ_) ||
-       // defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_)
+       // defined(_SCER11BEL_PRODUCT_REQ_) || defined(_CBR2_PRODUCT_REQ_) ||
+       // defined(_SR213_PRODUCT_REQ_)
 
         memset(ssid, 0, sizeof(ssid));
 
@@ -7100,11 +6967,6 @@ int wifidb_init_global_config_default(wifi_global_param_t *config)
     cfg.cli_stat_list[sizeof(cfg.cli_stat_list)-1] = '\0';
     strncpy(cfg.txrx_rate_list, tempBuf, sizeof(cfg.txrx_rate_list)-1);
     cfg.txrx_rate_list[sizeof(cfg.txrx_rate_list)-1] = '\0';
-
-    cfg.mgt_frame_rate_limit_enable = false;
-    cfg.mgt_frame_rate_limit = 10;
-    cfg.mgt_frame_rate_limit_window_size = 1;
-    cfg.mgt_frame_rate_limit_cooldown_time = 30;
 
 #ifdef ONEWIFI_DEFAULT_NETWORKING_MODE
     cfg.device_network_mode = ONEWIFI_DEFAULT_NETWORKING_MODE;

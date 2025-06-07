@@ -40,6 +40,7 @@
 #ifdef MQTTCM
 #include <mqttcm_lib/mqttcm_conn.h>
 #endif
+#include <sysevent/sysevent.h>
 #include "ext_blaster.pb-c.h"
 #include "qm_conn.h"
 #include "wifi_util.h"

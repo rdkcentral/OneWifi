@@ -60,51 +60,6 @@ typedef enum {
     hotspot_vap_param_update
 } wifi_hotspot_action_t;
 
-#define SEC_MODE_STR_MAX 32
-
-int convert_sec_mode_enable_int_str(int sec_mode_enable, char *secModeStr) {
-
-    switch(sec_mode_enable) {
-        case wifi_security_mode_wpa_personal:
-            strncpy(secModeStr, "WPA-Personal", SEC_MODE_STR_MAX);
-            break;
-
-        case wifi_security_mode_wpa2_personal:
-            strncpy(secModeStr, "WPA2-Personal", SEC_MODE_STR_MAX);
-            break;
-
-        case wifi_security_mode_wpa3_personal:
-            strncpy(secModeStr, "WPA3-Personal", SEC_MODE_STR_MAX);
-            break;
-
-        case wifi_security_mode_wpa_enterprise:
-            strncpy(secModeStr, "WPA-Enterprise", SEC_MODE_STR_MAX);
-            break;
-
-        case wifi_security_mode_wpa2_enterprise:
-            strncpy(secModeStr, "WPA2-Enterprise", SEC_MODE_STR_MAX);
-            break;
-
-        case wifi_security_mode_wpa3_enterprise:
-            strncpy(secModeStr, "WPA3-Enterprise", SEC_MODE_STR_MAX);
-            break;
-
-        case wifi_security_mode_wpa3_transition:
-            strncpy(secModeStr, "WPA3-Personal-Transition", SEC_MODE_STR_MAX);
-            break;
-
-        case wifi_security_mode_wpa3_compatibility:
-            strncpy(secModeStr, "WPA3-Personal-Compatibility", SEC_MODE_STR_MAX);
-            break;
-
-        default:
-            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: Invalid security mode %d\n", __func__, __LINE__, sec_mode_enable);
-            return RETURN_ERR;
-    }
-
-    return RETURN_OK;
-}
-
 void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_nop_start_reboot, unsigned int dfs_timer_secs);
 
 void process_scan_results_event(scan_results_t *results, unsigned int len)
@@ -3215,7 +3170,7 @@ void process_rsn_override_rfc(bool type)
     UINT apIndex = 0, ret;
     rdk_wifi_vap_info_t *rdk_vap_info;
     wifi_vap_info_t *vapInfo = NULL;
-    char update_status[128], old_sec_mode[32], new_sec_mode[32];
+    char update_status[128];
 
     rfc_param->wpa3_compatibility_enable = type;
     get_wifidb_obj()->desc.update_rfc_config_fn(0, rfc_param);
@@ -3233,13 +3188,6 @@ void process_rsn_override_rfc(bool type)
         if (radio_params->band == WIFI_FREQUENCY_6_BAND) {
             wifi_util_info_print(WIFI_CTRL,"%s: %d 6GHz radio supports only WPA3 personal mode. WPA3-RFC: %d\n",__FUNCTION__,__LINE__,type);
             continue;
-        }
-
-        memset(old_sec_mode, 0, sizeof(old_sec_mode));
-        memset(new_sec_mode, 0, sizeof(new_sec_mode));
-        ret = convert_sec_mode_enable_int_str(vapInfo->u.bss_info.security.mode, old_sec_mode);
-        if(ret != RETURN_OK) {
-            wifi_util_error_print(WIFI_CTRL, "%s:%d: Error converting security mode to string old_mode:%d new_mode\n", __func__, __LINE__);
         }
 
         if(type) {
@@ -3266,17 +3214,6 @@ void process_rsn_override_rfc(bool type)
                 vapInfo->u.bss_info.security.u.key.type = wifi_security_key_type_psk_sae;
             }
         }
-        ret = convert_sec_mode_enable_int_str(vapInfo->u.bss_info.security.mode, new_sec_mode);
-        if(ret != RETURN_OK) {
-            wifi_util_error_print(WIFI_CTRL, "%s:%d: Error converting security mode to string old_mode:%d new_mode\n", __func__, __LINE__);
-        }
-
-        wifi_util_info_print(WIFI_CTRL,"%s:%d: old_sec_mode %s new_sec_mode %s\n",
-            __func__, __LINE__, old_sec_mode, new_sec_mode);
-        if( (strcmp(old_sec_mode, new_sec_mode) != 0) && (new_sec_mode != NULL || old_sec_mode != NULL)) {
-            notify_wifi_sec_mode_enabled(ctrl, apIndex, old_sec_mode, new_sec_mode);
-        }
-
         memset(&tgt_vap_map, 0, sizeof(wifi_vap_info_map_t));
         tgt_vap_map.num_vaps = 1;
         memcpy(&tgt_vap_map.vap_array[0], vapInfo, sizeof(wifi_vap_info_t));
@@ -3522,9 +3459,8 @@ void handle_hal_indication(wifi_ctrl_t *ctrl, void *data, unsigned int len,
             __FUNCTION__, wifi_event_subtype_to_string(subtype));
         break;
     }
-#if ONEWIFI_ANALYTICS_APP_SUPPORT
+
     apps_mgr_analytics_event(&ctrl->apps_mgr, wifi_event_type_hal_ind, subtype, data);
-#endif
 }
 
 void update_subdoc_data(webconfig_subdoc_data_t *data, unsigned int num_ssid,
