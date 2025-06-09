@@ -321,6 +321,7 @@ bool is_db_backup_required();
 
 UINT getRadioIndexFromAp(UINT apIndex);
 UINT getPrivateApFromRadioIndex(UINT radioIndex);
+UINT getApFromRadioIndex(UINT radioIndex, char* vap_prefix);
 CHAR* getVAPName(UINT apIndex);
 BOOL isVapPrivate(UINT apIndex);
 BOOL isVapXhs(UINT apIndex);
