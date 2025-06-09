@@ -814,7 +814,7 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
         return;
     }
     if (lnf_2g_vap->u.bss_info.mdu_enabled) {
-        if (update_vap_params_to_hal_and_db(lnf_2g_vap, hotspot_5g_vap_info->u.bss_info.enabled) == -1)
+        if (update_vap_params_to_hal_and_db(lnf_2g_vap, hotspot_5g_vap_info.u.bss_info.enabled) == -1)
         {
             wifi_util_info_print(WIFI_CTRL, "%s:%d Unable to update LnF vaps as per Hotspot VAPs\n", __func__,__LINE__);
         }

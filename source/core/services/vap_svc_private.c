@@ -66,16 +66,15 @@ static int configure_lnf_psk_radius_from_hotspot(wifi_vap_info_t *vap_info)
     if (!isVapLnfPsk(vap_info->vap_index) || !vap_info->u.bss_info.mdu_enabled) {
         return 0;
     }
-
-    if (convert_radio_index_to_freq_band(&get_webconfig_dml()->hal_cap.wifi_prop, 
-                                        vap_info->radio_index, &band) != RETURN_OK) {
+    wifi_platform_property_t *wifi_prop = get_wifi_hal_cap_prop();
+    if (convert_radio_index_to_freq_band(wifi_prop, vap_info->radio_index, &band) != RETURN_OK) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to get band for vap_index=%d\n", 
                              __FUNCTION__, __LINE__, vap_info->vap_index);
         return -1;
     }
 
     if (band == WIFI_FREQUENCY_2_4_BAND) {
-        convert_freq_band_to_radio_index(WIFI_FREQUENCY_5_BAND, rIdx);
+        convert_freq_band_to_radio_index(WIFI_FREQUENCY_5_BAND, &rIdx);
         hotspot_vap_info = get_wifidb_vap_parameters(getApFromRadioIndex(rIdx, VAP_PREFIX_HOTSPOT_SECURE));
     } else {
         hotspot_vap_info = get_wifidb_vap_parameters(getApFromRadioIndex(vap_info->radio_index, VAP_PREFIX_HOTSPOT_SECURE));
@@ -104,7 +103,6 @@ int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
     unsigned int i;
     wifi_vap_info_map_t *p_tgt_vap_map = NULL;
     int ret;
-    int band;
     
     p_tgt_vap_map = (wifi_vap_info_map_t *) malloc( sizeof(wifi_vap_info_map_t) );
     if (p_tgt_vap_map == NULL) {
