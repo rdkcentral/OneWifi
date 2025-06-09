@@ -7386,9 +7386,9 @@ void init_wifidb_data()
             if (country_code[0] != 0) {
                 char radio_country_code[COUNTRY_CODE_LEN] = {0};
                 wifi_countrycode_type_t r_country_code;
-                strncpy(radio_country_code, country_code, strlen(country_code) - 1);
+                strncpy(radio_country_code, country_code, sizeof(radio_country_code) - 1);
                 if (country_code_conversion(&r_country_code, radio_country_code, COUNTRY_CODE_LEN, STRING_TO_ENUM) < 0) {
-                        wifi_util_dbg_print(WIFI_DB,"%s:%d: unable to convert country string\n", __func__, __LINE__);
+                        wifi_util_dbg_print(WIFI_DB,"%s:%d: unable to convert country string, country_code = %s\n", __func__, __LINE__,radio_country_code);
                 } else {
                     if (l_radio_cfg->countryCode != r_country_code) {
                         l_radio_cfg->countryCode = r_country_code;
