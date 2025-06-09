@@ -1545,6 +1545,25 @@ int country_code_conversion(wifi_countrycode_type_t *country_code, char *country
     return RETURN_ERR;
 }
 
+UINT getApFromRadioIndex(UINT radioIndex, char* vap_prefix)
+{
+    UINT apIndex;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    if (vap_prefix == NULL) {
+        wifi_util_error_print(WIFI_CTRL,"%s:%d vap_prefix is NULL \n", __FUNCTION__,__LINE__);
+        return 0;
+    }
+    for (UINT index = 0; index < getTotalNumberVAPs(); index++) {
+        apIndex = VAP_INDEX(mgr->hal_cap, index);
+        if((strncmp((CHAR *)getVAPName(apIndex), vap_prefix, strlen(vap_prefix)) == 0) &&
+               getRadioIndexFromAp(apIndex) == radioIndex ) {
+            return apIndex;
+        }
+    }
+    wifi_util_dbg_print(WIFI_CTRL,"getApFromRadioIndex not recognised for radioIndex %u!!!\n", radioIndex);
+    return 0;
+}
+
 int country_id_conversion(wifi_countrycode_type_t *country_code, char *country_id, int country_id_len, unsigned int conv_type)
 {
     int i = 0;

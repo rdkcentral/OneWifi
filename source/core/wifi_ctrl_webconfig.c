@@ -2093,8 +2093,6 @@ void webconfig_analytic_event_data_to_hal_apply(webconfig_subdoc_data_t *data)
 void process_managed_wifi_enable()
 {
     wifi_vap_info_t *hotspot5g_vap_info = NULL;
-
-    // Traverse radios starting from index 1 (defer radio 0)
     for (UINT rIdx = 1; rIdx < getNumberRadios(); rIdx++) {
         UINT lnf_ap_index = getApFromRadioIndex(rIdx, VAP_PREFIX_LNF_PSK);
         UINT hotspot_ap_index = getApFromRadioIndex(rIdx, VAP_PREFIX_HOTSPOT_SECURE);
@@ -2109,9 +2107,9 @@ void process_managed_wifi_enable()
         if (isVapHotspotSecure5g(hotspot_ap_index)) {
             hotspot5g_vap_info = hotspot_vap_info;
         }
-        update_lnf_vap_as_per_hotspot_enabled(lnf_vap_info, hotspot_vap_info);
+        update_vap_params_to_hal_and_db(lnf_vap_info, hotspot_vap_info->u.bss_info.enabled);
     }
-    // Handle radio 0 (deferred)
+
     UINT lnf_ap_index_0 = getApFromRadioIndex(0, VAP_PREFIX_LNF_PSK);
     wifi_vap_info_t *lnf_vap_info_0 = get_wifidb_vap_parameters(lnf_ap_index_0);
     if (!lnf_vap_info_0) {
@@ -2122,7 +2120,7 @@ void process_managed_wifi_enable()
         wifi_util_error_print(WIFI_CTRL, "%s:%d Hotspot 5G Secure VAP info not found, cannot update LNF radio 0\n", __func__, __LINE__);
         return;
     }
-    update_lnf_vap_as_per_hotspot_enabled(lnf_vap_info_0, hotspot5g_vap_info);
+    update_vap_params_to_hal_and_db(lnf_vap_info_0, hotspot5g_vap_info->u.bss_info.enabled);
 }
 
 webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc_data_t *data)

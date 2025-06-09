@@ -2881,26 +2881,7 @@ UINT getPrivateApFromRadioIndex(UINT radioIndex)
     return 0;
 }
 
-UINT getApFromRadioIndex(UINT radioIndex, char* vap_prefix)
-{
-    UINT apIndex;
-    wifi_mgr_t *mgr = get_wifimgr_obj();
-    if (vap_prefix == NULL) {
-        wifi_util_error_print(WIFI_CTRL,"%s:%d vap_prefix is NULL \n", __FUNCTION__,__LINE__);
-        return 0;
-    }
-    for (UINT index = 0; index < getTotalNumberVAPs(); index++) {
-        apIndex = VAP_INDEX(mgr->hal_cap, index);
-        if((strncmp((CHAR *)getVAPName(apIndex), vap_prefix, strlen(vap_prefix)) == 0) &&
-               getRadioIndexFromAp(apIndex) == radioIndex ) {
-            return apIndex;
-        }
-    }
-    wifi_util_dbg_print(WIFI_CTRL,"getApFromRadioIndex not recognised for radioIndex %u!!!\n", radioIndex);
-    return 0;
-}
-
-int update_vap_params_to_hal_and_db(wifi_vap_info_t *vap, int radio_indx, bool enable_or_disable) {
+int update_vap_params_to_hal_and_db(wifi_vap_info_t *vap, bool enable_or_disable) {
     if (!vap) {
         return RETURN_ERR;
     }
@@ -2923,36 +2904,13 @@ int update_vap_params_to_hal_and_db(wifi_vap_info_t *vap, int radio_indx, bool e
         return -1;
     }
 
-    if (svc && svc->update_fn(svc, radio_indx, &tmp_vap_map, rdk_vap_info) == RETURN_OK) {
+    if (svc && svc->update_fn(svc, vap->radio_index, &tmp_vap_map, rdk_vap_info) == RETURN_OK) {
         wifi_util_info_print(WIFI_CTRL, "%s:%d VAP Update done for Lnf VAP %s\n", __func__, __LINE__, vap->vap_name);
     } else {
         wifi_util_info_print(WIFI_CTRL, "%s:%d VAP Update failed for Lnf VAP %s\n", __func__, __LINE__, vap->vap_name);
         return RETURN_ERR;
     }
     return RETURN_OK;
-}
-
-int update_lnf_vap_as_per_hotspot_enabled(wifi_vap_info_t *lnf_vap_info, wifi_vap_info_t *hotspot_vap_info)
-{
-    if (!lnf_vap_info || !hotspot_vap_info) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d Null VAP info pointer(s)\n", __func__, __LINE__);
-        return -1;
-    }
-    lnf_vap_info->u.bss_info.security.repurposed_radius = hotspot_vap_info->u.bss_info.security.u.radius;
-    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Lnf Primary IP = %s Primary Port = %d Secondary Ip = %s Secondary Port = %d\n",
-        __func__, __LINE__, lnf_vap_info->u.bss_info.security.repurposed_radius.ip, lnf_vap_info->u.bss_info.security.repurposed_radius.port,
-        lnf_vap_info->u.bss_info.security.repurposed_radius.s_ip, lnf_vap_info->u.bss_info.security.repurposed_radius.s_port);
-
-    if (lnf_vap_info->u.bss_info.mdu_enabled)
-    {
-        if (update_vap_params_to_hal_and_db(lnf_vap_info, lnf_vap_info->radio_index, hotspot_vap_info->u.bss_info.enabled) != RETURN_OK) {
-            wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to update VAP params to DB\n", __func__, __LINE__);
-            return -1;
-        }
-        lnf_vap_info->u.bss_info.enabled = hotspot_vap_info->u.bss_info.enabled;
-        wifi_util_info_print(WIFI_CTRL, "%s:%d Value of lnf vapInfo->vap_name = %s and have made LnF Vap's enabled as same as hotspot vap enabled\n", __func__, __LINE__, lnf_vap_info->vap_name);
-    }
-    return 0;
 }
 
 BOOL isVapPrivate(UINT apIndex)
