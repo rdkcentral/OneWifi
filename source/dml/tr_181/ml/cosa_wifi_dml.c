@@ -6553,7 +6553,7 @@ AccessPoint_GetParamBoolValue
     }
     if( AnscEqualString(ParamName, "Connected_Building_Enabled", TRUE)) {
         if(isVapHotspot(vap_index)) {
-            *pBool = pcfg->u.bss_info.connected_building_enabled;
+            *pBool = pcfg->u.bss_info.mdu_phase_two_flag ? pcfg->u.bss_info.mdu_guest_hotspot_enabled : pcfg->u.bss_info.connected_building_enabled;
         } else {
             *pBool = FALSE;
         }
@@ -7259,8 +7259,11 @@ AccessPoint_SetParamBoolValue
             CcspWifiTrace(("RDK_LOG_ERROR, %s connected_building_enabled  not supported for vaps other than public vaps\n", __FUNCTION__));
             return FALSE;
         }
-        vapInfo->u.bss_info.connected_building_enabled = bValue;
-        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: connected_building_enabled Value = %d  \n",__func__, __LINE__, vapInfo->u.bss_info.connected_building_enabled);
+        if (vapInfo->u.bss_info.mdu_phase_two_flag)
+            vapInfo->u.bss_info.mdu_guest_hotspot_enabled = bValue;
+        else
+            vapInfo->u.bss_info.connected_building_enabled = bValue;
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d: connected_building_enabled Value = %d  \n",__func__, __LINE__, vapInfo->u.bss_info.mdu_guest_hotspot_enabled ? vapInfo->u.bss_info.mdu_guest_hotspot_enabled : vapInfo->u.bss_info.connected_building_enabled);
         set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
