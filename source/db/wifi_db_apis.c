@@ -7288,9 +7288,10 @@ void init_wifidb_data()
     wifi_vap_info_map_t *l_vap_param_cfg = NULL;
     wifi_radio_operationParam_t *l_radio_cfg = NULL;
     wifi_radio_feature_param_t *f_radio_cfg = NULL;
+#ifndef DEVICE_EXTENDER
     wifi_rfc_dml_parameters_t *rfc_param = get_wifi_db_rfc_parameters();
     char country_code[COUNTRY_CODE_LEN] = {0};
-
+#endif
     wifi_util_info_print(WIFI_DB,"%s:%d No of radios %d\n",__func__, __LINE__,getNumberRadios());
 
     //Check for the number of radios
@@ -7299,7 +7300,7 @@ void init_wifidb_data()
         return;
     }
     wifidb_init_default_value();
-
+#ifndef DEVICE_EXTENDER
     if ((access(ONEWIFI_FR_REBOOT_FLAG, F_OK) == 0) && (access(ONEWIFI_FR_WIFIDB_RESET_DONE_FLAG, F_OK) != 0)) {
         wifidb_update_rfc_config(0, rfc_param);
         get_wifi_country_code_from_bootstrap_json(country_code, COUNTRY_CODE_LEN);
@@ -7370,6 +7371,7 @@ void init_wifidb_data()
         wifidb_update_rfc_config(0, rfc_param);
 #endif
         get_wifi_country_code_from_bootstrap_json(country_code, COUNTRY_CODE_LEN);
+#endif
         pthread_mutex_lock(&g_wifidb->data_cache_lock);
         for (r_index = 0; r_index < num_radio; r_index++) {
             l_vap_param_cfg = get_wifidb_vap_map(r_index);
@@ -7403,7 +7405,7 @@ void init_wifidb_data()
             }
 
             wifidb_vap_config_correction(l_vap_param_cfg);
-
+#ifndef DEVICE_EXTENDER
             if (country_code[0] != 0) {
                 char radio_country_code[COUNTRY_CODE_LEN] = {0};
                 wifi_countrycode_type_t r_country_code;
@@ -7417,6 +7419,7 @@ void init_wifidb_data()
                     }
                 }
             }
+#endif
             wifidb_radio_config_upgrade(r_index, l_radio_cfg, f_radio_cfg);
             wifidb_vap_config_upgrade(l_vap_param_cfg, l_rdk_vap_param_cfg);
             if (l_radio_cfg->EcoPowerDown == false) {
@@ -7450,6 +7453,7 @@ void init_wifidb_data()
         wifidb_get_wifi_macfilter_config();
         wifidb_get_wifi_global_config(&g_wifidb->global_config.global_parameters);
         wifidb_get_gas_config(g_wifidb->global_config.gas_config.AdvertisementID,&g_wifidb->global_config.gas_config);
+#ifndef DEVICE_EXTENDER
         if (country_code[0] != 0) {
             if (strcmp(country_code, g_wifidb->global_config.global_parameters.wifi_region_code) != 0) {
                 strncpy(g_wifidb->global_config.global_parameters.wifi_region_code, country_code, sizeof(g_wifidb->global_config.global_parameters.wifi_region_code));
@@ -7461,9 +7465,11 @@ void init_wifidb_data()
             pthread_mutex_unlock(&g_wifidb->data_cache_lock);
             return;
         }
+#endif
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
+#ifndef DEVICE_EXTENDER
     }
-
+#endif
     wifi_util_info_print(WIFI_DB,"%s:%d Wifi data init complete\n",__func__, __LINE__);
     db_param_init = true;
 }
