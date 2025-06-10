@@ -799,7 +799,7 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
             __LINE__, args->radio_index);
         return RETURN_OK;
     }
-    
+
     nop_chan_list = mon_data->nop_started_channels;
 
     radioOperation = getRadioOperationParam(args->radio_index);
@@ -884,8 +884,8 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
                 for (unsigned int j = 0; j < mon_data->nop_channels_num; j++) {
                     if (args->channel_list.channels_list[i] == (int)nop_chan_list[j]) {
                         wifi_util_dbg_print(WIFI_MON,
-                            "%s:%d  skipping NOP channel %d for radio index %d\n", __func__, __LINE__,
-                            args->channel_list.channels_list[i], args->radio_index);
+                            "%s:%d  skipping NOP channel %d for radio index %d\n", __func__,
+                            __LINE__, args->channel_list.channels_list[i], args->radio_index);
                         is_nop_chan = 1;
                         break;
                     }

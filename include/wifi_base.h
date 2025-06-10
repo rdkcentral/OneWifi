@@ -343,7 +343,7 @@ typedef struct {
     wifi_mon_stats_request_state_t    req_state;
     wifi_mon_stats_args_t     args;
     wifi_channelBandwidth_t channel_width;
-    wifi_freq_bands_t   band;
+    wifi_freq_bands_t band;
     bool nop_up_status;
     unsigned int nop_up_channel;
 } __attribute__((packed)) wifi_mon_stats_config_t;

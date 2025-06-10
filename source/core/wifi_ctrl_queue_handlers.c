@@ -2798,7 +2798,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
                 data->u.mon_stats_config.channel_width = radio_params->channelWidth;
                 data->u.mon_stats_config.band = radio_params->band;
                 data->u.mon_stats_config.nop_up_status = true;
-                push_event_to_monitor_queue(data, wifi_event_monitor_nop_start_status, NULL); 
+                push_event_to_monitor_queue(data, wifi_event_monitor_nop_start_status, NULL);
                 if(!is_nop_start_reboot) {
                     pthread_mutex_lock(&g_wifidb->data_cache_lock);
                     if( !strcmp(radio_params->radarDetected, " ") ) {
