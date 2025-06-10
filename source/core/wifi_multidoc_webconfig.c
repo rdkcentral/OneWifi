@@ -218,6 +218,7 @@ static int decode_ssid_blob(wifi_vap_info_t *vap_info, cJSON *ssid, bool managed
         if (cJSON_IsBool(param)) {
             vap_info->u.bss_info.enabled = cJSON_IsTrue(param) ? true : false;
             wifi_util_info_print(WIFI_CTRL, "   \"Enable\": %s\n", (vap_info->u.bss_info.enabled) ? "true" : "false");
+            wifi_util_info_print(WIFI_CTRL, "  \" MDU Enabled\": %d\n", (vap_info->u.bss_info.mdu_enabled = vap_info->u.bss_info.enabled && managed_wifi));
         } else {
             wifi_util_error_print(WIFI_CTRL, "%s: \"Enable\" is not boolean\n", __func__);
             return -1;
@@ -564,8 +565,6 @@ static int update_vap_info_managed_guest(void *data, void *amenities_blob, wifi_
                     strncpy(vap_info->repurposed_vap_name, repurposed_vap_name, (strlen(repurposed_vap_name) + 1));
                 }
             }
-            vap_info->u.bss_info.mdu_enabled = true;
-            wifi_util_info_print(WIFI_CTRL,"%s:%d Managed WiFi Phase 2 set to %s\n",__FUNCTION__,__LINE__,vap_info->u.bss_info.mdu_enabled ? "enabled":"disabled");
         }
     } else {
         wifi_util_info_print(WIFI_CTRL, "%s: %d connected_building_enabled %d \n", __func__,__LINE__,connected_building_enabled);
