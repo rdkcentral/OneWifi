@@ -1513,9 +1513,14 @@ int get_nop_started_channels(wifi_mon_stats_config_t *data)
 
     int channel_list[MAX_DFS_CHANNELS] = {0};
     int channels_num = 0;
-    wifi_freq_bands_t band = data->band;
-    wifi_channelBandwidth_t bandwidth = data->channel_width;
-    int primary_channel = data->nop_up_channel;
+    wifi_freq_bands_t band;
+    wifi_channelBandwidth_t bandwidth;
+    int primary_channel;
+
+    band = data->band;
+    bandwidth = data->channel_width;
+    primary_channel = data->nop_up_channel;
+
     if (data == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: Invalid input data\n", __func__, __LINE__);
         return RETURN_ERR;
@@ -1566,10 +1571,8 @@ int get_nop_started_channels(wifi_mon_stats_config_t *data)
 
         g_monitor_module.nop_started_channels = new_ptr;
 
-        memcpy(g_monitor_module.nop_started_channels + g_monitor_module.nop_channels_num,
-            temp,
-            num_unmatched * sizeof(unsigned int)
-        );
+        memcpy(g_monitor_module.nop_started_channels + g_monitor_module.nop_channels_num, temp,
+            num_unmatched * sizeof(unsigned int));
 
         for (unsigned int i = 0; i < num_unmatched; i++) {
             wifi_util_dbg_print(WIFI_CTRL, "%s:%d Added NOP Channel: %u\n",
