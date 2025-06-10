@@ -2761,15 +2761,24 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
         rdk_wifi_radio_t *l_radio = NULL;
         time_t time_now = time(NULL);
         l_radio = find_radio_config_by_index(ch_chg->radioIndex);
+        wifi_monitor_data_t *data = NULL;
 
+        data = (wifi_monitor_data_t *)calloc(1, sizeof(wifi_monitor_data_t));
+        if (data == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d: Memory allocation failed\n", __func__,
+                __LINE__);
+            return;
+        }
         if (l_radio == NULL) {
             wifi_util_error_print(WIFI_CTRL,"%s:%d radio strucutre is not present for radio %d\n",
                                 __FUNCTION__, __LINE__,  ch_chg->radioIndex);
+            free(data);
             return;
         }
 
         if( ((ch_chg->channel >= 36 && ch_chg->channel < 52) && (ch_chg->channelWidth != WIFI_CHANNELBANDWIDTH_160MHZ )) || (ch_chg->channel > 144 && ch_chg->channel <= 165) ) {
             wifi_util_error_print(WIFI_CTRL,"%s: Wrong radar in radio_index:%d chan:%u \n",__FUNCTION__, ch_chg->radioIndex, ch_chg->channel);
+            free(data);
             return ;
         }
 
@@ -2785,7 +2794,11 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
                 l_radio->radarInfo.last_channel = ch_chg->channel;
                 l_radio->radarInfo.num_detected++;
                 l_radio->radarInfo.timestamp = (dfs_timer_secs == 0) ? (long int) time_now : (long int) (time_now - (radio_params->DFSTimer - dfs_timer_secs));
-
+                data->u.mon_stats_config.nop_up_channel = radio_params->channel;
+                data->u.mon_stats_config.channel_width = radio_params->channelWidth;
+                data->u.mon_stats_config.band = radio_params->band;
+                data->u.mon_stats_config.nop_up_status = true;
+                push_event_to_monitor_queue(data, wifi_event_monitor_nop_start_status, NULL); 
                 if(!is_nop_start_reboot) {
                     pthread_mutex_lock(&g_wifidb->data_cache_lock);
                     if( !strcmp(radio_params->radarDetected, " ") ) {
@@ -2816,7 +2829,12 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
                 chan_state = CHAN_STATE_DFS_CAC_COMPLETED;
                 break;
             case WIFI_EVENT_RADAR_NOP_FINISHED :
-                if( (unsigned int)l_radio->radarInfo.last_channel == ch_chg->channel && (time_now - l_radio->radarInfo.timestamp >= 1800)) {
+                data->u.mon_stats_config.nop_up_channel = ch_chg->channel;
+                data->u.mon_stats_config.channel_width = ch_chg->channelWidth;
+                data->u.mon_stats_config.band = radio_params->band;
+                data->u.mon_stats_config.nop_up_status = false;
+                push_event_to_monitor_queue(data, wifi_event_monitor_nop_start_status, NULL);
+            if( (unsigned int)l_radio->radarInfo.last_channel == ch_chg->channel && (time_now - l_radio->radarInfo.timestamp >= 1800)) {
                     l_radio->radarInfo.last_channel = 0;
                     l_radio->radarInfo.num_detected = 0;
                     l_radio->radarInfo.timestamp = 0;
@@ -2851,7 +2869,9 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
                 chan_state = CHAN_STATE_DFS_CAC_START;
                 break;
         }
-
+        if (data != NULL) {
+            free(data);
+        }
         if (ch_chg->sub_event == WIFI_EVENT_RADAR_DETECTED) {
             wifi_util_info_print(WIFI_CTRL,"%s:%d DFS RADAR_DETECTED on ch %d and will not be available for 30 mins\n",
                                  __func__, __LINE__, ch_chg->channel);

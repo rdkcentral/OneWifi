@@ -775,6 +775,7 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
     int count = 0;
     int id = 0;
     int on_chan_list[MAX_CHANNELS] = {0};
+    int nop_chan_list[MAX_DFS_CHANNELS] = { 0 };
     int onchan_num_channels = 0;
     int new_num_channels = 0;
     int updated_channels[MAX_CHANNELS] = {0};
@@ -797,6 +798,10 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
         wifi_util_info_print(WIFI_MON, "%s:%d radio_presence is false for radio : %d\n", __func__,
             __LINE__, args->radio_index);
         return RETURN_OK;
+    }
+    
+    for (unsigned int j = 0; j < mon_data->nop_channels_num; j++) {
+        nop_chan_list[j] = (int)mon_data->nop_started_channels[j];
     }
 
     radioOperation = getRadioOperationParam(args->radio_index);
@@ -868,14 +873,23 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
 	}
         // skip on-channel scan list
         for (int i = 0; i < args->channel_list.num_channels; i++) {
-            int unmatched = 1;
+            int is_on_chan = 0;
+            int is_nop_chan = 0;
             for (int j = 0; j < onchan_num_channels; j++) {
                 if ((int)args->channel_list.channels_list[i] == on_chan_list[j]) {
-                    unmatched = 0;
+                    is_on_chan = 1;
                     break;
                 }
             }
-            if (unmatched) {
+            if (mon_data->nop_channels_num != 0) {
+                for (unsigned int j = 0; j < mon_data->nop_channels_num; j++) {
+                    if ((int)args->channel_list.channels_list[i] == nop_chan_list[j]) {
+                        is_nop_chan = 1;
+                        break;
+                    }
+                }
+            }
+            if (!is_on_chan && !is_nop_chan) {
                 updated_channels[new_num_channels++] = args->channel_list.channels_list[i];
             }
         }
