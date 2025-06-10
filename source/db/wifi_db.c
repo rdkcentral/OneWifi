@@ -695,6 +695,8 @@ int wifidb_get_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
         config->u.bss_info.wps.enable = TRUE;
         config->u.bss_info.hostap_mgt_frame_ctrl = TRUE;
         config->u.bss_info.mbo_enabled = TRUE;
+        config->u.bss_info.interop_ctrl = FALSE;
+	config->u.bss_info.inum_sta = 0;
     }
     return ret;
 }
