@@ -1,15 +1,15 @@
 /************************************************************************************
   If not stated otherwise in this file or this component's LICENSE file the
   following copyright and licenses apply:
-  
-  Copyright 2018 RDK Management
-  
+
+  Copyright 2024 RDK Management
+
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
   You may obtain a copy of the License at
-  
+
   http://www.apache.org/licenses/LICENSE-2.0
-  
+
   Unless required by applicable law or agreed to in writing, software
   distributed under the License is distributed on an "AS IS" BASIS,
   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,27 +17,27 @@
   limitations under the License.
  **************************************************************************/
 
-#include "platform_common.h"
-#include "bus.h"
-#include "wifi_dml.h"
-#include "misc.h"
-#include "ccsp.h"
+#ifndef _MISC_H_
+#define _MISC_H_
 
-int platform_init(bus_handle_t *handle)
+#include "misc_common.h"
+
+#ifdef __cplusplus
+extern "C"
 {
-    /* Initialize RBUS descriptor */
-    bus_init(handle);
-
-    /* Initialize ccsp trace and log methods */
-    wifi_ccsp_rdkb_init(get_wificcsp_obj());
-#ifdef ONEWIFI_DML_SUPPORT
-    /* Initialize Data Model descriptor */
-    wifi_dml_init(get_wifidml_obj());
 #endif
-    /* Initialize misc data and descriptor */
-    wifi_misc_init(get_wifimisc_obj());
 
-    /* t2_events_, v_secure_system etc init */
-    // system_init();
-    return 0;
+void wifi_misc_init();
+
+typedef struct {
+    wifi_misc_desc_t                desc;
+} wifi_misc_t;
+
+wifi_misc_desc_t *get_misc_descriptor();
+wifi_misc_t *get_misc_obj();
+
+#ifdef __cplusplus
 }
+#endif
+
+#endif //_MISC_H

@@ -244,7 +244,8 @@ int notify_associated_entries(wifi_ctrl_t *ctrl, int ap_index, ULONG new_count, 
     snprintf(str, sizeof(str),
         "Device.WiFi.AccessPoint.%d.AssociatedDeviceNumberOfEntries,%d,%lu,%lu,%d", ap_index + 1, 0,
         new_count, old_count, 2);
-    rc = get_bus_descriptor()->bus_set_string_fn(&ctrl->handle, WIFI_NOTIFY_ASSOCIATED_ENTRIES,
+    wifi_util_info_print(WIFI_CTRL, "%s:%d: Sending Notification for str:%s \n", __func__, __LINE__, str);
+    rc = get_bus_descriptor()->bus_set_string_fn(&ctrl->handle, WIFI_NOTIFY_SYNC_COMPONENT,
         str);
     if (rc != bus_error_success) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: bus: bus_set_string_fn Failed %d\n", __func__,
@@ -418,6 +419,28 @@ int tcm_notify_deny_association(wifi_ctrl_t *ctrl, int ap_index, mac_addr_str_t 
 
     rc = get_bus_descriptor()->bus_set_string_fn(&ctrl->handle, WIFI_NOTIFY_DENY_TCM_ASSOCIATION,
         str);
+    if (rc != bus_error_success) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: bus: bus_set_string_fn Failed %d\n", __func__,
+            __LINE__, rc);
+        return RETURN_ERR;
+    }
+    return RETURN_OK;
+}
+
+int notify_wifi_sec_mode_enabled(wifi_ctrl_t *ctrl, int ap_index, char *old_mode, char *new_mode) {
+    bus_error_t rc;
+    char str[2048];
+    memset(str, 0, sizeof(str));
+
+    if (ctrl == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: NULL Pointer \n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    snprintf(str, sizeof(str),"Device.WiFi.AccessPoint.%d.Security.ModeEnabled,16,%s,%s,2",(ap_index + 1), new_mode, old_mode);
+
+    wifi_util_info_print(WIFI_CTRL, "%s:%d: sending str %s as notification to WIFI_NOTIFY_SYNC_COMPONENT\n", __func__, __LINE__, str);
+    rc = get_bus_descriptor()->bus_set_string_fn(&ctrl->handle, WIFI_NOTIFY_SYNC_COMPONENT, str);
     if (rc != bus_error_success) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: bus: bus_set_string_fn Failed %d\n", __func__,
             __LINE__, rc);

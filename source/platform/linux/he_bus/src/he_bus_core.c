@@ -1179,6 +1179,84 @@ he_bus_error_t he_bus_set_data(he_bus_handle_t handle, char const *event_name, h
     return status;
 }
 
+he_bus_error_t he_bus_method_invoke(he_bus_handle_t handle, char const *event_name,
+    he_bus_raw_data_t *p_input_data, he_bus_raw_data_t *p_output_data)
+{
+    VERIFY_NULL_WITH_RC(event_name);
+    VERIFY_NULL_WITH_RC(handle);
+
+    he_bus_raw_data_msg_t req_data = { 0 };
+    he_bus_stretch_buff_t raw_buff = { 0 };
+    he_bus_stretch_buff_t res_data = { 0 };
+    he_bus_error_t status = he_bus_error_success;
+    he_bus_raw_data_t payload_data = { 0 };
+
+    if (p_input_data == NULL) {
+        p_input_data = &payload_data;
+    }
+
+    status = prepare_initial_bus_header(&req_data, handle->component_name, he_bus_msg_set);
+    if (status != he_bus_error_success) {
+        he_bus_core_error_print("%s:%d initial bus header prepare is failed:%d\r\n", __func__,
+            __LINE__, status);
+        return status;
+    }
+
+    status = prepare_rem_payload_bus_msg_data(event_name, &req_data, he_bus_msg_method_event,
+        p_input_data, he_bus_error_success);
+    if (status != he_bus_error_success) {
+        he_bus_core_error_print("%s:%d rem bus payload prepare is failed:%d for %s\r\n", __func__,
+            __LINE__, status, event_name);
+        return status;
+    }
+
+    if (convert_bus_raw_msg_data_to_buffer(&req_data, &raw_buff) != he_bus_error_success) {
+        he_bus_core_error_print("%s:%d wrong data for :%s namespace\r\n", __func__, __LINE__,
+            event_name);
+        FREE_BUFF_MEMORY(raw_buff.buff);
+        return he_bus_error_invalid_input;
+    }
+
+    int ret = ipc_unix_send_data_and_wait_for_res(&raw_buff, &res_data, HE_BUS_RES_RECV_TIMEOUT_S);
+    if (ret != HE_BUS_RETURN_OK) {
+        he_bus_core_info_print("%s:%d event:%s bus get send failure:%d\r\n", __func__, __LINE__,
+            event_name, ret);
+        status = he_bus_error_destination_not_reachable;
+    } else {
+        // read bus response and parse.
+        he_bus_raw_data_msg_t recv_data = { 0 };
+        he_bus_data_object_t *p_obj_data = &recv_data.data_obj;
+
+        he_bus_core_info_print("%s:%d event:%s bus method get response received from provider\r\n",
+            __func__, __LINE__, event_name);
+        convert_buffer_to_bus_raw_msg_data(&recv_data, &res_data);
+        if (recv_data.msg_type == he_bus_msg_response &&
+            p_obj_data->msg_sub_type == he_bus_msg_method_event) {
+            if (!strncmp(event_name, p_obj_data->name, (strlen(p_obj_data->name) + 1))) {
+                he_bus_core_info_print("%s:%d event:%s bus method get response found\r\n", __func__,
+                    __LINE__, event_name);
+                if ((p_obj_data->status == he_bus_error_success) &&
+                    (p_output_data != NULL)) {
+                    memcpy(p_output_data, &p_obj_data->data, sizeof(p_obj_data->data));
+                } else {
+                    he_bus_core_error_print("%s:%d event:%s bus method get is falied:%d\r\n", __func__,
+                    __LINE__, event_name, p_obj_data->status);
+                    status = p_obj_data->status;
+                }
+            }
+        } else {
+            he_bus_core_info_print("%s:%d event:%s bus method get response:%d\r\n", __func__, __LINE__,
+                event_name, recv_data.msg_type);
+            free_bus_msg_obj_data(&recv_data.data_obj);
+            status = he_bus_error_destination_response_failure;
+        }
+    }
+
+    FREE_BUFF_MEMORY(raw_buff.buff);
+    FREE_BUFF_MEMORY(res_data.buff);
+    return status;
+}
+
 void remove_client_existing_sub_info_cb(element_node_t *node, traversal_cb_param_t param)
 {
     HE_BUS_VERIFY_NULL(node);

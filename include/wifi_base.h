@@ -42,7 +42,7 @@ extern "C" {
 #define WIFI_WAN_FAILOVER_TEST              "Device.WiFi.WanFailoverTest"
 #define WIFI_LMLITE_NOTIFY                  "Device.Hosts.X_RDKCENTRAL-COM_LMHost_Sync_From_WiFi"
 #define WIFI_HOTSPOT_NOTIFY                 "Device.X_COMCAST-COM_GRE.Hotspot.ClientChange"
-#define WIFI_NOTIFY_ASSOCIATED_ENTRIES      "Device.NotifyComponent.SetNotifi_ParamName"
+#define WIFI_NOTIFY_SYNC_COMPONENT          "Device.NotifyComponent.SetNotifi_ParamName"
 #define WIFI_NOTIFY_FORCE_DISASSOCIATION    "Device.WiFi.ConnectionControl.ClientForceDisassociation"
 #define WIFI_NOTIFY_DENY_ASSOCIATION        "Device.WiFi.ConnectionControl.ClientDenyAssociation"
 #define MESH_STATUS                         "Device.DeviceInfo.X_RDKCENTRAL-COM_xOpsDeviceMgmt.Mesh.Enable"
@@ -492,6 +492,10 @@ typedef struct {
     char cli_stat_list[MAX_BUF_LENGTH];
     char snr_list[MAX_BUF_LENGTH];
     char txrx_rate_list[MAX_BUF_LENGTH];
+    bool mgt_frame_rate_limit_enable;
+    int mgt_frame_rate_limit;
+    int mgt_frame_rate_limit_window_size;
+    int mgt_frame_rate_limit_cooldown_time;
 } __attribute__((packed)) wifi_global_param_t;
 
 typedef struct {
@@ -1287,6 +1291,14 @@ typedef struct {
 } ap_metrics_t;
 
 typedef struct {
+    mac_addr_t ruid;
+    unsigned char noise;
+    unsigned char transmit;
+    unsigned char receive_self;
+    unsigned char receive_other;
+} radio_metrics_t;
+
+typedef struct {
     ap_metrics_t vap_metrics;
     int sta_cnt;
     bool is_sta_traffic_stats_enabled;
@@ -1297,6 +1309,7 @@ typedef struct {
 
 typedef struct {
     int radio_index;
+    radio_metrics_t radio_metrics;
     em_vap_metrics_t vap_reports[MAX_NUM_VAP_PER_RADIO];
 } em_ap_metrics_report_t;
 
