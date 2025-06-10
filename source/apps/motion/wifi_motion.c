@@ -321,6 +321,7 @@ static void csi_update_client_mac_status(mac_addr_t mac, bool connected, int ap_
             csi_app->data.u.csi.csi_fns.csi_start_fn(csi_app, ap_idx, (unsigned char*)mac, wifi_app_inst_motion);
         } else {
             csi_app->data.u.csi.csi_fns.csi_stop_fn((void *)csi_app, ap_idx, (unsigned char*)mac, wifi_app_inst_motion);
+            //Added this function to checking client is still connected or not.
             refresh_connected_client_state(csi, csi_app, client_csi_index);
         }
     }
