@@ -1210,6 +1210,24 @@
             "min": 0,
             "max": 1
           }
+        },
+        "mdu_guest_hotspot_enabled": {
+          "type" : {
+            "key" : {
+              "type": "boolean"
+            },
+            "min": 0,
+            "max": 1
+          }
+        },
+        "mdu_phase_two_flag" : {
+          "type" : {
+            "key" : {
+              "type": "boolean"
+            },
+            "min": 0,
+            "max": 1,
+          }
         }
       },
     "isRoot": true

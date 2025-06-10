@@ -617,8 +617,9 @@ static int update_vap_info_managed_xfinity(void *data, wifi_vap_info_t *vap_info
     } else {
         wifi_util_dbg_print(WIFI_CTRL, "%s: \"connected_building_enabled\" is not present\n", __func__);
     }
-    vap_info->u.bss_info.connected_building_enabled = connected_building_enabled;
-    wifi_util_info_print(WIFI_CTRL, "  LINE %d \"connected_building_enabled\": %s and vap_name=%s\n", __LINE__,(vap_info->u.bss_info.connected_building_enabled) ? "true" : "false",vap_info->vap_name);
+    vap_info->u.bss_info.mdu_guest_hotspot_enabled = connected_building_enabled;
+    vap_info->u.bss_info.mdu_phase_two_flag = true; // Indication flag to know which to use : connected-building_enabled or mdu_guest_hotspot_enabled variable
+    wifi_util_info_print(WIFI_CTRL, "  LINE %d \"connected_building_enabled\": %s and vap_name=%s and phase two enabled flag = %d\n", __LINE__,(vap_info->u.bss_info.mdu_guest_hotspot_enabled) ? "true" : "false",vap_info->vap_name, vap_info->u.bss_info.mdu_phase_two_flag?"true":"false");
     cJSON_Delete(root);
     return status;
 }
@@ -1103,7 +1104,12 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
        cJSON *connected_building_enabled_o = cJSON_GetObjectItem(vb_entry, "Connected_building_enabled");
         if (connected_building_enabled_o == NULL) {
             wifi_util_dbg_print(WIFI_CTRL, "connected_building_enabled param is not present\n");
+            if (wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.mdu_phase_two_flag) {
+                cJSON_AddBoolToObject(vb_entry,"Connected_building_enabled",wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.mdu_guest_hotspot_enabled);
+            }
+            else {
             cJSON_AddBoolToObject(vb_entry,"Connected_building_enabled",wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.connected_building_enabled);
+            }
         }
 
         cJSON_AddNumberToObject(vb_entry, "SpeedTier", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.am_config.npc.speed_tier);
@@ -1537,7 +1543,6 @@ void process_managed_wifi_disable ()
 
     cJSON *managed_blob = cJSON_CreateObject();
     cJSON_AddBoolToObject(managed_blob, "connected_building_enabled", false);
-
 
     ret = connected_subdoc_handler(managed_blob, NULL, VAP_PREFIX_LNF_PSK, webconfig_subdoc_type_lnf, false,  execRetVal);
     if (ret != RETURN_OK) {

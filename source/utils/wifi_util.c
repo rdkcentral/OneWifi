@@ -3780,6 +3780,8 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
             IS_CHANGED(vap_info_old->u.bss_info.mdu_enabled, vap_info_new->u.bss_info.mdu_enabled) ||
             IS_CHANGED(vap_info_old->u.bss_info.am_config.npc.speed_tier,
                 vap_info_new->u.bss_info.am_config.npc.speed_tier) ||
+            IS_CHANGED(vap_info_old->u.bss_info.mdu_guest_hotspot_enabled, vap_info_new->u.bss_info.mdu_guest_hotspot_enabled) ||
+            IS_CHANGED(vap_info_old->u.bss_info.mdu_phase_two_flag, vap_info_new->u.bss_info.mdu_phase_two_flag) ||
             IS_BIN_CHANGED(&vap_info_old->u.bss_info.beaconRateCtl,
                 &vap_info_new->u.bss_info.beaconRateCtl,
                 sizeof(vap_info_old->u.bss_info.beaconRateCtl)) ||
