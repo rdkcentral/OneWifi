@@ -336,9 +336,7 @@ static int init_vap_config_default(int vap_index, wifi_vap_info_t *config,
 
         cfg.u.bss_info.network_initiated_greylist = false;
         cfg.u.bss_info.connected_building_enabled = false;
-        cfg.u.bss_info.mdu_guest_hotspot_enabled = false;
         cfg.u.bss_info.mdu_enabled = false;
-        cfg.u.bss_info.mdu_phase_two_flag = false;
         cfg.u.bss_info.am_config.npc.speed_tier = 0;
         if (isVapPrivate(vap_index)) {
             cfg.u.bss_info.vapStatsEnable = true;
@@ -683,8 +681,6 @@ int wifidb_get_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
         config->u.bss_info.nbrReportActivated = FALSE;
         config->u.bss_info.network_initiated_greylist = FALSE;
         config->u.bss_info.connected_building_enabled = FALSE;
-        config->u.bss_info.mdu_guest_hotspot_enabled = FALSE;
-        config->u.bss_info.mdu_phase_two_flag = TRUE;
         config->u.bss_info.rapidReconnectEnable = FALSE;
         config->u.bss_info.rapidReconnThreshold = 0;
         config->u.bss_info.vapStatsEnable = TRUE;

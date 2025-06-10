@@ -153,8 +153,6 @@
         PJS_OVS_BOOL(mld_apply) \
         PJS_OVS_BOOL(mdu_enabled)\
         PJS_OVS_INT(speed_tier)\
-        PJS_OVS_BOOL(mdu_guest_hotspot_enabled)\
-        PJS_OVS_BOOL(mdu_phase_two_flag)\
     )
 
 #define PJS_SCHEMA_Wifi_Interworking_Config \
@@ -2086,9 +2084,7 @@
     COLUMN(mld_apply)\
     COLUMN(interop_ctrl)\
     COLUMN(mdu_enabled)\
-    COLUMN(speed_tier)\
-    COLUMN(mdu_guest_hotspot_enabled)\
-    COLUMN(mdu_phase_two_flag)
+    COLUMN(speed_tier)
 
 #define SCHEMA__Wifi_Interworking_Config "Wifi_Interworking_Config"
 #define SCHEMA_COLUMN__Wifi_Interworking_Config(COLUMN) \
@@ -3448,8 +3444,6 @@
 #define SCHEMA__Wifi_VAP_Config__mld_apply "mld_apply"
 #define SCHEMA__Wifi_VAP_Config__mdu_enabled "mdu_enabled"
 #define SCHEMA__Wifi_VAP_Config__speed_tier "speed_tier"
-#define SCHEMA__Wifi_VAP_Config__mdu_guest_hotspot_enabled "mdu_guest_hotspot_enabled"
-#define SCHEMA__Wifi_VAP_Config__mdu_phase_two_flag "mdu_phase_two_flag"
 
 #define SCHEMA__Wifi_Interworking_Config__enable "enable"
 #define SCHEMA__Wifi_Interworking_Config__vap_name "vap_name"

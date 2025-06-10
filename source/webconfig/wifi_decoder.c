@@ -1729,16 +1729,10 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
     // connected_building_enabled params
     decode_param_allow_empty_bool(vap, "Connected_building_enabled", param, connected_value);
     if (!connected_value) {
-        if (vap_info->u.bss_info.mdu_phase_two_flag)
-            vap_info->u.bss_info.mdu_guest_hotspot_enabled = false;
-        else
-            vap_info->u.bss_info.connected_building_enabled = false;
+        vap_info->u.bss_info.connected_building_enabled = false;
     } else {
         decode_param_bool(vap, "Connected_building_enabled", param);
-        if (vap_info->u.bss_info.mdu_phase_two_flag)
-            vap_info->u.bss_info.mdu_guest_hotspot_enabled = (param->type & cJSON_True) ? true : false;
-        else
-            vap_info->u.bss_info.connected_building_enabled = (param->type & cJSON_True) ? true : false;
+        vap_info->u.bss_info.connected_building_enabled = (param->type & cJSON_True) ? true : false;
     }
 
     // HostapMgtFrameCtrl
