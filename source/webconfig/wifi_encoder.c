@@ -470,12 +470,7 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
 
 
     //conncted_building_enabled
-    if (vap_info->u.bss_info.mdu_phase_two_flag) {
-        cJSON_AddBoolToObject(vap_object, "Connected_building_enabled", vap_info->u.bss_info.mdu_guest_hotspot_enabled);
-    }
-    else {
-        cJSON_AddBoolToObject(vap_object, "Connected_building_enabled", vap_info->u.bss_info.connected_building_enabled);
-    }
+    cJSON_AddBoolToObject(vap_object, "Connected_building_enabled", vap_info->u.bss_info.connected_building_enabled);
 
     // HostapMgtFrameCtrl
     cJSON_AddBoolToObject(vap_object, "HostapMgtFrameCtrl",
