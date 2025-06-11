@@ -121,6 +121,19 @@ void process_scan_results_event(scan_results_t *results, unsigned int len)
     }
 }
 
+const char* wifi_hotspot_action_to_string(wifi_hotspot_action_t action) {
+    switch (action) {
+        case hotspot_vap_disable:
+            return "Up";
+        case hotspot_vap_enable:
+            return "Down";
+        case hotspot_vap_param_update:
+            return "Hotspot Param Update";
+        default:
+            return "unknown";
+    }
+}
+
 int remove_xfinity_acl_entries(bool remove_all_greylist_entry,bool prefer_private)
 {
     wifi_util_dbg_print(WIFI_CTRL,"%s:%d  Enter \n", __FUNCTION__, __LINE__);
@@ -728,6 +741,7 @@ void process_anqp_gas_init_frame_event(frame_data_t *msg, uint32_t msg_length)
     }
 }
 
+
 void send_hotspot_status(char* vap_name, bool up)
 {
     bus_error_t rc;
@@ -853,11 +867,19 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
                         wifi_util_error_print(WIFI_CTRL, "%s:%d Unable to update LnF vaps as per Hotspot VAPs\n", __func__,__LINE__);
                         return;
                     }
+                    wifi_util_info_print(WIFI_CTRL,"%s:%d LnF VAP %s is %s as per Tunnel %s event\n",__func__,__LINE__,lnf_vap_info->vap_name, lnf_vap_info->u.bss_info.enabled?"Enabled":"Disabled",wifi_hotspot_action_to_string(action));
                 }
             }
         }
     }
 
+    if (is_6g_supported_device(wifi_prop) && param != hotspot_vap_param_update) {
+        wifi_util_info_print(WIFI_CTRL,"6g supported device enable rrm\n");
+        if (pub_svc->event_fn != NULL) {
+            pub_svc->event_fn(pub_svc, wifi_event_type_command, wifi_event_type_xfinity_rrm,
+                vap_svc_event_none,NULL);
+        }
+    }
     if (!lnf_2g_vap)
     {
         wifi_util_info_print(WIFI_CTRL,"%s:%d lnf_2g_vap is NULL\n", __func__,__LINE__);
@@ -868,13 +890,7 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
         {
             wifi_util_info_print(WIFI_CTRL, "%s:%d Unable to update LnF vaps as per Hotspot VAPs\n", __func__,__LINE__);
         }
-    }
-    if (is_6g_supported_device(wifi_prop) && param != hotspot_vap_param_update) {
-        wifi_util_info_print(WIFI_CTRL,"6g supported device enable rrm\n");
-        if (pub_svc->event_fn != NULL) {
-            pub_svc->event_fn(pub_svc, wifi_event_type_command, wifi_event_type_xfinity_rrm,
-                vap_svc_event_none,NULL);
-        }
+        wifi_util_info_print(WIFI_CTRL,"%s:%d LnF VAP %s is %s as per Tunnel %s event\n",__func__,__LINE__,lnf_vap_info->vap_name, lnf_vap_info->u.bss_info.enabled?"Enabled":"Disabled",wifi_hotspot_action_to_string(action));   
     }
 }
 
