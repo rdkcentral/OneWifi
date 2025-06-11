@@ -1508,7 +1508,7 @@ int get_neighbor_scan_cfg(int radio_index,
     return 0;
 }
 
-int get_nop_started_channels(wifi_mon_stats_config_t *data)
+int get_nop_started_channels(wifi_nop_stats_config_t *data)
 {
     int channel_list[MAX_DFS_CHANNELS] = { 0 };
     int channels_num = 0;
@@ -1851,7 +1851,7 @@ void *monitor_function  (void *data)
                        // subscribe_stats = event_data->u.collect_stats.event_subscribe;
                     break;
                     case wifi_event_monitor_nop_start_status:
-                        get_nop_started_channels(&event_data->u.mon_stats_config);
+                        get_nop_started_channels(&event_data->u.nop_stats_config);
                     break;
                     default:
                     break;

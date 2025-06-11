@@ -2794,10 +2794,10 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
                 l_radio->radarInfo.last_channel = ch_chg->channel;
                 l_radio->radarInfo.num_detected++;
                 l_radio->radarInfo.timestamp = (dfs_timer_secs == 0) ? (long int) time_now : (long int) (time_now - (radio_params->DFSTimer - dfs_timer_secs));
-                data->u.mon_stats_config.nop_up_channel = radio_params->channel;
-                data->u.mon_stats_config.channel_width = radio_params->channelWidth;
-                data->u.mon_stats_config.band = radio_params->band;
-                data->u.mon_stats_config.nop_up_status = true;
+                data->u.nop_stats_config.nop_up_channel = radio_params->channel;
+                data->u.nop_stats_config.channel_width = radio_params->channelWidth;
+                data->u.nop_stats_config.band = radio_params->band;
+                data->u.nop_stats_config.nop_up_status = true;
                 push_event_to_monitor_queue(data, wifi_event_monitor_nop_start_status, NULL);
                 if(!is_nop_start_reboot) {
                     pthread_mutex_lock(&g_wifidb->data_cache_lock);
@@ -2829,10 +2829,10 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
                 chan_state = CHAN_STATE_DFS_CAC_COMPLETED;
                 break;
             case WIFI_EVENT_RADAR_NOP_FINISHED :
-                data->u.mon_stats_config.nop_up_channel = ch_chg->channel;
-                data->u.mon_stats_config.channel_width = ch_chg->channelWidth;
-                data->u.mon_stats_config.band = radio_params->band;
-                data->u.mon_stats_config.nop_up_status = false;
+                data->u.nop_stats_config.nop_up_channel = ch_chg->channel;
+                data->u.nop_stats_config.channel_width = ch_chg->channelWidth;
+                data->u.nop_stats_config.band = radio_params->band;
+                data->u.nop_stats_config.nop_up_status = false;
                 push_event_to_monitor_queue(data, wifi_event_monitor_nop_start_status, NULL);
             if( (unsigned int)l_radio->radarInfo.last_channel == ch_chg->channel && (time_now - l_radio->radarInfo.timestamp >= 1800)) {
                     l_radio->radarInfo.last_channel = 0;

@@ -349,6 +349,12 @@ typedef struct {
 } __attribute__((packed)) wifi_mon_stats_config_t;
 
 typedef struct {
+    wifi_channelBandwidth_t channel_width;
+    wifi_freq_bands_t band;
+    bool nop_up_status;
+    unsigned int nop_up_channel;
+} __attribute__((packed)) wifi_nop_stats_config_t;
+typedef struct {
     wifi_frame_t    frame;
     unsigned char data[MAX_FRAME_SZ];
 } __attribute__((__packed__)) frame_data_t;
@@ -392,6 +398,7 @@ typedef struct {
         frame_data_t msg;
         ocs_params_t        ocs_params;
         collect_stats_t     collect_stats;
+        wifi_nop_stats_config_t nop_stats_config;
     } u;
 } wifi_monitor_data_t;
 
