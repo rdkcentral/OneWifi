@@ -86,11 +86,11 @@ static int configure_lnf_psk_radius_from_hotspot(wifi_vap_info_t *vap_info)
         return -1;
     }
     vap_info->u.bss_info.security.repurposed_radius = hotspot_vap_info->u.bss_info.security.u.radius;
-    wifi_util_dbg_print(WIFI_CTRL, "%s:%d LNF RADIUS Config - Primary IP: %s Port: %d, Secondary IP: %s Port: %d\n",
-                       __func__, __LINE__, 
-                       vap_info->u.bss_info.security.repurposed_radius.ip, 
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d LNF RADIUS Config for vap name = %s - Primary IP: %s Port: %d, Secondary IP: %s Port: %d\n",
+                       __func__, __LINE__, vap_info->u.bss_info.vap_name,
+                       vap_info->u.bss_info.security.repurposed_radius.ip,
                        vap_info->u.bss_info.security.repurposed_radius.port,
-                       vap_info->u.bss_info.security.repurposed_radius.s_ip, 
+                       vap_info->u.bss_info.security.repurposed_radius.s_ip,
                        vap_info->u.bss_info.security.repurposed_radius.s_port);
 
     return 0;

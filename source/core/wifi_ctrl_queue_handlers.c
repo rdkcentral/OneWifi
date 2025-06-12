@@ -124,9 +124,9 @@ void process_scan_results_event(scan_results_t *results, unsigned int len)
 const char* wifi_hotspot_action_to_string(wifi_hotspot_action_t action) {
     switch (action) {
         case hotspot_vap_disable:
-            return "Hotspot VAP Up";
-        case hotspot_vap_enable:
             return "Hotspot VAP Down";
+        case hotspot_vap_enable:
+            return "Hotspot VAP Up";
         case hotspot_vap_param_update:
             return "Hotspot Param Update";
         default:
