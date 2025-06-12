@@ -2860,7 +2860,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
             case WIFI_EVENT_RADAR_CAC_STARTED :
                 chan_state = CHAN_STATE_DFS_CAC_START;
                 break;
-        
+            }
         data->u.nop_stats_config.radioIndex = ch_chg->radioIndex;
         data->u.nop_stats_config.nop_up_channel = radio_params->channel;
         data->u.nop_stats_config.channel_state = chan_state;
@@ -2917,7 +2917,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
         if (data != NULL) {
             free(data);
         }
-    } }else {
+    } else {
         wifi_util_error_print(WIFI_CTRL,"%s: Invalid event for radio %d\n",__FUNCTION__, ch_chg->radioIndex);
         return;
     }
