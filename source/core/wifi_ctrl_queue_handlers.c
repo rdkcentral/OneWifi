@@ -867,7 +867,7 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
                         wifi_util_error_print(WIFI_CTRL, "%s:%d Unable to update LnF vaps as per Hotspot VAPs\n", __func__,__LINE__);
                         return;
                     }
-                    wifi_util_info_print(WIFI_CTRL,"%s:%d LnF VAP %s is %s as per event\n",__func__,__LINE__,lnf_vap_info->vap_name, lnf_vap_info->u.bss_info.enabled?"Enabled":"Disabled",wifi_hotspot_action_to_string(action));
+                    wifi_util_info_print(WIFI_CTRL,"%s:%d LnF VAP %s is %s as per event\n",__func__,__LINE__,lnf_vap_info->vap_name, lnf_vap_info->u.bss_info.enabled?"Enabled":"Disabled",wifi_hotspot_action_to_string(param));
                 }
             }
         }
@@ -890,7 +890,7 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
         {
             wifi_util_info_print(WIFI_CTRL, "%s:%d Unable to update LnF vaps as per Hotspot VAPs\n", __func__,__LINE__);
         }
-        wifi_util_info_print(WIFI_CTRL,"%s:%d LnF VAP %s is %s as per %s event\n",__func__,__LINE__,lnf_vap_info->vap_name, lnf_vap_info->u.bss_info.enabled?"Enabled":"Disabled",wifi_hotspot_action_to_string(action));   
+        wifi_util_info_print(WIFI_CTRL,"%s:%d LnF VAP %s is %s as per %s event\n",__func__,__LINE__,lnf_vap_info->vap_name, lnf_vap_info->u.bss_info.enabled?"Enabled":"Disabled",wifi_hotspot_action_to_string(param));   
     }
 }
 
