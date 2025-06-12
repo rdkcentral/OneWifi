@@ -387,6 +387,7 @@ void sta_pending_connection_retry(wifi_ctrl_t *ctrl);
 bool get_wifi_mesh_vap_enable_status(void);
 int get_wifi_mesh_sta_network_status(uint8_t vapIndex, bool *status);
 bool check_for_greylisted_mac_filter(void);
+int update_vap_params_to_hal_and_db(wifi_vap_info_t *vap, bool enable_or_disable);
 void wait_wifi_scan_result(wifi_ctrl_t *ctrl);
 bool is_sta_enabled(void);
 void reset_wifi_radios();
