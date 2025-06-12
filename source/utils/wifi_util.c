@@ -2294,7 +2294,7 @@ bool wifi_radius_config_changed(const wifi_radius_settings_t *old_config,
 #ifdef WIFI_HAL_VERSION_3_PHASE2
     changed |= IS_BIN_CHANGED(&old_config->ip, &new_config->ip, sizeof(ip_addr_t));
 #else
-    changed |= IS_STR_CHANGED(old_config->ip, new_config->ip, sizeof(old_config->ip));
+    changed |= IS_BIN_CHANGED(old_config->ip, new_config->ip, sizeof(old_config->ip));
 #endif
     changed |= IS_CHANGED(old_config->port, new_config->port);
     changed |= IS_STR_CHANGED(old_config->key, new_config->key, sizeof(old_config->key));
@@ -2303,7 +2303,7 @@ bool wifi_radius_config_changed(const wifi_radius_settings_t *old_config,
 #ifdef WIFI_HAL_VERSION_3_PHASE2
     changed |= IS_BIN_CHANGED(&old_config->s_ip, &new_config->s_ip, sizeof(ip_addr_t));
 #else
-    changed |= IS_STR_CHANGED(old_config->s_ip, new_config->s_ip, sizeof(old_config->s_ip));
+    changed |= IS_BIN_CHANGED(old_config->s_ip, new_config->s_ip, sizeof(old_config->s_ip));
 #endif
     changed |= IS_CHANGED(old_config->s_port, new_config->s_port);
     changed |= IS_STR_CHANGED(old_config->s_key, new_config->s_key, sizeof(old_config->s_key));
