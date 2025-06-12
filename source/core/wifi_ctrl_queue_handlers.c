@@ -862,7 +862,7 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
                     wifi_util_info_print(WIFI_CTRL, "%s:%d lnf_vap_info is NULL for radio index = %d\n", __func__,__LINE__,radio_indx);
                     return;
                 }
-                if (!strstr(lnf_vap_info->vap_name, NAME_FREQUENCY_2_4_G) && lnf_vap_info->u.bss_info.mdu_enabled && !strncmp(tmp_vap_map.vap_array[0].vap_name, VAP_PREFIX_HOTSPOT_SECURE, strlen(VAP_PREFIX_HOTSPOT_SECURE))) {
+                if (!strstr(lnf_vap_info->vap_name, NAME_FREQUENCY_2_4_G) && lnf_vap_info->u.bss_info.mdu_enabled && !strncmp(tmp_vap_map.vap_array[0].vap_name, VAP_PREFIX_HOTSPOT_SECURE, strlen(VAP_PREFIX_HOTSPOT_SECURE)) && (lnf_vap_info->u.bss_info.enabled != tmp_vap_map.vap_array[0].u.bss_info.enabled)) {
                     if (update_vap_params_to_hal_and_db(lnf_vap_info, tmp_vap_map.vap_array[0].u.bss_info.enabled) == -1) {
                         wifi_util_error_print(WIFI_CTRL, "%s:%d Unable to update LnF vaps as per Hotspot VAPs\n", __func__,__LINE__);
                         return;
@@ -885,7 +885,7 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
         wifi_util_info_print(WIFI_CTRL,"%s:%d lnf_2g_vap is NULL\n", __func__,__LINE__);
         return;
     }
-    if (lnf_2g_vap->u.bss_info.mdu_enabled) {
+    if (lnf_2g_vap->u.bss_info.mdu_enabled && lnf_2g_vap->u.bss_info.enabled != hotspot_5g_vap_info.u.bss_info.enabled) {
         if (update_vap_params_to_hal_and_db(lnf_2g_vap, hotspot_5g_vap_info.u.bss_info.enabled) == -1)
         {
             wifi_util_info_print(WIFI_CTRL, "%s:%d Unable to update LnF vaps as per Hotspot VAPs\n", __func__,__LINE__);

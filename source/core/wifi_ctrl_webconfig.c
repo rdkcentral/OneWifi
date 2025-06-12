@@ -2115,7 +2115,9 @@ void process_managed_wifi_enable()
         if (isVapHotspotSecure5g(hotspot_ap_index)) {
             hotspot5g_vap_info = hotspot_vap_info;
         }
-        update_vap_params_to_hal_and_db(lnf_vap_info, hotspot_vap_info->u.bss_info.enabled);
+        if (lnf_vap_info_0->u.bss_info.mdu_enabled && lnf_vap_info_0->u.bss_info.enabled != hotspot5g_vap_info->u.bss_info.enabled) {
+        update_vap_params_to_hal_and_db(lnf_vap_info_0, hotspot5g_vap_info->u.bss_info.enabled);
+        }
     }
 
     UINT lnf_ap_index_0 = getApFromRadioIndex(0, VAP_PREFIX_LNF_PSK);
@@ -2128,7 +2130,9 @@ void process_managed_wifi_enable()
         wifi_util_error_print(WIFI_CTRL, "%s:%d Hotspot 5G Secure VAP info not found, cannot update LNF radio 0\n", __func__, __LINE__);
         return;
     }
-    update_vap_params_to_hal_and_db(lnf_vap_info_0, hotspot5g_vap_info->u.bss_info.enabled);
+    if (lnf_vap_info_0->u.bss_info.mdu_enabled && lnf_vap_info_0->u.bss_info.enabled != hotspot5g_vap_info->u.bss_info.enabled) {
+        update_vap_params_to_hal_and_db(lnf_vap_info_0, hotspot5g_vap_info->u.bss_info.enabled);
+    }
 }
 
 webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc_data_t *data)
@@ -2241,7 +2245,7 @@ webconfig_error_t webconfig_ctrl_apply(webconfig_subdoc_t *doc, webconfig_subdoc
                     bool status = ((ret == RETURN_OK) ? true : false);
                     hotspot_cfg_sem_signal(status);
                     wifi_util_info_print(WIFI_CTRL,":%s:%d xfinity blob cfg status:%d\n", __func__, __LINE__, ret);
-                    //process_managed_wifi_enable();
+                    process_managed_wifi_enable();
                     webconfig_cac_apply(ctrl, &data->u.decoded);
                     if (is_6g_supported_device((&(get_wifimgr_obj())->hal_cap.wifi_prop))) {
                         wifi_util_info_print(WIFI_CTRL,"6g supported device add rnr of 6g\n");
