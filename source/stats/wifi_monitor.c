@@ -1621,7 +1621,7 @@ static void update_subscribe_data(wifi_monitor_data_t *event)
 
 int get_nop_started_channels(wifi_nop_stats_config_t *data)
 {
-    if (data == NULL || data->radioIndex >= MAX_RADIOS) {
+    if (data == NULL || data->radioIndex >= MAX_NUM_RADIOS) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: Invalid input data\n", __func__, __LINE__);
         return RETURN_ERR;
     }
