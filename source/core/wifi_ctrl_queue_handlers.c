@@ -882,7 +882,7 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
     }
     if (!lnf_2g_vap)
     {
-        wifi_util_error_print(WIFI_CTRL,"%s:%d lnf_2g_vap is NULL\n", __func__,__LINE__);
+        wifi_util_error_print(WIFI_CTRL,"%s:%d LnF 2.4GHz VAP is NULL\n", __func__,__LINE__);
         return;
     }
     if (should_process_hotspot_config_change(lnf_2g_vap, hotspot_5g_vap_info)) {
