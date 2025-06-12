@@ -1644,7 +1644,7 @@ int get_nop_started_channels(wifi_nop_stats_config_t *data)
     pthread_mutex_lock(&g_monitor_module.data_lock);
     wifi_util_dbg_print(WIFI_CTRL, "%s:%d Acquired data lock\n", __func__, __LINE__);
 
-    if (data->nop_up_status == true) {
+    if (data->channel_state == NOP_CHANNEL_STARTED) {
         unsigned int *temp = (unsigned int *)calloc(channels_num, sizeof(unsigned int));
         if (temp == NULL) {
             wifi_util_error_print(WIFI_CTRL, "%s:%d: calloc failed\n", __func__, __LINE__);
@@ -1691,7 +1691,7 @@ int get_nop_started_channels(wifi_nop_stats_config_t *data)
         }
 
         free(temp);
-    } else {
+    } else if(data_->channel_state == NOP_CHANNEL_COMPLETED) {
         // Remove channels that have completed NOP
         for (int i = 0; i < channels_num; i++) {
             for (unsigned int j = 0; j < g_monitor_module.nop_channels_num; j++) {
