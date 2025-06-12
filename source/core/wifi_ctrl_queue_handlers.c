@@ -885,7 +885,7 @@ void process_xfinity_vaps(wifi_hotspot_action_t param, bool hs_evt)
         wifi_util_error_print(WIFI_CTRL,"%s:%d LnF 2.4GHz VAP is NULL\n", __func__,__LINE__);
         return;
     }
-    if (should_process_hotspot_config_change(lnf_2g_vap, hotspot_5g_vap_info)) {
+    if (should_process_hotspot_config_change(lnf_2g_vap, &hotspot_5g_vap_info)) {
         if (update_vap_params_to_hal_and_db(lnf_2g_vap, hotspot_5g_vap_info.u.bss_info.enabled) == -1)
         {
             wifi_util_info_print(WIFI_CTRL, "%s:%d Unable to update LnF vaps as per Hotspot VAPs\n", __func__,__LINE__);
