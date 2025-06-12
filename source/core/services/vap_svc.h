@@ -182,7 +182,7 @@ extern int vap_svc_mesh_ext_update(vap_svc_t *svc, unsigned int radio_index,
     wifi_vap_info_map_t *map, rdk_wifi_vap_info_t *rdk_vap_info);
 extern int vap_svc_mesh_ext_event(vap_svc_t *svc, wifi_event_type_t type, wifi_event_subtype_t sub_type, vap_svc_event_t event, void *arg);
 extern bool vap_svc_is_mesh_ext(unsigned int vap_index);
-
+int update_lnf_psk_vap_hal_prop_bridge_name(vap_svc_t *svc, wifi_vap_info_map_t *vap_map);
 vap_svc_t *get_svc_by_type(wifi_ctrl_t *ctrl, vap_svc_type_t type);
 vap_svc_t *get_svc_by_vap_index(wifi_ctrl_t *ctrl, unsigned int vap_index);
 vap_svc_t *get_svc_by_name(wifi_ctrl_t *ct, char *vap_name);
