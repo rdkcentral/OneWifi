@@ -29,7 +29,7 @@
 #endif
 
 #define  ANSC_STATUS_SUCCESS                        0
-
+#define MAX_DFS_CHANNELS 16
 #define MONITOR_QUEUE_SIZE_MAX 500
 
 typedef struct {
