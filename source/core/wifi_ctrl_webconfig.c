@@ -2115,8 +2115,9 @@ void process_managed_wifi_enable()
         if (isVapHotspotSecure5g(hotspot_ap_index)) {
             hotspot5g_vap_info = hotspot_vap_info;
         }
-        if (lnf_vap_info_0->u.bss_info.mdu_enabled && lnf_vap_info_0->u.bss_info.enabled != hotspot5g_vap_info->u.bss_info.enabled) {
-        update_vap_params_to_hal_and_db(lnf_vap_info_0, hotspot5g_vap_info->u.bss_info.enabled);
+        if (should_process_hotspot_config_change(lnf_vap_info, hotspot_vap_info)) {
+            update_vap_params_to_hal_and_db(lnf_vap_info, hotspot5g_vap_info->u.bss_info.enabled);
+            wifi_util_info_print(WIFI_CTRL,"%s:%d LnF VAP %s config changed as per %s event\n",__func__,__LINE__,lnf_vap_info->vap_name, hotspot5g_vap_info->u.bss_info.enabled?"Hotspot Up":"Hotspot Down");
         }
     }
 
@@ -2130,8 +2131,9 @@ void process_managed_wifi_enable()
         wifi_util_error_print(WIFI_CTRL, "%s:%d Hotspot 5G Secure VAP info not found, cannot update LNF radio 0\n", __func__, __LINE__);
         return;
     }
-    if (lnf_vap_info_0->u.bss_info.mdu_enabled && lnf_vap_info_0->u.bss_info.enabled != hotspot5g_vap_info->u.bss_info.enabled) {
+    if (should_process_hotspot_config_change(lnf_vap_info_0, hotspot5g_vap_info)) {
         update_vap_params_to_hal_and_db(lnf_vap_info_0, hotspot5g_vap_info->u.bss_info.enabled);
+        wifi_util_info_print(WIFI_CTRL,"%s:%d LnF VAP %s config changed as per %s event\n",__func__,__LINE__,lnf_vap_info->vap_name, hotspot5g_vap_info->u.bss_info.enabled?"Hotspot Up":"Hotspot Down");
     }
 }
 
