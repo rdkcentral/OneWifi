@@ -6818,7 +6818,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         cfg.u.bss_info.connected_building_enabled = false;
         cfg.u.bss_info.mdu_enabled = false;
         if (isVapLnfPsk(vap_index)) {
-            cfg.u.bss_info.am_config.npc.speed_tier = 2;
+            cfg.u.bss_info.am_config.npc.speed_tier = DEFAULT_MANAGED_WIFI_SPEED_TIER;
         }
         else {
             cfg.u.bss_info.am_config.npc.speed_tier = 0;
