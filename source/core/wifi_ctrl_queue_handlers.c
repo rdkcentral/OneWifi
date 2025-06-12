@@ -2761,15 +2761,25 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
         rdk_wifi_radio_t *l_radio = NULL;
         time_t time_now = time(NULL);
         l_radio = find_radio_config_by_index(ch_chg->radioIndex);
+        wifi_monitor_data_t *data = NULL;
+
+        data = (wifi_monitor_data_t *)calloc(1, sizeof(wifi_monitor_data_t));
+        if (data == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d: Memory allocation failed\n", __func__,
+                __LINE__);
+            return;
+        }
 
         if (l_radio == NULL) {
             wifi_util_error_print(WIFI_CTRL,"%s:%d radio strucutre is not present for radio %d\n",
                                 __FUNCTION__, __LINE__,  ch_chg->radioIndex);
+            free(data);
             return;
         }
 
         if( ((ch_chg->channel >= 36 && ch_chg->channel < 52) && (ch_chg->channelWidth != WIFI_CHANNELBANDWIDTH_160MHZ )) || (ch_chg->channel > 144 && ch_chg->channel <= 165) ) {
             wifi_util_error_print(WIFI_CTRL,"%s: Wrong radar in radio_index:%d chan:%u \n",__FUNCTION__, ch_chg->radioIndex, ch_chg->channel);
+            free(data);
             return ;
         }
 
@@ -2850,7 +2860,13 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
             case WIFI_EVENT_RADAR_CAC_STARTED :
                 chan_state = CHAN_STATE_DFS_CAC_START;
                 break;
-        }
+        
+        data->u.nop_stats_config.radio_index = ch_chg->radioIndex;
+        data->u.nop_stats_config.nop_up_channel = radio_params->channel;
+        data->u.nop_stats_config.channel_state = chan_state;
+        data->u.nop_stats_config.channel_width = radio_params->channelWidth;
+        data->u.nop_stats_config.band = radio_params->band;
+        push_event_to_monitor_queue(data, wifi_event_monitor_nop_start_status, NULL);
 
         if (ch_chg->sub_event == WIFI_EVENT_RADAR_DETECTED) {
             wifi_util_info_print(WIFI_CTRL,"%s:%d DFS RADAR_DETECTED on ch %d and will not be available for 30 mins\n",
@@ -2897,6 +2913,9 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
                 }
                 break;
             }
+        }
+        if (data != NULL) {
+            free(data);
         }
     } else {
         wifi_util_error_print(WIFI_CTRL,"%s: Invalid event for radio %d\n",__FUNCTION__, ch_chg->radioIndex);

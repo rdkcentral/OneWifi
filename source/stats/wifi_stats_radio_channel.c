@@ -779,6 +779,8 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
     int new_num_channels = 0;
     int updated_channels[MAX_CHANNELS] = {0};
     wifi_mon_stats_args_t *args = NULL;
+    unsigned int *nop_chan_list = NULL;
+    int nop_chan_count = 0;
 
     if (c_elem == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d input arguments are NULL args : %p\n", __func__,
@@ -798,6 +800,9 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
             __LINE__, args->radio_index);
         return RETURN_OK;
     }
+
+nop_chan_list = mon_data->nop_started_channels[args->radio_index];
+nop_chan_count = mon_data->nop_channels_num[args->radio_index];
 
     radioOperation = getRadioOperationParam(args->radio_index);
     if (radioOperation == NULL) {
@@ -868,17 +873,33 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
 	}
         // skip on-channel scan list
         for (int i = 0; i < args->channel_list.num_channels; i++) {
-            int unmatched = 1;
+            int is_on_chan = 0;
+            int is_nop_chan = 0;
             for (int j = 0; j < onchan_num_channels; j++) {
                 if ((int)args->channel_list.channels_list[i] == on_chan_list[j]) {
-                    unmatched = 0;
+                    is_on_chan = 1;
                     break;
                 }
             }
-            if (unmatched) {
+
+             pthread_mutex_lock(&mon_data->data_lock);
+            if (mon_data->nop_channels_num != 0) {
+                for (unsigned int j = 0; j < nop_chan_count; j++) {
+                    if (args->channel_list.channels_list[i] == (int)nop_chan_list[j]) {
+                        wifi_util_dbg_print(WIFI_MON,
+                            "%s:%d  skipping NOP channel %d for radio index %d\n", __func__,
+                            __LINE__, args->channel_list.channels_list[i], args->radio_index);
+                        is_nop_chan = 1;
+                        break;
+                    }
+                }
+            }
+            pthread_mutex_unlock(&mon_data->data_lock);
+            if (!is_on_chan && !is_nop_chan) {
                 updated_channels[new_num_channels++] = args->channel_list.channels_list[i];
             }
         }
+
         channels[0] = updated_channels[0];
         for (i = 0; i < new_num_channels; i++) {
             if (mon_data->last_scanned_channel[args->radio_index] ==

@@ -195,6 +195,7 @@ typedef enum {
     wifi_event_monitor_action_frame,
     wifi_event_monitor_auth_req,
     wifi_event_monitor_update_interop_interval,
+    wifi_event_monitor_nop_start_status,
     wifi_event_monitor_max,
 
     // Tunnel

@@ -373,6 +373,14 @@ typedef struct {
 } collect_stats_t;
 
 typedef struct {
+    wifi_channelBandwidth_t channel_width;
+    wifi_freq_bands_t band;
+    wifi_radio_index_t radioIndex;
+    unsigned int nop_up_channel;
+    wifi_channelState_t channel_state;
+} __attribute__((packed)) wifi_nop_stats_config_t;
+
+typedef struct {
     unsigned int id;
     int  csi_session;
     unsigned int    ap_index;
@@ -388,6 +396,7 @@ typedef struct {
         frame_data_t msg;
         ocs_params_t        ocs_params;
         collect_stats_t     collect_stats;
+        wifi_nop_stats_config_t nop_stats_config;
     } u;
 } wifi_monitor_data_t;
 
