@@ -2879,7 +2879,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
                 data->u.nop_stats_config.channel_width = ch_chg->channelWidth;
                 data->u.nop_stats_config.band = radio_params->band;
                 data->u.nop_stats_config.nop_up_status = false;
-                push_event_to_monitor_queue(data, wifi_event_monitor_nop_start_status, NULL);
+                push_event_to_monitor_queue(data, wifi_event_monitor_channel_status, NULL);
             if( (unsigned int)l_radio->radarInfo.last_channel == ch_chg->channel && (time_now - l_radio->radarInfo.timestamp >= 1800)) {
                     l_radio->radarInfo.last_channel = 0;
                     l_radio->radarInfo.num_detected = 0;
