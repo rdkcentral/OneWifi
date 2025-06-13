@@ -27,6 +27,7 @@
 #include "wifi_util.h"
 #include "wifi_ctrl.h"
 #include "wifi_mgr.h"
+#include "services/vap_svc.h"
 #include <netinet/in.h>
 #include <time.h>
 #include <openssl/sha.h>
@@ -2248,6 +2249,65 @@ int get_radio_index_for_vap_index(wifi_platform_property_t* wifi_prop, int vap_i
     return (prop) ? (int)prop->rdk_radio_index : RETURN_ERR;
 }
 
+bool wifi_radius_config_changed(const wifi_radius_settings_t *old_config,
+                                const wifi_radius_settings_t *new_config)
+{
+    if (!old_config || !new_config) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s: Invalid configuration pointers\n", __func__);
+        return false;
+    }
+
+    bool changed = false;
+
+#ifdef WIFI_HAL_VERSION_3_PHASE2
+    changed |= IS_BIN_CHANGED(&old_config->ip, &new_config->ip, sizeof(ip_addr_t));
+#else
+    changed |= IS_BIN_CHANGED(old_config->ip, new_config->ip, sizeof(old_config->ip));
+#endif
+    changed |= IS_CHANGED(old_config->port, new_config->port);
+    changed |= IS_STR_CHANGED(old_config->key, new_config->key, sizeof(old_config->key));
+    changed |= IS_STR_CHANGED(old_config->identity, new_config->identity, sizeof(old_config->identity));
+
+#ifdef WIFI_HAL_VERSION_3_PHASE2
+    changed |= IS_BIN_CHANGED(&old_config->s_ip, &new_config->s_ip, sizeof(ip_addr_t));
+#else
+    changed |= IS_BIN_CHANGED(old_config->s_ip, new_config->s_ip, sizeof(old_config->s_ip));
+#endif
+    changed |= IS_CHANGED(old_config->s_port, new_config->s_port);
+    changed |= IS_STR_CHANGED(old_config->s_key, new_config->s_key, sizeof(old_config->s_key));
+    changed |= IS_BIN_CHANGED(&old_config->dasip, &new_config->dasip, sizeof(ip_addr_t));
+    changed |= IS_CHANGED(old_config->dasport, new_config->dasport);
+    changed |= IS_STR_CHANGED(old_config->daskey, new_config->daskey, sizeof(old_config->daskey));
+    if (!changed) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s: No RADIUS configuration changes detected\n", __func__);
+    }
+    return changed;
+}
+
+bool should_process_hotspot_config_change(const wifi_vap_info_t *lnf_vap_info, 
+                                         const wifi_vap_info_t *hotspot_vap_info)
+{
+
+    if (!lnf_vap_info || !hotspot_vap_info) {
+        return false;
+    }
+    
+    bool is_mdu_enabled = lnf_vap_info->u.bss_info.mdu_enabled;
+    bool is_secure_hotspot = !strncmp(hotspot_vap_info->vap_name, 
+                                     VAP_PREFIX_HOTSPOT_SECURE,
+                                     strlen(VAP_PREFIX_HOTSPOT_SECURE));
+    
+    bool vap_enabled_changed = (lnf_vap_info->u.bss_info.enabled != 
+                               hotspot_vap_info->u.bss_info.enabled);
+    
+    bool radius_config_changed = wifi_radius_config_changed(
+        &lnf_vap_info->u.bss_info.security.repurposed_radius,
+        &hotspot_vap_info->u.bss_info.security.u.radius);
+    
+    return (is_mdu_enabled &&
+            is_secure_hotspot &&
+            (vap_enabled_changed || radius_config_changed));
+}
 
 int  min_hw_mode_conversion(unsigned int vapIndex, char *inputStr, char *outputStr, char *tableType)
 {
@@ -3777,6 +3837,9 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
                 vap_info_new->u.bss_info.wpsPushButton) ||
             IS_CHANGED(vap_info_old->u.bss_info.connected_building_enabled,
                 vap_info_new->u.bss_info.connected_building_enabled) ||
+            IS_CHANGED(vap_info_old->u.bss_info.mdu_enabled, vap_info_new->u.bss_info.mdu_enabled) ||
+            IS_CHANGED(vap_info_old->u.bss_info.am_config.npc.speed_tier,
+                vap_info_new->u.bss_info.am_config.npc.speed_tier) ||
             IS_BIN_CHANGED(&vap_info_old->u.bss_info.beaconRateCtl,
                 &vap_info_new->u.bss_info.beaconRateCtl,
                 sizeof(vap_info_old->u.bss_info.beaconRateCtl)) ||

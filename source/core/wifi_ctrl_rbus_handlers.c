@@ -494,7 +494,7 @@ int webconfig_bus_apply(wifi_ctrl_t *ctrl, webconfig_subdoc_encoded_data_t *data
     return RETURN_OK;
 }
 
-int get_managed_guest_bridge(char *brval, unsigned long length)
+int get_managed_guest_bridge(char *brval, unsigned long length, int radio_index)
 {
     bus_error_t rc;
     char *token = NULL;
@@ -502,23 +502,28 @@ int get_managed_guest_bridge(char *brval, unsigned long length)
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
     raw_data_t data;
     memset(&data, 0, sizeof(raw_data_t));
-
-    rc = get_bus_descriptor()->bus_data_get_fn(&g_wifi_mgr->ctrl.handle, MANAGED_WIFI_BRIDGE,
-        &data);
+    char str[32];
+    memset(str, 0, sizeof(str));
+    snprintf(str, sizeof(str), "Device.LAN.Bridge.%d.Name", radio_index + 1);
+    rc = get_bus_descriptor()->bus_data_get_fn(&g_wifi_mgr->ctrl.handle, str, &data);
     if (data.data_type != bus_data_type_string) {
         wifi_util_error_print(WIFI_CTRL,
-            "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%\n", __func__, __LINE__,
-            MANAGED_WIFI_BRIDGE, data.data_type, rc);
+            "%s:%d '%s' bus_data_get_fn failed with data_type:0x%x, rc:%d\n", __func__, __LINE__,
+            str, data.data_type, rc);
         get_bus_descriptor()->bus_data_free_fn(&data);
         return rc;
     }
 
     if (rc == bus_error_success) {
         brname = (char *)data.raw_data.bytes;
-        wifi_util_dbg_print(WIFI_CTRL, "Managed_wifi bridge name is %s\n", brname);
+        wifi_util_info_print(WIFI_CTRL,"%s:%d Managed_wifi bridge name is %s\n",__func__,__LINE__,brname);
         token = strrchr(brname, ':');
-        snprintf(brval, length, "%s", token + 1);
-        wifi_util_info_print(WIFI_CTRL, "Managed_wifi bridge val is %s\n", brval);
+        if (token) {
+            snprintf(brval, length, "%s", token + 1);
+        } else {
+            snprintf(brval, length, "%s", brname); 
+        }
+        wifi_util_info_print(WIFI_CTRL, "%s:%d Managed_wifi bridge val is %s\n",__func__,__LINE__,brval);
         get_bus_descriptor()->bus_data_free_fn(&data);
         return RETURN_OK;
     }
@@ -527,21 +532,20 @@ int get_managed_guest_bridge(char *brval, unsigned long length)
     return RETURN_ERR;
 }
 
-int set_managed_guest_interfaces(char *interface_name)
+int set_managed_guest_interfaces(char *interface_name, int radio_index)
 {
     bus_error_t rc;
     wifi_mgr_t *g_wifi_mgr = get_wifimgr_obj();
-    rc = get_bus_descriptor()->bus_set_string_fn(&g_wifi_mgr->ctrl.handle, MANAGED_WIFI_INTERFACE,
-        interface_name);
+    char str[48];
+    memset(str, 0, sizeof(str));
+    snprintf(str, sizeof(str), "Device.LAN.Bridge.%d.WiFiInterfaces", radio_index + 1);
+    rc = get_bus_descriptor()->bus_set_string_fn(&g_wifi_mgr->ctrl.handle, str, interface_name);
     if (rc != bus_error_success) {
-        wifi_util_error_print(WIFI_CTRL, "Failed to set %s with %s \n", MANAGED_WIFI_INTERFACE,
-            interface_name);
+        wifi_util_error_print(WIFI_CTRL, "Failed to set %s with %s \n", str, interface_name);
         return RETURN_ERR;
     } else {
-        wifi_util_dbg_print(WIFI_CTRL, "Successfuly set %s with %s \n", MANAGED_WIFI_INTERFACE,
-            interface_name);
+        wifi_util_dbg_print(WIFI_CTRL, "Successfuly set %s with %s \n", str, interface_name);
     }
-
     return RETURN_OK;
 }
 

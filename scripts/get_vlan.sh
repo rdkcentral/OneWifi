@@ -12,12 +12,18 @@ wlan0.2 | wl0.3)
         lan=brlan2;;
 wlan2.2 | wl1.3)
         lan=brlan3;;
+wl0.4)
+        lan=brlan16;;
+wl1.4)
+        lan=brlan17;;
 wlan0.4 | wl0.5)
         lan=brlan4;;
 wlan2.4 | wl1.5)
         lan=brlan5;;
 wl2.3)
         lan=bropen6g;;
+wl2.4) 
+        lan=brlan18;;
 wl2.5)
         lan=brsecure6g;;
 *)
