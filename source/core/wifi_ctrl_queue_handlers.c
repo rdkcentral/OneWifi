@@ -2875,11 +2875,6 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
                 chan_state = CHAN_STATE_DFS_CAC_COMPLETED;
                 break;
             case WIFI_EVENT_RADAR_NOP_FINISHED :
-                data->u.nop_stats_config.nop_up_channel = ch_chg->channel;
-                data->u.nop_stats_config.channel_width = ch_chg->channelWidth;
-                data->u.nop_stats_config.band = radio_params->band;
-                data->u.nop_stats_config.nop_up_status = false;
-                push_event_to_monitor_queue(data, wifi_event_monitor_channel_status, NULL);
             if( (unsigned int)l_radio->radarInfo.last_channel == ch_chg->channel && (time_now - l_radio->radarInfo.timestamp >= 1800)) {
                     l_radio->radarInfo.last_channel = 0;
                     l_radio->radarInfo.num_detected = 0;
@@ -2915,6 +2910,12 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
                 chan_state = CHAN_STATE_DFS_CAC_START;
                 break;
         }
+        data->u.nop_stats_config.radioIndex = ch_chg->radioIndex;
+        data->u.nop_stats_config.nop_up_channel = radio_params->channel;
+        data->u.nop_stats_config.channel_state = chan_state;
+        data->u.nop_stats_config.channel_width = radio_params->channelWidth;
+        data->u.nop_stats_config.band = radio_params->band;
+        push_event_to_monitor_queue(data, wifi_event_monitor_channel_status, NULL);
         if (data != NULL) {
             free(data);
         }
