@@ -6642,16 +6642,6 @@ AccessPoint_GetParamIntValue
         *pInt = pcfg->u.bss_info.bssMaxSta;
         return TRUE;
     }
-    if( AnscEqualString(ParamName, "MLD_ID", TRUE))
-    {
-        *pInt = pcfg->u.bss_info.mld_info.common_info.mld_id;
-        return TRUE;
-    }
-    if( AnscEqualString(ParamName, "MLD_Link_ID", TRUE))
-    {
-        *pInt = pcfg->u.bss_info.mld_info.common_info.mld_link_id;
-        return TRUE;
-    }
     if( AnscEqualString(ParamName, "X_CISCO_COM_BssUserStatus", TRUE))
     {
         if (isVapSTAMesh(pcfg->vap_index)) {
@@ -6772,6 +6762,18 @@ AccessPoint_GetParamUlongValue
     if( AnscEqualString(ParamName, "RetryLimit", TRUE))
     {
         *puLong = cfg->retry_limit;
+        return TRUE;
+    }
+
+    if( AnscEqualString(ParamName, "MLD_ID", TRUE))
+    {
+        *puLong = pcfg->u.bss_info.mld_info.common_info.mld_id;
+        return TRUE;
+    }
+
+    if( AnscEqualString(ParamName, "MLD_Link_ID", TRUE))
+    {
+        *puLong = pcfg->u.bss_info.mld_info.common_info.mld_link_id;
         return TRUE;
     }
 
@@ -7397,29 +7399,6 @@ AccessPoint_SetParamIntValue
         return TRUE;
     }
 
-    if( AnscEqualString(ParamName, "MLD_ID", TRUE))
-    {
-        if ( vapInfo->u.bss_info.mld_info.common_info.mld_id == (unsigned int)iValue )
-        {
-            return  TRUE;
-        }
-        /* save update to backup */
-        vapInfo->u.bss_info.mld_info.common_info.mld_id = iValue;
-        set_dml_cache_vap_config_changed(instance_number - 1);
-        return TRUE;
-    }
-
-    if( AnscEqualString(ParamName, "MLD_Link_ID", TRUE))
-    {
-        if ( vapInfo->u.bss_info.mld_info.common_info.mld_link_id == (unsigned int)iValue )
-        {
-            return  TRUE;
-        }
-        /* save update to backup */
-        vapInfo->u.bss_info.mld_info.common_info.mld_link_id = iValue;
-        set_dml_cache_vap_config_changed(instance_number - 1);
-        return TRUE;
-    }
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     return FALSE;
 }
@@ -7521,6 +7500,31 @@ AccessPoint_SetParamUlongValue
         cfg->associated_devices_highwatermark_threshold = uValue;
         return TRUE;
     }
+
+    if( AnscEqualString(ParamName, "MLD_ID", TRUE))
+    {
+        if ( vapInfo->u.bss_info.mld_info.common_info.mld_id == (unsigned int)uValue )
+        {
+            return  TRUE;
+        }
+        /* save update to backup */
+        vapInfo->u.bss_info.mld_info.common_info.mld_id = uValue;
+        set_dml_cache_vap_config_changed(instance_number - 1);
+        return TRUE;
+    }
+
+    if( AnscEqualString(ParamName, "MLD_Link_ID", TRUE))
+    {
+        if ( vapInfo->u.bss_info.mld_info.common_info.mld_link_id == (unsigned int)uValue )
+        {
+            return  TRUE;
+        }
+        /* save update to backup */
+        vapInfo->u.bss_info.mld_info.common_info.mld_link_id = uValue;
+        set_dml_cache_vap_config_changed(instance_number - 1);
+        return TRUE;
+    }
+
     /* CcspTraceWarning(("Unsupported parameter '%s'\n", ParamName)); */
     return FALSE;
 }
