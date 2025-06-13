@@ -78,12 +78,13 @@
 #define ONEWIFI_DB_VERSION_WPA3_COMP_FLAG 100032
 #define WPA3_COMPATIBILITY 8192
 #define ONEWIFI_DB_VERSION_HOSTAP_MGMT_FRAME_CTRL_FLAG 100033
+
 #define ONEWIFI_DB_VERSION_RSS_MEMORY_THRESHOLD_FLAG 100035
 #define ONEWIFI_DB_VERSION_MGT_FRAME_RATE_LIMIT 100036
 #define ONEWIFI_DB_VERSION_MANAGED_WIFI_FLAG 100038
 #define DEFAULT_MANAGED_WIFI_SPEED_TIER 2
-
 #define ONEWIFI_DB_VERSION_STATS_FLAG 100037
+#define ONEWIFI_DB_VERSION_MEMWRAPTOOL_FLAG 100039
 ovsdb_table_t table_Wifi_Radio_Config;
 ovsdb_table_t table_Wifi_VAP_Config;
 ovsdb_table_t table_Wifi_Security_Config;
@@ -237,6 +238,7 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon, struct schema_Wifi_Rf
         rfc_param->hotspot_open_6g_last_enabled = new_rec->hotspot_open_6g_last_enabled;
         rfc_param->hotspot_secure_2g_last_enabled = new_rec->hotspot_secure_2g_last_enabled;
         rfc_param->hotspot_secure_5g_last_enabled = new_rec->hotspot_secure_5g_last_enabled;
+        rfc_param->memwraptool_app_rfc = new_rec->memwraptool_app_rfc;
         rfc_param->wifi_offchannelscan_app_rfc = new_rec->wifi_offchannelscan_app_rfc;
         rfc_param->wifi_offchannelscan_sm_rfc = new_rec->wifi_offchannelscan_sm_rfc;
         rfc_param->hotspot_secure_6g_last_enabled = new_rec->hotspot_secure_6g_last_enabled;
@@ -250,7 +252,7 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon, struct schema_Wifi_Rf
             "hotspot_open_6g_last_enabled=%d hotspot_secure_2g_last_enabled=%d "
             "hotspot_secure_5g_last_enabled=%d hotspot_secure_6g_last_enabled=%d "
             "wifi_offchannelscan_app_rfc=%d offchannelscan=%d rfc_id=%s "
-            "levl_enabled_rfc=%d tcm_enabled_rfc=%d wpa3_compatibility_enable=%d \n",
+            "MemwrapTool=%d levl_enabled_rfc=%d tcm_enabled_rfc=%d wpa3_compatibility_enable=%d \n",
             __func__, __LINE__, rfc_param->wifipasspoint_rfc, rfc_param->wifiinterworking_rfc,
             rfc_param->radiusgreylist_rfc, rfc_param->dfsatbootup_rfc, rfc_param->dfs_rfc,
             rfc_param->wpa3_rfc, rfc_param->twoG80211axEnable_rfc,
@@ -258,7 +260,7 @@ void callback_Wifi_Rfc_Config(ovsdb_update_monitor_t *mon, struct schema_Wifi_Rf
             rfc_param->hotspot_open_6g_last_enabled, rfc_param->hotspot_secure_2g_last_enabled,
             rfc_param->hotspot_secure_5g_last_enabled, rfc_param->hotspot_secure_6g_last_enabled,
             rfc_param->wifi_offchannelscan_app_rfc, rfc_param->wifi_offchannelscan_sm_rfc,
-            rfc_param->rfc_id, rfc_param->levl_enabled_rfc,rfc_param->tcm_enabled_rfc,
+            rfc_param->rfc_id, rfc_param->memwraptool_app_rfc, rfc_param->levl_enabled_rfc,rfc_param->tcm_enabled_rfc,
             rfc_param->wpa3_compatibility_enable);
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
     }
@@ -1157,6 +1159,11 @@ void callback_Wifi_Global_Config(ovsdb_update_monitor_t *mon,
         g_wifidb->global_config.global_parameters.wifi_active_msmt_pktsize = new_rec->wifi_active_msmt_pktsize;
         g_wifidb->global_config.global_parameters.wifi_active_msmt_num_samples = new_rec->wifi_active_msmt_num_samples;
         g_wifidb->global_config.global_parameters.wifi_active_msmt_sample_duration = new_rec->wifi_active_msmt_sample_duration;
+        g_wifidb->global_config.global_parameters.memwraptool.rss_check_interval = new_rec->rss_check_interval;
+        g_wifidb->global_config.global_parameters.memwraptool.rss_threshold = new_rec->rss_threshold;
+        g_wifidb->global_config.global_parameters.memwraptool.rss_maxlimit = new_rec->rss_maxlimit;
+        g_wifidb->global_config.global_parameters.memwraptool.heapwalk_duration = new_rec->heapwalk_duration;
+        g_wifidb->global_config.global_parameters.memwraptool.heapwalk_interval = new_rec->heapwalk_interval;
         g_wifidb->global_config.global_parameters.vlan_cfg_version = new_rec->vlan_cfg_version;
 #ifdef FEATURE_SUPPORT_WPS
         if (strlen(new_rec->wps_pin) != 0) {
@@ -1227,7 +1234,8 @@ void callback_Wifi_Global_Config(ovsdb_update_monitor_t *mon,
             "wifi_region_code %s diagnostic_enable %d validate_ssid %d device_network_mode %d "
             "normalized_rssi_list %s snr_list %s cli_stat_list %s txrx_rate_list %s "
             "mgt_frame_rate_limit_enable %d mgt_frame_rate_limit %d mgt_frame_window_size %d"
-            "mgt_frame_cooldown_time %d\n",
+            "mgt_frame_cooldown_time %d rss_check_interval %d rss_threshold %d rss_maxlimit %d "
+            "heapwalk_duration %d heapwalk_interval %d\n",
             __func__, __LINE__, new_rec->notify_wifi_changes, new_rec->prefer_private,
             new_rec->prefer_private_configure, new_rec->factory_reset,
             new_rec->tx_overflow_selfheal, new_rec->inst_wifi_client_enabled,
@@ -1245,8 +1253,9 @@ void callback_Wifi_Global_Config(ovsdb_update_monitor_t *mon,
             new_rec->validate_ssid, new_rec->device_network_mode, new_rec->normalized_rssi_list,
             new_rec->snr_list, new_rec->cli_stat_list, new_rec->txrx_rate_list,
             new_rec->mgt_frame_rate_limit_enable, new_rec->mgt_frame_rate_limit,
-            new_rec->mgt_frame_rate_limit_window_size, new_rec->mgt_frame_rate_limit_cooldown_time);
-
+            new_rec->mgt_frame_rate_limit_window_size, new_rec->mgt_frame_rate_limit_cooldown_time,
+            new_rec->rss_check_interval, new_rec->rss_threshold, new_rec->rss_maxlimit,
+            new_rec->heapwalk_duration, new_rec->heapwalk_interval);
         pthread_mutex_unlock(&g_wifidb->data_cache_lock);
     }
     else
@@ -1745,6 +1754,7 @@ int wifidb_get_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_info)
     rfc_info->dfsatbootup_rfc = pcfg->dfsatbootup_rfc;
     rfc_info->dfs_rfc = pcfg->dfs_rfc;
     rfc_info->wpa3_rfc = pcfg->wpa3_rfc;
+    rfc_info->memwraptool_app_rfc = pcfg->memwraptool_app_rfc;
     rfc_info->levl_enabled_rfc = pcfg->levl_enabled_rfc;
 #ifdef ALWAYS_ENABLE_AX_2G
     rfc_info->twoG80211axEnable_rfc = true;
@@ -3012,6 +3022,11 @@ int wifidb_update_wifi_global_config(wifi_global_param_t *config)
     cfg.wifi_active_msmt_pktsize = config->wifi_active_msmt_pktsize;
     cfg.wifi_active_msmt_num_samples = config->wifi_active_msmt_num_samples;
     cfg.wifi_active_msmt_sample_duration = config->wifi_active_msmt_sample_duration;
+    cfg.rss_check_interval = config->memwraptool.rss_check_interval;
+    cfg.rss_threshold = config->memwraptool.rss_threshold;
+    cfg.rss_maxlimit = config->memwraptool.rss_maxlimit;
+    cfg.heapwalk_duration = config->memwraptool.heapwalk_duration;
+    cfg.heapwalk_interval = config->memwraptool.heapwalk_interval;
     cfg.vlan_cfg_version = config->vlan_cfg_version;
     strncpy(cfg.wps_pin,config->wps_pin,sizeof(cfg.wps_pin)-1);
     cfg.bandsteering_enable = config->bandsteering_enable;
@@ -3071,7 +3086,9 @@ int wifidb_update_wifi_global_config(wifi_global_param_t *config)
         "fixed_wmm_params %d wifi_region_code %s diagnostic_enable %d validate_ssid %d "
         "device_network_mode:%d normalized_rssi_list %s snr_list %s cli_stat_list %s "
         "txrx_rate_list %s mgt_frame_rate_limit_enable %d mgt_frame_rate_limit %d "
-        "mgt_frame_rate_limit_window_size %d mgt_frame_rate_limit_cooldown_time %d\n",
+        "mgt_frame_rate_limit_window_size %d mgt_frame_rate_limit_cooldown_time %d "
+        "rss_check_interval %d rss_threshold %d rss_maxlimit %d "
+        "heapwalk_duration %d heapwalk_interval %d\n",
         __func__, __LINE__, config->notify_wifi_changes, config->prefer_private,
         config->prefer_private_configure, config->factory_reset, config->tx_overflow_selfheal,
         config->inst_wifi_client_enabled, config->inst_wifi_client_reporting_period,
@@ -3086,8 +3103,10 @@ int wifidb_update_wifi_global_config(wifi_global_param_t *config)
         config->diagnostic_enable, config->validate_ssid, config->device_network_mode,
         config->normalized_rssi_list, config->snr_list, config->cli_stat_list,
         config->txrx_rate_list, config->mgt_frame_rate_limit_enable, config->mgt_frame_rate_limit,
-        config->mgt_frame_rate_limit_window_size, config->mgt_frame_rate_limit_cooldown_time);
-
+        config->mgt_frame_rate_limit_window_size, config->mgt_frame_rate_limit_cooldown_time,
+        config->memwraptool.rss_check_interval, config->memwraptool.rss_threshold,
+        config->memwraptool.rss_maxlimit, config->memwraptool.heapwalk_duration,
+        config->memwraptool.heapwalk_interval);
 
     if (wifidb_update_table_entry(NULL,NULL,OCLM_UUID,&table_Wifi_Global_Config,&cfg,filter_global) <= 0)
     {
@@ -3147,6 +3166,11 @@ int wifidb_get_wifi_global_config(wifi_global_param_t *config)
         config->assoc_gate_time = pcfg->assoc_gate_time;
         config->whix_log_interval = pcfg->whix_log_interval;
         config->whix_chutility_loginterval = pcfg->whix_chutility_loginterval;
+        config->memwraptool.rss_check_interval = pcfg->rss_check_interval;
+        config->memwraptool.rss_threshold = pcfg->rss_threshold;
+        config->memwraptool.rss_maxlimit = pcfg->rss_maxlimit;
+        config->memwraptool.heapwalk_duration = pcfg->heapwalk_duration;
+        config->memwraptool.heapwalk_interval = pcfg->heapwalk_interval;
         config->rss_memory_restart_threshold_low = pcfg->rss_memory_restart_threshold_low;
         config->rss_memory_restart_threshold_high = pcfg->rss_memory_restart_threshold_high;
         config->assoc_monitor_duration = pcfg->assoc_monitor_duration;
@@ -3178,7 +3202,6 @@ int wifidb_get_wifi_global_config(wifi_global_param_t *config)
             strncpy(config->txrx_rate_list,pcfg->txrx_rate_list,sizeof(config->txrx_rate_list)-1);
             config->txrx_rate_list[sizeof(config->txrx_rate_list)-1] = '\0';
         }
-
         config->mgt_frame_rate_limit_enable = pcfg->mgt_frame_rate_limit_enable;
         config->mgt_frame_rate_limit = pcfg->mgt_frame_rate_limit;
         config->mgt_frame_rate_limit_window_size = pcfg->mgt_frame_rate_limit_window_size;
@@ -3198,7 +3221,8 @@ int wifidb_get_wifi_global_config(wifi_global_param_t *config)
             "diagnostic_enable %d validate_ssid %d device_network_mode:%d normalized_rssi_list %s "
             "snr list %s txrx_rate_list %s cli_stat_list %s mgt_frame_rate_limit_enable %d"
             "mgt_frame_rate_limit %d mgt_frame_rate_limit_window_size %d "
-            "mgt_frame_rate_limit_cooldown_time %d\n",
+            "mgt_frame_rate_limit_cooldown_time %d rss_check_interval %d rss_threshold %d "
+            "rss_maxlimit %d heapwalk_duration %d heapwalk_interval %d\n",
             __func__, __LINE__, config->notify_wifi_changes, config->prefer_private,
             config->prefer_private_configure, config->factory_reset, config->tx_overflow_selfheal,
             config->inst_wifi_client_enabled, config->inst_wifi_client_reporting_period,
@@ -3214,7 +3238,10 @@ int wifidb_get_wifi_global_config(wifi_global_param_t *config)
             config->validate_ssid, config->device_network_mode, config->normalized_rssi_list,
             config->snr_list, config->txrx_rate_list, config->cli_stat_list,
             config->mgt_frame_rate_limit_enable, config->mgt_frame_rate_limit,
-            config->mgt_frame_rate_limit_window_size, config->mgt_frame_rate_limit_cooldown_time);
+            config->mgt_frame_rate_limit_window_size, config->mgt_frame_rate_limit_cooldown_time,
+            config->memwraptool.rss_check_interval, config->memwraptool.rss_threshold,
+            config->memwraptool.rss_maxlimit, config->memwraptool.heapwalk_duration,
+            config->memwraptool.heapwalk_interval);
     }
     free(pcfg);
     return 0;
@@ -4380,6 +4407,7 @@ void wifidb_init_rfc_config_default(wifi_rfc_dml_parameters_t *config)
     rfc_config.dfsatbootup_rfc = false;
     rfc_config.dfs_rfc = false;
     rfc_config.levl_enabled_rfc = false;
+    rfc_config.memwraptool_app_rfc = true;
 #if defined(_XB8_PRODUCT_REQ_) || defined(_SR213_PRODUCT_REQ_) || defined(_XER5_PRODUCT_REQ_) || defined (_SCER11BEL_PRODUCT_REQ_)
     rfc_config.wpa3_rfc = true;
 #else
@@ -4440,6 +4468,19 @@ static void wifidb_global_config_upgrade()
         } else {
             wifi_util_error_print(WIFI_DB,":%s:%d str value for whix_chutility_loginterval is null \r\n", __func__, __LINE__);
         }
+    }
+
+ 
+    if (g_wifidb->db_version < ONEWIFI_DB_VERSION_MEMWRAPTOOL_FLAG) {
+        wifi_util_dbg_print(WIFI_DB, "%s:%d upgrade global config, old db version %d \n", __func__,
+            __LINE__, g_wifidb->db_version);
+
+        g_wifidb->global_config.global_parameters.memwraptool.rss_check_interval = DEFAULT_RSS_CHECK_INTERVAL;
+        g_wifidb->global_config.global_parameters.memwraptool.rss_threshold = DEFAULT_RSS_THRESHOLD;
+        g_wifidb->global_config.global_parameters.memwraptool.rss_maxlimit = DEFAULT_RSS_MAXLIMIT;
+        g_wifidb->global_config.global_parameters.memwraptool.heapwalk_duration = DEFAULT_HEAPWALK_DURATION;
+        g_wifidb->global_config.global_parameters.memwraptool.heapwalk_interval = DEFAULT_HEAPWALK_INTERVAL;
+        g_wifidb->global_config.global_parameters.memwraptool.enable = true;
     }
 
     if (g_wifidb->db_version < ONEWIFI_DB_VERSION_RSS_MEMORY_THRESHOLD_FLAG) {
@@ -5652,6 +5693,7 @@ int wifidb_update_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_param)
     cfg.dfsatbootup_rfc = rfc_param->dfsatbootup_rfc;
     cfg.dfs_rfc = rfc_param->dfs_rfc;
     cfg.wpa3_rfc = rfc_param->wpa3_rfc;
+    cfg.memwraptool_app_rfc = rfc_param->memwraptool_app_rfc;
     cfg.levl_enabled_rfc = rfc_param->levl_enabled_rfc;
     cfg.twoG80211axEnable_rfc = rfc_param->twoG80211axEnable_rfc;
     cfg.hotspot_open_2g_last_enabled = rfc_param->hotspot_open_2g_last_enabled;
@@ -7096,6 +7138,12 @@ int wifidb_init_global_config_default(wifi_global_param_t *config)
     cfg.assoc_gate_time  = 0;
     cfg.whix_log_interval = 3600;
     cfg.whix_chutility_loginterval = 900;
+    cfg.memwraptool.rss_check_interval = DEFAULT_RSS_CHECK_INTERVAL;
+    cfg.memwraptool.rss_threshold = DEFAULT_RSS_THRESHOLD;
+    cfg.memwraptool.rss_maxlimit = DEFAULT_RSS_MAXLIMIT;
+    cfg.memwraptool.heapwalk_duration = DEFAULT_HEAPWALK_DURATION;
+    cfg.memwraptool.heapwalk_interval = DEFAULT_HEAPWALK_INTERVAL;
+    cfg.memwraptool.enable = true;
     cfg.rss_memory_restart_threshold_low = 81920;
     cfg.rss_memory_restart_threshold_high = 112640;
     cfg.assoc_monitor_duration = 0;
@@ -7314,7 +7362,6 @@ void init_wifidb_data()
     wifi_vap_info_map_t *l_vap_param_cfg = NULL;
     wifi_radio_operationParam_t *l_radio_cfg = NULL;
     wifi_radio_feature_param_t *f_radio_cfg = NULL;
-    wifi_rfc_dml_parameters_t *rfc_param = get_wifi_db_rfc_parameters();
     char country_code[COUNTRY_CODE_LEN] = {0};
 
     wifi_util_info_print(WIFI_DB,"%s:%d No of radios %d\n",__func__, __LINE__,getNumberRadios());
@@ -7325,6 +7372,7 @@ void init_wifidb_data()
         return;
     }
     wifidb_init_default_value();
+    wifi_rfc_dml_parameters_t *rfc_param = get_wifi_db_rfc_parameters();
 
     if ((access(ONEWIFI_FR_REBOOT_FLAG, F_OK) == 0) && (access(ONEWIFI_FR_WIFIDB_RESET_DONE_FLAG, F_OK) != 0)) {
         wifidb_update_rfc_config(0, rfc_param);

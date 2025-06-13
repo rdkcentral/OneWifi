@@ -120,6 +120,10 @@ int harvester_deinit(wifi_app_t *app)
 }
 #endif
 
+extern int memwraptool_init(wifi_app_t *app, unsigned int create_flag);
+extern int memwraptool_deinit(wifi_app_t *app);
+extern int memwraptool_event(wifi_app_t *app, wifi_event_t *event);
+
 #ifdef ONEWIFI_LEVL_APP_SUPPORT
 extern int levl_init(wifi_app_t *app, unsigned int create_flag);
 extern int levl_deinit(wifi_app_t *app);
@@ -307,6 +311,14 @@ wifi_app_descriptor_t app_desc[] = {
     },
 #endif
 #if ONEWIFI_MOTION_APP_SUPPORT
+    {
+        wifi_app_inst_memwraptool, 0,
+        wifi_event_type_webconfig | wifi_event_type_command,
+        true, true,
+        "Memwraptool",
+        memwraptool_init, memwraptool_event, memwraptool_deinit,
+        NULL, NULL
+    },
     {
         wifi_app_inst_motion, 0,
         wifi_event_type_hal_ind | wifi_event_type_webconfig | wifi_event_type_monitor | wifi_event_type_csi | wifi_event_type_speed_test,
