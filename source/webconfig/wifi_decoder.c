@@ -1462,7 +1462,7 @@ webconfig_error_t decode_ssid_name(char *ssid_name)
     }
 
     ssid_len = strlen(ssid_name);
-    if ((ssid_len == 0) || (ssid_len > WIFI_MAX_SSID_NAME_LEN)) {
+    if (ssid_len > WIFI_MAX_SSID_NAME_LEN) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: SSID length %d exceeds max SSID length %d\n", __func__, __LINE__, ssid_len, WIFI_MAX_SSID_NAME_LEN);
         //strncpy(execRetVal->ErrorMsg, "Invalid SSID Size",sizeof(execRetVal->ErrorMsg)-1);
         return webconfig_error_decode;
@@ -2197,7 +2197,7 @@ webconfig_error_t decode_mesh_sta_object(const cJSON *vap, wifi_vap_info_t *vap_
     }
 
     // SSID
-    decode_param_string(vap, "SSID", param);
+    decode_param_allow_empty_string(vap, "SSID", param);
     strcpy(vap_info->u.sta_info.ssid, param->valuestring);
 
     // BSSID
