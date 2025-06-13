@@ -13,6 +13,19 @@ cd $ONEWIFI_DIR
 mkdir -p install/bin
 mkdir -p install/lib
 
+#git clone test suite
+cd ..
+git clone ssh://gerrit.teamccp.com:29418/rdk/components/cpc/OneWifiTestSuite
+cd OneWifiTestSuite/
+git checkout origin/25Q2_sprint
+cp build/openwrt/patches/* ../../../package/kernel/mt76/patches/
+git clone http://github.com/yhirose/cpp-httplib
+cd cpp-httplib
+git checkout 9bbb4741b4f7c8fc5083c8a56d8d301a8abc25a3
+cp httplib.h ../src/external_agent_cci/ext_inc/
+cd ..
+rm -rf cpp-httplib
+cd $ONEWIFI_DIR
 
 #Check if the HOSTAP_DIR already present before creating
 if [ -d "$HOSTAP_DIR" ]; then
