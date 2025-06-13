@@ -1508,7 +1508,7 @@ int get_neighbor_scan_cfg(int radio_index,
     return 0;
 }
 
-int get_nop_started_channels(wifi_mon_stats_config_t *data)
+int get_nop_started_channels(wifi_channel_start_event_t *data)
 {
     int channel_list[MAX_DFS_CHANNELS] = { 0 };
     int channels_num = 0;
