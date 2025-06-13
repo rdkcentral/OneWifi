@@ -92,9 +92,6 @@ typedef struct {
 #ifdef ONEWIFI_STA_MGR_APP_SUPPORT
         sta_mgr_data_t sta_mgr;
 #endif //ONEWIFI_STA_MGR_APP_SUPPORT
-#ifdef ONEWIFI_EASYCONNECT_APP_SUPPORT
-        easyconnect_data_t ec;
-#endif // ONEWIFI_EASYCONNECT_APP_SUPPORT
 #ifdef EM_APP
         em_data_t            em_data;
 #endif //EM_APP
