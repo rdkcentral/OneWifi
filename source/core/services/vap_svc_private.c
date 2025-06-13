@@ -52,6 +52,50 @@ int vap_svc_private_stop(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info
     return 0;
 }
 
+static int configure_lnf_psk_radius_from_hotspot(wifi_vap_info_t *vap_info)
+{
+    int band;
+    wifi_vap_info_t *hotspot_vap_info = NULL;
+    int rIdx = 0;
+
+    if (!vap_info) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Invalid vap_info parameter\n", __FUNCTION__, __LINE__);
+        return -1;
+    }
+
+    if (!isVapLnfPsk(vap_info->vap_index) || !vap_info->u.bss_info.mdu_enabled) {
+        return 0;
+    }
+    wifi_platform_property_t *wifi_prop = get_wifi_hal_cap_prop();
+    if (convert_radio_index_to_freq_band(wifi_prop, vap_info->radio_index, &band) != RETURN_OK) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to get band for vap_index=%d\n", 
+                             __FUNCTION__, __LINE__, vap_info->vap_index);
+        return -1;
+    }
+
+    if (band == WIFI_FREQUENCY_2_4_BAND) {
+        convert_freq_band_to_radio_index(WIFI_FREQUENCY_5_BAND, &rIdx);
+        hotspot_vap_info = get_wifidb_vap_parameters(getApFromRadioIndex(rIdx, VAP_PREFIX_HOTSPOT_SECURE));
+    } else {
+        hotspot_vap_info = get_wifidb_vap_parameters(getApFromRadioIndex(vap_info->radio_index, VAP_PREFIX_HOTSPOT_SECURE));
+    }
+
+    if (hotspot_vap_info == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to get hotspot_vap_info for vap_index=%d\n", 
+                             __FUNCTION__, __LINE__, vap_info->vap_index);
+        return -1;
+    }
+    vap_info->u.bss_info.security.repurposed_radius = hotspot_vap_info->u.bss_info.security.u.radius;
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d LNF RADIUS Config for vap name = %s - Primary IP: %s Port: %d, Secondary IP: %s Port: %d\n",
+                       __func__, __LINE__, vap_info->vap_name,
+                       vap_info->u.bss_info.security.repurposed_radius.ip,
+                       vap_info->u.bss_info.security.repurposed_radius.port,
+                       vap_info->u.bss_info.security.repurposed_radius.s_ip,
+                       vap_info->u.bss_info.security.repurposed_radius.s_port);
+
+    return 0;
+}
+
 int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_info_map_t *map,
     rdk_wifi_vap_info_t *rdk_vap_info)
 {
@@ -59,7 +103,7 @@ int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
     unsigned int i;
     wifi_vap_info_map_t *p_tgt_vap_map = NULL;
     int ret;
-
+    
     p_tgt_vap_map = (wifi_vap_info_map_t *) malloc( sizeof(wifi_vap_info_map_t) );
     if (p_tgt_vap_map == NULL) {
         wifi_util_error_print(WIFI_CTRL,"%s:%d Failed to allocate memory.\n", __FUNCTION__,__LINE__);
@@ -75,6 +119,10 @@ int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
         // VAP is enabled in HAL if it is present in VIF_Config and enabled. Absent VAP entries are
         // saved to VAP_Config with exist flag set to 0 and default values.
         enabled = p_tgt_vap_map->vap_array[0].u.bss_info.enabled;
+        if (configure_lnf_psk_radius_from_hotspot(&p_tgt_vap_map->vap_array[0]) != RETURN_OK) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d configure_lnf_psk_radius_from_hotspot failed\n", __FUNCTION__, __LINE__);
+            return -1;
+        }
 #if defined(_WNXL11BWL_PRODUCT_REQ_)
         if (rdk_vap_info[i].exists == false && isVapPrivate(map->vap_array[i].vap_index)) {
             wifi_util_error_print(WIFI_CTRL,"%s:%d VAP_EXISTS_FALSE for vap_index=%d, setting to TRUE \n",__FUNCTION__,__LINE__,map->vap_array[i].vap_index);
@@ -104,7 +152,7 @@ int vap_svc_private_update(vap_svc_t *svc, unsigned int radio_index, wifi_vap_in
         }
 
         p_tgt_vap_map->vap_array[0].u.bss_info.enabled = enabled;
-
+        
         wifi_util_info_print(WIFI_CTRL,"%s: wifi vap create success: radio_index:%d vap_index:%d\n",__FUNCTION__,
                                                 radio_index, map->vap_array[i].vap_index);
         get_wifidb_obj()->desc.print_fn("%s: wifi vap create success: radio_index:%d vap_index:%d\n",__FUNCTION__,

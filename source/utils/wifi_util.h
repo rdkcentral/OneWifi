@@ -324,6 +324,7 @@ BOOL is_vap_hotspot_secure_5g(wifi_platform_property_t *wifi_prop, unsigned int 
 BOOL is_vap_hotspot_secure_6g(wifi_platform_property_t *wifi_prop, unsigned int ap_index);
 BOOL is_vap_lnf_radius(wifi_platform_property_t *wifi_prop, unsigned int ap_index);
 BOOL is_vap_mesh_sta(wifi_platform_property_t *wifi_prop, unsigned int ap_index);
+
 int country_code_conversion(wifi_countrycode_type_t *country_code, char *country, int country_len,
     unsigned int conv_type);
 int country_id_conversion(wifi_countrycode_type_t *country_code, char *country_id,
@@ -339,6 +340,8 @@ int channel_state_enum_to_str(wifi_channelState_t channel_state_enum, char *chan
     unsigned int channel_state_strlen);
 int is_wifi_channel_valid(wifi_platform_property_t *wifi_prop, wifi_freq_bands_t wifi_band,
     UINT wifi_channel);
+bool should_process_hotspot_config_change(const wifi_vap_info_t *lnf_vap_info, 
+                                         const wifi_vap_info_t *hotspot_vap_info);
 int key_mgmt_conversion_legacy(wifi_security_modes_t *mode_enum,
     wifi_encryption_method_t *encryp_enum, char *str_mode, int mode_len, char *str_encryp,
     int encryp_len, unsigned int conv_type);

@@ -375,6 +375,11 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
 
     // Broadcast SSID
     cJSON_AddBoolToObject(vap_object, "SSIDAdvertisementEnabled", vap_info->u.bss_info.showSsid);
+    // Speed Tier for Amenity Network
+    cJSON_AddNumberToObject(vap_object, "SpeedTier", vap_info->u.bss_info.am_config.npc.speed_tier);
+
+    // Managed WiFi Phase 2 Enabled
+    cJSON_AddBoolToObject(vap_object, "MDUEnabled", vap_info->u.bss_info.mdu_enabled);
 
     // Isolation
     cJSON_AddBoolToObject(vap_object, "IsolationEnable", vap_info->u.bss_info.isolation);
