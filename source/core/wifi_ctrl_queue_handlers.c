@@ -2907,9 +2907,9 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
                 break;
         }
         data->u.nop_stats_config.radioIndex = ch_chg->radioIndex;
-        data->u.nop_stats_config.nop_up_channel = radio_params->channel;
+        data->u.nop_stats_config.nop_up_channel = ch_chg->channel;
         data->u.nop_stats_config.channel_state = chan_state;
-        data->u.nop_stats_config.channel_width = radio_params->channelWidth;
+        data->u.nop_stats_config.channel_width = ch_chg->channelWidth;
         data->u.nop_stats_config.band = radio_params->band;
         push_event_to_monitor_queue(data, wifi_event_monitor_channel_status, NULL);
         if (data != NULL) {
