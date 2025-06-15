@@ -2840,7 +2840,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
                 l_radio->radarInfo.last_channel = ch_chg->channel;
                 l_radio->radarInfo.num_detected++;
                 l_radio->radarInfo.timestamp = (dfs_timer_secs == 0) ? (long int) time_now : (long int) (time_now - (radio_params->DFSTimer - dfs_timer_secs));
-                
+
                 if(!is_nop_start_reboot) {
                     pthread_mutex_lock(&g_wifidb->data_cache_lock);
                     if( !strcmp(radio_params->radarDetected, " ") ) {
@@ -2871,7 +2871,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
                 chan_state = CHAN_STATE_DFS_CAC_COMPLETED;
                 break;
             case WIFI_EVENT_RADAR_NOP_FINISHED :
-            if( (unsigned int)l_radio->radarInfo.last_channel == ch_chg->channel && (time_now - l_radio->radarInfo.timestamp >= 1800)) {
+                if( (unsigned int)l_radio->radarInfo.last_channel == ch_chg->channel && (time_now - l_radio->radarInfo.timestamp >= 1800)) {
                     l_radio->radarInfo.last_channel = 0;
                     l_radio->radarInfo.num_detected = 0;
                     l_radio->radarInfo.timestamp = 0;
