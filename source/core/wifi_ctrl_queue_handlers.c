@@ -2901,9 +2901,6 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
                 break;
             }
         }
-        if (data != NULL) {
-            free(data);
-        }
     } else {
         wifi_util_error_print(WIFI_CTRL,"%s: Invalid event for radio %d\n",__FUNCTION__, ch_chg->radioIndex);
         return;
