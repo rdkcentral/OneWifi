@@ -761,8 +761,8 @@ int check_scan_complete_read_results(void *arg)
     return RETURN_OK;
 }
 
-int get_non_operational_channel_list(int radio_index, int *input_channels, int input_channel_count,
-                                     int *nop_channels_out, int *nop_channel_count_out, wifi_monitor_t *mon_data)
+int get_non_operational_channel_list(int radio_index, int *input_channels,  int input_channel_count,
+                                     int *nop_channels_out, unsigned int *nop_channel_count_out, wifi_monitor_t *mon_data)
 {
     if (input_channels == NULL || nop_channels_out == NULL || 
         nop_channel_count_out == NULL || mon_data == NULL ||
@@ -916,8 +916,10 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
 		on_chan_list[0] = radioOperation->channel;
 	}
     unsigned int local_input_channels[64];
+    wifi_channels_list_t channel_list_local;
+memcpy(&channel_list_local, &args->channel_list, sizeof(channel_list_local));
 memcpy(local_input_channels, args->channel_list.channels_list,
-       args->channel_list.channel_count * sizeof(unsigned int));
+       args->channel_list.num_channels * sizeof(unsigned int));
        if( get_non_operational_channel_list(args->radio_index, args->channel_list.channels_list,
             args->channel_list.num_channels, nop_chan_list, &nop_chan_count, mon_data) != RETURN_OK) {
             wifi_util_error_print(WIFI_MON, "%s:%d get non operational channel list failed for radio : %d\n", __func__, __LINE__, args->radio_index);

@@ -375,7 +375,7 @@ typedef struct {
 typedef struct {
     wifi_channelMap_t channel_map[MAX_NUM_RADIOS][64];
     wifi_radio_index_t radio_index;
-} __attribute__((packed)) wifi_channel_status_event_t;
+} wifi_channel_status_event_t;
 
 typedef struct {
     unsigned int id;

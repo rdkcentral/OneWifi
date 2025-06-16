@@ -1629,20 +1629,24 @@ int get_nop_started_channels(wifi_channel_status_event_t *data)
     unsigned int count = 0;
 
     pthread_mutex_lock(&g_monitor_module.data_lock);
+
     for (int i = 0; i < MAX_DFS_CHANNELS; i++) {
-        // Access the channel using both indices
-        wifi_channelMap_t *entry = &data->channel_map[radio_index][i];
+        if (data->channel_map[radio_index][i].ch_number == 0)
+            break;
 
-        if (entry->ch_number == 0)
-            break; // No more valid channels
+        g_monitor_module.dfs_channels[radio_index][count].ch_number =
+            data->channel_map[radio_index][i].ch_number;
 
-        g_monitor_module.dfs_channels[radio_index][count].ch_number = entry->ch_number;
-        g_monitor_module.dfs_channels[radio_index][count].ch_state = entry->ch_state;
+        g_monitor_module.dfs_channels[radio_index][count].ch_state =
+            data->channel_map[radio_index][i].ch_state;
+
         count++;
     }
 
     g_monitor_module.dfs_channels_num[radio_index] = count;
+
     pthread_mutex_unlock(&g_monitor_module.data_lock);
+
     return RETURN_OK;
 }
 

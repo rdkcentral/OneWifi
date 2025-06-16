@@ -2669,7 +2669,14 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
     vap_svc_t *ext_svc;
     vap_svc_t  *pub_svc = NULL;
     int ret = 0;
+    wifi_monitor_data_t *data = NULL;
 
+        data = (wifi_monitor_data_t *)calloc(1, sizeof(wifi_monitor_data_t));
+        if (data == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d: Memory allocation failed\n", __func__,
+                __LINE__);
+            return;
+        }
     radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(ch_chg->radioIndex);
     if (radio_params == NULL) {
         wifi_util_error_print(WIFI_CTRL,"%s: wrong index for radio map: %d\n",__FUNCTION__, ch_chg->radioIndex);
