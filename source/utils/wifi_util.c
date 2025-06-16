@@ -2287,7 +2287,7 @@ bool wifi_radius_config_changed(const wifi_radius_settings_t *old_config,
 bool should_process_hotspot_config_change(const wifi_vap_info_t *lnf_vap_info, 
                                          const wifi_vap_info_t *hotspot_vap_info)
 {
-    wifi_util_info_print(WIFI_CTRL, "%s: Entry\n", __func__);
+    wifi_util_dbg_print(WIFI_CTRL, "%s: Entry\n", __func__);
     
     if (!lnf_vap_info || !hotspot_vap_info) {
         wifi_util_error_print(WIFI_CTRL, "%s: NULL pointer check failed - lnf_vap_info=%p, hotspot_vap_info=%p\n", 
@@ -2342,7 +2342,7 @@ bool should_process_hotspot_config_change(const wifi_vap_info_t *lnf_vap_info,
                         (vap_enabled_changed || radius_config_changed) ? 1 : 0,
                         result ? "true" : "false");
     
-    wifi_util_info_print(WIFI_CTRL, "%s: Exit - returning %s\n", __func__, result ? "true" : "false");
+    wifi_util_dbg_print(WIFI_CTRL, "%s: Exit - returning %s\n", __func__, result ? "true" : "false");
     
     return result;
 }
