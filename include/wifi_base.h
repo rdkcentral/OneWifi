@@ -373,12 +373,9 @@ typedef struct {
 } collect_stats_t;
 
 typedef struct {
-    wifi_channelBandwidth_t channel_width;
-    wifi_freq_bands_t band;
-    wifi_radio_index_t radioIndex;
-    unsigned int nop_up_channel;
-    wifi_channelState_t channel_state;
-} __attribute__((packed)) wifi_nop_stats_config_t;
+    wifi_channelMap_t channel_map[MAX_RADIOS][64];
+    wifi_radio_index_t radio_index;
+} __attribute__((packed)) wifi_channel_status_event_t;
 
 typedef struct {
     unsigned int id;
@@ -396,7 +393,7 @@ typedef struct {
         frame_data_t msg;
         ocs_params_t        ocs_params;
         collect_stats_t     collect_stats;
-        wifi_nop_stats_config_t nop_stats_config;
+        wifi_channel_status_event_t channel_status_map;
     } u;
 } wifi_monitor_data_t;
 

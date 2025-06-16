@@ -761,6 +761,37 @@ int check_scan_complete_read_results(void *arg)
     return RETURN_OK;
 }
 
+int get_non_operational_channel_list(int radio_index, int *input_channels, int input_channel_count,
+                                     int *nop_channels_out, int *nop_channel_count_out)
+{
+    if (input_channels == NULL || nop_channels_out == NULL || nop_channel_count_out == NULL ||
+        radio_index >= MAX_NUM_RADIOS) {
+        return RETURN_ERR;
+    }
+
+    int count = 0;
+
+    pthread_mutex_lock(&g_monitor_module.data_lock);
+
+    for (int i = 0; i < input_channel_count; i++) {
+        int ch = input_channels[i];
+        for (unsigned int j = 0; j < g_monitor_module.dfs_channels_num[radio_index]; j++) {
+            wifi_channelMap_t *entry = &g_monitor_module.dfs_channel_state[radio_index][j];
+
+            if (entry->ch_number == ch && entry->ch_state == CHAN_STATE_DFS_NOP_START) {
+                nop_channels_out[count++] = ch;
+                break; // found match, no need to keep checking
+            }
+        }
+    }
+
+    pthread_mutex_unlock(&g_monitor_module.data_lock);
+
+    *nop_channel_count_out = count;
+
+    return RETURN_OK;
+}
+
 int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor_t *mon_data,
     unsigned long task_interval_ms)
 {
@@ -775,12 +806,12 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
     int count = 0;
     int id = 0;
     int on_chan_list[MAX_CHANNELS] = {0};
+    int nop_chan_list[MAX_CHANNELS] ={0};
     int onchan_num_channels = 0;
+    int nop_chan_count = 0;
     int new_num_channels = 0;
     int updated_channels[MAX_CHANNELS] = {0};
     wifi_mon_stats_args_t *args = NULL;
-    unsigned int *nop_chan_list = NULL;
-    unsigned int nop_chan_count = 0;
 
     if (c_elem == NULL) {
         wifi_util_error_print(WIFI_MON, "%s:%d input arguments are NULL args : %p\n", __func__,
@@ -800,9 +831,6 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
             __LINE__, args->radio_index);
         return RETURN_OK;
     }
-
-nop_chan_list = mon_data->nop_started_channels[args->radio_index];
-nop_chan_count = mon_data->nop_channels_num[args->radio_index];
 
     radioOperation = getRadioOperationParam(args->radio_index);
     if (radioOperation == NULL) {
@@ -871,6 +899,11 @@ nop_chan_count = mon_data->nop_channels_num[args->radio_index];
 		onchan_num_channels = 1;
 		on_chan_list[0] = radioOperation->channel;
 	}
+       if( get_non_operational_channel_list(args->radio_index, args->channel_list.channels_list,
+            args->channel_list.num_channels, nop_chan_list, &nop_chan_count) != RETURN_OK) {
+            wifi_util_error_print(WIFI_MON, "%s:%d get non operational channel list failed for radio : %d\n", __func__, __LINE__, args->radio_index);
+            return RETURN_ERR;
+        }
         // skip on-channel scan list
         for (int i = 0; i < args->channel_list.num_channels; i++) {
             int is_on_chan = 0;
@@ -882,8 +915,7 @@ nop_chan_count = mon_data->nop_channels_num[args->radio_index];
                 }
             }
 
-             pthread_mutex_lock(&mon_data->data_lock);
-            if (mon_data->nop_channels_num != 0) {
+            if (mon_data->dfs_channels_num[args->radio_index] != 0) {
                 for (unsigned int j = 0; j < nop_chan_count; j++) {
                     if (args->channel_list.channels_list[i] == (int)nop_chan_list[j]) {
                         wifi_util_dbg_print(WIFI_MON,
@@ -894,7 +926,6 @@ nop_chan_count = mon_data->nop_channels_num[args->radio_index];
                     }
                 }
             }
-            pthread_mutex_unlock(&mon_data->data_lock);
             if (!is_on_chan && !is_nop_chan) {
                 updated_channels[new_num_channels++] = args->channel_list.channels_list[i];
             }
