@@ -915,16 +915,20 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
 		onchan_num_channels = 1;
 		on_chan_list[0] = radioOperation->channel;
 	}
-    unsigned int local_input_channels[64];
-    wifi_channels_list_t channel_list_local;
-memcpy(&channel_list_local, &args->channel_list, sizeof(channel_list_local));
-memcpy(local_input_channels, args->channel_list.channels_list,
-       args->channel_list.num_channels * sizeof(unsigned int));
-       if( get_non_operational_channel_list(args->radio_index, args->channel_list.channels_list,
-            args->channel_list.num_channels, nop_chan_list, &nop_chan_count, mon_data) != RETURN_OK) {
-            wifi_util_error_print(WIFI_MON, "%s:%d get non operational channel list failed for radio : %d\n", __func__, __LINE__, args->radio_index);
-            return RETURN_ERR;
-        }
+   unsigned int local_channels[MAX_CHANNELS];
+memcpy(local_channels, args->channel_list.channels_list, sizeof(local_channels));
+
+int num_channels = args->channel_list.num_channels;
+
+if (get_non_operational_channel_list(args->radio_index,
+                                     local_channels,
+                                     num_channels,
+                                     nop_chan_list,
+                                     &nop_chan_count,
+                                     mon_data) != RETURN_OK)
+{
+    wifi_util_error_print(WIFI_MON, "%s:%d get_non_operational_channel_list failed for radio: %d\n", __func__, __LINE__, args->radio_index);
+}
         // skip on-channel scan list
         for (int i = 0; i < args->channel_list.num_channels; i++) {
             int is_on_chan = 0;

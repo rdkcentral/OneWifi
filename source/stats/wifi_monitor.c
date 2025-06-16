@@ -1634,10 +1634,10 @@ int get_nop_started_channels(wifi_channel_status_event_t *data)
         if (data->channel_map[radio_index][i].ch_number == 0)
             break;
 
-        g_monitor_module.dfs_channels[radio_index][count].ch_number =
+        g_monitor_module.dfs_channels[radio_index][count] =
             data->channel_map[radio_index][i].ch_number;
 
-        g_monitor_module.dfs_channels[radio_index][count].ch_state =
+        g_monitor_module.dfs_channel_state[radio_index][count].ch_state =
             data->channel_map[radio_index][i].ch_state;
 
         count++;
