@@ -823,7 +823,7 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
     int on_chan_list[MAX_CHANNELS] = {0};
     int nop_chan_list[MAX_CHANNELS] ={0};
     int onchan_num_channels = 0;
-    int nop_chan_count = 0;
+    unsigned int nop_chan_count = 0;
     int new_num_channels = 0;
     int updated_channels[MAX_CHANNELS] = {0};
     wifi_mon_stats_args_t *args = NULL;
@@ -915,6 +915,9 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
 		onchan_num_channels = 1;
 		on_chan_list[0] = radioOperation->channel;
 	}
+    unsigned int local_input_channels[64];
+memcpy(local_input_channels, args->channel_list.channels_list,
+       args->channel_list.channel_count * sizeof(unsigned int));
        if( get_non_operational_channel_list(args->radio_index, args->channel_list.channels_list,
             args->channel_list.num_channels, nop_chan_list, &nop_chan_count, mon_data) != RETURN_OK) {
             wifi_util_error_print(WIFI_MON, "%s:%d get non operational channel list failed for radio : %d\n", __func__, __LINE__, args->radio_index);

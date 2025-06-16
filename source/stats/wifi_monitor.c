@@ -1630,11 +1630,14 @@ int get_nop_started_channels(wifi_channel_status_event_t *data)
 
     pthread_mutex_lock(&g_monitor_module.data_lock);
     for (int i = 0; i < MAX_DFS_CHANNELS; i++) {
-        if (data->channel_map[i].ch_number == 0)
-            break; // no more valid channels
+        // Access the channel using both indices
+        wifi_channelMap_t *entry = &data->channel_map[radio_index][i];
 
-        g_monitor_module.dfs_channels[radio_index][count].ch_number = data->channel_map[i].ch_number;
-        g_monitor_module.dfs_channels[radio_index][count].ch_state = data->channel_map[i].ch_state;
+        if (entry->ch_number == 0)
+            break; // No more valid channels
+
+        g_monitor_module.dfs_channels[radio_index][count].ch_number = entry->ch_number;
+        g_monitor_module.dfs_channels[radio_index][count].ch_state = entry->ch_state;
         count++;
     }
 
@@ -1761,7 +1764,7 @@ void *monitor_function  (void *data)
                         update_subscribe_data(event_data);
                        // subscribe_stats = event_data->u.collect_stats.event_subscribe;
                     break;
-                     case wifi_event_monitor_nop_start_status:
+                     case wifi_event_monitor_channel_status:
                         get_nop_started_channels(&event_data->u.channel_status_map);
                     break;
                     default:
