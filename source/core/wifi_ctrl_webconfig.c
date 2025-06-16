@@ -1857,8 +1857,8 @@ void process_managed_wifi_enable()
             hotspot5g_vap_info = hotspot_vap_info;
         }
         if (should_process_hotspot_config_change(lnf_vap_info, hotspot_vap_info)) {
-            update_vap_params_to_hal_and_db(lnf_vap_info, hotspot5g_vap_info->u.bss_info.enabled);
-            wifi_util_info_print(WIFI_CTRL,"%s:%d LnF VAP %s config changed as per %s event\n",__func__,__LINE__,lnf_vap_info->vap_name, hotspot5g_vap_info->u.bss_info.enabled?"Hotspot VAP Up":"Hotspot VAP Down");
+            update_vap_params_to_hal_and_db(lnf_vap_info, hotspot_vap_info->u.bss_info.enabled);
+            wifi_util_info_print(WIFI_CTRL,"%s:%d LnF VAP %s config changed as per %s event\n",__func__,__LINE__,lnf_vap_info->vap_name, hotspot_vap_info->u.bss_info.enabled?"Hotspot VAP Up":"Hotspot VAP Down");
         }
     }
 
