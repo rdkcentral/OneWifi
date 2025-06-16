@@ -2765,13 +2765,11 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
         if (l_radio == NULL) {
             wifi_util_error_print(WIFI_CTRL,"%s:%d radio strucutre is not present for radio %d\n",
                                 __FUNCTION__, __LINE__,  ch_chg->radioIndex);
-            free(data);
             return;
         }
 
         if( ((ch_chg->channel >= 36 && ch_chg->channel < 52) && (ch_chg->channelWidth != WIFI_CHANNELBANDWIDTH_160MHZ )) || (ch_chg->channel > 144 && ch_chg->channel <= 165) ) {
             wifi_util_error_print(WIFI_CTRL,"%s: Wrong radar in radio_index:%d chan:%u \n",__FUNCTION__, ch_chg->radioIndex, ch_chg->channel);
-            free(data);
             return ;
         }
 
@@ -2901,7 +2899,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
                 break;
             }
         }
-    } else {
+    } else {    
         wifi_util_error_print(WIFI_CTRL,"%s: Invalid event for radio %d\n",__FUNCTION__, ch_chg->radioIndex);
         return;
     }
