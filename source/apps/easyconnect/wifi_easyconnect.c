@@ -24,6 +24,8 @@
 #define ARRAYSIZE(a) (sizeof(a) / sizeof(*(a)))
 #endif // ARRAYSIZE
 
+#define SCAN_DWELL_MS 50
+
 static void publish_bss_info(const uint8_t *bss_buffer, int count, unsigned radio_idx)
 {
     if (count == 0) {
@@ -113,21 +115,144 @@ static bus_error_t event_sub_handler(char *eventName, bus_event_sub_action_t act
     return bus_error_success;
 }
 
-bus_error_t easyconnect_radio_addrowhandler(const char *tableName, const char *aliasName,
-    uint32_t *instNum)
+static void start_sta_channel_scan(void *data, unsigned int len)
 {
-    static unsigned int instanceCounter = 1;
-    *instNum = instanceCounter;
-    wifi_util_dbg_print(WIFI_EC, "%s:%d: tableName=%s aliasName=%s instNum=%d\n", __func__,
-        __LINE__, tableName, aliasName, *instNum);
-    instanceCounter = (instanceCounter % MAX_NUM_RADIOS) + 1;
+    mac_address_t radio_mac;
+    wifi_platform_property_t *wifi_prop;
+    wifi_radio_capabilities_t *wifi_cap = NULL;
+    wifi_radio_operationParam_t *radioOperation = NULL;
+    int num_channels = 0;
+    int channels[64] = { 0 };
+    unsigned int global_op_class = 0;
+    char country[8] = { 0 };
+
+    radio_interface_mapping_t *radio_iface_map = NULL;
+    channel_scan_request_t *scan_req = (channel_scan_request_t *)data;
+    wifi_mgr_t *mgr = get_wifimgr_obj();
+    bool found_radio = false;
+
+    if (scan_req == NULL) {
+        wifi_util_error_print(WIFI_EC, "%s:%d NUll data Pointer\n", __func__, __LINE__);
+        return;
+    }
+
+    if (len < sizeof(channel_scan_request_t)) {
+        wifi_util_error_print(WIFI_EC, "%s:%d Invalid parameter size \n", __func__, __LINE__);
+        return;
+    }
+
+    if (mgr == NULL) {
+        wifi_util_error_print(WIFI_EC, "%s:%d Mgr object is NULL \n", __func__, __LINE__);
+        return;
+    }
+
+    wifi_prop = &mgr->hal_cap.wifi_prop;
+
+    for (unsigned int k = 0;
+         k < (sizeof(wifi_prop->radio_interface_map) / sizeof(radio_interface_mapping_t)); k++) {
+        radio_iface_map = &(wifi_prop->radio_interface_map[k]);
+        if (radio_iface_map == NULL) {
+            wifi_util_error_print(WIFI_EC, "%s:%d: Unable to find the radio interface map entry \n",
+                __func__, __LINE__);
+            return;
+        }
+        mac_address_from_name(radio_iface_map->interface_name, radio_mac);
+        if (memcmp(scan_req->ruid, radio_mac, sizeof(mac_addr_t)) == 0) {
+            wifi_util_dbg_print(WIFI_EC,
+                "%s:%d Processing channel scan for Radio : " MACSTRFMT "\n", __func__, __LINE__,
+                MAC2STR(radio_mac));
+            found_radio = true;
+            break;
+        }
+    }
+
+    if (!found_radio) {
+        wifi_util_dbg_print(WIFI_EC, "%s:%d Failed to find radio for MAC : " MACSTRFMT "\n",
+            __func__, __LINE__, MAC2STR(radio_mac));
+        return;
+    }
+
+    radioOperation = getRadioOperationParam(radio_iface_map->radio_index);
+    if (radioOperation == NULL) {
+        wifi_util_error_print(WIFI_EC, "%s:%d NULL radioOperation pointer for radio : %d\n",
+            __func__, __LINE__, radio_iface_map->radio_index);
+        return;
+    }
+
+    wifi_cap = getRadioCapability(radio_iface_map->radio_index);
+
+    if (scan_req->num_operating_classes == 0) {
+        if (get_allowed_channels(radioOperation->band, wifi_cap, channels, &num_channels,
+                radioOperation->DfsEnabled) != RETURN_OK) {
+            wifi_util_error_print(WIFI_EC, "%s:%d get allowed channels failed for the radio : %d\n",
+                __func__, __LINE__, radio_iface_map->radio_index);
+            return;
+        }
+    } else {
+        get_coutry_str_from_code(mgr->radio_config[radio_iface_map->radio_index].oper.countryCode,
+            country);
+        global_op_class = country_to_global_op_class(country,
+            mgr->radio_config[radio_iface_map->radio_index].oper.operatingClass);
+
+        for (int i = 0; i < scan_req->num_operating_classes; i++) {
+            if (scan_req->operating_classes[i].operating_class == global_op_class) {
+                for (int j = 0; j < scan_req->operating_classes[i].num_channels; j++) {
+                    channels[num_channels] = scan_req->operating_classes[i].channels[j];
+                    wifi_util_dbg_print(WIFI_EC, "%s:%d channel number:%u\n", __func__, __LINE__,
+                        scan_req->operating_classes[i].channels[j]);
+                    num_channels++;
+                }
+                break;
+            }
+        }
+    }
+
+    if (wifi_hal_startScan(radio_iface_map->radio_index, WIFI_RADIO_SCAN_MODE_OFFCHAN, SCAN_DWELL_MS,
+            num_channels, channels) != RETURN_OK) {
+        wifi_util_error_print(WIFI_EC, "%s:%d Failed to start station scan on radio: %d\n",
+            __func__, __LINE__, radio_iface_map->radio_index);
+        return;
+    }
+    wifi_util_dbg_print(WIFI_EC, "%s:%d Successfully started scan on radio: %d\n", __func__,
+        __LINE__, radio_iface_map->radio_index);
+}
+
+static bus_error_t start_sta_channel_scan_cmd(char *name, raw_data_t *p_data,
+    bus_user_data_t *user_data)
+{
+    unsigned int len = 0;
+    char *tmp = NULL;
+    (void)user_data;
+
+    if (name == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d property name is not found\r\n", __FUNCTION__,
+            __LINE__);
+        return bus_error_element_name_missing;
+    }
+
+    tmp = (char *)p_data->raw_data.bytes;
+    if ((p_data->data_type != bus_data_type_bytes) || (tmp == NULL)) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d wrong bus data_type:%x\n", __func__, __LINE__,
+            p_data->data_type);
+        return bus_error_invalid_input;
+    }
+
+    len = p_data->raw_data_len;
+    push_event_to_ctrl_queue((char *)tmp, len, wifi_event_type_command,
+        wifi_event_type_start_sta_channel_scan, NULL);
+
     return bus_error_success;
 }
 
-bus_error_t easyconnect_radio_removerowhandler(const char *rowName)
+static void handle_ec_command_event(wifi_app_t *app, wifi_event_t *event)
 {
-    wifi_util_dbg_print(WIFI_EC, "%s(): %s\n", __func__, rowName);
-    return bus_error_success;
+    switch (event->sub_type) {
+    case wifi_event_type_start_sta_channel_scan:
+        start_sta_channel_scan(event->u.core_data.msg, event->u.core_data.len);
+        break;
+    default:
+        break;
+    }
 }
 
 int easyconnect_event(wifi_app_t *app, wifi_event_t *event)
@@ -135,6 +260,9 @@ int easyconnect_event(wifi_app_t *app, wifi_event_t *event)
     switch (event->event_type) {
     case wifi_event_type_hal_ind:
         handle_hal_event(app, event->sub_type, event->u.core_data.msg);
+        break;
+    case wifi_event_type_command:
+        handle_ec_command_event(app, event);
         break;
     default:
         wifi_util_dbg_print(WIFI_EC, "%s:%d: unhandled event_type=%d\n", __func__, __LINE__,
@@ -151,8 +279,11 @@ int easyconnect_init(wifi_app_t *app, unsigned int create_flags)
     // clang-format off
     bus_data_element_t data_elements[] = {
         { WIFI_EASYCONNECT_BSS_INFO, bus_element_type_method,
-         { NULL, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
-         { bus_data_type_bytes, false, 0, 0, 0, NULL } } ,
+            { NULL, NULL, NULL, NULL, NULL, NULL }, slow_speed, ZERO_TABLE,
+            { bus_data_type_bytes, false, 0, 0, 0, NULL } } ,
+        { WIFI_TRIGGER_STA_SCAN_REQ, bus_element_type_method,
+            { NULL, start_sta_channel_scan_cmd, NULL, NULL, NULL, NULL}, slow_speed, ZERO_TABLE,
+            { bus_data_type_none, true, 0, 0, 0, NULL } },
     };
     // clang-format on
 

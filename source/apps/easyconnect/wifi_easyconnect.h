@@ -25,6 +25,7 @@ extern "C" {
 #endif // __cplusplus
 
 #define WIFI_EASYCONNECT_BSS_INFO           "Device.WiFi.EC.BSSInfo"
+#define WIFI_TRIGGER_STA_SCAN_REQ           "Device.WiFi.EC.TriggerStaScan"
 
 #ifdef __cplusplus
 }
