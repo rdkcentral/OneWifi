@@ -761,7 +761,7 @@ int check_scan_complete_read_results(void *arg)
     return RETURN_OK;
 }
 
-int get_non_operational_channel_list(int radio_index, int *input_channels,  int input_channel_count,
+int get_non_operational_channel_list(int radio_index, unsigned int *input_channels,  int input_channel_count,
                                      int *nop_channels_out, unsigned int *nop_channel_count_out, wifi_monitor_t *mon_data)
 {
     if (input_channels == NULL || nop_channels_out == NULL || 
