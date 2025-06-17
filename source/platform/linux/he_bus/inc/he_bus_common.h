@@ -47,7 +47,7 @@ typedef struct _he_bus_handle *he_bus_handle_t;
 
 #define HE_BUS_MSG_IDENTIFICATION_NUM 0x12345678
 #define HE_BUS_RES_RECV_TIMEOUT_S 10
-#define HE_BUS_MAX_NAME_LENGTH 64
+#define HE_BUS_MAX_NAME_LENGTH 128
 
 #define HE_BUS_VERIFY_NULL(T) \
     if (NULL == T) {   \
@@ -228,6 +228,26 @@ typedef struct he_bus_raw_data_msg {
     uint32_t num_of_obj;
     he_bus_data_object_t data_obj;
 } he_bus_raw_data_msg_t;
+
+typedef struct he_bus_raw_data_property {
+    uint32_t name_len;
+    he_bus_name_string_t name;
+    bool is_data_set;
+    he_bus_raw_data_t raw_data;
+    he_bus_raw_data_property_t *next_raw_data;
+} he_bus_raw_data_property_t;
+
+typedef struct he_bus_raw_data_obj {
+    uint32_t num_properties;
+    uint32_t name_len;
+    he_bus_name_string_t name;
+    he_bus_raw_data_property_t data_prop;
+} he_bus_raw_data_obj_t;
+
+typedef struct he_bus_raw_data_prop_arg {
+    uint32_t num_prop;
+    he_bus_raw_data_property_t *prop;
+} he_bus_raw_data_prop_arg_t;
 
 typedef struct sub_payload_data {
     he_bus_event_sub_action_t action;

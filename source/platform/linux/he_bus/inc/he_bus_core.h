@@ -96,6 +96,9 @@ typedef he_bus_error_t (
     *he_bus_event_consumer_sub_handler_t)(char *event_name, he_bus_raw_data_t *p_data, void *userData);
 typedef he_bus_error_t (*he_bus_event_sub_ex_async_handler_t)(char *event_name, he_bus_error_t ret, void *userData);
 
+typedef void (*he_bus_method_async_resp_handler_t) (he_bus_handle_t *handle, char const* methodName,
+    he_bus_error_t error, he_bus_raw_data_prop_arg_t *params);
+
 typedef struct he_bus_callback_table {
     he_bus_get_handler_t get_handler; /**< Get parameters handler for the named paramter   */
     he_bus_set_handler_t set_handler; /**< Set parameters handler for the named parameter  */
@@ -193,6 +196,14 @@ typedef struct _he_bus_handle {
     he_bus_conn_info_t conn_info;
     pthread_mutex_t handle_mutex;
 } he_bus_handle;
+
+typedef struct he_bus_method_invoke_async_data {
+    he_bus_handle_t handle;
+    he_bus_name_string_t method_name;
+    he_bus_raw_data_obj_t in_params;
+    he_bus_method_async_resp_handler_t cb;
+    uint32_t timeout;
+} he_bus_method_invoke_async_data_t;
 
 typedef struct traversal_cb_param {
     union {

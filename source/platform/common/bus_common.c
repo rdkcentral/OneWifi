@@ -772,3 +772,74 @@ int validate_dm_set_parameters(data_model_properties_t *data_model_prop, raw_dat
 
     return ret;
 }
+
+void free_bus_raw_data(raw_data_t *data)
+{
+    if ((data->raw_data.bytes)
+        && (data->data_type == bus_data_type_bytes
+            || data->data_type == bus_data_type_string)) {
+        free(data->raw_data.bytes);
+    }
+}
+
+void bus_release_data_obj(raw_data_obj_t *p_raw_data_obj)
+{
+    raw_data_property_t *p_data_prop = p_raw_data_obj->data_prop.next_raw_data;
+    raw_data_property_t *next;
+
+    while(p_data_prop) {
+        free_bus_raw_data(&p_data_prop->raw_data);
+        next = p_data_prop->next_raw_data;
+        free(p_data_prop);
+        p_data_prop = next;
+    }
+    free_bus_raw_data(&p_raw_data_obj->data_prop.raw_data);
+    p_raw_data_obj->data_prop.is_data_set = false;
+}
+
+int clone_raw_data(raw_data_t *dst, raw_data_t *src)
+{
+    BUS_CHECK_NULL_WITH_RC(dst, RETURN_ERR);
+    BUS_CHECK_NULL_WITH_RC(src, RETURN_ERR);
+
+    memcpy(dst, src, sizeof(raw_data_t));
+
+    if ((dst->data_type == bus_data_type_bytes) || (dst->data_type == bus_data_type_string)) {
+        dst->raw_data.bytes = malloc(dst->raw_data_len);
+        memcpy(dst->raw_data.bytes, src->raw_data.bytes, dst->raw_data_len);
+    }
+    return RETURN_OK;
+}
+
+int bus_set_raw_data_prop(raw_data_obj_t *p_raw_data_obj, const char *event_name, raw_data_t *p_raw_data)
+{
+    BUS_CHECK_NULL_WITH_RC(p_raw_data_prop, RETURN_ERR);
+    BUS_CHECK_NULL_WITH_RC(p_raw_data, RETURN_ERR);
+
+    if (p_raw_data_obj->num_properties == 0) {
+        clone_raw_data(&p_raw_data_obj->data_prop.raw_data, p_raw_data);
+        p_raw_data_obj->name_len = strlen(event_name) + 1;
+        strncpy(p_raw_data_obj->name, event_name, p_raw_data_obj->name_len);
+        p_raw_data_obj->data_prop.is_data_set = true;
+        p_raw_data_obj->data_prop.next_raw_data = NULL;
+        p_raw_data_obj->num_properties++;
+    } else {
+        raw_data_property_t *p_data_prop = &p_raw_data_obj->data_prop;
+
+        raw_data_property_t *temp = calloc(1, sizeof(raw_data_property_t));
+        BUS_CHECK_NULL_WITH_RC(temp, RETURN_ERR);
+
+        clone_raw_data(&temp->raw_data, p_raw_data);
+        temp->is_data_set = true;
+        if (event_name) {
+            temp->name_len = strlen(event_name) + 1;
+            strncpy(temp->name, event_name, temp->name_len);
+        }
+
+        temp->next_raw_data = p_data_prop->next_raw_data;
+        p_data_prop->next_raw_data = temp;
+        p_raw_data_obj->num_properties++;
+    }
+
+    return RETURN_OK;
+}
