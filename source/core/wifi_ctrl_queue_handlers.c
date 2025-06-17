@@ -2910,10 +2910,25 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
         wifi_util_error_print(WIFI_CTRL,"%s: Invalid event for radio %d\n",__FUNCTION__, ch_chg->radioIndex);
         return;
     }
-    data->u.channel_status_map.radio_index = ch_chg->radioIndex;
-    memcpy(data->u.channel_status_map.channel_map, radio_params->channel_map,
-        sizeof(radio_params->channel_map));
-    push_event_to_monitor_queue(data, wifi_event_monitor_channel_status, NULL);
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Setting radio_index=%d in channel_status_map\n",
+    __func__, __LINE__, ch_chg->radioIndex);
+
+data->u.channel_status_map.radio_index = ch_chg->radioIndex;
+
+wifi_util_dbg_print(WIFI_CTRL, "%s:%d Copying channel_map for radio_index=%d\n",
+    __func__, __LINE__, ch_chg->radioIndex);
+    
+for (int i = 0; i < 64; i++) {
+    wifi_channelMap_t *entry = &radio_params->channel_map[radio_index][i];
+    wifi_util_dbg_print(WIFI_CTRL, "  channel_map[%d][%d]: ch_number=%d, ch_state=%d\n",
+        radio_index, i, entry->ch_number, entry->ch_state);
+}
+
+memcpy(data->u.channel_status_map.channel_map, radio_params->channel_map,
+    sizeof(radio_params->channel_map));
+
+
+push_event_to_monitor_queue(data, wifi_event_monitor_channel_status, NULL);
     if (data != NULL) {
         free(data);
     }
