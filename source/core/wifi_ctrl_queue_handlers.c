@@ -2922,8 +2922,8 @@ for (int i = 0; i < radio_capab.channel_list[ch_chg->radioIndex].num_channels; i
     wifi_util_dbg_print(WIFI_CTRL,
     "  channel_map[%d][%d]: ch_number=%d, ch_state=%d channelnumber:%d channelstate:%d\n",
     ch_chg->radioIndex, i,
-    radio_params->channel_map[ch_chg->radioIndex][i].ch_number,
-    radio_params->channel_map[ch_chg->radioIndex][i].ch_state, data->u.channel_status_map.channel_map[ch_chg->radioIndex][i].ch_number,
+    radio_params->channel_map[i].ch_number,
+    radio_params->channel_map[i].ch_state, data->u.channel_status_map.channel_map[ch_chg->radioIndex][i].ch_number,
     data->u.channel_status_map.channel_map[ch_chg->radioIndex][i].ch_state);
 }
 
@@ -2935,7 +2935,7 @@ for (int i = 0; i < radio_capab.channel_list[ch_chg->radioIndex].num_channels; i
     radio_params->channel_map[ch_chg->radioIndex][i].ch_state, data->u.channel_status_map.channel_map[ch_chg->radioIndex][i].ch_number,
     data->u.channel_status_map.channel_map[ch_chg->radioIndex][i].ch_state);}*/
 
-memcpy(data->u.channel_status_map.channel_map[ch_chg->radioIndex], radio_params->channel_map[ch_chg->radioIndex],
+memcpy(data->u.channel_status_map.channel_map[ch_chg->radioIndex], radio_params->channel_map,
     sizeof(wifi_channelMap_t) * 64);
 
 
