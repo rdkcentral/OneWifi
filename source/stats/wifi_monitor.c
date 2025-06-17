@@ -1619,60 +1619,40 @@ static void update_subscribe_data(wifi_monitor_data_t *event)
 }
 
 
-int get_nop_started_channels(wifi_channel_status_event_t *data)
+int get_nop_started_channels(wifi_channel_status_event_t *data)More actions
 {
     if (data == NULL || data->radio_index >= MAX_NUM_RADIOS) {
-        wifi_util_error_print(WIFI_MON, "%s:%d Invalid input: data=%p radio_index=%d\n",
-                              __func__, __LINE__, data, data ? data->radio_index : -1);
         return RETURN_ERR;
     }
 
     int radio_index = data->radio_index;
     unsigned int count = 0;
 
-    wifi_util_dbg_print(WIFI_MON, "%s:%d Processing NOP started channels for radio_index=%d\n",
-                        __func__, __LINE__, radio_index);
-
     pthread_mutex_lock(&g_monitor_module.data_lock);
 
     for (int i = 0; i < MAX_DFS_CHANNELS; i++) {
-        if (data->channel_map[radio_index][i].ch_number == 0) {
-            wifi_util_dbg_print(WIFI_MON, "%s:%d End of channel list at i=%d for radio_index=%d\n",
-                                __func__, __LINE__, i, radio_index);
+        if (data->channel_map[radio_index][i].ch_number == 0)
             break;
-        }
 
         g_monitor_module.dfs_channels[radio_index][count] =
             data->channel_map[radio_index][i].ch_number;
 
         g_monitor_module.dfs_channel_state[radio_index][count].ch_state =
             data->channel_map[radio_index][i].ch_state;
-
-        wifi_util_dbg_print(WIFI_MON, "%s:%d Added NOP channel: radio_index=%d, idx=%d, ch_number=%u, ch_state=%d\n",
-                            __func__, __LINE__, radio_index, count,
-                            data->channel_map[radio_index][i].ch_number,
-                            data->channel_map[radio_index][i].ch_state);
+            
+            wifi_util_dbg_print(WIFI_MON, "%s:%d radio_index:%d channel_number:%d channel_state:%d\n",
+            __func__, __LINE__, radio_index, g_monitor_module.dfs_channels[radio_index][count],
+            g_monitor_module.dfs_channel_state[radio_index][count].ch_state);
 
         count++;
     }
 
     g_monitor_module.dfs_channels_num[radio_index] = count;
 
-    wifi_util_info_print(WIFI_MON, "%s:%d Total NOP started channels for radio_index=%d: %u\n",
-                         __func__, __LINE__, radio_index, count);
-
     pthread_mutex_unlock(&g_monitor_module.data_lock);
 
     return RETURN_OK;
 }
-
-    g_monitor_module.dfs_channels_num[radio_index] = count;
-
-    pthread_mutex_unlock(&g_monitor_module.data_lock);
-
-    return RETURN_OK;
-}
-
 
 
 void *monitor_function  (void *data)
