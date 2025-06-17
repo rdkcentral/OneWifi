@@ -2922,8 +2922,8 @@ for (int i = 0; i < 64; i++) {
     wifi_util_dbg_print(WIFI_CTRL,
     "  channel_map[%d][%d]: ch_number=%d, ch_state=%d\n",
     ch_chg->radioIndex, i,
-    radio_params->channel_map[radio_index][i].ch_number,
-    radio_params->channel_map[radio_index][i].ch_state);
+    radio_params->channel_map[ch_chg->radioIndex][i].ch_number,
+    radio_params->channel_map[ch_chg->radioIndex][i].ch_state);
 
 }
 
