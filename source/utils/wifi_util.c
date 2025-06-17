@@ -2283,9 +2283,10 @@ bool should_process_hotspot_config_change(const wifi_vap_info_t *lnf_vap_info,
                   is_secure_hotspot &&
                   (vap_enabled_changed || radius_config_changed));
     
-    wifi_util_info_print(WIFI_CTRL, "%s: vap_name is %s and bool is %d:%d:%d:%d:%d:%s - result=%s\n", 
+    wifi_util_info_print(WIFI_CTRL, "%s: Hotspot vap_name is %s & LnF vap_name is %s and bool is %d:%d:%d:%d:%d - result=%s\n", 
                         __func__,
                         hotspot_vap_info->vap_name ? hotspot_vap_info->vap_name : "NULL",
+                        lnf_vap_info->vap_name ? lnf_vap_info->vap_name : "NULL",
                         is_mdu_enabled ? 1 : 0,
                         is_secure_hotspot ? 1 : 0,
                         vap_enabled_changed ? 1 : 0,
