@@ -893,6 +893,8 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
         }
     } else {
         int i;
+        wifi_util_error_print(WIFI_MON, "%s:%d scan mode %d for radio index %d\n", __func__,
+            __LINE__, args->scan_mode, args->radio_index);
         if (args->channel_list.num_channels == 0) {
             return RETURN_ERR;
         }
