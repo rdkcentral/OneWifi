@@ -1619,9 +1619,10 @@ static void update_subscribe_data(wifi_monitor_data_t *event)
 }
 
 
-int get_nop_started_channels(wifi_channel_status_event_t *data)More actions
+int get_nop_started_channels(wifi_channel_status_event_t *data)
 {
     if (data == NULL || data->radio_index >= MAX_NUM_RADIOS) {
+        wifi_util_error_print(WIFI_MON, "%s:%d Invalid input data or radio index out of range\n", __func__, __LINE__);
         return RETURN_ERR;
     }
 
@@ -1639,9 +1640,11 @@ int get_nop_started_channels(wifi_channel_status_event_t *data)More actions
 
         g_monitor_module.dfs_channel_state[radio_index][count].ch_state =
             data->channel_map[radio_index][i].ch_state;
-            
-            wifi_util_dbg_print(WIFI_MON, "%s:%d radio_index:%d channel_number:%d channel_state:%d\n",
-            __func__, __LINE__, radio_index, g_monitor_module.dfs_channels[radio_index][count],
+
+        wifi_util_dbg_print(WIFI_MON, "%s:%d radio_index:%d channel_number:%d channel_state:%d\n",
+            __func__, __LINE__,
+            radio_index,
+            g_monitor_module.dfs_channels[radio_index][count],
             g_monitor_module.dfs_channel_state[radio_index][count].ch_state);
 
         count++;
@@ -1653,7 +1656,6 @@ int get_nop_started_channels(wifi_channel_status_event_t *data)More actions
 
     return RETURN_OK;
 }
-
 
 void *monitor_function  (void *data)
 {
