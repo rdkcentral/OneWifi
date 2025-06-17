@@ -2918,25 +2918,25 @@ data->u.channel_status_map.radio_index = ch_chg->radioIndex;
 wifi_util_dbg_print(WIFI_CTRL, "%s:%d Copying channel_map for radio_index=%d\n",
     __func__, __LINE__, ch_chg->radioIndex);
     
-for (int i = 0; i < radio_capab.channel_list[0].num_channels; i++) {
+for (int i = 0; i < radio_capab.channel_list[ch_chg->radioIndex].num_channels; i++) {
     wifi_util_dbg_print(WIFI_CTRL,
     "  channel_map[%d][%d]: ch_number=%d, ch_state=%d channelnumber:%d channelstate:%d\n",
     ch_chg->radioIndex, i,
-    radio_params->channel_map[i].ch_number,
-    radio_params->channel_map[i].ch_state, data->u.channel_status_map.channel_map[ch_chg->radioIndex][i].ch_number,
+    radio_params->channel_map[ch_chg->radioIndex][i].ch_number,
+    radio_params->channel_map[ch_chg->radioIndex][i].ch_state, data->u.channel_status_map.channel_map[ch_chg->radioIndex][i].ch_number,
     data->u.channel_status_map.channel_map[ch_chg->radioIndex][i].ch_state);
 }
 
-for (int i = 0; i < radio_capab.channel_list[1].num_channels; i++) {
+/*for (int i = 0; i < radio_capab.channel_list[1].num_channels; i++) {
     wifi_util_dbg_print(WIFI_CTRL,
     "  channel_map[%d][%d]: ch_number=%d, ch_state=%d channelnumber:%d channelstate:%d\n",
     ch_chg->radioIndex, i,
-    radio_params->channel_map[i].ch_number,
-    radio_params->channel_map[i].ch_state, data->u.channel_status_map.channel_map[ch_chg->radioIndex][i].ch_number,
-    data->u.channel_status_map.channel_map[ch_chg->radioIndex][i].ch_state);
-}
-memcpy(data->u.channel_status_map.channel_map, radio_params->channel_map,
-    sizeof(radio_params->channel_map));
+    radio_params->channel_map[ch_chg->radioIndex][i].ch_number,
+    radio_params->channel_map[ch_chg->radioIndex][i].ch_state, data->u.channel_status_map.channel_map[ch_chg->radioIndex][i].ch_number,
+    data->u.channel_status_map.channel_map[ch_chg->radioIndex][i].ch_state);}*/
+
+memcpy(data->u.channel_status_map.channel_map[ch_chg->radioIndex], radio_params->channel_map[ch_chg->radioIndex],
+    sizeof(wifi_channelMap_t) * 64);
 
 
 push_event_to_monitor_queue(data, wifi_event_monitor_channel_status, NULL);
