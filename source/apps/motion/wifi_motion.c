@@ -220,11 +220,42 @@ static csi_session_t* csi_get_session(bool create, int csi_session_number) {
     return csi;
 }
 
+static int refresh_connected_client_state(csi_session_t *csi, wifi_app_t *csi_app,
+    int client_csi_data_index)
+{
+    int ap_index = -1;
+    if ((csi == NULL) || !(csi->enable && csi->subscribed)) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d NULL Pointer:%p or CSI not enabled,"
+            " Unable to start CSI\n", __func__, __LINE__, csi);
+        return RETURN_ERR;
+    }
+
+    if (csi_app == NULL || client_csi_data_index == -1) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d NULL Pointer:%p Unable to"
+            " start CSI\n", __func__, __LINE__, csi_app);
+        return RETURN_ERR;
+    }
+
+    //check if client is connected now
+    ap_index= getApIndexfromClientMac((char *)&csi->mac_list[client_csi_data_index]);
+    if (ap_index >= 0) {
+        csi->ap_index[client_csi_data_index] = ap_index;
+        csi->mac_is_connected[client_csi_data_index] = TRUE;
+        wifi_util_info_print(WIFI_APPS, "%s: Enabling csi collection:%d for Mac"
+            " %02x..%02x\n", __func__, client_csi_data_index,
+            csi->mac_list[client_csi_data_index][0],
+            csi->mac_list[client_csi_data_index][5]);
+        csi_app->data.u.csi.csi_fns.csi_start_fn((void *)csi_app, csi->ap_index[client_csi_data_index],
+            csi->mac_list[client_csi_data_index], wifi_app_inst_motion);
+    }
+    return RETURN_OK;
+}
+
 static void csi_update_client_mac_status(mac_addr_t mac, bool connected, int ap_idx) {
     csi_session_t *csi = NULL;
     int count = 0;
-    int i = 0, j = 0;
-    bool client_csi_monitored = FALSE;
+    int i = 0, j = 0, client_csi_index = -1;
+    bool client_csi_monitored = FALSE, is_mac_matched = false;
     wifi_apps_mgr_t *apps_mgr;
     wifi_app_t *app = NULL;
 
@@ -265,12 +296,16 @@ static void csi_update_client_mac_status(mac_addr_t mac, bool connected, int ap_
                 }
                 if (connected == FALSE) {
                     csi->ap_index[j] = -1;
-                }
-                else {
+                    client_csi_index = j;
+                } else {
                     csi->ap_index[j] = ap_idx;
                 }
+                is_mac_matched = true;
                 break;
             }
+        }
+        if (is_mac_matched == true) {
+            break;
         }
     }
 
@@ -286,6 +321,8 @@ static void csi_update_client_mac_status(mac_addr_t mac, bool connected, int ap_
             csi_app->data.u.csi.csi_fns.csi_start_fn(csi_app, ap_idx, (unsigned char*)mac, wifi_app_inst_motion);
         } else {
             csi_app->data.u.csi.csi_fns.csi_stop_fn((void *)csi_app, ap_idx, (unsigned char*)mac, wifi_app_inst_motion);
+            //Added this function to checking client is still connected or not.
+            refresh_connected_client_state(csi, csi_app, client_csi_index);
         }
     }
 }
