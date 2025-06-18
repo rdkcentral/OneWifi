@@ -983,7 +983,7 @@ wifi_util_dbg_print(WIFI_MON, "%s:%d skipping on channel %d", __func__, __LINE__
                 "%s:%d [Radio %d] Last scanned channel %d found at idx %d, selecting next channel %d\n",
                 __func__, __LINE__, args->radio_index,
                 mon_data->last_scanned_channel[args->radio_index],
-                i, channels[0])
+                i, channels[0]);
                     }
                     break;
                 }
