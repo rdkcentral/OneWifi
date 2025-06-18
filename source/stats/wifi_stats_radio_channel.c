@@ -762,7 +762,7 @@ int check_scan_complete_read_results(void *arg)
 }
 
 int get_non_operational_channel_list(int radio_index, unsigned int *input_channels,  unsigned int input_channel_count,
-                                     int *nop_channels_out, unsigned int *nop_channel_count_out, wifi_monitor_t *mon_data)
+                                     int *nop_channels_out, unsigned int *nop_channel_count_out, wifi_monitor_t *mon_data, wifi_freq_bands_t band)
 {
     if (input_channels == NULL || nop_channels_out == NULL || 
         nop_channel_count_out == NULL || mon_data == NULL ||
@@ -786,13 +786,14 @@ int get_non_operational_channel_list(int radio_index, unsigned int *input_channe
         for (unsigned int j = 0; j < mon_data->dfs_channels_num[radio_index]; j++) {
             wifi_util_info_print(WIFI_MON, "%s:%d --> DFS entry: ch_number = %d, ch_state = %d\n", 
                                  __func__, __LINE__, mon_data->dfs_channels[radio_index][j], mon_data->dfs_channel_state[radio_index][j].ch_state);
-
+            if (band == WIFI_FREQUENCY_5L_BAND || band == WIFI_FREQUENCY_5H_BAND ||band == WIFI_FREQUENCY_5_BAND){
             if (mon_data->dfs_channels[radio_index][j] == ch && mon_data->dfs_channel_state[radio_index][j].ch_state == CHAN_STATE_DFS_NOP_START) {
                 wifi_util_info_print(WIFI_MON, "%s:%d Channel %d is in DFS NOP state (CHAN_STATE_DFS_NOP_START)\n", 
                                      __func__, __LINE__, ch);
                 nop_channels_out[count++] = ch;
                 break;
             }
+        }
         }
     }
 
@@ -927,7 +928,7 @@ if (get_non_operational_channel_list(args->radio_index,
                                      num_channels,
                                      nop_chan_list,
                                      &nop_chan_count,
-                                     mon_data) != RETURN_OK)
+                                     mon_data, radioOperation->band) != RETURN_OK)
 {
     wifi_util_error_print(WIFI_MON, "%s:%d get_non_operational_channel_list failed for radio: %d\n", __func__, __LINE__, args->radio_index);
 }
