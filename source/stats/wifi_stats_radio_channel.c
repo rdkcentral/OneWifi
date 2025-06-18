@@ -955,6 +955,8 @@ if (get_non_operational_channel_list(args->radio_index,
             }
             if (!is_on_chan && !is_nop_chan) {
                 updated_channels[new_num_channels++] = args->channel_list.channels_list[i];
+                wifi_util_dbg_print(WIFI_MON, "updated_channels[%d] = %d\n", new_num_channels - 1,
+                    updated_channels[new_num_channels - 1]);
             }
         }
 
