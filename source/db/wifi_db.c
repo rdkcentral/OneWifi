@@ -79,7 +79,7 @@ static int init_radio_config_default(int radio_index, wifi_radio_operationParam_
     switch (cfg.band) {
         case WIFI_FREQUENCY_2_4_BAND:
             cfg.operatingClass = 81;
-            cfg.channel = 1;
+            cfg.channel = 6;
             cfg.channelWidth = WIFI_CHANNELBANDWIDTH_20MHZ;
             cfg.variant = WIFI_80211_VARIANT_G | WIFI_80211_VARIANT_N;
             break;
@@ -808,6 +808,31 @@ int wifidb_update_wifi_radio_config(int radio_index, wifi_radio_operationParam_t
 }
 
 int get_wifi_global_param(wifi_global_param_t *config)
+{
+   return 0;
+}
+
+int wifidb_get_rfc_config(UINT rfc_id, wifi_rfc_dml_parameters_t *rfc_info)
+{
+   return 0;
+}
+
+int wifidb_init_interworking_config_default(int vapIndex,void /*wifi_InterworkingElement_t*/ *config)
+{
+   return 0;
+}
+
+int get_wifi_radio_config(int radio_index, wifi_radio_operationParam_t *config, wifi_radio_feature_param_t *feat_config)
+{
+   return 0;
+}
+
+int get_wifi_vap_config(int radio_index,wifi_vap_info_map_t *config)
+{
+   return 0;
+}
+
+int get_all_param_from_psm_and_set_into_db(void)
 {
    return 0;
 }
