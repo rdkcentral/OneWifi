@@ -964,19 +964,36 @@ wifi_util_dbg_print(WIFI_MON, "%s:%d skipping on channel %d", __func__, __LINE__
         }
 
         channels[0] = updated_channels[0];
+        wifi_util_dbg_print(WIFI_MON,
+    "%s:%d [Radio %d] Default selected channels[0] = %d (first updated channel)\n",
+    __func__, __LINE__, args->radio_index, channels[0]);
         for (i = 0; i < new_num_channels; i++) {
             if (mon_data->last_scanned_channel[args->radio_index] ==
                 updated_channels[i]) {
                     if ((i + 1) >= new_num_channels) {
                         channels[0] = updated_channels[0];
+                        wifi_util_dbg_print(WIFI_MON,
+                "%s:%d [Radio %d] Last scanned channel %d was at end, wrapping to %d\n",
+                __func__, __LINE__, args->radio_index,
+                mon_data->last_scanned_channel[args->radio_index],
+                channels[0]);
                     } else {
                         channels[0] = updated_channels[i + 1];
+                        wifi_util_dbg_print(WIFI_MON,
+                "%s:%d [Radio %d] Last scanned channel %d found at idx %d, selecting next channel %d\n",
+                __func__, __LINE__, args->radio_index,
+                mon_data->last_scanned_channel[args->radio_index],
+                i, channels[0])
                     }
                     break;
                 }
             }
             num_channels = 1;
             mon_data->last_scanned_channel[args->radio_index] = channels[0];
+            wifi_util_dbg_print(WIFI_MON,
+    "%s:%d [Radio %d] Final scan channel set to %d, num_channels=%d\n",
+    __func__, __LINE__, args->radio_index,
+    channels[0], num_channels);
         }
 
     if (num_channels == 0) {
