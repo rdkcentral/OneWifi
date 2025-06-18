@@ -210,6 +210,9 @@ typedef struct he_bus_stretch_buff {
 } he_bus_stretch_buff_t;
 
 typedef struct he_bus_data_object {
+    //TBD I think we need this ref_count pointer
+    //atomic_int = volatile int
+    //atomic_int refCount;
     uint32_t name_len;
     he_bus_name_string_t name;
     he_bus_msg_sub_type_t msg_sub_type;
@@ -229,25 +232,10 @@ typedef struct he_bus_raw_data_msg {
     he_bus_data_object_t data_obj;
 } he_bus_raw_data_msg_t;
 
-typedef struct he_bus_raw_data_property {
-    uint32_t name_len;
-    he_bus_name_string_t name;
-    bool is_data_set;
-    he_bus_raw_data_t raw_data;
-    he_bus_raw_data_property_t *next_raw_data;
-} he_bus_raw_data_property_t;
-
-typedef struct he_bus_raw_data_obj {
-    uint32_t num_properties;
-    uint32_t name_len;
-    he_bus_name_string_t name;
-    he_bus_raw_data_property_t data_prop;
-} he_bus_raw_data_obj_t;
-
-typedef struct he_bus_raw_data_prop_arg {
-    uint32_t num_prop;
-    he_bus_raw_data_property_t *prop;
-} he_bus_raw_data_prop_arg_t;
+typedef struct he_bus_data_objs {
+    uint32_t num_obj;
+    he_bus_data_object_t data_obj;
+} he_bus_data_objs_t;
 
 typedef struct sub_payload_data {
     he_bus_event_sub_action_t action;

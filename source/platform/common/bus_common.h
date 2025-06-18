@@ -28,6 +28,8 @@ extern "C" {
 #endif
 
 #define BUS_SERVER_PROCESS_NAME     "OneWifi"
+/* If you change this max bus name length then you need
+*  to change "HE_BUS_MAX_NAME_LENGTH" macro value also. */
 #define BUS_MAX_NAME_LENGTH         128
 #define BUS_NODE_NAME               80
 #define ZERO_TABLE                  0
@@ -147,6 +149,18 @@ typedef enum node_elem_data_type {
     node_elem_sub_data,
 } node_elem_data_type_t;
 
+typedef enum {
+    bus_msg_reg_event = 1,
+    bus_msg_get_event,
+    bus_msg_set_event,
+    bus_msg_table_insert_event,
+    bus_msg_table_remove_event,
+    bus_msg_publish_event,
+    bus_msg_sub_event,
+    bus_msg_sub_ex_async_event,
+    bus_msg_method_event
+} bus_msg_sub_type_t;
+
 typedef struct data_model_properties {
     bus_data_type_t  data_format;
     bool             data_permission;
@@ -179,29 +193,24 @@ typedef struct raw_data {
     unsigned int             raw_data_len;
 } raw_data_t;
 
-typedef struct raw_data_property {
+typedef struct bus_data_prop {
     uint32_t name_len;
     bus_name_string_t name;
+    bus_msg_sub_type_t msg_sub_type;
     bool is_data_set;
-    raw_data_t raw_data;
-    raw_data_property_t *next_raw_data;
-} raw_data_property_t;
+    bus_error_t status;
+    raw_data_t value;
+    struct bus_data_prop *next_data;
+} bus_data_prop_t;
 
-typedef struct raw_data_obj {
-    uint32_t num_properties;
-    uint32_t name_len;
-    bus_name_string_t name;
-    raw_data_property_t data_prop;
-} raw_data_obj_t;
-
-typedef struct raw_data_prop_arg {
+typedef struct bus_data_obj {
     uint32_t num_prop;
-    raw_data_property_t *prop;
-} raw_data_prop_arg_t;
+    bus_data_prop_t data_prop;
+} bus_data_obj_t;
 
 typedef struct bus_user_data {
        void *handle;
-}bus_user_data_t;
+} bus_user_data_t;
 
 typedef struct bus_event_sub bus_event_sub_t;
 typedef struct elem_node_map elem_node_map_t;
@@ -212,14 +221,14 @@ typedef bus_error_t (*bus_get_handler_t)(char *event_name, raw_data_t *p_data, b
 typedef bus_error_t (*bus_set_handler_t)(char *event_name, raw_data_t *p_data, bus_user_data_t *user_data);
 typedef bus_error_t (*bus_table_add_row_handler_t)(char const* tableName, char const* aliasName, uint32_t* instNum);
 typedef bus_error_t (*bus_table_remove_row_handler_t)(char const* rowName);
-typedef bus_error_t (*bus_method_handler_t)(char const* methodName, raw_data_prop_arg_t *inParams,
-    raw_data_prop_arg_t *outParams, void *asyncHandle);
+typedef bus_error_t (*bus_method_handler_t)(char const* methodName, bus_data_prop_t *inParams,
+    bus_data_prop_t *outParams, void *asyncHandle);
 typedef bus_error_t (*bus_name_sub_handler_t)(char *eventName, bus_event_sub_action_t action, int32_t interval, bool* autoPublish);
 
 typedef bus_error_t (*bus_event_sub_handler_t)(char *event_name, raw_data_t *p_data, void *userData);
 typedef bus_error_t (*bus_event_sub_ex_async_handler_t)(char *event_name, bus_error_t ret, void *userData);
 
-typedef void (* wifi_bus_method_async_resp_handler_t) (char const* methodName, bus_error_t error, raw_data_prop_arg_t *params, void *userData);
+typedef void (* wifi_bus_method_async_resp_handler_t) (char const* methodName, bus_error_t error, bus_data_prop_t *params, void *userData);
 
 /* Following are bus function pointers */
 typedef bus_error_t (* wifi_bus_init_t)                         (bus_handle_t *handle);
@@ -239,13 +248,13 @@ typedef bus_error_t (* wifi_bus_event_subscribe_ex_t)           (bus_handle_t *h
 typedef bus_error_t (* wifi_bus_event_subscribe_ex_async_t)     (bus_handle_t *handle, bus_event_sub_t *l_sub_info_map, int num_sub, void *l_sub_handler, int timeout);
 typedef bus_error_t (* wifi_bus_event_unsubscribe_t)             (bus_handle_t *handle, char const* event_name);
 typedef bus_error_t (* wifi_bus_reg_elements_t)                 (bus_handle_t *handle, bus_data_element_t *data_element, uint32_t num_of_element);
-typedef bus_error_t (* wifi_bus_method_invoke_t)                (bus_handle_t *handle, void *paramName, char *event, raw_data_obj_t *input_data, raw_data_obj_t *output_data, uint8_t input_bus_data);
+typedef bus_error_t (* wifi_bus_method_invoke_t)                (bus_handle_t *handle, void *paramName, char *event, bus_data_obj_t *input_data, bus_data_obj_t *output_data, uint8_t input_bus_data);
 typedef bus_error_t (* wifi_bus_reg_table_row_t)                (bus_handle_t *handle, char const *name, uint32_t row_index, char const *alias);
 typedef bus_error_t (* wifi_bus_unreg_table_row_t)              (bus_handle_t *handle, char const *name);
 typedef bus_error_t (* wifi_bus_remove_table_row_t)             (bus_handle_t *handle, char const *name);
 typedef bus_error_t (* wifi_bus_unreg_elements_t)              (bus_handle_t *handle, uint32_t num_of_element, bus_data_element_t *data_element);
 typedef bus_error_t (* wifi_bus_method_async_invoke_t) (bus_handle_t *handle, void *param_name, char *event_name,
-    raw_data_obj_t *input_data, wifi_bus_method_async_resp_handler_t cb, uint32_t timeout);
+    bus_data_obj_t *input_data, wifi_bus_method_async_resp_handler_t cb, uint32_t timeout);
 typedef char const* (* wifi_bus_error_to_string_t)                        (bus_error_t bus_error);
 typedef void* (*wifi_bus_handle_to_actual_ptr_t) (bus_handle_t *handle);
 

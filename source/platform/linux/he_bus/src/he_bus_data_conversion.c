@@ -457,8 +457,8 @@ uint32_t set_bus_object_data(char *event_name, he_bus_data_object_t *p_obj_data,
         total_len += sizeof(tmp->msg_sub_type);
         tmp->is_data_set = true;
         total_len += sizeof(tmp->is_data_set);
-        p_obj_data->status = ret_status;
-        total_len += sizeof(p_obj_data->status);
+        tmp->status = ret_status;
+        total_len += sizeof(tmp->status);
         total_len += set_bus_object_payload_data(&tmp->data, cfg_data);
 
         if (p_obj_data->next_data == NULL) {
@@ -572,12 +572,12 @@ he_bus_error_t process_bus_sub_event(he_bus_handle_t handle, int socket_fd, char
 }
 
 he_bus_error_t process_bus_method_event(he_bus_handle_t handle, char *comp_name,
-    he_bus_data_object_t *p_obj_data, he_bus_raw_data_t *p_res_raw_data)
+    uint32_t num_objs, he_bus_data_object_t *p_obj_data, he_bus_data_object_t *p_res_objs)
 {
     VERIFY_NULL_WITH_RC(handle);
     VERIFY_NULL_WITH_RC(comp_name);
     VERIFY_NULL_WITH_RC(p_obj_data);
-    VERIFY_NULL_WITH_RC(p_res_raw_data);
+    VERIFY_NULL_WITH_RC(p_res_objs);
 
     he_bus_error_t status = he_bus_error_success;
     if (handle->root_element == NULL || p_obj_data->name_len == 0) {
@@ -595,8 +595,8 @@ he_bus_error_t process_bus_method_event(he_bus_handle_t handle, char *comp_name,
     } else {
         if (node->cb_table.method_handler != NULL) {
             ELM_LOCK(node->element_mutex);
-            status = node->cb_table.method_handler(p_obj_data->name, &p_obj_data->data,
-                p_res_raw_data, NULL);
+            status = node->cb_table.method_handler(p_obj_data->name, p_obj_data->next_data,
+                p_res_objs, NULL);
             ELM_UNLOCK(node->element_mutex);
         } else {
             he_bus_core_error_print("%s:%d Node method handler is not found for :%s namespace\r\n",
@@ -690,12 +690,13 @@ he_bus_error_t handle_bus_msg_req_data(he_bus_handle_t handle, int fd,
     he_bus_data_object_t *p_obj_data = &p_msg_data->data_obj;
     uint32_t l_num_of_obj = (uint32_t)p_msg_data->num_of_obj;
     he_bus_raw_data_t payload_data = { 0 };
+    he_bus_data_object_t payload_objs = { 0 };
 
     prepare_initial_bus_header(p_res_data, p_msg_data->component_name, he_bus_msg_response);
     he_bus_core_info_print("%s:%d msg sub type:%d from:%s l_num_of_obj:%d\r\n", __func__, __LINE__,
         p_obj_data->msg_sub_type, p_obj_data->name, l_num_of_obj);
-    while (l_num_of_obj > 0) {
-        switch (p_obj_data->msg_sub_type) {
+
+    switch (p_obj_data->msg_sub_type) {
         case he_bus_msg_reg_event:
 
             break;
@@ -728,10 +729,13 @@ he_bus_error_t handle_bus_msg_req_data(he_bus_handle_t handle, int fd,
                 &payload_data, ret);
             break;
         case he_bus_msg_method_event:
-            ret = process_bus_method_event(handle, p_msg_data->component_name, p_obj_data,
-                &payload_data);
-            prepare_rem_payload_bus_msg_data(p_obj_data->name, p_res_data, p_obj_data->msg_sub_type,
-                &payload_data, ret);
+            ret = process_bus_method_event(handle, p_msg_data->component_name, l_num_of_obj, p_obj_data,
+                &payload_objs);
+            set_obj_status(&payload_objs, ret);
+            p_res_data->data_obj = payload_objs;
+            p_res_data->total_raw_msg_len = get_total_objs_size_from_he_bus_objs(&payload_objs);
+            p_res_data->num_of_obj = get_max_objs_cnt(&payload_objs);
+            break;
         default:
             he_bus_core_error_print("%s:%d unsupported msg sub type:%d from:%s\r\n", __func__,
                 __LINE__, p_obj_data->msg_sub_type, p_obj_data->name);
@@ -739,9 +743,6 @@ he_bus_error_t handle_bus_msg_req_data(he_bus_handle_t handle, int fd,
 
             prepare_rem_payload_bus_msg_data(p_obj_data->name, p_res_data, p_obj_data->msg_sub_type,
                 &payload_data, ret);
-            break;
-        }
-        l_num_of_obj--;
     }
 
     return ret;
@@ -989,6 +990,54 @@ he_bus_error_t prepare_rem_payload_bus_msg_data(char *event_name,
     p_base_hdr_data->num_of_obj++;
     p_base_hdr_data->total_raw_msg_len += payload_len;
     return he_bus_error_success;
+}
+
+uint32_t get_total_size_from_he_bus_raw_data(he_bus_raw_data_t *cfg_data)
+{
+    uint32_t total_payload_data = 0;
+
+    if (cfg_data != NULL) {
+        total_payload_data += sizeof(cfg_data->data_type);
+        total_payload_data += cfg_data->raw_data_len;
+        total_payload_data += sizeof(cfg_data->raw_data_len);
+    }
+    return total_payload_data;
+}
+
+uint32_t get_total_objs_size_from_he_bus_objs(he_bus_data_object_t *p_objs)
+{
+    uint32_t total_raw_msg_len = 0;
+
+    while (p_objs) {
+        total_raw_msg_len += sizeof(p_objs->name_len);
+        total_raw_msg_len += p_objs->name_len;
+        total_raw_msg_len += sizeof(p_objs->msg_sub_type);
+        total_raw_msg_len += sizeof(p_objs->is_data_set);
+        total_raw_msg_len += sizeof(p_objs->status);
+        total_raw_msg_len += get_total_size_from_he_bus_raw_data(&p_objs->data);
+
+        p_objs = p_objs->next_data;
+    }
+
+    return total_raw_msg_len;
+}
+
+uint32_t get_max_objs_cnt(he_bus_data_object_t *p_objs)
+{
+    uint32_t total_obj_size = 0;
+
+    while (p_objs) {
+        total_obj_size++;
+        p_objs = p_objs->next_data;
+    }
+
+    return total_obj_size;
+}
+
+int set_obj_status(he_bus_data_object_t *p_objs, he_bus_error_t ret_status)
+{
+    p_objs->status = ret_status;
+    return RETURN_OK;
 }
 
 int send_bus_initial_msg_info(int fd, char *comp_name)

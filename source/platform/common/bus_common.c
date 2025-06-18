@@ -782,19 +782,20 @@ void free_bus_raw_data(raw_data_t *data)
     }
 }
 
-void bus_release_data_obj(raw_data_obj_t *p_raw_data_obj)
+void bus_release_data_obj(bus_data_obj_t *p_bus_obj)
 {
-    raw_data_property_t *p_data_prop = p_raw_data_obj->data_prop.next_raw_data;
-    raw_data_property_t *next;
+    bus_data_prop_t *p_data_prop = p_bus_obj->data_prop.next_data;
+    bus_data_prop_t *next;
+
+    free_bus_raw_data(&p_bus_obj->data_prop.value);
+    p_bus_obj->data_prop.is_data_set = false;
 
     while(p_data_prop) {
-        free_bus_raw_data(&p_data_prop->raw_data);
-        next = p_data_prop->next_raw_data;
+        next = p_data_prop->next_data;
+        free_bus_raw_data(&p_data_prop->value);
         free(p_data_prop);
         p_data_prop = next;
     }
-    free_bus_raw_data(&p_raw_data_obj->data_prop.raw_data);
-    p_raw_data_obj->data_prop.is_data_set = false;
 }
 
 int clone_raw_data(raw_data_t *dst, raw_data_t *src)
@@ -806,40 +807,80 @@ int clone_raw_data(raw_data_t *dst, raw_data_t *src)
 
     if ((dst->data_type == bus_data_type_bytes) || (dst->data_type == bus_data_type_string)) {
         dst->raw_data.bytes = malloc(dst->raw_data_len);
+        BUS_CHECK_NULL_WITH_RC(dst->raw_data.bytes, RETURN_ERR);
         memcpy(dst->raw_data.bytes, src->raw_data.bytes, dst->raw_data_len);
     }
     return RETURN_OK;
 }
 
-int bus_set_raw_data_prop(raw_data_obj_t *p_raw_data_obj, const char *event_name, raw_data_t *p_raw_data)
+int bus_get_raw_data_prop(bus_data_prop_t *p_bus_prop, const char *event_name, raw_data_t *p_raw_data)
 {
-    BUS_CHECK_NULL_WITH_RC(p_raw_data_prop, RETURN_ERR);
+    BUS_CHECK_NULL_WITH_RC(p_bus_prop, RETURN_ERR);
     BUS_CHECK_NULL_WITH_RC(p_raw_data, RETURN_ERR);
 
-    if (p_raw_data_obj->num_properties == 0) {
-        clone_raw_data(&p_raw_data_obj->data_prop.raw_data, p_raw_data);
-        p_raw_data_obj->name_len = strlen(event_name) + 1;
-        strncpy(p_raw_data_obj->name, event_name, p_raw_data_obj->name_len);
-        p_raw_data_obj->data_prop.is_data_set = true;
-        p_raw_data_obj->data_prop.next_raw_data = NULL;
-        p_raw_data_obj->num_properties++;
+    if (event_name == NULL) {
+        *p_raw_data = p_bus_prop->value;
     } else {
-        raw_data_property_t *p_data_prop = &p_raw_data_obj->data_prop;
+        uint32_t str_len = min(strlen(event_name) + 1, BUS_MAX_NAME_LENGTH);
 
-        raw_data_property_t *temp = calloc(1, sizeof(raw_data_property_t));
+        while(p_bus_prop) {
+            if (!strncmp(event_name, p_bus_prop->name, str_len)) {
+                *p_raw_data = p_bus_prop->value;
+                return RETURN_OK;
+            }
+            p_bus_prop = p_bus_prop->next_data;
+        }
+    }
+
+    return RETURN_ERR;
+}
+
+int bus_set_raw_data_prop(bus_data_prop_t *p_bus_prop, const char *event_name, raw_data_t *p_raw_data)
+{
+    BUS_CHECK_NULL_WITH_RC(p_bus_prop, RETURN_ERR);
+    BUS_CHECK_NULL_WITH_RC(p_raw_data, RETURN_ERR);
+
+    if (p_bus_prop->next_data == NULL && p_bus_prop->is_data_set == false) {
+        clone_raw_data(&p_bus_prop->value, p_raw_data);
+        if (event_name != NULL) {
+            p_bus_prop->name_len = strlen(event_name) + 1;
+            strncpy(p_bus_prop->name, event_name, p_bus_prop->name_len);
+        } else {
+            p_bus_prop->name_len = 0;
+            memset(p_bus_prop->name, 0, sizeof(p_bus_prop->name));
+        }
+        p_bus_prop->is_data_set = true;
+        p_bus_prop->next_data = NULL;
+    } else {
+        bus_data_prop_t *temp = calloc(1, sizeof(bus_data_prop_t));
         BUS_CHECK_NULL_WITH_RC(temp, RETURN_ERR);
 
-        clone_raw_data(&temp->raw_data, p_raw_data);
+        clone_raw_data(&temp->value, p_raw_data);
         temp->is_data_set = true;
-        if (event_name) {
+        if (event_name != NULL) {
             temp->name_len = strlen(event_name) + 1;
             strncpy(temp->name, event_name, temp->name_len);
+        } else {
+            temp->name_len = 0;
+            memset(temp->name, 0, sizeof(temp->name));
         }
 
-        temp->next_raw_data = p_data_prop->next_raw_data;
-        p_data_prop->next_raw_data = temp;
-        p_raw_data_obj->num_properties++;
+        temp->next_raw_data = p_bus_prop->next_data;
+        p_bus_prop->next_data = temp;
     }
 
     return RETURN_OK;
+}
+
+int bus_set_raw_data_obj(bus_data_obj_t *p_bus_obj, const char *event_name, raw_data_t *p_raw_data)
+{
+    BUS_CHECK_NULL_WITH_RC(p_bus_obj, RETURN_ERR);
+    BUS_CHECK_NULL_WITH_RC(p_raw_data, RETURN_ERR);
+
+    int ret = bus_set_raw_data_prop(&p_bus_obj->data_prop, p_raw_data);
+    if (ret == RETURN_OK) {
+        p_bus_obj->num_prop++;
+    }
+
+    return ret;
 }
