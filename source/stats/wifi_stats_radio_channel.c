@@ -937,7 +937,7 @@ if (get_non_operational_channel_list(args->radio_index,
             int is_nop_chan = 0;
             for (int j = 0; j < onchan_num_channels; j++) {
                 if ((int)args->channel_list.channels_list[i] == on_chan_list[j]) {
-                    is_on_chan = 1;
+wifi_util_dbg_print(WIFI_MON, "%s:%d skipping on channel %d", __func__, __LINE__, (int)args->channel_list.channels_list[i]);                is_on_chan = 1;
                     break;
                 }
             }
@@ -957,7 +957,9 @@ if (get_non_operational_channel_list(args->radio_index,
                 updated_channels[new_num_channels++] = args->channel_list.channels_list[i];
                 wifi_util_dbg_print(WIFI_MON, "updated_channels[%d] = %d\n", new_num_channels - 1,
                     updated_channels[new_num_channels - 1]);
-            }
+            }else {
+        wifi_util_dbg_print(WIFI_MON, "Channel %d filtered out (on_chan=%d, nop_chan=%d)", args->channel_list.channels_list[i], is_on_chan, is_nop_chan);
+    }
         }
 
         channels[0] = updated_channels[0];
