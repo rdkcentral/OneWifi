@@ -1230,6 +1230,47 @@ bus_error_t get_acl_device_data(char *name, raw_data_t *p_data, bus_user_data_t 
     return bus_error_success;
 }
 
+/* If we call the bus_data_get_fn in dmcli handling, it will be timed out
+ * due to they depend each other, bus_data_get_fn must wait dmcli handling finish first.
+ * This Function used in dmcli handling instead of using bus_data_get_fn WIFI_WEBCONFIG_GET_ACL */
+char *get_acl_devices_blob()
+{
+    char *str = NULL;
+    webconfig_subdoc_data_t data;
+    wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+
+    if ((mgr == NULL) || (ctrl == NULL)) {
+        wifi_util_error_print(WIFI_DMCLI, "%s:%d NULL pointers\n", __func__, __LINE__);
+        return NULL;
+    }
+
+    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+    memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&mgr->radio_config,
+        getNumberRadios() * sizeof(rdk_wifi_radio_t));
+    memcpy((unsigned char *)&data.u.decoded.hal_cap, (unsigned char *)&mgr->hal_cap,
+        sizeof(wifi_hal_capability_t));
+
+    data.u.decoded.num_radios = getNumberRadios();
+
+    if (webconfig_encode(&ctrl->webconfig, &data, webconfig_subdoc_type_mac_filter) ==
+        webconfig_error_none) {
+        wifi_util_info_print(WIFI_DMCLI, "%s: ACL DML cache encoded successfully  \n", __FUNCTION__);
+        str = (char *)calloc(strlen(data.u.encoded.raw) + 1, sizeof(char));
+        if (str != NULL) {
+            memcpy(str, data.u.encoded.raw, strlen(data.u.encoded.raw));
+        } else {
+            wifi_util_error_print(WIFI_DMCLI, "%s:%d Failed to allocate memory.\n", __FUNCTION__, __LINE__);
+        }
+    } else {
+        wifi_util_error_print(WIFI_DMCLI, "%s: ACL DML cache encode failed  \n", __FUNCTION__);
+    }
+
+    webconfig_data_free(&data);
+
+    return str;
+}
+
 extern void webconf_process_private_vap(const char *enb);
 bus_error_t get_private_vap(char *name, raw_data_t *p_data, bus_user_data_t *user_data)
 {

@@ -17666,6 +17666,13 @@ MacFiltTab_Synchronize
     )
 {
     wifi_util_dbg_print(WIFI_DMCLI,"%s:%d Inside Synchronize \n",__func__, __LINE__);
+    wifi_vap_info_t *vap_info = (wifi_vap_info_t *)hInsContext;
+    if (vap_info == NULL ) {
+        wifi_util_dbg_print(WIFI_DMCLI,"%s:%d NULL Pointer\n", __func__, __LINE__);
+        return -1;
+    }
+
+    get_acl_data_from_ctrl(vap_info->radio_index);
 
     return ANSC_STATUS_SUCCESS;
 }

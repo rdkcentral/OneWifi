@@ -644,6 +644,58 @@ hash_map_t* get_associated_devices_hash_map(unsigned int vap_index)
     return *assoc_dev_hash_map;
 }
 
+int get_acl_data_from_ctrl(unsigned int radio_index)
+{
+    char *str = NULL;
+    unsigned int radio_idx = 0, vap_idx = 0;
+    webconfig_subdoc_data_t data;
+    webconfig_dml_t* dml = NULL;
+
+    dml = get_webconfig_dml();
+    if (dml == NULL){
+        wifi_util_error_print(WIFI_DMCLI,"%s Error: value is NULL\n",__FUNCTION__);
+        return RETURN_ERR;
+    }
+
+    str = get_acl_devices_blob();
+    if (str == NULL) {
+        wifi_util_error_print(WIFI_DMCLI, "Get acl devices blob failed\n");
+        return RETURN_ERR;
+    }
+
+    memset(&data, 0, sizeof(webconfig_subdoc_data_t));
+    memcpy((unsigned char *)&data.u.decoded.radios, (unsigned char *)&dml->radios, dml->hal_cap.wifi_prop.numRadios*sizeof(rdk_wifi_radio_t));
+    memcpy((unsigned char *)&data.u.decoded.hal_cap,(unsigned char *)&dml->hal_cap, sizeof(wifi_hal_capability_t));
+    data.u.decoded.num_radios = dml->hal_cap.wifi_prop.numRadios;
+
+    // decode the ACL Data
+    if (webconfig_decode(&dml->webconfig, &data, str) == webconfig_error_none) {
+        wifi_util_info_print(WIFI_DMCLI, "%s %d webconfig_decode success \n", __FUNCTION__,
+            __LINE__);
+    } else {
+        wifi_util_error_print(WIFI_DMCLI, "%s %d webconfig_decode fail \n", __FUNCTION__, __LINE__);
+        free(str);
+        str = NULL;
+        return RETURN_ERR;
+    }
+
+    // update ACL from data to dml cache
+    for (radio_idx=0; radio_idx < dml->hal_cap.wifi_prop.numRadios; radio_idx++) {
+        for (vap_idx=0; vap_idx < MAX_NUM_VAP_PER_RADIO; vap_idx++) {
+            hash_map_t** acl_dev_map = get_dml_acl_hash_map(radio_idx, vap_idx);
+
+            mac_filter_dml_vap_cache_update(radio_idx, vap_idx);
+            *acl_dev_map = data.u.decoded.radios[radio_idx].vaps.rdk_vap_array[vap_idx].acl_map;
+        }
+    }
+
+    free(str);
+    str = NULL;
+    webconfig_data_free(&data);
+
+    return RETURN_OK;
+}
+
 queue_t** get_acl_new_entry_queue(wifi_vap_info_t *vap_info)
 {
     if (vap_info == NULL) {
