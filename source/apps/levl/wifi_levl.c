@@ -1323,7 +1323,7 @@ bus_error_t levl_get_handler(char *event_name, raw_data_t *p_data, bus_user_data
     }
 
     wifi_util_dbg_print(WIFI_CTRL, "%s(): %s\n", __FUNCTION__, name);
-    sscanf(name, "Device.WiFi.X_RDK_CSI_LEVL.%200s", parameter);
+    sscanf(name, "Device.WiFi.X_RDK_CSI_LEVL.%199s", parameter);
 
     if (strcmp(parameter, "clientMac") == 0) {
         char mac_string[18];
@@ -1436,7 +1436,7 @@ bus_error_t levl_set_handler(char *event_name, raw_data_t *p_data, bus_user_data
 
     wifi_util_dbg_print(WIFI_CTRL, "%s(): %s\n", __FUNCTION__, name);
 
-    sscanf(name, "Device.WiFi.X_RDK_CSI_LEVL.%200s", parameter);
+    sscanf(name, "Device.WiFi.X_RDK_CSI_LEVL.%199s", parameter);
 
     if (strcmp(parameter, "clientMac") == 0) {
         if (p_data->data_type != bus_data_type_string) {

@@ -379,6 +379,9 @@ void existing_assoc_list_update(webconfig_subdoc_decoded_data_t *params)
                     }
                     free(temp_assoc_dev_data);
                 }
+                hash_map_destroy(associated_devices_map);
+                params->radios[r_index].vaps.rdk_vap_array[v_index].associated_devices_diff_map =
+                    NULL;
             }
         }
     }

@@ -770,7 +770,7 @@ bus_error_t csi_set_handler(char *event_name, raw_data_t *p_data, bus_user_data_
         return bus_error_general;
     }
 
-    ret = sscanf(name, "Device.WiFi.X_RDK_CSI.%4d.%200s", &idx, parameter);
+    ret = sscanf(name, "Device.WiFi.X_RDK_CSI.%4d.%199s", &idx, parameter);
     if (ret==2) {
         qcount = queue_count(local_csi_queue);
         for (itr=0; itr<qcount; itr++) {
@@ -965,7 +965,7 @@ bus_error_t csi_get_handler(char *event_name, raw_data_t *p_data, bus_user_data_
         return status;
     }
 
-    ret = sscanf(name, "Device.WiFi.X_RDK_CSI.%4d.%200s", &idx, parameter);
+    ret = sscanf(name, "Device.WiFi.X_RDK_CSI.%4d.%199s", &idx, parameter);
     if (ret==2) {
         qcount = queue_count(csi_data_queue);
         for (itr=0; itr<qcount; itr++) {
