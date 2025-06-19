@@ -840,7 +840,9 @@ webconfig_error_t encode_anqp_object(const char *vap_name, cJSON *inter,const un
     if(cJSON_HasObjectItem(p_root, "ANQP") == true) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d  anqp element already exsistingin json\n", __func__, __LINE__);
         anqpElement = cJSON_GetObjectItem(p_root, (const char * const)"ANQP");
+        cJSON_DetachItemViaPointer(p_root, anqpElement);
         cJSON_AddItemToObject(inter, "ANQP", anqpElement);
+        cJSON_Delete(p_root);
     } else {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d  Add anqp element to json\n", __func__, __LINE__);
         cJSON_AddItemToObject(inter, "ANQP", p_root);
@@ -865,7 +867,9 @@ webconfig_error_t encode_passpoint_object(const char *vap_name, cJSON *inter,con
       if(cJSON_HasObjectItem(p_root, "Passpoint") == true) {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d  Passpoint element already exsisting in json\n", __func__, __LINE__);
         pass = cJSON_GetObjectItem(p_root,  (const char * const) "Passpoint");
+        cJSON_DetachItemViaPointer(p_root, pass);
         cJSON_AddItemToObject(inter, "Passpoint", pass);
+        cJSON_Delete(p_root);
     } else {
         wifi_util_dbg_print(WIFI_WEBCONFIG, "%s:%d  Add Passpoint element to json\n", __func__, __LINE__);
         cJSON_AddItemToObject(inter, "Passpoint", p_root);
