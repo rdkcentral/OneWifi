@@ -1006,16 +1006,14 @@ static void get_device_flag(char flag[], int size, char *list_name)
             }
         }
 
-        for(i = 0; i < MAX_VAP && i < size; i ++)
-        {
-            if(buf_int[i] < size && buf_int[i] >= 0)
-            {
-                flag[(buf_int[i] - 1)] = 1;
-            }
-            else
-            {
-                wifi_util_error_print(WIFI_APPS, "%s():%d for vap(%u) failed.\n",
-                        __func__, __LINE__, buf_int[i]);
+        for (i = 0; i < MAX_VAP && buf_int[i] > 0; i++) {
+            if (buf_int[i] - 1 < size) {
+                flag[buf_int[i] - 1] = 1;
+            } else {
+                wifi_util_error_print(WIFI_APPS,
+                    "%s:%d failed to set flag, vap index %d is more than size %d\n", __func__,
+                    __LINE__, buf_int[i], size);
+                return;
             }
         }
     } else {
