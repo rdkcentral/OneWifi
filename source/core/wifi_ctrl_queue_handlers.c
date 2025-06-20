@@ -2715,7 +2715,14 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
     vap_svc_t *ext_svc;
     vap_svc_t  *pub_svc = NULL;
     int ret = 0;
+    wifi_monitor_data_t *data = NULL;
 
+    data = (wifi_monitor_data_t *)calloc(1, sizeof(wifi_monitor_data_t));
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Memory allocation failed\n", __func__, __LINE__);
+        return;
+    }
+    
     radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(ch_chg->radioIndex);
     if (radio_params == NULL) {
         wifi_util_error_print(WIFI_CTRL,"%s: wrong index for radio map: %d\n",__FUNCTION__, ch_chg->radioIndex);
@@ -2807,14 +2814,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
         rdk_wifi_radio_t *l_radio = NULL;
         time_t time_now = time(NULL);
         l_radio = find_radio_config_by_index(ch_chg->radioIndex);
-        wifi_monitor_data_t *data = NULL;
-
-        data = (wifi_monitor_data_t *)calloc(1, sizeof(wifi_monitor_data_t));
-        if (data == NULL) {
-            wifi_util_error_print(WIFI_CTRL, "%s:%d: Memory allocation failed\n", __func__,
-                __LINE__);
-            return;
-        }
+        
         if (l_radio == NULL) {
             wifi_util_error_print(WIFI_CTRL,"%s:%d radio strucutre is not present for radio %d\n",
                                 __FUNCTION__, __LINE__,  ch_chg->radioIndex);
@@ -2906,15 +2906,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
                 chan_state = CHAN_STATE_DFS_CAC_START;
                 break;
         }
-        data->u.nop_stats_config.radioIndex = ch_chg->radioIndex;
-        data->u.nop_stats_config.nop_up_channel = ch_chg->channel;
-        data->u.nop_stats_config.channel_state = chan_state;
-        data->u.nop_stats_config.channel_width = ch_chg->channelWidth;
-        data->u.nop_stats_config.band = radio_params->band;
-        push_event_to_monitor_queue(data, wifi_event_monitor_channel_status, NULL);
-        if (data != NULL) {
-            free(data);
-        }
+        
         if (ch_chg->sub_event == WIFI_EVENT_RADAR_DETECTED) {
             wifi_util_info_print(WIFI_CTRL,"%s:%d DFS RADAR_DETECTED on ch %d and will not be available for 30 mins\n",
                                  __func__, __LINE__, ch_chg->channel);
@@ -2965,6 +2957,18 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
         wifi_util_error_print(WIFI_CTRL,"%s: Invalid event for radio %d\n",__FUNCTION__, ch_chg->radioIndex);
         return;
     }
+    for (int i = 0; i < 64; i++) {
+    wifi_channelMap_t *entry = &radio_params->channel_map[radio_index][i];
+    wifi_util_dbg_print(WIFI_CTRL, "  channel_map[%d][%d]: ch_number=%d, ch_state=%d\n",
+        radio_index, i, entry->ch_number, entry->ch_state);
+}
+    memcpy(data->u.channel_status_map.channel_map, radio_params->channel_map,
+        sizeof(radio_params->channel_map));
+    push_event_to_monitor_queue(data, wifi_event_monitor_channel_status, NULL);
+    if (data != NULL) {
+        free(data);
+    }
+
     g_wifidb->ctrl.webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
     start_wifi_sched_timer(ch_chg->radioIndex, ctrl, wifi_radio_sched);
     update_wifi_radio_config(ch_chg->radioIndex, radio_params, radio_feat);
