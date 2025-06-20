@@ -778,8 +778,8 @@ int get_non_operational_channel_list(int radio_index, unsigned int *input_channe
     wifi_util_info_print(WIFI_MON, "%s:%d Checking %d input channels for radio index %d\n", 
                          __func__, __LINE__, input_channel_count, radio_index);
 
-    for (unsigned int i = 0; i < input_channel_count; i++) {
-        unsigned int ch = input_channels[i];
+    for (int i = 0; i < input_channel_count; i++) {
+        int ch = input_channels[i];
         wifi_util_info_print(WIFI_MON, "%s:%d Checking channel: %d\n", 
                              __func__, __LINE__, ch);
 
