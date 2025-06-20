@@ -333,6 +333,23 @@ he_bus_error_t convert_bus_raw_msg_data_to_buffer(he_bus_raw_data_msg_t *raw_dat
     return he_bus_error_success;
 }
 
+he_bus_data_object_t *memory_alloc_for_he_bus_data_obj(void)
+{
+    he_bus_data_object_t *l_obj;
+
+    l_obj = he_bus_calloc(1, sizeof(he_bus_data_object_t));
+    HE_BUS_VERIFY_NULL_WITH_RETURN_ADDR(l_obj);
+    l_obj->ref_count = 1;
+    return l_obj;
+}
+
+int he_bus_data_object_retain(he_bus_data_object_t *p_obj)
+{
+    HE_BUS_CHECK_NULL_WITH_RC(p_obj, RETURN_ERR);
+    p_obj->ref_count++;
+    return RETURN_OK;
+}
+
 he_bus_error_t convert_buffer_to_bus_raw_msg_data(he_bus_raw_data_msg_t *raw_data,
     he_bus_stretch_buff_t *input_data)
 {
@@ -380,6 +397,7 @@ he_bus_error_t convert_buffer_to_bus_raw_msg_data(he_bus_raw_data_msg_t *raw_dat
     if (raw_data->num_of_obj != 0) {
 
         obj_len = convert_buffer_to_bus_data_object(&raw_data->data_obj, tmp);
+        he_bus_data_object_retain(&raw_data->data_obj);
         tmp += obj_len;
         buff_len += obj_len;
 
@@ -387,8 +405,8 @@ he_bus_error_t convert_buffer_to_bus_raw_msg_data(he_bus_raw_data_msg_t *raw_dat
         while (l_num_of_obj) {
             he_bus_data_object_t *l_obj;
 
-            l_obj = he_bus_calloc(1, sizeof(he_bus_data_object_t));
-
+            l_obj = memory_alloc_for_he_bus_data_obj();
+            HE_BUS_CHECK_NULL_WITH_RC(l_obj, he_bus_error_out_of_resources);
             l_obj->next_data = NULL;
 
             obj_len = convert_buffer_to_bus_data_object(l_obj, tmp);
@@ -446,8 +464,10 @@ uint32_t set_bus_object_data(char *event_name, he_bus_data_object_t *p_obj_data,
         total_len += sizeof(p_obj_data->status);
         total_len += set_bus_object_payload_data(&p_obj_data->data, cfg_data);
         p_obj_data->next_data = NULL;
+        he_bus_data_object_retain(p_obj_data);
     } else {
-        he_bus_data_object_t *tmp = he_bus_calloc(1, sizeof(he_bus_data_object_t));
+        he_bus_data_object_t *tmp = memory_alloc_for_he_bus_data_obj();
+        HE_BUS_CHECK_NULL_WITH_RC(tmp, 0);
 
         tmp->name_len = strlen(event_name) + 1;
         strncpy(tmp->name, event_name, tmp->name_len);
@@ -486,7 +506,13 @@ void free_raw_data_struct(he_bus_raw_data_t *p_data)
 
 void free_bus_msg_obj_data(he_bus_data_object_t *p_obj_data)
 {
-    free_raw_data_struct(&p_obj_data->data);
+    if (p_obj_data->ref_count <= 1) {
+        free_raw_data_struct(&p_obj_data->data);
+        p_obj_data->ref_count = 0;
+    } else {
+        he_bus_core_info_print("%s:%d memory already have some references:%d\r\n",
+            __func__, __LINE__, p_obj_data->ref_count);
+    }
     p_obj_data = p_obj_data->next_data;
     he_bus_data_object_t *temp;
 
@@ -494,8 +520,14 @@ void free_bus_msg_obj_data(he_bus_data_object_t *p_obj_data)
     while (p_obj_data != NULL) {
         temp = p_obj_data;
         p_obj_data = p_obj_data->next_data;
-        free_raw_data_struct(&temp->data);
-        he_bus_free(temp);
+        if (temp->ref_count <= 1) {
+            free_raw_data_struct(&temp->data);
+            he_bus_free(temp);
+	    p_obj_data->ref_count = 0;
+        } else {
+            he_bus_core_info_print("%s:%d memory:%p already have some references:%d\r\n",
+                __func__, __LINE__, temp, p_obj_data->ref_count);
+        }
     }
 }
 

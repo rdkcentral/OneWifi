@@ -116,7 +116,7 @@ extern "C" {
 
 #define BUS_DML_CONFIG_FILE "bus_dml_config.json"
 
-#define CTRL_QUEUE_SIZE_MAX 500
+#define CTRL_QUEUE_SIZE_MAX (700 * getNumberRadios())
 
 typedef enum {
     ctrl_webconfig_state_none = 0,
@@ -318,6 +318,7 @@ wifi_ctrl_t *get_wifictrl_obj();
 void deinit_ctrl_monitor(wifi_ctrl_t *ctrl);
 bool is_db_consolidated();
 bool is_db_backup_required();
+bool is_devtype_pod();
 
 UINT getRadioIndexFromAp(UINT apIndex);
 UINT getPrivateApFromRadioIndex(UINT radioIndex);

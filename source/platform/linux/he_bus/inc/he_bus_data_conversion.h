@@ -55,6 +55,8 @@ uint32_t get_total_size_from_he_bus_raw_data(he_bus_raw_data_t *cfg_data);
 uint32_t get_total_objs_size_from_he_bus_objs(he_bus_data_object_t *p_objs);
 uint32_t get_max_objs_cnt(he_bus_data_object_t *p_objs);
 int set_obj_status(he_bus_data_object_t *p_objs, he_bus_error_t ret_status);
+he_bus_data_object_t *memory_alloc_for_he_bus_data_obj(void);
+int he_bus_data_object_retain(he_bus_data_object_t *p_obj);
 
 #ifdef __cplusplus
 }

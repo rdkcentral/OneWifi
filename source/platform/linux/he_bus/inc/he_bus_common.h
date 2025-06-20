@@ -34,6 +34,8 @@ extern "C" {
 
 typedef struct _he_bus_handle *he_bus_handle_t;
 
+typedef volatile int atomic_int;
+
 #define HE_BUS_RETURN_ERR -1
 #define HE_BUS_RETURN_OK 0
 
@@ -63,6 +65,13 @@ typedef struct _he_bus_handle *he_bus_handle_t;
     if (NULL == T) {                   \
         return HE_BUS_RETURN_ERR;      \
     }
+
+#define HE_BUS_CHECK_NULL_WITH_RC(ptr, rc) \
+    do { \
+        if ((ptr) == NULL) { \
+            return (rc); \
+        } \
+    } while (0)
 
 #define HE_BUS_NO_DATA_OBJ 0
 #define HE_BUS_SINGLE_DATA_OBJ 1
@@ -210,9 +219,7 @@ typedef struct he_bus_stretch_buff {
 } he_bus_stretch_buff_t;
 
 typedef struct he_bus_data_object {
-    //TBD I think we need this ref_count pointer
-    //atomic_int = volatile int
-    //atomic_int refCount;
+    atomic_int ref_count;
     uint32_t name_len;
     he_bus_name_string_t name;
     he_bus_msg_sub_type_t msg_sub_type;

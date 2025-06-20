@@ -241,7 +241,7 @@ bus_error_t bus_reg_data_elements(bus_handle_t *handle, bus_data_element_t *data
 }
 
 bus_error_t bus_method_invoke(bus_handle_t *handle, void *paramName, char *event,
-    raw_data_obj_t *input_data, raw_data_obj_t *output_data, uint8_t input_bus_data)
+    bus_data_obj_t *input_data, bus_data_obj_t *output_data, uint8_t input_bus_data)
 {
     VERIFY_NULL_WITH_RC(handle);
     VERIFY_NULL_WITH_RC(event);
@@ -379,7 +379,7 @@ static bus_error_t bus_remove_table_row(bus_handle_t *handle, char const *name)
 }
 
 bus_error_t bus_method_async_invoke(bus_handle_t *handle, void *param_name, char *event_name,
-    raw_data_obj_t *input_data, wifi_bus_method_async_resp_handler_t cb, uint32_t timeout)
+    bus_data_obj_t *input_data, wifi_bus_method_async_resp_handler_t cb, uint32_t timeout)
 {
     return bus_error_success;
 }

@@ -773,6 +773,21 @@ int validate_dm_set_parameters(data_model_properties_t *data_model_prop, raw_dat
     return ret;
 }
 
+bus_data_prop_t *memory_alloc_for_bus_data_prop(void)
+{
+    bus_data_prop_t *temp = calloc(1, sizeof(bus_data_prop_t));
+    VERIFY_NULL_WITH_RETURN_ADDR(temp);
+    temp->ref_count = 1;
+    return temp;
+}
+
+int bus_data_prop_retain(bus_data_prop_t *p_prop)
+{
+    VERIFY_NULL_WITH_RETURN_INT(p_prop);
+    p_prop->ref_count++;
+    return RETURN_OK;
+}
+
 void free_bus_raw_data(raw_data_t *data)
 {
     if ((data->raw_data.bytes)
@@ -782,20 +797,35 @@ void free_bus_raw_data(raw_data_t *data)
     }
 }
 
-void bus_release_data_obj(bus_data_obj_t *p_bus_obj)
+void bus_release_data_prop(bus_data_prop_t *p_data_prop)
 {
-    bus_data_prop_t *p_data_prop = p_bus_obj->data_prop.next_data;
     bus_data_prop_t *next;
 
-    free_bus_raw_data(&p_bus_obj->data_prop.value);
-    p_bus_obj->data_prop.is_data_set = false;
+    if (p_data_prop->ref_count <= 1) {
+        free_bus_raw_data(&p_data_prop->value);
+        p_data_prop->is_data_set = false;
+    } else {
+        wifi_util_info_print(WIFI_BUS,"%s:%d memory:%p already have some references:%d\r\n",
+                __func__, __LINE__, p_data_prop, p_data_prop->ref_count);
+    }
 
     while(p_data_prop) {
         next = p_data_prop->next_data;
-        free_bus_raw_data(&p_data_prop->value);
-        free(p_data_prop);
+        if (p_data_prop->ref_count <= 1) {
+            free_bus_raw_data(&p_data_prop->value);
+            free(p_data_prop);
+        } else {
+            wifi_util_info_print(WIFI_BUS,"%s:%d memory:%p already have some references:%d\r\n",
+                __func__, __LINE__, p_data_prop, p_data_prop->ref_count);
+        }
         p_data_prop = next;
     }
+}
+
+void bus_release_data_obj(bus_data_obj_t *p_bus_obj)
+{
+    bus_release_data_prop(&p_bus_obj->data_prop);
+    p_bus_obj->num_prop = 0;
 }
 
 int clone_raw_data(raw_data_t *dst, raw_data_t *src)
@@ -851,8 +881,9 @@ int bus_set_raw_data_prop(bus_data_prop_t *p_bus_prop, const char *event_name, r
         }
         p_bus_prop->is_data_set = true;
         p_bus_prop->next_data = NULL;
+        bus_data_prop_retain(p_bus_prop);
     } else {
-        bus_data_prop_t *temp = calloc(1, sizeof(bus_data_prop_t));
+        bus_data_prop_t *temp = memory_alloc_for_bus_data_prop();
         BUS_CHECK_NULL_WITH_RC(temp, RETURN_ERR);
 
         clone_raw_data(&temp->value, p_raw_data);

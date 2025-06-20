@@ -1284,30 +1284,6 @@ he_bus_error_t he_bus_method_invoke(he_bus_handle_t handle, char const *event_na
         p_output_data, HE_BUS_RES_RECV_TIMEOUT_S);
 }
 
-void free_he_bus_raw_data(he_raw_data_t *data)
-{
-    if ((data->raw_data.bytes)
-        && (data->data_type == he_bus_data_type_bytes
-            || data->data_type == he_bus_data_type_string)) {
-        free(data->raw_data.bytes);
-    }
-}
-
-void he_bus_release_data_obj(he_bus_data_objs_t *p_data_objs)
-{
-    he_bus_data_object_t *p_data_obj = p_data_objs->data_obj.next_data;
-    he_bus_data_object_t *next;
-
-    while(p_data_obj) {
-        next = p_data_obj->next_data;
-        free_he_bus_raw_data(&p_data_obj->data);
-        free(p_data_obj);
-        p_data_obj = next;
-    }
-    free_he_bus_raw_data(&p_data_objs->data_obj.data);
-    p_data_objs->data_obj.is_data_set = false;
-}
-
 void *async_method_invoke_thread_func(void *arg)
 {
     he_bus_method_invoke_async_data_t *in_data =
@@ -1324,8 +1300,8 @@ void *async_method_invoke_thread_func(void *arg)
     //trigger method async callback
     in_data->cb(in_data->method_name, status, &output_prop.data_obj, in_data->handle);
 
-    he_bus_release_data_obj(&output_data);
-    he_bus_release_data_obj(&in_data->in_params);
+    free_bus_msg_obj_data(&output_data.data_obj);
+    free_bus_msg_obj_data(&in_data->in_params.data_obj);
     he_bus_free(in_data);
     return NULL;
 }
@@ -1361,7 +1337,7 @@ he_bus_error_t he_bus_async_method_invoke(he_bus_handle_t handle, char const *ev
     in_data->handle = handle;
     strcpy(in_data->method_name, event_name);
     in_data->in_params = input_data;
-    input_data->num_obj = 0;
+    he_bus_data_object_retain(&input_data->data_obj);
     in_data->cb = cb;
     in_data->timeout = timeout;
 

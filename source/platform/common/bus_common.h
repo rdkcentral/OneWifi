@@ -64,6 +64,8 @@ extern "C" {
 
 typedef char bus_name_string_t[BUS_MAX_NAME_LENGTH];
 
+typedef volatile int atomic_int;
+
 typedef enum
 {
     bus_data_type_boolean = 0x500,
@@ -194,6 +196,7 @@ typedef struct raw_data {
 } raw_data_t;
 
 typedef struct bus_data_prop {
+    atomic_int ref_count;
     uint32_t name_len;
     bus_name_string_t name;
     bus_msg_sub_type_t msg_sub_type;
