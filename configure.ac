@@ -40,6 +40,23 @@ AC_ARG_ENABLE([gtestapp],
              [echo "Gtestapp is disabled"])
 AM_CONDITIONAL([WITH_GTEST_SUPPORT], [test x$GTEST_SUPPORT_ENABLED = xtrue])
 
+AC_ARG_ENABLE([coretestapp],
+  AS_HELP_STRING([--enable-coretestapp], [Enable core app support (default is yes)]),
+  [
+    case "${enableval}" in
+      yes) CORETEST_SUPPORT_ENABLED=true;;
+      no) CORETEST_SUPPORT_ENABLED=false;;
+      *) AC_MSG_ERROR([bad value ${enableval} for --enable-coretestapp]);;
+    esac
+  ],
+  [
+    # Default action if --enable-coretestapp is not specified
+    CORETEST_SUPPORT_ENABLED=true
+    echo "coretestapp is enabled"
+  ]
+)
+AM_CONDITIONAL([WITH_CORETEST_SUPPORT], [test x$CORETEST_SUPPORT_ENABLED = xtrue])
+
 AC_ARG_ENABLE([libwebconfig],
              AS_HELP_STRING([--enable-libwebconfig],[enable libwebconfig (default is no)]),
              [
