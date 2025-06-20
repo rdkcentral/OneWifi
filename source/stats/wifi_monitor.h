@@ -27,9 +27,9 @@
 #ifndef WIFI_HAL_VERSION_3
 #define MAX_RADIOS  2
 #endif
-
-#define  ANSC_STATUS_SUCCESS                        0
 #define MAX_DFS_CHANNELS 64
+#define  ANSC_STATUS_SUCCESS                        0
+
 #define MONITOR_QUEUE_SIZE_MAX (700 * getNumberRadios())
 
 typedef struct {
