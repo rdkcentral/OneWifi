@@ -2287,26 +2287,65 @@ bool wifi_radius_config_changed(const wifi_radius_settings_t *old_config,
 bool should_process_hotspot_config_change(const wifi_vap_info_t *lnf_vap_info, 
                                          const wifi_vap_info_t *hotspot_vap_info)
 {
-
+    wifi_util_dbg_print(WIFI_CTRL, "%s: Entry\n", __func__);
+    
     if (!lnf_vap_info || !hotspot_vap_info) {
+        wifi_util_error_print(WIFI_CTRL, "%s: NULL pointer check failed - lnf_vap_info=%p, hotspot_vap_info=%p\n", 
+                             __func__, lnf_vap_info, hotspot_vap_info);
         return false;
     }
     
+    wifi_util_dbg_print(WIFI_CTRL, "%s: lnf_vap_name=%s, hotspot_vap_name=%s\n", 
+                       __func__, 
+                       lnf_vap_info->vap_name ? lnf_vap_info->vap_name : "NULL",
+                       hotspot_vap_info->vap_name ? hotspot_vap_info->vap_name : "NULL");
+    
     bool is_mdu_enabled = lnf_vap_info->u.bss_info.mdu_enabled;
+    wifi_util_dbg_print(WIFI_CTRL, "%s: is_mdu_enabled=%s\n", 
+                       __func__, is_mdu_enabled ? "true" : "false");
+    
     bool is_secure_hotspot = !strncmp(hotspot_vap_info->vap_name, 
                                      VAP_PREFIX_HOTSPOT_SECURE,
                                      strlen(VAP_PREFIX_HOTSPOT_SECURE));
+    wifi_util_dbg_print(WIFI_CTRL, "%s: is_secure_hotspot=%s (vap_name=%s, prefix=%s)\n", 
+                       __func__, 
+                       is_secure_hotspot ? "true" : "false",
+                       hotspot_vap_info->vap_name ? hotspot_vap_info->vap_name : "NULL",
+                       VAP_PREFIX_HOTSPOT_SECURE);
     
-    bool vap_enabled_changed = (lnf_vap_info->u.bss_info.enabled != 
-                               hotspot_vap_info->u.bss_info.enabled);
+    bool lnf_enabled = lnf_vap_info->u.bss_info.enabled;
+    bool hotspot_enabled = hotspot_vap_info->u.bss_info.enabled;
+    bool vap_enabled_changed = (lnf_enabled != hotspot_enabled);
+    wifi_util_dbg_print(WIFI_CTRL, "%s: vap_enabled_changed=%s (lnf_enabled=%s, hotspot_enabled=%s)\n", 
+                       __func__, 
+                       vap_enabled_changed ? "true" : "false",
+                       lnf_enabled ? "true" : "false",
+                       hotspot_enabled ? "true" : "false");
     
     bool radius_config_changed = wifi_radius_config_changed(
         &lnf_vap_info->u.bss_info.security.repurposed_radius,
         &hotspot_vap_info->u.bss_info.security.u.radius);
+    wifi_util_dbg_print(WIFI_CTRL, "%s: radius_config_changed=%s\n", 
+                       __func__, radius_config_changed ? "true" : "false");
     
-    return (is_mdu_enabled &&
-            is_secure_hotspot &&
-            (vap_enabled_changed || radius_config_changed));
+    bool result = (is_mdu_enabled &&
+                  is_secure_hotspot &&
+                  (vap_enabled_changed || radius_config_changed));
+    
+    wifi_util_info_print(WIFI_CTRL, "%s: Hotspot vap_name is %s & LnF vap_name is %s and bool is %d:%d:%d:%d:%d - result=%s\n", 
+                        __func__,
+                        hotspot_vap_info->vap_name ? hotspot_vap_info->vap_name : "NULL",
+                        lnf_vap_info->vap_name ? lnf_vap_info->vap_name : "NULL",
+                        is_mdu_enabled ? 1 : 0,
+                        is_secure_hotspot ? 1 : 0,
+                        vap_enabled_changed ? 1 : 0,
+                        radius_config_changed ? 1 : 0,
+                        (vap_enabled_changed || radius_config_changed) ? 1 : 0,
+                        result ? "true" : "false");
+    
+    wifi_util_dbg_print(WIFI_CTRL, "%s: Exit - returning %s\n", __func__, result ? "true" : "false");
+    
+    return result;
 }
 
 int  min_hw_mode_conversion(unsigned int vapIndex, char *inputStr, char *outputStr, char *tableType)
