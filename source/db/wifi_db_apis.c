@@ -1008,7 +1008,7 @@ void callback_Wifi_VAP_Config(ovsdb_update_monitor_t *mon,
         wifi_util_info_print(WIFI_DB,"%s:%d SREESH bridge name %s for vap_name = %s inside if condition\n", __func__, __LINE__, l_vap_param_cfg->bridge_name, new_rec->vap_name);
     } else {
         get_vap_interface_bridge_name(vap_index, l_vap_param_cfg->bridge_name);
-        wifi_util_info_print(WIFI_DB,"%s:%d SREESH bridge name not found for vap_name = %s inside else condition\n", __func__, __LINE__, new_rec->vap_name);
+        wifi_util_info_print(WIFI_DB,"%s:%d SREESH bridge name = %s not found for vap_name = %s inside else condition\n", __func__, __LINE__,l_vap_param_cfg->bridge_name, new_rec->vap_name);
     }
 } else {
     if (strlen(new_rec->bridge_name) != 0) {
@@ -2578,13 +2578,6 @@ int wifidb_update_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
     wifi_util_dbg_print(WIFI_DB,"%s:%d:Update radio=%s vap name=%s \n",__func__, __LINE__,radio_name,config->vap_name);
     strncpy(cfg.radio_name,radio_name,sizeof(cfg.radio_name)-1);
     strncpy(cfg.vap_name, config->vap_name,(sizeof(cfg.vap_name)-1));
-    if (isVapLnfPsk(cfg.vap_index) && config->u.bss_info.mdu_enabled) {
-        strncpy(cfg.repurposed_bridge_name, config->bridge_name,(sizeof(cfg.repurposed_bridge_name)-1));
-        wifi_util_info_print(WIFI_DB,"%s:%d:SREESH Update repurposed_bridge_name=%s \n",__func__, __LINE__,cfg.repurposed_bridge_name);
-    }
-    else {
-        strncpy(cfg.bridge_name, config->bridge_name,(sizeof(cfg.bridge_name)-1));
-    }
     if (strlen(config->repurposed_vap_name) != 0) {
         strncpy(cfg.repurposed_vap_name, config->repurposed_vap_name, (strlen(config->repurposed_vap_name) + 1));
     }
@@ -2592,6 +2585,13 @@ int wifidb_update_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
     if (l_vap_index < 0) {
             wifi_util_dbg_print(WIFI_DB,"%s:%d: Unable to get vap index for vap_name %s\n", __func__, __LINE__, config->vap_name);
             return RETURN_ERR;
+    }
+      if (isVapLnfPsk(l_vap_index) && config->u.bss_info.mdu_enabled) {
+        strncpy(cfg.repurposed_bridge_name, config->bridge_name,(sizeof(cfg.repurposed_bridge_name)-1));
+        wifi_util_info_print(WIFI_DB,"%s:%d:SREESH Update repurposed_bridge_name=%s \n",__func__, __LINE__,cfg.repurposed_bridge_name);
+    }
+    else {
+        strncpy(cfg.bridge_name, config->bridge_name,(sizeof(cfg.bridge_name)-1));
     }
 #if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
     if(rdk_config->exists == false) {
