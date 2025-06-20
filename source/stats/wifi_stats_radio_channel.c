@@ -761,7 +761,7 @@ int check_scan_complete_read_results(void *arg)
     return RETURN_OK;
 }
 
-int get_non_operational_channel_list(int radio_index, unsigned int *input_channels,  unsigned int input_channel_count,
+int get_non_operational_channel_list(int radio_index, unsigned int *input_channels, int input_channel_count,
                                      int *nop_channels_out, unsigned int *nop_channel_count_out, wifi_monitor_t *mon_data, wifi_freq_bands_t band)
 {
     if (input_channels == NULL || nop_channels_out == NULL || 
@@ -921,11 +921,11 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
 
 memcpy(local_channels, args->channel_list.channels_list, sizeof(int) * args->channel_list.num_channels);
 
-unsigned int num_channels = args->channel_list.num_channels;
+//unsigned int num_channels_value = args->channel_list.num_channels;
 
 if (get_non_operational_channel_list(args->radio_index,
                                      local_channels,
-                                     num_channels,
+                                     args->channel_list.num_channels,
                                      nop_chan_list,
                                      &nop_chan_count,
                                      mon_data, radioOperation->band) != RETURN_OK)
