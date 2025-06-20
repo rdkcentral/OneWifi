@@ -1629,7 +1629,7 @@ int get_nop_started_channels(wifi_channel_status_event_t *data)
 
     pthread_mutex_lock(&g_monitor_module.data_lock);
 
-    for (int i = 0; i < MAX_DFS_CHANNELS; i++) {
+    for (int i = 0; i < MAX_NUM_CHANNELS; i++) {
         if (data->channel_map[radio_index][i].ch_number == 0)
             break;
 
