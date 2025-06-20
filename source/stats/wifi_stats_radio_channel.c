@@ -761,7 +761,7 @@ int check_scan_complete_read_results(void *arg)
     return RETURN_OK;
 }
 
-int get_non_operational_channel_list(int radio_index, int *input_channels, int input_channel_count,
+int get_non_operational_channel_list(int radio_index, unsigned int *input_channels, unsigned int input_channel_count,
                                      int *nop_channels_out, unsigned int *nop_channel_count_out, wifi_monitor_t *mon_data, wifi_freq_bands_t band)
 {
     if (input_channels == NULL || nop_channels_out == NULL || 
@@ -778,8 +778,8 @@ int get_non_operational_channel_list(int radio_index, int *input_channels, int i
     wifi_util_info_print(WIFI_MON, "%s:%d Checking %d input channels for radio index %d\n", 
                          __func__, __LINE__, input_channel_count, radio_index);
 
-    for (int i = 0; i < input_channel_count; i++) {
-        int ch = input_channels[i];
+    for (unsigned int i = 0; i < input_channel_count; i++) {
+        unsigned int ch = input_channels[i];
         wifi_util_info_print(WIFI_MON, "%s:%d Checking channel: %d\n", 
                              __func__, __LINE__, ch);
 
@@ -917,15 +917,15 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
 		onchan_num_channels = 1;
 		on_chan_list[0] = radioOperation->channel;
 	}
-  unsigned int local_channels[MAX_CHANNELS];
+unsigned int local_channels[MAX_CHANNELS];
 
-//memcpy(local_channels, args->channel_list.channels_list, sizeof(int) * args->channel_list.num_channels);
+memcpy(local_channels, args->channel_list.channels_list, sizeof(int) * args->channel_list.num_channels);
 
-//unsigned int num_channels_value = args->channel_list.num_channels;
+unsigned int num_channels_value = args->channel_list.num_channels;
 
 if (get_non_operational_channel_list(args->radio_index,
-                                     args->channel_list.channels_list,
-                                     args->channel_list.num_channels,
+                                     local_channels,
+                                     num_channels_value,
                                      nop_chan_list,
                                      &nop_chan_count,
                                      mon_data, radioOperation->band) != RETURN_OK)
