@@ -1000,11 +1000,25 @@ void callback_Wifi_VAP_Config(ovsdb_update_monitor_t *mon,
             }
             l_bss_param_cfg->UAPSDEnabled = new_rec->uapsd_enabled;
             l_bss_param_cfg->beaconRate = new_rec->beacon_rate;
-            if (strlen(new_rec->bridge_name) != 0){
-                strncpy(l_vap_param_cfg->bridge_name, new_rec->bridge_name,(sizeof(l_vap_param_cfg->bridge_name)-1));
-            } else {
-                get_vap_interface_bridge_name(vap_index, l_vap_param_cfg->bridge_name);
-            }
+            
+            if (isVapLnfPsk(vap_index) && new_rec->mdu_enabled) {
+    if (strlen(new_rec->repurposed_bridge_name) != 0) {
+        strncpy(l_vap_param_cfg->bridge_name, new_rec->repurposed_bridge_name, sizeof(l_vap_param_cfg->bridge_name)-1);
+        l_vap_param_cfg->bridge_name[sizeof(l_vap_param_cfg->bridge_name)-1] = '\0';
+        wifi_util_info_print(WIFI_DB,"%s:%d SREESH bridge name %s for vap_name = %s inside if condition\n", __func__, __LINE__, l_vap_param_cfg->bridge_name, new_rec->vap_name);
+    } else {
+        get_vap_interface_bridge_name(vap_index, l_vap_param_cfg->bridge_name);
+        wifi_util_info_print(WIFI_DB,"%s:%d SREESH bridge name not found for vap_name = %s inside else condition\n", __func__, __LINE__, new_rec->vap_name);
+    }
+} else {
+    if (strlen(new_rec->bridge_name) != 0) {
+        strncpy(l_vap_param_cfg->bridge_name, new_rec->bridge_name, sizeof(l_vap_param_cfg->bridge_name)-1);
+        l_vap_param_cfg->bridge_name[sizeof(l_vap_param_cfg->bridge_name)-1] = '\0';
+    } else {
+        get_vap_interface_bridge_name(vap_index, l_vap_param_cfg->bridge_name);
+    }
+}
+            
             l_bss_param_cfg->wmmNoAck = new_rec->wmm_noack;
             l_bss_param_cfg->wepKeyLength = new_rec->wep_key_length;
             l_bss_param_cfg->bssHotspot = new_rec->bss_hotspot;
@@ -2564,7 +2578,13 @@ int wifidb_update_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
     wifi_util_dbg_print(WIFI_DB,"%s:%d:Update radio=%s vap name=%s \n",__func__, __LINE__,radio_name,config->vap_name);
     strncpy(cfg.radio_name,radio_name,sizeof(cfg.radio_name)-1);
     strncpy(cfg.vap_name, config->vap_name,(sizeof(cfg.vap_name)-1));
-    strncpy(cfg.bridge_name, config->bridge_name,(sizeof(cfg.bridge_name)-1));
+    if (isVapLnfPsk(cfg.vap_index) && config->u.bss_info.mdu_enabled) {
+        strncpy(cfg.repurposed_bridge_name, config->bridge_name,(sizeof(cfg.repurposed_bridge_name)-1));
+        wifi_util_info_print(WIFI_DB,"%s:%d:SREESH Update repurposed_bridge_name=%s \n",__func__, __LINE__,cfg.repurposed_bridge_name);
+    }
+    else {
+        strncpy(cfg.bridge_name, config->bridge_name,(sizeof(cfg.bridge_name)-1));
+    }
     if (strlen(config->repurposed_vap_name) != 0) {
         strncpy(cfg.repurposed_vap_name, config->repurposed_vap_name, (strlen(config->repurposed_vap_name) + 1));
     }
@@ -5860,10 +5880,22 @@ int wifidb_get_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
             wifi_util_error_print(WIFI_DB,"%s:%d: %s invalid vap name \n",__func__, __LINE__,pcfg->vap_name);
             return RETURN_ERR;
         }
-        if (strlen(pcfg->bridge_name) != 0) {
-            strncpy(config->bridge_name, pcfg->bridge_name,(sizeof(config->bridge_name)-1));
-        } else {
-            get_vap_interface_bridge_name(config->vap_index, config->bridge_name);
+        if (isVapLnfPsk(vap_index) && pcfg->mdu_enabled) {
+            if (strlen(pcfg->repurposed_bridge_name) != 0) {
+            strncpy(config->bridge_name, pcfg->repurposed_bridge_name,(sizeof(config->bridge_name)-1));
+            wifi_util_info_print(WIFI_DB,"%s:%d: SREESH repurposed_bridge_name=%s and repurposed_vap_name = %s if condition\n",__func__, __LINE__,config->bridge_name,config->repurposed_vap_name);
+            }
+            else {
+                get_vap_interface_bridge_name(config->vap_index, config->bridge_name);
+                wifi_util_info_print(WIFI_DB,"%s:%d: SREESH bridge_name=%s and repurposed_vap_name = %s else condition\n",__func__, __LINE__,config->bridge_name,config->repurposed_vap_name);
+            }
+        }
+        else {
+            if (strlen(pcfg->bridge_name) != 0) {
+                strncpy(config->bridge_name, pcfg->bridge_name,(sizeof(config->bridge_name)-1));
+            } else {
+                get_vap_interface_bridge_name(config->vap_index, config->bridge_name);
+            }
         }
 
         if (strlen(pcfg->repurposed_vap_name) != 0) {
