@@ -243,7 +243,7 @@ int notify_associated_entries(wifi_ctrl_t *ctrl, int ap_index, ULONG new_count, 
         "Device.WiFi.AccessPoint.%d.AssociatedDeviceNumberOfEntries,%d,%lu,%lu,%d", ap_index + 1, 0,
         new_count, old_count, 2);
     wifi_util_info_print(WIFI_CTRL, "%s:%d: Sending Notification for str:%s \n", __func__, __LINE__, str);
-    rc = get_bus_descriptor()->bus_set_string_fn(&ctrl->handle, WIFI_NOTIFY_ASSOCIATED_ENTRIES,
+    rc = get_bus_descriptor()->bus_set_string_fn(&ctrl->handle, WIFI_NOTIFY_SYNC_COMPONENT,
         str);
     if (rc != bus_error_success) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: bus: bus_set_string_fn Failed %d\n", __func__,
