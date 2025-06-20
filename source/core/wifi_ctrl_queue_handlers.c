@@ -2715,7 +2715,14 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
     vap_svc_t *ext_svc;
     vap_svc_t  *pub_svc = NULL;
     int ret = 0;
+    wifi_monitor_data_t *data = NULL;
 
+        data = (wifi_monitor_data_t *)calloc(1, sizeof(wifi_monitor_data_t));
+        if (data == NULL) {
+            wifi_util_error_print(WIFI_CTRL, "%s:%d: Memory allocation failed\n", __func__,
+                __LINE__);
+            return;
+        }
     radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(ch_chg->radioIndex);
     if (radio_params == NULL) {
         wifi_util_error_print(WIFI_CTRL,"%s: wrong index for radio map: %d\n",__FUNCTION__, ch_chg->radioIndex);
@@ -2896,7 +2903,8 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
             case WIFI_EVENT_RADAR_CAC_STARTED :
                 chan_state = CHAN_STATE_DFS_CAC_START;
                 break;
-        }
+            }
+        
 
         if (ch_chg->sub_event == WIFI_EVENT_RADAR_DETECTED) {
             wifi_util_info_print(WIFI_CTRL,"%s:%d DFS RADAR_DETECTED on ch %d and will not be available for 30 mins\n",
@@ -2944,10 +2952,41 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
                 break;
             }
         }
-    } else {
+    } else {    
         wifi_util_error_print(WIFI_CTRL,"%s: Invalid event for radio %d\n",__FUNCTION__, ch_chg->radioIndex);
         return;
     }
+    wifi_util_dbg_print(WIFI_CTRL, "%s:%d Setting radio_index=%d in channel_status_map\n",
+    __func__, __LINE__, ch_chg->radioIndex);
+
+data->u.channel_status_map.radio_index = ch_chg->radioIndex;
+
+wifi_util_dbg_print(WIFI_CTRL, "%s:%d Copying channel_map for radio_index=%d\n",
+    __func__, __LINE__, ch_chg->radioIndex);
+    
+for (int i = 0; i < radio_capab.channel_list[ch_chg->radioIndex].num_channels; i++) {
+    wifi_util_dbg_print(WIFI_CTRL,
+    "  channel_map[%d][%d]: ch_number=%d, ch_state=%d channelnumber:%d channelstate:%d\n",
+    ch_chg->radioIndex, i,
+    radio_params->channel_map[i].ch_number,
+    radio_params->channel_map[i].ch_state, data->u.channel_status_map.channel_map[ch_chg->radioIndex][i].ch_number,
+    data->u.channel_status_map.channel_map[ch_chg->radioIndex][i].ch_state);
+}
+
+/*for (int i = 0; i < radio_capab.channel_list[1].num_channels; i++) {
+    wifi_util_dbg_print(WIFI_CTRL,
+    "  channel_map[%d][%d]: ch_number=%d, ch_state=%d channelnumber:%d channelstate:%d\n",
+    ch_chg->radioIndex, i,
+    radio_params->channel_map[ch_chg->radioIndex][i].ch_number,
+    radio_params->channel_map[ch_chg->radioIndex][i].ch_state, data->u.channel_status_map.channel_map[ch_chg->radioIndex][i].ch_number,
+    data->u.channel_status_map.channel_map[ch_chg->radioIndex][i].ch_state);}*/
+
+memcpy(data->u.channel_status_map.channel_map[ch_chg->radioIndex], radio_params->channel_map,
+    sizeof(wifi_channelMap_t) * 64);
+
+
+push_event_to_monitor_queue(data, wifi_event_monitor_channel_status, NULL);
+    
     g_wifidb->ctrl.webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
     start_wifi_sched_timer(ch_chg->radioIndex, ctrl, wifi_radio_sched);
     update_wifi_radio_config(ch_chg->radioIndex, radio_params, radio_feat);

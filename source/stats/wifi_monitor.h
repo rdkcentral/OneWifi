@@ -27,7 +27,7 @@
 #ifndef WIFI_HAL_VERSION_3
 #define MAX_RADIOS  2
 #endif
-
+#define MAX_DFS_CHANNELS 64
 #define  ANSC_STATUS_SUCCESS                        0
 
 #define MONITOR_QUEUE_SIZE_MAX (700 * getNumberRadios())
@@ -186,6 +186,9 @@ typedef struct {
     bool radio_presence[MAX_NUM_RADIOS];
     bool is_blaster_running;
     hash_map_t  *clctr_subscriber_map; //clctr_subscription_t
+    unsigned int dfs_channels_num[MAX_NUM_RADIOS];
+unsigned int dfs_channels[MAX_NUM_RADIOS][MAX_DFS_CHANNELS];
+wifi_channelMap_t dfs_channel_state[MAX_NUM_RADIOS][MAX_DFS_CHANNELS];
 } wifi_monitor_t;
 
 typedef struct {

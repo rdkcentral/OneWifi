@@ -63,6 +63,7 @@
 #include <sys/stat.h>
 #include <netinet/icmp6.h>
 #include <netinet/ip6.h>
+#include "wifi_hal_radio.h"
 #include "wifi_events.h"
 #include "common/ieee802_11_defs.h"
 #include "const.h"
@@ -1617,6 +1618,45 @@ static void update_subscribe_data(wifi_monitor_data_t *event)
     }
 }
 
+
+int get_nop_started_channels(wifi_channel_status_event_t *data)
+{
+    if (data == NULL || data->radio_index >= MAX_NUM_RADIOS) {
+        wifi_util_error_print(WIFI_MON, "%s:%d Invalid input data or radio index out of range\n", __func__, __LINE__);
+        return RETURN_ERR;
+    }
+
+    int radio_index = data->radio_index;
+    unsigned int count = 0;
+
+    pthread_mutex_lock(&g_monitor_module.data_lock);
+
+    for (int i = 0; i < MAX_DFS_CHANNELS; i++) {
+        if (data->channel_map[radio_index][i].ch_number == 0)
+            break;
+
+        g_monitor_module.dfs_channels[radio_index][count] =
+            data->channel_map[radio_index][i].ch_number;
+
+        g_monitor_module.dfs_channel_state[radio_index][count].ch_state =
+            data->channel_map[radio_index][i].ch_state;
+
+        wifi_util_dbg_print(WIFI_MON, "%s:%d radio_index:%d channel_number:%d channel_state:%d\n",
+            __func__, __LINE__,
+            radio_index,
+            g_monitor_module.dfs_channels[radio_index][count],
+            g_monitor_module.dfs_channel_state[radio_index][count].ch_state);
+
+        count++;
+    }
+
+    g_monitor_module.dfs_channels_num[radio_index] = count;
+
+    pthread_mutex_unlock(&g_monitor_module.data_lock);
+
+    return RETURN_OK;
+}
+
 void *monitor_function  (void *data)
 {
     char event_buff[16] = {0};
@@ -1732,6 +1772,9 @@ void *monitor_function  (void *data)
                     case wifi_event_monitor_set_subscribe:
                         update_subscribe_data(event_data);
                        // subscribe_stats = event_data->u.collect_stats.event_subscribe;
+                    break;
+                     case wifi_event_monitor_channel_status:
+                        get_nop_started_channels(&event_data->u.channel_status_map);
                     break;
                     default:
                     break;

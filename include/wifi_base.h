@@ -373,6 +373,11 @@ typedef struct {
 } collect_stats_t;
 
 typedef struct {
+    wifi_channelMap_t channel_map[MAX_NUM_RADIOS][64];
+    wifi_radio_index_t radio_index;
+} wifi_channel_status_event_t;
+
+typedef struct {
     unsigned int id;
     int  csi_session;
     unsigned int    ap_index;
@@ -387,6 +392,7 @@ typedef struct {
         frame_data_t msg;
         ocs_params_t        ocs_params;
         collect_stats_t     collect_stats;
+        wifi_channel_status_event_t channel_status_map;
     } u;
 } wifi_monitor_data_t;
 
