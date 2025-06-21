@@ -3816,6 +3816,8 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
         IS_CHANGED(vap_info_old->radio_index, vap_info_new->radio_index) ||
         IS_STR_CHANGED(vap_info_old->bridge_name, vap_info_new->bridge_name,
             sizeof(vap_info_old->bridge_name)) ||
+        IS_STR_CHANGED(vap_info_old->repurposed_bridge_name, vap_info_new->repurposed_bridge_name,
+            sizeof(vap_info_old->repurposed_bridge_name)) ||
         IS_CHANGED(vap_info_old->vap_mode, vap_info_new->vap_mode)) {
         return true;
     }
