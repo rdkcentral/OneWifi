@@ -1553,6 +1553,17 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
     decode_param_allow_empty_string(vap, "BridgeName", param);
     strncpy(vap_info->bridge_name, param->valuestring, WIFI_BRIDGE_NAME_LEN - 1);
 
+    //Repurposed Bridge Name
+    decode_param_allow_optional_string(vap, "RepurposedBridgeName", param);
+    if (param != NULL && param->valuestring != NULL) {
+        strncpy(vap_info->repurposed_bridge_name, param->valuestring, WIFI_BRIDGE_NAME_LEN - 1);
+        vap_info->repurposed_bridge_name[WIFI_BRIDGE_NAME_LEN - 1] = '\0';
+        wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Inside if condition of optional string %s\n", __func__, __LINE__, vap_info->repurposed_bridge_name); 
+    } else {
+        vap_info->repurposed_bridge_name[0] = '\0';
+        wifi_util_info_print(WIFI_CTRL,"%s:%d SREESH Inside else condition of optional string %s\n", __func__, __LINE__, vap_info->repurposed_bridge_name);
+    }
+
     // repurposed vap_name
     decode_param_allow_empty_string(vap, "RepurposedVapName", param);
     strncpy(vap_info->repurposed_vap_name, param->valuestring,
