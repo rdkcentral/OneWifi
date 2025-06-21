@@ -1110,7 +1110,7 @@ pErr wifi_vap_cfg_subdoc_handler(void *data)
         cJSON_AddNumberToObject(vb_entry, "SpeedTier", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.am_config.npc.speed_tier);
         cJSON_AddBoolToObject(vb_entry, "MDUEnabled", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.mdu_enabled);
         cJSON_AddStringToObject(vb_entry, "RepurposedVapName", wifi_vap_map->vap_array[vapArrayIndex].repurposed_vap_name);
-
+        cJSON_AddStringToObject(vb_entry, "RepurposedBridgeName", wifi_vap_map->vap_array[vapArrayIndex].repurposed_bridge_name);
         cJSON_AddBoolToObject(vb_entry, "HostapMgtFrameCtrl", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.hostap_mgt_frame_ctrl);
         cJSON_AddBoolToObject(vb_entry, "InteropCtrl", wifi_vap_map->vap_array[vapArrayIndex].u.bss_info.interop_ctrl);
         cJSON_AddBoolToObject(vb_entry, "MboEnabled",
