@@ -525,6 +525,8 @@ static int update_vap_info_managed_guest(void *data, void *amenities_blob, wifi_
             }
             if (!strcmp(vap_info->vap_name,blob_vap_name_str)) {
                 wifi_util_error_print(WIFI_CTRL, "%s: %d connected_building_enabled %d \n", __func__,__LINE__,connected_building_enabled);
+                strncpy(vap_info->repurposed_bridge_name,vap_info->bridge_name,sizeof(vap_info->repurposed_bridge_name)-1);
+                wifi_util_error_print(WIFI_CTRL, "%s:%d SREESH Copying the old bridge name %s to repurposed_bridge_name %s\n",__func__,__LINE__,vap_info->bridge_name,vap_info->repurposed_bridge_name);
                 int rc = get_managed_guest_bridge(brval, sizeof(brval),radio_index);
                 if (rc != 0)
                 {
