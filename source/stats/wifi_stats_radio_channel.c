@@ -786,8 +786,8 @@ int get_non_operational_channel_list(int radio_index, unsigned int *input_channe
             if (band == WIFI_FREQUENCY_5L_BAND || band == WIFI_FREQUENCY_5H_BAND ||
                 band == WIFI_FREQUENCY_5_BAND) {
                 if (mon_data->dfs_channels[radio_index][j] == ch &&
-                    mon_data->dfs_channel_state[radio_index][j].ch_state ==
-                        CHAN_STATE_DFS_NOP_START) {
+                    (mon_data->dfs_channel_state[radio_index][j].ch_state ==
+                        CHAN_STATE_DFS_NOP_START || mon_data->dfs_channel_state[radio_index][j].ch_state == CHAN_STATE_DFS_CAC_START)) {
                     wifi_util_info_print(WIFI_MON,
                         "%s:%d Channel %d is in DFS NOP state (CHAN_STATE_DFS_NOP_START)\n",
                         __func__, __LINE__, ch);

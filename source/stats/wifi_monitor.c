@@ -1770,8 +1770,8 @@ void *monitor_function  (void *data)
                        // subscribe_stats = event_data->u.collect_stats.event_subscribe;
                     break;
                     case wifi_event_monitor_channel_status:
-                        get_nop_started_channels(&event_data->u.nop_stats_config);
-                        break;
+                        get_nop_started_channels(&event_data->u.channel_status_map);
+                    break;
                     default:
                     break;
 

@@ -2814,7 +2814,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
         rdk_wifi_radio_t *l_radio = NULL;
         time_t time_now = time(NULL);
         l_radio = find_radio_config_by_index(ch_chg->radioIndex);
-        
+
         if (l_radio == NULL) {
             wifi_util_error_print(WIFI_CTRL,"%s:%d radio strucutre is not present for radio %d\n",
                                 __FUNCTION__, __LINE__,  ch_chg->radioIndex);
@@ -2906,7 +2906,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
                 chan_state = CHAN_STATE_DFS_CAC_START;
                 break;
         }
-        
+
         if (ch_chg->sub_event == WIFI_EVENT_RADAR_DETECTED) {
             wifi_util_info_print(WIFI_CTRL,"%s:%d DFS RADAR_DETECTED on ch %d and will not be available for 30 mins\n",
                                  __func__, __LINE__, ch_chg->channel);
@@ -2957,18 +2957,11 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
         wifi_util_error_print(WIFI_CTRL,"%s: Invalid event for radio %d\n",__FUNCTION__, ch_chg->radioIndex);
         return;
     }
-    for (int i = 0; i < 64; i++) {
-    wifi_channelMap_t *entry = &radio_params->channel_map[radio_index][i];
-    wifi_util_dbg_print(WIFI_CTRL, "  channel_map[%d][%d]: ch_number=%d, ch_state=%d\n",
-        radio_index, i, entry->ch_number, entry->ch_state);
-}
-    memcpy(data->u.channel_status_map.channel_map, radio_params->channel_map,
-        sizeof(radio_params->channel_map));
+    data->u.channel_status_map.radio_index = ch_chg->radioIndex;
+    memcpy(data->u.channel_status_map.channel_map[ch_chg->radioIndex], radio_params->channel_map,
+        sizeof(wifi_channelMap_t) * 64);
     push_event_to_monitor_queue(data, wifi_event_monitor_channel_status, NULL);
-    if (data != NULL) {
-        free(data);
-    }
-
+    free(data);
     g_wifidb->ctrl.webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
     start_wifi_sched_timer(ch_chg->radioIndex, ctrl, wifi_radio_sched);
     update_wifi_radio_config(ch_chg->radioIndex, radio_params, radio_feat);
