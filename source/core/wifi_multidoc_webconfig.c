@@ -525,8 +525,7 @@ static int update_vap_info_managed_guest(void *data, void *amenities_blob, wifi_
             }
             if (!strcmp(vap_info->vap_name,blob_vap_name_str)) {
                 wifi_util_error_print(WIFI_CTRL, "%s: %d connected_building_enabled %d \n", __func__,__LINE__,connected_building_enabled);
-                strncpy(vap_info->repurposed_bridge_name,vap_info->bridge_name,sizeof(vap_info->repurposed_bridge_name)-1);
-                wifi_util_error_print(WIFI_CTRL, "%s:%d SREESH Copying the old bridge name %s to repurposed_bridge_name %s\n",__func__,__LINE__,vap_info->bridge_name,vap_info->repurposed_bridge_name);
+                strncpy(vap_info->repurposed_bridge_name,"brlan15",sizeof(vap_info->repurposed_bridge_name)-1);
                 int rc = get_managed_guest_bridge(brval, sizeof(brval),radio_index);
                 if (rc != 0)
                 {
@@ -571,6 +570,7 @@ static int update_vap_info_managed_guest(void *data, void *amenities_blob, wifi_
     } else {
         wifi_util_info_print(WIFI_CTRL, "%s: %d connected_building_enabled %d \n", __func__,__LINE__,connected_building_enabled);
         snprintf(vap_info->bridge_name, sizeof(vap_info->bridge_name), "br106");
+        snprintf(vap_info->repurposed_bridge_name, sizeof(vap_info->repurposed_bridge_name), "br106");
         vap_info->u.bss_info.showSsid = false;
         vap_info->u.bss_info.enabled = true;
         vap_info->u.bss_info.bssMaxSta = 75;
