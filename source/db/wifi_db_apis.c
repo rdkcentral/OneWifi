@@ -5886,7 +5886,8 @@ int wifidb_get_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
         if (isVapLnfPsk(vap_index) && pcfg->mdu_enabled) {
             if (strlen(pcfg->repurposed_bridge_name) != 0) {
             strncpy(config->bridge_name, pcfg->repurposed_bridge_name,(sizeof(config->bridge_name)-1));
-            wifi_util_info_print(WIFI_DB,"%s:%d: SREESH repurposed_bridge_name=%s and repurposed_vap_name = %s if condition\n",__func__, __LINE__,config->bridge_name,config->repurposed_vap_name);
+            strncpy(config->repurposed_bridge_name, pcfg->bridge_name, (sizeof(config->repurposed_bridge_name)-1));
+            wifi_util_info_print(WIFI_DB,"%s:%d: SREESH repurposed_bridge_name=%s old bridge name = %s and repurposed_vap_name = %s if condition\n",__func__, __LINE__,config->bridge_name, config->repurposed_bridge_name, config->repurposed_vap_name);
             }
             else {
                 get_vap_interface_bridge_name(config->vap_index, config->bridge_name);
