@@ -2940,7 +2940,7 @@ memcpy(data->u.channel_status_map.channel_map[ch_chg->radioIndex], radio_params-
 
 
 push_event_to_monitor_queue(data, wifi_event_monitor_channel_status, NULL);
-    
+ free(data);   
     g_wifidb->ctrl.webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
     start_wifi_sched_timer(ch_chg->radioIndex, ctrl, wifi_radio_sched);
     update_wifi_radio_config(ch_chg->radioIndex, radio_params, radio_feat);
