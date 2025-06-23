@@ -950,6 +950,7 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
         }
         // skip on-channel scan list
         for (int i = 0; i < args->channel_list.num_channels; i++) {
+            is_nop_chan = 0;
             int is_on_chan = 0;
             for (int j = 0; j < onchan_num_channels; j++) {
                 if ((int)args->channel_list.channels_list[i] == on_chan_list[j]) {
