@@ -882,7 +882,7 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
                     __func__, __LINE__, args->radio_index);
                 return RETURN_ERR;
             }
-            memcpy(channels, update_channels, sizeof(int) * ch_count);
+            memcpy(channels, updated_channels, sizeof(int) * ch_count);
             num_channels = ch_count;
         }
 
