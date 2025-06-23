@@ -779,20 +779,16 @@ int get_non_operational_channel_list(int radio_index, unsigned int *input_channe
             wifi_util_info_print(WIFI_MON, "%s:%d --> DFS entry: ch_number = %d, ch_state = %d\n",
                 __func__, __LINE__, mon_data->dfs_channel[radio_index][j].ch_number,
                 mon_data->dfs_channel[radio_index][j].ch_state);
-            if (band == WIFI_FREQUENCY_5L_BAND || band == WIFI_FREQUENCY_5H_BAND ||
-                band == WIFI_FREQUENCY_5_BAND) {
-                if (mon_data->dfs_channel[radio_index][j].ch_number == j &&
-                    (mon_data->dfs_channel[radio_index][j].ch_state ==
+            if ((band == WIFI_FREQUENCY_5L_BAND || band == WIFI_FREQUENCY_5H_BAND ||
+                band == WIFI_FREQUENCY_5_BAND) && (mon_data->dfs_channel[radio_index][j].ch_state ==
                         CHAN_STATE_DFS_NOP_START || mon_data->dfs_channel[radio_index][j].ch_state == CHAN_STATE_DFS_CAC_START)) {
                     wifi_util_info_print(WIFI_MON,
                         "%s:%d Channel %d is in DFS NOP state (CHAN_STATE_DFS_NOP_START)\n",
                         __func__, __LINE__, j);
-                    nop_channels_list[MAX_DFS_CHANNELS] = mon_data->dfs_channel[radio_index][j].ch_number;
-                    count++;
+                    nop_channels_list[count++] = mon_data->dfs_channel[radio_index][j].ch_number;
                     break;
                 }
             }
-    }
 
     pthread_mutex_unlock(&mon_data->data_lock);
 
