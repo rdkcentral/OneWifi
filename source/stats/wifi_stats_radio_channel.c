@@ -531,6 +531,7 @@ int execute_radio_channel_stats_api(wifi_mon_collector_element_t *c_elem, wifi_m
         push_monitor_response_event_to_ctrl_queue(collect_stats, sizeof(wifi_provider_response_t), wifi_event_type_monitor, wifi_event_type_collect_stats, NULL);
         free(collect_stats);
         free(chan_stats);
+        free(chan_data);
         return RETURN_OK;
     }
 
