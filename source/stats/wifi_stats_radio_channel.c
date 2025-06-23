@@ -796,7 +796,7 @@ int get_non_operational_channel_list(int radio_index, unsigned int *input_channe
 
     pthread_mutex_unlock(&mon_data->data_lock);
 
-    *nop_channel_count_out = count;
+    *nop_channel_count = count;
     wifi_util_info_print(WIFI_MON, "%s:%d Found %d NOP-active channels for radio %d\n", 
                          __func__, __LINE__, count, radio_index);
 
