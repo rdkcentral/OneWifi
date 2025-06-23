@@ -812,7 +812,7 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
     int bytes_written = 0;
     int count = 0;
     int is_nop_chan = 0;
-    int ch_count;
+    int ch_count = 0;
     int id = 0;
     int on_chan_list[MAX_CHANNELS] = {0};
     int nop_chan_list[MAX_CHANNELS] ={0};
@@ -862,7 +862,7 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
                     __LINE__, args->radio_index);
                 return RETURN_ERR;
             }
-            for (unsigned int j = 0; j < num_channels; j++) {
+            for (int j = 0; j < num_channels; j++) {
                 is_nop_chan = 0;
                 for (unsigned int i = 0; i < nop_chan_count; i++) {
                     if (channels[j] == nop_chan_list[i]) {
