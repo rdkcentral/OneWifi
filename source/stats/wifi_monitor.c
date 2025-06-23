@@ -1625,7 +1625,6 @@ int get_nop_started_channels(wifi_channel_status_event_t *data)
     }
 
     int radio_index = data->radio_index;
-    unsigned int count = 0;
 
     pthread_mutex_lock(&g_monitor_module.data_lock);
 
@@ -1633,20 +1632,16 @@ int get_nop_started_channels(wifi_channel_status_event_t *data)
         if (data->channel_map[radio_index][i].ch_number == 0)
             break;
 
-        g_monitor_module.dfs_channels[radio_index][count] =
-            data->channel_map[radio_index][i].ch_number;
-
-        g_monitor_module.dfs_channel_state[radio_index][count].ch_state =
-            data->channel_map[radio_index][i].ch_state;
+        memcpy(&g_monitor_module.dfs_channel[radio_index][i],
+            &data->channel_map[radio_index][i],
+            sizeof(wifi_dfs_channel_state_t)); 
 
         wifi_util_dbg_print(WIFI_MON, "%s:%d radio_index:%d channel_number:%d channel_state:%d\n",
-            __func__, __LINE__, radio_index, g_monitor_module.dfs_channels[radio_index][count],
-            g_monitor_module.dfs_channel_state[radio_index][count].ch_state);
+            __func__, __LINE__, radio_index, g_monitor_module.dfs_channel[radio_index][i].ch_number,
+            g_monitor_module.dfs_channel[radio_index][i].ch_state);
 
-        count++;
+       
     }
-
-    g_monitor_module.dfs_channels_num[radio_index] = count;
 
     pthread_mutex_unlock(&g_monitor_module.data_lock);
 
