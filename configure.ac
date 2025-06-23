@@ -274,7 +274,6 @@ AC_CONFIG_FILES(
     source/dml/Makefile
     source/dml/dml_webconfig/Makefile
     source/core/Makefile
-    source/test/core/Makefile
     source/Makefile
     source/sampleapps/Makefile
     source/utils/Makefile

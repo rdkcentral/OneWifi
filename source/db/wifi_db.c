@@ -674,11 +674,7 @@ int wifidb_get_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
         config->u.sta_info.scan_params.period = 10;
         config->u.sta_info.scan_params.channel.channel = 0;
         config->u.sta_info.scan_params.channel.band = WIFI_FREQUENCY_2_4_BAND |
-#if defined(_WNXL11BWL_PRODUCT_REQ_)
-            WIFI_FREQUENCY_5L_BAND | WIFI_FREQUENCY_5H_BAND;
-#else
             WIFI_FREQUENCY_5_BAND | WIFI_FREQUENCY_6_BAND;
-#endif
     } else {
         strncpy(config->u.bss_info.ssid, "Mesh_Backhaul ", (sizeof(config->u.bss_info.ssid) - 1));
         config->u.bss_info.enabled = TRUE;
