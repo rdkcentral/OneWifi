@@ -1637,7 +1637,7 @@ int get_nop_started_channels(wifi_channel_status_event_t *data)
 
         memcpy(&g_monitor_module.dfs_channel[radio_index][i],
             &data->channel_map[radio_index][i],
-            sizeof(wifi_dfs_channel_state_t)); 
+            sizeof(wifi_channelMap_t)); 
 
         wifi_util_dbg_print(WIFI_MON, "%s:%d radio_index:%d channel_number:%d channel_state:%d\n",
             __func__, __LINE__, radio_index, g_monitor_module.dfs_channel[radio_index][i].ch_number,
