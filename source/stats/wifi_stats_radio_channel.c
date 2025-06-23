@@ -775,7 +775,7 @@ int get_non_operational_channel_list(int radio_index, unsigned int *input_channe
     unsigned int count = 0;
 
     pthread_mutex_lock(&mon_data->data_lock);
-        for (unsigned int j = 0; j < MAX_NUM_CHANNELS; j++) {
+        for (unsigned int j = 0; j < MAX_DFS_CHANNELS; j++) {
             wifi_util_info_print(WIFI_MON, "%s:%d --> DFS entry: ch_number = %d, ch_state = %d\n",
                 __func__, __LINE__, mon_data->dfs_channel[radio_index][j].ch_number,
                 mon_data->dfs_channel[radio_index][j].ch_state);
@@ -787,7 +787,7 @@ int get_non_operational_channel_list(int radio_index, unsigned int *input_channe
                     wifi_util_info_print(WIFI_MON,
                         "%s:%d Channel %d is in DFS NOP state (CHAN_STATE_DFS_NOP_START)\n",
                         __func__, __LINE__, j);
-                    nop_channels_out[MAX_NUM_CHANNELS] = mon_data->dfs_channel[radio_index][j].ch_number;
+                    nop_channels_out[MAX_DFS_CHANNELS] = mon_data->dfs_channel[radio_index][j].ch_number;
                     count++;
                     break;
                 }
