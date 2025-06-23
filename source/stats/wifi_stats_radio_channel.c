@@ -856,7 +856,8 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
                 radioOperation->channel, channels, &num_channels) != 0) {
             num_channels = 1;
             channels[0] = radioOperation->channel;
-            if(get_non_operational_channel_list(args->radio_index,
+            }
+        if(get_non_operational_channel_list(args->radio_index,
                 channels, num_channels, nop_chan_list, &nop_chan_count, mon_data, radioOperation->band) != RETURN_OK) {
                 wifi_util_error_print(WIFI_MON,
                     "%s:%d get_non_operational_channel_list failed for radio: %d\n", __func__, __LINE__,
@@ -875,7 +876,7 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
                 "%s:%d Skipping on-channel scan for channel %d is in NOP list\n",
                 __func__, __LINE__, channels[0]);
             num_channels = 0;  
-        }}
+        }
     } else if (args->scan_mode == WIFI_RADIO_SCAN_MODE_FULL) {
 
         wifi_cap = getRadioCapability(args->radio_index);
