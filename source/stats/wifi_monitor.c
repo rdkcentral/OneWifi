@@ -1627,7 +1627,6 @@ int get_nop_started_channels(wifi_channel_status_event_t *data)
     }
 
     int radio_index = data->radio_index;
-    unsigned int count = 0;
 
     pthread_mutex_lock(&g_monitor_module.data_lock);
 
