@@ -811,7 +811,6 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
     char *channel_buff;
     int bytes_written = 0;
     int count = 0;
-    int is_nop_chan = 0;
     int ch_count = 0;
     int id = 0;
     int on_chan_list[MAX_CHANNELS] = {0};
@@ -849,6 +848,7 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
     }
 
     if (args->scan_mode == WIFI_RADIO_SCAN_MODE_ONCHAN) {
+        int is_nop_start = 0;
         if (get_on_channel_scan_list(radioOperation->band, radioOperation->channelWidth,
                 radioOperation->channel, channels, &num_channels) != 0) {
             num_channels = 1;
@@ -863,14 +863,14 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
                 return RETURN_ERR;
             }
             for (int j = 0; j < num_channels; j++) {
-                is_nop_chan = 0;
+                is_nop_start = 0;
                 for (unsigned int i = 0; i < nop_chan_count; i++) {
                     if (channels[j] == nop_chan_list[i]) {
-                        is_nop_chan = 1;
+                        is_nop_start = 1;
                         break;
                     }
                 }
-                if (is_nop_chan == 0) {
+                if (is_nop_start == 0) {
                     updated_channels[ch_count] = channels[j];
                     ch_count++;
                 }
@@ -960,6 +960,7 @@ if (get_non_operational_channel_list(args->radio_index,
 }
               // skip on-channel scan list
         for (int i = 0; i < args->channel_list.num_channels; i++) {
+            int is_nop_chan = 0;
             int is_on_chan = 0;
             for (int j = 0; j < onchan_num_channels; j++) {
                 if ((int)args->channel_list.channels_list[i] == on_chan_list[j]) {
