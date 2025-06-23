@@ -764,8 +764,8 @@ int check_scan_complete_read_results(void *arg)
 int get_non_operational_channel_list(int radio_index, unsigned int *input_channels, unsigned int input_channel_count,
                                      int *nop_channels_list, unsigned int *nop_channel_count, wifi_monitor_t *mon_data, wifi_freq_bands_t band)
 {
-    if (input_channels == NULL || nop_channels_out == NULL || 
-        nop_channel_count_out == NULL || mon_data == NULL ||
+    if (input_channels == NULL || nop_channels_list == NULL || 
+        nop_channel_count == NULL || mon_data == NULL ||
         radio_index >= MAX_NUM_RADIOS) {
         wifi_util_error_print(WIFI_MON, "%s:%d get_non_operational_channel_list: invalid arguments for radio: %d\n", 
                               __func__, __LINE__, radio_index);
@@ -787,7 +787,7 @@ int get_non_operational_channel_list(int radio_index, unsigned int *input_channe
                     wifi_util_info_print(WIFI_MON,
                         "%s:%d Channel %d is in DFS NOP state (CHAN_STATE_DFS_NOP_START)\n",
                         __func__, __LINE__, j);
-                    nop_channels_out[MAX_DFS_CHANNELS] = mon_data->dfs_channel[radio_index][j].ch_number;
+                    nop_channels_list[MAX_DFS_CHANNELS] = mon_data->dfs_channel[radio_index][j].ch_number;
                     count++;
                     break;
                 }
