@@ -1072,6 +1072,7 @@ int update_radio_channels_collector_args(void *ce)
     int channels[64] = {0};
     unsigned int is_used[64] = {0};
     int i, j;
+    int new_dwell_time = 0;
     wifi_mon_provider_element_t *provider_elem = NULL;
     wifi_mon_collector_element_t *collector_elem = (wifi_mon_collector_element_t *) ce;
 
@@ -1079,6 +1080,16 @@ int update_radio_channels_collector_args(void *ce)
         wifi_util_error_print(WIFI_MON,"%s:%d NULL arguments \n", __func__, __LINE__);
         return RETURN_ERR;
     }
+
+    // Traverse through the providers
+    provider_elem = hash_map_get_first(collector_elem->provider_list);
+    while (provider_elem != NULL) {
+        if (provider_elem->mon_stats_config->args.dwell_time > new_dwell_time) {
+            new_dwell_time = provider_elem->mon_stats_config->args.dwell_time;
+        }
+        provider_elem = hash_map_get_next(collector_elem->provider_list, provider_elem);
+    }
+    collector_elem->args->dwell_time = new_dwell_time;
 
     if (collector_elem->args->scan_mode == WIFI_RADIO_SCAN_MODE_OFFCHAN) {
         return RETURN_OK;
