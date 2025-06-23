@@ -786,7 +786,6 @@ int get_non_operational_channel_list(int radio_index, unsigned int *input_channe
                         "%s:%d Channel %d is in DFS NOP state (CHAN_STATE_DFS_NOP_START)\n",
                         __func__, __LINE__, j);
                     nop_channels_list[count++] = mon_data->dfs_channel[radio_index][j].ch_number;
-                    break;
                 }
             }
 
