@@ -30,7 +30,8 @@
 
 #define  ANSC_STATUS_SUCCESS                        0
 #define MAX_DFS_CHANNELS 64
-#define MONITOR_QUEUE_SIZE_MAX 500
+#define MONITOR_QUEUE_SIZE_MAX (700 * getNumberRadios())
+
 
 typedef struct {
     unsigned int        rapid_reconnect_threshold;
