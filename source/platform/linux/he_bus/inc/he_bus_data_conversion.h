@@ -57,6 +57,8 @@ uint32_t get_max_objs_cnt(he_bus_data_object_t *p_objs);
 int set_obj_status(he_bus_data_object_t *p_objs, he_bus_error_t ret_status);
 he_bus_data_object_t *memory_alloc_for_he_bus_data_obj(void);
 int he_bus_data_object_retain(he_bus_data_object_t *p_obj);
+int he_bus_all_objs_retain(he_bus_data_object_t *p_obj);
+int move_multi_objs_data(he_bus_raw_data_msg_t *dst, he_bus_data_object_t *src);
 
 #ifdef __cplusplus
 }

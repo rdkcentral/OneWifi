@@ -1212,28 +1212,17 @@ he_bus_error_t he_bus_method_invoke_internal(he_bus_handle_t handle, char const 
         return status;
     }
 
-    he_bus_data_object_t *temp_obj = &p_input_data->data_obj;
-    uint32_t num_prop = payload_data->num_obj;
-
-    while(temp_obj && num_prop > 0) {
-        status = prepare_rem_payload_bus_msg_data(temp_obj->name, &req_data, he_bus_msg_method_event,
-            &temp_obj->data, he_bus_error_success);
-        if (status != he_bus_error_success) {
-            he_bus_core_error_print("%s:%d rem bus data payload prepare is failed:%d for %s\r\n", __func__,
-                __LINE__, status, temp_obj->name);
-            return status;
-        }
-
-        temp_obj = temp_obj->next_data;
-        num_prop--;
-    }
+    move_multi_objs_data(&req_data, &p_input_data->data_obj);
+    he_bus_all_objs_retain(&p_input_data->data_obj);
 
     if (convert_bus_raw_msg_data_to_buffer(&req_data, &raw_buff) != he_bus_error_success) {
         he_bus_core_error_print("%s:%d wrong data for :%s namespace\r\n", __func__, __LINE__,
             event_name);
         FREE_BUFF_MEMORY(raw_buff.buff);
+        free_bus_msg_obj_data(&req_data.data_obj);
         return he_bus_error_invalid_input;
     }
+    free_bus_msg_obj_data(&req_data.data_obj);
 
     int ret = ipc_unix_send_data_and_wait_for_res(&raw_buff, &res_data, timeout);
     if (ret != HE_BUS_RETURN_OK) {
@@ -1256,7 +1245,8 @@ he_bus_error_t he_bus_method_invoke_internal(he_bus_handle_t handle, char const 
                 if ((p_obj_data->status == he_bus_error_success) &&
                     (p_output_data != NULL)) {
                     p_output_data->num_obj = recv_data.num_of_obj - 1;
-                    p_output_data->data_obj = p_obj_data->next_data;
+                    memcpy(&p_output_data->data_obj, p_obj_data->next_data,
+                        sizeof(he_bus_data_object_t));
                 } else {
                     he_bus_core_error_print("%s:%d event:%s bus method get is falied:%d\r\n", __func__,
                     __LINE__, event_name, p_obj_data->status);
@@ -1271,7 +1261,6 @@ he_bus_error_t he_bus_method_invoke_internal(he_bus_handle_t handle, char const 
         }
     }
 
-    //free req_data data block memory.
     FREE_BUFF_MEMORY(raw_buff.buff);
     FREE_BUFF_MEMORY(res_data.buff);
     return status;
@@ -1292,13 +1281,13 @@ void *async_method_invoke_thread_func(void *arg)
     he_bus_data_objs_t output_data = { 0 };
 
     status = he_bus_method_invoke_internal(in_data->handle, in_data->method_name,
-        in_data->in_params, &output_data, in_data->timeout);
+        &in_data->in_params, &output_data, in_data->timeout);
     if (status != he_bus_error_success) {
         he_bus_core_error_print("%s:%d async method invoke trigger failed\n", __func__, __LINE__);
     }
 
     //trigger method async callback
-    in_data->cb(in_data->method_name, status, &output_prop.data_obj, in_data->handle);
+    in_data->cb(in_data->method_name, status, &output_data.data_obj, in_data->handle);
 
     free_bus_msg_obj_data(&output_data.data_obj);
     free_bus_msg_obj_data(&in_data->in_params.data_obj);
@@ -1333,11 +1322,11 @@ he_bus_error_t he_bus_async_method_invoke(he_bus_handle_t handle, char const *ev
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
     in_data = he_bus_calloc(1, sizeof(he_bus_method_invoke_async_data_t));
-    BUS_CHECK_NULL_WITH_RC(in_data, he_bus_error_out_of_resources);
+    HE_BUS_CHECK_NULL_WITH_RC(in_data, he_bus_error_out_of_resources);
     in_data->handle = handle;
     strcpy(in_data->method_name, event_name);
-    in_data->in_params = input_data;
-    he_bus_data_object_retain(&input_data->data_obj);
+    memcpy(&in_data->in_params, input_data, sizeof(he_bus_data_objs_t));
+    he_bus_all_objs_retain(&input_data->data_obj);
     in_data->cb = cb;
     in_data->timeout = timeout;
 
@@ -1347,6 +1336,8 @@ he_bus_error_t he_bus_async_method_invoke(he_bus_handle_t handle, char const *ev
         if(attrp != NULL) {
             pthread_attr_destroy(attrp);
         }
+        free_bus_msg_obj_data(&in_data->in_params.data_obj);
+        he_bus_free(in_data);
         return he_bus_error_out_of_resources;
     }
 

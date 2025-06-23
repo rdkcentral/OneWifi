@@ -345,9 +345,20 @@ he_bus_data_object_t *memory_alloc_for_he_bus_data_obj(void)
 
 int he_bus_data_object_retain(he_bus_data_object_t *p_obj)
 {
-    HE_BUS_CHECK_NULL_WITH_RC(p_obj, RETURN_ERR);
+    HE_BUS_CHECK_NULL_WITH_RC(p_obj, he_bus_error_invalid_input);
     p_obj->ref_count++;
-    return RETURN_OK;
+    return he_bus_error_success;
+}
+
+int he_bus_all_objs_retain(he_bus_data_object_t *p_obj)
+{
+    HE_BUS_CHECK_NULL_WITH_RC(p_obj, he_bus_error_invalid_input);
+
+    while(p_obj) {
+        p_obj->ref_count++;
+        p_obj = p_obj->next_data;
+    }
+    return he_bus_error_success;
 }
 
 he_bus_error_t convert_buffer_to_bus_raw_msg_data(he_bus_raw_data_msg_t *raw_data,
@@ -512,6 +523,7 @@ void free_bus_msg_obj_data(he_bus_data_object_t *p_obj_data)
     } else {
         he_bus_core_info_print("%s:%d memory already have some references:%d\r\n",
             __func__, __LINE__, p_obj_data->ref_count);
+        p_obj_data->ref_count--;
     }
     p_obj_data = p_obj_data->next_data;
     he_bus_data_object_t *temp;
@@ -523,10 +535,10 @@ void free_bus_msg_obj_data(he_bus_data_object_t *p_obj_data)
         if (temp->ref_count <= 1) {
             free_raw_data_struct(&temp->data);
             he_bus_free(temp);
-	    p_obj_data->ref_count = 0;
         } else {
             he_bus_core_info_print("%s:%d memory:%p already have some references:%d\r\n",
-                __func__, __LINE__, temp, p_obj_data->ref_count);
+                __func__, __LINE__, temp, temp->ref_count);
+            temp->ref_count--;
         }
     }
 }
@@ -604,7 +616,7 @@ he_bus_error_t process_bus_sub_event(he_bus_handle_t handle, int socket_fd, char
 }
 
 he_bus_error_t process_bus_method_event(he_bus_handle_t handle, char *comp_name,
-    uint32_t num_objs, he_bus_data_object_t *p_obj_data, he_bus_data_object_t *p_res_objs)
+    he_bus_data_object_t *p_obj_data, he_bus_data_object_t *p_res_objs)
 {
     VERIFY_NULL_WITH_RC(handle);
     VERIFY_NULL_WITH_RC(comp_name);
@@ -711,6 +723,18 @@ he_bus_error_t process_bus_set_event(he_bus_handle_t handle, char *comp_name,
     return status;
 }
 
+int move_multi_objs_data(he_bus_raw_data_msg_t *dst, he_bus_data_object_t *src)
+{
+    if (dst->data_obj.next_data == NULL) {
+        dst->data_obj.next_data = memory_alloc_for_he_bus_data_obj();
+        HE_BUS_CHECK_NULL_WITH_RC(dst->data_obj.next_data, HE_BUS_RETURN_ERR);
+    }
+    memcpy(dst->data_obj.next_data, src, sizeof(he_bus_data_object_t));
+    dst->total_raw_msg_len += get_total_objs_size_from_he_bus_objs(src);
+    dst->num_of_obj += get_max_objs_cnt(src);
+    return HE_BUS_RETURN_OK;
+}
+
 he_bus_error_t handle_bus_msg_req_data(he_bus_handle_t handle, int fd,
     he_bus_raw_data_msg_t *p_msg_data, he_bus_raw_data_msg_t *p_res_data)
 {
@@ -761,12 +785,14 @@ he_bus_error_t handle_bus_msg_req_data(he_bus_handle_t handle, int fd,
                 &payload_data, ret);
             break;
         case he_bus_msg_method_event:
-            ret = process_bus_method_event(handle, p_msg_data->component_name, l_num_of_obj, p_obj_data,
+            he_bus_raw_data_t dummy_data = { 0 };
+
+            ret = process_bus_method_event(handle, p_msg_data->component_name, p_obj_data,
                 &payload_objs);
-            set_obj_status(&payload_objs, ret);
-            p_res_data->data_obj = payload_objs;
-            p_res_data->total_raw_msg_len = get_total_objs_size_from_he_bus_objs(&payload_objs);
-            p_res_data->num_of_obj = get_max_objs_cnt(&payload_objs);
+            prepare_rem_payload_bus_msg_data(p_obj_data->name, p_res_data, p_obj_data->msg_sub_type,
+                &dummy_data, ret);
+
+            move_multi_objs_data(p_res_data, &payload_objs);
             break;
         default:
             he_bus_core_error_print("%s:%d unsupported msg sub type:%d from:%s\r\n", __func__,
@@ -1069,7 +1095,7 @@ uint32_t get_max_objs_cnt(he_bus_data_object_t *p_objs)
 int set_obj_status(he_bus_data_object_t *p_objs, he_bus_error_t ret_status)
 {
     p_objs->status = ret_status;
-    return RETURN_OK;
+    return HE_BUS_RETURN_OK;;
 }
 
 int send_bus_initial_msg_info(int fd, char *comp_name)

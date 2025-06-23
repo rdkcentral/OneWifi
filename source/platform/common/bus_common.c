@@ -804,9 +804,11 @@ void bus_release_data_prop(bus_data_prop_t *p_data_prop)
     if (p_data_prop->ref_count <= 1) {
         free_bus_raw_data(&p_data_prop->value);
         p_data_prop->is_data_set = false;
+        p_data_prop->ref_count = 0;
     } else {
         wifi_util_info_print(WIFI_BUS,"%s:%d memory:%p already have some references:%d\r\n",
                 __func__, __LINE__, p_data_prop, p_data_prop->ref_count);
+        p_data_prop->ref_count--;
     }
 
     while(p_data_prop) {
@@ -817,6 +819,7 @@ void bus_release_data_prop(bus_data_prop_t *p_data_prop)
         } else {
             wifi_util_info_print(WIFI_BUS,"%s:%d memory:%p already have some references:%d\r\n",
                 __func__, __LINE__, p_data_prop, p_data_prop->ref_count);
+            p_data_prop->ref_count--;
         }
         p_data_prop = next;
     }
