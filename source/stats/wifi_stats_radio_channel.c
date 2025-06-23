@@ -959,7 +959,7 @@ wifi_util_dbg_print(WIFI_MON, "%s:%d skipping on channel %d", __func__, __LINE__
                 }
             }
 
-            if (mon_data->dfs_channels_num[args->radio_index] != 0) {
+            if (nop_chan_count != 0) {
                 for (unsigned int j = 0; j < nop_chan_count; j++) {
                     if (args->channel_list.channels_list[i] == (int)nop_chan_list[j]) {
                         wifi_util_dbg_print(WIFI_MON,
