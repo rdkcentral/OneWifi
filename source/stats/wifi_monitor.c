@@ -1625,7 +1625,7 @@ int update_monitor_channel_status_map(wifi_channel_status_event_t *data)
         return RETURN_ERR;
     }
     radio_index = data->radio_index;
-    for (int i = 0; i < MAX_NUM_CHANNELS; i++) {
+    for (int i = 0; i < MAX_CHANNELS; i++) {
         if (data->channel_map[i].ch_number == 0)
             break;
 

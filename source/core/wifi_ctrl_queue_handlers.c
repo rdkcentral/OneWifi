@@ -2716,7 +2716,7 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
     vap_svc_t  *pub_svc = NULL;
     int ret = 0;
     wifi_monitor_data_t *data = NULL;
-    
+
     radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(ch_chg->radioIndex);
     if (radio_params == NULL) {
         wifi_util_error_print(WIFI_CTRL,"%s: wrong index for radio map: %d\n",__FUNCTION__, ch_chg->radioIndex);
