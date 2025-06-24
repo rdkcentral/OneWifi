@@ -27,5 +27,5 @@ if JOURNALCTL_SUPPORT
 CcspWifiSsp_SOURCES += log_journal.c
 endif
 
-CcspWifiSsp_LDFLAGS_LDFLAGS += -lev
+CcspWifiSsp_LDFLAGS += -lev
 
