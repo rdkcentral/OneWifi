@@ -763,16 +763,15 @@ int check_scan_complete_read_results(void *arg)
 }
 
 // Function will return the list of channels that are in NOP/CAC start state
-int get_non_operational_channel_list(unsigned int *input_channels,
-    unsigned int input_channel_count, int *nop_channels_list, unsigned int *nop_channel_count,
-    wifi_monitor_t *mon_data, wifi_freq_bands_t band)
+int get_non_operational_channel_list(unsigned int *input_channels, unsigned int input_channel_count,
+    int *nop_channels_list, unsigned int *nop_channel_count, wifi_monitor_t *mon_data,
+    wifi_freq_bands_t band)
 {
     unsigned int count = 0;
     if (input_channels == NULL || nop_channels_list == NULL || nop_channel_count == NULL ||
         mon_data == NULL) {
         wifi_util_error_print(WIFI_MON,
-            "%s:%d get_non_operational_channel_list: invalid arguments\n", __func__,
-            __LINE__);
+            "%s:%d get_non_operational_channel_list: invalid arguments\n", __func__, __LINE__);
         return RETURN_ERR;
     }
 
@@ -788,9 +787,10 @@ int get_non_operational_channel_list(unsigned int *input_channels,
         }
     }
     pthread_mutex_unlock(&mon_data->data_lock);
+
     *nop_channel_count = count;
-    wifi_util_info_print(WIFI_MON, "%s:%d Found %d NOP-active channels\n", __func__,
-        __LINE__, count);
+    wifi_util_info_print(WIFI_MON, "%s:%d Found %d NOP-active channels\n", __func__, __LINE__,
+        count);
     return RETURN_OK;
 }
 
@@ -850,9 +850,8 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
             channels[0] = radioOperation->channel;
         } else {
             // Check if any of the channels are in NOP/CAC started state
-            if (get_non_operational_channel_list((unsigned int *)channels,
-                    num_channels, nop_chan_list, &nop_chan_count, mon_data,
-                    radioOperation->band) != RETURN_OK) {
+            if (get_non_operational_channel_list((unsigned int *)channels, num_channels,
+                    nop_chan_list, &nop_chan_count, mon_data, radioOperation->band) != RETURN_OK) {
                 wifi_util_error_print(WIFI_MON,
                     "%s:%d get_non_operational_channel_list failed for radio: %d\n", __func__,
                     __LINE__, args->radio_index);
@@ -869,7 +868,7 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
                 }
                 // Only keep channels that are NOT in NOP/CAC state
                 if (is_nop_chan == 0) {
-                    updated_channels[ch_count] = channels[j];
+                    updated_channels[ch_count] = channels[chan_idx];
                     ch_count++;
                 }
             }
