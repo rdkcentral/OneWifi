@@ -8036,7 +8036,7 @@ Security_GetParamUlongValue
     if( AnscEqualString(ParamName, "RepurposedRadiusServerPort", TRUE))
     {
         /* collect value */
-        *puLong = pcfg->repuposed_radius.port;
+        *puLong = pcfg->repurposed_radius.port;
         return TRUE;
     }
 	
