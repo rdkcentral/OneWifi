@@ -2952,13 +2952,17 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
     data = (wifi_monitor_data_t *)calloc(1, sizeof(wifi_monitor_data_t));
     if (data == NULL) {
         wifi_util_error_print(WIFI_CTRL, "%s:%d: Memory allocation failed\n", __func__, __LINE__);
-        return;
+    } else {
+        data->u.channel_status_map.radio_index = ch_chg->radioIndex;
+        memcpy(data->u.channel_status_map.channel_map, radio_params->channel_map,
+            sizeof(data->u.channel_status_map.channel_map));
+        if (push_event_to_monitor_queue(data, wifi_event_monitor_channel_status, NULL) !=
+            RETURN_OK) {
+            wifi_util_error_print(WIFI_CTRL,
+                "%s:%d: Failed to push channel status map to monitor queue\n", __func__, __LINE__);
+            free(data);
+        }
     }
-    data->u.channel_status_map.radio_index = ch_chg->radioIndex;
-    memcpy(data->u.channel_status_map.channel_map, radio_params->channel_map,
-        sizeof(wifi_channelMap_t) * 64);
-    push_event_to_monitor_queue(data, wifi_event_monitor_channel_status, NULL);
-    free(data);
     g_wifidb->ctrl.webconfig_state |= ctrl_webconfig_state_radio_cfg_rsp_pending;
     start_wifi_sched_timer(ch_chg->radioIndex, ctrl, wifi_radio_sched);
     update_wifi_radio_config(ch_chg->radioIndex, radio_params, radio_feat);

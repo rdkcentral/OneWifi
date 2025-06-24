@@ -1624,20 +1624,17 @@ int update_monitor_channel_status_map(wifi_channel_status_event_t *data)
             __func__, __LINE__);
         return RETURN_ERR;
     }
-    memcpy(&radio_index, &data->radio_index, sizeof(radio_index));
-    pthread_mutex_lock(&g_monitor_module.data_lock);
+    radio_index = data->radio_index;
     for (int i = 0; i < MAX_NUM_CHANNELS; i++) {
         if (data->channel_map[i].ch_number == 0)
             break;
 
-        memcpy(&g_monitor_module.channel_map[i], &data->channel_map[i],
-            sizeof(wifi_channelMap_t));
+        memcpy(&g_monitor_module.channel_map[radio_index][i], &data->channel_map[i], sizeof(wifi_channelMap_t));
 
         wifi_util_dbg_print(WIFI_MON, "%s:%d radio_index:%d channel_number:%d channel_state:%d\n",
-            __func__, __LINE__, radio_index, g_monitor_module.channel_map[i].ch_number,
-            g_monitor_module.channel_map[i].ch_state);
+            __func__, __LINE__, radio_index, g_monitor_module.channel_map[radio_index][i].ch_number,
+            g_monitor_module.channel_map[radio_index][i].ch_state);
     }
-    pthread_mutex_unlock(&g_monitor_module.data_lock);
     return RETURN_OK;
 }
 
