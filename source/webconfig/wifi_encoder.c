@@ -351,6 +351,9 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
     //Bridge Name
     cJSON_AddStringToObject(vap_object, "BridgeName", vap_info->bridge_name);
 
+    //Repurposed Bridge Name
+    cJSON_AddStringToObject(vap_object, "RepurposedBridgeName", vap_info->repurposed_bridge_name);
+
     //VAP Name
     cJSON_AddStringToObject(vap_object, "RepurposedVapName", vap_info->repurposed_vap_name);
 
@@ -958,6 +961,7 @@ webconfig_error_t encode_interworking_common_object(const wifi_interworking_t *i
     return webconfig_error_none;
 }
 
+
 webconfig_error_t encode_radius_object(const wifi_radius_settings_t *radius_info, cJSON *radius)
 {
     char str[64];
@@ -1096,6 +1100,21 @@ webconfig_error_t encode_security_object(const wifi_vap_security_t *security_inf
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to encode radius settings\n",
                 __func__, __LINE__);
             return webconfig_error_encode;
+        }
+    }
+
+    if (security_info->mode == wifi_security_mode_wpa_personal ||
+        security_info->mode == wifi_security_mode_wpa2_personal ||
+        security_info->mode == wifi_security_mode_wpa_wpa2_personal ||
+        security_info->mode == wifi_security_mode_wpa3_personal ||
+        security_info->mode == wifi_security_mode_wpa3_transition ||
+        security_info->mode == wifi_security_mode_wpa3_compatibility) {
+        
+        obj = cJSON_CreateObject();
+        cJSON_AddItemToObject(security, "RepurposedRadiusConfig", obj);
+        if (encode_radius_object(&security_info->repurposed_radius, obj) != webconfig_error_none) {
+            wifi_util_info_print(WIFI_CTRL, "%s:%d Failed to encode RepurposedRadiusConfig\n", __FUNCTION__, __LINE__);
+            return webconfig_error_decode;
         }
     }
 
