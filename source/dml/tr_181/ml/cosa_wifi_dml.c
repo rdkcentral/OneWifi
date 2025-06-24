@@ -7719,7 +7719,6 @@ Security_GetParamBoolValue
     uint8_t instance_number = convert_vap_name_to_index(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop, pcfg->vap_name)+1;
     wifi_vap_info_t *vapInfo = (wifi_vap_info_t *) get_dml_cache_vap_info(instance_number-1);
     wifi_radio_operationParam_t *radioOperation = (wifi_radio_operationParam_t *) get_dml_cache_radio_map(pcfg->radio_index);
-    BOOL WPA3_RFC = FALSE;
 
     if ((vapInfo == NULL) || (radioOperation ==NULL))
     {
@@ -7743,13 +7742,7 @@ Security_GetParamBoolValue
     }
     if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_TransitionDisable", TRUE))
     {
-        CosaWiFiDmlGetWPA3TransitionRFC(&WPA3_RFC);
-
-        if ((radioOperation->band != WIFI_FREQUENCY_6_BAND) && (WPA3_RFC)) {
-            *pBool = l_security_cfg->wpa3_transition_disable;
-        } else {
-            *pBool = FALSE;
-        }
+        *pBool = l_security_cfg->wpa3_transition_disable;
     }
 
     if( AnscEqualString(ParamName, "Reset", TRUE)) {
@@ -8333,7 +8326,6 @@ Security_SetParamBoolValue
     uint8_t instance_number = convert_vap_name_to_index(&((webconfig_dml_t *)get_webconfig_dml())->hal_cap.wifi_prop, pcfg->vap_name)+1;
     wifi_vap_info_t *vapInfo = (wifi_vap_info_t *) get_dml_cache_vap_info(instance_number-1);
     wifi_radio_operationParam_t *radioOperation = (wifi_radio_operationParam_t *) get_dml_cache_radio_map(pcfg->radio_index);
-    BOOL WPA3_RFC = FALSE;
 
     if ((vapInfo == NULL) || (radioOperation ==NULL))
     {
@@ -8358,27 +8350,12 @@ Security_SetParamBoolValue
     /* check the parameter name and set the corresponding value */
     if (AnscEqualString(ParamName, "X_RDKCENTRAL-COM_TransitionDisable", TRUE))
     {
-        if (radioOperation->band == WIFI_FREQUENCY_6_BAND)
-        {
-            CcspWifiTrace(("RDK_LOG_ERROR, %s Transition Mode not supported for 6GHz radio\n", __FUNCTION__));
-            return FALSE;
+        if (l_security_cfg->wpa3_transition_disable != bValue) {
+            l_security_cfg->wpa3_transition_disable = bValue;
+            wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:wpa3_transition_disable=%d Value=%d\n",
+                __func__, __LINE__, l_security_cfg->wpa3_transition_disable, bValue);
+            set_dml_cache_vap_config_changed(instance_number - 1);
         }
-        /* GET the WPA3 Transition RFC value */
-        CosaWiFiDmlGetWPA3TransitionRFC(&WPA3_RFC);
-        if ( (bValue == TRUE) && (!WPA3_RFC) )
-        {
-            CcspTraceError(("%s: WPA3 Transition RFC is not enabled\n",__func__));
-            return FALSE;
-        }
-        if ( (l_security_cfg->mode != wifi_security_mode_wpa3_transition) &&
-                (WPA3_RFC) )
-        {
-            CcspTraceError(("%s: Security mode is not WPA3-Personal-Transition\n",__func__));
-            return FALSE;
-        }
-        l_security_cfg->wpa3_transition_disable = bValue;
-	wifi_util_dbg_print(WIFI_DMCLI,"%s:%d:wpa3_transition_disable=%d Value = %d  \n",__func__, __LINE__,l_security_cfg->wpa3_transition_disable,bValue);
-	set_dml_cache_vap_config_changed(instance_number - 1);
         return TRUE;
     }
 
