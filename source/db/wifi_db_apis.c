@@ -81,6 +81,7 @@
 #define ONEWIFI_DB_VERSION_RSS_MEMORY_THRESHOLD_FLAG 100035
 #define ONEWIFI_DB_VERSION_MGT_FRAME_RATE_LIMIT 100036
 #define ONEWIFI_DB_VERSION_MANAGED_WIFI_FLAG 100038
+#define ONEWIFI_DB_VERSION_WPA3_T_DISABLE_FLAG 100039
 #define DEFAULT_MANAGED_WIFI_SPEED_TIER 2
 
 #define ONEWIFI_DB_VERSION_STATS_FLAG 100037
@@ -1000,11 +1001,23 @@ void callback_Wifi_VAP_Config(ovsdb_update_monitor_t *mon,
             }
             l_bss_param_cfg->UAPSDEnabled = new_rec->uapsd_enabled;
             l_bss_param_cfg->beaconRate = new_rec->beacon_rate;
-            if (strlen(new_rec->bridge_name) != 0){
-                strncpy(l_vap_param_cfg->bridge_name, new_rec->bridge_name,(sizeof(l_vap_param_cfg->bridge_name)-1));
+            
+            if (isVapLnfPsk(vap_index) && new_rec->mdu_enabled) {
+                if (strlen(new_rec->repurposed_bridge_name) != 0) {
+                    strncpy(l_vap_param_cfg->bridge_name, new_rec->repurposed_bridge_name, sizeof(l_vap_param_cfg->bridge_name)-1);
+                    l_vap_param_cfg->bridge_name[sizeof(l_vap_param_cfg->bridge_name)-1] = '\0';
+                    strncpy(l_vap_param_cfg->repurposed_bridge_name, new_rec->bridge_name, sizeof(l_vap_param_cfg->repurposed_bridge_name));
+                    l_vap_param_cfg->repurposed_bridge_name[sizeof(l_vap_param_cfg->repurposed_bridge_name)-1] = '\0';
+                }
             } else {
-                get_vap_interface_bridge_name(vap_index, l_vap_param_cfg->bridge_name);
+                if (strlen(new_rec->bridge_name) != 0) {
+                    strncpy(l_vap_param_cfg->bridge_name, new_rec->bridge_name, sizeof(l_vap_param_cfg->bridge_name)-1);
+                    l_vap_param_cfg->bridge_name[sizeof(l_vap_param_cfg->bridge_name)-1] = '\0';
+                } else {
+                    get_vap_interface_bridge_name(vap_index, l_vap_param_cfg->bridge_name);
+                }
             }
+            
             l_bss_param_cfg->wmmNoAck = new_rec->wmm_noack;
             l_bss_param_cfg->wepKeyLength = new_rec->wep_key_length;
             l_bss_param_cfg->bssHotspot = new_rec->bss_hotspot;
@@ -2564,7 +2577,6 @@ int wifidb_update_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
     wifi_util_dbg_print(WIFI_DB,"%s:%d:Update radio=%s vap name=%s \n",__func__, __LINE__,radio_name,config->vap_name);
     strncpy(cfg.radio_name,radio_name,sizeof(cfg.radio_name)-1);
     strncpy(cfg.vap_name, config->vap_name,(sizeof(cfg.vap_name)-1));
-    strncpy(cfg.bridge_name, config->bridge_name,(sizeof(cfg.bridge_name)-1));
     if (strlen(config->repurposed_vap_name) != 0) {
         strncpy(cfg.repurposed_vap_name, config->repurposed_vap_name, (strlen(config->repurposed_vap_name) + 1));
     }
@@ -2572,6 +2584,13 @@ int wifidb_update_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
     if (l_vap_index < 0) {
             wifi_util_dbg_print(WIFI_DB,"%s:%d: Unable to get vap index for vap_name %s\n", __func__, __LINE__, config->vap_name);
             return RETURN_ERR;
+    }
+      if (isVapLnfPsk(l_vap_index) && config->u.bss_info.mdu_enabled) {
+        strncpy(cfg.repurposed_bridge_name, config->bridge_name,(sizeof(cfg.repurposed_bridge_name)-1));
+        strncpy(cfg.bridge_name, config->repurposed_bridge_name,(sizeof(cfg.bridge_name)-1));
+    }
+    else {
+        strncpy(cfg.bridge_name, config->bridge_name,(sizeof(cfg.bridge_name)-1));
     }
 #if !defined(_WNXL11BWL_PRODUCT_REQ_) && !defined(_PP203X_PRODUCT_REQ_) && !defined(_GREXT02ACTS_PRODUCT_REQ_)
     if(rdk_config->exists == false) {
@@ -4635,6 +4654,23 @@ static void wifidb_vap_config_upgrade(wifi_vap_info_map_t *config, rdk_wifi_vap_
             wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i],
                 &rdk_config[i]);
         }
+
+        if (g_wifidb->db_version < ONEWIFI_DB_VERSION_WPA3_T_DISABLE_FLAG) {
+            wifi_vap_security_t *sec;
+
+            if (isVapSTAMesh(config->vap_array[i].vap_index)) {
+                sec = &config->vap_array[i].u.sta_info.security;
+            } else {
+                sec = &config->vap_array[i].u.bss_info.security;
+            }
+
+            if (sec->wpa3_transition_disable != false) {
+                sec->wpa3_transition_disable = false;
+                wifi_util_dbg_print(WIFI_DB, "%s:%d force change wpa3 transition disable state to false\r\n");
+                wifidb_update_wifi_vap_info(config->vap_array[i].vap_name, &config->vap_array[i],
+                    &rdk_config[i]);
+            }
+        }
     }
 }
 
@@ -5860,10 +5896,18 @@ int wifidb_get_wifi_vap_info(char *vap_name, wifi_vap_info_t *config,
             wifi_util_error_print(WIFI_DB,"%s:%d: %s invalid vap name \n",__func__, __LINE__,pcfg->vap_name);
             return RETURN_ERR;
         }
-        if (strlen(pcfg->bridge_name) != 0) {
-            strncpy(config->bridge_name, pcfg->bridge_name,(sizeof(config->bridge_name)-1));
-        } else {
-            get_vap_interface_bridge_name(config->vap_index, config->bridge_name);
+        if (isVapLnfPsk(vap_index) && pcfg->mdu_enabled) {
+            if (strlen(pcfg->repurposed_bridge_name) != 0) {
+                strncpy(config->bridge_name, pcfg->repurposed_bridge_name,(sizeof(config->bridge_name)-1));
+                strncpy(config->repurposed_bridge_name, pcfg->bridge_name, (sizeof(config->repurposed_bridge_name)-1));
+            }
+        }
+        else {
+            if (strlen(pcfg->bridge_name) != 0) {
+                strncpy(config->bridge_name, pcfg->bridge_name,(sizeof(config->bridge_name)-1));
+            } else {
+                get_vap_interface_bridge_name(config->vap_index, config->bridge_name);
+            }
         }
 
         if (strlen(pcfg->repurposed_vap_name) != 0) {
@@ -6732,7 +6776,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         cfg.vap_mode = wifi_vap_mode_sta;
         if (band == WIFI_FREQUENCY_6_BAND) {
             cfg.u.sta_info.security.mode = wifi_security_mode_wpa3_personal;
-            cfg.u.sta_info.security.wpa3_transition_disable = true;
+            cfg.u.sta_info.security.wpa3_transition_disable = false;
             cfg.u.sta_info.security.mfp = wifi_mfp_cfg_required;
             cfg.u.sta_info.security.u.key.type = wifi_security_key_type_sae;
         } else {
@@ -6877,7 +6921,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         } else if (isVapPrivate(vap_index))  {
             if (band == WIFI_FREQUENCY_6_BAND) {
                 cfg.u.bss_info.security.mode = wifi_security_mode_wpa3_personal;
-                cfg.u.bss_info.security.wpa3_transition_disable = true;
+                cfg.u.bss_info.security.wpa3_transition_disable = false;
                 cfg.u.bss_info.security.mfp = wifi_mfp_cfg_required;
                 cfg.u.bss_info.security.u.key.type = wifi_security_key_type_sae;
             } else {
@@ -6896,7 +6940,7 @@ int wifidb_init_vap_config_default(int vap_index, wifi_vap_info_t *config,
         } else  {
             if (band == WIFI_FREQUENCY_6_BAND) {
                 cfg.u.bss_info.security.mode = wifi_security_mode_wpa3_personal;
-                cfg.u.bss_info.security.wpa3_transition_disable = true;
+                cfg.u.bss_info.security.wpa3_transition_disable = false;
                 cfg.u.bss_info.security.mfp = wifi_mfp_cfg_required;
                 cfg.u.bss_info.security.u.key.type = wifi_security_key_type_sae;
             } else {
