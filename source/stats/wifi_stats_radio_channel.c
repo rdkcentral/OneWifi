@@ -855,7 +855,6 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
                 wifi_util_error_print(WIFI_MON,
                     "%s:%d get_non_operational_channel_list failed for radio: %d\n", __func__,
                     __LINE__, args->radio_index);
-                continue;
             }
             // Filter out channels that are in the NOP/CAC started list
             for (int chan_idx = 0; chan_idx < num_channels; chan_idx++) {
