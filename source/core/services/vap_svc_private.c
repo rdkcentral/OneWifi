@@ -86,7 +86,7 @@ static int configure_lnf_psk_radius_from_hotspot(wifi_vap_info_t *vap_info)
         return -1;
     }
     // Move the below once DB persistance is implemented. Since only copying from Hotspot Config now, keep the implementation here for now.
-    lnf_psk_sec = (wifi_vap_security *)Get_wifi_object_bss_security_parameter(vap_info->vap_index);
+    lnf_psk_sec = (wifi_vap_security_t *)Get_wifi_object_bss_security_parameter(vap_info->vap_index);
     if(!lnf_psk_sec)
     {
         wifi_util_error_print(WIFI_CTRL, "%s:%d Failed to get lnf_psk_sec for vap_index=%d\n", 
