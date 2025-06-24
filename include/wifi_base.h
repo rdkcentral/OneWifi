@@ -345,7 +345,7 @@ typedef struct {
 } __attribute__((packed)) wifi_mon_stats_config_t;
 
 typedef struct {
-    wifi_channelMap_t channel_map[MAX_NUM_RADIOS][64];
+    wifi_channelMap_t channel_map[64];
     wifi_radio_index_t radio_index;
 } wifi_channel_status_event_t;
 

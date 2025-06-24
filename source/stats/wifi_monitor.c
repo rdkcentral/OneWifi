@@ -1616,7 +1616,7 @@ static void update_subscribe_data(wifi_monitor_data_t *event)
     }
 }
 
-int get_nop_started_channels(wifi_channel_status_event_t *data)
+int update_monitor_channel_status_map(wifi_channel_status_event_t *data)
 {
     int radio_index;
     if (data == NULL || data->radio_index >= MAX_NUM_RADIOS) {
@@ -1624,22 +1624,18 @@ int get_nop_started_channels(wifi_channel_status_event_t *data)
             __func__, __LINE__);
         return RETURN_ERR;
     }
-
-    radio_index = data->radio_index;
-
+    memcpy(&radio_index, &data->radio_index, sizeof(radio_index));
     pthread_mutex_lock(&g_monitor_module.data_lock);
     for (int i = 0; i < MAX_NUM_CHANNELS; i++) {
-        if (data->channel_map[radio_index][i].ch_number == 0)
+        if (data->channel_map[i].ch_number == 0)
             break;
 
-        memcpy(&g_monitor_module.dfs_channel[radio_index][i],
-            &data->channel_map[radio_index][i],
-            sizeof(wifi_channelMap_t)); 
+        memcpy(&g_monitor_module.channel_map[i], &data->channel_map[i],
+            sizeof(wifi_channelMap_t));
 
         wifi_util_dbg_print(WIFI_MON, "%s:%d radio_index:%d channel_number:%d channel_state:%d\n",
-            __func__, __LINE__, radio_index, g_monitor_module.dfs_channel[radio_index][i].ch_number,
-            g_monitor_module.dfs_channel[radio_index][i].ch_state);
-       
+            __func__, __LINE__, radio_index, g_monitor_module.channel_map[i].ch_number,
+            g_monitor_module.channel_map[i].ch_state);
     }
     pthread_mutex_unlock(&g_monitor_module.data_lock);
     return RETURN_OK;
@@ -1762,7 +1758,7 @@ void *monitor_function  (void *data)
                        // subscribe_stats = event_data->u.collect_stats.event_subscribe;
                     break;
                     case wifi_event_monitor_channel_status:
-                        get_nop_started_channels(&event_data->u.channel_status_map);
+                        update_monitor_channel_status_map(&event_data->u.channel_status_map);
                     break;
                     default:
                     break;

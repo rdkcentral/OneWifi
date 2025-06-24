@@ -2716,12 +2716,6 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
     vap_svc_t  *pub_svc = NULL;
     int ret = 0;
     wifi_monitor_data_t *data = NULL;
-
-    data = (wifi_monitor_data_t *)calloc(1, sizeof(wifi_monitor_data_t));
-    if (data == NULL) {
-        wifi_util_error_print(WIFI_CTRL, "%s:%d: Memory allocation failed\n", __func__, __LINE__);
-        return;
-    }
     
     radio_params = (wifi_radio_operationParam_t *)get_wifidb_radio_map(ch_chg->radioIndex);
     if (radio_params == NULL) {
@@ -2818,13 +2812,11 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
         if (l_radio == NULL) {
             wifi_util_error_print(WIFI_CTRL,"%s:%d radio strucutre is not present for radio %d\n",
                                 __FUNCTION__, __LINE__,  ch_chg->radioIndex);
-            free(data);
             return;
         }
 
         if( ((ch_chg->channel >= 36 && ch_chg->channel < 52) && (ch_chg->channelWidth != WIFI_CHANNELBANDWIDTH_160MHZ )) || (ch_chg->channel > 144 && ch_chg->channel <= 165) ) {
             wifi_util_error_print(WIFI_CTRL,"%s: Wrong radar in radio_index:%d chan:%u \n",__FUNCTION__, ch_chg->radioIndex, ch_chg->channel);
-            free(data);
             return ;
         }
 
@@ -2957,8 +2949,13 @@ void process_channel_change_event(wifi_channel_change_event_t *ch_chg, bool is_n
         wifi_util_error_print(WIFI_CTRL,"%s: Invalid event for radio %d\n",__FUNCTION__, ch_chg->radioIndex);
         return;
     }
+    data = (wifi_monitor_data_t *)calloc(1, sizeof(wifi_monitor_data_t));
+    if (data == NULL) {
+        wifi_util_error_print(WIFI_CTRL, "%s:%d: Memory allocation failed\n", __func__, __LINE__);
+        return;
+    }
     data->u.channel_status_map.radio_index = ch_chg->radioIndex;
-    memcpy(data->u.channel_status_map.channel_map[ch_chg->radioIndex], radio_params->channel_map,
+    memcpy(data->u.channel_status_map.channel_map, radio_params->channel_map,
         sizeof(wifi_channelMap_t) * 64);
     push_event_to_monitor_queue(data, wifi_event_monitor_channel_status, NULL);
     free(data);
