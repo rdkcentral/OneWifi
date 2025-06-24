@@ -850,8 +850,9 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
             channels[0] = radioOperation->channel;
         } else {
             // Check if any of the channels are in NOP/CAC started state
-            if (get_non_operational_channel_list(args->radio_index, (unsigned int *)channels, num_channels,
-                    nop_chan_list, &nop_chan_count, mon_data, radioOperation->band) != RETURN_OK) {
+            if (get_non_operational_channel_list(args->radio_index, (unsigned int *)channels,
+                    num_channels, nop_chan_list, &nop_chan_count, mon_data,
+                    radioOperation->band) != RETURN_OK) {
                 wifi_util_error_print(WIFI_MON,
                     "%s:%d get_non_operational_channel_list failed for radio: %d\n", __func__,
                     __LINE__, args->radio_index);
@@ -872,8 +873,9 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
                 }
             }
             if (ch_count == 0 || ch_count > MAX_CHANNELS) {
-                wifi_util_error_print(WIFI_MON,
-                    "%s:%d on-channel scan could not be executed because the channel is currently in a NOP/CAC state for radio %d\n",
+                wifi_util_info_print(WIFI_MON,
+                    "%s:%d on-channel scan could not be executed because the channel is currently "
+                    "in a NOP/CAC state for radio %d\n",
                     __func__, __LINE__, args->radio_index);
                 return RETURN_ERR;
             }
@@ -948,7 +950,7 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
                 "%s:%d get_non_operational_channel_list failed for radio: %d\n", __func__, __LINE__,
                 args->radio_index);
         }
-        // skip on-channel scan list
+        // skip on-channel scan and non-operational channel list
         for (int i = 0; i < args->channel_list.num_channels; i++) {
             is_nop_chan = 0;
             is_on_chan = 0;
