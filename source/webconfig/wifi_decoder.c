@@ -1001,6 +1001,30 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
     }
 #endif
 
+    decode_param_allow_empty_string(radius, "RadiusServerIPAddr", param);
+    if (strlen(param->valuestring) == 0) {
+            wifi_util_dbg_print(WIFI_WEBCONFIG,"%s:%d: RadiusServerIPAddr is NULL\n", __func__, __LINE__);
+            strcpy(param->valuestring,"0.0.0.0");
+    }
+    if (decode_ipv4_address(param->valuestring) == webconfig_error_none || decode_ipv6_address(param->valuestring) == webconfig_error_none) {
+#ifndef WIFI_HAL_VERSION_3_PHASE2
+        strncpy((char *)radius_info->ip,param->valuestring,sizeof(radius_info->ip)-1);
+    }
+    else {
+        wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: Validation failed for RadiusServerIPAddr\n", __func__, __LINE__);
+        //strncpy(execRetVal->ErrorMsg, "Invalid Radius server IP",sizeof(execRetVal->ErrorMsg)-1);
+        return webconfig_error_decode;
+    }
+#else
+    /* check the INET family and update the radius ip address */
+    if(inet_pton(AF_INET, param->valuestring, &(radius_info->ip.u.IPv4addr)) > 0) {
+       radius_info->ip.family = wifi_ip_family_ipv4;
+    } else if(inet_pton(AF_INET6, param->valuestring, &(radius_info->ip.u.IPv6addr)) > 0) {
+       radius_info->ip.family = wifi_ip_family_ipv6;
+    } else {
+       return webconfig_error_decode;
+    }
+#endif
     decode_param_integer(radius, "RadiusServerPort", param);
     radius_info->port = param->valuedouble;
 
@@ -1074,6 +1098,63 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
     decode_param_integer(radius, "ServerRetries", param);
     radius_info->server_retries = param->valuedouble;
 
+    return webconfig_error_none;
+}
+
+webconfig_error_t decode_repurposed_radius_object(const cJSON *radius_json, wifi_radius_settings_t *radius_info)
+{
+    const cJSON *param;
+
+    if (radius_json == NULL || radius_info == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Invalid parameters\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+    memset(radius_info, 0, sizeof(wifi_repurposed_radius_t));
+    /* Decode primary server configuration */
+    decode_param_string(radius_json, "RepurposedRadiusServerIPAddr", param);
+    if (strlen(param->valuestring) >= sizeof(radius_info->primary_server)) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Primary server name too long\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+    strncpy(radius_info->ip, param->valuestring, sizeof(radius_info->ip) - 1);
+
+    decode_param_integer(radius_json, "RepurposedRadiusServerPort", param);
+    if (param->valuedouble < 1 || param->valuedouble > 65535) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Invalid primary port: %d\n", __func__, __LINE__, (int)param->valuedouble);
+        return webconfig_error_decode;
+    }
+    radius_info->port = (unsigned int)param->valuedouble;
+
+    decode_param_string(radius_json, "RepurposedRadiusSecret", param);
+    if (strlen(param->valuestring) >= sizeof(radius_info->key)) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Primary secret too long\n", __func__, __LINE__);
+        return webconfig_error_decode;
+    }
+    strncpy(radius_info->key, param->valuestring, sizeof(radius_info->key) - 1);
+
+    /* Decode secondary server configuration (optional) */
+    decode_param_allow_optional_string(radius_json, "RepurposedSecondaryRadiusServerIPAddr", param);
+    if (param != NULL) {
+        if (strlen(param->valuestring) >= sizeof(radius_info->secondary_server)) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Secondary server name too long\n", __func__, __LINE__);
+            return webconfig_error_decode;
+        }
+        strncpy(radius_info->s_ip, param->valuestring, sizeof(radius_info->s_ip) - 1);
+
+        decode_param_integer(radius_json, "RepurposedRadiusServerPort", param);
+        if (param->valuedouble < 1 || param->valuedouble > 65535) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Invalid secondary port: %d\n", __func__, __LINE__, (int)param->valuedouble);
+            return webconfig_error_decode;
+        }
+        radius_info->s_port = (unsigned int)param->valuedouble;
+
+        decode_param_string(radius_json, "RepurposedSecondaryRadiusSecret", param);
+        if (strlen(param->valuestring) >= sizeof(radius_info->s_key)) {
+            wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Secondary secret too long\n", __func__, __LINE__);
+            return webconfig_error_decode;
+        }
+        strncpy(radius_info->s_key, param->valuestring, sizeof(radius_info->s_key) - 1);
+    }
     return webconfig_error_none;
 }
 
@@ -1290,6 +1371,24 @@ webconfig_error_t decode_security_object(const cJSON *security, wifi_vap_securit
         wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d invalid security mode for 6G interface: %d\n",
             __func__, __LINE__, security_info->mode);
         return webconfig_error_decode;
+    }
+
+    /* Handle RepurposedRadiusConfig for personal modes only */
+    if (security_info->mode == wifi_security_mode_wpa_personal ||
+        security_info->mode == wifi_security_mode_wpa2_personal ||
+        security_info->mode == wifi_security_mode_wpa_wpa2_personal ||
+        security_info->mode == wifi_security_mode_wpa3_personal ||
+        security_info->mode == wifi_security_mode_wpa3_transition ||
+        security_info->mode == wifi_security_mode_wpa3_compatibility) {
+        
+        object = cJSON_GetObjectItem(security, "RepurposedRadiusConfig");
+        if (object != NULL) {
+            decode_param_object(security, "RepurposedRadiusConfig", param);
+            if (decode_repurposed_radius_object(param, &security_info->repurposed_radius) != webconfig_error_none) {
+                wifi_util_info_print(WIFI_CTRL, "%s:%d Failed to decode RepurposedRadiusConfig\n", __FUNCTION__, __LINE__);
+                return webconfig_error_decode;
+            }
+        }
     }
 
     if (security_info->mode == wifi_security_mode_none ||
