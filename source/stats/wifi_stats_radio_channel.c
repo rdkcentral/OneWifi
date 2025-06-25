@@ -817,6 +817,7 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
     int is_nop_chan = 0;
     int is_on_chan = 0;
     int ch_count = 0;
+    unsigned int nop_chan_count;
     int onchan_num_channels = 0;
     int new_num_channels = 0;
     int updated_channels[MAX_CHANNELS] = {0};
