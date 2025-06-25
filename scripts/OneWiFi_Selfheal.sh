@@ -204,6 +204,13 @@ onewifi_mem_restart() {
     now=$(date +%s)
     time_since_last_restart=$((now - onewifi_last_restart))
 
+    # Added check for threshold1 and threshold2 if any of them are zero or empty, then skip the OneWifi restart.
+    if [ -z "$vmrss" ] || [ -z "$threshold2" ] || [ -z "$threshold1" ] || \
+        [ "$vmrss" -eq 0 ] || [ "$threshold2" -eq 0 ] || [ "$threshold1" -eq 0 ]; then
+        echo_t "Invalid vmrss=$vmrss, threshold1=$threshold1, threshold2=$threshold2" >> $LOG_FILE
+        return
+    fi
+
     if [ "$vmrss" -ge "$threshold2" ]; then
         if [ "$time_since_last_restart" -ge 86400 ]; then
             echo_t "RSS Memory of Onewifi exceeds RSS threshold2 value and restarting Onewifi [Rss : ($vmrss kB) Threshold2 : ($threshold2 kB)]" >> $LOG_FILE

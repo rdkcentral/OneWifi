@@ -8673,7 +8673,8 @@ int get_all_param_from_psm_and_set_into_db(void)
     if (is_device_type_xb7() == true || is_device_type_xb8() == true ||
         is_device_type_vbvxb10() == true || is_device_type_sercommxb10() == true ||
         is_device_type_scxer10() == true || is_device_type_sr213() == true ||
-        is_device_type_cmxb7() == true || is_device_type_cbr2() == true || is_device_type_vbvxer5() == true) {
+        is_device_type_cmxb7() == true || is_device_type_cbr2() == true ||
+        is_device_type_vbvxer5() == true || is_device_type_xle() == true) {
         bool wifi_psm_db_enabled = false;
         char last_reboot_reason[32];
         raw_data_t data;
@@ -8681,7 +8682,7 @@ int get_all_param_from_psm_and_set_into_db(void)
         memset(&data, 0, sizeof(raw_data_t));
         memset(last_reboot_reason, 0, sizeof(last_reboot_reason));
 
-        bus_handle_t handle = {0};
+        bus_handle_t handle = { 0 };
         if (wifi_mgr_bus_subsription(&handle) == RETURN_OK) {
             if (get_bus_descriptor()->bus_data_get_fn(&handle, WIFI_PSM_DB_NAMESPACE, &data) ==
                 bus_error_success) {
@@ -8727,7 +8728,7 @@ int get_all_param_from_psm_and_set_into_db(void)
                 return 0;
             }
             strncpy(inactive_firmware, (char *)data.raw_data.bytes,
-                   (sizeof(inactive_firmware) - 1));
+                (sizeof(inactive_firmware) - 1));
             if (access(ONEWIFI_DB_CONSOLIDATED_FLAG, F_OK) != 0) {
                 if (((strncmp(last_reboot_reason, "Software_upgrade", strlen("Software_upgrade")) ==
                          0) ||
@@ -8739,7 +8740,6 @@ int get_all_param_from_psm_and_set_into_db(void)
                 }
             }
             get_bus_descriptor()->bus_data_free_fn(&data);
-
         }
 
         if ((access(ONEWIFI_MIGRATION_FLAG, F_OK) == 0)) {
