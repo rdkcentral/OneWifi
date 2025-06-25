@@ -49,6 +49,34 @@ INT process_csi(mac_address_t mac_addr, wifi_csi_data_t  *csi_data)
     return 0;
 }
 
+static int csi_enable_status_publish(bus_handle_t *handle, uint32_t vap_index,
+    mac_addr_t mac_addr, bool status)
+{
+    int rc;
+    raw_data_t data;
+    memset(&data, 0, sizeof(raw_data_t));
+    csi_enable_status_info_t csi_status = { 0 };
+
+    csi_status.vap_index = vap_index;
+    memcpy(csi_status.mac_addr, mac_addr, sizeof(mac_addr_t));
+    csi_status.status = status;
+
+    data.data_type = bus_data_type_bytes;
+    data.raw_data.bytes = (void *)&csi_status;
+    data.raw_data_len = sizeof(csi_enable_status_info_t);
+
+    rc = get_bus_descriptor()->bus_event_publish_fn(handle, WIFI_CSI_SOUNDING_STATUS, &data);
+    if (rc != bus_error_success) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d: bus publish Event failed:%d\n", __func__, __LINE__, rc);
+        return RETURN_ERR;
+    } else {
+        wifi_util_dbg_print(WIFI_APPS, "%s:%d: bus publish Event for %s\n",
+            __func__, __LINE__, WIFI_CSI_SOUNDING_STATUS);
+    }
+
+    return RETURN_OK;
+}
+
 void update_pinger_config(int ap_index, mac_addr_t mac_addr, bool pause_pinger)
 {
 #if (defined (_XB7_PRODUCT_REQ_) && !defined (_COSA_BCM_ARM_))
@@ -105,6 +133,7 @@ int csi_start_fn(void* csi_app, unsigned int ap_index, mac_addr_t mac_addr, int 
                     if ((to_hash_map->subscribed_apps & ~wifi_app_inst_motion)){
                         wifi_util_info_print(WIFI_APPS, "%s:%d Disabling CSI for mac %02x..%02x\n", __func__, __LINE__, to_hash_map->mac_addr[0], to_hash_map->mac_addr[5]);
                         wifi_enableCSIEngine(to_hash_map->ap_index, to_hash_map->mac_addr, FALSE);
+                        csi_enable_status_publish(&app->handle, to_hash_map->ap_index, to_hash_map->mac_addr, false);
                         update_pinger_config(to_hash_map->ap_index, to_hash_map->mac_addr, true);
                         to_hash_map = (csi_mac_data_t *)hash_map_remove(app->data.u.csi.csi_sounding_mac_map, mac_str);
                         if (to_hash_map != NULL) {
@@ -140,6 +169,7 @@ int csi_start_fn(void* csi_app, unsigned int ap_index, mac_addr_t mac_addr, int 
             wifi_enableCSIEngine(ap_index, (unsigned char *)mac_addr, TRUE);
             hash_map_put(app->data.u.csi.csi_sounding_mac_map, strdup(mac_str), to_hash_map);
             app->data.u.csi.num_current_sounding++;
+            csi_enable_status_publish(&app->handle, ap_index, mac_addr, true);
             update_pinger_config(ap_index, mac_addr, false);
             return 0;
         } else {
@@ -180,6 +210,7 @@ int csi_stop_fn(void* csi_app, unsigned int ap_index, mac_addr_t mac_addr, int s
         wifi_util_info_print(WIFI_APPS, "%s:%d Disabling CSI for mac %02x..%02x\n", __func__, __LINE__, mac_data->mac_addr[0], mac_data->mac_addr[5]);
         wifi_enableCSIEngine(mac_data->ap_index, mac_data->mac_addr, FALSE);
         mac_data = (csi_mac_data_t *)hash_map_remove(app->data.u.csi.csi_sounding_mac_map, mac_str);
+        csi_enable_status_publish(&app->handle, mac_data->ap_index, mac_data->mac_addr, false);
         update_pinger_config(mac_data->ap_index, mac_data->mac_addr, true);
         free(mac_data);
         app->data.u.csi.num_current_sounding--;
@@ -188,6 +219,36 @@ int csi_stop_fn(void* csi_app, unsigned int ap_index, mac_addr_t mac_addr, int s
 }
 
 #ifdef ONEWIFI_CSI_APP_SUPPORT
+int init_bus_registration(wifi_app_t *app)
+{
+    int rc = bus_error_success;
+    char *component_name = "WifiAppsCsi";
+    int num_elements;
+
+    bus_data_element_t dataElements[] = {
+        { WIFI_CSI_SOUNDING_STATUS, bus_element_type_property,
+            { NULL, NULL, NULL, NULL, NULL, NULL}, slow_speed, ZERO_TABLE,
+            { bus_data_type_bytes, true, 0, 0, 0, NULL } }
+    };
+
+    rc = get_bus_descriptor()->bus_open_fn(&app->handle, component_name);
+    if (rc != bus_error_success) {
+        wifi_util_error_print(WIFI_APPS, "%s:%d bus: bus_open_fn open failed for component:%s, rc:%d\n",
+            __func__, __LINE__, component_name, rc);
+        return RETURN_ERR;
+    }
+
+    num_elements = (sizeof(dataElements)/sizeof(bus_data_element_t));
+
+    rc = get_bus_descriptor()->bus_reg_data_element_fn(&app->handle, dataElements, num_elements);
+    if (rc != bus_error_success) {
+        wifi_util_dbg_print(WIFI_APPS,"%s:%d bus_reg_data_element_fn failed, rc:%d\n", __func__, __LINE__, rc);
+    } else {
+        wifi_util_info_print(WIFI_APPS,"%s:%d Apps bus_regDataElement success\n", __func__, __LINE__);
+    }
+    return rc;
+}
+
 int csi_init(wifi_app_t *app, unsigned int create_flag)
 {
     app->data.u.csi.csi_fns.csi_start_fn = csi_start_fn;
@@ -199,6 +260,8 @@ int csi_init(wifi_app_t *app, unsigned int create_flag)
     }
 
     app->data.u.csi.num_current_sounding = 0;
+
+    init_bus_registration(app);
 
 #if defined (FEATURE_CSI)
     wifi_csi_callback_register(process_csi);

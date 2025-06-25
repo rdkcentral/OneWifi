@@ -50,6 +50,10 @@ int analytics_event(wifi_app_t *app, wifi_event_t *event)
 
 #ifdef ONEWIFI_CSI_APP_SUPPORT
 extern int csi_init(wifi_app_t *app, unsigned int create_flag);
+extern int csi_analytics_init(wifi_app_t *app, unsigned int create_flag);
+extern int csi_analytics_event(wifi_app_t *app, wifi_event_t *event);
+extern int csi_analytics_deinit(wifi_app_t *app);
+extern int csi_analytics_update(wifi_app_t *app);
 #else
 int csi_init(wifi_app_t *app, unsigned int create_flag)
 {
@@ -317,7 +321,7 @@ wifi_app_descriptor_t app_desc[] = {
     },
     {
         wifi_app_inst_csi_analytics, 0,
-        wifi_event_type_csi | wifi_event_type_hal_ind,
+        wifi_event_type_hal_ind,
         false, false,
         "CSI analytics App",
         csi_analytics_init, csi_analytics_event, csi_analytics_deinit,

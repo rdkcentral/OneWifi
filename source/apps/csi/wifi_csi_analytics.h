@@ -1,24 +1,32 @@
 #ifndef WIFI_CSI_ANALYTICS_H
 #define WIFI_CSI_ANALYTICS_H
 
-#include "wifi_hal.h"
-#include "wifi_csi.h"
 #include "collection.h"
+#include "bus.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define MAX_LOG_MSG_PRINT_TIME_SEC 5
+#define MAX_LOG_MSG_PRINT_TIME_SEC 10
+#define MAX_MACLIST_SIZE 128
+#define MAX_MAC_STR_SIZE 18
+
+#define CSI_CLIENT_MACLIST "Device.WiFi.X_RDK_CSI.%d.ClientMaclist"
+#define CSI_ENABLE_NAME "Device.WiFi.X_RDK_CSI.%d.Enable"
 
 typedef struct csi_analytics_data {
-    uint32_t num_sc;
-    uint32_t decimation;
+    uint32_t num_sc;
+    uint32_t decimation;
     uint32_t skip_mismatch_data_num;
-    long long int csi_data_capture_time_sec;
+    long long int csi_data_capture_time_sec;
 } csi_analytics_data_t;
 
 typedef struct csi_analytics_info {
+    int32_t pipe_read_fd;
+    bool is_read_oper_thread_enabled;
+    uint32_t csi_session_index;
+    char sta_mac[MAX_MACLIST_SIZE];
     hash_map_t *csi_analytics_map;
 } csi_analytics_info_t;
 

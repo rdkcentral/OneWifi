@@ -20,6 +20,9 @@
 #ifndef WIFI_CSI_H
 #define WIFI_CSI_H
 
+#include "collection.h"
+#include "wifi_base.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -33,6 +36,12 @@ typedef struct {
     csi_start_fn_t csi_start_fn;
     csi_stop_fn_t  csi_stop_fn;
 } csi_base_app_t;
+
+typedef struct csi_enable_status_info {
+    mac_addr_t mac_addr;
+    uint32_t vap_index;
+    bool status;
+} csi_enable_status_info_t;
 
 typedef struct {
     hash_map_t           *csi_sounding_mac_map;
