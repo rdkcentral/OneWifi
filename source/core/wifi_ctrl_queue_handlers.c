@@ -2302,6 +2302,32 @@ void process_levl_rfc(bool type)
     return;
 }
 
+int update_wifi_app_rfc(wifi_app_inst_t inst, bool status)
+{
+    wifi_ctrl_t *ctrl = (wifi_ctrl_t *)get_wifictrl_obj();
+    wifi_apps_mgr_t *apps_mgr = NULL;
+    wifi_app_t *p_app = NULL;
+    if (ctrl != NULL) {
+        apps_mgr = &ctrl->apps_mgr;
+        p_app = (wifi_app_t *)get_app_by_inst(apps_mgr, inst);
+        if (p_app != NULL) {
+            p_app->desc.rfc  = status;
+            p_app->desc.update_fn(p_app);
+        }
+    }
+}
+
+void process_csi_analytics_rfc(bool type)
+{
+    wifi_util_info_print(WIFI_CTRL,"WIFI Enter RFC Func %s: %d : bool %d\n",
+        __func__, __LINE__, type);
+    wifi_rfc_dml_parameters_t *rfc_param = (wifi_rfc_dml_parameters_t *)get_wifi_db_rfc_parameters();
+
+    rfc_param->csi_analytics_enabled_rfc = type;
+    update_wifi_app_rfc(wifi_app_inst_csi_analytics, type);
+    return;
+}
+
 void process_tcm_rfc(bool type)
 {
     wifi_util_dbg_print(WIFI_DB, "Enter func %s: %d : Tcm RFC: %d\n", __FUNCTION__, __LINE__,
@@ -3444,6 +3470,9 @@ void handle_command_event(wifi_ctrl_t *ctrl, void *data, unsigned int len,
         break;
     case wifi_event_type_rsn_override_rfc:
         process_rsn_override_rfc(*(bool *)data);
+        break;
+    case wifi_event_type_csi_analytics_rfc:
+        process_csi_analytics_rfc(*(bool *)data);
         break;
     case wifi_event_type_mgmt_frame_bus_rfc:
     case wifi_event_type_sta_connect_in_progress:

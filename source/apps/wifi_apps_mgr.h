@@ -35,6 +35,9 @@ extern "C" {
 #include "wifi_sm.h"
 #include "wifi_motion.h"
 #include "wifi_csi.h"
+#ifdef ONEWIFI_CSI_APP_SUPPORT
+#include "wifi_csi_analytics.h"
+#endif
 #include "wifi_whix.h"
 #include "wifi_harvester.h"
 #include "wifi_ocs.h"
@@ -82,6 +85,9 @@ typedef struct {
         sm_data_t            sm_data;
         motion_data_t        motion;
         csi_app_t            csi;
+#ifdef ONEWIFI_CSI_APP_SUPPORT
+        csi_analytics_info_t csi_analytics;
+#endif
         whix_data_t          whix;
 #ifdef ONEWIFI_BLASTER_APP_SUPPORT
         blaster_data_t       blaster;
