@@ -23,7 +23,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <getopt.h>
-#include <rbus.h>
+#include <rbus/rbus.h>
 
 #define WIFI_RBUS_WIFIAPI_COMMAND               "Device.WiFi.WiFiAPI.command"
 #define WIFI_RBUS_WIFIAPI_RESULT                "Device.WiFi.WiFiAPI.result"
