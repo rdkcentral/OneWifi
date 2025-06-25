@@ -114,7 +114,9 @@ if EASYCONNECT_SUPPORT
 OneWifi_SOURCES += wifi_easy_connect.c
 endif
 endif
+if ONEWIFI_HARVESTER_APP_SUPPORT
 OneWifi_SOURCES += $(top_srcdir)/source/stats/wifi_associated_devices_msmt.c
+endif
 if JOURNALCTL_SUPPORT
 OneWifi_SOURCES += $(top_srcdir)/lib/log/log_journal.c
 endif
@@ -183,7 +185,10 @@ if ONEWIFI_DML_SUPPORT
 OneWifi_LDFLAGS += -lccsp_common
 OneWifi_LDFLAGS += -lutapi -lsyscfg -lprint_uptime
 endif
-OneWifi_LDFLAGS += -lrdk_wifihal -lavro
+OneWifi_LDFLAGS += -lrdk_wifihal
+if ONEWIFI_AVRO_SUPPORT
+OneWifi_LDFLAGS += -lavro
+endif
 
 OneWifi_CPPFLAGS += -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/ -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/ -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/ap -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/utils -I${PKG_CONFIG_SYSROOT_DIR}${includedir}/rdk-wifi-libhostap/src/drivers/ -I$(PKG_CONFIG_SYSROOT_DIR)$(includedir)/qca/qca-wifi/os/linux/include/ -I${PKG_CONFIG_SYSROOT_DIR}${libdir}/ -DEXTERNAL_USE_ONLY
 
