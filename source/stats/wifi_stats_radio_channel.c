@@ -788,7 +788,8 @@ int get_non_operational_channel_list(int radio_index, unsigned int *input_channe
                 band == WIFI_FREQUENCY_5_BAND) &&
             (mon_data->channel_map[radio_index][j].ch_state == CHAN_STATE_DFS_NOP_START ||
                 mon_data->channel_map[radio_index][j].ch_state == CHAN_STATE_DFS_CAC_START)) {
-            wifi_util_dbg_print(WIFI_MON, "%s:%d Channel %d is in %d\n", __func__, __LINE__, j,
+            wifi_util_dbg_print(WIFI_MON, "%s:%d Channel %d is in %d\n", __func__, __LINE__,
+                mon_data->channel_map[radio_index][j].ch_number,
                 mon_data->channel_map[radio_index][j].ch_state);
             nop_channels_list[count++] = mon_data->channel_map[radio_index][j].ch_number;
         }
@@ -968,7 +969,7 @@ int execute_radio_channel_api(wifi_mon_collector_element_t *c_elem, wifi_monitor
                 }
             }
             // Non-operational channel filter
-            if (nop_chan_count != 0 && is_on_chan == 1) {
+            if (nop_chan_count != 0 && is_on_chan != 1) {
                 for (unsigned int nop_idx = 0; nop_idx < nop_chan_count; nop_idx++) {
                     if (args->channel_list.channels_list[i] == (int)nop_chan_list[nop_idx]) {
                         wifi_util_dbg_print(WIFI_MON,
