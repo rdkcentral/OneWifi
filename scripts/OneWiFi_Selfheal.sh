@@ -415,7 +415,7 @@ do
 
     if [ $force_reset_subdoc -le  5 ]; then
         if [ -f  $SW_UPGRADE_DEFAULT_FILE ]; then
-            webcfg_rfc_enabled=`dmcli eRT getv Device.X_RDK_WebConfig.RfcEnable | grep "value" | cut -d ':' -f3-5`
+            webcfg_rfc_enabled="$(dmcli eRT getv Device.X_RDK_WebConfig.RfcEnable | grep bool | cut -d":" -f3- | cut -d" " -f2- | tr -d ' ')"
             echo_t "webcfg_rfc status is $webcfg_rfc_enabled" >>  /rdklogs/logs/wifi_selfheal.txt
             if [ "$webcfg_rfc_enabled" = "true" ]; then
                 dmcli eRT setv Device.X_RDK_WebConfig.webcfgSubdocForceReset string privatessid
