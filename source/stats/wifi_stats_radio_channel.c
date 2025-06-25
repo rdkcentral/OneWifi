@@ -768,13 +768,10 @@ int get_non_operational_channel_list(int radio_index, unsigned int *input_channe
     wifi_monitor_t *mon_data, wifi_freq_bands_t band)
 {
     unsigned int count = 0;
-    if (nop_channel_count == NULL) {
-        wifi_util_error_print(WIFI_MON, "%s:%d get_non_operational_channel_list: invalid arguments\n", __func__, __LINE__);
-        return RETURN_ERR;
-    }
+
     if (input_channels == NULL || nop_channels_list == NULL || mon_data == NULL ||
-        radio_index >= MAX_NUM_RADIOS || input_channel_count == 0) {
-        if (*nop_channel_count != 0) {
+        radio_index >= MAX_NUM_RADIOS || input_channel_count == 0 || nop_channel_count == NULL) {
+        if (nop_channel_count) {
             *nop_channel_count = 0;
         }
         wifi_util_error_print(WIFI_MON,
@@ -783,6 +780,7 @@ int get_non_operational_channel_list(int radio_index, unsigned int *input_channe
     }
 
     *nop_channel_count = 0;
+
     for (unsigned int j = 0; j < MAX_CHANNELS; j++) {
         if ((band == WIFI_FREQUENCY_5L_BAND || band == WIFI_FREQUENCY_5H_BAND ||
                 band == WIFI_FREQUENCY_5_BAND) &&
@@ -794,9 +792,11 @@ int get_non_operational_channel_list(int radio_index, unsigned int *input_channe
             nop_channels_list[count++] = mon_data->channel_map[radio_index][j].ch_number;
         }
     }
+
     *nop_channel_count = count;
     wifi_util_dbg_print(WIFI_MON, "%s:%d Found %d NOP-active channels\n", __func__, __LINE__,
         count);
+
     return RETURN_OK;
 }
 
