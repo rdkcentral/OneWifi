@@ -27,6 +27,7 @@
 #include "wifi_util.h"
 #include "wifi_ctrl.h"
 #include "wifi_mgr.h"
+#include "services/vap_svc.h"
 #include <netinet/in.h>
 #include <time.h>
 #include <openssl/sha.h>
@@ -2004,49 +2005,64 @@ int key_mgmt_conversion_legacy(wifi_security_modes_t *mode_enum, wifi_encryption
     return ret;
 }
 
-#define MAX_SEC_LEN 32
+typedef struct {
+    const char keys[16][MAX_SEC_LEN];
+    int len;
+    wifi_security_modes_t mode;
+} security_mapping_table_t;
 
-int key_mgmt_conversion(wifi_security_modes_t *enum_sec, char *str_sec, char *str_sec2, int sec_len, int sec_len2, unsigned int conv_type, int *len)
+static const security_mapping_table_t security_map[] = {
+    { .keys = { "wpa-psk" },        .len = 1, .mode = wifi_security_mode_wpa_personal },
+    { .keys = { "wpa2-psk" },       .len = 1, .mode = wifi_security_mode_wpa2_personal },
+    { .keys = { "wpa2-eap" },       .len = 1, .mode = wifi_security_mode_wpa2_enterprise },
+    { .keys = { "sae" },            .len = 1, .mode = wifi_security_mode_wpa3_personal },
+    { .keys = { "aes" },            .len = 1, .mode = wifi_security_mode_wpa3_enterprise },
+    { .keys = { "enhanced-open" },  .len = 1, .mode = wifi_security_mode_enhanced_open },
+    { .keys = { "wpa-eap" },        .len = 1, .mode = wifi_security_mode_wpa_enterprise },
+    { .keys = { "wpa-eap", "wpa2-eap" },    .len = 2, .mode = wifi_security_mode_wpa_wpa2_enterprise },
+    { .keys = { "wpa2-psk", "sae" },        .len = 2, .mode = wifi_security_mode_wpa3_transition },
+    { .keys = { "wpa-psk", "wpa2-psk" },    .len = 2, .mode = wifi_security_mode_wpa_wpa2_personal },
+    { .keys = { "wpa2-psk", "sae", "rsno" },    .len = 3, .mode = wifi_security_mode_wpa3_compatibility }
+};
+
+int key_mgmt_conversion(wifi_security_modes_t *enum_sec, int *sec_len, unsigned int conv_type,
+    int wpa_key_mgmt_len, char (*wpa_key_mgmt)[MAX_SEC_LEN])
 {
-    char arr_str[][MAX_SEC_LEN] = {"wpa-psk", "wpa2-psk", "wpa2-eap", "sae", "wpa2-psk sae", "wpa2-psk sae", "aes", "wpa-eap wpa2-eap", "enhanced-open", "wpa-eap", "wpa-psk wpa2-psk"};
-    wifi_security_modes_t  arr_num[] = {wifi_security_mode_wpa_personal, wifi_security_mode_wpa2_personal, wifi_security_mode_wpa2_enterprise, wifi_security_mode_wpa3_personal, wifi_security_mode_wpa3_transition, wifi_security_mode_wpa3_compatibility, wifi_security_mode_wpa3_enterprise, wifi_security_mode_wpa_wpa2_enterprise, wifi_security_mode_enhanced_open, wifi_security_mode_wpa_enterprise, wifi_security_mode_wpa_wpa2_personal};
-    unsigned int i = 0;
+    int i, j = 0;
+    int num_key_found = 0;
+    char key_mgmt_buff_str[MAX_SEC_LEN] = {0};
 
-    if ((enum_sec == NULL) || (str_sec == NULL)) {
+    if ((enum_sec == NULL) || wpa_key_mgmt == NULL) {
         return RETURN_ERR;
     }
 
     if (conv_type == STRING_TO_ENUM) {
-        char str_buff[MAX_SEC_LEN] = {0};
-        if (strlen(str_sec2) != 0) {
-            snprintf(str_buff, sizeof(str_buff), "%s %s", str_sec2, str_sec);
-        } else {
-            snprintf(str_buff, sizeof(str_buff), "%s", str_sec);
+        for (i = 0; i < wpa_key_mgmt_len; i++) {
+            snprintf(key_mgmt_buff_str + strlen(key_mgmt_buff_str), sizeof(key_mgmt_buff_str) - strlen(key_mgmt_buff_str), "%s", wpa_key_mgmt[i]);
         }
-        for (i = 0; i < ARRAY_SIZE(arr_str); i++) {
-            if (strcmp(arr_str[i], str_buff) == 0) {
-                *enum_sec = arr_num[i];
+        for (i = 0; i < ARRAY_LEN(security_map); i++) {
+            if (wpa_key_mgmt_len != security_map[i].len) {
+                continue;
+            }
+            num_key_found = 0;
+            for (j = 0; j < wpa_key_mgmt_len; j++) {
+                char *found_key = strstr(key_mgmt_buff_str, security_map[i].keys[j]);
+                if (found_key == NULL) {
+                    break;
+                }
+                num_key_found++;
+            }
+            if (num_key_found == wpa_key_mgmt_len) {
+                *enum_sec = security_map[i].mode;
                 return RETURN_OK;
             }
         }
     } else if (conv_type == ENUM_TO_STRING) {
-        for (i = 0; i < ARRAY_SIZE(arr_num); i++) {
-            if (arr_num[i]  == *enum_sec) {
-                if ((*enum_sec == wifi_security_mode_wpa3_transition) || (*enum_sec == wifi_security_mode_wpa3_compatibility)
-                    || (*enum_sec == wifi_security_mode_wpa_wpa2_enterprise) || (*enum_sec == wifi_security_mode_wpa_wpa2_personal))
-                {
-                    *len = 2;
-                    char *sec_safe;
-                    char *sec1 = strtok_r(arr_str[i], " ", &sec_safe);
-                    char *sec2 = NULL;
-                    if (NULL != sec1) {
-                       sec2 = strtok_r(NULL, " ", &sec_safe);
-                       snprintf(str_sec, sec_len, "%s", sec1);
-                       snprintf(str_sec2, sec_len2, "%s", sec2);
-                    }
-                } else {
-                    *len = 1;
-                    snprintf(str_sec, sec_len, "%s", arr_str[i]);
+        for (i = 0; i < ARRAY_LEN(security_map); i++) {
+            if (*enum_sec == security_map[i].mode) {
+                *sec_len = security_map[i].len;
+                for (j = 0; j < security_map[i].len; j++) {
+                    snprintf(wpa_key_mgmt[j], sizeof(wpa_key_mgmt[j]), "%s", security_map[i].keys[j]);
                 }
                 return RETURN_OK;
             }
@@ -2233,6 +2249,104 @@ int get_radio_index_for_vap_index(wifi_platform_property_t* wifi_prop, int vap_i
     return (prop) ? (int)prop->rdk_radio_index : RETURN_ERR;
 }
 
+bool wifi_radius_config_changed(const wifi_radius_settings_t *old_config,
+                                const wifi_radius_settings_t *new_config)
+{
+    if (!old_config || !new_config) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s: Invalid configuration pointers\n", __func__);
+        return false;
+    }
+
+    bool changed = false;
+
+#ifdef WIFI_HAL_VERSION_3_PHASE2
+    changed |= IS_BIN_CHANGED(&old_config->ip, &new_config->ip, sizeof(ip_addr_t));
+#else
+    changed |= IS_BIN_CHANGED(old_config->ip, new_config->ip, sizeof(old_config->ip));
+#endif
+    changed |= IS_CHANGED(old_config->port, new_config->port);
+    changed |= IS_STR_CHANGED(old_config->key, new_config->key, sizeof(old_config->key));
+    changed |= IS_STR_CHANGED(old_config->identity, new_config->identity, sizeof(old_config->identity));
+
+#ifdef WIFI_HAL_VERSION_3_PHASE2
+    changed |= IS_BIN_CHANGED(&old_config->s_ip, &new_config->s_ip, sizeof(ip_addr_t));
+#else
+    changed |= IS_BIN_CHANGED(old_config->s_ip, new_config->s_ip, sizeof(old_config->s_ip));
+#endif
+    changed |= IS_CHANGED(old_config->s_port, new_config->s_port);
+    changed |= IS_STR_CHANGED(old_config->s_key, new_config->s_key, sizeof(old_config->s_key));
+    changed |= IS_BIN_CHANGED(&old_config->dasip, &new_config->dasip, sizeof(ip_addr_t));
+    changed |= IS_CHANGED(old_config->dasport, new_config->dasport);
+    changed |= IS_STR_CHANGED(old_config->daskey, new_config->daskey, sizeof(old_config->daskey));
+    if (!changed) {
+        wifi_util_dbg_print(WIFI_CTRL, "%s: No RADIUS configuration changes detected\n", __func__);
+    }
+    return changed;
+}
+
+bool should_process_hotspot_config_change(const wifi_vap_info_t *lnf_vap_info, 
+                                         const wifi_vap_info_t *hotspot_vap_info)
+{
+    wifi_util_dbg_print(WIFI_CTRL, "%s: Entry\n", __func__);
+    
+    if (!lnf_vap_info || !hotspot_vap_info) {
+        wifi_util_error_print(WIFI_CTRL, "%s: NULL pointer check failed - lnf_vap_info=%p, hotspot_vap_info=%p\n", 
+                             __func__, lnf_vap_info, hotspot_vap_info);
+        return false;
+    }
+    
+    wifi_util_dbg_print(WIFI_CTRL, "%s: lnf_vap_name=%s, hotspot_vap_name=%s\n", 
+                       __func__, 
+                       lnf_vap_info->vap_name ? lnf_vap_info->vap_name : "NULL",
+                       hotspot_vap_info->vap_name ? hotspot_vap_info->vap_name : "NULL");
+    
+    bool is_mdu_enabled = lnf_vap_info->u.bss_info.mdu_enabled;
+    wifi_util_dbg_print(WIFI_CTRL, "%s: is_mdu_enabled=%s\n", 
+                       __func__, is_mdu_enabled ? "true" : "false");
+    
+    bool is_secure_hotspot = !strncmp(hotspot_vap_info->vap_name, 
+                                     VAP_PREFIX_HOTSPOT_SECURE,
+                                     strlen(VAP_PREFIX_HOTSPOT_SECURE));
+    wifi_util_dbg_print(WIFI_CTRL, "%s: is_secure_hotspot=%s (vap_name=%s, prefix=%s)\n", 
+                       __func__, 
+                       is_secure_hotspot ? "true" : "false",
+                       hotspot_vap_info->vap_name ? hotspot_vap_info->vap_name : "NULL",
+                       VAP_PREFIX_HOTSPOT_SECURE);
+    
+    bool lnf_enabled = lnf_vap_info->u.bss_info.enabled;
+    bool hotspot_enabled = hotspot_vap_info->u.bss_info.enabled;
+    bool vap_enabled_changed = (lnf_enabled != hotspot_enabled);
+    wifi_util_dbg_print(WIFI_CTRL, "%s: vap_enabled_changed=%s (lnf_enabled=%s, hotspot_enabled=%s)\n", 
+                       __func__, 
+                       vap_enabled_changed ? "true" : "false",
+                       lnf_enabled ? "true" : "false",
+                       hotspot_enabled ? "true" : "false");
+    
+    bool radius_config_changed = wifi_radius_config_changed(
+        &lnf_vap_info->u.bss_info.security.repurposed_radius,
+        &hotspot_vap_info->u.bss_info.security.u.radius);
+    wifi_util_dbg_print(WIFI_CTRL, "%s: radius_config_changed=%s\n", 
+                       __func__, radius_config_changed ? "true" : "false");
+    
+    bool result = (is_mdu_enabled &&
+                  is_secure_hotspot &&
+                  (vap_enabled_changed || radius_config_changed));
+    
+    wifi_util_info_print(WIFI_CTRL, "%s: Hotspot vap_name is %s & LnF vap_name is %s and bool is %d:%d:%d:%d:%d - result=%s\n", 
+                        __func__,
+                        hotspot_vap_info->vap_name ? hotspot_vap_info->vap_name : "NULL",
+                        lnf_vap_info->vap_name ? lnf_vap_info->vap_name : "NULL",
+                        is_mdu_enabled ? 1 : 0,
+                        is_secure_hotspot ? 1 : 0,
+                        vap_enabled_changed ? 1 : 0,
+                        radius_config_changed ? 1 : 0,
+                        (vap_enabled_changed || radius_config_changed) ? 1 : 0,
+                        result ? "true" : "false");
+    
+    wifi_util_dbg_print(WIFI_CTRL, "%s: Exit - returning %s\n", __func__, result ? "true" : "false");
+    
+    return result;
+}
 
 int  min_hw_mode_conversion(unsigned int vapIndex, char *inputStr, char *outputStr, char *tableType)
 {
@@ -3702,6 +3816,8 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
         IS_CHANGED(vap_info_old->radio_index, vap_info_new->radio_index) ||
         IS_STR_CHANGED(vap_info_old->bridge_name, vap_info_new->bridge_name,
             sizeof(vap_info_old->bridge_name)) ||
+        IS_STR_CHANGED(vap_info_old->repurposed_bridge_name, vap_info_new->repurposed_bridge_name,
+            sizeof(vap_info_old->repurposed_bridge_name)) ||
         IS_CHANGED(vap_info_old->vap_mode, vap_info_new->vap_mode)) {
         return true;
     }
@@ -3726,6 +3842,7 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
             IS_CHANGED(vap_info_old->u.bss_info.mgmtPowerControl,
                 vap_info_new->u.bss_info.mgmtPowerControl) ||
             IS_CHANGED(vap_info_old->u.bss_info.bssMaxSta, vap_info_new->u.bss_info.bssMaxSta) ||
+            IS_CHANGED(vap_info_old->u.bss_info.inum_sta, vap_info_new->u.bss_info.inum_sta) ||
             IS_CHANGED(vap_info_old->u.bss_info.bssTransitionActivated,
                 vap_info_new->u.bss_info.bssTransitionActivated) ||
             IS_CHANGED(vap_info_old->u.bss_info.nbrReportActivated,
@@ -3761,6 +3878,10 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
                 vap_info_new->u.bss_info.wpsPushButton) ||
             IS_CHANGED(vap_info_old->u.bss_info.connected_building_enabled,
                 vap_info_new->u.bss_info.connected_building_enabled) ||
+            IS_CHANGED(vap_info_old->u.bss_info.mdu_enabled, vap_info_new->u.bss_info.mdu_enabled) ||
+            IS_CHANGED(vap_info_old->u.bss_info.am_config.npc.speed_tier,
+                vap_info_new->u.bss_info.am_config.npc.speed_tier) ||
+            wifi_radius_config_changed(&vap_info_old->u.bss_info.security.repurposed_radius, &vap_info_new->u.bss_info.security.repurposed_radius) ||
             IS_BIN_CHANGED(&vap_info_old->u.bss_info.beaconRateCtl,
                 &vap_info_new->u.bss_info.beaconRateCtl,
                 sizeof(vap_info_old->u.bss_info.beaconRateCtl)) ||
@@ -3783,8 +3904,18 @@ bool is_vap_param_config_changed(wifi_vap_info_t *vap_info_old, wifi_vap_info_t 
             IS_STR_CHANGED(vap_info_old->u.bss_info.preassoc.sixGOpInfoMinRate,
                 vap_info_new->u.bss_info.preassoc.sixGOpInfoMinRate,
                 sizeof(vap_info_old->u.bss_info.preassoc.sixGOpInfoMinRate)) ||
+            IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_enable,
+                vap_info_new->u.bss_info.mld_info.common_info.mld_enable) ||
+            IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_id,
+                vap_info_new->u.bss_info.mld_info.common_info.mld_id) ||
+            IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_link_id,
+                vap_info_new->u.bss_info.mld_info.common_info.mld_link_id) ||
+            IS_CHANGED(vap_info_old->u.bss_info.mld_info.common_info.mld_apply,
+                vap_info_new->u.bss_info.mld_info.common_info.mld_apply) ||
             IS_CHANGED(vap_info_old->u.bss_info.hostap_mgt_frame_ctrl,
                 vap_info_new->u.bss_info.hostap_mgt_frame_ctrl) ||
+            IS_CHANGED(vap_info_old->u.bss_info.interop_ctrl,
+                vap_info_new->u.bss_info.interop_ctrl) ||
             IS_CHANGED(vap_info_old->u.bss_info.vendor_elements_len,
                 vap_info_new->u.bss_info.vendor_elements_len) ||
             IS_BIN_CHANGED(vap_info_old->u.bss_info.vendor_elements,

@@ -41,7 +41,6 @@
 #include <sys/un.h>
 #include <assert.h>
 #include <limits.h>
-#include <sysevent/sysevent.h>
 #include "wifi_passpoint.h"
 #include "safec_lib_common.h"
 #include <sched.h>
@@ -1523,7 +1522,7 @@ void WiFiBlastClient(void)
     wifi_util_dbg_print(WIFI_BLASTER, "%s : %d exiting the function\n",__func__,__LINE__);
 }
 
-static int send_monitor_event(int event, const char *event_data)
+int send_monitor_event(int event, const char *event_data)
 {
     int ret;
     wifi_monitor_data_t *data;

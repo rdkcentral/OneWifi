@@ -39,7 +39,6 @@
 #include <sys/un.h>
 #include <assert.h>
 #include <limits.h>
-#include <sysevent/sysevent.h>
 #include "wifi_passpoint.h"
 #include "safec_lib_common.h"
 #include "secure_wrapper.h"
@@ -1008,16 +1007,14 @@ static void get_device_flag(char flag[], int size, char *list_name)
             }
         }
 
-        for(i = 0; i < MAX_VAP && i < size; i ++)
-        {
-            if(buf_int[i] < size && buf_int[i] >= 0)
-            {
-                flag[(buf_int[i] - 1)] = 1;
-            }
-            else
-            {
-                wifi_util_error_print(WIFI_APPS, "%s():%d for vap(%u) failed.\n",
-                        __func__, __LINE__, buf_int[i]);
+        for (i = 0; i < MAX_VAP && buf_int[i] > 0; i++) {
+            if (buf_int[i] - 1 < size) {
+                flag[buf_int[i] - 1] = 1;
+            } else {
+                wifi_util_error_print(WIFI_APPS,
+                    "%s:%d failed to set flag, vap index %d is more than size %d\n", __func__,
+                    __LINE__, buf_int[i], size);
+                return;
             }
         }
     } else {
@@ -2391,6 +2388,9 @@ void reconfigure_whix_interval(wifi_app_t *app, wifi_event_t *event)
     wifi_util_dbg_print(WIFI_APPS,"%s:%d Intervals are %d %d\n", __func__, __LINE__, whix_log_interval, whix_chutil_interval);
     if (whix_log_interval && whix_chutil_interval) {
         push_whix_config_event_to_monitor_queue(mon_stats_request_state_start, app);
+    }
+    if (whix_chutil_interval) {
+        send_monitor_event(wifi_event_monitor_update_interop_interval,"interop_interval");
     }
     config_rejected_client_stats(app);
 }

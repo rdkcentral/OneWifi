@@ -111,6 +111,7 @@
         PJS_OVS_BOOL(isolation_enabled) \
         PJS_OVS_INT(mgmt_power_control) \
         PJS_OVS_INT(bss_max_sta) \
+        PJS_OVS_INT(inum_sta) \
         PJS_OVS_BOOL(bss_transition_activated) \
         PJS_OVS_BOOL(nbr_report_activated) \
         PJS_OVS_BOOL(rapid_connect_enabled) \
@@ -143,7 +144,16 @@
         PJS_OVS_STRING(repurposed_vap_name, 64 + 1) \
         PJS_OVS_BOOL(connected_building_enabled) \
         PJS_OVS_BOOL(hostap_mgt_frame_ctrl) \
+        PJS_OVS_BOOL(interop_ctrl) \
         PJS_OVS_BOOL(mbo_enabled) \
+        PJS_OVS_BOOL(mld_enable) \
+        PJS_OVS_INT(mld_id) \
+        PJS_OVS_INT(mld_link_id) \
+        PJS_OVS_STRING(mld_addr, 32 + 1) \
+        PJS_OVS_BOOL(mld_apply) \
+        PJS_OVS_BOOL(mdu_enabled)\
+        PJS_OVS_INT(speed_tier)\
+        PJS_OVS_STRING(repurposed_bridge_name, 8 + 1)\
     )
 
 #define PJS_SCHEMA_Wifi_Interworking_Config \
@@ -1604,6 +1614,8 @@
         PJS_OVS_INT(assoc_gate_time) \
         PJS_OVS_INT(whix_log_interval) \
         PJS_OVS_INT(whix_chutility_loginterval) \
+        PJS_OVS_INT(rss_memory_restart_threshold_low) \
+        PJS_OVS_INT(rss_memory_restart_threshold_high) \
         PJS_OVS_INT(assoc_monitor_duration) \
         PJS_OVS_BOOL(rapid_reconnect_enable) \
         PJS_OVS_BOOL(vap_stats_feature) \
@@ -1619,6 +1631,10 @@
         PJS_OVS_STRING(snr_list, 128 + 1) \
         PJS_OVS_STRING(cli_stat_list, 128 + 1) \
         PJS_OVS_STRING(txrx_rate_list, 128 + 1) \
+        PJS_OVS_BOOL(mgt_frame_rate_limit_enable) \
+        PJS_OVS_INT(mgt_frame_rate_limit) \
+        PJS_OVS_INT(mgt_frame_rate_limit_window_size) \
+        PJS_OVS_INT(mgt_frame_rate_limit_cooldown_time) \
     )
 
 #define PJS_SCHEMA_Wifi_Preassoc_Control_Config \
@@ -2028,6 +2044,7 @@
     COLUMN(isolation_enabled) \
     COLUMN(mgmt_power_control) \
     COLUMN(bss_max_sta) \
+    COLUMN(inum_sta) \
     COLUMN(bss_transition_activated) \
     COLUMN(nbr_report_activated) \
     COLUMN(rapid_connect_enabled) \
@@ -2060,8 +2077,16 @@
     COLUMN(repurposed_vap_name)\
     COLUMN(connected_building_enabled)\
     COLUMN(hostap_mgt_frame_ctrl) \
-    COLUMN(mbo_enabled)
-
+    COLUMN(mbo_enabled)\
+    COLUMN(mld_enable)\
+    COLUMN(mld_id)\
+    COLUMN(mld_link_id)\
+    COLUMN(mld_addr)\
+    COLUMN(mld_apply)\
+    COLUMN(interop_ctrl)\
+    COLUMN(mdu_enabled)\
+    COLUMN(speed_tier)\
+    COLUMN(repurposed_bridge_name)
 
 #define SCHEMA__Wifi_Interworking_Config "Wifi_Interworking_Config"
 #define SCHEMA_COLUMN__Wifi_Interworking_Config(COLUMN) \
@@ -3258,6 +3283,8 @@
     COLUMN(assoc_gate_time) \
     COLUMN(whix_log_interval) \
     COLUMN(whix_chutility_loginterval) \
+    COLUMN(rss_memory_restart_threshold_low) \
+    COLUMN(rss_memory_restart_threshold_high) \
     COLUMN(assoc_monitor_duration) \
     COLUMN(rapid_reconnect_enable) \
     COLUMN(vap_stats_feature) \
@@ -3273,6 +3300,10 @@
     COLUMN(snr_list) \
     COLUMN(cli_stat_list) \
     COLUMN(txrx_rate_list) \
+    COLUMN(mgt_frame_rate_limit_enable) \
+    COLUMN(mgt_frame_rate_limit) \
+    COLUMN(mgt_frame_rate_limit_window_size) \
+    COLUMN(mgt_frame_rate_limit_cooldown_time) \
 
 #define SCHEMA__Wifi_Preassoc_Control_Config "Wifi_Preassoc_Control_Config"
 #define SCHEMA_COLUMN__Wifi_Preassoc_Control_Config(COLUMN) \
@@ -3373,6 +3404,7 @@
 #define SCHEMA__Wifi_VAP_Config__isolation_enabled "isolation_enabled"
 #define SCHEMA__Wifi_VAP_Config__mgmt_power_control "mgmt_power_control"
 #define SCHEMA__Wifi_VAP_Config__bss_max_sta "bss_max_sta"
+#define SCHEMA__Wifi_VAP_Config__inum_sta "inum_sta"
 #define SCHEMA__Wifi_VAP_Config__bss_transition_activated "bss_transition_activated"
 #define SCHEMA__Wifi_VAP_Config__nbr_report_activated "nbr_report_activated"
 #define SCHEMA__Wifi_VAP_Config__rapid_connect_enabled "rapid_connect_enabled"
@@ -3405,7 +3437,16 @@
 #define SCHEMA__Wifi_VAP_Config__repurposed_vap_name "repurposed_vap_name"
 #define SCHEMA__Wifi_VAP_Config__connected_building_enabled "connected_building_enabled"
 #define SCHEMA__Wifi_VAP_Config__hostap_mgt_frame_ctrl "hostap_mgt_frame_ctrl"
+#define SCHEMA__Wifi_VAP_Config__interop_ctrl "interop_ctrl"
 #define SCHEMA__Wifi_VAP_Config__mbo_enabled "mbo_enabled"
+#define SCHEMA__Wifi_VAP_Config__mld_enable "mld_enable"
+#define SCHEMA__Wifi_VAP_Config__mld_id "mld_id"
+#define SCHEMA__Wifi_VAP_Config__mld_link_id "mld_link_id"
+#define SCHEMA__Wifi_VAP_Config__mld_addr "mld_addr"
+#define SCHEMA__Wifi_VAP_Config__mld_apply "mld_apply"
+#define SCHEMA__Wifi_VAP_Config__mdu_enabled "mdu_enabled"
+#define SCHEMA__Wifi_VAP_Config__speed_tier "speed_tier"
+#define SCHEMA__Wifi_VAP_Config__repurposed_bridge_name "repurposed_bridge_name"
 
 #define SCHEMA__Wifi_Interworking_Config__enable "enable"
 #define SCHEMA__Wifi_Interworking_Config__vap_name "vap_name"
@@ -4506,6 +4547,8 @@
 #define SCHEMA__Wifi_Global_Config__assoc_gate_time "assoc_gate_time"
 #define SCHEMA__Wifi_Global_Config__whix_log_interval "whix_log_interval"
 #define SCHEMA__Wifi_Global_Config__whix_chutility_loginterval "whix_chutility_loginterval"
+#define SCHEMA__Wifi_Global_Config__threshold1 "rss_memory_restart_threshold_low"
+#define SCHEMA__Wifi_Global_Config__threshold2 "rss_memory_restart_threshold_high"
 #define SCHEMA__Wifi_Global_Config__assoc_monitor_duration "assoc_monitor_duration"
 #define SCHEMA__Wifi_Global_Config__rapid_reconnect_enable "rapid_reconnect_enable"
 #define SCHEMA__Wifi_Global_Config__vap_stats_feature "vap_stats_feature"
@@ -4521,6 +4564,10 @@
 #define SCHEMA__Wifi_Global_Config__snr_list "snr_list"
 #define SCHEMA__Wifi_Global_Config__cli_stat_list "cli_stat_list"
 #define SCHEMA__Wifi_Global_Config__txrx_rate_list "txrx_rate_list"
+#define SCHEMA__Wifi_Global_Config__mgt_frame_rate_limit_enable "mgt_frame_rate_limit_enable"
+#define SCHEMA__Wifi_Global_Config__mgt_frame_rate_limit "mgt_frame_rate_limit"
+#define SCHEMA__Wifi_Global_Config__mgt_frame_rate_limit_window_size "mgt_frame_rate_limit_window_size"
+#define SCHEMA__Wifi_Global_Config__mgt_frame_rate_limit_cooldown_time "mgt_frame_rate_limit_cooldown_time"
 
 #define SCHEMA__Wifi_Preassoc_Control_Config__rssi_up_threshold "rssi_up_threshold"
 #define SCHEMA__Wifi_Preassoc_Control_Config__snr_threshold "snr_threshold"
