@@ -512,7 +512,6 @@ void ext_start_scan(vap_svc_t *svc)
     wifi_ctrl_t *ctrl;
     unsigned int radio_index;
     ssid_t ssid;
-    bool found = false;
     wifi_channels_list_t channels;
     wifi_radio_operationParam_t *radio_oper_param;
     wifi_mgr_t *mgr = (wifi_mgr_t *)get_wifimgr_obj();
@@ -567,11 +566,7 @@ void ext_start_scan(vap_svc_t *svc)
             // SSID is wildcard SSID
             continue;
         }
-        found = true;
-        break;
-    }
 
-    if (found) {
         wifi_util_dbg_print(WIFI_CTRL, "%s:%d start Scan on radio index %u\n", __func__, __LINE__,
             radio_index);
         wifi_hal_startScan(radio_index, WIFI_RADIO_SCAN_MODE_OFFCHAN, dwell_time,
