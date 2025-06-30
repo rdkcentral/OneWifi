@@ -29,7 +29,6 @@
 #endif
 
 #define  ANSC_STATUS_SUCCESS                        0
-
 #define MONITOR_QUEUE_SIZE_MAX (700 * getNumberRadios())
 
 typedef struct {
@@ -186,6 +185,7 @@ typedef struct {
     bool radio_presence[MAX_NUM_RADIOS];
     bool is_blaster_running;
     hash_map_t  *clctr_subscriber_map; //clctr_subscription_t
+    wifi_channelMap_t channel_map[MAX_NUM_RADIOS][MAX_CHANNELS];
 } wifi_monitor_t;
 
 typedef struct {

@@ -353,6 +353,9 @@ webconfig_error_t encode_vap_common_object(const wifi_vap_info_t *vap_info,
     //Bridge Name
     cJSON_AddStringToObject(vap_object, "BridgeName", vap_info->bridge_name);
 
+    //Repurposed Bridge Name
+    cJSON_AddStringToObject(vap_object, "RepurposedBridgeName", vap_info->repurposed_bridge_name);
+
     //VAP Name
     cJSON_AddStringToObject(vap_object, "RepurposedVapName", vap_info->repurposed_vap_name);
 
@@ -794,6 +797,27 @@ webconfig_error_t encode_wifi_global_config(const wifi_global_param_t *global_in
     cJSON_AddNumberToObject(global_obj, "MgtFrameRateLimitCooldownTime",
         global_info->mgt_frame_rate_limit_cooldown_time);
 
+    // RSSCheckInterval
+    cJSON_AddNumberToObject(global_obj, "rss_check_interval",
+        global_info->memwraptool.rss_check_interval);
+
+    // RSSThreshold
+    cJSON_AddNumberToObject(global_obj, "rss_threshold", global_info->memwraptool.rss_threshold);
+
+    // RSSMaxLimit
+    cJSON_AddNumberToObject(global_obj, "rss_maxlimit", global_info->memwraptool.rss_maxlimit);
+
+    // HeapwalkDuration
+    cJSON_AddNumberToObject(global_obj, "heapwalk_duration",
+        global_info->memwraptool.heapwalk_duration);
+
+    // HeapwalkInterval
+    cJSON_AddNumberToObject(global_obj, "heapwalk_interval",
+        global_info->memwraptool.heapwalk_interval);
+
+    // MemwrapToolEnable
+    cJSON_AddBoolToObject(global_obj, "MemwrapToolEnable", global_info->memwraptool.enable);
+
     return webconfig_error_none;
 }
 
@@ -991,6 +1015,7 @@ webconfig_error_t encode_interworking_common_object(const wifi_interworking_t *i
     return webconfig_error_none;
 }
 
+
 webconfig_error_t encode_radius_object(const wifi_radius_settings_t *radius_info, cJSON *radius)
 {
     char str[64];
@@ -1129,6 +1154,21 @@ webconfig_error_t encode_security_object(const wifi_vap_security_t *security_inf
             wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d failed to encode radius settings\n",
                 __func__, __LINE__);
             return webconfig_error_encode;
+        }
+    }
+
+    if (security_info->mode == wifi_security_mode_wpa_personal ||
+        security_info->mode == wifi_security_mode_wpa2_personal ||
+        security_info->mode == wifi_security_mode_wpa_wpa2_personal ||
+        security_info->mode == wifi_security_mode_wpa3_personal ||
+        security_info->mode == wifi_security_mode_wpa3_transition ||
+        security_info->mode == wifi_security_mode_wpa3_compatibility) {
+        
+        obj = cJSON_CreateObject();
+        cJSON_AddItemToObject(security, "RepurposedRadiusConfig", obj);
+        if (encode_radius_object(&security_info->repurposed_radius, obj) != webconfig_error_none) {
+            wifi_util_info_print(WIFI_CTRL, "%s:%d Failed to encode RepurposedRadiusConfig\n", __FUNCTION__, __LINE__);
+            return webconfig_error_decode;
         }
     }
 
@@ -1812,6 +1852,21 @@ webconfig_error_t encode_levl_object(const levl_config_t *levl, cJSON *levl_obj)
     cJSON_AddNumberToObject(levl_obj, "Duration", levl->levl_sounding_duration);
     cJSON_AddNumberToObject(levl_obj, "Interval", levl->levl_publish_interval);
 
+    return webconfig_error_none;
+}
+
+webconfig_error_t encode_memwraptool_object(memwraptool_config_t *memwrap_info, cJSON *memwrap_obj)
+{
+    if (memwrap_info == NULL || memwrap_obj == NULL) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d Memwrap info is NULL\n", __func__, __LINE__);
+        return webconfig_error_encode;
+    }
+    cJSON_AddNumberToObject(memwrap_obj, "rss_check_interval", memwrap_info->rss_check_interval);
+    cJSON_AddNumberToObject(memwrap_obj, "rss_threshold", memwrap_info->rss_threshold);
+    cJSON_AddNumberToObject(memwrap_obj, "rss_maxlimit", memwrap_info->rss_maxlimit);
+    cJSON_AddNumberToObject(memwrap_obj, "heapwalk_duration", memwrap_info->heapwalk_duration);
+    cJSON_AddNumberToObject(memwrap_obj, "heapwalk_interval", memwrap_info->heapwalk_interval);
+    cJSON_AddBoolToObject(memwrap_obj, "enable", memwrap_info->enable);
     return webconfig_error_none;
 }
 

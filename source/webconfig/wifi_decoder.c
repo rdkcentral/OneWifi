@@ -1000,7 +1000,6 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
        return webconfig_error_decode;
     }
 #endif
-
     decode_param_integer(radius, "RadiusServerPort", param);
     radius_info->port = param->valuedouble;
 
@@ -1076,6 +1075,7 @@ webconfig_error_t decode_radius_object(const cJSON *radius, wifi_radius_settings
 
     return webconfig_error_none;
 }
+
 
 webconfig_error_t decode_open_radius_object(const cJSON *radius, wifi_radius_settings_t *radius_info)
 {
@@ -1292,6 +1292,24 @@ webconfig_error_t decode_security_object(const cJSON *security, wifi_vap_securit
         return webconfig_error_decode;
     }
 
+    /* Handle RepurposedRadiusConfig for personal modes only */
+    if (security_info->mode == wifi_security_mode_wpa_personal ||
+        security_info->mode == wifi_security_mode_wpa2_personal ||
+        security_info->mode == wifi_security_mode_wpa_wpa2_personal ||
+        security_info->mode == wifi_security_mode_wpa3_personal ||
+        security_info->mode == wifi_security_mode_wpa3_transition ||
+        security_info->mode == wifi_security_mode_wpa3_compatibility) {
+        
+        object = cJSON_GetObjectItem(security, "RepurposedRadiusConfig");
+        if (object != NULL) {
+            decode_param_object(security, "RepurposedRadiusConfig", param);
+            if (decode_open_radius_object(param, &security_info->repurposed_radius) != webconfig_error_none) {
+                wifi_util_info_print(WIFI_CTRL, "%s:%d Failed to decode RepurposedRadiusConfig\n", __FUNCTION__, __LINE__);
+                return webconfig_error_decode;
+            }
+        }
+    }
+
     if (security_info->mode == wifi_security_mode_none ||
         security_info->mode == wifi_security_mode_enhanced_open) {
         object = cJSON_GetObjectItem(security, "RadiusSettings");
@@ -1452,7 +1470,7 @@ webconfig_error_t decode_security_object(const cJSON *security, wifi_vap_securit
     return webconfig_error_none;
 }
 
-webconfig_error_t decode_ssid_name(char *ssid_name)
+webconfig_error_t decode_ssid_name(char *ssid_name, wifi_vap_mode_t vap_mode)
 {
     int i = 0, ssid_len;
 
@@ -1462,12 +1480,18 @@ webconfig_error_t decode_ssid_name(char *ssid_name)
     }
 
     ssid_len = strlen(ssid_name);
-    if ((ssid_len == 0) || (ssid_len > WIFI_MAX_SSID_NAME_LEN)) {
+
+    if (vap_mode != wifi_vap_mode_sta && ssid_len <= 0) {
+        wifi_util_error_print(WIFI_WEBCONFIG, "%s:%d: SSID can not be empty for VAP mode %d\n",
+            __func__, __LINE__, vap_mode);
+        return webconfig_error_decode;
+    }
+
+    if (ssid_len > WIFI_MAX_SSID_NAME_LEN) {
         wifi_util_error_print(WIFI_WEBCONFIG,"%s:%d: SSID length %d exceeds max SSID length %d\n", __func__, __LINE__, ssid_len, WIFI_MAX_SSID_NAME_LEN);
         //strncpy(execRetVal->ErrorMsg, "Invalid SSID Size",sizeof(execRetVal->ErrorMsg)-1);
         return webconfig_error_decode;
     }
-
 
     for (i = 0; i < ssid_len; i++) {
         if (!((ssid_name[i] >= ' ') && (ssid_name[i] <= '~'))) {
@@ -1553,6 +1577,15 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
     decode_param_allow_empty_string(vap, "BridgeName", param);
     strncpy(vap_info->bridge_name, param->valuestring, WIFI_BRIDGE_NAME_LEN - 1);
 
+    //Repurposed Bridge Name
+    decode_param_allow_optional_string(vap, "RepurposedBridgeName", param);
+    if (param != NULL && param->valuestring != NULL) {
+        strncpy(vap_info->repurposed_bridge_name, param->valuestring, WIFI_BRIDGE_NAME_LEN - 1);
+        vap_info->repurposed_bridge_name[WIFI_BRIDGE_NAME_LEN - 1] = '\0';
+    } else {
+        vap_info->repurposed_bridge_name[0] = '\0';
+    }
+
     // repurposed vap_name
     decode_param_allow_empty_string(vap, "RepurposedVapName", param);
     strncpy(vap_info->repurposed_vap_name, param->valuestring,
@@ -1561,7 +1594,7 @@ webconfig_error_t decode_vap_common_object(const cJSON *vap, wifi_vap_info_t *va
     // SSID
     decode_param_string(vap, "SSID", param);
 
-    if (decode_ssid_name(param->valuestring) != webconfig_error_none) {
+    if (decode_ssid_name(param->valuestring, vap_info->vap_mode) != webconfig_error_none) {
         wifi_util_error_print(WIFI_WEBCONFIG, "%s %d : Ssid name validation failed for %s\n",
             __FUNCTION__, __LINE__, vap_info->vap_name);
         return webconfig_error_decode;
@@ -2197,7 +2230,7 @@ webconfig_error_t decode_mesh_sta_object(const cJSON *vap, wifi_vap_info_t *vap_
     }
 
     // SSID
-    decode_param_string(vap, "SSID", param);
+    decode_param_allow_empty_string(vap, "SSID", param);
     strcpy(vap_info->u.sta_info.ssid, param->valuestring);
 
     // BSSID
@@ -2386,6 +2419,24 @@ webconfig_error_t decode_wifi_global_config(const cJSON *global_cfg, wifi_global
     // MgtFrameRateLimitCooldownTime
     decode_param_integer(global_cfg, "MgtFrameRateLimitCooldownTime", param);
     global_info->mgt_frame_rate_limit_cooldown_time = param->valuedouble;
+
+    decode_param_bool(global_cfg, "MemwrapToolEnable", param);
+    global_info->memwraptool.enable = (param->type & cJSON_True) ? true : false;
+
+    decode_param_integer(global_cfg, "rss_check_interval", param);
+    global_info->memwraptool.rss_check_interval = param->valuedouble;
+
+    decode_param_integer(global_cfg, "rss_threshold", param);
+    global_info->memwraptool.rss_threshold = param->valuedouble;
+
+    decode_param_integer(global_cfg, "rss_maxlimit", param);
+    global_info->memwraptool.rss_maxlimit = param->valuedouble;
+
+    decode_param_integer(global_cfg, "heapwalk_duration", param);
+    global_info->memwraptool.heapwalk_duration = param->valuedouble;
+
+    decode_param_integer(global_cfg, "heapwalk_interval", param);
+    global_info->memwraptool.heapwalk_interval = param->valuedouble;
 
 #ifndef EASY_MESH_NODE
     //WifiRegionCode
@@ -3720,6 +3771,31 @@ webconfig_error_t decode_levl_object(const cJSON *levl_cfg, levl_config_t *levl_
     decode_param_integer(levl_cfg, "Interval", param);
     levl_config->levl_publish_interval = param->valuedouble;
 
+    return webconfig_error_none;
+}
+
+webconfig_error_t decode_memwraptool_object(const cJSON *memwraptool_cfg,
+    memwraptool_config_t *memwrap_info)
+{
+    const cJSON *param;
+
+    decode_param_bool(memwraptool_cfg, "enable", param);
+    memwrap_info->enable = (param->type & cJSON_True) ? true : false;
+
+    decode_param_integer(memwraptool_cfg, "rss_check_interval", param);
+    memwrap_info->rss_check_interval = param->valuedouble;
+
+    decode_param_integer(memwraptool_cfg, "rss_threshold", param);
+    memwrap_info->rss_threshold = param->valuedouble;
+
+    decode_param_integer(memwraptool_cfg, "rss_maxlimit", param);
+    memwrap_info->rss_maxlimit = param->valuedouble;
+
+    decode_param_integer(memwraptool_cfg, "heapwalk_duration", param);
+    memwrap_info->heapwalk_duration = param->valuedouble;
+
+    decode_param_integer(memwraptool_cfg, "heapwalk_interval", param);
+    memwrap_info->heapwalk_interval = param->valuedouble;
     return webconfig_error_none;
 }
 
