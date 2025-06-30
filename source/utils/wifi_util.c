@@ -713,7 +713,7 @@ char *get_formatted_time(char *time)
 
 void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *format, ...)
 {
-    char buff[256] = {0};
+    char buff[256] = { 0 };
     va_list list;
     FILE *fpg = NULL;
 #if defined(__ENABLE_PID__) && (__ENABLE_PID__)
@@ -724,120 +724,127 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
     char module_filename[32];
     char filename[100];
 
-    switch(module)
-    {
-        case WIFI_DB:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiDbDbg");
-            snprintf(module_filename, sizeof(module_filename), "wifiDb");
-            break;
-        }
-        case WIFI_MGR:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiMgrDbg");
-            snprintf(module_filename, sizeof(module_filename), "wifiMgr");
-            break;
-        }
-        case WIFI_WEBCONFIG:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiWebConfigDbg");
-            snprintf(module_filename, sizeof(module_filename), "wifiWebConfig");
-            break;
-        }
-        case WIFI_CTRL:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiCtrlDbg");
-            snprintf(module_filename, sizeof(module_filename), "wifiCtrl");
-            break;
-        }
-        case WIFI_PASSPOINT:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiPasspointDbg");
-            snprintf(module_filename, sizeof(module_filename), "wifiPasspointDbg");
-            break;
-        }
-        case WIFI_DPP:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiDppDbg");
-            snprintf(module_filename, sizeof(module_filename), "wifiDPP");
-            break;
-        }
-        case WIFI_MON:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiMonDbg");
-            snprintf(module_filename, sizeof(module_filename), "wifiMon");
-            break;
-        }
-        case WIFI_DMCLI:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiDMCLI");
-            snprintf(module_filename, sizeof(module_filename), "wifiDMCLI");
-            break;
-        }
-        case WIFI_LIB:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiLib");
-            snprintf(module_filename, sizeof(module_filename), "wifiLib");
-            break;
-        }
-        case WIFI_PSM:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiPsm");
-            snprintf(module_filename, sizeof(module_filename), "wifiPsm");
-            break;
-        }
-        case WIFI_ANALYTICS:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiAnalytics");
-            snprintf(module_filename, sizeof(module_filename), "wifiAnalytics");
-            break;
-        }
-        case WIFI_APPS:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiApps");
-            snprintf(module_filename, sizeof(module_filename), "wifiApps");
-            break;
-        }
-        case WIFI_SERVICES:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiServices");
-            snprintf(module_filename, sizeof(module_filename), "wifiServices");
-            break;
-        }
-        case WIFI_HARVESTER:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiHarvester");
-            snprintf(module_filename, sizeof(module_filename), "wifiHarvester");
-            break;
-        }
-        case WIFI_SM:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiSM");
-            snprintf(module_filename, sizeof(module_filename), "wifiSM");
-            break;
-        }
-        case WIFI_EM:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiEM");
-            snprintf(module_filename, sizeof(module_filename), "wifiEM");
-            break;
-        }
-        case WIFI_BLASTER:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiBlaster");
-            snprintf(module_filename, sizeof(module_filename), "wifiBlaster");
-            break;
-        }
-        case WIFI_OCS:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiOcsDbg");
-            snprintf(module_filename, sizeof(module_filename), "wifiOcs");
-            break;
-        }
-        case WIFI_BUS:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiBusDbg");
-            snprintf(module_filename, sizeof(module_filename), "wifiBus");
-            break;
-        }
-        case WIFI_TCM:{
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiTCMDbg");
-            snprintf(module_filename, sizeof(module_filename), "wifiTransientClientMgmtCtrl");
-            break;
-        }
-        case WIFI_EC: {
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiEc");
-            snprintf(module_filename, sizeof(module_filename), "wifiEc");
-            break;
-        }
-        case WIFI_CSI: {
-            snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiCsi");
-            snprintf(module_filename, sizeof(module_filename), "wifiCsi");
-            break;
-        }
-        default:
-            return;
+    switch (module) {
+    case WIFI_DB: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiDbDbg");
+        snprintf(module_filename, sizeof(module_filename), "wifiDb");
+        break;
+    }
+    case WIFI_MGR: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiMgrDbg");
+        snprintf(module_filename, sizeof(module_filename), "wifiMgr");
+        break;
+    }
+    case WIFI_WEBCONFIG: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable),
+            LOG_PATH_PREFIX "wifiWebConfigDbg");
+        snprintf(module_filename, sizeof(module_filename), "wifiWebConfig");
+        break;
+    }
+    case WIFI_CTRL: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiCtrlDbg");
+        snprintf(module_filename, sizeof(module_filename), "wifiCtrl");
+        break;
+    }
+    case WIFI_PASSPOINT: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable),
+            LOG_PATH_PREFIX "wifiPasspointDbg");
+        snprintf(module_filename, sizeof(module_filename), "wifiPasspointDbg");
+        break;
+    }
+    case WIFI_DPP: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiDppDbg");
+        snprintf(module_filename, sizeof(module_filename), "wifiDPP");
+        break;
+    }
+    case WIFI_MON: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiMonDbg");
+        snprintf(module_filename, sizeof(module_filename), "wifiMon");
+        break;
+    }
+    case WIFI_DMCLI: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiDMCLI");
+        snprintf(module_filename, sizeof(module_filename), "wifiDMCLI");
+        break;
+    }
+    case WIFI_LIB: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiLib");
+        snprintf(module_filename, sizeof(module_filename), "wifiLib");
+        break;
+    }
+    case WIFI_PSM: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiPsm");
+        snprintf(module_filename, sizeof(module_filename), "wifiPsm");
+        break;
+    }
+    case WIFI_ANALYTICS: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiAnalytics");
+        snprintf(module_filename, sizeof(module_filename), "wifiAnalytics");
+        break;
+    }
+    case WIFI_APPS: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiApps");
+        snprintf(module_filename, sizeof(module_filename), "wifiApps");
+        break;
+    }
+    case WIFI_SERVICES: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiServices");
+        snprintf(module_filename, sizeof(module_filename), "wifiServices");
+        break;
+    }
+    case WIFI_HARVESTER: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiHarvester");
+        snprintf(module_filename, sizeof(module_filename), "wifiHarvester");
+        break;
+    }
+    case WIFI_SM: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiSM");
+        snprintf(module_filename, sizeof(module_filename), "wifiSM");
+        break;
+    }
+    case WIFI_EM: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiEM");
+        snprintf(module_filename, sizeof(module_filename), "wifiEM");
+        break;
+    }
+    case WIFI_BLASTER: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiBlaster");
+        snprintf(module_filename, sizeof(module_filename), "wifiBlaster");
+        break;
+    }
+    case WIFI_MEMWRAPTOOL: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable),
+            LOG_PATH_PREFIX "wifiMemwrapTool");
+        snprintf(module_filename, sizeof(module_filename), "wifiMemwrapTool");
+        break;
+    }
+    case WIFI_OCS: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiOcsDbg");
+        snprintf(module_filename, sizeof(module_filename), "wifiOcs");
+        break;
+    }
+    case WIFI_BUS: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiBusDbg");
+        snprintf(module_filename, sizeof(module_filename), "wifiBus");
+        break;
+    }
+    case WIFI_TCM: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiTCMDbg");
+        snprintf(module_filename, sizeof(module_filename), "wifiTransientClientMgmtCtrl");
+        break;
+    }
+    case WIFI_EC: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiEc");
+        snprintf(module_filename, sizeof(module_filename), "wifiEc");
+        break;
+    }
+    case WIFI_CSI: {
+        snprintf(filename_dbg_enable, sizeof(filename_dbg_enable), LOG_PATH_PREFIX "wifiCsi");
+        snprintf(module_filename, sizeof(module_filename), "wifiCsi");
+        break;
+    }
+    default:
+        return;
     }
 
     if ((access(filename_dbg_enable, R_OK)) == 0) {
@@ -848,25 +855,26 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
         }
     } else {
         switch (level) {
-            case WIFI_LOG_LVL_INFO:
-            case WIFI_LOG_LVL_ERROR:
+        case WIFI_LOG_LVL_INFO:
+        case WIFI_LOG_LVL_ERROR:
 #if defined DEVICE_EXTENDER
-                snprintf(filename, sizeof(filename), "/var/log/messages");
+            snprintf(filename, sizeof(filename), "/var/log/messages");
 #else
-                snprintf(filename, sizeof(filename), "/rdklogs/logs/%s.txt", module_filename);
+            snprintf(filename, sizeof(filename), "/rdklogs/logs/%s.txt", module_filename);
 #endif
-                fpg = fopen(filename, "a+");
-                if (fpg == NULL) {
-                    return;
-                }
-                break;
-            case WIFI_LOG_LVL_DEBUG:
-            default:
+            fpg = fopen(filename, "a+");
+            if (fpg == NULL) {
                 return;
+            }
+            break;
+        case WIFI_LOG_LVL_DEBUG:
+        default:
+            return;
         }
     }
 
-    // formatting here. For analytics, do not need any time formatting, need timestamp for all others
+    // formatting here. For analytics, do not need any time formatting, need timestamp for all
+    // others
     if (module != WIFI_ANALYTICS) {
 #if defined(__ENABLE_PID__) && (__ENABLE_PID__)
         pid = syscall(__NR_gettid);
@@ -877,8 +885,7 @@ void wifi_util_print(wifi_log_level_t level, wifi_dbg_type_t module, char *forma
         get_formatted_time(&buff[strlen(buff)]);
 #endif
 
-        static const char *level_marker[WIFI_LOG_LVL_MAX] =
-        {
+        static const char *level_marker[WIFI_LOG_LVL_MAX] = {
             [WIFI_LOG_LVL_DEBUG] = "<D>",
             [WIFI_LOG_LVL_INFO] = "<I>",
             [WIFI_LOG_LVL_ERROR] = "<E>",
